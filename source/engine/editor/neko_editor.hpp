@@ -6,7 +6,9 @@
 #include <cinttypes>
 #include <vector>
 
+#include "engine/base/neko_cvar.hpp"
 #include "engine/common/neko_util.h"
+#include "engine/editor/neko_dbgui.hpp"
 #include "engine/utility/logger.hpp"
 #include "libs/glad/glad.h"
 
@@ -237,6 +239,8 @@ private:
 void neko_editor_render_uniform_variable(GLuint program, GLenum type, const char *name, GLint location);
 void neko_editor_inspect_shader(const char *label, GLuint program);
 void neko_editor_inspect_vertex_array(const char *label, GLuint vao);
+
+auto neko_editor_create(neko_engine_cvar_t &cvar) -> dbgui &;
 
 }  // namespace neko
 

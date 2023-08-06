@@ -846,7 +846,7 @@ inline void aligned_text(const std::string &text, alignment align, const float &
     ImGui::TextUnformatted(text.c_str());
 }
 
-inline auto CheckButton(const std::string &label, bool checked, const ImVec2 &size) -> bool {
+inline auto check_button(const std::string &label, bool checked, const ImVec2 &size) -> bool {
     if (checked) {
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetStyle().Colors[ImGuiCol_ButtonActive]);
         ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyle().Colors[ImGuiCol_ButtonActive]);
@@ -863,7 +863,7 @@ inline auto CheckButton(const std::string &label, bool checked, const ImVec2 &si
     return checked;
 }
 
-inline auto ButtonTab(std::vector<std::string> &tabs, int &index) -> int {
+inline auto button_tab(std::vector<std::string> &tabs, int &index) -> int {
     auto checked = 1 << index;
     std::string tab_names;
     std::for_each(tabs.begin(), tabs.end(), [&tab_names](const auto item) { tab_names += item; });
@@ -881,7 +881,7 @@ inline auto ButtonTab(std::vector<std::string> &tabs, int &index) -> int {
         auto &tab = tabs[i];
 
         // if current tab is checkd, uncheck otheres
-        if (CheckButton(tab, checked & (1 << i), ImVec2{tab_btn_width, 0})) {
+        if (check_button(tab, checked & (1 << i), ImVec2{tab_btn_width, 0})) {
             checked = 0;
             checked = 1 << i;
         }
@@ -903,7 +903,7 @@ inline auto ButtonTab(std::vector<std::string> &tabs, int &index) -> int {
     return index;
 }
 
-inline void SwitchButton(std::string &&label, bool &checked) {
+inline void switch_button(std::string &&label, bool &checked) {
     float height = ImGui::GetFrameHeight();
     float width = height * 1.55F;
     float radius = height * 0.50F;
@@ -928,7 +928,7 @@ inline void SwitchButton(std::string &&label, bool &checked) {
     draw_list->AddCircleFilled(ImVec2(checked ? (pos.x + width - radius) : (pos.x + radius), pos.y + radius), radius - 1.5F, IM_COL32_WHITE);
 }
 
-inline void Comb(std::string &&icon, std::string &&label, const std::vector<const char *> &items, int &index) {
+inline void comb(std::string &&icon, std::string &&label, const std::vector<const char *> &items, int &index) {
     const auto p_w = ImGui::GetContentRegionAvail().x;
     aligned_text(icon + "    " + label, alignment::kVerticalCenter);
     ImGui::SameLine();
@@ -937,7 +937,7 @@ inline void Comb(std::string &&icon, std::string &&label, const std::vector<cons
     ImGui::Combo((std::string("##") + label).c_str(), &index, items.data(), neko_s_cast<int>(items.size()));
 }
 
-inline void InputInt(std::string &&icon, std::string &&label, int &value) {
+inline void input_int(std::string &&icon, std::string &&label, int &value) {
     const auto p_w = ImGui::GetContentRegionAvail().x;
     aligned_text(icon + "    " + label, alignment::kVerticalCenter);
     ImGui::SameLine();
@@ -946,7 +946,7 @@ inline void InputInt(std::string &&icon, std::string &&label, int &value) {
     ImGui::InputInt((std::string("##") + label).c_str(), &value);
 }
 
-inline void ListSeparator(float indent = 30.0F) {
+inline void list_separator(float indent = 30.0F) {
     ImGuiWindow *window = ImGui::GetCurrentWindow();
     if (window->SkipItems) {
         return;

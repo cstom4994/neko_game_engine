@@ -23,7 +23,7 @@ ENUM_HPP_REGISTER_TRAITS(neko_dbgui_flags);
 struct neko_dbgui_win {
     neko_string name;
     neko_dbgui_func func;
-    neko_dbgui_flags flags;
+    cpp::bitflags::bitflags<neko_dbgui_flags> flags;
 };
 
 class dbgui : public module<dbgui> {
@@ -51,14 +51,19 @@ public:
         return *this;
     }
 
-    void draw() {
+    cpp::bitflags::bitflags<neko_dbgui_flags>& flags(const neko_string& name) {
+        if (dbgui_list.count(name) != 1) neko_assert(0);
+        return dbgui_list[name].flags;
+    }
+
+    void draw() const {
         for (auto& d : dbgui_list) {
             cpp::bitflags::bitflags<neko_dbgui_flags> flags(d.second.flags);
             if ((flags & neko_dbgui_flags::no_visible) == neko_dbgui_flags::no_visible) return;
             if (ImGui::Begin(d.first.c_str())) {
-                neko_defer([] { ImGui::End(); });
-                d.second.func(0);
+                neko_defer([&] { d.second.func(0); });
             }
+            ImGui::End();
         }
     }
 

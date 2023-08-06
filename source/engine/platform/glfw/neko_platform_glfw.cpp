@@ -74,11 +74,8 @@ neko_result glfw_platform_init(struct neko_platform_i *platform) {
 
     auto currentDir = std::filesystem::path(std::filesystem::current_path());
 
-    char buffer[MAX_PATH];
-    GetModuleFileNameA(NULL, buffer, MAX_PATH);  // TODO: 平台特异
-
     for (int i = 0; i < 3; ++i) {
-        if (std::filesystem::exists(currentDir / "data")) {
+        if (std::filesystem::exists(currentDir / "data") && std::filesystem::exists(currentDir / "data" / "scripts")) {
             neko_string tmp = neko_fs_normalize_path(currentDir.string());
             platform->ctx.gamepath = (char *)neko_safe_malloc(std::strlen(tmp.c_str()) + 1);
             std::strcpy(platform->ctx.gamepath, tmp.c_str());

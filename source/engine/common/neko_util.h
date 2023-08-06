@@ -4,6 +4,7 @@
 #include <chrono>
 #include <cstdio>
 #include <cstring>
+#include <fstream>
 #include <type_traits>
 
 #include "engine/common/neko_mem.h"
@@ -674,6 +675,25 @@ neko_static_inline std::string neko_fs_normalize_path(const std::string& path, c
     }
     if (!norm.empty() && norm.back() != delimiter) norm.push_back(delimiter);
     return norm;
+}
+
+neko_inline bool neko_fs_exists(const std::string& filename) {
+    std::ifstream file(filename);
+    return file.good();
+}
+
+neko_inline const char* neko_fs_get_filename(const char* path) {
+    int len = strlen(path);
+    int flag = 0;
+
+    for (int i = len - 1; i > 0; i--) {
+        if (path[i] == '\\' || path[i] == '//' || path[i] == '/') {
+            flag = 1;
+            path = path + i + 1;
+            break;
+        }
+    }
+    return path;
 }
 
 neko_inline void neko_utils_write_ppm(const int width, const int height, unsigned char* buffer, const char* filename) {

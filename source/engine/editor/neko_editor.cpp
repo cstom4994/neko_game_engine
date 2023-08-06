@@ -1,7 +1,13 @@
 
 #include "neko_editor.hpp"
 
+#include "engine/base/neko_engine.h"
+#include "engine/base/neko_meta.hpp"
+#include "engine/filesystem/neko_packer.h"
 #include "engine/gui/neko_imgui_utils.hpp"
+#include "engine/platform/neko_platform.h"
+#include "engine/utility/hash.hpp"
+#include "engine/utility/neko_cpp_utils.hpp"
 
 namespace neko {
 
@@ -519,6 +525,187 @@ void neko_editor_inspect_vertex_array(const char *label, GLuint vao) {
         ImGui::Unindent();
     }
     ImGui::PopID();
+}
+
+auto neko_editor_create(neko_engine_cvar_t &cvar) -> dbgui & {
+    return the<dbgui>()
+            .create(
+                    "utils",
+                    [&](u8) {
+                        if (cvar.ui_imgui_debug) ImGui::ShowDemoWindow();
+                        return 0;
+                    },
+                    neko_dbgui_flags::no_visible)
+            .create("cvar",
+                    [&](u8) {
+                        try {
+                            const meta::scope cvar_scope = meta::local_scope_("cvar").typedef_<neko_engine_cvar_t>("neko_engine_cvar_t");
+
+                            for (const auto &[type_name, type] : cvar_scope.get_typedefs()) {
+                                if (!type.is_class()) {
+                                    continue;
+                                }
+
+                                const meta::class_type &class_type = type.as_class();
+                                const meta::metadata_map &class_metadata = class_type.get_metadata();
+
+                                if (neko_imgui_collapsing_header(type_name.c_str())) {
+                                    for (const meta::member &member : class_type.get_members()) {
+                                        const meta::metadata_map &m = member.get_metadata();  // metadata
+
+                                        auto f = [&]<typename T>(T arg) {
+                                            if (member.get_type().get_value_type() != meta::resolve_type<T>()) return;
+                                            auto f = member.get(cvar);
+                                            if (T *s = f.try_as<T>()) {
+                                                if (m.find("imgui") != m.end()) {
+                                                    auto editor_ui_type = m.at("imgui").as<std::string>();
+                                                    switch (hash(editor_ui_type)) {
+                                                        case hash("float_range"): {
+                                                            T t = *s;
+                                                            ImGui::SliderFloat(member.get_name().c_str(), (float *)&t, m.at("min").as<float>(), m.at("max").as<float>(), "", 0);
+                                                            if (t != *s) member.try_set(cvar, t);
+                                                        } break;
+                                                        default:
+                                                            break;
+                                                    }
+                                                } else {
+                                                    T t = *s;
+                                                    ImGui::Auto(t, member.get_name().c_str());
+                                                    if (t != *s) member.try_set(cvar, t);
+                                                }
+                                                ImGui::Text("    [%s]", m.at("info").as<std::string>().c_str());
+                                            } else {
+                                                ImGui::TextColored({1.0f, 0.0f, 0.0f, 1.0f}, "(error) %s", member.get_name().c_str());
+                                            }
+                                        };
+
+                                        using cvar_types_t = std::tuple<CVAR_TYPES()>;
+
+                                        cvar_types_t ctt;
+                                        std::apply([&](auto &&...args) { (f(args), ...); }, ctt);
+                                    }
+                                }
+                            }
+                        } catch (const std::exception ex) {
+                            neko_error(std::format("[Exception] {0}", ex.what()).c_str());
+                        }
+
+                        return 0;
+                    })
+            .create("pack editor", [&](u8) {
+                // pack editor
+                neko_private(neko_pack_reader) pack_reader;
+                neko_private(neko_pack_result) result;
+                neko_private(bool) pack_reader_is_loaded = false;
+                neko_private(u8) majorVersion;
+                neko_private(u8) minorVersion;
+                neko_private(u8) patchVersion;
+                neko_private(bool) isLittleEndian;
+                neko_private(u64) itemCount;
+
+                neko_private(neko_string) file = neko_file_path("data");
+                neko_private(bool) filebrowser = false;
+
+                if (ImGui::Button("打开包") && !pack_reader_is_loaded) filebrowser = true;
+                ImGui::SameLine();
+                if (ImGui::Button("关闭包")) {
+                    neko_destroy_pack_reader(pack_reader);
+                    pack_reader_is_loaded = false;
+                }
+                ImGui::SameLine();
+                ImGui::Text("neko assert pack [%d.%d.%d]\n", PACK_VERSION_MAJOR, PACK_VERSION_MINOR, PACK_VERSION_PATCH);
+
+                if (filebrowser) {
+                    imgui::file_browser(file);
+
+                    if (!file.empty() && !std::filesystem::is_directory(file)) {
+
+                        if (pack_reader_is_loaded) {
+
+                        } else {
+                            result = neko_get_pack_info(file.c_str(), &majorVersion, &minorVersion, &patchVersion, &isLittleEndian, &itemCount);
+                            if (result != SUCCESS_PACK_RESULT) return 0;
+
+                            result = neko_create_file_pack_reader(file.c_str(), 0, false, &pack_reader);
+                            if (result != SUCCESS_PACK_RESULT) return 0;
+
+                            if (result == SUCCESS_PACK_RESULT) itemCount = neko_get_pack_item_count(pack_reader);
+
+                            pack_reader_is_loaded = true;
+                        }
+
+                        // 复位变量
+                        filebrowser = false;
+                        file = neko_file_path("data");
+                    }
+                }
+
+                if (pack_reader_is_loaded && result == SUCCESS_PACK_RESULT) {
+
+                    static int item_current_idx = -1;
+
+                    ImGui::Text(
+                            "包信息:\n"
+                            " 打包版本: %d.%d.%d\n"
+                            " 小端模式: %s\n"
+                            " 文件数量: %llu\n\n",
+                            majorVersion, minorVersion, patchVersion, isLittleEndian ? "true" : "false", (long long unsigned int)itemCount);
+
+                    ImVec2 outer_size = ImVec2(0.0f, ImGui::GetContentRegionMax().y - 250.0f);
+                    if (ImGui::BeginTable("ui_pack_file_table", 4,
+                                          ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersV | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable |
+                                                  ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_Sortable | ImGuiTableFlags_SortMulti,
+                                          outer_size)) {
+                        ImGui::TableSetupScrollFreeze(0, 1);  // Make top row always visible
+                        ImGui::TableSetupColumn("索引", ImGuiTableColumnFlags_WidthFixed, 50.0f);
+                        ImGui::TableSetupColumn("文件名", ImGuiTableColumnFlags_WidthFixed, 550.0f);
+                        ImGui::TableSetupColumn("大小", ImGuiTableColumnFlags_WidthFixed);
+                        ImGui::TableSetupColumn("操作", ImGuiTableColumnFlags_WidthFixed);
+                        ImGui::TableHeadersRow();
+
+                        for (u64 i = 0; i < itemCount; ++i) {
+                            ImGui::PushID(i);
+                            ImGui::TableNextRow(ImGuiTableRowFlags_None);
+                            if (ImGui::TableSetColumnIndex(0)) {
+                                // if (ImGui::Selectable(std::format("{0}", ).c_str(), item_current_idx, ImGuiSelectableFlags_SpanAllColumns)) {
+                                //     item_current_idx = i;
+                                // }
+                                ImGui::Text("%llu", (long long unsigned int)i);
+                            }
+                            if (ImGui::TableSetColumnIndex(1)) {
+                                ImGui::Text("%s", neko_get_pack_item_path(pack_reader, i));
+                            }
+                            if (ImGui::TableSetColumnIndex(2)) {
+                                ImGui::Text("%u", neko_get_pack_item_data_size(pack_reader, i));
+                            }
+                            if (ImGui::TableSetColumnIndex(3)) {
+                                if (ImGui::SmallButton("查看")) {
+                                    item_current_idx = i;
+                                }
+                                ImGui::SameLine();
+                                if (ImGui::SmallButton("替换")) {
+                                }
+                                ImGui::SameLine();
+                                if (ImGui::SmallButton("删除")) {
+                                }
+                            }
+                            ImGui::PopID();
+                        }
+
+                        ImGui::EndTable();
+                    }
+
+                    if (item_current_idx >= 0) {
+                        ImGui::Text("文件索引: %u\n包内路径: %s\n文件大小: %u\n", item_current_idx, neko_get_pack_item_path(pack_reader, item_current_idx),
+                                    neko_get_pack_item_data_size(pack_reader, item_current_idx));
+                    }
+
+                } else if (result != SUCCESS_PACK_RESULT) {
+                    ImGui::Text("错误: %s.\n", pack_result_to_string(result));
+                }
+
+                return 0;
+            });
 }
 
 }  // namespace neko

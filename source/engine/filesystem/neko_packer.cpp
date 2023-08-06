@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "engine/common/neko_mem.h"
 #include "engine/common/neko_util.h"
 #include "engine/utility/logger.hpp"
 #include "libs/lz4/lz4.h"
@@ -39,8 +40,8 @@ struct neko_packreader_t {
 neko_private(void) destroy_pack_items(u64 itemCount, pack_item *items) {
     neko_assert(itemCount == 0 || (itemCount > 0 && items));
 
-    for (u64 i = 0; i < itemCount; i++) free(items[i].path);
-    free(items);
+    for (u64 i = 0; i < itemCount; i++) neko_safe_free(items[i].path);
+    neko_safe_free(items);
 }
 
 neko_private(neko_pack_result) create_pack_items(FILE *packFile, u64 itemCount, pack_item **_items) {
@@ -48,7 +49,7 @@ neko_private(neko_pack_result) create_pack_items(FILE *packFile, u64 itemCount, 
     neko_assert(itemCount > 0);
     neko_assert(_items);
 
-    pack_item *items = (pack_item *)malloc(itemCount * sizeof(pack_item));
+    pack_item *items = (pack_item *)neko_safe_malloc(itemCount * sizeof(pack_item));
 
     if (!items) return FAILED_TO_ALLOCATE_PACK_RESULT;
 
@@ -67,7 +68,7 @@ neko_private(neko_pack_result) create_pack_items(FILE *packFile, u64 itemCount, 
             return BAD_DATA_SIZE_PACK_RESULT;
         }
 
-        char *path = (char *)malloc((info.pathSize + 1) * sizeof(char));
+        char *path = (char *)neko_safe_malloc((info.pathSize + 1) * sizeof(char));
 
         if (!path) {
             destroy_pack_items(i, items);
@@ -105,7 +106,7 @@ neko_pack_result neko_create_file_pack_reader(const char *filePath, u32 dataBuff
     neko_assert(filePath);
     neko_assert(pack_reader);
 
-    neko_pack_reader pack = (neko_pack_reader)calloc(1, sizeof(neko_packreader_t));
+    neko_pack_reader pack = (neko_pack_reader)neko_safe_calloc(1, sizeof(neko_packreader_t));
 
     if (!pack) return FAILED_TO_ALLOCATE_PACK_RESULT;
 
@@ -181,7 +182,7 @@ neko_pack_result neko_create_file_pack_reader(const char *filePath, u32 dataBuff
     u8 *dataBuffer;
 
     if (dataBufferCapacity > 0) {
-        dataBuffer = (u8 *)malloc(dataBufferCapacity * sizeof(u8));
+        dataBuffer = (u8 *)neko_safe_malloc(dataBufferCapacity * sizeof(u8));
 
         if (!dataBuffer) {
             neko_destroy_pack_reader(pack);
@@ -200,11 +201,11 @@ neko_pack_result neko_create_file_pack_reader(const char *filePath, u32 dataBuff
 void neko_destroy_pack_reader(neko_pack_reader pack_reader) {
     if (!pack_reader) return;
 
-    free(pack_reader->dataBuffer);
-    free(pack_reader->zipBuffer);
+    neko_safe_free(pack_reader->dataBuffer);
+    neko_safe_free(pack_reader->zipBuffer);
     destroy_pack_items(pack_reader->itemCount, pack_reader->items);
     if (pack_reader->file) closeFile(pack_reader->file);
-    free(pack_reader);
+    neko_safe_free(pack_reader);
 }
 
 u64 neko_get_pack_item_count(neko_pack_reader pack_reader) {
@@ -268,7 +269,7 @@ neko_pack_result neko_read_pack_item_data(neko_pack_reader pack_reader, u64 inde
 
     if (dataBuffer) {
         if (info.dataSize > pack_reader->dataSize) {
-            dataBuffer = (u8 *)realloc(dataBuffer, info.dataSize * sizeof(u8));
+            dataBuffer = (u8 *)neko_safe_realloc(dataBuffer, info.dataSize * sizeof(u8));
 
             if (!dataBuffer) return FAILED_TO_ALLOCATE_PACK_RESULT;
 
@@ -276,7 +277,7 @@ neko_pack_result neko_read_pack_item_data(neko_pack_reader pack_reader, u64 inde
             pack_reader->dataSize = info.dataSize;
         }
     } else {
-        dataBuffer = (u8 *)malloc(info.dataSize * sizeof(u8));
+        dataBuffer = (u8 *)neko_safe_malloc(info.dataSize * sizeof(u8));
 
         if (!dataBuffer) return FAILED_TO_ALLOCATE_PACK_RESULT;
 
@@ -288,7 +289,7 @@ neko_pack_result neko_read_pack_item_data(neko_pack_reader pack_reader, u64 inde
 
     if (zipBuffer) {
         if (info.zipSize > pack_reader->zipSize) {
-            zipBuffer = (u8 *)realloc(zipBuffer, info.zipSize * sizeof(u8));
+            zipBuffer = (u8 *)neko_safe_realloc(zipBuffer, info.zipSize * sizeof(u8));
 
             if (!zipBuffer) return FAILED_TO_ALLOCATE_PACK_RESULT;
 
@@ -297,7 +298,7 @@ neko_pack_result neko_read_pack_item_data(neko_pack_reader pack_reader, u64 inde
         }
     } else {
         if (info.zipSize > 0) {
-            zipBuffer = (u8 *)malloc(info.zipSize * sizeof(u8));
+            zipBuffer = (u8 *)neko_safe_malloc(info.zipSize * sizeof(u8));
 
             if (!zipBuffer) return FAILED_TO_ALLOCATE_PACK_RESULT;
 
@@ -355,8 +356,8 @@ neko_pack_result neko_read_pack_path_item_data(neko_pack_reader pack_reader, con
 
 void neko_free_pack_reader_buffers(neko_pack_reader pack_reader) {
     neko_assert(pack_reader);
-    free(pack_reader->dataBuffer);
-    free(pack_reader->zipBuffer);
+    neko_safe_free(pack_reader->dataBuffer);
+    neko_safe_free(pack_reader->zipBuffer);
     pack_reader->dataBuffer = NULL;
     pack_reader->zipBuffer = NULL;
 }
@@ -460,14 +461,14 @@ neko_private(neko_pack_result) neko_write_pack_items(FILE *packFile, u64 itemCou
 
     u32 bufferSize = 1;
 
-    u8 *itemData = (u8 *)malloc(sizeof(u8));
+    u8 *itemData = (u8 *)neko_safe_malloc(sizeof(u8));
 
     if (!itemData) return FAILED_TO_ALLOCATE_PACK_RESULT;
 
-    u8 *zipData = (u8 *)malloc(sizeof(u8));
+    u8 *zipData = (u8 *)neko_safe_malloc(sizeof(u8));
 
     if (!zipData) {
-        free(itemData);
+        neko_safe_free(itemData);
         return FAILED_TO_ALLOCATE_PACK_RESULT;
     }
 
@@ -484,16 +485,16 @@ neko_private(neko_pack_result) neko_write_pack_items(FILE *packFile, u64 itemCou
         size_t pathSize = strlen(itemPath);
 
         if (pathSize > UINT8_MAX) {
-            free(zipData);
-            free(itemData);
+            neko_safe_free(zipData);
+            neko_safe_free(itemData);
             return BAD_DATA_SIZE_PACK_RESULT;
         }
 
         FILE *itemFile = openFile(itemPath, "rb");
 
         if (!itemFile) {
-            free(zipData);
-            free(itemData);
+            neko_safe_free(zipData);
+            neko_safe_free(itemData);
             return FAILED_TO_OPEN_FILE_PACK_RESULT;
         }
 
@@ -501,8 +502,8 @@ neko_private(neko_pack_result) neko_write_pack_items(FILE *packFile, u64 itemCou
 
         if (seekResult != 0) {
             closeFile(itemFile);
-            free(zipData);
-            free(itemData);
+            neko_safe_free(zipData);
+            neko_safe_free(itemData);
             return FAILED_TO_SEEK_FILE_PACK_RESULT;
         }
 
@@ -510,8 +511,8 @@ neko_private(neko_pack_result) neko_write_pack_items(FILE *packFile, u64 itemCou
 
         if (itemSize == 0 || itemSize > UINT32_MAX) {
             closeFile(itemFile);
-            free(zipData);
-            free(itemData);
+            neko_safe_free(zipData);
+            neko_safe_free(itemData);
             return BAD_DATA_SIZE_PACK_RESULT;
         }
 
@@ -519,29 +520,29 @@ neko_private(neko_pack_result) neko_write_pack_items(FILE *packFile, u64 itemCou
 
         if (seekResult != 0) {
             closeFile(itemFile);
-            free(zipData);
-            free(itemData);
+            neko_safe_free(zipData);
+            neko_safe_free(itemData);
             return FAILED_TO_SEEK_FILE_PACK_RESULT;
         }
 
         if (itemSize > bufferSize) {
-            u8 *newBuffer = (u8 *)realloc(itemData, itemSize * sizeof(u8));
+            u8 *newBuffer = (u8 *)neko_safe_realloc(itemData, itemSize * sizeof(u8));
 
             if (!newBuffer) {
                 closeFile(itemFile);
-                free(zipData);
-                free(itemData);
+                neko_safe_free(zipData);
+                neko_safe_free(itemData);
                 return FAILED_TO_ALLOCATE_PACK_RESULT;
             }
 
             itemData = newBuffer;
 
-            newBuffer = (u8 *)realloc(zipData, itemSize * sizeof(u8));
+            newBuffer = (u8 *)neko_safe_realloc(zipData, itemSize * sizeof(u8));
 
             if (!newBuffer) {
                 closeFile(itemFile);
-                free(zipData);
-                free(itemData);
+                neko_safe_free(zipData);
+                neko_safe_free(itemData);
                 return FAILED_TO_ALLOCATE_PACK_RESULT;
             }
 
@@ -553,8 +554,8 @@ neko_private(neko_pack_result) neko_write_pack_items(FILE *packFile, u64 itemCou
         closeFile(itemFile);
 
         if (result != itemSize) {
-            free(zipData);
-            free(itemData);
+            neko_safe_free(zipData);
+            neko_safe_free(itemData);
             return FAILED_TO_READ_FILE_PACK_RESULT;
         }
 
@@ -585,16 +586,16 @@ neko_private(neko_pack_result) neko_write_pack_items(FILE *packFile, u64 itemCou
         result = fwrite(&info, sizeof(pack_iteminfo), 1, packFile);
 
         if (result != 1) {
-            free(zipData);
-            free(itemData);
+            neko_safe_free(zipData);
+            neko_safe_free(itemData);
             return FAILED_TO_WRITE_FILE_PACK_RESULT;
         }
 
         result = fwrite(itemPath, sizeof(char), info.pathSize, packFile);
 
         if (result != info.pathSize) {
-            free(zipData);
-            free(itemData);
+            neko_safe_free(zipData);
+            neko_safe_free(itemData);
             return FAILED_TO_WRITE_FILE_PACK_RESULT;
         }
 
@@ -602,16 +603,16 @@ neko_private(neko_pack_result) neko_write_pack_items(FILE *packFile, u64 itemCou
             result = fwrite(zipData, sizeof(u8), zipSize, packFile);
 
             if (result != zipSize) {
-                free(zipData);
-                free(itemData);
+                neko_safe_free(zipData);
+                neko_safe_free(itemData);
                 return FAILED_TO_WRITE_FILE_PACK_RESULT;
             }
         } else {
             result = fwrite(itemData, sizeof(u8), itemSize, packFile);
 
             if (result != itemSize) {
-                free(zipData);
-                free(itemData);
+                neko_safe_free(zipData);
+                neko_safe_free(itemData);
                 return FAILED_TO_WRITE_FILE_PACK_RESULT;
             }
         }
@@ -630,8 +631,8 @@ neko_private(neko_pack_result) neko_write_pack_items(FILE *packFile, u64 itemCou
         }
     }
 
-    free(zipData);
-    free(itemData);
+    neko_safe_free(zipData);
+    neko_safe_free(itemData);
 
     if (printProgress) {
         int compression = (int)((1.0 - (double)(totalZipSize) / (double)totalRawSize) * 100.0);
@@ -662,7 +663,7 @@ neko_pack_result neko_pack_files(const char *filePath, u64 fileCount, const char
     neko_assert(fileCount > 0);
     neko_assert(filePaths);
 
-    char **itemPaths = (char **)malloc(fileCount * sizeof(char *));
+    char **itemPaths = (char **)neko_safe_malloc(fileCount * sizeof(char *));
 
     if (!itemPaths) return FAILED_TO_ALLOCATE_PACK_RESULT;
 
@@ -683,7 +684,7 @@ neko_pack_result neko_pack_files(const char *filePath, u64 fileCount, const char
     FILE *packFile = openFile(filePath, "wb");
 
     if (!packFile) {
-        free(itemPaths);
+        neko_safe_free(itemPaths);
         return FAILED_TO_CREATE_FILE_PACK_RESULT;
     }
 
@@ -694,7 +695,7 @@ neko_pack_result neko_pack_files(const char *filePath, u64 fileCount, const char
     size_t writeResult = fwrite(header, sizeof(char), PACK_HEADER_SIZE, packFile);
 
     if (writeResult != PACK_HEADER_SIZE) {
-        free(itemPaths);
+        neko_safe_free(itemPaths);
         closeFile(packFile);
         remove(filePath);
         return FAILED_TO_WRITE_FILE_PACK_RESULT;
@@ -703,7 +704,7 @@ neko_pack_result neko_pack_files(const char *filePath, u64 fileCount, const char
     writeResult = fwrite(&itemCount, sizeof(u64), 1, packFile);
 
     if (writeResult != 1) {
-        free(itemPaths);
+        neko_safe_free(itemPaths);
         closeFile(packFile);
         remove(filePath);
         return FAILED_TO_WRITE_FILE_PACK_RESULT;
@@ -711,7 +712,7 @@ neko_pack_result neko_pack_files(const char *filePath, u64 fileCount, const char
 
     neko_pack_result packResult = neko_write_pack_items(packFile, itemCount, itemPaths, printProgress);
 
-    free(itemPaths);
+    neko_safe_free(itemPaths);
     closeFile(packFile);
 
     if (packResult != SUCCESS_PACK_RESULT) {

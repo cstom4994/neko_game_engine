@@ -81,7 +81,7 @@ struct alloc {
 void* neko_mem_leak_check_alloc(size_t size, const char* file, int line, size_t* statistics = NULL);
 void* neko_mem_leak_check_calloc(size_t count, size_t element_size, const char* file, int line, size_t* statistics = NULL);
 void neko_mem_leak_check_free(void* mem, size_t* statistics = NULL);
-void* neko_mem_leak_check_realloc(void* ptr, size_t size, const char* file, int line, size_t* statistics = NULL);
+void* neko_mem_leak_check_realloc(void* ptr, size_t new_size, const char* file, int line, size_t* statistics = NULL);
 
 int neko_mem_check_leaks(bool detailed);
 int neko_mem_bytes_inuse();

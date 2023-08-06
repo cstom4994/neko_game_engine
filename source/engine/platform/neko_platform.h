@@ -354,6 +354,7 @@ typedef struct neko_platform_i {
     s32 (*file_size_in_bytes)(const char *file_path);
     void (*file_extension)(char *buffer, usize buffer_sz, const char *file_path);
     neko_string (*get_path)(const neko_string &);
+    neko_string (*abbreviate_path)(const neko_string &, s32);
 
     // Settings for platform, including video, audio
     neko_platform_settings settings;
@@ -442,8 +443,10 @@ char *__neko_platform_read_file_contents_into_string_null_term(const char *file_
 neko_result __neko_platform_write_str_to_file(const char *contents, const char *mode, usize sz, const char *output_path);
 void __neko_platform_file_extension(char *buffer, usize buffer_sz, const char *file_path);
 neko_string __neko_platform_get_path(const neko_string &path);
+neko_string __neko_platform_abbreviate_path(const neko_string &path, s32 max_lenght = 30);
 
 #define neko_file_path(x) (neko_engine_subsystem(platform))->get_path(x).c_str()
+#define neko_abbreviate_path(x) (neko_engine_subsystem(platform))->abbreviate_path(x, 30).c_str()
 
 /*============================
 // Platform Util

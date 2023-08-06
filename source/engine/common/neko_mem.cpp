@@ -160,13 +160,31 @@ void neko_mem_leak_check_free(void* mem, size_t* statistics) {
     neko_free(info);
 }
 
-void* neko_mem_leak_check_realloc(void* ptr, size_t size, const char* file, int line, size_t* statistics) {
-    if (NULL == ptr) {
-        return neko_mem_leak_check_alloc((size), file, line, statistics);
-    } else {
-        neko_mem_leak_check_free(ptr);
-        return neko_mem_leak_check_alloc((size), file, line, statistics);
+void* neko_mem_leak_check_realloc(void* ptr, size_t new_size, const char* file, int line, size_t* statistics) {
+    if (new_size == 0) {
+        neko_mem_leak_check_free(ptr, statistics);  // 如果新大小为 0 则直接释放原内存块并返回 NULL
+        return NULL;
     }
+
+    if (ptr == NULL) {
+        return neko_mem_leak_check_alloc(new_size, file, line, statistics);  // 如果原指针为空 则等同于 alloc
+    }
+
+    void* new_ptr = neko_mem_leak_check_alloc(new_size, file, line, statistics);  // 分配新大小的内存块
+
+    if (new_ptr != NULL) {
+        // 复制旧内存块中的数据到新内存块
+
+        neko_mem_alloc_info_t* info = (neko_mem_alloc_info_t*)ptr - 1;
+
+        size_t old_size = info->size;
+        size_t copy_size = (old_size < new_size) ? old_size : new_size;
+        memcpy(new_ptr, ptr, copy_size);
+
+        neko_mem_leak_check_free(ptr, statistics);  // 释放旧内存块
+    }
+
+    return new_ptr;
 }
 
 int neko_mem_check_leaks(bool detailed) {
@@ -178,7 +196,7 @@ int neko_mem_check_leaks(bool detailed) {
 
     while (next != head) {
         if (detailed) {
-            neko_warn(std::format("[Mem] LEAKED {0} bytes from file \"{1}\" at line {2} from address {3}.", next->size, (next->file), next->line, (void*)(next + 1)));
+            neko_warn(std::format("LEAKED {0} bytes from file \"{1}\" at line {2} from address {3}.", next->size, neko_fs_get_filename(next->file), next->line, (void*)(next + 1)));
         }
         leaks_size += next->size;
         next = next->next;
@@ -186,12 +204,13 @@ int neko_mem_check_leaks(bool detailed) {
     }
 
     if (leaks && detailed) {
-        neko_trace("[Mem] Memory leaks detected (see above).");
-    } else if (leaks) {
+        neko_trace("memory leaks detected (see above).");
+    }
+    if (leaks) {
         double megabytes = neko_s_cast<double>(leaks_size) / 1048576;
-        neko_warn(std::format("[Mem] Memory leaks detected with {0} bytes equal to {1:.4f} MB.", leaks_size, megabytes));
+        neko_warn(std::format("memory leaks detected with {0} bytes equal to {1:.4f} MB.", leaks_size, megabytes));
     } else {
-        neko_debug("[Mem] No memory leaks detected.");
+        neko_debug("no memory leaks detected.");
     }
     return leaks;
 }
@@ -211,9 +230,9 @@ int neko_mem_bytes_inuse() {
 
 #else
 
-inline void* neko_mem_leak_check_alloc(size_t size, char* file, int line) { return NEKO_MALLOC_FUNC(size); }
+inline void* neko_mem_leak_check_alloc(size_t new_size, char* file, int line) { return NEKO_MALLOC_FUNC(new_size); }
 
-void* neko_mem_leak_check_calloc(size_t count, size_t element_size, char* file, int line) { return NEKO_CALLOC_FUNC(count, size); }
+void* neko_mem_leak_check_calloc(size_t count, size_t element_size, char* file, int line) { return NEKO_CALLOC_FUNC(count, new_size); }
 
 inline void neko_mem_leak_check_free(void* mem) { return NEKO_FREE_FUNC(mem); }
 

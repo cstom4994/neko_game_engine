@@ -61,6 +61,8 @@ inline static const char *pack_result_to_string(neko_pack_result result) {
 }
 
 typedef struct neko_packreader_t neko_packreader_t;
+
+// TODO: 23/8/6 将pack作为智能指针托管?
 typedef neko_packreader_t *neko_pack_reader;
 
 neko_pack_result neko_create_file_pack_reader(const char *filePath, u32 dataBufferCapacity, b8 isResourcesDirectory, neko_pack_reader *pack_reader);

@@ -263,6 +263,20 @@ neko_string __neko_platform_get_path(const neko_string& path) {
     return get_path;
 }
 
+neko_string __neko_platform_abbreviate_path(const neko_string& path, s32 max_lenght) {
+    if (path.length() <= max_lenght) return path;  // 如果路径长度不超过最大长度，则无需缩略，直接返回原路径
+
+    int filename_pos = path.find_last_of('\\');
+    if (filename_pos == std::string::npos) return path;
+
+    std::string fileName = path.substr(filename_pos + 1);
+    int dirPathLength = max_lenght - fileName.length() - 3;  // 3 表示省略号的长度
+    if (dirPathLength <= 0) return "..." + fileName;         // 如果文件名已经超过最大长度，则只显示文件名前面的省略号和文件名
+    std::string dirPath = path.substr(0, dirPathLength);
+
+    return dirPath + "..." + fileName;
+}
+
 /*============================
 // Platform UUID
 ============================*/
@@ -381,6 +395,7 @@ void __neko_default_init_platform(struct neko_platform_i* platform) {
     platform->file_size_in_bytes = &__neko_platform_file_size_in_bytes;
     platform->file_extension = &__neko_platform_file_extension;
     platform->get_path = &__neko_platform_get_path;
+    platform->abbreviate_path = &__neko_platform_abbreviate_path;
 
     // Default world time initialization
     platform->time.max_fps = 60.0;
