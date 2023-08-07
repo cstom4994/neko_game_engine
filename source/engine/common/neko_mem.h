@@ -93,9 +93,6 @@ typedef struct allocation_metrics {
 
 extern allocation_metrics g_allocation_metrics;
 
-u64 neko_mem_current_usage_bytes();
-f32 neko_mem_current_usage_mb();
-
 void neko_mem_init(int argc, char* argv[]);
 void neko_mem_end();
 void neko_mem_rungc();

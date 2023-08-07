@@ -11,6 +11,9 @@
 // glfw
 #include "GLFW/glfw3.h"
 
+// windows GetProcessMemoryInfo
+#include <Psapi.h>
+
 // Forward Decls.
 void __glfw_key_callback(GLFWwindow *window, s32 key, s32 scancode, s32 action, s32 mods);
 void __glfw_mouse_button_callback(GLFWwindow *window, s32 button, s32 action, s32 mods);
@@ -130,6 +133,25 @@ void glfw_platform_sleep(f32 ms) {
 
     // usleep(ms * 1000.f); // unistd.h
 #endif
+}
+
+neko_platform_meminfo glfw_platform_get_meminfo() {
+
+    neko_platform_meminfo meminfo = {};
+
+    HANDLE hProcess = GetCurrentProcess();
+    PROCESS_MEMORY_COUNTERS_EX pmc;
+
+    if (GetProcessMemoryInfo(hProcess, (PROCESS_MEMORY_COUNTERS *)&pmc, sizeof(pmc))) {
+        meminfo.virtual_memory_used = pmc.PrivateUsage;
+        meminfo.physical_memory_used = pmc.WorkingSetSize;
+        meminfo.peak_virtual_memory_used = pmc.PeakPagefileUsage;
+        meminfo.peak_physical_memory_used = pmc.PeakWorkingSetSize;
+
+    } else {
+    }
+
+    return meminfo;
 }
 
 neko_platform_keycode glfw_key_to_neko_keycode(u32 code) {
@@ -721,8 +743,6 @@ void glfw_set_cursor_position(neko_resource_handle handle, f64 x, f64 y) {
 // Method for creating platform layer for GLFW
 struct neko_platform_i *neko_platform_construct() {
     // Construct new platform interface
-    // struct neko_platform_i *platform = neko_malloc_init(neko_platform_i);
-
     neko_malloc_init_ex(platform, neko_platform_i);
 
     /*
@@ -740,6 +760,7 @@ struct neko_platform_i *neko_platform_construct() {
     ============================*/
     platform->sleep = &glfw_platform_sleep;
     platform->elapsed_time = &glfw_platform_time;
+    platform->get_meminfo = &glfw_platform_get_meminfo;
 
     /*============================
     // Platform Video

@@ -57,11 +57,59 @@ public:
     }
 
     void draw() const {
+
+        auto dock_win = []() {
+            ImGuiViewport* viewport = ImGui::GetMainViewport();
+
+            if (viewport) {
+                ImGui::SetNextWindowPos(viewport->Pos);
+                ImGui::SetNextWindowSize(viewport->Size);
+                ImGui::SetNextWindowViewport(viewport->ID);
+            }
+
+            const ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground;
+
+            const ImGuiDockNodeFlags dock_node_flags = ImGuiDockNodeFlags_PassthruCentralNode | ImGuiDockNodeFlags_NoDockingInCentralNode;
+
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.f);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.f);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.f, 0.f));
+
+            if (ImGui::Begin("neko_editor_dockspace_window", nullptr, window_flags)) {
+                ImGui::DockSpace(ImGui::GetID("neko_editor_dockspace"), ImVec2(0.f, 0.f), dock_node_flags);
+
+                if (ImGui::BeginMenuBar()) {
+                    neko_defer([] { ImGui::EndMenuBar(); });
+
+                    ImGui::TextColored(ImVec4(0.19f, 1.f, 0.196f, 1.f), "Neko");
+
+                    if (ImGui::BeginMenu("File")) {
+                        ImGui::EndMenu();
+                    }
+
+                    char fpsText[50];
+                    snprintf(fpsText, sizeof(fpsText), "%.1f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+                    // ME_draw_text(fpsText, {255, 255, 255, 255}, the<engine>().eng()->windowWidth - ImGui::CalcTextSize(fpsText).x, 0);
+
+                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(fpsText).x - ImGui::GetScrollX());
+
+                    ImGui::Text(fpsText);
+                }
+            }
+            ImGui::End();
+
+            ImGui::PopStyleVar(3);
+
+            return 0;
+        };
+
+        if ((dbgui_list.at("cvar").flags & neko_dbgui_flags::no_visible) != neko_dbgui_flags::no_visible) dock_win();
+
         for (auto& d : dbgui_list) {
             cpp::bitflags::bitflags<neko_dbgui_flags> flags(d.second.flags);
             if ((flags & neko_dbgui_flags::no_visible) == neko_dbgui_flags::no_visible) return;
             if (ImGui::Begin(d.first.c_str())) {
-                neko_defer([&] { d.second.func(0); });
+                neko_defer([&d] { d.second.func(0); });
             }
             ImGui::End();
         }

@@ -19,11 +19,13 @@
 #define neko_debug_build 1
 #endif
 
-#define neko_assert(x)                                                                                             \
-    if (!(x)) {                                                                                                    \
-        neko_printf("assertion failed: (%s), function %s, file %s, line %d.\n", #x, __func__, __FILE__, __LINE__); \
-        abort();                                                                                                   \
-    }
+#define neko_assert(x)                                                                                                 \
+    do {                                                                                                               \
+        if (!(x)) {                                                                                                    \
+            neko_printf("assertion failed: (%s), function %s, file %s, line %d.\n", #x, __func__, __FILE__, __LINE__); \
+            abort();                                                                                                   \
+        }                                                                                                              \
+    } while (0)
 
 #if defined(__cplusplus)
 #define neko_default_val() \

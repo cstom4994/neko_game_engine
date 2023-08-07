@@ -1,6 +1,7 @@
 
 
 #include "engine/base/neko_cvar.hpp"
+#include "engine/base/neko_ecs.h"
 #include "engine/editor/neko_dbgui.hpp"
 #include "engine/editor/neko_editor.hpp"
 #include "engine/filesystem/neko_packer.h"
@@ -22,9 +23,6 @@
 #define NEKO_BUILTIN_IMPL
 #include "engine/gui/neko_builtin_font.h"
 
-// windows GetProcessMemoryInfo
-#include <Psapi.h>
-
 #define g_window_width 1420
 #define g_window_height 880
 neko_global const s32 g_texture_width = g_window_width / 4;
@@ -42,6 +40,28 @@ typedef struct particle_t {
     cell_color_t color;
     b32 has_been_updated_this_frame;
 } particle_t;
+
+// 测试 ECS 用
+typedef struct {
+    f32 x, y;
+} CTransform;
+
+typedef struct {
+    f32 dx, dy;
+} CVelocity;
+
+typedef struct {
+    u32 gl_id;
+    f32 rotation;
+} CSprite;
+
+typedef enum {
+    COMPONENT_TRANSFORM,
+    COMPONENT_VELOCITY,
+    COMPONENT_SPRITE,
+
+    COMPONENT_COUNT
+} ComponentType;
 
 // Globals
 neko_global neko_vertex_buffer_t g_vbo = {0};
@@ -236,7 +256,7 @@ typedef struct {
     short x, y;
 } neko_tex_point;
 neko_tex_point *neko_tex_extract_outline_path(neko_tex_uc *data, int w, int h, int *point_count, neko_tex_point *reusable_outline);
-void neko_tex_distance_based_path_simplification(neko_tex_point *outline, int *outline_length, float distance_threshold);
+void neko_tex_distance_based_path_simplification(neko_tex_point *outline, int *outline_length, f32 distance_threshold);
 
 // Rendering
 void render_scene();
@@ -616,6 +636,51 @@ void drop_file_callback(void *platform_window, s32 count, const char **file_path
     }
 }
 
+neko_ecs_decl_mask(MOVEMENT_SYSTEM, 2, COMPONENT_TRANSFORM, COMPONENT_VELOCITY);
+void movement_system(neko_ecs *ecs) {
+    for (u32 i = 0; i < neko_ecs_for_count(ecs); i++) {
+        neko_ecs_ent e = neko_ecs_get_ent(ecs, i);
+        if (neko_ecs_ent_has_mask(ecs, e, neko_ecs_get_mask(MOVEMENT_SYSTEM))) {
+            CTransform *xform = (CTransform *)neko_ecs_ent_get_component(ecs, e, COMPONENT_TRANSFORM);
+            CVelocity *velocity = (CVelocity *)neko_ecs_ent_get_component(ecs, e, COMPONENT_VELOCITY);
+
+            xform->x += velocity->dx;
+            xform->y += velocity->dy;
+        }
+    }
+}
+
+neko_ecs_decl_mask(SPRITE_RENDER_SYSTEM, 2, COMPONENT_TRANSFORM, COMPONENT_SPRITE);
+void sprite_render_system(neko_ecs *ecs) {
+    for (u32 i = 0; i < neko_ecs_for_count(ecs); i++) {
+        neko_ecs_ent e = neko_ecs_get_ent(ecs, i);
+        if (neko_ecs_ent_has_mask(ecs, e, neko_ecs_get_mask(SPRITE_RENDER_SYSTEM))) {
+            CTransform *xform = (CTransform *)neko_ecs_ent_get_component(ecs, e, COMPONENT_TRANSFORM);
+            CSprite *sprite = (CSprite *)neko_ecs_ent_get_component(ecs, e, COMPONENT_SPRITE);
+
+            // render_sprite(sprite->gl_id, sprite->rot);
+        }
+    }
+}
+
+void register_components(neko_ecs *ecs) {
+    // neko_ecs, component index, component pool size, size of component, and component free func
+    neko_ecs_register_component(ecs, COMPONENT_TRANSFORM, 1000, sizeof(CTransform), NULL);
+    neko_ecs_register_component(ecs, COMPONENT_VELOCITY, 200, sizeof(CVelocity), NULL);
+    neko_ecs_register_component(ecs, COMPONENT_SPRITE, 1000, sizeof(CSprite), NULL);
+}
+
+void register_systems(neko_ecs *ecs) {
+    // ecs_run_systems will run the systems in the order they are registered
+    // ecs_run_system is also available if you wish to handle each system seperately
+    //
+    // neko_ecs, function pointer to system (must take a parameter of neko_ecs), system type
+    neko_ecs_register_system(ecs, movement_system, ECS_SYSTEM_UPDATE);
+    neko_ecs_register_system(ecs, sprite_render_system, ECS_SYSTEM_RENDER);
+}
+
+neko_global neko_ecs *g_ecs;
+
 neko_global font_index g_basic_font;
 
 neko_global neko_engine_cvar_t g_cvar = {0};
@@ -732,6 +797,20 @@ neko_result app_init() {
 
     neko_engine_cvar_init(&g_cvar, [] {});
 
+    // 初始化 ecs
+    g_ecs = neko_ecs_make(1000, COMPONENT_COUNT, 3);
+    register_components(g_ecs);
+    register_systems(g_ecs);
+
+    // 测试用
+    neko_ecs_ent e = neko_ecs_ent_make(g_ecs);
+    CTransform xform = {0, 0};
+    CVelocity velocity = {5, 0};
+    neko_ecs_ent_add_component(g_ecs, e, COMPONENT_TRANSFORM, &xform);
+    neko_ecs_ent_add_component(g_ecs, e, COMPONENT_VELOCITY, &velocity);
+
+    // neko_ecs_ent_destroy(ecs, e);
+
     // 启用 imgui
     imgui_init();
 
@@ -744,12 +823,10 @@ neko_result app_init() {
         if (ImGui::Button("mem check")) neko_mem_check_leaks(false);
 
         {
-            static u32 check_timer;
 
-            ImGui::Text("GC MemCurrentUsage: %.2f mb", neko_mem_current_usage_mb());
+            ImGui::Text("GC MemAllocInUsed: %.2lf mb", (f64)(neko_mem_bytes_inuse() / 1048576.0));
             ImGui::Text("GC MemTotalAllocated: %.2lf mb", (f64)(g_allocation_metrics.total_allocated / 1048576.0));
             ImGui::Text("GC MemTotalFree: %.2lf mb", (f64)(g_allocation_metrics.total_free / 1048576.0));
-            ImGui::Text("GC MemAllocInUsed: %.2lf mb", (f64)(neko_mem_bytes_inuse() / 1048576.0));
 
 #define GL_GPU_MEM_INFO_TOTAL_AVAILABLE_MEM_NVX 0x9048
 #define GL_GPU_MEM_INFO_CURRENT_AVAILABLE_MEM_NVX 0x9049
@@ -773,32 +850,14 @@ neko_result app_init() {
 
             ImGui::Text("ImGui MemoryUsage: %.2lf mb", ((f64)imgui_mem_usage / 1048576.0));
 
-            static u64 virtualMemoryUsed;
-            static u64 physicalMemoryUsed;
-            static u64 peakVirtualMemoryUsed;
-            static u64 peakPhysicalMemoryUsed;
+            static neko_platform_meminfo meminfo;
 
-            if (check_timer >= 200) {
-                HANDLE hProcess = GetCurrentProcess();
-                PROCESS_MEMORY_COUNTERS_EX pmc;
+            neko_timed_action(60, { meminfo = neko_engine_instance()->ctx.platform->get_meminfo(); });
 
-                if (GetProcessMemoryInfo(hProcess, (PROCESS_MEMORY_COUNTERS *)&pmc, sizeof(pmc))) {
-                    virtualMemoryUsed = pmc.PrivateUsage;
-                    physicalMemoryUsed = pmc.WorkingSetSize;
-                    peakVirtualMemoryUsed = pmc.PeakPagefileUsage;
-                    peakPhysicalMemoryUsed = pmc.PeakWorkingSetSize;
-
-                } else {
-                    std::cerr << "获取内存信息失败" << std::endl;
-                }
-            }
-
-            ImGui::Text("Virtual MemoryUsage: %.2lf mb", ((f64)virtualMemoryUsed / 1048576.0));
-            ImGui::Text("Real MemoryUsage: %.2lf mb", ((f64)physicalMemoryUsed / 1048576.0));
-            ImGui::Text("Virtual MemoryUsage Peak: %.2lf mb", ((f64)peakVirtualMemoryUsed / 1048576.0));
-            ImGui::Text("Real MemoryUsage Peak: %.2lf mb", ((f64)peakPhysicalMemoryUsed / 1048576.0));
-
-            check_timer++;
+            ImGui::Text("Virtual MemoryUsage: %.2lf mb", ((f64)meminfo.virtual_memory_used / 1048576.0));
+            ImGui::Text("Real MemoryUsage: %.2lf mb", ((f64)meminfo.physical_memory_used / 1048576.0));
+            ImGui::Text("Virtual MemoryUsage Peak: %.2lf mb", ((f64)meminfo.peak_virtual_memory_used / 1048576.0));
+            ImGui::Text("Real MemoryUsage Peak: %.2lf mb", ((f64)meminfo.peak_physical_memory_used / 1048576.0));
         }
 
         return 0;
@@ -854,6 +913,9 @@ neko_result app_update() {
         neko_sprite_renderer_update(&g_sr, engine->ctx.platform->time.delta);
 
         swarm.update(engine->ctx.platform->time.current, settings);
+
+        neko_ecs_run_systems(g_ecs, ECS_SYSTEM_UPDATE);
+        neko_ecs_run_systems(g_ecs, ECS_SYSTEM_RENDER);
     }
 
     /*===============
@@ -879,6 +941,8 @@ neko_result app_update() {
 }
 
 neko_result app_shutdown() {
+
+    neko_ecs_destroy(g_ecs);
 
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
@@ -912,7 +976,7 @@ void imgui_init() {
 
     io.IniFilename = "imgui.ini";
 
-    io.Fonts->AddFontFromFileTTF(neko_file_path("data/assets/fonts/fusion-pixel-10px-monospaced.ttf"), 18.0f, NULL, io.Fonts->GetGlyphRangesChineseFull());
+    io.Fonts->AddFontFromFileTTF(neko_file_path("data/assets/fonts/fusion-pixel-12px-monospaced.ttf"), 20.0f, NULL, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
@@ -3496,7 +3560,7 @@ restart:
     return outline;
 }
 
-void neko_tex_distance_based_path_simplification(neko_tex_point *outline, int *outline_length, float distance_threshold) {
+void neko_tex_distance_based_path_simplification(neko_tex_point *outline, int *outline_length, f32 distance_threshold) {
     int length = *outline_length;
     int l;
     for (l = length / 2 /*length - 1*/; l > 1; l--) {
@@ -3504,9 +3568,9 @@ void neko_tex_distance_based_path_simplification(neko_tex_point *outline, int *o
         for (a = 0; a < length; a++) {
             neko_tex_point ab;
             __neko_tex_point_sub(ab, outline[b], outline[a]);
-            float lab = sqrtf((float)(ab.x * ab.x + ab.y * ab.y));
-            float ilab = 1.0f / lab;
-            float abnx = ab.x * ilab, abny = ab.y * ilab;
+            f32 lab = sqrtf((f32)(ab.x * ab.x + ab.y * ab.y));
+            f32 ilab = 1.0f / lab;
+            f32 abnx = ab.x * ilab, abny = ab.y * ilab;
 
             if (lab != 0.0f) {
                 neko_tex_bool found = 1;
@@ -3514,8 +3578,8 @@ void neko_tex_distance_based_path_simplification(neko_tex_point *outline, int *o
                 while (i != b) {
                     neko_tex_point ai;
                     __neko_tex_point_sub(ai, outline[i], outline[a]);
-                    float t = (abnx * ai.x + abny * ai.y) * ilab;
-                    float distance = -abny * ai.x + abnx * ai.y;
+                    f32 t = (abnx * ai.x + abny * ai.y) * ilab;
+                    f32 distance = -abny * ai.x + abnx * ai.y;
                     if (t < 0.0f || t > 1.0f || distance > distance_threshold || -distance > distance_threshold) {
                         found = 0;
                         break;

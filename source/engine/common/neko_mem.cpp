@@ -16,12 +16,6 @@ namespace neko {
 
 allocation_metrics g_allocation_metrics = {.total_allocated = 0, .total_free = 0};
 
-u64 neko_mem_current_usage_bytes() { return g_allocation_metrics.total_allocated - g_allocation_metrics.total_free; }
-f32 neko_mem_current_usage_mb() {
-    u64 bytes = neko_mem_current_usage_bytes();
-    return (f32)(bytes / 1048576.0f);
-}
-
 struct neko_mem_stack_t {
     void* memory;
     size_t capacity;

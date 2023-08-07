@@ -199,6 +199,13 @@ typedef enum neko_platform_keycode {
     neko_keycode_count
 } neko_platform_keycode;
 
+typedef struct neko_platform_meminfo {
+    u64 virtual_memory_used;
+    u64 physical_memory_used;
+    u64 peak_virtual_memory_used;
+    u64 peak_physical_memory_used;
+} neko_platform_meminfo;
+
 typedef enum neko_platform_mouse_button_code { neko_mouse_lbutton, neko_mouse_rbutton, neko_mouse_mbutton, neko_mouse_button_code_count } neko_platform_mouse_button_code;
 
 typedef struct neko_platform_mouse {
@@ -283,8 +290,9 @@ typedef struct neko_platform_i {
     /*============================================================
     // Platform Util
     ============================================================*/
-    void (*sleep)(f32 ms);  // Sleeps platform for time in ms
-    f64 (*elapsed_time)();  // Returns time in ms since initialization of platform
+    void (*sleep)(f32 ms);                   // Sleeps platform for time in ms
+    f64 (*elapsed_time)();                   // Returns time in ms since initialization of platform
+    neko_platform_meminfo (*get_meminfo)();  // 获取系统内存使用信息
 
     /*============================================================
     // Platform Video

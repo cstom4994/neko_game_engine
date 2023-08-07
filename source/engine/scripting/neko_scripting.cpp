@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include "engine/base/neko_ecs.h"
 #include "engine/base/neko_engine.h"
 #include "engine/common/neko_str.h"
 #include "engine/platform/neko_platform.h"
@@ -199,6 +200,8 @@ void script_runfile(const char *filePath) {
     }
 }
 
+static void lua_reg_ecs(lua_State *ls);
+
 static void lua_reg(lua_State *ls) {
     neko_lua_register_t<>(ls)
             .def(&__neko_lua_trace, "log_trace")  // logger
@@ -206,6 +209,8 @@ static void lua_reg(lua_State *ls) {
             .def(&__neko_lua_error, "log_error")
             .def(&__neko_lua_warn, "log_warn")
             .def(&__neko_lua_info, "log_info");
+
+    lua_reg_ecs(ls);
 
     neko_lua_debug_setup(ls, "debugger", "dbg", NULL, NULL);
 }
@@ -262,5 +267,27 @@ void scripting::update() {
 void scripting::update_render() {}
 
 void scripting::update_tick() {}
+
+static void lua_reg_ecs(lua_State *ls) {
+    neko_lua_register_t<>(ls)
+            .def(&neko_ecs_make, "neko_ecs_make")  // logger
+            .def(&neko_ecs_destroy, "neko_ecs_destroy")
+            //.def(&neko_ecs_register_component, "neko_ecs_register_component")
+            //.def(&neko_ecs_register_system, "neko_ecs_register_system")
+            //.def(&neko_ecs_run_systems, "neko_ecs_run_systems")
+            //.def(&neko_ecs_run_system, "neko_ecs_run_system")
+            .def(&neko_ecs_for_count, "neko_ecs_for_count")
+            .def(&neko_ecs_get_ent, "neko_ecs_get_ent")
+            .def(&neko_ecs_ent_make, "neko_ecs_ent_make")
+            .def(&neko_ecs_ent_destroy, "neko_ecs_ent_destroy")
+            .def(&neko_ecs_ent_add_component, "neko_ecs_ent_add_component")
+            .def(&neko_ecs_ent_remove_component, "neko_ecs_ent_remove_component")
+            .def(&neko_ecs_ent_get_component, "neko_ecs_ent_get_component")
+            .def(&neko_ecs_ent_has_component, "neko_ecs_ent_has_component")
+            .def(&neko_ecs_ent_has_mask, "neko_ecs_ent_has_mask")
+            .def(&neko_ecs_ent_is_valid, "neko_ecs_ent_is_valid")
+            .def(&neko_ecs_ent_get_version, "neko_ecs_ent_get_version")
+            .def(&neko_ecs_ent_print, "neko_ecs_ent_print");
+}
 
 }  // namespace neko
