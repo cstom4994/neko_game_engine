@@ -384,7 +384,7 @@ void test_font2( ve_font_id id )
 }
 #endif
 
-font_index text_renderer::load(const void *data, size_t data_size, f32 font_size) {
+neko_font_index text_renderer::load(const void *data, size_t data_size, f32 font_size) {
     neko_fontcache_init(&cache);
     neko_fontcache_configure_snap(&cache, this->screen_w, this->screen_h);
     // neko_private(std::vector<u8>) buffer;
@@ -396,7 +396,7 @@ font_index text_renderer::load(const void *data, size_t data_size, f32 font_size
 // 将绘制字加入待绘制列表
 // pos 不是屏幕坐标也不是NDC
 // pos 以窗口左下角为原点 窗口空间为第一象限
-void text_renderer::push(const std::string &text, const font_index font, const neko_vec2 pos) {
+void text_renderer::push(const std::string &text, const neko_font_index font, const neko_vec2 pos) {
 
     // ME_profiler_scope_auto("RenderGUI.Font.Post");
 
@@ -694,7 +694,7 @@ void text_renderer::push(const std::string &text, const font_index font, const n
 #endif
 }
 
-void text_renderer::push(const std::string &text, const font_index font, const f32 x, const f32 y) { push(text, font, calc_pos(x, y)); }
+void text_renderer::push(const std::string &text, const neko_font_index font, const f32 x, const f32 y) { push(text, font, calc_pos(x, y)); }
 
 void text_renderer::resize(neko_vec2 size) {
     screen_w = size.x;

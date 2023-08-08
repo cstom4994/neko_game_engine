@@ -10,7 +10,7 @@
 
 namespace neko {
 
-using font_index = ve_font_id;
+using neko_font_index = ve_font_id;
 
 class text_renderer final : public module<text_renderer> /*: public ME::props_auto_reg<ME_fontcache>*/ {
     // public:
@@ -31,10 +31,10 @@ public:
 
 public:
     void drawcmd();
-    font_index load(const void* data, size_t data_size, f32 font_size = 42.0f);
+    neko_font_index load(const void* data, size_t data_size, f32 font_size = 42.0f);
 
-    void push(const std::string& text, const font_index font, const neko_vec2 pos);
-    void push(const std::string& text, const font_index font, const f32 x, const f32 y);
+    void push(const std::string& text, const neko_font_index font, const neko_vec2 pos);
+    void push(const std::string& text, const neko_font_index font, const f32 x, const f32 y);
     void resize(neko_vec2 size);
     neko_vec2 calc_pos(f32 x, f32 y) const;
 

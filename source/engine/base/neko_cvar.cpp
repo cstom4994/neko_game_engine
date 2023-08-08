@@ -21,41 +21,14 @@ void __neko_engine_cvar_init(neko_engine_cvar_t *s) {
             .member_("ui_inspector", &neko_engine_cvar_t::ui_inspector, {.metadata{{"info", "是否显示检查器"s}}})
             .member_("ui_memory_profiler", &neko_engine_cvar_t::ui_memory_profiler, {.metadata{{"info", "是否显示内存检查器"s}}})
 
-            .member_("draw_frame_graph", &neko_engine_cvar_t::draw_frame_graph, {.metadata{{"info", "是否显示帧率图"s}}})
-            .member_("draw_background", &neko_engine_cvar_t::draw_background, {.metadata{{"info", "是否绘制背景"s}}})
-            .member_("draw_background_grid", &neko_engine_cvar_t::draw_background_grid, {.metadata{{"info", "是否绘制背景网格"s}}})
-            .member_("draw_load_zones", &neko_engine_cvar_t::draw_load_zones, {.metadata{{"info", "是否显示加载区域"s}}})
-            .member_("draw_physics_debug", &neko_engine_cvar_t::draw_physics_debug, {.metadata{{"info", "是否开启物理调试"s}}})
-            .member_("draw_b2d_shape", &neko_engine_cvar_t::draw_b2d_shape, {.metadata{{"info", ""s}}})
-            .member_("draw_b2d_joint", &neko_engine_cvar_t::draw_b2d_joint, {.metadata{{"info", ""s}}})
-            .member_("draw_b2d_aabb", &neko_engine_cvar_t::draw_b2d_aabb, {.metadata{{"info", ""s}}})
-            .member_("draw_b2d_pair", &neko_engine_cvar_t::draw_b2d_pair, {.metadata{{"info", ""s}}})
-            .member_("draw_b2d_centerMass", &neko_engine_cvar_t::draw_b2d_centerMass, {.metadata{{"info", ""s}}})
-            .member_("draw_chunk_state", &neko_engine_cvar_t::draw_chunk_state, {.metadata{{"info", "是否显示区块状态"s}}})
-            .member_("draw_debug_stats", &neko_engine_cvar_t::draw_debug_stats, {.metadata{{"info", "是否显示调试信息"s}}})
-            .member_("draw_material_info", &neko_engine_cvar_t::draw_material_info, {.metadata{{"info", "是否显示材质信息"s}}})
-            .member_("draw_detailed_material_info", &neko_engine_cvar_t::draw_detailed_material_info, {.metadata{{"info", "是否显示材质详细信息"s}}})
-            .member_("draw_uinode_bounds", &neko_engine_cvar_t::draw_uinode_bounds, {.metadata{{"info", "是否绘制UINODE"s}}})
-            .member_("draw_temperature_map", &neko_engine_cvar_t::draw_temperature_map, {.metadata{{"info", "是否绘制温度图"s}}})
-            .member_("draw_cursor", &neko_engine_cvar_t::draw_cursor, {.metadata{{"info", "是否显示鼠标指针"s}}})
             .member_("draw_shaders", &neko_engine_cvar_t::draw_shaders, {.metadata{{"info", "是否启用光影"s}}})
-            .member_("water_overlay", &neko_engine_cvar_t::water_overlay, {.metadata{{"info", "水渲染覆盖"s}}})
-            .member_("water_showFlow", &neko_engine_cvar_t::water_showFlow, {.metadata{{"info", "是否绘制水渲染流程"s}}})
-            .member_("water_pixelated", &neko_engine_cvar_t::water_pixelated, {.metadata{{"info", "启用水渲染像素化"s}}})
-            .member_("lightingQuality", &neko_engine_cvar_t::lightingQuality, {.metadata{{"info", "光照质量"s}, {"imgui", "float_range"s}, {"max", 1.0f}, {"min", 0.0f}}})
-            .member_("draw_light_overlay", &neko_engine_cvar_t::draw_light_overlay, {.metadata{{"info", "是否启用光照覆盖"s}}})
-            .member_("simpleLighting", &neko_engine_cvar_t::simpleLighting, {.metadata{{"info", "是否启用光照简单采样"s}}})
-            .member_("lightingEmission", &neko_engine_cvar_t::lightingEmission, {.metadata{{"info", "是否启用光照放射"s}}})
-            .member_("lightingDithering", &neko_engine_cvar_t::lightingDithering, {.metadata{{"info", "是否启用光照抖动"s}}})
             .member_("tick_world", &neko_engine_cvar_t::tick_world, {.metadata{{"info", "是否启用世界更新"s}}})
-            .member_("tick_box2d", &neko_engine_cvar_t::tick_box2d, {.metadata{{"info", "是否启用刚体物理更新"s}}})
-            .member_("tick_temperature", &neko_engine_cvar_t::tick_temperature, {.metadata{{"info", "是否启用世界温度更新"s}}})
-            .member_("hd_objects", &neko_engine_cvar_t::hd_objects, {.metadata{{"info", ""s}}})
-            .member_("hd_objects_size", &neko_engine_cvar_t::hd_objects_size, {.metadata{{"info", ""s}}})
 
             .member_("cell_iter", &neko_engine_cvar_t::cell_iter, {.metadata{{"info", "Cell迭代次数"s}}})
             .member_("brush_size", &neko_engine_cvar_t::brush_size, {.metadata{{"info", "编辑器笔刷大小"s}}})
-            .member_("debug_entities_test", &neko_engine_cvar_t::debug_entities_test, {.metadata{{"info", "是否启用实体调试"s}}});
+            .member_("debug_entities_test", &neko_engine_cvar_t::debug_entities_test, {.metadata{{"info", "是否启用实体调试"s}}})
+
+            .member_("world_gravity", &neko_engine_cvar_t::world_gravity, {.metadata{{"info", "世界重力"s}}});
 }
 
 void __neko_engine_cvar_reg(neko_engine_cvar_t *s) {

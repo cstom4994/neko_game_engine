@@ -1,6 +1,8 @@
 #ifndef NEKO_GRAPHICS_H
 #define NEKO_GRAPHICS_H
 
+#include <map>
+
 #include "engine/common/neko_containers.h"
 #include "engine/common/neko_str.h"
 #include "engine/common/neko_types.h"
@@ -583,8 +585,14 @@ typedef struct neko_graphics_i {
     neko_vec2 (*text_dimensions)(const char* text, neko_resource(neko_font_t) ft);
     bool (*make_screenshot)(const neko_string& filename, u32 width, u32 height, u32 dst_width, u32 dst_height);
 
+    // Shader Methods
+
+    neko_shader_t* (*neko_shader_create)(const neko_string& name, const neko_string& vert, const neko_string& frag);
+    neko_shader_t* (*neko_shader_get)(const neko_string& name);
+    neko_hashmap<neko_shader_t>* (*neko_shader_internal_list)();
+
     // Internal Render Data (API specific)
-    void* data;
+    void* data;  // 实际上是 opengl_render_data_t
 
     neko_slot_array(neko_render_pipeline_state_t) render_pipelines;
 

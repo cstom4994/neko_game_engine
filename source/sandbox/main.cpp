@@ -67,7 +67,7 @@ typedef enum {
 neko_global neko_vertex_buffer_t g_vbo = {0};
 neko_global neko_index_buffer_t g_ibo = {0};
 neko_global neko_command_buffer_t g_cb = {0};
-neko_global neko_shader_t g_shader = {0};
+// neko_global neko_shader_t g_shader = {0};
 neko_global neko_uniform_t u_tex = {};
 neko_global neko_uniform_t u_flip_y = {};
 neko_global neko_texture_t g_tex = {0};
@@ -164,15 +164,8 @@ neko_global cell_color_t *g_ui_buffer = {0};
 // Frame counter
 neko_global u32 g_frame_counter = 0;
 
-// World physics settings
-neko_global f32 gravity = 10.f;
-
-neko_global f32 g_selection_radius = 10.f;
-
 neko_global bool g_show_material_selection_panel = true;
-neko_global bool g_run_simulation = true;
 neko_global bool g_show_frame_count = true;
-neko_global bool g_use_post_processing = true;
 
 // Handle for main window
 neko_global neko_resource_handle g_window;
@@ -681,7 +674,7 @@ void register_systems(neko_ecs *ecs) {
 
 neko_global neko_ecs *g_ecs;
 
-neko_global font_index g_basic_font;
+neko_global neko_font_index g_basic_font;
 
 neko_global neko_engine_cvar_t g_cvar = {0};
 
@@ -700,11 +693,11 @@ neko_result app_init() {
     g_cb = neko_command_buffer_new();
 
     // Construct shader from our source above
-    g_shader = gfx->construct_shader(v_src, f_src);
+    neko_shader_t *_shader = gfx->neko_shader_create("g_shader", v_src, f_src);
 
     // Construct uniform for shader
-    u_tex = gfx->construct_uniform(g_shader, "u_tex", neko_uniform_type_sampler2d);
-    u_flip_y = gfx->construct_uniform(g_shader, "u_flip_y", neko_uniform_type_int);
+    u_tex = gfx->construct_uniform(*_shader, "u_tex", neko_uniform_type_sampler2d);
+    u_flip_y = gfx->construct_uniform(*_shader, "u_flip_y", neko_uniform_type_int);
 
     // Vertex data layout for our mesh (for this shader, it's a single float2 attribute for position)
     neko_vertex_attribute_type layout[] = {neko_vertex_attribute_float2, neko_vertex_attribute_float2};
@@ -815,10 +808,16 @@ neko_result app_init() {
     imgui_init();
 
     neko_editor_create(g_cvar).create("shader", [&](u8) {
-        neko_editor_inspect_shader("Hello glsl", g_shader.program_id);
-        neko_editor_inspect_shader("horizontal_blur_shader", g_blur_pass.data.horizontal_blur_shader.program_id);
-        neko_editor_inspect_shader("vertical_blur_shader", g_blur_pass.data.vertical_blur_shader.program_id);
-        neko_editor_inspect_shader("g_bright_pass", g_bright_pass.data.shader.program_id);
+        // neko_editor_inspect_shader("Hello glsl", g_shader.program_id);
+        // neko_editor_inspect_shader("horizontal_blur_shader", g_blur_pass.data.horizontal_blur_shader.program_id);
+        // neko_editor_inspect_shader("vertical_blur_shader", g_blur_pass.data.vertical_blur_shader.program_id);
+        // neko_editor_inspect_shader("g_bright_pass", g_bright_pass.data.shader.program_id);
+
+        neko_graphics_i *_gfx = neko_engine_instance()->ctx.graphics;
+
+        for (auto &[n, s] : (*_gfx->neko_shader_internal_list())) {
+            neko_editor_inspect_shader(std::to_string(n).c_str(), s->program_id);
+        }
 
         if (ImGui::Button("mem check")) neko_mem_check_leaks(false);
 
@@ -888,10 +887,6 @@ neko_result app_update() {
         return neko_result_success;
     }
 
-    if (engine->ctx.platform->key_pressed(neko_keycode_tab)) {
-        the<dbgui>().flags("cvar") ^= neko_dbgui_flags::no_visible;
-    }
-
     // neko_timed_action(60, { neko_println("frame: %.5f ms", engine->ctx.platform->time.frame); });
 
     neko_invoke_once([] {
@@ -907,7 +902,7 @@ neko_result app_update() {
         update_input();
     }
 
-    if (g_run_simulation) {
+    if (g_cvar.tick_world) {
         update_particle_sim();
 
         neko_sprite_renderer_update(&g_sr, engine->ctx.platform->time.delta);
@@ -954,9 +949,9 @@ neko_result app_shutdown() {
     return neko_result_success;
 }
 
-neko_private(void *) __neko_imgui_malloc(size_t sz, void *user_data) { return neko_mem_leak_check_alloc((sz), (char *)__FILE__, __LINE__, &imgui_mem_usage); }
+neko_private(void *) __neko_imgui_malloc(size_t sz, void *user_data) { return __neko_mem_safe_alloc((sz), (char *)__FILE__, __LINE__, &imgui_mem_usage); }
 
-neko_private(void) __neko_imgui_free(void *ptr, void *user_data) { neko_mem_leak_check_free(ptr, &imgui_mem_usage); }
+neko_private(void) __neko_imgui_free(void *ptr, void *user_data) { __neko_mem_safe_free(ptr, &imgui_mem_usage); }
 
 void imgui_init() {
     neko_platform_i *platform = neko_engine_instance()->ctx.platform;
@@ -1062,20 +1057,24 @@ void update_input() {
     }
 
     if (platform->key_pressed(neko_keycode_b)) {
-        g_use_post_processing = !g_use_post_processing;
+        g_cvar.draw_shaders = !g_cvar.draw_shaders;
+    }
+
+    if (platform->key_pressed(neko_keycode_tab)) {
+        g_cvar.ui_tweak = !g_cvar.ui_tweak;
     }
 
     f32 wx = 0, wy = 0;
     platform->mouse_wheel(&wx, &wy);
     if (platform->key_pressed(neko_keycode_lbracket) || wy < 0.f) {
-        g_selection_radius = neko_clamp(g_selection_radius - 1.f, 1.f, 100.f);
+        g_cvar.brush_size = neko_clamp(g_cvar.brush_size - 1.f, 1.f, 100.f);
     }
     if (platform->key_pressed(neko_keycode_rbracket) || wy > 0.f) {
-        g_selection_radius = neko_clamp(g_selection_radius + 1.f, 1.f, 100.f);
+        g_cvar.brush_size = neko_clamp(g_cvar.brush_size + 1.f, 1.f, 100.f);
     }
 
     if (platform->key_pressed(neko_keycode_p)) {
-        g_run_simulation = !g_run_simulation;
+        g_cvar.tick_world = !g_cvar.tick_world;
     }
 
     // Clear data
@@ -1091,7 +1090,7 @@ void update_input() {
         f32 mp_y = neko_clamp(mp.y, 0.f, (f32)g_texture_height - 1.f);
         u32 max_idx = (g_texture_width * g_texture_height) - 1;
         s32 r_amt = random_val(1, 10000);
-        const f32 R = g_selection_radius;
+        const f32 R = g_cvar.brush_size;
 
         // Spawn in a circle around the mouse
         for (u32 i = 0; i < r_amt; ++i) {
@@ -1157,7 +1156,7 @@ void update_input() {
         f32 mp_x = neko_clamp(mp.x, 0.f, (f32)g_texture_width - 1.f);
         f32 mp_y = neko_clamp(mp.y, 0.f, (f32)g_texture_height - 1.f);
         u32 max_idx = (g_texture_width * g_texture_height) - 1;
-        const f32 R = g_selection_radius;
+        const f32 R = g_cvar.brush_size;
 
         // Erase in a circle pattern
         for (s32 i = -R; i < R; ++i) {
@@ -1348,14 +1347,14 @@ b32 update_ui() {
         draw_string_at(&g_font, g_ui_buffer, 10, 10, frame_time_str, strlen(frame_time_str), cell_color_t{255, 255, 255, 255});
 
         char sim_state_str[256];
-        neko_snprintf(sim_state_str, sizeof(sim_state_str), "state: %s", g_run_simulation ? "running" : "paused");
+        neko_snprintf(sim_state_str, sizeof(sim_state_str), "state: %s", g_cvar.tick_world ? "running" : "paused");
         draw_string_at(&g_font, g_ui_buffer, 10, 20, sim_state_str, strlen(sim_state_str), cell_color_t{255, 255, 255, 255});
 
         the<text_renderer>().push(std::format("test: {0}", l_check), g_basic_font, 40, 160);
     }
 
     // Draw circle around mouse pointer
-    s32 R = g_selection_radius;
+    s32 R = g_cvar.brush_size;
     circleBres((s32)mp.x, (s32)mp.y, R);
 
     // Upload our updated texture data to GPU
@@ -1422,6 +1421,8 @@ void render_scene() {
 
     const f32 _t = platform->elapsed_time();
 
+    neko_shader_t _shader = *gfx->neko_shader_get("g_shader");
+
     // Upload our updated texture data to GPU
     neko_texture_parameter_desc t_desc = neko_texture_parameter_desc_default();
     t_desc.mag_filter = neko_nearest;
@@ -1453,7 +1454,7 @@ void render_scene() {
 
         // This is to handle mac's retina high dpi for now until I fix that internally.
         gfx->set_viewport(cb, 0.f, 0.f, g_texture_width, g_texture_height);
-        gfx->bind_shader(cb, g_shader);
+        gfx->bind_shader(cb, _shader);
         gfx->bind_uniform(cb, u_flip_y, &flip_y);
         gfx->bind_vertex_buffer(cb, g_vbo);
         gfx->bind_index_buffer(cb, g_ibo);
@@ -1506,13 +1507,13 @@ void render_scene() {
         f32 t = neko_engine_instance()->ctx.platform->elapsed_time() * neko_engine_instance()->ctx.platform->time.delta * 0.001f;
         flip_y = true;
 
-        gfx->bind_shader(cb, g_shader);
+        gfx->bind_shader(cb, _shader);
         gfx->bind_uniform(cb, u_flip_y, &flip_y);
         gfx->bind_vertex_buffer(cb, g_vbo);
         gfx->bind_index_buffer(cb, g_ibo);
 
         // Draw final composited image
-        if (g_use_post_processing) {
+        if (g_cvar.draw_shaders) {
 
             gfx->bind_texture(cb, u_tex, g_composite_pass.data.render_target, 0);
         } else {
@@ -1687,7 +1688,7 @@ void update_salt(u32 x, u32 y) {
     u32 spread_rate = 5;
     s32 lx, ly;
 
-    p->velocity.y = neko_clamp(p->velocity.y + (gravity * dt), -10.f, 10.f);
+    p->velocity.y = neko_clamp(p->velocity.y + (g_cvar.world_gravity * dt), -10.f, 10.f);
 
     p->has_been_updated_this_frame = true;
 
@@ -1727,7 +1728,7 @@ void update_salt(u32 x, u32 y) {
     // Simple falling, changing the velocity here ruins everything. I need to redo this entire simulation.
     else if (in_bounds(x, y + 1) && ((is_empty(x, y + 1)))) {
         u32 idx = compute_idx(x, y + 1);
-        p->velocity.y += (gravity * dt);
+        p->velocity.y += (g_cvar.world_gravity * dt);
         particle_t tmp_a = g_world_particle_data[read_idx];
         particle_t tmp_b = g_world_particle_data[idx];
         write_data(idx, tmp_a);
@@ -1735,7 +1736,7 @@ void update_salt(u32 x, u32 y) {
     } else if (in_bounds(x - 1, y + 1) && (is_empty(x - 1, y + 1))) {
         u32 idx = compute_idx(x - 1, y + 1);
         p->velocity.x = random_val(0, 1) == 0 ? -1.2f : 1.2f;
-        p->velocity.y += (gravity * dt);
+        p->velocity.y += (g_cvar.world_gravity * dt);
         particle_t tmp_a = g_world_particle_data[read_idx];
         particle_t tmp_b = g_world_particle_data[idx];
         write_data(idx, tmp_a);
@@ -1743,7 +1744,7 @@ void update_salt(u32 x, u32 y) {
     } else if (in_bounds(x + 1, y + 1) && (is_empty(x + 1, y + 1))) {
         u32 idx = compute_idx(x + 1, y + 1);
         p->velocity.x = random_val(0, 1) == 0 ? -1.2f : 1.2f;
-        p->velocity.y += (gravity * dt);
+        p->velocity.y += (g_cvar.world_gravity * dt);
         particle_t tmp_a = g_world_particle_data[read_idx];
         particle_t tmp_b = g_world_particle_data[idx];
         write_data(idx, tmp_a);
@@ -1760,7 +1761,7 @@ void update_sand(u32 x, u32 y) {
     u32 write_idx = read_idx;
     u32 fall_rate = 4;
 
-    p->velocity.y = neko_clamp(p->velocity.y + (gravity * dt), -10.f, 10.f);
+    p->velocity.y = neko_clamp(p->velocity.y + (g_cvar.world_gravity * dt), -10.f, 10.f);
 
     // Just check if you can move directly beneath you. If not, then reset your velocity. God, this is going to blow.
     if (in_bounds(x, y + 1) && !is_empty(x, y + 1) && get_particle_at(x, y + 1).id != mat_id_water) {
@@ -1812,19 +1813,19 @@ void update_sand(u32 x, u32 y) {
     }
     // Simple falling, changing the velocity here ruins everything. I need to redo this entire simulation.
     else if (in_bounds(x, y + 1) && ((is_empty(x, y + 1) || (g_world_particle_data[b_idx].id == mat_id_water)))) {
-        p->velocity.y += (gravity * dt);
+        p->velocity.y += (g_cvar.world_gravity * dt);
         particle_t tmp_b = get_particle_at(x, y + 1);
         write_data(b_idx, *p);
         write_data(read_idx, tmp_b);
     } else if (in_bounds(x - 1, y + 1) && ((is_empty(x - 1, y + 1) || g_world_particle_data[bl_idx].id == mat_id_water))) {
         p->velocity.x = is_in_liquid(x, y, &lx, &ly) ? 0.f : random_val(0, 1) == 0 ? -1.f : 1.f;
-        p->velocity.y += (gravity * dt);
+        p->velocity.y += (g_cvar.world_gravity * dt);
         particle_t tmp_b = get_particle_at(x - 1, y + 1);
         write_data(bl_idx, *p);
         write_data(read_idx, tmp_b);
     } else if (in_bounds(x + 1, y + 1) && ((is_empty(x + 1, y + 1) || g_world_particle_data[br_idx].id == mat_id_water))) {
         p->velocity.x = is_in_liquid(x, y, &lx, &ly) ? 0.f : random_val(0, 1) == 0 ? -1.f : 1.f;
-        p->velocity.y += (gravity * dt);
+        p->velocity.y += (g_cvar.world_gravity * dt);
         particle_t tmp_b = get_particle_at(x + 1, y + 1);
         write_data(br_idx, *p);
         write_data(read_idx, tmp_b);
@@ -1844,7 +1845,7 @@ void update_gunpowder(u32 x, u32 y) {
     u32 write_idx = read_idx;
     u32 fall_rate = 4;
 
-    p->velocity.y = neko_clamp(p->velocity.y + (gravity * dt), -10.f, 10.f);
+    p->velocity.y = neko_clamp(p->velocity.y + (g_cvar.world_gravity * dt), -10.f, 10.f);
     // p->velocity.x = neko_clamp(p->velocity.x, -5.f, 5.f);
 
     // Just check if you can move directly beneath you. If not, then reset your velocity. God, this is going to blow.
@@ -1898,19 +1899,19 @@ void update_gunpowder(u32 x, u32 y) {
     }
     // Simple falling, changing the velocity here ruins everything. I need to redo this entire simulation.
     else if (in_bounds(x, y + 1) && ((is_empty(x, y + 1) || (g_world_particle_data[b_idx].id == mat_id_water)))) {
-        p->velocity.y += (gravity * dt);
+        p->velocity.y += (g_cvar.world_gravity * dt);
         particle_t tmp_b = get_particle_at(x, y + 1);
         write_data(b_idx, *p);
         write_data(read_idx, tmp_b);
     } else if (in_bounds(x - 1, y + 1) && ((is_empty(x - 1, y + 1) || g_world_particle_data[bl_idx].id == mat_id_water))) {
         p->velocity.x = is_in_liquid(x, y, &lx, &ly) ? 0.f : random_val(0, 1) == 0 ? -1.f : 1.f;
-        p->velocity.y += (gravity * dt);
+        p->velocity.y += (g_cvar.world_gravity * dt);
         particle_t tmp_b = get_particle_at(x - 1, y + 1);
         write_data(bl_idx, *p);
         write_data(read_idx, tmp_b);
     } else if (in_bounds(x + 1, y + 1) && ((is_empty(x + 1, y + 1) || g_world_particle_data[br_idx].id == mat_id_water))) {
         p->velocity.x = is_in_liquid(x, y, &lx, &ly) ? 0.f : random_val(0, 1) == 0 ? -1.f : 1.f;
-        p->velocity.y += (gravity * dt);
+        p->velocity.y += (g_cvar.world_gravity * dt);
         particle_t tmp_b = get_particle_at(x + 1, y + 1);
         write_data(br_idx, *p);
         write_data(read_idx, tmp_b);
@@ -1942,7 +1943,7 @@ void update_steam(u32 x, u32 y) {
     p->has_been_updated_this_frame = true;
 
     // Smoke rises over time. This might cause issues, actually...
-    p->velocity.y = neko_clamp(p->velocity.y - (gravity * dt), -2.f, 10.f);
+    p->velocity.y = neko_clamp(p->velocity.y - (g_cvar.world_gravity * dt), -2.f, 10.f);
     p->velocity.x = neko_clamp(p->velocity.x + (f32)random_val(-100, 100) / 100.f, -1.f, 1.f);
 
     // Change color based on life_time
@@ -1980,19 +1981,19 @@ void update_steam(u32 x, u32 y) {
     }
     // Simple falling, changing the velocity here ruins everything. I need to redo this entire simulation.
     else if (in_bounds(x, y - 1) && ((is_empty(x, y - 1) || (get_particle_at(x, y - 1).id == mat_id_water) || get_particle_at(x, y - 1).id == mat_id_fire))) {
-        p->velocity.y -= (gravity * dt);
+        p->velocity.y -= (g_cvar.world_gravity * dt);
         particle_t tmp_b = get_particle_at(x, y - 1);
         write_data(compute_idx(x, y - 1), *p);
         write_data(read_idx, tmp_b);
     } else if (in_bounds(x - 1, y - 1) && ((is_empty(x - 1, y - 1) || get_particle_at(x - 1, y - 1).id == mat_id_water) || get_particle_at(x - 1, y - 1).id == mat_id_fire)) {
         p->velocity.x = random_val(0, 1) == 0 ? -1.2f : 1.2f;
-        p->velocity.y -= (gravity * dt);
+        p->velocity.y -= (g_cvar.world_gravity * dt);
         particle_t tmp_b = get_particle_at(x - 1, y - 1);
         write_data(compute_idx(x - 1, y - 1), *p);
         write_data(read_idx, tmp_b);
     } else if (in_bounds(x + 1, y - 1) && ((is_empty(x + 1, y - 1) || get_particle_at(x + 1, y - 1).id == mat_id_water) || get_particle_at(x + 1, y - 1).id == mat_id_fire)) {
         p->velocity.x = random_val(0, 1) == 0 ? -1.2f : 1.2f;
-        p->velocity.y -= (gravity * dt);
+        p->velocity.y -= (g_cvar.world_gravity * dt);
         particle_t tmp_b = get_particle_at(x + 1, y - 1);
         write_data(compute_idx(x + 1, y - 1), *p);
         write_data(read_idx, tmp_b);
@@ -2034,7 +2035,7 @@ void update_smoke(u32 x, u32 y) {
     p->has_been_updated_this_frame = true;
 
     // Smoke rises over time. This might cause issues, actually...
-    p->velocity.y = neko_clamp(p->velocity.y - (gravity * dt), -2.f, 10.f);
+    p->velocity.y = neko_clamp(p->velocity.y - (g_cvar.world_gravity * dt), -2.f, 10.f);
     p->velocity.x = neko_clamp(p->velocity.x + (f32)random_val(-100, 100) / 100.f, -1.f, 1.f);
 
     // Change color based on life_time
@@ -2072,19 +2073,19 @@ void update_smoke(u32 x, u32 y) {
     }
     // Simple falling, changing the velocity here ruins everything. I need to redo this entire simulation.
     else if (in_bounds(x, y - 1) && get_particle_at(x, y - 1).id != mat_id_smoke && get_particle_at(x, y - 1).id != mat_id_wood && get_particle_at(x, y - 1).id != mat_id_stone) {
-        p->velocity.y -= (gravity * dt);
+        p->velocity.y -= (g_cvar.world_gravity * dt);
         particle_t tmp_b = get_particle_at(x, y - 1);
         write_data(compute_idx(x, y - 1), *p);
         write_data(read_idx, tmp_b);
     } else if (in_bounds(x - 1, y - 1) && get_particle_at(x - 1, y - 1).id != mat_id_smoke && get_particle_at(x - 1, y - 1).id != mat_id_wood && get_particle_at(x - 1, y - 1).id != mat_id_stone) {
         p->velocity.x = random_val(0, 1) == 0 ? -1.2f : 1.2f;
-        p->velocity.y -= (gravity * dt);
+        p->velocity.y -= (g_cvar.world_gravity * dt);
         particle_t tmp_b = get_particle_at(x - 1, y - 1);
         write_data(compute_idx(x - 1, y - 1), *p);
         write_data(read_idx, tmp_b);
     } else if (in_bounds(x + 1, y - 1) && get_particle_at(x + 1, y - 1).id != mat_id_smoke && get_particle_at(x + 1, y - 1).id != mat_id_wood && get_particle_at(x + 1, y - 1).id != mat_id_stone) {
         p->velocity.x = random_val(0, 1) == 0 ? -1.2f : 1.2f;
-        p->velocity.y -= (gravity * dt);
+        p->velocity.y -= (g_cvar.world_gravity * dt);
         particle_t tmp_b = get_particle_at(x + 1, y - 1);
         write_data(compute_idx(x + 1, y - 1), *p);
         write_data(read_idx, tmp_b);
@@ -2125,7 +2126,7 @@ void update_ember(u32 x, u32 y) {
 
     p->has_been_updated_this_frame = true;
 
-    p->velocity.y = neko_clamp(p->velocity.y - (gravity * dt), -2.f, 10.f);
+    p->velocity.y = neko_clamp(p->velocity.y - (g_cvar.world_gravity * dt), -2.f, 10.f);
     p->velocity.x = neko_clamp(p->velocity.x + (f32)random_val(-100, 100) / 100.f, -1.f, 1.f);
 
     // If directly on top of some wall, then replace it
@@ -2175,19 +2176,19 @@ void update_ember(u32 x, u32 y) {
     }
     // Simple falling, changing the velocity here ruins everything. I need to redo this entire simulation.
     else if (in_bounds(x, y - 1) && ((is_empty(x, y - 1) || (get_particle_at(x, y - 1).id == mat_id_water) || get_particle_at(x, y - 1).id == mat_id_fire))) {
-        p->velocity.y -= (gravity * dt);
+        p->velocity.y -= (g_cvar.world_gravity * dt);
         particle_t tmp_b = get_particle_at(x, y - 1);
         write_data(compute_idx(x, y - 1), *p);
         write_data(read_idx, tmp_b);
     } else if (in_bounds(x - 1, y - 1) && ((is_empty(x - 1, y - 1) || get_particle_at(x - 1, y - 1).id == mat_id_water) || get_particle_at(x - 1, y - 1).id == mat_id_fire)) {
         p->velocity.x = random_val(0, 1) == 0 ? -1.2f : 1.2f;
-        p->velocity.y -= (gravity * dt);
+        p->velocity.y -= (g_cvar.world_gravity * dt);
         particle_t tmp_b = get_particle_at(x - 1, y - 1);
         write_data(compute_idx(x - 1, y - 1), *p);
         write_data(read_idx, tmp_b);
     } else if (in_bounds(x + 1, y - 1) && ((is_empty(x + 1, y - 1) || get_particle_at(x + 1, y - 1).id == mat_id_water) || get_particle_at(x + 1, y + 1).id == mat_id_fire)) {
         p->velocity.x = random_val(0, 1) == 0 ? -1.2f : 1.2f;
-        p->velocity.y -= (gravity * dt);
+        p->velocity.y -= (g_cvar.world_gravity * dt);
         particle_t tmp_b = get_particle_at(x + 1, y - 1);
         write_data(compute_idx(x + 1, y - 1), *p);
         write_data(read_idx, tmp_b);
@@ -2232,7 +2233,7 @@ void update_fire(u32 x, u32 y) {
 
     f32 st = sin(neko_engine_instance()->ctx.platform->elapsed_time());
     // f32 grav_mul = random_val(0, 10) == 0 ? 2.f : 1.f;
-    p->velocity.y = neko_clamp(p->velocity.y - ((gravity * dt)) * 0.2f, -5.0f, 0.f);
+    p->velocity.y = neko_clamp(p->velocity.y - ((g_cvar.world_gravity * dt)) * 0.2f, -5.0f, 0.f);
     // p->velocity.x = neko_clamp(st, -1.f, 1.f);
     p->velocity.x = neko_clamp(p->velocity.x + (f32)random_val(-100, 100) / 200.f, -0.5f, 0.5f);
 
@@ -2523,7 +2524,7 @@ void update_fire(u32 x, u32 y) {
     }
 
     if (in_bounds(vi_x, vi_y) && (is_empty(vi_x, vi_y) || get_particle_at(vi_x, vi_y).id == mat_id_fire || get_particle_at(vi_x, vi_y).id == mat_id_smoke)) {
-        // p->velocity.y -= (gravity * dt);
+        // p->velocity.y -= (g_cvar.world_gravity * dt);
         particle_t tmp_b = g_world_particle_data[compute_idx(vi_x, vi_y)];
         write_data(compute_idx(vi_x, vi_y), *p);
         write_data(read_idx, tmp_b);
@@ -2531,20 +2532,20 @@ void update_fire(u32 x, u32 y) {
 
     // Simple falling, changing the velocity here ruins everything. I need to redo this entire simulation.
     else if (in_bounds(x, y + 1) && ((is_empty(x, y + 1) || (g_world_particle_data[b_idx].id == mat_id_water)))) {
-        // p->velocity.y -= (gravity * dt);
+        // p->velocity.y -= (g_cvar.world_gravity * dt);
         // p->velocity.x = random_val(0, 1) == 0 ? -1.f : 1.f;
         particle_t tmp_b = g_world_particle_data[b_idx];
         write_data(b_idx, *p);
         write_data(read_idx, tmp_b);
     } else if (in_bounds(x - 1, y + 1) && ((is_empty(x - 1, y + 1) || g_world_particle_data[bl_idx].id == mat_id_water))) {
         // p->velocity.x = random_val(0, 1) == 0 ? -1.f : 1.f;
-        // p->velocity.y -= (gravity * dt);
+        // p->velocity.y -= (g_cvar.world_gravity * dt);
         particle_t tmp_b = g_world_particle_data[bl_idx];
         write_data(bl_idx, *p);
         write_data(read_idx, tmp_b);
     } else if (in_bounds(x + 1, y + 1) && ((is_empty(x + 1, y + 1) || g_world_particle_data[br_idx].id == mat_id_water))) {
         // p->velocity.x = random_val(0, 1) == 0 ? -1.f : 1.f;
-        // p->velocity.y -= (gravity * dt);
+        // p->velocity.y -= (g_cvar.world_gravity * dt);
         particle_t tmp_b = g_world_particle_data[br_idx];
         write_data(br_idx, *p);
         write_data(read_idx, tmp_b);
@@ -2587,7 +2588,7 @@ void update_lava(u32 x, u32 y) {
 
     p->has_been_updated_this_frame = true;
 
-    p->velocity.y = neko_clamp(p->velocity.y + ((gravity * dt)), -10.f, 10.f);
+    p->velocity.y = neko_clamp(p->velocity.y + ((g_cvar.world_gravity * dt)), -10.f, 10.f);
 
     // Change color based on life_time
     if (random_val(0, (s32)(p->life_time * 100.f)) % 200 == 0) {
@@ -2891,7 +2892,7 @@ void update_oil(u32 x, u32 y) {
     u32 fall_rate = 2;
     s32 spread_rate = 4;
 
-    p->velocity.y = neko_clamp(p->velocity.y + (gravity * dt), -10.f, 10.f);
+    p->velocity.y = neko_clamp(p->velocity.y + (g_cvar.world_gravity * dt), -10.f, 10.f);
 
     p->has_been_updated_this_frame = true;
 
@@ -2978,7 +2979,7 @@ void update_acid(u32 x, u32 y) {
     s32 spread_rate = 5;
     s32 lx, ly;
 
-    p->velocity.y = neko_clamp(p->velocity.y + (gravity * dt), -10.f, 10.f);
+    p->velocity.y = neko_clamp(p->velocity.y + (g_cvar.world_gravity * dt), -10.f, 10.f);
 
     p->has_been_updated_this_frame = true;
 
@@ -3088,19 +3089,19 @@ void update_acid(u32 x, u32 y) {
     }
     // Simple falling, changing the velocity here ruins everything. I need to redo this entire simulation.
     else if (in_bounds(x, y + u) && ((is_empty(x, y + u)))) {
-        p->velocity.y += (gravity * dt);
+        p->velocity.y += (g_cvar.world_gravity * dt);
         particle_t tmp_b = get_particle_at(x, y + u);
         write_data(b_idx, *p);
         write_data(read_idx, tmp_b);
     } else if (in_bounds(x + l, y + u) && ((is_empty(x + l, y + u)))) {
         p->velocity.x = is_in_liquid(x, y, &lx, &ly) ? 0.f : random_val(0, 1) == 0 ? -1.f : 1.f;
-        p->velocity.y += (gravity * dt);
+        p->velocity.y += (g_cvar.world_gravity * dt);
         particle_t tmp_b = get_particle_at(x + l, y + u);
         write_data(bl_idx, *p);
         write_data(read_idx, tmp_b);
     } else if (in_bounds(x + r, y + u) && ((is_empty(x + r, y + u)))) {
         p->velocity.x = is_in_liquid(x, y, &lx, &ly) ? 0.f : random_val(0, 1) == 0 ? -1.f : 1.f;
-        p->velocity.y += (gravity * dt);
+        p->velocity.y += (g_cvar.world_gravity * dt);
         particle_t tmp_b = get_particle_at(x + r, y + u);
         write_data(br_idx, *p);
         write_data(read_idx, tmp_b);
@@ -3152,7 +3153,7 @@ void update_water(u32 x, u32 y) {
     u32 fall_rate = 2;
     s32 spread_rate = 5;
 
-    p->velocity.y = neko_clamp(p->velocity.y + (gravity * dt), -10.f, 10.f);
+    p->velocity.y = neko_clamp(p->velocity.y + (g_cvar.world_gravity * dt), -10.f, 10.f);
 
     p->has_been_updated_this_frame = true;
 
@@ -3198,19 +3199,19 @@ void update_water(u32 x, u32 y) {
     }
     // Simple falling, changing the velocity here ruins everything. I need to redo this entire simulation.
     else if (in_bounds(x, y + u) && ((is_empty(x, y + u) || (g_world_particle_data[b_idx].id == mat_id_oil)))) {
-        p->velocity.y += (gravity * dt);
+        p->velocity.y += (g_cvar.world_gravity * dt);
         particle_t tmp_b = get_particle_at(x, y + u);
         write_data(b_idx, *p);
         write_data(read_idx, tmp_b);
     } else if (in_bounds(x + l, y + u) && ((is_empty(x + l, y + u) || g_world_particle_data[bl_idx].id == mat_id_oil))) {
         p->velocity.x = is_in_liquid(x, y, &lx, &ly) ? 0.f : random_val(0, 1) == 0 ? -1.f : 1.f;
-        p->velocity.y += (gravity * dt);
+        p->velocity.y += (g_cvar.world_gravity * dt);
         particle_t tmp_b = get_particle_at(x + l, y + u);
         write_data(bl_idx, *p);
         write_data(read_idx, tmp_b);
     } else if (in_bounds(x + r, y + u) && ((is_empty(x + r, y + u) || g_world_particle_data[br_idx].id == mat_id_oil))) {
         p->velocity.x = is_in_liquid(x, y, &lx, &ly) ? 0.f : random_val(0, 1) == 0 ? -1.f : 1.f;
-        p->velocity.y += (gravity * dt);
+        p->velocity.y += (g_cvar.world_gravity * dt);
         particle_t tmp_b = get_particle_at(x + r, y + u);
         write_data(br_idx, *p);
         write_data(read_idx, tmp_b);

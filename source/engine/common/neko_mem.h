@@ -7,35 +7,22 @@
 
 namespace neko {
 
-typedef struct neko_mem_stack_t neko_mem_stack_t;
-neko_mem_stack_t* neko_mem_stack_create(void* memory_chunk, size_t size);
-void* neko_mem_stack_alloc(neko_mem_stack_t* stack, size_t size);
-int neko_mem_stack_free(neko_mem_stack_t* stack, void* memory);
-size_t neko_mem_stack_bytes_left(neko_mem_stack_t* stack);
-
-typedef struct neko_mem_frame_t neko_mem_frame_t;
-neko_mem_frame_t* neko_mem_frame_create(void* memory_chunk, size_t size);
-void* neko_mem_frame_alloc(neko_mem_frame_t* frame, size_t size);
-void neko_mem_frame_free(neko_mem_frame_t* frame);
-
-// define these to your own user definition as necessary
-
 #if 1
 
 #ifndef neko_safe_malloc
-#define neko_safe_malloc(size) ::neko::neko_mem_leak_check_alloc((size), (char*)__FILE__, __LINE__)
+#define neko_safe_malloc(size) ::neko::__neko_mem_safe_alloc((size), (char*)__FILE__, __LINE__)
 #endif
 
 #ifndef neko_safe_free
-#define neko_safe_free(mem) ::neko::neko_mem_leak_check_free(mem)
+#define neko_safe_free(mem) ::neko::__neko_mem_safe_free(mem)
 #endif
 
 #ifndef neko_safe_realloc
-#define neko_safe_realloc(ptr, size) ::neko::neko_mem_leak_check_realloc((ptr), (size), (char*)__FILE__, __LINE__)
+#define neko_safe_realloc(ptr, size) ::neko::__neko_mem_safe_realloc((ptr), (size), (char*)__FILE__, __LINE__)
 #endif
 
 #ifndef neko_safe_calloc
-#define neko_safe_calloc(count, element_size) ::neko::neko_mem_leak_check_calloc(count, element_size, (char*)__FILE__, __LINE__)
+#define neko_safe_calloc(count, element_size) ::neko::__neko_mem_safe_calloc(count, element_size, (char*)__FILE__, __LINE__)
 #endif
 
 #else
@@ -78,10 +65,10 @@ struct alloc {
     }
 #endif
 
-void* neko_mem_leak_check_alloc(size_t size, const char* file, int line, size_t* statistics = NULL);
-void* neko_mem_leak_check_calloc(size_t count, size_t element_size, const char* file, int line, size_t* statistics = NULL);
-void neko_mem_leak_check_free(void* mem, size_t* statistics = NULL);
-void* neko_mem_leak_check_realloc(void* ptr, size_t new_size, const char* file, int line, size_t* statistics = NULL);
+void* __neko_mem_safe_alloc(size_t size, const char* file, int line, size_t* statistics = NULL);
+void* __neko_mem_safe_calloc(size_t count, size_t element_size, const char* file, int line, size_t* statistics = NULL);
+void __neko_mem_safe_free(void* mem, size_t* statistics = NULL);
+void* __neko_mem_safe_realloc(void* ptr, size_t new_size, const char* file, int line, size_t* statistics = NULL);
 
 int neko_mem_check_leaks(bool detailed);
 int neko_mem_bytes_inuse();

@@ -162,7 +162,7 @@ const char *neko_gpu_glenum_string(GLenum e) {
     return buffer;
 }
 
-void neko_editor_render_uniform_variable(GLuint program, GLenum type, const char *name, GLint location) {
+void neko_editor_render_uniform_variable(GLuint program, GLenum type, const_str name, GLint location) {
     static bool is_color = false;
     switch (type) {
         case GL_FLOAT:
@@ -293,7 +293,7 @@ void neko_editor_render_uniform_variable(GLuint program, GLenum type, const char
 
 neko_inline float get_scrollable_height() { return ImGui::GetTextLineHeight() * 16; }
 
-void neko_editor_inspect_shader(const char *label, GLuint program) {
+void neko_editor_inspect_shader(const_str label, GLuint program) {
     neko_assert(label != nullptr, ("The label supplied with program: {} is nullptr", program));
     neko_assert(glIsProgram(program), ("The program: {} is not a valid shader program", program));
 
@@ -365,7 +365,7 @@ void neko_editor_inspect_shader(const char *label, GLuint program) {
     ImGui::PopID();
 }
 
-void neko_editor_inspect_vertex_array(const char *label, GLuint vao) {
+void neko_editor_inspect_vertex_array(const_str label, GLuint vao) {
     neko_assert(label != nullptr, ("The label supplied with VAO: %u is nullptr", vao));
     neko_assert(glIsVertexArray(vao), ("The VAO: %u is not a valid vertex array object", vao));
 

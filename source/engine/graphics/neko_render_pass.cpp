@@ -55,8 +55,8 @@ bright_filter_pass_t bright_filter_pass_ctor() {
     // Construct shaders resources
     bp.data.vb = gfx->construct_vertex_buffer(layout_bp, sizeof(layout_bp), bp_v_data, sizeof(bp_v_data));
     bp.data.ib = gfx->construct_index_buffer(bp_i_data, sizeof(bp_i_data));
-    bp.data.shader = gfx->construct_shader(bp_v_src, bp_f_src);
-    bp.data.u_input_tex = gfx->construct_uniform(bp.data.shader, "u_tex", neko_uniform_type_sampler2d);
+    bp.data.shader = gfx->neko_shader_create("bright_filter_pass", bp_v_src, bp_f_src);
+    bp.data.u_input_tex = gfx->construct_uniform(*bp.data.shader, "u_tex", neko_uniform_type_sampler2d);
     bp._base.pass = &bp_pass;
 
     // Construct render target to render into
@@ -122,7 +122,7 @@ void bp_pass(neko_command_buffer_t* cb, struct render_pass_i* _pass, void* _para
     gfx->set_view_clear(cb, (f32*)&cc);
 
     // Use the program
-    gfx->bind_shader(cb, bp->data.shader);
+    gfx->bind_shader(cb, *bp->data.shader);
     {
         gfx->bind_texture(cb, bp->data.u_input_tex, params->input_texture, 0);
         gfx->bind_vertex_buffer(cb, bp->data.vb);
@@ -226,10 +226,10 @@ blur_pass_t blur_pass_ctor() {
     bp._base.pass = &blur_pass;
 
     // Initialize shaders and uniforms
-    bp.data.horizontal_blur_shader = gfx->construct_shader(v_h_blur_src, f_blur_src);
-    bp.data.vertical_blur_shader = gfx->construct_shader(v_v_blur_src, f_blur_src);
-    bp.data.u_input_tex = gfx->construct_uniform(bp.data.horizontal_blur_shader, "u_tex", neko_uniform_type_sampler2d);
-    bp.data.u_tex_size = gfx->construct_uniform(bp.data.horizontal_blur_shader, "u_tex_size", neko_uniform_type_vec2);
+    bp.data.horizontal_blur_shader = gfx->neko_shader_create("horizontal_blur_shader", v_h_blur_src, f_blur_src);
+    bp.data.vertical_blur_shader = gfx->neko_shader_create("vertical_blur_shader", v_v_blur_src, f_blur_src);
+    bp.data.u_input_tex = gfx->construct_uniform(*bp.data.horizontal_blur_shader, "u_tex", neko_uniform_type_sampler2d);
+    bp.data.u_tex_size = gfx->construct_uniform(*bp.data.horizontal_blur_shader, "u_tex_size", neko_uniform_type_vec2);
 
     // Construct render target to render into
     neko_vec2 ws = platform->window_size(platform->main_window());
@@ -293,7 +293,7 @@ void blur_pass(neko_command_buffer_t* cb, render_pass_i* _pass, void* _params) {
     for (u32 i = 0; i < bp->data.iterations * 2; ++i) {
         b32 is_even = (i % 2 == 0);
         neko_texture_t* target = is_even ? &bp->data.blur_render_target_a : &bp->data.blur_render_target_b;
-        neko_shader_t* shader = is_even ? &bp->data.horizontal_blur_shader : &bp->data.vertical_blur_shader;
+        neko_shader_t* shader = is_even ? bp->data.horizontal_blur_shader : bp->data.vertical_blur_shader;
         neko_texture_t* tex = (i == 0) ? &params->input_texture : is_even ? &bp->data.blur_render_target_b : &bp->data.blur_render_target_a;
 
         // Set frame buffer attachment for rendering
@@ -405,12 +405,12 @@ composite_pass_t composite_pass_ctor() {
     // Construct shaders resources
     p.data.vb = gfx->construct_vertex_buffer(layout_cp, sizeof(layout_cp), cp_v_data, sizeof(cp_v_data));
     p.data.ib = gfx->construct_index_buffer(cp_i_data, sizeof(cp_i_data));
-    p.data.shader = gfx->construct_shader(cp_v_src, cp_f_src);
-    p.data.u_input_tex = gfx->construct_uniform(p.data.shader, "u_tex", neko_uniform_type_sampler2d);
-    p.data.u_blur_tex = gfx->construct_uniform(p.data.shader, "u_blur_tex", neko_uniform_type_sampler2d);
+    p.data.shader = gfx->neko_shader_create("composite_pass", cp_v_src, cp_f_src);
+    p.data.u_input_tex = gfx->construct_uniform(*p.data.shader, "u_tex", neko_uniform_type_sampler2d);
+    p.data.u_blur_tex = gfx->construct_uniform(*p.data.shader, "u_blur_tex", neko_uniform_type_sampler2d);
     // p.data.u_exposure = gfx->construct_uniform(p.data.shader, "u_exposure", neko_uniform_type_float);
     // p.data.u_gamma = gfx->construct_uniform(p.data.shader, "u_gamma", neko_uniform_type_float);
-    p.data.u_bloom_scalar = gfx->construct_uniform(p.data.shader, "u_bloom_scalar", neko_uniform_type_float);
+    p.data.u_bloom_scalar = gfx->construct_uniform(*p.data.shader, "u_bloom_scalar", neko_uniform_type_float);
     // p.data.u_saturation = gfx->construct_uniform(p.data.shader, "u_saturation", neko_uniform_type_float);
 
     p._base.pass = &cp_pass;
@@ -478,7 +478,7 @@ void cp_pass(neko_command_buffer_t* cb, struct render_pass_i* _pass, void* _para
     gfx->set_view_clear(cb, (f32*)&cc);
 
     // Use the program
-    gfx->bind_shader(cb, p->data.shader);
+    gfx->bind_shader(cb, *p->data.shader);
     {
         f32 saturation = 2.0f;
         f32 gamma = 2.2f;

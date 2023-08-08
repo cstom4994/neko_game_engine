@@ -741,11 +741,11 @@ void neko_array_pop(neko_array<T>* arr) {
 }
 
 template <typename T>
-T* neko_array_begin(neko_array<T>& arr) {
+T* begin(neko_array<T>& arr) {
     return arr.data;
 }
 template <typename T>
-T* neko_array_end(neko_array<T>& arr) {
+T* end(neko_array<T>& arr) {
     return &arr.data[arr.len];
 }
 

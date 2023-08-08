@@ -236,9 +236,9 @@ private:
         if (modified) glwrite(program, location, 1, GL_FALSE, value);                                    \
     }
 
-void neko_editor_render_uniform_variable(GLuint program, GLenum type, const char *name, GLint location);
-void neko_editor_inspect_shader(const char *label, GLuint program);
-void neko_editor_inspect_vertex_array(const char *label, GLuint vao);
+void neko_editor_render_uniform_variable(GLuint program, GLenum type, const_str name, GLint location);
+void neko_editor_inspect_shader(const_str label, GLuint program);
+void neko_editor_inspect_vertex_array(const_str label, GLuint vao);
 
 auto neko_editor_create(neko_engine_cvar_t &cvar) -> dbgui &;
 

@@ -58,6 +58,8 @@ public:
 
     void draw() const {
 
+        // if (!g_cvar.ui_tweak) return;
+
         auto dock_win = []() {
             ImGuiViewport* viewport = ImGui::GetMainViewport();
 

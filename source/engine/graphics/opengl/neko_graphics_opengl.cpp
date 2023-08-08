@@ -18,16 +18,8 @@
 #include "engine/math/neko_math.h"
 #include "engine/platform/neko_platform.h"
 #include "engine/serialize/neko_byte_buffer.h"
+#include "engine/utility/hash.hpp"
 #include "engine/utility/logger.hpp"
-
-// 用于 glsl 热更新检测文件是否更改
-#ifdef _WIN32
-#include <sys/stat.h>
-#else
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
-#endif
 
 // 3rd
 #include "libs/glad/glad.h"
@@ -86,53 +78,6 @@ bool __neko_make_screenshot(const std::string &filename, u32 width, u32 height, 
 
     return ret;
 }
-
-class neko_shader_hotloader {
-
-    using shader_handle = GLuint;
-    using program_handle = GLuint;
-
-    struct __neko_shader_nametype_pair {
-        std::string name;
-        GLenum type;
-        bool operator<(const __neko_shader_nametype_pair &rhs) const { return std::tie(name, type) < std::tie(rhs.name, rhs.type); }
-    };
-
-    struct neko_shader_hot {
-        shader_handle handle;
-        // Timestamp of the last update of the shader
-        uint64_t timestamp;
-        // 着色器名称的哈希值 这用于从 GLSL 编译器错误消息中恢复着色器名称
-        // 理论上碰撞几率极小
-        int32_t hash_name;
-    };
-
-    struct neko_program_hot {
-        // 当发生链接失败时 公共句柄变为0 直到链接错误得到修复。
-        program_handle public_handle;
-        program_handle internal_handle;
-    };
-
-    std::string shader_version;
-    std::string shader_preamble;
-
-    std::map<__neko_shader_nametype_pair, neko_shader_hot> __shaders_list;
-    std::map<std::vector<const __neko_shader_nametype_pair *>, neko_program_hot> __program_list;
-
-public:
-    neko_shader_hotloader() = default;
-    ~neko_shader_hotloader();
-
-    void set_version(const std::string &version);
-    void set_preamble(const std::string &preamble);
-    void set_preamble_file(const std::string &preambleFilename);
-
-    GLuint *add_program(const std::vector<std::pair<std::string, GLenum>> &typedShaders);
-    void update_programs();
-
-    GLuint *add_program_from_exts(const std::vector<std::string> &shaders);
-    GLuint *add_program_from_combined_file(const std::string &filename, const std::vector<GLenum> &shaderTypes);
-};
 
 neko_mat4 __neko_default_view_proj_mat() {
     neko_platform_i *platform = neko_engine_instance()->ctx.platform;
@@ -246,6 +191,7 @@ typedef neko_frame_buffer_t frame_buffer_t;
 // Define render resource data structure
 typedef struct opengl_render_data_t {
     immediate_drawing_internal_data_t immediate_data;
+    neko_hashmap<neko_shader_t> shaders_data;
 } opengl_render_data_t;
 
 neko_global const char *immediate_shader_v_src =
@@ -285,6 +231,7 @@ neko_resource(neko_font_t) __neko_get_default_font() { return g_default_font; }
 #define __get_opengl_data_internal() (opengl_render_data_t *)(neko_engine_instance()->ctx.graphics->data)
 
 #define __get_opengl_immediate_data() (&(__get_opengl_data_internal())->immediate_data);
+#define __get_opengl_shaders_data() (&(__get_opengl_data_internal())->shaders_data);
 
 // Forward Decls;
 void __reset_command_buffer_internal(command_buffer_t *cb);
@@ -363,7 +310,7 @@ void opengl_init_default_state() {
 
 neko_result opengl_init(struct neko_graphics_i *gfx) {
     // Construct instance of render data
-    struct opengl_render_data_t *data = neko_malloc_init(opengl_render_data_t);
+    opengl_render_data_t *data = new opengl_render_data_t{};
 
     // Set data
     gfx->data = data;
@@ -377,6 +324,9 @@ neko_result opengl_init(struct neko_graphics_i *gfx) {
 
     // Initialize data
     data->immediate_data = construct_immediate_drawing_internal_data_t();
+
+    // 预分配8个shader_t的哈希映射
+    neko_hashmap_reserve(&data->shaders_data, neko_hashmap_reserve_size(8));
 
     // Init all default opengl state here before frame begins
     opengl_init_default_state();
@@ -2384,302 +2334,27 @@ void opengl_free_shader(neko_shader_t shader) {
     shader_t_free(&shader);
 }
 
-static uint64_t __neko_get_file_timestamp(const char *filename) {
-    uint64_t timestamp = 0;
+neko_shader_t *__neko_shader_create(const neko_string &name, const neko_string &vert, const neko_string &frag) {
+    neko_graphics_i *gfx = neko_engine_instance()->ctx.graphics;
+    neko_assert(gfx);
 
-#ifdef _WIN32
-    struct __stat64 stFileInfo;
-    if (_stat64(filename, &stFileInfo) == 0) {
-        timestamp = stFileInfo.st_mtime;
-    }
-#else
-    struct stat fileStat;
+    neko_hashmap<neko_shader_t> *shaders_data = __get_opengl_shaders_data();
 
-    if (stat(filename, &fileStat) == -1) {
-        perror(filename);
-        return 0;
-    }
-
-#ifdef __APPLE__
-    timestamp = fileStat.st_mtimespec.tv_sec;
-#else
-    timestamp = fileStat.st_mtime;
-#endif
-#endif
-
-    return timestamp;
+    neko_shader_t shader = gfx->construct_shader(vert.c_str(), frag.c_str());
+    return &((*shaders_data)[neko::hash(name.c_str())] = shader);
 }
 
-static std::string __shader_string_from_file(const char *filename) {
-    std::ifstream fs(filename);
-    neko_assert(fs);
-    std::string s(std::istreambuf_iterator<char>{fs}, std::istreambuf_iterator<char>{});
-    return s;
+neko_shader_t *__neko_shader_get(const neko_string &name) {
+    neko_hashmap<neko_shader_t> *shaders_data = __get_opengl_shaders_data();
+    return &((*shaders_data)[neko::hash(name.c_str())]);
 }
 
-neko_shader_hotloader::~neko_shader_hotloader() {
-    for (auto &shader : __shaders_list) glDeleteShader(shader.second.handle);
-
-    for (auto &program : __program_list) glDeleteProgram(program.second.internal_handle);
-}
-
-void neko_shader_hotloader::set_version(const std::string &version) { shader_version = version; }
-
-void neko_shader_hotloader::set_preamble(const std::string &preamble) { shader_preamble = preamble; }
-
-GLuint *neko_shader_hotloader::add_program(const std::vector<std::pair<std::string, GLenum>> &typed_shaders) {
-    std::vector<const __neko_shader_nametype_pair *> shader_nametypes;
-
-    // 查找对现有着色器的引用 并创建以前不存在的着色器
-    for (const auto &shaderNameType : typed_shaders) {
-        __neko_shader_nametype_pair tmp_shader_nametype;
-        std::tie(tmp_shader_nametype.name, tmp_shader_nametype.type) = shaderNameType;
-
-        // 测试文件是否可以打开 以捕获拼写错误或丢失文件的错误
-        {
-            std::ifstream ifs(tmp_shader_nametype.name);
-            if (!ifs) {
-                neko_error(std::format("failed to open shader {0}", tmp_shader_nametype.name));
-            }
-        }
-
-        auto foundShader = __shaders_list.emplace(std::move(tmp_shader_nametype), neko_shader_hot{}).first;
-        if (!foundShader->second.handle) {
-            foundShader->second.handle = glCreateShader(shaderNameType.second);
-            // 将哈希值屏蔽为 16 位 因为某些实现仅限于该位数
-            // 符号位被屏蔽 因为一些着色器编译器将 #line 视为有符号，而另一些则将其视为无符号
-            foundShader->second.hash_name = (int32_t)std::hash<std::string>()(shaderNameType.first) & 0x7FFF;
-        }
-        shader_nametypes.push_back(&foundShader->first);
-    }
-
-    // 确保程序有规范的顺序
-    std::sort(begin(shader_nametypes), end(shader_nametypes));
-    shader_nametypes.erase(std::unique(begin(shader_nametypes), end(shader_nametypes)), end(shader_nametypes));
-
-    // 找到与这些着色器关联的程序 如果丢失则创建它
-    auto foundProgram = __program_list.emplace(shader_nametypes, neko_program_hot{}).first;
-    if (!foundProgram->second.internal_handle) {
-        // 公共句柄(id)为 0 直到程序无错误链接为止
-        foundProgram->second.public_handle = 0;
-
-        foundProgram->second.internal_handle = glCreateProgram();
-        for (const auto *shader : shader_nametypes) {
-            glAttachShader(foundProgram->second.internal_handle, __shaders_list[*shader].handle);
-        }
-    }
-
-    return &foundProgram->second.public_handle;
-}
-
-void neko_shader_hotloader::update_programs() {
-    // 查找具有更新时间戳的所有着色器
-    std::set<std::pair<const __neko_shader_nametype_pair, neko_shader_hot> *> updatedShaders;
-    for (auto &shader : __shaders_list) {
-        uint64_t timestamp = __neko_get_file_timestamp(shader.first.name.c_str());
-        if (timestamp > shader.second.timestamp) {
-            shader.second.timestamp = timestamp;
-            updatedShaders.insert(&shader);
-        }
-    }
-
-    // 重新编译所有更新的着色器
-    for (auto *shader : updatedShaders) {
-        // #line 前缀确保错误消息的文件具有正确的行号
-        // #line 指令还允许指定“文件名”编号，这使得可以识别错误来自哪个文件
-        std::string version = "#version " + shader_version + "\n";
-
-        std::string defines;
-        switch (shader->first.type) {
-            case GL_VERTEX_SHADER:
-                defines += "#define VERTEX_SHADER\n";
-                break;
-            case GL_FRAGMENT_SHADER:
-                defines += "#define FRAGMENT_SHADER\n";
-                break;
-            case GL_GEOMETRY_SHADER:
-                defines += "#define GEOMETRY_SHADER\n";
-                break;
-            case GL_TESS_CONTROL_SHADER:
-                defines += "#define TESS_CONTROL_SHADER\n";
-                break;
-            case GL_TESS_EVALUATION_SHADER:
-                defines += "#define TESS_EVALUATION_SHADER\n";
-                break;
-            case GL_COMPUTE_SHADER:
-                defines += "#define COMPUTE_SHADER\n";
-                break;
-        }
-
-        std::string preamble_hash = std::to_string((int32_t)std::hash<std::string>()("preamble") & 0x7FFF);
-        std::string preamble = "#line 1 " + preamble_hash + "\n" + shader_preamble + "\n";
-
-        std::string source_hash = std::to_string(shader->second.hash_name);
-        std::string source = "#line 1 " + source_hash + "\n" + __shader_string_from_file(shader->first.name.c_str()) + "\n";
-
-        const char *strings[] = {version.c_str(), defines.c_str(), preamble.c_str(), source.c_str()};
-        GLint lengths[] = {(GLint)version.length(), (GLint)defines.length(), (GLint)preamble.length(), (GLint)source.length()};
-
-        glShaderSource(shader->second.handle, sizeof(strings) / sizeof(*strings), strings, lengths);
-        glCompileShader(shader->second.handle);
-
-        GLint status;
-        glGetShaderiv(shader->second.handle, GL_COMPILE_STATUS, &status);
-        if (!status) {
-            GLint logLength;
-            glGetShaderiv(shader->second.handle, GL_INFO_LOG_LENGTH, &logLength);
-            std::vector<char> log(logLength + 1);
-            glGetShaderInfoLog(shader->second.handle, logLength, NULL, log.data());
-
-            std::string log_s = log.data();
-
-            // 将错误消息中的所有哈希文件名替换为实际文件名
-            for (size_t found_preamble; (found_preamble = log_s.find(preamble_hash)) != std::string::npos;) {
-                log_s.replace(found_preamble, preamble_hash.size(), "preamble");
-            }
-            for (size_t found_source; (found_source = log_s.find(source_hash)) != std::string::npos;) {
-                log_s.replace(found_source, source_hash.size(), shader->first.name);
-            }
-
-            neko_error(std::format("shader error compiling {0}:\n{1}\n", shader->first.name, log_s));
-        }
-    }
-
-    // 重新链接所有已更新着色器并成功编译所有着色器的程序
-    for (std::pair<const std::vector<const __neko_shader_nametype_pair *>, neko_program_hot> &program : __program_list) {
-        bool program_needs_relink = false;
-        for (const auto *programShader : program.first) {
-            for (auto *shader : updatedShaders) {
-                if (&shader->first == programShader) {
-                    program_needs_relink = true;
-                    break;
-                }
-            }
-
-            if (program_needs_relink) break;
-        }
-
-        // 不要尝试链接未成功编译的着色器
-        bool can_relink = true;
-        if (program_needs_relink) {
-            for (const auto *programShader : program.first) {
-                GLint status;
-                glGetShaderiv(__shaders_list[*programShader].handle, GL_COMPILE_STATUS, &status);
-                if (!status) {
-                    can_relink = false;
-                    break;
-                }
-            }
-        }
-
-        if (program_needs_relink && can_relink) {
-            glLinkProgram(program.second.internal_handle);
-
-            GLint logLength;
-            glGetProgramiv(program.second.internal_handle, GL_INFO_LOG_LENGTH, &logLength);
-            std::vector<char> log(logLength + 1);
-            glGetProgramInfoLog(program.second.internal_handle, logLength, NULL, log.data());
-
-            std::string log_s = log.data();
-
-            // 将错误消息中的所有哈希文件名替换为实际文件名
-            std::string preamble_hash = std::to_string((int32_t)std::hash<std::string>()("preamble"));
-            for (size_t found_preamble; (found_preamble = log_s.find(preamble_hash)) != std::string::npos;) {
-                log_s.replace(found_preamble, preamble_hash.size(), "preamble");
-            }
-            for (const auto *shaderInProgram : program.first) {
-                std::string source_hash = std::to_string(__shaders_list[*shaderInProgram].hash_name);
-                for (size_t found_source; (found_source = log_s.find(source_hash)) != std::string::npos;) {
-                    log_s.replace(found_source, source_hash.size(), shaderInProgram->name);
-                }
-            }
-
-            GLint status;
-            glGetProgramiv(program.second.internal_handle, GL_LINK_STATUS, &status);
-
-            std::string shader_names;
-
-            for (const auto *shader : program.first) {
-                if (shader != program.first.front()) {
-                    shader_names += ", ";
-                }
-
-                shader_names += shader->name;
-            }
-
-            if (!status) {
-                neko_error("error linking (", shader_names, ")");
-            } else {
-                neko_info("shader successfully linked (", shader_names, ")");
-            }
-
-            if (log[0] != '\0') {
-                neko_info(log_s.c_str());
-            }
-
-            if (!status) {
-                program.second.public_handle = 0;
-            } else {
-                program.second.public_handle = program.second.internal_handle;
-            }
-        }
-    }
-}
-
-void neko_shader_hotloader::set_preamble_file(const std::string &preambleFilename) { set_preamble(__shader_string_from_file(preambleFilename.c_str())); }
-
-GLuint *neko_shader_hotloader::add_program_from_exts(const std::vector<std::string> &shaders) {
-    std::vector<std::pair<std::string, GLenum>> typed_shaders;
-    for (const std::string &shader : shaders) {
-        size_t extLoc = shader.find_last_of('.');
-        if (extLoc == std::string::npos) {
-            return nullptr;
-        }
-
-        GLenum shader_type;
-
-        std::string ext = shader.substr(extLoc + 1);
-
-        // vertex shader: .vert
-        // fragment shader: .frag
-        // geometry shader: .geom
-        // tessellation control shader: .tesc
-        // tessellation evaluation shader: .tese
-        // compute shader: .comp
-
-        if (ext == "vert")
-            shader_type = GL_VERTEX_SHADER;
-        else if (ext == "frag")
-            shader_type = GL_FRAGMENT_SHADER;
-        else if (ext == "geom")
-            shader_type = GL_GEOMETRY_SHADER;
-        else if (ext == "tesc")
-            shader_type = GL_TESS_CONTROL_SHADER;
-        else if (ext == "tese")
-            shader_type = GL_TESS_EVALUATION_SHADER;
-        else if (ext == "comp")
-            shader_type = GL_COMPUTE_SHADER;
-        else
-            return nullptr;
-
-        typed_shaders.emplace_back(shader, shader_type);
-    }
-
-    return add_program(typed_shaders);
-}
-
-GLuint *neko_shader_hotloader::add_program_from_combined_file(const std::string &filename, const std::vector<GLenum> &shaderTypes) {
-    std::vector<std::pair<std::string, GLenum>> typedShaders;
-
-    for (auto type : shaderTypes) typedShaders.emplace_back(filename, type);
-
-    return add_program(typedShaders);
-}
+neko_hashmap<neko_shader_t> *__neko_shader_internal_list() { return &((opengl_render_data_t *)(neko_engine_instance()->ctx.graphics->data))->shaders_data; }
 
 // Method for creating graphics layer for opengl
 struct neko_graphics_i *__neko_graphics_construct() {
     // Construct new graphics interface instance
-    struct neko_graphics_i *gfx = neko_malloc_init(neko_graphics_i);
+    neko_malloc_init_ex(gfx, neko_graphics_i);
 
     // Null out data
     gfx->data = NULL;
@@ -2853,6 +2528,11 @@ struct neko_graphics_i *__neko_graphics_construct() {
     gfx->make_screenshot = &__neko_make_screenshot;
 
     gfx->default_font = &__neko_get_default_font;
+
+    // Shader Methods
+    gfx->neko_shader_create = &__neko_shader_create;
+    gfx->neko_shader_get = &__neko_shader_get;
+    gfx->neko_shader_internal_list = &__neko_shader_internal_list;
 
     /*============================================================
     // Graphics Utility APIs

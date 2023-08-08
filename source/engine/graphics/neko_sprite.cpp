@@ -65,7 +65,7 @@ bool neko_sprite_load(neko_sprite *spr, neko_string filepath) {
     // img.height = desc.height;
 
     neko_hashmap<neko_sprite_loop> by_tag;
-    neko_hashmap_reserve(&by_tag, neko_hash_map_reserve_size((u64)ase->tag_count));
+    neko_hashmap_reserve(&by_tag, neko_hashmap_reserve_size((u64)ase->tag_count));
 
     for (s32 i = 0; i < ase->tag_count; i++) {
         ase_tag_t &tag = ase->tags[i];

@@ -18,8 +18,8 @@ typedef struct blur_data_t {
     neko_texture_t medium_blur_render_target_b;
     neko_texture_t large_blur_render_target_a;
     neko_texture_t large_blur_render_target_b;
-    neko_shader_t horizontal_blur_shader;
-    neko_shader_t vertical_blur_shader;
+    neko_shader_t *horizontal_blur_shader;
+    neko_shader_t *vertical_blur_shader;
     neko_uniform_t u_input_tex;
     neko_uniform_t u_tex_size;
     neko_vertex_buffer_t vb;
@@ -40,7 +40,7 @@ typedef struct blur_pass_parameters_t {
 blur_pass_t blur_pass_ctor();
 
 typedef struct bright_filter_data_t {
-    neko_shader_t shader;
+    neko_shader_t *shader;
     neko_uniform_t u_input_tex;
     neko_texture_t render_target;
     neko_vertex_buffer_t vb;
@@ -60,7 +60,7 @@ typedef struct bright_filter_pass_parameters_t {
 bright_filter_pass_t bright_filter_pass_ctor();
 
 typedef struct composite_pass_data_t {
-    neko_shader_t shader;
+    neko_shader_t *shader;
     neko_uniform_t u_input_tex;
     neko_uniform_t u_blur_tex;
     neko_uniform_t u_exposure;

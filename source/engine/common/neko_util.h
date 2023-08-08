@@ -738,7 +738,7 @@ enum neko_hashmap_kind : u8 {
 
 #define HASH_MAP_LOAD_FACTOR 0.75f
 
-neko_inline u64 neko_hash_map_reserve_size(u64 size) {
+neko_inline u64 neko_hashmap_reserve_size(u64 size) {
     u64 n = (u64)(size / HASH_MAP_LOAD_FACTOR) + 1;
 
     // next pow of 2
@@ -943,5 +943,29 @@ neko_hashmap_iterator<T> end(neko_hashmap<T>& map) {
     it.cursor = map.capacity;
     return it;
 }
+
+// template <typename T>
+// neko_hashmap_iterator<T> begin(const neko_hashmap<T>& map) {
+//     neko_hashmap_iterator<T> it = {};
+//     it.map = &map;
+//     it.cursor = map.capacity;
+//
+//     for (u64 i = 0; i < map.capacity; i++) {
+//         if (map.kinds[i] == neko_hashmap_kind_some) {
+//             it.cursor = i;
+//             break;
+//         }
+//     }
+//
+//     return it;
+// }
+//
+// template <typename T>
+// neko_hashmap_iterator<T> end(const neko_hashmap<T>& map) {
+//     neko_hashmap_iterator<T> it = {};
+//     it.map = &map;
+//     it.cursor = map.capacity;
+//     return it;
+// }
 
 #endif  // NEKO_UTIL_H
