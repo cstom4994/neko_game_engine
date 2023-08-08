@@ -844,6 +844,7 @@ int neko_lua_safe_remove_handler(lua_State *state, neko_lua_safe_Handler handler
 
 int luaopen_cstruct_core(lua_State *L);
 int luaopen_cstruct_test(lua_State *L);
+int luaopen_datalist(lua_State *L);
 
 #ifndef _WIN32
 #include <stdint.h>
@@ -1113,7 +1114,7 @@ RET_V neko_lua_t::call(const char *func_name_, const ARG1 &arg1_) {
     lua_op_t<ARG1>::push_stack(m_ls, arg1_);
 
     if (lua_pcall(m_ls, tmpArg + 1, 1, 0) != 0) {
-        string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall failed func_name<%s>", func_name_);
+        neko_string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1375,6 +1376,25 @@ RET_V neko_lua_t::call(const char *func_name_, const ARG1 &arg1_, const ARG2 &ar
     lua_pop(m_ls, 1);
 
     return ret;
+}
+
+template <typename T>
+T neko_lua_to(lua_State *L, int index) {
+    if constexpr (std::same_as<T, s32> || std::same_as<T, u32>) {
+        luaL_argcheck(L, lua_isnumber(L, index), index, "number expected");
+        return static_cast<T>(lua_tointeger(L, index));
+    } else if constexpr (std::same_as<T, f32> || std::same_as<T, f64>) {
+        luaL_argcheck(L, lua_isnumber(L, index), index, "number expected");
+        return static_cast<T>(lua_tonumber(L, index));
+    } else if constexpr (std::same_as<T, const_str>) {
+        luaL_argcheck(L, lua_isstring(L, index), index, "string expected");
+        return lua_tostring(L, index);
+    } else if constexpr (std::same_as<T, bool>) {
+        luaL_argcheck(L, lua_isboolean(L, index), index, "boolean expected");
+        return lua_toboolean(L, index) != 0;
+    } else {
+        static_assert(std::is_same_v<T, void>, "Unsupported type for neko_lua_to");
+    }
 }
 
 }  // namespace neko

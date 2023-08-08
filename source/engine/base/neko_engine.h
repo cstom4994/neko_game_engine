@@ -3,6 +3,7 @@
 
 #include "engine/common/neko_types.h"
 #include "engine/platform/neko_platform.h"
+#include "engine/utility/neko_static_refl.hpp"
 
 // Forward Decl
 struct neko_platform_i;
@@ -16,9 +17,22 @@ typedef struct neko_application_desc_t {
     u32 window_height;
     neko_window_flags window_flags;
     f32 frame_rate;
-    b32 enable_vsync;
+    bool enable_vsync;
     void *user_data;
 } neko_application_desc_t;
+
+template <>
+struct neko::meta::static_refl::TypeInfo<neko_application_desc_t> : TypeInfoBase<neko_application_desc_t> {
+    static constexpr AttrList attrs = {};
+    static constexpr FieldList fields = {
+            Field{TSTR("window_title"), &Type::window_title},    // 窗口标题
+            Field{TSTR("window_width"), &Type::window_width},    //
+            Field{TSTR("window_height"), &Type::window_height},  //
+            Field{TSTR("window_flags"), &Type::window_flags},    //
+            Field{TSTR("frame_rate"), &Type::frame_rate},        // 限制帧率
+            Field{TSTR("enable_vsync"), &Type::enable_vsync},    // 启用 vsync
+    };
+};
 
 /*
     Game Engine Context:

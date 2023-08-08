@@ -216,6 +216,7 @@ static void lua_reg(lua_State *ls) {
 
     luaopen_cstruct_core(ls);
     luaopen_cstruct_test(ls);
+    luaopen_datalist(ls);
 }
 
 void scripting::__init() {

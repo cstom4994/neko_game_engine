@@ -6,6 +6,7 @@
 #include "engine/common/neko_types.h"
 #include "engine/common/neko_util.h"
 #include "engine/math/neko_math.h"
+#include "engine/scripting/neko_lua_base.h"
 #include "engine/utility/enum.hpp"
 
 #if (defined __APPLE__ || defined _APPLE)
@@ -65,6 +66,17 @@ typedef struct neko_uuid {
 
 ENUM_HPP_CLASS_DECL(neko_window_flags, u32, (resizable = 1 << 1)(fullscreen = 1 << 2)(highdpi = 1 << 3));
 ENUM_HPP_REGISTER_TRAITS(neko_window_flags);
+
+namespace neko {
+
+// HACK: 我知道这很丑 但是 neko_window_flags 在这里
+template <>
+neko_inline neko_window_flags neko_lua_to<neko_window_flags>(lua_State *L, int index) {
+    luaL_argcheck(L, lua_isnumber(L, index), index, "neko_window_flags expected");
+    return static_cast<neko_window_flags>(lua_tointeger(L, index));
+}
+
+}  // namespace neko
 
 // // Forward Decl
 struct neko_platform_window;
@@ -453,7 +465,7 @@ void __neko_platform_file_extension(char *buffer, usize buffer_sz, const char *f
 neko_string __neko_platform_get_path(const neko_string &path);
 neko_string __neko_platform_abbreviate_path(const neko_string &path, s32 max_lenght = 30);
 
-//#define neko_file_path(x) (neko_engine_subsystem(platform))->get_path(x).c_str()
+// #define neko_file_path(x) (neko_engine_subsystem(platform))->get_path(x).c_str()
 #define neko_file_path(x) x
 #define neko_abbreviate_path(x) (neko_engine_subsystem(platform))->abbreviate_path(x, 30).c_str()
 

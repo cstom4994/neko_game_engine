@@ -12,14 +12,7 @@ namespace neko {
 
 using neko_font_index = ve_font_id;
 
-class text_renderer final : public module<text_renderer> /*: public ME::props_auto_reg<ME_fontcache>*/ {
-    // public:
-    //     static void reg() {
-    //         ME::registry::class_<ME_fontcache>()
-    //                 // screen
-    //                 .prop("screen_w", &ME_fontcache::screen_w, false)
-    //                 .prop("screen_h", &ME_fontcache::screen_h, false);
-    //     }
+class text_renderer final : public module<text_renderer> {
 public:
     text_renderer() noexcept { __init(); };
     ~text_renderer() noexcept { __end(); };

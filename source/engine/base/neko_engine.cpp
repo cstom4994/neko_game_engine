@@ -3,6 +3,7 @@
 #include <functional>
 
 #include "engine/audio/neko_audio.h"
+#include "engine/base/neko_meta.hpp"
 #include "engine/common/neko_mem.h"
 #include "engine/common/neko_str.h"
 #include "engine/common/neko_util.h"
@@ -18,6 +19,8 @@
 #include "engine/utility/name.hpp"
 
 using namespace neko;
+
+using namespace std::literals;
 
 neko_define_logger_impl();
 
@@ -100,6 +103,9 @@ neko_engine_t *neko_engine_construct() {
 
         // neko_assert(neko_engine_instance_g->ctx.registry.classes != NULL);
 
+        // TODO: 初始化反射
+
+        // 脚本系统
         scripting script;
 
         script.__init();
@@ -115,27 +121,22 @@ neko_engine_t *neko_engine_construct() {
             script.neko_lua.load_file("data/scripts/main.lua");
 
             neko_application_desc_t t = {"Test", 1440, 840, neko_window_flags::resizable, 60.0f};
-            // neko_lua_auto_push(L, neko_application_desc_t, &t);
+
+            // neko_lua_auto_push(L, neko_application_dedsc_t, &t);
+
+            if (lua_getglobal(L, "app") == LUA_TNIL) throw std::exception("no app");
 
             if (lua_istable(L, -1)) {
-
-                if (lua_getfield(L, -1, "window_title") != LUA_TNIL) t.window_title = lua_tostring(L, -1);
-                lua_pop(L, 1);
-
-                if (lua_getfield(L, -1, "window_width") != LUA_TNIL) t.window_width = lua_tointeger(L, -1);
-                lua_pop(L, 1);
-
-                if (lua_getfield(L, -1, "window_height") != LUA_TNIL) t.window_height = lua_tointeger(L, -1);
-                lua_pop(L, 1);
-
-                if (lua_getfield(L, -1, "window_flags") != LUA_TNIL) t.window_flags = (neko_window_flags)lua_tointeger(L, -1);
-                lua_pop(L, 1);
-
-                if (lua_getfield(L, -1, "frame_rate") != LUA_TNIL) t.frame_rate = lua_tonumber(L, -1);
-                lua_pop(L, 1);
-
-                lua_pop(L, 1);
+                neko::meta::static_refl::TypeInfo<neko_application_desc_t>::ForEachVarOf(t, [&L](auto field, auto &&value) {
+                    static_assert(std::is_lvalue_reference_v<decltype(value)>);
+                    if (lua_getfield(L, -1, std::string(field.name).c_str()) != LUA_TNIL) value = neko::neko_lua_to<std::remove_reference_t<decltype(value)>>(L, -1);
+                    lua_pop(L, 1);
+                });
+            } else {
+                throw std::exception("no app table");
             }
+
+            lua_pop(L, 1);
 
             neko_engine_instance_g->ctx.app = t;
 

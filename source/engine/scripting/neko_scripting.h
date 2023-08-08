@@ -62,7 +62,27 @@ void SaveLuaConfig(const T &_struct, const char *table_name, std::string &out) {
 void print_error(lua_State *state, int result = 0);
 void script_runfile(const char *filePath);
 
-class scripting {
+template <class T>
+struct scripting_auto_reg {
+public:
+    typedef typename T TEMPLATE_T;
+    scripting_auto_reg() { auto_reg; }
+
+private:
+    struct type_registrator {
+        type_registrator() { TEMPLATE_T::reg(); }
+    };
+
+    static const type_registrator auto_reg;
+};
+
+template <class T>
+typename const scripting_auto_reg<T>::type_registrator scripting_auto_reg<T>::auto_reg;
+
+class scripting : public scripting_auto_reg<scripting> {
+public:
+    static void reg() {}
+
 public:
     neko_lua_t neko_lua;
 
