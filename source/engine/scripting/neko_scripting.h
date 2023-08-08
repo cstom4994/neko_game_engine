@@ -62,14 +62,12 @@ void SaveLuaConfig(const T &_struct, const char *table_name, std::string &out) {
 void print_error(lua_State *state, int result = 0);
 void script_runfile(const char *filePath);
 
-class scripting : public module<scripting> {
+class scripting {
 public:
     neko_lua_t neko_lua;
 
-    lua_State *L = nullptr;
-
-    scripting() noexcept { __init(); };
-    ~scripting() noexcept { __end(); };
+    scripting() noexcept {};
+    ~scripting() noexcept {};
 
     neko_move_only(scripting);
 

@@ -81,7 +81,7 @@ public:
     }
     static std::string dump_error(lua_State* ls_, const char* fmt, ...) {
         std::string ret;
-        char buff[1024];
+        char buff[4096];
 
         va_list argp;
         va_start(argp, fmt);

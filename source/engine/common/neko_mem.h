@@ -80,7 +80,7 @@ typedef struct allocation_metrics {
 
 extern allocation_metrics g_allocation_metrics;
 
-void neko_mem_init(int argc, char* argv[]);
+void neko_mem_init();
 void neko_mem_end();
 void neko_mem_rungc();
 

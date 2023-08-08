@@ -531,13 +531,13 @@ auto neko_editor_create(neko_engine_cvar_t &cvar) -> dbgui & {
     return the<dbgui>()
             .create(
                     "utils",
-                    [&](u8) {
+                    [&](neko_dbgui_result) {
                         if (cvar.ui_imgui_debug) ImGui::ShowDemoWindow();
-                        return 0;
+                        return neko_dbgui_result_in_progress;
                     },
                     neko_dbgui_flags::no_visible)
             .create("cvar",
-                    [&](u8) {
+                    [&](neko_dbgui_result) {
                         try {
                             const meta::scope cvar_scope = meta::local_scope_("cvar").typedef_<neko_engine_cvar_t>("neko_engine_cvar_t");
 
@@ -590,9 +590,9 @@ auto neko_editor_create(neko_engine_cvar_t &cvar) -> dbgui & {
                             neko_error(std::format("[Exception] {0}", ex.what()).c_str());
                         }
 
-                        return 0;
+                        return neko_dbgui_result_in_progress;
                     })
-            .create("pack editor", [&](u8) {
+            .create("pack editor", [&](neko_dbgui_result) {
                 // pack editor
                 neko_private(neko_pack_reader) pack_reader;
                 neko_private(neko_pack_result) result;
@@ -624,10 +624,10 @@ auto neko_editor_create(neko_engine_cvar_t &cvar) -> dbgui & {
 
                         } else {
                             result = neko_get_pack_info(file.c_str(), &majorVersion, &minorVersion, &patchVersion, &isLittleEndian, &itemCount);
-                            if (result != SUCCESS_PACK_RESULT) return 0;
+                            if (result != SUCCESS_PACK_RESULT) return neko_dbgui_result_in_progress;
 
                             result = neko_create_file_pack_reader(file.c_str(), 0, false, &pack_reader);
-                            if (result != SUCCESS_PACK_RESULT) return 0;
+                            if (result != SUCCESS_PACK_RESULT) return neko_dbgui_result_in_progress;
 
                             if (result == SUCCESS_PACK_RESULT) itemCount = neko_get_pack_item_count(pack_reader);
 
@@ -704,7 +704,7 @@ auto neko_editor_create(neko_engine_cvar_t &cvar) -> dbgui & {
                     ImGui::Text("错误: %s.\n", pack_result_to_string(result));
                 }
 
-                return 0;
+                return neko_dbgui_result_in_progress;
             });
 }
 

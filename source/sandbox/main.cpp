@@ -1,5 +1,6 @@
 
 
+#include "engine/audio/neko_audio.h"
 #include "engine/base/neko_cvar.hpp"
 #include "engine/base/neko_ecs.h"
 #include "engine/editor/neko_dbgui.hpp"
@@ -239,20 +240,53 @@ void update_default(u32 x, u32 y);
 // Utilities for writing data into color buffer
 void write_data(u32 idx, particle_t);
 
-typedef unsigned char neko_tex_uc;
-
-neko_tex_uc *neko_tex_rgba_to_alpha(const neko_tex_uc *data, int w, int h);
-neko_tex_uc *neko_tex_alpha_to_thresholded(const neko_tex_uc *data, int w, int h, neko_tex_uc threshold);
-neko_tex_uc *neko_tex_thresholded_to_outlined(const neko_tex_uc *data, int w, int h);
+u8 *neko_tex_rgba_to_alpha(const u8 *data, int w, int h);
+u8 *neko_tex_alpha_to_thresholded(const u8 *data, int w, int h, u8 threshold);
+u8 *neko_tex_thresholded_to_outlined(const u8 *data, int w, int h);
 
 typedef struct {
     short x, y;
 } neko_tex_point;
-neko_tex_point *neko_tex_extract_outline_path(neko_tex_uc *data, int w, int h, int *point_count, neko_tex_point *reusable_outline);
+neko_tex_point *neko_tex_extract_outline_path(u8 *data, int w, int h, int *point_count, neko_tex_point *reusable_outline);
 void neko_tex_distance_based_path_simplification(neko_tex_point *outline, int *outline_length, f32 distance_threshold);
 
 // Rendering
 void render_scene();
+
+// 基础容器测试
+
+// 各种容器的自定义结构对象
+typedef struct object_t {
+    f32 float_value;
+    u32 uint_value;
+} object_t;
+
+/*
+    声明自定义哈希表类型：
+    * key: u64 - 用于引用存储数据的密钥类型
+    * val: object_t - 表中存储的值类型
+    * hash_key_func: neko_hash_u64 - 用于散列密钥的散列函数（在 neko_util.h 中）
+    * hash_comp_func: neko_hash_key_comp_std_type - 哈希比较函数（在 neko_util.h 中）
+*/
+neko_hash_table_decl(u64, object_t, neko_hash_u64, neko_hash_key_comp_std_type);
+
+/*
+    声明自定义槽数组类型：
+    * type: object_t - 表中存储的值类型
+*/
+neko_slot_array_decl(object_t);
+
+// Globals
+neko_dyn_array(object_t) g_dyn_array;
+neko_hash_table(u64, object_t) g_hash_table;
+neko_slot_array(object_t) g_slot_array;
+u32 g_cur_val;
+
+// Util functions
+void print_array(neko_dyn_array(object_t) *);
+void print_slot_array(neko_slot_array(object_t) *);
+void print_hash_table(neko_hash_table(u64, object_t) *);
+void object_to_str(object_t *obj, char *str, usize str_sz);
 
 neko_global neko_sprite_renderer g_sr = {};
 neko_global neko_sprite g_test_spr = {0};
@@ -683,11 +717,16 @@ neko_global neko_swarm_simulator_settings settings;
 
 neko_global std::size_t imgui_mem_usage = 0;
 
+// 内部音频数据的资源句柄 由于音频必须在单独的线程上运行 因此这是必要的
+neko_global neko_resource(neko_audio_source_t) g_src = {0};
+neko_global neko_resource(neko_audio_instance_t) g_inst = {0};
+
 // Here, we'll initialize all of our application data, which in this case is our graphics resources
 neko_result app_init() {
     // Cache instance of api contexts from engine
     neko_graphics_i *gfx = neko_engine_instance()->ctx.graphics;
     neko_platform_i *platform = neko_engine_instance()->ctx.platform;
+    neko_audio_i *audio = neko_engine_subsystem(audio);
 
     // Construct command buffer (the command buffer is used to allow for immediate drawing at any point in our program)
     g_cb = neko_command_buffer_new();
@@ -774,6 +813,42 @@ neko_result app_init() {
 
     neko_sprite_renderer_play(&g_sr, "Attack");
 
+    // Constuct audio resource to play
+    g_src = audio->load_audio_source_from_file(neko_file_path("data/assets/audio/audioclip/6.wav"));
+
+    // 构建实例源并循环播放
+    // 填写实例数据以传递到音频子系统
+    neko_audio_instance_data_t inst = neko_audio_instance_data_new(g_src);
+    inst.volume = 0.1f;      // range 0-1
+    inst.loop = true;        // 是否循环
+    inst.persistent = true;  // 实例完成后是否应保留在内存中 否则将从内存中清除
+    g_inst = audio->construct_instance(inst);
+    audio->play(g_inst);
+
+    // 基础容器测试
+    g_cur_val = 0;
+
+    // Allocate containers
+    g_dyn_array = neko_dyn_array_new(object_t);
+    g_slot_array = neko_slot_array_new(object_t);
+    g_hash_table = neko_hash_table_new(u64, object_t);
+
+    // Add elements to containers
+    for (g_cur_val = 0; g_cur_val < 10; ++g_cur_val) {
+        object_t obj = {0};
+        obj.float_value = (f32)g_cur_val;
+        obj.uint_value = g_cur_val;
+
+        // Push into dyn array
+        neko_dyn_array_push(g_dyn_array, obj);
+
+        // Push into slot array
+        u32 id = neko_slot_array_insert(g_slot_array, obj);
+
+        // Push into hash table
+        neko_hash_table_insert(g_hash_table, (u64)g_cur_val, obj);
+    }
+
     // Cache window handle from platform
     g_window = neko_engine_instance()->ctx.platform->main_window();
 
@@ -807,60 +882,151 @@ neko_result app_init() {
     // 启用 imgui
     imgui_init();
 
-    neko_editor_create(g_cvar).create("shader", [&](u8) {
-        // neko_editor_inspect_shader("Hello glsl", g_shader.program_id);
-        // neko_editor_inspect_shader("horizontal_blur_shader", g_blur_pass.data.horizontal_blur_shader.program_id);
-        // neko_editor_inspect_shader("vertical_blur_shader", g_blur_pass.data.vertical_blur_shader.program_id);
-        // neko_editor_inspect_shader("g_bright_pass", g_bright_pass.data.shader.program_id);
+    neko_editor_create(g_cvar)
+            .create("shader",
+                    [&](neko_dbgui_result) {
+                        neko_graphics_i *_gfx = neko_engine_instance()->ctx.graphics;
 
-        neko_graphics_i *_gfx = neko_engine_instance()->ctx.graphics;
+                        for (auto &[n, s] : (*_gfx->neko_shader_internal_list())) {
+                            neko_editor_inspect_shader(std::to_string(n).c_str(), s->program_id);
+                        }
 
-        for (auto &[n, s] : (*_gfx->neko_shader_internal_list())) {
-            neko_editor_inspect_shader(std::to_string(n).c_str(), s->program_id);
-        }
+                        if (ImGui::Button("mem check")) neko_mem_check_leaks(false);
 
-        if (ImGui::Button("mem check")) neko_mem_check_leaks(false);
+                        {
 
-        {
-
-            ImGui::Text("GC MemAllocInUsed: %.2lf mb", (f64)(neko_mem_bytes_inuse() / 1048576.0));
-            ImGui::Text("GC MemTotalAllocated: %.2lf mb", (f64)(g_allocation_metrics.total_allocated / 1048576.0));
-            ImGui::Text("GC MemTotalFree: %.2lf mb", (f64)(g_allocation_metrics.total_free / 1048576.0));
+                            ImGui::Text("GC MemAllocInUsed: %.2lf mb", (f64)(neko_mem_bytes_inuse() / 1048576.0));
+                            ImGui::Text("GC MemTotalAllocated: %.2lf mb", (f64)(g_allocation_metrics.total_allocated / 1048576.0));
+                            ImGui::Text("GC MemTotalFree: %.2lf mb", (f64)(g_allocation_metrics.total_free / 1048576.0));
 
 #define GL_GPU_MEM_INFO_TOTAL_AVAILABLE_MEM_NVX 0x9048
 #define GL_GPU_MEM_INFO_CURRENT_AVAILABLE_MEM_NVX 0x9049
 
-            GLint total_mem_kb = 0;
-            glGetIntegerv(GL_GPU_MEM_INFO_TOTAL_AVAILABLE_MEM_NVX, &total_mem_kb);
+                            GLint total_mem_kb = 0;
+                            glGetIntegerv(GL_GPU_MEM_INFO_TOTAL_AVAILABLE_MEM_NVX, &total_mem_kb);
 
-            GLint cur_avail_mem_kb = 0;
-            glGetIntegerv(GL_GPU_MEM_INFO_CURRENT_AVAILABLE_MEM_NVX, &cur_avail_mem_kb);
+                            GLint cur_avail_mem_kb = 0;
+                            glGetIntegerv(GL_GPU_MEM_INFO_CURRENT_AVAILABLE_MEM_NVX, &cur_avail_mem_kb);
 
-            ImGui::Text("GPU MemTotalAvailable: %.2lf mb", (f64)(cur_avail_mem_kb / 1024.0f));
-            ImGui::Text("GPU MemCurrentUsage: %.2lf mb", (f64)((total_mem_kb - cur_avail_mem_kb) / 1024.0f));
+                            ImGui::Text("GPU MemTotalAvailable: %.2lf mb", (f64)(cur_avail_mem_kb / 1024.0f));
+                            ImGui::Text("GPU MemCurrentUsage: %.2lf mb", (f64)((total_mem_kb - cur_avail_mem_kb) / 1024.0f));
 
-            auto L = the<scripting>().neko_lua.get_lua_state();
-            lua_gc(L, LUA_GCCOLLECT, 0);
-            lua_Integer kb = lua_gc(L, LUA_GCCOUNT, 0);
-            lua_Integer bytes = lua_gc(L, LUA_GCCOUNTB, 0);
+                            // auto L = the<scripting>().neko_lua.get_lua_state();
+                            // lua_gc(L, LUA_GCCOLLECT, 0);
+                            // lua_Integer kb = lua_gc(L, LUA_GCCOUNT, 0);
+                            // lua_Integer bytes = lua_gc(L, LUA_GCCOUNTB, 0);
 
-            ImGui::Text("Lua MemoryUsage: %.2lf mb", ((f64)kb / 1024.0f));
-            ImGui::Text("Lua Remaining: %.2lf mb", ((f64)bytes / 1024.0f));
+                            // ImGui::Text("Lua MemoryUsage: %.2lf mb", ((f64)kb / 1024.0f));
+                            // ImGui::Text("Lua Remaining: %.2lf mb", ((f64)bytes / 1024.0f));
 
-            ImGui::Text("ImGui MemoryUsage: %.2lf mb", ((f64)imgui_mem_usage / 1048576.0));
+                            ImGui::Text("ImGui MemoryUsage: %.2lf mb", ((f64)imgui_mem_usage / 1048576.0));
 
-            static neko_platform_meminfo meminfo;
+                            static neko_platform_meminfo meminfo;
 
-            neko_timed_action(60, { meminfo = neko_engine_instance()->ctx.platform->get_meminfo(); });
+                            neko_timed_action(60, { meminfo = neko_engine_instance()->ctx.platform->get_meminfo(); });
 
-            ImGui::Text("Virtual MemoryUsage: %.2lf mb", ((f64)meminfo.virtual_memory_used / 1048576.0));
-            ImGui::Text("Real MemoryUsage: %.2lf mb", ((f64)meminfo.physical_memory_used / 1048576.0));
-            ImGui::Text("Virtual MemoryUsage Peak: %.2lf mb", ((f64)meminfo.peak_virtual_memory_used / 1048576.0));
-            ImGui::Text("Real MemoryUsage Peak: %.2lf mb", ((f64)meminfo.peak_physical_memory_used / 1048576.0));
-        }
+                            ImGui::Text("Virtual MemoryUsage: %.2lf mb", ((f64)meminfo.virtual_memory_used / 1048576.0));
+                            ImGui::Text("Real MemoryUsage: %.2lf mb", ((f64)meminfo.physical_memory_used / 1048576.0));
+                            ImGui::Text("Virtual MemoryUsage Peak: %.2lf mb", ((f64)meminfo.peak_virtual_memory_used / 1048576.0));
+                            ImGui::Text("Real MemoryUsage Peak: %.2lf mb", ((f64)meminfo.peak_physical_memory_used / 1048576.0));
+                        }
 
-        return 0;
-    });
+                        return neko_dbgui_result_in_progress;
+                    })
+            .create("Audio Test",
+                    [&](neko_dbgui_result) {
+                        neko_audio_i *audio = neko_engine_instance()->ctx.audio;
+
+                        if (ImGui::Button("播放/暂停")) {
+                            if (audio->is_playing(g_inst)) {
+                                audio->pause(g_inst);
+                            } else {
+                                audio->play(g_inst);
+                            }
+                        }
+
+                        if (ImGui::Button("重新播放")) {
+                            audio->restart(g_inst);
+                        }
+
+                        if (ImGui::Button("停止播放")) {
+                            audio->stop(g_inst);
+                        }
+
+                        if (ImGui::Button("Volume up")) {
+                            f32 cur_vol = audio->get_volume(g_inst);
+                            audio->set_volume(g_inst, cur_vol + 0.1f);
+                        }
+
+                        if (ImGui::Button("Volume down")) {
+                            f32 cur_vol = audio->get_volume(g_inst);
+                            audio->set_volume(g_inst, cur_vol - 0.1f);
+                        }
+
+                        // Can grab current runtime instance data as well
+                        neko_audio_instance_data_t id = audio->get_instance_data(g_inst);
+
+                        s32 sample_count = audio->get_sample_count(id.src);
+                        s32 sample_rate = audio->get_sample_rate(id.src);
+                        s32 num_channels = audio->get_num_channels(id.src);
+
+                        static char buf1[256] = neko_default_val();
+                        static char buf2[256] = neko_default_val();
+
+                        neko_timed_action(10, {
+                            s32 min = 0, sec = 0;
+
+                            // Runtime of source
+                            audio->get_runtime(g_src, &min, &sec);
+                            neko_snprintf(buf1, 256, sec < 10 ? "%d:0%d" : "%d:%d", min, sec);
+                            // neko_println("Runtime: %s", buf);
+
+                            // Get current play position
+                            audio->convert_to_runtime(sample_count, sample_rate, num_channels, id.sample_position, &min, &sec);
+
+                            neko_snprintf(buf2, 256, sec < 10 ? "%d:0%d" : "%d:%d", min, sec);
+                            // neko_println("Play Time: %s", buf);
+                        });
+
+                        ImGui::Text(buf1);
+                        ImGui::Text(buf2);
+
+                        return neko_dbgui_result_in_progress;
+                    })
+            .create("Containers Test", [&](neko_dbgui_result) {
+                if (ImGui::Button("清空容器")) {
+                    neko_dyn_array_clear(g_dyn_array);
+                    neko_hash_table_clear(g_hash_table);
+                    neko_slot_array_clear(g_slot_array);
+                }
+
+                if (ImGui::Button("插入元素")) {
+                    object_t obj = neko_default_val();
+                    obj.float_value = (f32)g_cur_val;
+                    obj.uint_value = g_cur_val;
+
+                    neko_dyn_array_push(g_dyn_array, obj);
+                    neko_slot_array_insert(g_slot_array, obj);
+                    neko_hash_table_insert(g_hash_table, (u64)g_cur_val, obj);
+
+                    g_cur_val++;
+                }
+
+                if (ImGui::Button("删除元素")) {
+                    neko_dyn_array_pop(g_dyn_array);
+                    neko_slot_array_erase(g_slot_array, 0);  // slot 删除元素后 原排列索引不变
+                }
+
+                if (ImGui::Button("检查")) {
+                    neko_println("");
+
+                    print_array(&g_dyn_array);
+                    print_slot_array(&g_slot_array);
+                    print_hash_table(&g_hash_table);
+                }
+
+                return neko_dbgui_result_in_progress;
+            });
 
     the<text_renderer>().resize({g_window_width, g_window_height});
 
@@ -890,9 +1056,9 @@ neko_result app_update() {
     // neko_timed_action(60, { neko_println("frame: %.5f ms", engine->ctx.platform->time.frame); });
 
     neko_invoke_once([] {
-        the<dbgui>().update("shader", [](s32) {
+        the<dbgui>().update("shader", [](neko_dbgui_result) {
             ImGui::Image((void *)(intptr_t)g_tex.id, ImVec2(g_texture_width, g_texture_height), ImVec2(0, 0), ImVec2(1, 1));
-            return 0;
+            return neko_dbgui_result_in_progress;
         });
     }(););
 
@@ -936,6 +1102,11 @@ neko_result app_update() {
 }
 
 neko_result app_shutdown() {
+
+    // 释放容器
+    neko_dyn_array_free(g_dyn_array);
+    neko_hash_table_free(g_hash_table);
+    neko_slot_array_free(g_slot_array);
 
     neko_ecs_destroy(g_ecs);
 
@@ -1220,7 +1391,7 @@ void update_particle_sim() {
                     // Do nothing for empty or default case
                 default:
                 case mat_id_empty: {
-                    // update_default(w, h, i);
+                    update_default(x, y);
                 } break;
             }
         }
@@ -1383,9 +1554,9 @@ void render_test() {
 
     neko_command_buffer_t *cb = &g_cb;
 
-    unsigned char *alpha = neko_tex_rgba_to_alpha((neko_tex_uc *)g_texture_buffer, g_texture_width, g_texture_height);
-    unsigned char *thresholded = neko_tex_alpha_to_thresholded(alpha, g_texture_width, g_texture_height, 90);
-    unsigned char *outlined = neko_tex_thresholded_to_outlined(thresholded, g_texture_width, g_texture_height);
+    u8 *alpha = neko_tex_rgba_to_alpha((u8 *)g_texture_buffer, g_texture_width, g_texture_height);
+    u8 *thresholded = neko_tex_alpha_to_thresholded(alpha, g_texture_width, g_texture_height, 90);
+    u8 *outlined = neko_tex_thresholded_to_outlined(thresholded, g_texture_width, g_texture_height);
     neko_safe_free(alpha);
     neko_safe_free(thresholded);
 
@@ -3416,25 +3587,25 @@ typedef int neko_tex_direction;  // 8 cw directions: >, _|, v, |_, <, |", ^, "|
 static const neko_tex_point neko_tex_direction_to_pixel_offset[] = {{1, 0}, {1, -1}, {0, -1}, {-1, -1}, {-1, 0}, {-1, 1}, {0, 1}, {1, 1}};
 
 // image manipulation functions
-neko_tex_uc *neko_tex_rgba_to_alpha(const neko_tex_uc *data, int w, int h) {
-    neko_tex_uc *result = (neko_tex_uc *)neko_safe_malloc(w * h);
+u8 *neko_tex_rgba_to_alpha(const u8 *data, int w, int h) {
+    u8 *result = (u8 *)neko_safe_malloc(w * h);
     int x, y;
     for (y = 0; y < h; y++)
         for (x = 0; x < w; x++) result[y * w + x] = data[(y * w + x) * 4 + 3];
     return result;
 }
 
-neko_tex_uc *neko_tex_alpha_to_thresholded(const neko_tex_uc *data, int w, int h, neko_tex_uc threshold) {
-    neko_tex_uc *result = (neko_tex_uc *)neko_safe_malloc(w * h);
+u8 *neko_tex_alpha_to_thresholded(const u8 *data, int w, int h, u8 threshold) {
+    u8 *result = (u8 *)neko_safe_malloc(w * h);
     int x, y;
     for (y = 0; y < h; y++)
         for (x = 0; x < w; x++) result[y * w + x] = data[y * w + x] >= threshold ? 255 : 0;
     return result;
 }
 
-neko_tex_uc *neko_tex_dilate_thresholded(const neko_tex_uc *data, int w, int h) {
+u8 *neko_tex_dilate_thresholded(const u8 *data, int w, int h) {
     int x, y, dx, dy, cx, cy;
-    neko_tex_uc *result = (neko_tex_uc *)neko_safe_malloc(w * h);
+    u8 *result = (u8 *)neko_safe_malloc(w * h);
     for (y = 0; y < h; y++) {
         for (x = 0; x < w; x++) {
             result[y * w + x] = 0;
@@ -3456,8 +3627,8 @@ neko_tex_uc *neko_tex_dilate_thresholded(const neko_tex_uc *data, int w, int h) 
     return result;
 }
 
-neko_tex_uc *neko_tex_thresholded_to_outlined(const neko_tex_uc *data, int w, int h) {
-    neko_tex_uc *result = (neko_tex_uc *)neko_safe_malloc(w * h);
+u8 *neko_tex_thresholded_to_outlined(const u8 *data, int w, int h) {
+    u8 *result = (u8 *)neko_safe_malloc(w * h);
     int x, y;
     for (x = 0; x < w; x++) {
         result[x] = data[x];
@@ -3478,7 +3649,7 @@ neko_tex_uc *neko_tex_thresholded_to_outlined(const neko_tex_uc *data, int w, in
 }
 
 // outline path procedures
-static neko_tex_bool neko_tex_find_first_filled_pixel(const neko_tex_uc *data, int w, int h, neko_tex_point *first) {
+static neko_tex_bool neko_tex_find_first_filled_pixel(const u8 *data, int w, int h, neko_tex_point *first) {
     int x, y;
     for (y = 0; y < h; y++) {
         for (x = 0; x < w; x++) {
@@ -3492,7 +3663,7 @@ static neko_tex_bool neko_tex_find_first_filled_pixel(const neko_tex_uc *data, i
     return 0;
 }
 
-static neko_tex_bool neko_tex_find_next_filled_pixel(const neko_tex_uc *data, int w, int h, neko_tex_point current, neko_tex_direction *dir, neko_tex_point *next) {
+static neko_tex_bool neko_tex_find_next_filled_pixel(const u8 *data, int w, int h, neko_tex_point current, neko_tex_direction *dir, neko_tex_point *next) {
     // turn around 180°, then make a clockwise scan for a filled pixel
     *dir = __neko_tex_direction_opposite(*dir);
     int i;
@@ -3508,7 +3679,7 @@ static neko_tex_bool neko_tex_find_next_filled_pixel(const neko_tex_uc *data, in
     return 0;
 }
 
-neko_tex_point *neko_tex_extract_outline_path(neko_tex_uc *data, int w, int h, int *point_count, neko_tex_point *reusable_outline) {
+neko_tex_point *neko_tex_extract_outline_path(u8 *data, int w, int h, int *point_count, neko_tex_point *reusable_outline) {
     neko_tex_point *outline = reusable_outline;
     if (!outline) outline = (neko_tex_point *)neko_safe_malloc(w * h * sizeof(neko_tex_point));
 
@@ -3608,21 +3779,67 @@ void neko_tex_distance_based_path_simplification(neko_tex_point *outline, int *o
     *outline_length = length;
 }
 
+void print_array(neko_dyn_array(object_t) * arr) {
+    char buffer[256] = {0};
+
+    // Array
+    neko_println("Array: [ ");
+
+    // Loop through all elements of array
+    u32 sz = neko_dyn_array_size(*arr);
+    for (u32 i = 0; i < sz; ++i) {
+        object_to_str(&(*arr)[i], buffer, 256);
+        neko_println("\t%s", buffer);
+    }
+    neko_printf(" ]\n");
+}
+
+void print_slot_array(neko_slot_array(object_t) * sa) {
+    // Slot Array
+    neko_println("Slot Array: [ ");
+
+    char buffer[256] = {0};
+
+    for (neko_slot_array_iter(object_t) it = neko_slot_array_iter_new(*sa); neko_slot_array_iter_valid(*sa, it); neko_slot_array_iter_advance(*sa, it)) {
+        object_t *obj = it.data;
+        object_to_str(obj, buffer, 256);
+        neko_println("\t%s, %zu", buffer, it.cur_idx);
+    }
+
+    neko_printf(" ]\n");
+}
+
+void print_hash_table(neko_hash_table(u64, object_t) * ht) {
+    // Temp buffer for printing object
+    char tmp_buffer[256] = {0};
+
+    // Hash Table
+    neko_println("Hash Table: [ ");
+
+    // Use iterator to iterate through hash table and print elements
+    for (neko_hash_table_iter(u64, object_t) it = neko_hash_table_iter_new(*ht); neko_hash_table_iter_valid(*ht, it); neko_hash_table_iter_advance(*ht, it)) {
+        u64 k = it.data->key;
+        object_t *v = &it.data->val;
+        object_to_str(v, tmp_buffer, 256);
+        neko_println("\t{ k: %zu, %s } ", k, tmp_buffer);
+    }
+
+    neko_println("]");
+}
+
+void object_to_str(object_t *obj, char *str, usize str_sz) { neko_snprintf(str, str_sz, "{ %.2f, %zu }", obj->float_value, obj->uint_value); }
+
 int main(int argc, char **argv) {
-    neko_application_desc_t app = {0};
-    app.window_title = "Hello Neko";
-    app.window_width = g_window_width;
-    app.window_height = g_window_height;
-    app.init = &app_init;
-    app.update = &app_update;
-    app.shutdown = &app_shutdown;
-    app.window_flags = neko_window_flags::resizable;
-    app.frame_rate = 60;
-    app.arg = {argc, argv};
-    app.enable_vsync = false;
+
+    // lua_newtable(L);
+    // for (int n = 0; n < argc; ++n) {
+    //     lua_pushstring(L, argv[n]);
+    //     lua_rawseti(L, -2, n);
+    // }
+    // lua_setglobal(L, "arg");
 
     // Construct internal instance of our engine
-    neko_engine_t *engine = neko_engine_construct(app);
+    neko_engine_t *engine = neko_engine_construct();
 
     // Run the internal engine loop until completion
     neko_result result = engine->run();

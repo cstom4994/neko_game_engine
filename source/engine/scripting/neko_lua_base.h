@@ -2,6 +2,7 @@
 #ifndef NEKO_LUA_BASE_H
 #define NEKO_LUA_BASE_H
 
+#include "engine/common/neko_types.h"
 #include "libs/lua/lua.hpp"
 
 #ifdef NEKO_PLATFORM_WINDOWS
@@ -840,6 +841,9 @@ void neko_lua_safe_add_handler(lua_State *state, neko_lua_safe_Handler handler, 
 int neko_lua_safe_remove_handler(lua_State *state, neko_lua_safe_Handler handler, void *handlerudata);
 
 #pragma endregion LuaMemSafe
+
+int luaopen_cstruct_core(lua_State *L);
+int luaopen_cstruct_test(lua_State *L);
 
 #ifndef _WIN32
 #include <stdint.h>

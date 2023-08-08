@@ -26,9 +26,9 @@ void __neko_engine_cvar_init(neko_engine_cvar_t *s) {
 
             .member_("cell_iter", &neko_engine_cvar_t::cell_iter, {.metadata{{"info", "Cell迭代次数"s}}})
             .member_("brush_size", &neko_engine_cvar_t::brush_size, {.metadata{{"info", "编辑器笔刷大小"s}}})
-            .member_("debug_entities_test", &neko_engine_cvar_t::debug_entities_test, {.metadata{{"info", "是否启用实体调试"s}}})
+            .member_("debug_entities_test", &neko_engine_cvar_t::debug_entities_test, {.metadata{{"info", "是否启用实体调试"s}}});
 
-            .member_("world_gravity", &neko_engine_cvar_t::world_gravity, {.metadata{{"info", "世界重力"s}}});
+    meta::class_<neko_engine_cvar_t>({{"info", "全局变量"s}}).member_("world_gravity", &neko_engine_cvar_t::world_gravity, {.metadata{{"info", "世界重力"s}}});
 }
 
 void __neko_engine_cvar_reg(neko_engine_cvar_t *s) {

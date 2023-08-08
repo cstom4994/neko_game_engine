@@ -167,7 +167,7 @@ inline int NEKO_BYTES_IN_USE() { return 0; }
 
 #endif
 
-void neko_mem_init(int argc, char* argv[]) {}
+void neko_mem_init() {}
 
 void neko_mem_end() { neko_mem_check_leaks(false); }
 

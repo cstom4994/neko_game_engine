@@ -2,6 +2,7 @@
 
 #include "engine/base/neko_engine.h"
 #include "engine/platform/neko_platform.h"
+#include "engine/utility/logger.hpp"
 
 // 3rd
 #include "libs/dr_libs/dr_mp3.h"
@@ -25,7 +26,7 @@ b32 __neko_load_ogg_data(const char* file_name, neko_audio_source_t* src) {
 
         if (!src->samples || src->sample_count == -1) {
             src->samples = NULL;
-            neko_println("WARNING: Could not load .ogg file: %s", file_name);
+            neko_warn("could not load .ogg file: ", file_name);
             return false;
         }
 
@@ -45,7 +46,7 @@ b32 __neko_load_wav_data(const char* file_name, neko_audio_source_t* src) {
 
     if (!src->samples) {
         src->samples = NULL;
-        neko_println("WARNING: Could not load .ogg file: %s", file_name);
+        neko_warn("could not load .wav file: ", file_name);
         return false;
     }
 
@@ -64,7 +65,7 @@ b32 __neko_load_mp3_data(const char* file_name, neko_audio_source_t* src) {
 
     if (!src->samples) {
         src->samples = NULL;
-        neko_println("WARNING: Could not load .ogg file: %s", file_name);
+        neko_warn("could not load .mp3 file: ", file_name);
         return false;
     }
 
@@ -194,12 +195,12 @@ neko_resource(neko_audio_source_t) __neko_load_audio_source_from_file(const char
     neko_audio_data_t* __data = (neko_audio_data_t*)audio->data;
 
     if (!platform->file_exists(file_name)) {
-        neko_println("WARNING: Could not open file: %s", file_name);
+        neko_warn("could not open file: ", file_name);
         return neko_resource_invalid(neko_audio_source_t);
     }
 
     // Lower case and grab file ext.
-    char file_ext[64] = {0};
+    char file_ext[256] = {0};
     neko_util_str_to_lower(file_name, file_ext, sizeof(file_ext));
     platform->file_extension(file_ext, sizeof(file_ext), file_ext);
 
@@ -218,12 +219,12 @@ neko_resource(neko_audio_source_t) __neko_load_audio_source_from_file(const char
 
     // Load raw source into memory and return handle id
     if (load_successful) {
-        neko_println("SUCCESS: Audio source loaded: %s", file_name);
+        neko_info("audio source loaded: ", file_name);
 
         // Add to resource cache
         return neko_resource_cache_insert(__data->audio_cache, source);
     } else {
-        neko_println("WARNING: Could not load audio source data: %s", file_name);
+        neko_warn("could not load audio source data: ", file_name);
         return neko_resource_invalid(neko_audio_source_t);
     }
 

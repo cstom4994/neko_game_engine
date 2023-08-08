@@ -15,7 +15,9 @@
 
 namespace neko {
 
-using neko_dbgui_func = neko_function<u8(u8)>;
+typedef enum { neko_dbgui_result_success, neko_dbgui_result_in_progress } neko_dbgui_result;
+
+using neko_dbgui_func = neko_function<neko_dbgui_result(neko_dbgui_result)>;
 
 ENUM_HPP_CLASS_DECL(neko_dbgui_flags, u32, (window = 1 << 0)(no_visible = 1 << 1));
 ENUM_HPP_REGISTER_TRAITS(neko_dbgui_flags);
@@ -111,7 +113,7 @@ public:
             cpp::bitflags::bitflags<neko_dbgui_flags> flags(d.second.flags);
             if ((flags & neko_dbgui_flags::no_visible) == neko_dbgui_flags::no_visible) return;
             if (ImGui::Begin(d.first.c_str())) {
-                neko_defer([&d] { d.second.func(0); });
+                neko_defer([&d] { d.second.func(neko_dbgui_result_in_progress); });
             }
             ImGui::End();
         }

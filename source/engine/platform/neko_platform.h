@@ -453,7 +453,8 @@ void __neko_platform_file_extension(char *buffer, usize buffer_sz, const char *f
 neko_string __neko_platform_get_path(const neko_string &path);
 neko_string __neko_platform_abbreviate_path(const neko_string &path, s32 max_lenght = 30);
 
-#define neko_file_path(x) (neko_engine_subsystem(platform))->get_path(x).c_str()
+//#define neko_file_path(x) (neko_engine_subsystem(platform))->get_path(x).c_str()
+#define neko_file_path(x) x
 #define neko_abbreviate_path(x) (neko_engine_subsystem(platform))->abbreviate_path(x, 30).c_str()
 
 /*============================

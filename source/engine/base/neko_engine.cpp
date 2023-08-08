@@ -27,6 +27,7 @@ neko_global neko_engine_t *neko_engine_instance_g = {0};
 // Function forward declarations
 neko_result neko_engine_run();
 neko_result neko_engine_shutdown();
+neko_result __neko_default_app_init();
 neko_result __neko_default_app_update();
 neko_result __neko_default_app_shutdown();
 void __neko_default_main_window_close_callback(void *window);
@@ -36,7 +37,7 @@ neko_resource_handle window;
 ENUM_HPP_CLASS_DECL(neko_modules_op, u32, (init = 1)(shutdown = 2));
 ENUM_HPP_REGISTER_TRAITS(neko_modules_op);
 
-#define __neko_module_types() scripting, text_renderer, dbgui
+#define __neko_module_types() text_renderer, dbgui
 
 // 递归展开类型列表，并调用函数模板
 template <typename T, typename... Rest>
@@ -82,22 +83,65 @@ void __neko_engine_shutdown_high() {
     __neko_module_command(__module_shutdown_type_list{}, neko_modules_op::shutdown);
 }
 
-neko_engine_t *neko_engine_construct(neko_application_desc_t app_desc) {
+neko_engine_t *neko_engine_construct() {
     if (neko_engine_instance_g == NULL) {
 
-        neko_mem_init(app_desc.arg.argc, app_desc.arg.argv);
+        neko_mem_init();
 
         // Construct instance
         neko_engine_instance_g = neko_malloc_init(neko_engine_t);
 
         // Set application description for engine
-        neko_engine_instance_g->ctx.app = app_desc;
+        // neko_engine_instance_g->ctx.app = app_desc;
 
         // Initialize the meta class registry
         // Want a way to add user meta class information as well as the engine's (haven't considered how that looks yet)
         // neko_meta_class_registry_init(&neko_engine_instance_g->ctx.registry);
 
         // neko_assert(neko_engine_instance_g->ctx.registry.classes != NULL);
+
+        scripting script;
+
+        script.__init();
+
+        auto L = script.neko_lua.get_lua_state();
+
+        neko_lua_auto_struct(L, neko_application_desc_t);
+        neko_lua_auto_struct_member(L, neko_application_desc_t, window_title, const char *);
+        neko_lua_auto_struct_member(L, neko_application_desc_t, window_width, unsigned int);
+        neko_lua_auto_struct_member(L, neko_application_desc_t, window_height, unsigned int);
+
+        try {
+            script.neko_lua.load_file("data/scripts/main.lua");
+
+            neko_application_desc_t t = {"Test", 1440, 840, neko_window_flags::resizable, 60.0f};
+            // neko_lua_auto_push(L, neko_application_desc_t, &t);
+
+            if (lua_istable(L, -1)) {
+
+                if (lua_getfield(L, -1, "window_title") != LUA_TNIL) t.window_title = lua_tostring(L, -1);
+                lua_pop(L, 1);
+
+                if (lua_getfield(L, -1, "window_width") != LUA_TNIL) t.window_width = lua_tointeger(L, -1);
+                lua_pop(L, 1);
+
+                if (lua_getfield(L, -1, "window_height") != LUA_TNIL) t.window_height = lua_tointeger(L, -1);
+                lua_pop(L, 1);
+
+                if (lua_getfield(L, -1, "window_flags") != LUA_TNIL) t.window_flags = (neko_window_flags)lua_tointeger(L, -1);
+                lua_pop(L, 1);
+
+                if (lua_getfield(L, -1, "frame_rate") != LUA_TNIL) t.frame_rate = lua_tonumber(L, -1);
+                lua_pop(L, 1);
+
+                lua_pop(L, 1);
+            }
+
+            neko_engine_instance_g->ctx.app = t;
+
+        } catch (std::exception &ex) {
+            neko_error(ex.what());
+        }
 
         // Set up function pointers
         neko_engine_instance_g->run = &neko_engine_run;
@@ -110,15 +154,15 @@ neko_engine_t *neko_engine_construct(neko_application_desc_t app_desc) {
         __neko_default_init_platform(neko_engine_instance_g->ctx.platform);
 
         // Set frame rate for application
-        if (app_desc.frame_rate > 0.f) {
-            neko_engine_instance_g->ctx.platform->time.max_fps = app_desc.frame_rate;
+        if (neko_engine_instance_g->ctx.app.frame_rate > 0.f) {
+            neko_engine_instance_g->ctx.platform->time.max_fps = neko_engine_instance_g->ctx.app.frame_rate;
         }
 
         // Set vsync for video
-        neko_engine_instance_g->ctx.platform->enable_vsync(app_desc.enable_vsync);
+        neko_engine_instance_g->ctx.platform->enable_vsync(false);
 
         // Construct window
-        neko_engine_instance()->ctx.platform->create_window(app_desc.window_title, app_desc.window_width, app_desc.window_height);
+        neko_engine_instance()->ctx.platform->create_window(neko_engine_instance_g->ctx.app.window_title, neko_engine_instance_g->ctx.app.window_width, neko_engine_instance_g->ctx.app.window_height);
 
         // Construct graphics api
         neko_engine_instance_g->ctx.graphics = __neko_graphics_construct();
@@ -133,20 +177,21 @@ neko_engine_t *neko_engine_construct(neko_application_desc_t app_desc) {
         neko_engine_instance_g->ctx.audio->init(neko_engine_instance_g->ctx.audio);
 
         // Default application context
-        neko_engine_instance_g->ctx.app.update = app_desc.update == NULL ? &__neko_default_app_update : app_desc.update;
-        neko_engine_instance_g->ctx.app.shutdown = app_desc.shutdown == NULL ? &__neko_default_app_shutdown : app_desc.shutdown;
+        neko_engine_instance_g->ctx.init = &__neko_default_app_init;
+        neko_engine_instance_g->ctx.update = &__neko_default_app_update;
+        neko_engine_instance_g->ctx.shutdown = &__neko_default_app_shutdown;
 
         __neko_engine_construct_high();
 
-        if (app_desc.init) {
-            if (app_desc.init() != neko_result_success) {
+        if (neko_engine_instance_g->ctx.init) {
+            if (neko_engine_instance_g->ctx.init() != neko_result_success) {
                 // Show error before aborting
-                neko_println("ERROR: Application failed to initialize.");
+                neko_error("application failed to initialize.");
                 neko_assert(false);
             }
         }
 
-        neko_engine_instance_g->ctx.app.is_running = true;
+        neko_engine_instance_g->ctx.is_running = true;
 
         // Set default callback for when main window close button is pressed
         neko_platform_i *platform = neko_engine_instance_g->ctx.platform;
@@ -181,7 +226,7 @@ neko_result neko_engine_run() {
         }
 
         // Process application context
-        if (neko_engine_instance()->ctx.app.update() != neko_result_in_progress || !neko_engine_instance()->ctx.app.is_running) {
+        if (neko_engine_instance()->ctx.update() != neko_result_in_progress || !neko_engine_instance()->ctx.is_running) {
             // Shutdown engine and return
             return (neko_engine_instance()->shutdown());
         }
@@ -231,7 +276,7 @@ neko_result neko_engine_run() {
 
 neko_result neko_engine_shutdown() {
     // Shutdown application
-    neko_result app_result = (neko_engine_instance()->ctx.app.shutdown());
+    neko_result app_result = (neko_engine_instance()->ctx.shutdown());
 
     __neko_engine_shutdown_high();
 
@@ -245,11 +290,22 @@ neko_result neko_engine_shutdown() {
 
 neko_engine_t *neko_engine_instance() { return neko_engine_instance_g; }
 
-neko_result __neko_default_app_update() { return neko_result_in_progress; }
+neko_result __neko_default_app_init() {
+    extern neko_result app_init();
+    return app_init();
+}
 
-neko_result __neko_default_app_shutdown() { return neko_result_success; }
+neko_result __neko_default_app_update() {
+    extern neko_result app_update();
+    return app_update();
+}
 
-void __neko_default_main_window_close_callback(void *window) { neko_engine_instance()->ctx.app.is_running = false; }
+neko_result __neko_default_app_shutdown() {
+    extern neko_result app_shutdown();
+    return app_shutdown();
+}
+
+void __neko_default_main_window_close_callback(void *window) { neko_engine_instance()->ctx.is_running = false; }
 
 /*========================
 // Hash Table

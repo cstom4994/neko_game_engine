@@ -176,29 +176,29 @@ static void InitLua(scripting *lc) {
 
 #endif
 
-void run_script_in_console(scripting *_struct, const char *c) {
-    luaL_loadstring(_struct->L, c);
-    auto result = neko_lua_debug_pcall(_struct->L, 0, LUA_MULTRET, 0);
-    if (result != LUA_OK) {
-        print_error(_struct->L);
-        return;
-    }
-}
-
-void script_runfile(const char *filePath) {
-    FUTIL_ASSERT_EXIST(filePath);
-
-    int result = luaL_loadfile(the<scripting>().L, neko_file_path(filePath));
-    if (result != LUA_OK) {
-        print_error(the<scripting>().L);
-        return;
-    }
-    result = neko_lua_debug_pcall(the<scripting>().L, 0, LUA_MULTRET, 0);
-
-    if (result != LUA_OK) {
-        print_error(the<scripting>().L);
-    }
-}
+// void run_script_in_console(scripting *_struct, const char *c) {
+//     luaL_loadstring(_struct->L, c);
+//     auto result = neko_lua_debug_pcall(_struct->L, 0, LUA_MULTRET, 0);
+//     if (result != LUA_OK) {
+//         print_error(_struct->L);
+//         return;
+//     }
+// }
+//
+// void script_runfile(const char *filePath) {
+//     FUTIL_ASSERT_EXIST(filePath);
+//
+//     int result = luaL_loadfile(the<scripting>().L, neko_file_path(filePath));
+//     if (result != LUA_OK) {
+//         print_error(the<scripting>().L);
+//         return;
+//     }
+//     result = neko_lua_debug_pcall(the<scripting>().L, 0, LUA_MULTRET, 0);
+//
+//     if (result != LUA_OK) {
+//         print_error(the<scripting>().L);
+//     }
+// }
 
 static void lua_reg_ecs(lua_State *ls);
 
@@ -213,6 +213,9 @@ static void lua_reg(lua_State *ls) {
     lua_reg_ecs(ls);
 
     neko_lua_debug_setup(ls, "debugger", "dbg", NULL, NULL);
+
+    luaopen_cstruct_core(ls);
+    luaopen_cstruct_test(ls);
 }
 
 void scripting::__init() {

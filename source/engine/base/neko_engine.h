@@ -11,20 +11,12 @@ struct neko_audio_i;
 
 // Application descriptor for user application
 typedef struct neko_application_desc_t {
-    neko_result (*init)();
-    neko_result (*update)();
-    neko_result (*shutdown)();
-    const char *window_title;
+    const_str window_title;
     u32 window_width;
     u32 window_height;
-    neko::cpp::bitflags::bitflags<neko_window_flags> window_flags;
+    neko_window_flags window_flags;
     f32 frame_rate;
     b32 enable_vsync;
-    b32 is_running;
-    struct {
-        s32 argc;
-        char **argv;
-    } arg;
     void *user_data;
 } neko_application_desc_t;
 
@@ -36,10 +28,18 @@ typedef struct neko_application_desc_t {
         for your application.
 */
 typedef struct neko_engine_context_t {
+    // 引擎基本接口
     struct neko_platform_i *platform;  // Main platform interface
     struct neko_graphics_i *graphics;
     struct neko_audio_i *audio;
     neko_application_desc_t app;
+
+    bool is_running;
+
+    // 客户端暴露接口
+    neko_result (*init)();
+    neko_result (*update)();
+    neko_result (*shutdown)();
 } neko_engine_context_t;
 
 // Main engine interface
@@ -49,7 +49,7 @@ typedef struct neko_engine_t {
     neko_result (*shutdown)();
 } neko_engine_t;
 
-extern neko_engine_t *neko_engine_construct(neko_application_desc_t app_desc);
+extern neko_engine_t *neko_engine_construct();
 extern neko_engine_t *neko_engine_instance();
 
 #define neko_engine_subsystem(T) (neko_engine_instance()->ctx.T)

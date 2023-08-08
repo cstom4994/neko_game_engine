@@ -2341,12 +2341,12 @@ neko_shader_t *__neko_shader_create(const neko_string &name, const neko_string &
     neko_hashmap<neko_shader_t> *shaders_data = __get_opengl_shaders_data();
 
     neko_shader_t shader = gfx->construct_shader(vert.c_str(), frag.c_str());
-    return &((*shaders_data)[neko::hash(name.c_str())] = shader);
+    return &((*shaders_data)[name] = shader);
 }
 
 neko_shader_t *__neko_shader_get(const neko_string &name) {
     neko_hashmap<neko_shader_t> *shaders_data = __get_opengl_shaders_data();
-    return &((*shaders_data)[neko::hash(name.c_str())]);
+    return &((*shaders_data)[name]);
 }
 
 neko_hashmap<neko_shader_t> *__neko_shader_internal_list() { return &((opengl_render_data_t *)(neko_engine_instance()->ctx.graphics->data))->shaders_data; }

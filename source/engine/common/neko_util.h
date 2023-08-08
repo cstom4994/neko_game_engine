@@ -107,6 +107,8 @@
 
 #define neko_aligned_buffer(name) alignas(16) static const std::uint8_t name[]
 
+#define neko_offsetof(s, m) ((::size_t) & reinterpret_cast<char const volatile&>((((s*)0)->m)))
+
 #if defined(__cplusplus)
 #include <string>
 #if defined(__cpp_char8_t)
@@ -148,7 +150,9 @@ const char* u8Cpp20(T&& t) noexcept {
 #define neko_check_is_trivial(type) static_assert(std::is_trivial<type>::value)
 #endif
 
-#define neko_malloc_init(type) (type*)_neko_malloc_init_impl(sizeof(type))
+#define neko_malloc_init(type)                   \
+    (type*)_neko_malloc_init_impl(sizeof(type)); \
+    neko_check_is_trivial(type, "try to init a non-trivial object")
 
 #define neko_malloc_init_ex(name, type)                              \
     neko_check_is_trivial(type, "try to init a non-trivial object"); \
@@ -762,6 +766,7 @@ struct neko_hashmap {
     u64 load = 0;
     u64 capacity = 0;
     T& operator[](u64 key);
+    T& operator[](const neko_string& key);
 };
 
 template <typename T>
@@ -861,6 +866,13 @@ template <typename T>
 T& neko_hashmap<T>::operator[](u64 key) {
     T* value;
     neko_hashmap_get(this, key, &value);
+    return *value;
+}
+
+template <typename T>
+T& neko_hashmap<T>::operator[](const neko_string& key) {
+    T* value;
+    neko_hashmap_get(this, neko::hash(key.c_str()), &value);
     return *value;
 }
 
