@@ -305,6 +305,7 @@ typedef struct neko_platform_i {
     void (*sleep)(f32 ms);                   // Sleeps platform for time in ms
     f64 (*elapsed_time)();                   // Returns time in ms since initialization of platform
     neko_platform_meminfo (*get_meminfo)();  // 获取系统内存使用信息
+    neko_vec2 (*get_opengl_ver)();           // 获取当前 OpenGL 版本
 
     /*============================================================
     // Platform Video
@@ -465,8 +466,7 @@ void __neko_platform_file_extension(char *buffer, usize buffer_sz, const char *f
 neko_string __neko_platform_get_path(const neko_string &path);
 neko_string __neko_platform_abbreviate_path(const neko_string &path, s32 max_lenght = 30);
 
-// #define neko_file_path(x) (neko_engine_subsystem(platform))->get_path(x).c_str()
-#define neko_file_path(x) x
+#define neko_file_path(x) (neko_engine_subsystem(platform))->get_path(x).c_str()
 #define neko_abbreviate_path(x) (neko_engine_subsystem(platform))->abbreviate_path(x, 30).c_str()
 
 /*============================

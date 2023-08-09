@@ -79,17 +79,17 @@ private:
 template <class T>
 typename const scripting_auto_reg<T>::type_registrator scripting_auto_reg<T>::auto_reg;
 
-class scripting : public scripting_auto_reg<scripting> {
+class neko_scripting : public scripting_auto_reg<neko_scripting> {
 public:
     static void reg() {}
 
 public:
     neko_lua_t neko_lua;
 
-    scripting() noexcept {};
-    ~scripting() noexcept {};
+    neko_scripting() noexcept {};
+    ~neko_scripting() noexcept {};
 
-    neko_move_only(scripting);
+    neko_move_only(neko_scripting);
 
     void __init();
     void __end();

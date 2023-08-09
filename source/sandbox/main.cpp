@@ -9,8 +9,6 @@
 #include "engine/graphics/neko_particle.h"
 #include "engine/graphics/neko_render_pass.h"
 #include "engine/graphics/neko_sprite.h"
-#include "engine/gui/imgui_impl/imgui_impl_glfw.h"
-#include "engine/gui/imgui_impl/imgui_impl_opengl3.h"
 #include "engine/gui/neko_imgui_utils.hpp"
 #include "engine/gui/neko_text_renderer.hpp"
 #include "engine/neko.h"
@@ -32,6 +30,8 @@ neko_global const s32 g_texture_height = g_window_height / 4;
 // neko engine cpp
 using namespace neko;
 
+using namespace std::string_literals;
+
 typedef neko_color_t cell_color_t;
 
 typedef struct particle_t {
@@ -39,7 +39,7 @@ typedef struct particle_t {
     f32 life_time;
     neko_vec2 velocity;
     cell_color_t color;
-    b32 has_been_updated_this_frame;
+    bool has_been_updated_this_frame;
 } particle_t;
 
 // 测试 ECS 用
@@ -200,10 +200,6 @@ neko_result app_init();
 neko_result app_update();
 neko_result app_shutdown();
 
-void imgui_init();
-void imgui_new_frame();
-void imgui_render();
-
 particle_t particle_empty();
 particle_t particle_sand();
 particle_t particle_water();
@@ -220,7 +216,7 @@ particle_t particle_stone();
 particle_t particle_acid();
 
 void update_input();
-b32 update_ui();
+bool update_ui();
 
 // Particle updates
 void update_particle_sim();
@@ -252,6 +248,10 @@ void neko_tex_distance_based_path_simplification(neko_tex_point *outline, int *o
 
 // Rendering
 void render_scene();
+
+void test_wang();
+void test_sr();
+void test_ut();
 
 // 基础容器测试
 
@@ -345,16 +345,16 @@ s32 random_val(s32 lower, s32 upper) {
 
 s32 compute_idx(s32 x, s32 y) { return (y * g_texture_width + x); }
 
-b32 in_bounds(s32 x, s32 y) {
+bool in_bounds(s32 x, s32 y) {
     if (x < 0 || x > (g_texture_width - 1) || y < 0 || y > (g_texture_height - 1)) return false;
     return true;
 }
 
-b32 is_empty(s32 x, s32 y) { return (in_bounds(x, y) && g_world_particle_data[compute_idx(x, y)].id == mat_id_empty); }
+bool is_empty(s32 x, s32 y) { return (in_bounds(x, y) && g_world_particle_data[compute_idx(x, y)].id == mat_id_empty); }
 
 particle_t get_particle_at(s32 x, s32 y) { return g_world_particle_data[compute_idx(x, y)]; }
 
-b32 completely_surrounded(s32 x, s32 y) {
+bool completely_surrounded(s32 x, s32 y) {
     // Top
     if (in_bounds(x, y - 1) && !is_empty(x, y - 1)) {
         return false;
@@ -391,7 +391,7 @@ b32 completely_surrounded(s32 x, s32 y) {
     return true;
 }
 
-b32 is_in_liquid(s32 x, s32 y, s32 *lx, s32 *ly) {
+bool is_in_liquid(s32 x, s32 y, s32 *lx, s32 *ly) {
     if (in_bounds(x, y) && (get_particle_at(x, y).id == mat_id_water || get_particle_at(x, y).id == mat_id_oil)) {
         *lx = x;
         *ly = y;
@@ -440,7 +440,7 @@ b32 is_in_liquid(s32 x, s32 y, s32 *lx, s32 *ly) {
     return false;
 }
 
-b32 is_in_water(s32 x, s32 y, s32 *lx, s32 *ly) {
+bool is_in_water(s32 x, s32 y, s32 *lx, s32 *ly) {
     if (in_bounds(x, y) && (get_particle_at(x, y).id == mat_id_water)) {
         *lx = x;
         *ly = y;
@@ -715,8 +715,6 @@ neko_global neko_engine_cvar_t g_cvar = {0};
 neko_global neko_obj_swarm swarm;
 neko_global neko_swarm_simulator_settings settings;
 
-neko_global std::size_t imgui_mem_usage = 0;
-
 // 内部音频数据的资源句柄 由于音频必须在单独的线程上运行 因此这是必要的
 neko_global neko_resource(neko_audio_source_t) g_src = {0};
 neko_global neko_resource(neko_audio_instance_t) g_inst = {0};
@@ -879,13 +877,11 @@ neko_result app_init() {
 
     // neko_ecs_ent_destroy(ecs, e);
 
-    // 启用 imgui
-    imgui_init();
-
     neko_editor_create(g_cvar)
             .create("shader",
                     [&](neko_dbgui_result) {
                         neko_graphics_i *_gfx = neko_engine_instance()->ctx.graphics;
+                        neko_platform_i *_platform = neko_engine_instance()->ctx.platform;
 
                         for (auto &[n, s] : (*_gfx->neko_shader_internal_list())) {
                             neko_editor_inspect_shader(std::to_string(n).c_str(), s->program_id);
@@ -911,15 +907,15 @@ neko_result app_init() {
                             ImGui::Text("GPU MemTotalAvailable: %.2lf mb", (f64)(cur_avail_mem_kb / 1024.0f));
                             ImGui::Text("GPU MemCurrentUsage: %.2lf mb", (f64)((total_mem_kb - cur_avail_mem_kb) / 1024.0f));
 
-                            // auto L = the<scripting>().neko_lua.get_lua_state();
-                            // lua_gc(L, LUA_GCCOLLECT, 0);
-                            // lua_Integer kb = lua_gc(L, LUA_GCCOUNT, 0);
-                            // lua_Integer bytes = lua_gc(L, LUA_GCCOUNTB, 0);
+                            lua_State *L = neko_sc()->neko_lua.get_lua_state();
+                            lua_gc(L, LUA_GCCOLLECT, 0);
+                            lua_Integer kb = lua_gc(L, LUA_GCCOUNT, 0);
+                            lua_Integer bytes = lua_gc(L, LUA_GCCOUNTB, 0);
 
-                            // ImGui::Text("Lua MemoryUsage: %.2lf mb", ((f64)kb / 1024.0f));
-                            // ImGui::Text("Lua Remaining: %.2lf mb", ((f64)bytes / 1024.0f));
+                            ImGui::Text("Lua MemoryUsage: %.2lf mb", ((f64)kb / 1024.0f));
+                            ImGui::Text("Lua Remaining: %.2lf mb", ((f64)bytes / 1024.0f));
 
-                            ImGui::Text("ImGui MemoryUsage: %.2lf mb", ((f64)imgui_mem_usage / 1048576.0));
+                            ImGui::Text("ImGui MemoryUsage: %.2lf mb", ((f64)__neko_imgui_meminuse() / 1048576.0));
 
                             static neko_platform_meminfo meminfo;
 
@@ -929,6 +925,12 @@ neko_result app_init() {
                             ImGui::Text("Real MemoryUsage: %.2lf mb", ((f64)meminfo.physical_memory_used / 1048576.0));
                             ImGui::Text("Virtual MemoryUsage Peak: %.2lf mb", ((f64)meminfo.peak_virtual_memory_used / 1048576.0));
                             ImGui::Text("Real MemoryUsage Peak: %.2lf mb", ((f64)meminfo.peak_physical_memory_used / 1048576.0));
+
+                            ImGui::Text("Using renderer: %s", glGetString(GL_RENDERER));
+                            ImGui::Text("OpenGL version supported: %s", glGetString(GL_VERSION));
+
+                            neko_vec2 opengl_ver = _platform->get_opengl_ver();
+                            ImGui::Text("OpenGL Version: %d.%d", (int)opengl_ver.x, (int)opengl_ver.y);
                         }
 
                         return neko_dbgui_result_in_progress;
@@ -1046,7 +1048,7 @@ neko_result app_init() {
 
 neko_result app_update() {
     // Grab global instance of engine
-    neko_engine_t *engine = neko_engine_instance();
+    neko_engine *engine = neko_engine_instance();
 
     // If we press the escape key, exit the application
     if (engine->ctx.platform->key_pressed(neko_keycode_esc)) {
@@ -1057,13 +1059,16 @@ neko_result app_update() {
 
     neko_invoke_once([] {
         the<dbgui>().update("shader", [](neko_dbgui_result) {
+            if (ImGui::Button("test_wang")) test_wang();
+            if (ImGui::Button("test_sr")) test_sr();
+            if (ImGui::Button("test_ut")) test_ut();
             ImGui::Image((void *)(intptr_t)g_tex.id, ImVec2(g_texture_width, g_texture_height), ImVec2(0, 0), ImVec2(1, 1));
             return neko_dbgui_result_in_progress;
         });
     }(););
 
     // All application updates
-    b32 ui_interaction = update_ui();
+    bool ui_interaction = update_ui();
     if (!ui_interaction) {
         update_input();
     }
@@ -1087,16 +1092,7 @@ neko_result app_update() {
     // Update frame counter
     g_frame_counter = (g_frame_counter + 1) % u32_max;
 
-    imgui_new_frame();
-
-    the<text_renderer>().drawcmd();
-
-    the<dbgui>().draw();
-
     settings.show();
-
-    // 渲染 imgui 内容
-    imgui_render();
 
     return neko_result_in_progress;
 }
@@ -1110,65 +1106,10 @@ neko_result app_shutdown() {
 
     neko_ecs_destroy(g_ecs);
 
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
-
     neko_destroy_pack_reader(g_pack_reader);
 
     neko_info("app_shutdown");
     return neko_result_success;
-}
-
-neko_private(void *) __neko_imgui_malloc(size_t sz, void *user_data) { return __neko_mem_safe_alloc((sz), (char *)__FILE__, __LINE__, &imgui_mem_usage); }
-
-neko_private(void) __neko_imgui_free(void *ptr, void *user_data) { __neko_mem_safe_free(ptr, &imgui_mem_usage); }
-
-void imgui_init() {
-    neko_platform_i *platform = neko_engine_instance()->ctx.platform;
-
-    // Get main window from platform
-    GLFWwindow *win = (GLFWwindow *)platform->raw_window_handle(platform->main_window());
-
-    ImGui::SetAllocatorFunctions(__neko_imgui_malloc, __neko_imgui_free);
-
-    // Setup Dear ImGui context
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO &io = ImGui::GetIO();
-
-    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-    // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-
-    io.IniFilename = "imgui.ini";
-
-    io.Fonts->AddFontFromFileTTF(neko_file_path("data/assets/fonts/fusion-pixel-12px-monospaced.ttf"), 20.0f, NULL, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
-
-    // Setup Dear ImGui style
-    ImGui::StyleColorsDark();
-
-    // Setup Platform/Renderer bindings
-    ImGui_ImplGlfw_InitForOpenGL(win, true);
-    ImGui_ImplOpenGL3_Init();
-}
-
-void imgui_new_frame() {
-    // Start the Dear ImGui frame
-    ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
-    ImGui::NewFrame();
-}
-
-void imgui_render() {
-    neko_platform_i *platform = neko_engine_instance()->ctx.platform;
-
-    // TODO: 将这一切抽象出来并通过命令缓冲系统渲染
-    ImGui::Render();
-    neko_vec2 fbs = platform->frame_buffer_size(platform->main_window());
-    glViewport(0, 0, fbs.x, fbs.y);
-    // glClearColor(0.1f, 0.1f, 0.1f, 1.f);
-    // glClear(GL_COLOR_BUFFER_BIT);
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
 void putpixel(int x, int y) {
@@ -1352,7 +1293,7 @@ void update_particle_sim() {
     neko_platform_i *platform = neko_engine_instance()->ctx.platform;
 
     // Update frame counter (loop back to 0 if we roll past u32 max)
-    b32 frame_counter_even = ((g_frame_counter % 2) == 0);
+    bool frame_counter_even = ((g_frame_counter % 2) == 0);
     s32 ran = frame_counter_even ? 0 : 1;
 
     const f32 dt = platform->time.delta;
@@ -1435,12 +1376,12 @@ void draw_string_at(font_t *f, cell_color_t *buffer, s32 x, s32 y, const char *s
     }
 }
 
-b32 in_rect(neko_vec2 p, neko_vec2 ro, neko_vec2 rd) {
+bool in_rect(neko_vec2 p, neko_vec2 ro, neko_vec2 rd) {
     if (p.x < ro.x || p.x > ro.x + rd.x || p.y < ro.y || p.y > ro.y + rd.y) return false;
     return true;
 }
 
-b32 gui_rect(cell_color_t *buffer, s32 _x, s32 _y, s32 _w, s32 _h, cell_color_t c) {
+bool gui_rect(cell_color_t *buffer, s32 _x, s32 _y, s32 _w, s32 _h, cell_color_t c) {
     neko_vec2 mp = calculate_mouse_position();
 
     for (u32 h = 0; h < _h; ++h) {
@@ -1451,7 +1392,7 @@ b32 gui_rect(cell_color_t *buffer, s32 _x, s32 _y, s32 _w, s32 _h, cell_color_t 
         }
     }
 
-    b32 clicked = neko_engine_instance()->ctx.platform->mouse_pressed(neko_mouse_lbutton);
+    bool clicked = neko_engine_instance()->ctx.platform->mouse_pressed(neko_mouse_lbutton);
 
     return in_rect(mp, neko_vec2{(f32)_x, (f32)_y}, neko_vec2{(f32)_w, (f32)_h}) && clicked;
 }
@@ -1479,8 +1420,8 @@ b32 gui_rect(cell_color_t *buffer, s32 _x, s32 _y, s32 _w, s32 _h, cell_color_t 
         }                                                                                                                             \
     } while (0)
 
-b32 update_ui() {
-    b32 interaction = false;
+bool update_ui() {
+    bool interaction = false;
     neko_graphics_i *gfx = neko_engine_instance()->ctx.graphics;
     neko_platform_i *platform = neko_engine_instance()->ctx.platform;
 
@@ -3030,7 +2971,7 @@ void update_lava(u32 x, u32 y) {
         write_data(read_idx, particle_empty());
     } else {
         particle_t tmp = *p;
-        b32 found = false;
+        bool found = false;
 
         for (u32 i = 0; i < fall_rate; ++i) {
             for (s32 j = spread_rate; j > 0; --j) {
@@ -3116,7 +3057,7 @@ void update_oil(u32 x, u32 y) {
         write_data(read_idx, particle_empty());
     } else {
         particle_t tmp = *p;
-        b32 found = false;
+        bool found = false;
 
         for (u32 i = 0; i < fall_rate; ++i) {
             for (s32 j = spread_rate; j > 0; --j) {
@@ -3282,7 +3223,7 @@ void update_acid(u32 x, u32 y) {
         write_data(read_idx, tmp_b);
     } else {
         particle_t tmp = *p;
-        b32 found = false;
+        bool found = false;
 
         // Don't try to spread if something is directly above you?
         if (completely_surrounded(x, y)) {
@@ -3392,7 +3333,7 @@ void update_water(u32 x, u32 y) {
         write_data(read_idx, tmp_b);
     } else {
         particle_t tmp = *p;
-        b32 found = false;
+        bool found = false;
 
         // Don't try to spread if something is directly above you?
         if (completely_surrounded(x, y)) {
@@ -3829,28 +3770,100 @@ void print_hash_table(neko_hash_table(u64, object_t) * ht) {
 
 void object_to_str(object_t *obj, char *str, usize str_sz) { neko_snprintf(str, str_sz, "{ %.2f, %zu }", obj->float_value, obj->uint_value); }
 
-int main(int argc, char **argv) {
+#include "engine/utility/random.hpp"
 
-    // lua_newtable(L);
-    // for (int n = 0; n < argc; ++n) {
-    //     lua_pushstring(L, argv[n]);
-    //     lua_rawseti(L, -2, n);
-    // }
-    // lua_setglobal(L, "arg");
+double wang_seed = 0;
+static CLGMRandom random(wang_seed);
 
-    // Construct internal instance of our engine
-    neko_engine_t *engine = neko_engine_construct();
+int myrand() { return random.Random(0, 2147483645 - 1); }
 
-    // Run the internal engine loop until completion
-    neko_result result = engine->run();
+#define STB_HBWANG_RAND() myrand()
+#define STB_HBWANG_IMPLEMENTATION
+#include "libs/stb/stb_herringbone_wang_tile.h"
+#include "libs/stb/stb_image.h"
+#include "libs/stb/stb_image_write.h"
 
-    // Check result of engine after exiting loop
-    if (result != neko_result_success) {
-        neko_warn("Error: Engine did not successfully finish running.");
-        return -1;
+void genwang(std::string filename, unsigned char *data, int xs, int ys, int w, int h) {
+    stbhw_tileset ts;
+    if (xs < 1 || xs > 1000) {
+        fprintf(stderr, "xsize invalid or out of range\n");
+        exit(1);
+    }
+    if (ys < 1 || ys > 1000) {
+        fprintf(stderr, "ysize invalid or out of range\n");
+        exit(1);
     }
 
-    neko_info("good");
+    stbhw_build_tileset_from_image(&ts, data, w * 3, w, h);
+    // allocate a buffer to create the final image to
+    int yimg = ys + 4;
+    auto buff = static_cast<unsigned char *>(malloc(3 * xs * yimg));
+    stbhw_generate_image(&ts, NULL, buff, xs * 3, xs, yimg);
+    stbi_write_png(filename.c_str(), xs, yimg, 3, buff, xs * 3);
+    stbhw_free_tileset(&ts);
+    free(buff);
+}
+
+void test_wang() {
+
+    // mapgen {tile-file} {xsize} {ysize} {seed} [n]
+
+    int xs = 128;
+    int ys = 128;
+
+    int n = 1;
+
+    int w, h;
+
+    unsigned char *data = stbi_load(neko_file_path("data/assets/textures/wang_test.png"), &w, &h, NULL, 3);
+
+    neko_assert(data);
+
+    printf("Output size: %dx%d\n", xs, ys);
+
+    auto seed = std::stoull("123456");
+    printf("Using seed: %llu\n", seed);
+    wang_seed = seed;
+    {
+        CLGMRandom rnd(seed);
+
+        // int num = seed + xs + 11 * (xs / -11) - 12 * (seed / 12);
+        int num = xs % 11 + seed % 12;
+        printf("Some number: %d\n", num);
+        while (num-- > 0) {
+            rnd.Next();
+        }
+
+        for (int i = 0; i < n; ++i) {
+            double newSeed = rnd.Next() * 2147483645.0;
+            printf("Adjusted seed: %f\n", newSeed);
+            random.SetSeed(newSeed);
+
+            auto filename = std::string("output_wang");
+            filename = filename.substr(0, filename.size() - 4);
+            filename = filename + std::to_string(seed) + "#" + std::to_string(i) + ".png";
+
+            genwang(filename, data, xs, ys, w, h);
+        }
+    }
+
+    free(data);
+}
+
+int main(int argc, char **argv) {
+
+    neko_engine *engine = neko_engine_construct(argc, argv);
+
+    if (nullptr != engine) {
+        neko_result result = engine->engine_run();
+        if (result != neko_result_success) {
+            neko_warn("engine did not successfully finish running.");
+            return -1;
+        }
+        neko_info("good");
+    } else {
+        neko_info("bad");
+    }
 
     return 0;
 }

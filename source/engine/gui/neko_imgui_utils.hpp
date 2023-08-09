@@ -979,6 +979,10 @@ inline void list_separator(float indent = 30.0F) {
 
 namespace neko {
 
+void neko_imgui_style();
+
+constexpr auto neko_imgui_color_from_byte = [](u8 r, u8 g, u8 b) { return ImVec4((f32)r / 255.0f, (f32)g / 255.0f, (f32)b / 255.0f, 1.0f); };
+
 auto neko_imgui_collapsing_header = [](const char *name) -> bool {
     ImGuiStyle &style = ImGui::GetStyle();
     ImGui::PushStyleColor(ImGuiCol_Header, style.Colors[ImGuiCol_Button]);
@@ -997,118 +1001,15 @@ void neko_draw_text_plate(std::string text, neko_color_t col, int x, int y, neko
 
 }  // namespace neko
 
-#ifdef NEKO_IMM32
+namespace neko {
 
-#if defined(_WIN32)
-#define NEKO_IMM32
-#include <Windows.h>
-#include <tchar.h>
-#else
-#include <sys/stat.h>
-#endif
+void neko_imgui_init();
+void neko_imgui_new_frame();
+void neko_imgui_render();
+void neko_imgui_destroy();
+std::size_t __neko_imgui_meminuse();
 
-#if defined(_WIN32)
-#include <CommCtrl.h>
-#include <Windows.h>
-#include <tchar.h>
-#include <vcruntime_string.h>
-
-#include "GLFW/glfw3.h"
-
-#define GLFW_EXPOSE_NATIVE_WIN32
-#include "GLFW/glfw3native.h"
-
-#if !defined(IMGUI_IMM_COMMAND_BEGIN)
-#define IMGUI_IMM_COMMAND_BEGIN (WM_APP + 0x200)
-#endif
-#endif
-
-struct NEKO_imgui_imm {
-
-    enum { IMGUI_IMM_COMMAND = IMGUI_IMM_COMMAND_BEGIN, IMGUI_IMM_END };
-
-    enum { IMGUI_IMM_COMMAND_NOP = 0u, IMGUI_IMM_COMMAND_SUBCLASSIFY, IMGUI_IMM_COMMAND_COMPOSITION_COMPLETE, IMGUI_IMM_COMMAND_CLEANUP };
-
-    struct imm_candidate_list {
-        std::vector<std::string> list_utf8;
-        std::vector<std::string>::size_type selection;
-
-        imm_candidate_list() : list_utf8{}, selection(0) {}
-        imm_candidate_list(const imm_candidate_list &rhv) = default;
-        imm_candidate_list(imm_candidate_list &&rhv) noexcept : list_utf8(), selection(0) { *this = std::move(rhv); }
-
-        ~imm_candidate_list() = default;
-
-        inline imm_candidate_list &operator=(const imm_candidate_list &rhv) = default;
-
-        inline imm_candidate_list &operator=(imm_candidate_list &&rhv) noexcept {
-            if (this == &rhv) {
-                return *this;
-            }
-            std::swap(list_utf8, rhv.list_utf8);
-            std::swap(selection, rhv.selection);
-            return *this;
-        }
-        inline void clear() {
-            list_utf8.clear();
-            selection = 0;
-        }
-
-        static imm_candidate_list cocreate(const CANDIDATELIST *const src, const size_t src_size);
-    };
-
-    static constexpr int candidate_window_num = 9;
-
-    bool is_open;
-    std::unique_ptr<char[]> comp_conved_utf8;
-    std::unique_ptr<char[]> comp_target_utf8;
-    std::unique_ptr<char[]> comp_unconv_utf8;
-    bool show_ime_candidate_list;
-    int request_candidate_list_str_commit;  // 候选列表在1更新后，请求移动到下一个转换候选
-    imm_candidate_list candidate_list;
-
-    NEKO_imgui_imm()
-        : is_open(false), comp_conved_utf8(nullptr), comp_target_utf8(nullptr), comp_unconv_utf8(nullptr), show_ime_candidate_list(false), request_candidate_list_str_commit(false), candidate_list() {}
-
-    ~NEKO_imgui_imm() = default;
-    void operator()();
-
-private:
-    bool update_candidate_window(HWND hWnd);
-
-    static LRESULT WINAPI imm_communication_subclassproc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
-    static LRESULT imm_communication_subclassproc_implement(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, NEKO_imgui_imm &comm);
-    BOOL subclassify_impl(HWND hWnd);
-
-public:
-    template <typename type_t>
-    inline BOOL subclassify(type_t hWnd);
-
-    template <>
-    inline BOOL subclassify<HWND>(HWND hWnd) {
-        return subclassify_impl(hWnd);
-    }
-};
-
-template <>
-inline BOOL NEKO_imgui_imm::subclassify<GLFWwindow *>(GLFWwindow *window) {
-    return this->subclassify(glfwGetWin32Window(window));
-}
-
-// template <>
-// inline BOOL NEKO_imgui_imm::subclassify<SDL_Window *>(SDL_Window *window) {
-//     SDL_SysWMinfo info{};
-//     SDL_VERSION(&info.version);
-//     if (SDL_GetWindowWMInfo(window, &info)) {
-//         IM_ASSERT(IsWindow(info.info.win.window));
-//         return this->subclassify(info.info.win.window);
-//     }
-//     return FALSE;
-// }
-
-int common_control_initialize();
-
-#endif
+}  // namespace neko
 
 void ShowAutoTestWindow();
 

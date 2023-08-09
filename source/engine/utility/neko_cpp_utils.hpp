@@ -15,6 +15,8 @@
 #include <type_traits>
 #include <unordered_map>
 
+#include "engine/common/neko_util.h"
+
 #pragma region Template
 
 namespace neko::cpp {

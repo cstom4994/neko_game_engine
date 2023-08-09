@@ -48,8 +48,6 @@ neko_result glfw_platform_init(struct neko_platform_i *platform) {
 #else
             glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, platform->settings.video.graphics.opengl.major_version);
             glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, platform->settings.video.graphics.opengl.minor_version);
-            // glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-            // glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
             glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
             glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #endif
@@ -74,18 +72,16 @@ neko_result glfw_platform_init(struct neko_platform_i *platform) {
     platform->cursors[(u32)neko_platform_cursor_no] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
 
     // 确定引擎运行路径
-
-    auto currentDir = std::filesystem::path(std::filesystem::current_path());
-
+    auto current_dir = std::filesystem::path(std::filesystem::current_path());
     for (int i = 0; i < 3; ++i) {
-        if (std::filesystem::exists(currentDir / "data") && std::filesystem::exists(currentDir / "data" / "scripts")) {
-            neko_string tmp = neko_fs_normalize_path(currentDir.string());
+        if (std::filesystem::exists(current_dir / "data") && std::filesystem::exists(current_dir / "data" / "scripts")) {
+            neko_string tmp = neko_fs_normalize_path(current_dir.string());
             platform->ctx.gamepath = (char *)neko_safe_malloc(std::strlen(tmp.c_str()) + 1);
             std::strcpy(platform->ctx.gamepath, tmp.c_str());
-            neko_info(std::format("Game data path detected: {0} (Base: {1})", platform->ctx.gamepath, std::filesystem::current_path().string()));
+            neko_info(std::format("game data path detected: {0} (base: {1})", platform->ctx.gamepath, std::filesystem::current_path().string()));
             break;
         }
-        currentDir = currentDir.parent_path();
+        current_dir = current_dir.parent_path();
     }
 
     return neko_result_success;
@@ -742,6 +738,14 @@ void glfw_set_cursor_position(neko_resource_handle handle, f64 x, f64 y) {
     glfwSetCursorPos(win, x, y);
 }
 
+neko_vec2 glfw_get_opengl_version() {
+    struct neko_platform_i *platform = neko_engine_instance()->ctx.platform;
+    GLFWwindow *win = __window_from_handle(platform, neko_engine_instance()->ctx.platform->main_window());
+    int major = glfwGetWindowAttrib(win, GLFW_CONTEXT_VERSION_MAJOR);
+    int minor = glfwGetWindowAttrib(win, GLFW_CONTEXT_VERSION_MINOR);
+    return {(f32)major, (f32)minor};
+}
+
 // Method for creating platform layer for GLFW
 struct neko_platform_i *neko_platform_construct() {
     // Construct new platform interface
@@ -763,6 +767,7 @@ struct neko_platform_i *neko_platform_construct() {
     platform->sleep = &glfw_platform_sleep;
     platform->elapsed_time = &glfw_platform_time;
     platform->get_meminfo = &glfw_platform_get_meminfo;
+    platform->get_opengl_ver = &glfw_get_opengl_version;
 
     /*============================
     // Platform Video

@@ -254,7 +254,7 @@ neko_private(GLuint) vao = 0;
 
 neko_private(neko_fontcache) cache;
 
-void text_renderer::drawcmd() {
+void text_renderer::draw() {
 
     // ME_profiler_scope_auto("RenderGUI.Font");
 

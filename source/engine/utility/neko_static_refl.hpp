@@ -243,18 +243,17 @@ constexpr std::size_t ElemList<Elems...>::FindIf(Func&& func) const {
 template <typename... Elems>
 template <typename Name>
 constexpr const auto& ElemList<Elems...>::Find(Name) const {
-    /*static_assert(Contains<Name>());
+    static_assert(Contains<Name>());
     constexpr std::size_t idx = []() {
-        constexpr decltype(Name::View()) names[]{ Elems::name... };
+        constexpr decltype(Name::View()) names[]{Elems::name...};
         for (std::size_t i = 0; i < sizeof...(Elems); i++) {
-            if (Name::View() == names[i])
-                return i;
+            if (Name::View() == names[i]) return i;
         }
         return static_cast<std::size_t>(-1);
     }();
     static_assert(idx != static_cast<std::size_t>(-1));
-    return Get<idx>();*/
-    return Get<neko::cpp::FindIf_v<TypeList<Elems...>, detail::IsSameNameWith<Name>::template Ttype>>();
+    return Get<idx>();
+    // return Get<neko::cpp::FindIf_v<TypeList<Elems...>, detail::IsSameNameWith<Name>::template Ttype>>();
 }
 
 template <typename... Elems>

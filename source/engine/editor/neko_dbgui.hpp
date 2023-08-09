@@ -38,6 +38,7 @@ public:
 
     void __init(){};
     void __end(){};
+    void __update() { draw(); };
 
 public:
     dbgui& create(const neko_string& name, const neko_dbgui_func& f, neko_dbgui_flags flags = neko_dbgui_flags::window) {

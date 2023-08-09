@@ -21,9 +21,10 @@ public:
 
     void __init();
     void __end();
+    void __update() { draw(); };
 
 public:
-    void drawcmd();
+    void draw();
     neko_font_index load(const void* data, size_t data_size, f32 font_size = 42.0f);
 
     void push(const std::string& text, const neko_font_index font, const neko_vec2 pos);

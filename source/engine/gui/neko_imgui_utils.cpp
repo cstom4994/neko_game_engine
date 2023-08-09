@@ -10,6 +10,13 @@
 #include <tuple>
 #include <vector>
 
+#include "engine/base/neko_engine.h"
+#include "engine/common/neko_util.h"
+#include "engine/gui/imgui_impl/imgui_impl_glfw.h"
+#include "engine/gui/imgui_impl/imgui_impl_opengl3.h"
+#include "engine/platform/neko_platform.h"
+#include "libs/glad/glad.h"
+
 namespace neko::imgui {
 
 markdown::markdown() {
@@ -733,6 +740,80 @@ void file_browser(std::string& path) {
 
 namespace neko {
 
+void neko_imgui_style() {
+
+    auto& style = ImGui::GetStyle();
+    ImVec4* colors = style.Colors;
+
+    const ImVec4 bgColor = neko_imgui_color_from_byte(37, 37, 38);
+    const ImVec4 lightBgColor = neko_imgui_color_from_byte(82, 82, 85);
+    const ImVec4 veryLightBgColor = neko_imgui_color_from_byte(90, 90, 95);
+
+    const ImVec4 panelColor = neko_imgui_color_from_byte(51, 51, 55);
+    const ImVec4 panelHoverColor = neko_imgui_color_from_byte(29, 151, 236);
+    const ImVec4 panelActiveColor = neko_imgui_color_from_byte(0, 119, 200);
+
+    const ImVec4 textColor = neko_imgui_color_from_byte(255, 255, 255);
+    const ImVec4 textDisabledColor = neko_imgui_color_from_byte(151, 151, 151);
+    const ImVec4 borderColor = neko_imgui_color_from_byte(78, 78, 78);
+
+    colors[ImGuiCol_Text] = textColor;
+    colors[ImGuiCol_TextDisabled] = textDisabledColor;
+    colors[ImGuiCol_TextSelectedBg] = panelActiveColor;
+    colors[ImGuiCol_WindowBg] = bgColor;
+    colors[ImGuiCol_ChildBg] = bgColor;
+    colors[ImGuiCol_PopupBg] = bgColor;
+    colors[ImGuiCol_Border] = borderColor;
+    colors[ImGuiCol_BorderShadow] = borderColor;
+    colors[ImGuiCol_FrameBg] = panelColor;
+    colors[ImGuiCol_FrameBgHovered] = panelHoverColor;
+    colors[ImGuiCol_FrameBgActive] = panelActiveColor;
+    colors[ImGuiCol_TitleBg] = bgColor;
+    colors[ImGuiCol_TitleBgActive] = bgColor;
+    colors[ImGuiCol_TitleBgCollapsed] = bgColor;
+    colors[ImGuiCol_MenuBarBg] = panelColor;
+    colors[ImGuiCol_ScrollbarBg] = panelColor;
+    colors[ImGuiCol_ScrollbarGrab] = lightBgColor;
+    colors[ImGuiCol_ScrollbarGrabHovered] = veryLightBgColor;
+    colors[ImGuiCol_ScrollbarGrabActive] = veryLightBgColor;
+    colors[ImGuiCol_CheckMark] = panelActiveColor;
+    colors[ImGuiCol_SliderGrab] = panelHoverColor;
+    colors[ImGuiCol_SliderGrabActive] = panelActiveColor;
+    colors[ImGuiCol_Button] = panelColor;
+    colors[ImGuiCol_ButtonHovered] = panelHoverColor;
+    colors[ImGuiCol_ButtonActive] = panelHoverColor;
+    colors[ImGuiCol_Header] = panelColor;
+    colors[ImGuiCol_HeaderHovered] = panelHoverColor;
+    colors[ImGuiCol_HeaderActive] = panelActiveColor;
+    colors[ImGuiCol_Separator] = borderColor;
+    colors[ImGuiCol_SeparatorHovered] = borderColor;
+    colors[ImGuiCol_SeparatorActive] = borderColor;
+    colors[ImGuiCol_ResizeGrip] = bgColor;
+    colors[ImGuiCol_ResizeGripHovered] = panelColor;
+    colors[ImGuiCol_ResizeGripActive] = lightBgColor;
+    colors[ImGuiCol_PlotLines] = panelActiveColor;
+    colors[ImGuiCol_PlotLinesHovered] = panelHoverColor;
+    colors[ImGuiCol_PlotHistogram] = panelActiveColor;
+    colors[ImGuiCol_PlotHistogramHovered] = panelHoverColor;
+    // colors[ImGuiCol_ModalWindowDarkening] = bgColor;
+    colors[ImGuiCol_DragDropTarget] = bgColor;
+    colors[ImGuiCol_NavHighlight] = bgColor;
+    colors[ImGuiCol_DockingPreview] = panelActiveColor;
+    colors[ImGuiCol_Tab] = bgColor;
+    colors[ImGuiCol_TabActive] = panelActiveColor;
+    colors[ImGuiCol_TabUnfocused] = bgColor;
+    colors[ImGuiCol_TabUnfocusedActive] = panelActiveColor;
+    colors[ImGuiCol_TabHovered] = panelHoverColor;
+
+    style.WindowRounding = 4.0f;
+    style.ChildRounding = 4.0f;
+    style.FrameRounding = 4.0f;
+    style.GrabRounding = 4.0f;
+    style.PopupRounding = 4.0f;
+    style.ScrollbarRounding = 0.0f;
+    style.TabRounding = 0.0f;
+}
+
 void neko_draw_text_plate(std::string text, neko_color_t col, int x, int y, neko_color_t backcolor) {
     auto text_size = ImGui::CalcTextSize(text.c_str());
     // R_RectangleFilled(target, x - 4, y - 4, x + text_size.x + 4, y + text_size.y + 4, backcolor);
@@ -773,579 +854,6 @@ void neko_draw_text(std::string text, neko_color_t col, int x, int y, bool outli
 }
 
 }  // namespace neko
-
-#if defined(ME_IMM32)
-
-#include <commctrl.h>
-#include <tchar.h>
-#include <windows.h>
-
-#pragma comment(linker, \
-                "\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
-processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
-#pragma comment(lib, "comctl32.lib")
-
-void ME_imgui_imm::operator()() {
-    ImGuiIO& io = ImGui::GetIO();
-
-    static ImVec2 window_pos = ImVec2();
-    static ImVec2 window_pos_pivot = ImVec2();
-
-    static ImGuiID candidate_window_root_id = 0;
-
-    static ImGuiWindow* lastTextInputNavWindow = nullptr;
-    static ImGuiID lastTextInputActiveId = 0;
-    static ImGuiID lastTextInputFocusId = 0;
-
-    if (!(candidate_window_root_id && ((ImGui::GetCurrentContext()->NavWindow ? ImGui::GetCurrentContext()->NavWindow->RootWindow->ID : 0u) == candidate_window_root_id))) {
-
-        window_pos = ImVec2(ImGui::GetCurrentContext()->PlatformImeData.InputPos.x + 1.0f,
-                            ImGui::GetCurrentContext()->PlatformImeData.InputPos.y);  //
-        window_pos_pivot = ImVec2(0.0f, 0.0f);
-
-        const ImGuiContext* const currentContext = ImGui::GetCurrentContext();
-        IM_ASSERT(currentContext || !"ImGui::GetCurrentContext() return nullptr.");
-        if (currentContext) {
-            if (!ImGui::IsMouseClicked(0)) {
-                if ((currentContext->WantTextInputNextFrame != -1) ? (!!(currentContext->WantTextInputNextFrame)) : false) {
-                    if ((!!currentContext->NavWindow) && (currentContext->NavWindow->RootWindow->ID != candidate_window_root_id) && (ImGui::GetActiveID() != lastTextInputActiveId)) {
-                        OutputDebugStringW(L"update lastTextInputActiveId\n");
-                        lastTextInputNavWindow = ImGui::GetCurrentContext()->NavWindow;
-                        lastTextInputActiveId = ImGui::GetActiveID();
-                        lastTextInputFocusId = ImGui::GetFocusID();
-                    }
-                } else {
-                    if (lastTextInputActiveId != 0) {
-                        if (currentContext->WantTextInputNextFrame) {
-                            OutputDebugStringW(L"update lastTextInputActiveId disabled\n");
-                        } else {
-                            OutputDebugStringW(L"update lastTextInputActiveId disabled update\n");
-                        }
-                    }
-                    lastTextInputNavWindow = nullptr;
-                    lastTextInputActiveId = 0;
-                    lastTextInputFocusId = 0;
-                }
-            }
-        }
-    }
-
-    ImVec2 target_screen_pos = ImVec2(0.0f, 0.0f);  // IME Candidate List Window position.
-
-    if (this->is_open) {
-        ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-        if (ImGui::Begin("IME Composition Window", nullptr,
-                         ImGuiWindowFlags_Tooltip | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize |
-                                 ImGuiWindowFlags_NoSavedSettings)) {
-
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.78125f, 1.0f, 0.1875f, 1.0f));
-            ImGui::Text("%s", neko_s_cast<bool>(comp_conved_utf8) ? comp_conved_utf8.get() : "");
-            ImGui::PopStyleColor();
-
-            if (neko_s_cast<bool>(comp_target_utf8)) {
-                ImGui::SameLine(0.0f, 0.0f);
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.203125f, 0.91796875f, 0.35546875f, 1.0f));
-
-                target_screen_pos = ImGui::GetCursorScreenPos();
-                target_screen_pos.y += ImGui::GetTextLineHeightWithSpacing();
-
-                ImGui::Text("%s", neko_s_cast<bool>(comp_target_utf8) ? comp_target_utf8.get() : "");
-                ImGui::PopStyleColor();
-            }
-            if (neko_s_cast<bool>(comp_unconv_utf8)) {
-                ImGui::SameLine(0.0f, 0.0f);
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.78125f, 1.0f, 0.1875f, 1.0f));
-                ImGui::Text("%s", neko_s_cast<bool>(comp_unconv_utf8) ? comp_unconv_utf8.get() : "");
-                ImGui::PopStyleColor();
-            }
-
-            // ImGui::SameLine();
-            // ImGui::Text("%u %u", candidate_window_root_id, ImGui::GetCurrentContext()->NavWindow ? ImGui::GetCurrentContext()->NavWindow->RootWindow->ID : 0u);
-
-            ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
-        }
-        ImGui::End();
-        ImGui::PopStyleVar();
-
-        /* Draw Candidate List */
-        if (show_ime_candidate_list && !candidate_list.list_utf8.empty()) {
-
-            std::vector<const char*> listbox_items = {};
-
-            IM_ASSERT(candidate_window_num);
-            int candidate_page = ((int)candidate_list.selection) / candidate_window_num;
-            int candidate_selection = ((int)candidate_list.selection) % candidate_window_num;
-
-            auto begin_ite = std::begin(candidate_list.list_utf8);
-            std::advance(begin_ite, candidate_page * candidate_window_num);
-            auto end_ite = begin_ite;
-            {
-                auto the_end = std::end(candidate_list.list_utf8);
-                for (int i = 0; end_ite != the_end && i < candidate_window_num; ++i) {
-                    std::advance(end_ite, 1);
-                }
-            }
-
-            std::for_each(begin_ite, end_ite, [&](auto& item) { listbox_items.push_back(item.c_str()); });
-
-            const float candidate_window_height = ((ImGui::GetStyle().FramePadding.y * 2) + ((ImGui::GetTextLineHeightWithSpacing()) * ((int)std::size(listbox_items) + 2)));
-
-            if (io.DisplaySize.y < (target_screen_pos.y + candidate_window_height)) {
-                target_screen_pos.y -= ImGui::GetTextLineHeightWithSpacing() + candidate_window_height;
-            }
-
-            target_screen_pos.x += 100;
-
-            ImGui::SetNextWindowPos(target_screen_pos, ImGuiCond_Always, window_pos_pivot);
-
-            if (ImGui::Begin("##Overlay-IME-Candidate-List-Window", &show_ime_candidate_list,
-                             ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoSavedSettings |
-                                     ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav)) {
-                if (ImGui::BeginListBox("##IMECandidateListWindow", ImVec2(neko_s_cast<int>(std::size(listbox_items)), neko_s_cast<int>(std::size(listbox_items))))) {
-
-                    int i = 0;
-                    for (const char*& listbox_item : listbox_items) {
-                        if (ImGui::Selectable(listbox_item, (i == candidate_selection))) {
-
-                            /* candidate list selection */
-
-                            if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && !ImGui::IsAnyItemActive() && !ImGui::IsMouseClicked(0)) {
-                                if (lastTextInputActiveId && lastTextInputFocusId) {
-                                    ImGui::SetActiveID(lastTextInputActiveId, lastTextInputNavWindow);
-                                    ImGui::SetFocusID(lastTextInputFocusId, lastTextInputNavWindow);
-                                }
-                            }
-
-                            if (candidate_selection == i) {
-                                OutputDebugStringW(L"complete\n");
-                                this->request_candidate_list_str_commit = 1;
-                            } else {
-                                const BYTE nVirtualKey = (candidate_selection < i) ? VK_DOWN : VK_UP;
-                                const size_t nNumToHit = abs(candidate_selection - i);
-                                for (size_t hit = 0; hit < nNumToHit; ++hit) {
-                                    keybd_event(nVirtualKey, 0, 0, 0);
-                                    keybd_event(nVirtualKey, 0, KEYEVENTF_KEYUP, 0);
-                                }
-                                this->request_candidate_list_str_commit = (int)nNumToHit;
-                            }
-                        }
-                        ++i;
-                    }
-                    ImGui::EndListBox();
-                }
-                ImGui::Text("%d/%d", candidate_list.selection + 1, neko_s_cast<int>(std::size(candidate_list.list_utf8)));
-#if defined(_DEBUG)
-                ImGui::SameLine();
-                ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "%s",
-#if defined(UNICODE)
-                                   u8"DEBUG (UNICODE)"
-#else
-                                   u8"DEBUG (MBCS)"
-#endif
-                );
-#endif
-                candidate_window_root_id = ImGui::GetCurrentWindowRead()->RootWindow->ID;
-                ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
-            }
-            ImGui::End();
-        }
-    }
-
-    if (!ImGui::IsWindowFocused(ImGuiFocusedFlags_AnyWindow)) {
-        if (io.ImeWindowHandle) {
-            IM_ASSERT(IsWindow(neko_s_cast<HWND>(io.ImeWindowHandle)));
-            (void)(ImmAssociateContext(neko_s_cast<HWND>(io.ImeWindowHandle), HIMC(0)));
-        }
-    }
-    if (io.WantTextInput) {
-        if (io.ImeWindowHandle) {
-            IM_ASSERT(IsWindow(neko_s_cast<HWND>(io.ImeWindowHandle)));
-            ME_ASSERT(ImmAssociateContextEx(neko_s_cast<HWND>(io.ImeWindowHandle), HIMC(0), IACE_DEFAULT));
-        }
-    }
-
-    return;
-}
-
-ME_imgui_imm::imm_candidate_list ME_imgui_imm::imm_candidate_list::cocreate(const CANDIDATELIST* const src, const size_t src_size) {
-    IM_ASSERT(nullptr != src);
-    IM_ASSERT(sizeof(CANDIDATELIST) <= src->dwSize);
-    IM_ASSERT(src->dwSelection < src->dwCount);
-
-    imm_candidate_list dst{};
-    if (!(sizeof(CANDIDATELIST) < src->dwSize)) {
-        return dst;
-    }
-    if (!(src->dwSelection < src->dwCount)) {
-        return dst;
-    }
-    const char* const baseaddr = reinterpret_cast<const char*>(src);
-
-    for (size_t i = 0; i < src->dwCount; ++i) {
-        const wchar_t* const item = reinterpret_cast<const wchar_t*>(baseaddr + src->dwOffset[i]);
-        const int require_byte = WideCharToMultiByte(CP_UTF8, 0, item, -1, nullptr, 0, NULL, NULL);
-        if (0 < require_byte) {
-            std::unique_ptr<char[]> utf8buf{new char[require_byte]};
-            if (require_byte == WideCharToMultiByte(CP_UTF8, 0, item, -1, utf8buf.get(), require_byte, NULL, NULL)) {
-                dst.list_utf8.emplace_back(utf8buf.get());
-                continue;
-            }
-        }
-        dst.list_utf8.emplace_back("??");
-    }
-    dst.selection = src->dwSelection;
-    return dst;
-}
-
-bool ME_imgui_imm::update_candidate_window(HWND hWnd) {
-    IM_ASSERT(IsWindow(hWnd));
-    bool result = false;
-    HIMC const hImc = ImmGetContext(hWnd);
-    if (hImc) {
-        DWORD dwSize = ImmGetCandidateListW(hImc, 0, NULL, 0);
-
-        if (dwSize) {
-            IM_ASSERT(sizeof(CANDIDATELIST) <= dwSize);
-            if (sizeof(CANDIDATELIST) <= dwSize) {
-
-                std::vector<char> candidatelist((size_t)dwSize);
-                if ((DWORD)(std::size(candidatelist) * sizeof(typename decltype(candidatelist)::value_type)) ==
-                    ImmGetCandidateListW(hImc, 0, reinterpret_cast<CANDIDATELIST*>(candidatelist.data()), (DWORD)(std::size(candidatelist) * sizeof(typename decltype(candidatelist)::value_type)))) {
-                    const CANDIDATELIST* const cl = reinterpret_cast<CANDIDATELIST*>(candidatelist.data());
-                    candidate_list = std::move(imm_candidate_list::cocreate(cl, dwSize));
-                    result = true;
-                }
-            }
-        }
-        ME_ASSERT(ImmReleaseContext(hWnd, hImc));
-    }
-    return result;
-}
-
-LRESULT
-ME_imgui_imm::imm_communication_subclassproc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData) {
-    switch (uMsg) {
-        case WM_DESTROY: {
-            ME_ASSERT(ImmAssociateContextEx(hWnd, HIMC(0), IACE_DEFAULT));
-            if (!RemoveWindowSubclass(hWnd, reinterpret_cast<SUBCLASSPROC>(uIdSubclass), uIdSubclass)) {
-                IM_ASSERT(!"RemoveWindowSubclass() failed\n");
-            }
-        } break;
-        default:
-            if (dwRefData) {
-                return imm_communication_subclassproc_implement(hWnd, uMsg, wParam, lParam, uIdSubclass, *reinterpret_cast<ME_imgui_imm*>(dwRefData));
-            }
-    }
-    return ::DefSubclassProc(hWnd, uMsg, wParam, lParam);
-}
-
-LRESULT
-ME_imgui_imm::imm_communication_subclassproc_implement(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubclass, ME_imgui_imm& comm) {
-    switch (uMsg) {
-        case WM_KEYDOWN:
-        case WM_KEYUP:
-        case WM_SYSKEYDOWN:
-        case WM_SYSKEYUP:
-            if (comm.is_open) {
-                return 0;
-            }
-            break;
-
-        case WM_IME_SETCONTEXT: { /* 各ビットを落とす */
-            lParam &= ~(ISC_SHOWUICOMPOSITIONWINDOW | (ISC_SHOWUICANDIDATEWINDOW) | (ISC_SHOWUICANDIDATEWINDOW << 1) | (ISC_SHOWUICANDIDATEWINDOW << 2) | (ISC_SHOWUICANDIDATEWINDOW << 3));
-        }
-            return ::DefWindowProc(hWnd, uMsg, wParam, lParam);
-        case WM_IME_STARTCOMPOSITION: {
-            comm.is_open = true;
-        }
-            return 1;
-        case WM_IME_ENDCOMPOSITION: {
-            comm.is_open = false;
-        }
-            return DefSubclassProc(hWnd, uMsg, wParam, lParam);
-        case WM_IME_COMPOSITION: {
-            HIMC const hImc = ImmGetContext(hWnd);
-            if (hImc) {
-                if (lParam & GCS_RESULTSTR) {
-                    comm.comp_conved_utf8 = nullptr;
-                    comm.comp_target_utf8 = nullptr;
-                    comm.comp_unconv_utf8 = nullptr;
-                    comm.show_ime_candidate_list = false;
-                }
-                if (lParam & GCS_COMPSTR) {
-
-                    const LONG compstr_length_in_byte = ImmGetCompositionStringW(hImc, GCS_COMPSTR, nullptr, 0);
-                    switch (compstr_length_in_byte) {
-                        case IMM_ERROR_NODATA:
-                        case IMM_ERROR_GENERAL:
-                            break;
-                        default: {
-                            size_t const buf_length_in_wchar = (size_t(compstr_length_in_byte) / sizeof(wchar_t)) + 1;
-                            IM_ASSERT(0 < buf_length_in_wchar);
-                            std::unique_ptr<wchar_t[]> buf{new wchar_t[buf_length_in_wchar]};
-                            if (buf) {
-                                // std::fill( &buf[0] , &buf[buf_length_in_wchar-1] , L'\0' );
-                                const LONG buf_length_in_byte = LONG(buf_length_in_wchar * sizeof(wchar_t));
-                                const DWORD l = ImmGetCompositionStringW(hImc, GCS_COMPSTR, (LPVOID)(buf.get()), buf_length_in_byte);
-
-                                const DWORD attribute_size = ImmGetCompositionStringW(hImc, GCS_COMPATTR, NULL, 0);
-                                std::vector<char> attribute_vec(attribute_size, 0);
-                                const DWORD attribute_end = ImmGetCompositionStringW(hImc, GCS_COMPATTR, attribute_vec.data(), (DWORD)std::size(attribute_vec));
-                                IM_ASSERT(attribute_end == (DWORD)(std::size(attribute_vec)));
-                                {
-                                    std::wstring comp_converted;
-                                    std::wstring comp_target;
-                                    std::wstring comp_unconveted;
-                                    size_t begin = 0;
-                                    size_t end = 0;
-
-                                    for (end = begin; end < attribute_end; ++end) {
-                                        if ((ATTR_TARGET_CONVERTED == attribute_vec[end] || ATTR_TARGET_NOTCONVERTED == attribute_vec[end])) {
-                                            break;
-                                        } else {
-                                            comp_converted.push_back(buf[end]);
-                                        }
-                                    }
-
-                                    for (begin = end; end < attribute_end; ++end) {
-                                        if (!(ATTR_TARGET_CONVERTED == attribute_vec[end] || ATTR_TARGET_NOTCONVERTED == attribute_vec[end])) {
-                                            break;
-                                        } else {
-                                            comp_target.push_back(buf[end]);
-                                        }
-                                    }
-
-                                    for (; end < attribute_end; ++end) {
-                                        comp_unconveted.push_back(buf[end]);
-                                    }
-
-#if 0
-                            {
-                                wchar_t dbgbuf[1024];
-                                _snwprintf_s(dbgbuf, sizeof(dbgbuf) / sizeof(dbgbuf[0]),
-                                    L"attribute_size = %d \"%s[%s]%s\"\n",
-                                    attribute_size,
-                                    comp_converted.c_str(),
-                                    comp_target.c_str(),
-                                    comp_unconveted.c_str());
-                                OutputDebugStringW(dbgbuf);
-                            }
-#endif
-                                    auto to_utf8_pointer = [](const std::wstring& arg) -> std::unique_ptr<char[]> {
-                                        if (arg.empty()) {
-                                            return std::unique_ptr<char[]>(nullptr);
-                                        }
-                                        const int require_byte = WideCharToMultiByte(CP_UTF8, 0, arg.c_str(), -1, nullptr, 0, NULL, NULL);
-                                        if (0 == require_byte) {
-                                            const DWORD lastError = GetLastError();
-                                            (void)(lastError);
-                                            IM_ASSERT(ERROR_INSUFFICIENT_BUFFER != lastError);
-                                            IM_ASSERT(ERROR_INVALID_FLAGS != lastError);
-                                            IM_ASSERT(ERROR_INVALID_PARAMETER != lastError);
-                                            IM_ASSERT(ERROR_NO_UNICODE_TRANSLATION != lastError);
-                                        }
-                                        IM_ASSERT(0 != require_byte);
-                                        if (!(0 < require_byte)) {
-                                            return std::unique_ptr<char[]>(nullptr);
-                                        }
-
-                                        std::unique_ptr<char[]> utf8buf{new char[require_byte]};
-
-                                        const int conversion_result = WideCharToMultiByte(CP_UTF8, 0, arg.c_str(), -1, utf8buf.get(), require_byte, NULL, NULL);
-                                        if (conversion_result == 0) {
-                                            const DWORD lastError = GetLastError();
-                                            (void)(lastError);
-                                            IM_ASSERT(ERROR_INSUFFICIENT_BUFFER != lastError);
-                                            IM_ASSERT(ERROR_INVALID_FLAGS != lastError);
-                                            IM_ASSERT(ERROR_INVALID_PARAMETER != lastError);
-                                            IM_ASSERT(ERROR_NO_UNICODE_TRANSLATION != lastError);
-                                        }
-
-                                        IM_ASSERT(require_byte == conversion_result);
-                                        if (require_byte != conversion_result) {
-                                            utf8buf.reset(nullptr);
-                                        }
-                                        return utf8buf;
-                                    };
-
-                                    comm.comp_conved_utf8 = to_utf8_pointer(comp_converted);
-                                    comm.comp_target_utf8 = to_utf8_pointer(comp_target);
-                                    comm.comp_unconv_utf8 = to_utf8_pointer(comp_unconveted);
-
-                                    if (!neko_s_cast<bool>(comm.comp_target_utf8)) {
-                                        comm.candidate_list.clear();
-                                    } else {
-                                        if (!comm.update_candidate_window(hWnd)) {
-                                            comm.candidate_list.clear();
-                                        }
-                                    }
-                                }
-                            }
-                        } break;
-                    }
-                }
-                ME_ASSERT(ImmReleaseContext(hWnd, hImc));
-            }
-        }
-
-#if defined(UNICODE)
-            return ::DefWindowProc(hWnd, uMsg, wParam, lParam);
-#else
-            return ::DefSubclassProc(hWnd, uMsg, wParam, lParam);
-#endif
-
-        case WM_IME_NOTIFY: {
-            switch (wParam) {
-
-                case IMN_OPENCANDIDATE:
-                    comm.show_ime_candidate_list = true;
-#if 0
-            if (IMN_OPENCANDIDATE == wParam) {
-                OutputDebugStringW(L"IMN_OPENCANDIDATE\n");
-            }
-#endif
-                    ;  // tear down;
-                case IMN_CHANGECANDIDATE: {
-#if 0
-            if (IMN_CHANGECANDIDATE == wParam) {
-                OutputDebugStringW(L"IMN_CHANGECANDIDATE\n");
-            }
-#endif
-
-                    if (!comm.show_ime_candidate_list) {
-                        comm.show_ime_candidate_list = true;
-                    }
-
-                    HIMC const hImc = ImmGetContext(hWnd);
-                    if (hImc) {
-                        DWORD dwSize = ImmGetCandidateListW(hImc, 0, NULL, 0);
-                        if (dwSize) {
-                            IM_ASSERT(sizeof(CANDIDATELIST) <= dwSize);
-                            if (sizeof(CANDIDATELIST) <= dwSize) {
-                                (void)(lParam);
-                                std::vector<char> candidatelist((size_t)dwSize);
-                                if ((DWORD)(std::size(candidatelist) * sizeof(typename decltype(candidatelist)::value_type)) ==
-                                    ImmGetCandidateListW(hImc, 0, reinterpret_cast<CANDIDATELIST*>(candidatelist.data()),
-                                                         (DWORD)(std::size(candidatelist) * sizeof(typename decltype(candidatelist)::value_type)))) {
-                                    const CANDIDATELIST* const cl = reinterpret_cast<CANDIDATELIST*>(candidatelist.data());
-                                    comm.candidate_list = std::move(imm_candidate_list::cocreate(cl, dwSize));
-                                }
-                            }
-                        }
-                        ME_ASSERT(ImmReleaseContext(hWnd, hImc));
-                    }
-                }
-
-                    IM_ASSERT(0 <= comm.request_candidate_list_str_commit);
-                    if (comm.request_candidate_list_str_commit) {
-                        if (comm.request_candidate_list_str_commit == 1) {
-                            ME_ASSERT(PostMessage(hWnd, IMGUI_IMM_COMMAND, IMGUI_IMM_COMMAND_COMPOSITION_COMPLETE, 0));
-                        }
-                        --(comm.request_candidate_list_str_commit);
-                    }
-
-                    break;
-                case IMN_CLOSECANDIDATE: {
-                    // OutputDebugStringW(L"IMN_CLOSECANDIDATE\n");
-                    comm.show_ime_candidate_list = false;
-                } break;
-                default:
-                    break;
-            }
-        }
-            return ::DefWindowProc(hWnd, uMsg, wParam, lParam);
-
-        case WM_IME_REQUEST:
-            return ::DefWindowProc(hWnd, uMsg, wParam, lParam);
-
-        case WM_INPUTLANGCHANGE:
-            return ::DefWindowProc(hWnd, uMsg, wParam, lParam);
-
-        case IMGUI_IMM_COMMAND: {
-            switch (wParam) {
-                case IMGUI_IMM_COMMAND_NOP:  // NOP
-                    return 1;
-                case IMGUI_IMM_COMMAND_SUBCLASSIFY: {
-                    ImGuiIO& io = ImGui::GetIO();
-                    if (io.ImeWindowHandle) {
-                        IM_ASSERT(IsWindow(neko_s_cast<HWND>(io.ImeWindowHandle)));
-                        ME_ASSERT(ImmAssociateContextEx(neko_s_cast<HWND>(io.ImeWindowHandle), nullptr, IACE_IGNORENOCONTEXT));
-                    }
-                }
-                    return 1;
-                case IMGUI_IMM_COMMAND_COMPOSITION_COMPLETE:
-                    if (!neko_s_cast<bool>(comm.comp_unconv_utf8) || '\0' == *(comm.comp_unconv_utf8.get())) {
-#if 0
-                        HIMC const hImc = ImmGetContext(hWnd);
-                        if (hImc) {
-                            ME_ASSERT(ImmNotifyIME(hImc, NI_COMPOSITIONSTR, CPS_COMPLETE, 0));
-                            ME_ASSERT(ImmReleaseContext(hWnd, hImc));
-                        }
-#else
-                        keybd_event(VK_RETURN, 0, 0, 0);
-                        keybd_event(VK_RETURN, 0, KEYEVENTF_KEYUP, 0);
-#endif
-                    } else {
-                        keybd_event(VK_RIGHT, 0, 0, 0);
-                        keybd_event(VK_RIGHT, 0, KEYEVENTF_KEYUP, 0);
-                    }
-                    return 1;
-                default:
-                    break;
-            }
-        }
-            return 1;
-        default:
-            break;
-    }
-    return ::DefSubclassProc(hWnd, uMsg, wParam, lParam);
-}
-
-BOOL ME_imgui_imm::subclassify_impl(HWND hWnd) {
-    IM_ASSERT(IsWindow(hWnd));
-    if (!IsWindow(hWnd)) {
-        return FALSE;
-    }
-    ImGui::GetIO().ImeWindowHandle = neko_s_cast<void*>(hWnd);
-    if (::SetWindowSubclass(hWnd, ME_imgui_imm::imm_communication_subclassproc, reinterpret_cast<UINT_PTR>(ME_imgui_imm::imm_communication_subclassproc), reinterpret_cast<DWORD_PTR>(this))) {
-        return PostMessage(hWnd, IMGUI_IMM_COMMAND, IMGUI_IMM_COMMAND_SUBCLASSIFY, 0u);
-    }
-    return FALSE;
-}
-
-int common_control_initialize() {
-    HMODULE comctl32 = nullptr;
-    if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, L"Comctl32.dll", &comctl32)) {
-        return EXIT_FAILURE;
-    }
-
-    assert(comctl32 != nullptr);
-    if (comctl32) {
-        {
-            typename std::add_pointer<decltype(InitCommonControlsEx)>::type lpfnInitCommonControlsEx =
-                    reinterpret_cast<typename std::add_pointer<decltype(InitCommonControlsEx)>::type>(GetProcAddress(comctl32, "InitCommonControlsEx"));
-
-            if (lpfnInitCommonControlsEx) {
-                const INITCOMMONCONTROLSEX initcommoncontrolsex = {sizeof(INITCOMMONCONTROLSEX), ICC_WIN95_CLASSES};
-                if (!lpfnInitCommonControlsEx(&initcommoncontrolsex)) {
-                    assert(!" InitCommonControlsEx(&initcommoncontrolsex) ");
-                    return EXIT_FAILURE;
-                }
-                // OutputDebugStringW(L"initCommonControlsEx Enable\n");
-                return 0;
-            }
-        }
-        {
-            InitCommonControls();
-            // OutputDebugStringW(L"initCommonControls Enable\n");
-            return 0;
-        }
-    }
-    return 1;
-}
-
-#endif
 
 #if 1
 
@@ -1768,3 +1276,68 @@ Container data, large structs and tuples are hidden by default.
 }
 
 #endif
+
+namespace neko {
+
+neko_global std::size_t g_imgui_mem_usage = 0;
+
+neko_private(void*) __neko_imgui_malloc(size_t sz, void* user_data) { return __neko_mem_safe_alloc((sz), (char*)__FILE__, __LINE__, &g_imgui_mem_usage); }
+
+neko_private(void) __neko_imgui_free(void* ptr, void* user_data) { __neko_mem_safe_free(ptr, &g_imgui_mem_usage); }
+
+std::size_t __neko_imgui_meminuse() { return g_imgui_mem_usage; }
+
+void neko_imgui_init() {
+    neko_platform_i* platform = neko_engine_instance()->ctx.platform;
+
+    // Get main window from platform
+    GLFWwindow* win = (GLFWwindow*)platform->raw_window_handle(platform->main_window());
+
+    ImGui::SetAllocatorFunctions(__neko_imgui_malloc, __neko_imgui_free);
+
+    // Setup Dear ImGui context
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+    // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+
+    io.IniFilename = "imgui.ini";
+
+    io.Fonts->AddFontFromFileTTF(neko_file_path("data/assets/fonts/fusion-pixel-12px-monospaced.ttf"), 20.0f, NULL, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
+
+    // Setup Dear ImGui style
+    ImGui::StyleColorsDark();
+
+    neko_imgui_style();
+
+    // Setup Platform/Renderer bindings
+    ImGui_ImplGlfw_InitForOpenGL(win, true);
+    ImGui_ImplOpenGL3_Init();
+}
+
+void neko_imgui_new_frame() {
+    // Start the Dear ImGui frame
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+}
+
+void neko_imgui_render() {
+    neko_platform_i* platform = neko_engine_instance()->ctx.platform;
+
+    // TODO: 将这一切抽象出来并通过命令缓冲系统渲染
+    ImGui::Render();
+    neko_vec2 fbs = platform->frame_buffer_size(platform->main_window());
+    glViewport(0, 0, fbs.x, fbs.y);
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+}
+
+void neko_imgui_destroy() {
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+}
+
+}  // namespace neko

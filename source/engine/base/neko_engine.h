@@ -3,6 +3,7 @@
 
 #include "engine/common/neko_types.h"
 #include "engine/platform/neko_platform.h"
+#include "engine/scripting/neko_scripting.h"
 #include "engine/utility/neko_static_refl.hpp"
 
 // Forward Decl
@@ -43,6 +44,10 @@ struct neko::meta::static_refl::TypeInfo<neko_application_desc_t> : TypeInfoBase
 */
 typedef struct neko_engine_context_t {
     // 引擎基本接口
+
+    // 脚本系统
+    neko::neko_scripting scripting;
+
     struct neko_platform_i *platform;  // Main platform interface
     struct neko_graphics_i *graphics;
     struct neko_audio_i *audio;
@@ -51,22 +56,23 @@ typedef struct neko_engine_context_t {
     bool is_running;
 
     // 客户端暴露接口
-    neko_result (*init)();
     neko_result (*update)();
     neko_result (*shutdown)();
 } neko_engine_context_t;
 
 // Main engine interface
-typedef struct neko_engine_t {
+typedef struct neko_engine {
     neko_engine_context_t ctx;
-    neko_result (*run)();
-    neko_result (*shutdown)();
-} neko_engine_t;
+    neko_result (*engine_run)();
+    neko_result (*engine_shutdown)();
+} neko_engine;
 
-extern neko_engine_t *neko_engine_construct();
-extern neko_engine_t *neko_engine_instance();
+extern neko_engine *neko_engine_construct(int argc, char **argv);
+extern neko_engine *neko_engine_instance();
 
 #define neko_engine_subsystem(T) (neko_engine_instance()->ctx.T)
+
+#define neko_sc() (&neko_engine_subsystem(scripting))
 
 #define neko_engine_user_data(T) (T *)(neko_engine_instance()->ctx.app.user_data)
 

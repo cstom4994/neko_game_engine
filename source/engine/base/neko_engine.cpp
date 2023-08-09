@@ -12,7 +12,6 @@
 #include "engine/gui/neko_text_renderer.hpp"
 #include "engine/math/neko_math.h"
 #include "engine/platform/neko_platform.h"
-#include "engine/scripting/neko_scripting.h"
 #include "engine/utility/enum.hpp"
 #include "engine/utility/logger.hpp"
 #include "engine/utility/module.hpp"
@@ -24,8 +23,8 @@ using namespace std::literals;
 
 neko_define_logger_impl();
 
-// Global instance of neko engine (...THERE CAN ONLY BE ONE)
-neko_global neko_engine_t *neko_engine_instance_g = {0};
+// Global instance of neko engine
+neko_global neko::scope<neko_engine> g_neko;
 
 // Function forward declarations
 neko_result neko_engine_run();
@@ -37,7 +36,7 @@ void __neko_default_main_window_close_callback(void *window);
 
 neko_resource_handle window;
 
-ENUM_HPP_CLASS_DECL(neko_modules_op, u32, (init = 1)(shutdown = 2));
+ENUM_HPP_CLASS_DECL(neko_modules_op, u32, (init = 1)(shutdown = 2)(update = 3));
 ENUM_HPP_REGISTER_TRAITS(neko_modules_op);
 
 #define __neko_module_types() text_renderer, dbgui
@@ -45,24 +44,28 @@ ENUM_HPP_REGISTER_TRAITS(neko_modules_op);
 // 递归展开类型列表，并调用函数模板
 template <typename T, typename... Rest>
 void __neko_module_command(cpp::TypeList<T, Rest...>, neko_modules_op op) {
+    try {
+        switch (op) {
+            case neko_modules_op::init:
+                neko_info(std::format("initialize {0}", std::string(cpp::type_name<T>().View())));
+                modules::initialize<T>();
+                break;
+            case neko_modules_op::shutdown:
+                neko_info(std::format("shutdown {0}", std::string(cpp::type_name<T>().View())));
+                modules::shutdown<T>();
+                break;
+            case neko_modules_op::update:
+                the<T>().__update();
+                break;
+            default:
+                break;
+        }
 
-    switch (op) {
-        case neko_modules_op::init:
-            neko_info(std::format("initialize {0}", std::string(cpp::type_name<T>().View())));
-
-            modules::initialize<T>();
-            break;
-        case neko_modules_op::shutdown:
-            neko_info(std::format("shutdown {0}", std::string(cpp::type_name<T>().View())));
-
-            modules::shutdown<T>();
-            break;
-        default:
-            break;
+        // 继续递归调用 __neko_module_command，处理 Rest...
+        __neko_module_command(cpp::TypeList<Rest...>(), op);
+    } catch (std::exception &ex) {
+        neko_error("__neko_module_command failed ", ex.what());
     }
-
-    // 继续递归调用 __neko_module_command，处理 Rest...
-    __neko_module_command(cpp::TypeList<Rest...>(), op);
 }
 
 // 终止递归的特化版本，处理空的 TypeList
@@ -71,10 +74,6 @@ void __neko_module_command(cpp::TypeList<>, neko_modules_op op) {
 }
 
 void __neko_engine_construct_high() {
-    // auto f = [&]<typename T>(void) { modules::initialize<decltype(std::declval<T>)>(); };
-    // using module_types_t = std::tuple<__neko_module_types()>;
-    // std::apply([&](auto &&...args) { (f<decltype(args)>(), ...); }, module_types_t{});
-
     using __module_init_type_list = cpp::TypeList<__neko_module_types()>;
     __neko_module_command(__module_init_type_list{}, neko_modules_op::init);
 }
@@ -86,120 +85,133 @@ void __neko_engine_shutdown_high() {
     __neko_module_command(__module_shutdown_type_list{}, neko_modules_op::shutdown);
 }
 
-neko_engine_t *neko_engine_construct() {
-    if (neko_engine_instance_g == NULL) {
+void __neko_engine_update_high() {
+    using __module_init_type_list = cpp::TypeList<__neko_module_types()>;
+    __neko_module_command(__module_init_type_list{}, neko_modules_op::update);
+}
 
-        neko_mem_init();
+neko_engine *neko_engine_construct(int argc, char **argv) {
 
-        // Construct instance
-        neko_engine_instance_g = neko_malloc_init(neko_engine_t);
+    if (g_neko != NULL) {
+        neko_assert(!g_neko, "repeated initialization");
+        return g_neko.get();
+    }
 
-        // Set application description for engine
-        // neko_engine_instance_g->ctx.app = app_desc;
+    neko_mem_init();
 
-        // Initialize the meta class registry
-        // Want a way to add user meta class information as well as the engine's (haven't considered how that looks yet)
-        // neko_meta_class_registry_init(&neko_engine_instance_g->ctx.registry);
+    // Construct instance
+    g_neko = create_scope<neko_engine>();
 
-        // neko_assert(neko_engine_instance_g->ctx.registry.classes != NULL);
+    // Set application description for engine
+    // g_neko->ctx.app = app_desc;
 
-        // TODO: 初始化反射
+    // Initialize the meta class registry
+    // Want a way to add user meta class information as well as the engine's (haven't considered how that looks yet)
+    // neko_meta_class_registry_init(&g_neko->ctx.registry);
 
-        // 脚本系统
-        scripting script;
+    // neko_assert(g_neko->ctx.registry.classes != NULL);
 
-        script.__init();
+    // TODO: 初始化反射
 
-        auto L = script.neko_lua.get_lua_state();
+    // Set up function pointers
+    g_neko->engine_run = &neko_engine_run;
+    g_neko->engine_shutdown = &neko_engine_shutdown;
 
-        neko_lua_auto_struct(L, neko_application_desc_t);
-        neko_lua_auto_struct_member(L, neko_application_desc_t, window_title, const char *);
-        neko_lua_auto_struct_member(L, neko_application_desc_t, window_width, unsigned int);
-        neko_lua_auto_struct_member(L, neko_application_desc_t, window_height, unsigned int);
+    // 初始化Platform子系统
 
-        try {
-            script.neko_lua.load_file("data/scripts/main.lua");
+    // Need to have video settings passed down from user
+    g_neko->ctx.platform = neko_platform_construct();
 
-            neko_application_desc_t t = {"Test", 1440, 840, neko_window_flags::resizable, 60.0f};
+    // Default initialization for platform here
+    __neko_default_init_platform(g_neko->ctx.platform);
 
-            // neko_lua_auto_push(L, neko_application_dedsc_t, &t);
+    // 初始化脚本系统
+    neko_sc()->__init();
 
-            if (lua_getglobal(L, "app") == LUA_TNIL) throw std::exception("no app");
+    auto L = neko_sc()->neko_lua.get_lua_state();
 
-            if (lua_istable(L, -1)) {
-                neko::meta::static_refl::TypeInfo<neko_application_desc_t>::ForEachVarOf(t, [&L](auto field, auto &&value) {
-                    static_assert(std::is_lvalue_reference_v<decltype(value)>);
-                    if (lua_getfield(L, -1, std::string(field.name).c_str()) != LUA_TNIL) value = neko::neko_lua_to<std::remove_reference_t<decltype(value)>>(L, -1);
-                    lua_pop(L, 1);
-                });
-            } else {
-                throw std::exception("no app table");
-            }
+    neko_lua_auto_struct(L, neko_application_desc_t);
+    neko_lua_auto_struct_member(L, neko_application_desc_t, window_title, const char *);
+    neko_lua_auto_struct_member(L, neko_application_desc_t, window_width, unsigned int);
+    neko_lua_auto_struct_member(L, neko_application_desc_t, window_height, unsigned int);
 
-            lua_pop(L, 1);
+    try {
 
-            neko_engine_instance_g->ctx.app = t;
+        lua_newtable(L);
+        for (int n = 0; n < argc; ++n) {
+            lua_pushstring(L, argv[n]);
+            lua_rawseti(L, -2, n);
+        }
+        lua_setglobal(L, "arg");
 
-        } catch (std::exception &ex) {
-            neko_error(ex.what());
+        neko_sc()->neko_lua.load_file(neko_file_path("data/scripts/main.lua"));
+
+        neko_application_desc_t t = {"Test", 1440, 840, neko_window_flags::resizable, 60.0f};
+
+        // neko_lua_auto_push(L, neko_application_dedsc_t, &t);
+
+        if (lua_getglobal(L, "app") == LUA_TNIL) throw std::exception("no app");
+
+        if (lua_istable(L, -1)) {
+            neko::meta::static_refl::TypeInfo<neko_application_desc_t>::ForEachVarOf(t, [&L](auto field, auto &&value) {
+                static_assert(std::is_lvalue_reference_v<decltype(value)>);
+                if (lua_getfield(L, -1, std::string(field.name).c_str()) != LUA_TNIL) value = neko::neko_lua_to<std::remove_reference_t<decltype(value)>>(L, -1);
+                lua_pop(L, 1);
+            });
+        } else {
+            throw std::exception("no app table");
         }
 
-        // Set up function pointers
-        neko_engine_instance_g->run = &neko_engine_run;
-        neko_engine_instance_g->shutdown = &neko_engine_shutdown;
+        lua_pop(L, 1);
 
-        // Need to have video settings passed down from user
-        neko_engine_instance_g->ctx.platform = neko_platform_construct();
-
-        // Default initialization for platform here
-        __neko_default_init_platform(neko_engine_instance_g->ctx.platform);
+        g_neko->ctx.app = t;
 
         // Set frame rate for application
-        if (neko_engine_instance_g->ctx.app.frame_rate > 0.f) {
-            neko_engine_instance_g->ctx.platform->time.max_fps = neko_engine_instance_g->ctx.app.frame_rate;
-        }
+        if (g_neko->ctx.app.frame_rate > 0.f) g_neko->ctx.platform->time.max_fps = g_neko->ctx.app.frame_rate;
 
         // Set vsync for video
-        neko_engine_instance_g->ctx.platform->enable_vsync(false);
+        g_neko->ctx.platform->enable_vsync(false);
 
         // Construct window
-        neko_engine_instance()->ctx.platform->create_window(neko_engine_instance_g->ctx.app.window_title, neko_engine_instance_g->ctx.app.window_width, neko_engine_instance_g->ctx.app.window_height);
+        neko_engine_instance()->ctx.platform->create_window(g_neko->ctx.app.window_title, g_neko->ctx.app.window_width, g_neko->ctx.app.window_height);
 
         // Construct graphics api
-        neko_engine_instance_g->ctx.graphics = __neko_graphics_construct();
+        g_neko->ctx.graphics = __neko_graphics_construct();
 
         // Initialize graphics here
-        neko_engine_instance_g->ctx.graphics->init(neko_engine_instance_g->ctx.graphics);
+        g_neko->ctx.graphics->init(g_neko->ctx.graphics);
 
         // Construct audio api
-        neko_engine_instance_g->ctx.audio = __neko_audio_construct();
+        g_neko->ctx.audio = __neko_audio_construct();
 
         // Initialize audio
-        neko_engine_instance_g->ctx.audio->init(neko_engine_instance_g->ctx.audio);
+        g_neko->ctx.audio->init(g_neko->ctx.audio);
 
         // Default application context
-        neko_engine_instance_g->ctx.init = &__neko_default_app_init;
-        neko_engine_instance_g->ctx.update = &__neko_default_app_update;
-        neko_engine_instance_g->ctx.shutdown = &__neko_default_app_shutdown;
+        g_neko->ctx.update = &__neko_default_app_update;
+        g_neko->ctx.shutdown = &__neko_default_app_shutdown;
 
         __neko_engine_construct_high();
 
-        if (neko_engine_instance_g->ctx.init) {
-            if (neko_engine_instance_g->ctx.init() != neko_result_success) {
-                // Show error before aborting
-                neko_error("application failed to initialize.");
-                neko_assert(false);
-            }
+        if (__neko_default_app_init() != neko_result_success) {
+            // Show error before aborting
+            neko_error("application failed to initialize.");
+            neko_assert(false);
         }
 
-        neko_engine_instance_g->ctx.is_running = true;
+        g_neko->ctx.is_running = true;
 
         // Set default callback for when main window close button is pressed
-        neko_platform_i *platform = neko_engine_instance_g->ctx.platform;
+        neko_platform_i *platform = g_neko->ctx.platform;
         platform->set_window_close_callback(platform->main_window(), &__neko_default_main_window_close_callback);
-    }
 
-    return neko_engine_instance_g;
+        return g_neko.get();
+
+    } catch (std::exception &ex) {
+        neko_error(ex.what());
+
+        return nullptr;
+    }
 }
 
 neko_result neko_engine_run() {
@@ -223,14 +235,23 @@ neko_result neko_engine_run() {
 
         // Process input for this frame
         if (platform->process_input(NULL) != neko_result_in_progress) {
-            return (neko_engine_instance()->shutdown());
+            return (neko_engine_instance()->engine_shutdown());
         }
+
+        neko_imgui_new_frame();
 
         // Process application context
         if (neko_engine_instance()->ctx.update() != neko_result_in_progress || !neko_engine_instance()->ctx.is_running) {
             // Shutdown engine and return
-            return (neko_engine_instance()->shutdown());
+            return (neko_engine_instance()->engine_shutdown());
         }
+
+        neko_sc()->neko_lua.call("test_update");
+
+        __neko_engine_update_high();
+
+        // 渲染 imgui 内容
+        neko_imgui_render();
 
         // Audio update and commit
         if (audio) {
@@ -279,9 +300,13 @@ neko_result neko_engine_shutdown() {
     // Shutdown application
     neko_result app_result = (neko_engine_instance()->ctx.shutdown());
 
+    neko_imgui_destroy();
+
     __neko_engine_shutdown_high();
 
     neko_safe_free(neko_engine_instance()->ctx.platform->ctx.gamepath);
+
+    neko_sc()->__end();
 
     // 在 app 结束后进行内存检查
     neko_mem_end();
@@ -289,9 +314,12 @@ neko_result neko_engine_shutdown() {
     return app_result;
 }
 
-neko_engine_t *neko_engine_instance() { return neko_engine_instance_g; }
+neko_engine *neko_engine_instance() { return g_neko.get(); }
 
 neko_result __neko_default_app_init() {
+    // 启用 imgui
+    neko_imgui_init();
+
     extern neko_result app_init();
     return app_init();
 }

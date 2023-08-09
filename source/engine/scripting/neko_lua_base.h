@@ -2,6 +2,9 @@
 #ifndef NEKO_LUA_BASE_H
 #define NEKO_LUA_BASE_H
 
+#include <cstdlib>
+#include <string>
+
 #include "engine/common/neko_types.h"
 #include "libs/lua/lua.hpp"
 
@@ -154,18 +157,23 @@ bool neko_lua_auto_struct_registered_type(lua_State *L, neko_lua_auto_Type type)
 
 const char *neko_lua_auto_struct_next_member_name_type(lua_State *L, neko_lua_auto_Type type, const char *member);
 
-/*
-** Enums
-*/
-
 #define neko_lua_auto_enum(L, type) neko_lua_auto_enum_type(L, neko_lua_auto_type(L, type), sizeof(type))
-#define neko_lua_auto_enum_value(L, type, value) neko_lua_auto_enum_value_type(L, neko_lua_auto_type(L, type), (const type[]){value}, #value);
-#define neko_lua_auto_enum_value_name(L, type, value, name) neko_lua_auto_enum_value_type(L, neko_lua_auto_type(L, type), (const type[]){value}, name);
+
+#define neko_lua_auto_enum_value(L, type, value)                    \
+    const type __neko_lua_auto_enum_value_temp_##value[] = {value}; \
+    neko_lua_auto_enum_value_type(L, neko_lua_auto_type(L, type), __neko_lua_auto_enum_value_temp_##value, #value)
+
+#define neko_lua_auto_enum_value_name(L, type, value, name)         \
+    const type __neko_lua_auto_enum_value_temp_##value[] = {value}; \
+    neko_lua_auto_enum_value_type(L, neko_lua_auto_type(L, type), __neko_lua_auto_enum_value_temp_##value, name)
 
 #define neko_lua_auto_enum_push(L, type, c_in) neko_lua_auto_enum_push_type(L, neko_lua_auto_type(L, type), c_in)
 #define neko_lua_auto_enum_to(L, type, c_out, index) neko_lua_auto_enum_to_type(L, neko_lua_auto_type(L, type), c_out, index)
 
-#define neko_lua_auto_enum_has_value(L, type, value) neko_lua_auto_enum_has_value_type(L, neko_lua_auto_type(L, type), (const type[]){value})
+#define neko_lua_auto_enum_has_value(L, type, value)                \
+    const type __neko_lua_auto_enum_value_temp_##value[] = {value}; \
+    neko_lua_auto_enum_has_value_type(L, neko_lua_auto_type(L, type), __neko_lua_auto_enum_value_temp_##value)
+
 #define neko_lua_auto_enum_has_name(L, type, name) neko_lua_auto_enum_has_name_type(L, neko_lua_auto_type(L, type), name)
 
 #define neko_lua_auto_enum_registered(L, type) neko_lua_auto_enum_registered_type(L, neko_lua_auto_type(L, type))
@@ -817,6 +825,31 @@ int neko_lua_preload_auto(lua_State *L, lua_CFunction f, const char *name);
 void neko_lua_load(lua_State *L, const luaL_Reg *l, const char *name);
 void neko_lua_loadover(lua_State *L, const luaL_Reg *l, const char *name);
 
+neko_inline void neko_lua_print_stack(lua_State *L) {
+    int top = lua_gettop(L);  // 获取堆栈上的元素个数
+    printf("Stack size: %d\n", top);
+
+    for (int i = 1; i <= top; ++i) {
+        int type = lua_type(L, i);                      // 获取元素的类型
+        const char *type_name = lua_typename(L, type);  // 获取类型名称
+
+        printf("[%d] Type: %s | Value: ", i, type_name);
+
+        switch (type) {
+            case LUA_TSTRING:
+                printf("%s\n", lua_tostring(L, i));  // 输出字符串值
+                break;
+            case LUA_TNUMBER:
+                printf("%f\n", lua_tonumber(L, i));  // 输出数字值
+                break;
+            default:
+                printf("Unknown\n");
+                break;
+        }
+    }
+    printf("\n");
+}
+
 #pragma region LuaMemSafe
 
 #define SAFELUA_CANCELED (-2)
@@ -845,14 +878,6 @@ int neko_lua_safe_remove_handler(lua_State *state, neko_lua_safe_Handler handler
 int luaopen_cstruct_core(lua_State *L);
 int luaopen_cstruct_test(lua_State *L);
 int luaopen_datalist(lua_State *L);
-
-#ifndef _WIN32
-#include <stdint.h>
-#endif
-
-#include <stdlib.h>
-
-#include <string>
 
 #include "neko_lua_register.h"
 

@@ -15,6 +15,7 @@
 #include "engine/base/neko_engine.h"
 #include "engine/common/neko_str.h"
 #include "engine/platform/neko_platform.h"
+#include "engine/scripting/neko_binding_engine.h"
 
 #define FUTIL_ASSERT_EXIST(x)
 
@@ -72,14 +73,7 @@ static int ls(lua_State *L) {
     return 1;
 }
 
-static void add_packagepath(const char *p) {
-    // auto &s_lua = the<scripting>().s_lua;
-    // neko_assert(&s_lua);
-    // s_lua.dostring(std::format("package.path = "
-    //                            "'{0}/?.lua;' .. package.path",
-    //                            p),
-    //                s_lua.globalTable());
-}
+static void __neko_add_packagepath(const char *p) { neko_sc()->neko_lua.add_package_path(p); }
 
 void print_error(lua_State *state, int result) {
     const char *message = lua_tostring(state, -1);
@@ -107,22 +101,8 @@ void print_error(lua_State *state, int result) {
     lua_pop(state, 1);
 }
 
-static char buf[1024];
-
-static std::string readStringFromFile(const char *filePath) {
-    FUTIL_ASSERT_EXIST(filePath);
-
-    FILE *f = fopen(filePath, "r");
-    if (!f) return "";
-    int read = 0;
-    std::string out;
-    while ((read = fread(buf, 1, 1024, f)) != 0) out += std::string_view(buf, read);
-    fclose(f);
-    return out;
-}
-
 #if 0
-static void InitLua(scripting *lc) {
+static void InitLua(neko_scripting *lc) {
 
     lc->L = lc->s_lua.state();
 
@@ -208,7 +188,9 @@ static void lua_reg(lua_State *ls) {
             .def(&__neko_lua_bug, "log_debug")
             .def(&__neko_lua_error, "log_error")
             .def(&__neko_lua_warn, "log_warn")
-            .def(&__neko_lua_info, "log_info");
+            .def(&__neko_lua_info, "log_info")
+
+            .def(&__neko_add_packagepath, "add_packagepath");
 
     lua_reg_ecs(ls);
 
@@ -217,9 +199,11 @@ static void lua_reg(lua_State *ls) {
     luaopen_cstruct_core(ls);
     luaopen_cstruct_test(ls);
     luaopen_datalist(ls);
+
+    neko_register(ls);
 }
 
-void scripting::__init() {
+void neko_scripting::__init() {
     neko_timer timer;
     timer.start();
 
@@ -255,9 +239,9 @@ void scripting::__init() {
     neko_info(std::format("lua loading done in {0:.4f} ms", timer.get()));
 }
 
-void scripting::__end() {}
+void neko_scripting::__end() {}
 
-void scripting::update() {
+void neko_scripting::update() {
     // luaL_loadstring(_struct->L, s_couroutineFileSrc.c_str());
     // if (__neko_lua_debug_pcall(_struct->L, 0, LUA_MULTRET, 0) != LUA_OK) {
     //     print_error(_struct->L);
@@ -268,9 +252,9 @@ void scripting::update() {
     // OnUpdate();
 }
 
-void scripting::update_render() {}
+void neko_scripting::update_render() {}
 
-void scripting::update_tick() {}
+void neko_scripting::update_tick() {}
 
 static void lua_reg_ecs(lua_State *ls) {
     neko_lua_register_t<>(ls)
