@@ -306,8 +306,8 @@ neko_inline void neko_register_platform(lua_State* L) {
 }
 
 static int __neko_bind_pack_construct(lua_State* L) {
-    const char* name = lua_tostring(L, 1);
-    const char* path = lua_tostring(L, 2);
+    const_str name = lua_tostring(L, 1);
+    const_str path = lua_tostring(L, 2);
 
     neko_lua_handle_t* userdata_ptr = (neko_lua_handle_t*)lua_newuserdata(L, sizeof(neko_lua_handle_t));
 
@@ -317,7 +317,7 @@ static int __neko_bind_pack_construct(lua_State* L) {
     neko_pack_result result = neko_pack_read(path, 0, false, (neko_packreader_t**)&userdata_ptr->data);
 
     if (!neko_pack_check(result)) {
-        const char* error_message = "neko_pack_check failed";
+        const_str error_message = "neko_pack_check failed";
         lua_pushstring(L, error_message);  // 将错误信息压入堆栈
         return lua_error(L);               // 抛出lua错误
     }
@@ -345,6 +345,83 @@ neko_inline void neko_register_pack(lua_State* L) {
     lua_register(L, "neko_pack_destroy", __neko_bind_pack_destroy);
 }
 
+static int __neko_bind_cvar_new(lua_State* L) {
+    const_str name = lua_tostring(L, 1);
+    const_str type = lua_tostring(L, 2);
+
+    // 检查是否已经存在
+    neko_cvar_t* cv = __neko_config_get(name);
+    if (NULL != cv) {
+        const_str error_message = "__neko_bind_cvar_new failed";
+        lua_pushstring(L, error_message);  // 将错误信息压入堆栈
+        return lua_error(L);               // 抛出lua错误
+    }
+
+    neko_cvar_type cval;
+    lua_pushstring(g_lua_bind, type);
+    neko_lua_auto_to(g_lua_bind, neko_cvar_type, &cval, -1);
+    lua_pop(g_lua_bind, 1);
+
+    switch (cval) {
+        case neko::__NEKO_CONFIG_TYPE_INT:
+            neko_cvar_lnew(name, cval, neko_lua_to<int>(L, 3));
+            break;
+        case neko::__NEKO_CONFIG_TYPE_FLOAT:
+            neko_cvar_lnew(name, cval, neko_lua_to<float>(L, 3));
+            break;
+        case neko::__NEKO_CONFIG_TYPE_STRING:
+            neko_cvar_lnew_str(name, cval, neko_lua_to<const_str>(L, 3));
+            break;
+        case neko::__NEKO_CONFIG_TYPE_COUNT:
+        default:
+            neko_warn(std::format("__neko_bind_cvar_new with a unknown type {0} {1} {2}", name, type, (u8)cval));
+            break;
+    }
+    return 0;
+}
+
+static int __neko_bind_cvar_get(lua_State* L) {
+    const_str name = lua_tostring(L, 1);
+    neko_cvar_t* cv = __neko_config_get(name);
+
+    if (NULL == cv) {
+        lua_pushnil(L);
+        return 1;  // 如果不存在就返回nil
+    }
+
+    switch (cv->type) {
+        case neko::__NEKO_CONFIG_TYPE_INT:
+            lua_pushinteger(L, cv->value.i);
+            break;
+        case neko::__NEKO_CONFIG_TYPE_FLOAT:
+            lua_pushnumber(L, cv->value.f);
+            break;
+        case neko::__NEKO_CONFIG_TYPE_STRING:
+            lua_pushstring(L, cv->value.s);
+            break;
+        case neko::__NEKO_CONFIG_TYPE_COUNT:
+        default:
+            break;
+    }
+    return 1;
+}
+
+static int __neko_bind_cvar_set(lua_State* L) {
+    const_str name = lua_tostring(L, 1);
+
+    // 检查是否存在
+    neko_cvar_t* cv = __neko_config_get(name);
+    if (NULL == cv) {
+        const_str error_message = "__neko_bind_cvar_set failed";
+        lua_pushstring(L, error_message);  // 将错误信息压入堆栈
+        return lua_error(L);               // 抛出lua错误
+    }
+
+    neko_cvar_set(cv, neko_lua_to<const_str>(L, 2));
+
+    return 0;
+}
+
 neko_inline void neko_register_common(lua_State* L) {
 
     neko_lua_auto_struct(L, neko_application_desc_t);
@@ -356,6 +433,16 @@ neko_inline void neko_register_common(lua_State* L) {
     neko_lua_auto_struct_member(L, neko_vec2, x, f32);
     neko_lua_auto_struct_member(L, neko_vec2, y, f32);
     neko_lua_auto_struct_member(L, neko_vec2, xy, f32[2]);
+
+    neko_lua_auto_enum(L, neko_cvar_type);
+    neko_lua_auto_enum_value(L, neko_cvar_type, __NEKO_CONFIG_TYPE_INT);
+    neko_lua_auto_enum_value(L, neko_cvar_type, __NEKO_CONFIG_TYPE_FLOAT);
+    neko_lua_auto_enum_value(L, neko_cvar_type, __NEKO_CONFIG_TYPE_STRING);
+    neko_lua_auto_enum_value(L, neko_cvar_type, __NEKO_CONFIG_TYPE_COUNT);
+
+    lua_register(L, "neko_cvar", __neko_bind_cvar_get);
+    lua_register(L, "neko_cvar_new", __neko_bind_cvar_new);
+    lua_register(L, "neko_cvar_set", __neko_bind_cvar_set);
 }
 
 neko_inline void neko_register(lua_State* L) {

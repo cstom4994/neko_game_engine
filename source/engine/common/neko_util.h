@@ -84,7 +84,8 @@
         }                                \
     } while (0)
 
-#define neko_concat(x, y) x##y
+#define neko_concat(x, y) neko_concat_impl(x, y)
+#define neko_concat_impl(x, y) x##y
 
 #define neko_invoke_once(...)                           \
     static char neko_concat(unused, __LINE__) = [&]() { \

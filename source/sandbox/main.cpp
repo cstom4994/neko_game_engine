@@ -14,7 +14,6 @@
 #include "engine/gui/neko_text_renderer.hpp"
 #include "engine/neko.h"
 #include "engine/scripting/neko_scripting.h"
-#include "engine/utility/defer.hpp"
 #include "engine/utility/hash.hpp"
 #include "engine/utility/logger.hpp"
 #include "engine/utility/module.hpp"
@@ -1038,6 +1037,7 @@ neko_result app_update() {
             if (ImGui::Button("test_wang")) test_wang();
             if (ImGui::Button("test_sr")) test_sr();
             if (ImGui::Button("test_ut")) test_ut();
+            if (ImGui::Button("test_cvars")) neko_config_print();
             ImGui::Image((void *)(intptr_t)g_tex.id, ImVec2(g_texture_width, g_texture_height), ImVec2(0, 0), ImVec2(1, 1));
             return neko_dbgui_result_in_progress;
         });
@@ -1629,7 +1629,7 @@ void render_scene() {
         neko_sprite *spr = g_sr.sprite;
         neko_sprite_frame f = spr->frames[index];
 
-        gfx->immediate.draw_rect_textured_ext(cb, 200.f, 200.f, 600.f, 600.f, f.u0, f.v0, f.u1, f.v1, g_sr.sprite->img.id, neko_color_white);
+        gfx->immediate.draw_rect_textured_ext(cb, 200.f, 200.f, 200.f + spr->width * 4.f, 200.f + spr->height * 4.f, f.u0, f.v0, f.u1, f.v1, g_sr.sprite->img.id, neko_color_white);
 
         gfx->immediate.begin_2d(cb);
         {

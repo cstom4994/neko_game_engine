@@ -9,7 +9,6 @@
 #include "engine/common/neko_str.h"
 #include "engine/common/neko_util.h"
 #include "engine/gui/neko_imgui_utils.hpp"
-#include "engine/utility/defer.hpp"
 #include "engine/utility/enum.hpp"
 #include "engine/utility/module.hpp"
 

@@ -84,7 +84,9 @@ neko_resource(neko_font_t) __neko_construct_font_from_file(const char* file_path
     u8* flipmap = (u8*)neko_safe_malloc(w * h * num_comps);
     memset(alpha_bitmap, 0, w * h);
     memset(flipmap, 0, w * h * num_comps);
-    s32 v = stbtt_BakeFontBitmap((u8*)ttf, 0, point_size, alpha_bitmap, w, h, 32, 96, (stbtt_bakedchar*)f.glyphs);  // no guarantee this fits!
+
+    // 只加载 ascii
+    s32 v = stbtt_BakeFontBitmap((u8*)ttf, 0, point_size, alpha_bitmap, w, h, 32, 96, (stbtt_bakedchar*)f.glyphs);
 
     // Flip texture
     u32 r = h - 1;

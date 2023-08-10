@@ -2,9 +2,9 @@
 #include "neko_sprite.h"
 
 #include "engine/base/neko_engine.h"
-#include "engine/utility/defer.hpp"
 #include "engine/utility/hash.hpp"
 #include "engine/utility/logger.hpp"
+#include "engine/utility/neko_cpp_utils.hpp"
 
 #define CUTE_ASEPRITE_IMPLEMENTATION
 #include "libs/cute/cute_aseprite.h"

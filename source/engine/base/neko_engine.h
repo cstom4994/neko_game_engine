@@ -1,6 +1,7 @@
 #ifndef NEKO_ENGINE_H
 #define NEKO_ENGINE_H
 
+#include "engine/base/neko_cvar.hpp"
 #include "engine/base/neko_ecs.h"
 #include "engine/common/neko_types.h"
 #include "engine/platform/neko_platform.h"
@@ -55,6 +56,7 @@ typedef struct neko_engine_context_t {
 
     neko_application_desc_t app;
     neko_ecs *ecs;
+    neko::neko_config_t *config;
 
     bool is_running;
 
@@ -76,6 +78,7 @@ extern neko_engine *neko_engine_instance();
 #define neko_engine_subsystem(T) (neko_engine_instance()->ctx.T)
 
 #define neko_sc() (&neko_engine_subsystem(scripting))
+#define neko_cv() (neko_engine_instance()->ctx.config)
 
 #define neko_engine_user_data(T) (T *)(neko_engine_instance()->ctx.app.user_data)
 

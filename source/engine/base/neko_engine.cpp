@@ -98,7 +98,7 @@ neko_engine *neko_engine_construct(int argc, char **argv) {
         return g_neko.get();
     }
 
-    neko_mem_init();
+    __neko_mem_init(argc, argv);
 
     // Construct instance
     g_neko = create_scope<neko_engine>();
@@ -114,17 +114,16 @@ neko_engine *neko_engine_construct(int argc, char **argv) {
 
     // TODO: 初始化反射
 
-    // Set up function pointers
+    // 设置引擎主函数指针
     g_neko->engine_run = &neko_engine_run;
     g_neko->engine_shutdown = &neko_engine_shutdown;
 
+    // 初始化 cvars
+    __neko_config_init();
+
     // 初始化Platform子系统
-
-    // Need to have video settings passed down from user
-    g_neko->ctx.platform = neko_platform_construct();
-
-    // Default initialization for platform here
-    __neko_default_init_platform(g_neko->ctx.platform);
+    g_neko->ctx.platform = neko_platform_construct();    // 需要从用户那里传递视频设置
+    __neko_default_init_platform(g_neko->ctx.platform);  // 此处平台的默认初始化
 
     // 初始化脚本系统
     neko_sc()->__init();
@@ -242,7 +241,11 @@ neko_result neko_engine_run() {
             return (neko_engine_instance()->engine_shutdown());
         }
 
-        neko_sc()->neko_lua.call("test_update");
+        try {
+            neko_sc()->neko_lua.call("test_update");
+        } catch (std::exception &ex) {
+            neko_error(ex.what());
+        }
 
         __neko_engine_update_high();
 
@@ -306,8 +309,10 @@ neko_result neko_engine_shutdown() {
 
     neko_sc()->__end();
 
+    __neko_config_free();
+
     // 在 app 结束后进行内存检查
-    neko_mem_end();
+    __neko_mem_end();
 
     return app_result;
 }

@@ -582,7 +582,7 @@ auto neko_editor_create(neko_engine_cvar_t &cvar) -> dbgui & {
                                         using cvar_types_t = std::tuple<CVAR_TYPES()>;
 
                                         cvar_types_t ctt;
-                                        std::apply([&](auto &&...args) { (f(args), ...); }, ctt);
+                                        neko::invoke::apply([&](auto &&...args) { (f(args), ...); }, ctt);
                                     }
                                 }
                             }
@@ -594,7 +594,7 @@ auto neko_editor_create(neko_engine_cvar_t &cvar) -> dbgui & {
                     })
             .create("pack editor", [&](neko_dbgui_result) {
                 // pack editor
-                neko_private(neko_packreader_t*) pack_reader;
+                neko_private(neko_packreader_t *) pack_reader;
                 neko_private(neko_pack_result) result;
                 neko_private(bool) pack_reader_is_loaded = false;
                 neko_private(u8) majorVersion;

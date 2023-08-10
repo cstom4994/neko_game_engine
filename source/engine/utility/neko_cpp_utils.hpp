@@ -1637,4 +1637,221 @@ auto func_combine(neko_function<T1(T2)> conv1, neko_function<T2(T3)> conv2, Fn..
 
 }  // namespace neko
 
+namespace neko::invoke {
+
+#define __neko_invoke_return_decl(...) \
+    noexcept(noexcept(__VA_ARGS__))->decltype(__VA_ARGS__) { return __VA_ARGS__; }
+
+template <typename... Args>
+struct make_void {
+    using type = void;
+};
+
+template <typename... Args>
+using void_t = typename make_void<Args...>::type;
+
+template <typename T, T... Ints>
+struct integer_sequence {
+    using value_type = T;
+    static constexpr std::size_t size() noexcept { return sizeof...(Ints); }
+};
+
+template <std::size_t... Ints>
+using index_sequence = integer_sequence<std::size_t, Ints...>;
+
+template <typename T, std::size_t N, T... Ints>
+struct make_integer_sequence_impl : make_integer_sequence_impl<T, N - 1, N - 1, Ints...> {};
+
+template <typename T, T... Ints>
+struct make_integer_sequence_impl<T, 0, Ints...> : integer_sequence<T, Ints...> {};
+
+template <typename T, std::size_t N>
+using make_integer_sequence = make_integer_sequence_impl<T, N>;
+
+template <std::size_t N>
+using make_index_sequence = make_integer_sequence<std::size_t, N>;
+
+template <typename... Ts>
+using index_sequence_for = make_index_sequence<sizeof...(Ts)>;
+
+template <typename T>
+struct is_reference_wrapper_impl : std::false_type {};
+
+template <typename U>
+struct is_reference_wrapper_impl<std::reference_wrapper<U>> : std::true_type {};
+
+template <typename T>
+struct is_reference_wrapper : is_reference_wrapper_impl<typename std::remove_cv<T>::type> {};
+
+template <typename Base, typename F, typename Derived, typename std::enable_if<std::is_base_of<Base, typename std::decay<Derived>::type>::value, int>::type = 0>
+constexpr auto invoke_member_object_impl(F Base::*f, Derived &&ref) __neko_invoke_return_decl(std::forward<Derived>(ref).*f)
+
+        template <typename Base, typename F, typename RefWrap, typename std::enable_if<is_reference_wrapper<typename std::decay<RefWrap>::type>::value, int>::type = 0>
+        constexpr auto invoke_member_object_impl(F Base::*f, RefWrap &&ref) __neko_invoke_return_decl(ref.get().*f)
+
+                template <typename Base, typename F, typename Pointer,
+                          typename std::enable_if<!std::is_base_of<Base, typename std::decay<Pointer>::type>::value && !is_reference_wrapper<typename std::decay<Pointer>::type>::value, int>::type = 0>
+                constexpr auto invoke_member_object_impl(F Base::*f, Pointer &&ptr) __neko_invoke_return_decl((*std::forward<Pointer>(ptr)).*f)
+
+                        template <typename Base, typename F, typename Derived, typename... Args,
+                                  typename std::enable_if<std::is_base_of<Base, typename std::decay<Derived>::type>::value, int>::type = 0>
+                        constexpr auto invoke_member_function_impl(F Base::*f, Derived &&ref, Args &&...args) __neko_invoke_return_decl((std::forward<Derived>(ref).*f)(std::forward<Args>(args)...))
+
+                                template <typename Base, typename F, typename RefWrap, typename... Args,
+                                          typename std::enable_if<is_reference_wrapper<typename std::decay<RefWrap>::type>::value, int>::type = 0>
+                                constexpr auto invoke_member_function_impl(F Base::*f, RefWrap &&ref, Args &&...args) __neko_invoke_return_decl((ref.get().*f)(std::forward<Args>(args)...))
+
+                                        template <typename Base, typename F, typename Pointer, typename... Args,
+                                                  typename std::enable_if<!std::is_base_of<Base, typename std::decay<Pointer>::type>::value &&
+                                                                                  !is_reference_wrapper<typename std::decay<Pointer>::type>::value,
+                                                                          int>::type = 0>
+                                        constexpr auto invoke_member_function_impl(F Base::*f, Pointer &&ptr,
+                                                                                   Args &&...args) __neko_invoke_return_decl(((*std::forward<Pointer>(ptr)).*f)(std::forward<Args>(args)...))
+
+                                                template <typename F, typename... Args, typename std::enable_if<!std::is_member_pointer<typename std::decay<F>::type>::value, int>::type = 0>
+                                                constexpr auto invoke(F &&f, Args &&...args) __neko_invoke_return_decl(std::forward<F>(f)(std::forward<Args>(args)...))
+
+                                                        template <typename F, typename T, typename std::enable_if<std::is_member_object_pointer<typename std::decay<F>::type>::value, int>::type = 0>
+                                                        constexpr auto invoke(F &&f, T &&t) __neko_invoke_return_decl(invoke_member_object_impl(std::forward<F>(f), std::forward<T>(t)))
+
+                                                                template <typename F, typename... Args,
+                                                                          typename std::enable_if<std::is_member_function_pointer<typename std::decay<F>::type>::value, int>::type = 0>
+                                                                constexpr auto invoke(F &&f, Args &&...args)
+                                                                        __neko_invoke_return_decl(invoke_member_function_impl(std::forward<F>(f), std::forward<Args>(args)...))
+
+                                                                                struct invoke_result_impl_tag {};
+
+template <typename Void, typename F, typename... Args>
+struct invoke_result_impl {};
+
+template <typename F, typename... Args>
+struct invoke_result_impl<void_t<invoke_result_impl_tag, decltype(neko::invoke::invoke(std::declval<F>(), std::declval<Args>()...))>, F, Args...> {
+    using type = decltype(neko::invoke::invoke(std::declval<F>(), std::declval<Args>()...));
+};
+
+template <typename F, typename... Args>
+struct invoke_result : invoke_result_impl<void, F, Args...> {};
+
+template <typename F, typename... Args>
+using invoke_result_t = typename invoke_result<F, Args...>::type;
+
+struct is_invocable_r_impl_tag {};
+
+template <typename Void, typename R, typename F, typename... Args>
+struct is_invocable_r_impl : std::false_type {};
+
+template <typename R, typename F, typename... Args>
+struct is_invocable_r_impl<void_t<is_invocable_r_impl_tag, invoke_result_t<F, Args...>>, R, F, Args...>
+    : std::conditional<std::is_void<R>::value, std::true_type, std::is_convertible<invoke_result_t<F, Args...>, R>>::type {};
+
+template <typename R, typename F, typename... Args>
+struct is_invocable_r : is_invocable_r_impl<void, R, F, Args...> {};
+
+template <typename F, typename... Args>
+using is_invocable = is_invocable_r<void, F, Args...>;
+
+template <typename F, typename Tuple, std::size_t... I>
+constexpr auto apply_impl(F &&f, Tuple &&args, index_sequence<I...>) __neko_invoke_return_decl(neko::invoke::invoke(std::forward<F>(f), std::get<I>(std::forward<Tuple>(args))...))
+
+        template <typename F, typename Tuple>
+        constexpr auto apply(F &&f, Tuple &&args)
+                __neko_invoke_return_decl(apply_impl(std::forward<F>(f), std::forward<Tuple>(args), make_index_sequence<std::tuple_size<typename std::decay<Tuple>::type>::value>()))
+}  // namespace neko::invoke
+
+namespace neko {
+namespace cpp::defer {
+template <typename F, typename... Args>
+class defer_impl {
+public:
+    defer_impl() = delete;
+    defer_impl(defer_impl &&) = delete;
+    defer_impl(const defer_impl &) = delete;
+    defer_impl &operator=(defer_impl &&) = delete;
+    defer_impl &operator=(const defer_impl &) = delete;
+
+    template <typename UF>
+    explicit defer_impl(UF &&f, std::tuple<Args...> &&args) : f_(std::forward<UF>(f)), args_(std::move(args)) {}
+
+    virtual ~defer_impl() noexcept {
+        if (!dismissed_) {
+            neko::invoke::apply(std::move(f_), std::move(args_));
+        }
+    }
+
+    void dismiss() noexcept { dismissed_ = true; }
+
+private:
+    F f_;
+    std::tuple<Args...> args_;
+    bool dismissed_{};
+};
+
+template <typename F, typename... Args>
+class error_defer_impl final : public defer_impl<F, Args...> {
+public:
+    error_defer_impl() = delete;
+    error_defer_impl(error_defer_impl &&) = delete;
+    error_defer_impl(const error_defer_impl &) = delete;
+    error_defer_impl &operator=(error_defer_impl &&) = delete;
+    error_defer_impl &operator=(const error_defer_impl &) = delete;
+
+    template <typename UF>
+    explicit error_defer_impl(UF &&f, std::tuple<Args...> &&args) : defer_impl<F, Args...>(std::forward<UF>(f), std::move(args)), exceptions_(std::uncaught_exceptions()) {}
+
+    ~error_defer_impl() noexcept final {
+        if (exceptions_ == std::uncaught_exceptions()) {
+            this->dismiss();
+        }
+    }
+
+private:
+    int exceptions_{};
+};
+
+template <typename F, typename... Args>
+class return_defer_impl final : public defer_impl<F, Args...> {
+public:
+    return_defer_impl() = delete;
+    return_defer_impl(return_defer_impl &&) = delete;
+    return_defer_impl(const return_defer_impl &) = delete;
+    return_defer_impl &operator=(return_defer_impl &&) = delete;
+    return_defer_impl &operator=(const return_defer_impl &) = delete;
+
+    template <typename UF>
+    explicit return_defer_impl(UF &&f, std::tuple<Args...> &&args) : defer_impl<F, Args...>(std::forward<UF>(f), std::move(args)), exceptions_(std::uncaught_exceptions()) {}
+
+    ~return_defer_impl() noexcept final {
+        if (exceptions_ != std::uncaught_exceptions()) {
+            this->dismiss();
+        }
+    }
+
+private:
+    int exceptions_{};
+};
+}  // namespace cpp::defer
+
+template <typename F, typename... Args>
+auto make_defer(F &&f, Args &&...args) {
+    using defer_t = cpp::defer::defer_impl<std::decay_t<F>, std::decay_t<Args>...>;
+    return defer_t(std::forward<F>(f), std::make_tuple(std::forward<Args>(args)...));
+}
+
+template <typename F, typename... Args>
+auto make_error_defer(F &&f, Args &&...args) {
+    using defer_t = cpp::defer::error_defer_impl<std::decay_t<F>, std::decay_t<Args>...>;
+    return defer_t(std::forward<F>(f), std::make_tuple(std::forward<Args>(args)...));
+}
+
+template <typename F, typename... Args>
+auto make_return_defer(F &&f, Args &&...args) {
+    using defer_t = cpp::defer::return_defer_impl<std::decay_t<F>, std::decay_t<Args>...>;
+    return defer_t(std::forward<F>(f), std::make_tuple(std::forward<Args>(args)...));
+}
+}  // namespace neko
+
+#define neko_defer(...) auto neko_concat(generated_defer_, __LINE__) = ::neko::make_defer(__VA_ARGS__)
+#define neko_defer_error(...) auto neko_concat(generated_error_defer_, __LINE__) = ::neko::make_error_defer(__VA_ARGS__)
+#define neko_defer_return(...) auto neko_concat(generated_return_defer_, __LINE__) = ::neko::make_return_defer(__VA_ARGS__)
+
 #endif
