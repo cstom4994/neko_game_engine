@@ -43,17 +43,17 @@ void __neko_platform_update_input(neko_platform_input*) {
     input->mouse.moved_this_frame = false;
 }
 
-b32 __neko_platform_was_key_down(neko_platform_keycode code) {
+bool __neko_platform_was_key_down(neko_platform_keycode code) {
     neko_platform_input* input = __input();
     return (input->prev_key_map[code]);
 }
 
-b32 __neko_platform_key_down(neko_platform_keycode code) {
+bool __neko_platform_key_down(neko_platform_keycode code) {
     neko_platform_input* input = __input();
     return (input->key_map[code]);
 }
 
-b32 __neko_platform_key_pressed(neko_platform_keycode code) {
+bool __neko_platform_key_pressed(neko_platform_keycode code) {
     neko_platform_input* input = __input();
     if (__neko_platform_key_down(code) && !__neko_platform_was_key_down(code)) {
         return true;
@@ -61,12 +61,12 @@ b32 __neko_platform_key_pressed(neko_platform_keycode code) {
     return false;
 }
 
-b32 __neko_platform_key_released(neko_platform_keycode code) {
+bool __neko_platform_key_released(neko_platform_keycode code) {
     neko_platform_input* input = __input();
     return (__neko_platform_was_key_down(code) && !__neko_platform_key_down(code));
 }
 
-b32 __neko_platform_was_mouse_down(neko_platform_mouse_button_code code) {
+bool __neko_platform_was_mouse_down(neko_platform_mouse_button_code code) {
     neko_platform_input* input = __input();
     return (input->mouse.prev_button_map[code]);
 }
@@ -85,12 +85,12 @@ void __neko_platform_release_mouse_button(neko_platform_mouse_button_code code) 
     }
 }
 
-b32 __neko_platform_mouse_down(neko_platform_mouse_button_code code) {
+bool __neko_platform_mouse_down(neko_platform_mouse_button_code code) {
     neko_platform_input* input = __input();
     return (input->mouse.button_map[code]);
 }
 
-b32 __neko_platform_mouse_pressed(neko_platform_mouse_button_code code) {
+bool __neko_platform_mouse_pressed(neko_platform_mouse_button_code code) {
     neko_platform_input* input = __input();
     if (__neko_platform_mouse_down(code) && !__neko_platform_was_mouse_down(code)) {
         return true;
@@ -98,7 +98,7 @@ b32 __neko_platform_mouse_pressed(neko_platform_mouse_button_code code) {
     return false;
 }
 
-b32 __neko_platform_mouse_released(neko_platform_mouse_button_code code) {
+bool __neko_platform_mouse_released(neko_platform_mouse_button_code code) {
     neko_platform_input* input = __input();
     return (__neko_platform_was_mouse_down(code) && !__neko_platform_mouse_down(code));
 }
@@ -125,7 +125,13 @@ void __neko_platform_mouse_position_x_y(f32* x, f32* y) {
     *y = input->mouse.position.y;
 }
 
-void __neko_platform_mouse_wheel(f32* x, f32* y) {
+neko_vec2 __neko_platform_mouse_wheel() {
+    neko_platform_input* input = __input();
+
+    return neko_vec2{input->mouse.wheel.x, input->mouse.wheel.y};
+}
+
+void __neko_platform_mouse_wheel_x_y(f32* x, f32* y) {
     neko_platform_input* input = __input();
     *x = input->mouse.wheel.x;
     *y = input->mouse.wheel.y;
@@ -151,7 +157,7 @@ void __neko_platform_release_key(neko_platform_keycode code) {
 
 #define __ctx() (&neko_engine_instance()->ctx.platform->ctx)
 
-b32 __neko_platform_file_exists(const char* file_path) {
+bool __neko_platform_file_exists(const char* file_path) {
     FILE* fp = fopen(file_path, "r");
     if (fp) {
         fclose(fp);
@@ -376,6 +382,7 @@ void __neko_default_init_platform(struct neko_platform_i* platform) {
     platform->mouse_position = &__neko_platform_mouse_position;
     platform->mouse_position_x_y = &__neko_platform_mouse_position_x_y;
     platform->mouse_wheel = &__neko_platform_mouse_wheel;
+    platform->mouse_wheel_x_y = &__neko_platform_mouse_wheel_x_y;
 
     /*============================
     // Platform UUID

@@ -3,6 +3,7 @@
 #include <functional>
 
 #include "engine/audio/neko_audio.h"
+#include "engine/base/neko_component.h"
 #include "engine/base/neko_meta.hpp"
 #include "engine/common/neko_mem.h"
 #include "engine/common/neko_str.h"
@@ -29,9 +30,9 @@ neko_global neko::scope<neko_engine> g_neko;
 // Function forward declarations
 neko_result neko_engine_run();
 neko_result neko_engine_shutdown();
-neko_result __neko_default_app_init();
-neko_result __neko_default_app_update();
-neko_result __neko_default_app_shutdown();
+neko_result __neko_default_game_init();
+neko_result __neko_default_game_update();
+neko_result __neko_default_game_shutdown();
 void __neko_default_main_window_close_callback(void *window);
 
 neko_resource_handle window;
@@ -130,11 +131,6 @@ neko_engine *neko_engine_construct(int argc, char **argv) {
 
     auto L = neko_sc()->neko_lua.get_lua_state();
 
-    neko_lua_auto_struct(L, neko_application_desc_t);
-    neko_lua_auto_struct_member(L, neko_application_desc_t, window_title, const char *);
-    neko_lua_auto_struct_member(L, neko_application_desc_t, window_width, unsigned int);
-    neko_lua_auto_struct_member(L, neko_application_desc_t, window_height, unsigned int);
-
     try {
 
         lua_newtable(L);
@@ -188,12 +184,12 @@ neko_engine *neko_engine_construct(int argc, char **argv) {
         g_neko->ctx.audio->init(g_neko->ctx.audio);
 
         // Default application context
-        g_neko->ctx.update = &__neko_default_app_update;
-        g_neko->ctx.shutdown = &__neko_default_app_shutdown;
+        g_neko->ctx.update = &__neko_default_game_update;
+        g_neko->ctx.shutdown = &__neko_default_game_shutdown;
 
         __neko_engine_construct_high();
 
-        if (__neko_default_app_init() != neko_result_success) {
+        if (__neko_default_game_init() != neko_result_success) {
             // Show error before aborting
             neko_error("application failed to initialize.");
             neko_assert(false);
@@ -302,6 +298,8 @@ neko_result neko_engine_shutdown() {
 
     neko_imgui_destroy();
 
+    neko_ecs_destroy(neko_engine_subsystem(ecs));
+
     __neko_engine_shutdown_high();
 
     neko_safe_free(neko_engine_instance()->ctx.platform->ctx.gamepath);
@@ -316,20 +314,25 @@ neko_result neko_engine_shutdown() {
 
 neko_engine *neko_engine_instance() { return g_neko.get(); }
 
-neko_result __neko_default_app_init() {
+neko_result __neko_default_game_init() {
+    // 初始化 ecs
+    neko_engine_subsystem(ecs) = neko_ecs_make(1024, COMPONENT_COUNT, 2);
+
     // 启用 imgui
     neko_imgui_init();
+
+    neko_sc()->neko_lua.call("game_init");
 
     extern neko_result app_init();
     return app_init();
 }
 
-neko_result __neko_default_app_update() {
+neko_result __neko_default_game_update() {
     extern neko_result app_update();
     return app_update();
 }
 
-neko_result __neko_default_app_shutdown() {
+neko_result __neko_default_game_shutdown() {
     extern neko_result app_shutdown();
     return app_shutdown();
 }

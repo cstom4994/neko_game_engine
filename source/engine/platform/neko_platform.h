@@ -221,17 +221,17 @@ typedef struct neko_platform_meminfo {
 typedef enum neko_platform_mouse_button_code { neko_mouse_lbutton, neko_mouse_rbutton, neko_mouse_mbutton, neko_mouse_button_code_count } neko_platform_mouse_button_code;
 
 typedef struct neko_platform_mouse {
-    b32 button_map[neko_mouse_button_code_count];
-    b32 prev_button_map[neko_mouse_button_code_count];
+    bool button_map[neko_mouse_button_code_count];
+    bool prev_button_map[neko_mouse_button_code_count];
     neko_vec2 position;
     neko_vec2 prev_position;
     neko_vec2 wheel;
-    b32 moved_this_frame;
+    bool moved_this_frame;
 } neko_platform_mouse;
 
 typedef struct neko_platform_input {
-    b32 key_map[neko_keycode_count];
-    b32 prev_key_map[neko_keycode_count];
+    bool key_map[neko_keycode_count];
+    bool prev_key_map[neko_keycode_count];
     neko_platform_mouse mouse;
 } neko_platform_input;
 
@@ -249,11 +249,6 @@ typedef enum neko_platform_type { neko_platform_type_unknown = 0, neko_platform_
 typedef enum neko_platform_video_driver_type {
     neko_platform_video_driver_type_none = 0,
     neko_platform_video_driver_type_opengl,
-    neko_platform_video_driver_type_opengles,
-    neko_platform_video_driver_type_directx,
-    neko_platform_video_driver_type_vulkan,
-    neko_platform_video_driver_type_metal,
-    neko_platform_video_driver_type_software
 } neko_platform_video_driver_type;
 
 typedef enum neko_opengl_compatibility_flags {
@@ -310,7 +305,7 @@ typedef struct neko_platform_i {
     /*============================================================
     // Platform Video
     ============================================================*/
-    void (*enable_vsync)(b32 enabled);
+    void (*enable_vsync)(bool enabled);
 
     /*============================================================
     // Platform UUID
@@ -327,24 +322,25 @@ typedef struct neko_platform_i {
     void (*update_input)(neko_platform_input *);
     void (*press_key)(neko_platform_keycode code);
     void (*release_key)(neko_platform_keycode code);
-    b32 (*was_key_down)(neko_platform_keycode code);
-    b32 (*key_pressed)(neko_platform_keycode code);
-    b32 (*key_down)(neko_platform_keycode code);
-    b32 (*key_released)(neko_platform_keycode code);
+    bool (*was_key_down)(neko_platform_keycode code);
+    bool (*key_pressed)(neko_platform_keycode code);
+    bool (*key_down)(neko_platform_keycode code);
+    bool (*key_released)(neko_platform_keycode code);
 
     void (*press_mouse_button)(neko_platform_mouse_button_code code);
     void (*release_mouse_button)(neko_platform_mouse_button_code code);
-    b32 (*was_mouse_down)(neko_platform_mouse_button_code code);
-    b32 (*mouse_pressed)(neko_platform_mouse_button_code code);
-    b32 (*mouse_down)(neko_platform_mouse_button_code code);
-    b32 (*mouse_released)(neko_platform_mouse_button_code code);
+    bool (*was_mouse_down)(neko_platform_mouse_button_code code);
+    bool (*mouse_pressed)(neko_platform_mouse_button_code code);
+    bool (*mouse_down)(neko_platform_mouse_button_code code);
+    bool (*mouse_released)(neko_platform_mouse_button_code code);
     void (*set_mouse_position)(neko_resource_handle, f64, f64);
 
     neko_vec2 (*mouse_delta)();
     neko_vec2 (*mouse_position)();
     void (*mouse_position_x_y)(f32 *x, f32 *y);
-    void (*mouse_wheel)(f32 *x, f32 *y);
-    b32 (*mouse_moved)();
+    neko_vec2 (*mouse_wheel)();
+    void (*mouse_wheel_x_y)(f32 *x, f32 *y);
+    bool (*mouse_moved)();
 
     /*============================================================
     // Platform Window
@@ -371,7 +367,7 @@ typedef struct neko_platform_i {
     char *(*read_file_contents)(const char *file_path, const char *mode, s32 *sz);
     neko_result (*write_file_contents)(const char *file_path, const char *mode, void *data, usize data_type_size, usize data_size);
     neko_result (*write_str_to_file)(const char *contents, const char *mode, usize sz, const char *output_path);
-    b32 (*file_exists)(const char *file_path);
+    bool (*file_exists)(const char *file_path);
     s32 (*file_size_in_bytes)(const char *file_path);
     void (*file_extension)(char *buffer, usize buffer_sz, const char *file_path);
     neko_string (*get_path)(const neko_string &);
@@ -418,25 +414,25 @@ void __neko_verify_platform_correctness(struct neko_platform_i *platform);
 
 void __neko_platform_update_input();
 
-b32 __neko_platform_was_key_down(neko_platform_keycode code);
+bool __neko_platform_was_key_down(neko_platform_keycode code);
 
-b32 __neko_platform_key_down(neko_platform_keycode code);
+bool __neko_platform_key_down(neko_platform_keycode code);
 
-b32 __neko_platform_key_pressed(neko_platform_keycode code);
+bool __neko_platform_key_pressed(neko_platform_keycode code);
 
-b32 __neko_platform_key_released(neko_platform_keycode code);
+bool __neko_platform_key_released(neko_platform_keycode code);
 
-b32 __neko_platform_was_mouse_down(neko_platform_mouse_button_code code);
+bool __neko_platform_was_mouse_down(neko_platform_mouse_button_code code);
 
 void __neko_platform_press_mouse_button(neko_platform_mouse_button_code code);
 
 void __neko_platform_release_mouse_button(neko_platform_mouse_button_code code);
 
-b32 __neko_platform_mouse_down(neko_platform_mouse_button_code code);
+bool __neko_platform_mouse_down(neko_platform_mouse_button_code code);
 
-b32 __neko_platform_mouse_pressed(neko_platform_mouse_button_code code);
+bool __neko_platform_mouse_pressed(neko_platform_mouse_button_code code);
 
-b32 __neko_platform_mouse_released(neko_platform_mouse_button_code code);
+bool __neko_platform_mouse_released(neko_platform_mouse_button_code code);
 
 neko_vec2 __neko_platform_mouse_delta();
 
@@ -444,7 +440,7 @@ neko_vec2 __neko_platform_mouse_position();
 
 void __neko_platform_mouse_position_x_y(f32 *x, f32 *y);
 
-void __neko_platform_mouse_wheel(f32 *x, f32 *y);
+void __neko_platform_mouse_wheel_x_y(f32 *x, f32 *y);
 
 void __neko_platform_press_key(neko_platform_keycode code);
 
@@ -459,7 +455,7 @@ neko_resource_handle __neko_platform_main_window();
 /*============================
 // Platform File IO
 ============================*/
-b32 __neko_platform_file_exists(const char *file_path);
+bool __neko_platform_file_exists(const char *file_path);
 char *__neko_platform_read_file_contents_into_string_null_term(const char *file_path, const char *mode, s32 *sz);
 neko_result __neko_platform_write_str_to_file(const char *contents, const char *mode, usize sz, const char *output_path);
 void __neko_platform_file_extension(char *buffer, usize buffer_sz, const char *file_path);

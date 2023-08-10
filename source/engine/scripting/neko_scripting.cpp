@@ -21,22 +21,15 @@
 
 namespace neko {
 
-auto f = [](auto &...args) { (..., As(args)); };
-
-static void bindBasic() {
-    // MyStruct myStruct;
-    // meta::struct_apply(myStruct, f);
-}
-
-static void __neko_lua_bug(const_str message) { neko_debug("[LUA] ", message); }
-static void __neko_lua_info(const_str message) { neko_info("[LUA] ", message); }
-static void __neko_lua_trace(const_str message) { neko_trace("[LUA] ", message); }
-static void __neko_lua_error(const_str message) { neko_error("[LUA] ", message); }
-static void __neko_lua_warn(const_str message) { neko_warn("[LUA] ", message); }
+static void __neko_lua_bug(const_str message) { neko_debug("[lua] ", message); }
+static void __neko_lua_info(const_str message) { neko_info("[lua] ", message); }
+static void __neko_lua_trace(const_str message) { neko_trace("[lua] ", message); }
+static void __neko_lua_error(const_str message) { neko_error("[lua] ", message); }
+static void __neko_lua_warn(const_str message) { neko_warn("[lua] ", message); }
 
 static int __neko_lua_catch_panic(lua_State *L) {
     const char *msg = lua_tostring(L, -1);
-    neko_error("[LUA] PANIC ERROR: ", msg);
+    neko_error("[lua] PANIC ERROR: ", msg);
     return 0;
 }
 
@@ -45,7 +38,7 @@ static void __neko_lua_exit(lua_State *L) {
 }
 
 // returns table with pairs of path and isDirectory
-static int ls(lua_State *L) {
+static int __neko_ls(lua_State *L) {
     if (!lua_isstring(L, 1)) {
         neko_warn("invalid lua argument");
         return 0;
@@ -156,34 +149,10 @@ static void InitLua(neko_scripting *lc) {
 
 #endif
 
-// void run_script_in_console(scripting *_struct, const char *c) {
-//     luaL_loadstring(_struct->L, c);
-//     auto result = neko_lua_debug_pcall(_struct->L, 0, LUA_MULTRET, 0);
-//     if (result != LUA_OK) {
-//         print_error(_struct->L);
-//         return;
-//     }
-// }
-//
-// void script_runfile(const char *filePath) {
-//     FUTIL_ASSERT_EXIST(filePath);
-//
-//     int result = luaL_loadfile(the<scripting>().L, neko_file_path(filePath));
-//     if (result != LUA_OK) {
-//         print_error(the<scripting>().L);
-//         return;
-//     }
-//     result = neko_lua_debug_pcall(the<scripting>().L, 0, LUA_MULTRET, 0);
-//
-//     if (result != LUA_OK) {
-//         print_error(the<scripting>().L);
-//     }
-// }
+static void lua_reg_ecs(lua_State *L);
 
-static void lua_reg_ecs(lua_State *ls);
-
-static void lua_reg(lua_State *ls) {
-    neko_lua_register_t<>(ls)
+static void lua_reg(lua_State *L) {
+    neko_lua_register_t<>(L)
             .def(&__neko_lua_trace, "log_trace")  // logger
             .def(&__neko_lua_bug, "log_debug")
             .def(&__neko_lua_error, "log_error")
@@ -192,15 +161,15 @@ static void lua_reg(lua_State *ls) {
 
             .def(&__neko_add_packagepath, "add_packagepath");
 
-    lua_reg_ecs(ls);
+    lua_reg_ecs(L);
 
-    neko_lua_debug_setup(ls, "debugger", "dbg", NULL, NULL);
+    neko_lua_debug_setup(L, "debugger", "dbg", NULL, NULL);
 
-    luaopen_cstruct_core(ls);
-    luaopen_cstruct_test(ls);
-    luaopen_datalist(ls);
+    luaopen_cstruct_core(L);
+    luaopen_cstruct_test(L);
+    luaopen_datalist(L);
 
-    neko_register(ls);
+    neko_register(L);
 }
 
 void neko_scripting::__init() {
@@ -256,9 +225,9 @@ void neko_scripting::update_render() {}
 
 void neko_scripting::update_tick() {}
 
-static void lua_reg_ecs(lua_State *ls) {
-    neko_lua_register_t<>(ls)
-            .def(&neko_ecs_make, "neko_ecs_make")  // logger
+static void lua_reg_ecs(lua_State *L) {
+    neko_lua_register_t<>(L)
+            .def(&neko_ecs_make, "neko_ecs_make")
             .def(&neko_ecs_destroy, "neko_ecs_destroy")
             //.def(&neko_ecs_register_component, "neko_ecs_register_component")
             //.def(&neko_ecs_register_system, "neko_ecs_register_system")

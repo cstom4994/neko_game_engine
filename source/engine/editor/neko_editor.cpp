@@ -594,7 +594,7 @@ auto neko_editor_create(neko_engine_cvar_t &cvar) -> dbgui & {
                     })
             .create("pack editor", [&](neko_dbgui_result) {
                 // pack editor
-                neko_private(neko_pack_reader) pack_reader;
+                neko_private(neko_packreader_t*) pack_reader;
                 neko_private(neko_pack_result) result;
                 neko_private(bool) pack_reader_is_loaded = false;
                 neko_private(u8) majorVersion;
@@ -609,7 +609,7 @@ auto neko_editor_create(neko_engine_cvar_t &cvar) -> dbgui & {
                 if (ImGui::Button("打开包") && !pack_reader_is_loaded) filebrowser = true;
                 ImGui::SameLine();
                 if (ImGui::Button("关闭包")) {
-                    neko_destroy_pack_reader(pack_reader);
+                    neko_pack_destroy(pack_reader);
                     pack_reader_is_loaded = false;
                 }
                 ImGui::SameLine();
@@ -623,13 +623,13 @@ auto neko_editor_create(neko_engine_cvar_t &cvar) -> dbgui & {
                         if (pack_reader_is_loaded) {
 
                         } else {
-                            result = neko_get_pack_info(file.c_str(), &majorVersion, &minorVersion, &patchVersion, &isLittleEndian, &itemCount);
+                            result = neko_pack_info(file.c_str(), &majorVersion, &minorVersion, &patchVersion, &isLittleEndian, &itemCount);
                             if (result != SUCCESS_PACK_RESULT) return neko_dbgui_result_in_progress;
 
-                            result = neko_create_file_pack_reader(file.c_str(), 0, false, &pack_reader);
+                            result = neko_pack_read(file.c_str(), 0, false, &pack_reader);
                             if (result != SUCCESS_PACK_RESULT) return neko_dbgui_result_in_progress;
 
-                            if (result == SUCCESS_PACK_RESULT) itemCount = neko_get_pack_item_count(pack_reader);
+                            if (result == SUCCESS_PACK_RESULT) itemCount = neko_pack_item_count(pack_reader);
 
                             pack_reader_is_loaded = true;
                         }
@@ -673,10 +673,10 @@ auto neko_editor_create(neko_engine_cvar_t &cvar) -> dbgui & {
                                 ImGui::Text("%llu", (long long unsigned int)i);
                             }
                             if (ImGui::TableSetColumnIndex(1)) {
-                                ImGui::Text("%s", neko_get_pack_item_path(pack_reader, i));
+                                ImGui::Text("%s", neko_pack_item_path(pack_reader, i));
                             }
                             if (ImGui::TableSetColumnIndex(2)) {
-                                ImGui::Text("%u", neko_get_pack_item_data_size(pack_reader, i));
+                                ImGui::Text("%u", neko_pack_item_size(pack_reader, i));
                             }
                             if (ImGui::TableSetColumnIndex(3)) {
                                 if (ImGui::SmallButton("查看")) {
@@ -696,12 +696,12 @@ auto neko_editor_create(neko_engine_cvar_t &cvar) -> dbgui & {
                     }
 
                     if (item_current_idx >= 0) {
-                        ImGui::Text("文件索引: %u\n包内路径: %s\n文件大小: %u\n", item_current_idx, neko_get_pack_item_path(pack_reader, item_current_idx),
-                                    neko_get_pack_item_data_size(pack_reader, item_current_idx));
+                        ImGui::Text("文件索引: %u\n包内路径: %s\n文件大小: %u\n", item_current_idx, neko_pack_item_path(pack_reader, item_current_idx),
+                                    neko_pack_item_size(pack_reader, item_current_idx));
                     }
 
                 } else if (result != SUCCESS_PACK_RESULT) {
-                    ImGui::Text("错误: %s.\n", pack_result_to_string(result));
+                    ImGui::Text("错误: %s.\n", __neko_pack_result(result));
                 }
 
                 return neko_dbgui_result_in_progress;

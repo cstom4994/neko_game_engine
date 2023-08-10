@@ -1,6 +1,7 @@
 #ifndef NEKO_ENGINE_H
 #define NEKO_ENGINE_H
 
+#include "engine/base/neko_ecs.h"
 #include "engine/common/neko_types.h"
 #include "engine/platform/neko_platform.h"
 #include "engine/scripting/neko_scripting.h"
@@ -51,7 +52,9 @@ typedef struct neko_engine_context_t {
     struct neko_platform_i *platform;  // Main platform interface
     struct neko_graphics_i *graphics;
     struct neko_audio_i *audio;
+
     neko_application_desc_t app;
+    neko_ecs *ecs;
 
     bool is_running;
 

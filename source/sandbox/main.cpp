@@ -1,6 +1,7 @@
 
 
 #include "engine/audio/neko_audio.h"
+#include "engine/base/neko_component.h"
 #include "engine/base/neko_cvar.hpp"
 #include "engine/base/neko_ecs.h"
 #include "engine/editor/neko_dbgui.hpp"
@@ -42,28 +43,6 @@ typedef struct particle_t {
     bool has_been_updated_this_frame;
 } particle_t;
 
-// 测试 ECS 用
-typedef struct {
-    f32 x, y;
-} CTransform;
-
-typedef struct {
-    f32 dx, dy;
-} CVelocity;
-
-typedef struct {
-    u32 gl_id;
-    f32 rotation;
-} CSprite;
-
-typedef enum {
-    COMPONENT_TRANSFORM,
-    COMPONENT_VELOCITY,
-    COMPONENT_SPRITE,
-
-    COMPONENT_COUNT
-} ComponentType;
-
 // Globals
 neko_global neko_vertex_buffer_t g_vbo = {0};
 neko_global neko_index_buffer_t g_ibo = {0};
@@ -79,7 +58,7 @@ neko_global neko_frame_buffer_t g_fb = {0};
 neko_global blur_pass_t g_blur_pass = {0};
 neko_global bright_filter_pass_t g_bright_pass = {0};
 neko_global composite_pass_t g_composite_pass = {0};
-neko_global neko_pack_reader g_pack_reader;
+neko_global neko_packreader_t *g_pack_reader;
 
 neko_resource(neko_font_t) g_test_font = {};
 
@@ -706,8 +685,6 @@ void register_systems(neko_ecs *ecs) {
     neko_ecs_register_system(ecs, sprite_render_system, ECS_SYSTEM_RENDER);
 }
 
-neko_global neko_ecs *g_ecs;
-
 neko_global neko_font_index g_basic_font;
 
 neko_global neko_engine_cvar_t g_cvar = {0};
@@ -854,7 +831,8 @@ neko_result app_init() {
     g_blur_pass = blur_pass_ctor();
     g_bright_pass = bright_filter_pass_ctor();
     g_composite_pass = composite_pass_ctor();
-    neko_pack_result pack_result = neko_create_file_pack_reader(neko_file_path("data/resources.pack"), 0, 0, &g_pack_reader);
+
+    neko_pack_result pack_result = neko_pack_read(neko_file_path("data/resources.pack"), 0, 0, &g_pack_reader);
 
     if (pack_result != SUCCESS_PACK_RESULT) {
         // METADOT_ERROR("%d", pack_result);
@@ -863,17 +841,15 @@ neko_result app_init() {
 
     neko_engine_cvar_init(&g_cvar, [] {});
 
-    // 初始化 ecs
-    g_ecs = neko_ecs_make(1000, COMPONENT_COUNT, 3);
-    register_components(g_ecs);
-    register_systems(g_ecs);
+    register_components(neko_engine_subsystem(ecs));
+    register_systems(neko_engine_subsystem(ecs));
 
     // 测试用
-    neko_ecs_ent e = neko_ecs_ent_make(g_ecs);
+    neko_ecs_ent e = neko_ecs_ent_make(neko_engine_subsystem(ecs));
     CTransform xform = {0, 0};
     CVelocity velocity = {5, 0};
-    neko_ecs_ent_add_component(g_ecs, e, COMPONENT_TRANSFORM, &xform);
-    neko_ecs_ent_add_component(g_ecs, e, COMPONENT_VELOCITY, &velocity);
+    neko_ecs_ent_add_component(neko_engine_subsystem(ecs), e, COMPONENT_TRANSFORM, &xform);
+    neko_ecs_ent_add_component(neko_engine_subsystem(ecs), e, COMPONENT_VELOCITY, &velocity);
 
     // neko_ecs_ent_destroy(ecs, e);
 
@@ -1080,8 +1056,8 @@ neko_result app_update() {
 
         swarm.update(engine->ctx.platform->time.current, settings);
 
-        neko_ecs_run_systems(g_ecs, ECS_SYSTEM_UPDATE);
-        neko_ecs_run_systems(g_ecs, ECS_SYSTEM_RENDER);
+        neko_ecs_run_systems(neko_engine_subsystem(ecs), ECS_SYSTEM_UPDATE);
+        neko_ecs_run_systems(neko_engine_subsystem(ecs), ECS_SYSTEM_RENDER);
     }
 
     /*===============
@@ -1104,9 +1080,7 @@ neko_result app_shutdown() {
     neko_hash_table_free(g_hash_table);
     neko_slot_array_free(g_slot_array);
 
-    neko_ecs_destroy(g_ecs);
-
-    neko_destroy_pack_reader(g_pack_reader);
+    neko_pack_destroy(g_pack_reader);
 
     neko_info("app_shutdown");
     return neko_result_success;
@@ -1177,7 +1151,7 @@ void update_input() {
     }
 
     f32 wx = 0, wy = 0;
-    platform->mouse_wheel(&wx, &wy);
+    platform->mouse_wheel_x_y(&wx, &wy);
     if (platform->key_pressed(neko_keycode_lbracket) || wy < 0.f) {
         g_cvar.brush_size = neko_clamp(g_cvar.brush_size - 1.f, 1.f, 100.f);
     }

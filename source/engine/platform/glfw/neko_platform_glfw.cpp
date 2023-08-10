@@ -718,7 +718,7 @@ void glfw_set_cursor(neko_resource_handle handle, neko_platform_cursor cursor) {
     glfwSetCursor(win, cp);
 }
 
-void glfw_set_vsync_enabled(b32 enabled) { glfwSwapInterval(enabled ? 1 : 0); }
+void glfw_set_vsync_enabled(bool enabled) { glfwSwapInterval(enabled ? 1 : 0); }
 
 void glfw_set_dropped_files_callback(neko_resource_handle handle, dropped_files_callback_t callback) {
     struct neko_platform_i *platform = neko_engine_instance()->ctx.platform;

@@ -945,7 +945,7 @@ public:
     int load_file(const std::string &file_name_)  //
     {
         if (luaL_dofile(m_ls, file_name_.c_str())) {
-            std::string err = neko_lua_tool_t::dump_error(m_ls, "cannot load file<%s>", file_name_.c_str());
+            std::string err = neko_lua_tool_t::dump_error(m_ls, "cannot load file <%s>", file_name_.c_str());
             ::lua_pop(m_ls, 1);
             throw lua_exception_t(err);
         }
@@ -957,7 +957,7 @@ public:
 
     void run_string(const char *str_) {
         if (luaL_dostring(m_ls, str_)) {
-            std::string err = neko_lua_tool_t::dump_error(m_ls, "neko_lua_t::run_string ::lua_pcall failed str<%s>", str_);
+            std::string err = neko_lua_tool_t::dump_error(m_ls, "neko_lua_t::run_string ::lua_pcall failed str <%s>", str_);
             ::lua_pop(m_ls, 1);
             throw lua_exception_t(err);
         }
@@ -988,7 +988,7 @@ public:
         ::lua_getglobal(m_ls, func_name_);
 
         if (::lua_pcall(m_ls, 0, 0, 0) != 0) {
-            std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall failed func_name<%s>", func_name_);
+            std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall failed func_name <%s>", func_name_);
             ::lua_pop(m_ls, 1);
             throw lua_exception_t(err);
         }
@@ -1113,7 +1113,7 @@ RET_V neko_lua_t::call(const char *func_name_) {
     int tmpArg = getFuncByName(func_name_);
 
     if (lua_pcall(m_ls, tmpArg + 0, 1, 0) != 0) {
-        neko_string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall failed func_name<%s>", func_name_);
+        neko_string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall failed func_name <%s>", func_name_);
         lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1121,7 +1121,7 @@ RET_V neko_lua_t::call(const char *func_name_) {
     if (lua_op_t<RET_V>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
-        SPRINTF_F(buff, sizeof(buff), "callfunc [arg0] get_ret_value failed  func_name<%s>", func_name_);
+        SPRINTF_F(buff, sizeof(buff), "callfunc [arg0] get_ret_value failed  func_name <%s>", func_name_);
         throw lua_exception_t(buff);
     }
 
@@ -1139,7 +1139,7 @@ RET_V neko_lua_t::call(const char *func_name_, const ARG1 &arg1_) {
     lua_op_t<ARG1>::push_stack(m_ls, arg1_);
 
     if (lua_pcall(m_ls, tmpArg + 1, 1, 0) != 0) {
-        neko_string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall failed func_name<%s>", func_name_);
+        neko_string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall failed func_name <%s>", func_name_);
         lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1147,7 +1147,7 @@ RET_V neko_lua_t::call(const char *func_name_, const ARG1 &arg1_) {
     if (lua_op_t<RET_V>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
-        SPRINTF_F(buff, sizeof(buff), "callfunc [arg1] get_ret_value failed  func_name<%s>", func_name_);
+        SPRINTF_F(buff, sizeof(buff), "callfunc [arg1] get_ret_value failed  func_name <%s>", func_name_);
         throw lua_exception_t(buff);
     }
 
@@ -1168,7 +1168,7 @@ RET_V neko_lua_t::call(const char *func_name_, const ARG1 &arg1_, const ARG2 &ar
     lua_op_t<ARG2>::push_stack(m_ls, arg2_);
 
     if (lua_pcall(m_ls, tmpArg + 2, 1, 0) != 0) {
-        string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall failed func_name<%s>", func_name_);
+        string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall failed func_name <%s>", func_name_);
         lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1176,7 +1176,7 @@ RET_V neko_lua_t::call(const char *func_name_, const ARG1 &arg1_, const ARG2 &ar
     if (lua_op_t<RET_V>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
-        SPRINTF_F(buff, sizeof(buff), "callfunc [arg2] get_ret_value failed  func_name<%s>", func_name_);
+        SPRINTF_F(buff, sizeof(buff), "callfunc [arg2] get_ret_value failed  func_name <%s>", func_name_);
         throw lua_exception_t(buff);
     }
 
@@ -1196,7 +1196,7 @@ RET_V neko_lua_t::call(const char *func_name_, const ARG1 &arg1_, const ARG2 &ar
     lua_op_t<ARG3>::push_stack(m_ls, arg3_);
 
     if (lua_pcall(m_ls, tmpArg + 3, 1, 0) != 0) {
-        string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall failed func_name<%s>", func_name_);
+        string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall failed func_name <%s>", func_name_);
         lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1204,7 +1204,7 @@ RET_V neko_lua_t::call(const char *func_name_, const ARG1 &arg1_, const ARG2 &ar
     if (lua_op_t<RET_V>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
-        SPRINTF_F(buff, sizeof(buff), "callfunc [arg3] get_ret_value failed  func_name<%s>", func_name_);
+        SPRINTF_F(buff, sizeof(buff), "callfunc [arg3] get_ret_value failed  func_name <%s>", func_name_);
         throw lua_exception_t(buff);
     }
 
@@ -1225,7 +1225,7 @@ RET_V neko_lua_t::call(const char *func_name_, const ARG1 &arg1_, const ARG2 &ar
     lua_op_t<ARG4>::push_stack(m_ls, arg4_);
 
     if (lua_pcall(m_ls, tmpArg + 4, 1, 0) != 0) {
-        string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall failed func_name<%s>", func_name_);
+        string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall failed func_name <%s>", func_name_);
         lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1233,7 +1233,7 @@ RET_V neko_lua_t::call(const char *func_name_, const ARG1 &arg1_, const ARG2 &ar
     if (lua_op_t<RET_V>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
-        SPRINTF_F(buff, sizeof(buff), "callfunc [arg4] get_ret_value failed  func_name<%s>", func_name_);
+        SPRINTF_F(buff, sizeof(buff), "callfunc [arg4] get_ret_value failed  func_name <%s>", func_name_);
         throw lua_exception_t(buff);
     }
 
@@ -1255,7 +1255,7 @@ RET_V neko_lua_t::call(const char *func_name_, const ARG1 &arg1_, const ARG2 &ar
     lua_op_t<ARG5>::push_stack(m_ls, arg5_);
 
     if (lua_pcall(m_ls, tmpArg + 5, 1, 0) != 0) {
-        string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall failed func_name<%s>", func_name_);
+        string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall failed func_name <%s>", func_name_);
         lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1263,7 +1263,7 @@ RET_V neko_lua_t::call(const char *func_name_, const ARG1 &arg1_, const ARG2 &ar
     if (lua_op_t<RET_V>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
-        SPRINTF_F(buff, sizeof(buff), "callfunc [arg5] get_ret_value failed  func_name<%s>", func_name_);
+        SPRINTF_F(buff, sizeof(buff), "callfunc [arg5] get_ret_value failed  func_name <%s>", func_name_);
         throw lua_exception_t(buff);
     }
 
@@ -1286,7 +1286,7 @@ RET_V neko_lua_t::call(const char *func_name_, const ARG1 &arg1_, const ARG2 &ar
     lua_op_t<ARG6>::push_stack(m_ls, arg6_);
 
     if (lua_pcall(m_ls, tmpArg + 6, 1, 0) != 0) {
-        string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall failed func_name<%s>", func_name_);
+        string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall failed func_name <%s>", func_name_);
         lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1294,7 +1294,7 @@ RET_V neko_lua_t::call(const char *func_name_, const ARG1 &arg1_, const ARG2 &ar
     if (lua_op_t<RET_V>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
-        SPRINTF_F(buff, sizeof(buff), "callfunc [arg6] get_ret_value failed  func_name<%s>", func_name_);
+        SPRINTF_F(buff, sizeof(buff), "callfunc [arg6] get_ret_value failed  func_name <%s>", func_name_);
         throw lua_exception_t(buff);
     }
 
@@ -1318,7 +1318,7 @@ RET_V neko_lua_t::call(const char *func_name_, const ARG1 &arg1_, const ARG2 &ar
     lua_op_t<ARG7>::push_stack(m_ls, arg7_);
 
     if (lua_pcall(m_ls, tmpArg + 7, 1, 0) != 0) {
-        string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall failed func_name<%s>", func_name_);
+        string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall failed func_name <%s>", func_name_);
         lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1326,7 +1326,7 @@ RET_V neko_lua_t::call(const char *func_name_, const ARG1 &arg1_, const ARG2 &ar
     if (lua_op_t<RET_V>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
-        SPRINTF_F(buff, sizeof(buff), "callfunc [arg7] get_ret_value failed  func_name<%s>", func_name_);
+        SPRINTF_F(buff, sizeof(buff), "callfunc [arg7] get_ret_value failed  func_name <%s>", func_name_);
         throw lua_exception_t(buff);
     }
 
@@ -1351,7 +1351,7 @@ RET_V neko_lua_t::call(const char *func_name_, const ARG1 &arg1_, const ARG2 &ar
     lua_op_t<ARG8>::push_stack(m_ls, arg8_);
 
     if (lua_pcall(m_ls, tmpArg + 8, 1, 0) != 0) {
-        string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall failed func_name<%s>", func_name_);
+        string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall failed func_name <%s>", func_name_);
         lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1359,7 +1359,7 @@ RET_V neko_lua_t::call(const char *func_name_, const ARG1 &arg1_, const ARG2 &ar
     if (lua_op_t<RET_V>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
-        SPRINTF_F(buff, sizeof(buff), "callfunc [arg8] get_ret_value failed  func_name<%s>", func_name_);
+        SPRINTF_F(buff, sizeof(buff), "callfunc [arg8] get_ret_value failed  func_name <%s>", func_name_);
         throw lua_exception_t(buff);
     }
 
@@ -1386,7 +1386,7 @@ RET_V neko_lua_t::call(const char *func_name_, const ARG1 &arg1_, const ARG2 &ar
     lua_op_t<ARG9>::push_stack(m_ls, arg9_);
 
     if (lua_pcall(m_ls, tmpArg + 9, 1, 0) != 0) {
-        string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall failed func_name<%s>", func_name_);
+        string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall failed func_name <%s>", func_name_);
         lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1394,7 +1394,7 @@ RET_V neko_lua_t::call(const char *func_name_, const ARG1 &arg1_, const ARG2 &ar
     if (lua_op_t<RET_V>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
-        SPRINTF_F(buff, sizeof(buff), "callfunc [arg9] get_ret_value failed func_name<%s>", func_name_);
+        SPRINTF_F(buff, sizeof(buff), "callfunc [arg9] get_ret_value failed func_name <%s>", func_name_);
         throw lua_exception_t(buff);
     }
 
