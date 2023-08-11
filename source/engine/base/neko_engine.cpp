@@ -10,7 +10,6 @@
 #include "engine/common/neko_util.h"
 #include "engine/editor/neko_dbgui.hpp"
 #include "engine/graphics/neko_graphics.h"
-#include "engine/gui/neko_text_renderer.hpp"
 #include "engine/math/neko_math.h"
 #include "engine/platform/neko_platform.h"
 #include "engine/utility/enum.hpp"
@@ -40,7 +39,7 @@ neko_resource_handle window;
 ENUM_HPP_CLASS_DECL(neko_modules_op, u32, (init = 1)(shutdown = 2)(update = 3));
 ENUM_HPP_REGISTER_TRAITS(neko_modules_op);
 
-#define __neko_module_types() text_renderer, dbgui
+#define __neko_module_types() dbgui
 
 // 递归展开类型列表，并调用函数模板
 template <typename T, typename... Rest>
@@ -249,6 +248,8 @@ neko_result neko_engine_run() {
 
         __neko_engine_update_high();
 
+        gfx->fontcache_draw();
+
         // 渲染 imgui 内容
         neko_imgui_render();
 
@@ -326,7 +327,11 @@ neko_result __neko_default_game_init() {
     // 启用 imgui
     neko_imgui_init();
 
-    neko_sc()->neko_lua.call("game_init");
+    try {
+        neko_sc()->neko_lua.call("game_init");
+    } catch (std::exception &ex) {
+        neko_error(ex.what());
+    }
 
     extern neko_result app_init();
     return app_init();
@@ -338,6 +343,13 @@ neko_result __neko_default_game_update() {
 }
 
 neko_result __neko_default_game_shutdown() {
+
+    try {
+        neko_sc()->neko_lua.call("game_shutdown");
+    } catch (std::exception &ex) {
+        neko_error(ex.what());
+    }
+
     extern neko_result app_shutdown();
     return app_shutdown();
 }

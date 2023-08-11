@@ -7,6 +7,7 @@
 #include "engine/common/neko_str.h"
 #include "engine/common/neko_types.h"
 #include "engine/graphics/neko_camera.h"
+#include "engine/graphics/neko_fontcache.h"
 #include "engine/math/neko_math.h"
 #include "engine/serialize/neko_byte_buffer.h"
 
@@ -249,6 +250,8 @@ typedef struct neko_font_t {
 } neko_font_t;
 
 neko_resource_cache_decl(neko_font_t);
+
+using neko_font_index = ve_font_id;
 
 /*================
 // Pipeline State
@@ -585,8 +588,20 @@ typedef struct neko_graphics_i {
     neko_vec2 (*text_dimensions)(const char* text, neko_resource(neko_font_t) ft);
     bool (*make_screenshot)(const neko_string& filename, u32 width, u32 height, u32 dst_width, u32 dst_height);
 
-    // Shader Methods
+    /*============================================================
+    // Fontcache
+    ============================================================*/
+    void (*fontcache_create)(void);
+    void (*fontcache_destroy)(void);
+    void (*fontcache_draw)(void);
+    neko_font_index (*fontcache_load)(const void* data, size_t data_size, f32 font_size);
 
+    void (*fontcache_push)(const std::string& text, const neko_font_index font, const neko_vec2 pos);
+    void (*fontcache_push_x_y)(const std::string& text, const neko_font_index font, const f32 x, const f32 y);
+
+    /*============================================================
+    // Shader Methods
+    ============================================================*/
     neko_shader_t* (*neko_shader_create)(const neko_string& name, const neko_string& vert, const neko_string& frag);
     neko_shader_t* (*neko_shader_get)(const neko_string& name);
     neko_hashmap<neko_shader_t>* (*neko_shader_internal_list)();

@@ -27,6 +27,80 @@
 #include "libs/stb/stb_image_resize.h"
 #include "libs/stb/stb_image_write.h"
 
+// OpenGL
+
+#define __neko_gl_state_backup()                                                 \
+    GLenum last_active_texture;                                                  \
+    glGetIntegerv(GL_ACTIVE_TEXTURE, (GLint *)&last_active_texture);             \
+    glActiveTexture(GL_TEXTURE0);                                                \
+    GLuint last_program;                                                         \
+    glGetIntegerv(GL_CURRENT_PROGRAM, (GLint *)&last_program);                   \
+    GLuint last_texture;                                                         \
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, (GLint *)&last_texture);                \
+    GLuint last_array_buffer;                                                    \
+    glGetIntegerv(GL_ARRAY_BUFFER_BINDING, (GLint *)&last_array_buffer);         \
+    GLint last_viewport[4];                                                      \
+    glGetIntegerv(GL_VIEWPORT, last_viewport);                                   \
+    GLint last_scissor_box[4];                                                   \
+    glGetIntegerv(GL_SCISSOR_BOX, last_scissor_box);                             \
+    GLenum last_blend_src_rgb;                                                   \
+    glGetIntegerv(GL_BLEND_SRC_RGB, (GLint *)&last_blend_src_rgb);               \
+    GLenum last_blend_dst_rgb;                                                   \
+    glGetIntegerv(GL_BLEND_DST_RGB, (GLint *)&last_blend_dst_rgb);               \
+    GLenum last_blend_src_alpha;                                                 \
+    glGetIntegerv(GL_BLEND_SRC_ALPHA, (GLint *)&last_blend_src_alpha);           \
+    GLenum last_blend_dst_alpha;                                                 \
+    glGetIntegerv(GL_BLEND_DST_ALPHA, (GLint *)&last_blend_dst_alpha);           \
+    GLenum last_blend_equation_rgb;                                              \
+    glGetIntegerv(GL_BLEND_EQUATION_RGB, (GLint *)&last_blend_equation_rgb);     \
+    GLenum last_blend_equation_alpha;                                            \
+    glGetIntegerv(GL_BLEND_EQUATION_ALPHA, (GLint *)&last_blend_equation_alpha); \
+    GLboolean last_enable_blend = glIsEnabled(GL_BLEND);                         \
+    GLboolean last_enable_cull_face = glIsEnabled(GL_CULL_FACE);                 \
+    GLboolean last_enable_depth_test = glIsEnabled(GL_DEPTH_TEST);               \
+    GLboolean last_enable_stencil_test = glIsEnabled(GL_STENCIL_TEST);           \
+    GLboolean last_enable_scissor_test = glIsEnabled(GL_SCISSOR_TEST);           \
+    GLboolean last_enable_mutisample = glIsEnabled(GL_MULTISAMPLE);              \
+    GLboolean last_enable_framebuffer_srgb = glIsEnabled(GL_FRAMEBUFFER_SRGB)
+
+#define __neko_gl_state_restore()                                                                            \
+    glUseProgram(last_program);                                                                              \
+    glBindTexture(GL_TEXTURE_2D, last_texture);                                                              \
+    glActiveTexture(last_active_texture);                                                                    \
+    glBindBuffer(GL_ARRAY_BUFFER, last_array_buffer);                                                        \
+    glBlendEquationSeparate(last_blend_equation_rgb, last_blend_equation_alpha);                             \
+    glBlendFuncSeparate(last_blend_src_rgb, last_blend_dst_rgb, last_blend_src_alpha, last_blend_dst_alpha); \
+    if (last_enable_blend)                                                                                   \
+        glEnable(GL_BLEND);                                                                                  \
+    else                                                                                                     \
+        glDisable(GL_BLEND);                                                                                 \
+    if (last_enable_cull_face)                                                                               \
+        glEnable(GL_CULL_FACE);                                                                              \
+    else                                                                                                     \
+        glDisable(GL_CULL_FACE);                                                                             \
+    if (last_enable_depth_test)                                                                              \
+        glEnable(GL_DEPTH_TEST);                                                                             \
+    else                                                                                                     \
+        glDisable(GL_DEPTH_TEST);                                                                            \
+    if (last_enable_stencil_test)                                                                            \
+        glEnable(GL_STENCIL_TEST);                                                                           \
+    else                                                                                                     \
+        glDisable(GL_STENCIL_TEST);                                                                          \
+    if (last_enable_scissor_test)                                                                            \
+        glEnable(GL_SCISSOR_TEST);                                                                           \
+    else                                                                                                     \
+        glDisable(GL_SCISSOR_TEST);                                                                          \
+    if (last_enable_mutisample)                                                                              \
+        glEnable(GL_MULTISAMPLE);                                                                            \
+    else                                                                                                     \
+        glDisable(GL_MULTISAMPLE);                                                                           \
+    if (last_enable_framebuffer_srgb)                                                                        \
+        glEnable(GL_FRAMEBUFFER_SRGB);                                                                       \
+    else                                                                                                     \
+        glDisable(GL_FRAMEBUFFER_SRGB);                                                                      \
+    glViewport(last_viewport[0], last_viewport[1], (GLsizei)last_viewport[2], (GLsizei)last_viewport[3]);    \
+    glScissor(last_scissor_box[0], last_scissor_box[1], (GLsizei)last_scissor_box[2], (GLsizei)last_scissor_box[3])
+
 /*============================================================
 // Graphics Resource Declarations
 ============================================================*/
@@ -39,6 +113,10 @@
 */
 
 #define int_2_void_p(i) (void *)(uintptr_t)(i)
+
+// fwd
+void __neko_fontcache_init();
+void __neko_fontcache_end();
 
 neko_static_inline void neko_mat4_debug_print(neko_mat4 *mat) {
     f32 *e = mat->elements;
@@ -339,6 +417,9 @@ neko_result opengl_init(struct neko_graphics_i *gfx) {
     // Init data for utility APIs
     gfx->quad_batch_i->shader = gfx->construct_shader(neko_quad_batch_default_vertex_src, neko_quad_batch_default_frag_src);
 
+    // 初始化 fontcache
+    __neko_fontcache_init();
+
     // Initialize all data here
     return neko_result_success;
 }
@@ -346,6 +427,10 @@ neko_result opengl_init(struct neko_graphics_i *gfx) {
 neko_result opengl_update(struct neko_graphics_i *gfx) { return neko_result_in_progress; }
 
 neko_result opengl_shutdown(struct neko_graphics_i *gfx) {
+
+    // 清理 fontcache
+    __neko_fontcache_end();
+
     // Release all data here
     return neko_result_success;
 }
@@ -2351,6 +2436,296 @@ neko_shader_t *__neko_shader_get(const neko_string &name) {
 
 neko_hashmap<neko_shader_t> *__neko_shader_internal_list() { return &((opengl_render_data_t *)(neko_engine_instance()->ctx.graphics->data))->shaders_data; }
 
+static GLint fontcache_shader_render_glyph;
+static GLint fontcache_shader_blit_atlas;
+static GLint fontcache_shader_draw_text;
+static GLuint fontcache_fbo[2];
+static GLuint fontcache_fbo_texture[2];
+
+const std::string vs_source_shared = R"(
+#version 330 core
+in vec2 vpos;
+in vec2 vtex;
+out vec2 uv;
+void main( void ) {
+    uv = vtex;
+    gl_Position = vec4( vpos.xy, 0.0, 1.0 );
+}
+)";
+
+const std::string fs_source_render_glyph = R"(
+#version 330 core
+out vec4 fragc;
+void main( void ) {
+    fragc = vec4( 1.0, 1.0, 1.0, 1.0 );
+}
+)";
+
+const std::string fs_source_blit_atlas = R"(
+#version 330 core
+in vec2 uv;
+out vec4 fragc;
+uniform uint region;
+uniform sampler2D src_texture;
+float downsample( vec2 uv, vec2 texsz )
+{
+    float v =
+        texture( src_texture, uv + vec2( 0.0f, 0.0f ) * texsz ).x * 0.25f +
+        texture( src_texture, uv + vec2( 0.0f, 1.0f ) * texsz ).x * 0.25f +
+        texture( src_texture, uv + vec2( 1.0f, 0.0f ) * texsz ).x * 0.25f +
+        texture( src_texture, uv + vec2( 1.0f, 1.0f ) * texsz ).x * 0.25f;
+    return v;
+}
+void main( void ) {
+    const vec2 texsz = 1.0f / vec2( 2048 /* NEKO_FONTCACHE_GLYPHDRAW_BUFFER_WIDTH */, 512 /* NEKO_FONTCACHE_GLYPHDRAW_BUFFER_HEIGHT */ );
+    if ( region == 0u || region == 1u || region == 2u ) {
+        float v =
+            downsample( uv + vec2( -1.5f, -1.5f ) * texsz, texsz ) * 0.25f +
+            downsample( uv + vec2(  0.5f, -1.5f ) * texsz, texsz ) * 0.25f +
+            downsample( uv + vec2( -1.5f,  0.5f ) * texsz, texsz ) * 0.25f +
+            downsample( uv + vec2(  0.5f,  0.5f ) * texsz, texsz ) * 0.25f;
+        fragc = vec4( 1, 1, 1, v );
+    } else {
+        fragc = vec4( 0, 0, 0, 1 );
+    }
+}
+)";
+
+const std::string vs_source_draw_text = R"(
+#version 330 core
+in vec2 vpos;
+in vec2 vtex;
+out vec2 uv;
+void main( void ) {
+    uv = vtex;
+    gl_Position = vec4( vpos.xy * 2.0f - 1.0f, 0.0, 1.0 );
+}
+)";
+const std::string fs_source_draw_text = R"(
+#version 330 core
+in vec2 uv;
+out vec4 fragc;
+uniform sampler2D src_texture;
+uniform uint downsample;
+uniform vec4 colour;
+void main( void ) {
+    float v = texture( src_texture, uv ).x;
+    if ( downsample == 1u ) {
+        const vec2 texsz = 1.0f / vec2( 2048 /* NEKO_FONTCACHE_GLYPHDRAW_BUFFER_WIDTH */, 512 /* NEKO_FONTCACHE_GLYPHDRAW_BUFFER_HEIGHT */ );
+        v =
+            texture( src_texture, uv + vec2(-0.5f,-0.5f ) * texsz ).x * 0.25f +
+            texture( src_texture, uv + vec2(-0.5f, 0.5f ) * texsz ).x * 0.25f +
+            texture( src_texture, uv + vec2( 0.5f,-0.5f ) * texsz ).x * 0.25f +
+            texture( src_texture, uv + vec2( 0.5f, 0.5f ) * texsz ).x * 0.25f;
+    }
+    fragc = vec4( colour.xyz, colour.a * v );
+}
+)";
+
+neko_private(GLint) __neko_fontcache_compile_shader(const std::string vs, const std::string fs) {
+    auto printCompileError = [&](GLuint shader) {
+        char temp[4096];
+        GLint compileStatus = 0;
+        glGetShaderiv(shader, GL_COMPILE_STATUS, &compileStatus);
+        glGetShaderInfoLog(shader, 4096, NULL, temp);
+        printf("%s", temp);
+    };
+    GLint compiled = 0;
+    const char *vsrc[] = {vs.c_str()}, *fsrc[] = {fs.c_str()};
+    GLint length[] = {-1};
+    GLint vshader = glCreateShader(GL_VERTEX_SHADER), fshader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(vshader, 1, vsrc, length);
+    glShaderSource(fshader, 1, fsrc, length);
+    glCompileShader(vshader);
+    glGetShaderiv(vshader, GL_COMPILE_STATUS, &compiled);
+    printCompileError(vshader);
+    assert(compiled);
+    glCompileShader(fshader);
+    glGetShaderiv(fshader, GL_COMPILE_STATUS, &compiled);
+    printCompileError(fshader);
+    assert(compiled);
+    GLint program = glCreateProgram();
+    glAttachShader(program, vshader);
+    glAttachShader(program, fshader);
+    glBindAttribLocation(program, 0, "vpos");
+    glBindAttribLocation(program, 1, "vtexc");
+    glLinkProgram(program);
+    glDetachShader(program, vshader);
+    glDetachShader(program, fshader);
+    glDeleteShader(vshader);
+    glDeleteShader(fshader);
+    return program;
+}
+
+neko_private(void) __neko_fontcache_compile_vbo(GLuint &dest_vb, GLuint &dest_ib, const neko_fontcache_vertex *verts, int nverts, const uint32_t *indices, int nindices) {
+    if (dest_vb == 0 || dest_ib == 0) {
+        GLuint buf[2];
+        glGenBuffers(2, buf);
+        dest_vb = buf[0], dest_ib = buf[1];
+        glBindBuffer(GL_ARRAY_BUFFER, dest_vb);
+        glBufferData(GL_ARRAY_BUFFER, nverts * sizeof(neko_fontcache_vertex), verts, GL_DYNAMIC_DRAW);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, dest_ib);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, nindices * sizeof(uint32_t), indices, GL_DYNAMIC_DRAW);
+    }
+}
+
+neko_private(void) __neko_fontcache_setup_fbo() {
+    glGenFramebuffers(2, fontcache_fbo);
+    glGenTextures(2, fontcache_fbo_texture);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, fontcache_fbo[0]);
+    glBindTexture(GL_TEXTURE_2D, fontcache_fbo_texture[0]);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, NEKO_FONTCACHE_GLYPHDRAW_BUFFER_WIDTH, NEKO_FONTCACHE_GLYPHDRAW_BUFFER_HEIGHT, 0, GL_RED, GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fontcache_fbo_texture[0], 0);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, fontcache_fbo[1]);
+    glBindTexture(GL_TEXTURE_2D, fontcache_fbo_texture[1]);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, NEKO_FONTCACHE_ATLAS_WIDTH, NEKO_FONTCACHE_ATLAS_HEIGHT, 0, GL_RED, GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fontcache_fbo_texture[1], 0);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+neko_private(GLuint) vao = 0;
+neko_private(neko_fontcache) cache;
+
+void __neko_fontcache_draw() {
+
+    // ME_profiler_scope_auto("RenderGUI.Font");
+
+    neko_platform_i *platform = neko_engine_instance()->ctx.platform;
+    neko_vec2 ws = platform->window_size(platform->main_window());
+
+    // TODO: plz!!! optimize this method
+    __neko_gl_state_backup();
+
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
+    glEnable(GL_BLEND);
+    glBlendEquation(GL_FUNC_ADD);
+
+    __neko_fontcache_optimise_drawlist(&cache);
+    auto drawlist = __neko_fontcache_get_drawlist(&cache);
+
+    if (vao == 0) {
+        glGenVertexArrays(1, &vao);
+        glBindVertexArray(vao);
+    } else {
+        glBindVertexArray(vao);
+    }
+
+    GLuint vbo = 0, ibo = 0;
+    __neko_fontcache_compile_vbo(vbo, ibo, drawlist->vertices.data(), drawlist->vertices.size(), drawlist->indices.data(), drawlist->indices.size());
+
+    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(0, 2, GL_FLOAT, false, sizeof(neko_fontcache_vertex), 0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, false, sizeof(neko_fontcache_vertex), (GLvoid *)(2 * sizeof(float)));
+
+    for (auto &dcall : drawlist->dcalls) {
+        if (dcall.pass == NEKO_FONTCACHE_FRAMEBUFFER_PASS_GLYPH) {
+            glUseProgram(fontcache_shader_render_glyph);
+            glBindFramebuffer(GL_FRAMEBUFFER, fontcache_fbo[0]);
+            glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ONE_MINUS_SRC_COLOR);
+            glViewport(0, 0, NEKO_FONTCACHE_GLYPHDRAW_BUFFER_WIDTH, NEKO_FONTCACHE_GLYPHDRAW_BUFFER_HEIGHT);
+            glScissor(0, 0, NEKO_FONTCACHE_GLYPHDRAW_BUFFER_WIDTH, NEKO_FONTCACHE_GLYPHDRAW_BUFFER_HEIGHT);
+            glDisable(GL_FRAMEBUFFER_SRGB);
+        } else if (dcall.pass == NEKO_FONTCACHE_FRAMEBUFFER_PASS_ATLAS) {
+            glUseProgram(fontcache_shader_blit_atlas);
+            glBindFramebuffer(GL_FRAMEBUFFER, fontcache_fbo[1]);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glViewport(0, 0, NEKO_FONTCACHE_ATLAS_WIDTH, NEKO_FONTCACHE_ATLAS_HEIGHT);
+            glScissor(0, 0, NEKO_FONTCACHE_ATLAS_WIDTH, NEKO_FONTCACHE_ATLAS_HEIGHT);
+            glUniform1i(glGetUniformLocation(fontcache_shader_blit_atlas, "src_texture"), 0);
+            glUniform1ui(glGetUniformLocation(fontcache_shader_blit_atlas, "region"), dcall.region);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, fontcache_fbo_texture[0]);
+            glDisable(GL_FRAMEBUFFER_SRGB);
+        } else {
+            glUseProgram(fontcache_shader_draw_text);
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glViewport(0, 0, ws.x, ws.y);
+            glScissor(0, 0, ws.x, ws.y);
+            glUniform1i(glGetUniformLocation(fontcache_shader_draw_text, "src_texture"), 0);
+            glUniform1ui(glGetUniformLocation(fontcache_shader_draw_text, "downsample"), dcall.pass == NEKO_FONTCACHE_FRAMEBUFFER_PASS_TARGET_UNCACHED ? 1 : 0);
+            glUniform4fv(glGetUniformLocation(fontcache_shader_draw_text, "colour"), 1, dcall.colour);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, dcall.pass == NEKO_FONTCACHE_FRAMEBUFFER_PASS_TARGET_UNCACHED ? fontcache_fbo_texture[0] : fontcache_fbo_texture[1]);
+            glEnable(GL_FRAMEBUFFER_SRGB);
+        }
+        if (dcall.clear_before_draw) {
+            glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+            glClear(GL_COLOR_BUFFER_BIT);
+        }
+        if (dcall.end_index - dcall.start_index == 0) continue;
+        glDrawElements(GL_TRIANGLES, dcall.end_index - dcall.start_index, GL_UNSIGNED_INT, (GLvoid *)(dcall.start_index * sizeof(uint32_t)));
+    }
+
+    // glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    glDeleteBuffers(1, &vbo);
+    glDeleteBuffers(1, &ibo);
+
+    // ME_CHECK_GL_ERROR();
+    __neko_fontcache_flush_drawlist(&cache);
+
+    __neko_gl_state_restore();
+}
+
+neko_font_index __neko_fontcache_load(const void *data, size_t data_size, f32 font_size) {
+    neko_platform_i *platform = neko_engine_instance()->ctx.platform;
+    neko_vec2 ws = platform->window_size(platform->main_window());
+
+    __neko_fontcache_init(&cache);
+    __neko_fontcache_configure_snap(&cache, ws.x, ws.y);
+
+    // 返回字体索引
+    return __neko_fontcache_load(&cache, data, data_size, font_size);
+}
+
+// 将绘制字加入待绘制列表
+// pos 不是屏幕坐标也不是NDC
+// pos 以窗口左下角为原点 窗口空间为第一象限
+void __neko_fontcache_push(const std::string &text, const neko_font_index font, const neko_vec2 pos) {
+
+    neko_platform_i *platform = neko_engine_instance()->ctx.platform;
+    neko_vec2 ws = platform->window_size(platform->main_window());
+
+    __neko_fontcache_configure_snap(&cache, ws.x, ws.y);
+    __neko_fontcache_draw_text(&cache, font, text, pos.x, pos.y, 1.0f / ws.x, 1.0f / ws.y);
+}
+
+// 将屏幕窗口坐标转换为 fontcache 绘制坐标
+neko_vec2 __neko_fontcache_calc_pos(f32 x, f32 y) {
+    neko_platform_i *platform = neko_engine_instance()->ctx.platform;
+    neko_vec2 ws = platform->window_size(platform->main_window());
+    f32 tmpx = x / ws.x;
+    f32 tmpy = y / ws.y;
+    return neko_vec2{tmpx, 1.0f - tmpy};
+}
+
+void __neko_fontcache_push_x_y(const std::string &text, const neko_font_index font, const f32 x, const f32 y) { __neko_fontcache_push(text, font, __neko_fontcache_calc_pos(x, y)); }
+
+void __neko_fontcache_init() {
+
+    fontcache_shader_render_glyph = __neko_fontcache_compile_shader(vs_source_shared, fs_source_render_glyph);
+    fontcache_shader_blit_atlas = __neko_fontcache_compile_shader(vs_source_shared, fs_source_blit_atlas);
+    fontcache_shader_draw_text = __neko_fontcache_compile_shader(vs_source_draw_text, fs_source_draw_text);
+
+    __neko_fontcache_setup_fbo();
+}
+
+void __neko_fontcache_end() { __neko_fontcache_shutdown(&cache); }
+
 // Method for creating graphics layer for opengl
 struct neko_graphics_i *__neko_graphics_construct() {
     // Construct new graphics interface instance
@@ -2529,7 +2904,19 @@ struct neko_graphics_i *__neko_graphics_construct() {
 
     gfx->default_font = &__neko_get_default_font;
 
+    /*============================================================
+    // Fontcache
+    ============================================================*/
+    gfx->fontcache_create = &__neko_fontcache_init;
+    gfx->fontcache_destroy = &__neko_fontcache_end;
+    gfx->fontcache_draw = &__neko_fontcache_draw;
+    gfx->fontcache_load = &__neko_fontcache_load;
+    gfx->fontcache_push = &__neko_fontcache_push;
+    gfx->fontcache_push_x_y = &__neko_fontcache_push_x_y;
+
+    /*============================================================
     // Shader Methods
+    ============================================================*/
     gfx->neko_shader_create = &__neko_shader_create;
     gfx->neko_shader_get = &__neko_shader_get;
     gfx->neko_shader_internal_list = &__neko_shader_internal_list;

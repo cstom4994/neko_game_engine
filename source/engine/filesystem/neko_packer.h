@@ -86,18 +86,11 @@ neko_inline bool neko_pack_check(neko_pack_result result) {
 }
 
 // 资源管理
-
-struct neko_assets_handle_t {
-    const u8 *data;
-    u32 size;
-};
-
-neko_assets_handle_t neko_assets_get(neko_packreader_t *pack_reader, const neko_string &path);
-
 struct neko_lua_handle_t {
     const_str name;
     u64 size;
     void *data;
 };
+
 
 #endif

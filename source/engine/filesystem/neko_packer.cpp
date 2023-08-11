@@ -774,16 +774,3 @@ neko_pack_result neko_pack_info(const char *filePath, u8 *majorVersion, u8 *mino
     *_itemCount = itemCount;
     return SUCCESS_PACK_RESULT;
 }
-
-neko_assets_handle_t neko_assets_get(neko_packreader_t *pack_reader, const neko_string &path) {
-    neko_pack_result pack_result;
-    neko_assets_handle_t handle;
-    pack_result = neko_pack_item_data(pack_reader, path.c_str(), &handle.data, &handle.size);
-    if (pack_result != SUCCESS_PACK_RESULT) {
-        neko_pack_destroy(pack_reader);
-        neko_error(std::format("get assets \"{0}\" failed: {1}", path, pack_result));
-        neko_assert(0);
-    }
-    neko_assert(handle.data && handle.size);
-    return handle;
-}

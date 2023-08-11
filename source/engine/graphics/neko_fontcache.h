@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "engine/common/neko_util.h"
+#include "engine/math/neko_math.h"
 #include "libs/stb/stb_truetype.h"
 
 #ifndef NEKO_FONTCACHE_CURNEKO_QUALITY
@@ -16,34 +17,6 @@
 #endif  // NEKO_FONTCACHE_CURNEKO_QUALITY
 
 #include "libs/external/utf8.h"
-
-/*
----------------------------------- Font Atlas Caching Strategy --------------------------------------------
-
-                        2k
-                        --------------------
-                        |         |        |
-                        |    A    |        |
-                        |         |        | 2
-                        |---------|    C   | k
-                        |         |        |
-                     1k |    B    |        |
-                        |         |        |
-                        --------------------
-                        |                  |
-                        |                  |
-                        |                  | 2
-                        |        D         | k
-                        |                  |
-                        |                  |
-                        |                  |
-                        --------------------
-
-                        Region A = 32x32 caches, 1024 glyphs
-                        Region B = 32x64 caches, 512 glyphs
-                        Region C = 64x64 caches, 512 glyphs
-                        Region D = 128x128 caches, 256 glyphs
-*/
 
 #define NEKO_FONTCACHE_ATLAS_WIDTH 4096
 #define NEKO_FONTCACHE_ATLAS_HEIGHT 2048
@@ -142,12 +115,8 @@ struct neko_fontcache_vertex {
     float v;
 };
 
-struct neko_fontcache_vec2 {
-    float x;
-    float y;
-};
-inline neko_fontcache_vec2 neko_fontcache_make_vec2(float x_, float y_) {
-    neko_fontcache_vec2 v;
+inline neko_vec2 neko_fontcache_make_vec2(float x_, float y_) {
+    neko_vec2 v;
     v.x = x_;
     v.y = y_;
     return v;
@@ -215,8 +184,8 @@ struct neko_fontcache_atlas {
 
 struct neko_fontcache_shaped_text {
     std::vector<ve_glyph> glyphs;
-    std::vector<neko_fontcache_vec2> pos;
-    neko_fontcache_vec2 end_cursor_pos;
+    std::vector<neko_vec2> pos;
+    neko_vec2 end_cursor_pos;
 };
 
 struct neko_fontcache_shaped_text_cache {
@@ -228,13 +197,13 @@ struct neko_fontcache_shaped_text_cache {
 struct neko_fontcache {
     std::vector<neko_fontcache_entry> entry;
 
-    std::vector<neko_fontcache_vec2> temp_path;
+    std::vector<neko_vec2> temp_path;
     std::unordered_map<uint64_t, bool> temp_codepoint_seen;
 
     uint32_t snap_width = 0;
     uint32_t snap_height = 0;
     float colour[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-    neko_fontcache_vec2 cursor_pos;
+    neko_vec2 cursor_pos;
 
     neko_fontcache_drawlist drawlist;
     neko_fontcache_atlas atlas;
@@ -243,72 +212,66 @@ struct neko_fontcache {
     bool text_shape_advanced = true;
 };
 
-// Call this to initialise a fontcache.
-void neko_fontcache_init(neko_fontcache* cache);
+// 调用此函数来初始化字体缓存
+void __neko_fontcache_init(neko_fontcache* cache);
 
-// Call this to shutdown everything.
-void neko_fontcache_shutdown(neko_fontcache* cache);
+// 调用此命令可以关闭字体缓存所有内容
+void __neko_fontcache_shutdown(neko_fontcache* cache);
 
-// Load hb_font from in-memory buffer. Supports otf, ttf, everything STB_truetype supports.
-//     Caller still owns data and must hold onto it; This buffer cannot be freed while hb_font is still being used.
-//     SBTTT will keep track of weak pointers into this memory.
-//     If you're loading the same hb_font at different size_px values, it is OK to share the same data buffer amongst them.
-//
-ve_font_id neko_fontcache_load(neko_fontcache* cache, const void* data, size_t data_size, float size_px = 24.0f);
+// 从内存缓冲区加载 hb_font 支持 otf,ttf,STB_truetype 支持的所有内容
+// 调用者仍然拥有数据并且必须保留它 当 hb_font 仍在使用时 无法释放该缓冲区
+// SBTTT 将跟踪该内存中的弱指针
+// 如果您以不同的 size_px 值加载相同的 hb_font 则可以在它们之间共享相同的数据缓冲区
+ve_font_id __neko_fontcache_load(neko_fontcache* cache, const void* data, size_t data_size, float size_px = 24.0f);
 
-// Load hb_font from file. Supports otf, ttf, everything STB_truetype supports.
-//     Caller still owns given buffer and must hold onto it. This buffer cannot be freed while hb_font is still being used.
-//     SBTTT will keep track of weak pointers into this memory.
-//     If you're loading the same hb_font at different size_px values, it is OK to share the same buffer amongst them.
-//
-ve_font_id neko_fontcache_loadfile(neko_fontcache* cache, const char* filename, std::vector<uint8_t>& buffer, float size_px = 24.0f);
+// 从文件加载 hb_font 支持 otf,ttf,STB_truetype 支持的所有内容
+// 调用者仍然拥有给定的缓冲区并且必须保留它 当 hb_font 仍在使用时 无法释放该缓冲区
+// SBTTT 将跟踪该内存中的弱指针
+// 如果您以不同的 size_px 值加载相同的 hb_font 则可以在它们之间共享相同的缓冲区
+ve_font_id __neko_fontcache_loadfile(neko_fontcache* cache, const char* filename, std::vector<uint8_t>& buffer, float size_px = 24.0f);
 
-// Unload a font and relase memory. Calling neko_fontcache_shutdown already does this on all loaded fonts.
-void neko_fontcache_unload(neko_fontcache* cache, ve_font_id id);
+// 卸载字体并释放内存 调用 __neko fontcache shutdown 已经对所有加载的字体执行了此操作
+void __neko_fontcache_unload(neko_fontcache* cache, ve_font_id id);
 
-// Configure snapping glyphs to pixel border when hb_font is rendered to 2D screen. May affect kerning. This may be changed at any time.
-// Set both to zero to disable pixel snapping.
-void neko_fontcache_configure_snap(neko_fontcache* cache, uint32_t snap_width = 0, uint32_t snap_height = 0);
+// 当 hb 字体渲染到 2D 屏幕时 配置将字形捕捉到像素边框 可能会影响字距调整 这可能随时更改 // 将两者设置为零以禁用像素捕捉
+void __neko_fontcache_configure_snap(neko_fontcache* cache, uint32_t snap_width = 0, uint32_t snap_height = 0);
 
-// Call this per-frame after draw list has been executed. This will clear the drawlist for next frame.
-void neko_fontcache_flush_drawlist(neko_fontcache* cache);
+// 在执行绘制列表后每帧调用此函数 这将清除下一帧的绘制列表
+void __neko_fontcache_flush_drawlist(neko_fontcache* cache);
 
-// Main draw text function. This batches caches both shape and glyphs, and uses fallback path when not available.
-//     Note that this function immediately appends everything needed to render the next to the cache->drawlist.
-//     If you want to draw to multiple unrelated targets, simply draw_text, then loop through execute draw list, draw_text again, and loop through execute draw list again.
-//     Suggest scalex = 1 / screen_width and scaley = 1 / screen height! scalex and scaley will need to account for aspect ratio.
-//
-bool neko_fontcache_draw_text(neko_fontcache* cache, ve_font_id font, const std::string& text_utf8, float posx = 0.0f, float posy = 0.0f, float scalex = 1.0f, float scaley = 1.0f);
+// 主要绘制文本函数 此批处理会缓存形状和字形 并在不可用时使用后备路径
+// 请注意 此函数立即将渲染下一个所需的所有内容附加到缓存->绘制列表中
+// 如果要绘制到多个不相关的目标 只需 draw_text 然后循环执行绘制列表 再次 draw_text 再次循环执行绘制列表
+// 建议scalex = 1 / screen_width 和scaley = 1 / 屏幕高度 scalex 和 scaley 需要考虑纵横比
+bool __neko_fontcache_draw_text(neko_fontcache* cache, ve_font_id font, const std::string& text_utf8, float posx = 0.0f, float posy = 0.0f, float scalex = 1.0f, float scaley = 1.0f);
 
-// Get where the last neko_fontcache_draw_text call left off.
-neko_fontcache_vec2 neko_fontcache_get_cursor_pos(neko_fontcache* cache);
+// 获取最后一次 __neko_fontcache_draw_text 调用停止的位置
+neko_vec2 __neko_fontcache_get_cursor_pos(neko_fontcache* cache);
 
-// Merges drawcalls. Significantly improves drawcall overhead, highly recommended. Call this before looping through and executing drawlist.
-void neko_fontcache_optimise_drawlist(neko_fontcache* cache);
+// 合并绘制调用 显着改善绘制调用开销 强烈推荐在循环并执行绘制列表之前调用此函数
+void __neko_fontcache_optimise_drawlist(neko_fontcache* cache);
 
-// Retrieves current drawlist from cache.
-neko_fontcache_drawlist* neko_fontcache_get_drawlist(neko_fontcache* cache);
+// 从缓存中检索当前绘制列表
+neko_fontcache_drawlist* __neko_fontcache_get_drawlist(neko_fontcache* cache);
 
-// Set text colour of subsequent text draws.
-void neko_fontcache_set_colour(neko_fontcache* cache, float c[4]);
+// 设置后续文本绘制的文本颜色
+void __neko_fontcache_set_colour(neko_fontcache* cache, float c[4]);
 
-inline void neko_fontcache_enable_advanced_text_shaping(neko_fontcache* cache, bool enabled = true) { cache->text_shape_advanced = enabled; }
+inline void __neko_fontcache_enable_advanced_text_shaping(neko_fontcache* cache, bool enabled = true) { cache->text_shape_advanced = enabled; }
 
-// --------------------------------------------------------------------- Generic Data Structure Declarations -------------------------------------------------------------
+// 用于无分配 LRU 实现的通用池列表
+void __neko_fontcache_poollist_init(neko_fontcache_poollist& plist, int capacity);
+void __neko_fontcache_poollist_push_front(neko_fontcache_poollist& plist, neko_fontcache_poollist_value v);
+void __neko_fontcache_poollist_erase(neko_fontcache_poollist& plist, neko_fontcache_poollist_itr it);
+neko_fontcache_poollist_value __neko_fontcache_poollist_peek_back(neko_fontcache_poollist& plist);
+neko_fontcache_poollist_value __neko_fontcache_poollist_pop_back(neko_fontcache_poollist& plist);
 
-// Generic pool list for alloc-free LRU implementation.
-void neko_fontcache_poollist_init(neko_fontcache_poollist& plist, int capacity);
-void neko_fontcache_poollist_push_front(neko_fontcache_poollist& plist, neko_fontcache_poollist_value v);
-void neko_fontcache_poollist_erase(neko_fontcache_poollist& plist, neko_fontcache_poollist_itr it);
-neko_fontcache_poollist_value neko_fontcache_poollist_peek_back(neko_fontcache_poollist& plist);
-neko_fontcache_poollist_value neko_fontcache_poollist_pop_back(neko_fontcache_poollist& plist);
+// 通用 LRU（Least-Recently-Used）缓存实现 可重用于图集和形状缓存
+void __neko_fontcache_LRU_init(neko_fontcache_LRU& LRU, int capacity);
+int __neko_fontcache_LRU_get(neko_fontcache_LRU& LRU, uint64_t key);
+int __neko_fontcache_LRU_peek(neko_fontcache_LRU& LRU, uint64_t key);
+uint64_t __neko_fontcache_LRU_put(neko_fontcache_LRU& LRU, uint64_t key, int val);
+void __neko_fontcache_LRU_refresh(neko_fontcache_LRU& LRU, uint64_t key);
+uint64_t __neko_fontcache_LRU_get_next_evicted(neko_fontcache_LRU& LRU);
 
-// Generic LRU ( Least-Recently-Used ) cache implementation, reused for both atlas and shape cache.
-void neko_fontcache_LRU_init(neko_fontcache_LRU& LRU, int capacity);
-int neko_fontcache_LRU_get(neko_fontcache_LRU& LRU, uint64_t key);
-int neko_fontcache_LRU_peek(neko_fontcache_LRU& LRU, uint64_t key);
-uint64_t neko_fontcache_LRU_put(neko_fontcache_LRU& LRU, uint64_t key, int val);
-void neko_fontcache_LRU_refresh(neko_fontcache_LRU& LRU, uint64_t key);
-uint64_t neko_fontcache_LRU_get_next_evicted(neko_fontcache_LRU& LRU);
-
-bool neko_fontcache_cache_glyph(neko_fontcache* cache, ve_font_id font, ve_glyph glyph_index, float scaleX = 1.0f, float scaleY = 1.0f, float translateX = 0.0f, float translateY = 0.0f);
+bool __neko_fontcache_cache_glyph(neko_fontcache* cache, ve_font_id font, ve_glyph glyph_index, float scaleX = 1.0f, float scaleY = 1.0f, float translateX = 0.0f, float translateY = 0.0f);

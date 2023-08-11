@@ -4,7 +4,7 @@
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "libs/stb/stb_truetype.h"
 
-void neko_fontcache_init(neko_fontcache* cache) {
+void __neko_fontcache_init(neko_fontcache* cache) {
     neko_assert(cache);
 
     // Reserve global context data.
@@ -20,13 +20,13 @@ void neko_fontcache_init(neko_fontcache* cache) {
     cache->atlas.next_atlas_idx_B = 0;
     cache->atlas.next_atlas_idx_C = 0;
     cache->atlas.next_atlas_idx_D = 0;
-    neko_fontcache_LRU_init(cache->atlas.stateA, NEKO_FONTCACHE_ATLAS_REGION_A_CAPACITY);
-    neko_fontcache_LRU_init(cache->atlas.stateB, NEKO_FONTCACHE_ATLAS_REGION_B_CAPACITY);
-    neko_fontcache_LRU_init(cache->atlas.stateC, NEKO_FONTCACHE_ATLAS_REGION_C_CAPACITY);
-    neko_fontcache_LRU_init(cache->atlas.stateD, NEKO_FONTCACHE_ATLAS_REGION_D_CAPACITY);
+    __neko_fontcache_LRU_init(cache->atlas.stateA, NEKO_FONTCACHE_ATLAS_REGION_A_CAPACITY);
+    __neko_fontcache_LRU_init(cache->atlas.stateB, NEKO_FONTCACHE_ATLAS_REGION_B_CAPACITY);
+    __neko_fontcache_LRU_init(cache->atlas.stateC, NEKO_FONTCACHE_ATLAS_REGION_C_CAPACITY);
+    __neko_fontcache_LRU_init(cache->atlas.stateD, NEKO_FONTCACHE_ATLAS_REGION_D_CAPACITY);
 
     // Reserve data for shape cache. This is pretty big!
-    neko_fontcache_LRU_init(cache->shape_cache.state, NEKO_FONTCACHE_SHAPECACHE_SIZE);
+    __neko_fontcache_LRU_init(cache->shape_cache.state, NEKO_FONTCACHE_SHAPECACHE_SIZE);
     cache->shape_cache.storage.resize(NEKO_FONTCACHE_SHAPECACHE_SIZE);
     for (int i = 0; i < NEKO_FONTCACHE_SHAPECACHE_SIZE; i++) {
         cache->shape_cache.storage[i].glyphs.reserve(NEKO_FONTCACHE_SHAPECACHE_RESERNEKO_LENGTH);
@@ -42,14 +42,14 @@ void neko_fontcache_init(neko_fontcache* cache) {
     cache->atlas.glyph_update_batch_clear_drawlist.indices.reserve(NEKO_FONTCACHE_GLYPHDRAW_BUFFER_BATCH * 2 * 6);
 }
 
-void neko_fontcache_shutdown(neko_fontcache* cache) {
+void __neko_fontcache_shutdown(neko_fontcache* cache) {
     neko_assert(cache);
     for (neko_fontcache_entry& et : cache->entry) {
-        neko_fontcache_unload(cache, et.font_id);
+        __neko_fontcache_unload(cache, et.font_id);
     }
 }
 
-ve_font_id neko_fontcache_load(neko_fontcache* cache, const void* data, size_t data_size, float size_px) {
+ve_font_id __neko_fontcache_load(neko_fontcache* cache, const void* data, size_t data_size, float size_px) {
     neko_assert(cache);
     if (!data) return -1;
 
@@ -81,7 +81,7 @@ ve_font_id neko_fontcache_load(neko_fontcache* cache, const void* data, size_t d
     return id;
 }
 
-ve_font_id neko_fontcache_loadfile(neko_fontcache* cache, const char* filename, std::vector<uint8_t>& buffer, float size_px) {
+ve_font_id __neko_fontcache_loadfile(neko_fontcache* cache, const char* filename, std::vector<uint8_t>& buffer, float size_px) {
     FILE* fp = fopen(filename, "rb");
     if (!fp) return -1;
 
@@ -97,11 +97,11 @@ ve_font_id neko_fontcache_loadfile(neko_fontcache* cache, const char* filename, 
     }
     fclose(fp);
 
-    ve_font_id ret = neko_fontcache_load(cache, buffer.data(), buffer.size(), size_px);
+    ve_font_id ret = __neko_fontcache_load(cache, buffer.data(), buffer.size(), size_px);
     return ret;
 }
 
-void neko_fontcache_unload(neko_fontcache* cache, ve_font_id font) {
+void __neko_fontcache_unload(neko_fontcache* cache, ve_font_id font) {
     neko_assert(cache);
     neko_assert(font >= 0 && font < cache->entry.size());
 
@@ -109,13 +109,13 @@ void neko_fontcache_unload(neko_fontcache* cache, ve_font_id font) {
     et.used = false;
 }
 
-void neko_fontcache_configure_snap(neko_fontcache* cache, uint32_t snap_width, uint32_t snap_height) {
+void __neko_fontcache_configure_snap(neko_fontcache* cache, uint32_t snap_width, uint32_t snap_height) {
     neko_assert(cache);
     cache->snap_width = snap_width;
     cache->snap_height = snap_height;
 }
 
-neko_fontcache_drawlist* neko_fontcache_get_drawlist(neko_fontcache* cache) {
+neko_fontcache_drawlist* __neko_fontcache_get_drawlist(neko_fontcache* cache) {
     neko_assert(cache);
     return &cache->drawlist;
 }
@@ -143,25 +143,25 @@ void neko_fontcache_merge_drawlist(neko_fontcache_drawlist& dest, const neko_fon
     }
 }
 
-void neko_fontcache_flush_drawlist(neko_fontcache* cache) {
+void __neko_fontcache_flush_drawlist(neko_fontcache* cache) {
     neko_assert(cache);
     neko_fontcache_clear_drawlist(cache->drawlist);
 }
 
-inline neko_fontcache_vec2 neko_fontcache_eval_bezier(neko_fontcache_vec2 p0, neko_fontcache_vec2 p1, neko_fontcache_vec2 p2, float t) {
+inline neko_vec2 neko_fontcache_eval_bezier(neko_vec2 p0, neko_vec2 p1, neko_vec2 p2, float t) {
     float t2 = t * t, c0 = (1.0f - t) * (1.0f - t), c1 = 2.0f * (1.0f - t) * t, c2 = t2;
     return neko_fontcache_make_vec2(c0 * p0.x + c1 * p1.x + c2 * p2.x, c0 * p0.y + c1 * p1.y + c2 * p2.y);
 }
 
-inline neko_fontcache_vec2 neko_fontcache_eval_bezier(neko_fontcache_vec2 p0, neko_fontcache_vec2 p1, neko_fontcache_vec2 p2, neko_fontcache_vec2 p3, float t) {
+inline neko_vec2 neko_fontcache_eval_bezier(neko_vec2 p0, neko_vec2 p1, neko_vec2 p2, neko_vec2 p3, float t) {
     float t2 = t * t, t3 = t2 * t;
     float c0 = (1.0f - t) * (1.0f - t) * (1.0f - t), c1 = 3.0f * (1.0f - t) * (1.0f - t) * t, c2 = 3.0f * (1.0f - t) * t2, c3 = t3;
     return neko_fontcache_make_vec2(c0 * p0.x + c1 * p1.x + c2 * p2.x + c3 * p3.x, c0 * p0.y + c1 * p1.y + c2 * p2.y + c3 * p3.y);
 }
 
 // WARNING: doesn't actually append drawcall; caller is responsible for actually appending the drawcall.
-void neko_fontcache_draw_filled_path(neko_fontcache_drawlist& drawlist, neko_fontcache_vec2 outside, std::vector<neko_fontcache_vec2>& path, float scaleX = 1.0f, float scaleY = 1.0f,
-                                     float translateX = 0.0f, float translateY = 0.0f) {
+void neko_fontcache_draw_filled_path(neko_fontcache_drawlist& drawlist, neko_vec2 outside, std::vector<neko_vec2>& path, float scaleX = 1.0f, float scaleY = 1.0f, float translateX = 0.0f,
+                                     float translateY = 0.0f) {
 #ifdef NEKO_FONTCACHE_DEBUGPRINT_VERBOSE
     printf("outline_path: \n");
     for (int i = 0; i < path.size(); i++) {
@@ -227,7 +227,7 @@ void neko_fontcache_blit_quad(neko_fontcache_drawlist& drawlist, float x0 = 0.0f
     }
 }
 
-bool neko_fontcache_cache_glyph(neko_fontcache* cache, ve_font_id font, ve_glyph glyph_index, float scaleX, float scaleY, float translateX, float translateY) {
+bool __neko_fontcache_cache_glyph(neko_fontcache* cache, ve_font_id font, ve_glyph glyph_index, float scaleX, float scaleY, float translateX, float translateY) {
     neko_assert(cache);
     neko_assert(font >= 0 && font < cache->entry.size());
     neko_fontcache_entry& entry = cache->entry[font];
@@ -265,7 +265,7 @@ bool neko_fontcache_cache_glyph(neko_fontcache* cache, ve_font_id font, ve_glyph
     int bounds_x0, bounds_x1, bounds_y0, bounds_y1;
     int success = stbtt_GetGlyphBox(&entry.info, glyph_index, &bounds_x0, &bounds_y0, &bounds_x1, &bounds_y1);
     neko_assert(success);
-    neko_fontcache_vec2 outside = neko_fontcache_make_vec2(bounds_x0 - 21, bounds_y0 - 33);
+    neko_vec2 outside = neko_fontcache_make_vec2(bounds_x0 - 21, bounds_y0 - 33);
 
     // Figure out scaling so it fits within our box.
     neko_fontcache_draw draw;
@@ -275,7 +275,7 @@ bool neko_fontcache_cache_glyph(neko_fontcache* cache, ve_font_id font, ve_glyph
     // Draw the path using simplified version of https://medium.com/@evanwallace/easy-scalable-text-rendering-on-the-gpu-c3f4d782c5ac.
     // Instead of involving fragment shader code we simply make use of modern GPU ability to crunch triangles and brute force curve definitions.
     //
-    std::vector<neko_fontcache_vec2>& path = cache->temp_path;
+    std::vector<neko_vec2>& path = cache->temp_path;
     path.clear();
     for (int i = 0; i < nverts; i++) {
         stbtt_vertex& edge = shape[i];
@@ -291,9 +291,9 @@ bool neko_fontcache_cache_glyph(neko_fontcache* cache, ve_font_id font, ve_glyph
                 break;
             case STBTT_vcurve: {
                 neko_assert(path.size() > 0);
-                neko_fontcache_vec2 p0 = path[path.size() - 1];
-                neko_fontcache_vec2 p1 = neko_fontcache_make_vec2(shape[i].cx, shape[i].cy);
-                neko_fontcache_vec2 p2 = neko_fontcache_make_vec2(shape[i].x, shape[i].y);
+                neko_vec2 p0 = path[path.size() - 1];
+                neko_vec2 p1 = neko_fontcache_make_vec2(shape[i].cx, shape[i].cy);
+                neko_vec2 p2 = neko_fontcache_make_vec2(shape[i].x, shape[i].y);
 
                 float step = 1.0f / NEKO_FONTCACHE_CURNEKO_QUALITY, t = step;
                 for (int i = 0; i < NEKO_FONTCACHE_CURNEKO_QUALITY; i++) {
@@ -304,10 +304,10 @@ bool neko_fontcache_cache_glyph(neko_fontcache* cache, ve_font_id font, ve_glyph
             }
             case STBTT_vcubic: {
                 neko_assert(path.size() > 0);
-                neko_fontcache_vec2 p0 = path[path.size() - 1];
-                neko_fontcache_vec2 p1 = neko_fontcache_make_vec2(shape[i].cx, shape[i].cy);
-                neko_fontcache_vec2 p2 = neko_fontcache_make_vec2(shape[i].cx1, shape[i].cy1);
-                neko_fontcache_vec2 p3 = neko_fontcache_make_vec2(shape[i].x, shape[i].y);
+                neko_vec2 p0 = path[path.size() - 1];
+                neko_vec2 p1 = neko_fontcache_make_vec2(shape[i].cx, shape[i].cy);
+                neko_vec2 p2 = neko_fontcache_make_vec2(shape[i].cx1, shape[i].cy1);
+                neko_vec2 p3 = neko_fontcache_make_vec2(shape[i].x, shape[i].y);
 
                 float step = 1.0f / NEKO_FONTCACHE_CURNEKO_QUALITY, t = step;
                 for (int i = 0; i < NEKO_FONTCACHE_CURNEKO_QUALITY; i++) {
@@ -490,22 +490,22 @@ void neko_fontcache_cache_glyph_to_atlas(neko_fontcache* cache, ve_font_id font,
 
     // Grab an atlas LRU cache slot.
     uint64_t lru_code = glyph_index + ((0x100000000ULL * font) & 0xFFFFFFFF00000000ULL);
-    int atlas_index = neko_fontcache_LRU_get(*state, lru_code);
+    int atlas_index = __neko_fontcache_LRU_get(*state, lru_code);
     if (atlas_index == -1) {
         if (*next_idx < state->capacity) {
-            uint64_t evicted = neko_fontcache_LRU_put(*state, lru_code, *next_idx);
+            uint64_t evicted = __neko_fontcache_LRU_put(*state, lru_code, *next_idx);
             atlas_index = *next_idx;
             (*next_idx)++;
             neko_assert(evicted == lru_code);
         } else {
-            uint64_t next_evict_codepoint = neko_fontcache_LRU_get_next_evicted(*state);
+            uint64_t next_evict_codepoint = __neko_fontcache_LRU_get_next_evicted(*state);
             neko_assert(next_evict_codepoint != 0xFFFFFFFFFFFFFFFFULL);
-            atlas_index = neko_fontcache_LRU_peek(*state, next_evict_codepoint);
+            atlas_index = __neko_fontcache_LRU_peek(*state, next_evict_codepoint);
             neko_assert(atlas_index != -1);
-            uint64_t evicted = neko_fontcache_LRU_put(*state, lru_code, atlas_index);
+            uint64_t evicted = __neko_fontcache_LRU_put(*state, lru_code, atlas_index);
             neko_assert(evicted == next_evict_codepoint);
         }
-        neko_assert(neko_fontcache_LRU_get(*state, lru_code) != -1);
+        neko_assert(__neko_fontcache_LRU_get(*state, lru_code) != -1);
     }
 
 #ifdef NEKO_FONTCACHE_DEBUGPRINT
@@ -572,7 +572,7 @@ void neko_fontcache_cache_glyph_to_atlas(neko_fontcache* cache, ve_font_id font,
     cache->atlas.glyph_update_batch_drawlist.dcalls.push_back(dcall);
 
     // the<engine>().eng()-> glyph to glyph_update_FBO.
-    neko_fontcache_cache_glyph(cache, font, glyph_index, glyph_draw_scale_x, glyph_draw_scale_y, glyph_draw_translate_x, glyph_draw_translate_y);
+    __neko_fontcache_cache_glyph(cache, font, glyph_index, glyph_draw_scale_x, glyph_draw_scale_y, glyph_draw_translate_x, glyph_draw_translate_y);
 }
 
 void neko_fontcache_shape_text_uncached(neko_fontcache* cache, ve_font_id font, neko_fontcache_shaped_text& output, const std::string& text_utf8) {
@@ -652,17 +652,17 @@ static neko_fontcache_shaped_text& neko_fontcache_shape_text_cached(neko_fontcac
     neko_fontcache_ELFhash64(hash, &font);
 
     neko_fontcache_LRU& state = cache->shape_cache.state;
-    int shape_cache_idx = neko_fontcache_LRU_get(state, hash);
+    int shape_cache_idx = __neko_fontcache_LRU_get(state, hash);
     if (shape_cache_idx == -1) {
         if (cache->shape_cache.next_cache_idx < state.capacity) {
             shape_cache_idx = cache->shape_cache.next_cache_idx++;
-            neko_fontcache_LRU_put(state, hash, shape_cache_idx);
+            __neko_fontcache_LRU_put(state, hash, shape_cache_idx);
         } else {
-            uint64_t next_evict_idx = neko_fontcache_LRU_get_next_evicted(state);
+            uint64_t next_evict_idx = __neko_fontcache_LRU_get_next_evicted(state);
             neko_assert(next_evict_idx != 0xFFFFFFFFFFFFFFFFULL);
-            shape_cache_idx = neko_fontcache_LRU_peek(state, next_evict_idx);
+            shape_cache_idx = __neko_fontcache_LRU_peek(state, next_evict_idx);
             neko_assert(shape_cache_idx != -1);
-            neko_fontcache_LRU_put(state, hash, shape_cache_idx);
+            __neko_fontcache_LRU_put(state, hash, shape_cache_idx);
         }
         neko_fontcache_shape_text_uncached(cache, font, cache->shape_cache.storage[shape_cache_idx], text_utf8);
     }
@@ -684,7 +684,7 @@ static void neko_fontcache_directly_draw_massive_glyph(neko_fontcache* cache, ne
                                      NEKO_FONTCACHE_GLYPHDRAW_BUFFER_HEIGHT);
 
     // the<engine>().eng()-> glyph to glyph_update_FBO.
-    neko_fontcache_cache_glyph(cache, entry.font_id, glyph, glyph_draw_scale_x, glyph_draw_scale_y, glyph_draw_translate_x, glyph_draw_translate_y);
+    __neko_fontcache_cache_glyph(cache, entry.font_id, glyph, glyph_draw_scale_x, glyph_draw_scale_y, glyph_draw_translate_x, glyph_draw_translate_y);
 
     // Figure out the source rect.
     float glyph_x = 0.0f, glyph_y = 0.0f, glyph_w = bounds_width * entry.size_scale * oversample_x, glyph_h = bounds_height * entry.size_scale * oversample_y;
@@ -761,7 +761,7 @@ bool neko_fontcache_draw_cached_glyph(neko_fontcache* cache, neko_fontcache_entr
 
     // Is this codepoint cached?
     uint64_t lru_code = glyph_index + ((0x100000000ULL * entry.font_id) & 0xFFFFFFFF00000000ULL);
-    int atlas_index = neko_fontcache_LRU_get(*state, lru_code);
+    int atlas_index = __neko_fontcache_LRU_get(*state, lru_code);
     if (atlas_index == -1) {
         return false;
     }
@@ -820,11 +820,11 @@ static bool neko_fontcache_can_batch_glyph(neko_fontcache* cache, ve_font_id fon
 
     // Is this glyph cached?
     uint64_t lru_code = glyph_index + ((0x100000000ULL * entry.font_id) & 0xFFFFFFFF00000000ULL);
-    int atlas_index = neko_fontcache_LRU_get(*state, lru_code);
+    int atlas_index = __neko_fontcache_LRU_get(*state, lru_code);
     if (atlas_index == -1) {
         if (*next_idx >= state->capacity) {
             // We will evict LRU. We must predict which LRU will get evicted, and if it's something we've seen then we need to take slowpath and flush batch.
-            uint64_t next_evict_codepoint = neko_fontcache_LRU_get_next_evicted(*state);
+            uint64_t next_evict_codepoint = __neko_fontcache_LRU_get_next_evicted(*state);
             if (cache->temp_codepoint_seen[next_evict_codepoint]) {
                 return false;
             }
@@ -832,7 +832,7 @@ static bool neko_fontcache_can_batch_glyph(neko_fontcache* cache, ve_font_id fon
         neko_fontcache_cache_glyph_to_atlas(cache, font, glyph_index);
     }
 
-    neko_assert(neko_fontcache_LRU_get(*state, lru_code) != -1);
+    neko_assert(__neko_fontcache_LRU_get(*state, lru_code) != -1);
     cache->temp_codepoint_seen[lru_code] = true;
 
     return true;
@@ -849,7 +849,7 @@ static void neko_fontcache_draw_text_batch(neko_fontcache* cache, neko_fontcache
     }
 }
 
-bool neko_fontcache_draw_text(neko_fontcache* cache, ve_font_id font, const std::string& text_utf8, float posx, float posy, float scalex, float scaley) {
+bool __neko_fontcache_draw_text(neko_fontcache* cache, ve_font_id font, const std::string& text_utf8, float posx, float posy, float scalex, float scaley) {
     neko_fontcache_shaped_text& shaped = neko_fontcache_shape_text_cached(cache, font, text_utf8);
 
     if (cache->snap_width) posx = ((int)(posx * cache->snap_width + 0.5f)) / (float)cache->snap_width;
@@ -886,9 +886,9 @@ bool neko_fontcache_draw_text(neko_fontcache* cache, ve_font_id font, const std:
     return true;
 }
 
-neko_fontcache_vec2 neko_fontcache_get_cursor_pos(neko_fontcache* cache) { return cache->cursor_pos; }
+neko_vec2 __neko_fontcache_get_cursor_pos(neko_fontcache* cache) { return cache->cursor_pos; }
 
-void neko_fontcache_optimise_drawlist(neko_fontcache* cache) {
+void __neko_fontcache_optimise_drawlist(neko_fontcache* cache) {
     neko_assert(cache);
 
     int write_idx = 0;
@@ -916,7 +916,7 @@ void neko_fontcache_optimise_drawlist(neko_fontcache* cache) {
     cache->drawlist.dcalls.resize(write_idx + 1);
 }
 
-void neko_fontcache_set_colour(neko_fontcache* cache, float c[4]) {
+void __neko_fontcache_set_colour(neko_fontcache* cache, float c[4]) {
     cache->colour[0] = c[0];
     cache->colour[1] = c[1];
     cache->colour[2] = c[2];
@@ -925,14 +925,14 @@ void neko_fontcache_set_colour(neko_fontcache* cache, float c[4]) {
 
 // ------------------------------------------------------ Generic Data Structure Implementations ------------------------------------------
 
-void neko_fontcache_poollist_init(neko_fontcache_poollist& plist, int capacity) {
+void __neko_fontcache_poollist_init(neko_fontcache_poollist& plist, int capacity) {
     plist.pool.resize(capacity);
     plist.freelist.resize(capacity);
     plist.capacity = capacity;
     for (int i = 0; i < capacity; i++) plist.freelist[i] = i;
 }
 
-void neko_fontcache_poollist_push_front(neko_fontcache_poollist& plist, neko_fontcache_poollist_value v) {
+void __neko_fontcache_poollist_push_front(neko_fontcache_poollist& plist, neko_fontcache_poollist_value v) {
     if (plist.size >= plist.capacity) return;
     neko_assert(plist.freelist.size() > 0);
     neko_assert(plist.freelist.size() == plist.capacity - plist.size);
@@ -949,7 +949,7 @@ void neko_fontcache_poollist_push_front(neko_fontcache_poollist& plist, neko_fon
     plist.size++;
 }
 
-void neko_fontcache_poollist_erase(neko_fontcache_poollist& plist, neko_fontcache_poollist_itr it) {
+void __neko_fontcache_poollist_erase(neko_fontcache_poollist& plist, neko_fontcache_poollist_itr it) {
     if (plist.size <= 0) return;
     neko_assert(it >= 0 && it < plist.capacity);
     neko_assert(plist.freelist.size() == plist.capacity - plist.size);
@@ -968,45 +968,45 @@ void neko_fontcache_poollist_erase(neko_fontcache_poollist& plist, neko_fontcach
     if (--plist.size == 0) plist.back = plist.front = -1;
 }
 
-neko_fontcache_poollist_value neko_fontcache_poollist_peek_back(neko_fontcache_poollist& plist) {
+neko_fontcache_poollist_value __neko_fontcache_poollist_peek_back(neko_fontcache_poollist& plist) {
     neko_assert(plist.back != -1);
     return plist.pool[plist.back].value;
 }
 
-neko_fontcache_poollist_value neko_fontcache_poollist_pop_back(neko_fontcache_poollist& plist) {
+neko_fontcache_poollist_value __neko_fontcache_poollist_pop_back(neko_fontcache_poollist& plist) {
     if (plist.size <= 0) return 0;
     neko_assert(plist.back != -1);
     neko_fontcache_poollist_value v = plist.pool[plist.back].value;
-    neko_fontcache_poollist_erase(plist, plist.back);
+    __neko_fontcache_poollist_erase(plist, plist.back);
     return v;
 }
 
-void neko_fontcache_LRU_init(neko_fontcache_LRU& LRU, int capacity) {
+void __neko_fontcache_LRU_init(neko_fontcache_LRU& LRU, int capacity) {
     // Thanks to dfsbfs from leetcode! This code is eavily based on that with simplifications made on top.
     // ref: https://leetcode.com/problems/lru-cache/discuss/968703/c%2B%2B
     //      https://leetcode.com/submissions/detail/436667816/
     LRU.capacity = capacity;
     LRU.cache.reserve(capacity);
-    neko_fontcache_poollist_init(LRU.key_queue, capacity);
+    __neko_fontcache_poollist_init(LRU.key_queue, capacity);
 }
 
-void neko_fontcache_LRU_refresh(neko_fontcache_LRU& LRU, uint64_t key) {
+void __neko_fontcache_LRU_refresh(neko_fontcache_LRU& LRU, uint64_t key) {
     auto it = LRU.cache.find(key);
-    neko_fontcache_poollist_erase(LRU.key_queue, it->second.ptr);
-    neko_fontcache_poollist_push_front(LRU.key_queue, key);
+    __neko_fontcache_poollist_erase(LRU.key_queue, it->second.ptr);
+    __neko_fontcache_poollist_push_front(LRU.key_queue, key);
     it->second.ptr = LRU.key_queue.front;
 }
 
-int neko_fontcache_LRU_get(neko_fontcache_LRU& LRU, uint64_t key) {
+int __neko_fontcache_LRU_get(neko_fontcache_LRU& LRU, uint64_t key) {
     auto it = LRU.cache.find(key);
     if (it == LRU.cache.end()) {
         return -1;
     }
-    neko_fontcache_LRU_refresh(LRU, key);
+    __neko_fontcache_LRU_refresh(LRU, key);
     return it->second.value;
 }
 
-int neko_fontcache_LRU_peek(neko_fontcache_LRU& LRU, uint64_t key) {
+int __neko_fontcache_LRU_peek(neko_fontcache_LRU& LRU, uint64_t key) {
     auto it = LRU.cache.find(key);
     if (it == LRU.cache.end()) {
         return -1;
@@ -1014,29 +1014,29 @@ int neko_fontcache_LRU_peek(neko_fontcache_LRU& LRU, uint64_t key) {
     return it->second.value;
 }
 
-uint64_t neko_fontcache_LRU_put(neko_fontcache_LRU& LRU, uint64_t key, int val) {
+uint64_t __neko_fontcache_LRU_put(neko_fontcache_LRU& LRU, uint64_t key, int val) {
     auto it = LRU.cache.find(key);
     if (it != LRU.cache.end()) {
-        neko_fontcache_LRU_refresh(LRU, key);
+        __neko_fontcache_LRU_refresh(LRU, key);
         it->second.value = val;
         return key;
     }
 
     uint64_t evict = key;
     if (LRU.key_queue.size >= LRU.capacity) {
-        evict = neko_fontcache_poollist_pop_back(LRU.key_queue);
+        evict = __neko_fontcache_poollist_pop_back(LRU.key_queue);
         LRU.cache.erase(evict);
     }
 
-    neko_fontcache_poollist_push_front(LRU.key_queue, key);
+    __neko_fontcache_poollist_push_front(LRU.key_queue, key);
     LRU.cache[key].value = val;
     LRU.cache[key].ptr = LRU.key_queue.front;
     return evict;
 }
 
-uint64_t neko_fontcache_LRU_get_next_evicted(neko_fontcache_LRU& LRU) {
+uint64_t __neko_fontcache_LRU_get_next_evicted(neko_fontcache_LRU& LRU) {
     if (LRU.key_queue.size >= LRU.capacity) {
-        uint64_t evict = neko_fontcache_poollist_peek_back(LRU.key_queue);
+        uint64_t evict = __neko_fontcache_poollist_peek_back(LRU.key_queue);
         ;
         return evict;
     }

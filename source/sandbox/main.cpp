@@ -11,7 +11,6 @@
 #include "engine/graphics/neko_render_pass.h"
 #include "engine/graphics/neko_sprite.h"
 #include "engine/gui/neko_imgui_utils.hpp"
-#include "engine/gui/neko_text_renderer.hpp"
 #include "engine/neko.h"
 #include "engine/scripting/neko_scripting.h"
 #include "engine/utility/hash.hpp"
@@ -1005,10 +1004,9 @@ neko_result app_init() {
                 return neko_dbgui_result_in_progress;
             });
 
-    the<text_renderer>().resize({g_window_width, g_window_height});
-
-    auto ui_font = neko_assets_get(g_pack_reader, ".\\fonts\\fusion-pixel.ttf");
-    g_basic_font = the<text_renderer>().load(ui_font.data, ui_font.size, 24.0f);
+    neko_lua_handle_t *font_handle = (neko_lua_handle_t *)neko_gc_alloc(&g_gc, sizeof(neko_lua_handle_t));
+    neko_pack_item_data(g_pack_reader, ".\\fonts\\fusion-pixel.ttf", (const u8 **)&font_handle->data, (u32 *)&font_handle->size);
+    g_basic_font = gfx->fontcache_load(font_handle->data, font_handle->size, 24.0f);
 
     g_test_font = gfx->construct_font_from_file(neko_file_path("data/assets/fonts/fusion-pixel-12px-monospaced.ttf"), 64.f);
 
@@ -1436,7 +1434,7 @@ bool update_ui() {
         neko_snprintf(sim_state_str, sizeof(sim_state_str), "state: %s", g_cvar.tick_world ? "running" : "paused");
         draw_string_at(&g_font, g_ui_buffer, 10, 20, sim_state_str, strlen(sim_state_str), cell_color_t{255, 255, 255, 255});
 
-        the<text_renderer>().push(std::format("test: {0}", l_check), g_basic_font, 40, 160);
+        gfx->fontcache_push_x_y(std::format("test: {0}", l_check), g_basic_font, 40, 160);
     }
 
     // Draw circle around mouse pointer
@@ -3827,7 +3825,6 @@ void test_wang() {
 int main(int argc, char **argv) {
 
     neko_engine *engine = neko_engine_construct(argc, argv);
-
     if (nullptr != engine) {
         neko_result result = engine->engine_run();
         if (result != neko_result_success) {
