@@ -2,7 +2,7 @@
 #include "neko_sprite.h"
 
 #include "engine/base/neko_engine.h"
-#include "engine/utility/hash.hpp"
+#include "engine/common/neko_hash.h"
 #include "engine/utility/logger.hpp"
 #include "engine/utility/neko_cpp_utils.hpp"
 

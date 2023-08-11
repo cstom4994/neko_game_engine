@@ -19,8 +19,8 @@ neko_particle::~neko_particle() {}
 void neko_particle::init() {
     m_x = 0;
     m_y = 0;
-    m_direction = 2 * neko_pi * rand() / RAND_MAX;
-    m_speed = 0.04 * rand() / RAND_MAX;
+    m_direction = 2 * neko_pi * neko_rand_xorshf32() / neko_rand_xorshf32_max;
+    m_speed = 0.04 * neko_rand_xorshf32() / neko_rand_xorshf32_max;
     m_speed *= m_speed;
 }
 
@@ -37,7 +37,7 @@ void neko_particle::update(int interval, float spin, float speed) {
         init();
     }
 
-    if (rand() < RAND_MAX / 100) {
+    if (neko_rand_xorshf32() < neko_rand_xorshf32_max / 100) {
         init();
     }
 }

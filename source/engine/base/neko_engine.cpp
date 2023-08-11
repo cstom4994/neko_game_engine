@@ -144,7 +144,7 @@ neko_engine *neko_engine_construct(int argc, char **argv) {
 
         // neko_lua_auto_push(L, neko_application_dedsc_t, &t);
 
-        if (lua_getglobal(L, "app") == LUA_TNIL) throw std::exception("no app");
+        if (lua_getglobal(L, "neko_app") == LUA_TNIL) throw std::exception("no app");
 
         if (lua_istable(L, -1)) {
             neko::meta::static_refl::TypeInfo<neko_application_desc_t>::ForEachVarOf(t, [&L](auto field, auto &&value) {

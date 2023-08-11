@@ -588,7 +588,7 @@ int markdown::block(MD_BLOCKTYPE type, void* d, bool e) {
             BLOCK_TD((MD_BLOCK_TD_DETAIL*)d, e);
             break;
         default:
-            assert(false);
+            neko_assert(false);
             break;
     }
 
@@ -628,7 +628,7 @@ int markdown::span(MD_SPANTYPE type, void* d, bool e) {
             SPAN_U(e);
             break;
         default:
-            assert(false);
+            neko_assert(false);
             break;
     }
 

@@ -374,7 +374,7 @@ struct ::neko::cpp::IsIValue<::neko::cpp::IValue<T, v>> : std::true_type {};
 template <size_t N>
 constexpr std::size_t neko::cpp::lengthof(const char (&str)[N]) noexcept {
     static_assert(N > 0);
-    assert(str[N - 1] == 0);  // c-style string
+    neko_assert(str[N - 1] == 0);  // c-style string
     return N - 1;
 }
 
@@ -1003,13 +1003,6 @@ struct TContain<TemplateList<Ts...>, T> : std::bool_constant<(is_same_typename_t
 #ifndef NEKO_TSTR
 #define NEKO_TSTR
 
-#ifdef __cpp_nontype_template_parameter_class
-#define NEKO_TSTR_NTTPC 1
-#else
-#if defined(_MSC_VER) && _MSC_VER >= 1926
-#define NEKO_TSTR_NTTPC 1
-#endif
-#endif
 
 #include <concepts>
 #include <string_view>
@@ -1049,8 +1042,12 @@ template <typename Char, std::size_t N>
 fixed_cstring(const Char (&)[N]) -> fixed_cstring<Char, N - 1>;
 }  // namespace neko::cpp
 
-#ifdef NEKO_TSTR_NTTPC
-
+// 编译期字符串
+//
+// 创建一个字符串的方法是这样
+// TStr<char, 'h', 'e', 'l', 'l', 'o', 'w'> str;
+//
+// 这里的模板参数fixed_cstring是指字符类型
 namespace neko::cpp {
 template <fixed_cstring str>
 struct TStr {
@@ -1078,59 +1075,6 @@ using TStr_of_a = TStr<fixed_cstring<decltype(c), 1>(c)>;
         return ::neko::cpp::TStr<::neko::cpp::fixed_cstring<typename decltype(str)::value_type, str.size()>{str}>{}; \
     }())
 
-#else
-namespace neko::cpp {
-template <typename Char, Char... chars>
-struct TStr;
-}
-
-namespace neko::cpp::details {
-template <typename Char, typename T, std::size_t... N>
-constexpr auto TSTRHelperImpl(std::index_sequence<N...>) {
-    return TStr<Char, T::get()[N]...>{};
-}
-
-template <typename T>
-constexpr auto TSTRHelper(T) {
-    using SV = decltype(T::get());
-    using Char = typename SV::value_type;
-    return TSTRHelperImpl<Char, T>(std::make_index_sequence<T::get().size()>{});
-}
-}  // namespace neko::cpp::details
-
-// [C-style string type (value)]
-#define TSTR(s)                                                               \
-    ([] {                                                                     \
-        struct tmp {                                                          \
-            static constexpr auto get() { return std::basic_string_view{s}; } \
-        };                                                                    \
-        return neko::cpp::details::TSTRHelper(tmp{});                         \
-    }())
-
-namespace neko::cpp {
-template <typename C, C... chars>
-struct TStr {
-    using Char = C;
-    template <typename T>
-    static constexpr bool Is(T = {}) noexcept {
-        return std::is_same_v<T, TStr>;
-    }
-    static constexpr const Char *Data() noexcept { return data; }
-    static constexpr std::size_t Size() noexcept { return sizeof...(chars); }
-    static constexpr std::basic_string_view<Char> View() noexcept { return data; }
-    constexpr operator std::basic_string_view<Char>() { return View(); }
-
-private:
-    static constexpr Char data[]{chars..., Char(0)};
-};
-
-template <char... chars>
-using TStrC_of = TStr<char, chars...>;
-template <auto c>
-using TStr_of_a = TStr<decltype(c), c>;
-}  // namespace neko::cpp
-
-#endif  // NEKO_TSTR_NTTPC
 #endif  // NEKO_TSTR
 
 #ifndef NEKO_TSTR_UTIL
@@ -1142,24 +1086,16 @@ concept TStrLike = requires {
                        { T::View() } -> std::same_as<std::basic_string_view<typename T::Char>>;
                    };
 
-#ifdef NEKO_TSTR_NTTPC
 template <typename Str>
 constexpr auto empty_of(Str = {}) noexcept {
     return TStr<fixed_cstring<typename Str::Char, 0>{}>{};
 }
-#else
-template <typename Str>
-constexpr auto empty_of(Str = {}) noexcept {
-    return TStr<typename Str::Char>{};
-}
-#endif
 
 template <typename Str0, typename Str1>
 struct concat_helper;
 template <typename Str0, typename Str1>
 using concat_helper_t = typename concat_helper<Str0, Str1>::type;
 
-#ifdef NEKO_TSTR_NTTPC
 template <typename Str0, typename Str1>
 struct concat_helper {
 private:
@@ -1171,12 +1107,6 @@ private:
 public:
     using type = decltype(get(std::make_index_sequence<Str0::Size()>{}, std::make_index_sequence<Str1::Size()>{}));
 };
-#else
-template <typename Char, Char... c0, Char... c1>
-struct concat_helper<TStr<Char, c0...>, TStr<Char, c1...>> {
-    using type = TStr<Char, c0..., c1...>;
-};
-#endif  // NEKO_TSTR_NTTPC
 
 template <typename Str0, typename Str1>
 constexpr auto concat(Str0 = {}, Str1 = {}) noexcept {

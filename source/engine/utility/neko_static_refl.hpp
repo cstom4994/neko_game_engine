@@ -15,6 +15,7 @@ namespace neko::meta::static_refl {
 template <typename Name, typename T>
 struct NamedValue;
 
+// NamedValue 的父类 存一个std::string_view做成员的名称
 template <typename Name, typename T>
 struct NamedValueBase {
     using TName = Name;
@@ -116,8 +117,8 @@ template <typename T, typename... Args>
 struct ConstructorWrapper<T(Args...)> {
     static constexpr auto run() {
         return static_cast<void (*)(T*, Args...)>([](T* ptr, Args... args) {
-#ifdef assert
-            assert(ptr != nullptr);
+#ifdef neko_assert
+            neko_assert(ptr != nullptr);
 #endif
             /*return*/ new (ptr) T{std::forward<Args>(args)...};
         });
@@ -137,11 +138,14 @@ constexpr auto WrapConstructor() {
 template <typename T>
 constexpr auto WrapDestructor() {
     return static_cast<void (*)(T*)>([](T* ptr) {
-        assert(ptr != nullptr);
+        neko_assert(ptr != nullptr);
         ptr->~T();
     });
 }
 
+// ElemList是一个能够存储任意类型的列表 其内部使用了tuple实现
+// 简单来说就是个tuple的封装 但比起tuple提供了更多的操作
+// 如查找 询问是否包含 对每个元素进行操作和增加元素等
 // Elems is named value
 template <typename... Elems>
 struct ElemList {
@@ -358,6 +362,8 @@ struct FieldTraitsBase {
     static constexpr bool is_func = isFunction;
 };
 
+// FTraits类型系列是用于自动判断类型T 是类中的哪种成员 is_static代表是否是类中静态成员，is_func代表是否是函数。
+
 // non-static member pointer
 template <typename Object, typename T>
 struct FieldTraits<T Object::*> : FieldTraitsBase<Object, T, false, std::is_function_v<T>> {};
@@ -371,6 +377,7 @@ template <typename T>
 struct FieldTraits : FieldTraitsBase<void, T, true, false> {};
 }  // namespace neko::meta::static_refl::detail
 
+// Field是保存类中成员的结构 是反射的核心 它是存储着类中成员变量和函数的容器
 namespace neko::meta::static_refl {
 template <typename Name, typename T, typename AList>
 struct Field : detail::FieldTraits<T>, NamedValue<Name, T> {

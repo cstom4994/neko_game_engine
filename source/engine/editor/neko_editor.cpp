@@ -3,10 +3,10 @@
 
 #include "engine/base/neko_engine.h"
 #include "engine/base/neko_meta.hpp"
+#include "engine/common/neko_hash.h"
 #include "engine/filesystem/neko_packer.h"
 #include "engine/gui/neko_imgui_utils.hpp"
 #include "engine/platform/neko_platform.h"
-#include "engine/utility/hash.hpp"
 #include "engine/utility/neko_cpp_utils.hpp"
 
 namespace neko {
@@ -613,7 +613,7 @@ auto neko_editor_create(neko_engine_cvar_t &cvar) -> dbgui & {
                     pack_reader_is_loaded = false;
                 }
                 ImGui::SameLine();
-                ImGui::Text("neko assert pack [%d.%d.%d]\n", PACK_VERSION_MAJOR, PACK_VERSION_MINOR, PACK_VERSION_PATCH);
+                ImGui::Text("neko assets pack [%d.%d.%d]\n", PACK_VERSION_MAJOR, PACK_VERSION_MINOR, PACK_VERSION_PATCH);
 
                 if (filebrowser) {
                     imgui::file_browser(file);

@@ -1,6 +1,7 @@
 #ifndef NEKO_CONTAINERS_H
 #define NEKO_CONTAINERS_H
 
+#include "engine/common/neko_hash.h"
 #include "engine/common/neko_mem.h"
 #include "engine/common/neko_types.h"
 #include "engine/common/neko_util.h"

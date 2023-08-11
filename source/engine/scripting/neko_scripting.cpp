@@ -21,52 +21,60 @@
 
 namespace neko {
 
-static void __neko_lua_bug(const_str message) { neko_debug("[lua] ", message); }
-static void __neko_lua_info(const_str message) { neko_info("[lua] ", message); }
-static void __neko_lua_trace(const_str message) { neko_trace("[lua] ", message); }
-static void __neko_lua_error(const_str message) { neko_error("[lua] ", message); }
-static void __neko_lua_warn(const_str message) { neko_warn("[lua] ", message); }
+// lua 面向对象模拟
+const neko_string neko_lua_src_object = R"lua(
 
-static int __neko_lua_catch_panic(lua_State *L) {
-    const char *msg = lua_tostring(L, -1);
-    neko_error("[lua] PANIC ERROR: ", msg);
-    return 0;
-}
+neko_object = {} -- 全局变量
+neko_object.__index = neko_object
 
-static void __neko_lua_exit(lua_State *L) {
-    // s_lua_layer->closeConsole();
-}
+function neko_object:new()
+end
 
-// returns table with pairs of path and isDirectory
-static int __neko_ls(lua_State *L) {
-    if (!lua_isstring(L, 1)) {
-        neko_warn("invalid lua argument");
-        return 0;
-    }
-    auto string = lua_tostring(L, 1);
-    if (!std::filesystem::is_directory(string)) {
-        neko_warn(std::format("{0} is not directory", string));
-        return 0;
-    }
+function neko_object:extend()
+    local classlst = {}
+    for k, v in pairs(self) do
+        if k:find("__") == 1 then
+            classlst[k] = v
+        end
+    end
+    classlst.__index = classlst
+    classlst.super = self
+    setmetatable(classlst, self)
+    return classlst
+end
 
-    lua_newtable(L);
-    int i = 0;
-    for (auto &p : std::filesystem::directory_iterator(string)) {
-        lua_pushnumber(L, i + 1);  // parent table index
-        lua_newtable(L);
-        lua_pushstring(L, "path");
-        lua_pushstring(L, p.path().generic_string().c_str());
-        lua_settable(L, -3);
-        lua_pushstring(L, "isDirectory");
-        lua_pushboolean(L, p.is_directory());
-        lua_settable(L, -3);
-        lua_settable(L, -3);
-        i++;
-    }
-    return 1;
-}
+function neko_object:implement(...)
+    for _, classlst in pairs({...}) do
+        for k, v in pairs(classlst) do
+            if self[k] == nil and type(v) == "function" then
+                self[k] = v
+            end
+        end
+    end
+end
 
-static void __neko_add_packagepath(const char *p) { neko_sc()->neko_lua.add_package_path(p); }
+function neko_object:is(T)
+    local mt = getmetatable(self)
+    while mt do
+        if mt == T then
+            return true
+        end
+        mt = getmetatable(mt)
+    end
+    return false
+end
+
+function neko_object:__tostring()
+    return "neko_object"
+end
+
+function neko_object:__call(...)
+    local obj = setmetatable({}, self)
+    obj:new(...)
+    return obj
+end
+
+)lua";
 
 void print_error(lua_State *state, int result) {
     const char *message = lua_tostring(state, -1);
@@ -152,24 +160,22 @@ static void InitLua(neko_scripting *lc) {
 static void lua_reg_ecs(lua_State *L);
 
 static void lua_reg(lua_State *L) {
-    neko_lua_register_t<>(L)
-            .def(&__neko_lua_trace, "log_trace")  // logger
-            .def(&__neko_lua_bug, "log_debug")
-            .def(&__neko_lua_error, "log_error")
-            .def(&__neko_lua_warn, "log_warn")
-            .def(&__neko_lua_info, "log_info")
-
-            .def(&__neko_add_packagepath, "add_packagepath");
 
     lua_reg_ecs(L);
-
-    neko_lua_debug_setup(L, "debugger", "dbg", NULL, NULL);
 
     luaopen_cstruct_core(L);
     luaopen_cstruct_test(L);
     luaopen_datalist(L);
 
     neko_register(L);
+
+    neko_lua_debug_setup(L, "debugger", "dbg", NULL, NULL);
+}
+
+static int __neko_lua_catch_panic(lua_State *L) {
+    const char *msg = lua_tostring(L, -1);
+    neko_error("[lua] PANIC ERROR: ", msg);
+    return 0;
 }
 
 void neko_scripting::__init() {
@@ -197,6 +203,9 @@ void neko_scripting::__init() {
                             "'{1}/?.{2};{0}/?.{2};{0}/libs/?.{2};{0}/libs/?/init.{2};{0}/libs/"
                             "?/?.{2};' .. package.cpath",
                             neko_file_path("data/scripts"), neko_fs_normalize_path(std::filesystem::current_path().string()).c_str(), "dll"));
+
+        // 面向对象基础
+        neko_lua.run_string(neko_lua_src_object);
 
         neko_lua.load_file(neko_file_path("data/scripts/init.lua"));
 

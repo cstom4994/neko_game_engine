@@ -7,7 +7,6 @@
 #include "engine/graphics/neko_camera.h"
 #include "engine/graphics/neko_material.h"
 #include "engine/platform/neko_platform.h"
-#include "engine/utility/hash.hpp"
 #include "engine/utility/logger.hpp"
 
 #define STB_DEFINE

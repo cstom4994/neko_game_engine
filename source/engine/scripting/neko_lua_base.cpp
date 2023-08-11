@@ -1,7 +1,6 @@
 
 #include "engine/scripting/neko_lua_base.h"
 
-#include <assert.h>
 #include <setjmp.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -102,7 +101,7 @@ void *lua_alloc(void *ud, void *ptr, size_t osize, size_t nsize) {
         fprintf(stderr, "Found block %u\n", blk);
 #endif
     }
-    assert(alloc->blocks[blk].ptr == ptr && (!ptr || alloc->blocks[blk].size == osize));
+    neko_assert(alloc->blocks[blk].ptr == ptr && (!ptr || alloc->blocks[blk].size == osize));
     if (nsize == 0) {
         free(ptr);
         alloc->total_allocated -= osize;
@@ -1450,7 +1449,7 @@ static const char *MSGH = "DEBUGGER_LUA_MSGH";
 void neko_lua_debug_setup(lua_State *lua, const char *name, const char *globalName, lua_CFunction readFunc, lua_CFunction writeFunc) {
     // Check that the module name was not already defined.
     lua_getfield(lua, LUA_REGISTRYINDEX, MODULE_NAME);
-    assert(lua_isnil(lua, -1) || strcmp(name, luaL_checkstring(lua, -1)));
+    neko_assert(lua_isnil(lua, -1) || strcmp(name, luaL_checkstring(lua, -1)));
     lua_pop(lua, 1);
 
     // Push the module name into the registry.
@@ -2620,7 +2619,7 @@ static inline int to_hex(char c) {
 static int push_token_string(lua_State *L, const char *ptr, size_t sz) {
     char tmp[SHORT_STRING];
     char *buffer = tmp;
-    assert(sz > 0);
+    neko_assert(sz > 0);
     if (sz > SHORT_STRING) {
         buffer = (char *)lua_newuserdatauv(L, sz, 0);
     }
@@ -2632,7 +2631,7 @@ static int push_token_string(lua_State *L, const char *ptr, size_t sz) {
         } else {
             ++ptr;
             ++i;
-            assert(i < sz);
+            neko_assert(i < sz);
             char c = *ptr;
             if (c >= '0' && c <= '9') {
                 // escape dec ascii
@@ -3332,7 +3331,7 @@ static void parse_all(lua_State *L, struct lex_state *LS) {
     lua_rotate(L, -3, 2);
     int tt = read_token(L, LS);
     if (tt == TOKEN_EOF) return;
-    assert(tt == TOKEN_NEWLINE);
+    neko_assert(tt == TOKEN_NEWLINE);
     parse_section(L, LS, 0);
     if (LS->c.type != TOKEN_EOF) {
         invalid(L, LS, "not end");

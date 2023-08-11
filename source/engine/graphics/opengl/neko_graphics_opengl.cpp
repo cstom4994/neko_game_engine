@@ -9,6 +9,7 @@
 
 #include "engine/base/neko_engine.h"
 #include "engine/common/neko_containers.h"
+#include "engine/common/neko_hash.h"
 #include "engine/common/neko_mem.h"
 #include "engine/common/neko_util.h"
 #include "engine/graphics/neko_camera.h"
@@ -18,7 +19,6 @@
 #include "engine/math/neko_math.h"
 #include "engine/platform/neko_platform.h"
 #include "engine/serialize/neko_byte_buffer.h"
-#include "engine/utility/hash.hpp"
 #include "engine/utility/logger.hpp"
 
 // 3rd
@@ -256,6 +256,16 @@ typedef struct immediate_drawing_internal_data_t {
     neko_dyn_array(neko_matrix_mode) matrix_modes;
 } immediate_drawing_internal_data_t;
 
+typedef struct fontcache_drawing_internal_data_t {
+    GLuint vao = 0;
+    neko_fontcache cache;
+    GLint fontcache_shader_render_glyph;
+    GLint fontcache_shader_blit_atlas;
+    GLint fontcache_shader_draw_text;
+    GLuint fontcache_fbo[2];
+    GLuint fontcache_fbo_texture[2];
+} fontcache_drawing_internal_data_t;
+
 typedef neko_command_buffer_t command_buffer_t;
 typedef neko_texture_t texture_t;
 typedef neko_shader_t shader_t;
@@ -270,6 +280,7 @@ typedef neko_frame_buffer_t frame_buffer_t;
 typedef struct opengl_render_data_t {
     immediate_drawing_internal_data_t immediate_data;
     neko_hashmap<neko_shader_t> shaders_data;
+    fontcache_drawing_internal_data_t fontcache_data;
 } opengl_render_data_t;
 
 neko_global const char *immediate_shader_v_src =
@@ -308,8 +319,9 @@ neko_resource(neko_font_t) __neko_get_default_font() { return g_default_font; }
 
 #define __get_opengl_data_internal() (opengl_render_data_t *)(neko_engine_instance()->ctx.graphics->data)
 
-#define __get_opengl_immediate_data() (&(__get_opengl_data_internal())->immediate_data);
-#define __get_opengl_shaders_data() (&(__get_opengl_data_internal())->shaders_data);
+#define __get_opengl_immediate_data() (&(__get_opengl_data_internal())->immediate_data)
+#define __get_opengl_shaders_data() (&(__get_opengl_data_internal())->shaders_data)
+#define __get_opengl_fontcache_data() (&(__get_opengl_data_internal())->fontcache_data)
 
 // Forward Decls;
 void __reset_command_buffer_internal(command_buffer_t *cb);
@@ -410,9 +422,9 @@ neko_result opengl_init(struct neko_graphics_i *gfx) {
     opengl_init_default_state();
 
     // Print some immediate info
-    neko_info("OpenGL::Vendor = ", glGetString(GL_VENDOR));
-    neko_info("OpenGL::Renderer = ", glGetString(GL_RENDERER));
-    neko_info("OpenGL::Version = ", glGetString(GL_VERSION));
+    neko_info("OpenGL::vendor = ", glGetString(GL_VENDOR));
+    neko_info("OpenGL::renderer = ", glGetString(GL_RENDERER));
+    neko_info("OpenGL::version = ", glGetString(GL_VERSION));
 
     // Init data for utility APIs
     gfx->quad_batch_i->shader = gfx->construct_shader(neko_quad_batch_default_vertex_src, neko_quad_batch_default_frag_src);
@@ -2436,12 +2448,6 @@ neko_shader_t *__neko_shader_get(const neko_string &name) {
 
 neko_hashmap<neko_shader_t> *__neko_shader_internal_list() { return &((opengl_render_data_t *)(neko_engine_instance()->ctx.graphics->data))->shaders_data; }
 
-static GLint fontcache_shader_render_glyph;
-static GLint fontcache_shader_blit_atlas;
-static GLint fontcache_shader_draw_text;
-static GLuint fontcache_fbo[2];
-static GLuint fontcache_fbo_texture[2];
-
 const std::string vs_source_shared = R"(
 #version 330 core
 in vec2 vpos;
@@ -2539,11 +2545,11 @@ neko_private(GLint) __neko_fontcache_compile_shader(const std::string vs, const 
     glCompileShader(vshader);
     glGetShaderiv(vshader, GL_COMPILE_STATUS, &compiled);
     printCompileError(vshader);
-    assert(compiled);
+    neko_assert(compiled);
     glCompileShader(fshader);
     glGetShaderiv(fshader, GL_COMPILE_STATUS, &compiled);
     printCompileError(fshader);
-    assert(compiled);
+    neko_assert(compiled);
     GLint program = glCreateProgram();
     glAttachShader(program, vshader);
     glAttachShader(program, fshader);
@@ -2570,32 +2576,29 @@ neko_private(void) __neko_fontcache_compile_vbo(GLuint &dest_vb, GLuint &dest_ib
 }
 
 neko_private(void) __neko_fontcache_setup_fbo() {
-    glGenFramebuffers(2, fontcache_fbo);
-    glGenTextures(2, fontcache_fbo_texture);
+    glGenFramebuffers(2, __get_opengl_fontcache_data()->fontcache_fbo);
+    glGenTextures(2, __get_opengl_fontcache_data()->fontcache_fbo_texture);
 
-    glBindFramebuffer(GL_FRAMEBUFFER, fontcache_fbo[0]);
-    glBindTexture(GL_TEXTURE_2D, fontcache_fbo_texture[0]);
+    glBindFramebuffer(GL_FRAMEBUFFER, __get_opengl_fontcache_data()->fontcache_fbo[0]);
+    glBindTexture(GL_TEXTURE_2D, __get_opengl_fontcache_data()->fontcache_fbo_texture[0]);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, NEKO_FONTCACHE_GLYPHDRAW_BUFFER_WIDTH, NEKO_FONTCACHE_GLYPHDRAW_BUFFER_HEIGHT, 0, GL_RED, GL_UNSIGNED_BYTE, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fontcache_fbo_texture[0], 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, __get_opengl_fontcache_data()->fontcache_fbo_texture[0], 0);
 
-    glBindFramebuffer(GL_FRAMEBUFFER, fontcache_fbo[1]);
-    glBindTexture(GL_TEXTURE_2D, fontcache_fbo_texture[1]);
+    glBindFramebuffer(GL_FRAMEBUFFER, __get_opengl_fontcache_data()->fontcache_fbo[1]);
+    glBindTexture(GL_TEXTURE_2D, __get_opengl_fontcache_data()->fontcache_fbo_texture[1]);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, NEKO_FONTCACHE_ATLAS_WIDTH, NEKO_FONTCACHE_ATLAS_HEIGHT, 0, GL_RED, GL_UNSIGNED_BYTE, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fontcache_fbo_texture[1], 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, __get_opengl_fontcache_data()->fontcache_fbo_texture[1], 0);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
-
-neko_private(GLuint) vao = 0;
-neko_private(neko_fontcache) cache;
 
 void __neko_fontcache_draw() {
 
@@ -2612,14 +2615,14 @@ void __neko_fontcache_draw() {
     glEnable(GL_BLEND);
     glBlendEquation(GL_FUNC_ADD);
 
-    __neko_fontcache_optimise_drawlist(&cache);
-    auto drawlist = __neko_fontcache_get_drawlist(&cache);
+    __neko_fontcache_optimise_drawlist(&__get_opengl_fontcache_data()->cache);
+    auto drawlist = __neko_fontcache_get_drawlist(&__get_opengl_fontcache_data()->cache);
 
-    if (vao == 0) {
-        glGenVertexArrays(1, &vao);
-        glBindVertexArray(vao);
+    if (__get_opengl_fontcache_data()->vao == 0) {
+        glGenVertexArrays(1, &__get_opengl_fontcache_data()->vao);
+        glBindVertexArray(__get_opengl_fontcache_data()->vao);
     } else {
-        glBindVertexArray(vao);
+        glBindVertexArray(__get_opengl_fontcache_data()->vao);
     }
 
     GLuint vbo = 0, ibo = 0;
@@ -2632,34 +2635,35 @@ void __neko_fontcache_draw() {
 
     for (auto &dcall : drawlist->dcalls) {
         if (dcall.pass == NEKO_FONTCACHE_FRAMEBUFFER_PASS_GLYPH) {
-            glUseProgram(fontcache_shader_render_glyph);
-            glBindFramebuffer(GL_FRAMEBUFFER, fontcache_fbo[0]);
+            glUseProgram(__get_opengl_fontcache_data()->fontcache_shader_render_glyph);
+            glBindFramebuffer(GL_FRAMEBUFFER, __get_opengl_fontcache_data()->fontcache_fbo[0]);
             glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ONE_MINUS_SRC_COLOR);
             glViewport(0, 0, NEKO_FONTCACHE_GLYPHDRAW_BUFFER_WIDTH, NEKO_FONTCACHE_GLYPHDRAW_BUFFER_HEIGHT);
             glScissor(0, 0, NEKO_FONTCACHE_GLYPHDRAW_BUFFER_WIDTH, NEKO_FONTCACHE_GLYPHDRAW_BUFFER_HEIGHT);
             glDisable(GL_FRAMEBUFFER_SRGB);
         } else if (dcall.pass == NEKO_FONTCACHE_FRAMEBUFFER_PASS_ATLAS) {
-            glUseProgram(fontcache_shader_blit_atlas);
-            glBindFramebuffer(GL_FRAMEBUFFER, fontcache_fbo[1]);
+            glUseProgram(__get_opengl_fontcache_data()->fontcache_shader_blit_atlas);
+            glBindFramebuffer(GL_FRAMEBUFFER, __get_opengl_fontcache_data()->fontcache_fbo[1]);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             glViewport(0, 0, NEKO_FONTCACHE_ATLAS_WIDTH, NEKO_FONTCACHE_ATLAS_HEIGHT);
             glScissor(0, 0, NEKO_FONTCACHE_ATLAS_WIDTH, NEKO_FONTCACHE_ATLAS_HEIGHT);
-            glUniform1i(glGetUniformLocation(fontcache_shader_blit_atlas, "src_texture"), 0);
-            glUniform1ui(glGetUniformLocation(fontcache_shader_blit_atlas, "region"), dcall.region);
+            glUniform1i(glGetUniformLocation(__get_opengl_fontcache_data()->fontcache_shader_blit_atlas, "src_texture"), 0);
+            glUniform1ui(glGetUniformLocation(__get_opengl_fontcache_data()->fontcache_shader_blit_atlas, "region"), dcall.region);
             glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, fontcache_fbo_texture[0]);
+            glBindTexture(GL_TEXTURE_2D, __get_opengl_fontcache_data()->fontcache_fbo_texture[0]);
             glDisable(GL_FRAMEBUFFER_SRGB);
         } else {
-            glUseProgram(fontcache_shader_draw_text);
+            glUseProgram(__get_opengl_fontcache_data()->fontcache_shader_draw_text);
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             glViewport(0, 0, ws.x, ws.y);
             glScissor(0, 0, ws.x, ws.y);
-            glUniform1i(glGetUniformLocation(fontcache_shader_draw_text, "src_texture"), 0);
-            glUniform1ui(glGetUniformLocation(fontcache_shader_draw_text, "downsample"), dcall.pass == NEKO_FONTCACHE_FRAMEBUFFER_PASS_TARGET_UNCACHED ? 1 : 0);
-            glUniform4fv(glGetUniformLocation(fontcache_shader_draw_text, "colour"), 1, dcall.colour);
+            glUniform1i(glGetUniformLocation(__get_opengl_fontcache_data()->fontcache_shader_draw_text, "src_texture"), 0);
+            glUniform1ui(glGetUniformLocation(__get_opengl_fontcache_data()->fontcache_shader_draw_text, "downsample"), dcall.pass == NEKO_FONTCACHE_FRAMEBUFFER_PASS_TARGET_UNCACHED ? 1 : 0);
+            glUniform4fv(glGetUniformLocation(__get_opengl_fontcache_data()->fontcache_shader_draw_text, "colour"), 1, dcall.colour);
             glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, dcall.pass == NEKO_FONTCACHE_FRAMEBUFFER_PASS_TARGET_UNCACHED ? fontcache_fbo_texture[0] : fontcache_fbo_texture[1]);
+            glBindTexture(GL_TEXTURE_2D, dcall.pass == NEKO_FONTCACHE_FRAMEBUFFER_PASS_TARGET_UNCACHED ? __get_opengl_fontcache_data()->fontcache_fbo_texture[0]
+                                                                                                       : __get_opengl_fontcache_data()->fontcache_fbo_texture[1]);
             glEnable(GL_FRAMEBUFFER_SRGB);
         }
         if (dcall.clear_before_draw) {
@@ -2676,7 +2680,7 @@ void __neko_fontcache_draw() {
     glDeleteBuffers(1, &ibo);
 
     // ME_CHECK_GL_ERROR();
-    __neko_fontcache_flush_drawlist(&cache);
+    __neko_fontcache_flush_drawlist(&__get_opengl_fontcache_data()->cache);
 
     __neko_gl_state_restore();
 }
@@ -2685,11 +2689,11 @@ neko_font_index __neko_fontcache_load(const void *data, size_t data_size, f32 fo
     neko_platform_i *platform = neko_engine_instance()->ctx.platform;
     neko_vec2 ws = platform->window_size(platform->main_window());
 
-    __neko_fontcache_init(&cache);
-    __neko_fontcache_configure_snap(&cache, ws.x, ws.y);
+    __neko_fontcache_init(&__get_opengl_fontcache_data()->cache);
+    __neko_fontcache_configure_snap(&__get_opengl_fontcache_data()->cache, ws.x, ws.y);
 
     // 返回字体索引
-    return __neko_fontcache_load(&cache, data, data_size, font_size);
+    return __neko_fontcache_load(&__get_opengl_fontcache_data()->cache, data, data_size, font_size);
 }
 
 // 将绘制字加入待绘制列表
@@ -2700,8 +2704,8 @@ void __neko_fontcache_push(const std::string &text, const neko_font_index font, 
     neko_platform_i *platform = neko_engine_instance()->ctx.platform;
     neko_vec2 ws = platform->window_size(platform->main_window());
 
-    __neko_fontcache_configure_snap(&cache, ws.x, ws.y);
-    __neko_fontcache_draw_text(&cache, font, text, pos.x, pos.y, 1.0f / ws.x, 1.0f / ws.y);
+    __neko_fontcache_configure_snap(&__get_opengl_fontcache_data()->cache, ws.x, ws.y);
+    __neko_fontcache_draw_text(&__get_opengl_fontcache_data()->cache, font, text, pos.x, pos.y, 1.0f / ws.x, 1.0f / ws.y);
 }
 
 // 将屏幕窗口坐标转换为 fontcache 绘制坐标
@@ -2717,14 +2721,14 @@ void __neko_fontcache_push_x_y(const std::string &text, const neko_font_index fo
 
 void __neko_fontcache_init() {
 
-    fontcache_shader_render_glyph = __neko_fontcache_compile_shader(vs_source_shared, fs_source_render_glyph);
-    fontcache_shader_blit_atlas = __neko_fontcache_compile_shader(vs_source_shared, fs_source_blit_atlas);
-    fontcache_shader_draw_text = __neko_fontcache_compile_shader(vs_source_draw_text, fs_source_draw_text);
+    __get_opengl_fontcache_data()->fontcache_shader_render_glyph = __neko_fontcache_compile_shader(vs_source_shared, fs_source_render_glyph);
+    __get_opengl_fontcache_data()->fontcache_shader_blit_atlas = __neko_fontcache_compile_shader(vs_source_shared, fs_source_blit_atlas);
+    __get_opengl_fontcache_data()->fontcache_shader_draw_text = __neko_fontcache_compile_shader(vs_source_draw_text, fs_source_draw_text);
 
     __neko_fontcache_setup_fbo();
 }
 
-void __neko_fontcache_end() { __neko_fontcache_shutdown(&cache); }
+void __neko_fontcache_end() { __neko_fontcache_shutdown(&__get_opengl_fontcache_data()->cache); }
 
 // Method for creating graphics layer for opengl
 struct neko_graphics_i *__neko_graphics_construct() {

@@ -13,11 +13,6 @@ typedef struct {
     f32 dx, dy;
 } CVelocity;
 
-typedef struct {
-    u32 gl_id;
-    f32 rotation;
-} CSprite;
-
 typedef enum {
     COMPONENT_TRANSFORM,
     COMPONENT_VELOCITY,

@@ -73,12 +73,12 @@ void *__neko_mem_safe_realloc(void *ptr, size_t new_size, const char *file, int 
 int neko_mem_check_leaks(bool detailed);
 int neko_mem_bytes_inuse();
 
-typedef struct allocation_metrics {
+typedef struct neko_allocation_metrics {
     u64 total_allocated;
     u64 total_free;
-} allocation_metrics;
+} neko_allocation_metrics;
 
-extern allocation_metrics g_allocation_metrics;
+extern neko_allocation_metrics g_allocation_metrics;
 
 // GC 具体设计可以见 https://github.com/orangeduck/tgc
 

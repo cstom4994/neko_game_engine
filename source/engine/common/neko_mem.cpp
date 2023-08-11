@@ -14,7 +14,7 @@
 
 namespace neko {
 
-allocation_metrics g_allocation_metrics = {.total_allocated = 0, .total_free = 0};
+neko_allocation_metrics g_allocation_metrics = {.total_allocated = 0, .total_free = 0};
 
 neko_gc_t g_gc;
 

@@ -4,6 +4,7 @@
 #include "engine/base/neko_component.h"
 #include "engine/base/neko_cvar.hpp"
 #include "engine/base/neko_ecs.h"
+#include "engine/common/neko_hash.h"
 #include "engine/editor/neko_dbgui.hpp"
 #include "engine/editor/neko_editor.hpp"
 #include "engine/filesystem/neko_packer.h"
@@ -13,7 +14,6 @@
 #include "engine/gui/neko_imgui_utils.hpp"
 #include "engine/neko.h"
 #include "engine/scripting/neko_scripting.h"
-#include "engine/utility/hash.hpp"
 #include "engine/utility/logger.hpp"
 #include "engine/utility/module.hpp"
 #include "libs/glad/glad.h"
@@ -45,7 +45,6 @@ typedef struct particle_t {
 neko_global neko_vertex_buffer_t g_vbo = {0};
 neko_global neko_index_buffer_t g_ibo = {0};
 neko_global neko_command_buffer_t g_cb = {0};
-// neko_global neko_shader_t g_shader = {0};
 neko_global neko_uniform_t u_tex = {};
 neko_global neko_uniform_t u_flip_y = {};
 neko_global neko_texture_t g_tex = {0};
@@ -265,7 +264,6 @@ void print_slot_array(neko_slot_array(object_t) *);
 void print_hash_table(neko_hash_table(u64, object_t) *);
 void object_to_str(object_t *obj, char *str, usize str_sz);
 
-neko_global neko_sprite_renderer g_sr = {};
 neko_global neko_sprite g_test_spr = {0};
 
 neko_texture_t load_ase_texture_simple(const std::string &path) {
@@ -317,7 +315,7 @@ s32 random_val(s32 lower, s32 upper) {
         lower = upper;
         upper = tmp;
     }
-    return (rand() % (upper - lower + 1) + lower);
+    return (neko_rand_xorshf32() % (upper - lower + 1) + lower);
 }
 
 s32 compute_idx(s32 x, s32 y) { return (y * g_texture_width + x); }
@@ -640,13 +638,19 @@ void drop_file_callback(void *platform_window, s32 count, const char **file_path
     }
 }
 
-neko_ecs_decl_mask(MOVEMENT_SYSTEM, 2, COMPONENT_TRANSFORM, COMPONENT_VELOCITY);
+neko_ecs_decl_mask(MOVEMENT_SYSTEM, 3, COMPONENT_TRANSFORM, COMPONENT_VELOCITY, COMPONENT_SPRITE);
 void movement_system(neko_ecs *ecs) {
     for (u32 i = 0; i < neko_ecs_for_count(ecs); i++) {
         neko_ecs_ent e = neko_ecs_get_ent(ecs, i);
         if (neko_ecs_ent_has_mask(ecs, e, neko_ecs_get_mask(MOVEMENT_SYSTEM))) {
             CTransform *xform = (CTransform *)neko_ecs_ent_get_component(ecs, e, COMPONENT_TRANSFORM);
             CVelocity *velocity = (CVelocity *)neko_ecs_ent_get_component(ecs, e, COMPONENT_VELOCITY);
+            neko_sprite_renderer *sprite = (neko_sprite_renderer *)neko_ecs_ent_get_component(ecs, e, COMPONENT_SPRITE);
+
+            // Grab global instance of engine
+            neko_engine *engine = neko_engine_instance();
+
+            neko_sprite_renderer_update(sprite, engine->ctx.platform->time.delta);
 
             xform->x += velocity->dx;
             xform->y += velocity->dy;
@@ -660,9 +664,22 @@ void sprite_render_system(neko_ecs *ecs) {
         neko_ecs_ent e = neko_ecs_get_ent(ecs, i);
         if (neko_ecs_ent_has_mask(ecs, e, neko_ecs_get_mask(SPRITE_RENDER_SYSTEM))) {
             CTransform *xform = (CTransform *)neko_ecs_ent_get_component(ecs, e, COMPONENT_TRANSFORM);
-            CSprite *sprite = (CSprite *)neko_ecs_ent_get_component(ecs, e, COMPONENT_SPRITE);
+            neko_sprite_renderer *sprite = (neko_sprite_renderer *)neko_ecs_ent_get_component(ecs, e, COMPONENT_SPRITE);
 
-            // render_sprite(sprite->gl_id, sprite->rot);
+            neko_graphics_i *gfx = neko_engine_instance()->ctx.graphics;
+            neko_command_buffer_t *cb = &g_cb;
+
+            s32 index;
+            if (sprite->loop) {
+                index = sprite->loop->indices[sprite->current_frame];
+            } else {
+                index = sprite->current_frame;
+            }
+
+            neko_sprite *spr = sprite->sprite;
+            neko_sprite_frame f = spr->frames[index];
+
+            gfx->immediate.draw_rect_textured_ext(cb, 200.f, 200.f, 200.f + spr->width * 4.f, 200.f + spr->height * 4.f, f.u0, f.v0, f.u1, f.v1, sprite->sprite->img.id, neko_color_white);
         }
     }
 }
@@ -671,7 +688,7 @@ void register_components(neko_ecs *ecs) {
     // neko_ecs, component index, component pool size, size of component, and component free func
     neko_ecs_register_component(ecs, COMPONENT_TRANSFORM, 1000, sizeof(CTransform), NULL);
     neko_ecs_register_component(ecs, COMPONENT_VELOCITY, 200, sizeof(CVelocity), NULL);
-    neko_ecs_register_component(ecs, COMPONENT_SPRITE, 1000, sizeof(CSprite), NULL);
+    neko_ecs_register_component(ecs, COMPONENT_SPRITE, 1000, sizeof(neko_sprite_renderer), NULL);
 }
 
 void register_systems(neko_ecs *ecs) {
@@ -693,6 +710,8 @@ neko_global neko_swarm_simulator_settings settings;
 // 内部音频数据的资源句柄 由于音频必须在单独的线程上运行 因此这是必要的
 neko_global neko_resource(neko_audio_source_t) g_src = {0};
 neko_global neko_resource(neko_audio_instance_t) g_inst = {0};
+
+neko_sprite_renderer sprite_test = {};
 
 // Here, we'll initialize all of our application data, which in this case is our graphics resources
 neko_result app_init() {
@@ -778,14 +797,6 @@ neko_result app_init() {
 
     // g_test_ase = load_ase_texture_simple(neko_file_path("data/assets/textures/B_witch.ase"));
 
-    neko_sprite_load(&g_test_spr, neko_file_path("data/assets/textures/B_witch.ase"));
-
-    g_sr.sprite = &g_test_spr;
-
-    // sprite_renderer_set_frame(&g_sr, 0);
-
-    neko_sprite_renderer_play(&g_sr, "Attack");
-
     // Constuct audio resource to play
     g_src = audio->load_audio_source_from_file(neko_file_path("data/assets/audio/audioclip/6.wav"));
 
@@ -846,8 +857,15 @@ neko_result app_init() {
     neko_ecs_ent e = neko_ecs_ent_make(neko_engine_subsystem(ecs));
     CTransform xform = {0, 0};
     CVelocity velocity = {5, 0};
+
+    neko_sprite_load(&g_test_spr, neko_file_path("data/assets/textures/B_witch.ase"));
+
+    sprite_test = {.sprite = &g_test_spr};
+    neko_sprite_renderer_play(&sprite_test, "Charge_Loop");
+
     neko_ecs_ent_add_component(neko_engine_subsystem(ecs), e, COMPONENT_TRANSFORM, &xform);
     neko_ecs_ent_add_component(neko_engine_subsystem(ecs), e, COMPONENT_VELOCITY, &velocity);
+    neko_ecs_ent_add_component(neko_engine_subsystem(ecs), e, COMPONENT_SPRITE, &sprite_test);
 
     // neko_ecs_ent_destroy(ecs, e);
 
@@ -1036,6 +1054,7 @@ neko_result app_update() {
             if (ImGui::Button("test_sr")) test_sr();
             if (ImGui::Button("test_ut")) test_ut();
             if (ImGui::Button("test_cvars")) neko_config_print();
+            if (ImGui::Button("test_rand")) neko_info(std::to_string(neko_rand_xorshf32()));
             ImGui::Image((void *)(intptr_t)g_tex.id, ImVec2(g_texture_width, g_texture_height), ImVec2(0, 0), ImVec2(1, 1));
             return neko_dbgui_result_in_progress;
         });
@@ -1050,12 +1069,9 @@ neko_result app_update() {
     if (g_cvar.tick_world) {
         update_particle_sim();
 
-        neko_sprite_renderer_update(&g_sr, engine->ctx.platform->time.delta);
-
         swarm.update(engine->ctx.platform->time.current, settings);
 
         neko_ecs_run_systems(neko_engine_subsystem(ecs), ECS_SYSTEM_UPDATE);
-        neko_ecs_run_systems(neko_engine_subsystem(ecs), ECS_SYSTEM_RENDER);
     }
 
     /*===============
@@ -1613,21 +1629,8 @@ void render_scene() {
 
     gfx->immediate.begin_drawing(cb);
     {
-        // Draw 2d textured rect
 
-        // gfx->immediate.draw_rect_textured(cb, {200.f, 200.f}, {600.f, 600.f}, g_sr.sprite->img.id, neko_color_white);
-
-        s32 index;
-        if (g_sr.loop) {
-            index = g_sr.loop->indices[g_sr.current_frame];
-        } else {
-            index = g_sr.current_frame;
-        }
-
-        neko_sprite *spr = g_sr.sprite;
-        neko_sprite_frame f = spr->frames[index];
-
-        gfx->immediate.draw_rect_textured_ext(cb, 200.f, 200.f, 200.f + spr->width * 4.f, 200.f + spr->height * 4.f, f.u0, f.v0, f.u1, f.v1, g_sr.sprite->img.id, neko_color_white);
+        neko_ecs_run_systems(neko_engine_subsystem(ecs), ECS_SYSTEM_RENDER);
 
         gfx->immediate.begin_2d(cb);
         {
@@ -3742,14 +3745,7 @@ void print_hash_table(neko_hash_table(u64, object_t) * ht) {
 
 void object_to_str(object_t *obj, char *str, usize str_sz) { neko_snprintf(str, str_sz, "{ %.2f, %zu }", obj->float_value, obj->uint_value); }
 
-#include "engine/utility/random.hpp"
-
-double wang_seed = 0;
-static CLGMRandom random(wang_seed);
-
-int myrand() { return random.Random(0, 2147483645 - 1); }
-
-#define STB_HBWANG_RAND() myrand()
+#define STB_HBWANG_RAND() neko_rand_xorshf32()
 #define STB_HBWANG_IMPLEMENTATION
 #include "libs/stb/stb_herringbone_wang_tile.h"
 #include "libs/stb/stb_image.h"
@@ -3793,23 +3789,13 @@ void test_wang() {
 
     printf("Output size: %dx%d\n", xs, ys);
 
-    auto seed = std::stoull("123456");
-    printf("Using seed: %llu\n", seed);
-    wang_seed = seed;
     {
-        CLGMRandom rnd(seed);
+        u32 seed = neko_rand_xorshf32();
 
         // int num = seed + xs + 11 * (xs / -11) - 12 * (seed / 12);
         int num = xs % 11 + seed % 12;
-        printf("Some number: %d\n", num);
-        while (num-- > 0) {
-            rnd.Next();
-        }
 
         for (int i = 0; i < n; ++i) {
-            double newSeed = rnd.Next() * 2147483645.0;
-            printf("Adjusted seed: %f\n", newSeed);
-            random.SetSeed(newSeed);
 
             auto filename = std::string("output_wang");
             filename = filename.substr(0, filename.size() - 4);

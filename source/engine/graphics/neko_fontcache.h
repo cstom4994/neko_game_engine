@@ -149,8 +149,8 @@ struct neko_fontcache_poollist_item {
 struct neko_fontcache_poollist {
     std::vector<neko_fontcache_poollist_item> pool;
     std::vector<neko_fontcache_poollist_itr> freelist;
-    neko_fontcache_poollist_itr front = -1;
-    neko_fontcache_poollist_itr back = -1;
+    neko_fontcache_poollist_itr front = 0;
+    neko_fontcache_poollist_itr back = 0;
     size_t size = 0;
     size_t capacity = 0;
 };

@@ -4,6 +4,7 @@
 #include <map>
 
 #include "engine/common/neko_containers.h"
+#include "engine/common/neko_hash.h"
 #include "engine/common/neko_str.h"
 #include "engine/common/neko_types.h"
 #include "engine/graphics/neko_camera.h"

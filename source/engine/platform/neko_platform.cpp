@@ -1,8 +1,8 @@
 #include "engine/platform/neko_platform.h"
 
 #include "engine/base/neko_engine.h"
+#include "engine/common/neko_hash.h"
 #include "engine/common/neko_mem.h"
-#include "engine/utility/hash.hpp"
 
 /*============================
 // Platform Window
@@ -17,10 +17,8 @@ neko_resource_handle __neko_platform_create_window(const char* title, u32 width,
     return handle;
 }
 
-neko_resource_handle __neko_platform_main_window() {
-    // Should be the first element of the slot array...Great assumption to make.
-    return 0;
-}
+// 获取主窗口句柄 实际上返回是句柄槽的第一个窗口
+neko_resource_handle __neko_platform_main_window() { return 0; }
 
 /*============================
 // Platform Input
@@ -298,7 +296,7 @@ struct neko_uuid __neko_platform_generate_uuid() {
     s32 n_len = strlen(sz_temp);
 
     for (t = 0; t < n_len + 1; t++) {
-        s32 r = rand() % 16;
+        s32 r = neko_rand_xorshf32() % 16;
         char c = ' ';
 
         switch (sz_temp[t]) {
