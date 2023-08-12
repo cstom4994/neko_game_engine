@@ -288,7 +288,6 @@ neko_string __neko_platform_abbreviate_path(const neko_string& path, s32 max_len
 struct neko_uuid __neko_platform_generate_uuid() {
     struct neko_uuid uuid;
 
-    srand(clock());
     char guid[40];
     s32 t = 0;
     char* sz_temp = "xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx";
@@ -346,9 +345,6 @@ void __neko_default_init_platform(struct neko_platform_i* platform) {
 
     // Just assert these for now
     __neko_verify_platform_correctness(platform);
-
-    // Initialize random with time
-    srand(time(0));
 
     /*============================
     // Platform Window

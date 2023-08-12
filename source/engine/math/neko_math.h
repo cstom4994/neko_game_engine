@@ -6,7 +6,7 @@
 #include "engine/common/neko_types.h"
 
 // Defines
-#define neko_pi 3.1415926535897932
+#define neko_pi 3.14159265358979323846264f
 #define neko_tau 2.0 * neko_pi
 
 // Useful Utility
@@ -55,16 +55,41 @@ neko_static_inline f32 neko_map_range(f32 input_start, f32 input_end, f32 output
 }
 
 /*================================================================================
-// Vec2
+// neko_vec2
 ================================================================================*/
 
-typedef struct {
+typedef struct neko_vec2 {
     union {
         f32 xy[2];
         struct {
             f32 x, y;
         };
     };
+
+    void set(float x_, float y_) {
+        x = x_;
+        y = y_;
+    }
+
+    neko_vec2 operator-() { return neko_vec2{-x, -y}; }
+
+    void operator+=(const neko_vec2 &v) {
+        x += v.x;
+        y += v.y;
+    }
+
+    void operator-=(const neko_vec2 &v) {
+        x -= v.x;
+        y -= v.y;
+    }
+
+    void operator*=(float a) {
+        x *= a;
+        y *= a;
+    }
+
+    float Length() const { return sqrtf(x * x + y * y); }
+
 } neko_vec2;
 
 neko_static_inline neko_vec2 neko_vec2_ctor(f32 _x, f32 _y) {
@@ -811,6 +836,78 @@ typedef struct neko_plane_t {
 } neko_plane_t;
 
 /*================================================================================
+// Mat22
+================================================================================*/
+
+struct neko_mat22 {
+    neko_vec2 col1, col2;
+};
+
+inline neko_mat22 neko_mat22_transpose(const neko_mat22 &mat) { return neko_mat22(neko_vec2{mat.col1.x, mat.col2.x}, neko_vec2{mat.col1.y, mat.col2.y}); }
+
+inline neko_mat22 neko_mat22_invert(const neko_mat22 &mat) {
+    float a = mat.col1.x, b = mat.col2.x, c = mat.col1.y, d = mat.col2.y;
+    neko_mat22 B;
+    float det = a * d - b * c;
+    assert(det != 0.0f);
+    det = 1.0f / det;
+    B.col1.x = det * d;
+    B.col2.x = -det * b;
+    B.col1.y = -det * c;
+    B.col2.y = det * a;
+    return B;
+}
+
+inline neko_mat22 neko_mat22_ctor() { return neko_mat22{}; }
+
+inline neko_mat22 neko_mat22_ctor(float angle) {
+    neko_mat22 mat;
+    float c = cosf(angle), s = sinf(angle);
+    mat.col1.x = c;
+    mat.col2.x = -s;
+    mat.col1.y = s;
+    mat.col2.y = c;
+    return mat;
+}
+
+inline neko_mat22 neko_mat22_ctor(const neko_vec2 &col1, const neko_vec2 &col2) { return neko_mat22{col1, col2}; }
+
+inline neko_vec2 neko_vec2_cross(const neko_vec2 &a, float s) { return neko_vec2{s * a.y, -s * a.x}; }
+
+inline neko_vec2 neko_vec2_cross(float s, const neko_vec2 &a) { return neko_vec2{-s * a.y, s * a.x}; }
+
+inline neko_vec2 operator*(const neko_mat22 &A, const neko_vec2 &v) { return neko_vec2{A.col1.x * v.x + A.col2.x * v.y, A.col1.y * v.x + A.col2.y * v.y}; }
+
+inline neko_vec2 operator+(const neko_vec2 &a, const neko_vec2 &b) { return neko_vec2{a.x + b.x, a.y + b.y}; }
+
+inline neko_vec2 operator-(const neko_vec2 &a, const neko_vec2 &b) { return neko_vec2{a.x - b.x, a.y - b.y}; }
+
+inline neko_vec2 operator*(float s, const neko_vec2 &v) { return neko_vec2{s * v.x, s * v.y}; }
+
+inline neko_mat22 operator+(const neko_mat22 &A, const neko_mat22 &B) { return neko_mat22(A.col1 + B.col1, A.col2 + B.col2); }
+
+inline neko_mat22 operator*(const neko_mat22 &A, const neko_mat22 &B) { return neko_mat22(A * B.col1, A * B.col2); }
+
+inline neko_vec2 neko_vec2_abs(const neko_vec2 &a) { return neko_vec2{fabsf(a.x), fabsf(a.y)}; }
+
+inline neko_mat22 neko_mat22_abs(const neko_mat22 &A) { return neko_mat22(neko_vec2_abs(A.col1), neko_vec2_abs(A.col2)); }
+
+// Random number in range [-1,1]
+inline float Random() {
+    float r = (float)rand();
+    r /= RAND_MAX;
+    r = 2.0f * r - 1.0f;
+    return r;
+}
+
+inline float Random(float lo, float hi) {
+    float r = (float)rand();
+    r /= RAND_MAX;
+    r = (hi - lo) * r + lo;
+    return r;
+}
+
+/*================================================================================
 // Utils
 ================================================================================*/
 
@@ -833,5 +930,9 @@ neko_static_inline b32 neko_rect_vs_rect(neko_rect_t a, neko_rect_t b) {
 
 #define neko_min(a, b) ((a) < (b) ? (a) : (b))
 #define neko_max(a, b) ((a) > (b) ? (a) : (b))
+
+#define neko_clamp(v, min, max) ((v) > (max) ? (max) : (v) < (min) ? (min) : (v))
+
+neko_inline f32 neko_sign(f32 x) { return x < 0.0f ? -1.0f : 1.0f; }
 
 #endif  // NEKO_MATH_H

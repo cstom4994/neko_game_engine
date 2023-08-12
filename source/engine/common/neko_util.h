@@ -16,7 +16,9 @@
 #define neko_array_size(arr) sizeof(arr) / sizeof(arr[0])
 
 #if defined(DEBUG) || defined(_DEBUG)
-#define neko_debug_build 1
+#define neko_is_debug() 1
+#else
+#define neko_is_debug() 0
 #endif
 
 #define neko_assert(x)                                                                                                 \
@@ -577,5 +579,12 @@ neko_static_inline u32 neko_rand_xorshf32(void) {
 }
 
 #define neko_rand_xorshf32_max 0xFFFFFFFF
+
+template <typename T>
+neko_inline void neko_swap(T& a, T& b) {
+    T tmp = a;
+    a = b;
+    b = tmp;
+}
 
 #endif  // NEKO_UTIL_H

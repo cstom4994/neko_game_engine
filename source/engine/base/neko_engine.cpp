@@ -140,7 +140,7 @@ neko_engine *neko_engine_construct(int argc, char **argv) {
 
         neko_sc()->neko_lua.load_file(neko_file_path("data/scripts/main.lua"));
 
-        neko_application_desc_t t = {"Test", 1440, 840, neko_window_flags::resizable, 60.0f};
+        neko_application_desc_t t = {"Test", 1440, 840, neko_window_flags::resizable, neko_is_debug() ? 60.0f : 120.0f};
 
         // neko_lua_auto_push(L, neko_application_dedsc_t, &t);
 

@@ -372,7 +372,6 @@ neko_inline void neko_register_pack(lua_State* L) {
 
 static int __neko_bind_cvar_new(lua_State* L) {
     const_str name = lua_tostring(L, 1);
-    const_str type = lua_tostring(L, 2);
 
     // 检查是否已经存在
     neko_cvar_t* cv = __neko_config_get(name);
@@ -382,10 +381,17 @@ static int __neko_bind_cvar_new(lua_State* L) {
         return lua_error(L);               // 抛出lua错误
     }
 
-    neko_cvar_type cval;
-    lua_pushstring(g_lua_bind, type);
-    neko_lua_auto_to(g_lua_bind, neko_cvar_type, &cval, -1);
-    lua_pop(g_lua_bind, 1);
+    neko_cvar_type cval = neko_cvar_type::__NEKO_CONFIG_TYPE_COUNT;
+
+    if (lua_type(L, 2) == LUA_TSTRING) {
+        const_str type = lua_tostring(L, 2);
+        lua_pushstring(g_lua_bind, type);
+        neko_lua_auto_to(g_lua_bind, neko_cvar_type, &cval, -1);
+        lua_pop(g_lua_bind, 1);
+    } else if (lua_isinteger(L, 2)) {
+        int type = lua_tointeger(L, 2);
+        cval = (neko_cvar_type)type;
+    }
 
     switch (cval) {
         case neko::__NEKO_CONFIG_TYPE_INT:
@@ -399,7 +405,7 @@ static int __neko_bind_cvar_new(lua_State* L) {
             break;
         case neko::__NEKO_CONFIG_TYPE_COUNT:
         default:
-            neko_warn(std::format("__neko_bind_cvar_new with a unknown type {0} {1} {2}", name, type, (u8)cval));
+            neko_warn(std::format("__neko_bind_cvar_new with a unknown type {0} {1}", name, (u8)cval));
             break;
     }
     return 0;
@@ -494,6 +500,9 @@ neko_inline void neko_register_common(lua_State* L) {
             .def(&__neko_lua_info, "log_info")
 
             .def(&__neko_add_packagepath, "add_packagepath");
+
+    neko_lua_register_t<>(L).def(
+            +[]() -> bool { return (bool)neko_is_debug(); }, "neko_is_debug");
 
     neko_lua_auto_struct(L, neko_application_desc_t);
     neko_lua_auto_struct_member(L, neko_application_desc_t, window_title, const char*);

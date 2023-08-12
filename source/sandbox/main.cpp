@@ -1450,7 +1450,7 @@ bool update_ui() {
         neko_snprintf(sim_state_str, sizeof(sim_state_str), "state: %s", g_cvar.tick_world ? "running" : "paused");
         draw_string_at(&g_font, g_ui_buffer, 10, 20, sim_state_str, strlen(sim_state_str), cell_color_t{255, 255, 255, 255});
 
-        gfx->fontcache_push_x_y(std::format("test: {0}", l_check), g_basic_font, 40, 160);
+        gfx->fontcache_push_x_y(std::format("test: {0} {1}", l_check, neko_buildnum()), g_basic_font, 40, 160);
     }
 
     // Draw circle around mouse pointer

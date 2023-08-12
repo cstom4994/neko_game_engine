@@ -9,6 +9,33 @@
 #include "engine/platform/neko_platform.h"
 #include "engine/utility/neko_cpp_utils.hpp"
 
+neko_static_inline const char *__build_date = __DATE__;
+neko_static_inline const char *mon[12] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+neko_static_inline const char mond[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+
+int neko_buildnum(void) {
+    int m = 0, d = 0, y = 0;
+    static int b = 0;
+
+    // 优化
+    if (b != 0) return b;
+
+    for (m = 0; m < 11; m++) {
+        if (!strncmp(&__build_date[0], mon[m], 3)) break;
+        d += mond[m];
+    }
+
+    d += atoi(&__build_date[4]) - 1;
+    y = atoi(&__build_date[7]) - 2022;
+    b = d + (int)((y - 1) * 365.25f);
+
+    if (((y % 4) == 0) && m > 1) b += 1;
+
+    b -= 151;
+
+    return b;
+}
+
 namespace neko {
 
 #define __neko_gl_to_string_def(x) \

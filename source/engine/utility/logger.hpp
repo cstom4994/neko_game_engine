@@ -67,14 +67,14 @@ public:
     }
 
     template <typename... args>
-    static void log(log_type type, const std::string& message, args &&...argv) noexcept {
+    static void log(log_type type, const std::string &message, args &&...argv) noexcept {
         log_impl(message.c_str(), type, argv...);
     }
 };
 
 }  // namespace neko
 
-#if defined(neko_debug_build)
+#if neko_debug_build
 #define neko_debug(...) ::neko::logger::log(::neko::log_type::debug, __VA_ARGS__, std::format(" (at {0}:{1})", __func__, __LINE__).c_str())
 #else
 #define neko_debug(...)

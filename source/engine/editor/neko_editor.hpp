@@ -244,4 +244,6 @@ auto neko_editor_create(neko_engine_cvar_t &cvar) -> dbgui &;
 
 }  // namespace neko
 
+int neko_buildnum(void);
+
 #endif

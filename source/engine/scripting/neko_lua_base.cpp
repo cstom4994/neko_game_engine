@@ -152,40 +152,40 @@ void *lua_alloc(void *ud, void *ptr, size_t osize, size_t nsize) {
 void __neko_lua_auto_open(lua_State *L) {
 
     lua_pushinteger(L, 0);
-    lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "type_index");
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "type_index");
     lua_newtable(L);
-    lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "type_ids");
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "type_ids");
     lua_newtable(L);
-    lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "type_names");
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "type_names");
     lua_newtable(L);
-    lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "type_sizes");
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "type_sizes");
 
     lua_newtable(L);
-    lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "stack_push");
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "stack_push");
     lua_newtable(L);
-    lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "stack_to");
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "stack_to");
 
     lua_newtable(L);
-    lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "structs");
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "structs");
     lua_newtable(L);
-    lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "structs_offset");
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "structs_offset");
     lua_newtable(L);
-    lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "enums");
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "enums");
     lua_newtable(L);
-    lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "enums_sizes");
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "enums_sizes");
     lua_newtable(L);
-    lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "enums_values");
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "enums_values");
     lua_newtable(L);
-    lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "functions");
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "functions");
 
     lua_newuserdata(L, LUAA_RETURN_STACK_SIZE);
-    lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "call_ret_stk");
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "call_ret_stk");
     lua_newuserdata(L, LUAA_ARGUMENT_STACK_SIZE);
-    lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "call_arg_stk");
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "call_arg_stk");
     lua_pushinteger(L, 0);
-    lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "call_ret_ptr");
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "call_ret_ptr");
     lua_pushinteger(L, 0);
-    lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "call_arg_ptr");
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "call_arg_ptr");
 
     // compiler does weird macro expansion with "bool" so no magic macro for you
     neko_lua_auto_conversion_type(L, neko_lua_auto_type_add(L, "bool", sizeof(bool)), neko_lua_auto_push_bool, neko_lua_auto_to_bool);
@@ -232,45 +232,45 @@ void __neko_lua_auto_open(lua_State *L) {
 void __neko_lua_auto_close(lua_State *L) {
 
     lua_pushnil(L);
-    lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "type_index");
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "type_index");
     lua_pushnil(L);
-    lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "type_ids");
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "type_ids");
     lua_pushnil(L);
-    lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "type_names");
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "type_names");
     lua_pushnil(L);
-    lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "type_sizes");
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "type_sizes");
 
     lua_pushnil(L);
-    lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "stack_push");
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "stack_push");
     lua_pushnil(L);
-    lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "stack_to");
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "stack_to");
 
     lua_pushnil(L);
-    lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "structs");
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "structs");
     lua_pushnil(L);
-    lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "structs_offset");
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "structs_offset");
     lua_pushnil(L);
-    lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "enums");
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "enums");
     lua_pushnil(L);
-    lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "enums_sizes");
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "enums_sizes");
     lua_pushnil(L);
-    lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "enums_values");
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "enums_values");
     lua_pushnil(L);
-    lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "functions");
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "functions");
 
     lua_pushnil(L);
-    lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "call_ret_stk");
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "call_ret_stk");
     lua_pushnil(L);
-    lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "call_arg_stk");
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "call_arg_stk");
     lua_pushnil(L);
-    lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "call_ret_ptr");
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "call_ret_ptr");
     lua_pushnil(L);
-    lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "call_arg_ptr");
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "call_arg_ptr");
 }
 
 neko_lua_auto_Type neko_lua_auto_type_add(lua_State *L, const char *type, size_t size) {
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "type_ids");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "type_ids");
     lua_getfield(L, -1, type);
 
     if (lua_isnumber(L, -1)) {
@@ -283,27 +283,27 @@ neko_lua_auto_Type neko_lua_auto_type_add(lua_State *L, const char *type, size_t
 
         lua_pop(L, 2);
 
-        lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "type_index");
+        lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "type_index");
 
         neko_lua_auto_Type id = lua_tointeger(L, -1);
         lua_pop(L, 1);
         id++;
 
         lua_pushinteger(L, id);
-        lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "type_index");
+        lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "type_index");
 
-        lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "type_ids");
+        lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "type_ids");
         lua_pushinteger(L, id);
         lua_setfield(L, -2, type);
         lua_pop(L, 1);
 
-        lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "type_names");
+        lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "type_names");
         lua_pushinteger(L, id);
         lua_pushstring(L, type);
         lua_settable(L, -3);
         lua_pop(L, 1);
 
-        lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "type_sizes");
+        lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "type_sizes");
         lua_pushinteger(L, id);
         lua_pushinteger(L, size);
         lua_settable(L, -3);
@@ -315,7 +315,7 @@ neko_lua_auto_Type neko_lua_auto_type_add(lua_State *L, const char *type, size_t
 
 neko_lua_auto_Type neko_lua_auto_type_find(lua_State *L, const char *type) {
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "type_ids");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "type_ids");
     lua_getfield(L, -1, type);
 
     neko_lua_auto_Type id = lua_isnil(L, -1) ? LUAA_INVALID_TYPE : lua_tointeger(L, -1);
@@ -326,7 +326,7 @@ neko_lua_auto_Type neko_lua_auto_type_find(lua_State *L, const char *type) {
 
 const char *neko_lua_auto_typename(lua_State *L, neko_lua_auto_Type id) {
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "type_names");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "type_names");
     lua_pushinteger(L, id);
     lua_gettable(L, -2);
 
@@ -338,7 +338,7 @@ const char *neko_lua_auto_typename(lua_State *L, neko_lua_auto_Type id) {
 
 size_t neko_lua_auto_typesize(lua_State *L, neko_lua_auto_Type id) {
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "type_sizes");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "type_sizes");
     lua_pushinteger(L, id);
     lua_gettable(L, -2);
 
@@ -354,7 +354,7 @@ size_t neko_lua_auto_typesize(lua_State *L, neko_lua_auto_Type id) {
 
 int neko_lua_auto_push_type(lua_State *L, neko_lua_auto_Type type_id, const void *c_in) {
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "stack_push");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "stack_push");
     lua_pushinteger(L, type_id);
     lua_gettable(L, -2);
 
@@ -381,7 +381,7 @@ int neko_lua_auto_push_type(lua_State *L, neko_lua_auto_Type type_id, const void
 
 void neko_lua_auto_to_type(lua_State *L, neko_lua_auto_Type type_id, void *c_out, int index) {
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "stack_to");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "stack_to");
     lua_pushinteger(L, type_id);
     lua_gettable(L, -2);
 
@@ -414,7 +414,7 @@ void neko_lua_auto_conversion_type(lua_State *L, neko_lua_auto_Type type_id, nek
 }
 
 void neko_lua_auto_conversion_push_type(lua_State *L, neko_lua_auto_Type type_id, neko_lua_auto_Pushfunc func) {
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "stack_push");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "stack_push");
     lua_pushinteger(L, type_id);
     lua_pushlightuserdata(L, func);
     lua_settable(L, -3);
@@ -422,7 +422,7 @@ void neko_lua_auto_conversion_push_type(lua_State *L, neko_lua_auto_Type type_id
 }
 
 void neko_lua_auto_conversion_to_type(lua_State *L, neko_lua_auto_Type type_id, neko_lua_auto_Tofunc func) {
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "stack_to");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "stack_to");
     lua_pushinteger(L, type_id);
     lua_pushlightuserdata(L, func);
     lua_settable(L, -3);
@@ -566,7 +566,7 @@ bool neko_lua_auto_conversion_registered_type(lua_State *L, neko_lua_auto_Type t
 
 bool neko_lua_auto_conversion_push_registered_type(lua_State *L, neko_lua_auto_Type type_id) {
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "stack_push");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "stack_push");
     lua_pushinteger(L, type_id);
     lua_gettable(L, -2);
 
@@ -578,7 +578,7 @@ bool neko_lua_auto_conversion_push_registered_type(lua_State *L, neko_lua_auto_T
 
 bool neko_lua_auto_conversion_to_registered_type(lua_State *L, neko_lua_auto_Type type_id) {
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "stack_to");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "stack_to");
     lua_pushinteger(L, type_id);
     lua_gettable(L, -2);
 
@@ -594,7 +594,7 @@ bool neko_lua_auto_conversion_to_registered_type(lua_State *L, neko_lua_auto_Typ
 
 int neko_lua_auto_struct_push_member_offset_type(lua_State *L, neko_lua_auto_Type type, size_t offset, const void *c_in) {
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "structs_offset");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "structs_offset");
     lua_pushinteger(L, type);
     lua_gettable(L, -2);
 
@@ -623,7 +623,7 @@ int neko_lua_auto_struct_push_member_offset_type(lua_State *L, neko_lua_auto_Typ
 
 int neko_lua_auto_struct_push_member_name_type(lua_State *L, neko_lua_auto_Type type, const char *member, const void *c_in) {
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "structs");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "structs");
     lua_pushinteger(L, type);
     lua_gettable(L, -2);
 
@@ -654,7 +654,7 @@ int neko_lua_auto_struct_push_member_name_type(lua_State *L, neko_lua_auto_Type 
 
 void neko_lua_auto_struct_to_member_offset_type(lua_State *L, neko_lua_auto_Type type, size_t offset, void *c_out, int index) {
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "structs_offset");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "structs_offset");
     lua_pushinteger(L, type);
     lua_gettable(L, -2);
 
@@ -683,7 +683,7 @@ void neko_lua_auto_struct_to_member_offset_type(lua_State *L, neko_lua_auto_Type
 
 void neko_lua_auto_struct_to_member_name_type(lua_State *L, neko_lua_auto_Type type, const char *member, void *c_out, int index) {
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "structs");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "structs");
     lua_pushinteger(L, type);
     lua_gettable(L, -2);
 
@@ -715,7 +715,7 @@ void neko_lua_auto_struct_to_member_name_type(lua_State *L, neko_lua_auto_Type t
 
 bool neko_lua_auto_struct_has_member_offset_type(lua_State *L, neko_lua_auto_Type type, size_t offset) {
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "structs_offset");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "structs_offset");
     lua_pushinteger(L, type);
     lua_gettable(L, -2);
 
@@ -741,7 +741,7 @@ bool neko_lua_auto_struct_has_member_offset_type(lua_State *L, neko_lua_auto_Typ
 
 bool neko_lua_auto_struct_has_member_name_type(lua_State *L, neko_lua_auto_Type type, const char *member) {
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "structs");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "structs");
     lua_pushinteger(L, type);
     lua_gettable(L, -2);
 
@@ -767,7 +767,7 @@ bool neko_lua_auto_struct_has_member_name_type(lua_State *L, neko_lua_auto_Type 
 
 neko_lua_auto_Type neko_lua_auto_struct_typeof_member_offset_type(lua_State *L, neko_lua_auto_Type type, size_t offset) {
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "structs_offset");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "structs_offset");
     lua_pushinteger(L, type);
     lua_gettable(L, -2);
 
@@ -796,7 +796,7 @@ neko_lua_auto_Type neko_lua_auto_struct_typeof_member_offset_type(lua_State *L, 
 
 neko_lua_auto_Type neko_lua_auto_struct_typeof_member_name_type(lua_State *L, neko_lua_auto_Type type, const char *member) {
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "structs");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "structs");
     lua_pushinteger(L, type);
     lua_gettable(L, -2);
 
@@ -824,13 +824,13 @@ neko_lua_auto_Type neko_lua_auto_struct_typeof_member_name_type(lua_State *L, ne
 }
 
 void neko_lua_auto_struct_type(lua_State *L, neko_lua_auto_Type type) {
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "structs");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "structs");
     lua_pushinteger(L, type);
     lua_newtable(L);
     lua_settable(L, -3);
     lua_pop(L, 1);
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "structs_offset");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "structs_offset");
     lua_pushinteger(L, type);
     lua_newtable(L);
     lua_settable(L, -3);
@@ -839,7 +839,7 @@ void neko_lua_auto_struct_type(lua_State *L, neko_lua_auto_Type type) {
 
 void neko_lua_auto_struct_member_type(lua_State *L, neko_lua_auto_Type type, const char *member, neko_lua_auto_Type mtype, size_t offset) {
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "structs");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "structs");
     lua_pushinteger(L, type);
     lua_gettable(L, -2);
 
@@ -856,7 +856,7 @@ void neko_lua_auto_struct_member_type(lua_State *L, neko_lua_auto_Type type, con
 
         lua_setfield(L, -2, member);
 
-        lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "structs_offset");
+        lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "structs_offset");
         lua_pushinteger(L, type);
         lua_gettable(L, -2);
 
@@ -874,7 +874,7 @@ void neko_lua_auto_struct_member_type(lua_State *L, neko_lua_auto_Type type, con
 
 bool neko_lua_auto_struct_registered_type(lua_State *L, neko_lua_auto_Type type) {
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "structs");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "structs");
     lua_pushinteger(L, type);
     lua_gettable(L, -2);
 
@@ -886,7 +886,7 @@ bool neko_lua_auto_struct_registered_type(lua_State *L, neko_lua_auto_Type type)
 
 int neko_lua_auto_struct_push_type(lua_State *L, neko_lua_auto_Type type, const void *c_in) {
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "structs");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "structs");
     lua_pushinteger(L, type);
     lua_gettable(L, -2);
 
@@ -944,7 +944,7 @@ void neko_lua_auto_struct_to_type(lua_State *L, neko_lua_auto_Type type, void *c
 
 const char *neko_lua_auto_struct_next_member_name_type(lua_State *L, neko_lua_auto_Type type, const char *member) {
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "structs");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "structs");
     lua_pushinteger(L, type);
     lua_gettable(L, -2);
 
@@ -976,13 +976,13 @@ const char *neko_lua_auto_struct_next_member_name_type(lua_State *L, neko_lua_au
 
 int neko_lua_auto_enum_push_type(lua_State *L, neko_lua_auto_Type type, const void *value) {
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "enums_values");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "enums_values");
     lua_pushinteger(L, type);
     lua_gettable(L, -2);
 
     if (!lua_isnil(L, -1)) {
 
-        lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "enums_sizes");
+        lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "enums_sizes");
         lua_pushinteger(L, type);
         lua_gettable(L, -2);
         size_t size = lua_tointeger(L, -1);
@@ -1018,13 +1018,13 @@ void neko_lua_auto_enum_to_type(lua_State *L, neko_lua_auto_Type type, void *c_o
 
     const char *name = lua_tostring(L, index);
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "enums");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "enums");
     lua_pushinteger(L, type);
     lua_gettable(L, -2);
 
     if (!lua_isnil(L, -1)) {
 
-        lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "enums_sizes");
+        lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "enums_sizes");
         lua_pushinteger(L, type);
         lua_gettable(L, -2);
         size_t size = lua_tointeger(L, -1);
@@ -1055,13 +1055,13 @@ void neko_lua_auto_enum_to_type(lua_State *L, neko_lua_auto_Type type, void *c_o
 
 bool neko_lua_auto_enum_has_value_type(lua_State *L, neko_lua_auto_Type type, const void *value) {
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "enums_values");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "enums_values");
     lua_pushinteger(L, type);
     lua_gettable(L, -2);
 
     if (!lua_isnil(L, -1)) {
 
-        lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "enums_sizes");
+        lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "enums_sizes");
         lua_pushinteger(L, type);
         lua_gettable(L, -2);
         size_t size = lua_tointeger(L, -1);
@@ -1089,7 +1089,7 @@ bool neko_lua_auto_enum_has_value_type(lua_State *L, neko_lua_auto_Type type, co
 }
 
 bool neko_lua_auto_enum_has_name_type(lua_State *L, neko_lua_auto_Type type, const char *name) {
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "enums");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "enums");
     lua_pushinteger(L, type);
     lua_gettable(L, -2);
 
@@ -1113,19 +1113,19 @@ bool neko_lua_auto_enum_has_name_type(lua_State *L, neko_lua_auto_Type type, con
 }
 
 void neko_lua_auto_enum_type(lua_State *L, neko_lua_auto_Type type, size_t size) {
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "enums");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "enums");
     lua_pushinteger(L, type);
     lua_newtable(L);
     lua_settable(L, -3);
     lua_pop(L, 1);
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "enums_values");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "enums_values");
     lua_pushinteger(L, type);
     lua_newtable(L);
     lua_settable(L, -3);
     lua_pop(L, 1);
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "enums_sizes");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "enums_sizes");
     lua_pushinteger(L, type);
     lua_pushinteger(L, size);
     lua_settable(L, -3);
@@ -1134,13 +1134,13 @@ void neko_lua_auto_enum_type(lua_State *L, neko_lua_auto_Type type, size_t size)
 
 void neko_lua_auto_enum_value_type(lua_State *L, neko_lua_auto_Type type, const void *value, const char *name) {
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "enums");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "enums");
     lua_pushinteger(L, type);
     lua_gettable(L, -2);
 
     if (!lua_isnil(L, -1)) {
 
-        lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "enums_sizes");
+        lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "enums_sizes");
         lua_pushinteger(L, type);
         lua_gettable(L, -2);
         size_t size = lua_tointeger(L, -1);
@@ -1159,7 +1159,7 @@ void neko_lua_auto_enum_value_type(lua_State *L, neko_lua_auto_Type type, const 
 
         lua_setfield(L, -2, name);
 
-        lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "enums_values");
+        lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "enums_values");
         lua_pushinteger(L, type);
         lua_gettable(L, -2);
         lua_pushinteger(L, lvalue);
@@ -1176,7 +1176,7 @@ void neko_lua_auto_enum_value_type(lua_State *L, neko_lua_auto_Type type, const 
 }
 
 bool neko_lua_auto_enum_registered_type(lua_State *L, neko_lua_auto_Type type) {
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "enums");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "enums");
     lua_pushinteger(L, type);
     lua_gettable(L, -2);
     bool reg = !lua_isnil(L, -1);
@@ -1186,7 +1186,7 @@ bool neko_lua_auto_enum_registered_type(lua_State *L, neko_lua_auto_Type type) {
 
 const char *neko_lua_auto_enum_next_value_name_type(lua_State *L, neko_lua_auto_Type type, const char *member) {
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "enums");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "enums");
     lua_pushinteger(L, type);
     lua_gettable(L, -2);
 
@@ -1252,19 +1252,19 @@ static int neko_lua_auto_call_entry(lua_State *L) {
 
     /* Test to see if using heap */
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "call_ret_stk");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "call_ret_stk");
     void *ret_stack = lua_touserdata(L, -1);
     lua_pop(L, 1);
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "call_arg_stk");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "call_arg_stk");
     void *arg_stack = lua_touserdata(L, -1);
     lua_pop(L, 1);
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "call_ret_ptr");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "call_ret_ptr");
     lua_Integer ret_ptr = lua_tointeger(L, -1);
     lua_pop(L, 1);
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "call_arg_ptr");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "call_arg_ptr");
     lua_Integer arg_ptr = lua_tointeger(L, -1);
     lua_pop(L, 1);
 
@@ -1303,12 +1303,12 @@ static int neko_lua_auto_call_entry(lua_State *L) {
 
     if (!ret_heap) {
         lua_pushinteger(L, ret_ptr + ret_size);
-        lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "call_ret_ptr");
+        lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "call_ret_ptr");
     }
 
     if (!arg_heap) {
         lua_pushinteger(L, arg_ptr + arg_size);
-        lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "call_arg_ptr");
+        lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "call_arg_ptr");
     }
 
     /* Pop args and place in memory */
@@ -1347,14 +1347,14 @@ static int neko_lua_auto_call_entry(lua_State *L) {
 
     if (!ret_heap) {
         lua_pushinteger(L, ret_ptr);
-        lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "call_ret_ptr");
+        lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "call_ret_ptr");
     } else {
         free(ret_data);
     }
 
     if (!arg_heap) {
         lua_pushinteger(L, arg_ptr);
-        lua_setfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "argument_ptr");
+        lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "argument_ptr");
     } else {
         free(arg_data);
     }
@@ -1363,7 +1363,7 @@ static int neko_lua_auto_call_entry(lua_State *L) {
 }
 
 int neko_lua_auto_call(lua_State *L, void *func_ptr) {
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "functions");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "functions");
     lua_pushlightuserdata(L, func_ptr);
     lua_gettable(L, -2);
     lua_remove(L, -2);
@@ -1379,7 +1379,7 @@ int neko_lua_auto_call(lua_State *L, void *func_ptr) {
 }
 
 int neko_lua_auto_call_name(lua_State *L, const char *func_name) {
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "functions");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "functions");
     lua_pushstring(L, func_name);
     lua_gettable(L, -2);
     lua_remove(L, -2);
@@ -1396,7 +1396,7 @@ int neko_lua_auto_call_name(lua_State *L, const char *func_name) {
 
 void neko_lua_auto_function_register_type(lua_State *L, void *src_func, neko_lua_auto_Func auto_func, const char *name, neko_lua_auto_Type ret_t, int num_args, ...) {
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "functions");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "functions");
     lua_pushstring(L, name);
 
     lua_newtable(L);
@@ -1425,10 +1425,10 @@ void neko_lua_auto_function_register_type(lua_State *L, void *src_func, neko_lua
     lua_settable(L, -3);
     lua_pop(L, 1);
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "functions");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "functions");
     lua_pushlightuserdata(L, src_func);
 
-    lua_getfield(L, LUA_REGISTRYINDEX, LUAA_REGISTRYPREFIX "functions");
+    lua_getfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "functions");
     lua_getfield(L, -1, name);
     lua_remove(L, -2);
 

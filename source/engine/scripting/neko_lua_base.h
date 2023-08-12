@@ -31,7 +31,7 @@ void *lua_alloc(void *ud, void *ptr, size_t osize, size_t nsize);
 
 #pragma region LuaA
 
-#define LUAA_REGISTRYPREFIX "lautoc_"
+#define NEKO_LUA_AUTO_REGISTER_PREFIX "neko_lua_auto_"
 
 void __neko_lua_auto_open(lua_State *L);
 void __neko_lua_auto_close(lua_State *L);
