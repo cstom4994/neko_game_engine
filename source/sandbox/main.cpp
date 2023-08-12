@@ -13,6 +13,7 @@
 #include "engine/graphics/neko_sprite.h"
 #include "engine/gui/neko_imgui_utils.hpp"
 #include "engine/neko.h"
+#include "engine/physics/neko_phy.h"
 #include "engine/scripting/neko_scripting.h"
 #include "engine/utility/logger.hpp"
 #include "engine/utility/module.hpp"
@@ -23,8 +24,9 @@
 
 #define g_window_width 1420
 #define g_window_height 880
-neko_global const s32 g_texture_width = g_window_width / 4;
-neko_global const s32 g_texture_height = g_window_height / 4;
+neko_global const s32 g_scale = 4;
+neko_global const s32 g_texture_width = g_window_width / g_scale;
+neko_global const s32 g_texture_height = g_window_height / g_scale;
 
 // neko engine cpp
 using namespace neko;
@@ -56,6 +58,17 @@ neko_global blur_pass_t g_blur_pass = {0};
 neko_global bright_filter_pass_t g_bright_pass = {0};
 neko_global composite_pass_t g_composite_pass = {0};
 neko_global neko_packreader_t *g_pack_reader;
+neko_global neko_quad_batch_t g_batch = {0};
+
+// 3d
+neko_global neko_uniform_t u_color = {};
+neko_global neko_uniform_t u_model = {};
+neko_global neko_uniform_t u_view = {};
+neko_global neko_uniform_t u_proj = {};
+
+neko_global neko_vertex_buffer_t g_3d_vbo = {0};
+
+neko_global neko_camera_t g_camera = {0};
 
 neko_resource(neko_font_t) g_test_font = {};
 
@@ -169,6 +182,51 @@ void main()
 {
    frag_color = texture(u_tex, texCoord);
 }
+)glsl";
+
+const char *v_3d_src = R"glsl(
+#version 330 core
+layout(location = 0) in vec3 a_pos;
+uniform mat4 u_model;
+uniform mat4 u_view;
+uniform mat4 u_proj;
+void main()
+{
+    gl_Position = u_proj * u_view * u_model * vec4(a_pos, 1.0); 
+}
+)glsl";
+
+const char *f_3d_src = R"glsl(
+#version 330 core
+uniform vec4 u_color;
+out vec4 frag_color;
+
+#define COLOR_STEP 6.0
+#define PIXEL_SIZE 4.0
+
+vec4 colorize(in vec4 color) {
+
+    // Pixel art coloring
+    vec3 nCol = normalize(color.rgb);
+    float nLen = length(color.rgb);
+    return vec4(nCol * round(nLen * COLOR_STEP) / COLOR_STEP, color.w);
+
+}
+
+//void mainImage( out vec4 fragColor, in vec2 fragCoord )
+//{
+//    // Pixel Sizing
+//    float ratio = iResolution.y/720.0;
+//    vec2 pixel = round(fragCoord / (PIXEL_SIZE * ratio)) * PIXEL_SIZE * ratio;
+//    vec2 uv = pixel/iResolution.xy;
+//    fragColor = colorize(texture(iChannel0, uv));
+//}
+
+void main()
+{
+    frag_color = colorize(u_color); 
+}
+
 )glsl";
 
 // Forward Decls.
@@ -294,6 +352,8 @@ neko_texture_t load_ase_texture_simple(const std::string &path) {
     t_desc.height = ase->h;
     t_desc.num_comps = 4;
     t_desc.data = ase->frames->pixels;
+
+    neko_tex_flip_vertically(ase->w, ase->h, (u8 *)t_desc.data);
 
     neko_texture_t tex = gfx->construct_texture(t_desc);
 
@@ -713,6 +773,291 @@ neko_global neko_resource(neko_audio_instance_t) g_inst = {0};
 
 neko_sprite_renderer sprite_test = {};
 
+namespace {
+
+neko_phy_body bodies[200];
+neko_phy_joint joints[100];
+
+neko_phy_body *bomb = NULL;
+
+int iterations = 20;
+neko_vec2 gravity{0.0f, -10.0f};
+
+int numBodies = 0;
+int numJoints = 0;
+
+int demoIndex = 0;
+
+f32 timeStep = 1.f / 60.f;
+
+neko_phy_world world(gravity, iterations);
+}  // namespace
+
+neko_inline neko_vec2 world_to_screen_pos(const neko_vec2 &pos) {
+    f32 screenX = pos.x * g_scale;
+    f32 screenY = g_window_height - pos.y * g_scale;
+    return neko_vec2{screenX, screenY};
+}
+
+neko_inline neko_vec2 screen_to_world_pos(const neko_vec2 &pos) {
+    f32 worldX = pos.x / g_scale;
+    f32 worldY = (g_window_height - pos.y) / g_scale;
+    return neko_vec2{worldX, worldY};
+}
+
+static void DrawBody(neko_phy_body *body) {
+    neko_mat22 R = neko_mat22_ctor(body->rotation);
+    neko_vec2 x = body->position;
+    neko_vec2 h = 0.5f * body->width;
+
+    neko_vec2 v1 = world_to_screen_pos(x + R * neko_vec2{-h.x, -h.y});
+    neko_vec2 v2 = world_to_screen_pos(x + R * neko_vec2{h.x, -h.y});
+    neko_vec2 v3 = world_to_screen_pos(x + R * neko_vec2{h.x, h.y});
+    neko_vec2 v4 = world_to_screen_pos(x + R * neko_vec2{-h.x, h.y});
+
+    // Graphics api instance
+    neko_graphics_i *gfx = neko_engine_instance()->ctx.graphics;
+    neko_command_buffer_t *cb = &g_cb;
+
+    neko_color_t color = body == bomb ? neko_color_red : neko_color_white;
+
+    gfx->immediate.draw_line_ext(cb, v1, v2, 4.f, color);
+    gfx->immediate.draw_line_ext(cb, v2, v3, 4.f, color);
+    gfx->immediate.draw_line_ext(cb, v3, v4, 4.f, color);
+    gfx->immediate.draw_line_ext(cb, v4, v1, 4.f, color);
+}
+
+static void DrawJoint(neko_phy_joint *joint) {
+    neko_phy_body *b1 = joint->body1;
+    neko_phy_body *b2 = joint->body2;
+
+    neko_mat22 R1 = neko_mat22_ctor(b1->rotation);
+    neko_mat22 R2 = neko_mat22_ctor(b2->rotation);
+
+    neko_vec2 x1 = b1->position;
+    neko_vec2 p1 = x1 + R1 * joint->localAnchor1;
+
+    neko_vec2 x2 = b2->position;
+    neko_vec2 p2 = x2 + R2 * joint->localAnchor2;
+
+    // Graphics api instance
+    neko_graphics_i *gfx = neko_engine_instance()->ctx.graphics;
+    neko_command_buffer_t *cb = &g_cb;
+
+    neko_color_t color = neko_color_orange;
+
+    gfx->immediate.draw_line_ext(cb, world_to_screen_pos(x1), world_to_screen_pos(p1), 3.f, color);
+    gfx->immediate.draw_line_ext(cb, world_to_screen_pos(x2), world_to_screen_pos(p2), 3.f, color);
+}
+
+static void LaunchBomb() {
+    if (!bomb) {
+        bomb = bodies + numBodies;
+        neko_body_set(bomb, neko_vec2{15.0f, 15.0f}, 50.0f);
+        bomb->friction = 0.2f;
+        world.neko_phy_create(bomb);
+        ++numBodies;
+    }
+
+    neko_vec2 ws = neko_engine_instance()->ctx.platform->window_size(g_window);
+    neko_vec2 pmp = neko_engine_instance()->ctx.platform->mouse_position();
+
+    neko_vec2 pos = screen_to_world_pos(pmp);
+
+    bomb->position.set(pos.x, pos.y);
+    bomb->rotation = neko_math_rand(-1.5f, 1.5f);
+    bomb->velocity = {neko_math_rand(-1.5f, 1.5f), neko_math_rand(-1.5f, 1.5f)};
+    bomb->angularVelocity = neko_math_rand(-4.0f, 4.0f);
+}
+
+void init_demo(s32 i) {
+    world.neko_phy_clear();
+    numBodies = 0;
+    numJoints = 0;
+    bomb = NULL;
+
+    neko_phy_body *b = bodies;
+    neko_phy_joint *j = joints;
+
+    if (i == 1) {  // A pyramid
+        neko_body_set(b, neko_vec2{1000.0f, 5.0f}, neko_mass_max);
+        b->position.set(200.0f, 5.f);
+        b->friction = 4.f;
+        world.neko_phy_create(b);
+        ++b;
+        ++numBodies;
+
+        neko_vec2 x{15.0f, 20.f};
+        neko_vec2 y;
+
+        for (int i = 0; i < 12; ++i) {
+            y = x;
+
+            for (int j = i; j < 12; ++j) {
+                neko_body_set(b, neko_vec2{15.0f, 15.0f}, 10.0f);
+                b->friction = 0.2f;
+                b->position = y;
+                world.neko_phy_create(b);
+                ++b;
+                ++numBodies;
+
+                y += neko_vec2{20.f, 0.0f};
+            }
+
+            // x += neko_vec2{0.5625f, 1.125f);
+            x += neko_vec2{7.5f, 20.0f};
+        }
+    } else if (i == 2)  // A simple pendulum
+    {
+        neko_phy_body *b1 = b + 0;
+        neko_body_set(b, neko_vec2{1000.0f, 10.0f}, neko_mass_max);
+        b1->friction = 0.2f;
+        b->position.set(200.0f, 10.5f);
+        b1->rotation = 0.0f;
+        world.neko_phy_create(b1);
+
+        neko_phy_body *b2 = b + 1;
+        neko_body_set(b2, neko_vec2{15.0f, 15.0f}, 100.0f);
+        b2->friction = 0.2f;
+        b2->position.set(40.0f, 100.0f);
+        b2->rotation = 0.0f;
+        world.neko_phy_create(b2);
+
+        numBodies += 2;
+
+        j->Set(b1, b2, neko_vec2{150.0f, 150.0f});
+        world.neko_phy_create(j);
+
+        numJoints += 1;
+    } else if (i == 3) {  // A multi-pendulum
+        neko_body_set(b, neko_vec2{1000.0f, 10.0f}, neko_mass_max);
+        b->friction = 0.2f;
+        b->position.set(0.0f, -0.5f * b->width.y);
+        b->rotation = 0.0f;
+        world.neko_phy_create(b);
+
+        neko_phy_body *b1 = b;
+        ++b;
+        ++numBodies;
+
+        float mass = 10.0f;
+
+        // Tuning
+        float frequencyHz = 4.0f;
+        float dampingRatio = 0.7f;
+
+        // frequency in radians
+        float omega = 2.0f * neko_pi * frequencyHz;
+
+        // damping coefficient
+        float d = 2.0f * mass * dampingRatio * omega;
+
+        // spring stiffness
+        float k = mass * omega * omega;
+
+        // magic formulas
+        float softness = 1.0f / (d + timeStep * k);
+        float biasFactor = timeStep * k / (d + timeStep * k);
+
+        const float y = 100.0f;
+        const float xx = 100.0f;
+
+        for (int i = 0; i < 15; ++i) {
+            neko_vec2 x{xx + i * 5.f, y};
+            neko_body_set(b, neko_vec2{4.0f, 6.0f}, mass);
+            b->friction = 0.2f;
+            b->position = x;
+            b->rotation = 0.0f;
+            world.neko_phy_create(b);
+
+            j->Set(b1, b, neko_vec2{float(xx + i * 5.f), y});
+            j->softness = softness;
+            j->biasFactor = biasFactor;
+            world.neko_phy_create(j);
+
+            b1 = b;
+            ++b;
+            ++numBodies;
+            ++j;
+            ++numJoints;
+        }
+    } else if (i == 4) {
+
+        neko_body_set(b, neko_vec2{1000.0f, 10.0f}, neko_mass_max);
+        b->friction = 0.2f;
+        b->position.set(0.0f, -0.5f * b->width.y);
+        b->rotation = 0.0f;
+        world.neko_phy_create(b);
+        ++b;
+        ++numBodies;
+
+        const int numPlanks = 15;
+        float mass = 50.0f;
+
+        for (int i = 0; i < numPlanks; ++i) {
+            neko_body_set(b, neko_vec2{50.0f, 15.f}, mass);
+            b->friction = 0.2f;
+            b->position.set(-8.5f + 1.25f * i, 5.0f);
+            world.neko_phy_create(b);
+            ++b;
+            ++numBodies;
+        }
+
+        // Tuning
+        float frequencyHz = 2.0f;
+        float dampingRatio = 0.7f;
+
+        // frequency in radians
+        float omega = 2.0f * neko_pi * frequencyHz;
+
+        // damping coefficient
+        float d = 2.0f * mass * dampingRatio * omega;
+
+        // spring stifness
+        float k = mass * omega * omega;
+
+        // magic formulas
+        float softness = 1.0f / (d + timeStep * k);
+        float biasFactor = timeStep * k / (d + timeStep * k);
+
+        for (int i = 0; i < numPlanks; ++i) {
+            j->Set(bodies + i, bodies + i + 1, neko_vec2{-9.125f + 50.25f * i, 15.0f});
+            j->softness = softness;
+            j->biasFactor = biasFactor;
+
+            world.neko_phy_create(j);
+            ++j;
+            ++numJoints;
+        }
+
+        j->Set(bodies + numPlanks, bodies, neko_vec2{-9.125f + 50.25f * numPlanks, 15.0f});
+        j->softness = softness;
+        j->biasFactor = biasFactor;
+        world.neko_phy_create(j);
+        ++j;
+        ++numJoints;
+    } else if (i == 5) {
+
+        neko_body_set(b, neko_vec2{1000.0f, 10.0f}, neko_mass_max);
+        b->friction = 0.2f;
+        b->position.set(0.0f, -0.5f * b->width.y);
+        b->rotation = 0.0f;
+        world.neko_phy_create(b);
+        ++b;
+        ++numBodies;
+
+        for (int i = 0; i < 10; ++i) {
+            neko_body_set(b, neko_vec2{15.0f, 15.0f}, 4.0f);
+            b->friction = 0.2f;
+            float x = neko_math_rand(-1.f, 1.f);
+            b->position.set(x + 150.f, 0.51f + 16.f * i);
+            world.neko_phy_create(b);
+            ++b;
+            ++numBodies;
+        }
+    }
+}
+
 // Here, we'll initialize all of our application data, which in this case is our graphics resources
 neko_result app_init() {
     // Cache instance of api contexts from engine
@@ -748,6 +1093,62 @@ neko_result app_init() {
     g_vbo = gfx->construct_vertex_buffer(layout, sizeof(layout), v_data, sizeof(v_data));
     // Construct index buffer
     g_ibo = gfx->construct_index_buffer(i_data, sizeof(i_data));
+
+    // 测试3d
+    _shader = gfx->neko_shader_create("g_3d_shader", v_3d_src, f_3d_src);
+    u_color = gfx->construct_uniform(*_shader, "u_color", neko_uniform_type_vec4);
+    u_view = gfx->construct_uniform(*_shader, "u_view", neko_uniform_type_mat4);
+    u_model = gfx->construct_uniform(*_shader, "u_model", neko_uniform_type_mat4);
+    u_proj = gfx->construct_uniform(*_shader, "u_proj", neko_uniform_type_mat4);
+
+    // Vertex data layout for our mesh (for this shader, it's a single float3 attribute for position)
+    neko_vertex_attribute_type layout_3d[] = {neko_vertex_attribute_float3};
+
+    // Vertex data for cube
+    float v_3d_data[] = {                      // Position
+                         -0.5f, -0.5f, -0.5f,  // First face
+                         0.5f,  -0.5f, -0.5f,  //
+                         0.5f,  0.5f,  -0.5f,  //
+                         0.5f,  0.5f,  -0.5f,  //
+                         -0.5f, 0.5f,  -0.5f,  //
+                         -0.5f, -0.5f, -0.5f,  //
+
+                         -0.5f, -0.5f, 0.5f,  // Second face
+                         0.5f,  -0.5f, 0.5f,  //
+                         0.5f,  0.5f,  0.5f,  //
+                         0.5f,  0.5f,  0.5f,  //
+                         -0.5f, 0.5f,  0.5f,  //
+                         -0.5f, -0.5f, 0.5f,  //
+
+                         -0.5f, 0.5f,  0.5f,   // Third face
+                         -0.5f, 0.5f,  -0.5f,  //
+                         -0.5f, -0.5f, -0.5f,  //
+                         -0.5f, -0.5f, -0.5f,  //
+                         -0.5f, -0.5f, 0.5f,   //
+                         -0.5f, 0.5f,  0.5f,   //
+
+                         0.5f,  0.5f,  0.5f,   // Fourth face
+                         0.5f,  0.5f,  -0.5f,  //
+                         0.5f,  -0.5f, -0.5f,  //
+                         0.5f,  -0.5f, -0.5f,  //
+                         0.5f,  -0.5f, 0.5f,   //
+                         0.5f,  0.5f,  0.5f,   //
+
+                         -0.5f, -0.5f, -0.5f,  // Fifth face
+                         0.5f,  -0.5f, -0.5f,  //
+                         0.5f,  -0.5f, 0.5f,   //
+                         0.5f,  -0.5f, 0.5f,   //
+                         -0.5f, -0.5f, 0.5f,   //
+                         -0.5f, -0.5f, -0.5f,  //
+
+                         -0.5f, 0.5f,  -0.5f,  // Sixth face
+                         0.5f,  0.5f,  -0.5f,  //
+                         0.5f,  0.5f,  0.5f,   //
+                         0.5f,  0.5f,  0.5f,   //
+                         -0.5f, 0.5f,  0.5f,   //
+                         -0.5f, 0.5f,  -0.5f};
+    // Construct vertex buffer
+    g_3d_vbo = gfx->construct_vertex_buffer(layout_3d, sizeof(layout_3d), v_3d_data, sizeof(v_3d_data));
 
     // Construct world data (for now, it'll just be the size of the screen)
     g_world_particle_data = (particle_t *)neko_safe_malloc(g_texture_width * g_texture_height * sizeof(particle_t));
@@ -795,7 +1196,22 @@ neko_result app_init() {
     // Construct frame buffer
     g_fb = gfx->construct_frame_buffer(g_rt);
 
-    // g_test_ase = load_ase_texture_simple(neko_file_path("data/assets/textures/B_witch.ase"));
+    // Construct camera parameters
+    g_camera.transform = neko_vqs_default();
+    g_camera.transform.position = neko_vec3{0.f, 0.f, -1.f};
+    g_camera.fov = 60.f;
+    g_camera.near_plane = 0.1f;
+    g_camera.far_plane = 1000.f;
+    g_camera.ortho_scale = 2.f;
+    g_camera.proj_type = neko_projection_type_orthographic;
+
+    g_test_ase = load_ase_texture_simple(neko_file_path("data/assets/textures/Sprite-0001.ase"));
+
+    // Construct quad batch api and link up function pointers
+    g_batch = neko_quad_batch_new(neko_resource_invalid(neko_material_t));
+
+    // Set material texture uniform
+    gfx->set_material_uniform_sampler2d(g_batch.material, "u_tex", g_test_ase, 0);
 
     // Constuct audio resource to play
     g_src = audio->load_audio_source_from_file(neko_file_path("data/assets/audio/audioclip/6.wav"));
@@ -817,7 +1233,7 @@ neko_result app_init() {
     g_slot_array = neko_slot_array_new(object_t);
     g_hash_table = neko_hash_table_new(u64, object_t);
 
-    // Add elements to containers
+    // neko_phy_create elements to containers
     for (g_cur_val = 0; g_cur_val < 10; ++g_cur_val) {
         object_t obj = {0};
         obj.float_value = (f32)g_cur_val;
@@ -1031,6 +1447,8 @@ neko_result app_init() {
     // Load UI font texture data from file
     construct_font_data(g_font_data);
 
+    init_demo(1);
+
     // Set up callback for dropping them files, yo.
     platform->set_dropped_files_callback(platform->main_window(), &drop_file_callback);
 
@@ -1072,6 +1490,8 @@ neko_result app_update() {
         swarm.update(engine->ctx.platform->time.current, settings);
 
         neko_ecs_run_systems(neko_engine_subsystem(ecs), ECS_SYSTEM_UPDATE);
+
+        world.neko_phy_step(engine->ctx.platform->time.delta * 2.f);
     }
 
     /*===============
@@ -1162,6 +1582,45 @@ void update_input() {
 
     if (platform->key_pressed(neko_keycode_tab)) {
         g_cvar.ui_tweak = !g_cvar.ui_tweak;
+    }
+
+    if (platform->key_pressed(neko_keycode_z)) {
+        LaunchBomb();
+    }
+
+    if (platform->key_pressed(neko_keycode_one)) {
+        init_demo(1);
+    }
+    if (platform->key_pressed(neko_keycode_two)) {
+        init_demo(2);
+    }
+    if (platform->key_pressed(neko_keycode_three)) {
+        init_demo(3);
+    }
+    if (platform->key_pressed(neko_keycode_four)) {
+        init_demo(4);
+    }
+    if (platform->key_pressed(neko_keycode_five)) {
+        init_demo(5);
+    }
+
+    if (platform->key_down(neko_keycode_q)) {
+        g_camera.ortho_scale += 0.1f;
+    }
+    if (platform->key_down(neko_keycode_e)) {
+        g_camera.ortho_scale -= 0.1f;
+    }
+    if (platform->key_down(neko_keycode_a)) {
+        g_camera.transform.position.x -= 0.1f;
+    }
+    if (platform->key_down(neko_keycode_d)) {
+        g_camera.transform.position.x += 0.1f;
+    }
+    if (platform->key_down(neko_keycode_w)) {
+        g_camera.transform.position.y += 0.1f;
+    }
+    if (platform->key_down(neko_keycode_s)) {
+        g_camera.transform.position.y -= 0.1f;
     }
 
     f32 wx = 0, wy = 0;
@@ -1498,7 +1957,7 @@ void render_test() {
         l_check = l;
 
         for (int i = 0; i < l; i++) {
-            gfx->immediate.draw_line_ext(cb, neko_vec2_mul(last_point, {4.f, 4.f}), neko_vec2_mul({(f32)outline[i].x, (f32)outline[i].y}, {4.f, 4.f}), 2.f, neko_color_white);
+            gfx->immediate.draw_line_ext(cb, neko_vec2_mul(last_point, {4.f, 4.f}), neko_vec2_mul(neko_vec2{(f32)outline[i].x, (f32)outline[i].y}, {4.f, 4.f}), 2.f, neko_color_white);
 
             last_point = {(f32)outline[i].x, (f32)outline[i].y};
         }
@@ -1517,9 +1976,26 @@ void render_scene() {
     // Platform api instance
     neko_platform_i *platform = neko_engine_instance()->ctx.platform;
 
+    neko_quad_batch_t *qb = &g_batch;
     neko_command_buffer_t *cb = &g_cb;
 
     const f32 _t = platform->elapsed_time();
+
+    // Add some stuff to the quad batch
+    gfx->quad_batch_begin(qb);
+    {
+        neko_for_range_i(100) {
+            neko_for_range_j(100) {
+                neko_default_quad_info_t quad_info = {0};
+                quad_info.transform = neko_vqs_default();
+                quad_info.transform.position = neko_vec3{(f32)i, (f32)j, 0.f};
+                quad_info.uv = neko_vec4{0.f, 0.f, 1.f, 1.f};
+                quad_info.color = i % 2 == 0 ? neko_vec4{1.f, 1.f, 1.f, 1.f} : neko_vec4{1.f, 0.f, 0.f, 1.f};
+                gfx->quad_batch_add(qb, &quad_info);
+            }
+        }
+    }
+    gfx->quad_batch_end(qb);
 
     neko_shader_t _shader = *gfx->neko_shader_get("g_shader");
 
@@ -1536,6 +2012,7 @@ void render_scene() {
 
     const neko_vec2 ws = platform->window_size(g_window);
     neko_vec2 fbs = platform->frame_buffer_size(g_window);
+    const f32 t = platform->elapsed_time();
     b32 flip_y = false;
 
     // Default state set up
@@ -1627,6 +2104,52 @@ void render_scene() {
         gfx->draw_indexed(cb, 6, 0);
     }
 
+    {
+        // Create model/view/projection matrices from camera
+        neko_mat4 view_mtx = neko_camera_get_view(&g_camera);
+        neko_mat4 proj_mtx = neko_camera_get_projection(&g_camera, ws.x, ws.y);
+        neko_mat4 model_mtx = neko_mat4_scale(neko_vec3{1.f, 1.f, 1.f});
+
+        // Set necessary dynamic uniforms for quad batch material (defined in default shader in neko_quad_batch.h)
+        gfx->set_material_uniform_mat4(qb->material, "u_model", model_mtx);
+        gfx->set_material_uniform_mat4(qb->material, "u_view", view_mtx);
+        gfx->set_material_uniform_mat4(qb->material, "u_proj", proj_mtx);
+
+        // Need to submit quad batch
+        gfx->quad_batch_submit(cb, qb);
+    }
+
+    // 3d
+    {
+        _shader = *gfx->neko_shader_get("g_3d_shader");
+
+        // Bind shader
+        gfx->bind_shader(cb, _shader);
+
+        // Bind uniform for triangle color
+        f32 color[4] = {sin(t * 0.001f), cos(t * 0.002f), 0.1f, 1.f};
+        gfx->bind_uniform(cb, u_color, &color);
+
+        // Create model/view/projection matrices
+        neko_mat4 view_mtx = neko_mat4_mul(neko_mat4_rotate(15.f, neko_vec3{1.f, 0.f, 0.f}), neko_mat4_translate(neko_vec3{0.f, -0.9f, -2.5f}));
+        // neko_mat4 proj_mtx = neko_mat4_perspective(60.f, ws.x / ws.y, 0.01f, 1000.f);
+
+        // neko_mat4 view_mtx = neko_camera_get_view(&g_camera);
+        neko_mat4 proj_mtx = neko_camera_get_projection(&g_camera, ws.x, ws.y);
+        neko_mat4 model_mtx = neko_mat4_rotate(t * 0.01f, neko_vec3{0.f, 1.f, 0.f});
+
+        // Bind matrix uniforms
+        gfx->bind_uniform_mat4(cb, u_proj, proj_mtx);
+        gfx->bind_uniform_mat4(cb, u_view, view_mtx);
+        gfx->bind_uniform_mat4(cb, u_model, model_mtx);
+
+        // Bind vertex buffer
+        gfx->bind_vertex_buffer(cb, g_3d_vbo);
+
+        // Draw
+        gfx->draw(cb, 0, 36);
+    }
+
     gfx->immediate.begin_drawing(cb);
     {
 
@@ -1638,6 +2161,20 @@ void render_scene() {
 
             // gfx->immediate.draw_line_ext(cb, {9.f, 9.f}, {400.f, 400.f}, 4.f, neko_color_white);
             // render_test();
+
+            for (int i = 0; i < numBodies; ++i) DrawBody(bodies + i);
+
+            for (int i = 0; i < numJoints; ++i) DrawJoint(joints + i);
+
+            std::map<neko_phy_arbiter_key, neko_phy_arbiter>::const_iterator iter;
+            for (iter = world.arbiters.begin(); iter != world.arbiters.end(); ++iter) {
+                const neko_phy_arbiter &arbiter = iter->second;
+                for (int i = 0; i < arbiter.numContacts; ++i) {
+                    neko_vec2 p = arbiter.contacts[i].position;
+                    // glVertex2f(p.x, p.y);
+                    gfx->immediate.draw_circle(cb, world_to_screen_pos({p.x, p.y}), 5.f, 0, neko_color_green);
+                }
+            }
         }
         gfx->immediate.end_2d(cb);
     }

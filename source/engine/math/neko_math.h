@@ -3,7 +3,7 @@
 
 #include <math.h>
 
-#include "engine/common/neko_types.h"
+#include "engine/common/neko_util.h"
 
 // Defines
 #define neko_pi 3.14159265358979323846264f
@@ -843,13 +843,13 @@ struct neko_mat22 {
     neko_vec2 col1, col2;
 };
 
-inline neko_mat22 neko_mat22_transpose(const neko_mat22 &mat) { return neko_mat22(neko_vec2{mat.col1.x, mat.col2.x}, neko_vec2{mat.col1.y, mat.col2.y}); }
+neko_inline neko_mat22 neko_mat22_transpose(const neko_mat22 &mat) { return neko_mat22(neko_vec2{mat.col1.x, mat.col2.x}, neko_vec2{mat.col1.y, mat.col2.y}); }
 
-inline neko_mat22 neko_mat22_invert(const neko_mat22 &mat) {
+neko_inline neko_mat22 neko_mat22_invert(const neko_mat22 &mat) {
     float a = mat.col1.x, b = mat.col2.x, c = mat.col1.y, d = mat.col2.y;
     neko_mat22 B;
     float det = a * d - b * c;
-    assert(det != 0.0f);
+    neko_assert(det != 0.0f);
     det = 1.0f / det;
     B.col1.x = det * d;
     B.col2.x = -det * b;
@@ -858,9 +858,9 @@ inline neko_mat22 neko_mat22_invert(const neko_mat22 &mat) {
     return B;
 }
 
-inline neko_mat22 neko_mat22_ctor() { return neko_mat22{}; }
+neko_inline neko_mat22 neko_mat22_ctor() { return neko_mat22{}; }
 
-inline neko_mat22 neko_mat22_ctor(float angle) {
+neko_inline neko_mat22 neko_mat22_ctor(float angle) {
     neko_mat22 mat;
     float c = cosf(angle), s = sinf(angle);
     mat.col1.x = c;
@@ -870,39 +870,39 @@ inline neko_mat22 neko_mat22_ctor(float angle) {
     return mat;
 }
 
-inline neko_mat22 neko_mat22_ctor(const neko_vec2 &col1, const neko_vec2 &col2) { return neko_mat22{col1, col2}; }
+neko_inline neko_mat22 neko_mat22_ctor(const neko_vec2 &col1, const neko_vec2 &col2) { return neko_mat22{col1, col2}; }
 
-inline neko_vec2 neko_vec2_cross(const neko_vec2 &a, float s) { return neko_vec2{s * a.y, -s * a.x}; }
+neko_inline neko_vec2 neko_vec2_cross(const neko_vec2 &a, float s) { return neko_vec2{s * a.y, -s * a.x}; }
 
-inline neko_vec2 neko_vec2_cross(float s, const neko_vec2 &a) { return neko_vec2{-s * a.y, s * a.x}; }
+neko_inline neko_vec2 neko_vec2_cross(float s, const neko_vec2 &a) { return neko_vec2{-s * a.y, s * a.x}; }
 
-inline neko_vec2 operator*(const neko_mat22 &A, const neko_vec2 &v) { return neko_vec2{A.col1.x * v.x + A.col2.x * v.y, A.col1.y * v.x + A.col2.y * v.y}; }
+neko_inline neko_vec2 operator*(const neko_mat22 &A, const neko_vec2 &v) { return neko_vec2{A.col1.x * v.x + A.col2.x * v.y, A.col1.y * v.x + A.col2.y * v.y}; }
 
-inline neko_vec2 operator+(const neko_vec2 &a, const neko_vec2 &b) { return neko_vec2{a.x + b.x, a.y + b.y}; }
+neko_inline neko_vec2 operator+(const neko_vec2 &a, const neko_vec2 &b) { return neko_vec2{a.x + b.x, a.y + b.y}; }
 
-inline neko_vec2 operator-(const neko_vec2 &a, const neko_vec2 &b) { return neko_vec2{a.x - b.x, a.y - b.y}; }
+neko_inline neko_vec2 operator-(const neko_vec2 &a, const neko_vec2 &b) { return neko_vec2{a.x - b.x, a.y - b.y}; }
 
-inline neko_vec2 operator*(float s, const neko_vec2 &v) { return neko_vec2{s * v.x, s * v.y}; }
+neko_inline neko_vec2 operator*(float s, const neko_vec2 &v) { return neko_vec2{s * v.x, s * v.y}; }
 
-inline neko_mat22 operator+(const neko_mat22 &A, const neko_mat22 &B) { return neko_mat22(A.col1 + B.col1, A.col2 + B.col2); }
+neko_inline neko_mat22 operator+(const neko_mat22 &A, const neko_mat22 &B) { return neko_mat22(A.col1 + B.col1, A.col2 + B.col2); }
 
-inline neko_mat22 operator*(const neko_mat22 &A, const neko_mat22 &B) { return neko_mat22(A * B.col1, A * B.col2); }
+neko_inline neko_mat22 operator*(const neko_mat22 &A, const neko_mat22 &B) { return neko_mat22(A * B.col1, A * B.col2); }
 
-inline neko_vec2 neko_vec2_abs(const neko_vec2 &a) { return neko_vec2{fabsf(a.x), fabsf(a.y)}; }
+neko_inline neko_vec2 neko_vec2_abs(const neko_vec2 &a) { return neko_vec2{fabsf(a.x), fabsf(a.y)}; }
 
-inline neko_mat22 neko_mat22_abs(const neko_mat22 &A) { return neko_mat22(neko_vec2_abs(A.col1), neko_vec2_abs(A.col2)); }
+neko_inline neko_mat22 neko_mat22_abs(const neko_mat22 &A) { return neko_mat22(neko_vec2_abs(A.col1), neko_vec2_abs(A.col2)); }
 
 // Random number in range [-1,1]
-inline float Random() {
-    float r = (float)rand();
-    r /= RAND_MAX;
+neko_inline float neko_math_rand() {
+    float r = (float)neko_rand_xorshf32();
+    r /= neko_rand_xorshf32_max;
     r = 2.0f * r - 1.0f;
     return r;
 }
 
-inline float Random(float lo, float hi) {
-    float r = (float)rand();
-    r /= RAND_MAX;
+neko_inline float neko_math_rand(float lo, float hi) {
+    float r = (float)neko_rand_xorshf32();
+    r /= neko_rand_xorshf32_max;
     r = (hi - lo) * r + lo;
     return r;
 }
@@ -927,11 +927,6 @@ neko_static_inline b32 neko_rect_vs_rect(neko_rect_t a, neko_rect_t b) {
 
     return false;
 }
-
-#define neko_min(a, b) ((a) < (b) ? (a) : (b))
-#define neko_max(a, b) ((a) > (b) ? (a) : (b))
-
-#define neko_clamp(v, min, max) ((v) > (max) ? (max) : (v) < (min) ? (min) : (v))
 
 neko_inline f32 neko_sign(f32 x) { return x < 0.0f ? -1.0f : 1.0f; }
 

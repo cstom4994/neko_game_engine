@@ -46,9 +46,7 @@
 #define neko_for_range(iter_type, iter_name, iter_end) for (iter_type iter_name = 0; iter_name < iter_end; ++iter_name)
 
 #define neko_max(a, b) ((a) > (b) ? (a) : (b))
-
 #define neko_min(a, b) ((a) < (b) ? (a) : (b))
-
 #define neko_clamp(v, min, max) ((v) > (max) ? (max) : (v) < (min) ? (min) : (v))
 
 // Helpful macro for casting one type to another
