@@ -585,4 +585,62 @@ neko_inline void neko_swap(T& a, T& b) {
     b = tmp;
 }
 
+template <typename T>
+neko_static_inline void write_var(u8*& _buffer, T _var) {
+    memcpy(_buffer, &_var, sizeof(T));
+    _buffer += sizeof(T);
+}
+
+neko_static_inline void write_str(u8*& _buffer, const char* _str) {
+    u32 len = (u32)strlen(_str);
+    write_var(_buffer, len);
+    memcpy(_buffer, _str, len);
+    _buffer += len;
+}
+
+template <typename T>
+neko_static_inline void read_var(u8*& _buffer, T& _var) {
+    memcpy(&_var, _buffer, sizeof(T));
+    _buffer += sizeof(T);
+}
+
+neko_static_inline char* read_string(u8*& _buffer) {
+    u32 len;
+    read_var(_buffer, len);
+    char* str = new char[len + 1];
+    memcpy(str, _buffer, len);
+    str[len] = 0;
+    _buffer += len;
+    return str;
+}
+
+neko_static_inline const char* duplicate_string(const char* _str) {
+    char* str = new char[strlen(_str) + 1];
+    strcpy(str, _str);
+    return str;
+}
+
+struct string_store {
+    typedef std::unordered_map<std::string, u32> string_to_index_type;
+    typedef std::unordered_map<u32, std::string> index_to_string_type;
+
+    u32 m_totalSize;
+    string_to_index_type m_stringIndexMap;
+    index_to_string_type m_strings;
+
+    string_store() : m_totalSize(0) {}
+
+    void add_string(const char* _str) {
+        string_to_index_type::iterator it = m_stringIndexMap.find(_str);
+        if (it == m_stringIndexMap.end()) {
+            u32 index = (u32)m_stringIndexMap.size();
+            m_totalSize += 4 + (u32)strlen(_str);  // see writeStr for details
+            m_stringIndexMap[_str] = index;
+            m_strings[index] = _str;
+        }
+    }
+
+    u32 get_string(const char* _str) { return m_stringIndexMap[_str]; }
+};
+
 #endif  // NEKO_UTIL_H

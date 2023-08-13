@@ -9,6 +9,8 @@
 #include "engine/base/neko_cvar.hpp"
 #include "engine/common/neko_util.h"
 #include "engine/editor/neko_dbgui.hpp"
+#include "engine/editor/neko_profiler.hpp"
+#include "engine/gui/neko_imgui_utils.hpp"
 #include "engine/utility/logger.hpp"
 #include "libs/glad/glad.h"
 
@@ -16,7 +18,36 @@
 
 namespace neko {
 
-neko_private(char const *) __neko_gl_error_string(GLenum const err) noexcept {
+#define __neko_desired_frame_rate 30.0f
+#define __neko_minimum_frame_rate 20.0f
+#define __neko_flash_time_in_ms 333.0f
+
+struct pan_and_zoon {
+    f32 offset;
+    f32 start_pan;
+    f32 zoom;
+
+    pan_and_zoon() {
+        offset = 0.0f;
+        start_pan = 0.0f;
+        zoom = 1.0f;
+    }
+
+    inline f32 w2s(f32 wld, f32 minX, f32 maxX) { return minX + wld * (maxX - minX) * zoom - offset; }
+    inline f32 w2sdelta(f32 wld, f32 minX, f32 maxX) { return wld * (maxX - minX) * zoom; }
+    inline f32 s2w(f32 scr, f32 minX, f32 maxX) { return (scr + offset - minX) / ((maxX - minX) * zoom); }
+};
+
+struct frame_info {
+    f32 time;
+    u32 offset;
+    u32 size;
+};
+
+int profiler_draw_frame(profiler_frame* _data, void* _buffer = 0, size_t _bufferSize = 0, bool _inGame = true, bool _multi = false);
+void profiler_draw_stats(profiler_frame* _data, bool _multi = false);
+
+neko_private(char const*) __neko_gl_error_string(GLenum const err) noexcept {
     switch (err) {
         // opengl 2 errors (8)
         case GL_NO_ERROR:
@@ -53,7 +84,7 @@ neko_private(char const *) __neko_gl_error_string(GLenum const err) noexcept {
     }
 }
 
-neko_private(void) __neko_check_gl_error(const char *file, const int line) {
+neko_private(void) __neko_check_gl_error(const char* file, const int line) {
     GLenum err;
     static GLenum last_err = -1;
     while ((err = glGetError()) != GL_NO_ERROR) {
@@ -66,38 +97,38 @@ neko_private(void) __neko_check_gl_error(const char *file, const int line) {
 
 #define neko_check_gl_error() __neko_check_gl_error(__FILE__, __LINE__)
 
-#define neko_gl_state_backup()                                                   \
-    GLenum last_active_texture;                                                  \
-    glGetIntegerv(GL_ACTIVE_TEXTURE, (GLint *)&last_active_texture);             \
-    glActiveTexture(GL_TEXTURE0);                                                \
-    GLuint last_program;                                                         \
-    glGetIntegerv(GL_CURRENT_PROGRAM, (GLint *)&last_program);                   \
-    GLuint last_texture;                                                         \
-    glGetIntegerv(GL_TEXTURE_BINDING_2D, (GLint *)&last_texture);                \
-    GLuint last_array_buffer;                                                    \
-    glGetIntegerv(GL_ARRAY_BUFFER_BINDING, (GLint *)&last_array_buffer);         \
-    GLint last_viewport[4];                                                      \
-    glGetIntegerv(GL_VIEWPORT, last_viewport);                                   \
-    GLint last_scissor_box[4];                                                   \
-    glGetIntegerv(GL_SCISSOR_BOX, last_scissor_box);                             \
-    GLenum last_blend_src_rgb;                                                   \
-    glGetIntegerv(GL_BLEND_SRC_RGB, (GLint *)&last_blend_src_rgb);               \
-    GLenum last_blend_dst_rgb;                                                   \
-    glGetIntegerv(GL_BLEND_DST_RGB, (GLint *)&last_blend_dst_rgb);               \
-    GLenum last_blend_src_alpha;                                                 \
-    glGetIntegerv(GL_BLEND_SRC_ALPHA, (GLint *)&last_blend_src_alpha);           \
-    GLenum last_blend_dst_alpha;                                                 \
-    glGetIntegerv(GL_BLEND_DST_ALPHA, (GLint *)&last_blend_dst_alpha);           \
-    GLenum last_blend_equation_rgb;                                              \
-    glGetIntegerv(GL_BLEND_EQUATION_RGB, (GLint *)&last_blend_equation_rgb);     \
-    GLenum last_blend_equation_alpha;                                            \
-    glGetIntegerv(GL_BLEND_EQUATION_ALPHA, (GLint *)&last_blend_equation_alpha); \
-    GLboolean last_enable_blend = glIsEnabled(GL_BLEND);                         \
-    GLboolean last_enable_cull_face = glIsEnabled(GL_CULL_FACE);                 \
-    GLboolean last_enable_depth_test = glIsEnabled(GL_DEPTH_TEST);               \
-    GLboolean last_enable_stencil_test = glIsEnabled(GL_STENCIL_TEST);           \
-    GLboolean last_enable_scissor_test = glIsEnabled(GL_SCISSOR_TEST);           \
-    GLboolean last_enable_mutisample = glIsEnabled(GL_MULTISAMPLE);              \
+#define neko_gl_state_backup()                                                  \
+    GLenum last_active_texture;                                                 \
+    glGetIntegerv(GL_ACTIVE_TEXTURE, (GLint*)&last_active_texture);             \
+    glActiveTexture(GL_TEXTURE0);                                               \
+    GLuint last_program;                                                        \
+    glGetIntegerv(GL_CURRENT_PROGRAM, (GLint*)&last_program);                   \
+    GLuint last_texture;                                                        \
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, (GLint*)&last_texture);                \
+    GLuint last_array_buffer;                                                   \
+    glGetIntegerv(GL_ARRAY_BUFFER_BINDING, (GLint*)&last_array_buffer);         \
+    GLint last_viewport[4];                                                     \
+    glGetIntegerv(GL_VIEWPORT, last_viewport);                                  \
+    GLint last_scissor_box[4];                                                  \
+    glGetIntegerv(GL_SCISSOR_BOX, last_scissor_box);                            \
+    GLenum last_blend_src_rgb;                                                  \
+    glGetIntegerv(GL_BLEND_SRC_RGB, (GLint*)&last_blend_src_rgb);               \
+    GLenum last_blend_dst_rgb;                                                  \
+    glGetIntegerv(GL_BLEND_DST_RGB, (GLint*)&last_blend_dst_rgb);               \
+    GLenum last_blend_src_alpha;                                                \
+    glGetIntegerv(GL_BLEND_SRC_ALPHA, (GLint*)&last_blend_src_alpha);           \
+    GLenum last_blend_dst_alpha;                                                \
+    glGetIntegerv(GL_BLEND_DST_ALPHA, (GLint*)&last_blend_dst_alpha);           \
+    GLenum last_blend_equation_rgb;                                             \
+    glGetIntegerv(GL_BLEND_EQUATION_RGB, (GLint*)&last_blend_equation_rgb);     \
+    GLenum last_blend_equation_alpha;                                           \
+    glGetIntegerv(GL_BLEND_EQUATION_ALPHA, (GLint*)&last_blend_equation_alpha); \
+    GLboolean last_enable_blend = glIsEnabled(GL_BLEND);                        \
+    GLboolean last_enable_cull_face = glIsEnabled(GL_CULL_FACE);                \
+    GLboolean last_enable_depth_test = glIsEnabled(GL_DEPTH_TEST);              \
+    GLboolean last_enable_stencil_test = glIsEnabled(GL_STENCIL_TEST);          \
+    GLboolean last_enable_scissor_test = glIsEnabled(GL_SCISSOR_TEST);          \
+    GLboolean last_enable_mutisample = glIsEnabled(GL_MULTISAMPLE);             \
     GLboolean last_enable_framebuffer_srgb = glIsEnabled(GL_FRAMEBUFFER_SRGB)
 
 #define neko_gl_state_restore()                                                                              \
@@ -143,7 +174,7 @@ public:
     DebugOutputGL() {}
     ~DebugOutputGL() {}
 
-    static void GLerrorCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *msg, const void *data) {
+    static void GLerrorCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* msg, const void* data) {
         if (severity == GL_DEBUG_SEVERITY_NOTIFICATION || type == 0x8250) {
             return;
         }
@@ -240,7 +271,7 @@ void neko_editor_render_uniform_variable(GLuint program, GLenum type, const_str 
 void neko_editor_inspect_shader(const_str label, GLuint program);
 void neko_editor_inspect_vertex_array(const_str label, GLuint vao);
 
-auto neko_editor_create(neko_engine_cvar_t &cvar) -> dbgui &;
+auto neko_editor_create(neko_engine_cvar_t& cvar) -> dbgui&;
 
 }  // namespace neko
 

@@ -9,6 +9,7 @@
 #include "engine/common/neko_str.h"
 #include "engine/common/neko_util.h"
 #include "engine/editor/neko_dbgui.hpp"
+#include "engine/editor/neko_profiler.hpp"
 #include "engine/graphics/neko_graphics.h"
 #include "engine/math/neko_math.h"
 #include "engine/platform/neko_platform.h"
@@ -210,7 +211,12 @@ neko_engine *neko_engine_construct(int argc, char **argv) {
 
 neko_result neko_engine_run() {
     // Main engine loop
-    while (true) {
+    while (neko_engine_instance()->ctx.is_running) {
+
+        neko_profiler_begin();
+
+        neko_profiler_scope_auto("engine");
+
         static u32 curr_ticks = 0;
         static u32 prev_ticks = 0;
 
@@ -229,43 +235,53 @@ neko_result neko_engine_run() {
 
         // Process input for this frame
         if (platform->process_input(NULL) != neko_result_in_progress) {
-            return (neko_engine_instance()->engine_shutdown());
         }
 
         neko_imgui_new_frame();
 
         // Process application context
-        if (neko_engine_instance()->ctx.update() != neko_result_in_progress || !neko_engine_instance()->ctx.is_running) {
-            // Shutdown engine and return
-            return (neko_engine_instance()->engine_shutdown());
+        if (neko_engine_instance()->ctx.update() != neko_result_in_progress) {
         }
 
         try {
+            neko_profiler_scope_auto("lua_update");
             neko_sc()->neko_lua["test_update"]();
         } catch (std::exception &ex) {
             neko_error(ex.what());
         }
 
-        __neko_engine_update_high();
+        {
+            neko_profiler_scope_auto("engine_high");
+            __neko_engine_update_high();
+        }
 
         gfx->fontcache_draw();
 
-        // 渲染 imgui 内容
-        neko_imgui_render();
+        {
+            neko_profiler_scope_auto("imgui");
+            // 渲染 imgui 内容
+            neko_imgui_render();
+        }
 
-        // Audio update and commit
-        if (audio) {
-            if (audio->update) {
-                audio->update(audio);
-            }
-            if (audio->commit) {
-                audio->commit(audio);
+        {
+            neko_profiler_scope_auto("audio");
+            // Audio update and commit
+            if (audio) {
+                if (audio->update) {
+                    audio->update(audio);
+                }
+                if (audio->commit) {
+                    audio->commit(audio);
+                }
             }
         }
 
-        // Graphics update and commit
-        if (gfx && gfx->update) {
-            gfx->update(gfx);
+        {
+            neko_profiler_scope_auto("gfx");
+            // Graphics update and commit
+            if (gfx && gfx->update) {
+                gfx->update(gfx);
+            }
         }
 
         // Swap all platform window buffers? Sure...
@@ -291,9 +307,7 @@ neko_result neko_engine_run() {
         }
     }
 
-    // Shouldn't hit here
-    neko_assert(false);
-    return neko_result_failure;
+    return (neko_engine_instance()->engine_shutdown());
 }
 
 neko_result neko_engine_shutdown() {

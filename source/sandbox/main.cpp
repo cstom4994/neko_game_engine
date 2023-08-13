@@ -7,6 +7,7 @@
 #include "engine/common/neko_hash.h"
 #include "engine/editor/neko_dbgui.hpp"
 #include "engine/editor/neko_editor.hpp"
+#include "engine/editor/neko_profiler.hpp"
 #include "engine/filesystem/neko_packer.h"
 #include "engine/graphics/neko_particle.h"
 #include "engine/graphics/neko_render_pass.h"
@@ -1600,10 +1601,20 @@ neko_result app_init() {
     // Set up callback for dropping them files, yo.
     platform->set_dropped_files_callback(platform->main_window(), &drop_file_callback);
 
+    // 帧检查器
+    neko_profiler_init();
+    neko_profiler_register_thread("Main thread");  // 注册主线程
+
     return neko_result_success;
 }
 
+static char buffer[10 * 1024];
+static profiler_frame frame_data;
+
 neko_result app_update() {
+
+    neko_profiler_scope_auto("client");
+
     // Grab global instance of engine
     neko_engine *engine = neko_engine_instance();
 
@@ -1626,36 +1637,57 @@ neko_result app_update() {
         });
     }(););
 
-    // All application updates
-    bool ui_interaction = update_ui();
-    if (!ui_interaction) {
-        update_input();
+    {
+        neko_profiler_scope_auto("loop");
+
+        // All application updates
+        bool ui_interaction = update_ui();
+        if (!ui_interaction) {
+            update_input();
+        }
+
+        if (g_cvar.tick_world) {
+            {
+                neko_profiler_scope_auto("sim");
+                update_particle_sim();
+            }
+            swarm.update(engine->ctx.platform->time.current, settings);
+            {
+                neko_profiler_scope_auto("ecs");
+                neko_ecs_run_systems(neko_engine_subsystem(ecs), ECS_SYSTEM_UPDATE);
+            }
+            {
+                neko_profiler_scope_auto("physics");
+                world.neko_phy_step(engine->ctx.platform->time.delta * 2.f);
+            }
+        }
     }
-
-    if (g_cvar.tick_world) {
-        update_particle_sim();
-
-        swarm.update(engine->ctx.platform->time.current, settings);
-
-        neko_ecs_run_systems(neko_engine_subsystem(ecs), ECS_SYSTEM_UPDATE);
-
-        world.neko_phy_step(engine->ctx.platform->time.delta * 2.f);
+    {
+        neko_profiler_scope_auto("render");
+        render_scene();
     }
-
-    /*===============
-    // Render scene
-    ================*/
-    render_scene();
 
     // Update frame counter
     g_frame_counter = (g_frame_counter + 1) % u32_max;
 
     settings.show();
 
+    {
+        neko_profiler_scope_auto("profiler");
+
+        neko_profiler_get_frame(&frame_data);
+        // // if (g_multi) ProfilerDrawFrameNavigation(g_frameInfos.data(), g_frameInfos.size());
+
+        profiler_draw_frame(&frame_data, buffer, 10 * 1024);
+        // ProfilerDrawStats(&data);
+    }
+
     return neko_result_in_progress;
 }
 
 neko_result app_shutdown() {
+
+    neko_profiler_shutdown();
 
     // 释放容器
     neko_dyn_array_free(g_dyn_array);
@@ -2341,6 +2373,8 @@ void render_scene() {
 
     gfx->immediate.begin_drawing(cb);
     {
+
+        neko_profiler_scope_auto("immediate_draw");
 
         neko_ecs_run_systems(neko_engine_subsystem(ecs), ECS_SYSTEM_RENDER);
 

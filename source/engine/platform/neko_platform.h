@@ -475,4 +475,105 @@ void __neko_platform_uuid_to_string(char *temp_buffer, const struct neko_uuid *u
 
 u32 __neko_platform_hash_uuid(const struct neko_uuid *uuid);
 
+/*============================
+// Platform Thread
+============================*/
+
+static inline uint64_t neko_get_thread_id() {
+#if defined(NEKO_PLATFORM_WIN)
+    return (uint64_t)GetCurrentThreadId();
+#elif defined(NEKO_PLATFORM_LINUX)
+    return (uint64_t)syscall(SYS_gettid);
+#elif defined(NEKO_PLATFORM_APPLE)
+    return (mach_port_t)::pthread_mach_thread_np(pthread_self());
+#else
+#error "Unsupported platform!"
+#endif
+}
+
+// Thread Local Storage(TLS)
+// msvc: https://learn.microsoft.com/en-us/cpp/parallel/thread-local-storage-tls
+
+#ifdef NEKO_PLATFORM_WIN
+
+static inline uint32_t neko_tls_allocate() { return (uint32_t)TlsAlloc(); }
+
+static inline void neko_tls_set_value(uint32_t _handle, void *_value) { TlsSetValue(_handle, _value); }
+
+static inline void *neko_tls_get_value(uint32_t _handle) { return TlsGetValue(_handle); }
+
+static inline void neko_tls_free(uint32_t _handle) { TlsFree(_handle); }
+
+#else
+
+static inline pthread_key_t neko_tls_allocate() {
+    pthread_key_t handle;
+    pthread_key_create(&handle, NULL);
+    return handle;
+}
+
+static inline void neko_tls_set_value(pthread_key_t _handle, void *_value) { pthread_setspecific(_handle, _value); }
+
+static inline void *neko_tls_get_value(pthread_key_t _handle) { return pthread_getspecific(_handle); }
+
+static inline void neko_tls_free(pthread_key_t _handle) { pthread_key_delete(_handle); }
+
+#endif
+
+#if defined(NEKO_PLATFORM_WIN)
+typedef CRITICAL_SECTION neko_mutex;
+
+static inline void neko_mutex_init(neko_mutex *_mutex) { InitializeCriticalSection(_mutex); }
+
+static inline void neko_mutex_destroy(neko_mutex *_mutex) { DeleteCriticalSection(_mutex); }
+
+static inline void neko_mutex_lock(neko_mutex *_mutex) { EnterCriticalSection(_mutex); }
+
+static inline int neko_mutex_trylock(neko_mutex *_mutex) { return TryEnterCriticalSection(_mutex) ? 0 : 1; }
+
+static inline void neko_mutex_unlock(neko_mutex *_mutex) { LeaveCriticalSection(_mutex); }
+
+#elif defined(NEKO_PLATFORM_POSIX)
+typedef pthread_mutex_t neko_mutex;
+
+static inline void neko_mutex_init(neko_mutex *_mutex) { pthread_mutex_init(_mutex, NULL); }
+
+static inline void neko_mutex_destroy(neko_mutex *_mutex) { pthread_mutex_destroy(_mutex); }
+
+static inline void neko_mutex_lock(neko_mutex *_mutex) { pthread_mutex_lock(_mutex); }
+
+static inline int neko_mutex_trylock(neko_mutex *_mutex) { return pthread_mutex_trylock(_mutex); }
+
+static inline void neko_mutex_unlock(neko_mutex *_mutex) { pthread_mutex_unlock(_mutex); }
+
+#else
+#error "Unsupported platform!"
+#endif
+
+class neko_pthread_mutex {
+    neko_mutex m_mutex;
+
+    neko_pthread_mutex(const neko_pthread_mutex &_rhs);
+    neko_pthread_mutex &operator=(const neko_pthread_mutex &_rhs);
+
+public:
+    inline neko_pthread_mutex() { neko_mutex_init(&m_mutex); }
+    inline ~neko_pthread_mutex() { neko_mutex_destroy(&m_mutex); }
+    inline void lock() { neko_mutex_lock(&m_mutex); }
+    inline void unlock() { neko_mutex_unlock(&m_mutex); }
+    inline bool tryLock() { return (neko_mutex_trylock(&m_mutex) == 0); }
+};
+
+class neko_scoped_mutex_locker {
+    neko_pthread_mutex &m_mutex;
+
+    neko_scoped_mutex_locker();
+    neko_scoped_mutex_locker(const neko_scoped_mutex_locker &);
+    neko_scoped_mutex_locker &operator=(const neko_scoped_mutex_locker &);
+
+public:
+    inline neko_scoped_mutex_locker(neko_pthread_mutex &_mutex) : m_mutex(_mutex) { m_mutex.lock(); }
+    inline ~neko_scoped_mutex_locker() { m_mutex.unlock(); }
+};
+
 #endif  // NEKO_PLATFORM_H

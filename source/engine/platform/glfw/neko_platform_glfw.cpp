@@ -101,7 +101,7 @@ f64 glfw_platform_time() { return (glfwGetTime() * 1000.0); }
 #include <sched.h>
 #include <unistd.h>
 
-#elif (defined NEKO_PLATFORM_WINDOWS)
+#elif (defined NEKO_PLATFORM_WIN)
 
 #include <windows.h>
 #endif

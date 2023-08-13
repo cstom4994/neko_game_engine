@@ -8,7 +8,7 @@
 #include "engine/common/neko_types.h"
 #include "libs/lua/lua.hpp"
 
-#ifdef NEKO_PLATFORM_WINDOWS
+#ifdef NEKO_PLATFORM_WIN
 #define strerror_r(errno, buf, len) strerror_s(buf, len, errno)
 #endif
 

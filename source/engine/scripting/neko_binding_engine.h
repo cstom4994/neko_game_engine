@@ -488,9 +488,7 @@ static int __neko_ls(lua_State* L) {
     return 1;
 }
 
-static void __neko_add_packagepath(const char* p) {
-    // neko_sc()->neko_lua.add_package_path(p);
-}
+static void __neko_add_packagepath(const char* p) { neko_sc()->add_package_path(p); }
 
 neko_inline void neko_register_common(lua_wrapper::State& lua) {
 
