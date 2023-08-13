@@ -2777,7 +2777,7 @@ static void push_token(lua_State *L, struct lex_state *LS, struct token *t) {
         // may be a number
         // lua string always has \0 at the end, so strto* is safe
         char *endptr = NULL;
-        lua_Integer v = strtoull(ptr, (const char *)(&endptr), 10);
+        lua_Integer v = strtoull(ptr, (char **)(&endptr), 10);
         if (endptr - ptr == sz) {
             lua_pushinteger(L, v);
             return;

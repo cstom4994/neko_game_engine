@@ -159,7 +159,9 @@ static void InitLua(neko_scripting *lc) {
 
 static void lua_reg_ecs(lua_State *L);
 
-static void lua_reg(lua_State *L) {
+static void lua_reg(lua_wrapper::State &lua) {
+
+    lua_State *L = lua.state();
 
     lua_reg_ecs(L);
 
@@ -167,7 +169,7 @@ static void lua_reg(lua_State *L) {
     luaopen_cstruct_test(L);
     luaopen_datalist(L);
 
-    neko_register(L);
+    neko_register(lua);
 
     neko_lua_debug_setup(L, "debugger", "dbg", NULL, NULL);
 }
@@ -184,30 +186,28 @@ void neko_scripting::__init() {
 
     try {
 
-        neko_lua.setModFuncFlag(true);
+        lua_atpanic(neko_lua.state(), __neko_lua_catch_panic);
 
-        lua_atpanic(neko_lua.get_lua_state(), __neko_lua_catch_panic);
+        lua_reg(neko_lua);
 
-        neko_lua.reg(lua_reg);
+        add_package_path("./");
 
-        neko_lua.add_package_path("./");
-
-        neko_lua.run_string(
+        neko_lua.dostring(
                 std::format("package.path = "
                             "'{1}/?.lua;{0}/?.lua;{0}/libs/?.lua;{0}/libs/?/init.lua;{0}/libs/"
                             "?/?.lua;' .. package.path",
                             neko_file_path("data/scripts"), neko_fs_normalize_path(std::filesystem::current_path().string()).c_str()));
 
-        neko_lua.run_string(
+        neko_lua.dostring(
                 std::format("package.cpath = "
                             "'{1}/?.{2};{0}/?.{2};{0}/libs/?.{2};{0}/libs/?/init.{2};{0}/libs/"
                             "?/?.{2};' .. package.cpath",
                             neko_file_path("data/scripts"), neko_fs_normalize_path(std::filesystem::current_path().string()).c_str(), "dll"));
 
         // 面向对象基础
-        neko_lua.run_string(neko_lua_src_object);
+        neko_lua.dostring(neko_lua_src_object);
 
-        neko_lua.load_file(neko_file_path("data/scripts/init.lua"));
+        neko_lua.dofile(neko_file_path("data/scripts/init.lua"));
 
     } catch (std::exception &ex) {
         neko_error(ex.what());
@@ -235,25 +235,25 @@ void neko_scripting::update_render() {}
 void neko_scripting::update_tick() {}
 
 static void lua_reg_ecs(lua_State *L) {
-    neko_lua_register_t<>(L)
-            .def(&neko_ecs_make, "neko_ecs_make")
-            .def(&neko_ecs_destroy, "neko_ecs_destroy")
-            //.def(&neko_ecs_register_component, "neko_ecs_register_component")
-            //.def(&neko_ecs_register_system, "neko_ecs_register_system")
-            //.def(&neko_ecs_run_systems, "neko_ecs_run_systems")
-            //.def(&neko_ecs_run_system, "neko_ecs_run_system")
-            .def(&neko_ecs_for_count, "neko_ecs_for_count")
-            .def(&neko_ecs_get_ent, "neko_ecs_get_ent")
-            .def(&neko_ecs_ent_make, "neko_ecs_ent_make")
-            .def(&neko_ecs_ent_destroy, "neko_ecs_ent_destroy")
-            .def(&neko_ecs_ent_add_component, "neko_ecs_ent_add_component")
-            .def(&neko_ecs_ent_remove_component, "neko_ecs_ent_remove_component")
-            .def(&neko_ecs_ent_get_component, "neko_ecs_ent_get_component")
-            .def(&neko_ecs_ent_has_component, "neko_ecs_ent_has_component")
-            .def(&neko_ecs_ent_has_mask, "neko_ecs_ent_has_mask")
-            .def(&neko_ecs_ent_is_valid, "neko_ecs_ent_is_valid")
-            .def(&neko_ecs_ent_get_version, "neko_ecs_ent_get_version")
-            .def(&neko_ecs_ent_print, "neko_ecs_ent_print");
+    // neko_lua_register_t<>(L)
+    //         .def(&neko_ecs_make, "neko_ecs_make")
+    //         .def(&neko_ecs_destroy, "neko_ecs_destroy")
+    //         //.def(&neko_ecs_register_component, "neko_ecs_register_component")
+    //         //.def(&neko_ecs_register_system, "neko_ecs_register_system")
+    //         //.def(&neko_ecs_run_systems, "neko_ecs_run_systems")
+    //         //.def(&neko_ecs_run_system, "neko_ecs_run_system")
+    //         .def(&neko_ecs_for_count, "neko_ecs_for_count")
+    //         .def(&neko_ecs_get_ent, "neko_ecs_get_ent")
+    //         .def(&neko_ecs_ent_make, "neko_ecs_ent_make")
+    //         .def(&neko_ecs_ent_destroy, "neko_ecs_ent_destroy")
+    //         .def(&neko_ecs_ent_add_component, "neko_ecs_ent_add_component")
+    //         .def(&neko_ecs_ent_remove_component, "neko_ecs_ent_remove_component")
+    //         .def(&neko_ecs_ent_get_component, "neko_ecs_ent_get_component")
+    //         .def(&neko_ecs_ent_has_component, "neko_ecs_ent_has_component")
+    //         .def(&neko_ecs_ent_has_mask, "neko_ecs_ent_has_mask")
+    //         .def(&neko_ecs_ent_is_valid, "neko_ecs_ent_is_valid")
+    //         .def(&neko_ecs_ent_get_version, "neko_ecs_ent_get_version")
+    //         .def(&neko_ecs_ent_print, "neko_ecs_ent_print");
 }
 
 }  // namespace neko

@@ -32,8 +32,6 @@ typedef struct neko_phy_body {
         invI = 0.0f;
     }
 
-    void add_force(const neko_vec2 &f) { force += f; }
-
     neko_vec2 position;
     f32 rotation;
 
@@ -49,6 +47,8 @@ typedef struct neko_phy_body {
     f32 mass, invMass;
     f32 I, invI;
 } neko_phy_body;
+
+neko_inline void neko_body_add_force(neko_phy_body *body, const neko_vec2 &f) { body->force += f; }
 
 neko_inline void neko_body_set(neko_phy_body *body, const neko_vec2 &w, f32 m) {
     body->position.set(0.0f, 0.0f);

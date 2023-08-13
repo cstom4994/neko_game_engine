@@ -60,6 +60,10 @@ neko_global composite_pass_t g_composite_pass = {0};
 neko_global neko_packreader_t *g_pack_reader;
 neko_global neko_quad_batch_t g_batch = {0};
 
+neko_global neko_shader_t g_custom_batch_shader = {0};
+neko_global neko_quad_batch_t g_custom_batch = {0};
+neko_global neko_resource(neko_material_t) g_custom_batch_mat = {0};
+
 // 3d
 neko_global neko_uniform_t u_color = {};
 neko_global neko_uniform_t u_model = {};
@@ -270,15 +274,15 @@ void update_default(u32 x, u32 y);
 // Utilities for writing data into color buffer
 void write_data(u32 idx, particle_t);
 
-u8 *neko_tex_rgba_to_alpha(const u8 *data, int w, int h);
-u8 *neko_tex_alpha_to_thresholded(const u8 *data, int w, int h, u8 threshold);
-u8 *neko_tex_thresholded_to_outlined(const u8 *data, int w, int h);
+u8 *neko_tex_rgba_to_alpha(const u8 *data, s32 w, s32 h);
+u8 *neko_tex_alpha_to_thresholded(const u8 *data, s32 w, s32 h, u8 threshold);
+u8 *neko_tex_thresholded_to_outlined(const u8 *data, s32 w, s32 h);
 
 typedef struct {
     short x, y;
 } neko_tex_point;
-neko_tex_point *neko_tex_extract_outline_path(u8 *data, int w, int h, int *point_count, neko_tex_point *reusable_outline);
-void neko_tex_distance_based_path_simplification(neko_tex_point *outline, int *outline_length, f32 distance_threshold);
+neko_tex_point *neko_tex_extract_outline_path(u8 *data, s32 w, s32 h, s32 *point_count, neko_tex_point *reusable_outline);
+void neko_tex_distance_based_path_simplification(neko_tex_point *outline, s32 *outline_length, f32 distance_threshold);
 
 // Rendering
 void render_scene();
@@ -324,6 +328,121 @@ void object_to_str(object_t *obj, char *str, usize str_sz);
 
 neko_global neko_sprite g_test_spr = {0};
 
+#pragma region CustomBatch
+
+const char *quad_batch_custom_vert_src = R"glsl(
+#version 330 core
+layout(location = 0) in vec3 a_pos;
+layout(location = 1) in vec2 a_uv;
+layout(location = 2) in vec4 a_color;
+layout(location = 3) in vec4 a_color_two;
+uniform mat4 u_model;
+uniform mat4 u_view;
+uniform mat4 u_proj;
+out vec2 uv;
+out vec4 color;
+out vec4 color_two;
+void main()
+{
+   gl_Position = u_proj * u_view * u_model * vec4(a_pos, 1.0);
+   uv = a_uv;
+   color = a_color;
+   color_two = a_color_two;
+}
+)glsl";
+
+const char *quad_batch_custom_frag_src = R"glsl(
+#version 330
+uniform sampler2D u_tex;
+uniform f32 u_alpha;
+in vec2 uv;
+in vec4 color;
+in vec4 color_two;
+out vec4 frag_color;
+void main()
+{
+   frag_color = vec4((mix(color_two, color, 0.5) * texture(u_tex, uv)).rgb, u_alpha);
+}
+)glsl";
+
+typedef struct quad_batch_custom_vert_t {
+    neko_vec3 position;
+    neko_vec2 uv;
+    neko_vec4 color;
+    neko_vec4 color_two;
+} quad_batch_custom_vert_t;
+
+typedef struct quad_batch_custom_info_t {
+    neko_vqs transform;
+    neko_vec4 uv;
+    neko_vec4 color;
+    neko_vec4 color_two;
+} quad_batch_custom_info_t;
+
+void quad_batch_custom_add(neko_quad_batch_t *qb, void *quad_batch_custom_info_data) {
+    neko_graphics_i *gfx = neko_engine_instance()->ctx.graphics;
+
+    quad_batch_custom_info_t *quad_info = (quad_batch_custom_info_t *)(quad_batch_custom_info_data);
+    if (!quad_info) {
+        neko_assert(false);
+    }
+
+    neko_vqs transform = quad_info->transform;
+    neko_vec4 uv = quad_info->uv;
+    neko_vec4 color = quad_info->color;
+    neko_vec4 color_two = quad_info->color_two;
+
+    neko_mat4 model = neko_vqs_to_mat4(&transform);
+
+    neko_vec3 _tl = neko_vec3{-0.5f, -0.5f, 0.f};
+    neko_vec3 _tr = neko_vec3{0.5f, -0.5f, 0.f};
+    neko_vec3 _bl = neko_vec3{-0.5f, 0.5f, 0.f};
+    neko_vec3 _br = neko_vec3{0.5f, 0.5f, 0.f};
+    neko_vec4 position = {0};
+    quad_batch_custom_vert_t tl = {0};
+    quad_batch_custom_vert_t tr = {0};
+    quad_batch_custom_vert_t bl = {0};
+    quad_batch_custom_vert_t br = {0};
+
+    // Top Left
+    position = neko_mat4_mul_vec4(model, neko_vec4{_tl.x, _tl.y, _tl.z, 1.0f});
+    position = neko_vec4_scale(position, 1.0f / position.w);
+    tl.position = neko_vec3{position.x, position.y, position.z};
+    tl.uv = neko_vec2{uv.x, uv.y};
+    tl.color = color;
+    tl.color_two = color_two;
+
+    // Top Right
+    position = neko_mat4_mul_vec4(model, neko_vec4{_tr.x, _tr.y, _tr.z, 1.0f});
+    position = neko_vec4_scale(position, 1.0f / position.w);
+    tr.position = neko_vec3{position.x, position.y, position.z};
+    tr.uv = neko_vec2{uv.z, uv.y};
+    tr.color = color;
+    tr.color_two = color_two;
+
+    // Bottom Left
+    position = neko_mat4_mul_vec4(model, neko_vec4{_bl.x, _bl.y, _bl.z, 1.0f});
+    position = neko_vec4_scale(position, 1.0f / position.w);
+    bl.position = neko_vec3{position.x, position.y, position.z};
+    bl.uv = neko_vec2{uv.x, uv.w};
+    bl.color = color;
+    bl.color_two = color_two;
+
+    // Bottom Right
+    position = neko_mat4_mul_vec4(model, neko_vec4{_br.x, _br.y, _br.z, 1.0f});
+    position = neko_vec4_scale(position, 1.0f / position.w);
+    br.position = neko_vec3{position.x, position.y, position.z};
+    br.uv = neko_vec2{uv.z, uv.w};
+    br.color = color;
+    br.color_two = color_two;
+
+    quad_batch_custom_vert_t verts[] = {tl, br, bl, tl, tr, br};
+
+    __neko_quad_batch_add_raw_vert_data(qb, verts, sizeof(verts));
+}
+
+#pragma endregion
+
 neko_texture_t load_ase_texture_simple(const std::string &path) {
 
     ase_t *ase = cute_aseprite_load_from_file(path.c_str(), NULL);
@@ -340,7 +459,7 @@ neko_texture_t load_ase_texture_simple(const std::string &path) {
 
     neko_debug(std::format("load aseprite\n - frame_count {0}\n - palette.entry_count{1}\n - w={2} h={3}", ase->frame_count, ase->palette.entry_count, ase->w, ase->h));
 
-    int bpp = 4;
+    s32 bpp = 4;
 
     neko_texture_parameter_desc t_desc = neko_texture_parameter_desc_default();
 
@@ -780,13 +899,13 @@ neko_phy_joint joints[100];
 
 neko_phy_body *bomb = NULL;
 
-int iterations = 20;
+s32 iterations = 20;
 neko_vec2 gravity{0.0f, -10.0f};
 
-int numBodies = 0;
-int numJoints = 0;
+s32 numBodies = 0;
+s32 numJoints = 0;
 
-int demoIndex = 0;
+s32 demoIndex = 0;
 
 f32 timeStep = 1.f / 60.f;
 
@@ -890,10 +1009,10 @@ void init_demo(s32 i) {
         neko_vec2 x{15.0f, 20.f};
         neko_vec2 y;
 
-        for (int i = 0; i < 12; ++i) {
+        for (s32 i = 0; i < 12; ++i) {
             y = x;
 
-            for (int j = i; j < 12; ++j) {
+            for (s32 j = i; j < 12; ++j) {
                 neko_body_set(b, neko_vec2{15.0f, 15.0f}, 10.0f);
                 b->friction = 0.2f;
                 b->position = y;
@@ -940,29 +1059,29 @@ void init_demo(s32 i) {
         ++b;
         ++numBodies;
 
-        float mass = 10.0f;
+        f32 mass = 10.0f;
 
         // Tuning
-        float frequencyHz = 4.0f;
-        float dampingRatio = 0.7f;
+        f32 frequencyHz = 4.0f;
+        f32 dampingRatio = 0.7f;
 
         // frequency in radians
-        float omega = 2.0f * neko_pi * frequencyHz;
+        f32 omega = 2.0f * neko_pi * frequencyHz;
 
         // damping coefficient
-        float d = 2.0f * mass * dampingRatio * omega;
+        f32 d = 2.0f * mass * dampingRatio * omega;
 
         // spring stiffness
-        float k = mass * omega * omega;
+        f32 k = mass * omega * omega;
 
         // magic formulas
-        float softness = 1.0f / (d + timeStep * k);
-        float biasFactor = timeStep * k / (d + timeStep * k);
+        f32 softness = 1.0f / (d + timeStep * k);
+        f32 biasFactor = timeStep * k / (d + timeStep * k);
 
-        const float y = 100.0f;
-        const float xx = 100.0f;
+        const f32 y = 100.0f;
+        const f32 xx = 100.0f;
 
-        for (int i = 0; i < 15; ++i) {
+        for (s32 i = 0; i < 15; ++i) {
             neko_vec2 x{xx + i * 5.f, y};
             neko_body_set(b, neko_vec2{4.0f, 6.0f}, mass);
             b->friction = 0.2f;
@@ -970,7 +1089,7 @@ void init_demo(s32 i) {
             b->rotation = 0.0f;
             world.neko_phy_create(b);
 
-            j->Set(b1, b, neko_vec2{float(xx + i * 5.f), y});
+            j->Set(b1, b, neko_vec2{f32(xx + i * 5.f), y});
             j->softness = softness;
             j->biasFactor = biasFactor;
             world.neko_phy_create(j);
@@ -991,10 +1110,10 @@ void init_demo(s32 i) {
         ++b;
         ++numBodies;
 
-        const int numPlanks = 15;
-        float mass = 50.0f;
+        const s32 numPlanks = 15;
+        f32 mass = 50.0f;
 
-        for (int i = 0; i < numPlanks; ++i) {
+        for (s32 i = 0; i < numPlanks; ++i) {
             neko_body_set(b, neko_vec2{50.0f, 15.f}, mass);
             b->friction = 0.2f;
             b->position.set(-8.5f + 1.25f * i, 5.0f);
@@ -1004,23 +1123,23 @@ void init_demo(s32 i) {
         }
 
         // Tuning
-        float frequencyHz = 2.0f;
-        float dampingRatio = 0.7f;
+        f32 frequencyHz = 2.0f;
+        f32 dampingRatio = 0.7f;
 
         // frequency in radians
-        float omega = 2.0f * neko_pi * frequencyHz;
+        f32 omega = 2.0f * neko_pi * frequencyHz;
 
         // damping coefficient
-        float d = 2.0f * mass * dampingRatio * omega;
+        f32 d = 2.0f * mass * dampingRatio * omega;
 
         // spring stifness
-        float k = mass * omega * omega;
+        f32 k = mass * omega * omega;
 
         // magic formulas
-        float softness = 1.0f / (d + timeStep * k);
-        float biasFactor = timeStep * k / (d + timeStep * k);
+        f32 softness = 1.0f / (d + timeStep * k);
+        f32 biasFactor = timeStep * k / (d + timeStep * k);
 
-        for (int i = 0; i < numPlanks; ++i) {
+        for (s32 i = 0; i < numPlanks; ++i) {
             j->Set(bodies + i, bodies + i + 1, neko_vec2{-9.125f + 50.25f * i, 15.0f});
             j->softness = softness;
             j->biasFactor = biasFactor;
@@ -1046,10 +1165,10 @@ void init_demo(s32 i) {
         ++b;
         ++numBodies;
 
-        for (int i = 0; i < 10; ++i) {
+        for (s32 i = 0; i < 10; ++i) {
             neko_body_set(b, neko_vec2{15.0f, 15.0f}, 4.0f);
             b->friction = 0.2f;
-            float x = neko_math_rand(-1.f, 1.f);
+            f32 x = neko_math_rand(-1.f, 1.f);
             b->position.set(x + 150.f, 0.51f + 16.f * i);
             world.neko_phy_create(b);
             ++b;
@@ -1105,48 +1224,48 @@ neko_result app_init() {
     neko_vertex_attribute_type layout_3d[] = {neko_vertex_attribute_float3};
 
     // Vertex data for cube
-    float v_3d_data[] = {                      // Position
-                         -0.5f, -0.5f, -0.5f,  // First face
-                         0.5f,  -0.5f, -0.5f,  //
-                         0.5f,  0.5f,  -0.5f,  //
-                         0.5f,  0.5f,  -0.5f,  //
-                         -0.5f, 0.5f,  -0.5f,  //
-                         -0.5f, -0.5f, -0.5f,  //
+    f32 v_3d_data[] = {                      // Position
+                       -0.5f, -0.5f, -0.5f,  // First face
+                       0.5f,  -0.5f, -0.5f,  //
+                       0.5f,  0.5f,  -0.5f,  //
+                       0.5f,  0.5f,  -0.5f,  //
+                       -0.5f, 0.5f,  -0.5f,  //
+                       -0.5f, -0.5f, -0.5f,  //
 
-                         -0.5f, -0.5f, 0.5f,  // Second face
-                         0.5f,  -0.5f, 0.5f,  //
-                         0.5f,  0.5f,  0.5f,  //
-                         0.5f,  0.5f,  0.5f,  //
-                         -0.5f, 0.5f,  0.5f,  //
-                         -0.5f, -0.5f, 0.5f,  //
+                       -0.5f, -0.5f, 0.5f,  // Second face
+                       0.5f,  -0.5f, 0.5f,  //
+                       0.5f,  0.5f,  0.5f,  //
+                       0.5f,  0.5f,  0.5f,  //
+                       -0.5f, 0.5f,  0.5f,  //
+                       -0.5f, -0.5f, 0.5f,  //
 
-                         -0.5f, 0.5f,  0.5f,   // Third face
-                         -0.5f, 0.5f,  -0.5f,  //
-                         -0.5f, -0.5f, -0.5f,  //
-                         -0.5f, -0.5f, -0.5f,  //
-                         -0.5f, -0.5f, 0.5f,   //
-                         -0.5f, 0.5f,  0.5f,   //
+                       -0.5f, 0.5f,  0.5f,   // Third face
+                       -0.5f, 0.5f,  -0.5f,  //
+                       -0.5f, -0.5f, -0.5f,  //
+                       -0.5f, -0.5f, -0.5f,  //
+                       -0.5f, -0.5f, 0.5f,   //
+                       -0.5f, 0.5f,  0.5f,   //
 
-                         0.5f,  0.5f,  0.5f,   // Fourth face
-                         0.5f,  0.5f,  -0.5f,  //
-                         0.5f,  -0.5f, -0.5f,  //
-                         0.5f,  -0.5f, -0.5f,  //
-                         0.5f,  -0.5f, 0.5f,   //
-                         0.5f,  0.5f,  0.5f,   //
+                       0.5f,  0.5f,  0.5f,   // Fourth face
+                       0.5f,  0.5f,  -0.5f,  //
+                       0.5f,  -0.5f, -0.5f,  //
+                       0.5f,  -0.5f, -0.5f,  //
+                       0.5f,  -0.5f, 0.5f,   //
+                       0.5f,  0.5f,  0.5f,   //
 
-                         -0.5f, -0.5f, -0.5f,  // Fifth face
-                         0.5f,  -0.5f, -0.5f,  //
-                         0.5f,  -0.5f, 0.5f,   //
-                         0.5f,  -0.5f, 0.5f,   //
-                         -0.5f, -0.5f, 0.5f,   //
-                         -0.5f, -0.5f, -0.5f,  //
+                       -0.5f, -0.5f, -0.5f,  // Fifth face
+                       0.5f,  -0.5f, -0.5f,  //
+                       0.5f,  -0.5f, 0.5f,   //
+                       0.5f,  -0.5f, 0.5f,   //
+                       -0.5f, -0.5f, 0.5f,   //
+                       -0.5f, -0.5f, -0.5f,  //
 
-                         -0.5f, 0.5f,  -0.5f,  // Sixth face
-                         0.5f,  0.5f,  -0.5f,  //
-                         0.5f,  0.5f,  0.5f,   //
-                         0.5f,  0.5f,  0.5f,   //
-                         -0.5f, 0.5f,  0.5f,   //
-                         -0.5f, 0.5f,  -0.5f};
+                       -0.5f, 0.5f,  -0.5f,  // Sixth face
+                       0.5f,  0.5f,  -0.5f,  //
+                       0.5f,  0.5f,  0.5f,   //
+                       0.5f,  0.5f,  0.5f,   //
+                       -0.5f, 0.5f,  0.5f,   //
+                       -0.5f, 0.5f,  -0.5f};
     // Construct vertex buffer
     g_3d_vbo = gfx->construct_vertex_buffer(layout_3d, sizeof(layout_3d), v_3d_data, sizeof(v_3d_data));
 
@@ -1212,6 +1331,35 @@ neko_result app_init() {
 
     // Set material texture uniform
     gfx->set_material_uniform_sampler2d(g_batch.material, "u_tex", g_test_ase, 0);
+
+#ifdef custom_batch
+
+    // 自定义batch
+    neko_quad_batch_i *cqb = gfx->quad_batch_i;
+
+    // Initialize quad batch API with custom implementation data
+    neko_vertex_attribute_type qb_layout[] = {
+            neko_vertex_attribute_float3,  // Position
+            neko_vertex_attribute_float2,  // UV
+            neko_vertex_attribute_float4,  // Color
+            neko_vertex_attribute_float4   // Color2
+    };
+
+    g_custom_batch_shader = gfx->construct_shader(quad_batch_custom_vert_src, quad_batch_custom_frag_src);
+    cqb->set_shader(cqb, g_custom_batch_shader);
+    cqb->set_layout(cqb, qb_layout, sizeof(qb_layout));
+    cqb->add = &quad_batch_custom_add;
+
+    // Setup quad batch
+    g_custom_batch_mat = neko_material_new(gfx->quad_batch_i->shader);
+
+    // Set texture uniform for material
+    gfx->set_material_uniform_sampler2d(g_custom_batch_mat, "u_tex", g_test_ase, 0);
+
+    // Construct quad batch api and link up function pointers
+    g_custom_batch = neko_quad_batch_new(g_custom_batch_mat);
+
+#endif
 
     // Constuct audio resource to play
     g_src = audio->load_audio_source_from_file(neko_file_path("data/assets/audio/audioclip/6.wav"));
@@ -1315,7 +1463,7 @@ neko_result app_init() {
                             ImGui::Text("GPU MemTotalAvailable: %.2lf mb", (f64)(cur_avail_mem_kb / 1024.0f));
                             ImGui::Text("GPU MemCurrentUsage: %.2lf mb", (f64)((total_mem_kb - cur_avail_mem_kb) / 1024.0f));
 
-                            lua_State *L = neko_sc()->neko_lua.get_lua_state();
+                            lua_State *L = neko_sc()->neko_lua.state();
                             lua_gc(L, LUA_GCCOLLECT, 0);
                             lua_Integer kb = lua_gc(L, LUA_GCCOUNT, 0);
                             lua_Integer bytes = lua_gc(L, LUA_GCCOUNTB, 0);
@@ -1338,7 +1486,7 @@ neko_result app_init() {
                             ImGui::Text("OpenGL version supported: %s", glGetString(GL_VERSION));
 
                             neko_vec2 opengl_ver = _platform->get_opengl_ver();
-                            ImGui::Text("OpenGL Version: %d.%d", (int)opengl_ver.x, (int)opengl_ver.y);
+                            ImGui::Text("OpenGL Version: %d.%d", (s32)opengl_ver.x, (s32)opengl_ver.y);
                         }
 
                         return neko_dbgui_result_in_progress;
@@ -1520,7 +1668,7 @@ neko_result app_shutdown() {
     return neko_result_success;
 }
 
-void putpixel(int x, int y) {
+void putpixel(s32 x, s32 y) {
     if (in_bounds(x, y)) {
         g_ui_buffer[compute_idx(x, y)] = cell_color_t{255, 255, 255, 255};
     }
@@ -1528,7 +1676,7 @@ void putpixel(int x, int y) {
 
 // Function to put pixels
 // at subsequence points
-void drawCircle(int xc, int yc, int x, int y) {
+void drawCircle(s32 xc, s32 yc, s32 x, s32 y) {
     putpixel(xc + x, yc + y);
     putpixel(xc - x, yc + y);
     putpixel(xc + x, yc - y);
@@ -1541,9 +1689,9 @@ void drawCircle(int xc, int yc, int x, int y) {
 
 // Function for circle-generation
 // using Bresenham's algorithm
-void circleBres(int xc, int yc, int r) {
-    int x = 0, y = r;
-    int d = 3 - 2 * r;
+void circleBres(s32 xc, s32 yc, s32 r) {
+    s32 x = 0, y = r;
+    s32 d = 3 - 2 * r;
     drawCircle(xc, yc, x, y);
     while (y >= x) {
         // For each pixel we will
@@ -1950,13 +2098,13 @@ void render_test() {
 
     neko_tex_point *outline = neko_tex_extract_outline_path(outlined, g_texture_width, g_texture_height, &l, 0);
     while (l) {
-        int l0 = l;
+        s32 l0 = l;
         neko_tex_distance_based_path_simplification(outline, &l, 0.5f);
         // printf("simplified outline: %d -> %d\n", l0, l);
 
         l_check = l;
 
-        for (int i = 0; i < l; i++) {
+        for (s32 i = 0; i < l; i++) {
             gfx->immediate.draw_line_ext(cb, neko_vec2_mul(last_point, {4.f, 4.f}), neko_vec2_mul(neko_vec2{(f32)outline[i].x, (f32)outline[i].y}, {4.f, 4.f}), 2.f, neko_color_white);
 
             last_point = {(f32)outline[i].x, (f32)outline[i].y};
@@ -1977,6 +2125,7 @@ void render_scene() {
     neko_platform_i *platform = neko_engine_instance()->ctx.platform;
 
     neko_quad_batch_t *qb = &g_batch;
+    neko_quad_batch_t *cqb = &g_custom_batch;
     neko_command_buffer_t *cb = &g_cb;
 
     const f32 _t = platform->elapsed_time();
@@ -1996,6 +2145,28 @@ void render_scene() {
         }
     }
     gfx->quad_batch_end(qb);
+
+#ifdef custom_batch
+    // Add 10k items to batch
+    gfx->quad_batch_begin(cqb);
+    {
+        neko_for_range_i(100) {
+            neko_for_range_j(100) {
+                // Instance of our custom quad batch info struct
+                quad_batch_custom_info_t quad_info = {0};
+
+                quad_info.transform = neko_vqs_default();
+                quad_info.transform.position = neko_vec3{(f32)i, (f32)j, 0.f};
+                quad_info.uv = neko_vec4{0.f, 0.f, 1.f, 1.f};
+                quad_info.color = i % 2 == 0 ? neko_vec4{1.f, 1.f, 1.f, 1.f} : neko_vec4{1.f, 0.f, 0.f, 1.f};
+                quad_info.color_two = neko_vec4{0.f, 1.f, 0.f, 1.f};
+
+                gfx->quad_batch_add(cqb, &quad_info);
+            }
+        }
+    }
+    gfx->quad_batch_end(cqb);
+#endif
 
     neko_shader_t _shader = *gfx->neko_shader_get("g_shader");
 
@@ -2119,6 +2290,24 @@ void render_scene() {
         gfx->quad_batch_submit(cb, qb);
     }
 
+#ifdef custom_batch
+    {
+        // Create model/view/projection matrices from camera
+        neko_mat4 view_mtx = neko_camera_get_view(&g_camera);
+        neko_mat4 proj_mtx = neko_camera_get_projection(&g_camera, ws.x, ws.y);
+        neko_mat4 model_mtx = neko_mat4_scale(neko_vec3{1.f, 1.f, 1.f});
+
+        // Set necessary dynamic uniforms for quad batch material (defined in default shader in neko_quad_batch.h)
+        gfx->set_material_uniform_mat4(cqb->material, "u_model", model_mtx);
+        gfx->set_material_uniform_mat4(cqb->material, "u_view", view_mtx);
+        gfx->set_material_uniform_mat4(cqb->material, "u_proj", proj_mtx);
+        gfx->set_material_uniform_float(cqb->material, "u_alpha", sin(t * 0.001f) * 0.5f + 0.5f);
+
+        // Need to submit quad batch
+        gfx->quad_batch_submit(cb, cqb);
+    }
+#endif
+
     // 3d
     {
         _shader = *gfx->neko_shader_get("g_3d_shader");
@@ -2162,14 +2351,14 @@ void render_scene() {
             // gfx->immediate.draw_line_ext(cb, {9.f, 9.f}, {400.f, 400.f}, 4.f, neko_color_white);
             // render_test();
 
-            for (int i = 0; i < numBodies; ++i) DrawBody(bodies + i);
+            for (s32 i = 0; i < numBodies; ++i) DrawBody(bodies + i);
 
-            for (int i = 0; i < numJoints; ++i) DrawJoint(joints + i);
+            for (s32 i = 0; i < numJoints; ++i) DrawJoint(joints + i);
 
             std::map<neko_phy_arbiter_key, neko_phy_arbiter>::const_iterator iter;
             for (iter = world.arbiters.begin(); iter != world.arbiters.end(); ++iter) {
                 const neko_phy_arbiter &arbiter = iter->second;
-                for (int i = 0; i < arbiter.numContacts; ++i) {
+                for (s32 i = 0; i < arbiter.numContacts; ++i) {
                     neko_vec2 p = arbiter.contacts[i].position;
                     // glVertex2f(p.x, p.y);
                     gfx->immediate.draw_circle(cb, world_to_screen_pos({p.x, p.y}), 5.f, 0, neko_color_green);
@@ -3460,7 +3649,7 @@ void update_lava(u32 x, u32 y) {
         }
     }
 
-    // If in water, then need to float upwards
+    // If in water, then need to f32 upwards
     // s32 lx, ly;
     // if (is_in_liquid(x, y, &lx, &ly) && in_bounds(x, y - 1) && get_particle_at(x, y - 1).id == mat_id_water) {
     //  particle_t tmp = get_particle_at(x, y - 1);
@@ -3546,7 +3735,7 @@ void update_oil(u32 x, u32 y) {
     s32 r_idx = compute_idx(x + r, y);
     s32 vx = (s32)p->velocity.x, vy = (s32)p->velocity.y;
 
-    // If in water, then need to float upwards
+    // If in water, then need to f32 upwards
     // s32 lx, ly;
     // if (is_in_liquid(x, y, &lx, &ly) && in_bounds(x, y - 1) && get_particle_at(x, y - 1).id == mat_id_water) {
     //  particle_t tmp = get_particle_at(x, y - 1);
@@ -4018,7 +4207,7 @@ particle_t particle_acid() {
 //
 //  位图边缘检测算法
 
-typedef int neko_tex_bool;
+typedef s32 neko_tex_bool;
 
 // 2d point type helpers
 #define __neko_tex_point_add(result, a, b) \
@@ -4035,29 +4224,29 @@ typedef int neko_tex_bool;
 #define __neko_tex_point_is_next_to(a, b) ((a).x - (b).x <= 1 && (a).x - (b).x >= -1 && (a).y - (b).y <= 1 && (a).y - (b).y >= -1)
 
 // direction type
-typedef int neko_tex_direction;  // 8 cw directions: >, _|, v, |_, <, |", ^, "|
+typedef s32 neko_tex_direction;  // 8 cw directions: >, _|, v, |_, <, |", ^, "|
 #define __neko_tex_direction_opposite(dir) ((dir + 4) & 7)
 static const neko_tex_point neko_tex_direction_to_pixel_offset[] = {{1, 0}, {1, -1}, {0, -1}, {-1, -1}, {-1, 0}, {-1, 1}, {0, 1}, {1, 1}};
 
 // image manipulation functions
-u8 *neko_tex_rgba_to_alpha(const u8 *data, int w, int h) {
+u8 *neko_tex_rgba_to_alpha(const u8 *data, s32 w, s32 h) {
     u8 *result = (u8 *)neko_safe_malloc(w * h);
-    int x, y;
+    s32 x, y;
     for (y = 0; y < h; y++)
         for (x = 0; x < w; x++) result[y * w + x] = data[(y * w + x) * 4 + 3];
     return result;
 }
 
-u8 *neko_tex_alpha_to_thresholded(const u8 *data, int w, int h, u8 threshold) {
+u8 *neko_tex_alpha_to_thresholded(const u8 *data, s32 w, s32 h, u8 threshold) {
     u8 *result = (u8 *)neko_safe_malloc(w * h);
-    int x, y;
+    s32 x, y;
     for (y = 0; y < h; y++)
         for (x = 0; x < w; x++) result[y * w + x] = data[y * w + x] >= threshold ? 255 : 0;
     return result;
 }
 
-u8 *neko_tex_dilate_thresholded(const u8 *data, int w, int h) {
-    int x, y, dx, dy, cx, cy;
+u8 *neko_tex_dilate_thresholded(const u8 *data, s32 w, s32 h) {
+    s32 x, y, dx, dy, cx, cy;
     u8 *result = (u8 *)neko_safe_malloc(w * h);
     for (y = 0; y < h; y++) {
         for (x = 0; x < w; x++) {
@@ -4080,9 +4269,9 @@ u8 *neko_tex_dilate_thresholded(const u8 *data, int w, int h) {
     return result;
 }
 
-u8 *neko_tex_thresholded_to_outlined(const u8 *data, int w, int h) {
+u8 *neko_tex_thresholded_to_outlined(const u8 *data, s32 w, s32 h) {
     u8 *result = (u8 *)neko_safe_malloc(w * h);
-    int x, y;
+    s32 x, y;
     for (x = 0; x < w; x++) {
         result[x] = data[x];
         result[(h - 1) * w + x] = data[(h - 1) * w + x];
@@ -4102,8 +4291,8 @@ u8 *neko_tex_thresholded_to_outlined(const u8 *data, int w, int h) {
 }
 
 // outline path procedures
-static neko_tex_bool neko_tex_find_first_filled_pixel(const u8 *data, int w, int h, neko_tex_point *first) {
-    int x, y;
+static neko_tex_bool neko_tex_find_first_filled_pixel(const u8 *data, s32 w, s32 h, neko_tex_point *first) {
+    s32 x, y;
     for (y = 0; y < h; y++) {
         for (x = 0; x < w; x++) {
             if (data[y * w + x]) {
@@ -4116,10 +4305,10 @@ static neko_tex_bool neko_tex_find_first_filled_pixel(const u8 *data, int w, int
     return 0;
 }
 
-static neko_tex_bool neko_tex_find_next_filled_pixel(const u8 *data, int w, int h, neko_tex_point current, neko_tex_direction *dir, neko_tex_point *next) {
+static neko_tex_bool neko_tex_find_next_filled_pixel(const u8 *data, s32 w, s32 h, neko_tex_point current, neko_tex_direction *dir, neko_tex_point *next) {
     // turn around 180°, then make a clockwise scan for a filled pixel
     *dir = __neko_tex_direction_opposite(*dir);
-    int i;
+    s32 i;
     for (i = 0; i < 8; i++) {
         __neko_tex_point_add(*next, current, neko_tex_direction_to_pixel_offset[*dir]);
 
@@ -4132,7 +4321,7 @@ static neko_tex_bool neko_tex_find_next_filled_pixel(const u8 *data, int w, int 
     return 0;
 }
 
-neko_tex_point *neko_tex_extract_outline_path(u8 *data, int w, int h, int *point_count, neko_tex_point *reusable_outline) {
+neko_tex_point *neko_tex_extract_outline_path(u8 *data, s32 w, s32 h, s32 *point_count, neko_tex_point *reusable_outline) {
     neko_tex_point *outline = reusable_outline;
     if (!outline) outline = (neko_tex_point *)neko_safe_malloc(w * h * sizeof(neko_tex_point));
 
@@ -4144,7 +4333,7 @@ restart:
         return outline;
     }
 
-    int count = 0;
+    s32 count = 0;
     neko_tex_direction dir = 0;
 
     while (__neko_tex_point_is_inside(current, w, h)) {
@@ -4153,7 +4342,7 @@ restart:
         if (!neko_tex_find_next_filled_pixel(data, w, h, current, &dir, &next)) {
             // find loop connection
             neko_tex_bool found = 0;
-            int i;
+            s32 i;
             for (i = 0; i < count / 2; i++)  // only allow big loops
             {
                 if (__neko_tex_point_is_next_to(current, outline[i])) {
@@ -4168,7 +4357,7 @@ restart:
                 // go backwards until we see outline pixels again
                 dir = __neko_tex_direction_opposite(dir);
                 count--;  // back up
-                int prev;
+                s32 prev;
                 for (prev = count; prev >= 0; prev--) {
                     current = outline[prev];
                     outline[count++] = current;  // add our current point to the outline again
@@ -4185,11 +4374,11 @@ restart:
     return outline;
 }
 
-void neko_tex_distance_based_path_simplification(neko_tex_point *outline, int *outline_length, f32 distance_threshold) {
-    int length = *outline_length;
-    int l;
+void neko_tex_distance_based_path_simplification(neko_tex_point *outline, s32 *outline_length, f32 distance_threshold) {
+    s32 length = *outline_length;
+    s32 l;
     for (l = length / 2 /*length - 1*/; l > 1; l--) {
-        int a, b = l;
+        s32 a, b = l;
         for (a = 0; a < length; a++) {
             neko_tex_point ab;
             __neko_tex_point_sub(ab, outline[b], outline[a]);
@@ -4199,7 +4388,7 @@ void neko_tex_distance_based_path_simplification(neko_tex_point *outline, int *o
 
             if (lab != 0.0f) {
                 neko_tex_bool found = 1;
-                int i = (a + 1) % length;
+                s32 i = (a + 1) % length;
                 while (i != b) {
                     neko_tex_point ai;
                     __neko_tex_point_sub(ai, outline[i], outline[a]);
@@ -4214,7 +4403,7 @@ void neko_tex_distance_based_path_simplification(neko_tex_point *outline, int *o
                 }
 
                 if (found) {
-                    int i;
+                    s32 i;
                     if (a < b) {
                         for (i = 0; i < length - b; i++) outline[a + i + 1] = outline[b + i];
                         length -= b - a - 1;
@@ -4288,7 +4477,7 @@ void object_to_str(object_t *obj, char *str, usize str_sz) { neko_snprintf(str, 
 #include "libs/stb/stb_image.h"
 #include "libs/stb/stb_image_write.h"
 
-void genwang(std::string filename, unsigned char *data, int xs, int ys, int w, int h) {
+void genwang(std::string filename, unsigned char *data, s32 xs, s32 ys, s32 w, s32 h) {
     stbhw_tileset ts;
     if (xs < 1 || xs > 1000) {
         fprintf(stderr, "xsize invalid or out of range\n");
@@ -4301,7 +4490,7 @@ void genwang(std::string filename, unsigned char *data, int xs, int ys, int w, i
 
     stbhw_build_tileset_from_image(&ts, data, w * 3, w, h);
     // allocate a buffer to create the final image to
-    int yimg = ys + 4;
+    s32 yimg = ys + 4;
     auto buff = static_cast<unsigned char *>(malloc(3 * xs * yimg));
     stbhw_generate_image(&ts, NULL, buff, xs * 3, xs, yimg);
     stbi_write_png(filename.c_str(), xs, yimg, 3, buff, xs * 3);
@@ -4313,12 +4502,12 @@ void test_wang() {
 
     // mapgen {tile-file} {xsize} {ysize} {seed} [n]
 
-    int xs = 128;
-    int ys = 128;
+    s32 xs = 128;
+    s32 ys = 128;
 
-    int n = 1;
+    s32 n = 1;
 
-    int w, h;
+    s32 w, h;
 
     unsigned char *data = stbi_load(neko_file_path("data/assets/textures/wang_test.png"), &w, &h, NULL, 3);
 
@@ -4329,10 +4518,10 @@ void test_wang() {
     {
         u32 seed = neko_rand_xorshf32();
 
-        // int num = seed + xs + 11 * (xs / -11) - 12 * (seed / 12);
-        int num = xs % 11 + seed % 12;
+        // s32 num = seed + xs + 11 * (xs / -11) - 12 * (seed / 12);
+        s32 num = xs % 11 + seed % 12;
 
-        for (int i = 0; i < n; ++i) {
+        for (s32 i = 0; i < n; ++i) {
 
             auto filename = std::string("output_wang");
             filename = filename.substr(0, filename.size() - 4);
@@ -4345,7 +4534,7 @@ void test_wang() {
     free(data);
 }
 
-int main(int argc, char **argv) {
+s32 main(s32 argc, char **argv) {
 
     neko_engine *engine = neko_engine_construct(argc, argv);
     if (nullptr != engine) {

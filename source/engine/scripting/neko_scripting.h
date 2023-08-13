@@ -8,7 +8,7 @@
 #include <string>
 
 #include "engine/common/neko_util.h"
-#include "engine/scripting/neko_lua_base.h"
+#include "engine/scripting/neko_lua_wrapper.hpp"
 #include "engine/utility/logger.hpp"
 #include "engine/utility/module.hpp"
 
@@ -84,7 +84,7 @@ public:
     static void reg() {}
 
 public:
-    neko_lua_t neko_lua;
+    lua_wrapper::State neko_lua;
 
     neko_scripting() noexcept {};
     ~neko_scripting() noexcept {};
@@ -98,6 +98,28 @@ public:
     void update();
     void update_render();
     void update_tick();
+
+    neko_inline int add_package_path(const std::string &str_) {
+        std::string new_path = "package.path = package.path .. \"";
+        if (str_.empty()) {
+            return -1;
+        }
+
+        if (str_[0] != ';') {
+            new_path += ";";
+        }
+
+        new_path += str_;
+
+        if (str_[str_.length() - 1] != '/') {
+            new_path += "/";
+        }
+
+        new_path += "?.lua\" ";
+
+        neko_lua.dostring(new_path);
+        return 0;
+    }
 };
 
 }  // namespace neko

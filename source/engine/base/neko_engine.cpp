@@ -127,7 +127,7 @@ neko_engine *neko_engine_construct(int argc, char **argv) {
     // 初始化脚本系统
     neko_sc()->__init();
 
-    auto L = neko_sc()->neko_lua.get_lua_state();
+    auto L = neko_sc()->neko_lua.state();
 
     try {
 
@@ -138,7 +138,7 @@ neko_engine *neko_engine_construct(int argc, char **argv) {
         }
         lua_setglobal(L, "arg");
 
-        neko_sc()->neko_lua.load_file(neko_file_path("data/scripts/main.lua"));
+        neko_sc()->neko_lua.dofile(neko_file_path("data/scripts/main.lua"));
 
         neko_application_desc_t t = {"Test", 1440, 840, neko_window_flags::resizable, neko_is_debug() ? 60.0f : 120.0f};
 
@@ -241,7 +241,7 @@ neko_result neko_engine_run() {
         }
 
         try {
-            neko_sc()->neko_lua.call("test_update");
+            neko_sc()->neko_lua["test_update"]();
         } catch (std::exception &ex) {
             neko_error(ex.what());
         }
@@ -328,7 +328,7 @@ neko_result __neko_default_game_init() {
     neko_imgui_init();
 
     try {
-        neko_sc()->neko_lua.call("game_init");
+        neko_sc()->neko_lua["game_init"]();
     } catch (std::exception &ex) {
         neko_error(ex.what());
     }
@@ -345,7 +345,7 @@ neko_result __neko_default_game_update() {
 neko_result __neko_default_game_shutdown() {
 
     try {
-        neko_sc()->neko_lua.call("game_shutdown");
+        neko_sc()->neko_lua["game_shutdown"]();
     } catch (std::exception &ex) {
         neko_error(ex.what());
     }
