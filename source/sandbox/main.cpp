@@ -882,8 +882,6 @@ void register_systems(neko_ecs *ecs) {
 
 neko_global neko_font_index g_basic_font;
 
-neko_global neko_engine_cvar_t g_cvar = {0};
-
 neko_global neko_obj_swarm swarm;
 neko_global neko_swarm_simulator_settings settings;
 
@@ -1601,15 +1599,8 @@ neko_result app_init() {
     // Set up callback for dropping them files, yo.
     platform->set_dropped_files_callback(platform->main_window(), &drop_file_callback);
 
-    // 帧检查器
-    neko_profiler_init();
-    neko_profiler_register_thread("Main thread");  // 注册主线程
-
     return neko_result_success;
 }
-
-static char buffer[10 * 1024];
-static profiler_frame frame_data;
 
 neko_result app_update() {
 
@@ -1672,22 +1663,10 @@ neko_result app_update() {
 
     settings.show();
 
-    {
-        neko_profiler_scope_auto("profiler");
-
-        neko_profiler_get_frame(&frame_data);
-        // // if (g_multi) ProfilerDrawFrameNavigation(g_frameInfos.data(), g_frameInfos.size());
-
-        profiler_draw_frame(&frame_data, buffer, 10 * 1024);
-        // ProfilerDrawStats(&data);
-    }
-
     return neko_result_in_progress;
 }
 
 neko_result app_shutdown() {
-
-    neko_profiler_shutdown();
 
     // 释放容器
     neko_dyn_array_free(g_dyn_array);

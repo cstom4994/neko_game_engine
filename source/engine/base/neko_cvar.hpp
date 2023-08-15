@@ -41,7 +41,6 @@ struct neko_engine_cvar_t {
     bool ui_profiler;
     bool ui_console;
     bool ui_pack_editor;
-    bool ui_code_editor;
     bool ui_inspector;
     bool ui_memory_profiler;
     bool debug_entities_test;
@@ -52,6 +51,8 @@ struct neko_engine_cvar_t {
     f32 brush_size = 4.f;
     f32 world_gravity = 10.f;
 };
+
+extern neko_engine_cvar_t g_cvar;
 
 void __neko_engine_cvar_init(neko_engine_cvar_t *s);
 

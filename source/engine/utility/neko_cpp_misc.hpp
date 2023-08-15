@@ -53,7 +53,7 @@ template <typename NewFunc>
 struct FuncExpand;
 
 template <typename Lambda>
-constexpr auto DecayLambda(Lambda &&lambda) noexcept;
+constexpr auto DecayLambda(Lambda&& lambda) noexcept;
 }  // namespace neko::cpp
 
 namespace neko::cpp::details {
@@ -62,18 +62,18 @@ namespace neko::cpp::details {
 template <typename T>
 struct RmvLValueRef : std::type_identity<T> {};
 template <typename T>
-struct RmvLValueRef<T &> : std::type_identity<T> {};
+struct RmvLValueRef<T&> : std::type_identity<T> {};
 template <typename T>
 struct RmvConstRef : std::type_identity<T> {};
 template <typename T>
-struct RmvConstRef<const T &> : std::type_identity<T> {};
+struct RmvConstRef<const T&> : std::type_identity<T> {};
 
 template <typename A1, typename A2>
-struct AreArgumentsCompatible : std::is_same<const typename RmvLValueRef<A1>::type &, const typename RmvLValueRef<A2>::type &> {};
+struct AreArgumentsCompatible : std::is_same<const typename RmvLValueRef<A1>::type&, const typename RmvLValueRef<A2>::type&> {};
 template <typename A1, typename A2>
-struct AreArgumentsCompatible<A1, A2 &> : std::false_type {};
+struct AreArgumentsCompatible<A1, A2&> : std::false_type {};
 template <typename A>
-struct AreArgumentsCompatible<A &, A &> : std::true_type {};
+struct AreArgumentsCompatible<A&, A&> : std::true_type {};
 // void as a return value
 template <typename A>
 struct AreArgumentsCompatible<void, A> : std::true_type {};
@@ -142,28 +142,28 @@ template <typename Ret, typename... Args>  // 1100
 struct neko::cpp::FuncTraits<Ret(Args...) const volatile> : details::FuncTraitsBase<true, true, ReferenceMode::None, false, Ret(Args...)> {};
 
 template <typename Ret, typename... Args>  // 0010
-struct neko::cpp::FuncTraits<Ret(Args...) &> : details::FuncTraitsBase<false, false, ReferenceMode::Left, false, Ret(Args...)> {};
+struct neko::cpp::FuncTraits<Ret(Args...)&> : details::FuncTraitsBase<false, false, ReferenceMode::Left, false, Ret(Args...)> {};
 
 template <typename Ret, typename... Args>  // 1010
-struct neko::cpp::FuncTraits<Ret(Args...) const &> : details::FuncTraitsBase<true, false, ReferenceMode::Left, false, Ret(Args...)> {};
+struct neko::cpp::FuncTraits<Ret(Args...) const&> : details::FuncTraitsBase<true, false, ReferenceMode::Left, false, Ret(Args...)> {};
 
 template <typename Ret, typename... Args>  // 0110
-struct neko::cpp::FuncTraits<Ret(Args...) volatile &> : details::FuncTraitsBase<false, true, ReferenceMode::Left, false, Ret(Args...)> {};
+struct neko::cpp::FuncTraits<Ret(Args...) volatile&> : details::FuncTraitsBase<false, true, ReferenceMode::Left, false, Ret(Args...)> {};
 
 template <typename Ret, typename... Args>  // 1110
-struct neko::cpp::FuncTraits<Ret(Args...) const volatile &> : details::FuncTraitsBase<true, true, ReferenceMode::Left, false, Ret(Args...)> {};
+struct neko::cpp::FuncTraits<Ret(Args...) const volatile&> : details::FuncTraitsBase<true, true, ReferenceMode::Left, false, Ret(Args...)> {};
 
 template <typename Ret, typename... Args>  // 0020
 struct neko::cpp::FuncTraits<Ret(Args...) &&> : details::FuncTraitsBase<false, false, ReferenceMode::Right, false, Ret(Args...)> {};
 
 template <typename Ret, typename... Args>  // 1020
-struct neko::cpp::FuncTraits<Ret(Args...) const &&> : details::FuncTraitsBase<true, false, ReferenceMode::Right, false, Ret(Args...)> {};
+struct neko::cpp::FuncTraits<Ret(Args...) const&&> : details::FuncTraitsBase<true, false, ReferenceMode::Right, false, Ret(Args...)> {};
 
 template <typename Ret, typename... Args>  // 0120
-struct neko::cpp::FuncTraits<Ret(Args...) volatile &&> : details::FuncTraitsBase<false, true, ReferenceMode::Right, false, Ret(Args...)> {};
+struct neko::cpp::FuncTraits<Ret(Args...) volatile&&> : details::FuncTraitsBase<false, true, ReferenceMode::Right, false, Ret(Args...)> {};
 
 template <typename Ret, typename... Args>  // 1120
-struct neko::cpp::FuncTraits<Ret(Args...) const volatile &&> : details::FuncTraitsBase<true, true, ReferenceMode::Right, false, Ret(Args...)> {};
+struct neko::cpp::FuncTraits<Ret(Args...) const volatile&&> : details::FuncTraitsBase<true, true, ReferenceMode::Right, false, Ret(Args...)> {};
 
 template <typename Ret, typename... Args>  // 0001
 struct neko::cpp::FuncTraits<Ret(Args...) noexcept> : details::FuncTraitsBase<false, false, ReferenceMode::None, true, Ret(Args...)> {};
@@ -203,7 +203,7 @@ struct neko::cpp::FuncTraits<Ret(Args...) const volatile && noexcept> : details:
 
 // dispatch
 template <typename Func>
-struct neko::cpp::FuncTraits<Func *> : FuncTraits<Func> {
+struct neko::cpp::FuncTraits<Func*> : FuncTraits<Func> {
     using Object = void;
     using Function = Func;
 };
@@ -215,13 +215,13 @@ struct neko::cpp::FuncTraits<Func T::*> : FuncTraits<Func> {
 };
 
 template <typename Func>
-struct neko::cpp::FuncTraits<Func &> : FuncTraits<Func> {};
+struct neko::cpp::FuncTraits<Func&> : FuncTraits<Func> {};
 template <typename Func>
-struct neko::cpp::FuncTraits<Func &&> : FuncTraits<Func> {};
+struct neko::cpp::FuncTraits<Func&&> : FuncTraits<Func> {};
 template <typename Func>
-struct neko::cpp::FuncTraits<const Func &> : FuncTraits<Func> {};
+struct neko::cpp::FuncTraits<const Func&> : FuncTraits<Func> {};
 template <typename Func>
-struct neko::cpp::FuncTraits<const Func &&> : FuncTraits<Func> {};
+struct neko::cpp::FuncTraits<const Func&&> : FuncTraits<Func> {};
 
 template <typename T>
 struct neko::cpp::FuncTraits : details::FuncTraitsDispatch<std::is_function_v<T>, T> {};
@@ -229,7 +229,7 @@ struct neko::cpp::FuncTraits : details::FuncTraitsDispatch<std::is_function_v<T>
 template <typename Ret, typename... Args>
 struct neko::cpp::FuncExpand<Ret(Args...)> {
     template <typename Func>
-    static auto get(Func &&func) noexcept {
+    static auto get(Func&& func) noexcept {
         static_assert(std::is_void_v<Ret> || std::is_convertible_v<FuncTraits_Return<Func>, Ret>, "Func's return can't convert to Ret");
         constexpr std::size_t N = Length_v<typename FuncTraits<Func>::ArgList>;
         return get(std::forward<Func>(func), std::make_index_sequence<N>{});
@@ -237,7 +237,7 @@ struct neko::cpp::FuncExpand<Ret(Args...)> {
 
 private:
     template <typename Func, std::size_t... Ns>
-    static auto get(Func &&func, std::index_sequence<Ns...>) {
+    static auto get(Func&& func, std::index_sequence<Ns...>) {
         using FromArgList = typename FuncTraits<Func>::ArgList;
         using ToArgList = TypeList<Args...>;
         return [func = std::forward<Func>(func)](Args... args) mutable -> decltype(auto) {
@@ -252,7 +252,7 @@ private:
 };
 
 template <typename Lambda>
-constexpr auto neko::cpp::DecayLambda(Lambda &&lambda) noexcept {
+constexpr auto neko::cpp::DecayLambda(Lambda&& lambda) noexcept {
     return static_cast<std::add_pointer_t<FuncTraits_Signature<std::remove_reference_t<Lambda>>>>(std::forward<Lambda>(lambda));
 }
 
@@ -265,7 +265,7 @@ struct neko::cpp::MemFuncOf {
 template <typename Func>
 struct neko::cpp::FuncOf {
     static_assert(std::is_function_v<Func>);
-    static constexpr auto get(Func *func) noexcept { return func; }
+    static constexpr auto get(Func* func) noexcept { return func; }
 };
 
 #pragma endregion FuncTraits
@@ -500,5 +500,145 @@ template <typename T, template <typename Base, typename Impl> class Interface>
 struct neko::cpp::SI_Contains : details::SI_Contains_Helper<void, T, Interface> {};
 
 #pragma endregion SI
+
+#pragma region Tuple
+
+namespace neko::cpp::detail {
+template <typename Ints>
+struct IntegerSequenceTraits;
+
+template <typename T, T N0, T... Ns>
+struct IntegerSequenceTraits<std::integer_sequence<T, N0, Ns...>> {
+    static constexpr size_t head = N0;
+    static constexpr auto tail = std::integer_sequence<T, Ns...>{};
+};
+
+template <typename Tuple, typename Acc, typename Func, bool... Masks, size_t... Ns>
+constexpr auto tuple_accumulate(Tuple&& t, Acc&& acc, Func&& f, std::integer_sequence<bool, Masks...>, std::index_sequence<Ns...>) {
+    if constexpr (sizeof...(Ns) > 0) {
+        using IST_Ns = IntegerSequenceTraits<std::index_sequence<Ns...>>;
+        if constexpr (sizeof...(Masks) > 0) {
+            using IST_Masks = IntegerSequenceTraits<std::integer_sequence<bool, Masks...>>;
+            if constexpr (IST_Masks::head) {
+                return tuple_accumulate(std::forward<Tuple>(t), f(std::forward<Acc>(acc), std::get<IST_Ns::head>(std::forward<Tuple>(t))), std::forward<Func>(f), IST_Masks::tail, IST_Ns::tail);
+            } else {
+                return tuple_accumulate(std::forward<Tuple>(t), std::forward<Acc>(acc), std::forward<Func>(f), IST_Masks::tail, IST_Ns::tail);
+            }
+        } else {
+            return tuple_accumulate(std::forward<Tuple>(t), f(std::forward<Acc>(acc), std::get<IST_Ns::head>(std::forward<Tuple>(t))), std::forward<Func>(f), std::integer_sequence<bool>{},
+                                    IST_Ns::tail);
+        }
+    } else
+        return std::forward<Acc>(acc);
+}
+
+template <typename Tuple, typename Func, size_t... Ns>
+constexpr size_t tuple_find_if(const Tuple& t, Func&& f, std::index_sequence<Ns...>) {
+    if constexpr (sizeof...(Ns) > 0) {
+        using IST_Ns = IntegerSequenceTraits<std::index_sequence<Ns...>>;
+        if (std::forward<Func>(f)(std::get<IST_Ns::head>(t)))
+            return IST_Ns::head;
+        else
+            return tuple_find_if(t, std::forward<Func>(f), IST_Ns::tail);
+    } else
+        return static_cast<size_t>(-1);
+}
+}  // namespace neko::cpp::detail
+
+namespace neko::cpp {
+template <bool... Masks, typename Tuple, typename Init, typename Func>
+constexpr auto tuple_accumulate(Tuple&& t, Init&& i, Func&& f) {
+    constexpr size_t N = std::tuple_size_v<std::decay_t<Tuple>>;
+    static_assert(sizeof...(Masks) <= N);
+    return detail::tuple_accumulate(std::forward<Tuple>(t), std::forward<Init>(i), std::forward<Func>(f), std::integer_sequence<bool, Masks...>{}, std::make_index_sequence<N>{});
+}
+
+template <bool... Masks, typename Tuple, typename Func>
+constexpr void tuple_for_each(Tuple&& t, Func&& f) {
+    tuple_accumulate<Masks...>(std::forward<Tuple>(t), 0, [&](auto, auto&& val) {
+        std::forward<Func>(f)(std::forward<decltype(val)>(val));
+        return 0;
+    });
+}
+
+template <typename Tuple, typename Func>
+constexpr size_t tuple_find_if(const Tuple& t, Func&& f) {
+    return detail::tuple_find_if(t, std::forward<Func>(f), std::make_index_sequence<std::tuple_size_v<Tuple>>{});
+}
+
+template <typename Tuple, typename Elem>
+constexpr size_t tuple_find(const Tuple& t, const Elem& e) {
+    return tuple_find_if(t, [&](const auto& t_e) {
+        if constexpr (std::is_same_v<std::decay_t<decltype(t_e)>, Elem>)
+            return t_e == e;
+        else
+            return false;
+    });
+}
+
+template <typename Tuple, typename Elem>
+constexpr bool tuple_constains(const Tuple& t, const Elem& e) {
+    return tuple_find(t, e) != static_cast<size_t>(-1);
+}
+
+template <typename Tuple, typename Func>
+constexpr size_t tuple_count_if(const Tuple& t, Func&& f) {
+    return tuple_accumulate(t, 0, [&](auto cnt, const auto& e) {
+        if (std::forward<Func>(f)(e))
+            return cnt + 1;
+        else
+            return cnt;
+    });
+}
+
+template <typename Tuple, typename Elem>
+constexpr size_t tuple_count(const Tuple& t, const Elem& e) {
+    return tuple_count_if(t, [&](const auto& t_e) {
+        if constexpr (std::is_same_v<std::decay_t<decltype(t_e)>, Elem>)
+            return t_e == e;
+        else
+            return false;
+    });
+}
+
+template <typename Tuple, typename... Elems>
+constexpr auto tuple_append(Tuple&& src, Elems&&... elems) {
+    return std::apply([&](auto&&... src_elems) { return std::tuple{std::forward<decltype(src_elems)>(src_elems)..., std::forward<Elems>(elems)...}; }, std::forward<Tuple>(src));
+}
+
+template <typename Tuple, typename... Elems>
+constexpr auto tuple_prepend(Tuple&& src, Elems&&... elems) {
+    return std::apply([&](auto&&... src_elems) { return std::tuple{std::forward<Elems>(elems)..., std::forward<decltype(src_elems)>(src_elems)...}; }, std::forward<Tuple>(src));
+}
+
+template <bool... Masks, typename Tuple, typename Init, typename Func>
+constexpr auto tuple_accumulate(Tuple&&, Init&&, Func&&);
+
+template <bool... Masks, typename Tuple, typename Func>
+constexpr void tuple_for_each(Tuple&&, Func&&);
+
+template <typename Tuple, typename Func>
+constexpr size_t tuple_find_if(const Tuple&, Func&&);
+
+template <typename Tuple, typename Elem>
+constexpr size_t tuple_find(const Tuple&, const Elem&);
+
+template <typename Tuple, typename Elem>
+constexpr bool tuple_constains(const Tuple&, const Elem&);
+
+template <typename Tuple, typename Func>
+constexpr size_t tuple_count_if(const Tuple&, Func&&);
+
+template <typename Tuple, typename Elem>
+constexpr size_t tuple_count(const Tuple&, const Elem&);
+
+template <typename Tuple, typename... Elems>
+constexpr auto tuple_append(Tuple&&, Elems&&...);
+
+template <typename Tuple, typename... Elems>
+constexpr auto tuple_prepend(Tuple&&, Elems&&...);
+}  // namespace neko::cpp
+
+#pragma endregion Tuple
 
 #endif

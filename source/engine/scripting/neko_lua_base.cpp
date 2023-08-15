@@ -3434,3 +3434,185 @@ int luaopen_datalist(lua_State *L) {
 }
 
 #pragma endregion LuaDataList
+
+using namespace neko;
+
+int neko_lua_state_view::absindex(int idx) { return lua_absindex(L, idx); }
+void neko_lua_state_view::arith(int op) { return lua_arith(L, op); }
+lua_CFunction neko_lua_state_view::atpanic(lua_CFunction panicf) { return lua_atpanic(L, panicf); }
+void neko_lua_state_view::call(int nargs, int nresults) { return lua_call(L, nargs, nresults); }
+void neko_lua_state_view::callk(int nargs, int nresults, lua_KContext ctx, lua_KFunction k) { return lua_callk(L, nargs, nresults, ctx, k); }
+int neko_lua_state_view::checkstack(int n) { return lua_checkstack(L, n); }
+int neko_lua_state_view::compare(int index1, int index2, int op) { return lua_compare(L, index1, index2, op); }
+void neko_lua_state_view::concat(int n) { return lua_concat(L, n); }
+void neko_lua_state_view::copy(int fromidx, int toidx) { return lua_copy(L, fromidx, toidx); }
+void neko_lua_state_view::createtable(int narr, int nrec) { return lua_createtable(L, narr, nrec); }
+int neko_lua_state_view::dump(lua_Writer writer, void *data, int strip) { return lua_dump(L, writer, data, strip); }
+int neko_lua_state_view::error() { return lua_error(L); }
+int neko_lua_state_view::gc(int what, int data) { return lua_gc(L, what, data); }
+lua_Alloc neko_lua_state_view::getallocf(void **ud) { return lua_getallocf(L, ud); }
+int neko_lua_state_view::getfield(int index, const char *k) { return lua_getfield(L, index, k); }
+int neko_lua_state_view::getglobal(const char *name) { return lua_getglobal(L, name); }
+lua_Hook neko_lua_state_view::gethook() { return lua_gethook(L); }
+int neko_lua_state_view::gethookcount() { return lua_gethookcount(L); }
+int neko_lua_state_view::gethookmask() { return lua_gethookmask(L); }
+int neko_lua_state_view::geti(int index, lua_Integer i) { return lua_geti(L, index, i); }
+int neko_lua_state_view::getinfo(const char *what, lua_Debug *ar) { return lua_getinfo(L, what, ar); }
+const char *neko_lua_state_view::getlocal(const lua_Debug *ar, int n) { return lua_getlocal(L, ar, n); }
+int neko_lua_state_view::getmetatable(int index) { return lua_getmetatable(L, index); }
+int neko_lua_state_view::getstack(int level, lua_Debug *ar) { return lua_getstack(L, level, ar); }
+int neko_lua_state_view::gettable(int index) { return lua_gettable(L, index); }
+int neko_lua_state_view::gettop() { return lua_gettop(L); }
+const char *neko_lua_state_view::getupvalue(int funcindex, int n) { return lua_getupvalue(L, funcindex, n); }
+int neko_lua_state_view::getuservalue(int index) { return lua_getuservalue(L, index); }
+void neko_lua_state_view::insert(int index) { return lua_insert(L, index); }
+int neko_lua_state_view::isboolean(int index) { return lua_isboolean(L, index); }
+int neko_lua_state_view::iscfunction(int index) { return lua_iscfunction(L, index); }
+int neko_lua_state_view::isfunction(int index) { return lua_isfunction(L, index); }
+int neko_lua_state_view::isinteger(int index) { return lua_isinteger(L, index); }
+int neko_lua_state_view::islightuserdata(int index) { return lua_islightuserdata(L, index); }
+int neko_lua_state_view::isnil(int index) { return lua_isnil(L, index); }
+int neko_lua_state_view::isnone(int index) { return lua_isnone(L, index); }
+int neko_lua_state_view::isnoneornil(int index) { return lua_isnoneornil(L, index); }
+int neko_lua_state_view::isnumber(int index) { return lua_isnumber(L, index); }
+int neko_lua_state_view::isstring(int index) { return lua_isstring(L, index); }
+int neko_lua_state_view::istable(int index) { return lua_istable(L, index); }
+int neko_lua_state_view::isthread(int index) { return lua_isthread(L, index); }
+int neko_lua_state_view::isuserdata(int index) { return lua_isuserdata(L, index); }
+void neko_lua_state_view::len(int index) { return lua_len(L, index); }
+int neko_lua_state_view::load(lua_Reader reader, void *data, const char *chunkname, const char *mode) { return lua_load(L, reader, data, chunkname, mode); }
+void neko_lua_state_view::newtable() { return lua_newtable(L); }
+void *neko_lua_state_view::newuserdata(size_t size) { return lua_newuserdata(L, size); }
+int neko_lua_state_view::next(int index) { return lua_next(L, index); }
+int neko_lua_state_view::pcall(int nargs, int nresults, int msgh) { return lua_pcall(L, nargs, nresults, msgh); }
+int neko_lua_state_view::pcallk(int nargs, int nresults, int msgh, lua_KContext ctx, lua_KFunction k) { return lua_pcallk(L, nargs, nresults, msgh, ctx, k); }
+void neko_lua_state_view::pop(int n) { return lua_pop(L, n); }
+void neko_lua_state_view::pushboolean(int b) { return lua_pushboolean(L, b); }
+void neko_lua_state_view::pushcclosure(lua_CFunction fn, int n) { return lua_pushcclosure(L, fn, n); }
+void neko_lua_state_view::pushcfunction(lua_CFunction f) { return lua_pushcfunction(L, f); }
+const char *neko_lua_state_view::pushfstring(const char *fmt, ...) {
+    va_list argp;
+    va_start(argp, fmt);
+    const char *rst = pushvfstring(fmt, argp);
+    va_end(argp);
+    return rst;
+}
+void neko_lua_state_view::pushglobaltable() { lua_pushglobaltable(L); }
+void neko_lua_state_view::pushinteger(lua_Integer n) { return lua_pushinteger(L, n); }
+void neko_lua_state_view::pushlightuserdata(void *p) { return lua_pushlightuserdata(L, p); }
+const char *neko_lua_state_view::pushlstring(const char *s, size_t len) { return lua_pushlstring(L, s, len); }
+void neko_lua_state_view::pushnil() { return lua_pushnil(L); }
+void neko_lua_state_view::pushnumber(lua_Number n) { return lua_pushnumber(L, n); }
+const char *neko_lua_state_view::pushstring(const char *s) { return lua_pushstring(L, s); }
+int neko_lua_state_view::pushthread() { return lua_pushthread(L); }
+void neko_lua_state_view::pushvalue(int index) { return lua_pushvalue(L, index); }
+const char *neko_lua_state_view::pushvfstring(const char *fmt, va_list argp) { return lua_pushvfstring(L, fmt, argp); }
+int neko_lua_state_view::rawequal(int index1, int index2) { return lua_rawequal(L, index1, index2); }
+int neko_lua_state_view::rawget(int index) { return lua_rawget(L, index); }
+int neko_lua_state_view::rawgeti(int index, lua_Integer n) { return lua_rawgeti(L, index, n); }
+int neko_lua_state_view::rawgetp(int index, const void *p) { return lua_rawgetp(L, index, p); }
+size_t neko_lua_state_view::rawlen(int index) { return lua_rawlen(L, index); }
+void neko_lua_state_view::rawset(int index) { return lua_rawset(L, index); }
+void neko_lua_state_view::rawseti(int index, lua_Integer i) { return lua_rawseti(L, index, i); }
+void neko_lua_state_view::rawsetp(int index, const void *p) { return lua_rawsetp(L, index, p); }
+void neko_lua_state_view::register_(const char *name, lua_CFunction f) { return lua_register(L, name, f); }
+void neko_lua_state_view::remove(int index) { return lua_remove(L, index); }
+void neko_lua_state_view::replace(int index) { return lua_replace(L, index); }
+int neko_lua_state_view::resume(lua_State *from, int nargs, int *nresults) { return lua_resume(L, from, nargs, nresults); }
+void neko_lua_state_view::rotate(int idx, int n) { return lua_rotate(L, idx, n); }
+void neko_lua_state_view::setallocf(lua_Alloc f, void *ud) { return lua_setallocf(L, f, ud); }
+void neko_lua_state_view::setfield(int index, const char *k) { return lua_setfield(L, index, k); }
+void neko_lua_state_view::setglobal(const char *name) { return lua_setglobal(L, name); }
+void neko_lua_state_view::seti(int index, lua_Integer n) { return lua_seti(L, index, n); }
+int neko_lua_state_view::setmetatable(int index) { return lua_setmetatable(L, index); }
+void neko_lua_state_view::settable(int index) { return lua_settable(L, index); }
+void neko_lua_state_view::settop(int index) { return lua_settop(L, index); }
+void neko_lua_state_view::setuservalue(int index) { lua_setuservalue(L, index); }
+int neko_lua_state_view::status() { return lua_status(L); }
+size_t neko_lua_state_view::stringtonumber(const char *s) { return lua_stringtonumber(L, s); }
+int neko_lua_state_view::toboolean(int index) { return lua_toboolean(L, index); }
+lua_CFunction neko_lua_state_view::tocfunction(int index) { return lua_tocfunction(L, index); }
+lua_Integer neko_lua_state_view::tointeger(int index) { return lua_tointeger(L, index); }
+lua_Integer neko_lua_state_view::tointegerx(int index, int *isnum) { return lua_tointegerx(L, index, isnum); }
+const char *neko_lua_state_view::tolstring(int index, size_t *len) { return lua_tolstring(L, index, len); }
+lua_Number neko_lua_state_view::tonumber(int index) { return lua_tonumber(L, index); }
+lua_Number neko_lua_state_view::tonumberx(int index, int *isnum) { return lua_tonumberx(L, index, isnum); }
+const void *neko_lua_state_view::topointer(int index) { return lua_topointer(L, index); }
+const char *neko_lua_state_view::tostring(int index) { return lua_tostring(L, index); }
+void *neko_lua_state_view::touserdata(int index) { return lua_touserdata(L, index); }
+int neko_lua_state_view::type(int index) { return lua_type(L, index); }
+const char *neko_lua_state_view::typename_(int tp) { return lua_typename(L, tp); }
+void neko_lua_state_view::xmove(lua_State *from, lua_State *to, int n) { return lua_xmove(from, to, n); }
+int neko_lua_state_view::yield(int nresults) { return lua_yield(L, nresults); }
+void neko_lua_state_view::sethook(lua_Hook f, int mask, int count) { lua_sethook(L, f, mask, count); }
+const char *neko_lua_state_view::setlocal(const lua_Debug *ar, int n) { return lua_setlocal(L, ar, n); }
+const char *neko_lua_state_view::setupvalue(int funcindex, int n) { return lua_setupvalue(L, funcindex, n); }
+void neko_lua_state_view::argcheck(int cond, int arg, const char *extramsg) { return luaL_argcheck(L, cond, arg, extramsg); }
+int neko_lua_state_view::argerror(int arg, const char *extramsg) { return luaL_argerror(L, arg, extramsg); }
+void neko_lua_state_view::buffinit(luaL_Buffer *B) { return luaL_buffinit(L, B); }
+char *neko_lua_state_view::buffinitsize(luaL_Buffer *B, size_t sz) { return luaL_buffinitsize(L, B, sz); }
+int neko_lua_state_view::callmeta(int obj, const char *e) { return luaL_callmeta(L, obj, e); }
+void neko_lua_state_view::checkany(int arg) { return luaL_checkany(L, arg); }
+lua_Integer neko_lua_state_view::checkinteger(int arg) { return luaL_checkinteger(L, arg); }
+const char *neko_lua_state_view::checklstring(int arg, size_t *l) { return luaL_checklstring(L, arg, l); }
+lua_Number neko_lua_state_view::checknumber(int arg) { return luaL_checknumber(L, arg); }
+int neko_lua_state_view::checkoption(int arg, const char *def, const char *const lst[]) { return luaL_checkoption(L, arg, def, lst); }
+void neko_lua_state_view::checkstack(int sz, const char *msg) { return luaL_checkstack(L, sz, msg); }
+const char *neko_lua_state_view::checkstring(int arg) { return luaL_checkstring(L, arg); }
+void neko_lua_state_view::checktype(int arg, int t) { return luaL_checktype(L, arg, t); }
+void *neko_lua_state_view::checkudata(int arg, const char *tname) { return luaL_checkudata(L, arg, tname); }
+void neko_lua_state_view::checkversion() { return luaL_checkversion(L); }
+int neko_lua_state_view::dofile(const char *filename) { return luaL_dofile(L, filename); }
+int neko_lua_state_view::dostring(const char *str) { return luaL_dostring(L, str); }
+int neko_lua_state_view::error(const char *fmt, ...) {
+    va_list argp;
+    va_start(argp, fmt);
+    luaL_where(L, 1);
+    lua_pushvfstring(L, fmt, argp);
+    va_end(argp);
+    lua_concat(L, 2);
+    return lua_error(L);
+}
+int neko_lua_state_view::execresult(int stat) { return luaL_execresult(L, stat); }
+int neko_lua_state_view::fileresult(int stat, const char *fname) { return luaL_fileresult(L, stat, fname); }
+int neko_lua_state_view::getmetafield(int obj, const char *e) { return luaL_getmetafield(L, obj, e); }
+int neko_lua_state_view::getmetatable(const char *tname) { return luaL_getmetatable(L, tname); }
+int neko_lua_state_view::getsubtable(int idx, const char *fname) { return luaL_getsubtable(L, idx, fname); }
+const char *neko_lua_state_view::gsub(const char *s, const char *p, const char *r) { return luaL_gsub(L, s, p, r); }
+lua_Integer neko_lua_state_view::lenL(int index) { return luaL_len(L, index); }
+int neko_lua_state_view::loadbuffer(const char *buff, size_t sz, const char *name) { return luaL_loadbuffer(L, buff, sz, name); }
+int neko_lua_state_view::loadbufferx(const char *buff, size_t sz, const char *name, const char *mode) { return luaL_loadbufferx(L, buff, sz, name, mode); }
+int neko_lua_state_view::loadfile(const char *filename) { return luaL_loadfile(L, filename); }
+int neko_lua_state_view::loadfilex(const char *filename, const char *mode) { return luaL_loadfilex(L, filename, mode); }
+int neko_lua_state_view::loadstring(const char *s) { return luaL_loadstring(L, s); }
+int neko_lua_state_view::newmetatable(const char *tname) { return luaL_newmetatable(L, tname); }
+void neko_lua_state_view::openlibs() { return luaL_openlibs(L); }
+lua_Integer neko_lua_state_view::optinteger(int arg, lua_Integer d) { return luaL_optinteger(L, arg, d); }
+const char *neko_lua_state_view::optlstring(int arg, const char *d, size_t *l) { return luaL_optlstring(L, arg, d, l); }
+lua_Number neko_lua_state_view::optnumber(int arg, lua_Number d) { return luaL_optnumber(L, arg, d); }
+const char *neko_lua_state_view::optstring(int arg, const char *d) { return luaL_optstring(L, arg, d); }
+int neko_lua_state_view::ref(int t) { return luaL_ref(L, t); }
+void neko_lua_state_view::requiref(const char *modname, lua_CFunction openf, int glb) { return luaL_requiref(L, modname, openf, glb); }
+void neko_lua_state_view::setfuncs(const luaL_Reg *l, int nup) { return luaL_setfuncs(L, l, nup); }
+void neko_lua_state_view::setmetatable(const char *tname) { return luaL_setmetatable(L, tname); }
+void *neko_lua_state_view::testudata(int arg, const char *tname) { return luaL_testudata(L, arg, tname); }
+const char *neko_lua_state_view::tolstringL(int idx, size_t *len) { return luaL_tolstring(L, idx, len); }
+const char *neko_lua_state_view::typenameL(int index) { return luaL_typename(L, index); }
+void neko_lua_state_view::unref(int t, int ref) { return luaL_unref(L, t, ref); }
+void neko_lua_state_view::where(int lvl) { return luaL_where(L, lvl); }
+
+neko_lua_state::neko_lua_state(lua_State *main, neko_lua_state_view L) : main{std::move(main)}, neko_lua_state_view{L} {}
+
+neko::neko_lua_state::~neko_lua_state() { lua_close(main); }
+
+neko_lua_state::neko_lua_state() {
+    main = luaL_newstate();
+    L = main;
+}
+
+neko_lua_state::neko_lua_state(lua_Alloc f, void *userdata) {
+    main = lua_newstate(f, userdata);
+    L = main;
+}
+
+neko_lua_state neko_lua_state::newthread() { return {main, lua_newthread(L)}; }

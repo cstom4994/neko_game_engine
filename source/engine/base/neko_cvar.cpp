@@ -9,6 +9,8 @@ namespace neko {
 
 using namespace std::literals;
 
+neko_engine_cvar_t g_cvar = {0};
+
 void __neko_engine_cvar_init(neko_engine_cvar_t *s) {
 
     meta::class_<neko_engine_cvar_t>({{"info", "全局变量"s}})
@@ -18,7 +20,6 @@ void __neko_engine_cvar_init(neko_engine_cvar_t *s) {
             .member_("ui_profiler", &neko_engine_cvar_t::ui_profiler, {.metadata{{"info", "是否显示帧检查器"s}}})
             .member_("ui_console", &neko_engine_cvar_t::ui_console, {.metadata{{"info", "是否显示控制台"s}}})
             .member_("ui_pack_editor", &neko_engine_cvar_t::ui_pack_editor, {.metadata{{"info", "是否显示包编辑器"s}}})
-            .member_("ui_code_editor", &neko_engine_cvar_t::ui_code_editor, {.metadata{{"info", "是否显示脚本编辑器"s}}})
             .member_("ui_inspector", &neko_engine_cvar_t::ui_inspector, {.metadata{{"info", "是否显示检查器"s}}})
             .member_("ui_memory_profiler", &neko_engine_cvar_t::ui_memory_profiler, {.metadata{{"info", "是否显示内存检查器"s}}})
 

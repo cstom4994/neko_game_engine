@@ -84,7 +84,7 @@ public:
     static void reg() {}
 
 public:
-    lua_wrapper::State neko_lua;
+    lua_wrapper::neko_lua_wrap neko_lua;
 
     neko_scripting() noexcept {};
     ~neko_scripting() noexcept {};

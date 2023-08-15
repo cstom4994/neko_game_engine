@@ -9,6 +9,7 @@
 #include "engine/common/neko_str.h"
 #include "engine/common/neko_util.h"
 #include "engine/editor/neko_dbgui.hpp"
+#include "engine/editor/neko_editor.hpp"
 #include "engine/editor/neko_profiler.hpp"
 #include "engine/graphics/neko_graphics.h"
 #include "engine/math/neko_math.h"
@@ -26,6 +27,9 @@ neko_define_logger_impl();
 
 // Global instance of neko engine
 neko_global neko::scope<neko_engine> g_neko;
+
+neko_global u8 profiler_buffer[10 * 1024];
+neko_global profiler_frame frame_data;
 
 // Function forward declarations
 neko_result neko_engine_run();
@@ -188,6 +192,10 @@ neko_engine *neko_engine_construct(int argc, char **argv) {
 
         __neko_engine_construct_high();
 
+        // 帧检查器
+        neko_profiler_init();
+        neko_profiler_register_thread("Main thread");  // 注册主线程
+
         if (__neko_default_game_init() != neko_result_success) {
             // Show error before aborting
             neko_error("application failed to initialize.");
@@ -258,6 +266,18 @@ neko_result neko_engine_run() {
         gfx->fontcache_draw();
 
         {
+            neko_profiler_scope_auto("profiler");
+
+            if (g_cvar.ui_profiler) {
+                neko_profiler_get_frame(&frame_data);
+                // // if (g_multi) ProfilerDrawFrameNavigation(g_frameInfos.data(), g_frameInfos.size());
+
+                profiler_draw_frame(&frame_data, profiler_buffer, 10 * 1024);
+                // ProfilerDrawStats(&data);
+            }
+        }
+
+        {
             neko_profiler_scope_auto("imgui");
             // 渲染 imgui 内容
             neko_imgui_render();
@@ -313,6 +333,8 @@ neko_result neko_engine_run() {
 neko_result neko_engine_shutdown() {
     // Shutdown application
     neko_result app_result = (neko_engine_instance()->ctx.shutdown());
+
+    neko_profiler_shutdown();
 
     neko_imgui_destroy();
 

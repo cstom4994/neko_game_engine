@@ -5811,7 +5811,7 @@ struct lua_type_traits<UserdataMetatable<T, Base>> {
 }  // namespace neko::lua_wrapper
 
 namespace neko::lua_wrapper {
-class State;
+class neko_lua_wrap;
 
 /**
  * This class is the type returned by members of non-const LuaRef(Table) when
@@ -5827,7 +5827,7 @@ public:
     lua_State *state() const { return state_; }
 
     friend class LuaRef;
-    friend class State;
+    friend class neko_lua_wrap;
 
     //! this is not copy.same assign from referenced value.
     TableKeyReferenceProxy &operator=(const TableKeyReferenceProxy &src) {
@@ -6396,12 +6396,12 @@ struct DefaultAllocator {
 };
 
 /// lua_State wrap class
-class State final /*: public neko::moveonly<State>*/ {
+class neko_lua_wrap final /*: public neko::moveonly<State>*/ {
     ref<void> allocator_holder_;
-    lua_State *state_;
+    neko_lua_state state_;
     bool created_;
 
-    neko_move_only(State);
+    neko_move_only(neko_lua_wrap);
 
     static int initializing_panic(lua_State *L) {
         ErrorHandler::throwDefaultError(lua_status(L), lua_tostring(L, -1));
@@ -6422,7 +6422,7 @@ class State final /*: public neko::moveonly<State>*/ {
 
     template <typename Libs>
     void init(const Libs &lib) {
-        if (state_) {
+        if (state_.Valid()) {
             lua_atpanic(state_, &initializing_panic);
             try {
                 if (!ErrorHandler::getHandler(state_)) {
@@ -6433,8 +6433,7 @@ class State final /*: public neko::moveonly<State>*/ {
                 lua_atpanic(state_, &default_panic);
                 __neko_lua_auto_open(state_);
             } catch (const exception::exception_luawarp &) {
-                lua_close(state_);
-                state_ = 0;
+                state_.~neko_lua_state();
             }
         }
     }
@@ -6449,14 +6448,14 @@ class State final /*: public neko::moveonly<State>*/ {
 
 public:
     /// @brief create Lua state with lua standard library
-    State() : allocator_holder_(), state_(luaL_newstate()), created_(true) { init(AllLoadLibs()); }
+    neko_lua_wrap() : allocator_holder_(), created_(true) { init(AllLoadLibs()); }
 
     /// @brief create Lua state with lua standard library. Can not use this
     /// constructor at luajit. error message is 'Must use luaL_newstate() for 64
     /// bit target'
     /// @param allocator allocator for memory allocation @see DefaultAllocator
     template <typename Allocator>
-    State(ref<Allocator> allocator) : allocator_holder_(allocator), state_(lua_newstate(&AllocatorFunction<Allocator>, allocator_holder_.get())), created_(true) {
+    neko_lua_wrap(ref<Allocator> allocator) : allocator_holder_(allocator), state_(lua_newstate(&AllocatorFunction<Allocator>, allocator_holder_.get())), created_(true) {
         init(AllLoadLibs());
     }
 
@@ -6465,7 +6464,7 @@ public:
     /// e.g. LoadLibs libs;libs.push_back(LoadLib("libname",libfunction));State
     /// state(libs);
     /// e.g. State state({{"libname",libfunction}}); for c++ 11
-    State(const LoadLibs &libs) : allocator_holder_(), state_(luaL_newstate()), created_(true) { init(libs); }
+    neko_lua_wrap(const LoadLibs &libs) : allocator_holder_(), created_(true) { init(libs); }
 
     /// @brief create Lua state with (or without) libraries. Can not use this
     /// constructor at luajit. error message is 'Must use luaL_newstate() for 64
@@ -6473,24 +6472,23 @@ public:
     /// @param libs load libraries
     /// @param allocator allocator for memory allocation @see DefaultAllocator
     template <typename Allocator>
-    State(const LoadLibs &libs, ref<Allocator> allocator) : allocator_holder_(allocator), state_(lua_newstate(&AllocatorFunction<Allocator>, allocator_holder_.get())), created_(true) {
+    neko_lua_wrap(const LoadLibs &libs, ref<Allocator> allocator) : allocator_holder_(allocator), state_(lua_newstate(&AllocatorFunction<Allocator>, allocator_holder_.get())), created_(true) {
         init(libs);
     }
 
     /// @brief construct using created lua_State.
     /// @param lua created lua_State. It is not call lua_close() in this class
-    State(lua_State *lua) : state_(lua), created_(false) {
-        if (state_) {
+    neko_lua_wrap(lua_State *main, neko_lua_state_view L) : state_(main, L), created_(false) {
+        if (state_.Valid()) {
             registerMainThreadIfNeeded();
             if (!ErrorHandler::getHandler(state_)) {
                 setErrorHandler(&stderror_out);
             }
         }
     }
-    ~State() {
-        if (created_ && state_) {
+    ~neko_lua_wrap() {
+        if (created_ && state_.Valid()) {
             __neko_lua_auto_close(state_);
-            lua_close(state_);
         }
     }
 
@@ -6782,12 +6780,12 @@ public:
     };
 
     // /@brief  return Garbage collection interface.
-    GCType gc() const { return GCType(state_); }
+    GCType gc() { return GCType(state_.GetState()); }
     /// @brief performs a full garbage-collection cycle.
     void garbageCollect() { gc().collect(); }
 
     /// @brief returns the current amount of memory (in Kbytes) in use by Lua.
-    size_t useKBytes() const { return size_t(gc().count()); }
+    size_t useKBytes() { return size_t(gc().count()); }
 
     /// @brief create Table and push to stack.
     /// using for Lua module
@@ -6803,7 +6801,7 @@ public:
     lua_State *state() { return state_; };
 
     /// @brief check valid lua_State.
-    bool isInvalid() const { return !state_; }
+    bool isInvalid() const { return !state_.Valid(); }
 };
 
 /// @}
@@ -6894,15 +6892,15 @@ private:
 };
 
 namespace detail {
-inline int bind_internal(lua_State *L, void (*bindfn)()) {
-    int count = lua_gettop(L);
-    lua_wrapper::State state(L);
-    LuaTable l = state.newTable();
-    l.push();
-    scope scope(l);
-    bindfn();
-    return lua_gettop(L) - count;
-}
+// inline int bind_internal(lua_State *L, void (*bindfn)()) {
+//     int count = lua_gettop(L);
+//     lua_wrapper::State state(L);
+//     LuaTable l = state.newTable();
+//     l.push();
+//     scope scope(l);
+//     bindfn();
+//     return lua_gettop(L) - count;
+// }
 }  // namespace detail
 
 /// @ingroup another_binding_api

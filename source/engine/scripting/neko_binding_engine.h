@@ -139,7 +139,7 @@ static int __neko_bind_platform_frame_buffer_size(lua_State* L) {
     return 2;
 }
 
-neko_inline void neko_register_platform(lua_wrapper::State& lua) {
+neko_inline void neko_register_platform(lua_wrapper::neko_lua_wrap& lua) {
 
     lua_State* L = lua.state();
 
@@ -361,7 +361,7 @@ static int __neko_bind_graphics_fontcache_load(lua_State* L) {
     return 1;
 }
 
-neko_inline void neko_register_pack(lua_wrapper::State& lua) {
+neko_inline void neko_register_pack(lua_wrapper::neko_lua_wrap& lua) {
 
     lua_State* L = lua.state();
 
@@ -490,7 +490,7 @@ static int __neko_ls(lua_State* L) {
 
 static void __neko_add_packagepath(const char* p) { neko_sc()->add_package_path(p); }
 
-neko_inline void neko_register_common(lua_wrapper::State& lua) {
+neko_inline void neko_register_common(lua_wrapper::neko_lua_wrap& lua) {
 
     lua_State* L = lua.state();
 
@@ -526,7 +526,7 @@ neko_inline void neko_register_common(lua_wrapper::State& lua) {
     lua_register(L, "neko_ls", __neko_ls);
 }
 
-neko_inline void neko_register_graphics(lua_wrapper::State& lua) {
+neko_inline void neko_register_graphics(lua_wrapper::neko_lua_wrap& lua) {
 
     lua_State* L = lua.state();
 
@@ -545,7 +545,7 @@ neko_inline void neko_register_graphics(lua_wrapper::State& lua) {
 //     } save;
 // };
 
-neko_inline void neko_register_audio(lua_wrapper::State& lua) {
+neko_inline void neko_register_audio(lua_wrapper::neko_lua_wrap& lua) {
     //
     // lua_register(L, "neko_audio_load", __neko_bind_audio_load);
 
@@ -577,7 +577,7 @@ neko_inline void neko_register_audio(lua_wrapper::State& lua) {
     // lua["neko_audio_play"] = [&audio](neko_lua_handle_wrap inst) { audio->play(inst.save.audio_ins); };
 }
 
-neko_inline void neko_register(lua_wrapper::State& lua) {
+neko_inline void neko_register(lua_wrapper::neko_lua_wrap& lua) {
 
     g_lua_bind = lua.state();
 

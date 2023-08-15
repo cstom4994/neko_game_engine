@@ -1064,25 +1064,25 @@ constexpr std::string_view neko::cpp::type_name_add_const_rvalue_reference(std::
 #pragma region Type
 
 namespace neko::cpp {
-class NameID {
+class name_id {
 public:
     static constexpr std::size_t InvalidValue() noexcept { return static_cast<std::size_t>(-1); }
 
-    constexpr NameID() noexcept : value{InvalidValue()} {}
-    explicit constexpr NameID(std::size_t value) noexcept : value{value} {}
-    constexpr NameID(std::string_view str) noexcept : value{string_hash(str)} {}
+    constexpr name_id() noexcept : value{InvalidValue()} {}
+    explicit constexpr name_id(std::size_t value) noexcept : value{value} {}
+    constexpr name_id(std::string_view str) noexcept : value{string_hash(str)} {}
     template <std::size_t N>
-    constexpr NameID(const char (&str)[N]) noexcept : value{string_hash(str)} {}
+    constexpr name_id(const char (&str)[N]) noexcept : value{string_hash(str)} {}
 
     constexpr std::size_t GetValue() const noexcept { return value; }
 
     constexpr bool Valid() const noexcept { return value != InvalidValue(); }
 
-    constexpr bool Is(std::string_view str) const noexcept { return value == NameID{str}.GetValue(); }
+    constexpr bool Is(std::string_view str) const noexcept { return value == name_id{str}.GetValue(); }
 
     explicit constexpr operator bool() const noexcept { return Valid(); }
 
-    constexpr std::strong_ordering operator<=>(const NameID& rhs) const noexcept = default;
+    constexpr std::strong_ordering operator<=>(const name_id& rhs) const noexcept = default;
 
 private:
     std::size_t value;
@@ -1114,7 +1114,7 @@ public:
     constexpr std::strong_ordering operator<=>(const TypeID& rhs) const noexcept = default;
 
 private:
-    NameID nameID;
+    name_id nameID;
 };
 
 template <typename T>
@@ -1134,13 +1134,13 @@ public:
     constexpr Name(std::string_view str) noexcept : str{str}, nameID{str} {}
     template <std::size_t N>
     constexpr Name(const char (&str)[N]) noexcept : Name{std::string_view{str}} {}
-    constexpr Name(std::string_view str, NameID nameID) noexcept : str{str}, nameID{nameID} { neko_assert(NameID{str} == nameID); }
-    constexpr std::string_view GetView() const noexcept { return str; }
-    constexpr operator std::string_view() const noexcept { return GetView(); }
-    constexpr NameID GetID() const noexcept { return nameID; }
-    constexpr operator NameID() const noexcept { return GetID(); }
-    constexpr bool Valid() const noexcept { return !str.empty() && nameID.Valid(); }
-    constexpr operator bool() const noexcept { return Valid(); }
+    constexpr Name(std::string_view str, name_id nameID) noexcept : str{str}, nameID{nameID} { neko_assert(name_id{str} == nameID); }
+    constexpr std::string_view get_view() const noexcept { return str; }
+    constexpr operator std::string_view() const noexcept { return get_view(); }
+    constexpr name_id get_id() const noexcept { return nameID; }
+    constexpr operator name_id() const noexcept { return get_id(); }
+    constexpr bool valid() const noexcept { return !str.empty() && nameID.Valid(); }
+    constexpr operator bool() const noexcept { return valid(); }
     constexpr std::strong_ordering operator<=>(const Name& rhs) const noexcept { return nameID <=> rhs.nameID; }
     friend constexpr bool operator==(const Name& lhs, const Name& rhs) noexcept {
         if (lhs.nameID == rhs.nameID) {
@@ -1154,7 +1154,7 @@ public:
 
 private:
     std::string_view str;
-    NameID nameID;
+    name_id nameID;
 };
 
 class Type {
@@ -1163,18 +1163,18 @@ public:
     constexpr Type(std::string_view str) noexcept : name{str} {}
     template <std::size_t N>
     constexpr Type(const char (&str)[N]) noexcept : name{std::string_view{str}} {}
-    constexpr Type(std::string_view str, TypeID typeID) noexcept : name{str, NameID{typeID.GetValue()}} {}
-    constexpr std::string_view get_name() const noexcept { return name.GetView(); }
+    constexpr Type(std::string_view str, TypeID typeID) noexcept : name{str, name_id{typeID.GetValue()}} {}
+    constexpr std::string_view get_name() const noexcept { return name.get_view(); }
     constexpr operator std::string_view() const noexcept { return get_name(); }
-    constexpr TypeID GetID() const noexcept { return TypeID{name.GetID().GetValue()}; }
-    constexpr operator TypeID() const noexcept { return GetID(); }
-    constexpr bool Valid() const noexcept { return name.Valid(); }
-    constexpr operator bool() const noexcept { return Valid(); }
+    constexpr TypeID get_id() const noexcept { return TypeID{name.get_id().GetValue()}; }
+    constexpr operator TypeID() const noexcept { return get_id(); }
+    constexpr bool valid() const noexcept { return name.valid(); }
+    constexpr operator bool() const noexcept { return valid(); }
     constexpr std::strong_ordering operator<=>(const Type& rhs) const noexcept = default;
 
     template <typename T>
     constexpr bool Is() const noexcept {
-        if (GetID() == TypeID_of<T>) {
+        if (get_id() == TypeID_of<T>) {
             neko_assert(name.Is(type_name<T>().View()));
             return true;
         }
@@ -1188,50 +1188,50 @@ public:
 
     // primary
 
-    constexpr bool IsVoid() const noexcept { return type_name_is_void(name.GetView()); }
-    constexpr bool IsNullptr() const noexcept { return type_name_is_null_pointer(name.GetView()); }
-    constexpr bool IsIntegral() const noexcept { return type_name_is_integral(name.GetView()); }
-    constexpr bool IsFloatingPoint() const noexcept { return type_name_is_floating_point(name.GetView()); }
-    constexpr bool IsArray() const noexcept { return type_name_is_array(name.GetView()); }
-    constexpr bool IsEnum() const noexcept { return type_name_is_enum(name.GetView()); }
-    constexpr bool IsUnion() const noexcept { return type_name_is_union(name.GetView()); }
-    constexpr bool IsFunction() const noexcept { return type_name_is_function(name.GetView()); }
-    constexpr bool IsPointer() const noexcept { return type_name_is_pointer(name.GetView()); }
-    constexpr bool IsLValueReference() const noexcept { return type_name_is_lvalue_reference(name.GetView()); }
-    constexpr bool IsRValueReference() const noexcept { return type_name_is_rvalue_reference(name.GetView()); }
-    constexpr bool IsMemberPointer() const noexcept { return type_name_is_member_pointer(name.GetView()); }
+    constexpr bool IsVoid() const noexcept { return type_name_is_void(name.get_view()); }
+    constexpr bool IsNullptr() const noexcept { return type_name_is_null_pointer(name.get_view()); }
+    constexpr bool IsIntegral() const noexcept { return type_name_is_integral(name.get_view()); }
+    constexpr bool IsFloatingPoint() const noexcept { return type_name_is_floating_point(name.get_view()); }
+    constexpr bool IsArray() const noexcept { return type_name_is_array(name.get_view()); }
+    constexpr bool IsEnum() const noexcept { return type_name_is_enum(name.get_view()); }
+    constexpr bool IsUnion() const noexcept { return type_name_is_union(name.get_view()); }
+    constexpr bool IsFunction() const noexcept { return type_name_is_function(name.get_view()); }
+    constexpr bool IsPointer() const noexcept { return type_name_is_pointer(name.get_view()); }
+    constexpr bool IsLValueReference() const noexcept { return type_name_is_lvalue_reference(name.get_view()); }
+    constexpr bool IsRValueReference() const noexcept { return type_name_is_rvalue_reference(name.get_view()); }
+    constexpr bool IsMemberPointer() const noexcept { return type_name_is_member_pointer(name.get_view()); }
 
     // composite
-    constexpr bool IsArithmetic() const noexcept { return type_name_is_arithmetic(name.GetView()); }
-    constexpr bool IsFundamental() const noexcept { return type_name_is_fundamental(name.GetView()); }
+    constexpr bool IsArithmetic() const noexcept { return type_name_is_arithmetic(name.get_view()); }
+    constexpr bool IsFundamental() const noexcept { return type_name_is_fundamental(name.get_view()); }
 
     // properties
 
-    constexpr bool IsConst() const noexcept { return type_name_is_const(name.GetView()); }
-    constexpr bool IsReadOnly() const noexcept { return type_name_is_read_only(name.GetView()); }
-    constexpr bool IsVolatile() const noexcept { return type_name_is_volatile(name.GetView()); }
-    constexpr bool IsCV() const noexcept { return type_name_is_cv(name.GetView()); }
-    constexpr bool IsReference() const noexcept { return type_name_is_reference(name.GetView()); }
-    constexpr bool IsSign() const noexcept { return type_name_is_signed(name.GetView()); }
-    constexpr bool IsUnsigned() const noexcept { return type_name_is_unsigned(name.GetView()); }
-    constexpr bool IsBoundedArray() const noexcept { return type_name_is_bounded_array(name.GetView()); }
-    constexpr bool IsUnboundedArray() const noexcept { return type_name_is_unbounded_array(name.GetView()); }
-    constexpr std::size_t Rank() const noexcept { return type_name_rank(name.GetView()); }
-    constexpr std::size_t Extent() const noexcept { return type_name_extent(name.GetView()); }
-    constexpr CVRefMode GetCVRefMode() const noexcept { return type_name_cvref_mode(name.GetView()); }
+    constexpr bool IsConst() const noexcept { return type_name_is_const(name.get_view()); }
+    constexpr bool IsReadOnly() const noexcept { return type_name_is_read_only(name.get_view()); }
+    constexpr bool IsVolatile() const noexcept { return type_name_is_volatile(name.get_view()); }
+    constexpr bool IsCV() const noexcept { return type_name_is_cv(name.get_view()); }
+    constexpr bool IsReference() const noexcept { return type_name_is_reference(name.get_view()); }
+    constexpr bool IsSign() const noexcept { return type_name_is_signed(name.get_view()); }
+    constexpr bool IsUnsigned() const noexcept { return type_name_is_unsigned(name.get_view()); }
+    constexpr bool IsBoundedArray() const noexcept { return type_name_is_bounded_array(name.get_view()); }
+    constexpr bool IsUnboundedArray() const noexcept { return type_name_is_unbounded_array(name.get_view()); }
+    constexpr std::size_t Rank() const noexcept { return type_name_rank(name.get_view()); }
+    constexpr std::size_t Extent() const noexcept { return type_name_extent(name.get_view()); }
+    constexpr CVRefMode GetCVRefMode() const noexcept { return type_name_cvref_mode(name.get_view()); }
 
     // modification (clip)
 
-    constexpr std::string_view Name_RemoveCV() const noexcept { return type_name_remove_cv(name.GetView()); }
-    constexpr std::string_view Name_RemoveConst() const noexcept { return type_name_remove_const(name.GetView()); }
-    constexpr std::string_view Name_RemoveTopMostVolatile() const noexcept { return type_name_remove_topmost_volatile(name.GetView()); }
-    constexpr std::string_view Name_RemoveLValueReference() const noexcept { return type_name_remove_lvalue_reference(name.GetView()); }
-    constexpr std::string_view Name_RemoveRValueReference() const noexcept { return type_name_remove_rvalue_reference(name.GetView()); }
-    constexpr std::string_view Name_RemoveReference() const noexcept { return type_name_remove_reference(name.GetView()); }
-    constexpr std::string_view Name_RemovePointer() const noexcept { return type_name_remove_pointer(name.GetView()); }
-    constexpr std::string_view Name_RemoveCVRef() const noexcept { return type_name_remove_cvref(name.GetView()); }
-    constexpr std::string_view Name_RemoveExtent() const noexcept { return type_name_remove_extent(name.GetView()); }
-    constexpr std::string_view Name_RemoveAllExtents() const noexcept { return type_name_remove_all_extents(name.GetView()); }
+    constexpr std::string_view Name_RemoveCV() const noexcept { return type_name_remove_cv(name.get_view()); }
+    constexpr std::string_view Name_RemoveConst() const noexcept { return type_name_remove_const(name.get_view()); }
+    constexpr std::string_view Name_RemoveTopMostVolatile() const noexcept { return type_name_remove_topmost_volatile(name.get_view()); }
+    constexpr std::string_view Name_RemoveLValueReference() const noexcept { return type_name_remove_lvalue_reference(name.get_view()); }
+    constexpr std::string_view Name_RemoveRValueReference() const noexcept { return type_name_remove_rvalue_reference(name.get_view()); }
+    constexpr std::string_view Name_RemoveReference() const noexcept { return type_name_remove_reference(name.get_view()); }
+    constexpr std::string_view Name_RemovePointer() const noexcept { return type_name_remove_pointer(name.get_view()); }
+    constexpr std::string_view Name_RemoveCVRef() const noexcept { return type_name_remove_cvref(name.get_view()); }
+    constexpr std::string_view Name_RemoveExtent() const noexcept { return type_name_remove_extent(name.get_view()); }
+    constexpr std::string_view Name_RemoveAllExtents() const noexcept { return type_name_remove_all_extents(name.get_view()); }
 
     constexpr Type RemoveCV() const noexcept { return FastGetType(Name_RemoveCV()); }
     constexpr Type RemoveConst() const noexcept { return FastGetType(Name_RemoveConst()); }
@@ -1246,20 +1246,20 @@ public:
 
     // modification (add, ID)
 
-    constexpr TypeID ID_AddConst() const noexcept { return TypeID{type_name_add_const_hash(name.GetView())}; }
-    constexpr TypeID ID_AddVolatile() const noexcept { return TypeID{type_name_add_volatile_hash(name.GetView())}; }
-    constexpr TypeID ID_AddCV() const noexcept { return TypeID{type_name_add_cv_hash(name.GetView())}; }
-    constexpr TypeID ID_AddLValueReference() const noexcept { return TypeID{type_name_add_lvalue_reference_hash(name.GetView())}; }
+    constexpr TypeID ID_AddConst() const noexcept { return TypeID{type_name_add_const_hash(name.get_view())}; }
+    constexpr TypeID ID_AddVolatile() const noexcept { return TypeID{type_name_add_volatile_hash(name.get_view())}; }
+    constexpr TypeID ID_AddCV() const noexcept { return TypeID{type_name_add_cv_hash(name.get_view())}; }
+    constexpr TypeID ID_AddLValueReference() const noexcept { return TypeID{type_name_add_lvalue_reference_hash(name.get_view())}; }
     // same with type_name_add_lvalue_reference_hash, but it won't change &&{T}
-    constexpr TypeID ID_AddLValueReferenceWeak() const noexcept { return TypeID{type_name_add_lvalue_reference_weak_hash(name.GetView())}; }
-    constexpr TypeID ID_AddRValueReference() const noexcept { return TypeID{type_name_add_rvalue_reference_hash(name.GetView())}; }
-    constexpr TypeID ID_AddPointer() const noexcept { return TypeID{type_name_add_pointer_hash(name.GetView())}; }
-    constexpr TypeID ID_AddConstLValueReference() const noexcept { return TypeID{type_name_add_const_lvalue_reference_hash(name.GetView())}; }
-    constexpr TypeID ID_AddConstRValueReference() const noexcept { return TypeID{type_name_add_const_rvalue_reference_hash(name.GetView())}; }
+    constexpr TypeID ID_AddLValueReferenceWeak() const noexcept { return TypeID{type_name_add_lvalue_reference_weak_hash(name.get_view())}; }
+    constexpr TypeID ID_AddRValueReference() const noexcept { return TypeID{type_name_add_rvalue_reference_hash(name.get_view())}; }
+    constexpr TypeID ID_AddPointer() const noexcept { return TypeID{type_name_add_pointer_hash(name.get_view())}; }
+    constexpr TypeID ID_AddConstLValueReference() const noexcept { return TypeID{type_name_add_const_lvalue_reference_hash(name.get_view())}; }
+    constexpr TypeID ID_AddConstRValueReference() const noexcept { return TypeID{type_name_add_const_rvalue_reference_hash(name.get_view())}; }
 
 private:
     // avoid hash
-    constexpr Type FastGetType(std::string_view str) const noexcept { return name.GetView().data() == str.data() ? *this : Type{str}; }
+    constexpr Type FastGetType(std::string_view str) const noexcept { return name.get_view().data() == str.data() ? *this : Type{str}; }
 
     Name name;
 };
@@ -1276,8 +1276,8 @@ template <typename X, typename Y>
 constexpr bool Type_Less_v = Type_Less<X, Y>::value;
 
 template <std::size_t N>
-class TempNameIDs : public TempArray<NameID, N> {
-    using TempArray<NameID, N>::TempArray;
+class TempNameIDs : public TempArray<name_id, N> {
+    using TempArray<name_id, N>::TempArray;
 };
 template <std::size_t N>
 class TempTypeIDs : public TempArray<TypeID, N> {
@@ -1306,8 +1306,8 @@ constexpr auto Types_of = TempTypes{Type_of<Ts>...};
 }  // namespace neko::cpp
 
 template <>
-struct std::hash<neko::cpp::NameID> {
-    std::size_t operator()(const neko::cpp::NameID& ID) const noexcept { return ID.GetValue(); }
+struct std::hash<neko::cpp::name_id> {
+    std::size_t operator()(const neko::cpp::name_id& ID) const noexcept { return ID.GetValue(); }
 };
 
 template <>
@@ -1317,12 +1317,12 @@ struct std::hash<neko::cpp::TypeID> {
 
 template <>
 struct std::hash<neko::cpp::Name> {
-    std::size_t operator()(const neko::cpp::Name& name) const noexcept { return name.GetID().GetValue(); }
+    std::size_t operator()(const neko::cpp::Name& name) const noexcept { return name.get_id().GetValue(); }
 };
 
 template <>
 struct std::hash<neko::cpp::Type> {
-    std::size_t operator()(const neko::cpp::Type& type) const noexcept { return type.GetID().GetValue(); }
+    std::size_t operator()(const neko::cpp::Type& type) const noexcept { return type.get_id().GetValue(); }
 };
 
 #pragma endregion Type

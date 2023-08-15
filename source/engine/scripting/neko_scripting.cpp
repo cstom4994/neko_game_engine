@@ -159,7 +159,7 @@ static void InitLua(neko_scripting *lc) {
 
 static void lua_reg_ecs(lua_State *L);
 
-static void lua_reg(lua_wrapper::State &lua) {
+static void lua_reg(lua_wrapper::neko_lua_wrap &lua) {
 
     lua_State *L = lua.state();
 
