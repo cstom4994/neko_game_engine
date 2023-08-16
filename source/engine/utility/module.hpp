@@ -42,7 +42,7 @@ public:
 
     static BaseT& instance() {
         if (!is_initialized()) {
-            throw exception::module_not_initialized();
+            throw neko::exception::module_not_initialized();
         }
         return *instance_;
     }

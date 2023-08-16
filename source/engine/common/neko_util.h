@@ -127,6 +127,19 @@ const char* u8Cpp20(T&& t) noexcept {
 #define neko_str(x) x
 #endif
 
+// Helper macro for typedefing a struture definition
+#define neko_struct_def(name, ...) \
+    typedef struct {               \
+        __VA_ARGS__                \
+    } name
+
+// Definition for derived struct (based another parent struct)
+#define neko_derive_def(name, parent, ...) neko_struct_def(name, parent _base; __VA_ARGS__)
+
+#define neko_engine_check(statement) (statement) ? true : false
+
+#define _base(base_type) base_type _base
+
 /*===================================
 // Memory Allocation Utils
 ===================================*/

@@ -1,13 +1,11 @@
 #ifndef NEKO_CAMERA_H
 #define NEKO_CAMERA_H
 
-#include "engine/base/neko_object.h"
 #include "engine/common/neko_types.h"
 #include "engine/math/neko_math.h"
 
 typedef enum { neko_projection_type_orthographic, neko_projection_type_perspective } neko_projection_type;
 
-// TODO(john): enums need to be supported with the reflection generation
 typedef struct neko_camera_t {
     neko_vqs transform;
     f32 fov;
@@ -31,7 +29,5 @@ neko_vec3 neko_camera_right(neko_camera_t* cam);
 neko_vec3 neko_camera_left(neko_camera_t* cam);
 neko_vec3 neko_camera_unproject(neko_camera_t* cam, neko_vec3 coords, s32 view_width, s32 view_height);
 void neko_camera_offset_orientation(neko_camera_t* cam, f32 yaw, f32 picth);
-
-// TODO: Implement world_to_screen and screen_to_world
 
 #endif  // NEKO_CAMERA_H

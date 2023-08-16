@@ -22,7 +22,6 @@
 #include <typeinfo>
 #include <vector>
 
-#include "engine/base/neko_meta.hpp"
 #include "engine/common/neko_containers.h"
 #include "engine/common/neko_util.h"
 #include "engine/utility/module.hpp"

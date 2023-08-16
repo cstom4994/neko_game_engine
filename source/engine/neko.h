@@ -3,7 +3,6 @@
 
 #include "engine/audio/neko_audio.h"
 #include "engine/base/neko_engine.h"
-#include "engine/base/neko_object.h"
 #include "engine/common/neko_types.h"
 #include "engine/common/neko_util.h"
 #include "engine/graphics/neko_camera.h"

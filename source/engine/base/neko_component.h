@@ -21,4 +21,16 @@ typedef enum {
     COMPONENT_COUNT
 } ComponentType;
 
+namespace neko {
+namespace meta {
+struct range {
+    float min_value;
+    float max_value;
+};
+struct info {
+    const_str info;
+};
+}  // namespace meta
+}  // namespace neko
+
 #endif  // !NEKO_COMPONENT_H

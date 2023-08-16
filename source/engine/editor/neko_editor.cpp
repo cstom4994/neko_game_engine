@@ -2,10 +2,10 @@
 #include "neko_editor.hpp"
 
 #include "engine/base/neko_engine.h"
-#include "engine/base/neko_meta.hpp"
 #include "engine/common/neko_hash.h"
 #include "engine/filesystem/neko_packer.h"
 #include "engine/gui/neko_imgui_utils.hpp"
+#include "engine/meta/neko_refl.hpp"
 #include "engine/platform/neko_platform.h"
 #include "engine/utility/neko_cpp_misc.hpp"
 #include "engine/utility/neko_cpp_utils.hpp"
@@ -38,6 +38,8 @@ int neko_buildnum(void) {
 }
 
 namespace neko {
+
+using namespace neko::cpp;
 
 static const int __profiler_max_level_colors = 11;
 static const ImU32 __profiler_level_colors[__profiler_max_level_colors] = {IM_COL32(90, 150, 110, 255), IM_COL32(80, 180, 115, 255),  IM_COL32(129, 195, 110, 255), IM_COL32(170, 190, 100, 255),
@@ -1120,53 +1122,25 @@ auto neko_editor_create(neko_engine_cvar_t &cvar) -> dbgui & {
             .create("cvar",
                     [&](neko_dbgui_result) {
                         try {
-                            const meta::scope cvar_scope = meta::local_scope_("cvar").typedef_<neko_engine_cvar_t>("neko_engine_cvar_t");
 
-                            for (const auto &[type_name, type] : cvar_scope.get_typedefs()) {
-                                if (!type.is_class()) {
-                                    continue;
+                            ObjectView cvar_view{cvar};
+
+                            auto f = [&]<typename T>(auto &name, auto &var, T &t) {
+                                if (var.GetType() == Type_of<T>) {
+                                    ImGui::Auto(var.As<T>(), std::string(name.get_view()).c_str());
                                 }
+                            };
 
-                                const meta::class_type &class_type = type.as_class();
-                                const meta::metadata_map &class_metadata = class_type.get_metadata();
-
-                                if (neko_imgui_collapsing_header(type_name.c_str())) {
-                                    for (const meta::member &member : class_type.get_members()) {
-                                        const meta::metadata_map &m = member.get_metadata();  // metadata
-
-                                        auto f = [&]<typename T>(T arg) {
-                                            if (member.get_type().get_value_type() != meta::resolve_type<T>()) return;
-                                            auto f = member.get(cvar);
-                                            if (T *s = f.try_as<T>()) {
-                                                if (m.find("imgui") != m.end()) {
-                                                    auto editor_ui_type = m.at("imgui").as<std::string>();
-                                                    switch (hash(editor_ui_type)) {
-                                                        case hash("float_range"): {
-                                                            T t = *s;
-                                                            ImGui::SliderFloat(member.get_name().c_str(), (f32 *)&t, m.at("min").as<f32>(), m.at("max").as<f32>(), "", 0);
-                                                            if (t != *s) member.try_set(cvar, t);
-                                                        } break;
-                                                        default:
-                                                            break;
-                                                    }
-                                                } else {
-                                                    T t = *s;
-                                                    ImGui::Auto(t, member.get_name().c_str());
-                                                    if (t != *s) member.try_set(cvar, t);
-                                                }
-                                                ImGui::Text("    [%s]", m.at("info").as<std::string>().c_str());
-                                            } else {
-                                                ImGui::TextColored({1.0f, 0.0f, 0.0f, 1.0f}, "(error) %s", member.get_name().c_str());
-                                            }
-                                        };
-
-                                        using cvar_types_t = std::tuple<CVAR_TYPES()>;
-
-                                        cvar_types_t ctt;
-                                        neko::invoke::apply([&](auto &&...args) { (f(args), ...); }, ctt);
+                            auto v = cvar_view.GetVars();
+                            for (auto &iter = v.begin(); iter != v.end(); ++iter) {
+                                const auto &[name, var] = *iter;
+                                neko::invoke::apply([&](auto &&...args) { (f(name, var, args), ...); }, std::tuple<float, bool>());
+                                for (const auto &attr : iter.GetFieldInfo().attrs)
+                                    for (const auto &[name, var] : attr.GetVars()) {
+                                        if (name == "info") ImGui::Text("    [%s]", var.As<const_str>());
                                     }
-                                }
                             }
+
                         } catch (const std::exception ex) {
                             neko_error(std::format("[Exception] {0}", ex.what()).c_str());
                         }

@@ -4,7 +4,6 @@
 
 #include "engine/audio/neko_audio.h"
 #include "engine/base/neko_component.h"
-#include "engine/base/neko_meta.hpp"
 #include "engine/common/neko_mem.h"
 #include "engine/common/neko_str.h"
 #include "engine/common/neko_util.h"

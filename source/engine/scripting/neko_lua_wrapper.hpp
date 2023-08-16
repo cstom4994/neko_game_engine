@@ -6432,7 +6432,7 @@ class neko_lua_wrap final /*: public neko::moveonly<State>*/ {
                 openlibs(lib);
                 lua_atpanic(state_, &default_panic);
                 __neko_lua_auto_open(state_);
-            } catch (const exception::exception_luawarp &) {
+            } catch (const neko::exception::exception_luawarp &) {
                 state_.~neko_lua_state();
             }
         }
