@@ -314,7 +314,7 @@ u64 neko_profiler_get_clock() {
 u64 __neko_profiler_get_clock_frequency() {
 #ifdef NEKO_PLATFORM_WIN
 #if defined(_M_IX86) || defined(_M_X64) || defined(__i386__) || defined(__x86_64__)
-#ifndef neko_RELEASE
+#if neko_is_debug()
     static LONGLONG frequency = 1;
     static bool initialized = false;
     if (!initialized) {

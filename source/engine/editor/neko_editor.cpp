@@ -1115,7 +1115,9 @@ auto neko_editor_create(neko_engine_cvar_t &cvar) -> dbgui & {
             .create(
                     "utils",
                     [&](neko_dbgui_result) {
-                        if (cvar.ui_imgui_debug) ImGui::ShowDemoWindow();
+                        if (cvar.ui_imgui_debug) {
+                            ImGui::ShowDemoWindow();
+                        }
                         return neko_dbgui_result_in_progress;
                     },
                     neko_dbgui_flags::no_visible)
@@ -1126,9 +1128,7 @@ auto neko_editor_create(neko_engine_cvar_t &cvar) -> dbgui & {
                             ObjectView cvar_view{cvar};
 
                             auto f = [&]<typename T>(auto &name, auto &var, T &t) {
-                                if (var.GetType() == Type_of<T>) {
-                                    ImGui::Auto(var.As<T>(), std::string(name.get_view()).c_str());
-                                }
+                                if (var.GetType() == Type_of<T>) neko::imgui::Auto(var.As<T>(), std::string(name.get_view()).c_str());
                             };
 
                             auto v = cvar_view.GetVars();

@@ -11,8 +11,13 @@
 // glfw
 #include "GLFW/glfw3.h"
 
-// windows GetProcessMemoryInfo
-#include <Psapi.h>
+#ifdef NEKO_PLATFORM_WIN
+#include <Psapi.h>  // windows GetProcessMemoryInfo
+
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include "GLFW/glfw3native.h"
+
+#endif  // NEKO_PLATFORM_WIN
 
 // Forward Decls.
 void __glfw_key_callback(GLFWwindow *window, s32 key, s32 scancode, s32 action, s32 mods);
@@ -132,9 +137,9 @@ void glfw_platform_sleep(f32 ms) {
 }
 
 neko_platform_meminfo glfw_platform_get_meminfo() {
-
     neko_platform_meminfo meminfo = {};
 
+#ifdef NEKO_PLATFORM_WIN
     HANDLE hProcess = GetCurrentProcess();
     PROCESS_MEMORY_COUNTERS_EX pmc;
 
@@ -146,6 +151,7 @@ neko_platform_meminfo glfw_platform_get_meminfo() {
 
     } else {
     }
+#endif
 
     return meminfo;
 }
@@ -746,6 +752,13 @@ neko_vec2 glfw_get_opengl_version() {
     return {(f32)major, (f32)minor};
 }
 
+void *glfw_get_sys_handle(neko_resource_handle handle) {
+    struct neko_platform_i *platform = neko_engine_instance()->ctx.platform;
+    GLFWwindow *win = __window_from_handle(platform, handle);
+    HWND hwnd = glfwGetWin32Window(win);
+    return hwnd;
+}
+
 // Method for creating platform layer for GLFW
 struct neko_platform_i *neko_platform_construct() {
     // Construct new platform interface
@@ -768,6 +781,7 @@ struct neko_platform_i *neko_platform_construct() {
     platform->elapsed_time = &glfw_platform_time;
     platform->get_meminfo = &glfw_platform_get_meminfo;
     platform->get_opengl_ver = &glfw_get_opengl_version;
+    platform->get_sys_handle = &glfw_get_sys_handle;
 
     /*============================
     // Platform Video

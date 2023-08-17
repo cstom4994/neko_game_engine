@@ -1218,7 +1218,7 @@ public:
     constexpr bool IsUnboundedArray() const noexcept { return type_name_is_unbounded_array(name.get_view()); }
     constexpr std::size_t Rank() const noexcept { return type_name_rank(name.get_view()); }
     constexpr std::size_t Extent() const noexcept { return type_name_extent(name.get_view()); }
-    constexpr CVRefMode GetCVRefMode() const noexcept { return type_name_cvref_mode(name.get_view()); }
+    constexpr CVRefMode get_cvref_mode() const noexcept { return type_name_cvref_mode(name.get_view()); }
 
     // modification (clip)
 

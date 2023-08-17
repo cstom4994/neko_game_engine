@@ -21,7 +21,6 @@
 
 #include "engine/common/neko_util.h"
 #include "engine/math/neko_math.h"
-#include "engine/utility/pfr.hpp"
 
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -32,24 +31,17 @@
 
 #pragma region ImGuiAuto
 
-#ifndef NEKO_GUI_TREE_MAX_ELEMENT_SIZE
-#define NEKO_GUI_TREE_MAX_ELEMENT_SIZE sizeof(std::string)  // larger values generate less tree nodes
-#endif
-#ifndef NEKO_GUI_TREE_MAX_TUPLE_ELEMENTS
-#define NEKO_GUI_TREE_MAX_TUPLE_ELEMENTS 3  // larger values generate less tree nodes
-#endif
+#define __neko_imgui_tree_max_elementsize sizeof(std::string)
+#define __neko_imgui_tree_max_tuple 3
 
 neko_static_inline ImVec4 vec4_to_imvec4(const neko_vec4 &v4) { return {v4.x, v4.y, v4.z, v4.w}; }
 neko_static_inline ImColor vec4_to_imcolor(const neko_vec4 &v4) { return {v4.x * 255.0f, v4.y * 255.0f, v4.z * 255.0f, v4.w * 255.0f}; }
 
-namespace ImGui {
+namespace neko::imgui {
 
-// This is the function that this libary implements. (It's just a wrapper around the class ImGui::Auto_t<AnyType>)
+// 这就是这个库实现的功能 只是类 neko::imgui::Auto_t<AnyType> 的包装
 template <typename AnyType>
 void Auto(AnyType &anything, const std::string &name = std::string());
-
-//      HELPER FUNCTIONS
-//      ================
 
 // same as std::as_const in c++17
 template <class T>
@@ -57,7 +49,6 @@ constexpr std::add_const_t<T> &as_const(T &t) noexcept {
     return t;
 }
 
-#pragma region DETAIL
 namespace detail {
 
 template <typename T>
@@ -101,52 +92,33 @@ void AutoTuple(const std::string &name, const std::tuple<Args...> &tpl);
 template <typename T, std::size_t N>
 using c_array_t = T[N];  // so arrays are regular types and can be used in macro
 
-// template<typename Container> inline std::size_t AutoContainerSize(Container &cont, std::enable_if_t< std::is_array_v<Container>>*=0){    return sizeof(Container) /
-// sizeof(decltype(*std::begin(cont)));} template<typename Container> inline std::size_t AutoContainerSize(Container &cont, std::enable_if_t<!std::is_array_v<Container>> *= 0) { return cont.size(); }
-
 }  // namespace detail
-#pragma endregion
 
-//      PRIMARY TEMPLATE
-//      ================
-// This implements the struct to tuple scenario
 template <typename AnyType>
 struct Auto_t {
     static void Auto(AnyType &anything, const std::string &name) {
-        static_assert(
-                !std::is_reference_v<AnyType> && std::is_copy_constructible_v<std::remove_all_extents_t<AnyType>> && !std::is_polymorphic_v<AnyType> &&
-                        ME::cpp::pfr::detail::is_aggregate_initializable_n<AnyType, ME::cpp::pfr::detail::detect_fields_count_dispatch<AnyType>(ME::cpp::pfr::detail::size_t_<sizeof(AnyType) * 8>{},
-                                                                                                                                                1L)>::value,  // If the above is not a constexpr
-                expression,
-                // you are yousing an invalid type
-                "This type cannot be converted to a tuple.");
-        auto tuple = ME::cpp::pfr::structure_tie(anything);
-        ImGui::detail::AutoTuple("Struct " + name, tuple);
+        // auto tuple = neko::cpp::pfr::structure_tie(anything);
+        // neko::imgui::detail::AutoTuple("Struct " + name, tuple);
+        static_assert("Auto not support struct!");
     }
-};  // ImGui::Auto_t<>::Auto()
-}  // namespace ImGui
+};
+}  // namespace neko::imgui
 
-// Implementation of ImGui::Auto()
 template <typename AnyType>
-inline void ImGui::Auto(AnyType &anything, const std::string &name) {
-    ImGui::Auto_t<AnyType>::Auto(anything, name);
+inline void neko::imgui::Auto(AnyType &anything, const std::string &name) {
+    neko::imgui::Auto_t<AnyType>::Auto(anything, name);
 }
 
-//      HELPER FUNCTIONS
-//      ================
-
-#pragma region UTILS
-
 template <typename T>
-bool ImGui::detail::AutoExpand(const std::string &name, T &value) {
-    if (sizeof(T) <= NEKO_GUI_TREE_MAX_ELEMENT_SIZE) {
+bool neko::imgui::detail::AutoExpand(const std::string &name, T &value) {
+    if (sizeof(T) <= __neko_imgui_tree_max_elementsize) {
         ImGui::PushID(name.c_str());
         ImGui::Bullet();
-        ImGui::Auto_t<T>::Auto(value, name);
+        neko::imgui::Auto_t<T>::Auto(value, name);
         ImGui::PopID();
         return true;
     } else if (ImGui::TreeNode(name.c_str())) {
-        ImGui::Auto_t<T>::Auto(value, name);
+        neko::imgui::Auto_t<T>::Auto(value, name);
         ImGui::TreePop();
         return true;
     } else
@@ -154,17 +126,17 @@ bool ImGui::detail::AutoExpand(const std::string &name, T &value) {
 }
 
 template <typename Container>
-bool ImGui::detail::AutoContainerTreeNode(const std::string &name, Container &cont) {
-    // std::size_t size = ImGui::detail::AutoContainerSize(cont);
+bool neko::imgui::detail::AutoContainerTreeNode(const std::string &name, Container &cont) {
+    // std::size_t size = neko::imgui::detail::AutoContainerSize(cont);
     std::size_t size = cont.size();
     if (ImGui::CollapsingHeader(name.c_str())) {
         size_t elemsize = sizeof(decltype(*std::begin(cont)));
         ImGui::Text("大小: %d, 非动态元素大小: %d bytes", (int)size, (int)elemsize);
         return true;
     } else {
-        float label_width = CalcTextSize(name.c_str()).x + ImGui::GetTreeNodeToLabelSpacing() + 5;
+        float label_width = ImGui::CalcTextSize(name.c_str()).x + ImGui::GetTreeNodeToLabelSpacing() + 5;
         std::string sizetext = "(大小 = " + std::to_string(size) + ')';
-        float sizet_width = CalcTextSize(sizetext.c_str()).x;
+        float sizet_width = ImGui::CalcTextSize(sizetext.c_str()).x;
         float avail_width = ImGui::GetContentRegionAvail().x;
         if (avail_width > label_width + sizet_width) {
             ImGui::SameLine(avail_width - sizet_width);
@@ -174,14 +146,14 @@ bool ImGui::detail::AutoContainerTreeNode(const std::string &name, Container &co
     }
 }
 template <typename Container>
-bool ImGui::detail::AutoContainerValues(const std::string &name, Container &cont) {
-    if (ImGui::detail::AutoContainerTreeNode(name, cont)) {
+bool neko::imgui::detail::AutoContainerValues(const std::string &name, Container &cont) {
+    if (neko::imgui::detail::AutoContainerTreeNode(name, cont)) {
         ImGui::Indent();
         ImGui::PushID(name.c_str());
         std::size_t i = 0;
         for (auto &elem : cont) {
             std::string itemname = "[" + std::to_string(i) + ']';
-            ImGui::detail::AutoExpand(itemname, elem);
+            neko::imgui::detail::AutoExpand(itemname, elem);
             ++i;
         }
         ImGui::PopID();
@@ -191,8 +163,8 @@ bool ImGui::detail::AutoContainerValues(const std::string &name, Container &cont
         return false;
 }
 template <typename Container>
-bool ImGui::detail::AutoMapContainerValues(const std::string &name, Container &cont) {
-    if (ImGui::detail::AutoContainerTreeNode(name, cont)) {
+bool neko::imgui::detail::AutoMapContainerValues(const std::string &name, Container &cont) {
+    if (neko::imgui::detail::AutoContainerTreeNode(name, cont)) {
         ImGui::Indent();
         std::size_t i = 0;
         for (auto &elem : cont) {
@@ -207,425 +179,329 @@ bool ImGui::detail::AutoMapContainerValues(const std::string &name, Container &c
         return false;
 }
 template <typename Container>
-void ImGui::detail::AutoContainerPushFrontButton(Container &cont) {
+void neko::imgui::detail::AutoContainerPushFrontButton(Container &cont) {
     if (ImGui::SmallButton("Push Front")) cont.emplace_front();
 }
 template <typename Container>
-void ImGui::detail::AutoContainerPushBackButton(Container &cont) {
+void neko::imgui::detail::AutoContainerPushBackButton(Container &cont) {
     if (ImGui::SmallButton("Push Back ")) cont.emplace_back();
 }
 template <typename Container>
-void ImGui::detail::AutoContainerPopFrontButton(Container &cont) {
+void neko::imgui::detail::AutoContainerPopFrontButton(Container &cont) {
     if (!cont.empty() && ImGui::SmallButton("Pop Front ")) cont.pop_front();
 }
 template <typename Container>
-void ImGui::detail::AutoContainerPopBackButton(Container &cont) {
+void neko::imgui::detail::AutoContainerPopBackButton(Container &cont) {
     if (!cont.empty() && ImGui::SmallButton("Pop Back  ")) cont.pop_back();
 }
 template <typename Key, typename var>
-void ImGui::detail::AutoMapKeyValue(Key &key, var &value) {
-    bool b_k = sizeof(Key) <= NEKO_GUI_TREE_MAX_ELEMENT_SIZE;
-    bool b_v = sizeof(var) <= NEKO_GUI_TREE_MAX_ELEMENT_SIZE;
+void neko::imgui::detail::AutoMapKeyValue(Key &key, var &value) {
+    bool b_k = sizeof(Key) <= __neko_imgui_tree_max_elementsize;
+    bool b_v = sizeof(var) <= __neko_imgui_tree_max_elementsize;
     if (b_k) {
         ImGui::TextUnformatted("[");
         ImGui::SameLine();
-        ImGui::Auto_t<Key>::Auto(key, "");
+        neko::imgui::Auto_t<Key>::Auto(key, "");
         ImGui::SameLine();
         ImGui::TextUnformatted("]");
         if (b_v) ImGui::SameLine();
-        ImGui::Auto_t<var>::Auto(value, "Value");
+        neko::imgui::Auto_t<var>::Auto(value, "Value");
     } else {
-        ImGui::Auto_t<Key>::Auto(key, "Key");
-        ImGui::Auto_t<var>::Auto(value, "Value");
+        neko::imgui::Auto_t<Key>::Auto(key, "Key");
+        neko::imgui::Auto_t<var>::Auto(value, "Value");
     }
 }
 
 template <std::size_t I, typename... Args>
-void ImGui::detail::AutoTupleRecurse(std::tuple<Args...> &tpl, std::enable_if_t<0 != I> *) {
-    ImGui::detail::AutoTupleRecurse<I - 1, Args...>(tpl);  // first draw smaller indeces
+void neko::imgui::detail::AutoTupleRecurse(std::tuple<Args...> &tpl, std::enable_if_t<0 != I> *) {
+    neko::imgui::detail::AutoTupleRecurse<I - 1, Args...>(tpl);  // first draw smaller indeces
     using type = decltype(std::get<I - 1>(tpl));
     std::string str = '<' + std::to_string(I) + ">: " + (std::is_const_v<type> ? "const " : "") + typeid(type).name();
-    ImGui::detail::AutoExpand(str, std::get<I - 1>(tpl));
+    neko::imgui::detail::AutoExpand(str, std::get<I - 1>(tpl));
 }
 template <std::size_t I, typename... Args>
-void ImGui::detail::AutoTupleRecurse(const std::tuple<Args...> &tpl, std::enable_if_t<0 != I> *) {
-    ImGui::detail::AutoTupleRecurse<I - 1, const Args...>(tpl);  // first draw smaller indeces
+void neko::imgui::detail::AutoTupleRecurse(const std::tuple<Args...> &tpl, std::enable_if_t<0 != I> *) {
+    neko::imgui::detail::AutoTupleRecurse<I - 1, const Args...>(tpl);  // first draw smaller indeces
     using type = decltype(std::get<I - 1>(tpl));
     std::string str = '<' + std::to_string(I) + ">: " + "const " + typeid(type).name();
-    ImGui::detail::AutoExpand(str, ImGui::as_const(std::get<I - 1>(tpl)));
+    neko::imgui::detail::AutoExpand(str, ImGui::as_const(std::get<I - 1>(tpl)));
 }
 template <typename... Args>
-void ImGui::detail::AutoTuple(const std::string &name, std::tuple<Args...> &tpl) {
+void neko::imgui::detail::AutoTuple(const std::string &name, std::tuple<Args...> &tpl) {
     constexpr std::size_t tuple_size = sizeof(decltype(tpl));
     constexpr std::size_t tuple_numelems = sizeof...(Args);
-    if (tuple_size <= NEKO_GUI_TREE_MAX_ELEMENT_SIZE && tuple_numelems <= NEKO_GUI_TREE_MAX_TUPLE_ELEMENTS) {
+    if (tuple_size <= __neko_imgui_tree_max_elementsize && tuple_numelems <= __neko_imgui_tree_max_tuple) {
         ImGui::TextUnformatted((name + " (" + std::to_string(tuple_size) + " bytes)").c_str());
         ImGui::PushID(name.c_str());
         ImGui::Indent();
-        ImGui::detail::AutoTupleRecurse<tuple_numelems, Args...>(tpl);
+        neko::imgui::detail::AutoTupleRecurse<tuple_numelems, Args...>(tpl);
         ImGui::Unindent();
         ImGui::PopID();
     } else if (ImGui::TreeNode((name + " (" + std::to_string(tuple_size) + " bytes)").c_str())) {
-        ImGui::detail::AutoTupleRecurse<tuple_numelems, Args...>(tpl);
+        neko::imgui::detail::AutoTupleRecurse<tuple_numelems, Args...>(tpl);
         ImGui::TreePop();
     }
 }
 template <typename... Args>
-void ImGui::detail::AutoTuple(const std::string &name,
-                              const std::tuple<Args...> &tpl)  // same but const
+void neko::imgui::detail::AutoTuple(const std::string &name,
+                                    const std::tuple<Args...> &tpl)  // same but const
 {
     constexpr std::size_t tuple_size = sizeof(std::tuple<Args...>);
     constexpr std::size_t tuple_numelems = sizeof...(Args);
-    if (tuple_size <= NEKO_GUI_TREE_MAX_ELEMENT_SIZE && tuple_numelems <= NEKO_GUI_TREE_MAX_TUPLE_ELEMENTS) {
+    if (tuple_size <= __neko_imgui_tree_max_elementsize && tuple_numelems <= __neko_imgui_tree_max_tuple) {
         ImGui::TextUnformatted((name + " !(" + std::to_string(tuple_size) + " bytes)").c_str());
         ImGui::PushID(name.c_str());
         ImGui::Indent();
-        ImGui::detail::AutoTupleRecurse<tuple_numelems, Args...>(tpl);
+        neko::imgui::detail::AutoTupleRecurse<tuple_numelems, Args...>(tpl);
         ImGui::Unindent();
         ImGui::PopID();
     } else if (ImGui::TreeNode((name + " (" + std::to_string(tuple_size) + " bytes)").c_str())) {
-        ImGui::detail::AutoTupleRecurse<tuple_numelems, Args...>(tpl);
+        neko::imgui::detail::AutoTupleRecurse<tuple_numelems, Args...>(tpl);
         ImGui::TreePop();
     }
 }
 
-#pragma endregion
+// 在此版本中将 templatespec 和 typespec 括在括号中
+#define __neko_imgui_def_begin_p(templatespec, typespec)                 \
+    namespace neko::imgui {                                              \
+    neko_va_unpack templatespec struct Auto_t<neko_va_unpack typespec> { \
+        static void Auto(neko_va_unpack typespec &var, const std::string &name) {
 
-//      HELPER MACROS
-//      =============
+// 如果宏参数内部没有逗号 请使用不带括号的此版本
+#define __neko_imgui_def_begin(templatespec, typespec) __neko_imgui_def_begin_p((templatespec), (typespec))
 
-#define UNPACK(...) __VA_ARGS__  // for unpacking parentheses. It is needed for macro arguments with commmas
-// Enclose templatespec, AND typespec in parentheses in this version. Useful if there are commas in the argument.
-#define NEKO_GUI_DEFINE_BEGIN_P(templatespec, typespec)  \
-    namespace ImGui {                                    \
-    UNPACK templatespec struct Auto_t<UNPACK typespec> { \
-        static void Auto(UNPACK typespec &var, const std::string &name) {
-// If macro arguments have no commmas inside use this version without parentheses
-#define NEKO_GUI_DEFINE_BEGIN(templatespec, typespec) NEKO_GUI_DEFINE_BEGIN_P((templatespec), (typespec))  // when there are no commas in types, use this without parentheses
-#define NEKO_GUI_DEFINE_END \
-    }                       \
-    }                       \
-    ;                       \
+#define __neko_imgui_def_end() \
+    }                          \
+    }                          \
+    ;                          \
     }
-#define NEKO_GUI_DEFINE_INLINE_P(template_spec, type_spec, code) NEKO_GUI_DEFINE_BEGIN_P(template_spec, type_spec) code NEKO_GUI_DEFINE_END
-#define NEKO_GUI_DEFINE_INLINE(template_spec, type_spec, code) NEKO_GUI_DEFINE_INLINE_P((template_spec), (type_spec), code)
 
-#ifndef NEKO_GUI_INPUT_FLOAT1
-#define NEKO_GUI_INPUT_FLOAT1 ImGui::DragFloat
-#endif
-#ifndef NEKO_GUI_INPUT_FLOAT2
-#define NEKO_GUI_INPUT_FLOAT2 ImGui::DragFloat2
-#endif
-#ifndef NEKO_GUI_INPUT_FLOAT3
-#define NEKO_GUI_INPUT_FLOAT3 ImGui::DragFloat3
-#endif
-#ifndef NEKO_GUI_INPUT_FLOAT4
-#define NEKO_GUI_INPUT_FLOAT4 ImGui::DragFloat4
-#endif
-#ifndef NEKO_GUI_INPUT_INT1
-#define NEKO_GUI_INPUT_INT1 ImGui::InputInt
-#endif
-#ifndef NEKO_GUI_INPUT_INT2
-#define NEKO_GUI_INPUT_INT2 ImGui::InputInt2
-#endif
-#ifndef NEKO_GUI_INPUT_INT3
-#define NEKO_GUI_INPUT_INT3 ImGui::InputInt3
-#endif
-#ifndef NEKO_GUI_INPUT_INT4
-#define NEKO_GUI_INPUT_INT4 ImGui::InputInt4
-#endif
-#ifndef NEKO_GUI_NULLPTR_COLOR
+#define __neko_imgui_def_inline_p(template_spec, type_spec, code) __neko_imgui_def_begin_p(template_spec, type_spec) code __neko_imgui_def_end()
+
+#define __neko_imgui_def_inline(template_spec, type_spec, code) __neko_imgui_def_inline_p((template_spec), (type_spec), code)
+
 #define NEKO_GUI_NULLPTR_COLOR ImVec4(1.0, 0.5, 0.5, 1.0)
-#endif
 
-//      SPECIALIZATIONS
-//      ===============
+__neko_imgui_def_begin(template <>, const_str) if (name.empty()) ImGui::TextUnformatted(var);
+else ImGui::Text("%s=%s", name.c_str(), var);
+__neko_imgui_def_end();
 
-#pragma region STRINGS
+__neko_imgui_def_begin_p((template <std::size_t N>), (const detail::c_array_t<char, N>)) if (name.empty()) ImGui::TextUnformatted(var, var + N - 1);
+else ImGui::Text("%s=%s", name.c_str(), var);
+__neko_imgui_def_end();
 
-NEKO_GUI_DEFINE_BEGIN(template <>, const char *)
-if (name.empty())
-    ImGui::TextUnformatted(var);
-else
-    ImGui::Text("%s=%s", name.c_str(), var);
-NEKO_GUI_DEFINE_END
+__neko_imgui_def_inline(template <>, char *, const_str tmp = var; neko::imgui::Auto_t<const_str>::Auto(tmp, name););
 
-NEKO_GUI_DEFINE_BEGIN_P((template <std::size_t N>), (const detail::c_array_t<char, N>))
-if (name.empty())
-    ImGui::TextUnformatted(var, var + N - 1);
-else
-    ImGui::Text("%s=%s", name.c_str(), var);
-NEKO_GUI_DEFINE_END
+__neko_imgui_def_inline(template <>, char *const, const_str tmp = var; neko::imgui::Auto_t<const_str>::Auto(tmp, name););
 
-NEKO_GUI_DEFINE_INLINE(template <>, char *, const char *tmp = var; ImGui::Auto_t<const char *>::Auto(tmp, name);)
-NEKO_GUI_DEFINE_INLINE(template <>, char *const, const char *tmp = var; ImGui::Auto_t<const char *>::Auto(tmp, name);)
-NEKO_GUI_DEFINE_INLINE(template <>, const char *const, const char *tmp = var; ImGui::Auto_t<const char *>::Auto(tmp, name);)
-NEKO_GUI_DEFINE_BEGIN(template <>, std::string)
-const std::size_t lines = var.find('\n');
+__neko_imgui_def_inline(template <>, const_str const, const_str tmp = var; neko::imgui::Auto_t<const_str>::Auto(tmp, name););
+
+__neko_imgui_def_begin(template <>, std::string) const std::size_t lines = var.find('\n');
 if (var.find('\n') != std::string::npos)
     ImGui::InputTextMultiline(name.c_str(), const_cast<char *>(var.c_str()), 256);
 else
     ImGui::InputText(name.c_str(), const_cast<char *>(var.c_str()), 256);
-NEKO_GUI_DEFINE_END
-NEKO_GUI_DEFINE_BEGIN(template <>, const std::string)
-if (name.empty())
-    ImGui::TextUnformatted(var.c_str(), var.c_str() + var.length());
-else
-    ImGui::Text("%s=%s", name.c_str(), var.c_str());
-NEKO_GUI_DEFINE_END
+__neko_imgui_def_end();
+__neko_imgui_def_begin(template <>, const std::string) if (name.empty()) ImGui::TextUnformatted(var.c_str(), var.c_str() + var.length());
+else ImGui::Text("%s=%s", name.c_str(), var.c_str());
+__neko_imgui_def_end();
 
-#pragma endregion
+__neko_imgui_def_inline(template <>, float, ImGui::DragFloat(name.c_str(), &var););
+__neko_imgui_def_inline(template <>, int, ImGui::InputInt(name.c_str(), &var););
+__neko_imgui_def_inline(template <>, unsigned int, ImGui::InputInt(name.c_str(), (int *)&var););
+__neko_imgui_def_inline(template <>, bool, ImGui::Checkbox(name.c_str(), &var););
+__neko_imgui_def_inline(template <>, ImVec2, ImGui::DragFloat2(name.c_str(), &var.x););
+__neko_imgui_def_inline(template <>, ImVec4, ImGui::DragFloat4(name.c_str(), &var.x););
+__neko_imgui_def_inline(template <>, const float, neko::imgui::Auto_t<const std::string>::Auto(std::to_string(var), name););
+__neko_imgui_def_inline(template <>, const int, neko::imgui::Auto_t<const std::string>::Auto(std::to_string(var), name););
+__neko_imgui_def_inline(template <>, const unsigned, neko::imgui::Auto_t<const std::string>::Auto(std::to_string(var), name););
+__neko_imgui_def_inline(template <>, const bool, neko::imgui::Auto_t<const std::string>::Auto(std::to_string(var), name););
+__neko_imgui_def_inline(template <>, const ImVec2, ImGui::Text("%s(%f,%f)", (name.empty() ? "" : name + "=").c_str(), var.x, var.y););
+__neko_imgui_def_inline(template <>, const ImVec4, ImGui::Text("%s(%f,%f,%f,%f)", (name.empty() ? "" : name + "=").c_str(), var.x, var.y, var.z, var.w););
 
-#pragma region NUMBERS
+#define INTERNAL_NUM(_c, _imn)                                                                               \
+    __neko_imgui_def_inline(template <>, _c, ImGui::InputScalar(name.c_str(), ImGuiDataType_##_imn, &var);); \
+    __neko_imgui_def_inline(template <>, const _c, neko::imgui::Auto_t<const std::string>::Auto(std::to_string(var), name);)
 
-NEKO_GUI_DEFINE_INLINE(template <>, float, NEKO_GUI_INPUT_FLOAT1(name.c_str(), &var);)
-NEKO_GUI_DEFINE_INLINE(template <>, int, NEKO_GUI_INPUT_INT1(name.c_str(), &var);)
-NEKO_GUI_DEFINE_INLINE(template <>, unsigned int, NEKO_GUI_INPUT_INT1(name.c_str(), (int *)&var);)
-NEKO_GUI_DEFINE_INLINE(template <>, bool, ImGui::Checkbox(name.c_str(), &var);)
-NEKO_GUI_DEFINE_INLINE(template <>, ImVec2, NEKO_GUI_INPUT_FLOAT2(name.c_str(), &var.x);)
-NEKO_GUI_DEFINE_INLINE(template <>, ImVec4, NEKO_GUI_INPUT_FLOAT4(name.c_str(), &var.x);)
-NEKO_GUI_DEFINE_INLINE(template <>, const float, ImGui::Auto_t<const std::string>::Auto(std::to_string(var), name);)
-NEKO_GUI_DEFINE_INLINE(template <>, const int, ImGui::Auto_t<const std::string>::Auto(std::to_string(var), name);)
-NEKO_GUI_DEFINE_INLINE(template <>, const unsigned, ImGui::Auto_t<const std::string>::Auto(std::to_string(var), name);)
-NEKO_GUI_DEFINE_INLINE(template <>, const bool, ImGui::Auto_t<const std::string>::Auto(std::to_string(var), name);)
-NEKO_GUI_DEFINE_INLINE(template <>, const ImVec2, ImGui::Text("%s(%f,%f)", (name.empty() ? "" : name + "=").c_str(), var.x, var.y);)
-NEKO_GUI_DEFINE_INLINE(template <>, const ImVec4, ImGui::Text("%s(%f,%f,%f,%f)", (name.empty() ? "" : name + "=").c_str(), var.x, var.y, var.z, var.w);)
+INTERNAL_NUM(u8, U8);
+INTERNAL_NUM(u16, U16);
+INTERNAL_NUM(u64, U64);
+INTERNAL_NUM(s8, S8);
+INTERNAL_NUM(s16, S16);
+INTERNAL_NUM(s64, S64);
 
-#define INTERNAL_NUM(_c, _imn)                                                                             \
-    NEKO_GUI_DEFINE_INLINE(template <>, _c, ImGui::InputScalar(name.c_str(), ImGuiDataType_##_imn, &var);) \
-    NEKO_GUI_DEFINE_INLINE(template <>, const _c, ImGui::Auto_t<const std::string>::Auto(std::to_string(var), name);)
+__neko_imgui_def_inline_p((template <>), (detail::c_array_t<float, 1>), ImGui::DragFloat(name.c_str(), &var[0]););
+__neko_imgui_def_inline_p((template <>), (const detail::c_array_t<float, 1>), ImGui::Text("%s%f", (name.empty() ? "" : name + "=").c_str(), var[0]););
+__neko_imgui_def_inline_p((template <>), (detail::c_array_t<float, 2>), ImGui::DragFloat2(name.c_str(), &var[0]););
+__neko_imgui_def_inline_p((template <>), (const detail::c_array_t<float, 2>), ImGui::Text("%s(%f,%f)", (name.empty() ? "" : name + "=").c_str(), var[0], var[1]););
+__neko_imgui_def_inline_p((template <>), (detail::c_array_t<float, 3>), ImGui::DragFloat3(name.c_str(), &var[0]););
+__neko_imgui_def_inline_p((template <>), (const detail::c_array_t<float, 3>), ImGui::Text("%s(%f,%f,%f)", (name.empty() ? "" : name + "=").c_str(), var[0], var[1], var[2]););
+__neko_imgui_def_inline_p((template <>), (detail::c_array_t<float, 4>), ImGui::DragFloat4(name.c_str(), &var[0]););
+__neko_imgui_def_inline_p((template <>), (const detail::c_array_t<float, 4>), ImGui::Text("%s(%f,%f,%f,%f)", (name.empty() ? "" : name + "=").c_str(), var[0], var[1], var[2], var[3]););
 
-INTERNAL_NUM(u8, U8)
-INTERNAL_NUM(u16, U16)
-INTERNAL_NUM(u64, U64)
-INTERNAL_NUM(s8, S8)
-INTERNAL_NUM(s16, S16)
-INTERNAL_NUM(s64, S64)
+__neko_imgui_def_inline_p((template <>), (detail::c_array_t<int, 1>), ImGui::InputInt(name.c_str(), &var[0]););
+__neko_imgui_def_inline_p((template <>), (const detail::c_array_t<int, 1>), ImGui::Text("%s%d", (name.empty() ? "" : name + "=").c_str(), var[0]););
+__neko_imgui_def_inline_p((template <>), (detail::c_array_t<int, 2>), ImGui::InputInt2(name.c_str(), &var[0]););
+__neko_imgui_def_inline_p((template <>), (const detail::c_array_t<int, 2>), ImGui::Text("%s(%d,%d)", (name.empty() ? "" : name + "=").c_str(), var[0], var[1]););
+__neko_imgui_def_inline_p((template <>), (detail::c_array_t<int, 3>), ImGui::InputInt3(name.c_str(), &var[0]););
+__neko_imgui_def_inline_p((template <>), (const detail::c_array_t<int, 3>), ImGui::Text("%s(%d,%d,%d)", (name.empty() ? "" : name + "=").c_str(), var[0], var[1], var[2]););
+__neko_imgui_def_inline_p((template <>), (detail::c_array_t<int, 4>), ImGui::InputInt4(name.c_str(), &var[0]););
+__neko_imgui_def_inline_p((template <>), (const detail::c_array_t<int, 4>), ; ImGui::Text("%s(%d,%d,%d,%d)", (name.empty() ? "" : name + "=").c_str(), var[0], var[1], var[2], var[3]););
 
-NEKO_GUI_DEFINE_INLINE_P((template <>), (detail::c_array_t<float, 1>), NEKO_GUI_INPUT_FLOAT1(name.c_str(), &var[0]);)
-NEKO_GUI_DEFINE_INLINE_P((template <>), (const detail::c_array_t<float, 1>), ImGui::Text("%s%f", (name.empty() ? "" : name + "=").c_str(), var[0]);)
-NEKO_GUI_DEFINE_INLINE_P((template <>), (detail::c_array_t<float, 2>), NEKO_GUI_INPUT_FLOAT2(name.c_str(), &var[0]);)
-NEKO_GUI_DEFINE_INLINE_P((template <>), (const detail::c_array_t<float, 2>), ImGui::Text("%s(%f,%f)", (name.empty() ? "" : name + "=").c_str(), var[0], var[1]);)
-NEKO_GUI_DEFINE_INLINE_P((template <>), (detail::c_array_t<float, 3>), NEKO_GUI_INPUT_FLOAT3(name.c_str(), &var[0]);)
-NEKO_GUI_DEFINE_INLINE_P((template <>), (const detail::c_array_t<float, 3>), ImGui::Text("%s(%f,%f,%f)", (name.empty() ? "" : name + "=").c_str(), var[0], var[1], var[2]);)
-NEKO_GUI_DEFINE_INLINE_P((template <>), (detail::c_array_t<float, 4>), NEKO_GUI_INPUT_FLOAT4(name.c_str(), &var[0]);)
-NEKO_GUI_DEFINE_INLINE_P((template <>), (const detail::c_array_t<float, 4>), ImGui::Text("%s(%f,%f,%f,%f)", (name.empty() ? "" : name + "=").c_str(), var[0], var[1], var[2], var[3]);)
+__neko_imgui_def_begin(template <typename T>, T *) if (var != nullptr) neko::imgui::detail::AutoExpand<T>("Pointer " + name, *var);
+else ImGui::TextColored(NEKO_GUI_NULLPTR_COLOR, "%s=NULL", name.c_str());
+__neko_imgui_def_end();
 
-NEKO_GUI_DEFINE_INLINE_P((template <>), (detail::c_array_t<int, 1>), NEKO_GUI_INPUT_INT1(name.c_str(), &var[0]);)
-NEKO_GUI_DEFINE_INLINE_P((template <>), (const detail::c_array_t<int, 1>), ImGui::Text("%s%d", (name.empty() ? "" : name + "=").c_str(), var[0]);)
-NEKO_GUI_DEFINE_INLINE_P((template <>), (detail::c_array_t<int, 2>), NEKO_GUI_INPUT_INT2(name.c_str(), &var[0]);)
-NEKO_GUI_DEFINE_INLINE_P((template <>), (const detail::c_array_t<int, 2>), ImGui::Text("%s(%d,%d)", (name.empty() ? "" : name + "=").c_str(), var[0], var[1]);)
-NEKO_GUI_DEFINE_INLINE_P((template <>), (detail::c_array_t<int, 3>), NEKO_GUI_INPUT_INT3(name.c_str(), &var[0]);)
-NEKO_GUI_DEFINE_INLINE_P((template <>), (const detail::c_array_t<int, 3>), ImGui::Text("%s(%d,%d,%d)", (name.empty() ? "" : name + "=").c_str(), var[0], var[1], var[2]);)
-NEKO_GUI_DEFINE_INLINE_P((template <>), (detail::c_array_t<int, 4>), NEKO_GUI_INPUT_INT4(name.c_str(), &var[0]);)
-NEKO_GUI_DEFINE_INLINE_P((template <>), (const detail::c_array_t<int, 4>), ImGui::Text("%s(%d,%d,%d,%d)", (name.empty() ? "" : name + "=").c_str(), var[0], var[1], var[2], var[3]);)
+__neko_imgui_def_begin(template <typename T>, T *const) if (var != nullptr) neko::imgui::detail::AutoExpand<T>("Pointer " + name, *var);
+else ImGui::TextColored(NEKO_GUI_NULLPTR_COLOR, "%s=NULL", name.c_str());
+__neko_imgui_def_end();
 
-#pragma endregion
+__neko_imgui_def_inline_p((template <typename T, std::size_t N>), (std::array<T, N>), neko::imgui::detail::AutoContainerValues("array " + name, var););
+__neko_imgui_def_inline_p((template <typename T, std::size_t N>), (const std::array<T, N>), neko::imgui::detail::AutoContainerValues("array " + name, var););
+__neko_imgui_def_inline_p((template <typename T, std::size_t N>), (detail::c_array_t<T, N>), neko::imgui::detail::AutoContainerValues("Array " + name, *(std::array<T, N> *)(&var)););
+__neko_imgui_def_inline_p((template <typename T, std::size_t N>), (const detail::c_array_t<T, N>), neko::imgui::detail::AutoContainerValues("Array " + name, *(const std::array<T, N> *)(&var)););
 
-#pragma region POINTERS and ARRAYS
-NEKO_GUI_DEFINE_BEGIN(template <typename T>, T *)
-if (var != nullptr)
-    ImGui::detail::AutoExpand<T>("Pointer " + name, *var);
-else
-    ImGui::TextColored(NEKO_GUI_NULLPTR_COLOR, "%s=NULL", name.c_str());
-NEKO_GUI_DEFINE_END
-NEKO_GUI_DEFINE_BEGIN(template <typename T>, T *const)
-if (var != nullptr)
-    ImGui::detail::AutoExpand<T>("Pointer " + name, *var);
-else
-    ImGui::TextColored(NEKO_GUI_NULLPTR_COLOR, "%s=NULL", name.c_str());
-NEKO_GUI_DEFINE_END
-
-NEKO_GUI_DEFINE_INLINE_P((template <typename T, std::size_t N>), (std::array<T, N>), ImGui::detail::AutoContainerValues("array " + name, var);)
-NEKO_GUI_DEFINE_INLINE_P((template <typename T, std::size_t N>), (const std::array<T, N>), ImGui::detail::AutoContainerValues("array " + name, var);)
-NEKO_GUI_DEFINE_INLINE_P((template <typename T, std::size_t N>), (detail::c_array_t<T, N>), ImGui::detail::AutoContainerValues("Array " + name, *(std::array<T, N> *)(&var));)
-NEKO_GUI_DEFINE_INLINE_P((template <typename T, std::size_t N>), (const detail::c_array_t<T, N>), ImGui::detail::AutoContainerValues("Array " + name, *(const std::array<T, N> *)(&var));)
-
-#pragma endregion
-
-#pragma region PAIRS and TUPLES
-
-NEKO_GUI_DEFINE_BEGIN_P((template <typename T1, typename T2>), (std::pair<T1, T2>))
-if ((std::is_fundamental_v<T1> || std::is_same_v<std::string, T1>)&&(std::is_fundamental_v<T2> || std::is_same_v<std::string, T2>)) {
+__neko_imgui_def_begin_p((template <typename T1, typename T2>),
+                         (std::pair<T1, T2>)) if ((std::is_fundamental_v<T1> || std::is_same_v<std::string, T1>)&&(std::is_fundamental_v<T2> || std::is_same_v<std::string, T2>)) {
     float width = ImGui::CalcItemWidth();
     ImGui::PushItemWidth(width * 0.4 - 10);  // a bit less than half
-    ImGui::detail::AutoExpand<T1>(name + ".first", var.first);
+    neko::imgui::detail::AutoExpand<T1>(name + ".first", var.first);
     ImGui::SameLine();
-    ImGui::detail::AutoExpand<T2>(name + ".second", var.second);
+    neko::imgui::detail::AutoExpand<T2>(name + ".second", var.second);
     ImGui::PopItemWidth();
-} else {
-    ImGui::detail::AutoExpand<T1>(name + ".first", var.first);
-    ImGui::detail::AutoExpand<T2>(name + ".second", var.second);
+}
+else {
+    neko::imgui::detail::AutoExpand<T1>(name + ".first", var.first);
+    neko::imgui::detail::AutoExpand<T2>(name + ".second", var.second);
 }
 
-NEKO_GUI_DEFINE_END
+__neko_imgui_def_end();
 
-NEKO_GUI_DEFINE_BEGIN_P((template <typename T1, typename T2>), (const std::pair<T1, T2>))
-ImGui::detail::AutoExpand<const T1>(name + ".first", var.first);
+__neko_imgui_def_begin_p((template <typename T1, typename T2>), (const std::pair<T1, T2>)) neko::imgui::detail::AutoExpand<const T1>(name + ".first", var.first);
 if (std::is_fundamental_v<T1> && std::is_fundamental_v<T2>) ImGui::SameLine();
-ImGui::detail::AutoExpand<const T2>(name + ".second", var.second);
-NEKO_GUI_DEFINE_END
+neko::imgui::detail::AutoExpand<const T2>(name + ".second", var.second);
+__neko_imgui_def_end();
 
-#ifdef _TUPLE_
-NEKO_GUI_DEFINE_INLINE(template <typename... Args>, std::tuple<Args...>, ImGui::detail::AutoTuple("Tuple " + name, var);)
-NEKO_GUI_DEFINE_INLINE(template <typename... Args>, const std::tuple<Args...>, ImGui::detail::AutoTuple("Tuple " + name, var);)
-#endif  //_TUPLE_
+__neko_imgui_def_inline(template <typename... Args>, std::tuple<Args...>, neko::imgui::detail::AutoTuple("Tuple " + name, var););
+__neko_imgui_def_inline(template <typename... Args>, const std::tuple<Args...>, neko::imgui::detail::AutoTuple("Tuple " + name, var););
 
-#pragma endregion
-
-#pragma region CONTAINERS
-NEKO_GUI_DEFINE_BEGIN(template <typename T>, std::vector<T>)
-if (ImGui::detail::AutoContainerValues<std::vector<T>>("Vector " + name, var)) {
+__neko_imgui_def_begin(template <typename T>, std::vector<T>) if (neko::imgui::detail::AutoContainerValues<std::vector<T>>("Vector " + name, var)) {
     ImGui::PushID(name.c_str());
     ImGui::Indent();
-    ImGui::detail::AutoContainerPushBackButton(var);
+    neko::imgui::detail::AutoContainerPushBackButton(var);
     if (!var.empty()) ImGui::SameLine();
-    ImGui::detail::AutoContainerPopBackButton(var);
+    neko::imgui::detail::AutoContainerPopBackButton(var);
     ImGui::PopID();
     ImGui::Unindent();
 }
-NEKO_GUI_DEFINE_END
-NEKO_GUI_DEFINE_BEGIN(template <>, std::vector<bool>)
-if (ImGui::detail::AutoContainerTreeNode<std::vector<bool>>("Vector " + name, var)) {
+__neko_imgui_def_end();
+
+__neko_imgui_def_begin(template <>, std::vector<bool>) if (neko::imgui::detail::AutoContainerTreeNode<std::vector<bool>>("Vector " + name, var)) {
     ImGui::Indent();
     for (int i = 0; i < var.size(); ++i) {
         bool b = var[i];
         ImGui::Bullet();
-        ImGui::Auto_t<bool>::Auto(b, '[' + std::to_string(i) + ']');
+        neko::imgui::Auto_t<bool>::Auto(b, '[' + std::to_string(i) + ']');
         var[i] = b;
     }
     ImGui::PushID(name.c_str());
     ImGui::Indent();
-    ImGui::detail::AutoContainerPushBackButton(var);
+    neko::imgui::detail::AutoContainerPushBackButton(var);
     if (!var.empty()) ImGui::SameLine();
-    ImGui::detail::AutoContainerPopBackButton(var);
+    neko::imgui::detail::AutoContainerPopBackButton(var);
     ImGui::PopID();
     ImGui::Unindent();
     ImGui::Unindent();
 }
-NEKO_GUI_DEFINE_END
+__neko_imgui_def_end();
 
-NEKO_GUI_DEFINE_BEGIN(template <typename T>, const std::vector<T>)
-ImGui::detail::AutoContainerValues<const std::vector<T>>("Vector " + name, var);
-NEKO_GUI_DEFINE_END
-NEKO_GUI_DEFINE_BEGIN(template <>, const std::vector<bool>)
-if (ImGui::detail::AutoContainerTreeNode<const std::vector<bool>>("Vector " + name, var)) {
+__neko_imgui_def_begin(template <typename T>, const std::vector<T>) neko::imgui::detail::AutoContainerValues<const std::vector<T>>("Vector " + name, var);
+__neko_imgui_def_end();
+
+__neko_imgui_def_begin(template <>, const std::vector<bool>) if (neko::imgui::detail::AutoContainerTreeNode<const std::vector<bool>>("Vector " + name, var)) {
     ImGui::Indent();
     for (int i = 0; i < var.size(); ++i) {
         ImGui::Bullet();
-        ImGui::Auto_t<const bool>::Auto(var[i], '[' + std::to_string(i) + ']');
+        neko::imgui::Auto_t<const bool>::Auto(var[i], '[' + std::to_string(i) + ']');
     }
     ImGui::Unindent();
 }
-NEKO_GUI_DEFINE_END
+__neko_imgui_def_end();
 
-NEKO_GUI_DEFINE_BEGIN(template <typename T>, std::list<T>)
-if (ImGui::detail::AutoContainerValues<std::list<T>>("List " + name, var)) {
+__neko_imgui_def_begin(template <typename T>, std::list<T>) if (neko::imgui::detail::AutoContainerValues<std::list<T>>("List " + name, var)) {
     ImGui::PushID(name.c_str());
     ImGui::Indent();
-    ImGui::detail::AutoContainerPushFrontButton(var);
+    neko::imgui::detail::AutoContainerPushFrontButton(var);
     ImGui::SameLine();
-    ImGui::detail::AutoContainerPushBackButton(var);
-    ImGui::detail::AutoContainerPopFrontButton(var);
+    neko::imgui::detail::AutoContainerPushBackButton(var);
+    neko::imgui::detail::AutoContainerPopFrontButton(var);
     if (!var.empty()) ImGui::SameLine();
-    ImGui::detail::AutoContainerPopBackButton(var);
+    neko::imgui::detail::AutoContainerPopBackButton(var);
     ImGui::PopID();
     ImGui::Unindent();
 }
-NEKO_GUI_DEFINE_END
-NEKO_GUI_DEFINE_BEGIN(template <typename T>, const std::list<T>)
-ImGui::detail::AutoContainerValues<const std::list<T>>("List " + name, var);
-NEKO_GUI_DEFINE_END
+__neko_imgui_def_end();
 
-NEKO_GUI_DEFINE_BEGIN(template <typename T>, std::deque<T>)
-if (ImGui::detail::AutoContainerValues<std::deque<T>>("Deque " + name, var)) {
+__neko_imgui_def_begin(template <typename T>, const std::list<T>) neko::imgui::detail::AutoContainerValues<const std::list<T>>("List " + name, var);
+__neko_imgui_def_end();
+
+__neko_imgui_def_begin(template <typename T>, std::deque<T>) if (neko::imgui::detail::AutoContainerValues<std::deque<T>>("Deque " + name, var)) {
     ImGui::PushID(name.c_str());
     ImGui::Indent();
-    ImGui::detail::AutoContainerPushFrontButton(var);
+    neko::imgui::detail::AutoContainerPushFrontButton(var);
     ImGui::SameLine();
-    ImGui::detail::AutoContainerPushBackButton(var);
-    ImGui::detail::AutoContainerPopFrontButton(var);
+    neko::imgui::detail::AutoContainerPushBackButton(var);
+    neko::imgui::detail::AutoContainerPopFrontButton(var);
     if (!var.empty()) ImGui::SameLine();
-    ImGui::detail::AutoContainerPopBackButton(var);
+    neko::imgui::detail::AutoContainerPopBackButton(var);
     ImGui::PopID();
     ImGui::Unindent();
 }
-NEKO_GUI_DEFINE_END
-NEKO_GUI_DEFINE_BEGIN(template <typename T>, const std::deque<T>)
-ImGui::detail::AutoContainerValues<const std::deque<T>>("Deque " + name, var);
-NEKO_GUI_DEFINE_END
+__neko_imgui_def_end();
 
-NEKO_GUI_DEFINE_BEGIN(template <typename T>, std::forward_list<T>)
-if (ImGui::detail::AutoContainerValues<std::forward_list<T>>("Forward list " + name, var)) {
+__neko_imgui_def_begin(template <typename T>, const std::deque<T>) neko::imgui::detail::AutoContainerValues<const std::deque<T>>("Deque " + name, var);
+__neko_imgui_def_end();
+
+__neko_imgui_def_begin(template <typename T>, std::forward_list<T>) if (neko::imgui::detail::AutoContainerValues<std::forward_list<T>>("Forward list " + name, var)) {
     ImGui::PushID(name.c_str());
     ImGui::Indent();
-    ImGui::detail::AutoContainerPushFrontButton(var);
+    neko::imgui::detail::AutoContainerPushFrontButton(var);
     if (!var.empty()) ImGui::SameLine();
-    ImGui::detail::AutoContainerPopFrontButton(var);
+    neko::imgui::detail::AutoContainerPopFrontButton(var);
     ImGui::PopID();
     ImGui::Unindent();
 }
-NEKO_GUI_DEFINE_END
-NEKO_GUI_DEFINE_BEGIN(template <typename T>, const std::forward_list<T>)
-ImGui::detail::AutoContainerValues<const std::forward_list<T>>("Forward list " + name, var);
-NEKO_GUI_DEFINE_END
+__neko_imgui_def_end();
+__neko_imgui_def_begin(template <typename T>, const std::forward_list<T>) neko::imgui::detail::AutoContainerValues<const std::forward_list<T>>("Forward list " + name, var);
+__neko_imgui_def_end();
 
-NEKO_GUI_DEFINE_BEGIN(template <typename T>, std::set<T>)
-ImGui::detail::AutoContainerValues<std::set<T>>("Set " + name, var);
+__neko_imgui_def_begin(template <typename T>, std::set<T>) neko::imgui::detail::AutoContainerValues<std::set<T>>("Set " + name, var);
 // todo insert
-NEKO_GUI_DEFINE_END
-NEKO_GUI_DEFINE_BEGIN(template <typename T>, const std::set<T>)
-ImGui::detail::AutoContainerValues<const std::set<T>>("Set " + name, var);
-NEKO_GUI_DEFINE_END
+__neko_imgui_def_end();
+__neko_imgui_def_begin(template <typename T>, const std::set<T>) neko::imgui::detail::AutoContainerValues<const std::set<T>>("Set " + name, var);
+__neko_imgui_def_end();
 
-NEKO_GUI_DEFINE_BEGIN(template <typename T>, std::unordered_set<T>)
-ImGui::detail::AutoContainerValues<std::unordered_set<T>>("Unordered set " + name, var);
+__neko_imgui_def_begin(template <typename T>, std::unordered_set<T>) neko::imgui::detail::AutoContainerValues<std::unordered_set<T>>("Unordered set " + name, var);
 // todo insert
-NEKO_GUI_DEFINE_END
-NEKO_GUI_DEFINE_BEGIN(template <typename T>, const std::unordered_set<T>)
-ImGui::detail::AutoContainerValues<const std::unordered_set<T>>("Unordered set " + name, var);
-NEKO_GUI_DEFINE_END
+__neko_imgui_def_end();
+__neko_imgui_def_begin(template <typename T>, const std::unordered_set<T>) neko::imgui::detail::AutoContainerValues<const std::unordered_set<T>>("Unordered set " + name, var);
+__neko_imgui_def_end();
 
-NEKO_GUI_DEFINE_BEGIN_P((template <typename K, typename V>), (std::map<K, V>))
-ImGui::detail::AutoMapContainerValues<std::map<K, V>>("Map " + name, var);
+__neko_imgui_def_begin_p((template <typename K, typename V>), (std::map<K, V>)) neko::imgui::detail::AutoMapContainerValues<std::map<K, V>>("Map " + name, var);
 // todo insert
-NEKO_GUI_DEFINE_END
-NEKO_GUI_DEFINE_BEGIN_P((template <typename K, typename V>), (const std::map<K, V>))
-ImGui::detail::AutoMapContainerValues<const std::map<K, V>>("Map " + name, var);
-NEKO_GUI_DEFINE_END
+__neko_imgui_def_end();
+__neko_imgui_def_begin_p((template <typename K, typename V>), (const std::map<K, V>)) neko::imgui::detail::AutoMapContainerValues<const std::map<K, V>>("Map " + name, var);
+__neko_imgui_def_end();
 
-NEKO_GUI_DEFINE_BEGIN_P((template <typename K, typename V>), (std::unordered_map<K, V>))
-ImGui::detail::AutoMapContainerValues<std::unordered_map<K, V>>("Unordered map " + name, var);
+__neko_imgui_def_begin_p((template <typename K, typename V>), (std::unordered_map<K, V>)) neko::imgui::detail::AutoMapContainerValues<std::unordered_map<K, V>>("Unordered map " + name, var);
 // todo insert
-NEKO_GUI_DEFINE_END
-NEKO_GUI_DEFINE_BEGIN_P((template <typename K, typename V>), (const std::unordered_map<K, V>))
-ImGui::detail::AutoMapContainerValues<const std::unordered_map<K, V>>("Unordered map " + name, var);
-NEKO_GUI_DEFINE_END
+__neko_imgui_def_end();
+__neko_imgui_def_begin_p((template <typename K, typename V>), (const std::unordered_map<K, V>)) neko::imgui::detail::AutoMapContainerValues<const std::unordered_map<K, V>>("Unordered map " + name,
+                                                                                                                                                                            var);
+__neko_imgui_def_end();
 
-#pragma endregion
-
-#pragma region FUNCTIONS
-
-NEKO_GUI_DEFINE_INLINE(template <>, std::add_pointer_t<void()>, if (ImGui::Button(name.c_str())) var();)
-NEKO_GUI_DEFINE_INLINE(template <>, const std::add_pointer_t<void()>, if (ImGui::Button(name.c_str())) var();)
-
-#pragma endregion
-
-// NEKO_GUI_DEFINE_BEGIN(template <typename T>, std::vector<T>)
-// if (ImGui::detail::AutoContainerValues<std::vector<T>>("MEVector " + name, var)) {
-//     ImGui::PushID(name.c_str());
-//     ImGui::Indent();
-//     ImGui::detail::AutoContainerPushBackButton(var);
-//     if (!var.empty()) ImGui::SameLine();
-//     ImGui::detail::AutoContainerPopBackButton(var);
-//     ImGui::PopID();
-//     ImGui::Unindent();
-// }
-// NEKO_GUI_DEFINE_END
-
-// NEKO_GUI_DEFINE_BEGIN(template <typename T>, const std::vector<T>)
-// ImGui::detail::AutoContainerValues<const std::vector<T>>("MEVector " + name, var);
-// NEKO_GUI_DEFINE_END
+__neko_imgui_def_inline(template <>, std::add_pointer_t<void()>, if (ImGui::Button(name.c_str())) var(););
+__neko_imgui_def_inline(template <>, const std::add_pointer_t<void()>, if (ImGui::Button(name.c_str())) var(););
 
 #pragma endregion ImGuiAuto
 
@@ -639,11 +515,11 @@ neko_inline ImVec4 neko_rgba2imvec(int r, int g, int b, int a = 255) {
 
 namespace neko::imgui {
 
-bool color_picker_3U32(const char *label, ImU32 *color, ImGuiColorEditFlags flags = 0);
+bool color_picker_3U32(const_str label, ImU32 *color, ImGuiColorEditFlags flags = 0);
 
 void file_browser(std::string &path);
 
-neko_inline void neko_imgui_help_marker(const char *desc) {
+neko_inline void neko_imgui_help_marker(const_str desc) {
     ImGui::TextDisabled("(?)");
     if (ImGui::IsItemHovered()) {
         ImGui::BeginTooltip();
@@ -760,7 +636,7 @@ inline void switch_button(std::string &&label, bool &checked) {
     draw_list->AddCircleFilled(ImVec2(checked ? (pos.x + width - radius) : (pos.x + radius), pos.y + radius), radius - 1.5F, IM_COL32_WHITE);
 }
 
-inline void comb(std::string &&icon, std::string &&label, const std::vector<const char *> &items, int &index) {
+inline void comb(std::string &&icon, std::string &&label, const std::vector<const_str> &items, int &index) {
     const auto p_w = ImGui::GetContentRegionAvail().x;
     aligned_text(icon + "    " + label, alignment::kVerticalCenter);
     ImGui::SameLine();
@@ -815,7 +691,7 @@ void neko_imgui_style();
 
 constexpr auto neko_imgui_color_from_byte = [](u8 r, u8 g, u8 b) { return ImVec4((f32)r / 255.0f, (f32)g / 255.0f, (f32)b / 255.0f, 1.0f); };
 
-auto neko_imgui_collapsing_header = [](const char *name) -> bool {
+auto neko_imgui_collapsing_header = [](const_str name) -> bool {
     ImGuiStyle &style = ImGui::GetStyle();
     ImGui::PushStyleColor(ImGuiCol_Header, style.Colors[ImGuiCol_Button]);
     ImGui::PushStyleColor(ImGuiCol_HeaderHovered, style.Colors[ImGuiCol_ButtonHovered]);
@@ -842,7 +718,5 @@ void neko_imgui_destroy();
 std::size_t __neko_imgui_meminuse();
 
 }  // namespace neko
-
-void ShowAutoTestWindow();
 
 #endif

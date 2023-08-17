@@ -3912,9 +3912,9 @@ FieldPtr neko_refl::GenerateFieldPtr() {
 
         if constexpr (NeedRegisterFieldType) RegisterType<Value>();
         if constexpr (has_virtual_base_v<Obj>) {
-            return {Type_of<Value>, field_offsetor<field_data>()};
+            return FieldPtr{Type_of<Value>, field_offsetor<field_data>()};
         } else {
-            return {Type_of<Value>, field_forward_offset_value(field_data)};
+            return FieldPtr{Type_of<Value>, field_forward_offset_value(field_data)};
         }
     } else if constexpr (std::is_enum_v<FieldData>) {
         if constexpr (NeedRegisterFieldType) RegisterType<FieldData>();
@@ -4396,7 +4396,7 @@ public:
     };
 
     constexpr VarRange(ObjectView obj, FieldFlag flag) noexcept
-        : objtree{ObjectTree{obj}}, flag{obj.GetPtr() ? flag : enum_within(flag, FieldFlag::Unowned)}, cvref_mode{obj.GetType().GetCVRefMode()} {
+        : objtree{ObjectTree{obj}}, flag{obj.GetPtr() ? flag : enum_within(flag, FieldFlag::Unowned)}, cvref_mode{obj.GetType().get_cvref_mode()} {
         neko_assert(!CVRefMode_IsVolatile(cvref_mode));
     }
 

@@ -9,7 +9,7 @@ using namespace neko::cpp;
 
 namespace neko::cpp::details {
 static ObjectView StaticCast_BaseToDerived(ObjectView obj, Type type) {
-    neko_assert(obj.GetType().GetCVRefMode() == CVRefMode::None);
+    neko_assert(obj.GetType().get_cvref_mode() == CVRefMode::None);
 
     if (obj.GetType() == type) return obj;
 
@@ -27,7 +27,7 @@ static ObjectView StaticCast_BaseToDerived(ObjectView obj, Type type) {
 }
 
 static ObjectView DynamicCast_BaseToDerived(ObjectView obj, Type type) {
-    neko_assert(obj.GetType().GetCVRefMode() == CVRefMode::None);
+    neko_assert(obj.GetType().get_cvref_mode() == CVRefMode::None);
 
     if (obj.GetType() == type) return obj;
 
@@ -429,7 +429,7 @@ ObjectView neko_refl::StaticCast_DerivedToBase(ObjectView obj, Type type) const 
         return {};
     };
 
-    const CVRefMode cvref_mode = obj.GetType().GetCVRefMode();
+    const CVRefMode cvref_mode = obj.GetType().get_cvref_mode();
     neko_assert(!CVRefMode_IsVolatile(cvref_mode));
     switch (cvref_mode) {
         case CVRefMode::Left:
@@ -450,7 +450,7 @@ ObjectView neko_refl::StaticCast_DerivedToBase(ObjectView obj, Type type) const 
 ObjectView neko_refl::StaticCast_BaseToDerived(ObjectView obj, Type type) const {
     if (obj.GetPtr() == nullptr) return {type, nullptr};
 
-    const CVRefMode cvref_mode = obj.GetType().GetCVRefMode();
+    const CVRefMode cvref_mode = obj.GetType().get_cvref_mode();
     neko_assert(!CVRefMode_IsVolatile(cvref_mode));
     switch (cvref_mode) {
         case CVRefMode::Left:
@@ -471,7 +471,7 @@ ObjectView neko_refl::StaticCast_BaseToDerived(ObjectView obj, Type type) const 
 ObjectView neko_refl::DynamicCast_BaseToDerived(ObjectView obj, Type type) const {
     if (obj.GetPtr() == nullptr) return {type, nullptr};
 
-    const CVRefMode cvref_mode = obj.GetType().GetCVRefMode();
+    const CVRefMode cvref_mode = obj.GetType().get_cvref_mode();
     neko_assert(!CVRefMode_IsVolatile(cvref_mode));
     switch (cvref_mode) {
         case CVRefMode::Left:
@@ -574,7 +574,7 @@ bool neko_refl::IsCompatible(std::span<const Type> paramTypes, std::span<const T
 }
 
 Type neko_refl::IsInvocable(Type type, Name method_name, std::span<const Type> argTypes, MethodFlag flag) const {
-    const CVRefMode cvref_mode = type.GetCVRefMode();
+    const CVRefMode cvref_mode = type.get_cvref_mode();
     neko_assert(!CVRefMode_IsVolatile(cvref_mode));
     switch (cvref_mode) {
         case CVRefMode::Left:
@@ -625,7 +625,7 @@ Type neko_refl::IsInvocable(Type type, Name method_name, std::span<const Type> a
 Type neko_refl::BInvoke(ObjectView obj, Name method_name, void* result_buffer, ArgsView args, MethodFlag flag, std::pmr::memory_resource* temp_args_rsrc) const {
     neko_assert(temp_args_rsrc);
 
-    const CVRefMode cvref_mode = obj.GetType().GetCVRefMode();
+    const CVRefMode cvref_mode = obj.GetType().get_cvref_mode();
     neko_assert(!CVRefMode_IsVolatile(cvref_mode));
     switch (cvref_mode) {
         case CVRefMode::Left:
@@ -683,7 +683,7 @@ SharedObject neko_refl::MInvoke(ObjectView obj, Name method_name, std::pmr::memo
     neko_assert(rst_rsrc);
     neko_assert(temp_args_rsrc);
 
-    const CVRefMode cvref_mode = obj.GetType().GetCVRefMode();
+    const CVRefMode cvref_mode = obj.GetType().get_cvref_mode();
     neko_assert(!CVRefMode_IsVolatile(cvref_mode));
     switch (cvref_mode) {
         case CVRefMode::Left:
@@ -828,7 +828,7 @@ bool neko_refl::IsMoveConstructible(Type type) const {
 }
 
 bool neko_refl::IsDestructible(Type type) const {
-    neko_assert(type.GetCVRefMode() == CVRefMode::None);
+    neko_assert(type.get_cvref_mode() == CVRefMode::None);
 
     auto target = typeinfos.find(type);
     if (target == typeinfos.end()) return false;

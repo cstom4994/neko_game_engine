@@ -301,6 +301,7 @@ typedef struct neko_platform_i {
     f64 (*elapsed_time)();                   // Returns time in ms since initialization of platform
     neko_platform_meminfo (*get_meminfo)();  // 获取系统内存使用信息
     neko_vec2 (*get_opengl_ver)();           // 获取当前 OpenGL 版本
+    void *(*get_sys_handle)(neko_resource_handle handle);
 
     /*============================================================
     // Platform Video

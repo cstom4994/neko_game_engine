@@ -108,6 +108,8 @@
 
 #define neko_aligned_buffer(name) alignas(16) static const std::uint8_t name[]
 
+#define neko_va_unpack(...) __VA_ARGS__  // 用于解包括号 带逗号的宏参数需要它
+
 #define neko_offsetof(s, m) ((::size_t) & reinterpret_cast<char const volatile&>((((s*)0)->m)))
 
 #if defined(__cplusplus)
