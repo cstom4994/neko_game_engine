@@ -10,27 +10,6 @@
 #include "engine/common/neko_types.h"
 #include "libs/lua/lua.hpp"
 
-#ifdef NEKO_PLATFORM_WIN
-#define strerror_r(errno, buf, len) strerror_s(buf, len, errno)
-#endif
-
-struct lua_mem_block {
-    void *ptr;
-    size_t size;
-};
-
-struct lua_allocator {
-    struct lua_mem_block *blocks;
-    size_t nb_blocks, size_blocks;
-    size_t total_allocated;
-};
-
-struct lua_allocator *new_allocator(void);
-void delete_allocator(struct lua_allocator *alloc);
-
-void *lua_simple_alloc(void *ud, void *ptr, size_t osize, size_t nsize);
-void *lua_alloc(void *ud, void *ptr, size_t osize, size_t nsize);
-
 #pragma region LuaA
 
 #define NEKO_LUA_AUTO_REGISTER_PREFIX "neko_lua_auto_"
@@ -852,31 +831,6 @@ neko_inline void neko_lua_print_stack(lua_State *L) {
     printf("\n");
 }
 
-#pragma region LuaMemSafe
-
-#define SAFELUA_CANCELED (-2)
-#define SAFELUA_FINISHED (-1)
-
-/** Open a new Lua state that can be canceled */
-lua_State *neko_lua_safe_open(void);
-/** Close the Lua state and free resources */
-void neko_lua_safe_close(lua_State *state);
-
-/** Type for the cancel callback, used to check if this thread should stop */
-typedef int (*neko_lua_safe_CancelCheck)(lua_State *, void *);
-
-/** Type for the handler callback, used to free some resource */
-typedef void (*neko_lua_safe_Handler)(int, void *);
-
-int neko_lua_safe_pcallk(lua_State *state, int nargs, int nresults, int errfunc, int ctx, lua_KFunction k, neko_lua_safe_CancelCheck cancel, void *canceludata);
-void neko_lua_safe_checkcancel(lua_State *state);
-void neko_lua_safe_cancel(lua_State *state);
-int neko_lua_safe_shouldcancel(lua_State *state);
-void neko_lua_safe_add_handler(lua_State *state, neko_lua_safe_Handler handler, void *handlerudata);
-int neko_lua_safe_remove_handler(lua_State *state, neko_lua_safe_Handler handler, void *handlerudata);
-
-#pragma endregion LuaMemSafe
-
 int luaopen_cstruct_core(lua_State *L);
 int luaopen_cstruct_test(lua_State *L);
 int luaopen_datalist(lua_State *L);
@@ -1122,8 +1076,7 @@ namespace neko {
 class neko_lua_state : public neko_lua_state_view {
 public:
     neko_lua_state();
-    neko_lua_state(lua_Alloc f, void *userdata);
-    neko_lua_state(lua_State* main, neko_lua_state_view L);
+    neko_lua_state(lua_State *main, neko_lua_state_view L);
 
     ~neko_lua_state();
 

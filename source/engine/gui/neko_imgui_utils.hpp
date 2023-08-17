@@ -39,9 +39,9 @@ neko_static_inline ImColor vec4_to_imcolor(const neko_vec4 &v4) { return {v4.x *
 
 namespace neko::imgui {
 
-// 这就是这个库实现的功能 只是类 neko::imgui::Auto_t<AnyType> 的包装
-template <typename AnyType>
-void Auto(AnyType &anything, const std::string &name = std::string());
+// 这就是这个库实现的功能 只是类 neko::imgui::Auto_t<T> 的包装
+template <typename T>
+void Auto(T &anything, const std::string &name = std::string());
 
 // same as std::as_const in c++17
 template <class T>
@@ -94,9 +94,9 @@ using c_array_t = T[N];  // so arrays are regular types and can be used in macro
 
 }  // namespace detail
 
-template <typename AnyType>
+template <typename T>
 struct Auto_t {
-    static void Auto(AnyType &anything, const std::string &name) {
+    static void Auto(T &anything, const std::string &name) {
         // auto tuple = neko::cpp::pfr::structure_tie(anything);
         // neko::imgui::detail::AutoTuple("Struct " + name, tuple);
         static_assert("Auto not support struct!");
@@ -104,9 +104,9 @@ struct Auto_t {
 };
 }  // namespace neko::imgui
 
-template <typename AnyType>
-inline void neko::imgui::Auto(AnyType &anything, const std::string &name) {
-    neko::imgui::Auto_t<AnyType>::Auto(anything, name);
+template <typename T>
+inline void neko::imgui::Auto(T &anything, const std::string &name) {
+    neko::imgui::Auto_t<T>::Auto(anything, name);
 }
 
 template <typename T>

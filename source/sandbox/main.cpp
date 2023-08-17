@@ -292,6 +292,7 @@ void test_wang();
 void test_sr();
 void test_ut();
 void test_rf();
+void test_se();
 
 // 基础容器测试
 
@@ -878,7 +879,7 @@ void register_systems(neko_ecs *ecs) {
     //
     // neko_ecs, function pointer to system (must take a parameter of neko_ecs), system type
     neko_ecs_register_system(ecs, movement_system, ECS_SYSTEM_UPDATE);
-    neko_ecs_register_system(ecs, sprite_render_system, ECS_SYSTEM_RENDER);
+    neko_ecs_register_system(ecs, sprite_render_system, ECS_SYSTEM_RENDER_IMMEDIATE);
 }
 
 neko_global neko_font_index g_basic_font;
@@ -1362,7 +1363,7 @@ neko_result app_init() {
 #endif
 
     // 构建实例源
-    piano = cs_load_wav(neko_file_path("data/assets/audio/Daniel_Birch_-_05_-_Run_It_Might_Be_Somebody.wav"), NULL);
+    piano = cs_load_wav(neko_file_path("data/assets/audio/otoha.wav"), NULL);
 
     // 基础容器测试
     g_cur_val = 0;
@@ -1619,6 +1620,7 @@ neko_result app_update() {
             if (ImGui::Button("test_sr")) test_sr();
             if (ImGui::Button("test_ut")) test_ut();
             if (ImGui::Button("test_rf")) test_rf();
+            if (ImGui::Button("test_se")) test_se();
             if (ImGui::Button("test_cvars")) neko_config_print();
             if (ImGui::Button("test_rand")) neko_info(std::to_string(neko_rand_xorshf32()));
             ImGui::Image((void *)(intptr_t)g_tex.id, ImVec2(g_texture_width, g_texture_height), ImVec2(0, 0), ImVec2(1, 1));
@@ -2353,7 +2355,7 @@ void render_scene() {
 
         neko_profiler_scope_auto("immediate_draw");
 
-        neko_ecs_run_systems(neko_engine_subsystem(ecs), ECS_SYSTEM_RENDER);
+        neko_ecs_run_systems(neko_engine_subsystem(ecs), ECS_SYSTEM_RENDER_IMMEDIATE);
 
         gfx->immediate.begin_2d(cb);
         {

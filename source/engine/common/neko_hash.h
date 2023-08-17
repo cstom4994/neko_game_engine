@@ -8,7 +8,6 @@
 #include <string>
 #include <vector>
 
-#include "engine/common/neko_containers.h"
 #include "engine/common/neko_util.h"
 
 neko_force_inline u32 neko_hash_u32(u32 x) {

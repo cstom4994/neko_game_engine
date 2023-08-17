@@ -23,7 +23,7 @@ neko_result __neko_audio_init(struct neko_audio_i*) {
     cs_init(hwnd, 44100, 1024, NULL);
 
     cs_spawn_mix_thread();
-    cs_mix_thread_sleep_delay(1);
+    // cs_mix_thread_sleep_delay(1);
 
     return neko_result_success;
 }
@@ -35,7 +35,7 @@ neko_result __neko_audio_shutdown(struct neko_audio_i*) {
 }
 neko_result __neko_audio_update(struct neko_audio_i*) {
 
-    cs_update(0);
+    cs_update(neko_engine_subsystem(platform)->time.delta);
 
     return neko_result_success;
 }

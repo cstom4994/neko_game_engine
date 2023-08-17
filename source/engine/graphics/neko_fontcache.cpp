@@ -1,6 +1,8 @@
 
 #include "neko_fontcache.h"
 
+#include "libs/external/utf8.h"
+
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "libs/stb/stb_truetype.h"
 

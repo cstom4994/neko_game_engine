@@ -13,7 +13,7 @@ typedef u32 neko_ecs_component_type;
 
 #define neko_ecs_get_mask(name) name##_MASK_COUNT, name##_MASK
 
-typedef enum { ECS_SYSTEM_UPDATE, ECS_SYSTEM_RENDER } neko_ecs_system_type;
+typedef enum { ECS_SYSTEM_UPDATE, ECS_SYSTEM_RENDER_IMMEDIATE } neko_ecs_system_type;
 
 typedef struct neko_ecs neko_ecs;
 

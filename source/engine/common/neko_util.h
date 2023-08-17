@@ -60,7 +60,7 @@
 #define neko_offset(type, element) ((usize)(&(((type*)(0))->element)))
 
 // macro for turning any given type into a const char* of itself
-#define neko_to_str(type) ((const char*)#type)
+#define neko_to_str(type) ((const_str) #type)
 
 #define neko_print_enabled 0
 
@@ -141,6 +141,20 @@ const char* u8Cpp20(T&& t) noexcept {
 #define neko_engine_check(statement) (statement) ? true : false
 
 #define _base(base_type) base_type _base
+
+// 一种向任何指针添加字节偏移量的可移植且安全的方法
+// https://stackoverflow.com/questions/15934111/portable-and-safe-way-to-add-byte-offset-to-any-pointer
+template <typename T>
+neko_inline void neko_addoffset(std::ptrdiff_t offset, T*& ptr) {
+    if (!ptr) return;
+    ptr = (T*)((unsigned char*)ptr + offset);
+}
+
+template <typename T>
+neko_inline T* neko_addoffset_r(std::ptrdiff_t offset, T* ptr) {
+    if (!ptr) return nullptr;
+    return (T*)((unsigned char*)ptr + offset);
+}
 
 /*===================================
 // Memory Allocation Utils
