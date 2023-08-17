@@ -12,6 +12,7 @@
 #include "engine/graphics/neko_particle.h"
 #include "engine/graphics/neko_render_pass.h"
 #include "engine/graphics/neko_sprite.h"
+#include "engine/gui/neko_imgui_lua.hpp"
 #include "engine/gui/neko_imgui_utils.hpp"
 #include "engine/neko.h"
 #include "engine/physics/neko_phy.h"
@@ -1621,6 +1622,7 @@ neko_result app_update() {
             if (ImGui::Button("test_ut")) test_ut();
             if (ImGui::Button("test_rf")) test_rf();
             if (ImGui::Button("test_se")) test_se();
+            if (ImGui::Button("test_st")) neko_platform_print_callstack();
             if (ImGui::Button("test_cvars")) neko_config_print();
             if (ImGui::Button("test_rand")) neko_info(std::to_string(neko_rand_xorshf32()));
             ImGui::Image((void *)(intptr_t)g_tex.id, ImVec2(g_texture_width, g_texture_height), ImVec2(0, 0), ImVec2(1, 1));
@@ -1662,6 +1664,32 @@ neko_result app_update() {
     g_frame_counter = (g_frame_counter + 1) % u32_max;
 
     settings.show();
+
+    neko_invoke_once(lua_bind::l_G = neko_sc()->neko_lua.state(); lua_bind::imgui_init_lua(););
+    neko_invoke_once(neko_sc()->neko_lua.dostring(R"(
+      -- Main window
+      local Window = ImGui.new("Window", "example title")
+      -- Inner elements
+      local Label = ImGui.new("Label", Window)
+      local TabSelector = ImGui.new("TabSelector", Window)
+      local Tab1 = TabSelector:AddTab("Tab1")
+      local Tab2 = TabSelector:AddTab("Tab2")
+      local Button = ImGui.new("Button", Tab1)
+      local Slider = ImGui.new("Slider", Tab1, true) -- (boolean: 3) aligns it side-by-side !
+      local ColorPicker = ImGui.new("ColorPicker", Tab2)
+      Label.Text = "这个窗口由Lua脚本控制"
+      Slider.Text = "Slider Example"
+      Button.Text = "Button Example"
+      ColorPicker.Text = "Color Picker Example"
+      Slider.Min = -10
+      Slider.Max = 10
+      Button.Callback = function()
+        ImGui.new("Label", Tab1).Text = "Hello world"
+      end
+          )"););
+    for (auto &w : lua_bind::windows) {
+        w.render();
+    }
 
     return neko_result_in_progress;
 }

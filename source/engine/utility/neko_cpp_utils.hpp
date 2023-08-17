@@ -1413,6 +1413,34 @@ constexpr auto operator""_f() {
     return [=]<typename... T>(T... args) { return std::format(F.str, args...); };
 }
 
+// 成员函数返回值类型确定
+// https://stackoverflow.com/questions/26107041/how-can-i-determine-the-return-type-of-a-c11-member-function
+
+template <typename T>
+struct return_type;
+template <typename R, typename... Args>
+struct return_type<R (*)(Args...)> {
+    using type = R;
+};
+template <typename R, typename C, typename... Args>
+struct return_type<R (C::*)(Args...)> {
+    using type = R;
+};
+template <typename R, typename C, typename... Args>
+struct return_type<R (C::*)(Args...) const> {
+    using type = R;
+};
+template <typename R, typename C, typename... Args>
+struct return_type<R (C::*)(Args...) volatile> {
+    using type = R;
+};
+template <typename R, typename C, typename... Args>
+struct return_type<R (C::*)(Args...) const volatile> {
+    using type = R;
+};
+template <typename T>
+using return_type_t = typename return_type<T>::type;
+
 struct any_function {
 public:
     struct type {

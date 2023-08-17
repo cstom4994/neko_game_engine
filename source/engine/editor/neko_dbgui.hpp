@@ -9,22 +9,25 @@
 #include "engine/common/neko_str.h"
 #include "engine/common/neko_util.h"
 #include "engine/gui/neko_imgui_utils.hpp"
-#include "engine/utility/enum.hpp"
+#include "engine/meta/neko_refl.hpp"
+#include "engine/utility/logger.hpp"
 #include "engine/utility/module.hpp"
 
 namespace neko {
+
+using namespace neko::cpp;
 
 typedef enum { neko_dbgui_result_success, neko_dbgui_result_in_progress } neko_dbgui_result;
 
 using neko_dbgui_func = neko_function<neko_dbgui_result(neko_dbgui_result)>;
 
-ENUM_HPP_CLASS_DECL(neko_dbgui_flags, u32, (window = 1 << 0)(no_visible = 1 << 1));
-ENUM_HPP_REGISTER_TRAITS(neko_dbgui_flags);
+neko_enum_decl(neko_dbgui_flags, window = 1 << 1, no_visible = 1 << 2);
+neko_enum_flag_operator(neko_dbgui_flags);
 
 struct neko_dbgui_win {
     neko_string name;
     neko_dbgui_func func;
-    cpp::bitflags::bitflags<neko_dbgui_flags> flags;
+    neko_dbgui_flags flags;
 };
 
 class dbgui : public module<dbgui> {
@@ -53,7 +56,7 @@ public:
         return *this;
     }
 
-    cpp::bitflags::bitflags<neko_dbgui_flags>& flags(const neko_string& name) {
+    neko_dbgui_flags& flags(const neko_string& name) {
         if (dbgui_list.count(name) != 1) neko_assert(0);
         return dbgui_list[name].flags;
     }
@@ -87,7 +90,8 @@ public:
 
                     ImGui::TextColored(ImVec4(0.19f, 1.f, 0.196f, 1.f), "Neko");
 
-                    if (ImGui::BeginMenu("File")) {
+                    if (ImGui::BeginMenu("engine")) {
+                        ImGui::Checkbox("CVar", &g_cvar.ui_tweak);
                         ImGui::EndMenu();
                     }
 
@@ -110,7 +114,7 @@ public:
         if ((dbgui_list.at("cvar").flags & neko_dbgui_flags::no_visible) != neko_dbgui_flags::no_visible) dock_win();
 
         for (auto& d : dbgui_list) {
-            cpp::bitflags::bitflags<neko_dbgui_flags> flags(d.second.flags);
+            neko_dbgui_flags flags = d.second.flags;
             if ((flags & neko_dbgui_flags::no_visible) == neko_dbgui_flags::no_visible) return;
             if (ImGui::Begin(d.first.c_str())) {
                 neko_defer([&d] { d.second.func(neko_dbgui_result_in_progress); });

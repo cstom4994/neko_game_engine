@@ -37,6 +37,14 @@
 neko_static_inline ImVec4 vec4_to_imvec4(const neko_vec4 &v4) { return {v4.x, v4.y, v4.z, v4.w}; }
 neko_static_inline ImColor vec4_to_imcolor(const neko_vec4 &v4) { return {v4.x * 255.0f, v4.y * 255.0f, v4.z * 255.0f, v4.w * 255.0f}; }
 
+neko_inline neko_color_t imvec_to_rgba(ImVec4 iv) {
+    u8 newr = iv.x * 255;
+    u8 newg = iv.y * 255;
+    u8 newb = iv.z * 255;
+    u8 newa = iv.w * 255;
+    return neko_color_t{newr, newg, newb, newa};
+}
+
 namespace neko::imgui {
 
 // 这就是这个库实现的功能 只是类 neko::imgui::Auto_t<T> 的包装

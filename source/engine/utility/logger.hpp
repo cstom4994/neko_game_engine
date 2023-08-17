@@ -9,11 +9,28 @@
 
 #include "engine/common/neko_types.h"
 #include "engine/common/neko_util.h"
-#include "engine/utility/enum.hpp"
 
 namespace neko {
 
-ENUM_HPP_CLASS_DECL(log_type, u8, (trace)(warning)(error)(info)(msg)(debug));
+neko_enum_decl(log_type, trace, warning, error, info, debug);
+
+template <typename T>
+std::string log_type_to_str(T enumValue) {
+    switch (enumValue) {
+        case T::trace:
+            return "trace";
+        case T::warning:
+            return "warning";
+        case T::error:
+            return "error";
+        case T::info:
+            return "info";
+        case T::debug:
+            return "debug";
+        default:
+            return "unknown";
+    }
+}
 
 struct log_msg {
     std::string msg;
@@ -38,7 +55,7 @@ private:
 
         constexpr uint8_t logTypeOffset = 6;
 
-        std::string output = std::format("[{0}] {1}", log_type_traits::to_string(type).value(), message);
+        std::string output = std::format("[{0}] {1}", log_type_to_str(type), message);
 
         std::stringstream ss;
         (ss << ... << argv);

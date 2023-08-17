@@ -218,13 +218,13 @@ public:
         if (value_) {
             return *value_;
         }
-        throw exception::bad_optional_access();
+        throw neko::exception::bad_optional_access();
     }
     const T &value() const {
         if (value_) {
             return *value_;
         }
-        throw exception::bad_optional_access();
+        throw neko::exception::bad_optional_access();
     }
 
     template <class U>
@@ -1560,7 +1560,7 @@ template <typename T>
 inline T object_get(lua_State *l, int index) {
     const typename traits::remove_reference<T>::type *pointer = get_const_pointer(l, index, types::typetag<typename traits::remove_reference<T>::type>());
     if (!pointer) {
-        throw exception::LuaTypeMismatch();
+        throw neko::exception::LuaTypeMismatch();
     }
     return *pointer;
 }
@@ -1620,7 +1620,7 @@ bool strictCheckType(lua_State *l, int index) {
 
 template <class To>
 To get(lua_State *, int) {
-    throw exception::LuaTypeMismatch();
+    throw neko::exception::LuaTypeMismatch();
 }
 template <class To, class From, class... Remain>
 To get(lua_State *l, int index) {
@@ -1710,7 +1710,7 @@ template <typename T, typename Enable>
 typename lua_type_traits<T, Enable>::get_type lua_type_traits<T, Enable>::get(lua_State *l, int index) {
     const typename traits::remove_reference<T>::type *pointer = get_const_pointer(l, index, types::typetag<typename traits::remove_reference<T>::type>());
     if (!pointer) {
-        throw exception::LuaTypeMismatch();
+        throw neko::exception::LuaTypeMismatch();
     }
     return *pointer;
 }
@@ -1750,7 +1750,7 @@ struct lua_type_traits<REF, typename traits::enable_if<traits::is_lvalue_referen
     static get_type get(lua_State *l, int index) {
         T *pointer = get_pointer(l, index, types::typetag<T>());
         if (!pointer) {
-            throw exception::LuaTypeMismatch();
+            throw neko::exception::LuaTypeMismatch();
         }
         return *pointer;
     }
@@ -1803,7 +1803,7 @@ struct lua_type_traits<PTR, typename traits::enable_if<traits::is_pointer<typena
         if (type == LUA_TNIL || type == LUA_TNONE) {
             return 0;
         }
-        throw exception::LuaTypeMismatch();
+        throw neko::exception::LuaTypeMismatch();
         return 0;
     }
     static opt_type opt(lua_State *l, int index) ME_LUAWRAPPER_NOEXCEPT {
@@ -1980,7 +1980,7 @@ struct lua_type_traits<std::unique_ptr<T, Deleter>> {
     static get_type get(lua_State *l, int index) {
         type *pointer = get_pointer(l, index, types::typetag<type>());
         if (!pointer) {
-            throw exception::LuaTypeMismatch();
+            throw neko::exception::LuaTypeMismatch();
         }
         return *pointer;
     }
@@ -2015,7 +2015,7 @@ struct lua_type_traits<std::nullptr_t> {
     }
     static get_type get(lua_State *l, int index) {
         if (!lua_isnoneornil(l, index)) {
-            throw exception::LuaTypeMismatch();
+            throw neko::exception::LuaTypeMismatch();
         }
         return nullptr;
     }
@@ -2072,7 +2072,7 @@ struct lua_type_traits<T, typename traits::enable_if<traits::is_floating_point<T
         int isnum = 0;
         get_type num = static_cast<T>(lua_tonumberx(l, index, &isnum));
         if (!isnum) {
-            throw exception::LuaTypeMismatch();
+            throw neko::exception::LuaTypeMismatch();
         }
         return num;
     }
@@ -2105,7 +2105,7 @@ struct lua_type_traits<T, typename traits::enable_if<traits::is_integral<T>::val
         int isnum = 0;
         get_type num = static_cast<T>(lua_tointegerx(l, index, &isnum));
         if (!isnum) {
-            throw exception::LuaTypeMismatch();
+            throw neko::exception::LuaTypeMismatch();
         }
         return num;
     }
@@ -2163,7 +2163,7 @@ struct lua_type_traits<const char *> {
     static get_type get(lua_State *l, int index) {
         const char *buffer = lua_tostring(l, index);
         if (!buffer) {
-            throw exception::LuaTypeMismatch();
+            throw neko::exception::LuaTypeMismatch();
         }
         return buffer;
     }
@@ -2192,7 +2192,7 @@ struct lua_type_traits<char[N]> {
     static const char *get(lua_State *l, int index) {
         const char *buffer = lua_tostring(l, index);
         if (!buffer) {
-            throw exception::LuaTypeMismatch();
+            throw neko::exception::LuaTypeMismatch();
         }
         return buffer;
     }
@@ -2228,7 +2228,7 @@ struct lua_type_traits<std::string> {
         if (opt_type o = opt(l, index)) {
             return *o;
         }
-        throw exception::LuaTypeMismatch();
+        throw neko::exception::LuaTypeMismatch();
     }
     static int push(lua_State *l, const std::string &s) {
         lua_pushlstring(l, s.c_str(), s.size());
@@ -2287,7 +2287,7 @@ struct lua_type_traits<NilValue> {
     }
     static get_type get(lua_State *l, int index) {
         if (!checkType(l, index)) {
-            throw exception::LuaTypeMismatch();
+            throw neko::exception::LuaTypeMismatch();
         }
         return NilValue();
     }
@@ -2577,15 +2577,15 @@ struct ErrorHandler {
     static void throwDefaultError(int status, const char *message = 0) {
         switch (status) {
             case LUA_ERRSYNTAX:
-                throw exception::LuaSyntaxError(status, message ? std::string(message) : "unknown syntax error");
+                throw neko::exception::LuaSyntaxError(status, message ? std::string(message) : "unknown syntax error");
             case LUA_ERRRUN:
-                throw exception::LuaRuntimeError(status, message ? std::string(message) : "unknown runtime error");
+                throw neko::exception::LuaRuntimeError(status, message ? std::string(message) : "unknown runtime error");
             case LUA_ERRMEM:
-                throw exception::LuaMemoryError(status, message ? std::string(message) : "lua memory allocation error");
+                throw neko::exception::LuaMemoryError(status, message ? std::string(message) : "lua memory allocation error");
             case LUA_ERRERR:
-                throw exception::LuaErrorRunningError(status, message ? std::string(message) : "unknown error running error");
+                throw neko::exception::LuaErrorRunningError(status, message ? std::string(message) : "unknown error running error");
             default:
-                throw exception::LuaUnknownError(status, message ? std::string(message) : "lua unknown error");
+                throw neko::exception::LuaUnknownError(status, message ? std::string(message) : "lua unknown error");
         }
     }
 
@@ -4279,7 +4279,7 @@ typename traits::enable_if<traits::is_object<MemType>::value, int>::type call(lu
         }
     } else {
         if (!this_) {
-            throw exception::LuaTypeMismatch();
+            throw neko::exception::LuaTypeMismatch();
         }
         this_->*mptr = lua_type_traits<MemType>::get(state, 2);
         return 0;
@@ -4580,7 +4580,7 @@ int best_match_invoke(lua_State *state, Fun &&fn, Functions &&...fns) {
         assert(size_t(index) <= sizeof...(fns));
         return invoke_index(state, index, 0, fn, fns...);
     } else {
-        throw exception::LuaTypeMismatch();
+        throw neko::exception::LuaTypeMismatch();
     }
     return 0;
 }
@@ -5539,7 +5539,7 @@ public:
     template <typename Ret>
     UserdataMetatable &addProperty(const char *name, Ret class_type::*mem) {
         if (has_key(name)) {
-            throw exception::KaguyaException(std::string(name) + " is already registered.");
+            throw neko::exception::KaguyaException(std::string(name) + " is already registered.");
             return *this;
         }
         property_map_[name] = AnyDataPusher(lua_wrapper::function(mem));
@@ -5552,7 +5552,7 @@ public:
     template <typename GetType>
     UserdataMetatable &addProperty(const char *name, GetType (class_type::*getter)() const) {
         if (has_key(name)) {
-            throw exception::KaguyaException(std::string(name) + " is already registered.");
+            throw neko::exception::KaguyaException(std::string(name) + " is already registered.");
             return *this;
         }
         property_map_[name] = AnyDataPusher(lua_wrapper::function(getter));
@@ -5566,7 +5566,7 @@ public:
     template <typename GetType>
     UserdataMetatable &addProperty(const char *name, GetType (*getter)(const class_type *)) {
         if (has_key(name)) {
-            throw exception::KaguyaException(std::string(name) + " is already registered.");
+            throw neko::exception::KaguyaException(std::string(name) + " is already registered.");
             return *this;
         }
         property_map_[name] = AnyDataPusher(function(getter));
@@ -5579,7 +5579,7 @@ public:
     template <typename GetType>
     UserdataMetatable &addProperty(const char *name, GetType (*getter)(const class_type &)) {
         if (has_key(name)) {
-            throw exception::KaguyaException(std::string(name) + " is already registered.");
+            throw neko::exception::KaguyaException(std::string(name) + " is already registered.");
             return *this;
         }
         property_map_[name] = AnyDataPusher(function(getter));
@@ -5593,7 +5593,7 @@ public:
     template <typename GetType, typename SetType>
     UserdataMetatable &addProperty(const char *name, GetType (class_type::*getter)() const, void (class_type::*setter)(SetType)) {
         if (has_key(name)) {
-            throw exception::KaguyaException(std::string(name) + " is already registered.");
+            throw neko::exception::KaguyaException(std::string(name) + " is already registered.");
             return *this;
         }
         property_map_[name] = AnyDataPusher(overload(getter, setter));
@@ -5608,7 +5608,7 @@ public:
     template <typename GetType, typename SetType>
     UserdataMetatable &addProperty(const char *name, GetType (*getter)(const class_type *), void (*setter)(class_type *, SetType)) {
         if (has_key(name)) {
-            throw exception::KaguyaException(std::string(name) + " is already registered.");
+            throw neko::exception::KaguyaException(std::string(name) + " is already registered.");
             return *this;
         }
         property_map_[name] = AnyDataPusher(overload(getter, setter));
@@ -5623,7 +5623,7 @@ public:
     template <typename GetType, typename SetType>
     UserdataMetatable &addProperty(const char *name, GetType (*getter)(const class_type &), void (*setter)(class_type &, SetType)) {
         if (has_key(name)) {
-            throw exception::KaguyaException(std::string(name) + " is already registered.");
+            throw neko::exception::KaguyaException(std::string(name) + " is already registered.");
             return *this;
         }
         property_map_[name] = AnyDataPusher(overload(getter, setter));
@@ -5636,7 +5636,7 @@ public:
     template <typename GetterType>
     UserdataMetatable &addPropertyAny(const char *name, GetterType getter) {
         if (has_key(name)) {
-            throw exception::KaguyaException(std::string(name) + " is already registered.");
+            throw neko::exception::KaguyaException(std::string(name) + " is already registered.");
             return *this;
         }
         property_map_[name] = AnyDataPusher(function(getter));
@@ -5649,7 +5649,7 @@ public:
     template <typename GetterType, typename SetterType>
     UserdataMetatable &addPropertyAny(const char *name, GetterType getter, SetterType setter) {
         if (has_key(name)) {
-            throw exception::KaguyaException(std::string(name) + " is already registered.");
+            throw neko::exception::KaguyaException(std::string(name) + " is already registered.");
             return *this;
         }
         property_map_[name] = AnyDataPusher(overload(getter, setter));
@@ -5662,7 +5662,7 @@ public:
     template <typename Fun>
     UserdataMetatable &addStaticFunction(const char *name, Fun f) {
         if (has_key(name)) {
-            throw exception::KaguyaException(std::string(name) + " is already registered.");
+            throw neko::exception::KaguyaException(std::string(name) + " is already registered.");
             return *this;
         }
         member_map_[name] = AnyDataPusher(lua_wrapper::function(f));
@@ -5675,7 +5675,7 @@ public:
     template <typename... Funcs>
     UserdataMetatable &addOverloadedFunctions(const char *name, Funcs... f) {
         if (has_key(name)) {
-            throw exception::KaguyaException(std::string(name) + " is already registered.");
+            throw neko::exception::KaguyaException(std::string(name) + " is already registered.");
             return *this;
         }
 
@@ -5690,7 +5690,7 @@ public:
     template <typename Data>
     UserdataMetatable &addStaticField(const char *name, Data &&d) {
         if (has_key(name)) {
-            throw exception::KaguyaException(std::string(name) + " is already registered.");
+            throw neko::exception::KaguyaException(std::string(name) + " is already registered.");
             return *this;
         }
         member_map_[name] = AnyDataPusher(std::forward<Data>(d));
@@ -5702,7 +5702,7 @@ public:
     template <typename Fun>
     UserdataMetatable &addFunction(const char *name, Fun f) {
         if (has_key(name)) {
-            throw exception::KaguyaException(std::string(name) +
+            throw neko::exception::KaguyaException(std::string(name) +
                                              " is already registered. To "
                                              "overload a function, use "
                                              "addOverloadedFunctions");
@@ -5718,7 +5718,7 @@ public:
     template <typename Ret>
     UserdataMetatable &addFunction(const char *name, Ret class_type::*f) {
         if (has_key(name)) {
-            throw exception::KaguyaException(std::string(name) +
+            throw neko::exception::KaguyaException(std::string(name) +
                                              " is already registered. To "
                                              "overload a function, use "
                                              "addOverloadedFunctions");
@@ -5733,7 +5733,7 @@ public:
     /// @param f member function object.
     UserdataMetatable &addFunction(const char *name, PolymorphicMemberInvoker f) {
         if (has_key(name)) {
-            throw exception::KaguyaException(std::string(name) +
+            throw neko::exception::KaguyaException(std::string(name) +
                                              " is already registered. To "
                                              "overload a function, use "
                                              "addOverloadedFunctions");

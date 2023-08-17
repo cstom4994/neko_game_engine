@@ -3,7 +3,6 @@
 #define NEKO_PACKER_H
 
 #include "engine/common/neko_util.h"
-#include "engine/utility/enum.hpp"
 #include "engine/utility/logger.hpp"
 
 #define PACK_HEADER_SIZE 8
@@ -86,14 +85,9 @@ neko_inline bool neko_pack_check(neko_pack_result result) {
     return false;
 }
 
-ENUM_HPP_CLASS_DECL(neko_handle_type, u64, (audio = 1 < 1));
-
-ENUM_HPP_REGISTER_TRAITS(neko_handle_type);
-
 // 资源管理
 struct neko_lua_handle_t {
     const_str name;
-    neko_handle_type type;
     u64 size;
     void *data;
 };

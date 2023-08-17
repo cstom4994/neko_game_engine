@@ -4,8 +4,8 @@
 
 #include <thread>
 
-#include "engine/utility/neko_cpp_utils.hpp"
 #include "engine/utility/exception.hpp"
+#include "engine/utility/neko_cpp_utils.hpp"
 
 namespace neko {
 
@@ -30,7 +30,7 @@ public:
     template <typename ImplT, typename... Args>
     static ImplT& initialize(Args&&... args) {
         if (is_initialized()) {
-            throw exception::module_already_initialized();
+            throw neko::exception::module_already_initialized();
         }
         instance_ = create_scope<ImplT>(std::forward<Args>(args)...);
         return static_cast<ImplT&>(*instance_);

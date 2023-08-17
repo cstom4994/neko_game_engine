@@ -1112,6 +1112,108 @@ void neko_editor_inspect_vertex_array(const_str label, GLuint vao) {
 
 auto neko_editor_create(neko_engine_cvar_t &cvar) -> dbgui & {
     return the<dbgui>()
+            .create("console",
+                    [&](neko_dbgui_result) {
+                        for (auto &a : logger::message_log()) {
+                            ImVec4 colour;
+                            switch (a.type) {
+                                case log_type::warning:
+                                    colour = {1.0f, 1.0f, 0.0f, 1.0f};
+                                    break;
+                                case log_type::error:
+                                    colour = {1.0f, 0.0f, 0.0f, 1.0f};
+                                    break;
+                                case log_type::info:
+                                    colour = neko_rgba2imvec(0, 183, 255, 255);
+                                    break;
+                                case log_type::trace:
+                                    colour = {1.0f, 1.0f, 1.0f, 1.0f};
+                                    break;
+                            }
+
+                            ImGui::TextColored(colour, "%s", a.msg.c_str());
+                        }
+
+                        static std::string command;
+                        if ((ImGui::InputTextWithHint("##Input", "在这里输入命令", &command) || ImGui::IsItemActive())) {
+                        }
+                        ImGui::SameLine();
+                        if (ImGui::Button("Send##consoleCommand") || (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Enter)))) {
+                            // for (auto &a : loggerInternal.commands) {
+                            //     if (command.rfind(a.cmd, 0) == 0) {
+                            //         a.func(command);
+                            //         break;
+                            //     }
+                            // }
+                            // ME_scripting::get_singleton_ptr()->run_command(command);
+
+                            // this->eval(command);
+
+                            command.clear();
+                        }
+                        if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY()) ImGui::SetScrollHereY(1.0f);
+
+                        s64 now = neko_get_time();
+
+                        log_msg log_list[10] = {};
+                        int n = 9;
+
+                        std::vector<log_msg>::const_reverse_iterator backwardIterator;
+                        auto &logger_list = logger::message_log();
+                        for (backwardIterator = logger_list.crbegin(); backwardIterator != logger_list.crend(); backwardIterator++) {
+                            if (n < 0) break;
+
+                            s64 dtime = now - backwardIterator->time;
+
+                            if (dtime > 4000) {
+                                n--;
+                                break;  // 直接跳出循环就可以，在此之后的日志只可能比这更老的
+                            }
+                            log_list[n] = *backwardIterator;
+                            n--;
+                        }
+
+                        int x = 10, y = 10;
+
+                        if (g_cvar.ui_tweak) y += 18;
+
+                        ImDrawList *draw_list = ImGui::GetBackgroundDrawList();
+
+                        for (auto &a : log_list) {
+
+                            if (a.msg.empty()) continue;
+
+                            s64 dtime = now - a.time;
+
+                            ImVec4 colour;
+                            switch (a.type) {
+                                case log_type::warning:
+                                    colour = {1.0f, 1.0f, 0.0f, 1.0f};
+                                    break;
+                                case log_type::error:
+                                    colour = {1.0f, 0.0f, 0.0f, 1.0f};
+                                    break;
+                                case log_type::info:
+                                    colour = neko_rgba2imvec(0, 183, 255, 255);
+                                    break;
+                                case log_type::trace:
+                                    colour = {1.0f, 1.0f, 1.0f, 1.0f};
+                                    break;
+                            }
+
+                            bool outline = true;
+
+                            if (dtime >= 3500) {
+                                colour.w = std::abs((4000 - dtime) / 500.0f);
+                                outline = false;
+                            }
+
+                            neko_debug_draw_text(a.msg, imvec_to_rgba(colour), x, y, true);
+                            y = y + 20;
+                        }
+
+                        return neko_dbgui_result_in_progress;
+                    })
             .create(
                     "utils",
                     [&](neko_dbgui_result) {
@@ -1134,7 +1236,7 @@ auto neko_editor_create(neko_engine_cvar_t &cvar) -> dbgui & {
                             auto v = cvar_view.GetVars();
                             for (auto &iter = v.begin(); iter != v.end(); ++iter) {
                                 const auto &[name, var] = *iter;
-                                neko::invoke::apply([&](auto &&...args) { (f(name, var, args), ...); }, std::tuple<float, bool>());
+                                neko::invoke::apply([&](auto &&...args) { (f(name, var, args), ...); }, std::tuple<float, int, bool>());
                                 for (const auto &attr : iter.GetFieldInfo().attrs)
                                     for (const auto &[name, var] : attr.GetVars()) {
                                         if (name == "info") ImGui::Text("    [%s]", var.As<const_str>());

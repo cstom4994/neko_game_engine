@@ -7,7 +7,6 @@
 #include "engine/common/neko_util.h"
 #include "engine/math/neko_math.h"
 #include "engine/scripting/neko_lua_base.h"
-#include "engine/utility/enum.hpp"
 
 #if (defined __APPLE__ || defined _APPLE)
 
@@ -64,8 +63,8 @@ typedef struct neko_uuid {
 // // Platform Window
 // ============================================================*/
 
-ENUM_HPP_CLASS_DECL(neko_window_flags, u32, (resizable = 1 << 1)(fullscreen = 1 << 2)(highdpi = 1 << 3));
-ENUM_HPP_REGISTER_TRAITS(neko_window_flags);
+neko_enum_decl(neko_window_flags, resizable = 1 << 1, fullscreen = 1 << 2, highdpi = 1 << 3);
+neko_enum_flag_operator(neko_window_flags);
 
 namespace neko {
 
@@ -497,13 +496,13 @@ static inline uint64_t neko_get_thread_id() {
 
 #ifdef NEKO_PLATFORM_WIN
 
-static inline uint32_t neko_tls_allocate() { return (uint32_t)TlsAlloc(); }
+static inline u32 neko_tls_allocate() { return (u32)TlsAlloc(); }
 
-static inline void neko_tls_set_value(uint32_t _handle, void *_value) { TlsSetValue(_handle, _value); }
+static inline void neko_tls_set_value(u32 _handle, void *_value) { TlsSetValue(_handle, _value); }
 
-static inline void *neko_tls_get_value(uint32_t _handle) { return TlsGetValue(_handle); }
+static inline void *neko_tls_get_value(u32 _handle) { return TlsGetValue(_handle); }
 
-static inline void neko_tls_free(uint32_t _handle) { TlsFree(_handle); }
+static inline void neko_tls_free(u32 _handle) { TlsFree(_handle); }
 
 #else
 
@@ -576,5 +575,37 @@ public:
     inline neko_scoped_mutex_locker(neko_pthread_mutex &_mutex) : m_mutex(_mutex) { m_mutex.lock(); }
     inline ~neko_scoped_mutex_locker() { m_mutex.unlock(); }
 };
+
+#include <functional>
+
+namespace neko {
+
+// Job系统详细设计可以见
+// https://turanszkij.wordpress.com/2018/11/24/simple-job-system-using-standard-c/
+
+struct neko_job_dispatch_args {
+    u32 job_index;
+    u32 group_index;
+};
+
+void neko_job_init();
+void neko_job_execute(const std::function<void()> &job);
+void neko_job_dispatch(u32 jobCount, u32 groupSize, const std::function<void(neko_job_dispatch_args)> &job);
+bool neko_job_is_busy();
+void neko_job_wait();
+
+typedef struct {
+    const char *function;  // name of function containing address of function.
+    const char *file;      // file where symbol is defined, might not work on all platforms.
+    unsigned int line;     // line in file where symbol is defined, might not work on all platforms.
+    unsigned int offset;   // offset from start of function where call was made.
+} neko_platform_callstack_symbol_t;
+
+int neko_platform_callstack(int skip_frames, void **addresses, int num_addresses);
+int neko_platform_callstack_symbols(void **addresses, neko_platform_callstack_symbol_t *out_syms, int num_addresses, char *memory, int mem_size);
+
+void neko_platform_print_callstack();
+
+}  // namespace neko
 
 #endif  // NEKO_PLATFORM_H

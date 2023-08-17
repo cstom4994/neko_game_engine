@@ -620,9 +620,7 @@ neko_result glfw_process_input(struct neko_platform_input *input) {
 
 void *glfw_create_window(const char *title, u32 width, u32 height) {
     // Grab window hints from application desc
-    // neko::cpp::bitflags::bitflags<neko_window_flags> window_hints(neko_engine_instance()->ctx.app.window_flags);
-
-    neko::cpp::bitflags::bitflags<neko_window_flags> window_hints = neko_window_flags::resizable;
+    neko_window_flags window_hints = neko_engine_instance()->ctx.app.window_flags;
 
     // Set whether or not the screen is resizable
     glfwWindowHint(GLFW_RESIZABLE, (window_hints & neko_window_flags::resizable) == neko_window_flags::resizable);

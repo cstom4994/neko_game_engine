@@ -13,7 +13,6 @@
 #include "engine/graphics/neko_graphics.h"
 #include "engine/math/neko_math.h"
 #include "engine/platform/neko_platform.h"
-#include "engine/utility/enum.hpp"
 #include "engine/utility/logger.hpp"
 #include "engine/utility/module.hpp"
 #include "engine/utility/name.hpp"
@@ -40,8 +39,7 @@ void __neko_default_main_window_close_callback(void *window);
 
 neko_resource_handle window;
 
-ENUM_HPP_CLASS_DECL(neko_modules_op, u32, (init = 1)(shutdown = 2)(update = 3));
-ENUM_HPP_REGISTER_TRAITS(neko_modules_op);
+neko_enum_decl(neko_modules_op, init = 1, shutdown = 2, update = 3);
 
 #define __neko_module_types() dbgui
 
@@ -128,6 +126,8 @@ neko_engine *neko_engine_construct(int argc, char **argv) {
     g_neko->ctx.platform = neko_platform_construct();    // 需要从用户那里传递视频设置
     __neko_default_init_platform(g_neko->ctx.platform);  // 此处平台的默认初始化
 
+    neko_job_init();
+
     // 初始化脚本系统
     neko_sc()->__init();
 
@@ -144,7 +144,8 @@ neko_engine *neko_engine_construct(int argc, char **argv) {
 
         neko_sc()->neko_lua.dofile(neko_file_path("data/scripts/main.lua"));
 
-        neko_application_desc_t t = {"Test", 1440, 840, neko_window_flags::resizable, neko_is_debug() ? 60.0f : 120.0f};
+        neko_window_flags win_flags = neko_window_flags::resizable;
+        neko_application_desc_t t = {"Test", 1440, 840, win_flags, neko_is_debug() ? 60.0f : 120.0f};
 
         // neko_lua_auto_push(L, neko_application_dedsc_t, &t);
 

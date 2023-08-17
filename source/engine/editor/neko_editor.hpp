@@ -18,6 +18,30 @@
 
 namespace neko {
 
+neko_inline void neko_debug_draw_text(std::string text, neko_color_t col, int x, int y, bool outline = false, neko_color_t outline_col = {0, 0, 0, 180}) {
+
+    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImDrawList* draw_list = ImGui::GetBackgroundDrawList(viewport);
+
+    if (outline) {
+
+        auto outline_col_im = ImColor(outline_col.r, outline_col.g, outline_col.b, col.a);
+
+        draw_list->AddText(ImVec2(x + 0, y - 1), outline_col_im, text.c_str());  // up
+        draw_list->AddText(ImVec2(x + 0, y + 1), outline_col_im, text.c_str());  // down
+        draw_list->AddText(ImVec2(x + 1, y + 0), outline_col_im, text.c_str());  // right
+        draw_list->AddText(ImVec2(x - 1, y + 0), outline_col_im, text.c_str());  // left
+
+        draw_list->AddText(ImVec2(x + 1, y + 1), outline_col_im, text.c_str());  // down-right
+        draw_list->AddText(ImVec2(x - 1, y + 1), outline_col_im, text.c_str());  // down-left
+
+        draw_list->AddText(ImVec2(x + 1, y - 1), outline_col_im, text.c_str());  // up-right
+        draw_list->AddText(ImVec2(x - 1, y - 1), outline_col_im, text.c_str());  // up-left
+    }
+
+    draw_list->AddText(ImVec2(x, y), ImColor(col.r, col.g, col.b, col.a), text.c_str());  // base
+}
+
 #define __neko_desired_frame_rate 30.0f
 #define __neko_minimum_frame_rate 20.0f
 #define __neko_flash_time_in_ms 333.0f
