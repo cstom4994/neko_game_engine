@@ -1,3 +1,4 @@
+
 #include <algorithm>
 #include <cstdio>
 #include <fstream>
@@ -12,10 +13,12 @@
 #include "engine/common/neko_hash.h"
 #include "engine/common/neko_mem.h"
 #include "engine/common/neko_util.h"
+#include "engine/editor/neko_profiler.hpp"
 #include "engine/graphics/neko_camera.h"
 #include "engine/graphics/neko_graphics.h"
 #include "engine/graphics/neko_material.h"
 #include "engine/graphics/neko_quad_batch.h"
+#include "engine/gui/neko_imgui_utils.hpp"
 #include "engine/math/neko_math.h"
 #include "engine/platform/neko_platform.h"
 #include "engine/serialize/neko_byte_buffer.h"
@@ -27,8 +30,9 @@
 #include "libs/stb/stb_image_resize.h"
 #include "libs/stb/stb_image_write.h"
 
-// OpenGL
+using namespace neko;
 
+// OpenGL
 #define __neko_gl_state_backup()                                                 \
     GLenum last_active_texture;                                                  \
     glGetIntegerv(GL_ACTIVE_TEXTURE, (GLint *)&last_active_texture);             \
@@ -436,7 +440,26 @@ neko_result opengl_init(struct neko_graphics_i *gfx) {
     return neko_result_success;
 }
 
-neko_result opengl_update(struct neko_graphics_i *gfx) { return neko_result_in_progress; }
+neko_result opengl_pre_update(struct neko_graphics_i *gfx) {
+
+    {
+        // neko_profiler_scope_auto("imgui");
+        neko_imgui_new_frame();
+    }
+
+    return neko_result_in_progress;
+}
+
+neko_result opengl_post_update(struct neko_graphics_i *gfx) {
+
+    {
+        neko_profiler_scope_auto("imgui");
+        // 渲染 imgui 内容
+        neko_imgui_render();
+    }
+
+    return neko_result_in_progress;
+}
 
 neko_result opengl_shutdown(struct neko_graphics_i *gfx) {
 
@@ -2743,7 +2766,8 @@ struct neko_graphics_i *__neko_graphics_construct() {
     ============================================================*/
     gfx->init = &opengl_init;
     gfx->shutdown = &opengl_shutdown;
-    gfx->update = &opengl_update;
+    gfx->pre_update = &opengl_pre_update;
+    gfx->post_update = &opengl_post_update;
 
     /*============================================================
     // Graphics Command Buffer Ops

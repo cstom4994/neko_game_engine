@@ -820,8 +820,8 @@ void neko_platform_print_callstack() {
     int num_addresses = neko_platform_callstack(0, addresses, 256);
 
     neko_platform_callstack_symbol_t symbols[256];
-    char symbols_buffer[2048];
-    num_addresses = neko_platform_callstack_symbols(addresses, symbols, num_addresses, symbols_buffer, 2048);
+    char symbols_buffer[4096];
+    num_addresses = neko_platform_callstack_symbols(addresses, symbols, num_addresses, symbols_buffer, 4096);
 
     int i;
     for (i = 0; i < num_addresses; ++i) printf("%3d) %-50s %s(%u)\n", i, symbols[i].function, symbols[i].file, symbols[i].line);

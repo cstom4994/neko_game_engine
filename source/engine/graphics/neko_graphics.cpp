@@ -1153,7 +1153,7 @@ void __neko_draw_circle_sector_impl(neko_command_buffer_t* cb, neko_vec2 center,
 
     // Function expects (end_angle > start_angle)
     if (end_angle < start_angle) {
-        // Swap values
+        // swap values
         s32 tmp = start_angle;
         start_angle = end_angle;
         end_angle = tmp;

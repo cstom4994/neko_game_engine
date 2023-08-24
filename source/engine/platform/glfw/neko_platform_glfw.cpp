@@ -81,7 +81,6 @@ neko_result glfw_platform_init(struct neko_platform_i *platform) {
     for (int i = 0; i < 3; ++i) {
         if (std::filesystem::exists(current_dir / "data") && std::filesystem::exists(current_dir / "data" / "scripts")) {
             neko_string tmp = neko_fs_normalize_path(current_dir.string());
-            platform->ctx.gamepath = (char *)neko_safe_malloc(std::strlen(tmp.c_str()) + 1);
             std::strcpy(platform->ctx.gamepath, tmp.c_str());
             neko_info(std::format("game data path detected: {0} (base: {1})", platform->ctx.gamepath, std::filesystem::current_path().string()));
             break;

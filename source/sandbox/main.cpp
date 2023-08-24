@@ -14,6 +14,7 @@
 #include "engine/graphics/neko_sprite.h"
 #include "engine/gui/neko_imgui_lua.hpp"
 #include "engine/gui/neko_imgui_utils.hpp"
+#include "engine/lexer/neko_parser.hpp"
 #include "engine/neko.h"
 #include "engine/physics/neko_phy.h"
 #include "engine/scripting/neko_scripting.h"
@@ -1622,6 +1623,27 @@ neko_result app_update() {
             if (ImGui::Button("test_ut")) test_ut();
             if (ImGui::Button("test_rf")) test_rf();
             if (ImGui::Button("test_se")) test_se();
+            if (ImGui::Button("test_ns")) {
+                std::vector<NStoken> tokens = neko_parser_lex_file(neko_file_path("data/test/example.ns"));
+
+                neko_parser_print_lex(tokens);
+
+                std::cout << "-------------ok-------------" << std::endl;
+
+                NSast *ast = neko_parser_parse_tokens(tokens);
+                neko_assert(ast);
+
+                neko_parser_print_ast(ast);
+
+                std::cout << "-------------ok-------------" << std::endl;
+
+                neko_parser_execute(ast);
+
+                neko_parser_save_ast(neko_file_path("data/test/example.nsobj"), ast);
+                neko_parser_free_ast(ast);
+
+                std::cout << "-------------ok-------------" << std::endl;
+            }
             if (ImGui::Button("test_st")) neko_platform_print_callstack();
             if (ImGui::Button("test_cvars")) neko_config_print();
             if (ImGui::Button("test_rand")) neko_info(std::to_string(neko_rand_xorshf32()));
@@ -1666,27 +1688,27 @@ neko_result app_update() {
     settings.show();
 
     neko_invoke_once(lua_bind::l_G = neko_sc()->neko_lua.state(); lua_bind::imgui_init_lua(););
-    neko_invoke_once(neko_sc()->neko_lua.dostring(R"(
-      -- Main window
-      local Window = ImGui.new("Window", "example title")
-      -- Inner elements
-      local Label = ImGui.new("Label", Window)
-      local TabSelector = ImGui.new("TabSelector", Window)
-      local Tab1 = TabSelector:AddTab("Tab1")
-      local Tab2 = TabSelector:AddTab("Tab2")
-      local Button = ImGui.new("Button", Tab1)
-      local Slider = ImGui.new("Slider", Tab1, true) -- (boolean: 3) aligns it side-by-side !
-      local ColorPicker = ImGui.new("ColorPicker", Tab2)
-      Label.Text = "这个窗口由Lua脚本控制"
-      Slider.Text = "Slider Example"
-      Button.Text = "Button Example"
-      ColorPicker.Text = "Color Picker Example"
-      Slider.Min = -10
-      Slider.Max = 10
-      Button.Callback = function()
-        ImGui.new("Label", Tab1).Text = "Hello world"
-      end
-          )"););
+    // neko_invoke_once(neko_sc()->neko_lua.dostring(R"(
+    //   -- Main window
+    //   local Window = ImGui.new("Window", "example title")
+    //   -- Inner elements
+    //   local Label = ImGui.new("Label", Window)
+    //   local TabSelector = ImGui.new("TabSelector", Window)
+    //   local Tab1 = TabSelector:AddTab("Tab1")
+    //   local Tab2 = TabSelector:AddTab("Tab2")
+    //   local Button = ImGui.new("Button", Tab1)
+    //   local Slider = ImGui.new("Slider", Tab1, true) -- (boolean: 3) aligns it side-by-side !
+    //   local ColorPicker = ImGui.new("ColorPicker", Tab2)
+    //   Label.Text = "这个窗口由Lua脚本控制"
+    //   Slider.Text = "Slider Example"
+    //   Button.Text = "Button Example"
+    //   ColorPicker.Text = "Color Picker Example"
+    //   Slider.Min = -10
+    //   Slider.Max = 10
+    //   Button.Callback = function()
+    //     ImGui.new("Label", Tab1).Text = "Hello world"
+    //   end
+    //       )"););
     for (auto &w : lua_bind::windows) {
         w.render();
     }
@@ -4578,19 +4600,42 @@ void test_wang() {
     free(data);
 }
 
+// Use discrete GPU by default.
+extern "C" {
+// http://developer.download.nvidia.com/devzone/devcenter/gamegraphics/files/OptimusRenderingPolicies.pdf
+__declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
+
+// https://gpuopen.com/learn/amdpowerxpressrequesthighperformance/
+__declspec(dllexport) unsigned long AmdPowerXpressRequestHighPerformance = 0x00000001;
+}
+
 s32 main(s32 argc, char **argv) {
+
+#ifndef _DEBUG
+    HANDLE hMutex = CreateMutex(nullptr, FALSE, L"KaoruGameMutex");
+
+    if (NULL != hMutex) GetLastError();
+
+    DWORD dwMutexResult = ::WaitForSingleObject(hMutex, 0);
+
+    if (dwMutexResult != WAIT_OBJECT_0 && dwMutexResult != WAIT_ABANDONED) {
+        MessageBoxA(NULL, "Could not launch game.\nOnly one instance of this game can be run at a time.", "Fatal Error", MB_OK | MB_ICONERROR);
+        return 0;
+    }
+#endif
 
     neko_engine *engine = neko_engine_construct(argc, argv);
     if (nullptr != engine) {
         neko_result result = engine->engine_run();
         if (result != neko_result_success) {
             neko_warn("engine did not successfully finish running.");
-            return -1;
         }
-        neko_info("good");
-    } else {
-        neko_info("bad");
     }
+
+#ifndef _DEBUG
+    ::ReleaseMutex(hMutex);
+    ::CloseHandle(hMutex);
+#endif
 
     return 0;
 }

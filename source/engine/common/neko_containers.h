@@ -517,7 +517,7 @@ neko_force_inline u32 neko_slot_array_find_next_available_index(neko_slot_array_
                 }                                                                                   \
             }                                                                                       \
                                                                                                     \
-            /* Swap and pop data */                                                                 \
+            /* swap and pop data */                                                                 \
             (sa).data[og_data_idx] = neko_dyn_array_back((sa).data);                                \
             neko_dyn_array_pop((sa).data);                                                          \
                                                                                                     \

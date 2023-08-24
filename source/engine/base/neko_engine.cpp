@@ -245,7 +245,13 @@ neko_result neko_engine_run() {
         if (platform->process_input(NULL) != neko_result_in_progress) {
         }
 
-        neko_imgui_new_frame();
+        {
+            neko_profiler_scope_auto("gfx_pre");
+            // Graphics update and commit
+            if (gfx && gfx->pre_update) {
+                gfx->pre_update(gfx);
+            }
+        }
 
         // Process application context
         if (neko_engine_instance()->ctx.update() != neko_result_in_progress) {
@@ -278,12 +284,6 @@ neko_result neko_engine_run() {
         }
 
         {
-            neko_profiler_scope_auto("imgui");
-            // 渲染 imgui 内容
-            neko_imgui_render();
-        }
-
-        {
             neko_profiler_scope_auto("audio");
             // Audio update and commit
             if (audio) {
@@ -297,14 +297,14 @@ neko_result neko_engine_run() {
         }
 
         {
-            neko_profiler_scope_auto("gfx");
+            neko_profiler_scope_auto("gfx_post");
             // Graphics update and commit
-            if (gfx && gfx->update) {
-                gfx->update(gfx);
+            if (gfx && gfx->post_update) {
+                gfx->post_update(gfx);
             }
         }
 
-        // Swap all platform window buffers? Sure...
+        // swap all platform window buffers? Sure...
         neko_for_range_i(neko_dyn_array_size(platform->active_window_handles)) { platform->window_swap_buffer(platform->active_window_handles[i]); }
 
         // Frame locking
@@ -341,8 +341,6 @@ neko_result neko_engine_shutdown() {
     neko_ecs_destroy(neko_engine_subsystem(ecs));
 
     __neko_engine_shutdown_high();
-
-    neko_safe_free(neko_engine_instance()->ctx.platform->ctx.gamepath);
 
     neko_sc()->__end();
 

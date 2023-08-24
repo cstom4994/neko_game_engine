@@ -477,7 +477,8 @@ typedef struct neko_graphics_i {
     ============================================================*/
     neko_result (*init)(struct neko_graphics_i*);
     neko_result (*shutdown)(struct neko_graphics_i*);
-    neko_result (*update)(struct neko_graphics_i*);
+    neko_result (*pre_update)(struct neko_graphics_i*);
+    neko_result (*post_update)(struct neko_graphics_i*);
 
     /*============================================================
     // Graphics Command Buffer Ops

@@ -1236,7 +1236,7 @@ auto neko_editor_create(neko_engine_cvar_t &cvar) -> dbgui & {
                             auto v = cvar_view.GetVars();
                             for (auto &iter = v.begin(); iter != v.end(); ++iter) {
                                 const auto &[name, var] = *iter;
-                                neko::invoke::apply([&](auto &&...args) { (f(name, var, args), ...); }, std::tuple<float, int, bool>());
+                                neko::invoke::apply([&](auto &&...args) { (f(name, var, args), ...); }, std::tuple<CVAR_TYPES()>());
                                 for (const auto &attr : iter.GetFieldInfo().attrs)
                                     for (const auto &[name, var] : attr.GetVars()) {
                                         if (name == "info") ImGui::Text("    [%s]", var.As<const_str>());

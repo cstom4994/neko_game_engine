@@ -304,7 +304,7 @@ static void ImGui_ImplOpenGL3_SetupRenderState(ImDrawData* draw_data, int fb_wid
         float tmp = T;
         T = B;
         B = tmp;
-    }  // Swap top and bottom if origin is upper left
+    }  // swap top and bottom if origin is upper left
 #endif
     const float ortho_projection[4][4] = {
             {2.0f / (R - L), 0.0f, 0.0f, 0.0f},

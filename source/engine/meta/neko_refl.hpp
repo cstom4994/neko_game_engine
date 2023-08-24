@@ -2075,7 +2075,7 @@ public:
 
     bool IsObjectView() const noexcept { return !buffer; }
 
-    void Swap(SharedObject& rhs) noexcept {
+    void swap(SharedObject& rhs) noexcept {
         std::swap(type, rhs.type);
         std::swap(ptr, rhs.ptr);
         buffer.swap(rhs.buffer);
@@ -2449,7 +2449,7 @@ struct std::hash<neko::cpp::SharedObject> {
 };
 
 namespace std {
-inline void swap(neko::cpp::SharedObject& left, neko::cpp::SharedObject& right) noexcept { left.Swap(right); }
+inline void swap(neko::cpp::SharedObject& left, neko::cpp::SharedObject& right) noexcept { left.swap(right); }
 }  // namespace std
 
 namespace neko::cpp {

@@ -235,7 +235,7 @@ typedef struct neko_platform_input {
 } neko_platform_input;
 
 typedef struct neko_platform_ctx {
-    char *gamepath;
+    char gamepath[256];
 } neko_platform_ctx;
 
 /*===============================================================================================

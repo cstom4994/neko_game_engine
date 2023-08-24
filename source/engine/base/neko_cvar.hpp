@@ -31,7 +31,7 @@ namespace neko {
 
 enum cmd_type { CVAR_VAR = 0, CVAR_FUNC = 1 };
 
-#define CVAR_TYPES() bool, int, float
+#define CVAR_TYPES() bool, s32, f32
 
 struct neko_engine_cvar_t {
     bool ui_tweak;
@@ -46,7 +46,7 @@ struct neko_engine_cvar_t {
 
     bool draw_shaders = true;
     bool tick_world = true;
-    int cell_iter;
+    s32 cell_iter;
     f32 brush_size = 4.f;
     f32 world_gravity = 10.f;
 };

@@ -15,7 +15,7 @@ namespace neko {
 neko_enum_decl(log_type, trace, warning, error, info, debug);
 
 template <typename T>
-std::string log_type_to_str(T enumValue) {
+constexpr std::string log_type_to_str(T enumValue) {
     switch (enumValue) {
         case T::trace:
             return "trace";

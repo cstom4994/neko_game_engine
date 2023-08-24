@@ -8,6 +8,7 @@
 // Defines
 #define neko_pi 3.14159265358979323846264f
 #define neko_tau 2.0 * neko_pi
+#define neko_e 2.71828182845904523536f  // e
 
 // Useful Utility
 #define neko_v2(...) neko_vec2_ctor(__VA_ARGS__)
@@ -138,7 +139,7 @@ neko_static_inline f32 neko_vec2_cross(neko_vec2 a, neko_vec2 b) { return a.x * 
 
 neko_static_inline f32 neko_vec2_angle(neko_vec2 a, neko_vec2 b) { return acos(neko_vec2_dot(a, b) / (neko_vec2_len(a) * neko_vec2_len(b))); }
 
-neko_static_inline b32 neko_vec2_equal(neko_vec2 a, neko_vec2 b) { return (a.x == b.x && a.y == b.y); }
+neko_static_inline bool neko_vec2_equal(neko_vec2 a, neko_vec2 b) { return (a.x == b.x && a.y == b.y); }
 
 /*================================================================================
 // Vec3
@@ -208,6 +209,8 @@ neko_static_inline void neko_vec3_scale_ip(neko_vec3 *vp, f32 s) {
     vp->z *= s;
 }
 
+neko_static_inline bool neko_vec3_equal(neko_vec3 a, neko_vec3 b) { return (a.x == b.x && a.y == b.y && a.z == b.z); }
+
 /*================================================================================
 // Vec4
 ================================================================================*/
@@ -236,6 +239,8 @@ neko_static_inline neko_vec4 neko_vec4_sub(neko_vec4 v0, neko_vec4 v1) { return 
 
 neko_static_inline neko_vec4 neko_vec4_div(neko_vec4 v0, neko_vec4 v1) { return neko_vec4_ctor(v0.x / v1.x, v0.y / v1.y, v0.z / v1.z, v0.w / v1.w); }
 
+neko_static_inline neko_vec4 neko_vec4_mul(neko_vec4 v0, neko_vec4 v1) { return neko_vec4_ctor(v0.x * v1.x, v0.y * v1.y, v0.z * v1.z, v0.w * v1.w); }
+
 neko_static_inline neko_vec4 neko_vec4_scale(neko_vec4 v, f32 s) { return neko_vec4_ctor(v.x / s, v.y / s, v.z / s, v.w / s); }
 
 neko_static_inline f32 neko_vec4_dot(neko_vec4 v0, neko_vec4 v1) { return (f32)(v0.x * v1.x + v0.y * v1.y + v0.z * v1.z + v0.w * v1.w); }
@@ -261,6 +266,8 @@ neko_static_inline f32 neko_vec4_dist(neko_vec4 v0, neko_vec4 v1) {
     f32 dw = (v0.w - v1.w);
     return (sqrt(dx * dx + dy * dy + dz * dz + dw * dw));
 }
+
+neko_static_inline bool neko_vec4_equal(neko_vec4 a, neko_vec4 b) { return (a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w); }
 
 /*================================================================================
 // Useful Vector Functions
@@ -920,7 +927,7 @@ typedef struct neko_rect_t {
     neko_vec2 max;
 } neko_rect_t;
 
-neko_static_inline b32 neko_rect_vs_rect(neko_rect_t a, neko_rect_t b) {
+neko_static_inline bool neko_rect_vs_rect(neko_rect_t a, neko_rect_t b) {
     if (a.max.x > b.min.x && a.max.y > b.min.y && a.min.x < b.max.x && a.min.y < b.max.y) {
         return true;
     }
@@ -929,5 +936,1469 @@ neko_static_inline b32 neko_rect_vs_rect(neko_rect_t a, neko_rect_t b) {
 }
 
 neko_inline f32 neko_sign(f32 x) { return x < 0.0f ? -1.0f : 1.0f; }
+
+#define NEKO_MATH_USE_SSE 1
+#if NEKO_MATH_USE_SSE
+#include <pmmintrin.h>
+#include <xmmintrin.h>
+#endif
+
+#define NEKO_MATH_PREFIX(name) neko_fast_##name
+
+#define NEKO_MATH_SQRTF sqrtf
+#define NEKO_MATH_SINF sinf
+#define NEKO_MATH_COSF cosf
+#define NEKO_MATH_TANF tanf
+#define NEKO_MATH_ACOSF acosf
+
+//----------------------------------------------------------------------//
+// STRUCT DEFINITIONS:
+
+typedef int neko_fast_bool;
+
+// a 2-dimensional vector of floats
+typedef union {
+    float v[2];
+    struct {
+        float x, y;
+    };
+    struct {
+        float w, h;
+    };
+} neko_fast_vec2;
+
+// a 3-dimensional vector of floats
+typedef union {
+    float v[3];
+    struct {
+        float x, y, z;
+    };
+    struct {
+        float w, h, d;
+    };
+    struct {
+        float r, g, b;
+    };
+} neko_fast_vec3;
+
+// a 4-dimensional vector of floats
+typedef union {
+    float v[4];
+    struct {
+        float x, y, z, w;
+    };
+    struct {
+        float r, g, b, a;
+    };
+
+#if NEKO_MATH_USE_SSE
+
+    __m128 packed;
+
+#endif
+} neko_fast_vec4;
+
+//-----------------------------//
+// matrices are column-major
+
+typedef union {
+    float m[3][3];
+} neko_fast_mat3;
+
+typedef union {
+    float m[4][4];
+
+#if NEKO_MATH_USE_SSE
+
+    __m128 packed[4];  // array of columns
+
+#endif
+} neko_fast_mat4;
+
+//-----------------------------//
+
+typedef union {
+    float q[4];
+    struct {
+        float x, y, z, w;
+    };
+
+#if NEKO_MATH_USE_SSE
+
+    __m128 packed;
+
+#endif
+} neko_fast_quaternion;
+
+// typedefs:
+typedef neko_fast_vec2 neko_voxel_vec2;
+typedef neko_fast_vec3 neko_voxel_vec3;
+typedef neko_fast_vec4 neko_voxel_vec4;
+typedef neko_fast_mat3 neko_voxel_mat3;
+typedef neko_fast_mat4 neko_voxel_mat4;
+typedef neko_fast_quaternion neko_voxel_quaternion;
+
+//----------------------------------------------------------------------//
+// HELPER FUNCS:
+
+#define NEKO_MATH_MIN(x, y) ((x) < (y) ? (x) : (y))
+#define NEKO_MATH_MAX(x, y) ((x) > (y) ? (x) : (y))
+#define NEKO_MATH_ABS(x) ((x) > 0 ? (x) : -(x))
+
+neko_static_inline float NEKO_MATH_PREFIX(rad_to_deg)(float rad) { return rad * 57.2957795131f; }
+
+neko_static_inline float NEKO_MATH_PREFIX(deg_to_rad)(float deg) { return deg * 0.01745329251f; }
+
+#if NEKO_MATH_USE_SSE
+
+neko_static_inline __m128 NEKO_MATH_PREFIX(mat4_mult_column_sse)(__m128 c1, neko_fast_mat4 m2) {
+    __m128 result;
+
+    result = _mm_mul_ps(_mm_shuffle_ps(c1, c1, _MM_SHUFFLE(0, 0, 0, 0)), m2.packed[0]);
+    result = _mm_add_ps(result, _mm_mul_ps(_mm_shuffle_ps(c1, c1, _MM_SHUFFLE(1, 1, 1, 1)), m2.packed[1]));
+    result = _mm_add_ps(result, _mm_mul_ps(_mm_shuffle_ps(c1, c1, _MM_SHUFFLE(2, 2, 2, 2)), m2.packed[2]));
+    result = _mm_add_ps(result, _mm_mul_ps(_mm_shuffle_ps(c1, c1, _MM_SHUFFLE(3, 3, 3, 3)), m2.packed[3]));
+
+    return result;
+}
+
+#endif
+
+//----------------------------------------------------------------------//
+// VECTOR FUNCTIONS:
+
+// addition:
+
+neko_static_inline neko_fast_vec2 NEKO_MATH_PREFIX(vec2_add)(neko_fast_vec2 v1, neko_fast_vec2 v2) {
+    neko_fast_vec2 result;
+
+    result.x = v1.x + v2.x;
+    result.y = v1.y + v2.y;
+
+    return result;
+}
+
+neko_static_inline neko_fast_vec3 NEKO_MATH_PREFIX(vec3_add)(neko_fast_vec3 v1, neko_fast_vec3 v2) {
+    neko_fast_vec3 result;
+
+    result.x = v1.x + v2.x;
+    result.y = v1.y + v2.y;
+    result.z = v1.z + v2.z;
+
+    return result;
+}
+
+neko_static_inline neko_fast_vec4 NEKO_MATH_PREFIX(vec4_add)(neko_fast_vec4 v1, neko_fast_vec4 v2) {
+    neko_fast_vec4 result;
+
+#if NEKO_MATH_USE_SSE
+
+    result.packed = _mm_add_ps(v1.packed, v2.packed);
+
+#else
+
+    result.x = v1.x + v2.x;
+    result.y = v1.y + v2.y;
+    result.z = v1.z + v2.z;
+    result.w = v1.w + v2.w;
+
+#endif
+
+    return result;
+}
+
+// subtraction:
+
+neko_static_inline neko_fast_vec2 NEKO_MATH_PREFIX(vec2_sub)(neko_fast_vec2 v1, neko_fast_vec2 v2) {
+    neko_fast_vec2 result;
+
+    result.x = v1.x - v2.x;
+    result.y = v1.y - v2.y;
+
+    return result;
+}
+
+neko_static_inline neko_fast_vec3 NEKO_MATH_PREFIX(vec3_sub)(neko_fast_vec3 v1, neko_fast_vec3 v2) {
+    neko_fast_vec3 result;
+
+    result.x = v1.x - v2.x;
+    result.y = v1.y - v2.y;
+    result.z = v1.z - v2.z;
+
+    return result;
+}
+
+neko_static_inline neko_fast_vec4 NEKO_MATH_PREFIX(vec4_sub)(neko_fast_vec4 v1, neko_fast_vec4 v2) {
+    neko_fast_vec4 result;
+
+#if NEKO_MATH_USE_SSE
+
+    result.packed = _mm_sub_ps(v1.packed, v2.packed);
+
+#else
+
+    result.x = v1.x - v2.x;
+    result.y = v1.y - v2.y;
+    result.z = v1.z - v2.z;
+    result.w = v1.w - v2.w;
+
+#endif
+
+    return result;
+}
+
+// multiplication:
+
+neko_static_inline neko_fast_vec2 NEKO_MATH_PREFIX(vec2_mult)(neko_fast_vec2 v1, neko_fast_vec2 v2) {
+    neko_fast_vec2 result;
+
+    result.x = v1.x * v2.x;
+    result.y = v1.y * v2.y;
+
+    return result;
+}
+
+neko_static_inline neko_fast_vec3 NEKO_MATH_PREFIX(vec3_mult)(neko_fast_vec3 v1, neko_fast_vec3 v2) {
+    neko_fast_vec3 result;
+
+    result.x = v1.x * v2.x;
+    result.y = v1.y * v2.y;
+    result.z = v1.z * v2.z;
+
+    return result;
+}
+
+neko_static_inline neko_fast_vec4 NEKO_MATH_PREFIX(vec4_mult)(neko_fast_vec4 v1, neko_fast_vec4 v2) {
+    neko_fast_vec4 result;
+
+#if NEKO_MATH_USE_SSE
+
+    result.packed = _mm_mul_ps(v1.packed, v2.packed);
+
+#else
+
+    result.x = v1.x * v2.x;
+    result.y = v1.y * v2.y;
+    result.z = v1.z * v2.z;
+    result.w = v1.w * v2.w;
+
+#endif
+
+    return result;
+}
+
+// division:
+
+neko_static_inline neko_fast_vec2 NEKO_MATH_PREFIX(vec2_div)(neko_fast_vec2 v1, neko_fast_vec2 v2) {
+    neko_fast_vec2 result;
+
+    result.x = v1.x / v2.x;
+    result.y = v1.y / v2.y;
+
+    return result;
+}
+
+neko_static_inline neko_fast_vec3 NEKO_MATH_PREFIX(vec3_div)(neko_fast_vec3 v1, neko_fast_vec3 v2) {
+    neko_fast_vec3 result;
+
+    result.x = v1.x / v2.x;
+    result.y = v1.y / v2.y;
+    result.z = v1.z / v2.z;
+
+    return result;
+}
+
+neko_static_inline neko_fast_vec4 NEKO_MATH_PREFIX(vec4_div)(neko_fast_vec4 v1, neko_fast_vec4 v2) {
+    neko_fast_vec4 result;
+
+#if NEKO_MATH_USE_SSE
+
+    result.packed = _mm_div_ps(v1.packed, v2.packed);
+
+#else
+
+    result.x = v1.x / v2.x;
+    result.y = v1.y / v2.y;
+    result.z = v1.z / v2.z;
+    result.w = v1.w / v2.w;
+
+#endif
+
+    return result;
+}
+
+// scalar multiplication:
+
+neko_static_inline neko_fast_vec2 NEKO_MATH_PREFIX(vec2_scale)(neko_fast_vec2 v, float s) {
+    neko_fast_vec2 result;
+
+    result.x = v.x * s;
+    result.y = v.y * s;
+
+    return result;
+}
+
+neko_static_inline neko_fast_vec3 NEKO_MATH_PREFIX(vec3_scale)(neko_fast_vec3 v, float s) {
+    neko_fast_vec3 result;
+
+    result.x = v.x * s;
+    result.y = v.y * s;
+    result.z = v.z * s;
+
+    return result;
+}
+
+neko_static_inline neko_fast_vec4 NEKO_MATH_PREFIX(vec4_scale)(neko_fast_vec4 v, float s) {
+    neko_fast_vec4 result;
+
+#if NEKO_MATH_USE_SSE
+
+    __m128 scale = _mm_set1_ps(s);
+    result.packed = _mm_mul_ps(v.packed, scale);
+
+#else
+
+    result.x = v.x * s;
+    result.y = v.y * s;
+    result.z = v.z * s;
+    result.w = v.w * s;
+
+#endif
+
+    return result;
+}
+
+// dot product:
+
+neko_static_inline float NEKO_MATH_PREFIX(vec2_dot)(neko_fast_vec2 v1, neko_fast_vec2 v2) {
+    float result;
+
+    result = v1.x * v2.x + v1.y * v2.y;
+
+    return result;
+}
+
+neko_static_inline float NEKO_MATH_PREFIX(vec3_dot)(neko_fast_vec3 v1, neko_fast_vec3 v2) {
+    float result;
+
+    result = v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+
+    return result;
+}
+
+neko_static_inline float NEKO_MATH_PREFIX(vec4_dot)(neko_fast_vec4 v1, neko_fast_vec4 v2) {
+    float result;
+
+#if NEKO_MATH_USE_SSE
+
+    __m128 r = _mm_mul_ps(v1.packed, v2.packed);
+    r = _mm_hadd_ps(r, r);
+    r = _mm_hadd_ps(r, r);
+    _mm_store_ss(&result, r);
+
+#else
+
+    result = v1.x * v2.x + v1.y * v2.y + v1.z * v2.z + v1.w * v2.w;
+
+#endif
+
+    return result;
+}
+
+// cross product
+
+neko_static_inline neko_fast_vec3 NEKO_MATH_PREFIX(vec3_cross)(neko_fast_vec3 v1, neko_fast_vec3 v2) {
+    neko_fast_vec3 result;
+
+    result.x = (v1.y * v2.z) - (v1.z * v2.y);
+    result.y = (v1.z * v2.x) - (v1.x * v2.z);
+    result.z = (v1.x * v2.y) - (v1.y * v2.x);
+
+    return result;
+}
+
+// length:
+
+neko_static_inline float NEKO_MATH_PREFIX(vec2_length)(neko_fast_vec2 v) {
+    float result;
+
+    result = NEKO_MATH_SQRTF(NEKO_MATH_PREFIX(vec2_dot)(v, v));
+
+    return result;
+}
+
+neko_static_inline float NEKO_MATH_PREFIX(vec3_length)(neko_fast_vec3 v) {
+    float result;
+
+    result = NEKO_MATH_SQRTF(NEKO_MATH_PREFIX(vec3_dot)(v, v));
+
+    return result;
+}
+
+neko_static_inline float NEKO_MATH_PREFIX(vec4_length)(neko_fast_vec4 v) {
+    float result;
+
+    result = NEKO_MATH_SQRTF(NEKO_MATH_PREFIX(vec4_dot)(v, v));
+
+    return result;
+}
+
+// normalize:
+
+neko_static_inline neko_fast_vec2 NEKO_MATH_PREFIX(vec2_normalize)(neko_fast_vec2 v) {
+    neko_fast_vec2 result = {0};
+
+    float invLen = NEKO_MATH_PREFIX(vec2_length)(v);
+    if (invLen != 0.0f) {
+        invLen = 1.0f / invLen;
+        result.x = v.x * invLen;
+        result.y = v.y * invLen;
+    }
+
+    return result;
+}
+
+neko_static_inline neko_fast_vec3 NEKO_MATH_PREFIX(vec3_normalize)(neko_fast_vec3 v) {
+    neko_fast_vec3 result = {0};
+
+    float invLen = NEKO_MATH_PREFIX(vec3_length)(v);
+    if (invLen != 0.0f) {
+        invLen = 1.0f / invLen;
+        result.x = v.x * invLen;
+        result.y = v.y * invLen;
+        result.z = v.z * invLen;
+    }
+
+    return result;
+}
+
+neko_static_inline neko_fast_vec4 NEKO_MATH_PREFIX(vec4_normalize)(neko_fast_vec4 v) {
+    neko_fast_vec4 result = {0};
+
+    float len = NEKO_MATH_PREFIX(vec4_length)(v);
+    if (len != 0.0f) {
+#if NEKO_MATH_USE_SSE
+
+        __m128 scale = _mm_set1_ps(len);
+        result.packed = _mm_div_ps(v.packed, scale);
+
+#else
+
+        float invLen = 1.0f / len;
+
+        result.x = v.x * invLen;
+        result.y = v.y * invLen;
+        result.z = v.z * invLen;
+        result.w = v.w * invLen;
+
+#endif
+    }
+
+    return result;
+}
+
+// distance:
+
+neko_static_inline float NEKO_MATH_PREFIX(vec2_distance)(neko_fast_vec2 v1, neko_fast_vec2 v2) {
+    float result;
+
+    neko_fast_vec2 to = NEKO_MATH_PREFIX(vec2_sub)(v1, v2);
+    result = NEKO_MATH_PREFIX(vec2_length)(to);
+
+    return result;
+}
+
+neko_static_inline float NEKO_MATH_PREFIX(vec3_distance)(neko_fast_vec3 v1, neko_fast_vec3 v2) {
+    float result;
+
+    neko_fast_vec3 to = NEKO_MATH_PREFIX(vec3_sub)(v1, v2);
+    result = NEKO_MATH_PREFIX(vec3_length)(to);
+
+    return result;
+}
+
+neko_static_inline float NEKO_MATH_PREFIX(vec4_distance)(neko_fast_vec4 v1, neko_fast_vec4 v2) {
+    float result;
+
+    neko_fast_vec4 to = NEKO_MATH_PREFIX(vec4_sub)(v1, v2);
+    result = NEKO_MATH_PREFIX(vec4_length)(to);
+
+    return result;
+}
+
+// equality:
+
+neko_static_inline neko_fast_bool NEKO_MATH_PREFIX(vec2_equals)(neko_fast_vec2 v1, neko_fast_vec2 v2) {
+    neko_fast_bool result;
+
+    result = (v1.x == v2.x) && (v1.y == v2.y);
+
+    return result;
+}
+
+neko_static_inline neko_fast_bool NEKO_MATH_PREFIX(vec3_equals)(neko_fast_vec3 v1, neko_fast_vec3 v2) {
+    neko_fast_bool result;
+
+    result = (v1.x == v2.x) && (v1.y == v2.y) && (v1.z == v2.z);
+
+    return result;
+}
+
+neko_static_inline neko_fast_bool NEKO_MATH_PREFIX(vec4_equals)(neko_fast_vec4 v1, neko_fast_vec4 v2) {
+    neko_fast_bool result;
+
+    // TODO: there are SIMD instructions for floating point equality, find a way to get a single bool from them
+    result = (v1.x == v2.x) && (v1.y == v2.y) && (v1.z == v2.z) && (v1.w == v2.w);
+
+    return result;
+}
+
+// min:
+
+neko_static_inline neko_fast_vec2 NEKO_MATH_PREFIX(vec2_min)(neko_fast_vec2 v1, neko_fast_vec2 v2) {
+    neko_fast_vec2 result;
+
+    result.x = NEKO_MATH_MIN(v1.x, v2.x);
+    result.y = NEKO_MATH_MIN(v1.y, v2.y);
+
+    return result;
+}
+
+neko_static_inline neko_fast_vec3 NEKO_MATH_PREFIX(vec3_min)(neko_fast_vec3 v1, neko_fast_vec3 v2) {
+    neko_fast_vec3 result;
+
+    result.x = NEKO_MATH_MIN(v1.x, v2.x);
+    result.y = NEKO_MATH_MIN(v1.y, v2.y);
+    result.z = NEKO_MATH_MIN(v1.z, v2.z);
+
+    return result;
+}
+
+neko_static_inline neko_fast_vec4 NEKO_MATH_PREFIX(vec4_min)(neko_fast_vec4 v1, neko_fast_vec4 v2) {
+    neko_fast_vec4 result;
+
+#if NEKO_MATH_USE_SSE
+
+    result.packed = _mm_min_ps(v1.packed, v2.packed);
+
+#else
+
+    result.x = NEKO_MATH_MIN(v1.x, v2.x);
+    result.y = NEKO_MATH_MIN(v1.y, v2.y);
+    result.z = NEKO_MATH_MIN(v1.z, v2.z);
+    result.w = NEKO_MATH_MIN(v1.w, v2.w);
+
+#endif
+
+    return result;
+}
+
+// max:
+
+neko_static_inline neko_fast_vec2 NEKO_MATH_PREFIX(vec2_max)(neko_fast_vec2 v1, neko_fast_vec2 v2) {
+    neko_fast_vec2 result;
+
+    result.x = NEKO_MATH_MAX(v1.x, v2.x);
+    result.y = NEKO_MATH_MAX(v1.y, v2.y);
+
+    return result;
+}
+
+neko_static_inline neko_fast_vec3 NEKO_MATH_PREFIX(vec3_max)(neko_fast_vec3 v1, neko_fast_vec3 v2) {
+    neko_fast_vec3 result;
+
+    result.x = NEKO_MATH_MAX(v1.x, v2.x);
+    result.y = NEKO_MATH_MAX(v1.y, v2.y);
+    result.z = NEKO_MATH_MAX(v1.z, v2.z);
+
+    return result;
+}
+
+neko_static_inline neko_fast_vec4 NEKO_MATH_PREFIX(vec4_max)(neko_fast_vec4 v1, neko_fast_vec4 v2) {
+    neko_fast_vec4 result;
+
+#if NEKO_MATH_USE_SSE
+
+    result.packed = _mm_max_ps(v1.packed, v2.packed);
+
+#else
+
+    result.x = NEKO_MATH_MAX(v1.x, v2.x);
+    result.y = NEKO_MATH_MAX(v1.y, v2.y);
+    result.z = NEKO_MATH_MAX(v1.z, v2.z);
+    result.w = NEKO_MATH_MAX(v1.w, v2.w);
+
+#endif
+
+    return result;
+}
+
+//----------------------------------------------------------------------//
+// MATRIX FUNCTIONS:
+
+// initialization:
+
+neko_static_inline neko_fast_mat3 NEKO_MATH_PREFIX(mat3_identity)() {
+    neko_fast_mat3 result = {1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f};
+
+    return result;
+}
+
+neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_identity)() {
+    neko_fast_mat4 result = {1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f};
+
+    return result;
+}
+
+// addition:
+
+neko_static_inline neko_fast_mat3 NEKO_MATH_PREFIX(mat3_add)(neko_fast_mat3 m1, neko_fast_mat3 m2) {
+    neko_fast_mat3 result;
+
+    result.m[0][0] = m1.m[0][0] + m2.m[0][0];
+    result.m[0][1] = m1.m[0][1] + m2.m[0][1];
+    result.m[0][2] = m1.m[0][2] + m2.m[0][2];
+    result.m[1][0] = m1.m[1][0] + m2.m[1][0];
+    result.m[1][1] = m1.m[1][1] + m2.m[1][1];
+    result.m[1][2] = m1.m[1][2] + m2.m[1][2];
+    result.m[2][0] = m1.m[2][0] + m2.m[2][0];
+    result.m[2][1] = m1.m[2][1] + m2.m[2][1];
+    result.m[2][2] = m1.m[2][2] + m2.m[2][2];
+
+    return result;
+}
+
+neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_add)(neko_fast_mat4 m1, neko_fast_mat4 m2) {
+    neko_fast_mat4 result;
+
+#if NEKO_MATH_USE_SSE
+
+    result.packed[0] = _mm_add_ps(m1.packed[0], m2.packed[0]);
+    result.packed[1] = _mm_add_ps(m1.packed[1], m2.packed[1]);
+    result.packed[2] = _mm_add_ps(m1.packed[2], m2.packed[2]);
+    result.packed[3] = _mm_add_ps(m1.packed[3], m2.packed[3]);
+
+#else
+
+    result.m[0][0] = m1.m[0][0] + m2.m[0][0];
+    result.m[0][1] = m1.m[0][1] + m2.m[0][1];
+    result.m[0][2] = m1.m[0][2] + m2.m[0][2];
+    result.m[0][3] = m1.m[0][3] + m2.m[0][3];
+    result.m[1][0] = m1.m[1][0] + m2.m[1][0];
+    result.m[1][1] = m1.m[1][1] + m2.m[1][1];
+    result.m[1][2] = m1.m[1][2] + m2.m[1][2];
+    result.m[1][3] = m1.m[1][3] + m2.m[1][3];
+    result.m[2][0] = m1.m[2][0] + m2.m[2][0];
+    result.m[2][1] = m1.m[2][1] + m2.m[2][1];
+    result.m[2][2] = m1.m[2][2] + m2.m[2][2];
+    result.m[2][3] = m1.m[2][3] + m2.m[2][3];
+    result.m[3][0] = m1.m[3][0] + m2.m[3][0];
+    result.m[3][1] = m1.m[3][1] + m2.m[3][1];
+    result.m[3][2] = m1.m[3][2] + m2.m[3][2];
+    result.m[3][3] = m1.m[3][3] + m2.m[3][3];
+
+#endif
+
+    return result;
+}
+
+// subtraction:
+
+neko_static_inline neko_fast_mat3 NEKO_MATH_PREFIX(mat3_sub)(neko_fast_mat3 m1, neko_fast_mat3 m2) {
+    neko_fast_mat3 result;
+
+    result.m[0][0] = m1.m[0][0] - m2.m[0][0];
+    result.m[0][1] = m1.m[0][1] - m2.m[0][1];
+    result.m[0][2] = m1.m[0][2] - m2.m[0][2];
+    result.m[1][0] = m1.m[1][0] - m2.m[1][0];
+    result.m[1][1] = m1.m[1][1] - m2.m[1][1];
+    result.m[1][2] = m1.m[1][2] - m2.m[1][2];
+    result.m[2][0] = m1.m[2][0] - m2.m[2][0];
+    result.m[2][1] = m1.m[2][1] - m2.m[2][1];
+    result.m[2][2] = m1.m[2][2] - m2.m[2][2];
+
+    return result;
+}
+
+neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_sub)(neko_fast_mat4 m1, neko_fast_mat4 m2) {
+    neko_fast_mat4 result;
+
+#if NEKO_MATH_USE_SSE
+
+    result.packed[0] = _mm_sub_ps(m1.packed[0], m2.packed[0]);
+    result.packed[1] = _mm_sub_ps(m1.packed[1], m2.packed[1]);
+    result.packed[2] = _mm_sub_ps(m1.packed[2], m2.packed[2]);
+    result.packed[3] = _mm_sub_ps(m1.packed[3], m2.packed[3]);
+
+#else
+
+    result.m[0][0] = m1.m[0][0] - m2.m[0][0];
+    result.m[0][1] = m1.m[0][1] - m2.m[0][1];
+    result.m[0][2] = m1.m[0][2] - m2.m[0][2];
+    result.m[0][3] = m1.m[0][3] - m2.m[0][3];
+    result.m[1][0] = m1.m[1][0] - m2.m[1][0];
+    result.m[1][1] = m1.m[1][1] - m2.m[1][1];
+    result.m[1][2] = m1.m[1][2] - m2.m[1][2];
+    result.m[1][3] = m1.m[1][3] - m2.m[1][3];
+    result.m[2][0] = m1.m[2][0] - m2.m[2][0];
+    result.m[2][1] = m1.m[2][1] - m2.m[2][1];
+    result.m[2][2] = m1.m[2][2] - m2.m[2][2];
+    result.m[2][3] = m1.m[2][3] - m2.m[2][3];
+    result.m[3][0] = m1.m[3][0] - m2.m[3][0];
+    result.m[3][1] = m1.m[3][1] - m2.m[3][1];
+    result.m[3][2] = m1.m[3][2] - m2.m[3][2];
+    result.m[3][3] = m1.m[3][3] - m2.m[3][3];
+
+#endif
+
+    return result;
+}
+
+// multiplication:
+
+neko_static_inline neko_fast_mat3 NEKO_MATH_PREFIX(mat3_mult)(neko_fast_mat3 m1, neko_fast_mat3 m2) {
+    neko_fast_mat3 result;
+
+    result.m[0][0] = m1.m[0][0] * m2.m[0][0] + m1.m[1][0] * m2.m[0][1] + m1.m[2][0] * m2.m[0][2];
+    result.m[0][1] = m1.m[0][1] * m2.m[0][0] + m1.m[1][1] * m2.m[0][1] + m1.m[2][1] * m2.m[0][2];
+    result.m[0][2] = m1.m[0][2] * m2.m[0][0] + m1.m[1][2] * m2.m[0][1] + m1.m[2][2] * m2.m[0][2];
+    result.m[1][0] = m1.m[0][0] * m2.m[1][0] + m1.m[1][0] * m2.m[1][1] + m1.m[2][0] * m2.m[1][2];
+    result.m[1][1] = m1.m[0][1] * m2.m[1][0] + m1.m[1][1] * m2.m[1][1] + m1.m[2][1] * m2.m[1][2];
+    result.m[1][2] = m1.m[0][2] * m2.m[1][0] + m1.m[1][2] * m2.m[1][1] + m1.m[2][2] * m2.m[1][2];
+    result.m[2][0] = m1.m[0][0] * m2.m[2][0] + m1.m[1][0] * m2.m[2][1] + m1.m[2][0] * m2.m[2][2];
+    result.m[2][1] = m1.m[0][1] * m2.m[2][0] + m1.m[1][1] * m2.m[2][1] + m1.m[2][1] * m2.m[2][2];
+    result.m[2][2] = m1.m[0][2] * m2.m[2][0] + m1.m[1][2] * m2.m[2][1] + m1.m[2][2] * m2.m[2][2];
+
+    return result;
+}
+
+neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_mult)(neko_fast_mat4 m1, neko_fast_mat4 m2) {
+    neko_fast_mat4 result;
+
+#if NEKO_MATH_USE_SSE
+
+    result.packed[0] = NEKO_MATH_PREFIX(mat4_mult_column_sse)(m2.packed[0], m1);
+    result.packed[1] = NEKO_MATH_PREFIX(mat4_mult_column_sse)(m2.packed[1], m1);
+    result.packed[2] = NEKO_MATH_PREFIX(mat4_mult_column_sse)(m2.packed[2], m1);
+    result.packed[3] = NEKO_MATH_PREFIX(mat4_mult_column_sse)(m2.packed[3], m1);
+
+#else
+
+    result.m[0][0] = m1.m[0][0] * m2.m[0][0] + m1.m[1][0] * m2.m[0][1] + m1.m[2][0] * m2.m[0][2] + m1.m[3][0] * m2.m[0][3];
+    result.m[0][1] = m1.m[0][1] * m2.m[0][0] + m1.m[1][1] * m2.m[0][1] + m1.m[2][1] * m2.m[0][2] + m1.m[3][1] * m2.m[0][3];
+    result.m[0][2] = m1.m[0][2] * m2.m[0][0] + m1.m[1][2] * m2.m[0][1] + m1.m[2][2] * m2.m[0][2] + m1.m[3][2] * m2.m[0][3];
+    result.m[0][3] = m1.m[0][3] * m2.m[0][0] + m1.m[1][3] * m2.m[0][1] + m1.m[2][3] * m2.m[0][2] + m1.m[3][3] * m2.m[0][3];
+    result.m[1][0] = m1.m[0][0] * m2.m[1][0] + m1.m[1][0] * m2.m[1][1] + m1.m[2][0] * m2.m[1][2] + m1.m[3][0] * m2.m[1][3];
+    result.m[1][1] = m1.m[0][1] * m2.m[1][0] + m1.m[1][1] * m2.m[1][1] + m1.m[2][1] * m2.m[1][2] + m1.m[3][1] * m2.m[1][3];
+    result.m[1][2] = m1.m[0][2] * m2.m[1][0] + m1.m[1][2] * m2.m[1][1] + m1.m[2][2] * m2.m[1][2] + m1.m[3][2] * m2.m[1][3];
+    result.m[1][3] = m1.m[0][3] * m2.m[1][0] + m1.m[1][3] * m2.m[1][1] + m1.m[2][3] * m2.m[1][2] + m1.m[3][3] * m2.m[1][3];
+    result.m[2][0] = m1.m[0][0] * m2.m[2][0] + m1.m[1][0] * m2.m[2][1] + m1.m[2][0] * m2.m[2][2] + m1.m[3][0] * m2.m[2][3];
+    result.m[2][1] = m1.m[0][1] * m2.m[2][0] + m1.m[1][1] * m2.m[2][1] + m1.m[2][1] * m2.m[2][2] + m1.m[3][1] * m2.m[2][3];
+    result.m[2][2] = m1.m[0][2] * m2.m[2][0] + m1.m[1][2] * m2.m[2][1] + m1.m[2][2] * m2.m[2][2] + m1.m[3][2] * m2.m[2][3];
+    result.m[2][3] = m1.m[0][3] * m2.m[2][0] + m1.m[1][3] * m2.m[2][1] + m1.m[2][3] * m2.m[2][2] + m1.m[3][3] * m2.m[2][3];
+    result.m[3][0] = m1.m[0][0] * m2.m[3][0] + m1.m[1][0] * m2.m[3][1] + m1.m[2][0] * m2.m[3][2] + m1.m[3][0] * m2.m[3][3];
+    result.m[3][1] = m1.m[0][1] * m2.m[3][0] + m1.m[1][1] * m2.m[3][1] + m1.m[2][1] * m2.m[3][2] + m1.m[3][1] * m2.m[3][3];
+    result.m[3][2] = m1.m[0][2] * m2.m[3][0] + m1.m[1][2] * m2.m[3][1] + m1.m[2][2] * m2.m[3][2] + m1.m[3][2] * m2.m[3][3];
+    result.m[3][3] = m1.m[0][3] * m2.m[3][0] + m1.m[1][3] * m2.m[3][1] + m1.m[2][3] * m2.m[3][2] + m1.m[3][3] * m2.m[3][3];
+
+#endif
+
+    return result;
+}
+
+neko_static_inline neko_fast_vec3 NEKO_MATH_PREFIX(mat3_mult_vec3)(neko_fast_mat3 m, neko_fast_vec3 v) {
+    neko_fast_vec3 result;
+
+    result.x = m.m[0][0] * v.x + m.m[1][0] * v.y + m.m[2][0] * v.z;
+    result.y = m.m[0][1] * v.x + m.m[1][1] * v.y + m.m[2][1] * v.z;
+    result.z = m.m[0][2] * v.x + m.m[1][2] * v.y + m.m[2][2] * v.z;
+
+    return result;
+}
+
+neko_static_inline neko_fast_vec4 NEKO_MATH_PREFIX(mat4_mult_vec4)(neko_fast_mat4 m, neko_fast_vec4 v) {
+    neko_fast_vec4 result;
+
+#if NEKO_MATH_USE_SSE
+
+    result.packed = NEKO_MATH_PREFIX(mat4_mult_column_sse)(v.packed, m);
+
+#else
+
+    result.x = m.m[0][0] * v.x + m.m[1][0] * v.y + m.m[2][0] * v.z + m.m[3][0] * v.w;
+    result.y = m.m[0][1] * v.x + m.m[1][1] * v.y + m.m[2][1] * v.z + m.m[3][1] * v.w;
+    result.z = m.m[0][2] * v.x + m.m[1][2] * v.y + m.m[2][2] * v.z + m.m[3][2] * v.w;
+    result.w = m.m[0][3] * v.x + m.m[1][3] * v.y + m.m[2][3] * v.z + m.m[3][3] * v.w;
+
+#endif
+
+    return result;
+}
+
+// transpose:
+
+neko_static_inline neko_fast_mat3 NEKO_MATH_PREFIX(mat3_transpose)(neko_fast_mat3 m) {
+    neko_fast_mat3 result;
+
+    result.m[0][0] = m.m[0][0];
+    result.m[0][1] = m.m[1][0];
+    result.m[0][2] = m.m[2][0];
+    result.m[1][0] = m.m[0][1];
+    result.m[1][1] = m.m[1][1];
+    result.m[1][2] = m.m[2][1];
+    result.m[2][0] = m.m[0][2];
+    result.m[2][1] = m.m[1][2];
+    result.m[2][2] = m.m[2][2];
+
+    return result;
+}
+
+neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_transpose)(neko_fast_mat4 m) {
+    neko_fast_mat4 result = m;
+
+#if NEKO_MATH_USE_SSE
+
+    _MM_TRANSPOSE4_PS(result.packed[0], result.packed[1], result.packed[2], result.packed[3]);
+
+#else
+
+    result.m[0][0] = m.m[0][0];
+    result.m[0][1] = m.m[1][0];
+    result.m[0][2] = m.m[2][0];
+    result.m[0][3] = m.m[3][0];
+    result.m[1][0] = m.m[0][1];
+    result.m[1][1] = m.m[1][1];
+    result.m[1][2] = m.m[2][1];
+    result.m[1][3] = m.m[3][1];
+    result.m[2][0] = m.m[0][2];
+    result.m[2][1] = m.m[1][2];
+    result.m[2][2] = m.m[2][2];
+    result.m[2][3] = m.m[3][2];
+    result.m[3][0] = m.m[0][3];
+    result.m[3][1] = m.m[1][3];
+    result.m[3][2] = m.m[2][3];
+    result.m[3][3] = m.m[3][3];
+
+#endif
+
+    return result;
+}
+
+// inverse:
+
+neko_static_inline neko_fast_mat3 NEKO_MATH_PREFIX(mat3_inv)(neko_fast_mat3 m) {
+    neko_fast_mat3 result;
+
+    float det;
+    float a = m.m[0][0], b = m.m[0][1], c = m.m[0][2], d = m.m[1][0], e = m.m[1][1], f = m.m[1][2], g = m.m[2][0], h = m.m[2][1], i = m.m[2][2];
+
+    result.m[0][0] = e * i - f * h;
+    result.m[0][1] = -(b * i - h * c);
+    result.m[0][2] = b * f - e * c;
+    result.m[1][0] = -(d * i - g * f);
+    result.m[1][1] = a * i - c * g;
+    result.m[1][2] = -(a * f - d * c);
+    result.m[2][0] = d * h - g * e;
+    result.m[2][1] = -(a * h - g * b);
+    result.m[2][2] = a * e - b * d;
+
+    det = 1.0f / (a * result.m[0][0] + b * result.m[1][0] + c * result.m[2][0]);
+
+    result.m[0][0] *= det;
+    result.m[0][1] *= det;
+    result.m[0][2] *= det;
+    result.m[1][0] *= det;
+    result.m[1][1] *= det;
+    result.m[1][2] *= det;
+    result.m[2][0] *= det;
+    result.m[2][1] *= det;
+    result.m[2][2] *= det;
+
+    return result;
+}
+
+neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_inv)(neko_fast_mat4 mat) {
+    // TODO: this function is not SIMD optimized, figure out how to do it
+
+    neko_fast_mat4 result;
+
+    float tmp[6];
+    float det;
+    float a = mat.m[0][0], b = mat.m[0][1], c = mat.m[0][2], d = mat.m[0][3], e = mat.m[1][0], f = mat.m[1][1], g = mat.m[1][2], h = mat.m[1][3], i = mat.m[2][0], j = mat.m[2][1], k = mat.m[2][2],
+          l = mat.m[2][3], m = mat.m[3][0], n = mat.m[3][1], o = mat.m[3][2], p = mat.m[3][3];
+
+    tmp[0] = k * p - o * l;
+    tmp[1] = j * p - n * l;
+    tmp[2] = j * o - n * k;
+    tmp[3] = i * p - m * l;
+    tmp[4] = i * o - m * k;
+    tmp[5] = i * n - m * j;
+
+    result.m[0][0] = f * tmp[0] - g * tmp[1] + h * tmp[2];
+    result.m[1][0] = -(e * tmp[0] - g * tmp[3] + h * tmp[4]);
+    result.m[2][0] = e * tmp[1] - f * tmp[3] + h * tmp[5];
+    result.m[3][0] = -(e * tmp[2] - f * tmp[4] + g * tmp[5]);
+
+    result.m[0][1] = -(b * tmp[0] - c * tmp[1] + d * tmp[2]);
+    result.m[1][1] = a * tmp[0] - c * tmp[3] + d * tmp[4];
+    result.m[2][1] = -(a * tmp[1] - b * tmp[3] + d * tmp[5]);
+    result.m[3][1] = a * tmp[2] - b * tmp[4] + c * tmp[5];
+
+    tmp[0] = g * p - o * h;
+    tmp[1] = f * p - n * h;
+    tmp[2] = f * o - n * g;
+    tmp[3] = e * p - m * h;
+    tmp[4] = e * o - m * g;
+    tmp[5] = e * n - m * f;
+
+    result.m[0][2] = b * tmp[0] - c * tmp[1] + d * tmp[2];
+    result.m[1][2] = -(a * tmp[0] - c * tmp[3] + d * tmp[4]);
+    result.m[2][2] = a * tmp[1] - b * tmp[3] + d * tmp[5];
+    result.m[3][2] = -(a * tmp[2] - b * tmp[4] + c * tmp[5]);
+
+    tmp[0] = g * l - k * h;
+    tmp[1] = f * l - j * h;
+    tmp[2] = f * k - j * g;
+    tmp[3] = e * l - i * h;
+    tmp[4] = e * k - i * g;
+    tmp[5] = e * j - i * f;
+
+    result.m[0][3] = -(b * tmp[0] - c * tmp[1] + d * tmp[2]);
+    result.m[1][3] = a * tmp[0] - c * tmp[3] + d * tmp[4];
+    result.m[2][3] = -(a * tmp[1] - b * tmp[3] + d * tmp[5]);
+    result.m[3][3] = a * tmp[2] - b * tmp[4] + c * tmp[5];
+
+    det = 1.0f / (a * result.m[0][0] + b * result.m[1][0] + c * result.m[2][0] + d * result.m[3][0]);
+
+#if NEKO_MATH_USE_SSE
+
+    __m128 scale = _mm_set1_ps(det);
+    result.packed[0] = _mm_mul_ps(result.packed[0], scale);
+    result.packed[1] = _mm_mul_ps(result.packed[1], scale);
+    result.packed[2] = _mm_mul_ps(result.packed[2], scale);
+    result.packed[3] = _mm_mul_ps(result.packed[3], scale);
+
+#else
+
+    result.m[0][0] = result.m[0][0] * det;
+    result.m[0][1] = result.m[0][1] * det;
+    result.m[0][2] = result.m[0][2] * det;
+    result.m[0][3] = result.m[0][3] * det;
+    result.m[1][0] = result.m[1][0] * det;
+    result.m[1][1] = result.m[1][1] * det;
+    result.m[1][2] = result.m[1][2] * det;
+    result.m[1][3] = result.m[1][3] * det;
+    result.m[2][0] = result.m[2][0] * det;
+    result.m[2][1] = result.m[2][1] * det;
+    result.m[2][2] = result.m[2][2] * det;
+    result.m[2][3] = result.m[2][3] * det;
+    result.m[3][0] = result.m[3][0] * det;
+    result.m[3][1] = result.m[3][1] * det;
+    result.m[3][2] = result.m[3][2] * det;
+    result.m[3][3] = result.m[3][3] * det;
+
+#endif
+
+    return result;
+}
+
+// translation:
+
+neko_static_inline neko_fast_mat3 NEKO_MATH_PREFIX(mat3_translate)(neko_fast_vec2 t) {
+    neko_fast_mat3 result = NEKO_MATH_PREFIX(mat3_identity)();
+
+    result.m[2][0] = t.x;
+    result.m[2][1] = t.y;
+
+    return result;
+}
+
+neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_translate)(neko_fast_vec3 t) {
+    neko_fast_mat4 result = NEKO_MATH_PREFIX(mat4_identity)();
+
+    result.m[3][0] = t.x;
+    result.m[3][1] = t.y;
+    result.m[3][2] = t.z;
+
+    return result;
+}
+
+// scaling:
+
+neko_static_inline neko_fast_mat3 NEKO_MATH_PREFIX(mat3_scale)(neko_fast_vec2 s) {
+    neko_fast_mat3 result = NEKO_MATH_PREFIX(mat3_identity)();
+
+    result.m[0][0] = s.x;
+    result.m[1][1] = s.y;
+
+    return result;
+}
+
+neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_scale)(neko_fast_vec3 s) {
+    neko_fast_mat4 result = NEKO_MATH_PREFIX(mat4_identity)();
+
+    result.m[0][0] = s.x;
+    result.m[1][1] = s.y;
+    result.m[2][2] = s.z;
+
+    return result;
+}
+
+// rotation:
+
+neko_static_inline neko_fast_mat3 NEKO_MATH_PREFIX(mat3_rotate)(float angle) {
+    neko_fast_mat3 result = NEKO_MATH_PREFIX(mat3_identity)();
+
+    float radians = NEKO_MATH_PREFIX(deg_to_rad)(angle);
+    float sine = NEKO_MATH_SINF(radians);
+    float cosine = NEKO_MATH_COSF(radians);
+
+    result.m[0][0] = cosine;
+    result.m[1][0] = sine;
+    result.m[0][1] = -sine;
+    result.m[1][1] = cosine;
+
+    return result;
+}
+
+neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_rotate)(neko_fast_vec3 axis, float angle) {
+    neko_fast_mat4 result = NEKO_MATH_PREFIX(mat4_identity)();
+
+    axis = NEKO_MATH_PREFIX(vec3_normalize)(axis);
+
+    float radians = NEKO_MATH_PREFIX(deg_to_rad)(angle);
+    float sine = NEKO_MATH_SINF(radians);
+    float cosine = NEKO_MATH_COSF(radians);
+    float cosine2 = 1.0f - cosine;
+
+    result.m[0][0] = axis.x * axis.x * cosine2 + cosine;
+    result.m[0][1] = axis.x * axis.y * cosine2 + axis.z * sine;
+    result.m[0][2] = axis.x * axis.z * cosine2 - axis.y * sine;
+    result.m[1][0] = axis.y * axis.x * cosine2 - axis.z * sine;
+    result.m[1][1] = axis.y * axis.y * cosine2 + cosine;
+    result.m[1][2] = axis.y * axis.z * cosine2 + axis.x * sine;
+    result.m[2][0] = axis.z * axis.x * cosine2 + axis.y * sine;
+    result.m[2][1] = axis.z * axis.y * cosine2 - axis.x * sine;
+    result.m[2][2] = axis.z * axis.z * cosine2 + cosine;
+
+    return result;
+}
+
+neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_rotate_euler)(neko_fast_vec3 angles) {
+    neko_fast_mat4 result = NEKO_MATH_PREFIX(mat4_identity)();
+
+    neko_fast_vec3 radians;
+    radians.x = NEKO_MATH_PREFIX(deg_to_rad)(angles.x);
+    radians.y = NEKO_MATH_PREFIX(deg_to_rad)(angles.y);
+    radians.z = NEKO_MATH_PREFIX(deg_to_rad)(angles.z);
+
+    float sinX = NEKO_MATH_SINF(radians.x);
+    float cosX = NEKO_MATH_COSF(radians.x);
+    float sinY = NEKO_MATH_SINF(radians.y);
+    float cosY = NEKO_MATH_COSF(radians.y);
+    float sinZ = NEKO_MATH_SINF(radians.z);
+    float cosZ = NEKO_MATH_COSF(radians.z);
+
+    result.m[0][0] = cosY * cosZ;
+    result.m[0][1] = cosY * sinZ;
+    result.m[0][2] = -sinY;
+    result.m[1][0] = sinX * sinY * cosZ - cosX * sinZ;
+    result.m[1][1] = sinX * sinY * sinZ + cosX * cosZ;
+    result.m[1][2] = sinX * cosY;
+    result.m[2][0] = cosX * sinY * cosZ + sinX * sinZ;
+    result.m[2][1] = cosX * sinY * sinZ - sinX * cosZ;
+    result.m[2][2] = cosX * cosY;
+
+    return result;
+}
+
+// to mat3:
+
+neko_static_inline neko_fast_mat3 NEKO_MATH_PREFIX(mat4_top_left)(neko_fast_mat4 m) {
+    neko_fast_mat3 result;
+
+    result.m[0][0] = m.m[0][0];
+    result.m[0][1] = m.m[0][1];
+    result.m[0][2] = m.m[0][2];
+    result.m[1][0] = m.m[1][0];
+    result.m[1][1] = m.m[1][1];
+    result.m[1][2] = m.m[1][2];
+    result.m[2][0] = m.m[2][0];
+    result.m[2][1] = m.m[2][1];
+    result.m[2][2] = m.m[2][2];
+
+    return result;
+}
+
+// projection:
+
+neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_perspective)(float fov, float aspect, float n, float f) {
+    neko_fast_mat4 result = {0};
+
+    float scale = NEKO_MATH_TANF(NEKO_MATH_PREFIX(deg_to_rad)(fov * 0.5f)) * n;
+
+    float right = aspect * scale;
+    float left = -right;
+    float top = scale;
+    float bot = -top;
+
+    result.m[0][0] = n / right;
+    result.m[1][1] = n / top;
+    result.m[2][2] = -(f + n) / (f - n);
+    result.m[3][2] = -2.0f * f * n / (f - n);
+    result.m[2][3] = -1.0f;
+
+    return result;
+}
+
+neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_orthographic)(float left, float right, float bot, float top, float n, float f) {
+    neko_fast_mat4 result = NEKO_MATH_PREFIX(mat4_identity)();
+
+    result.m[0][0] = 2.0f / (right - left);
+    result.m[1][1] = 2.0f / (top - bot);
+    result.m[2][2] = 2.0f / (n - f);
+
+    result.m[3][0] = (left + right) / (left - right);
+    result.m[3][1] = (bot + top) / (bot - top);
+    result.m[3][2] = (n + f) / (n - f);
+
+    return result;
+}
+
+// view matrix:
+
+neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_look)(neko_fast_vec3 pos, neko_fast_vec3 dir, neko_fast_vec3 up) {
+    neko_fast_mat4 result;
+
+    neko_fast_vec3 r = NEKO_MATH_PREFIX(vec3_normalize)(NEKO_MATH_PREFIX(vec3_cross)(up, dir));
+    neko_fast_vec3 u = NEKO_MATH_PREFIX(vec3_cross)(dir, r);
+
+    neko_fast_mat4 RUD = NEKO_MATH_PREFIX(mat4_identity)();
+    RUD.m[0][0] = r.x;
+    RUD.m[1][0] = r.y;
+    RUD.m[2][0] = r.z;
+    RUD.m[0][1] = u.x;
+    RUD.m[1][1] = u.y;
+    RUD.m[2][1] = u.z;
+    RUD.m[0][2] = dir.x;
+    RUD.m[1][2] = dir.y;
+    RUD.m[2][2] = dir.z;
+
+    neko_fast_vec3 oppPos = {-pos.x, -pos.y, -pos.z};
+    result = NEKO_MATH_PREFIX(mat4_mult)(RUD, NEKO_MATH_PREFIX(mat4_translate)(oppPos));
+
+    return result;
+}
+
+neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_lookat)(neko_fast_vec3 pos, neko_fast_vec3 target, neko_fast_vec3 up) {
+    neko_fast_mat4 result;
+
+    neko_fast_vec3 dir = NEKO_MATH_PREFIX(vec3_normalize)(NEKO_MATH_PREFIX(vec3_sub)(pos, target));
+    result = NEKO_MATH_PREFIX(mat4_look)(pos, dir, up);
+
+    return result;
+}
+
+//----------------------------------------------------------------------//
+// QUATERNION FUNCTIONS:
+
+neko_static_inline neko_fast_quaternion NEKO_MATH_PREFIX(quaternion_identity)() {
+    neko_fast_quaternion result;
+
+    result.x = 0.0f;
+    result.y = 0.0f;
+    result.z = 0.0f;
+    result.w = 1.0f;
+
+    return result;
+}
+
+neko_static_inline neko_fast_quaternion NEKO_MATH_PREFIX(quaternion_add)(neko_fast_quaternion q1, neko_fast_quaternion q2) {
+    neko_fast_quaternion result;
+
+#if NEKO_MATH_USE_SSE
+
+    result.packed = _mm_add_ps(q1.packed, q2.packed);
+
+#else
+
+    result.x = q1.x + q2.x;
+    result.y = q1.y + q2.y;
+    result.z = q1.z + q2.z;
+    result.w = q1.w + q2.w;
+
+#endif
+
+    return result;
+}
+
+neko_static_inline neko_fast_quaternion NEKO_MATH_PREFIX(quaternion_sub)(neko_fast_quaternion q1, neko_fast_quaternion q2) {
+    neko_fast_quaternion result;
+
+#if NEKO_MATH_USE_SSE
+
+    result.packed = _mm_sub_ps(q1.packed, q2.packed);
+
+#else
+
+    result.x = q1.x - q2.x;
+    result.y = q1.y - q2.y;
+    result.z = q1.z - q2.z;
+    result.w = q1.w - q2.w;
+
+#endif
+
+    return result;
+}
+
+neko_static_inline neko_fast_quaternion NEKO_MATH_PREFIX(quaternion_mult)(neko_fast_quaternion q1, neko_fast_quaternion q2) {
+    neko_fast_quaternion result;
+
+#if NEKO_MATH_USE_SSE
+
+    __m128 temp1;
+    __m128 temp2;
+
+    temp1 = _mm_shuffle_ps(q1.packed, q1.packed, _MM_SHUFFLE(3, 3, 3, 3));
+    temp2 = q2.packed;
+    result.packed = _mm_mul_ps(temp1, temp2);
+
+    temp1 = _mm_xor_ps(_mm_shuffle_ps(q1.packed, q1.packed, _MM_SHUFFLE(0, 0, 0, 0)), _mm_setr_ps(0.0f, -0.0f, 0.0f, -0.0f));
+    temp2 = _mm_shuffle_ps(q2.packed, q2.packed, _MM_SHUFFLE(0, 1, 2, 3));
+    result.packed = _mm_add_ps(result.packed, _mm_mul_ps(temp1, temp2));
+
+    temp1 = _mm_xor_ps(_mm_shuffle_ps(q1.packed, q1.packed, _MM_SHUFFLE(1, 1, 1, 1)), _mm_setr_ps(0.0f, 0.0f, -0.0f, -0.0f));
+    temp2 = _mm_shuffle_ps(q2.packed, q2.packed, _MM_SHUFFLE(1, 0, 3, 2));
+    result.packed = _mm_add_ps(result.packed, _mm_mul_ps(temp1, temp2));
+
+    temp1 = _mm_xor_ps(_mm_shuffle_ps(q1.packed, q1.packed, _MM_SHUFFLE(2, 2, 2, 2)), _mm_setr_ps(-0.0f, 0.0f, 0.0f, -0.0f));
+    temp2 = _mm_shuffle_ps(q2.packed, q2.packed, _MM_SHUFFLE(2, 3, 0, 1));
+    result.packed = _mm_add_ps(result.packed, _mm_mul_ps(temp1, temp2));
+
+#else
+
+    result.x = q1.w * q2.x + q1.x * q2.w + q1.y * q2.z - q1.z * q2.y;
+    result.y = q1.w * q2.y - q1.x * q2.z + q1.y * q2.w + q1.z * q2.x;
+    result.z = q1.w * q2.z + q1.x * q2.y - q1.y * q2.x + q1.z * q2.w;
+    result.w = q1.w * q2.w - q1.x * q2.x - q1.y * q2.y - q1.z * q2.z;
+
+#endif
+
+    return result;
+}
+
+neko_static_inline neko_fast_quaternion NEKO_MATH_PREFIX(quaternion_scale)(neko_fast_quaternion q, float s) {
+    neko_fast_quaternion result;
+
+#if NEKO_MATH_USE_SSE
+
+    __m128 scale = _mm_set1_ps(s);
+    result.packed = _mm_mul_ps(q.packed, scale);
+
+#else
+
+    result.x = q.x * s;
+    result.y = q.y * s;
+    result.z = q.z * s;
+    result.w = q.w * s;
+
+#endif
+
+    return result;
+}
+
+neko_static_inline float NEKO_MATH_PREFIX(quaternion_dot)(neko_fast_quaternion q1, neko_fast_quaternion q2) {
+    float result;
+
+#if NEKO_MATH_USE_SSE
+
+    __m128 r = _mm_mul_ps(q1.packed, q2.packed);
+    r = _mm_hadd_ps(r, r);
+    r = _mm_hadd_ps(r, r);
+    _mm_store_ss(&result, r);
+
+#else
+
+    result = q1.x * q2.x + q1.y * q2.y + q1.z * q2.z + q1.w * q2.w;
+
+#endif
+
+    return result;
+}
+
+neko_static_inline float NEKO_MATH_PREFIX(quaternion_length)(neko_fast_quaternion q) {
+    float result;
+
+    result = NEKO_MATH_SQRTF(NEKO_MATH_PREFIX(quaternion_dot)(q, q));
+
+    return result;
+}
+
+neko_static_inline neko_fast_quaternion NEKO_MATH_PREFIX(quaternion_normalize)(neko_fast_quaternion q) {
+    neko_fast_quaternion result = {0};
+
+    float len = NEKO_MATH_PREFIX(quaternion_length)(q);
+    if (len != 0.0f) {
+#if NEKO_MATH_USE_SSE
+
+        __m128 scale = _mm_set1_ps(len);
+        result.packed = _mm_div_ps(q.packed, scale);
+
+#else
+
+        float invLen = 1.0f / len;
+
+        result.x = q.x * invLen;
+        result.y = q.y * invLen;
+        result.z = q.z * invLen;
+        result.w = q.w * invLen;
+
+#endif
+    }
+
+    return result;
+}
+
+neko_static_inline neko_fast_quaternion NEKO_MATH_PREFIX(quaternion_conjugate)(neko_fast_quaternion q) {
+    neko_fast_quaternion result;
+
+    result.x = -q.x;
+    result.y = -q.y;
+    result.z = -q.z;
+    result.w = q.w;
+
+    return result;
+}
+
+neko_static_inline neko_fast_quaternion NEKO_MATH_PREFIX(quaternion_inv)(neko_fast_quaternion q) {
+    neko_fast_quaternion result;
+
+    result.x = -q.x;
+    result.y = -q.y;
+    result.z = -q.z;
+    result.w = q.w;
+
+#if NEKO_MATH_USE_SSE
+
+    __m128 scale = _mm_set1_ps(NEKO_MATH_PREFIX(quaternion_dot)(q, q));
+    _mm_div_ps(result.packed, scale);
+
+#else
+
+    float invLen2 = 1.0f / NEKO_MATH_PREFIX(quaternion_dot)(q, q);
+
+    result.x *= invLen2;
+    result.y *= invLen2;
+    result.z *= invLen2;
+    result.w *= invLen2;
+
+#endif
+
+    return result;
+}
+
+neko_static_inline neko_fast_quaternion NEKO_MATH_PREFIX(quaternion_slerp)(neko_fast_quaternion q1, neko_fast_quaternion q2, float a) {
+    neko_fast_quaternion result;
+
+    float cosine = NEKO_MATH_PREFIX(quaternion_dot)(q1, q2);
+    float angle = NEKO_MATH_ACOSF(cosine);
+
+    float sine1 = NEKO_MATH_SINF((1.0f - a) * angle);
+    float sine2 = NEKO_MATH_SINF(a * angle);
+    float invSine = 1.0f / NEKO_MATH_SINF(angle);
+
+    q1 = NEKO_MATH_PREFIX(quaternion_scale)(q1, sine1);
+    q2 = NEKO_MATH_PREFIX(quaternion_scale)(q2, sine2);
+
+    result = NEKO_MATH_PREFIX(quaternion_add)(q1, q2);
+    result = NEKO_MATH_PREFIX(quaternion_scale)(result, invSine);
+
+    return result;
+}
+
+neko_static_inline neko_fast_quaternion NEKO_MATH_PREFIX(quaternion_from_axis_angle)(neko_fast_vec3 axis, float angle) {
+    neko_fast_quaternion result;
+
+    float radians = NEKO_MATH_PREFIX(deg_to_rad)(angle * 0.5f);
+    axis = NEKO_MATH_PREFIX(vec3_normalize)(axis);
+    float sine = NEKO_MATH_SINF(radians);
+
+    result.x = axis.x * sine;
+    result.y = axis.y * sine;
+    result.z = axis.z * sine;
+    result.w = NEKO_MATH_COSF(radians);
+
+    return result;
+}
+
+neko_static_inline neko_fast_quaternion NEKO_MATH_PREFIX(quaternion_from_euler)(neko_fast_vec3 angles) {
+    neko_fast_quaternion result;
+
+    neko_fast_vec3 radians;
+    radians.x = NEKO_MATH_PREFIX(deg_to_rad)(angles.x * 0.5f);
+    radians.y = NEKO_MATH_PREFIX(deg_to_rad)(angles.y * 0.5f);
+    radians.z = NEKO_MATH_PREFIX(deg_to_rad)(angles.z * 0.5f);
+
+    float sinx = NEKO_MATH_SINF(radians.x);
+    float cosx = NEKO_MATH_COSF(radians.x);
+    float siny = NEKO_MATH_SINF(radians.y);
+    float cosy = NEKO_MATH_COSF(radians.y);
+    float sinz = NEKO_MATH_SINF(radians.z);
+    float cosz = NEKO_MATH_COSF(radians.z);
+
+#if NEKO_MATH_USE_SSE
+
+    __m128 packedx = _mm_setr_ps(sinx, cosx, cosx, cosx);
+    __m128 packedy = _mm_setr_ps(cosy, siny, cosy, cosy);
+    __m128 packedz = _mm_setr_ps(cosz, cosz, sinz, cosz);
+
+    result.packed = _mm_mul_ps(_mm_mul_ps(packedx, packedy), packedz);
+
+    packedx = _mm_shuffle_ps(packedx, packedx, _MM_SHUFFLE(0, 0, 0, 1));
+    packedy = _mm_shuffle_ps(packedy, packedy, _MM_SHUFFLE(1, 1, 0, 1));
+    packedz = _mm_shuffle_ps(packedz, packedz, _MM_SHUFFLE(2, 0, 2, 2));
+
+    result.packed = _mm_addsub_ps(result.packed, _mm_mul_ps(_mm_mul_ps(packedx, packedy), packedz));
+
+#else
+
+    result.x = sinx * cosy * cosz - cosx * siny * sinz;
+    result.y = cosx * siny * cosz + sinx * cosy * sinz;
+    result.z = cosx * cosy * sinz - sinx * siny * cosz;
+    result.w = cosx * cosy * cosz + sinx * siny * sinz;
+
+#endif
+
+    return result;
+}
+
+neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(quaternion_to_mat4)(neko_fast_quaternion q) {
+    neko_fast_mat4 result = NEKO_MATH_PREFIX(mat4_identity)();
+
+    float x2 = q.x + q.x;
+    float y2 = q.y + q.y;
+    float z2 = q.z + q.z;
+    float xx2 = q.x * x2;
+    float xy2 = q.x * y2;
+    float xz2 = q.x * z2;
+    float yy2 = q.y * y2;
+    float yz2 = q.y * z2;
+    float zz2 = q.z * z2;
+    float sx2 = q.w * x2;
+    float sy2 = q.w * y2;
+    float sz2 = q.w * z2;
+
+    result.m[0][0] = 1.0f - (yy2 + zz2);
+    result.m[0][1] = xy2 - sz2;
+    result.m[0][2] = xz2 + sy2;
+    result.m[1][0] = xy2 + sz2;
+    result.m[1][1] = 1.0f - (xx2 + zz2);
+    result.m[1][2] = yz2 - sx2;
+    result.m[2][0] = xz2 - sy2;
+    result.m[2][1] = yz2 + sx2;
+    result.m[2][2] = 1.0f - (xx2 + yy2);
+
+    return result;
+}
 
 #endif  // NEKO_MATH_H
