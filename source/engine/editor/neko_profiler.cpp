@@ -64,18 +64,18 @@ void neko_profiler_get_frame(profiler_frame *_data) {
 
 s32 neko_profiler_save(profiler_frame *_data, void *_buffer, size_t _bufferSize) {
     // fill string data
-    string_store strStore;
+    string_store str_store;
     for (u32 i = 0; i < _data->num_scopes; ++i) {
         profiler_scope &scope = _data->scopes[i];
-        strStore.add_string(scope.name);
-        strStore.add_string(scope.file);
+        str_store.add_string(scope.name);
+        str_store.add_string(scope.file);
     }
     for (u32 i = 0; i < _data->num_threads; ++i) {
-        strStore.add_string(_data->threads[i].name);
+        str_store.add_string(_data->threads[i].name);
     }
 
     // calc data size
-    u32 totalSize = _data->num_scopes * sizeof(profiler_scope) + _data->num_threads * sizeof(neko_profiler_thread) + sizeof(profiler_frame) + strStore.m_totalSize;
+    u32 totalSize = _data->num_scopes * sizeof(profiler_scope) + _data->num_threads * sizeof(neko_profiler_thread) + sizeof(profiler_frame) + str_store.total_size;
 
     u8 *buffer = new u8[totalSize];
     u8 *bufPtr = buffer;
@@ -93,8 +93,8 @@ s32 neko_profiler_save(profiler_frame *_data, void *_buffer, size_t _bufferSize)
         write_var(buffer, scope.start);
         write_var(buffer, scope.end);
         write_var(buffer, scope.thread_id);
-        write_var(buffer, strStore.get_string(scope.name));
-        write_var(buffer, strStore.get_string(scope.file));
+        write_var(buffer, str_store.get_string(scope.name));
+        write_var(buffer, str_store.get_string(scope.file));
         write_var(buffer, scope.line);
         write_var(buffer, scope.level);
     }
@@ -104,14 +104,14 @@ s32 neko_profiler_save(profiler_frame *_data, void *_buffer, size_t _bufferSize)
     for (u32 i = 0; i < _data->num_threads; ++i) {
         neko_profiler_thread &t = _data->threads[i];
         write_var(buffer, t.thread_id);
-        write_var(buffer, strStore.get_string(t.name));
+        write_var(buffer, str_store.get_string(t.name));
     }
 
     // write string data
-    u32 numStrings = (u32)strStore.m_strings.size();
+    u32 numStrings = (u32)str_store.strings.size();
     write_var(buffer, numStrings);
 
-    for (u32 i = 0; i < strStore.m_strings.size(); ++i) write_str(buffer, strStore.m_strings[i].c_str());
+    for (u32 i = 0; i < str_store.strings.size(); ++i) write_str(buffer, str_store.strings[i].c_str());
 
     s32 compSize = LZ4_compress_default((const_str)bufPtr, (char *)_buffer, (s32)(buffer - bufPtr), (s32)_bufferSize);
     delete[] bufPtr;

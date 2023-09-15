@@ -7,6 +7,11 @@
 
 namespace neko {
 
+void *__neko_mem_safe_alloc(size_t size, const char *file, int line, size_t *statistics = NULL);
+void *__neko_mem_safe_calloc(size_t count, size_t element_size, const char *file, int line, size_t *statistics = NULL);
+void __neko_mem_safe_free(void *mem, size_t *statistics = NULL);
+void *__neko_mem_safe_realloc(void *ptr, size_t new_size, const char *file, int line, size_t *statistics = NULL);
+
 #if 1
 
 #ifndef neko_safe_malloc
@@ -64,11 +69,6 @@ struct alloc {
         neko_safe_free(_name);     \
     }
 #endif
-
-void *__neko_mem_safe_alloc(size_t size, const char *file, int line, size_t *statistics = NULL);
-void *__neko_mem_safe_calloc(size_t count, size_t element_size, const char *file, int line, size_t *statistics = NULL);
-void __neko_mem_safe_free(void *mem, size_t *statistics = NULL);
-void *__neko_mem_safe_realloc(void *ptr, size_t new_size, const char *file, int line, size_t *statistics = NULL);
 
 int neko_mem_check_leaks(bool detailed);
 int neko_mem_bytes_inuse();

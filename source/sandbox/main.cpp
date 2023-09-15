@@ -9,12 +9,12 @@
 #include "engine/editor/neko_editor.hpp"
 #include "engine/editor/neko_profiler.hpp"
 #include "engine/filesystem/neko_packer.h"
-#include "engine/graphics/neko_particle.h"
 #include "engine/graphics/neko_render_pass.h"
 #include "engine/graphics/neko_sprite.h"
 #include "engine/gui/neko_imgui_lua.hpp"
 #include "engine/gui/neko_imgui_utils.hpp"
 #include "engine/lexer/neko_parser.hpp"
+#include "engine/lexer/neko_xml.h"
 #include "engine/neko.h"
 #include "engine/physics/neko_phy.h"
 #include "engine/scripting/neko_scripting.h"
@@ -330,6 +330,9 @@ void print_array(neko_dyn_array(object_t) *);
 void print_slot_array(neko_slot_array(object_t) *);
 void print_hash_table(neko_hash_table(u64, object_t) *);
 void object_to_str(object_t *obj, char *str, usize str_sz);
+
+void print_indent(int indent);
+void print_xml_node(neko_xml_node_t *node, int indent);
 
 neko_global neko_sprite g_test_spr = {0};
 
@@ -868,11 +871,30 @@ void sprite_render_system(neko_ecs *ecs) {
     }
 }
 
+neko_ecs_decl_mask(PARTICLE_RENDER_SYSTEM, 2, COMPONENT_TRANSFORM, COMPONENT_PARTICLE);
+void particle_render_system(neko_ecs *ecs) {
+    for (u32 i = 0; i < neko_ecs_for_count(ecs); i++) {
+        neko_ecs_ent e = neko_ecs_get_ent(ecs, i);
+        if (neko_ecs_ent_has_mask(ecs, e, neko_ecs_get_mask(PARTICLE_RENDER_SYSTEM))) {
+            CTransform *xform = (CTransform *)neko_ecs_ent_get_component(ecs, e, COMPONENT_TRANSFORM);
+            neko_particle_renderer *particle_render = (neko_particle_renderer *)neko_ecs_ent_get_component(ecs, e, COMPONENT_PARTICLE);
+
+            neko_graphics_i *gfx = neko_engine_instance()->ctx.graphics;
+            neko_command_buffer_t *cb = &g_cb;
+
+            neko_particle_renderer_update(particle_render, neko_engine_instance()->ctx.platform->time.current);
+
+            neko_particle_renderer_draw(particle_render, cb);
+        }
+    }
+}
+
 void register_components(neko_ecs *ecs) {
     // neko_ecs, component index, component pool size, size of component, and component free func
     neko_ecs_register_component(ecs, COMPONENT_TRANSFORM, 1000, sizeof(CTransform), NULL);
     neko_ecs_register_component(ecs, COMPONENT_VELOCITY, 200, sizeof(CVelocity), NULL);
     neko_ecs_register_component(ecs, COMPONENT_SPRITE, 1000, sizeof(neko_sprite_renderer), NULL);
+    neko_ecs_register_component(ecs, COMPONENT_PARTICLE, 20, sizeof(neko_particle_renderer), NULL);
 }
 
 void register_systems(neko_ecs *ecs) {
@@ -882,18 +904,17 @@ void register_systems(neko_ecs *ecs) {
     // neko_ecs, function pointer to system (must take a parameter of neko_ecs), system type
     neko_ecs_register_system(ecs, movement_system, ECS_SYSTEM_UPDATE);
     neko_ecs_register_system(ecs, sprite_render_system, ECS_SYSTEM_RENDER_IMMEDIATE);
+    neko_ecs_register_system(ecs, particle_render_system, ECS_SYSTEM_RENDER_IMMEDIATE);
 }
 
 neko_global neko_font_index g_basic_font;
-
-neko_global neko_obj_swarm swarm;
-neko_global neko_swarm_simulator_settings settings;
 
 // 内部音频数据的资源句柄 由于音频必须在单独的线程上运行 因此这是必要的
 cs_audio_source_t *piano;
 cs_sound_params_t params = cs_sound_params_default();
 
 neko_sprite_renderer sprite_test = {};
+neko_particle_renderer particle_render = {};
 
 namespace {
 
@@ -1421,9 +1442,12 @@ neko_result app_init() {
     sprite_test = {.sprite = &g_test_spr};
     neko_sprite_renderer_play(&sprite_test, "Charge_Loop");
 
+    neko_particle_renderer_construct(&particle_render);
+
     neko_ecs_ent_add_component(neko_engine_subsystem(ecs), e, COMPONENT_TRANSFORM, &xform);
     neko_ecs_ent_add_component(neko_engine_subsystem(ecs), e, COMPONENT_VELOCITY, &velocity);
     neko_ecs_ent_add_component(neko_engine_subsystem(ecs), e, COMPONENT_SPRITE, &sprite_test);
+    neko_ecs_ent_add_component(neko_engine_subsystem(ecs), e, COMPONENT_PARTICLE, &particle_render);
 
     // neko_ecs_ent_destroy(ecs, e);
 
@@ -1624,14 +1648,17 @@ neko_result app_update() {
             if (ImGui::Button("test_rf")) test_rf();
             if (ImGui::Button("test_se")) test_se();
             if (ImGui::Button("test_ns")) {
-                std::vector<NStoken> tokens = neko_parser_lex_file(neko_file_path("data/test/example.ns"));
+
+                std::cout << "-------------ok-------------" << std::endl;
+
+                std::vector<ns_token> tokens = neko_parser_lex_file(neko_file_path("data/test/example.ns"));
 
                 neko_parser_print_lex(tokens);
 
                 std::cout << "-------------ok-------------" << std::endl;
 
-                NSast *ast = neko_parser_parse_tokens(tokens);
-                neko_assert(ast);
+                ns_ast *ast = neko_parser_parse_tokens(tokens);
+                // if (!ast) return -1;
 
                 neko_parser_print_ast(ast);
 
@@ -1643,10 +1670,30 @@ neko_result app_update() {
                 neko_parser_free_ast(ast);
 
                 std::cout << "-------------ok-------------" << std::endl;
+
+                ast = neko_parser_load_ast(neko_file_path("data/test/example.nsobj"));
+
+                neko_parser_execute(ast);
+                neko_parser_free_ast(ast);
+
+                std::cout << "-------------ok-------------" << std::endl;
             }
             if (ImGui::Button("test_st")) neko_platform_print_callstack();
             if (ImGui::Button("test_cvars")) neko_config_print();
             if (ImGui::Button("test_rand")) neko_info(std::to_string(neko_rand_xorshf32()));
+            if (ImGui::Button("test_xml")) {
+
+                neko_xml_document_t *doc = neko_xml_parse_file(neko_file_path("data/test/test.xml"));
+                if (!doc) {
+                    printf("XML Parse Error: %s\n", neko_xml_get_error());
+                } else {
+                    for (uint32_t i = 0; i < neko_dyn_array_size(doc->nodes); i++) {
+                        neko_xml_node_t *node = doc->nodes + i;
+                        print_xml_node(node, 0);
+                    }
+                    neko_xml_free(doc);
+                }
+            }
             ImGui::Image((void *)(intptr_t)g_tex.id, ImVec2(g_texture_width, g_texture_height), ImVec2(0, 0), ImVec2(1, 1));
             return neko_dbgui_result_in_progress;
         });
@@ -1666,7 +1713,6 @@ neko_result app_update() {
                 neko_profiler_scope_auto("sim");
                 update_particle_sim();
             }
-            swarm.update(engine->ctx.platform->time.current, settings);
             {
                 neko_profiler_scope_auto("ecs");
                 neko_ecs_run_systems(neko_engine_subsystem(ecs), ECS_SYSTEM_UPDATE);
@@ -1684,8 +1730,6 @@ neko_result app_update() {
 
     // Update frame counter
     g_frame_counter = (g_frame_counter + 1) % u32_max;
-
-    settings.show();
 
     neko_invoke_once(lua_bind::l_G = neko_sc()->neko_lua.state(); lua_bind::imgui_init_lua(););
     // neko_invoke_once(neko_sc()->neko_lua.dostring(R"(
@@ -2409,8 +2453,6 @@ void render_scene() {
 
         gfx->immediate.begin_2d(cb);
         {
-            swarm.draw(cb);
-
             // gfx->immediate.draw_line_ext(cb, {9.f, 9.f}, {400.f, 400.f}, 4.f, neko_color_white);
             // render_test();
 
@@ -4536,6 +4578,50 @@ void print_hash_table(neko_hash_table(u64, object_t) * ht) {
 }
 
 void object_to_str(object_t *obj, char *str, usize str_sz) { neko_snprintf(str, str_sz, "{ %.2f, %zu }", obj->float_value, obj->uint_value); }
+
+void print_indent(int indent) {
+    for (int i = 0; i < indent; i++) {
+        putc('\t', stdout);
+    }
+}
+
+void print_xml_node(neko_xml_node_t *node, int indent) {
+    print_indent(indent);
+    printf("XML Node: %s\n", node->name);
+    print_indent(indent);
+    printf("\tText: %s\n", node->text);
+    print_indent(indent);
+    puts("\tAttributes:");
+    for (neko_hash_table_iter(u64, neko_xml_attribute_t) it = neko_hash_table_iter_new(node->attributes); neko_hash_table_iter_valid(node->attributes, it);
+         neko_hash_table_iter_advance(node->attributes, it)) {
+        // neko_xml_attribute_t attrib = neko_hash_table_iter_get(node->attributes, it);
+        neko_xml_attribute_t attrib = it.data->val;
+
+        print_indent(indent);
+        printf("\t\t%s: ", attrib.name);
+        switch (attrib.type) {
+            case NEKO_XML_ATTRIBUTE_NUMBER:
+                printf("(number) %g\n", attrib.value.number);
+                break;
+            case NEKO_XML_ATTRIBUTE_BOOLEAN:
+                printf("(boolean) %s\n", attrib.value.boolean ? "true" : "false");
+                break;
+            case NEKO_XML_ATTRIBUTE_STRING:
+                printf("(string) %s\n", attrib.value.string);
+                break;
+            default:
+                break;  // Unreachable
+        }
+    }
+
+    if (neko_dyn_array_size(node->children) > 0) {
+        print_indent(indent);
+        printf("\t = Children = \n");
+        for (uint32_t i = 0; i < neko_dyn_array_size(node->children); i++) {
+            print_xml_node(node->children + i, indent + 1);
+        }
+    }
+}
 
 #define STB_HBWANG_RAND() neko_rand_xorshf32()
 #define STB_HBWANG_IMPLEMENTATION

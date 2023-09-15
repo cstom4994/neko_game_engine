@@ -193,6 +193,11 @@ void neko_ecs_register_component(neko_ecs *ecs, neko_ecs_component_type componen
         return;
     }
 
+    if (count * size <= 0) {
+        neko_println("Registering Component type %u (count*size) is less than 0.\n", component_type);
+        return;
+    }
+
     ecs->pool[component_type] = neko_ecs_component_pool_make(count, size, destroy_func);
 }
 

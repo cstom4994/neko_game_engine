@@ -1,3 +1,4 @@
+
 #include <filesystem>
 
 #include "engine/base/neko_engine.h"
@@ -13,6 +14,8 @@
 
 #ifdef NEKO_PLATFORM_WIN
 #include <Psapi.h>  // windows GetProcessMemoryInfo
+#include <Windows.h>
+
 
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include "GLFW/glfw3native.h"
@@ -36,6 +39,10 @@ void __glfw_drop_callback(GLFWwindow *window);
 
 neko_result glfw_platform_init(struct neko_platform_i *platform) {
     neko_info("Initializing GLFW");
+
+#ifdef NEKO_PLATFORM_WIN
+    SetConsoleOutputCP(65001);
+#endif
 
     glfwInit();
 

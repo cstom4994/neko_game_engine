@@ -21,13 +21,10 @@ typedef enum { neko_dbgui_result_success, neko_dbgui_result_in_progress } neko_d
 
 using neko_dbgui_func = neko_function<neko_dbgui_result(neko_dbgui_result)>;
 
-neko_enum_decl(neko_dbgui_flags, window = 1 << 1, no_visible = 1 << 2);
-neko_enum_flag_operator(neko_dbgui_flags);
-
 struct neko_dbgui_win {
     neko_string name;
     neko_dbgui_func func;
-    neko_dbgui_flags flags;
+    bool visible = true;
 };
 
 class dbgui : public module<dbgui> {
@@ -43,22 +40,17 @@ public:
     void __update() { draw(); };
 
 public:
-    dbgui& create(const neko_string& name, const neko_dbgui_func& f, neko_dbgui_flags flags = neko_dbgui_flags::window) {
+    dbgui& create(const neko_string& name, const neko_dbgui_func& f, bool visible = true) {
         // 创建 dbgui 实例
-        dbgui_list.insert(std::make_pair(name, neko_dbgui_win{name, f, flags}));
+        dbgui_list.insert(std::make_pair(name, neko_dbgui_win{name, f, visible}));
         return *this;
     }
 
     dbgui& update(const neko_string& name, const neko_dbgui_func& f) {
         if (dbgui_list.count(name) != 1) neko_assert(0);
         auto origin = dbgui_list[name];
-        dbgui_list[name] = neko_dbgui_win{origin.name, func_combine(f, origin.func), origin.flags};
+        dbgui_list[name] = neko_dbgui_win{origin.name, func_combine(f, origin.func), origin.visible};
         return *this;
-    }
-
-    neko_dbgui_flags& flags(const neko_string& name) {
-        if (dbgui_list.count(name) != 1) neko_assert(0);
-        return dbgui_list[name].flags;
     }
 
     void draw() const {
@@ -111,11 +103,10 @@ public:
             return 0;
         };
 
-        if ((dbgui_list.at("cvar").flags & neko_dbgui_flags::no_visible) != neko_dbgui_flags::no_visible) dock_win();
+        if (dbgui_list.at("cvar").visible) dock_win();
 
         for (auto& d : dbgui_list) {
-            neko_dbgui_flags flags = d.second.flags;
-            if ((flags & neko_dbgui_flags::no_visible) == neko_dbgui_flags::no_visible) return;
+            if (!(d.second.visible)) return;
             if (ImGui::Begin(d.first.c_str())) {
                 neko_defer([&d] { d.second.func(neko_dbgui_result_in_progress); });
             }

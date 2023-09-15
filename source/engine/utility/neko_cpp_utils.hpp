@@ -4,6 +4,7 @@
 #define NEKO_CPP_TUTIL_HPP
 
 #include <algorithm>
+#include <array>
 #include <bitset>
 #include <cassert>
 #include <codecvt>
@@ -1083,8 +1084,8 @@ using TStr_of_a = TStr<fixed_cstring<decltype(c), 1>(c)>;
 namespace neko::cpp {
 template <typename T>
 concept TStrLike = requires {
-                       { T::View() } -> std::same_as<std::basic_string_view<typename T::Char>>;
-                   };
+    { T::View() } -> std::same_as<std::basic_string_view<typename T::Char>>;
+};
 
 template <typename Str>
 constexpr auto empty_of(Str = {}) noexcept {
@@ -1811,5 +1812,60 @@ auto make_return_defer(F &&f, Args &&...args) {
 #define neko_defer(...) auto neko_concat(generated_defer_, __LINE__) = ::neko::make_defer(__VA_ARGS__)
 #define neko_defer_error(...) auto neko_concat(generated_error_defer_, __LINE__) = ::neko::make_error_defer(__VA_ARGS__)
 #define neko_defer_return(...) auto neko_concat(generated_return_defer_, __LINE__) = ::neko::make_return_defer(__VA_ARGS__)
+
+#pragma region EnumName
+
+namespace neko {
+
+template <auto value>
+constexpr auto enum_name() {
+    std::string_view name;
+#ifdef __clang__
+    name = __PRETTY_FUNCTION__;
+    auto start = name.find("value = ") + 8;  // 8 is length of "value = "
+    auto end = name.find_last_of(']');
+    return std::string_view{name.data() + start, end - start};
+
+#elif defined(__GNUC__)
+    name = __PRETTY_FUNCTION__;
+    auto start = name.find("value = ") + 8;  // 8 is length of "value = "
+    auto end = name.find_last_of(']');
+    return std::string_view{name.data() + start, end - start};
+
+#elif defined(_MSC_VER)
+    name = __FUNCSIG__;
+    auto start = name.find("enum_name<") + 10;  // 10 is length of "enum_name<"
+    auto end = name.find_last_of('>');
+    return std::string_view{name.data() + start, end - start};
+#endif
+}
+
+template <typename T>
+concept enum_check = std::is_enum_v<T>;
+
+// 获取枚举变量数量
+template <enum_check T, std::size_t N = 0>
+constexpr auto enum_max() {
+    constexpr auto value = static_cast<T>(N);
+    if constexpr (neko::enum_name<value>().find("(") == std::string_view::npos)  // 如果超出了连续有名枚举 将会是"(enum Name)0xN"
+        return neko::enum_max<T, N + 1>();
+    else
+        return N;
+}
+
+// 打表
+template <typename T>
+    requires std::is_enum_v<T>
+constexpr auto enum_name(T value) {
+    constexpr auto num = neko::enum_max<T>();
+    constexpr std::array<std::string_view, num> names{[]<std::size_t... Is>(std::index_sequence<Is...>) {
+        return std::array<std::string_view, num>{neko::enum_name<static_cast<T>(Is)>()...};
+    }(std::make_index_sequence<num>{})};  // 打表获得枚举名称
+    return names[static_cast<std::size_t>(value)];
+}
+
+}  // namespace neko
+
+#pragma endregion EnumName
 
 #endif

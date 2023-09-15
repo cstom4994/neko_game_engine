@@ -678,8 +678,8 @@ neko_static_inline neko_quat neko_quat_slerp(neko_quat a, neko_quat b, f32 t) {
 #define quat_axis_angle(axis, angle) neko_quat_angle_axis(angle, axis)
 
 /*
- * @brief Convert given quaternion param into equivalent 4x4 rotation matrix
- * @note: From http://www.euclideanspace.com/maths/geometry/rotations/conversions/quaternionToMatrix/index.htm
+ * @brief Convert given quat param into equivalent 4x4 rotation matrix
+ * @note: From http://www.euclideanspace.com/maths/geometry/rotations/conversions/quatToMatrix/index.htm
  */
 neko_static_inline neko_mat4 neko_quat_to_mat4(neko_quat _q) {
     neko_mat4 mat = neko_mat4_identity();
@@ -1028,7 +1028,7 @@ typedef union {
     __m128 packed;
 
 #endif
-} neko_fast_quaternion;
+} neko_fast_quat;
 
 // typedefs:
 typedef neko_fast_vec2 neko_voxel_vec2;
@@ -1036,7 +1036,7 @@ typedef neko_fast_vec3 neko_voxel_vec3;
 typedef neko_fast_vec4 neko_voxel_vec4;
 typedef neko_fast_mat3 neko_voxel_mat3;
 typedef neko_fast_mat4 neko_voxel_mat4;
-typedef neko_fast_quaternion neko_voxel_quaternion;
+typedef neko_fast_quat neko_voxel_quat;
 
 //----------------------------------------------------------------------//
 // HELPER FUNCS:
@@ -2102,8 +2102,8 @@ neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_lookat)(neko_fast_vec3 p
 //----------------------------------------------------------------------//
 // QUATERNION FUNCTIONS:
 
-neko_static_inline neko_fast_quaternion NEKO_MATH_PREFIX(quaternion_identity)() {
-    neko_fast_quaternion result;
+neko_static_inline neko_fast_quat NEKO_MATH_PREFIX(quat_identity)() {
+    neko_fast_quat result;
 
     result.x = 0.0f;
     result.y = 0.0f;
@@ -2113,8 +2113,8 @@ neko_static_inline neko_fast_quaternion NEKO_MATH_PREFIX(quaternion_identity)() 
     return result;
 }
 
-neko_static_inline neko_fast_quaternion NEKO_MATH_PREFIX(quaternion_add)(neko_fast_quaternion q1, neko_fast_quaternion q2) {
-    neko_fast_quaternion result;
+neko_static_inline neko_fast_quat NEKO_MATH_PREFIX(quat_add)(neko_fast_quat q1, neko_fast_quat q2) {
+    neko_fast_quat result;
 
 #if NEKO_MATH_USE_SSE
 
@@ -2132,8 +2132,8 @@ neko_static_inline neko_fast_quaternion NEKO_MATH_PREFIX(quaternion_add)(neko_fa
     return result;
 }
 
-neko_static_inline neko_fast_quaternion NEKO_MATH_PREFIX(quaternion_sub)(neko_fast_quaternion q1, neko_fast_quaternion q2) {
-    neko_fast_quaternion result;
+neko_static_inline neko_fast_quat NEKO_MATH_PREFIX(quat_sub)(neko_fast_quat q1, neko_fast_quat q2) {
+    neko_fast_quat result;
 
 #if NEKO_MATH_USE_SSE
 
@@ -2151,8 +2151,8 @@ neko_static_inline neko_fast_quaternion NEKO_MATH_PREFIX(quaternion_sub)(neko_fa
     return result;
 }
 
-neko_static_inline neko_fast_quaternion NEKO_MATH_PREFIX(quaternion_mult)(neko_fast_quaternion q1, neko_fast_quaternion q2) {
-    neko_fast_quaternion result;
+neko_static_inline neko_fast_quat NEKO_MATH_PREFIX(quat_mult)(neko_fast_quat q1, neko_fast_quat q2) {
+    neko_fast_quat result;
 
 #if NEKO_MATH_USE_SSE
 
@@ -2187,8 +2187,8 @@ neko_static_inline neko_fast_quaternion NEKO_MATH_PREFIX(quaternion_mult)(neko_f
     return result;
 }
 
-neko_static_inline neko_fast_quaternion NEKO_MATH_PREFIX(quaternion_scale)(neko_fast_quaternion q, float s) {
-    neko_fast_quaternion result;
+neko_static_inline neko_fast_quat NEKO_MATH_PREFIX(quat_scale)(neko_fast_quat q, float s) {
+    neko_fast_quat result;
 
 #if NEKO_MATH_USE_SSE
 
@@ -2207,7 +2207,7 @@ neko_static_inline neko_fast_quaternion NEKO_MATH_PREFIX(quaternion_scale)(neko_
     return result;
 }
 
-neko_static_inline float NEKO_MATH_PREFIX(quaternion_dot)(neko_fast_quaternion q1, neko_fast_quaternion q2) {
+neko_static_inline float NEKO_MATH_PREFIX(quat_dot)(neko_fast_quat q1, neko_fast_quat q2) {
     float result;
 
 #if NEKO_MATH_USE_SSE
@@ -2226,18 +2226,18 @@ neko_static_inline float NEKO_MATH_PREFIX(quaternion_dot)(neko_fast_quaternion q
     return result;
 }
 
-neko_static_inline float NEKO_MATH_PREFIX(quaternion_length)(neko_fast_quaternion q) {
+neko_static_inline float NEKO_MATH_PREFIX(quat_length)(neko_fast_quat q) {
     float result;
 
-    result = NEKO_MATH_SQRTF(NEKO_MATH_PREFIX(quaternion_dot)(q, q));
+    result = NEKO_MATH_SQRTF(NEKO_MATH_PREFIX(quat_dot)(q, q));
 
     return result;
 }
 
-neko_static_inline neko_fast_quaternion NEKO_MATH_PREFIX(quaternion_normalize)(neko_fast_quaternion q) {
-    neko_fast_quaternion result = {0};
+neko_static_inline neko_fast_quat NEKO_MATH_PREFIX(quat_normalize)(neko_fast_quat q) {
+    neko_fast_quat result = {0};
 
-    float len = NEKO_MATH_PREFIX(quaternion_length)(q);
+    float len = NEKO_MATH_PREFIX(quat_length)(q);
     if (len != 0.0f) {
 #if NEKO_MATH_USE_SSE
 
@@ -2259,8 +2259,8 @@ neko_static_inline neko_fast_quaternion NEKO_MATH_PREFIX(quaternion_normalize)(n
     return result;
 }
 
-neko_static_inline neko_fast_quaternion NEKO_MATH_PREFIX(quaternion_conjugate)(neko_fast_quaternion q) {
-    neko_fast_quaternion result;
+neko_static_inline neko_fast_quat NEKO_MATH_PREFIX(quat_conjugate)(neko_fast_quat q) {
+    neko_fast_quat result;
 
     result.x = -q.x;
     result.y = -q.y;
@@ -2270,8 +2270,8 @@ neko_static_inline neko_fast_quaternion NEKO_MATH_PREFIX(quaternion_conjugate)(n
     return result;
 }
 
-neko_static_inline neko_fast_quaternion NEKO_MATH_PREFIX(quaternion_inv)(neko_fast_quaternion q) {
-    neko_fast_quaternion result;
+neko_static_inline neko_fast_quat NEKO_MATH_PREFIX(quat_inv)(neko_fast_quat q) {
+    neko_fast_quat result;
 
     result.x = -q.x;
     result.y = -q.y;
@@ -2280,12 +2280,12 @@ neko_static_inline neko_fast_quaternion NEKO_MATH_PREFIX(quaternion_inv)(neko_fa
 
 #if NEKO_MATH_USE_SSE
 
-    __m128 scale = _mm_set1_ps(NEKO_MATH_PREFIX(quaternion_dot)(q, q));
+    __m128 scale = _mm_set1_ps(NEKO_MATH_PREFIX(quat_dot)(q, q));
     _mm_div_ps(result.packed, scale);
 
 #else
 
-    float invLen2 = 1.0f / NEKO_MATH_PREFIX(quaternion_dot)(q, q);
+    float invLen2 = 1.0f / NEKO_MATH_PREFIX(quat_dot)(q, q);
 
     result.x *= invLen2;
     result.y *= invLen2;
@@ -2297,27 +2297,27 @@ neko_static_inline neko_fast_quaternion NEKO_MATH_PREFIX(quaternion_inv)(neko_fa
     return result;
 }
 
-neko_static_inline neko_fast_quaternion NEKO_MATH_PREFIX(quaternion_slerp)(neko_fast_quaternion q1, neko_fast_quaternion q2, float a) {
-    neko_fast_quaternion result;
+neko_static_inline neko_fast_quat NEKO_MATH_PREFIX(quat_slerp)(neko_fast_quat q1, neko_fast_quat q2, float a) {
+    neko_fast_quat result;
 
-    float cosine = NEKO_MATH_PREFIX(quaternion_dot)(q1, q2);
+    float cosine = NEKO_MATH_PREFIX(quat_dot)(q1, q2);
     float angle = NEKO_MATH_ACOSF(cosine);
 
     float sine1 = NEKO_MATH_SINF((1.0f - a) * angle);
     float sine2 = NEKO_MATH_SINF(a * angle);
     float invSine = 1.0f / NEKO_MATH_SINF(angle);
 
-    q1 = NEKO_MATH_PREFIX(quaternion_scale)(q1, sine1);
-    q2 = NEKO_MATH_PREFIX(quaternion_scale)(q2, sine2);
+    q1 = NEKO_MATH_PREFIX(quat_scale)(q1, sine1);
+    q2 = NEKO_MATH_PREFIX(quat_scale)(q2, sine2);
 
-    result = NEKO_MATH_PREFIX(quaternion_add)(q1, q2);
-    result = NEKO_MATH_PREFIX(quaternion_scale)(result, invSine);
+    result = NEKO_MATH_PREFIX(quat_add)(q1, q2);
+    result = NEKO_MATH_PREFIX(quat_scale)(result, invSine);
 
     return result;
 }
 
-neko_static_inline neko_fast_quaternion NEKO_MATH_PREFIX(quaternion_from_axis_angle)(neko_fast_vec3 axis, float angle) {
-    neko_fast_quaternion result;
+neko_static_inline neko_fast_quat NEKO_MATH_PREFIX(quat_from_axis_angle)(neko_fast_vec3 axis, float angle) {
+    neko_fast_quat result;
 
     float radians = NEKO_MATH_PREFIX(deg_to_rad)(angle * 0.5f);
     axis = NEKO_MATH_PREFIX(vec3_normalize)(axis);
@@ -2331,8 +2331,8 @@ neko_static_inline neko_fast_quaternion NEKO_MATH_PREFIX(quaternion_from_axis_an
     return result;
 }
 
-neko_static_inline neko_fast_quaternion NEKO_MATH_PREFIX(quaternion_from_euler)(neko_fast_vec3 angles) {
-    neko_fast_quaternion result;
+neko_static_inline neko_fast_quat NEKO_MATH_PREFIX(quat_from_euler)(neko_fast_vec3 angles) {
+    neko_fast_quat result;
 
     neko_fast_vec3 radians;
     radians.x = NEKO_MATH_PREFIX(deg_to_rad)(angles.x * 0.5f);
@@ -2372,7 +2372,7 @@ neko_static_inline neko_fast_quaternion NEKO_MATH_PREFIX(quaternion_from_euler)(
     return result;
 }
 
-neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(quaternion_to_mat4)(neko_fast_quaternion q) {
+neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(quat_to_mat4)(neko_fast_quat q) {
     neko_fast_mat4 result = NEKO_MATH_PREFIX(mat4_identity)();
 
     float x2 = q.x + q.x;

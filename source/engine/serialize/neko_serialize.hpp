@@ -132,13 +132,13 @@ public:
 public:
     template <class T>
     neko_serialize& operator&(T& v) {
-        v.Serialize(*this);
+        v.__neko_serialize(*this);
         return *this;
     }
 
     template <class T>
     const neko_serialize& operator&(const T& v) const {
-        ((T&)v).Serialize(*this);
+        ((T&)v).__neko_serialize(*this);
         return *this;
     }
 

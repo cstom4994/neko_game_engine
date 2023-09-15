@@ -356,7 +356,7 @@ neko_engine *neko_engine_instance() { return g_neko.get(); }
 
 neko_result __neko_default_game_init() {
     // 初始化 ecs
-    neko_engine_subsystem(ecs) = neko_ecs_make(1024, COMPONENT_COUNT, 2);
+    neko_engine_subsystem(ecs) = neko_ecs_make(1024, COMPONENT_COUNT, 3);
 
     // 启用 imgui
     neko_imgui_init();

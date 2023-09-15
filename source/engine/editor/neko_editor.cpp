@@ -1112,7 +1112,8 @@ void neko_editor_inspect_vertex_array(const_str label, GLuint vao) {
 
 auto neko_editor_create(neko_engine_cvar_t &cvar) -> dbgui & {
     return the<dbgui>()
-            .create("console",
+            .create(
+                    "console",
                     [&](neko_dbgui_result) {
                         for (auto &a : logger::message_log()) {
                             ImVec4 colour;
@@ -1155,21 +1156,20 @@ auto neko_editor_create(neko_engine_cvar_t &cvar) -> dbgui & {
 
                         s64 now = neko_get_time();
 
-                        log_msg log_list[10] = {};
-                        int n = 9;
+                        constexpr int log_list_num = 10;
 
-                        std::vector<log_msg>::const_reverse_iterator backwardIterator;
+                        log_msg log_list[log_list_num] = {};
+
+                        int n = log_list_num - 1;
                         auto &logger_list = logger::message_log();
-                        for (backwardIterator = logger_list.crbegin(); backwardIterator != logger_list.crend(); backwardIterator++) {
+                        for (const log_msg &log : logger_list | std::views::reverse) {
                             if (n < 0) break;
-
-                            s64 dtime = now - backwardIterator->time;
-
+                            s64 dtime = now - log.time;
                             if (dtime > 4000) {
                                 n--;
                                 break;  // 直接跳出循环就可以，在此之后的日志只可能比这更老的
                             }
-                            log_list[n] = *backwardIterator;
+                            log_list[n] = log;
                             n--;
                         }
 
@@ -1213,7 +1213,8 @@ auto neko_editor_create(neko_engine_cvar_t &cvar) -> dbgui & {
                         }
 
                         return neko_dbgui_result_in_progress;
-                    })
+                    },
+                    &g_cvar.ui_console)
             .create(
                     "utils",
                     [&](neko_dbgui_result) {
@@ -1222,7 +1223,7 @@ auto neko_editor_create(neko_engine_cvar_t &cvar) -> dbgui & {
                         }
                         return neko_dbgui_result_in_progress;
                     },
-                    neko_dbgui_flags::no_visible)
+                    &g_cvar.ui_imgui_debug)
             .create("cvar",
                     [&](neko_dbgui_result) {
                         try {
