@@ -159,9 +159,9 @@ static void InitLua(neko_scripting *lc) {
 
 static void lua_reg_ecs(lua_State *L);
 
-static void lua_reg(lua_wrapper::neko_lua_wrap &lua) {
+static void lua_reg(neko_lua_wrap_t &lua) {
 
-    lua_State *L = lua.state();
+    lua_State *L = lua.get_lua_state();
 
     lua_reg_ecs(L);
 
@@ -176,7 +176,7 @@ static void lua_reg(lua_wrapper::neko_lua_wrap &lua) {
 
 static int __neko_lua_catch_panic(lua_State *L) {
     const char *msg = lua_tostring(L, -1);
-    neko_error("[lua] PANIC ERROR: ", msg);
+    neko_error("[lua] panic error: ", msg);
     return 0;
 }
 
@@ -186,28 +186,30 @@ void neko_scripting::__init() {
 
     try {
 
-        lua_atpanic(neko_lua.state(), __neko_lua_catch_panic);
+        neko_lua.setModFuncFlag(true);
+
+        lua_atpanic(neko_lua.get_lua_state(), __neko_lua_catch_panic);
 
         lua_reg(neko_lua);
 
         add_package_path("./");
 
-        neko_lua.dostring(
+        neko_lua.run_string(
                 std::format("package.path = "
                             "'{1}/?.lua;{0}/?.lua;{0}/libs/?.lua;{0}/libs/?/init.lua;{0}/libs/"
                             "?/?.lua;' .. package.path",
                             neko_file_path("data/scripts"), neko_fs_normalize_path(std::filesystem::current_path().string()).c_str()));
 
-        neko_lua.dostring(
+        neko_lua.run_string(
                 std::format("package.cpath = "
                             "'{1}/?.{2};{0}/?.{2};{0}/libs/?.{2};{0}/libs/?/init.{2};{0}/libs/"
                             "?/?.{2};' .. package.cpath",
                             neko_file_path("data/scripts"), neko_fs_normalize_path(std::filesystem::current_path().string()).c_str(), "dll"));
 
         // 面向对象基础
-        neko_lua.dostring(neko_lua_src_object);
+        neko_lua.run_string(neko_lua_src_object);
 
-        neko_lua.dofile(neko_file_path("data/scripts/init.lua"));
+        neko_lua.do_file(neko_file_path("data/scripts/init.lua"));
 
     } catch (std::exception &ex) {
         neko_error(ex.what());

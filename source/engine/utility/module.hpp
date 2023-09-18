@@ -9,10 +9,6 @@
 
 namespace neko {
 
-namespace lua_wrapper {
-class neko_lua_wrap;
-}
-
 template <typename BaseT>
 class module : private noncopyable {
 public:
@@ -50,7 +46,7 @@ public:
     virtual void init(){};
     virtual void end(){};
     virtual void update(){};
-    virtual void registerLua(lua_wrapper::neko_lua_wrap* p_lua){};
+    // virtual void registerLua(lua_wrapper::neko_lua_wrap* p_lua){};
 
 private:
     static std::unique_ptr<BaseT> instance_;

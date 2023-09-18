@@ -53,9 +53,9 @@ neko_refl::neko_refl() : temporary_resource{std::make_shared<std::pmr::synchroni
     details::__neko_refl_util_gen_2(*this);
     details::__neko_refl_util_gen_3(*this);
     details::__neko_refl_util_gen_4(*this);
-    details::__neko_refl_util_gen_5(*this);
-    details::__neko_refl_util_gen_6(*this);
-    details::__neko_refl_util_gen_7(*this);
+    // details::__neko_refl_util_gen_5(*this);
+    // details::__neko_refl_util_gen_6(*this);
+    // details::__neko_refl_util_gen_7(*this);
 }
 
 neko_refl& neko_refl::Instance() noexcept {

@@ -8,7 +8,7 @@
 #include <string>
 
 #include "engine/common/neko_util.h"
-#include "engine/scripting/neko_lua_wrapper.hpp"
+#include "engine/scripting/neko_lua_base.h"
 #include "engine/utility/logger.hpp"
 #include "engine/utility/module.hpp"
 
@@ -84,7 +84,7 @@ public:
     static void reg() {}
 
 public:
-    lua_wrapper::neko_lua_wrap neko_lua;
+    neko_lua_wrap_t neko_lua;
 
     neko_scripting() noexcept {};
     ~neko_scripting() noexcept {};
@@ -117,7 +117,7 @@ public:
 
         new_path += "?.lua\" ";
 
-        neko_lua.dostring(new_path);
+        neko_lua.run_string(new_path);
         return 0;
     }
 };

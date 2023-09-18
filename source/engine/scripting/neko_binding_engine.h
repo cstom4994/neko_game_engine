@@ -8,7 +8,7 @@
 #include "engine/graphics/neko_graphics.h"
 #include "engine/platform/neko_platform.h"
 #include "engine/scripting/neko_lua_base.h"
-#include "engine/scripting/neko_lua_wrapper.hpp"
+#include "engine/scripting/neko_lua_register.h"
 
 namespace neko {
 
@@ -139,9 +139,9 @@ static int __neko_bind_platform_frame_buffer_size(lua_State* L) {
     return 2;
 }
 
-neko_inline void neko_register_platform(lua_wrapper::neko_lua_wrap& lua) {
+neko_inline void neko_register_platform(neko_lua_wrap_t& lua) {
 
-    lua_State* L = lua.state();
+    lua_State* L = lua.get_lua_state();
 
     neko_lua_auto_enum(L, neko_platform_keycode);
     neko_lua_auto_enum_value(L, neko_platform_keycode, neko_keycode_a);
@@ -254,26 +254,27 @@ neko_inline void neko_register_platform(lua_wrapper::neko_lua_wrap& lua) {
     neko_lua_auto_enum_value(L, neko_platform_mouse_button_code, neko_mouse_mbutton);
     neko_lua_auto_enum_value(L, neko_platform_mouse_button_code, neko_mouse_button_code_count);
 
-    lua["neko_key_pressed"] = __neko_bind_platform_key_pressed;
-    lua["neko_was_key_down"] = __neko_bind_platform_was_key_down;
-    lua["neko_was_mouse_down"] = __neko_bind_platform_was_mouse_down;
-    lua["neko_key_down"] = __neko_bind_platform_key_down;
-    lua["neko_key_released"] = __neko_bind_platform_key_released;
-    lua["neko_mouse_down"] = __neko_bind_platform_mouse_down;
-    lua["neko_mouse_pressed"] = __neko_bind_platform_mouse_pressed;
-    lua["neko_mouse_released"] = __neko_bind_platform_mouse_released;
-
-    lua["neko_mouse_moved"] = +[]() -> bool { return neko_engine_subsystem(platform)->mouse_moved(); };
-
-    lua["neko_file_path"] = +[](const_str path) -> neko_string { return neko_engine_subsystem(platform)->get_path(path); };
-
-    lua["neko_create_window"] = +[](const_str title, u32 width, u32 height) -> neko_resource_handle { return neko_engine_subsystem(platform)->create_window(title, width, height); };
-
-    lua["neko_main_window"] = +[]() -> neko_resource_handle { return neko_engine_subsystem(platform)->main_window(); };
-
-    lua["neko_set_window_size"] = +[](neko_resource_handle handle, u32 width, u32 height) { neko_engine_subsystem(platform)->set_window_size(handle, width, height); };
-
-    lua["neko_set_mouse_position"] = +[](neko_resource_handle handle, f64 x, f64 y) { neko_engine_subsystem(platform)->set_mouse_position(handle, x, y); };
+    neko_lua_wrap_register_t<>(L)
+            .def(&__neko_bind_platform_key_pressed, "neko_key_pressed")
+            .def(&__neko_bind_platform_was_key_down, "neko_was_key_down")
+            .def(&__neko_bind_platform_was_mouse_down, "neko_was_mouse_down")
+            .def(&__neko_bind_platform_key_down, "neko_key_down")
+            .def(&__neko_bind_platform_key_released, "neko_key_released")
+            .def(&__neko_bind_platform_mouse_down, "neko_mouse_down")
+            .def(&__neko_bind_platform_mouse_pressed, "neko_mouse_pressed")
+            .def(&__neko_bind_platform_mouse_released, "neko_mouse_released")
+            .def(
+                    +[]() -> bool { return neko_engine_subsystem(platform)->mouse_moved(); }, "neko_mouse_moved")
+            .def(
+                    +[](const_str path) -> neko_string { return neko_engine_subsystem(platform)->get_path(path); }, "neko_file_path")
+            .def(
+                    +[](const_str title, u32 width, u32 height) -> neko_resource_handle { return neko_engine_subsystem(platform)->create_window(title, width, height); }, "neko_create_window")
+            .def(
+                    +[]() -> neko_resource_handle { return neko_engine_subsystem(platform)->main_window(); }, "neko_main_window")
+            .def(
+                    +[](neko_resource_handle handle, u32 width, u32 height) { neko_engine_subsystem(platform)->set_window_size(handle, width, height); }, "neko_set_window_size")
+            .def(
+                    +[](neko_resource_handle handle, f64 x, f64 y) { neko_engine_subsystem(platform)->set_mouse_position(handle, x, y); }, "neko_set_mouse_position");
 
     lua_register(L, "neko_mouse_delta", __neko_bind_platform_mouse_delta);
     lua_register(L, "neko_mouse_position", __neko_bind_platform_mouse_position);
@@ -361,9 +362,9 @@ static int __neko_bind_graphics_fontcache_load(lua_State* L) {
     return 1;
 }
 
-neko_inline void neko_register_pack(lua_wrapper::neko_lua_wrap& lua) {
+neko_inline void neko_register_pack(neko_lua_wrap_t& lua) {
 
-    lua_State* L = lua.state();
+    lua_State* L = lua.get_lua_state();
 
     lua_register(L, "neko_pack_construct", __neko_bind_pack_construct);
     lua_register(L, "neko_pack_destroy", __neko_bind_pack_destroy);
@@ -490,18 +491,19 @@ static int __neko_ls(lua_State* L) {
 
 static void __neko_add_packagepath(const char* p) { neko_sc()->add_package_path(p); }
 
-neko_inline void neko_register_common(lua_wrapper::neko_lua_wrap& lua) {
+neko_inline void neko_register_common(neko_lua_wrap_t& lua) {
 
-    lua_State* L = lua.state();
+    lua_State* L = lua.get_lua_state();
 
-    lua["log_trace"] = __neko_lua_trace;
-    lua["log_debug"] = __neko_lua_bug;
-    lua["log_error"] = __neko_lua_error;
-    lua["log_warn"] = __neko_lua_warn;
-    lua["log_info"] = __neko_lua_info;
-    lua["add_packagepath"] = __neko_add_packagepath;
-
-    lua["neko_is_debug"] = +[]() -> bool { return (bool)neko_is_debug(); };
+    neko_lua_wrap_register_t<>(L)
+            .def(&__neko_lua_trace, "log_trace")
+            .def(&__neko_lua_bug, "log_debug")
+            .def(&__neko_lua_error, "log_error")
+            .def(&__neko_lua_warn, "log_warn")
+            .def(&__neko_lua_info, "log_info")
+            .def(&__neko_add_packagepath, "add_packagepath")
+            .def(
+                    +[]() -> bool { return (bool)neko_is_debug(); }, "neko_is_debug");
 
     neko_lua_auto_struct(L, neko_application_desc_t);
     neko_lua_auto_struct_member(L, neko_application_desc_t, window_title, const char*);
@@ -526,11 +528,12 @@ neko_inline void neko_register_common(lua_wrapper::neko_lua_wrap& lua) {
     lua_register(L, "neko_ls", __neko_ls);
 }
 
-neko_inline void neko_register_graphics(lua_wrapper::neko_lua_wrap& lua) {
+neko_inline void neko_register_graphics(neko_lua_wrap_t& lua) {
 
-    lua_State* L = lua.state();
+    lua_State* L = lua.get_lua_state();
 
-    lua["neko_fontcache_push"] = +[](const_str text, const neko_font_index font, const f32 x, const f32 y) { ((neko_engine_instance()->ctx.graphics))->fontcache_push_x_y(text, font, x, y); };
+    neko_lua_wrap_register_t<>(L).def(
+            +[](const_str text, const neko_font_index font, const f32 x, const f32 y) { ((neko_engine_instance()->ctx.graphics))->fontcache_push_x_y(text, font, x, y); }, "neko_fontcache_push");
 
     lua_register(L, "neko_fontcache_load", __neko_bind_graphics_fontcache_load);
 }
@@ -545,7 +548,7 @@ neko_inline void neko_register_graphics(lua_wrapper::neko_lua_wrap& lua) {
 //     } save;
 // };
 
-neko_inline void neko_register_audio(lua_wrapper::neko_lua_wrap& lua) {
+neko_inline void neko_register_audio(neko_lua_wrap_t& lua) {
     //
     // lua_register(L, "neko_audio_load", __neko_bind_audio_load);
 
@@ -577,9 +580,9 @@ neko_inline void neko_register_audio(lua_wrapper::neko_lua_wrap& lua) {
     // lua["neko_audio_play"] = [&audio](neko_lua_handle_wrap inst) { audio->play(inst.save.audio_ins); };
 }
 
-neko_inline void neko_register(lua_wrapper::neko_lua_wrap& lua) {
+neko_inline void neko_register(neko_lua_wrap_t& lua) {
 
-    g_lua_bind = lua.state();
+    g_lua_bind = lua.get_lua_state();
 
     neko_register_common(lua);
     neko_register_platform(lua);

@@ -17,6 +17,11 @@
 #define NEKO_PLATFORM_WIN
 #include <windows.h>
 
+// 一些 winapi 调用可能会失败 但我们没有任何已知的方法来“修复”该问题
+// 其中一些调用不是致命的（例如如果无法移动窗口）因此我们只需断言 DEBUG_CHECK
+#define DEBUG_CHECK(R) \
+    if (!(R)) neko_assert(false)
+
 #define WIN32_LEAN_AND_MEAN
 
 #elif (defined linux || defined _linux || defined __linux__)
@@ -29,6 +34,21 @@
 struct neko_uuid;
 struct neko_platform_input;
 struct neko_platform_window;
+
+// native utils
+
+template <int N>
+static void toWChar(WCHAR (&out)[N], neko_stringview in) {
+    const char *c = in.begin;
+    WCHAR *cout = out;
+    while (c != in.end && c - in.begin < N - 1) {
+        *cout = *c;
+        ++cout;
+        ++c;
+    }
+    neko_assert(c == in.end);
+    *cout = 0;
+}
 
 /*============================================================
 // Platform Time
@@ -372,6 +392,47 @@ typedef struct neko_platform_i {
     void (*file_extension)(char *buffer, usize buffer_sz, const char *file_path);
     neko_string (*get_path)(const neko_string &);
     neko_string (*abbreviate_path)(const neko_string &, s32);
+
+    /*============================================================
+    // Platform Native
+    ============================================================*/
+
+    neko_inline void __native_copy_to_clipboard(const char *text) {
+        if (!OpenClipboard(NULL)) return;
+        int len = std::strlen(text) + 1;
+        HGLOBAL mem_handle = GlobalAlloc(GMEM_MOVEABLE, len * sizeof(char));
+        if (!mem_handle) return;
+
+        char *mem = (char *)GlobalLock(mem_handle);
+        neko_str_copy(neko_span(mem, len), text);
+        GlobalUnlock(mem_handle);
+        EmptyClipboard();
+        SetClipboardData(CF_TEXT, mem_handle);
+        CloseClipboard();
+    }
+
+    neko_inline int __native_get_dpi() {
+        const HDC hdc = GetDC(NULL);
+        return GetDeviceCaps(hdc, LOGPIXELSX);
+    }
+
+    neko_inline void *__native_library_load(const char *path) {
+        WCHAR tmp[MAX_PATH];
+        toWChar(tmp, path);
+        return LoadLibrary(tmp);
+    }
+
+    neko_inline void __native_library_unload(void *handle) {
+        if (handle) {
+            DEBUG_CHECK(FreeLibrary((HMODULE)handle));
+        }
+    }
+
+    neko_inline void *__native_library_get_symbol(void *handle, const char *name) { return (void *)GetProcAddress((HMODULE)handle, name); }
+
+    /*============================================================
+    // Platform
+    ============================================================*/
 
     // Settings for platform, including video, audio
     neko_platform_settings settings;

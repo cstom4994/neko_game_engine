@@ -7,18 +7,14 @@
 
 namespace neko {
 
-// 计算结构体成员数量
-#if !defined(_MSC_VER)  // 我不知道为什么 if constexpr (!requires { T{Args...}; }) {...} 方法会导致目前版本的vs代码感知非常卡
-
 struct __any {
     // 无定义 我们需要一个可以转换为任何类型的在以下特殊语境中使用的辅助类
     template <typename T>
     constexpr operator T() const;
-    template <typename T>
-    constexpr operator T &() const;
-    template <typename T>
-    constexpr operator T &&() const;
 };
+
+// 计算结构体成员数量
+#if !defined(_MSC_VER) || 0  // 我不知道为什么 if constexpr (!requires { T{Args...}; }) {...} 方法会导致目前版本的vs代码感知非常卡
 
 template <typename T>
 consteval size_t struct_size(auto &&...Args) {
@@ -34,41 +30,18 @@ struct struct_member_count : std::integral_constant<std::size_t, struct_size<T>(
 
 #else
 
-template <class T>
-struct __any {
-    // 无定义 我们需要一个可以转换为除了自身类型意外的任何类型的辅助类
-    template <class U, class = typename std::enable_if<!std::is_same<typename std::decay<T>::type, typename std::decay<U>::type>::value>::type>
-    constexpr operator U() const noexcept;
-    // template <class U, class = typename std::enable_if<!std::is_same<typename std::decay<T>::type, typename std::decay<U>::type>::value>::type>
-    // constexpr operator U &() const noexcept;
-    // template <class U, class = typename std::enable_if<!std::is_same<typename std::decay<T>::type, typename std::decay<U>::type>::value>::type>
-    // constexpr operator U &&() const noexcept;
+template <typename T, typename = void, typename... Ts>
+struct struct_size {
+    constexpr static size_t value = sizeof...(Ts) - 1;
 };
 
-template <class T, std::size_t I>
-struct __any_tagged : __any<T> {};
-
-// 判断T是否可以进行聚合初始化 T{std::declval<Args>()...}
-template <class T, class... Args>
-constexpr auto __is_aggregate_constructible_impl(T &&, Args &&...args) -> decltype(T{{args}...}, std::true_type());
-constexpr auto __is_aggregate_constructible_impl(...) -> std::false_type;
-
-template <class T, class... Args>
-struct __is_aggregate_constructible : decltype(__is_aggregate_constructible_impl(std::declval<T>(), std::declval<Args>()...)) {};
-
-template <class T, class seq>
-struct __is_aggregate_constructible_with_n_args;
-template <class T, std::size_t... I>
-struct __is_aggregate_constructible_with_n_args<T, std::index_sequence<I...> > : __is_aggregate_constructible<T, __any_tagged<T, I>...> {};
-
-template <class T, class seq = std::make_index_sequence<sizeof(T)> >
-struct struct_member_count_impl;
-template <class T, std::size_t... I>
-struct struct_member_count_impl<T, std::index_sequence<I...> > : std::integral_constant<std::size_t, (... + !!(__is_aggregate_constructible_with_n_args<T, std::make_index_sequence<I + 1> >::value))> {
+template <typename T, typename... Ts>
+struct struct_size<T, std::void_t<decltype(T{Ts{}...})>, Ts...> {
+    constexpr static size_t value = struct_size<T, void, Ts..., __any>::value;
 };
 
 template <class T>
-struct struct_member_count : struct_member_count_impl<T> {};
+struct struct_member_count : std::integral_constant<std::size_t, struct_size<T>::value> {};
 
 #endif
 

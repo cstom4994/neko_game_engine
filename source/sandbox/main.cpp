@@ -453,8 +453,8 @@ void quad_batch_custom_add(neko_quad_batch_t *qb, void *quad_batch_custom_info_d
 
 neko_texture_t load_ase_texture_simple(const std::string &path) {
 
-    ase_t *ase = cute_aseprite_load_from_file(path.c_str(), NULL);
-    neko_defer([&] { cute_aseprite_free(ase); });
+    ase_t *ase = neko_aseprite_load_from_file(path.c_str());
+    neko_defer([&] { neko_aseprite_free(ase); });
 
     if (NULL == ase) {
         neko_error("unable to load ase ", path);
@@ -1481,7 +1481,7 @@ neko_result app_init() {
                             ImGui::Text("GPU MemTotalAvailable: %.2lf mb", (f64)(cur_avail_mem_kb / 1024.0f));
                             ImGui::Text("GPU MemCurrentUsage: %.2lf mb", (f64)((total_mem_kb - cur_avail_mem_kb) / 1024.0f));
 
-                            lua_State *L = neko_sc()->neko_lua.state();
+                            lua_State *L = neko_sc()->neko_lua.get_lua_state();
                             lua_gc(L, LUA_GCCOLLECT, 0);
                             lua_Integer kb = lua_gc(L, LUA_GCCOUNT, 0);
                             lua_Integer bytes = lua_gc(L, LUA_GCCOUNTB, 0);
@@ -1509,72 +1509,68 @@ neko_result app_init() {
 
                         return neko_dbgui_result_in_progress;
                     })
-            .create("Audio Test",
-                    [&](neko_dbgui_result) {
-                        neko_audio_i *audio = neko_engine_instance()->ctx.audio;
+            .create("Audio Test", [&](neko_dbgui_result) {
+                neko_audio_i *audio = neko_engine_instance()->ctx.audio;
 
-                        static cs_playing_sound_t pl;
+                static cs_playing_sound_t pl;
 
-                        if (ImGui::Button("播放/暂停")) {
-                            // if (audio->is_playing(g_inst)) {
-                            //     audio->pause(g_inst);
-                            // } else {
-                            //     audio->play(g_inst);
-                            // }
+                if (ImGui::Button("播放/暂停")) {
+                    // if (audio->is_playing(g_inst)) {
+                    //     audio->pause(g_inst);
+                    // } else {
+                    //     audio->play(g_inst);
+                    // }
 
-                            pl = cs_play_sound(piano, params);
-                        }
+                    pl = cs_play_sound(piano, params);
+                }
 
-                        if (ImGui::Button("重新播放")) {
-                            // audio->restart(g_inst);
-                        }
+                if (ImGui::Button("重新播放")) {
+                    // audio->restart(g_inst);
+                }
 
-                        if (ImGui::Button("停止播放")) {
-                            // audio->stop(g_inst);
-                            cs_sound_set_is_paused(pl, true);
-                        }
+                if (ImGui::Button("停止播放")) {
+                    // audio->stop(g_inst);
+                    cs_sound_set_is_paused(pl, true);
+                }
 
-                        if (ImGui::Button("Volume up")) {
-                            // f32 cur_vol = audio->get_volume(g_inst);
-                            // audio->set_volume(g_inst, cur_vol + 0.1f);
-                        }
+                if (ImGui::Button("Volume up")) {
+                    // f32 cur_vol = audio->get_volume(g_inst);
+                    // audio->set_volume(g_inst, cur_vol + 0.1f);
+                }
 
-                        if (ImGui::Button("Volume down")) {
-                            // f32 cur_vol = audio->get_volume(g_inst);
-                            // audio->set_volume(g_inst, cur_vol - 0.1f);
-                        }
+                if (ImGui::Button("Volume down")) {
+                    // f32 cur_vol = audio->get_volume(g_inst);
+                    // audio->set_volume(g_inst, cur_vol - 0.1f);
+                }
 
-                        // Can grab current runtime instance data as well
-                        // neko_audio_instance_data_t id = audio->get_instance_data(g_inst);
+                // Can grab current runtime instance data as well
+                // neko_audio_instance_data_t id = audio->get_instance_data(g_inst);
 
-                        // s32 sample_count = audio->get_sample_count(id.src);
-                        // s32 sample_rate = audio->get_sample_rate(id.src);
-                        // s32 num_channels = audio->get_num_channels(id.src);
+                // s32 sample_count = audio->get_sample_count(id.src);
+                // s32 sample_rate = audio->get_sample_rate(id.src);
+                // s32 num_channels = audio->get_num_channels(id.src);
 
-                        // static char buf1[256] = neko_default_val();
-                        // static char buf2[256] = neko_default_val();
+                // static char buf1[256] = neko_default_val();
+                // static char buf2[256] = neko_default_val();
 
-                        // neko_timed_action(10, {
-                        //     s32 min = 0, sec = 0;
+                // neko_timed_action(10, {
+                //     s32 min = 0, sec = 0;
 
-                        //    // Runtime of source
-                        //    audio->get_runtime(g_src, &min, &sec);
-                        //    neko_snprintf(buf1, 256, sec < 10 ? "%d:0%d" : "%d:%d", min, sec);
-                        //    // neko_println("Runtime: %s", buf);
+                //    // Runtime of source
+                //    audio->get_runtime(g_src, &min, &sec);
+                //    neko_snprintf(buf1, 256, sec < 10 ? "%d:0%d" : "%d:%d", min, sec);
+                //    // neko_println("Runtime: %s", buf);
 
-                        //    // Get current play position
-                        //    audio->convert_to_runtime(sample_count, sample_rate, num_channels, id.sample_position, &min, &sec);
+                //    // Get current play position
+                //    audio->convert_to_runtime(sample_count, sample_rate, num_channels, id.sample_position, &min, &sec);
 
-                        //    neko_snprintf(buf2, 256, sec < 10 ? "%d:0%d" : "%d:%d", min, sec);
-                        //    // neko_println("Play Time: %s", buf);
-                        //});
+                //    neko_snprintf(buf2, 256, sec < 10 ? "%d:0%d" : "%d:%d", min, sec);
+                //    // neko_println("Play Time: %s", buf);
+                //});
 
-                        // ImGui::Text(buf1);
-                        // ImGui::Text(buf2);
+                // ImGui::Text(buf1);
+                // ImGui::Text(buf2);
 
-                        return neko_dbgui_result_in_progress;
-                    })
-            .create("Containers Test", [&](neko_dbgui_result) {
                 if (ImGui::Button("清空容器")) {
                     neko_dyn_array_clear(g_dyn_array);
                     neko_hash_table_clear(g_hash_table);
@@ -1731,7 +1727,7 @@ neko_result app_update() {
     // Update frame counter
     g_frame_counter = (g_frame_counter + 1) % u32_max;
 
-    neko_invoke_once(lua_bind::l_G = neko_sc()->neko_lua.state(); lua_bind::imgui_init_lua(););
+    neko_invoke_once(lua_bind::l_G = neko_sc()->neko_lua.get_lua_state(); lua_bind::imgui_init_lua(););
     // neko_invoke_once(neko_sc()->neko_lua.dostring(R"(
     //   -- Main window
     //   local Window = ImGui.new("Window", "example title")

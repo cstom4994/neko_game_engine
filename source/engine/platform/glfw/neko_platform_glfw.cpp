@@ -13,9 +13,20 @@
 #include "GLFW/glfw3.h"
 
 #ifdef NEKO_PLATFORM_WIN
-#include <Psapi.h>  // windows GetProcessMemoryInfo
-#include <Windows.h>
 
+#pragma warning(push)
+#pragma warning(disable : 4091)
+#include <Psapi.h>  // windows GetProcessMemoryInfo
+#include <Shobjidl_core.h>
+#include <shlobj_core.h>
+#include <sysinfoapi.h>
+#include <windowsx.h>
+#pragma warning(pop)
+#pragma warning(disable : 4996)
+
+typedef enum PROCESS_DPI_AWARENESS { PROCESS_DPI_UNAWARE = 0, PROCESS_SYSTEM_DPI_AWARE = 1, PROCESS_PER_MONITOR_DPI_AWARE = 2 } PROCESS_DPI_AWARENESS;
+
+HRESULT WINAPI SetProcessDpiAwareness(PROCESS_DPI_AWARENESS value);
 
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include "GLFW/glfw3native.h"
@@ -40,14 +51,23 @@ void __glfw_drop_callback(GLFWwindow *window);
 neko_result glfw_platform_init(struct neko_platform_i *platform) {
     neko_info("Initializing GLFW");
 
+    // Verify platform is valid
+    neko_assert(platform);
+
 #ifdef NEKO_PLATFORM_WIN
     SetConsoleOutputCP(65001);
+
+    SetProcessDPIAware();
+    void *shcore = platform->__native_library_load("shcore.dll");
+    if (shcore) {
+        auto setter = (decltype(&SetProcessDpiAwareness))platform->__native_library_get_symbol(shcore, "SetProcessDpiAwareness");
+        if (setter) setter(PROCESS_PER_MONITOR_DPI_AWARE);
+    }
+
+    if (shcore) platform->__native_library_unload(shcore);
 #endif
 
     glfwInit();
-
-    // Verify platform is valid
-    neko_assert(platform);
 
     switch (platform->settings.video.driver) {
         case neko_platform_video_driver_type_opengl: {

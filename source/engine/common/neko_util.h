@@ -121,6 +121,12 @@
 
 #define neko_offsetof(s, m) ((::size_t) & reinterpret_cast<char const volatile&>((((s*)0)->m)))
 
+#if defined(_MSC_VER)
+#define neko_unused(x) (void)x
+#else
+#define neko_unused(x) (void)(sizeof(x))
+#endif
+
 #if defined(__cplusplus)
 #include <string>
 #if defined(__cpp_char8_t)
@@ -679,6 +685,69 @@ struct string_store {
     }
 
     u32 get_string(const char* _str) { return str_index_map[_str]; }
+};
+
+template <typename T>
+struct neko_span {
+    neko_span() : __begin(nullptr), __end(nullptr) {}
+    neko_span(T* begin, u32 len) : __begin(begin), __end(begin + len) {}
+    neko_span(T* begin, T* end) : __begin(begin), __end(end) {}
+    template <int N>
+    neko_span(T (&value)[N]) : __begin(value), __end(value + N) {}
+    T& operator[](u32 idx) const {
+        neko_assert(__begin + idx < __end);
+        return __begin[idx];
+    }
+    operator neko_span<const T>() const { return neko_span<const T>(__begin, __end); }
+    void remove_prefix(u32 count) {
+        neko_assert(count <= length());
+        __begin += count;
+    }
+    void remove_suffix(u32 count) {
+        neko_assert(count <= length());
+        __end -= count;
+    }
+    [[nodiscard]] neko_span from_left(u32 count) const {
+        neko_assert(count <= length());
+        return neko_span(__begin + count, __end);
+    }
+    [[nodiscard]] neko_span from_right(u32 count) const {
+        neko_assert(count <= length());
+        return neko_span(__begin, __end - count);
+    }
+    T& back() {
+        neko_assert(length() > 0);
+        return *(__end - 1);
+    }
+    const T& back() const {
+        neko_assert(length() > 0);
+        return *(__end - 1);
+    }
+    bool equals(const neko_span<T>& rhs) {
+        bool res = true;
+        if (length() != rhs.length()) return false;
+        for (const T& v : *this) {
+            u32 i = u32(&v - __begin);
+            if (v != rhs.__begin[i]) return false;
+        }
+        return true;
+    }
+
+    template <typename F>
+    s32 find(const F& f) const {
+        for (u32 i = 0, c = length(); i < c; ++i) {
+            if (f(__begin[i])) return i;
+        }
+        return -1;
+    }
+
+    u32 length() const { return (u32)(__end - __begin); }
+
+    T* begin() const { return __begin; }
+    T* end() const { return __end; }
+
+    T* __begin;
+    T* __end;
 };
 
 #endif  // NEKO_UTIL_H

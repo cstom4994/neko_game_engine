@@ -1,19 +1,32 @@
 #pragma once
 
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
+#include <fstream>
 #include <functional>
+#include <iostream>
 #include <iterator>
+#include <memory_resource>
 #include <set>
+#include <shared_mutex>
+#include <span>
+#include <sstream>
+#include <variant>
+
+#include "engine/utility/name.hpp"
+#include "engine/utility/neko_cpp_misc.hpp"
+#include "engine/utility/neko_cpp_utils.hpp"
+
+#ifndef NDEBUG
+#include <unordered_set>
+#endif  // !NDEBUG
 
 namespace neko::cpp {
 static constexpr std::size_t MaxArgNum = 64;
 static_assert(MaxArgNum <= 256 - 2);
 }  // namespace neko::cpp
-
-#include "engine/utility/name.hpp"
-#include "engine/utility/neko_cpp_misc.hpp"
-#include "engine/utility/neko_cpp_utils.hpp"
 
 #define NEKO_DYREFL_ENUM_BOOL_OPERATOR_DEFINE(Name)                          \
     constexpr Name operator&(const Name& lhs, const Name& rhs) noexcept {    \
@@ -239,26 +252,21 @@ concept operator_bool = static_castable_to<T, bool>;
 template <typename T>
 concept operator_plus = requires(T t) { +t; };
 template <typename T>
-concept operator_minus = !
-std::is_unsigned_v<T>&& requires(T t) { -t; };
+concept operator_minus = !std::is_unsigned_v<T> && requires(T t) { -t; };
 
 template <typename T>
 concept operator_add = requires(T lhs, T rhs) { lhs + rhs; };
 template <typename T>
-concept operator_sub = !
-std::is_same_v<std::decay_t<T>, void*>&& requires(T lhs, T rhs) { lhs - rhs; };
+concept operator_sub = !std::is_same_v<std::decay_t<T>, void*> && requires(T lhs, T rhs) { lhs - rhs; };
 template <typename T>
 concept operator_mul = requires(T lhs, T rhs) { lhs* rhs; };
 template <typename T>
-concept operator_div = !
-std::is_same_v<std::remove_cvref_t<T>, bool>&& requires(T lhs, T rhs) { lhs / rhs; };
+concept operator_div = !std::is_same_v<std::remove_cvref_t<T>, bool> && requires(T lhs, T rhs) { lhs / rhs; };
 template <typename T>
-concept operator_mod = !
-std::is_same_v<std::remove_cvref_t<T>, bool>&& requires(T lhs, T rhs) { lhs % rhs; };
+concept operator_mod = !std::is_same_v<std::remove_cvref_t<T>, bool> && requires(T lhs, T rhs) { lhs % rhs; };
 
 template <typename T>
-concept operator_bnot = !
-std::is_same_v<std::remove_cvref_t<T>, bool>&& requires(T t) { ~t; };
+concept operator_bnot = !std::is_same_v<std::remove_cvref_t<T>, bool> && requires(T t) { ~t; };
 template <typename T>
 concept operator_band = requires(T lhs, T rhs) { lhs& rhs; };
 template <typename T>
@@ -271,114 +279,92 @@ template <typename T, typename U>
 concept operator_shr = requires(T lhs, U rhs) { lhs >> rhs; };
 
 template <typename T>
-concept operator_pre_inc = !
-std::is_same_v<T, bool>&& requires(T t) { ++t; };
+concept operator_pre_inc = !std::is_same_v<T, bool> && requires(T t) { ++t; };
 template <typename T>
-concept operator_post_inc = !
-std::is_same_v<T, bool>&& requires(T t) { t++; };
+concept operator_post_inc = !std::is_same_v<T, bool> && requires(T t) { t++; };
 template <typename T>
-concept operator_pre_dec = !
-std::is_same_v<T, bool>&& requires(T t) { --t; };
+concept operator_pre_dec = !std::is_same_v<T, bool> && requires(T t) { --t; };
 template <typename T>
-concept operator_post_dec = !
-std::is_same_v<T, bool>&& requires(T t) { t--; };
+concept operator_post_dec = !std::is_same_v<T, bool> && requires(T t) { t--; };
 
 template <typename T, typename U>
 concept operator_assignment = requires(T lhs, U rhs) {
-                                  { lhs = std::forward<U>(rhs) } -> std::same_as<T&>;
-                              };
+    { lhs = std::forward<U>(rhs) } -> std::same_as<T&>;
+};
 template <typename T>
 concept operator_assignment_copy = std::is_copy_assignable_v<T> && operator_assignment<T, const T&>;
 template <typename T>
 concept operator_assignment_move = std::is_move_assignable_v<T> && operator_assignment<T, T&&>;
 template <typename T>
-concept operator_assignment_add = !
-std::is_same_v<T, bool>&& requires(T lhs, const T& rhs) {
-                              { lhs += rhs } -> std::same_as<T&>;
-                          };
+concept operator_assignment_add = !std::is_same_v<T, bool> && requires(T lhs, const T& rhs) {
+    { lhs += rhs } -> std::same_as<T&>;
+};
 template <typename T>
-concept operator_assignment_sub = !
-std::is_same_v<std::decay_t<T>, void*> && !std::is_same_v<T, void> && !std::is_same_v<T, bool> && requires(T lhs, const T& rhs) {
-                                                                                                      { lhs -= rhs } -> std::same_as<T&>;
-                                                                                                  };
+concept operator_assignment_sub = !std::is_same_v<std::decay_t<T>, void*> && !std::is_same_v<T, void> && !std::is_same_v<T, bool> && requires(T lhs, const T& rhs) {
+    { lhs -= rhs } -> std::same_as<T&>;
+};
 template <typename T>
-concept operator_assignment_mul = !
-std::is_same_v<T, bool>&& requires(T lhs, const T& rhs) {
-                              { lhs *= rhs } -> std::same_as<T&>;
-                          };
+concept operator_assignment_mul = !std::is_same_v<T, bool> && requires(T lhs, const T& rhs) {
+    { lhs *= rhs } -> std::same_as<T&>;
+};
 template <typename T>
-concept operator_assignment_div = !
-std::is_same_v<T, bool>&& requires(T lhs, const T& rhs) {
-                              { lhs /= rhs } -> std::same_as<T&>;
-                          };
+concept operator_assignment_div = !std::is_same_v<T, bool> && requires(T lhs, const T& rhs) {
+    { lhs /= rhs } -> std::same_as<T&>;
+};
 template <typename T>
-concept operator_assignment_mod = !
-std::is_same_v<T, bool>&& requires(T lhs, const T& rhs) {
-                              { lhs %= rhs } -> std::same_as<T&>;
-                          };
+concept operator_assignment_mod = !std::is_same_v<T, bool> && requires(T lhs, const T& rhs) {
+    { lhs %= rhs } -> std::same_as<T&>;
+};
 template <typename T>
-concept operator_assignment_band = !
-std::is_same_v<T, bool>&& requires(T lhs, const T& rhs) {
-                              { lhs &= rhs } -> std::same_as<T&>;
-                          };
+concept operator_assignment_band = !std::is_same_v<T, bool> && requires(T lhs, const T& rhs) {
+    { lhs &= rhs } -> std::same_as<T&>;
+};
 template <typename T>
-concept operator_assignment_bor = !
-std::is_same_v<T, bool>&& requires(T lhs, const T& rhs) {
-                              { lhs |= rhs } -> std::same_as<T&>;
-                          };
+concept operator_assignment_bor = !std::is_same_v<T, bool> && requires(T lhs, const T& rhs) {
+    { lhs |= rhs } -> std::same_as<T&>;
+};
 template <typename T>
-concept operator_assignment_bxor = !
-std::is_same_v<T, bool>&& requires(T lhs, const T& rhs) {
-                              { lhs ^= rhs } -> std::same_as<T&>;
-                          };
+concept operator_assignment_bxor = !std::is_same_v<T, bool> && requires(T lhs, const T& rhs) {
+    { lhs ^= rhs } -> std::same_as<T&>;
+};
 template <typename T>
-concept operator_assignment_shl = !
-std::is_same_v<T, bool>&& requires(T lhs, const T& rhs) {
-                              { lhs <<= rhs } -> std::same_as<T&>;
-                          };
+concept operator_assignment_shl = !std::is_same_v<T, bool> && requires(T lhs, const T& rhs) {
+    { lhs <<= rhs } -> std::same_as<T&>;
+};
 template <typename T>
-concept operator_assignment_shr = !
-std::is_same_v<T, bool>&& requires(T lhs, const T& rhs) {
-                              { lhs >>= rhs } -> std::same_as<T&>;
-                          };
+concept operator_assignment_shr = !std::is_same_v<T, bool> && requires(T lhs, const T& rhs) {
+    { lhs >>= rhs } -> std::same_as<T&>;
+};
 
 template <typename T>
-concept operator_eq = !
-std::is_array_v<T>&& requires(const T& lhs, const T& rhs) {
-                         { lhs == rhs } -> static_castable_to<bool>;
-                     };
+concept operator_eq = !std::is_array_v<T> && requires(const T& lhs, const T& rhs) {
+    { lhs == rhs } -> static_castable_to<bool>;
+};
 template <typename T>
-concept operator_ne = !
-std::is_array_v<T>&& requires(const T& lhs, const T& rhs) {
-                         { lhs != rhs } -> static_castable_to<bool>;
-                     };
+concept operator_ne = !std::is_array_v<T> && requires(const T& lhs, const T& rhs) {
+    { lhs != rhs } -> static_castable_to<bool>;
+};
 template <typename T>
-concept operator_lt = !
-std::is_array_v<T>&& requires(const T& lhs, const T& rhs) {
-                         { lhs < rhs } -> static_castable_to<bool>;
-                     };
+concept operator_lt = !std::is_array_v<T> && requires(const T& lhs, const T& rhs) {
+    { lhs < rhs } -> static_castable_to<bool>;
+};
 template <typename T>
-concept operator_le = !
-std::is_array_v<T>&& requires(const T& lhs, const T& rhs) {
-                         { lhs <= rhs } -> static_castable_to<bool>;
-                     };
+concept operator_le = !std::is_array_v<T> && requires(const T& lhs, const T& rhs) {
+    { lhs <= rhs } -> static_castable_to<bool>;
+};
 template <typename T>
-concept operator_gt = !
-std::is_array_v<T>&& requires(const T& lhs, const T& rhs) {
-                         { lhs > rhs } -> static_castable_to<bool>;
-                     };
+concept operator_gt = !std::is_array_v<T> && requires(const T& lhs, const T& rhs) {
+    { lhs > rhs } -> static_castable_to<bool>;
+};
 template <typename T>
-concept operator_ge = !
-std::is_array_v<T>&& requires(const T& lhs, const T& rhs) {
-                         { lhs >= rhs } -> static_castable_to<bool>;
-                     };
+concept operator_ge = !std::is_array_v<T> && requires(const T& lhs, const T& rhs) {
+    { lhs >= rhs } -> static_castable_to<bool>;
+};
 
 template <typename T, typename U>
-concept operator_subscript = !
-std::is_void_v<std::remove_pointer_t<T>>&& requires(T lhs, const U& rhs) { lhs[rhs]; };
+concept operator_subscript = !std::is_void_v<std::remove_pointer_t<T>> && requires(T lhs, const U& rhs) { lhs[rhs]; };
 template <typename T>
-concept operator_indirection = !
-std::is_same_v<std::decay_t<T>, void*>&& requires(T t) { *t; };
+concept operator_indirection = !std::is_same_v<std::decay_t<T>, void*> && requires(T t) { *t; };
 
 //
 // pair
@@ -409,13 +395,13 @@ concept variant_size = requires() { std::variant_size<T>::value; };
 
 template <typename T>
 concept variant_index = requires(const T& t) {
-                            { t.index() } -> static_castable_to<std::size_t>;
-                        };
+    { t.index() } -> static_castable_to<std::size_t>;
+};
 
 template <typename T>
 concept variant_valueless_by_exception = requires(const T& t) {
-                                             { t.valueless_by_exception() } -> static_castable_to<bool>;
-                                         };
+    { t.valueless_by_exception() } -> static_castable_to<bool>;
+};
 
 //
 // optional
@@ -423,8 +409,8 @@ concept variant_valueless_by_exception = requires(const T& t) {
 
 template <typename T>
 concept optional_has_value = requires(const T& t) {
-                                 { t.has_value() } -> static_castable_to<bool>;
-                             };
+    { t.has_value() } -> static_castable_to<bool>;
+};
 template <typename T>
 concept optional_value = requires(T t) { t.value(); };
 template <typename T>
@@ -579,16 +565,16 @@ concept container_top = requires(T t) { t.top(); };
 
 template <typename T>
 concept container_empty = requires(const T& t) {
-                              { std::empty(t) } -> static_castable_to<bool>;
-                          };
+    { std::empty(t) } -> static_castable_to<bool>;
+};
 template <typename T>
 concept container_size = requires(const T& t) {
-                             { std::size(t) } -> static_castable_to<std::size_t>;
-                         };
+    { std::size(t) } -> static_castable_to<std::size_t>;
+};
 template <typename T>
 concept container_size_bytes = requires(const T& t) {
-                                   { t.size_bytes() } -> static_castable_to<std::size_t>;
-                               };
+    { t.size_bytes() } -> static_castable_to<std::size_t>;
+};
 template <typename T>
 concept container_resize_cnt = container_size_type<T> && requires(T t, const typename T::size_type& cnt) { t.resize(cnt); };
 template <typename T>
@@ -596,12 +582,12 @@ concept container_resize_cnt_value =
         container_size_type<T> && container_value_type<T> && requires(T t, const typename T::size_type& cnt, const typename T::value_type& value) { t.resize(cnt, value); };
 template <typename T>
 concept container_capacity = requires(const T& t) {
-                                 { t.capacity() } -> static_castable_to<std::size_t>;
-                             };
+    { t.capacity() } -> static_castable_to<std::size_t>;
+};
 template <typename T>
 concept container_bucket_count = requires(const T& t) {
-                                     { t.bucket_count() } -> static_castable_to<std::size_t>;
-                                 };
+    { t.bucket_count() } -> static_castable_to<std::size_t>;
+};
 template <typename T>
 concept container_reserve = container_size_type<T> && requires(T t, const typename T::size_type& cnt) { t.reserve(cnt); };
 template <typename T>
@@ -729,16 +715,16 @@ concept container_extract_key = container_key_type<T> && container_extract<T, ty
 
 template <typename T>
 concept container_count = container_key_type<T> && requires(const T& t, const typename T::key_type& u) {
-                                                       { t.count(u) } -> static_castable_to<std::size_t>;
-                                                   };
+    { t.count(u) } -> static_castable_to<std::size_t>;
+};
 
 template <typename T>
 concept container_find = container_key_type<T> && requires(T t, const typename T::key_type& u) { t.find(u); };
 
 template <typename T>
 concept container_contains = container_key_type<T> && requires(const T& t, const typename T::key_type& u) {
-                                                          { t.count(u) } -> static_castable_to<bool>;
-                                                      };
+    { t.count(u) } -> static_castable_to<bool>;
+};
 
 template <typename T>
 concept container_lower_bound = container_key_type<T> && requires(T t, const typename T::key_type& u) { t.lower_bound(u); };
@@ -805,16 +791,16 @@ concept container_splice_range_r = container_splice_range<T, T&&>;
 
 template <typename T>
 concept container_remove = container_value_type<T> && requires(T t, const typename T::value_type& v) {
-                                                          { t.remove(v) } -> static_castable_to<std::size_t>;
-                                                      };
+    { t.remove(v) } -> static_castable_to<std::size_t>;
+};
 
 template <typename T>
 concept container_reverse = requires(T t) { t.reverse(); };
 
 template <typename T>
 concept container_unique = requires(T t) {
-                               { t.unique() } -> static_castable_to<std::size_t>;
-                           };
+    { t.unique() } -> static_castable_to<std::size_t>;
+};
 
 template <typename T>
 concept container_sort = requires(T t) { t.sort(); };
@@ -1018,8 +1004,6 @@ template<typename T>
 concept Is* = ...;
 */
 }  // namespace neko::cpp
-
-#include <set>
 
 template <typename Key, typename Compare, typename Allocator>
 struct neko::cpp::SpecializeIsSet<std::set<Key, Compare, Allocator>> : std::true_type {};
@@ -1231,12 +1215,6 @@ concept IsContainerType = false || IsRawArray<T> || IsDeque<T> || IsForwardList<
                           IsVariant<T> || IsOptional<T>;
 }  // namespace neko::cpp
 
-#include "engine/utility/name.hpp"
-#include "engine/utility/neko_cpp_misc.hpp"
-#include "engine/utility/neko_cpp_utils.hpp"
-
-// #include <memory>
-
 namespace neko::cpp {
 enum class MethodFlag {
     Variable = 0b001,
@@ -1279,8 +1257,7 @@ public:
 template <typename T>
 constexpr bool IsObjectOrView_v = IsObjectOrView<T>::value;
 template <typename T>
-concept NonObjectAndView = !
-IsObjectOrView_v<T>;
+concept NonObjectAndView = !IsObjectOrView_v<T>;
 
 template <typename T>
 T MoveResult(Type type, void* result_buffer) noexcept(std::is_reference_v<T> || std::is_nothrow_destructible_v<T> && std::is_nothrow_move_constructible_v<T>) {
@@ -1314,17 +1291,6 @@ class MethodRange;
 
 class neko_refl;
 }  // namespace neko::cpp
-
-#include <variant>
-
-// #include <string>
-// #include <unordered_map>
-#include <memory_resource>
-#include <shared_mutex>
-
-#ifndef NDEBUG
-#include <unordered_set>
-#endif  // !NDEBUG
 
 namespace neko::cpp {
 // name must end with 0
@@ -1545,9 +1511,6 @@ public:
 };
 }  // namespace neko::cpp
 
-#include <cassert>
-#include <cstring>
-
 namespace neko::cpp {
 template <typename T, typename U>
 IDRegistry<T, U>::IDRegistry()
@@ -1690,8 +1653,6 @@ bool TypeIDRegistry::IsRegistered() const {
     return IDRegistry<TypeID, Type>::IsRegistered(TypeID_of<T>);
 }
 }  // namespace neko::cpp
-
-// #include <span>
 
 namespace neko::cpp {
 // pointer const array type (pointer is const, and pointer to non - const / referenced object)
@@ -2577,10 +2538,6 @@ private:
 };
 }  // namespace neko::cpp
 
-#include <set>
-
-// #include <vector>
-
 namespace neko::cpp {
 using ParamList = std::vector<Type>;
 
@@ -2668,10 +2625,6 @@ template <>
 constexpr auto neko::cpp::type_name<neko::cpp::AttrSet>() noexcept {
     return TSTR("neko::cpp::AttrSet");
 }
-
-#include <fstream>
-#include <iostream>
-#include <sstream>
 
 namespace neko::cpp {
 constexpr Type GlobalType = TypeIDRegistry::Meta::global;
@@ -2844,14 +2797,14 @@ public:
     // 3. pointer to **non-void** and **non-function** type
     // 4. functor : Value*(Object*) / Value&(Object*)
     template <typename T, bool NeedRegisterFieldType = true>
-        requires std::negation_v<std::is_same<std::decay_t<T>, FieldInfo>> bool
-    AddField(Type type, Name name, T&& data, AttrSet attrs = {}) {
+        requires std::negation_v<std::is_same<std::decay_t<T>, FieldInfo>>
+    bool AddField(Type type, Name name, T&& data, AttrSet attrs = {}) {
         return AddField(type, name, {GenerateFieldPtr<T, NeedRegisterFieldType>(std::forward<T>(data)), std::move(attrs)});
     }
 
     template <typename T>
-        requires std::negation_v<std::is_same<std::decay_t<T>, FieldInfo>> bool
-    SimpleAddField(Type type, Name name, T&& data, AttrSet attrs = {}) {
+        requires std::negation_v<std::is_same<std::decay_t<T>, FieldInfo>>
+    bool SimpleAddField(Type type, Name name, T&& data, AttrSet attrs = {}) {
         return AddField<T, false>(type, name, std::forward<T>(data), std::move(attrs));
     }
 
@@ -2861,12 +2814,12 @@ public:
     // > - result must be an pointer of **non-void** type
     // 3. enumerator
     template <typename T, bool NeedRegisterFieldType = true>
-        requires std::negation_v<std::is_same<std::decay_t<T>, FieldInfo>> bool
-    AddField(Name name, T&& data, AttrSet attrs = {});
+        requires std::negation_v<std::is_same<std::decay_t<T>, FieldInfo>>
+    bool AddField(Name name, T&& data, AttrSet attrs = {});
 
     template <typename T>
-        requires std::negation_v<std::is_same<std::decay_t<T>, FieldInfo>> bool
-    SimpleAddField(Name name, T&& data, AttrSet attrs = {}) {
+        requires std::negation_v<std::is_same<std::decay_t<T>, FieldInfo>>
+    bool SimpleAddField(Name name, T&& data, AttrSet attrs = {}) {
         return AddField<T, false>(name, std::forward<T>(data), std::move(attrs));
     }
 
@@ -4084,8 +4037,8 @@ bool neko_refl::AddField(Name name, AttrSet attrs) {
 }
 
 template <typename T, bool NeedRegisterFieldType>
-    requires std::negation_v<std::is_same<std::decay_t<T>, FieldInfo>> bool
-neko_refl::AddField(Name name, T&& data, AttrSet attrs) {
+    requires std::negation_v<std::is_same<std::decay_t<T>, FieldInfo>>
+bool neko_refl::AddField(Name name, T&& data, AttrSet attrs) {
     using RawT = std::remove_cv_t<std::remove_reference_t<T>>;
     if constexpr (std::is_member_object_pointer_v<RawT>)
         return AddField<T, NeedRegisterFieldType>(Type_of<member_pointer_traits_object<RawT>>, name, std::forward<T>(data), std::move(attrs));
@@ -4416,8 +4369,6 @@ private:
 template <typename T, FieldFlag flag = FieldFlag::Unowned>
 static constexpr VarRange VarRange_of = VarRange{ObjectView_of<T>, flag};
 }  // namespace neko::cpp
-
-#include <span>
 
 namespace neko::cpp::details {
 // parameter <- argument
