@@ -26,6 +26,7 @@
 #include "engine/common/neko_util.h"
 #include "engine/utility/module.hpp"
 #include "engine/utility/neko_cpp_utils.hpp"
+#include "engine/utility/neko_struct.hpp"
 
 namespace neko {
 
@@ -42,6 +43,7 @@ struct neko_engine_cvar_t {
     bool ui_pack_editor;
     bool ui_inspector;
     bool ui_memory_profiler;
+    bool ui_shader_inspector;
     bool debug_entities_test;
 
     bool draw_shaders = true;
@@ -50,6 +52,11 @@ struct neko_engine_cvar_t {
     f32 brush_size = 4.f;
     f32 world_gravity = 10.f;
 };
+
+neko_struct(neko_engine_cvar_t, _Fs(ui_tweak, "是否打开TWEAK界面"), _Fs(ui_debug, ""), _Fs(ui_imgui_debug, "是否显示IMGUI示例窗口"), _Fs(ui_profiler, "是否显示帧检查器"),
+            _Fs(ui_console, "是否显示控制台"), _Fs(ui_pack_editor, "是否显示包编辑器"), _Fs(ui_inspector, "是否显示检查器"), _Fs(ui_memory_profiler, "是否显示内存检查器"),
+            _Fs(ui_shader_inspector, "是否显示着色器检查器"), _Fs(debug_entities_test, "是否启用实体调试"), _Fs(draw_shaders, "是否启用光影"), _Fs(tick_world, "是否启用世界更新"),
+            _Fs(cell_iter, "Cell迭代次数"), _Fs(brush_size, "编辑器笔刷大小"), _Fs(world_gravity, "世界重力"));
 
 extern neko_engine_cvar_t g_cvar;
 

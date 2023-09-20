@@ -637,6 +637,18 @@ constexpr auto tuple_append(Tuple&&, Elems&&...);
 
 template <typename Tuple, typename... Elems>
 constexpr auto tuple_prepend(Tuple&&, Elems&&...);
+
+template <typename T>
+struct tuple_size;
+
+template <typename... Args>
+struct tuple_size<std::tuple<Args...>> {
+    static constexpr std::size_t value = sizeof...(Args);
+};
+
+template <typename T>
+constexpr std::size_t tuple_size_v = tuple_size<T>::value;
+
 }  // namespace neko::cpp
 
 #pragma endregion Tuple

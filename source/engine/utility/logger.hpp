@@ -29,7 +29,6 @@ private:
     friend class console;
 
     static void logger::writeline(const std::string &msg) {
-        // OutputDebugStringA(msg.c_str());
         std::cout << msg;
     }
 

@@ -523,7 +523,7 @@ void neko_job_init() {
 
         // 命名线程
         std::wstringstream wss;
-        wss << "ME_JobSystem_" << threadID;
+        wss << "neko_engine_job_" << threadID;
         HRESULT hr = SetThreadDescription(handle, wss.str().c_str());
         neko_assert(SUCCEEDED(hr));
 #endif

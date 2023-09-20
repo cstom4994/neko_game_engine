@@ -1451,159 +1451,153 @@ neko_result app_init() {
 
     // neko_ecs_ent_destroy(ecs, e);
 
-    neko_editor_create(g_cvar)
-            .create("shader",
-                    [&](neko_dbgui_result) {
-                        neko_graphics_i *_gfx = neko_engine_instance()->ctx.graphics;
-                        neko_platform_i *_platform = neko_engine_instance()->ctx.platform;
+    neko_editor_create(g_cvar).create("Test", [&](neko_dbgui_result) {
+        if (ImGui::Begin("Test")) {
 
-                        for (auto &[n, s] : (*_gfx->neko_shader_internal_list())) {
-                            neko_editor_inspect_shader(std::to_string(n).c_str(), s->program_id);
-                        }
+            neko_platform_i *_platform = neko_engine_instance()->ctx.platform;
 
-                        if (ImGui::Button("mem check")) neko_mem_check_leaks(false);
+            {
 
-                        {
-
-                            ImGui::Text("GC MemAllocInUsed: %.2lf mb", (f64)(neko_mem_bytes_inuse() / 1048576.0));
-                            ImGui::Text("GC MemTotalAllocated: %.2lf mb", (f64)(g_allocation_metrics.total_allocated / 1048576.0));
-                            ImGui::Text("GC MemTotalFree: %.2lf mb", (f64)(g_allocation_metrics.total_free / 1048576.0));
+                ImGui::Text("GC MemAllocInUsed: %.2lf mb", (f64)(neko_mem_bytes_inuse() / 1048576.0));
+                ImGui::Text("GC MemTotalAllocated: %.2lf mb", (f64)(g_allocation_metrics.total_allocated / 1048576.0));
+                ImGui::Text("GC MemTotalFree: %.2lf mb", (f64)(g_allocation_metrics.total_free / 1048576.0));
 
 #define GL_GPU_MEM_INFO_TOTAL_AVAILABLE_MEM_NVX 0x9048
 #define GL_GPU_MEM_INFO_CURRENT_AVAILABLE_MEM_NVX 0x9049
 
-                            GLint total_mem_kb = 0;
-                            glGetIntegerv(GL_GPU_MEM_INFO_TOTAL_AVAILABLE_MEM_NVX, &total_mem_kb);
+                GLint total_mem_kb = 0;
+                glGetIntegerv(GL_GPU_MEM_INFO_TOTAL_AVAILABLE_MEM_NVX, &total_mem_kb);
 
-                            GLint cur_avail_mem_kb = 0;
-                            glGetIntegerv(GL_GPU_MEM_INFO_CURRENT_AVAILABLE_MEM_NVX, &cur_avail_mem_kb);
+                GLint cur_avail_mem_kb = 0;
+                glGetIntegerv(GL_GPU_MEM_INFO_CURRENT_AVAILABLE_MEM_NVX, &cur_avail_mem_kb);
 
-                            ImGui::Text("GPU MemTotalAvailable: %.2lf mb", (f64)(cur_avail_mem_kb / 1024.0f));
-                            ImGui::Text("GPU MemCurrentUsage: %.2lf mb", (f64)((total_mem_kb - cur_avail_mem_kb) / 1024.0f));
+                ImGui::Text("GPU MemTotalAvailable: %.2lf mb", (f64)(cur_avail_mem_kb / 1024.0f));
+                ImGui::Text("GPU MemCurrentUsage: %.2lf mb", (f64)((total_mem_kb - cur_avail_mem_kb) / 1024.0f));
 
-                            lua_State *L = neko_sc()->neko_lua.get_lua_state();
-                            lua_gc(L, LUA_GCCOLLECT, 0);
-                            lua_Integer kb = lua_gc(L, LUA_GCCOUNT, 0);
-                            lua_Integer bytes = lua_gc(L, LUA_GCCOUNTB, 0);
+                lua_State *L = neko_sc()->neko_lua.get_lua_state();
+                lua_gc(L, LUA_GCCOLLECT, 0);
+                lua_Integer kb = lua_gc(L, LUA_GCCOUNT, 0);
+                lua_Integer bytes = lua_gc(L, LUA_GCCOUNTB, 0);
 
-                            ImGui::Text("Lua MemoryUsage: %.2lf mb", ((f64)kb / 1024.0f));
-                            ImGui::Text("Lua Remaining: %.2lf mb", ((f64)bytes / 1024.0f));
+                ImGui::Text("Lua MemoryUsage: %.2lf mb", ((f64)kb / 1024.0f));
+                ImGui::Text("Lua Remaining: %.2lf mb", ((f64)bytes / 1024.0f));
 
-                            ImGui::Text("ImGui MemoryUsage: %.2lf mb", ((f64)__neko_imgui_meminuse() / 1048576.0));
+                ImGui::Text("ImGui MemoryUsage: %.2lf mb", ((f64)__neko_imgui_meminuse() / 1048576.0));
 
-                            static neko_platform_meminfo meminfo;
+                static neko_platform_meminfo meminfo;
 
-                            neko_timed_action(60, { meminfo = neko_engine_instance()->ctx.platform->get_meminfo(); });
+                neko_timed_action(60, { meminfo = neko_engine_instance()->ctx.platform->get_meminfo(); });
 
-                            ImGui::Text("Virtual MemoryUsage: %.2lf mb", ((f64)meminfo.virtual_memory_used / 1048576.0));
-                            ImGui::Text("Real MemoryUsage: %.2lf mb", ((f64)meminfo.physical_memory_used / 1048576.0));
-                            ImGui::Text("Virtual MemoryUsage Peak: %.2lf mb", ((f64)meminfo.peak_virtual_memory_used / 1048576.0));
-                            ImGui::Text("Real MemoryUsage Peak: %.2lf mb", ((f64)meminfo.peak_physical_memory_used / 1048576.0));
+                ImGui::Text("Virtual MemoryUsage: %.2lf mb", ((f64)meminfo.virtual_memory_used / 1048576.0));
+                ImGui::Text("Real MemoryUsage: %.2lf mb", ((f64)meminfo.physical_memory_used / 1048576.0));
+                ImGui::Text("Virtual MemoryUsage Peak: %.2lf mb", ((f64)meminfo.peak_virtual_memory_used / 1048576.0));
+                ImGui::Text("Real MemoryUsage Peak: %.2lf mb", ((f64)meminfo.peak_physical_memory_used / 1048576.0));
 
-                            ImGui::Text("Using renderer: %s", glGetString(GL_RENDERER));
-                            ImGui::Text("OpenGL version supported: %s", glGetString(GL_VERSION));
+                ImGui::Text("Using renderer: %s", glGetString(GL_RENDERER));
+                ImGui::Text("OpenGL version supported: %s", glGetString(GL_VERSION));
 
-                            neko_vec2 opengl_ver = _platform->get_opengl_ver();
-                            ImGui::Text("OpenGL Version: %d.%d", (s32)opengl_ver.x, (s32)opengl_ver.y);
-                        }
+                neko_vec2 opengl_ver = _platform->get_opengl_ver();
+                ImGui::Text("OpenGL Version: %d.%d", (s32)opengl_ver.x, (s32)opengl_ver.y);
+            }
 
-                        return neko_dbgui_result_in_progress;
-                    })
-            .create("Audio Test", [&](neko_dbgui_result) {
-                neko_audio_i *audio = neko_engine_instance()->ctx.audio;
+            if (ImGui::Button("mem check")) neko_mem_check_leaks(false);
 
-                static cs_playing_sound_t pl;
+            neko_audio_i *audio = neko_engine_instance()->ctx.audio;
 
-                if (ImGui::Button("播放/暂停")) {
-                    // if (audio->is_playing(g_inst)) {
-                    //     audio->pause(g_inst);
-                    // } else {
-                    //     audio->play(g_inst);
-                    // }
+            static cs_playing_sound_t pl;
 
-                    pl = cs_play_sound(piano, params);
-                }
+            if (ImGui::Button("播放/暂停")) {
+                // if (audio->is_playing(g_inst)) {
+                //     audio->pause(g_inst);
+                // } else {
+                //     audio->play(g_inst);
+                // }
 
-                if (ImGui::Button("重新播放")) {
-                    // audio->restart(g_inst);
-                }
+                pl = cs_play_sound(piano, params);
+            }
 
-                if (ImGui::Button("停止播放")) {
-                    // audio->stop(g_inst);
-                    cs_sound_set_is_paused(pl, true);
-                }
+            if (ImGui::Button("重新播放")) {
+                // audio->restart(g_inst);
+            }
 
-                if (ImGui::Button("Volume up")) {
-                    // f32 cur_vol = audio->get_volume(g_inst);
-                    // audio->set_volume(g_inst, cur_vol + 0.1f);
-                }
+            if (ImGui::Button("停止播放")) {
+                // audio->stop(g_inst);
+                cs_sound_set_is_paused(pl, true);
+            }
 
-                if (ImGui::Button("Volume down")) {
-                    // f32 cur_vol = audio->get_volume(g_inst);
-                    // audio->set_volume(g_inst, cur_vol - 0.1f);
-                }
+            if (ImGui::Button("Volume up")) {
+                // f32 cur_vol = audio->get_volume(g_inst);
+                // audio->set_volume(g_inst, cur_vol + 0.1f);
+            }
 
-                // Can grab current runtime instance data as well
-                // neko_audio_instance_data_t id = audio->get_instance_data(g_inst);
+            if (ImGui::Button("Volume down")) {
+                // f32 cur_vol = audio->get_volume(g_inst);
+                // audio->set_volume(g_inst, cur_vol - 0.1f);
+            }
 
-                // s32 sample_count = audio->get_sample_count(id.src);
-                // s32 sample_rate = audio->get_sample_rate(id.src);
-                // s32 num_channels = audio->get_num_channels(id.src);
+            // Can grab current runtime instance data as well
+            // neko_audio_instance_data_t id = audio->get_instance_data(g_inst);
 
-                // static char buf1[256] = neko_default_val();
-                // static char buf2[256] = neko_default_val();
+            // s32 sample_count = audio->get_sample_count(id.src);
+            // s32 sample_rate = audio->get_sample_rate(id.src);
+            // s32 num_channels = audio->get_num_channels(id.src);
 
-                // neko_timed_action(10, {
-                //     s32 min = 0, sec = 0;
+            // static char buf1[256] = neko_default_val();
+            // static char buf2[256] = neko_default_val();
 
-                //    // Runtime of source
-                //    audio->get_runtime(g_src, &min, &sec);
-                //    neko_snprintf(buf1, 256, sec < 10 ? "%d:0%d" : "%d:%d", min, sec);
-                //    // neko_println("Runtime: %s", buf);
+            // neko_timed_action(10, {
+            //     s32 min = 0, sec = 0;
 
-                //    // Get current play position
-                //    audio->convert_to_runtime(sample_count, sample_rate, num_channels, id.sample_position, &min, &sec);
+            //    // Runtime of source
+            //    audio->get_runtime(g_src, &min, &sec);
+            //    neko_snprintf(buf1, 256, sec < 10 ? "%d:0%d" : "%d:%d", min, sec);
+            //    // neko_println("Runtime: %s", buf);
 
-                //    neko_snprintf(buf2, 256, sec < 10 ? "%d:0%d" : "%d:%d", min, sec);
-                //    // neko_println("Play Time: %s", buf);
-                //});
+            //    // Get current play position
+            //    audio->convert_to_runtime(sample_count, sample_rate, num_channels, id.sample_position, &min, &sec);
 
-                // ImGui::Text(buf1);
-                // ImGui::Text(buf2);
+            //    neko_snprintf(buf2, 256, sec < 10 ? "%d:0%d" : "%d:%d", min, sec);
+            //    // neko_println("Play Time: %s", buf);
+            //});
 
-                if (ImGui::Button("清空容器")) {
-                    neko_dyn_array_clear(g_dyn_array);
-                    neko_hash_table_clear(g_hash_table);
-                    neko_slot_array_clear(g_slot_array);
-                }
+            // ImGui::Text(buf1);
+            // ImGui::Text(buf2);
 
-                if (ImGui::Button("插入元素")) {
-                    object_t obj = neko_default_val();
-                    obj.float_value = (f32)g_cur_val;
-                    obj.uint_value = g_cur_val;
+            if (ImGui::Button("清空容器")) {
+                neko_dyn_array_clear(g_dyn_array);
+                neko_hash_table_clear(g_hash_table);
+                neko_slot_array_clear(g_slot_array);
+            }
 
-                    neko_dyn_array_push(g_dyn_array, obj);
-                    neko_slot_array_insert(g_slot_array, obj);
-                    neko_hash_table_insert(g_hash_table, (u64)g_cur_val, obj);
+            if (ImGui::Button("插入元素")) {
+                object_t obj = neko_default_val();
+                obj.float_value = (f32)g_cur_val;
+                obj.uint_value = g_cur_val;
 
-                    g_cur_val++;
-                }
+                neko_dyn_array_push(g_dyn_array, obj);
+                neko_slot_array_insert(g_slot_array, obj);
+                neko_hash_table_insert(g_hash_table, (u64)g_cur_val, obj);
 
-                if (ImGui::Button("删除元素")) {
-                    neko_dyn_array_pop(g_dyn_array);
-                    neko_slot_array_erase(g_slot_array, 0);  // slot 删除元素后 原排列索引不变
-                }
+                g_cur_val++;
+            }
 
-                if (ImGui::Button("检查")) {
-                    neko_println("");
+            if (ImGui::Button("删除元素")) {
+                neko_dyn_array_pop(g_dyn_array);
+                neko_slot_array_erase(g_slot_array, 0);  // slot 删除元素后 原排列索引不变
+            }
 
-                    print_array(&g_dyn_array);
-                    print_slot_array(&g_slot_array);
-                    print_hash_table(&g_hash_table);
-                }
+            if (ImGui::Button("检查")) {
+                neko_println("");
 
-                return neko_dbgui_result_in_progress;
-            });
+                print_array(&g_dyn_array);
+                print_slot_array(&g_slot_array);
+                print_hash_table(&g_hash_table);
+            }
+        }
+        ImGui::End();
+
+        return neko_dbgui_result_in_progress;
+    });
 
     neko_lua_handle_t *font_handle = (neko_lua_handle_t *)neko_gc_alloc(&g_gc, sizeof(neko_lua_handle_t));
     neko_pack_item_data(g_pack_reader, ".\\fonts\\fusion-pixel.ttf", (const u8 **)&font_handle->data, (u32 *)&font_handle->size);
@@ -1637,60 +1631,65 @@ neko_result app_update() {
     // neko_timed_action(60, { neko_println("frame: %.5f ms", engine->ctx.platform->time.frame); });
 
     neko_invoke_once([] {
-        the<dbgui>().update("shader", [](neko_dbgui_result) {
-            if (ImGui::Button("test_wang")) test_wang();
-            if (ImGui::Button("test_sr")) test_sr();
-            if (ImGui::Button("test_ut")) test_ut();
-            if (ImGui::Button("test_rf")) test_rf();
-            if (ImGui::Button("test_se")) test_se();
-            if (ImGui::Button("test_ns")) {
+        the<dbgui>().func_change("Test", [](neko_dbgui_result) {
+            if (ImGui::Begin("Test")) {
 
-                std::cout << "-------------ok-------------" << std::endl;
+                if (ImGui::Button("test_wang")) test_wang();
+                if (ImGui::Button("test_sr")) test_sr();
+                if (ImGui::Button("test_ut")) test_ut();
+                // if (ImGui::Button("test_rf")) test_rf();
+                if (ImGui::Button("test_se")) test_se();
+                if (ImGui::Button("test_ns")) {
 
-                std::vector<ns_token> tokens = neko_parser_lex_file(neko_file_path("data/test/example.ns"));
+                    std::cout << "-------------ok-------------" << std::endl;
 
-                neko_parser_print_lex(tokens);
+                    std::vector<ns_token> tokens = neko_parser_lex_file(neko_file_path("data/test/example.ns"));
 
-                std::cout << "-------------ok-------------" << std::endl;
+                    neko_parser_print_lex(tokens);
 
-                ns_ast *ast = neko_parser_parse_tokens(tokens);
-                // if (!ast) return -1;
+                    std::cout << "-------------ok-------------" << std::endl;
 
-                neko_parser_print_ast(ast);
+                    ns_ast *ast = neko_parser_parse_tokens(tokens);
+                    // if (!ast) return -1;
 
-                std::cout << "-------------ok-------------" << std::endl;
+                    neko_parser_print_ast(ast);
 
-                neko_parser_execute(ast);
+                    std::cout << "-------------ok-------------" << std::endl;
 
-                neko_parser_save_ast(neko_file_path("data/test/example.nsobj"), ast);
-                neko_parser_free_ast(ast);
+                    neko_parser_execute(ast);
 
-                std::cout << "-------------ok-------------" << std::endl;
+                    neko_parser_save_ast(neko_file_path("data/test/example.nsobj"), ast);
+                    neko_parser_free_ast(ast);
 
-                ast = neko_parser_load_ast(neko_file_path("data/test/example.nsobj"));
+                    std::cout << "-------------ok-------------" << std::endl;
 
-                neko_parser_execute(ast);
-                neko_parser_free_ast(ast);
+                    ast = neko_parser_load_ast(neko_file_path("data/test/example.nsobj"));
 
-                std::cout << "-------------ok-------------" << std::endl;
-            }
-            if (ImGui::Button("test_st")) neko_platform_print_callstack();
-            if (ImGui::Button("test_cvars")) neko_config_print();
-            if (ImGui::Button("test_rand")) neko_info(std::to_string(neko_rand_xorshf32()));
-            if (ImGui::Button("test_xml")) {
+                    neko_parser_execute(ast);
+                    neko_parser_free_ast(ast);
 
-                neko_xml_document_t *doc = neko_xml_parse_file(neko_file_path("data/test/test.xml"));
-                if (!doc) {
-                    printf("XML Parse Error: %s\n", neko_xml_get_error());
-                } else {
-                    for (uint32_t i = 0; i < neko_dyn_array_size(doc->nodes); i++) {
-                        neko_xml_node_t *node = doc->nodes + i;
-                        print_xml_node(node, 0);
-                    }
-                    neko_xml_free(doc);
+                    std::cout << "-------------ok-------------" << std::endl;
                 }
+                if (ImGui::Button("test_st")) neko_platform_print_callstack();
+                if (ImGui::Button("test_cvars")) neko_config_print();
+                if (ImGui::Button("test_rand")) neko_info(std::to_string(neko_rand_xorshf32()));
+                if (ImGui::Button("test_xml")) {
+
+                    neko_xml_document_t *doc = neko_xml_parse_file(neko_file_path("data/test/test.xml"));
+                    if (!doc) {
+                        printf("XML Parse Error: %s\n", neko_xml_get_error());
+                    } else {
+                        for (uint32_t i = 0; i < neko_dyn_array_size(doc->nodes); i++) {
+                            neko_xml_node_t *node = doc->nodes + i;
+                            print_xml_node(node, 0);
+                        }
+                        neko_xml_free(doc);
+                    }
+                }
+                ImGui::Image((void *)(intptr_t)g_tex.id, ImVec2(g_texture_width, g_texture_height), ImVec2(0, 0), ImVec2(1, 1));
             }
-            ImGui::Image((void *)(intptr_t)g_tex.id, ImVec2(g_texture_width, g_texture_height), ImVec2(0, 0), ImVec2(1, 1));
+            ImGui::End();
+
             return neko_dbgui_result_in_progress;
         });
     }(););

@@ -125,67 +125,6 @@ protected:
 
 struct bad_optional_access : exception_base {};
 
-class exception_luawarp : public exception_base {
-    int status_;
-    std::string what_;
-    const char *what_c_;
-
-public:
-    exception_luawarp(int status, const char *what) throw() : status_(status), what_c_(what) {}
-    exception_luawarp(int status, const std::string &what) : status_(status), what_(what), what_c_(0) {}
-    int status() const throw() { return status_; }
-    const char *what() const throw() { return what_c_ ? what_c_ : what_.c_str(); }
-
-    ~exception_luawarp() throw() {}
-};
-class KaguyaException : public exception_base {
-    std::string what_;
-    const char *what_c_;
-
-public:
-    KaguyaException(const char *what) throw() : what_c_(what) {}
-    KaguyaException(const std::string &what) : what_(what), what_c_(0) {}
-    const char *what() const throw() { return what_c_ ? what_c_ : what_.c_str(); }
-
-    ~KaguyaException() throw() {}
-};
-class LuaTypeMismatch : public exception_luawarp {
-public:
-    LuaTypeMismatch() throw() : exception_luawarp(0, "type mismatch!!") {}
-    LuaTypeMismatch(const char *what) throw() : exception_luawarp(0, what) {}
-    LuaTypeMismatch(const std::string &what) : exception_luawarp(0, what) {}
-};
-class LuaMemoryError : public exception_luawarp {
-public:
-    LuaMemoryError(int status, const char *what) throw() : exception_luawarp(status, what) {}
-    LuaMemoryError(int status, const std::string &what) : exception_luawarp(status, what) {}
-};
-class LuaRuntimeError : public exception_luawarp {
-public:
-    LuaRuntimeError(int status, const char *what) throw() : exception_luawarp(status, what) {}
-    LuaRuntimeError(int status, const std::string &what) : exception_luawarp(status, what) {}
-};
-class LuaErrorRunningError : public exception_luawarp {
-public:
-    LuaErrorRunningError(int status, const char *what) throw() : exception_luawarp(status, what) {}
-    LuaErrorRunningError(int status, const std::string &what) : exception_luawarp(status, what) {}
-};
-class LuaGCError : public exception_luawarp {
-public:
-    LuaGCError(int status, const char *what) throw() : exception_luawarp(status, what) {}
-    LuaGCError(int status, const std::string &what) : exception_luawarp(status, what) {}
-};
-class LuaUnknownError : public exception_luawarp {
-public:
-    LuaUnknownError(int status, const char *what) throw() : exception_luawarp(status, what) {}
-    LuaUnknownError(int status, const std::string &what) : exception_luawarp(status, what) {}
-};
-
-class LuaSyntaxError : public exception_luawarp {
-public:
-    LuaSyntaxError(int status, const std::string &what) : exception_luawarp(status, what) {}
-};
-
 }  // namespace exception
 
 }  // namespace neko

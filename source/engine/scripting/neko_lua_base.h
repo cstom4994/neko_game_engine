@@ -225,320 +225,6 @@ const char *neko_lua_auto_enum_next_value_name_type(lua_State *L, neko_lua_auto_
 // #define LUAA_DECLARE(func, ret_t, count, suffix, ...) LUAA_APPLY(LUAA_JOIN3(neko_lua_auto_function_declare, count, suffix), (func, ret_t, ##__VA_ARGS__))
 #define LUAA_REGISTER(L, func, ret_t, count, ...) LUAA_APPLY(LUAA_JOIN2(neko_lua_auto_function_register, count), (L, func, ret_t, ##__VA_ARGS__))
 
-/*
-** MSVC does not allow nested functions
-** so function is wrapped in nested struct
-*/
-#ifdef _MSC_VER
-
-#define neko_lua_auto_function_declare0(func, ret_t)                                           \
-    struct __neko_lua_auto_wrap_##func {                                                       \
-        static void __neko_lua_auto_##func(char *out, char *args) { *(ret_t *)out = func(); }; \
-    }
-
-#define neko_lua_auto_function_declare0_void(func, ret_t)                      \
-    struct __neko_lua_auto_wrap_##func {                                       \
-        static void __neko_lua_auto_##func(char *out, char *args) { func(); }; \
-    }
-
-#define neko_lua_auto_function_declare1(func, ret_t, arg0_t)        \
-    struct __neko_lua_auto_wrap_##func {                            \
-        static void __neko_lua_auto_##func(char *out, char *args) { \
-            arg0_t a0 = *(arg0_t *)args;                            \
-            *(ret_t *)out = func(a0);                               \
-        };                                                          \
-    }
-
-#define neko_lua_auto_function_declare1_void(func, ret_t, arg0_t)   \
-    struct __neko_lua_auto_wrap_##func {                            \
-        static void __neko_lua_auto_##func(char *out, char *args) { \
-            arg0_t a0 = *(arg0_t *)args;                            \
-            func(a0);                                               \
-        };                                                          \
-    }
-
-#define neko_lua_auto_function_declare2(func, ret_t, arg0_t, arg1_t) \
-    struct __neko_lua_auto_wrap_##func {                             \
-        static void __neko_lua_auto_##func(char *out, char *args) {  \
-            arg0_t a0 = *(arg0_t *)args;                             \
-            arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));          \
-            *(ret_t *)out = func(a0, a1);                            \
-        };                                                           \
-    }
-
-#define neko_lua_auto_function_declare2_void(func, ret_t, arg0_t, arg1_t) \
-    struct __neko_lua_auto_wrap_##func {                                  \
-        static void __neko_lua_auto_##func(char *out, char *args) {       \
-            arg0_t a0 = *(arg0_t *)args;                                  \
-            arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));               \
-            func(a0, a1);                                                 \
-        };                                                                \
-    }
-
-#define neko_lua_auto_function_declare3(func, ret_t, arg0_t, arg1_t, arg2_t) \
-    struct __neko_lua_auto_wrap_##func {                                     \
-        static void __neko_lua_auto_##func(char *out, char *args) {          \
-            arg0_t a0 = *(arg0_t *)args;                                     \
-            arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                  \
-            arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t)); \
-            *(ret_t *)out = func(a0, a1, a2);                                \
-        };                                                                   \
-    }
-
-#define neko_lua_auto_function_declare3_void(func, ret_t, arg0_t, arg1_t, arg2_t) \
-    struct __neko_lua_auto_wrap_##func {                                          \
-        static void __neko_lua_auto_##func(char *out, char *args) {               \
-            arg0_t a0 = *(arg0_t *)args;                                          \
-            arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                       \
-            arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t));      \
-            func(a0, a1, a2);                                                     \
-        };                                                                        \
-    }
-
-#define neko_lua_auto_function_declare4(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t)          \
-    struct __neko_lua_auto_wrap_##func {                                                      \
-        static void __neko_lua_auto_##func(char *out, char *args) {                           \
-            arg0_t a0 = *(arg0_t *)args;                                                      \
-            arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                                   \
-            arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t));                  \
-            arg3_t a3 = *(arg3_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t)); \
-            *(ret_t *)out = func(a0, a1, a2, a3);                                             \
-        };                                                                                    \
-    }
-
-#define neko_lua_auto_function_declare4_void(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t)     \
-    struct __neko_lua_auto_wrap_##func {                                                      \
-        static void __neko_lua_auto_##func(char *out, char *args) {                           \
-            arg0_t a0 = *(arg0_t *)args;                                                      \
-            arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                                   \
-            arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t));                  \
-            arg3_t a3 = *(arg3_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t)); \
-            func(a0, a1, a2, a3);                                                             \
-        };                                                                                    \
-    }
-
-#define neko_lua_auto_function_declare5(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t)                   \
-    struct __neko_lua_auto_wrap_##func {                                                                       \
-        static void __neko_lua_auto_##func(char *out, char *args) {                                            \
-            arg0_t a0 = *(arg0_t *)args;                                                                       \
-            arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                                                    \
-            arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t));                                   \
-            arg3_t a3 = *(arg3_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t));                  \
-            arg4_t a4 = *(arg4_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t)); \
-            *(ret_t *)out = func(a0, a1, a2, a3, a4);                                                          \
-        };                                                                                                     \
-    }
-
-#define neko_lua_auto_function_declare5_void(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t)              \
-    struct __neko_lua_auto_wrap_##func {                                                                       \
-        static void __neko_lua_auto_##func(char *out, char *args) {                                            \
-            arg0_t a0 = *(arg0_t *)args;                                                                       \
-            arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                                                    \
-            arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t));                                   \
-            arg3_t a3 = *(arg3_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t));                  \
-            arg4_t a4 = *(arg4_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t)); \
-            func(a0, a1, a2, a3, a4);                                                                          \
-        };                                                                                                     \
-    }
-
-#define neko_lua_auto_function_declare6(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t)                            \
-    struct __neko_lua_auto_wrap_##func {                                                                                        \
-        static void __neko_lua_auto_##func(char *out, char *args) {                                                             \
-            arg0_t a0 = *(arg0_t *)args;                                                                                        \
-            arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                                                                     \
-            arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t));                                                    \
-            arg3_t a3 = *(arg3_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t));                                   \
-            arg4_t a4 = *(arg4_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t));                  \
-            arg5_t a5 = *(arg5_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t) + sizeof(arg4_t)); \
-            *(ret_t *)out = func(a0, a1, a2, a3, a4, a5);                                                                       \
-        };                                                                                                                      \
-    }
-
-#define neko_lua_auto_function_declare6_void(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t)                       \
-    struct __neko_lua_auto_wrap_##func {                                                                                        \
-        static void __neko_lua_auto_##func(char *out, char *args) {                                                             \
-            arg0_t a0 = *(arg0_t *)args;                                                                                        \
-            arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                                                                     \
-            arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t));                                                    \
-            arg3_t a3 = *(arg3_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t));                                   \
-            arg4_t a4 = *(arg4_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t));                  \
-            arg5_t a5 = *(arg5_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t) + sizeof(arg4_t)); \
-            func(a0, a1, a2, a3, a4, a5);                                                                                       \
-        };                                                                                                                      \
-    }
-
-#define neko_lua_auto_function_declare7(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t)                                     \
-    struct __neko_lua_auto_wrap_##func {                                                                                                         \
-        static void __neko_lua_auto_##func(char *out, char *args) {                                                                              \
-            arg0_t a0 = *(arg0_t *)args;                                                                                                         \
-            arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                                                                                      \
-            arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t));                                                                     \
-            arg3_t a3 = *(arg3_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t));                                                    \
-            arg4_t a4 = *(arg4_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t));                                   \
-            arg5_t a5 = *(arg5_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t) + sizeof(arg4_t));                  \
-            arg6_t a6 = *(arg6_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t) + sizeof(arg4_t) + sizeof(arg5_t)); \
-            *(ret_t *)out = func(a0, a1, a2, a3, a4, a5, a6);                                                                                    \
-        };                                                                                                                                       \
-    }
-
-#define neko_lua_auto_function_declare7_void(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t)                                \
-    struct __neko_lua_auto_wrap_##func {                                                                                                         \
-        static void __neko_lua_auto_##func(char *out, char *args) {                                                                              \
-            arg0_t a0 = *(arg0_t *)args;                                                                                                         \
-            arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                                                                                      \
-            arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t));                                                                     \
-            arg3_t a3 = *(arg3_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t));                                                    \
-            arg4_t a4 = *(arg4_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t));                                   \
-            arg5_t a5 = *(arg5_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t) + sizeof(arg4_t));                  \
-            arg6_t a6 = *(arg6_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t) + sizeof(arg4_t) + sizeof(arg5_t)); \
-            func(a0, a1, a2, a3, a4, a5, a6);                                                                                                    \
-        };                                                                                                                                       \
-    }
-
-#define neko_lua_auto_function_declare8(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t, arg7_t)                                              \
-    struct __neko_lua_auto_wrap_##func {                                                                                                                          \
-        static void __neko_lua_auto_##func(char *out, char *args) {                                                                                               \
-            arg0_t a0 = *(arg0_t *)args;                                                                                                                          \
-            arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                                                                                                       \
-            arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t));                                                                                      \
-            arg3_t a3 = *(arg3_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t));                                                                     \
-            arg4_t a4 = *(arg4_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t));                                                    \
-            arg5_t a5 = *(arg5_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t) + sizeof(arg4_t));                                   \
-            arg6_t a6 = *(arg6_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t) + sizeof(arg4_t) + sizeof(arg5_t));                  \
-            arg7_t a7 = *(arg7_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t) + sizeof(arg4_t) + sizeof(arg5_t) + sizeof(arg6_t)); \
-            *(ret_t *)out = func(a0, a1, a2, a3, a4, a5, a6, a7);                                                                                                 \
-        };                                                                                                                                                        \
-    }
-
-#define neko_lua_auto_function_declare8_void(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t, arg7_t)                                         \
-    struct __neko_lua_auto_wrap_##func {                                                                                                                          \
-        static void __neko_lua_auto_##func(char *out, char *args) {                                                                                               \
-            arg0_t a0 = *(arg0_t *)args;                                                                                                                          \
-            arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                                                                                                       \
-            arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t));                                                                                      \
-            arg3_t a3 = *(arg3_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t));                                                                     \
-            arg4_t a4 = *(arg4_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t));                                                    \
-            arg5_t a5 = *(arg5_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t) + sizeof(arg4_t));                                   \
-            arg6_t a6 = *(arg6_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t) + sizeof(arg4_t) + sizeof(arg5_t));                  \
-            arg7_t a7 = *(arg7_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t) + sizeof(arg4_t) + sizeof(arg5_t) + sizeof(arg6_t)); \
-            func(a0, a1, a2, a3, a4, a5, a6, a7);                                                                                                                 \
-        };                                                                                                                                                        \
-    }
-
-#define neko_lua_auto_function_declare9(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t, arg7_t, arg8_t)                                                       \
-    struct __neko_lua_auto_wrap_##func {                                                                                                                                           \
-        static void __neko_lua_auto_##func(char *out, char *args) {                                                                                                                \
-            arg0_t a0 = *(arg0_t *)args;                                                                                                                                           \
-            arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                                                                                                                        \
-            arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t));                                                                                                       \
-            arg3_t a3 = *(arg3_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t));                                                                                      \
-            arg4_t a4 = *(arg4_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t));                                                                     \
-            arg5_t a5 = *(arg5_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t) + sizeof(arg4_t));                                                    \
-            arg6_t a6 = *(arg6_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t) + sizeof(arg4_t) + sizeof(arg5_t));                                   \
-            arg7_t a7 = *(arg7_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t) + sizeof(arg4_t) + sizeof(arg5_t) + sizeof(arg6_t));                  \
-            arg8_t a8 = *(arg8_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t) + sizeof(arg4_t) + sizeof(arg5_t) + sizeof(arg6_t) + sizeof(arg7_t)); \
-            *(ret_t *)out = func(a0, a1, a2, a3, a4, a5, a6, a7, a8);                                                                                                              \
-        };                                                                                                                                                                         \
-    }
-
-#define neko_lua_auto_function_declare9_void(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t, arg7_t, arg8_t)                                                  \
-    struct __neko_lua_auto_wrap_##func {                                                                                                                                           \
-        static void __neko_lua_auto_##func(char *out, char *args) {                                                                                                                \
-            arg0_t a0 = *(arg0_t *)args;                                                                                                                                           \
-            arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                                                                                                                        \
-            arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t));                                                                                                       \
-            arg3_t a3 = *(arg3_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t));                                                                                      \
-            arg4_t a4 = *(arg4_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t));                                                                     \
-            arg5_t a5 = *(arg5_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t) + sizeof(arg4_t));                                                    \
-            arg6_t a6 = *(arg6_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t) + sizeof(arg4_t) + sizeof(arg5_t));                                   \
-            arg7_t a7 = *(arg7_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t) + sizeof(arg4_t) + sizeof(arg5_t) + sizeof(arg6_t));                  \
-            arg8_t a8 = *(arg8_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t) + sizeof(arg4_t) + sizeof(arg5_t) + sizeof(arg6_t) + sizeof(arg7_t)); \
-            func(a0, a1, a2, a3, a4, a5, a6, a7, a8);                                                                                                                              \
-        };                                                                                                                                                                         \
-    }
-
-#define neko_lua_auto_function_declare10(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t, arg7_t, arg8_t, arg9_t)                                                               \
-    struct __neko_lua_auto_wrap_##func {                                                                                                                                                            \
-        static void __neko_lua_auto_##func(char *out, char *args) {                                                                                                                                 \
-            arg0_t a0 = *(arg0_t *)args;                                                                                                                                                            \
-            arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                                                                                                                                         \
-            arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t));                                                                                                                        \
-            arg3_t a3 = *(arg3_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t));                                                                                                       \
-            arg4_t a4 = *(arg4_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t));                                                                                      \
-            arg5_t a5 = *(arg5_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t) + sizeof(arg4_t));                                                                     \
-            arg6_t a6 = *(arg6_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t) + sizeof(arg4_t) + sizeof(arg5_t));                                                    \
-            arg7_t a7 = *(arg7_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t) + sizeof(arg4_t) + sizeof(arg5_t) + sizeof(arg6_t));                                   \
-            arg8_t a8 = *(arg8_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t) + sizeof(arg4_t) + sizeof(arg5_t) + sizeof(arg6_t) + sizeof(arg7_t));                  \
-            arg9_t a9 = *(arg9_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t) + sizeof(arg4_t) + sizeof(arg5_t) + sizeof(arg6_t) + sizeof(arg7_t) + sizeof(arg8_t)); \
-            *(ret_t *)out = func(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9);                                                                                                                           \
-        };                                                                                                                                                                                          \
-    }
-
-#define neko_lua_auto_function_declare10_void(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t, arg7_t, arg8_t, arg9_t)                                                          \
-    struct __neko_lua_auto_wrap_##func {                                                                                                                                                            \
-        static void __neko_lua_auto_##func(char *out, char *args) {                                                                                                                                 \
-            arg0_t a0 = *(arg0_t *)args;                                                                                                                                                            \
-            arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                                                                                                                                         \
-            arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t));                                                                                                                        \
-            arg3_t a3 = *(arg3_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t));                                                                                                       \
-            arg4_t a4 = *(arg4_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t));                                                                                      \
-            arg5_t a5 = *(arg5_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t) + sizeof(arg4_t));                                                                     \
-            arg6_t a6 = *(arg6_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t) + sizeof(arg4_t) + sizeof(arg5_t));                                                    \
-            arg7_t a7 = *(arg7_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t) + sizeof(arg4_t) + sizeof(arg5_t) + sizeof(arg6_t));                                   \
-            arg8_t a8 = *(arg8_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t) + sizeof(arg4_t) + sizeof(arg5_t) + sizeof(arg6_t) + sizeof(arg7_t));                  \
-            arg9_t a9 = *(arg9_t *)(args + sizeof(arg0_t) + sizeof(arg1_t) + sizeof(arg2_t) + sizeof(arg3_t) + sizeof(arg4_t) + sizeof(arg5_t) + sizeof(arg6_t) + sizeof(arg7_t) + sizeof(arg8_t)); \
-            func(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9);                                                                                                                                           \
-        };                                                                                                                                                                                          \
-    }
-
-#define neko_lua_auto_function_register0(L, func, ret_t) \
-    neko_lua_auto_function_register_type(L, func, (neko_lua_auto_Func)__neko_lua_auto_wrap_##func::__neko_lua_auto_##func, #func, neko_lua_auto_type(L, ret_t), 0)
-
-#define neko_lua_auto_function_register1(L, func, ret_t, arg0_t) \
-    neko_lua_auto_function_register_type(L, func, (neko_lua_auto_Func)__neko_lua_auto_wrap_##func::__neko_lua_auto_##func, #func, neko_lua_auto_type(L, ret_t), 1, neko_lua_auto_type(L, arg0_t))
-
-#define neko_lua_auto_function_register2(L, func, ret_t, arg0_t, arg1_t)                                                                                                                          \
-    neko_lua_auto_function_register_type(L, func, (neko_lua_auto_Func)__neko_lua_auto_wrap_##func::__neko_lua_auto_##func, #func, neko_lua_auto_type(L, ret_t), 2, neko_lua_auto_type(L, arg0_t), \
-                                         neko_lua_auto_type(L, arg1_t))
-
-#define neko_lua_auto_function_register3(L, func, ret_t, arg0_t, arg1_t, arg2_t)                                                                                                                  \
-    neko_lua_auto_function_register_type(L, func, (neko_lua_auto_Func)__neko_lua_auto_wrap_##func::__neko_lua_auto_##func, #func, neko_lua_auto_type(L, ret_t), 3, neko_lua_auto_type(L, arg0_t), \
-                                         neko_lua_auto_type(L, arg1_t), neko_lua_auto_type(L, arg2_t))
-
-#define neko_lua_auto_function_register4(L, func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t)                                                                                                          \
-    neko_lua_auto_function_register_type(L, func, (neko_lua_auto_Func)__neko_lua_auto_wrap_##func::__neko_lua_auto_##func, #func, neko_lua_auto_type(L, ret_t), 4, neko_lua_auto_type(L, arg0_t), \
-                                         neko_lua_auto_type(L, arg1_t), neko_lua_auto_type(L, arg2_t), neko_lua_auto_type(L, arg3_t))
-
-#define neko_lua_auto_function_register5(L, func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t)                                                                                                  \
-    neko_lua_auto_function_register_type(L, func, (neko_lua_auto_Func)__neko_lua_auto_wrap_##func::__neko_lua_auto_##func, #func, neko_lua_auto_type(L, ret_t), 5, neko_lua_auto_type(L, arg0_t), \
-                                         neko_lua_auto_type(L, arg1_t), neko_lua_auto_type(L, arg2_t), neko_lua_auto_type(L, arg3_t), neko_lua_auto_type(L, arg4_t))
-
-#define neko_lua_auto_function_register6(L, func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t)                                                                                          \
-    neko_lua_auto_function_register_type(L, func, (neko_lua_auto_Func)__neko_lua_auto_wrap_##func::__neko_lua_auto_##func, #func, neko_lua_auto_type(L, ret_t), 6, neko_lua_auto_type(L, arg0_t), \
-                                         neko_lua_auto_type(L, arg1_t), neko_lua_auto_type(L, arg2_t), neko_lua_auto_type(L, arg3_t), neko_lua_auto_type(L, arg4_t), neko_lua_auto_type(L, arg5_t))
-
-#define neko_lua_auto_function_register7(L, func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t)                                                                                    \
-    neko_lua_auto_function_register_type(L, func, (neko_lua_auto_Func)__neko_lua_auto_wrap_##func::__neko_lua_auto_##func, #func, neko_lua_auto_type(L, ret_t), 7, neko_lua_auto_type(L, arg0_t),   \
-                                         neko_lua_auto_type(L, arg1_t), neko_lua_auto_type(L, arg2_t), neko_lua_auto_type(L, arg3_t), neko_lua_auto_type(L, arg4_t), neko_lua_auto_type(L, arg5_t), \
-                                         neko_lua_auto_type(L, arg6_t))
-
-#define neko_lua_auto_function_register8(L, func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t, arg7_t)                                                                            \
-    neko_lua_auto_function_register_type(L, func, (neko_lua_auto_Func)__neko_lua_auto_wrap_##func::__neko_lua_auto_##func, #func, neko_lua_auto_type(L, ret_t), 8, neko_lua_auto_type(L, arg0_t),   \
-                                         neko_lua_auto_type(L, arg1_t), neko_lua_auto_type(L, arg2_t), neko_lua_auto_type(L, arg3_t), neko_lua_auto_type(L, arg4_t), neko_lua_auto_type(L, arg5_t), \
-                                         neko_lua_auto_type(L, arg6_t), neko_lua_auto_type(L, arg7_t))
-
-#define neko_lua_auto_function_register9(L, func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t, arg7_t, arg8_t)                                                                    \
-    neko_lua_auto_function_register_type(L, func, (neko_lua_auto_Func)__neko_lua_auto_wrap_##func::__neko_lua_auto_##func, #func, neko_lua_auto_type(L, ret_t), 9, neko_lua_auto_type(L, arg0_t),   \
-                                         neko_lua_auto_type(L, arg1_t), neko_lua_auto_type(L, arg2_t), neko_lua_auto_type(L, arg3_t), neko_lua_auto_type(L, arg4_t), neko_lua_auto_type(L, arg5_t), \
-                                         neko_lua_auto_type(L, arg6_t), neko_lua_auto_type(L, arg7_t), neko_lua_auto_type(L, arg8_t))
-
-#define neko_lua_auto_function_register10(L, func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t, arg7_t, arg8_t, arg9_t)                                                           \
-    neko_lua_auto_function_register_type(L, func, (neko_lua_auto_Func)__neko_lua_auto_wrap_##func::__neko_lua_auto_##func, #func, neko_lua_auto_type(L, ret_t), 10, neko_lua_auto_type(L, arg0_t),  \
-                                         neko_lua_auto_type(L, arg1_t), neko_lua_auto_type(L, arg2_t), neko_lua_auto_type(L, arg3_t), neko_lua_auto_type(L, arg4_t), neko_lua_auto_type(L, arg5_t), \
-                                         neko_lua_auto_type(L, arg6_t), neko_lua_auto_type(L, arg7_t), neko_lua_auto_type(L, arg8_t), neko_lua_auto_type(L, arg9_t))
-
-#else
-
 #define neko_lua_auto_function_declare0(func, ret_t) \
     void __neko_lua_auto_##func(void *out, void *args) { *(ret_t *)out = func(); }
 
@@ -798,8 +484,6 @@ const char *neko_lua_auto_enum_next_value_name_type(lua_State *L, neko_lua_auto_
                                          neko_lua_auto_type(L, arg2_t), neko_lua_auto_type(L, arg3_t), neko_lua_auto_type(L, arg4_t), neko_lua_auto_type(L, arg5_t), neko_lua_auto_type(L, arg6_t), \
                                          neko_lua_auto_type(L, arg7_t), neko_lua_auto_type(L, arg8_t), neko_lua_auto_type(L, arg9_t))
 
-#endif
-
 #define neko_lua_auto_function(L, func, ret_t, ...)             \
     neko_lua_auto_function_declare(func, ret_t, ##__VA_ARGS__); \
     neko_lua_auto_function_register(L, func, ret_t, ##__VA_ARGS__)
@@ -877,241 +561,28 @@ T neko_lua_to(lua_State *L, int index) {
     }
 }
 
-}  // namespace neko
-
-namespace neko {
-class neko_lua_state_view {
-public:
-    neko_lua_state_view() noexcept : L{nullptr} {}
-    neko_lua_state_view(lua_State *L) noexcept : L{L} {}
-
-    lua_State *GetState() { return L; }
-    bool Valid() const { return L != nullptr; }
-    operator lua_State *() { return L; }
-
-    int absindex(int idx);
-    void arith(int op);
-    lua_CFunction atpanic(lua_CFunction panicf);
-    void call(int nargs, int nresults);
-    void callk(int nargs, int nresults, lua_KContext ctx, lua_KFunction k);
-    int checkstack(int n);
-    int compare(int index1, int index2, int op);
-    void concat(int n);
-    void copy(int fromidx, int toidx);
-    void createtable(int narr, int nrec);
-    int dump(lua_Writer writer, void *data, int strip);
-    int error();
-    int gc(int what, int data);
-    lua_Alloc getallocf(void **ud);
-    int getfield(int index, const char *k);
-    int getglobal(const char *name);
-    lua_Hook gethook();
-    int gethookcount();
-    int gethookmask();
-    int geti(int index, lua_Integer i);
-    int getinfo(const char *what, lua_Debug *ar);
-    const char *getlocal(const lua_Debug *ar, int n);
-    int getmetatable(int index);
-    int getstack(int level, lua_Debug *ar);
-    int gettable(int index);
-    int gettop();
-    const char *getupvalue(int funcindex, int n);
-    int getuservalue(int index);
-    void insert(int index);
-    int isboolean(int index);
-    int iscfunction(int index);
-    int isfunction(int index);
-    int isinteger(int index);
-    int islightuserdata(int index);
-    int isnil(int index);
-    int isnone(int index);
-    int isnoneornil(int index);
-    int isnumber(int index);
-    int isstring(int index);
-    int istable(int index);
-    int isthread(int index);
-    int isuserdata(int index);
-    void len(int index);
-    int load(lua_Reader reader, void *data, const char *chunkname, const char *mode);
-    void newtable();
-    void *newuserdata(size_t size);
-    int next(int index);
-    int pcall(int nargs, int nresults, int msgh);
-    int pcallk(int nargs, int nresults, int msgh, lua_KContext ctx, lua_KFunction k);
-    void pop(int n);
-    void pushboolean(int b);
-    void pushcclosure(lua_CFunction fn, int n);
-    void pushcfunction(lua_CFunction f);
-    const char *pushfstring(const char *fmt, ...);
-    void pushglobaltable();
-    void pushinteger(lua_Integer n);
-    void pushlightuserdata(void *p);
-    const char *pushlstring(const char *s, size_t len);
-    void pushnil();
-    void pushnumber(lua_Number n);
-    const char *pushstring(const char *s);
-    int pushthread();
-    void pushvalue(int index);
-    const char *pushvfstring(const char *fmt, va_list argp);
-    int rawequal(int index1, int index2);
-    int rawget(int index);
-    int rawgeti(int index, lua_Integer n);
-    int rawgetp(int index, const void *p);
-    size_t rawlen(int index);
-    void rawset(int index);
-    void rawseti(int index, lua_Integer i);
-    void rawsetp(int index, const void *p);
-    void register_(const char *name, lua_CFunction f);
-    void remove(int index);
-    void replace(int index);
-    int resume(lua_State *from, int nargs, int *nresults);
-    void rotate(int idx, int n);
-    void setallocf(lua_Alloc f, void *ud);
-    void setfield(int index, const char *k);
-    void setglobal(const char *name);
-    void seti(int index, lua_Integer n);
-    int setmetatable(int index);
-    void settable(int index);
-    void settop(int index);
-    void setuservalue(int index);
-    int status();
-    size_t stringtonumber(const char *s);
-    int toboolean(int index);
-    lua_CFunction tocfunction(int index);
-    lua_Integer tointeger(int index);
-    lua_Integer tointegerx(int index, int *isnum);
-    const char *tolstring(int index, size_t *len);
-    lua_Number tonumber(int index);
-    lua_Number tonumberx(int index, int *isnum);
-    const void *topointer(int index);
-    const char *tostring(int index);
-    void *touserdata(int index);
-    int type(int index);
-    const char *typename_(int tp);
-    void xmove(lua_State *from, lua_State *to, int n);
-    int yield(int nresults);
-    void sethook(lua_Hook f, int mask, int count);
-    const char *setlocal(const lua_Debug *ar, int n);
-    const char *setupvalue(int funcindex, int n);
-    void argcheck(int cond, int arg, const char *extramsg);
-    int argerror(int arg, const char *extramsg);
-    void buffinit(luaL_Buffer *B);
-    char *buffinitsize(luaL_Buffer *B, size_t sz);
-    int callmeta(int obj, const char *e);
-    void checkany(int arg);
-    lua_Integer checkinteger(int arg);
-    const char *checklstring(int arg, size_t *l);
-    lua_Number checknumber(int arg);
-    int checkoption(int arg, const char *def, const char *const lst[]);
-    void checkstack(int sz, const char *msg);
-    const char *checkstring(int arg);
-    void checktype(int arg, int t);
-    void *checkudata(int arg, const char *tname);
-    void checkversion();
-    int dofile(const char *filename);
-    int dostring(const char *str);
-    int error(const char *fmt, ...);
-    int execresult(int stat);
-    int fileresult(int stat, const char *fname);
-    int getmetafield(int obj, const char *e);
-    int getmetatable(const char *tname);
-    int getsubtable(int idx, const char *fname);
-    const char *gsub(const char *s, const char *p, const char *r);
-    lua_Integer lenL(int index);
-    int loadbuffer(const char *buff, size_t sz, const char *name);
-    int loadbufferx(const char *buff, size_t sz, const char *name, const char *mode);
-    int loadfile(const char *filename);
-    int loadfilex(const char *filename, const char *mode);
-    int loadstring(const char *s);
-    template <size_t N>
-    void newlib(const luaL_Reg (&l)[N]);
-    template <size_t N>
-    void newlibtable(const luaL_Reg (&l)[N]);
-    int newmetatable(const char *tname);
-    void openlibs();
-    lua_Integer optinteger(int arg, lua_Integer d);
-    const char *optlstring(int arg, const char *d, size_t *l);
-    lua_Number optnumber(int arg, lua_Number d);
-    const char *optstring(int arg, const char *d);
-    int ref(int t);
-    void requiref(const char *modname, lua_CFunction openf, int glb);
-    void setfuncs(const luaL_Reg *l, int nup);
-    void setmetatable(const char *tname);
-    void *testudata(int arg, const char *tname);
-    const char *tolstringL(int idx, size_t *len);
-    const char *typenameL(int tp);
-    void unref(int t, int ref);
-    void where(int lvl);
-
-protected:
-    lua_State *L;
-};
-}  // namespace neko
-
-namespace neko {
-class neko_lua_ref {
-public:
-    neko_lua_ref() noexcept : t{0}, ref{LUA_REFNIL} {}
-    neko_lua_ref(neko_lua_state_view L, int t) : L{L}, t{t} { ref = L.ref(t); }
-    neko_lua_ref(neko_lua_state_view L) : neko_lua_ref{L, LUA_REGISTRYINDEX} {}
-    neko_lua_state_view GetView() const noexcept { return L; }
-    bool IsNil() const noexcept { return ref == LUA_REFNIL; }
-    int Get() { return L.rawgeti(t, ref); }
-    ~neko_lua_ref() {
-        if (IsNil()) return;
-        L.unref(t, ref);
-    }
-    neko_lua_ref(neko_lua_ref &&rhs) noexcept : L{rhs.L}, t{rhs.t}, ref{rhs.ref} {
-        rhs.L = neko_lua_state_view{};
-        rhs.t = 0;
-        rhs.ref = LUA_REFNIL;
-    }
-    neko_lua_ref(const neko_lua_ref &) = delete;
-    neko_lua_ref &operator=(const neko_lua_ref &) = delete;
-    neko_lua_ref &operator=(neko_lua_ref &&rhs) noexcept {
-        std::swap(L, rhs.L);
-        std::swap(t, rhs.t);
-        std::swap(ref, rhs.ref);
-        return *this;
-    }
-
-private:
-    neko_lua_state_view L;
-    int t;
-    int ref;
-};
-}  // namespace neko
-
-// ==========================
-
-template <size_t N>
-void neko::neko_lua_state_view::newlib(const luaL_Reg (&l)[N]) {
-    luaL_newlib(L, l);
-}
-template <size_t N>
-void neko::neko_lua_state_view::newlibtable(const luaL_Reg (&l)[N]) {
-    luaL_newlibtable(L, l);
+neko_inline bool neko_lua_equal(lua_State *state, int index1, int index2) {
+#if LUA_VERSION_NUM <= 501
+    return lua_equal(state, index1, index2) == 1;
+#else
+    return lua_compare(state, index1, index2, LUA_OPEQ) == 1;
+#endif
 }
 
-namespace neko {
-class neko_lua_state : public neko_lua_state_view {
-public:
-    neko_lua_state();
-    neko_lua_state(lua_State *main, neko_lua_state_view L);
+template <typename Iterable>
+neko_inline bool neko_lua_equal(lua_State *state, const Iterable &indices) {
+    auto it = indices.begin();
+    auto end = indices.end();
+    if (it == end) return true;
+    int cmp_index = *it++;
+    while (it != end) {
+        int index = *it++;
+        if (!neko_lua_equal(state, cmp_index, index)) return false;
+        cmp_index = index;
+    }
+    return true;
+}
 
-    ~neko_lua_state();
-
-    lua_State *GetMainState() { return main; }
-    neko_lua_state_view MainView() { return main; }
-
-    neko_lua_state newthread();
-
-    operator lua_State *() { return GetMainState(); }
-    // operator int() { return (int)GetMainState(); }
-
-private:
-    lua_State *main;
-};
 }  // namespace neko
 
 namespace neko {
@@ -1450,7 +921,7 @@ struct init_value_traits_t<const std::string &> {
 };
 
 template <typename T>
-struct lua_op_t {
+struct __lua_op_t {
     static void push_stack(lua_State *ls_, const char *arg_) { lua_pushstring(ls_, arg_); }
     /*
     static int lua_to_value(lua_State* ls_, int pos_, char*& param_)
@@ -1462,7 +933,7 @@ struct lua_op_t {
 };
 
 template <>
-struct lua_op_t<const char *> {
+struct __lua_op_t<const char *> {
     static void push_stack(lua_State *ls_, const char *arg_) { lua_pushstring(ls_, arg_); }
     static int lua_to_value(lua_State *ls_, int pos_, char *&param_) {
         const char *str = luaL_checkstring(ls_, pos_);
@@ -1471,7 +942,7 @@ struct lua_op_t<const char *> {
     }
 };
 template <>
-struct lua_op_t<char *> {
+struct __lua_op_t<char *> {
     static void push_stack(lua_State *ls_, const char *arg_) { lua_pushstring(ls_, arg_); }
     static int lua_to_value(lua_State *ls_, int pos_, char *&param_) {
         const char *str = luaL_checkstring(ls_, pos_);
@@ -1481,17 +952,17 @@ struct lua_op_t<char *> {
 };
 
 template <>
-struct lua_op_t<lua_nil_t> {
+struct __lua_op_t<lua_nil_t> {
     static void push_stack(lua_State *ls_, const lua_nil_t &arg_) { lua_pushnil(ls_); }
 };
 
 template <>
-struct lua_op_t<cpp_void_t> {
+struct __lua_op_t<cpp_void_t> {
     static int get_ret_value(lua_State *ls_, int pos_, cpp_void_t &param_) { return 0; }
 };
 
 template <>
-struct lua_op_t<int64_t> {
+struct __lua_op_t<int64_t> {
     static void push_stack(lua_State *ls_, int64_t arg_) {
 #if LUA_VERSION_NUM >= 503
         lua_pushinteger(ls_, arg_);
@@ -1534,7 +1005,7 @@ struct lua_op_t<int64_t> {
 };
 
 template <>
-struct lua_op_t<uint64_t> {
+struct __lua_op_t<uint64_t> {
     static void push_stack(lua_State *ls_, uint64_t arg_) {
         std::stringstream ss;
         ss << arg_;
@@ -1562,7 +1033,7 @@ struct lua_op_t<uint64_t> {
 };
 
 template <>
-struct lua_op_t<int8_t> {
+struct __lua_op_t<int8_t> {
 
     static void push_stack(lua_State *ls_, int8_t arg_) { lua_pushnumber(ls_, (lua_Number)arg_); }
     static int get_ret_value(lua_State *ls_, int pos_, int8_t &param_) {
@@ -1579,7 +1050,7 @@ struct lua_op_t<int8_t> {
 };
 
 template <>
-struct lua_op_t<uint8_t> {
+struct __lua_op_t<uint8_t> {
     static void push_stack(lua_State *ls_, uint8_t arg_) { lua_pushnumber(ls_, (lua_Number)arg_); }
     static int get_ret_value(lua_State *ls_, int pos_, uint8_t &param_) {
         if (!lua_isnumber(ls_, pos_)) {
@@ -1596,7 +1067,7 @@ struct lua_op_t<uint8_t> {
 #ifdef _WIN32
 
 template <>
-struct lua_op_t<char> {
+struct __lua_op_t<char> {
 
     static void push_stack(lua_State *ls_, char arg_) { lua_pushnumber(ls_, (lua_Number)arg_); }
     static int get_ret_value(lua_State *ls_, int pos_, char &param_) {
@@ -1614,7 +1085,7 @@ struct lua_op_t<char> {
 
 #endif
 template <>
-struct lua_op_t<int16_t> {
+struct __lua_op_t<int16_t> {
     static void push_stack(lua_State *ls_, int16_t arg_) { lua_pushnumber(ls_, (lua_Number)arg_); }
     static int get_ret_value(lua_State *ls_, int pos_, int16_t &param_) {
         if (!lua_isnumber(ls_, pos_)) {
@@ -1629,7 +1100,7 @@ struct lua_op_t<int16_t> {
     }
 };
 template <>
-struct lua_op_t<uint16_t> {
+struct __lua_op_t<uint16_t> {
 
     static void push_stack(lua_State *ls_, uint16_t arg_) { lua_pushnumber(ls_, (lua_Number)arg_); }
     static int get_ret_value(lua_State *ls_, int pos_, uint16_t &param_) {
@@ -1645,7 +1116,7 @@ struct lua_op_t<uint16_t> {
     }
 };
 template <>
-struct lua_op_t<int32_t> {
+struct __lua_op_t<int32_t> {
     static void push_stack(lua_State *ls_, int32_t arg_) { lua_pushnumber(ls_, (lua_Number)arg_); }
     static int get_ret_value(lua_State *ls_, int pos_, int32_t &param_) {
         if (!lua_isnumber(ls_, pos_)) {
@@ -1660,7 +1131,7 @@ struct lua_op_t<int32_t> {
     }
 };
 template <>
-struct lua_op_t<uint32_t> {
+struct __lua_op_t<uint32_t> {
 
     static void push_stack(lua_State *ls_, uint32_t arg_) { lua_pushnumber(ls_, (lua_Number)arg_); }
     static int get_ret_value(lua_State *ls_, int pos_, uint32_t &param_) {
@@ -1677,7 +1148,7 @@ struct lua_op_t<uint32_t> {
 };
 
 template <>
-struct lua_op_t<bool> {
+struct __lua_op_t<bool> {
     static void push_stack(lua_State *ls_, bool arg_) { lua_pushboolean(ls_, arg_); }
 
     static int get_ret_value(lua_State *ls_, int pos_, bool &param_) {
@@ -1701,7 +1172,7 @@ struct lua_op_t<bool> {
 };
 
 template <>
-struct lua_op_t<std::string> {
+struct __lua_op_t<std::string> {
 
     static void push_stack(lua_State *ls_, const std::string &arg_) { lua_pushlstring(ls_, arg_.c_str(), arg_.length()); }
 
@@ -1727,7 +1198,7 @@ struct lua_op_t<std::string> {
 };
 
 template <>
-struct lua_op_t<const std::string &> {
+struct __lua_op_t<const std::string &> {
     static void push_stack(lua_State *ls_, const std::string &arg_) { lua_pushlstring(ls_, arg_.c_str(), arg_.length()); }
 
     static int get_ret_value(lua_State *ls_, int pos_, std::string &param_) {
@@ -1751,7 +1222,7 @@ struct lua_op_t<const std::string &> {
     }
 };
 template <>
-struct lua_op_t<float> {
+struct __lua_op_t<float> {
     static void push_stack(lua_State *ls_, float arg_) { lua_pushnumber(ls_, (lua_Number)arg_); }
     static int get_ret_value(lua_State *ls_, int pos_, float &param_) {
         if (!lua_isnumber(ls_, pos_)) {
@@ -1766,7 +1237,7 @@ struct lua_op_t<float> {
     }
 };
 template <>
-struct lua_op_t<double> {
+struct __lua_op_t<double> {
     static void push_stack(lua_State *ls_, double arg_) { lua_pushnumber(ls_, (lua_Number)arg_); }
     static int get_ret_value(lua_State *ls_, int pos_, double &param_) {
         if (!lua_isnumber(ls_, pos_)) {
@@ -1780,7 +1251,7 @@ struct lua_op_t<double> {
         return 0;
     }
 };
-/*template<> struct lua_op_t<long>
+/*template<> struct __lua_op_t<long>
 {
 
     static void push_stack(lua_State* ls_, long arg_)
@@ -1803,7 +1274,7 @@ struct lua_op_t<double> {
     }
 };*/
 template <>
-struct lua_op_t<void *> {
+struct __lua_op_t<void *> {
     static void push_stack(lua_State *ls_, void *arg_) { lua_pushlightuserdata(ls_, arg_); }
 
     static int get_ret_value(lua_State *ls_, int pos_, void *&param_) {
@@ -1829,7 +1300,7 @@ struct lua_op_t<void *> {
 };
 
 template <typename T>
-struct lua_op_t<T *> {
+struct __lua_op_t<T *> {
     static void push_stack(lua_State *ls_, T &arg_) {
         void *ptr = lua_newuserdata(ls_, sizeof(userdata_for_object_t<T>));
         new (ptr) userdata_for_object_t<T>(&arg_);
@@ -1928,22 +1399,22 @@ struct lua_op_t<T *> {
 };
 
 template <typename T>
-struct lua_op_t<const T *> {
-    static void push_stack(lua_State *ls_, const T *arg_) { lua_op_t<T *>::push_stack(ls_, (T *)arg_); }
+struct __lua_op_t<const T *> {
+    static void push_stack(lua_State *ls_, const T *arg_) { __lua_op_t<T *>::push_stack(ls_, (T *)arg_); }
 
-    static int get_ret_value(lua_State *ls_, int pos_, T *&param_) { return lua_op_t<T *>::get_ret_value(ls_, pos_, param_); }
+    static int get_ret_value(lua_State *ls_, int pos_, T *&param_) { return __lua_op_t<T *>::get_ret_value(ls_, pos_, param_); }
 
-    static int lua_to_value(lua_State *ls_, int pos_, T *&param_) { return lua_op_t<T *>::lua_to_value(ls_, pos_, param_); }
+    static int lua_to_value(lua_State *ls_, int pos_, T *&param_) { return __lua_op_t<T *>::lua_to_value(ls_, pos_, param_); }
 };
 
 template <typename T>
-struct lua_op_t<vector<T> > {
+struct __lua_op_t<vector<T> > {
     static void push_stack(lua_State *ls_, const vector<T> &arg_) {
         lua_newtable(ls_);
         typename vector<T>::const_iterator it = arg_.begin();
         for (int i = 1; it != arg_.end(); ++it, ++i) {
-            lua_op_t<int>::push_stack(ls_, i);
-            lua_op_t<T>::push_stack(ls_, *it);
+            __lua_op_t<int>::push_stack(ls_, i);
+            __lua_op_t<T>::push_stack(ls_, *it);
             lua_settable(ls_, -3);
         }
     }
@@ -1958,7 +1429,7 @@ struct lua_op_t<vector<T> > {
 
         while (lua_next(ls_, real_pos) != 0) {
             param_.push_back(T());
-            if (lua_op_t<T>::get_ret_value(ls_, -1, param_[param_.size() - 1]) < 0) {
+            if (__lua_op_t<T>::get_ret_value(ls_, -1, param_[param_.size() - 1]) < 0) {
                 return -1;
             }
             lua_pop(ls_, 1);
@@ -1974,7 +1445,7 @@ struct lua_op_t<vector<T> > {
         if (pos_ < 0) real_pos = real_pos - 1;
         while (lua_next(ls_, real_pos) != 0) {
             param_.push_back(T());
-            if (lua_op_t<T>::lua_to_value(ls_, -1, param_[param_.size() - 1]) < 0) {
+            if (__lua_op_t<T>::lua_to_value(ls_, -1, param_[param_.size() - 1]) < 0) {
                 luaL_argerror(ls_, pos_ > 0 ? pos_ : -pos_, "convert to vector failed");
             }
             lua_pop(ls_, 1);
@@ -1984,13 +1455,13 @@ struct lua_op_t<vector<T> > {
 };
 
 template <typename T>
-struct lua_op_t<std::list<T> > {
+struct __lua_op_t<std::list<T> > {
     static void push_stack(lua_State *ls_, const std::list<T> &arg_) {
         lua_newtable(ls_);
         typename std::list<T>::const_iterator it = arg_.begin();
         for (int i = 1; it != arg_.end(); ++it, ++i) {
-            lua_op_t<int>::push_stack(ls_, i);
-            lua_op_t<T>::push_stack(ls_, *it);
+            __lua_op_t<int>::push_stack(ls_, i);
+            __lua_op_t<T>::push_stack(ls_, *it);
             lua_settable(ls_, -3);
         }
     }
@@ -2005,7 +1476,7 @@ struct lua_op_t<std::list<T> > {
 
         while (lua_next(ls_, real_pos) != 0) {
             param_.push_back(T());
-            if (lua_op_t<T>::get_ret_value(ls_, -1, (param_.back())) < 0) {
+            if (__lua_op_t<T>::get_ret_value(ls_, -1, (param_.back())) < 0) {
                 return -1;
             }
             lua_pop(ls_, 1);
@@ -2021,7 +1492,7 @@ struct lua_op_t<std::list<T> > {
         if (pos_ < 0) real_pos = real_pos - 1;
         while (lua_next(ls_, real_pos) != 0) {
             param_.push_back(T());
-            if (lua_op_t<T>::lua_to_value(ls_, -1, (param_.back())) < 0) {
+            if (__lua_op_t<T>::lua_to_value(ls_, -1, (param_.back())) < 0) {
                 luaL_argerror(ls_, pos_ > 0 ? pos_ : -pos_, "convert to vector failed");
             }
             lua_pop(ls_, 1);
@@ -2031,13 +1502,13 @@ struct lua_op_t<std::list<T> > {
 };
 
 template <typename T>
-struct lua_op_t<std::set<T> > {
+struct __lua_op_t<std::set<T> > {
     static void push_stack(lua_State *ls_, const std::set<T> &arg_) {
         lua_newtable(ls_);
         typename std::set<T>::const_iterator it = arg_.begin();
         for (int i = 1; it != arg_.end(); ++it, ++i) {
-            lua_op_t<int>::push_stack(ls_, i);
-            lua_op_t<T>::push_stack(ls_, *it);
+            __lua_op_t<int>::push_stack(ls_, i);
+            __lua_op_t<T>::push_stack(ls_, *it);
             lua_settable(ls_, -3);
         }
     }
@@ -2052,7 +1523,7 @@ struct lua_op_t<std::set<T> > {
 
         while (lua_next(ls_, real_pos) != 0) {
             T val = init_value_traits_t<T>::value();
-            if (lua_op_t<T>::get_ret_value(ls_, -1, val) < 0) {
+            if (__lua_op_t<T>::get_ret_value(ls_, -1, val) < 0) {
                 return -1;
             }
             param_.insert(val);
@@ -2069,7 +1540,7 @@ struct lua_op_t<std::set<T> > {
         if (pos_ < 0) real_pos = real_pos - 1;
         while (lua_next(ls_, real_pos) != 0) {
             T val = init_value_traits_t<T>::value();
-            if (lua_op_t<T>::lua_to_value(ls_, -1, val) < 0) {
+            if (__lua_op_t<T>::lua_to_value(ls_, -1, val) < 0) {
                 luaL_argerror(ls_, pos_ > 0 ? pos_ : -pos_, "convert to vector failed");
             }
             param_.insert(val);
@@ -2079,13 +1550,13 @@ struct lua_op_t<std::set<T> > {
     }
 };
 template <typename K, typename V>
-struct lua_op_t<std::map<K, V> > {
+struct __lua_op_t<std::map<K, V> > {
     static void push_stack(lua_State *ls_, const std::map<K, V> &arg_) {
         lua_newtable(ls_);
         typename std::map<K, V>::const_iterator it = arg_.begin();
         for (; it != arg_.end(); ++it) {
-            lua_op_t<K>::push_stack(ls_, it->first);
-            lua_op_t<V>::push_stack(ls_, it->second);
+            __lua_op_t<K>::push_stack(ls_, it->first);
+            __lua_op_t<V>::push_stack(ls_, it->second);
             lua_settable(ls_, -3);
         }
     }
@@ -2102,7 +1573,7 @@ struct lua_op_t<std::map<K, V> > {
             K key = init_value_traits_t<K>::value();
             V val = init_value_traits_t<V>::value();
 
-            if (lua_op_t<K>::get_ret_value(ls_, -2, key) < 0 || lua_op_t<V>::get_ret_value(ls_, -1, val) < 0) {
+            if (__lua_op_t<K>::get_ret_value(ls_, -2, key) < 0 || __lua_op_t<V>::get_ret_value(ls_, -1, val) < 0) {
                 return -1;
             }
             param_.insert(std::make_pair(key, val));
@@ -2120,7 +1591,7 @@ struct lua_op_t<std::map<K, V> > {
         while (lua_next(ls_, real_pos) != 0) {
             K key = init_value_traits_t<K>::value();
             V val = init_value_traits_t<V>::value();
-            if (lua_op_t<K>::get_ret_value(ls_, -2, key) < 0 || lua_op_t<V>::get_ret_value(ls_, -1, val) < 0) {
+            if (__lua_op_t<K>::get_ret_value(ls_, -2, key) < 0 || __lua_op_t<V>::get_ret_value(ls_, -1, val) < 0) {
                 luaL_argerror(ls_, pos_ > 0 ? pos_ : -pos_, "convert to vector failed");
             }
             param_.insert(std::make_pair(key, val));
@@ -2355,7 +1826,7 @@ int neko_lua_wrap_t::get_global_variable(const char *field_name_, T &ret_) {
     int ret = 0;
 
     lua_getglobal(m_ls, field_name_);
-    ret = lua_op_t<T>::get_ret_value(m_ls, -1, ret_);
+    ret = __lua_op_t<T>::get_ret_value(m_ls, -1, ret_);
 
     lua_pop(m_ls, 1);
     return ret;
@@ -2368,7 +1839,7 @@ int neko_lua_wrap_t::set_global_variable(const std::string &field_name_, const T
 
 template <typename T>
 int neko_lua_wrap_t::set_global_variable(const char *field_name_, const T &value_) {
-    lua_op_t<T>::push_stack(m_ls, value_);
+    __lua_op_t<T>::push_stack(m_ls, value_);
     lua_setglobal(m_ls, field_name_);
     return 0;
 }
@@ -2391,7 +1862,7 @@ RET_V neko_lua_wrap_t::call(const char *func_name_) {
         throw lua_exception_t(err);
     }
 
-    if (lua_op_t<RET_V>::get_ret_value(m_ls, -1, ret)) {
+    if (__lua_op_t<RET_V>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
         SPRINTF_F(buff, sizeof(buff), "callfunc [arg0] get_ret_value failed  func_name<%s>", func_name_);
@@ -2409,7 +1880,7 @@ RET_V neko_lua_wrap_t::call(const char *func_name_, const ARG1 &arg1_) {
 
     int tmpArg = getFuncByName(func_name_);
 
-    lua_op_t<ARG1>::push_stack(m_ls, arg1_);
+    __lua_op_t<ARG1>::push_stack(m_ls, arg1_);
 
     if (lua_pcall(m_ls, tmpArg + 1, 1, 0) != 0) {
         string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall failed func_name<%s>", func_name_);
@@ -2417,7 +1888,7 @@ RET_V neko_lua_wrap_t::call(const char *func_name_, const ARG1 &arg1_) {
         throw lua_exception_t(err);
     }
 
-    if (lua_op_t<RET_V>::get_ret_value(m_ls, -1, ret)) {
+    if (__lua_op_t<RET_V>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
         SPRINTF_F(buff, sizeof(buff), "callfunc [arg1] get_ret_value failed  func_name<%s>", func_name_);
@@ -2437,8 +1908,8 @@ RET_V neko_lua_wrap_t::call(const char *func_name_, const ARG1 &arg1_, const ARG
 
     int tmpArg = getFuncByName(func_name_);
 
-    lua_op_t<ARG1>::push_stack(m_ls, arg1_);
-    lua_op_t<ARG2>::push_stack(m_ls, arg2_);
+    __lua_op_t<ARG1>::push_stack(m_ls, arg1_);
+    __lua_op_t<ARG2>::push_stack(m_ls, arg2_);
 
     if (lua_pcall(m_ls, tmpArg + 2, 1, 0) != 0) {
         string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall failed func_name<%s>", func_name_);
@@ -2446,7 +1917,7 @@ RET_V neko_lua_wrap_t::call(const char *func_name_, const ARG1 &arg1_, const ARG
         throw lua_exception_t(err);
     }
 
-    if (lua_op_t<RET_V>::get_ret_value(m_ls, -1, ret)) {
+    if (__lua_op_t<RET_V>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
         SPRINTF_F(buff, sizeof(buff), "callfunc [arg2] get_ret_value failed  func_name<%s>", func_name_);
@@ -2464,9 +1935,9 @@ RET_V neko_lua_wrap_t::call(const char *func_name_, const ARG1 &arg1_, const ARG
 
     int tmpArg = getFuncByName(func_name_);
 
-    lua_op_t<ARG1>::push_stack(m_ls, arg1_);
-    lua_op_t<ARG2>::push_stack(m_ls, arg2_);
-    lua_op_t<ARG3>::push_stack(m_ls, arg3_);
+    __lua_op_t<ARG1>::push_stack(m_ls, arg1_);
+    __lua_op_t<ARG2>::push_stack(m_ls, arg2_);
+    __lua_op_t<ARG3>::push_stack(m_ls, arg3_);
 
     if (lua_pcall(m_ls, tmpArg + 3, 1, 0) != 0) {
         string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall failed func_name<%s>", func_name_);
@@ -2474,7 +1945,7 @@ RET_V neko_lua_wrap_t::call(const char *func_name_, const ARG1 &arg1_, const ARG
         throw lua_exception_t(err);
     }
 
-    if (lua_op_t<RET_V>::get_ret_value(m_ls, -1, ret)) {
+    if (__lua_op_t<RET_V>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
         SPRINTF_F(buff, sizeof(buff), "callfunc [arg3] get_ret_value failed  func_name<%s>", func_name_);
@@ -2492,10 +1963,10 @@ RET_V neko_lua_wrap_t::call(const char *func_name_, const ARG1 &arg1_, const ARG
 
     int tmpArg = getFuncByName(func_name_);
 
-    lua_op_t<ARG1>::push_stack(m_ls, arg1_);
-    lua_op_t<ARG2>::push_stack(m_ls, arg2_);
-    lua_op_t<ARG3>::push_stack(m_ls, arg3_);
-    lua_op_t<ARG4>::push_stack(m_ls, arg4_);
+    __lua_op_t<ARG1>::push_stack(m_ls, arg1_);
+    __lua_op_t<ARG2>::push_stack(m_ls, arg2_);
+    __lua_op_t<ARG3>::push_stack(m_ls, arg3_);
+    __lua_op_t<ARG4>::push_stack(m_ls, arg4_);
 
     if (lua_pcall(m_ls, tmpArg + 4, 1, 0) != 0) {
         string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall failed func_name<%s>", func_name_);
@@ -2503,7 +1974,7 @@ RET_V neko_lua_wrap_t::call(const char *func_name_, const ARG1 &arg1_, const ARG
         throw lua_exception_t(err);
     }
 
-    if (lua_op_t<RET_V>::get_ret_value(m_ls, -1, ret)) {
+    if (__lua_op_t<RET_V>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
         SPRINTF_F(buff, sizeof(buff), "callfunc [arg4] get_ret_value failed  func_name<%s>", func_name_);
@@ -2521,11 +1992,11 @@ RET_V neko_lua_wrap_t::call(const char *func_name_, const ARG1 &arg1_, const ARG
 
     int tmpArg = getFuncByName(func_name_);
 
-    lua_op_t<ARG1>::push_stack(m_ls, arg1_);
-    lua_op_t<ARG2>::push_stack(m_ls, arg2_);
-    lua_op_t<ARG3>::push_stack(m_ls, arg3_);
-    lua_op_t<ARG4>::push_stack(m_ls, arg4_);
-    lua_op_t<ARG5>::push_stack(m_ls, arg5_);
+    __lua_op_t<ARG1>::push_stack(m_ls, arg1_);
+    __lua_op_t<ARG2>::push_stack(m_ls, arg2_);
+    __lua_op_t<ARG3>::push_stack(m_ls, arg3_);
+    __lua_op_t<ARG4>::push_stack(m_ls, arg4_);
+    __lua_op_t<ARG5>::push_stack(m_ls, arg5_);
 
     if (lua_pcall(m_ls, tmpArg + 5, 1, 0) != 0) {
         string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall failed func_name<%s>", func_name_);
@@ -2533,7 +2004,7 @@ RET_V neko_lua_wrap_t::call(const char *func_name_, const ARG1 &arg1_, const ARG
         throw lua_exception_t(err);
     }
 
-    if (lua_op_t<RET_V>::get_ret_value(m_ls, -1, ret)) {
+    if (__lua_op_t<RET_V>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
         SPRINTF_F(buff, sizeof(buff), "callfunc [arg5] get_ret_value failed  func_name<%s>", func_name_);
@@ -2551,12 +2022,12 @@ RET_V neko_lua_wrap_t::call(const char *func_name_, const ARG1 &arg1_, const ARG
 
     int tmpArg = getFuncByName(func_name_);
 
-    lua_op_t<ARG1>::push_stack(m_ls, arg1_);
-    lua_op_t<ARG2>::push_stack(m_ls, arg2_);
-    lua_op_t<ARG3>::push_stack(m_ls, arg3_);
-    lua_op_t<ARG4>::push_stack(m_ls, arg4_);
-    lua_op_t<ARG5>::push_stack(m_ls, arg5_);
-    lua_op_t<ARG6>::push_stack(m_ls, arg6_);
+    __lua_op_t<ARG1>::push_stack(m_ls, arg1_);
+    __lua_op_t<ARG2>::push_stack(m_ls, arg2_);
+    __lua_op_t<ARG3>::push_stack(m_ls, arg3_);
+    __lua_op_t<ARG4>::push_stack(m_ls, arg4_);
+    __lua_op_t<ARG5>::push_stack(m_ls, arg5_);
+    __lua_op_t<ARG6>::push_stack(m_ls, arg6_);
 
     if (lua_pcall(m_ls, tmpArg + 6, 1, 0) != 0) {
         string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall failed func_name<%s>", func_name_);
@@ -2564,7 +2035,7 @@ RET_V neko_lua_wrap_t::call(const char *func_name_, const ARG1 &arg1_, const ARG
         throw lua_exception_t(err);
     }
 
-    if (lua_op_t<RET_V>::get_ret_value(m_ls, -1, ret)) {
+    if (__lua_op_t<RET_V>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
         SPRINTF_F(buff, sizeof(buff), "callfunc [arg6] get_ret_value failed  func_name<%s>", func_name_);
@@ -2582,13 +2053,13 @@ RET_V neko_lua_wrap_t::call(const char *func_name_, const ARG1 &arg1_, const ARG
 
     int tmpArg = getFuncByName(func_name_);
 
-    lua_op_t<ARG1>::push_stack(m_ls, arg1_);
-    lua_op_t<ARG2>::push_stack(m_ls, arg2_);
-    lua_op_t<ARG3>::push_stack(m_ls, arg3_);
-    lua_op_t<ARG4>::push_stack(m_ls, arg4_);
-    lua_op_t<ARG5>::push_stack(m_ls, arg5_);
-    lua_op_t<ARG6>::push_stack(m_ls, arg6_);
-    lua_op_t<ARG7>::push_stack(m_ls, arg7_);
+    __lua_op_t<ARG1>::push_stack(m_ls, arg1_);
+    __lua_op_t<ARG2>::push_stack(m_ls, arg2_);
+    __lua_op_t<ARG3>::push_stack(m_ls, arg3_);
+    __lua_op_t<ARG4>::push_stack(m_ls, arg4_);
+    __lua_op_t<ARG5>::push_stack(m_ls, arg5_);
+    __lua_op_t<ARG6>::push_stack(m_ls, arg6_);
+    __lua_op_t<ARG7>::push_stack(m_ls, arg7_);
 
     if (lua_pcall(m_ls, tmpArg + 7, 1, 0) != 0) {
         string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall failed func_name<%s>", func_name_);
@@ -2596,7 +2067,7 @@ RET_V neko_lua_wrap_t::call(const char *func_name_, const ARG1 &arg1_, const ARG
         throw lua_exception_t(err);
     }
 
-    if (lua_op_t<RET_V>::get_ret_value(m_ls, -1, ret)) {
+    if (__lua_op_t<RET_V>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
         SPRINTF_F(buff, sizeof(buff), "callfunc [arg7] get_ret_value failed  func_name<%s>", func_name_);
@@ -2615,14 +2086,14 @@ RET_V neko_lua_wrap_t::call(const char *func_name_, const ARG1 &arg1_, const ARG
 
     int tmpArg = getFuncByName(func_name_);
 
-    lua_op_t<ARG1>::push_stack(m_ls, arg1_);
-    lua_op_t<ARG2>::push_stack(m_ls, arg2_);
-    lua_op_t<ARG3>::push_stack(m_ls, arg3_);
-    lua_op_t<ARG4>::push_stack(m_ls, arg4_);
-    lua_op_t<ARG5>::push_stack(m_ls, arg5_);
-    lua_op_t<ARG6>::push_stack(m_ls, arg6_);
-    lua_op_t<ARG7>::push_stack(m_ls, arg7_);
-    lua_op_t<ARG8>::push_stack(m_ls, arg8_);
+    __lua_op_t<ARG1>::push_stack(m_ls, arg1_);
+    __lua_op_t<ARG2>::push_stack(m_ls, arg2_);
+    __lua_op_t<ARG3>::push_stack(m_ls, arg3_);
+    __lua_op_t<ARG4>::push_stack(m_ls, arg4_);
+    __lua_op_t<ARG5>::push_stack(m_ls, arg5_);
+    __lua_op_t<ARG6>::push_stack(m_ls, arg6_);
+    __lua_op_t<ARG7>::push_stack(m_ls, arg7_);
+    __lua_op_t<ARG8>::push_stack(m_ls, arg8_);
 
     if (lua_pcall(m_ls, tmpArg + 8, 1, 0) != 0) {
         string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall failed func_name<%s>", func_name_);
@@ -2630,7 +2101,7 @@ RET_V neko_lua_wrap_t::call(const char *func_name_, const ARG1 &arg1_, const ARG
         throw lua_exception_t(err);
     }
 
-    if (lua_op_t<RET_V>::get_ret_value(m_ls, -1, ret)) {
+    if (__lua_op_t<RET_V>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
         SPRINTF_F(buff, sizeof(buff), "callfunc [arg8] get_ret_value failed  func_name<%s>", func_name_);
@@ -2649,15 +2120,15 @@ RET_V neko_lua_wrap_t::call(const char *func_name_, const ARG1 &arg1_, const ARG
 
     int tmpArg = getFuncByName(func_name_);
 
-    lua_op_t<ARG1>::push_stack(m_ls, arg1_);
-    lua_op_t<ARG2>::push_stack(m_ls, arg2_);
-    lua_op_t<ARG3>::push_stack(m_ls, arg3_);
-    lua_op_t<ARG4>::push_stack(m_ls, arg4_);
-    lua_op_t<ARG5>::push_stack(m_ls, arg5_);
-    lua_op_t<ARG6>::push_stack(m_ls, arg6_);
-    lua_op_t<ARG7>::push_stack(m_ls, arg7_);
-    lua_op_t<ARG8>::push_stack(m_ls, arg8_);
-    lua_op_t<ARG9>::push_stack(m_ls, arg9_);
+    __lua_op_t<ARG1>::push_stack(m_ls, arg1_);
+    __lua_op_t<ARG2>::push_stack(m_ls, arg2_);
+    __lua_op_t<ARG3>::push_stack(m_ls, arg3_);
+    __lua_op_t<ARG4>::push_stack(m_ls, arg4_);
+    __lua_op_t<ARG5>::push_stack(m_ls, arg5_);
+    __lua_op_t<ARG6>::push_stack(m_ls, arg6_);
+    __lua_op_t<ARG7>::push_stack(m_ls, arg7_);
+    __lua_op_t<ARG8>::push_stack(m_ls, arg8_);
+    __lua_op_t<ARG9>::push_stack(m_ls, arg9_);
 
     if (lua_pcall(m_ls, tmpArg + 9, 1, 0) != 0) {
         string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall failed func_name<%s>", func_name_);
@@ -2665,7 +2136,7 @@ RET_V neko_lua_wrap_t::call(const char *func_name_, const ARG1 &arg1_, const ARG
         throw lua_exception_t(err);
     }
 
-    if (lua_op_t<RET_V>::get_ret_value(m_ls, -1, ret)) {
+    if (__lua_op_t<RET_V>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
         SPRINTF_F(buff, sizeof(buff), "callfunc [arg9] get_ret_value failed func_name<%s>", func_name_);

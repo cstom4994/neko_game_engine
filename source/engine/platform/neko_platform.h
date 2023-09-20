@@ -430,6 +430,8 @@ typedef struct neko_platform_i {
 
     neko_inline void *__native_library_get_symbol(void *handle, const char *name) { return (void *)GetProcAddress((HMODULE)handle, name); }
 
+    neko_static_inline void __native_debug_output(const std::string &msg) { OutputDebugStringA(msg.c_str()); }
+
     /*============================================================
     // Platform
     ============================================================*/

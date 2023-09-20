@@ -4,8 +4,8 @@
 #include "engine/base/neko_engine.h"
 #include "engine/common/neko_hash.h"
 #include "engine/filesystem/neko_packer.h"
+#include "engine/graphics/neko_graphics.h"
 #include "engine/gui/neko_imgui_utils.hpp"
-#include "engine/meta/neko_refl.hpp"
 #include "engine/platform/neko_platform.h"
 #include "engine/utility/neko_cpp_misc.hpp"
 #include "engine/utility/neko_cpp_utils.hpp"
@@ -14,9 +14,9 @@ neko_static_inline const char *__build_date = __DATE__;
 neko_static_inline const char *mon[12] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 neko_static_inline const char mond[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
-int neko_buildnum(void) {
-    int m = 0, d = 0, y = 0;
-    static int b = 0;
+s32 neko_buildnum(void) {
+    s32 m = 0, d = 0, y = 0;
+    static s32 b = 0;
 
     // 优化
     if (b != 0) return b;
@@ -28,7 +28,7 @@ int neko_buildnum(void) {
 
     d += atoi(&__build_date[4]) - 1;
     y = atoi(&__build_date[7]) - 2022;
-    b = d + (int)((y - 1) * 365.25f);
+    b = d + (s32)((y - 1) * 365.25f);
 
     if (((y % 4) == 0) && m > 1) b += 1;
 
@@ -41,7 +41,7 @@ namespace neko {
 
 using namespace neko::cpp;
 
-static const int __profiler_max_level_colors = 11;
+static const s32 __profiler_max_level_colors = 11;
 static const ImU32 __profiler_level_colors[__profiler_max_level_colors] = {IM_COL32(90, 150, 110, 255), IM_COL32(80, 180, 115, 255),  IM_COL32(129, 195, 110, 255), IM_COL32(170, 190, 100, 255),
                                                                            IM_COL32(210, 200, 80, 255), IM_COL32(230, 210, 115, 255), IM_COL32(240, 180, 90, 255),  IM_COL32(240, 140, 65, 255),
                                                                            IM_COL32(250, 110, 40, 255), IM_COL32(250, 75, 25, 255),   IM_COL32(250, 50, 0, 255)};
@@ -114,7 +114,7 @@ void profiler_draw_frame_bavigation(frame_info *_infos, uint32_t _numInfos) {
 
     ImGui::Begin("Frame navigator", 0, ImGuiWindowFlags_NoScrollbar);
 
-    static int sortKind = 0;
+    static s32 sortKind = 0;
     ImGui::Text("Sort frames by:  ");
     ImGui::SameLine();
     ImGui::RadioButton("Chronological", &sortKind, 0);
@@ -159,8 +159,8 @@ void profiler_draw_frame_bavigation(frame_info *_infos, uint32_t _numInfos) {
     ImGui::End();
 }
 
-int profiler_draw_frame(profiler_frame *_data, void *_buffer, size_t _bufferSize, bool _inGame, bool _multi) {
-    int ret = 0;
+s32 profiler_draw_frame(profiler_frame *_data, void *_buffer, size_t _bufferSize, bool _inGame, bool _multi) {
+    s32 ret = 0;
 
     // if (fabs(_data->m_startTime - _data->m_endtime) == 0.0f) return ret;
 
@@ -229,7 +229,7 @@ int profiler_draw_frame(profiler_frame *_data, void *_buffer, size_t _bufferSize
 
     bool resetZoom = false;
     static f32 threshold = 0.0f;
-    static int thresholdLevel = 0;
+    static s32 thresholdLevel = 0;
 
     if (_inGame) {
         ImGui::PushItemWidth(210);
@@ -306,9 +306,9 @@ int profiler_draw_frame(profiler_frame *_data, void *_buffer, size_t _bufferSize
     neko_profiler_set_paused(pause);
     neko_profiler_set_threshold(threshold, thresholdLevel);
 
-    static const int ME_MAX_FRAME_TIMES = 128;
+    static const s32 ME_MAX_FRAME_TIMES = 128;
     static f32 s_frameTimes[ME_MAX_FRAME_TIMES];
-    static int s_currentFrame = 0;
+    static s32 s_currentFrame = 0;
 
     f32 maxFrameTime = 0.0f;
     if (_inGame) {
@@ -322,7 +322,7 @@ int profiler_draw_frame(profiler_frame *_data, void *_buffer, size_t _bufferSize
         }
 
         f32 frameTimes[ME_MAX_FRAME_TIMES];
-        for (int i = 0; i < ME_MAX_FRAME_TIMES; ++i) {
+        for (s32 i = 0; i < ME_MAX_FRAME_TIMES; ++i) {
             frameTimes[i] = s_frameTimes[(s_currentFrame + i) % ME_MAX_FRAME_TIMES];
             maxFrameTime = std::max(maxFrameTime, frameTimes[i]);
         }
@@ -415,7 +415,7 @@ int profiler_draw_frame(profiler_frame *_data, void *_buffer, size_t _bufferSize
 
         bottom = std::max(bottom, br.y);
 
-        int level = cs.level;
+        s32 level = cs.level;
         if (cs.level >= __profiler_max_level_colors) level = __profiler_max_level_colors - 1;
 
         ImU32 drawColor = __profiler_level_colors[level];
@@ -427,7 +427,7 @@ int profiler_draw_frame(profiler_frame *_data, void *_buffer, size_t _bufferSize
             stat_clicked_level = cs.level;
         }
 
-        if ((thresholdLevel == (int)cs.level + 1) && (threshold <= __neko_profiler_clock2ms(cs.end - cs.start, _data->cpu_frequency))) flash_color(drawColor, currTime - _data->end_time);
+        if ((thresholdLevel == (s32)cs.level + 1) && (threshold <= __neko_profiler_clock2ms(cs.end - cs.start, _data->cpu_frequency))) flash_color(drawColor, currTime - _data->end_time);
 
         draw_list->PushClipRect(tl, br, true);
         draw_list->AddRectFilled(tl, br, drawColor);
@@ -471,7 +471,7 @@ void profiler_draw_stats(profiler_frame *_data, bool _multi) {
 
     f32 deltaTime = __neko_profiler_clock2ms(_data->end_time - _data->start_time, _data->cpu_frequency);
 
-    static int exclusive = 0;
+    static s32 exclusive = 0;
     ImGui::Text("Sort by:  ");
     ImGui::SameLine();
     ImGui::RadioButton("Exclusive time", &exclusive, 0);
@@ -521,7 +521,7 @@ void profiler_draw_stats(profiler_frame *_data, bool _multi) {
         ImVec2 tl = ImVec2(startX, frameStartY);
         ImVec2 br = ImVec2(endX, frameStartY + barHeight);
 
-        int colIdx = __profiler_max_level_colors - 1 - i;
+        s32 colIdx = __profiler_max_level_colors - 1 - i;
         if (colIdx < 0) colIdx = 0;
         ImU32 drawColor = __profiler_level_colors[colIdx];
 
@@ -895,7 +895,7 @@ void neko_editor_inspect_shader(const_str label, GLuint program) {
             static std::vector<char> name;
             name.resize(max_name_length);
 
-            for (int i = 0; i < uniform_count; i++) {
+            for (s32 i = 0; i < uniform_count; i++) {
                 GLint ignored;
                 GLenum type;
                 glGetActiveUniform(program, i, max_name_length, nullptr, &ignored, &type, name.data());
@@ -979,8 +979,8 @@ void neko_editor_inspect_vertex_array(const_str label, GLuint vao) {
         ImGui::PushID(buffer);
         if (ImGui::CollapsingHeader(buffer)) {
             ImGui::Indent();
-            // Assuming unsigned int atm, as I have not found a way to get out the type of the element array buffer.
-            int size = 0;
+            // Assuming unsigned s32 atm, as I have not found a way to get out the type of the element array buffer.
+            s32 size = 0;
             glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
             size /= sizeof(GLuint);
             ImGui::Text("Size: %d", size);
@@ -989,7 +989,7 @@ void neko_editor_inspect_vertex_array(const_str label, GLuint vao) {
                 // TODO: Find a better way to put this out on screen, because this solution will probably not scale good when we get a lot of indices.
                 //       Possible solution: Make it into columns, like the VBO's, and present the indices as triangles.
                 auto ptr = (GLuint *)glMapBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_READ_ONLY);
-                for (int i = 0; i < size; i++) {
+                for (s32 i = 0; i < size; i++) {
                     ImGui::Text("%u", ptr[i]);
                     ImGui::SameLine();
                     if ((i + 1) % 3 == 0) ImGui::NewLine();
@@ -1052,17 +1052,17 @@ void neko_editor_inspect_vertex_array(const_str label, GLuint vao) {
                     ImGui::BeginChild(ImGui::GetID("vbo contents"), ImVec2(-1.0f, get_scrollable_height()), true, ImGuiWindowFlags_AlwaysVerticalScrollbar);
                     ImGui::Columns(dimensions + 1);
                     const char *descriptors[] = {"index", "x", "y", "z", "w"};
-                    for (int j = 0; j < dimensions + 1; j++) {
+                    for (s32 j = 0; j < dimensions + 1; j++) {
                         ImGui::Text("%s", descriptors[j]);
                         ImGui::NextColumn();
                     }
                     ImGui::Separator();
 
                     auto ptr = (char *)glMapBuffer(GL_ARRAY_BUFFER, GL_READ_ONLY) + (intptr_t)offset;
-                    for (int j = 0, c = 0; j < size; j += stride, c++) {
+                    for (s32 j = 0, c = 0; j < size; j += stride, c++) {
                         ImGui::Text("%d", c);
                         ImGui::NextColumn();
-                        for (int k = 0; k < dimensions; k++) {
+                        for (s32 k = 0; k < dimensions; k++) {
                             switch (type) {
                                 case GL_BYTE:
                                     ImGui::Text("% d", *(GLbyte *)&ptr[j + k * sizeof(GLbyte)]);
@@ -1110,257 +1110,289 @@ void neko_editor_inspect_vertex_array(const_str label, GLuint vao) {
     ImGui::PopID();
 }
 
+template <typename T>
+void __neko_cvar_gui(T &&obj, int depth = 0, const char *fieldName = "", const char *info = "") {
+    if constexpr (std::is_class_v<std::decay_t<T>>) {
+        neko_struct_foreach(obj, [depth](auto &&fieldName, auto &&value, auto &&info) { __neko_cvar_gui(value, depth + 1, fieldName, info); });
+    } else {
+
+        auto ff = [&]<typename T>(const char *name, auto &var, T &t) {
+            // if (var.GetType() == Type_of<T>)
+            if constexpr (std::is_same_v<std::decay_t<decltype(var)>, T>) neko::imgui::Auto(var, name);
+        };
+
+        neko::invoke::apply([&](auto &&...args) { (ff(fieldName, obj, args), ...); }, std::tuple<CVAR_TYPES()>());
+        ImGui::Text("    [%s]", info);
+        // for (const auto &attr : iter.GetFieldInfo().attrs)
+        //     for (const auto &[name, var] : attr.GetVars()) {
+        //         if (name == "info") ImGui::Text("    [%s]", var.As<const_str>());
+        //     }
+    }
+}
+
 auto neko_editor_create(neko_engine_cvar_t &cvar) -> dbgui & {
     return the<dbgui>()
-            .create(
-                    "console",
+            .create("console",
                     [&](neko_dbgui_result) {
-                        for (auto &a : logger::message_log()) {
-                            ImVec4 colour;
-                            switch (a.type) {
-                                case log_type::warning:
-                                    colour = {1.0f, 1.0f, 0.0f, 1.0f};
-                                    break;
-                                case log_type::error:
-                                    colour = {1.0f, 0.0f, 0.0f, 1.0f};
-                                    break;
-                                case log_type::info:
-                                    colour = neko_rgba2imvec(0, 183, 255, 255);
-                                    break;
-                                case log_type::trace:
-                                    colour = {1.0f, 1.0f, 1.0f, 1.0f};
-                                    break;
+                        if (!g_cvar.ui_console) return neko_dbgui_result_in_progress;
+
+                        if (ImGui::Begin("console")) {
+
+                            for (auto &l : logger::message_log()) {
+                                ImVec4 colour;
+                                switch (l.type) {
+                                    case log_type::warning:
+                                        colour = {1.0f, 1.0f, 0.0f, 1.0f};
+                                        break;
+                                    case log_type::error:
+                                        colour = {1.0f, 0.0f, 0.0f, 1.0f};
+                                        break;
+                                    case log_type::info:
+                                        colour = neko_rgba2imvec(0, 183, 255, 255);
+                                        break;
+                                    case log_type::trace:
+                                        colour = {1.0f, 1.0f, 1.0f, 1.0f};
+                                        break;
+                                }
+
+                                ImGui::TextColored(colour, "%s", l.msg.c_str());
                             }
 
-                            ImGui::TextColored(colour, "%s", a.msg.c_str());
-                        }
+                            static std::string command;
+                            if ((ImGui::InputTextWithHint("##Input", "在这里输入命令", &command) || ImGui::IsItemActive())) {
+                            }
+                            ImGui::SameLine();
+                            if (ImGui::Button("Send##consoleCommand") || (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Enter)))) {
+                                // for (auto &a : loggerInternal.commands) {
+                                //     if (command.rfind(a.cmd, 0) == 0) {
+                                //         a.func(command);
+                                //         break;
+                                //     }
+                                // }
+                                // ME_scripting::get_singleton_ptr()->run_command(command);
 
-                        static std::string command;
-                        if ((ImGui::InputTextWithHint("##Input", "在这里输入命令", &command) || ImGui::IsItemActive())) {
-                        }
-                        ImGui::SameLine();
-                        if (ImGui::Button("Send##consoleCommand") || (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Enter)))) {
-                            // for (auto &a : loggerInternal.commands) {
-                            //     if (command.rfind(a.cmd, 0) == 0) {
-                            //         a.func(command);
-                            //         break;
-                            //     }
-                            // }
-                            // ME_scripting::get_singleton_ptr()->run_command(command);
+                                // this->eval(command);
 
-                            // this->eval(command);
+                                command.clear();
+                            }
+                            if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY()) ImGui::SetScrollHereY(1.0f);
 
-                            command.clear();
-                        }
-                        if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY()) ImGui::SetScrollHereY(1.0f);
+                            s64 now = neko_get_time();
 
-                        s64 now = neko_get_time();
+                            constexpr s32 log_list_num = 10;
 
-                        constexpr int log_list_num = 10;
+                            log_msg log_list[log_list_num] = {};
 
-                        log_msg log_list[log_list_num] = {};
-
-                        int n = log_list_num - 1;
-                        auto &logger_list = logger::message_log();
-                        for (const log_msg &log : logger_list | std::views::reverse) {
-                            if (n < 0) break;
-                            s64 dtime = now - log.time;
-                            if (dtime > 4000) {
+                            s32 n = log_list_num - 1;
+                            auto &logger_list = logger::message_log();
+                            for (const log_msg &log : logger_list | std::views::reverse) {
+                                if (n < 0) break;
+                                s64 dtime = now - log.time;
+                                if (dtime > 4000) {
+                                    n--;
+                                    break;  // 直接跳出循环就可以，在此之后的日志只可能比这更老的
+                                }
+                                log_list[n] = log;
                                 n--;
-                                break;  // 直接跳出循环就可以，在此之后的日志只可能比这更老的
                             }
-                            log_list[n] = log;
-                            n--;
+
+                            s32 x = 10, y = 10;
+
+                            if (g_cvar.ui_tweak) y += 18;
+
+                            ImDrawList *draw_list = ImGui::GetBackgroundDrawList();
+
+                            for (auto &a : log_list) {
+
+                                if (a.msg.empty()) continue;
+
+                                s64 dtime = now - a.time;
+
+                                ImVec4 colour;
+                                switch (a.type) {
+                                    case log_type::warning:
+                                        colour = {1.0f, 1.0f, 0.0f, 1.0f};
+                                        break;
+                                    case log_type::error:
+                                        colour = {1.0f, 0.0f, 0.0f, 1.0f};
+                                        break;
+                                    case log_type::info:
+                                        colour = neko_rgba2imvec(0, 183, 255, 255);
+                                        break;
+                                    case log_type::trace:
+                                        colour = {1.0f, 1.0f, 1.0f, 1.0f};
+                                        break;
+                                }
+
+                                bool outline = true;
+
+                                if (dtime >= 3500) {
+                                    colour.w = std::abs((4000 - dtime) / 500.0f);
+                                    outline = false;
+                                }
+
+                                neko_debug_draw_text(a.msg, imvec_to_rgba(colour), x, y, true);
+                                y = y + 20;
+                            }
                         }
+                        ImGui::End();
+                        return neko_dbgui_result_in_progress;
+                    })
+            .create("shader",
+                    [&](neko_dbgui_result) {
+                        if (!g_cvar.ui_shader_inspector) return neko_dbgui_result_in_progress;
 
-                        int x = 10, y = 10;
+                        if (ImGui::Begin("shader")) {
+                            neko_graphics_i *_gfx = neko_engine_instance()->ctx.graphics;
 
-                        if (g_cvar.ui_tweak) y += 18;
-
-                        ImDrawList *draw_list = ImGui::GetBackgroundDrawList();
-
-                        for (auto &a : log_list) {
-
-                            if (a.msg.empty()) continue;
-
-                            s64 dtime = now - a.time;
-
-                            ImVec4 colour;
-                            switch (a.type) {
-                                case log_type::warning:
-                                    colour = {1.0f, 1.0f, 0.0f, 1.0f};
-                                    break;
-                                case log_type::error:
-                                    colour = {1.0f, 0.0f, 0.0f, 1.0f};
-                                    break;
-                                case log_type::info:
-                                    colour = neko_rgba2imvec(0, 183, 255, 255);
-                                    break;
-                                case log_type::trace:
-                                    colour = {1.0f, 1.0f, 1.0f, 1.0f};
-                                    break;
+                            for (auto &[n, s] : (*_gfx->neko_shader_internal_list())) {
+                                neko_editor_inspect_shader(std::to_string(n).c_str(), s->program_id);
                             }
-
-                            bool outline = true;
-
-                            if (dtime >= 3500) {
-                                colour.w = std::abs((4000 - dtime) / 500.0f);
-                                outline = false;
-                            }
-
-                            neko_debug_draw_text(a.msg, imvec_to_rgba(colour), x, y, true);
-                            y = y + 20;
                         }
+                        ImGui::End();
 
                         return neko_dbgui_result_in_progress;
-                    },
-                    &g_cvar.ui_console)
-            .create(
-                    "utils",
+                    })
+            .create("utils",
                     [&](neko_dbgui_result) {
                         if (cvar.ui_imgui_debug) {
                             ImGui::ShowDemoWindow();
                         }
                         return neko_dbgui_result_in_progress;
-                    },
-                    &g_cvar.ui_imgui_debug)
+                    })
             .create("cvar",
                     [&](neko_dbgui_result) {
-                        try {
+                        if (!g_cvar.ui_tweak) return neko_dbgui_result_in_progress;
 
-                            ObjectView cvar_view{cvar};
+                        if (ImGui::Begin("cvar")) {
+                            try {
+                                __neko_cvar_gui(g_cvar);
 
-                            auto f = [&]<typename T>(auto &name, auto &var, T &t) {
-                                if (var.GetType() == Type_of<T>) neko::imgui::Auto(var.As<T>(), std::string(name.get_view()).c_str());
-                            };
-
-                            auto v = cvar_view.GetVars();
-                            for (auto &iter = v.begin(); iter != v.end(); ++iter) {
-                                const auto &[name, var] = *iter;
-                                neko::invoke::apply([&](auto &&...args) { (f(name, var, args), ...); }, std::tuple<CVAR_TYPES()>());
-                                for (const auto &attr : iter.GetFieldInfo().attrs)
-                                    for (const auto &[name, var] : attr.GetVars()) {
-                                        if (name == "info") ImGui::Text("    [%s]", var.As<const_str>());
-                                    }
+                            } catch (const std::exception ex) {
+                                neko_error(std::format("[Exception] {0}", ex.what()).c_str());
                             }
-
-                        } catch (const std::exception ex) {
-                            neko_error(std::format("[Exception] {0}", ex.what()).c_str());
                         }
+                        ImGui::End();
 
                         return neko_dbgui_result_in_progress;
                     })
             .create("pack editor", [&](neko_dbgui_result) {
-                // pack editor
-                neko_private(neko_packreader_t *) pack_reader;
-                neko_private(neko_pack_result) result;
-                neko_private(bool) pack_reader_is_loaded = false;
-                neko_private(u8) majorVersion;
-                neko_private(u8) minorVersion;
-                neko_private(u8) patchVersion;
-                neko_private(bool) isLittleEndian;
-                neko_private(u64) itemCount;
+                if (!g_cvar.ui_pack_editor) return neko_dbgui_result_in_progress;
 
-                neko_private(neko_string) file = neko_file_path("data");
-                neko_private(bool) filebrowser = false;
+                if (ImGui::Begin("pack editor")) {
 
-                if (ImGui::Button("打开包") && !pack_reader_is_loaded) filebrowser = true;
-                ImGui::SameLine();
-                if (ImGui::Button("关闭包")) {
-                    neko_pack_destroy(pack_reader);
-                    pack_reader_is_loaded = false;
-                }
-                ImGui::SameLine();
-                ImGui::Text("neko assets pack [%d.%d.%d]\n", PACK_VERSION_MAJOR, PACK_VERSION_MINOR, PACK_VERSION_PATCH);
+                    // pack editor
+                    neko_private(neko_packreader_t *) pack_reader;
+                    neko_private(neko_pack_result) result;
+                    neko_private(bool) pack_reader_is_loaded = false;
+                    neko_private(u8) majorVersion;
+                    neko_private(u8) minorVersion;
+                    neko_private(u8) patchVersion;
+                    neko_private(bool) isLittleEndian;
+                    neko_private(u64) itemCount;
 
-                if (filebrowser) {
-                    imgui::file_browser(file);
+                    neko_private(neko_string) file = neko_file_path("data");
+                    neko_private(bool) filebrowser = false;
 
-                    if (!file.empty() && !std::filesystem::is_directory(file)) {
+                    if (ImGui::Button("打开包") && !pack_reader_is_loaded) filebrowser = true;
+                    ImGui::SameLine();
+                    if (ImGui::Button("关闭包")) {
+                        neko_pack_destroy(pack_reader);
+                        pack_reader_is_loaded = false;
+                    }
+                    ImGui::SameLine();
+                    ImGui::Text("neko assets pack [%d.%d.%d]\n", PACK_VERSION_MAJOR, PACK_VERSION_MINOR, PACK_VERSION_PATCH);
 
-                        if (pack_reader_is_loaded) {
+                    if (filebrowser) {
+                        imgui::file_browser(file);
 
-                        } else {
-                            result = neko_pack_info(file.c_str(), &majorVersion, &minorVersion, &patchVersion, &isLittleEndian, &itemCount);
-                            if (result != SUCCESS_PACK_RESULT) return neko_dbgui_result_in_progress;
+                        if (!file.empty() && !std::filesystem::is_directory(file)) {
 
-                            result = neko_pack_read(file.c_str(), 0, false, &pack_reader);
-                            if (result != SUCCESS_PACK_RESULT) return neko_dbgui_result_in_progress;
+                            if (pack_reader_is_loaded) {
 
-                            if (result == SUCCESS_PACK_RESULT) itemCount = neko_pack_item_count(pack_reader);
+                            } else {
+                                result = neko_pack_info(file.c_str(), &majorVersion, &minorVersion, &patchVersion, &isLittleEndian, &itemCount);
+                                if (result != SUCCESS_PACK_RESULT) return neko_dbgui_result_in_progress;
 
-                            pack_reader_is_loaded = true;
+                                result = neko_pack_read(file.c_str(), 0, false, &pack_reader);
+                                if (result != SUCCESS_PACK_RESULT) return neko_dbgui_result_in_progress;
+
+                                if (result == SUCCESS_PACK_RESULT) itemCount = neko_pack_item_count(pack_reader);
+
+                                pack_reader_is_loaded = true;
+                            }
+
+                            // 复位变量
+                            filebrowser = false;
+                            file = neko_file_path("data");
+                        }
+                    }
+
+                    if (pack_reader_is_loaded && result == SUCCESS_PACK_RESULT) {
+
+                        static s32 item_current_idx = -1;
+
+                        ImGui::Text(
+                                "包信息:\n"
+                                " 打包版本: %d.%d.%d\n"
+                                " 小端模式: %s\n"
+                                " 文件数量: %llu\n\n",
+                                majorVersion, minorVersion, patchVersion, isLittleEndian ? "true" : "false", (long long unsigned int)itemCount);
+
+                        ImVec2 outer_size = ImVec2(0.0f, ImGui::GetContentRegionMax().y - 250.0f);
+                        if (ImGui::BeginTable("ui_pack_file_table", 4,
+                                              ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersV | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable |
+                                                      ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_Sortable | ImGuiTableFlags_SortMulti,
+                                              outer_size)) {
+                            ImGui::TableSetupScrollFreeze(0, 1);  // Make top row always visible
+                            ImGui::TableSetupColumn("索引", ImGuiTableColumnFlags_WidthFixed, 50.0f);
+                            ImGui::TableSetupColumn("文件名", ImGuiTableColumnFlags_WidthFixed, 550.0f);
+                            ImGui::TableSetupColumn("大小", ImGuiTableColumnFlags_WidthFixed);
+                            ImGui::TableSetupColumn("操作", ImGuiTableColumnFlags_WidthFixed);
+                            ImGui::TableHeadersRow();
+
+                            for (u64 i = 0; i < itemCount; ++i) {
+                                ImGui::PushID(i);
+                                ImGui::TableNextRow(ImGuiTableRowFlags_None);
+                                if (ImGui::TableSetColumnIndex(0)) {
+                                    // if (ImGui::Selectable(std::format("{0}", ).c_str(), item_current_idx, ImGuiSelectableFlags_SpanAllColumns)) {
+                                    //     item_current_idx = i;
+                                    // }
+                                    ImGui::Text("%llu", (long long unsigned int)i);
+                                }
+                                if (ImGui::TableSetColumnIndex(1)) {
+                                    ImGui::Text("%s", neko_pack_item_path(pack_reader, i));
+                                }
+                                if (ImGui::TableSetColumnIndex(2)) {
+                                    ImGui::Text("%u", neko_pack_item_size(pack_reader, i));
+                                }
+                                if (ImGui::TableSetColumnIndex(3)) {
+                                    if (ImGui::SmallButton("查看")) {
+                                        item_current_idx = i;
+                                    }
+                                    ImGui::SameLine();
+                                    if (ImGui::SmallButton("替换")) {
+                                    }
+                                    ImGui::SameLine();
+                                    if (ImGui::SmallButton("删除")) {
+                                    }
+                                }
+                                ImGui::PopID();
+                            }
+
+                            ImGui::EndTable();
                         }
 
-                        // 复位变量
-                        filebrowser = false;
-                        file = neko_file_path("data");
-                    }
-                }
-
-                if (pack_reader_is_loaded && result == SUCCESS_PACK_RESULT) {
-
-                    static int item_current_idx = -1;
-
-                    ImGui::Text(
-                            "包信息:\n"
-                            " 打包版本: %d.%d.%d\n"
-                            " 小端模式: %s\n"
-                            " 文件数量: %llu\n\n",
-                            majorVersion, minorVersion, patchVersion, isLittleEndian ? "true" : "false", (long long unsigned int)itemCount);
-
-                    ImVec2 outer_size = ImVec2(0.0f, ImGui::GetContentRegionMax().y - 250.0f);
-                    if (ImGui::BeginTable("ui_pack_file_table", 4,
-                                          ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersV | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable |
-                                                  ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_Sortable | ImGuiTableFlags_SortMulti,
-                                          outer_size)) {
-                        ImGui::TableSetupScrollFreeze(0, 1);  // Make top row always visible
-                        ImGui::TableSetupColumn("索引", ImGuiTableColumnFlags_WidthFixed, 50.0f);
-                        ImGui::TableSetupColumn("文件名", ImGuiTableColumnFlags_WidthFixed, 550.0f);
-                        ImGui::TableSetupColumn("大小", ImGuiTableColumnFlags_WidthFixed);
-                        ImGui::TableSetupColumn("操作", ImGuiTableColumnFlags_WidthFixed);
-                        ImGui::TableHeadersRow();
-
-                        for (u64 i = 0; i < itemCount; ++i) {
-                            ImGui::PushID(i);
-                            ImGui::TableNextRow(ImGuiTableRowFlags_None);
-                            if (ImGui::TableSetColumnIndex(0)) {
-                                // if (ImGui::Selectable(std::format("{0}", ).c_str(), item_current_idx, ImGuiSelectableFlags_SpanAllColumns)) {
-                                //     item_current_idx = i;
-                                // }
-                                ImGui::Text("%llu", (long long unsigned int)i);
-                            }
-                            if (ImGui::TableSetColumnIndex(1)) {
-                                ImGui::Text("%s", neko_pack_item_path(pack_reader, i));
-                            }
-                            if (ImGui::TableSetColumnIndex(2)) {
-                                ImGui::Text("%u", neko_pack_item_size(pack_reader, i));
-                            }
-                            if (ImGui::TableSetColumnIndex(3)) {
-                                if (ImGui::SmallButton("查看")) {
-                                    item_current_idx = i;
-                                }
-                                ImGui::SameLine();
-                                if (ImGui::SmallButton("替换")) {
-                                }
-                                ImGui::SameLine();
-                                if (ImGui::SmallButton("删除")) {
-                                }
-                            }
-                            ImGui::PopID();
+                        if (item_current_idx >= 0) {
+                            ImGui::Text("文件索引: %u\n包内路径: %s\n文件大小: %u\n", item_current_idx, neko_pack_item_path(pack_reader, item_current_idx),
+                                        neko_pack_item_size(pack_reader, item_current_idx));
                         }
 
-                        ImGui::EndTable();
+                    } else if (result != SUCCESS_PACK_RESULT) {
+                        ImGui::Text("错误: %s.\n", __neko_pack_result(result));
                     }
-
-                    if (item_current_idx >= 0) {
-                        ImGui::Text("文件索引: %u\n包内路径: %s\n文件大小: %u\n", item_current_idx, neko_pack_item_path(pack_reader, item_current_idx),
-                                    neko_pack_item_size(pack_reader, item_current_idx));
-                    }
-
-                } else if (result != SUCCESS_PACK_RESULT) {
-                    ImGui::Text("错误: %s.\n", __neko_pack_result(result));
                 }
+                ImGui::End();
 
                 return neko_dbgui_result_in_progress;
             });
