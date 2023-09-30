@@ -185,8 +185,22 @@ const char *f_src = R"glsl(
 in vec2 texCoord;
 out vec4 frag_color;
 uniform sampler2D u_tex;
+
+#define COLOR_STEP 32.0
+#define PIXEL_SIZE 2.0
+
+vec4 colorize(in vec4 color) {
+
+    // Pixel art coloring
+    vec3 nCol = normalize(color.rgb);
+    float nLen = length(color.rgb);
+    return vec4(nCol * round(nLen * COLOR_STEP) / COLOR_STEP, color.w);
+
+}
+
 void main()
 {
+   //frag_color = colorize(texture(u_tex, texCoord));
    frag_color = texture(u_tex, texCoord);
 }
 )glsl";
@@ -208,30 +222,15 @@ const char *f_3d_src = R"glsl(
 uniform vec4 u_color;
 out vec4 frag_color;
 
-#define COLOR_STEP 6.0
-#define PIXEL_SIZE 4.0
 
-vec4 colorize(in vec4 color) {
 
-    // Pixel art coloring
-    vec3 nCol = normalize(color.rgb);
-    float nLen = length(color.rgb);
-    return vec4(nCol * round(nLen * COLOR_STEP) / COLOR_STEP, color.w);
 
-}
 
-//void mainImage( out vec4 fragColor, in vec2 fragCoord )
-//{
-//    // Pixel Sizing
-//    float ratio = iResolution.y/720.0;
-//    vec2 pixel = round(fragCoord / (PIXEL_SIZE * ratio)) * PIXEL_SIZE * ratio;
-//    vec2 uv = pixel/iResolution.xy;
-//    fragColor = colorize(texture(iChannel0, uv));
-//}
+
 
 void main()
 {
-    frag_color = colorize(u_color); 
+    frag_color = u_color; 
 }
 
 )glsl";
@@ -293,8 +292,8 @@ void render_scene();
 void test_wang();
 void test_sr();
 void test_ut();
-void test_rf();
 void test_se();
+void test_xml();
 
 // 基础容器测试
 
@@ -331,9 +330,6 @@ void print_slot_array(neko_slot_array(object_t) *);
 void print_hash_table(neko_hash_table(u64, object_t) *);
 void object_to_str(object_t *obj, char *str, usize str_sz);
 
-void print_indent(int indent);
-void print_xml_node(neko_xml_node_t *node, int indent);
-
 neko_global neko_sprite g_test_spr = {0};
 
 #pragma region CustomBatch
@@ -352,24 +348,24 @@ out vec4 color;
 out vec4 color_two;
 void main()
 {
-   gl_Position = u_proj * u_view * u_model * vec4(a_pos, 1.0);
-   uv = a_uv;
-   color = a_color;
-   color_two = a_color_two;
+    gl_Position = u_proj * u_view * u_model * vec4(a_pos, 1.0);
+    uv = a_uv;
+    color = a_color;
+    color_two = a_color_two;
 }
 )glsl";
 
 const char *quad_batch_custom_frag_src = R"glsl(
 #version 330
 uniform sampler2D u_tex;
-uniform f32 u_alpha;
+uniform float u_alpha;
 in vec2 uv;
 in vec4 color;
 in vec4 color_two;
 out vec4 frag_color;
 void main()
 {
-   frag_color = vec4((mix(color_two, color, 0.5) * texture(u_tex, uv)).rgb, u_alpha);
+    frag_color = vec4((mix(color_two, color, 0.5) * texture(u_tex, uv)).rgb, u_alpha);
 }
 )glsl";
 
@@ -820,7 +816,7 @@ void drop_file_callback(void *platform_window, s32 count, const char **file_path
             }
 
             // Free texture data
-            neko_safe_free(texture_data);
+            free(texture_data);
         }
     }
 }
@@ -841,6 +837,9 @@ void movement_system(neko_ecs *ecs) {
 
             xform->x += velocity->dx;
             xform->y += velocity->dy;
+
+            velocity->dx /= 2.0f;
+            velocity->dy /= 2.0f;
         }
     }
 }
@@ -866,7 +865,7 @@ void sprite_render_system(neko_ecs *ecs) {
             neko_sprite *spr = sprite->sprite;
             neko_sprite_frame f = spr->frames[index];
 
-            gfx->immediate.draw_rect_textured_ext(cb, 200.f, 200.f, 200.f + spr->width * 4.f, 200.f + spr->height * 4.f, f.u0, f.v0, f.u1, f.v1, sprite->sprite->img.id, neko_color_white);
+            gfx->immediate.draw_rect_textured_ext(cb, xform->x, xform->y, xform->x + spr->width * 4.f, xform->y + spr->height * 4.f, f.u0, f.v0, f.u1, f.v1, sprite->sprite->img.id, neko_color_white);
         }
     }
 }
@@ -884,7 +883,7 @@ void particle_render_system(neko_ecs *ecs) {
 
             neko_particle_renderer_update(particle_render, neko_engine_instance()->ctx.platform->time.current);
 
-            neko_particle_renderer_draw(particle_render, cb);
+            neko_particle_renderer_draw(particle_render, cb, xform);
         }
     }
 }
@@ -912,9 +911,6 @@ neko_global neko_font_index g_basic_font;
 // 内部音频数据的资源句柄 由于音频必须在单独的线程上运行 因此这是必要的
 cs_audio_source_t *piano;
 cs_sound_params_t params = cs_sound_params_default();
-
-neko_sprite_renderer sprite_test = {};
-neko_particle_renderer particle_render = {};
 
 namespace {
 
@@ -947,6 +943,8 @@ neko_inline neko_vec2 screen_to_world_pos(const neko_vec2 &pos) {
     f32 worldY = (g_window_height - pos.y) / g_scale;
     return neko_vec2{worldX, worldY};
 }
+
+#pragma region test_physics
 
 static void DrawBody(neko_phy_body *body) {
     neko_mat22 R = neko_mat22_ctor(body->rotation);
@@ -1201,6 +1199,8 @@ void init_demo(s32 i) {
     }
 }
 
+#pragma endregion
+
 // Here, we'll initialize all of our application data, which in this case is our graphics resources
 neko_result app_init() {
     // Cache instance of api contexts from engine
@@ -1215,8 +1215,8 @@ neko_result app_init() {
     neko_shader_t *_shader = gfx->neko_shader_create("g_shader", v_src, f_src);
 
     // Construct uniform for shader
-    u_tex = gfx->construct_uniform(*_shader, "u_tex", neko_uniform_type_sampler2d);
-    u_flip_y = gfx->construct_uniform(*_shader, "u_flip_y", neko_uniform_type_int);
+    u_tex = gfx->construct_uniform(_shader, "u_tex", neko_uniform_type_sampler2d);
+    u_flip_y = gfx->construct_uniform(_shader, "u_flip_y", neko_uniform_type_int);
 
     // Vertex data layout for our mesh (for this shader, it's a single float2 attribute for position)
     neko_vertex_attribute_type layout[] = {neko_vertex_attribute_float2, neko_vertex_attribute_float2};
@@ -1237,12 +1237,13 @@ neko_result app_init() {
     // Construct index buffer
     g_ibo = gfx->construct_index_buffer(i_data, sizeof(i_data));
 
-    // 测试3d
+// 测试3d
+#if 1
     _shader = gfx->neko_shader_create("g_3d_shader", v_3d_src, f_3d_src);
-    u_color = gfx->construct_uniform(*_shader, "u_color", neko_uniform_type_vec4);
-    u_view = gfx->construct_uniform(*_shader, "u_view", neko_uniform_type_mat4);
-    u_model = gfx->construct_uniform(*_shader, "u_model", neko_uniform_type_mat4);
-    u_proj = gfx->construct_uniform(*_shader, "u_proj", neko_uniform_type_mat4);
+    u_color = gfx->construct_uniform(_shader, "u_color", neko_uniform_type_vec4);
+    u_view = gfx->construct_uniform(_shader, "u_view", neko_uniform_type_mat4);
+    u_model = gfx->construct_uniform(_shader, "u_model", neko_uniform_type_mat4);
+    u_proj = gfx->construct_uniform(_shader, "u_proj", neko_uniform_type_mat4);
 
     // Vertex data layout for our mesh (for this shader, it's a single float3 attribute for position)
     neko_vertex_attribute_type layout_3d[] = {neko_vertex_attribute_float3};
@@ -1292,6 +1293,7 @@ neko_result app_init() {
                        -0.5f, 0.5f,  -0.5f};
     // Construct vertex buffer
     g_3d_vbo = gfx->construct_vertex_buffer(layout_3d, sizeof(layout_3d), v_3d_data, sizeof(v_3d_data));
+#endif
 
     // Construct world data (for now, it'll just be the size of the screen)
     g_world_particle_data = (particle_t *)neko_safe_malloc(g_texture_width * g_texture_height * sizeof(particle_t));
@@ -1356,7 +1358,7 @@ neko_result app_init() {
     // Set material texture uniform
     gfx->set_material_uniform_sampler2d(g_batch.material, "u_tex", g_test_ase, 0);
 
-#ifdef custom_batch
+#if defined(custom_batch) || 0
 
     // 自定义batch
     neko_quad_batch_i *cqb = gfx->quad_batch_i;
@@ -1369,7 +1371,7 @@ neko_result app_init() {
             neko_vertex_attribute_float4   // Color2
     };
 
-    g_custom_batch_shader = gfx->construct_shader(quad_batch_custom_vert_src, quad_batch_custom_frag_src);
+    g_custom_batch_shader = gfx->construct_shader("quad_batch_custom_shader", quad_batch_custom_vert_src, quad_batch_custom_frag_src);
     cqb->set_shader(cqb, g_custom_batch_shader);
     cqb->set_layout(cqb, qb_layout, sizeof(qb_layout));
     cqb->add = &quad_batch_custom_add;
@@ -1434,10 +1436,13 @@ neko_result app_init() {
 
     // 测试用
     neko_ecs_ent e = neko_ecs_ent_make(neko_engine_subsystem(ecs));
-    CTransform xform = {0, 0};
-    CVelocity velocity = {5, 0};
+    CTransform xform = {10, 10};
+    CVelocity velocity = {0, 0};
 
     neko_sprite_load(&g_test_spr, neko_file_path("data/assets/textures/B_witch.ase"));
+
+    neko_sprite_renderer sprite_test = {};
+    neko_particle_renderer particle_render = {};
 
     sprite_test = {.sprite = &g_test_spr};
     neko_sprite_renderer_play(&sprite_test, "Charge_Loop");
@@ -1448,6 +1453,8 @@ neko_result app_init() {
     neko_ecs_ent_add_component(neko_engine_subsystem(ecs), e, COMPONENT_VELOCITY, &velocity);
     neko_ecs_ent_add_component(neko_engine_subsystem(ecs), e, COMPONENT_SPRITE, &sprite_test);
     neko_ecs_ent_add_component(neko_engine_subsystem(ecs), e, COMPONENT_PARTICLE, &particle_render);
+
+    neko_ecs_ent_print(neko_engine_subsystem(ecs), e);
 
     // neko_ecs_ent_destroy(ecs, e);
 
@@ -1515,24 +1522,26 @@ neko_result app_init() {
 
                 pl = cs_play_sound(piano, params);
             }
+            ImGui::SameLine();
 
             if (ImGui::Button("重新播放")) {
                 // audio->restart(g_inst);
             }
+            ImGui::SameLine();
 
             if (ImGui::Button("停止播放")) {
                 // audio->stop(g_inst);
                 cs_sound_set_is_paused(pl, true);
             }
+            ImGui::SameLine();
 
             if (ImGui::Button("Volume up")) {
-                // f32 cur_vol = audio->get_volume(g_inst);
-                // audio->set_volume(g_inst, cur_vol + 0.1f);
+                cs_sound_set_volume(pl, cs_sound_get_volume(pl) + 0.1);
             }
+            ImGui::SameLine();
 
             if (ImGui::Button("Volume down")) {
-                // f32 cur_vol = audio->get_volume(g_inst);
-                // audio->set_volume(g_inst, cur_vol - 0.1f);
+                cs_sound_set_volume(pl, cs_sound_get_volume(pl) - 0.1);
             }
 
             // Can grab current runtime instance data as well
@@ -1568,6 +1577,7 @@ neko_result app_init() {
                 neko_hash_table_clear(g_hash_table);
                 neko_slot_array_clear(g_slot_array);
             }
+            ImGui::SameLine();
 
             if (ImGui::Button("插入元素")) {
                 object_t obj = neko_default_val();
@@ -1580,11 +1590,13 @@ neko_result app_init() {
 
                 g_cur_val++;
             }
+            ImGui::SameLine();
 
             if (ImGui::Button("删除元素")) {
                 neko_dyn_array_pop(g_dyn_array);
                 neko_slot_array_erase(g_slot_array, 0);  // slot 删除元素后 原排列索引不变
             }
+            ImGui::SameLine();
 
             if (ImGui::Button("检查")) {
                 neko_println("");
@@ -1673,19 +1685,8 @@ neko_result app_update() {
                 if (ImGui::Button("test_st")) neko_platform_print_callstack();
                 if (ImGui::Button("test_cvars")) neko_config_print();
                 if (ImGui::Button("test_rand")) neko_info(std::to_string(neko_rand_xorshf32()));
-                if (ImGui::Button("test_xml")) {
+                if (ImGui::Button("test_xml")) test_xml();
 
-                    neko_xml_document_t *doc = neko_xml_parse_file(neko_file_path("data/test/test.xml"));
-                    if (!doc) {
-                        printf("XML Parse Error: %s\n", neko_xml_get_error());
-                    } else {
-                        for (uint32_t i = 0; i < neko_dyn_array_size(doc->nodes); i++) {
-                            neko_xml_node_t *node = doc->nodes + i;
-                            print_xml_node(node, 0);
-                        }
-                        neko_xml_free(doc);
-                    }
-                }
                 ImGui::Image((void *)(intptr_t)g_tex.id, ImVec2(g_texture_width, g_texture_height), ImVec2(0, 0), ImVec2(1, 1));
             }
             ImGui::End();
@@ -1727,27 +1728,27 @@ neko_result app_update() {
     g_frame_counter = (g_frame_counter + 1) % u32_max;
 
     neko_invoke_once(lua_bind::l_G = neko_sc()->neko_lua.get_lua_state(); lua_bind::imgui_init_lua(););
-    // neko_invoke_once(neko_sc()->neko_lua.dostring(R"(
-    //   -- Main window
-    //   local Window = ImGui.new("Window", "example title")
-    //   -- Inner elements
-    //   local Label = ImGui.new("Label", Window)
-    //   local TabSelector = ImGui.new("TabSelector", Window)
-    //   local Tab1 = TabSelector:AddTab("Tab1")
-    //   local Tab2 = TabSelector:AddTab("Tab2")
-    //   local Button = ImGui.new("Button", Tab1)
-    //   local Slider = ImGui.new("Slider", Tab1, true) -- (boolean: 3) aligns it side-by-side !
-    //   local ColorPicker = ImGui.new("ColorPicker", Tab2)
-    //   Label.Text = "这个窗口由Lua脚本控制"
-    //   Slider.Text = "Slider Example"
-    //   Button.Text = "Button Example"
-    //   ColorPicker.Text = "Color Picker Example"
-    //   Slider.Min = -10
-    //   Slider.Max = 10
-    //   Button.Callback = function()
-    //     ImGui.new("Label", Tab1).Text = "Hello world"
-    //   end
-    //       )"););
+    // neko_invoke_once(neko_sc()->neko_lua.run_string(R"(
+    //    -- Main window
+    //    local Window = ImGui.new("Window", "example title")
+    //    -- Inner elements
+    //    local Label = ImGui.new("Label", Window)
+    //    local TabSelector = ImGui.new("TabSelector", Window)
+    //    local Tab1 = TabSelector:AddTab("Tab1")
+    //    local Tab2 = TabSelector:AddTab("Tab2")
+    //    local Button = ImGui.new("Button", Tab1)
+    //    local Slider = ImGui.new("Slider", Tab1, true) -- (boolean: 3) aligns it side-by-side !
+    //    local ColorPicker = ImGui.new("ColorPicker", Tab2)
+    //    Label.Text = "这个窗口由Lua脚本控制"
+    //    Slider.Text = "Slider Example"
+    //    Button.Text = "Button Example"
+    //    ColorPicker.Text = "Color Picker Example"
+    //    Slider.Min = -10
+    //    Slider.Max = 10
+    //    Button.Callback = function()
+    //      ImGui.new("Label", Tab1).Text = "Hello world"
+    //    end
+    //        )"););
     for (auto &w : lua_bind::windows) {
         w.render();
     }
@@ -1812,9 +1813,13 @@ void circleBres(s32 xc, s32 yc, s32 r) {
 
 void update_input() {
 
-    if (ImGui::GetIO().WantCaptureMouse) return;
+    if (ImGui::GetIO().WantCaptureMouse && ImGui::GetIO().WantTextInput) return;
 
     neko_platform_i *platform = neko_engine_instance()->ctx.platform;
+
+    neko_ecs_ent player = neko_ecs_get_ent(neko_engine_subsystem(ecs), 0);
+
+    CVelocity *player_v = static_cast<CVelocity *>(neko_ecs_ent_get_component(neko_engine_subsystem(ecs), player, COMPONENT_VELOCITY));
 
     if (platform->key_pressed(neko_keycode_i)) {
         g_show_material_selection_panel = !g_show_material_selection_panel;
@@ -1858,17 +1863,22 @@ void update_input() {
     if (platform->key_down(neko_keycode_e)) {
         g_camera.ortho_scale -= 0.1f;
     }
+
     if (platform->key_down(neko_keycode_a)) {
         g_camera.transform.position.x -= 0.1f;
+        player_v->dx -= 2.1f;
     }
     if (platform->key_down(neko_keycode_d)) {
         g_camera.transform.position.x += 0.1f;
+        player_v->dx += 2.1f;
     }
     if (platform->key_down(neko_keycode_w)) {
         g_camera.transform.position.y += 0.1f;
+        player_v->dy -= 2.1f;
     }
     if (platform->key_down(neko_keycode_s)) {
         g_camera.transform.position.y -= 0.1f;
+        player_v->dy += 2.1f;
     }
 
     f32 wx = 0, wy = 0;
@@ -1889,6 +1899,8 @@ void update_input() {
         memset(g_texture_buffer, 0, sizeof(cell_color_t) * g_texture_width * g_texture_height);
         memset(g_world_particle_data, 0, sizeof(particle_t) * g_texture_width * g_texture_height);
     }
+
+    if (ImGui::GetIO().WantCaptureMouse) return;
 
     // Mouse input for testing
     if (platform->mouse_down(neko_mouse_lbutton)) {
@@ -2007,23 +2019,40 @@ void update_particle_sim() {
             // Update particle's lifetime (I guess just use frames)? Or should I have sublife?
             g_world_particle_data[read_idx].life_time += 1.f * dt;
 
-#define __mat_case(name)       \
-    case mat_id_##name:        \
-        update_##name##(x, y); \
-        break
-
             switch (mat_id) {
-                __mat_case(sand);
-                __mat_case(water);
-                __mat_case(salt);
-                __mat_case(fire);
-                __mat_case(smoke);
-                __mat_case(ember);
-                __mat_case(steam);
-                __mat_case(gunpowder);
-                __mat_case(oil);
-                __mat_case(lava);
-                __mat_case(acid);
+                case mat_id_sand:
+                    update_sand(x, y);
+                    break;
+                case mat_id_water:
+                    update_water(x, y);
+                    break;
+                case mat_id_salt:
+                    update_salt(x, y);
+                    break;
+                case mat_id_fire:
+                    update_fire(x, y);
+                    break;
+                case mat_id_smoke:
+                    update_smoke(x, y);
+                    break;
+                case mat_id_ember:
+                    update_ember(x, y);
+                    break;
+                case mat_id_steam:
+                    update_steam(x, y);
+                    break;
+                case mat_id_gunpowder:
+                    update_gunpowder(x, y);
+                    break;
+                case mat_id_oil:
+                    update_oil(x, y);
+                    break;
+                case mat_id_lava:
+                    update_lava(x, y);
+                    break;
+                case mat_id_acid:
+                    update_acid(x, y);
+                    break;
                     // Do nothing for empty or default case
                 default:
                 case mat_id_empty: {
@@ -2032,7 +2061,6 @@ void update_particle_sim() {
             }
         }
     }
-#undef __mat_case
 
     // Can remove this loop later on by keeping update structure and setting that for the particle as it moves,
     // then at the end of frame just memsetting the entire structure to 0.
@@ -2230,11 +2258,11 @@ void render_scene() {
 
     const f32 _t = platform->elapsed_time();
 
-    // Add some stuff to the quad batch
+#if 0
     gfx->quad_batch_begin(qb);
     {
-        neko_for_range_i(100) {
-            neko_for_range_j(100) {
+        neko_for_range_i(10) {
+            neko_for_range_j(10) {
                 neko_default_quad_info_t quad_info = {0};
                 quad_info.transform = neko_vqs_default();
                 quad_info.transform.position = neko_vec3{(f32)i, (f32)j, 0.f};
@@ -2245,13 +2273,13 @@ void render_scene() {
         }
     }
     gfx->quad_batch_end(qb);
+#endif
 
-#ifdef custom_batch
-    // Add 10k items to batch
+#if defined(custom_batch) || 0
     gfx->quad_batch_begin(cqb);
     {
-        neko_for_range_i(100) {
-            neko_for_range_j(100) {
+        neko_for_range_i(10) {
+            neko_for_range_j(10) {
                 // Instance of our custom quad batch info struct
                 quad_batch_custom_info_t quad_info = {0};
 
@@ -2268,7 +2296,7 @@ void render_scene() {
     gfx->quad_batch_end(cqb);
 #endif
 
-    neko_shader_t _shader = *gfx->neko_shader_get("g_shader");
+    neko_shader_t *_shader = gfx->neko_shader_get("g_shader");
 
     // Upload our updated texture data to GPU
     neko_texture_parameter_desc t_desc = neko_texture_parameter_desc_default();
@@ -2375,6 +2403,7 @@ void render_scene() {
         gfx->draw_indexed(cb, 6, 0);
     }
 
+#if 0
     {
         // Create model/view/projection matrices from camera
         neko_mat4 view_mtx = neko_camera_get_view(&g_camera);
@@ -2389,8 +2418,9 @@ void render_scene() {
         // Need to submit quad batch
         gfx->quad_batch_submit(cb, qb);
     }
+#endif
 
-#ifdef custom_batch
+#if defined(custom_batch) || 0
     {
         // Create model/view/projection matrices from camera
         neko_mat4 view_mtx = neko_camera_get_view(&g_camera);
@@ -2408,9 +2438,10 @@ void render_scene() {
     }
 #endif
 
-    // 3d
+// 3d
+#if 1
     {
-        _shader = *gfx->neko_shader_get("g_3d_shader");
+        _shader = gfx->neko_shader_get("g_3d_shader");
 
         // Bind shader
         gfx->bind_shader(cb, _shader);
@@ -2438,6 +2469,7 @@ void render_scene() {
         // Draw
         gfx->draw(cb, 0, 36);
     }
+#endif
 
     gfx->immediate.begin_drawing(cb);
     {
@@ -2446,6 +2478,7 @@ void render_scene() {
 
         neko_ecs_run_systems(neko_engine_subsystem(ecs), ECS_SYSTEM_RENDER_IMMEDIATE);
 
+#if 0
         gfx->immediate.begin_2d(cb);
         {
             // gfx->immediate.draw_line_ext(cb, {9.f, 9.f}, {400.f, 400.f}, 4.f, neko_color_white);
@@ -2466,6 +2499,7 @@ void render_scene() {
             }
         }
         gfx->immediate.end_2d(cb);
+#endif
 
         // neko_snprintfc(fps_text, 256, "fps: %.2f", 1000.f / platform->time.frame);
         // gfx->immediate.draw_text(cb, 410.f, 420.f, fps_text, neko_color_white);
@@ -4573,50 +4607,6 @@ void print_hash_table(neko_hash_table(u64, object_t) * ht) {
 }
 
 void object_to_str(object_t *obj, char *str, usize str_sz) { neko_snprintf(str, str_sz, "{ %.2f, %zu }", obj->float_value, obj->uint_value); }
-
-void print_indent(int indent) {
-    for (int i = 0; i < indent; i++) {
-        putc('\t', stdout);
-    }
-}
-
-void print_xml_node(neko_xml_node_t *node, int indent) {
-    print_indent(indent);
-    printf("XML Node: %s\n", node->name);
-    print_indent(indent);
-    printf("\tText: %s\n", node->text);
-    print_indent(indent);
-    puts("\tAttributes:");
-    for (neko_hash_table_iter(u64, neko_xml_attribute_t) it = neko_hash_table_iter_new(node->attributes); neko_hash_table_iter_valid(node->attributes, it);
-         neko_hash_table_iter_advance(node->attributes, it)) {
-        // neko_xml_attribute_t attrib = neko_hash_table_iter_get(node->attributes, it);
-        neko_xml_attribute_t attrib = it.data->val;
-
-        print_indent(indent);
-        printf("\t\t%s: ", attrib.name);
-        switch (attrib.type) {
-            case NEKO_XML_ATTRIBUTE_NUMBER:
-                printf("(number) %g\n", attrib.value.number);
-                break;
-            case NEKO_XML_ATTRIBUTE_BOOLEAN:
-                printf("(boolean) %s\n", attrib.value.boolean ? "true" : "false");
-                break;
-            case NEKO_XML_ATTRIBUTE_STRING:
-                printf("(string) %s\n", attrib.value.string);
-                break;
-            default:
-                break;  // Unreachable
-        }
-    }
-
-    if (neko_dyn_array_size(node->children) > 0) {
-        print_indent(indent);
-        printf("\t = Children = \n");
-        for (uint32_t i = 0; i < neko_dyn_array_size(node->children); i++) {
-            print_xml_node(node->children + i, indent + 1);
-        }
-    }
-}
 
 #define STB_HBWANG_RAND() neko_rand_xorshf32()
 #define STB_HBWANG_IMPLEMENTATION
