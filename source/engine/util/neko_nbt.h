@@ -96,29 +96,29 @@ typedef enum {
 
 typedef enum { NBT_WRITE_FLAG_USE_RAW = 1 } neko_nbt_write_flags_t;
 
-neko_nbt_tag_t* neko_nbt_parse(neko_nbt_reader_t reader, int parse_flags);
-void neko_nbt_write(neko_nbt_writer_t writer, neko_nbt_tag_t* tag, int write_flags);
+NEKO_API_DECL neko_nbt_tag_t* neko_nbt_parse(neko_nbt_reader_t reader, int parse_flags);
+NEKO_API_DECL void neko_nbt_write(neko_nbt_writer_t writer, neko_nbt_tag_t* tag, int write_flags);
 
-neko_nbt_tag_t* neko_nbt_new_tag_byte(s8 value);
-neko_nbt_tag_t* neko_nbt_new_tag_short(s16 value);
-neko_nbt_tag_t* neko_nbt_new_tag_int(s32 value);
-neko_nbt_tag_t* neko_nbt_new_tag_long(s64 value);
-neko_nbt_tag_t* neko_nbt_new_tag_float(float value);
-neko_nbt_tag_t* neko_nbt_new_tag_double(double value);
-neko_nbt_tag_t* neko_nbt_new_tag_byte_array(s8* value, size_t size);
-neko_nbt_tag_t* neko_nbt_new_tag_string(const char* value, size_t size);
-neko_nbt_tag_t* neko_nbt_new_tag_list(neko_nbt_tag_type_t type);
-neko_nbt_tag_t* neko_nbt_new_tag_compound(void);
-neko_nbt_tag_t* neko_nbt_new_tag_int_array(s32* value, size_t size);
-neko_nbt_tag_t* neko_nbt_new_tag_long_array(s64* value, size_t size);
+NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_byte(s8 value);
+NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_short(s16 value);
+NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_int(s32 value);
+NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_long(s64 value);
+NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_float(float value);
+NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_double(double value);
+NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_byte_array(s8* value, size_t size);
+NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_string(const char* value, size_t size);
+NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_list(neko_nbt_tag_type_t type);
+NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_compound(void);
+NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_int_array(s32* value, size_t size);
+NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_long_array(s64* value, size_t size);
 
-void neko_nbt_set_tag_name(neko_nbt_tag_t* tag, const char* name, size_t size);
+NEKO_API_DECL void neko_nbt_set_tag_name(neko_nbt_tag_t* tag, const char* name, size_t size);
 
-void neko_nbt_tag_list_append(neko_nbt_tag_t* list, neko_nbt_tag_t* value);
-neko_nbt_tag_t* neko_nbt_tag_list_get(neko_nbt_tag_t* tag, size_t index);
-void neko_nbt_tag_compound_append(neko_nbt_tag_t* compound, neko_nbt_tag_t* value);
-neko_nbt_tag_t* neko_nbt_tag_compound_get(neko_nbt_tag_t* tag, const char* key);
+NEKO_API_DECL void neko_nbt_tag_list_append(neko_nbt_tag_t* list, neko_nbt_tag_t* value);
+NEKO_API_DECL neko_nbt_tag_t* neko_nbt_tag_list_get(neko_nbt_tag_t* tag, size_t index);
+NEKO_API_DECL void neko_nbt_tag_compound_append(neko_nbt_tag_t* compound, neko_nbt_tag_t* value);
+NEKO_API_DECL neko_nbt_tag_t* neko_nbt_tag_compound_get(neko_nbt_tag_t* tag, const char* key);
 
-void neko_nbt_free_tag(neko_nbt_tag_t* tag);
+NEKO_API_DECL void neko_nbt_free_tag(neko_nbt_tag_t* tag);
 
 #endif

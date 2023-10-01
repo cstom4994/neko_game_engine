@@ -10,12 +10,10 @@
 #include <tuple>
 #include <vector>
 
-#include "engine/base/neko_engine.h"
-#include "engine/common/neko_util.h"
-#include "engine/gui/imgui_impl/imgui_impl_glfw.h"
-#include "engine/gui/imgui_impl/imgui_impl_opengl3.h"
-#include "engine/platform/neko_platform.h"
 #include "libs/glad/glad.h"
+
+// glfw
+#include <GLFW/glfw3.h>
 
 namespace neko::imgui {
 
@@ -116,15 +114,6 @@ void neko_imgui_style() {
     colors[ImGuiCol_PlotLinesHovered] = panelHoverColor;
     colors[ImGuiCol_PlotHistogram] = panelActiveColor;
     colors[ImGuiCol_PlotHistogramHovered] = panelHoverColor;
-    // colors[ImGuiCol_ModalWindowDarkening] = bgColor;
-    colors[ImGuiCol_DragDropTarget] = bgColor;
-    colors[ImGuiCol_NavHighlight] = bgColor;
-    colors[ImGuiCol_DockingPreview] = panelActiveColor;
-    colors[ImGuiCol_Tab] = bgColor;
-    colors[ImGuiCol_TabActive] = panelActiveColor;
-    colors[ImGuiCol_TabUnfocused] = bgColor;
-    colors[ImGuiCol_TabUnfocusedActive] = panelActiveColor;
-    colors[ImGuiCol_TabHovered] = panelHoverColor;
 
     style.WindowRounding = 4.0f;
     style.ChildRounding = 4.0f;
@@ -132,7 +121,6 @@ void neko_imgui_style() {
     style.GrabRounding = 4.0f;
     style.PopupRounding = 4.0f;
     style.ScrollbarRounding = 0.0f;
-    style.TabRounding = 0.0f;
 }
 
 void neko_draw_text_plate(std::string text, neko_color_t col, int x, int y, neko_color_t backcolor) {
@@ -180,63 +168,10 @@ namespace neko {
 
 neko_global std::size_t g_imgui_mem_usage = 0;
 
-neko_private(void*) __neko_imgui_malloc(size_t sz, void* user_data) { return __neko_mem_safe_alloc((sz), (char*)__FILE__, __LINE__, &g_imgui_mem_usage); }
+neko_private(void*) __neko_imgui_malloc(size_t sz) { return __neko_mem_safe_alloc((sz), (char*)__FILE__, __LINE__, &g_imgui_mem_usage); }
 
-neko_private(void) __neko_imgui_free(void* ptr, void* user_data) { __neko_mem_safe_free(ptr, &g_imgui_mem_usage); }
+neko_private(void) __neko_imgui_free(void* ptr) { __neko_mem_safe_free(ptr, &g_imgui_mem_usage); }
 
 std::size_t __neko_imgui_meminuse() { return g_imgui_mem_usage; }
-
-void neko_imgui_init() {
-    neko_platform_i* platform = neko_engine_instance()->ctx.platform;
-
-    // Get main window from platform
-    GLFWwindow* win = (GLFWwindow*)platform->raw_window_handle(platform->main_window());
-
-    ImGui::SetAllocatorFunctions(__neko_imgui_malloc, __neko_imgui_free);
-
-    // Setup Dear ImGui context
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
-
-    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-    // io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-
-    io.IniFilename = "imgui.ini";
-
-    io.Fonts->AddFontFromFileTTF(neko_file_path("data/assets/fonts/fusion-pixel-12px-monospaced.ttf"), 20.0f, NULL, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
-
-    // Setup Dear ImGui style
-    ImGui::StyleColorsDark();
-
-    neko_imgui_style();
-
-    // Setup Platform/Renderer bindings
-    ImGui_ImplGlfw_InitForOpenGL(win, true);
-    ImGui_ImplOpenGL3_Init();
-}
-
-void neko_imgui_new_frame() {
-    // Start the Dear ImGui frame
-    ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
-    ImGui::NewFrame();
-}
-
-void neko_imgui_render() {
-    neko_platform_i* platform = neko_engine_instance()->ctx.platform;
-
-    // TODO: 将这一切抽象出来并通过命令缓冲系统渲染
-    ImGui::Render();
-    neko_vec2 fbs = platform->frame_buffer_size(platform->main_window());
-    glViewport(0, 0, fbs.x, fbs.y);
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-}
-
-void neko_imgui_destroy() {
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
-}
 
 }  // namespace neko

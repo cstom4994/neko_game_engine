@@ -8,8 +8,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include "libs/stb/stb_truetype.h"
 #include "engine/neko_engine.h"
+#include "libs/stb/stb_truetype.h"
 
 #ifndef NEKO_FONTCACHE_CURNEKO_QUALITY
 #define NEKO_FONTCACHE_CURNEKO_QUALITY 6
@@ -117,22 +117,22 @@ inline neko_vec2 neko_fontcache_make_vec2(float x_, float y_) {
 }
 
 struct neko_fontcache_draw {
-    uint32_t pass = 0;  // One of NEKO_FONTCACHE_FRAMEBUFFER_PASS_* values.
-    uint32_t start_index = 0;
-    uint32_t end_index = 0;
+    u32 pass = 0;  // One of NEKO_FONTCACHE_FRAMEBUFFER_PASS_* values.
+    u32 start_index = 0;
+    u32 end_index = 0;
     bool clear_before_draw = false;
-    uint32_t region = 0;
+    u32 region = 0;
     float colour[4] = {1.0f, 1.0f, 1.0f, 1.0f};
 };
 
 struct neko_fontcache_drawlist {
     std::vector<neko_fontcache_vertex> vertices;
-    std::vector<uint32_t> indices;
+    std::vector<u32> indices;
     std::vector<neko_fontcache_draw> dcalls;
 };
 
-typedef uint32_t neko_fontcache_poollist_itr;
-typedef uint64_t neko_fontcache_poollist_value;
+typedef u32 neko_fontcache_poollist_itr;
+typedef u64 neko_fontcache_poollist_value;
 
 struct neko_fontcache_poollist_item {
     neko_fontcache_poollist_itr prev = -1;
@@ -156,22 +156,22 @@ struct neko_fontcache_LRU_link {
 
 struct neko_fontcache_LRU {
     int capacity = 0;
-    std::unordered_map<uint64_t, neko_fontcache_LRU_link> cache;
+    std::unordered_map<u64, neko_fontcache_LRU_link> cache;
     neko_fontcache_poollist key_queue;
 };
 
 struct neko_fontcache_atlas {
-    uint32_t next_atlas_idx_A = 0;
-    uint32_t next_atlas_idx_B = 0;
-    uint32_t next_atlas_idx_C = 0;
-    uint32_t next_atlas_idx_D = 0;
+    u32 next_atlas_idx_A = 0;
+    u32 next_atlas_idx_B = 0;
+    u32 next_atlas_idx_C = 0;
+    u32 next_atlas_idx_D = 0;
 
     neko_fontcache_LRU stateA;
     neko_fontcache_LRU stateB;
     neko_fontcache_LRU stateC;
     neko_fontcache_LRU stateD;
 
-    uint32_t glyph_update_batch_x = 0;
+    u32 glyph_update_batch_x = 0;
     neko_fontcache_drawlist glyph_update_batch_clear_drawlist;
     neko_fontcache_drawlist glyph_update_batch_drawlist;
 };
@@ -185,17 +185,17 @@ struct neko_fontcache_shaped_text {
 struct neko_fontcache_shaped_text_cache {
     std::vector<neko_fontcache_shaped_text> storage;
     neko_fontcache_LRU state;
-    uint32_t next_cache_idx = 0;
+    u32 next_cache_idx = 0;
 };
 
 struct neko_fontcache {
     std::vector<neko_fontcache_entry> entry;
 
     std::vector<neko_vec2> temp_path;
-    std::unordered_map<uint64_t, bool> temp_codepoint_seen;
+    std::unordered_map<u64, bool> temp_codepoint_seen;
 
-    uint32_t snap_width = 0;
-    uint32_t snap_height = 0;
+    u32 snap_width = 0;
+    u32 snap_height = 0;
     float colour[4] = {1.0f, 1.0f, 1.0f, 1.0f};
     neko_vec2 cursor_pos;
 
@@ -210,7 +210,7 @@ struct neko_fontcache {
 void __neko_fontcache_init(neko_fontcache* cache);
 
 // 调用此命令可以关闭字体缓存所有内容
-void __neko_fontcache_shutdown(neko_fontcache* cache);
+void __neko_fontcache_destroy(neko_fontcache* cache);
 
 // 从内存缓冲区加载 hb_font 支持 otf,ttf,STB_truetype 支持的所有内容
 // 调用者仍然拥有数据并且必须保留它 当 hb_font 仍在使用时 无法释放该缓冲区
@@ -228,7 +228,7 @@ ve_font_id __neko_fontcache_loadfile(neko_fontcache* cache, const char* filename
 void __neko_fontcache_unload(neko_fontcache* cache, ve_font_id id);
 
 // 当 hb 字体渲染到 2D 屏幕时 配置将字形捕捉到像素边框 可能会影响字距调整 这可能随时更改 // 将两者设置为零以禁用像素捕捉
-void __neko_fontcache_configure_snap(neko_fontcache* cache, uint32_t snap_width = 0, uint32_t snap_height = 0);
+void __neko_fontcache_configure_snap(neko_fontcache* cache, u32 snap_width = 0, u32 snap_height = 0);
 
 // 在执行绘制列表后每帧调用此函数 这将清除下一帧的绘制列表
 void __neko_fontcache_flush_drawlist(neko_fontcache* cache);
@@ -262,10 +262,10 @@ neko_fontcache_poollist_value __neko_fontcache_poollist_pop_back(neko_fontcache_
 
 // 通用 LRU（Least-Recently-Used）缓存实现 可重用于图集和形状缓存
 void __neko_fontcache_LRU_init(neko_fontcache_LRU& LRU, int capacity);
-int __neko_fontcache_LRU_get(neko_fontcache_LRU& LRU, uint64_t key);
-int __neko_fontcache_LRU_peek(neko_fontcache_LRU& LRU, uint64_t key);
-uint64_t __neko_fontcache_LRU_put(neko_fontcache_LRU& LRU, uint64_t key, int val);
-void __neko_fontcache_LRU_refresh(neko_fontcache_LRU& LRU, uint64_t key);
-uint64_t __neko_fontcache_LRU_get_next_evicted(neko_fontcache_LRU& LRU);
+int __neko_fontcache_LRU_get(neko_fontcache_LRU& LRU, u64 key);
+int __neko_fontcache_LRU_peek(neko_fontcache_LRU& LRU, u64 key);
+u64 __neko_fontcache_LRU_put(neko_fontcache_LRU& LRU, u64 key, int val);
+void __neko_fontcache_LRU_refresh(neko_fontcache_LRU& LRU, u64 key);
+u64 __neko_fontcache_LRU_get_next_evicted(neko_fontcache_LRU& LRU);
 
 bool __neko_fontcache_cache_glyph(neko_fontcache* cache, ve_font_id font, ve_glyph glyph_index, float scaleX = 1.0f, float scaleY = 1.0f, float translateX = 0.0f, float translateY = 0.0f);

@@ -109,6 +109,8 @@ NEKO_API_DECL void neko_idraw_v3fv(neko_immediate_draw_t* neko_idraw, neko_vec3 
 NEKO_API_DECL void neko_idraw_flush(neko_immediate_draw_t* neko_idraw);
 NEKO_API_DECL void neko_idraw_texture(neko_immediate_draw_t* neko_idraw, neko_handle(neko_graphics_texture_t) texture);
 
+NEKO_API_DECL void neko_idraw_rect_2d_textured_ext(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 x1, f32 y1, f32 u0, f32 v0, f32 u1, f32 v1, u32 tex_id, neko_color_t color);
+
 // Core pipeline functions
 NEKO_API_DECL void neko_idraw_blend_enabled(neko_immediate_draw_t* neko_idraw, bool enabled);
 NEKO_API_DECL void neko_idraw_depth_enabled(neko_immediate_draw_t* neko_idraw, bool enabled);

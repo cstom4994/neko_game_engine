@@ -1,25 +1,124 @@
 // Copyright(c) 2022-2023, KaoruXun All rights reserved.
 
-#include "neko_scripting.h"
+#ifndef NEKO_SCRIPTING_H
+#define NEKO_SCRIPTING_H
 
 #include <cstring>
 #include <filesystem>
 #include <format>
+#include <functional>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "engine/base/neko_ecs.h"
-#include "engine/base/neko_engine.h"
-#include "engine/common/neko_str.h"
-#include "engine/platform/neko_platform.h"
-#include "engine/scripting/neko_binding_engine.h"
+#include "engine/neko.h"
+#include "engine/neko_containers.h"
+#include "engine/neko_engine.h"
+
+// lua
+#include "engine/util/neko_lua.h"
+
+// binding
+#include "neko_binding_engine.h"
+
+struct lua_State;
+
+template <typename T>
+neko_static_inline void struct_as(std::string &s, const char *table, const char *key, const T &value) {
+    s += std::format("{0}.{1} = {2}\n", table, key, value);
+}
+
+template <>
+neko_static_inline void struct_as(std::string &s, const char *table, const char *key, const std::string &value) {
+    s += std::format("{0}.{1} = \"{2}\"\n", table, key, value);
+}
+
+using ppair = std::pair<const char *, const void *>;
+
+struct test_visitor {
+    std::vector<ppair> result;
+
+    template <typename T>
+    void operator()(const char *name, const T &t) {
+        result.emplace_back(ppair{name, static_cast<const void *>(&t)});
+    }
+};
+
+template <typename T>
+void SaveLuaConfig(const T &_struct, const char *table_name, std::string &out) {
+    ME::meta::dostruct::for_each(_struct, [&](const char *name, const auto &value) {
+        // METADOT_INFO("{} == {} ({})", name, value, typeid(value).name());
+        struct_as(out, table_name, name, value);
+    });
+}
+
+#define LoadLuaConfig(_struct, _luat, _c) _struct->_c = _luat[#_c].get<decltype(_struct->_c)>()
+
+// template<typename T>
+// void LoadLuaConfig(const T &_struct, lua_wrapper::LuaTable *luat) {
+//     int idx = 0;
+//     test_visitor vis;
+//     ME::meta::dostruct::apply_visitor(vis, _struct);
+//     ME::meta::dostruct::for_each(_struct, [&](const char *name, const auto &value) {
+//         // (*ME::meta::dostruct::get_pointer<idx>()) =
+//         //         (*luat)[name].get<decltype(ME::meta::dostruct::get<idx>(_struct))>();
+//         // (*vis1.result[idx].first) = (*luat)[name].get<>();
+//     });
+// }
+
+void print_error(lua_State *state, int result = 0);
+void script_runfile(const char *filePath);
+
+template <class T>
+struct scripting_auto_reg {
+public:
+    typedef typename T TEMPLATE_T;
+    scripting_auto_reg() { auto_reg; }
+
+private:
+    struct type_registrator {
+        type_registrator() { TEMPLATE_T::reg(); }
+    };
+
+    static const type_registrator auto_reg;
+};
+
+template <class T>
+typename const scripting_auto_reg<T>::type_registrator scripting_auto_reg<T>::auto_reg;
+
+class neko_scripting : public scripting_auto_reg<neko_scripting> {
+public:
+    static void reg() {}
+};
+
+neko_inline int add_package_path(lua_State *L, const std::string &str_) {
+    std::string new_path = "package.path = package.path .. \"";
+    if (str_.empty()) {
+        return -1;
+    }
+
+    if (str_[0] != ';') {
+        new_path += ";";
+    }
+
+    new_path += str_;
+
+    if (str_[str_.length() - 1] != '/') {
+        new_path += "/";
+    }
+
+    new_path += "?.lua\" ";
+
+    neko_lua_wrap_run_string(L, new_path);
+    return 0;
+}
 
 #define FUTIL_ASSERT_EXIST(x)
 
-namespace neko {
+neko_string __neko_platform_get_path(const neko_string &path);
 
 // lua 面向对象模拟
 const neko_string neko_lua_src_object = R"lua(
@@ -78,24 +177,24 @@ end
 
 void print_error(lua_State *state, int result) {
     const char *message = lua_tostring(state, -1);
-    neko_error("LuaScript ERROR:\n  ", (message ? message : "no message"));
+    neko_log_error("LuaScript ERROR:\n  %s", (message ? message : "no message"));
 
     if (result != 0) {
         switch (result) {
             case LUA_ERRRUN:
-                neko_error("Lua Runtime error");
+                neko_log_error("Lua Runtime error");
                 break;
             case LUA_ERRSYNTAX:
-                neko_error("Lua syntax error");
+                neko_log_error("Lua syntax error");
                 break;
             case LUA_ERRMEM:
-                neko_error("Lua was unable to allocate the required memory");
+                neko_log_error("Lua was unable to allocate the required memory");
                 break;
             case LUA_ERRFILE:
-                neko_error("Lua was unable to find boot file");
+                neko_log_error("Lua was unable to find boot file");
                 break;
             default:
-                neko_error("Unknown lua error: %d", result);
+                neko_log_error("Unknown lua error: %d", result);
         }
     }
 
@@ -159,9 +258,7 @@ static void InitLua(neko_scripting *lc) {
 
 static void lua_reg_ecs(lua_State *L);
 
-static void lua_reg(neko_lua_wrap_t &lua) {
-
-    lua_State *L = lua.get_lua_state();
+static void lua_reg(lua_State *L) {
 
     lua_reg_ecs(L);
 
@@ -169,59 +266,59 @@ static void lua_reg(neko_lua_wrap_t &lua) {
     luaopen_cstruct_test(L);
     luaopen_datalist(L);
 
-    neko_register(lua);
+    neko_register(L);
 
     neko_lua_debug_setup(L, "debugger", "dbg", NULL, NULL);
 }
 
 static int __neko_lua_catch_panic(lua_State *L) {
     const char *msg = lua_tostring(L, -1);
-    neko_error("[lua] panic error: ", msg);
+    neko_log_error("[lua] panic error: %s", msg);
     return 0;
 }
 
-void neko_scripting::__init() {
+lua_State *neko_scripting_init() {
     neko_timer timer;
     timer.start();
 
+    lua_State *L = neko_lua_wrap_create();
+
     try {
 
-        neko_lua.setModFuncFlag(true);
+        lua_atpanic(L, __neko_lua_catch_panic);
 
-        lua_atpanic(neko_lua.get_lua_state(), __neko_lua_catch_panic);
+        lua_reg(L);
 
-        lua_reg(neko_lua);
+        add_package_path(L, "./");
 
-        add_package_path("./");
+        neko_lua_wrap_run_string(L, std::format("package.path = "
+                                                "'{1}/?.lua;{0}/?.lua;{0}/libs/?.lua;{0}/libs/?/init.lua;{0}/libs/"
+                                                "?/?.lua;' .. package.path",
+                                                __neko_platform_get_path("data/scripts"), neko_fs_normalize_path(std::filesystem::current_path().string()).c_str()));
 
-        neko_lua.run_string(
-                std::format("package.path = "
-                            "'{1}/?.lua;{0}/?.lua;{0}/libs/?.lua;{0}/libs/?/init.lua;{0}/libs/"
-                            "?/?.lua;' .. package.path",
-                            neko_file_path("data/scripts"), neko_fs_normalize_path(std::filesystem::current_path().string()).c_str()));
-
-        neko_lua.run_string(
-                std::format("package.cpath = "
-                            "'{1}/?.{2};{0}/?.{2};{0}/libs/?.{2};{0}/libs/?/init.{2};{0}/libs/"
-                            "?/?.{2};' .. package.cpath",
-                            neko_file_path("data/scripts"), neko_fs_normalize_path(std::filesystem::current_path().string()).c_str(), "dll"));
+        neko_lua_wrap_run_string(L, std::format("package.cpath = "
+                                                "'{1}/?.{2};{0}/?.{2};{0}/libs/?.{2};{0}/libs/?/init.{2};{0}/libs/"
+                                                "?/?.{2};' .. package.cpath",
+                                                __neko_platform_get_path("data/scripts"), neko_fs_normalize_path(std::filesystem::current_path().string()).c_str(), "dll"));
 
         // 面向对象基础
-        neko_lua.run_string(neko_lua_src_object);
+        neko_lua_wrap_run_string(L, neko_lua_src_object);
 
-        neko_lua.do_file(neko_file_path("data/scripts/init.lua"));
+        neko_lua_wrap_do_file(L, __neko_platform_get_path("data/scripts/init.lua"));
 
     } catch (std::exception &ex) {
-        neko_error(ex.what());
+        neko_log_error("%s", ex.what());
     }
 
     timer.stop();
-    neko_info(std::format("lua loading done in {0:.4f} ms", timer.get()));
+    neko_log_info(std::format("lua loading done in {0:.4f} ms", timer.get()).c_str());
+
+    return L;
 }
 
-void neko_scripting::__end() {}
+void neko_scripting_end(lua_State *L) { neko_lua_wrap_destory(L); }
 
-void neko_scripting::update() {
+void neko_scripting_update() {
     // luaL_loadstring(_struct->L, s_couroutineFileSrc.c_str());
     // if (__neko_lua_debug_pcall(_struct->L, 0, LUA_MULTRET, 0) != LUA_OK) {
     //     print_error(_struct->L);
@@ -232,9 +329,9 @@ void neko_scripting::update() {
     // OnUpdate();
 }
 
-void neko_scripting::update_render() {}
+void neko_scripting_update_render() {}
 
-void neko_scripting::update_tick() {}
+void neko_scripting_update_tick() {}
 
 static void lua_reg_ecs(lua_State *L) {
     // neko_lua_register_t<>(L)
@@ -258,4 +355,4 @@ static void lua_reg_ecs(lua_State *L) {
     //         .def(&neko_ecs_ent_print, "neko_ecs_ent_print");
 }
 
-}  // namespace neko
+#endif

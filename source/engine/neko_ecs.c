@@ -7,7 +7,7 @@ typedef struct {
     u32 *data;
     u64 capacity;
     u64 top;
-    bool empty;
+    b32 empty;
 } neko_ecs_stack;
 
 typedef struct {
@@ -51,7 +51,7 @@ struct neko_ecs {
 };
 
 neko_ecs_stack *neko_ecs_stack_make(u64 capacity) {
-    neko_ecs_stack *s = (neko_ecs_stack *)neko_malloc(sizeof(*s));
+    neko_ecs_stack *s = (neko_ecs_stack *)neko_malloc(sizeof(neko_ecs_stack));
     s->data = (u32 *)neko_malloc(sizeof(*s->data) * capacity);
     s->capacity = capacity;
     s->top = 0;
@@ -65,9 +65,9 @@ void neko_ecs_stack_destroy(neko_ecs_stack *s) {
     neko_free(s);
 }
 
-bool neko_ecs_stack_empty(neko_ecs_stack *s) { return s->empty; }
+b32 neko_ecs_stack_empty(neko_ecs_stack *s) { return s->empty; }
 
-bool neko_ecs_stack_full(neko_ecs_stack *s) { return s->top == s->capacity; }
+b32 neko_ecs_stack_full(neko_ecs_stack *s) { return s->top == s->capacity; }
 
 u64 neko_ecs_stack_capacity(neko_ecs_stack *s) { return s->capacity; }
 

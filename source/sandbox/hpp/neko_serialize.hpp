@@ -15,7 +15,7 @@
 #include <string>
 #include <vector>
 
-#include "engine/common/neko_util.h"
+#include "engine/neko.h"
 
 class neko_serialize_swap_byte_base {
 public:

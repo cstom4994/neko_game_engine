@@ -16,7 +16,7 @@
 #include <type_traits>
 #include <unordered_map>
 
-#include "engine/common/neko_util.h"
+#include "engine/neko.h"
 
 #pragma region Template
 
@@ -1834,7 +1834,7 @@ constexpr auto enum_name() {
 
 #elif defined(_MSC_VER)
     name = __FUNCSIG__;
-    auto start = name.find("enum_name<") + 10;  // 10 is length of "enum_name<"
+    auto start = name.find("neko::enum_name<") + 16;  // 16 is length of "neko::enum_name<"
     auto end = name.find_last_of('>');
     return std::string_view{name.data() + start, end - start};
 #endif

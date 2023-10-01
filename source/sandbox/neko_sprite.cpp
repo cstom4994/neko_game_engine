@@ -1,10 +1,12 @@
 
 #include "neko_sprite.h"
 
-#include "engine/base/neko_engine.h"
-#include "engine/common/neko_hash.h"
-#include "engine/utility/logger.hpp"
-#include "engine/utility/neko_cpp_utils.hpp"
+#include "engine/neko.h"
+#include "engine/neko_containers.h"
+#include "engine/neko_engine.h"
+
+// game
+#include "hpp/neko_cpp_utils.hpp"
 
 bool neko_sprite_load(neko_sprite* spr, const neko_string& filepath) {
 
@@ -12,7 +14,7 @@ bool neko_sprite_load(neko_sprite* spr, const neko_string& filepath) {
     neko_defer([&] { neko_aseprite_free(ase); });
 
     if (NULL == ase) {
-        neko_error("unable to load ase ", filepath);
+        neko_log_error("unable to load ase %s", filepath);
         return neko_default_val();
     }
 
@@ -40,23 +42,23 @@ bool neko_sprite_load(neko_sprite* spr, const neko_string& filepath) {
         std::memcpy(pixels.data + (i * rect), &frame.pixels[0].r, rect);
     }
 
-    neko_graphics_i* gfx = neko_engine_instance()->ctx.graphics;
+    neko_graphics_t* gfx = neko_instance()->ctx.graphics;
 
-    neko_texture_parameter_desc t_desc = neko_texture_parameter_desc_default();
+    neko_graphics_texture_desc_t t_desc = {};
 
-    t_desc.texture_format = neko_texture_format_rgba8;
-    t_desc.mag_filter = neko_nearest;
-    t_desc.min_filter = neko_nearest;
-    t_desc.generate_mips = false;
+    t_desc.format = NEKO_GRAPHICS_TEXTURE_FORMAT_RGBA8;
+    t_desc.mag_filter = NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST;
+    t_desc.min_filter = NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST;
+    t_desc.num_mips = 0;
     t_desc.width = ase->w;
     t_desc.height = ase->h * ase->frame_count;
-    t_desc.num_comps = 4;
+    // t_desc.num_comps = 4;
 
     // 大小为 ase->frame_count * rect
     // neko_tex_flip_vertically(ase->w, ase->h * ase->frame_count, (u8 *)pixels.data);
-    t_desc.data = pixels.data;
+    t_desc.data[0] = pixels.data;
 
-    neko_texture_t tex = gfx->construct_texture(t_desc);
+    neko_texture_t tex = neko_graphics_texture_create(&t_desc);
 
     // img.width = desc.width;
     // img.height = desc.height;
@@ -77,7 +79,7 @@ bool neko_sprite_load(neko_sprite* spr, const neko_string& filepath) {
         by_tag[key] = loop;
     }
 
-    neko_debug(std::format("created sprite with image id: {0} and {1} frames", tex.id, frames.len));
+    neko_log_info(std::format("created sprite with image id: {0} and {1} frames", tex.id, frames.len).c_str());
 
     neko_sprite s = {};
     s.img = tex;
@@ -106,7 +108,7 @@ void neko_sprite_renderer_play(neko_sprite_renderer* sr, const neko_string& tag)
     sr->elapsed = 0;
 }
 
-void neko_sprite_renderer_update(neko_sprite_renderer* sr, float dt) {
+void neko_sprite_renderer_update(neko_sprite_renderer* sr, f32 dt) {
     s32 index;
     u64 len;
     if (sr->loop) {
@@ -171,24 +173,29 @@ void neko_particle_update(neko_particle_t* par, int interval, float spin, float 
     }
 }
 
-void neko_particle_draw(neko_particle_t* par, neko_command_buffer_t* cb, neko_color_t color, int particle_radius) {
-    neko_graphics_i* gfx = neko_engine_instance()->ctx.graphics;
-    neko_platform_i* platform = neko_engine_instance()->ctx.platform;
+void neko_particle_draw(neko_particle_t* par, neko_command_buffer_t* cb, CTransform* trans, neko_color_t color, f32 render_radius, int particle_radius) {
+    neko_graphics_t* gfx = neko_instance()->ctx.graphics;
 
-    neko_vec2 win_size = platform->window_size(platform->main_window());
-
-    f32 x = (int)((par->x + 1) * (win_size.x) / 2);
-    f32 y = (int)(par->y * (win_size.x) / 2 + (int)((win_size.y) / 2));
+    f32 x = (par->x + 1) * render_radius + trans->x;
+    f32 y = (par->y + 1) * render_radius + trans->y;
 
     // 暂时用立即渲染方法测试
-    gfx->immediate.draw_circle(cb, neko_vec2{x, y}, particle_radius, 0, neko_color_white);
+    // gfx->immediate.draw_circle(cb, neko_vec2{x, y}, particle_radius, 0, neko_color_white);
 }
 
 void neko_particle_renderer_construct(neko_particle_renderer* pr) {
     pr->particles_arr = neko_dyn_array_new(neko_particle_t);
 
     pr->last_time = 0;
-    pr->particles_num = 250;
+    pr->particles_num = 100;
+    pr->cycle_colors = true;
+
+    pr->color_cycling_speed = 0.001f;
+    pr->particle_color = neko_color_t{0, 0, 0, 255};
+    pr->particle_radius = 2;
+    pr->particle_spin = 0.0003f;
+    pr->particle_speed = 0.5f;
+    pr->render_radius = 64.f;
 
     for (int i = 0; i < pr->particles_num; i++) {
         neko_particle_t par = {0};
@@ -234,11 +241,11 @@ void neko_particle_renderer_update(neko_particle_renderer* pr, int elapsed) {
     // }
 }
 
-void neko_particle_renderer_draw(neko_particle_renderer* pr, neko_command_buffer_t* cb) {
+void neko_particle_renderer_draw(neko_particle_renderer* pr, neko_command_buffer_t* cb, CTransform* trans) {
     u32 sz = neko_dyn_array_size(pr->particles_arr);
     for (u32 i = 0; i < sz; ++i) {
         neko_particle_t* particle = &(pr->particles_arr)[i];
-        neko_particle_draw(particle, cb, pr->particle_color, pr->particle_radius);
+        neko_particle_draw(particle, cb, trans, pr->particle_color, pr->render_radius, pr->particle_radius);
     }
 }
 
@@ -738,7 +745,7 @@ ase_t* neko_aseprite_load_from_file(const char* path) {
     int sz;
     void* file = s_fopen(path, &sz);
     if (!file) {
-        neko_warn(std::format("Unable to find map file {0}", s_error_file ? s_error_file : "MEMORY"));
+        neko_log_warning(std::format("Unable to find map file {0}", s_error_file ? s_error_file : "MEMORY").c_str());
         return NULL;
     }
     ase_t* aseprite = neko_aseprite_load_from_memory(file, sz);
@@ -876,7 +883,7 @@ ase_t* neko_aseprite_load_from_memory(const void* memory, int size) {
                     s_skip(s, sizeof(u16));  // Default layer width in pixels (ignored).
                     s_skip(s, sizeof(u16));  // Default layer height in pixels (ignored).
                     int blend_mode = (int)s_read_uint16(s);
-                    if (blend_mode) neko_warn("Unknown blend mode encountered.");
+                    if (blend_mode) neko_log_warning("Unknown blend mode encountered.");
                     layer->opacity = s_read_uint8(s) / 255.0f;
                     if (!valid_layer_opacity) layer->opacity = 1.0f;
                     s_skip(s, 3);  // For future use (set to zero).
@@ -923,7 +930,7 @@ ase_t* neko_aseprite_load_from_memory(const void* memory, int size) {
                             int pixels_sz = cel->w * cel->h * bpp;
                             void* pixels_decompressed = neko_safe_malloc(pixels_sz);
                             int ret = s_inflate(pixels, deflate_bytes, pixels_decompressed, pixels_sz);
-                            if (!ret) neko_warn(s_error_reason);
+                            if (!ret) neko_log_warning(s_error_reason);
                             cel->pixels = pixels_decompressed;
                             s_skip(s, deflate_bytes);
                         } break;

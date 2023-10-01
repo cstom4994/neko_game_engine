@@ -315,7 +315,7 @@ neko_xml_document_t* neko_xml_parse_file(const_str path) {
 
     neko_xml_document_t* doc = neko_xml_parse(source);
 
-    neko_safe_free(source);
+    neko_free(source);
 
     return doc;
 }
@@ -353,7 +353,7 @@ neko_xml_attribute_t* neko_xml_find_attribute(neko_xml_node_t* node, const_str n
     if (!neko_hash_table_exists(node->attributes, neko_xml_hash_string(name, neko_string_length(name)))) {
         return NULL;
     } else {
-        return neko_hash_table_get_ptr(node->attributes, neko_xml_hash_string(name, neko_string_length(name)));
+        return neko_hash_table_getp(node->attributes, neko_xml_hash_string(name, neko_string_length(name)));
     }
 }
 

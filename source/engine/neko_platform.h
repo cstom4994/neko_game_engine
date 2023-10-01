@@ -51,7 +51,7 @@ typedef struct neko_uuid_t {
 
 // Should have an internal resource cache of window handles (controlled by the platform api)
 
-typedef struct neko_platform_window_desc_t {
+typedef struct neko_platform_running_desc_s {
     const char* title;
     u32 width;
     u32 height;
@@ -60,7 +60,7 @@ typedef struct neko_platform_window_desc_t {
     u32 monitor_index;
     b32 vsync;
     float frame_rate;
-} neko_platform_window_desc_t;
+} neko_platform_running_desc_t;
 
 typedef struct neko_platform_window_s {
     void* hndl;
@@ -551,7 +551,7 @@ NEKO_API_DECL bool neko_platform_poll_events(neko_platform_event_t* evt, bool32_
 NEKO_API_DECL void neko_platform_add_event(neko_platform_event_t* evt);
 
 // Platform Window
-NEKO_API_DECL u32 neko_platform_window_create(const neko_platform_window_desc_t* desc);
+NEKO_API_DECL u32 neko_platform_window_create(const neko_platform_running_desc_t* desc);
 NEKO_API_DECL u32 neko_platform_main_window();
 
 typedef struct neko_platform_file_stats_s {
@@ -638,7 +638,7 @@ NEKO_API_DECL neko_platform_keycode neko_platform_codepoint_to_key(u32 code);
 NEKO_API_DECL void neko_platform_mouse_set_position(u32 handle, float x, float y);
 NEKO_API_DECL void neko_platform_lock_mouse(u32 handle, bool32_t lock);
 
-NEKO_API_DECL neko_platform_window_t neko_platform_window_create_internal(const neko_platform_window_desc_t* desc);
+NEKO_API_DECL neko_platform_window_t neko_platform_window_create_internal(const neko_platform_running_desc_t* desc);
 NEKO_API_DECL void neko_platform_window_swap_buffer(u32 handle);
 NEKO_API_DECL neko_vec2 neko_platform_window_sizev(u32 handle);
 NEKO_API_DECL void neko_platform_window_size(u32 handle, u32* width, u32* height);

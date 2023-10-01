@@ -53,7 +53,7 @@ static double __neko_nbt_get_double(__neko_nbt_read_stream_t* stream) {
 
 static neko_nbt_tag_t* __neko_nbt_parse(__neko_nbt_read_stream_t* stream, int parse_name, neko_nbt_tag_type_t override_type) {
 
-    neko_nbt_tag_t* tag = (neko_nbt_tag_t*)neko_safe_malloc(sizeof(neko_nbt_tag_t));
+    neko_nbt_tag_t* tag = (neko_nbt_tag_t*)neko_malloc(sizeof(neko_nbt_tag_t));
 
     if (override_type == NBT_NO_OVERRIDE) {
         tag->type = (neko_nbt_tag_type_t)__neko_nbt_get_byte(stream);
@@ -63,7 +63,7 @@ static neko_nbt_tag_t* __neko_nbt_parse(__neko_nbt_read_stream_t* stream, int pa
 
     if (parse_name && tag->type != NBT_TYPE_END) {
         tag->name_size = __neko_nbt_get_int16(stream);
-        tag->name = (char*)neko_safe_malloc(tag->name_size + 1);
+        tag->name = (char*)neko_malloc(tag->name_size + 1);
         for (size_t i = 0; i < tag->name_size; i++) {
             tag->name[i] = __neko_nbt_get_byte(stream);
         }
@@ -103,7 +103,7 @@ static neko_nbt_tag_t* __neko_nbt_parse(__neko_nbt_read_stream_t* stream, int pa
         }
         case NBT_TYPE_BYTE_ARRAY: {
             tag->tag_byte_array.size = __neko_nbt_get_int32(stream);
-            tag->tag_byte_array.value = (s8*)neko_safe_malloc(tag->tag_byte_array.size);
+            tag->tag_byte_array.value = (s8*)neko_malloc(tag->tag_byte_array.size);
             for (size_t i = 0; i < tag->tag_byte_array.size; i++) {
                 tag->tag_byte_array.value[i] = __neko_nbt_get_byte(stream);
             }
@@ -111,7 +111,7 @@ static neko_nbt_tag_t* __neko_nbt_parse(__neko_nbt_read_stream_t* stream, int pa
         }
         case NBT_TYPE_STRING: {
             tag->tag_string.size = __neko_nbt_get_int16(stream);
-            tag->tag_string.value = (char*)neko_safe_malloc(tag->tag_string.size + 1);
+            tag->tag_string.value = (char*)neko_malloc(tag->tag_string.size + 1);
             for (size_t i = 0; i < tag->tag_string.size; i++) {
                 tag->tag_string.value[i] = __neko_nbt_get_byte(stream);
             }
@@ -121,7 +121,7 @@ static neko_nbt_tag_t* __neko_nbt_parse(__neko_nbt_read_stream_t* stream, int pa
         case NBT_TYPE_LIST: {
             tag->tag_list.type = (neko_nbt_tag_type_t)__neko_nbt_get_byte(stream);
             tag->tag_list.size = __neko_nbt_get_int32(stream);
-            tag->tag_list.value = (neko_nbt_tag_t**)neko_safe_malloc(tag->tag_list.size * sizeof(neko_nbt_tag_t*));
+            tag->tag_list.value = (neko_nbt_tag_t**)neko_malloc(tag->tag_list.size * sizeof(neko_nbt_tag_t*));
             for (size_t i = 0; i < tag->tag_list.size; i++) {
                 tag->tag_list.value[i] = __neko_nbt_parse(stream, 0, tag->tag_list.type);
             }
@@ -137,7 +137,7 @@ static neko_nbt_tag_t* __neko_nbt_parse(__neko_nbt_read_stream_t* stream, int pa
                     neko_nbt_free_tag(inner_tag);
                     break;
                 } else {
-                    tag->tag_compound.value = (neko_nbt_tag_t**)neko_safe_realloc(tag->tag_compound.value, (tag->tag_compound.size + 1) * sizeof(neko_nbt_tag_t*));
+                    tag->tag_compound.value = (neko_nbt_tag_t**)neko_realloc(tag->tag_compound.value, (tag->tag_compound.size + 1) * sizeof(neko_nbt_tag_t*));
                     tag->tag_compound.value[tag->tag_compound.size] = inner_tag;
                     tag->tag_compound.size++;
                 }
@@ -146,7 +146,7 @@ static neko_nbt_tag_t* __neko_nbt_parse(__neko_nbt_read_stream_t* stream, int pa
         }
         case NBT_TYPE_INT_ARRAY: {
             tag->tag_int_array.size = __neko_nbt_get_int32(stream);
-            tag->tag_int_array.value = (s32*)neko_safe_malloc(tag->tag_int_array.size * sizeof(s32));
+            tag->tag_int_array.value = (s32*)neko_malloc(tag->tag_int_array.size * sizeof(s32));
             for (size_t i = 0; i < tag->tag_int_array.size; i++) {
                 tag->tag_int_array.value[i] = __neko_nbt_get_int32(stream);
             }
@@ -154,14 +154,14 @@ static neko_nbt_tag_t* __neko_nbt_parse(__neko_nbt_read_stream_t* stream, int pa
         }
         case NBT_TYPE_LONG_ARRAY: {
             tag->tag_long_array.size = __neko_nbt_get_int32(stream);
-            tag->tag_long_array.value = (s64*)neko_safe_malloc(tag->tag_long_array.size * sizeof(s64));
+            tag->tag_long_array.value = (s64*)neko_malloc(tag->tag_long_array.size * sizeof(s64));
             for (size_t i = 0; i < tag->tag_long_array.size; i++) {
                 tag->tag_long_array.value[i] = __neko_nbt_get_int64(stream);
             }
             break;
         }
         default: {
-            neko_safe_free(tag);
+            neko_free(tag);
             return NULL;
         }
     }
@@ -180,7 +180,7 @@ neko_nbt_tag_t* neko_nbt_parse(neko_nbt_reader_t reader, int parse_flags) {
     size_t bytes_read;
     do {
         bytes_read = reader.read(reader.userdata, in_buffer, NEKO_NBT_BUFFER_SIZE);
-        buffer = (u8*)neko_safe_realloc(buffer, buffer_size + bytes_read);
+        buffer = (u8*)neko_realloc(buffer, buffer_size + bytes_read);
         memcpy(buffer + buffer_size, in_buffer, bytes_read);
         buffer_size += bytes_read;
     } while (bytes_read == NEKO_NBT_BUFFER_SIZE);
@@ -190,7 +190,7 @@ neko_nbt_tag_t* neko_nbt_parse(neko_nbt_reader_t reader, int parse_flags) {
 
     neko_nbt_tag_t* tag = __neko_nbt_parse(&stream, 1, NBT_NO_OVERRIDE);
 
-    neko_safe_free(buffer);
+    neko_free(buffer);
 
     return tag;
 }
@@ -204,7 +204,7 @@ typedef struct {
 
 void __neko_nbt_put_byte(__neko_nbt_write_stream_t* stream, u8 value) {
     if (stream->offset >= stream->alloc_size - 1) {
-        stream->buffer = (u8*)neko_safe_realloc(stream->buffer, stream->alloc_size * 2);
+        stream->buffer = (u8*)neko_realloc(stream->buffer, stream->alloc_size * 2);
         stream->alloc_size *= 2;
     }
 
@@ -376,7 +376,7 @@ static u32 __neko_nbt_update_crc(u32 crc, u8* buf, size_t len) {
 void neko_nbt_write(neko_nbt_writer_t writer, neko_nbt_tag_t* tag, int write_flags) {
 
     __neko_nbt_write_stream_t write_stream;
-    write_stream.buffer = (u8*)neko_safe_malloc(NEKO_NBT_BUFFER_SIZE);
+    write_stream.buffer = (u8*)neko_malloc(NEKO_NBT_BUFFER_SIZE);
     write_stream.offset = 0;
     write_stream.size = 0;
     write_stream.alloc_size = NEKO_NBT_BUFFER_SIZE;
@@ -391,11 +391,11 @@ void neko_nbt_write(neko_nbt_writer_t writer, neko_nbt_tag_t* tag, int write_fla
         bytes_left -= bytes_written;
     }
 
-    neko_safe_free(write_stream.buffer);
+    neko_free(write_stream.buffer);
 }
 
 static neko_nbt_tag_t* __neko_nbt_new_tag_base(void) {
-    neko_nbt_tag_t* tag = (neko_nbt_tag_t*)neko_safe_malloc(sizeof(neko_nbt_tag_t));
+    neko_nbt_tag_t* tag = (neko_nbt_tag_t*)neko_malloc(sizeof(neko_nbt_tag_t));
     tag->name = NULL;
     tag->name_size = 0;
 
@@ -461,7 +461,7 @@ neko_nbt_tag_t* neko_nbt_new_tag_byte_array(s8* value, size_t size) {
 
     tag->type = NBT_TYPE_BYTE_ARRAY;
     tag->tag_byte_array.size = size;
-    tag->tag_byte_array.value = (s8*)neko_safe_malloc(size);
+    tag->tag_byte_array.value = (s8*)neko_malloc(size);
 
     memcpy(tag->tag_byte_array.value, value, size);
 
@@ -473,7 +473,7 @@ neko_nbt_tag_t* neko_nbt_new_tag_string(const char* value, size_t size) {
 
     tag->type = NBT_TYPE_STRING;
     tag->tag_string.size = size;
-    tag->tag_string.value = (char*)neko_safe_malloc(size + 1);
+    tag->tag_string.value = (char*)neko_malloc(size + 1);
 
     memcpy(tag->tag_string.value, value, size);
     tag->tag_string.value[tag->tag_string.size] = '\0';
@@ -507,7 +507,7 @@ neko_nbt_tag_t* neko_nbt_new_tag_int_array(s32* value, size_t size) {
 
     tag->type = NBT_TYPE_INT_ARRAY;
     tag->tag_int_array.size = size;
-    tag->tag_int_array.value = (s32*)neko_safe_malloc(size * sizeof(s32));
+    tag->tag_int_array.value = (s32*)neko_malloc(size * sizeof(s32));
 
     memcpy(tag->tag_int_array.value, value, size * sizeof(s32));
 
@@ -519,7 +519,7 @@ neko_nbt_tag_t* neko_nbt_new_tag_long_array(s64* value, size_t size) {
 
     tag->type = NBT_TYPE_LONG_ARRAY;
     tag->tag_long_array.size = size;
-    tag->tag_long_array.value = (s64*)neko_safe_malloc(size * sizeof(s64));
+    tag->tag_long_array.value = (s64*)neko_malloc(size * sizeof(s64));
 
     memcpy(tag->tag_long_array.value, value, size * sizeof(s64));
 
@@ -528,16 +528,16 @@ neko_nbt_tag_t* neko_nbt_new_tag_long_array(s64* value, size_t size) {
 
 void neko_nbt_set_tag_name(neko_nbt_tag_t* tag, const char* name, size_t size) {
     if (tag->name) {
-        neko_safe_free(tag->name);
+        neko_free(tag->name);
     }
     tag->name_size = size;
-    tag->name = (char*)neko_safe_malloc(size + 1);
+    tag->name = (char*)neko_malloc(size + 1);
     memcpy(tag->name, name, size);
     tag->name[tag->name_size] = '\0';
 }
 
 void neko_nbt_tag_list_append(neko_nbt_tag_t* list, neko_nbt_tag_t* value) {
-    list->tag_list.value = (neko_nbt_tag_t**)neko_safe_realloc(list->tag_list.value, (list->tag_list.size + 1) * sizeof(neko_nbt_tag_t*));
+    list->tag_list.value = (neko_nbt_tag_t**)neko_realloc(list->tag_list.value, (list->tag_list.size + 1) * sizeof(neko_nbt_tag_t*));
     list->tag_list.value[list->tag_list.size] = value;
     list->tag_list.size++;
 }
@@ -545,7 +545,7 @@ void neko_nbt_tag_list_append(neko_nbt_tag_t* list, neko_nbt_tag_t* value) {
 neko_nbt_tag_t* neko_nbt_tag_list_get(neko_nbt_tag_t* tag, size_t index) { return tag->tag_list.value[index]; }
 
 void neko_nbt_tag_compound_append(neko_nbt_tag_t* compound, neko_nbt_tag_t* value) {
-    compound->tag_compound.value = (neko_nbt_tag_t**)neko_safe_realloc(compound->tag_compound.value, (compound->tag_compound.size + 1) * sizeof(neko_nbt_tag_t*));
+    compound->tag_compound.value = (neko_nbt_tag_t**)neko_realloc(compound->tag_compound.value, (compound->tag_compound.size + 1) * sizeof(neko_nbt_tag_t*));
     compound->tag_compound.value[compound->tag_compound.size] = value;
     compound->tag_compound.size++;
 }
@@ -565,33 +565,33 @@ neko_nbt_tag_t* neko_nbt_tag_compound_get(neko_nbt_tag_t* tag, const char* key) 
 void neko_nbt_free_tag(neko_nbt_tag_t* tag) {
     switch (tag->type) {
         case NBT_TYPE_BYTE_ARRAY: {
-            neko_safe_free(tag->tag_byte_array.value);
+            neko_free(tag->tag_byte_array.value);
             break;
         }
         case NBT_TYPE_STRING: {
-            neko_safe_free(tag->tag_string.value);
+            neko_free(tag->tag_string.value);
             break;
         }
         case NBT_TYPE_LIST: {
             for (size_t i = 0; i < tag->tag_list.size; i++) {
                 neko_nbt_free_tag(tag->tag_list.value[i]);
             }
-            neko_safe_free(tag->tag_list.value);
+            neko_free(tag->tag_list.value);
             break;
         }
         case NBT_TYPE_COMPOUND: {
             for (size_t i = 0; i < tag->tag_compound.size; i++) {
                 neko_nbt_free_tag(tag->tag_compound.value[i]);
             }
-            neko_safe_free(tag->tag_compound.value);
+            neko_free(tag->tag_compound.value);
             break;
         }
         case NBT_TYPE_INT_ARRAY: {
-            neko_safe_free(tag->tag_int_array.value);
+            neko_free(tag->tag_int_array.value);
             break;
         }
         case NBT_TYPE_LONG_ARRAY: {
-            neko_safe_free(tag->tag_long_array.value);
+            neko_free(tag->tag_long_array.value);
             break;
         }
         default: {
@@ -600,8 +600,8 @@ void neko_nbt_free_tag(neko_nbt_tag_t* tag) {
     }
 
     if (tag->name) {
-        neko_safe_free(tag->name);
+        neko_free(tag->name);
     }
 
-    neko_safe_free(tag);
+    neko_free(tag);
 }

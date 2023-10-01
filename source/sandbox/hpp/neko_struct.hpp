@@ -88,17 +88,17 @@ inline constexpr auto __neko_gen_struct_meta() {
 
 // 这里_F*用于生成__neko_gen_struct_meta内tuple叠入的tuple
 #define _F(field) (std::make_tuple(#field, &T::field))
-#define _Fs(field, metainfo) (std::make_tuple(#field, &T::field, metainfo))
+#define _Fs(field, ...) (std::make_tuple(#field, &T::field, std::make_tuple(__VA_ARGS__)))
 
 template <typename T, typename Fields, typename F, size_t... Is>
 inline constexpr void neko_struct_foreach_impl(T&& obj, Fields&& fields, F&& f, std::index_sequence<Is...>) {
     auto ff = [&](auto index) {
         auto& t = std::get<index>(fields);
-        if constexpr (std::tuple_size_v<std::decay_t<decltype(t)>> == 3) {
+        constexpr static std::size_t t_size = std::tuple_size_v<std::decay_t<decltype(t)>>;
+        if constexpr (t_size == 3)
             std::apply([&](auto&& arg1, auto&& arg2, auto&& info) { f(arg1, obj.*arg2, info); }, t);
-        } else if constexpr (std::tuple_size_v<std::decay_t<decltype(t)>> == 2) {
-            std::apply([&](auto&& arg1, auto&& arg2) { f(arg1, obj.*arg2, "default"); }, t);
-        }
+        else if constexpr (t_size == 2)
+            std::apply([&](auto&& arg1, auto&& arg2) { f(arg1, obj.*arg2, std::make_tuple("default")); }, t);
         // std::cout << "^^ 傻逼 " << std::tuple_size_v<std::decay_t<decltype(fields)>> << std::endl;
     };
     // 逗号双层表达式 因为ff没有返回值则Is作为里层逗号表达式的结果

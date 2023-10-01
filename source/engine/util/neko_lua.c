@@ -1,5 +1,5 @@
 
-#include "engine/scripting/neko_lua_base.h"
+#include "neko_lua.h"
 
 #include <setjmp.h>
 #include <stdbool.h>
@@ -7,9 +7,7 @@
 #include <string.h>
 #include <sys/types.h>
 
-#include "engine/base/neko_engine.h"
-#include "engine/common/neko_util.h"
-#include "engine/platform/neko_platform.h"
+#include "engine/neko.h"
 
 #pragma region LuaA
 
@@ -1303,7 +1301,7 @@ void neko_lua_auto_function_register_type(lua_State *L, void *src_func, neko_lua
 #pragma endregion LuaA
 
 int luaopen_debugger(lua_State *lua) {
-    if (luaL_dofile(lua, neko_file_path("data/scripts/libs/debugger.lua"))) lua_error(lua);
+    if (luaL_dofile(lua, /*neko_file_path*/ ("data/scripts/libs/debugger.lua"))) lua_error(lua);
     return 1;
 }
 

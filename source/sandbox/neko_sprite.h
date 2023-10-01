@@ -2,9 +2,12 @@
 #ifndef NEKO_SPRITE_H
 #define NEKO_SPRITE_H
 
-#include "engine/common/neko_containers.h"
-#include "engine/common/neko_util.h"
-#include "engine/graphics/neko_graphics.h"
+#include "engine/neko.h"
+#include "engine/neko_component.h"
+#include "engine/neko_engine.h"
+
+// game
+#include "neko_hash.h"
 
 struct neko_sprite_frame {
     s32 duration;
@@ -35,7 +38,7 @@ struct neko_sprite {
 bool neko_sprite_load(neko_sprite* spr, const neko_string& filepath);
 void neko_sprite_end(neko_sprite* spr);
 void neko_sprite_renderer_play(neko_sprite_renderer* sr, const neko_string& tag);
-void neko_sprite_renderer_update(neko_sprite_renderer* sr, float dt);
+void neko_sprite_renderer_update(neko_sprite_renderer* sr, f32 dt);
 void neko_sprite_renderer_set_frame(neko_sprite_renderer* sr, s32 frame);
 
 struct neko_particle_t {
@@ -46,14 +49,14 @@ struct neko_particle_t {
 };
 
 struct neko_particle_renderer {
-    s32 particles_num = 0;
-    bool cycle_colors = true;
-    f32 color_cycling_speed = 0.001f;
-    neko_color_t particle_color = neko_color_t{0, 0, 0, 255};
-    s32 particle_radius = 2;
-    f32 particle_spin = 0.0003f;
-    f32 particle_speed = 0.5f;
-    s32 blur_radius = 1;
+    s32 particles_num;
+    bool cycle_colors;
+    f32 color_cycling_speed;
+    neko_color_t particle_color;
+    s32 particle_radius;
+    f32 particle_spin;
+    f32 particle_speed;
+    f32 render_radius;
 
     s32 last_time;  // 上次更新屏幕的时间
 
@@ -62,12 +65,12 @@ struct neko_particle_renderer {
 
 void neko_particle_ctor(neko_particle_t* par);
 void neko_particle_update(neko_particle_t* par, int interval, float spin, float speed);
-void neko_particle_draw(neko_particle_t* par, neko_command_buffer_t* cb, neko_color_t color, int particle_radius);
+void neko_particle_draw(neko_particle_t* par, neko_command_buffer_t* cb, CTransform* trans, neko_color_t color, f32 render_radius, int particle_radius);
 
 void neko_particle_renderer_construct(neko_particle_renderer* pr);
 void neko_particle_renderer_free(neko_particle_renderer* pr);
 void neko_particle_renderer_update(neko_particle_renderer* pr, int elapsed);
-void neko_particle_renderer_draw(neko_particle_renderer* pr, neko_command_buffer_t* cb);
+void neko_particle_renderer_draw(neko_particle_renderer* pr, neko_command_buffer_t* cb, CTransform* trans);
 
 typedef struct ase_t ase_t;
 

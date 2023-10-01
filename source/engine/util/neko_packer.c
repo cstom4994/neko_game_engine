@@ -350,7 +350,7 @@ neko_pack_result neko_pack_item_data(neko_packreader_t *pack_reader, const char 
         return FAILED_TO_GET_ITEM_PACK_RESULT;
     }
 
-    return neko_pack_item_data(pack_reader, index, data, size);
+    return neko_pack_item_data_with_index(pack_reader, index, data, size);
 }
 
 void neko_pack_free_buffers(neko_packreader_t *pack_reader) {

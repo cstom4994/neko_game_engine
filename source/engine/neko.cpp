@@ -1,10 +1,21 @@
 
-#include "engine/neko.h"
+#include "neko.h"
 
 #include <csetjmp>
 #include <format>
 
+#include "engine/neko_component.h"
+#include "engine/neko_ecs.h"
 #include "engine/neko_engine.h"
+
+// Use discrete GPU by default.
+extern "C" {
+// http://developer.download.nvidia.com/devzone/devcenter/gamegraphics/files/OptimusRenderingPolicies.pdf
+__declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
+
+// https://gpuopen.com/learn/amdpowerxpressrequesthighperformance/
+__declspec(dllexport) unsigned long AmdPowerXpressRequestHighPerformance = 0x00000001;
+}
 
 // Resource Creation
 NEKO_API_DECL neko_handle(neko_graphics_texture_t) neko_graphics_texture_create(const neko_graphics_texture_desc_t* desc) { return neko_graphics()->api.texture_create(desc); }
@@ -2732,7 +2743,7 @@ NEKO_API_DECL neko_t* neko_create(neko_game_desc_t app_desc) {
         // Check app desc for defaults
         if (app_desc.window.width == 0) app_desc.window.width = 800;
         if (app_desc.window.height == 0) app_desc.window.height = 600;
-        if (app_desc.window.title == 0) app_desc.window.title = "App";
+        if (app_desc.window.title == 0) app_desc.window.title = "Neko Engine";
         if (app_desc.window.frame_rate <= 0.f) app_desc.window.frame_rate = 60.f;
         if (app_desc.update == NULL) app_desc.update = &neko_default_app_func;
         if (app_desc.shutdown == NULL) app_desc.shutdown = &neko_default_app_func;
@@ -2788,6 +2799,9 @@ NEKO_API_DECL neko_t* neko_create(neko_game_desc_t app_desc) {
 
         // Initialize audio
         neko_instance()->ctx.audio->init(neko_instance()->ctx.audio);
+
+        // 初始化 ecs
+        neko_ecs() = neko_ecs_make(1024, COMPONENT_COUNT, 2);
 
         // Initialize application and set to running
         app_desc.init();
@@ -2850,6 +2864,9 @@ NEKO_API_DECL void neko_frame() {
         }
     }
 
+    // 感觉这玩意放这里不是很合理 之后再改
+    neko_subsystem(graphics)->api.fontcache_draw();
+
     // Clear all platform events
     neko_dyn_array_clear(platform->events);
 
@@ -2885,11 +2902,18 @@ void neko_destroy() {
     neko_ctx()->game.is_running = false;
 
     // Shutdown subsystems
+    neko_ecs_destroy(neko_ecs());
+
     neko_graphics_shutdown(neko_subsystem(graphics));
     neko_graphics_destroy(neko_subsystem(graphics));
 
     neko_platform_shutdown(neko_subsystem(platform));
     neko_platform_destroy(neko_subsystem(platform));
+
+    __neko_config_free();
+
+    // 在 app 结束后进行内存检查
+    __neko_mem_end();
 }
 
 NEKO_API_DECL void neko_default_app_func() {

@@ -19,7 +19,7 @@
 // Pipeline Description: vert-layout, shader, bindables, render states
 // Pass Description: render pass, action on render targets (clear, set viewport, etc.)
 
-/* Useful macro for forcing enum decl to be uint32_t type with default = 0x00 for quick init */
+/* Useful macro for forcing enum decl to be u32 type with default = 0x00 for quick init */
 #define neko_enum_decl(NAME, ...) typedef enum NAME { _neko_##NAME##_default = 0x0, __VA_ARGS__, _neko_##NAME##_count, _neko_##NAME##_force_u32 = 0x7fffffff } NAME;
 
 #define neko_enum_count(NAME) _neko_##NAME##_count
@@ -163,9 +163,9 @@ typedef struct neko_graphics_shader_desc_t {
 /* Graphics Texture Desc */
 typedef struct neko_graphics_texture_desc_t {
     neko_graphics_texture_type type;
-    uint32_t width;                                   // Width of texture in texels
-    uint32_t height;                                  // Height of texture in texels
-    uint32_t depth;                                   // Depth of texture
+    u32 width;                                        // Width of texture in texels
+    u32 height;                                       // Height of texture in texels
+    u32 depth;                                        // Depth of texture
     void* data[NEKO_GRAPHICS_TEXTURE_DATA_MAX];       // Texture data to upload (can be null)
     neko_graphics_texture_format_type format;         // Format of texture data (rgba32, rgba8, rgba32f, r8, depth32f, etc...)
     neko_graphics_texture_wrapping_type wrap_s;       // Wrapping type for s axis of texture
@@ -175,13 +175,13 @@ typedef struct neko_graphics_texture_desc_t {
     neko_graphics_texture_filtering_type mag_filter;  // Magnification filter for texture
     neko_graphics_texture_filtering_type mip_filter;  // Mip filter for texture
     neko_vec2 offset;                                 // Offset for updates
-    uint32_t num_mips;                                // Number of mips to generate (default 0 is disable mip generation)
+    u32 num_mips;                                     // Number of mips to generate (default 0 is disable mip generation)
     struct {
-        uint32_t x;       // X offset in texels to start read
-        uint32_t y;       // Y offset in texels to start read
-        uint32_t width;   // Width in texels for texture
-        uint32_t height;  // Height in texels for texture
-        size_t size;      // Size in bytes for data to be read
+        u32 x;        // X offset in texels to start read
+        u32 y;        // Y offset in texels to start read
+        u32 width;    // Width in texels for texture
+        u32 height;   // Height in texels for texture
+        size_t size;  // Size in bytes for data to be read
     } read;
     uint16_t flip_y;  // Whether or not y is flipped
 } neko_graphics_texture_desc_t;
@@ -190,7 +190,7 @@ typedef struct neko_graphics_texture_desc_t {
 typedef struct neko_graphics_uniform_layout_desc_t {
     neko_graphics_uniform_type type;  // Type of field
     char fname[64];                   // Name of field (required for implicit APIs, like OpenGL/ES)
-    uint32_t count;                   // Count variable (used for arrays such as glUniformXXXv)
+    u32 count;                        // Count variable (used for arrays such as glUniformXXXv)
 } neko_graphics_uniform_layout_desc_t;
 
 /* Graphics Uniform Desc */
@@ -287,13 +287,13 @@ typedef struct neko_graphics_bind_index_buffer_desc_t {
 
 typedef struct neko_graphics_bind_image_buffer_desc_t {
     neko_handle(neko_graphics_texture_t) tex;
-    uint32_t binding;
+    u32 binding;
     neko_graphics_access_type access;
 } neko_graphics_bind_image_buffer_desc_t;
 
 typedef struct neko_graphics_bind_uniform_buffer_desc_t {
     neko_handle(neko_graphics_uniform_buffer_t) buffer;
-    uint32_t binding;
+    u32 binding;
     struct {
         size_t offset;  // Specify an offset for ranged binds.
         size_t size;    // Specify size for ranged binds.
@@ -302,13 +302,13 @@ typedef struct neko_graphics_bind_uniform_buffer_desc_t {
 
 typedef struct neko_graphics_bind_storage_buffer_desc_t {
     neko_handle(neko_graphics_storage_buffer_t) buffer;
-    uint32_t binding;
+    u32 binding;
 } neko_graphics_bind_storage_buffer_desc_t;
 
 typedef struct neko_graphics_bind_uniform_desc_t {
     neko_handle(neko_graphics_uniform_t) uniform;
     void* data;
-    uint32_t binding;  // Base binding for samplers?
+    u32 binding;  // Base binding for samplers?
 } neko_graphics_bind_uniform_desc_t;
 
 /* Graphics Binding Desc */
@@ -361,9 +361,9 @@ typedef struct neko_graphics_depth_state_desc_t {
 /* Graphics Stencil State Desc */
 typedef struct neko_graphics_stencil_state_desc_t {
     neko_graphics_stencil_func_type func;  // Function to set for stencil test
-    uint32_t ref;                          // Specifies reference val for stencil test
-    uint32_t comp_mask;                    // Specifies mask that is ANDed with both ref val and stored stencil val
-    uint32_t write_mask;                   // Specifies mask that is ANDed with both ref val and stored stencil val
+    u32 ref;                               // Specifies reference val for stencil test
+    u32 comp_mask;                         // Specifies mask that is ANDed with both ref val and stored stencil val
+    u32 write_mask;                        // Specifies mask that is ANDed with both ref val and stored stencil val
     neko_graphics_stencil_op_type sfail;   // Action to take when stencil test fails
     neko_graphics_stencil_op_type dpfail;  // Action to take when stencil test passes but depth test fails
     neko_graphics_stencil_op_type dppass;  // Action to take when both stencil test passes and either depth passes or is not enabled
@@ -390,7 +390,7 @@ typedef struct neko_graphics_vertex_attribute_desc_t {
     size_t stride;                               // Total stride of vertex layout (optional, calculated by default)
     size_t offset;                               // Offset of this vertex from base pointer of data (optional, calaculated by default)
     size_t divisor;                              // Used for instancing. (optional, default = 0x00 for no instancing)
-    uint32_t buffer_idx;                         // Vertex buffer to use (optional, default = 0x00)
+    u32 buffer_idx;                              // Vertex buffer to use (optional, default = 0x00)
 } neko_graphics_vertex_attribute_desc_t;
 
 /* Graphics Vertex Layout Desc */
@@ -411,13 +411,13 @@ typedef struct neko_graphics_pipeline_desc_t {
 
 /* Graphics Draw Desc */
 typedef struct neko_graphics_draw_desc_t {
-    uint32_t start;
-    uint32_t count;
-    uint32_t instances;
-    uint32_t base_vertex;
+    u32 start;
+    u32 count;
+    u32 instances;
+    u32 base_vertex;
     struct {
-        uint32_t start;
-        uint32_t end;
+        u32 start;
+        u32 end;
     } range;
 } neko_graphics_draw_desc_t;
 
@@ -430,14 +430,14 @@ neko_inline neko_handle(neko_graphics_renderpass_t) __neko_renderpass_default_im
 #define NEKO_GRAPHICS_RENDER_PASS_DEFAULT __neko_renderpass_default_impl()
 
 typedef struct neko_graphics_info_t {
-    uint32_t major_version;
-    uint32_t minor_version;
-    uint32_t max_texture_units;
+    u32 major_version;
+    u32 minor_version;
+    u32 max_texture_units;
     struct {
         b32 available;
-        uint32_t max_work_group_count[3];
-        uint32_t max_work_group_size[3];
-        uint32_t max_work_group_invocations;
+        u32 max_work_group_count[3];
+        u32 max_work_group_size[3];
+        u32 max_work_group_invocations;
     } compute;
 } neko_graphics_info_t;
 
@@ -569,13 +569,13 @@ NEKO_API_DECL void neko_graphics_storage_buffer_request_update(neko_command_buff
 // Pipeline / Pass / Bind / Draw
 NEKO_API_DECL void neko_graphics_renderpass_begin(neko_command_buffer_t* cb, neko_handle(neko_graphics_renderpass_t) hndl);
 NEKO_API_DECL void neko_graphics_renderpass_end(neko_command_buffer_t* cb);
-NEKO_API_DECL void neko_graphics_set_viewport(neko_command_buffer_t* cb, uint32_t x, uint32_t y, uint32_t w, uint32_t h);
-NEKO_API_DECL void neko_graphics_set_view_scissor(neko_command_buffer_t* cb, uint32_t x, uint32_t y, uint32_t w, uint32_t h);
+NEKO_API_DECL void neko_graphics_set_viewport(neko_command_buffer_t* cb, u32 x, u32 y, u32 w, u32 h);
+NEKO_API_DECL void neko_graphics_set_view_scissor(neko_command_buffer_t* cb, u32 x, u32 y, u32 w, u32 h);
 NEKO_API_DECL void neko_graphics_clear(neko_command_buffer_t* cb, neko_graphics_clear_desc_t* desc);
 NEKO_API_DECL void neko_graphics_pipeline_bind(neko_command_buffer_t* cb, neko_handle(neko_graphics_pipeline_t) hndl);
 NEKO_API_DECL void neko_graphics_apply_bindings(neko_command_buffer_t* cb, neko_graphics_bind_desc_t* binds);
 NEKO_API_DECL void neko_graphics_draw(neko_command_buffer_t* cb, neko_graphics_draw_desc_t* desc);
-NEKO_API_DECL void neko_graphics_dispatch_compute(neko_command_buffer_t* cb, uint32_t num_x_groups, uint32_t num_y_groups, uint32_t num_z_groups);
+NEKO_API_DECL void neko_graphics_dispatch_compute(neko_command_buffer_t* cb, u32 num_x_groups, u32 num_y_groups, u32 num_z_groups);
 
 // Submission (Main Thread)
 #define neko_graphics_command_buffer_submit(CB) neko_graphics()->api.command_buffer_submit((CB))

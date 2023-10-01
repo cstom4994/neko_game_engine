@@ -28,7 +28,7 @@ typedef struct neko_meta_property_typeinfo_t {
     u32 id;          // 匹配属性类型 用于查找和 switch 语句
 } neko_meta_property_typeinfo_t;
 
-extern neko_meta_property_typeinfo_t __neko_meta_property_typeinfo_decl_impl(const_str name, u32 id);
+NEKO_API_DECL neko_meta_property_typeinfo_t __neko_meta_property_typeinfo_decl_impl(const_str name, u32 id);
 
 #define neko_meta_property_typeinfo_decl(TY, PROP_TYPE) __neko_meta_property_typeinfo_decl_impl(neko_to_str(TY), PROP_TYPE)
 
@@ -51,7 +51,7 @@ typedef struct neko_meta_property_t {
     neko_meta_property_typeinfo_t type;  // 类型信息
 } neko_meta_property_t;
 
-extern neko_meta_property_t __neko_meta_property_impl(const_str name, u64 offset, neko_meta_property_typeinfo_t type);
+NEKO_API_DECL neko_meta_property_t __neko_meta_property_impl(const_str name, u64 offset, neko_meta_property_typeinfo_t type);
 
 #define neko_meta_property(CLS, FIELD, TYPE) __neko_meta_property_impl(neko_to_str(FIELD), neko_offset(CLS, FIELD), (TYPE))
 
@@ -72,10 +72,10 @@ typedef struct neko_meta_class_decl_t {
 } neko_meta_class_decl_t;
 
 // Functions
-extern neko_meta_registry_t neko_meta_registry_new();
-extern void neko_meta_registry_free(neko_meta_registry_t* meta);
-extern u64 __neko_meta_registry_register_class_impl(neko_meta_registry_t* meta, const_str name, const neko_meta_class_decl_t* decl);
-extern neko_meta_class_t* __neko_meta_class_getp_impl(neko_meta_registry_t* meta, const_str name);
+NEKO_API_DECL neko_meta_registry_t neko_meta_registry_new();
+NEKO_API_DECL void neko_meta_registry_free(neko_meta_registry_t* meta);
+NEKO_API_DECL u64 __neko_meta_registry_register_class_impl(neko_meta_registry_t* meta, const_str name, const neko_meta_class_decl_t* decl);
+NEKO_API_DECL neko_meta_class_t* __neko_meta_class_getp_impl(neko_meta_registry_t* meta, const_str name);
 
 #define neko_meta_registry_decl_class(T) neko_meta_property_t __gen_##T##_property[]
 #define neko_meta_registry_register_class(META, T)                                                                                                         \

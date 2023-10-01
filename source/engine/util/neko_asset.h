@@ -2,6 +2,8 @@
 #ifndef NEKO_ASSET_H
 #define NEKO_ASSET_H
 
+#include "engine/neko_engine.h"
+
 // Asset handle
 typedef struct neko_asset_s {
     uint64_t type_id;
@@ -45,43 +47,43 @@ NEKO_API_DECL void neko_asset_importer_set_desc(neko_asset_importer_t* imp, neko
 #define gsa_imsa(IMPORTER, T) ((neko_slot_array(T))(IMPORTER)->slot_array)
 #endif
 
-#define neko_assets_register_importer(AM, T, DESC)                                           \
-    do {                                                                                   \
+#define neko_assets_register_importer(AM, T, DESC)                                             \
+    do {                                                                                       \
         neko_asset_importer_t ai = neko_default_val();                                         \
-        ai.data_size = sizeof(T);                                                          \
-        ai.importer_id = (AM)->free_importer_id++;                                         \
+        ai.data_size = sizeof(T);                                                              \
+        ai.importer_id = (AM)->free_importer_id++;                                             \
         neko_asset_importer_set_desc(&ai, (neko_asset_importer_desc_t*)DESC);                  \
-        size_t sz = 2 * sizeof(void*) + sizeof(T);                                         \
-        neko_slot_array(T) sa = NULL;                                                        \
-        neko_slot_array_init((void**)&sa, sizeof(*sa));                                      \
-        neko_dyn_array_init((void**)&sa->indices, sizeof(uint32_t));                         \
-        neko_dyn_array_init((void**)&sa->data, sizeof(T));                                   \
-        ai.slot_array = (void*)sa;                                                         \
-        ai.tmp_ptr = (void*)&sa->tmp;                                                      \
-        ai.slot_array_indices_ptr = (void*)sa->indices;                                    \
-        ai.slot_array_data_ptr = (void*)sa->data;                                          \
-        if (!ai.desc.load_from_file) {                                                     \
+        size_t sz = 2 * sizeof(void*) + sizeof(T);                                             \
+        neko_slot_array(T) sa = NULL;                                                          \
+        neko_slot_array_init((void**)&sa, sizeof(*sa));                                        \
+        neko_dyn_array_init((void**)&sa->indices, sizeof(uint32_t));                           \
+        neko_dyn_array_init((void**)&sa->data, sizeof(T));                                     \
+        ai.slot_array = (void*)sa;                                                             \
+        ai.tmp_ptr = (void*)&sa->tmp;                                                          \
+        ai.slot_array_indices_ptr = (void*)sa->indices;                                        \
+        ai.slot_array_data_ptr = (void*)sa->data;                                              \
+        if (!ai.desc.load_from_file) {                                                         \
             ai.desc.load_from_file = (neko_asset_load_func)&neko_asset_default_load_from_file; \
-        }                                                                                  \
-        neko_hash_table_insert((AM)->importers, neko_hash_str64(neko_to_str(T)), ai);            \
+        }                                                                                      \
+        neko_hash_table_insert((AM)->importers, neko_hash_str64(neko_to_str(T)), ai);          \
     } while (0)
 
 // Need a way to be able to print upon assert
 #define neko_assets_load_from_file(AM, T, PATH, ...)                                                                                                                           \
-    (/*neko_assert(neko_hash_table_key_exists((AM)->importers, neko_hash_str64(neko_to_str(T)))),*/                                                                                  \
-     (AM)->tmpi = neko_hash_table_getp((AM)->importers, neko_hash_str64(neko_to_str(T))), (AM)->tmpi->desc.load_from_file(PATH, (AM)->tmpi->tmp_ptr, ##__VA_ARGS__),               \
+    (/*neko_assert(neko_hash_table_key_exists((AM)->importers, neko_hash_str64(neko_to_str(T)))),*/                                                                            \
+     (AM)->tmpi = neko_hash_table_getp((AM)->importers, neko_hash_str64(neko_to_str(T))), (AM)->tmpi->desc.load_from_file(PATH, (AM)->tmpi->tmp_ptr, ##__VA_ARGS__),           \
      (AM)->tmpi->tmpid = neko_slot_array_insert_func(&(AM)->tmpi->slot_array_indices_ptr, &(AM)->tmpi->slot_array_data_ptr, (AM)->tmpi->tmp_ptr, (AM)->tmpi->data_size, NULL), \
      neko_asset_handle_create(T, (AM)->tmpi->tmpid, (AM)->tmpi->importer_id))
 
 #define neko_assets_create_asset(AM, T, DATA)                                                                                                                                  \
-    (/*neko_assert(neko_hash_table_key_exists((AM)->importers, neko_hash_str64(neko_to_str(T)))),*/                                                                                  \
-     (AM)->tmpi = neko_hash_table_getp((AM)->importers, neko_hash_str64(neko_to_str(T))), (AM)->tmpi->tmp_ptr = (DATA),                                                            \
+    (/*neko_assert(neko_hash_table_key_exists((AM)->importers, neko_hash_str64(neko_to_str(T)))),*/                                                                            \
+     (AM)->tmpi = neko_hash_table_getp((AM)->importers, neko_hash_str64(neko_to_str(T))), (AM)->tmpi->tmp_ptr = (DATA),                                                        \
      (AM)->tmpi->tmpid = neko_slot_array_insert_func(&(AM)->tmpi->slot_array_indices_ptr, &(AM)->tmpi->slot_array_data_ptr, (AM)->tmpi->tmp_ptr, (AM)->tmpi->data_size, NULL), \
      neko_asset_handle_create(T, (AM)->tmpi->tmpid, (AM)->tmpi->importer_id))
 
 typedef struct neko_asset_manager_t {
     neko_hash_table(uint64_t, neko_asset_importer_t) importers;  // Maps hashed types to importer
-    neko_asset_importer_t* tmpi;                               // Temporary importer for caching
+    neko_asset_importer_t* tmpi;                                 // Temporary importer for caching
     uint32_t free_importer_id;
 } neko_asset_manager_t;
 

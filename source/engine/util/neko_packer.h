@@ -63,23 +63,23 @@ inline static const char *__neko_pack_result(neko_pack_result result) {
 
 typedef struct neko_packreader_t neko_packreader_t;
 
-neko_pack_result neko_pack_read(const char *filePath, u32 dataBufferCapacity, bool isResourcesDirectory, neko_packreader_t **pack_reader);
-void neko_pack_destroy(neko_packreader_t *pack_reader);
+NEKO_API_DECL neko_pack_result neko_pack_read(const char *filePath, u32 dataBufferCapacity, bool isResourcesDirectory, neko_packreader_t **pack_reader);
+NEKO_API_DECL void neko_pack_destroy(neko_packreader_t *pack_reader);
 
-u64 neko_pack_item_count(neko_packreader_t *pack_reader);
-b8 neko_pack_item_index(neko_packreader_t *pack_reader, const char *path, u64 *index);
-u32 neko_pack_item_size(neko_packreader_t *pack_reader, u64 index);
-const char *neko_pack_item_path(neko_packreader_t *pack_reader, u64 index);
-neko_pack_result neko_pack_item_data_with_index(neko_packreader_t *pack_reader, u64 index, const u8 **data, u32 *size);
-neko_pack_result neko_pack_item_data(neko_packreader_t *pack_reader, const char *path, const u8 **data, u32 *size);
-void neko_pack_free_buffers(neko_packreader_t *pack_reader);
-neko_pack_result neko_unpack_files(const char *filePath, b8 printProgress);
-neko_pack_result neko_pack_files(const char *packPath, u64 fileCount, const char **filePaths, b8 printProgress);
+NEKO_API_DECL u64 neko_pack_item_count(neko_packreader_t *pack_reader);
+NEKO_API_DECL b8 neko_pack_item_index(neko_packreader_t *pack_reader, const char *path, u64 *index);
+NEKO_API_DECL u32 neko_pack_item_size(neko_packreader_t *pack_reader, u64 index);
+NEKO_API_DECL const char *neko_pack_item_path(neko_packreader_t *pack_reader, u64 index);
+NEKO_API_DECL neko_pack_result neko_pack_item_data_with_index(neko_packreader_t *pack_reader, u64 index, const u8 **data, u32 *size);
+NEKO_API_DECL neko_pack_result neko_pack_item_data(neko_packreader_t *pack_reader, const char *path, const u8 **data, u32 *size);
+NEKO_API_DECL void neko_pack_free_buffers(neko_packreader_t *pack_reader);
+NEKO_API_DECL neko_pack_result neko_unpack_files(const char *filePath, b8 printProgress);
+NEKO_API_DECL neko_pack_result neko_pack_files(const char *packPath, u64 fileCount, const char **filePaths, b8 printProgress);
 
-void neko_pack_version(u8 *majorVersion, u8 *minorVersion, u8 *patchVersion);
-neko_pack_result neko_pack_info(const char *filePath, u8 *majorVersion, u8 *minorVersion, u8 *patchVersion, b8 *isLittleEndian, u64 *itemCount);
+NEKO_API_DECL void neko_pack_version(u8 *majorVersion, u8 *minorVersion, u8 *patchVersion);
+NEKO_API_DECL neko_pack_result neko_pack_info(const char *filePath, u8 *majorVersion, u8 *minorVersion, u8 *patchVersion, b8 *isLittleEndian, u64 *itemCount);
 
-neko_inline bool neko_pack_check(neko_pack_result result) {
+NEKO_API_DECL neko_inline bool neko_pack_check(neko_pack_result result) {
     if (result == SUCCESS_PACK_RESULT) return true;
     // neko_error(std::format("read pack faild: {0}", __neko_pack_result(result)));
     return false;

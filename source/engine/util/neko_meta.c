@@ -19,7 +19,8 @@ u64 __neko_meta_registry_register_class_impl(neko_meta_registry_t* meta, const_s
     u32 ct = decl->size / sizeof(neko_meta_property_t);
     cls.name = name;
     cls.property_count = ct;
-    cls.properties = (neko_meta_property_t*)neko_gc_alloc(&g_gc, decl->size);
+    // cls.properties = (neko_meta_property_t*)neko_gc_alloc(&g_gc, decl->size);
+    cls.properties = (neko_meta_property_t*)neko_malloc(decl->size);
     memcpy(cls.properties, decl->properties, decl->size);
 
     u64 id = neko_hash_str64(name);

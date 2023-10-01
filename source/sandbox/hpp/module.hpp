@@ -4,8 +4,7 @@
 
 #include <thread>
 
-#include "engine/utility/exception.hpp"
-#include "engine/utility/neko_cpp_utils.hpp"
+#include "neko_cpp_utils.hpp"
 
 namespace neko {
 

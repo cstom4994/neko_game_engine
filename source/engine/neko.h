@@ -82,7 +82,7 @@
 #else
 #ifdef __cplusplus
 #define NEKO_API_EXTERN extern "C"
-#define NEKO_CPP
+#define neko_cpp_src
 #else
 #define NEKO_API_EXTERN extern
 #endif
@@ -137,12 +137,12 @@
 // C primitive types
 ============================================================*/
 
-#ifndef NEKO_CPP
+#ifndef neko_cpp_src
 #define false 0
 #define true 1
 #endif
 
-#ifdef NEKO_CPP
+#ifdef neko_cpp_src
 typedef bool b8;
 #else
 #ifndef __bool_true_false_are_defined
@@ -177,14 +177,41 @@ typedef uintptr_t uptr;
 #define f32_max FLT_MAX
 #define f32_min FLT_MIN
 
+// 提供于静态反射和序列化模块
+enum neko_type_kind {
+    TYPE_KIND_S8 = 0x00,
+    TYPE_KIND_S16,
+    TYPE_KIND_S32,
+    TYPE_KIND_S64,
+    TYPE_KIND_U8,
+    TYPE_KIND_U16,
+    TYPE_KIND_U32,
+    TYPE_KIND_U64,
+    TYPE_KIND_F32,
+    TYPE_KIND_F64,
+    TYPE_KIND_BOOL,
+    TYPE_KIND_CHAR,
+    TYPE_KIND_STR,
+    TYPE_KIND_VOID,
+    TYPE_KIND_POINTER,
+    TYPE_KIND_ARRAY,
+    TYPE_KIND_ENUM,
+    TYPE_KIND_STRUCT,
+    TYPE_KIND_COUNT
+};
+
 // Helper macro for compiling to nothing
 #define neko_empty_instruction(...)
 
 #define neko_array_size(__ARR) sizeof(__ARR) / sizeof(__ARR[0])
 
-#ifndef neko_assert
-#define neko_assert assert
-#endif
+#define neko_assert(x, ...)                                                                                            \
+    do {                                                                                                               \
+        if (!(x)) {                                                                                                    \
+            neko_printf("assertion failed: (%s), function %s, file %s, line %d.\n", #x, __func__, __FILE__, __LINE__); \
+            __debugbreak();                                                                                            \
+        }                                                                                                              \
+    } while (0)
 
 #if defined(__cplusplus)
 #define neko_default_val() \
@@ -195,12 +222,12 @@ typedef uintptr_t uptr;
 #endif
 
 // Helper macro for an in place for-range loop
-#define neko_for_range_i(__COUNT) for (uint32_t i = 0; i < __COUNT; ++i)
+#define neko_for_range_i(__COUNT) for (u32 i = 0; i < __COUNT; ++i)
 
 // Helper macro for an in place for-range loop
-#define neko_for_range_j(__COUNT) for (uint32_t j = 0; j < __COUNT; ++j)
+#define neko_for_range_j(__COUNT) for (u32 j = 0; j < __COUNT; ++j)
 
-#define neko_for_range(__COUNT) for (uint32_t neko_macro_token_paste(__T, __LINE__) = 0; neko_macro_token_paste(__T, __LINE__) < __COUNT; ++(neko_macro_token_paste(__T, __LINE__)))
+#define neko_for_range(__COUNT) for (u32 neko_macro_token_paste(__T, __LINE__) = 0; neko_macro_token_paste(__T, __LINE__) < __COUNT; ++(neko_macro_token_paste(__T, __LINE__)))
 
 #define neko_max(A, B) ((A) > (B) ? (A) : (B))
 
@@ -232,13 +259,13 @@ typedef uintptr_t uptr;
 #define neko_macro_token_paste(X, Y) X##Y
 #define neko_macro_cat(X, Y) neko_macro_token_paste(X, Y)
 
-#define neko_timed_action(INTERVAL, ...)                                      \
-    do {                                                                      \
-        static uint32_t neko_macro_cat(neko_macro_cat(__T, __LINE__), t) = 0; \
-        if (neko_macro_cat(neko_macro_cat(__T, __LINE__), t)++ > INTERVAL) {  \
-            neko_macro_cat(neko_macro_cat(__T, __LINE__), t) = 0;             \
-            __VA_ARGS__                                                       \
-        }                                                                     \
+#define neko_timed_action(INTERVAL, ...)                                     \
+    do {                                                                     \
+        static u32 neko_macro_cat(neko_macro_cat(__T, __LINE__), t) = 0;     \
+        if (neko_macro_cat(neko_macro_cat(__T, __LINE__), t)++ > INTERVAL) { \
+            neko_macro_cat(neko_macro_cat(__T, __LINE__), t) = 0;            \
+            __VA_ARGS__                                                      \
+        }                                                                    \
     } while (0)
 
 #define neko_concat(x, y) neko_concat_impl(x, y)
@@ -287,7 +314,7 @@ typedef uintptr_t uptr;
     class_name(class_name&&) = default;                \
     class_name& operator=(class_name&&) = default
 
-#define neko_aligned_buffer(name) alignas(16) static const std::uint8_t name[]
+#define neko_aligned_buffer(name) alignas(16) static const std::u8 name[]
 
 #define neko_va_unpack(...) __VA_ARGS__  // 用于解包括号 带逗号的宏参数需要它
 
@@ -329,13 +356,25 @@ const char* u8Cpp20(T&& t) noexcept {
 
 #define _base(base_type) base_type _base
 
-#ifdef NEKO_CPP
+#ifdef neko_cpp_src
 
 #include <functional>
 #include <memory>
 #include <string>
 #include <string_view>
 #include <vector>
+
+#ifndef neko_check_is_trivial
+#define neko_check_is_trivial(type, err) static_assert(std::is_trivial<type>::value, err)
+#endif
+
+#define neko_malloc_init(type)                   \
+    (type*)_neko_malloc_init_impl(sizeof(type)); \
+    neko_check_is_trivial(type, "try to init a non-trivial object")
+
+#define neko_malloc_init_ex(name, type)                              \
+    neko_check_is_trivial(type, "try to init a non-trivial object"); \
+    struct type* name = neko_malloc_init(type)
 
 typedef std::string neko_string;
 typedef std::string_view neko_string_view;
@@ -422,7 +461,7 @@ struct neko_named_func {
 
 }  // namespace neko
 
-#endif  // NEKO_CPP
+#endif  // neko_cpp_src
 
 #pragma region neko_mem
 
@@ -442,14 +481,12 @@ NEKO_API_DECL
 void* _neko_malloc_init_impl(size_t sz);
 
 // Default memory allocations
-#ifndef NEKO_NO_OS_MEMORY_ALLOC_DEFAULT
 #define neko_malloc malloc
 #define neko_free free
 #define neko_realloc realloc
 #define neko_calloc calloc
-#define neko_alloca malloc
+
 #define neko_malloc_init(__T) (__T*)_neko_malloc_init_impl(sizeof(__T))
-#endif
 
 NEKO_API_DECL neko_os_api_t neko_os_api_new_default();
 
@@ -457,70 +494,32 @@ NEKO_API_DECL neko_os_api_t neko_os_api_new_default();
 #define neko_os_api_new neko_os_api_new_default
 #endif
 
-#ifndef neko_malloc
-#define neko_malloc(__SZ) (neko_ctx()->os.malloc(__SZ))
-#endif
-
-#ifndef neko_malloc_init
-#define neko_malloc_init(__T) ((__T*)neko_ctx()->os.malloc_init(sizeof(__T)))
-#endif
-
-#ifndef neko_free
-#define neko_free(__MEM) (neko_ctx()->os.free(__MEM))
-#endif
-
-#ifndef neko_realloc
-#define neko_realloc(__MEM, __AZ) (neko_ctx()->os.realloc(__MEM, __AZ))
-#endif
-
-#ifndef neko_calloc
-#define neko_calloc(__NUM, __SZ) (neko_ctx()->os.calloc(__NUM, __SZ))
-#endif
-
-#ifndef neko_alloca
-#define neko_alloca(__SZ) (neko_ctx()->os.alloca(__SZ))
-#endif
-
 #ifndef neko_strdup
 #define neko_strdup(__STR) (neko_ctx()->os.strdup(__STR))
 #endif
 
-#ifdef NEKO_CPP
-
-void* __neko_mem_safe_alloc(size_t size, const char* file, int line, size_t* statistics = NULL);
-void* __neko_mem_safe_calloc(size_t count, size_t element_size, const char* file, int line, size_t* statistics = NULL);
-void __neko_mem_safe_free(void* mem, size_t* statistics = NULL);
-void* __neko_mem_safe_realloc(void* ptr, size_t new_size, const char* file, int line, size_t* statistics = NULL);
+NEKO_API_DECL void* __neko_mem_safe_alloc(size_t size, const char* file, int line, size_t* statistics);
+NEKO_API_DECL void* __neko_mem_safe_calloc(size_t count, size_t element_size, const char* file, int line, size_t* statistics);
+NEKO_API_DECL void __neko_mem_safe_free(void* mem, size_t* statistics);
+NEKO_API_DECL void* __neko_mem_safe_realloc(void* ptr, size_t new_size, const char* file, int line, size_t* statistics);
 
 #if 1
 
-#ifndef neko_safe_malloc
-#define neko_safe_malloc(size) ::neko::__neko_mem_safe_alloc((size), (char*)__FILE__, __LINE__)
-#endif
-
-#ifndef neko_safe_free
-#define neko_safe_free(mem) ::neko::__neko_mem_safe_free(mem)
-#endif
-
-#ifndef neko_safe_realloc
-#define neko_safe_realloc(ptr, size) ::neko::__neko_mem_safe_realloc((ptr), (size), (char*)__FILE__, __LINE__)
-#endif
-
-#ifndef neko_safe_calloc
-#define neko_safe_calloc(count, element_size) ::neko::__neko_mem_safe_calloc(count, element_size, (char*)__FILE__, __LINE__)
-#endif
+#define neko_safe_malloc(size) __neko_mem_safe_alloc((size), (char*)__FILE__, __LINE__, NULL)
+#define neko_safe_free(mem) __neko_mem_safe_free(mem, NULL)
+#define neko_safe_realloc(ptr, size) __neko_mem_safe_realloc((ptr), (size), (char*)__FILE__, __LINE__, NULL)
+#define neko_safe_calloc(count, element_size) __neko_mem_safe_calloc(count, element_size, (char*)__FILE__, __LINE__, NULL)
 
 #else
 
-#ifndef neko_safe_malloc
-#define neko_safe_malloc ME_MALLOC_FUNC
-#endif
-
-#ifndef neko_safe_free
-#define neko_safe_free ME_FREE_FUNC
-#endif
+#define neko_safe_malloc neko_malloc
+#define neko_safe_free neko_free
+#define neko_safe_realloc neko_realloc
+#define neko_safe_calloc neko_calloc
 
 #endif
+
+#ifdef neko_cpp_src
 
 // 单纯用来测试的 new 和 delete
 // 不用于开发目的
@@ -659,20 +658,20 @@ typedef enum neko_result { NEKO_RESULT_SUCCESS, NEKO_RESULT_IN_PROGRESS, NEKO_RE
 
 #define neko_handle(TYPE) neko_handle_##TYPE
 
-#define neko_handle_decl(TYPE)                                             \
-    typedef struct {                                                       \
-        uint32_t id;                                                       \
-    } neko_handle(TYPE);                                                   \
-    neko_inline neko_handle(TYPE) neko_handle_invalid_##TYPE() {           \
-        neko_handle(TYPE) h;                                               \
-        h.id = UINT32_MAX;                                                 \
-        return h;                                                          \
-    }                                                                      \
-                                                                           \
-    neko_inline neko_handle(TYPE) neko_handle_create_##TYPE(uint32_t id) { \
-        neko_handle(TYPE) h;                                               \
-        h.id = id;                                                         \
-        return h;                                                          \
+#define neko_handle_decl(TYPE)                                        \
+    typedef struct {                                                  \
+        u32 id;                                                       \
+    } neko_handle(TYPE);                                              \
+    neko_inline neko_handle(TYPE) neko_handle_invalid_##TYPE() {      \
+        neko_handle(TYPE) h;                                          \
+        h.id = UINT32_MAX;                                            \
+        return h;                                                     \
+    }                                                                 \
+                                                                      \
+    neko_inline neko_handle(TYPE) neko_handle_create_##TYPE(u32 id) { \
+        neko_handle(TYPE) h;                                          \
+        h.id = id;                                                    \
+        return h;                                                     \
     }
 
 #define neko_handle_invalid(__TYPE) neko_handle_invalid_##__TYPE()
@@ -707,14 +706,14 @@ neko_force_inline neko_hsv_t neko_hsv_ctor(float h, float s, float v) {
 
 typedef struct neko_color_t {
     union {
-        uint8_t rgba[4];
+        u8 rgba[4];
         struct {
-            uint8_t r, g, b, a;
+            u8 r, g, b, a;
         };
     };
 } neko_color_t;
 
-neko_force_inline neko_color_t neko_color_ctor(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+neko_force_inline neko_color_t neko_color_ctor(u8 r, u8 g, u8 b, u8 a) {
     neko_color_t color;
     color.r = r;
     color.g = g;
@@ -734,7 +733,7 @@ neko_force_inline neko_color_t neko_color_ctor(uint8_t r, uint8_t g, uint8_t b, 
 #define NEKO_COLOR_MAROON neko_color(128, 0, 0, 255)
 #define NEKO_COLOR_BROWN neko_color(165, 42, 42, 255)
 
-neko_force_inline neko_color_t neko_color_alpha(neko_color_t c, uint8_t a) { return neko_color(c.r, c.g, c.b, a); }
+neko_force_inline neko_color_t neko_color_alpha(neko_color_t c, u8 a) { return neko_color(c.r, c.g, c.b, a); }
 
 neko_force_inline neko_hsv_t neko_rgb2hsv(neko_color_t in) {
     float ir = (float)in.r / 255.f;
@@ -803,10 +802,10 @@ neko_force_inline neko_color_t neko_hsv2rgb(neko_hsv_t in) {
     q = in.v * (1.0 - (in.s * ff));
     t = in.v * (1.0 - (in.s * (1.0 - ff)));
 
-    uint8_t iv = in.v * 255;
-    uint8_t it = t * 255;
-    uint8_t ip = p * 255;
-    uint8_t iq = q * 255;
+    u8 iv = in.v * 255;
+    u8 it = t * 255;
+    u8 ip = p * 255;
+    u8 iq = q * 255;
 
     switch (i) {
         case 0:
@@ -849,8 +848,8 @@ neko_force_inline neko_color_t neko_hsv2rgb(neko_hsv_t in) {
 // String Utils
 ===================================*/
 
-neko_force_inline uint32_t neko_string_length(const char* txt) {
-    uint32_t sz = 0;
+neko_force_inline u32 neko_string_length(const char* txt) {
+    u32 sz = 0;
     while (txt != NULL && txt[sz] != '\0') {
         sz++;
     }
@@ -862,15 +861,15 @@ neko_force_inline uint32_t neko_string_length(const char* txt) {
 // Expects null terminated strings
 neko_force_inline b32 neko_string_compare_equal(const char* txt, const char* cmp) {
     // Grab sizes of both strings
-    uint32_t a_sz = neko_string_length(txt);
-    uint32_t b_sz = neko_string_length(cmp);
+    u32 a_sz = neko_string_length(txt);
+    u32 b_sz = neko_string_length(cmp);
 
     // Return false if sizes do not match
     if (a_sz != b_sz) {
         return false;
     }
 
-    for (uint32_t i = 0; i < a_sz; ++i) {
+    for (u32 i = 0; i < a_sz; ++i) {
         if (*txt++ != *cmp++) {
             return false;
         }
@@ -879,16 +878,16 @@ neko_force_inline b32 neko_string_compare_equal(const char* txt, const char* cmp
     return true;
 }
 
-neko_force_inline b32 neko_string_compare_equal_n(const char* txt, const char* cmp, uint32_t n) {
-    uint32_t a_sz = neko_string_length(txt);
-    uint32_t b_sz = neko_string_length(cmp);
+neko_force_inline b32 neko_string_compare_equal_n(const char* txt, const char* cmp, u32 n) {
+    u32 a_sz = neko_string_length(txt);
+    u32 b_sz = neko_string_length(cmp);
 
     // Not enough characters to do operation
     if (a_sz < n || b_sz < n) {
         return false;
     }
 
-    for (uint32_t i = 0; i < n; ++i) {
+    for (u32 i = 0; i < n; ++i) {
         if (*txt++ != *cmp++) {
             return false;
         }
@@ -901,7 +900,7 @@ neko_force_inline void neko_util_str_to_lower(const char* src, char* buffer, siz
     size_t src_sz = neko_string_length(src);
     size_t len = neko_min(src_sz, buffer_sz);
 
-    for (uint32_t i = 0; i < len; ++i) {
+    for (u32 i = 0; i < len; ++i) {
         buffer[i] = tolower(src[i]);
     }
 }
@@ -932,8 +931,8 @@ neko_force_inline b32 neko_util_file_exists(const char* file_path) {
     return false;
 }
 
-neko_force_inline void neko_util_get_file_extension(char* buffer, uint32_t buffer_size, const char* file_path) {
-    uint32_t str_len = neko_string_length(file_path);
+neko_force_inline void neko_util_get_file_extension(char* buffer, u32 buffer_size, const char* file_path) {
+    u32 str_len = neko_string_length(file_path);
     const char* at = (file_path + str_len - 1);
     while (*at != '.' && at != file_path) {
         at--;
@@ -941,7 +940,7 @@ neko_force_inline void neko_util_get_file_extension(char* buffer, uint32_t buffe
 
     if (*at == '.') {
         at++;
-        uint32_t i = 0;
+        u32 i = 0;
         while (*at) {
             char c = *at;
             buffer[i++] = *at++;
@@ -950,10 +949,10 @@ neko_force_inline void neko_util_get_file_extension(char* buffer, uint32_t buffe
     }
 }
 
-neko_force_inline void neko_util_get_dir_from_file(char* buffer, uint32_t buffer_size, const char* file_path) {
-    uint32_t str_len = neko_string_length(file_path);
+neko_force_inline void neko_util_get_dir_from_file(char* buffer, u32 buffer_size, const char* file_path) {
+    u32 str_len = neko_string_length(file_path);
     const char* end = (file_path + str_len);
-    for (uint32_t i = 0; i < str_len; ++i) {
+    for (u32 i = 0; i < str_len; ++i) {
         if (file_path[i] == '/' || file_path[i] == '\\') {
             end = &file_path[i];
         }
@@ -966,11 +965,11 @@ neko_force_inline void neko_util_get_dir_from_file(char* buffer, uint32_t buffer
     }
 }
 
-neko_force_inline void neko_util_get_file_name(char* buffer, uint32_t buffer_size, const char* file_path) {
-    uint32_t str_len = neko_string_length(file_path);
+neko_force_inline void neko_util_get_file_name(char* buffer, u32 buffer_size, const char* file_path) {
+    u32 str_len = neko_string_length(file_path);
     const char* file_start = file_path;
     const char* file_end = (file_path + str_len);
-    for (uint32_t i = 0; i < str_len; ++i) {
+    for (u32 i = 0; i < str_len; ++i) {
         if (file_path[i] == '/' || file_path[i] == '\\') {
             file_start = &file_path[i + 1];
         } else if (file_path[i] == '.') {
@@ -985,8 +984,8 @@ neko_force_inline void neko_util_get_file_name(char* buffer, uint32_t buffer_siz
     }
 }
 
-neko_force_inline void neko_util_string_substring(const char* src, char* dst, size_t sz, uint32_t start, uint32_t end) {
-    uint32_t str_len = neko_string_length(src);
+neko_force_inline void neko_util_string_substring(const char* src, char* dst, size_t sz, u32 start, u32 end) {
+    u32 str_len = neko_string_length(src);
     if (end > str_len) {
         end = str_len;
     }
@@ -996,7 +995,7 @@ neko_force_inline void neko_util_string_substring(const char* src, char* dst, si
 
     const char* at = src + start;
     const char* e = src + end;
-    uint32_t ct = 0;
+    u32 ct = 0;
     while (at && *at != '\0' && at != e) {
         dst[ct] = *at;
         at++;
@@ -1004,9 +1003,9 @@ neko_force_inline void neko_util_string_substring(const char* src, char* dst, si
     }
 }
 
-neko_force_inline void neko_util_string_remove_character(const char* src, char* buffer, uint32_t buffer_size, char delimiter) {
-    uint32_t ct = 0;
-    uint32_t str_len = neko_string_length(src);
+neko_force_inline void neko_util_string_remove_character(const char* src, char* buffer, u32 buffer_size, char delimiter) {
+    u32 ct = 0;
+    u32 str_len = neko_string_length(src);
     const char* at = src;
     while (at && *at != '\0' && ct < buffer_size) {
         char c = *at;
@@ -1021,7 +1020,7 @@ neko_force_inline void neko_util_string_remove_character(const char* src, char* 
 neko_force_inline void neko_util_string_replace(char* buffer, size_t buffer_sz, const char* replace, char fallback) {
     // Replace all characters with characters of keyword, then the rest replace with spaces
     size_t len = neko_string_length(replace);
-    for (uint32_t c = 0; c < buffer_sz; ++c) {
+    for (u32 c = 0; c < buffer_sz; ++c) {
         if (c < len) {
             buffer[c] = replace[c];
         } else {
@@ -1030,8 +1029,8 @@ neko_force_inline void neko_util_string_replace(char* buffer, size_t buffer_sz, 
     }
 }
 
-neko_force_inline void neko_util_string_replace_delim(const char* source_str, char* buffer, uint32_t buffer_size, char delimiter, char replace) {
-    uint32_t str_len = neko_string_length(source_str);
+neko_force_inline void neko_util_string_replace_delim(const char* source_str, char* buffer, u32 buffer_size, char delimiter, char replace) {
+    u32 str_len = neko_string_length(source_str);
     const char* at = source_str;
     while (at && *at != '\0') {
         char c = *at;
@@ -1043,7 +1042,7 @@ neko_force_inline void neko_util_string_replace_delim(const char* source_str, ch
     }
 }
 
-neko_force_inline void neko_util_normalize_path(const char* path, char* buffer, uint32_t buffer_size) {
+neko_force_inline void neko_util_normalize_path(const char* path, char* buffer, u32 buffer_size) {
     // Normalize the path somehow...
 }
 
@@ -1094,10 +1093,10 @@ neko_force_inline void neko_fprintln(FILE* fp, const char* fmt, ...) {
     neko_fprintf(fp, "\n");
 }
 
-neko_force_inline void neko_fprintln_t(FILE* fp, uint32_t tabs, const char* fmt, ...) {
+neko_force_inline void neko_fprintln_t(FILE* fp, u32 tabs, const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
-    for (uint32_t i = 0; i < tabs; ++i) {
+    for (u32 i = 0; i < tabs; ++i) {
         neko_fprintf(fp, "\t");
     }
     vfprintf(fp, fmt, args);
@@ -1124,13 +1123,13 @@ neko_force_inline void neko_snprintf(char* buffer, size_t buffer_size, const cha
     char __NAME[__SZ] = neko_default_val();      \
     neko_snprintf(__NAME, __SZ, __FMT, ##__VA_ARGS__);
 
-neko_force_inline uint32_t neko_util_safe_truncate_u64(uint64_t value) {
+neko_force_inline u32 neko_util_safe_truncate_u64(u64 value) {
     neko_assert(value <= 0xFFFFFFFF);
-    uint32_t result = (uint32_t)value;
+    u32 result = (u32)value;
     return result;
 }
 
-neko_force_inline uint32_t neko_hash_uint32_t(uint32_t x) {
+neko_force_inline u32 neko_hash_uint32_t(u32 x) {
     x = ((x >> 16) ^ x) * 0x45d9f3b;
     x = ((x >> 16) ^ x) * 0x45d9f3b;
     x = (x >> 16) ^ x;
@@ -1144,17 +1143,17 @@ neko_force_inline uint32_t neko_hash_uint32_t(uint32_t x) {
         __OUT = (__OUT >> 16) ^ __OUT;               \
     } while (0)
 
-neko_force_inline uint32_t neko_hash_u64(uint64_t x) {
+neko_force_inline u32 neko_hash_u64(u64 x) {
     x = (x ^ (x >> 31) ^ (x >> 62)) * UINT64_C(0x319642b2d24d8ec3);
     x = (x ^ (x >> 27) ^ (x >> 54)) * UINT64_C(0x96de1b173f119089);
     x = x ^ (x >> 30) ^ (x >> 60);
-    return (uint32_t)x;
+    return (u32)x;
 }
 
 // Note: source: http://www.cse.yorku.ca/~oz/hash.html
 // djb2 hash by dan bernstein
-neko_force_inline uint32_t neko_hash_str(const char* str) {
-    uint32_t hash = 5381;
+neko_force_inline u32 neko_hash_str(const char* str) {
+    u32 hash = 5381;
     s32 c;
     while ((c = *str++)) {
         hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
@@ -1162,10 +1161,10 @@ neko_force_inline uint32_t neko_hash_str(const char* str) {
     return hash;
 }
 
-neko_force_inline uint64_t neko_hash_str64(const char* str) {
-    uint32_t hash1 = 5381;
-    uint32_t hash2 = 52711;
-    uint32_t i = neko_string_length(str);
+neko_force_inline u64 neko_hash_str64(const char* str) {
+    u32 hash1 = 5381;
+    u32 hash2 = 52711;
+    u32 i = neko_string_length(str);
     while (i--) {
         char c = str[i];
         hash1 = (hash1 * 33) ^ c;
@@ -1307,8 +1306,8 @@ neko_force_inline size_t neko_hash_bytes(void* p, size_t len, size_t seed) {
 }
 
 /* Resource Loading Util */
-NEKO_API_DECL bool32_t neko_util_load_texture_data_from_file(const char* file_path, int32_t* width, int32_t* height, uint32_t* num_comps, void** data, bool32_t flip_vertically_on_load);
-NEKO_API_DECL bool32_t neko_util_load_texture_data_from_memory(const void* memory, size_t sz, int32_t* width, int32_t* height, uint32_t* num_comps, void** data, bool32_t flip_vertically_on_load);
+NEKO_API_DECL bool32_t neko_util_load_texture_data_from_file(const char* file_path, s32* width, s32* height, u32* num_comps, void** data, bool32_t flip_vertically_on_load);
+NEKO_API_DECL bool32_t neko_util_load_texture_data_from_memory(const void* memory, size_t sz, s32* width, s32* height, u32* num_comps, void** data, bool32_t flip_vertically_on_load);
 
 /** @} */  // end of neko_util
 
@@ -1316,10 +1315,10 @@ NEKO_API_DECL bool32_t neko_util_load_texture_data_from_memory(const void* memor
 // NEKO_MEMORY
 ========================*/
 
-#define neko_ptr_add(P, BYTES) (((uint8_t*)P + (BYTES)))
+#define neko_ptr_add(P, BYTES) (((u8*)P + (BYTES)))
 
 typedef struct neko_memory_block_t {
-    uint8_t* data;
+    u8* data;
     size_t size;
 } neko_memory_block_t;
 
@@ -1333,7 +1332,7 @@ NEKO_API_DECL size_t neko_memory_calc_padding_w_header(size_t base_address, size
 ================================================================================*/
 
 typedef struct neko_linear_allocator_t {
-    uint8_t* memory;
+    u8* memory;
     size_t total_size;
     size_t offset;
 } neko_linear_allocator_t;
@@ -1348,7 +1347,7 @@ NEKO_API_DECL void neko_linear_allocator_clear(neko_linear_allocator_t* la);
 ================================================================================*/
 
 typedef struct neko_stack_allocator_header_t {
-    uint32_t size;
+    u32 size;
 } neko_stack_allocator_header_t;
 
 typedef struct neko_stack_allocator_t {
@@ -1389,8 +1388,8 @@ typedef struct neko_heap_allocator_free_block_t {
 typedef struct neko_heap_allocator_t {
     neko_heap_allocator_header_t* memory;
     neko_heap_allocator_free_block_t* free_blocks;
-    uint32_t free_block_count;
-    uint32_t free_block_capacity;
+    u32 free_block_count;
+    u32 free_block_capacity;
 } neko_heap_allocator_t;
 
 NEKO_API_DECL neko_heap_allocator_t neko_heap_allocate_new();
@@ -1416,10 +1415,10 @@ typedef struct neko_paged_allocator_page_t {
 } neko_paged_allocator_page_t;
 
 typedef struct neko_paged_allocator_t {
-    uint32_t block_size;
-    uint32_t blocks_per_page;
+    u32 block_size;
+    u32 blocks_per_page;
     neko_paged_allocator_page_t* pages;
-    uint32_t page_count;
+    u32 page_count;
     neko_paged_allocator_block_t* free_list;
 } neko_paged_allocator_t;
 
@@ -1433,7 +1432,7 @@ NEKO_API_DECL void neko_paged_allocator_clear(neko_paged_allocator_t* pa);
 
 #include "engine/neko_math.h"
 
-#ifdef NEKO_CPP
+#ifdef neko_cpp_src
 
 #include <algorithm>
 #include <chrono>
@@ -1464,7 +1463,7 @@ neko_static_inline time_t neko_get_time_mkgmtime(struct tm* unixdate) {
     time_t fakeUnixtime = mktime(unixdate);
     struct tm* fakeDate = gmtime(&fakeUnixtime);
 
-    int32_t nOffSet = fakeDate->tm_hour - unixdate->tm_hour;
+    s32 nOffSet = fakeDate->tm_hour - unixdate->tm_hour;
     if (nOffSet > 12) {
         nOffSet = 24 - nOffSet;
     }
@@ -1575,7 +1574,7 @@ neko_inline void neko_tex_flip_vertically(int width, int height, u8* data) {
     }
 }
 
-#endif  // NEKO_CPP
+#endif  // neko_cpp_src
 
 /*================================================================================
 // Random
@@ -1635,16 +1634,16 @@ typedef struct neko_camera_t {
 NEKO_API_DECL neko_camera_t neko_camera_default();
 NEKO_API_DECL neko_camera_t neko_camera_perspective();
 NEKO_API_DECL neko_mat4 neko_camera_get_view(const neko_camera_t* cam);
-NEKO_API_DECL neko_mat4 neko_camera_get_proj(const neko_camera_t* cam, int32_t view_width, int32_t view_height);
-NEKO_API_DECL neko_mat4 neko_camera_get_view_projection(const neko_camera_t* cam, int32_t view_width, int32_t view_height);
+NEKO_API_DECL neko_mat4 neko_camera_get_proj(const neko_camera_t* cam, s32 view_width, s32 view_height);
+NEKO_API_DECL neko_mat4 neko_camera_get_view_projection(const neko_camera_t* cam, s32 view_width, s32 view_height);
 NEKO_API_DECL neko_vec3 neko_camera_forward(const neko_camera_t* cam);
 NEKO_API_DECL neko_vec3 neko_camera_backward(const neko_camera_t* cam);
 NEKO_API_DECL neko_vec3 neko_camera_up(const neko_camera_t* cam);
 NEKO_API_DECL neko_vec3 neko_camera_down(const neko_camera_t* cam);
 NEKO_API_DECL neko_vec3 neko_camera_right(const neko_camera_t* cam);
 NEKO_API_DECL neko_vec3 neko_camera_left(const neko_camera_t* cam);
-NEKO_API_DECL neko_vec3 neko_camera_screen_to_world(const neko_camera_t* cam, neko_vec3 coords, int32_t view_x, int32_t view_y, int32_t view_width, int32_t view_height);
-NEKO_API_DECL neko_vec3 neko_camera_world_to_screen(const neko_camera_t* cam, neko_vec3 coords, int32_t view_width, int32_t view_height);
+NEKO_API_DECL neko_vec3 neko_camera_screen_to_world(const neko_camera_t* cam, neko_vec3 coords, s32 view_x, s32 view_y, s32 view_width, s32 view_height);
+NEKO_API_DECL neko_vec3 neko_camera_world_to_screen(const neko_camera_t* cam, neko_vec3 coords, s32 view_width, s32 view_height);
 NEKO_API_DECL void neko_camera_offset_orientation(neko_camera_t* cam, float yaw, float picth);
 
 /*================================================================================
@@ -1713,7 +1712,7 @@ neko_vec4 neko_aabb_window_coords(neko_aabb_t* aabb, neko_camera_t* camera, neko
     neko_vec4 br = neko_v4(aabb->max.x, aabb->max.y, 0.f, 1.f);
 
     neko_mat4 view_mtx = neko_camera_get_view(camera);
-    neko_mat4 proj_mtx = neko_camera_get_proj(camera, (int32_t)window_size.x, (int32_t)window_size.y);
+    neko_mat4 proj_mtx = neko_camera_get_proj(camera, (s32)window_size.x, (s32)window_size.y);
     neko_mat4 vp = neko_mat4_mul(proj_mtx, view_mtx);
 
     // Transform verts
@@ -1793,7 +1792,7 @@ typedef enum neko_token_type {
 typedef struct neko_token_t {
     const char* text;
     neko_token_type type;
-    uint32_t len;
+    u32 len;
 } neko_token_t;
 
 NEKO_API_DECL neko_token_t neko_token_invalid_token();
@@ -1806,6 +1805,11 @@ NEKO_API_DECL bool neko_char_is_end_of_line(char c);
 NEKO_API_DECL bool neko_char_is_white_space(char c);
 NEKO_API_DECL bool neko_char_is_alpha(char c);
 NEKO_API_DECL bool neko_char_is_numeric(char c);
+
+NEKO_API_DECL neko_inline b8 neko_token_is_end_of_line(char c) { return (c == '\n' || c == '\r'); }
+NEKO_API_DECL neko_inline b8 neko_token_char_is_white_space(char c) { return (c == '\t' || c == ' ' || neko_token_is_end_of_line(c)); }
+NEKO_API_DECL neko_inline b8 neko_token_char_is_alpha(char c) { return ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')); }
+NEKO_API_DECL neko_inline b8 neko_token_char_is_numeric(char c) { return (c >= '0' && c <= '9'); }
 
 //==== [ Lexer ] ============================================================//
 
@@ -1838,5 +1842,137 @@ NEKO_API_DECL bool neko_lexer_c_can_lex(neko_lexer_t* lex);
 NEKO_API_DECL void neko_lexer_c_eat_white_space(neko_lexer_t* lex);
 NEKO_API_DECL neko_token_t neko_lexer_c_next_token(neko_lexer_t* lex);
 NEKO_API_DECL void neko_lexer_set_token(neko_lexer_t* lex, neko_token_t token);
+
+#ifdef neko_cpp_src
+
+template <typename T>
+neko_inline void neko_swap(T& a, T& b) {
+    T tmp = a;
+    a = b;
+    b = tmp;
+}
+
+template <typename T>
+neko_static_inline void write_var(u8*& _buffer, T _var) {
+    std::memcpy(_buffer, &_var, sizeof(T));
+    _buffer += sizeof(T);
+}
+
+neko_static_inline void write_str(u8*& _buffer, const char* _str) {
+    u32 len = (u32)strlen(_str);
+    write_var(_buffer, len);
+    std::memcpy(_buffer, _str, len);
+    _buffer += len;
+}
+
+template <typename T>
+neko_static_inline void read_var(u8*& _buffer, T& _var) {
+    std::memcpy(&_var, _buffer, sizeof(T));
+    _buffer += sizeof(T);
+}
+
+neko_static_inline char* read_string(u8*& _buffer) {
+    u32 len;
+    read_var(_buffer, len);
+    char* str = new char[len + 1];
+    std::memcpy(str, _buffer, len);
+    str[len] = 0;
+    _buffer += len;
+    return str;
+}
+
+neko_static_inline const char* duplicate_string(const char* _str) {
+    char* str = new char[strlen(_str) + 1];
+    std::strcpy(str, _str);
+    return str;
+}
+
+struct string_store {
+    typedef std::unordered_map<std::string, u32> string_to_index_type;
+    typedef std::unordered_map<u32, std::string> index_to_string_type;
+
+    u32 total_size;
+    string_to_index_type str_index_map;
+    index_to_string_type strings;
+
+    string_store() : total_size(0) {}
+
+    void add_string(const char* _str) {
+        string_to_index_type::iterator it = str_index_map.find(_str);
+        if (it == str_index_map.end()) {
+            u32 index = (u32)str_index_map.size();
+            total_size += 4 + (u32)std::strlen(_str);
+            str_index_map[_str] = index;
+            strings[index] = _str;
+        }
+    }
+
+    u32 get_string(const char* _str) { return str_index_map[_str]; }
+};
+
+template <typename T>
+struct neko_span {
+    neko_span() : __begin(nullptr), __end(nullptr) {}
+    neko_span(T* begin, u32 len) : __begin(begin), __end(begin + len) {}
+    neko_span(T* begin, T* end) : __begin(begin), __end(end) {}
+    template <int N>
+    neko_span(T (&value)[N]) : __begin(value), __end(value + N) {}
+    T& operator[](u32 idx) const {
+        neko_assert(__begin + idx < __end);
+        return __begin[idx];
+    }
+    operator neko_span<const T>() const { return neko_span<const T>(__begin, __end); }
+    void remove_prefix(u32 count) {
+        neko_assert(count <= length());
+        __begin += count;
+    }
+    void remove_suffix(u32 count) {
+        neko_assert(count <= length());
+        __end -= count;
+    }
+    [[nodiscard]] neko_span from_left(u32 count) const {
+        neko_assert(count <= length());
+        return neko_span(__begin + count, __end);
+    }
+    [[nodiscard]] neko_span from_right(u32 count) const {
+        neko_assert(count <= length());
+        return neko_span(__begin, __end - count);
+    }
+    T& back() {
+        neko_assert(length() > 0);
+        return *(__end - 1);
+    }
+    const T& back() const {
+        neko_assert(length() > 0);
+        return *(__end - 1);
+    }
+    bool equals(const neko_span<T>& rhs) {
+        bool res = true;
+        if (length() != rhs.length()) return false;
+        for (const T& v : *this) {
+            u32 i = u32(&v - __begin);
+            if (v != rhs.__begin[i]) return false;
+        }
+        return true;
+    }
+
+    template <typename F>
+    s32 find(const F& f) const {
+        for (u32 i = 0, c = length(); i < c; ++i) {
+            if (f(__begin[i])) return i;
+        }
+        return -1;
+    }
+
+    u32 length() const { return (u32)(__end - __begin); }
+
+    T* begin() const { return __begin; }
+    T* end() const { return __end; }
+
+    T* __begin;
+    T* __end;
+};
+
+#endif
 
 #endif  // NEKO_H

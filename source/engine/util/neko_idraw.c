@@ -63,7 +63,7 @@ neko_idraw_pipeline_state_attr_t neko_idraw_pipeline_state_default() {
     attr.stencil_enabled = false;
     attr.blend_enabled = true;
     attr.face_cull_enabled = false;
-    attr.prim_type = (uint16_t)NEKO_GRAPHICS_PRIMITIVE_TRIANGLES;
+    attr.prim_type = (u16)NEKO_GRAPHICS_PRIMITIVE_TRIANGLES;
     return attr;
 }
 
@@ -149,11 +149,11 @@ void neko_immediate_draw_static_data_init() {
     neko_handle(neko_graphics_shader_t) shader = neko_graphics_shader_create(&sdesc);
 
     // Pipelines
-    for (uint16_t d = 0; d < 2; ++d)                  // Depth
-        for (uint16_t s = 0; s < 2; ++s)              // Stencil
-            for (uint16_t b = 0; b < 2; ++b)          // Blend
-                for (uint16_t f = 0; f < 2; ++f)      // Face Cull
-                    for (uint16_t p = 0; p < 2; ++p)  // Prim Type
+    for (u16 d = 0; d < 2; ++d)                  // Depth
+        for (u16 s = 0; s < 2; ++s)              // Stencil
+            for (u16 b = 0; b < 2; ++b)          // Blend
+                for (u16 f = 0; f < 2; ++f)      // Face Cull
+                    for (u16 p = 0; p < 2; ++p)  // Prim Type
                     {
                         neko_idraw_pipeline_state_attr_t attr = neko_default_val();
 
@@ -161,12 +161,12 @@ void neko_immediate_draw_static_data_init() {
                         attr.stencil_enabled = s;
                         attr.blend_enabled = b;
                         attr.face_cull_enabled = f;
-                        attr.prim_type = p ? (uint16_t)NEKO_GRAPHICS_PRIMITIVE_TRIANGLES : (uint16_t)NEKO_GRAPHICS_PRIMITIVE_LINES;
+                        attr.prim_type = p ? (u16)NEKO_GRAPHICS_PRIMITIVE_TRIANGLES : (u16)NEKO_GRAPHICS_PRIMITIVE_LINES;
 
                         // Create new pipeline based on this arrangement
                         neko_graphics_pipeline_desc_t pdesc = neko_default_val();
                         pdesc.raster.shader = shader;
-                        pdesc.raster.index_buffer_element_size = sizeof(uint16_t);
+                        pdesc.raster.index_buffer_element_size = sizeof(u16);
                         pdesc.raster.face_culling = attr.face_cull_enabled ? NEKO_GRAPHICS_FACE_CULLING_BACK : (neko_graphics_face_culling_type)0x00;
                         pdesc.raster.primitive = (neko_graphics_primitive_type)attr.prim_type;
                         pdesc.blend.func = attr.blend_enabled ? NEKO_GRAPHICS_BLEND_EQUATION_ADD : (neko_graphics_blend_equation_type)0x00;
@@ -305,8 +305,8 @@ void neko_immediate_draw_set_pipeline(neko_immediate_draw_t* neko_idraw) {
     }
 
     // Check validity
-    if (neko_idraw->cache.pipeline.prim_type != (uint16_t)NEKO_GRAPHICS_PRIMITIVE_TRIANGLES && neko_idraw->cache.pipeline.prim_type != (uint16_t)NEKO_GRAPHICS_PRIMITIVE_LINES) {
-        neko_idraw->cache.pipeline.prim_type = (uint16_t)NEKO_GRAPHICS_PRIMITIVE_TRIANGLES;
+    if (neko_idraw->cache.pipeline.prim_type != (u16)NEKO_GRAPHICS_PRIMITIVE_TRIANGLES && neko_idraw->cache.pipeline.prim_type != (u16)NEKO_GRAPHICS_PRIMITIVE_LINES) {
+        neko_idraw->cache.pipeline.prim_type = (u16)NEKO_GRAPHICS_PRIMITIVE_TRIANGLES;
     }
     neko_idraw->cache.pipeline.depth_enabled = neko_clamp(neko_idraw->cache.pipeline.depth_enabled, 0, 1);
     neko_idraw->cache.pipeline.stencil_enabled = neko_clamp(neko_idraw->cache.pipeline.stencil_enabled, 0, 1);
@@ -316,6 +316,52 @@ void neko_immediate_draw_set_pipeline(neko_immediate_draw_t* neko_idraw) {
     // Bind pipeline
     neko_assert(neko_hash_table_key_exists(neko_idraw()->pipeline_table, neko_idraw->cache.pipeline));
     neko_graphics_pipeline_bind(&neko_idraw->commands, neko_hash_table_get(neko_idraw()->pipeline_table, neko_idraw->cache.pipeline));
+}
+
+void __neko_draw_rect_2d_impl(neko_immediate_draw_t* neko_idraw, neko_vec2 a, neko_vec2 b, neko_vec2 uv0, neko_vec2 uv1, neko_color_t color) {
+    neko_vec3 tl = neko_v3(a.x, a.y, 0.f);
+    neko_vec3 tr = neko_v3(b.x, a.y, 0.f);
+    neko_vec3 bl = neko_v3(a.x, b.y, 0.f);
+    neko_vec3 br = neko_v3(b.x, b.y, 0.f);
+
+    neko_vec2 tl_uv = neko_v2(uv0.x, uv1.y);
+    neko_vec2 tr_uv = neko_v2(uv1.x, uv1.y);
+    neko_vec2 bl_uv = neko_v2(uv0.x, uv0.y);
+    neko_vec2 br_uv = neko_v2(uv1.x, uv0.y);
+
+    neko_idraw_begin(neko_idraw, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
+    {
+        neko_idraw_c4ubv(neko_idraw, color);
+
+        neko_idraw_tc2fv(neko_idraw, tl_uv);
+        neko_idraw_v3fv(neko_idraw, tl);
+
+        neko_idraw_tc2fv(neko_idraw, br_uv);
+        neko_idraw_v3fv(neko_idraw, br);
+
+        neko_idraw_tc2fv(neko_idraw, bl_uv);
+        neko_idraw_v3fv(neko_idraw, bl);
+
+        neko_idraw_tc2fv(neko_idraw, tl_uv);
+        neko_idraw_v3fv(neko_idraw, tl);
+
+        neko_idraw_tc2fv(neko_idraw, tr_uv);
+        neko_idraw_v3fv(neko_idraw, tr);
+
+        neko_idraw_tc2fv(neko_idraw, br_uv);
+        neko_idraw_v3fv(neko_idraw, br);
+    }
+    neko_idraw_end(neko_idraw);
+}
+
+void neko_idraw_rect_2d_textured_ext(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 x1, f32 y1, f32 u0, f32 v0, f32 u1, f32 v1, u32 tex_id, neko_color_t color) {
+
+    neko_handle(neko_graphics_texture_t) tex = neko_default_val();
+    tex.id = tex_id;
+
+    neko_idraw_texture(neko_idraw, tex);
+    __neko_draw_rect_2d_impl(neko_idraw, neko_v2(x0, y0), neko_v2(x1, y1), neko_v2(u0, v0), neko_v2(u1, v1), color);
+    neko_idraw_texture(neko_idraw, (neko_texture_t){0});
 }
 
 /* Core Vertex Functions */
@@ -458,7 +504,7 @@ void neko_idraw_blend_enabled(neko_immediate_draw_t* neko_idraw, bool enabled) {
 // Core pipeline functions
 void neko_idraw_depth_enabled(neko_immediate_draw_t* neko_idraw, bool enabled) {
     // Push a new pipeline?
-    if (neko_idraw->flags & NEKO_IDRAW_FLAG_NO_BIND_CACHED_PIPELINES || neko_idraw->cache.pipeline.depth_enabled == (uint16_t)enabled) {
+    if (neko_idraw->flags & NEKO_IDRAW_FLAG_NO_BIND_CACHED_PIPELINES || neko_idraw->cache.pipeline.depth_enabled == (u16)enabled) {
         return;
     }
 
@@ -466,7 +512,7 @@ void neko_idraw_depth_enabled(neko_immediate_draw_t* neko_idraw, bool enabled) {
     neko_idraw_flush(neko_idraw);
 
     // Set primitive type
-    neko_idraw->cache.pipeline.depth_enabled = (uint16_t)enabled;
+    neko_idraw->cache.pipeline.depth_enabled = (u16)enabled;
 
     // Bind pipeline
     neko_immediate_draw_set_pipeline(neko_idraw);
@@ -474,7 +520,7 @@ void neko_idraw_depth_enabled(neko_immediate_draw_t* neko_idraw, bool enabled) {
 
 void neko_idraw_stencil_enabled(neko_immediate_draw_t* neko_idraw, bool enabled) {
     // Push a new pipeline?
-    if (neko_idraw->flags & NEKO_IDRAW_FLAG_NO_BIND_CACHED_PIPELINES || neko_idraw->cache.pipeline.stencil_enabled == (uint16_t)enabled) {
+    if (neko_idraw->flags & NEKO_IDRAW_FLAG_NO_BIND_CACHED_PIPELINES || neko_idraw->cache.pipeline.stencil_enabled == (u16)enabled) {
         return;
     }
 
@@ -482,7 +528,7 @@ void neko_idraw_stencil_enabled(neko_immediate_draw_t* neko_idraw, bool enabled)
     neko_idraw_flush(neko_idraw);
 
     // Set primitive type
-    neko_idraw->cache.pipeline.stencil_enabled = (uint16_t)enabled;
+    neko_idraw->cache.pipeline.stencil_enabled = (u16)enabled;
 
     // Bind pipeline
     neko_immediate_draw_set_pipeline(neko_idraw);
@@ -490,7 +536,7 @@ void neko_idraw_stencil_enabled(neko_immediate_draw_t* neko_idraw, bool enabled)
 
 void neko_idraw_face_cull_enabled(neko_immediate_draw_t* neko_idraw, bool enabled) {
     // Push a new pipeline?
-    if (neko_idraw->flags & NEKO_IDRAW_FLAG_NO_BIND_CACHED_PIPELINES || neko_idraw->cache.pipeline.face_cull_enabled == (uint16_t)enabled) {
+    if (neko_idraw->flags & NEKO_IDRAW_FLAG_NO_BIND_CACHED_PIPELINES || neko_idraw->cache.pipeline.face_cull_enabled == (u16)enabled) {
         return;
     }
 
@@ -498,7 +544,7 @@ void neko_idraw_face_cull_enabled(neko_immediate_draw_t* neko_idraw, bool enable
     neko_idraw_flush(neko_idraw);
 
     // Set primitive type
-    neko_idraw->cache.pipeline.face_cull_enabled = (uint16_t)enabled;
+    neko_idraw->cache.pipeline.face_cull_enabled = (u16)enabled;
 
     // Bind pipeline
     neko_immediate_draw_set_pipeline(neko_idraw);
@@ -514,7 +560,7 @@ NEKO_API_DECL void neko_idraw_texture(neko_immediate_draw_t* neko_idraw, neko_ha
     neko_idraw_flush(neko_idraw);
 
     // Set texture
-    neko_idraw->cache.texture = texture.id && texture.id != UINT32_MAX ? texture : neko_idraw()->tex_default;
+    neko_idraw->cache.texture = (texture.id && texture.id != UINT32_MAX) ? texture : neko_idraw()->tex_default;
 }
 
 NEKO_API_DECL void neko_idraw_pipeline_set(neko_immediate_draw_t* neko_idraw, neko_handle(neko_graphics_pipeline_t) pipeline) {

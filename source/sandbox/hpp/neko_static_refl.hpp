@@ -6,9 +6,9 @@
 #include <tuple>
 #include <utility>
 
-#include "engine/utility/name.hpp"
-#include "engine/utility/neko_cpp_misc.hpp"
-#include "engine/utility/neko_cpp_utils.hpp"
+#include "name.hpp"
+#include "neko_cpp_misc.hpp"
+#include "neko_cpp_utils.hpp"
 
 namespace neko::meta::static_refl {
 

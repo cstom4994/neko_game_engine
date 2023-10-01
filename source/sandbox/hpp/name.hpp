@@ -18,7 +18,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "engine/utility/neko_cpp_utils.hpp"
+#include "neko_cpp_utils.hpp"
 
 namespace neko::cpp {
 template <auto V>

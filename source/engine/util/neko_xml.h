@@ -45,18 +45,18 @@ typedef struct neko_xml_node_iter_t {
     neko_xml_node_t* current;
 } neko_xml_node_iter_t;
 
-neko_xml_document_t* neko_xml_parse(const_str source);
-neko_xml_document_t* neko_xml_parse_file(const_str path);
-void neko_xml_free(neko_xml_document_t* document);
+NEKO_API_DECL neko_xml_document_t* neko_xml_parse(const_str source);
+NEKO_API_DECL neko_xml_document_t* neko_xml_parse_file(const_str path);
+NEKO_API_DECL void neko_xml_free(neko_xml_document_t* document);
 
-neko_xml_attribute_t* neko_xml_find_attribute(neko_xml_node_t* node, const_str name);
-neko_xml_node_t* neko_xml_find_node(neko_xml_document_t* doc, const_str name);
-neko_xml_node_t* neko_xml_find_node_child(neko_xml_node_t* node, const_str name);
+NEKO_API_DECL neko_xml_attribute_t* neko_xml_find_attribute(neko_xml_node_t* node, const_str name);
+NEKO_API_DECL neko_xml_node_t* neko_xml_find_node(neko_xml_document_t* doc, const_str name);
+NEKO_API_DECL neko_xml_node_t* neko_xml_find_node_child(neko_xml_node_t* node, const_str name);
 
-const_str neko_xml_get_error();
+NEKO_API_DECL const_str neko_xml_get_error();
 
-neko_xml_node_iter_t neko_xml_new_node_iter(neko_xml_document_t* doc, const_str name);
-neko_xml_node_iter_t neko_xml_new_node_child_iter(neko_xml_node_t* node, const_str name);
-bool neko_xml_node_iter_next(neko_xml_node_iter_t* iter);
+NEKO_API_DECL neko_xml_node_iter_t neko_xml_new_node_iter(neko_xml_document_t* doc, const_str name);
+NEKO_API_DECL neko_xml_node_iter_t neko_xml_new_node_child_iter(neko_xml_node_t* node, const_str name);
+NEKO_API_DECL bool neko_xml_node_iter_next(neko_xml_node_iter_t* iter);
 
 #endif  // NEKO_XML_H
