@@ -69,6 +69,7 @@ NEKO_API_DECL void neko_byte_buffer_clear(neko_byte_buffer_t* buffer);
 NEKO_API_DECL bool neko_byte_buffer_empty(neko_byte_buffer_t* buffer);
 NEKO_API_DECL size_t neko_byte_buffer_size(neko_byte_buffer_t* buffer);
 NEKO_API_DECL void neko_byte_buffer_resize(neko_byte_buffer_t* buffer, size_t sz);
+NEKO_API_DECL void neko_byte_buffer_copy_contents(neko_byte_buffer_t* dst, neko_byte_buffer_t* src);
 NEKO_API_DECL void neko_byte_buffer_seek_to_beg(neko_byte_buffer_t* buffer);
 NEKO_API_DECL void neko_byte_buffer_seek_to_end(neko_byte_buffer_t* buffer);
 NEKO_API_DECL void neko_byte_buffer_advance_position(neko_byte_buffer_t* buffer, size_t sz);

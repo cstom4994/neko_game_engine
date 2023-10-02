@@ -16,12 +16,60 @@ typedef u32 neko_ecs_component_type;
 #define __neko_ecs_ent_index(id) ((u32)id)
 #define __neko_ecs_ent_ver(id) ((u32)(id >> 32))
 
-typedef enum { ECS_SYSTEM_UPDATE, ECS_SYSTEM_RENDER_IMMEDIATE } neko_ecs_system_type;
-
-typedef struct neko_ecs neko_ecs;
-
 typedef void (*neko_ecs_system_func)(struct neko_ecs *ecs);
 typedef void (*neko_ecs_component_destroy)(void *data);
+
+typedef enum { ECS_SYSTEM_UPDATE, ECS_SYSTEM_RENDER_IMMEDIATE } neko_ecs_system_type;
+
+typedef struct {
+    u32 *data;
+    u64 capacity;
+    u64 top;
+    b32 empty;
+} neko_ecs_stack;
+
+typedef struct {
+    void *data;
+    u32 count;
+    u32 size;
+
+    neko_ecs_component_destroy destroy_func;
+
+    neko_ecs_stack *indexes;
+
+} neko_ecs_component_pool;
+
+typedef struct {
+    neko_ecs_system_func func;
+    neko_ecs_system_type type;
+} neko_ecs_system;
+
+typedef struct neko_ecs {
+    u32 max_entities;
+    u32 component_count;
+    u32 system_count;
+
+    neko_ecs_stack *indexes;
+
+    // max_index 用来优化
+    u32 max_index;
+    u32 *versions;
+
+    // components 是组件的索引
+    // 最大值为 (实体数 * component_count)
+    // 索引通过 (index * comp_count + comp_type) 实现
+    // component_masks 的工作原理相同 只是检查 mask 是否启用
+    u32 *components;
+    b32 *component_masks;
+
+    neko_ecs_component_pool *pool;
+
+    neko_ecs_system *systems;
+    u32 systems_top;
+
+    // 额外数据
+    void *user_data;
+} neko_ecs;
 
 NEKO_API_DECL neko_ecs *neko_ecs_make(u32 max_entities, u32 component_count, u32 system_count);
 NEKO_API_DECL void neko_ecs_destroy(neko_ecs *ecs);

@@ -3,10 +3,9 @@
 #define NEKO_STRUCT_HPP
 
 #include <cstddef>
+#include <tuple>
 #include <type_traits>
 #include <utility>
-
-namespace neko {
 
 struct __any {
     // 无定义 我们需要一个可以转换为任何类型的在以下特殊语境中使用的辅助类
@@ -113,7 +112,5 @@ inline constexpr void neko_struct_foreach(T&& obj, F&& f) {
     // std::make_index_sequence 来确认范围
     neko_struct_foreach_impl(std::forward<T>(obj), fields, std::forward<F>(f), std::make_index_sequence<std::tuple_size_v<decltype(fields)>>{});
 }
-
-}  // namespace neko
 
 #endif  // !NEKO_STRUCT_HPP

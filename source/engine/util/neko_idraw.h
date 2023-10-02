@@ -4,11 +4,7 @@
 #define NEKO_IDRAW_H
 
 #include "engine/neko_engine.h"
-
-// STB
-#include "libs/stb/stb_image.h"
-#include "libs/stb/stb_rect_pack.h"
-#include "libs/stb/stb_truetype.h"
+#include "engine/util/neko_asset.h"
 
 /*==== Interface ====*/
 

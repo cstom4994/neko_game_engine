@@ -3,10 +3,6 @@
 #ifndef NEKO_H
 #define NEKO_H
 
-/*========================
-// Defines
-========================*/
-
 #include <assert.h>  // assert
 #include <ctype.h>   // tolower
 #include <float.h>   // FLT_MAX
@@ -25,9 +21,9 @@
 #include <time.h>    // time
 #include <time.h>
 
-/*===========================================================
-// neko_inline, neko_global, neko_local_persist, neko_force_inline
-===========================================================*/
+/*========================
+// Defines
+========================*/
 
 #ifndef neko_inline
 #define neko_inline inline
@@ -578,7 +574,7 @@ typedef struct {
     int paused;
     uintptr_t minptr, maxptr;
     neko_gc_ptr_t *items, *frees;
-    double loadfactor, sweepfactor;
+    f64 loadfactor, sweepfactor;
     size_t nitems, nslots, mitems, nfrees;
 } neko_gc_t;
 
@@ -689,14 +685,14 @@ typedef enum neko_result { NEKO_RESULT_SUCCESS, NEKO_RESULT_IN_PROGRESS, NEKO_RE
 
 typedef struct neko_hsv_t {
     union {
-        float hsv[3];
+        f32 hsv[3];
         struct {
-            float h, s, v;
+            f32 h, s, v;
         };
     };
 } neko_hsv_t;
 
-neko_force_inline neko_hsv_t neko_hsv_ctor(float h, float s, float v) {
+neko_force_inline neko_hsv_t neko_hsv_ctor(f32 h, f32 s, f32 v) {
     neko_hsv_t hsv;
     hsv.h = h;
     hsv.s = s;
@@ -736,13 +732,13 @@ neko_force_inline neko_color_t neko_color_ctor(u8 r, u8 g, u8 b, u8 a) {
 neko_force_inline neko_color_t neko_color_alpha(neko_color_t c, u8 a) { return neko_color(c.r, c.g, c.b, a); }
 
 neko_force_inline neko_hsv_t neko_rgb2hsv(neko_color_t in) {
-    float ir = (float)in.r / 255.f;
-    float ig = (float)in.g / 255.f;
-    float ib = (float)in.b / 255.f;
-    float ia = (float)in.a / 255.f;
+    f32 ir = (f32)in.r / 255.f;
+    f32 ig = (f32)in.g / 255.f;
+    f32 ib = (f32)in.b / 255.f;
+    f32 ia = (f32)in.a / 255.f;
 
     neko_hsv_t out = neko_default_val();
-    double min, max, delta;
+    f64 min, max, delta;
 
     min = ir < ig ? ir : ig;
     min = min < ib ? min : ib;
@@ -782,7 +778,7 @@ neko_force_inline neko_hsv_t neko_rgb2hsv(neko_color_t in) {
 }
 
 neko_force_inline neko_color_t neko_hsv2rgb(neko_hsv_t in) {
-    double hh, p, q, t, ff;
+    f64 hh, p, q, t, ff;
     long i;
     neko_color_t out;
 
@@ -1428,9 +1424,21 @@ NEKO_API_DECL void* neko_paged_allocator_allocate(neko_paged_allocator_t* pa);
 NEKO_API_DECL void neko_paged_allocator_deallocate(neko_paged_allocator_t* pa, void* data);
 NEKO_API_DECL void neko_paged_allocator_clear(neko_paged_allocator_t* pa);
 
-/** @} */  // end of neko_memory
-
 #include "engine/neko_math.h"
+
+neko_inline const_str neko_fs_get_filename(const_str path) {
+    int len = strlen(path);
+    int flag = 0;
+
+    for (int i = len - 1; i > 0; i--) {
+        if (path[i] == '\\' || path[i] == '//' || path[i] == '/') {
+            flag = 1;
+            path = path + i + 1;
+            break;
+        }
+    }
+    return path;
+}
 
 #ifdef neko_cpp_src
 
@@ -1483,13 +1491,13 @@ public:
     neko_inline void start() noexcept { startPos = std::chrono::high_resolution_clock::now(); }
     neko_inline void stop() noexcept {
         auto endTime = std::chrono::high_resolution_clock::now();
-        duration = static_cast<double>(neko_time_count(endTime) - neko_time_count(startPos)) * 0.001;
+        duration = static_cast<f64>(neko_time_count(endTime) - neko_time_count(startPos)) * 0.001;
     }
-    [[nodiscard]] neko_inline double get() const noexcept { return duration; }
+    [[nodiscard]] neko_inline f64 get() const noexcept { return duration; }
     ~neko_timer() noexcept { stop(); }
 
 private:
-    double duration = 0;
+    f64 duration = 0;
     std::chrono::time_point<std::chrono::high_resolution_clock> startPos;
 };
 
@@ -1528,20 +1536,6 @@ neko_static_inline std::string neko_fs_normalize_path(const std::string& path, c
 neko_inline bool neko_fs_exists(const std::string& filename) {
     std::ifstream file(filename);
     return file.good();
-}
-
-neko_inline const char* neko_fs_get_filename(const char* path) {
-    int len = strlen(path);
-    int flag = 0;
-
-    for (int i = len - 1; i > 0; i--) {
-        if (path[i] == '\\' || path[i] == '//' || path[i] == '/') {
-            flag = 1;
-            path = path + i + 1;
-            break;
-        }
-    }
-    return path;
 }
 
 neko_inline void neko_utils_write_ppm(const int width, const int height, unsigned char* buffer, const char* filename) {
@@ -1601,15 +1595,15 @@ neko_static_inline u32 neko_rand_xorshf32(void) {
 #define neko_rand_xorshf32_max 0xFFFFFFFF
 
 // Random number in range [-1,1]
-neko_inline float neko_math_rand() {
-    float r = (float)neko_rand_xorshf32();
+neko_inline f32 neko_math_rand() {
+    f32 r = (f32)neko_rand_xorshf32();
     r /= neko_rand_xorshf32_max;
     r = 2.0f * r - 1.0f;
     return r;
 }
 
-neko_inline float neko_math_rand_range(float lo, float hi) {
-    float r = (float)neko_rand_xorshf32();
+neko_inline f32 neko_math_rand_range(f32 lo, f32 hi) {
+    f32 r = (f32)neko_rand_xorshf32();
     r /= neko_rand_xorshf32_max;
     r = (hi - lo) * r + lo;
     return r;
@@ -1623,11 +1617,11 @@ typedef enum neko_projection_type { NEKO_PROJECTION_TYPE_ORTHOGRAPHIC, NEKO_PROJ
 
 typedef struct neko_camera_t {
     neko_vqs transform;
-    float fov;
-    float aspect_ratio;
-    float near_plane;
-    float far_plane;
-    float ortho_scale;
+    f32 fov;
+    f32 aspect_ratio;
+    f32 near_plane;
+    f32 far_plane;
+    f32 ortho_scale;
     neko_projection_type proj_type;
 } neko_camera_t;
 
@@ -1644,7 +1638,7 @@ NEKO_API_DECL neko_vec3 neko_camera_right(const neko_camera_t* cam);
 NEKO_API_DECL neko_vec3 neko_camera_left(const neko_camera_t* cam);
 NEKO_API_DECL neko_vec3 neko_camera_screen_to_world(const neko_camera_t* cam, neko_vec3 coords, s32 view_x, s32 view_y, s32 view_width, s32 view_height);
 NEKO_API_DECL neko_vec3 neko_camera_world_to_screen(const neko_camera_t* cam, neko_vec3 coords, s32 view_width, s32 view_height);
-NEKO_API_DECL void neko_camera_offset_orientation(neko_camera_t* cam, float yaw, float picth);
+NEKO_API_DECL void neko_camera_offset_orientation(neko_camera_t* cam, f32 yaw, f32 picth);
 
 /*================================================================================
 // Utils

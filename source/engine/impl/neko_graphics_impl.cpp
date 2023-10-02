@@ -3329,7 +3329,7 @@ NEKO_API_DECL void neko_graphics_init(neko_graphics_t* graphics) {
     __neko_fontcache_create();
 
     const GLubyte* glslv = glGetString(GL_SHADING_LANGUAGE_VERSION);
-    neko_println("GLSL Version: %s", glslv);
+    neko_log_info("GLSL Version: %s", glslv);
 
     // Set up all function pointers for graphics context
 
@@ -3385,9 +3385,6 @@ NEKO_API_DECL void neko_graphics_init(neko_graphics_t* graphics) {
 #define NEKO_FONTCACHE_IMPL
 
 #include "libs/external/utf8.h"
-
-// #define STB_TRUETYPE_IMPLEMENTATION
-#include "libs/stb/stb_truetype.h"
 
 void __neko_fontcache_init(neko_fontcache* cache) {
     neko_assert(cache);

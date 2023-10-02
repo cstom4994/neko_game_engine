@@ -1798,7 +1798,7 @@ NEKO_API_DECL void neko_gui_dock_ex(neko_gui_context_t* ctx, const char* dst, co
     neko_gui_container_t* dst_cnt = neko_gui_get_container(ctx, dst);
     neko_gui_container_t* src_cnt = neko_gui_get_container(ctx, src);
     neko_gui_dock_ex_cnt(ctx, dst_cnt, src_cnt, split_type, ratio);
-    if (f != ctx->frame) neko_gui_end(ctx);
+    if (f != ctx->frame) neko_gui_end(ctx, true);
 }
 
 NEKO_API_DECL void neko_gui_undock_ex(neko_gui_context_t* ctx, const char* name) {
@@ -1868,7 +1868,7 @@ NEKO_API_DECL void neko_gui_dock_ex_cnt(neko_gui_context_t* ctx, neko_gui_contai
         }
         // Otherwise, create new tab bar
         else {
-            neko_println("create tab bar");
+            neko_log_info("create tab bar");
 
             // Create tab bar
             neko_gui_tab_bar_t tb = neko_default_val();
@@ -2392,7 +2392,7 @@ NEKO_API_DECL neko_gui_context_t neko_gui_new(uint32_t window_hndl) {
 
 NEKO_API_DECL void neko_gui_init(neko_gui_context_t* ctx, uint32_t window_hndl) {
     memset(ctx, 0, sizeof(*ctx));
-    ctx->gsi = neko_immediate_draw_new();
+    ctx->gui_idraw = neko_immediate_draw_new();
     ctx->overlay_draw_list = neko_immediate_draw_new();
     neko_gui_init_default_styles(ctx);
     ctx->window_hndl = window_hndl;
@@ -2524,7 +2524,7 @@ typedef struct neko_gui_context_t
 } neko_gui_context_t;
 */
     neko_hash_table_free(ctx->font_stash);
-    neko_immediate_draw_free(&ctx->gsi);
+    neko_immediate_draw_free(&ctx->gui_idraw);
     neko_immediate_draw_free(&ctx->overlay_draw_list);
     neko_hash_table_free(ctx->animations);
     neko_slot_array_free(ctx->splits);
@@ -3115,7 +3115,7 @@ static void neko_gui_docking(neko_gui_context_t* ctx) {
     }
 }
 
-NEKO_API_DECL void neko_gui_end(neko_gui_context_t* ctx) {
+NEKO_API_DECL void neko_gui_end(neko_gui_context_t* ctx, b32 update) {
     int32_t i, n;
 
     // Check for docking, draw overlays
@@ -3127,6 +3127,7 @@ NEKO_API_DECL void neko_gui_end(neko_gui_context_t* ctx) {
         // If split moved, update position for next frame
         switch (req->type) {
             case NEKO_GUI_CNT_MOVE: {
+                if (!update) break;
                 if (req->cnt) {
                     req->cnt->rect.x += ctx->mouse_delta.x;
                     req->cnt->rect.y += ctx->mouse_delta.y;
@@ -3141,6 +3142,7 @@ NEKO_API_DECL void neko_gui_end(neko_gui_context_t* ctx) {
             } break;
 
             case NEKO_GUI_CNT_FOCUS: {
+                if (!update) break;
                 if (!req->cnt) break;
 
                 neko_gui_container_t* cnt = (neko_gui_container_t*)req->cnt;
@@ -3352,7 +3354,7 @@ NEKO_API_DECL void neko_gui_end(neko_gui_context_t* ctx) {
     ctx->updated_focus = 0;
 
     // Bring hover root to front if mouse was pressed
-    if (ctx->mouse_pressed && ctx->next_hover_root && ctx->next_hover_root->zindex < ctx->last_zindex && ctx->next_hover_root->zindex >= 0) {
+    if (update && ctx->mouse_pressed && ctx->next_hover_root && ctx->next_hover_root->zindex < ctx->last_zindex && ctx->next_hover_root->zindex >= 0) {
         // Root split
         neko_gui_split_t* split = neko_gui_get_root_split(ctx, ctx->next_hover_root);
 
@@ -3408,12 +3410,12 @@ NEKO_API_DECL void neko_gui_end(neko_gui_context_t* ctx) {
 NEKO_API_DECL void neko_gui_render(neko_gui_context_t* ctx, neko_command_buffer_t* cb) {
     const neko_vec2 fb = ctx->framebuffer_size;
     const neko_gui_rect_t* viewport = &ctx->viewport;
-    neko_immediate_draw_t* gsi = &ctx->gsi;
+    neko_immediate_draw_t* gui_idraw = &ctx->gui_idraw;
 
-    neko_idraw_defaults(&ctx->gsi);
+    neko_idraw_defaults(&ctx->gui_idraw);
     // neko_idraw_camera2D(&ctx->gsi, (uint32_t)fb.x, (uint32_t)fb.y);
-    neko_idraw_camera2D(&ctx->gsi, (uint32_t)viewport->w, (uint32_t)viewport->h);
-    neko_idraw_blend_enabled(&ctx->gsi, true);
+    neko_idraw_camera2D(&ctx->gui_idraw, (uint32_t)viewport->w, (uint32_t)viewport->h);
+    neko_idraw_blend_enabled(&ctx->gui_idraw, true);
 
     neko_gui_rect_t clip = neko_gui_unclipped_rect;
 
@@ -3421,44 +3423,44 @@ NEKO_API_DECL void neko_gui_render(neko_gui_context_t* ctx, neko_command_buffer_
     while (neko_gui_next_command(ctx, &cmd)) {
         switch (cmd->type) {
             case NEKO_GUI_COMMAND_CUSTOM: {
-                neko_idraw_defaults(&ctx->gsi);
-                neko_idraw_set_view_scissor(&ctx->gsi, (int32_t)(cmd->custom.clip.x), (int32_t)(fb.y - cmd->custom.clip.h - cmd->custom.clip.y), (int32_t)(cmd->custom.clip.w),
+                neko_idraw_defaults(&ctx->gui_idraw);
+                neko_idraw_set_view_scissor(&ctx->gui_idraw, (int32_t)(cmd->custom.clip.x), (int32_t)(fb.y - cmd->custom.clip.h - cmd->custom.clip.y), (int32_t)(cmd->custom.clip.w),
                                             (int32_t)(cmd->custom.clip.h));
 
                 if (cmd->custom.cb) {
                     cmd->custom.cb(ctx, &cmd->custom);
                 }
 
-                neko_idraw_defaults(&ctx->gsi);
+                neko_idraw_defaults(&ctx->gui_idraw);
                 // neko_idraw_camera2D(&ctx->gsi, (uint32_t)fb.x, (uint32_t)fb.y);
-                neko_idraw_camera2D(&ctx->gsi, (uint32_t)viewport->w, (uint32_t)viewport->h);
-                neko_idraw_blend_enabled(&ctx->gsi, true);
+                neko_idraw_camera2D(&ctx->gui_idraw, (uint32_t)viewport->w, (uint32_t)viewport->h);
+                neko_idraw_blend_enabled(&ctx->gui_idraw, true);
                 // neko_graphics_set_viewport(&ctx->gsi.commands, 0, 0, (uint32_t)fb.x, (uint32_t)fb.y);
-                neko_graphics_set_viewport(&ctx->gsi.commands, (uint32_t)viewport->x, (uint32_t)viewport->y, (uint32_t)viewport->w, (uint32_t)viewport->h);
+                neko_graphics_set_viewport(&ctx->gui_idraw.commands, (uint32_t)viewport->x, (uint32_t)viewport->y, (uint32_t)viewport->w, (uint32_t)viewport->h);
 
-                neko_idraw_set_view_scissor(&ctx->gsi, (int32_t)(clip.x), (int32_t)(fb.y - clip.h - clip.y), (int32_t)(clip.w), (int32_t)(clip.h));
+                neko_idraw_set_view_scissor(&ctx->gui_idraw, (int32_t)(clip.x), (int32_t)(fb.y - clip.h - clip.y), (int32_t)(clip.w), (int32_t)(clip.h));
 
             } break;
 
             case NEKO_GUI_COMMAND_PIPELINE: {
-                neko_idraw_pipeline_set(&ctx->gsi, cmd->pipeline.pipeline);
+                neko_idraw_pipeline_set(&ctx->gui_idraw, cmd->pipeline.pipeline);
 
                 // Set layout if valid
                 if (cmd->pipeline.layout_sz) {
                     switch (cmd->pipeline.layout_type) {
                         case NEKO_IDRAW_LAYOUT_VATTR: {
-                            neko_idraw_vattr_list(&ctx->gsi, (neko_idraw_vattr_type*)cmd->pipeline.layout, cmd->pipeline.layout_sz);
+                            neko_idraw_vattr_list(&ctx->gui_idraw, (neko_idraw_vattr_type*)cmd->pipeline.layout, cmd->pipeline.layout_sz);
                         } break;
 
                         case NEKO_IDRAW_LAYOUT_MESH: {
-                            neko_idraw_vattr_list_mesh(&ctx->gsi, (neko_asset_mesh_layout_t*)cmd->pipeline.layout, cmd->pipeline.layout_sz);
+                            neko_idraw_vattr_list_mesh(&ctx->gui_idraw, (neko_asset_mesh_layout_t*)cmd->pipeline.layout, cmd->pipeline.layout_sz);
                         } break;
                     }
                 }
 
                 // If not a valid pipeline, then set back to default gui pipeline
                 if (!cmd->pipeline.pipeline.id) {
-                    neko_idraw_blend_enabled(&ctx->gsi, true);
+                    neko_idraw_blend_enabled(&ctx->gui_idraw, true);
                 }
 
             } break;
@@ -3490,7 +3492,7 @@ NEKO_API_DECL void neko_gui_render(neko_gui_context_t* ctx, neko_command_buffer_
                     uniforms[0].uniform = hndl;
                     uniforms[0].binding = binding;
                     uniforms[0].data = udata;
-                    neko_graphics_apply_bindings(&ctx->gsi.commands, &bind);
+                    neko_graphics_apply_bindings(&ctx->gui_idraw.commands, &bind);
                 }
             } break;
 
@@ -3499,48 +3501,48 @@ NEKO_API_DECL void neko_gui_render(neko_gui_context_t* ctx, neko_command_buffer_
                 const char* ts = cmd->text.str;
                 const neko_color_t* tc = &cmd->text.color;
                 const neko_asset_font_t* tf = cmd->text.font;
-                neko_idraw_text(&ctx->gsi, tp->x, tp->y, ts, tf, false, tc->r, tc->g, tc->b, tc->a);
+                neko_idraw_text(&ctx->gui_idraw, tp->x, tp->y, ts, tf, false, tc->r, tc->g, tc->b, tc->a);
             } break;
 
             case NEKO_GUI_COMMAND_SHAPE: {
-                neko_idraw_texture(&ctx->gsi, neko_handle_invalid(neko_graphics_texture_t));
+                neko_idraw_texture(&ctx->gui_idraw, neko_handle_invalid(neko_graphics_texture_t));
                 neko_color_t* c = &cmd->shape.color;
 
                 switch (cmd->shape.type) {
                     case NEKO_GUI_SHAPE_RECT: {
                         neko_gui_rect_t* r = &cmd->shape.rect;
-                        neko_idraw_rectvd(&ctx->gsi, neko_v2(r->x, r->y), neko_v2(r->w, r->h), neko_v2s(0.f), neko_v2s(1.f), *c, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
+                        neko_idraw_rectvd(&ctx->gui_idraw, neko_v2(r->x, r->y), neko_v2(r->w, r->h), neko_v2s(0.f), neko_v2s(1.f), *c, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
                     } break;
 
                     case NEKO_GUI_SHAPE_CIRCLE: {
                         neko_vec2* cp = &cmd->shape.circle.center;
                         float* r = &cmd->shape.circle.radius;
-                        neko_idraw_circle(&ctx->gsi, cp->x, cp->y, *r, 16, c->r, c->g, c->b, c->a, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
+                        neko_idraw_circle(&ctx->gui_idraw, cp->x, cp->y, *r, 16, c->r, c->g, c->b, c->a, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
                     } break;
 
                     case NEKO_GUI_SHAPE_TRIANGLE: {
                         neko_vec2* pa = &cmd->shape.triangle.points[0];
                         neko_vec2* pb = &cmd->shape.triangle.points[1];
                         neko_vec2* pc = &cmd->shape.triangle.points[2];
-                        neko_idraw_trianglev(&ctx->gsi, *pa, *pb, *pc, *c, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
+                        neko_idraw_trianglev(&ctx->gui_idraw, *pa, *pb, *pc, *c, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
 
                     } break;
 
                     case NEKO_GUI_SHAPE_LINE: {
                         neko_vec2* s = &cmd->shape.line.start;
                         neko_vec2* e = &cmd->shape.line.end;
-                        neko_idraw_linev(&ctx->gsi, *s, *e, *c);
+                        neko_idraw_linev(&ctx->gui_idraw, *s, *e, *c);
                     } break;
                 }
 
             } break;
 
             case NEKO_GUI_COMMAND_IMAGE: {
-                neko_idraw_texture(&ctx->gsi, cmd->image.hndl);
+                neko_idraw_texture(&ctx->gui_idraw, cmd->image.hndl);
                 neko_color_t* c = &cmd->image.color;
                 neko_gui_rect_t* r = &cmd->image.rect;
                 neko_vec4* uvs = &cmd->image.uvs;
-                neko_idraw_rectvd(&ctx->gsi, neko_v2(r->x, r->y), neko_v2(r->w, r->h), neko_v2(uvs->x, uvs->y), neko_v2(uvs->z, uvs->w), *c, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
+                neko_idraw_rectvd(&ctx->gui_idraw, neko_v2(r->x, r->y), neko_v2(r->w, r->h), neko_v2(uvs->x, uvs->y), neko_v2(uvs->z, uvs->w), *c, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
             } break;
 
             case NEKO_GUI_COMMAND_CLIP: {
@@ -3561,14 +3563,14 @@ NEKO_API_DECL void neko_gui_render(neko_gui_context_t* ctx, neko_command_buffer_
 
                 clip = clip_rect;
 
-                neko_idraw_set_view_scissor(&ctx->gsi, (int32_t)(clip_rect.x), (int32_t)(fb.y - clip_rect.h - clip_rect.y), (int32_t)(clip_rect.w), (int32_t)(clip_rect.h));
+                neko_idraw_set_view_scissor(&ctx->gui_idraw, (int32_t)(clip_rect.x), (int32_t)(fb.y - clip_rect.h - clip_rect.y), (int32_t)(clip_rect.w), (int32_t)(clip_rect.h));
 
             } break;
         }
     }
 
     // Draw main list
-    neko_idraw_draw(&ctx->gsi, cb);
+    neko_idraw_draw(&ctx->gui_idraw, cb);
 
     // Draw overlay list
     neko_idraw_draw(&ctx->overlay_draw_list, cb);
@@ -6564,7 +6566,7 @@ typedef struct {
 static void neko_gui_gizmo_render(neko_gui_context_t* ctx, neko_gui_customcommand_t* cmd) {
     const neko_vec2 fbs = ctx->framebuffer_size;
     const float t = neko_platform_elapsed_time();
-    neko_immediate_draw_t* gsi = &ctx->gsi;
+    neko_immediate_draw_t* gui_idraw = &ctx->gui_idraw;
     neko_gizmo_desc_t* desc = (neko_gizmo_desc_t*)cmd->data;
     neko_gui_rect_t clip = cmd->clip;
     neko_gui_rect_t viewport = desc->viewport;
@@ -6574,10 +6576,10 @@ static void neko_gui_gizmo_render(neko_gui_context_t* ctx, neko_gui_customcomman
     const neko_contact_info_t* info = &desc->info;
     const uint8_t alpha = 150;
 
-    neko_idraw_defaults(gsi);
-    neko_idraw_depth_enabled(gsi, false);
-    neko_idraw_camera(gsi, &cam, (uint32_t)viewport.w, (uint32_t)viewport.h);
-    neko_graphics_set_viewport(&gsi->commands, (u32)viewport.x, (u32)(fbs.y - viewport.h - viewport.y), (u32)viewport.w, (u32)viewport.h);
+    neko_idraw_defaults(gui_idraw);
+    neko_idraw_depth_enabled(gui_idraw, false);
+    neko_idraw_camera(gui_idraw, &cam, (uint32_t)viewport.w, (uint32_t)viewport.h);
+    neko_graphics_set_viewport(&gui_idraw->commands, (u32)viewport.x, (u32)(fbs.y - viewport.h - viewport.y), (u32)viewport.w, (u32)viewport.h);
     neko_graphics_primitive_type primitive = NEKO_GRAPHICS_PRIMITIVE_TRIANGLES;
 
 #define NEKO_GUI_GIZMO_AXIS_TRANSLATE(ID, AXIS, COLOR)                                                                                                                     \
@@ -6588,24 +6590,24 @@ static void neko_gui_gizmo_render(neko_gui_context_t* ctx, neko_gui_customcomman
         neko_color_t color = hover || focus ? NEKO_COLOR_YELLOW : COLOR;                                                                                                   \
         /* Axis */                                                                                                                                                         \
         {                                                                                                                                                                  \
-            neko_idraw_push_matrix(gsi, NEKO_IDRAW_MATRIX_MODELVIEW);                                                                                                      \
-            neko_idraw_mul_matrix(gsi, neko_vqs_to_mat4(&desc->gizmo.translate.AXIS.axis.model));                                                                          \
+            neko_idraw_push_matrix(gui_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);                                                                                                      \
+            neko_idraw_mul_matrix(gui_idraw, neko_vqs_to_mat4(&desc->gizmo.translate.AXIS.axis.model));                                                                          \
             {                                                                                                                                                              \
                 neko_cylinder_t* axis = &desc->gizmo.translate.AXIS.axis.shape.cylinder;                                                                                   \
-                neko_idraw_cylinder(gsi, axis->base.x, axis->base.y, axis->base.z, axis->r, axis->r, axis->height, segments, color.r, color.g, color.b, alpha, primitive); \
+                neko_idraw_cylinder(gui_idraw, axis->base.x, axis->base.y, axis->base.z, axis->r, axis->r, axis->height, segments, color.r, color.g, color.b, alpha, primitive); \
             }                                                                                                                                                              \
-            neko_idraw_pop_matrix(gsi);                                                                                                                                    \
+            neko_idraw_pop_matrix(gui_idraw);                                                                                                                                    \
         }                                                                                                                                                                  \
                                                                                                                                                                            \
         /* Cap */                                                                                                                                                          \
         {                                                                                                                                                                  \
-            neko_idraw_push_matrix(gsi, NEKO_IDRAW_MATRIX_MODELVIEW);                                                                                                      \
-            neko_idraw_mul_matrix(gsi, neko_vqs_to_mat4(&desc->gizmo.translate.AXIS.cap.model));                                                                           \
+            neko_idraw_push_matrix(gui_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);                                                                                                      \
+            neko_idraw_mul_matrix(gui_idraw, neko_vqs_to_mat4(&desc->gizmo.translate.AXIS.cap.model));                                                                           \
             {                                                                                                                                                              \
                 neko_cone_t* cap = &desc->gizmo.translate.AXIS.cap.shape.cone;                                                                                             \
-                neko_idraw_cone(gsi, cap->base.x, cap->base.y, cap->base.z, cap->r, cap->height, segments, color.r, color.g, color.b, alpha, primitive);                   \
+                neko_idraw_cone(gui_idraw, cap->base.x, cap->base.y, cap->base.z, cap->r, cap->height, segments, color.r, color.g, color.b, alpha, primitive);                   \
             }                                                                                                                                                              \
-            neko_idraw_pop_matrix(gsi);                                                                                                                                    \
+            neko_idraw_pop_matrix(gui_idraw);                                                                                                                                    \
         }                                                                                                                                                                  \
     } while (0)
 
@@ -6617,26 +6619,26 @@ static void neko_gui_gizmo_render(neko_gui_context_t* ctx, neko_gui_customcomman
         neko_color_t color = hover || focus ? NEKO_COLOR_YELLOW : COLOR;                                                                                                   \
         /* Axis */                                                                                                                                                         \
         {                                                                                                                                                                  \
-            neko_idraw_push_matrix(gsi, NEKO_IDRAW_MATRIX_MODELVIEW);                                                                                                      \
-            neko_idraw_mul_matrix(gsi, neko_vqs_to_mat4(&desc->gizmo.scale.AXIS.axis.model));                                                                              \
+            neko_idraw_push_matrix(gui_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);                                                                                                      \
+            neko_idraw_mul_matrix(gui_idraw, neko_vqs_to_mat4(&desc->gizmo.scale.AXIS.axis.model));                                                                              \
             {                                                                                                                                                              \
                 neko_cylinder_t* axis = &desc->gizmo.scale.AXIS.axis.shape.cylinder;                                                                                       \
-                neko_idraw_cylinder(gsi, axis->base.x, axis->base.y, axis->base.z, axis->r, axis->r, axis->height, segments, color.r, color.g, color.b, alpha, primitive); \
+                neko_idraw_cylinder(gui_idraw, axis->base.x, axis->base.y, axis->base.z, axis->r, axis->r, axis->height, segments, color.r, color.g, color.b, alpha, primitive); \
             }                                                                                                                                                              \
-            neko_idraw_pop_matrix(gsi);                                                                                                                                    \
+            neko_idraw_pop_matrix(gui_idraw);                                                                                                                                    \
         }                                                                                                                                                                  \
                                                                                                                                                                            \
         /* Cap */                                                                                                                                                          \
         {                                                                                                                                                                  \
-            neko_idraw_push_matrix(gsi, NEKO_IDRAW_MATRIX_MODELVIEW);                                                                                                      \
-            neko_idraw_mul_matrix(gsi, neko_vqs_to_mat4(&desc->gizmo.scale.AXIS.cap.model));                                                                               \
+            neko_idraw_push_matrix(gui_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);                                                                                                      \
+            neko_idraw_mul_matrix(gui_idraw, neko_vqs_to_mat4(&desc->gizmo.scale.AXIS.cap.model));                                                                               \
             {                                                                                                                                                              \
                 neko_aabb_t* cap = &desc->gizmo.scale.AXIS.cap.shape.aabb;                                                                                                 \
                 neko_vec3 hd = neko_vec3_scale(neko_vec3_sub(cap->max, cap->min), 0.5f);                                                                                   \
                 neko_vec3 c = neko_vec3_add(cap->min, hd);                                                                                                                 \
-                neko_idraw_box(gsi, c.x, c.y, c.z, hd.x, hd.y, hd.z, color.r, color.g, color.b, alpha, primitive);                                                         \
+                neko_idraw_box(gui_idraw, c.x, c.y, c.z, hd.x, hd.y, hd.z, color.r, color.g, color.b, alpha, primitive);                                                         \
             }                                                                                                                                                              \
-            neko_idraw_pop_matrix(gsi);                                                                                                                                    \
+            neko_idraw_pop_matrix(gui_idraw);                                                                                                                                    \
         }                                                                                                                                                                  \
     } while (0)
 
@@ -6649,17 +6651,17 @@ static void neko_gui_gizmo_render(neko_gui_context_t* ctx, neko_gui_customcomman
         neko_color_t color = hover || focus ? NEKO_COLOR_YELLOW : def_color;                                                                      \
         /* Axis */                                                                                                                                \
         {                                                                                                                                         \
-            neko_idraw_push_matrix(gsi, NEKO_IDRAW_MATRIX_MODELVIEW);                                                                             \
-            neko_idraw_mul_matrix(gsi, neko_vqs_to_mat4(&desc->gizmo.rotate.AXIS.axis.model));                                                    \
+            neko_idraw_push_matrix(gui_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);                                                                             \
+            neko_idraw_mul_matrix(gui_idraw, neko_vqs_to_mat4(&desc->gizmo.rotate.AXIS.axis.model));                                                    \
             {                                                                                                                                     \
                 neko_plane_t* axis = &desc->gizmo.rotate.AXIS.axis.shape.plane;                                                                   \
-                neko_idraw_arc(gsi, 0.f, 0.f, 0.92f, 1.f, 0.f, 360.f, 48, color.r, color.g, color.b, color.a, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES); \
+                neko_idraw_arc(gui_idraw, 0.f, 0.f, 0.92f, 1.f, 0.f, 360.f, 48, color.r, color.g, color.b, color.a, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES); \
             }                                                                                                                                     \
-            neko_idraw_pop_matrix(gsi);                                                                                                           \
+            neko_idraw_pop_matrix(gui_idraw);                                                                                                           \
             if (focus) {                                                                                                                          \
                 neko_vec3 ls = desc->xform.translation;                                                                                           \
                 neko_vec3 le = neko_vec3_add(ls, neko_vec3_scale(info->normal, 0.5f));                                                            \
-                neko_idraw_line3Dv(gsi, ls, le, NEKO_COLOR_BLUE);                                                                                 \
+                neko_idraw_line3Dv(gui_idraw, ls, le, NEKO_COLOR_BLUE);                                                                                 \
             }                                                                                                                                     \
         }                                                                                                                                         \
     } while (0)
@@ -6689,8 +6691,8 @@ static void neko_gui_gizmo_render(neko_gui_context_t* ctx, neko_gui_customcomman
     }
 
     if (li->hit) {
-        neko_idraw_sphere(gsi, li->point.x, li->point.y, li->point.z, 0.005f, 255, 0, 0, 255, NEKO_GRAPHICS_PRIMITIVE_LINES);
-        neko_idraw_line3Dv(gsi, li->point, desc->xform.translation, neko_color(255, 0, 0, 255));
+        neko_idraw_sphere(gui_idraw, li->point.x, li->point.y, li->point.z, 0.005f, 255, 0, 0, 255, NEKO_GRAPHICS_PRIMITIVE_LINES);
+        neko_idraw_line3Dv(gui_idraw, li->point, desc->xform.translation, neko_color(255, 0, 0, 255));
     }
 }
 
@@ -7504,35 +7506,6 @@ NEKO_API_DECL int32_t neko_gui_style_editor(neko_gui_context_t* ctx, neko_gui_st
 }
 
 NEKO_API_DECL int32_t neko_gui_demo_window(neko_gui_context_t* ctx, neko_gui_rect_t rect, bool* open) {
-    /*
-       Window for all of the available features for neko_gui:
-
-        - Opts:
-
-        - Widgets:
-            - Label
-            - Panel
-            - Button
-            - Textbox
-            - Text
-            Todo:
-                - Menu / MenuItem
-                - ColorPicker
-                - Lists (with images / various style enums for item types (circle, rect, box)
-
-        - Window Navigation
-            - VIM controls eventually?
-
-        - Docking
-
-        - Menus
-
-        - Tabs
-
-        - Styles:
-            - Inline styles
-            - Style sheets
-    */
 
     if (neko_gui_window_begin_ex(ctx, "Demo_Window", rect, open, NULL, 0x00)) {
         neko_gui_container_t* win = neko_gui_get_current_container(ctx);
@@ -7551,6 +7524,7 @@ NEKO_API_DECL int32_t neko_gui_demo_window(neko_gui_context_t* ctx, neko_gui_rec
                 }
                 neko_gui_label(ctx, "ABOUT THIS DEMO:");
                 neko_gui_text(ctx, "  - Sections below are demonstrating many aspects of the util.");
+                neko_gui_text(ctx, " 测试中文，你好世界");
             }
             neko_gui_panel_end(ctx);
             neko_gui_treenode_end(ctx);

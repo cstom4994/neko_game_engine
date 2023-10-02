@@ -129,7 +129,7 @@ static void stdout_callback(neko_log_event* ev) {
     char buf[16];
     buf[strftime(buf, sizeof(buf), "%H:%M:%S", ev->time)] = '\0';
 #ifdef LOG_USE_COLOR
-    fprintf(ev->udata, "%s %s%-5s\x1b[0m \x1b[90m%s:%d:\x1b[0m ", buf, level_colors[ev->level], level_strings[ev->level], ev->file, ev->line);
+    fprintf(ev->udata, "%s %s%-5s\x1b[0m \x1b[90m%s:%d:\x1b[0m ", buf, level_colors[ev->level], level_strings[ev->level], neko_fs_get_filename(ev->file), ev->line);
 #else
     fprintf(ev->udata, "%s %-5s %s:%d: ", buf, level_strings[ev->level], ev->file, ev->line);
 #endif
@@ -364,8 +364,8 @@ NEKO_API_DECL void* neko_dyn_array_resize_impl(void* arr, size_t sz, size_t amou
         if (!arr) {
             data->size = 0;
         }
-        data->capacity = (int32_t)capacity;
-        return ((int32_t*)data + 2);
+        data->capacity = (s32)capacity;
+        return ((s32*)data + 2);
     }
 
     return NULL;
@@ -376,7 +376,7 @@ NEKO_API_DECL void** neko_dyn_array_init(void** arr, size_t val_len) {
         neko_dyn_array* data = (neko_dyn_array*)neko_malloc(val_len + sizeof(neko_dyn_array));  // Allocate capacity of one
         data->size = 0;
         data->capacity = 1;
-        *arr = ((int32_t*)data + 2);
+        *arr = ((s32*)data + 2);
     }
     return arr;
 }
@@ -386,14 +386,14 @@ NEKO_API_DECL void neko_dyn_array_push_data(void** arr, void* val, size_t val_le
         neko_dyn_array_init(arr, val_len);
     }
     if (neko_dyn_array_need_grow(*arr, 1)) {
-        int32_t capacity = neko_dyn_array_capacity(*arr) * 2;
+        s32 capacity = neko_dyn_array_capacity(*arr) * 2;
 
         // Create new neko_dyn_array with just the header information
         neko_dyn_array* data = (neko_dyn_array*)neko_realloc(neko_dyn_array_head(*arr), capacity * val_len + sizeof(neko_dyn_array));
 
         if (data) {
             data->capacity = capacity;
-            *arr = ((int32_t*)data + 2);
+            *arr = ((s32*)data + 2);
         }
     }
     size_t offset = neko_dyn_array_size(*arr);
@@ -1474,7 +1474,7 @@ NEKO_API_DECL neko_vec3 neko_camera_right(const neko_camera_t* cam) { return (ne
 
 NEKO_API_DECL neko_vec3 neko_camera_left(const neko_camera_t* cam) { return (neko_quat_rotate(cam->transform.rotation, neko_v3(-1.0f, 0.0f, 0.0f))); }
 
-NEKO_API_DECL neko_vec3 neko_camera_world_to_screen(const neko_camera_t* cam, neko_vec3 coords, int32_t view_width, int32_t view_height) {
+NEKO_API_DECL neko_vec3 neko_camera_world_to_screen(const neko_camera_t* cam, neko_vec3 coords, s32 view_width, s32 view_height) {
     // Transform world coords to screen coords to place billboarded UI elements in world
     neko_mat4 vp = neko_camera_get_view_projection(cam, view_width, view_height);
     neko_vec4 p4 = neko_v4(coords.x, coords.y, coords.z, 1.f);
@@ -1567,36 +1567,6 @@ NEKO_API_DECL void neko_camera_offset_orientation(neko_camera_t* cam, f32 yaw, f
 // NEKO_UTIL
 =============================*/
 
-#ifndef NEKO_NO_STB_RECT_PACK
-#define STB_RECT_PACK_IMPLEMENTATION
-#endif
-
-#ifndef NEKO_NO_STB_TRUETYPE
-// #define STBTT_RASTERIZER_VERSION 0
-#define STB_TRUETYPE_IMPLEMENTATION
-#endif
-
-#ifndef NEKO_NO_STB_DEFINE
-#define STB_DEFINE
-#endif
-
-#ifndef NEKO_NO_STB_IMAGE
-#define STB_IMAGE_IMPLEMENTATION
-// #define STB_IMAGE_WRITE_IMPLEMENTATION
-#endif
-
-#ifndef NEKO_NO_CGLTF
-#define CGLTF_IMPLEMENTATION
-#endif
-
-// STB
-#include "libs/stb/stb_image.h"
-#include "libs/stb/stb_rect_pack.h"
-#include "libs/stb/stb_truetype.h"
-
-// CGLTF
-#include "libs/cgltf/cgltf.h"
-
 NEKO_API_DECL char* neko_read_file_contents_into_string_null_term(const char* file_path, const char* mode, size_t* _sz) {
     char* buffer = 0;
     FILE* fp = fopen(file_path, mode);
@@ -1616,7 +1586,7 @@ NEKO_API_DECL char* neko_read_file_contents_into_string_null_term(const char* fi
     return buffer;
 }
 
-bool32_t neko_util_load_texture_data_from_file(const char* file_path, int32_t* width, int32_t* height, uint32_t* num_comps, void** data, bool32_t flip_vertically_on_load) {
+bool32_t neko_util_load_texture_data_from_file(const char* file_path, s32* width, s32* height, uint32_t* num_comps, void** data, bool32_t flip_vertically_on_load) {
     size_t len = 0;
     char* file_data = neko_platform_read_file_contents(file_path, "rb", &len);
     neko_assert(file_data);
@@ -1626,591 +1596,6 @@ bool32_t neko_util_load_texture_data_from_file(const char* file_path, int32_t* w
     }
     neko_free(file_data);
     return ret;
-}
-
-NEKO_API_DECL bool32_t neko_util_load_texture_data_from_memory(const void* memory, size_t sz, int32_t* width, int32_t* height, uint32_t* num_comps, void** data, bool32_t flip_vertically_on_load) {
-    // Load texture data
-    stbi_set_flip_vertically_on_load(flip_vertically_on_load);
-    *data = stbi_load_from_memory((const stbi_uc*)memory, (int32_t)sz, (int32_t*)width, (int32_t*)height, (int32_t*)num_comps, STBI_rgb_alpha);
-    if (!*data) {
-        neko_free(*data);
-        return false;
-    }
-    return true;
-}
-
-/*==========================
-// NEKO_ASSET_TYPES
-==========================*/
-
-NEKO_API_DECL bool neko_asset_texture_load_from_file(const char* path, void* out, neko_graphics_texture_desc_t* desc, bool32_t flip_on_load, bool32_t keep_data) {
-    neko_asset_texture_t* t = (neko_asset_texture_t*)out;
-
-    memset(&t->desc, 0, sizeof(neko_graphics_texture_desc_t));
-
-    if (desc) {
-        t->desc = *desc;
-    } else {
-        t->desc.format = NEKO_GRAPHICS_TEXTURE_FORMAT_RGBA8;
-        t->desc.min_filter = NEKO_GRAPHICS_TEXTURE_FILTER_LINEAR;
-        t->desc.mag_filter = NEKO_GRAPHICS_TEXTURE_FILTER_LINEAR;
-        t->desc.wrap_s = NEKO_GRAPHICS_TEXTURE_WRAP_REPEAT;
-        t->desc.wrap_t = NEKO_GRAPHICS_TEXTURE_WRAP_REPEAT;
-    }
-
-    // Load texture data
-    FILE* f = fopen(path, "rb");
-    if (!f) {
-        return false;
-    }
-
-    int32_t comp = 0;
-    stbi_set_flip_vertically_on_load(t->desc.flip_y);
-    *t->desc.data = (uint8_t*)stbi_load_from_file(f, (int32_t*)&t->desc.width, (int32_t*)&t->desc.height, (int32_t*)&comp, STBI_rgb_alpha);
-
-    if (!t->desc.data) {
-        fclose(f);
-        return false;
-    }
-
-    t->hndl = neko_graphics_texture_create(&t->desc);
-
-    if (!keep_data) {
-        neko_free(*t->desc.data);
-        *t->desc.data = NULL;
-    }
-
-    fclose(f);
-    return true;
-}
-
-/*
-bool neko_asset_texture_load_from_file(const char* path, void* out, neko_graphics_texture_desc_t* desc, bool32_t flip_on_load, bool32_t keep_data)
-{
-    size_t len = 0;
-    char* file_data = neko_platform_read_file_contents(path, "rb", &len);
-    neko_assert(file_data);
-    bool32_t ret = neko_asset_texture_load_from_memory(file_data, len, out, desc, flip_on_load, keep_data);
-    neko_free(file_data);
-    return ret;
-}
- */
-
-bool neko_asset_texture_load_from_memory(const void* memory, size_t sz, void* out, neko_graphics_texture_desc_t* desc, bool32_t flip_on_load, bool32_t keep_data) {
-    neko_asset_texture_t* t = (neko_asset_texture_t*)out;
-
-    memset(&t->desc, 0, sizeof(neko_graphics_texture_desc_t));
-
-    if (desc) {
-        t->desc = *desc;
-    } else {
-        t->desc.format = NEKO_GRAPHICS_TEXTURE_FORMAT_RGBA8;
-        t->desc.min_filter = NEKO_GRAPHICS_TEXTURE_FILTER_LINEAR;
-        t->desc.mag_filter = NEKO_GRAPHICS_TEXTURE_FILTER_LINEAR;
-        t->desc.wrap_s = NEKO_GRAPHICS_TEXTURE_WRAP_REPEAT;
-        t->desc.wrap_t = NEKO_GRAPHICS_TEXTURE_WRAP_REPEAT;
-    }
-
-    // Load texture data
-    int32_t num_comps = 0;
-    bool32_t loaded = neko_util_load_texture_data_from_memory(memory, sz, (int32_t*)&t->desc.width, (int32_t*)&t->desc.height, (uint32_t*)&num_comps, (void**)&t->desc.data, t->desc.flip_y);
-
-    if (!loaded) {
-        return false;
-    }
-
-    t->hndl = neko_graphics_texture_create(&t->desc);
-
-    if (!keep_data) {
-        neko_free(t->desc.data);
-        *t->desc.data = NULL;
-    }
-
-    return true;
-}
-
-bool neko_asset_font_load_from_file(const char* path, void* out, uint32_t point_size) {
-    size_t len = 0;
-    char* ttf = neko_platform_read_file_contents(path, "rb", &len);
-    if (!point_size) {
-        neko_println("Warning: Font: %s: Point size not declared. Setting to default 16.", path);
-        point_size = 16;
-    }
-    bool ret = neko_asset_font_load_from_memory(ttf, len, out, point_size);
-    if (!ret) {
-        neko_println("Font Failed to Load: %s", path);
-    } else {
-        neko_println("Font Successfully Loaded: %s", path);
-    }
-    neko_free(ttf);
-    return ret;
-}
-
-bool neko_asset_font_load_from_memory(const void* memory, size_t sz, void* out, uint32_t point_size) {
-    neko_asset_font_t* f = (neko_asset_font_t*)out;
-
-    if (!point_size) {
-        neko_println("Warning: Font: Point size not declared. Setting to default 16.");
-        point_size = 16;
-    }
-
-    // Poor attempt at an auto resized texture
-    const uint32_t point_wh = neko_max(point_size, 32);
-    const uint32_t w = (point_wh / 32 * 512) + (point_wh / 32 * 512) % 512;
-    const uint32_t h = (point_wh / 32 * 512) + (point_wh / 32 * 512) % 512;
-
-    const uint32_t num_comps = 4;
-    u8* alpha_bitmap = (uint8_t*)neko_malloc(w * h);
-    u8* flipmap = (uint8_t*)neko_malloc(w * h * num_comps);
-    memset(alpha_bitmap, 0, w * h);
-    memset(flipmap, 0, w * h * num_comps);
-    s32 v = stbtt_BakeFontBitmap((u8*)memory, 0, (float)point_size, alpha_bitmap, w, h, 32, 96, (stbtt_bakedchar*)f->glyphs);  // no guarantee this fits!
-
-    // Flip texture
-    u32 r = h - 1;
-    for (u32 i = 0; i < h; ++i) {
-        for (u32 j = 0; j < w; ++j) {
-            u32 i0 = i * w + j;
-            u32 i1 = i * w * num_comps + j * num_comps;
-            u8 a = alpha_bitmap[i0];
-            flipmap[i1 + 0] = 255;
-            flipmap[i1 + 1] = 255;
-            flipmap[i1 + 2] = 255;
-            flipmap[i1 + 3] = a;
-        }
-        r--;
-    }
-
-    neko_graphics_texture_desc_t desc = neko_default_val();
-    desc.width = w;
-    desc.height = h;
-    *desc.data = flipmap;
-    desc.format = NEKO_GRAPHICS_TEXTURE_FORMAT_RGBA8;
-    desc.min_filter = NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST;
-    desc.mag_filter = NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST;
-
-    // Generate atlas texture for bitmap with bitmap data
-    f->texture.hndl = neko_graphics_texture_create(&desc);
-    f->texture.desc = desc;
-    *f->texture.desc.data = NULL;
-
-    bool success = false;
-    if (v <= 0) {
-        neko_println("Font Failed to Load, Baked Texture Was Too Small: %d", v);
-    } else {
-        neko_println("Font Successfully Loaded: %d", v);
-        success = true;
-    }
-
-    neko_free(alpha_bitmap);
-    neko_free(flipmap);
-    return success;
-}
-
-NEKO_API_DECL float neko_asset_font_max_height(const neko_asset_font_t* fp) {
-    if (!fp) return 0.f;
-    float h = 0.f, x = 0.f, y = 0.f;
-    const char* txt = "1l`'f()ABCDEFGHIJKLMNOjPQqSTU!";
-    while (txt[0] != '\0') {
-        char c = txt[0];
-        if (c >= 32 && c <= 127) {
-            stbtt_aligned_quad q = neko_default_val();
-            stbtt_GetBakedQuad((stbtt_bakedchar*)fp->glyphs, fp->texture.desc.width, fp->texture.desc.height, c - 32, &x, &y, &q, 1);
-            h = neko_max(neko_max(h, fabsf(q.y0)), fabsf(q.y1));
-        }
-        txt++;
-    };
-    return h;
-}
-
-NEKO_API_DECL neko_vec2 neko_asset_font_text_dimensions(const neko_asset_font_t* fp, const char* text, int32_t len) { return neko_asset_font_text_dimensions_ex(fp, text, len, 0); }
-
-NEKO_API_DECL neko_vec2 neko_asset_font_text_dimensions_ex(const neko_asset_font_t* fp, const char* text, int32_t len, bool32_t include_past_baseline) {
-    neko_vec2 dimensions = neko_v2s(0.f);
-
-    if (!fp || !text) return dimensions;
-    float x = 0.f;
-    float y = 0.f;
-    float y_under = 0;
-
-    while (text[0] != '\0' && len--) {
-        char c = text[0];
-        if (c >= 32 && c <= 127) {
-            stbtt_aligned_quad q = neko_default_val();
-            stbtt_GetBakedQuad((stbtt_bakedchar*)fp->glyphs, fp->texture.desc.width, fp->texture.desc.height, c - 32, &x, &y, &q, 1);
-            dimensions.x = neko_max(dimensions.x, x);
-            dimensions.y = neko_max(dimensions.y, fabsf(q.y0));
-            if (include_past_baseline) y_under = neko_max(y_under, fabsf(q.y1));
-        }
-        text++;
-    };
-
-    if (include_past_baseline) dimensions.y += y_under;
-    return dimensions;
-}
-
-bool neko_util_load_gltf_data_from_file(const char* path, neko_asset_mesh_decl_t* decl, neko_asset_mesh_raw_data_t** out, uint32_t* mesh_count) {
-    // Use cgltf like a boss
-    cgltf_options options = neko_default_val();
-    size_t len = 0;
-    char* file_data = neko_platform_read_file_contents(path, "rb", &len);
-    neko_println("Loading GLTF: %s", path);
-
-    cgltf_data* data = NULL;
-    cgltf_result result = cgltf_parse(&options, file_data, (cgltf_size)len, &data);
-    neko_free(file_data);
-
-    if (result != cgltf_result_success) {
-        neko_println("Mesh:LoadFromFile:Failed load gltf");
-        cgltf_free(data);
-        return false;
-    }
-
-    // Load buffers as well
-    result = cgltf_load_buffers(&options, data, path);
-    if (result != cgltf_result_success) {
-        cgltf_free(data);
-        neko_println("Mesh:LoadFromFile:Failed to load buffers");
-        return false;
-    }
-
-    // Type of index data
-    size_t index_element_size = decl ? decl->index_buffer_element_size : 0;
-
-    // Temporary structures
-    neko_dyn_array(neko_vec3) positions = NULL;
-    neko_dyn_array(neko_vec3) normals = NULL;
-    neko_dyn_array(neko_vec3) tangents = NULL;
-    neko_dyn_array(neko_color_t) colors = NULL;
-    neko_dyn_array(neko_vec2) uvs = NULL;
-    neko_dyn_array(neko_asset_mesh_layout_t) layouts = NULL;
-    neko_byte_buffer_t v_data = neko_byte_buffer_new();
-    neko_byte_buffer_t i_data = neko_byte_buffer_new();
-
-    // Allocate memory for buffers
-    *mesh_count = data->meshes_count;
-    *out = (neko_asset_mesh_raw_data_t*)neko_malloc(data->meshes_count * sizeof(neko_asset_mesh_raw_data_t));
-    memset(*out, 0, sizeof(neko_asset_mesh_raw_data_t) * data->meshes_count);
-
-    // Iterate through meshes in data
-    for (uint32_t i = 0; i < data->meshes_count; ++i) {
-        // Initialize mesh data
-        neko_asset_mesh_raw_data_t* mesh = out[i];
-        mesh->prim_count = data->meshes[i].primitives_count;
-        mesh->vertex_sizes = (size_t*)neko_malloc(sizeof(size_t) * mesh->prim_count);
-        mesh->index_sizes = (size_t*)neko_malloc(sizeof(size_t) * mesh->prim_count);
-        mesh->vertices = (void**)neko_malloc(sizeof(size_t) * mesh->prim_count);
-        mesh->indices = (void**)neko_malloc(sizeof(size_t) * mesh->prim_count);
-
-        // For each primitive in mesh
-        for (uint32_t p = 0; p < data->meshes[i].primitives_count; ++p) {
-            // Clear temp data from previous use
-            neko_dyn_array_clear(positions);
-            neko_dyn_array_clear(normals);
-            neko_dyn_array_clear(tangents);
-            neko_dyn_array_clear(uvs);
-            neko_dyn_array_clear(colors);
-            neko_dyn_array_clear(layouts);
-            neko_byte_buffer_clear(&v_data);
-            neko_byte_buffer_clear(&i_data);
-
-#define __GLTF_PUSH_ATTR(ATTR, TYPE, COUNT, ARR, ARR_TYPE, LAYOUTS, LAYOUT_TYPE)                                                     \
-    do {                                                                                                                             \
-        int32_t N = 0;                                                                                                               \
-        TYPE* BUF = (TYPE*)ATTR->buffer_view->buffer->data + ATTR->buffer_view->offset / sizeof(TYPE) + ATTR->offset / sizeof(TYPE); \
-        neko_assert(BUF);                                                                                                            \
-        TYPE V[COUNT] = neko_default_val();                                                                                          \
-        /* For each vertex */                                                                                                        \
-        for (uint32_t k = 0; k < ATTR->count; k++) {                                                                                 \
-            /* For each element */                                                                                                   \
-            for (int l = 0; l < COUNT; l++) {                                                                                        \
-                V[l] = BUF[N + l];                                                                                                   \
-            }                                                                                                                        \
-            N += (int32_t)(ATTR->stride / sizeof(TYPE));                                                                             \
-            /* Add to temp data array */                                                                                             \
-            ARR_TYPE ELEM = neko_default_val();                                                                                      \
-            memcpy((void*)&ELEM, (void*)V, sizeof(ARR_TYPE));                                                                        \
-            neko_dyn_array_push(ARR, ELEM);                                                                                          \
-        }                                                                                                                            \
-        /* Push into layout */                                                                                                       \
-        neko_asset_mesh_layout_t LAYOUT = neko_default_val();                                                                        \
-        LAYOUT.type = LAYOUT_TYPE;                                                                                                   \
-        neko_dyn_array_push(LAYOUTS, LAYOUT);                                                                                        \
-    } while (0)
-
-            // For each attribute in primitive
-            for (uint32_t a = 0; a < data->meshes[i].primitives[p].attributes_count; ++a) {
-                // Accessor for attribute data
-                cgltf_accessor* attr = data->meshes[i].primitives[p].attributes[a].data;
-
-                // Switch on type for reading data
-                switch (data->meshes[i].primitives[p].attributes[a].type) {
-                    case cgltf_attribute_type_position: {
-                        __GLTF_PUSH_ATTR(attr, float, 3, positions, neko_vec3, layouts, NEKO_ASSET_MESH_ATTRIBUTE_TYPE_POSITION);
-                    } break;
-
-                    case cgltf_attribute_type_normal: {
-                        __GLTF_PUSH_ATTR(attr, float, 3, normals, neko_vec3, layouts, NEKO_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL);
-                    } break;
-
-                    case cgltf_attribute_type_tangent: {
-                        __GLTF_PUSH_ATTR(attr, float, 3, tangents, neko_vec3, layouts, NEKO_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT);
-                    } break;
-
-                    case cgltf_attribute_type_texcoord: {
-                        __GLTF_PUSH_ATTR(attr, float, 2, uvs, neko_vec2, layouts, NEKO_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD);
-                    } break;
-
-                    case cgltf_attribute_type_color: {
-                        __GLTF_PUSH_ATTR(attr, uint8_t, 4, colors, neko_color_t, layouts, NEKO_ASSET_MESH_ATTRIBUTE_TYPE_COLOR);
-                    } break;
-
-                    // Not sure what to do with these for now
-                    case cgltf_attribute_type_joints: {
-                        // Push into layout
-                        neko_asset_mesh_layout_t layout = neko_default_val();
-                        layout.type = NEKO_ASSET_MESH_ATTRIBUTE_TYPE_JOINT;
-                        neko_dyn_array_push(layouts, layout);
-                    } break;
-
-                    case cgltf_attribute_type_weights: {
-                        // Push into layout
-                        neko_asset_mesh_layout_t layout = neko_default_val();
-                        layout.type = NEKO_ASSET_MESH_ATTRIBUTE_TYPE_WEIGHT;
-                        neko_dyn_array_push(layouts, layout);
-                    } break;
-
-                    // Shouldn't hit here...
-                    default: {
-                    } break;
-                }
-            }
-
-            // Indices for primitive
-            cgltf_accessor* acc = data->meshes[i].primitives[p].indices;
-
-#define __GLTF_PUSH_IDX(BB, ACC, TYPE)                                                                                            \
-    do {                                                                                                                          \
-        int32_t n = 0;                                                                                                            \
-        TYPE* buf = (TYPE*)acc->buffer_view->buffer->data + acc->buffer_view->offset / sizeof(TYPE) + acc->offset / sizeof(TYPE); \
-        neko_assert(buf);                                                                                                         \
-        TYPE v = 0;                                                                                                               \
-        /* For each index */                                                                                                      \
-        for (uint32_t k = 0; k < acc->count; k++) {                                                                               \
-            /* For each element */                                                                                                \
-            for (int l = 0; l < 1; l++) {                                                                                         \
-                v = buf[n + l];                                                                                                   \
-            }                                                                                                                     \
-            n += (int32_t)(acc->stride / sizeof(TYPE));                                                                           \
-            /* Add to temp positions array */                                                                                     \
-            switch (index_element_size) {                                                                                         \
-                case 0:                                                                                                           \
-                    neko_byte_buffer_write(BB, uint16_t, (uint16_t)v);                                                            \
-                    break;                                                                                                        \
-                case 2:                                                                                                           \
-                    neko_byte_buffer_write(BB, uint16_t, (uint16_t)v);                                                            \
-                    break;                                                                                                        \
-                case 4:                                                                                                           \
-                    neko_byte_buffer_write(BB, uint32_t, (uint32_t)v);                                                            \
-                    break;                                                                                                        \
-            }                                                                                                                     \
-        }                                                                                                                         \
-    } while (0)
-
-            // If indices are available
-            if (acc) {
-                switch (acc->component_type) {
-                    case cgltf_component_type_r_8:
-                        __GLTF_PUSH_IDX(&i_data, acc, int8_t);
-                        break;
-                    case cgltf_component_type_r_8u:
-                        __GLTF_PUSH_IDX(&i_data, acc, uint8_t);
-                        break;
-                    case cgltf_component_type_r_16:
-                        __GLTF_PUSH_IDX(&i_data, acc, int16_t);
-                        break;
-                    case cgltf_component_type_r_16u:
-                        __GLTF_PUSH_IDX(&i_data, acc, uint16_t);
-                        break;
-                    case cgltf_component_type_r_32u:
-                        __GLTF_PUSH_IDX(&i_data, acc, uint32_t);
-                        break;
-                    case cgltf_component_type_r_32f:
-                        __GLTF_PUSH_IDX(&i_data, acc, float);
-                        break;
-
-                    // Shouldn't hit here
-                    default: {
-                    } break;
-                }
-            } else {
-                // Iterate over positions size, then just push back indices
-                for (uint32_t i = 0; i < neko_dyn_array_size(positions); ++i) {
-                    switch (index_element_size) {
-                        default:
-                        case 0:
-                            neko_byte_buffer_write(&i_data, uint16_t, (uint16_t)i);
-                            break;
-                        case 2:
-                            neko_byte_buffer_write(&i_data, uint16_t, (uint16_t)i);
-                            break;
-                        case 4:
-                            neko_byte_buffer_write(&i_data, uint32_t, (uint32_t)i);
-                            break;
-                    }
-                }
-            }
-
-            bool warnings[neko_enum_count(neko_asset_mesh_attribute_type)] = neko_default_val();
-
-            // Grab mesh layout pointer to use
-            neko_asset_mesh_layout_t* layoutp = decl ? decl->layout : layouts;
-            uint32_t layout_ct = decl ? decl->layout_size / sizeof(neko_asset_mesh_layout_t) : neko_dyn_array_size(layouts);
-
-            // Iterate layout to fill data buffers according to provided layout
-            {
-                uint32_t vct = 0;
-                vct = neko_max(vct, neko_dyn_array_size(positions));
-                vct = neko_max(vct, neko_dyn_array_size(colors));
-                vct = neko_max(vct, neko_dyn_array_size(uvs));
-                vct = neko_max(vct, neko_dyn_array_size(normals));
-                vct = neko_max(vct, neko_dyn_array_size(tangents));
-
-#define __NEKO_GLTF_WRITE_DATA(IT, VDATA, ARR, ARR_TYPE, ARR_DEF_VAL, LAYOUT_TYPE)              \
-    do {                                                                                        \
-        /* Grab data at index, if available */                                                  \
-        if (IT < neko_dyn_array_size(ARR)) {                                                    \
-            neko_byte_buffer_write(&(VDATA), ARR_TYPE, ARR[IT]);                                \
-        } else {                                                                                \
-            /* Write default value and give warning.*/                                          \
-            neko_byte_buffer_write(&(VDATA), ARR_TYPE, ARR_DEF_VAL);                            \
-            if (!warnings[LAYOUT_TYPE]) {                                                       \
-                neko_println("Warning:Mesh:LoadFromFile:%s:Index out of range.", #LAYOUT_TYPE); \
-                warnings[LAYOUT_TYPE] = true;                                                   \
-            }                                                                                   \
-        }                                                                                       \
-    } while (0)
-
-                for (uint32_t it = 0; it < vct; ++it) {
-                    // For each attribute in layout
-                    for (uint32_t l = 0; l < layout_ct; ++l) {
-                        switch (layoutp[l].type) {
-                            case NEKO_ASSET_MESH_ATTRIBUTE_TYPE_POSITION: {
-                                __NEKO_GLTF_WRITE_DATA(it, v_data, positions, neko_vec3, neko_v3(0.f, 0.f, 0.f), NEKO_ASSET_MESH_ATTRIBUTE_TYPE_POSITION);
-                            } break;
-
-                            case NEKO_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD: {
-                                __NEKO_GLTF_WRITE_DATA(it, v_data, uvs, neko_vec2, neko_v2(0.f, 0.f), NEKO_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD);
-                            } break;
-
-                            case NEKO_ASSET_MESH_ATTRIBUTE_TYPE_COLOR: {
-                                __NEKO_GLTF_WRITE_DATA(it, v_data, colors, neko_color_t, NEKO_COLOR_WHITE, NEKO_ASSET_MESH_ATTRIBUTE_TYPE_COLOR);
-                            } break;
-
-                            case NEKO_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL: {
-                                __NEKO_GLTF_WRITE_DATA(it, v_data, normals, neko_vec3, neko_v3(0.f, 0.f, 1.f), NEKO_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL);
-                            } break;
-
-                            case NEKO_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT: {
-                                __NEKO_GLTF_WRITE_DATA(it, v_data, tangents, neko_vec3, neko_v3(0.f, 1.f, 0.f), NEKO_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT);
-                            } break;
-
-                            default: {
-                            } break;
-                        }
-                    }
-                }
-            }
-
-            // Add to out data
-            mesh->vertices[p] = neko_malloc(v_data.size);
-            mesh->indices[p] = neko_malloc(i_data.size);
-            mesh->vertex_sizes[p] = v_data.size;
-            mesh->index_sizes[p] = i_data.size;
-
-            // Copy data
-            memcpy(mesh->vertices[p], v_data.data, v_data.size);
-            memcpy(mesh->indices[p], i_data.data, i_data.size);
-        }
-    }
-
-    // Free all data at the end
-    cgltf_free(data);
-    neko_dyn_array_free(positions);
-    neko_dyn_array_free(normals);
-    neko_dyn_array_free(tangents);
-    neko_dyn_array_free(colors);
-    neko_dyn_array_free(uvs);
-    neko_dyn_array_free(layouts);
-    neko_byte_buffer_free(&v_data);
-    neko_byte_buffer_free(&i_data);
-    return true;
-}
-
-bool neko_asset_mesh_load_from_file(const char* path, void* out, neko_asset_mesh_decl_t* decl, void* data_out, size_t data_size) {
-    // Cast mesh data to use
-    neko_asset_mesh_t* mesh = (neko_asset_mesh_t*)out;
-
-    if (!neko_platform_file_exists(path)) {
-        neko_println("Warning:MeshLoadFromFile:File does not exist: %s", path);
-        return false;
-    }
-
-    // Mesh data to fill out
-    uint32_t mesh_count = 0;
-    neko_asset_mesh_raw_data_t* meshes = NULL;
-
-    // Get file extension from path
-    neko_transient_buffer(file_ext, 32);
-    neko_platform_file_extension(file_ext, 32, path);
-
-    // GLTF
-    if (neko_string_compare_equal(file_ext, "gltf")) {
-        neko_util_load_gltf_data_from_file(path, decl, &meshes, &mesh_count);
-    } else {
-        neko_println("Warning:MeshLoadFromFile:File extension not supported: %s, file: %s", file_ext, path);
-        return false;
-    }
-
-    // For now, handle meshes with only single mesh count
-    if (mesh_count != 1) {
-        // Error
-        // Free all the memory
-        return false;
-    }
-
-    // Process all mesh data, add meshes
-    for (uint32_t i = 0; i < mesh_count; ++i) {
-        neko_asset_mesh_raw_data_t* m = &meshes[i];
-
-        for (uint32_t p = 0; p < m->prim_count; ++p) {
-            // Construct primitive
-            neko_asset_mesh_primitive_t prim = neko_default_val();
-            prim.count = m->index_sizes[p] / sizeof(uint16_t);
-
-            // Vertex buffer decl
-            neko_graphics_vertex_buffer_desc_t vdesc = neko_default_val();
-            vdesc.data = m->vertices[p];
-            vdesc.size = m->vertex_sizes[p];
-
-            // Construct vertex buffer for primitive
-            prim.vbo = neko_graphics_vertex_buffer_create(&vdesc);
-
-            // Index buffer decl
-            neko_graphics_index_buffer_desc_t idesc = neko_default_val();
-            idesc.data = m->indices[p];
-            idesc.size = m->index_sizes[p];
-
-            // Construct index buffer for primitive
-            prim.ibo = neko_graphics_index_buffer_create(&idesc);
-
-            // Add primitive to mesh
-            neko_dyn_array_push(mesh->primitives, prim);
-        }
-    }
-
-    // Free all mesh data
-    return true;
 }
 
 /*========================
@@ -2801,7 +2186,7 @@ NEKO_API_DECL neko_t* neko_create(neko_game_desc_t app_desc) {
         neko_instance()->ctx.audio->init(neko_instance()->ctx.audio);
 
         // 初始化 ecs
-        neko_ecs() = neko_ecs_make(1024, COMPONENT_COUNT, 2);
+        neko_ecs() = neko_ecs_make(1024, COMPONENT_COUNT, 3);
 
         // Initialize application and set to running
         app_desc.init();

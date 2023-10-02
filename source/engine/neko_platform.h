@@ -39,7 +39,7 @@ typedef struct neko_platform_time_t {
     { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 
 typedef struct neko_uuid_t {
-    uint8_t bytes[16];
+    u8 bytes[16];
 } neko_uuid_t;
 
 /*============================================================
@@ -52,7 +52,7 @@ typedef struct neko_uuid_t {
 // Should have an internal resource cache of window handles (controlled by the platform api)
 
 typedef struct neko_platform_running_desc_s {
-    const char* title;
+    const_str title;
     u32 width;
     u32 height;
     u32 flags;
@@ -60,6 +60,7 @@ typedef struct neko_platform_running_desc_s {
     u32 monitor_index;
     b32 vsync;
     float frame_rate;
+    const_str engine_args;
 } neko_platform_running_desc_t;
 
 typedef struct neko_platform_window_s {
@@ -335,7 +336,7 @@ typedef struct neko_opengl_video_settinneko_t {
     neko_opengl_compatibility_flags compability_flags;
     u32 major_version;
     u32 minor_version;
-    uint8_t multi_sampling_count;
+    u8 multi_sampling_count;
     void* ctx;
 } neko_opengl_video_settinneko_t;
 
@@ -577,45 +578,18 @@ NEKO_API_DECL void neko_platform_library_unload_default_impl(void* lib);
 NEKO_API_DECL void* neko_platform_library_proc_address_default_impl(void* lib, const char* func);
 
 // Default file implementations
-#ifndef neko_platform_read_file_contents
 #define neko_platform_read_file_contents neko_platform_read_file_contents_default_impl
-#endif
-#ifndef neko_platform_write_file_contents
 #define neko_platform_write_file_contents neko_platform_write_file_contents_default_impl
-#endif
-#ifndef neko_platform_file_exists
 #define neko_platform_file_exists neko_platform_file_exists_default_impl
-#endif
-#ifndef neko_platform_dir_exists
 #define neko_platform_dir_exists neko_platform_dir_exists_default_impl
-#endif
-#ifndef neko_platform_mkdir
 #define neko_platform_mkdir neko_platform_mkdir_default_impl
-#endif
-#ifndef neko_platform_file_exists
-#define neko_platform_file_exists neko_platform_file_exists_default_impl
-#endif
-#ifndef neko_platform_file_size_in_bytes
 #define neko_platform_file_size_in_bytes neko_platform_file_size_in_bytes_default_impl
-#endif
-#ifndef neko_platform_file_extension
 #define neko_platform_file_extension neko_platform_file_extension_default_impl
-#endif
-#ifndef neko_platform_file_delete
 #define neko_platform_file_delete neko_platform_file_delete_default_impl
-#endif
-#ifndef neko_platform_file_copy
 #define neko_platform_file_copy neko_platform_file_copy_default_impl
-#endif
-#ifndef neko_platform_library_load
 #define neko_platform_library_load neko_platform_library_load_default_impl
-#endif
-#ifndef neko_platform_library_unload
 #define neko_platform_library_unload neko_platform_library_unload_default_impl
-#endif
-#ifndef neko_platform_library_proc_addresss
 #define neko_platform_library_proc_address neko_platform_library_proc_address_default_impl
-#endif
 
 /* == Platform Dependent API == */
 
@@ -647,6 +621,7 @@ NEKO_API_DECL u32 neko_platform_window_height(u32 handle);
 NEKO_API_DECL bool32_t neko_platform_window_fullscreen(u32 handle);
 NEKO_API_DECL neko_vec2 neko_platform_window_positionv(u32 handle);
 NEKO_API_DECL void neko_platform_window_position(u32 handle, u32* x, u32* y);
+NEKO_API_DECL void neko_platform_set_window_title(u32 handle, const_str title);
 NEKO_API_DECL void neko_platform_set_window_size(u32 handle, u32 width, u32 height);
 NEKO_API_DECL void neko_platform_set_window_sizev(u32 handle, neko_vec2 v);
 NEKO_API_DECL void neko_platform_set_window_fullscreen(u32 handle, bool32_t fullscreen);
@@ -667,6 +642,12 @@ NEKO_API_DECL void neko_platform_set_window_close_callback(u32 handle, neko_wind
 NEKO_API_DECL void neko_platform_set_character_callback(u32 handle, neko_character_callback_t cb);
 
 NEKO_API_DECL void* neko_platform_get_sys_handle();
+NEKO_API_DECL neko_platform_meminfo_t neko_platform_get_meminfo();
+NEKO_API_DECL neko_vec2 neko_platform_get_opengl_ver();
+
+// Platform Internal
+void __neko_initialize_symbol_handler();
+void __neko_print_stacktrace();
 
 /*============================================================
 // Platform Native

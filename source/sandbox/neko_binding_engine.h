@@ -4,8 +4,8 @@
 
 #include "engine/neko_cvar.h"
 #include "engine/neko_engine.h"
+#include "engine/util/neko_asset.h"
 #include "engine/util/neko_lua.h"
-#include "engine/util/neko_packer.h"
 
 neko_global lua_State* g_lua_bind;
 
@@ -529,7 +529,7 @@ neko_inline void neko_register_common(lua_State* L) {
 neko_inline void neko_register_graphics(lua_State* L) {
 
     neko_lua_wrap_register_t<>(L).def(
-            +[](const_str text, const neko_font_index font, const f32 x, const f32 y) { ((neko_instance()->ctx.graphics))->api.fontcache_push_x_y(text, font, x, y); }, "neko_fontcache_push");
+            +[](const_str text, const neko_font_index font, const f32 x, const f32 y) { ((neko_instance()->ctx.graphics))->api.fontcache_push_x_y(text, font, x, y); }, "neko_text");
 
     lua_register(L, "neko_fontcache_load", __neko_bind_graphics_fontcache_load);
 }

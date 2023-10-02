@@ -3,7 +3,6 @@
 #define NEKO_ENGINE_H
 
 #include "engine/neko.h"
-#include "engine/neko_asset.h"
 #include "engine/neko_audio.h"
 #include "engine/neko_cvar.h"
 #include "engine/neko_ecs.h"

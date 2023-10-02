@@ -529,6 +529,27 @@ void neko_platform_release_key(neko_platform_keycode code) {
     }
 }
 
+#ifdef NEKO_PLATFORM_WIN
+
+LPCWSTR ConvertToLPCWSTR(const char* str) {
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, str, -1, NULL, 0);
+    if (size_needed <= 0) {
+        // 失败处理
+        return NULL;
+    }
+
+    wchar_t* wide_str = new wchar_t[size_needed];
+    if (!MultiByteToWideChar(CP_UTF8, 0, str, -1, wide_str, size_needed)) {
+        // 失败处理
+        delete[] wide_str;
+        return NULL;
+    }
+
+    return wide_str;
+}
+
+#endif
+
 // Platform File IO
 char* neko_platform_read_file_contents_default_impl(const char* file_path, const char* mode, size_t* sz) {
     const char* path = file_path;
@@ -588,7 +609,7 @@ NEKO_API_DECL bool neko_platform_dir_exists_default_impl(const char* dir_path) {
 
 NEKO_API_DECL s32 neko_platform_mkdir_default_impl(const char* dir_path, s32 opt) { return mkdir(dir_path); }
 
-bool neko_platform_file_exists_default_impl(const char* file_path) {
+NEKO_API_DECL bool neko_platform_file_exists_default_impl(const char* file_path) {
     const char* path = file_path;
 
 #ifdef NEKO_PLATFORM_ANDROID
@@ -608,7 +629,7 @@ bool neko_platform_file_exists_default_impl(const char* file_path) {
 s32 neko_platform_file_size_in_bytes_default_impl(const char* file_path) {
 #ifdef NEKO_PLATFORM_WIN
 
-    HANDLE hFile = CreateFile((LPCWSTR)file_path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    HANDLE hFile = CreateFileA(file_path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hFile == INVALID_HANDLE_VALUE) return -1;  // error condition, could call GetLastError to find out more
 
     LARGE_INTEGER size;
@@ -643,7 +664,7 @@ NEKO_API_DECL s32 neko_platform_file_delete_default_impl(const char* file_path) 
 #if (defined NEKO_PLATFORM_WIN)
 
     // Non-zero if successful
-    return DeleteFile((LPCWSTR)file_path);
+    return DeleteFileA(file_path);
 
 #elif (defined NEKO_PLATFORM_LINUX || defined NEKO_PLATFORM_APPLE || defined NEKO_PLATFORM_ANDROID)
 
@@ -658,7 +679,7 @@ NEKO_API_DECL s32 neko_platform_file_delete_default_impl(const char* file_path) 
 NEKO_API_DECL s32 neko_platform_file_copy_default_impl(const char* src_path, const char* dst_path) {
 #if (defined NEKO_PLATFORM_WIN)
 
-    return CopyFile((LPCWSTR)src_path, (LPCWSTR)dst_path, false);
+    return CopyFileA(src_path, dst_path, false);
 
 #elif (defined NEKO_PLATFORM_LINUX || defined NEKO_PLATFORM_APPLE || defined NEKO_PLATFORM_ANDROID)
 
@@ -835,7 +856,7 @@ void neko_platform_init(neko_platform_t* pf) {
     neko_println("Initializing GLFW");
 
 #ifdef NEKO_PLATFORM_WIN
-    SetConsoleOutputCP(65001);
+    SetConsoleOutputCP(CP_UTF8);
 
     SetProcessDPIAware();
     void* shcore = __native_library_load("shcore.dll");
@@ -844,6 +865,8 @@ void neko_platform_init(neko_platform_t* pf) {
         if (setter) setter(PROCESS_PER_MONITOR_DPI_AWARE);
     }
     if (shcore) __native_library_unload(shcore);
+
+    __neko_initialize_symbol_handler();
 #endif
 
     glfwInit();
@@ -939,6 +962,8 @@ void* glfw_get_sys_handle() {
 }
 
 void* neko_platform_get_sys_handle() { return glfw_get_sys_handle(); }
+neko_platform_meminfo_t neko_platform_get_meminfo() { return glfw_platform_get_meminfo(); }
+neko_vec2 neko_platform_get_opengl_ver() { return glfw_get_opengl_version(); }
 
 NEKO_API_DECL void neko_platform_update_internal(neko_platform_t* platform) {
     neko_platform_input_t* input = &platform->input;
@@ -2427,6 +2452,11 @@ neko_vec2 neko_platform_window_positionv(u32 handle) {
     return window->window_position;
 }
 
+void neko_platform_set_window_title(u32 handle, const_str title) {
+    neko_platform_window_t* win = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
+    glfwSetWindowTitle((GLFWwindow*)win->hndl, title);
+}
+
 void neko_platform_set_window_size(u32 handle, u32 w, u32 h) {
     neko_platform_window_t* window = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
     glfwSetWindowSize((GLFWwindow*)window->hndl, (s32)w, (s32)h);
@@ -2592,6 +2622,57 @@ b32 __glfw_set_window_center(GLFWwindow* window) {
 
     return true;
 }
+
+#ifdef NEKO_PLATFORM_WIN
+
+//
+#include <windows.h>
+//
+#include <dbghelp.h>
+
+// 定义用于堆栈跟踪的最大深度
+#define MAX_STACK_DEPTH 64
+
+// 初始化符号处理器
+void __neko_initialize_symbol_handler() {
+    SymSetOptions(SYMOPT_DEFERRED_LOADS | SYMOPT_LOAD_LINES);
+    SymInitialize(GetCurrentProcess(), NULL, TRUE);
+}
+
+// 打印函数调用栈信息 包括函数名和源码文件名
+void __neko_print_stacktrace() {
+    void* stack[MAX_STACK_DEPTH];
+    USHORT frames = CaptureStackBackTrace(0, MAX_STACK_DEPTH, stack, NULL);
+
+    for (USHORT i = 0; i < frames; i++) {
+        DWORD64 address = (DWORD64)(stack[i]);
+
+        // 获取函数名
+        SYMBOL_INFO* symbol = (SYMBOL_INFO*)calloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char), 1);
+        symbol->MaxNameLen = 255;
+        symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+        SymFromAddr(GetCurrentProcess(), address, 0, symbol);
+
+        // 获取源码文件名和行号
+        IMAGEHLP_LINE64 lineInfo;
+        lineInfo.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
+        DWORD displacement;
+        if (SymGetLineFromAddr64(GetCurrentProcess(), address, &displacement, &lineInfo)) {
+            printf("#%u %s - File: %s, Line: %u\n", i, symbol->Name, lineInfo.FileName, lineInfo.LineNumber);
+        } else {
+            printf("#%u %s - Source information not available\n", i, symbol->Name);
+        }
+
+        free(symbol);
+    }
+}
+
+#else
+
+void __neko_initialize_symbol_handler() {}
+void __neko_print_stacktrace() {}
+
+#endif
 
 /* Main entry point for platform*/
 #ifndef NEKO_NO_HIJACK_MAIN
@@ -3774,6 +3855,9 @@ NEKO_API_DECL u32 neko_platform_framebuffer_height(u32 handle) {
     neko_ems_t* ems = NEKO_EMS_DATA();
     return (u32)ems->canvas_height;
 }
+
+void __neko_initialize_symbol_handler() {}
+void __neko_print_stacktrace() {}
 
 #ifndef NEKO_NO_HIJACK_MAIN
 s32 main(s32 argc, char** argv) {

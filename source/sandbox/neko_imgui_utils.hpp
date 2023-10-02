@@ -327,12 +327,12 @@ __neko_imgui_def_inline(template <>, const ImVec4, ImGui::Text("%s(%f,%f,%f,%f)"
     __neko_imgui_def_inline(template <>, _c, ImGui::InputScalar(name.c_str(), ImGuiDataType_##_imn, &var);); \
     __neko_imgui_def_inline(template <>, const _c, neko::imgui::Auto_t<const std::string>::Auto(std::to_string(var), name);)
 
-INTERNAL_NUM(u8, U8);
-INTERNAL_NUM(u16, U16);
-INTERNAL_NUM(u64, U64);
-INTERNAL_NUM(s8, S8);
-INTERNAL_NUM(s16, S16);
-INTERNAL_NUM(s64, S64);
+// INTERNAL_NUM(u8, U8);
+// INTERNAL_NUM(u16, U16);
+// INTERNAL_NUM(u64, U64);
+// INTERNAL_NUM(s8, S8);
+// INTERNAL_NUM(s16, S16);
+// INTERNAL_NUM(s64, S64);
 
 __neko_imgui_def_inline_p((template <>), (detail::c_array_t<float, 1>), ImGui::DragFloat(name.c_str(), &var[0]););
 __neko_imgui_def_inline_p((template <>), (const detail::c_array_t<float, 1>), ImGui::Text("%s%f", (name.empty() ? "" : name + "=").c_str(), var[0]););
@@ -519,8 +519,6 @@ neko_inline ImVec4 neko_rgba2imvec(int r, int g, int b, int a = 255) {
 
 namespace neko::imgui {
 
-bool color_picker_3U32(const_str label, ImU32 *color, ImGuiColorEditFlags flags = 0);
-
 void file_browser(std::string &path);
 
 neko_inline void neko_imgui_help_marker(const_str desc) {
@@ -532,30 +530,6 @@ neko_inline void neko_imgui_help_marker(const_str desc) {
         ImGui::PopTextWrapPos();
         ImGui::EndTooltip();
     }
-}
-
-enum class alignment : unsigned char {
-    kHorizontalCenter = 1 << 0,
-    kVerticalCenter = 1 << 1,
-    kCenter = kHorizontalCenter | kVerticalCenter,
-};
-
-inline void aligned_text(const std::string &text, alignment align, const float &width = 0.0F) {
-    const auto alignment = neko_s_cast<unsigned char>(align);
-    const auto text_size = ImGui::CalcTextSize(text.c_str());
-    const auto wind_size = ImGui::GetContentRegionAvail();
-    if (alignment & neko_s_cast<unsigned char>(alignment::kHorizontalCenter)) {
-        if (width < 0.1F) {
-            ImGui::SetCursorPosX((wind_size.x - text_size.x) * 0.5F);
-        } else {
-            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (width - text_size.x) * 0.5F);
-        }
-    }
-    if (alignment & neko_s_cast<unsigned char>(alignment::kVerticalCenter)) {
-        ImGui::AlignTextToFramePadding();
-    }
-
-    ImGui::TextUnformatted(text.c_str());
 }
 
 }  // namespace neko::imgui

@@ -704,7 +704,7 @@ typedef struct neko_gui_context_t {
 
     // Backend resources
     uint32_t window_hndl;
-    neko_immediate_draw_t gsi;
+    neko_immediate_draw_t gui_idraw;
     neko_immediate_draw_t overlay_draw_list;
 
     // Active Transitions
@@ -780,7 +780,7 @@ typedef struct {
 
     // Backend resources
     uint32_t window_hndl;
-    neko_immediate_draw_t gsi;
+    neko_immediate_draw_t gui_idraw;
     neko_immediate_draw_t overlay_draw_list;
 
     // Active Transitions
@@ -826,7 +826,7 @@ NEKO_API_DECL void neko_gui_init_font_stash(neko_gui_context_t* ctx, neko_gui_fo
 NEKO_API_DECL neko_gui_context_t neko_gui_context_new(uint32_t window_hndl);
 NEKO_API_DECL void neko_gui_free(neko_gui_context_t* ctx);
 NEKO_API_DECL void neko_gui_begin(neko_gui_context_t* ctx, const neko_gui_hints_t* hints);
-NEKO_API_DECL void neko_gui_end(neko_gui_context_t* ctx);
+NEKO_API_DECL void neko_gui_end(neko_gui_context_t* ctx, b32 update);
 NEKO_API_DECL void neko_gui_render(neko_gui_context_t* ctx, neko_command_buffer_t* cb);
 
 //=== Util ===//

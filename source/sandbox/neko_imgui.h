@@ -158,7 +158,7 @@ neko_imgui_context_t neko_imgui_new(uint32_t hndl, bool install_callbacks) {
     ImGuiIO& io = ImGui::GetIO();
     // io.BackendFlags |= ImGuiBackendFlaneko_HasMouseCursors;  // We can honor GetMouseCursor() values (optional)
     // io.BackendFlags |= ImGuiBackendFlaneko_HasSetMousePos;   // We can honor io.WantSetMousePos requests (optional, rarely used)
-    io.BackendPlatformName = "imgui_impl_gs";
+    io.BackendPlatformName = "imgui_impl_neko";
 
     // Keyboard mapping. ImGui will use those indices to peek into the io.KeysDown[] array.
     io.KeyMap[ImGuiKey_Tab] = neko_platform_key_to_codepoint(NEKO_KEYCODE_TAB);

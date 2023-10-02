@@ -3,53 +3,6 @@
 
 #include "engine/neko_component.h"
 
-typedef struct {
-    u32 *data;
-    u64 capacity;
-    u64 top;
-    b32 empty;
-} neko_ecs_stack;
-
-typedef struct {
-    void *data;
-    u32 count;
-    u32 size;
-
-    neko_ecs_component_destroy destroy_func;
-
-    neko_ecs_stack *indexes;
-
-} neko_ecs_component_pool;
-
-typedef struct {
-    neko_ecs_system_func func;
-    neko_ecs_system_type type;
-} neko_ecs_system;
-
-struct neko_ecs {
-    u32 max_entities;
-    u32 component_count;
-    u32 system_count;
-
-    neko_ecs_stack *indexes;
-
-    // max_index 用来优化
-    u32 max_index;
-    u32 *versions;
-
-    // components 是组件的索引
-    // 最大值为 (实体数 * component_count)
-    // 索引通过 (index * comp_count + comp_type) 实现
-    // component_masks 的工作原理相同 只是检查 mask 是否启用
-    u32 *components;
-    b32 *component_masks;
-
-    neko_ecs_component_pool *pool;
-
-    neko_ecs_system *systems;
-    u32 systems_top;
-};
-
 neko_ecs_stack *neko_ecs_stack_make(u64 capacity) {
     neko_ecs_stack *s = (neko_ecs_stack *)neko_malloc(sizeof(neko_ecs_stack));
     s->data = (u32 *)neko_malloc(sizeof(*s->data) * capacity);

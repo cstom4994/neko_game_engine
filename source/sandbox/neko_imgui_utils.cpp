@@ -17,19 +17,6 @@
 
 namespace neko::imgui {
 
-bool color_picker_3U32(const char* label, ImU32* color, ImGuiColorEditFlags flags) {
-    float col[3];
-    col[0] = (float)((*color >> 0) & 0xFF) / 255.0f;
-    col[1] = (float)((*color >> 8) & 0xFF) / 255.0f;
-    col[2] = (float)((*color >> 16) & 0xFF) / 255.0f;
-
-    bool result = ImGui::ColorPicker3(label, col, flags);
-
-    *color = ((ImU32)(col[0] * 255.0f)) | ((ImU32)(col[1] * 255.0f) << 8) | ((ImU32)(col[2] * 255.0f) << 16);
-
-    return result;
-}
-
 void file_browser(std::string& path) {
 
     ImGui::Text("Current Path: %s", path.c_str());
@@ -80,15 +67,15 @@ void neko_imgui_style() {
     colors[ImGuiCol_TextDisabled] = textDisabledColor;
     colors[ImGuiCol_TextSelectedBg] = panelActiveColor;
     colors[ImGuiCol_WindowBg] = bgColor;
-    colors[ImGuiCol_ChildBg] = bgColor;
-    colors[ImGuiCol_PopupBg] = bgColor;
+    // colors[ImGuiCol_ChildBg] = bgColor;
+    // colors[ImGuiCol_PopupBg] = bgColor;
     colors[ImGuiCol_Border] = borderColor;
     colors[ImGuiCol_BorderShadow] = borderColor;
     colors[ImGuiCol_FrameBg] = panelColor;
     colors[ImGuiCol_FrameBgHovered] = panelHoverColor;
     colors[ImGuiCol_FrameBgActive] = panelActiveColor;
     colors[ImGuiCol_TitleBg] = bgColor;
-    colors[ImGuiCol_TitleBgActive] = bgColor;
+    // colors[ImGuiCol_TitleBgActive] = bgColor;
     colors[ImGuiCol_TitleBgCollapsed] = bgColor;
     colors[ImGuiCol_MenuBarBg] = panelColor;
     colors[ImGuiCol_ScrollbarBg] = panelColor;
@@ -104,9 +91,9 @@ void neko_imgui_style() {
     colors[ImGuiCol_Header] = panelColor;
     colors[ImGuiCol_HeaderHovered] = panelHoverColor;
     colors[ImGuiCol_HeaderActive] = panelActiveColor;
-    colors[ImGuiCol_Separator] = borderColor;
-    colors[ImGuiCol_SeparatorHovered] = borderColor;
-    colors[ImGuiCol_SeparatorActive] = borderColor;
+    // colors[ImGuiCol_Separator] = borderColor;
+    // colors[ImGuiCol_SeparatorHovered] = borderColor;
+    // colors[ImGuiCol_SeparatorActive] = borderColor;
     colors[ImGuiCol_ResizeGrip] = bgColor;
     colors[ImGuiCol_ResizeGripHovered] = panelColor;
     colors[ImGuiCol_ResizeGripActive] = lightBgColor;
@@ -116,10 +103,10 @@ void neko_imgui_style() {
     colors[ImGuiCol_PlotHistogramHovered] = panelHoverColor;
 
     style.WindowRounding = 4.0f;
-    style.ChildRounding = 4.0f;
+    // style.ChildRounding = 4.0f;
     style.FrameRounding = 4.0f;
-    style.GrabRounding = 4.0f;
-    style.PopupRounding = 4.0f;
+    // style.GrabRounding = 4.0f;
+    // style.PopupRounding = 4.0f;
     style.ScrollbarRounding = 0.0f;
 }
 
@@ -138,29 +125,7 @@ u32 neko_draw_darken_color(u32 color, float brightness) {
     return (a << 24) | (r << 16) | (g << 8) | b;
 }
 
-void neko_draw_text(std::string text, neko_color_t col, int x, int y, bool outline, neko_color_t outline_col) {
-
-    ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImDrawList* draw_list = ImGui::GetBackgroundDrawList(viewport);
-
-    if (outline) {
-
-        auto outline_col_im = ImColor(outline_col.r, outline_col.g, outline_col.b, col.a);
-
-        draw_list->AddText(ImVec2(x + 0, y - 1), outline_col_im, text.c_str());  // up
-        draw_list->AddText(ImVec2(x + 0, y + 1), outline_col_im, text.c_str());  // down
-        draw_list->AddText(ImVec2(x + 1, y + 0), outline_col_im, text.c_str());  // right
-        draw_list->AddText(ImVec2(x - 1, y + 0), outline_col_im, text.c_str());  // left
-
-        draw_list->AddText(ImVec2(x + 1, y + 1), outline_col_im, text.c_str());  // down-right
-        draw_list->AddText(ImVec2(x - 1, y + 1), outline_col_im, text.c_str());  // down-left
-
-        draw_list->AddText(ImVec2(x + 1, y - 1), outline_col_im, text.c_str());  // up-right
-        draw_list->AddText(ImVec2(x - 1, y - 1), outline_col_im, text.c_str());  // up-left
-    }
-
-    draw_list->AddText(ImVec2(x, y), ImColor(col.r, col.g, col.b, col.a), text.c_str());  // base
-}
+void neko_draw_text(std::string text, neko_color_t col, int x, int y, bool outline, neko_color_t outline_col) {}
 
 }  // namespace neko
 

@@ -1,6 +1,11 @@
 
 #include "engine/util/neko_idraw.h"
 
+// STB
+#include "libs/stb/stb_image.h"
+#include "libs/stb/stb_rect_pack.h"
+#include "libs/stb/stb_truetype.h"
+
 // Global instance of immediate draw static data
 neko_immediate_draw_static_data_t* g_neko_idraw = NULL;
 
