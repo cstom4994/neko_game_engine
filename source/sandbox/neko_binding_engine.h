@@ -499,7 +499,8 @@ neko_inline void neko_register_common(lua_State* L) {
             .def(&__neko_lua_bug, "log_debug")
             .def(&__neko_lua_error, "log_error")
             .def(&__neko_lua_warn, "log_warn")
-            .def(&__neko_lua_info, "log_info");
+            .def(&__neko_lua_info, "log_info")
+            .def(&neko_rand_xorshf32, "neko_rand");
     //.def(&__neko_add_packagepath, "add_packagepath")
     //.def(+[]() -> bool { return (bool)neko_is_debug(); }, "neko_is_debug");
 

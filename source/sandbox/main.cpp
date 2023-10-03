@@ -8,11 +8,13 @@
 #include "engine/neko_component.h"
 #include "engine/neko_ecs.h"
 #include "engine/neko_platform.h"
+#include "engine/util/neko_ai.h"
 #include "engine/util/neko_asset.h"
 #include "engine/util/neko_gfxt.h"
 #include "engine/util/neko_gui.h"
 #include "engine/util/neko_idraw.h"
 #include "engine/util/neko_lua.h"
+#include "engine/util/neko_tiled.h"
 
 // game
 #include "neko_client_ecs.h"
@@ -54,6 +56,20 @@ neko_string data_path = {};
 
 neko_global neko_sprite test_witch_spr = {0};
 
+// ai test
+enum { AI_STATE_MOVE = 0x00, AI_STATE_HEAL };
+
+typedef struct {
+    neko_vqs xform;
+    neko_vec3 target;
+    f32 health;
+    int16_t state;
+} ai_t;
+
+neko_camera_t camera;
+neko_ai_bt_t bt;
+ai_t ai;
+
 // decl static reflection
 template <>
 struct neko::meta::static_refl::TypeInfo<neko_platform_running_desc_t> : TypeInfoBase<neko_platform_running_desc_t> {
@@ -80,7 +96,7 @@ struct neko_engine_cvar_t {
 
     bool show_gui = false;
 
-    float bg[3] = {90, 95, 100};
+    f32 bg[3] = {90, 95, 100};
 };
 
 neko_struct(neko_engine_cvar_t, _Fs(show_demo_window, "Is show imgui demo"), _Fs(show_info_window, "Is show info window"), _Fs(show_cvar_window, "cvar inspector"), _Fs(show_gui, "neko gui"),
@@ -161,14 +177,14 @@ void app_load_style_sheet(bool destroy) {
     neko_gui_set_style_sheet(&g_gui, &style_sheet);
 }
 
-int32_t button_custom(neko_gui_context_t *ctx, const char *label) {
+s32 button_custom(neko_gui_context_t *ctx, const char *label) {
     // Do original button call
-    int32_t res = neko_gui_button(ctx, label);
+    s32 res = neko_gui_button(ctx, label);
 
     // Draw inner shadows/highlights over button
     neko_color_t hc = NEKO_COLOR_WHITE, sc = neko_color(85, 85, 85, 255);
     neko_gui_rect_t r = ctx->last_rect;
-    int32_t w = 2;
+    s32 w = 2;
     neko_gui_draw_rect(ctx, neko_gui_rect(r.x + w, r.y, r.w - 2 * w, w), hc);
     neko_gui_draw_rect(ctx, neko_gui_rect(r.x + w, r.y + r.h - w, r.w - 2 * w, w), sc);
     neko_gui_draw_rect(ctx, neko_gui_rect(r.x, r.y, w, r.h), hc);
@@ -183,10 +199,10 @@ void gui_cb(neko_gui_context_t *ctx, struct neko_gui_customcommand_t *cmd) {
     neko_vec2 fbs = ctx->framebuffer_size;               // Framebuffer size bound for gui context
     neko_color_t *color = (neko_color_t *)cmd->data;     // Grab custom data
     neko_asset_texture_t *tp = neko_assets_getp(&g_am, neko_asset_texture_t, tex_hndl);
-    const float t = neko_platform_elapsed_time();
+    const f32 t = neko_platform_elapsed_time();
 
     // Set up an immedaite camera using our passed in cmd viewport (this is the clipped viewport of the gui window being drawn)
-    neko_idraw_camera3D(gui_idraw, (uint32_t)cmd->viewport.w, (uint32_t)cmd->viewport.h);
+    neko_idraw_camera3D(gui_idraw, (u32)cmd->viewport.w, (u32)cmd->viewport.h);
     neko_idraw_blend_enabled(gui_idraw, true);
     neko_graphics_set_viewport(&gui_idraw->commands, cmd->viewport.x, fbs.y - cmd->viewport.h - cmd->viewport.y, cmd->viewport.w, cmd->viewport.h);
     neko_idraw_push_matrix(gui_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);
@@ -198,7 +214,7 @@ void gui_cb(neko_gui_context_t *ctx, struct neko_gui_customcommand_t *cmd) {
     neko_idraw_pop_matrix(gui_idraw);
 
     // Set up 2D camera for projection matrix
-    neko_idraw_camera2D(gui_idraw, (uint32_t)fbs.x, (uint32_t)fbs.y);
+    neko_idraw_camera2D(gui_idraw, (u32)fbs.x, (u32)fbs.y);
 
     // Rect
     neko_idraw_rectv(gui_idraw, neko_v2(500.f, 50.f), neko_v2(600.f, 100.f), NEKO_COLOR_RED, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
@@ -222,7 +238,7 @@ void gui_cb(neko_gui_context_t *ctx, struct neko_gui_customcommand_t *cmd) {
     // Box (with texture)
     neko_idraw_depth_enabled(gui_idraw, true);
     neko_idraw_face_cull_enabled(gui_idraw, true);
-    neko_idraw_camera3D(gui_idraw, (uint32_t)fbs.x, (uint32_t)fbs.y);
+    neko_idraw_camera3D(gui_idraw, (u32)fbs.x, (u32)fbs.y);
     neko_idraw_push_matrix(gui_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);
     {
         neko_idraw_translatef(gui_idraw, -2.f, -1.f, -5.f);
@@ -248,7 +264,7 @@ void gui_cb(neko_gui_context_t *ctx, struct neko_gui_customcommand_t *cmd) {
     neko_idraw_pop_matrix(gui_idraw);
 
     // Sphere (triangles, no texture)
-    neko_idraw_camera3D(gui_idraw, (uint32_t)fbs.x, (uint32_t)fbs.y);
+    neko_idraw_camera3D(gui_idraw, (u32)fbs.x, (u32)fbs.y);
     neko_idraw_push_matrix(gui_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);
     {
         neko_idraw_translatef(gui_idraw, -2.f, -1.f, -5.f);
@@ -272,11 +288,91 @@ void gui_cb(neko_gui_context_t *ctx, struct neko_gui_customcommand_t *cmd) {
     neko_idraw_pop_matrix(gui_idraw);
 
     // Text (custom and default fonts)
-    // neko_idraw_camera2D(gui_idraw, (uint32_t)ws.x, (uint32_t)ws.y);
+    // neko_idraw_camera2D(gui_idraw, (u32)ws.x, (u32)ws.y);
     // neko_idraw_defaults(gui_idraw);
     // neko_idraw_text(gui_idraw, 410.f, 150.f, "Custom Font", &font, false, 200, 100, 50, 255);
     // neko_idraw_text(gui_idraw, 450.f, 200.f, "Default Font", NULL, false, 50, 100, 255, 255);
 }
+
+#pragma region AI
+
+// Behavior tree functions
+void ai_behavior_tree_frame(struct neko_ai_bt_t *ctx);
+void ai_task_target_find(struct neko_ai_bt_t *ctx, struct neko_ai_bt_node_t *node);
+void ai_task_target_move_to(struct neko_ai_bt_t *ctx, struct neko_ai_bt_node_t *node);
+void ai_task_health_check(struct neko_ai_bt_t *ctx, struct neko_ai_bt_node_t *node);
+void ai_task_heal(struct neko_ai_bt_t *ctx, struct neko_ai_bt_node_t *node);
+
+void ai_behavior_tree_frame(struct neko_ai_bt_t *ctx) {
+    ai_t *ai = (ai_t *)ctx->ctx.user_data;
+
+    neko_ai_bt(ctx, {
+        neko_ai_repeater(ctx, {
+            neko_ai_selector(ctx, {
+                // Heal
+                neko_ai_sequence(ctx, {
+                    neko_ai_leaf(ctx, ai_task_health_check);
+                    neko_ai_leaf(ctx, ai_task_heal);
+                });
+
+                // Move to
+                neko_ai_sequence(ctx, {
+                    neko_ai_leaf(ctx, ai_task_target_find);
+                    neko_ai_condition(ctx, (ai->health > 50.f), { neko_ai_leaf(ctx, ai_task_target_move_to); });
+                });
+            });
+        });
+    });
+}
+
+void ai_task_health_check(struct neko_ai_bt_t *ctx, struct neko_ai_bt_node_t *node) {
+    ai_t *ai = (ai_t *)ctx->ctx.user_data;
+    node->state = ai->health >= 50 ? NEKO_AI_BT_STATE_FAILURE : NEKO_AI_BT_STATE_SUCCESS;
+}
+
+void ai_task_heal(struct neko_ai_bt_t *ctx, struct neko_ai_bt_node_t *node) {
+    ai_t *ai = (ai_t *)ctx->ctx.user_data;
+    if (ai->health < 100.f) {
+        ai->health += 1.f;
+        node->state = NEKO_AI_BT_STATE_RUNNING;
+        ai->state = AI_STATE_HEAL;
+    } else {
+        node->state = NEKO_AI_BT_STATE_SUCCESS;
+    }
+}
+
+void ai_task_target_find(struct neko_ai_bt_t *ctx, struct neko_ai_bt_node_t *node) {
+    ai_t *ai = (ai_t *)ctx->ctx.user_data;
+    f32 dist = neko_vec3_dist(ai->xform.translation, ai->target);
+    if (dist < 1.f) {
+        neko_mt_rand_t rand = neko_rand_seed(time(NULL));
+        neko_vec3 target = neko_v3(neko_rand_gen_range(&rand, -10.f, 10.f), 0.f, neko_rand_gen_range(&rand, -10.f, 10.f));
+        ai->target = target;
+    }
+    node->state = NEKO_AI_BT_STATE_SUCCESS;
+}
+
+void ai_task_target_move_to(struct neko_ai_bt_t *ctx, struct neko_ai_bt_node_t *node) {
+    ai_t *ai = (ai_t *)ctx->ctx.user_data;
+    const f32 dt = neko_platform_time()->delta;
+    f32 dist = neko_vec3_dist(ai->xform.translation, ai->target);
+    f32 speed = 25.f * dt;
+    if (dist > speed) {
+        neko_vec3 dir = neko_vec3_norm(neko_vec3_sub(ai->target, ai->xform.translation));
+        neko_vec3 vel = neko_vec3_scale(dir, speed);
+        neko_vec3 np = neko_vec3_add(ai->xform.translation, vel);
+        ai->xform.translation =
+                neko_v3(neko_interp_linear(ai->xform.translation.x, np.x, 0.05f), neko_interp_linear(ai->xform.translation.y, np.y, 0.05f), neko_interp_linear(ai->xform.translation.z, np.z, 0.05f));
+        // Look at target rotation
+        ai->xform.rotation = neko_quat_look_rotation(ai->xform.translation, ai->target, NEKO_YAXIS);
+        node->state = NEKO_AI_BT_STATE_RUNNING;
+        ai->state = AI_STATE_MOVE;
+    } else {
+        node->state = NEKO_AI_BT_STATE_SUCCESS;
+    }
+}
+
+#pragma endregion
 
 template <typename T, typename Fields = std::tuple<>>
 void __neko_cvar_gui_internal(T &&obj, int depth = 0, const char *fieldName = "", Fields &&fields = std::make_tuple()) {
@@ -316,9 +412,18 @@ void neko_cvar_gui() {
     }
 }
 
+// Tiled
+map_t map;
+
 void game_init() {
     g_cb = neko_command_buffer_new();
     g_idraw = neko_immediate_draw_new();
+
+    neko_graphics_info_t *info = neko_graphics_info();
+    if (!info->compute.available) {
+        neko_log_error("Compute shaders not available.");
+        return;
+    }
 
     g_am = neko_asset_manager_new();
 
@@ -436,6 +541,33 @@ void game_init() {
     neko_ecs_ent_print(neko_ecs(), e);
 
     // neko_ecs_ent_destroy(ecs, e);
+
+    // AI
+    // Set up camera
+    camera = neko_camera_perspective();
+    camera.transform = neko_vqs{.translation = neko_v3(22.52f, 15.52f, 18.18f), .rotation = neko_quat{-0.23f, 0.42f, 0.11f, 0.87f}, .scale = neko_v3s(1.f)};
+
+    // Initialize ai information
+    ai = ai_t{.xform = neko_vqs{.translation = neko_v3s(0.f), .rotation = neko_quat_default(), .scale = neko_v3s(1.f)}, .target = neko_v3s(0.f), .health = 100.f};
+
+    // 行为树上下文保留内部 ai 上下文
+    // 该上下文可以保存 BT 节点可以读/写的全局/共享信息
+    // 我们将把 BT 的内部上下文用户数据设置为 AI 信息的地址
+    bt.ctx.user_data = &ai;
+
+#pragma region tiled
+
+    neko_tiled_load(&map, "D:/Projects/Neko/Dev/data_tiled/map.tmx", NULL);
+
+    char *vert_src = neko_read_file_contents_into_string_null_term("D:/Projects/Neko/Dev/data_tiled/shader/sprite.vert", "rb", NULL);
+    char *frag_src = neko_read_file_contents_into_string_null_term("D:/Projects/Neko/Dev/data_tiled/shader/sprite.frag", "rb", NULL);
+
+    neko_tiled_render_init(&g_cb, vert_src, frag_src);
+
+    neko_free(vert_src);
+    neko_free(frag_src);
+
+#pragma endregion
 }
 
 void game_update() {
@@ -446,7 +578,7 @@ void game_update() {
     neko_vec2 md = neko_platform_mouse_deltav();
     bool lock = neko_platform_mouse_locked();
     bool moved = neko_platform_mouse_moved();
-    const float t = neko_platform_elapsed_time();
+    const f32 t = neko_platform_elapsed_time();
 
     if (neko_platform_key_pressed(NEKO_KEYCODE_ESC)) {
         neko_quit();
@@ -460,17 +592,6 @@ void game_update() {
     neko_graphics_renderpass_begin(&g_cb, neko_renderpass_t{0});
     { neko_graphics_clear(&g_cb, &clear); }
     neko_graphics_renderpass_end(&g_cb);
-
-    neko_asset_texture_t *tp = neko_assets_getp(&g_am, neko_asset_texture_t, tex_hndl);
-
-    neko_idraw_defaults(&g_idraw);
-    neko_idraw_camera3D(&g_idraw, (uint32_t)fbs.x, (uint32_t)fbs.y);
-    neko_idraw_face_cull_enabled(&g_idraw, true);
-    neko_idraw_translatef(&g_idraw, -2.f, 0.f, -5.f);
-    neko_idraw_rotatev(&g_idraw, -neko_platform_elapsed_time() * 0.001f, NEKO_YAXIS);
-    neko_idraw_sphere(&g_idraw, 0.f, 0.f, 0.f, 1.5f, 20, 50, 150, 100, NEKO_GRAPHICS_PRIMITIVE_LINES);
-    neko_idraw_texture(&g_idraw, tp->hndl);
-    neko_idraw_sphere(&g_idraw, 0.f, 0.f, 0.f, 1.5f, 255, 255, 255, 255, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
 
     // Set up 2D camera for projection matrix
     neko_idraw_defaults(&g_idraw);
@@ -514,6 +635,77 @@ void game_update() {
     }
     neko_graphics_renderpass_end(&g_cb);
 
+#pragma region AI
+
+    // AI
+    ai_behavior_tree_frame(&bt);
+
+    // Update/render scene
+    neko_idraw_camera(&g_idraw, &camera, (u32)fbs.x, (u32)fbs.y);
+    neko_idraw_depth_enabled(&g_idraw, true);
+
+    // Render ground
+    neko_idraw_rect3Dv(&g_idraw, neko_v3(-15.f, -0.5f, -15.f), neko_v3(15.f, -0.5f, 15.f), neko_v2s(0.f), neko_v2s(1.f), neko_color(50, 50, 50, 255), NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
+
+    // Render ai
+    neko_idraw_push_matrix(&g_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);
+    neko_idraw_mul_matrix(&g_idraw, neko_vqs_to_mat4(&ai.xform));
+    neko_idraw_box(&g_idraw, 0.f, 0.f, 0.f, 0.5f, 0.5f, 0.5f, 255, 255, 255, 255, NEKO_GRAPHICS_PRIMITIVE_LINES);
+    neko_idraw_line3Dv(&g_idraw, neko_v3s(0.f), NEKO_ZAXIS, NEKO_COLOR_BLUE);
+    neko_idraw_line3Dv(&g_idraw, neko_v3s(0.f), NEKO_XAXIS, NEKO_COLOR_RED);
+    neko_idraw_line3Dv(&g_idraw, neko_v3s(0.f), NEKO_YAXIS, NEKO_COLOR_GREEN);
+    neko_idraw_pop_matrix(&g_idraw);
+
+    // Render target
+    neko_idraw_push_matrix(&g_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);
+    neko_idraw_translatev(&g_idraw, ai.target);
+    neko_idraw_box(&g_idraw, 0.f, 0.f, 0.f, 0.5f, 0.5f, 0.5f, 255, 255, 0, 255, NEKO_GRAPHICS_PRIMITIVE_LINES);
+    neko_idraw_pop_matrix(&g_idraw);
+
+#pragma endregion
+
+    neko_graphics_renderpass_begin(&g_cb, neko_renderpass_t{0});
+    {
+        neko_tiled_render_begin();
+
+        // for (u32 i = 0; i < neko_dyn_array_size(map.layers); i++) {
+        //     layer_t *layer = map.layers + i;
+        //     for (u32 y = 0; y < layer->height; y++) {
+        //         for (u32 x = 0; x < layer->width; x++) {
+        //             tile_t *tile = layer->tiles + (x + y * layer->width);
+        //             if (tile->id != 0) {
+        //                 tileset_t *tileset = map.tilesets + tile->tileset_id;
+        //                 u32 tsxx = (tile->id % (tileset->width / tileset->tile_width) - 1) * tileset->tile_width;
+        //                 u32 tsyy = tileset->tile_height * ((tile->id - tileset->first_gid) / (tileset->width / tileset->tile_width));
+        //                 neko_tiled_quad_t quad = {.texture = tileset->texture,
+        //                                           .texture_size = {(f32)tileset->width, (f32)tileset->height},
+        //                                           .position = {(f32)(x * tileset->tile_width * SPRITE_SCALE), (f32)(y * tileset->tile_height * SPRITE_SCALE)},
+        //                                           .dimentions = {(f32)(tileset->tile_width * SPRITE_SCALE), (f32)(tileset->tile_height * SPRITE_SCALE)},
+        //                                           .rectangle = {(f32)tsxx, (f32)tsyy, (f32)tileset->tile_width, (f32)tileset->tile_height},
+        //                                           .color = layer->tint,
+        //                                           .use_texture = true};
+        //                 neko_tiled_render_push(&g_cb, &quad);
+        //             }
+        //         }
+        //     }
+        // }
+
+        // for (u32 i = 0; i < neko_dyn_array_size(map.object_groups); i++) {
+        //     object_group_t *group = map.object_groups + i;
+        //     for (u32 ii = 0; ii < neko_dyn_array_size(map.object_groups[i].objects); ii++) {
+        //         object_t *object = group->objects + ii;
+        //         neko_tiled_quad_t quad = {.position = {(f32)(object->x * SPRITE_SCALE), (f32)(object->y * SPRITE_SCALE)},
+        //                        .dimentions = {(f32)(object->width * SPRITE_SCALE), (f32)(object->height * SPRITE_SCALE)},
+        //                        .color = group->color,
+        //                        .use_texture = false};
+        //         neko_tiled_render_push(&g_cb, &quad);
+        //     }
+        // }
+
+        neko_tiled_render_flush(&g_cb);
+    }
+    neko_graphics_renderpass_end(&g_cb);
+
 #pragma region gui
 
     ImGuiIO io = ImGui::GetIO();
@@ -554,7 +746,7 @@ void game_update() {
 
                 struct {
                     const char *str;
-                    int32_t val;
+                    s32 val;
                 } btns[] = {{"Left", NEKO_MOUSE_LBUTTON}, {"Right", NEKO_MOUSE_RBUTTON}, {"Middle", NEKO_MOUSE_MBUTTON}, {NULL}};
 
                 bool mouse_down[3] = {0};
@@ -577,7 +769,7 @@ void game_update() {
                 mouse_pressed[NEKO_MOUSE_MBUTTON] = neko_platform_mouse_pressed(NEKO_MOUSE_MBUTTON);
 
                 neko_gui_layout_row(&g_gui, 7, GUI_WIDTHS(100, 100, 32, 100, 32, 100, 32), 0);
-                for (uint32_t i = 0; btns[i].str; ++i) {
+                for (u32 i = 0; btns[i].str; ++i) {
                     GUI_LABEL("%s: ", btns[i].str);
                     GUI_LABEL("pressed: ");
                     GUI_LABEL("%d", mouse_pressed[btns[i].val]);
@@ -618,7 +810,7 @@ void game_update() {
                 neko_gui_selector_desc_t selector_2 = {.id = "lbl", .classes = {"c0"}};
                 neko_gui_label_ex(&g_gui, "label##lbl", &selector_2, 0x00);
 
-                const float m = cnt->body.w * 0.3f;
+                const f32 m = cnt->body.w * 0.3f;
                 // neko_gui_layout_row(gui, 2, (int[]){m, -m}, 0);
                 // neko_gui_layout_next(gui); // Empty space at beginning
                 neko_gui_layout_row(&g_gui, 1, GUI_WIDTHS(0), 0);
@@ -647,6 +839,26 @@ void game_update() {
                 // 你不需要任何东西。
                 neko_color_t color = neko_color_alpha(NEKO_COLOR_RED, (uint8_t)neko_clamp((sin(t * 0.001f) * 0.5f + 0.5f) * 255, 0, 255));
                 neko_gui_draw_custom(&g_gui, cnt->body, gui_cb, &color, sizeof(color));
+            }
+            neko_gui_window_end(&g_gui);
+
+#pragma endregion
+
+#pragma region gui_ai
+
+            neko_gui_window_begin(&g_gui, "AI", neko_gui_rect(10, 10, 350, 220));
+            {
+                neko_gui_layout_row(&g_gui, 1, GUI_WIDTHS(-1), 100);
+                neko_gui_text(&g_gui,
+                              " * The AI will continue to move towards a random location as long as its health is not lower than 50.\n\n"
+                              " * If health drops below 50, the AI will pause to heal back up to 100 then continue moving towards its target.\n\n"
+                              " * After it reaches its target, it will find another random location to move towards.");
+
+                neko_gui_layout_row(&g_gui, 1, GUI_WIDTHS(-1), 0);
+                neko_gui_label(&g_gui, "state: %s", ai.state == AI_STATE_HEAL ? "HEAL" : "MOVE");
+                neko_gui_layout_row(&g_gui, 2, GUI_WIDTHS(55, 50), 0);
+                neko_gui_label(&g_gui, "health: ");
+                neko_gui_number(&g_gui, &ai.health, 0.1f);
             }
             neko_gui_window_end(&g_gui);
 
@@ -759,12 +971,25 @@ void game_shutdown() {
         neko_log_error("%s", ex.what());
     }
 
+    for (u32 i = 0; i < neko_dyn_array_size(map.tilesets); i++) {
+        neko_graphics_texture_destroy(map.tilesets[i].texture);
+    }
+
+    for (u32 i = 0; i < neko_dyn_array_size(map.layers); i++) {
+        neko_free(map.layers[i].tiles);
+    }
+
+    neko_dyn_array_free(map.layers);
+    neko_dyn_array_free(map.tilesets);
+
+    neko_tiled_render_deinit(&g_cb);
+
     neko_scripting_end(L);
 
     neko_gui_free(&g_gui);
 }
 
-neko_game_desc_t neko_main(int32_t argc, char **argv) {
+neko_game_desc_t neko_main(s32 argc, char **argv) {
 
     // 确定运行路径
     auto current_dir = std::filesystem::path(std::filesystem::current_path());
@@ -777,12 +1002,12 @@ neko_game_desc_t neko_main(int32_t argc, char **argv) {
             current_dir = current_dir.parent_path();
         }
 
-    return neko_game_desc_t{.init = game_init, .update = game_update, .shutdown = game_shutdown, .window = {.width = 1024, .height = 760}, .argc = argc, .argv = argv};
+    return neko_game_desc_t{.init = game_init, .update = game_update, .shutdown = game_shutdown, .window = {.width = 1440, .height = 880}, .argc = argc, .argv = argv};
 }
 
 void dockspace(neko_gui_context_t *ctx) {
-    int32_t opt = NEKO_GUI_OPT_NOCLIP | NEKO_GUI_OPT_NOFRAME | NEKO_GUI_OPT_FORCESETRECT | NEKO_GUI_OPT_NOTITLE | NEKO_GUI_OPT_DOCKSPACE | NEKO_GUI_OPT_FULLSCREEN | NEKO_GUI_OPT_NOMOVE |
-                  NEKO_GUI_OPT_NOBRINGTOFRONT | NEKO_GUI_OPT_NOFOCUS | NEKO_GUI_OPT_NORESIZE;
+    s32 opt = NEKO_GUI_OPT_NOCLIP | NEKO_GUI_OPT_NOFRAME | NEKO_GUI_OPT_FORCESETRECT | NEKO_GUI_OPT_NOTITLE | NEKO_GUI_OPT_DOCKSPACE | NEKO_GUI_OPT_FULLSCREEN | NEKO_GUI_OPT_NOMOVE |
+              NEKO_GUI_OPT_NOBRINGTOFRONT | NEKO_GUI_OPT_NOFOCUS | NEKO_GUI_OPT_NORESIZE;
     neko_gui_window_begin_ex(ctx, "Dockspace", neko_gui_rect(350, 40, 600, 500), NULL, NULL, opt);
     {
         // Empty dockspace...

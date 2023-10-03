@@ -225,7 +225,7 @@ void log_log(int level, const char* file, int line, const char* fmt, ...) {
 ========================*/
 
 void neko_byte_buffer_init(neko_byte_buffer_t* buffer) {
-    buffer->data = (uint8_t*)neko_malloc(NEKO_BYTE_BUFFER_DEFAULT_CAPCITY);
+    buffer->data = (u8*)neko_malloc(NEKO_BYTE_BUFFER_DEFAULT_CAPCITY);
     buffer->capacity = NEKO_BYTE_BUFFER_DEFAULT_CAPCITY;
     buffer->size = 0;
     buffer->position = 0;
@@ -253,14 +253,14 @@ bool neko_byte_buffer_empty(neko_byte_buffer_t* buffer) { return (buffer->size =
 size_t neko_byte_buffer_size(neko_byte_buffer_t* buffer) { return buffer->size; }
 
 void neko_byte_buffer_resize(neko_byte_buffer_t* buffer, size_t sz) {
-    uint8_t* data = (uint8_t*)neko_realloc(buffer->data, sz);
+    u8* data = (u8*)neko_realloc(buffer->data, sz);
 
     if (data == NULL) {
         return;
     }
 
     buffer->data = data;
-    buffer->capacity = (uint32_t)sz;
+    buffer->capacity = (u32)sz;
 }
 
 void neko_byte_buffer_copy_contents(neko_byte_buffer_t* dst, neko_byte_buffer_t* src) {
@@ -273,7 +273,7 @@ void neko_byte_buffer_seek_to_beg(neko_byte_buffer_t* buffer) { buffer->position
 
 void neko_byte_buffer_seek_to_end(neko_byte_buffer_t* buffer) { buffer->position = buffer->size; }
 
-void neko_byte_buffer_advance_position(neko_byte_buffer_t* buffer, size_t sz) { buffer->position += (uint32_t)sz; }
+void neko_byte_buffer_advance_position(neko_byte_buffer_t* buffer, size_t sz) { buffer->position += (u32)sz; }
 
 void neko_byte_buffer_write_bulk(neko_byte_buffer_t* buffer, void* src, size_t size) {
     // Check for necessary resize
@@ -290,23 +290,23 @@ void neko_byte_buffer_write_bulk(neko_byte_buffer_t* buffer, void* src, size_t s
     // memcpy data
     memcpy((buffer->data + buffer->position), src, size);
 
-    buffer->size += (uint32_t)size;
-    buffer->position += (uint32_t)size;
+    buffer->size += (u32)size;
+    buffer->position += (u32)size;
 }
 
 void neko_byte_buffer_read_bulk(neko_byte_buffer_t* buffer, void** dst, size_t size) {
     memcpy(*dst, (buffer->data + buffer->position), size);
-    buffer->position += (uint32_t)size;
+    buffer->position += (u32)size;
 }
 
 void neko_byte_buffer_write_str(neko_byte_buffer_t* buffer, const char* str) {
     // Write size of string
-    uint32_t str_len = neko_string_length(str);
+    u32 str_len = neko_string_length(str);
     neko_byte_buffer_write(buffer, uint16_t, str_len);
 
     size_t i;
     for (i = 0; i < str_len; ++i) {
-        neko_byte_buffer_write(buffer, uint8_t, str[i]);
+        neko_byte_buffer_write(buffer, u8, str[i]);
     }
 }
 
@@ -315,9 +315,9 @@ void neko_byte_buffer_read_str(neko_byte_buffer_t* buffer, char* str) {
     uint16_t sz;
     neko_byte_buffer_read(buffer, uint16_t, &sz);
 
-    uint32_t i;
+    u32 i;
     for (i = 0; i < sz; ++i) {
-        neko_byte_buffer_read(buffer, uint8_t, &str[i]);
+        neko_byte_buffer_read(buffer, u8, &str[i]);
     }
     str[i] = '\0';
 }
@@ -342,7 +342,7 @@ neko_result neko_byte_buffer_read_from_file(neko_byte_buffer_t* buffer, const ch
     return NEKO_RESULT_SUCCESS;
 }
 
-NEKO_API_DECL void neko_byte_buffer_memset(neko_byte_buffer_t* buffer, uint8_t val) { memset(buffer->data, val, buffer->capacity); }
+NEKO_API_DECL void neko_byte_buffer_memset(neko_byte_buffer_t* buffer, u8 val) { memset(buffer->data, val, buffer->capacity); }
 
 /*========================
 // Dynamic Array
@@ -397,7 +397,7 @@ NEKO_API_DECL void neko_dyn_array_push_data(void** arr, void* val, size_t val_le
         }
     }
     size_t offset = neko_dyn_array_size(*arr);
-    memcpy(((uint8_t*)(*arr)) + offset * val_len, val, val_len);
+    memcpy(((u8*)(*arr)) + offset * val_len, val, val_len);
     neko_dyn_array_head(*arr)->size++;
 }
 
@@ -1114,13 +1114,13 @@ void __neko_mem_end() {
 void __neko_mem_rungc() { neko_gc_run(&g_gc); }
 
 // typedef struct neko_memory_block_t {
-//     uint8_t* data;
+//     u8* data;
 //     size_t size;
 // } neko_memory_block_t;
 
 NEKO_API_DECL neko_memory_block_t neko_memory_block_new(size_t sz) {
     neko_memory_block_t mem = neko_default_val();
-    mem.data = (uint8_t*)neko_malloc(sz);
+    mem.data = (u8*)neko_malloc(sz);
     memset(mem.data, 0, sz);
     mem.size = sz;
     return mem;
@@ -1164,14 +1164,14 @@ NEKO_API_DECL size_t neko_memory_calc_padding_w_header(size_t base_address, size
 ================================================================================*/
 
 // typedef struct neko_linear_allocator_t {
-//     uint8_t* memory;
+//     u8* memory;
 //     size_t total_size;
 //     size_t offset;
 // } neko_linear_allocator_t;
 
 NEKO_API_DECL neko_linear_allocator_t neko_linear_allocator_new(size_t sz) {
     neko_linear_allocator_t la = neko_default_val();
-    la.memory = (uint8_t*)neko_malloc(sz);
+    la.memory = (u8*)neko_malloc(sz);
     memset(la.memory, 0, sz);
     la.offset = 0;
     la.total_size = sz;
@@ -1238,8 +1238,8 @@ NEKO_API_DECL void* neko_stack_allocator_allocate(neko_stack_allocator_t* sa, si
     // Create new entry and push
     size_t header_addr = (size_t)(sa->memory.data + sa->offset + sz);
     neko_stack_allocator_header_t* header = (neko_stack_allocator_header_t*)(sa->memory.data + sa->offset + sz);
-    uint8_t* data = (uint8_t*)(sa->memory.data + sa->offset);
-    header->size = (uint32_t)sz;
+    u8* data = (u8*)(sa->memory.data + sa->offset);
+    header->size = (u32)sz;
 
     // Add this to the memory size
     sa->offset += total_size;
@@ -1256,7 +1256,7 @@ NEKO_API_DECL void* neko_stack_allocator_pop(neko_stack_allocator_t* sa) {
 
     // Move current size back
     neko_stack_allocator_header_t* header = (neko_stack_allocator_header_t*)(sa->memory.data + sa->offset - sizeof(neko_stack_allocator_header_t));
-    void* data = (uint8_t*)(sa->memory.data + sa->offset - sizeof(neko_stack_allocator_header_t) - header->size);
+    void* data = (u8*)(sa->memory.data + sa->offset - sizeof(neko_stack_allocator_header_t) - header->size);
     size_t total_sz = (size_t)header->size + sizeof(neko_stack_allocator_header_t);
 
     // Set offset back
@@ -1310,10 +1310,10 @@ NEKO_API_DECL void* neko_paged_allocator_allocate(neko_paged_allocator_t* pa) {
         pa->pages = page;
 
         // #define neko_ptr_add(P, BYTES) \
-//     (((uint8_t*)P + (BYTES)))
+//     (((u8*)P + (BYTES)))
 
-        uint32_t bppmo = pa->blocks_per_page - 1;
-        for (uint32_t i = 0; i < bppmo; ++i) {
+        u32 bppmo = pa->blocks_per_page - 1;
+        for (u32 i = 0; i < bppmo; ++i) {
             neko_paged_allocator_block_t* node = (neko_paged_allocator_block_t*)neko_ptr_add(page->data, pa->block_size * i);
             neko_paged_allocator_block_t* next = (neko_paged_allocator_block_t*)neko_ptr_add(page->data, pa->block_size * (i + 1));
             node->next = next;
@@ -1334,7 +1334,7 @@ NEKO_API_DECL void neko_paged_allocator_deallocate(neko_paged_allocator_t* pa, v
 
 NEKO_API_DECL void neko_paged_allocator_clear(neko_paged_allocator_t* pa) {
     neko_paged_allocator_page_t* page = pa->pages;
-    for (uint32_t i = 0; i < pa->page_count; ++i) {
+    for (u32 i = 0; i < pa->page_count; ++i) {
         neko_paged_allocator_page_t* next = page->next;
         neko_free(page);
         page = next;
@@ -1369,8 +1369,8 @@ NEKO_API_DECL void neko_paged_allocator_clear(neko_paged_allocator_t* pa) {
 // typedef struct neko_heap_allocator_t {
 //     neko_heap_allocator_header_t* memory;
 //     neko_heap_allocator_free_block_t* free_blocks;
-//     uint32_t free_block_count;
-//     uint32_t free_block_capacity;
+//     u32 free_block_count;
+//     u32 free_block_capacity;
 // } neko_heap_allocator_t;
 
 NEKO_API_DECL neko_heap_allocator_t neko_heap_allocate_new() {
@@ -1401,7 +1401,7 @@ NEKO_API_DECL void* neko_heap_allocator_allocate(neko_heap_allocator_t* ha, size
     size_t size_needed = sz + sizeof(neko_heap_allocator_header_t);
     neko_heap_allocator_free_block_t* first_fit = NULL;
 
-    for (uint32_t i = 0; i < ha->free_block_count; ++i) {
+    for (u32 i = 0; i < ha->free_block_count; ++i) {
         neko_heap_allocator_free_block_t* block = ha->free_blocks + i;
         if (block->size >= size_needed) {
             first_fit = block;
@@ -1586,7 +1586,7 @@ NEKO_API_DECL char* neko_read_file_contents_into_string_null_term(const char* fi
     return buffer;
 }
 
-bool32_t neko_util_load_texture_data_from_file(const char* file_path, s32* width, s32* height, uint32_t* num_comps, void** data, bool32_t flip_vertically_on_load) {
+bool32_t neko_util_load_texture_data_from_file(const char* file_path, s32* width, s32* height, u32* num_comps, void** data, bool32_t flip_vertically_on_load) {
     size_t len = 0;
     char* file_data = neko_platform_read_file_contents(file_path, "rb", &len);
     neko_assert(file_data);
@@ -1904,7 +1904,7 @@ NEKO_API_DECL neko_token_t neko_lexer_c_next_token(neko_lexer_t* lex) {
                     lex->at++;
                 } else {
                     lex->at++;
-                    uint32_t num_decimals = 0;
+                    u32 num_decimals = 0;
                     while (lex->at[0] && (neko_char_is_numeric(lex->at[0]) || (lex->at[0] == '.' && num_decimals == 0) || lex->at[0] == 'f')) {
                         // Grab decimal
                         num_decimals = lex->at[0] == '.' ? num_decimals++ : num_decimals;
@@ -1977,7 +1977,7 @@ NEKO_API_DECL neko_token_t neko_lexer_c_next_token(neko_lexer_t* lex) {
                     t.len = lex->at - t.text;
                     t.type = NEKO_TOKEN_IDENTIFIER;
                 } else if (neko_char_is_numeric(c) && c != '-') {
-                    uint32_t num_decimals = 0;
+                    u32 num_decimals = 0;
                     while (neko_char_is_numeric(lex->at[0]) || (lex->at[0] == '.' && num_decimals == 0) || lex->at[0] == 'f') {
                         // Grab decimal
                         num_decimals = lex->at[0] == '.' ? num_decimals++ : num_decimals;
@@ -2113,6 +2113,72 @@ NEKO_API_DECL neko_lexer_t neko_lexer_c_ctor(const char* contents) {
     return lex;
 }
 
+/*================================================================================
+// Random
+================================================================================*/
+
+#define NEKO_RAND_UPPER_MASK 0x80000000
+#define NEKO_RAND_LOWER_MASK 0x7fffffff
+#define NEKO_RAND_TEMPERING_MASK_B 0x9d2c5680
+#define NEKO_RAND_TEMPERING_MASK_C 0xefc60000
+
+NEKO_API_DECL void _neko_rand_seed_impl(neko_mt_rand_t* rand, uint64_t seed) {
+    rand->mt[0] = seed & 0xffffffff;
+    for (rand->index = 1; rand->index < NEKO_STATE_VECTOR_LENGTH; rand->index++) {
+        rand->mt[rand->index] = (6069 * rand->mt[rand->index - 1]) & 0xffffffff;
+    }
+}
+
+NEKO_API_DECL neko_mt_rand_t neko_rand_seed(uint64_t seed) {
+    neko_mt_rand_t rand;
+    _neko_rand_seed_impl(&rand, seed);
+    return rand;
+}
+
+NEKO_API_DECL uint64_t neko_rand_gen_long(neko_mt_rand_t* rand) {
+    uint64_t y;
+    static uint64_t mag[2] = {0x0, 0x9908b0df}; /* mag[x] = x * 0x9908b0df for x = 0,1 */
+    if (rand->index >= NEKO_STATE_VECTOR_LENGTH || rand->index < 0) {
+        // generate NEKO_STATE_VECTOR_LENGTH words at a time
+        int kk;
+        if (rand->index >= NEKO_STATE_VECTOR_LENGTH + 1 || rand->index < 0) {
+            _neko_rand_seed_impl(rand, 4357);
+        }
+        for (kk = 0; kk < NEKO_STATE_VECTOR_LENGTH - NEKO_STATE_VECTOR_M; kk++) {
+            y = (rand->mt[kk] & NEKO_RAND_UPPER_MASK) | (rand->mt[kk + 1] & NEKO_RAND_LOWER_MASK);
+            rand->mt[kk] = rand->mt[kk + NEKO_STATE_VECTOR_M] ^ (y >> 1) ^ mag[y & 0x1];
+        }
+        for (; kk < NEKO_STATE_VECTOR_LENGTH - 1; kk++) {
+            y = (rand->mt[kk] & NEKO_RAND_UPPER_MASK) | (rand->mt[kk + 1] & NEKO_RAND_LOWER_MASK);
+            rand->mt[kk] = rand->mt[kk + (NEKO_STATE_VECTOR_M - NEKO_STATE_VECTOR_LENGTH)] ^ (y >> 1) ^ mag[y & 0x1];
+        }
+        y = (rand->mt[NEKO_STATE_VECTOR_LENGTH - 1] & NEKO_RAND_UPPER_MASK) | (rand->mt[0] & NEKO_RAND_LOWER_MASK);
+        rand->mt[NEKO_STATE_VECTOR_LENGTH - 1] = rand->mt[NEKO_STATE_VECTOR_M - 1] ^ (y >> 1) ^ mag[y & 0x1];
+        rand->index = 0;
+    }
+    y = rand->mt[rand->index++];
+    y ^= (y >> 11);
+    y ^= (y << 7) & NEKO_RAND_TEMPERING_MASK_B;
+    y ^= (y << 15) & NEKO_RAND_TEMPERING_MASK_C;
+    y ^= (y >> 18);
+    return y;
+}
+
+NEKO_API_DECL double neko_rand_gen(neko_mt_rand_t* rand) { return ((double)neko_rand_gen_long(rand) / (uint64_t)0xffffffff); }
+
+NEKO_API_DECL uint64_t neko_rand_gen_range_long(neko_mt_rand_t* rand, int32_t min, int32_t max) { return (uint64_t)(floorf(neko_rand_gen_range(rand, (double)min, (double)max))); }
+
+NEKO_API_DECL double neko_rand_gen_range(neko_mt_rand_t* rand, double min, double max) { return neko_map_range(0.0, 1.0, min, max, neko_rand_gen(rand)); }
+
+NEKO_API_DECL neko_color_t neko_rand_gen_color(neko_mt_rand_t* rand) {
+    neko_color_t c = neko_default_val();
+    c.r = (u8)neko_rand_gen_range_long(rand, 0, 255);
+    c.g = (u8)neko_rand_gen_range_long(rand, 0, 255);
+    c.b = (u8)neko_rand_gen_range_long(rand, 0, 255);
+    c.a = (u8)neko_rand_gen_range_long(rand, 0, 255);
+    return c;
+}
+
 /*=============================
 // NEKO_ENGINE
 =============================*/
@@ -2210,8 +2276,8 @@ NEKO_API_DECL neko_game_desc_t* neko_app() { return &neko_instance()->ctx.game; 
 // Define main frame function for framework to step
 NEKO_API_DECL void neko_frame() {
     // Remove these...
-    static uint32_t curr_ticks = 0;
-    static uint32_t prev_ticks = 0;
+    static u32 curr_ticks = 0;
+    static u32 prev_ticks = 0;
 
     // Cache platform pointer
     neko_platform_t* platform = neko_subsystem(platform);

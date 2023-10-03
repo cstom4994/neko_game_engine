@@ -18,10 +18,10 @@
 /** @addtogroup neko_byte_buffer
  */
 typedef struct neko_byte_buffer_t {
-    uint8_t* data;      // Buffer that actually holds all relevant byte data
-    uint32_t size;      // Current size of the stored buffer data
-    uint32_t position;  // Current read/write position in the buffer
-    uint32_t capacity;  // Current max capacity for the buffer
+    u8* data;      // Buffer that actually holds all relevant byte data
+    u32 size;      // Current size of the stored buffer data
+    u32 position;  // Current read/write position in the buffer
+    u32 capacity;  // Current max capacity for the buffer
 } neko_byte_buffer_t;
 
 // Generic "write" function for a byte buffer
@@ -38,8 +38,8 @@ typedef struct neko_byte_buffer_t {
             neko_byte_buffer_resize(__BUFFER, __CAP);         \
         }                                                     \
         *(__T*)(__BUFFER->data + __BUFFER->position) = __VAL; \
-        __BUFFER->position += (uint32_t)__SZ;                 \
-        __BUFFER->size += (uint32_t)__SZ;                     \
+        __BUFFER->position += (u32)__SZ;                      \
+        __BUFFER->size += (u32)__SZ;                          \
     } while (0)
 
 // Generic "read" function
@@ -79,7 +79,7 @@ NEKO_API_DECL void neko_byte_buffer_write_bulk(neko_byte_buffer_t* buffer, void*
 NEKO_API_DECL void neko_byte_buffer_read_bulk(neko_byte_buffer_t* buffer, void** dst, size_t sz);
 NEKO_API_DECL neko_result neko_byte_buffer_write_to_file(neko_byte_buffer_t* buffer, const char* output_path);  // Assumes that the output directory exists
 NEKO_API_DECL neko_result neko_byte_buffer_read_from_file(neko_byte_buffer_t* buffer, const char* file_path);   // Assumes an allocated byte buffer
-NEKO_API_DECL void neko_byte_buffer_memset(neko_byte_buffer_t* buffer, uint8_t val);
+NEKO_API_DECL void neko_byte_buffer_memset(neko_byte_buffer_t* buffer, u8 val);
 
 /*===================================
 // Dynamic Array
@@ -97,7 +97,7 @@ typedef struct neko_dyn_array {
     int32_t capacity;
 } neko_dyn_array;
 
-#define neko_dyn_array_head(__ARR) ((neko_dyn_array*)((uint8_t*)(__ARR) - sizeof(neko_dyn_array)))
+#define neko_dyn_array_head(__ARR) ((neko_dyn_array*)((u8*)(__ARR) - sizeof(neko_dyn_array)))
 
 #define neko_dyn_array_size(__ARR) (__ARR == NULL ? 0 : neko_dyn_array_head((__ARR))->size)
 
@@ -119,7 +119,7 @@ NEKO_API_DECL void** neko_dyn_array_init(void** arr, size_t val_len);
 
 NEKO_API_DECL void neko_dyn_array_push_data(void** arr, void* val, size_t val_len);
 
-neko_force_inline void neko_dyn_array_set_data_i(void** arr, void* val, size_t val_len, uint32_t offset) { memcpy(((char*)(*arr)) + offset * val_len, val, val_len); }
+neko_force_inline void neko_dyn_array_set_data_i(void** arr, void* val, size_t val_len, u32 offset) { memcpy(((char*)(*arr)) + offset * val_len, val, val_len); }
 
 #define neko_dyn_array_push(__ARR, __ARRVAL)                               \
     do {                                                                   \
@@ -246,8 +246,8 @@ NEKO_API_DECL void __neko_hash_table_init_impl(void** ht, size_t sz);
 #define neko_hash_table_clear(__HT)                                                \
     do {                                                                           \
         if ((__HT) != NULL) {                                                      \
-            uint32_t capacity = neko_dyn_array_capacity((__HT)->data);             \
-            for (uint32_t i = 0; i < capacity; ++i) {                              \
+            u32 capacity = neko_dyn_array_capacity((__HT)->data);                  \
+            for (u32 i = 0; i < capacity; ++i) {                                   \
                 (__HT)->data[i].state = NEKO_HASH_TABLE_ENTRY_INACTIVE;            \
             }                                                                      \
             /*memset((__HT)->data, 0, neko_dyn_array_capacity((__HT)->data) * );*/ \
@@ -274,16 +274,16 @@ NEKO_API_DECL void __neko_hash_table_init_impl(void** ht, size_t sz);
         }                                                                                                                                                                                             \
                                                                                                                                                                                                       \
         /* Grow table if necessary */                                                                                                                                                                 \
-        uint32_t __CAP = neko_hash_table_capacity(__HT);                                                                                                                                              \
+        u32 __CAP = neko_hash_table_capacity(__HT);                                                                                                                                                   \
         float __LF = neko_hash_table_load_factor(__HT);                                                                                                                                               \
         if (__LF >= 0.5f || !__CAP) {                                                                                                                                                                 \
-            uint32_t NEW_CAP = __CAP ? __CAP * 2 : 2;                                                                                                                                                 \
+            u32 NEW_CAP = __CAP ? __CAP * 2 : 2;                                                                                                                                                      \
             size_t ENTRY_SZ = sizeof((__HT)->tmp_key) + sizeof((__HT)->tmp_val) + sizeof(neko_hash_table_entry_state);                                                                                \
             neko_dyn_array_reserve((__HT)->data, NEW_CAP);                                                                                                                                            \
             /**((void **)&(__HT->data)) = neko_dyn_array_resize_impl(__HT->data, ENTRY_SZ, NEW_CAP);*/                                                                                                \
             /* Iterate through data and set state to null, from __CAP -> __CAP * 2 */                                                                                                                 \
             /* Memset here instead */                                                                                                                                                                 \
-            for (uint32_t __I = __CAP; __I < NEW_CAP; ++__I) {                                                                                                                                        \
+            for (u32 __I = __CAP; __I < NEW_CAP; ++__I) {                                                                                                                                             \
                 (__HT)->data[__I].state = NEKO_HASH_TABLE_ENTRY_INACTIVE;                                                                                                                             \
             }                                                                                                                                                                                         \
             __CAP = neko_hash_table_capacity(__HT);                                                                                                                                                   \
@@ -294,7 +294,7 @@ NEKO_API_DECL void __neko_hash_table_init_impl(void** ht, size_t sz);
         size_t __HSH = neko_hash_bytes((void*)&((__HT)->tmp_key), sizeof((__HT)->tmp_key), NEKO_HASH_TABLE_HASH_SEED);                                                                                \
         size_t __HSH_IDX = __HSH % __CAP;                                                                                                                                                             \
         (__HT)->tmp_key = (__HT)->data[__HSH_IDX].key;                                                                                                                                                \
-        uint32_t c = 0;                                                                                                                                                                               \
+        u32 c = 0;                                                                                                                                                                                    \
                                                                                                                                                                                                       \
         /* Find valid idx and place data */                                                                                                                                                           \
         while (c < __CAP && __HSH != neko_hash_bytes((void*)&(__HT)->tmp_key, sizeof((__HT)->tmp_key), NEKO_HASH_TABLE_HASH_SEED) && (__HT)->data[__HSH_IDX].state == NEKO_HASH_TABLE_ENTRY_ACTIVE) { \
@@ -311,12 +311,12 @@ NEKO_API_DECL void __neko_hash_table_init_impl(void** ht, size_t sz);
 // Need size difference between two entries
 // Need size of key + val
 
-neko_force_inline uint32_t neko_hash_table_get_key_index_func(void** data, void* key, size_t key_len, size_t val_len, size_t stride, size_t klpvl) {
+neko_force_inline u32 neko_hash_table_get_key_index_func(void** data, void* key, size_t key_len, size_t val_len, size_t stride, size_t klpvl) {
     if (!data || !key) return NEKO_HASH_TABLE_INVALID_INDEX;
 
     // Need a better way to handle this. Can't do it like this anymore.
     // Need to fix this. Seriously messing me up.
-    uint32_t capacity = neko_dyn_array_capacity(*data);
+    u32 capacity = neko_dyn_array_capacity(*data);
     size_t idx = (size_t)NEKO_HASH_TABLE_INVALID_INDEX;
     size_t hash = (size_t)neko_hash_bytes(key, key_len, NEKO_HASH_TABLE_HASH_SEED);
     size_t hash_idx = (hash % capacity);
@@ -333,7 +333,7 @@ neko_force_inline uint32_t neko_hash_table_get_key_index_func(void** data, void*
             break;
         }
     }
-    return (uint32_t)idx;
+    return (u32)idx;
 }
 
 // Get key at index
@@ -347,43 +347,43 @@ neko_force_inline uint32_t neko_hash_table_get_key_index_func(void** data, void*
     ((__HT)->tmp_key = (__HTK), (neko_hash_table_geti((__HT), neko_hash_table_get_key_index_func((void**)&(__HT)->data, (void*)&((__HT)->tmp_key), sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), \
                                                                                                  (__HT)->stride, (__HT)->klpvl))))
 
-#define neko_hash_table_getp(__HT, __HTK)                                                                                                                                                       \
-    ((__HT)->tmp_key = (__HTK),                                                                                                                                                                 \
-     ((__HT)->tmp_idx = (uint32_t)neko_hash_table_get_key_index_func((void**)&(__HT->data), (void*)&(__HT->tmp_key), sizeof(__HT->tmp_key), sizeof(__HT->tmp_val), __HT->stride, __HT->klpvl)), \
+#define neko_hash_table_getp(__HT, __HTK)                                                                                                                                                  \
+    ((__HT)->tmp_key = (__HTK),                                                                                                                                                            \
+     ((__HT)->tmp_idx = (u32)neko_hash_table_get_key_index_func((void**)&(__HT->data), (void*)&(__HT->tmp_key), sizeof(__HT->tmp_key), sizeof(__HT->tmp_val), __HT->stride, __HT->klpvl)), \
      ((__HT)->tmp_idx != NEKO_HASH_TABLE_INVALID_INDEX ? &neko_hash_table_geti((__HT), (__HT)->tmp_idx) : NULL))
 
 #define _neko_hash_table_key_exists_internal(__HT, __HTK) \
     ((__HT)->tmp_key = (__HTK),                           \
      (neko_hash_table_get_key_index_func((void**)&(__HT->data), (void*)&(__HT->tmp_key), sizeof(__HT->tmp_key), sizeof(__HT->tmp_val), __HT->stride, __HT->klpvl) != NEKO_HASH_TABLE_INVALID_INDEX))
 
-// uint32_t neko_hash_table_get_key_index_func(void** data, void* key, size_t key_len, size_t val_len, size_t stride, size_t klpvl)
+// u32 neko_hash_table_get_key_index_func(void** data, void* key, size_t key_len, size_t val_len, size_t stride, size_t klpvl)
 
 #define neko_hash_table_exists(__HT, __HTK) (__HT && _neko_hash_table_key_exists_internal((__HT), (__HTK)))
 
 #define neko_hash_table_key_exists(__HT, __HTK) (neko_hash_table_exists((__HT), (__HTK)))
 
-#define neko_hash_table_erase(__HT, __HTK)                                                                                                                                                          \
-    do {                                                                                                                                                                                            \
-        if ((__HT)) {                                                                                                                                                                               \
-            /* Get idx for key */                                                                                                                                                                   \
-            (__HT)->tmp_key = (__HTK);                                                                                                                                                              \
-            uint32_t __IDX = neko_hash_table_get_key_index_func((void**)&(__HT)->data, (void*)&((__HT)->tmp_key), sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), (__HT)->stride, (__HT)->klpvl); \
-            if (__IDX != NEKO_HASH_TABLE_INVALID_INDEX) {                                                                                                                                           \
-                (__HT)->data[__IDX].state = NEKO_HASH_TABLE_ENTRY_INACTIVE;                                                                                                                         \
-                if (neko_dyn_array_head((__HT)->data)->size) neko_dyn_array_head((__HT)->data)->size--;                                                                                             \
-            }                                                                                                                                                                                       \
-        }                                                                                                                                                                                           \
+#define neko_hash_table_erase(__HT, __HTK)                                                                                                                                                     \
+    do {                                                                                                                                                                                       \
+        if ((__HT)) {                                                                                                                                                                          \
+            /* Get idx for key */                                                                                                                                                              \
+            (__HT)->tmp_key = (__HTK);                                                                                                                                                         \
+            u32 __IDX = neko_hash_table_get_key_index_func((void**)&(__HT)->data, (void*)&((__HT)->tmp_key), sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), (__HT)->stride, (__HT)->klpvl); \
+            if (__IDX != NEKO_HASH_TABLE_INVALID_INDEX) {                                                                                                                                      \
+                (__HT)->data[__IDX].state = NEKO_HASH_TABLE_ENTRY_INACTIVE;                                                                                                                    \
+                if (neko_dyn_array_head((__HT)->data)->size) neko_dyn_array_head((__HT)->data)->size--;                                                                                        \
+            }                                                                                                                                                                                  \
+        }                                                                                                                                                                                      \
     } while (0)
 
 /*===== Hash Table Iterator ====*/
 
-typedef uint32_t neko_hash_table_iter;
+typedef u32 neko_hash_table_iter;
 
-neko_force_inline uint32_t __neko_find_first_valid_iterator(void* data, size_t key_len, size_t val_len, uint32_t idx, size_t stride, size_t klpvl) {
-    uint32_t it = (uint32_t)idx;
-    for (; it < (uint32_t)neko_dyn_array_capacity(data); ++it) {
+neko_force_inline u32 __neko_find_first_valid_iterator(void* data, size_t key_len, size_t val_len, u32 idx, size_t stride, size_t klpvl) {
+    u32 it = (u32)idx;
+    for (; it < (u32)neko_dyn_array_capacity(data); ++it) {
         size_t offset = (it * stride);
-        neko_hash_table_entry_state state = *(neko_hash_table_entry_state*)((uint8_t*)data + offset + (klpvl));
+        neko_hash_table_entry_state state = *(neko_hash_table_entry_state*)((u8*)data + offset + (klpvl));
         if (state == NEKO_HASH_TABLE_ENTRY_ACTIVE) {
             break;
         }
@@ -397,11 +397,11 @@ neko_force_inline uint32_t __neko_find_first_valid_iterator(void* data, size_t k
 #define neko_hash_table_iter_valid(__HT, __IT) ((__IT) < neko_hash_table_capacity((__HT)))
 
 // Have to be able to do this for hash table...
-neko_force_inline void __neko_hash_table_iter_advance_func(void** data, size_t key_len, size_t val_len, uint32_t* it, size_t stride, size_t klpvl) {
+neko_force_inline void __neko_hash_table_iter_advance_func(void** data, size_t key_len, size_t val_len, u32* it, size_t stride, size_t klpvl) {
     (*it)++;
-    for (; *it < (uint32_t)neko_dyn_array_capacity(*data); ++*it) {
+    for (; *it < (u32)neko_dyn_array_capacity(*data); ++*it) {
         size_t offset = (size_t)(*it * stride);
-        neko_hash_table_entry_state state = *(neko_hash_table_entry_state*)((uint8_t*)*data + offset + (klpvl));
+        neko_hash_table_entry_state state = *(neko_hash_table_entry_state*)((u8*)*data + offset + (klpvl));
         if (state == NEKO_HASH_TABLE_ENTRY_ACTIVE) {
             break;
         }
@@ -430,23 +430,23 @@ neko_force_inline void __neko_hash_table_iter_advance_func(void** data, size_t k
 #define neko_slot_array_handle_valid(__SA, __ID) (__ID < neko_dyn_array_size((__SA)->indices) && (__SA)->indices[__ID] != NEKO_SLOT_ARRAY_INVALID_HANDLE)
 
 typedef struct __neko_slot_array_dummy_header {
-    neko_dyn_array(uint32_t) indices;
-    neko_dyn_array(uint32_t) data;
+    neko_dyn_array(u32) indices;
+    neko_dyn_array(u32) data;
 } __neko_slot_array_dummy_header;
 
-#define neko_slot_array(__T)              \
-    struct {                              \
-        neko_dyn_array(uint32_t) indices; \
-        neko_dyn_array(__T) data;         \
-        __T tmp;                          \
+#define neko_slot_array(__T)         \
+    struct {                         \
+        neko_dyn_array(u32) indices; \
+        neko_dyn_array(__T) data;    \
+        __T tmp;                     \
     }*
 
 #define neko_slot_array_new(__T) NULL
 
-neko_force_inline uint32_t __neko_slot_array_find_next_available_index(neko_dyn_array(uint32_t) indices) {
-    uint32_t idx = NEKO_SLOT_ARRAY_INVALID_HANDLE;
-    for (uint32_t i = 0; i < (uint32_t)neko_dyn_array_size(indices); ++i) {
-        uint32_t handle = indices[i];
+neko_force_inline u32 __neko_slot_array_find_next_available_index(neko_dyn_array(u32) indices) {
+    u32 idx = NEKO_SLOT_ARRAY_INVALID_HANDLE;
+    for (u32 i = 0; i < (u32)neko_dyn_array_size(indices); ++i) {
+        u32 handle = indices[i];
         if (handle == NEKO_SLOT_ARRAY_INVALID_HANDLE) {
             idx = i;
             break;
@@ -462,15 +462,15 @@ neko_force_inline uint32_t __neko_slot_array_find_next_available_index(neko_dyn_
 NEKO_API_DECL void** neko_slot_array_init(void** sa, size_t sz);
 
 #define neko_slot_array_init_all(__SA) \
-    (neko_slot_array_init((void**)&(__SA), sizeof(*(__SA))), neko_dyn_array_init((void**)&((__SA)->indices), sizeof(uint32_t)), neko_dyn_array_init((void**)&((__SA)->data), sizeof((__SA)->tmp)))
+    (neko_slot_array_init((void**)&(__SA), sizeof(*(__SA))), neko_dyn_array_init((void**)&((__SA)->indices), sizeof(u32)), neko_dyn_array_init((void**)&((__SA)->data), sizeof((__SA)->tmp)))
 
-neko_force_inline uint32_t neko_slot_array_insert_func(void** indices, void** data, void* val, size_t val_len, uint32_t* ip) {
+neko_force_inline u32 neko_slot_array_insert_func(void** indices, void** data, void* val, size_t val_len, u32* ip) {
     // Find next available index
-    u32 idx = __neko_slot_array_find_next_available_index((uint32_t*)*indices);
+    u32 idx = __neko_slot_array_find_next_available_index((u32*)*indices);
 
     if (idx == neko_dyn_array_size(*indices)) {
-        uint32_t v = 0;
-        neko_dyn_array_push_data(indices, &v, sizeof(uint32_t));
+        u32 v = 0;
+        neko_dyn_array_push_data(indices, &v, sizeof(u32));
         idx = neko_dyn_array_size(*indices) - 1;
     }
 
@@ -478,8 +478,8 @@ neko_force_inline uint32_t neko_slot_array_insert_func(void** indices, void** da
     neko_dyn_array_push_data(data, val, val_len);
 
     // Set data in indices
-    uint32_t bi = neko_dyn_array_size(*data) - 1;
-    neko_dyn_array_set_data_i(indices, &bi, sizeof(uint32_t), idx);
+    u32 bi = neko_dyn_array_size(*data) - 1;
+    neko_dyn_array_set_data_i(indices, &bi, sizeof(u32), idx);
 
     if (ip) {
         *ip = idx;
@@ -516,7 +516,7 @@ neko_force_inline uint32_t neko_slot_array_insert_func(void** indices, void** da
         }                                          \
     } while (0)
 
-#define neko_slot_array_exists(__SA, __SID) ((__SA) && (__SID) < (uint32_t)neko_dyn_array_size((__SA)->indices) && (__SA)->indices[__SID] != NEKO_SLOT_ARRAY_INVALID_HANDLE)
+#define neko_slot_array_exists(__SA, __SID) ((__SA) && (__SID) < (u32)neko_dyn_array_size((__SA)->indices) && (__SA)->indices[__SID] != NEKO_SLOT_ARRAY_INVALID_HANDLE)
 
 #define neko_slot_array_get(__SA, __SID) ((__SA)->data[(__SA)->indices[(__SID) % neko_dyn_array_size(((__SA)->indices))]])
 
@@ -536,16 +536,16 @@ neko_force_inline uint32_t neko_slot_array_insert_func(void** indices, void** da
 
 #define neko_slot_array_erase(__SA, __id)                                                       \
     do {                                                                                        \
-        uint32_t __H0 = (__id) /*% neko_dyn_array_size((__SA)->indices)*/;                      \
+        u32 __H0 = (__id) /*% neko_dyn_array_size((__SA)->indices)*/;                           \
         if (neko_slot_array_size(__SA) == 1) {                                                  \
             neko_slot_array_clear(__SA);                                                        \
         } else if (!neko_slot_array_handle_valid(__SA, __H0)) {                                 \
             neko_println("Warning: Attempting to erase invalid slot array handle (%zu)", __H0); \
         } else {                                                                                \
-            uint32_t __OG_DATA_IDX = (__SA)->indices[__H0];                                     \
+            u32 __OG_DATA_IDX = (__SA)->indices[__H0];                                          \
             /* Iterate through handles until last index of data found */                        \
-            uint32_t __H = 0;                                                                   \
-            for (uint32_t __I = 0; __I < neko_dyn_array_size((__SA)->indices); ++__I) {         \
+            u32 __H = 0;                                                                        \
+            for (u32 __I = 0; __I < neko_dyn_array_size((__SA)->indices); ++__I) {              \
                 if ((__SA)->indices[__I] == neko_dyn_array_size((__SA)->data) - 1) {            \
                     __H = __I;                                                                  \
                     break;                                                                      \
@@ -565,28 +565,28 @@ neko_force_inline uint32_t neko_slot_array_insert_func(void** indices, void** da
 /*=== Slot Array Iterator ===*/
 
 // Slot array iterator new
-typedef uint32_t neko_slot_array_iter;
+typedef u32 neko_slot_array_iter;
 
 #define neko_slot_array_iter_valid(__SA, __IT) (__SA && neko_slot_array_exists(__SA, __IT))
 
-neko_force_inline void _neko_slot_array_iter_advance_func(neko_dyn_array(uint32_t) indices, uint32_t* it) {
+neko_force_inline void _neko_slot_array_iter_advance_func(neko_dyn_array(u32) indices, u32* it) {
     if (!indices) {
         *it = NEKO_SLOT_ARRAY_INVALID_HANDLE;
         return;
     }
 
     (*it)++;
-    for (; *it < (uint32_t)neko_dyn_array_size(indices); ++*it) {
+    for (; *it < (u32)neko_dyn_array_size(indices); ++*it) {
         if (indices[*it] != NEKO_SLOT_ARRAY_INVALID_HANDLE) {
             break;
         }
     }
 }
 
-neko_force_inline uint32_t _neko_slot_array_iter_find_first_valid_index(neko_dyn_array(uint32_t) indices) {
+neko_force_inline u32 _neko_slot_array_iter_find_first_valid_index(neko_dyn_array(u32) indices) {
     if (!indices) return NEKO_SLOT_ARRAY_INVALID_HANDLE;
 
-    for (uint32_t i = 0; i < (uint32_t)neko_dyn_array_size(indices); ++i) {
+    for (u32 i = 0; i < (u32)neko_dyn_array_size(indices); ++i) {
         if (indices[i] != NEKO_SLOT_ARRAY_INVALID_HANDLE) {
             return i;
         }
@@ -606,10 +606,10 @@ neko_force_inline uint32_t _neko_slot_array_iter_find_first_valid_index(neko_dyn
 // Slot Map
 ===================================*/
 
-#define neko_slot_map(__SMK, __SMV)          \
-    struct {                                 \
-        neko_hash_table(__SMK, uint32_t) ht; \
-        neko_slot_array(__SMV) sa;           \
+#define neko_slot_map(__SMK, __SMV)     \
+    struct {                            \
+        neko_hash_table(__SMK, u32) ht; \
+        neko_slot_array(__SMV) sa;      \
     }*
 
 #define neko_slot_map_new(__SMK, __SMV) NULL
@@ -617,11 +617,11 @@ neko_force_inline uint32_t _neko_slot_array_iter_find_first_valid_index(neko_dyn
 NEKO_API_DECL void** neko_slot_map_init(void** sm);
 
 // Could return something, I believe?
-#define neko_slot_map_insert(__SM, __SMK, __SMV)                      \
-    do {                                                              \
-        neko_slot_map_init((void**)&(__SM));                          \
-        uint32_t __H = neko_slot_array_insert((__SM)->sa, ((__SMV))); \
-        neko_hash_table_insert((__SM)->ht, (__SMK), __H);             \
+#define neko_slot_map_insert(__SM, __SMK, __SMV)                 \
+    do {                                                         \
+        neko_slot_map_init((void**)&(__SM));                     \
+        u32 __H = neko_slot_array_insert((__SM)->sa, ((__SMV))); \
+        neko_hash_table_insert((__SM)->ht, (__SMK), __H);        \
     } while (0)
 
 #define neko_slot_map_get(__SM, __SMK) (neko_slot_array_get((__SM)->sa, neko_hash_table_get((__SM)->ht, (__SMK))))
@@ -638,11 +638,11 @@ NEKO_API_DECL void** neko_slot_map_init(void** sm);
         }                                      \
     } while (0)
 
-#define neko_slot_map_erase(__SM, __SMK)                         \
-    do {                                                         \
-        uint32_t __K = neko_hash_table_get((__SM)->ht, (__SMK)); \
-        neko_hash_table_erase((__SM)->ht, (__SMK));              \
-        neko_slot_array_erase((__SM)->sa, __K);                  \
+#define neko_slot_map_erase(__SM, __SMK)                    \
+    do {                                                    \
+        u32 __K = neko_hash_table_get((__SM)->ht, (__SMK)); \
+        neko_hash_table_erase((__SM)->ht, (__SMK));         \
+        neko_slot_array_erase((__SM)->sa, __K);             \
     } while (0)
 
 #define neko_slot_map_free(__SM)              \
@@ -659,7 +659,7 @@ NEKO_API_DECL void** neko_slot_map_init(void** sm);
 
 /*=== Slot Map Iterator ===*/
 
-typedef uint32_t neko_slot_map_iter;
+typedef u32 neko_slot_map_iter;
 
 /* Find first valid iterator idx */
 #define neko_slot_map_iter_new(__SM) neko_hash_table_iter_new((__SM)->ht)
@@ -687,8 +687,8 @@ typedef uint32_t neko_slot_map_iter;
 // Command Buffer
 ===================================*/
 
-typedef struct neko_command_buffer_t {
-    uint32_t num_commands;
+typedef struct neko_command_buffer_s {
+    u32 num_commands;
     neko_byte_buffer_t commands;
 } neko_command_buffer_t;
 

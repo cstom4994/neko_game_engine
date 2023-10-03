@@ -888,10 +888,10 @@ void neko_platform_init(neko_platform_t* pf) {
             } else {
                 // glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, platform->settings.video.graphics.opengl.major_version);
                 // glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, platform->settings.video.graphics.opengl.minor_version);
-                glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-                glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
-                glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-                glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+                // glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+                // glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+                // glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+                // glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
             }
 #endif
             // glfwSwapInterval(platform->settings.video.vsync_enabled);
@@ -2278,7 +2278,7 @@ NEKO_API_DECL void neko_platform_enable_vsync(s32 enabled) { glfwSwapInterval(en
 /*== OpenGL debug callback == */
 void GLAPIENTRY __neko_platform_gl_debug(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei len, const GLchar* msg, const void* user) {
     if (severity != GL_DEBUG_SEVERITY_NOTIFICATION) {
-        neko_println("GL: %s", msg);
+        neko_log_warning("GL: %s", msg);
     }
 }
 
