@@ -28,6 +28,12 @@
 #define NEKO_GUI_TAB_ITEM_MAX 24
 #define NEKO_GUI_CLS_SELECTOR_MAX 4
 
+#define neko_gui_widths(...)                      \
+    [&]() -> const s32* {                         \
+        static s32 temp_widths[] = {__VA_ARGS__}; \
+        return temp_widths;                       \
+    }()
+
 #define neko_gui_stack(T, n) \
     struct {                 \
         int32_t idx;         \

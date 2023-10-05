@@ -300,13 +300,13 @@ void neko_imgui_update_mouse_and_keys(neko_imgui_context_t* ctx) {
         }
     }
 
-    if (neko_platform_key_pressed(NEKO_KEYCODE_TAB)) neko_println("tab");
-    if (neko_platform_key_pressed(NEKO_KEYCODE_ENTER)) neko_println("enter");
-    if (neko_platform_key_pressed(NEKO_KEYCODE_BACKSPACE)) neko_println("bspace");
-    if (neko_platform_key_pressed(NEKO_KEYCODE_LEFT)) neko_println("left");
-    if (neko_platform_key_pressed(NEKO_KEYCODE_RIGHT)) neko_println("right");
-    if (neko_platform_key_pressed(NEKO_KEYCODE_UP)) neko_println("up");
-    if (neko_platform_key_pressed(NEKO_KEYCODE_DOWN)) neko_println("down");
+    // if (neko_platform_key_pressed(NEKO_KEYCODE_TAB)) neko_println("tab");
+    // if (neko_platform_key_pressed(NEKO_KEYCODE_ENTER)) neko_println("enter");
+    // if (neko_platform_key_pressed(NEKO_KEYCODE_BACKSPACE)) neko_println("bspace");
+    // if (neko_platform_key_pressed(NEKO_KEYCODE_LEFT)) neko_println("left");
+    // if (neko_platform_key_pressed(NEKO_KEYCODE_RIGHT)) neko_println("right");
+    // if (neko_platform_key_pressed(NEKO_KEYCODE_UP)) neko_println("up");
+    // if (neko_platform_key_pressed(NEKO_KEYCODE_DOWN)) neko_println("down");
 
     io.KeysDown[neko_platform_key_to_codepoint(NEKO_KEYCODE_BACKSPACE)] = neko_platform_key_pressed(NEKO_KEYCODE_BACKSPACE);
     io.KeysDown[neko_platform_key_to_codepoint(NEKO_KEYCODE_TAB)] = neko_platform_key_pressed(NEKO_KEYCODE_TAB);

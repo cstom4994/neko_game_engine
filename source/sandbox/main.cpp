@@ -30,6 +30,9 @@
 #include "neko_imgui.h"
 #include "neko_imgui_utils.hpp"
 
+#define NEKO_CONSOLE_IMPL
+#include "neko_console.h"
+
 // opengl
 #include "libs/glad/glad.h"
 
@@ -96,11 +99,13 @@ struct neko_engine_cvar_t {
 
     bool show_gui = false;
 
+    bool hello_duck = false;
+
     f32 bg[3] = {90, 95, 100};
 };
 
 neko_struct(neko_engine_cvar_t, _Fs(show_demo_window, "Is show imgui demo"), _Fs(show_info_window, "Is show info window"), _Fs(show_cvar_window, "cvar inspector"), _Fs(show_gui, "neko gui"),
-            _Fs(bg, "bg color"));
+            _Fs(hello_duck, "Test gltf"), _Fs(bg, "bg color"));
 
 neko_engine_cvar_t g_cvar = {};
 
@@ -112,6 +117,8 @@ void test_sr();
 void test_ut();
 void test_se();
 void test_containers();
+
+NEKO_API_DECL void test_sexpr();
 
 neko_texture_t load_ase_texture_simple(const std::string &path) {
 
@@ -374,6 +381,125 @@ void ai_task_target_move_to(struct neko_ai_bt_t *ctx, struct neko_ai_bt_node_t *
 
 #pragma endregion
 
+#pragma region console
+
+static int window = 1, embeded, summons;
+
+static void toggle_window(int argc, char **argv);
+static void toggle_embedded(int argc, char **argv);
+static void help(int argc, char **argv);
+static void echo(int argc, char **argv);
+static void spam(int argc, char **argv);
+void summon(int argc, char **argv);
+void sz(int argc, char **argv);
+
+neko_console_command_t commands[] = {
+        {
+                .func = echo,
+                .name = "echo",
+                .desc = "repeat what was entered",
+        },
+        {
+                .func = spam,
+                .name = "spam",
+                .desc = "send the word arg1, arg2 amount of times",
+        },
+        {
+                .func = help,
+                .name = "help",
+                .desc = "sends a list of commands",
+        },
+        {
+                .func = toggle_window,
+                .name = "window",
+                .desc = "toggles gui window",
+        },
+        {
+                .func = toggle_embedded,
+                .name = "embed",
+                .desc = "places the console inside the window",
+        },
+        {
+                .func = summon,
+                .name = "summon",
+                .desc = "summons a gui window",
+        },
+        {
+                .func = sz,
+                .name = "sz",
+                .desc = "change console size",
+        },
+};
+
+neko_console_t console = {
+        .tb = "",
+        .cb = "",
+        .size = 0.4,
+        .open_speed = 0.2,
+        .close_speed = 0.3,
+        .autoscroll = true,
+        .commands = commands,
+        .commands_len = neko_array_size(commands),
+};
+
+void sz(int argc, char **argv) {
+    if (argc != 2) {
+        neko_console_printf(&console, "[sz]: needs 1 argument!\n");
+        return;
+    }
+    float sz = atof(argv[1]);
+    if (sz > 1 || sz < 0) {
+        neko_console_printf(&console, "[sz]: number needs to be between (0, 1)");
+        return;
+    }
+    console.size = sz;
+
+    neko_console_printf(&console, "console size is now %f\n", sz);
+}
+
+void toggle_window(int argc, char **argv) {
+    if (window && embeded)
+        neko_console_printf(&console, "Unable to turn off window, console is embeded!\n");
+    else
+        neko_console_printf(&console, "GUI Window turned %s\n", (window = !window) ? "on" : "off");
+}
+
+void toggle_embedded(int argc, char **argv) {
+    if (!window && !embeded)
+        neko_console_printf(&console, "Unable to embed into window, open window first!\n");
+    else
+        neko_console_printf(&console, "console embedded turned %s\n", (embeded = !embeded) ? "on" : "off");
+}
+
+void summon(int argc, char **argv) {
+    neko_console_printf(&console, "A summoner has cast his spell! A window has appeared!!!!\n");
+    summons++;
+}
+
+void spam(int argc, char **argv) {
+    if (argc != 3) goto spam_invalid_command;
+    int count = atoi(argv[2]);
+    if (!count) goto spam_invalid_command;
+    while (count--) neko_console_printf(&console, "%s\n", argv[1]);
+    return;
+spam_invalid_command:
+    neko_console_printf(&console, "[spam]: invalid usage. It should be 'spam word [int count]''\n");
+}
+
+void echo(int argc, char **argv) {
+    for (int i = 1; i < argc; i++) neko_console_printf(&console, "%s ", argv[i]);
+    neko_console_printf(&console, "\n");
+}
+
+void help(int argc, char **argv) {
+    for (int i = 0; i < neko_array_size(commands); i++) {
+        if (commands[i].name) neko_console_printf(&console, "* Command: %s\n", commands[i].name);
+        if (commands[i].desc) neko_console_printf(&console, "- desc: %s\n", commands[i].desc);
+    }
+}
+
+#pragma endregion
+
 template <typename T, typename Fields = std::tuple<>>
 void __neko_cvar_gui_internal(T &&obj, int depth = 0, const char *fieldName = "", Fields &&fields = std::make_tuple()) {
     if constexpr (std::is_class_v<std::decay_t<T>>) {
@@ -572,6 +698,12 @@ void game_init() {
 
 void game_update() {
 
+    struct {
+        float x, y, w, h;
+    } batch_tex_uvs[] = {
+            {2, 2, 24, 24}, {58, 2, 24, 24}, {114, 2, 24, 24}, {170, 2, 24, 24}, {2, 30, 24, 24},
+    };
+
     neko_vec2 fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
     neko_vec2 mp = neko_platform_mouse_positionv();
     neko_vec2 mw = neko_platform_mouse_wheelv();
@@ -614,26 +746,29 @@ void game_update() {
     neko_mat4 vp = neko_camera_get_view_projection(&cam, fbs.x, fbs.y);
     neko_mat4 mvp = neko_mat4_mul(vp, model);
 
-    // Apply material uniforms
-    neko_gfxt_material_set_uniform(&mat, "u_mvp", &mvp);
-    neko_gfxt_material_set_uniform(&mat, "u_tex", &texture);
+    if (g_cvar.hello_duck) {
 
-    // Rendering
-    neko_graphics_renderpass_begin(&g_cb, neko_renderpass_t{0});
-    {
-        // Set view port
-        neko_graphics_set_viewport(&g_cb, 0, 0, (int)fbs.x, (int)fbs.y);
+        // Apply material uniforms
+        neko_gfxt_material_set_uniform(&mat, "u_mvp", &mvp);
+        neko_gfxt_material_set_uniform(&mat, "u_tex", &texture);
 
-        // Bind material
-        neko_gfxt_material_bind(&g_cb, &mat);
+        // Rendering
+        neko_graphics_renderpass_begin(&g_cb, neko_renderpass_t{0});
+        {
+            // Set view port
+            neko_graphics_set_viewport(&g_cb, 0, 0, (int)fbs.x, (int)fbs.y);
 
-        // Bind material uniforms
-        neko_gfxt_material_bind_uniforms(&g_cb, &mat);
+            // Bind material
+            neko_gfxt_material_bind(&g_cb, &mat);
 
-        // Render mesh
-        neko_gfxt_mesh_draw_material(&g_cb, &mesh, &mat);
+            // Bind material uniforms
+            neko_gfxt_material_bind_uniforms(&g_cb, &mat);
+
+            // Render mesh
+            neko_gfxt_mesh_draw_material(&g_cb, &mesh, &mat);
+        }
+        neko_graphics_renderpass_end(&g_cb);
     }
-    neko_graphics_renderpass_end(&g_cb);
 
 #pragma region AI
 
@@ -730,13 +865,7 @@ void game_update() {
         neko_gui_label(&g_gui, BUFFER);                  \
     } while (0)
 
-#define GUI_WIDTHS(...)                           \
-    []() -> const s32 * {                         \
-        static s32 temp_widths[] = {__VA_ARGS__}; \
-        return temp_widths;                       \
-    }()
-
-                neko_gui_layout_row(&g_gui, 1, GUI_WIDTHS(-1), 0);
+                neko_gui_layout_row(&g_gui, 1, neko_gui_widths(-1), 0);
 
                 GUI_LABEL("Position: <%.2f %.2f>", mp.x, mp.y);
                 GUI_LABEL("Wheel: <%.2f %.2f>", mw.x, mw.y);
@@ -768,7 +897,7 @@ void game_update() {
                 mouse_pressed[NEKO_MOUSE_RBUTTON] = neko_platform_mouse_pressed(NEKO_MOUSE_RBUTTON);
                 mouse_pressed[NEKO_MOUSE_MBUTTON] = neko_platform_mouse_pressed(NEKO_MOUSE_MBUTTON);
 
-                neko_gui_layout_row(&g_gui, 7, GUI_WIDTHS(100, 100, 32, 100, 32, 100, 32), 0);
+                neko_gui_layout_row(&g_gui, 7, neko_gui_widths(100, 100, 32, 100, 32, 100, 32), 0);
                 for (u32 i = 0; btns[i].str; ++i) {
                     GUI_LABEL("%s: ", btns[i].str);
                     GUI_LABEL("pressed: ");
@@ -793,7 +922,7 @@ void game_update() {
                 // Cache the current container
                 neko_gui_container_t *cnt = neko_gui_get_current_container(&g_gui);
 
-                neko_gui_layout_row(&g_gui, 2, GUI_WIDTHS(200, 0), 0);
+                neko_gui_layout_row(&g_gui, 2, neko_gui_widths(200, 0), 0);
 
                 neko_gui_text(&g_gui, "A regular element button.");
                 neko_gui_button(&g_gui, "button");
@@ -813,7 +942,7 @@ void game_update() {
                 const f32 m = cnt->body.w * 0.3f;
                 // neko_gui_layout_row(gui, 2, (int[]){m, -m}, 0);
                 // neko_gui_layout_next(gui); // Empty space at beginning
-                neko_gui_layout_row(&g_gui, 1, GUI_WIDTHS(0), 0);
+                neko_gui_layout_row(&g_gui, 1, neko_gui_widths(0), 0);
                 neko_gui_selector_desc_t selector_3 = {.classes = {"reload_btn"}};
                 if (neko_gui_button_ex(&g_gui, "reload style sheet", &selector_3, 0x00)) {
                     app_load_style_sheet(true);
@@ -848,15 +977,15 @@ void game_update() {
 
             neko_gui_window_begin(&g_gui, "AI", neko_gui_rect(10, 10, 350, 220));
             {
-                neko_gui_layout_row(&g_gui, 1, GUI_WIDTHS(-1), 100);
+                neko_gui_layout_row(&g_gui, 1, neko_gui_widths(-1), 100);
                 neko_gui_text(&g_gui,
                               " * The AI will continue to move towards a random location as long as its health is not lower than 50.\n\n"
                               " * If health drops below 50, the AI will pause to heal back up to 100 then continue moving towards its target.\n\n"
                               " * After it reaches its target, it will find another random location to move towards.");
 
-                neko_gui_layout_row(&g_gui, 1, GUI_WIDTHS(-1), 0);
+                neko_gui_layout_row(&g_gui, 1, neko_gui_widths(-1), 0);
                 neko_gui_label(&g_gui, "state: %s", ai.state == AI_STATE_HEAL ? "HEAL" : "MOVE");
-                neko_gui_layout_row(&g_gui, 2, GUI_WIDTHS(55, 50), 0);
+                neko_gui_layout_row(&g_gui, 2, neko_gui_widths(55, 50), 0);
                 neko_gui_label(&g_gui, "health: ");
                 neko_gui_number(&g_gui, &ai.health, 0.1f);
             }
@@ -864,6 +993,39 @@ void game_update() {
 
 #pragma endregion
         }
+
+        if (neko_platform_key_pressed(NEKO_KEYCODE_GRAVE_ACCENT)) {
+            console.open = !console.open;
+        } else if (neko_platform_key_pressed(NEKO_KEYCODE_TAB) && console.open) {
+            console.autoscroll = !console.autoscroll;
+        }
+
+        neko_gui_layout_t l;
+        if (window && neko_gui_window_begin(&g_gui, "App", neko_gui_rect(100, 100, 200, 200))) {
+            l = *neko_gui_get_layout(&g_gui);
+            neko_gui_layout_row(&g_gui, 1, neko_gui_widths(-1), 0);
+            neko_gui_text(&g_gui, "Hello neko");
+            neko_gui_window_end(&g_gui);
+        }
+
+        int s = summons;
+        while (s--) {
+            neko_gui_push_id(&g_gui, &s, sizeof(s));
+            if (neko_gui_window_begin(&g_gui, "Summon", neko_gui_rect(100, 100, 200, 200))) {
+                neko_gui_layout_row(&g_gui, 1, neko_gui_widths(-1), 0);
+                neko_gui_text(&g_gui, "new window");
+                neko_gui_window_end(&g_gui);
+            }
+            neko_gui_pop_id(&g_gui);
+        }
+
+        neko_vec2 fb = (&g_gui)->framebuffer_size;
+        neko_gui_rect_t screen;
+        if (embeded)
+            screen = l.body;
+        else
+            screen = neko_gui_rect(0, 0, fb.x, fb.y);
+        neko_console(&console, &g_gui, screen, NULL);
     }
     neko_gui_end(&g_gui, !(io.WantCaptureMouse || io.WantCaptureKeyboard));
 
@@ -886,6 +1048,7 @@ void game_update() {
         if (ImGui::Button("test_ut")) test_ut();
         if (ImGui::Button("test_backtrace")) __neko_print_stacktrace();
         if (ImGui::Button("test_containers")) test_containers();
+        if (ImGui::Button("test_sexpr")) test_sexpr();
     }
     ImGui::End();
 

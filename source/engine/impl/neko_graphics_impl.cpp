@@ -46,79 +46,6 @@ neko_graphics_info_t* neko_graphics_info() { return &neko_subsystem(graphics)->i
 #define CHECK_GL_CORE(...) neko_empty_instruction(void)
 #endif
 
-// OpenGL
-#define __neko_gl_state_backup()                                                \
-    GLenum last_active_texture;                                                 \
-    glGetIntegerv(GL_ACTIVE_TEXTURE, (GLint*)&last_active_texture);             \
-    glActiveTexture(GL_TEXTURE0);                                               \
-    GLuint last_program;                                                        \
-    glGetIntegerv(GL_CURRENT_PROGRAM, (GLint*)&last_program);                   \
-    GLuint last_texture;                                                        \
-    glGetIntegerv(GL_TEXTURE_BINDING_2D, (GLint*)&last_texture);                \
-    GLuint last_array_buffer;                                                   \
-    glGetIntegerv(GL_ARRAY_BUFFER_BINDING, (GLint*)&last_array_buffer);         \
-    GLint last_viewport[4];                                                     \
-    glGetIntegerv(GL_VIEWPORT, last_viewport);                                  \
-    GLint last_scissor_box[4];                                                  \
-    glGetIntegerv(GL_SCISSOR_BOX, last_scissor_box);                            \
-    GLenum last_blend_src_rgb;                                                  \
-    glGetIntegerv(GL_BLEND_SRC_RGB, (GLint*)&last_blend_src_rgb);               \
-    GLenum last_blend_dst_rgb;                                                  \
-    glGetIntegerv(GL_BLEND_DST_RGB, (GLint*)&last_blend_dst_rgb);               \
-    GLenum last_blend_src_alpha;                                                \
-    glGetIntegerv(GL_BLEND_SRC_ALPHA, (GLint*)&last_blend_src_alpha);           \
-    GLenum last_blend_dst_alpha;                                                \
-    glGetIntegerv(GL_BLEND_DST_ALPHA, (GLint*)&last_blend_dst_alpha);           \
-    GLenum last_blend_equation_rgb;                                             \
-    glGetIntegerv(GL_BLEND_EQUATION_RGB, (GLint*)&last_blend_equation_rgb);     \
-    GLenum last_blend_equation_alpha;                                           \
-    glGetIntegerv(GL_BLEND_EQUATION_ALPHA, (GLint*)&last_blend_equation_alpha); \
-    GLboolean last_enable_blend = glIsEnabled(GL_BLEND);                        \
-    GLboolean last_enable_cull_face = glIsEnabled(GL_CULL_FACE);                \
-    GLboolean last_enable_depth_test = glIsEnabled(GL_DEPTH_TEST);              \
-    GLboolean last_enable_stencil_test = glIsEnabled(GL_STENCIL_TEST);          \
-    GLboolean last_enable_scissor_test = glIsEnabled(GL_SCISSOR_TEST);          \
-    GLboolean last_enable_mutisample = glIsEnabled(GL_MULTISAMPLE);             \
-    GLboolean last_enable_framebuffer_srgb = glIsEnabled(GL_FRAMEBUFFER_SRGB)
-
-#define __neko_gl_state_restore()                                                                            \
-    glUseProgram(last_program);                                                                              \
-    glBindTexture(GL_TEXTURE_2D, last_texture);                                                              \
-    glActiveTexture(last_active_texture);                                                                    \
-    glBindBuffer(GL_ARRAY_BUFFER, last_array_buffer);                                                        \
-    glBlendEquationSeparate(last_blend_equation_rgb, last_blend_equation_alpha);                             \
-    glBlendFuncSeparate(last_blend_src_rgb, last_blend_dst_rgb, last_blend_src_alpha, last_blend_dst_alpha); \
-    if (last_enable_blend)                                                                                   \
-        glEnable(GL_BLEND);                                                                                  \
-    else                                                                                                     \
-        glDisable(GL_BLEND);                                                                                 \
-    if (last_enable_cull_face)                                                                               \
-        glEnable(GL_CULL_FACE);                                                                              \
-    else                                                                                                     \
-        glDisable(GL_CULL_FACE);                                                                             \
-    if (last_enable_depth_test)                                                                              \
-        glEnable(GL_DEPTH_TEST);                                                                             \
-    else                                                                                                     \
-        glDisable(GL_DEPTH_TEST);                                                                            \
-    if (last_enable_stencil_test)                                                                            \
-        glEnable(GL_STENCIL_TEST);                                                                           \
-    else                                                                                                     \
-        glDisable(GL_STENCIL_TEST);                                                                          \
-    if (last_enable_scissor_test)                                                                            \
-        glEnable(GL_SCISSOR_TEST);                                                                           \
-    else                                                                                                     \
-        glDisable(GL_SCISSOR_TEST);                                                                          \
-    if (last_enable_mutisample)                                                                              \
-        glEnable(GL_MULTISAMPLE);                                                                            \
-    else                                                                                                     \
-        glDisable(GL_MULTISAMPLE);                                                                           \
-    if (last_enable_framebuffer_srgb)                                                                        \
-        glEnable(GL_FRAMEBUFFER_SRGB);                                                                       \
-    else                                                                                                     \
-        glDisable(GL_FRAMEBUFFER_SRGB);                                                                      \
-    glViewport(last_viewport[0], last_viewport[1], (GLsizei)last_viewport[2], (GLsizei)last_viewport[3]);    \
-    glScissor(last_scissor_box[0], last_scissor_box[1], (GLsizei)last_scissor_box[2], (GLsizei)last_scissor_box[3])
-
 // fwd
 void __neko_fontcache_create();
 void __neko_fontcache_shutdown();
@@ -1389,9 +1316,9 @@ NEKO_API_DECL neko_handle(neko_graphics_shader_t) neko_graphics_shader_create_im
     glLinkProgram(shader);
 
     // Create info log for errors
-    s32 is_linked = 0;
-    glGetProgramiv(shader, GL_LINK_STATUS, (s32*)&is_linked);
-    if (is_linked == GL_FALSE) {
+    s32 is_good = 0;
+    glGetProgramiv(shader, GL_LINK_STATUS, (s32*)&is_good);
+    if (is_good == GL_FALSE) {
         GLint max_len = 0;
         glGetProgramiv(shader, GL_INFO_LOG_LENGTH, &max_len);
 
@@ -1410,6 +1337,12 @@ NEKO_API_DECL neko_handle(neko_graphics_shader_t) neko_graphics_shader_create_im
 
         // Just assert for now
         neko_assert(false);
+    }
+
+    glValidateProgram(shader);
+    glGetProgramiv(shader, GL_VALIDATE_STATUS, &is_good);
+    if (!is_good) {
+        neko_log_error("Failed to validate shader: '%s'", desc->name);
     }
 
     // Free shaders after use

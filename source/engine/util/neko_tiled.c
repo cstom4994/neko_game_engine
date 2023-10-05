@@ -230,7 +230,7 @@ void neko_tiled_render_init(neko_command_buffer_t *cb, const char *vert_src, con
                                                                                                  {.type = NEKO_GRAPHICS_SHADER_STAGE_FRAGMENT, .source = frag_src},
                                                                                          },
                                                                                  .size = 2 * sizeof(neko_graphics_shader_source_desc_t),
-                                                                                 .name = "sprite_shader"});
+                                                                                 .name = "tiled_sprite_shader"});
 
     renderer.u_camera = neko_graphics_uniform_create(&(neko_graphics_uniform_desc_t){.name = "camera", .layout = &(neko_graphics_uniform_layout_desc_t){.type = NEKO_GRAPHICS_UNIFORM_MAT4}});
 
