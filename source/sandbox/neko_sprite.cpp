@@ -18,12 +18,74 @@ bool neko_sprite_load(neko_sprite* spr, const neko_string& filepath) {
         return neko_default_val();
     }
 
+    // 为了方便起见，将所有单元像素混合到各自的帧中
+    for (int i = 0; i < ase->frame_count; ++i) {
+        ase_frame_t* frame = ase->frames + i;
+
+        frame->pixels[0] = (neko_color_t*)neko_safe_malloc((int)(sizeof(neko_color_t)) * ase->w * ase->h);
+
+        spr->mem_used += (sizeof(neko_color_t)) * ase->w * ase->h;
+
+        std::memset(frame->pixels[0], 0, sizeof(neko_color_t) * (size_t)ase->w * (size_t)ase->h);
+        neko_color_t* dst = frame->pixels[0];
+
+        neko_println_debug("frame: %d cel_count: %d", i, frame->cel_count);
+
+        for (int j = 0; j < frame->cel_count; ++j) {  //
+
+            ase_cel_t* cel = frame->cels + j;
+
+            neko_println_debug(" - %s", cel->layer->name);
+
+            // 确定图块所在层与父层可视
+            if (!(cel->layer->flags & NEKO_ASE_LAYER_FLAGS_VISIBLE) || (cel->layer->parent && !(cel->layer->parent->flags & NEKO_ASE_LAYER_FLAGS_VISIBLE))) {
+                continue;
+            }
+
+            while (cel->is_linked) {
+                ase_frame_t* frame = ase->frames + cel->linked_frame_index;
+                int found = 0;
+                for (int k = 0; k < frame->cel_count; ++k) {
+                    if (frame->cels[k].layer == cel->layer) {
+                        cel = frame->cels + k;
+                        found = 1;
+                        break;
+                    }
+                }
+                neko_assert(found);
+            }
+
+            void* src = cel->cel_pixels;
+            u8 opacity = (u8)(cel->opacity * cel->layer->opacity * 255.0f);
+            int cx = cel->x;
+            int cy = cel->y;
+            int cw = cel->w;
+            int ch = cel->h;
+            int cl = -neko_min(cx, 0);
+            int ct = -neko_min(cy, 0);
+            int dl = neko_max(cx, 0);
+            int dt = neko_max(cy, 0);
+            int dr = neko_min(ase->w, cw + cx);
+            int db = neko_min(ase->h, ch + cy);
+            int aw = ase->w;
+            for (int dx = dl, sx = cl; dx < dr; dx++, sx++) {
+                for (int dy = dt, sy = ct; dy < db; dy++, sy++) {
+                    int dst_index = aw * dy + dx;
+                    neko_color_t src_color = s_color(ase, src, cw * sy + sx);
+                    neko_color_t dst_color = dst[dst_index];
+                    neko_color_t result = s_blend(src_color, dst_color, opacity);
+                    dst[dst_index] = result;
+                }
+            }
+        }
+    }
+
     s32 rect = ase->w * ase->h * 4;
 
     neko_array<neko_sprite_frame> frames = {};
     neko_array_reserve(&frames, ase->frame_count);
 
-    neko_array<char> pixels = {};
+    neko_array<u8> pixels = {};
     neko_array_reserve(&pixels, ase->frame_count * rect);
     neko_defer([&] { neko_array_dctor(&pixels); });
 
@@ -39,7 +101,11 @@ bool neko_sprite_load(neko_sprite* spr, const neko_string& filepath) {
         sf.v1 = (f32)i / ase->frame_count;
 
         neko_array_push(&frames, sf);
-        std::memcpy(pixels.data + (i * rect), &frame.pixels[0].r, rect);
+
+        neko_color_t* data = frame.pixels[0];
+
+        // 不知道是直接读取aseprite解析的数据还是像这样拷贝为一个贴图 在渲染时改UV来得快
+        std::memcpy(pixels.data + (i * rect), &data[0].r, rect);
     }
 
     neko_graphics_t* gfx = neko_instance()->ctx.graphics;
@@ -79,7 +145,13 @@ bool neko_sprite_load(neko_sprite* spr, const neko_string& filepath) {
         by_tag[key] = loop;
     }
 
-    neko_log_info(std::format("created sprite with image id: {0} and {1} frames", tex.id, frames.len).c_str());
+    for (s32 i = 0; i < ase->layer_count; i++) {
+        ase_layer_t& layer = ase->layers[i];
+        neko_println_debug("%s", layer.name);
+    }
+
+    neko_log_trace(std::format("created sprite size({3}) with image id: {0} and {1} frames with {2} layers", tex.id, frames.len, ase->layer_count, (spr->mem_used + pixels.capacity * sizeof(u8)) / 1e6)
+                           .c_str());
 
     neko_sprite s = {};
     s.img = tex;
@@ -331,8 +403,137 @@ void neko_particle_renderer_draw(neko_particle_renderer* pr, neko_command_buffer
 //     ImGui::End();
 // }
 
-static const_str s_error_file = NULL;  // 正在解析的文件的文件路径 如果来自内存则为 NULL
-static const_str s_error_reason;       // 用于捕获 DEFLATE 解析期间的错误
+#define ROW_COL_CT 10
+
+// Vertex data for quad
+float v_data[] = {
+        // Positions  UVs
+        -0.5f, -0.5f, 0.0f, 0.0f,  // Top Left
+        0.5f,  -0.5f, 1.0f, 0.0f,  // Top Right
+        -0.5f, 0.5f,  0.0f, 1.0f,  // Bottom Left
+        0.5f,  0.5f,  1.0f, 1.0f   // Bottom Right
+};
+
+// Index data for quad
+u32 i_data[] = {
+        0, 3, 2,  // First Triangle
+        0, 1, 3   // Second Triangle
+};
+
+// Shaders
+#ifdef NEKO_PLATFORM_WEB
+#define NEKO_VERSION_STR "#version 300 es\n"
+#else
+#define NEKO_VERSION_STR "#version 330 core\n"
+#endif
+
+// Shaders
+const char* v_src = NEKO_VERSION_STR
+        R"(
+layout(location = 0) in vec2 a_pos;
+layout(location = 1) in vec2 a_uv;
+precision mediump float;
+out vec2 uv;
+void main()
+{
+   gl_Position = vec4(a_pos, 0.0, 1.0);
+   uv = a_uv;
+}
+)";
+
+const char* f_src = NEKO_VERSION_STR
+        R"(
+precision mediump float;
+uniform sampler2D u_tex;
+in vec2 uv;
+out vec4 frag_color;
+void main()
+{
+   frag_color = texture(u_tex, uv);
+}
+)";
+
+void neko_neko_fast_sprite_renderer_construct(neko_fast_sprite_renderer* render, u32 width, u32 height, void* data) {
+
+    // Generate procedural texture data (checkered texture)
+
+    if (width == 0 || height == 0 || NULL == data) {
+        neko_color_t c0 = NEKO_COLOR_WHITE;
+        neko_color_t c1 = neko_color(20, 50, 150, 255);
+        neko_color_t pixels[ROW_COL_CT * ROW_COL_CT] = neko_default_val();
+        for (u32 r = 0; r < ROW_COL_CT; ++r) {
+            for (u32 c = 0; c < ROW_COL_CT; ++c) {
+                const bool re = (r % 2) == 0;
+                const bool ce = (c % 2) == 0;
+                u32 idx = r * ROW_COL_CT + c;
+                pixels[idx] = (re && ce) ? c0 : (re) ? c1 : (ce) ? c1 : c0;
+            }
+        }
+        data = pixels;
+        width = height = ROW_COL_CT;
+    }
+
+    // Create dynamic texture
+    render->tex = neko_graphics_texture_create(neko_c_ref(neko_graphics_texture_desc_t, {.type = NEKO_GRAPHICS_TEXTURE_2D,
+                                                                                         .width = width,
+                                                                                         .height = height,
+                                                                                         .data = data,
+                                                                                         .format = NEKO_GRAPHICS_TEXTURE_FORMAT_RGBA8,
+                                                                                         .min_filter = NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST,
+                                                                                         .mag_filter = NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST}));
+
+    // Construct sampler buffer
+    neko_graphics_uniform_layout_desc_t uniform_decl = {.type = NEKO_GRAPHICS_UNIFORM_SAMPLER2D};
+
+    render->u_tex = neko_graphics_uniform_create(neko_c_ref(neko_graphics_uniform_desc_t, {.stage = NEKO_GRAPHICS_SHADER_STAGE_FRAGMENT, .name = "u_tex", .layout = &uniform_decl}));
+
+    // Construct vertex buffer
+    render->vbo = neko_graphics_vertex_buffer_create(neko_c_ref(neko_graphics_vertex_buffer_desc_t, {.data = v_data, .size = sizeof(v_data)}));
+
+    // Construct index buffer
+    render->ibo = neko_graphics_index_buffer_create(neko_c_ref(neko_graphics_index_buffer_desc_t, {.data = i_data, .size = sizeof(i_data)}));
+
+    // Create shader
+    neko_graphics_shader_source_desc_t shaders_decl[] = {{.type = NEKO_GRAPHICS_SHADER_STAGE_VERTEX, .source = v_src}, {.type = NEKO_GRAPHICS_SHADER_STAGE_FRAGMENT, .source = f_src}};
+
+    render->shader = neko_graphics_shader_create(neko_c_ref(neko_graphics_shader_desc_t, {.sources = shaders_decl, .size = 2 * sizeof(neko_graphics_shader_source_desc_t), .name = "quad"}));
+
+    render->pip = neko_graphics_pipeline_create(
+            neko_c_ref(neko_graphics_pipeline_desc_t, {.raster = {.shader = render->shader, .index_buffer_element_size = sizeof(u32)},
+                                                       .layout = {.attrs = neko_arr_ref(neko_graphics_vertex_attribute_desc_t, {{
+                                                                                                                                        .name = "a_pos",
+                                                                                                                                        .format = NEKO_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT2,
+                                                                                                                                },
+                                                                                                                                {
+                                                                                                                                        .name = "a_uv",
+                                                                                                                                        .format = NEKO_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT2,
+                                                                                                                                }}),
+                                                                  .size = 2 * sizeof(neko_graphics_vertex_attribute_desc_t)}}));
+}
+
+void neko_neko_fast_sprite_renderer_draw(neko_fast_sprite_renderer* render, neko_command_buffer_t* cb) {
+
+    // Bindings for all buffers: vertex, index, sampler
+    neko_graphics_bind_desc_t binds = {.vertex_buffers = {.desc = neko_c_ref(neko_graphics_bind_vertex_buffer_desc_t, {.buffer = render->vbo})},
+                                       .index_buffers = {.desc = neko_c_ref(neko_graphics_bind_index_buffer_desc_t, {.buffer = render->ibo})},
+                                       .uniforms = {.desc = neko_c_ref(neko_graphics_bind_uniform_desc_t, {.uniform = render->u_tex, .data = &render->tex, .binding = 0})}};
+
+    /* Render */
+    neko_graphics_renderpass_begin(cb, NEKO_GRAPHICS_RENDER_PASS_DEFAULT);
+    {
+        // neko_graphics_set_viewport(cb, 0, 0, (s32)fbs.x, (s32)fbs.y);
+        // neko_graphics_clear(cb, &clear);
+        neko_graphics_pipeline_bind(cb, render->pip);
+        neko_graphics_apply_bindings(cb, &binds);
+        neko_graphics_draw(cb, neko_c_ref(neko_graphics_draw_desc_t, {.start = 0, .count = 6}));
+    }
+    neko_graphics_renderpass_end(cb);
+}
+
+#pragma region neko_ase
+
+neko_global const_str s_error_file = NULL;  // 正在解析的文件的文件路径 如果来自内存则为 NULL
+neko_global const_str s_error_reason;       // 用于捕获 DEFLATE 解析期间的错误
 
 #define __NEKO_ASEPRITE_FAIL() \
     do {                       \
@@ -355,18 +556,18 @@ static const_str s_error_reason;       // 用于捕获 DEFLATE 解析期间的�
 #define __NEKO_ASEPRITE_DEFLATE_MAX_BITLEN 15
 
 // DEFLATE tables from RFC 1951
-static u8 s_fixed_table[288 + 32] = {
+neko_global u8 s_fixed_table[288 + 32] = {
         8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
         8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
         8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
         9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
         7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
-};                                                                                                                                                                                      // 3.2.6
-static u8 s_permutation_order[19] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};                                                                                 // 3.2.7
-static u8 s_len_extra_bits[29 + 2] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0, 0, 0};                                                     // 3.2.5
-static u32 s_len_base[29 + 2] = {3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258, 0, 0};                              // 3.2.5
-static u8 s_dist_extra_bits[30 + 2] = {0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 0, 0};                                         // 3.2.5
-static u32 s_dist_base[30 + 2] = {1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577, 0, 0};  // 3.2.5
+};                                                                                                                                                                                           // 3.2.6
+neko_global u8 s_permutation_order[19] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};                                                                                 // 3.2.7
+neko_global u8 s_len_extra_bits[29 + 2] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0, 0, 0};                                                     // 3.2.5
+neko_global u32 s_len_base[29 + 2] = {3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258, 0, 0};                              // 3.2.5
+neko_global u8 s_dist_extra_bits[30 + 2] = {0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 0, 0};                                         // 3.2.5
+neko_global u32 s_dist_base[30 + 2] = {1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577, 0, 0};  // 3.2.5
 
 typedef struct deflate_t {
     u64 bits;
@@ -391,14 +592,14 @@ typedef struct deflate_t {
     u32 nlen;
 } deflate_t;
 
-static int s_would_overflow(deflate_t* s, int num_bits) { return (s->bits_left + s->count) - num_bits < 0; }
+neko_global int s_would_overflow(deflate_t* s, int num_bits) { return (s->bits_left + s->count) - num_bits < 0; }
 
-static char* s_ptr(deflate_t* s) {
+neko_global char* s_ptr(deflate_t* s) {
     neko_assert(!(s->bits_left & 7));
     return (char*)(s->words + s->word_index) - (s->count / 8);
 }
 
-static u64 s_peak_bits(deflate_t* s, int num_bits_to_read) {
+neko_global u64 s_peak_bits(deflate_t* s, int num_bits_to_read) {
     if (s->count < num_bits_to_read) {
         if (s->word_index < s->word_count) {
             u32 word = s->words[s->word_index++];
@@ -418,7 +619,7 @@ static u64 s_peak_bits(deflate_t* s, int num_bits_to_read) {
     return s->bits;
 }
 
-static u32 s_consume_bits(deflate_t* s, int num_bits_to_read) {
+neko_global u32 s_consume_bits(deflate_t* s, int num_bits_to_read) {
     neko_assert(s->count >= num_bits_to_read);
     u32 bits = (u32)(s->bits & (((u64)1 << num_bits_to_read) - 1));
     s->bits >>= num_bits_to_read;
@@ -427,7 +628,7 @@ static u32 s_consume_bits(deflate_t* s, int num_bits_to_read) {
     return bits;
 }
 
-static u32 s_read_bits(deflate_t* s, int num_bits_to_read) {
+neko_global u32 s_read_bits(deflate_t* s, int num_bits_to_read) {
     neko_assert(num_bits_to_read <= 32);
     neko_assert(num_bits_to_read >= 0);
     neko_assert(s->bits_left > 0);
@@ -438,7 +639,7 @@ static u32 s_read_bits(deflate_t* s, int num_bits_to_read) {
     return bits;
 }
 
-static u32 s_rev16(u32 a) {
+neko_global u32 s_rev16(u32 a) {
     a = ((a & 0xAAAA) >> 1) | ((a & 0x5555) << 1);
     a = ((a & 0xCCCC) >> 2) | ((a & 0x3333) << 2);
     a = ((a & 0xF0F0) >> 4) | ((a & 0x0F0F) << 4);
@@ -447,7 +648,7 @@ static u32 s_rev16(u32 a) {
 }
 
 // RFC 1951 section 3.2.2
-static u32 s_build(deflate_t* s, u32* tree, u8* lens, int sym_count) {
+neko_global u32 s_build(deflate_t* s, u32* tree, u8* lens, int sym_count) {
     int n, codes[16], first[16], counts[16] = {0};
     neko_unused(s);
 
@@ -475,7 +676,7 @@ static u32 s_build(deflate_t* s, u32* tree, u8* lens, int sym_count) {
     return (u32)first[15];
 }
 
-static int s_stored(deflate_t* s) {
+neko_global int s_stored(deflate_t* s) {
     char* p;
 
     // 3.2.3
@@ -498,13 +699,13 @@ ase_err:
 }
 
 // 3.2.6
-static int s_fixed(deflate_t* s) {
+neko_global int s_fixed(deflate_t* s) {
     s->nlit = s_build(s, s->lit, s_fixed_table, 288);
     s->ndst = s_build(0, s->dst, s_fixed_table + 288, 32);
     return 1;
 }
 
-static int s_decode(deflate_t* s, u32* tree, int hi) {
+neko_global int s_decode(deflate_t* s, u32* tree, int hi) {
     u64 bits = s_peak_bits(s, 16);
     u32 search = (s_rev16((u32)bits) << 16) | 0xFFFF;
     int lo = 0;
@@ -525,7 +726,7 @@ static int s_decode(deflate_t* s, u32* tree, int hi) {
 }
 
 // 3.2.7
-static int s_dynamic(deflate_t* s) {
+neko_global int s_dynamic(deflate_t* s) {
     u8 lenlens[19] = {0};
 
     u32 nlit = 257 + s_read_bits(s, 5);
@@ -562,7 +763,7 @@ static int s_dynamic(deflate_t* s) {
 }
 
 // 3.2.3
-static int s_block(deflate_t* s) {
+neko_global int s_block(deflate_t* s) {
     while (1) {
         int symbol = s_decode(s, s->lit, (int)s->nlit);
 
@@ -603,7 +804,7 @@ ase_err:
 }
 
 // 3.2.3
-static int s_inflate(const void* in, int in_bytes, void* out, int out_bytes) {
+neko_global int s_inflate(const void* in, int in_bytes, void* out, int out_bytes) {
     deflate_t* s = (deflate_t*)neko_safe_malloc(sizeof(deflate_t));
     s->bits = 0;
     s->count = 0;
@@ -666,7 +867,7 @@ typedef struct ase_state_t {
     u8* end;
 } ase_state_t;
 
-static u8 s_read_uint8(ase_state_t* s) {
+neko_global u8 s_read_uint8(ase_state_t* s) {
     neko_assert(s->in <= s->end + sizeof(u8));
     u8** p = &s->in;
     u8 value = **p;
@@ -674,7 +875,7 @@ static u8 s_read_uint8(ase_state_t* s) {
     return value;
 }
 
-static u16 s_read_uint16(ase_state_t* s) {
+neko_global u16 s_read_uint16(ase_state_t* s) {
     neko_assert(s->in <= s->end + sizeof(u16));
     u8** p = &s->in;
     u16 value;
@@ -684,14 +885,14 @@ static u16 s_read_uint16(ase_state_t* s) {
     return value;
 }
 
-static ase_fixed_t s_read_fixed(ase_state_t* s) {
+neko_global ase_fixed_t s_read_fixed(ase_state_t* s) {
     ase_fixed_t value;
     value.a = s_read_uint16(s);
     value.b = s_read_uint16(s);
     return value;
 }
 
-static u32 s_read_uint32(ase_state_t* s) {
+neko_global u32 s_read_uint32(ase_state_t* s) {
     neko_assert(s->in <= s->end + sizeof(u32));
     u8** p = &s->in;
     u32 value;
@@ -703,10 +904,10 @@ static u32 s_read_uint32(ase_state_t* s) {
     return value;
 }
 
-static int16_t s_read_int16(ase_state_t* s) { return (int16_t)s_read_uint16(s); }
-static int16_t s_read_int32(ase_state_t* s) { return (int32_t)s_read_uint32(s); }
+neko_global s16 s_read_int16(ase_state_t* s) { return (s16)s_read_uint16(s); }
+neko_global s16 s_read_int32(ase_state_t* s) { return (s32)s_read_uint32(s); }
 
-static const char* s_read_string(ase_state_t* s) {
+neko_global const char* s_read_string(ase_state_t* s) {
     int len = (int)s_read_uint16(s);
     char* bytes = (char*)neko_safe_malloc(len + 1);
     for (int i = 0; i < len; ++i) {
@@ -716,12 +917,12 @@ static const char* s_read_string(ase_state_t* s) {
     return bytes;
 }
 
-static void s_skip(ase_state_t* ase, int num_bytes) {
+neko_global void s_skip(ase_state_t* ase, int num_bytes) {
     neko_assert(ase->in <= ase->end + num_bytes);
     ase->in += num_bytes;
 }
 
-static char* s_fopen(const char* path, int* size) {
+neko_global char* s_fopen(const char* path, int* size) {
     char* data = 0;
     FILE* fp = fopen(path, "rb");
     int sz = 0;
@@ -754,51 +955,6 @@ ase_t* neko_aseprite_load_from_file(const char* path) {
     return aseprite;
 }
 
-static int s_mul_un8(int a, int b) {
-    int t = (a * b) + 0x80;
-    return (((t >> 8) + t) >> 8);
-}
-
-static ase_color_t s_blend(ase_color_t src, ase_color_t dst, u8 opacity) {
-    src.a = (u8)s_mul_un8(src.a, opacity);
-    int a = src.a + dst.a - s_mul_un8(src.a, dst.a);
-    int r, g, b;
-    if (a == 0) {
-        r = g = b = 0;
-    } else {
-        r = dst.r + (src.r - dst.r) * src.a / a;
-        g = dst.g + (src.g - dst.g) * src.a / a;
-        b = dst.b + (src.b - dst.b) * src.a / a;
-    }
-    ase_color_t ret = {(u8)r, (u8)g, (u8)b, (u8)a};
-    return ret;
-}
-
-static int s_min(int a, int b) { return a < b ? a : b; }
-
-static int s_max(int a, int b) { return a < b ? b : a; }
-
-static ase_color_t s_color(ase_t* ase, void* src, int index) {
-    ase_color_t result;
-    if (ase->mode == ASE_MODE_RGBA) {
-        result = ((ase_color_t*)src)[index];
-    } else if (ase->mode == ASE_MODE_GRAYSCALE) {
-        u8 saturation = ((u8*)src)[index * 2];
-        u8 a = ((u8*)src)[index * 2 + 1];
-        result.r = result.g = result.b = saturation;
-        result.a = a;
-    } else {
-        neko_assert(ase->mode == ASE_MODE_INDEXED);
-        u8 palette_index = ((u8*)src)[index];
-        if (palette_index == ase->transparent_palette_entry_index) {
-            result = {0, 0, 0, 0};
-        } else {
-            result = ase->palette.entries[palette_index].color;
-        }
-    }
-    return result;
-}
-
 ase_t* neko_aseprite_load_from_memory(const void* memory, int size) {
     ase_t* ase = (ase_t*)neko_safe_malloc(sizeof(ase_t));
     std::memset(ase, 0, sizeof(*ase));
@@ -817,12 +973,12 @@ ase_t* neko_aseprite_load_from_memory(const void* memory, int size) {
     ase->h = s_read_uint16(s);
     u16 bpp = s_read_uint16(s) / 8;
     if (bpp == 4)
-        ase->mode = ASE_MODE_RGBA;
+        ase->mode = NEKO_ASE_MODE_RGBA;
     else if (bpp == 2)
-        ase->mode = ASE_MODE_GRAYSCALE;
+        ase->mode = NEKO_ASE_MODE_GRAYSCALE;
     else {
         neko_assert(bpp == 1);
-        ase->mode = ASE_MODE_INDEXED;
+        ase->mode = NEKO_ASE_MODE_INDEXED;
     }
     u32 valid_layer_opacity = s_read_uint32(s) & 1;
     int speed = s_read_uint16(s);
@@ -846,6 +1002,9 @@ ase_t* neko_aseprite_load_from_memory(const void* memory, int size) {
     int tag_index = 0;
 
     ase_layer_t* layer_stack[__NEKO_ASEPRITE_MAX_LAYERS];
+
+    // 查看 aseprite 文件标准
+    // https://github.com/aseprite/aseprite/blob/main/docs/ase-file-specs.md
 
     // Parse all chunks in the .aseprite file.
     for (int i = 0; i < ase->frame_count; ++i) {
@@ -873,7 +1032,13 @@ ase_t* neko_aseprite_load_from_memory(const void* memory, int size) {
                     neko_assert(ase->layer_count < __NEKO_ASEPRITE_MAX_LAYERS);
                     ase_layer_t* layer = ase->layers + ase->layer_count++;
                     layer->flags = (ase_layer_flags_t)s_read_uint16(s);
+
+                    // WORD Layer type
+                    //  0 = Normal(image) layer
+                    //  1 = Group
+                    //  2 = Tilemap
                     layer->type = (ase_layer_type_t)s_read_uint16(s);
+
                     layer->parent = NULL;
                     int child_level = (int)s_read_uint16(s);
                     layer_stack[child_level] = layer;
@@ -883,7 +1048,7 @@ ase_t* neko_aseprite_load_from_memory(const void* memory, int size) {
                     s_skip(s, sizeof(u16));  // Default layer width in pixels (ignored).
                     s_skip(s, sizeof(u16));  // Default layer height in pixels (ignored).
                     int blend_mode = (int)s_read_uint16(s);
-                    if (blend_mode) neko_log_warning("Unknown blend mode encountered.");
+                    if (blend_mode) neko_log_warning("aseprite unknown blend mode encountered.");
                     layer->opacity = s_read_uint8(s) / 255.0f;
                     if (!valid_layer_opacity) layer->opacity = 1.0f;
                     s_skip(s, 3);  // For future use (set to zero).
@@ -906,8 +1071,8 @@ ase_t* neko_aseprite_load_from_memory(const void* memory, int size) {
                         case 0:  // Raw cel.
                             cel->w = s_read_uint16(s);
                             cel->h = s_read_uint16(s);
-                            cel->pixels = neko_safe_malloc(cel->w * cel->h * bpp);
-                            std::memcpy(cel->pixels, s->in, (size_t)(cel->w * cel->h * bpp));
+                            cel->cel_pixels = neko_safe_malloc(cel->w * cel->h * bpp);
+                            std::memcpy(cel->cel_pixels, s->in, (size_t)(cel->w * cel->h * bpp));
                             s_skip(s, cel->w * cel->h * bpp);
                             break;
 
@@ -931,7 +1096,7 @@ ase_t* neko_aseprite_load_from_memory(const void* memory, int size) {
                             void* pixels_decompressed = neko_safe_malloc(pixels_sz);
                             int ret = s_inflate(pixels, deflate_bytes, pixels_decompressed, pixels_sz);
                             if (!ret) neko_log_warning(s_error_reason);
-                            cel->pixels = pixels_decompressed;
+                            cel->cel_pixels = pixels_decompressed;
                             s_skip(s, deflate_bytes);
                         } break;
                     }
@@ -957,7 +1122,7 @@ ase_t* neko_aseprite_load_from_memory(const void* memory, int size) {
                     ase->color_profile.use_fixed_gamma = (int)s_read_uint16(s) & 1;
                     ase->color_profile.gamma = s_read_fixed(s);
                     s_skip(s, 8);  // For future use (set to zero).
-                    if (ase->color_profile.type == ASE_COLOR_PROFILE_TYPE_EMBEDDED_ICC) {
+                    if (ase->color_profile.type == NEKO_ASE_COLOR_PROFILE_TYPE_EMBEDDED_ICC) {
                         // Use the embedded ICC profile.
                         ase->color_profile.icc_profile_data_length = s_read_uint32(s);
                         ase->color_profile.icc_profile_data = neko_safe_malloc(ase->color_profile.icc_profile_data_length);
@@ -1074,20 +1239,31 @@ ase_t* neko_aseprite_load_from_memory(const void* memory, int size) {
         }
     }
 
+    return ase;
+}
+
+void neko_aseprite_default_blend_bind(ase_t* ase) {
+
+    neko_assert(ase);
+    neko_assert(ase->frame_count);
+
     // 为了方便起见，将所有单元像素混合到各自的帧中
     for (int i = 0; i < ase->frame_count; ++i) {
         ase_frame_t* frame = ase->frames + i;
-        frame->pixels = (ase_color_t*)neko_safe_malloc((int)(sizeof(ase_color_t)) * ase->w * ase->h);
-        std::memset(frame->pixels, 0, sizeof(ase_color_t) * (size_t)ase->w * (size_t)ase->h);
-        ase_color_t* dst = frame->pixels;
-        for (int j = 0; j < frame->cel_count; ++j) {
+        frame->pixels[0] = (neko_color_t*)neko_safe_malloc((size_t)(sizeof(neko_color_t)) * ase->w * ase->h);
+        std::memset(frame->pixels[0], 0, sizeof(neko_color_t) * (size_t)ase->w * (size_t)ase->h);
+        neko_color_t* dst = frame->pixels[0];
+
+        neko_println_debug("frame: %d cel_count: %d", i, frame->cel_count);
+
+        for (int j = 0; j < frame->cel_count; ++j) {  //
+
             ase_cel_t* cel = frame->cels + j;
-            if (!(cel->layer->flags & ASE_LAYER_FLAGS_VISIBLE)) {
+
+            if (!(cel->layer->flags & NEKO_ASE_LAYER_FLAGS_VISIBLE) || (cel->layer->parent && !(cel->layer->parent->flags & NEKO_ASE_LAYER_FLAGS_VISIBLE))) {
                 continue;
             }
-            if (cel->layer->parent && !(cel->layer->parent->flags & ASE_LAYER_FLAGS_VISIBLE)) {
-                continue;
-            }
+
             while (cel->is_linked) {
                 ase_frame_t* frame = ase->frames + cel->linked_frame_index;
                 int found = 0;
@@ -1100,41 +1276,39 @@ ase_t* neko_aseprite_load_from_memory(const void* memory, int size) {
                 }
                 neko_assert(found);
             }
-            void* src = cel->pixels;
+            void* src = cel->cel_pixels;
             u8 opacity = (u8)(cel->opacity * cel->layer->opacity * 255.0f);
             int cx = cel->x;
             int cy = cel->y;
             int cw = cel->w;
             int ch = cel->h;
-            int cl = -s_min(cx, 0);
-            int ct = -s_min(cy, 0);
-            int dl = s_max(cx, 0);
-            int dt = s_max(cy, 0);
-            int dr = s_min(ase->w, cw + cx);
-            int db = s_min(ase->h, ch + cy);
+            int cl = -neko_min(cx, 0);
+            int ct = -neko_min(cy, 0);
+            int dl = neko_max(cx, 0);
+            int dt = neko_max(cy, 0);
+            int dr = neko_min(ase->w, cw + cx);
+            int db = neko_min(ase->h, ch + cy);
             int aw = ase->w;
             for (int dx = dl, sx = cl; dx < dr; dx++, sx++) {
                 for (int dy = dt, sy = ct; dy < db; dy++, sy++) {
                     int dst_index = aw * dy + dx;
-                    ase_color_t src_color = s_color(ase, src, cw * sy + sx);
-                    ase_color_t dst_color = dst[dst_index];
-                    ase_color_t result = s_blend(src_color, dst_color, opacity);
+                    neko_color_t src_color = s_color(ase, src, cw * sy + sx);
+                    neko_color_t dst_color = dst[dst_index];
+                    neko_color_t result = s_blend(src_color, dst_color, opacity);
                     dst[dst_index] = result;
                 }
             }
         }
     }
-
-    return ase;
 }
 
 void neko_aseprite_free(ase_t* ase) {
     for (int i = 0; i < ase->frame_count; ++i) {
         ase_frame_t* frame = ase->frames + i;
-        neko_safe_free(frame->pixels);
+        neko_safe_free(frame->pixels[0]);
         for (int j = 0; j < frame->cel_count; ++j) {
             ase_cel_t* cel = frame->cels + j;
-            neko_safe_free(cel->pixels);
+            neko_safe_free(cel->cel_pixels);
             neko_safe_free((void*)cel->udata.text);
         }
     }
@@ -1161,3 +1335,5 @@ void neko_aseprite_free(ase_t* ase) {
     neko_safe_free(ase->frames);
     neko_safe_free(ase);
 }
+
+#pragma endregion

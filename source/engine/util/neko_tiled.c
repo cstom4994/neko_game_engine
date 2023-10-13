@@ -119,7 +119,7 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
         const char *encoding = neko_xml_find_attribute(data_node, "encoding")->value.string;
 
         if (strcmp(encoding, "csv") != 0) {
-            neko_log_error("Only CSV data encoding is supported.");
+            neko_log_error("%s", "Only CSV data encoding is supported.");
             return;
         }
 
@@ -221,7 +221,7 @@ void neko_tiled_render_init(neko_command_buffer_t *cb, const char *vert_src, con
     renderer.ib = neko_graphics_index_buffer_create(&ib_decl);
 
     if (!vert_src || !frag_src) {
-        neko_log_error("Failed to load tiled renderer shaders.");
+        neko_log_error("%s", "Failed to load tiled renderer shaders.");
     }
 
     renderer.shader = neko_graphics_shader_create(&(neko_graphics_shader_desc_t){.sources =
@@ -232,7 +232,8 @@ void neko_tiled_render_init(neko_command_buffer_t *cb, const char *vert_src, con
                                                                                  .size = 2 * sizeof(neko_graphics_shader_source_desc_t),
                                                                                  .name = "tiled_sprite_shader"});
 
-    renderer.u_camera = neko_graphics_uniform_create(&(neko_graphics_uniform_desc_t){.name = "camera", .layout = &(neko_graphics_uniform_layout_desc_t){.type = NEKO_GRAPHICS_UNIFORM_MAT4}});
+    renderer.u_camera =
+            neko_graphics_uniform_create(&(neko_graphics_uniform_desc_t){.name = "tiled_sprite_camera", .layout = &(neko_graphics_uniform_layout_desc_t){.type = NEKO_GRAPHICS_UNIFORM_MAT4}});
 
     renderer.pip = neko_graphics_pipeline_create(
             &(neko_graphics_pipeline_desc_t){.raster = {.shader = renderer.shader, .index_buffer_element_size = sizeof(uint32_t)},
@@ -253,7 +254,13 @@ void neko_tiled_render_deinit(neko_command_buffer_t *cb) {
     // neko_command_buffer_free(cb);
 }
 
-void neko_tiled_render_begin() { renderer.quad_count = 0; }
+void neko_tiled_render_begin(neko_command_buffer_t *cb) {
+
+    // neko_graphics_clear_desc_t clear = {.actions = &(neko_graphics_clear_action_t){.color = {0.1f, 0.1f, 0.1f, 1.0f}}};
+    // neko_graphics_clear(cb, &clear);
+
+    renderer.quad_count = 0;
+}
 
 void neko_tiled_render_flush(neko_command_buffer_t *cb) {
     const neko_vec2 ws = neko_platform_window_sizev(neko_platform_main_window());
@@ -271,22 +278,24 @@ void neko_tiled_render_flush(neko_command_buffer_t *cb) {
                                                .size = (renderer.texture_count) * sizeof(neko_graphics_bind_image_buffer_desc_t)  //
                                        }};
 
-    for (u32 i = 0; i < renderer.texture_count; i++) {
+    for (s32 i = 0; i < renderer.texture_count; i++) {
         neko_graphics_uniform_desc_t u_desc = {
                 .layout = &(neko_graphics_uniform_layout_desc_t){.type = NEKO_GRAPHICS_UNIFORM_SAMPLER2D},
                 .stage = NEKO_GRAPHICS_SHADER_STAGE_FRAGMENT,
         };
-
         sprintf(u_desc.name, "textures[%d]", i);
+        neko_uniform_t new_uniform = neko_graphics_uniform_create(&u_desc);
 
         binds.image_buffers.desc[i] = (neko_graphics_bind_image_buffer_desc_t){renderer.textures[i], i, NEKO_GRAPHICS_ACCESS_READ_ONLY};
-        binds.uniforms.desc[1 + i] = (neko_graphics_bind_uniform_desc_t){.uniform = neko_graphics_uniform_create(&u_desc), .data = renderer.textures + i};
+        binds.uniforms.desc[1 + i] = (neko_graphics_bind_uniform_desc_t){.uniform = new_uniform, .data = renderer.textures + i};
     }
 
     neko_graphics_pipeline_bind(cb, renderer.pip);
     neko_graphics_apply_bindings(cb, &binds);
 
     neko_graphics_draw(cb, &(neko_graphics_draw_desc_t){.start = 0, .count = renderer.quad_count * IND_PER_QUAD});
+
+    neko_check_gl_error();
 
     renderer.quad_count = 0;
 }
@@ -308,6 +317,7 @@ void neko_tiled_render_push(neko_command_buffer_t *cb, neko_tiled_quad_t *quad) 
             }
         }
 
+        // 添加新Tiled贴图
         if (tex_id == -1) {
             renderer.textures[renderer.texture_count] = quad->texture;
             tex_id = renderer.texture_count++;
@@ -356,7 +366,7 @@ void neko_tiled_render_push(neko_command_buffer_t *cb, neko_tiled_quad_t *quad) 
 
     renderer.quad_count++;
 
-    if (renderer.quad_count >= 1000) {
+    if (renderer.quad_count >= BATCH_SIZE) {
         neko_tiled_render_flush(cb);
     }
 }

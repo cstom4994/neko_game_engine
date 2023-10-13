@@ -21,9 +21,6 @@
 // lua
 #include "engine/util/neko_lua.h"
 
-// binding
-#include "neko_binding_engine.h"
-
 struct lua_State;
 
 template <typename T>
@@ -118,7 +115,7 @@ neko_inline int add_package_path(lua_State *L, const std::string &str_) {
 
 #define FUTIL_ASSERT_EXIST(x)
 
-neko_string __neko_platform_get_path(const neko_string &path);
+neko_string __neko_game_get_path(const neko_string &path);
 
 // lua 面向对象模拟
 const neko_string neko_lua_src_object = R"lua(
@@ -182,16 +179,16 @@ void print_error(lua_State *state, int result) {
     if (result != 0) {
         switch (result) {
             case LUA_ERRRUN:
-                neko_log_error("Lua Runtime error");
+                neko_log_error("%s", "Lua Runtime error");
                 break;
             case LUA_ERRSYNTAX:
-                neko_log_error("Lua syntax error");
+                neko_log_error("%s", "Lua syntax error");
                 break;
             case LUA_ERRMEM:
-                neko_log_error("Lua was unable to allocate the required memory");
+                neko_log_error("%s", "Lua was unable to allocate the required memory");
                 break;
             case LUA_ERRFILE:
-                neko_log_error("Lua was unable to find boot file");
+                neko_log_error("%s", "Lua was unable to find boot file");
                 break;
             default:
                 neko_log_error("Unknown lua error: %d", result);
@@ -258,6 +255,8 @@ static void InitLua(neko_scripting *lc) {
 
 static void lua_reg_ecs(lua_State *L);
 
+static void neko_register(lua_State *L);
+
 static void lua_reg(lua_State *L) {
 
     lua_reg_ecs(L);
@@ -294,17 +293,17 @@ lua_State *neko_scripting_init() {
         neko_lua_wrap_run_string(L, std::format("package.path = "
                                                 "'{1}/?.lua;{0}/?.lua;{0}/libs/?.lua;{0}/libs/?/init.lua;{0}/libs/"
                                                 "?/?.lua;' .. package.path",
-                                                __neko_platform_get_path("data/scripts"), neko_fs_normalize_path(std::filesystem::current_path().string()).c_str()));
+                                                __neko_game_get_path("data/scripts"), neko_fs_normalize_path(std::filesystem::current_path().string()).c_str()));
 
         neko_lua_wrap_run_string(L, std::format("package.cpath = "
                                                 "'{1}/?.{2};{0}/?.{2};{0}/libs/?.{2};{0}/libs/?/init.{2};{0}/libs/"
                                                 "?/?.{2};' .. package.cpath",
-                                                __neko_platform_get_path("data/scripts"), neko_fs_normalize_path(std::filesystem::current_path().string()).c_str(), "dll"));
+                                                __neko_game_get_path("data/scripts"), neko_fs_normalize_path(std::filesystem::current_path().string()).c_str(), "dll"));
 
         // 面向对象基础
         neko_lua_wrap_run_string(L, neko_lua_src_object);
 
-        neko_lua_wrap_do_file(L, __neko_platform_get_path("data/scripts/init.lua"));
+        neko_lua_wrap_do_file(L, __neko_game_get_path("data/scripts/init.lua"));
 
     } catch (std::exception &ex) {
         neko_log_error("%s", ex.what());
@@ -354,5 +353,8 @@ static void lua_reg_ecs(lua_State *L) {
     //         .def(&neko_ecs_ent_get_version, "neko_ecs_ent_get_version")
     //         .def(&neko_ecs_ent_print, "neko_ecs_ent_print");
 }
+
+// binding
+#include "neko_binding_engine.h"
 
 #endif

@@ -33,6 +33,10 @@ struct neko_sprite {
     neko_texture_t img;
     s32 width;
     s32 height;
+
+#ifdef NEKO_DEBUG
+    u64 mem_used;
+#endif
 };
 
 bool neko_sprite_load(neko_sprite* spr, const neko_string& filepath);
@@ -72,18 +76,33 @@ void neko_particle_renderer_free(neko_particle_renderer* pr);
 void neko_particle_renderer_update(neko_particle_renderer* pr, int elapsed);
 void neko_particle_renderer_draw(neko_particle_renderer* pr, neko_command_buffer_t* cb, CTransform* trans);
 
+typedef struct neko_fast_sprite_renderer {
+    neko_handle(neko_graphics_vertex_buffer_t) vbo = {0};
+    neko_handle(neko_graphics_index_buffer_t) ibo = {0};
+    neko_handle(neko_graphics_pipeline_t) pip = {0};
+    neko_handle(neko_graphics_shader_t) shader = {0};
+    neko_handle(neko_graphics_uniform_t) u_tex = {0};
+    neko_handle(neko_graphics_texture_t) tex = {0};
+
+} neko_fast_sprite_renderer;
+
+void neko_neko_fast_sprite_renderer_construct(neko_fast_sprite_renderer* render, u32 width = 0, u32 height = 0, void* data = NULL);
+void neko_neko_fast_sprite_renderer_draw(neko_fast_sprite_renderer* render, neko_command_buffer_t* cb);
+
+#pragma region neko_ase
+
 typedef struct ase_t ase_t;
 
 ase_t* neko_aseprite_load_from_file(const char* path);
 ase_t* neko_aseprite_load_from_memory(const void* memory, int size);
 void neko_aseprite_free(ase_t* aseprite);
+void neko_aseprite_default_blend_bind(ase_t* aseprite);  // 默认图块混合管线
 
 #define __NEKO_ASEPRITE_MAX_LAYERS (64)
 #define __NEKO_ASEPRITE_MAX_SLICES (128)
 #define __NEKO_ASEPRITE_MAX_PALETTE_ENTRIES (1024)
 #define __NEKO_ASEPRITE_MAX_TAGS (256)
 
-typedef struct ase_color_t ase_color_t;
 typedef struct ase_frame_t ase_frame_t;
 typedef struct ase_layer_t ase_layer_t;
 typedef struct ase_cel_t ase_cel_t;
@@ -97,10 +116,6 @@ typedef struct ase_color_profile_t ase_color_profile_t;
 typedef struct ase_fixed_t ase_fixed_t;
 typedef struct ase_cel_extra_chunk_t ase_cel_extra_chunk_t;
 
-struct ase_color_t {
-    u8 r, g, b, a;
-};
-
 struct ase_fixed_t {
     u16 a;
     u16 b;
@@ -108,24 +123,25 @@ struct ase_fixed_t {
 
 struct ase_udata_t {
     int has_color;
-    ase_color_t color;
+    neko_color_t color;
     int has_text;
     const char* text;
 };
 
 typedef enum ase_layer_flags_t {
-    ASE_LAYER_FLAGS_VISIBLE = 0x01,
-    ASE_LAYER_FLAGS_EDITABLE = 0x02,
-    ASE_LAYER_FLAGS_LOCK_MOVEMENT = 0x04,
-    ASE_LAYER_FLAGS_BACKGROUND = 0x08,
-    ASE_LAYER_FLAGS_PREFER_LINKED_CELS = 0x10,
-    ASE_LAYER_FLAGS_COLLAPSED = 0x20,
-    ASE_LAYER_FLAGS_REFERENCE = 0x40,
+    NEKO_ASE_LAYER_FLAGS_VISIBLE = 0x01,
+    NEKO_ASE_LAYER_FLAGS_EDITABLE = 0x02,
+    NEKO_ASE_LAYER_FLAGS_LOCK_MOVEMENT = 0x04,
+    NEKO_ASE_LAYER_FLAGS_BACKGROUND = 0x08,
+    NEKO_ASE_LAYER_FLAGS_PREFER_LINKED_CELS = 0x10,
+    NEKO_ASE_LAYER_FLAGS_COLLAPSED = 0x20,
+    NEKO_ASE_LAYER_FLAGS_REFERENCE = 0x40,
 } ase_layer_flags_t;
 
 typedef enum ase_layer_type_t {
-    ASE_LAYER_TYPE_NORMAL,
-    ASE_LAYER_TYPE_GROUP,
+    NEKO_ASE_LAYER_TYPE_NORMAL,
+    NEKO_ASE_LAYER_TYPE_GROUP,
+    NEKO_ASE_LAYER_TYPE_TILEMAP,
 } ase_layer_type_t;
 
 struct ase_layer_t {
@@ -146,7 +162,7 @@ struct ase_cel_extra_chunk_t {
 
 struct ase_cel_t {
     ase_layer_t* layer;
-    void* pixels;
+    void* cel_pixels;  // 图块的pixels数据是唯一的
     int w, h;
     int x, y;
     float opacity;
@@ -160,15 +176,16 @@ struct ase_cel_t {
 struct ase_frame_t {
     ase_t* ase;
     int duration_milliseconds;
-    ase_color_t* pixels;
+    int pixel_count;
+    neko_color_t* pixels[__NEKO_ASEPRITE_MAX_LAYERS];  // 支持每层一个pixels数据
     int cel_count;
     ase_cel_t cels[__NEKO_ASEPRITE_MAX_LAYERS];
 };
 
 typedef enum ase_animation_direction_t {
-    ASE_ANIMATION_DIRECTION_FORWARDS,
-    ASE_ANIMATION_DIRECTION_BACKWORDS,
-    ASE_ANIMATION_DIRECTION_PINGPONG,
+    NEKO_ASE_ANIMATION_DIRECTION_FORWARDS,
+    NEKO_ASE_ANIMATION_DIRECTION_BACKWORDS,
+    NEKO_ASE_ANIMATION_DIRECTION_PINGPONG,
 } ase_animation_direction_t;
 
 struct ase_tag_t {
@@ -201,7 +218,7 @@ struct ase_slice_t {
 };
 
 struct ase_palette_entry_t {
-    ase_color_t color;
+    neko_color_t color;
     const char* color_name;
 };
 
@@ -211,9 +228,9 @@ struct ase_palette_t {
 };
 
 typedef enum ase_color_profile_type_t {
-    ASE_COLOR_PROFILE_TYPE_NONE,
-    ASE_COLOR_PROFILE_TYPE_SRGB,
-    ASE_COLOR_PROFILE_TYPE_EMBEDDED_ICC,
+    NEKO_ASE_COLOR_PROFILE_TYPE_NONE,
+    NEKO_ASE_COLOR_PROFILE_TYPE_SRGB,
+    NEKO_ASE_COLOR_PROFILE_TYPE_EMBEDDED_ICC,
 } ase_color_profile_type_t;
 
 struct ase_color_profile_t {
@@ -224,7 +241,7 @@ struct ase_color_profile_t {
     void* icc_profile_data;
 };
 
-typedef enum ase_mode_t { ASE_MODE_RGBA, ASE_MODE_GRAYSCALE, ASE_MODE_INDEXED } ase_mode_t;
+typedef enum ase_mode_t { NEKO_ASE_MODE_RGBA, NEKO_ASE_MODE_GRAYSCALE, NEKO_ASE_MODE_INDEXED } ase_mode_t;
 
 struct ase_t {
     ase_mode_t mode;
@@ -253,5 +270,48 @@ struct ase_t {
     int slice_count;
     ase_slice_t slices[__NEKO_ASEPRITE_MAX_SLICES];
 };
+
+neko_inline int s_mul_un8(int a, int b) {
+    int t = (a * b) + 0x80;
+    return (((t >> 8) + t) >> 8);
+}
+
+neko_inline neko_color_t s_blend(neko_color_t src, neko_color_t dst, u8 opacity) {
+    src.a = (u8)s_mul_un8(src.a, opacity);
+    int a = src.a + dst.a - s_mul_un8(src.a, dst.a);
+    int r, g, b;
+    if (a == 0) {
+        r = g = b = 0;
+    } else {
+        r = dst.r + (src.r - dst.r) * src.a / a;
+        g = dst.g + (src.g - dst.g) * src.a / a;
+        b = dst.b + (src.b - dst.b) * src.a / a;
+    }
+    neko_color_t ret = {(u8)r, (u8)g, (u8)b, (u8)a};
+    return ret;
+}
+
+neko_inline neko_color_t s_color(ase_t* ase, void* src, int index) {
+    neko_color_t result;
+    if (ase->mode == NEKO_ASE_MODE_RGBA) {
+        result = ((neko_color_t*)src)[index];
+    } else if (ase->mode == NEKO_ASE_MODE_GRAYSCALE) {
+        u8 saturation = ((u8*)src)[index * 2];
+        u8 a = ((u8*)src)[index * 2 + 1];
+        result.r = result.g = result.b = saturation;
+        result.a = a;
+    } else {
+        neko_assert(ase->mode == NEKO_ASE_MODE_INDEXED);
+        u8 palette_index = ((u8*)src)[index];
+        if (palette_index == ase->transparent_palette_entry_index) {
+            result = {0, 0, 0, 0};
+        } else {
+            result = ase->palette.entries[palette_index].color;
+        }
+    }
+    return result;
+}
+
+#pragma endregion
 
 #endif

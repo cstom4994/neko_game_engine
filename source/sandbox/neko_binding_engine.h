@@ -490,6 +490,8 @@ static int __neko_ls(lua_State* L) {
     return 1;
 }
 
+static bool __neko_dolua(const_str file) { return neko_lua_wrap_do_file(g_lua_bind, __neko_game_get_path(file)); }
+
 // static void __neko_add_packagepath(const char* p) { neko_sc()->add_package_path(p); }
 
 neko_inline void neko_register_common(lua_State* L) {
@@ -500,7 +502,9 @@ neko_inline void neko_register_common(lua_State* L) {
             .def(&__neko_lua_error, "log_error")
             .def(&__neko_lua_warn, "log_warn")
             .def(&__neko_lua_info, "log_info")
-            .def(&neko_rand_xorshf32, "neko_rand");
+            .def(&neko_rand_xorshf32, "neko_rand")
+            .def(&__neko_dolua, "neko_dolua");
+
     //.def(&__neko_add_packagepath, "add_packagepath")
     //.def(+[]() -> bool { return (bool)neko_is_debug(); }, "neko_is_debug");
 
@@ -508,6 +512,9 @@ neko_inline void neko_register_common(lua_State* L) {
     // neko_lua_auto_struct_member(L, neko_application_desc_t, window_title, const char*);
     // neko_lua_auto_struct_member(L, neko_application_desc_t, window_width, unsigned int);
     // neko_lua_auto_struct_member(L, neko_application_desc_t, window_height, unsigned int);
+
+    lua_pushstring(L, __neko_game_get_path("data").c_str());
+    lua_setglobal(L, "neko_game_data_path");
 
     neko_lua_auto_struct(L, neko_vec2);
     neko_lua_auto_struct_member(L, neko_vec2, x, f32);

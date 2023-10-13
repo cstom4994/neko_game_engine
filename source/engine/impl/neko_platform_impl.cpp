@@ -21,6 +21,8 @@
 #ifndef NEKO_PLATFORM_IMPL_H
 #define NEKO_PLATFORM_IMPL_H
 
+#include "libs/glad/glad.h"
+
 /*=================================
 // Default Platform Implemenattion
 =================================*/
@@ -565,7 +567,7 @@ char* neko_platform_read_file_contents_default_impl(const char* file_path, const
     size_t read_sz = 0;
     if (fp) {
         read_sz = neko_platform_file_size_in_bytes(file_path);
-        buffer = (char*)neko_malloc(read_sz + 1);
+        buffer = (char*)neko_safe_malloc(read_sz + 1);
         if (buffer) {
             size_t _r = fread(buffer, 1, read_sz, fp);
         }
@@ -920,7 +922,7 @@ void neko_platform_init(neko_platform_t* pf) {
     for (u32 i = 0; i < NEKO_PLATFORM_GAMEPAD_MAX; ++i) {
         pf->input.gamepads[i].present = glfwJoystickPresent(GLFW_JOYSTICK_1 + i);
         if (pf->input.gamepads[i].present) {
-            neko_log_success("Controller %d connected.", i);
+            neko_log_trace("Controller %d connected.", i);
         }
     }
 }
@@ -941,6 +943,18 @@ neko_platform_meminfo_t glfw_platform_get_meminfo() {
     } else {
     }
 #endif
+
+#define GL_GPU_MEM_INFO_TOTAL_AVAILABLE_MEM_NVX 0x9048
+#define GL_GPU_MEM_INFO_CURRENT_AVAILABLE_MEM_NVX 0x9049
+
+    GLint total_mem_kb = 0;
+    glGetIntegerv(GL_GPU_MEM_INFO_TOTAL_AVAILABLE_MEM_NVX, &total_mem_kb);
+
+    GLint cur_avail_mem_kb = 0;
+    glGetIntegerv(GL_GPU_MEM_INFO_CURRENT_AVAILABLE_MEM_NVX, &cur_avail_mem_kb);
+
+    meminfo.gpu_memory_used = total_mem_kb - cur_avail_mem_kb;
+    meminfo.gpu_total_memory = cur_avail_mem_kb;
 
     return meminfo;
 }
@@ -963,7 +977,17 @@ void* glfw_get_sys_handle() {
 
 void* neko_platform_get_sys_handle() { return glfw_get_sys_handle(); }
 neko_platform_meminfo_t neko_platform_get_meminfo() { return glfw_platform_get_meminfo(); }
-neko_vec2 neko_platform_get_opengl_ver() { return glfw_get_opengl_version(); }
+neko_vec2 neko_platform_opengl_ver() { return glfw_get_opengl_version(); }
+
+void neko_platform_msgbox(const_str msg) {
+#ifdef NEKO_PLATFORM_WIN
+
+    MessageBoxA((HWND)glfw_get_sys_handle(), msg, "Neko Error", MB_OK | MB_SETFOREGROUND | MB_ICONSTOP);
+
+#else  // TODO: wasm
+    Android_MessageBox("Neko Error", x);
+#endif
+}
 
 NEKO_API_DECL void neko_platform_update_internal(neko_platform_t* platform) {
     neko_platform_input_t* input = &platform->input;
@@ -2208,6 +2232,19 @@ void __glfw_mouse_cursor_position_callback(GLFWwindow* window, f64 x, f64 y) {
     neko_platform_add_event(&neko_evt);
 }
 
+// GLFW窗口焦点回调函数
+void __glfw_window_focus_callback(GLFWwindow* window, int focused) {
+
+    neko_platform_t* platform = neko_instance()->ctx.platform;
+    neko_platform_window_t* win = (neko_slot_array_getp(platform->windows, neko_platform_main_window()));
+
+    if (focused == GLFW_TRUE) {
+        win->focus = true;
+    } else {
+        win->focus = false;
+    }
+}
+
 void __glfw_mouse_scroll_wheel_callback(GLFWwindow* window, f64 x, f64 y) {
     neko_platform_t* platform = neko_subsystem(platform);
     platform->input.mouse.wheel = neko_v2((f32)x, (f32)y);
@@ -2302,6 +2339,8 @@ NEKO_API_DECL neko_platform_window_t neko_platform_window_create_internal(const 
     // Set multi-samples
     if (desc->num_samples) {
         glfwWindowHint(GLFW_SAMPLES, desc->num_samples);
+    } else {
+        glfwWindowHint(GLFW_SAMPLES, 0);
     }
 
     // Get monitor if fullscreen
@@ -2316,7 +2355,7 @@ NEKO_API_DECL neko_platform_window_t neko_platform_window_create_internal(const 
 
     GLFWwindow* window = glfwCreateWindow(desc->width, desc->height, desc->title, monitor, NULL);
     if (window == NULL) {
-        neko_log_error("Failed to create window.");
+        neko_log_error("%s", "Failed to create window.");
         glfwTerminate();
         return win;
     }
@@ -2325,12 +2364,14 @@ NEKO_API_DECL neko_platform_window_t neko_platform_window_create_internal(const 
 
     // Callbacks for window
     glfwMakeContextCurrent(window);
+
     glfwSetKeyCallback(window, &__glfw_key_callback);
     glfwSetCharCallback(window, &__glfw_char_callback);
     glfwSetMouseButtonCallback(window, &__glfw_mouse_button_callback);
     glfwSetCursorEnterCallback(window, &__glfw_mouse_cursor_enter_callback);
     glfwSetCursorPosCallback(window, &__glfw_mouse_cursor_position_callback);
     glfwSetScrollCallback(window, &__glfw_mouse_scroll_wheel_callback);
+    glfwSetWindowFocusCallback(window, &__glfw_window_focus_callback);
 
     // Cache all necessary window information
     s32 wx = 0, wy = 0, fx = 0, fy = 0, wpx = 0, wpy = 0;
@@ -2340,6 +2381,7 @@ NEKO_API_DECL neko_platform_window_t neko_platform_window_create_internal(const 
     win.window_size = neko_v2((float)wx, (float)wy);
     win.window_position = neko_v2((float)wpx, (float)wpy);
     win.framebuffer_size = neko_v2((float)fx, (float)fy);
+    win.focus = true;
 
     // Need to make sure this is ONLY done once.
     if (neko_slot_array_empty(neko_subsystem(platform)->windows)) {
@@ -2640,7 +2682,10 @@ void __neko_initialize_symbol_handler() {
 }
 
 // 打印函数调用栈信息 包括函数名和源码文件名
-void __neko_print_stacktrace() {
+const_str __neko_inter_stacktrace() {
+
+    static char trace_info[4096];
+
     void* stack[MAX_STACK_DEPTH];
     USHORT frames = CaptureStackBackTrace(0, MAX_STACK_DEPTH, stack, NULL);
 
@@ -2657,20 +2702,31 @@ void __neko_print_stacktrace() {
         IMAGEHLP_LINE64 lineInfo;
         lineInfo.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
         DWORD displacement;
+
+        bool is_main = !strcmp(symbol->Name, "main");
+
+        char trace_tmp[512];
         if (SymGetLineFromAddr64(GetCurrentProcess(), address, &displacement, &lineInfo)) {
-            printf("#%u %s - File: %s, Line: %u\n", i, symbol->Name, lineInfo.FileName, lineInfo.LineNumber);
+            neko_snprintf(trace_tmp, 512, "#%u %s - File: %s, Line: %u\n", i, symbol->Name, lineInfo.FileName, lineInfo.LineNumber);
         } else {
-            printf("#%u %s - Source information not available\n", i, symbol->Name);
+            neko_snprintf(trace_tmp, 512, "#%u %s - Source information not available\n", i, symbol->Name);
         }
 
+        strcat(trace_info, trace_tmp);
+        neko_printf("%s", trace_tmp);
+
         free(symbol);
+
+        if (is_main) break;
     }
+
+    return trace_info;
 }
 
 #else
 
 void __neko_initialize_symbol_handler() {}
-void __neko_print_stacktrace() {}
+void __neko_inter_stacktrace() {}
 
 #endif
 
@@ -3857,7 +3913,7 @@ NEKO_API_DECL u32 neko_platform_framebuffer_height(u32 handle) {
 }
 
 void __neko_initialize_symbol_handler() {}
-void __neko_print_stacktrace() {}
+void __neko_inter_stacktrace() {}
 
 #ifndef NEKO_NO_HIJACK_MAIN
 s32 main(s32 argc, char** argv) {

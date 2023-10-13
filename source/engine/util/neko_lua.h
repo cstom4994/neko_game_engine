@@ -4,7 +4,7 @@
 
 #include "engine/neko.h"
 
-#ifdef neko_cpp_src
+#ifdef NEKO_CPP_SRC
 extern "C" {
 #include "libs/lua/lauxlib.h"
 #include "libs/lua/lua.h"
@@ -495,6 +495,12 @@ void neko_lua_auto_function_register_type(lua_State *L, void *src_func, neko_lua
 
 #pragma endregion LuaA
 
+#define neko_lua_register(FUNCTIONS)                                \
+    for (unsigned i = 0; i < neko_array_size(FUNCTIONS) - 1; ++i) { \
+        lua_pushcfunction(L, FUNCTIONS[i].func);                    \
+        lua_setglobal(L, FUNCTIONS[i].name);                        \
+    }
+
 NEKO_API_DECL void neko_lua_debug_setup(lua_State *lua, const char *name, const char *globalName, lua_CFunction readFunc, lua_CFunction writeFunc);
 NEKO_API_DECL int neko_lua_debug_pcall(lua_State *lua, int nargs, int nresults, int msgh);
 
@@ -509,7 +515,7 @@ NEKO_API_DECL int luaopen_cstruct_core(lua_State *L);
 NEKO_API_DECL int luaopen_cstruct_test(lua_State *L);
 NEKO_API_DECL int luaopen_datalist(lua_State *L);
 
-#ifdef neko_cpp_src
+#ifdef NEKO_CPP_SRC
 
 #include <cstdlib>
 #include <cstring>

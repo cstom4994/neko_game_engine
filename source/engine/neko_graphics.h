@@ -6,9 +6,62 @@
 #include "engine/neko.h"
 #include "engine/neko_containers.h"
 
+// OpenGL
+#include "libs/glad/glad.h"
+
 /*=============================
 // NEKO_GRAPHICS
 =============================*/
+
+NEKO_API_DECL neko_inline const char* __neko_gl_error_string(GLenum const err) {
+    switch (err) {
+        // opengl 2 errors (8)
+        case GL_NO_ERROR:
+            return "GL_NO_ERROR";
+
+        case GL_INVALID_ENUM:
+            return "GL_INVALID_ENUM";
+
+        case GL_INVALID_VALUE:
+            return "GL_INVALID_VALUE";
+
+        case GL_INVALID_OPERATION:
+            return "GL_INVALID_OPERATION";
+
+        case GL_STACK_OVERFLOW:
+            return "GL_STACK_OVERFLOW";
+
+        case GL_STACK_UNDERFLOW:
+            return "GL_STACK_UNDERFLOW";
+
+        case GL_OUT_OF_MEMORY:
+            return "GL_OUT_OF_MEMORY";
+
+        // case GL_TABLE_TOO_LARGE:
+        //     return "GL_TABLE_TOO_LARGE";
+
+        // opengl 3 errors (1)
+        case GL_INVALID_FRAMEBUFFER_OPERATION:
+            return "GL_INVALID_FRAMEBUFFER_OPERATION";
+
+        // gles 2, 3 and gl 4 error are handled by the switch above
+        default:
+            return "unknown error";
+    }
+}
+
+NEKO_API_DECL neko_inline void __neko_check_gl_error(const char* file, const int line) {
+    GLenum err;
+    static GLenum last_err = -1;
+    while ((err = glGetError()) != GL_NO_ERROR) {
+        if (last_err != err) {
+            last_err = err;
+            neko_log_warning("gl: %s(%s) %s", file, line, __neko_gl_error_string(err));
+        }
+    }
+}
+
+#define neko_check_gl_error() __neko_check_gl_error(__FILE__, __LINE__)
 
 // OpenGL
 #define __neko_gl_state_backup()                                                \
@@ -503,6 +556,8 @@ neko_inline neko_handle(neko_graphics_renderpass_t) __neko_renderpass_default_im
 #define NEKO_GRAPHICS_RENDER_PASS_DEFAULT __neko_renderpass_default_impl()
 
 typedef struct neko_graphics_info_t {
+    const_str version;
+    const_str vendor;
     u32 major_version;
     u32 minor_version;
     u32 max_texture_units;

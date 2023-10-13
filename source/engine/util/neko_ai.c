@@ -65,7 +65,7 @@ NEKO_API_DECL neko_ai_bt_node_t* neko_ai_bt_node_next(struct neko_ai_bt_t* ctx) 
 
         // If we're concerned about max children, make sure we haven't passed it
         if (parent->max_children && parent->num_children > parent->max_children) {
-            neko_log_error("Attempting to add more children than max allows.");
+            neko_log_error("%s", "Attempting to add more children than max allows.");
         }
     }
 

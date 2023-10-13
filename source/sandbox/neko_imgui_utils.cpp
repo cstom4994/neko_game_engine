@@ -128,15 +128,3 @@ u32 neko_draw_darken_color(u32 color, float brightness) {
 void neko_draw_text(std::string text, neko_color_t col, int x, int y, bool outline, neko_color_t outline_col) {}
 
 }  // namespace neko
-
-namespace neko {
-
-neko_global std::size_t g_imgui_mem_usage = 0;
-
-neko_private(void*) __neko_imgui_malloc(size_t sz) { return __neko_mem_safe_alloc((sz), (char*)__FILE__, __LINE__, &g_imgui_mem_usage); }
-
-neko_private(void) __neko_imgui_free(void* ptr) { __neko_mem_safe_free(ptr, &g_imgui_mem_usage); }
-
-std::size_t __neko_imgui_meminuse() { return g_imgui_mem_usage; }
-
-}  // namespace neko

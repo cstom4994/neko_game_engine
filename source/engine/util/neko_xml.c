@@ -306,7 +306,7 @@ static neko_dyn_array(neko_xml_node_t) neko_xml_parse_block(const_str start, u32
 
 neko_xml_document_t* neko_xml_parse_file(const_str path) {
     size_t size;
-    char* source = neko_read_file_contents_into_string_null_term(path, "r", &size);
+    char* source = neko_read_file_contents(path, "r", &size);
 
     if (!source) {
         neko_xml_emit_error("Failed to load xml file!");

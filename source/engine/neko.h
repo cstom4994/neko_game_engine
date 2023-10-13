@@ -78,7 +78,7 @@
 #else
 #ifdef __cplusplus
 #define NEKO_API_EXTERN extern "C"
-#define neko_cpp_src
+#define NEKO_CPP_SRC
 #else
 #define NEKO_API_EXTERN extern
 #endif
@@ -129,16 +129,20 @@
 
 #endif
 
+#if defined(DEBUG) || defined(_DEBUG)
+#define NEKO_DEBUG
+#endif
+
 /*============================================================
 // C primitive types
 ============================================================*/
 
-#ifndef neko_cpp_src
+#ifndef NEKO_CPP_SRC
 #define false 0
 #define true 1
 #endif
 
-#ifdef neko_cpp_src
+#ifdef NEKO_CPP_SRC
 typedef bool b8;
 #else
 #ifndef __bool_true_false_are_defined
@@ -209,7 +213,7 @@ enum neko_type_kind {
         }                                                                                                              \
     } while (0)
 
-#if defined(__cplusplus)
+#if defined(NEKO_CPP_SRC)
 #define neko_default_val() \
     {}
 #else
@@ -286,15 +290,23 @@ enum neko_type_kind {
         }                         \
     } while (0)
 
-// Logging
+#define neko_expect(x)                                                   \
+    do {                                                                 \
+        if (!(x)) {                                                      \
+            neko_log_error("Unexpect error: assertion '%s' failed", #x); \
+            abort();                                                     \
+        }                                                                \
+    } while (0)
 
+// Logging
 #define neko_log_info(...) log_info(__VA_ARGS__)
-#define neko_log_success(...) log_trace(__VA_ARGS__)
+#define neko_log_trace(...) log_trace(__VA_ARGS__)
 #define neko_log_warning(...) log_warn(__VA_ARGS__)
-#define neko_log_error(MESSAGE, ...)                                                                   \
-    do {                                                                                               \
-        neko_println("ERROR::%s::%s(%zu)::" MESSAGE, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__); \
-        neko_assert(false);                                                                            \
+#define neko_log_error(msg, ...)                                            \
+    do {                                                                    \
+        char tmp[512];                                                      \
+        neko_snprintf(tmp, 512, msg, __VA_ARGS__);                          \
+        log_error("%s (%s:%s:%zu)", tmp, __FILE__, __FUNCTION__, __LINE__); \
     } while (0)
 
 #define neko_enum_flag_operator(T)                                                                                                                                         \
@@ -354,13 +366,49 @@ const char* u8Cpp20(T&& t) noexcept {
 
 #define _base(base_type) base_type _base
 
-#ifdef neko_cpp_src
+#ifdef NEKO_CPP_SRC
 
 #include <functional>
 #include <memory>
 #include <string>
 #include <string_view>
 #include <vector>
+
+#define neko_va_count(...) detail::va_count(__VA_ARGS__)
+
+namespace detail {
+template <typename... Args>
+constexpr std::size_t va_count(Args&&...) {
+    return sizeof...(Args);
+}
+}  // namespace detail
+
+#define neko_macro_overload(fun, a, ...)                                               \
+    do {                                                                               \
+        if (const bool a_ = (a); a_)                                                   \
+            [&](auto&&... args) {                                                      \
+                const auto t = std::make_tuple(std::forward<decltype(args)>(args)...); \
+                constexpr auto N = std::tuple_size<decltype(t)>::value;                \
+                                                                                       \
+                if constexpr (N == 0) {                                                \
+                    fun(a_);                                                           \
+                } else {                                                               \
+                    fun(a_, __VA_ARGS__);                                              \
+                }                                                                      \
+            }(__VA_ARGS__);                                                            \
+    } while (0)
+
+#define neko_c_ref(T, ...)                                                                                       \
+    [&]() -> T* {                                                                                                \
+        static T neko_macro_cat(__neko_gen_, neko_macro_cat(T, neko_macro_cat(_cref_, __LINE__))) = __VA_ARGS__; \
+        return &neko_macro_cat(__neko_gen_, neko_macro_cat(T, neko_macro_cat(_cref_, __LINE__)));                \
+    }()
+
+#define neko_arr_ref(T, ...)                                                                                                            \
+    [&]() -> T* {                                                                                                                       \
+        static T neko_macro_cat(neko_macro_cat(__neko_gen_, neko_macro_cat(T, neko_macro_cat(_arr_ref_, __LINE__))), []) = __VA_ARGS__; \
+        return neko_macro_cat(__neko_gen_, neko_macro_cat(T, neko_macro_cat(_arr_ref_, __LINE__)));                                     \
+    }()
 
 #ifndef neko_check_is_trivial
 #define neko_check_is_trivial(type, err) static_assert(std::is_trivial<type>::value, err)
@@ -459,7 +507,7 @@ struct neko_named_func {
 
 }  // namespace neko
 
-#endif  // neko_cpp_src
+#endif  // NEKO_CPP_SRC
 
 #pragma region neko_mem
 
@@ -517,7 +565,7 @@ NEKO_API_DECL void* __neko_mem_safe_realloc(void* ptr, size_t new_size, const ch
 
 #endif
 
-#ifdef neko_cpp_src
+#ifdef NEKO_CPP_SRC
 
 // 单纯用来测试的 new 和 delete
 // 不用于开发目的
@@ -918,7 +966,7 @@ neko_force_inline b32 neko_util_str_is_numeric(const char* str) {
 }
 
 // Will return a null buffer if file does not exist or allocation fails
-NEKO_API_DECL char* neko_read_file_contents_into_string_null_term(const char* file_path, const char* mode, size_t* _sz);
+NEKO_API_DECL char* neko_read_file_contents(const char* file_path, const char* mode, size_t* _sz);
 
 neko_force_inline b32 neko_util_file_exists(const char* file_path) {
     FILE* fp = fopen(file_path, "r");
@@ -1073,6 +1121,12 @@ neko_force_inline void neko_printf(const char* fmt, ...) {
         neko_printf(__FMT, ##__VA_ARGS__); \
         neko_printf("\n");                 \
     } while (0)
+
+#ifdef NEKO_DEBUG
+#define neko_println_debug(...) neko_println(__VA_ARGS__)
+#else
+#define neko_println_debug(...)
+#endif
 
 #ifndef neko_fprintf
 neko_force_inline void neko_fprintf(FILE* fp, const char* fmt, ...) {
@@ -1442,7 +1496,7 @@ neko_inline const_str neko_fs_get_filename(const_str path) {
     return path;
 }
 
-#ifdef neko_cpp_src
+#ifdef NEKO_CPP_SRC
 
 #include <algorithm>
 #include <chrono>
@@ -1570,7 +1624,7 @@ neko_inline void neko_tex_flip_vertically(int width, int height, u8* data) {
     }
 }
 
-#endif  // neko_cpp_src
+#endif  // NEKO_CPP_SRC
 
 /*================================================================================
 // Random
@@ -1854,7 +1908,415 @@ NEKO_API_DECL void neko_lexer_c_eat_white_space(neko_lexer_t* lex);
 NEKO_API_DECL neko_token_t neko_lexer_c_next_token(neko_lexer_t* lex);
 NEKO_API_DECL void neko_lexer_set_token(neko_lexer_t* lex, neko_token_t token);
 
-#ifdef neko_cpp_src
+NEKO_API_DECL const_str neko_enum_name_cstr();
+
+#pragma region neko_ecs
+
+typedef u64 neko_ecs_ent;
+typedef u32 neko_ecs_component_type;
+
+#define neko_ecs_decl_mask(name, ctypes_count, ...)                    \
+    neko_ecs_component_type name##_MASK[ctypes_count] = {__VA_ARGS__}; \
+    u32 name##_MASK_COUNT = ctypes_count
+
+#define neko_ecs_get_mask(name) name##_MASK_COUNT, name##_MASK
+
+#define __neko_ecs_ent_id(index, ver) (((u64)ver << 32) | index)
+#define __neko_ecs_ent_index(id) ((u32)id)
+#define __neko_ecs_ent_ver(id) ((u32)(id >> 32))
+
+typedef void (*neko_ecs_system_func)(struct neko_ecs* ecs);
+typedef void (*neko_ecs_component_destroy)(void* data);
+
+typedef enum { ECS_SYSTEM_UPDATE, ECS_SYSTEM_RENDER_IMMEDIATE } neko_ecs_system_type;
+
+typedef struct neko_ecs_stack {
+    u32* data;
+    u64 capacity;
+    u64 top;
+    b32 empty;
+} neko_ecs_stack;
+
+typedef struct neko_ecs_component_pool {
+    void* data;
+    u32 count;
+    u32 size;
+
+    neko_ecs_component_destroy destroy_func;
+
+    neko_ecs_stack* indexes;
+
+} neko_ecs_component_pool;
+
+typedef struct neko_ecs_system {
+    neko_ecs_system_func func;
+    neko_ecs_system_type type;
+} neko_ecs_system;
+
+typedef struct neko_ecs {
+    u32 max_entities;
+    u32 component_count;
+    u32 system_count;
+
+    neko_ecs_stack* indexes;
+
+    // max_index 用来优化
+    u32 max_index;
+    u32* versions;
+
+    // components 是组件的索引
+    // 最大值为 (实体数 * component_count)
+    // 索引通过 (index * comp_count + comp_type) 实现
+    // component_masks 的工作原理相同 只是检查 mask 是否启用
+    u32* components;
+    b32* component_masks;
+
+    neko_ecs_component_pool* pool;
+
+    neko_ecs_system* systems;
+    u32 systems_top;
+
+    // 额外数据
+    void* user_data;
+} neko_ecs;
+
+NEKO_API_DECL neko_ecs* neko_ecs_make(u32 max_entities, u32 component_count, u32 system_count);
+NEKO_API_DECL void neko_ecs_destroy(neko_ecs* ecs);
+NEKO_API_DECL void neko_ecs_register_component(neko_ecs* ecs, neko_ecs_component_type component_type, u32 count, u32 size, neko_ecs_component_destroy destroy_func);
+NEKO_API_DECL void neko_ecs_register_system(neko_ecs* ecs, neko_ecs_system_func func, neko_ecs_system_type type);
+NEKO_API_DECL void neko_ecs_run_systems(neko_ecs* ecs, neko_ecs_system_type type);
+NEKO_API_DECL void neko_ecs_run_system(neko_ecs* ecs, u32 system_index);
+NEKO_API_DECL u32 neko_ecs_for_count(neko_ecs* ecs);
+NEKO_API_DECL neko_ecs_ent neko_ecs_get_ent(neko_ecs* ecs, u32 index);
+NEKO_API_DECL neko_ecs_ent neko_ecs_ent_make(neko_ecs* ecs);
+NEKO_API_DECL void neko_ecs_ent_destroy(neko_ecs* ecs, neko_ecs_ent e);
+NEKO_API_DECL void neko_ecs_ent_add_component(neko_ecs* ecs, neko_ecs_ent e, neko_ecs_component_type type, void* component_data);
+NEKO_API_DECL void neko_ecs_ent_remove_component(neko_ecs* ecs, neko_ecs_ent e, neko_ecs_component_type type);
+NEKO_API_DECL void* neko_ecs_ent_get_component(neko_ecs* ecs, neko_ecs_ent e, neko_ecs_component_type type);
+NEKO_API_DECL b32 neko_ecs_ent_has_component(neko_ecs* ecs, neko_ecs_ent e, neko_ecs_component_type component_type);
+NEKO_API_DECL b32 neko_ecs_ent_has_mask(neko_ecs* ecs, neko_ecs_ent e, u32 component_type_count, neko_ecs_component_type component_types[]);
+NEKO_API_DECL b32 neko_ecs_ent_is_valid(neko_ecs* ecs, neko_ecs_ent e);
+NEKO_API_DECL u32 neko_ecs_ent_get_version(neko_ecs* ecs, neko_ecs_ent e);
+NEKO_API_DECL void neko_ecs_ent_print(neko_ecs* ecs, neko_ecs_ent e);
+
+#pragma endregion
+
+#if !defined(NEKO_PROP) && defined(NEKO_CPP_SRC)
+#define NEKO_PROP
+
+#include <string_view>
+
+//
+// Type names
+//
+
+template <typename T>
+constexpr std::string_view getTypeName() {
+    constexpr auto prefixLength = 36, suffixLength = 1;
+    const char* data = __FUNCSIG__;
+    auto end = data;
+    while (*end) {
+        ++end;
+    }
+    return {data + prefixLength, size_t(end - data - prefixLength - suffixLength)};
+}
+
+//
+// Component types list
+//
+
+template <int N>
+struct neko_prop_component_type_counter : neko_prop_component_type_counter<N - 1> {
+    static constexpr auto num = N;
+};
+template <>
+struct neko_prop_component_type_counter<0> {
+    static constexpr auto num = 0;
+};
+neko_prop_component_type_counter<0> numComponentTypes(neko_prop_component_type_counter<0>);
+
+template <int I>
+struct neko_prop_component_typelist;
+template <>
+struct neko_prop_component_typelist<0> {
+    static void each(auto&& f) {}
+};
+
+inline constexpr auto maxNumComponentTypes = 32;
+
+template <typename T>
+inline constexpr auto isComponentType = false;
+
+#define ComponentTypeListAdd(T)                                                                                                                       \
+    template <>                                                                                                                                       \
+    inline constexpr auto isComponentType<T> = true;                                                                                                  \
+    constexpr auto ComponentTypeList_##T##_Size = decltype(numComponentTypes(neko_prop_component_type_counter<maxNumComponentTypes>()))::num + 1;     \
+    static_assert(ComponentTypeList_##T##_Size < maxNumComponentTypes);                                                                               \
+    neko_prop_component_type_counter<ComponentTypeList_##T##_Size> numComponentTypes(neko_prop_component_type_counter<ComponentTypeList_##T##_Size>); \
+    template <>                                                                                                                                       \
+    struct neko_prop_component_typelist<ComponentTypeList_##T##_Size> {                                                                               \
+        static void each(auto&& f) {                                                                                                                  \
+            neko_prop_component_typelist<ComponentTypeList_##T##_Size - 1>::each(f);                                                                  \
+            f.template operator()<T>();                                                                                                               \
+        }                                                                                                                                             \
+    }
+
+#define Comp(T)              \
+    T;                       \
+    ComponentTypeListAdd(T); \
+    struct T
+
+#define UseComponentTypes()                                                                                                                                           \
+    static void forEachComponentType(auto&& f) {                                                                                                                      \
+        neko_prop_component_typelist<decltype(numComponentTypes(neko_prop_component_type_counter<maxNumComponentTypes>()))::num>::each(std::forward<decltype(f)>(f)); \
+    }
+
+//
+// Props
+//
+
+constexpr u32 props_hash(std::string_view str) {
+    constexpr u32 offset = 2166136261;
+    constexpr u32 prime = 16777619;
+    auto result = offset;
+    for (auto c : str) {
+        result = (result ^ c) * prime;
+    }
+    return result;
+}
+
+struct neko_prop_attribs {
+    std::string_view name;
+    u32 nameHash = props_hash(name);
+
+    bool exampleFlag = false;
+};
+
+inline constexpr auto maxNumProps = 24;
+
+template <int N>
+struct neko_prop_counter : neko_prop_counter<N - 1> {
+    static constexpr auto num = N;
+};
+template <>
+struct neko_prop_counter<0> {
+    static constexpr auto num = 0;
+};
+[[maybe_unused]] inline static neko_prop_counter<0> numProps(neko_prop_counter<0>);
+
+template <int N>
+struct neko_prop_index {
+    static constexpr auto index = N;
+};
+
+template <typename T, int N>
+struct neko_prop_tag_wrapper {
+    struct tag {
+        inline static neko_prop_attribs attribs = T::getPropAttribs(neko_prop_index<N>{});
+    };
+};
+template <typename T, int N>
+struct neko_prop_tag_wrapper<const T, N> {
+    using tag = typename neko_prop_tag_wrapper<T, N>::tag;
+};
+template <typename T, int N>
+using neko_prop_tag = typename neko_prop_tag_wrapper<T, N>::tag;
+
+#define neko_prop(type, name_, ...) neko_prop_named(#name_, type, name_, __VA_ARGS__)
+#define neko_prop_named(nameStr, type, name_, ...)                                                                                                                                             \
+    using name_##_Index = neko_prop_index<decltype(numProps(neko_prop_counter<maxNumProps>()))::num>;                                                                                          \
+    inline static neko_prop_counter<decltype(numProps(neko_prop_counter<maxNumProps>()))::num + 1> numProps(neko_prop_counter<decltype(numProps(neko_prop_counter<maxNumProps>()))::num + 1>); \
+    static std::type_identity<PROP_PARENS_1(PROP_PARENS_3 type)> propType(name_##_Index);                                                                                                      \
+    static constexpr neko_prop_attribs getPropAttribs(name_##_Index) { return {.name = #name_, __VA_ARGS__}; };                                                                                \
+    std::type_identity_t<PROP_PARENS_1(PROP_PARENS_3 type)> name_
+
+#define PROP_PARENS_1(...) PROP_PARENS_2(__VA_ARGS__)
+#define PROP_PARENS_2(...) NO##__VA_ARGS__
+#define PROP_PARENS_3(...) PROP_PARENS_3 __VA_ARGS__
+#define NOPROP_PARENS_3
+
+template <auto memPtr>
+struct neko_prop_containing_type {};
+template <typename C, typename R, R C::*memPtr>
+struct neko_prop_containing_type<memPtr> {
+    using Type = C;
+};
+#define neko_prop_tag(field) neko_prop_tag<neko_prop_containing_type<&field>::Type, field##_Index::index>
+
+struct __neko_prop_any {
+    template <typename T>
+    operator T() const;  // NOLINT(google-explicit-constructor)
+};
+
+template <typename Aggregate, typename Base = std::index_sequence<>, typename = void>
+struct __neko_prop_count_fields : Base {};
+template <typename Aggregate, int... Indices>
+struct __neko_prop_count_fields<Aggregate, std::index_sequence<Indices...>,
+                                std::void_t<decltype(Aggregate{{(static_cast<void>(Indices), std::declval<__neko_prop_any>())}..., {std::declval<__neko_prop_any>()}})>>
+    : __neko_prop_count_fields<Aggregate, std::index_sequence<Indices..., sizeof...(Indices)>> {};
+template <typename T>
+constexpr int countFields() {
+    return __neko_prop_count_fields<std::remove_cvref_t<T>>().size();
+}
+
+template <typename T>
+concept neko_props = std::is_aggregate_v<T>;
+
+template <neko_props T, typename F>
+inline void forEachProp(T& val, F&& func) {
+    if constexpr (requires { forEachField(const_cast<std::remove_cvref_t<T>&>(val), func); }) {
+        forEachField(const_cast<std::remove_cvref_t<T>&>(val), func);
+    } else if constexpr (requires { T::propType(neko_prop_index<0>{}); }) {
+        constexpr auto n = countFields<T>();
+        const auto call = [&]<typename Index>(Index index, auto& val) {
+            if constexpr (requires { T::propType(index); }) {
+                static_assert(std::is_same_v<typename decltype(T::propType(index))::type, std::remove_cvref_t<decltype(val)>>);
+                func(neko_prop_tag<T, Index::index>{}, val);
+            }
+        };
+#define C(i) call(neko_prop_index<i>{}, f##i)
+        if constexpr (n == 1) {
+            auto& [f0] = val;
+            (C(0));
+        } else if constexpr (n == 2) {
+            auto& [f0, f1] = val;
+            (C(0), C(1));
+        } else if constexpr (n == 3) {
+            auto& [f0, f1, f2] = val;
+            (C(0), C(1), C(2));
+        } else if constexpr (n == 4) {
+            auto& [f0, f1, f2, f3] = val;
+            (C(0), C(1), C(2), C(3));
+        } else if constexpr (n == 5) {
+            auto& [f0, f1, f2, f3, f4] = val;
+            (C(0), C(1), C(2), C(3), C(4));
+        } else if constexpr (n == 6) {
+            auto& [f0, f1, f2, f3, f4, f5] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5));
+        } else if constexpr (n == 7) {
+            auto& [f0, f1, f2, f3, f4, f5, f6] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6));
+        } else if constexpr (n == 8) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7));
+        } else if constexpr (n == 9) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8));
+        } else if constexpr (n == 10) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9));
+        } else if constexpr (n == 11) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10));
+        } else if constexpr (n == 12) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11));
+        } else if constexpr (n == 13) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12));
+        } else if constexpr (n == 14) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12), C(13));
+        } else if constexpr (n == 15) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12), C(13), C(14));
+        } else if constexpr (n == 16) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12), C(13), C(14), C(15));
+        } else if constexpr (n == 17) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12), C(13), C(14), C(15), C(16));
+        } else if constexpr (n == 18) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12), C(13), C(14), C(15), C(16), C(17));
+        } else if constexpr (n == 19) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12), C(13), C(14), C(15), C(16), C(17), C(18));
+        } else if constexpr (n == 20) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12), C(13), C(14), C(15), C(16), C(17), C(18), C(19));
+        } else if constexpr (n == 21) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12), C(13), C(14), C(15), C(16), C(17), C(18), C(19), C(20));
+        } else if constexpr (n == 22) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12), C(13), C(14), C(15), C(16), C(17), C(18), C(19), C(20), C(21));
+        } else if constexpr (n == 23) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21, f22] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12), C(13), C(14), C(15), C(16), C(17), C(18), C(19), C(20), C(21), C(22));
+        } else if constexpr (n == 24) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21, f22, f23] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12), C(13), C(14), C(15), C(16), C(17), C(18), C(19), C(20), C(21), C(22), C(23));
+        }
+#undef C
+    }
+}
+
+#endif
+
+#ifdef NEKO_CPP_SRC
+
+#include <array>
+#include <string_view>
+
+#pragma region neko_enum_name
+
+namespace neko {
+
+template <auto value>
+constexpr auto enum_name() {
+    std::string_view name;
+#ifdef __clang__
+    name = __PRETTY_FUNCTION__;
+    auto start = name.find("value = ") + 8;  // 8 is length of "value = "
+    auto end = name.find_last_of(']');
+    return std::string_view{name.data() + start, end - start};
+
+#elif defined(__GNUC__)
+    name = __PRETTY_FUNCTION__;
+    auto start = name.find("value = ") + 8;  // 8 is length of "value = "
+    auto end = name.find_last_of(']');
+    return std::string_view{name.data() + start, end - start};
+
+#elif defined(_MSC_VER)
+    name = __FUNCSIG__;
+    auto start = name.find("neko::enum_name<") + 16;  // 16 is length of "neko::enum_name<"
+    auto end = name.find_last_of('>');
+    return std::string_view{name.data() + start, end - start};
+#endif
+}
+
+template <typename T>
+concept enum_check = std::is_enum_v<T>;
+
+// 获取枚举变量数量
+template <enum_check T, std::size_t N = 0>
+constexpr auto enum_max() {
+    constexpr auto value = static_cast<T>(N);
+    if constexpr (neko::enum_name<value>().find("(") == std::string_view::npos)  // 如果超出了连续有名枚举 将会是"(enum Name)0xN"
+        return neko::enum_max<T, N + 1>();
+    else
+        return N;
+}
+
+// 打表
+template <typename T>
+    requires std::is_enum_v<T>
+constexpr auto enum_name(T value) {
+    constexpr auto num = neko::enum_max<T>();
+    constexpr std::array<std::string_view, num> names{[]<std::size_t... Is>(std::index_sequence<Is...>) {
+        return std::array<std::string_view, num>{neko::enum_name<static_cast<T>(Is)>()...};
+    }(std::make_index_sequence<num>{})};  // 打表获得枚举名称
+    return names[static_cast<std::size_t>(value)];
+}
+
+}  // namespace neko
+
+#pragma endregion
+
+#endif  // NEKO_CPP_SRC
+
+#ifdef NEKO_CPP_SRC
 
 template <typename T>
 neko_inline void neko_swap(T& a, T& b) {

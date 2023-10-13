@@ -68,6 +68,7 @@ typedef struct neko_platform_window_s {
     neko_vec2 framebuffer_size;
     neko_vec2 window_size;
     neko_vec2 window_position;
+    b32 focus;
 } neko_platform_window_t;
 
 typedef struct neko_platform_meminfo_s {
@@ -75,6 +76,8 @@ typedef struct neko_platform_meminfo_s {
     u64 physical_memory_used;
     u64 peak_virtual_memory_used;
     u64 peak_physical_memory_used;
+    u64 gpu_memory_used;   // kb
+    u64 gpu_total_memory;  // kb
 } neko_platform_meminfo_t;
 
 typedef enum neko_platform_cursor {
@@ -591,6 +594,8 @@ NEKO_API_DECL void* neko_platform_library_proc_address_default_impl(void* lib, c
 #define neko_platform_library_unload neko_platform_library_unload_default_impl
 #define neko_platform_library_proc_address neko_platform_library_proc_address_default_impl
 
+#define neko_platform_open_file fopen
+
 /* == Platform Dependent API == */
 
 NEKO_API_DECL void neko_platform_init(neko_platform_t* platform);      // Initialize platform layer
@@ -643,11 +648,12 @@ NEKO_API_DECL void neko_platform_set_character_callback(u32 handle, neko_charact
 
 NEKO_API_DECL void* neko_platform_get_sys_handle();
 NEKO_API_DECL neko_platform_meminfo_t neko_platform_get_meminfo();
-NEKO_API_DECL neko_vec2 neko_platform_get_opengl_ver();
+NEKO_API_DECL neko_vec2 neko_platform_opengl_ver();
+NEKO_API_DECL void neko_platform_msgbox(const_str msg);
 
 // Platform Internal
 void __neko_initialize_symbol_handler();
-void __neko_print_stacktrace();
+const_str __neko_inter_stacktrace();
 
 /*============================================================
 // Platform Native

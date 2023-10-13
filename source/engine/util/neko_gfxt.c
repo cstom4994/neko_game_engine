@@ -900,7 +900,7 @@ NEKO_API_DECL bool neko_gfxt_load_gltf_data_from_file(const char* path, neko_gfx
 
     cgltf_data* data = NULL;
     cgltf_result result = cgltf_parse(&cgltf_options, file_data, (cgltf_size)len, &data);
-    neko_free(file_data);
+    neko_safe_free(file_data);
 
     if (result != cgltf_result_success) {
         neko_println("GFXT:Mesh:LoadFromFile:Failed load gltf");
@@ -2879,9 +2879,9 @@ NEKO_API_DECL neko_gfxt_pipeline_t neko_gfxt_pipeline_load_from_file(const char*
     size_t len = 0;
     char* file_data = neko_platform_read_file_contents(path, "rb", &len);
     neko_assert(file_data);
-    neko_log_success("Parsing pipeline: %s", path);
+    neko_log_trace("Parsing pipeline: %s", path);
     neko_gfxt_pipeline_t pip = neko_gfxt_pipeline_load_from_memory(file_data, len);
-    neko_free(file_data);
+    neko_safe_free(file_data);
     return pip;
 }
 

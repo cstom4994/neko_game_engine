@@ -5,7 +5,7 @@
 
 void __neko_platform_file_extension(char *buffer, usize buffer_sz, const_str file_path) { neko_util_get_file_extension(buffer, buffer_sz, file_path); }
 
-// neko_string __neko_platform_get_path(const neko_string &path) {
+// neko_string __neko_game_get_path(const neko_string &path) {
 //
 //     neko_platform_ctx *ctx = __ctx();
 //
@@ -41,7 +41,7 @@ neko_string __neko_platform_abbreviate_path(const neko_string &path, s32 max_len
     return dirPath + "..." + fileName;
 }
 
-neko_string __neko_platform_get_path(const neko_string &path);
+neko_string __neko_game_get_path(const neko_string &path);
 neko_string __neko_platform_abbreviate_path(const neko_string &path, s32 max_lenght = 30);
 
 #define neko_file_path(x) (neko_engine_subsystem(platform))->get_path(x).c_str()

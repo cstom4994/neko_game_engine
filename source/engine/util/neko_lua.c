@@ -2311,7 +2311,7 @@ static inline int read_token(lua_State *L, struct lex_state *LS) {
     }
     LS->c = LS->n;
     if (!next_token(LS)) invalid(L, LS, "Invalid token");
-    //  printf("token %d %.*s\n", LS->c.type, (int)(LS->c.to-LS->c.from), LS->source + LS->c.from);
+    // neko_println("token %d %.*s", LS->c.type, (int)(LS->c.to-LS->c.from), LS->source + LS->c.from);
     return LS->c.type;
 }
 

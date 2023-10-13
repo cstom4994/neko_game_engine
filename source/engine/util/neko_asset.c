@@ -1,7 +1,7 @@
 
 #include "neko_asset.h"
 
-neko_asset_t __neko_asset_handle_create_impl(uint64_t type_id, uint32_t asset_id, uint32_t importer_id) {
+neko_asset_t __neko_asset_handle_create_impl(u64 type_id, u32 asset_id, u32 importer_id) {
     neko_asset_t asset = neko_default_val();
     asset.type_id = type_id;
     asset.asset_id = asset_id;
@@ -37,7 +37,7 @@ void neko_asset_manager_free(neko_asset_manager_t *am) {
     // Free all data
 }
 
-void *__neko_assets_getp_impl(neko_asset_manager_t *am, uint64_t type_id, neko_asset_t hndl) {
+void *__neko_assets_getp_impl(neko_asset_manager_t *am, u64 type_id, neko_asset_t hndl) {
     if (type_id != hndl.type_id) {
         neko_println("Warning: Type id: %zu doesn't match handle type id: %zu.", type_id, hndl.type_id);
         neko_assert(false);
@@ -61,8 +61,8 @@ void *__neko_assets_getp_impl(neko_asset_manager_t *am, uint64_t type_id, neko_a
     }
 
     // Need to get data index from slot array using hndl asset id
-    size_t offset = (((sizeof(uint32_t) * hndl.asset_id) + 3) & (~3));
-    uint32_t idx = *(uint32_t *)((char *)(imp->slot_array_indices_ptr) + offset);
+    size_t offset = (((sizeof(u32) * hndl.asset_id) + 3) & (~3));
+    u32 idx = *(u32 *)((char *)(imp->slot_array_indices_ptr) + offset);
     // Then need to return pointer to data at index
     size_t data_sz = imp->data_size;
     size_t s = data_sz == 8 ? 7 : 3;
@@ -119,7 +119,7 @@ void neko_asset_default_load_from_file(const char *path, void *out) {
 #include "libs/stb/stb_rect_pack.h"
 #include "libs/stb/stb_truetype.h"
 
-NEKO_API_DECL bool32_t neko_util_load_texture_data_from_memory(const void *memory, size_t sz, s32 *width, s32 *height, uint32_t *num_comps, void **data, bool32_t flip_vertically_on_load) {
+NEKO_API_DECL bool32_t neko_util_load_texture_data_from_memory(const void *memory, size_t sz, s32 *width, s32 *height, u32 *num_comps, void **data, bool32_t flip_vertically_on_load) {
     // Load texture data
     stbi_set_flip_vertically_on_load(flip_vertically_on_load);
     *data = stbi_load_from_memory((const stbi_uc *)memory, (s32)sz, (s32 *)width, (s32 *)height, (s32 *)num_comps, STBI_rgb_alpha);
@@ -153,7 +153,7 @@ NEKO_API_DECL bool neko_asset_texture_load_from_file(const char *path, void *out
 
     s32 comp = 0;
     stbi_set_flip_vertically_on_load(t->desc.flip_y);
-    *t->desc.data = (uint8_t *)stbi_load_from_file(f, (s32 *)&t->desc.width, (s32 *)&t->desc.height, (s32 *)&comp, STBI_rgb_alpha);
+    *t->desc.data = (u8 *)stbi_load_from_file(f, (s32 *)&t->desc.width, (s32 *)&t->desc.height, (s32 *)&comp, STBI_rgb_alpha);
 
     if (!t->desc.data) {
         fclose(f);
@@ -200,7 +200,7 @@ bool neko_asset_texture_load_from_memory(const void *memory, size_t sz, void *ou
 
     // Load texture data
     s32 num_comps = 0;
-    bool32_t loaded = neko_util_load_texture_data_from_memory(memory, sz, (s32 *)&t->desc.width, (s32 *)&t->desc.height, (uint32_t *)&num_comps, (void **)&t->desc.data, t->desc.flip_y);
+    bool32_t loaded = neko_util_load_texture_data_from_memory(memory, sz, (s32 *)&t->desc.width, (s32 *)&t->desc.height, (u32 *)&num_comps, (void **)&t->desc.data, t->desc.flip_y);
 
     if (!loaded) {
         return false;
@@ -216,7 +216,7 @@ bool neko_asset_texture_load_from_memory(const void *memory, size_t sz, void *ou
     return true;
 }
 
-bool neko_asset_font_load_from_file(const char *path, void *out, uint32_t point_size) {
+bool neko_asset_font_load_from_file(const char *path, void *out, u32 point_size) {
     size_t len = 0;
     char *ttf = neko_platform_read_file_contents(path, "rb", &len);
     if (!point_size) {
@@ -229,11 +229,11 @@ bool neko_asset_font_load_from_file(const char *path, void *out, uint32_t point_
     } else {
         neko_println("Font Successfully Loaded: %s", path);
     }
-    neko_free(ttf);
+    neko_safe_free(ttf);
     return ret;
 }
 
-bool neko_asset_font_load_from_memory(const void *memory, size_t sz, void *out, uint32_t point_size) {
+bool neko_asset_font_load_from_memory(const void *memory, size_t sz, void *out, u32 point_size) {
     neko_asset_font_t *f = (neko_asset_font_t *)out;
 
     if (!point_size) {
@@ -242,16 +242,16 @@ bool neko_asset_font_load_from_memory(const void *memory, size_t sz, void *out, 
     }
 
     // Poor attempt at an auto resized texture
-    const uint32_t point_wh = neko_max(point_size, 32);
-    const uint32_t w = (point_wh / 32 * 512) + (point_wh / 32 * 512) % 512;
-    const uint32_t h = (point_wh / 32 * 512) + (point_wh / 32 * 512) % 512;
+    const u32 point_wh = neko_max(point_size, 32);
+    const u32 w = (point_wh / 32 * 512) + (point_wh / 32 * 512) % 512;
+    const u32 h = (point_wh / 32 * 512) + (point_wh / 32 * 512) % 512;
 
-    const uint32_t num_comps = 4;
-    u8 *alpha_bitmap = (uint8_t *)neko_malloc(w * h);
-    u8 *flipmap = (uint8_t *)neko_malloc(w * h * num_comps);
+    const u32 num_comps = 4;
+    u8 *alpha_bitmap = (u8 *)neko_malloc(w * h);
+    u8 *flipmap = (u8 *)neko_malloc(w * h * num_comps);
     memset(alpha_bitmap, 0, w * h);
     memset(flipmap, 0, w * h * num_comps);
-    s32 v = stbtt_BakeFontBitmap((u8 *)memory, 0, (float)point_size, alpha_bitmap, w, h, 32, 96, (stbtt_bakedchar *)f->glyphs);  // no guarantee this fits!
+    s32 v = stbtt_BakeFontBitmap((u8 *)memory, 0, (f32)point_size, alpha_bitmap, w, h, 32, 96, (stbtt_bakedchar *)f->glyphs);  // no guarantee this fits!
 
     // Flip texture
     u32 r = h - 1;
@@ -294,9 +294,9 @@ bool neko_asset_font_load_from_memory(const void *memory, size_t sz, void *out, 
     return success;
 }
 
-NEKO_API_DECL float neko_asset_font_max_height(const neko_asset_font_t *fp) {
+NEKO_API_DECL f32 neko_asset_font_max_height(const neko_asset_font_t *fp) {
     if (!fp) return 0.f;
-    float h = 0.f, x = 0.f, y = 0.f;
+    f32 h = 0.f, x = 0.f, y = 0.f;
     const char *txt = "1l`'f()ABCDEFGHIJKLMNOjPQqSTU!";
     while (txt[0] != '\0') {
         char c = txt[0];
@@ -316,9 +316,9 @@ NEKO_API_DECL neko_vec2 neko_asset_font_text_dimensions_ex(const neko_asset_font
     neko_vec2 dimensions = neko_v2s(0.f);
 
     if (!fp || !text) return dimensions;
-    float x = 0.f;
-    float y = 0.f;
-    float y_under = 0;
+    f32 x = 0.f;
+    f32 y = 0.f;
+    f32 y_under = 0;
 
     while (text[0] != '\0' && len--) {
         char c = text[0];
@@ -336,7 +336,7 @@ NEKO_API_DECL neko_vec2 neko_asset_font_text_dimensions_ex(const neko_asset_font
     return dimensions;
 }
 
-bool neko_util_load_gltf_data_from_file(const char *path, neko_asset_mesh_decl_t *decl, neko_asset_mesh_raw_data_t **out, uint32_t *mesh_count) {
+bool neko_util_load_gltf_data_from_file(const char *path, neko_asset_mesh_decl_t *decl, neko_asset_mesh_raw_data_t **out, u32 *mesh_count) {
     // Use cgltf like a boss
     cgltf_options options = neko_default_val();
     size_t len = 0;
@@ -345,7 +345,7 @@ bool neko_util_load_gltf_data_from_file(const char *path, neko_asset_mesh_decl_t
 
     cgltf_data *data = NULL;
     cgltf_result result = cgltf_parse(&options, file_data, (cgltf_size)len, &data);
-    neko_free(file_data);
+    neko_safe_free(file_data);
 
     if (result != cgltf_result_success) {
         neko_println("Mesh:LoadFromFile:Failed load gltf");
@@ -380,7 +380,7 @@ bool neko_util_load_gltf_data_from_file(const char *path, neko_asset_mesh_decl_t
     memset(*out, 0, sizeof(neko_asset_mesh_raw_data_t) * data->meshes_count);
 
     // Iterate through meshes in data
-    for (uint32_t i = 0; i < data->meshes_count; ++i) {
+    for (u32 i = 0; i < data->meshes_count; ++i) {
         // Initialize mesh data
         neko_asset_mesh_raw_data_t *mesh = out[i];
         mesh->prim_count = data->meshes[i].primitives_count;
@@ -390,7 +390,7 @@ bool neko_util_load_gltf_data_from_file(const char *path, neko_asset_mesh_decl_t
         mesh->indices = (void **)neko_malloc(sizeof(size_t) * mesh->prim_count);
 
         // For each primitive in mesh
-        for (uint32_t p = 0; p < data->meshes[i].primitives_count; ++p) {
+        for (u32 p = 0; p < data->meshes[i].primitives_count; ++p) {
             // Clear temp data from previous use
             neko_dyn_array_clear(positions);
             neko_dyn_array_clear(normals);
@@ -408,7 +408,7 @@ bool neko_util_load_gltf_data_from_file(const char *path, neko_asset_mesh_decl_t
         neko_assert(BUF);                                                                                                             \
         TYPE V[COUNT] = neko_default_val();                                                                                           \
         /* For each vertex */                                                                                                         \
-        for (uint32_t k = 0; k < ATTR->count; k++) {                                                                                  \
+        for (u32 k = 0; k < ATTR->count; k++) {                                                                                       \
             /* For each element */                                                                                                    \
             for (int l = 0; l < COUNT; l++) {                                                                                         \
                 V[l] = BUF[N + l];                                                                                                    \
@@ -426,30 +426,30 @@ bool neko_util_load_gltf_data_from_file(const char *path, neko_asset_mesh_decl_t
     } while (0)
 
             // For each attribute in primitive
-            for (uint32_t a = 0; a < data->meshes[i].primitives[p].attributes_count; ++a) {
+            for (u32 a = 0; a < data->meshes[i].primitives[p].attributes_count; ++a) {
                 // Accessor for attribute data
                 cgltf_accessor *attr = data->meshes[i].primitives[p].attributes[a].data;
 
                 // Switch on type for reading data
                 switch (data->meshes[i].primitives[p].attributes[a].type) {
                     case cgltf_attribute_type_position: {
-                        __GLTF_PUSH_ATTR(attr, float, 3, positions, neko_vec3, layouts, NEKO_ASSET_MESH_ATTRIBUTE_TYPE_POSITION);
+                        __GLTF_PUSH_ATTR(attr, f32, 3, positions, neko_vec3, layouts, NEKO_ASSET_MESH_ATTRIBUTE_TYPE_POSITION);
                     } break;
 
                     case cgltf_attribute_type_normal: {
-                        __GLTF_PUSH_ATTR(attr, float, 3, normals, neko_vec3, layouts, NEKO_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL);
+                        __GLTF_PUSH_ATTR(attr, f32, 3, normals, neko_vec3, layouts, NEKO_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL);
                     } break;
 
                     case cgltf_attribute_type_tangent: {
-                        __GLTF_PUSH_ATTR(attr, float, 3, tangents, neko_vec3, layouts, NEKO_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT);
+                        __GLTF_PUSH_ATTR(attr, f32, 3, tangents, neko_vec3, layouts, NEKO_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT);
                     } break;
 
                     case cgltf_attribute_type_texcoord: {
-                        __GLTF_PUSH_ATTR(attr, float, 2, uvs, neko_vec2, layouts, NEKO_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD);
+                        __GLTF_PUSH_ATTR(attr, f32, 2, uvs, neko_vec2, layouts, NEKO_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD);
                     } break;
 
                     case cgltf_attribute_type_color: {
-                        __GLTF_PUSH_ATTR(attr, uint8_t, 4, colors, neko_color_t, layouts, NEKO_ASSET_MESH_ATTRIBUTE_TYPE_COLOR);
+                        __GLTF_PUSH_ATTR(attr, u8, 4, colors, neko_color_t, layouts, NEKO_ASSET_MESH_ATTRIBUTE_TYPE_COLOR);
                     } break;
 
                     // Not sure what to do with these for now
@@ -483,7 +483,7 @@ bool neko_util_load_gltf_data_from_file(const char *path, neko_asset_mesh_decl_t
         neko_assert(buf);                                                                                                          \
         TYPE v = 0;                                                                                                                \
         /* For each index */                                                                                                       \
-        for (uint32_t k = 0; k < acc->count; k++) {                                                                                \
+        for (u32 k = 0; k < acc->count; k++) {                                                                                     \
             /* For each element */                                                                                                 \
             for (int l = 0; l < 1; l++) {                                                                                          \
                 v = buf[n + l];                                                                                                    \
@@ -492,13 +492,13 @@ bool neko_util_load_gltf_data_from_file(const char *path, neko_asset_mesh_decl_t
             /* Add to temp positions array */                                                                                      \
             switch (index_element_size) {                                                                                          \
                 case 0:                                                                                                            \
-                    neko_byte_buffer_write(BB, uint16_t, (uint16_t)v);                                                             \
+                    neko_byte_buffer_write(BB, u16, (u16)v);                                                                       \
                     break;                                                                                                         \
                 case 2:                                                                                                            \
-                    neko_byte_buffer_write(BB, uint16_t, (uint16_t)v);                                                             \
+                    neko_byte_buffer_write(BB, u16, (u16)v);                                                                       \
                     break;                                                                                                         \
                 case 4:                                                                                                            \
-                    neko_byte_buffer_write(BB, uint32_t, (uint32_t)v);                                                             \
+                    neko_byte_buffer_write(BB, u32, (u32)v);                                                                       \
                     break;                                                                                                         \
             }                                                                                                                      \
         }                                                                                                                          \
@@ -508,22 +508,22 @@ bool neko_util_load_gltf_data_from_file(const char *path, neko_asset_mesh_decl_t
             if (acc) {
                 switch (acc->component_type) {
                     case cgltf_component_type_r_8:
-                        __GLTF_PUSH_IDX(&i_data, acc, int8_t);
+                        __GLTF_PUSH_IDX(&i_data, acc, s8);
                         break;
                     case cgltf_component_type_r_8u:
-                        __GLTF_PUSH_IDX(&i_data, acc, uint8_t);
+                        __GLTF_PUSH_IDX(&i_data, acc, u8);
                         break;
                     case cgltf_component_type_r_16:
-                        __GLTF_PUSH_IDX(&i_data, acc, int16_t);
+                        __GLTF_PUSH_IDX(&i_data, acc, s16);
                         break;
                     case cgltf_component_type_r_16u:
-                        __GLTF_PUSH_IDX(&i_data, acc, uint16_t);
+                        __GLTF_PUSH_IDX(&i_data, acc, u16);
                         break;
                     case cgltf_component_type_r_32u:
-                        __GLTF_PUSH_IDX(&i_data, acc, uint32_t);
+                        __GLTF_PUSH_IDX(&i_data, acc, u32);
                         break;
                     case cgltf_component_type_r_32f:
-                        __GLTF_PUSH_IDX(&i_data, acc, float);
+                        __GLTF_PUSH_IDX(&i_data, acc, f32);
                         break;
 
                     // Shouldn't hit here
@@ -532,17 +532,17 @@ bool neko_util_load_gltf_data_from_file(const char *path, neko_asset_mesh_decl_t
                 }
             } else {
                 // Iterate over positions size, then just push back indices
-                for (uint32_t i = 0; i < neko_dyn_array_size(positions); ++i) {
+                for (u32 i = 0; i < neko_dyn_array_size(positions); ++i) {
                     switch (index_element_size) {
                         default:
                         case 0:
-                            neko_byte_buffer_write(&i_data, uint16_t, (uint16_t)i);
+                            neko_byte_buffer_write(&i_data, u16, (u16)i);
                             break;
                         case 2:
-                            neko_byte_buffer_write(&i_data, uint16_t, (uint16_t)i);
+                            neko_byte_buffer_write(&i_data, u16, (u16)i);
                             break;
                         case 4:
-                            neko_byte_buffer_write(&i_data, uint32_t, (uint32_t)i);
+                            neko_byte_buffer_write(&i_data, u32, (u32)i);
                             break;
                     }
                 }
@@ -552,11 +552,11 @@ bool neko_util_load_gltf_data_from_file(const char *path, neko_asset_mesh_decl_t
 
             // Grab mesh layout pointer to use
             neko_asset_mesh_layout_t *layoutp = decl ? decl->layout : layouts;
-            uint32_t layout_ct = decl ? decl->layout_size / sizeof(neko_asset_mesh_layout_t) : neko_dyn_array_size(layouts);
+            u32 layout_ct = decl ? decl->layout_size / sizeof(neko_asset_mesh_layout_t) : neko_dyn_array_size(layouts);
 
             // Iterate layout to fill data buffers according to provided layout
             {
-                uint32_t vct = 0;
+                u32 vct = 0;
                 vct = neko_max(vct, neko_dyn_array_size(positions));
                 vct = neko_max(vct, neko_dyn_array_size(colors));
                 vct = neko_max(vct, neko_dyn_array_size(uvs));
@@ -578,9 +578,9 @@ bool neko_util_load_gltf_data_from_file(const char *path, neko_asset_mesh_decl_t
         }                                                                                       \
     } while (0)
 
-                for (uint32_t it = 0; it < vct; ++it) {
+                for (u32 it = 0; it < vct; ++it) {
                     // For each attribute in layout
-                    for (uint32_t l = 0; l < layout_ct; ++l) {
+                    for (u32 l = 0; l < layout_ct; ++l) {
                         switch (layoutp[l].type) {
                             case NEKO_ASSET_MESH_ATTRIBUTE_TYPE_POSITION: {
                                 __NEKO_GLTF_WRITE_DATA(it, v_data, positions, neko_vec3, neko_v3(0.f, 0.f, 0.f), NEKO_ASSET_MESH_ATTRIBUTE_TYPE_POSITION);
@@ -644,7 +644,7 @@ bool neko_asset_mesh_load_from_file(const char *path, void *out, neko_asset_mesh
     }
 
     // Mesh data to fill out
-    uint32_t mesh_count = 0;
+    u32 mesh_count = 0;
     neko_asset_mesh_raw_data_t *meshes = NULL;
 
     // Get file extension from path
@@ -667,13 +667,13 @@ bool neko_asset_mesh_load_from_file(const char *path, void *out, neko_asset_mesh
     }
 
     // Process all mesh data, add meshes
-    for (uint32_t i = 0; i < mesh_count; ++i) {
+    for (u32 i = 0; i < mesh_count; ++i) {
         neko_asset_mesh_raw_data_t *m = &meshes[i];
 
-        for (uint32_t p = 0; p < m->prim_count; ++p) {
+        for (u32 p = 0; p < m->prim_count; ++p) {
             // Construct primitive
             neko_asset_mesh_primitive_t prim = neko_default_val();
-            prim.count = m->index_sizes[p] / sizeof(uint16_t);
+            prim.count = m->index_sizes[p] / sizeof(u16);
 
             // Vertex buffer decl
             neko_graphics_vertex_buffer_desc_t vdesc = neko_default_val();
@@ -782,7 +782,7 @@ neko_private(neko_pack_result) create_pack_items(FILE *packFile, u64 itemCount, 
             return FAILED_TO_READ_FILE_PACK_RESULT;
         }
 
-        int64_t fileOffset = info.zipSize > 0 ? info.zipSize : info.dataSize;
+        s64 fileOffset = info.zipSize > 0 ? info.zipSize : info.dataSize;
 
         int seekResult = seekFile(packFile, fileOffset, SEEK_CUR);
 
@@ -1007,7 +1007,7 @@ neko_pack_result neko_pack_item_data_with_index(neko_packreader_t *pack_reader, 
 
     FILE *file = pack_reader->file;
 
-    int64_t fileOffset = (int64_t)(info.fileOffset + sizeof(pack_iteminfo) + info.pathSize);
+    s64 fileOffset = (s64)(info.fileOffset + sizeof(pack_iteminfo) + info.pathSize);
 
     int seekResult = seekFile(file, fileOffset, SEEK_SET);
 
@@ -1136,7 +1136,7 @@ neko_pack_result neko_unpack_files(const char *filePath, b8 printProgress) {
             totalRawSize += rawFileSize;
             totalZipSize += zipFileSize;
 
-            int progress = (int)(((float)(i + 1) / (float)itemCount) * 100.0f);
+            int progress = (int)(((f32)(i + 1) / (f32)itemCount) * 100.0f);
 
             printf("(%u/%u bytes) [%d%%]\n", rawFileSize, zipFileSize, progress);
             fflush(stdout);
@@ -1272,7 +1272,7 @@ neko_private(neko_pack_result) neko_write_pack_items(FILE *packFile, u64 itemCou
             zipSize = 0;
         }
 
-        int64_t fileOffset = tellFile(packFile);
+        s64 fileOffset = tellFile(packFile);
 
         pack_iteminfo info = {
                 (u32)zipSize,
@@ -1322,7 +1322,7 @@ neko_private(neko_pack_result) neko_write_pack_items(FILE *packFile, u64 itemCou
             totalZipSize += zipFileSize;
             totalRawSize += rawFileSize;
 
-            int progress = (int)(((float)(i + 1) / (float)itemCount) * 100.0f);
+            int progress = (int)(((f32)(i + 1) / (f32)itemCount) * 100.0f);
 
             printf("(%u/%u bytes) [%d%%]\n", zipFileSize, rawFileSize, progress);
             fflush(stdout);
@@ -1333,7 +1333,7 @@ neko_private(neko_pack_result) neko_write_pack_items(FILE *packFile, u64 itemCou
     neko_safe_free(itemData);
 
     if (printProgress) {
-        int compression = (int)((1.0 - (double)(totalZipSize) / (double)totalRawSize) * 100.0);
+        int compression = (int)((1.0 - (f64)(totalZipSize) / (f64)totalRawSize) * 100.0);
         printf("Packed %llu files. (%llu/%llu bytes, %d%% saved)\n", (long long unsigned int)itemCount, (long long unsigned int)totalZipSize, (long long unsigned int)totalRawSize, compression);
     }
 

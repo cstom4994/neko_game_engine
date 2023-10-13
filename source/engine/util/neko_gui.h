@@ -6,7 +6,7 @@
 #include "engine/neko.h"
 #include "engine/util/neko_idraw.h"
 
-// Directly modified from microui implementation: https://github.com/rxi/microui
+// Modified from microui(https://github.com/rxi/microui) and ImGui(https://github.com/ocornut/imgui)
 
 #define NEKO_GUI_SPLIT_SIZE 2.f
 #define NEKO_GUI_MAX_CNT 48
@@ -36,7 +36,7 @@
 
 #define neko_gui_stack(T, n) \
     struct {                 \
-        int32_t idx;         \
+        s32 idx;             \
         T items[n];          \
     }
 
@@ -124,7 +124,7 @@ enum { NEKO_GUI_KEY_SHIFT = (1 << 0), NEKO_GUI_KEY_CTRL = (1 << 1), NEKO_GUI_KEY
 #define NEKO_GUI_OPT_NOSTYLING (NEKO_GUI_OPT_NOSTYLEBORDER | NEKO_GUI_OPT_NOSTYLEBACKGROUND | NEKO_GUI_OPT_NOSTYLESHADOW)
 
 typedef struct neko_gui_context_t neko_gui_context_t;
-typedef uint32_t neko_gui_id;
+typedef u32 neko_gui_id;
 typedef NEKO_GUI_REAL neko_gui_real;
 
 // Shapes
@@ -145,11 +145,11 @@ typedef struct {
 
 typedef struct {
     neko_gui_id id;
-    int32_t last_update;
+    s32 last_update;
 } neko_gui_pool_item_t;
 
 typedef struct {
-    int32_t type, size;
+    s32 type, size;
 } neko_gui_basecommand_t;
 
 typedef struct {
@@ -211,7 +211,7 @@ typedef struct neko_gui_customcommand_t {
 
 typedef struct {
     neko_gui_basecommand_t base;
-    uint32_t type;
+    u32 type;
     union {
         neko_gui_rect_t rect;
         neko_gui_circle_t circle;
@@ -223,7 +223,7 @@ typedef struct {
 
 // NOTE: This is wasteful, given how I'm pushing into the byte buffer anyway for heterogenous types
 typedef union {
-    int32_t type;
+    s32 type;
     neko_gui_basecommand_t base;
     neko_gui_jumpcommand_t jump;
     neko_gui_clipcommand_t clip;
@@ -237,7 +237,7 @@ typedef union {
 
 struct neko_gui_context_t;
 
-typedef void (*neko_gui_on_draw_button_callback)(struct neko_gui_context_t* ctx, neko_gui_rect_t rect, neko_gui_id id, bool hovered, bool focused, int32_t opt, const char* label, int32_t icon);
+typedef void (*neko_gui_on_draw_button_callback)(struct neko_gui_context_t* ctx, neko_gui_rect_t rect, neko_gui_id id, bool hovered, bool focused, s32 opt, const char* label, s32 icon);
 
 typedef enum {
     NEKO_GUI_LAYOUT_ANCHOR_TOPLEFT = 0x00,
@@ -263,18 +263,18 @@ typedef struct neko_gui_layout_t {
     neko_vec2 position;
     neko_vec2 size;
     neko_vec2 max;
-    int32_t padding[4];
-    int32_t widths[NEKO_GUI_MAX_WIDTHS];
-    int32_t items;
-    int32_t item_index;
-    int32_t next_row;
-    int32_t next_type;
-    int32_t indent;
+    s32 padding[4];
+    s32 widths[NEKO_GUI_MAX_WIDTHS];
+    s32 items;
+    s32 item_index;
+    s32 next_row;
+    s32 next_type;
+    s32 indent;
 
     // flex direction / justification / alignment
-    int32_t direction;
-    int32_t justify_content;
-    int32_t align_content;
+    s32 direction;
+    s32 justify_content;
+    s32 align_content;
 
 } neko_gui_layout_t;
 
@@ -288,7 +288,7 @@ enum { NEKO_GUI_SPLIT_NODE_CHILD = 0x00, NEKO_GUI_SPLIT_NODE_PARENT };
 typedef struct neko_gui_split_node_t {
     neko_gui_split_node_type type;
     union {
-        uint32_t split;
+        u32 split;
         struct neko_gui_container_t* container;
     };
 } neko_gui_split_node_t;
@@ -301,10 +301,10 @@ typedef struct neko_gui_split_t {
     neko_gui_rect_t rect;
     neko_gui_rect_t prev_rect;
     neko_gui_split_node_t children[2];
-    uint32_t parent;
-    uint32_t id;
-    uint32_t zindex;
-    int32_t frame;
+    u32 parent;
+    u32 id;
+    u32 zindex;
+    s32 frame;
 } neko_gui_split_t;
 
 typedef enum neko_gui_window_flags { NEKO_GUI_WINDOW_FLANEKO_VISIBLE = (1 << 0), NEKO_GUI_WINDOW_FLANEKO_FIRST_INIT = (1 << 1) } neko_gui_window_flags;
@@ -312,16 +312,16 @@ typedef enum neko_gui_window_flags { NEKO_GUI_WINDOW_FLANEKO_VISIBLE = (1 << 0),
 // Equidistantly sized tabs, based on rect of window
 typedef struct neko_gui_tab_item_t {
     neko_gui_id tab_bar;
-    uint32_t zindex;  // Sorting index in tab bar
-    void* data;       // User set data pointer for this item
-    uint32_t idx;     // Internal index
+    u32 zindex;  // Sorting index in tab bar
+    void* data;  // User set data pointer for this item
+    u32 idx;     // Internal index
 } neko_gui_tab_item_t;
 
 typedef struct neko_gui_tab_bar_t {
     neko_gui_tab_item_t items[NEKO_GUI_TAB_ITEM_MAX];
-    uint32_t size;         // Current number of items in tab bar
+    u32 size;              // Current number of items in tab bar
     neko_gui_rect_t rect;  // Cached sized for tab bar
-    uint32_t focus;        // Focused item in tab bar
+    u32 focus;             // Focused item in tab bar
 } neko_gui_tab_bar_t;
 
 typedef struct neko_gui_container_t {
@@ -330,17 +330,17 @@ typedef struct neko_gui_container_t {
     neko_gui_rect_t body;
     neko_vec2 content_size;
     neko_vec2 scroll;
-    int32_t zindex;
-    int32_t open;
+    s32 zindex;
+    s32 open;
     neko_gui_id id;
     neko_gui_id split;  // If container is docked, then will have owning split to get sizing (0x00 for NULL)
-    uint32_t tab_bar;
-    uint32_t tab_item;
+    u32 tab_bar;
+    u32 tab_item;
     struct neko_gui_container_t* parent;  // Owning parent (for tabbing)
-    uint64_t opt;
-    uint32_t frame;
-    uint32_t visible;
-    int32_t flags;
+    u64 opt;
+    u32 frame;
+    u32 visible;
+    s32 flags;
     char name[256];
 } neko_gui_container_t;
 
@@ -438,25 +438,25 @@ enum { NEKO_GUI_ANIMATION_DIRECTION_FORWARD = 0x00, NEKO_GUI_ANIMATION_DIRECTION
 typedef struct {
     neko_gui_style_element_type type;
     union {
-        int32_t value;
+        s32 value;
         neko_color_t color;
         neko_asset_font_t* font;
     };
 } neko_gui_style_element_t;
 
 typedef struct neko_gui_animation_t {
-    int16_t max;          // max time
-    int16_t time;         // current time
-    int16_t delay;        // delay
-    int16_t curve;        // curve type
-    int16_t direction;    // current direction
-    int16_t playing;      // whether or not active
-    int16_t iterations;   // number of iterations to play the animation
-    int16_t focus_state;  // cached focus_state from frame (want to delete this somehow)
-    int16_t hover_state;  // cached hover_state from frame (want to delete this somehow)
-    int16_t start_state;  // starting state for animation blend
-    int16_t end_state;    // ending state for animation blend
-    int32_t frame;        // current frame (to match)
+    s16 max;          // max time
+    s16 time;         // current time
+    s16 delay;        // delay
+    s16 curve;        // curve type
+    s16 direction;    // current direction
+    s16 playing;      // whether or not active
+    s16 iterations;   // number of iterations to play the animation
+    s16 focus_state;  // cached focus_state from frame (want to delete this somehow)
+    s16 hover_state;  // cached hover_state from frame (want to delete this somehow)
+    s16 start_state;  // starting state for animation blend
+    s16 end_state;    // ending state for animation blend
+    s32 frame;        // current frame (to match)
 } neko_gui_animation_t;
 
 typedef struct neko_gui_style_t {
@@ -465,31 +465,31 @@ typedef struct neko_gui_style_t {
 
     // dimensions
     float size[2];
-    int16_t spacing;         // get rid of    (use padding)
-    int16_t indent;          // get rid of    (use margin)
-    int16_t title_height;    // get rid of    (use title_bar style)
-    int16_t scrollbar_size;  // get rid of    (use scroll style)
-    int16_t thumb_size;      // get rid of    (use various styles)
+    s16 spacing;         // get rid of    (use padding)
+    s16 indent;          // get rid of    (use margin)
+    s16 title_height;    // get rid of    (use title_bar style)
+    s16 scrollbar_size;  // get rid of    (use scroll style)
+    s16 thumb_size;      // get rid of    (use various styles)
 
     // colors
     neko_color_t colors[NEKO_GUI_COLOR_MAX];
 
     // padding/margin
-    int32_t padding[4];
-    int16_t margin[4];
+    s32 padding[4];
+    s16 margin[4];
 
     // border
-    int16_t border_width[4];
-    int16_t border_radius[4];
+    s16 border_width[4];
+    s16 border_radius[4];
 
     // flex direction / justification / alignment
-    int16_t direction;
-    int16_t justify_content;
-    int16_t align_content;
+    s16 direction;
+    s16 justify_content;
+    s16 align_content;
 
     // shadow amount each direction
-    int16_t shadow_x;
-    int16_t shadow_y;
+    s16 shadow_x;
+    s16 shadow_y;
 
 } neko_gui_style_t;
 
@@ -497,8 +497,8 @@ typedef struct neko_gui_style_t {
 
 typedef struct neko_gui_animation_property_t {
     neko_gui_style_element_type type;
-    int16_t time;
-    int16_t delay;
+    s16 time;
+    s16 delay;
 } neko_gui_animation_property_t;
 
 typedef struct neko_gui_animation_property_list_t {
@@ -525,8 +525,8 @@ typedef struct neko_gui_style_sheet_t {
     neko_gui_style_t styles[NEKO_GUI_ELEMENT_COUNT][3];  // default | hovered | focused
     neko_hash_table(neko_gui_element_type, neko_gui_animation_property_list_t) animations;
 
-    neko_hash_table(uint64_t, neko_gui_style_list_t) cid_styles;
-    neko_hash_table(uint64_t, neko_gui_animation_property_list_t) cid_animations;
+    neko_hash_table(u64, neko_gui_style_list_t) cid_styles;
+    neko_hash_table(u64, neko_gui_animation_property_list_t) cid_animations;
 } neko_gui_style_sheet_t;
 
 typedef struct neko_gui_style_sheet_element_desc_t {
@@ -628,14 +628,14 @@ typedef struct neko_gui_request_t {
         neko_gui_split_t* split;
         neko_gui_container_t* cnt;
     };
-    uint32_t frame;
+    u32 frame;
 } neko_gui_request_t;
 
 typedef struct neko_gui_inline_style_stack_t {
     neko_dyn_array(neko_gui_style_element_t) styles[3];
     neko_dyn_array(neko_gui_animation_property_t) animations[3];
-    neko_dyn_array(uint32_t) style_counts;      // amount of styles to pop off at "top of stack" for each state
-    neko_dyn_array(uint32_t) animation_counts;  // amount of animations to pop off at "top of stack" for each state
+    neko_dyn_array(u32) style_counts;      // amount of styles to pop off at "top of stack" for each state
+    neko_dyn_array(u32) animation_counts;  // amount of animations to pop off at "top of stack" for each state
 } neko_gui_inline_style_stack_t;
 
 typedef struct neko_gui_context_t {
@@ -646,16 +646,16 @@ typedef struct neko_gui_context_t {
     neko_gui_id focus;
     neko_gui_id last_id;
     neko_gui_id state_switch_id;  // Id that had a state switch
-    int32_t switch_state;
+    s32 switch_state;
     neko_gui_id lock_focus;
-    int32_t last_hover_state;
-    int32_t last_focus_state;
+    s32 last_hover_state;
+    s32 last_focus_state;
     neko_gui_id prev_hover;
     neko_gui_id prev_focus;
     neko_gui_rect_t last_rect;
-    int32_t last_zindex;
-    int32_t updated_focus;
-    int32_t frame;
+    s32 last_zindex;
+    s32 updated_focus;
+    s32 frame;
     neko_vec2 framebuffer_size;
     neko_gui_rect_t viewport;
     neko_gui_container_t* active_root;
@@ -679,7 +679,7 @@ typedef struct neko_gui_context_t {
     neko_dyn_array(neko_gui_request_t) requests;
 
     // Stacks
-    neko_gui_stack(uint8_t, NEKO_GUI_COMMANDLIST_SIZE) command_list;
+    neko_gui_stack(u8, NEKO_GUI_COMMANDLIST_SIZE) command_list;
     neko_gui_stack(neko_gui_container_t*, NEKO_GUI_ROOTLIST_SIZE) root_list;
     neko_gui_stack(neko_gui_container_t*, NEKO_GUI_CONTAINERSTACK_SIZE) container_stack;
     neko_gui_stack(neko_gui_rect_t, NEKO_GUI_CLIPSTACK_SIZE) clip_stack;
@@ -702,14 +702,14 @@ typedef struct neko_gui_context_t {
     neko_vec2 last_mouse_pos;
     neko_vec2 mouse_delta;
     neko_vec2 scroll_delta;
-    int32_t mouse_down;
-    int32_t mouse_pressed;
-    int32_t key_down;
-    int32_t key_pressed;
+    s32 mouse_down;
+    s32 mouse_pressed;
+    s32 key_down;
+    s32 key_pressed;
     char input_text[32];
 
     // Backend resources
-    uint32_t window_hndl;
+    u32 window_hndl;
     neko_immediate_draw_t gui_idraw;
     neko_immediate_draw_t overlay_draw_list;
 
@@ -717,7 +717,7 @@ typedef struct neko_gui_context_t {
     neko_hash_table(neko_gui_id, neko_gui_animation_t) animations;
 
     // Font stash
-    neko_hash_table(uint64_t, neko_asset_font_t*) font_stash;
+    neko_hash_table(u64, neko_asset_font_t*) font_stash;
 
     // Callbacks
     struct {
@@ -735,9 +735,9 @@ typedef struct {
     neko_gui_id last_id;
     neko_gui_id lock_focus;
     neko_gui_rect_t last_rect;
-    int32_t last_zindex;
-    int32_t updated_focus;
-    int32_t frame;
+    s32 last_zindex;
+    s32 updated_focus;
+    s32 frame;
     neko_gui_container_t* hover_root;
     neko_gui_container_t* next_hover_root;
     neko_gui_container_t* scroll_target;
@@ -760,7 +760,7 @@ typedef struct {
     // Stacks
     neko_gui_stack(neko_gui_container_t*, NEKO_GUI_CONTAINERSTACK_SIZE) container_stack;
 
-    neko_dyn_array(uint8_t) command_list;
+    neko_dyn_array(u8) command_list;
     neko_dyn_array(neko_gui_container_t*) root_list;
     neko_dyn_array(neko_gui_rect_t) clip_stack;
     neko_dyn_array(neko_gui_id) id_stack;
@@ -778,14 +778,14 @@ typedef struct {
     neko_vec2 last_mouse_pos;
     neko_vec2 mouse_delta;
     neko_vec2 scroll_delta;
-    int16_t mouse_down;
-    int16_t mouse_pressed;
-    int16_t key_down;
-    int16_t key_pressed;
+    s16 mouse_down;
+    s16 mouse_pressed;
+    s16 key_down;
+    s16 key_pressed;
     char input_text[32];
 
     // Backend resources
-    uint32_t window_hndl;
+    u32 window_hndl;
     neko_immediate_draw_t gui_idraw;
     neko_immediate_draw_t overlay_draw_list;
 
@@ -819,17 +819,17 @@ enum { NEKO_GUI_HINT_FLAG_NO_SCALE_BIAS_MOUSE = (1 << 0), NEKO_GUI_HINT_FLAG_NO_
 typedef struct neko_gui_hints_s {
     neko_vec2 framebuffer_size;  // Overall framebuffer size
     neko_gui_rect_t viewport;    // Viewport within framebuffer for gui context
-    int32_t flags;               // Flags for hints
+    s32 flags;                   // Flags for hints
 } neko_gui_hints_t;
 
 NEKO_API_DECL neko_gui_rect_t neko_gui_rect(float x, float y, float w, float h);
 
 //=== Context ===//
 
-NEKO_API_DECL neko_gui_context_t neko_gui_new(uint32_t window_hndl);
-NEKO_API_DECL void neko_gui_init(neko_gui_context_t* ctx, uint32_t window_hndl);
+NEKO_API_DECL neko_gui_context_t neko_gui_new(u32 window_hndl);
+NEKO_API_DECL void neko_gui_init(neko_gui_context_t* ctx, u32 window_hndl);
 NEKO_API_DECL void neko_gui_init_font_stash(neko_gui_context_t* ctx, neko_gui_font_stash_desc_t* desc);
-NEKO_API_DECL neko_gui_context_t neko_gui_context_new(uint32_t window_hndl);
+NEKO_API_DECL neko_gui_context_t neko_gui_context_new(u32 window_hndl);
 NEKO_API_DECL void neko_gui_free(neko_gui_context_t* ctx);
 NEKO_API_DECL void neko_gui_begin(neko_gui_context_t* ctx, const neko_gui_hints_t* hints);
 NEKO_API_DECL void neko_gui_end(neko_gui_context_t* ctx, b32 update);
@@ -845,27 +845,27 @@ NEKO_API_DECL void neko_gui_parse_label_tag(neko_gui_context_t* ctx, const char*
 
 NEKO_API_DECL void neko_gui_set_focus(neko_gui_context_t* ctx, neko_gui_id id);
 NEKO_API_DECL void neko_gui_set_hover(neko_gui_context_t* ctx, neko_gui_id id);
-NEKO_API_DECL neko_gui_id neko_gui_get_id(neko_gui_context_t* ctx, const void* data, int32_t size);
-NEKO_API_DECL void neko_gui_push_id(neko_gui_context_t* ctx, const void* data, int32_t size);
+NEKO_API_DECL neko_gui_id neko_gui_get_id(neko_gui_context_t* ctx, const void* data, s32 size);
+NEKO_API_DECL void neko_gui_push_id(neko_gui_context_t* ctx, const void* data, s32 size);
 NEKO_API_DECL void neko_gui_pop_id(neko_gui_context_t* ctx);
 NEKO_API_DECL void neko_gui_push_clip_rect(neko_gui_context_t* ctx, neko_gui_rect_t rect);
 NEKO_API_DECL void neko_gui_pop_clip_rect(neko_gui_context_t* ctx);
 NEKO_API_DECL neko_gui_rect_t neko_gui_get_clip_rect(neko_gui_context_t* ctx);
-NEKO_API_DECL int32_t neko_gui_check_clip(neko_gui_context_t* ctx, neko_gui_rect_t r);
-NEKO_API_DECL int32_t neko_gui_mouse_over(neko_gui_context_t* ctx, neko_gui_rect_t rect);
-NEKO_API_DECL void neko_gui_update_control(neko_gui_context_t* ctx, neko_gui_id id, neko_gui_rect_t rect, uint64_t opt);
+NEKO_API_DECL s32 neko_gui_check_clip(neko_gui_context_t* ctx, neko_gui_rect_t r);
+NEKO_API_DECL s32 neko_gui_mouse_over(neko_gui_context_t* ctx, neko_gui_rect_t rect);
+NEKO_API_DECL void neko_gui_update_control(neko_gui_context_t* ctx, neko_gui_id id, neko_gui_rect_t rect, u64 opt);
 
 //=== Conatiner ===//
 
 NEKO_API_DECL neko_gui_container_t* neko_gui_get_current_container(neko_gui_context_t* ctx);
 NEKO_API_DECL neko_gui_container_t* neko_gui_get_container(neko_gui_context_t* ctx, const char* name);
 NEKO_API_DECL neko_gui_container_t* neko_gui_get_top_most_container(neko_gui_context_t* ctx, neko_gui_split_t* split);
-NEKO_API_DECL neko_gui_container_t* neko_gui_get_container_ex(neko_gui_context_t* ctx, neko_gui_id id, uint64_t opt);
+NEKO_API_DECL neko_gui_container_t* neko_gui_get_container_ex(neko_gui_context_t* ctx, neko_gui_id id, u64 opt);
 NEKO_API_DECL void neko_gui_bring_to_front(neko_gui_context_t* ctx, neko_gui_container_t* cnt);
 NEKO_API_DECL void neko_gui_bring_split_to_front(neko_gui_context_t* ctx, neko_gui_split_t* split);
 NEKO_API_DECL neko_gui_split_t* neko_gui_get_split(neko_gui_context_t* ctx, neko_gui_container_t* cnt);
 NEKO_API_DECL neko_gui_tab_bar_t* neko_gui_get_tab_bar(neko_gui_context_t* ctx, neko_gui_container_t* cnt);
-NEKO_API_DECL void neko_gui_tab_item_swap(neko_gui_context_t* ctx, neko_gui_container_t* cnt, int32_t direction);
+NEKO_API_DECL void neko_gui_tab_item_swap(neko_gui_context_t* ctx, neko_gui_container_t* cnt, s32 direction);
 NEKO_API_DECL neko_gui_container_t* neko_gui_get_root_container(neko_gui_context_t* ctx, neko_gui_container_t* cnt);
 NEKO_API_DECL neko_gui_container_t* neko_gui_get_root_container_from_split(neko_gui_context_t* ctx, neko_gui_split_t* split);
 NEKO_API_DECL neko_gui_container_t* neko_gui_get_parent(neko_gui_context_t* ctx, neko_gui_container_t* cnt);
@@ -873,9 +873,9 @@ NEKO_API_DECL void neko_gui_current_container_close(neko_gui_context_t* ctx);
 
 //=== Animation ===//
 
-NEKO_API_DECL neko_gui_animation_t* neko_gui_get_animation(neko_gui_context_t* ctx, neko_gui_id id, const neko_gui_selector_desc_t* desc, int32_t elementid);
+NEKO_API_DECL neko_gui_animation_t* neko_gui_get_animation(neko_gui_context_t* ctx, neko_gui_id id, const neko_gui_selector_desc_t* desc, s32 elementid);
 
-NEKO_API_DECL neko_gui_style_t neko_gui_animation_get_blend_style(neko_gui_context_t* ctx, neko_gui_animation_t* anim, const neko_gui_selector_desc_t* desc, int32_t elementid);
+NEKO_API_DECL neko_gui_style_t neko_gui_animation_get_blend_style(neko_gui_context_t* ctx, neko_gui_animation_t* anim, const neko_gui_selector_desc_t* desc, s32 elementid);
 
 //=== Style Sheet ===//
 
@@ -893,24 +893,24 @@ NEKO_API_DECL neko_gui_style_sheet_t neko_gui_style_sheet_load_from_memory(neko_
 
 //=== Pools ===//
 
-NEKO_API_DECL int32_t neko_gui_pool_init(neko_gui_context_t* ctx, neko_gui_pool_item_t* items, int32_t len, neko_gui_id id);
-NEKO_API_DECL int32_t neko_gui_pool_get(neko_gui_context_t* ctx, neko_gui_pool_item_t* items, int32_t len, neko_gui_id id);
-NEKO_API_DECL void neko_gui_pool_update(neko_gui_context_t* ctx, neko_gui_pool_item_t* items, int32_t idx);
+NEKO_API_DECL s32 neko_gui_pool_init(neko_gui_context_t* ctx, neko_gui_pool_item_t* items, s32 len, neko_gui_id id);
+NEKO_API_DECL s32 neko_gui_pool_get(neko_gui_context_t* ctx, neko_gui_pool_item_t* items, s32 len, neko_gui_id id);
+NEKO_API_DECL void neko_gui_pool_update(neko_gui_context_t* ctx, neko_gui_pool_item_t* items, s32 idx);
 
 //=== Input ===//
 
-NEKO_API_DECL void neko_gui_input_mousemove(neko_gui_context_t* ctx, int32_t x, int32_t y);
-NEKO_API_DECL void neko_gui_input_mousedown(neko_gui_context_t* ctx, int32_t x, int32_t y, int32_t btn);
-NEKO_API_DECL void neko_gui_input_mouseup(neko_gui_context_t* ctx, int32_t x, int32_t y, int32_t btn);
-NEKO_API_DECL void neko_gui_input_scroll(neko_gui_context_t* ctx, int32_t x, int32_t y);
-NEKO_API_DECL void neko_gui_input_keydown(neko_gui_context_t* ctx, int32_t key);
-NEKO_API_DECL void neko_gui_input_keyup(neko_gui_context_t* ctx, int32_t key);
+NEKO_API_DECL void neko_gui_input_mousemove(neko_gui_context_t* ctx, s32 x, s32 y);
+NEKO_API_DECL void neko_gui_input_mousedown(neko_gui_context_t* ctx, s32 x, s32 y, s32 btn);
+NEKO_API_DECL void neko_gui_input_mouseup(neko_gui_context_t* ctx, s32 x, s32 y, s32 btn);
+NEKO_API_DECL void neko_gui_input_scroll(neko_gui_context_t* ctx, s32 x, s32 y);
+NEKO_API_DECL void neko_gui_input_keydown(neko_gui_context_t* ctx, s32 key);
+NEKO_API_DECL void neko_gui_input_keyup(neko_gui_context_t* ctx, s32 key);
 NEKO_API_DECL void neko_gui_input_text(neko_gui_context_t* ctx, const char* text);
 
 //=== Commands ===//
 
-NEKO_API_DECL neko_gui_command_t* neko_gui_push_command(neko_gui_context_t* ctx, int32_t type, int32_t size);
-NEKO_API_DECL int32_t neko_gui_next_command(neko_gui_context_t* ctx, neko_gui_command_t** cmd);
+NEKO_API_DECL neko_gui_command_t* neko_gui_push_command(neko_gui_context_t* ctx, s32 type, s32 size);
+NEKO_API_DECL s32 neko_gui_next_command(neko_gui_context_t* ctx, neko_gui_command_t** cmd);
 NEKO_API_DECL void neko_gui_set_clip(neko_gui_context_t* ctx, neko_gui_rect_t rect);
 NEKO_API_DECL void neko_gui_set_pipeline(neko_gui_context_t* ctx, neko_handle(neko_graphics_pipeline_t) pip, void* layout, size_t layout_sz, neko_idraw_layout_type layout_type);
 NEKO_API_DECL void neko_gui_bind_uniforms(neko_gui_context_t* ctx, neko_graphics_bind_uniform_desc_t* uniforms, size_t uniforms_sz);
@@ -920,30 +920,30 @@ NEKO_API_DECL void neko_gui_bind_uniforms(neko_gui_context_t* ctx, neko_graphics
 NEKO_API_DECL void neko_gui_draw_rect(neko_gui_context_t* ctx, neko_gui_rect_t rect, neko_color_t color);
 NEKO_API_DECL void neko_gui_draw_circle(neko_gui_context_t* ctx, neko_vec2 position, float radius, neko_color_t color);
 NEKO_API_DECL void neko_gui_draw_triangle(neko_gui_context_t* ctx, neko_vec2 a, neko_vec2 b, neko_vec2 c, neko_color_t color);
-NEKO_API_DECL void neko_gui_draw_box(neko_gui_context_t* ctx, neko_gui_rect_t rect, int16_t* width, neko_color_t color);
+NEKO_API_DECL void neko_gui_draw_box(neko_gui_context_t* ctx, neko_gui_rect_t rect, s16* width, neko_color_t color);
 NEKO_API_DECL void neko_gui_draw_line(neko_gui_context_t* ctx, neko_vec2 start, neko_vec2 end, neko_color_t color);
-NEKO_API_DECL void neko_gui_draw_text(neko_gui_context_t* ctx, neko_asset_font_t* font, const char* str, int32_t len, neko_vec2 pos, neko_color_t color, int32_t shadow_x, int32_t shadow_y,
+NEKO_API_DECL void neko_gui_draw_text(neko_gui_context_t* ctx, neko_asset_font_t* font, const char* str, s32 len, neko_vec2 pos, neko_color_t color, s32 shadow_x, s32 shadow_y,
                                       neko_color_t shadow_color);
 NEKO_API_DECL void neko_gui_draw_image(neko_gui_context_t* ctx, neko_handle(neko_graphics_texture_t) hndl, neko_gui_rect_t rect, neko_vec2 uv0, neko_vec2 uv1, neko_color_t color);
-NEKO_API_DECL void neko_gui_draw_nine_rect(neko_gui_context_t* ctx, neko_handle(neko_graphics_texture_t) hndl, neko_gui_rect_t rect, neko_vec2 uv0, neko_vec2 uv1, uint32_t left, uint32_t right,
-                                           uint32_t top, uint32_t bottom, neko_color_t color);
-NEKO_API_DECL void neko_gui_draw_control_frame(neko_gui_context_t* ctx, neko_gui_id id, neko_gui_rect_t rect, int32_t elementid, uint64_t opt);
-NEKO_API_DECL void neko_gui_draw_control_text(neko_gui_context_t* ctx, const char* str, neko_gui_rect_t rect, const neko_gui_style_t* style, uint64_t opt);
+NEKO_API_DECL void neko_gui_draw_nine_rect(neko_gui_context_t* ctx, neko_handle(neko_graphics_texture_t) hndl, neko_gui_rect_t rect, neko_vec2 uv0, neko_vec2 uv1, u32 left, u32 right, u32 top,
+                                           u32 bottom, neko_color_t color);
+NEKO_API_DECL void neko_gui_draw_control_frame(neko_gui_context_t* ctx, neko_gui_id id, neko_gui_rect_t rect, s32 elementid, u64 opt);
+NEKO_API_DECL void neko_gui_draw_control_text(neko_gui_context_t* ctx, const char* str, neko_gui_rect_t rect, const neko_gui_style_t* style, u64 opt);
 NEKO_API_DECL void neko_gui_draw_custom(neko_gui_context_t* ctx, neko_gui_rect_t rect, neko_gui_draw_callback_t cb, void* data, size_t sz);
 
 //=== Layout ===//
 
 NEKO_API_DECL neko_gui_layout_t* neko_gui_get_layout(neko_gui_context_t* ctx);
-NEKO_API_DECL void neko_gui_layout_row(neko_gui_context_t* ctx, int32_t items, const int32_t* widths, int32_t height);
-NEKO_API_DECL void neko_gui_layout_row_ex(neko_gui_context_t* ctx, int32_t items, const int32_t* widths, int32_t height, int32_t justification);
-NEKO_API_DECL void neko_gui_layout_width(neko_gui_context_t* ctx, int32_t width);
-NEKO_API_DECL void neko_gui_layout_height(neko_gui_context_t* ctx, int32_t height);
+NEKO_API_DECL void neko_gui_layout_row(neko_gui_context_t* ctx, s32 items, const s32* widths, s32 height);
+NEKO_API_DECL void neko_gui_layout_row_ex(neko_gui_context_t* ctx, s32 items, const s32* widths, s32 height, s32 justification);
+NEKO_API_DECL void neko_gui_layout_width(neko_gui_context_t* ctx, s32 width);
+NEKO_API_DECL void neko_gui_layout_height(neko_gui_context_t* ctx, s32 height);
 NEKO_API_DECL void neko_gui_layout_column_begin(neko_gui_context_t* ctx);
 NEKO_API_DECL void neko_gui_layout_column_end(neko_gui_context_t* ctx);
-NEKO_API_DECL void neko_gui_layout_set_next(neko_gui_context_t* ctx, neko_gui_rect_t r, int32_t relative);
+NEKO_API_DECL void neko_gui_layout_set_next(neko_gui_context_t* ctx, neko_gui_rect_t r, s32 relative);
 NEKO_API_DECL neko_gui_rect_t neko_gui_layout_peek_next(neko_gui_context_t* ctx);
 NEKO_API_DECL neko_gui_rect_t neko_gui_layout_next(neko_gui_context_t* ctx);
-NEKO_API_DECL neko_gui_rect_t neko_gui_layout_anchor(const neko_gui_rect_t* parent, int32_t width, int32_t height, int32_t xoff, int32_t yoff, neko_gui_layout_anchor_type type);
+NEKO_API_DECL neko_gui_rect_t neko_gui_layout_anchor(const neko_gui_rect_t* parent, s32 width, s32 height, s32 xoff, s32 yoff, neko_gui_layout_anchor_type type);
 
 //=== Elements ===//
 
@@ -967,44 +967,44 @@ NEKO_API_DECL neko_gui_rect_t neko_gui_layout_anchor(const neko_gui_rect_t* pare
 
 //=== Elements (Extended) ===//
 
-NEKO_API_DECL int32_t neko_gui_image_ex(neko_gui_context_t* ctx, neko_handle(neko_graphics_texture_t) hndl, neko_vec2 uv0, neko_vec2 uv1, const neko_gui_selector_desc_t* desc, uint64_t opt);
-NEKO_API_DECL int32_t neko_gui_text_ex(neko_gui_context_t* ctx, const char* text, int32_t text_wrap, const neko_gui_selector_desc_t* desc, uint64_t opt);
-NEKO_API_DECL int32_t neko_gui_label_ex(neko_gui_context_t* ctx, const char* text, const neko_gui_selector_desc_t* desc, uint64_t opt);
-NEKO_API_DECL int32_t neko_gui_button_ex(neko_gui_context_t* ctx, const char* label, const neko_gui_selector_desc_t* desc, uint64_t opt);
-NEKO_API_DECL int32_t neko_gui_checkbox_ex(neko_gui_context_t* ctx, const char* label, int32_t* state, const neko_gui_selector_desc_t* desc, uint64_t opt);
-NEKO_API_DECL int32_t neko_gui_textbox_raw(neko_gui_context_t* ctx, char* buf, int32_t bufsz, neko_gui_id id, neko_gui_rect_t r, const neko_gui_selector_desc_t* desc, uint64_t opt);
-NEKO_API_DECL int32_t neko_gui_textbox_ex(neko_gui_context_t* ctx, char* buf, int32_t bufsz, const neko_gui_selector_desc_t* desc, uint64_t opt);
-NEKO_API_DECL int32_t neko_gui_slider_ex(neko_gui_context_t* ctx, neko_gui_real* value, neko_gui_real low, neko_gui_real high, neko_gui_real step, const char* fmt,
-                                         const neko_gui_selector_desc_t* desc, uint64_t opt);
-NEKO_API_DECL int32_t neko_gui_number_ex(neko_gui_context_t* ctx, neko_gui_real* value, neko_gui_real step, const char* fmt, const neko_gui_selector_desc_t* desc, uint64_t opt);
-NEKO_API_DECL int32_t neko_gui_header_ex(neko_gui_context_t* ctx, const char* label, const neko_gui_selector_desc_t* desc, uint64_t opt);
-NEKO_API_DECL int32_t neko_gui_treenode_begin_ex(neko_gui_context_t* ctx, const char* label, const neko_gui_selector_desc_t* desc, uint64_t opt);
+NEKO_API_DECL s32 neko_gui_image_ex(neko_gui_context_t* ctx, neko_handle(neko_graphics_texture_t) hndl, neko_vec2 uv0, neko_vec2 uv1, const neko_gui_selector_desc_t* desc, u64 opt);
+NEKO_API_DECL s32 neko_gui_text_ex(neko_gui_context_t* ctx, const char* text, s32 text_wrap, const neko_gui_selector_desc_t* desc, u64 opt);
+NEKO_API_DECL s32 neko_gui_label_ex(neko_gui_context_t* ctx, const char* text, const neko_gui_selector_desc_t* desc, u64 opt);
+NEKO_API_DECL s32 neko_gui_button_ex(neko_gui_context_t* ctx, const char* label, const neko_gui_selector_desc_t* desc, u64 opt);
+NEKO_API_DECL s32 neko_gui_checkbox_ex(neko_gui_context_t* ctx, const char* label, s32* state, const neko_gui_selector_desc_t* desc, u64 opt);
+NEKO_API_DECL s32 neko_gui_textbox_raw(neko_gui_context_t* ctx, char* buf, s32 bufsz, neko_gui_id id, neko_gui_rect_t r, const neko_gui_selector_desc_t* desc, u64 opt);
+NEKO_API_DECL s32 neko_gui_textbox_ex(neko_gui_context_t* ctx, char* buf, s32 bufsz, const neko_gui_selector_desc_t* desc, u64 opt);
+NEKO_API_DECL s32 neko_gui_slider_ex(neko_gui_context_t* ctx, neko_gui_real* value, neko_gui_real low, neko_gui_real high, neko_gui_real step, const char* fmt, const neko_gui_selector_desc_t* desc,
+                                     u64 opt);
+NEKO_API_DECL s32 neko_gui_number_ex(neko_gui_context_t* ctx, neko_gui_real* value, neko_gui_real step, const char* fmt, const neko_gui_selector_desc_t* desc, u64 opt);
+NEKO_API_DECL s32 neko_gui_header_ex(neko_gui_context_t* ctx, const char* label, const neko_gui_selector_desc_t* desc, u64 opt);
+NEKO_API_DECL s32 neko_gui_treenode_begin_ex(neko_gui_context_t* ctx, const char* label, const neko_gui_selector_desc_t* desc, u64 opt);
 NEKO_API_DECL void neko_gui_treenode_end(neko_gui_context_t* ctx);
-NEKO_API_DECL int32_t neko_gui_window_begin_ex(neko_gui_context_t* ctx, const char* title, neko_gui_rect_t rect, bool* open, const neko_gui_selector_desc_t* desc, uint64_t opt);
+NEKO_API_DECL s32 neko_gui_window_begin_ex(neko_gui_context_t* ctx, const char* title, neko_gui_rect_t rect, bool* open, const neko_gui_selector_desc_t* desc, u64 opt);
 NEKO_API_DECL void neko_gui_window_end(neko_gui_context_t* ctx);
 NEKO_API_DECL void neko_gui_popup_open(neko_gui_context_t* ctx, const char* name);
-NEKO_API_DECL int32_t neko_gui_popup_begin_ex(neko_gui_context_t* ctx, const char* name, neko_gui_rect_t r, const neko_gui_selector_desc_t* desc, uint64_t opt);
+NEKO_API_DECL s32 neko_gui_popup_begin_ex(neko_gui_context_t* ctx, const char* name, neko_gui_rect_t r, const neko_gui_selector_desc_t* desc, u64 opt);
 NEKO_API_DECL void neko_gui_popup_end(neko_gui_context_t* ctx);
-NEKO_API_DECL void neko_gui_panel_begin_ex(neko_gui_context_t* ctx, const char* name, const neko_gui_selector_desc_t* desc, uint64_t opt);
+NEKO_API_DECL void neko_gui_panel_begin_ex(neko_gui_context_t* ctx, const char* name, const neko_gui_selector_desc_t* desc, u64 opt);
 NEKO_API_DECL void neko_gui_panel_end(neko_gui_context_t* ctx);
-NEKO_API_DECL int32_t neko_gui_combo_begin_ex(neko_gui_context_t* ctx, const char* id, const char* current_item, int32_t max_items, neko_gui_selector_desc_t* desc, uint64_t opt);
+NEKO_API_DECL s32 neko_gui_combo_begin_ex(neko_gui_context_t* ctx, const char* id, const char* current_item, s32 max_items, neko_gui_selector_desc_t* desc, u64 opt);
 NEKO_API_DECL void neko_gui_combo_end(neko_gui_context_t* ctx);
-NEKO_API_DECL int32_t neko_gui_combo_item_ex(neko_gui_context_t* ctx, const char* label, const neko_gui_selector_desc_t* desc, uint64_t opt);
+NEKO_API_DECL s32 neko_gui_combo_item_ex(neko_gui_context_t* ctx, const char* label, const neko_gui_selector_desc_t* desc, u64 opt);
 
 //=== Demos ===//
 
-NEKO_API_DECL int32_t neko_gui_style_editor(neko_gui_context_t* ctx, neko_gui_style_sheet_t* style_sheet, neko_gui_rect_t rect, bool* open);
-NEKO_API_DECL int32_t neko_gui_demo_window(neko_gui_context_t* ctx, neko_gui_rect_t rect, bool* open);
+NEKO_API_DECL s32 neko_gui_style_editor(neko_gui_context_t* ctx, neko_gui_style_sheet_t* style_sheet, neko_gui_rect_t rect, bool* open);
+NEKO_API_DECL s32 neko_gui_demo_window(neko_gui_context_t* ctx, neko_gui_rect_t rect, bool* open);
 
 //=== Docking ===//
 
-NEKO_API_DECL void neko_gui_dock_ex(neko_gui_context_t* ctx, const char* dst, const char* src, int32_t split_type, float ratio);
+NEKO_API_DECL void neko_gui_dock_ex(neko_gui_context_t* ctx, const char* dst, const char* src, s32 split_type, float ratio);
 NEKO_API_DECL void neko_gui_undock_ex(neko_gui_context_t* ctx, const char* name);
-NEKO_API_DECL void neko_gui_dock_ex_cnt(neko_gui_context_t* ctx, neko_gui_container_t* dst, neko_gui_container_t* src, int32_t split_type, float ratio);
+NEKO_API_DECL void neko_gui_dock_ex_cnt(neko_gui_context_t* ctx, neko_gui_container_t* dst, neko_gui_container_t* src, s32 split_type, float ratio);
 NEKO_API_DECL void neko_gui_undock_ex_cnt(neko_gui_context_t* ctx, neko_gui_container_t* cnt);
 
 //=== Gizmo ===//
 
-NEKO_API_DECL int32_t neko_gui_gizmo(neko_gui_context_t* ctx, neko_camera_t* camera, neko_vqs* model, neko_gui_rect_t viewport, bool invert_view_y, float snap, int32_t op, int32_t mode, uint64_t opt);
+NEKO_API_DECL s32 neko_gui_gizmo(neko_gui_context_t* ctx, neko_camera_t* camera, neko_vqs* model, neko_gui_rect_t viewport, bool invert_view_y, float snap, s32 op, s32 mode, u64 opt);
 
 #endif  // NEKO_GUI_H

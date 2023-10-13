@@ -1,9 +1,9 @@
 #ifndef NEKO_AUDIO_H
 #define NEKO_AUDIO_H
 
-#include "libs/cute/cute_sound.h"
 #include "engine/neko.h"
 #include "engine/neko_containers.h"
+#include "libs/cute/cute_sound.h"
 
 /*=====================
 // Internal Audio Data
@@ -22,7 +22,7 @@ typedef struct neko_audio_s {
     ============================================================*/
 
     neko_result (*init)(struct neko_audio_s*);
-    neko_result (*shutdown)(struct neko_audio_s*);
+    // neko_result (*shutdown)(struct neko_audio_s*);
     neko_result (*update)(struct neko_audio_s*);
     neko_result (*commit)(struct neko_audio_s*);
 
@@ -43,5 +43,8 @@ typedef struct neko_audio_s {
 
 // Extern internal functions
 extern struct neko_audio_s* __neko_audio_construct();
+
+void neko_audio_shutdown(neko_audio_t*);
+void neko_audio_destroy(neko_audio_t*);
 
 #endif  // NEKO_AUDIO_H

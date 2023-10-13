@@ -4,12 +4,40 @@
 
 #include "engine/neko.h"
 #include "engine/neko_component.h"
-#include "engine/neko_ecs.h"
 #include "engine/neko_engine.h"
 #include "engine/util/neko_idraw.h"
 
 // game
 #include "neko_sprite.h"
+
+void print(const float &val) { std::printf("%f", val); }
+
+void print(const std::string &val) { std::printf("%s", val.c_str()); }
+
+// Register component types by wrapping the struct name in `Comp(...)`
+
+struct Comp(Position) {
+    // Register reflectable fields ('props') using the `Prop` macro. This can be used in any aggregate
+    // `struct`, doesn't have to be a `Comp`.
+    neko_prop(float, x) = 0;
+    neko_prop(float, y) = 0;
+};
+
+struct Comp(Name) {
+    neko_prop(std::string, first) = "First";
+
+    // Props can have additional attributes, see the `neko_prop_attribs` type. You can customize and add
+    // your own attributes there.
+    neko_prop(std::string, last, .exampleFlag = true) = "Last";
+
+    int internal = 42;  // This is a non-prop field that doesn't show up in reflection. IMPORTANT NOTE:
+    // All such non-prop fields must be at the end of the struct, with all props at
+    // the front. Mixing props and non-props in the order is not allowed.
+};
+
+// After all compnonent types are defined, this macro must be called to be able to use
+// `forEachComponentType` to iterate all component types
+UseComponentTypes();
 
 typedef struct neko_client_ecs_userdata_s {
     neko_command_buffer_t *cb;
@@ -63,12 +91,7 @@ void sprite_render_system(neko_ecs *ecs) {
             neko_sprite *spr = sprite->sprite;
             neko_sprite_frame f = spr->frames[index];
 
-            // gfx->immediate.draw_rect_textured_ext(cb, xform->x, xform->y, xform->x + spr->width * 4.f, xform->y + spr->height * 4.f, f.u0, f.v0, f.u1, f.v1, sprite->sprite->img.id,
-            // neko_color_white);
-
-            neko_idraw_rect_2d_textured_ext(idraw, xform->x, xform->y, xform->x + spr->width * 4.f, xform->y + spr->height * 4.f, f.u0, f.v0, f.u1, f.v1, sprite->sprite->img.id, NEKO_COLOR_WHITE);
-
-            // neko_idraw_texture(&gsi, sprite->sprite->img.id);
+            neko_idraw_rect_2d_textured_ext(idraw, xform->x, xform->y, xform->x + spr->width * 2.f, xform->y + spr->height * 2.f, f.u0, f.v0, f.u1, f.v1, sprite->sprite->img.id, NEKO_COLOR_WHITE);
         }
     }
 }

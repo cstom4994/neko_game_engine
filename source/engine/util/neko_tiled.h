@@ -60,7 +60,7 @@ typedef struct neko_tiled_quad_quad_s {
 
 NEKO_API_DECL void neko_tiled_render_init(neko_command_buffer_t* cb, const char* vert_src, const char* frag_src);
 NEKO_API_DECL void neko_tiled_render_deinit(neko_command_buffer_t* cb);
-NEKO_API_DECL void neko_tiled_render_begin();
+NEKO_API_DECL void neko_tiled_render_begin(neko_command_buffer_t* cb);
 NEKO_API_DECL void neko_tiled_render_flush(neko_command_buffer_t* cb);
 NEKO_API_DECL void neko_tiled_render_push(neko_command_buffer_t* cb, neko_tiled_quad_t* quad);
 

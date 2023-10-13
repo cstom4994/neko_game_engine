@@ -2,14 +2,14 @@
 #define NEKO_IMGUI_IMPL_H
 
 #include "engine/neko_engine.h"
-#include "neko_imgui.h"
+#include "neko_imgui_utils.hpp"
 
 // ImGui
 #include "libs/imgui/imgui.h"
 
 // Main context for necessary imgui information
 typedef struct neko_imgui_context_s {
-    uint32_t win_hndl;
+    u32 win_hndl;
     double time;
     bool mouse_just_pressed[ImGuiMouseButton_COUNT];
     bool mouse_cursors[ImGuiMouseCursor_COUNT];
@@ -35,42 +35,54 @@ typedef struct neko_imgui_vertex_t {
 #define NEKO_IMGUI_SHADER_VERSION "#version 330 core\n"
 #endif
 
-neko_imgui_context_t neko_imgui_new(uint32_t hndl, bool install_callbacks);
+neko_imgui_context_t neko_imgui_new(u32 hndl, bool install_callbacks);
 void neko_imgui_device_create(neko_imgui_context_t* gs);
 bool neko_imgui_create_fonts_texture(neko_imgui_context_t* gs);
 void neko_imgui_render(neko_imgui_context_t* gs, neko_command_buffer_t* cb);
 
 void neko_imgui_new_frame(neko_imgui_context_t* gs);
 
-/*===============================
+//===============================
 //      Implementation
-================================*/
+//===============================
 
 #ifdef NEKO_IMGUI_IMPL
 
-void neko_imgui_device_create(neko_imgui_context_t* gs) {
+neko_global std::size_t g_imgui_mem_usage = 0;
+
+neko_private(void*) __neko_imgui_malloc(size_t sz, void* user_data) { return __neko_mem_safe_alloc((sz), (char*)__FILE__, __LINE__, &g_imgui_mem_usage); }
+
+neko_private(void) __neko_imgui_free(void* ptr, void* user_data) { __neko_mem_safe_free(ptr, &g_imgui_mem_usage); }
+
+std::size_t __neko_imgui_meminuse() { return g_imgui_mem_usage; }
+
+void neko_imgui_device_create(neko_imgui_context_t* neko_imgui) {
     static const char* imgui_vertsrc = NEKO_IMGUI_SHADER_VERSION
-            "uniform mat4 ProjMtx;\n"
-            "layout (location = 0) in vec2 Position;\n"
-            "layout (location = 1) in vec2 TexCoord;\n"
-            "layout (location = 2) in vec4 Color;\n"
-            "out vec2 Frag_UV;\n"
-            "out vec4 Frag_Color;\n"
-            "void main() {\n"
-            "   Frag_UV = TexCoord;\n"
-            "   Frag_Color = Color;\n"
-            "   gl_Position = ProjMtx * vec4(Position.xy, 0, 1);\n"
-            "}\n";
+            R"(
+uniform mat4 ProjMtx;
+layout (location = 0) in vec2 Position;
+layout (location = 1) in vec2 TexCoord;
+layout (location = 2) in vec4 Color;
+out vec2 Frag_UV;
+out vec4 Frag_Color;
+void main() {
+   Frag_UV = TexCoord;
+   Frag_Color = Color;
+   gl_Position = ProjMtx * vec4(Position.xy, 0, 1);
+}
+)";
 
     static const char* imgui_fragsrc = NEKO_IMGUI_SHADER_VERSION
-            "precision mediump float;\n"
-            "uniform sampler2D Texture;\n"
-            "in vec2 Frag_UV;\n"
-            "in vec4 Frag_Color;\n"
-            "out vec4 Out_Color;\n"
-            "void main(){\n"
-            "   Out_Color = Frag_Color * texture(Texture, Frag_UV.st);\n"
-            "}\n";
+            R"(
+precision mediump float;
+uniform sampler2D Texture;
+in vec2 Frag_UV;
+in vec4 Frag_Color;
+out vec4 Out_Color;
+void main(){
+   Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
+}
+)";
 
     // Shader source description
     neko_graphics_shader_source_desc_t sources[2] = {};
@@ -86,7 +98,7 @@ void neko_imgui_device_create(neko_imgui_context_t* gs) {
     memcpy(sdesc.name, "imgui", 64);
 
     // Create shader
-    gs->shader = neko_graphics_shader_create(&sdesc);
+    neko_imgui->shader = neko_graphics_shader_create(&sdesc);
 
     // Uniform texture
     neko_graphics_uniform_layout_desc_t slayout = neko_default_val();
@@ -94,7 +106,7 @@ void neko_imgui_device_create(neko_imgui_context_t* gs) {
     neko_graphics_uniform_desc_t utexdesc = {};
     memcpy(utexdesc.name, "Texture", 64);
     utexdesc.layout = &slayout;
-    gs->u_tex = neko_graphics_uniform_create(&utexdesc);
+    neko_imgui->u_tex = neko_graphics_uniform_create(&utexdesc);
 
     // Construct uniform
     neko_graphics_uniform_layout_desc_t ulayout = neko_default_val();
@@ -104,7 +116,7 @@ void neko_imgui_device_create(neko_imgui_context_t* gs) {
     udesc.layout = &ulayout;
 
     // Construct project matrix uniform
-    gs->u_proj = neko_graphics_uniform_create(&udesc);
+    neko_imgui->u_proj = neko_graphics_uniform_create(&udesc);
 
     // Vertex buffer description
     neko_graphics_vertex_buffer_desc_t vbufdesc = {};
@@ -112,7 +124,7 @@ void neko_imgui_device_create(neko_imgui_context_t* gs) {
     vbufdesc.data = NULL;
 
     // Construct vertex buffer
-    gs->vbo = neko_graphics_vertex_buffer_create(&vbufdesc);
+    neko_imgui->vbo = neko_graphics_vertex_buffer_create(&vbufdesc);
 
     // Index buffer desc
     neko_graphics_index_buffer_desc_t ibufdesc = {};
@@ -120,7 +132,7 @@ void neko_imgui_device_create(neko_imgui_context_t* gs) {
     ibufdesc.data = NULL;
 
     // Create index buffer
-    gs->ibo = neko_graphics_index_buffer_create(&ibufdesc);
+    neko_imgui->ibo = neko_graphics_index_buffer_create(&ibufdesc);
 
     // Vertex attr layout
     neko_graphics_vertex_attribute_desc_t vattrs[3] = {};
@@ -130,8 +142,8 @@ void neko_imgui_device_create(neko_imgui_context_t* gs) {
 
     // Pipeline desc
     neko_graphics_pipeline_desc_t pdesc = {};
-    pdesc.raster.shader = gs->shader;
-    pdesc.raster.index_buffer_element_size = (sizeof(ImDrawIdx) == 2) ? sizeof(uint16_t) : sizeof(uint32_t);
+    pdesc.raster.shader = neko_imgui->shader;
+    pdesc.raster.index_buffer_element_size = (sizeof(ImDrawIdx) == 2) ? sizeof(uint16_t) : sizeof(u32);
     pdesc.blend.func = NEKO_GRAPHICS_BLEND_EQUATION_ADD;
     pdesc.blend.src = NEKO_GRAPHICS_BLEND_MODE_SRC_ALPHA;
     pdesc.blend.dst = NEKO_GRAPHICS_BLEND_MODE_ONE_MINUS_SRC_ALPHA;
@@ -139,20 +151,22 @@ void neko_imgui_device_create(neko_imgui_context_t* gs) {
     pdesc.layout.size = sizeof(vattrs);
 
     // Create pipeline
-    gs->pip = neko_graphics_pipeline_create(&pdesc);
+    neko_imgui->pip = neko_graphics_pipeline_create(&pdesc);
 
     // Create default fonts texture
-    neko_imgui_create_fonts_texture(gs);
+    neko_imgui_create_fonts_texture(neko_imgui);
 }
 
-neko_imgui_context_t neko_imgui_new(uint32_t hndl, bool install_callbacks) {
-    neko_imgui_context_t gs = {};
+neko_imgui_context_t neko_imgui_new(u32 hndl, bool install_callbacks) {
+    neko_imgui_context_t neko_imgui = {};
 
-    gs.ctx = ImGui::CreateContext();
-    ImGui::SetCurrentContext(gs.ctx);
+    neko_imgui.ctx = ImGui::CreateContext();
+    ImGui::SetCurrentContext(neko_imgui.ctx);
 
-    gs.win_hndl = hndl;
-    gs.time = 0.0;
+    ImGui::SetAllocatorFunctions(__neko_imgui_malloc, __neko_imgui_free);
+
+    neko_imgui.win_hndl = hndl;
+    neko_imgui.time = 0.0;
 
     // Setup backend capabilities flags
     ImGuiIO& io = ImGui::GetIO();
@@ -187,14 +201,13 @@ neko_imgui_context_t neko_imgui_new(uint32_t hndl, bool install_callbacks) {
     // Rendering
     // io.BackendFlags |= ImGuiBackendFlaneko_RendererHasVtxOffset;
 
-    neko_imgui_device_create(&gs);
+    neko_imgui_device_create(&neko_imgui);
 
     //     io.SetClipboardTextFn = ImGui_ImplGlfw_SetClipboardText;
     //     io.GetClipboardTextFn = ImGui_ImplGlfw_GetClipboardText;
     //     io.ClipboardUserData = g_Window;
-    // #if defined(_WIN32)
-    //     io.ImeWindowHandle = (void*)glfwGetWin32Window(g_Window);
-    // #endif
+
+    io.ImeWindowHandle = (void*)neko_platform_get_sys_handle();
 
     // Create mouse cursors
     // (By design, on X11 cursors are user configurable and some cursors may be missing. When a cursor doesn't exist,
@@ -235,10 +248,10 @@ neko_imgui_context_t neko_imgui_new(uint32_t hndl, bool install_callbacks) {
 
     // g_ClientApi = client_api;
 
-    return gs;
+    return neko_imgui;
 }
 
-bool neko_imgui_create_fonts_texture(neko_imgui_context_t* gs) {
+bool neko_imgui_create_fonts_texture(neko_imgui_context_t* neko_imgui) {
     // Build texture atlas
     ImGuiIO& io = ImGui::GetIO();
     unsigned char* pixels;
@@ -256,10 +269,10 @@ bool neko_imgui_create_fonts_texture(neko_imgui_context_t* gs) {
     tdesc.mag_filter = NEKO_GRAPHICS_TEXTURE_FILTER_LINEAR;
     *tdesc.data = (void*)pixels;
 
-    gs->font_tex = neko_graphics_texture_create(&tdesc);
+    neko_imgui->font_tex = neko_graphics_texture_create(&tdesc);
 
     // Store our identifier
-    io.Fonts->TexID = (ImTextureID)(intptr_t)gs->font_tex.id;
+    io.Fonts->TexID = (ImTextureID)(intptr_t)neko_imgui->font_tex.id;
 
     return true;
 }
@@ -277,7 +290,7 @@ void neko_imgui_update_mouse_and_keys(neko_imgui_context_t* ctx) {
                 switch (evt.key.action) {
                     case NEKO_PLATFORM_KEY_PRESSED: {
                         // Not sure if this is correct at all.
-                        uint32_t cp = evt.key.codepoint;
+                        u32 cp = evt.key.codepoint;
                         if (cp <= IM_UNICODE_CODEPOINT_MAX) {
                             io.AddInputCharacter(cp);
                         }
@@ -336,21 +349,21 @@ void neko_imgui_update_mouse_and_keys(neko_imgui_context_t* ctx) {
     neko_platform_mouse_wheel(&io.MouseWheelH, &io.MouseWheel);
 }
 
-void neko_imgui_new_frame(neko_imgui_context_t* gs) {
-    neko_assert(gs->ctx != nullptr);
-    ImGui::SetCurrentContext(gs->ctx);
+void neko_imgui_new_frame(neko_imgui_context_t* neko_imgui) {
+    neko_assert(neko_imgui->ctx != nullptr);
+    ImGui::SetCurrentContext(neko_imgui->ctx);
     neko_assert(ImGui::GetCurrentContext() != nullptr);
 
     ImGuiIO& io = ImGui::GetIO();
     IM_ASSERT(io.Fonts->IsBuilt() && "Font atlas not built! It is generally built by the renderer backend. Missing call to renderer _NewFrame() function? e.g. ImGui_ImplOpenGL3_NewFrame().");
 
     // Setup display size (every frame to accommodate for window resizing)
-    uint32_t w, h;
-    uint32_t display_w, display_h;
+    u32 w, h;
+    u32 display_w, display_h;
 
     // Get platform window size and framebuffer size from window handle
-    neko_platform_window_size(gs->win_hndl, &w, &h);
-    neko_platform_framebuffer_size(gs->win_hndl, &display_w, &display_h);
+    neko_platform_window_size(neko_imgui->win_hndl, &w, &h);
+    neko_platform_framebuffer_size(neko_imgui->win_hndl, &display_w, &display_h);
 
     io.DisplaySize = ImVec2((float)w, (float)h);
     if (w > 0 && h > 0) io.DisplayFramebufferScale = ImVec2((float)display_w / w, (float)display_h / h);
@@ -361,14 +374,14 @@ void neko_imgui_new_frame(neko_imgui_context_t* gs) {
     // io.DeltaTime = gs->time > 0.0 ? (float)(current_time - gs->time) : (float)(1.0f / 60.0f);
     // gs->time = current_time;
 
-    neko_imgui_update_mouse_and_keys(gs);
+    neko_imgui_update_mouse_and_keys(neko_imgui);
 
     ImGui::NewFrame();
 }
 
-void neko_imgui_render(neko_imgui_context_t* gs, neko_command_buffer_t* cb) {
+void neko_imgui_render(neko_imgui_context_t* neko_imgui, neko_command_buffer_t* cb) {
     // Set current context
-    ImGui::SetCurrentContext(gs->ctx);
+    ImGui::SetCurrentContext(neko_imgui->ctx);
 
     // Do da drawing
     ImGui::Render();
@@ -399,13 +412,13 @@ void neko_imgui_render(neko_imgui_context_t* gs, neko_command_buffer_t* cb) {
 
     // Set up data binds
     neko_graphics_bind_vertex_buffer_desc_t vbuffers = {};
-    vbuffers.buffer = gs->vbo;
+    vbuffers.buffer = neko_imgui->vbo;
 
     neko_graphics_bind_index_buffer_desc_t ibuffers = {};
-    ibuffers.buffer = gs->ibo;
+    ibuffers.buffer = neko_imgui->ibo;
 
     neko_graphics_bind_uniform_desc_t ubuffers = {};
-    ubuffers.uniform = gs->u_proj;
+    ubuffers.uniform = neko_imgui->u_proj;
     ubuffers.data = &m;
 
     // Set up data binds
@@ -429,7 +442,7 @@ void neko_imgui_render(neko_imgui_context_t* gs, neko_command_buffer_t* cb) {
     neko_graphics_renderpass_begin(cb, def_pass);
     {
         // Bind pipeline
-        neko_graphics_pipeline_bind(cb, gs->pip);
+        neko_graphics_pipeline_bind(cb, neko_imgui->pip);
 
         // Set viewport
         neko_graphics_set_viewport(cb, 0, 0, fb_width, fb_height);
@@ -446,14 +459,14 @@ void neko_imgui_render(neko_imgui_context_t* gs, neko_command_buffer_t* cb) {
             vdesc.usage = NEKO_GRAPHICS_BUFFER_USAGE_STREAM;
             vdesc.data = cmd_list->VtxBuffer.Data;
             vdesc.size = cmd_list->VtxBuffer.Size * sizeof(ImDrawVert);
-            neko_graphics_vertex_buffer_request_update(cb, gs->vbo, &vdesc);
+            neko_graphics_vertex_buffer_request_update(cb, neko_imgui->vbo, &vdesc);
 
             // Update index buffer
             neko_graphics_index_buffer_desc_t idesc = {};
             idesc.usage = NEKO_GRAPHICS_BUFFER_USAGE_STREAM;
             idesc.data = cmd_list->IdxBuffer.Data;
             idesc.size = cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx);
-            neko_graphics_index_buffer_request_update(cb, gs->ibo, &idesc);
+            neko_graphics_index_buffer_request_update(cb, neko_imgui->ibo, &idesc);
 
             // Iterate through command buffer
             for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++) {
@@ -480,10 +493,10 @@ void neko_imgui_render(neko_imgui_context_t* gs, neko_command_buffer_t* cb) {
                         neko_graphics_set_view_scissor(cb, (int)clip_rect.x, (int)(fb_height - clip_rect.w), (int)(clip_rect.z - clip_rect.x), (int)(clip_rect.w - clip_rect.y));
 
                         // Grab handle from command texture id
-                        neko_handle(neko_graphics_texture_t) tex = neko_handle_create(neko_graphics_texture_t, (uint32_t)(intptr_t)pcmd->TextureId);
+                        neko_handle(neko_graphics_texture_t) tex = neko_handle_create(neko_graphics_texture_t, (u32)(intptr_t)pcmd->TextureId);
 
                         neko_graphics_bind_uniform_desc_t sbuffer = {};
-                        sbuffer.uniform = gs->u_tex;
+                        sbuffer.uniform = neko_imgui->u_tex;
                         sbuffer.data = &tex;
                         sbuffer.binding = 0;
 

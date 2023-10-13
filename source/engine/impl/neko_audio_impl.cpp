@@ -39,8 +39,8 @@ neko_result __neko_audio_update(struct neko_audio_s* s) {
 neko_result __neko_audio_commit(struct neko_audio_s* s) { return NEKO_RESULT_SUCCESS; }
 
 struct neko_audio_s* __neko_audio_construct() {
-    neko_audio_t* audio = (neko_audio_t*)neko_malloc(sizeof(neko_audio_t));
-    neko_audio_data_t* data = (neko_audio_data_t*)neko_malloc(sizeof(neko_audio_data_t));
+    neko_audio_t* audio = (neko_audio_t*)neko_safe_malloc(sizeof(neko_audio_t));
+    neko_audio_data_t* data = (neko_audio_data_t*)neko_safe_malloc(sizeof(neko_audio_data_t));
 
     data->internal = NULL;
     // data->instance_cache = neko_resource_cache_new(neko_audio_instance_t);
@@ -60,10 +60,17 @@ struct neko_audio_s* __neko_audio_construct() {
     return audio;
 }
 
+void neko_audio_shutdown(neko_audio_t* audio) { __neko_audio_shutdown(audio); }
+
+void neko_audio_destroy(neko_audio_t* audio) {
+    neko_safe_free(audio->data);
+    neko_safe_free(audio);
+}
+
 void __neko_audio_set_default_functions(struct neko_audio_s* audio) {
 
     audio->init = &__neko_audio_init;
     audio->update = &__neko_audio_update;
-    audio->shutdown = &__neko_audio_shutdown;
+    // audio->shutdown = &__neko_audio_shutdown;
     audio->commit = &__neko_audio_commit;
 }

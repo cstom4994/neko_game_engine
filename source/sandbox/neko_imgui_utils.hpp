@@ -558,10 +558,4 @@ void neko_draw_text_plate(std::string text, neko_color_t col, int x, int y, neko
 
 }  // namespace neko
 
-namespace neko {
-
-std::size_t __neko_imgui_meminuse();
-
-}  // namespace neko
-
 #endif
