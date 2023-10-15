@@ -678,6 +678,9 @@ typedef struct neko_gui_context_t {
     neko_gui_alt_drag_mode_type alt_drag_mode;
     neko_dyn_array(neko_gui_request_t) requests;
 
+    // Fontcache
+    neko_font_index default_font;
+
     // Stacks
     neko_gui_stack(u8, NEKO_GUI_COMMANDLIST_SIZE) command_list;
     neko_gui_stack(neko_gui_container_t*, NEKO_GUI_ROOTLIST_SIZE) root_list;
@@ -949,6 +952,7 @@ NEKO_API_DECL neko_gui_rect_t neko_gui_layout_anchor(const neko_gui_rect_t* pare
 
 #define neko_gui_button(_CTX, _LABEL) neko_gui_button_ex((_CTX), (_LABEL), NULL, NEKO_GUI_OPT_LEFTCLICKONLY)
 #define neko_gui_text(_CTX, _TXT) neko_gui_text_ex((_CTX), (_TXT), 1, NULL, 0x00)
+#define neko_gui_text_fc(_CTX, _TXT) neko_gui_text_fc_ex((_CTX), (_TXT), (-1))
 #define neko_gui_textbox(_CTX, _BUF, _BUFSZ) neko_gui_textbox_ex((_CTX), (_BUF), (_BUFSZ), NULL, 0x00)
 #define neko_gui_slider(_CTX, _VALUE, _LO, _HI) neko_gui_slider_ex((_CTX), (_VALUE), (_LO), (_HI), 0, NEKO_GUI_SLIDER_FMT, NULL, 0x00)
 #define neko_gui_number(_CTX, _VALUE, _STEP) neko_gui_number_ex((_CTX), (_VALUE), (_STEP), NEKO_GUI_SLIDER_FMT, NULL, 0x00)
@@ -968,6 +972,7 @@ NEKO_API_DECL neko_gui_rect_t neko_gui_layout_anchor(const neko_gui_rect_t* pare
 //=== Elements (Extended) ===//
 
 NEKO_API_DECL s32 neko_gui_image_ex(neko_gui_context_t* ctx, neko_handle(neko_graphics_texture_t) hndl, neko_vec2 uv0, neko_vec2 uv1, const neko_gui_selector_desc_t* desc, u64 opt);
+NEKO_API_DECL s32 neko_gui_text_fc_ex(neko_gui_context_t* ctx, const char* text, neko_font_index fontindex);
 NEKO_API_DECL s32 neko_gui_text_ex(neko_gui_context_t* ctx, const char* text, s32 text_wrap, const neko_gui_selector_desc_t* desc, u64 opt);
 NEKO_API_DECL s32 neko_gui_label_ex(neko_gui_context_t* ctx, const char* text, const neko_gui_selector_desc_t* desc, u64 opt);
 NEKO_API_DECL s32 neko_gui_button_ex(neko_gui_context_t* ctx, const char* label, const neko_gui_selector_desc_t* desc, u64 opt);

@@ -18,7 +18,7 @@
 // game
 #include "neko_client_ecs.h"
 #include "neko_hash.h"
-#include "neko_scripting.h"
+#include "neko_nui.h"
 #include "neko_sprite.h"
 
 // hpp
@@ -35,6 +35,9 @@
 // opengl
 #include "libs/glad/glad.h"
 
+// stb
+#include "libs/stb/stb_image.h"
+
 neko_command_buffer_t g_cb = neko_default_val();
 neko_gui_context_t g_gui = neko_default_val();
 neko_imgui_context_t g_imgui = neko_default_val();
@@ -42,6 +45,8 @@ neko_immediate_draw_t g_idraw = neko_default_val();
 neko_client_ecs_userdata_t g_client_ecs_userdata = neko_default_val();
 neko_asset_font_t g_font;
 neko_gui_style_sheet_t style_sheet;
+neko_tiled_renderer_t g_tiled = neko_default_val();
+neko_nui_ctx_t neko_nui = neko_default_val();
 
 neko_gfxt_pipeline_t pip;
 neko_gfxt_material_t mat;
@@ -108,15 +113,26 @@ struct neko_engine_cvar_t {
 
     bool hello_duck = false;
     bool hello_ai_shit = false;
-    bool hello_tiled = false;
+    bool hello_tiled = true;
 
-    f32 bg[3] = {90, 95, 100};
+    f32 bg[3] = {28, 28, 28};
 };
 
-neko_struct(neko_engine_cvar_t, _Fs(show_demo_window, "Is show imgui demo"), _Fs(show_info_window, "Is show info window"), _Fs(show_cvar_window, "cvar inspector"), _Fs(show_gui, "neko gui"),
-            _Fs(hello_duck, "Test gltf"), _Fs(hello_ai_shit, "Test AI"), _Fs(hello_tiled, "Test Tiled"), _Fs(bg, "bg color"));
+neko_struct(neko_engine_cvar_t,                            //
+            _Fs(show_demo_window, "Is show imgui demo"),   //
+            _Fs(show_info_window, "Is show info window"),  //
+            _Fs(show_cvar_window, "cvar inspector"),       //
+            _Fs(show_gui, "neko gui"),                     //
+            _Fs(hello_duck, "Test gltf"),                  //
+            _Fs(hello_ai_shit, "Test AI"),                 //
+            _Fs(hello_tiled, "Test Tiled"),                //
+            _Fs(bg, "bg color")                            //
+);
 
 neko_engine_cvar_t g_cvar = neko_default_val();
+
+// game binding
+#include "neko_scripting.h"
 
 void dockspace(neko_gui_context_t *ctx);
 
@@ -404,6 +420,7 @@ static void echo(int argc, char **argv);
 static void spam(int argc, char **argv);
 static void crash(int argc, char **argv);
 void summon(int argc, char **argv);
+void nui_theme(int argc, char **argv);
 void sz(int argc, char **argv);
 
 neko_console_command_t commands[] = {
@@ -446,6 +463,11 @@ neko_console_command_t commands[] = {
                 .func = crash,
                 .name = "crash",
                 .desc = "test crashhhhhhhhh.....",
+        },
+        {
+                .func = nui_theme,
+                .name = "nui_theme",
+                .desc = "set neko nui theme",
         },
 };
 
@@ -514,6 +536,11 @@ spam_invalid_command:
 void echo(int argc, char **argv) {
     for (int i = 1; i < argc; i++) neko_console_printf(&console, "%s ", argv[i]);
     neko_console_printf(&console, "\n");
+}
+
+void nui_theme(int argc, char **argv) {
+    if (argc != 2) return;
+    set_style(&neko_nui.neko_nui_ctx, (neko_nui_style_theme)atoi(argv[1]));
 }
 
 void help(int argc, char **argv) {
@@ -668,6 +695,13 @@ void game_init() {
 
     g_imgui = neko_imgui_new(neko_platform_main_window(), false);
 
+    // Initialize neko_nui context
+    neko_nui_init(&neko_nui, neko_platform_main_window(), NEKO_NUI_STATE_DEFAULT);
+
+    // Default font (can add different ones in here)
+    neko_nui_font_stash_begin(&neko_nui, NULL);
+    neko_nui_font_stash_end(&neko_nui);
+
     register_components(neko_ecs());
     register_systems(neko_ecs());
 
@@ -676,7 +710,7 @@ void game_init() {
     CTransform xform = {10, 10};
     CVelocity velocity = {0, 0};
 
-    neko_sprite_load(&test_witch_spr, __neko_game_get_path("data/assets/textures/map1.ase"));
+    neko_sprite_load(&test_witch_spr, __neko_game_get_path("data/assets/textures/B_witch.ase"));
 
     neko_sprite_renderer sprite_test = {.sprite = &test_witch_spr};
     neko_particle_renderer particle_render = {};
@@ -710,13 +744,13 @@ void game_init() {
 
     neko_tiled_load(&map, __neko_game_get_path("data/map.tmx").c_str(), NULL);
 
-    char *vert_src = neko_read_file_contents(__neko_game_get_path("data/shaders/sprite.vert").c_str(), "rb", NULL);
-    char *frag_src = neko_read_file_contents(__neko_game_get_path("data/shaders/sprite.frag").c_str(), "rb", NULL);
+    char *vert_src = neko_read_file_contents(__neko_game_get_path("data/shaders/sprite_vs.glsl").c_str(), "rb", NULL);
+    char *frag_src = neko_read_file_contents(__neko_game_get_path("data/shaders/sprite_fs.glsl").c_str(), "rb", NULL);
 
-    neko_tiled_render_init(&g_cb, vert_src, frag_src);
+    neko_tiled_render_init(&g_cb, &g_tiled, vert_src, frag_src);
 
-    neko_free(vert_src);
-    neko_free(frag_src);
+    neko_safe_free(vert_src);
+    neko_safe_free(frag_src);
 
 #pragma endregion
 
@@ -868,10 +902,7 @@ void game_update() {
 
         neko_graphics_renderpass_begin(&g_cb, NEKO_GRAPHICS_RENDER_PASS_DEFAULT);
         {
-            neko_tiled_render_begin(&g_cb);
-
-            neko_idraw_defaults(&g_idraw);
-            neko_idraw_camera2D(&g_idraw, (u32)fbs.x, (u32)fbs.y);
+            neko_tiled_render_begin(&g_cb, &g_tiled);
 
             for (u32 i = 0; i < neko_dyn_array_size(map.layers); i++) {
                 layer_t *layer = map.layers + i;
@@ -882,34 +913,35 @@ void game_update() {
                             tileset_t *tileset = map.tilesets + tile->tileset_id;
                             u32 tsxx = (tile->id % (tileset->width / tileset->tile_width) - 1) * tileset->tile_width;
                             u32 tsyy = tileset->tile_height * ((tile->id - tileset->first_gid) / (tileset->width / tileset->tile_width));
-                            neko_tiled_quad_t quad = {.texture = tileset->texture,
+                            neko_tiled_quad_t quad = {.tileset_id = tile->tileset_id,
+                                                      .texture = tileset->texture,
                                                       .texture_size = {(f32)tileset->width, (f32)tileset->height},
                                                       .position = {(f32)(x * tileset->tile_width * SPRITE_SCALE), (f32)(y * tileset->tile_height * SPRITE_SCALE)},
                                                       .dimentions = {(f32)(tileset->tile_width * SPRITE_SCALE), (f32)(tileset->tile_height * SPRITE_SCALE)},
                                                       .rectangle = {(f32)tsxx, (f32)tsyy, (f32)tileset->tile_width, (f32)tileset->tile_height},
                                                       .color = layer->tint,
                                                       .use_texture = true};
-                            neko_tiled_render_push(&g_cb, &quad);
-                            // neko_idraw_rect_2d_textured_ext(&g_idraw, quad.position.x, quad.position.y, quad.position.x + quad.texture_size.x * 0.2f, quad.position.y + quad.texture_size.y * 0.2f,
-                            // 0, 0, 1, 1, g_test_ase.id, NEKO_COLOR_WHITE);
+                            neko_tiled_render_push(&g_cb, &g_tiled, quad);
                         }
                     }
                 }
             }
 
-            for (u32 i = 0; i < neko_dyn_array_size(map.object_groups); i++) {
-                object_group_t *group = map.object_groups + i;
-                for (u32 ii = 0; ii < neko_dyn_array_size(map.object_groups[i].objects); ii++) {
-                    object_t *object = group->objects + ii;
-                    neko_tiled_quad_t quad = {.position = {(f32)(object->x * SPRITE_SCALE), (f32)(object->y * SPRITE_SCALE)},
-                                              .dimentions = {(f32)(object->width * SPRITE_SCALE), (f32)(object->height * SPRITE_SCALE)},
-                                              .color = group->color,
-                                              .use_texture = false};
-                    neko_tiled_render_push(&g_cb, &quad);
-                }
-            }
+            // for (u32 i = 0; i < neko_dyn_array_size(map.object_groups); i++) {
+            //     object_group_t *group = map.object_groups + i;
+            //     for (u32 ii = 0; ii < neko_dyn_array_size(map.object_groups[i].objects); ii++) {
+            //         object_t *object = group->objects + ii;
+            //         neko_tiled_quad_t quad = {.position = {(f32)(object->x * SPRITE_SCALE), (f32)(object->y * SPRITE_SCALE)},
+            //                                   .dimentions = {(f32)(object->width * SPRITE_SCALE), (f32)(object->height * SPRITE_SCALE)},
+            //                                   .color = group->color,
+            //                                   .use_texture = false};
+            //         neko_tiled_render_push(&g_cb, quad);
+            //     }
+            // }
 
-            neko_tiled_render_flush(&g_cb);
+            // neko_tiled_render_flush(&g_cb);
+
+            neko_tiled_render_draw(&g_cb, &g_tiled);
         }
         neko_graphics_renderpass_end(&g_cb);
     }
@@ -948,9 +980,9 @@ void game_update() {
 
                     GUI_LABEL("ImGui MemoryUsage: %.2lf mb", ((f64)__neko_imgui_meminuse() / 1048576.0));
 
-                    static neko_platform_meminfo_t meminfo = neko_default_val();
+                    static neko_memory_info_t meminfo = neko_default_val();
 
-                    neko_timed_action(60, { meminfo = neko_platform_get_meminfo(); });
+                    neko_timed_action(60, { meminfo = neko_platform_memory_info(); });
 
                     GUI_LABEL("Virtual MemoryUsage: %.2lf mb", ((f64)meminfo.virtual_memory_used / 1048576.0));
                     GUI_LABEL("Real MemoryUsage: %.2lf mb", ((f64)meminfo.physical_memory_used / 1048576.0));
@@ -977,58 +1009,7 @@ void game_update() {
             neko_gui_demo_window(&g_gui, neko_gui_rect(100, 100, 500, 500), NULL);
             neko_gui_style_editor(&g_gui, NULL, neko_gui_rect(350, 250, 300, 240), NULL);
 
-#pragma region gui_mouse
-
             const neko_vec2 ws = neko_v2(600.f, 300.f);
-            neko_gui_window_begin(&g_gui, "Mouse", neko_gui_rect((fbs.x - ws.x) * 0.5f, (fbs.y - ws.y) * 0.5f, ws.x, ws.y));
-            {
-
-                neko_gui_layout_row(&g_gui, 1, neko_gui_widths(-1), 0);
-
-                GUI_LABEL("Position: <%.2f %.2f>", mp.x, mp.y);
-                GUI_LABEL("Wheel: <%.2f %.2f>", mw.x, mw.y);
-                GUI_LABEL("Delta: <%.2f %.2f>", md.x, md.y);
-                GUI_LABEL("Lock: %zu", lock);
-                GUI_LABEL("Moved: %zu", moved);
-
-                struct {
-                    const char *str;
-                    s32 val;
-                } btns[] = {{"Left", NEKO_MOUSE_LBUTTON}, {"Right", NEKO_MOUSE_RBUTTON}, {"Middle", NEKO_MOUSE_MBUTTON}, {NULL}};
-
-                bool mouse_down[3] = {0};
-                bool mouse_pressed[3] = {0};
-                bool mouse_released[3] = {0};
-
-                // Query mouse held down states.
-                mouse_down[NEKO_MOUSE_LBUTTON] = neko_platform_mouse_down(NEKO_MOUSE_LBUTTON);
-                mouse_down[NEKO_MOUSE_RBUTTON] = neko_platform_mouse_down(NEKO_MOUSE_RBUTTON);
-                mouse_down[NEKO_MOUSE_MBUTTON] = neko_platform_mouse_down(NEKO_MOUSE_MBUTTON);
-
-                // Query mouse release states.
-                mouse_released[NEKO_MOUSE_LBUTTON] = neko_platform_mouse_released(NEKO_MOUSE_LBUTTON);
-                mouse_released[NEKO_MOUSE_RBUTTON] = neko_platform_mouse_released(NEKO_MOUSE_RBUTTON);
-                mouse_released[NEKO_MOUSE_MBUTTON] = neko_platform_mouse_released(NEKO_MOUSE_MBUTTON);
-
-                // Query mouse pressed states. Press is a single frame click.
-                mouse_pressed[NEKO_MOUSE_LBUTTON] = neko_platform_mouse_pressed(NEKO_MOUSE_LBUTTON);
-                mouse_pressed[NEKO_MOUSE_RBUTTON] = neko_platform_mouse_pressed(NEKO_MOUSE_RBUTTON);
-                mouse_pressed[NEKO_MOUSE_MBUTTON] = neko_platform_mouse_pressed(NEKO_MOUSE_MBUTTON);
-
-                neko_gui_layout_row(&g_gui, 7, neko_gui_widths(100, 100, 32, 100, 32, 100, 32), 0);
-                for (u32 i = 0; btns[i].str; ++i) {
-                    GUI_LABEL("%s: ", btns[i].str);
-                    GUI_LABEL("pressed: ");
-                    GUI_LABEL("%d", mouse_pressed[btns[i].val]);
-                    GUI_LABEL("down: ");
-                    GUI_LABEL("%d", mouse_down[btns[i].val]);
-                    GUI_LABEL("released: ");
-                    GUI_LABEL("%d", mouse_released[btns[i].val]);
-                }
-            }
-            neko_gui_window_end(&g_gui);
-
-#pragma endregion
 
 #pragma region gui_ss
 
@@ -1119,10 +1100,57 @@ void game_update() {
         }
 
         neko_gui_layout_t l;
-        if (window && neko_gui_window_begin(&g_gui, "App", neko_gui_rect(200, 200, 200, 200))) {
+        if (window && neko_gui_window_begin(&g_gui, "App", neko_gui_rect(950, 200, 200, 200))) {
             l = *neko_gui_get_layout(&g_gui);
             neko_gui_layout_row(&g_gui, 1, neko_gui_widths(-1), 0);
+
             neko_gui_text(&g_gui, "Hello neko");
+
+            neko_gui_text_fc(&g_gui, "喵喵昂~");
+
+            // neko_gui_layout_row(&g_gui, 1, neko_gui_widths(-1), 0);
+
+            GUI_LABEL("Position: <%.2f %.2f>", mp.x, mp.y);
+            GUI_LABEL("Wheel: <%.2f %.2f>", mw.x, mw.y);
+            GUI_LABEL("Delta: <%.2f %.2f>", md.x, md.y);
+            GUI_LABEL("Lock: %zu", lock);
+            GUI_LABEL("Moved: %zu", moved);
+
+            struct {
+                const char *str;
+                s32 val;
+            } btns[] = {{"Left", NEKO_MOUSE_LBUTTON}, {"Right", NEKO_MOUSE_RBUTTON}, {"Middle", NEKO_MOUSE_MBUTTON}, {NULL}};
+
+            bool mouse_down[3] = {0};
+            bool mouse_pressed[3] = {0};
+            bool mouse_released[3] = {0};
+
+            // Query mouse held down states.
+            mouse_down[NEKO_MOUSE_LBUTTON] = neko_platform_mouse_down(NEKO_MOUSE_LBUTTON);
+            mouse_down[NEKO_MOUSE_RBUTTON] = neko_platform_mouse_down(NEKO_MOUSE_RBUTTON);
+            mouse_down[NEKO_MOUSE_MBUTTON] = neko_platform_mouse_down(NEKO_MOUSE_MBUTTON);
+
+            // Query mouse release states.
+            mouse_released[NEKO_MOUSE_LBUTTON] = neko_platform_mouse_released(NEKO_MOUSE_LBUTTON);
+            mouse_released[NEKO_MOUSE_RBUTTON] = neko_platform_mouse_released(NEKO_MOUSE_RBUTTON);
+            mouse_released[NEKO_MOUSE_MBUTTON] = neko_platform_mouse_released(NEKO_MOUSE_MBUTTON);
+
+            // Query mouse pressed states. Press is a single frame click.
+            mouse_pressed[NEKO_MOUSE_LBUTTON] = neko_platform_mouse_pressed(NEKO_MOUSE_LBUTTON);
+            mouse_pressed[NEKO_MOUSE_RBUTTON] = neko_platform_mouse_pressed(NEKO_MOUSE_RBUTTON);
+            mouse_pressed[NEKO_MOUSE_MBUTTON] = neko_platform_mouse_pressed(NEKO_MOUSE_MBUTTON);
+
+            neko_gui_layout_row(&g_gui, 7, neko_gui_widths(100, 100, 32, 100, 32, 100, 32), 0);
+            for (u32 i = 0; btns[i].str; ++i) {
+                GUI_LABEL("%s: ", btns[i].str);
+                GUI_LABEL("pressed: ");
+                GUI_LABEL("%d", mouse_pressed[btns[i].val]);
+                GUI_LABEL("down: ");
+                GUI_LABEL("%d", mouse_down[btns[i].val]);
+                GUI_LABEL("released: ");
+                GUI_LABEL("%d", mouse_released[btns[i].val]);
+            }
+
             neko_gui_window_end(&g_gui);
         }
 
@@ -1145,7 +1173,7 @@ void game_update() {
             screen = neko_gui_rect(0, 0, fb.x, fb.y);
         neko_console(&console, &g_gui, screen, NULL);
     }
-    neko_gui_end(&g_gui, !(io.WantCaptureMouse || io.WantCaptureKeyboard));
+    neko_gui_end(&g_gui, !(io.WantCaptureMouse || io.WantCaptureKeyboard) || (neko_nui.neko_nui_ctx.input.mouse.grab || neko_nui.neko_nui_ctx.input.mouse.grabbed));
 
 #pragma endregion
 
@@ -1160,7 +1188,7 @@ void game_update() {
     // neko_idraw_rotatev(&g_idraw, neko_platform_elapsed_time() * 0.0003f, NEKO_ZAXIS);
     // neko_idraw_box(&g_idraw, 0.f, 0.f, 0.f, 0.5f, 0.5f, 0.5f, 255, 255, 255, 255, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
 
-    neko_neko_fast_sprite_renderer_draw(&g_test_fast_sprite, &g_cb);
+    // neko_neko_fast_sprite_renderer_draw(&g_test_fast_sprite, &g_cb);
 
     neko_graphics_renderpass_begin(&g_cb, NEKO_GRAPHICS_RENDER_PASS_DEFAULT);
     {
@@ -1176,14 +1204,45 @@ void game_update() {
 
     if (ImGui::Begin("Test")) {
         neko::imgui::Auto(g_cvar.show_cvar_window, "CVar Window");
-        if (ImGui::Button("test_xml")) test_xml(__neko_game_get_path("data/test/test.xml"));
-        if (ImGui::Button("test_se")) test_se();
-        if (ImGui::Button("test_sr")) test_sr();
-        if (ImGui::Button("test_ut")) test_ut();
-        if (ImGui::Button("test_backtrace")) __neko_inter_stacktrace();
-        if (ImGui::Button("test_containers")) test_containers();
-        if (ImGui::Button("test_sexpr")) test_sexpr();
-        if (ImGui::Button("Test ecs")) {
+    }
+    ImGui::End();
+
+    if (g_cvar.show_demo_window) ImGui::ShowDemoWindow(&g_cvar.show_demo_window);
+
+    if (g_cvar.show_cvar_window) {
+        if (ImGui::Begin("CVar", &g_cvar.show_cvar_window)) {
+            try {
+                neko_cvar_gui();
+            } catch (const std::exception &ex) {
+                neko_log_error("cvar exception %s", ex.what());
+            }
+        }
+        ImGui::End();
+    }
+
+    neko_imgui_render(&g_imgui, &g_cb);
+
+#pragma endregion
+
+    struct neko_nui_context *ctx = &neko_nui.neko_nui_ctx;
+
+    neko_nui_new_frame(&neko_nui);
+
+    if (neko_nui_begin(ctx, "Hello Neko", neko_nui_rect(1250, 200, 350, 500),
+                       NEKO_NUI_WINDOW_BORDER | NEKO_NUI_WINDOW_MOVABLE | NEKO_NUI_WINDOW_SCALABLE | NEKO_NUI_WINDOW_MINIMIZABLE | NEKO_NUI_WINDOW_TITLE)) {
+        enum { EASY, HARD };
+        static int op = EASY;
+        static int property = 20;
+        neko_nui_layout_row_static(ctx, 30, 125, 1);
+
+        if (neko_nui_button_label(ctx, "test_xml")) test_xml(__neko_game_get_path("data/test/test.xml"));
+        if (neko_nui_button_label(ctx, "test_se")) test_se();
+        if (neko_nui_button_label(ctx, "test_sr")) test_sr();
+        if (neko_nui_button_label(ctx, "test_ut")) test_ut();
+        if (neko_nui_button_label(ctx, "test_backtrace")) __neko_inter_stacktrace();
+        if (neko_nui_button_label(ctx, "test_containers")) test_containers();
+        if (neko_nui_button_label(ctx, "test_sexpr")) test_sexpr();
+        if (neko_nui_button_label(ctx, "test_ecs")) {
             forEachComponentType([&]<typename T>() {
                 // 打印类型名称 它是一个更大字符串的 std::string_view 因此我们使用“%.*s”
                 // `std::printf` 的形式
@@ -1211,25 +1270,36 @@ void game_update() {
                 });
             });
         }
+
+        neko_nui_layout_row_dynamic(ctx, 30, 2);
+        if (neko_nui_option_label(ctx, "easy", op == EASY)) op = EASY;
+        if (neko_nui_option_label(ctx, "hard", op == HARD)) op = HARD;
+
+        neko_nui_layout_row_dynamic(ctx, 25, 1);
+        neko_nui_property_int(ctx, "Compression:", 0, &property, 100, 10, 1);
+
+        neko_nui_layout_row_dynamic(ctx, 20, 1);
+        neko_nui_label(ctx, "background:", NEKO_NUI_TEXT_LEFT);
+        neko_nui_layout_row_dynamic(ctx, 25, 1);
+        // if (neko_nui_combo_begin_color(ctx, neko_nui_rgb_cf(bg), neko_nui_vec2(neko_nui_widget_width(ctx), 400))) {
+        //     neko_nui_layout_row_dynamic(ctx, 120, 1);
+        //     bg = neko_nui_color_picker(ctx, bg, NEKO_NUI_RGBA);
+        //     neko_nui_layout_row_dynamic(ctx, 25, 1);
+        //     bg.r = neko_nui_propertyf(ctx, "#R:", 0, bg.r, 1.0f, 0.01f, 0.005f);
+        //     bg.g = neko_nui_propertyf(ctx, "#G:", 0, bg.g, 1.0f, 0.01f, 0.005f);
+        //     bg.b = neko_nui_propertyf(ctx, "#B:", 0, bg.b, 1.0f, 0.01f, 0.005f);
+        //     bg.a = neko_nui_propertyf(ctx, "#A:", 0, bg.a, 1.0f, 0.01f, 0.005f);
+        //     neko_nui_combo_end(ctx);
+        // }
     }
-    ImGui::End();
+    neko_nui_end(ctx);
 
-    if (g_cvar.show_demo_window) ImGui::ShowDemoWindow(&g_cvar.show_demo_window);
+    // calculator(ctx);
 
-    if (g_cvar.show_cvar_window) {
-        if (ImGui::Begin("CVar", &g_cvar.show_cvar_window)) {
-            try {
-                neko_cvar_gui();
-            } catch (const std::exception &ex) {
-                neko_log_error("cvar exception %s", ex.what());
-            }
-        }
-        ImGui::End();
-    }
+    // node_editor(ctx, &editor);
 
-    neko_imgui_render(&g_imgui, &g_cb);
-
-#pragma endregion
+    // Render neko_nui commands into graphics command buffer
+    neko_nui_render(&neko_nui, &g_cb, NEKO_NUI_ANTI_ALIASING_ON);
 
     try {
         neko_lua_wrap_call(L, "test_update");
@@ -1248,20 +1318,11 @@ void game_shutdown() {
         neko_log_error("lua exception %s", ex.what());
     }
 
-    for (u32 i = 0; i < neko_dyn_array_size(map.tilesets); i++) {
-        neko_graphics_texture_destroy(map.tilesets[i].texture);
-    }
-
-    for (u32 i = 0; i < neko_dyn_array_size(map.layers); i++) {
-        neko_free(map.layers[i].tiles);
-    }
-
-    neko_dyn_array_free(map.layers);
-    neko_dyn_array_free(map.tilesets);
+    neko_tiled_unload(&map);
 
     neko_array_dctor(&test_witch_spr.frames);
 
-    neko_tiled_render_deinit(&g_cb);
+    neko_tiled_render_deinit(&g_cb, &g_tiled);
 
     neko_scripting_end(L);
 

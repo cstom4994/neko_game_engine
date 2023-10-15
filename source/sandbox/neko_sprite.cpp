@@ -8,6 +8,15 @@
 // game
 #include "hpp/neko_cpp_utils.hpp"
 
+// Shaders
+#ifdef NEKO_PLATFORM_WEB
+#define NEKO_VERSION_STR "#version 300 es\n"
+#else
+#define NEKO_VERSION_STR "#version 330 core\n"
+#endif
+
+#define ROW_COL_CT 10
+
 bool neko_sprite_load(neko_sprite* spr, const neko_string& filepath) {
 
     ase_t* ase = neko_aseprite_load_from_file(filepath.c_str());
@@ -403,8 +412,6 @@ void neko_particle_renderer_draw(neko_particle_renderer* pr, neko_command_buffer
 //     ImGui::End();
 // }
 
-#define ROW_COL_CT 10
-
 // Vertex data for quad
 float v_data[] = {
         // Positions  UVs
@@ -419,13 +426,6 @@ u32 i_data[] = {
         0, 3, 2,  // First Triangle
         0, 1, 3   // Second Triangle
 };
-
-// Shaders
-#ifdef NEKO_PLATFORM_WEB
-#define NEKO_VERSION_STR "#version 300 es\n"
-#else
-#define NEKO_VERSION_STR "#version 330 core\n"
-#endif
 
 // Shaders
 const char* v_src = NEKO_VERSION_STR

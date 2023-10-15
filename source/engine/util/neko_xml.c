@@ -315,7 +315,7 @@ neko_xml_document_t* neko_xml_parse_file(const_str path) {
 
     neko_xml_document_t* doc = neko_xml_parse(source);
 
-    neko_free(source);
+    neko_safe_free(source);
 
     return doc;
 }

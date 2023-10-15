@@ -1575,7 +1575,7 @@ NEKO_API_DECL char* neko_read_file_contents(const char* file_path, const char* m
         fseek(fp, 0, SEEK_END);
         sz = ftell(fp);
         fseek(fp, 0, SEEK_SET);
-        buffer = (char*)neko_malloc(sz + 1);
+        buffer = (char*)neko_safe_malloc(sz + 1);
         if (buffer) {
             fread(buffer, 1, sz, fp);
         }

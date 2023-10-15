@@ -4756,6 +4756,26 @@ NEKO_API_DECL s32 neko_gui_text_ex(neko_gui_context_t* ctx, const char* text, s3
     return res;
 }
 
+NEKO_API_DECL s32 neko_gui_text_fc_ex(neko_gui_context_t* ctx, const char* text, neko_font_index fontindex) {
+
+    s32 width = -1;
+
+    s32 th = 20;
+
+    neko_gui_layout_column_begin(ctx);
+
+    neko_gui_layout_row(ctx, 1, &width, th);
+
+    neko_gui_layout_t* layout = neko_gui_get_layout(ctx);
+
+    if (fontindex == -1) fontindex = ctx->default_font;
+    neko_graphics_text(text, fontindex, layout->body.x, layout->body.y + layout->body.h / 2);
+
+    neko_gui_layout_column_end(ctx);
+
+    return 0;
+}
+
 NEKO_API_DECL s32 neko_gui_label_ex(neko_gui_context_t* ctx, const char* label, const neko_gui_selector_desc_t* desc, u64 opt) {
     // Want to push animations here for styles
     s32 res = 0;

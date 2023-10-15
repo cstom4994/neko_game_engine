@@ -47,8 +47,10 @@ typedef struct map_s {
 } map_t;
 
 NEKO_API_DECL void neko_tiled_load(map_t* map, const_str tmx_path, const_str res_path);
+NEKO_API_DECL void neko_tiled_unload(map_t* map);
 
-typedef struct neko_tiled_quad_quad_s {
+typedef struct neko_tiled_quad_s {
+    u32 tileset_id;
     neko_handle(neko_graphics_texture_t) texture;
     neko_vec2 texture_size;
     neko_vec2 position;
@@ -58,10 +60,35 @@ typedef struct neko_tiled_quad_quad_s {
     bool use_texture;
 } neko_tiled_quad_t;
 
-NEKO_API_DECL void neko_tiled_render_init(neko_command_buffer_t* cb, const char* vert_src, const char* frag_src);
-NEKO_API_DECL void neko_tiled_render_deinit(neko_command_buffer_t* cb);
-NEKO_API_DECL void neko_tiled_render_begin(neko_command_buffer_t* cb);
-NEKO_API_DECL void neko_tiled_render_flush(neko_command_buffer_t* cb);
-NEKO_API_DECL void neko_tiled_render_push(neko_command_buffer_t* cb, neko_tiled_quad_t* quad);
+#define BATCH_SIZE 2048
+
+#define IND_PER_QUAD 6
+
+#define VERTS_PER_QUAD 4   // 一次发送多少个verts数据
+#define FLOATS_PER_VERT 9  // 每个verts数据的大小
+
+typedef struct neko_tiled_quad_list_s {
+    neko_dyn_array(neko_tiled_quad_t) quad_list;  // quad 绘制队列
+} neko_tiled_quad_list_t;
+
+typedef struct neko_tiled_renderer_s {
+    neko_handle(neko_graphics_vertex_buffer_t) vb;
+    neko_handle(neko_graphics_index_buffer_t) ib;
+    neko_handle(neko_graphics_pipeline_t) pip;
+    neko_handle(neko_graphics_shader_t) shader;
+    neko_handle(neko_graphics_uniform_t) u_camera;
+    neko_handle(neko_graphics_uniform_t) u_batch_tex;
+    neko_handle(neko_graphics_texture_t) batch_texture;       // 当前绘制所用贴图
+    neko_hash_table(u32, neko_tiled_quad_list_t) quad_table;  // 分层绘制哈希表
+
+    u32 quad_count;
+} neko_tiled_renderer_t;
+
+NEKO_API_DECL void neko_tiled_render_init(neko_command_buffer_t* cb, neko_tiled_renderer_t* renderer, const char* vert_src, const char* frag_src);
+NEKO_API_DECL void neko_tiled_render_deinit(neko_command_buffer_t* cb, neko_tiled_renderer_t* renderer);
+NEKO_API_DECL void neko_tiled_render_begin(neko_command_buffer_t* cb, neko_tiled_renderer_t* renderer);
+NEKO_API_DECL void neko_tiled_render_flush(neko_command_buffer_t* cb, neko_tiled_renderer_t* renderer);
+NEKO_API_DECL void neko_tiled_render_push(neko_command_buffer_t* cb, neko_tiled_renderer_t* renderer, neko_tiled_quad_t quad);
+NEKO_API_DECL void neko_tiled_render_draw(neko_command_buffer_t* cb, neko_tiled_renderer_t* renderer);
 
 #endif

@@ -71,14 +71,14 @@ typedef struct neko_platform_window_s {
     b32 focus;
 } neko_platform_window_t;
 
-typedef struct neko_platform_meminfo_s {
+typedef struct neko_memory_info_s {
     u64 virtual_memory_used;
     u64 physical_memory_used;
     u64 peak_virtual_memory_used;
     u64 peak_physical_memory_used;
     u64 gpu_memory_used;   // kb
     u64 gpu_total_memory;  // kb
-} neko_platform_meminfo_t;
+} neko_memory_info_t;
 
 typedef enum neko_platform_cursor {
     NEKO_PLATFORM_CURSOR_ARROW,
@@ -647,7 +647,7 @@ NEKO_API_DECL void neko_platform_set_window_close_callback(u32 handle, neko_wind
 NEKO_API_DECL void neko_platform_set_character_callback(u32 handle, neko_character_callback_t cb);
 
 NEKO_API_DECL void* neko_platform_get_sys_handle();
-NEKO_API_DECL neko_platform_meminfo_t neko_platform_get_meminfo();
+NEKO_API_DECL neko_memory_info_t neko_platform_memory_info();
 NEKO_API_DECL neko_vec2 neko_platform_opengl_ver();
 NEKO_API_DECL void neko_platform_msgbox(const_str msg);
 

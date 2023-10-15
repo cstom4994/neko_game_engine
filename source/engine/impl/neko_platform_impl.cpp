@@ -927,8 +927,8 @@ void neko_platform_init(neko_platform_t* pf) {
     }
 }
 
-neko_platform_meminfo_t glfw_platform_get_meminfo() {
-    neko_platform_meminfo_t meminfo = {0};
+neko_memory_info_t glfw_platform_get_meminfo() {
+    neko_memory_info_t meminfo = {0};
 
 #ifdef NEKO_PLATFORM_WIN
     HANDLE hProcess = GetCurrentProcess();
@@ -976,7 +976,7 @@ void* glfw_get_sys_handle() {
 }
 
 void* neko_platform_get_sys_handle() { return glfw_get_sys_handle(); }
-neko_platform_meminfo_t neko_platform_get_meminfo() { return glfw_platform_get_meminfo(); }
+neko_memory_info_t neko_platform_memory_info() { return glfw_platform_get_meminfo(); }
 neko_vec2 neko_platform_opengl_ver() { return glfw_get_opengl_version(); }
 
 void neko_platform_msgbox(const_str msg) {

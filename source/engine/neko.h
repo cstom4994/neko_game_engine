@@ -205,6 +205,7 @@ enum neko_type_kind {
 
 #define neko_array_size(__ARR) sizeof(__ARR) / sizeof(__ARR[0])
 
+#ifdef NEKO_DEBUG
 #define neko_assert(x, ...)                                                                                            \
     do {                                                                                                               \
         if (!(x)) {                                                                                                    \
@@ -212,6 +213,14 @@ enum neko_type_kind {
             __debugbreak();                                                                                            \
         }                                                                                                              \
     } while (0)
+#else
+#define neko_assert(x, ...)                                                                                            \
+    do {                                                                                                               \
+        if (!(x)) {                                                                                                    \
+            neko_printf("assertion failed: (%s), function %s, file %s, line %d.\n", #x, __func__, __FILE__, __LINE__); \
+        }                                                                                                              \
+    } while (0)
+#endif
 
 #if defined(NEKO_CPP_SRC)
 #define neko_default_val() \

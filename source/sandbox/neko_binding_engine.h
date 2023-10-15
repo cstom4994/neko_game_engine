@@ -365,6 +365,14 @@ static int __neko_bind_graphics_fontcache_load(lua_State* L) {
     return 1;
 }
 
+static int __neko_bind_graphics_fontcache_set_default_font(lua_State* L) {
+    neko_font_index font_index = lua_tointeger(L, 1);
+
+    g_gui.default_font = font_index;
+
+    return 0;
+}
+
 neko_inline void neko_register_pack(lua_State* L) {
 
     lua_register(L, "neko_pack_construct", __neko_bind_pack_construct);
@@ -537,9 +545,10 @@ neko_inline void neko_register_common(lua_State* L) {
 neko_inline void neko_register_graphics(lua_State* L) {
 
     neko_lua_wrap_register_t<>(L).def(
-            +[](const_str text, const neko_font_index font, const f32 x, const f32 y) { ((neko_instance()->ctx.graphics))->api.fontcache_push_x_y(text, font, x, y); }, "neko_text");
+            +[](const_str text, const neko_font_index font, const f32 x, const f32 y) { neko_graphics_text(text, font, x, y); }, "neko_text");
 
     lua_register(L, "neko_fontcache_load", __neko_bind_graphics_fontcache_load);
+    lua_register(L, "neko_fontcache_set_default_font", __neko_bind_graphics_fontcache_set_default_font);
 }
 
 // struct neko_lua_handle_wrap {
