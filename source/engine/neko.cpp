@@ -2263,7 +2263,10 @@ void neko_ecs_component_pool_push(neko_ecs_component_pool* pool, u32 index) {
 u32 neko_ecs_component_pool_pop(neko_ecs_component_pool* pool, void* data) {
     u32 index = neko_ecs_stack_pop(pool->indexes);
     u8* ptr = (u8*)((u8*)pool->data + (index * pool->size));
-    memcpy(ptr, data, pool->size);  // 初始化组件的数据是以深拷贝进行
+    if (NULL != data)
+        memcpy(ptr, data, pool->size);  // 初始化组件数据是以深拷贝进行
+    else
+        memset(ptr, 0, pool->size);  // 默认组件数据为NULL 一般发生在组件数据需要特殊初始化
     return index;
 }
 
@@ -2428,20 +2431,64 @@ u32 neko_ecs_ent_get_version(neko_ecs* ecs, neko_ecs_ent e) { return ecs->versio
 void neko_ecs_ent_print(neko_ecs* ecs, neko_ecs_ent e) {
     u32 index = __neko_ecs_ent_index(e);
 
-    printf("---- neko_ecs_ent ----\nIndex: %d\nVersion: %d\nMask: ", index, ecs->versions[index]);
+    neko_printf("---- neko_ecs_ent ----\nIndex: %d\nVersion: %d\nMask: ", index, ecs->versions[index]);
 
     for (u32 i = ecs->component_count; i-- > 0;) {
-        printf("%u", ecs->component_masks[index * ecs->component_count + i]);
+        neko_printf("%u", ecs->component_masks[index * ecs->component_count + i]);
     }
-    printf("\n");
+    neko_printf("\n");
 
     for (u32 i = 0; i < ecs->component_count; i++) {
         if (neko_ecs_ent_has_component(ecs, e, i)) {
-            printf("Component Type: %s (Index: %d)\n", neko::enum_name((ComponentType)i).data(), ecs->components[index * ecs->component_count + i]);
+            neko_println("Component Type: %s (Index: %d)", std::string(neko::enum_name((ComponentType)i)).c_str(), ecs->components[index * ecs->component_count + i]);
         }
     }
 
-    printf("----------------\n");
+    neko_println("----------------");
+}
+
+neko_ecs_ent_view neko_ecs_ent_view_single(neko_ecs* ecs, neko_ecs_component_type component_type) {
+
+    neko_ecs_ent_view view = neko_default_val();
+
+    view.view_type = component_type;
+    view.ecs = ecs;
+
+    for (view.i = 0; view.i < neko_ecs_for_count(view.ecs); view.i++) {
+        neko_ecs_ent e = neko_ecs_get_ent(view.ecs, view.i);
+        if (neko_ecs_ent_has_component(view.ecs, e, component_type)) {
+            view.ent = e;
+            view.valid = true;
+            return view;
+        }
+    }
+
+    view.valid = false;
+    return view;
+}
+
+b32 neko_ecs_ent_view_valid(neko_ecs_ent_view* view) {
+    neko_assert(view);
+    return (view->valid && view->i != neko_ecs_for_count(view->ecs));
+}
+
+void neko_ecs_ent_view_next(neko_ecs_ent_view* view) {
+    neko_assert(view->ecs);
+    neko_assert(view);
+
+    view->valid = false;  // 重置有效状态
+    view->i++;            // next
+
+    while (view->i < neko_ecs_for_count(view->ecs)) {
+        neko_ecs_ent e = neko_ecs_get_ent(view->ecs, view->i);
+        if (neko_ecs_ent_has_component(view->ecs, e, view->view_type)) {
+            view->ent = e;
+            view->valid = true;
+            break;
+        } else {
+            view->i++;
+        }
+    }
 }
 
 #pragma endregion
@@ -2519,7 +2566,7 @@ NEKO_API_DECL neko_t* neko_create(neko_game_desc_t app_desc) {
         neko_instance()->ctx.audio->init(neko_instance()->ctx.audio);
 
         // 初始化 ecs
-        neko_ecs() = neko_ecs_make(1024, COMPONENT_COUNT, 3);
+        neko_ecs() = neko_ecs_make(1024, COMPONENT_COUNT, 8);
 
         // Initialize application and set to running
         app_desc.init();

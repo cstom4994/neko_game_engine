@@ -968,6 +968,11 @@ NEKO_API_DECL neko_gui_rect_t neko_gui_layout_anchor(const neko_gui_rect_t* pare
 #define neko_gui_dock(_CTX, _DST, _SRC, _TYPE) neko_gui_dock_ex((_CTX), (_DST), (_SRC), (_TYPE), 0.5f)
 #define neko_gui_undock(_CTX, _NAME) neko_gui_undock_ex((_CTX), (_NAME))
 #define neko_gui_label(_CTX, _FMT, ...) (neko_snprintf((_CTX)->number_edit_buf, sizeof((_CTX)->number_edit_buf), _FMT, ##__VA_ARGS__), neko_gui_label_ex((_CTX), (_CTX)->number_edit_buf, NULL, 0x00))
+#define neko_gui_labelf(STR, ...)                        \
+    do {                                                 \
+        neko_snprintfc(BUFFER, 256, STR, ##__VA_ARGS__); \
+        neko_gui_label(&g_gui, BUFFER);                  \
+    } while (0)
 
 //=== Elements (Extended) ===//
 

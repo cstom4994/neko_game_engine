@@ -6,6 +6,12 @@
 
 // 测试 ECS 用
 typedef struct {
+    char name[64];
+    bool visible;
+    bool selected;
+} CGameObject;
+
+typedef struct {
     f32 x, y;
 } CTransform;
 
@@ -14,10 +20,15 @@ typedef struct {
 } CVelocity;
 
 enum ComponentType {
+    COMPONENT_GAMEOBJECT,
     COMPONENT_TRANSFORM,
     COMPONENT_VELOCITY,
     COMPONENT_SPRITE,
     COMPONENT_PARTICLE,
+    COMPONENT_TILED,
+    COMPONENT_GFXT,
+    COMPONENT_UI,
+    COMPONENT_FAST_SPRITE,
 
     COMPONENT_COUNT
 };

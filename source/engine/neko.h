@@ -1919,14 +1919,24 @@ NEKO_API_DECL void neko_lexer_set_token(neko_lexer_t* lex, neko_token_t token);
 
 NEKO_API_DECL const_str neko_enum_name_cstr();
 
+NEKO_API_DECL neko_inline u32 neko_darken_color(u32 color, f32 brightness) {
+    int a = (color >> 24) & 0xFF;
+    int r = (int)(((color >> 16) & 0xFF) * brightness);
+    int g = (int)(((color >> 8) & 0xFF) * brightness);
+    int b = (int)((color & 0xFF) * brightness);
+
+    return (a << 24) | (r << 16) | (g << 8) | b;
+}
+
 #pragma region neko_ecs
 
 typedef u64 neko_ecs_ent;
 typedef u32 neko_ecs_component_type;
 
-#define neko_ecs_decl_mask(name, ctypes_count, ...)                    \
-    neko_ecs_component_type name##_MASK[ctypes_count] = {__VA_ARGS__}; \
-    u32 name##_MASK_COUNT = ctypes_count
+#define neko_ecs_decl_system(name, mask_name, ctypes_count, ...)            \
+    neko_ecs_component_type mask_name##_MASK[ctypes_count] = {__VA_ARGS__}; \
+    u32 mask_name##_MASK_COUNT = ctypes_count;                              \
+    void name(neko_ecs* ecs)
 
 #define neko_ecs_get_mask(name) name##_MASK_COUNT, name##_MASK
 
@@ -1937,7 +1947,7 @@ typedef u32 neko_ecs_component_type;
 typedef void (*neko_ecs_system_func)(struct neko_ecs* ecs);
 typedef void (*neko_ecs_component_destroy)(void* data);
 
-typedef enum { ECS_SYSTEM_UPDATE, ECS_SYSTEM_RENDER_IMMEDIATE } neko_ecs_system_type;
+typedef enum { ECS_SYSTEM_UPDATE, ECS_SYSTEM_RENDER_IMMEDIATE, ECS_SYSTEM_RENDER_DEFERRED, ECS_SYSTEM_EDITOR } neko_ecs_system_type;
 
 typedef struct neko_ecs_stack {
     u32* data;
@@ -2007,6 +2017,18 @@ NEKO_API_DECL b32 neko_ecs_ent_has_mask(neko_ecs* ecs, neko_ecs_ent e, u32 compo
 NEKO_API_DECL b32 neko_ecs_ent_is_valid(neko_ecs* ecs, neko_ecs_ent e);
 NEKO_API_DECL u32 neko_ecs_ent_get_version(neko_ecs* ecs, neko_ecs_ent e);
 NEKO_API_DECL void neko_ecs_ent_print(neko_ecs* ecs, neko_ecs_ent e);
+
+typedef struct neko_ecs_ent_view {
+    neko_ecs* ecs;
+    neko_ecs_ent ent;
+    neko_ecs_component_type view_type;
+    u32 i;
+    b32 valid;
+} neko_ecs_ent_view;
+
+NEKO_API_DECL neko_ecs_ent_view neko_ecs_ent_view_single(neko_ecs* ecs, neko_ecs_component_type component_type);
+NEKO_API_DECL b32 neko_ecs_ent_view_valid(neko_ecs_ent_view* view);
+NEKO_API_DECL void neko_ecs_ent_view_next(neko_ecs_ent_view* view);
 
 #pragma endregion
 

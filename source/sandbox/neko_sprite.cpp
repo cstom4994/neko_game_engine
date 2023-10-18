@@ -38,13 +38,13 @@ bool neko_sprite_load(neko_sprite* spr, const neko_string& filepath) {
         std::memset(frame->pixels[0], 0, sizeof(neko_color_t) * (size_t)ase->w * (size_t)ase->h);
         neko_color_t* dst = frame->pixels[0];
 
-        neko_println_debug("frame: %d cel_count: %d", i, frame->cel_count);
+        // neko_println_debug("frame: %d cel_count: %d", i, frame->cel_count);
 
         for (int j = 0; j < frame->cel_count; ++j) {  //
 
             ase_cel_t* cel = frame->cels + j;
 
-            neko_println_debug(" - %s", cel->layer->name);
+            // neko_println_debug(" - %s", cel->layer->name);
 
             // 确定图块所在层与父层可视
             if (!(cel->layer->flags & NEKO_ASE_LAYER_FLAGS_VISIBLE) || (cel->layer->parent && !(cel->layer->parent->flags & NEKO_ASE_LAYER_FLAGS_VISIBLE))) {
@@ -453,7 +453,7 @@ void main()
 }
 )";
 
-void neko_neko_fast_sprite_renderer_construct(neko_fast_sprite_renderer* render, u32 width, u32 height, void* data) {
+void neko_fast_sprite_renderer_construct(neko_fast_sprite_renderer* render, u32 width, u32 height, void* data) {
 
     // Generate procedural texture data (checkered texture)
 
@@ -511,7 +511,7 @@ void neko_neko_fast_sprite_renderer_construct(neko_fast_sprite_renderer* render,
                                                                   .size = 2 * sizeof(neko_graphics_vertex_attribute_desc_t)}}));
 }
 
-void neko_neko_fast_sprite_renderer_draw(neko_fast_sprite_renderer* render, neko_command_buffer_t* cb) {
+void neko_fast_sprite_renderer_draw(neko_fast_sprite_renderer* render, neko_command_buffer_t* cb) {
 
     // Bindings for all buffers: vertex, index, sampler
     neko_graphics_bind_desc_t binds = {.vertex_buffers = {.desc = neko_c_ref(neko_graphics_bind_vertex_buffer_desc_t, {.buffer = render->vbo})},
@@ -1254,7 +1254,7 @@ void neko_aseprite_default_blend_bind(ase_t* ase) {
         std::memset(frame->pixels[0], 0, sizeof(neko_color_t) * (size_t)ase->w * (size_t)ase->h);
         neko_color_t* dst = frame->pixels[0];
 
-        neko_println_debug("frame: %d cel_count: %d", i, frame->cel_count);
+        // neko_println_debug("frame: %d cel_count: %d", i, frame->cel_count);
 
         for (int j = 0; j < frame->cel_count; ++j) {  //
 

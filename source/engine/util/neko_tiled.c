@@ -107,7 +107,7 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
 
         const char *cd_ptr = data_text;
 
-        layer.tiles = (tile_t *)neko_malloc(layer.width * layer.height * sizeof(tile_t));
+        layer.tiles = (tile_t *)neko_safe_malloc(layer.width * layer.height * sizeof(tile_t));
 
         for (u32 y = 0; y < layer.height; y++) {
             for (u32 x = 0; x < layer.width; x++) {
@@ -188,14 +188,19 @@ void neko_tiled_unload(map_t *map) {
     }
 
     for (u32 i = 0; i < neko_dyn_array_size(map->layers); i++) {
-        neko_free(map->layers[i].tiles);
+        neko_safe_free(map->layers[i].tiles);
     }
 
     neko_dyn_array_free(map->layers);
     neko_dyn_array_free(map->tilesets);
 }
 
-void neko_tiled_render_init(neko_command_buffer_t *cb, neko_tiled_renderer_t *renderer, const char *vert_src, const char *frag_src) {
+void neko_tiled_render_init(neko_command_buffer_t *cb, neko_tiled_renderer *renderer, const char *vert_src, const char *frag_src) {
+
+    if (NULL == vert_src || NULL == frag_src) {
+        vert_src = neko_read_file_contents("data/shaders/sprite_vs.glsl", "rb", NULL);
+        frag_src = neko_read_file_contents("data/shaders/sprite_fs.glsl", "rb", NULL);
+    }
 
     neko_graphics_vertex_buffer_desc_t vb_decl = {
             .data = NULL,
@@ -247,9 +252,12 @@ void neko_tiled_render_init(neko_command_buffer_t *cb, neko_tiled_renderer_t *re
                                                                 },
                                                         .size = 4 * sizeof(neko_graphics_vertex_attribute_desc_t)},
                                              .blend = {.func = NEKO_GRAPHICS_BLEND_EQUATION_ADD, .src = NEKO_GRAPHICS_BLEND_MODE_SRC_ALPHA, .dst = NEKO_GRAPHICS_BLEND_MODE_ONE_MINUS_SRC_ALPHA}});
+
+    neko_safe_free(vert_src);
+    neko_safe_free(frag_src);
 }
 
-void neko_tiled_render_deinit(neko_command_buffer_t *cb, neko_tiled_renderer_t *renderer) {
+void neko_tiled_render_deinit(neko_tiled_renderer *renderer) {
 
     for (neko_hash_table_iter it = neko_hash_table_iter_new(renderer->quad_table); neko_hash_table_iter_valid(renderer->quad_table, it); neko_hash_table_iter_advance(renderer->quad_table, it)) {
         u32 k = neko_hash_table_iter_getk(renderer->quad_table, it);
@@ -266,7 +274,7 @@ void neko_tiled_render_deinit(neko_command_buffer_t *cb, neko_tiled_renderer_t *
     // neko_command_buffer_free(cb);
 }
 
-void neko_tiled_render_begin(neko_command_buffer_t *cb, neko_tiled_renderer_t *renderer) {
+void neko_tiled_render_begin(neko_command_buffer_t *cb, neko_tiled_renderer *renderer) {
 
     // neko_graphics_clear_desc_t clear = {.actions = &(neko_graphics_clear_action_t){.color = {0.1f, 0.1f, 0.1f, 1.0f}}};
     // neko_graphics_clear(cb, &clear);
@@ -274,7 +282,7 @@ void neko_tiled_render_begin(neko_command_buffer_t *cb, neko_tiled_renderer_t *r
     renderer->quad_count = 0;
 }
 
-void neko_tiled_render_flush(neko_command_buffer_t *cb, neko_tiled_renderer_t *renderer) {
+void neko_tiled_render_flush(neko_command_buffer_t *cb, neko_tiled_renderer *renderer) {
     const neko_vec2 ws = neko_platform_window_sizev(neko_platform_main_window());
     neko_graphics_set_viewport(cb, 0, 0, ws.x, ws.y);
 
@@ -307,7 +315,7 @@ void neko_tiled_render_flush(neko_command_buffer_t *cb, neko_tiled_renderer_t *r
     renderer->quad_count = 0;
 }
 
-void neko_tiled_render_push(neko_command_buffer_t *cb, neko_tiled_renderer_t *renderer, neko_tiled_quad_t quad) {
+void neko_tiled_render_push(neko_command_buffer_t *cb, neko_tiled_renderer *renderer, neko_tiled_quad_t quad) {
 
     if (!neko_hash_table_exists(renderer->quad_table, quad.tileset_id)) neko_hash_table_insert(renderer->quad_table, quad.tileset_id, (neko_tiled_quad_list_t){0});
 
@@ -316,7 +324,9 @@ void neko_tiled_render_push(neko_command_buffer_t *cb, neko_tiled_renderer_t *re
     neko_dyn_array_push(quad_list->quad_list, quad);
 }
 
-void neko_tiled_render_draw(neko_command_buffer_t *cb, neko_tiled_renderer_t *renderer) {
+void neko_tiled_render_draw(neko_command_buffer_t *cb, neko_tiled_renderer *renderer) {
+
+    // TODO: 23/10/16 检测quad是否在屏幕视角范围外 进行剔除性优化
 
     // iterate quads hash table
     for (neko_hash_table_iter it = neko_hash_table_iter_new(renderer->quad_table); neko_hash_table_iter_valid(renderer->quad_table, it); neko_hash_table_iter_advance(renderer->quad_table, it)) {

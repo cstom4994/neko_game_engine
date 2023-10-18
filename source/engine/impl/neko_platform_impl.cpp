@@ -855,7 +855,7 @@ b32 __glfw_set_window_center(GLFWwindow* window);
 void neko_platform_init(neko_platform_t* pf) {
     neko_assert(pf);
 
-    neko_println("Initializing GLFW");
+    neko_log_trace("Initializing GLFW");
 
 #ifdef NEKO_PLATFORM_WIN
     SetConsoleOutputCP(CP_UTF8);
@@ -902,7 +902,7 @@ void neko_platform_init(neko_platform_t* pf) {
 
         default: {
             // Default to no output at all.
-            neko_println("Video format not supported.");
+            neko_log_warning("Video format not supported.");
             neko_assert(false);
         } break;
     }

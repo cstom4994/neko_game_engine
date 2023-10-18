@@ -86,8 +86,8 @@ typedef struct neko_fast_sprite_renderer {
 
 } neko_fast_sprite_renderer;
 
-void neko_neko_fast_sprite_renderer_construct(neko_fast_sprite_renderer* render, u32 width = 0, u32 height = 0, void* data = NULL);
-void neko_neko_fast_sprite_renderer_draw(neko_fast_sprite_renderer* render, neko_command_buffer_t* cb);
+void neko_fast_sprite_renderer_construct(neko_fast_sprite_renderer* render, u32 width = 0, u32 height = 0, void* data = NULL);
+void neko_fast_sprite_renderer_draw(neko_fast_sprite_renderer* render, neko_command_buffer_t* cb);
 
 #pragma region neko_ase
 

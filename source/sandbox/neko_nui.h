@@ -53,4 +53,6 @@ NEKO_NUI_INTERN void neko_nui_clipboard_copy(neko_nui_handle usr, const char* te
 
 NEKO_API_DECL void set_style(struct neko_nui_context* ctx, enum neko_nui_style_theme theme);
 
+NEKO_API_DECL int neko_nui_overview(struct neko_nui_context* ctx);
+
 #endif  // NEKO_NUI_H

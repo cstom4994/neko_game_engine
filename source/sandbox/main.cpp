@@ -16,18 +16,15 @@
 #include "engine/util/neko_tiled.h"
 
 // game
+#include "game_chunk.h"
 #include "neko_client_ecs.h"
 #include "neko_hash.h"
-#include "neko_nui.h"
+#include "neko_nui_auto.hpp"
 #include "neko_sprite.h"
 
 // hpp
 #include "hpp/neko_static_refl.hpp"
 #include "hpp/neko_struct.hpp"
-
-#define NEKO_IMGUI_IMPL
-#include "neko_imgui.h"
-#include "neko_imgui_utils.hpp"
 
 #define NEKO_CONSOLE_IMPL
 #include "neko_console.h"
@@ -40,26 +37,17 @@
 
 neko_command_buffer_t g_cb = neko_default_val();
 neko_gui_context_t g_gui = neko_default_val();
-neko_imgui_context_t g_imgui = neko_default_val();
 neko_immediate_draw_t g_idraw = neko_default_val();
 neko_client_ecs_userdata_t g_client_ecs_userdata = neko_default_val();
 neko_asset_font_t g_font;
 neko_gui_style_sheet_t style_sheet;
-neko_tiled_renderer_t g_tiled = neko_default_val();
-neko_nui_ctx_t neko_nui = neko_default_val();
-
-neko_gfxt_pipeline_t pip;
-neko_gfxt_material_t mat;
-neko_gfxt_mesh_t mesh;
-neko_gfxt_texture_t texture;
+neko_nui_ctx_t g_nui = neko_default_val();
 
 neko_handle(neko_graphics_renderpass_t) rp = neko_default_val();
 neko_handle(neko_graphics_framebuffer_t) fbo = neko_default_val();
 neko_handle(neko_graphics_texture_t) rt = neko_default_val();
 
 neko_texture_t g_test_ase = neko_default_val();
-
-neko_fast_sprite_renderer g_test_fast_sprite = neko_default_val();
 
 neko_asset_manager_t g_am = neko_default_val();
 
@@ -119,7 +107,7 @@ struct neko_engine_cvar_t {
 };
 
 neko_struct(neko_engine_cvar_t,                            //
-            _Fs(show_demo_window, "Is show imgui demo"),   //
+            _Fs(show_demo_window, "Is show nui demo"),     //
             _Fs(show_info_window, "Is show info window"),  //
             _Fs(show_cvar_window, "cvar inspector"),       //
             _Fs(show_gui, "neko gui"),                     //
@@ -540,7 +528,7 @@ void echo(int argc, char **argv) {
 
 void nui_theme(int argc, char **argv) {
     if (argc != 2) return;
-    set_style(&neko_nui.neko_nui_ctx, (neko_nui_style_theme)atoi(argv[1]));
+    set_style(&g_nui.neko_nui_ctx, (neko_nui_style_theme)atoi(argv[1]));
 }
 
 void help(int argc, char **argv) {
@@ -560,8 +548,8 @@ void __neko_cvar_gui_internal(T &&obj, int depth = 0, const char *fieldName = ""
 
         auto ff = [&]<typename T>(const char *name, auto &var, T &t) {
             if constexpr (std::is_same_v<std::decay_t<decltype(var)>, T>) {
-                neko::imgui::Auto(var, name);
-                ImGui::Text("    [%s]", std::get<0>(fields));
+                neko_nui::nui_auto(var, name);
+                neko_nui_labelf(&g_nui.neko_nui_ctx, NEKO_NUI_TEXT_LEFT, "    [%s]", std::get<0>(fields));
             }
         };
 
@@ -577,21 +565,18 @@ void neko_cvar_gui() {
             switch ((&neko_cv()->cvars[i])->type) {
                 default:
                 case __NEKO_CONFIG_TYPE_STRING:
-                    neko::imgui::Auto((&neko_cv()->cvars[i])->value.s, (&neko_cv()->cvars[i])->name);
+                    neko_nui::nui_auto((&neko_cv()->cvars[i])->value.s, (&neko_cv()->cvars[i])->name);
                     break;
                 case __NEKO_CONFIG_TYPE_FLOAT:
-                    neko::imgui::Auto((&neko_cv()->cvars[i])->value.f, (&neko_cv()->cvars[i])->name);
+                    neko_nui::nui_auto((&neko_cv()->cvars[i])->value.f, (&neko_cv()->cvars[i])->name);
                     break;
                 case __NEKO_CONFIG_TYPE_INT:
-                    neko::imgui::Auto((&neko_cv()->cvars[i])->value.i, (&neko_cv()->cvars[i])->name);
+                    neko_nui::nui_auto((&neko_cv()->cvars[i])->value.i, (&neko_cv()->cvars[i])->name);
                     break;
             };
         };
     }
 }
-
-// Tiled
-map_t map;
 
 void game_init() {
     g_cb = neko_command_buffer_new();
@@ -607,6 +592,7 @@ void game_init() {
 
     g_client_ecs_userdata.cb = &g_cb;
     g_client_ecs_userdata.idraw = &g_idraw;
+    g_client_ecs_userdata.igui = &g_gui;
 
     neko_ecs()->user_data = &g_client_ecs_userdata;
 
@@ -658,20 +644,6 @@ void game_init() {
     neko_asset_texture_load_from_file(__neko_game_get_path("data/assets/textures/yzh.jpg").c_str(), &tex0, NULL, false, false);
     tex_hndl = neko_assets_create_asset(&g_am, neko_asset_texture_t, &tex0);
 
-    // Load pipeline from resource file
-    pip = neko_gfxt_pipeline_load_from_file(__neko_game_get_path("data/assets/pipelines/simple.sf").c_str());
-
-    // Create material using this pipeline
-    neko_gfxt_material_desc_t mat_decl = {.pip_func = {.hndl = &pip}};
-    mat = neko_gfxt_material_create(&mat_decl);
-
-    // Create mesh that uses the layout from the pipeline's requested mesh layout
-    neko_gfxt_mesh_import_options_t mesh_decl = {
-            .layout = pip.mesh_layout, .size = neko_dyn_array_size(pip.mesh_layout) * sizeof(neko_gfxt_mesh_layout_t), .index_buffer_element_size = pip.desc.raster.index_buffer_element_size};
-    mesh = neko_gfxt_mesh_load_from_file(__neko_game_get_path("data/assets/meshes/Duck.gltf").c_str(), &mesh_decl);
-
-    texture = neko_gfxt_texture_load_from_file(__neko_game_get_path("data/assets/textures/DuckCM.png").c_str(), NULL, false, false);
-
     neko_gui_init(&g_gui, neko_platform_main_window());
 
     // Load in custom font file and then initialize gui font stash
@@ -688,42 +660,102 @@ void game_init() {
     neko_gui_init_font_stash(&g_gui, GUI_FONT_STASH());
 
     // Load style sheet from file now
-    app_load_style_sheet(false);
+    // app_load_style_sheet(false);
 
     // Dock windows before hand
     neko_gui_dock_ex(&g_gui, "Style_Editor", "Demo_Window", NEKO_GUI_SPLIT_TAB, 0.5f);
 
-    g_imgui = neko_imgui_new(neko_platform_main_window(), false);
-
     // Initialize neko_nui context
-    neko_nui_init(&neko_nui, neko_platform_main_window(), NEKO_NUI_STATE_DEFAULT);
+    neko_nui_init(&g_nui, neko_platform_main_window(), NEKO_NUI_STATE_DEFAULT);
 
     // Default font (can add different ones in here)
-    neko_nui_font_stash_begin(&neko_nui, NULL);
-    neko_nui_font_stash_end(&neko_nui);
+    neko_nui_font_stash_begin(&g_nui, NULL);
+    neko_nui_font_stash_end(&g_nui);
+
+    neko_nui::ctx = &g_nui.neko_nui_ctx;
+
+    g_client_ecs_userdata.nui = &g_nui;
 
     register_components(neko_ecs());
     register_systems(neko_ecs());
 
     // 测试用
-    neko_ecs_ent e = neko_ecs_ent_make(neko_ecs());
+    neko_ecs_ent e1 = neko_ecs_ent_make(neko_ecs());
+    neko_ecs_ent e2 = neko_ecs_ent_make(neko_ecs());
     CTransform xform = {10, 10};
     CVelocity velocity = {0, 0};
 
     neko_sprite_load(&test_witch_spr, __neko_game_get_path("data/assets/textures/B_witch.ase"));
 
     neko_sprite_renderer sprite_test = {.sprite = &test_witch_spr};
-    neko_particle_renderer particle_render = {};
+    neko_particle_renderer particle_render = neko_default_val();
+
+    neko_tiled_renderer tiled = neko_default_val();
+
+    neko_tiled_load(&tiled.map, __neko_game_get_path("data/map.tmx").c_str(), NULL);
+
+    neko_tiled_render_init(&g_cb, &tiled, NULL, NULL);
+
+    neko_ui_renderer ui_render = neko_default_val();
+    ui_render.type = neko_ui_renderer::type::LABEL;
+    neko_snprintf(ui_render.text, 128, "%s", "啊对对对");
 
     // neko_sprite_renderer_play(&sprite_test, "Attack");
     neko_particle_renderer_construct(&particle_render);
 
-    neko_ecs_ent_add_component(neko_ecs(), e, COMPONENT_TRANSFORM, &xform);
-    neko_ecs_ent_add_component(neko_ecs(), e, COMPONENT_VELOCITY, &velocity);
-    neko_ecs_ent_add_component(neko_ecs(), e, COMPONENT_SPRITE, &sprite_test);
-    neko_ecs_ent_add_component(neko_ecs(), e, COMPONENT_PARTICLE, &particle_render);
+    neko_fast_sprite_renderer test_fast_sprite = neko_default_val();
 
-    neko_ecs_ent_print(neko_ecs(), e);
+    neko_fast_sprite_renderer_construct(&test_fast_sprite);
+
+    CGameObject gameobj = neko_default_val();
+    gameobj.visible = true;
+    neko_snprintf(gameobj.name, 64, "%s", "AAA_ent");
+
+    neko_ecs_ent_add_component(neko_ecs(), e1, COMPONENT_GAMEOBJECT, &gameobj);
+    neko_ecs_ent_add_component(neko_ecs(), e1, COMPONENT_TRANSFORM, &xform);
+    neko_ecs_ent_add_component(neko_ecs(), e1, COMPONENT_VELOCITY, &velocity);
+    neko_ecs_ent_add_component(neko_ecs(), e1, COMPONENT_SPRITE, &sprite_test);
+    neko_ecs_ent_add_component(neko_ecs(), e1, COMPONENT_PARTICLE, &particle_render);
+    neko_ecs_ent_add_component(neko_ecs(), e1, COMPONENT_TILED, &tiled);
+
+    neko_snprintf(gameobj.name, 64, "%s", "BBB_ent");
+    gameobj.visible = false;
+
+    neko_ecs_ent_add_component(neko_ecs(), e2, COMPONENT_GAMEOBJECT, &gameobj);
+    neko_ecs_ent_add_component(neko_ecs(), e2, COMPONENT_TRANSFORM, &xform);
+    neko_ecs_ent_add_component(neko_ecs(), e2, COMPONENT_GFXT, NULL);
+    neko_ecs_ent_add_component(neko_ecs(), e2, COMPONENT_UI, &ui_render);
+    // neko_ecs_ent_add_component(neko_ecs(), e, COMPONENT_FAST_SPRITE, &test_fast_sprite);
+
+    neko_gfxt_renderer *gfxt_render = (neko_gfxt_renderer *)neko_ecs_ent_get_component(neko_ecs(), e2, COMPONENT_GFXT);
+
+    // Load pipeline from resource file
+    gfxt_render->pip = neko_gfxt_pipeline_load_from_file(__neko_game_get_path("data/assets/pipelines/simple.sf").c_str());
+
+    // Create material using this pipeline
+    neko_gfxt_material_desc_t mat_decl = {.pip_func = {.hndl = &gfxt_render->pip}};
+    gfxt_render->mat = neko_gfxt_material_create(&mat_decl);
+
+    // Create mesh that uses the layout from the pipeline's requested mesh layout
+    neko_gfxt_mesh_import_options_t mesh_decl = {.layout = gfxt_render->pip.mesh_layout,
+                                                 .size = neko_dyn_array_size(gfxt_render->pip.mesh_layout) * sizeof(neko_gfxt_mesh_layout_t),
+                                                 .index_buffer_element_size = gfxt_render->pip.desc.raster.index_buffer_element_size};
+
+    gfxt_render->mesh = neko_gfxt_mesh_load_from_file(__neko_game_get_path("data/assets/meshes/Duck.gltf").c_str(), &mesh_decl);
+
+    gfxt_render->texture = neko_gfxt_texture_load_from_file(__neko_game_get_path("data/assets/textures/DuckCM.png").c_str(), NULL, false, false);
+
+    for (int i = 0; i < 10; i++) {
+        neko_snprintf(gameobj.name, 64, "%s_%d", "Test_ent", i);
+        gameobj.visible = true;
+
+        neko_ecs_ent e = neko_ecs_ent_make(neko_ecs());
+        neko_ecs_ent_add_component(neko_ecs(), e, COMPONENT_GAMEOBJECT, &gameobj);
+        neko_ecs_ent_add_component(neko_ecs(), e, COMPONENT_TRANSFORM, &xform);
+    }
+
+    neko_ecs_ent_print(neko_ecs(), e1);
+    neko_ecs_ent_print(neko_ecs(), e2);
 
     // neko_ecs_ent_destroy(ecs, e);
 
@@ -739,20 +771,6 @@ void game_init() {
     // 该上下文可以保存 BT 节点可以读/写的全局/共享信息
     // 我们将把 BT 的内部上下文用户数据设置为 AI 信息的地址
     bt.ctx.user_data = &ai;
-
-#pragma region tiled
-
-    neko_tiled_load(&map, __neko_game_get_path("data/map.tmx").c_str(), NULL);
-
-    char *vert_src = neko_read_file_contents(__neko_game_get_path("data/shaders/sprite_vs.glsl").c_str(), "rb", NULL);
-    char *frag_src = neko_read_file_contents(__neko_game_get_path("data/shaders/sprite_fs.glsl").c_str(), "rb", NULL);
-
-    neko_tiled_render_init(&g_cb, &g_tiled, vert_src, frag_src);
-
-    neko_safe_free(vert_src);
-    neko_safe_free(frag_src);
-
-#pragma endregion
 
     g_test_ase = load_ase_texture_simple(__neko_game_get_path("data/assets/textures/Sprite-0001.ase"));
 
@@ -778,16 +796,10 @@ void game_init() {
                                                                                              .color_size = sizeof(rt)  // Size of color attachment array in bytes
                                                                                      }));
 
-    neko_neko_fast_sprite_renderer_construct(&g_test_fast_sprite);
+    chunk_init();
 }
 
 void game_update() {
-
-    struct {
-        float x, y, w, h;
-    } batch_tex_uvs[] = {
-            {2, 2, 24, 24}, {58, 2, 24, 24}, {114, 2, 24, 24}, {170, 2, 24, 24}, {2, 30, 24, 24},
-    };
 
     neko_vec2 fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
     neko_vec2 mp = neko_platform_mouse_positionv();
@@ -805,19 +817,25 @@ void game_update() {
     CVelocity *player_v = static_cast<CVelocity *>(neko_ecs_ent_get_component(neko_ecs(), player, COMPONENT_VELOCITY));
 
     if (neko_platform_key_down(NEKO_KEYCODE_A)) {
-        player_v->dx += 3.1f;
-    }
-    if (neko_platform_key_down(NEKO_KEYCODE_D)) {
         player_v->dx -= 3.1f;
     }
+    if (neko_platform_key_down(NEKO_KEYCODE_D)) {
+        player_v->dx += 3.1f;
+    }
     if (neko_platform_key_down(NEKO_KEYCODE_W)) {
-        player_v->dy += 3.1f;
+        player_v->dy -= 3.1f;
     }
     if (neko_platform_key_down(NEKO_KEYCODE_S)) {
-        player_v->dy -= 3.1f;
+        player_v->dy += 3.1f;
     }
 
     neko_ecs_run_systems(neko_ecs(), ECS_SYSTEM_UPDATE);
+
+    try {
+        neko_lua_wrap_call(L, "test_update");
+    } catch (std::exception &ex) {
+        neko_log_error("lua exception %s", ex.what());
+    }
 
     // Do rendering
     neko_graphics_clear_action_t clear_action = {.color = {g_cvar.bg[0] / 255, g_cvar.bg[1] / 255, g_cvar.bg[2] / 255, 1.f}};
@@ -832,36 +850,7 @@ void game_update() {
 
     neko_ecs_run_systems(neko_ecs(), ECS_SYSTEM_RENDER_IMMEDIATE);
 
-    // Camera for scene
-    neko_camera_t cam = neko_camera_perspective();
-    cam.transform.position = neko_v3(0.f, 6.f, 20.f);
-    neko_vqs trans = {.translation = neko_v3(0.f, 0.f, -10.f), .rotation = neko_quat_angle_axis(t * 0.001f, NEKO_YAXIS), .scale = neko_v3s(0.1f)};
-    neko_mat4 model = neko_vqs_to_mat4(&trans);
-    neko_mat4 vp = neko_camera_get_view_projection(&cam, fbs.x, fbs.y);
-    neko_mat4 mvp = neko_mat4_mul(vp, model);
-
     if (g_cvar.hello_duck) {
-
-        // Apply material uniforms
-        neko_gfxt_material_set_uniform(&mat, "u_mvp", &mvp);
-        neko_gfxt_material_set_uniform(&mat, "u_tex", &texture);
-
-        // Rendering
-        neko_graphics_renderpass_begin(&g_cb, rp);
-        {
-            // Set view port
-            neko_graphics_set_viewport(&g_cb, 0, 0, (int)fbs.x, (int)fbs.y);
-
-            // Bind material
-            neko_gfxt_material_bind(&g_cb, &mat);
-
-            // Bind material uniforms
-            neko_gfxt_material_bind_uniforms(&g_cb, &mat);
-
-            // Render mesh
-            neko_gfxt_mesh_draw_material(&g_cb, &mesh, &mat);
-        }
-        neko_graphics_renderpass_end(&g_cb);
     }
 
 #pragma region AI
@@ -900,63 +889,12 @@ void game_update() {
 
     if (g_cvar.hello_tiled) {
 
-        neko_graphics_renderpass_begin(&g_cb, NEKO_GRAPHICS_RENDER_PASS_DEFAULT);
-        {
-            neko_tiled_render_begin(&g_cb, &g_tiled);
-
-            for (u32 i = 0; i < neko_dyn_array_size(map.layers); i++) {
-                layer_t *layer = map.layers + i;
-                for (u32 y = 0; y < layer->height; y++) {
-                    for (u32 x = 0; x < layer->width; x++) {
-                        tile_t *tile = layer->tiles + (x + y * layer->width);
-                        if (tile->id != 0) {
-                            tileset_t *tileset = map.tilesets + tile->tileset_id;
-                            u32 tsxx = (tile->id % (tileset->width / tileset->tile_width) - 1) * tileset->tile_width;
-                            u32 tsyy = tileset->tile_height * ((tile->id - tileset->first_gid) / (tileset->width / tileset->tile_width));
-                            neko_tiled_quad_t quad = {.tileset_id = tile->tileset_id,
-                                                      .texture = tileset->texture,
-                                                      .texture_size = {(f32)tileset->width, (f32)tileset->height},
-                                                      .position = {(f32)(x * tileset->tile_width * SPRITE_SCALE), (f32)(y * tileset->tile_height * SPRITE_SCALE)},
-                                                      .dimentions = {(f32)(tileset->tile_width * SPRITE_SCALE), (f32)(tileset->tile_height * SPRITE_SCALE)},
-                                                      .rectangle = {(f32)tsxx, (f32)tsyy, (f32)tileset->tile_width, (f32)tileset->tile_height},
-                                                      .color = layer->tint,
-                                                      .use_texture = true};
-                            neko_tiled_render_push(&g_cb, &g_tiled, quad);
-                        }
-                    }
-                }
-            }
-
-            // for (u32 i = 0; i < neko_dyn_array_size(map.object_groups); i++) {
-            //     object_group_t *group = map.object_groups + i;
-            //     for (u32 ii = 0; ii < neko_dyn_array_size(map.object_groups[i].objects); ii++) {
-            //         object_t *object = group->objects + ii;
-            //         neko_tiled_quad_t quad = {.position = {(f32)(object->x * SPRITE_SCALE), (f32)(object->y * SPRITE_SCALE)},
-            //                                   .dimentions = {(f32)(object->width * SPRITE_SCALE), (f32)(object->height * SPRITE_SCALE)},
-            //                                   .color = group->color,
-            //                                   .use_texture = false};
-            //         neko_tiled_render_push(&g_cb, quad);
-            //     }
-            // }
-
-            // neko_tiled_render_flush(&g_cb);
-
-            neko_tiled_render_draw(&g_cb, &g_tiled);
-        }
-        neko_graphics_renderpass_end(&g_cb);
+        neko_ecs_run_systems(neko_ecs(), ECS_SYSTEM_RENDER_DEFERRED);
     }
 
 #pragma endregion
 
 #pragma region gui
-
-    ImGuiIO io = ImGui::GetIO();
-
-#define GUI_LABEL(STR, ...)                              \
-    do {                                                 \
-        neko_snprintfc(BUFFER, 256, STR, ##__VA_ARGS__); \
-        neko_gui_label(&g_gui, BUFFER);                  \
-    } while (0)
 
     neko_gui_begin(&g_gui, NULL);
     {
@@ -967,38 +905,47 @@ void game_update() {
             {
                 neko_gui_layout_row(&g_gui, 1, neko_gui_widths(-1), 0);
                 {
-                    GUI_LABEL("GC MemAllocInUsed: %.2lf mb", (f64)(neko_mem_bytes_inuse() / 1048576.0));
-                    GUI_LABEL("GC MemTotalAllocated: %.2lf mb", (f64)(g_allocation_metrics.total_allocated / 1048576.0));
-                    GUI_LABEL("GC MemTotalFree: %.2lf mb", (f64)(g_allocation_metrics.total_free / 1048576.0));
+
+                    static f32 delta, fps = neko_default_val();
+                    static neko_memory_info_t meminfo = neko_default_val();
+
+                    neko_timed_action(60, {
+                        delta = neko_platform_delta_time();
+                        fps = 1.f / delta;
+                        meminfo = neko_platform_memory_info();
+                    });
+
+                    neko_gui_labelf("Delta: %.6lf", delta);
+                    neko_gui_labelf("FPS: %.2lf", fps);
+
+                    neko_gui_labelf("GC MemAllocInUsed: %.2lf mb", (f64)(neko_mem_bytes_inuse() / 1048576.0));
+                    neko_gui_labelf("GC MemTotalAllocated: %.2lf mb", (f64)(g_allocation_metrics.total_allocated / 1048576.0));
+                    neko_gui_labelf("GC MemTotalFree: %.2lf mb", (f64)(g_allocation_metrics.total_free / 1048576.0));
 
                     lua_gc(L, LUA_GCCOLLECT, 0);
                     lua_Integer kb = lua_gc(L, LUA_GCCOUNT, 0);
                     lua_Integer bytes = lua_gc(L, LUA_GCCOUNTB, 0);
 
-                    GUI_LABEL("Lua MemoryUsage: %.2lf mb", ((f64)kb / 1024.0f));
-                    GUI_LABEL("Lua Remaining: %.2lf mb", ((f64)bytes / 1024.0f));
+                    neko_gui_labelf("Lua MemoryUsage: %.2lf mb", ((f64)kb / 1024.0f));
+                    neko_gui_labelf("Lua Remaining: %.2lf mb", ((f64)bytes / 1024.0f));
 
-                    GUI_LABEL("ImGui MemoryUsage: %.2lf mb", ((f64)__neko_imgui_meminuse() / 1048576.0));
+                    // neko_gui_labelf("ImGui MemoryUsage: %.2lf mb", ((f64)__neko_imgui_meminuse() / 1048576.0));
 
-                    static neko_memory_info_t meminfo = neko_default_val();
+                    neko_gui_labelf("Virtual MemoryUsage: %.2lf mb", ((f64)meminfo.virtual_memory_used / 1048576.0));
+                    neko_gui_labelf("Real MemoryUsage: %.2lf mb", ((f64)meminfo.physical_memory_used / 1048576.0));
+                    neko_gui_labelf("Virtual MemoryUsage Peak: %.2lf mb", ((f64)meminfo.peak_virtual_memory_used / 1048576.0));
+                    neko_gui_labelf("Real MemoryUsage Peak: %.2lf mb", ((f64)meminfo.peak_physical_memory_used / 1048576.0));
 
-                    neko_timed_action(60, { meminfo = neko_platform_memory_info(); });
-
-                    GUI_LABEL("Virtual MemoryUsage: %.2lf mb", ((f64)meminfo.virtual_memory_used / 1048576.0));
-                    GUI_LABEL("Real MemoryUsage: %.2lf mb", ((f64)meminfo.physical_memory_used / 1048576.0));
-                    GUI_LABEL("Virtual MemoryUsage Peak: %.2lf mb", ((f64)meminfo.peak_virtual_memory_used / 1048576.0));
-                    GUI_LABEL("Real MemoryUsage Peak: %.2lf mb", ((f64)meminfo.peak_physical_memory_used / 1048576.0));
-
-                    GUI_LABEL("GPU MemTotalAvailable: %.2lf mb", (f64)(meminfo.gpu_total_memory / 1024.0f));
-                    GUI_LABEL("GPU MemCurrentUsage: %.2lf mb", (f64)(meminfo.gpu_memory_used / 1024.0f));
+                    neko_gui_labelf("GPU MemTotalAvailable: %.2lf mb", (f64)(meminfo.gpu_total_memory / 1024.0f));
+                    neko_gui_labelf("GPU MemCurrentUsage: %.2lf mb", (f64)(meminfo.gpu_memory_used / 1024.0f));
 
                     neko_graphics_info_t *info = &neko_subsystem(graphics)->info;
 
-                    GUI_LABEL("Using renderer: %s", info->vendor);
-                    GUI_LABEL("OpenGL version supported: %s", info->version);
+                    neko_gui_labelf("OpenGL vendor: %s", info->vendor);
+                    neko_gui_labelf("OpenGL version supported: %s", info->version);
 
                     neko_vec2 opengl_ver = neko_platform_opengl_ver();
-                    GUI_LABEL("OpenGL Version: %d.%d", (s32)opengl_ver.x, (s32)opengl_ver.y);
+                    neko_gui_labelf("OpenGL version: %d.%d", (s32)opengl_ver.x, (s32)opengl_ver.y);
                 }
             }
             neko_gui_window_end(&g_gui);
@@ -1012,6 +959,8 @@ void game_update() {
             const neko_vec2 ws = neko_v2(600.f, 300.f);
 
 #pragma region gui_ss
+
+#if 0
 
             const neko_gui_style_sheet_t *ss = &style_sheet;
 
@@ -1050,6 +999,8 @@ void game_update() {
                 button_custom(&g_gui, "Hello?");
             }
             neko_gui_window_end(&g_gui);
+
+#endif
 
 #pragma endregion
 
@@ -1100,7 +1051,7 @@ void game_update() {
         }
 
         neko_gui_layout_t l;
-        if (window && neko_gui_window_begin(&g_gui, "App", neko_gui_rect(950, 200, 200, 200))) {
+        if (window && neko_gui_window_begin(&g_gui, "App", neko_gui_rect(fbs.x - 210, 10, 200, 200))) {
             l = *neko_gui_get_layout(&g_gui);
             neko_gui_layout_row(&g_gui, 1, neko_gui_widths(-1), 0);
 
@@ -1110,11 +1061,11 @@ void game_update() {
 
             // neko_gui_layout_row(&g_gui, 1, neko_gui_widths(-1), 0);
 
-            GUI_LABEL("Position: <%.2f %.2f>", mp.x, mp.y);
-            GUI_LABEL("Wheel: <%.2f %.2f>", mw.x, mw.y);
-            GUI_LABEL("Delta: <%.2f %.2f>", md.x, md.y);
-            GUI_LABEL("Lock: %zu", lock);
-            GUI_LABEL("Moved: %zu", moved);
+            neko_gui_labelf("Position: <%.2f %.2f>", mp.x, mp.y);
+            neko_gui_labelf("Wheel: <%.2f %.2f>", mw.x, mw.y);
+            neko_gui_labelf("Delta: <%.2f %.2f>", md.x, md.y);
+            neko_gui_labelf("Lock: %zu", lock);
+            neko_gui_labelf("Moved: %zu", moved);
 
             struct {
                 const char *str;
@@ -1142,13 +1093,13 @@ void game_update() {
 
             neko_gui_layout_row(&g_gui, 7, neko_gui_widths(100, 100, 32, 100, 32, 100, 32), 0);
             for (u32 i = 0; btns[i].str; ++i) {
-                GUI_LABEL("%s: ", btns[i].str);
-                GUI_LABEL("pressed: ");
-                GUI_LABEL("%d", mouse_pressed[btns[i].val]);
-                GUI_LABEL("down: ");
-                GUI_LABEL("%d", mouse_down[btns[i].val]);
-                GUI_LABEL("released: ");
-                GUI_LABEL("%d", mouse_released[btns[i].val]);
+                neko_gui_labelf("%s: ", btns[i].str);
+                neko_gui_labelf("pressed: ");
+                neko_gui_labelf("%d", mouse_pressed[btns[i].val]);
+                neko_gui_labelf("down: ");
+                neko_gui_labelf("%d", mouse_down[btns[i].val]);
+                neko_gui_labelf("released: ");
+                neko_gui_labelf("%d", mouse_released[btns[i].val]);
             }
 
             neko_gui_window_end(&g_gui);
@@ -1173,7 +1124,7 @@ void game_update() {
             screen = neko_gui_rect(0, 0, fb.x, fb.y);
         neko_console(&console, &g_gui, screen, NULL);
     }
-    neko_gui_end(&g_gui, !(io.WantCaptureMouse || io.WantCaptureKeyboard) || (neko_nui.neko_nui_ctx.input.mouse.grab || neko_nui.neko_nui_ctx.input.mouse.grabbed));
+    neko_gui_end(&g_gui, !(g_nui.neko_nui_ctx.input.mouse.grab || g_nui.neko_nui_ctx.input.mouse.grabbed));
 
 #pragma endregion
 
@@ -1188,87 +1139,117 @@ void game_update() {
     // neko_idraw_rotatev(&g_idraw, neko_platform_elapsed_time() * 0.0003f, NEKO_ZAXIS);
     // neko_idraw_box(&g_idraw, 0.f, 0.f, 0.f, 0.5f, 0.5f, 0.5f, 255, 255, 255, 255, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
 
-    // neko_neko_fast_sprite_renderer_draw(&g_test_fast_sprite, &g_cb);
+    chunk_update();
 
     neko_graphics_renderpass_begin(&g_cb, NEKO_GRAPHICS_RENDER_PASS_DEFAULT);
     {
         neko_graphics_set_viewport(&g_cb, 0, 0, (u32)fbs.x, (u32)fbs.y);
-        neko_idraw_draw(&g_idraw, &g_cb);
+        neko_idraw_draw(&g_idraw, &g_cb);  // 立即模式绘制 idraw
         neko_gui_render(&g_gui, &g_cb);
     }
     neko_graphics_renderpass_end(&g_cb);
 
-#pragma region ImGui
+#pragma region nui
 
-    neko_imgui_new_frame(&g_imgui);
+    struct neko_nui_context *ctx = &g_nui.neko_nui_ctx;
 
-    if (ImGui::Begin("Test")) {
-        neko::imgui::Auto(g_cvar.show_cvar_window, "CVar Window");
-    }
-    ImGui::End();
+    neko_nui_new_frame(&g_nui);
 
-    if (g_cvar.show_demo_window) ImGui::ShowDemoWindow(&g_cvar.show_demo_window);
+    neko_ecs_run_systems(neko_ecs(), ECS_SYSTEM_EDITOR);
 
-    if (g_cvar.show_cvar_window) {
-        if (ImGui::Begin("CVar", &g_cvar.show_cvar_window)) {
-            try {
-                neko_cvar_gui();
-            } catch (const std::exception &ex) {
-                neko_log_error("cvar exception %s", ex.what());
-            }
-        }
-        ImGui::End();
-    }
+    if (g_cvar.show_demo_window) neko_nui_overview(ctx);
 
-    neko_imgui_render(&g_imgui, &g_cb);
-
-#pragma endregion
-
-    struct neko_nui_context *ctx = &neko_nui.neko_nui_ctx;
-
-    neko_nui_new_frame(&neko_nui);
-
-    if (neko_nui_begin(ctx, "Hello Neko", neko_nui_rect(1250, 200, 350, 500),
+    if (neko_nui_begin(ctx, "Hello Neko", neko_nui_rect(1250, 200, 350, 700),
                        NEKO_NUI_WINDOW_BORDER | NEKO_NUI_WINDOW_MOVABLE | NEKO_NUI_WINDOW_SCALABLE | NEKO_NUI_WINDOW_MINIMIZABLE | NEKO_NUI_WINDOW_TITLE)) {
         enum { EASY, HARD };
         static int op = EASY;
         static int property = 20;
+        static std::string str = "Hello shit";
+
+        static std::vector<int> vec = {op, property};
+        static std::map<std::string, int> mp = {{"AA", op}, {"BB", property}};
+        static std::pair<std::string, int> pp = {"CC", property};
+        static std::string *p_str = NULL;
+
         neko_nui_layout_row_static(ctx, 30, 125, 1);
 
-        if (neko_nui_button_label(ctx, "test_xml")) test_xml(__neko_game_get_path("data/test/test.xml"));
-        if (neko_nui_button_label(ctx, "test_se")) test_se();
-        if (neko_nui_button_label(ctx, "test_sr")) test_sr();
-        if (neko_nui_button_label(ctx, "test_ut")) test_ut();
-        if (neko_nui_button_label(ctx, "test_backtrace")) __neko_inter_stacktrace();
-        if (neko_nui_button_label(ctx, "test_containers")) test_containers();
-        if (neko_nui_button_label(ctx, "test_sexpr")) test_sexpr();
-        if (neko_nui_button_label(ctx, "test_ecs")) {
-            forEachComponentType([&]<typename T>() {
-                // 打印类型名称 它是一个更大字符串的 std::string_view 因此我们使用“%.*s”
-                // `std::printf` 的形式
-                constexpr auto typeName = getTypeName<T>();
-                std::printf("component type: %.*s\n", int(typeName.size()), typeName.data());
+        try {
+            neko_cvar_gui();
+        } catch (const std::exception &ex) {
+            neko_log_error("cvar exception %s", ex.what());
+        }
 
-                // 设置组件的默认值并打印其 props
-                T val{};
-                std::printf("  props:\n");
-                forEachProp(val, [&](auto propTag, auto &propVal) {
-                    // `propTag` 每个 prop 都有不同的类型 并保存包括名称在内的属性 我们打印
-                    // 首先是名称。名称是 std::string_view  但它指向的整个字符串是
-                    // 名称 以便我们可以直接打印其数据
-                    std::printf("    %s: ", propTag.attribs.name.data());
+        neko_nui::nui_auto(property, "test_auto_1");
+        neko_nui::nui_auto(vec, "test_auto_2");
+        neko_nui::nui_auto(str, "test_auto_3");
+        neko_nui::nui_auto(mp, "test_auto_4");
+        neko_nui::nui_auto(pp, "test_auto_5");
+        neko_nui::nui_auto(p_str, "test_auto_6");
 
-                    // 调用上面重载的print函数之一来打印值本身
-                    print(propVal);
+        neko_nui_layout_row_dynamic(ctx, 300, 1);
+        if (neko_nui_group_begin(ctx, "ECS", NEKO_NUI_WINDOW_TITLE | NEKO_NUI_WINDOW_BORDER | NEKO_NUI_WINDOW_SCROLL_AUTO_HIDE)) {
 
-                    // 现在我们打印是否设置了`exampleFlag`请注意 我们可以检查属性`constexpr`
-                    if (propTag.attribs.exampleFlag) {
-                        std::printf(" (example flag set)");
-                    }
+            neko_nui_layout_row_static(ctx, 18, 125, 1);
 
-                    std::printf("\n");
+            for (neko_ecs_ent_view v = neko_ecs_ent_view_single(neko_ecs(), COMPONENT_GAMEOBJECT); neko_ecs_ent_view_valid(&v); neko_ecs_ent_view_next(&v)) {
+                CGameObject *gameobj = (CGameObject *)neko_ecs_ent_get_component(neko_ecs(), v.ent, COMPONENT_GAMEOBJECT);
+                // neko_println("%d %d %d %d %s", v.i, v.ent, v.valid, v.view_type, gameobj->name);
+
+                neko_nui_selectable_label(ctx, gameobj->name, NEKO_NUI_TEXT_CENTERED, (neko_nui_bool *)&gameobj->selected);
+            }
+
+            neko_nui_group_end(ctx);
+        }
+
+        neko_nui_layout_row_dynamic(ctx, 300, 1);
+        if (neko_nui_group_begin(ctx, "CVars", NEKO_NUI_WINDOW_TITLE | NEKO_NUI_WINDOW_BORDER | NEKO_NUI_WINDOW_SCROLL_AUTO_HIDE)) {
+
+            neko_nui_layout_row_static(ctx, 30, 150, 2);
+
+            if (neko_nui_button_label(ctx, "test_xml")) test_xml(__neko_game_get_path("data/test/test.xml"));
+            if (neko_nui_button_label(ctx, "test_se")) test_se();
+            if (neko_nui_button_label(ctx, "test_sr")) test_sr();
+            if (neko_nui_button_label(ctx, "test_ut")) test_ut();
+            if (neko_nui_button_label(ctx, "test_backtrace")) __neko_inter_stacktrace();
+            if (neko_nui_button_label(ctx, "test_containers")) test_containers();
+            if (neko_nui_button_label(ctx, "test_sexpr")) test_sexpr();
+            if (neko_nui_button_label(ctx, "test_ecs_view")) {
+
+                for (neko_ecs_ent_view v = neko_ecs_ent_view_single(neko_ecs(), COMPONENT_GAMEOBJECT); neko_ecs_ent_view_valid(&v); neko_ecs_ent_view_next(&v)) {
+                    CGameObject *gameobj = (CGameObject *)neko_ecs_ent_get_component(neko_ecs(), v.ent, COMPONENT_GAMEOBJECT);
+                    neko_println("%d %d %d %d %s", v.i, v.ent, v.valid, v.view_type, gameobj->name);
+                }
+            }
+            if (neko_nui_button_label(ctx, "test_ecs_cpp")) {
+                forEachComponentType([&]<typename T>() {
+                    // 打印类型名称 它是一个更大字符串的 std::string_view 因此我们使用“%.*s”
+                    // `std::printf` 的形式
+                    constexpr auto typeName = getTypeName<T>();
+                    std::printf("component type: %.*s\n", int(typeName.size()), typeName.data());
+
+                    // 设置组件的默认值并打印其 props
+                    T val{};
+                    std::printf("  props:\n");
+                    forEachProp(val, [&](auto propTag, auto &propVal) {
+                        // `propTag` 每个 prop 都有不同的类型 并保存包括名称在内的属性 我们打印
+                        // 首先是名称。名称是 std::string_view  但它指向的整个字符串是
+                        // 名称 以便我们可以直接打印其数据
+                        std::printf("    %s: ", propTag.attribs.name.data());
+
+                        // 调用上面重载的print函数之一来打印值本身
+                        print(propVal);
+
+                        // 现在我们打印是否设置了`exampleFlag`请注意 我们可以检查属性`constexpr`
+                        if (propTag.attribs.exampleFlag) {
+                            std::printf(" (example flag set)");
+                        }
+
+                        std::printf("\n");
+                    });
                 });
-            });
+            }
+
+            neko_nui_group_end(ctx);
         }
 
         neko_nui_layout_row_dynamic(ctx, 30, 2);
@@ -1278,34 +1259,26 @@ void game_update() {
         neko_nui_layout_row_dynamic(ctx, 25, 1);
         neko_nui_property_int(ctx, "Compression:", 0, &property, 100, 10, 1);
 
-        neko_nui_layout_row_dynamic(ctx, 20, 1);
-        neko_nui_label(ctx, "background:", NEKO_NUI_TEXT_LEFT);
-        neko_nui_layout_row_dynamic(ctx, 25, 1);
-        // if (neko_nui_combo_begin_color(ctx, neko_nui_rgb_cf(bg), neko_nui_vec2(neko_nui_widget_width(ctx), 400))) {
-        //     neko_nui_layout_row_dynamic(ctx, 120, 1);
-        //     bg = neko_nui_color_picker(ctx, bg, NEKO_NUI_RGBA);
-        //     neko_nui_layout_row_dynamic(ctx, 25, 1);
-        //     bg.r = neko_nui_propertyf(ctx, "#R:", 0, bg.r, 1.0f, 0.01f, 0.005f);
-        //     bg.g = neko_nui_propertyf(ctx, "#G:", 0, bg.g, 1.0f, 0.01f, 0.005f);
-        //     bg.b = neko_nui_propertyf(ctx, "#B:", 0, bg.b, 1.0f, 0.01f, 0.005f);
-        //     bg.a = neko_nui_propertyf(ctx, "#A:", 0, bg.a, 1.0f, 0.01f, 0.005f);
-        //     neko_nui_combo_end(ctx);
-        // }
+        // neko_nui_layout_row_dynamic(ctx, 20, 1);
+        // neko_nui_label(ctx, "background:", NEKO_NUI_TEXT_LEFT);
+        // neko_nui_layout_row_dynamic(ctx, 25, 1);
+        //  if (neko_nui_combo_begin_color(ctx, neko_nui_rgb_cf(bg), neko_nui_vec2(neko_nui_widget_width(ctx), 400))) {
+        //      neko_nui_layout_row_dynamic(ctx, 120, 1);
+        //      bg = neko_nui_color_picker(ctx, bg, NEKO_NUI_RGBA);
+        //      neko_nui_layout_row_dynamic(ctx, 25, 1);
+        //      bg.r = neko_nui_propertyf(ctx, "#R:", 0, bg.r, 1.0f, 0.01f, 0.005f);
+        //      bg.g = neko_nui_propertyf(ctx, "#G:", 0, bg.g, 1.0f, 0.01f, 0.005f);
+        //      bg.b = neko_nui_propertyf(ctx, "#B:", 0, bg.b, 1.0f, 0.01f, 0.005f);
+        //      bg.a = neko_nui_propertyf(ctx, "#A:", 0, bg.a, 1.0f, 0.01f, 0.005f);
+        //      neko_nui_combo_end(ctx);
+        //  }
     }
     neko_nui_end(ctx);
 
-    // calculator(ctx);
-
-    // node_editor(ctx, &editor);
-
     // Render neko_nui commands into graphics command buffer
-    neko_nui_render(&neko_nui, &g_cb, NEKO_NUI_ANTI_ALIASING_ON);
+    neko_nui_render(&g_nui, &g_cb, NEKO_NUI_ANTI_ALIASING_ON);
 
-    try {
-        neko_lua_wrap_call(L, "test_update");
-    } catch (std::exception &ex) {
-        neko_log_error("lua exception %s", ex.what());
-    }
+#pragma endregion
 
     // Submits to cb
     neko_graphics_command_buffer_submit(&g_cb);
@@ -1318,11 +1291,9 @@ void game_shutdown() {
         neko_log_error("lua exception %s", ex.what());
     }
 
-    neko_tiled_unload(&map);
-
     neko_array_dctor(&test_witch_spr.frames);
 
-    neko_tiled_render_deinit(&g_cb, &g_tiled);
+    chunk_destroy();
 
     neko_scripting_end(L);
 

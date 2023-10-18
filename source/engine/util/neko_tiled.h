@@ -71,7 +71,7 @@ typedef struct neko_tiled_quad_list_s {
     neko_dyn_array(neko_tiled_quad_t) quad_list;  // quad 绘制队列
 } neko_tiled_quad_list_t;
 
-typedef struct neko_tiled_renderer_s {
+typedef struct neko_tiled_renderer {
     neko_handle(neko_graphics_vertex_buffer_t) vb;
     neko_handle(neko_graphics_index_buffer_t) ib;
     neko_handle(neko_graphics_pipeline_t) pip;
@@ -82,13 +82,15 @@ typedef struct neko_tiled_renderer_s {
     neko_hash_table(u32, neko_tiled_quad_list_t) quad_table;  // 分层绘制哈希表
 
     u32 quad_count;
-} neko_tiled_renderer_t;
 
-NEKO_API_DECL void neko_tiled_render_init(neko_command_buffer_t* cb, neko_tiled_renderer_t* renderer, const char* vert_src, const char* frag_src);
-NEKO_API_DECL void neko_tiled_render_deinit(neko_command_buffer_t* cb, neko_tiled_renderer_t* renderer);
-NEKO_API_DECL void neko_tiled_render_begin(neko_command_buffer_t* cb, neko_tiled_renderer_t* renderer);
-NEKO_API_DECL void neko_tiled_render_flush(neko_command_buffer_t* cb, neko_tiled_renderer_t* renderer);
-NEKO_API_DECL void neko_tiled_render_push(neko_command_buffer_t* cb, neko_tiled_renderer_t* renderer, neko_tiled_quad_t quad);
-NEKO_API_DECL void neko_tiled_render_draw(neko_command_buffer_t* cb, neko_tiled_renderer_t* renderer);
+    map_t map;
+} neko_tiled_renderer;
+
+NEKO_API_DECL void neko_tiled_render_init(neko_command_buffer_t* cb, neko_tiled_renderer* renderer, const char* vert_src, const char* frag_src);
+NEKO_API_DECL void neko_tiled_render_deinit(neko_tiled_renderer* renderer);
+NEKO_API_DECL void neko_tiled_render_begin(neko_command_buffer_t* cb, neko_tiled_renderer* renderer);
+NEKO_API_DECL void neko_tiled_render_flush(neko_command_buffer_t* cb, neko_tiled_renderer* renderer);
+NEKO_API_DECL void neko_tiled_render_push(neko_command_buffer_t* cb, neko_tiled_renderer* renderer, neko_tiled_quad_t quad);
+NEKO_API_DECL void neko_tiled_render_draw(neko_command_buffer_t* cb, neko_tiled_renderer* renderer);
 
 #endif

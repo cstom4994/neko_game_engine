@@ -22,6 +22,14 @@ typedef struct neko_nui_vertex_t {
 
 enum neko_nui_style_theme { THEME_BLACK, THEME_WHITE, THEME_RED, THEME_BLUE, THEME_DARK };
 
+neko_global size_t g_nui_mem_usage = 0;
+
+neko_private(void*) __neko_nui_malloc(size_t sz, void* user_data) { return __neko_mem_safe_alloc((sz), (char*)__FILE__, __LINE__, &g_nui_mem_usage); }
+
+neko_private(void) __neko_nui_free(void* ptr, void* user_data) { __neko_mem_safe_free(ptr, &g_nui_mem_usage); }
+
+size_t __neko_nui_meminuse() { return g_nui_mem_usage; }
+
 NEKO_API_DECL void set_style(struct neko_nui_context* ctx, enum neko_nui_style_theme theme) {
     struct neko_nui_color table[NEKO_NUI_COLOR_COUNT];
     if (theme == THEME_WHITE) {
@@ -307,6 +315,8 @@ NEKO_API_DECL void neko_nui_new_frame(neko_nui_ctx_t* neko) {
                 } break;
 
                 case NEKO_PLATFORM_EVENT_MOUSE: {
+                    // TODO: 23/10/18 检测nui组件获得焦点
+                    // if (!(ctx->input.mouse.grab || ctx->input.mouse.grabbed)) break;
                     switch (evt.mouse.action) {
                         case NEKO_PLATFORM_MOUSE_WHEEL: {
                             neko->scroll.x = evt.mouse.wheel.x;

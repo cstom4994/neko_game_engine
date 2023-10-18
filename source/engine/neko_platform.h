@@ -305,24 +305,12 @@ typedef struct neko_platform_input_t {
 } neko_platform_input_t;
 
 // Enumeration of all platform types
-typedef enum neko_platform_type {
-    NEKO_PLATFORM_TYPE_UNKNOWN = 0,
-    NEKO_PLATFORM_TYPE_WINDOWS,
-    NEKO_PLATFORM_TYPE_LINUX,
-    NEKO_PLATFORM_TYPE_MAC,
-    NEKO_PLATFORM_TYPE_ANDROID,
-    NEKO_PLATFORM_TYPE_IOS,
-    NEKO_PLATFORM_TYPE_HTML5,
-    NEKO_PLATFORM_TYPE_RPI
-} neko_platform_type;
+typedef enum neko_platform_type { NEKO_PLATFORM_TYPE_UNKNOWN = 0, NEKO_PLATFORM_TYPE_WINDOWS, NEKO_PLATFORM_TYPE_LINUX, NEKO_PLATFORM_TYPE_MAC, NEKO_PLATFORM_TYPE_WEB } neko_platform_type;
 
 typedef enum neko_platform_video_driver_type {
     NEKO_PLATFORM_VIDEO_DRIVER_TYPE_NONE = 0,
     NEKO_PLATFORM_VIDEO_DRIVER_TYPE_OPENGL,
     NEKO_PLATFORM_VIDEO_DRIVER_TYPE_OPENGLES,
-    NEKO_PLATFORM_VIDEO_DRIVER_TYPE_DIRECTX,
-    NEKO_PLATFORM_VIDEO_DRIVER_TYPE_VULKAN,
-    NEKO_PLATFORM_VIDEO_DRIVER_TYPE_METAL,
     NEKO_PLATFORM_VIDEO_DRIVER_TYPE_SOFTWARE
 } neko_platform_video_driver_type;
 
@@ -652,8 +640,8 @@ NEKO_API_DECL neko_vec2 neko_platform_opengl_ver();
 NEKO_API_DECL void neko_platform_msgbox(const_str msg);
 
 // Platform Internal
-void __neko_initialize_symbol_handler();
-const_str __neko_inter_stacktrace();
+NEKO_API_DECL void __neko_initialize_symbol_handler();
+NEKO_API_DECL const_str __neko_inter_stacktrace();
 
 /*============================================================
 // Platform Native

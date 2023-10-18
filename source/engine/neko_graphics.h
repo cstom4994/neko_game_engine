@@ -309,7 +309,7 @@ typedef struct neko_graphics_texture_desc_t {
         u32 height;   // Height in texels for texture
         size_t size;  // Size in bytes for data to be read
     } read;
-    uint16_t flip_y;  // Whether or not y is flipped
+    u16 flip_y;  // Whether or not y is flipped
 } neko_graphics_texture_desc_t;
 
 /* Graphics Uniform Layout Desc */
