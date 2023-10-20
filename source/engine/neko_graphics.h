@@ -707,7 +707,7 @@ NEKO_API_DECL void neko_graphics_dispatch_compute(neko_command_buffer_t* cb, u32
 
 // Macros
 #define neko_graphics_command_buffer_submit(CB) neko_graphics()->api.command_buffer_submit((CB))
-#define neko_graphics_text(text, font, x, y) ((neko_instance()->ctx.graphics))->api.fontcache_push_x_y(text, font, x, y)
+#define neko_graphics_fc_text(text, font, x, y) ((neko_instance()->ctx.graphics))->api.fontcache_push_x_y(text, font, x, y)
 
 #ifndef NEKO_NO_SHORT_NAME
 

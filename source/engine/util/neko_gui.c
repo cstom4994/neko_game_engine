@@ -4768,8 +4768,8 @@ NEKO_API_DECL s32 neko_gui_text_fc_ex(neko_gui_context_t* ctx, const char* text,
 
     neko_gui_layout_t* layout = neko_gui_get_layout(ctx);
 
-    if (fontindex == -1) fontindex = ctx->default_font;
-    neko_graphics_text(text, fontindex, layout->body.x, layout->body.y + layout->body.h / 2);
+    if (fontindex == -1) fontindex = ctx->gui_idraw.data->font_fc_default;
+    neko_graphics_fc_text(text, fontindex, layout->body.x, layout->body.y + layout->body.h / 2);
 
     neko_gui_layout_column_end(ctx);
 

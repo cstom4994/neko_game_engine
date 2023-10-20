@@ -678,9 +678,6 @@ typedef struct neko_gui_context_t {
     neko_gui_alt_drag_mode_type alt_drag_mode;
     neko_dyn_array(neko_gui_request_t) requests;
 
-    // Fontcache
-    neko_font_index default_font;
-
     // Stacks
     neko_gui_stack(u8, NEKO_GUI_COMMANDLIST_SIZE) command_list;
     neko_gui_stack(neko_gui_container_t*, NEKO_GUI_ROOTLIST_SIZE) root_list;

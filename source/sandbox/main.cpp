@@ -684,6 +684,9 @@ void game_init() {
     neko_ecs_ent e2 = neko_ecs_ent_make(neko_ecs());
     CTransform xform = {10, 10};
     CVelocity velocity = {0, 0};
+    CGameObject gameobj = neko_default_val();
+
+#if 0
 
     neko_sprite_load(&test_witch_spr, __neko_game_get_path("data/assets/textures/B_witch.ase"));
 
@@ -707,7 +710,6 @@ void game_init() {
 
     neko_fast_sprite_renderer_construct(&test_fast_sprite);
 
-    CGameObject gameobj = neko_default_val();
     gameobj.visible = true;
     neko_snprintf(gameobj.name, 64, "%s", "AAA_ent");
 
@@ -718,14 +720,16 @@ void game_init() {
     neko_ecs_ent_add_component(neko_ecs(), e1, COMPONENT_PARTICLE, &particle_render);
     neko_ecs_ent_add_component(neko_ecs(), e1, COMPONENT_TILED, &tiled);
 
+#endif
+
     neko_snprintf(gameobj.name, 64, "%s", "BBB_ent");
     gameobj.visible = false;
 
     neko_ecs_ent_add_component(neko_ecs(), e2, COMPONENT_GAMEOBJECT, &gameobj);
     neko_ecs_ent_add_component(neko_ecs(), e2, COMPONENT_TRANSFORM, &xform);
     neko_ecs_ent_add_component(neko_ecs(), e2, COMPONENT_GFXT, NULL);
-    neko_ecs_ent_add_component(neko_ecs(), e2, COMPONENT_UI, &ui_render);
-    // neko_ecs_ent_add_component(neko_ecs(), e, COMPONENT_FAST_SPRITE, &test_fast_sprite);
+    // neko_ecs_ent_add_component(neko_ecs(), e2, COMPONENT_UI, &ui_render);
+    //  neko_ecs_ent_add_component(neko_ecs(), e, COMPONENT_FAST_SPRITE, &test_fast_sprite);
 
     neko_gfxt_renderer *gfxt_render = (neko_gfxt_renderer *)neko_ecs_ent_get_component(neko_ecs(), e2, COMPONENT_GFXT);
 
@@ -796,7 +800,7 @@ void game_init() {
                                                                                              .color_size = sizeof(rt)  // Size of color attachment array in bytes
                                                                                      }));
 
-    chunk_init();
+    game_chunk_init();
 }
 
 void game_update() {
@@ -813,6 +817,7 @@ void game_update() {
         neko_quit();
     }
 
+#if 0
     neko_ecs_ent player = neko_ecs_get_ent(neko_ecs(), 0);
     CVelocity *player_v = static_cast<CVelocity *>(neko_ecs_ent_get_component(neko_ecs(), player, COMPONENT_VELOCITY));
 
@@ -828,6 +833,7 @@ void game_update() {
     if (neko_platform_key_down(NEKO_KEYCODE_S)) {
         player_v->dy += 3.1f;
     }
+#endif
 
     neko_ecs_run_systems(neko_ecs(), ECS_SYSTEM_UPDATE);
 
@@ -1139,7 +1145,7 @@ void game_update() {
     // neko_idraw_rotatev(&g_idraw, neko_platform_elapsed_time() * 0.0003f, NEKO_ZAXIS);
     // neko_idraw_box(&g_idraw, 0.f, 0.f, 0.f, 0.5f, 0.5f, 0.5f, 255, 255, 255, 255, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
 
-    chunk_update();
+    game_chunk_update();
 
     neko_graphics_renderpass_begin(&g_cb, NEKO_GRAPHICS_RENDER_PASS_DEFAULT);
     {
@@ -1159,7 +1165,7 @@ void game_update() {
 
     if (g_cvar.show_demo_window) neko_nui_overview(ctx);
 
-    if (neko_nui_begin(ctx, "Hello Neko", neko_nui_rect(1250, 200, 350, 700),
+    if (neko_nui_begin(ctx, "Hello Neko", neko_nui_rect(50, 200, 350, 700),
                        NEKO_NUI_WINDOW_BORDER | NEKO_NUI_WINDOW_MOVABLE | NEKO_NUI_WINDOW_SCALABLE | NEKO_NUI_WINDOW_MINIMIZABLE | NEKO_NUI_WINDOW_TITLE)) {
         enum { EASY, HARD };
         static int op = EASY;
@@ -1293,7 +1299,7 @@ void game_shutdown() {
 
     neko_array_dctor(&test_witch_spr.frames);
 
-    chunk_destroy();
+    game_chunk_destroy();
 
     neko_scripting_end(L);
 

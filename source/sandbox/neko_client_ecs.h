@@ -153,7 +153,7 @@ neko_ecs_decl_system(particle_render_system, PARTICLE_RENDER_SYSTEM, 2, COMPONEN
     }
 }
 
-neko_ecs_decl_system(tiled_render_system, TILED_RENDER_SYSTEM, 2, COMPONENT_TRANSFORM, COMPONENT_TILED) {
+neko_ecs_decl_system(tiled_render_system, TILED_RENDER_SYSTEM, 3, COMPONENT_GAMEOBJECT, COMPONENT_TRANSFORM, COMPONENT_TILED) {
 
     neko_command_buffer_t *cb = ((neko_client_ecs_userdata_s *)ecs->user_data)->cb;
     neko_immediate_draw_t *idraw = ((neko_client_ecs_userdata_s *)ecs->user_data)->idraw;
@@ -163,6 +163,10 @@ neko_ecs_decl_system(tiled_render_system, TILED_RENDER_SYSTEM, 2, COMPONENT_TRAN
         if (neko_ecs_ent_has_mask(ecs, e, neko_ecs_get_mask(TILED_RENDER_SYSTEM))) {
             CTransform *xform = (CTransform *)neko_ecs_ent_get_component(ecs, e, COMPONENT_TRANSFORM);
             neko_tiled_renderer *tiled_render = (neko_tiled_renderer *)neko_ecs_ent_get_component(ecs, e, COMPONENT_TILED);
+
+            CGameObject *gameobj = (CGameObject *)neko_ecs_ent_get_component(ecs, e, COMPONENT_GAMEOBJECT);
+
+            if (!gameobj->visible) continue;
 
             neko_graphics_renderpass_begin(cb, NEKO_GRAPHICS_RENDER_PASS_DEFAULT);
             {
@@ -273,7 +277,7 @@ neko_ecs_decl_system(ui_render_system, UI_RENDER_SYSTEM, 2, COMPONENT_TRANSFORM,
             neko_ui_renderer *ui_render = (neko_ui_renderer *)neko_ecs_ent_get_component(ecs, e, COMPONENT_UI);
 
             if (ui_render->type == neko_ui_renderer::type::LABEL) {
-                neko_graphics_text(ui_render->text, igui->default_font, xform->x, xform->y);
+                neko_graphics_fc_text(ui_render->text, idraw->data->font_fc_default, xform->x, xform->y);
             }
         }
     }

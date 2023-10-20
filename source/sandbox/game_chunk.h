@@ -8,42 +8,79 @@
 #include "libs/glad/glad.h"
 
 // game
+#include "game_physics_math.hpp"
 #include "neko_client_ecs.h"
-
-#define NEKO_BUILTIN_IMPL
-#include "old/neko_builtin_font.h"
 
 #define g_window_width 1280
 #define g_window_height 740
-neko_global const s32 g_scale = 4;
-neko_global const s32 g_texture_width = g_window_width / g_scale;
-neko_global const s32 g_texture_height = g_window_height / g_scale;
+
+neko_global f32 g_scale = 8;
+
+neko_global const s32 CHUNK_W = 64;
+neko_global const s32 CHUNK_H = 64;
 
 // neko engine cpp
 using namespace neko;
-
-using namespace std::string_literals;
 
 f32 brush_size = 4.f;
 f32 world_gravity = 10.f;
 
 typedef neko_color_t cell_color_t;
 
+enum mat_physics_type {
+    AIR = 0,
+    SOLID = 1,
+    SAND = 2,
+    LIQUID = 3,
+    GAS = 4,
+    PASSABLE = 5,
+    OBJECT = 6,
+};
+
 typedef struct particle_t {
-    u8 id;
+    u8 mat_id;
     f32 life_time;
     neko_vec2 velocity;
     cell_color_t color;
     bool has_been_updated_this_frame;
 } particle_t;
 
-// Globals
-// neko_global neko_vertex_buffer_t g_vbo = {0};
-// neko_global neko_index_buffer_t g_ibo = {0};
-// neko_global neko_command_buffer_t g_cb = {0};
-// neko_global neko_uniform_t u_tex = {};
-// neko_global neko_uniform_t u_flip_y = {};
-neko_global neko_texture_t g_tex = {0};
+typedef struct game_chunk_s {
+    // neko_vec2 position; // 实际位置
+    s32 index_x;  // 相对位置
+    s32 index_y;  // 相对位置
+    particle_t* world_particle_data;
+    cell_color_t* texture_buffer;
+    neko_texture_t tex;  // TODO: 23/10/20 一个区块一个贴图的立即渲染效率不高 后期改成把每个区块数据贴到一个大贴图上
+} game_chunk_t;
+
+// TODO: 23/10/20
+// 因为在各种关于particle的update函数中 particle的位置永远是对于
+// 某个区域块(chunk)而言的相对位置
+// 即永远在0-64区间 这可以通过2^5二进制位来存储
+// 一个chunk的相对位置只需要10个bit 而非两个u32
+
+game_chunk_t game_chunk_ctor(s32 x, s32 y) {
+    game_chunk_t ch;
+    ch.index_x = x;
+    ch.index_y = y;
+    return ch;
+}
+
+typedef particle_t (*particle_ctor_func)(void);
+typedef void (*particle_update_func)(game_chunk_t* chunk, u32 x, u32 y);
+
+typedef struct mat_s {
+    char name[64];
+    cell_color_t color;
+    mat_physics_type phy_type;
+
+    particle_ctor_func p_func;
+    particle_update_func update_func;
+
+    // neko_texture_t texture;
+} mat_t;
+
 neko_global neko_texture_t g_tex_ui = {0};
 // neko_global neko_texture_t g_rt = {0};
 // neko_global neko_texture_t g_test_ase = {0};
@@ -55,7 +92,7 @@ neko_global neko_texture_t g_tex_ui = {0};
 s32 l;
 s32 l_check;
 
-// For now, all particle information will simply be a value to determine its material id
+// For now, all particle information will simply be a value to determine its material mat_id
 #define mat_id_empty (u8)0
 #define mat_id_sand (u8)1
 #define mat_id_water (u8)2
@@ -119,15 +156,6 @@ typedef enum material_selection {
 // Material selection for "painting" / default to sand
 neko_global material_selection g_material_selection = mat_sel_sand;
 
-// World update processing structure
-neko_global u8* g_world_process_update_structure = {0};  // Every particle has id associated with it? Jeezuz...
-
-// World particle data structure
-neko_global particle_t* g_world_particle_data = {0};
-
-// Texture buffers
-neko_global cell_color_t* g_texture_buffer = {0};
-
 // UI texture buffer
 neko_global cell_color_t* g_ui_buffer = {0};
 
@@ -137,8 +165,15 @@ neko_global u32 g_frame_counter = 0;
 neko_global bool g_show_material_selection_panel = true;
 neko_global bool g_show_frame_count = true;
 
+neko_global neko_vec2 g_chunk_render_pos;
+
+// pixelui
+#include "game_pixelui.h"
+
 // Handle for main window
 // neko_global neko_resource_handle g_window;
+
+#if 0
 
 const char* pixel_v_src = R"glsl(
 #version 330 core
@@ -178,6 +213,8 @@ void main()
 }
 )glsl";
 
+#endif
+
 particle_t particle_empty();
 particle_t particle_sand();
 particle_t particle_water();
@@ -197,22 +234,27 @@ void update_input();
 bool update_ui();
 
 // Particle updates
-void update_particle_sim();
-void update_sand(u32 x, u32 y);
-void update_water(u32 x, u32 y);
-void update_salt(u32 x, u32 y);
-void update_fire(u32 x, u32 y);
-void update_smoke(u32 x, u32 y);
-void update_ember(u32 x, u32 y);
-void update_steam(u32 x, u32 y);
-void update_gunpowder(u32 x, u32 y);
-void update_oil(u32 x, u32 y);
-void update_lava(u32 x, u32 y);
-void update_acid(u32 x, u32 y);
-void update_default(u32 x, u32 y);
+void chunk_update_particle(game_chunk_t* chunk);
+void update_sand(game_chunk_t* chunk, u32 x, u32 y);
+void update_water(game_chunk_t* chunk, u32 x, u32 y);
+void update_salt(game_chunk_t* chunk, u32 x, u32 y);
+void update_fire(game_chunk_t* chunk, u32 x, u32 y);
+void update_smoke(game_chunk_t* chunk, u32 x, u32 y);
+void update_ember(game_chunk_t* chunk, u32 x, u32 y);
+void update_steam(game_chunk_t* chunk, u32 x, u32 y);
+void update_gunpowder(game_chunk_t* chunk, u32 x, u32 y);
+void update_oil(game_chunk_t* chunk, u32 x, u32 y);
+void update_lava(game_chunk_t* chunk, u32 x, u32 y);
+void update_acid(game_chunk_t* chunk, u32 x, u32 y);
+void update_default(game_chunk_t* chunk, u32 x, u32 y);
+
+void chunk_init(game_chunk_t* chunk);
+void chunk_destroy(game_chunk_t* chunk);
+void chunk_update(game_chunk_t* chunk);
+void chunk_update_mesh(game_chunk_t* chunk);
 
 // Utilities for writing data into color buffer
-void write_data(u32 idx, particle_t);
+void chunk_write_data(game_chunk_t* chunk, u32 idx, particle_t);
 
 u8* neko_tex_rgba_to_alpha(const u8* data, s32 w, s32 h);
 u8* neko_tex_alpha_to_thresholded(const u8* data, s32 w, s32 h, u8 threshold);
@@ -224,16 +266,21 @@ typedef struct {
 neko_tex_point* neko_tex_extract_outline_path(u8* data, s32 w, s32 h, s32* point_count, neko_tex_point* reusable_outline);
 void neko_tex_distance_based_path_simplification(neko_tex_point* outline, s32* outline_length, f32 distance_threshold);
 
-// Rendering
-void render_scene();
+void render_chunk_immediate(game_chunk_t* chunk);
 
-neko_vec2 calculate_mouse_position() {
-    neko_vec2 ws = neko_platform_framebuffer_sizev(neko_platform_main_window());
-    neko_vec2 pmp = neko_platform_mouse_positionv();
-    // Need to place mouse into frame
-    f32 x_scale = pmp.x / (f32)ws.x;
-    f32 y_scale = pmp.y / (f32)ws.y;
-    return neko_vec2{x_scale * (f32)g_texture_width, y_scale * (f32)g_texture_height};
+s32 compute_idx(s32 x, s32 y) { return (y * CHUNK_W + x); }
+
+neko_vec2 calc_chunk_position(game_chunk_t* chunk) {
+
+    f32 x = (chunk->index_x) * CHUNK_W * g_scale;
+    f32 y = (chunk->index_y) * CHUNK_H * g_scale;
+
+    return neko_v2(x, y);
+}
+
+bool in_bounds(s32 x, s32 y) {
+    if (x < 0 || x > (CHUNK_W - 1) || y < 0 || y > (CHUNK_H - 1)) return false;
+    return true;
 }
 
 s32 random_val(s32 lower, s32 upper) {
@@ -246,96 +293,89 @@ s32 random_val(s32 lower, s32 upper) {
     return (rand() % (upper - lower + 1) + lower);
 }
 
-s32 compute_idx(s32 x, s32 y) { return (y * g_texture_width + x); }
+bool is_empty(game_chunk_t* chunk, s32 x, s32 y) { return (in_bounds(x, y) && chunk->world_particle_data[compute_idx(x, y)].mat_id == mat_id_empty); }
 
-bool in_bounds(s32 x, s32 y) {
-    if (x < 0 || x > (g_texture_width - 1) || y < 0 || y > (g_texture_height - 1)) return false;
-    return true;
-}
+particle_t get_particle_at(game_chunk_t* chunk, s32 x, s32 y) { return chunk->world_particle_data[compute_idx(x, y)]; }
 
-bool is_empty(s32 x, s32 y) { return (in_bounds(x, y) && g_world_particle_data[compute_idx(x, y)].id == mat_id_empty); }
-
-particle_t get_particle_at(s32 x, s32 y) { return g_world_particle_data[compute_idx(x, y)]; }
-
-bool completely_surrounded(s32 x, s32 y) {
+bool completely_surrounded(game_chunk_t* chunk, s32 x, s32 y) {
     // Top
-    if (in_bounds(x, y - 1) && !is_empty(x, y - 1)) {
+    if (in_bounds(x, y - 1) && !is_empty(chunk, x, y - 1)) {
         return false;
     }
     // Bottom
-    if (in_bounds(x, y + 1) && !is_empty(x, y + 1)) {
+    if (in_bounds(x, y + 1) && !is_empty(chunk, x, y + 1)) {
         return false;
     }
     // Left
-    if (in_bounds(x - 1, y) && !is_empty(x - 1, y)) {
+    if (in_bounds(x - 1, y) && !is_empty(chunk, x - 1, y)) {
         return false;
     }
     // Right
-    if (in_bounds(x + 1, y) && !is_empty(x + 1, y)) {
+    if (in_bounds(x + 1, y) && !is_empty(chunk, x + 1, y)) {
         return false;
     }
     // Top Left
-    if (in_bounds(x - 1, y - 1) && !is_empty(x - 1, y - 1)) {
+    if (in_bounds(x - 1, y - 1) && !is_empty(chunk, x - 1, y - 1)) {
         return false;
     }
     // Top Right
-    if (in_bounds(x + 1, y - 1) && !is_empty(x + 1, y - 1)) {
+    if (in_bounds(x + 1, y - 1) && !is_empty(chunk, x + 1, y - 1)) {
         return false;
     }
     // Bottom Left
-    if (in_bounds(x - 1, y + 1) && !is_empty(x - 1, y + 1)) {
+    if (in_bounds(x - 1, y + 1) && !is_empty(chunk, x - 1, y + 1)) {
         return false;
     }
     // Bottom Right
-    if (in_bounds(x + 1, y + 1) && !is_empty(x + 1, y + 1)) {
+    if (in_bounds(x + 1, y + 1) && !is_empty(chunk, x + 1, y + 1)) {
         return false;
     }
 
     return true;
 }
 
-bool is_in_liquid(s32 x, s32 y, s32* lx, s32* ly) {
-    if (in_bounds(x, y) && (get_particle_at(x, y).id == mat_id_water || get_particle_at(x, y).id == mat_id_oil)) {
+bool is_in_liquid(game_chunk_t* chunk, s32 x, s32 y, s32* lx, s32* ly) {
+    if (in_bounds(x, y) && (get_particle_at(chunk, x, y).mat_id == mat_id_water || get_particle_at(chunk, x, y).mat_id == mat_id_oil)) {
         *lx = x;
         *ly = y;
         return true;
     }
-    if (in_bounds(x, y - 1) && (get_particle_at(x, y - 1).id == mat_id_water || get_particle_at(x, y - 1).id == mat_id_oil)) {
+    if (in_bounds(x, y - 1) && (get_particle_at(chunk, x, y - 1).mat_id == mat_id_water || get_particle_at(chunk, x, y - 1).mat_id == mat_id_oil)) {
         *lx = x;
         *ly = y - 1;
         return true;
     }
-    if (in_bounds(x, y + 1) && (get_particle_at(x, y + 1).id == mat_id_water || get_particle_at(x, y + 1).id == mat_id_oil)) {
+    if (in_bounds(x, y + 1) && (get_particle_at(chunk, x, y + 1).mat_id == mat_id_water || get_particle_at(chunk, x, y + 1).mat_id == mat_id_oil)) {
         *lx = x;
         *ly = y + 1;
         return true;
     }
-    if (in_bounds(x - 1, y) && (get_particle_at(x - 1, y).id == mat_id_water || get_particle_at(x - 1, y).id == mat_id_oil)) {
+    if (in_bounds(x - 1, y) && (get_particle_at(chunk, x - 1, y).mat_id == mat_id_water || get_particle_at(chunk, x - 1, y).mat_id == mat_id_oil)) {
         *lx = x - 1;
         *ly = y;
         return true;
     }
-    if (in_bounds(x - 1, y - 1) && (get_particle_at(x - 1, y - 1).id == mat_id_water || get_particle_at(x - 1, y - 1).id == mat_id_oil)) {
+    if (in_bounds(x - 1, y - 1) && (get_particle_at(chunk, x - 1, y - 1).mat_id == mat_id_water || get_particle_at(chunk, x - 1, y - 1).mat_id == mat_id_oil)) {
         *lx = x - 1;
         *ly = y - 1;
         return true;
     }
-    if (in_bounds(x - 1, y + 1) && (get_particle_at(x - 1, y + 1).id == mat_id_water || get_particle_at(x - 1, y + 1).id == mat_id_oil)) {
+    if (in_bounds(x - 1, y + 1) && (get_particle_at(chunk, x - 1, y + 1).mat_id == mat_id_water || get_particle_at(chunk, x - 1, y + 1).mat_id == mat_id_oil)) {
         *lx = x - 1;
         *ly = y + 1;
         return true;
     }
-    if (in_bounds(x + 1, y) && (get_particle_at(x + 1, y).id == mat_id_water || get_particle_at(x + 1, y).id == mat_id_oil)) {
+    if (in_bounds(x + 1, y) && (get_particle_at(chunk, x + 1, y).mat_id == mat_id_water || get_particle_at(chunk, x + 1, y).mat_id == mat_id_oil)) {
         *lx = x + 1;
         *ly = y;
         return true;
     }
-    if (in_bounds(x + 1, y - 1) && (get_particle_at(x + 1, y - 1).id == mat_id_water || get_particle_at(x + 1, y - 1).id == mat_id_oil)) {
+    if (in_bounds(x + 1, y - 1) && (get_particle_at(chunk, x + 1, y - 1).mat_id == mat_id_water || get_particle_at(chunk, x + 1, y - 1).mat_id == mat_id_oil)) {
         *lx = x + 1;
         *ly = y - 1;
         return true;
     }
-    if (in_bounds(x + 1, y + 1) && (get_particle_at(x + 1, y + 1).id == mat_id_water || get_particle_at(x + 1, y + 1).id == mat_id_oil)) {
+    if (in_bounds(x + 1, y + 1) && (get_particle_at(chunk, x + 1, y + 1).mat_id == mat_id_water || get_particle_at(chunk, x + 1, y + 1).mat_id == mat_id_oil)) {
         *lx = x + 1;
         *ly = y + 1;
         return true;
@@ -343,48 +383,48 @@ bool is_in_liquid(s32 x, s32 y, s32* lx, s32* ly) {
     return false;
 }
 
-bool is_in_water(s32 x, s32 y, s32* lx, s32* ly) {
-    if (in_bounds(x, y) && (get_particle_at(x, y).id == mat_id_water)) {
+bool is_in_water(game_chunk_t* chunk, s32 x, s32 y, s32* lx, s32* ly) {
+    if (in_bounds(x, y) && (get_particle_at(chunk, x, y).mat_id == mat_id_water)) {
         *lx = x;
         *ly = y;
         return true;
     }
-    if (in_bounds(x, y - 1) && (get_particle_at(x, y - 1).id == mat_id_water)) {
+    if (in_bounds(x, y - 1) && (get_particle_at(chunk, x, y - 1).mat_id == mat_id_water)) {
         *lx = x;
         *ly = y - 1;
         return true;
     }
-    if (in_bounds(x, y + 1) && (get_particle_at(x, y + 1).id == mat_id_water)) {
+    if (in_bounds(x, y + 1) && (get_particle_at(chunk, x, y + 1).mat_id == mat_id_water)) {
         *lx = x;
         *ly = y + 1;
         return true;
     }
-    if (in_bounds(x - 1, y) && (get_particle_at(x - 1, y).id == mat_id_water)) {
+    if (in_bounds(x - 1, y) && (get_particle_at(chunk, x - 1, y).mat_id == mat_id_water)) {
         *lx = x - 1;
         *ly = y;
         return true;
     }
-    if (in_bounds(x - 1, y - 1) && (get_particle_at(x - 1, y - 1).id == mat_id_water)) {
+    if (in_bounds(x - 1, y - 1) && (get_particle_at(chunk, x - 1, y - 1).mat_id == mat_id_water)) {
         *lx = x - 1;
         *ly = y - 1;
         return true;
     }
-    if (in_bounds(x - 1, y + 1) && (get_particle_at(x - 1, y + 1).id == mat_id_water)) {
+    if (in_bounds(x - 1, y + 1) && (get_particle_at(chunk, x - 1, y + 1).mat_id == mat_id_water)) {
         *lx = x - 1;
         *ly = y + 1;
         return true;
     }
-    if (in_bounds(x + 1, y) && (get_particle_at(x + 1, y).id == mat_id_water)) {
+    if (in_bounds(x + 1, y) && (get_particle_at(chunk, x + 1, y).mat_id == mat_id_water)) {
         *lx = x + 1;
         *ly = y;
         return true;
     }
-    if (in_bounds(x + 1, y - 1) && (get_particle_at(x + 1, y - 1).id == mat_id_water)) {
+    if (in_bounds(x + 1, y - 1) && (get_particle_at(chunk, x + 1, y - 1).mat_id == mat_id_water)) {
         *lx = x + 1;
         *ly = y - 1;
         return true;
     }
-    if (in_bounds(x + 1, y + 1) && (get_particle_at(x + 1, y + 1).id == mat_id_water)) {
+    if (in_bounds(x + 1, y + 1) && (get_particle_at(chunk, x + 1, y + 1).mat_id == mat_id_water)) {
         *lx = x + 1;
         *ly = y + 1;
         return true;
@@ -541,8 +581,8 @@ void drop_file_callback(void* platform_window, s32 count, const char** file_path
             // Not sure what the format should be, so this is ...blah. Need to find a way to determine this beforehand.
             u8* data = (u8*)texture_data;
 
-            s32 sx = (g_texture_width - _w) / 2;
-            s32 sy = (g_texture_height - _h) / 2;
+            s32 sx = (CHUNK_W - _w) / 2;
+            s32 sy = (CHUNK_H - _h) / 2;
 
             // Now we need to process the data and place it into our particle/color buffers
             for (u32 h = 0; h < _h; ++h) {
@@ -556,7 +596,7 @@ void drop_file_callback(void* platform_window, s32 count, const char** file_path
                     if (in_bounds(sx + w, sy + h)) {
 
                         u32 idx = compute_idx(sx + w, sy + h);
-                        write_data(idx, p);
+                        chunk_write_data(chunk,idx, p);
                     }
                 }
             }
@@ -585,21 +625,131 @@ neko_inline neko_vec2 screen_to_world_pos(const neko_vec2& pos) {
     return neko_vec2{worldX, worldY};
 }
 
-// Here, we'll initialize all of our application data, which in this case is our graphics resources
-void chunk_init() {
+neko_hash_table(u8, mat_t) g_mat_data;
+
+neko_inline mat_t mat_ctor(const_str name, cell_color_t color, mat_physics_type type, particle_ctor_func pfunc, particle_update_func ufunc) {
+    mat_t m;
+    neko_snprintf(m.name, 64, "%s", name);
+    m.color = color;
+    m.phy_type = type;
+    // m.texture = tex;
+    m.p_func = pfunc;
+    m.update_func = ufunc;
+    return m;
+}
+
+void game_matdata_init() {
+
+    neko_hash_table_insert(g_mat_data, mat_id_sand, mat_ctor("sand", {}, mat_physics_type::SAND, particle_sand, update_sand));
+    neko_hash_table_insert(g_mat_data, mat_id_water, mat_ctor("water", {}, mat_physics_type::LIQUID, particle_water, update_water));
+    neko_hash_table_insert(g_mat_data, mat_id_salt, mat_ctor("salt", {}, mat_physics_type::SAND, particle_salt, update_salt));
+    neko_hash_table_insert(g_mat_data, mat_id_fire, mat_ctor("fire", {}, mat_physics_type::PASSABLE, particle_fire, update_fire));
+    neko_hash_table_insert(g_mat_data, mat_id_smoke, mat_ctor("smoke", {}, mat_physics_type::GAS, particle_smoke, update_smoke));
+    neko_hash_table_insert(g_mat_data, mat_id_ember, mat_ctor("ember", {}, mat_physics_type::SAND, particle_ember, update_ember));
+    neko_hash_table_insert(g_mat_data, mat_id_steam, mat_ctor("steam", {}, mat_physics_type::GAS, particle_steam, update_steam));
+    neko_hash_table_insert(g_mat_data, mat_id_gunpowder, mat_ctor("gunpowder", {}, mat_physics_type::SAND, particle_gunpowder, update_gunpowder));
+    neko_hash_table_insert(g_mat_data, mat_id_oil, mat_ctor("oil", {}, mat_physics_type::LIQUID, particle_oil, update_oil));
+    neko_hash_table_insert(g_mat_data, mat_id_lava, mat_ctor("lava", {}, mat_physics_type::LIQUID, particle_lava, update_lava));
+    neko_hash_table_insert(g_mat_data, mat_id_acid, mat_ctor("acid", {}, mat_physics_type::LIQUID, particle_acid, update_acid));
+
+    // neko_hash_table_insert(g_mat_data, mat_id_stone, mat_ctor("stone", {}, mat_physics_type::SOLID, particle_stone, update_default));
+}
+
+void game_matdata_destroy() { neko_hash_table_free(g_mat_data); }
+
+neko_hash_table(u32, game_chunk_t) g_chunk_data;
+
+void game_chunk_init() {
+
+    g_chunk_render_pos = {600, 50};
+
+    game_matdata_init();
+
+    g_ui_buffer = (cell_color_t*)neko_safe_malloc(g_pixelui_texture_width * g_pixelui_texture_height * sizeof(cell_color_t));
+    memset(g_ui_buffer, 0, g_pixelui_texture_width * g_pixelui_texture_height);
+
+    neko_graphics_texture_desc_t t_desc = neko_default_val();
+    t_desc.format = NEKO_GRAPHICS_TEXTURE_FORMAT_RGBA8;
+    t_desc.mag_filter = NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST;
+    t_desc.min_filter = NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST;
+    t_desc.num_mips = 0;
+    t_desc.width = g_pixelui_texture_width;
+    t_desc.height = g_pixelui_texture_height;
+    t_desc.data[0] = g_ui_buffer;
+
+    g_tex_ui = neko_graphics_texture_create(&t_desc);
+
+    neko_hash_table_insert(g_chunk_data, 0, game_chunk_ctor(0, 0));
+    neko_hash_table_insert(g_chunk_data, 1, game_chunk_ctor(0, 1));
+    neko_hash_table_insert(g_chunk_data, 2, game_chunk_ctor(1, 0));
+    neko_hash_table_insert(g_chunk_data, 3, game_chunk_ctor(1, 1));
+
+    for (neko_hash_table_iter it = neko_hash_table_iter_new(g_chunk_data); neko_hash_table_iter_valid(g_chunk_data, it); neko_hash_table_iter_advance(g_chunk_data, it)) {
+        u32 k = neko_hash_table_iter_getk(g_chunk_data, it);
+        game_chunk_t* chunk = neko_hash_table_iter_getp(g_chunk_data, it);
+
+        chunk_init(chunk);
+    }
+
+    // Load UI font texture data from file
+    construct_font_data(g_font_data);
+
+    // Set up callback for dropping them files, yo.
+    // platform->set_dropped_files_callback(platform->main_window(), &drop_file_callback);
+}
+
+void game_chunk_destroy() {
+
+    for (neko_hash_table_iter it = neko_hash_table_iter_new(g_chunk_data); neko_hash_table_iter_valid(g_chunk_data, it); neko_hash_table_iter_advance(g_chunk_data, it)) {
+        u32 k = neko_hash_table_iter_getk(g_chunk_data, it);
+        game_chunk_t* chunk = neko_hash_table_iter_getp(g_chunk_data, it);
+
+        chunk_destroy(chunk);
+    }
+
+    neko_graphics_texture_destroy(g_tex_ui);
+    neko_safe_free(g_ui_buffer);
+
+    game_matdata_destroy();
+}
+void game_chunk_update() {
+
+    bool ui_interaction = update_ui();
+
+    if (!ui_interaction) {
+        update_input();
+    }
+
+    for (neko_hash_table_iter it = neko_hash_table_iter_new(g_chunk_data); neko_hash_table_iter_valid(g_chunk_data, it); neko_hash_table_iter_advance(g_chunk_data, it)) {
+        u32 k = neko_hash_table_iter_getk(g_chunk_data, it);
+        game_chunk_t* chunk = neko_hash_table_iter_getp(g_chunk_data, it);
+
+        chunk_update(chunk);
+        chunk_update_mesh(chunk);
+    }
+
+    neko_immediate_draw_t* idraw = ((neko_client_ecs_userdata_s*)neko_ecs()->user_data)->idraw;
+
+    const neko_vec2 fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
+    neko_idraw_rect_2d_textured_ext(idraw, 0, 0, fbs.x, fbs.y, 0, 1, 1, 0, g_tex_ui.id, NEKO_COLOR_WHITE);
+
+    // Update frame counter
+    g_frame_counter = (g_frame_counter + 1) % u32_max;
+}
+
+void chunk_init(game_chunk_t* chunk) {
+
+    // chunk = (game_chunk_t*)neko_safe_malloc(sizeof(game_chunk_t));
 
     // Construct world data (for now, it'll just be the size of the screen)
-    g_world_particle_data = (particle_t*)neko_safe_malloc(g_texture_width * g_texture_height * sizeof(particle_t));
+    chunk->world_particle_data = (particle_t*)neko_safe_malloc(CHUNK_W * CHUNK_H * sizeof(particle_t));
 
     // Construct texture buffer data
-    g_texture_buffer = (cell_color_t*)neko_safe_malloc(g_texture_width * g_texture_height * sizeof(cell_color_t));
-
-    g_ui_buffer = (cell_color_t*)neko_safe_malloc(g_texture_width * g_texture_height * sizeof(cell_color_t));
+    chunk->texture_buffer = (cell_color_t*)neko_safe_malloc(CHUNK_W * CHUNK_H * sizeof(cell_color_t));
 
     // Set buffers to 0
-    memset(g_texture_buffer, 0, g_texture_width * g_texture_height * sizeof(cell_color_t));
-    memset(g_world_particle_data, 0, g_texture_width * g_texture_height * sizeof(particle_t));
-    memset(g_ui_buffer, 0, g_texture_width * g_texture_height);
+    memset(chunk->texture_buffer, 0, CHUNK_W * CHUNK_H * sizeof(cell_color_t));
+    memset(chunk->world_particle_data, 0, CHUNK_W * CHUNK_H * sizeof(particle_t));
 
     // Construct texture resource from GPU
     neko_graphics_texture_desc_t t_desc = neko_default_val();
@@ -607,19 +757,13 @@ void chunk_init() {
     t_desc.mag_filter = NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST;
     t_desc.min_filter = NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST;
     t_desc.num_mips = 0;
-    t_desc.flip_y = false;
 
-    t_desc.width = g_texture_width;
-    t_desc.height = g_texture_height;
+    t_desc.width = CHUNK_W;
+    t_desc.height = CHUNK_H;
 
-    t_desc.data[0] = g_texture_buffer;
+    t_desc.data[0] = chunk->texture_buffer;
 
-    g_tex = neko_graphics_texture_create(&t_desc);
-
-    // Construct texture resource from GPU
-    t_desc.data[0] = g_ui_buffer;
-
-    g_tex_ui = neko_graphics_texture_create(&t_desc);
+    chunk->tex = neko_graphics_texture_create(&t_desc);
 
     // Construct target for offscreen rendering
     // t_desc.data = NULL;
@@ -632,86 +776,22 @@ void chunk_init() {
     // g_blur_pass = blur_pass_ctor();
     // g_bright_pass = bright_filter_pass_ctor();
     // g_composite_pass = composite_pass_ctor();
-
-    // Load UI font texture data from file
-    construct_font_data(g_font_data);
-
-    // Set up callback for dropping them files, yo.
-    // platform->set_dropped_files_callback(platform->main_window(), &drop_file_callback);
 }
 
-void chunk_destroy() {
+void chunk_destroy(game_chunk_t* chunk) {
 
-    neko_graphics_texture_destroy(g_tex);
-    neko_graphics_texture_destroy(g_tex_ui);
+    neko_graphics_texture_destroy(chunk->tex);
 
-    neko_safe_free(g_world_particle_data);
-    neko_safe_free(g_texture_buffer);
-    neko_safe_free(g_ui_buffer);
+    neko_safe_free(chunk->world_particle_data);
+    neko_safe_free(chunk->texture_buffer);
+
+    // neko_safe_free(chunk);
 }
 
-#if 1
-
-void chunk_update() {
-
-    // All application updates
-    bool ui_interaction = update_ui();
-    if (!ui_interaction) {
-        update_input();
-    }
-
-    update_particle_sim();
-    render_scene();
-
-    // Update frame counter
-    g_frame_counter = (g_frame_counter + 1) % u32_max;
+void chunk_update(game_chunk_t* chunk) {
+    chunk_update_particle(chunk);
+    render_chunk_immediate(chunk);
 }
-
-#endif
-
-void putpixel(s32 x, s32 y) {
-    if (in_bounds(x, y)) {
-        g_ui_buffer[compute_idx(x, y)] = cell_color_t{255, 255, 255, 255};
-    }
-}
-
-// Function to put pixels
-// at subsequence points
-void drawCircle(s32 xc, s32 yc, s32 x, s32 y) {
-    putpixel(xc + x, yc + y);
-    putpixel(xc - x, yc + y);
-    putpixel(xc + x, yc - y);
-    putpixel(xc - x, yc - y);
-    putpixel(xc + y, yc + x);
-    putpixel(xc - y, yc + x);
-    putpixel(xc + y, yc - x);
-    putpixel(xc - y, yc - x);
-}
-
-// Function for circle-generation
-// using Bresenham's algorithm
-void circleBres(s32 xc, s32 yc, s32 r) {
-    s32 x = 0, y = r;
-    s32 d = 3 - 2 * r;
-    drawCircle(xc, yc, x, y);
-    while (y >= x) {
-        // For each pixel we will
-        // draw all eight pixels
-        x++;
-
-        // Check for decision parameter
-        // and correspondingly
-        // update d, x, y
-        if (d > 0) {
-            y--;
-            d = d + 4 * (x - y) + 10;
-        } else
-            d = d + 4 * x + 6;
-        drawCircle(xc, yc, x, y);
-    }
-}
-
-#if 1
 
 void update_input() {
 
@@ -732,96 +812,148 @@ void update_input() {
         brush_size = neko_clamp(brush_size + 1.f, 1.f, 100.f);
     }
 
+    if (neko_platform_key_pressed(NEKO_KEYCODE_PAGE_UP)) {
+        g_scale += 1.f;
+    } else if (neko_platform_key_pressed(NEKO_KEYCODE_PAGE_DOWN)) {
+        g_scale -= 1.f;
+    }
+
+    if (neko_platform_key_pressed(NEKO_KEYCODE_W)) {
+        g_chunk_render_pos.y += 10.f;
+    }
+    if (neko_platform_key_pressed(NEKO_KEYCODE_S)) {
+        g_chunk_render_pos.y -= 10.f;
+    }
+    if (neko_platform_key_pressed(NEKO_KEYCODE_A)) {
+        g_chunk_render_pos.x -= 10.f;
+    }
+    if (neko_platform_key_pressed(NEKO_KEYCODE_D)) {
+        g_chunk_render_pos.x += 10.f;
+    }
+
     // Clear data
     if (neko_platform_key_pressed(NEKO_KEYCODE_C)) {
-        memset(g_texture_buffer, 0, sizeof(cell_color_t) * g_texture_width * g_texture_height);
-        memset(g_world_particle_data, 0, sizeof(particle_t) * g_texture_width * g_texture_height);
+
+        for (neko_hash_table_iter it = neko_hash_table_iter_new(g_chunk_data); neko_hash_table_iter_valid(g_chunk_data, it); neko_hash_table_iter_advance(g_chunk_data, it)) {
+            u32 k = neko_hash_table_iter_getk(g_chunk_data, it);
+            game_chunk_t* chunk = neko_hash_table_iter_getp(g_chunk_data, it);
+
+            memset(chunk->texture_buffer, 0, sizeof(cell_color_t) * CHUNK_W * CHUNK_H);
+            memset(chunk->world_particle_data, 0, sizeof(particle_t) * CHUNK_W * CHUNK_H);
+        }
     }
 
     // Mouse input for testing
     if (neko_platform_mouse_down(NEKO_MOUSE_LBUTTON)) {
-        neko_vec2 mp = calculate_mouse_position();
-        f32 mp_x = neko_clamp(mp.x, 0.f, (f32)g_texture_width - 1.f);
-        f32 mp_y = neko_clamp(mp.y, 0.f, (f32)g_texture_height - 1.f);
-        u32 max_idx = (g_texture_width * g_texture_height) - 1;
-        s32 r_amt = random_val(1, 10000);
-        const f32 R = brush_size;
+        neko_vec2 mp = neko_platform_mouse_positionv();
 
-        // Spawn in a circle around the mouse
-        for (u32 i = 0; i < r_amt; ++i) {
-            f32 ran = (f32)random_val(0, 100) / 100.f;
-            f32 r = R * sqrt(ran);
-            f32 theta = (f32)random_val(0, 100) / 100.f * 2.f * neko_pi;
-            f32 rx = cos((f32)theta) * r;
-            f32 ry = sin((f32)theta) * r;
-            s32 mpx = (s32)neko_clamp(mp_x + (f32)rx, 0.f, (f32)g_texture_width - 1.f);
-            s32 mpy = (s32)neko_clamp(mp_y + (f32)ry, 0.f, (f32)g_texture_height - 1.f);
-            s32 idx = mpy * (s32)g_texture_width + mpx;
-            idx = neko_clamp(idx, 0, max_idx);
+        for (neko_hash_table_iter it = neko_hash_table_iter_new(g_chunk_data); neko_hash_table_iter_valid(g_chunk_data, it); neko_hash_table_iter_advance(g_chunk_data, it)) {
+            u32 k = neko_hash_table_iter_getk(g_chunk_data, it);
+            game_chunk_t* chunk = neko_hash_table_iter_getp(g_chunk_data, it);
 
-            if (is_empty(mpx, mpy)) {
-                particle_t p = {0};
-                switch (g_material_selection) {
-                    case mat_sel_sand:
-                        p = particle_sand();
-                        break;
-                    case mat_sel_water:
-                        p = particle_water();
-                        break;
-                    case mat_sel_salt:
-                        p = particle_salt();
-                        break;
-                    case mat_sel_wood:
-                        p = particle_wood();
-                        break;
-                    case mat_sel_fire:
-                        p = particle_fire();
-                        break;
-                    case mat_sel_smoke:
-                        p = particle_smoke();
-                        break;
-                    case mat_sel_steam:
-                        p = particle_steam();
-                        break;
-                    case mat_sel_gunpowder:
-                        p = particle_gunpowder();
-                        break;
-                    case mat_sel_oil:
-                        p = particle_oil();
-                        break;
-                    case mat_sel_lava:
-                        p = particle_lava();
-                        break;
-                    case mat_sel_stone:
-                        p = particle_stone();
-                        break;
-                    case mat_sel_acid:
-                        p = particle_acid();
-                        break;
+            //
+            neko_vec2 position = neko_vec2_add(calc_chunk_position(chunk), g_chunk_render_pos);
+
+            neko_vec2 peek_pos = neko_vec2_sub(mp, position);
+
+            if ((peek_pos.x >= 0 && peek_pos.y >= 0) && (peek_pos.x <= CHUNK_W * g_scale && peek_pos.y <= CHUNK_H * g_scale)) {
+
+                f32 mp_x = neko_clamp(peek_pos.x, 0.f, (f32)CHUNK_W * g_scale - 1.f) / g_scale;
+                f32 mp_y = neko_clamp(peek_pos.y, 0.f, (f32)CHUNK_H * g_scale - 1.f) / g_scale;
+                u32 max_idx = (CHUNK_W * CHUNK_H) - 1;
+                s32 r_amt = random_val(1, 10000);
+                const f32 R = brush_size;
+
+                // Spawn in a circle around the mouse
+                for (u32 i = 0; i < r_amt; ++i) {
+                    f32 ran = (f32)random_val(0, 100) / 100.f;
+                    f32 r = R * sqrt(ran);
+                    f32 theta = (f32)random_val(0, 100) / 100.f * 2.f * neko_pi;
+                    f32 rx = cos((f32)theta) * r;
+                    f32 ry = sin((f32)theta) * r;
+                    s32 mpx = (s32)neko_clamp(mp_x + (f32)rx, 0.f, (f32)CHUNK_W - 1.f);
+                    s32 mpy = (s32)neko_clamp(mp_y + (f32)ry, 0.f, (f32)CHUNK_H - 1.f);
+                    s32 idx = mpy * (s32)CHUNK_W + mpx;
+                    idx = neko_clamp(idx, 0, max_idx);
+
+                    if (is_empty(chunk, mpx, mpy)) {
+                        particle_t p = {0};
+                        switch (g_material_selection) {
+                            case mat_sel_sand:
+                                p = particle_sand();
+                                break;
+                            case mat_sel_water:
+                                p = particle_water();
+                                break;
+                            case mat_sel_salt:
+                                p = particle_salt();
+                                break;
+                            case mat_sel_wood:
+                                p = particle_wood();
+                                break;
+                            case mat_sel_fire:
+                                p = particle_fire();
+                                break;
+                            case mat_sel_smoke:
+                                p = particle_smoke();
+                                break;
+                            case mat_sel_steam:
+                                p = particle_steam();
+                                break;
+                            case mat_sel_gunpowder:
+                                p = particle_gunpowder();
+                                break;
+                            case mat_sel_oil:
+                                p = particle_oil();
+                                break;
+                            case mat_sel_lava:
+                                p = particle_lava();
+                                break;
+                            case mat_sel_stone:
+                                p = particle_stone();
+                                break;
+                            case mat_sel_acid:
+                                p = particle_acid();
+                                break;
+                        }
+                        p.velocity = neko_vec2{(f32)random_val(-1, 1), (f32)random_val(-2, 5)};
+                        chunk_write_data(chunk, idx, p);
+                    }
                 }
-                p.velocity = neko_vec2{(f32)random_val(-1, 1), (f32)random_val(-2, 5)};
-                write_data(idx, p);
             }
         }
     }
 
     // Solid Erase
     if (neko_platform_mouse_down(NEKO_MOUSE_RBUTTON)) {
-        neko_vec2 mp = calculate_mouse_position();
-        f32 mp_x = neko_clamp(mp.x, 0.f, (f32)g_texture_width - 1.f);
-        f32 mp_y = neko_clamp(mp.y, 0.f, (f32)g_texture_height - 1.f);
-        u32 max_idx = (g_texture_width * g_texture_height) - 1;
-        const f32 R = brush_size;
+        neko_vec2 mp = neko_platform_mouse_positionv();
 
-        // Erase in a circle pattern
-        for (s32 i = -R; i < R; ++i) {
-            for (s32 j = -R; j < R; ++j) {
-                s32 rx = ((s32)mp_x + j);
-                s32 ry = ((s32)mp_y + i);
-                neko_vec2 r = neko_vec2{(f32)rx, (f32)ry};
+        for (neko_hash_table_iter it = neko_hash_table_iter_new(g_chunk_data); neko_hash_table_iter_valid(g_chunk_data, it); neko_hash_table_iter_advance(g_chunk_data, it)) {
+            u32 k = neko_hash_table_iter_getk(g_chunk_data, it);
+            game_chunk_t* chunk = neko_hash_table_iter_getp(g_chunk_data, it);
 
-                if (in_bounds(rx, ry) && neko_vec2_dist(mp, r) <= R) {
-                    write_data(compute_idx(rx, ry), particle_empty());
+            neko_vec2 position = neko_vec2_add(calc_chunk_position(chunk), g_chunk_render_pos);
+
+            neko_vec2 peek_pos = neko_vec2_sub(mp, position);
+
+            if ((peek_pos.x >= 0 && peek_pos.y >= 0) && (peek_pos.x <= CHUNK_W * g_scale && peek_pos.y <= CHUNK_H * g_scale)) {
+
+                f32 mp_x = neko_clamp(peek_pos.x, 0.f, (f32)CHUNK_W * g_scale - 1.f) / g_scale;
+                f32 mp_y = neko_clamp(peek_pos.y, 0.f, (f32)CHUNK_H * g_scale - 1.f) / g_scale;
+                u32 max_idx = (CHUNK_W * CHUNK_H) - 1;
+                const f32 R = brush_size;
+
+                // Erase in a circle pattern
+                for (s32 i = -R; i < R; ++i) {
+                    for (s32 j = -R; j < R; ++j) {
+                        s32 rx = ((s32)mp_x + j);
+                        s32 ry = ((s32)mp_y + i);
+                        neko_vec2 r = neko_vec2{(f32)rx, (f32)ry};
+
+                        if (in_bounds(rx, ry) && neko_vec2_dist(peek_pos, r) <= R) {
+                            chunk_write_data(chunk, compute_idx(rx, ry), particle_empty());
+                        }
+                    }
                 }
             }
         }
@@ -830,9 +962,7 @@ void update_input() {
     // Need to detect if mouse has entered the screen with payload...
 }
 
-#endif
-
-void update_particle_sim() {
+void chunk_update_particle(game_chunk_t* chunk) {
     // Cache engine subsystem interfaces
     // neko_graphics_i* gfx = neko_engine_instance()->ctx.graphics;
     // neko_platform_i* platform = neko_engine_instance()->ctx.platform;
@@ -846,276 +976,320 @@ void update_particle_sim() {
     // through read data and update write buffer
     // update "bottom up", since all the data is edited "in place". Double buffering all data would fix this
     //  issue, however it requires double all of the data.
-    for (u32 y = g_texture_height - 1; y > 0; --y) {
-        for (u32 x = ran ? 0 : g_texture_width - 1; ran ? x < g_texture_width : x > 0; ran ? ++x : --x) {
+    for (u32 y = CHUNK_H - 1; y > 0; --y) {
+        for (u32 x = ran ? 0 : CHUNK_W - 1; ran ? x < CHUNK_W : x > 0; ran ? ++x : --x) {
             // Current particle idx
             u32 read_idx = compute_idx(x, y);
 
             // Get material of particle at point
-            u8 mat_id = get_particle_at(x, y).id;
+            u8 mat_id = get_particle_at(chunk, x, y).mat_id;
 
             // Update particle's lifetime (I guess just use frames)? Or should I have sublife?
-            g_world_particle_data[read_idx].life_time += 1.f * dt;
+            chunk->world_particle_data[read_idx].life_time += 1.f * dt;
 
-            switch (mat_id) {
-                case mat_id_sand:
-                    update_sand(x, y);
-                    break;
-                case mat_id_water:
-                    update_water(x, y);
-                    break;
-                case mat_id_salt:
-                    update_salt(x, y);
-                    break;
-                case mat_id_fire:
-                    update_fire(x, y);
-                    break;
-                case mat_id_smoke:
-                    update_smoke(x, y);
-                    break;
-                case mat_id_ember:
-                    update_ember(x, y);
-                    break;
-                case mat_id_steam:
-                    update_steam(x, y);
-                    break;
-                case mat_id_gunpowder:
-                    update_gunpowder(x, y);
-                    break;
-                case mat_id_oil:
-                    update_oil(x, y);
-                    break;
-                case mat_id_lava:
-                    update_lava(x, y);
-                    break;
-                case mat_id_acid:
-                    update_acid(x, y);
-                    break;
-                    // Do nothing for empty or default case
-                default:
-                case mat_id_empty: {
-                    update_default(x, y);
-                } break;
+            if (neko_hash_table_exists(g_mat_data, mat_id)) {
+                mat_t* mat = neko_hash_table_getp(g_mat_data, mat_id);
+                neko_assert(mat);
+                mat->update_func(chunk, x, y);
+            } else {
+                update_default(chunk, x, y);
             }
         }
     }
 
     // Can remove this loop later on by keeping update structure and setting that for the particle as it moves,
     // then at the end of frame just memsetting the entire structure to 0.
-    for (u32 y = g_texture_height - 1; y > 0; --y) {
-        for (u32 x = ran ? 0 : g_texture_width - 1; ran ? x < g_texture_width : x > 0; ran ? ++x : --x) {
+    for (u32 y = CHUNK_H - 1; y > 0; --y) {
+        for (u32 x = ran ? 0 : CHUNK_W - 1; ran ? x < CHUNK_W : x > 0; ran ? ++x : --x) {
             // Set particle's update to false for next frame
-            g_world_particle_data[compute_idx(x, y)].has_been_updated_this_frame = false;
+            chunk->world_particle_data[compute_idx(x, y)].has_been_updated_this_frame = false;
         }
     }
 }
 
-void draw_glyph_at(font_t* f, cell_color_t* buffer, s32 x, s32 y, char c, cell_color_t col) {
-    u8* font_data = (u8*)f->data;
-    font_glyph_t g = get_glyph(f, c);
-
-    // How to accurately place? I have width and height of glyph in texture, but need to convert this to RGBA data for ui buffer
-    for (s32 h = 0; h < g.height; ++h) {
-        for (s32 w = 0; w < g.width; ++w) {
-            s32 _w = w + g.x;
-            s32 _h = h + g.y;
-            u8 a = font_data[(_h * f->width + _w) * f->num_comps + 0] == 0 ? 0 : 255;
-            cell_color_t c = {font_data[(_h * f->width + _w) * f->num_comps + 0], font_data[(_h * f->width + _w) * f->num_comps + 1], font_data[(_h * f->width + _w) * f->num_comps + 2], a};
-            if (in_bounds(x + w, y + h) && a) {
-                buffer[compute_idx(x + w, y + h)] = col;
-            }
-        }
-    }
-}
-
-void draw_string_at(font_t* f, cell_color_t* buffer, s32 x, s32 y, const char* str, usize len, cell_color_t col) {
-    u8* font_data = (u8*)f->data;
-    for (u32 i = 0; i < len; ++i) {
-        font_glyph_t g = get_glyph(f, str[i]);
-        draw_glyph_at(f, buffer, x, y, str[i], col);
-        x += g.width + f->glyph_advance;  // Move by glyph width + advance
-    }
-}
-
-bool in_rect(neko_vec2 p, neko_vec2 ro, neko_vec2 rd) {
-    if (p.x < ro.x || p.x > ro.x + rd.x || p.y < ro.y || p.y > ro.y + rd.y) return false;
-    return true;
-}
-
-bool gui_rect(cell_color_t* buffer, s32 _x, s32 _y, s32 _w, s32 _h, cell_color_t c) {
-    neko_vec2 mp = calculate_mouse_position();
-
-    for (u32 h = 0; h < _h; ++h) {
-        for (u32 w = 0; w < _w; ++w) {
-            if (in_bounds(_x + w, _y + h)) {
-                buffer[compute_idx(_x + w, _y + h)] = c;
-            }
-        }
-    }
-
-    bool clicked = neko_platform_mouse_down(NEKO_MOUSE_LBUTTON);
-
-    return in_rect(mp, neko_vec2{(f32)_x, (f32)_y}, neko_vec2{(f32)_w, (f32)_h}) && clicked;
-}
-
-#define __gui_interaction(x, y, w, h, c, str, id)                                                                                         \
-    do {                                                                                                                                  \
-        if ((id) == g_material_selection) {                                                                                               \
-            const s32 b = 2;                                                                                                              \
-            gui_rect(g_ui_buffer, x - b / 2, y - b / 2, w + b, h + b, cell_color_t{200, 150, 20, 255});                                   \
-        }                                                                                                                                 \
-        neko_vec2 mp = calculate_mouse_position();                                                                                        \
-        if (in_rect(mp, neko_vec2{(f32)(x), (f32)(y)}, neko_vec2{(w), (h)})) {                                                            \
-            interaction |= true;                                                                                                          \
-            char _str[] = (str);                                                                                                          \
-            cell_color_t col = cell_color_t{255, 255, 255, 255};                                                                          \
-            cell_color_t s_col = cell_color_t{10, 10, 10, 255};                                                                           \
-            cell_color_t r_col = cell_color_t{5, 5, 5, 170};                                                                              \
-            /*Draw rect around text as well for easier viewing*/                                                                          \
-            gui_rect(g_ui_buffer, g_texture_width / 2 - 50, 15, 100, 20, r_col);                                                          \
-            draw_string_at(&pixel_font, g_ui_buffer, g_texture_width / 2 + 1 - (sizeof(str) * 5) / 2, 20 - 1, _str, sizeof(_str), s_col); \
-            draw_string_at(&pixel_font, g_ui_buffer, g_texture_width / 2 - (sizeof(str) * 5) / 2, 20, _str, sizeof(_str), col);           \
-        }                                                                                                                                 \
-        if (gui_rect(g_ui_buffer, x, y, w, h, c)) {                                                                                       \
-            g_material_selection = id;                                                                                                    \
-        }                                                                                                                                 \
-    } while (0)
-
-bool update_ui() {
-    bool interaction = false;
-    // neko_graphics_i* gfx = neko_engine_instance()->ctx.graphics;
-    // neko_platform_i* platform = neko_engine_instance()->ctx.platform;
-
-    // Cache transformed mouse position
-    neko_vec2 mp = calculate_mouse_position();
-
-    // Do ui stuff
-    memset(g_ui_buffer, 0, g_texture_width * g_texture_height * sizeof(cell_color_t));
-
-    // Material selection panel gui
-    if (g_show_material_selection_panel) {
-        const s32 offset = 12;
-        s32 xoff = 20;
-        s32 base = 10;
-
-        // Sand Selection
-        __gui_interaction(g_texture_width - xoff, base + offset * 0, 10, 10, mat_col_sand, "Sand", mat_sel_sand);
-        __gui_interaction(g_texture_width - xoff, base + offset * 1, 10, 10, mat_col_water, "Water", mat_sel_water);
-        __gui_interaction(g_texture_width - xoff, base + offset * 2, 10, 10, mat_col_smoke, "Smoke", mat_sel_smoke);
-        __gui_interaction(g_texture_width - xoff, base + offset * 3, 10, 10, mat_col_fire, "Fire", mat_sel_fire);
-        __gui_interaction(g_texture_width - xoff, base + offset * 4, 10, 10, mat_col_steam, "Steam", mat_sel_steam);
-        __gui_interaction(g_texture_width - xoff, base + offset * 5, 10, 10, mat_col_oil, "Oil", mat_sel_oil);
-        __gui_interaction(g_texture_width - xoff, base + offset * 6, 10, 10, mat_col_salt, "Salt", mat_sel_salt);
-        __gui_interaction(g_texture_width - xoff, base + offset * 7, 10, 10, mat_col_wood, "Wood", mat_sel_wood);
-        __gui_interaction(g_texture_width - xoff, base + offset * 8, 10, 10, mat_col_stone, "Stone", mat_sel_stone);
-        __gui_interaction(g_texture_width - xoff, base + offset * 9, 10, 10, mat_col_lava, "Lava", mat_sel_lava);
-        __gui_interaction(g_texture_width - xoff, base + offset * 10, 10, 10, mat_col_gunpowder, "GunPowder", mat_sel_gunpowder);
-        __gui_interaction(g_texture_width - xoff, base + offset * 11, 10, 10, mat_col_acid, "Acid", mat_sel_acid);
-    }
-
-    if (g_show_frame_count) {
-
-        char frame_time_str[256];
-        neko_snprintf(frame_time_str, sizeof(frame_time_str), "frame: %.2f ms", neko_platform_frame_time());
-        draw_string_at(&pixel_font, g_ui_buffer, 10, 10, frame_time_str, strlen(frame_time_str), cell_color_t{255, 255, 255, 255});
-
-        char sim_state_str[256];
-        neko_snprintf(sim_state_str, sizeof(sim_state_str), "state: %s", "running");
-        draw_string_at(&pixel_font, g_ui_buffer, 10, 20, sim_state_str, strlen(sim_state_str), cell_color_t{255, 255, 255, 255});
-
-        // gfx->fontcache_push_x_y(std::format("test: {0} {1}", l_check, neko_buildnum()), g_basic_font, 40, 160);
-    }
-
-    // Draw circle around mouse pointer
-    s32 R = brush_size;
-    circleBres((s32)mp.x, (s32)mp.y, R);
-
-    // Upload our updated texture data to GPU
-    neko_graphics_texture_desc_t t_desc = neko_default_val();
-    t_desc.format = NEKO_GRAPHICS_TEXTURE_FORMAT_RGBA8;
-    t_desc.mag_filter = NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST;
-    t_desc.min_filter = NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST;
-    t_desc.num_mips = 0;
-    t_desc.flip_y = false;
-
-    t_desc.width = g_texture_width;
-    t_desc.height = g_texture_height;
-
-    t_desc.data[0] = g_ui_buffer;
-
-    neko_graphics_texture_update(g_tex_ui, &t_desc);
-
-    return interaction;
-}
-
-static neko_vec2 last_point;
-
-#if 1
-void render_test() {
-
-    u8* alpha = neko_tex_rgba_to_alpha((u8*)g_texture_buffer, g_texture_width, g_texture_height);
-    u8* thresholded = neko_tex_alpha_to_thresholded(alpha, g_texture_width, g_texture_height, 90);
-    u8* outlined = neko_tex_thresholded_to_outlined(thresholded, g_texture_width, g_texture_height);
-    neko_safe_free(alpha);
-    neko_safe_free(thresholded);
-
-    neko_tex_point* outline = neko_tex_extract_outline_path(outlined, g_texture_width, g_texture_height, &l, 0);
-    while (l) {
-        s32 l0 = l;
-        neko_tex_distance_based_path_simplification(outline, &l, 0.5f);
-        // printf("simplified outline: %d -> %d\n", l0, l);
-
-        l_check = l;
-
-        for (s32 i = 0; i < l; i++) {
-            // gfx->immediate.draw_line_ext(cb, neko_vec2_mul(last_point, {4.f, 4.f}), neko_vec2_mul(neko_vec2{(f32)outline[i].x, (f32)outline[i].y}, {4.f, 4.f}), 2.f, neko_color_white);
-
-            last_point = {(f32)outline[i].x, (f32)outline[i].y};
-        }
-
-        outline = neko_tex_extract_outline_path(outlined, g_texture_width, g_texture_height, &l, outline);
-    };
-
-    neko_safe_free(outline);
-    neko_safe_free(outlined);
-}
-
-void render_scene() {
+void render_chunk_immediate(game_chunk_t* chunk) {
 
     neko_graphics_texture_desc_t t_desc = neko_default_val();
     t_desc.format = NEKO_GRAPHICS_TEXTURE_FORMAT_RGBA8;
     t_desc.mag_filter = NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST;
     t_desc.min_filter = NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST;
     t_desc.num_mips = 0;
-    t_desc.flip_y = false;
 
-    t_desc.width = g_texture_width;
-    t_desc.height = g_texture_height;
+    t_desc.width = CHUNK_W;
+    t_desc.height = CHUNK_H;
 
-    t_desc.data[0] = g_texture_buffer;
-    neko_graphics_texture_update(g_tex, &t_desc);
+    t_desc.data[0] = chunk->texture_buffer;
+    neko_graphics_texture_update(chunk->tex, &t_desc);
 
     neko_immediate_draw_t* idraw = ((neko_client_ecs_userdata_s*)neko_ecs()->user_data)->idraw;
 
     const neko_vec2 fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
 
-    neko_idraw_rect_2d_textured_ext(idraw, 0, 0, fbs.x, fbs.y, 0, 1, 1, 0, g_tex_ui.id, NEKO_COLOR_WHITE);
-    neko_idraw_rect_2d_textured_ext(idraw, 0, 0, fbs.x, fbs.y, 0, 1, 1, 0, g_tex.id, NEKO_COLOR_WHITE);
+    neko_vec2 position = neko_vec2_add(calc_chunk_position(chunk), g_chunk_render_pos);
+
+    neko_idraw_rect_2d_textured_ext(idraw, position.x, position.y, position.x + CHUNK_W * g_scale, position.y + CHUNK_H * g_scale, 0, 1, 1, 0, chunk->tex.id, NEKO_COLOR_WHITE);
 }
 
-#endif
+void chunk_update_mesh(game_chunk_t* chunk) {
 
-void write_data(u32 idx, particle_t p) {
-    // Write into particle data for id value
-    g_world_particle_data[idx] = p;
-    g_texture_buffer[idx] = p.color;
+    neko_immediate_draw_t* idraw = ((neko_client_ecs_userdata_s*)neko_ecs()->user_data)->idraw;
+
+    // std::lock_guard<std::mutex> locker(g_mutex_updatechunkmesh);
+
+    /*
+    if (chunk->rb != nullptr) b2world->DestroyBody(chunk->rb->body);
+    */
+
+    // 区块坐标转化为世界坐标
+    // int chTx = chunk->x * CHUNK_W + loadZone.x;
+    // int chTy = chunk->y * CHUNK_H + loadZone.y;
+
+    // if (chTx < 0 || chTy < 0 || chTx + CHUNK_W >= width || chTy + CHUNK_H >= height) {
+    //     return;
+    // }
+
+    // 优化掉无固态碰撞的区块
+    bool foundAnything = true;
+    for (int x = 0; x < CHUNK_W; x++) {
+        for (int y = 0; y < CHUNK_H; y++) {
+
+            // Material* mat = real_tiles[(x + chTx) + (y + chTy) * width].mat;
+            // if (mat != nullptr && mat->physicsType == PhysicsType::SOLID) {
+            //     foundAnything = true;
+            //     goto found;
+            // }
+
+            if (get_particle_at(chunk, x, y).mat_id == mat_id_stone) {
+                foundAnything = true;
+                goto found;
+            }
+
+            // bool f = tiles[(x + meshZone.x) + (y + meshZone.y) * width].mat->physicsType == PhysicsType::SOLID;
+            // foundAnything = foundAnything || f;
+        }
+    }
+
+found:
+
+    if (!foundAnything) {
+        return;
+    }
+
+    // unsigned char* data = new unsigned char[CHUNK_W * CHUNK_H];
+    // bool* edgeSeen = new bool[CHUNK_W * CHUNK_H];
+
+    unsigned char data[CHUNK_W * CHUNK_H] = neko_default_val();
+    bool edgeSeen[CHUNK_W * CHUNK_H] = neko_default_val();
+
+    for (int y = 0; y < CHUNK_H; y++) {
+        for (int x = 0; x < CHUNK_W; x++) {
+            // data[x + y * CHUNK_W] = real_tiles[(x + chTx) + (y + chTy) * width].mat->physicsType == PhysicsType::SOLID;
+            u8 mat_id = get_particle_at(chunk, x, y).mat_id;
+            data[x + y * CHUNK_W] = (mat_id == mat_id_stone);
+            edgeSeen[x + y * CHUNK_W] = false;
+        }
+    }
+
+    // TPPLPoly和MarchingSquares::Result都是非聚合类 需要构造函数 使用STL来存储
+    std::vector<std::vector<neko_vec2>> world_meshes = {};
+    std::list<TPPLPoly> shapes;
+    std::list<MarchingSquares::Result> results;
+
+    int inn = 0;
+    int lookIndex = 0;
+
+    // TODO: 23/10/19 优化一下啦
+    u32 test_count = 0;
+
+    while (true) {
+        // inn++;
+        int lookX = lookIndex % CHUNK_W;
+        int lookY = lookIndex / CHUNK_W;
+        /*if (inn == 1) {
+            lookX = CHUNK_W / 2;
+            lookY = CHUNK_H / 2;
+        }*/
+
+        int edgeX = -1;
+        int edgeY = -1;
+        int size = CHUNK_W * CHUNK_H;
+
+        for (int i = lookIndex; i < size; i++) {
+            if (data[i] != 0) {
+
+                int numBorders = 0;
+                // if (i % CHUNK_W - 1 >= 0) numBorders += data[(i % CHUNK_W - 1) + i / CHUNK_W * CHUNK_W];
+                // if (i / CHUNK_W - 1 >= 0) numBorders += data[(i % CHUNK_W)+(i / CHUNK_W - 1) * CHUNK_W];
+                if (i % CHUNK_W + 1 < CHUNK_W) numBorders += data[(i % CHUNK_W + 1) + i / CHUNK_W * CHUNK_W];
+                if (i / CHUNK_W + 1 < CHUNK_H) numBorders += data[(i % CHUNK_W) + (i / CHUNK_W + 1) * CHUNK_W];
+                if (i / CHUNK_W + 1 < CHUNK_H && i % CHUNK_W + 1 < CHUNK_W) numBorders += data[(i % CHUNK_W + 1) + (i / CHUNK_W + 1) * CHUNK_W];
+
+                // int val = value(i % CHUNK_W, i / CHUNK_W, CHUNK_W, height, data);
+                if (numBorders != 3) {
+                    edgeX = i % CHUNK_W;
+                    edgeY = i / CHUNK_W;
+                    break;
+                }
+            }
+        }
+
+        if (edgeX == -1) {
+            break;
+        }
+
+        // MarchingSquares::Direction edge = MarchingSquares::FindEdge(CHUNK_W, CHUNK_H, data, lookX, lookY);
+
+        lookX = edgeX;
+        lookY = edgeY;
+
+        lookIndex = lookX + lookY * CHUNK_W + 1;
+
+        if (edgeSeen[lookX + lookY * CHUNK_W]) {
+            inn--;
+            continue;
+        }
+
+        int val = MarchingSquares::value(lookX, lookY, CHUNK_W, CHUNK_H, data);
+
+        if (val == 0 || val == 15) {
+            inn--;
+            continue;
+        }
+
+        MarchingSquares::Result r = MarchingSquares::FindPerimeter(lookX, lookY, CHUNK_W, CHUNK_H, data);
+
+        results.push_back(r);
+
+        std::vector<neko_vec2> worldMesh;
+
+        f32 lastX = (f32)r.initialX;
+        f32 lastY = (f32)r.initialY;
+
+        for (int i = 0; i < r.directions.size(); i++) {
+            // if(r.directions[i].x != 0) r.directions[i].x = r.directions[i].x / abs(r.directions[i].x);
+            // if(r.directions[i].y != 0) r.directions[i].y = r.directions[i].y / abs(r.directions[i].y);
+
+            for (int ix = 0; ix < std::max(abs(r.directions[i].x), 1); ix++) {
+                for (int iy = 0; iy < std::max(abs(r.directions[i].y), 1); iy++) {
+                    int ilx = (int)(lastX + ix * (r.directions[i].x < 0 ? -1 : 1));
+                    int ily = (int)(lastY - iy * (r.directions[i].y < 0 ? -1 : 1));
+
+                    if (ilx < 0) ilx = 0;
+                    if (ilx >= CHUNK_W) ilx = CHUNK_W - 1;
+
+                    if (ily < 0) ily = 0;
+                    if (ily >= CHUNK_H) ily = CHUNK_H - 1;
+
+                    int ind = ilx + ily * CHUNK_W;
+                    if (ind >= size) {
+                        continue;
+                    }
+                    edgeSeen[ind] = true;
+
+                    test_count++;
+                }
+            }
+
+            lastX += (f32)r.directions[i].x;
+            lastY -= (f32)r.directions[i].y;
+            worldMesh.emplace_back(neko_v2(lastX, lastY));
+        }
+
+        // 优化
+        f32 simplify_tolerance = 1.f;
+        if (test_count >= 800) simplify_tolerance = 3.f;
+        worldMesh = simplify(worldMesh, simplify_tolerance);
+
+        // 优化单像素点
+        if (worldMesh.size() < 3) continue;
+
+        world_meshes.push_back(worldMesh);
+
+        TPPLPoly poly;
+
+        poly.Init((long)worldMesh.size());
+
+        for (int i = 0; i < worldMesh.size(); i++) {
+            poly[(int)worldMesh.size() - i - 1] = {worldMesh[i].x, worldMesh[i].y};
+        }
+
+        if (poly.GetOrientation() == TPPL_CW) {
+            poly.SetHole(true);
+        }
+
+        shapes.push_back(poly);
+    }
+
+    // delete[] edgeSeen;
+    // delete[] data;
+    std::list<TPPLPoly> result;
+    std::list<TPPLPoly> result2;
+
+    TPPLPartition part;
+    TPPLPartition part2;
+
+    part.RemoveHoles(&shapes, &result2);
+
+    part2.Triangulate_EC(&result2, &result);
+
+    /*bool* solid = new bool[10 * 10];
+    for (int x = 0; x < 10; x++) {
+        for (int y = 0; y < 10; y++) {
+            solid[x + y * width] = rand() % 2 == 0;
+        }
+    }*/
+
+    // Ps::MarchingSquares ms = Ps::MarchingSquares(solid, CHUNK_W, CHUNK_H);
+
+    // Ps::MarchingSquares ms = Ps::MarchingSquares(texture);
+    // worldMesh = ms.extract_simple(2);
+
+    // chunk->polys.clear();
+
+    neko_vec2 position = neko_vec2_add(calc_chunk_position(chunk), g_chunk_render_pos);
+
+    std::for_each(result.begin(), result.end(), [&](TPPLPoly cur) {
+        // 修正重叠点
+        if (cur[0].x == cur[1].x && cur[1].x == cur[2].x) {
+            cur[0].x += 0.01f;
+        }
+        if (cur[0].y == cur[1].y && cur[1].y == cur[2].y) {
+            cur[0].y += 0.01f;
+        }
+
+        std::vector<neko_vec2> vec = {neko_v2((f32)cur[0].x, (f32)cur[0].y), neko_v2((f32)cur[1].x, (f32)cur[1].y), neko_v2((f32)cur[2].x, (f32)cur[2].y)};
+
+        std::for_each(vec.begin(), vec.end(), [&](neko_vec2& v) {
+            v.x *= g_scale;
+            v.y *= g_scale;
+            v.x += position.x;
+            v.y += position.y;
+        });
+
+        //  worldTris.push_back(vec);
+        //  b2PolygonShape sh;
+        //  sh.Set(&vec[0], 3);
+        //  chunk->polys.push_back(sh);
+
+        neko_idraw_trianglev(idraw, vec[0], vec[1], vec[2], NEKO_COLOR_WHITE, NEKO_GRAPHICS_PRIMITIVE_LINES);
+    });
+
+    // neko_graphics_fc_text(std::to_string(test_count).c_str(), idraw->data->font_fc_default, 500, 100);
+
+    neko_idraw_rectv(idraw, position, neko_v2(position.x + CHUNK_W * g_scale, position.y + CHUNK_H * g_scale), NEKO_COLOR_WHITE, NEKO_GRAPHICS_PRIMITIVE_LINES);
 }
 
-void update_salt(u32 x, u32 y) {
+void chunk_write_data(game_chunk_t* chunk, u32 idx, particle_t p) {
+    // Write into particle data for mat_id value
+    chunk->world_particle_data[idx] = p;
+    chunk->texture_buffer[idx] = p.color;
+}
+
+void update_salt(game_chunk_t* chunk, u32 x, u32 y) {
     f32 dt = neko_platform_delta_time();
 
     u32 read_idx = compute_idx(x, y);
-    particle_t* p = &g_world_particle_data[read_idx];
+    particle_t* p = &chunk->world_particle_data[read_idx];
     u32 write_idx = read_idx;
     u32 fall_rate = 2;
     u32 spread_rate = 5;
@@ -1126,16 +1300,16 @@ void update_salt(u32 x, u32 y) {
     p->has_been_updated_this_frame = true;
 
     // If in liquid, chance to dissolve itself.
-    if (is_in_liquid(x, y, &lx, &ly)) {
+    if (is_in_liquid(chunk, x, y, &lx, &ly)) {
         if (random_val(0, 1000) == 0) {
-            write_data(read_idx, particle_empty());
+            chunk_write_data(chunk, read_idx, particle_empty());
             return;
         }
     }
 
     // Just check if you can move directly beneath you. If not, then reset your velocity. God, this is going to blow.
-    // if (in_bounds(x, y + 1) && !is_empty(x, y + 1) && get_particle_at(x, y + 1).id != mat_id_water) {
-    if (in_bounds(x, y + 1) && !is_empty(x, y + 1)) {
+    // if (in_bounds(x, y + 1) && !is_empty(chunk,x, y + 1) && get_particle_at(chunk,x, y + 1).mat_id != mat_id_water) {
+    if (in_bounds(x, y + 1) && !is_empty(chunk, x, y + 1)) {
         p->velocity.y /= 2.f;
     }
 
@@ -1150,54 +1324,54 @@ void update_salt(u32 x, u32 y) {
     s32 r_idx = compute_idx(x + r, y);
     s32 vx = (s32)p->velocity.x, vy = (s32)p->velocity.y;
 
-    if (in_bounds(x + vx, y + vy) && (is_empty(x + vx, y + vy))) {
-        write_data(v_idx, *p);
-        write_data(read_idx, particle_empty());
-    } else if (is_in_liquid(x, y, &lx, &ly) && random_val(0, 10) == 0) {
-        particle_t tmp_b = get_particle_at(lx, ly);
-        write_data(compute_idx(lx, ly), *p);
-        write_data(read_idx, tmp_b);
+    if (in_bounds(x + vx, y + vy) && (is_empty(chunk, x + vx, y + vy))) {
+        chunk_write_data(chunk, v_idx, *p);
+        chunk_write_data(chunk, read_idx, particle_empty());
+    } else if (is_in_liquid(chunk, x, y, &lx, &ly) && random_val(0, 10) == 0) {
+        particle_t tmp_b = get_particle_at(chunk, lx, ly);
+        chunk_write_data(chunk, compute_idx(lx, ly), *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
     }
     // Simple falling, changing the velocity here ruins everything. I need to redo this entire simulation.
-    else if (in_bounds(x, y + 1) && ((is_empty(x, y + 1)))) {
+    else if (in_bounds(x, y + 1) && ((is_empty(chunk, x, y + 1)))) {
         u32 idx = compute_idx(x, y + 1);
         p->velocity.y += (world_gravity * dt);
-        particle_t tmp_a = g_world_particle_data[read_idx];
-        particle_t tmp_b = g_world_particle_data[idx];
-        write_data(idx, tmp_a);
-        write_data(read_idx, tmp_b);
-    } else if (in_bounds(x - 1, y + 1) && (is_empty(x - 1, y + 1))) {
+        particle_t tmp_a = chunk->world_particle_data[read_idx];
+        particle_t tmp_b = chunk->world_particle_data[idx];
+        chunk_write_data(chunk, idx, tmp_a);
+        chunk_write_data(chunk, read_idx, tmp_b);
+    } else if (in_bounds(x - 1, y + 1) && (is_empty(chunk, x - 1, y + 1))) {
         u32 idx = compute_idx(x - 1, y + 1);
         p->velocity.x = random_val(0, 1) == 0 ? -1.2f : 1.2f;
         p->velocity.y += (world_gravity * dt);
-        particle_t tmp_a = g_world_particle_data[read_idx];
-        particle_t tmp_b = g_world_particle_data[idx];
-        write_data(idx, tmp_a);
-        write_data(read_idx, tmp_b);
-    } else if (in_bounds(x + 1, y + 1) && (is_empty(x + 1, y + 1))) {
+        particle_t tmp_a = chunk->world_particle_data[read_idx];
+        particle_t tmp_b = chunk->world_particle_data[idx];
+        chunk_write_data(chunk, idx, tmp_a);
+        chunk_write_data(chunk, read_idx, tmp_b);
+    } else if (in_bounds(x + 1, y + 1) && (is_empty(chunk, x + 1, y + 1))) {
         u32 idx = compute_idx(x + 1, y + 1);
         p->velocity.x = random_val(0, 1) == 0 ? -1.2f : 1.2f;
         p->velocity.y += (world_gravity * dt);
-        particle_t tmp_a = g_world_particle_data[read_idx];
-        particle_t tmp_b = g_world_particle_data[idx];
-        write_data(idx, tmp_a);
-        write_data(read_idx, tmp_b);
+        particle_t tmp_a = chunk->world_particle_data[read_idx];
+        particle_t tmp_b = chunk->world_particle_data[idx];
+        chunk_write_data(chunk, idx, tmp_a);
+        chunk_write_data(chunk, read_idx, tmp_b);
     }
 }
 
-void update_sand(u32 x, u32 y) {
+void update_sand(game_chunk_t* chunk, u32 x, u32 y) {
     f32 dt = neko_platform_delta_time();
 
     // For water, same as sand, but we'll check immediate left and right as well
     u32 read_idx = compute_idx(x, y);
-    particle_t* p = &g_world_particle_data[read_idx];
+    particle_t* p = &chunk->world_particle_data[read_idx];
     u32 write_idx = read_idx;
     u32 fall_rate = 4;
 
     p->velocity.y = neko_clamp(p->velocity.y + (world_gravity * dt), -10.f, 10.f);
 
     // Just check if you can move directly beneath you. If not, then reset your velocity. God, this is going to blow.
-    if (in_bounds(x, y + 1) && !is_empty(x, y + 1) && get_particle_at(x, y + 1).id != mat_id_water) {
+    if (in_bounds(x, y + 1) && !is_empty(chunk, x, y + 1) && get_particle_at(chunk, x, y + 1).mat_id != mat_id_water) {
         p->velocity.y /= 2.f;
     }
 
@@ -1211,70 +1385,72 @@ void update_sand(u32 x, u32 y) {
 
     s32 lx, ly;
 
-    particle_t tmp_a = g_world_particle_data[read_idx];
+    particle_t tmp_a = chunk->world_particle_data[read_idx];
 
     // Physics (using velocity)
-    if (in_bounds(vi_x, vi_y) &&
-        ((is_empty(vi_x, vi_y) || (((g_world_particle_data[compute_idx(vi_x, vi_y)].id == mat_id_water) && !g_world_particle_data[compute_idx(vi_x, vi_y)].has_been_updated_this_frame &&
-                                    neko_vec2_len(g_world_particle_data[compute_idx(vi_x, vi_y)].velocity) - neko_vec2_len(tmp_a.velocity) > 10.f))))) {
+    if (in_bounds(vi_x, vi_y) &&                                                                 //
+        ((is_empty(chunk, vi_x, vi_y) ||                                                         //
+          (((chunk->world_particle_data[compute_idx(vi_x, vi_y)].mat_id == mat_id_water) &&      //
+            !chunk->world_particle_data[compute_idx(vi_x, vi_y)].has_been_updated_this_frame &&  //
+            neko_vec2_len(chunk->world_particle_data[compute_idx(vi_x, vi_y)].velocity) - neko_vec2_len(tmp_a.velocity) > 10.f))))) {
 
-        particle_t tmp_b = g_world_particle_data[compute_idx(vi_x, vi_y)];
+        particle_t tmp_b = chunk->world_particle_data[compute_idx(vi_x, vi_y)];
 
         // Try to throw water out
-        if (tmp_b.id == mat_id_water) {
+        if (tmp_b.mat_id == mat_id_water) {
 
             s32 rx = random_val(-2, 2);
             tmp_b.velocity = neko_vec2{(f32)rx, -4.f};
 
-            write_data(compute_idx(vi_x, vi_y), tmp_a);
+            chunk_write_data(chunk, compute_idx(vi_x, vi_y), tmp_a);
 
             for (s32 i = -10; i < 0; ++i) {
                 for (s32 j = -10; j < 10; ++j) {
-                    if (is_empty(vi_x + j, vi_y + i)) {
-                        write_data(compute_idx(vi_x + j, vi_y + i), tmp_b);
+                    if (is_empty(chunk, vi_x + j, vi_y + i)) {
+                        chunk_write_data(chunk, compute_idx(vi_x + j, vi_y + i), tmp_b);
                         break;
                     }
                 }
             }
 
             // Couldn't write there, so, uh, destroy it.
-            write_data(read_idx, particle_empty());
-        } else if (is_empty(vi_x, vi_y)) {
-            write_data(compute_idx(vi_x, vi_y), tmp_a);
-            write_data(read_idx, tmp_b);
+            chunk_write_data(chunk, read_idx, particle_empty());
+        } else if (is_empty(chunk, vi_x, vi_y)) {
+            chunk_write_data(chunk, compute_idx(vi_x, vi_y), tmp_a);
+            chunk_write_data(chunk, read_idx, tmp_b);
         }
     }
     // Simple falling, changing the velocity here ruins everything. I need to redo this entire simulation.
-    else if (in_bounds(x, y + 1) && ((is_empty(x, y + 1) || (g_world_particle_data[b_idx].id == mat_id_water)))) {
+    else if (in_bounds(x, y + 1) && ((is_empty(chunk, x, y + 1) || (chunk->world_particle_data[b_idx].mat_id == mat_id_water)))) {
         p->velocity.y += (world_gravity * dt);
-        particle_t tmp_b = get_particle_at(x, y + 1);
-        write_data(b_idx, *p);
-        write_data(read_idx, tmp_b);
-    } else if (in_bounds(x - 1, y + 1) && ((is_empty(x - 1, y + 1) || g_world_particle_data[bl_idx].id == mat_id_water))) {
-        p->velocity.x = is_in_liquid(x, y, &lx, &ly) ? 0.f : random_val(0, 1) == 0 ? -1.f : 1.f;
+        particle_t tmp_b = get_particle_at(chunk, x, y + 1);
+        chunk_write_data(chunk, b_idx, *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
+    } else if (in_bounds(x - 1, y + 1) && ((is_empty(chunk, x - 1, y + 1) || chunk->world_particle_data[bl_idx].mat_id == mat_id_water))) {
+        p->velocity.x = is_in_liquid(chunk, x, y, &lx, &ly) ? 0.f : random_val(0, 1) == 0 ? -1.f : 1.f;
         p->velocity.y += (world_gravity * dt);
-        particle_t tmp_b = get_particle_at(x - 1, y + 1);
-        write_data(bl_idx, *p);
-        write_data(read_idx, tmp_b);
-    } else if (in_bounds(x + 1, y + 1) && ((is_empty(x + 1, y + 1) || g_world_particle_data[br_idx].id == mat_id_water))) {
-        p->velocity.x = is_in_liquid(x, y, &lx, &ly) ? 0.f : random_val(0, 1) == 0 ? -1.f : 1.f;
+        particle_t tmp_b = get_particle_at(chunk, x - 1, y + 1);
+        chunk_write_data(chunk, bl_idx, *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
+    } else if (in_bounds(x + 1, y + 1) && ((is_empty(chunk, x + 1, y + 1) || chunk->world_particle_data[br_idx].mat_id == mat_id_water))) {
+        p->velocity.x = is_in_liquid(chunk, x, y, &lx, &ly) ? 0.f : random_val(0, 1) == 0 ? -1.f : 1.f;
         p->velocity.y += (world_gravity * dt);
-        particle_t tmp_b = get_particle_at(x + 1, y + 1);
-        write_data(br_idx, *p);
-        write_data(read_idx, tmp_b);
-    } else if (is_in_liquid(x, y, &lx, &ly) && random_val(0, 10) == 0) {
-        particle_t tmp_b = get_particle_at(lx, ly);
-        write_data(compute_idx(lx, ly), *p);
-        write_data(read_idx, tmp_b);
+        particle_t tmp_b = get_particle_at(chunk, x + 1, y + 1);
+        chunk_write_data(chunk, br_idx, *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
+    } else if (is_in_liquid(chunk, x, y, &lx, &ly) && random_val(0, 10) == 0) {
+        particle_t tmp_b = get_particle_at(chunk, lx, ly);
+        chunk_write_data(chunk, compute_idx(lx, ly), *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
     }
 }
 
-void update_gunpowder(u32 x, u32 y) {
+void update_gunpowder(game_chunk_t* chunk, u32 x, u32 y) {
     f32 dt = neko_platform_delta_time();
 
     // For water, same as sand, but we'll check immediate left and right as well
     u32 read_idx = compute_idx(x, y);
-    particle_t* p = &g_world_particle_data[read_idx];
+    particle_t* p = &chunk->world_particle_data[read_idx];
     u32 write_idx = read_idx;
     u32 fall_rate = 4;
 
@@ -1282,7 +1458,7 @@ void update_gunpowder(u32 x, u32 y) {
     // p->velocity.x = neko_clamp(p->velocity.x, -5.f, 5.f);
 
     // Just check if you can move directly beneath you. If not, then reset your velocity. God, this is going to blow.
-    if (in_bounds(x, y + 1) && !is_empty(x, y + 1) && get_particle_at(x, y + 1).id != mat_id_water) {
+    if (in_bounds(x, y + 1) && !is_empty(chunk, x, y + 1) && get_particle_at(chunk, x, y + 1).mat_id != mat_id_water) {
         p->velocity.y /= 2.f;
         // p->velocity.x /= 1.2f;
     }
@@ -1297,75 +1473,75 @@ void update_gunpowder(u32 x, u32 y) {
 
     s32 lx, ly;
 
-    particle_t tmp_a = g_world_particle_data[read_idx];
+    particle_t tmp_a = chunk->world_particle_data[read_idx];
 
     // Physics (using velocity)
-    if (in_bounds(vi_x, vi_y) &&
-        ((is_empty(vi_x, vi_y) || (((g_world_particle_data[compute_idx(vi_x, vi_y)].id == mat_id_water) && !g_world_particle_data[compute_idx(vi_x, vi_y)].has_been_updated_this_frame &&
-                                    neko_vec2_len(g_world_particle_data[compute_idx(vi_x, vi_y)].velocity) - neko_vec2_len(tmp_a.velocity) > 10.f))))) {
+    if (in_bounds(vi_x, vi_y) && ((is_empty(chunk, vi_x, vi_y) ||
+                                   (((chunk->world_particle_data[compute_idx(vi_x, vi_y)].mat_id == mat_id_water) && !chunk->world_particle_data[compute_idx(vi_x, vi_y)].has_been_updated_this_frame &&
+                                     neko_vec2_len(chunk->world_particle_data[compute_idx(vi_x, vi_y)].velocity) - neko_vec2_len(tmp_a.velocity) > 10.f))))) {
 
-        particle_t tmp_b = g_world_particle_data[compute_idx(vi_x, vi_y)];
+        particle_t tmp_b = chunk->world_particle_data[compute_idx(vi_x, vi_y)];
 
         // Try to throw water out
-        if (tmp_b.id == mat_id_water) {
+        if (tmp_b.mat_id == mat_id_water) {
 
             s32 rx = random_val(-2, 2);
             tmp_b.velocity = neko_vec2{(f32)rx, -4.f};
 
-            write_data(compute_idx(vi_x, vi_y), tmp_a);
+            chunk_write_data(chunk, compute_idx(vi_x, vi_y), tmp_a);
 
             for (s32 i = -10; i < 0; ++i) {
                 for (s32 j = -10; j < 10; ++j) {
-                    if (is_empty(vi_x + j, vi_y + i)) {
-                        write_data(compute_idx(vi_x + j, vi_y + i), tmp_b);
+                    if (is_empty(chunk, vi_x + j, vi_y + i)) {
+                        chunk_write_data(chunk, compute_idx(vi_x + j, vi_y + i), tmp_b);
                         break;
                     }
                 }
             }
 
             // Couldn't write there, so, uh, destroy it.
-            write_data(read_idx, particle_empty());
-        } else if (is_empty(vi_x, vi_y)) {
-            write_data(compute_idx(vi_x, vi_y), tmp_a);
-            write_data(read_idx, tmp_b);
+            chunk_write_data(chunk, read_idx, particle_empty());
+        } else if (is_empty(chunk, vi_x, vi_y)) {
+            chunk_write_data(chunk, compute_idx(vi_x, vi_y), tmp_a);
+            chunk_write_data(chunk, read_idx, tmp_b);
         }
     }
     // Simple falling, changing the velocity here ruins everything. I need to redo this entire simulation.
-    else if (in_bounds(x, y + 1) && ((is_empty(x, y + 1) || (g_world_particle_data[b_idx].id == mat_id_water)))) {
+    else if (in_bounds(x, y + 1) && ((is_empty(chunk, x, y + 1) || (chunk->world_particle_data[b_idx].mat_id == mat_id_water)))) {
         p->velocity.y += (world_gravity * dt);
-        particle_t tmp_b = get_particle_at(x, y + 1);
-        write_data(b_idx, *p);
-        write_data(read_idx, tmp_b);
-    } else if (in_bounds(x - 1, y + 1) && ((is_empty(x - 1, y + 1) || g_world_particle_data[bl_idx].id == mat_id_water))) {
-        p->velocity.x = is_in_liquid(x, y, &lx, &ly) ? 0.f : random_val(0, 1) == 0 ? -1.f : 1.f;
+        particle_t tmp_b = get_particle_at(chunk, x, y + 1);
+        chunk_write_data(chunk, b_idx, *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
+    } else if (in_bounds(x - 1, y + 1) && ((is_empty(chunk, x - 1, y + 1) || chunk->world_particle_data[bl_idx].mat_id == mat_id_water))) {
+        p->velocity.x = is_in_liquid(chunk, x, y, &lx, &ly) ? 0.f : random_val(0, 1) == 0 ? -1.f : 1.f;
         p->velocity.y += (world_gravity * dt);
-        particle_t tmp_b = get_particle_at(x - 1, y + 1);
-        write_data(bl_idx, *p);
-        write_data(read_idx, tmp_b);
-    } else if (in_bounds(x + 1, y + 1) && ((is_empty(x + 1, y + 1) || g_world_particle_data[br_idx].id == mat_id_water))) {
-        p->velocity.x = is_in_liquid(x, y, &lx, &ly) ? 0.f : random_val(0, 1) == 0 ? -1.f : 1.f;
+        particle_t tmp_b = get_particle_at(chunk, x - 1, y + 1);
+        chunk_write_data(chunk, bl_idx, *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
+    } else if (in_bounds(x + 1, y + 1) && ((is_empty(chunk, x + 1, y + 1) || chunk->world_particle_data[br_idx].mat_id == mat_id_water))) {
+        p->velocity.x = is_in_liquid(chunk, x, y, &lx, &ly) ? 0.f : random_val(0, 1) == 0 ? -1.f : 1.f;
         p->velocity.y += (world_gravity * dt);
-        particle_t tmp_b = get_particle_at(x + 1, y + 1);
-        write_data(br_idx, *p);
-        write_data(read_idx, tmp_b);
-    } else if (is_in_liquid(x, y, &lx, &ly) && random_val(0, 10) == 0) {
-        particle_t tmp_b = get_particle_at(lx, ly);
-        write_data(compute_idx(lx, ly), *p);
-        write_data(read_idx, tmp_b);
+        particle_t tmp_b = get_particle_at(chunk, x + 1, y + 1);
+        chunk_write_data(chunk, br_idx, *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
+    } else if (is_in_liquid(chunk, x, y, &lx, &ly) && random_val(0, 10) == 0) {
+        particle_t tmp_b = get_particle_at(chunk, lx, ly);
+        chunk_write_data(chunk, compute_idx(lx, ly), *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
     }
 }
 
-void update_steam(u32 x, u32 y) {
+void update_steam(game_chunk_t* chunk, u32 x, u32 y) {
     f32 dt = neko_platform_delta_time();
 
     // For water, same as sand, but we'll check immediate left and right as well
     u32 read_idx = compute_idx(x, y);
-    particle_t* p = &g_world_particle_data[read_idx];
+    particle_t* p = &chunk->world_particle_data[read_idx];
     u32 write_idx = read_idx;
     u32 fall_rate = 4;
 
     if (p->life_time > 10.f) {
-        write_data(read_idx, particle_empty());
+        chunk_write_data(chunk, read_idx, particle_empty());
         return;
     }
 
@@ -1386,78 +1562,80 @@ void update_steam(u32 x, u32 y) {
     p->color.a = (u8)(neko_clamp((neko_interp_linear(10.f, 0.f, p->life_time) / 10.f) * 255.f, 10.f, 255.f));
 
     // Just check if you can move directly beneath you. If not, then reset your velocity. God, this is going to blow.
-    if (in_bounds(x, y - 1) && !is_empty(x, y - 1) && get_particle_at(x, y - 1).id != mat_id_water) {
+    if (in_bounds(x, y - 1) && !is_empty(chunk, x, y - 1) && get_particle_at(chunk, x, y - 1).mat_id != mat_id_water) {
         p->velocity.y /= 2.f;
     }
 
     s32 vi_x = x + (s32)p->velocity.x;
     s32 vi_y = y + (s32)p->velocity.y;
 
-    if (in_bounds(vi_x, vi_y) && ((is_empty(vi_x, vi_y) || get_particle_at(vi_x, vi_y).id == mat_id_water || get_particle_at(vi_x, vi_y).id == mat_id_fire))) {
+    if (in_bounds(vi_x, vi_y) && ((is_empty(chunk, vi_x, vi_y) || get_particle_at(chunk, vi_x, vi_y).mat_id == mat_id_water || get_particle_at(chunk, vi_x, vi_y).mat_id == mat_id_fire))) {
 
-        particle_t tmp_b = g_world_particle_data[compute_idx(vi_x, vi_y)];
+        particle_t tmp_b = chunk->world_particle_data[compute_idx(vi_x, vi_y)];
 
         // Try to throw water out
-        if (tmp_b.id == mat_id_water) {
+        if (tmp_b.mat_id == mat_id_water) {
 
             tmp_b.has_been_updated_this_frame = true;
 
             s32 rx = random_val(-2, 2);
             tmp_b.velocity = neko_vec2{(f32)rx, -3.f};
 
-            write_data(compute_idx(vi_x, vi_y), *p);
-            write_data(read_idx, tmp_b);
-        } else if (is_empty(vi_x, vi_y)) {
-            write_data(compute_idx(vi_x, vi_y), *p);
-            write_data(read_idx, tmp_b);
+            chunk_write_data(chunk, compute_idx(vi_x, vi_y), *p);
+            chunk_write_data(chunk, read_idx, tmp_b);
+        } else if (is_empty(chunk, vi_x, vi_y)) {
+            chunk_write_data(chunk, compute_idx(vi_x, vi_y), *p);
+            chunk_write_data(chunk, read_idx, tmp_b);
         }
     }
     // Simple falling, changing the velocity here ruins everything. I need to redo this entire simulation.
-    else if (in_bounds(x, y - 1) && ((is_empty(x, y - 1) || (get_particle_at(x, y - 1).id == mat_id_water) || get_particle_at(x, y - 1).id == mat_id_fire))) {
+    else if (in_bounds(x, y - 1) && ((is_empty(chunk, x, y - 1) || (get_particle_at(chunk, x, y - 1).mat_id == mat_id_water) || get_particle_at(chunk, x, y - 1).mat_id == mat_id_fire))) {
         p->velocity.y -= (world_gravity * dt);
-        particle_t tmp_b = get_particle_at(x, y - 1);
-        write_data(compute_idx(x, y - 1), *p);
-        write_data(read_idx, tmp_b);
-    } else if (in_bounds(x - 1, y - 1) && ((is_empty(x - 1, y - 1) || get_particle_at(x - 1, y - 1).id == mat_id_water) || get_particle_at(x - 1, y - 1).id == mat_id_fire)) {
+        particle_t tmp_b = get_particle_at(chunk, x, y - 1);
+        chunk_write_data(chunk, compute_idx(x, y - 1), *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
+    } else if (in_bounds(x - 1, y - 1) &&
+               ((is_empty(chunk, x - 1, y - 1) || get_particle_at(chunk, x - 1, y - 1).mat_id == mat_id_water) || get_particle_at(chunk, x - 1, y - 1).mat_id == mat_id_fire)) {
         p->velocity.x = random_val(0, 1) == 0 ? -1.2f : 1.2f;
         p->velocity.y -= (world_gravity * dt);
-        particle_t tmp_b = get_particle_at(x - 1, y - 1);
-        write_data(compute_idx(x - 1, y - 1), *p);
-        write_data(read_idx, tmp_b);
-    } else if (in_bounds(x + 1, y - 1) && ((is_empty(x + 1, y - 1) || get_particle_at(x + 1, y - 1).id == mat_id_water) || get_particle_at(x + 1, y - 1).id == mat_id_fire)) {
+        particle_t tmp_b = get_particle_at(chunk, x - 1, y - 1);
+        chunk_write_data(chunk, compute_idx(x - 1, y - 1), *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
+    } else if (in_bounds(x + 1, y - 1) &&
+               ((is_empty(chunk, x + 1, y - 1) || get_particle_at(chunk, x + 1, y - 1).mat_id == mat_id_water) || get_particle_at(chunk, x + 1, y - 1).mat_id == mat_id_fire)) {
         p->velocity.x = random_val(0, 1) == 0 ? -1.2f : 1.2f;
         p->velocity.y -= (world_gravity * dt);
-        particle_t tmp_b = get_particle_at(x + 1, y - 1);
-        write_data(compute_idx(x + 1, y - 1), *p);
-        write_data(read_idx, tmp_b);
+        particle_t tmp_b = get_particle_at(chunk, x + 1, y - 1);
+        chunk_write_data(chunk, compute_idx(x + 1, y - 1), *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
     }
     // Can move if in liquid
-    else if (in_bounds(x + 1, y) && (get_particle_at(x + 1, y).id == mat_id_water)) {
+    else if (in_bounds(x + 1, y) && (get_particle_at(chunk, x + 1, y).mat_id == mat_id_water)) {
         u32 idx = compute_idx(x + 1, y);
-        particle_t tmp_b = g_world_particle_data[idx];
-        write_data(idx, *p);
-        write_data(read_idx, tmp_b);
-    } else if (in_bounds(x - 1, y) && (g_world_particle_data[compute_idx(x - 1, y)].id == mat_id_water)) {
+        particle_t tmp_b = chunk->world_particle_data[idx];
+        chunk_write_data(chunk, idx, *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
+    } else if (in_bounds(x - 1, y) && (chunk->world_particle_data[compute_idx(x - 1, y)].mat_id == mat_id_water)) {
         u32 idx = compute_idx(x - 1, y);
-        particle_t tmp_b = g_world_particle_data[idx];
-        write_data(idx, *p);
-        write_data(read_idx, tmp_b);
+        particle_t tmp_b = chunk->world_particle_data[idx];
+        chunk_write_data(chunk, idx, *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
     } else {
-        write_data(read_idx, *p);
+        chunk_write_data(chunk, read_idx, *p);
     }
 }
 
-void update_smoke(u32 x, u32 y) {
+void update_smoke(game_chunk_t* chunk, u32 x, u32 y) {
     f32 dt = neko_platform_delta_time();
 
     // For water, same as sand, but we'll check immediate left and right as well
     u32 read_idx = compute_idx(x, y);
-    particle_t* p = &g_world_particle_data[read_idx];
+    particle_t* p = &chunk->world_particle_data[read_idx];
     u32 write_idx = read_idx;
     u32 fall_rate = 4;
 
     if (p->life_time > 10.f) {
-        write_data(read_idx, particle_empty());
+        chunk_write_data(chunk, read_idx, particle_empty());
         return;
     }
 
@@ -1477,79 +1655,84 @@ void update_smoke(u32 x, u32 y) {
     p->color.b = (u8)(neko_clamp((neko_interp_linear(10.f, 0.f, p->life_time * 0.5f) / 10.f) * 100.f, 0.f, 100.f));
 
     // Just check if you can move directly beneath you. If not, then reset your velocity. God, this is going to blow.
-    if (in_bounds(x, y - 1) && !is_empty(x, y - 1) && get_particle_at(x, y - 1).id != mat_id_water) {
+    if (in_bounds(x, y - 1) && !is_empty(chunk, x, y - 1) && get_particle_at(chunk, x, y - 1).mat_id != mat_id_water) {
         p->velocity.y /= 2.f;
     }
 
     s32 vi_x = x + (s32)p->velocity.x;
     s32 vi_y = y + (s32)p->velocity.y;
 
-    // if (in_bounds(vi_x, vi_y) && ((is_empty(vi_x, vi_y) || get_particle_at(vi_x, vi_y).id == mat_id_water || get_particle_at(vi_x, vi_y).id == mat_id_fire))) {
-    if (in_bounds(vi_x, vi_y) && get_particle_at(vi_x, vi_y).id != mat_id_smoke) {
+    // if (in_bounds(vi_x, vi_y) && ((is_empty(chunk,vi_x, vi_y) || get_particle_at(chunk,vi_x, vi_y).mat_id == mat_id_water || get_particle_at(chunk,vi_x, vi_y).mat_id == mat_id_fire))) {
+    if (in_bounds(vi_x, vi_y) && get_particle_at(chunk, vi_x, vi_y).mat_id != mat_id_smoke) {
 
-        particle_t tmp_b = g_world_particle_data[compute_idx(vi_x, vi_y)];
+        particle_t tmp_b = chunk->world_particle_data[compute_idx(vi_x, vi_y)];
 
         // Try to throw water out
-        if (tmp_b.id == mat_id_water) {
+        if (tmp_b.mat_id == mat_id_water) {
 
             tmp_b.has_been_updated_this_frame = true;
 
             s32 rx = random_val(-2, 2);
             tmp_b.velocity = neko_vec2{(f32)rx, -3.f};
 
-            write_data(compute_idx(vi_x, vi_y), *p);
-            write_data(read_idx, tmp_b);
-        } else if (is_empty(vi_x, vi_y)) {
-            write_data(compute_idx(vi_x, vi_y), *p);
-            write_data(read_idx, tmp_b);
+            chunk_write_data(chunk, compute_idx(vi_x, vi_y), *p);
+            chunk_write_data(chunk, read_idx, tmp_b);
+        } else if (is_empty(chunk, vi_x, vi_y)) {
+            chunk_write_data(chunk, compute_idx(vi_x, vi_y), *p);
+            chunk_write_data(chunk, read_idx, tmp_b);
         }
     }
     // Simple falling, changing the velocity here ruins everything. I need to redo this entire simulation.
-    else if (in_bounds(x, y - 1) && get_particle_at(x, y - 1).id != mat_id_smoke && get_particle_at(x, y - 1).id != mat_id_wood && get_particle_at(x, y - 1).id != mat_id_stone) {
+    else if (in_bounds(x, y - 1) && get_particle_at(chunk, x, y - 1).mat_id != mat_id_smoke && get_particle_at(chunk, x, y - 1).mat_id != mat_id_wood &&
+             get_particle_at(chunk, x, y - 1).mat_id != mat_id_stone) {
         p->velocity.y -= (world_gravity * dt);
-        particle_t tmp_b = get_particle_at(x, y - 1);
-        write_data(compute_idx(x, y - 1), *p);
-        write_data(read_idx, tmp_b);
-    } else if (in_bounds(x - 1, y - 1) && get_particle_at(x - 1, y - 1).id != mat_id_smoke && get_particle_at(x - 1, y - 1).id != mat_id_wood && get_particle_at(x - 1, y - 1).id != mat_id_stone) {
+        particle_t tmp_b = get_particle_at(chunk, x, y - 1);
+        chunk_write_data(chunk, compute_idx(x, y - 1), *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
+    } else if (in_bounds(x - 1, y - 1) && get_particle_at(chunk, x - 1, y - 1).mat_id != mat_id_smoke && get_particle_at(chunk, x - 1, y - 1).mat_id != mat_id_wood &&
+               get_particle_at(chunk, x - 1, y - 1).mat_id != mat_id_stone) {
         p->velocity.x = random_val(0, 1) == 0 ? -1.2f : 1.2f;
         p->velocity.y -= (world_gravity * dt);
-        particle_t tmp_b = get_particle_at(x - 1, y - 1);
-        write_data(compute_idx(x - 1, y - 1), *p);
-        write_data(read_idx, tmp_b);
-    } else if (in_bounds(x + 1, y - 1) && get_particle_at(x + 1, y - 1).id != mat_id_smoke && get_particle_at(x + 1, y - 1).id != mat_id_wood && get_particle_at(x + 1, y - 1).id != mat_id_stone) {
+        particle_t tmp_b = get_particle_at(chunk, x - 1, y - 1);
+        chunk_write_data(chunk, compute_idx(x - 1, y - 1), *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
+    } else if (in_bounds(x + 1, y - 1) && get_particle_at(chunk, x + 1, y - 1).mat_id != mat_id_smoke && get_particle_at(chunk, x + 1, y - 1).mat_id != mat_id_wood &&
+               get_particle_at(chunk, x + 1, y - 1).mat_id != mat_id_stone) {
         p->velocity.x = random_val(0, 1) == 0 ? -1.2f : 1.2f;
         p->velocity.y -= (world_gravity * dt);
-        particle_t tmp_b = get_particle_at(x + 1, y - 1);
-        write_data(compute_idx(x + 1, y - 1), *p);
-        write_data(read_idx, tmp_b);
+        particle_t tmp_b = get_particle_at(chunk, x + 1, y - 1);
+        chunk_write_data(chunk, compute_idx(x + 1, y - 1), *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
     }
     // Can move if in liquid
-    else if (in_bounds(x + 1, y) && get_particle_at(x + 1, y).id != mat_id_smoke && get_particle_at(x + 1, y).id != mat_id_wood && get_particle_at(x + 1, y).id != mat_id_stone) {
+    else if (in_bounds(x + 1, y) && get_particle_at(chunk, x + 1, y).mat_id != mat_id_smoke && get_particle_at(chunk, x + 1, y).mat_id != mat_id_wood &&
+             get_particle_at(chunk, x + 1, y).mat_id != mat_id_stone) {
         u32 idx = compute_idx(x + 1, y);
-        particle_t tmp_b = g_world_particle_data[idx];
-        write_data(idx, *p);
-        write_data(read_idx, tmp_b);
-    } else if (in_bounds(x - 1, y) && get_particle_at(x - 1, y).id != mat_id_smoke && get_particle_at(x - 1, y).id != mat_id_wood && get_particle_at(x - 1, y).id != mat_id_stone) {
+        particle_t tmp_b = chunk->world_particle_data[idx];
+        chunk_write_data(chunk, idx, *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
+    } else if (in_bounds(x - 1, y) && get_particle_at(chunk, x - 1, y).mat_id != mat_id_smoke && get_particle_at(chunk, x - 1, y).mat_id != mat_id_wood &&
+               get_particle_at(chunk, x - 1, y).mat_id != mat_id_stone) {
         u32 idx = compute_idx(x - 1, y);
-        particle_t tmp_b = g_world_particle_data[idx];
-        write_data(idx, *p);
-        write_data(read_idx, tmp_b);
+        particle_t tmp_b = chunk->world_particle_data[idx];
+        chunk_write_data(chunk, idx, *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
     } else {
-        write_data(read_idx, *p);
+        chunk_write_data(chunk, read_idx, *p);
     }
 }
 
-void update_ember(u32 x, u32 y) {
+void update_ember(game_chunk_t* chunk, u32 x, u32 y) {
     f32 dt = neko_platform_delta_time();
 
     // For water, same as sand, but we'll check immediate left and right as well
     u32 read_idx = compute_idx(x, y);
-    particle_t* p = &g_world_particle_data[read_idx];
+    particle_t* p = &chunk->world_particle_data[read_idx];
     u32 write_idx = read_idx;
     u32 fall_rate = 4;
 
     if (p->life_time > 0.5f) {
-        write_data(read_idx, particle_empty());
+        chunk_write_data(chunk, read_idx, particle_empty());
         return;
     }
 
@@ -1563,91 +1746,93 @@ void update_ember(u32 x, u32 y) {
     p->velocity.x = neko_clamp(p->velocity.x + (f32)random_val(-100, 100) / 100.f, -1.f, 1.f);
 
     // If directly on top of some wall, then replace it
-    if (in_bounds(x, y + 1) && get_particle_at(x, y + 1).id == mat_id_wood && random_val(0, 200) == 0) {
-        write_data(compute_idx(x, y + 1), particle_fire());
-    } else if (in_bounds(x + 1, y + 1) && get_particle_at(x + 1, y + 1).id == mat_id_wood && random_val(0, 200) == 0) {
-        write_data(compute_idx(x + 1, y + 1), particle_fire());
-    } else if (in_bounds(x - 1, y + 1) && get_particle_at(x - 1, y + 1).id == mat_id_wood && random_val(0, 200) == 0) {
-        write_data(compute_idx(x - 1, y + 1), particle_fire());
-    } else if (in_bounds(x - 1, y) && get_particle_at(x - 1, y).id == mat_id_wood && random_val(0, 200) == 0) {
-        write_data(compute_idx(x - 1, y), particle_fire());
-    } else if (in_bounds(x + 1, y) && get_particle_at(x + 1, y).id == mat_id_wood && random_val(0, 200) == 0) {
-        write_data(compute_idx(x + 1, y), particle_fire());
-    } else if (in_bounds(x + 1, y - 1) && get_particle_at(x + 1, y - 1).id == mat_id_wood && random_val(0, 200) == 0) {
-        write_data(compute_idx(x + 1, y - 1), particle_fire());
-    } else if (in_bounds(x - 1, y - 1) && get_particle_at(x - 1, y - 1).id == mat_id_wood && random_val(0, 200) == 0) {
-        write_data(compute_idx(x - 1, y - 1), particle_fire());
+    if (in_bounds(x, y + 1) && get_particle_at(chunk, x, y + 1).mat_id == mat_id_wood && random_val(0, 200) == 0) {
+        chunk_write_data(chunk, compute_idx(x, y + 1), particle_fire());
+    } else if (in_bounds(x + 1, y + 1) && get_particle_at(chunk, x + 1, y + 1).mat_id == mat_id_wood && random_val(0, 200) == 0) {
+        chunk_write_data(chunk, compute_idx(x + 1, y + 1), particle_fire());
+    } else if (in_bounds(x - 1, y + 1) && get_particle_at(chunk, x - 1, y + 1).mat_id == mat_id_wood && random_val(0, 200) == 0) {
+        chunk_write_data(chunk, compute_idx(x - 1, y + 1), particle_fire());
+    } else if (in_bounds(x - 1, y) && get_particle_at(chunk, x - 1, y).mat_id == mat_id_wood && random_val(0, 200) == 0) {
+        chunk_write_data(chunk, compute_idx(x - 1, y), particle_fire());
+    } else if (in_bounds(x + 1, y) && get_particle_at(chunk, x + 1, y).mat_id == mat_id_wood && random_val(0, 200) == 0) {
+        chunk_write_data(chunk, compute_idx(x + 1, y), particle_fire());
+    } else if (in_bounds(x + 1, y - 1) && get_particle_at(chunk, x + 1, y - 1).mat_id == mat_id_wood && random_val(0, 200) == 0) {
+        chunk_write_data(chunk, compute_idx(x + 1, y - 1), particle_fire());
+    } else if (in_bounds(x - 1, y - 1) && get_particle_at(chunk, x - 1, y - 1).mat_id == mat_id_wood && random_val(0, 200) == 0) {
+        chunk_write_data(chunk, compute_idx(x - 1, y - 1), particle_fire());
     }
 
     // Just check if you can move directly beneath you. If not, then reset your velocity. God, this is going to blow.
-    if (in_bounds(x, y - 1) && !is_empty(x, y - 1) && get_particle_at(x, y - 1).id != mat_id_water) {
+    if (in_bounds(x, y - 1) && !is_empty(chunk, x, y - 1) && get_particle_at(chunk, x, y - 1).mat_id != mat_id_water) {
         p->velocity.y /= 2.f;
     }
 
     s32 vi_x = x + (s32)p->velocity.x;
     s32 vi_y = y + (s32)p->velocity.y;
 
-    if (in_bounds(vi_x, vi_y) && (is_empty(vi_x, vi_y) || get_particle_at(vi_x, vi_y).id == mat_id_water || get_particle_at(vi_x, vi_y).id == mat_id_fire ||
-                                  get_particle_at(vi_x, vi_y).id == mat_id_smoke || get_particle_at(vi_x, vi_y).id == mat_id_ember)) {
+    if (in_bounds(vi_x, vi_y) && (is_empty(chunk, vi_x, vi_y) || get_particle_at(chunk, vi_x, vi_y).mat_id == mat_id_water || get_particle_at(chunk, vi_x, vi_y).mat_id == mat_id_fire ||
+                                  get_particle_at(chunk, vi_x, vi_y).mat_id == mat_id_smoke || get_particle_at(chunk, vi_x, vi_y).mat_id == mat_id_ember)) {
 
-        particle_t tmp_b = g_world_particle_data[compute_idx(vi_x, vi_y)];
+        particle_t tmp_b = chunk->world_particle_data[compute_idx(vi_x, vi_y)];
 
         // Try to throw water out
-        if (tmp_b.id == mat_id_water) {
+        if (tmp_b.mat_id == mat_id_water) {
 
             tmp_b.has_been_updated_this_frame = true;
 
             s32 rx = random_val(-2, 2);
             tmp_b.velocity = neko_vec2{(f32)rx, -3.f};
 
-            write_data(compute_idx(vi_x, vi_y), *p);
-            write_data(read_idx, tmp_b);
-        } else if (is_empty(vi_x, vi_y)) {
-            write_data(compute_idx(vi_x, vi_y), *p);
-            write_data(read_idx, tmp_b);
+            chunk_write_data(chunk, compute_idx(vi_x, vi_y), *p);
+            chunk_write_data(chunk, read_idx, tmp_b);
+        } else if (is_empty(chunk, vi_x, vi_y)) {
+            chunk_write_data(chunk, compute_idx(vi_x, vi_y), *p);
+            chunk_write_data(chunk, read_idx, tmp_b);
         }
     }
     // Simple falling, changing the velocity here ruins everything. I need to redo this entire simulation.
-    else if (in_bounds(x, y - 1) && ((is_empty(x, y - 1) || (get_particle_at(x, y - 1).id == mat_id_water) || get_particle_at(x, y - 1).id == mat_id_fire))) {
+    else if (in_bounds(x, y - 1) && ((is_empty(chunk, x, y - 1) || (get_particle_at(chunk, x, y - 1).mat_id == mat_id_water) || get_particle_at(chunk, x, y - 1).mat_id == mat_id_fire))) {
         p->velocity.y -= (world_gravity * dt);
-        particle_t tmp_b = get_particle_at(x, y - 1);
-        write_data(compute_idx(x, y - 1), *p);
-        write_data(read_idx, tmp_b);
-    } else if (in_bounds(x - 1, y - 1) && ((is_empty(x - 1, y - 1) || get_particle_at(x - 1, y - 1).id == mat_id_water) || get_particle_at(x - 1, y - 1).id == mat_id_fire)) {
+        particle_t tmp_b = get_particle_at(chunk, x, y - 1);
+        chunk_write_data(chunk, compute_idx(x, y - 1), *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
+    } else if (in_bounds(x - 1, y - 1) &&
+               ((is_empty(chunk, x - 1, y - 1) || get_particle_at(chunk, x - 1, y - 1).mat_id == mat_id_water) || get_particle_at(chunk, x - 1, y - 1).mat_id == mat_id_fire)) {
         p->velocity.x = random_val(0, 1) == 0 ? -1.2f : 1.2f;
         p->velocity.y -= (world_gravity * dt);
-        particle_t tmp_b = get_particle_at(x - 1, y - 1);
-        write_data(compute_idx(x - 1, y - 1), *p);
-        write_data(read_idx, tmp_b);
-    } else if (in_bounds(x + 1, y - 1) && ((is_empty(x + 1, y - 1) || get_particle_at(x + 1, y - 1).id == mat_id_water) || get_particle_at(x + 1, y + 1).id == mat_id_fire)) {
+        particle_t tmp_b = get_particle_at(chunk, x - 1, y - 1);
+        chunk_write_data(chunk, compute_idx(x - 1, y - 1), *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
+    } else if (in_bounds(x + 1, y - 1) &&
+               ((is_empty(chunk, x + 1, y - 1) || get_particle_at(chunk, x + 1, y - 1).mat_id == mat_id_water) || get_particle_at(chunk, x + 1, y + 1).mat_id == mat_id_fire)) {
         p->velocity.x = random_val(0, 1) == 0 ? -1.2f : 1.2f;
         p->velocity.y -= (world_gravity * dt);
-        particle_t tmp_b = get_particle_at(x + 1, y - 1);
-        write_data(compute_idx(x + 1, y - 1), *p);
-        write_data(read_idx, tmp_b);
+        particle_t tmp_b = get_particle_at(chunk, x + 1, y - 1);
+        chunk_write_data(chunk, compute_idx(x + 1, y - 1), *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
     }
     // Can move if in liquid
-    else if (in_bounds(x + 1, y) && (is_empty(x + 1, y) || get_particle_at(x + 1, y).id == mat_id_fire)) {
+    else if (in_bounds(x + 1, y) && (is_empty(chunk, x + 1, y) || get_particle_at(chunk, x + 1, y).mat_id == mat_id_fire)) {
         u32 idx = compute_idx(x + 1, y);
-        particle_t tmp_b = g_world_particle_data[idx];
-        write_data(idx, *p);
-        write_data(read_idx, tmp_b);
-    } else if (in_bounds(x - 1, y) && (is_empty(x - 1, y) || get_particle_at(x - 1, y).id == mat_id_fire)) {
+        particle_t tmp_b = chunk->world_particle_data[idx];
+        chunk_write_data(chunk, idx, *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
+    } else if (in_bounds(x - 1, y) && (is_empty(chunk, x - 1, y) || get_particle_at(chunk, x - 1, y).mat_id == mat_id_fire)) {
         u32 idx = compute_idx(x - 1, y);
-        particle_t tmp_b = g_world_particle_data[idx];
-        write_data(idx, *p);
-        write_data(read_idx, tmp_b);
+        particle_t tmp_b = chunk->world_particle_data[idx];
+        chunk_write_data(chunk, idx, *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
     } else {
-        write_data(read_idx, *p);
+        chunk_write_data(chunk, read_idx, *p);
     }
 }
 
-void update_fire(u32 x, u32 y) {
+void update_fire(game_chunk_t* chunk, u32 x, u32 y) {
     f32 dt = neko_platform_delta_time();
 
     // For water, same as sand, but we'll check immediate left and right as well
     u32 read_idx = compute_idx(x, y);
-    particle_t* p = &g_world_particle_data[read_idx];
+    particle_t* p = &chunk->world_particle_data[read_idx];
     u32 write_idx = read_idx;
     u32 fall_rate = 4;
 
@@ -1659,7 +1844,7 @@ void update_fire(u32 x, u32 y) {
 
     if (p->life_time > 0.2f) {
         if (random_val(0, 100) == 0) {
-            write_data(read_idx, particle_empty());
+            chunk_write_data(chunk, read_idx, particle_empty());
             return;
         }
     }
@@ -1699,29 +1884,29 @@ void update_fire(u32 x, u32 y) {
     // In water, so create steam and DIE
     // Should also kill the water...
     s32 lx, ly;
-    if (is_in_water(x, y, &lx, &ly)) {
+    if (is_in_water(chunk, x, y, &lx, &ly)) {
         if (random_val(0, 1) == 0) {
             s32 ry = random_val(-5, -1);
             s32 rx = random_val(-5, 5);
             for (s32 i = ry; i > -5; --i) {
                 for (s32 j = rx; j < 5; ++j) {
                     particle_t p = particle_steam();
-                    if (in_bounds(x + j, y + i) && is_empty(x + j, y + i)) {
+                    if (in_bounds(x + j, y + i) && is_empty(chunk, x + j, y + i)) {
                         particle_t p = particle_steam();
-                        write_data(compute_idx(x + j, y + i), p);
+                        chunk_write_data(chunk, compute_idx(x + j, y + i), p);
                     }
                 }
             }
             particle_t p = particle_steam();
-            write_data(read_idx, particle_empty());
-            write_data(read_idx, p);
-            write_data(compute_idx(lx, ly), particle_empty());
+            chunk_write_data(chunk, read_idx, particle_empty());
+            chunk_write_data(chunk, read_idx, p);
+            chunk_write_data(chunk, compute_idx(lx, ly), particle_empty());
             return;
         }
     }
 
     // Just check if you can move directly beneath you. If not, then reset your velocity. God, this is going to blow.
-    if (in_bounds(x, y + 1) && !is_empty(x, y + 1) && (get_particle_at(x, y + 1).id != mat_id_water || get_particle_at(x, y + 1).id != mat_id_smoke)) {
+    if (in_bounds(x, y + 1) && !is_empty(chunk, x, y + 1) && (get_particle_at(chunk, x, y + 1).mat_id != mat_id_water || get_particle_at(chunk, x, y + 1).mat_id != mat_id_smoke)) {
         p->velocity.y /= 2.f;
     }
 
@@ -1731,14 +1916,14 @@ void update_fire(u32 x, u32 y) {
     // p->velocity.x = neko_clamp(p->velocity.x, -0.5f, 0.5f);
 
     // Kill fire underneath
-    if (in_bounds(x, y + 3) && get_particle_at(x, y + 3).id == mat_id_fire && random_val(0, 100) == 0) {
-        write_data(compute_idx(x, y + 3), *p);
-        write_data(read_idx, particle_empty());
+    if (in_bounds(x, y + 3) && get_particle_at(chunk, x, y + 3).mat_id == mat_id_fire && random_val(0, 100) == 0) {
+        chunk_write_data(chunk, compute_idx(x, y + 3), *p);
+        chunk_write_data(chunk, read_idx, particle_empty());
         return;
     }
 
     // Chance to kick itself up (to simulate flames)
-    if (in_bounds(x, y + 1) && get_particle_at(x, y + 1).id == mat_id_fire && in_bounds(x, y - 1) && get_particle_at(x, y - 1).id == mat_id_empty) {
+    if (in_bounds(x, y + 1) && get_particle_at(chunk, x, y + 1).mat_id == mat_id_fire && in_bounds(x, y - 1) && get_particle_at(chunk, x, y - 1).mat_id == mat_id_empty) {
         if (random_val(0, 10) == 0 * p->life_time < 10.f && p->life_time > 1.f) {
             s32 r = random_val(0, 1);
             s32 rh = random_val(-10, -1);
@@ -1746,9 +1931,9 @@ void update_fire(u32 x, u32 y) {
             for (s32 i = rh; i < 0; ++i) {
                 for (s32 j = r ? -spread : spread; r ? j < spread : j > -spread; r ? ++j : --j) {
                     s32 rx = j, ry = i;
-                    if (in_bounds(x + rx, y + ry) && is_empty(x + rx, y + ry)) {
-                        write_data(compute_idx(x + rx, y + ry), *p);
-                        write_data(read_idx, particle_empty());
+                    if (in_bounds(x + rx, y + ry) && is_empty(chunk, x + rx, y + ry)) {
+                        chunk_write_data(chunk, compute_idx(x + rx, y + ry), *p);
+                        chunk_write_data(chunk, read_idx, particle_empty());
                         break;
                     }
                 }
@@ -1772,12 +1957,12 @@ void update_fire(u32 x, u32 y) {
     // Chance to spawn smoke above
     for (u32 i = 0; i < random_val(1, 10); ++i) {
         if (random_val(0, 500) == 0) {
-            if (in_bounds(x, y - 1) && is_empty(x, y - 1)) {
-                write_data(compute_idx(x, y - 1), particle_smoke());
-            } else if (in_bounds(x + 1, y - 1) && is_empty(x + 1, y - 1)) {
-                write_data(compute_idx(x + 1, y - 1), particle_smoke());
-            } else if (in_bounds(x - 1, y - 1) && is_empty(x - 1, y - 1)) {
-                write_data(compute_idx(x - 1, y - 1), particle_smoke());
+            if (in_bounds(x, y - 1) && is_empty(chunk, x, y - 1)) {
+                chunk_write_data(chunk, compute_idx(x, y - 1), particle_smoke());
+            } else if (in_bounds(x + 1, y - 1) && is_empty(chunk, x + 1, y - 1)) {
+                chunk_write_data(chunk, compute_idx(x + 1, y - 1), particle_smoke());
+            } else if (in_bounds(x - 1, y - 1) && is_empty(chunk, x - 1, y - 1)) {
+                chunk_write_data(chunk, compute_idx(x - 1, y - 1), particle_smoke());
             }
         }
     }
@@ -1785,233 +1970,233 @@ void update_fire(u32 x, u32 y) {
     // Spawn embers
     if (random_val(0, 250) == 0 && p->life_time < 3.f) {
         for (u32 i = 0; i < random_val(1, 100); ++i) {
-            if (in_bounds(x, y - 1) && is_empty(x, y - 1)) {
+            if (in_bounds(x, y - 1) && is_empty(chunk, x, y - 1)) {
                 particle_t e = particle_ember();
                 e.velocity = neko_vec2{(f32)random_val(-5, 5) / 5.f, -(f32)random_val(2, 10) / 10.f};
-                write_data(compute_idx(x, y - 1), e);
-            } else if (in_bounds(x + 1, y - 1) && is_empty(x + 1, y - 1)) {
+                chunk_write_data(chunk, compute_idx(x, y - 1), e);
+            } else if (in_bounds(x + 1, y - 1) && is_empty(chunk, x + 1, y - 1)) {
                 particle_t e = particle_ember();
                 e.velocity = neko_vec2{(f32)random_val(-5, 5) / 5.f, -(f32)random_val(2, 10) / 10.f};
-                write_data(compute_idx(x + 1, y - 1), e);
-            } else if (in_bounds(x - 1, y - 1) && is_empty(x - 1, y - 1)) {
+                chunk_write_data(chunk, compute_idx(x + 1, y - 1), e);
+            } else if (in_bounds(x - 1, y - 1) && is_empty(chunk, x - 1, y - 1)) {
                 particle_t e = particle_ember();
                 e.velocity = neko_vec2{(f32)random_val(-5, 5) / 5.f, -(f32)random_val(2, 10) / 10.f};
-                write_data(compute_idx(x - 1, y - 1), e);
+                chunk_write_data(chunk, compute_idx(x - 1, y - 1), e);
             }
         }
     }
 
     // If directly on top of some wall, then replace it
-    if (in_bounds(x, y + 1) &&
-        ((get_particle_at(x, y + 1).id == mat_id_wood && random_val(0, wood_chance) == 0) || (get_particle_at(x, y + 1).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
-         (get_particle_at(x, y + 1).id == mat_id_oil && random_val(0, oil_chance) == 0)
+    if (in_bounds(x, y + 1) && ((get_particle_at(chunk, x, y + 1).mat_id == mat_id_wood && random_val(0, wood_chance) == 0) ||
+                                (get_particle_at(chunk, x, y + 1).mat_id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
+                                (get_particle_at(chunk, x, y + 1).mat_id == mat_id_oil && random_val(0, oil_chance) == 0)
 
-                 )) {
-        write_data(compute_idx(x, y + 1), particle_fire());
+                                        )) {
+        chunk_write_data(chunk, compute_idx(x, y + 1), particle_fire());
         if (random_val(0, 5) == 0) {
             s32 r = random_val(0, 1);
             for (s32 i = -3; i < 2; ++i) {
                 for (s32 j = r ? -3 : 2; r ? j < 2 : j > -3; r ? ++j : --j) {
                     s32 rx = j, ry = i;
-                    if (in_bounds(x + rx, y + ry) && is_empty(x + rx, y + ry)) {
+                    if (in_bounds(x + rx, y + ry) && is_empty(chunk, x + rx, y + ry)) {
                         // particle_t fp = particle_fire();
                         p->life_time += 0.1f;
-                        write_data(compute_idx(x + rx, y + ry), *p);
-                        write_data(read_idx, particle_empty());
+                        chunk_write_data(chunk, compute_idx(x + rx, y + ry), *p);
+                        chunk_write_data(chunk, read_idx, particle_empty());
                         break;
                     }
                 }
             }
         }
-    } else if (in_bounds(x + 1, y + 1) &&
-               ((get_particle_at(x + 1, y + 1).id == mat_id_wood && random_val(0, wood_chance) == 0) ||
-                (get_particle_at(x + 1, y + 1).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) || (get_particle_at(x + 1, y + 1).id == mat_id_oil && random_val(0, oil_chance) == 0)
+    } else if (in_bounds(x + 1, y + 1) && ((get_particle_at(chunk, x + 1, y + 1).mat_id == mat_id_wood && random_val(0, wood_chance) == 0) ||
+                                           (get_particle_at(chunk, x + 1, y + 1).mat_id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
+                                           (get_particle_at(chunk, x + 1, y + 1).mat_id == mat_id_oil && random_val(0, oil_chance) == 0)
 
-                        )) {
-        write_data(compute_idx(x + 1, y + 1), particle_fire());
+                                                   )) {
+        chunk_write_data(chunk, compute_idx(x + 1, y + 1), particle_fire());
         if (random_val(0, 5) == 0) {
             s32 r = random_val(0, 1);
             for (s32 i = -3; i < 2; ++i) {
                 for (s32 j = r ? -3 : 2; r ? j < 2 : j > -3; r ? ++j : --j) {
                     s32 rx = j, ry = i;
-                    if (in_bounds(x + rx, y + ry) && is_empty(x + rx, y + ry)) {
+                    if (in_bounds(x + rx, y + ry) && is_empty(chunk, x + rx, y + ry)) {
                         // particle_t fp = particle_fire();
                         p->life_time += 0.1f;
-                        write_data(compute_idx(x + rx, y + ry), *p);
-                        write_data(read_idx, particle_empty());
+                        chunk_write_data(chunk, compute_idx(x + rx, y + ry), *p);
+                        chunk_write_data(chunk, read_idx, particle_empty());
                         break;
                     }
                 }
             }
         }
-    } else if (in_bounds(x - 1, y + 1) &&
-               ((get_particle_at(x - 1, y + 1).id == mat_id_wood && random_val(0, wood_chance) == 0) ||
-                (get_particle_at(x - 1, y + 1).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) || (get_particle_at(x - 1, y + 1).id == mat_id_oil && random_val(0, oil_chance) == 0)
+    } else if (in_bounds(x - 1, y + 1) && ((get_particle_at(chunk, x - 1, y + 1).mat_id == mat_id_wood && random_val(0, wood_chance) == 0) ||
+                                           (get_particle_at(chunk, x - 1, y + 1).mat_id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
+                                           (get_particle_at(chunk, x - 1, y + 1).mat_id == mat_id_oil && random_val(0, oil_chance) == 0)
 
-                        )) {
-        write_data(compute_idx(x - 1, y + 1), particle_fire());
+                                                   )) {
+        chunk_write_data(chunk, compute_idx(x - 1, y + 1), particle_fire());
         if (random_val(0, 5) == 0) {
             s32 r = random_val(0, 1);
             for (s32 i = -3; i < 2; ++i) {
                 for (s32 j = r ? -3 : 2; r ? j < 2 : j > -3; r ? ++j : --j) {
                     s32 rx = j, ry = i;
-                    if (in_bounds(x + rx, y + ry) && is_empty(x + rx, y + ry)) {
+                    if (in_bounds(x + rx, y + ry) && is_empty(chunk, x + rx, y + ry)) {
                         // particle_t fp = particle_fire();
                         p->life_time += 0.1f;
-                        write_data(compute_idx(x + rx, y + ry), *p);
-                        write_data(read_idx, particle_empty());
+                        chunk_write_data(chunk, compute_idx(x + rx, y + ry), *p);
+                        chunk_write_data(chunk, read_idx, particle_empty());
                         break;
                     }
                 }
             }
         }
-    } else if (in_bounds(x - 1, y) &&
-               ((get_particle_at(x - 1, y).id == mat_id_wood && random_val(0, wood_chance) == 0) || (get_particle_at(x - 1, y).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
-                (get_particle_at(x - 1, y).id == mat_id_oil && random_val(0, oil_chance) == 0)
+    } else if (in_bounds(x - 1, y) && ((get_particle_at(chunk, x - 1, y).mat_id == mat_id_wood && random_val(0, wood_chance) == 0) ||
+                                       (get_particle_at(chunk, x - 1, y).mat_id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
+                                       (get_particle_at(chunk, x - 1, y).mat_id == mat_id_oil && random_val(0, oil_chance) == 0)
 
-                        )) {
-        write_data(compute_idx(x - 1, y), particle_fire());
+                                               )) {
+        chunk_write_data(chunk, compute_idx(x - 1, y), particle_fire());
         if (random_val(0, 5) == 0) {
             s32 r = random_val(0, 1);
             for (s32 i = -3; i < 2; ++i) {
                 for (s32 j = r ? -3 : 2; r ? j < 2 : j > -3; r ? ++j : --j) {
                     s32 rx = j, ry = i;
-                    if (in_bounds(x + rx, y + ry) && is_empty(x + rx, y + ry)) {
+                    if (in_bounds(x + rx, y + ry) && is_empty(chunk, x + rx, y + ry)) {
                         // particle_t fp = particle_fire();
                         p->life_time += 0.1f;
-                        write_data(compute_idx(x + rx, y + ry), *p);
-                        write_data(read_idx, particle_empty());
+                        chunk_write_data(chunk, compute_idx(x + rx, y + ry), *p);
+                        chunk_write_data(chunk, read_idx, particle_empty());
                         break;
                     }
                 }
             }
         }
-    } else if (in_bounds(x + 1, y) &&
-               ((get_particle_at(x + 1, y).id == mat_id_wood && random_val(0, wood_chance) == 0) || (get_particle_at(x + 1, y).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
-                (get_particle_at(x + 1, y).id == mat_id_oil && random_val(0, oil_chance) == 0)
+    } else if (in_bounds(x + 1, y) && ((get_particle_at(chunk, x + 1, y).mat_id == mat_id_wood && random_val(0, wood_chance) == 0) ||
+                                       (get_particle_at(chunk, x + 1, y).mat_id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
+                                       (get_particle_at(chunk, x + 1, y).mat_id == mat_id_oil && random_val(0, oil_chance) == 0)
 
-                        )) {
-        write_data(compute_idx(x + 1, y), particle_fire());
+                                               )) {
+        chunk_write_data(chunk, compute_idx(x + 1, y), particle_fire());
         if (random_val(0, 5) == 0) {
             s32 r = random_val(0, 1);
             for (s32 i = -3; i < 2; ++i) {
                 for (s32 j = r ? -3 : 2; r ? j < 2 : j > -3; r ? ++j : --j) {
                     s32 rx = j, ry = i;
-                    if (in_bounds(x + rx, y + ry) && is_empty(x + rx, y + ry)) {
+                    if (in_bounds(x + rx, y + ry) && is_empty(chunk, x + rx, y + ry)) {
                         // particle_t fp = particle_fire();
                         p->life_time += 0.1f;
-                        write_data(compute_idx(x + rx, y + ry), *p);
-                        write_data(read_idx, particle_empty());
+                        chunk_write_data(chunk, compute_idx(x + rx, y + ry), *p);
+                        chunk_write_data(chunk, read_idx, particle_empty());
                         break;
                     }
                 }
             }
         }
-    } else if (in_bounds(x + 1, y - 1) &&
-               ((get_particle_at(x + 1, y - 1).id == mat_id_wood && random_val(0, wood_chance) == 0) ||
-                (get_particle_at(x + 1, y - 1).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) || (get_particle_at(x + 1, y - 1).id == mat_id_oil && random_val(0, oil_chance) == 0)
+    } else if (in_bounds(x + 1, y - 1) && ((get_particle_at(chunk, x + 1, y - 1).mat_id == mat_id_wood && random_val(0, wood_chance) == 0) ||
+                                           (get_particle_at(chunk, x + 1, y - 1).mat_id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
+                                           (get_particle_at(chunk, x + 1, y - 1).mat_id == mat_id_oil && random_val(0, oil_chance) == 0)
 
-                        )) {
-        write_data(compute_idx(x + 1, y - 1), particle_fire());
+                                                   )) {
+        chunk_write_data(chunk, compute_idx(x + 1, y - 1), particle_fire());
         if (random_val(0, 5) == 0) {
             s32 r = random_val(0, 1);
             for (s32 i = -3; i < 2; ++i) {
                 for (s32 j = r ? -3 : 2; r ? j < 2 : j > -3; r ? ++j : --j) {
                     s32 rx = j, ry = i;
-                    if (in_bounds(x + rx, y + ry) && is_empty(x + rx, y + ry)) {
+                    if (in_bounds(x + rx, y + ry) && is_empty(chunk, x + rx, y + ry)) {
                         // particle_t fp = particle_fire();
                         p->life_time += 0.1f;
-                        write_data(compute_idx(x + rx, y + ry), *p);
-                        write_data(read_idx, particle_empty());
+                        chunk_write_data(chunk, compute_idx(x + rx, y + ry), *p);
+                        chunk_write_data(chunk, read_idx, particle_empty());
                         break;
                     }
                 }
             }
         }
-    } else if (in_bounds(x - 1, y - 1) &&
-               ((get_particle_at(x - 1, y - 1).id == mat_id_wood && random_val(0, wood_chance) == 0) ||
-                (get_particle_at(x - 1, y - 1).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) || (get_particle_at(x - 1, y - 1).id == mat_id_oil && random_val(0, oil_chance) == 0)
+    } else if (in_bounds(x - 1, y - 1) && ((get_particle_at(chunk, x - 1, y - 1).mat_id == mat_id_wood && random_val(0, wood_chance) == 0) ||
+                                           (get_particle_at(chunk, x - 1, y - 1).mat_id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
+                                           (get_particle_at(chunk, x - 1, y - 1).mat_id == mat_id_oil && random_val(0, oil_chance) == 0)
 
-                        )) {
-        write_data(compute_idx(x - 1, y - 1), particle_fire());
+                                                   )) {
+        chunk_write_data(chunk, compute_idx(x - 1, y - 1), particle_fire());
         if (random_val(0, 5) == 0) {
             s32 r = random_val(0, 1);
             for (s32 i = -3; i < 2; ++i) {
                 for (s32 j = r ? -3 : 2; r ? j < 2 : j > -3; r ? ++j : --j) {
                     s32 rx = j, ry = i;
-                    if (in_bounds(x + rx, y + ry) && is_empty(x + rx, y + ry)) {
+                    if (in_bounds(x + rx, y + ry) && is_empty(chunk, x + rx, y + ry)) {
                         // particle_t fp = particle_fire();
                         p->life_time += 0.1f;
-                        write_data(compute_idx(x + rx, y + ry), *p);
-                        write_data(read_idx, particle_empty());
+                        chunk_write_data(chunk, compute_idx(x + rx, y + ry), *p);
+                        chunk_write_data(chunk, read_idx, particle_empty());
                         break;
                     }
                 }
             }
         }
-    } else if (in_bounds(x, y - 1) && is_empty(x, y - 1)) {
+    } else if (in_bounds(x, y - 1) && is_empty(chunk, x, y - 1)) {
         if (random_val(0, 50) == 0) {
-            write_data(read_idx, particle_empty());
+            chunk_write_data(chunk, read_idx, particle_empty());
             return;
         }
     }
 
-    if (in_bounds(vi_x, vi_y) && (is_empty(vi_x, vi_y) || get_particle_at(vi_x, vi_y).id == mat_id_fire || get_particle_at(vi_x, vi_y).id == mat_id_smoke)) {
+    if (in_bounds(vi_x, vi_y) && (is_empty(chunk, vi_x, vi_y) || get_particle_at(chunk, vi_x, vi_y).mat_id == mat_id_fire || get_particle_at(chunk, vi_x, vi_y).mat_id == mat_id_smoke)) {
         // p->velocity.y -= (world_gravity * dt);
-        particle_t tmp_b = g_world_particle_data[compute_idx(vi_x, vi_y)];
-        write_data(compute_idx(vi_x, vi_y), *p);
-        write_data(read_idx, tmp_b);
+        particle_t tmp_b = chunk->world_particle_data[compute_idx(vi_x, vi_y)];
+        chunk_write_data(chunk, compute_idx(vi_x, vi_y), *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
     }
 
     // Simple falling, changing the velocity here ruins everything. I need to redo this entire simulation.
-    else if (in_bounds(x, y + 1) && ((is_empty(x, y + 1) || (g_world_particle_data[b_idx].id == mat_id_water)))) {
+    else if (in_bounds(x, y + 1) && ((is_empty(chunk, x, y + 1) || (chunk->world_particle_data[b_idx].mat_id == mat_id_water)))) {
         // p->velocity.y -= (world_gravity * dt);
         // p->velocity.x = random_val(0, 1) == 0 ? -1.f : 1.f;
-        particle_t tmp_b = g_world_particle_data[b_idx];
-        write_data(b_idx, *p);
-        write_data(read_idx, tmp_b);
-    } else if (in_bounds(x - 1, y + 1) && ((is_empty(x - 1, y + 1) || g_world_particle_data[bl_idx].id == mat_id_water))) {
+        particle_t tmp_b = chunk->world_particle_data[b_idx];
+        chunk_write_data(chunk, b_idx, *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
+    } else if (in_bounds(x - 1, y + 1) && ((is_empty(chunk, x - 1, y + 1) || chunk->world_particle_data[bl_idx].mat_id == mat_id_water))) {
         // p->velocity.x = random_val(0, 1) == 0 ? -1.f : 1.f;
         // p->velocity.y -= (world_gravity * dt);
-        particle_t tmp_b = g_world_particle_data[bl_idx];
-        write_data(bl_idx, *p);
-        write_data(read_idx, tmp_b);
-    } else if (in_bounds(x + 1, y + 1) && ((is_empty(x + 1, y + 1) || g_world_particle_data[br_idx].id == mat_id_water))) {
+        particle_t tmp_b = chunk->world_particle_data[bl_idx];
+        chunk_write_data(chunk, bl_idx, *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
+    } else if (in_bounds(x + 1, y + 1) && ((is_empty(chunk, x + 1, y + 1) || chunk->world_particle_data[br_idx].mat_id == mat_id_water))) {
         // p->velocity.x = random_val(0, 1) == 0 ? -1.f : 1.f;
         // p->velocity.y -= (world_gravity * dt);
-        particle_t tmp_b = g_world_particle_data[br_idx];
-        write_data(br_idx, *p);
-        write_data(read_idx, tmp_b);
-    } else if (in_bounds(x - 1, y - 1) && (g_world_particle_data[compute_idx(x - 1, y - 1)].id == mat_id_water)) {
+        particle_t tmp_b = chunk->world_particle_data[br_idx];
+        chunk_write_data(chunk, br_idx, *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
+    } else if (in_bounds(x - 1, y - 1) && (chunk->world_particle_data[compute_idx(x - 1, y - 1)].mat_id == mat_id_water)) {
         u32 idx = compute_idx(x - 1, y - 1);
         // p->velocity.x = random_val(0, 1) == 0 ? -1.f : 1.f;
-        particle_t tmp_b = g_world_particle_data[idx];
-        write_data(idx, *p);
-        write_data(read_idx, tmp_b);
-    } else if (in_bounds(x + 1, y - 1) && (g_world_particle_data[compute_idx(x + 1, y - 1)].id == mat_id_water)) {
+        particle_t tmp_b = chunk->world_particle_data[idx];
+        chunk_write_data(chunk, idx, *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
+    } else if (in_bounds(x + 1, y - 1) && (chunk->world_particle_data[compute_idx(x + 1, y - 1)].mat_id == mat_id_water)) {
         u32 idx = compute_idx(x + 1, y - 1);
         // p->velocity.x = random_val(0, 1) == 0 ? -1.f : 1.f;
-        particle_t tmp_b = g_world_particle_data[idx];
-        write_data(idx, *p);
-        write_data(read_idx, tmp_b);
-    } else if (in_bounds(x, y - 1) && (g_world_particle_data[compute_idx(x, y - 1)].id == mat_id_water)) {
+        particle_t tmp_b = chunk->world_particle_data[idx];
+        chunk_write_data(chunk, idx, *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
+    } else if (in_bounds(x, y - 1) && (chunk->world_particle_data[compute_idx(x, y - 1)].mat_id == mat_id_water)) {
         u32 idx = compute_idx(x, y - 1);
         // p->velocity.x = random_val(0, 1) == 0 ? -1.f : 1.f;
-        particle_t tmp_b = g_world_particle_data[idx];
-        write_data(idx, *p);
-        write_data(read_idx, tmp_b);
+        particle_t tmp_b = chunk->world_particle_data[idx];
+        chunk_write_data(chunk, idx, *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
     } else {
         // p->velocity.x = random_val(0, 1) == 0 ? -1.f : 1.f;
-        write_data(read_idx, *p);
+        chunk_write_data(chunk, read_idx, *p);
     }
 }
 
-void update_lava(u32 x, u32 y) {
+void update_lava(game_chunk_t* chunk, u32 x, u32 y) {
     f32 dt = neko_platform_delta_time();
 
     // For water, same as sand, but we'll check immediate left and right as well
     u32 read_idx = compute_idx(x, y);
-    particle_t* p = &g_world_particle_data[read_idx];
+    particle_t* p = &chunk->world_particle_data[read_idx];
     u32 write_idx = read_idx;
     u32 fall_rate = 4;
 
@@ -2045,23 +2230,23 @@ void update_lava(u32 x, u32 y) {
     // In water, so create steam and DIE
     // Should also kill the water...
     s32 lx, ly;
-    if (is_in_water(x, y, &lx, &ly)) {
+    if (is_in_water(chunk, x, y, &lx, &ly)) {
         if (random_val(0, 1) == 0) {
             s32 ry = random_val(-5, -1);
             s32 rx = random_val(-5, 5);
             for (s32 i = ry; i > -5; --i) {
                 for (s32 j = rx; j < 5; ++j) {
                     particle_t p = particle_steam();
-                    if (in_bounds(x + j, y + i) && is_empty(x + j, y + i)) {
+                    if (in_bounds(x + j, y + i) && is_empty(chunk, x + j, y + i)) {
                         particle_t p = particle_steam();
-                        write_data(compute_idx(x + j, y + i), p);
+                        chunk_write_data(chunk, compute_idx(x + j, y + i), p);
                     }
                 }
             }
             particle_t p = particle_steam();
-            write_data(read_idx, particle_empty());
-            write_data(read_idx, p);
-            write_data(compute_idx(lx, ly), particle_stone());
+            chunk_write_data(chunk, read_idx, particle_empty());
+            chunk_write_data(chunk, read_idx, p);
+            chunk_write_data(chunk, compute_idx(lx, ly), particle_stone());
             return;
         }
     }
@@ -2069,7 +2254,7 @@ void update_lava(u32 x, u32 y) {
     // Otherwise destroy anything that isn't fire or lava...eventually...
 
     // Just check if you can move directly beneath you. If not, then reset your velocity. God, this is going to blow.
-    if (in_bounds(x, y + 1) && !is_empty(x, y + 1) && (get_particle_at(x, y + 1).id != mat_id_water || get_particle_at(x, y + 1).id != mat_id_smoke)) {
+    if (in_bounds(x, y + 1) && !is_empty(chunk, x, y + 1) && (get_particle_at(chunk, x, y + 1).mat_id != mat_id_water || get_particle_at(chunk, x, y + 1).mat_id != mat_id_smoke)) {
         p->velocity.y /= 2.f;
     }
 
@@ -2096,12 +2281,12 @@ void update_lava(u32 x, u32 y) {
     // Chance to spawn smoke above
     for (u32 i = 0; i < random_val(1, 10); ++i) {
         if (random_val(0, 500) == 0) {
-            if (in_bounds(x, y - 1) && is_empty(x, y - 1)) {
-                write_data(compute_idx(x, y - 1), particle_smoke());
-            } else if (in_bounds(x + 1, y - 1) && is_empty(x + 1, y - 1)) {
-                write_data(compute_idx(x + 1, y - 1), particle_smoke());
-            } else if (in_bounds(x - 1, y - 1) && is_empty(x - 1, y - 1)) {
-                write_data(compute_idx(x - 1, y - 1), particle_smoke());
+            if (in_bounds(x, y - 1) && is_empty(chunk, x, y - 1)) {
+                chunk_write_data(chunk, compute_idx(x, y - 1), particle_smoke());
+            } else if (in_bounds(x + 1, y - 1) && is_empty(chunk, x + 1, y - 1)) {
+                chunk_write_data(chunk, compute_idx(x + 1, y - 1), particle_smoke());
+            } else if (in_bounds(x - 1, y - 1) && is_empty(chunk, x - 1, y - 1)) {
+                chunk_write_data(chunk, compute_idx(x - 1, y - 1), particle_smoke());
             }
         }
     }
@@ -2109,159 +2294,159 @@ void update_lava(u32 x, u32 y) {
     // Spawn embers
     if (random_val(0, 250) == 0 && p->life_time < 3.f) {
         for (u32 i = 0; i < random_val(1, 100); ++i) {
-            if (in_bounds(x, y - 1) && is_empty(x, y - 1)) {
+            if (in_bounds(x, y - 1) && is_empty(chunk, x, y - 1)) {
                 particle_t e = particle_ember();
                 e.velocity = neko_vec2{(f32)random_val(-5, 5) / 5.f, -(f32)random_val(2, 10) / 2.f};
-                write_data(compute_idx(x, y - 1), e);
-            } else if (in_bounds(x + 1, y - 1) && is_empty(x + 1, y - 1)) {
+                chunk_write_data(chunk, compute_idx(x, y - 1), e);
+            } else if (in_bounds(x + 1, y - 1) && is_empty(chunk, x + 1, y - 1)) {
                 particle_t e = particle_ember();
                 e.velocity = neko_vec2{(f32)random_val(-5, 5) / 5.f, -(f32)random_val(2, 10) / 2.f};
-                write_data(compute_idx(x + 1, y - 1), e);
-            } else if (in_bounds(x - 1, y - 1) && is_empty(x - 1, y - 1)) {
+                chunk_write_data(chunk, compute_idx(x + 1, y - 1), e);
+            } else if (in_bounds(x - 1, y - 1) && is_empty(chunk, x - 1, y - 1)) {
                 particle_t e = particle_ember();
                 e.velocity = neko_vec2{(f32)random_val(-5, 5) / 5.f, -(f32)random_val(2, 10) / 2.f};
-                write_data(compute_idx(x - 1, y - 1), e);
+                chunk_write_data(chunk, compute_idx(x - 1, y - 1), e);
             }
         }
     }
 
     // If directly on top of some wall, then replace it
-    if (in_bounds(x, y + 1) &&
-        ((get_particle_at(x, y + 1).id == mat_id_wood && random_val(0, wood_chance) == 0) || (get_particle_at(x, y + 1).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
-         (get_particle_at(x, y + 1).id == mat_id_oil && random_val(0, oil_chance) == 0)
+    if (in_bounds(x, y + 1) && ((get_particle_at(chunk, x, y + 1).mat_id == mat_id_wood && random_val(0, wood_chance) == 0) ||
+                                (get_particle_at(chunk, x, y + 1).mat_id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
+                                (get_particle_at(chunk, x, y + 1).mat_id == mat_id_oil && random_val(0, oil_chance) == 0)
 
-                 )) {
-        write_data(compute_idx(x, y + 1), particle_fire());
+                                        )) {
+        chunk_write_data(chunk, compute_idx(x, y + 1), particle_fire());
         if (random_val(0, 5) == 0) {
             s32 r = random_val(0, 1);
             for (s32 i = -3; i < 2; ++i) {
                 for (s32 j = r ? -3 : 2; r ? j < 2 : j > -3; r ? ++j : --j) {
                     s32 rx = j, ry = i;
-                    if (in_bounds(x + rx, y + ry) && is_empty(x + rx, y + ry)) {
+                    if (in_bounds(x + rx, y + ry) && is_empty(chunk, x + rx, y + ry)) {
                         particle_t fp = particle_fire();
                         p->life_time += 0.1f;
-                        write_data(compute_idx(x + rx, y + ry), fp);
-                        // write_data(read_idx, particle_empty());
+                        chunk_write_data(chunk, compute_idx(x + rx, y + ry), fp);
+                        // chunk_write_data(chunk,read_idx, particle_empty());
                         break;
                     }
                 }
             }
         }
-    } else if (in_bounds(x + 1, y + 1) &&
-               ((get_particle_at(x + 1, y + 1).id == mat_id_wood && random_val(0, wood_chance) == 0) ||
-                (get_particle_at(x + 1, y + 1).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) || (get_particle_at(x + 1, y + 1).id == mat_id_oil && random_val(0, oil_chance) == 0)
+    } else if (in_bounds(x + 1, y + 1) && ((get_particle_at(chunk, x + 1, y + 1).mat_id == mat_id_wood && random_val(0, wood_chance) == 0) ||
+                                           (get_particle_at(chunk, x + 1, y + 1).mat_id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
+                                           (get_particle_at(chunk, x + 1, y + 1).mat_id == mat_id_oil && random_val(0, oil_chance) == 0)
 
-                        )) {
-        write_data(compute_idx(x + 1, y + 1), particle_fire());
+                                                   )) {
+        chunk_write_data(chunk, compute_idx(x + 1, y + 1), particle_fire());
         if (random_val(0, 5) == 0) {
             s32 r = random_val(0, 1);
             for (s32 i = -3; i < 2; ++i) {
                 for (s32 j = r ? -3 : 2; r ? j < 2 : j > -3; r ? ++j : --j) {
                     s32 rx = j, ry = i;
-                    if (in_bounds(x + rx, y + ry) && is_empty(x + rx, y + ry)) {
+                    if (in_bounds(x + rx, y + ry) && is_empty(chunk, x + rx, y + ry)) {
                         particle_t fp = particle_fire();
                         p->life_time += 0.1f;
-                        write_data(compute_idx(x + rx, y + ry), fp);
+                        chunk_write_data(chunk, compute_idx(x + rx, y + ry), fp);
                         break;
                     }
                 }
             }
         }
-    } else if (in_bounds(x - 1, y + 1) &&
-               ((get_particle_at(x - 1, y + 1).id == mat_id_wood && random_val(0, wood_chance) == 0) ||
-                (get_particle_at(x - 1, y + 1).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) || (get_particle_at(x - 1, y + 1).id == mat_id_oil && random_val(0, oil_chance) == 0)
+    } else if (in_bounds(x - 1, y + 1) && ((get_particle_at(chunk, x - 1, y + 1).mat_id == mat_id_wood && random_val(0, wood_chance) == 0) ||
+                                           (get_particle_at(chunk, x - 1, y + 1).mat_id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
+                                           (get_particle_at(chunk, x - 1, y + 1).mat_id == mat_id_oil && random_val(0, oil_chance) == 0)
 
-                        )) {
-        write_data(compute_idx(x - 1, y + 1), particle_fire());
+                                                   )) {
+        chunk_write_data(chunk, compute_idx(x - 1, y + 1), particle_fire());
         if (random_val(0, 5) == 0) {
             s32 r = random_val(0, 1);
             for (s32 i = -3; i < 2; ++i) {
                 for (s32 j = r ? -3 : 2; r ? j < 2 : j > -3; r ? ++j : --j) {
                     s32 rx = j, ry = i;
-                    if (in_bounds(x + rx, y + ry) && is_empty(x + rx, y + ry)) {
+                    if (in_bounds(x + rx, y + ry) && is_empty(chunk, x + rx, y + ry)) {
                         particle_t fp = particle_fire();
                         p->life_time += 0.1f;
-                        write_data(compute_idx(x + rx, y + ry), fp);
+                        chunk_write_data(chunk, compute_idx(x + rx, y + ry), fp);
                         break;
                     }
                 }
             }
         }
-    } else if (in_bounds(x - 1, y) &&
-               ((get_particle_at(x - 1, y).id == mat_id_wood && random_val(0, wood_chance) == 0) || (get_particle_at(x - 1, y).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
-                (get_particle_at(x - 1, y).id == mat_id_oil && random_val(0, oil_chance) == 0)
+    } else if (in_bounds(x - 1, y) && ((get_particle_at(chunk, x - 1, y).mat_id == mat_id_wood && random_val(0, wood_chance) == 0) ||
+                                       (get_particle_at(chunk, x - 1, y).mat_id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
+                                       (get_particle_at(chunk, x - 1, y).mat_id == mat_id_oil && random_val(0, oil_chance) == 0)
 
-                        )) {
-        write_data(compute_idx(x - 1, y), particle_fire());
+                                               )) {
+        chunk_write_data(chunk, compute_idx(x - 1, y), particle_fire());
         if (random_val(0, 5) == 0) {
             s32 r = random_val(0, 1);
             for (s32 i = -3; i < 2; ++i) {
                 for (s32 j = r ? -3 : 2; r ? j < 2 : j > -3; r ? ++j : --j) {
                     s32 rx = j, ry = i;
-                    if (in_bounds(x + rx, y + ry) && is_empty(x + rx, y + ry)) {
+                    if (in_bounds(x + rx, y + ry) && is_empty(chunk, x + rx, y + ry)) {
                         particle_t fp = particle_fire();
                         p->life_time += 0.1f;
-                        write_data(compute_idx(x + rx, y + ry), fp);
+                        chunk_write_data(chunk, compute_idx(x + rx, y + ry), fp);
                         break;
                     }
                 }
             }
         }
-    } else if (in_bounds(x + 1, y) &&
-               ((get_particle_at(x + 1, y).id == mat_id_wood && random_val(0, wood_chance) == 0) || (get_particle_at(x + 1, y).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
-                (get_particle_at(x + 1, y).id == mat_id_oil && random_val(0, oil_chance) == 0)
+    } else if (in_bounds(x + 1, y) && ((get_particle_at(chunk, x + 1, y).mat_id == mat_id_wood && random_val(0, wood_chance) == 0) ||
+                                       (get_particle_at(chunk, x + 1, y).mat_id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
+                                       (get_particle_at(chunk, x + 1, y).mat_id == mat_id_oil && random_val(0, oil_chance) == 0)
 
-                        )) {
-        write_data(compute_idx(x + 1, y), particle_fire());
+                                               )) {
+        chunk_write_data(chunk, compute_idx(x + 1, y), particle_fire());
         if (random_val(0, 5) == 0) {
             s32 r = random_val(0, 1);
             for (s32 i = -3; i < 2; ++i) {
                 for (s32 j = r ? -3 : 2; r ? j < 2 : j > -3; r ? ++j : --j) {
                     s32 rx = j, ry = i;
-                    if (in_bounds(x + rx, y + ry) && is_empty(x + rx, y + ry)) {
+                    if (in_bounds(x + rx, y + ry) && is_empty(chunk, x + rx, y + ry)) {
                         particle_t fp = particle_fire();
                         p->life_time += 0.1f;
-                        write_data(compute_idx(x + rx, y + ry), fp);
+                        chunk_write_data(chunk, compute_idx(x + rx, y + ry), fp);
                         break;
                     }
                 }
             }
         }
-    } else if (in_bounds(x + 1, y - 1) &&
-               ((get_particle_at(x + 1, y - 1).id == mat_id_wood && random_val(0, wood_chance) == 0) ||
-                (get_particle_at(x + 1, y - 1).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) || (get_particle_at(x + 1, y - 1).id == mat_id_oil && random_val(0, oil_chance) == 0)
+    } else if (in_bounds(x + 1, y - 1) && ((get_particle_at(chunk, x + 1, y - 1).mat_id == mat_id_wood && random_val(0, wood_chance) == 0) ||
+                                           (get_particle_at(chunk, x + 1, y - 1).mat_id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
+                                           (get_particle_at(chunk, x + 1, y - 1).mat_id == mat_id_oil && random_val(0, oil_chance) == 0)
 
-                        )) {
-        write_data(compute_idx(x + 1, y - 1), particle_fire());
+                                                   )) {
+        chunk_write_data(chunk, compute_idx(x + 1, y - 1), particle_fire());
         if (random_val(0, 5) == 0) {
             s32 r = random_val(0, 1);
             for (s32 i = -3; i < 2; ++i) {
                 for (s32 j = r ? -3 : 2; r ? j < 2 : j > -3; r ? ++j : --j) {
                     s32 rx = j, ry = i;
-                    if (in_bounds(x + rx, y + ry) && is_empty(x + rx, y + ry)) {
+                    if (in_bounds(x + rx, y + ry) && is_empty(chunk, x + rx, y + ry)) {
                         particle_t fp = particle_fire();
                         p->life_time += 0.1f;
-                        write_data(compute_idx(x + rx, y + ry), fp);
+                        chunk_write_data(chunk, compute_idx(x + rx, y + ry), fp);
                         break;
                     }
                 }
             }
         }
-    } else if (in_bounds(x - 1, y - 1) &&
-               ((get_particle_at(x - 1, y - 1).id == mat_id_wood && random_val(0, wood_chance) == 0) ||
-                (get_particle_at(x - 1, y - 1).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) || (get_particle_at(x - 1, y - 1).id == mat_id_oil && random_val(0, oil_chance) == 0)
+    } else if (in_bounds(x - 1, y - 1) && ((get_particle_at(chunk, x - 1, y - 1).mat_id == mat_id_wood && random_val(0, wood_chance) == 0) ||
+                                           (get_particle_at(chunk, x - 1, y - 1).mat_id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
+                                           (get_particle_at(chunk, x - 1, y - 1).mat_id == mat_id_oil && random_val(0, oil_chance) == 0)
 
-                        )) {
-        write_data(compute_idx(x - 1, y - 1), particle_fire());
+                                                   )) {
+        chunk_write_data(chunk, compute_idx(x - 1, y - 1), particle_fire());
         if (random_val(0, 5) == 0) {
             s32 r = random_val(0, 1);
             for (s32 i = -3; i < 2; ++i) {
                 for (s32 j = r ? -3 : 2; r ? j < 2 : j > -3; r ? ++j : --j) {
                     s32 rx = j, ry = i;
-                    if (in_bounds(x + rx, y + ry) && is_empty(x + rx, y + ry)) {
+                    if (in_bounds(x + rx, y + ry) && is_empty(chunk, x + rx, y + ry)) {
                         particle_t fp = particle_fire();
                         p->life_time += 0.1f;
-                        write_data(compute_idx(x + rx, y + ry), fp);
+                        chunk_write_data(chunk, compute_idx(x + rx, y + ry), fp);
                         break;
                     }
                 }
@@ -2271,39 +2456,39 @@ void update_lava(u32 x, u32 y) {
 
     // If in water, then need to f32 upwards
     // s32 lx, ly;
-    // if (is_in_liquid(x, y, &lx, &ly) && in_bounds(x, y - 1) && get_particle_at(x, y - 1).id == mat_id_water) {
-    //  particle_t tmp = get_particle_at(x, y - 1);
-    //  write_data(compute_idx(x, y - 1), *p);
-    //  write_data(read_idx, tmp);
+    // if (is_in_liquid(chunk,x, y, &lx, &ly) && in_bounds(x, y - 1) && get_particle_at(chunk,x, y - 1).mat_id == mat_id_water) {
+    //  particle_t tmp = get_particle_at(chunk,x, y - 1);
+    //  chunk_write_data(chunk,compute_idx(x, y - 1), *p);
+    //  chunk_write_data(chunk,read_idx, tmp);
     //  // return;
     // }
 
-    if (in_bounds(x + vx, y + vy) && (is_empty(x + vx, y + vy))) {
-        write_data(v_idx, *p);
-        write_data(read_idx, particle_empty());
-    } else if (is_empty(x, y + u)) {
-        write_data(b_idx, *p);
-        write_data(read_idx, particle_empty());
-    } else if (is_empty(x + r, y + u)) {
-        write_data(br_idx, *p);
-        write_data(read_idx, particle_empty());
-    } else if (is_empty(x + l, y + u)) {
-        write_data(bl_idx, *p);
-        write_data(read_idx, particle_empty());
+    if (in_bounds(x + vx, y + vy) && (is_empty(chunk, x + vx, y + vy))) {
+        chunk_write_data(chunk, v_idx, *p);
+        chunk_write_data(chunk, read_idx, particle_empty());
+    } else if (is_empty(chunk, x, y + u)) {
+        chunk_write_data(chunk, b_idx, *p);
+        chunk_write_data(chunk, read_idx, particle_empty());
+    } else if (is_empty(chunk, x + r, y + u)) {
+        chunk_write_data(chunk, br_idx, *p);
+        chunk_write_data(chunk, read_idx, particle_empty());
+    } else if (is_empty(chunk, x + l, y + u)) {
+        chunk_write_data(chunk, bl_idx, *p);
+        chunk_write_data(chunk, read_idx, particle_empty());
     } else {
         particle_t tmp = *p;
         bool found = false;
 
         for (u32 i = 0; i < fall_rate; ++i) {
             for (s32 j = spread_rate; j > 0; --j) {
-                if (is_empty(x - j, y + i)) {
-                    write_data(compute_idx(x - j, y + i), *p);
-                    write_data(read_idx, particle_empty());
+                if (is_empty(chunk, x - j, y + i)) {
+                    chunk_write_data(chunk, compute_idx(x - j, y + i), *p);
+                    chunk_write_data(chunk, read_idx, particle_empty());
                     found = true;
                     break;
-                } else if (is_empty(x + j, y + i)) {
-                    write_data(compute_idx(x + j, y + i), *p);
-                    write_data(read_idx, particle_empty());
+                } else if (is_empty(chunk, x + j, y + i)) {
+                    chunk_write_data(chunk, compute_idx(x + j, y + i), *p);
+                    chunk_write_data(chunk, read_idx, particle_empty());
                     found = true;
                     break;
                 }
@@ -2311,16 +2496,16 @@ void update_lava(u32 x, u32 y) {
         }
 
         if (!found) {
-            write_data(read_idx, tmp);
+            chunk_write_data(chunk, read_idx, tmp);
         }
     }
 }
 
-void update_oil(u32 x, u32 y) {
+void update_oil(game_chunk_t* chunk, u32 x, u32 y) {
     f32 dt = neko_platform_delta_time();
 
     u32 read_idx = compute_idx(x, y);
-    particle_t* p = &g_world_particle_data[read_idx];
+    particle_t* p = &chunk->world_particle_data[read_idx];
     u32 write_idx = read_idx;
     u32 fall_rate = 2;
     s32 spread_rate = 4;
@@ -2330,8 +2515,8 @@ void update_oil(u32 x, u32 y) {
     p->has_been_updated_this_frame = true;
 
     // Just check if you can move directly beneath you. If not, then reset your velocity. God, this is going to blow.
-    // if (in_bounds(x, y + 1) && !is_empty(x, y + 1) && get_particle_at(x, y + 1).id != mat_id_water) {
-    if (in_bounds(x, y + 1) && !is_empty(x, y + 1)) {
+    // if (in_bounds(x, y + 1) && !is_empty(chunk,x, y + 1) && get_particle_at(chunk,x, y + 1).mat_id != mat_id_water) {
+    if (in_bounds(x, y + 1) && !is_empty(chunk, x, y + 1)) {
         p->velocity.y /= 2.f;
     }
 
@@ -2357,39 +2542,39 @@ void update_oil(u32 x, u32 y) {
 
     // If in water, then need to f32 upwards
     // s32 lx, ly;
-    // if (is_in_liquid(x, y, &lx, &ly) && in_bounds(x, y - 1) && get_particle_at(x, y - 1).id == mat_id_water) {
-    //  particle_t tmp = get_particle_at(x, y - 1);
-    //  write_data(compute_idx(x, y - 1), *p);
-    //  write_data(read_idx, tmp);
+    // if (is_in_liquid(chunk,x, y, &lx, &ly) && in_bounds(x, y - 1) && get_particle_at(chunk,x, y - 1).mat_id == mat_id_water) {
+    //  particle_t tmp = get_particle_at(chunk,x, y - 1);
+    //  chunk_write_data(chunk,compute_idx(x, y - 1), *p);
+    //  chunk_write_data(chunk,read_idx, tmp);
     //  // return;
     // }
 
-    if (in_bounds(x + vx, y + vy) && (is_empty(x + vx, y + vy))) {
-        write_data(v_idx, *p);
-        write_data(read_idx, particle_empty());
-    } else if (is_empty(x, y + u)) {
-        write_data(b_idx, *p);
-        write_data(read_idx, particle_empty());
-    } else if (is_empty(x + r, y + u)) {
-        write_data(br_idx, *p);
-        write_data(read_idx, particle_empty());
-    } else if (is_empty(x + l, y + u)) {
-        write_data(bl_idx, *p);
-        write_data(read_idx, particle_empty());
+    if (in_bounds(x + vx, y + vy) && (is_empty(chunk, x + vx, y + vy))) {
+        chunk_write_data(chunk, v_idx, *p);
+        chunk_write_data(chunk, read_idx, particle_empty());
+    } else if (is_empty(chunk, x, y + u)) {
+        chunk_write_data(chunk, b_idx, *p);
+        chunk_write_data(chunk, read_idx, particle_empty());
+    } else if (is_empty(chunk, x + r, y + u)) {
+        chunk_write_data(chunk, br_idx, *p);
+        chunk_write_data(chunk, read_idx, particle_empty());
+    } else if (is_empty(chunk, x + l, y + u)) {
+        chunk_write_data(chunk, bl_idx, *p);
+        chunk_write_data(chunk, read_idx, particle_empty());
     } else {
         particle_t tmp = *p;
         bool found = false;
 
         for (u32 i = 0; i < fall_rate; ++i) {
             for (s32 j = spread_rate; j > 0; --j) {
-                if (is_empty(x - j, y + i)) {
-                    write_data(compute_idx(x - j, y + i), *p);
-                    write_data(read_idx, particle_empty());
+                if (is_empty(chunk, x - j, y + i)) {
+                    chunk_write_data(chunk, compute_idx(x - j, y + i), *p);
+                    chunk_write_data(chunk, read_idx, particle_empty());
                     found = true;
                     break;
-                } else if (is_empty(x + j, y + i)) {
-                    write_data(compute_idx(x + j, y + i), *p);
-                    write_data(read_idx, particle_empty());
+                } else if (is_empty(chunk, x + j, y + i)) {
+                    chunk_write_data(chunk, compute_idx(x + j, y + i), *p);
+                    chunk_write_data(chunk, read_idx, particle_empty());
                     found = true;
                     break;
                 }
@@ -2397,16 +2582,16 @@ void update_oil(u32 x, u32 y) {
         }
 
         if (!found) {
-            write_data(read_idx, tmp);
+            chunk_write_data(chunk, read_idx, tmp);
         }
     }
 }
 
-void update_acid(u32 x, u32 y) {
+void update_acid(game_chunk_t* chunk, u32 x, u32 y) {
     f32 dt = neko_platform_delta_time();
 
     u32 read_idx = compute_idx(x, y);
-    particle_t* p = &g_world_particle_data[read_idx];
+    particle_t* p = &chunk->world_particle_data[read_idx];
     u32 write_idx = read_idx;
     u32 fall_rate = 2;
     s32 spread_rate = 5;
@@ -2417,8 +2602,8 @@ void update_acid(u32 x, u32 y) {
     p->has_been_updated_this_frame = true;
 
     // Just check if you can move directly beneath you. If not, then reset your velocity. God, this is going to blow.
-    // if (in_bounds(x, y + 1) && !is_empty(x, y + 1) && get_particle_at(x, y + 1).id != mat_id_water) {
-    if (in_bounds(x, y + 1) && !is_empty(x, y + 1)) {
+    // if (in_bounds(x, y + 1) && !is_empty(chunk,x, y + 1) && get_particle_at(chunk,x, y + 1).mat_id != mat_id_water) {
+    if (in_bounds(x, y + 1) && !is_empty(chunk, x, y + 1)) {
         p->velocity.y /= 2.f;
     }
 
@@ -2436,61 +2621,67 @@ void update_acid(u32 x, u32 y) {
     const s32 salt_chance = 20;
 
     // Random chance to die if in water
-    if (is_in_water(x, y, &lx, &ly) && random_val(0, 250) == 0) {
-        write_data(read_idx, particle_empty());
+    if (is_in_water(chunk, x, y, &lx, &ly) && random_val(0, 250) == 0) {
+        chunk_write_data(chunk, read_idx, particle_empty());
         return;
     }
 
     // If directly on top of some wall, then replace it
     if (in_bounds(x, y + 1) &&
-        ((get_particle_at(x, y + 1).id == mat_id_wood && random_val(0, wood_chance) == 0) || (get_particle_at(x, y + 1).id == mat_id_stone && random_val(0, stone_chance) == 0) ||
-         (get_particle_at(x, y + 1).id == mat_id_sand && random_val(0, sand_chance) == 0) || (get_particle_at(x, y + 1).id == mat_id_salt && random_val(0, salt_chance) == 0)
+        ((get_particle_at(chunk, x, y + 1).mat_id == mat_id_wood && random_val(0, wood_chance) == 0) || (get_particle_at(chunk, x, y + 1).mat_id == mat_id_stone && random_val(0, stone_chance) == 0) ||
+         (get_particle_at(chunk, x, y + 1).mat_id == mat_id_sand && random_val(0, sand_chance) == 0) || (get_particle_at(chunk, x, y + 1).mat_id == mat_id_salt && random_val(0, salt_chance) == 0)
 
                  )) {
-        write_data(compute_idx(x, y + 1), *p);
-        write_data(read_idx, particle_empty());
-    } else if (in_bounds(x + 1, y + 1) &&
-               ((get_particle_at(x + 1, y + 1).id == mat_id_wood && random_val(0, wood_chance) == 0) || (get_particle_at(x + 1, y + 1).id == mat_id_stone && random_val(0, stone_chance) == 0) ||
-                (get_particle_at(x + 1, y + 1).id == mat_id_sand && random_val(0, sand_chance) == 0) || (get_particle_at(x + 1, y + 1).id == mat_id_salt && random_val(0, salt_chance) == 0)
+        chunk_write_data(chunk, compute_idx(x, y + 1), *p);
+        chunk_write_data(chunk, read_idx, particle_empty());
+    } else if (in_bounds(x + 1, y + 1) && ((get_particle_at(chunk, x + 1, y + 1).mat_id == mat_id_wood && random_val(0, wood_chance) == 0) ||
+                                           (get_particle_at(chunk, x + 1, y + 1).mat_id == mat_id_stone && random_val(0, stone_chance) == 0) ||
+                                           (get_particle_at(chunk, x + 1, y + 1).mat_id == mat_id_sand && random_val(0, sand_chance) == 0) ||
+                                           (get_particle_at(chunk, x + 1, y + 1).mat_id == mat_id_salt && random_val(0, salt_chance) == 0)
 
-                        )) {
-        write_data(compute_idx(x + 1, y + 1), *p);
-        write_data(read_idx, particle_empty());
-    } else if (in_bounds(x - 1, y + 1) &&
-               ((get_particle_at(x - 1, y + 1).id == mat_id_wood && random_val(0, wood_chance) == 0) || (get_particle_at(x - 1, y + 1).id == mat_id_stone && random_val(0, stone_chance) == 0) ||
-                (get_particle_at(x - 1, y + 1).id == mat_id_sand && random_val(0, sand_chance) == 0) || (get_particle_at(x - 1, y + 1).id == mat_id_salt && random_val(0, salt_chance) == 0)
+                                                   )) {
+        chunk_write_data(chunk, compute_idx(x + 1, y + 1), *p);
+        chunk_write_data(chunk, read_idx, particle_empty());
+    } else if (in_bounds(x - 1, y + 1) && ((get_particle_at(chunk, x - 1, y + 1).mat_id == mat_id_wood && random_val(0, wood_chance) == 0) ||
+                                           (get_particle_at(chunk, x - 1, y + 1).mat_id == mat_id_stone && random_val(0, stone_chance) == 0) ||
+                                           (get_particle_at(chunk, x - 1, y + 1).mat_id == mat_id_sand && random_val(0, sand_chance) == 0) ||
+                                           (get_particle_at(chunk, x - 1, y + 1).mat_id == mat_id_salt && random_val(0, salt_chance) == 0)
 
-                        )) {
-        write_data(compute_idx(x - 1, y + 1), *p);
-        write_data(read_idx, particle_empty());
-    } else if (in_bounds(x - 1, y) &&
-               ((get_particle_at(x - 1, y).id == mat_id_wood && random_val(0, wood_chance) == 0) || (get_particle_at(x - 1, y).id == mat_id_stone && random_val(0, stone_chance) == 0) ||
-                (get_particle_at(x - 1, y).id == mat_id_sand && random_val(0, sand_chance) == 0) || (get_particle_at(x - 1, y).id == mat_id_salt && random_val(0, salt_chance) == 0)
+                                                   )) {
+        chunk_write_data(chunk, compute_idx(x - 1, y + 1), *p);
+        chunk_write_data(chunk, read_idx, particle_empty());
+    } else if (in_bounds(x - 1, y) && ((get_particle_at(chunk, x - 1, y).mat_id == mat_id_wood && random_val(0, wood_chance) == 0) ||
+                                       (get_particle_at(chunk, x - 1, y).mat_id == mat_id_stone && random_val(0, stone_chance) == 0) ||
+                                       (get_particle_at(chunk, x - 1, y).mat_id == mat_id_sand && random_val(0, sand_chance) == 0) ||
+                                       (get_particle_at(chunk, x - 1, y).mat_id == mat_id_salt && random_val(0, salt_chance) == 0)
 
-                        )) {
-        write_data(compute_idx(x - 1, y), *p);
-        write_data(read_idx, particle_empty());
-    } else if (in_bounds(x + 1, y) &&
-               ((get_particle_at(x + 1, y).id == mat_id_wood && random_val(0, wood_chance) == 0) || (get_particle_at(x + 1, y).id == mat_id_stone && random_val(0, stone_chance) == 0) ||
-                (get_particle_at(x + 1, y).id == mat_id_sand && random_val(0, sand_chance) == 0) || (get_particle_at(x + 1, y).id == mat_id_salt && random_val(0, sand_chance) == 0)
+                                               )) {
+        chunk_write_data(chunk, compute_idx(x - 1, y), *p);
+        chunk_write_data(chunk, read_idx, particle_empty());
+    } else if (in_bounds(x + 1, y) && ((get_particle_at(chunk, x + 1, y).mat_id == mat_id_wood && random_val(0, wood_chance) == 0) ||
+                                       (get_particle_at(chunk, x + 1, y).mat_id == mat_id_stone && random_val(0, stone_chance) == 0) ||
+                                       (get_particle_at(chunk, x + 1, y).mat_id == mat_id_sand && random_val(0, sand_chance) == 0) ||
+                                       (get_particle_at(chunk, x + 1, y).mat_id == mat_id_salt && random_val(0, sand_chance) == 0)
 
-                        )) {
-        write_data(compute_idx(x + 1, y), *p);
-        write_data(read_idx, particle_empty());
-    } else if (in_bounds(x + 1, y - 1) &&
-               ((get_particle_at(x + 1, y - 1).id == mat_id_wood && random_val(0, wood_chance) == 0) || (get_particle_at(x + 1, y - 1).id == mat_id_stone && random_val(0, stone_chance) == 0) ||
-                (get_particle_at(x + 1, y - 1).id == mat_id_sand && random_val(0, sand_chance) == 0) || (get_particle_at(x + 1, y - 1).id == mat_id_salt && random_val(0, salt_chance) == 0)
+                                               )) {
+        chunk_write_data(chunk, compute_idx(x + 1, y), *p);
+        chunk_write_data(chunk, read_idx, particle_empty());
+    } else if (in_bounds(x + 1, y - 1) && ((get_particle_at(chunk, x + 1, y - 1).mat_id == mat_id_wood && random_val(0, wood_chance) == 0) ||
+                                           (get_particle_at(chunk, x + 1, y - 1).mat_id == mat_id_stone && random_val(0, stone_chance) == 0) ||
+                                           (get_particle_at(chunk, x + 1, y - 1).mat_id == mat_id_sand && random_val(0, sand_chance) == 0) ||
+                                           (get_particle_at(chunk, x + 1, y - 1).mat_id == mat_id_salt && random_val(0, salt_chance) == 0)
 
-                        )) {
-        write_data(compute_idx(x + 1, y - 1), *p);
-        write_data(read_idx, particle_empty());
-    } else if (in_bounds(x - 1, y - 1) &&
-               ((get_particle_at(x - 1, y - 1).id == mat_id_wood && random_val(0, wood_chance) == 0) || (get_particle_at(x - 1, y - 1).id == mat_id_stone && random_val(0, stone_chance) == 0) ||
-                (get_particle_at(x - 1, y - 1).id == mat_id_sand && random_val(0, sand_chance) == 0) || (get_particle_at(x - 1, y - 1).id == mat_id_salt && random_val(0, salt_chance) == 0)
+                                                   )) {
+        chunk_write_data(chunk, compute_idx(x + 1, y - 1), *p);
+        chunk_write_data(chunk, read_idx, particle_empty());
+    } else if (in_bounds(x - 1, y - 1) && ((get_particle_at(chunk, x - 1, y - 1).mat_id == mat_id_wood && random_val(0, wood_chance) == 0) ||
+                                           (get_particle_at(chunk, x - 1, y - 1).mat_id == mat_id_stone && random_val(0, stone_chance) == 0) ||
+                                           (get_particle_at(chunk, x - 1, y - 1).mat_id == mat_id_sand && random_val(0, sand_chance) == 0) ||
+                                           (get_particle_at(chunk, x - 1, y - 1).mat_id == mat_id_salt && random_val(0, salt_chance) == 0)
 
-                        )) {
-        write_data(compute_idx(x - 1, y - 1), *p);
-        write_data(read_idx, particle_empty());
+                                                   )) {
+        chunk_write_data(chunk, compute_idx(x - 1, y - 1), *p);
+        chunk_write_data(chunk, read_idx, particle_empty());
     }
 
     s32 ran = random_val(0, 1);
@@ -2507,63 +2698,63 @@ void update_acid(u32 x, u32 y) {
 
     // If touching wood or stone, destroy it
 
-    if (in_bounds(x + vx, y + vy) && (is_empty(x + vx, y + vy))) {
-        write_data(v_idx, *p);
-        write_data(read_idx, particle_empty());
-    } else if (is_empty(x, y + u)) {
-        write_data(b_idx, *p);
-        write_data(read_idx, particle_empty());
-    } else if (is_empty(x + r, y + u)) {
-        write_data(br_idx, *p);
-        write_data(read_idx, particle_empty());
-    } else if (is_empty(x + l, y + u)) {
-        write_data(bl_idx, *p);
-        write_data(read_idx, particle_empty());
+    if (in_bounds(x + vx, y + vy) && (is_empty(chunk, x + vx, y + vy))) {
+        chunk_write_data(chunk, v_idx, *p);
+        chunk_write_data(chunk, read_idx, particle_empty());
+    } else if (is_empty(chunk, x, y + u)) {
+        chunk_write_data(chunk, b_idx, *p);
+        chunk_write_data(chunk, read_idx, particle_empty());
+    } else if (is_empty(chunk, x + r, y + u)) {
+        chunk_write_data(chunk, br_idx, *p);
+        chunk_write_data(chunk, read_idx, particle_empty());
+    } else if (is_empty(chunk, x + l, y + u)) {
+        chunk_write_data(chunk, bl_idx, *p);
+        chunk_write_data(chunk, read_idx, particle_empty());
     }
     // Simple falling, changing the velocity here ruins everything. I need to redo this entire simulation.
-    else if (in_bounds(x, y + u) && ((is_empty(x, y + u)))) {
+    else if (in_bounds(x, y + u) && ((is_empty(chunk, x, y + u)))) {
         p->velocity.y += (world_gravity * dt);
-        particle_t tmp_b = get_particle_at(x, y + u);
-        write_data(b_idx, *p);
-        write_data(read_idx, tmp_b);
-    } else if (in_bounds(x + l, y + u) && ((is_empty(x + l, y + u)))) {
-        p->velocity.x = is_in_liquid(x, y, &lx, &ly) ? 0.f : random_val(0, 1) == 0 ? -1.f : 1.f;
+        particle_t tmp_b = get_particle_at(chunk, x, y + u);
+        chunk_write_data(chunk, b_idx, *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
+    } else if (in_bounds(x + l, y + u) && ((is_empty(chunk, x + l, y + u)))) {
+        p->velocity.x = is_in_liquid(chunk, x, y, &lx, &ly) ? 0.f : random_val(0, 1) == 0 ? -1.f : 1.f;
         p->velocity.y += (world_gravity * dt);
-        particle_t tmp_b = get_particle_at(x + l, y + u);
-        write_data(bl_idx, *p);
-        write_data(read_idx, tmp_b);
-    } else if (in_bounds(x + r, y + u) && ((is_empty(x + r, y + u)))) {
-        p->velocity.x = is_in_liquid(x, y, &lx, &ly) ? 0.f : random_val(0, 1) == 0 ? -1.f : 1.f;
+        particle_t tmp_b = get_particle_at(chunk, x + l, y + u);
+        chunk_write_data(chunk, bl_idx, *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
+    } else if (in_bounds(x + r, y + u) && ((is_empty(chunk, x + r, y + u)))) {
+        p->velocity.x = is_in_liquid(chunk, x, y, &lx, &ly) ? 0.f : random_val(0, 1) == 0 ? -1.f : 1.f;
         p->velocity.y += (world_gravity * dt);
-        particle_t tmp_b = get_particle_at(x + r, y + u);
-        write_data(br_idx, *p);
-        write_data(read_idx, tmp_b);
-    } else if (is_in_liquid(x, y, &lx, &ly) && random_val(0, 10) == 0) {
-        particle_t tmp_b = get_particle_at(lx, ly);
-        write_data(compute_idx(lx, ly), *p);
-        write_data(read_idx, tmp_b);
+        particle_t tmp_b = get_particle_at(chunk, x + r, y + u);
+        chunk_write_data(chunk, br_idx, *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
+    } else if (is_in_liquid(chunk, x, y, &lx, &ly) && random_val(0, 10) == 0) {
+        particle_t tmp_b = get_particle_at(chunk, lx, ly);
+        chunk_write_data(chunk, compute_idx(lx, ly), *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
     } else {
         particle_t tmp = *p;
         bool found = false;
 
         // Don't try to spread if something is directly above you?
-        if (completely_surrounded(x, y)) {
-            write_data(read_idx, tmp);
+        if (completely_surrounded(chunk, x, y)) {
+            chunk_write_data(chunk, read_idx, tmp);
             return;
         } else {
             for (u32 i = 0; i < fall_rate; ++i) {
                 for (s32 j = spread_rate; j > 0; --j) {
-                    if (in_bounds(x - j, y + i) && (is_empty(x - j, y + i) || get_particle_at(x - j, y + i).id == mat_id_oil)) {
-                        particle_t tmp = get_particle_at(x - j, y + i);
-                        write_data(compute_idx(x - j, y + i), *p);
-                        write_data(read_idx, tmp);
+                    if (in_bounds(x - j, y + i) && (is_empty(chunk, x - j, y + i) || get_particle_at(chunk, x - j, y + i).mat_id == mat_id_oil)) {
+                        particle_t tmp = get_particle_at(chunk, x - j, y + i);
+                        chunk_write_data(chunk, compute_idx(x - j, y + i), *p);
+                        chunk_write_data(chunk, read_idx, tmp);
                         found = true;
                         break;
                     }
-                    if (in_bounds(x + j, y + i) && (is_empty(x + j, y + i) || get_particle_at(x + j, y + i).id == mat_id_oil)) {
-                        particle_t tmp = get_particle_at(x + j, y + i);
-                        write_data(compute_idx(x + j, y + i), *p);
-                        write_data(read_idx, tmp);
+                    if (in_bounds(x + j, y + i) && (is_empty(chunk, x + j, y + i) || get_particle_at(chunk, x + j, y + i).mat_id == mat_id_oil)) {
+                        particle_t tmp = get_particle_at(chunk, x + j, y + i);
+                        chunk_write_data(chunk, compute_idx(x + j, y + i), *p);
+                        chunk_write_data(chunk, read_idx, tmp);
                         found = true;
                         break;
                     }
@@ -2571,17 +2762,17 @@ void update_acid(u32 x, u32 y) {
             }
 
             if (!found) {
-                write_data(read_idx, tmp);
+                chunk_write_data(chunk, read_idx, tmp);
             }
         }
     }
 }
 
-void update_water(u32 x, u32 y) {
+void update_water(game_chunk_t* chunk, u32 x, u32 y) {
     f32 dt = neko_platform_delta_time();
 
     u32 read_idx = compute_idx(x, y);
-    particle_t* p = &g_world_particle_data[read_idx];
+    particle_t* p = &chunk->world_particle_data[read_idx];
     u32 write_idx = read_idx;
     u32 fall_rate = 2;
     s32 spread_rate = 5;
@@ -2591,8 +2782,8 @@ void update_water(u32 x, u32 y) {
     p->has_been_updated_this_frame = true;
 
     // Just check if you can move directly beneath you. If not, then reset your velocity. God, this is going to blow.
-    // if (in_bounds(x, y + 1) && !is_empty(x, y + 1) && get_particle_at(x, y + 1).id != mat_id_water) {
-    if (in_bounds(x, y + 1) && !is_empty(x, y + 1)) {
+    // if (in_bounds(x, y + 1) && !is_empty(chunk,x, y + 1) && get_particle_at(chunk,x, y + 1).mat_id != mat_id_water) {
+    if (in_bounds(x, y + 1) && !is_empty(chunk, x, y + 1)) {
         p->velocity.y /= 2.f;
     }
 
@@ -2617,63 +2808,63 @@ void update_water(u32 x, u32 y) {
     s32 vx = (s32)p->velocity.x, vy = (s32)p->velocity.y;
     s32 lx, ly;
 
-    if (in_bounds(x + vx, y + vy) && (is_empty(x + vx, y + vy))) {
-        write_data(v_idx, *p);
-        write_data(read_idx, particle_empty());
-    } else if (is_empty(x, y + u)) {
-        write_data(b_idx, *p);
-        write_data(read_idx, particle_empty());
-    } else if (is_empty(x + r, y + u)) {
-        write_data(br_idx, *p);
-        write_data(read_idx, particle_empty());
-    } else if (is_empty(x + l, y + u)) {
-        write_data(bl_idx, *p);
-        write_data(read_idx, particle_empty());
+    if (in_bounds(x + vx, y + vy) && (is_empty(chunk, x + vx, y + vy))) {
+        chunk_write_data(chunk, v_idx, *p);
+        chunk_write_data(chunk, read_idx, particle_empty());
+    } else if (is_empty(chunk, x, y + u)) {
+        chunk_write_data(chunk, b_idx, *p);
+        chunk_write_data(chunk, read_idx, particle_empty());
+    } else if (is_empty(chunk, x + r, y + u)) {
+        chunk_write_data(chunk, br_idx, *p);
+        chunk_write_data(chunk, read_idx, particle_empty());
+    } else if (is_empty(chunk, x + l, y + u)) {
+        chunk_write_data(chunk, bl_idx, *p);
+        chunk_write_data(chunk, read_idx, particle_empty());
     }
     // Simple falling, changing the velocity here ruins everything. I need to redo this entire simulation.
-    else if (in_bounds(x, y + u) && ((is_empty(x, y + u) || (g_world_particle_data[b_idx].id == mat_id_oil)))) {
+    else if (in_bounds(x, y + u) && ((is_empty(chunk, x, y + u) || (chunk->world_particle_data[b_idx].mat_id == mat_id_oil)))) {
         p->velocity.y += (world_gravity * dt);
-        particle_t tmp_b = get_particle_at(x, y + u);
-        write_data(b_idx, *p);
-        write_data(read_idx, tmp_b);
-    } else if (in_bounds(x + l, y + u) && ((is_empty(x + l, y + u) || g_world_particle_data[bl_idx].id == mat_id_oil))) {
-        p->velocity.x = is_in_liquid(x, y, &lx, &ly) ? 0.f : random_val(0, 1) == 0 ? -1.f : 1.f;
+        particle_t tmp_b = get_particle_at(chunk, x, y + u);
+        chunk_write_data(chunk, b_idx, *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
+    } else if (in_bounds(x + l, y + u) && ((is_empty(chunk, x + l, y + u) || chunk->world_particle_data[bl_idx].mat_id == mat_id_oil))) {
+        p->velocity.x = is_in_liquid(chunk, x, y, &lx, &ly) ? 0.f : random_val(0, 1) == 0 ? -1.f : 1.f;
         p->velocity.y += (world_gravity * dt);
-        particle_t tmp_b = get_particle_at(x + l, y + u);
-        write_data(bl_idx, *p);
-        write_data(read_idx, tmp_b);
-    } else if (in_bounds(x + r, y + u) && ((is_empty(x + r, y + u) || g_world_particle_data[br_idx].id == mat_id_oil))) {
-        p->velocity.x = is_in_liquid(x, y, &lx, &ly) ? 0.f : random_val(0, 1) == 0 ? -1.f : 1.f;
+        particle_t tmp_b = get_particle_at(chunk, x + l, y + u);
+        chunk_write_data(chunk, bl_idx, *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
+    } else if (in_bounds(x + r, y + u) && ((is_empty(chunk, x + r, y + u) || chunk->world_particle_data[br_idx].mat_id == mat_id_oil))) {
+        p->velocity.x = is_in_liquid(chunk, x, y, &lx, &ly) ? 0.f : random_val(0, 1) == 0 ? -1.f : 1.f;
         p->velocity.y += (world_gravity * dt);
-        particle_t tmp_b = get_particle_at(x + r, y + u);
-        write_data(br_idx, *p);
-        write_data(read_idx, tmp_b);
-    } else if (is_in_liquid(x, y, &lx, &ly) && random_val(0, 10) == 0) {
-        particle_t tmp_b = get_particle_at(lx, ly);
-        write_data(compute_idx(lx, ly), *p);
-        write_data(read_idx, tmp_b);
+        particle_t tmp_b = get_particle_at(chunk, x + r, y + u);
+        chunk_write_data(chunk, br_idx, *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
+    } else if (is_in_liquid(chunk, x, y, &lx, &ly) && random_val(0, 10) == 0) {
+        particle_t tmp_b = get_particle_at(chunk, lx, ly);
+        chunk_write_data(chunk, compute_idx(lx, ly), *p);
+        chunk_write_data(chunk, read_idx, tmp_b);
     } else {
         particle_t tmp = *p;
         bool found = false;
 
         // Don't try to spread if something is directly above you?
-        if (completely_surrounded(x, y)) {
-            write_data(read_idx, tmp);
+        if (completely_surrounded(chunk, x, y)) {
+            chunk_write_data(chunk, read_idx, tmp);
             return;
         } else {
             for (u32 i = 0; i < fall_rate; ++i) {
                 for (s32 j = spread_rate; j > 0; --j) {
-                    if (in_bounds(x - j, y + i) && (is_empty(x - j, y + i) || get_particle_at(x - j, y + i).id == mat_id_oil)) {
-                        particle_t tmp = get_particle_at(x - j, y + i);
-                        write_data(compute_idx(x - j, y + i), *p);
-                        write_data(read_idx, tmp);
+                    if (in_bounds(x - j, y + i) && (is_empty(chunk, x - j, y + i) || get_particle_at(chunk, x - j, y + i).mat_id == mat_id_oil)) {
+                        particle_t tmp = get_particle_at(chunk, x - j, y + i);
+                        chunk_write_data(chunk, compute_idx(x - j, y + i), *p);
+                        chunk_write_data(chunk, read_idx, tmp);
                         found = true;
                         break;
                     }
-                    if (in_bounds(x + j, y + i) && (is_empty(x + j, y + i) || get_particle_at(x + j, y + i).id == mat_id_oil)) {
-                        particle_t tmp = get_particle_at(x + j, y + i);
-                        write_data(compute_idx(x + j, y + i), *p);
-                        write_data(read_idx, tmp);
+                    if (in_bounds(x + j, y + i) && (is_empty(chunk, x + j, y + i) || get_particle_at(chunk, x + j, y + i).mat_id == mat_id_oil)) {
+                        particle_t tmp = get_particle_at(chunk, x + j, y + i);
+                        chunk_write_data(chunk, compute_idx(x + j, y + i), *p);
+                        chunk_write_data(chunk, read_idx, tmp);
                         found = true;
                         break;
                     }
@@ -2681,27 +2872,27 @@ void update_water(u32 x, u32 y) {
             }
 
             if (!found) {
-                write_data(read_idx, tmp);
+                chunk_write_data(chunk, read_idx, tmp);
             }
         }
     }
 }
 
-void update_default(u32 w, u32 h) {
+void update_default(game_chunk_t* chunk, u32 w, u32 h) {
     u32 read_idx = compute_idx(w, h);
-    write_data(read_idx, get_particle_at(w, h));
+    chunk_write_data(chunk, read_idx, get_particle_at(chunk, w, h));
 }
 
 particle_t particle_empty() {
     particle_t p = {0};
-    p.id = mat_id_empty;
+    p.mat_id = mat_id_empty;
     p.color = mat_col_empty;
     return p;
 }
 
 particle_t particle_sand() {
     particle_t p = {0};
-    p.id = mat_id_sand;
+    p.mat_id = mat_id_sand;
     // Random sand color
     f32 r = (f32)(random_val(0, 10)) / 10.f;
     p.color.r = (u8)(neko_interp_linear(0.8f, 1.f, r) * 255.f);
@@ -2713,7 +2904,7 @@ particle_t particle_sand() {
 
 particle_t particle_water() {
     particle_t p = {0};
-    p.id = mat_id_water;
+    p.mat_id = mat_id_water;
     f32 r = (f32)(random_val(0, 1)) / 2.f;
     p.color.r = (u8)(neko_interp_linear(0.1f, 0.15f, r) * 255.f);
     p.color.g = (u8)(neko_interp_linear(0.3f, 0.35f, r) * 255.f);
@@ -2724,7 +2915,7 @@ particle_t particle_water() {
 
 particle_t particle_salt() {
     particle_t p = {0};
-    p.id = mat_id_salt;
+    p.mat_id = mat_id_salt;
     f32 r = (f32)(random_val(0, 1)) / 2.f;
     p.color.r = (u8)(neko_interp_linear(0.9f, 1.0f, r) * 255.f);
     p.color.g = (u8)(neko_interp_linear(0.8f, 0.85f, r) * 255.f);
@@ -2735,7 +2926,7 @@ particle_t particle_salt() {
 
 particle_t particle_wood() {
     particle_t p = {0};
-    p.id = mat_id_wood;
+    p.mat_id = mat_id_wood;
     f32 r = (f32)(random_val(0, 1)) / 2.f;
     p.color.r = (u8)(neko_interp_linear(0.23f, 0.25f, r) * 255.f);
     p.color.g = (u8)(neko_interp_linear(0.15f, 0.18f, r) * 255.f);
@@ -2746,7 +2937,7 @@ particle_t particle_wood() {
 
 particle_t particle_gunpowder() {
     particle_t p = {0};
-    p.id = mat_id_gunpowder;
+    p.mat_id = mat_id_gunpowder;
     f32 r = (f32)(random_val(0, 1)) / 2.f;
     p.color.r = (u8)(neko_interp_linear(0.15f, 0.2f, r) * 255.f);
     p.color.g = (u8)(neko_interp_linear(0.15f, 0.2f, r) * 255.f);
@@ -2757,7 +2948,7 @@ particle_t particle_gunpowder() {
 
 particle_t particle_oil() {
     particle_t p = {0};
-    p.id = mat_id_oil;
+    p.mat_id = mat_id_oil;
     f32 r = (f32)(random_val(0, 1)) / 2.f;
     p.color.r = (u8)(neko_interp_linear(0.12f, 0.15f, r) * 255.f);
     p.color.g = (u8)(neko_interp_linear(0.10f, 0.12f, r) * 255.f);
@@ -2768,42 +2959,42 @@ particle_t particle_oil() {
 
 particle_t particle_fire() {
     particle_t p = {0};
-    p.id = mat_id_fire;
+    p.mat_id = mat_id_fire;
     p.color = mat_col_fire;
     return p;
 }
 
 particle_t particle_lava() {
     particle_t p = {0};
-    p.id = mat_id_lava;
+    p.mat_id = mat_id_lava;
     p.color = mat_col_fire;
     return p;
 }
 
 particle_t particle_ember() {
     particle_t p = {0};
-    p.id = mat_id_ember;
+    p.mat_id = mat_id_ember;
     p.color = mat_col_ember;
     return p;
 }
 
 particle_t particle_smoke() {
     particle_t p = {0};
-    p.id = mat_id_smoke;
+    p.mat_id = mat_id_smoke;
     p.color = mat_col_smoke;
     return p;
 }
 
 particle_t particle_steam() {
     particle_t p = {0};
-    p.id = mat_id_steam;
+    p.mat_id = mat_id_steam;
     p.color = mat_col_steam;
     return p;
 }
 
 particle_t particle_stone() {
     particle_t p = {0};
-    p.id = mat_id_stone;
+    p.mat_id = mat_id_stone;
     f32 r = (f32)(random_val(0, 1)) / 2.f;
     p.color.r = (u8)(neko_interp_linear(0.5f, 0.65f, r) * 255.f);
     p.color.g = (u8)(neko_interp_linear(0.5f, 0.65f, r) * 255.f);
@@ -2814,7 +3005,7 @@ particle_t particle_stone() {
 
 particle_t particle_acid() {
     particle_t p = {0};
-    p.id = mat_id_acid;
+    p.mat_id = mat_id_acid;
     f32 r = (f32)(random_val(0, 1)) / 2.f;
     p.color.r = (u8)(neko_interp_linear(0.05f, 0.06f, r) * 255.f);
     p.color.g = (u8)(neko_interp_linear(0.8f, 0.85f, r) * 255.f);
@@ -2826,6 +3017,41 @@ particle_t particle_acid() {
 ///////////////////////////////////////////////
 //
 //  位图边缘检测算法
+
+#if 0
+
+static neko_vec2 last_point;
+
+void render_test() {
+
+    u8* alpha = neko_tex_rgba_to_alpha((u8*)g_texture_buffer, CHUNK_W, CHUNK_H);
+    u8* thresholded = neko_tex_alpha_to_thresholded(alpha, CHUNK_W, CHUNK_H, 90);
+    u8* outlined = neko_tex_thresholded_to_outlined(thresholded, CHUNK_W, CHUNK_H);
+    neko_safe_free(alpha);
+    neko_safe_free(thresholded);
+
+    neko_tex_point* outline = neko_tex_extract_outline_path(outlined, CHUNK_W, CHUNK_H, &l, 0);
+    while (l) {
+        s32 l0 = l;
+        neko_tex_distance_based_path_simplification(outline, &l, 0.5f);
+        // printf("simplified outline: %d -> %d\n", l0, l);
+
+        l_check = l;
+
+        for (s32 i = 0; i < l; i++) {
+            // gfx->immediate.draw_line_ext(cb, neko_vec2_mul(last_point, {4.f, 4.f}), neko_vec2_mul(neko_vec2{(f32)outline[i].x, (f32)outline[i].y}, {4.f, 4.f}), 2.f, neko_color_white);
+
+            last_point = {(f32)outline[i].x, (f32)outline[i].y};
+        }
+
+        outline = neko_tex_extract_outline_path(outlined, CHUNK_W, CHUNK_H, &l, outline);
+    };
+
+    neko_safe_free(outline);
+    neko_safe_free(outlined);
+}
+
+#endif
 
 typedef s32 neko_tex_bool;
 

@@ -55,7 +55,8 @@ typedef struct neko_immediate_cache_t {
 
 typedef struct neko_immediate_draw_static_data_t {
     neko_handle(neko_graphics_texture_t) tex_default;
-    neko_asset_font_t font_default;
+    neko_asset_font_t font_default;   // Idraw font
+    neko_font_index font_fc_default;  // Fontcache
     neko_hash_table(neko_idraw_pipeline_state_attr_t, neko_handle(neko_graphics_pipeline_t)) pipeline_table;
     neko_handle(neko_graphics_uniform_t) uniform;
     neko_handle(neko_graphics_uniform_t) sampler;
