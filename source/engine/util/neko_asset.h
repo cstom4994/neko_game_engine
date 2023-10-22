@@ -7,19 +7,19 @@
 // Asset handle
 typedef struct neko_asset_s {
     uint64_t type_id;
-    uint32_t asset_id;
-    uint32_t importer_id;  // 'Unique' id of importer, used for type safety
+    u32 asset_id;
+    u32 importer_id;  // 'Unique' id of importer, used for type safety
 } neko_asset_t;
 
-NEKO_API_DECL neko_asset_t __neko_asset_handle_create_impl(uint64_t type_id, uint32_t asset_id, uint32_t importer_id);
+NEKO_API_DECL neko_asset_t __neko_asset_handle_create_impl(uint64_t type_id, u32 asset_id, u32 importer_id);
 
 #define neko_asset_handle_create(T, ID, IMPID) __neko_asset_handle_create_impl(neko_hash_str64(neko_to_str(T)), ID, IMPID)
 
-typedef void (*neko_asset_load_func)(const char*, void*, ...);
+typedef void (*neko_asset_load_func)(const_str, void*, ...);
 typedef neko_asset_t (*neko_asset_default_func)(void*);
 
 typedef struct neko_asset_importer_desc_t {
-    void (*load_from_file)(const char* path, void* out, ...);
+    void (*load_from_file)(const_str path, void* out, ...);
     neko_asset_t (*default_asset)(void* out);
 } neko_asset_importer_desc_t;
 
@@ -28,14 +28,14 @@ typedef struct neko_asset_importer_t {
     void* slot_array_data_ptr;
     void* slot_array_indices_ptr;
     void* tmp_ptr;
-    uint32_t tmpid;
+    u32 tmpid;
     size_t data_size;
     neko_asset_importer_desc_t desc;
-    uint32_t importer_id;
+    u32 importer_id;
     neko_asset_t default_asset;
 } neko_asset_importer_t;
 
-NEKO_API_DECL void neko_asset_default_load_from_file(const char* path, void* out);
+NEKO_API_DECL void neko_asset_default_load_from_file(const_str path, void* out);
 NEKO_API_DECL neko_asset_t neko_asset_default_asset();
 NEKO_API_DECL void neko_asset_importer_set_desc(neko_asset_importer_t* imp, neko_asset_importer_desc_t* desc);
 
@@ -56,7 +56,7 @@ NEKO_API_DECL void neko_asset_importer_set_desc(neko_asset_importer_t* imp, neko
         size_t sz = 2 * sizeof(void*) + sizeof(T);                                             \
         neko_slot_array(T) sa = NULL;                                                          \
         neko_slot_array_init((void**)&sa, sizeof(*sa));                                        \
-        neko_dyn_array_init((void**)&sa->indices, sizeof(uint32_t));                           \
+        neko_dyn_array_init((void**)&sa->indices, sizeof(u32));                                \
         neko_dyn_array_init((void**)&sa->data, sizeof(T));                                     \
         ai.slot_array = (void*)sa;                                                             \
         ai.tmp_ptr = (void*)&sa->tmp;                                                          \
@@ -84,7 +84,7 @@ NEKO_API_DECL void neko_asset_importer_set_desc(neko_asset_importer_t* imp, neko
 typedef struct neko_asset_manager_s {
     neko_hash_table(uint64_t, neko_asset_importer_t) importers;  // Maps hashed types to importer
     neko_asset_importer_t* tmpi;                                 // Temporary importer for caching
-    uint32_t free_importer_id;
+    u32 free_importer_id;
 } neko_asset_manager_t;
 
 NEKO_API_DECL neko_asset_manager_t neko_asset_manager_new();
@@ -105,31 +105,31 @@ typedef struct neko_asset_texture_t {
     neko_graphics_texture_desc_t desc;
 } neko_asset_texture_t;
 
-NEKO_API_DECL bool neko_asset_texture_load_from_file(const char* path, void* out, neko_graphics_texture_desc_t* desc, bool32_t flip_on_load, bool32_t keep_data);
+NEKO_API_DECL bool neko_asset_texture_load_from_file(const_str path, void* out, neko_graphics_texture_desc_t* desc, bool32_t flip_on_load, bool32_t keep_data);
 NEKO_API_DECL bool neko_asset_texture_load_from_memory(const void* memory, size_t sz, void* out, neko_graphics_texture_desc_t* desc, bool32_t flip_on_load, bool32_t keep_data);
 
 // Font
 typedef struct neko_baked_char_t {
-    uint32_t codepoint;
+    u32 codepoint;
     uint16_t x0, y0, x1, y1;
     float xoff, yoff, advance;
-    uint32_t width, height;
+    u32 width, height;
 } neko_baked_char_t;
 
-typedef struct neko_asset_font_t {
+typedef struct neko_asset_ascii_font_t {
     void* font_info;
     neko_baked_char_t glyphs[96];
     neko_asset_texture_t texture;
     float ascent;
     float descent;
     float line_gap;
-} neko_asset_font_t;
+} neko_asset_ascii_font_t;
 
-NEKO_API_DECL bool neko_asset_font_load_from_file(const char* path, void* out, uint32_t point_size);
-NEKO_API_DECL bool neko_asset_font_load_from_memory(const void* memory, size_t sz, void* out, uint32_t point_size);
-NEKO_API_DECL neko_vec2 neko_asset_font_text_dimensions(const neko_asset_font_t* font, const char* text, int32_t len);
-NEKO_API_DECL neko_vec2 neko_asset_font_text_dimensions_ex(const neko_asset_font_t* fp, const char* text, int32_t len, bool32_t include_past_baseline);
-NEKO_API_DECL float neko_asset_font_max_height(const neko_asset_font_t* font);
+NEKO_API_DECL bool neko_asset_ascii_font_load_from_file(const_str path, void* out, u32 point_size);
+NEKO_API_DECL bool neko_asset_ascii_font_load_from_memory(const void* memory, size_t sz, void* out, u32 point_size);
+NEKO_API_DECL neko_vec2 neko_asset_ascii_font_text_dimensions(const neko_asset_ascii_font_t* font, const_str text, s32 len);
+NEKO_API_DECL neko_vec2 neko_asset_ascii_font_text_dimensions_ex(const neko_asset_ascii_font_t* fp, const_str text, s32 len, bool32_t include_past_baseline);
+NEKO_API_DECL float neko_asset_ascii_font_max_height(const neko_asset_ascii_font_t* font);
 
 // Mesh
 neko_enum_decl(neko_asset_mesh_attribute_type, NEKO_ASSET_MESH_ATTRIBUTE_TYPE_POSITION, NEKO_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL, NEKO_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT,
@@ -138,7 +138,7 @@ neko_enum_decl(neko_asset_mesh_attribute_type, NEKO_ASSET_MESH_ATTRIBUTE_TYPE_PO
 
 typedef struct neko_asset_mesh_layout_t {
     neko_asset_mesh_attribute_type type;  // Type of attribute
-    uint32_t idx;                         // Optional index (for joint/weight/texcoord/color)
+    u32 idx;                              // Optional index (for joint/weight/texcoord/color)
 } neko_asset_mesh_layout_t;
 
 typedef struct neko_asset_mesh_decl_t {
@@ -150,7 +150,7 @@ typedef struct neko_asset_mesh_decl_t {
 typedef struct neko_asset_mesh_primitive_t {
     neko_handle(neko_graphics_vertex_buffer_t) vbo;
     neko_handle(neko_graphics_index_buffer_t) ibo;
-    uint32_t count;
+    u32 count;
 } neko_asset_mesh_primitive_t;
 
 typedef struct neko_asset_mesh_t {
@@ -159,16 +159,16 @@ typedef struct neko_asset_mesh_t {
 
 // Structured/packed raw mesh data
 typedef struct neko_asset_mesh_raw_data_t {
-    uint32_t prim_count;
+    u32 prim_count;
     size_t* vertex_sizes;
     size_t* index_sizes;
     void** vertices;
     void** indices;
 } neko_asset_mesh_raw_data_t;
 
-NEKO_API_DECL bool neko_asset_mesh_load_from_file(const char* path, void* out, neko_asset_mesh_decl_t* decl, void* data_out, size_t data_size);
-NEKO_API_DECL bool neko_util_load_gltf_data_from_file(const char* path, neko_asset_mesh_decl_t* decl, neko_asset_mesh_raw_data_t** out, uint32_t* mesh_count);
-// NEKO_API_DECL bool neko_util_load_gltf_data_from_memory(const void* memory, size_t sz, neko_asset_mesh_decl_t* decl, neko_asset_mesh_raw_data_t** out, uint32_t* mesh_count);
+NEKO_API_DECL bool neko_asset_mesh_load_from_file(const_str path, void* out, neko_asset_mesh_decl_t* decl, void* data_out, size_t data_size);
+NEKO_API_DECL bool neko_util_load_gltf_data_from_file(const_str path, neko_asset_mesh_decl_t* decl, neko_asset_mesh_raw_data_t** out, u32* mesh_count);
+// NEKO_API_DECL bool neko_util_load_gltf_data_from_memory(const void* memory, size_t sz, neko_asset_mesh_decl_t* decl, neko_asset_mesh_raw_data_t** out, u32* mesh_count);
 
 #pragma region packer
 
@@ -199,13 +199,13 @@ typedef enum neko_packresult_t {
 typedef u8 neko_pack_result;
 
 typedef struct pack_iteminfo {
-    u32 zipSize;
-    u32 dataSize;
-    u64 fileOffset;
-    u8 pathSize;
+    u32 zip_size;
+    u32 data_size;
+    u64 file_offset;
+    u8 path_size;
 } pack_iteminfo;
 
-neko_private(const char* const) pack_result_strings[PACK_RESULT_COUNT] = {
+neko_private(const_str const) pack_result_strings[PACK_RESULT_COUNT] = {
         "Success",
         "Failed to allocate",
         "Failed to create LZ4",
@@ -223,28 +223,28 @@ neko_private(const char* const) pack_result_strings[PACK_RESULT_COUNT] = {
         "Bad file endianness",
 };
 
-inline static const char* __neko_pack_result(neko_pack_result result) {
+inline static const_str __neko_pack_result(neko_pack_result result) {
     if (result >= PACK_RESULT_COUNT) return "Unknown PACK result";
     return pack_result_strings[result];
 }
 
 typedef struct neko_packreader_t neko_packreader_t;
 
-NEKO_API_DECL neko_pack_result neko_pack_read(const char* filePath, u32 dataBufferCapacity, bool isResourcesDirectory, neko_packreader_t** pack_reader);
+NEKO_API_DECL neko_pack_result neko_pack_read(const_str filePath, u32 dataBufferCapacity, bool isResourcesDirectory, neko_packreader_t** pack_reader);
 NEKO_API_DECL void neko_pack_destroy(neko_packreader_t* pack_reader);
 
 NEKO_API_DECL u64 neko_pack_item_count(neko_packreader_t* pack_reader);
-NEKO_API_DECL b8 neko_pack_item_index(neko_packreader_t* pack_reader, const char* path, u64* index);
+NEKO_API_DECL b8 neko_pack_item_index(neko_packreader_t* pack_reader, const_str path, u64* index);
 NEKO_API_DECL u32 neko_pack_item_size(neko_packreader_t* pack_reader, u64 index);
-NEKO_API_DECL const char* neko_pack_item_path(neko_packreader_t* pack_reader, u64 index);
+NEKO_API_DECL const_str neko_pack_item_path(neko_packreader_t* pack_reader, u64 index);
 NEKO_API_DECL neko_pack_result neko_pack_item_data_with_index(neko_packreader_t* pack_reader, u64 index, const u8** data, u32* size);
-NEKO_API_DECL neko_pack_result neko_pack_item_data(neko_packreader_t* pack_reader, const char* path, const u8** data, u32* size);
+NEKO_API_DECL neko_pack_result neko_pack_item_data(neko_packreader_t* pack_reader, const_str path, const u8** data, u32* size);
 NEKO_API_DECL void neko_pack_free_buffers(neko_packreader_t* pack_reader);
-NEKO_API_DECL neko_pack_result neko_unpack_files(const char* filePath, b8 printProgress);
-NEKO_API_DECL neko_pack_result neko_pack_files(const char* packPath, u64 fileCount, const char** filePaths, b8 printProgress);
+NEKO_API_DECL neko_pack_result neko_unpack_files(const_str filePath, b8 printProgress);
+NEKO_API_DECL neko_pack_result neko_pack_files(const_str packPath, u64 fileCount, const_str* filePaths, b8 printProgress);
 
 NEKO_API_DECL void neko_pack_version(u8* majorVersion, u8* minorVersion, u8* patchVersion);
-NEKO_API_DECL neko_pack_result neko_pack_info(const char* filePath, u8* majorVersion, u8* minorVersion, u8* patchVersion, b8* isLittleEndian, u64* itemCount);
+NEKO_API_DECL neko_pack_result neko_pack_info(const_str filePath, u8* majorVersion, u8* minorVersion, u8* patchVersion, b8* isLittleEndian, u64* itemCount);
 
 NEKO_API_DECL neko_inline bool neko_pack_check(neko_pack_result result) {
     if (result == SUCCESS_PACK_RESULT) return true;

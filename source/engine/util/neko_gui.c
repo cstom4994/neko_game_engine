@@ -1758,22 +1758,22 @@ NEKO_API_DECL neko_gui_container_t* neko_gui_get_container_ex(neko_gui_context_t
     return cnt;
 }
 
-static s32 neko_gui_text_width(neko_asset_font_t* font, const char* text, s32 len) {
-    neko_vec2 td = neko_asset_font_text_dimensions(font, text, len);
+static s32 neko_gui_text_width(neko_asset_ascii_font_t* font, const char* text, s32 len) {
+    neko_vec2 td = neko_asset_ascii_font_text_dimensions(font, text, len);
     return (s32)td.x;
 }
 
-static s32 neko_gui_text_height(neko_asset_font_t* font, const char* text, s32 len) {
-    return (s32)neko_asset_font_max_height(font);
-    neko_vec2 td = neko_asset_font_text_dimensions(font, text, len);
+static s32 neko_gui_text_height(neko_asset_ascii_font_t* font, const char* text, s32 len) {
+    return (s32)neko_asset_ascii_font_max_height(font);
+    neko_vec2 td = neko_asset_ascii_font_text_dimensions(font, text, len);
     return (s32)td.y;
 }
 
 // Grabs max height for a given font
-static s32 neko_gui_font_height(neko_asset_font_t* font) { return (s32)neko_asset_font_max_height(font); }
+static s32 neko_gui_font_height(neko_asset_ascii_font_t* font) { return (s32)neko_asset_ascii_font_max_height(font); }
 
-static neko_vec2 neko_gui_text_dimensions(neko_asset_font_t* font, const char* text, s32 len) {
-    neko_vec2 td = neko_asset_font_text_dimensions(font, text, len);
+static neko_vec2 neko_gui_text_dimensions(neko_asset_ascii_font_t* font, const char* text, s32 len) {
+    neko_vec2 td = neko_asset_ascii_font_text_dimensions(font, text, len);
     return td;
 }
 
@@ -2506,7 +2506,7 @@ typedef struct neko_gui_context_t
     neko_hash_table(neko_gui_id, neko_gui_animation_t) animations;
 
     // Font stash
-    neko_hash_table(u64, neko_asset_font_t*) font_stash;
+    neko_hash_table(u64, neko_asset_ascii_font_t*) font_stash;
 
     // Callbacks
     struct {
@@ -3491,7 +3491,7 @@ NEKO_API_DECL void neko_gui_render(neko_gui_context_t* ctx, neko_command_buffer_
                 const neko_vec2* tp = &cmd->text.pos;
                 const char* ts = cmd->text.str;
                 const neko_color_t* tc = &cmd->text.color;
-                const neko_asset_font_t* tf = cmd->text.font;
+                const neko_asset_ascii_font_t* tf = cmd->text.font;
                 neko_idraw_text(&ctx->gui_idraw, tp->x, tp->y, ts, tf, false, tc->r, tc->g, tc->b, tc->a);
             } break;
 
@@ -3962,7 +3962,7 @@ NEKO_API_DECL void neko_gui_draw_box(neko_gui_context_t* ctx, neko_gui_rect_t re
     neko_gui_draw_rect(ctx, neko_gui_rect(rect.x + rect.w - r, rect.y, r, rect.h), color);              // right
 }
 
-NEKO_API_DECL void neko_gui_draw_text(neko_gui_context_t* ctx, neko_asset_font_t* font, const char* str, s32 len, neko_vec2 pos, neko_color_t color, s32 shadow_x, s32 shadow_y,
+NEKO_API_DECL void neko_gui_draw_text(neko_gui_context_t* ctx, neko_asset_ascii_font_t* font, const char* str, s32 len, neko_vec2 pos, neko_color_t color, s32 shadow_x, s32 shadow_y,
                                       neko_color_t shadow_color) {
     // Set to default font
     if (!font) {
@@ -4471,7 +4471,7 @@ NEKO_API_DECL void neko_gui_draw_control_frame(neko_gui_context_t* ctx, neko_gui
 
 NEKO_API_DECL void neko_gui_draw_control_text(neko_gui_context_t* ctx, const char* str, neko_gui_rect_t rect, const neko_gui_style_t* style, u64 opt) {
     neko_vec2 pos = neko_v2(rect.x, rect.y);
-    neko_asset_font_t* font = style->font;
+    neko_asset_ascii_font_t* font = style->font;
     neko_vec2 td = neko_gui_text_dimensions(font, str, -1);
     s32 tw = (s32)td.x;
     s32 th = (s32)td.y;
@@ -4678,7 +4678,7 @@ NEKO_API_DECL s32 neko_gui_text_ex(neko_gui_context_t* ctx, const char* text, s3
     }
 
     neko_gui_style_t* save = neko_gui_push_style(ctx, &style);
-    neko_asset_font_t* font = ctx->style->font;
+    neko_asset_ascii_font_t* font = ctx->style->font;
     neko_color_t* color = &ctx->style->colors[NEKO_GUI_COLOR_CONTENT];
     s32 sx = ctx->style->shadow_x;
     s32 sy = ctx->style->shadow_y;
@@ -4756,25 +4756,17 @@ NEKO_API_DECL s32 neko_gui_text_ex(neko_gui_context_t* ctx, const char* text, s3
     return res;
 }
 
-NEKO_API_DECL s32 neko_gui_text_fc_ex(neko_gui_context_t* ctx, const char* text, neko_font_index fontindex) {
-
-    s32 width = -1;
-
-    s32 th = 20;
-
-    neko_gui_layout_column_begin(ctx);
-
-    neko_gui_layout_row(ctx, 1, &width, th);
-
-    neko_gui_layout_t* layout = neko_gui_get_layout(ctx);
-
-    if (fontindex == -1) fontindex = ctx->gui_idraw.data->font_fc_default;
-    neko_graphics_fc_text(text, fontindex, layout->body.x, layout->body.y + layout->body.h / 2);
-
-    neko_gui_layout_column_end(ctx);
-
-    return 0;
-}
+// NEKO_API_DECL s32 neko_gui_text_fc_ex(neko_gui_context_t* ctx, const char* text, neko_font_index fontindex) {
+//     s32 width = -1;
+//     s32 th = 20;
+//     neko_gui_layout_column_begin(ctx);
+//     neko_gui_layout_row(ctx, 1, &width, th);
+//     neko_gui_layout_t* layout = neko_gui_get_layout(ctx);
+//     if (fontindex == -1) fontindex = ctx->gui_idraw.data->font_fc_default;
+//     neko_graphics_fc_text(text, fontindex, layout->body.x, layout->body.y + layout->body.h / 2);
+//     neko_gui_layout_column_end(ctx);
+//     return 0;
+// }
 
 NEKO_API_DECL s32 neko_gui_label_ex(neko_gui_context_t* ctx, const char* label, const neko_gui_selector_desc_t* desc, u64 opt) {
     // Want to push animations here for styles
@@ -5089,7 +5081,7 @@ NEKO_API_DECL s32 neko_gui_textbox_raw(neko_gui_context_t* ctx, char* buf, s32 b
         s32 sx = sp->shadow_x;
         s32 sy = sp->shadow_y;
         neko_color_t* sc = &sp->colors[NEKO_GUI_COLOR_SHADOW];
-        neko_asset_font_t* font = sp->font;
+        neko_asset_ascii_font_t* font = sp->font;
         s32 textw = neko_gui_text_width(font, buf, -1);
         s32 texth = neko_gui_font_height(font);
         s32 ofx = (s32)(rect.w - sp->padding[NEKO_GUI_PADDING_RIGHT] - textw - 1);
@@ -5152,7 +5144,7 @@ NEKO_API_DECL s32 neko_gui_textbox_raw(neko_gui_context_t* ctx, char* buf, s32 b
     } else {
         neko_gui_style_t* sp = &style;
         neko_color_t* color = &sp->colors[NEKO_GUI_COLOR_CONTENT];
-        neko_asset_font_t* font = sp->font;
+        neko_asset_ascii_font_t* font = sp->font;
         s32 sx = sp->shadow_x;
         s32 sy = sp->shadow_y;
         neko_color_t* sc = &sp->colors[NEKO_GUI_COLOR_SHADOW];
@@ -7938,7 +7930,7 @@ bool _neko_gui_style_sheet_parse_attribute_font(neko_gui_context_t* ctx, neko_le
         for (neko_hash_table_iter it = neko_hash_table_iter_new(ctx->font_stash); neko_hash_table_iter_valid(ctx->font_stash, it); neko_hash_table_iter_advance(ctx->font_stash, it)) {
             u64 key = neko_hash_table_getk(ctx->font_stash, it);
             if (hash == key) {
-                neko_asset_font_t* font = neko_hash_table_iter_get(ctx->font_stash, it);
+                neko_asset_ascii_font_t* font = neko_hash_table_iter_get(ctx->font_stash, it);
                 SET_FONT(font);
                 found = true;
                 break;

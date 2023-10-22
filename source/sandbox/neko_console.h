@@ -16,10 +16,10 @@ typedef struct neko_console_s {
     char cb[10][256];  // "command" buffer
     int current_cb_idx;
 
-    float y;
-    float size;
-    float open_speed;
-    float close_speed;
+    f32 y;
+    f32 size;
+    f32 open_speed;
+    f32 close_speed;
 
     bool open;
     int last_open_state;
@@ -59,7 +59,7 @@ void neko_console(neko_console_t* console, neko_gui_context_t* ctx, neko_gui_rec
     else
         return;
 
-    const float sz = neko_min(console->y, 26);
+    const f32 sz = neko_min(console->y, 26);
     if (neko_gui_window_begin_ex(ctx, "neko_console_content", neko_gui_rect(screen.x, screen.y, screen.w, console->y - sz), NULL, NULL,
                                  NEKO_GUI_OPT_FORCESETRECT | NEKO_GUI_OPT_NOTITLE | NEKO_GUI_OPT_NORESIZE | NEKO_GUI_OPT_NODOCK | NEKO_GUI_OPT_FORCEFOCUS | NEKO_GUI_OPT_HOLDFOCUS)) {
         neko_gui_layout_row(ctx, 1, neko_gui_widths(-1), 0);
@@ -84,8 +84,8 @@ void neko_console(neko_console_t* console, neko_gui_context_t* ctx, neko_gui_rec
 
         if (neko_platform_key_pressed(NEKO_KEYCODE_UP)) {
             console->current_cb_idx++;
-            if (console->current_cb_idx >= neko_array_size(console->cb)) {
-                console->current_cb_idx = neko_array_size(console->cb) - 1;
+            if (console->current_cb_idx >= neko_arr_size(console->cb)) {
+                console->current_cb_idx = neko_arr_size(console->cb) - 1;
             } else {
                 memcpy(&console->cb[0], &console->cb[console->current_cb_idx], sizeof(*console->cb));
             }

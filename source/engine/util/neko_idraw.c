@@ -193,7 +193,7 @@ void neko_immediate_draw_static_data_init() {
                     }
 
     // Create default font
-    neko_asset_font_t* f = &neko_idraw()->font_default;
+    neko_asset_ascii_font_t* f = &neko_idraw()->font_default;
     stbtt_fontinfo font = neko_default_val();
     const char* compressed_ttf_data_base85 = __neko_internal_GetDefaultCompressedFontDataTTFBase85();
     s32 compressed_ttf_size = (((s32)strlen(compressed_ttf_data_base85) + 4) / 5) * 4;
@@ -293,7 +293,7 @@ NEKO_API_DECL void neko_immediate_draw_free(neko_immediate_draw_t* ctx) {
     neko_dyn_array_free(ctx->cache.modes);
 }
 
-NEKO_API_DECL neko_asset_font_t* neko_idraw_default_font() {
+NEKO_API_DECL neko_asset_ascii_font_t* neko_idraw_default_font() {
     if (neko_idraw()) return &neko_idraw()->font_default;
     return NULL;
 }
@@ -1451,7 +1451,7 @@ NEKO_API_DECL void neko_idraw_cone(neko_immediate_draw_t* neko_idraw, float x, f
     neko_idraw_cylinder(neko_idraw, x, y, z, 0.f, radius, height, sides, r, g, b, a, type);
 }
 
-void neko_idraw_text(neko_immediate_draw_t* neko_idraw, float x, float y, const char* text, const neko_asset_font_t* fp, bool32_t flip_vertical, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+void neko_idraw_text(neko_immediate_draw_t* neko_idraw, float x, float y, const char* text, const neko_asset_ascii_font_t* fp, bool32_t flip_vertical, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
     // If no font, set to default
     if (!fp) {
         fp = &neko_idraw()->font_default;
@@ -1462,8 +1462,8 @@ void neko_idraw_text(neko_immediate_draw_t* neko_idraw, float x, float y, const 
     neko_mat4 rot = neko_mat4_rotatev(neko_deg2rad(-180.f), NEKO_XAXIS);
 
     // Get total dimensions of text
-    neko_vec2 td = neko_asset_font_text_dimensions(fp, text, -1);
-    float th = neko_asset_font_max_height(fp);
+    neko_vec2 td = neko_asset_ascii_font_text_dimensions(fp, text, -1);
+    float th = neko_asset_ascii_font_max_height(fp);
 
     // Move text to accomdate height
     // y += td.y;

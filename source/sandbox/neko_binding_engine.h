@@ -348,6 +348,8 @@ static int __neko_bind_pack_assets_load(lua_State* L) {
     return 1;
 }
 
+#if 0
+
 static int __neko_bind_graphics_fontcache_load(lua_State* L) {
     neko_lua_handle_t* assets_user_handle = (neko_lua_handle_t*)lua_touserdata(L, 1);
     f64 font_size = lua_tonumber(L, 2);
@@ -372,6 +374,8 @@ static int __neko_bind_graphics_fontcache_set_default_font(lua_State* L) {
 
     return 0;
 }
+
+#endif
 
 neko_inline void neko_register_pack(lua_State* L) {
 
@@ -544,11 +548,11 @@ neko_inline void neko_register_common(lua_State* L) {
 
 neko_inline void neko_register_graphics(lua_State* L) {
 
-    neko_lua_wrap_register_t<>(L).def(
-            +[](const_str text, const neko_font_index font, const f32 x, const f32 y) { neko_graphics_fc_text(text, font, x, y); }, "neko_text");
+    // neko_lua_wrap_register_t<>(L).def(
+    //         +[](const_str text, const neko_font_index font, const f32 x, const f32 y) { neko_graphics_fc_text(text, font, x, y); }, "neko_text");
 
-    lua_register(L, "neko_fontcache_load", __neko_bind_graphics_fontcache_load);
-    lua_register(L, "neko_fontcache_set_default_font", __neko_bind_graphics_fontcache_set_default_font);
+    // lua_register(L, "neko_fontcache_load", __neko_bind_graphics_fontcache_load);
+    // lua_register(L, "neko_fontcache_set_default_font", __neko_bind_graphics_fontcache_set_default_font);
 }
 
 // struct neko_lua_handle_wrap {

@@ -39,7 +39,7 @@ neko_command_buffer_t g_cb = neko_default_val();
 neko_gui_context_t g_gui = neko_default_val();
 neko_immediate_draw_t g_idraw = neko_default_val();
 neko_client_ecs_userdata_t g_client_ecs_userdata = neko_default_val();
-neko_asset_font_t g_font;
+neko_asset_ascii_font_t g_font;
 neko_gui_style_sheet_t style_sheet;
 neko_nui_ctx_t g_nui = neko_default_val();
 
@@ -132,6 +132,7 @@ void test_se();
 void test_containers();
 
 NEKO_API_DECL void test_sexpr();
+NEKO_API_DECL void test_ttf();
 
 neko_texture_t load_ase_texture_simple(const std::string &path) {
 
@@ -467,7 +468,7 @@ neko_console_t console = {
         .close_speed = 0.3,
         .autoscroll = true,
         .commands = commands,
-        .commands_len = neko_array_size(commands),
+        .commands_len = neko_arr_size(commands),
 };
 
 void sz(int argc, char **argv) {
@@ -532,7 +533,7 @@ void nui_theme(int argc, char **argv) {
 }
 
 void help(int argc, char **argv) {
-    for (int i = 0; i < neko_array_size(commands); i++) {
+    for (int i = 0; i < neko_arr_size(commands); i++) {
         if (commands[i].name) neko_console_printf(&console, "* Command: %s\n", commands[i].name);
         if (commands[i].desc) neko_console_printf(&console, "- desc: %s\n", commands[i].desc);
     }
@@ -647,7 +648,7 @@ void game_init() {
     neko_gui_init(&g_gui, neko_platform_main_window());
 
     // Load in custom font file and then initialize gui font stash
-    neko_asset_font_load_from_file(__neko_game_get_path("data/assets/fonts/fusion-pixel-12px-monospaced.ttf").c_str(), &g_font, 24);
+    neko_asset_ascii_font_load_from_file(__neko_game_get_path("data/assets/fonts/fusion-pixel-12px-monospaced.ttf").c_str(), &g_font, 24);
 
 #define GUI_FONT_STASH(...)                                                                                            \
     []() -> neko_gui_font_stash_desc_t * {                                                                             \
@@ -1063,7 +1064,7 @@ void game_update() {
 
             neko_gui_text(&g_gui, "Hello neko");
 
-            neko_gui_text_fc(&g_gui, "喵喵昂~");
+            // neko_gui_text_fc(&g_gui, "喵喵昂~");
 
             // neko_gui_layout_row(&g_gui, 1, neko_gui_widths(-1), 0);
 
@@ -1219,8 +1220,10 @@ void game_update() {
             if (neko_nui_button_label(ctx, "test_backtrace")) __neko_inter_stacktrace();
             if (neko_nui_button_label(ctx, "test_containers")) test_containers();
             if (neko_nui_button_label(ctx, "test_sexpr")) test_sexpr();
+            if (neko_nui_button_label(ctx, "test_ttf")) {
+                neko_timer_do(t, neko_println("%llu", t), { test_ttf(); });
+            }
             if (neko_nui_button_label(ctx, "test_ecs_view")) {
-
                 for (neko_ecs_ent_view v = neko_ecs_ent_view_single(neko_ecs(), COMPONENT_GAMEOBJECT); neko_ecs_ent_view_valid(&v); neko_ecs_ent_view_next(&v)) {
                     CGameObject *gameobj = (CGameObject *)neko_ecs_ent_get_component(neko_ecs(), v.ent, COMPONENT_GAMEOBJECT);
                     neko_println("%d %d %d %d %s", v.i, v.ent, v.valid, v.view_type, gameobj->name);

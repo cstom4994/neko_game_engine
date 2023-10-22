@@ -120,6 +120,10 @@
 
 #define NEKO_PLATFORM_LINUX
 
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
+
 /* Platform Emscripten */
 #elif (defined __EMSCRIPTEN__)
 
@@ -203,7 +207,7 @@ enum neko_type_kind {
 // Helper macro for compiling to nothing
 #define neko_empty_instruction(...)
 
-#define neko_array_size(__ARR) sizeof(__ARR) / sizeof(__ARR[0])
+#define neko_arr_size(__ARR) sizeof(__ARR) / sizeof(__ARR[0])
 
 #ifdef NEKO_DEBUG
 #define neko_assert(x, ...)                                                                                            \
@@ -282,12 +286,23 @@ enum neko_type_kind {
 #define neko_concat(x, y) neko_concat_impl(x, y)
 #define neko_concat_impl(x, y) x##y
 
+#ifdef __cplusplus
 #define neko_invoke_once(...)                           \
     static char neko_concat(unused, __LINE__) = [&]() { \
         __VA_ARGS__;                                    \
         return '\0';                                    \
     }();                                                \
     (void)neko_concat(unused, __LINE__)
+#else
+#define neko_invoke_once(...) \
+    do {                      \
+        static u8 did = 0;    \
+        if (!did) {           \
+            __VA_ARGS__;      \
+            did = 1;          \
+        }                     \
+    } while (0)
+#endif
 
 #define neko_int2voidp(I) (void*)(uintptr_t)(I)
 
@@ -606,15 +621,15 @@ struct alloc {
 
 #endif
 
-int neko_mem_check_leaks(bool detailed);
-int neko_mem_bytes_inuse();
+NEKO_API_DECL int neko_mem_check_leaks(bool detailed);
+NEKO_API_DECL int neko_mem_bytes_inuse();
 
 typedef struct neko_allocation_metrics {
     u64 total_allocated;
     u64 total_free;
 } neko_allocation_metrics;
 
-extern neko_allocation_metrics g_allocation_metrics;
+NEKO_API_DECL neko_allocation_metrics g_allocation_metrics;
 
 // GC 具体设计可以见 https://github.com/orangeduck/tgc
 
@@ -637,32 +652,32 @@ typedef struct {
     size_t nitems, nslots, mitems, nfrees;
 } neko_gc_t;
 
-void neko_gc_start(neko_gc_t* gc, void* stk);
-void neko_gc_stop(neko_gc_t* gc);
-void neko_gc_pause(neko_gc_t* gc);
-void neko_gc_resume(neko_gc_t* gc);
-void neko_gc_run(neko_gc_t* gc);
+NEKO_API_DECL void neko_gc_start(neko_gc_t* gc, void* stk);
+NEKO_API_DECL void neko_gc_stop(neko_gc_t* gc);
+NEKO_API_DECL void neko_gc_pause(neko_gc_t* gc);
+NEKO_API_DECL void neko_gc_resume(neko_gc_t* gc);
+NEKO_API_DECL void neko_gc_run(neko_gc_t* gc);
 
 // GC 公开函数
-void* neko_gc_alloc(neko_gc_t* gc, size_t size);
-void* neko_gc_calloc(neko_gc_t* gc, size_t num, size_t size);
-void* neko_gc_realloc(neko_gc_t* gc, void* ptr, size_t size);
-void neko_gc_free(neko_gc_t* gc, void* ptr);
+NEKO_API_DECL void* neko_gc_alloc(neko_gc_t* gc, size_t size);
+NEKO_API_DECL void* neko_gc_calloc(neko_gc_t* gc, size_t num, size_t size);
+NEKO_API_DECL void* neko_gc_realloc(neko_gc_t* gc, void* ptr, size_t size);
+NEKO_API_DECL void neko_gc_free(neko_gc_t* gc, void* ptr);
 
-void* __neko_gc_alloc_opt(neko_gc_t* gc, size_t size, int flags, void (*dtor)(void*));
-void* __neko_gc_calloc_opt(neko_gc_t* gc, size_t num, size_t size, int flags, void (*dtor)(void*));
+NEKO_API_DECL void* __neko_gc_alloc_opt(neko_gc_t* gc, size_t size, int flags, void (*dtor)(void*));
+NEKO_API_DECL void* __neko_gc_calloc_opt(neko_gc_t* gc, size_t num, size_t size, int flags, void (*dtor)(void*));
 
-void neko_gc_set_dtor(neko_gc_t* gc, void* ptr, void (*dtor)(void*));
-void neko_gc_set_flags(neko_gc_t* gc, void* ptr, int flags);
-int neko_gc_get_flags(neko_gc_t* gc, void* ptr);
-void (*neko_gc_get_dtor(neko_gc_t* gc, void* ptr))(void*);
-size_t neko_gc_get_size(neko_gc_t* gc, void* ptr);
+NEKO_API_DECL void neko_gc_set_dtor(neko_gc_t* gc, void* ptr, void (*dtor)(void*));
+NEKO_API_DECL void neko_gc_set_flags(neko_gc_t* gc, void* ptr, int flags);
+NEKO_API_DECL int neko_gc_get_flags(neko_gc_t* gc, void* ptr);
+NEKO_API_DECL void (*neko_gc_get_dtor(neko_gc_t* gc, void* ptr))(void*);
+NEKO_API_DECL size_t neko_gc_get_size(neko_gc_t* gc, void* ptr);
 
-extern neko_gc_t g_gc;
+NEKO_API_DECL neko_gc_t g_gc;
 
-void __neko_mem_init(int argc, char** argv);
-void __neko_mem_end();
-void __neko_mem_rungc();
+NEKO_API_DECL void __neko_mem_init(int argc, char** argv);
+NEKO_API_DECL void __neko_mem_end();
+NEKO_API_DECL void __neko_mem_rungc();
 
 #pragma endregion
 

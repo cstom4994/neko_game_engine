@@ -55,8 +55,7 @@ typedef struct neko_immediate_cache_t {
 
 typedef struct neko_immediate_draw_static_data_t {
     neko_handle(neko_graphics_texture_t) tex_default;
-    neko_asset_font_t font_default;   // Idraw font
-    neko_font_index font_fc_default;  // Fontcache
+    neko_asset_ascii_font_t font_default;   // Idraw font
     neko_hash_table(neko_idraw_pipeline_state_attr_t, neko_handle(neko_graphics_pipeline_t)) pipeline_table;
     neko_handle(neko_graphics_uniform_t) uniform;
     neko_handle(neko_graphics_uniform_t) sampler;
@@ -90,7 +89,7 @@ NEKO_API_DECL void neko_immediate_draw_static_data_set(neko_immediate_draw_stati
 NEKO_API_DECL neko_handle(neko_graphics_pipeline_t) neko_idraw_get_pipeline(neko_immediate_draw_t* neko_idraw, neko_idraw_pipeline_state_attr_t state);
 
 // Get default font asset pointer
-NEKO_API_DECL neko_asset_font_t* neko_idraw_default_font();
+NEKO_API_DECL neko_asset_ascii_font_t* neko_idraw_default_font();
 
 // Core Vertex Functions
 NEKO_API_DECL void neko_idraw_begin(neko_immediate_draw_t* neko_idraw, neko_graphics_primitive_type type);
@@ -196,7 +195,7 @@ NEKO_API_DECL void neko_idraw_cone(neko_immediate_draw_t* neko_idraw, float x, f
 // Draw planes/poly groups
 
 // Text Drawing Util
-NEKO_API_DECL void neko_idraw_text(neko_immediate_draw_t* neko_idraw, float x, float y, const char* text, const neko_asset_font_t* fp, bool32_t flip_vertical, uint8_t r, uint8_t g, uint8_t b,
+NEKO_API_DECL void neko_idraw_text(neko_immediate_draw_t* neko_idraw, float x, float y, const char* text, const neko_asset_ascii_font_t* fp, bool32_t flip_vertical, uint8_t r, uint8_t g, uint8_t b,
                                    uint8_t a);
 
 // Paths

@@ -1,20 +1,17 @@
 
 #include "neko.h"
 
-#include <csetjmp>
-#include <format>
+#include <setjmp.h>
 
 #include "engine/neko_component.h"
 #include "engine/neko_engine.h"
 
 // Use discrete GPU by default.
-extern "C" {
 // http://developer.download.nvidia.com/devzone/devcenter/gamegraphics/files/OptimusRenderingPolicies.pdf
 __declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
 
 // https://gpuopen.com/learn/amdpowerxpressrequesthighperformance/
 __declspec(dllexport) unsigned long AmdPowerXpressRequestHighPerformance = 0x00000001;
-}
 
 // Resource Creation
 NEKO_API_DECL neko_handle(neko_graphics_texture_t) neko_graphics_texture_create(const neko_graphics_texture_desc_t* desc) { return neko_graphics()->api.texture_create(desc); }
@@ -172,7 +169,7 @@ void log_set_quiet(bool enable) { L.quiet = enable; }
 int log_add_callback(neko_log_fn fn, void* udata, int level) {
     for (int i = 0; i < MAX_CALLBACKS; i++) {
         if (!L.callbacks[i].fn) {
-            L.callbacks[i] = Callback{fn, udata, level};
+            L.callbacks[i] = (Callback){fn, udata, level};
             return 0;
         }
     }
@@ -494,7 +491,7 @@ void* __neko_mem_safe_alloc(size_t size, const char* file, int line, size_t* sta
 void* __neko_mem_safe_calloc(size_t count, size_t element_size, const char* file, int line, size_t* statistics) {
     size_t size = count * element_size;
     void* mem = __neko_mem_safe_alloc(size, file, line, statistics);
-    std::memset(mem, 0, size);
+    memset(mem, 0, size);
     return mem;
 }
 
@@ -543,11 +540,13 @@ int neko_mem_check_leaks(bool detailed) {
     neko_mem_alloc_info_t* next = head->next;
     int leaks = 0;
 
-    std::size_t leaks_size = 0;
+    size_t leaks_size = 0;
 
     while (next != head) {
         if (detailed) {
-            neko_log_warning(std::format("LEAKED {0} bytes from file \"{1}\" at line {2} from address {3}.", next->size, neko_fs_get_filename(next->file), next->line, (void*)(next + 1)).c_str());
+            char info[128];
+            neko_snprintf(info, 128, "LEAKED %zu bytes from file \"%s\" at line %d from address %p.", next->size, neko_fs_get_filename(next->file), next->line, (void*)(next + 1));
+            neko_log_warning(info);
         }
         leaks_size += next->size;
         next = next->next;
@@ -558,8 +557,8 @@ int neko_mem_check_leaks(bool detailed) {
         neko_log_info("memory leaks detected (see above).");
     }
     if (leaks) {
-        double megabytes = neko_s_cast<double>(leaks_size) / 1048576;
-        neko_log_warning(std::format("memory leaks detected with {0} bytes equal to {1:.4f} MB.", leaks_size, megabytes).c_str());
+        f32 megabytes = (f32)leaks_size / 1048576.f;
+        neko_log_warning("memory leaks detected with %zu bytes equal to %.4f MB.", leaks_size, megabytes);
     } else {
         neko_log_info("no memory leaks detected.");
     }
@@ -2045,7 +2044,7 @@ NEKO_API_DECL bool neko_lexer_require_token_text(neko_lexer_t* lex, const char* 
     }
 
     // Error
-    neko_println("error::neko_lexer_require_token_text::%.*s, expected: %s", cur_t.len, cur_t.text, match);
+    neko_log_warning("neko_lexer_require_token_text::%.*s, expected: %s", cur_t.len, cur_t.text, match);
 
     // Reset
     lex->at = at;
@@ -2208,7 +2207,7 @@ u64 neko_ecs_stack_top(neko_ecs_stack* s) { return s->top; }
 
 u32 neko_ecs_stack_peek(neko_ecs_stack* s) {
     if (s->empty) {
-        neko_println("Failed to peek, stack is full");
+        neko_log_warning("[ECS] Failed to peek, stack is full");
         return 0;
     }
     return s->data[s->top - 1];
@@ -2216,7 +2215,7 @@ u32 neko_ecs_stack_peek(neko_ecs_stack* s) {
 
 void neko_ecs_stack_push(neko_ecs_stack* s, u32 val) {
     if (neko_ecs_stack_full(s)) {
-        neko_println("Failed to push %u, stack is full", val);
+        neko_log_warning("[ECS] Failed to push %u, stack is full", val);
         return;
     }
 
@@ -2226,7 +2225,7 @@ void neko_ecs_stack_push(neko_ecs_stack* s, u32 val) {
 
 u32 neko_ecs_stack_pop(neko_ecs_stack* s) {
     if (s->empty) {
-        neko_println("Failed to pop, stack is empty");
+        neko_log_warning("[ECS] Failed to pop, stack is empty");
         return 0;
     }
 
@@ -2323,12 +2322,12 @@ void neko_ecs_destroy(neko_ecs* ecs) {
 
 void neko_ecs_register_component(neko_ecs* ecs, neko_ecs_component_type component_type, u32 count, u32 size, neko_ecs_component_destroy destroy_func) {
     if (ecs->pool[component_type].data != NULL) {
-        neko_println("Registered Component type %u more than once.\n", component_type);
+        neko_log_warning("[ECS] Registered Component type %u more than once.", component_type);
         return;
     }
 
     if (count * size <= 0) {
-        neko_println("Registering Component type %u (count*size) is less than 0.\n", component_type);
+        neko_log_warning("[ECS] Registering Component type %u (count*size) is less than 0.", component_type);
         return;
     }
 
@@ -2378,7 +2377,7 @@ void neko_ecs_ent_add_component(neko_ecs* ecs, neko_ecs_ent e, neko_ecs_componen
     u32 index = __neko_ecs_ent_index(e);
 
     if (neko_ecs_ent_has_component(ecs, e, type)) {
-        neko_println("Component %u already exists on neko_ecs_ent %lu (Index %u)", type, e, index);
+        neko_log_warning("[ECS] Component %u already exists on neko_ecs_ent %lu (Index %u)", type, e, index);
         return;
     }
 
@@ -2392,7 +2391,7 @@ void neko_ecs_ent_remove_component(neko_ecs* ecs, neko_ecs_ent e, neko_ecs_compo
     u32 index = __neko_ecs_ent_index(e);
 
     if (!neko_ecs_ent_has_component(ecs, e, type)) {
-        neko_println("Component %u doesn't exist on neko_ecs_ent %lu (Index %u)", type, e, index);
+        neko_log_warning("[ECS] Component %u doesn't exist on neko_ecs_ent %lu (Index %u)", type, e, index);
         return;
     }
 
@@ -2405,7 +2404,7 @@ void* neko_ecs_ent_get_component(neko_ecs* ecs, neko_ecs_ent e, neko_ecs_compone
     u32 index = __neko_ecs_ent_index(e);
 
     if (!neko_ecs_ent_has_component(ecs, e, type)) {
-        neko_println("Trying to get non existent component %u on neko_ecs_ent %lu (Index %u)", type, e, index);
+        neko_log_warning("[ECS] Trying to get non existent component %u on neko_ecs_ent %lu (Index %u)", type, e, index);
         return NULL;
     }
 
@@ -2440,7 +2439,7 @@ void neko_ecs_ent_print(neko_ecs* ecs, neko_ecs_ent e) {
 
     for (u32 i = 0; i < ecs->component_count; i++) {
         if (neko_ecs_ent_has_component(ecs, e, i)) {
-            neko_println("Component Type: %s (Index: %d)", std::string(neko::enum_name((ComponentType)i)).c_str(), ecs->components[index * ecs->component_count + i]);
+            // neko_println("Component Type: %s (Index: %d)", std::string(neko::enum_name((ComponentType)i)).c_str(), ecs->components[index * ecs->component_count + i]);
         }
     }
 
@@ -2515,6 +2514,8 @@ NEKO_API_DECL neko_t* neko_create(neko_game_desc_t app_desc) {
         if (app_desc.init == NULL) app_desc.init = &neko_default_app_func;
 
         __neko_mem_init(app_desc.argc, app_desc.argv);
+
+        neko_timer_initialize();
 
         // Set up os api before all?
         neko_os_api_t os = neko_os_api_new();
@@ -2632,9 +2633,6 @@ NEKO_API_DECL void neko_frame() {
                 }
             }
         }
-
-        // 感觉这玩意放这里不是很合理 之后再改
-        neko_subsystem(graphics)->api.fontcache_draw();
     }
 
     // Clear all platform events
@@ -2684,6 +2682,8 @@ void neko_destroy() {
     neko_platform_destroy(neko_subsystem(platform));
 
     __neko_config_free();
+
+    neko_timer_shutdown();
 
     // 在 app 结束后进行内存检查
     __neko_mem_end();

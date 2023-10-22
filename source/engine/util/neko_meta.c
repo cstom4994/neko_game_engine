@@ -24,8 +24,7 @@ u64 __neko_meta_registry_register_class_impl(neko_meta_registry_t* meta, const_s
     memcpy(cls.properties, decl->properties, decl->size);
 
     u64 id = neko_hash_str64(name);
-    // meta->classes_[id] = cls;
-    neko_hash_table_insert(meta->classes_, id, cls);
+    neko_hash_table_insert(meta->classes_, id, cls);  // meta->classes_[id] = cls;
     return id;
 }
 

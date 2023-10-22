@@ -18,14 +18,23 @@
 // Platform Time
 ============================================================*/
 
+#if defined(_WIN32) || defined(_WIN64) || defined(NEKO_PLATFORM_WIN)
+typedef unsigned __int64 tick_t;
+#else
+#include <stdint.h>
+typedef uint64_t tick_t;
+#endif
+
+typedef double deltatime_t;
+
 typedef struct neko_platform_time_t {
-    float max_fps;
-    float elapsed;
-    float previous;
-    float update;
-    float render;
-    float delta;
-    float frame;
+    f32 max_fps;
+    f32 elapsed;
+    f32 previous;
+    f32 update;
+    f32 render;
+    f32 delta;
+    f32 frame;
 } neko_platform_time_t;
 
 /*============================================================
@@ -59,7 +68,7 @@ typedef struct neko_platform_running_desc_s {
     u32 num_samples;  // Multisamples (if 0, then disabled)
     u32 monitor_index;
     b32 vsync;
-    float frame_rate;
+    f32 frame_rate;
     const_str engine_args;
 } neko_platform_running_desc_t;
 
@@ -276,7 +285,7 @@ enum {
 
 typedef struct neko_platform_gamepad_t {
     int16_t buttons[NEKO_PLATFORM_GAMEPAD_BUTTON_COUNT];
-    float axes[NEKO_PLATFORM_JOYSTICK_AXIS_COUNT];
+    f32 axes[NEKO_PLATFORM_JOYSTICK_AXIS_COUNT];
     int16_t present;
 } neko_platform_gamepad_t;
 
@@ -495,8 +504,8 @@ NEKO_API_DECL void neko_platform_update(neko_platform_t* platform);  // Update p
 
 // Platform Util
 NEKO_API_DECL const neko_platform_time_t* neko_platform_time();
-NEKO_API_DECL float neko_platform_delta_time();
-NEKO_API_DECL float neko_platform_frame_time();
+NEKO_API_DECL f32 neko_platform_delta_time();
+NEKO_API_DECL f32 neko_platform_frame_time();
 
 // Platform UUID
 NEKO_API_DECL neko_uuid_t neko_platform_uuid_generate();
@@ -526,17 +535,17 @@ NEKO_API_DECL bool neko_platform_mouse_pressed(neko_platform_mouse_button_code c
 NEKO_API_DECL bool neko_platform_mouse_down(neko_platform_mouse_button_code code);
 NEKO_API_DECL bool neko_platform_mouse_released(neko_platform_mouse_button_code code);
 NEKO_API_DECL neko_vec2 neko_platform_mouse_deltav();
-NEKO_API_DECL void neko_platform_mouse_delta(float* x, float* y);
+NEKO_API_DECL void neko_platform_mouse_delta(f32* x, f32* y);
 NEKO_API_DECL neko_vec2 neko_platform_mouse_positionv();
 NEKO_API_DECL void neko_platform_mouse_position(s32* x, s32* y);
-NEKO_API_DECL void neko_platform_mouse_wheel(float* x, float* y);
+NEKO_API_DECL void neko_platform_mouse_wheel(f32* x, f32* y);
 NEKO_API_DECL neko_vec2 neko_platform_mouse_wheelv();
 NEKO_API_DECL bool neko_platform_mouse_moved();
 NEKO_API_DECL bool neko_platform_mouse_locked();
 NEKO_API_DECL neko_vec2 neko_platform_touch_deltav(u32 idx);
-NEKO_API_DECL void neko_platform_touch_delta(u32 idx, float* x, float* y);
+NEKO_API_DECL void neko_platform_touch_delta(u32 idx, f32* x, f32* y);
 NEKO_API_DECL neko_vec2 neko_platform_touch_positionv(u32 idx);
-NEKO_API_DECL void neko_platform_touch_position(u32 idx, float* x, float* y);
+NEKO_API_DECL void neko_platform_touch_position(u32 idx, f32* x, f32* y);
 
 // Platform Events
 NEKO_API_DECL bool neko_platform_poll_events(neko_platform_event_t* evt, bool32_t consume);
@@ -593,7 +602,7 @@ NEKO_API_DECL void neko_platform_update_internal(neko_platform_t* platform);
 
 // Platform Util
 NEKO_API_DECL double neko_platform_elapsed_time();  // Returns time in ms since initialization of platform
-NEKO_API_DECL void neko_platform_sleep(float ms);   // Sleeps platform for time in ms
+NEKO_API_DECL void neko_platform_sleep(f32 ms);     // Sleeps platform for time in ms
 
 // Platform Video
 NEKO_API_DECL void neko_platform_enable_vsync(s32 enabled);
@@ -602,7 +611,7 @@ NEKO_API_DECL void neko_platform_enable_vsync(s32 enabled);
 NEKO_API_DECL void neko_platform_process_input(neko_platform_input_t* input);
 NEKO_API_DECL u32 neko_platform_key_to_codepoint(neko_platform_keycode code);
 NEKO_API_DECL neko_platform_keycode neko_platform_codepoint_to_key(u32 code);
-NEKO_API_DECL void neko_platform_mouse_set_position(u32 handle, float x, float y);
+NEKO_API_DECL void neko_platform_mouse_set_position(u32 handle, f32 x, f32 y);
 NEKO_API_DECL void neko_platform_lock_mouse(u32 handle, bool32_t lock);
 
 NEKO_API_DECL neko_platform_window_t neko_platform_window_create_internal(const neko_platform_running_desc_t* desc);
@@ -679,6 +688,23 @@ neko_inline void __native_library_unload(void* handle) {
 neko_inline void* __native_library_get_symbol(void* handle, const char* name) { return (void*)GetProcAddress((HMODULE)handle, name); }
 
 neko_inline void __native_debug_output(const char* msg) { OutputDebugStringA(msg); }
+
+NEKO_API_DECL int neko_timer_initialize(void);
+NEKO_API_DECL void neko_timer_shutdown(void);
+NEKO_API_DECL tick_t neko_timer_current(void);
+NEKO_API_DECL deltatime_t neko_timer_elapsed(const tick_t t);
+NEKO_API_DECL tick_t neko_timer_elapsed_ticks(const tick_t t);
+NEKO_API_DECL tick_t neko_timer_ticks_per_second(void);
+NEKO_API_DECL deltatime_t neko_timer_ticks_to_seconds(const tick_t dt);
+NEKO_API_DECL tick_t neko_timer_system(void);
+
+#define neko_timer_do(timer_name, timer_do, ...)           \
+    do {                                                   \
+        tick_t timer_name = neko_timer_current();          \
+        __VA_ARGS__;                                       \
+        timer_name = neko_timer_elapsed_ticks(timer_name); \
+        timer_do;                                          \
+    } while (0)
 
 /*
 typedef struct neko_platform_interface_s

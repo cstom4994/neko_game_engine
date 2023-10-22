@@ -80,7 +80,7 @@ NEKO_API_DECL neko_meta_class_t* __neko_meta_class_getp_impl(neko_meta_registry_
 #define neko_meta_registry_decl_class(T) neko_meta_property_t __gen_##T##_property[]
 #define neko_meta_registry_register_class(META, T)                                                                                                         \
     do {                                                                                                                                                   \
-        const u8 __gen_##T##_property_size = neko_array_size(__gen_##T##_property);                                                                        \
+        const u8 __gen_##T##_property_size = neko_arr_size(__gen_##T##_property);                                                                        \
         neko_meta_class_decl_t __gen_##T##_class = {.properties = __gen_##T##_property, .size = __gen_##T##_property_size * sizeof(neko_meta_property_t)}; \
         __neko_meta_registry_register_class_impl((META), neko_to_str(T), (&__gen_##T##_class));                                                            \
     } while (0)

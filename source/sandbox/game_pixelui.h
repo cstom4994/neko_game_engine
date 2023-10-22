@@ -187,7 +187,7 @@ bool update_ui() {
     }
 
     // Draw circle around mouse pointer
-    s32 R = brush_size;
+    s32 R = brush_size * g_scale;
     circleBres((s32)(mp.x), (s32)(mp.y), R);
 
     // Upload our updated texture data to GPU

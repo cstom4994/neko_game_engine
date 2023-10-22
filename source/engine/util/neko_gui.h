@@ -21,7 +21,7 @@
 #define NEKO_GUI_NEKO_GUI_SPLIT_SIZE 32
 #define NEKO_GUI_NEKO_GUI_TAB_SIZE 32
 #define NEKO_GUI_MAX_WIDTHS 16
-#define NEKO_GUI_REAL float
+#define NEKO_GUI_REAL f32
 #define NEKO_GUI_REAL_FMT "%.3g"
 #define NEKO_GUI_SLIDER_FMT "%.2f"
 #define NEKO_GUI_MAX_FMT 127
@@ -164,7 +164,7 @@ typedef struct {
 
 typedef struct {
     neko_gui_basecommand_t base;
-    neko_asset_font_t* font;
+    neko_asset_ascii_font_t* font;
     neko_vec2 pos;
     neko_color_t color;
     char str[1];
@@ -440,7 +440,7 @@ typedef struct {
     union {
         s32 value;
         neko_color_t color;
-        neko_asset_font_t* font;
+        neko_asset_ascii_font_t* font;
     };
 } neko_gui_style_element_t;
 
@@ -461,7 +461,7 @@ typedef struct neko_gui_animation_t {
 
 typedef struct neko_gui_style_t {
     // font
-    neko_asset_font_t* font;
+    neko_asset_ascii_font_t* font;
 
     // dimensions
     float size[2];
@@ -717,7 +717,7 @@ typedef struct neko_gui_context_t {
     neko_hash_table(neko_gui_id, neko_gui_animation_t) animations;
 
     // Font stash
-    neko_hash_table(u64, neko_asset_font_t*) font_stash;
+    neko_hash_table(u64, neko_asset_ascii_font_t*) font_stash;
 
     // Callbacks
     struct {
@@ -801,7 +801,7 @@ typedef struct {
 
 typedef struct {
     const char* key;
-    neko_asset_font_t* font;
+    neko_asset_ascii_font_t* font;
 } neko_gui_font_desc_t;
 
 typedef struct {
@@ -922,7 +922,7 @@ NEKO_API_DECL void neko_gui_draw_circle(neko_gui_context_t* ctx, neko_vec2 posit
 NEKO_API_DECL void neko_gui_draw_triangle(neko_gui_context_t* ctx, neko_vec2 a, neko_vec2 b, neko_vec2 c, neko_color_t color);
 NEKO_API_DECL void neko_gui_draw_box(neko_gui_context_t* ctx, neko_gui_rect_t rect, s16* width, neko_color_t color);
 NEKO_API_DECL void neko_gui_draw_line(neko_gui_context_t* ctx, neko_vec2 start, neko_vec2 end, neko_color_t color);
-NEKO_API_DECL void neko_gui_draw_text(neko_gui_context_t* ctx, neko_asset_font_t* font, const char* str, s32 len, neko_vec2 pos, neko_color_t color, s32 shadow_x, s32 shadow_y,
+NEKO_API_DECL void neko_gui_draw_text(neko_gui_context_t* ctx, neko_asset_ascii_font_t* font, const char* str, s32 len, neko_vec2 pos, neko_color_t color, s32 shadow_x, s32 shadow_y,
                                       neko_color_t shadow_color);
 NEKO_API_DECL void neko_gui_draw_image(neko_gui_context_t* ctx, neko_handle(neko_graphics_texture_t) hndl, neko_gui_rect_t rect, neko_vec2 uv0, neko_vec2 uv1, neko_color_t color);
 NEKO_API_DECL void neko_gui_draw_nine_rect(neko_gui_context_t* ctx, neko_handle(neko_graphics_texture_t) hndl, neko_gui_rect_t rect, neko_vec2 uv0, neko_vec2 uv1, u32 left, u32 right, u32 top,
@@ -949,7 +949,7 @@ NEKO_API_DECL neko_gui_rect_t neko_gui_layout_anchor(const neko_gui_rect_t* pare
 
 #define neko_gui_button(_CTX, _LABEL) neko_gui_button_ex((_CTX), (_LABEL), NULL, NEKO_GUI_OPT_LEFTCLICKONLY)
 #define neko_gui_text(_CTX, _TXT) neko_gui_text_ex((_CTX), (_TXT), 1, NULL, 0x00)
-#define neko_gui_text_fc(_CTX, _TXT) neko_gui_text_fc_ex((_CTX), (_TXT), (-1))
+// #define neko_gui_text_fc(_CTX, _TXT) neko_gui_text_fc_ex((_CTX), (_TXT), (-1))
 #define neko_gui_textbox(_CTX, _BUF, _BUFSZ) neko_gui_textbox_ex((_CTX), (_BUF), (_BUFSZ), NULL, 0x00)
 #define neko_gui_slider(_CTX, _VALUE, _LO, _HI) neko_gui_slider_ex((_CTX), (_VALUE), (_LO), (_HI), 0, NEKO_GUI_SLIDER_FMT, NULL, 0x00)
 #define neko_gui_number(_CTX, _VALUE, _STEP) neko_gui_number_ex((_CTX), (_VALUE), (_STEP), NEKO_GUI_SLIDER_FMT, NULL, 0x00)
@@ -974,7 +974,7 @@ NEKO_API_DECL neko_gui_rect_t neko_gui_layout_anchor(const neko_gui_rect_t* pare
 //=== Elements (Extended) ===//
 
 NEKO_API_DECL s32 neko_gui_image_ex(neko_gui_context_t* ctx, neko_handle(neko_graphics_texture_t) hndl, neko_vec2 uv0, neko_vec2 uv1, const neko_gui_selector_desc_t* desc, u64 opt);
-NEKO_API_DECL s32 neko_gui_text_fc_ex(neko_gui_context_t* ctx, const char* text, neko_font_index fontindex);
+// NEKO_API_DECL s32 neko_gui_text_fc_ex(neko_gui_context_t* ctx, const char* text, neko_font_index fontindex);
 NEKO_API_DECL s32 neko_gui_text_ex(neko_gui_context_t* ctx, const char* text, s32 text_wrap, const neko_gui_selector_desc_t* desc, u64 opt);
 NEKO_API_DECL s32 neko_gui_label_ex(neko_gui_context_t* ctx, const char* text, const neko_gui_selector_desc_t* desc, u64 opt);
 NEKO_API_DECL s32 neko_gui_button_ex(neko_gui_context_t* ctx, const char* label, const neko_gui_selector_desc_t* desc, u64 opt);

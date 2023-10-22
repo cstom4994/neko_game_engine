@@ -569,14 +569,6 @@ typedef struct neko_graphics_info_t {
     } compute;
 } neko_graphics_info_t;
 
-// fontcache
-
-typedef int64_t ve_font_id;
-typedef int32_t ve_codepoint;
-typedef int32_t ve_glyph;
-
-typedef ve_font_id neko_font_index;
-
 /*==========================
 // Graphics Interface
 ==========================*/
@@ -623,13 +615,12 @@ typedef struct neko_graphics_t {
         /*============================================================
         // Fontcache
         ============================================================*/
-        void (*fontcache_create)(void);
-        void (*fontcache_destroy)(void);
-        void (*fontcache_draw)(void);
-        neko_font_index (*fontcache_load)(const void* data, size_t data_size, f32 font_size);
-
-        void (*fontcache_push)(const char* text, const neko_font_index font, const neko_vec2 pos);
-        void (*fontcache_push_x_y)(const char* text, const neko_font_index font, const f32 x, const f32 y);
+        // void (*fontcache_create)(void);
+        // void (*fontcache_destroy)(void);
+        // void (*fontcache_draw)(void);
+        // neko_font_index (*fontcache_load)(const void* data, size_t data_size, f32 font_size);
+        // void (*fontcache_push)(const char* text, const neko_font_index font, const neko_vec2 pos);
+        // void (*fontcache_push_x_y)(const char* text, const neko_font_index font, const f32 x, const f32 y);
 
     } api;  // Interface for stable access across .dll boundaries
 
@@ -707,7 +698,7 @@ NEKO_API_DECL void neko_graphics_dispatch_compute(neko_command_buffer_t* cb, u32
 
 // Macros
 #define neko_graphics_command_buffer_submit(CB) neko_graphics()->api.command_buffer_submit((CB))
-#define neko_graphics_fc_text(text, font, x, y) ((neko_instance()->ctx.graphics))->api.fontcache_push_x_y(text, font, x, y)
+// #define neko_graphics_fc_text(text, font, x, y) ((neko_instance()->ctx.graphics))->api.fontcache_push_x_y(text, font, x, y)
 
 #ifndef NEKO_NO_SHORT_NAME
 

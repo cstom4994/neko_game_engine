@@ -277,7 +277,7 @@ neko_ecs_decl_system(ui_render_system, UI_RENDER_SYSTEM, 2, COMPONENT_TRANSFORM,
             neko_ui_renderer *ui_render = (neko_ui_renderer *)neko_ecs_ent_get_component(ecs, e, COMPONENT_UI);
 
             if (ui_render->type == neko_ui_renderer::type::LABEL) {
-                neko_graphics_fc_text(ui_render->text, idraw->data->font_fc_default, xform->x, xform->y);
+                // neko_graphics_fc_text(ui_render->text, idraw->data->font_fc_default, xform->x, xform->y);
             }
         }
     }

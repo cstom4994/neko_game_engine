@@ -44,8 +44,6 @@
 #include <sys/stat.h>
 #else
 #include <direct.h>
-
-#include "libs/dirent/dirent.h"
 #endif
 
 /*== Platform Window ==*/
@@ -94,9 +92,9 @@ NEKO_API_DECL u32 neko_platform_main_window() {
 
 NEKO_API_DECL const neko_platform_time_t* neko_platform_time() { return &neko_subsystem(platform)->time; }
 
-NEKO_API_DECL float neko_platform_delta_time() { return neko_platform_time()->delta; }
+NEKO_API_DECL f32 neko_platform_delta_time() { return neko_platform_time()->delta; }
 
-NEKO_API_DECL float neko_platform_frame_time() { return neko_platform_time()->frame; }
+NEKO_API_DECL f32 neko_platform_frame_time() { return neko_platform_time()->frame; }
 
 /*== Platform UUID ==*/
 
@@ -427,7 +425,7 @@ bool neko_platform_mouse_moved() {
     return (input->mouse.delta.x != 0.f || input->mouse.delta.y != 0.f);
 }
 
-void neko_platform_mouse_delta(float* x, float* y) {
+void neko_platform_mouse_delta(f32* x, f32* y) {
     neko_platform_input_t* input = __neko_input();
     *x = input->mouse.delta.x;
     *y = input->mouse.delta.y;
@@ -466,7 +464,7 @@ NEKO_API_DECL neko_vec2 neko_platform_mouse_wheelv() {
 
 bool neko_platform_mouse_locked() { return (__neko_input())->mouse.locked; }
 
-void neko_platform_touch_delta(u32 idx, float* x, float* y) {
+void neko_platform_touch_delta(u32 idx, f32* x, f32* y) {
     neko_platform_input_t* input = __neko_input();
     if (idx < NEKO_PLATFORM_MAX_TOUCH) {
         *x = input->touch.points[idx].delta.x;
@@ -480,7 +478,7 @@ neko_vec2 neko_platform_touch_deltav(u32 idx) {
     return delta;
 }
 
-void neko_platform_touch_position(u32 idx, float* x, float* y) {
+void neko_platform_touch_position(u32 idx, f32* x, f32* y) {
     neko_platform_input_t* input = __neko_input();
     if (idx < NEKO_PLATFORM_MAX_TOUCH) {
         *x = input->touch.points[idx].position.x;
@@ -531,27 +529,6 @@ void neko_platform_release_key(neko_platform_keycode code) {
     }
 }
 
-#ifdef NEKO_PLATFORM_WIN
-
-LPCWSTR ConvertToLPCWSTR(const char* str) {
-    int size_needed = MultiByteToWideChar(CP_UTF8, 0, str, -1, NULL, 0);
-    if (size_needed <= 0) {
-        // 失败处理
-        return NULL;
-    }
-
-    wchar_t* wide_str = new wchar_t[size_needed];
-    if (!MultiByteToWideChar(CP_UTF8, 0, str, -1, wide_str, size_needed)) {
-        // 失败处理
-        delete[] wide_str;
-        return NULL;
-    }
-
-    return wide_str;
-}
-
-#endif
-
 // Platform File IO
 char* neko_platform_read_file_contents_default_impl(const char* file_path, const char* mode, size_t* sz) {
     const char* path = file_path;
@@ -601,12 +578,18 @@ neko_result neko_platform_write_file_contents_default_impl(const char* file_path
 }
 
 NEKO_API_DECL bool neko_platform_dir_exists_default_impl(const char* dir_path) {
-    DIR* dir = opendir(dir_path);
-    if (dir) {
-        closedir(dir);
-        return true;
+#if defined(NEKO_PLATFORM_WIN)
+    DWORD attrib = GetFileAttributes(dir_path);
+    return (attrib != INVALID_FILE_ATTRIBUTES && (attrib & FILE_ATTRIBUTE_DIRECTORY));
+#elif defined(NEKO_PLATFORM_LINUX)
+    struct stat st;
+    if (stat(path, &st) == 0) {
+        if (S_ISDIR(st.st_mode)) {
+            return true;
+        }
     }
     return false;
+#endif
 }
 
 NEKO_API_DECL s32 neko_platform_mkdir_default_impl(const char* dir_path, s32 opt) { return mkdir(dir_path); }
@@ -826,7 +809,9 @@ NEKO_API_DECL void* neko_platform_library_proc_address_default_impl(void* lib, c
 
 typedef enum PROCESS_DPI_AWARENESS { PROCESS_DPI_UNAWARE = 0, PROCESS_SYSTEM_DPI_AWARE = 1, PROCESS_PER_MONITOR_DPI_AWARE = 2 } PROCESS_DPI_AWARENESS;
 
-HRESULT WINAPI SetProcessDpiAwareness(PROCESS_DPI_AWARENESS value);
+// HRESULT WINAPI SetProcessDpiAwareness(PROCESS_DPI_AWARENESS value);
+
+typedef HRESULT (*SetProcessDpiAwareness_func)(PROCESS_DPI_AWARENESS value);
 
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h>
@@ -863,7 +848,7 @@ void neko_platform_init(neko_platform_t* pf) {
     SetProcessDPIAware();
     void* shcore = __native_library_load("shcore.dll");
     if (shcore) {
-        auto setter = (decltype(&SetProcessDpiAwareness))__native_library_get_symbol(shcore, "SetProcessDpiAwareness");
+        SetProcessDpiAwareness_func setter = (SetProcessDpiAwareness_func)__native_library_get_symbol(shcore, "SetProcessDpiAwareness");
         if (setter) setter(PROCESS_PER_MONITOR_DPI_AWARE);
     }
     if (shcore) __native_library_unload(shcore);
@@ -1003,9 +988,9 @@ NEKO_API_DECL void neko_platform_update_internal(neko_platform_t* platform) {
         glfwGetWindowSize((GLFWwindow*)win->hndl, &wx, &wy);
         glfwGetFramebufferSize((GLFWwindow*)win->hndl, &fx, &fy);
         glfwGetWindowPos((GLFWwindow*)win->hndl, &wpx, &wpy);
-        win->window_size = neko_v2((float)wx, (float)wy);
-        win->window_position = neko_v2((float)wpx, (float)wpy);
-        win->framebuffer_size = neko_v2((float)fx, (float)fy);
+        win->window_size = neko_v2((f32)wx, (f32)wy);
+        win->window_position = neko_v2((f32)wpx, (f32)wpy);
+        win->framebuffer_size = neko_v2((f32)fx, (f32)fy);
     }
 
     // Update all gamepad state
@@ -1016,7 +1001,7 @@ NEKO_API_DECL void neko_platform_update_internal(neko_platform_t* platform) {
 
         if (gp->present) {
             s32 count = 0;
-            const float* axes = glfwGetJoystickAxes(GLFW_JOYSTICK_1 + i, &count);
+            const f32* axes = glfwGetJoystickAxes(GLFW_JOYSTICK_1 + i, &count);
             count = neko_min(count, NEKO_PLATFORM_JOYSTICK_AXIS_COUNT);
 
             for (u32 a = 0; a < count; ++a) {
@@ -2276,7 +2261,7 @@ void neko_platform_process_input(neko_platform_input_t* input) { glfwPollEvents(
 
 /*== Platform Util == */
 
-void neko_platform_sleep(float ms) {
+void neko_platform_sleep(f32 ms) {
 #if (defined NEKO_PLATFORM_WIN)
 
     timeBeginPeriod(1);
@@ -2378,9 +2363,9 @@ NEKO_API_DECL neko_platform_window_t neko_platform_window_create_internal(const 
     glfwGetWindowSize((GLFWwindow*)win.hndl, &wx, &wy);
     glfwGetFramebufferSize((GLFWwindow*)win.hndl, &fx, &fy);
     glfwGetWindowPos((GLFWwindow*)win.hndl, &wpx, &wpy);
-    win.window_size = neko_v2((float)wx, (float)wy);
-    win.window_position = neko_v2((float)wpx, (float)wpy);
-    win.framebuffer_size = neko_v2((float)fx, (float)fy);
+    win.window_size = neko_v2((f32)wx, (f32)wy);
+    win.window_position = neko_v2((f32)wpx, (f32)wpy);
+    win.framebuffer_size = neko_v2((f32)fx, (f32)fy);
     win.focus = true;
 
     // Need to make sure this is ONLY done once.
@@ -2433,7 +2418,7 @@ NEKO_API_DECL void neko_platform_set_framebuffer_resize_callback(u32 handle, nek
     glfwSetFramebufferSizeCallback((GLFWwindow*)win->hndl, (GLFWframebuffersizefun)cb);
 }
 
-NEKO_API_DECL void neko_platform_mouse_set_position(u32 handle, float x, float y) {
+NEKO_API_DECL void neko_platform_mouse_set_position(u32 handle, f32 x, f32 y) {
     neko_platform_t* platform = neko_subsystem(platform);
     neko_platform_window_t* win = neko_slot_array_getp(platform->windows, handle);
     glfwSetCursorPos((GLFWwindow*)win->hndl, x, y);
@@ -2548,7 +2533,7 @@ void neko_platform_framebuffer_size(u32 handle, u32* w, u32* h) {
 neko_vec2 neko_platform_framebuffer_sizev(u32 handle) {
     u32 w = 0, h = 0;
     neko_platform_framebuffer_size(handle, &w, &h);
-    return neko_v2((float)w, (float)h);
+    return neko_v2((f32)w, (f32)h);
 }
 
 u32 neko_platform_framebuffer_width(u32 handle) {
@@ -2577,8 +2562,8 @@ NEKO_API_DECL neko_vec2 neko_platform_monitor_sizev(u32 id) {
         monitor = glfwGetPrimaryMonitor();
     }
     glfwGetMonitorWorkarea(monitor, &xpos, &ypos, &width, &height);
-    ms.x = (float)width;
-    ms.y = (float)height;
+    ms.x = (f32)width;
+    ms.y = (f32)height;
     return ms;
 }
 
@@ -3546,10 +3531,10 @@ EM_BOOL neko_ems_size_changed_cb(s32 type, const EmscriptenUiEvent* evt, void* u
     (void)type;
     (void)evt;
     (void)user_data;
-    // neko_println("was: <%.2f, %.2f>", (float)ems->canvas_width, (float)ems->canvas_height);
+    // neko_println("was: <%.2f, %.2f>", (f32)ems->canvas_width, (f32)ems->canvas_height);
     emscripten_get_element_css_size(ems->canvas_name, &ems->canvas_width, &ems->canvas_height);
     emscripten_set_canvas_element_size(ems->canvas_name, ems->canvas_width, ems->canvas_height);
-    // neko_println("is: <%.2f, %.2f>", (float)ems->canvas_width, (float)ems->canvas_height);
+    // neko_println("is: <%.2f, %.2f>", (f32)ems->canvas_width, (f32)ems->canvas_height);
     return true;
 }
 
@@ -3567,8 +3552,8 @@ EM_BOOL neko_ems_fullscreenchange_cb(s32 type, const EmscriptenFullscreenChangeE
         emscripten_enter_soft_fullscreen(ems->canvas_name, &strategy);
         // neko_println("fullscreen!");
         // emscripten_enter_soft_fullscreen(ems->canvas_name, NULL);
-        // ems->canvas_width = (float)evt->screenWidth;
-        // ems->canvas_height = (float)evt->screenHeight;
+        // ems->canvas_width = (f32)evt->screenWidth;
+        // ems->canvas_height = (f32)evt->screenHeight;
         // emscripten_set_canvas_element_size(ems->canvas_name, ems->canvas_width, ems->canvas_height);
     } else {
         emscripten_exit_fullscreen();
@@ -3656,9 +3641,9 @@ EM_BOOL neko_ems_mouse_cb(s32 type, const EmscriptenMouseEvent* evt, void* user_
         case EMSCRIPTEN_EVENT_MOUSEMOVE: {
             neko_evt.mouse.action = NEKO_PLATFORM_MOUSE_MOVE;
             if (platform->input.mouse.locked) {
-                neko_evt.mouse.move = neko_v2((float)evt->movementX, (float)evt->movementY);
+                neko_evt.mouse.move = neko_v2((f32)evt->movementX, (f32)evt->movementY);
             } else {
-                neko_evt.mouse.move = neko_v2((float)evt->targetX, (float)evt->targetY);
+                neko_evt.mouse.move = neko_v2((f32)evt->targetX, (f32)evt->targetY);
             }
         } break;
 
@@ -3699,7 +3684,7 @@ EM_BOOL neko_ems_mousewheel_cb(s32 type, const EmscriptenWheelEvent* evt, void* 
     neko_platform_event_t neko_evt = neko_default_val();
     neko_evt.type = NEKO_PLATFORM_EVENT_MOUSE;
     neko_evt.mouse.action = NEKO_PLATFORM_MOUSE_WHEEL;
-    neko_evt.mouse.wheel = neko_v2((float)evt->deltaX, -(float)evt->deltaY);
+    neko_evt.mouse.wheel = neko_v2((f32)evt->deltaX, -(f32)evt->deltaY);
     neko_platform_add_event(&neko_evt);
 
     return true;
@@ -3791,7 +3776,7 @@ NEKO_API_DECL void neko_platform_enable_vsync(s32 enabled) {
 }
 
 // Platform Util
-NEKO_API_DECL void neko_platform_sleep(float ms) { emscripten_sleep((u32)ms); }
+NEKO_API_DECL void neko_platform_sleep(f32 ms) { emscripten_sleep((u32)ms); }
 
 NEKO_API_DECL void neko_platform_update_internal(neko_platform_t* platform) {}
 
@@ -3815,7 +3800,7 @@ NEKO_API_DECL void neko_platform_process_input(neko_platform_input_t* input) {
     }
 }
 
-NEKO_API_DECL void neko_platform_mouse_set_position(u32 handle, float x, float y) {
+NEKO_API_DECL void neko_platform_mouse_set_position(u32 handle, f32 x, f32 y) {
     // Not sure this is possible...
     struct neko_platform_t* platform = neko_subsystem(platform);
     platform->input.mouse.position = neko_v2(x, y);
@@ -3833,7 +3818,7 @@ NEKO_API_DECL void neko_platform_window_swap_buffer(u32 handle) {
 
 NEKO_API_DECL neko_vec2 neko_platform_window_sizev(u32 handle) {
     neko_ems_t* ems = NEKO_EMS_DATA();
-    return neko_v2((float)ems->canvas_width, (float)ems->canvas_height);
+    return neko_v2((f32)ems->canvas_width, (f32)ems->canvas_height);
 }
 
 NEKO_API_DECL void neko_platform_window_size(u32 handle, u32* w, u32* h) {
@@ -3926,5 +3911,96 @@ s32 main(s32 argc, char** argv) {
 
 #undef NEKO_PLATFORM_IMPL_EMSCRIPTEN
 #endif  // NEKO_PLATFORM_IMPL_EMSCRIPTEN
+
+static tick_t timerlib_freq = 0;
+static double timerlib_oofreq = 0;
+
+int neko_timer_initialize(void) {
+#if defined(NEKO_PLATFORM_WIN)
+    tick_t unused;
+    if (!QueryPerformanceFrequency((LARGE_INTEGER*)&timerlib_freq) || !QueryPerformanceCounter((LARGE_INTEGER*)&unused)) return -1;
+#elif defined(NEKO_PLATFORM_LINUX)
+    struct timespec ts = {.tv_sec = 0, .tv_nsec = 0};
+    if (clock_gettime(CLOCK_MONOTONIC, &ts)) return -1;
+    timerlib_freq = 1000000000ULL;
+#endif
+
+    timerlib_oofreq = 1.0 / (double)timerlib_freq;
+
+    return 0;
+}
+
+void neko_timer_shutdown(void) {}
+
+tick_t neko_timer_current(void) {
+#if defined(NEKO_PLATFORM_WIN)
+
+    tick_t curclock;
+    QueryPerformanceCounter((LARGE_INTEGER*)&curclock);
+    return curclock;
+
+#elif defined(NEKO_PLATFORM_LINUX)
+
+    struct timespec ts = {.tv_sec = 0, .tv_nsec = 0};
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ((uint64_t)ts.tv_sec * 1000000000ULL) + ts.tv_nsec;
+
+#endif
+}
+
+tick_t neko_timer_ticks_per_second(void) { return timerlib_freq; }
+
+deltatime_t neko_timer_elapsed(const tick_t t) { return (deltatime_t)((double)neko_timer_elapsed_ticks(t) * timerlib_oofreq); }
+
+tick_t neko_timer_elapsed_ticks(const tick_t t) {
+    tick_t dt = 0;
+
+#if defined(NEKO_PLATFORM_WIN)
+
+    tick_t curclock = t;
+    QueryPerformanceCounter((LARGE_INTEGER*)&curclock);
+    dt = curclock - t;
+
+#elif defined(NEKO_PLATFORM_LINUX)
+
+    tick_t curclock;
+    struct timespec ts = {.tv_sec = 0, .tv_nsec = 0};
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+
+    curclock = ((tick_t)ts.tv_sec * 1000000000ULL) + ts.tv_nsec;
+    dt = curclock - t;
+
+#endif
+
+    return dt;
+}
+
+deltatime_t neko_timer_ticks_to_seconds(const tick_t dt) { return (deltatime_t)((double)dt * timerlib_oofreq); }
+
+#if defined(NEKO_PLATFORM_WIN)
+struct __timeb64 {
+    __time64_t time;
+    unsigned short millitm;
+    short timezone;
+    short dstflag;
+};
+_CRTIMP errno_t __cdecl _ftime64_s(_Out_ struct __timeb64* _Time);
+#endif
+
+tick_t neko_timer_system(void) {
+#if defined(NEKO_PLATFORM_WIN)
+
+    struct __timeb64 tb;
+    _ftime64_s(&tb);
+    return ((tick_t)tb.time * 1000ULL) + (tick_t)tb.millitm;
+
+#elif defined(NEKO_PLATFORM_LINUX)
+
+    struct timespec ts = {.tv_sec = 0, .tv_nsec = 0};
+    clock_gettime(CLOCK_REALTIME, &ts);
+    return ((uint64_t)ts.tv_sec * 1000ULL) + (ts.tv_nsec / 1000000ULL);
+
+#endif
+}
 
 #endif
