@@ -434,7 +434,7 @@ void neko_idraw_flush(neko_immediate_draw_t* neko_idraw) {
     if (neko_dyn_array_size(neko_idraw->vattributes)) {
         // Calculate vertex stride
         size_t stride = 0;
-        for (uint32_t i = 0; i < neko_dyn_array_size(neko_idraw->vattributes); ++i) {
+        for (u32 i = 0; i < neko_dyn_array_size(neko_idraw->vattributes); ++i) {
             neko_idraw_vattr_type type = neko_idraw->vattributes[i];
             switch (type) {
                 default:
@@ -453,7 +453,7 @@ void neko_idraw_flush(neko_immediate_draw_t* neko_idraw) {
         vsz = stride;
     }
 
-    uint32_t ct = neko_byte_buffer_size(&neko_idraw->vertices) / vsz;
+    u32 ct = neko_byte_buffer_size(&neko_idraw->vertices) / vsz;
 
     // Set up all binding data
     neko_graphics_bind_vertex_buffer_desc_t vbuffer = neko_default_val();
@@ -588,8 +588,8 @@ NEKO_API_DECL void neko_idraw_vattr_list(neko_immediate_draw_t* neko_idraw, neko
     neko_idraw_flush(neko_idraw);
 
     neko_dyn_array_clear(neko_idraw->vattributes);
-    uint32_t ct = sz / sizeof(neko_idraw_vattr_type);
-    for (uint32_t i = 0; i < ct; ++i) {
+    u32 ct = sz / sizeof(neko_idraw_vattr_type);
+    for (u32 i = 0; i < ct; ++i) {
         neko_dyn_array_push(neko_idraw->vattributes, list[i]);
     }
 }
@@ -604,8 +604,8 @@ NEKO_API_DECL void neko_idraw_vattr_list_mesh(neko_immediate_draw_t* neko_idraw,
         neko_dyn_array_push(neko_idraw->vattributes, TYPE); \
     } while (0)
 
-    uint32_t ct = sz / sizeof(neko_asset_mesh_layout_t);
-    for (uint32_t i = 0; i < ct; ++i) {
+    u32 ct = sz / sizeof(neko_asset_mesh_layout_t);
+    for (u32 i = 0; i < ct; ++i) {
         neko_asset_mesh_attribute_type type = layout[i].type;
         switch (type) {
             default:
@@ -644,12 +644,12 @@ NEKO_API_DECL void neko_idraw_tc2fv(neko_immediate_draw_t* neko_idraw, neko_vec2
     neko_idraw->cache.uv = uv;
 }
 
-void neko_idraw_tc2f(neko_immediate_draw_t* neko_idraw, float u, float v) {
+void neko_idraw_tc2f(neko_immediate_draw_t* neko_idraw, f32 u, f32 v) {
     // Set cache register
     neko_idraw_tc2fv(neko_idraw, neko_v2(u, v));
 }
 
-void neko_idraw_c4ub(neko_immediate_draw_t* neko_idraw, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+void neko_idraw_c4ub(neko_immediate_draw_t* neko_idraw, u8 r, u8 g, u8 b, u8 a) {
     // Set cache color
     neko_idraw->cache.color = neko_color(r, g, b, a);
 }
@@ -659,7 +659,7 @@ NEKO_API_DECL void neko_idraw_c4ubv(neko_immediate_draw_t* neko_idraw, neko_colo
 void neko_idraw_v3fv(neko_immediate_draw_t* neko_idraw, neko_vec3 p) {
     if (neko_dyn_array_size(neko_idraw->vattributes)) {
         // Iterate through attributes and push into stream
-        for (uint32_t i = 0; i < neko_dyn_array_size(neko_idraw->vattributes); ++i) {
+        for (u32 i = 0; i < neko_dyn_array_size(neko_idraw->vattributes); ++i) {
             neko_idraw_vattr_type type = neko_idraw->vattributes[i];
             switch (type) {
                 default: {
@@ -687,12 +687,12 @@ void neko_idraw_v3fv(neko_immediate_draw_t* neko_idraw, neko_vec3 p) {
     }
 }
 
-void neko_idraw_v3f(neko_immediate_draw_t* neko_idraw, float x, float y, float z) {
+void neko_idraw_v3f(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, f32 z) {
     // Push vert
     neko_idraw_v3fv(neko_idraw, neko_v3(x, y, z));
 }
 
-void neko_idraw_v2f(neko_immediate_draw_t* neko_idraw, float x, float y) {
+void neko_idraw_v2f(neko_immediate_draw_t* neko_idraw, f32 x, f32 y) {
     // Push vert
     neko_idraw_v3f(neko_idraw, x, y, 0.f);
 }
@@ -784,24 +784,24 @@ void neko_idraw_mul_matrix(neko_immediate_draw_t* neko_idraw, neko_mat4 m) {
     }
 }
 
-void neko_idraw_perspective(neko_immediate_draw_t* neko_idraw, float fov, float aspect, float n, float f) {
+void neko_idraw_perspective(neko_immediate_draw_t* neko_idraw, f32 fov, f32 aspect, f32 n, f32 f) {
     // Set current matrix at mode to perspective
     neko_idraw_load_matrix(neko_idraw, neko_mat4_perspective(fov, aspect, n, f));
 }
 
-void neko_idraw_ortho(neko_immediate_draw_t* neko_idraw, float l, float r, float b, float t, float n, float f) {
+void neko_idraw_ortho(neko_immediate_draw_t* neko_idraw, f32 l, f32 r, f32 b, f32 t, f32 n, f32 f) {
     // Set current matrix at mode to ortho
     neko_idraw_load_matrix(neko_idraw, neko_mat4_ortho(l, r, b, t, n, f));
 }
 
-void neko_idraw_rotatef(neko_immediate_draw_t* neko_idraw, float angle, float x, float y, float z) {
+void neko_idraw_rotatef(neko_immediate_draw_t* neko_idraw, f32 angle, f32 x, f32 y, f32 z) {
     // Rotate current matrix at mode
     neko_idraw_mul_matrix(neko_idraw, neko_mat4_rotatev(angle, neko_v3(x, y, z)));
 }
 
-void neko_idraw_rotatev(neko_immediate_draw_t* neko_idraw, float angle, neko_vec3 v) { neko_idraw_rotatef(neko_idraw, angle, v.x, v.y, v.z); }
+void neko_idraw_rotatev(neko_immediate_draw_t* neko_idraw, f32 angle, neko_vec3 v) { neko_idraw_rotatef(neko_idraw, angle, v.x, v.y, v.z); }
 
-void neko_idraw_translatef(neko_immediate_draw_t* neko_idraw, float x, float y, float z) {
+void neko_idraw_translatef(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, f32 z) {
     // Translate current matrix at mode
     neko_idraw_mul_matrix(neko_idraw, neko_mat4_translate(x, y, z));
 }
@@ -811,27 +811,27 @@ void neko_idraw_translatev(neko_immediate_draw_t* neko_idraw, neko_vec3 v) {
     neko_idraw_mul_matrix(neko_idraw, neko_mat4_translate(v.x, v.y, v.z));
 }
 
-void neko_idraw_scalef(neko_immediate_draw_t* neko_idraw, float x, float y, float z) {
+void neko_idraw_scalef(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, f32 z) {
     // Scale current matrix at mode
     neko_idraw_mul_matrix(neko_idraw, neko_mat4_scale(x, y, z));
 }
 
 void neko_idraw_scalev(neko_immediate_draw_t* neko_idraw, neko_vec3 v) { neko_idraw_mul_matrix(neko_idraw, neko_mat4_scalev(v)); }
 
-void neko_idraw_camera(neko_immediate_draw_t* neko_idraw, neko_camera_t* cam, uint32_t width, uint32_t height) {
+void neko_idraw_camera(neko_immediate_draw_t* neko_idraw, neko_camera_t* cam, u32 width, u32 height) {
     // Just grab main window for now. Will need to grab top of viewport stack in future
     neko_idraw_load_matrix(neko_idraw, neko_camera_get_view_projection(cam, width, height));
 }
 
-void neko_idraw_camera2D(neko_immediate_draw_t* neko_idraw, uint32_t width, uint32_t height) {
+void neko_idraw_camera2D(neko_immediate_draw_t* neko_idraw, u32 width, u32 height) {
     // Flush previous
     neko_idraw_flush(neko_idraw);
-    f32 l = 0.f, r = (float)width, tp = 0.f, b = (float)height;
+    f32 l = 0.f, r = (f32)width, tp = 0.f, b = (f32)height;
     neko_mat4 ortho = neko_mat4_ortho(l, r, b, tp, -1.f, 1.f);
     neko_idraw_load_matrix(neko_idraw, ortho);
 }
 
-void neko_idraw_camera3D(neko_immediate_draw_t* neko_idraw, uint32_t width, uint32_t height) {
+void neko_idraw_camera3D(neko_immediate_draw_t* neko_idraw, u32 width, u32 height) {
     // Flush previous
     neko_idraw_flush(neko_idraw);
     neko_camera_t c = neko_camera_perspective();
@@ -839,7 +839,7 @@ void neko_idraw_camera3D(neko_immediate_draw_t* neko_idraw, uint32_t width, uint
 }
 
 // Shape Drawing Utils
-void neko_idraw_triangle(neko_immediate_draw_t* neko_idraw, float x0, float y0, float x1, float y1, float x2, float y2, uint8_t r, uint8_t g, uint8_t b, uint8_t a, neko_graphics_primitive_type type) {
+void neko_idraw_triangle(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 x1, f32 y1, f32 x2, f32 y2, u8 r, u8 g, u8 b, u8 a, neko_graphics_primitive_type type) {
     neko_idraw_trianglex(neko_idraw, x0, y0, 0.f, x1, y1, 0.f, x2, y2, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, r, g, b, a, type);
 }
 
@@ -847,8 +847,8 @@ void neko_idraw_trianglev(neko_immediate_draw_t* neko_idraw, neko_vec2 a, neko_v
     neko_idraw_triangle(neko_idraw, a.x, a.y, b.x, b.y, c.x, c.y, color.r, color.g, color.b, color.a, type);
 }
 
-void neko_idraw_trianglex(neko_immediate_draw_t* neko_idraw, float x0, float y0, float z0, float x1, float y1, float z1, float x2, float y2, float z2, float u0, float v0, float u1, float v1, float u2,
-                          float v2, uint8_t r, uint8_t g, uint8_t b, uint8_t a, neko_graphics_primitive_type type) {
+void neko_idraw_trianglex(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 z0, f32 x1, f32 y1, f32 z1, f32 x2, f32 y2, f32 z2, f32 u0, f32 v0, f32 u1, f32 v1, f32 u2, f32 v2, u8 r, u8 g, u8 b,
+                          u8 a, neko_graphics_primitive_type type) {
     switch (type) {
         default:
         case NEKO_GRAPHICS_PRIMITIVE_TRIANGLES: {
@@ -909,8 +909,7 @@ NEKO_API_DECL void neko_idraw_trianglevxmc(neko_immediate_draw_t* neko_idraw, ne
     }
 }
 
-void neko_idraw_line3Dmc(neko_immediate_draw_t* neko_idraw, float x0, float y0, float z0, float x1, float y1, float z1, uint8_t r0, uint8_t g0, uint8_t b0, uint8_t a0, uint8_t r1, uint8_t g1,
-                         uint8_t b1, uint8_t a1) {
+void neko_idraw_line3Dmc(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 z0, f32 x1, f32 y1, f32 z1, u8 r0, u8 g0, u8 b0, u8 a0, u8 r1, u8 g1, u8 b1, u8 a1) {
     neko_idraw_begin(neko_idraw, NEKO_GRAPHICS_PRIMITIVE_LINES);
 
     neko_idraw_tc2f(neko_idraw, 0.f, 0.f);
@@ -925,7 +924,7 @@ void neko_idraw_line3Dmc(neko_immediate_draw_t* neko_idraw, float x0, float y0, 
     neko_idraw_end(neko_idraw);
 }
 
-void neko_idraw_line3D(neko_immediate_draw_t* neko_idraw, float x0, float y0, float z0, float x1, float y1, float z1, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+void neko_idraw_line3D(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 z0, f32 x1, f32 y1, f32 z1, u8 r, u8 g, u8 b, u8 a) {
     neko_idraw_begin(neko_idraw, NEKO_GRAPHICS_PRIMITIVE_LINES);
     neko_idraw_tc2f(neko_idraw, 0.f, 0.f);
     neko_idraw_c4ub(neko_idraw, r, g, b, a);
@@ -938,14 +937,11 @@ void neko_idraw_line3Dv(neko_immediate_draw_t* neko_idraw, neko_vec3 s, neko_vec
     neko_idraw_line3D(neko_idraw, s.x, s.y, s.z, e.x, e.y, e.z, color.r, color.g, color.b, color.a);
 }
 
-void neko_idraw_line(neko_immediate_draw_t* neko_idraw, float x0, float y0, float x1, float y1, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-    neko_idraw_line3D(neko_idraw, x0, y0, 0.f, x1, y1, 0.f, r, g, b, a);
-}
+void neko_idraw_line(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 x1, f32 y1, u8 r, u8 g, u8 b, u8 a) { neko_idraw_line3D(neko_idraw, x0, y0, 0.f, x1, y1, 0.f, r, g, b, a); }
 
 void neko_idraw_linev(neko_immediate_draw_t* neko_idraw, neko_vec2 v0, neko_vec2 v1, neko_color_t c) { neko_idraw_line(neko_idraw, v0.x, v0.y, v1.x, v1.y, c.r, c.g, c.b, c.a); }
 
-void neko_idraw_rectx(neko_immediate_draw_t* neko_idraw, float l, float b, float r, float t, float u0, float v0, float u1, float v1, uint8_t _r, uint8_t _g, uint8_t _b, uint8_t _a,
-                      neko_graphics_primitive_type type) {
+void neko_idraw_rectx(neko_immediate_draw_t* neko_idraw, f32 l, f32 b, f32 r, f32 t, f32 u0, f32 v0, f32 u1, f32 v1, u8 _r, u8 _g, u8 _b, u8 _a, neko_graphics_primitive_type type) {
     // Shouldn't use triangles, because need to declare texture coordinates.
     switch (type) {
         case NEKO_GRAPHICS_PRIMITIVE_LINES: {
@@ -986,7 +982,7 @@ void neko_idraw_rectx(neko_immediate_draw_t* neko_idraw, float l, float b, float
     }
 }
 
-void neko_idraw_rect(neko_immediate_draw_t* neko_idraw, float l, float b, float r, float t, uint8_t _r, uint8_t _g, uint8_t _b, uint8_t _a, neko_graphics_primitive_type type) {
+void neko_idraw_rect(neko_immediate_draw_t* neko_idraw, f32 l, f32 b, f32 r, f32 t, u8 _r, u8 _g, u8 _b, u8 _a, neko_graphics_primitive_type type) {
     neko_idraw_rectx(neko_idraw, l, b, r, t, 0.f, 0.f, 1.f, 1.f, _r, _g, _b, _a, type);
 }
 
@@ -1021,10 +1017,10 @@ NEKO_API_DECL void neko_idraw_rect3Dv(neko_immediate_draw_t* neko_idraw, neko_ve
 
             neko_idraw_c4ub(neko_idraw, c.r, c.g, c.b, c.a);
 
-            const float u0 = uv0.x;
-            const float u1 = uv1.x;
-            const float v0 = uv0.y;
-            const float v1 = uv1.y;
+            const f32 u0 = uv0.x;
+            const f32 u1 = uv1.x;
+            const f32 v0 = uv0.y;
+            const f32 v1 = uv1.y;
 
             // First triangle
             neko_idraw_c4ub(neko_idraw, c.r, c.g, c.b, c.a);
@@ -1054,7 +1050,7 @@ NEKO_API_DECL void neko_idraw_rect3Dvd(neko_immediate_draw_t* neko_idraw, neko_v
     neko_idraw_rect3Dv(neko_idraw, xyz, neko_vec3_add(xyz, whd), uv0, uv1, c, type);
 }
 
-void neko_idraw_circle_sector(neko_immediate_draw_t* neko_idraw, float cx, float cy, float radius, int32_t start_angle, int32_t end_angle, int32_t segments, uint8_t r, uint8_t g, uint8_t b, uint8_t a,
+void neko_idraw_circle_sector(neko_immediate_draw_t* neko_idraw, f32 cx, f32 cy, f32 radius, int32_t start_angle, int32_t end_angle, int32_t segments, u8 r, u8 g, u8 b, u8 a,
                               neko_graphics_primitive_type type) {
     if (radius <= 0.0f) {
         radius = 0.1f;
@@ -1070,15 +1066,15 @@ void neko_idraw_circle_sector(neko_immediate_draw_t* neko_idraw, float cx, float
 
     if (segments < 4) {
         // Calculate the maximum angle between segments based on the error rate (usually 0.5f)
-        float th = acosf(2 * powf(1 - neko_idraw_smooth_circle_error_rate / radius, 2) - 1);
+        f32 th = acosf(2 * powf(1 - neko_idraw_smooth_circle_error_rate / radius, 2) - 1);
         segments = (int32_t)((end_angle - start_angle) * ceilf(2 * neko_pi / th) / 360);
         if (segments <= 0) {
             segments = 4;
         }
     }
 
-    float step = (float)(end_angle - start_angle) / (float)segments;
-    float angle = (float)start_angle;
+    f32 step = (f32)(end_angle - start_angle) / (f32)segments;
+    f32 angle = (f32)start_angle;
     neko_for_range_i(segments) {
         neko_vec2 _a = neko_v2(cx, cy);
         neko_vec2 _b = neko_v2(cx + sinf(neko_idraw_deg2rad * angle) * radius, cy + cosf(neko_idraw_deg2rad * angle) * radius);
@@ -1088,14 +1084,14 @@ void neko_idraw_circle_sector(neko_immediate_draw_t* neko_idraw, float cx, float
     }
 }
 
-void neko_idraw_circle_sectorvx(neko_immediate_draw_t* neko_idraw, neko_vec3 c, float radius, int32_t start_angle, int32_t end_angle, int32_t segments, neko_color_t color,
+void neko_idraw_circle_sectorvx(neko_immediate_draw_t* neko_idraw, neko_vec3 c, f32 radius, int32_t start_angle, int32_t end_angle, int32_t segments, neko_color_t color,
                                 neko_graphics_primitive_type type) {
     if (radius <= 0.0f) {
         radius = 0.1f;
     }
 
     // Cache elements of center vector
-    float cx = c.x, cy = c.y, cz = c.z;
+    f32 cx = c.x, cy = c.y, cz = c.z;
 
     // Function expects (end_angle > start_angle)
     if (end_angle < start_angle) {
@@ -1107,15 +1103,15 @@ void neko_idraw_circle_sectorvx(neko_immediate_draw_t* neko_idraw, neko_vec3 c, 
 
     if (segments < 4) {
         // Calculate the maximum angle between segments based on the error rate (usually 0.5f)
-        float th = acosf(2 * powf(1 - neko_idraw_smooth_circle_error_rate / radius, 2) - 1);
+        f32 th = acosf(2 * powf(1 - neko_idraw_smooth_circle_error_rate / radius, 2) - 1);
         segments = (int32_t)((end_angle - start_angle) * ceilf(2 * neko_pi / th) / 360);
         if (segments <= 0) {
             segments = 4;
         }
     }
 
-    float step = (float)(end_angle - start_angle) / (float)segments;
-    float angle = (float)start_angle;
+    f32 step = (f32)(end_angle - start_angle) / (f32)segments;
+    f32 angle = (f32)start_angle;
     neko_for_range_i(segments) {
         neko_vec3 _a = neko_v3(cx, cy, cz);
         neko_vec3 _b = neko_v3(cx + sinf(neko_idraw_deg2rad * angle) * radius, cy + cosf(neko_idraw_deg2rad * angle) * radius, cz);
@@ -1125,26 +1121,26 @@ void neko_idraw_circle_sectorvx(neko_immediate_draw_t* neko_idraw, neko_vec3 c, 
     }
 }
 
-void neko_idraw_circle(neko_immediate_draw_t* neko_idraw, float cx, float cy, float radius, int32_t segments, uint8_t r, uint8_t g, uint8_t b, uint8_t a, neko_graphics_primitive_type type) {
+void neko_idraw_circle(neko_immediate_draw_t* neko_idraw, f32 cx, f32 cy, f32 radius, int32_t segments, u8 r, u8 g, u8 b, u8 a, neko_graphics_primitive_type type) {
     neko_idraw_circle_sector(neko_idraw, cx, cy, radius, 0, 360, segments, r, g, b, a, type);
 }
 
-void neko_idraw_circlevx(neko_immediate_draw_t* neko_idraw, neko_vec3 c, float radius, int32_t segments, neko_color_t color, neko_graphics_primitive_type type) {
+void neko_idraw_circlevx(neko_immediate_draw_t* neko_idraw, neko_vec3 c, f32 radius, int32_t segments, neko_color_t color, neko_graphics_primitive_type type) {
     neko_idraw_circle_sectorvx(neko_idraw, c, radius, 0, 360, segments, color, type);
 }
 
-NEKO_API_DECL void neko_idraw_arc(neko_immediate_draw_t* neko_idraw, float cx, float cy, float radius_inner, float radius_outer, float start_angle, float end_angle, int32_t segments, uint8_t r,
-                                  uint8_t g, uint8_t b, uint8_t a, neko_graphics_primitive_type type) {
+NEKO_API_DECL void neko_idraw_arc(neko_immediate_draw_t* neko_idraw, f32 cx, f32 cy, f32 radius_inner, f32 radius_outer, f32 start_angle, f32 end_angle, int32_t segments, u8 r, u8 g, u8 b, u8 a,
+                                  neko_graphics_primitive_type type) {
     if (start_angle == end_angle) return;
 
     if (start_angle > end_angle) {
-        float tmp = end_angle;
+        f32 tmp = end_angle;
         end_angle = start_angle;
         start_angle = tmp;
     }
 
     if (radius_outer < radius_inner) {
-        float tmp = radius_outer;
+        f32 tmp = radius_outer;
         radius_outer = radius_inner;
         radius_inner = tmp;
     }
@@ -1152,7 +1148,7 @@ NEKO_API_DECL void neko_idraw_arc(neko_immediate_draw_t* neko_idraw, float cx, f
     int32_t min_segments = (int32_t)((end_angle - start_angle) / 90.f);
 
     if (segments < min_segments) {
-        float th = acosf(2 * powf(1 - neko_idraw_smooth_circle_error_rate / radius_outer, 2) - 1);
+        f32 th = acosf(2 * powf(1 - neko_idraw_smooth_circle_error_rate / radius_outer, 2) - 1);
         segments = (int32_t)((end_angle - start_angle) * ceilf(2 * neko_pi / th) / 360);
         if (segments <= 0) segments = min_segments;
     }
@@ -1164,12 +1160,12 @@ NEKO_API_DECL void neko_idraw_arc(neko_immediate_draw_t* neko_idraw, float cx, f
         return;
     }
 
-    float step = (end_angle - start_angle) / (float)segments;
-    float angle = start_angle;
+    f32 step = (end_angle - start_angle) / (f32)segments;
+    f32 angle = start_angle;
 
     for (int i = 0; i < segments; i++) {
-        float ar = neko_deg2rad(angle);
-        float ars = neko_deg2rad((angle + step));
+        f32 ar = neko_deg2rad(angle);
+        f32 ars = neko_deg2rad((angle + step));
 
         neko_idraw_trianglev(neko_idraw, neko_v2(cx + sinf(ar) * radius_inner, cy + cosf(ar) * radius_inner), neko_v2(cx + sinf(ars) * radius_inner, cy + cosf(ars) * radius_inner),
                              neko_v2(cx + sinf(ar) * radius_outer, cy + cosf(ar) * radius_outer), neko_color(r, g, b, a), type);
@@ -1181,10 +1177,10 @@ NEKO_API_DECL void neko_idraw_arc(neko_immediate_draw_t* neko_idraw, float cx, f
     }
 }
 
-void neko_idraw_box(neko_immediate_draw_t* neko_idraw, float x, float y, float z, float hx, float hy, float hz, uint8_t r, uint8_t g, uint8_t b, uint8_t a, neko_graphics_primitive_type type) {
-    float width = hx;
-    float height = hy;
-    float length = hz;
+void neko_idraw_box(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, f32 z, f32 hx, f32 hy, f32 hz, u8 r, u8 g, u8 b, u8 a, neko_graphics_primitive_type type) {
+    f32 width = hx;
+    f32 height = hy;
+    f32 length = hz;
 
     neko_vec3 v0 = neko_v3(x - width, y - height, z + length);
     neko_vec3 v1 = neko_v3(x + width, y - height, z + length);
@@ -1277,12 +1273,12 @@ void neko_idraw_box(neko_immediate_draw_t* neko_idraw, float x, float y, float z
     }
 }
 
-void neko_idraw_sphere(neko_immediate_draw_t* neko_idraw, float cx, float cy, float cz, float radius, uint8_t r, uint8_t g, uint8_t b, uint8_t a, neko_graphics_primitive_type type) {
+void neko_idraw_sphere(neko_immediate_draw_t* neko_idraw, f32 cx, f32 cy, f32 cz, f32 radius, u8 r, u8 g, u8 b, u8 a, neko_graphics_primitive_type type) {
     // Modified from: http://www.songho.ca/opengl/gl_sphere.html
-    const uint32_t stacks = 16;
-    const uint32_t sectors = 32;
-    float sector_step = 2.f * (float)neko_pi / (float)sectors;
-    float stack_step = (float)neko_pi / (float)stacks;
+    const u32 stacks = 16;
+    const u32 sectors = 32;
+    f32 sector_step = 2.f * (f32)neko_pi / (f32)sectors;
+    f32 stack_step = (f32)neko_pi / (f32)stacks;
     struct {
         neko_vec3 p;
         neko_vec2 uv;
@@ -1296,8 +1292,8 @@ void neko_idraw_sphere(neko_immediate_draw_t* neko_idraw, float cx, float cy, fl
         V.p.x = cx + (XZ)*cosf((SECANGLE));                \
         V.p.z = cz + (XZ)*sinf((SECANGLE));                \
         /* vertex tex coord (s, t) range between [0, 1] */ \
-        V.uv.x = (float)(J) / sectors;                     \
-        V.uv.y = (float)(I) / stacks;                      \
+        V.uv.x = (f32)(J) / sectors;                       \
+        V.uv.y = (f32)(I) / stacks;                        \
     } while (0)
 
 #define push_vert(V)                               \
@@ -1306,22 +1302,22 @@ void neko_idraw_sphere(neko_immediate_draw_t* neko_idraw, float cx, float cy, fl
         neko_idraw_v3f(neko_idraw, V.x, V.y, V.z); \
     } while (0)
 
-    for (uint32_t i = 0; i < stacks; ++i) {
-        float sa0 = neko_pi / 2.f - i * stack_step;
-        float sa1 = neko_pi / 2.f - (i + 1) * stack_step;
-        float xz0 = radius * cosf(sa0);
-        float xz1 = radius * cosf(sa1);
-        float y0 = cy + radius * sinf(sa0);  // r * sin(u)
-        float y1 = cy + radius * sinf(sa1);  // r * sin(u)
+    for (u32 i = 0; i < stacks; ++i) {
+        f32 sa0 = neko_pi / 2.f - i * stack_step;
+        f32 sa1 = neko_pi / 2.f - (i + 1) * stack_step;
+        f32 xz0 = radius * cosf(sa0);
+        f32 xz1 = radius * cosf(sa1);
+        f32 y0 = cy + radius * sinf(sa0);  // r * sin(u)
+        f32 y1 = cy + radius * sinf(sa1);  // r * sin(u)
 
         v0.p.y = y0;
         v1.p.y = y0;
         v2.p.y = y1;
         v3.p.y = y1;
 
-        for (uint32_t j = 0; j < sectors; ++j) {
-            float sca0 = j * sector_step;  // starting from 0 to 2pi
-            float sca1 = (j + 1) * sector_step;
+        for (u32 j = 0; j < sectors; ++j) {
+            f32 sca0 = j * sector_step;  // starting from 0 to 2pi
+            f32 sca1 = (j + 1) * sector_step;
 
             // Make verts
             make_vert(v0, i, j, xz0, sca0);
@@ -1338,28 +1334,28 @@ void neko_idraw_sphere(neko_immediate_draw_t* neko_idraw, float cx, float cy, fl
 }
 
 // Modified from Raylib's implementation
-void neko_idraw_bezier(neko_immediate_draw_t* neko_idraw, float x0, float y0, float x1, float y1, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+void neko_idraw_bezier(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 x1, f32 y1, u8 r, u8 g, u8 b, u8 a) {
     neko_vec2 start = neko_v2(x0, y0);
     neko_vec2 end = neko_v2(x1, y1);
     neko_vec2 previous = start;
     neko_vec2 current = neko_default_val();
     neko_color_t color = neko_color(r, g, b, a);
-    const uint32_t bezier_line_divisions = 24;
+    const u32 bezier_line_divisions = 24;
 
     for (int i = 1; i <= bezier_line_divisions; i++) {
-        current.y = neko_ease_cubic_in_out((float)i, start.y, end.y - start.y, (float)bezier_line_divisions);
-        current.x = previous.x + (end.x - start.x) / (float)bezier_line_divisions;
+        current.y = neko_ease_cubic_in_out((f32)i, start.y, end.y - start.y, (f32)bezier_line_divisions);
+        current.x = previous.x + (end.x - start.x) / (f32)bezier_line_divisions;
         neko_idraw_linev(neko_idraw, previous, current, color);
         previous = current;
     }
 }
 
-NEKO_API_DECL void neko_idraw_cylinder(neko_immediate_draw_t* neko_idraw, float x, float y, float z, float r_top, float r_bottom, float height, int32_t sides, uint8_t r, uint8_t g, uint8_t b,
-                                       uint8_t a, neko_graphics_primitive_type type) {
+NEKO_API_DECL void neko_idraw_cylinder(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, f32 z, f32 r_top, f32 r_bottom, f32 height, int32_t sides, u8 r, u8 g, u8 b, u8 a,
+                                       neko_graphics_primitive_type type) {
     if (sides < 3) sides = 3;
 
     int32_t numVertex = sides * 8;
-    const float hh = height * 0.5f;
+    const f32 hh = height * 0.5f;
 
     switch (type) {
         default:
@@ -1446,12 +1442,11 @@ NEKO_API_DECL void neko_idraw_cylinder(neko_immediate_draw_t* neko_idraw, float 
     }
 }
 
-NEKO_API_DECL void neko_idraw_cone(neko_immediate_draw_t* neko_idraw, float x, float y, float z, float radius, float height, int32_t sides, uint8_t r, uint8_t g, uint8_t b, uint8_t a,
-                                   neko_graphics_primitive_type type) {
+NEKO_API_DECL void neko_idraw_cone(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, f32 z, f32 radius, f32 height, int32_t sides, u8 r, u8 g, u8 b, u8 a, neko_graphics_primitive_type type) {
     neko_idraw_cylinder(neko_idraw, x, y, z, 0.f, radius, height, sides, r, g, b, a, type);
 }
 
-void neko_idraw_text(neko_immediate_draw_t* neko_idraw, float x, float y, const char* text, const neko_asset_ascii_font_t* fp, bool32_t flip_vertical, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+void neko_idraw_text(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, const char* text, const neko_asset_ascii_font_t* fp, bool32_t flip_vertical, u8 r, u8 g, u8 b, u8 a) {
     // If no font, set to default
     if (!fp) {
         fp = &neko_idraw()->font_default;
@@ -1463,7 +1458,7 @@ void neko_idraw_text(neko_immediate_draw_t* neko_idraw, float x, float y, const 
 
     // Get total dimensions of text
     neko_vec2 td = neko_asset_ascii_font_text_dimensions(fp, text, -1);
-    float th = neko_asset_ascii_font_max_height(fp);
+    f32 th = neko_asset_ascii_font_max_height(fp);
 
     // Move text to accomdate height
     // y += td.y;
@@ -1521,7 +1516,7 @@ void neko_idraw_text(neko_immediate_draw_t* neko_idraw, float x, float y, const 
 }
 
 // View/Scissor commands
-NEKO_API_DECL void neko_idraw_set_view_scissor(neko_immediate_draw_t* neko_idraw, uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
+NEKO_API_DECL void neko_idraw_set_view_scissor(neko_immediate_draw_t* neko_idraw, u32 x, u32 y, u32 w, u32 h) {
     // Flush previous
     neko_idraw_flush(neko_idraw);
 
@@ -1546,15 +1541,15 @@ NEKO_API_DECL void neko_idraw_draw(neko_immediate_draw_t* neko_idraw, neko_comma
 
 NEKO_API_DECL void neko_idraw_renderpass_submit(neko_immediate_draw_t* neko_idraw, neko_command_buffer_t* cb, neko_vec4 viewport, neko_color_t c) {
     neko_graphics_clear_action_t action = neko_default_val();
-    action.color[0] = (float)c.r / 255.f;
-    action.color[1] = (float)c.g / 255.f;
-    action.color[2] = (float)c.b / 255.f;
-    action.color[3] = (float)c.a / 255.f;
+    action.color[0] = (f32)c.r / 255.f;
+    action.color[1] = (f32)c.g / 255.f;
+    action.color[2] = (f32)c.b / 255.f;
+    action.color[3] = (f32)c.a / 255.f;
     neko_graphics_clear_desc_t clear = neko_default_val();
     clear.actions = &action;
     neko_renderpass_t pass = neko_default_val();
     neko_graphics_renderpass_begin(cb, pass);
-    neko_graphics_set_viewport(cb, (uint32_t)viewport.x, (uint32_t)viewport.y, (uint32_t)viewport.z, (uint32_t)viewport.w);
+    neko_graphics_set_viewport(cb, (u32)viewport.x, (u32)viewport.y, (u32)viewport.z, (u32)viewport.w);
     neko_graphics_clear(cb, &clear);
     neko_idraw_draw(neko_idraw, cb);
     neko_graphics_renderpass_end(cb);
@@ -1565,7 +1560,7 @@ NEKO_API_DECL void neko_idraw_renderpass_submit_ex(neko_immediate_draw_t* neko_i
     clear.actions = action;
     neko_renderpass_t pass = neko_default_val();
     neko_graphics_renderpass_begin(cb, pass);
-    neko_graphics_set_viewport(cb, (uint32_t)viewport.x, (uint32_t)viewport.y, (uint32_t)viewport.z, (uint32_t)viewport.w);
+    neko_graphics_set_viewport(cb, (u32)viewport.x, (u32)viewport.y, (u32)viewport.z, (u32)viewport.w);
     neko_graphics_clear(cb, &clear);
     neko_idraw_draw(neko_idraw, cb);
     neko_graphics_renderpass_end(cb);
@@ -1680,7 +1675,7 @@ unsigned int neko_adler32(unsigned int adler32, unsigned char* buffer, unsigned 
 }
 
 NEKO_API_DECL unsigned int neko_decompress(unsigned char* output, unsigned char* i, unsigned int length) {
-    uint32_t olen;
+    u32 olen;
     if (neko__in4(0) != 0x57bC0000) return 0;
     if (neko__in4(4) != 0) return 0;  // error! stream is > 4GB
     olen = neko_decompress_length(i);
@@ -1698,7 +1693,7 @@ NEKO_API_DECL unsigned int neko_decompress(unsigned char* output, unsigned char*
             if (*i == 0x05 && i[1] == 0xfa) {
                 assert(neko__dout == output + olen);
                 if (neko__dout != output + olen) return 0;
-                if (neko_adler32(1, output, olen) != (uint32_t)neko__in4(2)) return 0;
+                if (neko_adler32(1, output, olen) != (u32)neko__in4(2)) return 0;
                 return olen;
             } else {
                 assert(0); /* NOTREACHED */

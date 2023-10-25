@@ -35,6 +35,8 @@
 // stb
 #include "libs/stb/stb_image.h"
 
+NEKO_HIJACK_MAIN();
+
 neko_command_buffer_t g_cb = neko_default_val();
 neko_gui_context_t g_gui = neko_default_val();
 neko_immediate_draw_t g_idraw = neko_default_val();
@@ -133,6 +135,7 @@ void test_containers();
 
 NEKO_API_DECL void test_sexpr();
 NEKO_API_DECL void test_ttf();
+NEKO_API_DECL void test_sc();
 
 neko_texture_t load_ase_texture_simple(const std::string &path) {
 
@@ -579,6 +582,13 @@ void neko_cvar_gui() {
     }
 }
 
+#define NEKO_HOTLOAD_HOST NEKO_HOTLOAD_UNSAFE
+#include "neko_hotload.h"
+
+neko_global neko_hotload_module ctx;
+
+const_str hotfix_module = "output/" NEKO_HOTLOAD_MODULE("hotload");
+
 void game_init() {
     g_cb = neko_command_buffer_new();
     g_idraw = neko_immediate_draw_new();
@@ -598,6 +608,8 @@ void game_init() {
     neko_ecs()->user_data = &g_client_ecs_userdata;
 
     L = neko_scripting_init();
+
+    neko_hotload_module_open(ctx, hotfix_module);
 
     {
         neko_lua_wrap_register_t<>(L).def(
@@ -805,6 +817,8 @@ void game_init() {
 }
 
 void game_update() {
+
+    neko_hotload_module_update(ctx);
 
     neko_vec2 fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
     neko_vec2 mp = neko_platform_mouse_positionv();
@@ -1146,7 +1160,7 @@ void game_update() {
     // neko_idraw_rotatev(&g_idraw, neko_platform_elapsed_time() * 0.0003f, NEKO_ZAXIS);
     // neko_idraw_box(&g_idraw, 0.f, 0.f, 0.f, 0.5f, 0.5f, 0.5f, 255, 255, 255, 255, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
 
-    game_chunk_update();
+    neko_timer_do(t, neko_timed_action(500, printf("game_chunk_update : %llu\n", t);), { game_chunk_update(); });
 
     neko_graphics_renderpass_begin(&g_cb, NEKO_GRAPHICS_RENDER_PASS_DEFAULT);
     {
@@ -1166,7 +1180,7 @@ void game_update() {
 
     if (g_cvar.show_demo_window) neko_nui_overview(ctx);
 
-    if (neko_nui_begin(ctx, "Hello Neko", neko_nui_rect(50, 200, 350, 700),
+    if (neko_nui_begin(ctx, "Hello Neko", neko_nui_rect(1050, 200, 350, 700),
                        NEKO_NUI_WINDOW_BORDER | NEKO_NUI_WINDOW_MOVABLE | NEKO_NUI_WINDOW_SCALABLE | NEKO_NUI_WINDOW_MINIMIZABLE | NEKO_NUI_WINDOW_TITLE)) {
         enum { EASY, HARD };
         static int op = EASY;
@@ -1220,6 +1234,9 @@ void game_update() {
             if (neko_nui_button_label(ctx, "test_backtrace")) __neko_inter_stacktrace();
             if (neko_nui_button_label(ctx, "test_containers")) test_containers();
             if (neko_nui_button_label(ctx, "test_sexpr")) test_sexpr();
+            if (neko_nui_button_label(ctx, "test_sc")) {
+                neko_timer_do(t, neko_println("%llu", t), { test_sc(); });
+            }
             if (neko_nui_button_label(ctx, "test_ttf")) {
                 neko_timer_do(t, neko_println("%llu", t), { test_ttf(); });
             }
@@ -1303,6 +1320,8 @@ void game_shutdown() {
     neko_array_dctor(&test_witch_spr.frames);
 
     game_chunk_destroy();
+
+    neko_hotload_module_close(ctx);
 
     neko_scripting_end(L);
 

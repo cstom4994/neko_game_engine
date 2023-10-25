@@ -150,7 +150,7 @@ void neko_console(neko_console_t* console, neko_gui_context_t* ctx, neko_gui_rec
     console_input_handling_done:
 
         // 闪烁光标
-        neko_gui_get_layout(ctx)->body.x -= 5;
+        neko_gui_get_layout(ctx)->body.x += len * 7 - 5;
         if ((int)(neko_platform_elapsed_time() / 666.0f) & 1) neko_gui_text(ctx, "|");
 
         neko_gui_container_t* ctn = neko_gui_get_current_container(ctx);

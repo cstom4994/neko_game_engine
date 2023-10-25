@@ -1735,9 +1735,56 @@ NEKO_API_DECL neko_vec3 neko_camera_screen_to_world(const neko_camera_t* cam, ne
 NEKO_API_DECL neko_vec3 neko_camera_world_to_screen(const neko_camera_t* cam, neko_vec3 coords, s32 view_width, s32 view_height);
 NEKO_API_DECL void neko_camera_offset_orientation(neko_camera_t* cam, f32 yaw, f32 picth);
 
+/*=============================
+// Containers
+=============================*/
+
+#include "neko_containers.inl"
+
 /*================================================================================
 // Utils
 ================================================================================*/
+
+NEKO_API_DECL neko_inline u32 neko_abs(s32 v) {
+    unsigned int r;
+    int const mask = v >> sizeof(int) * CHAR_BIT - 1;
+    r = (v + mask) ^ mask;
+    return r;
+}
+
+// Function to convert UTF-8 encoded character to Unicode
+NEKO_API_DECL neko_inline u32 neko_utf8_to_unicode(const_str utf8, s32* bytes_read) {
+    u32 unicode = 0;
+    s32 len = 0;
+    unsigned char utf8char = utf8[0];
+
+    if ((utf8char & 0x80) == 0) {
+        unicode = utf8char;
+        len = 1;
+    } else if ((utf8char & 0xE0) == 0xC0) {
+        unicode = utf8char & 0x1F;
+        len = 2;
+    } else if ((utf8char & 0xF0) == 0xE0) {
+        unicode = utf8char & 0x0F;
+        len = 3;
+    } else {
+        // Invalid UTF-8 sequence
+        len = 1;
+    }
+
+    for (s32 i = 1; i < len; i++) {
+        utf8char = utf8[i];
+        if ((utf8char & 0xC0) != 0x80) {
+            // Invalid UTF-8 sequence
+            len = 1;
+            break;
+        }
+        unicode = (unicode << 6) | (utf8char & 0x3F);
+    }
+
+    *bytes_read = len;
+    return unicode;
+}
 
 // AABBs
 /*
@@ -1932,14 +1979,11 @@ NEKO_API_DECL void neko_lexer_c_eat_white_space(neko_lexer_t* lex);
 NEKO_API_DECL neko_token_t neko_lexer_c_next_token(neko_lexer_t* lex);
 NEKO_API_DECL void neko_lexer_set_token(neko_lexer_t* lex, neko_token_t token);
 
-NEKO_API_DECL const_str neko_enum_name_cstr();
-
 NEKO_API_DECL neko_inline u32 neko_darken_color(u32 color, f32 brightness) {
-    int a = (color >> 24) & 0xFF;
-    int r = (int)(((color >> 16) & 0xFF) * brightness);
-    int g = (int)(((color >> 8) & 0xFF) * brightness);
-    int b = (int)((color & 0xFF) * brightness);
-
+    s32 a = (color >> 24) & 0xFF;
+    s32 r = (s32)(((color >> 16) & 0xFF) * brightness);
+    s32 g = (s32)(((color >> 8) & 0xFF) * brightness);
+    s32 b = (s32)((color & 0xFF) * brightness);
     return (a << 24) | (r << 16) | (g << 8) | b;
 }
 
@@ -2300,6 +2344,130 @@ inline void forEachProp(T& val, F&& func) {
 
 #endif
 
+/*=============================
+// CVar
+=============================*/
+
+enum cmd_type { CVAR_VAR = 0, CVAR_FUNC = 1 };
+
+void __neko_engine_cvar_init();
+
+#define __NEKO_CVAR_STR_LEN 64
+
+typedef enum neko_cvar_type {
+    __NEKO_CONFIG_TYPE_INT,
+    __NEKO_CONFIG_TYPE_FLOAT,
+    __NEKO_CONFIG_TYPE_STRING,
+    __NEKO_CONFIG_TYPE_COUNT,
+} neko_cvar_type;
+
+typedef struct neko_cvar_t {
+    char name[__NEKO_CVAR_STR_LEN];  // 直接开辟好空间
+    neko_cvar_type type;             // cvar 类型
+    union {                          // 联合体存值
+        f32 f;
+        s32 i;
+        char* s;
+    } value;
+} neko_cvar_t;
+
+typedef struct neko_config_t {
+    neko_dyn_array(neko_cvar_t) cvars;
+} neko_config_t;
+
+NEKO_API_DECL void __neko_config_init();
+NEKO_API_DECL void __neko_config_free();
+
+NEKO_API_DECL neko_cvar_t* __neko_config_get(const_str name);
+NEKO_API_DECL void neko_config_print();
+
+#define neko_cvar_new(n, t, v)                                                \
+    {                                                                         \
+        neko_cvar_t cvar = {.name = n, .type = t, .value = 0};                \
+        if (t == __NEKO_CONFIG_TYPE_INT) {                                    \
+            cvar.value.i = v;                                                 \
+        } else if (t == __NEKO_CONFIG_TYPE_FLOAT) {                           \
+            cvar.value.f = v;                                                 \
+        } else {                                                              \
+            neko_assert(false);                                               \
+        }                                                                     \
+        neko_dyn_array_push((neko_instance()->ctx.game.config)->cvars, cvar); \
+    }
+
+#define neko_cvar_lnew(n, t, v)                                               \
+    {                                                                         \
+        neko_cvar_t cvar = {.type = t, .value = 0};                           \
+        std::strncpy(cvar.name, n, sizeof(cvar.name) - 1);                    \
+        cvar.name[sizeof(cvar.name) - 1] = '\0';                              \
+        if (t == __NEKO_CONFIG_TYPE_INT) {                                    \
+            cvar.value.i = v;                                                 \
+        } else if (t == __NEKO_CONFIG_TYPE_FLOAT) {                           \
+            cvar.value.f = v;                                                 \
+        } else {                                                              \
+            neko_assert(false);                                               \
+        }                                                                     \
+        neko_dyn_array_push((neko_instance()->ctx.game.config)->cvars, cvar); \
+    }
+
+// 由于 float -> char* 转换 很难将其写成单个宏
+#define neko_cvar_new_str(n, t, v)                                                         \
+    {                                                                                      \
+        neko_cvar_t cvar = {.name = n, .type = t, .value = {0}};                           \
+        cvar.value.s = (char*)neko_malloc(__NEKO_CVAR_STR_LEN);                            \
+        memset(cvar.value.s, 0, __NEKO_CVAR_STR_LEN);                                      \
+        memcpy(cvar.value.s, v, neko_min(__NEKO_CVAR_STR_LEN - 1, neko_string_length(v))); \
+        neko_dyn_array_push((neko_instance()->ctx.game.config)->cvars, cvar);              \
+    }
+
+#define neko_cvar_lnew_str(n, t, v)                                                        \
+    {                                                                                      \
+        neko_cvar_t cvar = {.type = t, .value = {0}};                                      \
+        std::strncpy(cvar.name, n, sizeof(cvar.name) - 1);                                 \
+        cvar.name[sizeof(cvar.name) - 1] = '\0';                                           \
+        cvar.value.s = (char*)neko_malloc(__NEKO_CVAR_STR_LEN);                            \
+        memset(cvar.value.s, 0, __NEKO_CVAR_STR_LEN);                                      \
+        memcpy(cvar.value.s, v, neko_min(__NEKO_CVAR_STR_LEN - 1, neko_string_length(v))); \
+        neko_dyn_array_push((neko_instance()->ctx.game.config)->cvars, cvar);              \
+    }
+
+#define neko_cvar(n) __neko_config_get(n)
+
+#define neko_cvar_print(cvar)                                           \
+    {                                                                   \
+        switch ((cvar)->type) {                                         \
+            default:                                                    \
+            case __NEKO_CONFIG_TYPE_STRING:                             \
+                neko_println("%s = %s", (cvar)->name, (cvar)->value.s); \
+                break;                                                  \
+                                                                        \
+            case __NEKO_CONFIG_TYPE_FLOAT:                              \
+                neko_println("%s = %f", (cvar)->name, (cvar)->value.f); \
+                break;                                                  \
+                                                                        \
+            case __NEKO_CONFIG_TYPE_INT:                                \
+                neko_println("%s = %d", (cvar)->name, (cvar)->value.i); \
+                break;                                                  \
+        };                                                              \
+    }
+
+#define neko_cvar_set(cvar, str)                                           \
+    {                                                                      \
+        switch ((cvar)->type) {                                            \
+            default:                                                       \
+            case __NEKO_CONFIG_TYPE_STRING:                                \
+                memcpy((cvar)->value.s, str, neko_string_length(str) + 1); \
+                break;                                                     \
+                                                                           \
+            case __NEKO_CONFIG_TYPE_FLOAT:                                 \
+                (cvar)->value.f = atof(str);                               \
+                break;                                                     \
+                                                                           \
+            case __NEKO_CONFIG_TYPE_INT:                                   \
+                (cvar)->value.i = atoi(str);                               \
+                break;                                                     \
+        };                                                                 \
+    }
+
 #ifdef NEKO_CPP_SRC
 
 #include <array>
@@ -2359,10 +2527,6 @@ constexpr auto enum_name(T value) {
 }  // namespace neko
 
 #pragma endregion
-
-#endif  // NEKO_CPP_SRC
-
-#ifdef NEKO_CPP_SRC
 
 template <typename T>
 neko_inline void neko_swap(T& a, T& b) {

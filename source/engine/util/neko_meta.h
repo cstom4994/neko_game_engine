@@ -2,7 +2,6 @@
 #define NEKO_META_H
 
 #include "engine/neko.h"
-#include "engine/neko_containers.h"
 
 // #include "engine/common/neko_hash.h"
 // #include "engine/common/neko_types_reflect.h"

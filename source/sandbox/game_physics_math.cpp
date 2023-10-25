@@ -19,8 +19,8 @@ neko_vec2 perpendicular(neko_vec2 v) {
     neko_vec2 p = {v.y, -v.x};
     return p;
 }
-float dotProduct(neko_vec2 a, neko_vec2 b) { return a.x * b.x + a.y * b.y; }
-float lengthSquared(neko_vec2 v) { return v.x * v.x + v.y * v.y; }
+f32 dotProduct(neko_vec2 a, neko_vec2 b) { return a.x * b.x + a.y * b.y; }
+f32 lengthSquared(neko_vec2 v) { return v.x * v.x + v.y * v.y; }
 
 //-----------------------------------------------------------------------------
 // Triple product expansion is used to calculate perpendicular normal vectors
@@ -30,8 +30,8 @@ neko_vec2 tripleProduct(neko_vec2 a, neko_vec2 b, neko_vec2 c) {
 
     neko_vec2 r;
 
-    float ac = a.x * c.x + a.y * c.y;  // perform a.dot(c)
-    float bc = b.x * c.x + b.y * c.y;  // perform b.dot(c)
+    f32 ac = a.x * c.x + a.y * c.y;  // perform a.dot(c)
+    f32 bc = b.x * c.x + b.y * c.y;  // perform b.dot(c)
 
     // perform b * a.dot(c) - a * b.dot(c)
     r.x = b.x * ac - a.x * bc;
@@ -60,10 +60,10 @@ neko_vec2 averagePoint(const neko_vec2 *vertices, size_t count) {
 
 size_t indexOfFurthestPoint(const neko_vec2 *vertices, size_t count, neko_vec2 d) {
 
-    float maxProduct = dotProduct(d, vertices[0]);
+    f32 maxProduct = dotProduct(d, vertices[0]);
     size_t index = 0;
     for (size_t i = 1; i < count; i++) {
-        float product = dotProduct(d, vertices[i]);
+        f32 product = dotProduct(d, vertices[i]);
         if (product > maxProduct) {
             maxProduct = product;
             index = i;
@@ -87,9 +87,9 @@ neko_vec2 support(const neko_vec2 *vertices1, size_t count1, const neko_vec2 *ve
     return subtract(vertices1[i], vertices2[j]);
 }
 
-int iter_count = 0;
+s32 iter_count = 0;
 
-int fast_c2(const neko_vec2 *vertices1, size_t count1, const neko_vec2 *vertices2, size_t count2) {
+s32 fast_c2(const neko_vec2 *vertices1, size_t count1, const neko_vec2 *vertices2, size_t count2) {
 
     size_t index = 0;  // index of current vertex of simplex
     neko_vec2 a, b, c, d, ao, ab, ac, abperp, acperp, simplex[3];
@@ -182,7 +182,7 @@ void TPPLPoly::Clear() {
     points = NULL;
 }
 
-void TPPLPoly::Init(long numpoints) {
+void TPPLPoly::Init(s64 numpoints) {
     Clear();
     this->numpoints = numpoints;
     points = new TPPLPoint[numpoints];
@@ -218,8 +218,8 @@ TPPLPoly &TPPLPoly::operator=(const TPPLPoly &src) {
     return *this;
 }
 
-int TPPLPoly::GetOrientation() const {
-    long i1, i2;
+s32 TPPLPoly::GetOrientation() const {
+    s64 i1, i2;
     tppl_float area = 0;
     for (i1 = 0; i1 < numpoints; i1++) {
         i2 = i1 + 1;
@@ -231,8 +231,8 @@ int TPPLPoly::GetOrientation() const {
     return 0;
 }
 
-void TPPLPoly::SetOrientation(int orientation) {
-    int polyorientation = GetOrientation();
+void TPPLPoly::SetOrientation(s32 orientation) {
+    s32 polyorientation = GetOrientation();
     if (polyorientation && (polyorientation != orientation)) {
         Invert();
     }
@@ -262,7 +262,7 @@ tppl_float TPPLPartition::Distance(const TPPLPoint &p1, const TPPLPoint &p2) {
 }
 
 // checks if two lines intersect
-int TPPLPartition::Intersects(TPPLPoint &p11, TPPLPoint &p12, TPPLPoint &p21, TPPLPoint &p22) {
+s32 TPPLPartition::Intersects(TPPLPoint &p11, TPPLPoint &p12, TPPLPoint &p21, TPPLPoint &p22) {
     if ((p11.x == p21.x) && (p11.y == p21.y)) return 0;
     if ((p11.x == p22.x) && (p11.y == p22.y)) return 0;
     if ((p12.x == p21.x) && (p12.y == p21.y)) return 0;
@@ -294,10 +294,10 @@ int TPPLPartition::Intersects(TPPLPoint &p11, TPPLPoint &p12, TPPLPoint &p21, TP
 }
 
 // removes holes from inpolys by merging them with non-holes
-int TPPLPartition::RemoveHoles(TPPLPolyList *inpolys, TPPLPolyList *outpolys) {
+s32 TPPLPartition::RemoveHoles(TPPLPolyList *inpolys, TPPLPolyList *outpolys) {
     TPPLPolyList polys;
     TPPLPolyList::iterator holeiter, polyiter, iter, iter2;
-    long i, i2, holepointindex, polypointindex;
+    s64 i, i2, holepointindex, polypointindex;
     TPPLPoint holepoint, polypoint, bestpolypoint;
     TPPLPoint linep1, linep2;
     TPPLPoint v1, v2;
@@ -468,8 +468,8 @@ void TPPLPartition::UpdateVertexReflexity(PartitionVertex *v) {
     v->isConvex = !IsReflex(v1->p, v->p, v3->p);
 }
 
-void TPPLPartition::UpdateVertex(PartitionVertex *v, PartitionVertex *vertices, long numvertices) {
-    long i;
+void TPPLPartition::UpdateVertex(PartitionVertex *v, PartitionVertex *vertices, s64 numvertices) {
+    s64 i;
     PartitionVertex *v1 = NULL, *v3 = NULL;
     TPPLPoint vec1, vec3;
 
@@ -499,14 +499,14 @@ void TPPLPartition::UpdateVertex(PartitionVertex *v, PartitionVertex *vertices, 
 }
 
 // triangulation by ear removal
-int TPPLPartition::Triangulate_EC(TPPLPoly *poly, TPPLPolyList *triangles) {
+s32 TPPLPartition::Triangulate_EC(TPPLPoly *poly, TPPLPolyList *triangles) {
     if (!poly->Valid()) return 0;
 
-    long numvertices;
+    s64 numvertices;
     PartitionVertex *vertices = NULL;
     PartitionVertex *ear = NULL;
     TPPLPoly triangle;
-    long i, j;
+    s64 i, j;
     bool earfound;
 
     if (poly->GetNumPoints() < 3) return 0;
@@ -579,7 +579,7 @@ int TPPLPartition::Triangulate_EC(TPPLPoly *poly, TPPLPolyList *triangles) {
     return 1;
 }
 
-int TPPLPartition::Triangulate_EC(TPPLPolyList *inpolys, TPPLPolyList *triangles) {
+s32 TPPLPartition::Triangulate_EC(TPPLPolyList *inpolys, TPPLPolyList *triangles) {
     TPPLPolyList outpolys;
     TPPLPolyList::iterator iter;
 
@@ -590,7 +590,7 @@ int TPPLPartition::Triangulate_EC(TPPLPolyList *inpolys, TPPLPolyList *triangles
     return 1;
 }
 
-int TPPLPartition::ConvexPartition_HM(TPPLPoly *poly, TPPLPolyList *parts) {
+s32 TPPLPartition::ConvexPartition_HM(TPPLPoly *poly, TPPLPolyList *parts) {
     if (!poly->Valid()) return 0;
 
     TPPLPolyList triangles;
@@ -598,9 +598,9 @@ int TPPLPartition::ConvexPartition_HM(TPPLPoly *poly, TPPLPolyList *parts) {
     TPPLPoly *poly1 = NULL, *poly2 = NULL;
     TPPLPoly newpoly;
     TPPLPoint d1, d2, p1, p2, p3;
-    long i11, i12, i21, i22, i13, i23, j, k;
+    s64 i11, i12, i21, i22, i13, i23, j, k;
     bool isdiagonal;
-    long numreflex;
+    s64 numreflex;
 
     // check if the poly is already convex
     numreflex = 0;
@@ -704,7 +704,7 @@ int TPPLPartition::ConvexPartition_HM(TPPLPoly *poly, TPPLPolyList *parts) {
     return 1;
 }
 
-int TPPLPartition::ConvexPartition_HM(TPPLPolyList *inpolys, TPPLPolyList *parts) {
+s32 TPPLPartition::ConvexPartition_HM(TPPLPolyList *inpolys, TPPLPolyList *parts) {
     TPPLPolyList outpolys;
     TPPLPolyList::iterator iter;
 
@@ -718,18 +718,18 @@ int TPPLPartition::ConvexPartition_HM(TPPLPolyList *inpolys, TPPLPolyList *parts
 // minimum-weight polygon triangulation by dynamic programming
 // O(n^3) time complexity
 // O(n^2) space complexity
-int TPPLPartition::Triangulate_OPT(TPPLPoly *poly, TPPLPolyList *triangles) {
+s32 TPPLPartition::Triangulate_OPT(TPPLPoly *poly, TPPLPolyList *triangles) {
     if (!poly->Valid()) return 0;
 
-    long i, j, k, gap, n;
+    s64 i, j, k, gap, n;
     DPState **dpstates = NULL;
     TPPLPoint p1, p2, p3, p4;
-    long bestvertex;
+    s64 bestvertex;
     tppl_float weight, minweight, d1, d2;
     Diagonal diagonal, newdiagonal;
     DiagonalList diagonals;
     TPPLPoly triangle;
-    int ret = 1;
+    s32 ret = 1;
 
     n = poly->GetNumPoints();
     dpstates = new DPState *[n];
@@ -864,10 +864,10 @@ int TPPLPartition::Triangulate_OPT(TPPLPoly *poly, TPPLPolyList *triangles) {
     return ret;
 }
 
-void TPPLPartition::UpdateState(long a, long b, long w, long i, long j, DPState2 **dpstates) {
+void TPPLPartition::UpdateState(s64 a, s64 b, s64 w, s64 i, s64 j, DPState2 **dpstates) {
     Diagonal newdiagonal;
     DiagonalList *pairs = NULL;
-    long w2;
+    s64 w2;
 
     w2 = dpstates[a][b].weight;
     if (w > w2) return;
@@ -887,11 +887,11 @@ void TPPLPartition::UpdateState(long a, long b, long w, long i, long j, DPState2
     }
 }
 
-void TPPLPartition::TypeA(long i, long j, long k, PartitionVertex *vertices, DPState2 **dpstates) {
+void TPPLPartition::TypeA(s64 i, s64 j, s64 k, PartitionVertex *vertices, DPState2 **dpstates) {
     DiagonalList *pairs = NULL;
     DiagonalList::iterator iter, lastiter;
-    long top;
-    long w;
+    s64 top;
+    s64 w;
 
     if (!dpstates[i][j].visible) return;
     top = j;
@@ -923,11 +923,11 @@ void TPPLPartition::TypeA(long i, long j, long k, PartitionVertex *vertices, DPS
     UpdateState(i, k, w, top, j, dpstates);
 }
 
-void TPPLPartition::TypeB(long i, long j, long k, PartitionVertex *vertices, DPState2 **dpstates) {
+void TPPLPartition::TypeB(s64 i, s64 j, s64 k, PartitionVertex *vertices, DPState2 **dpstates) {
     DiagonalList *pairs = NULL;
     DiagonalList::iterator iter, lastiter;
-    long top;
-    long w;
+    s64 top;
+    s64 w;
 
     if (!dpstates[j][k].visible) return;
     top = j;
@@ -960,21 +960,21 @@ void TPPLPartition::TypeB(long i, long j, long k, PartitionVertex *vertices, DPS
     UpdateState(i, k, w, j, top, dpstates);
 }
 
-int TPPLPartition::ConvexPartition_OPT(TPPLPoly *poly, TPPLPolyList *parts) {
+s32 TPPLPartition::ConvexPartition_OPT(TPPLPoly *poly, TPPLPolyList *parts) {
     if (!poly->Valid()) return 0;
 
     TPPLPoint p1, p2, p3, p4;
     PartitionVertex *vertices = NULL;
     DPState2 **dpstates = NULL;
-    long i, j, k, n, gap;
+    s64 i, j, k, n, gap;
     DiagonalList diagonals, diagonals2;
     Diagonal diagonal, newdiagonal;
     DiagonalList *pairs = NULL, *pairs2 = NULL;
     DiagonalList::iterator iter, iter2;
-    int ret;
+    s32 ret;
     TPPLPoly newpoly;
-    std::vector<long> indices;
-    std::vector<long>::iterator iiter;
+    std::vector<s64> indices;
+    std::vector<s64>::iterator iiter;
     bool ijreal, jkreal;
 
     n = poly->GetNumPoints();
@@ -1214,7 +1214,7 @@ int TPPLPartition::ConvexPartition_OPT(TPPLPoly *poly, TPPLPolyList *parts) {
         }
 
         std::sort(indices.begin(), indices.end());
-        newpoly.Init((long)indices.size());
+        newpoly.Init((s64)indices.size());
         k = 0;
         for (iiter = indices.begin(); iiter != indices.end(); iiter++) {
             newpoly[k] = vertices[*iiter].p;
@@ -1237,11 +1237,11 @@ int TPPLPartition::ConvexPartition_OPT(TPPLPoly *poly, TPPLPolyList *parts) {
 // the algorithm used here is outlined in the book
 //"Computational Geometry: Algorithms and Applications"
 // by Mark de Berg, Otfried Cheong, Marc van Kreveld and Mark Overmars
-int TPPLPartition::MonotonePartition(TPPLPolyList *inpolys, TPPLPolyList *monotonePolys) {
+s32 TPPLPartition::MonotonePartition(TPPLPolyList *inpolys, TPPLPolyList *monotonePolys) {
     TPPLPolyList::iterator iter;
     MonotoneVertex *vertices = NULL;
-    long i, numvertices, vindex, vindex2, newnumvertices, maxnumvertices;
-    long polystartindex, polyendindex;
+    s64 i, numvertices, vindex, vindex2, newnumvertices, maxnumvertices;
+    s64 polystartindex, polyendindex;
     TPPLPoly *poly = NULL;
     MonotoneVertex *v = NULL, *v2 = NULL, *vprev = NULL, *vnext = NULL;
     ScanLineEdge newedge;
@@ -1276,7 +1276,7 @@ int TPPLPartition::MonotonePartition(TPPLPolyList *inpolys, TPPLPolyList *monoto
     }
 
     // construct the priority queue
-    long *priority = new long[numvertices];
+    s64 *priority = new s64[numvertices];
     for (i = 0; i < numvertices; i++) priority[i] = i;
     std::sort(priority, &(priority[numvertices]), VertexSorter(vertices));
 
@@ -1305,7 +1305,7 @@ int TPPLPartition::MonotonePartition(TPPLPolyList *inpolys, TPPLPolyList *monoto
     }
 
     // helpers
-    long *helpers = new long[maxnumvertices];
+    s64 *helpers = new s64[maxnumvertices];
 
     // binary search tree that holds edges intersecting the scanline
     // note that while set doesn't actually have to be implemented as a tree
@@ -1461,7 +1461,7 @@ int TPPLPartition::MonotonePartition(TPPLPolyList *inpolys, TPPLPolyList *monoto
 
     if (!error) {
         // return result
-        long size;
+        s64 size;
         TPPLPoly mpoly;
         for (i = 0; i < newnumvertices; i++) {
             if (used[i]) continue;
@@ -1505,9 +1505,9 @@ int TPPLPartition::MonotonePartition(TPPLPolyList *inpolys, TPPLPolyList *monoto
 }
 
 // adds a diagonal to the doubly-connected list of vertices
-void TPPLPartition::AddDiagonal(MonotoneVertex *vertices, long *numvertices, long index1, long index2, char *vertextypes, std::set<ScanLineEdge>::iterator *edgeTreeIterators,
-                                std::set<ScanLineEdge> *edgeTree, long *helpers) {
-    long newindex1, newindex2;
+void TPPLPartition::AddDiagonal(MonotoneVertex *vertices, s64 *numvertices, s64 index1, s64 index2, char *vertextypes, std::set<ScanLineEdge>::iterator *edgeTreeIterators,
+                                std::set<ScanLineEdge> *edgeTree, s64 *helpers) {
+    s64 newindex1, newindex2;
 
     newindex1 = *numvertices;
     (*numvertices)++;
@@ -1550,7 +1550,7 @@ bool TPPLPartition::PBelow(TPPLPoint &p1, TPPLPoint &p2) {
 }
 
 // sorts in the falling order of y values, if y is equal, x is used instead
-bool TPPLPartition::VertexSorter::operator()(long index1, long index2) {
+bool TPPLPartition::VertexSorter::operator()(s64 index1, s64 index2) {
     if (vertices[index1].p.y > vertices[index2].p.y)
         return true;
     else if (vertices[index1].p.y == vertices[index2].p.y) {
@@ -1600,12 +1600,12 @@ bool TPPLPartition::ScanLineEdge::operator<(const ScanLineEdge &other) const {
 
 // triangulates monotone polygon
 // O(n) time, O(n) space complexity
-int TPPLPartition::TriangulateMonotone(TPPLPoly *inPoly, TPPLPolyList *triangles) {
+s32 TPPLPartition::TriangulateMonotone(TPPLPoly *inPoly, TPPLPolyList *triangles) {
     if (!inPoly->Valid()) return 0;
 
-    long i, i2, j, topindex, bottomindex, leftindex, rightindex, vindex;
+    s64 i, i2, j, topindex, bottomindex, leftindex, rightindex, vindex;
     TPPLPoint *points = NULL;
-    long numpoints;
+    s64 numpoints;
     TPPLPoly triangle;
 
     numpoints = inPoly->GetNumPoints();
@@ -1641,7 +1641,7 @@ int TPPLPartition::TriangulateMonotone(TPPLPoly *inPoly, TPPLPolyList *triangles
     }
 
     char *vertextypes = new char[numpoints];
-    long *priority = new long[numpoints];
+    s64 *priority = new s64[numpoints];
 
     // merge left and right vertex chains
     priority[0] = topindex;
@@ -1678,8 +1678,8 @@ int TPPLPartition::TriangulateMonotone(TPPLPoly *inPoly, TPPLPolyList *triangles
     priority[i] = bottomindex;
     vertextypes[bottomindex] = 0;
 
-    long *stack = new long[numpoints];
-    long stackptr = 0;
+    s64 *stack = new s64[numpoints];
+    s64 stackptr = 0;
 
     stack[0] = priority[0];
     stack[1] = priority[1];
@@ -1743,7 +1743,7 @@ int TPPLPartition::TriangulateMonotone(TPPLPoly *inPoly, TPPLPolyList *triangles
     return 1;
 }
 
-int TPPLPartition::Triangulate_MONO(TPPLPolyList *inpolys, TPPLPolyList *triangles) {
+s32 TPPLPartition::Triangulate_MONO(TPPLPolyList *inpolys, TPPLPolyList *triangles) {
     TPPLPolyList monotone;
     TPPLPolyList::iterator iter;
 
@@ -1754,7 +1754,7 @@ int TPPLPartition::Triangulate_MONO(TPPLPolyList *inpolys, TPPLPolyList *triangl
     return 1;
 }
 
-int TPPLPartition::Triangulate_MONO(TPPLPoly *poly, TPPLPolyList *triangles) {
+s32 TPPLPartition::Triangulate_MONO(TPPLPoly *poly, TPPLPolyList *triangles) {
     TPPLPolyList polys;
     polys.push_back(*poly);
 
@@ -1842,66 +1842,67 @@ f32 pDistance(f32 x, f32 y, f32 x1, f32 y1, f32 x2, f32 y2) {
     return std::sqrt(dx * dx + dy * dy);
 }
 
-namespace MarchingSquares {
+namespace marching_squares {
 
-bool operator==(const Direction &a, const Direction &b) { return a.x == b.x && a.y == b.y; }
+bool operator==(const ms_direction &a, const ms_direction &b) { return a.x == b.x && a.y == b.y; }
 
-Direction operator*(const Direction &direction, int multiplier) { return Direction(direction.x * multiplier, direction.y * multiplier); }
+ms_direction operator*(const ms_direction &direction, s32 multiplier) { return ms_direction(direction.x * multiplier, direction.y * multiplier); }
 
-Direction operator+(const Direction &a, const Direction &b) { return Direction(a.x + b.x, a.y + b.y); }
+ms_direction operator+(const ms_direction &a, const ms_direction &b) { return ms_direction(a.x + b.x, a.y + b.y); }
 
-Direction &operator+=(Direction &a, const Direction &b) {
+ms_direction &operator+=(ms_direction &a, const ms_direction &b) {
     a.x += b.x;
     a.y += b.y;
     return a;
 }
 
-Direction MakeDirection(int x, int y) { return Direction(x, y); }
+ms_direction make_direction(s32 x, s32 y) { return ms_direction(x, y); }
 
-Direction East() { return MakeDirection(1, 0); }
-Direction Northeast() { return MakeDirection(1, 1); }
-Direction North() { return MakeDirection(0, 1); }
-Direction Northwest() { return MakeDirection(-1, 1); }
-Direction West() { return MakeDirection(-1, 0); }
-Direction Southwest() { return MakeDirection(-1, -1); }
-Direction South() { return MakeDirection(0, -1); }
-Direction Southeast() { return MakeDirection(1, -1); }
+bool is_set(s32 x, s32 y, s32 width, s32 height, unsigned char *data) { return x <= 0 || x > width || y <= 0 || y > height ? false : data[(y - 1) * width + (x - 1)] != 0; }
 
-bool isSet(int x, int y, int width, int height, unsigned char *data) { return x <= 0 || x > width || y <= 0 || y > height ? false : data[(y - 1) * width + (x - 1)] != 0; }
-
-int value(int x, int y, int width, int height, unsigned char *data) {
-    int sum = 0;
-    if (isSet(x, y, width, height, data)) sum |= 1;
-    if (isSet(x + 1, y, width, height, data)) sum |= 2;
-    if (isSet(x, y + 1, width, height, data)) sum |= 4;
-    if (isSet(x + 1, y + 1, width, height, data)) sum |= 8;
+s32 ms_value(s32 x, s32 y, s32 width, s32 height, unsigned char *data) {
+    s32 sum = 0;
+    if (is_set(x, y, width, height, data)) sum |= 1;
+    if (is_set(x + 1, y, width, height, data)) sum |= 2;
+    if (is_set(x, y + 1, width, height, data)) sum |= 4;
+    if (is_set(x + 1, y + 1, width, height, data)) sum |= 8;
     return sum;
 }
 
-Result FindPerimeter(int initialX, int initialY, int width, int height, unsigned char *data) {
+ms_result find_perimeter(s32 initialX, s32 initialY, s32 width, s32 height, unsigned char *data) {
+
+    auto East = []() { return make_direction(1, 0); };
+    auto Northeast = []() { return make_direction(1, 1); };
+    auto North = []() { return make_direction(0, 1); };
+    auto Northwest = []() { return make_direction(-1, 1); };
+    auto West = []() { return make_direction(-1, 0); };
+    auto Southwest = []() { return make_direction(-1, -1); };
+    auto South = []() { return make_direction(0, -1); };
+    auto Southeast = []() { return make_direction(1, -1); };
+
     if (initialX < 0) initialX = 0;
     if (initialX > width) initialX = width;
     if (initialY < 0) initialY = 0;
     if (initialY > height) initialY = height;
 
-    int initialValue = value(initialX, initialY, width, height, data);
-    if (initialValue == 0 || initialValue == 15) {
-        std::ostringstream error;
-        error << "Supplied initial coordinates (" << initialX << ", " << initialY << ") do not lie on a perimeter.";
+    s32 initial_value = ms_value(initialX, initialY, width, height, data);
+    if (initial_value == 0 || initial_value == 15) {
+        // std::ostringstream error;
+        // error << "Supplied initial coordinates (" << initialX << ", " << initialY << ") do not lie on a perimeter.";
         // throw std::runtime_error(error.str());
-        Result result;
+        ms_result result;
         return result;
     }
 
-    Result result;
+    ms_result result;
 
-    int x = initialX;
-    int y = initialY;
-    Direction previous = MakeDirection(0, 0);
+    s32 x = initialX;
+    s32 y = initialY;
+    ms_direction previous = make_direction(0, 0);
 
     do {
-        Direction direction;
-        switch (value(x, y, width, height, data)) {
+        ms_direction direction;
+        switch (ms_value(x, y, width, height, data)) {
             case 1:
                 direction = North();
                 break;
@@ -1958,41 +1959,41 @@ Result FindPerimeter(int initialX, int initialY, int width, int height, unsigned
         y -= direction.y;  // accommodate change of basis
     } while (x != initialX || y != initialY);
 
-    result.initialX = initialX;
-    result.initialY = initialY;
+    result.initial_x = initialX;
+    result.initial_y = initialY;
 
     return result;
 }
 
-Result FindPerimeter(int width, int height, unsigned char *data) {
-    int size = width * height;
-    for (int i = 0; i < size; i++) {
+ms_result find_perimeter(s32 width, s32 height, unsigned char *data) {
+    s32 size = width * height;
+    for (s32 i = 0; i < size; i++) {
         if (data[i] != 0) {
-            return FindPerimeter(i % width, i / width, width, height, data);
+            return find_perimeter(i % width, i / width, width, height, data);
         }
     }
-    Result result;
+    ms_result result;
     return result;
 }
 
-Result FindPerimeter(int width, int height, unsigned char *data, int lookX, int lookY) {
-    int size = width * height;
-    for (int i = lookX + lookY * width; i < size; i++) {
+ms_result find_perimeter(s32 width, s32 height, unsigned char *data, s32 lookX, s32 lookY) {
+    s32 size = width * height;
+    for (s32 i = lookX + lookY * width; i < size; i++) {
         if (data[i] != 0) {
             // std::cout << (i%width) << " " << (i / width) << std::endl;
-            return FindPerimeter(i % width, i / width, width, height, data);
+            return find_perimeter(i % width, i / width, width, height, data);
         }
     }
-    Result result;
+    ms_result result;
     return result;
 }
 
-Direction FindEdge(int width, int height, unsigned char *data, int lookX, int lookY) {
-    int size = width * height;
-    for (int i = lookX + lookY * width; i < size; i++) {
+ms_direction find_edge(s32 width, s32 height, unsigned char *data, s32 lookX, s32 lookY) {
+    s32 size = width * height;
+    for (s32 i = lookX + lookY * width; i < size; i++) {
         if (data[i] != 0) {
             // std::cout << (i%width) << " " << (i / width) << std::endl;
-            int val = value(i % width, i / width, width, height, data);
+            s32 val = ms_value(i % width, i / width, width, height, data);
             if (val != 0 && val != 15) {
                 return {i % width, i / width};
             }
@@ -2001,6 +2002,6 @@ Direction FindEdge(int width, int height, unsigned char *data, int lookX, int lo
     return {-1, -1};
 }
 
-}  // namespace MarchingSquares
+}  // namespace marching_squares
 
 }  // namespace neko

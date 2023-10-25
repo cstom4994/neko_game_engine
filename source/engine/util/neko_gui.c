@@ -1271,7 +1271,7 @@ static void neko_gui_begin_root_container(neko_gui_context_t* ctx, neko_gui_cont
     /* set as hover root if the mouse is overlapping this container and it has a
     ** higher zindex than the current hover root */
     if (neko_gui_rect_overlaps_vec2(cnt->rect, ctx->mouse_pos) && (!ctx->next_hover_root || cnt->zindex > ctx->next_hover_root->zindex) && ~opt & NEKO_GUI_OPT_NOHOVER &&
-        cnt->flags & NEKO_GUI_WINDOW_FLANEKO_VISIBLE) {
+        cnt->flags & NEKO_GUI_WINDOW_FLAGS_VISIBLE) {
         ctx->next_hover_root = cnt;
     }
 
@@ -1752,8 +1752,10 @@ NEKO_API_DECL neko_gui_container_t* neko_gui_get_container_ex(neko_gui_context_t
     memset(cnt, 0, sizeof(*cnt));
     cnt->open = 1;
     cnt->id = id;
-    cnt->flags |= NEKO_GUI_WINDOW_FLANEKO_VISIBLE | NEKO_GUI_WINDOW_FLANEKO_FIRST_INIT;
+    cnt->flags |= NEKO_GUI_WINDOW_FLAGS_VISIBLE | NEKO_GUI_WINDOW_FLAGS_FIRST_INIT;
     neko_gui_bring_to_front(ctx, cnt);
+
+    // neko_println("CONSTRUCTING: %zu", id);
 
     return cnt;
 }
@@ -2081,7 +2083,7 @@ NEKO_API_DECL void neko_gui_undock_ex_cnt(neko_gui_context_t* ctx, neko_gui_cont
 
                     neko_gui_container_t* fcnt = (neko_gui_container_t*)tab_bar->items[tab_bar->focus].data;
                     fcnt->split = parent->split;
-                    fcnt->flags |= NEKO_GUI_WINDOW_FLANEKO_VISIBLE;
+                    fcnt->flags |= NEKO_GUI_WINDOW_FLAGS_VISIBLE;
 
                     // Fix up split reference
                     split = neko_slot_array_getp(ctx->splits, fcnt->split);
@@ -2119,7 +2121,7 @@ NEKO_API_DECL void neko_gui_undock_ex_cnt(neko_gui_context_t* ctx, neko_gui_cont
                     fcnt->tab_item = 0x00;
                     fcnt->tab_bar = 0x00;
                     fcnt->parent = NULL;
-                    fcnt->flags |= NEKO_GUI_WINDOW_FLANEKO_VISIBLE;
+                    fcnt->flags |= NEKO_GUI_WINDOW_FLAGS_VISIBLE;
                 }
 
                 // Fix up split reference
@@ -2195,7 +2197,7 @@ NEKO_API_DECL void neko_gui_undock_ex_cnt(neko_gui_context_t* ctx, neko_gui_cont
                     fcnt->tab_item = 0x00;
                     fcnt->tab_bar = 0x00;
                     fcnt->parent = NULL;
-                    fcnt->flags |= NEKO_GUI_WINDOW_FLANEKO_VISIBLE;
+                    fcnt->flags |= NEKO_GUI_WINDOW_FLAGS_VISIBLE;
                 }
 
                 tab_bar->size = 0;
@@ -3152,9 +3154,9 @@ NEKO_API_DECL void neko_gui_end(neko_gui_context_t* ctx, b32 update) {
                     neko_gui_container_t* fcnt = (neko_gui_container_t*)tab_bar->items[tab_bar->focus].data;
                     fcnt->opt |= NEKO_GUI_OPT_NOHOVER;
                     fcnt->opt |= NEKO_GUI_OPT_NOINTERACT;
-                    fcnt->flags &= ~NEKO_GUI_WINDOW_FLANEKO_VISIBLE;
+                    fcnt->flags &= ~NEKO_GUI_WINDOW_FLAGS_VISIBLE;
                     tab_bar->focus = tab_item->idx;
-                    cnt->flags |= NEKO_GUI_WINDOW_FLANEKO_VISIBLE;
+                    cnt->flags |= NEKO_GUI_WINDOW_FLAGS_VISIBLE;
 
                     // Bring all tab items to front
                     for (u32 i = 0; i < tab_bar->size; ++i) {
@@ -5483,7 +5485,7 @@ NEKO_API_DECL s32 neko_gui_window_begin_ex(neko_gui_context_t* ctx, const char* 
     neko_gui_container_t* root_cnt = neko_gui_get_root_container(ctx, cnt);
 
     // Cache rect
-    if ((cnt->rect.w == 0.f || opt & NEKO_GUI_OPT_FORCESETRECT || opt & NEKO_GUI_OPT_FULLSCREEN || cnt->flags & NEKO_GUI_WINDOW_FLANEKO_FIRST_INIT) && new_frame) {
+    if ((cnt->rect.w == 0.f || opt & NEKO_GUI_OPT_FORCESETRECT || opt & NEKO_GUI_OPT_FULLSCREEN || cnt->flags & NEKO_GUI_WINDOW_FLAGS_FIRST_INIT) && new_frame) {
         if (opt & NEKO_GUI_OPT_FULLSCREEN) {
             neko_vec2 fb = ctx->framebuffer_size;
             cnt->rect = neko_gui_rect(0, 0, fb.x, fb.y);
@@ -5502,7 +5504,7 @@ NEKO_API_DECL s32 neko_gui_window_begin_ex(neko_gui_context_t* ctx, const char* 
                 cnt->rect = rect;
             }
         }
-        cnt->flags = cnt->flags & ~NEKO_GUI_WINDOW_FLANEKO_FIRST_INIT;
+        cnt->flags = cnt->flags & ~NEKO_GUI_WINDOW_FLAGS_FIRST_INIT;
     }
     neko_gui_begin_root_container(ctx, cnt, opt);
     rect = body = cnt->rect;
@@ -5527,11 +5529,11 @@ NEKO_API_DECL s32 neko_gui_window_begin_ex(neko_gui_context_t* ctx, const char* 
 
     if (tab_item && tab_item) {
         if (tab_bar->focus == tab_item->idx) {
-            cnt->flags |= NEKO_GUI_WINDOW_FLANEKO_VISIBLE;
+            cnt->flags |= NEKO_GUI_WINDOW_FLAGS_VISIBLE;
             cnt->opt &= !NEKO_GUI_OPT_NOINTERACT;
             cnt->opt &= !NEKO_GUI_OPT_NOHOVER;
         } else {
-            cnt->flags &= ~NEKO_GUI_WINDOW_FLANEKO_VISIBLE;
+            cnt->flags &= ~NEKO_GUI_WINDOW_FLAGS_VISIBLE;
             cnt->opt |= NEKO_GUI_OPT_NOINTERACT;
             cnt->opt |= NEKO_GUI_OPT_NOHOVER;
         }
@@ -5703,7 +5705,7 @@ NEKO_API_DECL s32 neko_gui_window_begin_ex(neko_gui_context_t* ctx, const char* 
 
     // Control frame for body movement
     if (~root_cnt->opt & NEKO_GUI_OPT_NOMOVE && ~cnt->opt & NEKO_GUI_OPT_NOMOVE && ~cnt->opt & NEKO_GUI_OPT_NOINTERACT && ~cnt->opt & NEKO_GUI_OPT_NOHOVER && new_frame &&
-        cnt->flags & NEKO_GUI_WINDOW_FLANEKO_VISIBLE) {
+        cnt->flags & NEKO_GUI_WINDOW_FLAGS_VISIBLE) {
         // Cache rect
         neko_gui_rect_t br = cnt->rect;
 
@@ -5778,7 +5780,7 @@ NEKO_API_DECL s32 neko_gui_window_begin_ex(neko_gui_context_t* ctx, const char* 
     }
 
     // draw body frame
-    if (~opt & NEKO_GUI_OPT_NOFRAME && cnt->flags & NEKO_GUI_WINDOW_FLANEKO_VISIBLE) {
+    if (~opt & NEKO_GUI_OPT_NOFRAME && cnt->flags & NEKO_GUI_WINDOW_FLAGS_VISIBLE) {
         neko_gui_style_t* style = &ctx->style_sheet->styles[NEKO_GUI_ELEMENT_CONTAINER][state];
 
         if (ctx->active_root == root_cnt) {
@@ -5813,7 +5815,7 @@ NEKO_API_DECL s32 neko_gui_window_begin_ex(neko_gui_context_t* ctx, const char* 
         }
     }
 
-    if (split && ~opt & NEKO_GUI_OPT_NOCLIP && cnt->flags & NEKO_GUI_WINDOW_FLANEKO_VISIBLE) {
+    if (split && ~opt & NEKO_GUI_OPT_NOCLIP && cnt->flags & NEKO_GUI_WINDOW_FLAGS_VISIBLE) {
         s16 exp[] = {1, 1, 1, 1};
         neko_gui_push_clip_rect(ctx, neko_gui_expand_rect(cnt->rect, exp));
     }
@@ -5972,12 +5974,12 @@ NEKO_API_DECL s32 neko_gui_window_begin_ex(neko_gui_context_t* ctx, const char* 
         */
     }
 
-    if (split && ~opt & NEKO_GUI_OPT_NOCLIP && cnt->flags & NEKO_GUI_WINDOW_FLANEKO_VISIBLE) {
+    if (split && ~opt & NEKO_GUI_OPT_NOCLIP && cnt->flags & NEKO_GUI_WINDOW_FLAGS_VISIBLE) {
         neko_gui_pop_clip_rect(ctx);
     }
 
     // Draw border
-    if (~opt & NEKO_GUI_OPT_NOFRAME && cnt->flags & NEKO_GUI_WINDOW_FLANEKO_VISIBLE) {
+    if (~opt & NEKO_GUI_OPT_NOFRAME && cnt->flags & NEKO_GUI_WINDOW_FLAGS_VISIBLE) {
         const int* w = (int*)ctx->style_sheet->styles[NEKO_GUI_ELEMENT_CONTAINER][0x00].border_width;
         const neko_color_t* bc = &ctx->style_sheet->styles[NEKO_GUI_ELEMENT_CONTAINER][0x00].colors[NEKO_GUI_COLOR_BORDER];
         // neko_gui_draw_box(ctx, neko_gui_expand_rect(cnt->rect, w), w, *bc);
@@ -5991,7 +5993,7 @@ NEKO_API_DECL s32 neko_gui_window_begin_ex(neko_gui_context_t* ctx, const char* 
     }
 
     if (~opt & NEKO_GUI_OPT_NOCLIP) {
-        if (cnt->flags & NEKO_GUI_WINDOW_FLANEKO_VISIBLE) {
+        if (cnt->flags & NEKO_GUI_WINDOW_FLAGS_VISIBLE) {
             neko_gui_push_clip_rect(ctx, cnt->body);
         } else {
             neko_gui_push_clip_rect(ctx, neko_gui_rect(0, 0, 0, 0));
@@ -6068,7 +6070,7 @@ NEKO_API_DECL void neko_gui_window_end(neko_gui_context_t* ctx) {
     }
 
     // draw shadow
-    if (~opt & NEKO_GUI_OPT_NOFRAME && cnt->flags & NEKO_GUI_WINDOW_FLANEKO_VISIBLE) {
+    if (~opt & NEKO_GUI_OPT_NOFRAME && cnt->flags & NEKO_GUI_WINDOW_FLAGS_VISIBLE) {
         neko_gui_rect_t* r = &cnt->rect;
         u32 ssz = (u32)(split ? NEKO_GUI_SPLIT_SIZE : 5);
 
@@ -6104,7 +6106,7 @@ NEKO_API_DECL void neko_gui_window_end(neko_gui_context_t* ctx) {
     } while (0)
 
     // Control frame for body resize
-    if (~opt & NEKO_GUI_OPT_NORESIZE && cnt->flags & NEKO_GUI_WINDOW_FLANEKO_VISIBLE) {
+    if (~opt & NEKO_GUI_OPT_NORESIZE && cnt->flags & NEKO_GUI_WINDOW_FLAGS_VISIBLE) {
         // Cache main rect
         neko_gui_rect_t* r = root_split ? &root_split->rect : &cnt->rect;
         neko_gui_rect_t* cr = &cnt->rect;
@@ -6288,7 +6290,7 @@ NEKO_API_DECL void neko_gui_window_end(neko_gui_context_t* ctx) {
     // Do docking overlay (if enabled)
     if (can_dock && ~cnt->opt & NEKO_GUI_OPT_NODOCK && ctx->focus_root && ctx->focus_root != cnt &&
         neko_gui_rect_overlaps_vec2(cnt->rect, ctx->mouse_pos) &&  // This is the incorrect part - need to check if this container isn't being overlapped by another
-        ctx->mouse_down == NEKO_GUI_MOUSE_LEFT && ~cnt->opt & NEKO_GUI_OPT_NOHOVER && cnt->flags & NEKO_GUI_WINDOW_FLANEKO_VISIBLE) {
+        ctx->mouse_down == NEKO_GUI_MOUSE_LEFT && ~cnt->opt & NEKO_GUI_OPT_NOHOVER && cnt->flags & NEKO_GUI_WINDOW_FLAGS_VISIBLE) {
         neko_gui_split_t* focus_split = neko_gui_get_root_split(ctx, ctx->focus_root);
         neko_gui_split_t* cnt_split = neko_gui_get_root_split(ctx, cnt);
 

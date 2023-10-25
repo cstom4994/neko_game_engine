@@ -284,7 +284,7 @@ NEKO_API_DECL void* neko_gfxt_raw_data_default_impl(NEKO_GFXT_HNDL hndl, void* u
 
 // Mesh Generation API
 NEKO_API_DECL neko_gfxt_mesh_t neko_gfxt_mesh_unit_quad_generate(neko_gfxt_mesh_import_options_t* options);
-neko_handle(neko_graphics_texture_t) neko_gfxt_texture_generate_default();
+NEKO_API_DECL neko_handle(neko_graphics_texture_t) neko_gfxt_texture_generate_default();
 
 // ECS component
 typedef struct neko_gfxt_renderer {

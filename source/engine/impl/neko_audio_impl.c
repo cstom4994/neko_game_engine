@@ -16,7 +16,7 @@ neko_result __neko_audio_init(struct neko_audio_s* s) {
 
     neko_platform_t* platform = neko_subsystem(platform);
 
-    HWND hwnd = (HWND)neko_platform_get_sys_handle();
+    HWND hwnd = (HWND)neko_platform_hwnd();
     cs_init(hwnd, 44100, 1024, NULL);
 
     cs_spawn_mix_thread();

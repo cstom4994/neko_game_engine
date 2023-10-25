@@ -15,7 +15,6 @@
 #include <vector>
 
 #include "engine/neko.h"
-#include "engine/neko_containers.h"
 #include "engine/neko_engine.h"
 
 // lua

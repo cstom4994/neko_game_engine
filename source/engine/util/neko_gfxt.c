@@ -698,7 +698,7 @@ NEKO_API_DECL void neko_gfxt_mesh_draw(neko_command_buffer_t* cb, neko_gfxt_mesh
     */
 }
 
-NEKO_API_DECL void neko_gfxt_mesh_primitive_draw_layout(neko_command_buffer_t* cb, neko_gfxt_mesh_primitive_t* prim, neko_gfxt_mesh_layout_t* layout, size_t layout_size) {
+NEKO_API_DECL void neko_gfxt_mesh_primitive_draw_layout(neko_command_buffer_t* cb, neko_gfxt_mesh_primitive_t* prim, neko_gfxt_mesh_layout_t* layout, size_t layout_size, u32 instance_count) {
     if (!layout || !layout_size || !prim || !cb) {
         return;
     }
@@ -759,6 +759,7 @@ NEKO_API_DECL void neko_gfxt_mesh_primitive_draw_layout(neko_command_buffer_t* c
     neko_graphics_draw_desc_t ddesc = neko_default_val();
     ddesc.start = 0;
     ddesc.count = prim->count;
+    ddesc.instances = instance_count;
 
     neko_graphics_apply_bindings(cb, &binds);
     neko_graphics_draw(cb, &ddesc);
@@ -774,7 +775,7 @@ NEKO_API_DECL void neko_gfxt_mesh_draw_layout(neko_command_buffer_t* cb, neko_gf
     // For each primitive in mesh
     for (uint32_t i = 0; i < neko_dyn_array_size(mesh->primitives); ++i) {
         neko_gfxt_mesh_primitive_t* prim = &mesh->primitives[i];
-        neko_gfxt_mesh_primitive_draw_layout(cb, prim, layout, layout_size);
+        neko_gfxt_mesh_primitive_draw_layout(cb, prim, layout, layout_size, 1);
     }
 }
 
@@ -804,7 +805,7 @@ NEKO_API_DECL void neko_gfxt_mesh_draw_materials(neko_command_buffer_t* cb, neko
         // Get pipeline
         neko_gfxt_pipeline_t* pip = neko_gfxt_material_get_pipeline(mat);
 
-        neko_gfxt_mesh_primitive_draw_layout(cb, prim, pip->mesh_layout, neko_dyn_array_size(pip->mesh_layout) * sizeof(neko_gfxt_mesh_layout_t));
+        neko_gfxt_mesh_primitive_draw_layout(cb, prim, pip->mesh_layout, neko_dyn_array_size(pip->mesh_layout) * sizeof(neko_gfxt_mesh_layout_t), 1);
     }
 }
 
@@ -2719,7 +2720,7 @@ char* neko_pipeline_generate_shader_code(neko_gfxt_pipeline_desc_t* pdesc, neko_
 #ifdef NEKO_PLATFORM_WEB
 #define _NEKO_VERSION_STR "#version 300 es\n"
 #else
-#define _NEKO_VERSION_STR MAJMINSTR
+#define _NEKO_VERSION_STR MAJMINSTR  // should be "#version 430\n" or newer
 #endif
 
     // Source code
@@ -2844,21 +2845,23 @@ char* neko_pipeline_generate_shader_code(neko_gfxt_pipeline_desc_t* pdesc, neko_
                 }
             } break;
 
-            case NEKO_GRAPHICS_SHADER_STAGE_COMPUTE: {
-                neko_snprintfc(TMP, 64, "layout(");
-                strncat(src, "layout(", 7);
+                /*
+                case NEKO_GRAPHICS_SHADER_STAGE_COMPUTE: {
+                    neko_snprintfc(TMP, 64, "layout(");
+                    strncat(src, "layout(", 7);
 
-                for (uint32_t i = 0; i < neko_dyn_array_size(ppd->io_list[2]); ++i) {
-                    neko_shader_io_data_t* out = &ppd->io_list[2][i];
-                    const char* otype = out->type;
-                    const char* oname = out->name;
-                    neko_snprintfc(TMP, 64, "%s = %s%s", otype, oname, i == neko_dyn_array_size(ppd->io_list[2]) - 1 ? "" : ", ");
-                    const size_t sz = neko_string_length(TMP);
-                    strncat(src, TMP, sz);
-                }
+                    for (uint32_t i = 0; i < neko_dyn_array_size(ppd->io_list[2]); ++i) {
+                        neko_shader_io_data_t* out = &ppd->io_list[2][i];
+                        const char* otype = out->type;
+                        const char* oname = out->name;
+                        neko_snprintfc(TMP, 64, "%s = %s%s", otype, oname, i == neko_dyn_array_size(ppd->io_list[2]) - 1 ? "" : ", ");
+                        const size_t sz = neko_string_length(TMP);
+                        strncat(src, TMP, sz);
+                    }
 
-                strncat(src, ") in;\n", 7);
-            } break;
+                    strncat(src, ") in;\n", 7);
+                } break;
+                */
 
             default:
                 break;

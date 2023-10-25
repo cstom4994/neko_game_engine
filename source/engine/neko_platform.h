@@ -3,7 +3,6 @@
 #define NEKO_PLATFORM_H
 
 #include "engine/neko.h"
-#include "engine/neko_containers.h"
 
 /*========================
 // NEKO_PLATFORM
@@ -55,8 +54,8 @@ typedef struct neko_uuid_t {
 // Platform Window
 ============================================================*/
 
-#define NEKO_WINDOW_FLANEKO_NO_RESIZE 0x01
-#define NEKO_WINDOW_FLANEKO_FULLSCREEN 0x02
+#define NEKO_WINDOW_FLAGS_NO_RESIZE 0x01
+#define NEKO_WINDOW_FLAGS_FULLSCREEN 0x02
 
 // Should have an internal resource cache of window handles (controlled by the platform api)
 
@@ -324,11 +323,11 @@ typedef enum neko_platform_video_driver_type {
 } neko_platform_video_driver_type;
 
 typedef enum neko_opengl_compatibility_flags {
-    NEKO_OPENGL_COMPATIBILITY_FLANEKO_LEGACY = 0,
-    NEKO_OPENGL_COMPATIBILITY_FLANEKO_CORE = 1 << 1,
-    NEKO_OPENGL_COMPATIBILITY_FLANEKO_COMPATIBILITY = 1 << 2,
-    NEKO_OPENGL_COMPATIBILITY_FLANEKO_FORWARD = 1 << 3,
-    NEKO_OPENGL_COMPATIBILITY_FLANEKO_ES = 1 << 4,
+    NEKO_OPENGL_COMPATIBILITY_FLAGS_LEGACY = 0,
+    NEKO_OPENGL_COMPATIBILITY_FLAGS_CORE = 1 << 1,
+    NEKO_OPENGL_COMPATIBILITY_FLAGS_COMPATIBILITY = 1 << 2,
+    NEKO_OPENGL_COMPATIBILITY_FLAGS_FORWARD = 1 << 3,
+    NEKO_OPENGL_COMPATIBILITY_FLAGS_ES = 1 << 4,
 } neko_opengl_compatibility_flags;
 
 // A structure that contains OpenGL video settings
@@ -643,7 +642,7 @@ NEKO_API_DECL void neko_platform_set_dropped_files_callback(u32 handle, neko_dro
 NEKO_API_DECL void neko_platform_set_window_close_callback(u32 handle, neko_window_close_callback_t cb);
 NEKO_API_DECL void neko_platform_set_character_callback(u32 handle, neko_character_callback_t cb);
 
-NEKO_API_DECL void* neko_platform_get_sys_handle();
+NEKO_API_DECL void* neko_platform_hwnd();
 NEKO_API_DECL neko_memory_info_t neko_platform_memory_info();
 NEKO_API_DECL neko_vec2 neko_platform_opengl_ver();
 NEKO_API_DECL void neko_platform_msgbox(const_str msg);
@@ -655,6 +654,94 @@ NEKO_API_DECL const_str __neko_inter_stacktrace();
 /*============================================================
 // Platform Native
 ============================================================*/
+
+static inline uint64_t neko_get_thread_id() {
+#if defined(NEKO_PLATFORM_WIN)
+    return (uint64_t)GetCurrentThreadId();
+#elif defined(NEKO_PLATFORM_LINUX)
+    return (uint64_t)syscall(SYS_gettid);
+#elif defined(NEKO_PLATFORM_APPLE)
+    return (mach_port_t)::pthread_mach_thread_np(pthread_self());
+#else
+#error "Unsupported platform!"
+#endif
+}
+
+// Thread Local Storage(TLS)
+// msvc: https://learn.microsoft.com/en-us/cpp/parallel/thread-local-storage-tls
+
+#ifdef NEKO_PLATFORM_WIN
+
+static inline u32 neko_tls_allocate() { return (u32)TlsAlloc(); }
+static inline void neko_tls_set_value(u32 _handle, void* _value) { TlsSetValue(_handle, _value); }
+static inline void* neko_tls_get_value(u32 _handle) { return TlsGetValue(_handle); }
+static inline void neko_tls_free(u32 _handle) { TlsFree(_handle); }
+
+#else
+
+static inline pthread_key_t neko_tls_allocate() {
+    pthread_key_t handle;
+    pthread_key_create(&handle, NULL);
+    return handle;
+}
+static inline void neko_tls_set_value(pthread_key_t _handle, void* _value) { pthread_setspecific(_handle, _value); }
+static inline void* neko_tls_get_value(pthread_key_t _handle) { return pthread_getspecific(_handle); }
+static inline void neko_tls_free(pthread_key_t _handle) { pthread_key_delete(_handle); }
+
+#endif
+
+#if defined(NEKO_PLATFORM_WIN)
+
+typedef CRITICAL_SECTION neko_mutex;
+static inline void neko_mutex_init(neko_mutex* _mutex) { InitializeCriticalSection(_mutex); }
+static inline void neko_mutex_destroy(neko_mutex* _mutex) { DeleteCriticalSection(_mutex); }
+static inline void neko_mutex_lock(neko_mutex* _mutex) { EnterCriticalSection(_mutex); }
+static inline int neko_mutex_trylock(neko_mutex* _mutex) { return TryEnterCriticalSection(_mutex) ? 0 : 1; }
+static inline void neko_mutex_unlock(neko_mutex* _mutex) { LeaveCriticalSection(_mutex); }
+
+#elif defined(NEKO_PLATFORM_POSIX)
+
+typedef pthread_mutex_t neko_mutex;
+static inline void neko_mutex_init(neko_mutex* _mutex) { pthread_mutex_init(_mutex, NULL); }
+static inline void neko_mutex_destroy(neko_mutex* _mutex) { pthread_mutex_destroy(_mutex); }
+static inline void neko_mutex_lock(neko_mutex* _mutex) { pthread_mutex_lock(_mutex); }
+static inline int neko_mutex_trylock(neko_mutex* _mutex) { return pthread_mutex_trylock(_mutex); }
+static inline void neko_mutex_unlock(neko_mutex* _mutex) { pthread_mutex_unlock(_mutex); }
+
+#else
+#error "Unsupported platform!"
+#endif
+
+#if defined(NEKO_PLATFORM_WIN)
+
+#if defined(NEKO_CPP_SRC)
+
+#ifdef UNICODE
+#define NEKO_WINDOWS_ConvertPath(_newpath, _path) std::wstring _newpath(cr_utf8_to_wstring(_path))
+
+static std::wstring cr_utf8_to_wstring(const std::string& str) {
+    int wlen = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, 0, 0);
+    wchar_t wpath_small[MAX_PATH];
+    std::unique_ptr<wchar_t[]> wpath_big;
+    wchar_t* wpath = wpath_small;
+    if (wlen > _countof(wpath_small)) {
+        wpath_big = std::unique_ptr<wchar_t[]>(new wchar_t[wlen]);
+        wpath = wpath_big.get();
+    }
+
+    if (MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, wpath, wlen) != wlen) {
+        return L"";
+    }
+
+    return wpath;
+}
+#else
+#define NEKO_WINDOWS_ConvertPath(_newpath, _path) const std::string& _newpath = _path
+#endif  // UNICODE
+
+#endif
+
+#endif
 
 neko_inline void toWChar(wchar_t out[MAX_PATH], const char* in) {
     const char* c = in;
@@ -705,6 +792,16 @@ NEKO_API_DECL tick_t neko_timer_system(void);
         timer_name = neko_timer_elapsed_ticks(timer_name); \
         timer_do;                                          \
     } while (0)
+
+#define NEKO_HIJACK_MAIN()                                 \
+    s32 main(s32 argv, char** argc) {                      \
+        neko_t* inst = neko_create(neko_main(argv, argc)); \
+        while (neko_app()->is_running) {                   \
+            neko_frame();                                  \
+        }                                                  \
+        neko_free(inst);                                   \
+        return 0;                                          \
+    }
 
 /*
 typedef struct neko_platform_interface_s

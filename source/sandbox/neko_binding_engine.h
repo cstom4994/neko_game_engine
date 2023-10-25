@@ -2,7 +2,6 @@
 #ifndef NEKO_BINDING_ENGINE_H
 #define NEKO_BINDING_ENGINE_H
 
-#include "engine/neko_cvar.h"
 #include "engine/neko_engine.h"
 #include "engine/util/neko_asset.h"
 #include "engine/util/neko_lua.h"

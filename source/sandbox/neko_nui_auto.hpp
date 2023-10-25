@@ -255,11 +255,18 @@ void neko_nui::detail::auto_tuple(const std::string &name,
 
 #define neko_nui_auto_def(template_spec, type_spec, code) neko_nui_auto_def_inline_p((template_spec), (type_spec), code)
 
-neko_nui_auto_def_begin(template <>, const_str) if (name.empty()) neko_nui_label_wrap(ctx, var);
+neko_nui_auto_def(template <>, const_str, {
+    if (name.empty())
+        neko_nui_label_wrap(ctx, var);
+    else
+        neko_nui_labelf_wrap(ctx, "%s=%s", name.c_str(), var);
+});
+
+neko_nui_auto_def_begin_p((template <std::size_t N>), (detail::c_array_t<char, N>)) if (name.empty()) neko_nui_label_wrap(ctx, std::string(var, var + N - 1).c_str());
 else neko_nui_labelf_wrap(ctx, "%s=%s", name.c_str(), var);
 neko_nui_auto_def_end();
 
-neko_nui_auto_def_begin_p((template <std::size_t N>), (const detail::c_array_t<char, N>)) if (name.empty()) ImGui::TextUnformatted(var, var + N - 1);
+neko_nui_auto_def_begin_p((template <std::size_t N>), (const detail::c_array_t<char, N>)) if (name.empty()) neko_nui_label_wrap(ctx, std::string(var, var + N - 1).c_str());
 else neko_nui_labelf_wrap(ctx, "%s=%s", name.c_str(), var);
 neko_nui_auto_def_end();
 

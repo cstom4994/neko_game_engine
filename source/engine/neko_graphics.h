@@ -4,7 +4,6 @@
 #define NEKO_GRAPHICS_H
 
 #include "engine/neko.h"
-#include "engine/neko_containers.h"
 
 // OpenGL
 #include "libs/glad/glad.h"

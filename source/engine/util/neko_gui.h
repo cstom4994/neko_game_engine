@@ -307,7 +307,11 @@ typedef struct neko_gui_split_t {
     s32 frame;
 } neko_gui_split_t;
 
-typedef enum neko_gui_window_flags { NEKO_GUI_WINDOW_FLANEKO_VISIBLE = (1 << 0), NEKO_GUI_WINDOW_FLANEKO_FIRST_INIT = (1 << 1) } neko_gui_window_flags;
+typedef enum neko_gui_window_flags {
+    NEKO_GUI_WINDOW_FLAGS_VISIBLE = (1 << 0),     //
+    NEKO_GUI_WINDOW_FLAGS_FIRST_INIT = (1 << 1),  //
+    NEKO_GUI_WINDOW_FLAGS_PUSH_ID = (1 << 2)      //
+} neko_gui_window_flags;
 
 // Equidistantly sized tabs, based on rect of window
 typedef struct neko_gui_tab_item_t {

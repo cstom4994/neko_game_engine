@@ -2,7 +2,6 @@
 #define NEKO_XML_H
 
 #include "engine/neko.h"
-#include "engine/neko_containers.h"
 
 typedef enum neko_xml_attribute_type_t {
     NEKO_XML_ATTRIBUTE_NUMBER,

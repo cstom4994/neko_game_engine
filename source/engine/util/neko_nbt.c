@@ -2,7 +2,6 @@
 #include "neko_nbt.h"
 
 #include "engine/neko.h"
-#include "engine/neko_containers.h"
 
 typedef struct {
     u8* buffer;

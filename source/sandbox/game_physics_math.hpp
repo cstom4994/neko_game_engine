@@ -1,5 +1,6 @@
 //
 //
+// http://www.tomgibara.com/computer-vision/marching-squares
 // https://github.com/reunanen/cpp-marching-squares
 // https://github.com/ivanfratric/polypartition
 // https://gist.github.com/mieko/0275f2f4a3b18388ed5131b3364179fb
@@ -18,7 +19,7 @@
 
 namespace neko {
 
-neko_inline bool IsValid(float x) { return isfinite(x); }
+neko_inline bool IsValid(f32 x) { return isfinite(x); }
 
 neko_inline auto RectToPoint(const neko_vec2 &v) {
     neko_vec2 a1 = {v.x / 2.0f, v.y / 2.0f};
@@ -41,7 +42,7 @@ struct TPPLPoint {
     tppl_float y;
     // User-specified vertex identifier.  Note that this isn't used internally
     // by the library, but will be faithfully copied around.
-    int id;
+    s32 id;
 
     TPPLPoint operator+(const TPPLPoint &p) const {
         TPPLPoint r;
@@ -90,7 +91,7 @@ struct TPPLPoint {
 class TPPLPoly {
 protected:
     TPPLPoint *points;
-    long numpoints;
+    s64 numpoints;
     bool hole;
 
 public:
@@ -102,27 +103,27 @@ public:
     TPPLPoly &operator=(const TPPLPoly &src);
 
     // getters and setters
-    long GetNumPoints() const { return numpoints; }
+    s64 GetNumPoints() const { return numpoints; }
 
     bool IsHole() const { return hole; }
 
     void SetHole(bool hole) { this->hole = hole; }
 
-    TPPLPoint &GetPoint(long i) { return points[i]; }
+    TPPLPoint &GetPoint(s64 i) { return points[i]; }
 
-    const TPPLPoint &GetPoint(long i) const { return points[i]; }
+    const TPPLPoint &GetPoint(s64 i) const { return points[i]; }
 
     TPPLPoint *GetPoints() { return points; }
 
-    TPPLPoint &operator[](int i) { return points[i]; }
+    TPPLPoint &operator[](s32 i) { return points[i]; }
 
-    const TPPLPoint &operator[](int i) const { return points[i]; }
+    const TPPLPoint &operator[](s32 i) const { return points[i]; }
 
     // clears the polygon points
     void Clear();
 
     // inits the polygon with numpoints vertices
-    void Init(long numpoints);
+    void Init(s64 numpoints);
 
     // creates a triangle with points p1,p2,p3
     void Triangle(TPPLPoint &p1, TPPLPoint &p2, TPPLPoint &p3);
@@ -135,23 +136,19 @@ public:
     //    TPPL_CCW : polygon vertices are in counter-clockwise order
     //    TPPL_CW : polygon vertices are in clockwise order
     //        0 : the polygon has no (measurable) area
-    int GetOrientation() const;
+    s32 GetOrientation() const;
 
     // sets the polygon orientation
     // orientation can be
     //    TPPL_CCW : sets vertices in counter-clockwise order
     //    TPPL_CW : sets vertices in clockwise order
-    void SetOrientation(int orientation);
+    void SetOrientation(s32 orientation);
 
     // checks whether a polygon is valid or not
     inline bool Valid() const { return this->numpoints >= 3; }
 };
 
-#ifdef TPPL_ALLOCATOR
-typedef std::list<TPPLPoly, TPPL_ALLOCATOR(TPPLPoly)> TPPLPolyList;
-#else
 typedef std::list<TPPLPoly> TPPLPolyList;
-#endif
 
 class TPPLPartition {
 protected:
@@ -170,8 +167,8 @@ protected:
 
     struct MonotoneVertex {
         TPPLPoint p;
-        long previous;
-        long next;
+        s64 previous;
+        s64 next;
     };
 
     class VertexSorter {
@@ -179,37 +176,33 @@ protected:
 
     public:
         VertexSorter(MonotoneVertex *v) : vertices(v) {}
-        bool operator()(long index1, long index2);
+        bool operator()(s64 index1, s64 index2);
     };
 
     struct Diagonal {
-        long index1;
-        long index2;
+        s64 index1;
+        s64 index2;
     };
 
-#ifdef TPPL_ALLOCATOR
-    typedef std::list<Diagonal, TPPL_ALLOCATOR(Diagonal)> DiagonalList;
-#else
     typedef std::list<Diagonal> DiagonalList;
-#endif
 
     // dynamic programming state for minimum-weight triangulation
     struct DPState {
         bool visible;
         tppl_float weight;
-        long bestvertex;
+        s64 bestvertex;
     };
 
     // dynamic programming state for convex partitioning
     struct DPState2 {
         bool visible;
-        long weight;
+        s64 weight;
         DiagonalList pairs;
     };
 
     // edge that intersects the scanline
     struct ScanLineEdge {
-        mutable long index;
+        mutable s64 index;
         TPPLPoint p1;
         TPPLPoint p2;
 
@@ -227,27 +220,27 @@ protected:
     bool InCone(TPPLPoint &p1, TPPLPoint &p2, TPPLPoint &p3, TPPLPoint &p);
     bool InCone(PartitionVertex *v, TPPLPoint &p);
 
-    int Intersects(TPPLPoint &p11, TPPLPoint &p12, TPPLPoint &p21, TPPLPoint &p22);
+    s32 Intersects(TPPLPoint &p11, TPPLPoint &p12, TPPLPoint &p21, TPPLPoint &p22);
 
     TPPLPoint Normalize(const TPPLPoint &p);
     tppl_float Distance(const TPPLPoint &p1, const TPPLPoint &p2);
 
     // helper functions for Triangulate_EC
     void UpdateVertexReflexity(PartitionVertex *v);
-    void UpdateVertex(PartitionVertex *v, PartitionVertex *vertices, long numvertices);
+    void UpdateVertex(PartitionVertex *v, PartitionVertex *vertices, s64 numvertices);
 
     // helper functions for ConvexPartition_OPT
-    void UpdateState(long a, long b, long w, long i, long j, DPState2 **dpstates);
-    void TypeA(long i, long j, long k, PartitionVertex *vertices, DPState2 **dpstates);
-    void TypeB(long i, long j, long k, PartitionVertex *vertices, DPState2 **dpstates);
+    void UpdateState(s64 a, s64 b, s64 w, s64 i, s64 j, DPState2 **dpstates);
+    void TypeA(s64 i, s64 j, s64 k, PartitionVertex *vertices, DPState2 **dpstates);
+    void TypeB(s64 i, s64 j, s64 k, PartitionVertex *vertices, DPState2 **dpstates);
 
     // helper functions for MonotonePartition
     bool PBelow(TPPLPoint &p1, TPPLPoint &p2);
-    void AddDiagonal(MonotoneVertex *vertices, long *numvertices, long index1, long index2, char *vertextypes, std::set<ScanLineEdge>::iterator *edgeTreeIterators, std::set<ScanLineEdge> *edgeTree,
-                     long *helpers);
+    void AddDiagonal(MonotoneVertex *vertices, s64 *numvertices, s64 index1, s64 index2, char *vertextypes, std::set<ScanLineEdge>::iterator *edgeTreeIterators, std::set<ScanLineEdge> *edgeTree,
+                     s64 *helpers);
 
     // triangulates a monotone polygon, used in Triangulate_MONO
-    int TriangulateMonotone(TPPLPoly *inPoly, TPPLPolyList *triangles);
+    s32 TriangulateMonotone(TPPLPoly *inPoly, TPPLPolyList *triangles);
 
 public:
     // simple heuristic procedure for removing holes from a list of polygons
@@ -260,7 +253,7 @@ public:
     //              vertices of all hole polys have to be in clockwise order
     //    outpolys : a list of polygons without holes
     // returns 1 on success, 0 on failure
-    int RemoveHoles(TPPLPolyList *inpolys, TPPLPolyList *outpolys);
+    s32 RemoveHoles(TPPLPolyList *inpolys, TPPLPolyList *outpolys);
 
     // triangulates a polygon by ear clipping
     // time complexity O(n^2), n is the number of vertices
@@ -270,7 +263,7 @@ public:
     //           vertices have to be in counter-clockwise order
     //    triangles : a list of triangles (result)
     // returns 1 on success, 0 on failure
-    int Triangulate_EC(TPPLPoly *poly, TPPLPolyList *triangles);
+    s32 Triangulate_EC(TPPLPoly *poly, TPPLPolyList *triangles);
 
     // triangulates a list of polygons that may contain holes by ear clipping algorithm
     // first calls RemoveHoles to get rid of the holes, and then Triangulate_EC for each resulting polygon
@@ -282,7 +275,7 @@ public:
     //              vertices of all hole polys have to be in clockwise order
     //    triangles : a list of triangles (result)
     // returns 1 on success, 0 on failure
-    int Triangulate_EC(TPPLPolyList *inpolys, TPPLPolyList *triangles);
+    s32 Triangulate_EC(TPPLPolyList *inpolys, TPPLPolyList *triangles);
 
     // creates an optimal polygon triangulation in terms of minimal edge length
     // time complexity: O(n^3), n is the number of vertices
@@ -292,7 +285,7 @@ public:
     //           vertices have to be in counter-clockwise order
     //    triangles : a list of triangles (result)
     // returns 1 on success, 0 on failure
-    int Triangulate_OPT(TPPLPoly *poly, TPPLPolyList *triangles);
+    s32 Triangulate_OPT(TPPLPoly *poly, TPPLPolyList *triangles);
 
     // triangulates a polygons by firstly partitioning it into monotone polygons
     // time complexity: O(n*log(n)), n is the number of vertices
@@ -302,7 +295,7 @@ public:
     //           vertices have to be in counter-clockwise order
     //    triangles : a list of triangles (result)
     // returns 1 on success, 0 on failure
-    int Triangulate_MONO(TPPLPoly *poly, TPPLPolyList *triangles);
+    s32 Triangulate_MONO(TPPLPoly *poly, TPPLPolyList *triangles);
 
     // triangulates a list of polygons by firstly partitioning them into monotone polygons
     // time complexity: O(n*log(n)), n is the number of vertices
@@ -313,7 +306,7 @@ public:
     //              vertices of all hole polys have to be in clockwise order
     //    triangles : a list of triangles (result)
     // returns 1 on success, 0 on failure
-    int Triangulate_MONO(TPPLPolyList *inpolys, TPPLPolyList *triangles);
+    s32 Triangulate_MONO(TPPLPolyList *inpolys, TPPLPolyList *triangles);
 
     // creates a monotone partition of a list of polygons that can contain holes
     // time complexity: O(n*log(n)), n is the number of vertices
@@ -324,7 +317,7 @@ public:
     //              vertices of all hole polys have to be in clockwise order
     //    monotonePolys : a list of monotone polygons (result)
     // returns 1 on success, 0 on failure
-    int MonotonePartition(TPPLPolyList *inpolys, TPPLPolyList *monotonePolys);
+    s32 MonotonePartition(TPPLPolyList *inpolys, TPPLPolyList *monotonePolys);
 
     // partitions a polygon into convex polygons by using Hertel-Mehlhorn algorithm
     // the algorithm gives at most four times the number of parts as the optimal algorithm
@@ -337,7 +330,7 @@ public:
     //           vertices have to be in counter-clockwise order
     //    parts : resulting list of convex polygons
     // returns 1 on success, 0 on failure
-    int ConvexPartition_HM(TPPLPoly *poly, TPPLPolyList *parts);
+    s32 ConvexPartition_HM(TPPLPoly *poly, TPPLPolyList *parts);
 
     // partitions a list of polygons into convex parts by using Hertel-Mehlhorn algorithm
     // the algorithm gives at most four times the number of parts as the optimal algorithm
@@ -351,7 +344,7 @@ public:
     //              vertices of all hole polys have to be in clockwise order
     //    parts : resulting list of convex polygons
     // returns 1 on success, 0 on failure
-    int ConvexPartition_HM(TPPLPolyList *inpolys, TPPLPolyList *parts);
+    s32 ConvexPartition_HM(TPPLPolyList *inpolys, TPPLPolyList *parts);
 
     // optimal convex partitioning (in terms of number of resulting convex polygons)
     // using the Keil-Snoeyink algorithm
@@ -362,7 +355,7 @@ public:
     //           vertices have to be in counter-clockwise order
     //    parts : resulting list of convex polygons
     // returns 1 on success, 0 on failure
-    int ConvexPartition_OPT(TPPLPoly *poly, TPPLPolyList *parts);
+    s32 ConvexPartition_OPT(TPPLPoly *poly, TPPLPolyList *parts);
 };
 
 #pragma endregion TPPL
@@ -379,37 +372,29 @@ f32 pDistance(f32 x, f32 y, f32 x1, f32 y1, f32 x2, f32 y2);
 //  * algorithm have already been thresholded. The algorithm only distinguishes
 //  * between zero and non-zero values.
 
-namespace MarchingSquares {
-struct Direction {
-    Direction() : x(0), y(0) {}
-    Direction(int x, int y) : x(x), y(y) {}
-    Direction(neko_vec2 vec) : x(vec.x), y(vec.y) {}
-    int x;
-    int y;
+namespace marching_squares {
+struct ms_direction {
+    ms_direction() : x(0), y(0) {}
+    ms_direction(s32 x, s32 y) : x(x), y(y) {}
+    ms_direction(neko_vec2 vec) : x(vec.x), y(vec.y) {}
+    s32 x;
+    s32 y;
 };
 
-bool operator==(const Direction &a, const Direction &b);
-Direction operator*(const Direction &direction, int multiplier);
-Direction operator+(const Direction &a, const Direction &b);
-Direction &operator+=(Direction &a, const Direction &b);
+bool operator==(const ms_direction &a, const ms_direction &b);
+ms_direction operator*(const ms_direction &direction, s32 multiplier);
+ms_direction operator+(const ms_direction &a, const ms_direction &b);
+ms_direction &operator+=(ms_direction &a, const ms_direction &b);
 
-Direction MakeDirection(int x, int y);
-Direction East();
-Direction Northeast();
-Direction North();
-Direction Northwest();
-Direction West();
-Direction Southwest();
-Direction South();
-Direction Southeast();
+ms_direction make_direction(s32 x, s32 y);
 
-bool isSet(int x, int y, int width, int height, unsigned char *data);
-int value(int x, int y, int width, int height, unsigned char *data);
+bool is_set(s32 x, s32 y, s32 width, s32 height, unsigned char *data);
+s32 ms_value(s32 x, s32 y, s32 width, s32 height, unsigned char *data);
 
-struct Result {
-    int initialX = -1;
-    int initialY = -1;
-    std::vector<Direction> directions;
+struct ms_result {
+    s32 initial_x = -1;
+    s32 initial_y = -1;
+    std::vector<ms_direction> directions;
 };
 
 /**
@@ -422,10 +407,10 @@ struct Result {
  * with the data elements in row major order and the top-left-hand data
  * element at index zero.
  *
- * @param initialX
+ * @param initial_x
  *            the column of the data matrix at which to start tracing the
  *            perimeter
- * @param initialY
+ * @param initial_y
  *            the row of the data matrix at which to start tracing the
  *            perimeter
  * @param width
@@ -440,7 +425,7 @@ struct Result {
  * @throws std::runtime_error
  *             if there is no perimeter at the specified initial point.
  */
-Result FindPerimeter(int initialX, int initialY, int width, int height, unsigned char *data);
+ms_result find_perimeter(s32 initialX, s32 initialY, s32 width, s32 height, unsigned char *data);
 
 /**
  * A convenience method that locates at least one perimeter in the data with
@@ -450,10 +435,10 @@ Result FindPerimeter(int initialX, int initialY, int width, int height, unsigned
  *
  * @return a perimeter path obtained from the data, or null
  */
-Result FindPerimeter(int width, int height, unsigned char *data);
-Result FindPerimeter(int width, int height, unsigned char *data, int lookX, int lookY);
-Direction FindEdge(int width, int height, unsigned char *data, int lookX, int lookY);
-}  // namespace MarchingSquares
+ms_result find_perimeter(s32 width, s32 height, unsigned char *data);
+ms_result find_perimeter(s32 width, s32 height, unsigned char *data, s32 lookX, s32 lookY);
+ms_direction find_edge(s32 width, s32 height, unsigned char *data, s32 lookX, s32 lookY);
+}  // namespace marching_squares
 
 }  // namespace neko
 

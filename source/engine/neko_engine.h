@@ -4,7 +4,6 @@
 
 #include "engine/neko.h"
 #include "engine/neko_audio.h"
-#include "engine/neko_cvar.h"
 #include "engine/neko_graphics.h"
 #include "engine/neko_platform.h"
 

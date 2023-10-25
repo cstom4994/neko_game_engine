@@ -164,14 +164,14 @@ NEKO_API_DECL void neko_ai_bt_wait(struct neko_ai_bt_t* ctx, float* time, float 
 
 NEKO_API_DECL void neko_ai_bt_free(struct neko_ai_bt_t* ctx);
 
-#define neko_ai_bt(_CTX, ...)        \
+#define neko_ai_bt(_CTX, ...)     \
     do {                          \
         neko_ai_bt_begin((_CTX)); \
         __VA_ARGS__               \
         neko_ai_bt_end((_CTX));   \
     } while (0)
 
-#define neko_ai_repeater(_CTX, ...)                       \
+#define neko_ai_repeater(_CTX, ...)                    \
     do {                                               \
         if (neko_ai_bt_repeater_begin((_CTX), NULL)) { \
             __VA_ARGS__                                \
@@ -179,7 +179,7 @@ NEKO_API_DECL void neko_ai_bt_free(struct neko_ai_bt_t* ctx);
         }                                              \
     } while (0)
 
-#define neko_ai_inverter(_CTX, ...)                 \
+#define neko_ai_inverter(_CTX, ...)              \
     do {                                         \
         if (neko_ai_bt_inverter_begin((_CTX))) { \
             __VA_ARGS__                          \
@@ -187,7 +187,7 @@ NEKO_API_DECL void neko_ai_bt_free(struct neko_ai_bt_t* ctx);
         }                                        \
     } while (0)
 
-#define neko_ai_condition(_CTX, _COND, ...)                   \
+#define neko_ai_condition(_CTX, _COND, ...)                \
     do {                                                   \
         if (neko_ai_bt_condition_begin((_CTX), (_COND))) { \
             __VA_ARGS__                                    \
@@ -195,7 +195,7 @@ NEKO_API_DECL void neko_ai_bt_free(struct neko_ai_bt_t* ctx);
         }                                                  \
     } while (0)
 
-#define neko_ai_selector(_CTX, ...)                 \
+#define neko_ai_selector(_CTX, ...)              \
     do {                                         \
         if (neko_ai_bt_selector_begin((_CTX))) { \
             __VA_ARGS__                          \
@@ -203,7 +203,7 @@ NEKO_API_DECL void neko_ai_bt_free(struct neko_ai_bt_t* ctx);
         }                                        \
     } while (0)
 
-#define neko_ai_sequence(_CTX, ...)                 \
+#define neko_ai_sequence(_CTX, ...)              \
     do {                                         \
         if (neko_ai_bt_sequence_begin((_CTX))) { \
             __VA_ARGS__                          \

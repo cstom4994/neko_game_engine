@@ -21,7 +21,7 @@ bool pixelui_in_bounds(s32 x, s32 y) {
 
 void putpixel(s32 x, s32 y) {
     if (pixelui_in_bounds(x, y)) {
-        g_ui_buffer[pixelui_compute_idx(x, y)] = cell_color_t{255, 255, 255, 255};
+        g_fallsand.ui_buffer[pixelui_compute_idx(x, y)] = cell_color_t{255, 255, 255, 255};
     }
 }
 
@@ -118,27 +118,27 @@ bool gui_rect(cell_color_t* buffer, s32 _x, s32 _y, s32 _w, s32 _h, cell_color_t
     return in_rect(mp, neko_vec2{(f32)_x, (f32)_y}, neko_vec2{(f32)_w, (f32)_h}) && clicked;
 }
 
-#define __gui_interaction(x, y, w, h, c, str, id)                                                                                                 \
-    do {                                                                                                                                          \
-        if ((id) == g_material_selection) {                                                                                                       \
-            const s32 b = 2;                                                                                                                      \
-            gui_rect(g_ui_buffer, x - b / 2, y - b / 2, w + b, h + b, cell_color_t{200, 150, 20, 255});                                           \
-        }                                                                                                                                         \
-        neko_vec2 mp = calculate_mouse_position();                                                                                                \
-        if (in_rect(mp, neko_vec2{(f32)(x), (f32)(y)}, neko_vec2{(w), (h)})) {                                                                    \
-            interaction |= true;                                                                                                                  \
-            char _str[] = (str);                                                                                                                  \
-            cell_color_t col = cell_color_t{255, 255, 255, 255};                                                                                  \
-            cell_color_t s_col = cell_color_t{10, 10, 10, 255};                                                                                   \
-            cell_color_t r_col = cell_color_t{5, 5, 5, 170};                                                                                      \
-            /*Draw rect around text as well for easier viewing*/                                                                                  \
-            gui_rect(g_ui_buffer, g_pixelui_texture_width / 2 - 50, 15, 100, 20, r_col);                                                          \
-            draw_string_at(&pixel_font, g_ui_buffer, g_pixelui_texture_width / 2 + 1 - (sizeof(str) * 5) / 2, 20 - 1, _str, sizeof(_str), s_col); \
-            draw_string_at(&pixel_font, g_ui_buffer, g_pixelui_texture_width / 2 - (sizeof(str) * 5) / 2, 20, _str, sizeof(_str), col);           \
-        }                                                                                                                                         \
-        if (gui_rect(g_ui_buffer, x, y, w, h, c)) {                                                                                               \
-            g_material_selection = id;                                                                                                            \
-        }                                                                                                                                         \
+#define __gui_interaction(x, y, w, h, c, str, id)                                                                                                          \
+    do {                                                                                                                                                   \
+        if ((id) == g_fallsand.material_selection) {                                                                                                       \
+            const s32 b = 2;                                                                                                                               \
+            gui_rect(g_fallsand.ui_buffer, x - b / 2, y - b / 2, w + b, h + b, cell_color_t{200, 150, 20, 255});                                           \
+        }                                                                                                                                                  \
+        neko_vec2 mp = calculate_mouse_position();                                                                                                         \
+        if (in_rect(mp, neko_vec2{(f32)(x), (f32)(y)}, neko_vec2{(w), (h)})) {                                                                             \
+            interaction |= true;                                                                                                                           \
+            char _str[] = (str);                                                                                                                           \
+            cell_color_t col = cell_color_t{255, 255, 255, 255};                                                                                           \
+            cell_color_t s_col = cell_color_t{10, 10, 10, 255};                                                                                            \
+            cell_color_t r_col = cell_color_t{5, 5, 5, 170};                                                                                               \
+            /*Draw rect around text as well for easier viewing*/                                                                                           \
+            gui_rect(g_fallsand.ui_buffer, g_pixelui_texture_width / 2 - 50, 15, 100, 20, r_col);                                                          \
+            draw_string_at(&pixel_font, g_fallsand.ui_buffer, g_pixelui_texture_width / 2 + 1 - (sizeof(str) * 5) / 2, 20 - 1, _str, sizeof(_str), s_col); \
+            draw_string_at(&pixel_font, g_fallsand.ui_buffer, g_pixelui_texture_width / 2 - (sizeof(str) * 5) / 2, 20, _str, sizeof(_str), col);           \
+        }                                                                                                                                                  \
+        if (gui_rect(g_fallsand.ui_buffer, x, y, w, h, c)) {                                                                                               \
+            g_fallsand.material_selection = id;                                                                                                            \
+        }                                                                                                                                                  \
     } while (0)
 
 bool update_ui() {
@@ -150,10 +150,10 @@ bool update_ui() {
     neko_vec2 mp = calculate_mouse_position();
 
     // Do ui stuff
-    memset(g_ui_buffer, 0, g_pixelui_texture_width * g_pixelui_texture_height * sizeof(cell_color_t));
+    memset(g_fallsand.ui_buffer, 0, g_pixelui_texture_width * g_pixelui_texture_height * sizeof(cell_color_t));
 
     // Material selection panel gui
-    if (g_show_material_selection_panel) {
+    if (g_fallsand.show_material_selection_panel) {
         const s32 offset = 12;
         s32 xoff = 20;
         s32 base = 10;
@@ -173,11 +173,11 @@ bool update_ui() {
         __gui_interaction(g_pixelui_texture_width - xoff, base + offset * 11, 10, 10, mat_col_acid, "Acid", mat_sel_acid);
     }
 
-    if (g_show_frame_count) {
+    if (g_fallsand.show_frame_count) {
 
         char frame_time_str[256];
-        neko_snprintf(frame_time_str, sizeof(frame_time_str), "frame: %.2f ms", neko_platform_frame_time());
-        draw_string_at(&pixel_font, g_ui_buffer, 10, 10, frame_time_str, strlen(frame_time_str), cell_color_t{255, 255, 255, 255});
+        neko_snprintf(frame_time_str, sizeof(frame_time_str), "frame: %6.2f ms %llu", neko_platform_frame_time(), g_fallsand.update_time);
+        draw_string_at(&pixel_font, g_fallsand.ui_buffer, 10, 10, frame_time_str, strlen(frame_time_str), cell_color_t{255, 255, 255, 255});
 
         // char sim_state_str[256];
         // neko_snprintf(sim_state_str, sizeof(sim_state_str), "state: %s", "running");
@@ -186,8 +186,10 @@ bool update_ui() {
         // gfx->fontcache_push_x_y(std::format("test: {0} {1}", l_check, neko_buildnum()), g_basic_font, 40, 160);
     }
 
+    g_fallsand.update_time = 0;
+
     // Draw circle around mouse pointer
-    s32 R = brush_size * g_scale;
+    s32 R = g_fallsand.brush_size * g_fallsand.render_scale;
     circleBres((s32)(mp.x), (s32)(mp.y), R);
 
     // Upload our updated texture data to GPU
@@ -200,9 +202,9 @@ bool update_ui() {
     t_desc.width = g_pixelui_texture_width;
     t_desc.height = g_pixelui_texture_height;
 
-    t_desc.data[0] = g_ui_buffer;
+    t_desc.data[0] = g_fallsand.ui_buffer;
 
-    neko_graphics_texture_update(g_tex_ui, &t_desc);
+    neko_graphics_texture_update(g_fallsand.tex_ui, &t_desc);
 
     return interaction;
 }

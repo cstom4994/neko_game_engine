@@ -912,7 +912,7 @@ void neko_platform_init(neko_platform_t* pf) {
     }
 }
 
-neko_memory_info_t glfw_platform_get_meminfo() {
+neko_memory_info_t glfw_platform_meminfo() {
     neko_memory_info_t meminfo = {0};
 
 #ifdef NEKO_PLATFORM_WIN
@@ -960,15 +960,13 @@ void* glfw_get_sys_handle() {
     return hwnd;
 }
 
-void* neko_platform_get_sys_handle() { return glfw_get_sys_handle(); }
-neko_memory_info_t neko_platform_memory_info() { return glfw_platform_get_meminfo(); }
+void* neko_platform_hwnd() { return glfw_get_sys_handle(); }
+neko_memory_info_t neko_platform_memory_info() { return glfw_platform_meminfo(); }
 neko_vec2 neko_platform_opengl_ver() { return glfw_get_opengl_version(); }
 
 void neko_platform_msgbox(const_str msg) {
 #ifdef NEKO_PLATFORM_WIN
-
     MessageBoxA((HWND)glfw_get_sys_handle(), msg, "Neko Error", MB_OK | MB_SETFOREGROUND | MB_ICONSTOP);
-
 #else  // TODO: wasm
     Android_MessageBox("Neko Error", x);
 #endif
@@ -2319,7 +2317,7 @@ NEKO_API_DECL neko_platform_window_t neko_platform_window_create_internal(const 
     u32 window_hints = desc->flags;
 
     // Set whether or not the screen is resizable
-    glfwWindowHint(GLFW_RESIZABLE, (window_hints & NEKO_WINDOW_FLANEKO_NO_RESIZE) != NEKO_WINDOW_FLANEKO_NO_RESIZE);
+    glfwWindowHint(GLFW_RESIZABLE, (window_hints & NEKO_WINDOW_FLAGS_NO_RESIZE) != NEKO_WINDOW_FLAGS_NO_RESIZE);
 
     // Set multi-samples
     if (desc->num_samples) {
@@ -2330,7 +2328,7 @@ NEKO_API_DECL neko_platform_window_t neko_platform_window_create_internal(const 
 
     // Get monitor if fullscreen
     GLFWmonitor* monitor = NULL;
-    if ((window_hints & NEKO_WINDOW_FLANEKO_FULLSCREEN) == NEKO_WINDOW_FLANEKO_FULLSCREEN) {
+    if ((window_hints & NEKO_WINDOW_FLAGS_FULLSCREEN) == NEKO_WINDOW_FLAGS_FULLSCREEN) {
         int monitor_count;
         GLFWmonitor** monitors = glfwGetMonitors(&monitor_count);
         if (desc->monitor_index < monitor_count) {
@@ -2714,21 +2712,6 @@ void __neko_initialize_symbol_handler() {}
 void __neko_inter_stacktrace() {}
 
 #endif
-
-/* Main entry point for platform*/
-#ifndef NEKO_NO_HIJACK_MAIN
-
-s32 main(s32 argv, char** argc) {
-    neko_t* inst = neko_create(neko_main(argv, argc));
-    while (neko_app()->is_running) {
-        neko_frame();
-    }
-    // Free engine
-    neko_free(inst);
-    return 0;
-}
-
-#endif  // NEKO_NO_HIJACK_MAIN
 
 #undef NEKO_PLATFORM_IMPL_GLFW
 #endif  // NEKO_PLATFORM_IMPL_GLFW

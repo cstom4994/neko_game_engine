@@ -1,8 +1,6 @@
 
-#ifndef NEKO_CONTAINERS_H
-#define NEKO_CONTAINERS_H
-
-#include "engine/neko.h"
+#ifndef NEKO_CONTAINERS_INC
+#define NEKO_CONTAINERS_INC
 
 /*========================
 // Byte Buffer

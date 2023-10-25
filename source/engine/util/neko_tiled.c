@@ -1,7 +1,6 @@
 
 #include "neko_tiled.h"
 
-#include "engine/neko_containers.h"
 #include "engine/util/neko_xml.h"
 
 void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {

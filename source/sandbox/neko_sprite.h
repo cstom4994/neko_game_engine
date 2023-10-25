@@ -34,9 +34,9 @@ struct neko_sprite {
     s32 width;
     s32 height;
 
-#ifdef NEKO_DEBUG
+    // #ifdef NEKO_DEBUG
     u64 mem_used;
-#endif
+    // #endif
 };
 
 bool neko_sprite_load(neko_sprite* spr, const neko_string& filepath);
