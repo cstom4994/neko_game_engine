@@ -1,12 +1,12 @@
 # .gitignore config
 
+out/
 output/
 saves/
 build/
 .xmake/
 *.gen.*
 makefile
-CMakeLists.txt
 
 .luarc.json
 

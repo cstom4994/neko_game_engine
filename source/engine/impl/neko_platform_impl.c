@@ -44,6 +44,13 @@
 #include <sys/stat.h>
 #else
 #include <direct.h>
+
+#pragma comment(lib, "opengl32")  // glViewport
+#pragma comment(lib, "shell32")   // CommandLineToArgvW
+#pragma comment(lib, "user32")    // SetWindowLong
+#pragma comment(lib, "DbgHelp")   // DbgHelp
+#pragma comment(lib, "winmm")     // timeBeginPeriod
+
 #endif
 
 /*== Platform Window ==*/
@@ -533,6 +540,9 @@ void neko_platform_release_key(neko_platform_keycode code) {
 char* neko_platform_read_file_contents_default_impl(const char* file_path, const char* mode, size_t* sz) {
     const char* path = file_path;
 
+    // neko_unicode_convert_path(w_path, file_path);
+    // neko_unicode_convert_path(w_mode, mode);
+
 #ifdef NEKO_PLATFORM_ANDROID
     const char* internal_data_path = neko_app()->android.internal_data_path;
     neko_snprintfc(tmp_path, 1024, "%s/%s", internal_data_path, file_path);
@@ -540,7 +550,7 @@ char* neko_platform_read_file_contents_default_impl(const char* file_path, const
 #endif
 
     char* buffer = 0;
-    FILE* fp = fopen(path, mode);
+    FILE* fp = fopen(file_path, mode);
     size_t read_sz = 0;
     if (fp) {
         read_sz = neko_platform_file_size_in_bytes(file_path);
@@ -552,6 +562,8 @@ char* neko_platform_read_file_contents_default_impl(const char* file_path, const
         fclose(fp);
         if (sz) *sz = read_sz;
     }
+
+    // NEKO_WINDOWS_ConvertPath_end(path);
 
     return buffer;
 }
@@ -579,7 +591,7 @@ neko_result neko_platform_write_file_contents_default_impl(const char* file_path
 
 NEKO_API_DECL bool neko_platform_dir_exists_default_impl(const char* dir_path) {
 #if defined(NEKO_PLATFORM_WIN)
-    DWORD attrib = GetFileAttributes(dir_path);
+    DWORD attrib = GetFileAttributes((LPCWSTR)dir_path);  // TODO: unicode 路径修复
     return (attrib != INVALID_FILE_ATTRIBUTES && (attrib & FILE_ATTRIBUTE_DIRECTORY));
 #elif defined(NEKO_PLATFORM_LINUX)
     struct stat st;
@@ -791,6 +803,7 @@ NEKO_API_DECL void* neko_platform_library_proc_address_default_impl(void* lib, c
 #elif (defined NEKO_PLATFORM_WINDOWS)
 
 #define WIN32_LEAN_AND_MEAN
+#include <locale.h>
 #include <windows.h>
 
 #endif
@@ -843,6 +856,9 @@ void neko_platform_init(neko_platform_t* pf) {
     neko_log_trace("Initializing GLFW");
 
 #ifdef NEKO_PLATFORM_WIN
+
+    setlocale(LC_ALL, "en_us.utf8");
+
     SetConsoleOutputCP(CP_UTF8);
 
     SetProcessDPIAware();

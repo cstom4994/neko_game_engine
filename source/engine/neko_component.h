@@ -7,6 +7,7 @@
 // 测试 ECS 用
 typedef struct {
     char name[64];
+    bool active;
     bool visible;
     bool selected;
 } CGameObject;
@@ -29,6 +30,7 @@ enum ComponentType {
     COMPONENT_GFXT,
     COMPONENT_UI,
     COMPONENT_FAST_SPRITE,
+    COMPONENT_FALLSAND,
 
     COMPONENT_COUNT
 };

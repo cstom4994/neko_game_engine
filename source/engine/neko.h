@@ -3,22 +3,19 @@
 #ifndef NEKO_H
 #define NEKO_H
 
-#include <assert.h>  // assert
-#include <ctype.h>   // tolower
-#include <float.h>   // FLT_MAX
-#include <limits.h>  // INT32_MAX, UINT32_MAX
-#include <malloc.h>  // alloca/_alloca
-#include <math.h>    // floor, acos, sin, sqrt, tan
-#include <stdarg.h>  // valist
+#include <assert.h>
+#include <ctype.h>
+#include <float.h>
+#include <limits.h>
+#include <malloc.h>
+#include <math.h>
 #include <stdarg.h>
 #include <stdbool.h>
-#include <stddef.h>  // ptrdiff_t
-#include <stdint.h>  // standard types
-#include <stdio.h>   // FILE
+#include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>  // malloc, realloc, free
-#include <string.h>  // memset
-#include <time.h>    // time
+#include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 /*========================
@@ -468,15 +465,15 @@ class size_checker {
     static_assert(sizeof(T) == size, "check the size of integral types");
 };
 
-template class size_checker<s64, 8>;
-template class size_checker<s32, 4>;
-template class size_checker<s16, 2>;
-template class size_checker<s8, 1>;
-template class size_checker<u64, 8>;
-template class size_checker<u32, 4>;
-template class size_checker<u16, 2>;
-template class size_checker<u8, 1>;
-template class size_checker<b32, 4>;
+// template class size_checker<s64, 8>;
+// template class size_checker<s32, 4>;
+// template class size_checker<s16, 2>;
+// template class size_checker<s8, 1>;
+// template class size_checker<u64, 8>;
+// template class size_checker<u32, 4>;
+// template class size_checker<u16, 2>;
+// template class size_checker<u8, 1>;
+// template class size_checker<b32, 4>;
 
 namespace neko {
 
@@ -533,7 +530,9 @@ struct neko_named_func {
 
 #endif  // NEKO_CPP_SRC
 
-#pragma region neko_mem
+/*=============================
+// Memory
+=============================*/
 
 // Operating system function pointer
 typedef struct neko_os_api_s {
@@ -576,7 +575,7 @@ NEKO_API_DECL void* __neko_mem_safe_realloc(void* ptr, size_t new_size, const ch
 #if 1
 
 #define neko_safe_malloc(size) __neko_mem_safe_alloc((size), (char*)__FILE__, __LINE__, NULL)
-#define neko_safe_free(mem) __neko_mem_safe_free(mem, NULL)
+#define neko_safe_free(mem) __neko_mem_safe_free((void*)mem, NULL)
 #define neko_safe_realloc(ptr, size) __neko_mem_safe_realloc((ptr), (size), (char*)__FILE__, __LINE__, NULL)
 #define neko_safe_calloc(count, element_size) __neko_mem_safe_calloc(count, element_size, (char*)__FILE__, __LINE__, NULL)
 
@@ -631,55 +630,8 @@ typedef struct neko_allocation_metrics {
 
 NEKO_API_DECL neko_allocation_metrics g_allocation_metrics;
 
-// GC 具体设计可以见 https://github.com/orangeduck/tgc
-
-// GC 标记枚举
-enum { NEKO_GC_MARK = 0x01, NEKO_GC_ROOT = 0x02, NEKO_GC_LEAF = 0x04 };
-
-typedef struct {
-    void* ptr;
-    int flags;
-    size_t size, hash;
-    void (*dtor)(void*);
-} neko_gc_ptr_t;
-
-typedef struct {
-    void* bottom;
-    int paused;
-    uintptr_t minptr, maxptr;
-    neko_gc_ptr_t *items, *frees;
-    f64 loadfactor, sweepfactor;
-    size_t nitems, nslots, mitems, nfrees;
-} neko_gc_t;
-
-NEKO_API_DECL void neko_gc_start(neko_gc_t* gc, void* stk);
-NEKO_API_DECL void neko_gc_stop(neko_gc_t* gc);
-NEKO_API_DECL void neko_gc_pause(neko_gc_t* gc);
-NEKO_API_DECL void neko_gc_resume(neko_gc_t* gc);
-NEKO_API_DECL void neko_gc_run(neko_gc_t* gc);
-
-// GC 公开函数
-NEKO_API_DECL void* neko_gc_alloc(neko_gc_t* gc, size_t size);
-NEKO_API_DECL void* neko_gc_calloc(neko_gc_t* gc, size_t num, size_t size);
-NEKO_API_DECL void* neko_gc_realloc(neko_gc_t* gc, void* ptr, size_t size);
-NEKO_API_DECL void neko_gc_free(neko_gc_t* gc, void* ptr);
-
-NEKO_API_DECL void* __neko_gc_alloc_opt(neko_gc_t* gc, size_t size, int flags, void (*dtor)(void*));
-NEKO_API_DECL void* __neko_gc_calloc_opt(neko_gc_t* gc, size_t num, size_t size, int flags, void (*dtor)(void*));
-
-NEKO_API_DECL void neko_gc_set_dtor(neko_gc_t* gc, void* ptr, void (*dtor)(void*));
-NEKO_API_DECL void neko_gc_set_flags(neko_gc_t* gc, void* ptr, int flags);
-NEKO_API_DECL int neko_gc_get_flags(neko_gc_t* gc, void* ptr);
-NEKO_API_DECL void (*neko_gc_get_dtor(neko_gc_t* gc, void* ptr))(void*);
-NEKO_API_DECL size_t neko_gc_get_size(neko_gc_t* gc, void* ptr);
-
-NEKO_API_DECL neko_gc_t g_gc;
-
 NEKO_API_DECL void __neko_mem_init(int argc, char** argv);
 NEKO_API_DECL void __neko_mem_end();
-NEKO_API_DECL void __neko_mem_rungc();
-
-#pragma endregion
 
 // logging
 
@@ -1385,7 +1337,9 @@ neko_force_inline size_t neko_hash_bytes(void* p, size_t len, size_t seed) {
 NEKO_API_DECL bool32_t neko_util_load_texture_data_from_file(const char* file_path, s32* width, s32* height, u32* num_comps, void** data, bool32_t flip_vertically_on_load);
 NEKO_API_DECL bool32_t neko_util_load_texture_data_from_memory(const void* memory, size_t sz, s32* width, s32* height, u32* num_comps, void** data, bool32_t flip_vertically_on_load);
 
-/** @} */  // end of neko_util
+neko_static_inline u16 neko_read_LE16(const u8* data) { return (u16)((data[1] << 8) | data[0]); }
+
+neko_static_inline u32 neko_read_LE32(const u8* data) { return (((u32)data[3] << 24) | ((u32)data[2] << 16) | ((u32)data[1] << 8) | (u32)data[0]); }
 
 /*========================
 // NEKO_MEMORY
@@ -1504,7 +1458,7 @@ NEKO_API_DECL void* neko_paged_allocator_allocate(neko_paged_allocator_t* pa);
 NEKO_API_DECL void neko_paged_allocator_deallocate(neko_paged_allocator_t* pa, void* data);
 NEKO_API_DECL void neko_paged_allocator_clear(neko_paged_allocator_t* pa);
 
-#include "engine/neko_math.h"
+#include "neko_math.h"
 
 neko_inline const_str neko_fs_get_filename(const_str path) {
     int len = strlen(path);
@@ -1752,7 +1706,7 @@ NEKO_API_DECL neko_inline u32 neko_abs(s32 v) {
     return r;
 }
 
-// Function to convert UTF-8 encoded character to Unicode
+// 将UTF-8编码字符转换为Unicode
 NEKO_API_DECL neko_inline u32 neko_utf8_to_unicode(const_str utf8, s32* bytes_read) {
     u32 unicode = 0;
     s32 len = 0;
@@ -1768,14 +1722,14 @@ NEKO_API_DECL neko_inline u32 neko_utf8_to_unicode(const_str utf8, s32* bytes_re
         unicode = utf8char & 0x0F;
         len = 3;
     } else {
-        // Invalid UTF-8 sequence
+        // 无效的 UTF-8 序列
         len = 1;
     }
 
     for (s32 i = 1; i < len; i++) {
         utf8char = utf8[i];
         if ((utf8char & 0xC0) != 0x80) {
-            // Invalid UTF-8 sequence
+            // 无效的 UTF-8 序列
             len = 1;
             break;
         }
@@ -2100,6 +2054,10 @@ NEKO_API_DECL void neko_ecs_ent_view_next(neko_ecs_ent_view* view);
 // Type names
 //
 
+#ifndef __FUNCSIG__
+#define __FUNCSIG__ __PRETTY_FUNCTION__
+#endif
+
 template <typename T>
 constexpr std::string_view getTypeName() {
     constexpr auto prefixLength = 36, suffixLength = 1;
@@ -2345,6 +2303,36 @@ inline void forEachProp(T& val, F&& func) {
 #endif
 
 /*=============================
+// Console
+=============================*/
+
+typedef void (*neko_console_func)(int argc, char** argv);
+
+typedef struct neko_console_command_s {
+    neko_console_func func;
+    const char* name;
+    const char* desc;
+} neko_console_command_t;
+
+typedef struct neko_console_s {
+    char tb[2048];     // text buffer
+    char cb[10][256];  // "command" buffer
+    int current_cb_idx;
+
+    f32 y;
+    f32 size;
+    f32 open_speed;
+    f32 close_speed;
+
+    bool open;
+    int last_open_state;
+    bool autoscroll;
+
+    neko_console_command_t* commands;
+    int commands_len;
+} neko_console_t;
+
+/*=============================
 // CVar
 =============================*/
 
@@ -2382,7 +2370,7 @@ NEKO_API_DECL neko_cvar_t* __neko_config_get(const_str name);
 NEKO_API_DECL void neko_config_print();
 
 #define neko_cvar_new(n, t, v)                                                \
-    {                                                                         \
+    do {                                                                      \
         neko_cvar_t cvar = {.name = n, .type = t, .value = 0};                \
         if (t == __NEKO_CONFIG_TYPE_INT) {                                    \
             cvar.value.i = v;                                                 \
@@ -2392,12 +2380,12 @@ NEKO_API_DECL void neko_config_print();
             neko_assert(false);                                               \
         }                                                                     \
         neko_dyn_array_push((neko_instance()->ctx.game.config)->cvars, cvar); \
-    }
+    } while (0)
 
 #define neko_cvar_lnew(n, t, v)                                               \
-    {                                                                         \
+    do {                                                                      \
         neko_cvar_t cvar = {.type = t, .value = 0};                           \
-        std::strncpy(cvar.name, n, sizeof(cvar.name) - 1);                    \
+        strncpy(cvar.name, n, sizeof(cvar.name) - 1);                         \
         cvar.name[sizeof(cvar.name) - 1] = '\0';                              \
         if (t == __NEKO_CONFIG_TYPE_INT) {                                    \
             cvar.value.i = v;                                                 \
@@ -2407,33 +2395,33 @@ NEKO_API_DECL void neko_config_print();
             neko_assert(false);                                               \
         }                                                                     \
         neko_dyn_array_push((neko_instance()->ctx.game.config)->cvars, cvar); \
-    }
+    } while (0)
 
 // 由于 float -> char* 转换 很难将其写成单个宏
 #define neko_cvar_new_str(n, t, v)                                                         \
-    {                                                                                      \
+    do {                                                                                   \
         neko_cvar_t cvar = {.name = n, .type = t, .value = {0}};                           \
         cvar.value.s = (char*)neko_malloc(__NEKO_CVAR_STR_LEN);                            \
         memset(cvar.value.s, 0, __NEKO_CVAR_STR_LEN);                                      \
         memcpy(cvar.value.s, v, neko_min(__NEKO_CVAR_STR_LEN - 1, neko_string_length(v))); \
         neko_dyn_array_push((neko_instance()->ctx.game.config)->cvars, cvar);              \
-    }
+    } while (0)
 
 #define neko_cvar_lnew_str(n, t, v)                                                        \
-    {                                                                                      \
+    do {                                                                                   \
         neko_cvar_t cvar = {.type = t, .value = {0}};                                      \
-        std::strncpy(cvar.name, n, sizeof(cvar.name) - 1);                                 \
+        strncpy(cvar.name, n, sizeof(cvar.name) - 1);                                      \
         cvar.name[sizeof(cvar.name) - 1] = '\0';                                           \
         cvar.value.s = (char*)neko_malloc(__NEKO_CVAR_STR_LEN);                            \
         memset(cvar.value.s, 0, __NEKO_CVAR_STR_LEN);                                      \
         memcpy(cvar.value.s, v, neko_min(__NEKO_CVAR_STR_LEN - 1, neko_string_length(v))); \
         neko_dyn_array_push((neko_instance()->ctx.game.config)->cvars, cvar);              \
-    }
+    } while (0)
 
 #define neko_cvar(n) __neko_config_get(n)
 
 #define neko_cvar_print(cvar)                                           \
-    {                                                                   \
+    do {                                                                \
         switch ((cvar)->type) {                                         \
             default:                                                    \
             case __NEKO_CONFIG_TYPE_STRING:                             \
@@ -2448,10 +2436,10 @@ NEKO_API_DECL void neko_config_print();
                 neko_println("%s = %d", (cvar)->name, (cvar)->value.i); \
                 break;                                                  \
         };                                                              \
-    }
+    } while (0)
 
 #define neko_cvar_set(cvar, str)                                           \
-    {                                                                      \
+    do {                                                                   \
         switch ((cvar)->type) {                                            \
             default:                                                       \
             case __NEKO_CONFIG_TYPE_STRING:                                \
@@ -2466,7 +2454,7 @@ NEKO_API_DECL void neko_config_print();
                 (cvar)->value.i = atoi(str);                               \
                 break;                                                     \
         };                                                                 \
-    }
+    } while (0)
 
 #ifdef NEKO_CPP_SRC
 

@@ -84,6 +84,7 @@ typedef neko_immediate_draw_t gsid;
 NEKO_API_DECL neko_immediate_draw_t neko_immediate_draw_new();
 NEKO_API_DECL void neko_immediate_draw_free(neko_immediate_draw_t* neko_idraw);
 NEKO_API_DECL void neko_immediate_draw_static_data_set(neko_immediate_draw_static_data_t* data);
+NEKO_API_DECL neko_immediate_draw_static_data_t* neko_immediate_draw_static_data_get();  // 用于热更新
 
 // Get pipeline from state
 NEKO_API_DECL neko_handle(neko_graphics_pipeline_t) neko_idraw_get_pipeline(neko_immediate_draw_t* neko_idraw, neko_idraw_pipeline_state_attr_t state);
@@ -105,7 +106,11 @@ NEKO_API_DECL void neko_idraw_v3fv(neko_immediate_draw_t* neko_idraw, neko_vec3 
 NEKO_API_DECL void neko_idraw_flush(neko_immediate_draw_t* neko_idraw);
 NEKO_API_DECL void neko_idraw_texture(neko_immediate_draw_t* neko_idraw, neko_handle(neko_graphics_texture_t) texture);
 
-NEKO_API_DECL void neko_idraw_rect_2d_textured_ext(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 x1, f32 y1, f32 u0, f32 v0, f32 u1, f32 v1, u32 tex_id, neko_color_t color);
+NEKO_API_DECL neko_hsv_t neko_rgb_to_hsv(neko_color_t c);
+NEKO_API_DECL f32 neko_hue_dist(f32 h1, f32 h2);
+
+NEKO_API_DECL void neko_idraw_rect_textured(neko_immediate_draw_t* neko_idraw, neko_vec2 a, neko_vec2 b, u32 tex_id, neko_color_t color);
+NEKO_API_DECL void neko_idraw_rect_textured_ext(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 x1, f32 y1, f32 u0, f32 v0, f32 u1, f32 v1, u32 tex_id, neko_color_t color);
 
 // Core pipeline functions
 NEKO_API_DECL void neko_idraw_blend_enabled(neko_immediate_draw_t* neko_idraw, bool enabled);
@@ -132,7 +137,7 @@ NEKO_API_DECL void neko_idraw_push_matrix(neko_immediate_draw_t* neko_idraw, nek
 NEKO_API_DECL void neko_idraw_push_matrix_ex(neko_immediate_draw_t* neko_idraw, neko_idraw_matrix_type type, bool flush);
 NEKO_API_DECL void neko_idraw_pop_matrix(neko_immediate_draw_t* neko_idraw);
 NEKO_API_DECL void neko_idraw_pop_matrix_ex(neko_immediate_draw_t* neko_idraw, bool flush);
-NEKO_API_DECL void neko_idraw_matrix_mode(neko_immediate_draw_t* neko_idraw, neko_idraw_matrix_type type);
+// NEKO_API_DECL void neko_idraw_matrix_mode(neko_immediate_draw_t* neko_idraw, neko_idraw_matrix_type type);
 NEKO_API_DECL void neko_idraw_load_matrix(neko_immediate_draw_t* neko_idraw, neko_mat4 m);
 NEKO_API_DECL void neko_idraw_mul_matrix(neko_immediate_draw_t* neko_idraw, neko_mat4 m);
 NEKO_API_DECL void neko_idraw_perspective(neko_immediate_draw_t* neko_idraw, f32 fov, f32 aspect, f32 near, f32 far);

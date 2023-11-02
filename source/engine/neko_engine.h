@@ -6,6 +6,7 @@
 #include "engine/neko_audio.h"
 #include "engine/neko_graphics.h"
 #include "engine/neko_platform.h"
+// #include "engine/util/neko_console.h"
 
 /*==========================
 // NEKO_ENGINE / NEKO_APP
@@ -32,6 +33,7 @@ typedef struct neko_game_desc_s {
     } android;
 #endif
 
+    neko_console_t* console;
     neko_config_t* config;
     neko_ecs* ecs;
 
@@ -58,6 +60,9 @@ NEKO_API_DECL neko_context_t* neko_ctx();
 NEKO_API_DECL neko_game_desc_t* neko_app();
 NEKO_API_DECL void neko_frame();
 NEKO_API_DECL void neko_quit();
+
+// Engine utils
+NEKO_API_DECL s32 neko_buildnum(void);
 
 // Impl in game code
 NEKO_API_DECL neko_game_desc_t neko_main(int32_t argc, char** argv);

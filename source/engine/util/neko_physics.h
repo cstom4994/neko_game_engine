@@ -178,7 +178,7 @@ NEKO_API_DECL int32_t neko_sphere_vs_capsule(const neko_sphere_t* a, const neko_
 NEKO_API_DECL int32_t neko_sphere_vs_ray(const neko_sphere_t* a, const neko_vqs* xform_a, const neko_ray_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
 
 /* Box */
-NEKO_API_DECL int32_t neko_aabb_vs_aabb(const neko_aabb_t* a, const neko_vqs* xform_a, const neko_aabb_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+//NEKO_API_DECL int32_t neko_aabb_vs_aabb(const neko_aabb_t* a, const neko_vqs* xform_a, const neko_aabb_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
 NEKO_API_DECL int32_t neko_aabb_vs_sphere(const neko_aabb_t* a, const neko_vqs* xform_a, const neko_sphere_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
 NEKO_API_DECL int32_t neko_aabb_vs_poly(const neko_aabb_t* a, const neko_vqs* xform_a, const neko_poly_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
 NEKO_API_DECL int32_t neko_aabb_vs_cylinder(const neko_aabb_t* a, const neko_vqs* xform_a, const neko_cylinder_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);

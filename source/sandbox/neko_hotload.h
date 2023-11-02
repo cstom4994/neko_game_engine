@@ -190,7 +190,7 @@ void neko_hotload_set_temporary_path(neko_hotload_module &ctx, const std::string
 // #endif
 
 static time_t neko_hotload_last_write_time(const std::string &path) {
-    NEKO_WINDOWS_ConvertPath(_path, path);
+    neko_unicode_convert_path(_path, path);
     WIN32_FILE_ATTRIBUTE_DATA fad;
     if (!GetFileAttributesEx(_path.c_str(), GetFileExInfoStandard, &fad)) {
         return -1;
@@ -208,18 +208,18 @@ static time_t neko_hotload_last_write_time(const std::string &path) {
 }
 
 static bool neko_hotload_exists(const std::string &path) {
-    NEKO_WINDOWS_ConvertPath(_path, path);
+    neko_unicode_convert_path(_path, path);
     return GetFileAttributes(_path.c_str()) != INVALID_FILE_ATTRIBUTES;
 }
 
 static bool neko_hotload_copy(const std::string &from, const std::string &to) {
-    NEKO_WINDOWS_ConvertPath(_from, from);
-    NEKO_WINDOWS_ConvertPath(_to, to);
+    neko_unicode_convert_path(_from, from);
+    neko_unicode_convert_path(_to, to);
     return CopyFile(_from.c_str(), _to.c_str(), FALSE) ? true : false;
 }
 
 static void neko_hotload_del(const std::string &path) {
-    NEKO_WINDOWS_ConvertPath(_path, path);
+    neko_unicode_convert_path(_path, path);
     DeleteFile(_path.c_str());
 }
 
@@ -325,7 +325,7 @@ static char *neko_hotload_pdb_find(LPBYTE imageBase, PIMAGE_DEBUG_DIRECTORY debu
 }
 
 static bool neko_hotload_pdb_replace(const std::string &filename, const std::string &pdbname, std::string &orig_pdb) {
-    NEKO_WINDOWS_ConvertPath(_filename, filename);
+    neko_unicode_convert_path(_filename, filename);
 
     HANDLE fp = nullptr;
     HANDLE filemap = nullptr;
@@ -517,7 +517,7 @@ static void neko_hotload_so_unload(neko_hotload_module &ctx) {
 }
 
 static HMODULE neko_hotload_so_load(const std::string &filename) {
-    NEKO_WINDOWS_ConvertPath(_filename, filename);
+    neko_unicode_convert_path(_filename, filename);
     auto new_dll = LoadLibrary(_filename.c_str());
     if (!new_dll) {
         neko_log_error("Couldn't load module: %d", GetLastError());

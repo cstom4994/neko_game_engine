@@ -8,9 +8,25 @@
 #include "engine/util/neko_gfxt.h"
 #include "engine/util/neko_gui.h"
 #include "engine/util/neko_idraw.h"
+#include "engine/util/neko_imgui.h"
 #include "engine/util/neko_tiled.h"
 
+typedef struct neko_client_userdata_s {
+    neko_command_buffer_t *cb;
+    neko_immediate_draw_t *idraw;
+    neko_immediate_draw_static_data_t *idraw_sd;
+    neko_imgui_context_t *igui;
+    neko_gui_ctx_t *nui;
+
+    // 热加载模块
+    u32 module_count;
+    void (*module_func[16])(void);
+} neko_client_userdata_t;
+
+#if defined(NEKO_CPP_SRC)
+
 // game
+#include "game_chunk.h"
 #include "neko_nui_auto.hpp"
 #include "neko_sprite.h"
 
@@ -48,17 +64,10 @@ typedef struct neko_ui_renderer {
     char text[128];
 } neko_ui_renderer;
 
-typedef struct neko_client_ecs_userdata_s {
-    neko_command_buffer_t *cb;
-    neko_immediate_draw_t *idraw;
-    neko_gui_context_t *igui;
-    neko_nui_ctx_t *nui;
-} neko_client_ecs_userdata_t;
-
 neko_ecs_decl_system(editor_system, EDITOR_SYSTEM, 1, COMPONENT_GAMEOBJECT) {
 
-    neko_nui_ctx_t *nui = ((neko_client_ecs_userdata_s *)ecs->user_data)->nui;
-    neko_nui_context *ctx = &nui->neko_nui_ctx;
+    neko_gui_ctx_t *nui = ((neko_client_userdata_s *)ecs->user_data)->nui;
+    neko_gui_context *ctx = &nui->neko_gui_ctx;
 
     for (u32 i = 0; i < neko_ecs_for_count(ecs); i++) {
         neko_ecs_ent e = neko_ecs_get_ent(ecs, i);
@@ -69,15 +78,16 @@ neko_ecs_decl_system(editor_system, EDITOR_SYSTEM, 1, COMPONENT_GAMEOBJECT) {
                 char editor_name[64];
                 neko_snprintf(editor_name, 64, "GameObject_%s", gameobj->name);
 
-                if (neko_nui_begin(ctx, editor_name, neko_nui_rect(200, 200, 300, 400),
-                                   NEKO_NUI_WINDOW_BORDER | NEKO_NUI_WINDOW_MOVABLE | NEKO_NUI_WINDOW_SCALABLE | NEKO_NUI_WINDOW_MINIMIZABLE | NEKO_NUI_WINDOW_TITLE)) {
+                if (neko_gui_begin(ctx, editor_name, neko_gui_rect(200, 200, 300, 400),
+                                   NEKO_GUI_WINDOW_BORDER | NEKO_GUI_WINDOW_MOVABLE | NEKO_GUI_WINDOW_SCALABLE | NEKO_GUI_WINDOW_MINIMIZABLE | NEKO_GUI_WINDOW_TITLE)) {
 
-                    neko_nui_layout_row_static(ctx, 30, 150, 1);
+                    neko_gui_layout_row_static(ctx, 30, 150, 1);
 
                     neko_nui::nui_auto(gameobj->name, "name");
                     neko_nui::nui_auto(gameobj->visible, "visible");
+                    neko_nui::nui_auto(gameobj->active, "active");
                 }
-                neko_nui_end(ctx);
+                neko_gui_end(ctx);
             }
         }
     }
@@ -107,8 +117,8 @@ neko_ecs_decl_system(movement_system, MOVEMENT_SYSTEM, 3, COMPONENT_TRANSFORM, C
 
 neko_ecs_decl_system(sprite_render_system, SPRITE_RENDER_SYSTEM, 2, COMPONENT_TRANSFORM, COMPONENT_SPRITE) {
 
-    neko_command_buffer_t *cb = ((neko_client_ecs_userdata_s *)ecs->user_data)->cb;
-    neko_immediate_draw_t *idraw = ((neko_client_ecs_userdata_s *)ecs->user_data)->idraw;
+    neko_command_buffer_t *cb = ((neko_client_userdata_s *)ecs->user_data)->cb;
+    neko_immediate_draw_t *idraw = ((neko_client_userdata_s *)ecs->user_data)->idraw;
 
     for (u32 i = 0; i < neko_ecs_for_count(ecs); i++) {
         neko_ecs_ent e = neko_ecs_get_ent(ecs, i);
@@ -128,15 +138,15 @@ neko_ecs_decl_system(sprite_render_system, SPRITE_RENDER_SYSTEM, 2, COMPONENT_TR
             neko_sprite *spr = sprite->sprite;
             neko_sprite_frame f = spr->frames[index];
 
-            neko_idraw_rect_2d_textured_ext(idraw, xform->x, xform->y, xform->x + spr->width * 2.f, xform->y + spr->height * 2.f, f.u0, f.v0, f.u1, f.v1, sprite->sprite->img.id, NEKO_COLOR_WHITE);
+            neko_idraw_rect_textured_ext(idraw, xform->x, xform->y, xform->x + spr->width * 2.f, xform->y + spr->height * 2.f, f.u0, f.v0, f.u1, f.v1, sprite->sprite->img.id, NEKO_COLOR_WHITE);
         }
     }
 }
 
 neko_ecs_decl_system(particle_render_system, PARTICLE_RENDER_SYSTEM, 2, COMPONENT_TRANSFORM, COMPONENT_PARTICLE) {
 
-    neko_command_buffer_t *cb = ((neko_client_ecs_userdata_s *)ecs->user_data)->cb;
-    neko_immediate_draw_t *idraw = ((neko_client_ecs_userdata_s *)ecs->user_data)->idraw;
+    neko_command_buffer_t *cb = ((neko_client_userdata_s *)ecs->user_data)->cb;
+    neko_immediate_draw_t *idraw = ((neko_client_userdata_s *)ecs->user_data)->idraw;
 
     for (u32 i = 0; i < neko_ecs_for_count(ecs); i++) {
         neko_ecs_ent e = neko_ecs_get_ent(ecs, i);
@@ -155,8 +165,8 @@ neko_ecs_decl_system(particle_render_system, PARTICLE_RENDER_SYSTEM, 2, COMPONEN
 
 neko_ecs_decl_system(tiled_render_system, TILED_RENDER_SYSTEM, 3, COMPONENT_GAMEOBJECT, COMPONENT_TRANSFORM, COMPONENT_TILED) {
 
-    neko_command_buffer_t *cb = ((neko_client_ecs_userdata_s *)ecs->user_data)->cb;
-    neko_immediate_draw_t *idraw = ((neko_client_ecs_userdata_s *)ecs->user_data)->idraw;
+    neko_command_buffer_t *cb = ((neko_client_userdata_s *)ecs->user_data)->cb;
+    neko_immediate_draw_t *idraw = ((neko_client_userdata_s *)ecs->user_data)->idraw;
 
     for (u32 i = 0; i < neko_ecs_for_count(ecs); i++) {
         neko_ecs_ent e = neko_ecs_get_ent(ecs, i);
@@ -166,7 +176,7 @@ neko_ecs_decl_system(tiled_render_system, TILED_RENDER_SYSTEM, 3, COMPONENT_GAME
 
             CGameObject *gameobj = (CGameObject *)neko_ecs_ent_get_component(ecs, e, COMPONENT_GAMEOBJECT);
 
-            if (!gameobj->visible) continue;
+            if (!gameobj->visible || !gameobj->active) continue;
 
             neko_graphics_renderpass_begin(cb, NEKO_GRAPHICS_RENDER_PASS_DEFAULT);
             {
@@ -216,8 +226,8 @@ neko_ecs_decl_system(tiled_render_system, TILED_RENDER_SYSTEM, 3, COMPONENT_GAME
 
 neko_ecs_decl_system(gfxt_render_system, GFXT_RENDER_SYSTEM, 3, COMPONENT_GAMEOBJECT, COMPONENT_TRANSFORM, COMPONENT_GFXT) {
 
-    neko_command_buffer_t *cb = ((neko_client_ecs_userdata_s *)ecs->user_data)->cb;
-    neko_immediate_draw_t *idraw = ((neko_client_ecs_userdata_s *)ecs->user_data)->idraw;
+    neko_command_buffer_t *cb = ((neko_client_userdata_s *)ecs->user_data)->cb;
+    neko_immediate_draw_t *idraw = ((neko_client_userdata_s *)ecs->user_data)->idraw;
 
     neko_vec2 fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
     const f32 t = neko_platform_elapsed_time();
@@ -230,7 +240,7 @@ neko_ecs_decl_system(gfxt_render_system, GFXT_RENDER_SYSTEM, 3, COMPONENT_GAMEOB
 
             CGameObject *gameobj = (CGameObject *)neko_ecs_ent_get_component(ecs, e, COMPONENT_GAMEOBJECT);
 
-            if (!gameobj->visible) continue;
+            if (!gameobj->visible || !gameobj->active) continue;
 
             // Camera for scene
             neko_camera_t cam = neko_camera_perspective();
@@ -266,27 +276,26 @@ neko_ecs_decl_system(gfxt_render_system, GFXT_RENDER_SYSTEM, 3, COMPONENT_GAMEOB
 
 neko_ecs_decl_system(ui_render_system, UI_RENDER_SYSTEM, 2, COMPONENT_TRANSFORM, COMPONENT_UI) {
 
-    neko_command_buffer_t *cb = ((neko_client_ecs_userdata_s *)ecs->user_data)->cb;
-    neko_immediate_draw_t *idraw = ((neko_client_ecs_userdata_s *)ecs->user_data)->idraw;
-    neko_gui_context_t *igui = ((neko_client_ecs_userdata_s *)ecs->user_data)->igui;
+    neko_command_buffer_t *cb = ((neko_client_userdata_s *)ecs->user_data)->cb;
+    neko_immediate_draw_t *idraw = ((neko_client_userdata_s *)ecs->user_data)->idraw;
+    neko_imgui_context_t *igui = ((neko_client_userdata_s *)ecs->user_data)->igui;
 
     for (u32 i = 0; i < neko_ecs_for_count(ecs); i++) {
         neko_ecs_ent e = neko_ecs_get_ent(ecs, i);
         if (neko_ecs_ent_has_mask(ecs, e, neko_ecs_get_mask(UI_RENDER_SYSTEM))) {
             CTransform *xform = (CTransform *)neko_ecs_ent_get_component(ecs, e, COMPONENT_TRANSFORM);
-            neko_ui_renderer *ui_render = (neko_ui_renderer *)neko_ecs_ent_get_component(ecs, e, COMPONENT_UI);
+            CGameObject *gameobj = (CGameObject *)neko_ecs_ent_get_component(ecs, e, COMPONENT_GAMEOBJECT);
 
-            if (ui_render->type == neko_ui_renderer::type::LABEL) {
-                // neko_graphics_fc_text(ui_render->text, idraw->data->font_fc_default, xform->x, xform->y);
-            }
+            if (!gameobj->visible || !gameobj->active) continue;
+            // TODO
         }
     }
 }
 
 neko_ecs_decl_system(fast_sprite_render_system, FAST_SPRITE_RENDER_SYSTEM, 2, COMPONENT_TRANSFORM, COMPONENT_FAST_SPRITE) {
 
-    neko_command_buffer_t *cb = ((neko_client_ecs_userdata_s *)ecs->user_data)->cb;
-    neko_immediate_draw_t *idraw = ((neko_client_ecs_userdata_s *)ecs->user_data)->idraw;
+    neko_command_buffer_t *cb = ((neko_client_userdata_s *)ecs->user_data)->cb;
+    neko_immediate_draw_t *idraw = ((neko_client_userdata_s *)ecs->user_data)->idraw;
 
     for (u32 i = 0; i < neko_ecs_for_count(ecs); i++) {
         neko_ecs_ent e = neko_ecs_get_ent(ecs, i);
@@ -295,6 +304,25 @@ neko_ecs_decl_system(fast_sprite_render_system, FAST_SPRITE_RENDER_SYSTEM, 2, CO
             neko_fast_sprite_renderer *fs_render = (neko_fast_sprite_renderer *)neko_ecs_ent_get_component(ecs, e, COMPONENT_FAST_SPRITE);
 
             neko_fast_sprite_renderer_draw(fs_render, cb);
+        }
+    }
+}
+
+neko_ecs_decl_system(fallsand_render_system, FALLSAND_RENDER_SYSTEM, 3, COMPONENT_GAMEOBJECT, COMPONENT_TRANSFORM, COMPONENT_FALLSAND) {
+
+    neko_command_buffer_t *cb = ((neko_client_userdata_s *)ecs->user_data)->cb;
+    neko_immediate_draw_t *idraw = ((neko_client_userdata_s *)ecs->user_data)->idraw;
+
+    for (u32 i = 0; i < neko_ecs_for_count(ecs); i++) {
+        neko_ecs_ent e = neko_ecs_get_ent(ecs, i);
+        if (neko_ecs_ent_has_mask(ecs, e, neko_ecs_get_mask(FALLSAND_RENDER_SYSTEM))) {
+            CTransform *xform = (CTransform *)neko_ecs_ent_get_component(ecs, e, COMPONENT_TRANSFORM);
+            neko_fallsand_render *fallsand = (neko_fallsand_render *)neko_ecs_ent_get_component(ecs, e, COMPONENT_FALLSAND);
+            CGameObject *gameobj = (CGameObject *)neko_ecs_ent_get_component(ecs, e, COMPONENT_GAMEOBJECT);
+
+            if (!gameobj->visible || !gameobj->active) continue;
+
+            neko_timer_do(t, neko_timed_action(500, printf("game_chunk_update : %llu\n", t);), { game_chunk_update(fallsand); });
         }
     }
 }
@@ -313,6 +341,11 @@ void tiled_render_system_df(void *data) {
     neko_tiled_render_deinit(system);
 }
 
+void fallsand_render_system_df(void *data) {
+    neko_fallsand_render *system = (neko_fallsand_render *)data;
+    game_chunk_destroy(system);
+}
+
 void register_components(neko_ecs *ecs) {
     // neko_ecs, component index, component pool size, size of component, and component free func
     neko_ecs_register_component(ecs, COMPONENT_GAMEOBJECT, 1000, sizeof(CGameObject), NULL);
@@ -324,6 +357,7 @@ void register_components(neko_ecs *ecs) {
     neko_ecs_register_component(ecs, COMPONENT_GFXT, 20, sizeof(neko_gfxt_renderer), gfxt_render_system_df);
     neko_ecs_register_component(ecs, COMPONENT_UI, 20, sizeof(neko_ui_renderer), NULL);
     neko_ecs_register_component(ecs, COMPONENT_FAST_SPRITE, 20, sizeof(neko_fast_sprite_renderer), NULL);
+    neko_ecs_register_component(ecs, COMPONENT_FALLSAND, 20, sizeof(neko_fallsand_render), fallsand_render_system_df);
 }
 
 void register_systems(neko_ecs *ecs) {
@@ -338,6 +372,9 @@ void register_systems(neko_ecs *ecs) {
     neko_ecs_register_system(ecs, ui_render_system, ECS_SYSTEM_RENDER_IMMEDIATE);
     neko_ecs_register_system(ecs, fast_sprite_render_system, ECS_SYSTEM_RENDER_DEFERRED);
     neko_ecs_register_system(ecs, editor_system, ECS_SYSTEM_EDITOR);
+    neko_ecs_register_system(ecs, fallsand_render_system, ECS_SYSTEM_RENDER_IMMEDIATE);
 }
+
+#endif
 
 #endif

@@ -194,12 +194,10 @@ void neko_tiled_unload(map_t *map) {
     neko_dyn_array_free(map->tilesets);
 }
 
-void neko_tiled_render_init(neko_command_buffer_t *cb, neko_tiled_renderer *renderer, const char *vert_src, const char *frag_src) {
+void neko_tiled_render_init(neko_command_buffer_t *cb, neko_tiled_renderer *renderer, const_str vert_path, const_str frag_path) {
 
-    if (NULL == vert_src || NULL == frag_src) {
-        vert_src = neko_read_file_contents("data/shaders/sprite_vs.glsl", "rb", NULL);
-        frag_src = neko_read_file_contents("data/shaders/sprite_fs.glsl", "rb", NULL);
-    }
+    char *vert_src = neko_read_file_contents(vert_path, "rb", NULL);
+    char* frag_src = neko_read_file_contents(frag_path, "rb", NULL);
 
     neko_graphics_vertex_buffer_desc_t vb_decl = {
             .data = NULL,

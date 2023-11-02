@@ -6,7 +6,7 @@
 #include "libs/stb/stb_rect_pack.h"
 #include "libs/stb/stb_truetype.h"
 
-// Global instance of immediate draw static data
+// 立即绘制模式 静态数据的全局实例
 neko_immediate_draw_static_data_t* g_neko_idraw = NULL;
 
 #define neko_idraw() g_neko_idraw
@@ -255,6 +255,8 @@ void neko_immediate_draw_static_data_init() {
 
 NEKO_API_DECL void neko_immediate_draw_static_data_set(neko_immediate_draw_static_data_t* data) { g_neko_idraw = data; }
 
+NEKO_API_DECL neko_immediate_draw_static_data_t* neko_immediate_draw_static_data_get() { return g_neko_idraw; }
+
 // Create / Init / Shutdown / Free
 neko_immediate_draw_t neko_immediate_draw_new() {
     if (!neko_idraw()) {
@@ -323,6 +325,53 @@ void neko_immediate_draw_set_pipeline(neko_immediate_draw_t* neko_idraw) {
     neko_graphics_pipeline_bind(&neko_idraw->commands, neko_hash_table_get(neko_idraw()->pipeline_table, neko_idraw->cache.pipeline));
 }
 
+// From on: https://gist.github.com/fairlight1337/4935ae72bcbcc1ba5c72
+neko_hsv_t neko_rgb_to_hsv(neko_color_t c) {
+    neko_vec3 cv = (neko_vec3){(f32)c.r / 255.f, (f32)c.g / 255.f, (f32)c.b / 255.f};
+    f32 fR = cv.x, fG = cv.y, fB = cv.z;
+
+    f32 fCMax = neko_max(neko_max(fR, fG), fB);
+    f32 fCMin = neko_min(neko_min(fR, fG), fB);
+    f32 fDelta = fCMax - fCMin;
+
+    neko_hsv_t hsv;
+
+    if (fDelta > 0) {
+        if (fCMax == fR) {
+            hsv.h = 60 * (fmod(((fG - fB) / fDelta), 6));
+        } else if (fCMax == fG) {
+            hsv.h = 60 * (((fB - fR) / fDelta) + 2);
+        } else if (fCMax == fB) {
+            hsv.h = 60 * (((fR - fG) / fDelta) + 4);
+        }
+
+        if (fCMax > 0) {
+            hsv.s = fDelta / fCMax;
+        } else {
+            hsv.s = 0;
+        }
+
+        hsv.v = fCMax;
+    } else {
+        hsv.h = 0;
+        hsv.s = 0;
+        hsv.v = fCMax;
+    }
+
+    if (hsv.h < 0) {
+        hsv.h = 360 + hsv.h;
+    }
+
+    return hsv;
+}
+
+// Implemented from: https://stackoverflow.com/questions/27374550/how-to-compare-color-object-and-get-closest-color-in-an-color
+// distance between two hues:
+f32 neko_hue_dist(f32 h1, f32 h2) {
+    f32 d = fabsf(h1 - h2);
+    return d > 180.f ? 360.f - d : d;
+}
+
 void __neko_draw_rect_2d_impl(neko_immediate_draw_t* neko_idraw, neko_vec2 a, neko_vec2 b, neko_vec2 uv0, neko_vec2 uv1, neko_color_t color) {
     neko_vec3 tl = neko_v3(a.x, a.y, 0.f);
     neko_vec3 tr = neko_v3(b.x, a.y, 0.f);
@@ -359,7 +408,11 @@ void __neko_draw_rect_2d_impl(neko_immediate_draw_t* neko_idraw, neko_vec2 a, ne
     neko_idraw_end(neko_idraw);
 }
 
-void neko_idraw_rect_2d_textured_ext(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 x1, f32 y1, f32 u0, f32 v0, f32 u1, f32 v1, u32 tex_id, neko_color_t color) {
+void neko_idraw_rect_textured(neko_immediate_draw_t* neko_idraw, neko_vec2 a, neko_vec2 b, u32 tex_id, neko_color_t color) {
+    neko_idraw_rect_textured_ext(neko_idraw, a.x, a.y, b.x, b.y, 0.f, 0.f, 1.f, 1.f, tex_id, color);
+}
+
+void neko_idraw_rect_textured_ext(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 x1, f32 y1, f32 u0, f32 v0, f32 u1, f32 v1, u32 tex_id, neko_color_t color) {
 
     neko_handle(neko_graphics_texture_t) tex = neko_default_val();
     tex.id = tex_id;
@@ -381,23 +434,23 @@ void neko_idraw_begin(neko_immediate_draw_t* neko_idraw, neko_graphics_primitive
             break;
     }
 
-    // Push a new pipeline?
+    // 判断是否推入新的渲染管线
     if (neko_idraw->cache.pipeline.prim_type == type) {
         return;
     }
 
-    // Otherwise, we need to flush previous content
+    // 否则 刷新先前的渲染管线
     neko_idraw_flush(neko_idraw);
 
-    // Set primitive type
+    // 设置原始类型
     neko_idraw->cache.pipeline.prim_type = type;
 
-    // Bind pipeline
+    // 绑定渲染管线
     neko_immediate_draw_set_pipeline(neko_idraw);
 }
 
 void neko_idraw_end(neko_immediate_draw_t* neko_idraw) {
-    // Not sure what to do here...
+    // TODO
 }
 
 neko_mat4 neko_idraw_get_modelview_matrix(neko_immediate_draw_t* neko_idraw) { return neko_idraw->cache.modelview[neko_dyn_array_size(neko_idraw->cache.modelview) - 1]; }
@@ -411,17 +464,17 @@ neko_mat4 neko_idraw_get_mvp_matrix(neko_immediate_draw_t* neko_idraw) {
 }
 
 void neko_idraw_flush(neko_immediate_draw_t* neko_idraw) {
-    // Don't flush if verts empty
+    // 如果顶点数据为空则不刷新
     if (neko_byte_buffer_empty(&neko_idraw->vertices)) {
         return;
     }
 
-    // Set up mvp matrix
+    // 设置mvp矩阵
     neko_mat4 mv = neko_idraw->cache.modelview[neko_dyn_array_size(neko_idraw->cache.modelview) - 1];
     neko_mat4 proj = neko_idraw->cache.projection[neko_dyn_array_size(neko_idraw->cache.projection) - 1];
     neko_mat4 mvp = neko_mat4_mul(proj, mv);
 
-    // Update vertex buffer (command buffer version)
+    // 更新顶点缓冲区 (使用命令缓冲区)
     neko_graphics_vertex_buffer_desc_t vdesc = neko_default_val();
     vdesc.data = neko_idraw->vertices.data;
     vdesc.size = neko_byte_buffer_size(&neko_idraw->vertices);
@@ -429,10 +482,10 @@ void neko_idraw_flush(neko_immediate_draw_t* neko_idraw) {
 
     neko_graphics_vertex_buffer_request_update(&neko_idraw->commands, neko_idraw()->vbo, &vdesc);
 
-    // Calculate draw count
+    // 计算绘制数量
     size_t vsz = sizeof(neko_immediate_vert_t);
     if (neko_dyn_array_size(neko_idraw->vattributes)) {
-        // Calculate vertex stride
+        // 计算顶点步幅
         size_t stride = 0;
         for (u32 i = 0; i < neko_dyn_array_size(neko_idraw->vattributes); ++i) {
             neko_idraw_vattr_type type = neko_idraw->vattributes[i];
@@ -455,7 +508,7 @@ void neko_idraw_flush(neko_immediate_draw_t* neko_idraw) {
 
     u32 ct = neko_byte_buffer_size(&neko_idraw->vertices) / vsz;
 
-    // Set up all binding data
+    // 设置所有绑定数据
     neko_graphics_bind_vertex_buffer_desc_t vbuffer = neko_default_val();
     vbuffer.buffer = neko_idraw()->vbo;
 
@@ -466,7 +519,7 @@ void neko_idraw_flush(neko_immediate_draw_t* neko_idraw) {
     ubinds[1].data = &neko_idraw->cache.texture;
     ubinds[1].binding = 0;
 
-    // Bindings for all buffers: vertex, uniform, sampler
+    // 所有缓冲区的绑定 vertex,uniform,sampler
     neko_graphics_bind_desc_t binds = neko_default_val();
     binds.vertex_buffers.desc = &vbuffer;
 
@@ -476,16 +529,16 @@ void neko_idraw_flush(neko_immediate_draw_t* neko_idraw) {
         binds.uniforms.size = sizeof(ubinds);
     }
 
-    // Bind bindings
+    // 绑定
     neko_graphics_apply_bindings(&neko_idraw->commands, &binds);
 
-    // Submit draw
+    // 提交绘制
     neko_graphics_draw_desc_t draw = neko_default_val();
     draw.start = 0;
     draw.count = ct;
     neko_graphics_draw(&neko_idraw->commands, &draw);
 
-    // Clear data
+    // 绘制后清理缓冲区
     neko_byte_buffer_clear(&neko_idraw->vertices);
 }
 
@@ -1447,7 +1500,7 @@ NEKO_API_DECL void neko_idraw_cone(neko_immediate_draw_t* neko_idraw, f32 x, f32
 }
 
 void neko_idraw_text(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, const char* text, const neko_asset_ascii_font_t* fp, bool32_t flip_vertical, u8 r, u8 g, u8 b, u8 a) {
-    // If no font, set to default
+    // 如果没有指定字体 则使用默认字体
     if (!fp) {
         fp = &neko_idraw()->font_default;
     }
@@ -1461,8 +1514,7 @@ void neko_idraw_text(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, const char
     f32 th = neko_asset_ascii_font_max_height(fp);
 
     // Move text to accomdate height
-    // y += td.y;
-    y += th;
+    y += neko_max(td.y, th);
 
     // Needs to be fixed in here. Not elsewhere.
     neko_idraw_begin(neko_idraw, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);

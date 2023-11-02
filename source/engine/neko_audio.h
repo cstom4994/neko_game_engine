@@ -2,7 +2,9 @@
 #define NEKO_AUDIO_H
 
 #include "engine/neko.h"
-#include "libs/cute/cute_sound.h"
+
+// sound
+#include "engine/builtin/cute_sound.h"
 
 /*=====================
 // Internal Audio Data

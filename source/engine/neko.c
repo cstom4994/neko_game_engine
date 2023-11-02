@@ -5,6 +5,7 @@
 
 #include "engine/neko_component.h"
 #include "engine/neko_engine.h"
+#include "engine/util/neko_console.h"
 
 // Use discrete GPU by default.
 // http://developer.download.nvidia.com/devzone/devcenter/gamegraphics/files/OptimusRenderingPolicies.pdf
@@ -13,7 +14,34 @@ __declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
 // https://gpuopen.com/learn/amdpowerxpressrequesthighperformance/
 __declspec(dllexport) unsigned long AmdPowerXpressRequestHighPerformance = 0x00000001;
 
-// Resource Creation
+neko_global const char* __build_date = __DATE__;
+neko_global const char* mon[12] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+neko_global const char mond[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+
+s32 neko_buildnum(void) {
+    s32 m = 0, d = 0, y = 0;
+    static s32 b = 0;
+
+    // 优化
+    if (b != 0) return b;
+
+    for (m = 0; m < 11; m++) {
+        if (!strncmp(&__build_date[0], mon[m], 3)) break;
+        d += mond[m];
+    }
+
+    d += atoi(&__build_date[4]) - 1;
+    y = atoi(&__build_date[7]) - 2022;
+    b = d + (s32)((y - 1) * 365.25f);
+
+    if (((y % 4) == 0) && m > 1) b += 1;
+
+    b -= 151;
+
+    return b;
+}
+
+// 资源构造函数
 NEKO_API_DECL neko_handle(neko_graphics_texture_t) neko_graphics_texture_create(const neko_graphics_texture_desc_t* desc) { return neko_graphics()->api.texture_create(desc); }
 
 NEKO_API_DECL neko_handle(neko_graphics_uniform_t) neko_graphics_uniform_create(const neko_graphics_uniform_desc_t* desc) { return neko_graphics()->api.uniform_create(desc); }
@@ -39,42 +67,40 @@ NEKO_API_DECL neko_handle(neko_graphics_renderpass_t) neko_graphics_renderpass_c
 NEKO_API_DECL neko_handle(neko_graphics_pipeline_t) neko_graphics_pipeline_create(const neko_graphics_pipeline_desc_t* desc) { return neko_graphics()->api.pipeline_create(desc); }
 
 // Destroy
-NEKO_API_DECL void neko_graphics_texture_destroy(neko_handle(neko_graphics_texture_t) hndl) { return neko_graphics()->api.texture_destroy(hndl); }
+NEKO_API_DECL void neko_graphics_texture_destroy(neko_handle(neko_graphics_texture_t) hndl) { neko_graphics()->api.texture_destroy(hndl); }
 
-NEKO_API_DECL void neko_graphics_uniform_destroy(neko_handle(neko_graphics_uniform_t) hndl) { return neko_graphics()->api.uniform_destroy(hndl); }
+NEKO_API_DECL void neko_graphics_uniform_destroy(neko_handle(neko_graphics_uniform_t) hndl) { neko_graphics()->api.uniform_destroy(hndl); }
 
-NEKO_API_DECL void neko_graphics_shader_destroy(neko_handle(neko_graphics_shader_t) hndl) { return neko_graphics()->api.shader_destroy(hndl); }
+NEKO_API_DECL void neko_graphics_shader_destroy(neko_handle(neko_graphics_shader_t) hndl) { neko_graphics()->api.shader_destroy(hndl); }
 
-NEKO_API_DECL void neko_graphics_vertex_buffer_destroy(neko_handle(neko_graphics_vertex_buffer_t) hndl) { return neko_graphics()->api.vertex_buffer_destroy(hndl); }
+NEKO_API_DECL void neko_graphics_vertex_buffer_destroy(neko_handle(neko_graphics_vertex_buffer_t) hndl) { neko_graphics()->api.vertex_buffer_destroy(hndl); }
 
-NEKO_API_DECL void neko_graphics_index_buffer_destroy(neko_handle(neko_graphics_index_buffer_t) hndl) { return neko_graphics()->api.index_buffer_destroy(hndl); }
+NEKO_API_DECL void neko_graphics_index_buffer_destroy(neko_handle(neko_graphics_index_buffer_t) hndl) { neko_graphics()->api.index_buffer_destroy(hndl); }
 
-NEKO_API_DECL void neko_graphics_uniform_buffer_destroy(neko_handle(neko_graphics_uniform_buffer_t) hndl) { return neko_graphics()->api.uniform_buffer_destroy(hndl); }
+NEKO_API_DECL void neko_graphics_uniform_buffer_destroy(neko_handle(neko_graphics_uniform_buffer_t) hndl) { neko_graphics()->api.uniform_buffer_destroy(hndl); }
 
-NEKO_API_DECL void neko_graphics_storage_buffer_destroy(neko_handle(neko_graphics_storage_buffer_t) hndl) { return neko_graphics()->api.storage_buffer_destroy(hndl); }
+NEKO_API_DECL void neko_graphics_storage_buffer_destroy(neko_handle(neko_graphics_storage_buffer_t) hndl) { neko_graphics()->api.storage_buffer_destroy(hndl); }
 
-NEKO_API_DECL void neko_graphics_framebuffer_destroy(neko_handle(neko_graphics_framebuffer_t) hndl) { return neko_graphics()->api.framebuffer_destroy(hndl); }
+NEKO_API_DECL void neko_graphics_framebuffer_destroy(neko_handle(neko_graphics_framebuffer_t) hndl) { neko_graphics()->api.framebuffer_destroy(hndl); }
 
-NEKO_API_DECL void neko_graphics_renderpass_destroy(neko_handle(neko_graphics_renderpass_t) hndl) { return neko_graphics()->api.renderpass_destroy(hndl); }
+NEKO_API_DECL void neko_graphics_renderpass_destroy(neko_handle(neko_graphics_renderpass_t) hndl) { neko_graphics()->api.renderpass_destroy(hndl); }
 
-NEKO_API_DECL void neko_graphics_pipeline_destroy(neko_handle(neko_graphics_pipeline_t) hndl) { return neko_graphics()->api.pipeline_destroy(hndl); }
+NEKO_API_DECL void neko_graphics_pipeline_destroy(neko_handle(neko_graphics_pipeline_t) hndl) { neko_graphics()->api.pipeline_destroy(hndl); }
 
-// Resource Updates (main thread only)
+// 资源更新 (仅限主线程)
 NEKO_API_DECL void neko_graphics_vertex_buffer_update(neko_handle(neko_graphics_vertex_buffer_t) hndl, neko_graphics_vertex_buffer_desc_t* desc) {
-    return neko_graphics()->api.vertex_buffer_update(hndl, desc);
+    neko_graphics()->api.vertex_buffer_update(hndl, desc);
 }
 
-NEKO_API_DECL void neko_graphics_index_buffer_update(neko_handle(neko_graphics_index_buffer_t) hndl, neko_graphics_index_buffer_desc_t* desc) {
-    return neko_graphics()->api.index_buffer_update(hndl, desc);
-}
+NEKO_API_DECL void neko_graphics_index_buffer_update(neko_handle(neko_graphics_index_buffer_t) hndl, neko_graphics_index_buffer_desc_t* desc) { neko_graphics()->api.index_buffer_update(hndl, desc); }
 
 NEKO_API_DECL void neko_graphics_storage_buffer_update(neko_handle(neko_graphics_storage_buffer_t) hndl, neko_graphics_storage_buffer_desc_t* desc) {
-    return neko_graphics()->api.storage_buffer_update(hndl, desc);
+    neko_graphics()->api.storage_buffer_update(hndl, desc);
 }
 
-NEKO_API_DECL void neko_graphics_texture_update(neko_handle(neko_graphics_texture_t) hndl, neko_graphics_texture_desc_t* desc) { return neko_graphics()->api.texture_update(hndl, desc); }
+NEKO_API_DECL void neko_graphics_texture_update(neko_handle(neko_graphics_texture_t) hndl, neko_graphics_texture_desc_t* desc) { neko_graphics()->api.texture_update(hndl, desc); }
 
-NEKO_API_DECL void neko_graphics_texture_read(neko_handle(neko_graphics_texture_t) hndl, neko_graphics_texture_desc_t* desc) { return neko_graphics()->api.texture_read(hndl, desc); }
+NEKO_API_DECL void neko_graphics_texture_read(neko_handle(neko_graphics_texture_t) hndl, neko_graphics_texture_desc_t* desc) { neko_graphics()->api.texture_read(hndl, desc); }
 
 /*==========================
 // NEKO_OS
@@ -127,11 +153,18 @@ static void stdout_callback(neko_log_event* ev) {
 #ifdef LOG_USE_COLOR
     fprintf(ev->udata, "%s %s%-5s\x1b[0m \x1b[90m%s:%d:\x1b[0m ", buf, level_colors[ev->level], level_strings[ev->level], neko_fs_get_filename(ev->file), ev->line);
 #else
-    fprintf(ev->udata, "%s %-5s %s:%d: ", buf, level_strings[ev->level], ev->file, ev->line);
+    fprintf(ev->udata, "%s %-5s %s:%d: ", buf, level_strings[ev->level], neko_fs_get_filename(ev->file), ev->line);
 #endif
     vfprintf(ev->udata, ev->fmt, ev->ap);
     fprintf(ev->udata, "\n");
     fflush(ev->udata);
+
+    // 需要修改 console的fmt并不正确
+    if (NULL != neko_instance() && NULL != neko_instance()->ctx.game.console) {
+        neko_console_printf(neko_instance()->ctx.game.console, "%s %-5s %s:%d: ", buf, level_strings[ev->level], neko_fs_get_filename(ev->file), ev->line);
+        neko_console_printf(neko_instance()->ctx.game.console, ev->fmt, ev->ap);
+        neko_console_printf(neko_instance()->ctx.game.console, "\n");
+    }
 }
 
 static void file_callback(neko_log_event* ev) {
@@ -272,7 +305,7 @@ void neko_byte_buffer_seek_to_end(neko_byte_buffer_t* buffer) { buffer->position
 void neko_byte_buffer_advance_position(neko_byte_buffer_t* buffer, size_t sz) { buffer->position += (u32)sz; }
 
 void neko_byte_buffer_write_bulk(neko_byte_buffer_t* buffer, void* src, size_t size) {
-    // Check for necessary resize
+    // 检查是否需要调整大小
     size_t total_write_size = buffer->position + size;
     if (total_write_size >= (size_t)buffer->capacity) {
         size_t capacity = buffer->capacity * 2;
@@ -296,7 +329,7 @@ void neko_byte_buffer_read_bulk(neko_byte_buffer_t* buffer, void** dst, size_t s
 }
 
 void neko_byte_buffer_write_str(neko_byte_buffer_t* buffer, const char* str) {
-    // Write size of string
+    // 写入字符串的大小
     u32 str_len = neko_string_length(str);
     neko_byte_buffer_write(buffer, uint16_t, str_len);
 
@@ -307,7 +340,7 @@ void neko_byte_buffer_write_str(neko_byte_buffer_t* buffer, const char* str) {
 }
 
 void neko_byte_buffer_read_str(neko_byte_buffer_t* buffer, char* str) {
-    // Read in size of string from buffer
+    // 从缓冲区读取字符串的大小
     uint16_t sz;
     neko_byte_buffer_read(buffer, uint16_t, &sz);
 
@@ -353,7 +386,7 @@ NEKO_API_DECL void* neko_dyn_array_resize_impl(void* arr, size_t sz, size_t amou
         capacity = 0;
     }
 
-    // Create new neko_dyn_array with just the header information
+    // 仅使用标头信息创建新的 neko_dyn_array
     neko_dyn_array* data = (neko_dyn_array*)neko_realloc(arr ? neko_dyn_array_head(arr) : 0, capacity * sz + sizeof(neko_dyn_array));
 
     if (data) {
@@ -436,8 +469,6 @@ NEKO_API_DECL void** neko_slot_map_init(void** sm) {
 
 neko_allocation_metrics g_allocation_metrics = {.total_allocated = 0, .total_free = 0};
 
-neko_gc_t g_gc;
-
 typedef struct neko_mem_heap_header_t {
     struct neko_mem_heap_header_t* next;
     struct neko_mem_heap_header_t* prev;
@@ -469,6 +500,9 @@ static neko_mem_alloc_info_t* neko_mem_alloc_head() {
 
 #if 1
 void* __neko_mem_safe_alloc(size_t size, const char* file, int line, size_t* statistics) {
+
+    if (size < 64) neko_log_warning("small size of memory blocks should use GC (%s:%d)", neko_fs_get_filename(file), line);
+
     neko_mem_alloc_info_t* mem = (neko_mem_alloc_info_t*)neko_malloc(sizeof(neko_mem_alloc_info_t) + size);
 
     if (!mem) return 0;
@@ -508,6 +542,7 @@ void __neko_mem_safe_free(void* mem, size_t* statistics) {
     neko_free(info);
 }
 
+#if 1
 void* __neko_mem_safe_realloc(void* ptr, size_t new_size, const char* file, int line, size_t* statistics) {
     if (new_size == 0) {
         __neko_mem_safe_free(ptr, statistics);  // 如果新大小为 0 则直接释放原内存块并返回 NULL
@@ -534,6 +569,7 @@ void* __neko_mem_safe_realloc(void* ptr, size_t new_size, const char* file, int 
 
     return new_ptr;
 }
+#endif
 
 int neko_mem_check_leaks(bool detailed) {
     neko_mem_alloc_info_t* head = neko_mem_alloc_head();
@@ -591,525 +627,9 @@ inline int NEKO_BYTES_IN_USE() { return 0; }
 
 #endif
 
-#pragma region GC
+void __neko_mem_init(int argc, char** argv) {}
 
-static size_t __neko_gc_hash(void* ptr) {
-    uintptr_t ad = (uintptr_t)ptr;
-    return (size_t)((13 * ad) ^ (ad >> 15));
-}
-
-static size_t __neko_gc_probe(neko_gc_t* gc, size_t i, size_t h) {
-    long v = i - (h - 1);
-    if (v < 0) {
-        v = gc->nslots + v;
-    }
-    return v;
-}
-
-static neko_gc_ptr_t* __neko_gc_get_ptr(neko_gc_t* gc, void* ptr) {
-    size_t i, j, h;
-    i = __neko_gc_hash(ptr) % gc->nslots;
-    j = 0;
-    while (1) {
-        h = gc->items[i].hash;
-        if (h == 0 || j > __neko_gc_probe(gc, i, h)) {
-            return NULL;
-        }
-        if (gc->items[i].ptr == ptr) {
-            return &gc->items[i];
-        }
-        i = (i + 1) % gc->nslots;
-        j++;
-    }
-    return NULL;
-}
-
-static void __neko_gc_add_ptr(neko_gc_t* gc, void* ptr, size_t size, int flags, void (*dtor)(void*)) {
-
-    neko_gc_ptr_t item, tmp;
-    size_t h, p, i, j;
-
-    i = __neko_gc_hash(ptr) % gc->nslots;
-    j = 0;
-
-    item.ptr = ptr;
-    item.flags = flags;
-    item.size = size;
-    item.hash = i + 1;
-    item.dtor = dtor;
-
-    while (1) {
-        h = gc->items[i].hash;
-        if (h == 0) {
-            gc->items[i] = item;
-            return;
-        }
-        if (gc->items[i].ptr == item.ptr) {
-            return;
-        }
-        p = __neko_gc_probe(gc, i, h);
-        if (j >= p) {
-            tmp = gc->items[i];
-            gc->items[i] = item;
-            item = tmp;
-            j = p;
-        }
-        i = (i + 1) % gc->nslots;
-        j++;
-    }
-}
-
-static void __neko_gc_rem_ptr(neko_gc_t* gc, void* ptr) {
-
-    size_t i, j, h, nj, nh;
-
-    if (gc->nitems == 0) {
-        return;
-    }
-
-    for (i = 0; i < gc->nfrees; i++) {
-        if (gc->frees[i].ptr == ptr) {
-            gc->frees[i].ptr = NULL;
-        }
-    }
-
-    i = __neko_gc_hash(ptr) % gc->nslots;
-    j = 0;
-
-    while (1) {
-        h = gc->items[i].hash;
-        if (h == 0 || j > __neko_gc_probe(gc, i, h)) {
-            return;
-        }
-        if (gc->items[i].ptr == ptr) {
-            memset(&gc->items[i], 0, sizeof(neko_gc_ptr_t));
-            j = i;
-            while (1) {
-                nj = (j + 1) % gc->nslots;
-                nh = gc->items[nj].hash;
-                if (nh != 0 && __neko_gc_probe(gc, nj, nh) > 0) {
-                    memcpy(&gc->items[j], &gc->items[nj], sizeof(neko_gc_ptr_t));
-                    memset(&gc->items[nj], 0, sizeof(neko_gc_ptr_t));
-                    j = nj;
-                } else {
-                    break;
-                }
-            }
-            gc->nitems--;
-            return;
-        }
-        i = (i + 1) % gc->nslots;
-        j++;
-    }
-}
-
-enum { NEKO_GC_PRIMES_COUNT = 24 };
-
-static const size_t __neko_gc_primes[NEKO_GC_PRIMES_COUNT] = {0,    1,    5,     11,    23,    53,     101,    197,    389,     683,     1259,    2417,
-                                                              4733, 9371, 18617, 37097, 74093, 148073, 296099, 592019, 1100009, 2200013, 4400021, 8800019};
-
-static size_t __neko_gc_ideal_size(neko_gc_t* gc, size_t size) {
-    size_t i, last;
-    size = (size_t)((double)(size + 1) / gc->loadfactor);
-    for (i = 0; i < NEKO_GC_PRIMES_COUNT; i++) {
-        if (__neko_gc_primes[i] >= size) {
-            return __neko_gc_primes[i];
-        }
-    }
-    last = __neko_gc_primes[NEKO_GC_PRIMES_COUNT - 1];
-    for (i = 0;; i++) {
-        if (last * i >= size) {
-            return last * i;
-        }
-    }
-    return 0;
-}
-
-static int __neko_gc_rehash(neko_gc_t* gc, size_t new_size) {
-
-    size_t i;
-    neko_gc_ptr_t* old_items = gc->items;
-    size_t old_size = gc->nslots;
-
-    gc->nslots = new_size;
-    gc->items = (neko_gc_ptr_t*)calloc(gc->nslots, sizeof(neko_gc_ptr_t));
-
-    if (gc->items == NULL) {
-        gc->nslots = old_size;
-        gc->items = old_items;
-        return 0;
-    }
-
-    for (i = 0; i < old_size; i++) {
-        if (old_items[i].hash != 0) {
-            __neko_gc_add_ptr(gc, old_items[i].ptr, old_items[i].size, old_items[i].flags, old_items[i].dtor);
-        }
-    }
-
-    free(old_items);
-
-    return 1;
-}
-
-static int __neko_gc_resize_more(neko_gc_t* gc) {
-    size_t new_size = __neko_gc_ideal_size(gc, gc->nitems);
-    size_t old_size = gc->nslots;
-    return (new_size > old_size) ? __neko_gc_rehash(gc, new_size) : 1;
-}
-
-static int __neko_gc_resize_less(neko_gc_t* gc) {
-    size_t new_size = __neko_gc_ideal_size(gc, gc->nitems);
-    size_t old_size = gc->nslots;
-    return (new_size < old_size) ? __neko_gc_rehash(gc, new_size) : 1;
-}
-
-static void __neko_gc_mark_ptr(neko_gc_t* gc, void* ptr) {
-
-    size_t i, j, h, k;
-
-    if ((uintptr_t)ptr < gc->minptr || (uintptr_t)ptr > gc->maxptr) {
-        return;
-    }
-
-    i = __neko_gc_hash(ptr) % gc->nslots;
-    j = 0;
-
-    while (1) {
-        h = gc->items[i].hash;
-        if (h == 0 || j > __neko_gc_probe(gc, i, h)) {
-            return;
-        }
-        if (ptr == gc->items[i].ptr) {
-            if (gc->items[i].flags & NEKO_GC_MARK) {
-                return;
-            }
-            gc->items[i].flags |= NEKO_GC_MARK;
-            if (gc->items[i].flags & NEKO_GC_LEAF) {
-                return;
-            }
-            for (k = 0; k < gc->items[i].size / sizeof(void*); k++) {
-                __neko_gc_mark_ptr(gc, ((void**)gc->items[i].ptr)[k]);
-            }
-            return;
-        }
-        i = (i + 1) % gc->nslots;
-        j++;
-    }
-}
-
-static void __neko_gc_mark_stack(neko_gc_t* gc) {
-
-    void *stk, *bot, *top, *p;
-    bot = gc->bottom;
-    top = &stk;
-
-    if (bot == top) {
-        return;
-    }
-
-    if (bot < top) {
-        for (p = top; p >= bot; p = ((char*)p) - sizeof(void*)) {
-            __neko_gc_mark_ptr(gc, *((void**)p));
-        }
-    }
-
-    if (bot > top) {
-        for (p = top; p <= bot; p = ((char*)p) + sizeof(void*)) {
-            __neko_gc_mark_ptr(gc, *((void**)p));
-        }
-    }
-}
-
-static void __neko_gc_mark(neko_gc_t* gc) {
-
-    size_t i, k;
-    jmp_buf env;
-    void (*volatile mark_stack)(neko_gc_t*) = __neko_gc_mark_stack;
-
-    if (gc->nitems == 0) {
-        return;
-    }
-
-    for (i = 0; i < gc->nslots; i++) {
-        if (gc->items[i].hash == 0) {
-            continue;
-        }
-        if (gc->items[i].flags & NEKO_GC_MARK) {
-            continue;
-        }
-        if (gc->items[i].flags & NEKO_GC_ROOT) {
-            gc->items[i].flags |= NEKO_GC_MARK;
-            if (gc->items[i].flags & NEKO_GC_LEAF) {
-                continue;
-            }
-            for (k = 0; k < gc->items[i].size / sizeof(void*); k++) {
-                __neko_gc_mark_ptr(gc, ((void**)gc->items[i].ptr)[k]);
-            }
-            continue;
-        }
-    }
-
-    memset(&env, 0, sizeof(jmp_buf));
-    setjmp(env);
-    mark_stack(gc);
-}
-
-void __neko_gc_sweep(neko_gc_t* gc) {
-
-    size_t i, j, k, nj, nh;
-
-    if (gc->nitems == 0) {
-        return;
-    }
-
-    gc->nfrees = 0;
-    for (i = 0; i < gc->nslots; i++) {
-        if (gc->items[i].hash == 0) {
-            continue;
-        }
-        if (gc->items[i].flags & NEKO_GC_MARK) {
-            continue;
-        }
-        if (gc->items[i].flags & NEKO_GC_ROOT) {
-            continue;
-        }
-        gc->nfrees++;
-    }
-
-    gc->frees = (neko_gc_ptr_t*)realloc(gc->frees, sizeof(neko_gc_ptr_t) * gc->nfrees);
-    if (gc->frees == NULL) {
-        return;
-    }
-
-    i = 0;
-    k = 0;
-    while (i < gc->nslots) {
-        if (gc->items[i].hash == 0) {
-            i++;
-            continue;
-        }
-        if (gc->items[i].flags & NEKO_GC_MARK) {
-            i++;
-            continue;
-        }
-        if (gc->items[i].flags & NEKO_GC_ROOT) {
-            i++;
-            continue;
-        }
-
-        gc->frees[k] = gc->items[i];
-        k++;
-        memset(&gc->items[i], 0, sizeof(neko_gc_ptr_t));
-
-        j = i;
-        while (1) {
-            nj = (j + 1) % gc->nslots;
-            nh = gc->items[nj].hash;
-            if (nh != 0 && __neko_gc_probe(gc, nj, nh) > 0) {
-                memcpy(&gc->items[j], &gc->items[nj], sizeof(neko_gc_ptr_t));
-                memset(&gc->items[nj], 0, sizeof(neko_gc_ptr_t));
-                j = nj;
-            } else {
-                break;
-            }
-        }
-        gc->nitems--;
-    }
-
-    for (i = 0; i < gc->nslots; i++) {
-        if (gc->items[i].hash == 0) {
-            continue;
-        }
-        if (gc->items[i].flags & NEKO_GC_MARK) {
-            gc->items[i].flags &= ~NEKO_GC_MARK;
-        }
-    }
-
-    __neko_gc_resize_less(gc);
-
-    gc->mitems = gc->nitems + (size_t)(gc->nitems * gc->sweepfactor) + 1;
-
-    for (i = 0; i < gc->nfrees; i++) {
-        if (gc->frees[i].ptr) {
-            if (gc->frees[i].dtor) {
-                gc->frees[i].dtor(gc->frees[i].ptr);
-            }
-            free(gc->frees[i].ptr);
-        }
-    }
-
-    free(gc->frees);
-    gc->frees = NULL;
-    gc->nfrees = 0;
-}
-
-void neko_gc_start(neko_gc_t* gc, void* stk) {
-    gc->bottom = stk;
-    gc->paused = 0;
-    gc->nitems = 0;
-    gc->nslots = 0;
-    gc->mitems = 0;
-    gc->nfrees = 0;
-    gc->maxptr = 0;
-    gc->items = NULL;
-    gc->frees = NULL;
-    gc->minptr = UINTPTR_MAX;
-    gc->loadfactor = 0.9;
-    gc->sweepfactor = 0.5;
-}
-
-void neko_gc_stop(neko_gc_t* gc) {
-    __neko_gc_sweep(gc);
-    free(gc->items);
-    free(gc->frees);
-}
-
-void neko_gc_pause(neko_gc_t* gc) { gc->paused = 1; }
-
-void neko_gc_resume(neko_gc_t* gc) { gc->paused = 0; }
-
-void neko_gc_run(neko_gc_t* gc) {
-    __neko_gc_mark(gc);
-    __neko_gc_sweep(gc);
-}
-
-static void* __neko_gc_add(neko_gc_t* gc, void* ptr, size_t size, int flags, void (*dtor)(void*)) {
-
-    gc->nitems++;
-    gc->maxptr = ((uintptr_t)ptr) + size > gc->maxptr ? ((uintptr_t)ptr) + size : gc->maxptr;
-    gc->minptr = ((uintptr_t)ptr) < gc->minptr ? ((uintptr_t)ptr) : gc->minptr;
-
-    if (__neko_gc_resize_more(gc)) {
-        __neko_gc_add_ptr(gc, ptr, size, flags, dtor);
-        if (!gc->paused && gc->nitems > gc->mitems) {
-            neko_gc_run(gc);
-        }
-        return ptr;
-    } else {
-        gc->nitems--;
-        free(ptr);
-        return NULL;
-    }
-}
-
-static void __neko_gc_rem(neko_gc_t* gc, void* ptr) {
-    __neko_gc_rem_ptr(gc, ptr);
-    __neko_gc_resize_less(gc);
-    gc->mitems = gc->nitems + gc->nitems / 2 + 1;
-}
-
-void* neko_gc_alloc(neko_gc_t* gc, size_t size) { return __neko_gc_alloc_opt(gc, size, 0, NULL); }
-
-void* neko_gc_calloc(neko_gc_t* gc, size_t num, size_t size) { return __neko_gc_calloc_opt(gc, num, size, 0, NULL); }
-
-void* neko_gc_realloc(neko_gc_t* gc, void* ptr, size_t size) {
-
-    neko_gc_ptr_t* p;
-    void* qtr = realloc(ptr, size);
-
-    if (qtr == NULL) {
-        __neko_gc_rem(gc, ptr);
-        return qtr;
-    }
-
-    if (ptr == NULL) {
-        __neko_gc_add(gc, qtr, size, 0, NULL);
-        return qtr;
-    }
-
-    p = __neko_gc_get_ptr(gc, ptr);
-
-    if (p && qtr == ptr) {
-        p->size = size;
-        return qtr;
-    }
-
-    if (p && qtr != ptr) {
-        int flags = p->flags;
-        void (*dtor)(void*) = p->dtor;
-        __neko_gc_rem(gc, ptr);
-        __neko_gc_add(gc, qtr, size, flags, dtor);
-        return qtr;
-    }
-
-    return NULL;
-}
-
-void neko_gc_free(neko_gc_t* gc, void* ptr) {
-    neko_gc_ptr_t* p = __neko_gc_get_ptr(gc, ptr);
-    if (p) {
-        if (p->dtor) {
-            p->dtor(ptr);
-        }
-        free(ptr);
-        __neko_gc_rem(gc, ptr);
-    }
-}
-
-void* __neko_gc_alloc_opt(neko_gc_t* gc, size_t size, int flags, void (*dtor)(void*)) {
-    void* ptr = malloc(size);
-    if (ptr != NULL) {
-        ptr = __neko_gc_add(gc, ptr, size, flags, dtor);
-    }
-    return ptr;
-}
-
-void* __neko_gc_calloc_opt(neko_gc_t* gc, size_t num, size_t size, int flags, void (*dtor)(void*)) {
-    void* ptr = calloc(num, size);
-    if (ptr != NULL) {
-        ptr = __neko_gc_add(gc, ptr, num * size, flags, dtor);
-    }
-    return ptr;
-}
-
-void neko_gc_set_dtor(neko_gc_t* gc, void* ptr, void (*dtor)(void*)) {
-    neko_gc_ptr_t* p = __neko_gc_get_ptr(gc, ptr);
-    if (p) {
-        p->dtor = dtor;
-    }
-}
-
-void neko_gc_set_flags(neko_gc_t* gc, void* ptr, int flags) {
-    neko_gc_ptr_t* p = __neko_gc_get_ptr(gc, ptr);
-    if (p) {
-        p->flags = flags;
-    }
-}
-
-int neko_gc_get_flags(neko_gc_t* gc, void* ptr) {
-    neko_gc_ptr_t* p = __neko_gc_get_ptr(gc, ptr);
-    if (p) {
-        return p->flags;
-    }
-    return 0;
-}
-
-void (*neko_gc_get_dtor(neko_gc_t* gc, void* ptr))(void*) {
-    neko_gc_ptr_t* p = __neko_gc_get_ptr(gc, ptr);
-    if (p) {
-        return p->dtor;
-    }
-    return NULL;
-}
-
-size_t neko_gc_get_size(neko_gc_t* gc, void* ptr) {
-    neko_gc_ptr_t* p = __neko_gc_get_ptr(gc, ptr);
-    if (p) {
-        return p->size;
-    }
-    return 0;
-}
-
-#pragma endregion GC
-
-void __neko_mem_init(int argc, char** argv) { neko_gc_start(&g_gc, &argc); }
-
-void __neko_mem_end() {
-    neko_gc_stop(&g_gc);
-    neko_mem_check_leaks(false);
-}
-
-void __neko_mem_rungc() { neko_gc_run(&g_gc); }
+void __neko_mem_end() { neko_mem_check_leaks(false); }
 
 // typedef struct neko_memory_block_t {
 //     u8* data;
@@ -1190,17 +710,17 @@ NEKO_API_DECL void* neko_linear_allocator_allocate(neko_linear_allocator_t* la, 
     size_t padding_address = 0;
     size_t cur_address = (size_t)la->memory + la->offset;
 
-    // Calculate alignment required
+    // 计算所需的对齐方式
     if (alignment != 0 && la->offset % alignment != 0) {
         padding = neko_memory_calc_padding(cur_address, alignment);
     }
 
-    // Cannot allocate (not enough memory available)
+    // 无法分配 (没有足够的可用内存)
     if (la->offset + padding + sz > la->total_size) {
         return NULL;
     }
 
-    // Allocate and return pointer
+    // 申请内存并且返回地址
     la->offset += padding;
     size_t next_address = cur_address + padding;
     la->offset += sz;
@@ -2565,63 +2085,63 @@ NEKO_API_DECL neko_t* neko_create(neko_game_desc_t app_desc) {
 
         neko_timer_initialize();
 
-        // Set up os api before all?
+        // 首先设置 osapi?
         neko_os_api_t os = neko_os_api_new();
 
-        // Construct instance and set
+        // 构造实例并设置
         _neko_instance = (neko_t*)os.malloc(sizeof(neko_t));
         memset(_neko_instance, 0, sizeof(neko_t));
 
-        // Set os api now allocated
+        // 设置现在已分配的 osapi
         neko_instance()->ctx.os = os;
 
-        // Set application description for framework
+        // 设置框架的应用描述
         neko_instance()->ctx.game = app_desc;
 
-        // Set up function pointers
+        // 设置函数指针
         neko_instance()->shutdown = &neko_destroy;
 
         // 初始化 cvars
         __neko_config_init();
 
-        // Need to have video settings passed down from user
+        // 需要从用户那里传递视频设置
         neko_subsystem(platform) = neko_platform_create();
 
-        // Enable graphics API debugging
+        // 启用图形 API 调试
         neko_subsystem(platform)->settings.video.graphics.debug = app_desc.debug_gfx;
 
-        // Default initialization for platform here
+        // 此处平台的默认初始化
         neko_platform_init(neko_subsystem(platform));
 
-        // Set frame rate for application
+        // 设置应用程序的帧速率
         neko_subsystem(platform)->time.max_fps = app_desc.window.frame_rate;
 
-        // Construct main window
+        // 构建主窗口
         neko_platform_window_create(&app_desc.window);
 
-        // Set vsync for video
+        // 设置视频垂直同步
         neko_platform_enable_vsync(app_desc.window.vsync);
 
-        // Construct graphics api
+        // 构建图形API
         neko_subsystem(graphics) = neko_graphics_create();
 
-        // Initialize graphics here
+        // 初始化图形
         neko_graphics_init(neko_subsystem(graphics));
 
-        // Construct audio api
-        neko_instance()->ctx.audio = __neko_audio_construct();
+        // 构建音频API
+        neko_subsystem(audio) = __neko_audio_construct();
 
-        // Initialize audio
-        neko_instance()->ctx.audio->init(neko_instance()->ctx.audio);
+        // 初始化音频
+        neko_subsystem(audio)->init(neko_subsystem(audio));
 
         // 初始化 ecs
-        neko_ecs() = neko_ecs_make(1024, COMPONENT_COUNT, 8);
+        neko_ecs() = neko_ecs_make(1024, COMPONENT_COUNT, 9);
 
-        // Initialize application and set to running
+        // 初始化应用程序并设置为运行
         app_desc.init();
         neko_ctx()->game.is_running = true;
 
-        // Set default callback for when main window close button is pressed
+        // 设置按下主窗口关闭按钮时的默认回调
         neko_platform_set_window_close_callback(neko_platform_main_window(), &neko_default_main_window_close_callback);
     }
 
@@ -2639,8 +2159,8 @@ NEKO_API_DECL neko_game_desc_t* neko_app() { return &neko_instance()->ctx.game; 
 // Define main frame function for framework to step
 NEKO_API_DECL void neko_frame() {
     // Remove these...
-    static u32 curr_ticks = 0;
-    static u32 prev_ticks = 0;
+    neko_private(u32) curr_ticks = 0;
+    neko_private(u32) prev_ticks = 0;
 
     // Cache platform pointer
     neko_platform_t* platform = neko_subsystem(platform);
@@ -2748,3 +2268,27 @@ void neko_quit() {
     neko_instance()->ctx.game.is_running = false;
 #endif
 }
+
+#if defined(NEKO_ALL_IN_ONE)
+
+#include "engine/impl/neko_audio_impl.c"
+#include "engine/impl/neko_graphics_impl.c"
+#include "engine/impl/neko_platform_impl.c"
+#include "engine/util/neko_ai.c"
+#include "engine/util/neko_asset.c"
+#include "engine/util/neko_gfxt.c"
+#include "engine/util/neko_gui.c"
+#include "engine/util/neko_idraw.c"
+#include "engine/util/neko_meta.c"
+#include "engine/util/neko_nbt.c"
+#include "engine/util/neko_script.c"
+#include "engine/util/neko_tiled.c"
+#include "engine/util/neko_xml.c"
+
+#endif
+
+#define NEKO_IMPL
+
+// builtin
+#include "engine/builtin/neko_aseprite.h"
+#include "engine/builtin/neko_gui_internal.h"

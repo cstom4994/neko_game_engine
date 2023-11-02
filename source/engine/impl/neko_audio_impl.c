@@ -8,7 +8,7 @@
 // #define CUTE_SOUND_FREE(mem, ctx) neko_gc_free(&g_gc, mem)
 // #define HASHTABLE_MALLOC(ctx, size) (neko_gc_malloc(&g_gc, size))
 // #define HASHTABLE_FREE(ctx, ptr) (neko_gc_free(&g_gc, ptr))
-#include "libs/cute/cute_sound.h"
+#include "engine/builtin/cute_sound.h"
 
 void __neko_audio_set_default_functions(struct neko_audio_s* audio);
 

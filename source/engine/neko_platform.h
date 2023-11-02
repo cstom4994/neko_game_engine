@@ -72,7 +72,7 @@ typedef struct neko_platform_running_desc_s {
 } neko_platform_running_desc_t;
 
 typedef struct neko_platform_window_s {
-    void* hndl;
+    void *hndl;
     neko_vec2 framebuffer_size;
     neko_vec2 window_size;
     neko_vec2 window_position;
@@ -336,7 +336,7 @@ typedef struct neko_opengl_video_settinneko_t {
     u32 major_version;
     u32 minor_version;
     u8 multi_sampling_count;
-    void* ctx;
+    void *ctx;
 } neko_opengl_video_settinneko_t;
 
 typedef union neko_graphics_api_settinneko_t {
@@ -450,10 +450,10 @@ typedef struct neko_platform_event_t {
 } neko_platform_event_t;
 
 // Necessary function pointer typedefs
-typedef void (*neko_dropped_files_callback_t)(void*, s32 count, const char** file_paths);
-typedef void (*neko_window_close_callback_t)(void*);
-typedef void (*neko_character_callback_t)(void*, u32 code_point);
-typedef void (*neko_framebuffer_resize_callback_t)(void*, s32 width, s32 height);
+typedef void (*neko_dropped_files_callback_t)(void *, s32 count, const char **file_paths);
+typedef void (*neko_window_close_callback_t)(void *);
+typedef void (*neko_character_callback_t)(void *, u32 code_point);
+typedef void (*neko_framebuffer_resize_callback_t)(void *, s32 width, s32 height);
 
 /*===============================================================================================
 // Platform Interface
@@ -478,13 +478,13 @@ typedef struct neko_platform_t {
     neko_dyn_array(neko_platform_event_t) events;
 
     // Cursors
-    void* cursors[NEKO_PLATFORM_CURSOR_COUNT];
+    void *cursors[NEKO_PLATFORM_CURSOR_COUNT];
 
     // Specific user data (for custom implementations)
-    void* user_data;
+    void *user_data;
 
     // Optional api for stable access across .dll boundaries
-    struct neko_platform_interface_s* api;
+    struct neko_platform_interface_s *api;
 
 } neko_platform_t;
 
@@ -495,25 +495,25 @@ typedef struct neko_platform_t {
 /* == Platform Default API == */
 
 // Platform Create / Destroy
-NEKO_API_DECL neko_platform_t* neko_platform_create();
-NEKO_API_DECL void neko_platform_destroy(neko_platform_t* platform);
+NEKO_API_DECL neko_platform_t *neko_platform_create();
+NEKO_API_DECL void neko_platform_destroy(neko_platform_t *platform);
 
 // Platform Init / Update / Shutdown
-NEKO_API_DECL void neko_platform_update(neko_platform_t* platform);  // Update platform layer
+NEKO_API_DECL void neko_platform_update(neko_platform_t *platform);  // Update platform layer
 
 // Platform Util
-NEKO_API_DECL const neko_platform_time_t* neko_platform_time();
+NEKO_API_DECL const neko_platform_time_t *neko_platform_time();
 NEKO_API_DECL f32 neko_platform_delta_time();
 NEKO_API_DECL f32 neko_platform_frame_time();
 
 // Platform UUID
 NEKO_API_DECL neko_uuid_t neko_platform_uuid_generate();
-NEKO_API_DECL void neko_platform_uuid_to_string(char* temp_buffer, const neko_uuid_t* uuid);  // Expects a temp buffer with at least 32 bytes
-NEKO_API_DECL u32 neko_platform_uuid_hash(const neko_uuid_t* uuid);
+NEKO_API_DECL void neko_platform_uuid_to_string(char *temp_buffer, const neko_uuid_t *uuid);  // Expects a temp buffer with at least 32 bytes
+NEKO_API_DECL u32 neko_platform_uuid_hash(const neko_uuid_t *uuid);
 
 // Platform Input
-NEKO_API_DECL neko_platform_input_t* neko_platform_input();
-NEKO_API_DECL void neko_platform_update_input(neko_platform_input_t* input);
+NEKO_API_DECL neko_platform_input_t *neko_platform_input();
+NEKO_API_DECL void neko_platform_update_input(neko_platform_input_t *input);
 NEKO_API_DECL void neko_platform_press_key(neko_platform_keycode code);
 NEKO_API_DECL void neko_platform_release_key(neko_platform_keycode code);
 NEKO_API_DECL bool neko_platform_was_key_down(neko_platform_keycode code);
@@ -534,24 +534,24 @@ NEKO_API_DECL bool neko_platform_mouse_pressed(neko_platform_mouse_button_code c
 NEKO_API_DECL bool neko_platform_mouse_down(neko_platform_mouse_button_code code);
 NEKO_API_DECL bool neko_platform_mouse_released(neko_platform_mouse_button_code code);
 NEKO_API_DECL neko_vec2 neko_platform_mouse_deltav();
-NEKO_API_DECL void neko_platform_mouse_delta(f32* x, f32* y);
+NEKO_API_DECL void neko_platform_mouse_delta(f32 *x, f32 *y);
 NEKO_API_DECL neko_vec2 neko_platform_mouse_positionv();
-NEKO_API_DECL void neko_platform_mouse_position(s32* x, s32* y);
-NEKO_API_DECL void neko_platform_mouse_wheel(f32* x, f32* y);
+NEKO_API_DECL void neko_platform_mouse_position(s32 *x, s32 *y);
+NEKO_API_DECL void neko_platform_mouse_wheel(f32 *x, f32 *y);
 NEKO_API_DECL neko_vec2 neko_platform_mouse_wheelv();
 NEKO_API_DECL bool neko_platform_mouse_moved();
 NEKO_API_DECL bool neko_platform_mouse_locked();
 NEKO_API_DECL neko_vec2 neko_platform_touch_deltav(u32 idx);
-NEKO_API_DECL void neko_platform_touch_delta(u32 idx, f32* x, f32* y);
+NEKO_API_DECL void neko_platform_touch_delta(u32 idx, f32 *x, f32 *y);
 NEKO_API_DECL neko_vec2 neko_platform_touch_positionv(u32 idx);
-NEKO_API_DECL void neko_platform_touch_position(u32 idx, f32* x, f32* y);
+NEKO_API_DECL void neko_platform_touch_position(u32 idx, f32 *x, f32 *y);
 
 // Platform Events
-NEKO_API_DECL bool neko_platform_poll_events(neko_platform_event_t* evt, bool32_t consume);
-NEKO_API_DECL void neko_platform_add_event(neko_platform_event_t* evt);
+NEKO_API_DECL bool neko_platform_poll_events(neko_platform_event_t *evt, bool32_t consume);
+NEKO_API_DECL void neko_platform_add_event(neko_platform_event_t *evt);
 
 // Platform Window
-NEKO_API_DECL u32 neko_platform_window_create(const neko_platform_running_desc_t* desc);
+NEKO_API_DECL u32 neko_platform_window_create(const neko_platform_running_desc_t *desc);
 NEKO_API_DECL u32 neko_platform_main_window();
 
 typedef struct neko_platform_file_stats_s {
@@ -561,20 +561,20 @@ typedef struct neko_platform_file_stats_s {
 } neko_platform_file_stats_t;
 
 // Platform File IO (this all needs to be made available for impl rewrites)
-NEKO_API_DECL char* neko_platform_read_file_contents_default_impl(const char* file_path, const char* mode, size_t* sz);
-NEKO_API_DECL neko_result neko_platform_write_file_contents_default_impl(const char* file_path, const char* mode, void* data, size_t data_size);
-NEKO_API_DECL bool neko_platform_file_exists_default_impl(const char* file_path);
-NEKO_API_DECL bool neko_platform_dir_exists_default_impl(const char* dir_path);
-NEKO_API_DECL s32 neko_platform_mkdir_default_impl(const char* dir_path, s32 opt);
-NEKO_API_DECL s32 neko_platform_file_size_in_bytes_default_impl(const char* file_path);
-NEKO_API_DECL void neko_platform_file_extension_default_impl(char* buffer, size_t buffer_sz, const char* file_path);
-NEKO_API_DECL s32 neko_platform_file_delete_default_impl(const char* file_path);
-NEKO_API_DECL s32 neko_platform_file_copy_default_impl(const char* src_path, const char* dst_path);
+NEKO_API_DECL char *neko_platform_read_file_contents_default_impl(const char *file_path, const char *mode, size_t *sz);
+NEKO_API_DECL neko_result neko_platform_write_file_contents_default_impl(const char *file_path, const char *mode, void *data, size_t data_size);
+NEKO_API_DECL bool neko_platform_file_exists_default_impl(const char *file_path);
+NEKO_API_DECL bool neko_platform_dir_exists_default_impl(const char *dir_path);
+NEKO_API_DECL s32 neko_platform_mkdir_default_impl(const char *dir_path, s32 opt);
+NEKO_API_DECL s32 neko_platform_file_size_in_bytes_default_impl(const char *file_path);
+NEKO_API_DECL void neko_platform_file_extension_default_impl(char *buffer, size_t buffer_sz, const char *file_path);
+NEKO_API_DECL s32 neko_platform_file_delete_default_impl(const char *file_path);
+NEKO_API_DECL s32 neko_platform_file_copy_default_impl(const char *src_path, const char *dst_path);
 NEKO_API_DECL s32 neko_platform_file_compare_time(uint64_t time_a, uint64_t time_b);
-NEKO_API_DECL neko_platform_file_stats_t neko_platform_file_stats(const char* file_path);
-NEKO_API_DECL void* neko_platform_library_load_default_impl(const char* lib_path);
-NEKO_API_DECL void neko_platform_library_unload_default_impl(void* lib);
-NEKO_API_DECL void* neko_platform_library_proc_address_default_impl(void* lib, const char* func);
+NEKO_API_DECL neko_platform_file_stats_t neko_platform_file_stats(const char *file_path);
+NEKO_API_DECL void *neko_platform_library_load_default_impl(const char *lib_path);
+NEKO_API_DECL void neko_platform_library_unload_default_impl(void *lib);
+NEKO_API_DECL void *neko_platform_library_proc_address_default_impl(void *lib, const char *func);
 
 // Default file implementations
 #define neko_platform_read_file_contents neko_platform_read_file_contents_default_impl
@@ -594,10 +594,10 @@ NEKO_API_DECL void* neko_platform_library_proc_address_default_impl(void* lib, c
 
 /* == Platform Dependent API == */
 
-NEKO_API_DECL void neko_platform_init(neko_platform_t* platform);      // Initialize platform layer
-NEKO_API_DECL void neko_platform_shutdown(neko_platform_t* platform);  // Shutdown platform layer
+NEKO_API_DECL void neko_platform_init(neko_platform_t *platform);      // Initialize platform layer
+NEKO_API_DECL void neko_platform_shutdown(neko_platform_t *platform);  // Shutdown platform layer
 
-NEKO_API_DECL void neko_platform_update_internal(neko_platform_t* platform);
+NEKO_API_DECL void neko_platform_update_internal(neko_platform_t *platform);
 
 // Platform Util
 NEKO_API_DECL double neko_platform_elapsed_time();  // Returns time in ms since initialization of platform
@@ -607,21 +607,21 @@ NEKO_API_DECL void neko_platform_sleep(f32 ms);     // Sleeps platform for time 
 NEKO_API_DECL void neko_platform_enable_vsync(s32 enabled);
 
 // Platform Input
-NEKO_API_DECL void neko_platform_process_input(neko_platform_input_t* input);
+NEKO_API_DECL void neko_platform_process_input(neko_platform_input_t *input);
 NEKO_API_DECL u32 neko_platform_key_to_codepoint(neko_platform_keycode code);
 NEKO_API_DECL neko_platform_keycode neko_platform_codepoint_to_key(u32 code);
 NEKO_API_DECL void neko_platform_mouse_set_position(u32 handle, f32 x, f32 y);
 NEKO_API_DECL void neko_platform_lock_mouse(u32 handle, bool32_t lock);
 
-NEKO_API_DECL neko_platform_window_t neko_platform_window_create_internal(const neko_platform_running_desc_t* desc);
+NEKO_API_DECL neko_platform_window_t neko_platform_window_create_internal(const neko_platform_running_desc_t *desc);
 NEKO_API_DECL void neko_platform_window_swap_buffer(u32 handle);
 NEKO_API_DECL neko_vec2 neko_platform_window_sizev(u32 handle);
-NEKO_API_DECL void neko_platform_window_size(u32 handle, u32* width, u32* height);
+NEKO_API_DECL void neko_platform_window_size(u32 handle, u32 *width, u32 *height);
 NEKO_API_DECL u32 neko_platform_window_width(u32 handle);
 NEKO_API_DECL u32 neko_platform_window_height(u32 handle);
 NEKO_API_DECL bool32_t neko_platform_window_fullscreen(u32 handle);
 NEKO_API_DECL neko_vec2 neko_platform_window_positionv(u32 handle);
-NEKO_API_DECL void neko_platform_window_position(u32 handle, u32* x, u32* y);
+NEKO_API_DECL void neko_platform_window_position(u32 handle, u32 *x, u32 *y);
 NEKO_API_DECL void neko_platform_set_window_title(u32 handle, const_str title);
 NEKO_API_DECL void neko_platform_set_window_size(u32 handle, u32 width, u32 height);
 NEKO_API_DECL void neko_platform_set_window_sizev(u32 handle, neko_vec2 v);
@@ -629,9 +629,9 @@ NEKO_API_DECL void neko_platform_set_window_fullscreen(u32 handle, bool32_t full
 NEKO_API_DECL void neko_platform_set_window_position(u32 handle, u32 x, u32 y);
 NEKO_API_DECL void neko_platform_set_window_positionv(u32 handle, neko_vec2 v);
 NEKO_API_DECL void neko_platform_set_cursor(u32 handle, neko_platform_cursor cursor);
-NEKO_API_DECL void* neko_platform_raw_window_handle(u32 handle);
+NEKO_API_DECL void *neko_platform_raw_window_handle(u32 handle);
 NEKO_API_DECL neko_vec2 neko_platform_framebuffer_sizev(u32 handle);
-NEKO_API_DECL void neko_platform_framebuffer_size(u32 handle, u32* w, u32* h);
+NEKO_API_DECL void neko_platform_framebuffer_size(u32 handle, u32 *w, u32 *h);
 NEKO_API_DECL u32 neko_platform_framebuffer_width(u32 handle);
 NEKO_API_DECL u32 neko_platform_framebuffer_height(u32 handle);
 NEKO_API_DECL neko_vec2 neko_platform_monitor_sizev(u32 id);
@@ -642,7 +642,7 @@ NEKO_API_DECL void neko_platform_set_dropped_files_callback(u32 handle, neko_dro
 NEKO_API_DECL void neko_platform_set_window_close_callback(u32 handle, neko_window_close_callback_t cb);
 NEKO_API_DECL void neko_platform_set_character_callback(u32 handle, neko_character_callback_t cb);
 
-NEKO_API_DECL void* neko_platform_hwnd();
+NEKO_API_DECL void *neko_platform_hwnd();
 NEKO_API_DECL neko_memory_info_t neko_platform_memory_info();
 NEKO_API_DECL neko_vec2 neko_platform_opengl_ver();
 NEKO_API_DECL void neko_platform_msgbox(const_str msg);
@@ -673,8 +673,8 @@ static inline uint64_t neko_get_thread_id() {
 #ifdef NEKO_PLATFORM_WIN
 
 static inline u32 neko_tls_allocate() { return (u32)TlsAlloc(); }
-static inline void neko_tls_set_value(u32 _handle, void* _value) { TlsSetValue(_handle, _value); }
-static inline void* neko_tls_get_value(u32 _handle) { return TlsGetValue(_handle); }
+static inline void neko_tls_set_value(u32 _handle, void *_value) { TlsSetValue(_handle, _value); }
+static inline void *neko_tls_get_value(u32 _handle) { return TlsGetValue(_handle); }
 static inline void neko_tls_free(u32 _handle) { TlsFree(_handle); }
 
 #else
@@ -684,8 +684,8 @@ static inline pthread_key_t neko_tls_allocate() {
     pthread_key_create(&handle, NULL);
     return handle;
 }
-static inline void neko_tls_set_value(pthread_key_t _handle, void* _value) { pthread_setspecific(_handle, _value); }
-static inline void* neko_tls_get_value(pthread_key_t _handle) { return pthread_getspecific(_handle); }
+static inline void neko_tls_set_value(pthread_key_t _handle, void *_value) { pthread_setspecific(_handle, _value); }
+static inline void *neko_tls_get_value(pthread_key_t _handle) { return pthread_getspecific(_handle); }
 static inline void neko_tls_free(pthread_key_t _handle) { pthread_key_delete(_handle); }
 
 #endif
@@ -693,20 +693,20 @@ static inline void neko_tls_free(pthread_key_t _handle) { pthread_key_delete(_ha
 #if defined(NEKO_PLATFORM_WIN)
 
 typedef CRITICAL_SECTION neko_mutex;
-static inline void neko_mutex_init(neko_mutex* _mutex) { InitializeCriticalSection(_mutex); }
-static inline void neko_mutex_destroy(neko_mutex* _mutex) { DeleteCriticalSection(_mutex); }
-static inline void neko_mutex_lock(neko_mutex* _mutex) { EnterCriticalSection(_mutex); }
-static inline int neko_mutex_trylock(neko_mutex* _mutex) { return TryEnterCriticalSection(_mutex) ? 0 : 1; }
-static inline void neko_mutex_unlock(neko_mutex* _mutex) { LeaveCriticalSection(_mutex); }
+static inline void neko_mutex_init(neko_mutex *_mutex) { InitializeCriticalSection(_mutex); }
+static inline void neko_mutex_destroy(neko_mutex *_mutex) { DeleteCriticalSection(_mutex); }
+static inline void neko_mutex_lock(neko_mutex *_mutex) { EnterCriticalSection(_mutex); }
+static inline int neko_mutex_trylock(neko_mutex *_mutex) { return TryEnterCriticalSection(_mutex) ? 0 : 1; }
+static inline void neko_mutex_unlock(neko_mutex *_mutex) { LeaveCriticalSection(_mutex); }
 
 #elif defined(NEKO_PLATFORM_POSIX)
 
 typedef pthread_mutex_t neko_mutex;
-static inline void neko_mutex_init(neko_mutex* _mutex) { pthread_mutex_init(_mutex, NULL); }
-static inline void neko_mutex_destroy(neko_mutex* _mutex) { pthread_mutex_destroy(_mutex); }
-static inline void neko_mutex_lock(neko_mutex* _mutex) { pthread_mutex_lock(_mutex); }
-static inline int neko_mutex_trylock(neko_mutex* _mutex) { return pthread_mutex_trylock(_mutex); }
-static inline void neko_mutex_unlock(neko_mutex* _mutex) { pthread_mutex_unlock(_mutex); }
+static inline void neko_mutex_init(neko_mutex *_mutex) { pthread_mutex_init(_mutex, NULL); }
+static inline void neko_mutex_destroy(neko_mutex *_mutex) { pthread_mutex_destroy(_mutex); }
+static inline void neko_mutex_lock(neko_mutex *_mutex) { pthread_mutex_lock(_mutex); }
+static inline int neko_mutex_trylock(neko_mutex *_mutex) { return pthread_mutex_trylock(_mutex); }
+static inline void neko_mutex_unlock(neko_mutex *_mutex) { pthread_mutex_unlock(_mutex); }
 
 #else
 #error "Unsupported platform!"
@@ -717,13 +717,13 @@ static inline void neko_mutex_unlock(neko_mutex* _mutex) { pthread_mutex_unlock(
 #if defined(NEKO_CPP_SRC)
 
 #ifdef UNICODE
-#define NEKO_WINDOWS_ConvertPath(_newpath, _path) std::wstring _newpath(cr_utf8_to_wstring(_path))
+#define neko_unicode_convert_path(_newpath, _path) std::wstring _newpath(neko_utf8_to_wstring(_path))
 
-static std::wstring cr_utf8_to_wstring(const std::string& str) {
+static std::wstring neko_utf8_to_wstring(const std::string &str) {
     int wlen = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, 0, 0);
     wchar_t wpath_small[MAX_PATH];
     std::unique_ptr<wchar_t[]> wpath_big;
-    wchar_t* wpath = wpath_small;
+    wchar_t *wpath = wpath_small;
     if (wlen > _countof(wpath_small)) {
         wpath_big = std::unique_ptr<wchar_t[]>(new wchar_t[wlen]);
         wpath = wpath_big.get();
@@ -736,16 +736,48 @@ static std::wstring cr_utf8_to_wstring(const std::string& str) {
     return wpath;
 }
 #else
-#define NEKO_WINDOWS_ConvertPath(_newpath, _path) const std::string& _newpath = _path
+#define neko_unicode_convert_path(_newpath, _path) const std::string &_newpath = _path
 #endif  // UNICODE
 
-#endif
+#else
+
+neko_inline wchar_t *neko_utf8_to_wstring(const char *str) {
+    int wlen = MultiByteToWideChar(CP_UTF8, 0, str, -1, NULL, 0);
+    wchar_t wpath_small[MAX_PATH];
+    wchar_t *wpath_big = NULL;
+    wchar_t *wpath = wpath_small;
+
+    if (wlen > MAX_PATH) {
+        wpath_big = (wchar_t *)malloc(wlen * sizeof(wchar_t));
+        if (wpath_big == NULL) {
+            return NULL;
+        }
+        wpath = wpath_big;
+    }
+
+    if (MultiByteToWideChar(CP_UTF8, 0, str, -1, wpath, wlen) != wlen) {
+        if (wpath_big != NULL) {
+            free(wpath_big);
+        }
+        return NULL;
+    }
+
+    if (wpath_big != NULL) {
+        free(wpath_big);
+    }
+
+    return wpath;
+}
+
+#define neko_unicode_convert_path(_newpath, _path) wchar_t *_newpath = neko_utf8_to_wstring(_path)
+
+#endif  // NEKO_CPP_SRC
 
 #endif
 
-neko_inline void toWChar(wchar_t out[MAX_PATH], const char* in) {
-    const char* c = in;
-    wchar_t* cout = out;
+neko_inline void toWChar(wchar_t out[MAX_PATH], const char *in) {
+    const char *c = in;
+    wchar_t *cout = out;
     while (*c != '\0' && c - in < MAX_PATH - 1) {
         *cout = (wchar_t)*c;
         ++cout;
@@ -760,21 +792,21 @@ neko_inline int __native_get_dpi() {
     return GetDeviceCaps(hdc, LOGPIXELSX);
 }
 
-neko_inline void* __native_library_load(const char* path) {
+neko_inline void *__native_library_load(const char *path) {
     WCHAR tmp[MAX_PATH];
     toWChar(tmp, path);
     return LoadLibrary(tmp);
 }
 
-neko_inline void __native_library_unload(void* handle) {
+neko_inline void __native_library_unload(void *handle) {
     if (handle) {
         DEBUG_CHECK(FreeLibrary((HMODULE)handle));
     }
 }
 
-neko_inline void* __native_library_get_symbol(void* handle, const char* name) { return (void*)GetProcAddress((HMODULE)handle, name); }
+neko_inline void *__native_library_get_symbol(void *handle, const char *name) { return (void *)GetProcAddress((HMODULE)handle, name); }
 
-neko_inline void __native_debug_output(const char* msg) { OutputDebugStringA(msg); }
+neko_inline void __native_debug_output(const char *msg) { OutputDebugStringA(msg); }
 
 NEKO_API_DECL int neko_timer_initialize(void);
 NEKO_API_DECL void neko_timer_shutdown(void);
@@ -794,8 +826,8 @@ NEKO_API_DECL tick_t neko_timer_system(void);
     } while (0)
 
 #define NEKO_HIJACK_MAIN()                                 \
-    s32 main(s32 argv, char** argc) {                      \
-        neko_t* inst = neko_create(neko_main(argv, argc)); \
+    s32 main(s32 argv, char **argc) {                      \
+        neko_t *inst = neko_create(neko_main(argv, argc)); \
         while (neko_app()->is_running) {                   \
             neko_frame();                                  \
         }                                                  \
