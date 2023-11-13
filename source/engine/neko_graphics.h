@@ -753,12 +753,6 @@ typedef struct neko_graphics_custom_batch_framebuffer_t* neko_graphics_custom_ba
 NEKO_API_DECL neko_graphics_custom_batch_context_t* neko_graphics_custom_batch_make_ctx(u32 max_draw_calls);
 NEKO_API_DECL void neko_graphics_custom_batch_free(void* ctx);
 
-NEKO_API_DECL void gl_line_mvp(void* context, float* mvp);
-NEKO_API_DECL void gl_line_color(void* context, float r, float g, float b);
-NEKO_API_DECL void gl_line(void* context, float ax, float ay, float az, float bx, float by, float bz);
-NEKO_API_DECL void gl_line_width(float width);
-NEKO_API_DECL void gl_line_depth_test(void* context, int zero_for_off);
-
 NEKO_API_DECL void neko_graphics_custom_batch_make_frame_buffer(neko_graphics_custom_batch_framebuffer_t* fb, neko_graphics_custom_batch_shader_t* shader, int w, int h, int use_depth_test);
 NEKO_API_DECL void neko_graphics_custom_batch_free_frame_buffer(neko_graphics_custom_batch_framebuffer_t* fb);
 

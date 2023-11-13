@@ -46,22 +46,10 @@ neko_graphics_info_t* neko_graphics_info() { return &neko_subsystem(graphics)->i
 #endif
 
 struct neko_graphics_custom_batch_context_t {
-
     u32 max_draw_calls;
     u32 count;
     neko_graphics_custom_batch_draw_call_t* calls;
-
-    // 内置合批画线
-    neko_graphics_custom_batch_renderable_t line_r;
-    neko_graphics_custom_batch_shader_t line_s;
-    u32 line_vert_count;
-    u32 line_vert_capacity;
-    float* line_verts;
-    float r, g, b;
-    int line_depth_test;
 };
-
-#include <string.h>  // memset
 
 neko_graphics_custom_batch_context_t* neko_graphics_custom_batch_make_ctx(u32 max_draw_calls) {
     neko_graphics_custom_batch_context_t* ctx = (neko_graphics_custom_batch_context_t*)neko_safe_malloc(sizeof(neko_graphics_custom_batch_context_t));
@@ -78,85 +66,14 @@ neko_graphics_custom_batch_context_t* neko_graphics_custom_batch_make_ctx(u32 ma
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
 
-#if NEKO_GL_CUSTOM_LINE_RENDERER
-#define NEKO_GL_CUSTOM_LINE_STRIDE (sizeof(float) * 3 * 2)
-    neko_graphics_custom_batch_vertex_data_t vd;
-    neko_graphics_custom_batch_make_vertex_data(&vd, 1024 * 1024, GL_LINES, NEKO_GL_CUSTOM_LINE_STRIDE, GL_DYNAMIC_DRAW);
-    neko_graphics_custom_batch_add_attribute(&vd, "in_pos", 3, NEKO_GL_CUSTOM_FLOAT, 0);
-    neko_graphics_custom_batch_add_attribute(&vd, "in_col", 3, NEKO_GL_CUSTOM_FLOAT, NEKO_GL_CUSTOM_LINE_STRIDE / 2);
-    neko_graphics_custom_batch_make_renderable(&ctx->line_r, &vd);
-    const char* vs = "#version 330\nuniform mat4 u_mvp;in vec3 in_pos;in vec3 in_col;out vec3 v_col;void main(){v_col = in_col;gl_Position = u_mvp * vec4(in_pos, 1);}";
-    const char* ps = "#version 330\nprecision mediump float;in vec3 v_col;out vec4 out_col;void main(){out_col = vec4(v_col, 1);}";
-    neko_graphics_custom_batch_load_shader(&ctx->line_s, vs, ps);
-    neko_graphics_custom_batch_set_shader(&ctx->line_r, &ctx->line_s);
-    gl_line_color(ctx, 1.0f, 1.0f, 1.0f);
-    ctx->line_vert_count = 0;
-    ctx->line_vert_capacity = 1024 * 1024;
-    ctx->line_verts = (float*)neko_safe_malloc(NEKO_GL_CUSTOM_LINE_STRIDE * ctx->line_vert_capacity);
-    ctx->line_depth_test = 0;
-#endif
-
     return ctx;
 }
 
 void neko_graphics_custom_batch_free(void* ctx) {
     neko_graphics_custom_batch_context_t* context = (neko_graphics_custom_batch_context_t*)ctx;
     neko_safe_free(context->calls);
-#if NEKO_GL_CUSTOM_LINE_RENDERER
-    neko_safe_free(context->line_verts);
-#endif
     neko_safe_free(context);
 }
-
-#if NEKO_GL_CUSTOM_LINE_RENDERER
-void gl_line_mvp(void* context, float* mvp) {
-    neko_graphics_custom_batch_context_t* ctx = (neko_graphics_custom_batch_context_t*)context;
-    neko_graphics_custom_batch_send_matrix(&ctx->line_s, "u_mvp", mvp);
-}
-
-void gl_line_color(void* context, float r, float g, float b) {
-    neko_graphics_custom_batch_context_t* ctx = (neko_graphics_custom_batch_context_t*)context;
-    ctx->r = r;
-    ctx->g = g;
-    ctx->b = b;
-}
-
-void gl_line(void* context, float ax, float ay, float az, float bx, float by, float bz) {
-    neko_graphics_custom_batch_context_t* ctx = (neko_graphics_custom_batch_context_t*)context;
-    if (ctx->line_vert_count + 2 > ctx->line_vert_capacity) {
-        ctx->line_vert_capacity *= 2;
-        void* old_verts = ctx->line_verts;
-        ctx->line_verts = (float*)neko_safe_malloc(NEKO_GL_CUSTOM_LINE_STRIDE * ctx->line_vert_capacity);
-        memcpy(ctx->line_verts, old_verts, NEKO_GL_CUSTOM_LINE_STRIDE * ctx->line_vert_count);
-        neko_safe_free(old_verts);
-    }
-    float verts[12];
-    verts[0] = ax;
-    verts[1] = ay;
-    verts[2] = az;
-    verts[3] = ctx->r;
-    verts[4] = ctx->g;
-    verts[5] = ctx->b;
-    verts[6] = bx;
-    verts[7] = by;
-    verts[8] = bz;
-    verts[9] = ctx->r;
-    verts[10] = ctx->g;
-    verts[11] = ctx->b;
-    memcpy(ctx->line_verts + ctx->line_vert_count * (NEKO_GL_CUSTOM_LINE_STRIDE / sizeof(float)), verts, sizeof(verts));
-    ctx->line_vert_count += 2;
-}
-
-void gl_line_width(float width) {
-    glLineWidth(width);
-    NEKO_GL_CUSTOM_PRINT_GL_ERRORS();  // common errors here unfortunately
-}
-
-void gl_line_depth_test(void* context, int zero_for_off) {
-    neko_graphics_custom_batch_context_t* ctx = (neko_graphics_custom_batch_context_t*)context;
-    ctx->line_depth_test = zero_for_off;
-}
-#endif
 
 void neko_graphics_custom_batch_make_frame_buffer(neko_graphics_custom_batch_framebuffer_t* fb, neko_graphics_custom_batch_shader_t* shader, int w, int h, int use_depth_test) {
     // Generate the frame buffer
@@ -727,22 +644,6 @@ void neko_custom_batch_present_internal(void* context, neko_graphics_custom_batc
         neko_custom_batch_render_internal(call);
     }
 
-#if NEKO_GL_CUSTOM_LINE_RENDERER
-    if (ctx->line_vert_count) {
-        if (ctx->line_depth_test)
-            glEnable(GL_DEPTH_TEST);
-        else
-            glDisable(GL_DEPTH_TEST);
-        neko_graphics_custom_batch_draw_call_t call;
-        call.vert_count = ctx->line_vert_count;
-        call.verts = ctx->line_verts;
-        call.r = &ctx->line_r;
-        call.texture_count = 0;
-        neko_custom_batch_render_internal(&call);
-        ctx->line_vert_count = 0;
-    }
-#endif
-
     if (fb) {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glViewport(0, 0, w, h);
@@ -1082,7 +983,7 @@ void neko_gl_pipeline_state() {
     glDisable(GL_MULTISAMPLE);
 
     CHECK_GL_CORE(neko_graphics_info_t* info = neko_graphics_info(); if (info->compute.available) {
-        neko_invoke_once(neko_log_trace("Compute shader available: %s", neko_bool_str(info->compute.available)););
+        // neko_invoke_once(neko_log_trace("Compute shader available: %s", neko_bool_str(info->compute.available)););
         glBindImageTexture(0, 0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
     });
 }

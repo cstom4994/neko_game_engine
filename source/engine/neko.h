@@ -319,6 +319,8 @@ enum neko_type_kind {
         }                                                                \
     } while (0)
 
+#define neko_choose(type, ...) ((type[]){__VA_ARGS__})[rand() % (sizeof((type[]){__VA_ARGS__}) / sizeof(type))]
+
 // Logging
 #define neko_log_info(...) log_info(__VA_ARGS__)
 #define neko_log_trace(...) log_trace(__VA_ARGS__)
@@ -1157,7 +1159,7 @@ neko_force_inline u32 neko_util_safe_truncate_u64(u64 value) {
     return result;
 }
 
-neko_force_inline u32 neko_hash_uint32_t(u32 x) {
+neko_force_inline u32 neko_hash_u32(u32 x) {
     x = ((x >> 16) ^ x) * 0x45d9f3b;
     x = ((x >> 16) ^ x) * 0x45d9f3b;
     x = (x >> 16) ^ x;

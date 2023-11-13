@@ -26,13 +26,13 @@
 #define neko_gui_tree_max_elementsize sizeof(std::string)
 #define neko_gui_tree_max_tuple 3
 
-namespace neko_nui {
+namespace neko_gui {
 
 neko_global neko_gui_context *ctx = nullptr;
 
-// 这就是这个库实现的功能 只是类 neko_nui::auto_t<T> 的包装
+// 这就是这个库实现的功能 只是类 neko_gui::auto_t<T> 的包装
 template <typename T>
-void nui_auto(T &anything, const std::string &name = std::string());
+void gui_auto(T &anything, const std::string &name = std::string());
 
 // same as std::as_const in c++17
 template <class T>
@@ -93,24 +93,24 @@ template <typename T>
 struct auto_t {
     static void Auto(T &anything, const std::string &name, const bool auto_layout = true) {
         // auto tuple = neko::cpp::pfr::structure_tie(anything);
-        // neko_nui::detail::auto_tuple("Struct " + name, tuple);
+        // neko_gui::detail::auto_tuple("Struct " + name, tuple);
         static_assert("Neko nui not support struct yet!");
     }
 };
-}  // namespace neko_nui
+}  // namespace neko_gui
 
 template <typename T>
-inline void neko_nui::nui_auto(T &anything, const std::string &name) {
-    neko_nui::auto_t<T>::Auto(anything, name);
+inline void neko_gui::gui_auto(T &anything, const std::string &name) {
+    neko_gui::auto_t<T>::Auto(anything, name);
 }
 
 template <typename T>
-bool neko_nui::detail::auto_expand(const std::string &name, T &value) {
+bool neko_gui::detail::auto_expand(const std::string &name, T &value) {
     if (sizeof(T) <= neko_gui_tree_max_elementsize) {
-        neko_nui::auto_t<T>::Auto(value, name);
+        neko_gui::auto_t<T>::Auto(value, name);
         return true;
     } else if (neko_gui_tree_push_id(ctx, NEKO_GUI_TREE_TAB, name.c_str(), NEKO_GUI_MINIMIZED, neko_hash_str64(name.c_str()))) {
-        neko_nui::auto_t<T>::Auto(value, name);
+        neko_gui::auto_t<T>::Auto(value, name);
         neko_gui_tree_pop(ctx);
         return true;
     } else
@@ -118,8 +118,8 @@ bool neko_nui::detail::auto_expand(const std::string &name, T &value) {
 }
 
 template <typename Container>
-bool neko_nui::detail::auto_container_tree_node(const std::string &name, Container &cont) {
-    // std::size_t size = neko_nui::detail::AutoContainerSize(cont);
+bool neko_gui::detail::auto_container_tree_node(const std::string &name, Container &cont) {
+    // std::size_t size = neko_gui::detail::AutoContainerSize(cont);
     std::size_t size = cont.size();
     if (neko_gui_tree_push_id(ctx, NEKO_GUI_TREE_TAB, name.c_str(), NEKO_GUI_MINIMIZED, neko_hash_str64(name.c_str()))) {
         size_t elemsize = sizeof(decltype(*std::begin(cont)));
@@ -133,12 +133,12 @@ bool neko_nui::detail::auto_container_tree_node(const std::string &name, Contain
     }
 }
 template <typename Container>
-bool neko_nui::detail::auto_container_values(const std::string &name, Container &cont) {
-    if (neko_nui::detail::auto_container_tree_node(name, cont)) {
+bool neko_gui::detail::auto_container_values(const std::string &name, Container &cont) {
+    if (neko_gui::detail::auto_container_tree_node(name, cont)) {
         std::size_t i = 0;
         for (auto &elem : cont) {
             std::string itemname = "[" + std::to_string(i) + ']';
-            neko_nui::detail::auto_expand(itemname, elem);
+            neko_gui::detail::auto_expand(itemname, elem);
             ++i;
         }
         return true;
@@ -146,8 +146,8 @@ bool neko_nui::detail::auto_container_values(const std::string &name, Container 
         return false;
 }
 template <typename Container>
-bool neko_nui::detail::auto_map_container_values(const std::string &name, Container &cont) {
-    if (neko_nui::detail::auto_container_tree_node(name, cont)) {
+bool neko_gui::detail::auto_map_container_values(const std::string &name, Container &cont) {
+    if (neko_gui::detail::auto_container_tree_node(name, cont)) {
         std::size_t i = 0;
         for (auto &elem : cont) {
             auto_map_kv(elem.first, elem.second);
@@ -158,23 +158,23 @@ bool neko_nui::detail::auto_map_container_values(const std::string &name, Contai
         return false;
 }
 template <typename Container>
-void neko_nui::detail::auto_container_button_pushfront(Container &cont) {
+void neko_gui::detail::auto_container_button_pushfront(Container &cont) {
     if (neko_gui_button_label(ctx, "Push Front")) cont.emplace_front();
 }
 template <typename Container>
-void neko_nui::detail::auto_container_button_pushback(Container &cont) {
+void neko_gui::detail::auto_container_button_pushback(Container &cont) {
     if (neko_gui_button_label(ctx, "Push Back")) cont.emplace_back();
 }
 template <typename Container>
-void neko_nui::detail::auto_container_button_popfront(Container &cont) {
+void neko_gui::detail::auto_container_button_popfront(Container &cont) {
     if (!cont.empty() && neko_gui_button_label(ctx, "Pop Front")) cont.pop_front();
 }
 template <typename Container>
-void neko_nui::detail::auto_container_button_popback(Container &cont) {
+void neko_gui::detail::auto_container_button_popback(Container &cont) {
     if (!cont.empty() && neko_gui_button_label(ctx, "Pop Back")) cont.pop_back();
 }
 template <typename Key, typename var>
-void neko_nui::detail::auto_map_kv(Key &key, var &value) {
+void neko_gui::detail::auto_map_kv(Key &key, var &value) {
     bool b_k = sizeof(Key) <= neko_gui_tree_max_elementsize;
     bool b_v = sizeof(var) <= neko_gui_tree_max_elementsize;
     if (b_k) {
@@ -182,63 +182,63 @@ void neko_nui::detail::auto_map_kv(Key &key, var &value) {
         neko_gui_layout_row_dynamic(ctx, 20, 3);
 
         neko_gui_label_wrap(ctx, "[");
-        neko_nui::auto_t<Key>::Auto(key, "");
+        neko_gui::auto_t<Key>::Auto(key, "");
         neko_gui_label_wrap(ctx, "]");
 
         // if (b_v) {
         //     neko_gui_layout_row_dynamic(ctx, 20, 1);
         // }
-        neko_nui::auto_t<var>::Auto(value, "Value", true);
+        neko_gui::auto_t<var>::Auto(value, "Value", true);
     } else {
-        neko_nui::auto_t<Key>::Auto(key, "Key");
-        neko_nui::auto_t<var>::Auto(value, "Value");
+        neko_gui::auto_t<Key>::Auto(key, "Key");
+        neko_gui::auto_t<var>::Auto(value, "Value");
     }
 }
 
 template <std::size_t I, typename... Args>
-void neko_nui::detail::auto_tuple_recurse(std::tuple<Args...> &tpl, std::enable_if_t<0 != I> *) {
-    neko_nui::detail::auto_tuple_recurse<I - 1, Args...>(tpl);  // first draw smaller indeces
+void neko_gui::detail::auto_tuple_recurse(std::tuple<Args...> &tpl, std::enable_if_t<0 != I> *) {
+    neko_gui::detail::auto_tuple_recurse<I - 1, Args...>(tpl);  // first draw smaller indeces
     using type = decltype(std::get<I - 1>(tpl));
     std::string str = '<' + std::to_string(I) + ">: " + (std::is_const_v<type> ? "const " : "") + typeid(type).name();
-    neko_nui::detail::auto_expand(str, std::get<I - 1>(tpl));
+    neko_gui::detail::auto_expand(str, std::get<I - 1>(tpl));
 }
 template <std::size_t I, typename... Args>
-void neko_nui::detail::auto_tuple_recurse(const std::tuple<Args...> &tpl, std::enable_if_t<0 != I> *) {
-    neko_nui::detail::auto_tuple_recurse<I - 1, const Args...>(tpl);  // first draw smaller indeces
+void neko_gui::detail::auto_tuple_recurse(const std::tuple<Args...> &tpl, std::enable_if_t<0 != I> *) {
+    neko_gui::detail::auto_tuple_recurse<I - 1, const Args...>(tpl);  // first draw smaller indeces
     using type = decltype(std::get<I - 1>(tpl));
     std::string str = '<' + std::to_string(I) + ">: " + "const " + typeid(type).name();
-    neko_nui::detail::auto_expand(str, std::as_const(std::get<I - 1>(tpl)));
+    neko_gui::detail::auto_expand(str, std::as_const(std::get<I - 1>(tpl)));
 }
 template <typename... Args>
-void neko_nui::detail::auto_tuple(const std::string &name, std::tuple<Args...> &tpl) {
+void neko_gui::detail::auto_tuple(const std::string &name, std::tuple<Args...> &tpl) {
     constexpr std::size_t tuple_size = sizeof(decltype(tpl));
     constexpr std::size_t tuple_numelems = sizeof...(Args);
     if (tuple_size <= neko_gui_tree_max_elementsize && tuple_numelems <= neko_gui_tree_max_tuple) {
         neko_gui_label_wrap(ctx, (name + " (" + std::to_string(tuple_size) + " bytes)").c_str());
-        neko_nui::detail::auto_tuple_recurse<tuple_numelems, Args...>(tpl);
+        neko_gui::detail::auto_tuple_recurse<tuple_numelems, Args...>(tpl);
     } else if (neko_gui_tree_push_id(ctx, NEKO_GUI_TREE_TAB, std::string(name + " (" + std::to_string(tuple_size) + " bytes)").c_str(), NEKO_GUI_MINIMIZED, neko_hash_str64(name.c_str()))) {
-        neko_nui::detail::auto_tuple_recurse<tuple_numelems, Args...>(tpl);
+        neko_gui::detail::auto_tuple_recurse<tuple_numelems, Args...>(tpl);
         neko_gui_tree_pop(ctx);
     }
 }
 template <typename... Args>
-void neko_nui::detail::auto_tuple(const std::string &name,
+void neko_gui::detail::auto_tuple(const std::string &name,
                                   const std::tuple<Args...> &tpl)  // same but const
 {
     constexpr std::size_t tuple_size = sizeof(std::tuple<Args...>);
     constexpr std::size_t tuple_numelems = sizeof...(Args);
     if (tuple_size <= neko_gui_tree_max_elementsize && tuple_numelems <= neko_gui_tree_max_tuple) {
         neko_gui_label_wrap(ctx, (name + " !(" + std::to_string(tuple_size) + " bytes)").c_str());
-        neko_nui::detail::auto_tuple_recurse<tuple_numelems, Args...>(tpl);
+        neko_gui::detail::auto_tuple_recurse<tuple_numelems, Args...>(tpl);
     } else if (neko_gui_tree_push_id(ctx, NEKO_GUI_TREE_TAB, std::string(name + " (" + std::to_string(tuple_size) + " bytes)").c_str(), NEKO_GUI_MINIMIZED, neko_hash_str64(name.c_str()))) {
-        neko_nui::detail::auto_tuple_recurse<tuple_numelems, Args...>(tpl);
+        neko_gui::detail::auto_tuple_recurse<tuple_numelems, Args...>(tpl);
         neko_gui_tree_pop(ctx);
     }
 }
 
 // 在此版本中将 templatespec 和 typespec 括在括号中
 #define neko_gui_auto_def_begin_p(templatespec, typespec)                \
-    namespace neko_nui {                                                 \
+    namespace neko_gui {                                                 \
     neko_va_unpack templatespec struct auto_t<neko_va_unpack typespec> { \
         static void Auto(neko_va_unpack typespec &var, const std::string &name, const bool auto_layout = true) {
 
@@ -270,11 +270,11 @@ neko_gui_auto_def_begin_p((template <std::size_t N>), (const detail::c_array_t<c
 else neko_gui_labelf_wrap(ctx, "%s=%s", name.c_str(), var);
 neko_gui_auto_def_end();
 
-neko_gui_auto_def(template <>, char *, const_str tmp = var; neko_nui::auto_t<const_str>::Auto(tmp, name););
+neko_gui_auto_def(template <>, char *, const_str tmp = var; neko_gui::auto_t<const_str>::Auto(tmp, name););
 
-neko_gui_auto_def(template <>, char *const, const_str tmp = var; neko_nui::auto_t<const_str>::Auto(tmp, name););
+neko_gui_auto_def(template <>, char *const, const_str tmp = var; neko_gui::auto_t<const_str>::Auto(tmp, name););
 
-neko_gui_auto_def(template <>, const_str const, const_str tmp = var; neko_nui::auto_t<const_str>::Auto(tmp, name););
+neko_gui_auto_def(template <>, const_str const, const_str tmp = var; neko_gui::auto_t<const_str>::Auto(tmp, name););
 
 neko_gui_auto_def(template <>, std::string, {
     int len = var.length();  // TODO: 23/10/16 长度回调
@@ -312,17 +312,17 @@ neko_gui_auto_def(template <>, unsigned int, {
 
 // neko_gui_auto_def(template <>, ImVec2, ImGui::DragFloat2(name.c_str(), &var.x););
 // neko_gui_auto_def(template <>, ImVec4, ImGui::DragFloat4(name.c_str(), &var.x););
-neko_gui_auto_def(template <>, const float, neko_nui::auto_t<const std::string>::Auto(std::to_string(var), name););
-neko_gui_auto_def(template <>, const int, neko_nui::auto_t<const std::string>::Auto(std::to_string(var), name););
-neko_gui_auto_def(template <>, const unsigned, neko_nui::auto_t<const std::string>::Auto(std::to_string(var), name););
-neko_gui_auto_def(template <>, const bool, neko_nui::auto_t<const std::string>::Auto(std::to_string(var), name););
+neko_gui_auto_def(template <>, const float, neko_gui::auto_t<const std::string>::Auto(std::to_string(var), name););
+neko_gui_auto_def(template <>, const int, neko_gui::auto_t<const std::string>::Auto(std::to_string(var), name););
+neko_gui_auto_def(template <>, const unsigned, neko_gui::auto_t<const std::string>::Auto(std::to_string(var), name););
+neko_gui_auto_def(template <>, const bool, neko_gui::auto_t<const std::string>::Auto(std::to_string(var), name););
 
 // neko_gui_auto_def(template <>, const ImVec2, neko_gui_labelf_wrap(ctx, "%s(%f,%f)", (name.empty() ? "" : name + "=").c_str(), var.x, var.y););
 // neko_gui_auto_def(template <>, const ImVec4, neko_gui_labelf_wrap(ctx, "%s(%f,%f,%f,%f)", (name.empty() ? "" : name + "=").c_str(), var.x, var.y, var.z, var.w););
 
 //#define INTERNAL_NUM(_c, _imn)                                                                         \
 //    neko_gui_auto_def(template <>, _c, ImGui::InputScalar(name.c_str(), ImGuiDataType_##_imn, &var);); \
-//    neko_gui_auto_def(template <>, const _c, neko_nui::auto_t<const std::string>::Auto(std::to_string(var), name);)
+//    neko_gui_auto_def(template <>, const _c, neko_gui::auto_t<const std::string>::Auto(std::to_string(var), name);)
 
 // INTERNAL_NUM(u8, U8);
 // INTERNAL_NUM(u16, U16);
@@ -354,7 +354,7 @@ neko_gui_auto_def_inline_p((template <>), (const detail::c_array_t<int, 1>), nek
 
 neko_gui_auto_def(template <typename T>, T *, {
     if (var != nullptr)
-        neko_nui::detail::auto_expand<T>("Pointer " + name, *var);
+        neko_gui::detail::auto_expand<T>("Pointer " + name, *var);
     else {
         neko_gui_style_push_color(ctx, &ctx->style.text.color, neko_gui_rgb(255, 128, 128));
         neko_gui_labelf_wrap(ctx, "%s=NULL", name.c_str());
@@ -364,7 +364,7 @@ neko_gui_auto_def(template <typename T>, T *, {
 
 neko_gui_auto_def(template <typename T>, T *const, {
     if (var != nullptr)
-        neko_nui::detail::auto_expand<T>("Pointer " + name, *var);
+        neko_gui::detail::auto_expand<T>("Pointer " + name, *var);
     else {
         neko_gui_style_push_color(ctx, &ctx->style.text.color, neko_gui_rgb(255, 128, 128));
         neko_gui_labelf_wrap(ctx, "%s=NULL", name.c_str());
@@ -372,130 +372,130 @@ neko_gui_auto_def(template <typename T>, T *const, {
     }
 });
 
-neko_gui_auto_def_inline_p((template <typename T, std::size_t N>), (std::array<T, N>), neko_nui::detail::auto_container_values("std::array " + name, var););
-neko_gui_auto_def_inline_p((template <typename T, std::size_t N>), (const std::array<T, N>), neko_nui::detail::auto_container_values("std::array " + name, var););
-neko_gui_auto_def_inline_p((template <typename T, std::size_t N>), (detail::c_array_t<T, N>), neko_nui::detail::auto_container_values("c_array " + name, *(std::array<T, N> *)(&var)););
-neko_gui_auto_def_inline_p((template <typename T, std::size_t N>), (const detail::c_array_t<T, N>), neko_nui::detail::auto_container_values("c_array " + name, *(const std::array<T, N> *)(&var)););
+neko_gui_auto_def_inline_p((template <typename T, std::size_t N>), (std::array<T, N>), neko_gui::detail::auto_container_values("std::array " + name, var););
+neko_gui_auto_def_inline_p((template <typename T, std::size_t N>), (const std::array<T, N>), neko_gui::detail::auto_container_values("std::array " + name, var););
+neko_gui_auto_def_inline_p((template <typename T, std::size_t N>), (detail::c_array_t<T, N>), neko_gui::detail::auto_container_values("c_array " + name, *(std::array<T, N> *)(&var)););
+neko_gui_auto_def_inline_p((template <typename T, std::size_t N>), (const detail::c_array_t<T, N>), neko_gui::detail::auto_container_values("c_array " + name, *(const std::array<T, N> *)(&var)););
 
 neko_gui_auto_def_begin_p((template <typename T1, typename T2>),
                           (std::pair<T1, T2>)) if ((std::is_fundamental_v<T1> || std::is_same_v<std::string, T1>)&&(std::is_fundamental_v<T2> || std::is_same_v<std::string, T2>)) {
-    neko_nui::detail::auto_expand<T1>(name + ".first", var.first);
+    neko_gui::detail::auto_expand<T1>(name + ".first", var.first);
     { neko_gui_layout_row_dynamic(ctx, 30, 1); }
-    neko_nui::detail::auto_expand<T2>(name + ".second", var.second);
+    neko_gui::detail::auto_expand<T2>(name + ".second", var.second);
 }
 else {
-    neko_nui::detail::auto_expand<T1>(name + ".first", var.first);
-    neko_nui::detail::auto_expand<T2>(name + ".second", var.second);
+    neko_gui::detail::auto_expand<T1>(name + ".first", var.first);
+    neko_gui::detail::auto_expand<T2>(name + ".second", var.second);
 }
 
 neko_gui_auto_def_end();
 
-neko_gui_auto_def_begin_p((template <typename T1, typename T2>), (const std::pair<T1, T2>)) neko_nui::detail::auto_expand<const T1>(name + ".first", var.first);
+neko_gui_auto_def_begin_p((template <typename T1, typename T2>), (const std::pair<T1, T2>)) neko_gui::detail::auto_expand<const T1>(name + ".first", var.first);
 if (std::is_fundamental_v<T1> && std::is_fundamental_v<T2>) {
     neko_gui_layout_row_dynamic(ctx, 30, 1);
 }
-neko_nui::detail::auto_expand<const T2>(name + ".second", var.second);
+neko_gui::detail::auto_expand<const T2>(name + ".second", var.second);
 neko_gui_auto_def_end();
 
-neko_gui_auto_def(template <typename... Args>, std::tuple<Args...>, neko_nui::detail::auto_tuple("Tuple " + name, var););
-neko_gui_auto_def(template <typename... Args>, const std::tuple<Args...>, neko_nui::detail::auto_tuple("Tuple " + name, var););
+neko_gui_auto_def(template <typename... Args>, std::tuple<Args...>, neko_gui::detail::auto_tuple("Tuple " + name, var););
+neko_gui_auto_def(template <typename... Args>, const std::tuple<Args...>, neko_gui::detail::auto_tuple("Tuple " + name, var););
 
-neko_gui_auto_def_begin(template <typename T>, std::vector<T>) if (neko_nui::detail::auto_container_values<std::vector<T>>("Vector " + name, var)) {
-    neko_nui::detail::auto_container_button_pushback(var);
+neko_gui_auto_def_begin(template <typename T>, std::vector<T>) if (neko_gui::detail::auto_container_values<std::vector<T>>("Vector " + name, var)) {
+    neko_gui::detail::auto_container_button_pushback(var);
     if (!var.empty()) {
         neko_gui_layout_row_dynamic(ctx, 30, 1);
     }
-    neko_nui::detail::auto_container_button_popback(var);
+    neko_gui::detail::auto_container_button_popback(var);
 }
 neko_gui_auto_def_end();
 
-neko_gui_auto_def_begin(template <>, std::vector<bool>) if (neko_nui::detail::auto_container_tree_node<std::vector<bool>>("Vector " + name, var)) {
+neko_gui_auto_def_begin(template <>, std::vector<bool>) if (neko_gui::detail::auto_container_tree_node<std::vector<bool>>("Vector " + name, var)) {
     for (int i = 0; i < var.size(); ++i) {
         bool b = var[i];
-        neko_nui::auto_t<bool>::Auto(b, '[' + std::to_string(i) + ']');
+        neko_gui::auto_t<bool>::Auto(b, '[' + std::to_string(i) + ']');
         var[i] = b;
     }
-    neko_nui::detail::auto_container_button_pushback(var);
+    neko_gui::detail::auto_container_button_pushback(var);
     if (!var.empty()) {
         neko_gui_layout_row_dynamic(ctx, 30, 1);
     }
-    neko_nui::detail::auto_container_button_popback(var);
+    neko_gui::detail::auto_container_button_popback(var);
 }
 neko_gui_auto_def_end();
 
-neko_gui_auto_def_begin(template <typename T>, const std::vector<T>) neko_nui::detail::auto_container_values<const std::vector<T>>("Vector " + name, var);
+neko_gui_auto_def_begin(template <typename T>, const std::vector<T>) neko_gui::detail::auto_container_values<const std::vector<T>>("Vector " + name, var);
 neko_gui_auto_def_end();
 
-neko_gui_auto_def_begin(template <>, const std::vector<bool>) if (neko_nui::detail::auto_container_tree_node<const std::vector<bool>>("Vector " + name, var)) {
+neko_gui_auto_def_begin(template <>, const std::vector<bool>) if (neko_gui::detail::auto_container_tree_node<const std::vector<bool>>("Vector " + name, var)) {
     for (int i = 0; i < var.size(); ++i) {
-        neko_nui::auto_t<const bool>::Auto(var[i], '[' + std::to_string(i) + ']');
+        neko_gui::auto_t<const bool>::Auto(var[i], '[' + std::to_string(i) + ']');
     }
 }
 neko_gui_auto_def_end();
 
-neko_gui_auto_def_begin(template <typename T>, std::list<T>) if (neko_nui::detail::auto_container_values<std::list<T>>("List " + name, var)) {
-    neko_nui::detail::auto_container_button_pushfront(var);
+neko_gui_auto_def_begin(template <typename T>, std::list<T>) if (neko_gui::detail::auto_container_values<std::list<T>>("List " + name, var)) {
+    neko_gui::detail::auto_container_button_pushfront(var);
     if (auto_layout) neko_gui_layout_row_dynamic(ctx, 30, 2);
-    neko_nui::detail::auto_container_button_pushback(var);
-    neko_nui::detail::auto_container_button_popfront(var);
+    neko_gui::detail::auto_container_button_pushback(var);
+    neko_gui::detail::auto_container_button_popfront(var);
     if (!var.empty()) {
         neko_gui_layout_row_dynamic(ctx, 30, 1);
     }
-    neko_nui::detail::auto_container_button_popback(var);
+    neko_gui::detail::auto_container_button_popback(var);
 }
 neko_gui_auto_def_end();
 
-neko_gui_auto_def_begin(template <typename T>, const std::list<T>) neko_nui::detail::auto_container_values<const std::list<T>>("List " + name, var);
+neko_gui_auto_def_begin(template <typename T>, const std::list<T>) neko_gui::detail::auto_container_values<const std::list<T>>("List " + name, var);
 neko_gui_auto_def_end();
 
-neko_gui_auto_def_begin(template <typename T>, std::deque<T>) if (neko_nui::detail::auto_container_values<std::deque<T>>("Deque " + name, var)) {
-    neko_nui::detail::auto_container_button_pushfront(var);
+neko_gui_auto_def_begin(template <typename T>, std::deque<T>) if (neko_gui::detail::auto_container_values<std::deque<T>>("Deque " + name, var)) {
+    neko_gui::detail::auto_container_button_pushfront(var);
     if (auto_layout) neko_gui_layout_row_dynamic(ctx, 30, 2);
-    neko_nui::detail::auto_container_button_pushback(var);
-    neko_nui::detail::auto_container_button_popfront(var);
+    neko_gui::detail::auto_container_button_pushback(var);
+    neko_gui::detail::auto_container_button_popfront(var);
     if (!var.empty()) {
         neko_gui_layout_row_dynamic(ctx, 30, 1);
     }
-    neko_nui::detail::auto_container_button_popback(var);
+    neko_gui::detail::auto_container_button_popback(var);
 }
 neko_gui_auto_def_end();
 
-neko_gui_auto_def_begin(template <typename T>, const std::deque<T>) neko_nui::detail::auto_container_values<const std::deque<T>>("Deque " + name, var);
+neko_gui_auto_def_begin(template <typename T>, const std::deque<T>) neko_gui::detail::auto_container_values<const std::deque<T>>("Deque " + name, var);
 neko_gui_auto_def_end();
 
-neko_gui_auto_def_begin(template <typename T>, std::forward_list<T>) if (neko_nui::detail::auto_container_values<std::forward_list<T>>("Forward list " + name, var)) {
-    neko_nui::detail::auto_container_button_pushfront(var);
+neko_gui_auto_def_begin(template <typename T>, std::forward_list<T>) if (neko_gui::detail::auto_container_values<std::forward_list<T>>("Forward list " + name, var)) {
+    neko_gui::detail::auto_container_button_pushfront(var);
     if (!var.empty()) {
         neko_gui_layout_row_dynamic(ctx, 30, 1);
     }
-    neko_nui::detail::auto_container_button_popfront(var);
+    neko_gui::detail::auto_container_button_popfront(var);
 }
 neko_gui_auto_def_end();
-neko_gui_auto_def_begin(template <typename T>, const std::forward_list<T>) neko_nui::detail::auto_container_values<const std::forward_list<T>>("Forward list " + name, var);
+neko_gui_auto_def_begin(template <typename T>, const std::forward_list<T>) neko_gui::detail::auto_container_values<const std::forward_list<T>>("Forward list " + name, var);
 neko_gui_auto_def_end();
 
-neko_gui_auto_def_begin(template <typename T>, std::set<T>) neko_nui::detail::auto_container_values<std::set<T>>("Set " + name, var);
+neko_gui_auto_def_begin(template <typename T>, std::set<T>) neko_gui::detail::auto_container_values<std::set<T>>("Set " + name, var);
 // todo insert
 neko_gui_auto_def_end();
-neko_gui_auto_def_begin(template <typename T>, const std::set<T>) neko_nui::detail::auto_container_values<const std::set<T>>("Set " + name, var);
+neko_gui_auto_def_begin(template <typename T>, const std::set<T>) neko_gui::detail::auto_container_values<const std::set<T>>("Set " + name, var);
 neko_gui_auto_def_end();
 
-neko_gui_auto_def_begin(template <typename T>, std::unordered_set<T>) neko_nui::detail::auto_container_values<std::unordered_set<T>>("Unordered set " + name, var);
+neko_gui_auto_def_begin(template <typename T>, std::unordered_set<T>) neko_gui::detail::auto_container_values<std::unordered_set<T>>("Unordered set " + name, var);
 // todo insert
 neko_gui_auto_def_end();
-neko_gui_auto_def_begin(template <typename T>, const std::unordered_set<T>) neko_nui::detail::auto_container_values<const std::unordered_set<T>>("Unordered set " + name, var);
+neko_gui_auto_def_begin(template <typename T>, const std::unordered_set<T>) neko_gui::detail::auto_container_values<const std::unordered_set<T>>("Unordered set " + name, var);
 neko_gui_auto_def_end();
 
-neko_gui_auto_def_begin_p((template <typename K, typename V>), (std::map<K, V>)) neko_nui::detail::auto_map_container_values<std::map<K, V>>("Map " + name, var);
+neko_gui_auto_def_begin_p((template <typename K, typename V>), (std::map<K, V>)) neko_gui::detail::auto_map_container_values<std::map<K, V>>("Map " + name, var);
 // todo insert
 neko_gui_auto_def_end();
-neko_gui_auto_def_begin_p((template <typename K, typename V>), (const std::map<K, V>)) neko_nui::detail::auto_map_container_values<const std::map<K, V>>("Map " + name, var);
+neko_gui_auto_def_begin_p((template <typename K, typename V>), (const std::map<K, V>)) neko_gui::detail::auto_map_container_values<const std::map<K, V>>("Map " + name, var);
 neko_gui_auto_def_end();
 
-neko_gui_auto_def_begin_p((template <typename K, typename V>), (std::unordered_map<K, V>)) neko_nui::detail::auto_map_container_values<std::unordered_map<K, V>>("Unordered map " + name, var);
+neko_gui_auto_def_begin_p((template <typename K, typename V>), (std::unordered_map<K, V>)) neko_gui::detail::auto_map_container_values<std::unordered_map<K, V>>("Unordered map " + name, var);
 // todo insert
 neko_gui_auto_def_end();
-neko_gui_auto_def_begin_p((template <typename K, typename V>), (const std::unordered_map<K, V>)) neko_nui::detail::auto_map_container_values<const std::unordered_map<K, V>>("Unordered map " + name,
+neko_gui_auto_def_begin_p((template <typename K, typename V>), (const std::unordered_map<K, V>)) neko_gui::detail::auto_map_container_values<const std::unordered_map<K, V>>("Unordered map " + name,
                                                                                                                                                                              var);
 neko_gui_auto_def_end();
 

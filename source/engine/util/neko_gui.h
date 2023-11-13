@@ -2,6 +2,7 @@
 #define NEKO_GUI_H
 
 #include "engine/neko_engine.h"
+#include "engine/util/neko_asset.h"
 
 // gui implement
 #include "engine/builtin/neko_gui_impl.h"
@@ -40,6 +41,7 @@ typedef struct neko_gui_ctx_t {
     int32_t width, height;
     int32_t display_width, display_height;
     bool mouse_is_hover;
+    neko_nbt_tag_t* gui_layout_nbt_tags;
 } neko_gui_ctx_t;
 
 NEKO_API_DECL struct neko_gui_context* neko_gui_init(neko_gui_ctx_t* neko, uint32_t win_hndl, enum neko_gui_init_state init_state);
@@ -54,6 +56,8 @@ NEKO_API_DECL void neko_gui_font_stash_end(struct neko_gui_ctx_t* neko);
 NEKO_GUI_INTERN void neko_gui_clipboard_paste(neko_gui_handle usr, struct neko_gui_text_edit* edit);
 NEKO_GUI_INTERN void neko_gui_clipboard_copy(neko_gui_handle usr, const char* text, int32_t len);
 
+NEKO_API_DECL struct neko_gui_rect neko_gui_layout_get_bounds(neko_gui_ctx_t* neko_nui, const char* name);
+NEKO_API_DECL struct neko_gui_rect neko_gui_layout_get_bounds_ex(neko_gui_ctx_t* neko_nui, const char* name, struct neko_gui_rect default_bounds);
 NEKO_API_DECL void neko_gui_layout_save(neko_gui_ctx_t* neko_nui);
 
 NEKO_API_DECL void set_style(struct neko_gui_context* ctx, enum neko_gui_style_theme theme);

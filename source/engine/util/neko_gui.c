@@ -1,6 +1,8 @@
 
 #include "engine/util/neko_gui.h"
 
+#include "engine/util/neko_asset.h"
+
 #ifndef NEKO_GUI_DOUBLE_CLICK_LO
 #define NEKO_GUI_DOUBLE_CLICK_LO 0.02
 #endif
@@ -237,6 +239,11 @@ NEKO_API_DECL struct neko_gui_context* neko_gui_init(neko_gui_ctx_t* neko_nui, u
 
     // Font atlas
     neko_nui->atlas = neko_malloc(sizeof(struct neko_gui_font_atlas));
+
+    // 加载保存的 gui layout
+    if (neko_platform_file_exists("gui_layout.nbt")) {
+        neko_nui->gui_layout_nbt_tags = neko_nbt_readfile("gui_layout.nbt", NBT_PARSE_FLAG_USE_RAW);
+    }
 
     return &neko_nui->neko_gui_ctx;
 }
@@ -531,15 +538,83 @@ NEKO_GUI_INTERN void neko_gui_clipboard_copy(neko_gui_handle usr, const char* te
     // free(str);
 }
 
+struct neko_gui_rect neko_gui_layout_get_bounds(neko_gui_ctx_t* neko_nui, const char* name) { return neko_gui_layout_get_bounds_ex(neko_nui, name, neko_gui_rect(400, 200, 450, 400)); }
+
+struct neko_gui_rect neko_gui_layout_get_bounds_ex(neko_gui_ctx_t* neko_nui, const char* name, struct neko_gui_rect default_bounds) {
+
+    if (neko_nui->gui_layout_nbt_tags == NULL || strncmp(neko_nui->gui_layout_nbt_tags->name, "gui_layout", neko_nui->gui_layout_nbt_tags->name_size)) goto default_layout;
+
+    neko_assert(neko_nui->gui_layout_nbt_tags->type == NBT_TYPE_COMPOUND);
+
+    for (size_t i = 0; i < neko_nui->gui_layout_nbt_tags->tag_compound.size; i++) {
+        neko_nbt_tag_t* win_tag_level = neko_nui->gui_layout_nbt_tags->tag_compound.value[i];
+        if (!strcmp(win_tag_level->name, name)) {
+            neko_assert(win_tag_level->type == NBT_TYPE_COMPOUND);
+            // for (size_t i = 0; i < win_tag_level->tag_compound.size; i++) {
+            //     neko_nbt_tag_t* windows_prop = win_tag_level->tag_compound.value[i];
+            // }
+            f32 bx = neko_nbt_tag_compound_get(win_tag_level, "bx")->tag_float.value;
+            f32 by = neko_nbt_tag_compound_get(win_tag_level, "by")->tag_float.value;
+            f32 bw = neko_nbt_tag_compound_get(win_tag_level, "bw")->tag_float.value;
+            f32 bh = neko_nbt_tag_compound_get(win_tag_level, "bh")->tag_float.value;
+
+            return neko_gui_rect(bx, by, bw, bh);
+        }
+    }
+
+default_layout:
+    return default_bounds;  // 默认
+}
+
 void neko_gui_layout_save(neko_gui_ctx_t* neko_nui) {
+
+    // 释放先前加载的 gui layout
+    // if (neko_nui->gui_layout_nbt_tags) neko_nbt_free_tag(neko_nui->gui_layout_nbt_tags);
 
     struct neko_gui_window* iter;
     if (!&neko_nui->neko_gui_ctx) return;
     iter = neko_nui->neko_gui_ctx.begin;
+
+    neko_nbt_tag_t* tag_level;
+    if (!neko_nui->gui_layout_nbt_tags) {
+        tag_level = neko_nbt_new_tag_compound();
+        neko_nbt_set_tag_name(tag_level, "gui_layout", strlen("gui_layout"));
+    } else {
+        tag_level = neko_nui->gui_layout_nbt_tags;
+    }
+
     while (iter) {
         if (!(iter->flags & NEKO_GUI_WINDOW_HIDDEN)) {
-            neko_println("%f,%f,%f,%f %s", iter->bounds.x, iter->bounds.y, iter->bounds.w, iter->bounds.h, iter->name_string);
+            // neko_println("%f,%f,%f,%f %s", iter->bounds.x, iter->bounds.y, iter->bounds.w, iter->bounds.h, iter->name_string);
+
+            neko_nbt_tag_t* win_tag_level = neko_nbt_tag_compound_get(tag_level, iter->name_string);
+            if (win_tag_level == NULL) {
+                win_tag_level = neko_nbt_new_tag_compound();
+                neko_nbt_set_tag_name(win_tag_level, iter->name_string, strlen(iter->name_string));
+                neko_nbt_tag_compound_append(tag_level, win_tag_level);
+            }
+
+#define overwrite_nbt(_tag, _name, _value)                                 \
+    neko_nbt_tag_t* tag_##_name = neko_nbt_tag_compound_get(_tag, #_name); \
+    if (tag_##_name == NULL) {                                             \
+        tag_##_name = neko_nbt_new_tag_float(_value);                      \
+        neko_nbt_set_tag_name(tag_##_name, #_name, strlen(#_name));        \
+        neko_nbt_tag_compound_append(_tag, tag_##_name);                   \
+    } else {                                                               \
+        tag_##_name->tag_float.value = _value;                             \
+    }
+
+            overwrite_nbt(win_tag_level, bx, iter->bounds.x);
+            overwrite_nbt(win_tag_level, by, iter->bounds.y);
+            overwrite_nbt(win_tag_level, bw, iter->bounds.w);
+            overwrite_nbt(win_tag_level, bh, iter->bounds.h);
         }
         iter = iter->next;
     }
+
+    // neko_nbt_print_tree(tag_level, 2);
+
+    neko_nbt_writefile("gui_layout.nbt", tag_level, NBT_WRITE_FLAG_USE_RAW);
+
+    neko_nbt_free_tag(tag_level);
 }

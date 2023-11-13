@@ -4,6 +4,9 @@
 
 #include "engine/neko_engine.h"
 
+// c2
+#include "engine/builtin/cute_c2.h"
+
 #define SPRITE_SCALE 2
 
 typedef struct tile_s {
@@ -32,6 +35,12 @@ typedef struct layer_s {
 typedef struct object_s {
     u32 id;
     s32 x, y, width, height;
+    C2_TYPE phy_type;
+    c2AABB aabb;
+    union {
+        c2AABB box;
+        c2Poly poly;
+    } phy;
 } object_t;
 
 typedef struct object_group_s {

@@ -2292,3 +2292,6 @@ void neko_quit() {
 // builtin
 #include "engine/builtin/neko_aseprite.h"
 #include "engine/builtin/neko_gui_internal.h"
+
+#define CUTE_C2_IMPLEMENTATION
+#include "engine/builtin/cute_c2.h"

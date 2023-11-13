@@ -1716,7 +1716,7 @@ char *neko_script_mprintf(char *fmt, ...) {
     return buffer;
 }
 
-void vec_grow(void **vector, size_t more, size_t type_size) {
+void neko_script_vector_grow_impl(void **vector, size_t more, size_t type_size) {
     neko_script_vector_t *meta = neko_script_vector_meta(*vector);
     size_t count = 0;
     void *data = NULL;
@@ -1947,6 +1947,7 @@ void neko_script_ctx_addvar(neko_script_ctx_t *ctx, char *name, neko_script_valu
 
 neko_script_fn_t *neko_script_ctx_getfn(neko_script_ctx_t *ctx, char *name) {
     neko_script_value_t *v = neko_script_ctx_getvar(ctx, name);
+    while (v != NULL && v->type == NEKO_SC_VALUE_REF) v = v->ref;  // 追溯函数引用
     if (v == NULL || v->type != NEKO_SC_VALUE_FN) return NULL;
     return v->fn;
 }
@@ -1956,11 +1957,10 @@ void neko_script_ctx_addfn(neko_script_ctx_t *ctx, neko_script_binary_t *binary,
     func->address = address;
     func->argc = argc;
     func->native = fn;
-    func->binary = binary;
+    func->func_binary = binary;
     func->ctx = ctx;
 
     neko_script_value_t *v = neko_script_value_fn(func);
-
     neko_script_ctx_addvar(ctx, name, v);
 }
 
@@ -2167,7 +2167,7 @@ neko_script_value_t *neko_script_value_ref(neko_script_value_t *val) {
     return v;
 }
 
-neko_script_value_t *neko_script_value_native(void *val) {
+neko_script_value_t *neko_script_value_native(ns_userdata_t val) {
     neko_script_value_t *v = neko_script_gc_alloc_value();
     v->type = NEKO_SC_VALUE_NATIVE;
     v->refs = 0;
@@ -2619,7 +2619,7 @@ void neko_script_exec(neko_script_ctx_t *global, neko_script_ctx_t *context, nek
                 case NEKO_SC_OPCODE_POP:
                     neko_script_vector_pop(global->stack);
                     break;
-                case NEKO_SC_OPCODE_STOREFN: {
+                case NEKO_SC_OPCODE_STOREFN: {  // 声明定义函数
                     int adr = (int)neko_script_vector_pop(global->stack)->number;
                     int argc = (int)neko_script_vector_pop(global->stack)->number;
                     neko_script_ctx_addfn(context, binary, getstr(opcodes, &ip), argc, adr, NULL);
@@ -2650,8 +2650,8 @@ void neko_script_exec(neko_script_ctx_t *global, neko_script_ctx_t *context, nek
                     neko_script_gc_trigger();
                     break;
                 }
-                case NEKO_SC_OPCODE_CALL:
-                case NEKO_SC_OPCODE_CALLM: {
+                case NEKO_SC_OPCODE_CALL:     // 函数调用
+                case NEKO_SC_OPCODE_CALLM: {  // 成员函数调用
                     neko_script_value_t *fn_value = neko_script_vector_pop(global->stack);
                     while (fn_value->type == NEKO_SC_VALUE_REF) fn_value = fn_value->ref;
                     if (fn_value->type != NEKO_SC_VALUE_FN) {
@@ -2662,21 +2662,21 @@ void neko_script_exec(neko_script_ctx_t *global, neko_script_ctx_t *context, nek
                     if (byte == NEKO_SC_OPCODE_CALLM) {
                         parent = neko_script_vector_pop(global->stack);
                     }
-                    neko_script_value_t *argc = neko_script_vector_pop(global->stack);
+                    neko_script_value_t *argc = neko_script_vector_pop(global->stack);  // 函数实参数量
 
                     // 判断调用函数实参数量是否正确
                     if ((int)(argc->number) < fn->argc) {
                         neko_script_throw("To little arguments for function, expect %d got %d", fn->argc, (int)(argc->number));
                     }
 
-                    if (fn->native != NULL) {
+                    if (fn->native != NULL) {  // 判断是否为原生绑定函数
                         fn->native((int)(argc->number), global);
                     } else {
-                        neko_script_vector_push(global->stack, argc);
-                        neko_script_binary_t *fn_binary = fn->binary;
+                        neko_script_vector_push(global->stack, argc);  // 推入(还原)函数实参数量
+                        neko_script_binary_t *fn_binary = fn->func_binary;
                         size_t sp = neko_script_vector_size(global->stack) - 1 - (int)(argc->number);
                         if (binary == fn_binary) {
-                            // same module :)
+                            // 同一个模块
                             neko_script_vector_push(call_stack, ((callptr_t){ip, sp, context, neko_script_vector_size(ctx_stack), binary}));
                             neko_script_vector_push(ctx_stack, context);
                             context = neko_script_ctx_new(NULL);
@@ -2687,7 +2687,7 @@ void neko_script_exec(neko_script_ctx_t *global, neko_script_ctx_t *context, nek
                             }
                             ip = fn->address;
                         } else {
-                            // diffrent module :(
+                            // 不同的模块
                             // TODO: Fix try .. catch on external modules
                             neko_script_vector_push(call_stack, ((callptr_t){ip, sp, context, neko_script_vector_size(ctx_stack), binary}));
                             neko_script_vector_push(ctx_stack, context);
@@ -2844,7 +2844,7 @@ end:
 
 // VM END
 
-neko_script_binary_t *neko_script_compile_str(char *code) {
+neko_script_binary_t *neko_script_compile_str(const char *code) {
     neko_script_try {
         neko_script_parser_t *parser = neko_script_parser_new(code);
         neko_script_node_t *tree = neko_script_parse(parser);
@@ -2871,7 +2871,7 @@ int neko_script_eval_str(neko_script_ctx_t *ctx, char *code, neko_script_binary_
     return 1;
 }
 
-neko_script_binary_t *neko_script_compile_file(char *filename) {
+neko_script_binary_t *neko_script_compile_file(const char *filename) {
     FILE *fd = fopen(filename, "r");
     if (!fd) {
         sprintf(neko_script_ex_msg, "failed to open file %s", filename);
@@ -2895,16 +2895,16 @@ neko_script_binary_t *neko_script_compile_file(char *filename) {
     return bin;
 }
 
-int neko_script_eval_file(neko_script_ctx_t *ctx, char *filename, neko_script_binary_t *(*load_module)(char *name), void *(trap)(neko_script_ctx_t *ctx)) {
+neko_script_binary_t *neko_script_eval_file(neko_script_ctx_t *ctx, char *filename, neko_script_binary_t *(*load_module)(char *name), void *(trap)(neko_script_ctx_t *ctx), bool do_free) {
     neko_script_binary_t *bin = neko_script_compile_file(filename);
-    if (!bin) return 0;
+    if (!bin) return NULL;
 
     neko_script_try {
         neko_script_exec(ctx, ctx, bin, 0, load_module, trap);
-        neko_script_binary_free(bin);
+        if (do_free) neko_script_binary_free(bin);
     }
-    neko_script_catch { return 0; }
-    return 1;
+    neko_script_catch { return NULL; }
+    return bin;
 }
 
 int neko_script_dis_str(neko_script_ctx_t *ctx, char *code, neko_script_binary_t *(*load_module)(char *name), void *(trap)(neko_script_ctx_t *ctx)) {

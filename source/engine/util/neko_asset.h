@@ -295,4 +295,263 @@ NEKO_API_DECL neko_inline bool neko_pack_check(neko_pack_result result) {
     return false;
 }
 
+typedef enum neko_xml_attribute_type_t {
+    NEKO_XML_ATTRIBUTE_NUMBER,
+    NEKO_XML_ATTRIBUTE_BOOLEAN,
+    NEKO_XML_ATTRIBUTE_STRING,
+} neko_xml_attribute_type_t;
+
+typedef struct neko_xml_attribute_t {
+    char* name;
+    neko_xml_attribute_type_t type;
+
+    union {
+        double number;
+        bool boolean;
+        char* string;
+    } value;
+} neko_xml_attribute_t;
+
+// neko_hash_table_decl(u64, neko_xml_attribute_t, neko_hash_u64, neko_hash_key_comp_std_type);
+
+typedef struct neko_xml_node_t {
+    char* name;
+    char* text;
+
+    neko_hash_table(u64, neko_xml_attribute_t) attributes;
+    neko_dyn_array(struct neko_xml_node_t) children;
+
+} neko_xml_node_t;
+
+typedef struct neko_xml_document_t {
+    neko_dyn_array(neko_xml_node_t) nodes;
+} neko_xml_document_t;
+
+typedef struct neko_xml_node_iter_t {
+    neko_xml_document_t* doc;
+    neko_xml_node_t* node;
+    const_str name;
+    u32 idx;
+
+    neko_xml_node_t* current;
+} neko_xml_node_iter_t;
+
+NEKO_API_DECL neko_xml_document_t* neko_xml_parse(const_str source);
+NEKO_API_DECL neko_xml_document_t* neko_xml_parse_file(const_str path);
+NEKO_API_DECL void neko_xml_free(neko_xml_document_t* document);
+
+NEKO_API_DECL neko_xml_attribute_t* neko_xml_find_attribute(neko_xml_node_t* node, const_str name);
+NEKO_API_DECL neko_xml_node_t* neko_xml_find_node(neko_xml_document_t* doc, const_str name);
+NEKO_API_DECL neko_xml_node_t* neko_xml_find_node_child(neko_xml_node_t* node, const_str name);
+
+NEKO_API_DECL const_str neko_xml_get_error();
+
+NEKO_API_DECL neko_xml_node_iter_t neko_xml_new_node_iter(neko_xml_document_t* doc, const_str name);
+NEKO_API_DECL neko_xml_node_iter_t neko_xml_new_node_child_iter(neko_xml_node_t* node, const_str name);
+NEKO_API_DECL bool neko_xml_node_iter_next(neko_xml_node_iter_t* iter);
+
+/*==========================
+// NEKO_NBT
+==========================*/
+
+// Based on https://wiki.vg/NBT (Named binary tag be used in Minecraft)
+
+#define NEKO_NBT_BUFFER_SIZE 32768
+
+typedef enum {
+    NBT_TYPE_END,
+    NBT_TYPE_BYTE,
+    NBT_TYPE_SHORT,
+    NBT_TYPE_INT,
+    NBT_TYPE_LONG,
+    NBT_TYPE_FLOAT,
+    NBT_TYPE_DOUBLE,
+    NBT_TYPE_BYTE_ARRAY,
+    NBT_TYPE_STRING,
+    NBT_TYPE_LIST,
+    NBT_TYPE_COMPOUND,
+    NBT_TYPE_INT_ARRAY,
+    NBT_TYPE_LONG_ARRAY,
+    NBT_NO_OVERRIDE
+} neko_nbt_tag_type_t;
+
+typedef struct neko_nbt_tag_t neko_nbt_tag_t;
+
+struct neko_nbt_tag_t {
+
+    neko_nbt_tag_type_t type;
+
+    char* name;
+    size_t name_size;
+
+    union {
+        struct {
+            s8 value;
+        } tag_byte;
+        struct {
+            s16 value;
+        } tag_short;
+        struct {
+            s32 value;
+        } tag_int;
+        struct {
+            s64 value;
+        } tag_long;
+        struct {
+            float value;
+        } tag_float;
+        struct {
+            double value;
+        } tag_double;
+        struct {
+            s8* value;
+            size_t size;
+        } tag_byte_array;
+        struct {
+            char* value;
+            size_t size;
+        } tag_string;
+        struct {
+            neko_nbt_tag_t** value;
+            neko_nbt_tag_type_t type;
+            size_t size;
+        } tag_list;
+        struct {
+            neko_nbt_tag_t** value;
+            size_t size;
+        } tag_compound;
+        struct {
+            s32* value;
+            size_t size;
+        } tag_int_array;
+        struct {
+            s64* value;
+            size_t size;
+        } tag_long_array;
+    };
+};
+
+typedef struct {
+    size_t (*read)(void* userdata, u8* data, size_t size);
+    void* userdata;
+} neko_nbt_reader_t;
+
+typedef struct {
+    size_t (*write)(void* userdata, u8* data, size_t size);
+    void* userdata;
+} neko_nbt_writer_t;
+
+typedef enum {
+    NBT_PARSE_FLAG_USE_RAW = 1,
+} neko_nbt_parse_flags_t;
+
+typedef enum { NBT_WRITE_FLAG_USE_RAW = 1 } neko_nbt_write_flags_t;
+
+NEKO_API_DECL neko_nbt_tag_t* neko_nbt_parse(neko_nbt_reader_t reader, int parse_flags);
+NEKO_API_DECL void neko_nbt_write(neko_nbt_writer_t writer, neko_nbt_tag_t* tag, int write_flags);
+
+NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_byte(s8 value);
+NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_short(s16 value);
+NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_int(s32 value);
+NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_long(s64 value);
+NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_float(float value);
+NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_double(double value);
+NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_byte_array(s8* value, size_t size);
+NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_string(const char* value, size_t size);
+NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_list(neko_nbt_tag_type_t type);
+NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_compound(void);
+NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_int_array(s32* value, size_t size);
+NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_long_array(s64* value, size_t size);
+
+NEKO_API_DECL void neko_nbt_set_tag_name(neko_nbt_tag_t* tag, const char* name, size_t size);
+
+NEKO_API_DECL void neko_nbt_tag_list_append(neko_nbt_tag_t* list, neko_nbt_tag_t* value);
+NEKO_API_DECL neko_nbt_tag_t* neko_nbt_tag_list_get(neko_nbt_tag_t* tag, size_t index);
+NEKO_API_DECL void neko_nbt_tag_compound_append(neko_nbt_tag_t* compound, neko_nbt_tag_t* value);
+NEKO_API_DECL neko_nbt_tag_t* neko_nbt_tag_compound_get(neko_nbt_tag_t* tag, const char* key);
+
+NEKO_API_DECL void neko_nbt_free_tag(neko_nbt_tag_t* tag);
+
+NEKO_API_DECL neko_nbt_tag_t* neko_read_nbt_file_default(const char* name, int flags);
+NEKO_API_DECL void neko_write_nbt_file_default(const char* name, neko_nbt_tag_t* tag, int flags);
+
+#define neko_nbt_readfile neko_read_nbt_file_default
+#define neko_nbt_writefile neko_write_nbt_file_default
+
+NEKO_API_DECL void neko_nbt_print_tree(neko_nbt_tag_t* tag, int indentation);
+
+/*==========================
+// NEKO_FONT
+==========================*/
+
+typedef u64 neko_font_u64;
+
+extern const char* neko_font_error_reason;
+
+typedef struct neko_font_glyph_t {
+    float minx, miny;
+    float maxx, maxy;
+    float w, h;
+    int xoffset, yoffset;
+    int xadvance;
+} neko_font_glyph_t;
+
+typedef struct neko_font_t {
+    int font_height;
+    int glyph_count;
+    neko_font_glyph_t* glyphs;
+    int* codes;
+    int atlas_w;
+    int atlas_h;
+    neko_font_u64 atlas_id;
+    struct neko_font_kern_t* kern;
+    void* mem_ctx;
+} neko_font_t;
+
+NEKO_API_DECL neko_font_t* neko_font_load_ascii(neko_font_u64 atlas_id, const void* pixels, int w, int h, int stride, void* mem_ctx);
+NEKO_API_DECL neko_font_t* neko_font_load_1252(neko_font_u64 atlas_id, const void* pixels, int w, int h, int stride, void* mem_ctx);
+NEKO_API_DECL neko_font_t* neko_font_load_bmfont(neko_font_u64 atlas_id, const void* fnt, int size, void* mem_ctx);
+NEKO_API_DECL void neko_font_free(neko_font_t* font);
+
+NEKO_API_DECL int neko_font_text_width(neko_font_t* font, const char* text);
+NEKO_API_DECL int neko_font_text_height(neko_font_t* font, const char* text);
+NEKO_API_DECL int neko_font_max_glyph_height(neko_font_t* font, const char* text);
+
+NEKO_API_DECL int neko_font_get_glyph_index(neko_font_t* font, int code);  // returns run-time glyph index associated with a utf32 codepoint (unicode)
+NEKO_API_DECL neko_font_glyph_t* neko_font_get_glyph(neko_font_t* font, int index);  // returns a glyph, given run-time glyph index
+NEKO_API_DECL int neko_font_kerning(neko_font_t* font, int code0, int code1);
+
+// Here just in case someone wants to load up a custom file format.
+NEKO_API_DECL neko_font_t* neko_font_create_blank(int font_height, int glyph_count);
+NEKO_API_DECL void neko_font_add_kerning_pair(neko_font_t* font, int code0, int code1, int kerning);
+
+typedef struct neko_font_vert_t {
+    float x, y;
+    float u, v;
+} neko_font_vert_t;
+
+typedef struct neko_font_rect_t {
+    float left;
+    float right;
+    float top;
+    float bottom;
+} neko_font_rect_t;
+
+// Fills in an array of triangles, two triangles for each quad, one quad for each text glyph.
+// Will return 0 if the function tries to overrun the vertex buffer. Quads are setup in 2D where
+// the y axis points up, x axis points left. The top left of the first glyph is placed at the
+// coordinate {`x`, `y`}. Newlines move quads downward by the text height added with `line_height`.
+// `count_written` contains the number of outputted vertices. `wrap_w` is used for word wrapping if
+// positive, and ignored if negative. `clip_rect`, if not NULL, will be used to perform CPU-side
+// clipping to make sure quads are only output within the `clip_rect` bounding box. Clipping is
+// useful to implement scrollable text, and keep multiple different text instances within a single
+// vertex buffer (to reduce draw calls), as opposed to using a GPU-side scissor box, which would
+// require a different draw call for each scissor.
+NEKO_API_DECL int neko_font_fill_vertex_buffer(neko_font_t* font, const char* text, float x, float y, float wrap_w, float line_height, neko_font_rect_t* clip_rect, neko_font_vert_t* buffer,
+                                               int buffer_max,
+                                 int* count_written);
+
+// Decodes a utf8 codepoint and returns the advanced string pointer.
+NEKO_API_DECL const char* neko_font_decode_utf8(const char* text, int* cp);
+
 #endif  // NEKO_ASSET_H

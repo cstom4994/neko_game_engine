@@ -6,9 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if defined(NEKO_ENGINE)
-#include "engine/neko.h"
-#else
+// 用于脚本编译期外部测试
+#if defined(NO_NEKO_ENGINE)
 
 #ifdef NEKO_API_DLL_EXPORT
 #ifdef __cplusplus
@@ -41,6 +40,8 @@ typedef float f32;
 typedef double f64;
 typedef const char *const_str;
 
+#else
+#include "engine/neko.h"  // 否则引用 neko 头
 #endif
 
 typedef struct neko_script_vector_s {
@@ -50,8 +51,10 @@ typedef struct neko_script_vector_s {
 
 #define neko_script_vector(x) x *
 
-#define neko_script_vector_try_grow(VECTOR, MORE) \
-    (((!(VECTOR) || neko_script_vector_meta(VECTOR)->used + (MORE) >= neko_script_vector_meta(VECTOR)->allocated)) ? (void)vec_grow(((void **)&(VECTOR)), (MORE), sizeof(*(VECTOR))) : (void)0)
+#define neko_script_vector_try_grow(VECTOR, MORE)                                                                  \
+    (((!(VECTOR) || neko_script_vector_meta(VECTOR)->used + (MORE) >= neko_script_vector_meta(VECTOR)->allocated)) \
+             ? (void)neko_script_vector_grow_impl(((void **)&(VECTOR)), (MORE), sizeof(*(VECTOR)))                 \
+             : (void)0)
 
 #define neko_script_vector_meta(VECTOR) ((neko_script_vector_t *)(((unsigned char *)(VECTOR)) - sizeof(neko_script_vector_t)))
 
@@ -84,7 +87,7 @@ typedef struct neko_script_vector_s {
 
 #define vec_delete(VECTOR) free(neko_script_vector_meta(VECTOR))
 
-NEKO_API_DECL void vec_grow(void **vector, size_t more, size_t type_size);
+NEKO_API_DECL void neko_script_vector_grow_impl(void **vector, size_t more, size_t type_size);
 
 enum NEKO_SC_NODETYPE {
     NEKO_SC_NODETYPE_ROOT,
@@ -202,7 +205,7 @@ struct neko_script_ctx_s;
 struct neko_script_fn_s {
     int address;
     int argc;
-    struct neko_script_binary_s *binary;  // 带function代码的二进制
+    struct neko_script_binary_s *func_binary;  // 带function代码的二进制
     struct neko_script_ctx_s *ctx;
     void (*native)(int, struct neko_script_ctx_s *);  // 如果不为 NULL 则调用
 };
@@ -261,7 +264,7 @@ struct neko_script_value_s {
             neko_script_vector(struct neko_script_value_s *) values;
         } dict;
         struct neko_script_fn_s *fn;
-        struct neko_script_value_s *ref;
+        struct neko_script_value_s *ref;  // 存储引用 同时可以用来存储 native userdata (void*)
     };
 };
 
@@ -325,8 +328,8 @@ enum NEKO_SC_OPCODE {
 #ifdef NEKO_SC_DEBUG
 
 #define NEKO_SC_OPCODE_TRAP_MASK 128
-#define neko_script_settrap(bin, ip) binary->block[ip] |= NEKO_SC_OPCODE_TRAP_MASK;
-#define neko_script_cleartrap(bin, ip) binary->block[ip] &= ~NEKO_SC_OPCODE_TRAP_MASK;
+#define neko_script_settrap(bin, ip) func_binary->block[ip] |= NEKO_SC_OPCODE_TRAP_MASK;
+#define neko_script_cleartrap(bin, ip) func_binary->block[ip] &= ~NEKO_SC_OPCODE_TRAP_MASK;
 
 #endif
 
@@ -481,6 +484,8 @@ struct neko_script_parser_s {
 
 typedef struct neko_script_parser_s neko_script_parser_t;
 
+typedef void *ns_userdata_t;
+
 NEKO_API_DECL neko_script_parser_t *neko_script_parser_new(char *input);
 NEKO_API_DECL void neko_script_parser_free(neko_script_parser_t *parser);
 
@@ -504,7 +509,7 @@ NEKO_API_DECL neko_script_value_t *neko_script_value_tuple(neko_script_vector(ne
 NEKO_API_DECL neko_script_value_t *neko_script_value_dict(neko_script_vector(char *) names, neko_script_vector(neko_script_value_t *) values);
 NEKO_API_DECL neko_script_value_t *neko_script_value_fn(neko_script_fn_t *fn);
 NEKO_API_DECL neko_script_value_t *neko_script_value_ref(neko_script_value_t *val);
-NEKO_API_DECL neko_script_value_t *neko_script_value_native(void *val);
+NEKO_API_DECL neko_script_value_t *neko_script_value_native(ns_userdata_t val);
 
 NEKO_API_DECL void neko_script_value_assign(neko_script_value_t *a, neko_script_value_t *b);
 
@@ -520,14 +525,299 @@ NEKO_API_DECL neko_script_marker_t neko_script_getmarker(neko_script_binary_t *b
 NEKO_API_DECL void neko_script_exec(neko_script_ctx_t *global, neko_script_ctx_t *context, neko_script_binary_t *binary, int ip, neko_script_binary_t *(*load_module)(char *name),
                                     void *(trap)(neko_script_ctx_t *ctx));
 
-NEKO_API_DECL neko_script_binary_t *neko_script_compile_str(char *code);
-NEKO_API_DECL neko_script_binary_t *neko_script_compile_file(char *filename);
+NEKO_API_DECL neko_script_binary_t *neko_script_compile_str(const char *code);
+NEKO_API_DECL neko_script_binary_t *neko_script_compile_file(const char *filename);
 
 NEKO_API_DECL int neko_script_eval_str(neko_script_ctx_t *ctx, char *code, neko_script_binary_t *(*load_module)(char *name), void *(trap)(neko_script_ctx_t *ctx));
-NEKO_API_DECL int neko_script_eval_file(neko_script_ctx_t *ctx, char *filename, neko_script_binary_t *(*load_module)(char *name), void *(trap)(neko_script_ctx_t *ctx));
+NEKO_API_DECL neko_script_binary_t *neko_script_eval_file(neko_script_ctx_t *ctx, char *filename, neko_script_binary_t *(*load_module)(char *name), void *(trap)(neko_script_ctx_t *ctx), bool do_free);
 NEKO_API_DECL int neko_script_dis_str(neko_script_ctx_t *ctx, char *code, neko_script_binary_t *(*load_module)(char *name), void *(trap)(neko_script_ctx_t *ctx));
 
 #if defined(NEKO_CPP_SRC)
+
+#include <type_traits>
+#include <vector>
+
+template <typename T>
+struct neko_is_vector : std::false_type {};
+
+template <typename T, typename Alloc>
+struct neko_is_vector<std::vector<T, Alloc>> : std::true_type {};
+
+namespace detail {
+// 某些旧版本的 GCC 需要
+template <typename...>
+struct voider {
+    using type = void;
+};
+
+// std::void_t 将成为 C++17 的一部分 但在这里我还是自己实现吧
+template <typename... T>
+using void_t = typename voider<T...>::type;
+
+template <typename T, typename U = void>
+struct is_mappish_impl : std::false_type {};
+
+template <typename T>
+struct is_mappish_impl<T, void_t<typename T::key_type, typename T::mapped_type, decltype(std::declval<T &>()[std::declval<const typename T::key_type &>()])>> : std::true_type {};
+}  // namespace detail
+
+template <typename T>
+struct neko_is_mappish : detail::is_mappish_impl<T>::type {};
+
+template <class... Ts>
+struct neko_overloaded : Ts... {
+    using Ts::operator()...;
+};
+template <class... Ts>
+neko_overloaded(Ts...) -> neko_overloaded<Ts...>;
+
+template <typename T>
+auto neko_script_auto(T &&value) {
+    using TT = std::decay_t<decltype(value)>;
+    if constexpr (neko_is_vector<TT>::value) {
+        neko_script_vector(neko_script_value_t *) v = NULL;
+        using ET = std::decay_t<decltype(value)>::value_type;  // std::vector 的元素类型
+        if constexpr (std::is_same_v<ET, neko_script_value_t *>) {
+            for (int i = 0; i < value.size(); i++) {
+                neko_script_vector_push(v, (neko_script_value_t *)value[i]);
+            }
+        } else {
+            for (int i = 0; i < value.size(); i++) {
+                neko_script_vector_push(v, neko_script_auto(value[i]));
+            }
+        }
+        return v;
+    } else if constexpr (neko_is_mappish<TT>::value) {
+        neko_script_vector(char *) k = NULL;
+        neko_script_vector(neko_script_value_t *) v = NULL;
+        using ET = std::decay_t<decltype(value)>::value_type::second_type;  // std::map 的值类型
+        // print_type_name(ET);
+        if constexpr (std::is_same_v<ET, neko_script_value_t *>) {
+            for (auto &[kk, vv] : value) {
+                neko_script_vector_push(k, strdup(kk));
+                neko_script_vector_push(v, vv);
+            }
+        } else {
+            for (auto &[kk, vv] : value) {
+                neko_script_vector_push(k, strdup(kk));
+                neko_script_vector_push(v, neko_script_auto(vv));
+            }
+        }
+        return std::make_pair(k, v);
+    } else {
+        auto my_type = neko_overloaded{
+                [](void) { return neko_script_value_null(); },                                                   //
+                [](double value) { return neko_script_value_number(value); },                                    //
+                [](const char *value) { return neko_script_value_string(strdup(value)); },                       //
+                [](neko_script_vector(neko_script_value_t *) value) { return neko_script_value_array(value); },  //
+                [](ns_userdata_t value) { return neko_script_value_native(value); },                             //
+        };
+        return my_type(value);
+    }
+}
+
+template <typename T>
+auto neko_script_auto_add(neko_script_ctx_t *ctx, const char *name, T &&value) -> void {
+    using TT = std::decay_t<decltype(value)>;
+
+    auto my_reg = neko_overloaded{
+            [ctx, name](void) { neko_script_ctx_addvar(ctx, strdup(name), neko_script_value_null()); },
+            [ctx, name](ns_userdata_t value) { neko_script_ctx_addvar(ctx, strdup(name), neko_script_value_native(value)); },
+            [ctx, name](double value) { neko_script_ctx_addvar(ctx, strdup(name), neko_script_auto(value)); },
+            [ctx, name](const char *value) { neko_script_ctx_addvar(ctx, strdup(name), neko_script_auto(value)); },
+            [ctx, name](neko_script_vector(neko_script_value_t *) value) { neko_script_ctx_addvar(ctx, strdup(name), neko_script_auto(value)); },
+            [ctx, name](neko_script_vector(char *) names, neko_script_vector(neko_script_value_t *) value) { neko_script_ctx_addvar(ctx, strdup(name), neko_script_value_dict(names, value)); },
+    };
+
+    if constexpr (neko_is_vector<TT>::value) {
+        auto &&v = neko_script_auto(std::forward<T>(value));
+        my_reg(v);
+    } else if constexpr (neko_is_mappish<TT>::value) {
+        auto [k, v] = neko_script_auto(std::forward<T>(value));
+        my_reg(k, v);
+    } else {
+        auto &&v = std::forward<T>(value);
+        my_reg(v);
+    }
+}
+
+template <typename T>
+auto neko_script_auto(neko_script_ctx_t *ctx, char *name) -> T {
+    using TT = std::decay_t<T>;
+    neko_script_value_t *value = neko_script_ctx_getvar(ctx, name);
+    if (NULL == value) return {};
+    if constexpr (std::same_as<T, double> || std::same_as<T, float> || std::is_integral_v<T> || std::is_floating_point_v<T>) {
+        assert(value->type == NEKO_SC_VALUE_NUMBER);
+        return static_cast<T>(value->number);
+    } else if constexpr (std::same_as<T, ns_userdata_t>) {  // Native userdata
+        assert(value->type == NEKO_SC_VALUE_NATIVE);
+        return static_cast<T>(value->ref);
+    } else if constexpr (std::same_as<T, char *>) {
+        assert(value->type == NEKO_SC_VALUE_STRING);
+        return static_cast<T>(value->string);
+    } else if constexpr (neko_is_vector<TT>::value) {
+        assert(value->type == NEKO_SC_VALUE_ARRAY);
+        std::vector<double> vec{};
+        for (int i = 0; i < neko_script_vector_size(value->array); i++) {
+            double num = value->array[i]->number;
+            vec.push_back(num);
+        }
+        return vec;
+    } else if constexpr (neko_is_mappish<TT>::value) {
+        assert(value->type == NEKO_SC_VALUE_DICT);
+        neko_script_vector(char *) k = value->dict.names;
+        neko_script_vector(neko_script_value_t *) v = value->dict.values;
+        std::map<const char *, double> map{};
+        for (int i = 0; i < neko_script_vector_size(k); i++) {
+            char *name = k[i];
+            double num = v[i]->number;
+            map.insert(std::make_pair(name, num));
+        }
+        return map;
+    } else {
+        static_assert(std::is_same_v<T, void>, "Unsupported type for neko_script_auto");
+    }
+}
+
+neko_inline void neko_script_print_stack(neko_script_ctx_t *ctx) {
+    neko_script_ctx_t *c = ctx;
+
+    printf("Stack size: %llu\n", neko_script_vector_size(c->stack));
+    while (c) {
+        for (int i = (int)neko_script_vector_size(c->stack) - 1; i >= 0; i--) {
+            neko_script_value_t *v = c->stack[i];
+            printf("[%2d] Type: %5d | \n", i, v->type);
+        }
+        c = c->parent;
+    }
+
+    c = ctx;
+
+    printf("Vars size: %llu\n", neko_script_vector_size(c->vars));
+    while (c) {
+        for (int i = (int)neko_script_vector_size(c->vars) - 1; i >= 0; i--) {
+            neko_script_var_t *v = c->vars[i];
+            const char *type_name = neko_script_valuetypestr(v->val->type);
+            printf("[%2d] Name: %24s | Type: %25s | Value: ", i, v->name, type_name);
+            switch (v->val->type) {
+                case NEKO_SC_VALUE_NUMBER:
+                    printf("%lf\n", v->val->number);  // 输出字符串值
+                    break;
+                case NEKO_SC_VALUE_STRING:
+                    printf("\"%s\"\n", v->val->string);  // 输出数字值
+                    break;
+                default:
+                    printf("Unknown\n");
+                    break;
+            }
+        }
+        c = c->parent;
+    }
+}
+
+#define ns_bind_func_local(name, ...) static void neko_binding_##name##(int argc, neko_script_ctx_t *ctx)
+#define ns_bind_func_lambda(name, ...) auto neko_binding_##name## = [](int argc, neko_script_ctx_t *ctx)
+
+template <typename RET>
+auto neko_script_auto_args(neko_script_vector(neko_script_value_t *) stack) {
+    using TT = std::decay_t<RET>;
+    neko_script_value_t *v = neko_script_vector_pop(stack);
+    if constexpr (std::same_as<TT, double> || std::same_as<TT, float> || std::is_integral_v<TT> || std::is_floating_point_v<TT>) {
+        assert(v->type == NEKO_SC_VALUE_NUMBER);
+        return v->number;
+    } else if constexpr (std::is_same_v<TT, ns_userdata_t>) {
+        assert(v->type == NEKO_SC_VALUE_NATIVE);
+        return v->ref;
+    } else if constexpr (std::is_same_v<TT, char *> || std::is_same_v<TT, const char *>) {
+        assert(v->type == NEKO_SC_VALUE_STRING);
+        return v->string;
+    } else if constexpr (neko_is_vector<TT>::value) {  // TODO
+        assert(v->type == NEKO_SC_VALUE_ARRAY);
+        static_assert(false, "Unsupported type for neko_script_auto_args");
+    } else if constexpr (neko_is_mappish<TT>::value) {
+        assert(v->type == NEKO_SC_VALUE_DICT);
+        static_assert(false, "Unsupported type for neko_script_auto_args");
+    } else {
+        static_assert(std::is_same_v<T, void>, "Unsupported type for neko_script_auto_args");
+    }
+}
+
+#define ns_args(type, name) type name = neko_script_auto_args<type>(ctx->stack)
+#define ns_ret(value) neko_script_vector_push(ctx->stack, neko_script_auto(value))
+
+template <typename T, typename ARG1>
+auto neko_script_auto_call(neko_script_ctx_t *ctx, const char *name, ARG1 &&arg1) {
+    neko_script_fn_t *func = neko_script_ctx_getfn(ctx, const_cast<char *>(name));
+    assert(func);
+
+    neko_script_value_t *v = neko_script_vector_pop(ctx->stack);  // 先把函数顶弹出保留
+
+    neko_script_vector_push(ctx->stack, neko_script_auto(arg1));
+
+    neko_script_vector_push(ctx->stack, v);  // 推入函数顶
+
+    neko_script_try { neko_script_exec(ctx, func->ctx, func->func_binary, func->address, ns_load_module, NULL); }
+    neko_script_catch {}
+
+    return neko_script_auto_args<std::decay_t<T>>(ctx->stack);
+}
+
+template <typename T, typename ARG1, typename ARG2>
+auto neko_script_auto_call(neko_script_ctx_t *ctx, const char *name, ARG1 &&arg1, ARG2 &&arg2) {
+    neko_script_fn_t *func = neko_script_ctx_getfn(ctx, const_cast<char *>(name));
+    assert(func);
+
+    neko_script_value_t *v = neko_script_vector_pop(ctx->stack);  // 先把函数顶弹出保留
+
+    neko_script_vector_push(ctx->stack, neko_script_auto(arg2));
+    neko_script_vector_push(ctx->stack, neko_script_auto(arg1));
+
+    neko_script_vector_push(ctx->stack, v);  // 推入函数顶
+
+    neko_script_try { neko_script_exec(ctx, func->ctx, func->func_binary, func->address, ns_load_module, NULL); }
+    neko_script_catch {}
+
+    return neko_script_auto_args<std::decay_t<T>>(ctx->stack);
+}
+
+template <typename T, typename ARG1, typename ARG2, typename ARG3>
+auto neko_script_auto_call(neko_script_ctx_t *ctx, const char *name, ARG1 &&arg1, ARG2 &&arg2, ARG3 &&arg3) {
+    neko_script_fn_t *func = neko_script_ctx_getfn(ctx, const_cast<char *>(name));
+    assert(func);
+
+    neko_script_value_t *v = neko_script_vector_pop(ctx->stack);  // 先把函数顶弹出保留
+
+    neko_script_vector_push(ctx->stack, neko_script_auto(arg3));
+    neko_script_vector_push(ctx->stack, neko_script_auto(arg2));
+    neko_script_vector_push(ctx->stack, neko_script_auto(arg1));
+
+    neko_script_vector_push(ctx->stack, v);  // 推入函数顶
+
+    neko_script_try { neko_script_exec(ctx, func->ctx, func->func_binary, func->address, ns_load_module, NULL); }
+    neko_script_catch {}
+
+    return neko_script_auto_args<std::decay_t<T>>(ctx->stack);
+}
+
+template <typename T, typename ARG1, typename ARG2, typename ARG3, typename ARG4>
+auto neko_script_auto_call(neko_script_ctx_t *ctx, const char *name, ARG1 &&arg1, ARG2 &&arg2, ARG3 &&arg3, ARG4 &&arg4) {
+    neko_script_fn_t *func = neko_script_ctx_getfn(ctx, const_cast<char *>(name));
+    assert(func);
+
+    neko_script_value_t *v = neko_script_vector_pop(ctx->stack);  // 先把函数顶弹出保留
+
+    neko_script_vector_push(ctx->stack, neko_script_auto(arg4));
+    neko_script_vector_push(ctx->stack, neko_script_auto(arg3));
+    neko_script_vector_push(ctx->stack, neko_script_auto(arg2));
+    neko_script_vector_push(ctx->stack, neko_script_auto(arg1));
+
+    neko_script_vector_push(ctx->stack, v);  // 推入函数顶
+
+    neko_script_try { neko_script_exec(ctx, func->ctx, func->func_binary, func->address, ns_load_module, NULL); }
+    neko_script_catch {}
+
+    return neko_script_auto_args<std::decay_t<T>>(ctx->stack);
+}
 
 #endif
 

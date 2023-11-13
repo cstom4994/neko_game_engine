@@ -1,7 +1,7 @@
 
 #include "neko_tiled.h"
 
-#include "engine/util/neko_xml.h"
+#include "engine/util/neko_asset.h"
 
 void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
 
@@ -143,6 +143,18 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
         object_group_t object_group = {0};
         object_group.color = (neko_color_t){255, 255, 255, 255};
 
+        // 对象组名字
+        neko_xml_attribute_t *name_attrib = neko_xml_find_attribute(object_group_node, "name");
+        if (name_attrib) {
+            const char *namestring = name_attrib->value.string;
+            // u32 *cols = (u32 *)object_group.color.rgba;
+            //*cols = (u32)strtol(hexstring + 1, NULL, 16);
+            // object_group.color.a = 128;
+            neko_println("objectgroup: %s", namestring);
+        } else {
+        }
+
+        // 对象组默认颜色
         neko_xml_attribute_t *color_attrib = neko_xml_find_attribute(object_group_node, "color");
         if (color_attrib) {
             const char *hexstring = color_attrib->value.string;
@@ -159,6 +171,8 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
             object.x = (s32)neko_xml_find_attribute(object_node, "x")->value.number;
             object.y = (s32)neko_xml_find_attribute(object_node, "y")->value.number;
 
+            object.phy_type = C2_TYPE_POLY;
+
             neko_xml_attribute_t *attrib;
             if (attrib = neko_xml_find_attribute(object_node, "width")) {
                 object.width = attrib->value.number;
@@ -170,6 +184,17 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
                 object.height = attrib->value.number;
             } else {
                 object.height = 1;
+            }
+
+            object.aabb = (c2AABB){c2V(object.x, object.y), c2V(object.width, object.height)};
+
+            if (object.phy_type == C2_TYPE_POLY) {
+                object.phy.poly.verts[0] = (top_left(object.aabb));
+                object.phy.poly.verts[1] = (bottom_left(object.aabb));
+                object.phy.poly.verts[2] = (bottom_right(object.aabb));
+                object.phy.poly.verts[3] = c2Add(top_right(object.aabb), c2Mulvs(bottom_right(object.aabb), 0.5f));
+                object.phy.poly.count = 4;
+                c2Norms(object.phy.poly.verts, object.phy.poly.norms, object.phy.poly.count);
             }
 
             neko_dyn_array_push(object_group.objects, object);
@@ -197,7 +222,7 @@ void neko_tiled_unload(map_t *map) {
 void neko_tiled_render_init(neko_command_buffer_t *cb, neko_tiled_renderer *renderer, const_str vert_path, const_str frag_path) {
 
     char *vert_src = neko_read_file_contents(vert_path, "rb", NULL);
-    char* frag_src = neko_read_file_contents(frag_path, "rb", NULL);
+    char *frag_src = neko_read_file_contents(frag_path, "rb", NULL);
 
     neko_graphics_vertex_buffer_desc_t vb_decl = {
             .data = NULL,
@@ -314,10 +339,13 @@ void neko_tiled_render_flush(neko_command_buffer_t *cb, neko_tiled_renderer *ren
 
 void neko_tiled_render_push(neko_command_buffer_t *cb, neko_tiled_renderer *renderer, neko_tiled_quad_t quad) {
 
-    if (!neko_hash_table_exists(renderer->quad_table, quad.tileset_id)) neko_hash_table_insert(renderer->quad_table, quad.tileset_id, (neko_tiled_quad_list_t){0});
+    // 如果这个quad的tileset还不存在于quad_table中则插入一个
+    // tileset_id为quad_table的键值
+    if (!neko_hash_table_exists(renderer->quad_table, quad.tileset_id))                              //
+        neko_hash_table_insert(renderer->quad_table, quad.tileset_id, (neko_tiled_quad_list_t){0});  //
 
+    //
     neko_tiled_quad_list_t *quad_list = neko_hash_table_getp(renderer->quad_table, quad.tileset_id);
-
     neko_dyn_array_push(quad_list->quad_list, quad);
 }
 
@@ -375,12 +403,13 @@ void neko_tiled_render_draw(neko_command_buffer_t *cb, neko_tiled_renderer *rend
             const f32 r = (f32)quad->color.r / 255.0f;
             const f32 g = (f32)quad->color.g / 255.0f;
             const f32 b = (f32)quad->color.b / 255.0f;
+            const f32 a = (f32)quad->color.a / 255.0f;
 
             f32 verts[] = {
-                    x,     y,     tx,      ty,      r, g, b, 1.0f, (f32)quad->use_texture,  //
-                    x + w, y,     tx + tw, ty,      r, g, b, 1.0f, (f32)quad->use_texture,  //
-                    x + w, y + h, tx + tw, ty + th, r, g, b, 1.0f, (f32)quad->use_texture,  //
-                    x,     y + h, tx,      ty + th, r, g, b, 1.0f, (f32)quad->use_texture   //
+                    x,     y,     tx,      ty,      r, g, b, a, (f32)quad->use_texture,  //
+                    x + w, y,     tx + tw, ty,      r, g, b, a, (f32)quad->use_texture,  //
+                    x + w, y + h, tx + tw, ty + th, r, g, b, a, (f32)quad->use_texture,  //
+                    x,     y + h, tx,      ty + th, r, g, b, a, (f32)quad->use_texture   //
             };
 
             const u32 idx_off = renderer->quad_count * VERTS_PER_QUAD;

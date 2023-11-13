@@ -177,7 +177,7 @@ bool neko_sprite_load(neko_sprite* spr, const_str filepath) {
     s.height = ase->h;
     *spr = s;
 
-    neko_aseprite_free(ase); 
+    neko_aseprite_free(ase);
 
     return true;
 }
