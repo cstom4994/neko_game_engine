@@ -719,4 +719,51 @@ neko_force_inline void neko_command_buffer_free(neko_command_buffer_t* cb) { nek
 typedef neko_command_buffer_t neko_cmdbuf;
 #endif
 
+#ifndef HASHTABLE_U64
+#define HASHTABLE_U64 unsigned long long
+#endif
+
+#ifndef HASHTABLE_U32
+#define HASHTABLE_U32 unsigned int
+#endif
+
+struct hashtable_internal_slot_t {
+    HASHTABLE_U32 key_hash;
+    int item_index;
+    int base_count;
+};
+
+struct hashtable_t {
+    void* memctx;
+    int count;
+    int item_size;
+
+    struct hashtable_internal_slot_t* slots;
+    int slot_capacity;
+
+    HASHTABLE_U64* items_key;
+    int* items_slot;
+    void* items_data;
+    int item_capacity;
+
+    void* swap_temp;
+};
+
+typedef struct hashtable_t hashtable_t;
+
+NEKO_API_DECL void hashtable_init(hashtable_t* table, int item_size, int initial_capacity, void* memctx);
+NEKO_API_DECL void hashtable_term(hashtable_t* table);
+
+NEKO_API_DECL void* hashtable_insert(hashtable_t* table, HASHTABLE_U64 key, void const* item);
+NEKO_API_DECL void hashtable_remove(hashtable_t* table, HASHTABLE_U64 key);
+NEKO_API_DECL void hashtable_clear(hashtable_t* table);
+
+NEKO_API_DECL void* hashtable_find(hashtable_t const* table, HASHTABLE_U64 key);
+
+NEKO_API_DECL int hashtable_count(hashtable_t const* table);
+NEKO_API_DECL void* hashtable_items(hashtable_t const* table);
+NEKO_API_DECL HASHTABLE_U64 const* hashtable_keys(hashtable_t const* table);
+
+NEKO_API_DECL void hashtable_swap(hashtable_t* table, int index_a, int index_b);
+
 #endif

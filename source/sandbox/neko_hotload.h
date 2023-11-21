@@ -7,6 +7,10 @@
 #include "engine/neko.h"
 #include "engine/neko_platform.h"
 
+#if defined(NEKO_PLATFORM_LINUX)
+
+#else
+
 #define NEKO_HOTLOAD_WINDOWS
 #define NEKO_HOTLOAD_MODULE(name) "" name ".dll"
 
@@ -867,6 +871,8 @@ extern "C" void neko_hotload_module_close(neko_hotload_module &ctx) {
     ctx.p = nullptr;
     ctx.version = 0;
 }
+
+#endif
 
 #endif
 

@@ -117,41 +117,41 @@ public:
     neko_serialize(T& stream) : stream(stream) {}
 
 public:
-    template <class T>
-    const neko_serialize& operator<<(const T& v) const {
+    template <class S>
+    const neko_serialize& operator<<(const S& v) const {
         *this& v;
         return *this;
     }
 
-    template <class T>
-    neko_serialize& operator>>(T& v) {
+    template <class S>
+    neko_serialize& operator>>(S& v) {
         *this& v;
         return *this;
     }
 
 public:
-    template <class T>
-    neko_serialize& operator&(T& v) {
+    template <class S>
+    neko_serialize& operator&(S& v) {
         v.__neko_serialize(*this);
         return *this;
     }
 
-    template <class T>
-    const neko_serialize& operator&(const T& v) const {
-        ((T&)v).__neko_serialize(*this);
+    template <class S>
+    const neko_serialize& operator&(const S& v) const {
+        ((S&)v).__neko_serialize(*this);
         return *this;
     }
 
-    template <class T, size_t N>
-    neko_serialize& operator&(T (&v)[N]) {
+    template <class S, size_t N>
+    neko_serialize& operator&(S (&v)[N]) {
         u32 len;
         *this& len;
         for (size_t i = 0; i < N; ++i) *this& v[i];
         return *this;
     }
 
-    template <class T, size_t N>
-    const neko_serialize& operator&(const T (&v)[N]) const {
+    template <class S, size_t N>
+    const neko_serialize& operator&(const S (&v)[N]) const {
         u32 len = N;
         *this& len;
         for (size_t i = 0; i < N; ++i) *this& v[i];
@@ -219,22 +219,22 @@ public:
     SERIALIZER_FOR_POD_FLOATINGPOINT(double)
 
 #define SERIALIZER_FOR_STL(type)                                                               \
-    template <class T>                                                                         \
-    neko_serialize& operator&(type<T>& v) {                                                    \
+    template <class S>                                                                         \
+    neko_serialize& operator&(type<S>& v) {                                                    \
         u32 len;                                                                               \
         *this& len;                                                                            \
         for (u32 i = 0; i < len; ++i) {                                                        \
-            T value;                                                                           \
+            S value;                                                                           \
             *this& value;                                                                      \
             v.insert(v.end(), value);                                                          \
         }                                                                                      \
         return *this;                                                                          \
     }                                                                                          \
-    template <class T>                                                                         \
-    const neko_serialize& operator&(const type<T>& v) const {                                  \
+    template <class S>                                                                         \
+    const neko_serialize& operator&(const type<S>& v) const {                                  \
         u32 len = v.size();                                                                    \
         *this& len;                                                                            \
-        for (typename type<T>::const_iterator it = v.begin(); it != v.end(); ++it) *this&* it; \
+        for (typename type<S>::const_iterator it = v.begin(); it != v.end(); ++it) *this&* it; \
         return *this;                                                                          \
     }
 
@@ -302,9 +302,9 @@ public:
     }
 
 private:
-    template <class T>
-    T swap(const T& v) const {
-        return neko_serialize_swap_byte<T, sizeof(T)>::swap(v);
+    template <class S>
+    S swap(const S& v) const {
+        return neko_serialize_swap_byte<S, sizeof(S)>::swap(v);
     }
 
 private:

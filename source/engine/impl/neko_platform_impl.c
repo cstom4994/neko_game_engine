@@ -42,6 +42,7 @@
 #include <dirent.h>
 #include <dlfcn.h>  // dlopen, RTLD_LAZY, dlsym
 #include <sys/stat.h>
+#include <errno.h>
 #else
 #include <direct.h>
 
@@ -595,7 +596,7 @@ NEKO_API_DECL bool neko_platform_dir_exists_default_impl(const char* dir_path) {
     return (attrib != INVALID_FILE_ATTRIBUTES && (attrib & FILE_ATTRIBUTE_DIRECTORY));
 #elif defined(NEKO_PLATFORM_LINUX)
     struct stat st;
-    if (stat(path, &st) == 0) {
+    if (stat(dir_path, &st) == 0) {
         if (S_ISDIR(st.st_mode)) {
             return true;
         }
@@ -604,7 +605,7 @@ NEKO_API_DECL bool neko_platform_dir_exists_default_impl(const char* dir_path) {
 #endif
 }
 
-NEKO_API_DECL s32 neko_platform_mkdir_default_impl(const char* dir_path, s32 opt) { return mkdir(dir_path); }
+NEKO_API_DECL s32 neko_platform_mkdir_default_impl(const char* dir_path, s32 opt) { return mkdir(dir_path, opt); }
 
 NEKO_API_DECL bool neko_platform_file_exists_default_impl(const char* file_path) {
     const char* path = file_path;
@@ -969,21 +970,32 @@ neko_vec2 glfw_get_opengl_version() {
     return ver;
 }
 
+
+
 void* glfw_get_sys_handle() {
+#if defined(NEKO_PLATFORM_WIN)
     struct neko_platform_t* platform = neko_instance()->ctx.platform;
     GLFWwindow* win = (GLFWwindow*)(neko_slot_array_getp(platform->windows, neko_platform_main_window()))->hndl;
     HWND hwnd = glfwGetWin32Window(win);
     return hwnd;
+#else
+    return NULL;
+#endif
 }
+
+
+
 
 void* neko_platform_hwnd() { return glfw_get_sys_handle(); }
 neko_memory_info_t neko_platform_memory_info() { return glfw_platform_meminfo(); }
 neko_vec2 neko_platform_opengl_ver() { return glfw_get_opengl_version(); }
 
 void neko_platform_msgbox(const_str msg) {
-#ifdef NEKO_PLATFORM_WIN
+#if defined(NEKO_PLATFORM_WIN)
     MessageBoxA((HWND)glfw_get_sys_handle(), msg, "Neko Error", MB_OK | MB_SETFOREGROUND | MB_ICONSTOP);
-#else  // TODO: wasm
+#elif defined(NEKO_PLATFORM_LINUX)
+
+#else // TODO:: wasm
     Android_MessageBox("Neko Error", x);
 #endif
 }
@@ -2725,7 +2737,7 @@ const_str __neko_inter_stacktrace() {
 #else
 
 void __neko_initialize_symbol_handler() {}
-void __neko_inter_stacktrace() {}
+const_str __neko_inter_stacktrace()  { return "";}
 
 #endif
 

@@ -41,11 +41,9 @@
 #define CUTE_PNG_IMPLEMENTATION
 #include "engine/builtin/cute_png.h"
 
+#define CUTE_FILEWATCH_IMPLEMENTATION
 #define STRPOOL_IMPLEMENTATION
 #define ASSETSYS_IMPLEMENTATION
-#include "engine/builtin/assetsys.h"
-
-#define CUTE_FILEWATCH_IMPLEMENTATION
 #include "engine/builtin/cute_filewatch.h"
 
 // opengl
@@ -160,7 +158,7 @@ neko_texture_t load_ase_texture_simple(const void *memory, int size) {
         return neko_default_val();
     }
 
-    neko_assert(ase->frame_count == 1, "load_ase_texture_simple used to load simple aseprite");
+    neko_assert(ase->frame_count == 1);  // load_ase_texture_simple used to load simple aseprite
 
     neko_aseprite_default_blend_bind(ase);
 
@@ -190,7 +188,7 @@ neko_texture_t load_ase_texture_simple(const void *memory, int size) {
 
 neko_string game_assets(const neko_string &path) {
     if (data_path.empty()) {
-        neko_assert(!data_path.empty(), "game data path not detected");
+        neko_assert(!data_path.empty());  // game data path not detected
         return path;
     }
     neko_string get_path(data_path);
@@ -560,8 +558,8 @@ void __neko_cvar_gui_internal(T &&obj, int depth = 0, const char *fieldName = ""
         neko_struct_foreach(obj, [depth](auto &&fieldName, auto &&value, auto &&info) { __neko_cvar_gui_internal(value, depth + 1, fieldName, info); });
     } else {
 
-        auto ff = [&]<typename T>(const char *name, auto &var, T &t) {
-            if constexpr (std::is_same_v<std::decay_t<decltype(var)>, T>) {
+        auto ff = [&]<typename S>(const char *name, auto &var, S &t) {
+            if constexpr (std::is_same_v<std::decay_t<decltype(var)>, S>) {
                 neko_gui::gui_auto(var, name);
                 neko_gui_labelf(&g_nui.neko_gui_ctx, NEKO_GUI_TEXT_LEFT, "    [%s]", std::get<0>(fields));
             }
@@ -850,7 +848,7 @@ void draw_text(neko_font_t *font, const char *text, float x, float y, float line
     }
 }
 
-neko_script_binary_t *load_module(char *name) {
+neko_script_binary_t *ns_load_module(char *name) {
     FILE *fd;
     std::string fullname[] = {std::format("{0}/{1}.ns", game_assets("data/tests"), name)};
     for (int i = 0; i < neko_arr_size(fullname); i++) {
@@ -902,10 +900,9 @@ filewatch_t *filewatch;
 #define NEKO_HOTLOAD_HOST NEKO_HOTLOAD_UNSAFE
 #include "neko_hotload.h"
 
-neko_global neko_hotload_module ctx;
-
-const_str hotfix_module = "" NEKO_HOTLOAD_MODULE("hotload");
-bool is_hotfix_loaded = false;
+// neko_global neko_hotload_module ctx;
+// const_str hotfix_module = "" NEKO_HOTLOAD_MODULE("hotload");
+// bool is_hotfix_loaded = false;
 
 void game_init() {
     g_cb = neko_command_buffer_new();
@@ -926,10 +923,10 @@ void game_init() {
 
     neko_ecs()->user_data = &g_client_userdata;
 
-    ctx.userdata = &g_client_userdata;
-
-    is_hotfix_loaded = neko_hotload_module_open(ctx, hotfix_module);
-    if (!is_hotfix_loaded) neko_log_trace("hotfix is not loaded");
+    //    ctx.userdata = &g_client_userdata;
+    //
+    //    is_hotfix_loaded = neko_hotload_module_open(ctx, hotfix_module);
+    //    if (!is_hotfix_loaded) neko_log_trace("hotfix is not loaded");
 
     g_script.ctx = neko_script_ctx_new(NULL);
 
@@ -1004,18 +1001,17 @@ void game_init() {
     neko_safe_free(font_data);
     neko_safe_free(cat_data);
 
-#define GUI_FONT_STASH(...)                                                                                                \
-    []() -> neko_imgui_font_stash_desc_t * {                                                                               \
-        neko_imgui_font_desc_t font_decl[] = {{.key = "mc_regular", .font = &g_font}};                                     \
-        static neko_imgui_font_stash_desc_t font_stash = {.fonts = font_decl, .size = 1 * sizeof(neko_imgui_font_desc_t)}; \
-        return &font_stash;                                                                                                \
-    }()
+    auto GUI_FONT_STASH = []() -> neko_imgui_font_stash_desc_t * {
+        static neko_imgui_font_desc_t font_decl[] = {{.key = "mc_regular", .font = &g_font}};
+        static neko_imgui_font_stash_desc_t font_stash = {.fonts = font_decl, .size = 1 * sizeof(neko_imgui_font_desc_t)};
+        return &font_stash;
+    }();
 
     // neko_imgui_font_stash_desc_t font_stash = {.fonts = (neko_imgui_font_desc_t[]){{.key = "mc_regular", .font = &font}, .size = 1 * sizeof(neko_imgui_font_desc_t)};
-    neko_imgui_init_font_stash(&g_gui, GUI_FONT_STASH());
+    neko_imgui_init_font_stash(&g_gui, GUI_FONT_STASH);
 
     // Load style sheet from file now
-    app_load_style_sheet(false);
+    // app_load_style_sheet(false);
 
     // Dock windows before hand
     neko_imgui_dock_ex(&g_gui, "Style_Editor", "Demo_Window", NEKO_IMGUI_SPLIT_TAB, 0.5f);
@@ -1080,7 +1076,7 @@ void game_init() {
     neko_sprite_renderer sprite_test = {.sprite = &test_witch_spr};
     neko_particle_renderer particle_render = neko_default_val();
 
-    neko_sprite_renderer_play(&sprite_test, "Attack");
+    neko_sprite_renderer_play(&sprite_test, "Idle");
     neko_particle_renderer_construct(&particle_render);
 
     gameobj.visible = true;
@@ -1318,7 +1314,7 @@ void main() { out_col = texture(u_sprite_texture, v_uv); }
 
 void game_update() {
 
-    if (is_hotfix_loaded) neko_hotload_module_update(ctx);
+    //    if (is_hotfix_loaded) neko_hotload_module_update(ctx);
 
     neko_timed_action(250, {
         filewatch_update(filewatch);
@@ -1560,7 +1556,7 @@ void game_update() {
 
 #pragma region gui_ss
 
-#if 1
+#if 0
 
             const neko_imgui_style_sheet_t *ss = &style_sheet;
 
@@ -1930,18 +1926,18 @@ void game_update() {
 
                 std::string command = "build_hotload.bat";
 
-                FILE *pipe = _popen(command.c_str(), "r");
-                if (!pipe) {
-                    neko_log_error("%s", "Unable to create pipeline");
-                } else {
-                    char buffer[128];
-                    while (!feof(pipe)) {
-                        if (fgets(buffer, 128, pipe) != nullptr) {
-                            std::cout << buffer;
-                        }
-                    }
-                    _pclose(pipe);
-                }
+                //                FILE *pipe = _popen(command.c_str(), "r");
+                //                if (!pipe) {
+                //                    neko_log_error("%s", "Unable to create pipeline");
+                //                } else {
+                //                    char buffer[128];
+                //                    while (!feof(pipe)) {
+                //                        if (fgets(buffer, 128, pipe) != nullptr) {
+                //                            std::cout << buffer;
+                //                        }
+                //                    }
+                //                    _pclose(pipe);
+                //                }
             }
             if (neko_gui_button_label(nui_ctx, "test_ecs_view")) {
                 for (neko_ecs_ent_view v = neko_ecs_ent_view_single(neko_ecs(), COMPONENT_GAMEOBJECT); neko_ecs_ent_view_valid(&v); neko_ecs_ent_view_next(&v)) {
@@ -2063,7 +2059,7 @@ void game_shutdown() {
 
     neko_dyn_array_free(test_witch_spr.frames);
 
-    if (is_hotfix_loaded) neko_hotload_module_close(ctx);
+    //    if (is_hotfix_loaded) neko_hotload_module_close(ctx);
 
     neko_script_gc_freeall();
     for (int i = 0; i < neko_script_vector_size(g_script.modules); i++) {

@@ -6,7 +6,7 @@
 // NEKO_API_DECL void neko_console_printf(neko_console_t* console, const char* fmt, ...);
 // NEKO_API_DECL void neko_console(neko_console_t* console, neko_imgui_context_t* ctx, neko_imgui_rect_t screen, const neko_imgui_selector_desc_t* desc);
 
-NEKO_API_DECL neko_inline void neko_console_printf(neko_console_t* console, const char* fmt, ...) {
+neko_inline void neko_console_printf(neko_console_t* console, const char* fmt, ...) {
     char tmp[512] = {0};
     va_list args;
 
@@ -51,7 +51,9 @@ NEKO_API_DECL void neko_console(neko_console_t* console, neko_imgui_context_t* c
         neko_imgui_text(ctx, "$>");
         neko_imgui_text(ctx, console->cb[0]);
 
-        if (!console->open || !console->last_open_state) goto console_input_handling_done;
+        if (!console->open || !console->last_open_state) {
+//            goto console_input_handling_done;
+        }
 
         // 处理文本输入
         int32_t n = neko_min(sizeof(*console->cb) - len - 1, (int32_t)strlen(ctx->input_text));

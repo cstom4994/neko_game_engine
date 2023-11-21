@@ -18,72 +18,6 @@
 #include <string.h>
 #include <time.h>
 
-/*========================
-// Defines
-========================*/
-
-#ifndef neko_inline
-#define neko_inline inline
-#endif
-
-#ifndef neko_local_persist
-#define neko_local_persist static
-#endif
-
-#ifndef neko_global
-#define neko_global static
-#endif
-
-#ifndef neko_static_inline
-#define neko_static_inline static neko_inline
-#endif
-
-#if (defined _WIN32 || defined _WIN64)
-#define neko_force_inline neko_inline
-#elif (defined __APPLE__ || defined _APPLE)
-#define neko_force_inline static __attribute__((always_inline))
-#else
-#define neko_force_inline neko_inline
-#endif
-
-#ifndef neko_private
-#define neko_private(_result_type) static _result_type
-#endif
-
-#ifndef neko_public
-#define neko_public(_result_type) _result_type
-#endif
-
-#ifndef neko_little_endian
-#define neko_little_endian 1
-#endif
-
-#ifndef neko_bit
-#define neko_bit(x) (1 << x)
-#endif
-
-/*===================
-// NEKO_API_DECL
-===================*/
-
-#ifdef NEKO_API_DLL_EXPORT
-#ifdef __cplusplus
-#define NEKO_API_EXTERN extern "C" __declspec(dllexport)
-#else
-#define NEKO_API_EXTERN extern __declspec(dllexport)
-#endif
-#else
-#ifdef __cplusplus
-#define NEKO_API_EXTERN extern "C"
-#define NEKO_CPP_SRC
-#else
-#define NEKO_API_EXTERN extern
-#endif
-#endif
-
-#define NEKO_API_DECL NEKO_API_EXTERN
-#define NEKO_API_PRIVATE NEKO_API_EXTERN
-
 /*===================
 // PLATFORM DEFINES
 ===================*/
@@ -133,6 +67,76 @@
 #if defined(DEBUG) || defined(_DEBUG)
 #define NEKO_DEBUG
 #endif
+
+/*========================
+// Defines
+========================*/
+
+#ifndef neko_inline
+#if defined(NEKO_PLATFORM_LINUX)
+#define neko_inline static inline
+#else
+#define neko_inline inline
+#endif
+#endif
+
+#ifndef neko_local_persist
+#define neko_local_persist static
+#endif
+
+#ifndef neko_global
+#define neko_global static
+#endif
+
+#ifndef neko_static_inline
+#define neko_static_inline static inline
+#endif
+
+#if (defined _WIN32 || defined _WIN64)
+#define neko_force_inline neko_inline
+#elif (defined __APPLE__ || defined _APPLE)
+#define neko_force_inline static __attribute__((always_inline))
+#else
+#define neko_force_inline neko_inline
+#endif
+
+#ifndef neko_private
+#define neko_private(_result_type) static _result_type
+#endif
+
+#ifndef neko_public
+#define neko_public(_result_type) _result_type
+#endif
+
+#ifndef neko_little_endian
+#define neko_little_endian 1
+#endif
+
+#ifndef neko_bit
+#define neko_bit(x) (1 << x)
+#endif
+
+/*===================
+// NEKO_API_DECL
+===================*/
+
+#ifdef NEKO_API_DLL_EXPORT
+#ifdef __cplusplus
+#define NEKO_API_EXTERN extern "C" __declspec(dllexport)
+#else
+#define NEKO_API_EXTERN extern __declspec(dllexport)
+#endif
+#else
+#ifdef __cplusplus
+#define NEKO_API_EXTERN extern "C"
+#define NEKO_CPP_SRC
+#else
+#define NEKO_API_EXTERN extern
+#endif
+#endif
+
+#define NEKO_API_DECL NEKO_API_EXTERN
+#define NEKO_API_PRIVATE NEKO_API_EXTERN
 
 /*============================================================
 // C primitive types
@@ -207,11 +211,10 @@ enum neko_type_kind {
 #define neko_arr_size(__ARR) sizeof(__ARR) / sizeof(__ARR[0])
 
 #ifdef NEKO_DEBUG
-#define neko_assert(x, ...)                                                                                            \
+#define neko_assert(x)                                                                                                 \
     do {                                                                                                               \
         if (!(x)) {                                                                                                    \
             neko_printf("assertion failed: (%s), function %s, file %s, line %d.\n", #x, __func__, __FILE__, __LINE__); \
-            __debugbreak();                                                                                            \
         }                                                                                                              \
     } while (0)
 #else
@@ -437,9 +440,9 @@ constexpr std::size_t va_count(Args&&...) {
 #define neko_check_is_trivial(type, err) static_assert(std::is_trivial<type>::value, err)
 #endif
 
-#define neko_malloc_init(type)                   \
-    (type*)_neko_malloc_init_impl(sizeof(type)); \
-    neko_check_is_trivial(type, "try to init a non-trivial object")
+//#define neko_malloc_init(type)                   \
+//    (type*)_neko_malloc_init_impl(sizeof(type)); \
+//    neko_check_is_trivial(type, "try to init a non-trivial object")
 
 #define neko_malloc_init_ex(name, type)                              \
     neko_check_is_trivial(type, "try to init a non-trivial object"); \
@@ -1524,12 +1527,12 @@ neko_static_inline auto neko_time_to_string(std::time_t now = std::time(nullptr)
 
 class neko_timer {
 public:
-    neko_inline void start() noexcept { startPos = std::chrono::high_resolution_clock::now(); }
-    neko_inline void stop() noexcept {
+    inline void start() noexcept { startPos = std::chrono::high_resolution_clock::now(); }
+    inline void stop() noexcept {
         auto endTime = std::chrono::high_resolution_clock::now();
         duration = static_cast<f64>(neko_time_count(endTime) - neko_time_count(startPos)) * 0.001;
     }
-    [[nodiscard]] neko_inline f64 get() const noexcept { return duration; }
+    [[nodiscard]] inline f64 get() const noexcept { return duration; }
     ~neko_timer() noexcept { stop(); }
 
 private:
@@ -1701,7 +1704,7 @@ NEKO_API_DECL void neko_camera_offset_orientation(neko_camera_t* cam, f32 yaw, f
 // Utils
 ================================================================================*/
 
-NEKO_API_DECL neko_inline u32 neko_abs(s32 v) {
+neko_inline u32 neko_abs(s32 v) {
     unsigned int r;
     int const mask = v >> sizeof(int) * CHAR_BIT - 1;
     r = (v + mask) ^ mask;
@@ -1709,7 +1712,7 @@ NEKO_API_DECL neko_inline u32 neko_abs(s32 v) {
 }
 
 // 将UTF-8编码字符转换为Unicode
-NEKO_API_DECL neko_inline u32 neko_utf8_to_unicode(const_str utf8, s32* bytes_read) {
+neko_inline u32 neko_utf8_to_unicode(const_str utf8, s32* bytes_read) {
     u32 unicode = 0;
     s32 len = 0;
     unsigned char utf8char = utf8[0];
@@ -1898,10 +1901,10 @@ NEKO_API_DECL bool neko_char_is_white_space(char c);
 NEKO_API_DECL bool neko_char_is_alpha(char c);
 NEKO_API_DECL bool neko_char_is_numeric(char c);
 
-NEKO_API_DECL neko_inline b8 neko_token_is_end_of_line(char c) { return (c == '\n' || c == '\r'); }
-NEKO_API_DECL neko_inline b8 neko_token_char_is_white_space(char c) { return (c == '\t' || c == ' ' || neko_token_is_end_of_line(c)); }
-NEKO_API_DECL neko_inline b8 neko_token_char_is_alpha(char c) { return ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')); }
-NEKO_API_DECL neko_inline b8 neko_token_char_is_numeric(char c) { return (c >= '0' && c <= '9'); }
+neko_inline b8 neko_token_is_end_of_line(char c) { return (c == '\n' || c == '\r'); }
+neko_inline b8 neko_token_char_is_white_space(char c) { return (c == '\t' || c == ' ' || neko_token_is_end_of_line(c)); }
+neko_inline b8 neko_token_char_is_alpha(char c) { return ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')); }
+neko_inline b8 neko_token_char_is_numeric(char c) { return (c >= '0' && c <= '9'); }
 
 //==== [ Lexer ] ============================================================//
 
@@ -1935,7 +1938,7 @@ NEKO_API_DECL void neko_lexer_c_eat_white_space(neko_lexer_t* lex);
 NEKO_API_DECL neko_token_t neko_lexer_c_next_token(neko_lexer_t* lex);
 NEKO_API_DECL void neko_lexer_set_token(neko_lexer_t* lex, neko_token_t token);
 
-NEKO_API_DECL neko_inline u32 neko_darken_color(u32 color, f32 brightness) {
+neko_inline u32 neko_darken_color(u32 color, f32 brightness) {
     s32 a = (color >> 24) & 0xFF;
     s32 r = (s32)(((color >> 16) & 0xFF) * brightness);
     s32 g = (s32)(((color >> 8) & 0xFF) * brightness);
@@ -2527,20 +2530,20 @@ neko_inline void neko_swap(T& a, T& b) {
 
 template <typename T>
 neko_static_inline void write_var(u8*& _buffer, T _var) {
-    std::memcpy(_buffer, &_var, sizeof(T));
+    memcpy(_buffer, &_var, sizeof(T));
     _buffer += sizeof(T);
 }
 
 neko_static_inline void write_str(u8*& _buffer, const char* _str) {
     u32 len = (u32)strlen(_str);
     write_var(_buffer, len);
-    std::memcpy(_buffer, _str, len);
+    memcpy(_buffer, _str, len);
     _buffer += len;
 }
 
 template <typename T>
 neko_static_inline void read_var(u8*& _buffer, T& _var) {
-    std::memcpy(&_var, _buffer, sizeof(T));
+    memcpy(&_var, _buffer, sizeof(T));
     _buffer += sizeof(T);
 }
 
@@ -2548,7 +2551,7 @@ neko_static_inline char* read_string(u8*& _buffer) {
     u32 len;
     read_var(_buffer, len);
     char* str = new char[len + 1];
-    std::memcpy(str, _buffer, len);
+    memcpy(str, _buffer, len);
     str[len] = 0;
     _buffer += len;
     return str;
@@ -2556,7 +2559,7 @@ neko_static_inline char* read_string(u8*& _buffer) {
 
 neko_static_inline const char* duplicate_string(const char* _str) {
     char* str = new char[strlen(_str) + 1];
-    std::strcpy(str, _str);
+    strcpy(str, _str);
     return str;
 }
 
@@ -2574,7 +2577,7 @@ struct string_store {
         string_to_index_type::iterator it = str_index_map.find(_str);
         if (it == str_index_map.end()) {
             u32 index = (u32)str_index_map.size();
-            total_size += 4 + (u32)std::strlen(_str);
+            total_size += 4 + (u32)strlen(_str);
             str_index_map[_str] = index;
             strings[index] = _str;
         }

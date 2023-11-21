@@ -12,7 +12,7 @@
 // NEKO_GRAPHICS
 =============================*/
 
-NEKO_API_DECL neko_inline const char* __neko_gl_error_string(GLenum const err) {
+neko_inline const char* __neko_gl_error_string(GLenum const err) {
     switch (err) {
         // opengl 2 errors (8)
         case GL_NO_ERROR:
@@ -49,7 +49,7 @@ NEKO_API_DECL neko_inline const char* __neko_gl_error_string(GLenum const err) {
     }
 }
 
-NEKO_API_DECL neko_inline void __neko_check_gl_error(const char* file, const int line) {
+neko_inline void __neko_check_gl_error(const char* file, const int line) {
     GLenum err;
     static GLenum last_err = -1;
     while ((err = glGetError()) != GL_NO_ERROR) {

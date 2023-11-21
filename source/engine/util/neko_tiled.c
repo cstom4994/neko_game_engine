@@ -19,7 +19,7 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
     }
 
     neko_xml_node_t *map_node = neko_xml_find_node(doc, "map");
-    neko_assert(map_node, "Must have a map node!");
+    neko_assert(map_node); // Must have a map node!
 
     for (neko_xml_node_iter_t it = neko_xml_new_node_child_iter(map_node, "tileset"); neko_xml_node_iter_next(&it);) {
         tileset_t tileset = {0};

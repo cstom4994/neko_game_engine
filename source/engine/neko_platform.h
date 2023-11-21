@@ -20,7 +20,9 @@
 #if defined(_WIN32) || defined(_WIN64) || defined(NEKO_PLATFORM_WIN)
 typedef unsigned __int64 tick_t;
 #else
+#include <syscall.h>
 #include <stdint.h>
+#include <pthread.h>
 typedef uint64_t tick_t;
 #endif
 
@@ -699,7 +701,7 @@ static inline void neko_mutex_lock(neko_mutex *_mutex) { EnterCriticalSection(_m
 static inline int neko_mutex_trylock(neko_mutex *_mutex) { return TryEnterCriticalSection(_mutex) ? 0 : 1; }
 static inline void neko_mutex_unlock(neko_mutex *_mutex) { LeaveCriticalSection(_mutex); }
 
-#elif defined(NEKO_PLATFORM_POSIX)
+#elif defined(NEKO_PLATFORM_POSIX) || defined(NEKO_PLATFORM_LINUX)
 
 typedef pthread_mutex_t neko_mutex;
 static inline void neko_mutex_init(neko_mutex *_mutex) { pthread_mutex_init(_mutex, NULL); }
@@ -775,6 +777,8 @@ neko_inline wchar_t *neko_utf8_to_wstring(const char *str) {
 
 #endif
 
+#if defined(NEKO_PLATFORM_WIN)
+
 neko_inline void toWChar(wchar_t out[MAX_PATH], const char *in) {
     const char *c = in;
     wchar_t *cout = out;
@@ -807,6 +811,8 @@ neko_inline void __native_library_unload(void *handle) {
 neko_inline void *__native_library_get_symbol(void *handle, const char *name) { return (void *)GetProcAddress((HMODULE)handle, name); }
 
 neko_inline void __native_debug_output(const char *msg) { OutputDebugStringA(msg); }
+
+#endif
 
 NEKO_API_DECL int neko_timer_initialize(void);
 NEKO_API_DECL void neko_timer_shutdown(void);

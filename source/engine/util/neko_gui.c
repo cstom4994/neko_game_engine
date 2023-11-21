@@ -22,7 +22,7 @@ typedef struct neko_gui_vertex_t {
 #define NEKO_GUI_SHADER_VERSION "#version 330 core\n"
 #endif
 
-enum neko_gui_style_theme { THEME_BLACK, THEME_WHITE, THEME_RED, THEME_BLUE, THEME_DARK };
+
 
 neko_global size_t g_nui_mem_usage = 0;
 
@@ -32,7 +32,7 @@ neko_private(void) __neko_gui_free(void* ptr, void* user_data) { __neko_mem_safe
 
 size_t __neko_gui_meminuse() { return g_nui_mem_usage; }
 
-NEKO_API_DECL void set_style(struct neko_gui_context* ctx, enum neko_gui_style_theme theme) {
+void set_style(struct neko_gui_context* ctx, enum neko_gui_style_theme theme) {
     struct neko_gui_color table[NEKO_GUI_COLOR_COUNT];
     if (theme == THEME_WHITE) {
         table[NEKO_GUI_COLOR_TEXT] = neko_gui_rgba(70, 70, 70, 255);

@@ -3,7 +3,7 @@
 #ifndef NEKO_HASH_H
 #define NEKO_HASH_H
 
-#include <intrin.h>
+//#include <intrin.h>
 
 #include <string>
 #include <vector>
@@ -138,7 +138,7 @@ inline hash_value hash(long long int v) { return hash_simple(v); }
 inline hash_value hash(short int v) { return hash_simple(v); }
 inline hash_value hash(double v) { return hash_simple(v); }
 inline hash_value hash(float v) { return hash_simple(v); }
-inline hash_value hash(long double v) { return hash_simple(v); }
+//inline hash_value hash(long double v) { return hash_simple(v); }
 inline hash_value hash(wchar_t v) { return hash_simple(v); }
 constexpr hash_value hash(char const* input) { return hash_fnv(input); }
 constexpr hash_value hash(const std::string& input) { return hash_fnv(input.c_str()); }

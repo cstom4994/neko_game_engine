@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "neko_cpp_utils.hpp"
+#include "neko_cpp_misc.hpp"
 
 namespace neko::cpp {
 template <auto V>

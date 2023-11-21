@@ -235,7 +235,7 @@ enum NEKO_SC_VALUE {
 
 struct neko_script_fn_s;
 
-inline const_str neko_script_valuetypestr(int token) {
+neko_inline const_str neko_script_valuetypestr(int token) {
     if (token < 0 || token > NEKO_SC_VALUE_REF) return "WRONG VALUE!";
     const char *names[] = {
             "NEKO_SC_VALUE_NULL",    //
@@ -534,6 +534,7 @@ NEKO_API_DECL int neko_script_dis_str(neko_script_ctx_t *ctx, char *code, neko_s
 
 #if defined(NEKO_CPP_SRC)
 
+#include <map>
 #include <type_traits>
 #include <vector>
 
@@ -715,8 +716,8 @@ neko_inline void neko_script_print_stack(neko_script_ctx_t *ctx) {
     }
 }
 
-#define ns_bind_func_local(name, ...) static void neko_binding_##name##(int argc, neko_script_ctx_t *ctx)
-#define ns_bind_func_lambda(name, ...) auto neko_binding_##name## = [](int argc, neko_script_ctx_t *ctx)
+#define ns_bind_func_local(name, ...) static void neko_binding_##name(int argc, neko_script_ctx_t *ctx)
+#define ns_bind_func_lambda(name, ...) auto neko_binding_##name = [](int argc, neko_script_ctx_t *ctx)
 
 template <typename RET>
 auto neko_script_auto_args(neko_script_vector(neko_script_value_t *) stack) {
@@ -738,12 +739,14 @@ auto neko_script_auto_args(neko_script_vector(neko_script_value_t *) stack) {
         assert(v->type == NEKO_SC_VALUE_DICT);
         static_assert(false, "Unsupported type for neko_script_auto_args");
     } else {
-        static_assert(std::is_same_v<T, void>, "Unsupported type for neko_script_auto_args");
+        static_assert(std::is_same_v<TT, void>, "Unsupported type for neko_script_auto_args");
     }
 }
 
 #define ns_args(type, name) type name = neko_script_auto_args<type>(ctx->stack)
 #define ns_ret(value) neko_script_vector_push(ctx->stack, neko_script_auto(value))
+
+neko_script_binary_t *ns_load_module(char *name);
 
 template <typename T, typename ARG1>
 auto neko_script_auto_call(neko_script_ctx_t *ctx, const char *name, ARG1 &&arg1) {

@@ -60,6 +60,8 @@ NEKO_API_DECL struct neko_gui_rect neko_gui_layout_get_bounds(neko_gui_ctx_t* ne
 NEKO_API_DECL struct neko_gui_rect neko_gui_layout_get_bounds_ex(neko_gui_ctx_t* neko_nui, const char* name, struct neko_gui_rect default_bounds);
 NEKO_API_DECL void neko_gui_layout_save(neko_gui_ctx_t* neko_nui);
 
+enum neko_gui_style_theme { THEME_BLACK, THEME_WHITE, THEME_RED, THEME_BLUE, THEME_DARK };
+
 NEKO_API_DECL void set_style(struct neko_gui_context* ctx, enum neko_gui_style_theme theme);
 
 NEKO_API_DECL int neko_gui_overview(struct neko_gui_context* ctx);
