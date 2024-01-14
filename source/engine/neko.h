@@ -324,6 +324,30 @@ enum neko_type_kind {
 
 #define neko_choose(type, ...) ((type[]){__VA_ARGS__})[rand() % (sizeof((type[]){__VA_ARGS__}) / sizeof(type))]
 
+// Custom printf defines
+#ifndef neko_printf
+
+#ifdef __MINGW32__
+
+#define neko_printf(__FMT, ...) __mingw_printf(__FMT, ##__VA_ARGS__)
+
+#elif (defined NEKO_PLATFORM_ANDROID)
+
+#include <android/log.h>
+
+#define neko_printf(__FMT, ...) ((void)__android_log_print(ANDROID_LOG_INFO, "native-activity", __FMT, ##__VA_ARGS__))
+
+#else
+neko_force_inline void neko_printf(const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    vprintf(fmt, args);
+    va_end(args);
+}
+#endif
+
+#endif
+
 // Logging
 #define neko_log_info(...) log_info(__VA_ARGS__)
 #define neko_log_trace(...) log_trace(__VA_ARGS__)
@@ -923,13 +947,23 @@ neko_force_inline b32 neko_string_compare_equal_n(const char* txt, const char* c
     return true;
 }
 
+neko_force_inline char* neko_util_string_concat(char* s1, const char* s2) {
+    const size_t a = strlen(s1);
+    const size_t b = strlen(s2);
+    const size_t ab = a + b + 1;
+    s1 = (char*)neko_safe_realloc((void*)s1, ab);
+    memcpy(s1 + a, s2, b + 1);
+    return s1;
+}
+
 neko_force_inline void neko_util_str_to_lower(const char* src, char* buffer, size_t buffer_sz) {
     size_t src_sz = neko_string_length(src);
-    size_t len = neko_min(src_sz, buffer_sz);
+    size_t len = neko_min(src_sz, buffer_sz - 1);
 
     for (u32 i = 0; i < len; ++i) {
         buffer[i] = tolower(src[i]);
     }
+    if (len) buffer[len] = '\0';
 }
 
 neko_force_inline b32 neko_util_str_is_numeric(const char* str) {
@@ -959,20 +993,15 @@ neko_force_inline b32 neko_util_file_exists(const char* file_path) {
 }
 
 neko_force_inline void neko_util_get_file_extension(char* buffer, u32 buffer_size, const char* file_path) {
-    u32 str_len = neko_string_length(file_path);
-    const char* at = (file_path + str_len - 1);
-    while (*at != '.' && at != file_path) {
-        at--;
-    }
-
-    if (*at == '.') {
-        at++;
-        u32 i = 0;
-        while (*at) {
-            char c = *at;
-            buffer[i++] = *at++;
-        }
-        buffer[i] = '\0';
+    neko_assert(buffer && buffer_size);
+    const char* extension = strrchr(file_path, '.');
+    if (extension) {
+        uint32_t extension_len = strlen(extension + 1);
+        uint32_t len = (extension_len >= buffer_size) ? buffer_size - 1 : extension_len;
+        memcpy(buffer, extension + 1, len);
+        buffer[len] = '\0';
+    } else {
+        buffer[0] = '\0';
     }
 }
 
@@ -1073,29 +1102,6 @@ neko_force_inline void neko_util_normalize_path(const char* path, char* buffer, 
     // Normalize the path somehow...
 }
 
-// Custom printf defines
-#ifndef neko_printf
-
-#ifdef __MINGW32__
-
-#define neko_printf(__FMT, ...) __mingw_printf(__FMT, ##__VA_ARGS__)
-
-#elif (defined NEKO_PLATFORM_ANDROID)
-
-#include <android/log.h>
-
-#define neko_printf(__FMT, ...) ((void)__android_log_print(ANDROID_LOG_INFO, "native-activity", __FMT, ##__VA_ARGS__))
-
-#else
-neko_force_inline void neko_printf(const char* fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    vprintf(fmt, args);
-    va_end(args);
-}
-#endif
-
-#endif
 
 #define neko_println(__FMT, ...)           \
     do {                                   \
@@ -2500,7 +2506,7 @@ concept enum_check = std::is_enum_v<T>;
 template <enum_check T, std::size_t N = 0>
 constexpr auto enum_max() {
     constexpr auto value = static_cast<T>(N);
-    if constexpr (neko::enum_name<value>().find("(") == std::string_view::npos)  // 如果超出了连续有名枚举 将会是"(enum Name)0xN"
+    if constexpr (neko::enum_name<value>().find("(") == std::string_view::npos)  // 如果超出了连续有名枚举 将会是"(enum the_name)0xN"
         return neko::enum_max<T, N + 1>();
     else
         return N;

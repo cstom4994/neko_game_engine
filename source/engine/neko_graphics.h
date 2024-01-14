@@ -314,14 +314,14 @@ typedef struct neko_graphics_texture_desc_t {
 /* Graphics Uniform Layout Desc */
 typedef struct neko_graphics_uniform_layout_desc_t {
     neko_graphics_uniform_type type;  // Type of field
-    char fname[64];                   // Name of field (required for implicit APIs, like OpenGL/ES)
+    char fname[64];                   // the_name of field (required for implicit APIs, like OpenGL/ES)
     u32 count;                        // Count variable (used for arrays such as glUniformXXXv)
 } neko_graphics_uniform_layout_desc_t;
 
 /* Graphics Uniform Desc */
 typedef struct neko_graphics_uniform_desc_t {
     neko_graphics_shader_stage_type stage;
-    char name[64];                                // Name of uniform (required for OpenGL/ES, WebGL)
+    char name[64];                                // the_name of uniform (required for OpenGL/ES, WebGL)
     neko_graphics_uniform_layout_desc_t* layout;  // Layout array for uniform data
     size_t layout_size;                           // Size of uniform data in bytes
 } neko_graphics_uniform_desc_t;

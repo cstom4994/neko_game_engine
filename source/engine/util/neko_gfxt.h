@@ -32,6 +32,10 @@
 #define NEKO_GFXT_CUSTOM_UINT_MAX 4
 #endif
 
+#ifndef NEKO_GFXT_INCLUDE_DIR_MAX
+#define NEKO_GFXT_INCLUDE_DIR_MAX 8
+#endif
+
 #ifndef NEKO_GFXT_UNIFORM_VIEW_MATRIX
 #define NEKO_GFXT_UNIFORM_VIEW_MATRIX "U_VIEW_MTX"
 #endif
@@ -76,7 +80,7 @@ typedef struct neko_gfxt_raw_data_func_desc_t {
 
 //=== Uniforms/Uniform blocks ===//
 typedef struct neko_gfxt_uniform_desc_t {
-    char name[64];                          // Name of uniform (for binding to shader)
+    char name[64];                          // the_name of uniform (for binding to shader)
     neko_graphics_uniform_type type;        // Type of uniform: NEKO_GRAPHICS_UNIFORM_VEC2, NEKO_GRAPHICS_UNIFORM_VEC3, etc.
     uint32_t binding;                       // Binding for this uniform in shader
     neko_graphics_shader_stage_type stage;  // Shader stage for this uniform
@@ -255,6 +259,7 @@ NEKO_API_DECL void neko_gfxt_pipeline_destroy(neko_gfxt_pipeline_t* pipeline);
 //=== Resource Loading ===//
 NEKO_API_DECL neko_gfxt_pipeline_t neko_gfxt_pipeline_load_from_file(const char* path);
 NEKO_API_DECL neko_gfxt_pipeline_t neko_gfxt_pipeline_load_from_memory(const char* data, size_t sz);
+NEKO_API_DECL neko_gfxt_pipeline_t neko_gfxt_pipeline_load_from_memory_ext(const char* data, size_t sz, const char* file_dir);
 NEKO_API_DECL neko_gfxt_texture_t neko_gfxt_texture_load_from_file(const char* path, neko_graphics_texture_desc_t* desc, bool flip, bool keep_data);
 NEKO_API_DECL neko_gfxt_texture_t neko_gfxt_texture_load_from_memory(const char* data, size_t sz, neko_graphics_texture_desc_t* desc, bool flip, bool keep_data);
 

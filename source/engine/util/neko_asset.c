@@ -1282,29 +1282,21 @@ static void neko_fnt_decode(neko_fnt *fnt, void *input_data, neko_fnt_read_func_
 // #include "libs/lz4/lz4.h"
 
 #if __linux__ || __APPLE__
-#define openFile(filePath, mode) \
-	fopen(filePath, mode)
-#define seekFile(file, offset, whence) \
-	fseeko(file, offset, whence)
+#define openFile(filePath, mode) fopen(filePath, mode)
+#define seekFile(file, offset, whence) fseeko(file, offset, whence)
 #define tellFile(file) ftello(file)
 #elif _WIN32
-inline static FILE* openFile(const char* filePath, const char* mode)
-{
-    FILE* file;
+inline static FILE *openFile(const char *filePath, const char *mode) {
+    FILE *file;
 
-    errno_t error = fopen_s(
-            &file,
-            filePath,
-            mode);
+    errno_t error = fopen_s(&file, filePath, mode);
 
-    if (error != 0)
-        return NULL;
+    if (error != 0) return NULL;
 
     return file;
 }
 
-#define seekFile(file, offset, whence) \
-	_fseeki64(file, offset, whence)
+#define seekFile(file, offset, whence) _fseeki64(file, offset, whence)
 #define tellFile(file) _ftelli64(file)
 #else
 #error Unsupported operating system
@@ -1416,14 +1408,9 @@ neko_pack_result neko_pack_read(const_str file_path, u32 data_buffer_capacity, b
     }
 
     // 检查文件头
-    if (header[0] != 'P' || header[1] != 'A' || header[2] != 'C' || header[3] != 'K') {
+    if (header[0] != 'P' || header[1] != 'A' || header[2] != 'C' || header[3] != 'K' || header[4] != 0 || header[5] != 0) {
         neko_pack_destroy(pack_reader);
-        return -1; /*BAD_FILE_TYPE_PACK_RESULT*/
-    }
-
-    if (header[4] != 0 || header[5] != 0) {
-        neko_pack_destroy(pack_reader);
-        return -1; /*BAD_FILE_VERSION_PACK_RESULT*/
+        return -1;
     }
 
     // Skipping PATCH version check
@@ -1515,12 +1502,12 @@ b8 neko_pack_item_index(neko_packreader_t *pack_reader, const_str path, u64 *ind
     neko_assert(index);
     neko_assert(strlen(path) <= UINT8_MAX);
 
-    pack_item *searchItem = &pack_reader->search_item;
+    pack_item *search_item = &pack_reader->search_item;
 
-    searchItem->info.path_size = (u8)strlen(path);
-    searchItem->path = (char *)path;
+    search_item->info.path_size = (u8)strlen(path);
+    search_item->path = (char *)path;
 
-    pack_item *item = (pack_item *)bsearch(searchItem, pack_reader->items, pack_reader->item_count, sizeof(pack_item), neko_compare_pack_items);
+    pack_item *item = (pack_item *)bsearch(search_item, pack_reader->items, pack_reader->item_count, sizeof(pack_item), neko_compare_pack_items);
 
     if (!item) return false;
 
@@ -1591,11 +1578,11 @@ neko_pack_result neko_pack_item_data_with_index(neko_packreader_t *pack_reader, 
 
     FILE *file = pack_reader->file;
 
-    s64 fileOffset = (s64)(info.file_offset + sizeof(pack_iteminfo) + info.path_size);
+    s64 file_offset = (s64)(info.file_offset + sizeof(pack_iteminfo) + info.path_size);
 
-    int seekResult = seekFile(file, fileOffset, SEEK_SET);
+    int seek_result = seekFile(file, file_offset, SEEK_SET);
 
-    if (seekResult != 0) return -1; /*FAILED_TO_SEEK_FILE_PACK_RESULT*/
+    if (seek_result != 0) return -1; /*FAILED_TO_SEEK_FILE_PACK_RESULT*/
 
     if (info.zip_size > 0) {
         size_t result = fread(zip_buffer, sizeof(u8), info.zip_size, file);
@@ -1654,10 +1641,10 @@ void neko_pack_free_buffers(neko_packreader_t *pack_reader) {
     pack_reader->zip_buffer = NULL;
 }
 
-neko_private(void) neko_pack_remove_item(u64 item_count, pack_item *packItems) {
-    neko_assert(item_count == 0 || (item_count > 0 && packItems));
+neko_private(void) neko_pack_remove_item(u64 item_count, pack_item *pack_items) {
+    neko_assert(item_count == 0 || (item_count > 0 && pack_items));
 
-    for (u64 i = 0; i < item_count; i++) remove(packItems[i].path);
+    for (u64 i = 0; i < item_count; i++) remove(pack_items[i].path);
 }
 
 neko_pack_result neko_pack_unzip(const_str file_path, b8 printProgress) {
@@ -1669,7 +1656,7 @@ neko_pack_result neko_pack_unzip(const_str file_path, b8 printProgress) {
 
     if (pack_result != 0) return pack_result;
 
-    u64 totalRawSize = 0, totalZipSize = 0;
+    u64 total_raw_size = 0, total_zip_size = 0;
 
     u64 item_count = pack_reader.item_count;
     pack_item *items = pack_reader.items;
@@ -1725,8 +1712,8 @@ neko_pack_result neko_pack_unzip(const_str file_path, b8 printProgress) {
             u32 rawFileSize = item->info.data_size;
             u32 zipFileSize = item->info.zip_size > 0 ? item->info.zip_size : item->info.data_size;
 
-            totalRawSize += rawFileSize;
-            totalZipSize += zipFileSize;
+            total_raw_size += rawFileSize;
+            total_zip_size += zipFileSize;
 
             int progress = (int)(((f32)(i + 1) / (f32)item_count) * 100.0f);
 
@@ -1737,7 +1724,7 @@ neko_pack_result neko_pack_unzip(const_str file_path, b8 printProgress) {
     neko_pack_destroy(&pack_reader);
 
     if (printProgress) {
-        printf("Unpacked %llu files. (%llu/%llu bytes)\n", (long long unsigned int)item_count, (long long unsigned int)totalRawSize, (long long unsigned int)totalZipSize);
+        printf("Unpacked %llu files. (%llu/%llu bytes)\n", (long long unsigned int)item_count, (long long unsigned int)total_raw_size, (long long unsigned int)total_zip_size);
     }
 
     return 0;
@@ -2018,11 +2005,9 @@ neko_pack_result neko_pack_files(const_str file_path, u64 fileCount, const_str *
     return 0;
 }
 
-neko_pack_result neko_pack_info(const_str file_path, u8 *majorVersion, u8 *minorVersion, u8 *patchVersion, b8 *isLittleEndian, u64 *_item_count) {
+neko_pack_result neko_pack_info(const_str file_path, u8 *pack_version, b8 *isLittleEndian, u64 *_item_count) {
     neko_assert(file_path);
-    neko_assert(majorVersion);
-    neko_assert(minorVersion);
-    neko_assert(patchVersion);
+    neko_assert(pack_version);
     neko_assert(isLittleEndian);
     neko_assert(_item_count);
 
@@ -2054,9 +2039,9 @@ neko_pack_result neko_pack_info(const_str file_path, u8 *majorVersion, u8 *minor
 
     if (result != 1) return -1; /*FAILED_TO_READ_FILE_PACK_RESULT*/
 
-    *majorVersion = header[4];
-    *minorVersion = header[5];
-    *patchVersion = header[6];
+    *pack_version = header[4];
+    /*    *pack_version = header[5];
+     *pack_version = header[6];*/
     *isLittleEndian = !header[7];
     *_item_count = item_count;
     return 0;
@@ -2065,12 +2050,6 @@ neko_pack_result neko_pack_info(const_str file_path, u8 *majorVersion, u8 *minor
 #pragma endregion
 
 #pragma region xml
-
-#define __neko_xml_expect(c_, e_)                 \
-    if (*c_ != e_) {                              \
-        neko_xml_emit_error("Expected " #e_ "."); \
-        return NULL;                              \
-    }
 
 #define __neko_xml_expect_not_end(c_)           \
     if (!*(c_)) {                               \
@@ -3211,42 +3190,6 @@ void neko_nbt_print_tree(neko_nbt_tag_t *tag, int indentation) {
 
 #pragma region font
 
-#if !defined(CUTE_FONT_ALLOC)
-#include <stdlib.h>
-#define CUTE_FONT_ALLOC(size, ctx) malloc(size)
-#define CUTE_FONT_FREE(mem, ctx) free(mem)
-#endif
-
-#if !defined(CUTE_FONT_MEMSET)
-#include <string.h>
-#define CUTE_FONT_MEMSET memset
-#endif
-
-#if !defined(CUTE_FONT_MEMCPY)
-#include <string.h>
-#define CUTE_FONT_MEMCPY memcpy
-#endif
-
-#if !defined(CUTE_FONT_STRNCMP)
-#include <string.h>
-#define CUTE_FONT_STRNCMP strncmp
-#endif
-
-#if !defined(CUTE_FONT_STRTOLL)
-#include <stdlib.h>
-#define CUTE_FONT_STRTOLL strtoll
-#endif
-
-#if !defined(CUTE_FONT_STRTOD)
-#include <stdlib.h>
-#define CUTE_FONT_STRTOD strtod
-#endif
-
-#if !defined(CUTE_FONT_STRCHR)
-#include <string.h>
-#define CUTE_FONT_STRCHR strchr
-#endif
-
 const char *neko_font_error_reason;
 
 // cp1252 table and decode utf8 functions by Mitton a la TIGR
@@ -3349,7 +3292,7 @@ neko_font_t *neko_font_load(neko_font_u64 atlas_id, const void *pixels, int w, i
 
     // algorithm by Mitton a la TIGR
     // https://bitbucket.org/rmitton/tigr/src/default/
-    neko_font_t *font = (neko_font_t *)CUTE_FONT_ALLOC(sizeof(neko_font_t), mem_ctx);
+    neko_font_t *font = (neko_font_t *)neko_safe_malloc(sizeof(neko_font_t));
     font->codes = 0;
     font->glyphs = 0;
     font->mem_ctx = mem_ctx;
@@ -3371,8 +3314,8 @@ neko_font_t *neko_font_load(neko_font_u64 atlas_id, const void *pixels, int w, i
         default:
             CUTE_FONT_CHECK(0, "Unknown codepage encountered.");
     }
-    font->codes = (int *)CUTE_FONT_ALLOC(sizeof(int) * font->glyph_count, mem_ctx);
-    font->glyphs = (neko_font_glyph_t *)CUTE_FONT_ALLOC(sizeof(neko_font_glyph_t) * font->glyph_count, mem_ctx);
+    font->codes = (int *)neko_safe_malloc(sizeof(int) * font->glyph_count);
+    font->glyphs = (neko_font_glyph_t *)neko_safe_malloc(sizeof(neko_font_glyph_t) * font->glyph_count);
     font->atlas_id = atlas_id;
     font->kern = 0;
 
@@ -3428,9 +3371,9 @@ neko_font_t *neko_font_load(neko_font_u64 atlas_id, const void *pixels, int w, i
     return font;
 
 neko_font_err:
-    CUTE_FONT_FREE(font->glyphs, mem_ctx);
-    CUTE_FONT_FREE(font->codes, mem_ctx);
-    CUTE_FONT_FREE(font, mem_ctx);
+    neko_safe_free(font->glyphs);
+    neko_safe_free(font->codes);
+    neko_safe_free(font);
     return 0;
 }
 
@@ -3591,7 +3534,7 @@ neko_font_err:
 
 static int neko_font_read_int_internal(neko_font_parse_t *p, int *out) {
     char *end;
-    int val = (int)CUTE_FONT_STRTOLL(p->in, &end, 10);
+    int val = (int)strtoll(p->in, &end, 10);
     CUTE_FONT_CHECK(p->in != end, "Invalid integer found during parse.");
     p->in = end;
     *out = val;
@@ -3608,7 +3551,7 @@ neko_font_err:
 
 static int neko_font_read_float_internal(neko_font_parse_t *p, float *out) {
     char *end;
-    float val = (float)CUTE_FONT_STRTOD(p->in, &end);
+    float val = (float)strtod(p->in, &end);
     CUTE_FONT_CHECK(p->in != end, "Error reading float.");
     p->in = end;
     *out = val;
@@ -3625,7 +3568,7 @@ neko_font_err:
 
 int neko_font_expect_string_internal(neko_font_parse_t *p, const char *str) {
     neko_font_read_string(p);
-    if (CUTE_FONT_STRNCMP(p->scratch, str, p->scratch_len))
+    if (strncmp(p->scratch, str, p->scratch_len))
         return 0;
     else
         return 1;
@@ -3640,7 +3583,7 @@ neko_font_err:
 
 int neko_font_expect_identifier_internal(neko_font_parse_t *p, const char *str) {
     neko_font_read_identifier(p);
-    if (CUTE_FONT_STRNCMP(p->scratch, str, p->scratch_len))
+    if (strncmp(p->scratch, str, p->scratch_len))
         return 0;
     else
         return 1;
@@ -3664,7 +3607,7 @@ neko_font_t *neko_font_load_bmfont(neko_font_u64 atlas_id, const void *fnt, int 
     p->in = (const char *)fnt;
     p->end = p->in + size;
 
-    neko_font_t *font = (neko_font_t *)CUTE_FONT_ALLOC(sizeof(neko_font_t), mem_ctx);
+    neko_font_t *font = (neko_font_t *)neko_safe_malloc(sizeof(neko_font_t));
     font->atlas_id = atlas_id;
     font->kern = 0;
     font->mem_ctx = mem_ctx;
@@ -3728,8 +3671,8 @@ neko_font_t *neko_font_load_bmfont(neko_font_u64 atlas_id, const void *fnt, int 
     neko_font_expect_identifier(p, "chars");
     neko_font_expect_identifier(p, "count");
     neko_font_read_int(p, &font->glyph_count);
-    font->glyphs = (neko_font_glyph_t *)CUTE_FONT_ALLOC(sizeof(neko_font_glyph_t) * font->glyph_count, mem_ctx);
-    font->codes = (int *)CUTE_FONT_ALLOC(sizeof(int) * font->glyph_count, mem_ctx);
+    font->glyphs = (neko_font_glyph_t *)neko_safe_malloc(sizeof(neko_font_glyph_t) * font->glyph_count);
+    font->codes = (int *)neko_safe_malloc(sizeof(int) * font->glyph_count);
 
     // Used to squeeze UVs inward by 128th of a pixel.
     w0 = 1.0f / (float)(font->atlas_w);
@@ -3782,7 +3725,7 @@ neko_font_t *neko_font_load_bmfont(neko_font_u64 atlas_id, const void *fnt, int 
         neko_font_expect_identifier(p, "kernings");
         neko_font_expect_identifier(p, "count");
         neko_font_read_int(p, &kern_count);
-        kern = (neko_font_kern_t *)CUTE_FONT_ALLOC(sizeof(neko_font_kern_t), mem_ctx);
+        kern = (neko_font_kern_t *)neko_safe_malloc(sizeof(neko_font_kern_t));
         font->kern = kern;
         hashtable_init(&kern->table, sizeof(int), kern_count, mem_ctx);
 
@@ -3810,11 +3753,11 @@ neko_font_err:
 
 void neko_font_free(neko_font_t *font) {
     void *mem_ctx = font->mem_ctx;
-    CUTE_FONT_FREE(font->glyphs, mem_ctx);
-    CUTE_FONT_FREE(font->codes, mem_ctx);
+    neko_safe_free(font->glyphs);
+    neko_safe_free(font->codes);
     if (font->kern) hashtable_term(&font->kern->table);
-    CUTE_FONT_FREE(font->kern, mem_ctx);
-    CUTE_FONT_FREE(font, mem_ctx);
+    neko_safe_free(font->kern);
+    neko_safe_free(font);
 }
 
 int neko_font_text_width(neko_font_t *font, const char *text) {
@@ -3884,18 +3827,18 @@ neko_font_glyph_t *neko_font_get_glyph(neko_font_t *font, int index) { return fo
 int neko_font_kerning(neko_font_t *font, int code0, int code1) { return (int)(size_t)hashtable_find(&font->kern->table, (neko_font_u64)code0 << 32 | (neko_font_u64)code1); }
 
 neko_font_t *neko_font_create_blank(int font_height, int glyph_count) {
-    neko_font_t *font = (neko_font_t *)CUTE_FONT_ALLOC(sizeof(neko_font_t), font->mem_ctx);
+    neko_font_t *font = (neko_font_t *)neko_safe_malloc(sizeof(neko_font_t));
     font->glyph_count = glyph_count;
     font->font_height = font_height;
     font->kern = 0;
-    font->glyphs = (neko_font_glyph_t *)CUTE_FONT_ALLOC(sizeof(neko_font_glyph_t) * font->glyph_count, font->mem_ctx);
-    font->codes = (int *)CUTE_FONT_ALLOC(sizeof(int) * font->glyph_count, font->mem_ctx);
+    font->glyphs = (neko_font_glyph_t *)neko_safe_malloc(sizeof(neko_font_glyph_t) * font->glyph_count);
+    font->codes = (int *)neko_safe_malloc(sizeof(int) * font->glyph_count);
     return font;
 }
 
 void neko_font_add_kerning_pair(neko_font_t *font, int code0, int code1, int kerning) {
     if (!font->kern) {
-        neko_font_kern_t *kern = (neko_font_kern_t *)CUTE_FONT_ALLOC(sizeof(neko_font_kern_t), font->mem_ctx);
+        neko_font_kern_t *kern = (neko_font_kern_t *)neko_safe_malloc(sizeof(neko_font_kern_t));
         font->kern = kern;
         hashtable_init(&kern->table, sizeof(int), 256, font->mem_ctx);
     }

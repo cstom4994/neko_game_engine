@@ -176,13 +176,13 @@ static void file_callback(neko_log_event* ev) {
     fflush(ev->udata);
 }
 
-static void lock(void) {
+static void log_lock(void) {
     if (L.lock) {
         L.lock(true, L.udata);
     }
 }
 
-static void unlock(void) {
+static void log_unlock(void) {
     if (L.lock) {
         L.lock(false, L.udata);
     }
@@ -227,7 +227,7 @@ void log_log(int level, const char* file, int line, const char* fmt, ...) {
             .level = level,
     };
 
-    lock();
+    log_lock();
 
     if (!L.quiet && level >= L.level) {
         init_event(&ev, stderr);
@@ -246,7 +246,7 @@ void log_log(int level, const char* file, int line, const char* fmt, ...) {
         }
     }
 
-    unlock();
+    log_unlock();
 }
 
 /*========================
@@ -968,7 +968,7 @@ NEKO_API_DECL neko_camera_t neko_camera_default() {
     cam.transform.position.z = 1.f;
     cam.fov = 60.f;
     cam.near_plane = 0.1f;
-    cam.far_plane = 1000.f;
+    cam.far_plane = 100.f;
     cam.ortho_scale = 1.f;
     cam.proj_type = NEKO_PROJECTION_TYPE_ORTHOGRAPHIC;
     return cam;
@@ -2012,9 +2012,9 @@ void neko_ecs_ent_view_next(neko_ecs_ent_view* view) {
     }
 }
 
-/*=============================
+//=============================
 // CVar
-=============================*/
+//=============================
 
 void __neko_engine_cvar_init() {}
 
@@ -2060,9 +2060,9 @@ void neko_config_print() {
     }
 }
 
-/*=============================
+//=============================
 // NEKO_ENGINE
-=============================*/
+//=============================
 
 NEKO_API_DECL void neko_default_app_func();
 

@@ -792,7 +792,7 @@ NEKO_API_DECL void neko_imgui_bring_split_to_front(neko_imgui_context_t* ctx, ne
     if (!split) return;
 
     if (!split->parent) {
-        neko_snprintfc(TMP, 256, "!dockspace%zu", (size_t)split);
+        neko_snprintfc(TMP, 256, "!editor_dockspace%zu", (size_t)split);
         neko_imgui_id id = neko_imgui_get_id(ctx, TMP, 256);
         neko_imgui_container_t* cnt = neko_imgui_get_container(ctx, TMP);
         // if (cnt) neko_imgui_bring_to_front(ctx, cnt);
@@ -2565,7 +2565,7 @@ static void neko_imgui_draw_splits(neko_imgui_context_t* ctx, neko_imgui_split_t
         if (split->children[i].type == NEKO_IMGUI_SPLIT_NODE_CONTAINER && can_draw) {
             neko_imgui_container_t* cnt = split->children[i].container;
 
-            // Don't draw split if this container belongs to a dockspace
+            // Don't draw split if this container belongs to a editor_dockspace
             if (cnt->opt & NEKO_IMGUI_OPT_DOCKSPACE) {
                 can_draw = false;
                 continue;
@@ -2874,7 +2874,7 @@ NEKO_API_DECL void neko_imgui_begin(neko_imgui_context_t* ctx, const neko_imgui_
                 // Draw splits
                 neko_imgui_draw_splits(ctx, split);
 
-                // Do resize controls for dockspace
+                // Do resize controls for editor_dockspace
                 neko_imgui_container_t* top = neko_imgui_get_top_most_container(ctx, split);
                 const neko_imgui_rect_t* sr = &split->rect;
                 neko_imgui_container_t* hover_cnt = ctx->hover_root ? ctx->hover_root :
@@ -3010,7 +3010,7 @@ static void neko_imgui_docking(neko_imgui_context_t* ctx) {
 
         bool can_dock = true;
 
-        // Can't dock one dockspace into another
+        // Can't dock one editor_dockspace into another
         if (ctx->focus_root->opt & NEKO_IMGUI_OPT_DOCKSPACE) {
             can_dock = false;
         }
@@ -3353,7 +3353,7 @@ NEKO_API_DECL void neko_imgui_end(neko_imgui_context_t* ctx, b32 update) {
         // Root split
         neko_imgui_split_t* split = neko_imgui_get_root_split(ctx, ctx->next_hover_root);
 
-        // Need to bring entire dockspace to front
+        // Need to bring entire editor_dockspace to front
         if (split) {
             neko_imgui_bring_split_to_front(ctx, split);
         } else if (~ctx->next_hover_root->opt & NEKO_IMGUI_OPT_NOFOCUS) {
@@ -5618,7 +5618,7 @@ NEKO_API_DECL s32 neko_imgui_window_begin_ex(neko_imgui_context_t* ctx, const ch
 
         // Need to move the entire thing
         if ((id == ctx->focus || id == ctx->hover) && ctx->mouse_down == NEKO_IMGUI_MOUSE_LEFT) {
-            // This lock id is what I need...
+            // This log_lock id is what I need...
 
             ctx->active_root = cnt;
 
@@ -5836,7 +5836,7 @@ NEKO_API_DECL s32 neko_imgui_window_begin_ex(neko_imgui_context_t* ctx, const ch
             const float sh = split_size * 0.5f;
         }
 
-        // Don't draw this unless you're the bottom window or first frame in a tab group (if in dockspace)
+        // Don't draw this unless you're the bottom window or first frame in a tab group (if in editor_dockspace)
         if (tab_bar) {
             bool lowest = true;
             {
@@ -7687,7 +7687,7 @@ typedef struct {
 
 bool _neko_imgui_style_sheet_parse_attribute_transition(neko_imgui_context_t* ctx, neko_lexer_t* lex, neko_imgui_style_sheet_t* ss, const u64 id_tag, s32 elementid, s32 state,
                                                         neko_imgui_ss_variables_t* variables) {
-    // Name of enum attribute
+    // the_name of enum attribute
     neko_token_t token = neko_lexer_current_token(lex);
     // neko_token_debug_print(&token);
 
@@ -7856,7 +7856,7 @@ bool _neko_imgui_style_sheet_parse_attribute_transition(neko_imgui_context_t* ct
 
 bool _neko_imgui_style_sheet_parse_attribute_font(neko_imgui_context_t* ctx, neko_lexer_t* lex, neko_imgui_style_sheet_t* ss, u64 id_tag, s32 elementid, s32 state,
                                                   neko_imgui_ss_variables_t* variables) {
-    // Name of enum attribute
+    // the_name of enum attribute
     neko_token_t token = neko_lexer_current_token(lex);
     // neko_token_debug_print(&token);
     //
@@ -7954,7 +7954,7 @@ bool _neko_imgui_style_sheet_parse_attribute_font(neko_imgui_context_t* ctx, nek
 
 bool _neko_imgui_style_sheet_parse_attribute_enum(neko_imgui_context_t* ctx, neko_lexer_t* lex, neko_imgui_style_sheet_t* ss, u64 id_tag, s32 elementid, s32 state,
                                                   neko_imgui_ss_variables_t* variables) {
-    // Name of enum attribute
+    // the_name of enum attribute
     neko_token_t token = neko_lexer_current_token(lex);
     // neko_token_debug_print(&token);
 
@@ -8085,7 +8085,7 @@ bool _neko_imgui_style_sheet_parse_attribute_enum(neko_imgui_context_t* ctx, nek
 
 bool _neko_imgui_style_sheet_parse_attribute_val(neko_imgui_context_t* ctx, neko_lexer_t* lex, neko_imgui_style_sheet_t* ss, u64 id_tag, s32 elementid, s32 state,
                                                  neko_imgui_ss_variables_t* variables) {
-    // Name of value attribute
+    // the_name of value attribute
     neko_token_t token = neko_lexer_current_token(lex);
     // neko_token_debug_print(&token);
 
@@ -8375,7 +8375,7 @@ bool _neko_imgui_style_sheet_parse_attribute_val(neko_imgui_context_t* ctx, neko
 
 bool _neko_imgui_style_sheet_parse_attribute_color(neko_imgui_context_t* ctx, neko_lexer_t* lex, neko_imgui_style_sheet_t* ss, u64 id_tag, s32 elementid, s32 state,
                                                    neko_imgui_ss_variables_t* variables) {
-    // Name of color attribute
+    // the_name of color attribute
     neko_token_t token = neko_lexer_current_token(lex);
     // neko_token_debug_print(&token);
 
@@ -8548,7 +8548,7 @@ bool _neko_imgui_style_sheet_parse_attribute_color(neko_imgui_context_t* ctx, ne
 }
 
 bool _neko_imgui_style_sheet_parse_attribute(neko_imgui_context_t* ctx, neko_lexer_t* lex, neko_imgui_style_sheet_t* ss, u64 id_tag, s32 elementid, s32 state, neko_imgui_ss_variables_t* variables) {
-    // Name of attribute
+    // the_name of attribute
     neko_token_t token = neko_lexer_current_token(lex);
 
     if (neko_token_compare_text(&token, "color_background") || neko_token_compare_text(&token, "color_border") || neko_token_compare_text(&token, "color_shadow") ||

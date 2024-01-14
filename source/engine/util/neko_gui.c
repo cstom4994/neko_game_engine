@@ -196,7 +196,7 @@ NEKO_API_DECL void neko_gui_device_create(neko_gui_ctx_t* neko_nui) {
     // Construct sampler buffer
     neko_nui->u_tex = neko_graphics_uniform_create(&(neko_graphics_uniform_desc_t){.name = "Texture", .layout = &(neko_graphics_uniform_layout_desc_t){.type = NEKO_GRAPHICS_UNIFORM_SAMPLER2D}});
 
-    neko_nui->u_proj = neko_graphics_uniform_create(&(neko_graphics_uniform_desc_t){.name = "ProjMtx",  // Name of uniform (used for linkage)
+    neko_nui->u_proj = neko_graphics_uniform_create(&(neko_graphics_uniform_desc_t){.name = "ProjMtx",  // the_name of uniform (used for linkage)
                                                                                     .layout = &(neko_graphics_uniform_layout_desc_t){.type = NEKO_GRAPHICS_UNIFORM_MAT4}});
 
     // Construct vertex buffer

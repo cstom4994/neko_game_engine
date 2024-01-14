@@ -1129,21 +1129,21 @@ template <typename X, typename Y>
 template <typename X, typename Y>
 constexpr bool TypeID_Less_v = TypeID_Less<X, Y>::value;
 
-class Name {
+class the_name {
 public:
-    constexpr Name() noexcept = default;
-    constexpr Name(std::string_view str) noexcept : str{str}, nameID{str} {}
+    constexpr the_name() noexcept = default;
+    constexpr the_name(std::string_view str) noexcept : str{str}, nameID{str} {}
     template <std::size_t N>
-    constexpr Name(const char (&str)[N]) noexcept : Name{std::string_view{str}} {}
-    constexpr Name(std::string_view str, name_id nameID) noexcept : str{str}, nameID{nameID} { neko_assert(name_id{str} == nameID); }
+    constexpr the_name(const char (&str)[N]) noexcept : the_name{std::string_view{str}} {}
+    constexpr the_name(std::string_view str, name_id nameID) noexcept : str{str}, nameID{nameID} { neko_assert(name_id{str} == nameID); }
     constexpr std::string_view get_view() const noexcept { return str; }
     constexpr operator std::string_view() const noexcept { return get_view(); }
     constexpr name_id get_id() const noexcept { return nameID; }
     constexpr operator name_id() const noexcept { return get_id(); }
     constexpr bool valid() const noexcept { return !str.empty() && nameID.Valid(); }
     constexpr operator bool() const noexcept { return valid(); }
-    constexpr std::strong_ordering operator<=>(const Name& rhs) const noexcept { return nameID <=> rhs.nameID; }
-    friend constexpr bool operator==(const Name& lhs, const Name& rhs) noexcept {
+    constexpr std::strong_ordering operator<=>(const the_name& rhs) const noexcept { return nameID <=> rhs.nameID; }
+    friend constexpr bool operator==(const the_name& lhs, const the_name& rhs) noexcept {
         if (lhs.nameID == rhs.nameID) {
             neko_assert(lhs.str == rhs.str);
             return true;
@@ -1262,7 +1262,7 @@ private:
     // avoid hash
     constexpr Type FastGetType(std::string_view str) const noexcept { return name.get_view().data() == str.data() ? *this : Type{str}; }
 
-    Name name;
+    the_name name;
 };
 
 template <typename T>
@@ -1285,8 +1285,8 @@ class TempTypeIDs : public TempArray<TypeID, N> {
     using TempArray<TypeID, N>::TempArray;
 };
 template <std::size_t N>
-class TempNames : public TempArray<Name, N> {
-    using TempArray<Name, N>::TempArray;
+class TempNames : public TempArray<the_name, N> {
+    using TempArray<the_name, N>::TempArray;
 };
 template <std::size_t N>
 class TempTypes : public TempArray<Type, N> {
@@ -1317,8 +1317,8 @@ struct std::hash<neko::cpp::TypeID> {
 };
 
 template <>
-struct std::hash<neko::cpp::Name> {
-    std::size_t operator()(const neko::cpp::Name& name) const noexcept { return name.get_id().GetValue(); }
+struct std::hash<neko::cpp::the_name> {
+    std::size_t operator()(const neko::cpp::the_name& name) const noexcept { return name.get_id().GetValue(); }
 };
 
 template <>

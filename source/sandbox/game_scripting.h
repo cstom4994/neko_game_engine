@@ -3,7 +3,7 @@
 #define GAME_SCRIPTING_H
 
 #include "engine/neko.h"
-#include "engine/util/neko_script.h"
+#include "engine/util/neko_vm.h"
 
 typedef struct game_scripting_s {
     neko_script_ctx_t *ctx;

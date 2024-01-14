@@ -257,7 +257,7 @@ constexpr const auto& ElemList<Elems...>::Find(Name) const {
     }();
     static_assert(idx != static_cast<std::size_t>(-1));
     return Get<idx>();
-    // return Get<neko::cpp::FindIf_v<TypeList<Elems...>, detail::IsSameNameWith<Name>::template Ttype>>();
+    // return Get<neko::cpp::FindIf_v<TypeList<Elems...>, detail::IsSameNameWith<the_name>::template Ttype>>();
 }
 
 template <typename... Elems>

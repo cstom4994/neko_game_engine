@@ -42,7 +42,7 @@ typedef struct neko_ray_s {
 
 typedef struct neko_poly_t {
     neko_vec3* verts;
-    int32_t cnt;
+    s32 cnt;
 } neko_poly_t;
 
 typedef union neko_frustum_t {
@@ -106,7 +106,7 @@ typedef struct neko_circle_t {
 // Need 2d collision shapes and responses with GJK+EPA
 
 typedef struct neko_hit_t {
-    int32_t hit;
+    s32 hit;
     union {
         // General case
         float depth;
@@ -116,7 +116,7 @@ typedef struct neko_hit_t {
         };
         // GJK only
         struct {
-            int32_t hits, iterations;
+            s32 hits, iterations;
             neko_vec3 p0, p1;
             float distance2;
         };
@@ -146,7 +146,7 @@ typedef struct neko_hit_t {
 
 // Contact info
 typedef struct neko_contact_info_t {
-    int32_t hit;
+    s32 hit;
     neko_vec3 normal;
     float depth;
     neko_vec3 point;
@@ -169,60 +169,60 @@ NEKO_API_DECL float neko_plane_unsigned_distance(const neko_plane_t* p, neko_vec
 NEKO_API_DECL neko_plane_t neko_plane_normalized(const neko_plane_t* p);
 
 /* Sphere */
-NEKO_API_DECL int32_t neko_sphere_vs_sphere(const neko_sphere_t* a, const neko_vqs* xform_a, const neko_sphere_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_sphere_vs_aabb(const neko_sphere_t* a, const neko_vqs* xform_a, const neko_aabb_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_sphere_vs_poly(const neko_sphere_t* a, const neko_vqs* xform_a, const neko_poly_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_sphere_vs_cylinder(const neko_sphere_t* a, const neko_vqs* xform_a, const neko_cylinder_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_sphere_vs_cone(const neko_sphere_t* a, const neko_vqs* xform_a, const neko_cone_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_sphere_vs_capsule(const neko_sphere_t* a, const neko_vqs* xform_a, const neko_capsule_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_sphere_vs_ray(const neko_sphere_t* a, const neko_vqs* xform_a, const neko_ray_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_sphere_vs_sphere(const neko_sphere_t* a, const neko_vqs* xform_a, const neko_sphere_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_sphere_vs_aabb(const neko_sphere_t* a, const neko_vqs* xform_a, const neko_aabb_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_sphere_vs_poly(const neko_sphere_t* a, const neko_vqs* xform_a, const neko_poly_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_sphere_vs_cylinder(const neko_sphere_t* a, const neko_vqs* xform_a, const neko_cylinder_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_sphere_vs_cone(const neko_sphere_t* a, const neko_vqs* xform_a, const neko_cone_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_sphere_vs_capsule(const neko_sphere_t* a, const neko_vqs* xform_a, const neko_capsule_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_sphere_vs_ray(const neko_sphere_t* a, const neko_vqs* xform_a, const neko_ray_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
 
 /* Box */
-//NEKO_API_DECL int32_t neko_aabb_vs_aabb(const neko_aabb_t* a, const neko_vqs* xform_a, const neko_aabb_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_aabb_vs_sphere(const neko_aabb_t* a, const neko_vqs* xform_a, const neko_sphere_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_aabb_vs_poly(const neko_aabb_t* a, const neko_vqs* xform_a, const neko_poly_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_aabb_vs_cylinder(const neko_aabb_t* a, const neko_vqs* xform_a, const neko_cylinder_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_aabb_vs_cone(const neko_aabb_t* a, const neko_vqs* xform_a, const neko_cone_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_aabb_vs_capsule(const neko_aabb_t* a, const neko_vqs* xform_a, const neko_capsule_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_aabb_vs_ray(const neko_aabb_t* a, const neko_vqs* xform_a, const neko_ray_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+// NEKO_API_DECL s32 neko_aabb_vs_aabb(const neko_aabb_t* a, const neko_vqs* xform_a, const neko_aabb_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_aabb_vs_sphere(const neko_aabb_t* a, const neko_vqs* xform_a, const neko_sphere_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_aabb_vs_poly(const neko_aabb_t* a, const neko_vqs* xform_a, const neko_poly_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_aabb_vs_cylinder(const neko_aabb_t* a, const neko_vqs* xform_a, const neko_cylinder_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_aabb_vs_cone(const neko_aabb_t* a, const neko_vqs* xform_a, const neko_cone_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_aabb_vs_capsule(const neko_aabb_t* a, const neko_vqs* xform_a, const neko_capsule_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_aabb_vs_ray(const neko_aabb_t* a, const neko_vqs* xform_a, const neko_ray_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
 
 /* Capsule */
-NEKO_API_DECL int32_t neko_capsule_vs_aabb(const neko_capsule_t* capsule, const neko_vqs* xform_a, const neko_aabb_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_capsule_vs_sphere(const neko_capsule_t* capsule, const neko_vqs* xform_a, const neko_sphere_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_capsule_vs_poly(const neko_capsule_t* capsule, const neko_vqs* xform_a, const neko_poly_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_capsule_vs_cylinder(const neko_capsule_t* capsule, const neko_vqs* xform_a, const neko_cylinder_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_capsule_vs_cone(const neko_capsule_t* capsule, const neko_vqs* xform_a, const neko_cone_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_capsule_vs_capsule(const neko_capsule_t* capsule, const neko_vqs* xform_a, const neko_capsule_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_capsule_vs_ray(const neko_capsule_t* capsule, const neko_vqs* xform_a, const neko_ray_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_capsule_vs_aabb(const neko_capsule_t* capsule, const neko_vqs* xform_a, const neko_aabb_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_capsule_vs_sphere(const neko_capsule_t* capsule, const neko_vqs* xform_a, const neko_sphere_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_capsule_vs_poly(const neko_capsule_t* capsule, const neko_vqs* xform_a, const neko_poly_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_capsule_vs_cylinder(const neko_capsule_t* capsule, const neko_vqs* xform_a, const neko_cylinder_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_capsule_vs_cone(const neko_capsule_t* capsule, const neko_vqs* xform_a, const neko_cone_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_capsule_vs_capsule(const neko_capsule_t* capsule, const neko_vqs* xform_a, const neko_capsule_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_capsule_vs_ray(const neko_capsule_t* capsule, const neko_vqs* xform_a, const neko_ray_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
 
 /* Poly */
-NEKO_API_DECL int32_t neko_poly_vs_poly(const neko_poly_t* a, const neko_vqs* xform_a, const neko_poly_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_poly_vs_sphere(const neko_poly_t* a, const neko_vqs* xform_a, const neko_sphere_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_poly_vs_aabb(const neko_poly_t* a, const neko_vqs* xform_a, const neko_aabb_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_poly_vs_cylinder(const neko_poly_t* a, const neko_vqs* xform_a, const neko_cylinder_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_poly_vs_cone(const neko_poly_t* a, const neko_vqs* xform_a, const neko_cone_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_poly_vs_capsule(const neko_poly_t* a, const neko_vqs* xform_a, const neko_capsule_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_poly_vs_ray(const neko_poly_t* a, const neko_vqs* xform_a, const neko_ray_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_poly_vs_poly(const neko_poly_t* a, const neko_vqs* xform_a, const neko_poly_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_poly_vs_sphere(const neko_poly_t* a, const neko_vqs* xform_a, const neko_sphere_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_poly_vs_aabb(const neko_poly_t* a, const neko_vqs* xform_a, const neko_aabb_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_poly_vs_cylinder(const neko_poly_t* a, const neko_vqs* xform_a, const neko_cylinder_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_poly_vs_cone(const neko_poly_t* a, const neko_vqs* xform_a, const neko_cone_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_poly_vs_capsule(const neko_poly_t* a, const neko_vqs* xform_a, const neko_capsule_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_poly_vs_ray(const neko_poly_t* a, const neko_vqs* xform_a, const neko_ray_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
 
 /* Frustum */
 
 /* Cylinder */
-NEKO_API_DECL int32_t neko_cylinder_vs_cylinder(const neko_cylinder_t* a, const neko_vqs* xform_a, const neko_cylinder_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_cylinder_vs_sphere(const neko_cylinder_t* a, const neko_vqs* xform_a, const neko_sphere_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_cylinder_vs_aabb(const neko_cylinder_t* a, const neko_vqs* xform_a, const neko_aabb_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_cylinder_vs_poly(const neko_cylinder_t* a, const neko_vqs* xform_a, const neko_poly_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_cylinder_vs_cone(const neko_cylinder_t* a, const neko_vqs* xform_a, const neko_cone_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_cylinder_vs_capsule(const neko_cylinder_t* a, const neko_vqs* xform_a, const neko_capsule_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_cylinder_vs_ray(const neko_cylinder_t* a, const neko_vqs* xform_a, const neko_ray_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_cylinder_vs_cylinder(const neko_cylinder_t* a, const neko_vqs* xform_a, const neko_cylinder_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_cylinder_vs_sphere(const neko_cylinder_t* a, const neko_vqs* xform_a, const neko_sphere_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_cylinder_vs_aabb(const neko_cylinder_t* a, const neko_vqs* xform_a, const neko_aabb_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_cylinder_vs_poly(const neko_cylinder_t* a, const neko_vqs* xform_a, const neko_poly_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_cylinder_vs_cone(const neko_cylinder_t* a, const neko_vqs* xform_a, const neko_cone_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_cylinder_vs_capsule(const neko_cylinder_t* a, const neko_vqs* xform_a, const neko_capsule_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_cylinder_vs_ray(const neko_cylinder_t* a, const neko_vqs* xform_a, const neko_ray_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
 
 /* Cone */
-NEKO_API_DECL int32_t neko_cone_vs_cone(const neko_cone_t* a, const neko_vqs* xform_a, const neko_cone_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_cone_vs_sphere(const neko_cone_t* a, const neko_vqs* xform_a, const neko_sphere_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_cone_vs_aabb(const neko_cone_t* a, const neko_vqs* xform_a, const neko_aabb_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_cone_vs_poly(const neko_cone_t* a, const neko_vqs* xform_a, const neko_poly_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_cone_vs_cylinder(const neko_cone_t* a, const neko_vqs* xform_a, const neko_cylinder_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_cone_vs_capsule(const neko_cone_t* a, const neko_vqs* xform_a, const neko_capsule_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
-NEKO_API_DECL int32_t neko_cone_vs_ray(const neko_cone_t* a, const neko_vqs* xform_a, const neko_ray_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_cone_vs_cone(const neko_cone_t* a, const neko_vqs* xform_a, const neko_cone_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_cone_vs_sphere(const neko_cone_t* a, const neko_vqs* xform_a, const neko_sphere_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_cone_vs_aabb(const neko_cone_t* a, const neko_vqs* xform_a, const neko_aabb_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_cone_vs_poly(const neko_cone_t* a, const neko_vqs* xform_a, const neko_poly_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_cone_vs_cylinder(const neko_cone_t* a, const neko_vqs* xform_a, const neko_cylinder_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_cone_vs_capsule(const neko_cone_t* a, const neko_vqs* xform_a, const neko_capsule_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
+NEKO_API_DECL s32 neko_cone_vs_ray(const neko_cone_t* a, const neko_vqs* xform_a, const neko_ray_t* b, const neko_vqs* xform_b, neko_contact_info_t* res);
 
 // 2D Shapes (eventually)
 
@@ -270,7 +270,7 @@ typedef struct neko_gjk_simplex_t {
             neko_gjk_support_point_t d;
         };
     };
-    uint32_t ct;
+    u32 ct;
 } neko_gjk_simplex_t;
 
 typedef struct neko_gjk_polytope_face_t {
@@ -280,18 +280,17 @@ typedef struct neko_gjk_polytope_face_t {
 
 typedef struct neko_gjk_epa_edge_t {
     neko_vec3 normal;
-    uint32_t index;
+    u32 index;
     float distance;
     neko_gjk_support_point_t a, b;
 } neko_gjk_epa_edge_t;
 
-// NEKO_API_DECL int32_t neko_gjk(const neko_gjk_collider_info_t* ci0, const neko_gjk_collider_info_t* ci1, neko_gjk_dimension dimension, neko_contact_info_t* res);
+// NEKO_API_DECL s32 neko_gjk(const neko_gjk_collider_info_t* ci0, const neko_gjk_collider_info_t* ci1, neko_gjk_dimension dimension, neko_contact_info_t* res);
 // NEKO_API_DECL neko_contact_info_t neko_gjk_epa(const neko_gjk_simplex_t* simplex, const neko_gjk_collider_info_t* ci0, const neko_gjk_collider_info_t* ci1);
 // NEKO_API_DECL neko_contact_info_t neko_gjk_epa_2d(const neko_gjk_simplex_t* simplex, const neko_gjk_collider_info_t* ci0, const neko_gjk_collider_info_t* ci1);
 // NEKO_API_DECL neko_gjk_collider_info_t neko_gjk_collider_info(void* c, neko_support_func_t f, neko_phys_xform_t* t);
 //
-NEKO_API_PRIVATE int32_t _neko_ccd_gjk_internal(const void* c0, const neko_vqs* xform_a, neko_support_func_t f0, const void* c1, const neko_vqs* xform_b, neko_support_func_t f1,
-                                                neko_contact_info_t* res);
+NEKO_API_PRIVATE s32 _neko_ccd_gjk_internal(const void* c0, const neko_vqs* xform_a, neko_support_func_t f0, const void* c1, const neko_vqs* xform_b, neko_support_func_t f1, neko_contact_info_t* res);
 
 /*==== CCD ====*/
 
@@ -310,13 +309,13 @@ typedef struct _neko_collision_obj_handle_t {
 // this way I can keep everything consistent, only expose neko related APIs, wrap any 3rd party libs,
 // and possibly change internals in the future to custom implementations without breaking anything.
 NEKO_API_DECL void _neko_ccd_support_func(const void* _obj, const ccd_vec3_t* _dir, ccd_vec3_t* _out);
-NEKO_API_DECL int32_t _neko_ccd_gjk(const _neko_collision_obj_handle_t* c0, const _neko_collision_obj_handle_t* c1, neko_contact_info_t* res);
+NEKO_API_DECL s32 _neko_ccd_gjk(const _neko_collision_obj_handle_t* c0, const _neko_collision_obj_handle_t* c1, neko_contact_info_t* res);
 
 #endif  // NEKO_PHYSICS_NO_CCD
 
 /*==== Physics System ====*/
 
-#define EMPTY_VAR(...) int32_t __empty
+#define EMPTY_VAR(...) s32 __empty
 
 /* Rigid Body */
 
@@ -352,9 +351,9 @@ typedef struct neko_rigid_body_t {
     neko_vec3 world_center;
     float sleep_time;
     float gravity_scale;
-    uint32_t flags;
+    u32 flags;
 
-    uint32_t island_index;
+    u32 island_index;
     void* user_data;
 
 } neko_rigid_body_t;
@@ -402,13 +401,13 @@ typedef struct neko_physics_scene_t {
     neko_heap_allocator_t heap_allocator;
     neko_vec3 gravity;
     float delta_time;
-    uint32_t iterations;
+    u32 iterations;
 } neko_physics_scene_t;
 
 NEKO_API_DECL neko_physics_scene_t neko_physics_scene_new();
 NEKO_API_DECL void neko_physics_scene_step(neko_physics_scene_t* scene);
-NEKO_API_DECL uint32_t neko_physics_scene_create_body(neko_physics_scene_t* scene, neko_rigid_body_desc_t* desc);
-NEKO_API_DECL void neko_physics_scene_destroy_body(neko_physics_scene_t* scene, uint32_t id);
+NEKO_API_DECL u32 neko_physics_scene_create_body(neko_physics_scene_t* scene, neko_rigid_body_desc_t* desc);
+NEKO_API_DECL void neko_physics_scene_destroy_body(neko_physics_scene_t* scene, u32 id);
 NEKO_API_DECL void neko_physics_scene_destroy_all_bodies(neko_physics_scene_t* scene);
 NEKO_API_DECL neko_raycast_data_t neko_physics_scene_raycast(neko_physics_scene_t* scene, neko_query_callback_t* cb);
 
@@ -447,7 +446,7 @@ NEKO_API_DECL void neko_support_poly(const void* _o, const neko_vqs* xform, cons
     // Iterate over all points, find dot farthest in direction of d
     double max_dot, dot = 0.0;
     max_dot = (double)-FLT_MAX;
-    for (uint32_t i = 0; i < p->cnt; i++) {
+    for (u32 i = 0; i < p->cnt; i++) {
         dot = (double)neko_vec3_dot(d, p->verts[i]);
         if (dot > max_dot) {
             *out = p->verts[i];
@@ -654,7 +653,7 @@ NEKO_API_DECL neko_plane_t neko_plane_normalized(const neko_plane_t* p) {
     return pn;
 }
 
-NEKO_API_DECL int32_t neko_plane_vs_sphere(const neko_plane_t* a, neko_vqs* xform_a, const neko_sphere_t* b, neko_vqs* xform_b, struct neko_contact_info_t* res) {
+NEKO_API_DECL s32 neko_plane_vs_sphere(const neko_plane_t* a, neko_vqs* xform_a, const neko_sphere_t* b, neko_vqs* xform_b, struct neko_contact_info_t* res) {
     // Cache necesary transforms, matrices
     neko_mat4 mat = xform_a ? neko_vqs_to_mat4(xform_a) : neko_mat4_identity();
     neko_mat4 inv = xform_a ? neko_mat4_inverse(mat) : neko_mat4_identity();
@@ -696,9 +695,9 @@ NEKO_API_DECL int32_t neko_plane_vs_sphere(const neko_plane_t* a, neko_vqs* xfor
 
 #ifndef NEKO_PHYSICS_NO_CCD
 
-#define _NEKO_COLLIDE_FUNC_IMPL(_TA, _TB, _F0, _F1)                                                                                                                 \
-    NEKO_API_DECL int32_t neko_##_TA##_vs_##_TB(const neko_##_TA##_t* a, const neko_vqs* xa, const neko_##_TB##_t* b, const neko_vqs* xb, neko_contact_info_t* r) { \
-        return _neko_ccd_gjk_internal(a, xa, (_F0), b, xb, (_F1), r);                                                                                               \
+#define _NEKO_COLLIDE_FUNC_IMPL(_TA, _TB, _F0, _F1)                                                                                                             \
+    NEKO_API_DECL s32 neko_##_TA##_vs_##_TB(const neko_##_TA##_t* a, const neko_vqs* xa, const neko_##_TB##_t* b, const neko_vqs* xb, neko_contact_info_t* r) { \
+        return _neko_ccd_gjk_internal(a, xa, (_F0), b, xb, (_F1), r);                                                                                           \
     }
 
 /* Sphere */
@@ -772,14 +771,14 @@ bool neko_gjk_check_if_simplex_contains_origin(neko_gjk_simplex_t* simplex, neko
 void neko_gjk_simplex_push(neko_gjk_simplex_t* simplex, neko_gjk_support_point_t p);
 void neko_gjk_simplex_push_back(neko_gjk_simplex_t* simplex, neko_gjk_support_point_t p);
 void neko_gjk_simplex_push_front(neko_gjk_simplex_t* simplex, neko_gjk_support_point_t p);
-void neko_gjk_simplex_insert(neko_gjk_simplex_t* simplex, uint32_t idx, neko_gjk_support_point_t p);
+void neko_gjk_simplex_insert(neko_gjk_simplex_t* simplex, u32 idx, neko_gjk_support_point_t p);
 void neko_gjk_bary(neko_vec3 p, neko_vec3 a, neko_vec3 b, neko_vec3 c, float* u, float* v, float* w);
 // neko_gjk_epa_edge_t neko_gjk_epa_find_closest_edge(neko_gjk_simplex_t* simplex);
 neko_gjk_support_point_t neko_gjk_generate_support_point(const neko_gjk_collider_info_t* ci0, const neko_gjk_collider_info_t* ci1, neko_vec3 dir);
 neko_gjk_epa_edge_t neko_gjk_epa_find_closest_edge(neko_dyn_array(neko_gjk_support_point_t) polytope);
 
 // Modified from: https://github.com/Nightmask3/Physics-Framework/blob/master/PhysicsFramework/PhysicsManager.cpp
-int32_t neko_gjk(const neko_gjk_collider_info_t* ci0, const neko_gjk_collider_info_t* ci1, neko_gjk_dimension dimension, neko_contact_info_t* res)
+s32 neko_gjk(const neko_gjk_collider_info_t* ci0, const neko_gjk_collider_info_t* ci1, neko_gjk_dimension dimension, neko_contact_info_t* res)
 {
     // Simplex simplex;
     neko_gjk_simplex_t simplex = neko_default_val();
@@ -798,7 +797,7 @@ int32_t neko_gjk(const neko_gjk_collider_info_t* ci0, const neko_gjk_collider_in
     // Invert the search direction for the next point
     search_dir = neko_vec3_neg(search_dir);
 
-    uint32_t iterationCount = 0;
+    u32 iterationCount = 0;
 
     while (true)
     {
@@ -881,7 +880,7 @@ void neko_gjk_simplex_push(neko_gjk_simplex_t* simplex, neko_gjk_support_point_t
 {
     simplex->ct = neko_min(simplex->ct + 1, 4);
 
-    for (int32_t i = simplex->ct - 1; i > 0; i--)
+    for (s32 i = simplex->ct - 1; i > 0; i--)
         simplex->points[i] = simplex->points[i - 1];
 
     simplex->points[0] = p;
@@ -910,7 +909,7 @@ void neko_gjk_simplex_push_front(neko_gjk_simplex_t* simplex, neko_gjk_support_p
     simplex->ct = neko_min(simplex->ct + 1, 4);
 }
 
-void neko_gjk_simplex_insert(neko_gjk_simplex_t* simplex, uint32_t idx, neko_gjk_support_point_t p)
+void neko_gjk_simplex_insert(neko_gjk_simplex_t* simplex, u32 idx, neko_gjk_support_point_t p)
 {
     // Need more points (this is where polytope comes into play, I think...)
     // Splice the simplex by index
@@ -919,7 +918,7 @@ void neko_gjk_simplex_insert(neko_gjk_simplex_t* simplex, uint32_t idx, neko_gjk
 
     simplex->ct = neko_min(simplex->ct + 1, 4);
 
-    for (int32_t i = simplex->ct - 1; i > idx; i--)
+    for (s32 i = simplex->ct - 1; i > idx; i--)
         simplex->points[i] = simplex->points[i - 1];
 
     simplex->points[idx] = p;
@@ -1215,15 +1214,15 @@ NEKO_API_DECL neko_contact_info_t neko_gjk_epa(
     faces[2] = neko_ctor(neko_gjk_polytope_face_t, {simplex->a, simplex->d, simplex->b}, neko_vec3_norm(neko_vec3_cross(dma, bma)));    // ADB
     faces[3] = neko_ctor(neko_gjk_polytope_face_t, {simplex->b, simplex->d, simplex->c}, neko_vec3_norm(neko_vec3_cross(dmb, cmb)));    // BDC
 
-    int32_t num_faces = 4;
-    int32_t closest_face;
+    s32 num_faces = 4;
+    s32 closest_face;
 
-    for (int32_t iterations = 0; iterations < NEKO_EPA_MAX_NUM_ITERATIONS; ++iterations)
+    for (s32 iterations = 0; iterations < NEKO_EPA_MAX_NUM_ITERATIONS; ++iterations)
     {
         //Find face that's closest to origin
         float min_dist = neko_vec3_dot(faces[0].points[0].minkowski_hull_vert, faces[0].normal);
         closest_face = 0;
-        for (int32_t i = 1; i < num_faces; ++i)
+        for (s32 i = 1; i < num_faces; ++i)
         {
             float dist = neko_vec3_dot(faces[i].points[0].minkowski_hull_vert, faces[i].normal);
             if (dist < min_dist)
@@ -1283,10 +1282,10 @@ NEKO_API_DECL neko_contact_info_t neko_gjk_epa(
 
         // Fix Edges
         neko_gjk_support_point_t loose_edges[NEKO_EPA_MAX_NUM_LOOSE_EDGES][2];
-        int32_t num_loose_edges = 0;
+        s32 num_loose_edges = 0;
 
         // Find all triangles that are facing p
-        for (int32_t i = 0; i < num_faces; ++i)
+        for (s32 i = 0; i < num_faces; ++i)
         {
             // Grab direction from first point on face at p to i
             neko_vec3 dir = neko_vec3_sub(p.minkowski_hull_vert, faces[i].points[0].minkowski_hull_vert);
@@ -1296,11 +1295,11 @@ NEKO_API_DECL neko_contact_info_t neko_gjk_epa(
             {
                 // Add removed triangle's edges to loose edge list.
                 // If it's already there, remove it (both triangles it belonged to are gone)
-                for (int32_t j = 0; j < 3; ++j)
+                for (s32 j = 0; j < 3; ++j)
                 {
                     neko_gjk_support_point_t current_edge[2] = {faces[i].points[j], faces[i].points[(j + 1) % 3]};
                     bool found_edge = false;
-                    for (int32_t k = 0; k < num_loose_edges; ++k) //Check if current edge is already in list
+                    for (s32 k = 0; k < num_loose_edges; ++k) //Check if current edge is already in list
                     {
                         //Edge is already in the list, remove it
                         if (neko_vec3_eq(loose_edges[k][1].minkowski_hull_vert, current_edge[0].minkowski_hull_vert)
@@ -1338,7 +1337,7 @@ NEKO_API_DECL neko_contact_info_t neko_gjk_epa(
         }
 
         // Reconstruct polytope with p now added
-        for (int32_t i = 0; i < num_loose_edges; ++i)
+        for (s32 i = 0; i < num_loose_edges; ++i)
         {
             if (num_faces >= NEKO_EPA_MAX_NUM_FACES) break;
             faces[num_faces].points[0] = loose_edges[i][0];
@@ -1382,14 +1381,14 @@ NEKO_API_DECL neko_contact_info_t neko_gjk_epa_2d(
     neko_gjk_support_point_t p = neko_default_val();
 
     // Copy over simplex into polytope array
-    for (uint32_t i = 0; i < simplex->ct; ++i) {
+    for (u32 i = 0; i < simplex->ct; ++i) {
         neko_dyn_array_push(polytope, simplex->points[i]);
     }
 
     // p = neko_gjk_generate_support_point(ci0, ci1, neko_v3s(1.f));
     // neko_gjk_simplex_push_front(simplex, p);
     neko_gjk_epa_edge_t e = neko_default_val();
-    uint32_t iterations = 0;
+    u32 iterations = 0;
     while (iterations < NEKO_EPA_MAX_NUM_ITERATIONS)
     {
         // Find closest edge to origin from simplex
@@ -1413,20 +1412,20 @@ NEKO_API_DECL neko_contact_info_t neko_gjk_epa_2d(
             // This is just overwriting. I need to actually insert then push back.
             // neko_gjk_simplex_insert(simplex, e.index + 1, p);
             // Insert into polytope array at idx + 1
-            for (uint32_t i = 0; i < neko_dyn_array_size(polytope); ++i)
+            for (u32 i = 0; i < neko_dyn_array_size(polytope); ++i)
             {
                neko_vec3* p = &polytope[i].minkowski_hull_vert;
                neko_printf("<%.2f, %.2f>, ", p->x, p->y);
             }
             neko_dyn_array_push(polytope, p);
 
-            for (int32_t i = neko_dyn_array_size(polytope) - 1; i > e.index + 1; i--)
+            for (s32 i = neko_dyn_array_size(polytope) - 1; i > e.index + 1; i--)
                 polytope[i] = polytope[i - 1];
 
             polytope[e.index + 1] = p;
 
             neko_println("pts after: ");
-            for (uint32_t i = 0; i < neko_dyn_array_size(polytope); ++i)
+            for (u32 i = 0; i < neko_dyn_array_size(polytope); ++i)
             {
                neko_vec3* p = &polytope[i].minkowski_hull_vert;
                neko_printf("<%.2f, %.2f>, ", p->x, p->y);
@@ -1442,7 +1441,7 @@ NEKO_API_DECL neko_contact_info_t neko_gjk_epa_2d(
     // float s, t;
     // s = sqrt(neko_vec3_len2(projO) / neko_vec3_len2(line_vec));
     // t = 1.f - s;
-    // int32_t next_idx = (e.index + 1) % simplex->ct;
+    // s32 next_idx = (e.index + 1) % simplex->ct;
     res.hit = true;
     // res.points[0] = neko_vec3_add(neko_vec3_scale(simplex->points[e.index].support_a, s), neko_vec3_scale(simplex->points[next_idx].support_a, t));
     // res.points[1] = neko_vec3_add(neko_vec3_scale(simplex->points[e.index].support_b, s), neko_vec3_scale(simplex->points[next_idx].support_b, t));
@@ -1455,11 +1454,11 @@ neko_gjk_epa_edge_t neko_gjk_epa_find_closest_edge(neko_dyn_array(neko_gjk_suppo
 {
    neko_gjk_epa_edge_t res = neko_default_val();
    float min_dist = FLT_MAX;
-   uint32_t min_index = 0;
+   u32 min_index = 0;
    neko_vec3 min_normal = neko_default_val();
-   for (uint32_t i = 0; i < neko_dyn_array_size(polytope); ++i)
+   for (u32 i = 0; i < neko_dyn_array_size(polytope); ++i)
    {
-        uint32_t j = (i + 1) % neko_dyn_array_size(polytope);
+        u32 j = (i + 1) % neko_dyn_array_size(polytope);
         neko_gjk_support_point_t* a = &polytope[0];
         neko_gjk_support_point_t* b = &polytope[1];
         neko_vec3 dir = neko_vec3_sub(b->minkowski_hull_vert, a->minkowski_hull_vert);
@@ -1488,12 +1487,12 @@ neko_gjk_epa_edge_t neko_gjk_epa_find_closest_edge(neko_dyn_array(neko_gjk_suppo
 neko_gjk_epa_edge_t neko_gjk_epa_find_closest_edge2(neko_gjk_simplex_t* simplex)
 {
     neko_gjk_epa_edge_t result = neko_default_val();
-    uint32_t next_idx = 0;
+    u32 next_idx = 0;
     float min_dist = FLT_MAX, curr_dist = 0.f;
     neko_vec3 norm, edge;
     neko_vec3 norm_3d;
 
-    for (int32_t i = 0; i < simplex->ct; ++i)
+    for (s32 i = 0; i < simplex->ct; ++i)
     {
         next_idx = (i + 1) % simplex->ct;
         edge = neko_vec3_sub(simplex->points[next_idx].minkowski_hull_vert, simplex->points[i].minkowski_hull_vert);
@@ -1533,8 +1532,7 @@ void _neko_ccdv32gsv3(const ccd_vec3_t* _in, neko_vec3* _out) {
 
 void _neko_gsv32ccdv3(const neko_vec3* _in, ccd_vec3_t* _out) { ccdVec3Set(_out, CCD_REAL(_in->x), CCD_REAL(_in->y), CCD_REAL(_in->z)); }
 
-NEKO_API_PRIVATE int32_t _neko_ccd_gjk_internal(const void* c0, const neko_vqs* xform_a, neko_support_func_t f0, const void* c1, const neko_vqs* xform_b, neko_support_func_t f1,
-                                                neko_contact_info_t* res
+NEKO_API_PRIVATE s32 _neko_ccd_gjk_internal(const void* c0, const neko_vqs* xform_a, neko_support_func_t f0, const void* c1, const neko_vqs* xform_b, neko_support_func_t f1, neko_contact_info_t* res
 
 ) {
     // Convert to appropriate gjk internals, then call ccd
@@ -1565,7 +1563,7 @@ NEKO_API_PRIVATE int32_t _neko_ccd_gjk_internal(const void* c0, const neko_vqs* 
     // Call ccd, cache results into res for user
     ccd_real_t depth = CCD_REAL(0.0);
     ccd_vec3_t n = neko_ctor(ccd_vec3_t, 0.f, 0.f, 0.f), p = neko_ctor(ccd_vec3_t, 0.f, 0.f, 0.f);
-    int32_t r = ccdGJKPenetration(&h0, &h1, &ccd, &depth, &n, &p);
+    s32 r = ccdGJKPenetration(&h0, &h1, &ccd, &depth, &n, &p);
     b32 hit = r >= 0 && !neko_is_nan(n.v[0]) && !neko_is_nan(n.v[1]) && !neko_is_nan(n.v[2]);
 
     if (hit && res) {

@@ -14,8 +14,8 @@
 #include "engine/util/neko_gui.h"
 #include "engine/util/neko_idraw.h"
 #include "engine/util/neko_imgui.h"
-#include "engine/util/neko_script.h"
 #include "engine/util/neko_tiled.h"
+#include "engine/util/neko_vm.h"
 
 // builtin
 #include "engine/builtin/neko_aseprite.h"
@@ -133,7 +133,7 @@ neko_struct(neko_engine_cvar_t,                            //
 
 neko_engine_cvar_t g_cvar = neko_default_val();
 
-void dockspace(neko_imgui_context_t *ctx);
+void editor_dockspace(neko_imgui_context_t *ctx);
 
 // test
 void test_xml(const neko_string &file);
@@ -625,16 +625,16 @@ typedef struct {
     f32 x, y;
     f32 sx, sy;
     f32 c, s;
-} sprite_t;
+} neko_sprite_t;
 
 neko_graphics_custom_batch_context_t *font_render;
 neko_graphics_custom_batch_shader_t font_shader;
 neko_graphics_custom_batch_renderable_t font_renderable;
-int font_vert_max = 1024;
+f32 font_scale = 5.f;
 int font_vert_count;
 neko_font_vert_t *font_verts;
-neko_font_u64 courier_new_id;
-neko_font_t *courier_new;
+neko_font_u64 test_font_tex_id;
+neko_font_t *test_font_bmfont;
 
 spritebatch_config_t get_demo_config() {
     spritebatch_config_t config;
@@ -651,8 +651,8 @@ spritebatch_config_t get_demo_config() {
     return config;
 }
 
-sprite_t make_sprite(SPRITEBATCH_U64 image_id, f32 x, f32 y, f32 scale, f32 angle_radians, int depth) {
-    sprite_t s;
+neko_sprite_t make_sprite(SPRITEBATCH_U64 image_id, f32 x, f32 y, f32 scale, f32 angle_radians, int depth) {
+    neko_sprite_t s;
     s.image_id = image_id;
     s.depth = depth;
     s.x = x;
@@ -664,7 +664,7 @@ sprite_t make_sprite(SPRITEBATCH_U64 image_id, f32 x, f32 y, f32 scale, f32 angl
     return s;
 }
 
-void push_sprite(sprite_t sp) {
+void push_sprite(neko_sprite_t sp) {
     spritebatch_sprite_t s;
     s.image_id = sp.image_id;
     s.w = images[sp.image_id].w;
@@ -695,7 +695,7 @@ void batch_report(spritebatch_sprite_t *sprites, int count, int texture_w, int t
     // build the draw call
     neko_graphics_custom_batch_draw_call_t call;
     call.r = &sprite_renderable;
-    call.textures[0] = (uint32_t)sprites[0].texture_id;
+    call.textures[0] = (u32)sprites[0].texture_id;
     call.texture_count = 1;
 
     // set texture uniform in shader
@@ -813,32 +813,26 @@ void unload_images() {
 }
 
 void draw_text(neko_font_t *font, const char *text, float x, float y, float line_height, float clip_region, float wrap_x) {
-    float w = (float)neko_font_text_width(font, text);
-    float h = (float)neko_font_text_height(font, text);
+    f32 text_w = (f32)neko_font_text_width(font, text);
+    f32 text_h = (f32)neko_font_text_height(font, text);
 
     neko_vec2 fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
 
     neko_font_rect_t clip_rect;
-    clip_rect.left = -fbs.x / 2.0f * clip_region;
-    clip_rect.right = fbs.x / 2.0f * clip_region + 0.5f;
-    clip_rect.top = fbs.y / 2.0f * clip_region + 0.5f;
-    clip_rect.bottom = -fbs.y / 2.0f * clip_region;
+    clip_rect.left = -fbs.x / font_scale * clip_region;
+    clip_rect.right = fbs.x / font_scale * clip_region + 0.5f;
+    clip_rect.top = fbs.y / font_scale * clip_region + 0.5f;
+    clip_rect.bottom = -fbs.y / font_scale * clip_region;
 
-    // Uncomment lines to disable clip rect on one side.
-    // clip_rect.left    = -screen_w / 4.0f;
-    // clip_rect.right   =  screen_w / 4.0f;
-    // clip_rect.top     =  screen_h / 4.0f;
-    // clip_rect.bottom  = -screen_h / 4.0f;
-
-    float x0 = x + -w / 2;
-    float y0 = y + h / 2;
-    float wrap_width = wrap_x - x0;
+    f32 x0 = (x - fbs.x / 2.f) / font_scale /*+ -text_w / 2.f*/;
+    f32 y0 = (fbs.y / 2.f - y) / font_scale + text_h / 2.f;
+    f32 wrap_width = wrap_x - x0;
 
     neko_font_fill_vertex_buffer(font, text, x0, y0, wrap_width, line_height, &clip_rect, font_verts, 1024 * 2, &font_vert_count);
 
     if (font_vert_count) {
         neko_graphics_custom_batch_draw_call_t call;
-        call.textures[0] = (uint32_t)font->atlas_id;
+        call.textures[0] = (u32)font->atlas_id;
         call.texture_count = 1;
         call.r = &font_renderable;
         call.verts = font_verts;
@@ -863,7 +857,7 @@ neko_script_binary_t *ns_load_module(char *name) {
 }
 
 void watch_callback(filewatch_update_t change, const char *virtual_path, void *udata) {
-    const char *change_string = 0;
+    const char *change_string = nullptr;
     switch (change) {
         case FILEWATCH_DIR_ADDED:
             change_string = "FILEWATCH_DIR_ADDED";
@@ -897,13 +891,6 @@ void watch_callback(filewatch_update_t change, const char *virtual_path, void *u
 assetsys_t *assetsys;
 filewatch_t *filewatch;
 
-#define NEKO_HOTLOAD_HOST NEKO_HOTLOAD_UNSAFE
-#include "neko_hotload.h"
-
-// neko_global neko_hotload_module ctx;
-// const_str hotfix_module = "" NEKO_HOTLOAD_MODULE("hotload");
-// bool is_hotfix_loaded = false;
-
 void game_init() {
     g_cb = neko_command_buffer_new();
     g_idraw = neko_immediate_draw_new();
@@ -923,12 +910,9 @@ void game_init() {
 
     neko_ecs()->user_data = &g_client_userdata;
 
-    //    ctx.userdata = &g_client_userdata;
-    //
-    //    is_hotfix_loaded = neko_hotload_module_open(ctx, hotfix_module);
-    //    if (!is_hotfix_loaded) neko_log_trace("hotfix is not loaded");
+    // ctx.userdata = &g_client_userdata;
 
-    g_script.ctx = neko_script_ctx_new(NULL);
+    g_script.ctx = neko_script_ctx_new(nullptr);
 
     /*
     {
@@ -1204,11 +1188,8 @@ void main() {
     const char *ps = R"(
 #version 330
 precision mediump float;
-
 uniform sampler2D u_sprite_texture;
-
 in vec2 v_uv; out vec4 out_col;
-
 void main() { out_col = texture(u_sprite_texture, v_uv); }
 )";
 
@@ -1281,24 +1262,22 @@ void main() { out_col = texture(u_sprite_texture, v_uv); }
     neko_graphics_custom_batch_load_shader(&font_shader, font_vs, font_ps);
     neko_graphics_custom_batch_set_shader(&font_renderable, &font_shader);
 
-    neko_graphics_custom_batch_ortho_2d(fbs.x / 5.f, fbs.y / 5.f, 0, 0, font_projection);
+    neko_graphics_custom_batch_ortho_2d(fbs.x / font_scale, fbs.y / font_scale, 0, 0, font_projection);
 
     // neko_graphics_custom_batch_ortho_2d((float)640, (float)480, 0, 0, projection);
     // glViewport(0, 0, 640, 480);
 
     neko_graphics_custom_batch_send_matrix(&font_shader, "u_mvp", font_projection);
 
-    // Load Courier New exported from BMFont.
-    // See: http://www.angelcode.com/products/bmfont/
-    size_t courier_new_size = 0;
-    void *courier_new_memory = neko_platform_read_file_contents(game_assets("data/1.fnt").c_str(), "rb", &courier_new_size);
+    size_t test_font_size = 0;
+    void *test_font_mem = neko_platform_read_file_contents(game_assets("data/1.fnt").c_str(), "rb", &test_font_size);
     cp_image_t img = cp_load_png(game_assets("data/1_0.png").c_str());
-    courier_new_id = generate_texture_handle(img.pix, img.w, img.h, NULL);
-    courier_new = neko_font_load_bmfont(courier_new_id, courier_new_memory, courier_new_size, 0);
-    if (courier_new->atlas_w != img.w || courier_new->atlas_h != img.h) {
+    test_font_tex_id = generate_texture_handle(img.pix, img.w, img.h, NULL);
+    test_font_bmfont = neko_font_load_bmfont(test_font_tex_id, test_font_mem, test_font_size, 0);
+    if (test_font_bmfont->atlas_w != img.w || test_font_bmfont->atlas_h != img.h) {
         neko_log_warning("failed to load font");
     }
-    neko_safe_free(courier_new_memory);
+    neko_safe_free(test_font_mem);
     cp_free_png(&img);
 
     font_verts = (neko_font_vert_t *)neko_safe_malloc(sizeof(neko_font_vert_t) * 1024 * 2);
@@ -1465,12 +1444,12 @@ void game_update() {
     neko_ecs_run_systems(neko_ecs(), ECS_SYSTEM_RENDER_DEFERRED);
 
     call_count = 0;
-    sprite_t dragon_zombie = make_sprite(0, -250, -200, 5, neko_rad2deg(t / 100000.f), 0);
-    sprite_t night_spirit = make_sprite(1, -225, 100, 1, 0, 0);
+    neko_sprite_t dragon_zombie = make_sprite(0, -250, -200, 5, neko_rad2deg(t / 100000.f), 0);
+    neko_sprite_t night_spirit = make_sprite(1, -225, 100, 1, 0, 0);
     push_sprite(dragon_zombie);
     push_sprite(night_spirit);
-    sprite_t polish = make_sprite(1, 50, 180, 1, 0, 0);
-    sprite_t translated = polish;
+    neko_sprite_t polish = make_sprite(1, 50, 180, 1, 0, 0);
+    neko_sprite_t translated = polish;
     for (int i = 0; i < 4; ++i) {
         translated.x = polish.x + polish.sx * i;
         for (int j = 0; j < 6; ++j) {
@@ -1489,13 +1468,13 @@ void game_update() {
     spritebatch_flush(&sb);
     sprite_verts_count = 0;
 
-    draw_text(courier_new, "中文渲染测试 日本語レンダリングテスト Hello World! ", 0, 100, 1, 1.f, 200.f);
+    draw_text(test_font_bmfont, "中文渲染测试 日本語レンダリングテスト Hello World! ", 50, 50, 1, 1.f, 800.f);
 
 #pragma region gui
 
     neko_imgui_begin(&g_gui, NULL);
     {
-        dockspace(&g_gui);
+        editor_dockspace(&g_gui);
 
         if (g_cvar.show_info_window) {
             neko_imgui_window_begin_ex(&g_gui, "Info", neko_imgui_rect(100, 100, 500, 500), &g_cvar.show_info_window, NULL, NULL);
@@ -1611,7 +1590,7 @@ void game_update() {
                 // 在这里，我们将容器的主体作为视口传递，但这可以是您想要的任何内容，
                 // 正如我们将在“分割”窗口示例中看到的那样。
                 // 我们还传递自定义数据（颜色），以便我们可以在回调中使用它。如果以下情况，这可以为 NULL
-                // 你不需要任何东西。
+                // 你不需要任何东西
                 neko_color_t color = neko_color_alpha(NEKO_COLOR_RED, (uint8_t)neko_clamp((sin(t * 0.001f) * 0.5f + 0.5f) * 255, 0, 255));
                 neko_imgui_draw_custom(&g_gui, cnt->body, gui_cb, &color, sizeof(color));
             }
@@ -1767,9 +1746,7 @@ void game_update() {
             neko_private(neko_packreader_t) pack_reader;
             neko_private(neko_pack_result) result;
             neko_private(bool) pack_reader_is_loaded = false;
-            neko_private(u8) majorVersion;
-            neko_private(u8) minorVersion;
-            neko_private(u8) patchVersion;
+            neko_private(u8) pack_version;
             neko_private(bool) isLittleEndian;
             neko_private(u64) itemCount;
 
@@ -1794,7 +1771,7 @@ void game_update() {
                     if (pack_reader_is_loaded) {
 
                     } else {
-                        result = neko_pack_info(file.c_str(), &majorVersion, &minorVersion, &patchVersion, &isLittleEndian, &itemCount);
+                        result = neko_pack_info(file.c_str(), &pack_version, &isLittleEndian, &itemCount);
                         if (result != 0) return;
 
                         result = neko_pack_read(file.c_str(), 0, false, &pack_reader);
@@ -1815,7 +1792,7 @@ void game_update() {
 
                 static s32 item_current_idx = -1;
 
-                neko_gui_labelf_wrap(nui_ctx, "version: %d.%d.%d", majorVersion, minorVersion, patchVersion);
+                neko_gui_labelf_wrap(nui_ctx, "version: %d", pack_version);
                 neko_gui_labelf_wrap(nui_ctx, "little endian mode: %s", neko_bool_str(isLittleEndian));
                 neko_gui_labelf_wrap(nui_ctx, "file counts: %llu", (long long unsigned int)itemCount);
 
@@ -2051,7 +2028,7 @@ void game_shutdown() {
     neko_graphics_custom_batch_free(font_render);
     neko_graphics_custom_batch_free(sprite_batch);
 
-    destroy_texture_handle(courier_new_id, NULL);
+    destroy_texture_handle(test_font_tex_id, NULL);
 
     // gl_free_frame_buffer(&sb_fb);
 
@@ -2094,12 +2071,12 @@ neko_game_desc_t neko_main(s32 argc, char **argv) {
             .init = game_init, .update = game_update, .shutdown = game_shutdown, .window = {.width = 1280, .height = 740, .vsync = true}, .argc = argc, .argv = argv, .console = &console};
 }
 
-void dockspace(neko_imgui_context_t *ctx) {
+void editor_dockspace(neko_imgui_context_t *ctx) {
     s32 opt = NEKO_IMGUI_OPT_NOCLIP | NEKO_IMGUI_OPT_NOFRAME | NEKO_IMGUI_OPT_FORCESETRECT | NEKO_IMGUI_OPT_NOTITLE | NEKO_IMGUI_OPT_DOCKSPACE | NEKO_IMGUI_OPT_FULLSCREEN | NEKO_IMGUI_OPT_NOMOVE |
               NEKO_IMGUI_OPT_NOBRINGTOFRONT | NEKO_IMGUI_OPT_NOFOCUS | NEKO_IMGUI_OPT_NORESIZE;
     neko_imgui_window_begin_ex(ctx, "Dockspace", neko_imgui_rect(350, 40, 600, 500), NULL, NULL, opt);
     {
-        // Empty dockspace...
+        // Editor dockspace
     }
     neko_imgui_window_end(ctx);
 }

@@ -41,8 +41,8 @@
 #if !(defined NEKO_PLATFORM_WIN)
 #include <dirent.h>
 #include <dlfcn.h>  // dlopen, RTLD_LAZY, dlsym
-#include <sys/stat.h>
 #include <errno.h>
+#include <sys/stat.h>
 #else
 #include <direct.h>
 
@@ -580,7 +580,7 @@ neko_result neko_platform_write_file_contents_default_impl(const char* file_path
 
     FILE* fp = fopen(path, mode);
     if (fp) {
-        size_t ret = fwrite(data, sizeof(uint8_t), sz, fp);
+        size_t ret = fwrite(data, sizeof(u8), sz, fp);
         if (ret == sz) {
             fclose(fp);
             return NEKO_RESULT_SUCCESS;
@@ -707,7 +707,7 @@ NEKO_API_DECL s32 neko_platform_file_copy_default_impl(const char* src_path, con
     return 0;
 }
 
-NEKO_API_DECL s32 neko_platform_file_compare_time(uint64_t time_a, uint64_t time_b) { return time_a < time_b ? -1 : time_a == time_b ? 0 : 1; }
+NEKO_API_DECL s32 neko_platform_file_compare_time(u64 time_a, u64 time_b) { return time_a < time_b ? -1 : time_a == time_b ? 0 : 1; }
 
 NEKO_API_DECL neko_platform_file_stats_t neko_platform_file_stats(const char* file_path) {
     neko_platform_file_stats_t stats = neko_default_val();
@@ -724,14 +724,14 @@ NEKO_API_DECL neko_platform_file_stats_t neko_platform_file_stats(const char* fi
         atime = data.ftLastAccessTime;
     }
 
-    stats.modified_time = *((uint64_t*)&ftime);
-    stats.access_time = *((uint64_t*)&atime);
-    stats.creation_time = *((uint64_t*)&ctime);
+    stats.modified_time = *((u64*)&ftime);
+    stats.access_time = *((u64*)&atime);
+    stats.creation_time = *((u64*)&ctime);
 
 #elif (defined NEKO_PLATFORM_LINUX || defined NEKO_PLATFORM_APPLE || defined NEKO_PLATFORM_ANDROID)
     struct stat attr = neko_default_val();
     stat(file_path, &attr);
-    stats.modified_time = *((uint64_t*)&attr.st_mtime);
+    stats.modified_time = *((u64*)&attr.st_mtime);
 
 #endif
 
@@ -970,21 +970,18 @@ neko_vec2 glfw_get_opengl_version() {
     return ver;
 }
 
-
-
 void* glfw_get_sys_handle() {
 #if defined(NEKO_PLATFORM_WIN)
     struct neko_platform_t* platform = neko_instance()->ctx.platform;
     GLFWwindow* win = (GLFWwindow*)(neko_slot_array_getp(platform->windows, neko_platform_main_window()))->hndl;
     HWND hwnd = glfwGetWin32Window(win);
     return hwnd;
+#elif defined(NEKO_PLATFORM_LINUX)
+    return NULL;
 #else
     return NULL;
 #endif
 }
-
-
-
 
 void* neko_platform_hwnd() { return glfw_get_sys_handle(); }
 neko_memory_info_t neko_platform_memory_info() { return glfw_platform_meminfo(); }
@@ -994,8 +991,10 @@ void neko_platform_msgbox(const_str msg) {
 #if defined(NEKO_PLATFORM_WIN)
     MessageBoxA((HWND)glfw_get_sys_handle(), msg, "Neko Error", MB_OK | MB_SETFOREGROUND | MB_ICONSTOP);
 #elif defined(NEKO_PLATFORM_LINUX)
-
-#else // TODO:: wasm
+    char info[256];
+    neko_snprintf(info, 256, "notify-send \"%s\"", msg);
+    system(info);
+#else  // TODO:: wasm
     Android_MessageBox("Neko Error", x);
 #endif
 }
@@ -1004,7 +1003,7 @@ NEKO_API_DECL void neko_platform_update_internal(neko_platform_t* platform) {
     neko_platform_input_t* input = &platform->input;
 
     // Platform time
-    platform->time.elapsed = (glfwGetTime() * 1000.0);
+    platform->time.elapsed = (glfwGetTime() * 1000.0f);
 
     // Update all window/framebuffer state
     for (neko_slot_array_iter it = neko_slot_array_iter_new(platform->windows); neko_slot_array_iter_valid(platform->windows, it); neko_slot_array_iter_advance(platform->windows, it)) {
@@ -1034,7 +1033,7 @@ NEKO_API_DECL void neko_platform_update_internal(neko_platform_t* platform) {
                 gp->axes[a] = axes[a];
             }
 
-            const uint8_t* buttons = (uint8_t*)glfwGetJoystickButtons(GLFW_JOYSTICK_1 + i, &count);
+            const u8* buttons = (u8*)glfwGetJoystickButtons(GLFW_JOYSTICK_1 + i, &count);
             count = neko_min(count, NEKO_PLATFORM_GAMEPAD_BUTTON_COUNT);
 
             for (u32 b = 0; b < count; ++b) {
@@ -2291,7 +2290,7 @@ void neko_platform_sleep(f32 ms) {
 #if (defined NEKO_PLATFORM_WIN)
 
     timeBeginPeriod(1);
-    Sleep((uint64_t)ms);
+    Sleep((u64)ms);
     timeEndPeriod(1);
 
 #elif (defined NEKO_PLATFORM_APPLE)
@@ -2305,7 +2304,7 @@ void neko_platform_sleep(f32 ms) {
     struct timespec ts = neko_default_val();
     s32 res = 0;
     ts.tv_sec = ms / 1000.f;
-    ts.tv_nsec = ((uint64_t)ms % 1000) * 1000000;
+    ts.tv_nsec = ((u64)ms % 1000) * 1000000;
     do {
         res = nanosleep(&ts, &ts);
     } while (res && errno == EINTR);
@@ -2608,7 +2607,7 @@ void neko_platform_lock_mouse(u32 handle, bool32_t lock) {
 
     // Not sure if I want to support this or not
     // if (glfwRawMouseMotionSupported()) {
-    //     glfwSetInputMode(win, GLFW_RAW_MOUSE_MOTION, lock ? GLFW_TRUE : GLFW_FALSE);
+    //     glfwSetInputMode(win, GLFW_RAW_MOUSE_MOTION, log_lock ? GLFW_TRUE : GLFW_FALSE);
     // }
 }
 
@@ -2714,13 +2713,13 @@ const_str __neko_inter_stacktrace() {
         lineInfo.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
         DWORD displacement;
 
-        bool is_main = !strcmp(symbol->Name, "main");
+        bool is_main = !strcmp(symbol->the_name, "main");
 
         char trace_tmp[512];
         if (SymGetLineFromAddr64(GetCurrentProcess(), address, &displacement, &lineInfo)) {
-            neko_snprintf(trace_tmp, 512, "#%u %s - File: %s, Line: %u\n", i, symbol->Name, lineInfo.FileName, lineInfo.LineNumber);
+            neko_snprintf(trace_tmp, 512, "#%u %s - File: %s, Line: %u\n", i, symbol->the_name, lineInfo.FileName, lineInfo.LineNumber);
         } else {
-            neko_snprintf(trace_tmp, 512, "#%u %s - Source information not available\n", i, symbol->Name);
+            neko_snprintf(trace_tmp, 512, "#%u %s - Source information not available\n", i, symbol->the_name);
         }
 
         strcat(trace_info, trace_tmp);
@@ -2737,7 +2736,7 @@ const_str __neko_inter_stacktrace() {
 #else
 
 void __neko_initialize_symbol_handler() {}
-const_str __neko_inter_stacktrace()  { return "";}
+const_str __neko_inter_stacktrace() { return ""; }
 
 #endif
 
@@ -3768,7 +3767,7 @@ NEKO_API_DECL void neko_platform_lock_mouse(u32 handle, bool32_t lock) {
     neko_ems_t* ems = (neko_ems_t*)platform->user_data;
     // if (platform->input.mouse.locked == lock) return;
     platform->input.mouse.locked = lock;
-    if (lock) {
+    if (log_lock) {
         emscripten_request_pointerlock(ems->canvas_name, true);
     } else {
         emscripten_exit_pointerlock();
@@ -3954,7 +3953,7 @@ tick_t neko_timer_current(void) {
 
     struct timespec ts = {.tv_sec = 0, .tv_nsec = 0};
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    return ((uint64_t)ts.tv_sec * 1000000000ULL) + ts.tv_nsec;
+    return ((u64)ts.tv_sec * 1000000000ULL) + ts.tv_nsec;
 
 #endif
 }
@@ -4009,7 +4008,7 @@ tick_t neko_timer_system(void) {
 
     struct timespec ts = {.tv_sec = 0, .tv_nsec = 0};
     clock_gettime(CLOCK_REALTIME, &ts);
-    return ((uint64_t)ts.tv_sec * 1000ULL) + (ts.tv_nsec / 1000000ULL);
+    return ((u64)ts.tv_sec * 1000ULL) + (ts.tv_nsec / 1000000ULL);
 
 #endif
 }

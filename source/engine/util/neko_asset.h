@@ -287,7 +287,7 @@ NEKO_API_DECL neko_pack_result neko_pack_item_data(neko_packreader_t* pack_reade
 NEKO_API_DECL void neko_pack_free_buffers(neko_packreader_t* pack_reader);
 NEKO_API_DECL neko_pack_result neko_pack_unzip(const_str filePath, b8 printProgress);
 NEKO_API_DECL neko_pack_result neko_pack_files(const_str packPath, u64 fileCount, const_str* filePaths, b8 printProgress);
-NEKO_API_DECL neko_pack_result neko_pack_info(const_str filePath, u8* majorVersion, u8* minorVersion, u8* patchVersion, b8* isLittleEndian, u64* itemCount);
+NEKO_API_DECL neko_pack_result neko_pack_info(const_str filePath, u8* pack_version, b8* isLittleEndian, u64* itemCount);
 
 neko_inline bool neko_pack_check(neko_pack_result result) {
     if (result == 0) return true;

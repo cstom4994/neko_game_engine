@@ -16,7 +16,7 @@ NEKO_API_DECL void neko_ai_bt_end(struct neko_ai_bt_t* ctx) { neko_assert(neko_d
 NEKO_API_DECL neko_ai_bt_node_t* neko_ai_bt_parent_node_get(struct neko_ai_bt_t* ctx) {
     if (neko_dyn_array_empty(ctx->parent_stack)) return NULL;
 
-    uint32_t idx = ctx->parent_stack[neko_dyn_array_size(ctx->parent_stack) - 1];
+    u32 idx = ctx->parent_stack[neko_dyn_array_size(ctx->parent_stack) - 1];
     return &ctx->stack[idx];
 }
 
@@ -28,10 +28,10 @@ NEKO_API_DECL void neko_ai_bt_children_begin(struct neko_ai_bt_t* ctx, struct ne
 
 NEKO_API_DECL void neko_ai_bt_children_end(struct neko_ai_bt_t* ctx) { neko_dyn_array_pop(ctx->parent_stack); }
 
-NEKO_API_DECL neko_ai_bt_node_t* neko_ai_bt_node_child_get(struct neko_ai_bt_t* ctx, struct neko_ai_bt_node_t* parent, uint32_t child_index) {
+NEKO_API_DECL neko_ai_bt_node_t* neko_ai_bt_node_child_get(struct neko_ai_bt_t* ctx, struct neko_ai_bt_node_t* parent, u32 child_index) {
     neko_ai_bt_node_t* node = NULL;
-    uint32_t ci = parent->idx + child_index + 1;
-    uint32_t sz = neko_dyn_array_size(ctx->stack);
+    u32 ci = parent->idx + child_index + 1;
+    u32 sz = neko_dyn_array_size(ctx->stack);
     if (ci < sz) {
         node = &ctx->stack[ci];
     }
@@ -42,7 +42,7 @@ NEKO_API_DECL neko_ai_bt_node_t* neko_ai_bt_node_next(struct neko_ai_bt_t* ctx) 
     // Push on new node if doesn't exist
     neko_ai_bt_node_t* np = NULL;
 
-    uint32_t cnt = neko_dyn_array_size(ctx->stack);
+    u32 cnt = neko_dyn_array_size(ctx->stack);
     if (ctx->current_idx >= neko_dyn_array_size(ctx->stack)) {
         neko_ai_bt_node_t node = neko_default_val();
         node.state = NEKO_AI_BT_STATE_RUNNING;
@@ -98,7 +98,7 @@ NEKO_API_DECL void neko_ai_bt_parallel_end(struct neko_ai_bt_t* ctx) {
 
     // For each child
     bool all_succeed = true;
-    for (uint32_t i = 0; i < node->num_children; ++i) {
+    for (u32 i = 0; i < node->num_children; ++i) {
         neko_ai_bt_node_t* child = neko_ai_bt_node_child_get(ctx, node, i);
         neko_assert(child);
 
@@ -118,8 +118,8 @@ NEKO_API_DECL void neko_ai_bt_parallel_end(struct neko_ai_bt_t* ctx) {
         node->state = NEKO_AI_BT_STATE_FAILURE;
 
         // Pop all children and their children off stack
-        uint32_t cnt = neko_dyn_array_size(ctx->stack);
-        for (uint32_t i = node->idx + 1; i < cnt; ++i) {
+        u32 cnt = neko_dyn_array_size(ctx->stack);
+        for (u32 i = node->idx + 1; i < cnt; ++i) {
             neko_dyn_array_pop(ctx->stack);
         }
         ctx->current_idx = node->idx + 1;
@@ -129,8 +129,8 @@ NEKO_API_DECL void neko_ai_bt_parallel_end(struct neko_ai_bt_t* ctx) {
         node->state = NEKO_AI_BT_STATE_SUCCESS;
 
         // Pop all children and their children off stack
-        uint32_t cnt = neko_dyn_array_size(ctx->stack);
-        for (uint32_t i = node->idx + 1; i < cnt; ++i) {
+        u32 cnt = neko_dyn_array_size(ctx->stack);
+        for (u32 i = node->idx + 1; i < cnt; ++i) {
             neko_dyn_array_pop(ctx->stack);
         }
         ctx->current_idx = node->idx + 1;
@@ -161,7 +161,7 @@ NEKO_API_DECL void neko_ai_bt_selector_end(struct neko_ai_bt_t* ctx) {
     // Get top of parent stack for node
     neko_ai_bt_node_t* node = neko_ai_bt_parent_node_get(ctx);
 
-    for (uint32_t i = 0; i < node->num_children; ++i) {
+    for (u32 i = 0; i < node->num_children; ++i) {
         node->processed_child = i;
         neko_ai_bt_node_t* child = neko_ai_bt_node_child_get(ctx, node, i);
         neko_assert(child);
@@ -182,7 +182,7 @@ NEKO_API_DECL void neko_ai_bt_selector_end(struct neko_ai_bt_t* ctx) {
         node->state = NEKO_AI_BT_STATE_SUCCESS;
 
         // Pop all children off stack
-        for (uint32_t i = 0; i < node->num_children; ++i) {
+        for (u32 i = 0; i < node->num_children; ++i) {
             neko_dyn_array_pop(ctx->stack);
         }
         ctx->current_idx = node->idx + 1;
@@ -194,7 +194,7 @@ NEKO_API_DECL void neko_ai_bt_selector_end(struct neko_ai_bt_t* ctx) {
         node->state = NEKO_AI_BT_STATE_FAILURE;
 
         // Pop off all children off stack
-        for (uint32_t i = 0; i < node->num_children; ++i) {
+        for (u32 i = 0; i < node->num_children; ++i) {
             neko_dyn_array_pop(ctx->stack);
         }
         ctx->current_idx = node->idx + 1;
@@ -226,7 +226,7 @@ NEKO_API_DECL void neko_ai_bt_sequence_end(struct neko_ai_bt_t* ctx) {
     neko_ai_bt_node_t* node = neko_ai_bt_parent_node_get(ctx);
 
     // For each child
-    for (uint32_t i = 0; i < node->num_children; ++i) {
+    for (u32 i = 0; i < node->num_children; ++i) {
         node->processed_child = i;
         neko_ai_bt_node_t* child = neko_ai_bt_node_child_get(ctx, node, i);
         neko_assert(child);
@@ -247,7 +247,7 @@ NEKO_API_DECL void neko_ai_bt_sequence_end(struct neko_ai_bt_t* ctx) {
         node->state = NEKO_AI_BT_STATE_FAILURE;
 
         // Pop all children off stack, reset current idx?
-        for (uint32_t i = 0; i < node->num_children; ++i) {
+        for (u32 i = 0; i < node->num_children; ++i) {
             neko_dyn_array_pop(ctx->stack);
         }
         ctx->current_idx = node->idx + 1;
@@ -259,7 +259,7 @@ NEKO_API_DECL void neko_ai_bt_sequence_end(struct neko_ai_bt_t* ctx) {
         node->state = NEKO_AI_BT_STATE_SUCCESS;
 
         // Pop off all children off stack
-        for (uint32_t i = 0; i < node->num_children; ++i) {
+        for (u32 i = 0; i < node->num_children; ++i) {
             neko_dyn_array_pop(ctx->stack);
         }
         ctx->current_idx = node->idx + 1;
@@ -269,7 +269,7 @@ NEKO_API_DECL void neko_ai_bt_sequence_end(struct neko_ai_bt_t* ctx) {
     neko_ai_bt_children_end(ctx);
 }
 
-NEKO_API_DECL int16_t neko_ai_bt_repeater_begin(struct neko_ai_bt_t* ctx, uint32_t* count) {
+NEKO_API_DECL int16_t neko_ai_bt_repeater_begin(struct neko_ai_bt_t* ctx, u32* count) {
     // Get next node in stack
     neko_ai_bt_node_t* node = neko_ai_bt_node_next(ctx);
     node->name = "repeater";
@@ -302,7 +302,7 @@ NEKO_API_DECL void neko_ai_bt_repeater_end(struct neko_ai_bt_t* ctx) {
     // Get top of parent stack for node
     neko_ai_bt_node_t* node = neko_ai_bt_parent_node_get(ctx);
 
-    for (uint32_t i = 0; i < node->num_children; ++i) {
+    for (u32 i = 0; i < node->num_children; ++i) {
         node->processed_child = i;
         neko_ai_bt_node_t* child = neko_ai_bt_node_child_get(ctx, node, i);
         neko_assert(child);
@@ -313,8 +313,8 @@ NEKO_API_DECL void neko_ai_bt_repeater_end(struct neko_ai_bt_t* ctx) {
         node->state = NEKO_AI_BT_STATE_SUCCESS;
 
         // Pop all children and their children off stack
-        uint32_t cnt = neko_dyn_array_size(ctx->stack);
-        for (uint32_t i = node->idx + 1; i < cnt; ++i) {
+        u32 cnt = neko_dyn_array_size(ctx->stack);
+        for (u32 i = node->idx + 1; i < cnt; ++i) {
             neko_dyn_array_pop(ctx->stack);
         }
         ctx->current_idx = node->idx + 1;
@@ -348,7 +348,7 @@ NEKO_API_DECL void neko_ai_bt_inverter_end(struct neko_ai_bt_t* ctx) {
     // Get top of parent stack for node
     neko_ai_bt_node_t* node = neko_ai_bt_parent_node_get(ctx);
 
-    for (uint32_t i = 0; i < node->num_children; ++i) {
+    for (u32 i = 0; i < node->num_children; ++i) {
         node->processed_child = i;
         neko_ai_bt_node_t* child = neko_ai_bt_node_child_get(ctx, node, i);
         neko_assert(child);
@@ -367,8 +367,8 @@ NEKO_API_DECL void neko_ai_bt_inverter_end(struct neko_ai_bt_t* ctx) {
 
     if (node->state != NEKO_AI_BT_STATE_RUNNING) {
         // Pop all children and their children off stack
-        uint32_t cnt = neko_dyn_array_size(ctx->stack);
-        for (uint32_t i = node->idx + 1; i < cnt; ++i) {
+        u32 cnt = neko_dyn_array_size(ctx->stack);
+        for (u32 i = node->idx + 1; i < cnt; ++i) {
             neko_dyn_array_pop(ctx->stack);
         }
         ctx->current_idx = node->idx + 1;
@@ -406,7 +406,7 @@ NEKO_API_DECL void neko_ai_bt_condition_end(struct neko_ai_bt_t* ctx) {
     // Get top of parent stack for node
     neko_ai_bt_node_t* node = neko_ai_bt_parent_node_get(ctx);
 
-    for (uint32_t i = 0; i < node->num_children; ++i) {
+    for (u32 i = 0; i < node->num_children; ++i) {
         node->processed_child = i;
         neko_ai_bt_node_t* child = neko_ai_bt_node_child_get(ctx, node, i);
         neko_assert(child);
@@ -415,8 +415,8 @@ NEKO_API_DECL void neko_ai_bt_condition_end(struct neko_ai_bt_t* ctx) {
 
     if (node->state != NEKO_AI_BT_STATE_RUNNING) {
         // Pop all children and their children off stack
-        uint32_t cnt = neko_dyn_array_size(ctx->stack);
-        for (uint32_t i = node->idx + 1; i < cnt; ++i) {
+        u32 cnt = neko_dyn_array_size(ctx->stack);
+        for (u32 i = node->idx + 1; i < cnt; ++i) {
             neko_dyn_array_pop(ctx->stack);
         }
         ctx->current_idx = node->idx + 1;
@@ -487,8 +487,8 @@ NEKO_API_DECL float neko_ai_curve_binary(float m, float k, float c, float b, flo
 
 float neko_ai_utility_action_evaluate(neko_ai_utility_action_desc_t* desc) {
     float val = 1.f;
-    uint32_t cnt = desc->size / sizeof(neko_ai_utility_consideration_desc_t);
-    for (uint32_t i = 0; i < cnt; ++i) {
+    u32 cnt = desc->size / sizeof(neko_ai_utility_consideration_desc_t);
+    for (u32 i = 0; i < cnt; ++i) {
         neko_ai_utility_consideration_desc_t* cp = &desc->considerations[i];
 
         // Normalize range from bookends to [0.f, 1.f]

@@ -1530,6 +1530,7 @@ typedef struct neko_pipeline_parse_data_t {
     neko_dyn_array(neko_gfxt_mesh_layout_t) mesh_layout;
     neko_dyn_array(neko_graphics_vertex_attribute_type) vertex_layout;
     char* code[3];
+    char dir[256];
 } neko_ppd_t;
 
 #define neko_parse_warning(TXT, ...)     \
@@ -1886,11 +1887,15 @@ bool neko_parse_code(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* desc, neko_pp
         }
     }
 
-    // This is most likely incorrect...
+    // Allocate size for code
     const size_t sz = (size_t)(token.text - cur.text);
     char* code = (char*)neko_malloc(sz);
     memset(code, 0, sz);
     memcpy(code, cur.text, sz - 1);
+
+    // List of include directories to gather
+    u32 iidx = 0;
+    char includes[NEKO_GFXT_INCLUDE_DIR_MAX][256] = {0};
 
     // Need to parse through code and replace keywords with appropriate mappings
     neko_lexer_t clex = neko_lexer_c_ctor(code);
@@ -1913,11 +1918,48 @@ bool neko_parse_code(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* desc, neko_pp
                 } else if (neko_token_compare_text(&tkn, "NEKO_GFXT_UNIFORM_TIME")) {
                     neko_util_string_replace(tkn.text, tkn.len, NEKO_GFXT_UNIFORM_TIME, (char)32);
                 }
-            };
+            } break;
+
+            case NEKO_TOKEN_HASH: {
+                // Parse include
+                tkn = clex.next_token(&clex);
+                switch (tkn.type) {
+                    case NEKO_TOKEN_IDENTIFIER: {
+                        if (neko_token_compare_text(&tkn, "include") && iidx < NEKO_GFXT_INCLUDE_DIR_MAX) {
+                            // Length of include string
+                            size_t ilen = 8;
+
+                            // Grab next token, expect string
+                            tkn = clex.next_token(&clex);
+                            if (tkn.type == NEKO_TOKEN_STRING) {
+                                memcpy(includes[iidx], tkn.text + 1, tkn.len - 2);
+                                neko_util_string_replace(tkn.text - ilen, tkn.len + ilen, " ", (char)32);
+                                iidx++;
+                            }
+                        }
+                    }
+                }
+            } break;
         }
     }
 
-    // neko_println("code: %s", code);
+    for (uint32_t i = 0; i < NEKO_GFXT_INCLUDE_DIR_MAX; ++i) {
+        if (!includes[i][0]) continue;
+
+        // Need to collect other uniforms from these includes (parse code)
+        neko_snprintfc(FINAL_PATH, 256, "%s/%s", ppd->dir, includes[i]);
+        // gs_println("INC_DIR: %s", FINAL_PATH);
+
+        // Load include using final path and relative path from include
+        size_t len = 0;
+        char* inc_src = neko_platform_read_file_contents(FINAL_PATH, "rb", &len);
+        neko_assert(inc_src);
+
+        // Realloc previous code to greater size, shift contents around
+        char* cat = neko_util_string_concat(inc_src, code);
+        neko_safe_free(code);
+        code = cat;
+    }
 
     switch (stage) {
         case NEKO_GRAPHICS_SHADER_STAGE_VERTEX:
@@ -2883,18 +2925,41 @@ NEKO_API_DECL neko_gfxt_pipeline_t neko_gfxt_pipeline_load_from_file(const char*
     char* file_data = neko_platform_read_file_contents(path, "rb", &len);
     neko_assert(file_data);
     neko_log_trace("Parsing pipeline: %s", path);
-    neko_gfxt_pipeline_t pip = neko_gfxt_pipeline_load_from_memory(file_data, len);
+    neko_gfxt_pipeline_t pip = neko_gfxt_pipeline_load_from_memory_ext(file_data, len, path);
     neko_safe_free(file_data);
     return pip;
 }
 
-NEKO_API_DECL neko_gfxt_pipeline_t neko_gfxt_pipeline_load_from_memory(const char* file_data, size_t sz) {
+NEKO_API_DECL neko_gfxt_pipeline_t neko_gfxt_pipeline_load_from_memory(const char* file_data, size_t sz) { return neko_gfxt_pipeline_load_from_memory_ext(file_data, sz, "."); }
+
+NEKO_API_DECL neko_gfxt_pipeline_t neko_gfxt_pipeline_load_from_memory_ext(const char* file_data, size_t sz, const char* file_path) {
     // Cast to pip
     neko_gfxt_pipeline_t pip = neko_default_val();
 
     neko_ppd_t ppd = neko_default_val();
     neko_gfxt_pipeline_desc_t pdesc = neko_default_val();
     pdesc.pip_desc.raster.index_buffer_element_size = sizeof(uint32_t);
+
+    // Determine original file directory from path
+    if (file_path) {
+        neko_lexer_t lex = neko_lexer_c_ctor(file_path);
+        neko_token_t tparen = {0};
+        while (lex.can_lex(&lex)) {
+            neko_token_t token = lex.next_token(&lex);
+
+            // Look for last paren + identifier combo
+            switch (token.type) {
+                case NEKO_TOKEN_FSLASH:
+                case NEKO_TOKEN_BSLASH: {
+                    tparen = token;
+                } break;
+            }
+        }
+        // Now save dir
+        neko_println("HERE: %zu", tparen.text - file_path);
+        memcpy(ppd.dir, file_path, tparen.text - file_path);
+        neko_println("PPD_DIR: %s", ppd.dir);
+    }
 
     neko_lexer_t lex = neko_lexer_c_ctor(file_data);
     while (lex.can_lex(&lex)) {

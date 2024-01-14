@@ -23,11 +23,11 @@ endif ()
 
 include_directories("source/")
 
-# add_definitions(-DWIN32 -D_WIN32 -D_WINDOWS -DNOMINMAX -DDEBUG -D_DEBUG -DUNICODE -D_UNICODE)
-
 add_definitions(-DDEBUG -D_DEBUG)
 
 if (MSVC)
+    add_definitions(-DWIN32 -D_WIN32 -D_WINDOWS -DNOMINMAX -DUNICODE -D_UNICODE)
+
     add_compile_options(
             /wd4005
             /wd4267
@@ -74,10 +74,10 @@ if (MSVC)
     SET(CMAKE_C_FLAGS_RELEASE "/Zi /O2")
 else ()
     add_compile_options(
-            #            -finput-charset=UTF-8            # Equivalent to /utf-8
-            #            -pedantic-errors                 # Equivalent to /permissive (strict standards)
-            #            -flto                            # Enable link-time optimization, similar to /bigobj
-            #            -g                               # Generate debug information, similar to /ZI
+            # -finput-charset=UTF-8            # Equivalent to /utf-8
+            # -pedantic-errors                 # Equivalent to /permissive (strict standards)
+            # -flto                            # Enable link-time optimization, similar to /bigobj
+            # -g                               # Generate debug information, similar to /ZI
 
             -fno-strict-aliasing
 
@@ -88,10 +88,26 @@ else ()
             -Wno-unsequenced
             -Wno-unqualified-std-cast-call
             -Wno-implicit-const-int-float-conversion
-
-            -Wl
+            -Wno-unused-value
+            -Wno-pointer-bool-conversion
+            -Wno-unknown-attributes
+            -Wno-return-stack-address
+            -Wno-writable-strings
+            -Wno-format
+            -Wno-switch
+            -Wno-incompatible-pointer-types
+            -Wno-tautological-constant-out-of-range-compare
+            -Wno-tautological-pointer-compare
+            -Wno-shift-op-parentheses
+            -Wno-visibility
+            -Wno-parentheses
+            -Wno-pointer-sign
+            -Wno-ignored-attributes
+            -Wno-c99-designator
+            -Wno-null-conversion
 
             -finline-functions
+            -fPIC
     )
 
     add_link_options(
@@ -128,10 +144,6 @@ set(neko_game_src_all
         "source/tests/test_ut.cpp"
 )
 
-set(neko_hotload_src
-        "source/hotload/hotload.c"
-)
-
 set(neko_script_test_src
         "source/neko_script/interpreter.cpp"
 )
@@ -144,8 +156,8 @@ target_link_libraries(sandbox neko_engine)
 set_property(TARGET sandbox PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "./")
 target_link_libraries(sandbox neko_engine)
 
-add_library(hotload SHARED ${neko_hotload_src})
-target_link_libraries(hotload neko_engine)
+#add_library(hotload SHARED ${neko_hotload_src})
+#target_link_libraries(hotload neko_engine)
 
 add_executable(script_test ${neko_script_test_src})
 target_link_libraries(script_test neko_engine)

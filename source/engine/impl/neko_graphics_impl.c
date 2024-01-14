@@ -2136,7 +2136,7 @@ NEKO_API_DECL neko_handle(neko_graphics_shader_t) neko_graphics_shader_create_im
             s32 sz = 0;
             u32 type;
             glGetActiveUniform(shader, (GLuint)i, 256, NULL, &sz, &type, tmp_name);
-            neko_println("Uniform #%d Type: %u Name: %s\n", i, type, tmp_name);
+            neko_println("Uniform #%d Type: %u the_name: %s\n", i, type, tmp_name);
         }
     }
     */
