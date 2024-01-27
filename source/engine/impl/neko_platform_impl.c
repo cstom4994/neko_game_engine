@@ -605,7 +605,13 @@ NEKO_API_DECL bool neko_platform_dir_exists_default_impl(const char* dir_path) {
 #endif
 }
 
-NEKO_API_DECL s32 neko_platform_mkdir_default_impl(const char* dir_path, s32 opt) { return mkdir(dir_path, opt); }
+NEKO_API_DECL s32 neko_platform_mkdir_default_impl(const char* dir_path, s32 opt) { 
+#ifdef NEKO_PLATFORM_WIN
+    return mkdir(dir_path);
+#else
+    return mkdir(dir_path, opt);
+#endif
+}
 
 NEKO_API_DECL bool neko_platform_file_exists_default_impl(const char* file_path) {
     const char* path = file_path;
@@ -801,7 +807,7 @@ NEKO_API_DECL void* neko_platform_library_proc_address_default_impl(void* lib, c
 #include <sched.h>
 #include <unistd.h>
 
-#elif (defined NEKO_PLATFORM_WINDOWS)
+#elif (defined NEKO_PLATFORM_WIN)
 
 #define WIN32_LEAN_AND_MEAN
 #include <locale.h>
@@ -946,6 +952,7 @@ neko_memory_info_t glfw_platform_meminfo() {
     }
 #endif
 
+    // TODO:: 支持AMD显卡获取显存信息
 #define GL_GPU_MEM_INFO_TOTAL_AVAILABLE_MEM_NVX 0x9048
 #define GL_GPU_MEM_INFO_CURRENT_AVAILABLE_MEM_NVX 0x9049
 
@@ -991,8 +998,8 @@ void neko_platform_msgbox(const_str msg) {
 #if defined(NEKO_PLATFORM_WIN)
     MessageBoxA((HWND)glfw_get_sys_handle(), msg, "Neko Error", MB_OK | MB_SETFOREGROUND | MB_ICONSTOP);
 #elif defined(NEKO_PLATFORM_LINUX)
-    char info[256];
-    neko_snprintf(info, 256, "notify-send \"%s\"", msg);
+    char info[128];
+    neko_snprintf(info, 128, "notify-send \"%s\"", msg);
     system(info);
 #else  // TODO:: wasm
     Android_MessageBox("Neko Error", x);
@@ -2713,13 +2720,13 @@ const_str __neko_inter_stacktrace() {
         lineInfo.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
         DWORD displacement;
 
-        bool is_main = !strcmp(symbol->the_name, "main");
+        bool is_main = !strcmp(symbol->Name, "main");
 
         char trace_tmp[512];
         if (SymGetLineFromAddr64(GetCurrentProcess(), address, &displacement, &lineInfo)) {
-            neko_snprintf(trace_tmp, 512, "#%u %s - File: %s, Line: %u\n", i, symbol->the_name, lineInfo.FileName, lineInfo.LineNumber);
+            neko_snprintf(trace_tmp, 512, "#%u %s - File: %s, Line: %u\n", i, symbol->Name, lineInfo.FileName, lineInfo.LineNumber);
         } else {
-            neko_snprintf(trace_tmp, 512, "#%u %s - Source information not available\n", i, symbol->the_name);
+            neko_snprintf(trace_tmp, 512, "#%u %s - Source information not available\n", i, symbol->Name);
         }
 
         strcat(trace_info, trace_tmp);

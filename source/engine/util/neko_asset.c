@@ -1288,11 +1288,8 @@ static void neko_fnt_decode(neko_fnt *fnt, void *input_data, neko_fnt_read_func_
 #elif _WIN32
 inline static FILE *openFile(const char *filePath, const char *mode) {
     FILE *file;
-
     errno_t error = fopen_s(&file, filePath, mode);
-
     if (error != 0) return NULL;
-
     return file;
 }
 

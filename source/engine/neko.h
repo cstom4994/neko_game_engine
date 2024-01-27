@@ -41,7 +41,6 @@
 #define OEMRESOURCE
 
 #define NEKO_PLATFORM_WIN
-#define NEKO_PLATFORM_WINDOWS
 #include <windows.h>
 
 #define WIN32_LEAN_AND_MEAN
@@ -384,6 +383,14 @@ neko_force_inline void neko_printf(const char* fmt, ...) {
 #define neko_unused(x) (void)x
 #else
 #define neko_unused(x) (void)(sizeof(x))
+#endif
+
+#if defined(__clang__)
+#define neko_debugbreak() __builtin_debugtrap()
+#elif defined(_MSC_VER)
+#define neko_debugbreak() __debugbreak()
+#else
+#define neko_debugbreak()
 #endif
 
 #if defined(__cplusplus)

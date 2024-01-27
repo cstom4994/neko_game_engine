@@ -1,4 +1,7 @@
 
+#include <functional>
+#include <mutex>
+
 #include "engine/neko_engine.h"
 
 #if 1
@@ -72,8 +75,6 @@ public:
     inline neko_scoped_mutex_locker(neko_pthread_mutex &_mutex) : m_mutex(_mutex) { m_mutex.lock(); }
     inline ~neko_scoped_mutex_locker() { m_mutex.unlock(); }
 };
-
-#include <functional>
 
 namespace neko {
 
