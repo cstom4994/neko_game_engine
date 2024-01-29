@@ -2311,6 +2311,9 @@ extern "C" {
 #include "engine/builtin/neko_gui_internal.h"
 #include "engine/builtin/neko_hashtable.h"
 
+#define CUTE_PNG_IMPLEMENTATION
+#include "engine/builtin/cute_png.h"
+
 #define CUTE_C2_IMPLEMENTATION
 #include "engine/builtin/cute_c2.h"
 }

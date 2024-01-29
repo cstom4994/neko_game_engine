@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "engine/builtin/cute_png.h"
+
 #if defined(NEKO_PLATFORM_LINUX)
 #include <errno.h>
 #define fopen_s fopen
@@ -103,16 +105,22 @@ void neko_asset_default_load_from_file(const_str path, void *out) {
 #include "libs/cgltf/cgltf.h"
 
 // STB
-#include "libs/stb/stb_image.h"
 #include "libs/stb/stb_rect_pack.h"
 #include "libs/stb/stb_truetype.h"
 
 NEKO_API_DECL bool32_t neko_util_load_texture_data_from_memory(const void *memory, size_t sz, s32 *width, s32 *height, u32 *num_comps, void **data, bool32_t flip_vertically_on_load) {
     // Load texture data
-    stbi_set_flip_vertically_on_load(flip_vertically_on_load);
-    *data = stbi_load_from_memory((const stbi_uc *)memory, (s32)sz, (s32 *)width, (s32 *)height, (s32 *)num_comps, STBI_rgb_alpha);
+    //
+    // stbi_set_flip_vertically_on_load(flip_vertically_on_load);
+    // *data = stbi_load_from_memory((const stbi_uc *)memory, (s32)sz, (s32 *)width, (s32 *)height, (s32 *)num_comps, STBI_rgb_alpha);
+
+    neko_png_image_t img = neko_png_load_png_mem(memory, sz);
+    *data = img.pix;
+    *width = img.w;
+    *height = img.h;
+
     if (!*data) {
-        neko_free(*data);
+        neko_png_free_png(&img);
         return false;
     }
     return true;
@@ -139,9 +147,14 @@ NEKO_API_DECL bool neko_asset_texture_load_from_file(const_str path, void *out, 
         return false;
     }
 
-    s32 comp = 0;
-    stbi_set_flip_vertically_on_load(t->desc.flip_y);
-    *t->desc.data = (u8 *)stbi_load_from_file(f, (s32 *)&t->desc.width, (s32 *)&t->desc.height, (s32 *)&comp, STBI_rgb_alpha);
+    // s32 comp = 0;
+    // stbi_set_flip_vertically_on_load(t->desc.flip_y);
+    // *t->desc.data = (u8 *)stbi_load_from_file(f, (s32 *)&t->desc.width, (s32 *)&t->desc.height, (s32 *)&comp, STBI_rgb_alpha);
+
+    neko_png_image_t img = neko_png_load_png(f);
+    *t->desc.data = img.pix;
+    t->desc.width = img.w;
+    t->desc.height = img.h;
 
     if (!t->desc.data) {
         fclose(f);
@@ -151,7 +164,8 @@ NEKO_API_DECL bool neko_asset_texture_load_from_file(const_str path, void *out, 
     t->hndl = neko_graphics_texture_create(&t->desc);
 
     if (!keep_data) {
-        neko_free(*t->desc.data);
+        // neko_free(*t->desc.data);
+        neko_png_free_png(&img);
         *t->desc.data = NULL;
     }
 

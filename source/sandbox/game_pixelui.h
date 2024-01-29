@@ -6,7 +6,7 @@
 #include "engine/neko_engine.h"
 
 #define NEKO_BUILTIN_IMPL
-#include "old/neko_builtin_font.h"
+#include "../old/neko_builtin_font.h"
 
 neko_global const s32 g_pixelui_scale = 4;
 neko_global const s32 g_pixelui_texture_width = g_window_width / g_pixelui_scale;

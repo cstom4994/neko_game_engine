@@ -1,8 +1,9 @@
 
 #include "engine/util/neko_idraw.h"
 
+#include "engine/builtin/cute_png.h"
+
 // STB
-#include "libs/stb/stb_image.h"
 #include "libs/stb/stb_rect_pack.h"
 #include "libs/stb/stb_truetype.h"
 

@@ -55,7 +55,7 @@ neko_inline void __neko_check_gl_error(const char* file, const int line) {
     while ((err = glGetError()) != GL_NO_ERROR) {
         if (last_err != err) {
             last_err = err;
-            neko_log_warning("gl: %s(%s) %s", file, line, __neko_gl_error_string(err));
+            // neko_log_warning("gl: %s(%s) %s", file, line, __neko_gl_error_string(err));
         }
     }
 }

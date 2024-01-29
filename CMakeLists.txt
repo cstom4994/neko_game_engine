@@ -157,12 +157,13 @@ set(neko_game_src_all
         # ${neko_game_src}
 
         "source/sandbox/game_physics_math.cpp"
+        "source/sandbox/game_scripts.cpp"
+        "source/sandbox/game_editor.cpp"
         "source/sandbox/main.cpp"
-        "source/sandbox/neko_sprite.c"
-        "source/sandbox/test.c"
-        "source/tests/test_se.cpp"
-        "source/tests/test_sr.cpp"
-        "source/tests/test_ut.cpp"
+        "source/sandbox/tests/test.c"
+        "source/sandbox/tests/test_se.cpp"
+        "source/sandbox/tests/test_sr.cpp"
+        "source/sandbox/tests/test_ut.cpp"
 )
 
 set(my_game_src_all

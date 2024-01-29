@@ -15,6 +15,9 @@ cmake-*/
 
 data/assets/
 data/*.pack
+gamedir/
+docs/
+assets/
 dependencies/
 
 Resources/
