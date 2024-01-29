@@ -996,7 +996,7 @@ neko_vec2 neko_platform_opengl_ver() { return glfw_get_opengl_version(); }
 
 void neko_platform_msgbox(const_str msg) {
 #if defined(NEKO_PLATFORM_WIN)
-    MessageBoxA((HWND)glfw_get_sys_handle(), msg, "Neko Error", MB_OK | MB_SETFOREGROUND | MB_ICONSTOP);
+    MessageBoxW((HWND)glfw_get_sys_handle(), msg, "Neko Error", MB_OK | MB_SETFOREGROUND | MB_ICONSTOP);
 #elif defined(NEKO_PLATFORM_LINUX)
     char info[128];
     neko_snprintf(info, 128, "notify-send \"%s\"", msg);

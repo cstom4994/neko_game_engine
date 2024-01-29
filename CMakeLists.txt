@@ -14,7 +14,17 @@ if(MSVC)
         # file(GLOB cs_native_lib CONFIGURE_DEPENDS "dependencies/glfw/lib/*.lib")
         include_directories("dependencies/netcore/" , "dependencies/libffi/include" , "dependencies/fmod/include")
 
-        file(GLOB neko_engine_lib CONFIGURE_DEPENDS "dependencies/glfw/lib/*.lib" "dependencies/sdl2/lib/*.lib")
+        file(GLOB neko_game_lib CONFIGURE_DEPENDS 
+            "dependencies/libffi/lib/*.lib"
+            "dependencies/sdl2/lib/*.lib"
+            "dependencies/fmod/lib/*.lib"
+        )
+
+        set(neko_game_lib_all
+            ${neko_game_lib}
+        )
+
+        file(GLOB neko_engine_lib CONFIGURE_DEPENDS "dependencies/glfw/lib/*.lib" "dependencies/fmod/lib/*.lib")
         include_directories("dependencies/glfw/include/")
         include_directories("dependencies/sdl2/include/")
 else()
@@ -132,7 +142,7 @@ if(MSVC)
         endforeach()
 endif(MSVC)
 
-file(GLOB_RECURSE neko_engine_src CONFIGURE_DEPENDS "source/engine/*.c")
+file(GLOB_RECURSE neko_engine_src CONFIGURE_DEPENDS "source/engine/**.*")
 
 file(GLOB_RECURSE neko_game_src CONFIGURE_DEPENDS "source/game/**.*")
 
@@ -197,6 +207,10 @@ add_executable(sandbox ${neko_game_src_all})
 target_link_libraries(sandbox neko_engine)
 set_property(TARGET sandbox PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "./")
 target_link_libraries(sandbox neko_engine)
+
+add_executable(game ${neko_game_src})
+target_link_libraries(game neko_engine ${neko_game_lib_all})
+set_property(TARGET game PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "./")
 
 add_executable(my_game ${my_game_src_all})
 target_link_libraries(my_game neko_engine)

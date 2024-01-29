@@ -20,10 +20,10 @@
 #if defined(_WIN32) || defined(_WIN64) || defined(NEKO_PLATFORM_WIN)
 typedef unsigned __int64 tick_t;
 #else
-#include <syscall.h>
-#include <stdint.h>
 #include <pthread.h>
-typedef uint64_t tick_t;
+#include <stdint.h>
+#include <syscall.h>
+typedef u64 tick_t;
 #endif
 
 typedef double deltatime_t;
@@ -333,28 +333,28 @@ typedef enum neko_opengl_compatibility_flags {
 } neko_opengl_compatibility_flags;
 
 // A structure that contains OpenGL video settings
-typedef struct neko_opengl_video_settinneko_t {
+typedef struct neko_opengl_video_settings_t {
     neko_opengl_compatibility_flags compability_flags;
     u32 major_version;
     u32 minor_version;
     u8 multi_sampling_count;
     void *ctx;
-} neko_opengl_video_settinneko_t;
+} neko_opengl_video_settings_t;
 
-typedef union neko_graphics_api_settinneko_t {
-    neko_opengl_video_settinneko_t opengl;
+typedef union neko_graphics_api_settings_t {
+    neko_opengl_video_settings_t opengl;
     b32 debug;
-} neko_graphics_api_settinneko_t;
+} neko_graphics_api_settings_t;
 
-typedef struct neko_platform_video_settinneko_t {
-    neko_graphics_api_settinneko_t graphics;
+typedef struct neko_platform_video_settings_t {
+    neko_graphics_api_settings_t graphics;
     neko_platform_video_driver_type driver;
     b32 vsync_enabled;
-} neko_platform_video_settinneko_t;
+} neko_platform_video_settings_t;
 
-typedef struct neko_platform_settinneko_t {
-    neko_platform_video_settinneko_t video;
-} neko_platform_settinneko_t;
+typedef struct neko_platform_settings_t {
+    neko_platform_video_settings_t video;
+} neko_platform_settings_t;
 
 typedef enum neko_platform_event_type {
     NEKO_PLATFORM_EVENT_MOUSE,
@@ -465,7 +465,7 @@ struct neko_platform_interface_s;
 
 typedef struct neko_platform_t {
     // Settings for platform, including video
-    neko_platform_settinneko_t settings;
+    neko_platform_settings_t settings;
 
     // Time
     neko_platform_time_t time;
@@ -557,9 +557,9 @@ NEKO_API_DECL u32 neko_platform_window_create(const neko_platform_running_desc_t
 NEKO_API_DECL u32 neko_platform_main_window();
 
 typedef struct neko_platform_file_stats_s {
-    uint64_t modified_time;
-    uint64_t creation_time;
-    uint64_t access_time;
+    u64 modified_time;
+    u64 creation_time;
+    u64 access_time;
 } neko_platform_file_stats_t;
 
 // Platform File IO (this all needs to be made available for impl rewrites)
@@ -572,7 +572,7 @@ NEKO_API_DECL s32 neko_platform_file_size_in_bytes_default_impl(const char *file
 NEKO_API_DECL void neko_platform_file_extension_default_impl(char *buffer, size_t buffer_sz, const char *file_path);
 NEKO_API_DECL s32 neko_platform_file_delete_default_impl(const char *file_path);
 NEKO_API_DECL s32 neko_platform_file_copy_default_impl(const char *src_path, const char *dst_path);
-NEKO_API_DECL s32 neko_platform_file_compare_time(uint64_t time_a, uint64_t time_b);
+NEKO_API_DECL s32 neko_platform_file_compare_time(u64 time_a, u64 time_b);
 NEKO_API_DECL neko_platform_file_stats_t neko_platform_file_stats(const char *file_path);
 NEKO_API_DECL void *neko_platform_library_load_default_impl(const char *lib_path);
 NEKO_API_DECL void neko_platform_library_unload_default_impl(void *lib);
@@ -657,11 +657,11 @@ NEKO_API_DECL const_str __neko_inter_stacktrace();
 // Platform Native
 ============================================================*/
 
-static inline uint64_t neko_get_thread_id() {
+static inline u64 neko_get_thread_id() {
 #if defined(NEKO_PLATFORM_WIN)
-    return (uint64_t)GetCurrentThreadId();
+    return (u64)GetCurrentThreadId();
 #elif defined(NEKO_PLATFORM_LINUX)
-    return (uint64_t)syscall(SYS_gettid);
+    return (u64)syscall(SYS_gettid);
 #elif defined(NEKO_PLATFORM_APPLE)
     return (mach_port_t)::pthread_mach_thread_np(pthread_self());
 #else

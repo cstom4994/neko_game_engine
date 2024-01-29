@@ -15,7 +15,7 @@ typedef struct neko_client_userdata_s {
     neko_command_buffer_t *cb;
     neko_immediate_draw_t *idraw;
     neko_immediate_draw_static_data_t *idraw_sd;
-    neko_imgui_context_t *igui;
+    neko_core_ui_context_t *igui;
     neko_gui_ctx_t *nui;
     neko_graphics_custom_batch_context_t *sprite_batch;
 
@@ -315,7 +315,7 @@ neko_ecs_decl_system(ui_render_system, UI_RENDER_SYSTEM, 2, COMPONENT_TRANSFORM,
 
     neko_command_buffer_t *cb = ((neko_client_userdata_t *)ecs->user_data)->cb;
     neko_immediate_draw_t *idraw = ((neko_client_userdata_t *)ecs->user_data)->idraw;
-    neko_imgui_context_t *igui = ((neko_client_userdata_t *)ecs->user_data)->igui;
+    neko_core_ui_context_t *igui = ((neko_client_userdata_t *)ecs->user_data)->igui;
 
     for (u32 i = 0; i < neko_ecs_for_count(ecs); i++) {
         neko_ecs_ent e = neko_ecs_get_ent(ecs, i);

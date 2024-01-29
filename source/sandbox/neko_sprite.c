@@ -348,7 +348,7 @@ void neko_particle_renderer_draw(neko_particle_renderer* pr, neko_command_buffer
 //     // Number of particles
 //     ImGui::Text("Number of particles");
 //     ImGui::SameLine();
-//     neko_imgui_help_marker(
+//     neko_core_ui_help_marker(
 //             "Control the number of simulated particles by\n"
 //             "adjusting the slider.\n");
 //     ImGui::SliderInt("##Number of particles", &nParticles, 1, 20000);
@@ -360,7 +360,7 @@ void neko_particle_renderer_draw(neko_particle_renderer* pr, neko_command_buffer
 //     static int cycle = 1;
 //     ImGui::Text("Cycle colors");
 //     ImGui::SameLine();
-//     neko_imgui_help_marker(
+//     neko_core_ui_help_marker(
 //             "If set to true, particle colors are cycled automatically.\n"
 //             "Otherwise, the particle color may be defined manually\n"
 //             "through the color picker below.\n");
@@ -370,7 +370,7 @@ void neko_particle_renderer_draw(neko_particle_renderer* pr, neko_command_buffer
 //     static int cyclingSpeed = 5;
 //     ImGui::SliderInt("Cycle speed", &cyclingSpeed, 1, 20);
 //     ImGui::SameLine();
-//     neko_imgui_help_marker("Adjust the color cycling speed.\n");
+//     neko_core_ui_help_marker("Adjust the color cycling speed.\n");
 //     colorCyclingSpeed = cyclingSpeed * 0.0001f;
 //
 //     ImGui::RadioButton("False", &cycle, 0);
@@ -388,7 +388,7 @@ void neko_particle_renderer_draw(neko_particle_renderer* pr, neko_command_buffer
 //     // Particle radius
 //     ImGui::Text("Particle radius");
 //     ImGui::SameLine();
-//     neko_imgui_help_marker("The smaller the radius, the smaller the particle is.\n");
+//     neko_core_ui_help_marker("The smaller the radius, the smaller the particle is.\n");
 //     ImGui::SliderInt("##Particle radius", &particleRadius, 1, 5);
 //     ImGui::Spacing();
 //     ImGui::Separator();
@@ -398,7 +398,7 @@ void neko_particle_renderer_draw(neko_particle_renderer* pr, neko_command_buffer
 //     static int spin = 3;
 //     ImGui::Text("Particle spin");
 //     ImGui::SameLine();
-//     neko_imgui_help_marker(
+//     neko_core_ui_help_marker(
 //             "How much should exploding particles \"spin\" relative\n"
 //             "to the explosion center?\n");
 //     ImGui::SliderInt("##Particle spin", &spin, 1, 8);
@@ -411,7 +411,7 @@ void neko_particle_renderer_draw(neko_particle_renderer* pr, neko_command_buffer
 //     static int speed = 5;
 //     ImGui::Text("Particle speed");
 //     ImGui::SameLine();
-//     neko_imgui_help_marker("How fast should exploding particles diffuse?\n");
+//     neko_core_ui_help_marker("How fast should exploding particles diffuse?\n");
 //     ImGui::SliderInt("##Particle speed", &speed, 1, 10);
 //     particleSpeed = speed * 0.1f;
 //     ImGui::Spacing();

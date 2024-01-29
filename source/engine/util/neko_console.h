@@ -4,7 +4,7 @@
 #include "engine/util/neko_gui.h"
 
 // NEKO_API_DECL void neko_console_printf(neko_console_t* console, const char* fmt, ...);
-// NEKO_API_DECL void neko_console(neko_console_t* console, neko_imgui_context_t* ctx, neko_imgui_rect_t screen, const neko_imgui_selector_desc_t* desc);
+// NEKO_API_DECL void neko_console(neko_console_t* console, neko_core_ui_context_t* ctx, neko_core_ui_rect_t screen, const neko_core_ui_selector_desc_t* desc);
 
 neko_inline void neko_console_printf(neko_console_t* console, const char* fmt, ...) {
     char tmp[512] = {0};
@@ -25,7 +25,7 @@ neko_inline void neko_console_printf(neko_console_t* console, const char* fmt, .
 
 #ifdef NEKO_CONSOLE_IMPL
 
-NEKO_API_DECL void neko_console(neko_console_t* console, neko_imgui_context_t* ctx, neko_imgui_rect_t screen, const neko_imgui_selector_desc_t* desc) {
+NEKO_API_DECL void neko_console(neko_console_t* console, neko_core_ui_context_t* ctx, neko_core_ui_rect_t screen, const neko_core_ui_selector_desc_t* desc) {
     if (console->open)
         console->y += (screen.h * console->size - console->y) * console->open_speed;
     else if (!console->open && console->y >= 1.0f)
@@ -34,22 +34,22 @@ NEKO_API_DECL void neko_console(neko_console_t* console, neko_imgui_context_t* c
         return;
 
     const f32 sz = neko_min(console->y, 26);
-    if (neko_imgui_window_begin_ex(ctx, "neko_console_content", neko_imgui_rect(screen.x, screen.y, screen.w, console->y - sz), NULL, NULL,
-                                   NEKO_IMGUI_OPT_FORCESETRECT | NEKO_IMGUI_OPT_NOTITLE | NEKO_IMGUI_OPT_NORESIZE | NEKO_IMGUI_OPT_NODOCK | NEKO_IMGUI_OPT_FORCEFOCUS | NEKO_IMGUI_OPT_HOLDFOCUS)) {
-        neko_imgui_layout_row(ctx, 1, neko_imgui_widths(-1), 0);
-        neko_imgui_text(ctx, console->tb);
-        if (console->autoscroll) neko_imgui_get_current_container(ctx)->scroll.y = sizeof(console->tb) * 7 + 100;
-        neko_imgui_container_t* ctn = neko_imgui_get_current_container(ctx);
-        neko_imgui_bring_to_front(ctx, ctn);
-        neko_imgui_window_end(ctx);
+    if (neko_core_ui_window_begin_ex(ctx, "neko_console_content", neko_core_ui_rect(screen.x, screen.y, screen.w, console->y - sz), NULL, NULL,
+                                   NEKO_CORE_UI_OPT_FORCESETRECT | NEKO_CORE_UI_OPT_NOTITLE | NEKO_CORE_UI_OPT_NORESIZE | NEKO_CORE_UI_OPT_NODOCK | NEKO_CORE_UI_OPT_FORCEFOCUS | NEKO_CORE_UI_OPT_HOLDFOCUS)) {
+        neko_core_ui_layout_row(ctx, 1, neko_core_ui_widths(-1), 0);
+        neko_core_ui_text(ctx, console->tb);
+        if (console->autoscroll) neko_core_ui_get_current_container(ctx)->scroll.y = sizeof(console->tb) * 7 + 100;
+        neko_core_ui_container_t* ctn = neko_core_ui_get_current_container(ctx);
+        neko_core_ui_bring_to_front(ctx, ctn);
+        neko_core_ui_window_end(ctx);
     }
 
-    if (neko_imgui_window_begin_ex(ctx, "neko_console_input", neko_imgui_rect(screen.x, screen.y + console->y - sz, screen.w, sz), NULL, NULL,
-                                   NEKO_IMGUI_OPT_FORCESETRECT | NEKO_IMGUI_OPT_NOTITLE | NEKO_IMGUI_OPT_NORESIZE | NEKO_IMGUI_OPT_NODOCK | NEKO_IMGUI_OPT_NOHOVER | NEKO_IMGUI_OPT_NOINTERACT)) {
+    if (neko_core_ui_window_begin_ex(ctx, "neko_console_input", neko_core_ui_rect(screen.x, screen.y + console->y - sz, screen.w, sz), NULL, NULL,
+                                   NEKO_CORE_UI_OPT_FORCESETRECT | NEKO_CORE_UI_OPT_NOTITLE | NEKO_CORE_UI_OPT_NORESIZE | NEKO_CORE_UI_OPT_NODOCK | NEKO_CORE_UI_OPT_NOHOVER | NEKO_CORE_UI_OPT_NOINTERACT)) {
         int len = strlen(console->cb[0]);
-        neko_imgui_layout_row(ctx, 3, neko_imgui_widths(14, len * 7 + 2, 10), 0);
-        neko_imgui_text(ctx, "$>");
-        neko_imgui_text(ctx, console->cb[0]);
+        neko_core_ui_layout_row(ctx, 3, neko_core_ui_widths(14, len * 7 + 2, 10), 0);
+        neko_core_ui_text(ctx, "$>");
+        neko_core_ui_text(ctx, console->cb[0]);
 
         if (!console->open || !console->last_open_state) {
 //            goto console_input_handling_done;
@@ -127,13 +127,13 @@ NEKO_API_DECL void neko_console(neko_console_t* console, neko_imgui_context_t* c
     console_input_handling_done:
 
         // 闪烁光标
-        neko_imgui_get_layout(ctx)->body.x += len * 7 - 5;
-        if ((int)(neko_platform_elapsed_time() / 666.0f) & 1) neko_imgui_text(ctx, "|");
+        neko_core_ui_get_layout(ctx)->body.x += len * 7 - 5;
+        if ((int)(neko_platform_elapsed_time() / 666.0f) & 1) neko_core_ui_text(ctx, "|");
 
-        neko_imgui_container_t* ctn = neko_imgui_get_current_container(ctx);
-        neko_imgui_bring_to_front(ctx, ctn);
+        neko_core_ui_container_t* ctn = neko_core_ui_get_current_container(ctx);
+        neko_core_ui_bring_to_front(ctx, ctn);
 
-        neko_imgui_window_end(ctx);
+        neko_core_ui_window_end(ctx);
     }
 
     console->last_open_state = console->open;

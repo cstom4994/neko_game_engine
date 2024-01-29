@@ -317,7 +317,7 @@ std::vector<Attribute> MethodInfo::GetAttributes() const {
 ================================================================================*/
 
 void* Memory::AllocHGlobal(size_t InSize) {
-#if defined(_WIN32)
+#if defined(NEKO_PLATFORM_WIN)
     return LocalAlloc(LMEM_FIXED | LMEM_ZEROINIT, InSize);
 #else
     return malloc(InSize);
@@ -325,7 +325,7 @@ void* Memory::AllocHGlobal(size_t InSize) {
 }
 
 void Memory::FreeHGlobal(void* InPtr) {
-#if defined(_WIN32)
+#if defined(NEKO_PLATFORM_WIN)
     LocalFree(InPtr);
 #else
     free(InPtr);
@@ -336,7 +336,7 @@ CharType* Memory::StringToCoTaskMemAuto(StringView InString) {
     size_t length = InString.length() + 1;
     size_t size = length * sizeof(CharType);
 
-#if defined(_WIN32)
+#if defined(NEKO_PLATFORM_WIN)
     auto* buffer = static_cast<CharType*>(CoTaskMemAlloc(size));
 
     if (buffer != nullptr) {
@@ -356,7 +356,7 @@ CharType* Memory::StringToCoTaskMemAuto(StringView InString) {
 }
 
 void Memory::FreeCoTaskMem(void* InMemory) {
-#if defined(_WIN32)
+#if defined(NEKO_PLATFORM_WIN)
     CoTaskMemFree(InMemory);
 #else
     FreeHGlobal(InMemory);
@@ -490,7 +490,7 @@ void HostInstance::UnloadAssemblyLoadContext(AssemblyLoadContext& InLoadContext)
     InLoadContext.m_LoadedAssemblies.Clear();
 }
 
-#ifdef _WIN32
+#ifdef NEKO_PLATFORM_WIN
 template <typename TFunc>
 TFunc LoadFunctionPtr(void* InLibraryHandle, const char* InFunctionName) {
     auto result = (TFunc)GetProcAddress((HMODULE)InLibraryHandle, InFunctionName);
