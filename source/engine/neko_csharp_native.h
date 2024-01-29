@@ -86,7 +86,7 @@ using StringView = std::string_view;
         }                                                                                                                  \
     }
 
-namespace NekoCS {
+namespace neko_cs {
 
 using Bool32 = uint32_t;
 

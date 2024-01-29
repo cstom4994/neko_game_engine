@@ -19,6 +19,7 @@
 #include "engine/util/neko_gui.h"
 #include "engine/util/neko_idraw.h"
 #include "engine/util/neko_imgui.h"
+#include "engine/util/neko_sprite.h"
 #include "engine/util/neko_tiled.h"
 #include "engine/util/neko_vm.h"
 
@@ -26,11 +27,11 @@
 #include "engine/builtin/neko_aseprite.h"
 
 // game
-#include "game_scripting.h"
+#include "game_editor.h"
+#include "game_scripts.h"
 #include "neko_client_ecs.h"
 #include "neko_hash.h"
 #include "neko_nui_auto.hpp"
-#include "neko_sprite.h"
 #include "player.h"
 
 // hpp
@@ -82,7 +83,9 @@ neko_string data_path = neko_default_val();
 neko_global neko_sprite test_witch_spr = neko_default_val();
 neko_packreader_t g_pack = neko_default_val();
 
-game_scripting_t g_script = neko_default_val();
+game_vm_t g_vm = neko_default_val();
+
+game_csharp g_csharp;
 
 // ai test
 enum { AI_STATE_MOVE = 0x00, AI_STATE_HEAL };
@@ -118,10 +121,13 @@ struct neko::meta::static_refl::TypeInfo<neko_platform_running_desc_t> : TypeInf
 #define CVAR_TYPES() bool, s32, f32, f32 *
 
 struct neko_engine_cvar_t {
+    bool show_editor = false;
+
     bool show_demo_window = false;
     bool show_info_window = false;
     bool show_cvar_window = false;
     bool show_pack_editor = false;
+    bool show_profiler_window = false;
 
     bool show_gui = false;
 
@@ -131,10 +137,12 @@ struct neko_engine_cvar_t {
 };
 
 neko_struct(neko_engine_cvar_t,                            //
+            _Fs(show_editor, "Is show editor"),            //
             _Fs(show_demo_window, "Is show nui demo"),     //
             _Fs(show_info_window, "Is show info window"),  //
             _Fs(show_cvar_window, "cvar inspector"),       //
             _Fs(show_pack_editor, "pack editor"),          //
+            _Fs(show_profiler_window, "profiler"),         //
             _Fs(show_gui, "neko gui"),                     //
             _Fs(hello_ai_shit, "Test AI"),                 //
             _Fs(bg, "bg color")                            //
@@ -151,7 +159,6 @@ void test_ut();
 void test_se();
 void test_containers();
 void test_nbt();
-void test_fsm();
 void test_cs(std::string_view path);
 
 NEKO_API_DECL void test_sexpr();
@@ -202,8 +209,8 @@ neko_string game_assets(const neko_string &path) {
         return path;
     }
     neko_string get_path(data_path);
-    switch (neko::hash(path.substr(0, 4))) {
-        case neko::hash("data"):
+    switch (neko::hash(path.substr(0, 7))) {
+        case neko::hash("gamedir"):
             get_path.append(path);
             break;
         default:
@@ -216,7 +223,7 @@ void app_load_style_sheet(bool destroy) {
     if (destroy) {
         neko_core_ui_style_sheet_destroy(&style_sheet);
     }
-    style_sheet = neko_core_ui_style_sheet_load_from_file(&g_core_ui, game_assets("data/style_sheets/gui.ss").c_str());
+    style_sheet = neko_core_ui_style_sheet_load_from_file(&g_core_ui, game_assets("gamedir/style_sheets/gui.ss").c_str());
     neko_core_ui_set_style_sheet(&g_core_ui, &style_sheet);
 }
 
@@ -602,8 +609,8 @@ void neko_cvar_gui() {
 
 // clang-format off
 const_str image_names[] = {
-        "data/assets/textures/dragon_zombie.png",
-        "data/assets/textures/night_spirit.png",
+        "gamedir/assets/textures/dragon_zombie.png",
+        "gamedir/assets/textures/night_spirit.png",
 };
 // clang-format on
 
@@ -854,12 +861,12 @@ void draw_text(neko_font_t *font, const char *text, float x, float y, float line
 
 neko_script_binary_t *ns_load_module(char *name) {
     FILE *fd;
-    std::string fullname[] = {std::format("{0}/{1}.ns", game_assets("data/tests"), name)};
+    std::string fullname[] = {std::format("{0}/{1}.ns", game_assets("gamedir/tests"), name)};
     for (int i = 0; i < neko_arr_size(fullname); i++) {
         if ((fd = fopen(fullname[i].c_str(), "r")) != NULL) {
             fclose(fd);
             neko_script_binary_t *module = neko_script_compile_file(fullname[i].c_str());
-            neko_script_vector_push(g_script.modules, module);
+            neko_script_vector_push(g_vm.modules, module);
             return module;
         }
     }
@@ -894,7 +901,7 @@ void watch_callback(filewatch_update_t change, const char *virtual_path, void *u
 
         neko_tiled_unload(&tiled->map);
 
-        neko_tiled_load(&tiled->map, game_assets("data/maps/map.tmx").c_str(), NULL);
+        neko_tiled_load(&tiled->map, game_assets("gamedir/maps/map.tmx").c_str(), NULL);
     }
 }
 
@@ -922,13 +929,23 @@ void game_init() {
 
     // ctx.userdata = &g_client_userdata;
 
-    g_script.ctx = neko_script_ctx_new(nullptr);
+    g_vm.ctx = neko_script_ctx_new(nullptr);
 
+    // 测试 csharp wrapper
 #ifdef NEKO_DEBUG
-    test_cs(game_assets("data/managed/debug"));
+    test_cs(game_assets("gamedir/managed/debug"));
 #else
-    test_cs(game_assets("data/managed/release"));
+    test_cs(game_assets("gamedir/managed/release"));
 #endif
+
+    //
+#ifdef NEKO_DEBUG
+    std::string managed_path(game_assets("gamedir/managed/debug"));
+#else
+    std::string managed_path(game_assets("gamedir/managed/release"));
+#endif
+
+    g_csharp.init(managed_path);
 
     /*
     {
@@ -942,7 +959,7 @@ void game_init() {
         }
         lua_setglobal(L, "arg");
 
-        neko_lua_wrap_do_file(L, __neko_game_get_path("data/scripts/main.lua"));
+        neko_lua_wrap_do_file(L, __neko_game_get_path("gamedir/scripts/main.lua"));
 
         neko_platform_running_desc_t t = {.title = "Neko Engine", .engine_args = ""};
 
@@ -974,7 +991,7 @@ void game_init() {
     }
     */
 
-    neko_pack_result result = neko_pack_read(game_assets("data/res.pack").c_str(), 0, false, &g_pack);
+    neko_pack_result result = neko_pack_read(game_assets("gamedir/res.pack").c_str(), 0, false, &g_pack);
     neko_pack_check(result);
 
     u8 *font_data, *cat_data;
@@ -989,14 +1006,14 @@ void game_init() {
     g_test_ase = load_ase_texture_simple(cat_data, cat_data_size);
 
     neko_asset_texture_t tex0 = {0};
-    neko_asset_texture_load_from_file(game_assets("data/assets/textures/yzh.jpg").c_str(), &tex0, NULL, false, false);
+    neko_asset_texture_load_from_file(game_assets("gamedir/assets/textures/yzh.jpg").c_str(), &tex0, NULL, false, false);
     tex_hndl = neko_assets_create_asset(&g_am, neko_asset_texture_t, &tex0);
 
     neko_core_ui_init(&g_core_ui, neko_platform_main_window());
 
     // 加载自定义字体文件 初始化 gui font stash
     neko_asset_ascii_font_load_from_memory(font_data, font_data_size, &g_font, 24);
-    // neko_asset_ascii_font_load_from_file(__neko_game_get_path("data/assets/fonts/fusion-pixel-12px-monospaced.ttf").c_str(), &g_font, 24);
+    // neko_asset_ascii_font_load_from_file(__neko_game_get_path("gamedir/assets/fonts/fusion-pixel-12px-monospaced.ttf").c_str(), &g_font, 24);
 
     neko_safe_free(font_data);
     neko_safe_free(cat_data);
@@ -1026,7 +1043,7 @@ void game_init() {
 
     // 字体加载
     neko_gui_font_stash_begin(&g_gui, NULL);
-    // neko_gui_font *font = neko_gui_font_atlas_add_from_file(g_nui.atlas, __neko_game_get_path("data/assets/fonts/ark-pixel-12px-monospaced-zh_cn.ttf").c_str(), 20, &config);
+    // neko_gui_font *font = neko_gui_font_atlas_add_from_file(g_nui.atlas, __neko_game_get_path("gamedir/assets/fonts/ark-pixel-12px-monospaced-zh_cn.ttf").c_str(), 20, &config);
     neko_gui_font_stash_end(&g_gui);
 
     // neko_gui_style_set_font(&g_nui.neko_gui_ctx, &font->handle);
@@ -1051,13 +1068,13 @@ void game_init() {
 
 #if 1
 
-    neko_sprite_load(&test_witch_spr, game_assets("data/assets/textures/B_witch.ase").c_str());
+    neko_sprite_load(&test_witch_spr, game_assets("gamedir/assets/textures/B_witch.ase").c_str());
 
     neko_tiled_renderer tiled = neko_default_val();
 
-    neko_tiled_load(&tiled.map, game_assets("data/maps/map.tmx").c_str(), NULL);
+    neko_tiled_load(&tiled.map, game_assets("gamedir/maps/map.tmx").c_str(), NULL);
 
-    neko_tiled_render_init(&g_cb, &tiled, game_assets("data/shaders/sprite_vs.glsl").c_str(), game_assets("data/shaders/sprite_fs.glsl").c_str());
+    neko_tiled_render_init(&g_cb, &tiled, game_assets("gamedir/shaders/sprite_vs.glsl").c_str(), game_assets("gamedir/shaders/sprite_fs.glsl").c_str());
 
     neko_ui_renderer ui_render = neko_default_val();
     ui_render.type = neko_ui_renderer::type::LABEL;
@@ -1106,7 +1123,7 @@ void game_init() {
     neko_gfxt_renderer *gfxt_render = (neko_gfxt_renderer *)neko_ecs_ent_get_component(neko_ecs(), e2, COMPONENT_GFXT);
 
     // Load pipeline from resource file
-    gfxt_render->pip = neko_gfxt_pipeline_load_from_file(game_assets("data/assets/pipelines/simple.sf").c_str());
+    gfxt_render->pip = neko_gfxt_pipeline_load_from_file(game_assets("gamedir/assets/pipelines/simple.sf").c_str());
 
     // Create material using this pipeline
     neko_gfxt_material_desc_t mat_decl = {.pip_func = {.hndl = &gfxt_render->pip}};
@@ -1117,9 +1134,9 @@ void game_init() {
                                                  .size = neko_dyn_array_size(gfxt_render->pip.mesh_layout) * sizeof(neko_gfxt_mesh_layout_t),
                                                  .index_buffer_element_size = gfxt_render->pip.desc.raster.index_buffer_element_size};
 
-    gfxt_render->mesh = neko_gfxt_mesh_load_from_file(game_assets("data/assets/meshes/Duck.gltf").c_str(), &mesh_decl);
+    gfxt_render->mesh = neko_gfxt_mesh_load_from_file(game_assets("gamedir/assets/meshes/Duck.gltf").c_str(), &mesh_decl);
 
-    gfxt_render->texture = neko_gfxt_texture_load_from_file(game_assets("data/assets/textures/DuckCM.png").c_str(), NULL, false, false);
+    gfxt_render->texture = neko_gfxt_texture_load_from_file(game_assets("gamedir/assets/textures/DuckCM.png").c_str(), NULL, false, false);
 
     neko_snprintf(gameobj.name, 64, "%s", "chunk_test");
     gameobj.visible = true;
@@ -1288,8 +1305,8 @@ void main() { out_col = texture(u_sprite_texture, v_uv); }
     neko_graphics_custom_batch_send_matrix(&font_shader, "u_mvp", font_projection);
 
     size_t test_font_size = 0;
-    void *test_font_mem = neko_platform_read_file_contents(game_assets("data/1.fnt").c_str(), "rb", &test_font_size);
-    cp_image_t img = cp_load_png(game_assets("data/1_0.png").c_str());
+    void *test_font_mem = neko_platform_read_file_contents(game_assets("gamedir/1.fnt").c_str(), "rb", &test_font_size);
+    cp_image_t img = cp_load_png(game_assets("gamedir/1_0.png").c_str());
     test_font_tex_id = generate_texture_handle(img.pix, img.w, img.h, NULL);
     test_font_bmfont = neko_font_load_bmfont(test_font_tex_id, test_font_mem, test_font_size, 0);
     if (test_font_bmfont->atlas_w != img.w || test_font_bmfont->atlas_h != img.h) {
@@ -1304,8 +1321,8 @@ void main() { out_col = texture(u_sprite_texture, v_uv); }
     filewatch = filewatch_create(assetsys, 0);
 
     // filewatch_mount(filewatch, "./source", "/data");
-    filewatch_mount(filewatch, game_assets("data/style_sheets").c_str(), "/style_sheets");
-    filewatch_mount(filewatch, game_assets("data/maps").c_str(), "/maps");
+    filewatch_mount(filewatch, game_assets("gamedir/style_sheets").c_str(), "/style_sheets");
+    filewatch_mount(filewatch, game_assets("gamedir/maps").c_str(), "/maps");
     filewatch_start_watching(filewatch, "/maps", watch_callback, 0);
 }
 
@@ -1328,7 +1345,9 @@ void game_update() {
     struct neko_gui_context *nui_ctx = &g_gui.neko_gui_ctx;
 
     if (neko_platform_key_pressed(NEKO_KEYCODE_ESC)) {
-        neko_quit();
+        // neko_quit();
+
+        g_cvar.show_editor ^= true;
     }
 
 #if 0
@@ -1644,7 +1663,7 @@ void game_update() {
         }
 
         neko_core_ui_layout_t l;
-        if (window && neko_core_ui_window_begin(&g_core_ui, "App", neko_core_ui_rect(fbs.x - 210, 10, 200, 200))) {
+        if (window && neko_core_ui_window_begin(&g_core_ui, "App", neko_core_ui_rect(fbs.x - 210, 30, 200, 200))) {
             l = *neko_core_ui_get_layout(&g_core_ui);
             neko_core_ui_layout_row(&g_core_ui, 1, neko_core_ui_widths(-1), 0);
 
@@ -1727,6 +1746,24 @@ void game_update() {
         ImGui::ShowDemoWindow();
     }
 
+    if (g_cvar.show_editor) {
+        if (ImGui::BeginMainMenuBar()) {
+            if (ImGui::BeginMenu("engine")) {
+                ImGui::EndMenu();
+            }
+            ImGui::EndMainMenuBar();
+        }
+    }
+
+    if (g_cvar.show_profiler_window) {
+        static profiler_frame frame_data;
+        neko_profiler_get_frame(&frame_data);
+        // // if (g_multi) ProfilerDrawFrameNavigation(g_frameInfos.data(), g_frameInfos.size());
+        static char buffer[10 * 1024];
+        profiler_draw_frame(&frame_data, buffer, 10 * 1024);
+        // ProfilerDrawStats(&data);
+    }
+
 #pragma endregion
 
     // Immediate rendering for back buffer
@@ -1774,7 +1811,7 @@ void game_update() {
             neko_private(bool) isLittleEndian;
             neko_private(u64) itemCount;
 
-            neko_private(neko_string) file = game_assets("data/res.pack");
+            neko_private(neko_string) file = game_assets("gamedir/res.pack");
             neko_private(bool) filebrowser = false;
 
             neko_gui_layout_row_static(nui_ctx, 30, 400, 1);
@@ -1808,7 +1845,7 @@ void game_update() {
 
                     // 复位变量
                     filebrowser = false;
-                    file = game_assets("data");
+                    file = game_assets("gamedir");
                 }
             }
 
@@ -1908,7 +1945,7 @@ void game_update() {
                 }
                 neko_fnt_free(fnt);
             }
-            if (neko_gui_button_label(nui_ctx, "test_xml")) test_xml(game_assets("data/tests/test.xml"));
+            if (neko_gui_button_label(nui_ctx, "test_xml")) test_xml(game_assets("gamedir/tests/test.xml"));
             if (neko_gui_button_label(nui_ctx, "test_se")) test_se();
             if (neko_gui_button_label(nui_ctx, "test_sr")) test_sr();
             if (neko_gui_button_label(nui_ctx, "test_ut")) test_ut();
@@ -1916,7 +1953,6 @@ void game_update() {
             if (neko_gui_button_label(nui_ctx, "test_containers")) test_containers();
             if (neko_gui_button_label(nui_ctx, "test_sexpr")) test_sexpr();
             if (neko_gui_button_label(nui_ctx, "test_nbt")) test_nbt();
-            if (neko_gui_button_label(nui_ctx, "test_fsm")) test_fsm();
             if (neko_gui_button_label(nui_ctx, "test_sc")) {
                 neko_timer_do(t, neko_println("%llu", t), { test_sc(); });
             }
@@ -2048,6 +2084,8 @@ void game_shutdown() {
     //     neko_log_error("lua exception %s", ex.what());
     // }
 
+    g_csharp.shutdown();
+
     spritebatch_term(&sb);
     unload_images();
 
@@ -2065,16 +2103,16 @@ void game_shutdown() {
     //    if (is_hotfix_loaded) neko_hotload_module_close(ctx);
 
     neko_script_gc_freeall();
-    for (int i = 0; i < neko_script_vector_size(g_script.modules); i++) {
-        neko_script_binary_free(g_script.modules[i]);
+    for (int i = 0; i < neko_script_vector_size(g_vm.modules); i++) {
+        neko_script_binary_free(g_vm.modules[i]);
     }
-    neko_script_vector_free(g_script.modules);
+    neko_script_vector_free(g_vm.modules);
 
     neko_core_ui_free(&g_core_ui);
 
     neko_pack_destroy(&g_pack);
 
-    filewatch_stop_watching(filewatch, "/data");
+    filewatch_stop_watching(filewatch, "/gamedir");
 
     filewatch_free(filewatch);
     assetsys_destroy(assetsys);
@@ -2085,9 +2123,9 @@ neko_game_desc_t neko_main(s32 argc, char **argv) {
     // 确定运行路径
     auto current_dir = std::filesystem::path(std::filesystem::current_path());
     for (int i = 0; i < 6; ++i)
-        if (std::filesystem::exists(current_dir / "data") && std::filesystem::exists(current_dir / "data" / "scripts")) {
+        if (std::filesystem::exists(current_dir / "gamedir") && std::filesystem::exists(current_dir / "gamedir" / "scripts")) {
             data_path = neko_fs_normalize_path(current_dir.string());
-            neko_log_info(std::format("game data path detected: {0} (base: {1})", data_path, std::filesystem::current_path().string()).c_str());
+            neko_log_info(std::format("gamedir detected: {0} (base: {1})", data_path, std::filesystem::current_path().string()).c_str());
             break;
         } else {
             current_dir = current_dir.parent_path();

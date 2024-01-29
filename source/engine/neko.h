@@ -501,15 +501,15 @@ class size_checker {
     static_assert(sizeof(T) == size, "check the size of integral types");
 };
 
-// template class size_checker<s64, 8>;
-// template class size_checker<s32, 4>;
-// template class size_checker<s16, 2>;
-// template class size_checker<s8, 1>;
-// template class size_checker<u64, 8>;
-// template class size_checker<u32, 4>;
-// template class size_checker<u16, 2>;
-// template class size_checker<u8, 1>;
-// template class size_checker<b32, 4>;
+template class size_checker<s64, 8>;
+template class size_checker<s32, 4>;
+template class size_checker<s16, 2>;
+template class size_checker<s8, 1>;
+template class size_checker<u64, 8>;
+template class size_checker<u32, 4>;
+template class size_checker<u16, 2>;
+template class size_checker<u8, 1>;
+template class size_checker<b32, 4>;
 
 namespace neko {
 
@@ -1108,7 +1108,6 @@ neko_force_inline void neko_util_string_replace_delim(const char* source_str, ch
 neko_force_inline void neko_util_normalize_path(const char* path, char* buffer, u32 buffer_size) {
     // Normalize the path somehow...
 }
-
 
 #define neko_println(__FMT, ...)           \
     do {                                   \

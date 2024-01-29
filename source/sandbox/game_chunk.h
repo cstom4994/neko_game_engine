@@ -3380,7 +3380,7 @@ void test_wang() {
 
     s32 w, h;
 
-    unsigned char* data = stbi_load(neko_file_path("data/assets/textures/wang_test.png"), &w, &h, NULL, 3);
+    unsigned char* data = stbi_load(neko_file_path("gamedir/assets/textures/wang_test.png"), &w, &h, NULL, 3);
 
     neko_assert(data);
 

@@ -5,6 +5,7 @@
 =============================*/
 
 #include "engine/neko_engine.h"
+#include "engine/neko_profiler.h"
 
 #ifndef NEKO_PLATFORM_IMPL_CUSTOM
 #if (defined NEKO_PLATFORM_WIN || defined NEKO_PLATFORM_APPLE || defined NEKO_PLATFORM_LINUX)
@@ -308,6 +309,8 @@ void neko_platform_poll_all_events() {
 }
 
 void neko_platform_update(neko_platform_t* platform) {
+    neko_profiler_scope_auto("platform_update");
+
     // Update platform input from previous frame
     neko_platform_update_input(&platform->input);
 
@@ -605,7 +608,7 @@ NEKO_API_DECL bool neko_platform_dir_exists_default_impl(const char* dir_path) {
 #endif
 }
 
-NEKO_API_DECL s32 neko_platform_mkdir_default_impl(const char* dir_path, s32 opt) { 
+NEKO_API_DECL s32 neko_platform_mkdir_default_impl(const char* dir_path, s32 opt) {
 #ifdef NEKO_PLATFORM_WIN
     return mkdir(dir_path);
 #else
@@ -996,7 +999,7 @@ neko_vec2 neko_platform_opengl_ver() { return glfw_get_opengl_version(); }
 
 void neko_platform_msgbox(const_str msg) {
 #if defined(NEKO_PLATFORM_WIN)
-    MessageBoxW((HWND)glfw_get_sys_handle(), msg, "Neko Error", MB_OK | MB_SETFOREGROUND | MB_ICONSTOP);
+    MessageBoxW((HWND)glfw_get_sys_handle(), (LPCWSTR)msg, L"Neko Error", MB_OK | MB_SETFOREGROUND | MB_ICONSTOP);
 #elif defined(NEKO_PLATFORM_LINUX)
     char info[128];
     neko_snprintf(info, 128, "notify-send \"%s\"", msg);
@@ -3995,6 +3998,7 @@ tick_t neko_timer_elapsed_ticks(const tick_t t) {
 deltatime_t neko_timer_ticks_to_seconds(const tick_t dt) { return (deltatime_t)((double)dt * timerlib_oofreq); }
 
 #if defined(NEKO_PLATFORM_WIN)
+#ifndef NEKO_CPP_SRC
 struct __timeb64 {
     __time64_t time;
     unsigned short millitm;
@@ -4002,6 +4006,9 @@ struct __timeb64 {
     short dstflag;
 };
 _CRTIMP errno_t __cdecl _ftime64_s(_Out_ struct __timeb64* _Time);
+#else
+#include <sys/timeb.h>
+#endif
 #endif
 
 tick_t neko_timer_system(void) {

@@ -5,6 +5,7 @@
 
 #include "engine/neko_component.h"
 #include "engine/neko_engine.h"
+#include "engine/neko_profiler.h"
 #include "engine/util/neko_console.h"
 
 // Use discrete GPU by default.
@@ -202,7 +203,7 @@ void log_set_quiet(bool enable) { L.quiet = enable; }
 int log_add_callback(neko_log_fn fn, void* udata, int level) {
     for (int i = 0; i < MAX_CALLBACKS; i++) {
         if (!L.callbacks[i].fn) {
-            L.callbacks[i] = (Callback){fn, udata, level};
+            L.callbacks[i] = Callback{fn, udata, level};
             return 0;
         }
     }
@@ -2137,6 +2138,10 @@ NEKO_API_DECL neko_t* neko_create(neko_game_desc_t app_desc) {
         // 初始化 ecs
         neko_ecs() = neko_ecs_make(1024, COMPONENT_COUNT, 9);
 
+        // 初始化帧检查器
+        neko_profiler_init();
+        neko_profiler_register_thread("Main thread");  // 注册主线程
+
         // 初始化应用程序并设置为运行
         app_desc.init();
         neko_ctx()->game.is_running = true;
@@ -2162,73 +2167,82 @@ NEKO_API_DECL void neko_frame() {
     neko_private(u32) curr_ticks = 0;
     neko_private(u32) prev_ticks = 0;
 
-    // Cache platform pointer
-    neko_platform_t* platform = neko_subsystem(platform);
-    neko_audio_t* audio = neko_subsystem(audio);
+    neko_profiler_begin();
 
-    neko_platform_window_t* win = (neko_slot_array_getp(platform->windows, neko_platform_main_window()));
+    {
+        neko_profiler_scope_auto("engine");
 
-    // Cache times at start of frame
-    platform->time.elapsed = (f32)neko_platform_elapsed_time();
-    platform->time.update = platform->time.elapsed - platform->time.previous;
-    platform->time.previous = platform->time.elapsed;
+        // Cache platform pointer
+        neko_platform_t* platform = neko_subsystem(platform);
+        neko_audio_t* audio = neko_subsystem(audio);
 
-    // Update platform and process input
-    neko_platform_update(platform);
-    if (!neko_instance()->ctx.game.is_running) {
-        neko_instance()->shutdown();
-        return;
-    }
+        neko_platform_window_t* win = (neko_slot_array_getp(platform->windows, neko_platform_main_window()));
 
-    if (win->focus) {
+        // Cache times at start of frame
+        platform->time.elapsed = (f32)neko_platform_elapsed_time();
+        platform->time.update = platform->time.elapsed - platform->time.previous;
+        platform->time.previous = platform->time.elapsed;
 
-        // Process application context
-        neko_instance()->ctx.game.update();
-        if (!neko_instance()->ctx.game.is_running) {
-            neko_instance()->shutdown();
-            return;
-        }
+        // Update platform and process input
+        neko_platform_update(platform);
 
-        {
-            // neko_profiler_scope_auto("audio");
-            //  Audio update and commit
-            if (audio) {
-                if (audio->update) {
-                    audio->update(audio);
-                }
-                if (audio->commit) {
-                    audio->commit(audio);
+        if (win->focus) {
+
+            // Process application context
+            {
+                neko_profiler_scope_auto("game_update");
+                neko_instance()->ctx.game.update();
+            }
+
+            {
+                neko_profiler_scope_auto("audio_update");
+                //  Audio update and commit
+                if (audio) {
+                    if (audio->update) {
+                        audio->update(audio);
+                    }
+                    if (audio->commit) {
+                        audio->commit(audio);
+                    }
                 }
             }
         }
-    }
 
-    // Clear all platform events
-    neko_dyn_array_clear(platform->events);
+        // Clear all platform events
+        neko_dyn_array_clear(platform->events);
 
-    // NOTE: This won't work forever. Must change eventually.
-    // Swap all platform window buffers? Sure...
-    for (neko_slot_array_iter it = 0; neko_slot_array_iter_valid(platform->windows, it); neko_slot_array_iter_advance(platform->windows, it)) {
-        neko_platform_window_swap_buffer(it);
-    }
+        {
+            neko_profiler_scope_auto("swap");
+            // NOTE: This won't work forever. Must change eventually.
+            // Swap all platform window buffers? Sure...
+            for (neko_slot_array_iter it = 0; neko_slot_array_iter_valid(platform->windows, it); neko_slot_array_iter_advance(platform->windows, it)) {
+                neko_platform_window_swap_buffer(it);
+            }
+        }
 
-    // Frame locking (not sure if this should be done here, but it is what it is)
-    platform->time.elapsed = (f32)neko_platform_elapsed_time();
-    platform->time.render = platform->time.elapsed - platform->time.previous;
-    platform->time.previous = platform->time.elapsed;
-    platform->time.frame = platform->time.update + platform->time.render;  // Total frame time
-    platform->time.delta = platform->time.frame / 1000.f;
-
-    f32 target = (1000.f / platform->time.max_fps);
-
-    if (platform->time.frame < target) {
-        neko_platform_sleep((f32)(target - platform->time.frame));
-
+        // Frame locking (not sure if this should be done here, but it is what it is)
         platform->time.elapsed = (f32)neko_platform_elapsed_time();
-        double wait_time = platform->time.elapsed - platform->time.previous;
+        platform->time.render = platform->time.elapsed - platform->time.previous;
         platform->time.previous = platform->time.elapsed;
-        platform->time.frame += wait_time;
+        platform->time.frame = platform->time.update + platform->time.render;  // Total frame time
         platform->time.delta = platform->time.frame / 1000.f;
+
+        f32 target = (1000.f / platform->time.max_fps);
+
+        if (platform->time.frame < target) {
+            neko_platform_sleep((f32)(target - platform->time.frame));
+
+            platform->time.elapsed = (f32)neko_platform_elapsed_time();
+            double wait_time = platform->time.elapsed - platform->time.previous;
+            platform->time.previous = platform->time.elapsed;
+            platform->time.frame += wait_time;
+            platform->time.delta = platform->time.frame / 1000.f;
+        }
+    }
+
+    if (!neko_instance()->ctx.game.is_running) {
+        neko_instance()->shutdown();
+        return;
     }
 }
 
@@ -2236,6 +2250,8 @@ void neko_destroy() {
     // Shutdown application
     neko_ctx()->game.shutdown();
     neko_ctx()->game.is_running = false;
+
+    neko_profiler_shutdown();
 
     // Shutdown subsystems
     neko_ecs_destroy(neko_ecs());
@@ -2287,12 +2303,14 @@ void neko_quit() {
 
 #endif
 
-#define NEKO_IMPL
+extern "C" {
 
 // builtin
+#define NEKO_IMPL
 #include "engine/builtin/neko_aseprite.h"
 #include "engine/builtin/neko_gui_internal.h"
 #include "engine/builtin/neko_hashtable.h"
 
 #define CUTE_C2_IMPLEMENTATION
 #include "engine/builtin/cute_c2.h"
+}

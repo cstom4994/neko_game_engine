@@ -9,6 +9,7 @@
 #include "engine/util/neko_gui.h"
 #include "engine/util/neko_idraw.h"
 #include "engine/util/neko_imgui.h"
+#include "engine/util/neko_sprite.h"
 #include "engine/util/neko_tiled.h"
 
 typedef struct neko_client_userdata_s {
@@ -29,7 +30,6 @@ typedef struct neko_client_userdata_s {
 // game
 #include "game_chunk.h"
 #include "neko_nui_auto.hpp"
-#include "neko_sprite.h"
 
 void print(const float &val) { std::printf("%f", val); }
 

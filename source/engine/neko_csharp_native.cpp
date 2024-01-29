@@ -8,7 +8,7 @@
 #include <dlfcn.h>
 #endif
 
-namespace NekoCS {
+namespace neko_cs {
 
 /*================================================================================
 // String
@@ -432,17 +432,15 @@ void DefaultMessageCallback(std::string_view InMessage, MessageLevel InLevel) {
 
     switch (InLevel) {
         case MessageLevel::Info:
-            level = "Info";
+            neko_log_info("[csharp] %s", InMessage.data());
             break;
         case MessageLevel::Warning:
-            level = "Warn";
+            neko_log_warning("[csharp] %s", InMessage.data());
             break;
         case MessageLevel::Error:
-            level = "Error";
+            neko_log_error("[csharp] %s", InMessage.data());
             break;
     }
-
-    std::cout << "[NekoCS](" << level << "): " << InMessage << std::endl;
 }
 
 bool HostInstance::Initialize(HostSettings InSettings) {

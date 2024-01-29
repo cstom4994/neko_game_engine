@@ -174,9 +174,9 @@ NEKO_API_DECL bool neko_util_load_gltf_data_from_file(const_str path, neko_asset
 // LZ77
 ==========================*/
 
-u32 neko_lz_encode(const void* in, u32 inlen, void* out, u32 outlen, u32 flags);  // [0..(6)..9]
-u32 neko_lz_decode(const void* in, u32 inlen, void* out, u32 outlen);
-u32 neko_lz_bounds(u32 inlen, u32 flags);
+NEKO_API_DECL u32 neko_lz_encode(const void* in, u32 inlen, void* out, u32 outlen, u32 flags);  // [0..(6)..9]
+NEKO_API_DECL u32 neko_lz_decode(const void* in, u32 inlen, void* out, u32 outlen);
+NEKO_API_DECL u32 neko_lz_bounds(u32 inlen, u32 flags);
 
 /*==========================
 // NEKO_FNT
@@ -517,7 +517,7 @@ NEKO_API_DECL int neko_font_text_width(neko_font_t* font, const char* text);
 NEKO_API_DECL int neko_font_text_height(neko_font_t* font, const char* text);
 NEKO_API_DECL int neko_font_max_glyph_height(neko_font_t* font, const char* text);
 
-NEKO_API_DECL int neko_font_get_glyph_index(neko_font_t* font, int code);  // returns run-time glyph index associated with a utf32 codepoint (unicode)
+NEKO_API_DECL int neko_font_get_glyph_index(neko_font_t* font, int code);            // returns run-time glyph index associated with a utf32 codepoint (unicode)
 NEKO_API_DECL neko_font_glyph_t* neko_font_get_glyph(neko_font_t* font, int index);  // returns a glyph, given run-time glyph index
 NEKO_API_DECL int neko_font_kerning(neko_font_t* font, int code0, int code1);
 
@@ -548,8 +548,7 @@ typedef struct neko_font_rect_t {
 // vertex buffer (to reduce draw calls), as opposed to using a GPU-side scissor box, which would
 // require a different draw call for each scissor.
 NEKO_API_DECL int neko_font_fill_vertex_buffer(neko_font_t* font, const char* text, float x, float y, float wrap_w, float line_height, neko_font_rect_t* clip_rect, neko_font_vert_t* buffer,
-                                               int buffer_max,
-                                 int* count_written);
+                                               int buffer_max, int* count_written);
 
 // Decodes a utf8 codepoint and returns the advanced string pointer.
 NEKO_API_DECL const char* neko_font_decode_utf8(const char* text, int* cp);
