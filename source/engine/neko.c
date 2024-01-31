@@ -203,7 +203,7 @@ void log_set_quiet(bool enable) { L.quiet = enable; }
 int log_add_callback(neko_log_fn fn, void* udata, int level) {
     for (int i = 0; i < MAX_CALLBACKS; i++) {
         if (!L.callbacks[i].fn) {
-            L.callbacks[i] = Callback{fn, udata, level};
+            L.callbacks[i] = (Callback){fn, udata, level};
             return 0;
         }
     }
@@ -2140,7 +2140,7 @@ NEKO_API_DECL neko_t* neko_create(neko_game_desc_t app_desc) {
 
         // 初始化帧检查器
         neko_profiler_init();
-        neko_profiler_register_thread("Main thread");  // 注册主线程
+        neko_profiler_register_thread("Main thread", 0);  // 注册主线程
 
         // 初始化应用程序并设置为运行
         app_desc.init();
@@ -2170,7 +2170,7 @@ NEKO_API_DECL void neko_frame() {
     neko_profiler_begin();
 
     {
-        neko_profiler_scope_auto("engine");
+        neko_profiler_scope_begin(engine);
 
         // Cache platform pointer
         neko_platform_t* platform = neko_subsystem(platform);
@@ -2186,16 +2186,17 @@ NEKO_API_DECL void neko_frame() {
         // Update platform and process input
         neko_platform_update(platform);
 
-        if (win->focus) {
+        if (win->focus || 1) {
 
             // Process application context
             {
-                neko_profiler_scope_auto("game_update");
+                neko_profiler_scope_begin(game_update);
                 neko_instance()->ctx.game.update();
+                neko_profiler_scope_end(game_update);
             }
 
             {
-                neko_profiler_scope_auto("audio_update");
+                neko_profiler_scope_begin(audio_update);
                 //  Audio update and commit
                 if (audio) {
                     if (audio->update) {
@@ -2205,6 +2206,7 @@ NEKO_API_DECL void neko_frame() {
                         audio->commit(audio);
                     }
                 }
+                neko_profiler_scope_end(audio_update);
             }
         }
 
@@ -2212,12 +2214,13 @@ NEKO_API_DECL void neko_frame() {
         neko_dyn_array_clear(platform->events);
 
         {
-            neko_profiler_scope_auto("swap");
+            neko_profiler_scope_begin(swap);
             // NOTE: This won't work forever. Must change eventually.
             // Swap all platform window buffers? Sure...
             for (neko_slot_array_iter it = 0; neko_slot_array_iter_valid(platform->windows, it); neko_slot_array_iter_advance(platform->windows, it)) {
                 neko_platform_window_swap_buffer(it);
             }
+            neko_profiler_scope_end(swap);
         }
 
         // Frame locking (not sure if this should be done here, but it is what it is)
@@ -2238,6 +2241,8 @@ NEKO_API_DECL void neko_frame() {
             platform->time.frame += wait_time;
             platform->time.delta = platform->time.frame / 1000.f;
         }
+
+        neko_profiler_scope_end(engine);
     }
 
     if (!neko_instance()->ctx.game.is_running) {
@@ -2303,17 +2308,14 @@ void neko_quit() {
 
 #endif
 
-extern "C" {
-
 // builtin
 #define NEKO_IMPL
 #include "engine/builtin/neko_aseprite.h"
 #include "engine/builtin/neko_gui_internal.h"
 #include "engine/builtin/neko_hashtable.h"
 
-#define CUTE_PNG_IMPLEMENTATION
-#include "engine/builtin/cute_png.h"
+#define NEKO_PNG_IMPLEMENTATION
+#include "engine/builtin/neko_png.h"
 
 #define CUTE_C2_IMPLEMENTATION
 #include "engine/builtin/cute_c2.h"
-}

@@ -124,7 +124,7 @@ void profiler_draw_frame_bavigation(frame_info *_infos, uint32_t _numInfos) {
     ImGui::End();
 }
 
-s32 profiler_draw_frame(profiler_frame *_data, void *_buffer, size_t _bufferSize, bool _inGame, bool _multi) {
+s32 neko_profiler_draw_frame(neko_profiler_frame_t *_data, void *_buffer, size_t _bufferSize, bool _inGame, bool _multi) {
     s32 ret = 0;
 
     // if (fabs(_data->m_startTime - _data->m_endtime) == 0.0f) return ret;
@@ -364,9 +364,9 @@ s32 profiler_draw_frame(profiler_frame *_data, void *_buffer, size_t _bufferSize
         }
 
         // handle wrap around
-        int64_t sX = int64_t(cs.start - _data->start_time);
+        s64 sX = s64(cs.start - _data->start_time);
         if (sX < 0) sX = -sX;
-        int64_t eX = int64_t(cs.end - _data->start_time);
+        s64 eX = s64(cs.end - _data->start_time);
         if (eX < 0) eX = -eX;
 
         f32 startXpct = f32(sX) / f32(totalTime);
@@ -424,7 +424,7 @@ s32 profiler_draw_frame(profiler_frame *_data, void *_buffer, size_t _bufferSize
     return ret;
 }
 
-void profiler_draw_stats(profiler_frame *_data, bool _multi) {
+void neko_profiler_draw_stats(neko_profiler_frame_t *_data, bool _multi) {
     ImGui::SetNextWindowPos(ImVec2(920.0f, _multi ? 160.0f : 10.0f), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(600.0f, 900.0f), ImGuiCond_FirstUseEver);
 

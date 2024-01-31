@@ -68,12 +68,12 @@ typedef struct neko_particle_renderer {
 
 NEKO_API_DECL void neko_particle_ctor(neko_particle_t* par);
 NEKO_API_DECL void neko_particle_update(neko_particle_t* par, int interval, float spin, float speed);
-NEKO_API_DECL void neko_particle_draw(neko_particle_t* par, neko_command_buffer_t* cb, CTransform* trans, neko_color_t color, f32 render_radius, int particle_radius);
+NEKO_API_DECL void neko_particle_draw(neko_particle_t* par, neko_command_buffer_t* cb, neko_vec2 trans, neko_color_t color, f32 render_radius, int particle_radius);
 
 NEKO_API_DECL void neko_particle_renderer_construct(neko_particle_renderer* pr);
 NEKO_API_DECL void neko_particle_renderer_free(neko_particle_renderer* pr);
 NEKO_API_DECL void neko_particle_renderer_update(neko_particle_renderer* pr, int elapsed);
-NEKO_API_DECL void neko_particle_renderer_draw(neko_particle_renderer* pr, neko_command_buffer_t* cb, CTransform* trans);
+NEKO_API_DECL void neko_particle_renderer_draw(neko_particle_renderer* pr, neko_command_buffer_t* cb, neko_vec2 trans);
 
 typedef struct neko_fast_sprite_renderer {
     neko_handle(neko_graphics_vertex_buffer_t) vbo;

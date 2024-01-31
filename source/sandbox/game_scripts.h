@@ -14,12 +14,20 @@ typedef struct game_vm_s {
 class game_csharp {
 
 public:
-    void init(std::string managed_path);
+    void init(std::string _managed_path);
     void shutdown();
 
+    void update();
+
+    void hotfix();
+
 private:
-    neko_cs::HostInstance hostInstance;
-    neko_cs::AssemblyLoadContext loadContext;
+    neko_cs::HostInstance host_instance;
+    neko_cs::AssemblyLoadContext load_context;
+
+    neko_cs::ManagedObject game_instance;
+
+    std::string managed_path;
 };
 
 #endif

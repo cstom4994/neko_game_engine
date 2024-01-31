@@ -45,6 +45,62 @@ neko_graphics_info_t* neko_graphics_info() { return &neko_subsystem(graphics)->i
 #define CHECK_GL_CORE(...) neko_empty_instruction(void)
 #endif
 
+const char* gl_get_error_string(GLenum error_code) {
+    switch (error_code) {
+        case GL_NO_ERROR:
+            return "GL_NO_ERROR";
+        case GL_INVALID_ENUM:
+            return "GL_INVALID_ENUM";
+        case GL_INVALID_VALUE:
+            return "GL_INVALID_VALUE";
+        case GL_INVALID_OPERATION:
+            return "GL_INVALID_OPERATION";
+        case GL_OUT_OF_MEMORY:
+            return "GL_OUT_OF_MEMORY";
+        case GL_INVALID_FRAMEBUFFER_OPERATION:
+            return "GL_INVALID_FRAMEBUFFER_OPERATION";
+        default:
+            return "UNKNOWN_ERROR";
+    }
+}
+
+const char* gl_get_error_description(GLenum error_code) {
+    switch (error_code) {
+        case GL_NO_ERROR:
+            return "No error detected.";
+        case GL_INVALID_ENUM:
+            return "Enum argument out of range.";
+        case GL_INVALID_VALUE:
+            return "Numeric argument out of range.";
+        case GL_INVALID_OPERATION:
+            return "Operation illegal in current state.";
+        case GL_OUT_OF_MEMORY:
+            return "Not enough memory left to execute command.";
+        case GL_INVALID_FRAMEBUFFER_OPERATION:
+            return "Framebuffer object is not complete.";
+        default:
+            return "No description available for UNKNOWN_ERROR.";
+    }
+}
+
+void neko_graphics_print_errors_internal(const char* file, u32 line) {
+    GLenum code = glGetError();
+
+    if (code != GL_NO_ERROR) {
+        const char* last_slash = file;
+
+        while (*file) {
+            char c = *file;
+            if (c == '\\' || c == '/') last_slash = file + 1;
+            ++file;
+        }
+
+        const char* str = gl_get_error_string(code);
+        const char* des = gl_get_error_description(code);
+        neko_println("OpenGL Error %s (%u): %u, %s, %s:", last_slash, line, code, str, des);
+    }
+}
+
 struct neko_graphics_custom_batch_context_t {
     u32 max_draw_calls;
     u32 count;
@@ -769,64 +825,6 @@ void neko_graphics_custom_batch_identity(float* m) {
     m[10] = 1.0f;
     m[15] = 1.0f;
 }
-
-#if NEKO_GL_CUSTOM_DEBUG_CHECKS
-const char* gl_get_error_string(GLenum error_code) {
-    switch (error_code) {
-        case GL_NO_ERROR:
-            return "GL_NO_ERROR";
-        case GL_INVALID_ENUM:
-            return "GL_INVALID_ENUM";
-        case GL_INVALID_VALUE:
-            return "GL_INVALID_VALUE";
-        case GL_INVALID_OPERATION:
-            return "GL_INVALID_OPERATION";
-        case GL_OUT_OF_MEMORY:
-            return "GL_OUT_OF_MEMORY";
-        case GL_INVALID_FRAMEBUFFER_OPERATION:
-            return "GL_INVALID_FRAMEBUFFER_OPERATION";
-        default:
-            return "UNKNOWN_ERROR";
-    }
-}
-
-const char* gl_get_error_description(GLenum error_code) {
-    switch (error_code) {
-        case GL_NO_ERROR:
-            return "No error detected.";
-        case GL_INVALID_ENUM:
-            return "Enum argument out of range.";
-        case GL_INVALID_VALUE:
-            return "Numeric argument out of range.";
-        case GL_INVALID_OPERATION:
-            return "Operation illegal in current state.";
-        case GL_OUT_OF_MEMORY:
-            return "Not enough memory left to execute command.";
-        case GL_INVALID_FRAMEBUFFER_OPERATION:
-            return "Framebuffer object is not complete.";
-        default:
-            return "No description available for UNKNOWN_ERROR.";
-    }
-}
-
-void neko_graphics_custom_batch_print_errors_internal(const char* file, u32 line) {
-    GLenum code = glGetError();
-
-    if (code != GL_NO_ERROR) {
-        const char* last_slash = file;
-
-        while (*file) {
-            char c = *file;
-            if (c == '\\' || c == '/') last_slash = file + 1;
-            ++file;
-        }
-
-        const char* str = gl_get_error_string(code);
-        const char* des = gl_get_error_description(code);
-        neko_println("OpenGL Error %s (%u): %u, %s, %s:", last_slash, line, code, str, des);
-    }
-}
-#endif
 
 typedef enum neko_gl_uniform_type {
     NEKO_GL_UNIFORMTYPE_FLOAT,

@@ -472,7 +472,10 @@ bool HostInstance::Initialize(HostSettings InSettings) {
     return m_Initialized;
 }
 
-void HostInstance::Shutdown() { s_CoreCLRFunctions.CloseHostFXR(m_HostFXRContext); }
+void HostInstance::Shutdown() {
+    s_CoreCLRFunctions.CloseHostFXR(m_HostFXRContext);
+    m_Initialized = false;
+}
 
 AssemblyLoadContext HostInstance::CreateAssemblyLoadContext(std::string_view InName) {
     ScopedString name = String::New(InName);
@@ -817,4 +820,4 @@ ManagedAssembly& AssemblyLoadContext::LoadAssembly(std::string_view InFilePath) 
     return result;
 }
 
-}  // namespace NekoCS
+}  // namespace neko_cs

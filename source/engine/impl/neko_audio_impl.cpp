@@ -167,9 +167,9 @@ fmod_impl::~fmod_impl() {
     fmod_audio::ErrorCheck(get_fmod_system()->release());
 }
 
-void fmod_impl::Update() {
-    std::vector<ChannelMap::iterator> pStoppedChannels;
-    for (auto it = mChannels.begin(), itEnd = mChannels.end(); it != itEnd; ++it) {
+void fmod_impl::update() {
+    std::vector<fmod_channel_map::iterator> pStoppedChannels;
+    for (auto it = m_channels.begin(), itEnd = m_channels.end(); it != itEnd; ++it) {
         bool bIsPlaying = false;
         it->second->isPlaying(&bIsPlaying);
         if (!bIsPlaying) {
@@ -177,7 +177,7 @@ void fmod_impl::Update() {
         }
     }
     for (auto &it : pStoppedChannels) {
-        mChannels.erase(it);
+        m_channels.erase(it);
     }
     fmod_audio::ErrorCheck(get_fmod_system()->update());
 }
@@ -186,11 +186,11 @@ fmod_impl *g_fmod_impl = nullptr;
 
 void fmod_audio::Init() { g_fmod_impl = new fmod_impl; }
 
-void fmod_audio::Update() { g_fmod_impl->Update(); }
+void fmod_audio::Update() { g_fmod_impl->update(); }
 
 void fmod_audio::LoadSound(const std::string &strSoundName, bool b3d, bool bLooping, bool bStream) {
-    auto tFoundIt = g_fmod_impl->mSounds.find(strSoundName);
-    if (tFoundIt != g_fmod_impl->mSounds.end()) return;
+    auto tFoundIt = g_fmod_impl->m_sounds.find(strSoundName);
+    if (tFoundIt != g_fmod_impl->m_sounds.end()) return;
     FMOD_MODE eMode = FMOD_DEFAULT;
     eMode |= b3d ? FMOD_3D : FMOD_2D;
     eMode |= bLooping ? FMOD_LOOP_NORMAL : FMOD_LOOP_OFF;
@@ -198,24 +198,24 @@ void fmod_audio::LoadSound(const std::string &strSoundName, bool b3d, bool bLoop
     FMOD::Sound *pSound = nullptr;
     fmod_audio::ErrorCheck(get_fmod_core_system()->createSound(strSoundName.c_str(), eMode, nullptr, &pSound));
     if (pSound) {
-        g_fmod_impl->mSounds[strSoundName] = pSound;
+        g_fmod_impl->m_sounds[strSoundName] = pSound;
     }
 }
 
 void fmod_audio::UnLoadSound(const std::string &strSoundName) {
-    auto tFoundIt = g_fmod_impl->mSounds.find(strSoundName);
-    if (tFoundIt == g_fmod_impl->mSounds.end()) return;
+    auto tFoundIt = g_fmod_impl->m_sounds.find(strSoundName);
+    if (tFoundIt == g_fmod_impl->m_sounds.end()) return;
     fmod_audio::ErrorCheck(tFoundIt->second->release());
-    g_fmod_impl->mSounds.erase(tFoundIt);
+    g_fmod_impl->m_sounds.erase(tFoundIt);
 }
 
 int fmod_audio::PlaySounds(const std::string &strSoundName, const neko_vec3 &vPosition, float fVolumedB) {
-    int nChannelId = g_fmod_impl->mnNextChannelId++;
-    auto tFoundIt = g_fmod_impl->mSounds.find(strSoundName);
-    if (tFoundIt == g_fmod_impl->mSounds.end()) {
+    int nChannelId = g_fmod_impl->next_channel_id++;
+    auto tFoundIt = g_fmod_impl->m_sounds.find(strSoundName);
+    if (tFoundIt == g_fmod_impl->m_sounds.end()) {
         LoadSound(strSoundName);
-        tFoundIt = g_fmod_impl->mSounds.find(strSoundName);
-        if (tFoundIt == g_fmod_impl->mSounds.end()) {
+        tFoundIt = g_fmod_impl->m_sounds.find(strSoundName);
+        if (tFoundIt == g_fmod_impl->m_sounds.end()) {
             return nChannelId;
         }
     }
@@ -230,83 +230,83 @@ int fmod_audio::PlaySounds(const std::string &strSoundName, const neko_vec3 &vPo
         }
         fmod_audio::ErrorCheck(pChannel->setVolume(dbToVolume(fVolumedB)));
         fmod_audio::ErrorCheck(pChannel->setPaused(false));
-        g_fmod_impl->mChannels[nChannelId] = pChannel;
+        g_fmod_impl->m_channels[nChannelId] = pChannel;
     }
     return nChannelId;
 }
 
 void fmod_audio::SetChannel3dPosition(int nChannelId, const neko_vec3 &vPosition) {
-    auto tFoundIt = g_fmod_impl->mChannels.find(nChannelId);
-    if (tFoundIt == g_fmod_impl->mChannels.end()) return;
+    auto tFoundIt = g_fmod_impl->m_channels.find(nChannelId);
+    if (tFoundIt == g_fmod_impl->m_channels.end()) return;
 
     FMOD_VECTOR position = VectorToFmod(vPosition);
     fmod_audio::ErrorCheck(tFoundIt->second->set3DAttributes(&position, NULL));
 }
 
 void fmod_audio::SetChannelVolume(int nChannelId, float fVolumedB) {
-    auto tFoundIt = g_fmod_impl->mChannels.find(nChannelId);
-    if (tFoundIt == g_fmod_impl->mChannels.end()) return;
+    auto tFoundIt = g_fmod_impl->m_channels.find(nChannelId);
+    if (tFoundIt == g_fmod_impl->m_channels.end()) return;
 
     fmod_audio::ErrorCheck(tFoundIt->second->setVolume(dbToVolume(fVolumedB)));
 }
 
 void fmod_audio::LoadBank(const std::string &strBankName, FMOD_STUDIO_LOAD_BANK_FLAGS flags) {
-    auto tFoundIt = g_fmod_impl->mBanks.find(strBankName);
-    if (tFoundIt != g_fmod_impl->mBanks.end()) return;
+    auto tFoundIt = g_fmod_impl->m_banks.find(strBankName);
+    if (tFoundIt != g_fmod_impl->m_banks.end()) return;
     FMOD::Studio::Bank *pBank;
     fmod_audio::ErrorCheck(get_fmod_system()->loadBankFile(strBankName.c_str(), flags, &pBank));
     if (pBank) {
-        g_fmod_impl->mBanks[strBankName] = pBank;
+        g_fmod_impl->m_banks[strBankName] = pBank;
     }
 }
 
-FMOD::Studio::Bank *fmod_audio::GetBank(const std::string &strBankName) { return g_fmod_impl->mBanks[strBankName]; }
+FMOD::Studio::Bank *fmod_audio::GetBank(const std::string &strBankName) { return g_fmod_impl->m_banks[strBankName]; }
 
 void fmod_audio::LoadEvent(const std::string &strEventName) {
-    auto tFoundit = g_fmod_impl->mEvents.find(strEventName);
-    if (tFoundit != g_fmod_impl->mEvents.end()) return;
+    auto tFoundit = g_fmod_impl->m_events.find(strEventName);
+    if (tFoundit != g_fmod_impl->m_events.end()) return;
     FMOD::Studio::EventDescription *pEventDescription = NULL;
     fmod_audio::ErrorCheck(get_fmod_system()->getEvent(strEventName.c_str(), &pEventDescription));
     if (pEventDescription) {
         FMOD::Studio::EventInstance *pEventInstance = NULL;
         fmod_audio::ErrorCheck(pEventDescription->createInstance(&pEventInstance));
         if (pEventInstance) {
-            g_fmod_impl->mEvents[strEventName] = pEventInstance;
+            g_fmod_impl->m_events[strEventName] = pEventInstance;
         }
     }
 }
 
 void fmod_audio::PlayEvent(const std::string &strEventName) {
-    auto tFoundit = g_fmod_impl->mEvents.find(strEventName);
-    if (tFoundit == g_fmod_impl->mEvents.end()) {
+    auto tFoundit = g_fmod_impl->m_events.find(strEventName);
+    if (tFoundit == g_fmod_impl->m_events.end()) {
         LoadEvent(strEventName);
-        tFoundit = g_fmod_impl->mEvents.find(strEventName);
-        if (tFoundit == g_fmod_impl->mEvents.end()) return;
+        tFoundit = g_fmod_impl->m_events.find(strEventName);
+        if (tFoundit == g_fmod_impl->m_events.end()) return;
     }
     tFoundit->second->start();
 }
 
 FMOD::Studio::EventInstance *fmod_audio::GetEvent(const std::string &strEventName) {
-    auto tFoundit = g_fmod_impl->mEvents.find(strEventName);
-    if (tFoundit == g_fmod_impl->mEvents.end()) {
+    auto tFoundit = g_fmod_impl->m_events.find(strEventName);
+    if (tFoundit == g_fmod_impl->m_events.end()) {
         LoadEvent(strEventName);
-        tFoundit = g_fmod_impl->mEvents.find(strEventName);
-        if (tFoundit == g_fmod_impl->mEvents.end()) return nullptr;
+        tFoundit = g_fmod_impl->m_events.find(strEventName);
+        if (tFoundit == g_fmod_impl->m_events.end()) return nullptr;
     }
     return tFoundit->second;
 }
 
 void fmod_audio::StopEvent(const std::string &strEventName, bool bImmediate) {
-    auto tFoundIt = g_fmod_impl->mEvents.find(strEventName);
-    if (tFoundIt == g_fmod_impl->mEvents.end()) return;
+    auto tFoundIt = g_fmod_impl->m_events.find(strEventName);
+    if (tFoundIt == g_fmod_impl->m_events.end()) return;
     FMOD_STUDIO_STOP_MODE eMode;
     eMode = bImmediate ? FMOD_STUDIO_STOP_IMMEDIATE : FMOD_STUDIO_STOP_ALLOWFADEOUT;
     fmod_audio::ErrorCheck(tFoundIt->second->stop(eMode));
 }
 
 bool fmod_audio::IsEventPlaying(const std::string &strEventName) const {
-    auto tFoundIt = g_fmod_impl->mEvents.find(strEventName);
-    if (tFoundIt == g_fmod_impl->mEvents.end()) return false;
+    auto tFoundIt = g_fmod_impl->m_events.find(strEventName);
+    if (tFoundIt == g_fmod_impl->m_events.end()) return false;
 
     FMOD_STUDIO_PLAYBACK_STATE *state = NULL;
     if (tFoundIt->second->getPlaybackState(state) == FMOD_STUDIO_PLAYBACK_PLAYING) {
@@ -316,15 +316,15 @@ bool fmod_audio::IsEventPlaying(const std::string &strEventName) const {
 }
 
 void fmod_audio::GetEventParameter(const std::string &strEventName, const std::string &strParameterName, float *parameter) {
-    auto tFoundIt = g_fmod_impl->mEvents.find(strEventName);
-    if (tFoundIt == g_fmod_impl->mEvents.end()) return;
+    auto tFoundIt = g_fmod_impl->m_events.find(strEventName);
+    if (tFoundIt == g_fmod_impl->m_events.end()) return;
     fmod_audio::ErrorCheck(tFoundIt->second->getParameterByName(strParameterName.c_str(), parameter));
     // CAudioEngine::ErrorCheck(pParameter->getValue(parameter));
 }
 
 void fmod_audio::SetEventParameter(const std::string &strEventName, const std::string &strParameterName, float fValue) {
-    auto tFoundIt = g_fmod_impl->mEvents.find(strEventName);
-    if (tFoundIt == g_fmod_impl->mEvents.end()) return;
+    auto tFoundIt = g_fmod_impl->m_events.find(strEventName);
+    if (tFoundIt == g_fmod_impl->m_events.end()) return;
     fmod_audio::ErrorCheck(tFoundIt->second->setParameterByName(strParameterName.c_str(), fValue));
 }
 

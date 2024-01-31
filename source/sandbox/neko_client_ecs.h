@@ -175,7 +175,7 @@ neko_ecs_decl_system(particle_render_system, PARTICLE_RENDER_SYSTEM, 2, COMPONEN
 
             neko_particle_renderer_update(particle_render, neko_instance()->ctx.platform->time.elapsed);
 
-            neko_particle_renderer_draw(particle_render, cb, xform);
+            neko_particle_renderer_draw(particle_render, cb, {xform->x, xform->y});
         }
     }
 }

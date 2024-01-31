@@ -356,7 +356,7 @@ void neko_imgui_new_frame(neko_imgui_context_t* neko_imgui) {
     neko_assert(ImGui::GetCurrentContext() != nullptr);
 
     ImGuiIO& io = ImGui::GetIO();
-    IM_ASSERT(io.Fonts->IsBuilt() && "Font atlas not built! It is generally built by the renderer backend. Missing call to renderer _NewFrame() function? e.g. ImGui_ImplOpenGL3_NewFrame().");
+    IM_ASSERT(io.Fonts->IsBuilt() && "Font atlas not built! Missing call to renderer _NewFrame() function?");
 
     // Setup display size (every frame to accommodate for window resizing)
     u32 w, h;
@@ -408,7 +408,6 @@ void neko_imgui_render(neko_imgui_context_t* neko_imgui, neko_command_buffer_t* 
             {(r + l) / (l - r), (t + b) / (b - t), 0.0f, 1.0f},
     };
 
-    // neko_mat4 m = neko_mat4_identity();
     neko_mat4 m = neko_mat4_elem((float*)ortho);
 
     // Set up data binds

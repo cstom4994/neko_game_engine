@@ -49,18 +49,8 @@ neko_inline const char* __neko_gl_error_string(GLenum const err) {
     }
 }
 
-neko_inline void __neko_check_gl_error(const char* file, const int line) {
-    GLenum err;
-    static GLenum last_err = -1;
-    while ((err = glGetError()) != GL_NO_ERROR) {
-        if (last_err != err) {
-            last_err = err;
-            // neko_log_warning("gl: %s(%s) %s", file, line, __neko_gl_error_string(err));
-        }
-    }
-}
-
-#define neko_check_gl_error() __neko_check_gl_error(__FILE__, __LINE__)
+#define neko_check_gl_error() neko_graphics_print_errors_internal(__FILE__, __LINE__)
+NEKO_API_DECL void neko_graphics_print_errors_internal(const char* file, u32 line);
 
 // OpenGL
 #define __neko_gl_state_backup()                                                \
@@ -782,13 +772,6 @@ NEKO_API_DECL void neko_graphics_custom_batch_perspective(float* m, float y_fov_
 NEKO_API_DECL void neko_graphics_custom_batch_mul(float* a, float* b, float* out);  // perform a * b, stores result in out
 NEKO_API_DECL void neko_graphics_custom_batch_identity(float* m);
 NEKO_API_DECL void neko_graphics_custom_batch_copy(float* dst, float* src);
-
-#if NEKO_GL_CUSTOM_DEBUG_CHECKS
-
-#define NEKO_GL_CUSTOM_PRINT_GL_ERRORS() neko_graphics_custom_batch_print_errors_internal(__FILE__, __LINE__)
-NEKO_API_DECL void neko_graphics_custom_batch_print_errors_internal(const char* file, u32 line);
-
-#endif
 
 // Resource Creation
 // Create

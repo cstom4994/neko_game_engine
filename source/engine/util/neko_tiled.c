@@ -19,7 +19,7 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
     }
 
     neko_xml_node_t *map_node = neko_xml_find_node(doc, "map");
-    neko_assert(map_node); // Must have a map node!
+    neko_assert(map_node);  // Must have a map node!
 
     for (neko_xml_node_iter_t it = neko_xml_new_node_child_iter(map_node, "tileset"); neko_xml_node_iter_next(&it);) {
         tileset_t tileset = {0};
@@ -332,7 +332,7 @@ void neko_tiled_render_flush(neko_command_buffer_t *cb, neko_tiled_renderer *ren
 
     neko_graphics_draw(cb, &(neko_graphics_draw_desc_t){.start = 0, .count = renderer->quad_count * IND_PER_QUAD});
 
-    neko_check_gl_error();
+    // neko_check_gl_error();
 
     renderer->quad_count = 0;
 }

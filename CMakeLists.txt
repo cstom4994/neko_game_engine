@@ -11,22 +11,12 @@ set(CMAKE_C_EXTENSIONS ON)
 set(CMAKE_C_STANDARD 17)
 
 if(MSVC)
-        # file(GLOB cs_native_lib CONFIGURE_DEPENDS "dependencies/glfw/lib/*.lib")
-        include_directories("dependencies/netcore/" , "dependencies/libffi/include" , "dependencies/fmod/include")
-
-        file(GLOB neko_game_lib CONFIGURE_DEPENDS 
-            "dependencies/libffi/lib/*.lib"
-            "dependencies/sdl2/lib/*.lib"
-            "dependencies/fmod/lib/*.lib"
-        )
-
-        set(neko_game_lib_all
-            ${neko_game_lib}
-        )
-
         file(GLOB neko_engine_lib CONFIGURE_DEPENDS "dependencies/glfw/lib/*.lib" "dependencies/fmod/lib/*.lib")
-        include_directories("dependencies/glfw/include/")
-        include_directories("dependencies/sdl2/include/")
+        include_directories(
+            "dependencies/glfw/include/"
+            "dependencies/netcore/"
+            "dependencies/fmod/include/"
+        )
 else()
         find_package(OpenGL REQUIRED)
         find_package(glfw3 REQUIRED)
@@ -144,8 +134,6 @@ endif(MSVC)
 
 file(GLOB_RECURSE neko_engine_src CONFIGURE_DEPENDS "source/engine/**.*")
 
-file(GLOB_RECURSE neko_game_src CONFIGURE_DEPENDS "source/game/**.*")
-
 set(neko_engine_src_all
         ${neko_engine_src}
         "source/libs/impl_build.cpp"
@@ -153,9 +141,6 @@ set(neko_engine_src_all
 )
 
 set(neko_game_src_all
-
-        # ${neko_game_src}
-
         "source/sandbox/game_physics_math.cpp"
         "source/sandbox/game_scripts.cpp"
         "source/sandbox/game_editor.cpp"
@@ -164,37 +149,6 @@ set(neko_game_src_all
         "source/sandbox/tests/test_se.cpp"
         "source/sandbox/tests/test_sr.cpp"
         "source/sandbox/tests/test_ut.cpp"
-)
-
-set(my_game_src_all
-        "source/my_game/main.c"
-        "source/my_game/audio/audio_manager.c"
-
-        "source/my_game/bsp/bsp_entity.c"
-        "source/my_game/bsp/bsp_loader.c"
-        "source/my_game/bsp/bsp_map.c"
-        "source/my_game/bsp/bsp_patch.c"
-        "source/my_game/bsp/bsp_trace.c"
-
-        "source/my_game/entities/entity_manager.c"
-        "source/my_game/entities/monster.c"
-        "source/my_game/entities/player.c"
-        "source/my_game/entities/rocket.c"
-        "source/my_game/entities/weapon.c"
-
-        "source/my_game/fx/rocket_trail.c"
-
-        "source/my_game/game/config.c"
-        "source/my_game/game/console.c"
-        "source/my_game/game/game_manager.c"
-        "source/my_game/game/monster_manager.c"
-        "source/my_game/game/time_manager.c"
-
-        "source/my_game/graphics/model.c"
-        "source/my_game/graphics/model_manager.c"
-        "source/my_game/graphics/renderer.c"
-        "source/my_game/graphics/texture_manager.c"
-        "source/my_game/graphics/ui_manager.c"
 )
 
 set(neko_script_test_src
@@ -208,15 +162,6 @@ add_executable(sandbox ${neko_game_src_all})
 target_link_libraries(sandbox neko_engine)
 set_property(TARGET sandbox PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "./")
 target_link_libraries(sandbox neko_engine)
-
-add_executable(game ${neko_game_src})
-target_link_libraries(game neko_engine ${neko_game_lib_all})
-set_property(TARGET game PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "./")
-
-add_executable(my_game ${my_game_src_all})
-target_link_libraries(my_game neko_engine)
-set_property(TARGET my_game PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "./")
-target_link_libraries(my_game neko_engine)
 
 # add_library(hotload SHARED ${neko_hotload_src})
 # target_link_libraries(hotload neko_engine)

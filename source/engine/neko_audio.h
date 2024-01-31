@@ -86,36 +86,28 @@ class fmod_event_instance {
 struct fmod_event {
     FMOD::Studio::EventDescription *fmod_bank;
     std::string path;
-
     fmod_event_instance instance();
 };
 
 struct fmod_bank {
-    // Fmod bank 对象的实例
-    FMOD::Studio::Bank *fmod_banks;
+    FMOD::Studio::Bank *fmod_banks;  // Fmod bank 对象的实例
 
     std::unordered_map<std::string, fmod_event> event_map;
 
     fmod_bank(FMOD::Studio::Bank *fmod_bank);
 
-    // 加载事件描述 如果已加载则进行缓存
-    fmod_event *load_event(const char *path);
+    fmod_event *load_event(const char *path);  // 加载事件描述 如果已加载则进行缓存
 };
 
 // 用于存储bank的singleton
 class fmod_bank_manager {
     std::unordered_map<std::string, fmod_bank> bank_map;
-
     fmod_bank_manager();
 
 public:
     static fmod_bank_manager &instance();
-
-    // 卸载 bank
-    void unload(const char *bank_path);
-
-    // 加载返回指向存储体的指针
-    fmod_bank *load(const char *path);
+    void unload(const char *bank_path);  // 卸载 bank
+    fmod_bank *load(const char *path);   // 加载返回指向存储体的指针
 };
 
 // 初始化fmod系统
@@ -139,19 +131,19 @@ struct fmod_impl {
     fmod_impl();
     ~fmod_impl();
 
-    void Update();
+    void update();
 
-    int mnNextChannelId;
+    int next_channel_id;
 
-    typedef std::map<std::string, FMOD::Sound *> SoundMap;
-    typedef std::map<int, FMOD::Channel *> ChannelMap;
-    typedef std::map<std::string, FMOD::Studio::EventInstance *> EventMap;
-    typedef std::map<std::string, FMOD::Studio::Bank *> BankMap;
+    typedef std::map<std::string, FMOD::Sound *> fmod_sound_map;
+    typedef std::map<int, FMOD::Channel *> fmod_channel_map;
+    typedef std::map<std::string, FMOD::Studio::EventInstance *> fmod_event_map;
+    typedef std::map<std::string, FMOD::Studio::Bank *> fmod_bank_map;
 
-    BankMap mBanks;
-    EventMap mEvents;
-    SoundMap mSounds;
-    ChannelMap mChannels;
+    fmod_bank_map m_banks;
+    fmod_event_map m_events;
+    fmod_sound_map m_sounds;
+    fmod_channel_map m_channels;
 };
 
 class fmod_audio {

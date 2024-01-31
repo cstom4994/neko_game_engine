@@ -266,11 +266,11 @@ void neko_particle_update(neko_particle_t* par, int interval, float spin, float 
     }
 }
 
-void neko_particle_draw(neko_particle_t* par, neko_command_buffer_t* cb, CTransform* trans, neko_color_t color, f32 render_radius, int particle_radius) {
+void neko_particle_draw(neko_particle_t* par, neko_command_buffer_t* cb, neko_vec2 trans, neko_color_t color, f32 render_radius, int particle_radius) {
     neko_graphics_t* gfx = neko_instance()->ctx.graphics;
 
-    f32 x = (par->x + 1) * render_radius + trans->x;
-    f32 y = (par->y + 1) * render_radius + trans->y;
+    f32 x = (par->x + 1) * render_radius + trans.x;
+    f32 y = (par->y + 1) * render_radius + trans.y;
 
     // 暂时用立即渲染方法测试
     // gfx->immediate.draw_circle(cb, neko_vec2{x, y}, particle_radius, 0, neko_color_white);
@@ -334,7 +334,7 @@ void neko_particle_renderer_update(neko_particle_renderer* pr, int elapsed) {
     // }
 }
 
-void neko_particle_renderer_draw(neko_particle_renderer* pr, neko_command_buffer_t* cb, CTransform* trans) {
+void neko_particle_renderer_draw(neko_particle_renderer* pr, neko_command_buffer_t* cb, neko_vec2 trans) {
     u32 sz = neko_dyn_array_size(pr->particles_arr);
     for (u32 i = 0; i < sz; ++i) {
         neko_particle_t* particle = &(pr->particles_arr)[i];

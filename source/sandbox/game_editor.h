@@ -6,6 +6,7 @@
 #define __neko_desired_frame_rate 30.0f
 #define __neko_minimum_frame_rate 20.0f
 #define __neko_flash_time_in_ms 333.0
+
 struct pan_and_zoon {
     f32 offset;
     f32 start_pan;
@@ -28,7 +29,7 @@ struct frame_info {
     u32 size;
 };
 
-int profiler_draw_frame(profiler_frame* _data, void* _buffer = 0, size_t _bufferSize = 0, bool _inGame = true, bool _multi = false);
-void profiler_draw_stats(profiler_frame* _data, bool _multi = false);
+int neko_profiler_draw_frame(neko_profiler_frame_t* _data, void* _buffer = 0, size_t _bufferSize = 0, bool _inGame = true, bool _multi = false);
+void neko_profiler_draw_stats(neko_profiler_frame_t* _data, bool _multi = false);
 
 #endif

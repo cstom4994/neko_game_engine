@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "engine/builtin/cute_png.h"
+#include "engine/builtin/neko_png.h"
 
 #if defined(NEKO_PLATFORM_LINUX)
 #include <errno.h>
@@ -110,11 +110,11 @@ void neko_asset_default_load_from_file(const_str path, void *out) {
 
 NEKO_API_DECL bool32_t neko_util_load_texture_data_from_memory(const void *memory, size_t sz, s32 *width, s32 *height, u32 *num_comps, void **data, bool32_t flip_vertically_on_load) {
     // Load texture data
-    //
-    // stbi_set_flip_vertically_on_load(flip_vertically_on_load);
-    // *data = stbi_load_from_memory((const stbi_uc *)memory, (s32)sz, (s32 *)width, (s32 *)height, (s32 *)num_comps, STBI_rgb_alpha);
 
     neko_png_image_t img = neko_png_load_png_mem(memory, sz);
+
+    if (flip_vertically_on_load) neko_png_flip_image_horizontal(&img);
+
     *data = img.pix;
     *width = img.w;
     *height = img.h;
@@ -142,34 +142,26 @@ NEKO_API_DECL bool neko_asset_texture_load_from_file(const_str path, void *out, 
     }
 
     // Load texture data
-    FILE *f = fopen(path, "rb");
-    if (!f) {
-        return false;
-    }
+    neko_png_image_t img = neko_png_load_png(path);
 
-    // s32 comp = 0;
-    // stbi_set_flip_vertically_on_load(t->desc.flip_y);
-    // *t->desc.data = (u8 *)stbi_load_from_file(f, (s32 *)&t->desc.width, (s32 *)&t->desc.height, (s32 *)&comp, STBI_rgb_alpha);
+    if (t->desc.flip_y) neko_png_flip_image_horizontal(&img);
 
-    neko_png_image_t img = neko_png_load_png(f);
-    *t->desc.data = img.pix;
+    t->desc.data[0] = img.pix;
     t->desc.width = img.w;
     t->desc.height = img.h;
 
     if (!t->desc.data) {
-        fclose(f);
+        neko_log_warning("failed to load texture data %s", path);
         return false;
     }
 
     t->hndl = neko_graphics_texture_create(&t->desc);
 
     if (!keep_data) {
-        // neko_free(*t->desc.data);
         neko_png_free_png(&img);
         *t->desc.data = NULL;
     }
 
-    fclose(f);
     return true;
 }
 
@@ -1021,50 +1013,50 @@ u32 neko_lz_bounds(u32 inlen, u32 flags) { return inlen + inlen / 255 + 16; }
 typedef struct {
     neko_fnt *fnt;
     void *input_data;
-    neko_fnt_read_func_t input_read_func;
-} neko_fnt_decoder_t;
+    neko_font_fnt_read_func_t input_read_func;
+} neko_font_fnt_decoder_t;
 
-static void neko_fnt_set_error(neko_fnt *fnt, const char *message) {
+static void neko_font_fnt_set_error(neko_fnt *fnt, const char *message) {
     if (fnt) {
         fnt->num_glyphs = 0;
         fnt->error_message = message;
     }
 }
 
-static bool neko_fnt_read_func(neko_fnt_decoder_t *decoder, u8 *data, size_t length) {
+static bool neko_font_fnt_read_func(neko_font_fnt_decoder_t *decoder, u8 *data, size_t length) {
     if (decoder->input_read_func(decoder->input_data, data, length) == length) {
         return true;
     } else {
-        neko_fnt_set_error(decoder->fnt, "Read error: error calling input function.");
+        neko_font_fnt_set_error(decoder->fnt, "Read error: error calling input function.");
         return false;
     }
 }
 
-static void neko_fnt_decode(neko_fnt *fnt, void *input_data, neko_fnt_read_func_t input_read_func);
+static void neko_font_fnt_decode(neko_fnt *fnt, void *input_data, neko_font_fnt_read_func_t input_read_func);
 
 static size_t neko_file_read_func_default(void *user_data, u8 *buffer, size_t length) { return fread(buffer, 1, length, (FILE *)user_data); }
 
-neko_fnt *neko_fnt_read(FILE *file) {
+neko_fnt *neko_font_fnt_read(FILE *file) {
     neko_fnt *fnt = calloc(1, sizeof(neko_fnt));
     if (file) {
-        neko_fnt_decode(fnt, file, neko_file_read_func_default);
+        neko_font_fnt_decode(fnt, file, neko_file_read_func_default);
     } else {
-        neko_fnt_set_error(fnt, "File not found");
+        neko_font_fnt_set_error(fnt, "File not found");
     }
     return fnt;
 }
 
-neko_fnt *neko_fnt_read_from_callbacks(void *user_data, neko_fnt_read_func_t input_read_func) {
+neko_fnt *neko_font_fnt_read_from_callbacks(void *user_data, neko_font_fnt_read_func_t input_read_func) {
     neko_fnt *fnt = calloc(1, sizeof(neko_fnt));
     if (input_read_func) {
-        neko_fnt_decode(fnt, user_data, input_read_func);
+        neko_font_fnt_decode(fnt, user_data, input_read_func);
     } else {
-        neko_fnt_set_error(fnt, "Invalid argument: read_func is NULL");
+        neko_font_fnt_set_error(fnt, "Invalid argument: read_func is NULL");
     }
     return fnt;
 }
 
-void neko_fnt_free(neko_fnt *fnt) {
+void neko_font_fnt_free(neko_fnt *fnt) {
     if (fnt) {
         free(fnt->name);
         if (fnt->page_names) {
@@ -1089,21 +1081,21 @@ typedef enum {
     NEKO_FNT_BLOCK_TYPE_KERNING = 5,
 } ok_fnt_block_type;
 
-static void neko_fnt_decode2(neko_fnt_decoder_t *decoder) {
+static void neko_font_fnt_decode2(neko_font_fnt_decoder_t *decoder) {
     neko_fnt *fnt = decoder->fnt;
 
     u8 header[4];
-    if (!neko_fnt_read_func(decoder, header, sizeof(header))) {
+    if (!neko_font_fnt_read_func(decoder, header, sizeof(header))) {
         return;
     }
     if (memcmp("BMF", header, 3) != 0) {
-        neko_fnt_set_error(fnt, "Not an AngelCode binary FNT file.");
+        neko_font_fnt_set_error(fnt, "Not an AngelCode binary FNT file.");
         return;
     }
     if (header[3] != 3) {
-        neko_fnt_set_error(fnt,
-                           "Unsupported version of AngelCode binary FNT file "
-                           "(only version 3 supported).");
+        neko_font_fnt_set_error(fnt,
+                                "Unsupported version of AngelCode binary FNT file "
+                                "(only version 3 supported).");
         return;
     }
 
@@ -1114,7 +1106,7 @@ static void neko_fnt_decode2(neko_fnt_decoder_t *decoder) {
             // 可能是EOF 如果未找到所有必需的块则给出错误
             const int required_blocks = ((1 << NEKO_FNT_BLOCK_TYPE_COMMON) | (1 << NEKO_FNT_BLOCK_TYPE_PAGES) | (1 << NEKO_FNT_BLOCK_TYPE_CHARS));
             if ((block_types_found & required_blocks) != required_blocks) {
-                neko_fnt_set_error(decoder->fnt, "Missing required blocks or unexpected EOF");
+                neko_font_fnt_set_error(decoder->fnt, "Missing required blocks or unexpected EOF");
             }
             return;
         }
@@ -1127,10 +1119,10 @@ static void neko_fnt_decode2(neko_fnt_decoder_t *decoder) {
             case NEKO_FNT_BLOCK_TYPE_INFO: {
                 u8 info_header[14];
                 if (block_length <= sizeof(info_header)) {
-                    neko_fnt_set_error(fnt, "Invalid info block");
+                    neko_font_fnt_set_error(fnt, "Invalid info block");
                     return;
                 }
-                if (!neko_fnt_read_func(decoder, info_header, sizeof(info_header))) {
+                if (!neko_font_fnt_read_func(decoder, info_header, sizeof(info_header))) {
                     return;
                 }
                 // 获取fnt大小忽略其余
@@ -1140,10 +1132,10 @@ static void neko_fnt_decode2(neko_fnt_decoder_t *decoder) {
                 const size_t name_buffer_length = block_length - sizeof(info_header);
                 fnt->name = malloc(name_buffer_length);
                 if (!fnt->name) {
-                    neko_fnt_set_error(fnt, "Couldn't allocate font name");
+                    neko_font_fnt_set_error(fnt, "Couldn't allocate font name");
                     return;
                 }
-                if (!neko_fnt_read_func(decoder, (u8 *)fnt->name, name_buffer_length)) {
+                if (!neko_font_fnt_read_func(decoder, (u8 *)fnt->name, name_buffer_length)) {
                     return;
                 }
                 // 健全性检查 确保字符串具有空终止符
@@ -1154,10 +1146,10 @@ static void neko_fnt_decode2(neko_fnt_decoder_t *decoder) {
             case NEKO_FNT_BLOCK_TYPE_COMMON: {
                 u8 common[15];
                 if (block_length != sizeof(common)) {
-                    neko_fnt_set_error(fnt, "Invalid common block");
+                    neko_font_fnt_set_error(fnt, "Invalid common block");
                     return;
                 }
-                if (!neko_fnt_read_func(decoder, common, sizeof(common))) {
+                if (!neko_font_fnt_read_func(decoder, common, sizeof(common))) {
                     return;
                 }
                 // 获取height base和 page count 其余忽略
@@ -1169,23 +1161,23 @@ static void neko_fnt_decode2(neko_fnt_decoder_t *decoder) {
 
             case NEKO_FNT_BLOCK_TYPE_PAGES: {
                 if (fnt->num_pages <= 0 || block_length == 0) {
-                    neko_fnt_set_error(fnt, "Couldn't get page names");
+                    neko_font_fnt_set_error(fnt, "Couldn't get page names");
                     return;
                 } else {
                     fnt->page_names = calloc(fnt->num_pages, sizeof(char *));
                     if (!fnt->page_names) {
                         fnt->num_pages = 0;
-                        neko_fnt_set_error(fnt, "Couldn't allocate memory for page name array");
+                        neko_font_fnt_set_error(fnt, "Couldn't allocate memory for page name array");
                         return;
                     }
                     // 将所有内容加载到第一个项目中
                     fnt->page_names[0] = malloc(block_length);
                     if (!fnt->page_names[0]) {
                         fnt->num_pages = 0;
-                        neko_fnt_set_error(fnt, "Couldn't allocate memory for page names");
+                        neko_font_fnt_set_error(fnt, "Couldn't allocate memory for page names");
                         return;
                     }
-                    if (!neko_fnt_read_func(decoder, (u8 *)fnt->page_names[0], block_length)) {
+                    if (!neko_font_fnt_read_func(decoder, (u8 *)fnt->page_names[0], block_length)) {
                         return;
                     }
                     char *pos = fnt->page_names[0];
@@ -1213,19 +1205,19 @@ static void neko_fnt_decode2(neko_fnt_decoder_t *decoder) {
             case NEKO_FNT_BLOCK_TYPE_CHARS: {
                 u8 data[20];
                 fnt->num_glyphs = block_length / sizeof(data);
-                fnt->glyphs = malloc(fnt->num_glyphs * sizeof(neko_fnt_glyph));
+                fnt->glyphs = malloc(fnt->num_glyphs * sizeof(neko_font_fnt_glyph));
                 if (!fnt->glyphs) {
                     fnt->num_glyphs = 0;
-                    neko_fnt_set_error(fnt, "Couldn't allocate memory for glyphs");
+                    neko_font_fnt_set_error(fnt, "Couldn't allocate memory for glyphs");
                     return;
                 }
                 // 在小端系统上 我们可以将整个块加载到内存中
                 // 但是我们假设这里字节顺序未知
                 for (size_t i = 0; i < fnt->num_glyphs; i++) {
-                    if (!neko_fnt_read_func(decoder, data, sizeof(data))) {
+                    if (!neko_font_fnt_read_func(decoder, data, sizeof(data))) {
                         return;
                     }
-                    neko_fnt_glyph *glyph = &fnt->glyphs[i];
+                    neko_font_fnt_glyph *glyph = &fnt->glyphs[i];
                     glyph->ch = neko_read_LE32(data);
                     glyph->x = neko_read_LE16(data + 4);
                     glyph->y = neko_read_LE16(data + 6);
@@ -1243,19 +1235,19 @@ static void neko_fnt_decode2(neko_fnt_decoder_t *decoder) {
             case NEKO_FNT_BLOCK_TYPE_KERNING: {
                 u8 data[10];
                 fnt->num_kerning_pairs = block_length / sizeof(data);
-                fnt->kerning_pairs = malloc(fnt->num_kerning_pairs * sizeof(neko_fnt_kerning));
+                fnt->kerning_pairs = malloc(fnt->num_kerning_pairs * sizeof(neko_font_fnt_kerning));
                 if (!fnt->kerning_pairs) {
                     fnt->num_kerning_pairs = 0;
-                    neko_fnt_set_error(fnt, "Couldn't allocate memory for kerning");
+                    neko_font_fnt_set_error(fnt, "Couldn't allocate memory for kerning");
                     return;
                 }
                 // 在小端系统上 我们可以将整个块加载到内存中
                 // 但是我们假设这里字节顺序未知
                 for (size_t i = 0; i < fnt->num_kerning_pairs; i++) {
-                    if (!neko_fnt_read_func(decoder, data, sizeof(data))) {
+                    if (!neko_font_fnt_read_func(decoder, data, sizeof(data))) {
                         return;
                     }
-                    neko_fnt_kerning *kerning = &fnt->kerning_pairs[i];
+                    neko_font_fnt_kerning *kerning = &fnt->kerning_pairs[i];
                     kerning->first_char = neko_read_LE32(data);
                     kerning->second_char = neko_read_LE32(data + 4);
                     kerning->amount = (s16)neko_read_LE16(data + 8);
@@ -1264,24 +1256,24 @@ static void neko_fnt_decode2(neko_fnt_decoder_t *decoder) {
             }
 
             default:
-                neko_fnt_set_error(fnt, "Unknown block type");
+                neko_font_fnt_set_error(fnt, "Unknown block type");
                 return;
         }
     }
 }
 
-static void neko_fnt_decode(neko_fnt *fnt, void *input_data, neko_fnt_read_func_t input_read_func) {
+static void neko_font_fnt_decode(neko_fnt *fnt, void *input_data, neko_font_fnt_read_func_t input_read_func) {
     if (fnt) {
-        neko_fnt_decoder_t *decoder = calloc(1, sizeof(neko_fnt_decoder_t));
+        neko_font_fnt_decoder_t *decoder = calloc(1, sizeof(neko_font_fnt_decoder_t));
         if (!decoder) {
-            neko_fnt_set_error(fnt, "Couldn't allocate decoder.");
+            neko_font_fnt_set_error(fnt, "Couldn't allocate decoder.");
             return;
         }
         decoder->fnt = fnt;
         decoder->input_data = input_data;
         decoder->input_read_func = input_read_func;
 
-        neko_fnt_decode2(decoder);
+        neko_font_fnt_decode2(decoder);
 
         free(decoder);
     }

@@ -193,13 +193,13 @@ typedef struct {
     s16 advance_x;
     u8 page;
     u8 channel;
-} neko_fnt_glyph;
+} neko_font_fnt_glyph;
 
 typedef struct {
     u32 first_char;
     u32 second_char;
     s16 amount;
-} neko_fnt_kerning;
+} neko_font_fnt_kerning;
 
 // fnt 二进制文件存储格式见
 // http://www.angelcode.com/products/bmfont/doc/file_format.html
@@ -211,17 +211,17 @@ typedef struct {
     size_t num_pages;
     char** page_names;
     size_t num_glyphs;
-    neko_fnt_glyph* glyphs;
+    neko_font_fnt_glyph* glyphs;
     size_t num_kerning_pairs;
-    neko_fnt_kerning* kerning_pairs;
+    neko_font_fnt_kerning* kerning_pairs;
     const char* error_message;
 } neko_fnt;
 
-typedef size_t (*neko_fnt_read_func_t)(void* user_data, u8* buffer, size_t count);
+typedef size_t (*neko_font_fnt_read_func_t)(void* user_data, u8* buffer, size_t count);
 
-NEKO_API_DECL neko_fnt* neko_fnt_read(FILE* file);
-NEKO_API_DECL void neko_fnt_free(neko_fnt* fnt);
-NEKO_API_DECL neko_fnt* neko_fnt_read_from_callbacks(void* user_data, neko_fnt_read_func_t read_func);
+NEKO_API_DECL neko_fnt* neko_font_fnt_read(FILE* file);
+NEKO_API_DECL void neko_font_fnt_free(neko_fnt* fnt);
+NEKO_API_DECL neko_fnt* neko_font_fnt_read_from_callbacks(void* user_data, neko_font_fnt_read_func_t read_func);
 
 /*==========================
 // NEKO_PACK

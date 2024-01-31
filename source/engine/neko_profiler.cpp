@@ -11,39 +11,47 @@
 
 u64 __neko_profiler_get_clock_frequency();
 
-neko_profiler_context *g_profiler_context = 0;
+neko_profiler_context_t *g_profiler_context = 0;
 
-void neko_profiler_init() { g_profiler_context = new neko_profiler_context(); }
+void neko_profiler_init() {
+    // g_profiler_context = (neko_profiler_context_t *)malloc(sizeof(neko_profiler_context_t));
+    g_profiler_context = new neko_profiler_context_t();
+
+    neko_profiler_context_init(g_profiler_context);
+}
 
 void neko_profiler_shutdown() {
+
+    neko_profiler_context_shutdown(g_profiler_context);
+    // free(g_profiler_context);
     delete g_profiler_context;
     g_profiler_context = 0;
 }
 
-void neko_profiler_set_threshold(f32 _ms, s32 _level) { g_profiler_context->set_threshold(_ms, _level); }
+void neko_profiler_set_threshold(f32 _ms, s32 _level) { neko_profiler_context_set_threshold(g_profiler_context, _ms, _level); }
 
-void neko_profiler_register_thread(const_str _name, u64 _threadID) {
-    if (_threadID == 0) _threadID = neko_get_thread_id();
+void neko_profiler_register_thread(const_str _name, u64 _thread_id) {
+    if (_thread_id == 0) _thread_id = neko_get_thread_id();
 
-    g_profiler_context->register_thread(_threadID, _name);
+    neko_profiler_context_register_thread(g_profiler_context, _thread_id, _name);
 }
 
-void neko_profiler_unregister_thread(u64 _threadID) { g_profiler_context->unregister_thread(_threadID); }
+void neko_profiler_unregister_thread(u64 _thread_id) { neko_profiler_context_unregister_thread(g_profiler_context, _thread_id); }
 
-void neko_profiler_begin_frame() { g_profiler_context->begin_frame(); }
+void neko_profiler_begin_frame() { neko_profiler_context_begin_frame(g_profiler_context); }
 
-uintptr_t neko_profiler_begin_scope(const_str _file, s32 _line, const_str _name) { return (uintptr_t)g_profiler_context->begin_ccope(_file, _line, _name); }
+uintptr_t neko_profiler_begin_scope(const_str _file, s32 _line, const_str _name) { return (uintptr_t)neko_profiler_context_begin_scope(g_profiler_context, _file, _line, _name); }
 
-void neko_profiler_end_scope(uintptr_t _scopeHandle) { g_profiler_context->end_scope((profiler_scope *)_scopeHandle); }
+void neko_profiler_end_scope(uintptr_t _scopeHandle) { neko_profiler_context_end_scope(g_profiler_context, (profiler_scope *)_scopeHandle); }
 
-s32 neko_profiler_is_paused() { return g_profiler_context->is_paused() ? 1 : 0; }
+s32 neko_profiler_is_paused() { return neko_profiler_context_is_paused(g_profiler_context) ? 1 : 0; }
 
-s32 neko_profiler_was_threshold_crossed() { return g_profiler_context->was_threshold_crossed() ? 1 : 0; }
+s32 neko_profiler_was_threshold_crossed() { return neko_profiler_context_was_threshold_crossed(g_profiler_context) ? 1 : 0; }
 
-void neko_profiler_set_paused(s32 _paused) { return g_profiler_context->set_paused(_paused != 0); }
+void neko_profiler_set_paused(s32 _paused) { return neko_profiler_context_set_paused(g_profiler_context, _paused != 0); }
 
-void neko_profiler_get_frame(profiler_frame *_data) {
-    g_profiler_context->get_frame_data(_data);
+void neko_profiler_get_frame(neko_profiler_frame_t *_data) {
+    neko_profiler_context_get_frame_data(g_profiler_context, _data);
 
     // clamp scopes crossing frame boundary
     const u32 numScopes = _data->num_scopes;
@@ -57,7 +65,7 @@ void neko_profiler_get_frame(profiler_frame *_data) {
     }
 }
 
-s32 neko_profiler_save(profiler_frame *_data, void *_buffer, size_t _bufferSize) {
+s32 neko_profiler_save(neko_profiler_frame_t *_data, void *_buffer, size_t _bufferSize) {
     // fill string data
     string_store str_store;
     for (u32 i = 0; i < _data->num_scopes; ++i) {
@@ -70,7 +78,7 @@ s32 neko_profiler_save(profiler_frame *_data, void *_buffer, size_t _bufferSize)
     }
 
     // calc data size
-    u32 totalSize = _data->num_scopes * sizeof(profiler_scope) + _data->num_threads * sizeof(neko_profiler_thread) + sizeof(profiler_frame) + str_store.total_size;
+    u32 totalSize = _data->num_scopes * sizeof(profiler_scope) + _data->num_threads * sizeof(neko_profiler_thread) + sizeof(neko_profiler_frame_t) + str_store.total_size;
 
     u8 *buffer = new u8[totalSize];
     u8 *bufPtr = buffer;
@@ -116,7 +124,7 @@ s32 neko_profiler_save(profiler_frame *_data, void *_buffer, size_t _bufferSize)
     return compSize;
 }
 
-void neko_profiler_load(profiler_frame *_data, void *_buffer, size_t _bufferSize) {
+void neko_profiler_load(neko_profiler_frame_t *_data, void *_buffer, size_t _bufferSize) {
     size_t bufferSize = _bufferSize;
     u8 *buffer = 0;
     u8 *bufferPtr;
@@ -277,7 +285,7 @@ void neko_profiler_load_time_only(f32 *_time, void *_buffer, size_t _bufferSize)
     delete[] buffer;
 }
 
-void neko_profiler_release(profiler_frame *_data) {
+void neko_profiler_release(neko_profiler_frame_t *_data) {
     for (u32 i = 0; i < _data->num_scopes; ++i) {
         profiler_scope &scope = _data->scopes[i];
         delete[] scope.name;
@@ -394,41 +402,52 @@ s32 neko_profiler_free_list_check_ptr(neko_profiler_free_list_t *_freeList, void
     return ((uintptr_t)_freeList->max_blocks * (uintptr_t)_freeList->block_size) > (uintptr_t)(((u8 *)_ptr) - _freeList->buffer) ? 1 : 0;
 }
 
-neko_profiler_context::neko_profiler_context()
-    : scopes_open(0), display_scopes(0), frame_start_time(0), frame_end_time(0), threshold_crossed(false), time_threshold(0.0f), level_threshold(0), pause_profiling(false) {
+void neko_profiler_context_init(neko_profiler_context_t *ctx) {
+    neko_mutex_init(&ctx->internal_mutex);
 
-    tls_level = neko_tls_allocate();
+    ctx->tls_level = neko_tls_allocate();
 
-    neko_profiler_free_list_create(sizeof(profiler_scope), __neko_profiler_scopes_max, &scopes_allocator);
+    ctx->scopes_open = 0;
+    ctx->display_scopes = 0;
+    ctx->frame_start_time = 0;
+    ctx->frame_end_time = 0;
+    ctx->threshold_crossed = false;
+    ctx->time_threshold = 0.0f;
+    ctx->level_threshold = 0;
+    ctx->pause_profiling = false;
+
+    neko_profiler_free_list_create(sizeof(profiler_scope), __neko_profiler_scopes_max, &ctx->scopes_allocator);
 
     for (s32 i = 0; i < buffer_use::Count; ++i) {
-        names_size[i] = 0;
-        names_data[i] = names_data_buffers[i];
+        ctx->names_size[i] = 0;
+        ctx->names_data[i] = ctx->names_data_buffers[i];
     }
 }
 
-neko_profiler_context::~neko_profiler_context() {
-    neko_profiler_free_list_destroy(&scopes_allocator);
-    neko_tls_free(tls_level);
+void neko_profiler_context_shutdown(neko_profiler_context_t *ctx) {
+    neko_profiler_free_list_destroy(&ctx->scopes_allocator);
+    neko_tls_free(ctx->tls_level);
+
+    neko_mutex_destroy(&ctx->internal_mutex);
 }
 
-void neko_profiler_context::set_threshold(f32 _ms, s32 _levelThreshold) {
-    time_threshold = _ms;
-    level_threshold = _levelThreshold;
+void neko_profiler_context_set_threshold(neko_profiler_context_t *ctx, f32 _ms, s32 _levelThreshold) {
+    ctx->time_threshold = _ms;
+    ctx->level_threshold = _levelThreshold;
 }
 
-bool neko_profiler_context::is_paused() { return pause_profiling; }
+bool neko_profiler_context_is_paused(neko_profiler_context_t *ctx) { return ctx->pause_profiling; }
 
-bool neko_profiler_context::was_threshold_crossed() { return !pause_profiling && threshold_crossed; }
+bool neko_profiler_context_was_threshold_crossed(neko_profiler_context_t *ctx) { return !ctx->pause_profiling && ctx->threshold_crossed; }
 
-void neko_profiler_context::set_paused(bool _paused) { pause_profiling = _paused; }
+void neko_profiler_context_set_paused(neko_profiler_context_t *ctx, bool _paused) { ctx->pause_profiling = _paused; }
 
-void neko_profiler_context::register_thread(u64 _threadID, const_str _name) { thread_names[_threadID] = _name; }
+void neko_profiler_context_register_thread(neko_profiler_context_t *ctx, u64 _thread_id, const_str _name) { ctx->thread_names[_thread_id] = _name; }
 
-void neko_profiler_context::unregister_thread(u64 _threadID) { thread_names.erase(_threadID); }
+void neko_profiler_context_unregister_thread(neko_profiler_context_t *ctx, u64 _thread_id) { ctx->thread_names.erase(_thread_id); }
 
-void neko_profiler_context::begin_frame() {
-    neko_scoped_mutex_locker lock(mutex);
+void neko_profiler_context_begin_frame(neko_profiler_context_t *ctx) {
+    neko_mutex_lock(&ctx->internal_mutex);
 
     u64 frameBeginTime, frameEndTime;
     static u64 beginPrevFrameTime = neko_profiler_get_clock();
@@ -438,28 +457,28 @@ void neko_profiler_context::begin_frame() {
 
     static u64 frameTime = frameEndTime - frameBeginTime;
 
-    threshold_crossed = false;
+    ctx->threshold_crossed = false;
 
-    s32 level = (s32)level_threshold - 1;
+    s32 level = (s32)ctx->level_threshold - 1;
 
-    u32 scopesToRestart = 0;
+    u32 scopes_to_restart = 0;
 
-    names_size[buffer_use::Open] = 0;
+    ctx->names_size[buffer_use::Open] = 0;
 
     static profiler_scope scopesDisplay[__neko_profiler_scopes_max];
-    for (u32 i = 0; i < scopes_open; ++i) {
-        profiler_scope *scope = scopes_capture[i];
+    for (u32 i = 0; i < ctx->scopes_open; ++i) {
+        profiler_scope *scope = ctx->scopes_capture[i];
 
-        if (scope->start == scope->end) scope->name = add_string(scope->name, buffer_use::Open);
+        if (scope->start == scope->end) scope->name = neko_profiler_context_add_string(ctx, scope->name, buffer_use::Open);
 
         scopesDisplay[i] = *scope;
 
         // scope that was not closed, spans frame boundary
         // keep it for next frame
         if (scope->start == scope->end)
-            scopes_capture[scopesToRestart++] = scope;
+            ctx->scopes_capture[scopes_to_restart++] = scope;
         else {
-            neko_profiler_free_list_free(&scopes_allocator, scope);
+            neko_profiler_free_list_free(&ctx->scopes_allocator, scope);
             scope = &scopesDisplay[i];
         }
 
@@ -468,83 +487,88 @@ void neko_profiler_context::begin_frame() {
             u64 scopeEnd = scope->end;
             if (scope->start == scope->end) scopeEnd = frameEndTime;
 
-            if (time_threshold <= __neko_profiler_clock2ms(scopeEnd - scope->start, __neko_profiler_get_clock_frequency())) threshold_crossed = true;
+            if (ctx->time_threshold <= __neko_profiler_clock2ms(scopeEnd - scope->start, __neko_profiler_get_clock_frequency())) ctx->threshold_crossed = true;
         }
     }
 
     // did frame cross threshold ?
     f32 prevFrameTime = __neko_profiler_clock2ms(frameEndTime - frameBeginTime, __neko_profiler_get_clock_frequency());
-    if ((level == -1) && (time_threshold <= prevFrameTime)) threshold_crossed = true;
+    if ((level == -1) && (ctx->time_threshold <= prevFrameTime)) ctx->threshold_crossed = true;
 
-    if (threshold_crossed && !pause_profiling) {
-        std::swap(names_data[buffer_use::Capture], names_data[buffer_use::Display]);
+    if (ctx->threshold_crossed && !ctx->pause_profiling) {
+        std::swap(ctx->names_data[buffer_use::Capture], ctx->names_data[buffer_use::Display]);
 
-        memcpy(scopes_display, scopesDisplay, sizeof(profiler_scope) * scopes_open);
+        memcpy(ctx->scopes_display, scopesDisplay, sizeof(profiler_scope) * ctx->scopes_open);
 
-        display_scopes = scopes_open;
-        frame_start_time = frameBeginTime;
-        frame_end_time = frameEndTime;
+        ctx->display_scopes = ctx->scopes_open;
+        ctx->frame_start_time = frameBeginTime;
+        ctx->frame_end_time = frameEndTime;
     }
 
-    names_size[buffer_use::Capture] = 0;
-    for (u32 i = 0; i < scopesToRestart; ++i) scopes_capture[i]->name = add_string(scopes_capture[i]->name, buffer_use::Capture);
+    ctx->names_size[buffer_use::Capture] = 0;
+    for (u32 i = 0; i < scopes_to_restart; ++i) ctx->scopes_capture[i]->name = neko_profiler_context_add_string(ctx, ctx->scopes_capture[i]->name, buffer_use::Capture);
 
-    scopes_open = scopesToRestart;
+    ctx->scopes_open = scopes_to_restart;
     frameTime = frameEndTime - frameBeginTime;
+
+    neko_mutex_unlock(&ctx->internal_mutex);
 }
 
-s32 neko_profiler_context::inc_level() {
+s32 neko_profiler_context_inc_level(neko_profiler_context_t *ctx) {
     // may be a first call on this thread
-    void *tl = neko_tls_get_value(tls_level);
+    void *tl = neko_tls_get_value(ctx->tls_level);
     if (!tl) {
         // we'd like to start with -1 but then the ++ operator below
         // would result in NULL value for tls so we offset by 2
         tl = (void *)1;
-        neko_tls_set_value(tls_level, tl);
+        neko_tls_set_value(ctx->tls_level, tl);
     }
     intptr_t threadLevel = (intptr_t)tl - 1;
-    neko_tls_set_value(tls_level, (void *)(threadLevel + 2));
+    neko_tls_set_value(ctx->tls_level, (void *)(threadLevel + 2));
     return (s32)threadLevel;
 }
 
-void neko_profiler_context::dec_level() {
-    intptr_t threadLevel = (intptr_t)neko_tls_get_value(tls_level);
+void neko_profiler_context_dec_level(neko_profiler_context_t *ctx) {
+    intptr_t threadLevel = (intptr_t)neko_tls_get_value(ctx->tls_level);
     --threadLevel;
-    neko_tls_set_value(tls_level, (void *)threadLevel);
+    neko_tls_set_value(ctx->tls_level, (void *)threadLevel);
 }
 
-profiler_scope *neko_profiler_context::begin_ccope(const_str _file, s32 _line, const_str _name) {
+profiler_scope *neko_profiler_context_begin_scope(neko_profiler_context_t *ctx, const_str _file, s32 _line, const_str _name) {
     profiler_scope *scope = 0;
     {
-        neko_scoped_mutex_locker lock(mutex);
-        if (scopes_open == __neko_profiler_scopes_max) return 0;
+        neko_mutex_lock(&ctx->internal_mutex);
 
-        scope = (profiler_scope *)neko_profiler_free_list_alloc(&scopes_allocator);
-        scopes_capture[scopes_open++] = scope;
+        if (ctx->scopes_open == __neko_profiler_scopes_max) return 0;
 
-        scope->name = add_string(_name, buffer_use::Capture);
+        scope = (profiler_scope *)neko_profiler_free_list_alloc(&ctx->scopes_allocator);
+        ctx->scopes_capture[ctx->scopes_open++] = scope;
+
+        scope->name = neko_profiler_context_add_string(ctx, _name, buffer_use::Capture);
         scope->start = neko_profiler_get_clock();
         scope->end = scope->start;
+
+        neko_mutex_unlock(&ctx->internal_mutex);
     }
 
     scope->thread_id = neko_get_thread_id();
     scope->file = _file;
     scope->line = _line;
-    scope->level = inc_level();
+    scope->level = neko_profiler_context_inc_level(ctx);
 
     return scope;
 }
 
-void neko_profiler_context::end_scope(profiler_scope *_scope) {
+void neko_profiler_context_end_scope(neko_profiler_context_t *ctx, profiler_scope *_scope) {
     if (!_scope) return;
 
     _scope->end = neko_profiler_get_clock();
-    dec_level();
+    neko_profiler_context_dec_level(ctx);
 }
 
-const_str neko_profiler_context::add_string(const_str _name, buffer_use _buffer) {
-    char *nameData = names_data[_buffer];
-    s32 &nameSize = names_size[_buffer];
+const_str neko_profiler_context_add_string(neko_profiler_context_t *ctx, const_str _name, buffer_use _buffer) {
+    char *nameData = ctx->names_data[_buffer];
+    s32 &nameSize = ctx->names_size[_buffer];
 
     char c, *ret = &nameData[nameSize];
     while ((c = *_name++) && (nameSize < __neko_profiler_text_max)) nameData[nameSize++] = c;
@@ -557,29 +581,31 @@ const_str neko_profiler_context::add_string(const_str _name, buffer_use _buffer)
     return ret;
 }
 
-void neko_profiler_context::get_frame_data(profiler_frame *_data) {
-    neko_scoped_mutex_locker lock(mutex);
+void neko_profiler_context_get_frame_data(neko_profiler_context_t *ctx, neko_profiler_frame_t *_data) {
+    neko_mutex_lock(&ctx->internal_mutex);
 
     static neko_profiler_thread threadData[__neko_profiler_threads_max];
 
-    u32 numThreads = (u32)thread_names.size();
+    u32 numThreads = (u32)ctx->thread_names.size();
     if (numThreads > __neko_profiler_threads_max) numThreads = __neko_profiler_threads_max;
 
-    _data->num_scopes = display_scopes;
-    _data->scopes = scopes_display;
+    _data->num_scopes = ctx->display_scopes;
+    _data->scopes = ctx->scopes_display;
     _data->num_threads = numThreads;
     _data->threads = threadData;
-    _data->start_time = frame_start_time;
-    _data->end_time = frame_end_time;
-    _data->prev_frame_time = frame_end_time - frame_start_time;
+    _data->start_time = ctx->frame_start_time;
+    _data->end_time = ctx->frame_end_time;
+    _data->prev_frame_time = ctx->frame_end_time - ctx->frame_start_time;
     _data->cpu_frequency = __neko_profiler_get_clock_frequency();
-    _data->time_threshold = time_threshold;
-    _data->level_threshold = level_threshold;
+    _data->time_threshold = ctx->time_threshold;
+    _data->level_threshold = ctx->level_threshold;
 
-    std::map<u64, std::string>::iterator it = thread_names.begin();
+    std::map<u64, std::string>::iterator it = ctx->thread_names.begin();
     for (u32 i = 0; i < numThreads; ++i) {
         threadData[i].thread_id = it->first;
         threadData[i].name = it->second.c_str();
         ++it;
     }
+
+    neko_mutex_unlock(&ctx->internal_mutex);
 }

@@ -32,7 +32,6 @@
 #include "neko_client_ecs.h"
 #include "neko_hash.h"
 #include "neko_nui_auto.hpp"
-#include "player.h"
 
 // hpp
 #include "hpp/neko_static_refl.hpp"
@@ -47,8 +46,8 @@
 #define SPRITEBATCH_IMPLEMENTATION
 #include "engine/builtin/cute_spritebatch.h"
 
-#define CUTE_PNG_IMPLEMENTATION
-#include "engine/builtin/cute_png.h"
+#define NEKO_PNG_IMPLEMENTATION
+#include "engine/builtin/neko_png.h"
 
 #define CUTE_FILEWATCH_IMPLEMENTATION
 #define STRPOOL_IMPLEMENTATION
@@ -129,6 +128,8 @@ struct neko_engine_cvar_t {
     bool show_gui = false;
 
     bool hello_ai_shit = false;
+
+    bool vsync = true;
 
     f32 bg[3] = {28, 28, 28};
 };
@@ -898,7 +899,7 @@ neko_script_binary_t *ns_load_module(char *name) {
     return NULL;
 }
 
-void watch_callback(filewatch_update_t change, const char *virtual_path, void *udata) {
+void watch_map_callback(filewatch_update_t change, const char *virtual_path, void *udata) {
     const char *change_string = nullptr;
     switch (change) {
         case FILEWATCH_DIR_ADDED:
@@ -927,6 +928,33 @@ void watch_callback(filewatch_update_t change, const char *virtual_path, void *u
         neko_tiled_unload(&tiled->map);
 
         neko_tiled_load(&tiled->map, game_assets("gamedir/maps/map.tmx").c_str(), NULL);
+    }
+}
+
+void watch_managed_callback(filewatch_update_t change, const char *virtual_path, void *udata) {
+    const char *change_string = nullptr;
+    switch (change) {
+        case FILEWATCH_DIR_ADDED:
+            change_string = "FILEWATCH_DIR_ADDED";
+            break;
+        case FILEWATCH_DIR_REMOVED:
+            change_string = "FILEWATCH_DIR_REMOVED";
+            break;
+        case FILEWATCH_FILE_ADDED:
+            change_string = "FILEWATCH_FILE_ADDED";
+            break;
+        case FILEWATCH_FILE_REMOVED:
+            change_string = "FILEWATCH_FILE_REMOVED";
+            break;
+        case FILEWATCH_FILE_MODIFIED:
+            change_string = "FILEWATCH_FILE_MODIFIED";
+            break;
+    }
+
+    neko_println("%s at %s", change_string, virtual_path);
+
+    if (!strcmp(virtual_path, "/managed/Example.Managed.dll") && change == FILEWATCH_FILE_MODIFIED) {
+        g_csharp.hotfix();
     }
 }
 
@@ -1031,7 +1059,7 @@ void game_init() {
     g_test_ase = load_ase_texture_simple(cat_data, cat_data_size);
 
     neko_asset_texture_t tex0 = {0};
-    neko_asset_texture_load_from_file(game_assets("gamedir/assets/textures/yzh.jpg").c_str(), &tex0, NULL, false, false);
+    neko_asset_texture_load_from_file(game_assets("gamedir/assets/textures/yzh.png").c_str(), &tex0, NULL, false, false);
     tex_hndl = neko_assets_create_asset(&g_am, neko_asset_texture_t, &tex0);
 
     neko_core_ui_init(&g_core_ui, neko_platform_main_window());
@@ -1099,7 +1127,9 @@ void game_init() {
 
     neko_tiled_load(&tiled.map, game_assets("gamedir/maps/map.tmx").c_str(), NULL);
 
-    neko_tiled_render_init(&g_cb, &tiled, game_assets("gamedir/shaders/sprite_vs.glsl").c_str(), game_assets("gamedir/shaders/sprite_fs.glsl").c_str());
+    neko_tiled_render_init(&g_cb, &tiled,                                                  //
+                           game_assets("gamedir/assets/shaders/sprite_vs.glsl").c_str(),   //
+                           game_assets("gamedir/assets/shaders/sprite_fs.glsl").c_str());  //
 
     neko_ui_renderer ui_render = neko_default_val();
     ui_render.type = neko_ui_renderer::type::LABEL;
@@ -1135,6 +1165,8 @@ void game_init() {
 
 #endif
 
+#if 1
+
     neko_snprintf(gameobj.name, 64, "%s", "BBB_ent");
     gameobj.visible = true;
     gameobj.active = false;
@@ -1162,6 +1194,8 @@ void game_init() {
     gfxt_render->mesh = neko_gfxt_mesh_load_from_file(game_assets("gamedir/assets/meshes/Duck.gltf").c_str(), &mesh_decl);
 
     gfxt_render->texture = neko_gfxt_texture_load_from_file(game_assets("gamedir/assets/textures/DuckCM.png").c_str(), NULL, false, false);
+
+#endif
 
     neko_snprintf(gameobj.name, 64, "%s", "chunk_test");
     gameobj.visible = true;
@@ -1376,7 +1410,10 @@ void main() { out_col = texture(u_sprite_texture, v_uv); }
     // filewatch_mount(filewatch, "./source", "/data");
     filewatch_mount(filewatch, game_assets("gamedir/style_sheets").c_str(), "/style_sheets");
     filewatch_mount(filewatch, game_assets("gamedir/maps").c_str(), "/maps");
-    filewatch_start_watching(filewatch, "/maps", watch_callback, 0);
+    filewatch_mount(filewatch, game_assets("gamedir/managed/debug").c_str(), "/managed");
+
+    filewatch_start_watching(filewatch, "/maps", watch_map_callback, 0);
+    filewatch_start_watching(filewatch, "/managed", watch_managed_callback, 0);
 }
 
 void game_update() {
@@ -1397,11 +1434,7 @@ void game_update() {
     const f32 t = neko_platform_elapsed_time();
     struct neko_gui_context *gui_ctx = &g_gui.neko_gui_ctx;
 
-    if (neko_platform_key_pressed(NEKO_KEYCODE_ESC)) {
-        // neko_quit();
-
-        g_cvar.show_editor ^= true;
-    }
+    if (neko_platform_key_pressed(NEKO_KEYCODE_ESC)) g_cvar.show_editor ^= true;
 
 #if 0
     // 开屏动画
@@ -1448,7 +1481,17 @@ void game_update() {
     }
 #endif
 
-    neko_ecs_run_systems(neko_ecs(), ECS_SYSTEM_UPDATE);
+    {
+        neko_profiler_scope_begin(ecs_update);
+        neko_ecs_run_systems(neko_ecs(), ECS_SYSTEM_UPDATE);
+        neko_profiler_scope_end(ecs_update);
+    }
+
+    {
+        neko_profiler_scope_begin(csharp_update);
+        g_csharp.update();
+        neko_profiler_scope_end(csharp_update);
+    }
 
     // try {
     //     neko_lua_wrap_call(L, "test_update");
@@ -1523,7 +1566,11 @@ void game_update() {
     neko_idraw_defaults(&g_idraw);
     neko_idraw_camera2D(&g_idraw, (u32)fbs.x, (u32)fbs.y);
 
-    neko_ecs_run_systems(neko_ecs(), ECS_SYSTEM_RENDER_IMMEDIATE);
+    {
+        neko_profiler_scope_begin(render_immediate);
+        neko_ecs_run_systems(neko_ecs(), ECS_SYSTEM_RENDER_IMMEDIATE);
+        neko_profiler_scope_end(render_immediate);
+    }
 
     if (g_client_userdata.module_count) {
         if (g_client_userdata.module_func[0]) {
@@ -1531,7 +1578,11 @@ void game_update() {
         }
     }
 
-    neko_ecs_run_systems(neko_ecs(), ECS_SYSTEM_RENDER_DEFERRED);
+    {
+        neko_profiler_scope_begin(render_deferred);
+        neko_ecs_run_systems(neko_ecs(), ECS_SYSTEM_RENDER_DEFERRED);
+        neko_profiler_scope_end(render_deferred);
+    }
 
     call_count = 0;
     neko_sprite_t dragon_zombie = make_sprite(0, -250, -200, 5, neko_rad2deg(t / 100000.f), 0);
@@ -1553,10 +1604,14 @@ void game_update() {
     // 也可以每N帧只使用一次defrag(碎片整理)
     // tick也可以在不同的时间间隔调用(例如每次游戏更新一次
     // 但不一定每次屏幕呈现一次
-    spritebatch_defrag(&sb);
-    spritebatch_tick(&sb);
-    spritebatch_flush(&sb);
-    sprite_verts_count = 0;
+    {
+        neko_profiler_scope_begin(render_spritebatch);
+        spritebatch_defrag(&sb);
+        spritebatch_tick(&sb);
+        spritebatch_flush(&sb);
+        sprite_verts_count = 0;
+        neko_profiler_scope_end(render_spritebatch);
+    }
 
     draw_text(test_font_bmfont, "中文渲染测试 日本語レンダリングテスト Hello World! ", 50, 50, 1, 1.f, 800.f);
 
@@ -1802,6 +1857,8 @@ void game_update() {
     if (g_cvar.show_editor) {
         if (ImGui::BeginMainMenuBar()) {
             if (ImGui::BeginMenu("engine")) {
+                if (ImGui::Checkbox("vsync", &g_cvar.vsync)) neko_platform_enable_vsync(g_cvar.vsync);
+                if (ImGui::MenuItem("quit")) neko_quit();
                 ImGui::EndMenu();
             }
             ImGui::EndMainMenuBar();
@@ -1809,11 +1866,11 @@ void game_update() {
     }
 
     if (g_cvar.show_profiler_window) {
-        static profiler_frame frame_data;
+        static neko_profiler_frame_t frame_data;
         neko_profiler_get_frame(&frame_data);
         // // if (g_multi) ProfilerDrawFrameNavigation(g_frameInfos.data(), g_frameInfos.size());
         static char buffer[10 * 1024];
-        profiler_draw_frame(&frame_data, buffer, 10 * 1024);
+        neko_profiler_draw_frame(&frame_data, buffer, 10 * 1024);
         // ProfilerDrawStats(&data);
     }
 
@@ -1834,6 +1891,8 @@ void game_update() {
 // Compute pass
 #if 0
     {
+        neko_profiler_scope_auto("Compute_pass");
+
         float roll = neko_platform_elapsed_time() * .001f;
 
         // Bindings for compute shader
@@ -1873,7 +1932,11 @@ void game_update() {
 
     neko_gui_new_frame(&g_gui);
 
-    neko_ecs_run_systems(neko_ecs(), ECS_SYSTEM_EDITOR);
+    {
+        neko_profiler_scope_begin(ecs_editor);
+        neko_ecs_run_systems(neko_ecs(), ECS_SYSTEM_EDITOR);
+        neko_profiler_scope_end(ecs_editor);
+    }
 
     if (g_cvar.show_demo_window) neko_gui_overview(gui_ctx);
 
@@ -2011,7 +2074,7 @@ void game_update() {
 
             if (neko_gui_button_label(gui_ctx, "test_fnt")) {
                 FILE *file = fopen("1.fnt", "rb");
-                neko_fnt *fnt = neko_fnt_read(file);
+                neko_fnt *fnt = neko_font_fnt_read(file);
                 fclose(file);
                 if (NULL != fnt && fnt->num_glyphs > 0) {
                     neko_println("Got FNT! %i glyphs", fnt->num_glyphs);
@@ -2021,7 +2084,7 @@ void game_update() {
                         neko_println("glyph '%u' in '%s'", fnt->glyphs[i].ch, fnt->page_names[fnt->glyphs[i].page]);
                     }
                 }
-                neko_fnt_free(fnt);
+                neko_font_fnt_free(fnt);
             }
             if (neko_gui_button_label(gui_ctx, "test_xml")) test_xml(game_assets("gamedir/tests/test.xml"));
             if (neko_gui_button_label(gui_ctx, "test_se")) test_se();
@@ -2140,8 +2203,6 @@ void game_update() {
     // Render neko_nui commands into graphics command buffer
     neko_gui_render(&g_gui, &g_cb, NEKO_GUI_ANTI_ALIASING_ON);
 
-    neko_imgui_render(&g_imgui, &g_cb);
-
     neko_graphics_renderpass_begin(&g_cb, NEKO_GRAPHICS_RENDER_PASS_DEFAULT);
     {
         neko_graphics_set_viewport(&g_cb, 0, 0, (u32)fbs.x, (u32)fbs.y);
@@ -2149,10 +2210,16 @@ void game_update() {
     }
     neko_graphics_renderpass_end(&g_cb);
 
-    // Submits to cb
-    neko_graphics_command_buffer_submit(&g_cb);
+    neko_imgui_render(&g_imgui, &g_cb);
 
-    NEKO_GL_CUSTOM_PRINT_GL_ERRORS();
+    // Submits to cb
+    {
+        neko_profiler_scope_begin(render_submit);
+        neko_graphics_command_buffer_submit(&g_cb);
+        neko_profiler_scope_end(render_submit);
+    }
+
+    neko_check_gl_error();
 }
 
 void game_shutdown() {
@@ -2201,7 +2268,9 @@ neko_game_desc_t neko_main(s32 argc, char **argv) {
     // 确定运行路径
     auto current_dir = std::filesystem::path(std::filesystem::current_path());
     for (int i = 0; i < 6; ++i)
-        if (std::filesystem::exists(current_dir / "gamedir") && std::filesystem::exists(current_dir / "gamedir" / "scripts")) {
+        if (std::filesystem::exists(current_dir / "gamedir") &&              //
+            std::filesystem::exists(current_dir / "gamedir" / "scripts") &&  //
+            std::filesystem::exists(current_dir / "gamedir" / "managed")) {
             data_path = neko_fs_normalize_path(current_dir.string());
             neko_log_info(std::format("gamedir detected: {0} (base: {1})", data_path, std::filesystem::current_path().string()).c_str());
             break;
