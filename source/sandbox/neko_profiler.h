@@ -21,7 +21,7 @@ typedef struct neko_profiler_scope_stats_s {
 
 } neko_profiler_scope_stats;
 
-typedef struct neko_profiler_scope_t {
+typedef struct neko_profiler_scope_s {
     u64 start;
     u64 end;
     u64 thread_id;
@@ -31,7 +31,7 @@ typedef struct neko_profiler_scope_t {
     u32 level;
     neko_profiler_scope_stats *stats;
 
-} profiler_scope;
+} neko_profiler_scope_t;
 
 typedef struct neko_profiler_thread_s {
     u64 thread_id;
@@ -41,7 +41,7 @@ typedef struct neko_profiler_thread_s {
 
 typedef struct neko_profiler_frame_s {
     u32 num_scopes;
-    profiler_scope *scopes;
+    neko_profiler_scope_t *scopes;
     u32 num_threads;
     neko_profiler_thread *threads;
     u64 start_time;
@@ -51,19 +51,12 @@ typedef struct neko_profiler_frame_s {
     f32 time_threshold;
     u32 level_threshold;
     u32 num_scopes_stats;
-    profiler_scope *scopes_stats;
+    neko_profiler_scope_t *scopes_stats;
     neko_profiler_scope_stats *scope_stats_info;
 
 } neko_profiler_frame_t;
 
-NEKO_API_DECL void neko_profiler_init();
-NEKO_API_DECL void neko_profiler_shutdown();
 NEKO_API_DECL void neko_profiler_set_threshold(f32 _ms, s32 _level);
-NEKO_API_DECL void neko_profiler_register_thread(const_str _name, u64 _threadID);
-NEKO_API_DECL void neko_profiler_unregister_thread(u64 _threadID);
-NEKO_API_DECL void neko_profiler_begin_frame();
-NEKO_API_DECL uintptr_t neko_profiler_begin_scope(const_str _file, s32 _line, const_str _name);
-NEKO_API_DECL void neko_profiler_end_scope(uintptr_t _scopeHandle);
 NEKO_API_DECL s32 neko_profiler_is_paused();
 NEKO_API_DECL s32 neko_profiler_was_threshold_crossed();
 NEKO_API_DECL void neko_profiler_set_paused(s32 _paused);
@@ -90,12 +83,12 @@ struct neko_profiler_scoped {
     uintptr_t profileid_##n;              \
     profileid_##n = neko_profiler_begin_scope(__FILE__, __LINE__, #n)
 #define neko_profiler_scope_end(n) neko_profiler_end_scope(profileid_##n)
-#define neko_profiler_begin() neko_profiler_begin_frame()
+#define neko_profiler_begin_frame() neko_profiler_begin_frame()
 #define neko_profiler_thread(n) neko_profiler_register_thread(n)
 #define neko_profiler_shutdown() neko_profiler_shutdown()
 #else
 #define neko_profiler_init() void()
-#define neko_profiler_begin() void()
+#define neko_profiler_begin_frame() void()
 #define neko_profiler_thread(n) void()
 #define neko_profiler_shutdown() void()
 #endif
@@ -128,8 +121,8 @@ typedef struct neko_profiler_context_s {
     // neko_pthread_mutex mutex;
     neko_profiler_free_list_t scopes_allocator;
     u32 scopes_open;
-    profiler_scope *scopes_capture[__neko_profiler_scopes_max];
-    profiler_scope scopes_display[__neko_profiler_scopes_max];
+    neko_profiler_scope_t *scopes_capture[__neko_profiler_scopes_max];
+    neko_profiler_scope_t scopes_display[__neko_profiler_scopes_max];
     u32 display_scopes;
     u64 frame_start_time;
     u64 frame_end_time;
@@ -160,8 +153,8 @@ void neko_profiler_context_unregister_thread(neko_profiler_context_t *ctx, u64 _
 void neko_profiler_context_begin_frame(neko_profiler_context_t *ctx);
 s32 neko_profiler_context_inc_level(neko_profiler_context_t *ctx);
 void neko_profiler_context_dec_level(neko_profiler_context_t *ctx);
-profiler_scope *neko_profiler_context_begin_scope(neko_profiler_context_t *ctx, const_str _file, s32 _line, const_str _name);
-void neko_profiler_context_end_scope(neko_profiler_context_t *ctx, profiler_scope *_scope);
+neko_profiler_scope_t *neko_profiler_context_begin_scope(neko_profiler_context_t *ctx, const_str _file, s32 _line, const_str _name);
+void neko_profiler_context_end_scope(neko_profiler_context_t *ctx, neko_profiler_scope_t *_scope);
 const_str neko_profiler_context_add_string(neko_profiler_context_t *ctx, const_str _name, buffer_use _buffer);
 void neko_profiler_context_get_frame_data(neko_profiler_context_t *ctx, neko_profiler_frame_t *_data);
 

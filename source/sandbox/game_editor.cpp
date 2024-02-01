@@ -26,7 +26,7 @@ neko_inline void flash_color(ImU32 &_drawColor, uint64_t _elapsedTime) {
     _drawColor = ImColor(col4.x + (white4.x - col4.x) * msSince, col4.y + (white4.y - col4.y) * msSince, col4.z + (white4.z - col4.z) * msSince, 255.0f);
 }
 
-neko_inline void flash_color_named(ImU32 &_drawColor, profiler_scope &_cs, uint64_t _elapsedTime) {
+neko_inline void flash_color_named(ImU32 &_drawColor, neko_profiler_scope_t &_cs, uint64_t _elapsedTime) {
     if (stat_clicked_name && (strcmp(_cs.name, stat_clicked_name) == 0) && (_cs.level == stat_clicked_level)) flash_color(_drawColor, _elapsedTime);
 }
 
@@ -38,7 +38,7 @@ neko_static_inline ImVec4 tri_color(f32 _cmp, f32 _min1, f32 _min2) {
 }
 
 neko_inline struct sort_scopes {
-    neko_inline bool operator()(const profiler_scope &a, const profiler_scope &b) const {
+    neko_inline bool operator()(const neko_profiler_scope_t &a, const neko_profiler_scope_t &b) const {
         if (a.thread_id < b.thread_id) return true;
         if (b.thread_id < a.thread_id) return false;
 
@@ -332,7 +332,7 @@ s32 neko_profiler_draw_frame(neko_profiler_frame_t *_data, void *_buffer, size_t
     uint64_t currTime = neko_profiler_get_clock();
 
     for (uint32_t i = 0; i < _data->num_scopes; ++i) {
-        profiler_scope &cs = _data->scopes[i];
+        neko_profiler_scope_t &cs = _data->scopes[i];
         if (!cs.name) continue;
 
         if (cs.thread_id != threadID) {
@@ -447,11 +447,11 @@ void neko_profiler_draw_stats(neko_profiler_frame_t *_data, bool _multi) {
     ImGui::Separator();
 
     struct sort_excusive {
-        bool operator()(const profiler_scope &a, const profiler_scope &b) const { return (a.stats->exclusive_time_total > b.stats->exclusive_time_total); }
+        bool operator()(const neko_profiler_scope_t &a, const neko_profiler_scope_t &b) const { return (a.stats->exclusive_time_total > b.stats->exclusive_time_total); }
     } customLessExc;
 
     struct sort_inclusive {
-        bool operator()(const profiler_scope &a, const profiler_scope &b) const { return (a.stats->inclusive_time_total > b.stats->inclusive_time_total); }
+        bool operator()(const neko_profiler_scope_t &a, const neko_profiler_scope_t &b) const { return (a.stats->inclusive_time_total > b.stats->inclusive_time_total); }
     } customLessInc;
 
     if (exclusive == 0)
@@ -477,7 +477,7 @@ void neko_profiler_draw_stats(neko_profiler_frame_t *_data, bool _multi) {
     ImDrawList *draw_list = ImGui::GetWindowDrawList();
 
     for (uint32_t i = 0; i < _data->num_scopes_stats; i++) {
-        profiler_scope &cs = _data->scopes_stats[i];
+        neko_profiler_scope_t &cs = _data->scopes_stats[i];
 
         f32 endXpct = f32(cs.stats->exclusive_time_total) / f32(totalTime);
         if (exclusive == 1) endXpct = f32(cs.stats->inclusive_time_total) / f32(totalTime);

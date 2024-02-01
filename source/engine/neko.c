@@ -5,7 +5,7 @@
 
 #include "engine/neko_component.h"
 #include "engine/neko_engine.h"
-#include "engine/neko_profiler.h"
+// #include "engine/neko_profiler.h"
 #include "engine/util/neko_console.h"
 
 // Use discrete GPU by default.
@@ -2167,10 +2167,11 @@ NEKO_API_DECL void neko_frame() {
     neko_private(u32) curr_ticks = 0;
     neko_private(u32) prev_ticks = 0;
 
-    neko_profiler_begin();
+    neko_profiler_begin_frame();
 
     {
-        neko_profiler_scope_begin(engine);
+        uintptr_t profile_id_engine;
+        profile_id_engine = neko_profiler_begin_scope(__FILE__, __LINE__, "engine");
 
         // Cache platform pointer
         neko_platform_t* platform = neko_subsystem(platform);
@@ -2189,14 +2190,9 @@ NEKO_API_DECL void neko_frame() {
         if (win->focus || 1) {
 
             // Process application context
-            {
-                neko_profiler_scope_begin(game_update);
-                neko_instance()->ctx.game.update();
-                neko_profiler_scope_end(game_update);
-            }
+            neko_instance()->ctx.game.update();
 
             {
-                neko_profiler_scope_begin(audio_update);
                 //  Audio update and commit
                 if (audio) {
                     if (audio->update) {
@@ -2206,7 +2202,6 @@ NEKO_API_DECL void neko_frame() {
                         audio->commit(audio);
                     }
                 }
-                neko_profiler_scope_end(audio_update);
             }
         }
 
@@ -2214,13 +2209,11 @@ NEKO_API_DECL void neko_frame() {
         neko_dyn_array_clear(platform->events);
 
         {
-            neko_profiler_scope_begin(swap);
             // NOTE: This won't work forever. Must change eventually.
             // Swap all platform window buffers? Sure...
             for (neko_slot_array_iter it = 0; neko_slot_array_iter_valid(platform->windows, it); neko_slot_array_iter_advance(platform->windows, it)) {
                 neko_platform_window_swap_buffer(it);
             }
-            neko_profiler_scope_end(swap);
         }
 
         // Frame locking (not sure if this should be done here, but it is what it is)
@@ -2242,7 +2235,7 @@ NEKO_API_DECL void neko_frame() {
             platform->time.delta = platform->time.frame / 1000.f;
         }
 
-        neko_profiler_scope_end(engine);
+        neko_profiler_end_scope(profile_id_engine);
     }
 
     if (!neko_instance()->ctx.game.is_running) {

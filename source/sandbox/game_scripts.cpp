@@ -37,12 +37,12 @@ void game_native_binding_register(neko_cs::ManagedAssembly& assembly) {
     assembly.AddInternalCall("Example.Managed.NativeBinding", "NekoLogError", reinterpret_cast<void*>(&__csharp_bind_log_error));
 
     assembly.AddInternalCall(                                                                                  //
-            "Example.Managed.NativeBinding",                                                                    //
+            "Example.Managed.NativeBinding",                                                                   //
             "NekoLogTrace",                                                                                    //
             +[](neko_cs::String InString) { neko_log_trace("[csharp] %s", std::string(InString).c_str()); });  //
 
     assembly.AddInternalCall(                                                                         //
-            "Example.Managed.NativeBinding",                                                           //
+            "Example.Managed.NativeBinding",                                                          //
             "neko_platform_key_pressed",                                                              //
             +[](u32 key) -> bool { return neko_platform_key_pressed((neko_platform_keycode)key); });  //
 

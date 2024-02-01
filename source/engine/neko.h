@@ -2663,4 +2663,16 @@ struct neko_span {
 
 #endif
 
+/*===================================
+// Profiler Internal
+===================================*/
+
+NEKO_API_DECL void neko_profiler_init();
+NEKO_API_DECL void neko_profiler_shutdown();
+NEKO_API_DECL void neko_profiler_register_thread(const_str _name, u64 _threadID);
+NEKO_API_DECL void neko_profiler_unregister_thread(u64 _threadID);
+NEKO_API_DECL void neko_profiler_begin_frame();
+NEKO_API_DECL uintptr_t neko_profiler_begin_scope(const_str _file, s32 _line, const_str _name);
+NEKO_API_DECL void neko_profiler_end_scope(uintptr_t _scopeHandle);
+
 #endif  // NEKO_H

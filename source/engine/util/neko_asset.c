@@ -1465,7 +1465,7 @@ neko_pack_result neko_pack_read(const_str file_path, u32 data_buffer_capacity, b
     pack_reader->data_buffer = data_buffer;
     pack_reader->data_size = data_buffer_capacity;
 
-    neko_log_trace("load pack %s buildnum: %d", file_path, buildnum);
+    neko_log_trace("load pack %s buildnum: %d (engine %d)", neko_fs_get_filename(file_path), buildnum, neko_buildnum());
 
     //*pack_reader = pack;
     return 0;

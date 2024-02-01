@@ -1,7 +1,7 @@
 #ifndef GAME_EDITOR_H
 #define GAME_EDITOR_H
 
-#include "engine/neko_profiler.h"
+#include "sandbox/neko_profiler.h"
 
 #define __neko_desired_frame_rate 30.0f
 #define __neko_minimum_frame_rate 20.0f

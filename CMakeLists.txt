@@ -11,11 +11,10 @@ set(CMAKE_C_EXTENSIONS ON)
 set(CMAKE_C_STANDARD 17)
 
 if(MSVC)
-        file(GLOB neko_engine_lib CONFIGURE_DEPENDS "dependencies/glfw/lib/*.lib" "dependencies/fmod/lib/*.lib")
+        file(GLOB neko_engine_lib CONFIGURE_DEPENDS "dependencies/glfw/lib/*.lib")
         include_directories(
             "dependencies/glfw/include/"
             "dependencies/netcore/"
-            "dependencies/fmod/include/"
         )
 else()
         find_package(OpenGL REQUIRED)
@@ -137,13 +136,14 @@ file(GLOB_RECURSE neko_engine_src CONFIGURE_DEPENDS "source/engine/**.*")
 set(neko_engine_src_all
         ${neko_engine_src}
         "source/libs/impl_build.cpp"
-        "source/engine/neko_csharp_native.cpp"
 )
 
 set(neko_game_src_all
         "source/sandbox/game_physics_math.cpp"
         "source/sandbox/game_scripts.cpp"
         "source/sandbox/game_editor.cpp"
+        "source/sandbox/neko_csharp_native.cpp"
+        "source/sandbox/neko_profiler.cpp"
         "source/sandbox/main.cpp"
         "source/sandbox/tests/test.c"
         "source/sandbox/tests/test_se.cpp"
@@ -153,6 +153,10 @@ set(neko_game_src_all
 
 set(neko_script_test_src
         "source/neko_script/interpreter.cpp"
+)
+
+set(tools_packer_src
+        "source/tools/packer.c"
 )
 
 add_library(neko_engine STATIC ${neko_engine_src_all})
@@ -165,10 +169,14 @@ target_link_libraries(sandbox neko_engine)
 
 # add_library(hotload SHARED ${neko_hotload_src})
 # target_link_libraries(hotload neko_engine)
+
 add_executable(script_test ${neko_script_test_src})
-target_link_libraries(script_test neko_engine)
 set_property(TARGET script_test PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "./")
 target_link_libraries(script_test neko_engine)
+
+add_executable(tools_packer ${tools_packer_src})
+set_property(TARGET tools_packer PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "./")
+target_link_libraries(tools_packer neko_engine)
 
 # Copy DLLs to the build directory
 # if(WIN32)

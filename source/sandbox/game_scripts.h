@@ -3,8 +3,8 @@
 #define GAME_SCRIPTS_H
 
 #include "engine/neko.h"
-#include "engine/neko_csharp_native.h"
 #include "engine/util/neko_vm.h"
+#include "sandbox/neko_csharp_native.h"
 
 typedef struct game_vm_s {
     neko_script_ctx_t *ctx;

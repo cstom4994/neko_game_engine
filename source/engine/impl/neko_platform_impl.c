@@ -5,7 +5,7 @@
 =============================*/
 
 #include "engine/neko_engine.h"
-#include "engine/neko_profiler.h"
+// #include "engine/neko_profiler.h"
 
 #ifndef NEKO_PLATFORM_IMPL_CUSTOM
 #if (defined NEKO_PLATFORM_WIN || defined NEKO_PLATFORM_APPLE || defined NEKO_PLATFORM_LINUX)
@@ -309,7 +309,7 @@ void neko_platform_poll_all_events() {
 }
 
 void neko_platform_update(neko_platform_t* platform) {
-    neko_profiler_scope_begin(platform_update);
+    // neko_profiler_scope_begin(platform_update);
 
     // Update platform input from previous frame
     neko_platform_update_input(&platform->input);
@@ -322,7 +322,7 @@ void neko_platform_update(neko_platform_t* platform) {
 
     neko_platform_update_internal(platform);
 
-    neko_profiler_scope_end(platform_update);
+    // neko_profiler_scope_end(platform_update);
 }
 
 bool neko_platform_poll_events(neko_platform_event_t* evt, bool32_t consume) {
