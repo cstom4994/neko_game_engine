@@ -501,7 +501,7 @@ void neko_lua_auto_function_register_type(lua_State *L, void *src_func, neko_lua
         lua_setglobal(L, FUNCTIONS[i].name);                      \
     }
 
-NEKO_API_DECL void neko_lua_debug_setup(lua_State *lua, const char *name, const char *globalName, lua_CFunction readFunc, lua_CFunction writeFunc);
+NEKO_API_DECL void neko_lua_debug_setup(lua_State *lua, const char *name, const char *globalName, lua_CFunction readFunc, lua_CFunction writeFunc, const_str debugger_lua);
 NEKO_API_DECL int neko_lua_debug_pcall(lua_State *lua, int nargs, int nresults, int msgh);
 
 #define neko_lua_debug_dofile(lua, filename) (luaL_loadfile(lua, filename) || neko_lua_debug_pcall(lua, 0, LUA_MULTRET, 0))
@@ -514,6 +514,9 @@ void neko_lua_loadover(lua_State *L, const luaL_Reg *l, const char *name);
 NEKO_API_DECL int luaopen_cstruct_core(lua_State *L);
 NEKO_API_DECL int luaopen_cstruct_test(lua_State *L);
 NEKO_API_DECL int luaopen_datalist(lua_State *L);
+
+// neko
+NEKO_API_DECL int luaopen_neko_ecs(lua_State *L);
 
 #ifdef NEKO_CPP_SRC
 

@@ -161,7 +161,7 @@ static void stdout_callback(neko_log_event* ev) {
     fflush(ev->udata);
 
     // 需要修改 console的fmt并不正确
-    if (NULL != neko_instance() && NULL != neko_instance()->ctx.game.console) {
+    if (0 && NULL != neko_instance() && NULL != neko_instance()->ctx.game.console) {
         neko_console_printf(neko_instance()->ctx.game.console, "%s %-5s %s:%d: ", buf, level_strings[ev->level], neko_fs_get_filename(ev->file), ev->line);
         neko_console_printf(neko_instance()->ctx.game.console, ev->fmt, ev->ap);
         neko_console_printf(neko_instance()->ctx.game.console, "\n");
@@ -502,7 +502,7 @@ static neko_mem_alloc_info_t* neko_mem_alloc_head() {
 #if 1
 void* __neko_mem_safe_alloc(size_t size, const char* file, int line, size_t* statistics) {
 
-    if (size < 64) neko_log_warning("small size of memory blocks should use GC (%s:%d)", neko_fs_get_filename(file), line);
+    if (NEKO_MEM_CHECK && size < 64) neko_log_warning("small size of memory blocks should use GC (%s:%d)", neko_fs_get_filename(file), line);
 
     neko_mem_alloc_info_t* mem = (neko_mem_alloc_info_t*)neko_malloc(sizeof(neko_mem_alloc_info_t) + size);
 
@@ -580,19 +580,17 @@ int neko_mem_check_leaks(bool detailed) {
     size_t leaks_size = 0;
 
     while (next != head) {
+        if (!leaks && detailed) neko_log_info("memory leaks detected (see below).");
         if (detailed) {
             char info[128];
             neko_snprintf(info, 128, "LEAKED %zu bytes from file \"%s\" at line %d from address %p.", next->size, neko_fs_get_filename(next->file), next->line, (void*)(next + 1));
-            neko_log_warning(info);
+            neko_println("  | %s", info);
         }
         leaks_size += next->size;
         next = next->next;
         leaks = 1;
     }
 
-    if (leaks && detailed) {
-        neko_log_info("memory leaks detected (see above).");
-    }
     if (leaks) {
         f32 megabytes = (f32)leaks_size / 1048576.f;
         neko_log_warning("memory leaks detected with %zu bytes equal to %.4f MB.", leaks_size, megabytes);
@@ -630,7 +628,7 @@ inline int NEKO_BYTES_IN_USE() { return 0; }
 
 void __neko_mem_init(int argc, char** argv) {}
 
-void __neko_mem_end() { neko_mem_check_leaks(false); }
+void __neko_mem_end() { neko_mem_check_leaks(true); }
 
 // typedef struct neko_memory_block_t {
 //     u8* data;
@@ -1772,6 +1770,10 @@ neko_ecs_component_pool neko_ecs_component_pool_make(u32 count, u32 size, neko_e
 }
 
 void neko_ecs_component_pool_destroy(neko_ecs_component_pool* pool) {
+    // for (u32 i = 0; i < pool->count; i++) {
+    //     u8* ptr = (u8*)((u8*)pool->data + (i * pool->size));
+    //     if (pool->destroy_func) pool->destroy_func(ptr);
+    // }
     neko_free(pool->data);
     neko_ecs_stack_destroy(pool->indexes);
 }

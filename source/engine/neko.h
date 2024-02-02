@@ -603,6 +603,8 @@ NEKO_API_DECL neko_os_api_t neko_os_api_new_default();
 #define neko_strdup(__STR) (neko_ctx()->os.strdup(__STR))
 #endif
 
+#define NEKO_MEM_CHECK 0
+
 NEKO_API_DECL void* __neko_mem_safe_alloc(size_t size, const char* file, int line, size_t* statistics);
 NEKO_API_DECL void* __neko_mem_safe_calloc(size_t count, size_t element_size, const char* file, int line, size_t* statistics);
 NEKO_API_DECL void __neko_mem_safe_free(void* mem, size_t* statistics);

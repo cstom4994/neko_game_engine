@@ -380,17 +380,17 @@ struct FieldTraits : FieldTraitsBase<void, T, true, false> {};
 // Field是保存类中成员的结构 是反射的核心 它是存储着类中成员变量和函数的容器
 namespace neko::meta::static_refl {
 template <typename Name, typename T, typename AList>
-struct Field : detail::FieldTraits<T>, NamedValue<Name, T> {
+struct rf_field : detail::FieldTraits<T>, NamedValue<Name, T> {
     static_assert(detail::IsInstance<AList, AttrList>::value);
     static_assert(!std::is_void_v<T>);
 
     AList attrs;
 
-    constexpr Field(Name name, T value, AList attrs = {}) : NamedValue<Name, T>{name, value}, attrs{attrs} {}
+    constexpr rf_field(Name name, T value, AList attrs = {}) : NamedValue<Name, T>{name, value}, attrs{attrs} {}
 };
 
 template <typename Name, typename T>
-Field(Name, T) -> Field<Name, T, AttrList<>>;
+rf_field(Name, T) -> rf_field<Name, T, AttrList<>>;
 
 // Field's (name, value_type) must be unique
 template <typename... Fields>

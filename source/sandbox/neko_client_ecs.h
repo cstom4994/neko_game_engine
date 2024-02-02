@@ -20,9 +20,11 @@ typedef struct neko_client_userdata_s {
     neko_gui_ctx_t *nui;
     neko_graphics_custom_batch_context_t *sprite_batch;
 
-    // 热加载模块
-    u32 module_count;
-    void (*module_func[16])(void);
+    struct {
+        // 热加载模块
+        u32 module_count;
+        void (*module_func[16])(void);
+    } vm;
 } neko_client_userdata_t;
 
 #if defined(NEKO_CPP_SRC)
@@ -104,6 +106,14 @@ neko_ecs_decl_system(movement_system, MOVEMENT_SYSTEM, 3, COMPONENT_TRANSFORM, C
 
             // Grab global instance of engine
             neko_t *engine = neko_instance();
+
+            static u8 tick = 0;
+
+            if ((tick++ & 31) == 0)
+                if (fabs(velocity->dx) >= 0.5 || fabs(velocity->dy) >= 0.5)
+                    neko_sprite_renderer_play(sprite, "Run");
+                else
+                    neko_sprite_renderer_play(sprite, "Idle");
 
             neko_sprite_renderer_update(sprite, engine->ctx.platform->time.delta);
 

@@ -286,6 +286,7 @@ neko_inline void neko_register_platform(lua_State* L) {
     lua_register(L, "neko_frame_buffer_size", __neko_bind_platform_frame_buffer_size);
 }
 
+/*
 static int __neko_bind_pack_construct(lua_State* L) {
     const_str name = lua_tostring(L, 1);
     const_str path = lua_tostring(L, 2);
@@ -346,6 +347,7 @@ static int __neko_bind_pack_assets_load(lua_State* L) {
 
     return 1;
 }
+*/
 
 #if 0
 
@@ -378,9 +380,9 @@ static int __neko_bind_graphics_fontcache_set_default_font(lua_State* L) {
 
 neko_inline void neko_register_pack(lua_State* L) {
 
-    lua_register(L, "neko_pack_construct", __neko_bind_pack_construct);
-    lua_register(L, "neko_pack_destroy", __neko_bind_pack_destroy);
-    lua_register(L, "neko_pack_assets_load", __neko_bind_pack_assets_load);
+    // lua_register(L, "neko_pack_construct", __neko_bind_pack_construct);
+    // lua_register(L, "neko_pack_destroy", __neko_bind_pack_destroy);
+    // lua_register(L, "neko_pack_assets_load", __neko_bind_pack_assets_load);
 }
 
 static int __neko_bind_cvar_new(lua_State* L) {
@@ -501,7 +503,7 @@ static int __neko_ls(lua_State* L) {
     return 1;
 }
 
-static bool __neko_dolua(const_str file) { return neko_lua_wrap_do_file(g_lua_bind, __neko_game_get_path(file)); }
+static bool __neko_dolua(const_str file) { return neko_lua_wrap_do_file(g_lua_bind, game_assets(file)); }
 
 // static void __neko_add_packagepath(const char* p) { neko_sc()->add_package_path(p); }
 
@@ -524,7 +526,7 @@ neko_inline void neko_register_common(lua_State* L) {
     // neko_lua_auto_struct_member(L, neko_application_desc_t, window_width, unsigned int);
     // neko_lua_auto_struct_member(L, neko_application_desc_t, window_height, unsigned int);
 
-    lua_pushstring(L, __neko_game_get_path("data").c_str());
+    lua_pushstring(L, game_assets("gamedir").c_str());
     lua_setglobal(L, "neko_game_data_path");
 
     neko_lua_auto_struct(L, neko_vec2);

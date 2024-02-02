@@ -841,7 +841,7 @@ neko_gfxt_mesh_t neko_gfxt_mesh_load_from_file(const char* path, neko_gfxt_mesh_
     neko_gfxt_mesh_t mesh = neko_default_val();
 
     if (!neko_platform_file_exists(path)) {
-        neko_println("Warning:GFXT:MeshLoadFromFile:File does not exist: %s", path);
+        neko_log_trace("[gfxt] Warning:GFXT:MeshLoadFromFile:File does not exist: %s", path);
         return mesh;
     }
 
@@ -861,7 +861,7 @@ neko_gfxt_mesh_t neko_gfxt_mesh_load_from_file(const char* path, neko_gfxt_mesh_
     else if (neko_string_compare_equal(file_ext, "glb")) {
         neko_gfxt_load_gltf_data_from_file(path, options, &meshes, &mesh_count);
     } else {
-        neko_println("Warning:GFXT:MeshLoadFromFile:File extension not supported: %s, file: %s", file_ext, path);
+        neko_log_trace("[gfxt] Warning:GFXT:MeshLoadFromFile:File extension not supported: %s, file: %s", file_ext, path);
         return mesh;
     }
 
@@ -888,14 +888,14 @@ NEKO_API_DECL bool neko_gfxt_load_gltf_data_from_file(const char* path, neko_gfx
     // GLTF
     if (neko_string_compare_equal(file_ext, "gltf")) {
         file_data = neko_platform_read_file_contents(path, "rb", &len);
-        neko_println("GFXT:Loading GLTF: %s", path);
+        neko_log_trace("[gfxt] GFXT:Loading GLTF: %s", path);
     }
     // GLB
     else if (neko_string_compare_equal(file_ext, "glb")) {
         file_data = neko_platform_read_file_contents(path, "rb", &len);
-        neko_println("GFXT:Loading GLTF: %s", path);
+        neko_log_trace("[gfxt] GFXT:Loading GLTF: %s", path);
     } else {
-        neko_println("Warning:GFXT:LoadGLTFDataFromFile:File extension not supported: %s, file: %s", file_ext, path);
+        neko_log_trace("[gfxt] Warning:GFXT:LoadGLTFDataFromFile:File extension not supported: %s, file: %s", file_ext, path);
         return false;
     }
 
@@ -904,7 +904,7 @@ NEKO_API_DECL bool neko_gfxt_load_gltf_data_from_file(const char* path, neko_gfx
     neko_safe_free(file_data);
 
     if (result != cgltf_result_success) {
-        neko_println("GFXT:Mesh:LoadFromFile:Failed load gltf");
+        neko_log_trace("[gfxt] GFXT:Mesh:LoadFromFile:Failed load gltf");
         cgltf_free(data);
         return false;
     }
@@ -913,7 +913,7 @@ NEKO_API_DECL bool neko_gfxt_load_gltf_data_from_file(const char* path, neko_gfx
     result = cgltf_load_buffers(&cgltf_options, data, path);
     if (result != cgltf_result_success) {
         cgltf_free(data);
-        neko_println("GFXT:Mesh:LoadFromFile:Failed to load buffers");
+        neko_log_trace("[gfxt] GFXT:Mesh:LoadFromFile:Failed to load buffers");
         return false;
     }
 
@@ -944,12 +944,12 @@ NEKO_API_DECL bool neko_gfxt_load_gltf_data_from_file(const char* path, neko_gfx
         cgltf_node* node = &data->nodes[_n];
         if (node->mesh == NULL) continue;
 
-        neko_println("Load mesh from node: %s", node->name);
+        neko_log_trace("[gfxt] Load mesh from node: %s", node->name);
 
         // Reset matrix
         world_mat = neko_mat4_identity();
 
-        // neko_println("i: %zu, r: %zu, t: %zu, s: %zu, m: %zu", i, node->has_rotation, node->has_translation, node->has_scale, node->has_matrix);
+        // neko_log_trace("[gfxt] i: %zu, r: %zu, t: %zu, s: %zu, m: %zu", i, node->has_rotation, node->has_translation, node->has_scale, node->has_matrix);
 
         // Not sure what "local transform" does, since world gives me the actual world result...probably for animation
         if (node->has_rotation || node->has_translation || node->has_scale) {
@@ -1537,41 +1537,41 @@ typedef struct neko_pipeline_parse_data_t {
     do {                                 \
         neko_printf("WARNING::");        \
         neko_printf(TXT, ##__VA_ARGS__); \
-        neko_println("");                \
+        neko_log_trace("[gfxt] ");       \
     } while (0)
 
 #define neko_parse_error(TXT, ASSERT, ...) \
     do {                                   \
         neko_printf("ERROR::");            \
         neko_printf(TXT, ##__VA_ARGS__);   \
-        neko_println("");                  \
+        neko_log_trace("[gfxt] ");         \
         if (ASSERT) neko_assert(false);    \
     } while (0)
 
-#define neko_parse_block(NAME, ...)                                                                      \
-    do {                                                                                                 \
-        neko_println("neko_pipeline_load_from_file::parsing::%s", #NAME);                                \
-        if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_LBRACE)) {                                  \
-            neko_println("error::neko_pipeline_load_from_file::error parsing raster from .sf resource"); \
-            neko_assert(false);                                                                          \
-        }                                                                                                \
-                                                                                                         \
-        uint32_t bc = 1;                                                                                 \
-        while (neko_lexer_can_lex(lex) && bc) {                                                          \
-            neko_token_t token = neko_lexer_next_token(lex);                                             \
-            switch (token.type) {                                                                        \
-                case NEKO_TOKEN_LBRACE: {                                                                \
-                    bc++;                                                                                \
-                } break;                                                                                 \
-                case NEKO_TOKEN_RBRACE: {                                                                \
-                    bc--;                                                                                \
-                } break;                                                                                 \
-                                                                                                         \
-                case NEKO_TOKEN_IDENTIFIER: {                                                            \
-                    __VA_ARGS__                                                                          \
-                }                                                                                        \
-            }                                                                                            \
-        }                                                                                                \
+#define neko_parse_block(NAME, ...)                                                                               \
+    do {                                                                                                          \
+        neko_log_trace("[gfxt] neko_pipeline_load_from_file::parsing::%s", #NAME);                                \
+        if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_LBRACE)) {                                           \
+            neko_log_trace("[gfxt] error::neko_pipeline_load_from_file::error parsing raster from .sf resource"); \
+            neko_assert(false);                                                                                   \
+        }                                                                                                         \
+                                                                                                                  \
+        uint32_t bc = 1;                                                                                          \
+        while (neko_lexer_can_lex(lex) && bc) {                                                                   \
+            neko_token_t token = neko_lexer_next_token(lex);                                                      \
+            switch (token.type) {                                                                                 \
+                case NEKO_TOKEN_LBRACE: {                                                                         \
+                    bc++;                                                                                         \
+                } break;                                                                                          \
+                case NEKO_TOKEN_RBRACE: {                                                                         \
+                    bc--;                                                                                         \
+                } break;                                                                                          \
+                                                                                                                  \
+                case NEKO_TOKEN_IDENTIFIER: {                                                                     \
+                    __VA_ARGS__                                                                                   \
+                }                                                                                                 \
+            }                                                                                                     \
+        }                                                                                                         \
     } while (0)
 
 const char* neko_get_vertex_attribute_string(neko_graphics_vertex_attribute_type type) {
@@ -2053,7 +2053,7 @@ bool neko_parse_vertex_mesh_attributes(neko_lexer_t* lex, neko_gfxt_pipeline_des
         memcpy(attr.name, token_name.text, token_name.len);              \
         attr.format = NEKO_GRAPHICS_VERTEX_ATTRIBUTE_##VERT_ATTR;        \
         neko_dyn_array_push(desc->pip_desc.layout.attrs, attr);          \
-        /*neko_println("%s: %s", #MESH_ATTR, #VERT_ATTR);*/              \
+        /*neko_log_trace("[gfxt] %s: %s", #MESH_ATTR, #VERT_ATTR);*/     \
     } while (0)
 
                 if (neko_token_compare_text(&token, "POSITION"))
@@ -2113,7 +2113,7 @@ bool neko_parse_vertex_attributes(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* 
 
 bool neko_parse_shader_stage(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* desc, neko_ppd_t* ppd, neko_graphics_shader_stage_type stage) {
     if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_LBRACE)) {
-        neko_println("error::neko_pipeline_load_from_file::error parsing raster from .sf resource");
+        neko_log_trace("[gfxt] error::neko_pipeline_load_from_file::error parsing raster from .sf resource");
         neko_assert(false);
     }
 
@@ -2130,7 +2130,7 @@ bool neko_parse_shader_stage(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* desc,
 
             case NEKO_TOKEN_IDENTIFIER: {
                 if (stage == NEKO_GRAPHICS_SHADER_STAGE_VERTEX && neko_token_compare_text(&token, "attributes")) {
-                    neko_println("parsing attributes...");
+                    neko_log_trace("[gfxt] parsing attributes...");
                     if (!neko_parse_vertex_attributes(lex, desc, ppd)) {
                         neko_log_warning("Unable to parse vertex attributes.");
                         return false;
@@ -2138,7 +2138,7 @@ bool neko_parse_shader_stage(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* desc,
                 }
 
                 else if (neko_token_compare_text(&token, "uniforms")) {
-                    neko_println("parsing uniforms...");
+                    neko_log_trace("[gfxt] parsing uniforms...");
                     if (!neko_parse_uniforms(lex, desc, ppd, stage)) {
                         neko_log_warning("Unable to parse 'uniforms' for stage: %zu.", (u32)stage);
                         return false;
@@ -2146,7 +2146,7 @@ bool neko_parse_shader_stage(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* desc,
                 }
 
                 else if (neko_token_compare_text(&token, "out")) {
-                    neko_println("parsing out...");
+                    neko_log_trace("[gfxt] parsing out...");
                     if (!neko_parse_io(lex, desc, ppd, stage)) {
                         neko_log_warning("Unable to parse 'out' for stage: %zu.", (u32)stage);
                         return false;
@@ -2154,7 +2154,7 @@ bool neko_parse_shader_stage(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* desc,
                 }
 
                 else if (neko_token_compare_text(&token, "in")) {
-                    neko_println("parsing in...");
+                    neko_log_trace("[gfxt] parsing in...");
                     if (!neko_parse_io(lex, desc, ppd, stage)) {
                         neko_log_warning("Unable to parse 'in' for stage: %zu.", (u32)stage);
                         return false;
@@ -2162,7 +2162,7 @@ bool neko_parse_shader_stage(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* desc,
                 }
 
                 else if (neko_token_compare_text(&token, "code")) {
-                    neko_println("parsing code...");
+                    neko_log_trace("[gfxt] parsing code...");
                     if (!neko_parse_code(lex, desc, ppd, stage)) {
                         neko_log_warning("Unable to parse 'code' for stage: %zu.", (u32)stage);
                         return false;
@@ -2221,7 +2221,7 @@ bool neko_parse_shader(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* desc, neko_
             case NEKO_TOKEN_IDENTIFIER: {
                 // Vertex shader
                 if (neko_token_compare_text(&token, "vertex")) {
-                    neko_println("parsing vertex shader");
+                    neko_log_trace("[gfxt] parsing vertex shader");
                     if (!neko_parse_shader_stage(lex, desc, ppd, NEKO_GRAPHICS_SHADER_STAGE_VERTEX)) {
                         neko_log_warning("Unable to parse shader stage: Vertex");
                         return false;
@@ -2230,7 +2230,7 @@ bool neko_parse_shader(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* desc, neko_
 
                 // Fragment shader
                 else if (neko_token_compare_text(&token, "fragment")) {
-                    neko_println("parsing fragment shader");
+                    neko_log_trace("[gfxt] parsing fragment shader");
                     if (!neko_parse_shader_stage(lex, desc, ppd, NEKO_GRAPHICS_SHADER_STAGE_FRAGMENT)) {
                         neko_log_warning("Unable to parse shader stage: Fragment");
                         return false;
@@ -2239,7 +2239,7 @@ bool neko_parse_shader(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* desc, neko_
 
                 // Compute shader
                 else if (neko_token_compare_text(&token, "compute")) {
-                    neko_println("parsing compute shader");
+                    neko_log_trace("[gfxt] parsing compute shader");
                     if (!neko_parse_shader_stage(lex, desc, ppd, NEKO_GRAPHICS_SHADER_STAGE_COMPUTE)) {
                         neko_log_warning("Unable to parse shader stage: Compute");
                         return false;
@@ -2312,7 +2312,7 @@ bool neko_parse_depth(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* pdesc, neko_
                 neko_log_warning("Mask type %.*s not valid.", token.len, token.text);
                 return false;
             }
-            neko_println("MASK: %zu", (uint32_t)pdesc->pip_desc.depth.mask);
+            neko_log_trace("[gfxt] MASK: %zu", (uint32_t)pdesc->pip_desc.depth.mask);
         }
     });
     return true;
@@ -2710,7 +2710,7 @@ bool neko_parse_pipeline(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* desc, nek
         switch (token.type) {
             case NEKO_TOKEN_IDENTIFIER: {
                 if (neko_token_compare_text(&token, "shader")) {
-                    neko_println("parsing shader");
+                    neko_log_trace("[gfxt] parsing shader");
                     if (!neko_parse_shader(lex, desc, ppd)) {
                         neko_log_warning("Unable to parse shader descriptor");
                         return false;
@@ -2752,7 +2752,7 @@ bool neko_parse_pipeline(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* desc, nek
 }
 
 char* neko_pipeline_generate_shader_code(neko_gfxt_pipeline_desc_t* pdesc, neko_ppd_t* ppd, neko_graphics_shader_stage_type stage) {
-    neko_println("GENERATING CODE...");
+    neko_log_trace("[gfxt] GENERATING CODE...");
 
     // Get major/minor version of shader
     neko_graphics_info_t* ginfo = neko_graphics_info();
@@ -2956,9 +2956,9 @@ NEKO_API_DECL neko_gfxt_pipeline_t neko_gfxt_pipeline_load_from_memory_ext(const
             }
         }
         // Now save dir
-        neko_println("HERE: %zu", tparen.text - file_path);
+        neko_log_trace("[gfxt] HERE: %zu", tparen.text - file_path);
         memcpy(ppd.dir, file_path, tparen.text - file_path);
-        neko_println("PPD_DIR: %s", ppd.dir);
+        neko_log_trace("[gfxt] PPD_DIR: %s", ppd.dir);
     }
 
     neko_lexer_t lex = neko_lexer_c_ctor(file_data);
@@ -2978,15 +2978,15 @@ NEKO_API_DECL neko_gfxt_pipeline_t neko_gfxt_pipeline_load_from_memory_ext(const
 
     // Generate vertex shader code
     char* v_src = neko_pipeline_generate_shader_code(&pdesc, &ppd, NEKO_GRAPHICS_SHADER_STAGE_VERTEX);
-    // neko_println("%s", v_src);
+    // neko_log_trace("[gfxt] %s", v_src);
 
     // Generate fragment shader code
     char* f_src = neko_pipeline_generate_shader_code(&pdesc, &ppd, NEKO_GRAPHICS_SHADER_STAGE_FRAGMENT);
-    // neko_println("%s", f_src);
+    // neko_log_trace("[gfxt] %s", f_src);
 
     // Generate compute shader code (need to check for this first)
     char* c_src = neko_pipeline_generate_shader_code(&pdesc, &ppd, NEKO_GRAPHICS_SHADER_STAGE_COMPUTE);
-    // neko_println("%s", c_src);
+    // neko_log_trace("[gfxt] %s", c_src);
 
     // Construct compute shader
     if (c_src) {

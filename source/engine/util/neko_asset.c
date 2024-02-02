@@ -105,8 +105,8 @@ void neko_asset_default_load_from_file(const_str path, void *out) {
 #include "libs/cgltf/cgltf.h"
 
 // STB
-#include "libs/stb/stb_rect_pack.h"
-#include "libs/stb/stb_truetype.h"
+#include "libs/imgui/imstb_rectpack.h"
+#include "libs/imgui/imstb_truetype.h"
 
 NEKO_API_DECL bool32_t neko_util_load_texture_data_from_memory(const void *memory, size_t sz, s32 *width, s32 *height, u32 *num_comps, void **data, bool32_t flip_vertically_on_load) {
     // Load texture data

@@ -539,7 +539,8 @@ NEKO_API_DECL neko_script_binary_t *neko_script_compile_str(const char *code);
 NEKO_API_DECL neko_script_binary_t *neko_script_compile_file(const char *filename);
 
 NEKO_API_DECL int neko_script_eval_str(neko_script_ctx_t *ctx, char *code, neko_script_binary_t *(*load_module)(char *name), void *(trap)(neko_script_ctx_t *ctx));
-NEKO_API_DECL neko_script_binary_t *neko_script_eval_file(neko_script_ctx_t *ctx, char *filename, neko_script_binary_t *(*load_module)(char *name), void *(trap)(neko_script_ctx_t *ctx), bool do_free);
+NEKO_API_DECL neko_script_binary_t *neko_script_eval_file(neko_script_ctx_t *ctx, const_str filename, neko_script_binary_t *(*load_module)(char *name), void *(trap)(neko_script_ctx_t *ctx),
+                                                          bool do_free);
 NEKO_API_DECL int neko_script_dis_str(neko_script_ctx_t *ctx, char *code, neko_script_binary_t *(*load_module)(char *name), void *(trap)(neko_script_ctx_t *ctx));
 
 #if defined(NEKO_CPP_SRC)

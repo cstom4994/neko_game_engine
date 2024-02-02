@@ -4,8 +4,8 @@
 #include "engine/builtin/neko_png.h"
 
 // STB
-#include "libs/stb/stb_rect_pack.h"
-#include "libs/stb/stb_truetype.h"
+#include "libs/imgui/imstb_rectpack.h"
+#include "libs/imgui/imstb_truetype.h"
 
 // 立即绘制模式 静态数据的全局实例
 neko_immediate_draw_static_data_t* g_neko_idraw = NULL;

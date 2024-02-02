@@ -114,7 +114,7 @@ neko_inline int add_package_path(lua_State *L, const std::string &str_) {
 
 #define FUTIL_ASSERT_EXIST(x)
 
-neko_string __neko_game_get_path(const neko_string &path);
+neko_string game_assets(const neko_string &path);
 
 // lua 面向对象模拟
 const neko_string neko_lua_src_object = R"lua(
@@ -263,10 +263,11 @@ static void lua_reg(lua_State *L) {
     luaopen_cstruct_core(L);
     luaopen_cstruct_test(L);
     luaopen_datalist(L);
+    luaopen_neko_ecs(L);
 
     neko_register(L);
 
-    neko_lua_debug_setup(L, "debugger", "dbg", NULL, NULL);
+    neko_lua_debug_setup(L, "debugger", "dbg", NULL, NULL, game_assets("gamedir/scripts/libs/debugger.lua").c_str());
 }
 
 static int __neko_lua_catch_panic(lua_State *L) {
@@ -292,17 +293,17 @@ lua_State *neko_scripting_init() {
         neko_lua_wrap_run_string(L, std::format("package.path = "
                                                 "'{1}/?.lua;{0}/?.lua;{0}/libs/?.lua;{0}/libs/?/init.lua;{0}/libs/"
                                                 "?/?.lua;' .. package.path",
-                                                __neko_game_get_path("gamedir/scripts"), neko_fs_normalize_path(std::filesystem::current_path().string()).c_str()));
+                                                game_assets("gamedir/scripts"), neko_fs_normalize_path(std::filesystem::current_path().string()).c_str()));
 
         neko_lua_wrap_run_string(L, std::format("package.cpath = "
                                                 "'{1}/?.{2};{0}/?.{2};{0}/libs/?.{2};{0}/libs/?/init.{2};{0}/libs/"
                                                 "?/?.{2};' .. package.cpath",
-                                                __neko_game_get_path("gamedir/scripts"), neko_fs_normalize_path(std::filesystem::current_path().string()).c_str(), "dll"));
+                                                game_assets("gamedir/scripts"), neko_fs_normalize_path(std::filesystem::current_path().string()).c_str(), "dll"));
 
         // 面向对象基础
         neko_lua_wrap_run_string(L, neko_lua_src_object);
 
-        neko_lua_wrap_do_file(L, __neko_game_get_path("gamedir/scripts/init.lua"));
+        neko_lua_wrap_do_file(L, game_assets("gamedir/scripts/init.lua"));
 
     } catch (std::exception &ex) {
         neko_log_error("%s", ex.what());

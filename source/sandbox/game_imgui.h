@@ -51,9 +51,21 @@ void neko_imgui_new_frame(neko_imgui_context_t* gs);
 
 neko_global std::size_t g_imgui_mem_usage = 0;
 
-neko_private(void*) __neko_imgui_malloc(size_t sz, void* user_data) { return __neko_mem_safe_alloc((sz), (char*)__FILE__, __LINE__, &g_imgui_mem_usage); }
+neko_private(void*) __neko_imgui_malloc(size_t sz, void* user_data) {
+#ifdef NEKO_IMGUI_USE_GC
+    return __neko_mem_safe_alloc((sz), (char*)__FILE__, __LINE__, &g_imgui_mem_usage);
+#else
+    return malloc(sz);
+#endif
+}
 
-neko_private(void) __neko_imgui_free(void* ptr, void* user_data) { __neko_mem_safe_free(ptr, &g_imgui_mem_usage); }
+neko_private(void) __neko_imgui_free(void* ptr, void* user_data) {
+#ifdef NEKO_IMGUI_USE_GC
+    __neko_mem_safe_free(ptr, &g_imgui_mem_usage);
+#else
+    return free(ptr);
+#endif
+}
 
 std::size_t __neko_imgui_meminuse() { return g_imgui_mem_usage; }
 
@@ -171,8 +183,6 @@ neko_imgui_context_t neko_imgui_new(u32 hndl, bool install_callbacks) {
 
     // Setup backend capabilities flags
     ImGuiIO& io = ImGui::GetIO();
-    // io.BackendFlags |= ImGuiBackendFlaneko_HasMouseCursors;  // We can honor GetMouseCursor() values (optional)
-    // io.BackendFlags |= ImGuiBackendFlaneko_HasSetMousePos;   // We can honor io.WantSetMousePos requests (optional, rarely used)
     io.BackendPlatformName = "imgui_impl_neko";
 
     // Keyboard mapping. ImGui will use those indices to peek into the io.KeysDown[] array.
@@ -191,16 +201,13 @@ neko_imgui_context_t neko_imgui_new(u32 hndl, bool install_callbacks) {
     io.KeyMap[ImGuiKey_Space] = neko_platform_key_to_codepoint(NEKO_KEYCODE_SPACE);
     io.KeyMap[ImGuiKey_Enter] = neko_platform_key_to_codepoint(NEKO_KEYCODE_ENTER);
     io.KeyMap[ImGuiKey_Escape] = neko_platform_key_to_codepoint(NEKO_KEYCODE_ESC);
-    // io.KeyMap[ImGuiKey_KeyPadEnter] = neko_platform_key_to_codepoint(NEKO_KEYCODE_KP_ENTER);
+    io.KeyMap[ImGuiKey_KeypadEnter] = neko_platform_key_to_codepoint(NEKO_KEYCODE_KP_ENTER);
     io.KeyMap[ImGuiKey_A] = neko_platform_key_to_codepoint(NEKO_KEYCODE_A);
     io.KeyMap[ImGuiKey_C] = neko_platform_key_to_codepoint(NEKO_KEYCODE_C);
     io.KeyMap[ImGuiKey_V] = neko_platform_key_to_codepoint(NEKO_KEYCODE_V);
     io.KeyMap[ImGuiKey_X] = neko_platform_key_to_codepoint(NEKO_KEYCODE_X);
     io.KeyMap[ImGuiKey_Y] = neko_platform_key_to_codepoint(NEKO_KEYCODE_Y);
     io.KeyMap[ImGuiKey_Z] = neko_platform_key_to_codepoint(NEKO_KEYCODE_Z);
-
-    // Rendering
-    // io.BackendFlags |= ImGuiBackendFlaneko_RendererHasVtxOffset;
 
     neko_imgui_device_create(&neko_imgui);
 
@@ -349,6 +356,8 @@ void neko_imgui_update_mouse_and_keys(neko_imgui_context_t* ctx) {
     // Mouse wheel
     neko_platform_mouse_wheel(&io.MouseWheelH, &io.MouseWheel);
 }
+
+void neko_imgui_shutdown(neko_imgui_context_t* neko_imgui) { ImGui::DestroyContext(neko_imgui->ctx); }
 
 void neko_imgui_new_frame(neko_imgui_context_t* neko_imgui) {
     neko_assert(neko_imgui->ctx != nullptr);

@@ -15,7 +15,7 @@ static u64 time_since_stat_clicked = neko_profiler_get_clock();
 static const char *stat_clicked_name = 0;
 static u32 stat_clicked_level = 0;
 
-neko_inline void flash_color(ImU32 &_drawColor, uint64_t _elapsedTime) {
+neko_inline void flash_color(ImU32 &_drawColor, u64 _elapsedTime) {
     ImVec4 white4 = ImColor(IM_COL32_WHITE);
 
     f32 msSince = __neko_profiler_clock2ms(_elapsedTime, __neko_profiler_get_clock_frequency());
@@ -26,7 +26,7 @@ neko_inline void flash_color(ImU32 &_drawColor, uint64_t _elapsedTime) {
     _drawColor = ImColor(col4.x + (white4.x - col4.x) * msSince, col4.y + (white4.y - col4.y) * msSince, col4.z + (white4.z - col4.z) * msSince, 255.0f);
 }
 
-neko_inline void flash_color_named(ImU32 &_drawColor, neko_profiler_scope_t &_cs, uint64_t _elapsedTime) {
+neko_inline void flash_color_named(ImU32 &_drawColor, neko_profiler_scope_t &_cs, u64 _elapsedTime) {
     if (stat_clicked_name && (strcmp(_cs.name, stat_clicked_name) == 0) && (_cs.level == stat_clicked_level)) flash_color(_drawColor, _elapsedTime);
 }
 
@@ -73,7 +73,7 @@ neko_inline struct sort_frame_info_asc {
     }
 } customAsc;
 
-void profiler_draw_frame_bavigation(frame_info *_infos, uint32_t _numInfos) {
+void profiler_draw_frame_bavigation(frame_info *_infos, u32 _numInfos) {
     ImGui::SetNextWindowPos(ImVec2(10.0f, 10.0f), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(1510.0f, 140.0f), ImGuiCond_FirstUseEver);
 
@@ -104,7 +104,7 @@ void profiler_draw_frame_bavigation(frame_info *_infos, uint32_t _numInfos) {
     };
 
     f32 maxTime = 0;
-    for (uint32_t i = 0; i < _numInfos; ++i) {
+    for (u32 i = 0; i < _numInfos; ++i) {
         if (maxTime < _infos[i].time) maxTime = _infos[i].time;
     }
 
@@ -321,17 +321,17 @@ s32 neko_profiler_draw_frame(neko_profiler_frame_t *_data, void *_buffer, size_t
         return ret;
     }
 
-    uint64_t threadID = _data->scopes[0].thread_id;
+    u64 threadID = _data->scopes[0].thread_id;
     bool writeThreadName = true;
 
-    uint64_t totalTime = _data->end_time - _data->start_time;
+    u64 totalTime = _data->end_time - _data->start_time;
 
     f32 barHeight = 21.0f;
     f32 bottom = 0.0f;
 
-    uint64_t currTime = neko_profiler_get_clock();
+    u64 currTime = neko_profiler_get_clock();
 
-    for (uint32_t i = 0; i < _data->num_scopes; ++i) {
+    for (u32 i = 0; i < _data->num_scopes; ++i) {
         neko_profiler_scope_t &cs = _data->scopes[i];
         if (!cs.name) continue;
 
@@ -348,7 +348,7 @@ s32 neko_profiler_draw_frame(neko_profiler_frame_t *_data, void *_buffer, size_t
             draw_list->PushClipRect(tlt, brt, true);
             draw_list->AddRectFilled(tlt, brt, IM_COL32(45, 45, 60, 255));
             const char *threadName = "Unnamed thread";
-            for (uint32_t j = 0; j < _data->num_threads; ++j)
+            for (u32 j = 0; j < _data->num_threads; ++j)
                 if (_data->threads[j].thread_id == threadID) {
                     threadName = _data->threads[j].name;
                     break;
@@ -466,7 +466,7 @@ void neko_profiler_draw_stats(neko_profiler_frame_t *_data, bool _multi) {
     f32 frameEndX = frameStartX + s.x - 23;
     f32 frameStartY = p.y + 21.0f;
 
-    uint64_t totalTime = 0;
+    u64 totalTime = 0;
     if (exclusive == 0)
         totalTime = _data->scopes_stats[0].stats->exclusive_time_total;
     else
@@ -476,7 +476,7 @@ void neko_profiler_draw_stats(neko_profiler_frame_t *_data, bool _multi) {
 
     ImDrawList *draw_list = ImGui::GetWindowDrawList();
 
-    for (uint32_t i = 0; i < _data->num_scopes_stats; i++) {
+    for (u32 i = 0; i < _data->num_scopes_stats; i++) {
         neko_profiler_scope_t &cs = _data->scopes_stats[i];
 
         f32 endXpct = f32(cs.stats->exclusive_time_total) / f32(totalTime);

@@ -33,6 +33,9 @@
 #include "neko_hash.h"
 #include "neko_nui_auto.hpp"
 
+// lua
+#include "neko_scripting.h"
+
 // hpp
 #include "hpp/neko_static_refl.hpp"
 #include "hpp/neko_struct.hpp"
@@ -49,10 +52,10 @@
 #define NEKO_PNG_IMPLEMENTATION
 #include "engine/builtin/neko_png.h"
 
-#define CUTE_FILEWATCH_IMPLEMENTATION
 #define STRPOOL_IMPLEMENTATION
-#define ASSETSYS_IMPLEMENTATION
-#include "engine/builtin/cute_filewatch.h"
+#define NEKO_FILEWATCH_IMPL
+#define NEKO_ASSETSYS_IMPL
+#include "engine/builtin/neko_filewatch.h"
 
 // opengl
 #include "libs/glad/glad.h"
@@ -81,7 +84,11 @@ neko_packreader_t g_pack = neko_default_val();
 
 game_vm_t g_vm = neko_default_val();
 
+#ifdef GAME_CSHARP_ENABLED
 game_csharp g_csharp;
+#endif
+
+lua_State *L = nullptr;
 
 // ai test
 enum { AI_STATE_MOVE = 0x00, AI_STATE_HEAL };
@@ -102,21 +109,21 @@ template <>
 struct neko::meta::static_refl::TypeInfo<neko_platform_running_desc_t> : TypeInfoBase<neko_platform_running_desc_t> {
     static constexpr AttrList attrs = {};
     static constexpr FieldList fields = {
-            Field{TSTR("title"), &Type::title},                  // 窗口标题
-            Field{TSTR("width"), &Type::width},                  //
-            Field{TSTR("height"), &Type::height},                //
-            Field{TSTR("flags"), &Type::flags},                  //
-            Field{TSTR("num_samples"), &Type::num_samples},      //
-            Field{TSTR("monitor_index"), &Type::monitor_index},  //
-            Field{TSTR("vsync"), &Type::vsync},                  // 启用 vsync
-            Field{TSTR("frame_rate"), &Type::frame_rate},        // 限制帧率
-            Field{TSTR("engine_args"), &Type::engine_args},      // 引擎参数
+            rf_field{TSTR("title"), &Type::title},                  // 窗口标题
+            rf_field{TSTR("width"), &Type::width},                  //
+            rf_field{TSTR("height"), &Type::height},                //
+            rf_field{TSTR("flags"), &Type::flags},                  //
+            rf_field{TSTR("num_samples"), &Type::num_samples},      //
+            rf_field{TSTR("monitor_index"), &Type::monitor_index},  //
+            rf_field{TSTR("vsync"), &Type::vsync},                  // 启用 vsync
+            rf_field{TSTR("frame_rate"), &Type::frame_rate},        // 限制帧率
+            rf_field{TSTR("engine_args"), &Type::engine_args},      // 引擎参数
     };
 };
 
 #define CVAR_TYPES() bool, s32, f32, f32 *
 
-struct neko_engine_cvar_t {
+typedef struct neko_engine_cvar_s {
     bool show_editor = false;
 
     bool show_demo_window = false;
@@ -132,7 +139,7 @@ struct neko_engine_cvar_t {
     bool vsync = true;
 
     f32 bg[3] = {28, 28, 28};
-};
+} neko_engine_cvar_t;
 
 neko_struct(neko_engine_cvar_t,                            //
             _Fs(show_editor, "Is show editor"),            //
@@ -899,7 +906,7 @@ neko_script_binary_t *ns_load_module(char *name) {
     return NULL;
 }
 
-void watch_map_callback(filewatch_update_t change, const char *virtual_path, void *udata) {
+void watch_map_callback(neko_filewatch_update_t change, const char *virtual_path, void *udata) {
     const char *change_string = nullptr;
     switch (change) {
         case FILEWATCH_DIR_ADDED:
@@ -931,7 +938,7 @@ void watch_map_callback(filewatch_update_t change, const char *virtual_path, voi
     }
 }
 
-void watch_managed_callback(filewatch_update_t change, const char *virtual_path, void *udata) {
+void watch_managed_callback(neko_filewatch_update_t change, const char *virtual_path, void *udata) {
     const char *change_string = nullptr;
     switch (change) {
         case FILEWATCH_DIR_ADDED:
@@ -954,12 +961,14 @@ void watch_managed_callback(filewatch_update_t change, const char *virtual_path,
     neko_println("%s at %s", change_string, virtual_path);
 
     if (!strcmp(virtual_path, "/managed/Example.Managed.dll") && change == FILEWATCH_FILE_MODIFIED) {
+#ifdef GAME_CSHARP_ENABLED
         g_csharp.hotfix();
+#endif
     }
 }
 
-assetsys_t *assetsys;
-filewatch_t *filewatch;
+neko_assetsys_t *g_assetsys;
+neko_filewatch_t *filewatch;
 
 void game_init() {
     g_cb = neko_command_buffer_new();
@@ -984,26 +993,25 @@ void game_init() {
 
     g_vm.ctx = neko_script_ctx_new(nullptr);
 
-    // 测试 csharp wrapper
-#ifdef NEKO_DEBUG
-    test_cs(game_assets("gamedir/managed/debug"));
-#else
-    test_cs(game_assets("gamedir/managed/release"));
-#endif
+    L = neko_scripting_init();
 
-    //
+    // 测试 csharp wrapper
+#ifdef GAME_CSHARP_ENABLED
+
 #ifdef NEKO_DEBUG
     std::string managed_path(game_assets("gamedir/managed/debug"));
 #else
     std::string managed_path(game_assets("gamedir/managed/release"));
 #endif
 
-    g_csharp.init(managed_path);
+    test_cs(managed_path);
 
-    /*
+    g_csharp.init(managed_path);
+#endif
+
     {
         neko_lua_wrap_register_t<>(L).def(
-                +[](const_str path) -> neko_string { return __neko_game_get_path(path); }, "neko_file_path");
+                +[](const_str path) -> neko_string { return game_assets(path); }, "neko_file_path");
 
         lua_newtable(L);
         for (int n = 0; n < neko_instance()->ctx.game.argc; ++n) {
@@ -1012,7 +1020,7 @@ void game_init() {
         }
         lua_setglobal(L, "arg");
 
-        neko_lua_wrap_do_file(L, __neko_game_get_path("gamedir/scripts/main.lua"));
+        neko_lua_wrap_do_file(L, game_assets("gamedir/scripts/main.lua"));
 
         neko_platform_running_desc_t t = {.title = "Neko Engine", .engine_args = ""};
 
@@ -1042,7 +1050,6 @@ void game_init() {
     } catch (std::exception &ex) {
         neko_log_error("lua exception %s", ex.what());
     }
-    */
 
     neko_pack_result result = neko_pack_read(game_assets("gamedir/res.pack").c_str(), 0, false, &g_pack);
     neko_pack_check(result);
@@ -1404,25 +1411,24 @@ void main() { out_col = texture(u_sprite_texture, v_uv); }
     u_voxels = neko_graphics_storage_buffer_create(
             neko_c_ref(neko_graphics_storage_buffer_desc_t, {.data = &data, .size = sizeof(neko_vec4), .name = "u_voxels", .usage = NEKO_GRAPHICS_BUFFER_USAGE_DYNAMIC}));
 
-    assetsys = assetsys_create(0);
-    filewatch = filewatch_create(assetsys, 0);
+    g_assetsys = neko_assetsys_create(0);
+    filewatch = neko_filewatch_create(g_assetsys, 0);
 
     // filewatch_mount(filewatch, "./source", "/data");
-    filewatch_mount(filewatch, game_assets("gamedir/style_sheets").c_str(), "/style_sheets");
-    filewatch_mount(filewatch, game_assets("gamedir/maps").c_str(), "/maps");
-    filewatch_mount(filewatch, game_assets("gamedir/managed/debug").c_str(), "/managed");
+    neko_filewatch_mount(filewatch, game_assets("gamedir/style_sheets").c_str(), "/style_sheets");
+    neko_filewatch_mount(filewatch, game_assets("gamedir/maps").c_str(), "/maps");
+    neko_filewatch_mount(filewatch, game_assets("gamedir/managed/debug").c_str(), "/managed");
 
-    filewatch_start_watching(filewatch, "/maps", watch_map_callback, 0);
-    filewatch_start_watching(filewatch, "/managed", watch_managed_callback, 0);
+    neko_filewatch_start_watching(filewatch, "/maps", watch_map_callback, 0);
+    neko_filewatch_start_watching(filewatch, "/managed", watch_managed_callback, 0);
 }
 
 void game_update() {
-
     //    if (is_hotfix_loaded) neko_hotload_module_update(ctx);
 
     neko_timed_action(250, {
-        filewatch_update(filewatch);
-        filewatch_notify(filewatch);
+        neko_filewatch_update(filewatch);
+        neko_filewatch_notify(filewatch);
     });
 
     neko_vec2 fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
@@ -1487,17 +1493,19 @@ void game_update() {
         neko_profiler_scope_end(ecs_update);
     }
 
+#ifdef GAME_CSHARP_ENABLED
     {
         neko_profiler_scope_begin(csharp_update);
         g_csharp.update();
         neko_profiler_scope_end(csharp_update);
     }
+#endif
 
-    // try {
-    //     neko_lua_wrap_call(L, "test_update");
-    // } catch (std::exception &ex) {
-    //     neko_log_error("lua exception %s", ex.what());
-    // }
+    try {
+        neko_lua_wrap_call(L, "test_update");
+    } catch (std::exception &ex) {
+        neko_log_error("lua exception %s", ex.what());
+    }
 
     // Do rendering
     neko_graphics_clear_action_t clear_action = {.color = {g_cvar.bg[0] / 255, g_cvar.bg[1] / 255, g_cvar.bg[2] / 255, 1.f}};
@@ -1572,9 +1580,9 @@ void game_update() {
         neko_profiler_scope_end(render_immediate);
     }
 
-    if (g_client_userdata.module_count) {
-        if (g_client_userdata.module_func[0]) {
-            g_client_userdata.module_func[0]();
+    if (g_client_userdata.vm.module_count) {
+        if (g_client_userdata.vm.module_func[0]) {
+            g_client_userdata.vm.module_func[0]();
         }
     }
 
@@ -1857,6 +1865,8 @@ void game_update() {
     if (g_cvar.show_editor) {
         if (ImGui::BeginMainMenuBar()) {
             if (ImGui::BeginMenu("engine")) {
+                if (ImGui::Checkbox("cvar", &g_cvar.show_cvar_window))
+                    ;
                 if (ImGui::Checkbox("vsync", &g_cvar.vsync)) neko_platform_enable_vsync(g_cvar.vsync);
                 if (ImGui::MenuItem("quit")) neko_quit();
                 ImGui::EndMenu();
@@ -2022,181 +2032,185 @@ void game_update() {
         neko_gui_end(gui_ctx);
     };
 
-    if (g_cvar.show_pack_editor) pack_editor_func();
+    auto cvar_func = [gui_ctx]() {
+        if (neko_gui_begin(gui_ctx, "Hello Neko", neko_gui_layout_get_bounds_ex(&g_gui, "Hello Neko", neko_gui_rect(1050, 200, 350, 700)),
+                           NEKO_GUI_WINDOW_BORDER | NEKO_GUI_WINDOW_MOVABLE | NEKO_GUI_WINDOW_SCALABLE | NEKO_GUI_WINDOW_MINIMIZABLE | NEKO_GUI_WINDOW_TITLE)) {
 
-    if (neko_gui_begin(gui_ctx, "Hello Neko", neko_gui_layout_get_bounds_ex(&g_gui, "Hello Neko", neko_gui_rect(1050, 200, 350, 700)),
-                       NEKO_GUI_WINDOW_BORDER | NEKO_GUI_WINDOW_MOVABLE | NEKO_GUI_WINDOW_SCALABLE | NEKO_GUI_WINDOW_MINIMIZABLE | NEKO_GUI_WINDOW_TITLE)) {
+            enum { EASY, HARD };
+            static int op = EASY;
+            static int property = 20;
+            static std::string str = "Hello shit";
 
-        enum { EASY, HARD };
-        static int op = EASY;
-        static int property = 20;
-        static std::string str = "Hello shit";
+            static std::vector<int> vec = {op, property};
+            static std::map<std::string, int> mp = {{"AA", op}, {"BB", property}};
+            static std::pair<std::string, int> pp = {"CC", property};
+            static std::string *p_str = NULL;
 
-        static std::vector<int> vec = {op, property};
-        static std::map<std::string, int> mp = {{"AA", op}, {"BB", property}};
-        static std::pair<std::string, int> pp = {"CC", property};
-        static std::string *p_str = NULL;
+            neko_gui_layout_row_static(gui_ctx, 30, 125, 1);
 
-        neko_gui_layout_row_static(gui_ctx, 30, 125, 1);
-
-        try {
-            neko_cvar_gui();
-        } catch (const std::exception &ex) {
-            neko_log_error("cvar exception %s", ex.what());
-        }
-
-        neko_gui::gui_auto(property, "test_auto_1");
-        neko_gui::gui_auto(vec, "test_auto_2");
-        neko_gui::gui_auto(str, "test_auto_3");
-        neko_gui::gui_auto(mp, "test_auto_4");
-        neko_gui::gui_auto(pp, "test_auto_5");
-        neko_gui::gui_auto(p_str, "test_auto_6");
-
-        neko_gui_layout_row_dynamic(gui_ctx, 300, 1);
-        if (neko_gui_group_begin(gui_ctx, "ECS", NEKO_GUI_WINDOW_TITLE | NEKO_GUI_WINDOW_BORDER | NEKO_GUI_WINDOW_SCROLL_AUTO_HIDE)) {
-
-            neko_gui_layout_row_static(gui_ctx, 18, 125, 1);
-
-            for (neko_ecs_ent_view v = neko_ecs_ent_view_single(neko_ecs(), COMPONENT_GAMEOBJECT); neko_ecs_ent_view_valid(&v); neko_ecs_ent_view_next(&v)) {
-                CGameObject *gameobj = (CGameObject *)neko_ecs_ent_get_component(neko_ecs(), v.ent, COMPONENT_GAMEOBJECT);
-                // neko_println("%d %d %d %d %s", v.i, v.ent, v.valid, v.view_type, gameobj->name);
-
-                neko_gui_selectable_label(gui_ctx, gameobj->name, NEKO_GUI_TEXT_CENTERED, (neko_gui_bool *)&gameobj->selected);
+            try {
+                neko_cvar_gui();
+            } catch (const std::exception &ex) {
+                neko_log_error("cvar exception %s", ex.what());
             }
 
-            neko_gui_group_end(gui_ctx);
-        }
+            neko_gui::gui_auto(property, "test_auto_1");
+            neko_gui::gui_auto(vec, "test_auto_2");
+            neko_gui::gui_auto(str, "test_auto_3");
+            neko_gui::gui_auto(mp, "test_auto_4");
+            neko_gui::gui_auto(pp, "test_auto_5");
+            neko_gui::gui_auto(p_str, "test_auto_6");
 
-        neko_gui_layout_row_dynamic(gui_ctx, 300, 1);
-        if (neko_gui_group_begin(gui_ctx, "CVars", NEKO_GUI_WINDOW_TITLE | NEKO_GUI_WINDOW_BORDER | NEKO_GUI_WINDOW_SCROLL_AUTO_HIDE)) {
+            neko_gui_layout_row_dynamic(gui_ctx, 300, 1);
+            if (neko_gui_group_begin(gui_ctx, "ECS", NEKO_GUI_WINDOW_TITLE | NEKO_GUI_WINDOW_BORDER | NEKO_GUI_WINDOW_SCROLL_AUTO_HIDE)) {
 
-            neko_gui_layout_row_static(gui_ctx, 30, 150, 2);
+                neko_gui_layout_row_static(gui_ctx, 18, 125, 1);
 
-            if (neko_gui_button_label(gui_ctx, "test_fnt")) {
-                FILE *file = fopen("1.fnt", "rb");
-                neko_fnt *fnt = neko_font_fnt_read(file);
-                fclose(file);
-                if (NULL != fnt && fnt->num_glyphs > 0) {
-                    neko_println("Got FNT! %i glyphs", fnt->num_glyphs);
-                    // printf("First glyph is '%c' in page '%s'.\n", fnt->glyphs[0].ch, fnt->page_names[fnt->glyphs[0].page]);
-
-                    for (int i = 0; i < fnt->num_glyphs; i += 10) {
-                        neko_println("glyph '%u' in '%s'", fnt->glyphs[i].ch, fnt->page_names[fnt->glyphs[i].page]);
-                    }
-                }
-                neko_font_fnt_free(fnt);
-            }
-            if (neko_gui_button_label(gui_ctx, "test_xml")) test_xml(game_assets("gamedir/tests/test.xml"));
-            if (neko_gui_button_label(gui_ctx, "test_se")) test_se();
-            if (neko_gui_button_label(gui_ctx, "test_sr")) test_sr();
-            if (neko_gui_button_label(gui_ctx, "test_ut")) test_ut();
-            if (neko_gui_button_label(gui_ctx, "test_backtrace")) __neko_inter_stacktrace();
-            if (neko_gui_button_label(gui_ctx, "test_containers")) test_containers();
-            if (neko_gui_button_label(gui_ctx, "test_sexpr")) test_sexpr();
-            if (neko_gui_button_label(gui_ctx, "test_nbt")) test_nbt();
-            if (neko_gui_button_label(gui_ctx, "test_sc")) {
-                neko_timer_do(t, neko_println("%llu", t), { test_sc(); });
-            }
-            if (neko_gui_button_label(gui_ctx, "test_ttf")) {
-                neko_timer_do(t, neko_println("%llu", t), { test_ttf(); });
-            }
-            if (neko_gui_button_label(gui_ctx, "test_hotload")) {
-
-                std::string command = "build_hotload.bat";
-
-                //                FILE *pipe = _popen(command.c_str(), "r");
-                //                if (!pipe) {
-                //                    neko_log_error("%s", "Unable to create pipeline");
-                //                } else {
-                //                    char buffer[128];
-                //                    while (!feof(pipe)) {
-                //                        if (fgets(buffer, 128, pipe) != nullptr) {
-                //                            std::cout << buffer;
-                //                        }
-                //                    }
-                //                    _pclose(pipe);
-                //                }
-            }
-            if (neko_gui_button_label(gui_ctx, "test_ecs_view")) {
                 for (neko_ecs_ent_view v = neko_ecs_ent_view_single(neko_ecs(), COMPONENT_GAMEOBJECT); neko_ecs_ent_view_valid(&v); neko_ecs_ent_view_next(&v)) {
                     CGameObject *gameobj = (CGameObject *)neko_ecs_ent_get_component(neko_ecs(), v.ent, COMPONENT_GAMEOBJECT);
-                    neko_println("%d %d %d %d %s", v.i, v.ent, v.valid, v.view_type, gameobj->name);
+                    // neko_println("%d %d %d %d %s", v.i, v.ent, v.valid, v.view_type, gameobj->name);
+
+                    neko_gui_selectable_label(gui_ctx, gameobj->name, NEKO_GUI_TEXT_CENTERED, (neko_gui_bool *)&gameobj->selected);
                 }
+
+                neko_gui_group_end(gui_ctx);
             }
-            if (neko_gui_button_label(gui_ctx, "test_ecs_cpp")) {
-                forEachComponentType([&]<typename T>() {
-                    // 打印类型名称 它是一个更大字符串的 std::string_view 因此我们使用“%.*s”
-                    // `std::printf` 的形式
-                    constexpr auto typeName = getTypeName<T>();
-                    std::printf("component type: %.*s\n", int(typeName.size()), typeName.data());
 
-                    // 设置组件的默认值并打印其 props
-                    T val{};
-                    std::printf("  props:\n");
-                    forEachProp(val, [&](auto propTag, auto &propVal) {
-                        // `propTag` 每个 prop 都有不同的类型 并保存包括名称在内的属性 我们打印
-                        // 首先是名称。名称是 std::string_view  但它指向的整个字符串是
-                        // 名称 以便我们可以直接打印其数据
-                        std::printf("    %s: ", propTag.attribs.name.data());
+            neko_gui_layout_row_dynamic(gui_ctx, 300, 1);
+            if (neko_gui_group_begin(gui_ctx, "CVars", NEKO_GUI_WINDOW_TITLE | NEKO_GUI_WINDOW_BORDER | NEKO_GUI_WINDOW_SCROLL_AUTO_HIDE)) {
 
-                        // 调用上面重载的print函数之一来打印值本身
-                        print(propVal);
+                neko_gui_layout_row_static(gui_ctx, 30, 150, 2);
 
-                        // 现在我们打印是否设置了`exampleFlag`请注意 我们可以检查属性`constexpr`
-                        if (propTag.attribs.exampleFlag) {
-                            std::printf(" (example flag set)");
+                if (neko_gui_button_label(gui_ctx, "test_fnt")) {
+                    FILE *file = fopen("1.fnt", "rb");
+                    neko_fnt *fnt = neko_font_fnt_read(file);
+                    fclose(file);
+                    if (NULL != fnt && fnt->num_glyphs > 0) {
+                        neko_println("Got FNT! %i glyphs", fnt->num_glyphs);
+                        // printf("First glyph is '%c' in page '%s'.\n", fnt->glyphs[0].ch, fnt->page_names[fnt->glyphs[0].page]);
+
+                        for (int i = 0; i < fnt->num_glyphs; i += 10) {
+                            neko_println("glyph '%u' in '%s'", fnt->glyphs[i].ch, fnt->page_names[fnt->glyphs[i].page]);
                         }
+                    }
+                    neko_font_fnt_free(fnt);
+                }
+                if (neko_gui_button_label(gui_ctx, "test_xml")) test_xml(game_assets("gamedir/tests/test.xml"));
+                if (neko_gui_button_label(gui_ctx, "test_se")) test_se();
+                if (neko_gui_button_label(gui_ctx, "test_sr")) test_sr();
+                if (neko_gui_button_label(gui_ctx, "test_ut")) test_ut();
+                if (neko_gui_button_label(gui_ctx, "test_backtrace")) __neko_inter_stacktrace();
+                if (neko_gui_button_label(gui_ctx, "test_containers")) test_containers();
+                if (neko_gui_button_label(gui_ctx, "test_sexpr")) test_sexpr();
+                if (neko_gui_button_label(gui_ctx, "test_nbt")) test_nbt();
+                if (neko_gui_button_label(gui_ctx, "test_sc")) {
+                    neko_timer_do(t, neko_println("%llu", t), { test_sc(); });
+                }
+                if (neko_gui_button_label(gui_ctx, "test_ttf")) {
+                    neko_timer_do(t, neko_println("%llu", t), { test_ttf(); });
+                }
+                if (neko_gui_button_label(gui_ctx, "test_hotload")) {
 
-                        std::printf("\n");
+                    std::string command = "build_hotload.bat";
+
+                    //                FILE *pipe = _popen(command.c_str(), "r");
+                    //                if (!pipe) {
+                    //                    neko_log_error("%s", "Unable to create pipeline");
+                    //                } else {
+                    //                    char buffer[128];
+                    //                    while (!feof(pipe)) {
+                    //                        if (fgets(buffer, 128, pipe) != nullptr) {
+                    //                            std::cout << buffer;
+                    //                        }
+                    //                    }
+                    //                    _pclose(pipe);
+                    //                }
+                }
+                if (neko_gui_button_label(gui_ctx, "test_ecs_view")) {
+                    for (neko_ecs_ent_view v = neko_ecs_ent_view_single(neko_ecs(), COMPONENT_GAMEOBJECT); neko_ecs_ent_view_valid(&v); neko_ecs_ent_view_next(&v)) {
+                        CGameObject *gameobj = (CGameObject *)neko_ecs_ent_get_component(neko_ecs(), v.ent, COMPONENT_GAMEOBJECT);
+                        neko_println("%d %d %d %d %s", v.i, v.ent, v.valid, v.view_type, gameobj->name);
+                    }
+                }
+                if (neko_gui_button_label(gui_ctx, "test_ecs_cpp")) {
+                    forEachComponentType([&]<typename T>() {
+                        // 打印类型名称 它是一个更大字符串的 std::string_view 因此我们使用“%.*s”
+                        // `std::printf` 的形式
+                        constexpr auto typeName = getTypeName<T>();
+                        std::printf("component type: %.*s\n", int(typeName.size()), typeName.data());
+
+                        // 设置组件的默认值并打印其 props
+                        T val{};
+                        std::printf("  props:\n");
+                        forEachProp(val, [&](auto propTag, auto &propVal) {
+                            // `propTag` 每个 prop 都有不同的类型 并保存包括名称在内的属性 我们打印
+                            // 首先是名称。名称是 std::string_view  但它指向的整个字符串是
+                            // 名称 以便我们可以直接打印其数据
+                            std::printf("    %s: ", propTag.attribs.name.data());
+
+                            // 调用上面重载的print函数之一来打印值本身
+                            print(propVal);
+
+                            // 现在我们打印是否设置了`exampleFlag`请注意 我们可以检查属性`constexpr`
+                            if (propTag.attribs.exampleFlag) {
+                                std::printf(" (example flag set)");
+                            }
+
+                            std::printf("\n");
+                        });
                     });
-                });
+                }
+
+                neko_gui_group_end(gui_ctx);
             }
 
-            neko_gui_group_end(gui_ctx);
+            neko_gui_layout_row_dynamic(gui_ctx, 30, 2);
+            if (neko_gui_option_label(gui_ctx, "easy", op == EASY)) op = EASY;
+            if (neko_gui_option_label(gui_ctx, "hard", op == HARD)) op = HARD;
+
+            neko_gui_layout_row_dynamic(gui_ctx, 25, 1);
+            neko_gui_property_int(gui_ctx, "Compression:", 0, &property, 100, 10, 1);
+
+            auto custom_draw_widget = [](struct neko_gui_context *ctx) {
+                struct neko_gui_command_buffer *canvas;
+                struct neko_gui_input *input = &ctx->input;
+                canvas = neko_gui_window_get_canvas(ctx);
+
+                struct neko_gui_rect space;
+                enum neko_gui_widget_layout_states state;
+                state = neko_gui_widget(&space, ctx);
+                if (!state) return;
+
+                if (state != NEKO_GUI_WIDGET_ROM) {
+                    //...
+                }
+                // neko_gui_fill_rect(canvas, space, 0, neko_gui_rgb(144, 0, 144));
+
+                neko_gui_draw_text(canvas, space, "hhhhh", 5, ctx->style.font, neko_gui_rgb(0, 0, 0), neko_gui_rgb(255, 0, 0));
+            };
+
+            custom_draw_widget(gui_ctx);
+
+            // neko_gui_layout_row_dynamic(ctx, 20, 1);
+            // neko_gui_label(ctx, "background:", NEKO_GUI_TEXT_LEFT);
+            // neko_gui_layout_row_dynamic(ctx, 25, 1);
+            //  if (neko_gui_combo_begin_color(ctx, neko_gui_rgb_cf(bg), neko_gui_vec2(neko_gui_widget_width(ctx), 400))) {
+            //      neko_gui_layout_row_dynamic(ctx, 120, 1);
+            //      bg = neko_gui_color_picker(ctx, bg, NEKO_GUI_RGBA);
+            //      neko_gui_layout_row_dynamic(ctx, 25, 1);
+            //      bg.r = neko_gui_propertyf(ctx, "#R:", 0, bg.r, 1.0f, 0.01f, 0.005f);
+            //      bg.g = neko_gui_propertyf(ctx, "#G:", 0, bg.g, 1.0f, 0.01f, 0.005f);
+            //      bg.b = neko_gui_propertyf(ctx, "#B:", 0, bg.b, 1.0f, 0.01f, 0.005f);
+            //      bg.a = neko_gui_propertyf(ctx, "#A:", 0, bg.a, 1.0f, 0.01f, 0.005f);
+            //      neko_gui_combo_end(ctx);
+            //  }
         }
+        neko_gui_end(gui_ctx);
+    };
 
-        neko_gui_layout_row_dynamic(gui_ctx, 30, 2);
-        if (neko_gui_option_label(gui_ctx, "easy", op == EASY)) op = EASY;
-        if (neko_gui_option_label(gui_ctx, "hard", op == HARD)) op = HARD;
+    if (g_cvar.show_pack_editor) pack_editor_func();
 
-        neko_gui_layout_row_dynamic(gui_ctx, 25, 1);
-        neko_gui_property_int(gui_ctx, "Compression:", 0, &property, 100, 10, 1);
-
-        auto custom_draw_widget = [](struct neko_gui_context *ctx) {
-            struct neko_gui_command_buffer *canvas;
-            struct neko_gui_input *input = &ctx->input;
-            canvas = neko_gui_window_get_canvas(ctx);
-
-            struct neko_gui_rect space;
-            enum neko_gui_widget_layout_states state;
-            state = neko_gui_widget(&space, ctx);
-            if (!state) return;
-
-            if (state != NEKO_GUI_WIDGET_ROM) {
-                //...
-            }
-            // neko_gui_fill_rect(canvas, space, 0, neko_gui_rgb(144, 0, 144));
-
-            neko_gui_draw_text(canvas, space, "hhhhh", 5, ctx->style.font, neko_gui_rgb(0, 0, 0), neko_gui_rgb(255, 0, 0));
-        };
-
-        custom_draw_widget(gui_ctx);
-
-        // neko_gui_layout_row_dynamic(ctx, 20, 1);
-        // neko_gui_label(ctx, "background:", NEKO_GUI_TEXT_LEFT);
-        // neko_gui_layout_row_dynamic(ctx, 25, 1);
-        //  if (neko_gui_combo_begin_color(ctx, neko_gui_rgb_cf(bg), neko_gui_vec2(neko_gui_widget_width(ctx), 400))) {
-        //      neko_gui_layout_row_dynamic(ctx, 120, 1);
-        //      bg = neko_gui_color_picker(ctx, bg, NEKO_GUI_RGBA);
-        //      neko_gui_layout_row_dynamic(ctx, 25, 1);
-        //      bg.r = neko_gui_propertyf(ctx, "#R:", 0, bg.r, 1.0f, 0.01f, 0.005f);
-        //      bg.g = neko_gui_propertyf(ctx, "#G:", 0, bg.g, 1.0f, 0.01f, 0.005f);
-        //      bg.b = neko_gui_propertyf(ctx, "#B:", 0, bg.b, 1.0f, 0.01f, 0.005f);
-        //      bg.a = neko_gui_propertyf(ctx, "#A:", 0, bg.a, 1.0f, 0.01f, 0.005f);
-        //      neko_gui_combo_end(ctx);
-        //  }
-    }
-    neko_gui_end(gui_ctx);
+    if (g_cvar.show_cvar_window) cvar_func();
 
     g_gui.mouse_is_hover = neko_gui_window_is_any_hovered(gui_ctx) || neko_gui_item_is_any_active(gui_ctx);
 
@@ -2223,13 +2237,17 @@ void game_update() {
 }
 
 void game_shutdown() {
-    // try {
-    //     neko_lua_wrap_call(L, "game_shutdown");
-    // } catch (std::exception &ex) {
-    //     neko_log_error("lua exception %s", ex.what());
-    // }
+    try {
+        neko_lua_wrap_call(L, "game_shutdown");
+    } catch (std::exception &ex) {
+        neko_log_error("lua exception %s", ex.what());
+    }
 
+    neko_scripting_end(L);
+
+#ifdef GAME_CSHARP_ENABLED
     g_csharp.shutdown();
+#endif
 
     spritebatch_term(&sb);
     unload_images();
@@ -2240,6 +2258,8 @@ void game_shutdown() {
     destroy_texture_handle(test_font_tex_id, NULL);
 
     // gl_free_frame_buffer(&sb_fb);
+
+    neko_imgui_shutdown(&g_imgui);
 
     neko_gui_layout_save(&g_gui);
 
@@ -2257,13 +2277,38 @@ void game_shutdown() {
 
     neko_pack_destroy(&g_pack);
 
-    filewatch_stop_watching(filewatch, "/gamedir");
+    neko_filewatch_stop_watching(filewatch, "/gamedir");
 
-    filewatch_free(filewatch);
-    assetsys_destroy(assetsys);
+    neko_filewatch_free(filewatch);
+    neko_assetsys_destroy(g_assetsys);
 }
 
+#define NEKO_ARGS_IMPL
+#include "neko_args.h"
+
+// interpreter
+#include "interpreter.h"
+
 neko_game_desc_t neko_main(s32 argc, char **argv) {
+
+    neko_args_desc args = {
+            .argc = argc,
+            .argv = argv,
+    };
+    neko_args_setup(&args);
+
+#define ARGS_STR(s0, s1) (0 == strcmp(s0, s1))
+
+    if (ARGS_STR(neko_args_key_at(0), "packer")) {
+    }
+
+    if (ARGS_STR(neko_args_key_at(0), "vm")) {
+        neko_vm_interpreter(neko_args_key_at(1));
+
+        return neko_game_desc_t{.window = {.width = 1280, .height = 740, .vsync = true}, .argc = argc, .argv = argv, .console = &console};
+    }
+
+#undef ARGS_STR
 
     // 确定运行路径
     auto current_dir = std::filesystem::path(std::filesystem::current_path());

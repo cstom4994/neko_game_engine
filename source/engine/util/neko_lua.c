@@ -1300,15 +1300,20 @@ void neko_lua_auto_function_register_type(lua_State *L, void *src_func, neko_lua
 
 #pragma endregion LuaA
 
+static const char *debugger_lua_path;
+
 int luaopen_debugger(lua_State *lua) {
-    if (luaL_dofile(lua, /*neko_file_path*/ ("gamedir/scripts/libs/debugger.lua"))) lua_error(lua);
+    if (luaL_dofile(lua, debugger_lua_path)) lua_error(lua);
     return 1;
 }
 
 static const char *MODULE_NAME = "DEBUGGER_LUA_MODULE";
 static const char *MSGH = "DEBUGGER_LUA_MSGH";
 
-void neko_lua_debug_setup(lua_State *lua, const char *name, const char *globalName, lua_CFunction readFunc, lua_CFunction writeFunc) {
+void neko_lua_debug_setup(lua_State *lua, const char *name, const char *globalName, lua_CFunction readFunc, lua_CFunction writeFunc, const_str debugger_lua) {
+
+    debugger_lua_path = debugger_lua;
+
     // Check that the module name was not already defined.
     lua_getfield(lua, LUA_REGISTRYINDEX, MODULE_NAME);
     neko_assert(lua_isnil(lua, -1) || strcmp(name, luaL_checkstring(lua, -1)));
@@ -1398,7 +1403,7 @@ void neko_lua_loadover(lua_State *L, const luaL_Reg *l, const char *name) {
     lua_setglobal(L, name);
 }
 
-#pragma region LuaStructLoader
+#pragma region lua_struct
 
 #define TYPEID_int8 0
 #define TYPEID_int16 1
@@ -2061,9 +2066,9 @@ int luaopen_cstruct_test(lua_State *L) {
     return 1;
 }
 
-#pragma endregion LuaStructLoader
+#pragma endregion lua_struct
 
-#pragma region LuaDataList
+#pragma region lua_datalist
 
 #define MAX_DEPTH 256
 #define SHORT_STRING 1024
@@ -3139,4 +3144,4 @@ int luaopen_datalist(lua_State *L) {
     return 1;
 }
 
-#pragma endregion LuaDataList
+#pragma endregion lua_datalist

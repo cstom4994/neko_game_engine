@@ -2895,7 +2895,7 @@ neko_script_binary_t *neko_script_compile_file(const char *filename) {
     return bin;
 }
 
-neko_script_binary_t *neko_script_eval_file(neko_script_ctx_t *ctx, char *filename, neko_script_binary_t *(*load_module)(char *name), void *(trap)(neko_script_ctx_t *ctx), bool do_free) {
+neko_script_binary_t *neko_script_eval_file(neko_script_ctx_t *ctx, const_str filename, neko_script_binary_t *(*load_module)(char *name), void *(trap)(neko_script_ctx_t *ctx), bool do_free) {
     neko_script_binary_t *bin = neko_script_compile_file(filename);
     if (!bin) return NULL;
 
