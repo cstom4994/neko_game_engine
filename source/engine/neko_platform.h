@@ -71,6 +71,7 @@ typedef struct neko_platform_running_desc_s {
     b32 vsync;
     f32 frame_rate;
     const_str engine_args;
+    bool center;
 } neko_platform_running_desc_t;
 
 typedef struct neko_platform_window_s {

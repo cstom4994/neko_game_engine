@@ -6,7 +6,7 @@
 #define __neko_profiler_text_max (1024 * 1024)
 #define __neko_profiler_threads_max (16)
 
-#include "engine/neko.h"
+#include "engine/neko.hpp"
 #include "engine/neko_platform.h"
 
 // #include "engine/common/neko_util.h"

@@ -2138,7 +2138,7 @@ NEKO_API_DECL neko_t* neko_create(neko_game_desc_t app_desc) {
         neko_subsystem(audio)->init(neko_subsystem(audio));
 
         // 初始化 ecs
-        neko_ecs() = neko_ecs_make(1024, COMPONENT_COUNT, 9);
+        neko_ecs() = neko_ecs_make(1024, COMPONENT_COUNT, 4);
 
         // 初始化帧检查器
         neko_profiler_init();

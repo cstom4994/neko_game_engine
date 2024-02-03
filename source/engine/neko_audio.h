@@ -3,8 +3,14 @@
 
 #include "engine/neko.h"
 
-// sound
-// DDD #include "engine/builtin/cute_sound.h"
+// well fix this
+#if defined(NEKO_CPP_SRC)
+extern "C" {
+#include "engine/builtin/cute_sound.h"
+}
+#else
+#include "engine/builtin/cute_sound.h"
+#endif
 
 /*=====================
 // Internal Audio Data

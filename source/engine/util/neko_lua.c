@@ -8,6 +8,8 @@
 #include <sys/types.h>
 
 #include "engine/neko.h"
+#include "libs/lua/lauxlib.h"
+#include "libs/lua/lua.h"
 
 #pragma region LuaA
 
@@ -2061,8 +2063,14 @@ int luaopen_cstruct_test(lua_State *L) {
             {NULL, NULL},
     };
     neko_lua_load(L, l, "__neko_cstruct_test");
-    // lua_pushlightuserdata(L, NULL);
-    // lua_setfield(L, -2, "NULL");
+
+    lua_getglobal(L, "__neko_cstruct_test");
+
+    lua_pushlightuserdata(L, NULL);
+    lua_setfield(L, -2, "NULL");
+
+    lua_pop(L, 1);
+
     return 1;
 }
 

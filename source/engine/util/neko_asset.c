@@ -111,7 +111,7 @@ void neko_asset_default_load_from_file(const_str path, void *out) {
 NEKO_API_DECL bool32_t neko_util_load_texture_data_from_memory(const void *memory, size_t sz, s32 *width, s32 *height, u32 *num_comps, void **data, bool32_t flip_vertically_on_load) {
     // Load texture data
 
-    neko_png_image_t img = neko_png_load_png_mem(memory, sz);
+    neko_png_image_t img = neko_png_load_mem(memory, sz);
 
     if (flip_vertically_on_load) neko_png_flip_image_horizontal(&img);
 
@@ -120,7 +120,7 @@ NEKO_API_DECL bool32_t neko_util_load_texture_data_from_memory(const void *memor
     *height = img.h;
 
     if (!*data) {
-        neko_png_free_png(&img);
+        neko_png_free(&img);
         return false;
     }
     return true;
@@ -142,7 +142,7 @@ NEKO_API_DECL bool neko_asset_texture_load_from_file(const_str path, void *out, 
     }
 
     // Load texture data
-    neko_png_image_t img = neko_png_load_png(path);
+    neko_png_image_t img = neko_png_load(path);
 
     if (t->desc.flip_y) neko_png_flip_image_horizontal(&img);
 
@@ -158,7 +158,7 @@ NEKO_API_DECL bool neko_asset_texture_load_from_file(const_str path, void *out, 
     t->hndl = neko_graphics_texture_create(&t->desc);
 
     if (!keep_data) {
-        neko_png_free_png(&img);
+        neko_png_free(&img);
         *t->desc.data = NULL;
     }
 

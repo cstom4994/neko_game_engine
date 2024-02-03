@@ -10,11 +10,13 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_C_EXTENSIONS ON)
 set(CMAKE_C_STANDARD 17)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 if(MSVC)
         file(GLOB neko_engine_lib CONFIGURE_DEPENDS "dependencies/glfw/lib/*.lib")
         include_directories(
-            "dependencies/glfw/include/"
-            "dependencies/netcore/"
+                "dependencies/glfw/include/"
+                "dependencies/netcore/"
         )
 else()
         find_package(OpenGL REQUIRED)
@@ -133,26 +135,18 @@ endif(MSVC)
 
 file(GLOB_RECURSE neko_engine_src CONFIGURE_DEPENDS "source/engine/**.*")
 
+file(GLOB_RECURSE luaecs_src CONFIGURE_DEPENDS "source/libs/luaecs/**.*")
+
 set(neko_engine_src_all
         ${neko_engine_src}
+        ${luaecs_src}
         "source/libs/impl_build.cpp"
 )
 
-set(neko_game_src_all
-        "source/sandbox/game_physics_math.cpp"
-        "source/sandbox/game_scripts.cpp"
-        "source/sandbox/game_editor.cpp"
-        "source/sandbox/neko_csharp_native.cpp"
-        "source/sandbox/neko_profiler.cpp"
-        "source/sandbox/main.cpp"
-        "source/sandbox/tests/test.c"
-        "source/sandbox/tests/test_se.cpp"
-        "source/sandbox/tests/test_sr.cpp"
-        "source/sandbox/tests/test_ut.cpp"
-)
+file(GLOB_RECURSE neko_game_src CONFIGURE_DEPENDS "source/sandbox/**.*")
 
-set(neko_script_test_src
-        "source/neko_script/interpreter.cpp"
+set(neko_game_src_all
+        ${neko_game_src}
 )
 
 set(tools_packer_src
@@ -170,13 +164,9 @@ target_link_libraries(sandbox neko_engine)
 # add_library(hotload SHARED ${neko_hotload_src})
 # target_link_libraries(hotload neko_engine)
 
-add_executable(script_test ${neko_script_test_src})
-set_property(TARGET script_test PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "./")
-target_link_libraries(script_test neko_engine)
-
-add_executable(tools_packer ${tools_packer_src})
-set_property(TARGET tools_packer PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "./")
-target_link_libraries(tools_packer neko_engine)
+# add_executable(tools_packer ${tools_packer_src})
+# set_property(TARGET tools_packer PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "./")
+# target_link_libraries(tools_packer neko_engine)
 
 # Copy DLLs to the build directory
 # if(WIN32)

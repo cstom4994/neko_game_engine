@@ -834,8 +834,6 @@ NEKO_API_DECL void* neko_platform_library_proc_address_default_impl(void* lib, c
 
 typedef enum PROCESS_DPI_AWARENESS { PROCESS_DPI_UNAWARE = 0, PROCESS_SYSTEM_DPI_AWARE = 1, PROCESS_PER_MONITOR_DPI_AWARE = 2 } PROCESS_DPI_AWARENESS;
 
-// HRESULT WINAPI SetProcessDpiAwareness(PROCESS_DPI_AWARENESS value);
-
 typedef HRESULT (*SetProcessDpiAwareness_func)(PROCESS_DPI_AWARENESS value);
 
 #define GLFW_EXPOSE_NATIVE_WIN32
@@ -868,7 +866,6 @@ void neko_platform_init(neko_platform_t* pf) {
     neko_log_trace("Initializing GLFW");
 
 #ifdef NEKO_PLATFORM_WIN
-
     setlocale(LC_ALL, "en_us.utf8");
 
     SetConsoleOutputCP(CP_UTF8);
@@ -2425,7 +2422,7 @@ NEKO_API_DECL neko_platform_window_t neko_platform_window_create_internal(const 
         }
     }
 
-    __glfw_set_window_center(window);
+    if (desc->center) __glfw_set_window_center(window);
 
     return win;
 }

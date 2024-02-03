@@ -15,7 +15,7 @@
 #include <list>
 #include <set>
 
-#include "engine/neko.h"
+#include "engine/neko.hpp"
 
 namespace neko {
 

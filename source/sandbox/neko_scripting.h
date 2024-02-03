@@ -15,10 +15,12 @@
 #include <vector>
 
 #include "engine/neko.h"
+#include "engine/neko.hpp"
 #include "engine/neko_engine.h"
 
 // lua
 #include "engine/util/neko_lua.h"
+#include "engine/util/neko_lua.hpp"
 
 struct lua_State;
 
@@ -43,15 +45,15 @@ struct test_visitor {
     }
 };
 
-template <typename T>
-void SaveLuaConfig(const T &_struct, const char *table_name, std::string &out) {
-    ME::meta::dostruct::for_each(_struct, [&](const char *name, const auto &value) {
-        // METADOT_INFO("{} == {} ({})", name, value, typeid(value).name());
-        struct_as(out, table_name, name, value);
-    });
-}
+// template <typename T>
+// void SaveLuaConfig(const T &_struct, const char *table_name, std::string &out) {
+//     ME::meta::dostruct::for_each(_struct, [&](const char *name, const auto &value) {
+//         // METADOT_INFO("{} == {} ({})", name, value, typeid(value).name());
+//         struct_as(out, table_name, name, value);
+//     });
+// }
 
-#define LoadLuaConfig(_struct, _luat, _c) _struct->_c = _luat[#_c].get<decltype(_struct->_c)>()
+// #define LoadLuaConfig(_struct, _luat, _c) _struct->_c = _luat[#_c].get<decltype(_struct->_c)>()
 
 // template<typename T>
 // void LoadLuaConfig(const T &_struct, lua_wrapper::LuaTable *luat) {
@@ -67,28 +69,6 @@ void SaveLuaConfig(const T &_struct, const char *table_name, std::string &out) {
 
 void print_error(lua_State *state, int result = 0);
 void script_runfile(const char *filePath);
-
-template <class T>
-struct scripting_auto_reg {
-public:
-    typedef typename T TEMPLATE_T;
-    scripting_auto_reg() { auto_reg; }
-
-private:
-    struct type_registrator {
-        type_registrator() { TEMPLATE_T::reg(); }
-    };
-
-    static const type_registrator auto_reg;
-};
-
-template <class T>
-typename const scripting_auto_reg<T>::type_registrator scripting_auto_reg<T>::auto_reg;
-
-class neko_scripting : public scripting_auto_reg<neko_scripting> {
-public:
-    static void reg() {}
-};
 
 neko_inline int add_package_path(lua_State *L, const std::string &str_) {
     std::string new_path = "package.path = package.path .. \"";
@@ -353,8 +333,5 @@ static void lua_reg_ecs(lua_State *L) {
     //         .def(&neko_ecs_ent_get_version, "neko_ecs_ent_get_version")
     //         .def(&neko_ecs_ent_print, "neko_ecs_ent_print");
 }
-
-// binding
-#include "neko_binding_engine.h"
 
 #endif

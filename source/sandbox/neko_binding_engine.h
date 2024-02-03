@@ -2,9 +2,17 @@
 #ifndef NEKO_BINDING_ENGINE_H
 #define NEKO_BINDING_ENGINE_H
 
+#include <filesystem>
+#include <string>
+
 #include "engine/neko_engine.h"
 #include "engine/util/neko_asset.h"
 #include "engine/util/neko_lua.h"
+#include "engine/util/neko_sprite.h"
+#include "engine/util/neko_tiled.h"
+
+// game
+#include "sandbox/game_chunk.h"
 
 neko_global lua_State* g_lua_bind;
 
@@ -349,6 +357,311 @@ static int __neko_bind_pack_assets_load(lua_State* L) {
 }
 */
 
+static int __neko_bind_player_create(lua_State* L) {
+
+    neko_sprite* sprite_data = (neko_sprite*)lua_touserdata(L, 1);
+
+    neko_sprite_renderer* user_handle = (neko_sprite_renderer*)lua_newuserdata(L, sizeof(neko_sprite_renderer));
+    memset(user_handle, 0, sizeof(neko_sprite_renderer));
+
+    user_handle->sprite = sprite_data;
+
+    neko_sprite_renderer_play(user_handle, "Idle");
+
+    return 1;
+}
+
+static int __neko_bind_player_update(lua_State* L) {
+    neko_sprite_renderer* user_handle = (neko_sprite_renderer*)lua_touserdata(L, 1);
+
+    neko_t* engine = neko_instance();
+
+    neko_sprite_renderer_update(user_handle, engine->ctx.platform->time.delta);
+
+    return 0;
+}
+
+static int __neko_bind_player_update_animation(lua_State* L) {
+    neko_sprite_renderer* user_handle = (neko_sprite_renderer*)lua_touserdata(L, 1);
+    const_str by_tag = lua_tostring(L, 2);
+    neko_sprite_renderer_play(user_handle, by_tag);
+    return 0;
+}
+
+static int __neko_bind_player_render(lua_State* L) {
+    neko_sprite_renderer* user_handle = (neko_sprite_renderer*)lua_touserdata(L, 1);
+
+    neko_vec2 xform = {};
+    xform.x = lua_tonumber(L, 2);
+    xform.y = lua_tonumber(L, 3);
+
+    neko_t* engine = neko_instance();
+
+    neko_graphics_t* gfx = neko_instance()->ctx.graphics;
+
+    s32 index;
+    if (user_handle->loop) {
+        index = user_handle->loop->indices[user_handle->current_frame];
+    } else {
+        index = user_handle->current_frame;
+    }
+
+    neko_sprite* spr = user_handle->sprite;
+    neko_sprite_frame f = spr->frames[index];
+
+    neko_idraw_rect_textured_ext(&g_idraw, xform.x, xform.y, xform.x + spr->width * 4.f, xform.y + spr->height * 4.f, f.u0, f.v0, f.u1, f.v1, user_handle->sprite->img.id, NEKO_COLOR_WHITE);
+
+    return 0;
+}
+
+static int __neko_bind_sprite_create(lua_State* L) {
+    const_str file_path = lua_tostring(L, 1);
+
+    neko_sprite* user_handle = (neko_sprite*)lua_newuserdata(L, sizeof(neko_sprite));
+    memset(user_handle, 0, sizeof(neko_sprite));
+
+    neko_sprite_load(user_handle, file_path);
+
+    return 1;
+}
+
+static int __neko_bind_sprite_end(lua_State* L) {
+    neko_sprite* user_handle = (neko_sprite*)lua_touserdata(L, 1);
+    neko_sprite_end(user_handle);
+    return 0;
+}
+
+static int __neko_bind_tiled_create(lua_State* L) {
+    const_str map_path = lua_tostring(L, 1);
+
+    neko_tiled_renderer* user_handle = (neko_tiled_renderer*)lua_newuserdata(L, sizeof(neko_tiled_renderer));
+    memset(user_handle, 0, sizeof(neko_tiled_renderer));
+
+    neko_tiled_load(&(user_handle->map), map_path, NULL);
+
+    neko_tiled_render_init(&g_cb, user_handle,                                             //
+                           game_assets("gamedir/assets/shaders/sprite_vs.glsl").c_str(),   //
+                           game_assets("gamedir/assets/shaders/sprite_fs.glsl").c_str());  //
+
+    return 1;
+}
+
+static int __neko_bind_tiled_update(lua_State* L) {
+    neko_tiled_renderer* tiled_render = (neko_tiled_renderer*)lua_touserdata(L, 1);
+
+    neko_command_buffer_t* cb = &g_cb;
+
+    neko_graphics_renderpass_begin(cb, NEKO_GRAPHICS_RENDER_PASS_DEFAULT);
+    {
+        neko_tiled_render_begin(cb, tiled_render);
+
+        for (u32 i = 0; i < neko_dyn_array_size(tiled_render->map.layers); i++) {
+            layer_t* layer = tiled_render->map.layers + i;
+            for (u32 y = 0; y < layer->height; y++) {
+                for (u32 x = 0; x < layer->width; x++) {
+                    tile_t* tile = layer->tiles + (x + y * layer->width);
+                    if (tile->id != 0) {
+                        tileset_t* tileset = tiled_render->map.tilesets + tile->tileset_id;
+                        u32 tsxx = (tile->id % (tileset->width / tileset->tile_width) - 1) * tileset->tile_width;
+                        u32 tsyy = tileset->tile_height * ((tile->id - tileset->first_gid) / (tileset->width / tileset->tile_width));
+                        neko_tiled_quad_t quad = {.tileset_id = tile->tileset_id,
+                                                  .texture = tileset->texture,
+                                                  .texture_size = {(f32)tileset->width, (f32)tileset->height},
+                                                  .position = {(f32)(x * tileset->tile_width * SPRITE_SCALE), (f32)(y * tileset->tile_height * SPRITE_SCALE)},
+                                                  .dimentions = {(f32)(tileset->tile_width * SPRITE_SCALE), (f32)(tileset->tile_height * SPRITE_SCALE)},
+                                                  .rectangle = {(f32)tsxx, (f32)tsyy, (f32)tileset->tile_width, (f32)tileset->tile_height},
+                                                  .color = layer->tint,
+                                                  .use_texture = true};
+                        neko_tiled_render_push(cb, tiled_render, quad);
+                    }
+                }
+            }
+            neko_tiled_render_draw(cb, tiled_render);  // 一层渲染一次
+        }
+
+        // for (u32 i = 0; i < neko_dyn_array_size(tiled_render->map.object_groups); i++) {
+        //     object_group_t *group = tiled_render->map.object_groups + i;
+        //     for (u32 ii = 0; ii < neko_dyn_array_size(tiled_render->map.object_groups[i].objects); ii++) {
+        //         object_t *object = group->objects + ii;
+        //         neko_tiled_quad_t quad = {.position = {(f32)(object->x * SPRITE_SCALE), (f32)(object->y * SPRITE_SCALE)},
+        //                                   .dimentions = {(f32)(object->width * SPRITE_SCALE), (f32)(object->height * SPRITE_SCALE)},
+        //                                   .color = group->color,
+        //                                   .use_texture = false};
+        //         neko_tiled_render_push(cb, tiled_render, quad);
+        //     }
+        //     neko_tiled_render_draw(cb, tiled_render);  // 一层渲染一次
+        // }
+
+        // for (u32 i = 0; i < neko_dyn_array_size(tiled_render->map.object_groups); i++) {
+        //     object_group_t *group = tiled_render->map.object_groups + i;
+        //     for (u32 ii = 0; ii < neko_dyn_array_size(tiled_render->map.object_groups[i].objects); ii++) {
+        //         object_t *object = group->objects + ii;
+        //         auto draw_poly = [sprite_batch](c2Poly poly) {
+        //             c2v *verts = poly.verts;
+        //             int count = poly.count;
+        //             for (int i = 0; i < count; ++i) {
+        //                 int iA = i;
+        //                 int iB = (i + 1) % count;
+        //                 c2v a = verts[iA];
+        //                 c2v b = verts[iB];
+        //                 gl_line(sprite_batch, a.x, a.y, 0, b.x, b.y, 0);
+        //             }
+        //         };
+        //         draw_poly(object->phy.poly);
+        //     }
+        // }
+    }
+    neko_graphics_renderpass_end(cb);
+
+    return 0;
+}
+
+static int __neko_bind_tiled_end(lua_State* L) {
+    neko_tiled_renderer* user_handle = (neko_tiled_renderer*)lua_touserdata(L, 1);
+    neko_tiled_unload(&user_handle->map);
+    neko_tiled_render_deinit(user_handle);
+    return 0;
+}
+
+static int __neko_bind_fallingsand_create(lua_State* L) {
+    // const_str file_path = lua_tostring(L, 1);
+
+    neko_fallsand_render* user_handle = (neko_fallsand_render*)lua_newuserdata(L, sizeof(neko_fallsand_render));
+    memset(user_handle, 0, sizeof(neko_fallsand_render));
+
+    game_chunk_init(user_handle);
+
+    return 1;
+}
+
+static int __neko_bind_fallingsand_update(lua_State* L) {
+    neko_fallsand_render* user_handle = (neko_fallsand_render*)lua_touserdata(L, 1);
+
+    neko_timer_do(t, neko_timed_action(500, printf("game_chunk_update : %llu\n", t);), { game_chunk_update(user_handle); });
+
+    return 0;
+}
+
+static int __neko_bind_fallingsand_end(lua_State* L) {
+    neko_fallsand_render* user_handle = (neko_fallsand_render*)lua_touserdata(L, 1);
+    game_chunk_destroy(user_handle);
+    return 0;
+}
+
+static int __neko_bind_gfxt_create(lua_State* L) {
+    const_str pip_path = lua_tostring(L, 1);   // gamedir/assets/pipelines/simple.sf
+    const_str gltf_path = lua_tostring(L, 2);  // gamedir/assets/meshes/Duck.gltf
+    const_str tex_path = lua_tostring(L, 3);   // gamedir/assets/textures/DuckCM.png
+
+    neko_gfxt_renderer* gfxt_render = (neko_gfxt_renderer*)lua_newuserdata(L, sizeof(neko_gfxt_renderer));
+    memset(gfxt_render, 0, sizeof(neko_gfxt_renderer));
+
+    // Load pipeline from resource file
+    gfxt_render->pip = neko_gfxt_pipeline_load_from_file(pip_path);
+
+    // Create material using this pipeline
+    neko_gfxt_material_desc_t mat_decl = {.pip_func = {.hndl = &gfxt_render->pip}};
+    gfxt_render->mat = neko_gfxt_material_create(&mat_decl);
+
+    // Create mesh that uses the layout from the pipeline's requested mesh layout
+    neko_gfxt_mesh_import_options_t mesh_decl = {.layout = gfxt_render->pip.mesh_layout,
+                                                 .size = neko_dyn_array_size(gfxt_render->pip.mesh_layout) * sizeof(neko_gfxt_mesh_layout_t),
+                                                 .index_buffer_element_size = gfxt_render->pip.desc.raster.index_buffer_element_size};
+
+    gfxt_render->mesh = neko_gfxt_mesh_load_from_file(gltf_path, &mesh_decl);
+
+    gfxt_render->texture = neko_gfxt_texture_load_from_file(tex_path, NULL, false, false);
+
+    return 1;
+}
+
+static int __neko_bind_gfxt_update(lua_State* L) {
+    neko_gfxt_renderer* gfxt_render = (neko_gfxt_renderer*)lua_touserdata(L, 1);
+
+    neko_vec2 fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
+    const f32 t = neko_platform_elapsed_time();
+
+    neko_command_buffer_t* cb = &g_cb;
+
+    // Camera for scene
+    neko_camera_t cam = neko_camera_perspective();
+    cam.transform.position = neko_v3(0.f, 6.f, 20.f);
+    neko_vqs trans = {.translation = neko_v3(0.f, 0.f, -10.f), .rotation = neko_quat_angle_axis(t * 0.001f, NEKO_YAXIS), .scale = neko_v3s(0.1f)};
+    neko_mat4 model = neko_vqs_to_mat4(&trans);
+    neko_mat4 vp = neko_camera_get_view_projection(&cam, fbs.x, fbs.y);
+    neko_mat4 mvp = neko_mat4_mul(vp, model);
+
+    // Apply material uniforms
+    neko_gfxt_material_set_uniform(&gfxt_render->mat, "u_mvp", &mvp);
+    neko_gfxt_material_set_uniform(&gfxt_render->mat, "u_tex", &gfxt_render->texture);
+
+    // Rendering
+    neko_graphics_renderpass_begin(cb, NEKO_GRAPHICS_RENDER_PASS_DEFAULT);
+    {
+        // Set view port
+        neko_graphics_set_viewport(cb, 0, 0, (int)fbs.x, (int)fbs.y);
+
+        // Bind material
+        neko_gfxt_material_bind(cb, &gfxt_render->mat);
+
+        // Bind material uniforms
+        neko_gfxt_material_bind_uniforms(cb, &gfxt_render->mat);
+
+        // Render mesh
+        neko_gfxt_mesh_draw_material(cb, &gfxt_render->mesh, &gfxt_render->mat);
+    }
+    neko_graphics_renderpass_end(cb);
+
+    return 0;
+}
+
+static int __neko_bind_gfxt_end(lua_State* L) {
+    neko_gfxt_renderer* user_handle = (neko_gfxt_renderer*)lua_touserdata(L, 1);
+
+    neko_gfxt_texture_destroy(&user_handle->texture);
+    neko_gfxt_mesh_destroy(&user_handle->mesh);
+    neko_gfxt_material_destroy(&user_handle->mat);
+    neko_gfxt_pipeline_destroy(&user_handle->pip);
+
+    return 0;
+}
+
+static int __neko_bind_draw_text(lua_State* L) {
+
+    f32 x = lua_tonumber(L, 1);
+    f32 y = lua_tonumber(L, 2);
+    const_str text = lua_tostring(L, 3);
+
+    draw_text(test_font_bmfont, text, x, y, 1, 1.f, 800.f);
+
+    return 0;
+}
+
+neko_inline void neko_register_test(lua_State* L) {
+    //
+    lua_register(L, "neko_player_create", __neko_bind_player_create);
+    lua_register(L, "neko_player_update", __neko_bind_player_update);
+    lua_register(L, "neko_player_render", __neko_bind_player_render);
+    lua_register(L, "neko_player_update_animation", __neko_bind_player_update_animation);
+
+    lua_register(L, "neko_sprite_create", __neko_bind_sprite_create);
+    lua_register(L, "neko_sprite_end", __neko_bind_sprite_end);
+
+    lua_register(L, "neko_tiled_create", __neko_bind_tiled_create);
+    lua_register(L, "neko_tiled_update", __neko_bind_tiled_update);
+    lua_register(L, "neko_tiled_end", __neko_bind_tiled_end);
+
+    lua_register(L, "neko_fallingsand_create", __neko_bind_fallingsand_create);
+    lua_register(L, "neko_fallingsand_update", __neko_bind_fallingsand_update);
+    lua_register(L, "neko_fallingsand_end", __neko_bind_fallingsand_end);
+
+    lua_register(L, "neko_gfxt_create", __neko_bind_gfxt_create);
+    lua_register(L, "neko_gfxt_update", __neko_bind_gfxt_update);
+    lua_register(L, "neko_gfxt_end", __neko_bind_gfxt_end);
+
+    lua_register(L, "neko_draw_text", __neko_bind_draw_text);
+}
+
 #if 0
 
 static int __neko_bind_graphics_fontcache_load(lua_State* L) {
@@ -598,6 +911,97 @@ neko_inline void neko_register_audio(lua_State* L) {
     // lua["neko_audio_play"] = [&audio](neko_lua_handle_wrap inst) { audio->play(inst.save.audio_ins); };
 }
 
+class base_t {
+public:
+    base_t() : v(789) {}
+    void dump() {
+        // printf("in %s a:%dn", __FUNCTION__, v);
+    }
+    int v;
+};
+
+class foo_t : public base_t {
+public:
+    foo_t(int b) : a(b) {
+        // printf("in %s b:%d this=%pn", __FUNCTION__, b, this);
+    }
+
+    ~foo_t() {
+        // printf("in %sn", __FUNCTION__);
+    }
+
+    void print(int64_t a, base_t* p) const {
+        // printf("in foo_t::print a:%ld p:%pn", (long)a, p);
+    }
+
+    static void dumy() {
+        // printf("in %sn", __FUNCTION__);
+    }
+    int a;
+};
+
+//! lua talbe 可以自动转换为stl 对象
+void dumy(std::map<std::string, std::string> ret, std::vector<int> a, std::list<std::string> b, std::set<int64_t> c) {
+    printf("in %s begin ------------n", __FUNCTION__);
+    for (std::map<std::string, std::string>::iterator it = ret.begin(); it != ret.end(); ++it) {
+        printf("map:%s, val:%s:n", it->first.c_str(), it->second.c_str());
+    }
+    printf("in %s end ------------n", __FUNCTION__);
+}
+
+static void neko_register_test_oop(lua_State* L) {
+    //! 注册基类函数, ctor() 为构造函数的类型
+    neko_lua_wrap_register_t<base_t, void_ctor()>(L, "base_t")  //! 注册构造函数
+            .def(&base_t::dump, "dump")                         //! 注册基类的函数
+            .def(&base_t::v, "v");                              //! 注册基类的属性
+
+    //! 注册子类，ctor(int) 为构造函数， foo_t为类型名称， base_t为继承的基类名称
+    neko_lua_wrap_register_t<foo_t, void_ctor(int)>(L, "foo_t", "base_t")
+            .def(&foo_t::print, "print")  //! 子类的函数
+            .def(&foo_t::a, "a");         //! 子类的字段
+
+    neko_lua_wrap_register_t<>(L).def(&dumy, "dumy");  //! 注册静态函数
+                                                       /*支持注册基类
+                                                       fflua_register_t<base_t, virtual_ctor()>(ls, "base_t");
+                                                       */
+
+    std::string test_script = R"(
+
+function test_object(foo_obj)
+    --测试构造
+    base = base_t:new()
+    -- 每个对象都有一个get_pointer获取指针
+    -- print("base ptr:", base:get_pointer())
+    -- 测试C++对象函数
+    foo_obj:print(12333, base)
+    base:delete()
+    --基类的函数
+    foo_obj:dump()
+    -- 测试对象属性
+    -- print("foo property", foo_obj.a)
+    -- print("base property", foo_obj.v)
+end
+
+function test_ret_object(foo_obj)
+    return foo_obj
+end
+
+function test_ret_base_object(foo_obj)
+    return foo_obj
+end
+
+    )";
+
+    neko_lua_wrap_run_string(L, test_script);
+
+    foo_t* foo_ptr = new foo_t(456);
+    neko_lua_wrap_call<void>(L, "test_object", foo_ptr);
+
+    assert(foo_ptr == neko_lua_wrap_call<foo_t*>(L, "test_ret_object", foo_ptr));
+    base_t* base_ptr = neko_lua_wrap_call<base_t*>(L, "test_ret_base_object", foo_ptr);
+    assert(base_ptr == foo_ptr);
+}
+
 neko_inline void neko_register(lua_State* L) {
 
     g_lua_bind = L;
@@ -607,6 +1011,8 @@ neko_inline void neko_register(lua_State* L) {
     neko_register_pack(L);
     neko_register_graphics(L);
     neko_register_audio(L);
+    neko_register_test(L);
+    neko_register_test_oop(L);
 }
 
 #endif  // !NEKO_BINDING_ENGINE_H
