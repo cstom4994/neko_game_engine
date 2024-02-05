@@ -6,6 +6,7 @@
 #include "engine/neko_component.h"
 #include "engine/neko_engine.h"
 // #include "engine/neko_profiler.h"
+#include "engine/neko_platform.h"
 #include "engine/util/neko_console.h"
 
 // Use discrete GPU by default.
@@ -283,6 +284,9 @@ bool neko_byte_buffer_empty(neko_byte_buffer_t* buffer) { return (buffer->size =
 size_t neko_byte_buffer_size(neko_byte_buffer_t* buffer) { return buffer->size; }
 
 void neko_byte_buffer_resize(neko_byte_buffer_t* buffer, size_t sz) {
+
+    // if (sz == 4096) neko_assert(0);
+
     u8* data = (u8*)neko_safe_realloc(buffer->data, sz);
 
     if (data == NULL) {
@@ -2211,11 +2215,10 @@ NEKO_API_DECL void neko_frame() {
         neko_dyn_array_clear(platform->events);
 
         {
-            // NOTE: This won't work forever. Must change eventually.
-            // Swap all platform window buffers? Sure...
-            for (neko_slot_array_iter it = 0; neko_slot_array_iter_valid(platform->windows, it); neko_slot_array_iter_advance(platform->windows, it)) {
-                neko_platform_window_swap_buffer(it);
-            }
+            // for (neko_slot_array_iter it = 0; neko_slot_array_iter_valid(platform->windows, it); neko_slot_array_iter_advance(platform->windows, it)) {
+            //     neko_platform_window_swap_buffer(it);
+            // }
+            neko_platform_window_swap_buffer(neko_platform_main_window());
         }
 
         // Frame locking (not sure if this should be done here, but it is what it is)

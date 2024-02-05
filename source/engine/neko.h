@@ -41,6 +41,8 @@
 #define OEMRESOURCE
 
 #define NEKO_PLATFORM_WIN
+
+#define _WINSOCKAPI_
 #include <windows.h>
 
 #define WIN32_LEAN_AND_MEAN
@@ -214,6 +216,7 @@ enum neko_type_kind {
     do {                                                                                                               \
         if (!(x)) {                                                                                                    \
             neko_printf("assertion failed: (%s), function %s, file %s, line %d.\n", #x, __func__, __FILE__, __LINE__); \
+            neko_debugbreak();                                                                                         \
         }                                                                                                              \
     } while (0)
 #else

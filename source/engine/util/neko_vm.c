@@ -3018,7 +3018,7 @@ static void neko_sexpr_write_nde(FILE *fd, const neko_snode_t *node, s32 root, s
             }
         }
         if (strchr(node->str, '`')) {
-            neko_log_warning("neko S-expression error: string '%s' contains a `, nisse does not support this", node->str);
+            neko_log_warning("neko S-expression error: string '%s' contains a `, sexpr does not support this", node->str);
         } else {
             if (res)
                 fprintf(fd, "`%s`", node->str);

@@ -22,8 +22,6 @@ typedef struct neko_gui_vertex_t {
 #define NEKO_GUI_SHADER_VERSION "#version 330 core\n"
 #endif
 
-
-
 neko_global size_t g_nui_mem_usage = 0;
 
 neko_private(void*) __neko_gui_malloc(size_t sz, void* user_data) { return __neko_mem_safe_alloc((sz), (char*)__FILE__, __LINE__, &g_nui_mem_usage); }
@@ -584,7 +582,7 @@ void neko_gui_layout_save(neko_gui_ctx_t* neko_nui) {
     }
 
     while (iter) {
-        if (!(iter->flags & NEKO_GUI_WINDOW_HIDDEN)) {
+        if (!(iter->flags & NEKO_GUI_WINDOW_HIDDEN) && !(iter->flags & NEKO_GUI_WINDOW_NO_SAVE)) {
             // neko_println("%f,%f,%f,%f %s", iter->bounds.x, iter->bounds.y, iter->bounds.w, iter->bounds.h, iter->name_string);
 
             neko_nbt_tag_t* win_tag_level = neko_nbt_tag_compound_get(tag_level, iter->name_string);

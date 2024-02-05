@@ -400,7 +400,7 @@ struct FieldList : ElemList<Fields...> {
 
 template <typename T, typename... Bases>
 struct TypeInfoBase {
-    using Type = T;
+    using rf_type = T;
     using TName = decltype(cpp::type_name<T>());
     static constexpr std::string_view name = TName::View();
     static constexpr BaseList bases = {Bases{}...};
@@ -440,14 +440,14 @@ namespace neko::meta::static_refl {
 template <typename T, typename... Bases>
 template <typename Derived>
 constexpr auto&& TypeInfoBase<T, Bases...>::Forward(Derived&& derived) noexcept {
-    static_assert(std::is_base_of_v<Type, std::decay_t<Derived>>);
+    static_assert(std::is_base_of_v<rf_type, std::decay_t<Derived>>);
     using DecayDerived = std::decay_t<Derived>;
     if constexpr (std::is_same_v<const DecayDerived&, Derived>)
-        return static_cast<const Type&>(derived);
+        return static_cast<const rf_type&>(derived);
     else if constexpr (std::is_same_v<DecayDerived&, Derived>)
-        return static_cast<Type&>(derived);
+        return static_cast<rf_type&>(derived);
     else if constexpr (std::is_same_v<DecayDerived, Derived>)
-        return static_cast<Type&&>(derived);
+        return static_cast<rf_type&&>(derived);
     else
         static_assert(true);  // volitile
 }
@@ -478,8 +478,8 @@ constexpr auto detail_DFS_Acc(T type, Acc&& acc, Func&& func) {
 template <typename T, typename... Bases>
 template <typename Init, typename Func>
 constexpr auto TypeInfoBase<T, Bases...>::DFS_Acc(Init&& init, Func&& func) {
-    return detail_DFS_Acc<0>(TypeInfo<Type>{},
-                             VirtualBases().Accumulate(std::forward<Func>(func)(std::forward<Init>(init), TypeInfo<Type>{}, 0),
+    return detail_DFS_Acc<0>(TypeInfo<rf_type>{},
+                             VirtualBases().Accumulate(std::forward<Func>(func)(std::forward<Init>(init), TypeInfo<rf_type>{}, 0),
                                                        [&](auto&& acc, auto vb) { return std::forward<Func>(func)(std::forward<decltype(acc)>(acc), vb, 1); }),
                              std::forward<Func>(func));
 }
@@ -496,14 +496,14 @@ constexpr void TypeInfoBase<T, Bases...>::DFS_ForEach(Func&& func) {
 template <typename T, typename... Bases>
 template <typename U, typename Func>
 constexpr void TypeInfoBase<T, Bases...>::ForEachVarOf(U&& obj, Func&& func) {
-    static_assert(std::is_same_v<Type, std::decay_t<U>>);
+    static_assert(std::is_same_v<rf_type, std::decay_t<U>>);
     VirtualBases().ForEach([&](auto vb) {
         vb.fields.ForEach([&](const auto& field) {
             using Fld = std::remove_const_t<std::remove_reference_t<decltype(field)>>;
             if constexpr (!Fld::is_static && !Fld::is_func) std::forward<Func>(func)(field, std::forward<U>(obj).*(field.value));
         });
     });
-    detail::ForEachNonVirtualVarOf(TypeInfo<Type>{}, std::forward<U>(obj), std::forward<Func>(func));
+    detail::ForEachNonVirtualVarOf(TypeInfo<rf_type>{}, std::forward<U>(obj), std::forward<Func>(func));
 }
 }  // namespace neko::meta::static_refl
 

@@ -14,7 +14,6 @@
 
 #include "engine/util/neko_lua.h"
 
-
 struct strtoll_tool_t {
     static long do_strtoll(const char *s, const char *, int) { return atol(s); }
 };
@@ -1298,10 +1297,10 @@ int neko_lua_wrap_set_global_variable(lua_State *m_ls, const char *field_name_, 
     return 0;
 }
 
-template <typename T>
-void neko_lua_wrap_reg(lua_State *m_ls, T a) {
-    a(this->get_lua_state());
-}
+// template <typename T>
+// void neko_lua_wrap_reg(lua_State *m_ls, T a) {
+//     a(this->get_lua_state());
+// }
 
 //! impl for common RET
 template <typename RET>

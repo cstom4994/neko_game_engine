@@ -983,7 +983,7 @@ static void neko_core_ui_draw_frame(neko_core_ui_context_t* ctx, neko_core_ui_re
 
 static s32 neko_core_ui_compare_zindex(const void* a, const void* b) { return (*(neko_core_ui_container_t**)a)->zindex - (*(neko_core_ui_container_t**)b)->zindex; }
 
-static neko_core_ui_style_t* neko_core_ui_push_style(neko_core_ui_context_t* ctx, neko_core_ui_style_t* style) {
+neko_core_ui_style_t* neko_core_ui_push_style(neko_core_ui_context_t* ctx, neko_core_ui_style_t* style) {
     neko_core_ui_style_t* save = ctx->style;
     ctx->style = style;
     return save;
@@ -1104,7 +1104,7 @@ static void neko_core_ui_pop_inline_style(neko_core_ui_context_t* ctx, neko_core
     }
 }
 
-static void neko_core_ui_pop_style(neko_core_ui_context_t* ctx, neko_core_ui_style_t* style) { ctx->style = style; }
+void neko_core_ui_pop_style(neko_core_ui_context_t* ctx, neko_core_ui_style_t* style) { ctx->style = style; }
 
 static void neko_core_ui_push_layout(neko_core_ui_context_t* ctx, neko_core_ui_rect_t body, neko_vec2 scroll) {
     neko_core_ui_layout_t layout;
@@ -2321,7 +2321,7 @@ static void neko_core_ui_init_default_styles(neko_core_ui_context_t* ctx) {
     // panel
     for (u32 i = 0; i < 3; ++i) {
         style = &neko_core_ui_default_panel_style[i];
-        style->colors[NEKO_CORE_UI_COLOR_BACKGROUND] = neko_color(30, 30, 30, 255);
+        style->colors[NEKO_CORE_UI_COLOR_BACKGROUND] = neko_color(30, 30, 30, 160);
         style->size[1] = 19;
     }
 

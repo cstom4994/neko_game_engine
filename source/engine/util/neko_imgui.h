@@ -891,6 +891,9 @@ NEKO_API_DECL void neko_core_ui_style_sheet_set_element_styles(neko_core_ui_styl
                                                                neko_core_ui_style_element_t* styles, size_t size);
 NEKO_API_DECL void neko_core_ui_set_style_sheet(neko_core_ui_context_t* ctx, neko_core_ui_style_sheet_t* style_sheet);
 
+NEKO_API_DECL neko_core_ui_style_t* neko_core_ui_push_style(neko_core_ui_context_t* ctx, neko_core_ui_style_t* style);
+NEKO_API_DECL void neko_core_ui_pop_style(neko_core_ui_context_t* ctx, neko_core_ui_style_t* style);
+
 //=== Resource Loading ===//
 
 NEKO_API_DECL neko_core_ui_style_sheet_t neko_core_ui_style_sheet_load_from_file(neko_core_ui_context_t* ctx, const char* file_path);

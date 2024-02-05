@@ -214,14 +214,14 @@ bool neko_asset_ascii_font_load_from_file(const_str path, void *out, u32 point_s
     size_t len = 0;
     char *ttf = neko_platform_read_file_contents(path, "rb", &len);
     if (!point_size) {
-        neko_log_warning("Warning: Font: %s: Point size not declared. Setting to default 16.", path);
+        neko_log_warning("font: %s: point size not declared. setting to default 16.", path);
         point_size = 16;
     }
     bool ret = neko_asset_ascii_font_load_from_memory(ttf, len, out, point_size);
     if (!ret) {
-        neko_log_warning("Font Failed to Load: %s", path);
+        neko_log_warning("font failed to load: %s", path);
     } else {
-        neko_log_trace("Font Successfully Loaded: %s", path);
+        neko_log_trace("font successfully loaded: %s", path);
     }
     neko_safe_free(ttf);
     return ret;
@@ -231,7 +231,7 @@ bool neko_asset_ascii_font_load_from_memory(const void *memory, size_t sz, void 
     neko_asset_ascii_font_t *f = (neko_asset_ascii_font_t *)out;
 
     if (!point_size) {
-        neko_log_warning("Warning: Font: Point size not declared. Setting to default 16.");
+        neko_log_warning("font: point size not declared. setting to default 16.");
         point_size = 16;
     }
 
@@ -277,9 +277,9 @@ bool neko_asset_ascii_font_load_from_memory(const void *memory, size_t sz, void 
 
     bool success = false;
     if (v <= 0) {
-        neko_log_warning("Font Failed to Load, Baked Texture Was Too Small: %d", v);
+        neko_log_warning("font failed to load, baked texture was too small: %d", v);
     } else {
-        neko_log_trace("Font Successfully Loaded: %d", v);
+        neko_log_trace("font baked size: %d", v);
         success = true;
     }
 

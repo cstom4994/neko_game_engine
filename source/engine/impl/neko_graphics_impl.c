@@ -5,6 +5,7 @@
 =============================*/
 
 #include "engine/neko_engine.h"
+#include "engine/neko_platform.h"
 
 #ifndef NEKO_GRAPHICS_IMPL_CUSTOM
 
@@ -1593,6 +1594,8 @@ size_t neko_gl_uniform_data_size_in_bytes(neko_graphics_uniform_type type) {
     return sz;
 }
 
+thread_mutex_t g_graphics_mutex;
+
 /* Graphics Interface Creation / Initialization / Shutdown / Destruction */
 NEKO_API_DECL neko_graphics_t* neko_graphics_create() {
     // Construct new graphics interface
@@ -1600,6 +1603,8 @@ NEKO_API_DECL neko_graphics_t* neko_graphics_create() {
 
     // Construct internal data for opengl
     gfx->user_data = neko_malloc_init(neko_gl_data_t);
+
+    thread_mutex_init(&g_graphics_mutex);
 
     return gfx;
 }
@@ -1656,6 +1661,8 @@ NEKO_API_DECL void neko_graphics_destroy(neko_graphics_t* graphics) {
 
     neko_free(graphics);
     graphics = NULL;
+
+    thread_mutex_term(&g_graphics_mutex);
 }
 
 NEKO_API_DECL void neko_graphics_shutdown(neko_graphics_t* graphics) {}

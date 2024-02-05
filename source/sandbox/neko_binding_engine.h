@@ -7,7 +7,7 @@
 
 #include "engine/neko_engine.h"
 #include "engine/util/neko_asset.h"
-#include "engine/util/neko_lua.h"
+#include "engine/util/neko_lua.hpp"
 #include "engine/util/neko_sprite.h"
 #include "engine/util/neko_tiled.h"
 
@@ -1002,6 +1002,8 @@ end
     assert(base_ptr == foo_ptr);
 }
 
+void __neko_bind_imgui(lua_State* L);
+
 neko_inline void neko_register(lua_State* L) {
 
     g_lua_bind = L;
@@ -1013,6 +1015,8 @@ neko_inline void neko_register(lua_State* L) {
     neko_register_audio(L);
     neko_register_test(L);
     neko_register_test_oop(L);
+
+    __neko_bind_imgui(L);
 }
 
 #endif  // !NEKO_BINDING_ENGINE_H
