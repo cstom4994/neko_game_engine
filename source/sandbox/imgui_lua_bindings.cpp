@@ -12,7 +12,7 @@
 #include "engine/util/neko_lua.h"
 
 // ImGui
-#include "libs/imgui/imgui.h"
+#include "neko_imgui_auto.hpp"
 
 // THIS IS FOR LUA 5.3 although you can make a few changes for other versions
 

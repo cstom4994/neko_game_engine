@@ -6,7 +6,7 @@
 // #include "neko_imgui_utils.hpp"
 
 // ImGui
-#include "libs/imgui/imgui.h"
+#include "neko_imgui_auto.hpp"
 
 // Main context for necessary imgui information
 typedef struct neko_imgui_context_s {

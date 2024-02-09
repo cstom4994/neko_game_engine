@@ -3,7 +3,6 @@
 #define NEKO_SPRITE_H
 
 #include "engine/neko.h"
-#include "engine/neko_component.h"
 #include "engine/neko_engine.h"
 
 // game

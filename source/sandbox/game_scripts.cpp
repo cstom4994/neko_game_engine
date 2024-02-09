@@ -3,6 +3,8 @@
 
 #include "engine/neko_engine.h"
 
+#ifdef GAME_CSHARP_ENABLED
+
 static void __csharp_exception_callback(std::string_view InMessage) { std::cout << "# Unhandled native exception: " << InMessage << std::endl; }
 
 void VectorAddIcall(neko_vec3* InVec0, const neko_vec3* InVec1) {
@@ -90,3 +92,5 @@ void game_csharp::hotfix() {
     this->shutdown();
     this->init(managed_path);
 }
+
+#endif

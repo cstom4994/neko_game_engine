@@ -12,7 +12,6 @@
 // engine
 #include "engine/neko.h"
 #include "engine/neko.hpp"
-#include "engine/neko_component.h"
 #include "engine/neko_platform.h"
 #include "engine/util/neko_ai.h"
 #include "engine/util/neko_asset.h"
@@ -30,13 +29,13 @@
 // game
 #include "game_editor.h"
 #include "game_scripts.h"
-#include "neko_client_ecs.h"
 #include "neko_hash.h"
 #include "neko_nui_auto.hpp"
 
 // hpp
 #include "hpp/neko_static_refl.hpp"
 #include "hpp/neko_struct.hpp"
+#include "sandbox/neko_imgui_auto.hpp"
 
 #define NEKO_CONSOLE_IMPL
 #include "engine/util/neko_console.h"
@@ -63,7 +62,6 @@ NEKO_HIJACK_MAIN();
 neko_command_buffer_t g_cb = neko_default_val();
 neko_core_ui_context_t g_core_ui = neko_default_val();
 neko_immediate_draw_t g_idraw = neko_default_val();
-neko_client_userdata_t g_client_userdata = neko_default_val();
 neko_asset_ascii_font_t g_font;
 neko_core_ui_style_sheet_t style_sheet;
 neko_gui_ctx_t g_gui = neko_default_val();
@@ -84,6 +82,25 @@ game_vm_t g_vm = neko_default_val();
 #ifdef GAME_CSHARP_ENABLED
 game_csharp g_csharp;
 #endif
+
+// user data
+
+typedef struct neko_client_userdata_s {
+    neko_command_buffer_t *cb;
+    neko_immediate_draw_t *idraw;
+    neko_immediate_draw_static_data_t *idraw_sd;
+    neko_core_ui_context_t *igui;
+    neko_gui_ctx_t *nui;
+    neko_graphics_custom_batch_context_t *sprite_batch;
+
+    struct {
+        // 热加载模块
+        u32 module_count;
+        void (*module_func[16])(void);
+    } vm;
+} neko_client_userdata_t;
+
+neko_client_userdata_t g_client_userdata = neko_default_val();
 
 // ai test
 enum { AI_STATE_MOVE = 0x00, AI_STATE_HEAL };
@@ -133,8 +150,27 @@ typedef struct neko_engine_cvar_s {
 
     bool vsync = true;
 
+    bool is_hotfix = true;
+
     f32 bg[3] = {28, 28, 28};
 } neko_engine_cvar_t;
+
+template <>
+struct neko::meta::static_refl::TypeInfo<neko_engine_cvar_t> : TypeInfoBase<neko_engine_cvar_t> {
+    static constexpr AttrList attrs = {};
+    static constexpr FieldList fields = {
+            rf_field{TSTR("show_editor"), &rf_type::show_editor},                    //
+            rf_field{TSTR("show_demo_window"), &rf_type::show_demo_window},          //
+            rf_field{TSTR("show_info_window"), &rf_type::show_info_window},          //
+            rf_field{TSTR("show_cvar_window"), &rf_type::show_cvar_window},          //
+            rf_field{TSTR("show_pack_editor"), &rf_type::show_pack_editor},          //
+            rf_field{TSTR("show_profiler_window"), &rf_type::show_profiler_window},  //
+            rf_field{TSTR("show_gui"), &rf_type::show_gui},                          //
+            rf_field{TSTR("hello_ai_shit"), &rf_type::hello_ai_shit},                //
+            rf_field{TSTR("is_hotfix"), &rf_type::is_hotfix},                        //
+            rf_field{TSTR("vsync"), &rf_type::vsync},                                //
+    };
+};
 
 neko_struct(neko_engine_cvar_t,                            //
             _Fs(show_editor, "Is show editor"),            //
@@ -165,6 +201,35 @@ void test_thd(void);
 NEKO_API_DECL void test_sexpr();
 NEKO_API_DECL void test_ttf();
 NEKO_API_DECL void test_sc();
+
+void print(const float &val) { std::printf("%f", val); }
+
+void print(const std::string &val) { std::printf("%s", val.c_str()); }
+
+// Register component types by wrapping the struct name in `Comp(...)`
+
+struct Comp(Position) {
+    // Register reflectable fields ('props') using the `Prop` macro. This can be used in any aggregate
+    // `struct`, doesn't have to be a `Comp`.
+    neko_prop(float, x) = 0;
+    neko_prop(float, y) = 0;
+};
+
+struct Comp(Name) {
+    neko_prop(std::string, first) = "First";
+
+    // Props can have additional attributes, see the `neko_prop_attribs` type. You can customize and add
+    // your own attributes there.
+    neko_prop(std::string, last, .exampleFlag = true) = "Last";
+
+    int internal = 42;  // This is a non-prop field that doesn't show up in reflection. IMPORTANT NOTE:
+    // All such non-prop fields must be at the end of the struct, with all props at
+    // the front. Mixing props and non-props in the order is not allowed.
+};
+
+// After all compnonent types are defined, this macro must be called to be able to use
+// `forEachComponentType` to iterate all component types
+UseComponentTypes();
 
 neko_texture_t load_ase_texture_simple(const void *memory, int size) {
 
@@ -210,13 +275,14 @@ neko_string game_assets(const neko_string &path) {
         return path;
     }
     neko_string get_path(data_path);
-    switch (neko::hash(path.substr(0, 7))) {
-        case neko::hash("gamedir"):
-            get_path.append(path);
-            break;
-        default:
-            break;
+
+    if (path.substr(0, 7) == "gamedir") {
+        get_path.append(path);
+    } else if (path.substr(0, 11) == "lua_scripts") {
+        neko_string lua_path = path;
+        get_path = std::filesystem::path(data_path).parent_path().string().append("/source/lua/game/").append(lua_path.replace(0, 12, ""));
     }
+
     return get_path;
 }
 
@@ -989,47 +1055,6 @@ int init_work(void *user_data) {
         thread_timer_t timer;
         thread_timer_init(&timer);
 
-        register_components(neko_ecs());
-        register_systems(neko_ecs());
-
-        // 测试用
-        neko_ecs_ent e1 = neko_ecs_ent_make(neko_ecs());
-        neko_ecs_ent e2 = neko_ecs_ent_make(neko_ecs());
-        neko_ecs_ent e3 = neko_ecs_ent_make(neko_ecs());
-        neko_ecs_ent e4 = neko_ecs_ent_make(neko_ecs());
-        CTransform xform = {10, 10};
-        CVelocity velocity = {0, 0};
-        CGameObject gameobj = neko_default_val();
-
-#if 1
-
-        neko_ui_renderer ui_render = neko_default_val();
-        ui_render.type = neko_ui_renderer::type::LABEL;
-        neko_snprintf(ui_render.text, 128, "%s", "啊对对对");
-
-        // neko_fast_sprite_renderer test_fast_sprite = neko_default_val();
-        // neko_fast_sprite_renderer_construct(&test_fast_sprite, 0, 0, NULL);
-
-        gameobj.visible = true;
-        gameobj.active = true;
-        neko_snprintf(gameobj.name, 64, "%s", "AAA_ent");
-
-        neko_ecs_ent_add_component(neko_ecs(), e1, COMPONENT_GAMEOBJECT, &gameobj);
-        neko_ecs_ent_add_component(neko_ecs(), e1, COMPONENT_TRANSFORM, &xform);
-        neko_ecs_ent_add_component(neko_ecs(), e1, COMPONENT_VELOCITY, &velocity);
-
-#endif
-
-        for (int i = 0; i < 100; i++) {
-            neko_snprintf(gameobj.name, 64, "%s_%d", "Test_ent", i);
-            gameobj.visible = true;
-            gameobj.active = false;
-
-            neko_ecs_ent e = neko_ecs_ent_make(neko_ecs());
-            neko_ecs_ent_add_component(neko_ecs(), e, COMPONENT_GAMEOBJECT, &gameobj);
-            neko_ecs_ent_add_component(neko_ecs(), e, COMPONENT_TRANSFORM, &xform);
-        }
-
         g_assetsys = neko_assetsys_create(0);
         g_filewatch = neko_filewatch_create(g_assetsys, 0);
 
@@ -1068,8 +1093,6 @@ void game_init() {
     g_client_userdata.igui = &g_core_ui;
     g_client_userdata.idraw_sd = neko_immediate_draw_static_data_get();
 
-    neko_ecs()->user_data = &g_client_userdata;
-
     // ctx.userdata = &g_client_userdata;
 
     g_vm.ctx = neko_script_ctx_new(nullptr);
@@ -1101,14 +1124,10 @@ void game_init() {
         }
         lua_setglobal(L, "arg");
 
-        neko_lua_wrap_do_file(L, game_assets("gamedir/scripts/main.lua"));
+        neko_lua_wrap_do_file(L, game_assets("lua_scripts/main.lua"));
 
         neko_platform_running_desc_t t = {.title = "Neko Engine", .engine_args = ""};
-
-        // neko_lua_auto_push(L, neko_application_dedsc_t, &t);
-
         if (lua_getglobal(L, "neko_app") == LUA_TNIL) throw std::exception("no app");
-
         if (lua_istable(L, -1)) {
             neko::meta::static_refl::TypeInfo<neko_platform_running_desc_t>::ForEachVarOf(t, [](auto field, auto &&value) {
                 static_assert(std::is_lvalue_reference_v<decltype(value)>);
@@ -1118,7 +1137,20 @@ void game_init() {
         } else {
             throw std::exception("no app table");
         }
+        lua_pop(L, 1);
 
+        neko_engine_cvar_t cvar;
+        if (lua_getglobal(L, "neko_cvar") == LUA_TNIL) throw std::exception("no cvar");
+        if (lua_istable(L, -1)) {
+            neko::meta::static_refl::TypeInfo<neko_engine_cvar_t>::ForEachVarOf(cvar, [](auto field, auto &&value) {
+                static_assert(std::is_lvalue_reference_v<decltype(value)>);
+                if (lua_getfield(L, -1, std::string(field.name).c_str()) != LUA_TNIL) value = neko_lua_to<std::remove_reference_t<decltype(value)>>(L, -1);
+                lua_pop(L, 1);
+            });
+            g_cvar = cvar;  // 复制到 g_cvar
+        } else {
+            throw std::exception("no cvar table");
+        }
         lua_pop(L, 1);
 
         neko_log_info("load game: %s %d %d", t.title, t.width, t.height);
@@ -1456,12 +1488,6 @@ void game_update() {
 
         if (neko_platform_key_pressed(NEKO_KEYCODE_ESC)) g_cvar.show_editor ^= true;
 
-        {
-            neko_profiler_scope_begin(ecs_update);
-            neko_ecs_run_systems(neko_ecs(), ECS_SYSTEM_UPDATE);
-            neko_profiler_scope_end(ecs_update);
-        }
-
 #ifdef GAME_CSHARP_ENABLED
         {
             neko_profiler_scope_begin(csharp_update);
@@ -1470,11 +1496,15 @@ void game_update() {
         }
 #endif
 
-        try {
-            neko_lua_wrap_call(L, "game_update");
-            neko_lua_wrap_call(L, "test_update");
-        } catch (std::exception &ex) {
-            neko_log_error("lua exception %s", ex.what());
+        {
+            neko_profiler_scope_begin(lua_update);
+            try {
+                neko_lua_wrap_call(L, "game_update");
+                neko_lua_wrap_call(L, "test_update");
+            } catch (std::exception &ex) {
+                neko_log_error("lua exception %s", ex.what());
+            }
+            neko_profiler_scope_end(lua_update);
         }
 
         // Do rendering
@@ -1547,27 +1577,19 @@ void game_update() {
         neko_idraw_camera2D(&g_idraw, (u32)fbs.x, (u32)fbs.y);
 
         {
-            neko_profiler_scope_begin(render_immediate);
-            neko_ecs_run_systems(neko_ecs(), ECS_SYSTEM_RENDER_IMMEDIATE);
-            neko_profiler_scope_end(render_immediate);
-        }
-
-        try {
-            neko_lua_wrap_call(L, "game_render");
-        } catch (std::exception &ex) {
-            neko_log_error("lua exception %s", ex.what());
+            neko_profiler_scope_begin(lua_render);
+            try {
+                neko_lua_wrap_call(L, "game_render");
+            } catch (std::exception &ex) {
+                neko_log_error("lua exception %s", ex.what());
+            }
+            neko_profiler_scope_end(lua_render);
         }
 
         if (g_client_userdata.vm.module_count) {
             if (g_client_userdata.vm.module_func[0]) {
                 g_client_userdata.vm.module_func[0]();
             }
-        }
-
-        {
-            neko_profiler_scope_begin(render_deferred);
-            neko_ecs_run_systems(neko_ecs(), ECS_SYSTEM_RENDER_DEFERRED);
-            neko_profiler_scope_end(render_deferred);
         }
 
         call_count = 0;
@@ -1841,6 +1863,8 @@ void game_update() {
             ImGui::ShowDemoWindow();
         }
 
+        // neko_imgui::Auto(g_cvar.bg);
+
         if (g_cvar.show_editor) {
             if (ImGui::BeginMainMenuBar()) {
                 if (ImGui::BeginMenu("engine")) {
@@ -1920,12 +1944,6 @@ void game_update() {
         neko_graphics_renderpass_end(&g_cb);
 
         neko_gui_new_frame(&g_gui);
-
-        {
-            neko_profiler_scope_begin(ecs_editor);
-            neko_ecs_run_systems(neko_ecs(), ECS_SYSTEM_EDITOR);
-            neko_profiler_scope_end(ecs_editor);
-        }
 
         if (g_cvar.show_demo_window) neko_gui_overview(gui_ctx);
 
@@ -2079,14 +2097,11 @@ void game_update() {
                 if (neko_gui_group_begin(gui_ctx, "ECS", NEKO_GUI_WINDOW_TITLE | NEKO_GUI_WINDOW_BORDER | NEKO_GUI_WINDOW_SCROLL_AUTO_HIDE)) {
 
                     neko_gui_layout_row_static(gui_ctx, 18, 125, 1);
-
-                    for (neko_ecs_ent_view v = neko_ecs_ent_view_single(neko_ecs(), COMPONENT_GAMEOBJECT); neko_ecs_ent_view_valid(&v); neko_ecs_ent_view_next(&v)) {
-                        CGameObject *gameobj = (CGameObject *)neko_ecs_ent_get_component(neko_ecs(), v.ent, COMPONENT_GAMEOBJECT);
-                        // neko_println("%d %d %d %d %s", v.i, v.ent, v.valid, v.view_type, gameobj->name);
-
-                        neko_gui_selectable_label(gui_ctx, gameobj->name, NEKO_GUI_TEXT_CENTERED, (neko_gui_bool *)&gameobj->selected);
-                    }
-
+                    // for (neko_ecs_ent_view v = neko_ecs_ent_view_single(neko_ecs(), COMPONENT_GAMEOBJECT); neko_ecs_ent_view_valid(&v); neko_ecs_ent_view_next(&v)) {
+                    //     CGameObject *gameobj = (CGameObject *)neko_ecs_ent_get_component(neko_ecs(), v.ent, COMPONENT_GAMEOBJECT);
+                    //     // neko_println("%d %d %d %d %s", v.i, v.ent, v.valid, v.view_type, gameobj->name);
+                    //     neko_gui_selectable_label(gui_ctx, gameobj->name, NEKO_GUI_TEXT_CENTERED, (neko_gui_bool *)&gameobj->selected);
+                    // }
                     neko_gui_group_end(gui_ctx);
                 }
 
@@ -2147,10 +2162,10 @@ void game_update() {
                         //                }
                     }
                     if (neko_gui_button_label(gui_ctx, "test_ecs_view")) {
-                        for (neko_ecs_ent_view v = neko_ecs_ent_view_single(neko_ecs(), COMPONENT_GAMEOBJECT); neko_ecs_ent_view_valid(&v); neko_ecs_ent_view_next(&v)) {
-                            CGameObject *gameobj = (CGameObject *)neko_ecs_ent_get_component(neko_ecs(), v.ent, COMPONENT_GAMEOBJECT);
-                            neko_println("%d %d %d %d %s", v.i, v.ent, v.valid, v.view_type, gameobj->name);
-                        }
+                        // for (neko_ecs_ent_view v = neko_ecs_ent_view_single(neko_ecs(), COMPONENT_GAMEOBJECT); neko_ecs_ent_view_valid(&v); neko_ecs_ent_view_next(&v)) {
+                        //     CGameObject *gameobj = (CGameObject *)neko_ecs_ent_get_component(neko_ecs(), v.ent, COMPONENT_GAMEOBJECT);
+                        //     neko_println("%d %d %d %d %s", v.i, v.ent, v.valid, v.view_type, gameobj->name);
+                        // }
                     }
                     if (neko_gui_button_label(gui_ctx, "test_ecs_cpp")) {
                         forEachComponentType([&]<typename T>() {
@@ -2342,8 +2357,8 @@ neko_game_desc_t neko_main(s32 argc, char **argv) {
     // 确定运行路径
     auto current_dir = std::filesystem::path(std::filesystem::current_path());
     for (int i = 0; i < 6; ++i)
-        if (std::filesystem::exists(current_dir / "gamedir") &&              //
-            std::filesystem::exists(current_dir / "gamedir" / "scripts") &&  //
+        if (std::filesystem::exists(current_dir / "gamedir") &&  //
+                                                                 // std::filesystem::exists(current_dir / "gamedir" / "scripts") &&  //
             std::filesystem::exists(current_dir / "gamedir" / "managed")) {
             data_path = neko_fs_normalize_path(current_dir.string());
             neko_log_info(std::format("gamedir: {0} (base: {1})", data_path, std::filesystem::current_path().string()).c_str());

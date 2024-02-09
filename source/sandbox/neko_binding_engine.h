@@ -12,6 +12,7 @@
 #include "engine/util/neko_tiled.h"
 
 // game
+#include "libs/lua/lua.h"
 #include "sandbox/game_chunk.h"
 
 neko_global lua_State* g_lua_bind;
@@ -637,6 +638,88 @@ static int __neko_bind_draw_text(lua_State* L) {
     return 0;
 }
 
+static int __neko_bind_custom_sprite_create(lua_State* L) {
+    // const_str file_path = lua_tostring(L, 1);
+
+    neko_fast_sprite_renderer* user_handle = (neko_fast_sprite_renderer*)lua_newuserdata(L, sizeof(neko_fast_sprite_renderer));
+    memset(user_handle, 0, sizeof(neko_fast_sprite_renderer));
+
+    neko_fast_sprite_renderer_construct(user_handle, 0, 0, NULL);
+
+    return 1;
+}
+
+static int __neko_bind_custom_sprite_render(lua_State* L) {
+    neko_fast_sprite_renderer* user_handle = (neko_fast_sprite_renderer*)lua_touserdata(L, 1);
+    neko_fast_sprite_renderer_draw(user_handle, &g_cb);
+    return 0;
+}
+
+static int __neko_bind_custom_sprite_end(lua_State* L) {
+    neko_fast_sprite_renderer* user_handle = (neko_fast_sprite_renderer*)lua_touserdata(L, 1);
+    return 0;
+}
+
+static int __neko_bind_particle_create(lua_State* L) {
+    // const_str file_path = lua_tostring(L, 1);
+
+    neko_particle_renderer* user_handle = (neko_particle_renderer*)lua_newuserdata(L, sizeof(neko_particle_renderer));
+    memset(user_handle, 0, sizeof(neko_particle_renderer));
+
+    neko_particle_renderer_construct(user_handle);
+
+    return 1;
+}
+
+static int __neko_bind_particle_render(lua_State* L) {
+    neko_particle_renderer* user_handle = (neko_particle_renderer*)lua_touserdata(L, 1);
+
+    neko_vec2 xform = {};
+    xform.x = lua_tonumber(L, 2);
+    xform.y = lua_tonumber(L, 3);
+
+    neko_graphics_t* gfx = neko_instance()->ctx.graphics;
+
+    neko_particle_renderer_update(user_handle, neko_instance()->ctx.platform->time.elapsed);
+
+    neko_particle_renderer_draw(user_handle, &g_cb, xform);
+    return 0;
+}
+
+static int __neko_bind_particle_end(lua_State* L) {
+    neko_particle_renderer* user_handle = (neko_particle_renderer*)lua_touserdata(L, 1);
+    neko_particle_renderer_free(user_handle);
+    return 0;
+}
+
+// 测试 luacstruct 用
+struct CGameObject {
+    int id;
+    bool active;
+    bool visible;
+    bool selected;
+};
+
+static int __neko_bind_gameobject_inspect(lua_State* L) {
+
+    CGameObject* user_handle = (CGameObject*)lua_touserdata(L, 1);
+
+    neko_println("gameobj %d %s %s %s", user_handle->id, neko_bool_str(user_handle->active), neko_bool_str(user_handle->visible), neko_bool_str(user_handle->selected));
+
+    // if (neko_gui_begin(ctx, editor_name, neko_gui_rect(200, 200, 300, 400),
+    //                    NEKO_GUI_WINDOW_BORDER | NEKO_GUI_WINDOW_MOVABLE | NEKO_GUI_WINDOW_SCALABLE | NEKO_GUI_WINDOW_MINIMIZABLE | NEKO_GUI_WINDOW_TITLE)) {
+
+    //     neko_gui_layout_row_static(ctx, 30, 150, 1);
+
+    //     neko_gui::gui_auto(gameobj->name, "name");
+    //     neko_gui::gui_auto(gameobj->visible, "visible");
+    //     neko_gui::gui_auto(gameobj->active, "active");
+    // }
+    // neko_gui_end(ctx);
+
+    return 0;
+}
+
 neko_inline void neko_register_test(lua_State* L) {
     //
     lua_register(L, "neko_player_create", __neko_bind_player_create);
@@ -660,6 +743,16 @@ neko_inline void neko_register_test(lua_State* L) {
     lua_register(L, "neko_gfxt_end", __neko_bind_gfxt_end);
 
     lua_register(L, "neko_draw_text", __neko_bind_draw_text);
+
+    lua_register(L, "neko_custom_sprite_create", __neko_bind_custom_sprite_create);
+    lua_register(L, "neko_custom_sprite_render", __neko_bind_custom_sprite_render);
+    lua_register(L, "neko_custom_sprite_end", __neko_bind_custom_sprite_end);
+
+    lua_register(L, "neko_particle_create", __neko_bind_particle_create);
+    lua_register(L, "neko_particle_render", __neko_bind_particle_render);
+    lua_register(L, "neko_particle_end", __neko_bind_particle_end);
+
+    lua_register(L, "neko_gameobject_inspect", __neko_bind_gameobject_inspect);
 }
 
 #if 0

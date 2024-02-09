@@ -502,31 +502,4 @@ neko_gui_auto_def_end();
 neko_gui_auto_def(template <>, std::add_pointer_t<void()>, if (neko_gui_button_label(ctx, name.c_str())) var(););
 neko_gui_auto_def(template <>, const std::add_pointer_t<void()>, if (neko_gui_button_label(ctx, name.c_str())) var(););
 
-#if 0
-void file_browser(std::string &path) {
-
-    ImGui::Text("Current Path: %s", path.c_str());
-    ImGui::Separator();
-
-    if (ImGui::Button("Parent Directory")) {
-        std::filesystem::path current_path(path);
-        if (!current_path.empty()) {
-            current_path = current_path.parent_path();
-            path = current_path.string();
-        }
-    }
-
-    for (const auto &entry : std::filesystem::directory_iterator(path)) {
-        const auto &entry_path = entry.path();
-        const auto &filename = entry_path.filename().string();
-        if (entry.is_directory()) {
-            if (ImGui::Selectable((filename + "/").c_str())) path = entry_path.string();
-
-        } else {
-            if (ImGui::Selectable(filename.c_str())) path = entry_path.string();
-        }
-    }
-}
-#endif
-
 #endif

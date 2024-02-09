@@ -6,10 +6,16 @@ local dump_func = require "common/dump"
 local ECS = require "ecs"
 local json = require "json"
 
+c_gameobject = require("gameobject")
+
 neko_app = {
     title = "sandbox",
     width = 1440,
     height = 880
+}
+
+neko_cvar = {
+    show_demo_window = false
 }
 
 game_data = {}
@@ -17,8 +23,8 @@ game_data = {}
 local w = ECS.fetch_world("sandbox")
 
 w:register("gameobj", {
-    active = true,
-    ud
+    name = "default name",
+    sd
 })
 
 w:register("vector2", {
@@ -45,6 +51,10 @@ w:register("fallingsand", {ud})
 
 w:register("gfxt", {ud})
 
+w:register("custom_sprite", {ud})
+
+w:register("particle", {ud})
+
 local gd = game_data
 
 game_init = function()
@@ -60,7 +70,8 @@ game_init = function()
 
     eid1 = w:new{
         gameobj = {
-            active = true
+            name = "player",
+            sd = c_gameobject.new_obj(1001, true, true)
         },
         vector2 = {
             x = 20,
@@ -106,6 +117,26 @@ game_init = function()
     --     }
     -- }
 
+    -- eid5 = w:new{
+    --     vector2 = {
+    --         x = 20,
+    --         y = 20
+    --     },
+    --     custom_sprite = {
+    --         ud = neko_custom_sprite_create()
+    --     }
+    -- }
+
+    eid6 = w:new{
+        vector2 = {
+            x = 100,
+            y = 100
+        },
+        particle = {
+            ud = neko_particle_create()
+        }
+    }
+
     local safefunc = sandbox.protect([[
         -- test_audio_src = neko_audio_load(neko_file_path("data/assets/audio/test.mp3"))
         -- test_audio_ins = neko_audio_instance(test_audio_src, 0.2)
@@ -125,12 +156,20 @@ game_shutdown = function()
         neko_tiled_end(t.ud)
     end
 
+    for v2, t in w:match("all", "vector2", "custom_sprite") do
+        neko_custom_sprite_end(t.ud)
+    end
+
     for v2, t in w:match("all", "vector2", "fallingsand") do
         neko_fallingsand_end(t.ud)
     end
 
     for v2, t in w:match("all", "vector2", "gfxt") do
         neko_gfxt_end(t.ud)
+    end
+
+    for v2, t in w:match("all", "vector2", "particle") do
+        neko_particle_end(t.ud)
     end
 end
 
@@ -166,17 +205,30 @@ game_update = function()
 
         neko_player_update(p.ud)
 
+        local player_v = 3.1
+
+        if neko_key_pressed("NEKO_KEYCODE_T") then
+            -- print(c_gameobject.CGameObject_get_id(obj.sd))
+            neko_gameobject_inspect(obj.sd)
+        end
+
+        if neko_was_key_down("NEKO_KEYCODE_LEFT_SHIFT") then
+            player_v = 5.1
+        else
+            player_v = 3.1
+        end
+
         if neko_was_key_down("NEKO_KEYCODE_A") then
-            v.dx = v.dx - 3.1
+            v.dx = v.dx - player_v
         end
         if neko_was_key_down("NEKO_KEYCODE_D") then
-            v.dx = v.dx + 3.1
+            v.dx = v.dx + player_v
         end
         if neko_was_key_down("NEKO_KEYCODE_W") then
-            v.dy = v.dy - 3.1
+            v.dy = v.dy - player_v
         end
         if neko_was_key_down("NEKO_KEYCODE_S") then
-            v.dy = v.dy + 3.1
+            v.dy = v.dy + player_v
         end
 
         v4.x = v4.x + v.dx
@@ -196,12 +248,20 @@ game_render = function()
         neko_tiled_update(t.ud)
     end
 
+    for v2, t in w:match("all", "vector2", "custom_sprite") do
+        neko_custom_sprite_render(t.ud)
+    end
+
     for v2, t in w:match("all", "vector2", "fallingsand") do
         neko_fallingsand_update(t.ud)
     end
 
     for v2, t in w:match("all", "vector2", "gfxt") do
         neko_gfxt_update(t.ud)
+    end
+
+    for v2, t in w:match("all", "vector2", "particle") do
+        neko_particle_render(t.ud, v2.x, v2.y)
     end
 
     neko_draw_text(50.0, 50.0, "中文渲染测试 日本語レンダリングテスト Hello World! ")
@@ -245,10 +305,10 @@ test_update = function()
 
     if neko_key_pressed("NEKO_KEYCODE_F2") then
         -- neko_dolua("lua_scripts/test_map.lua")
-        -- neko_dolua("lua_scripts/test.lua")
+        neko_dolua("lua_scripts/test.lua")
         -- neko_dolua("lua_scripts/test_cstruct.lua")
 
-        print(dump_func(w))
+        -- print(dump_func(w))
     end
 
     win_w, win_h = neko_window_size(neko_main_window())

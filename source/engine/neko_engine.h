@@ -35,7 +35,6 @@ typedef struct neko_game_desc_s {
 
     neko_console_t* console;
     neko_config_t* config;
-    neko_ecs* ecs;
 
 } neko_game_desc_t;
 
@@ -70,7 +69,7 @@ NEKO_API_DECL neko_game_desc_t neko_main(int32_t argc, char** argv);
 #define neko_subsystem(__T) (neko_instance()->ctx.__T)
 
 #define neko_cv() (neko_instance()->ctx.game.config)
-#define neko_ecs() (neko_instance()->ctx.game.ecs)
+// #define neko_ecs() (neko_instance()->ctx.game.ecs)
 
 #define neko_user_data(__T) (__T*)(neko_instance()->ctx.game.user_data)
 

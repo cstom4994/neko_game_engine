@@ -9,10 +9,12 @@
 
 // game
 #include "game_physics_math.hpp"
-#include "neko_client_ecs.h"
 
 #define g_window_width 1280
 #define g_window_height 740
+
+// user data
+extern neko_client_userdata_t g_client_userdata;
 
 // neko engine cpp
 using namespace neko;
@@ -681,7 +683,7 @@ void game_chunk_update(neko_fallsand_render* fallsand) {
     t_desc.data[0] = fallsand->texture_buffer;
     neko_graphics_texture_update(fallsand->tex, &t_desc);
 
-    neko_immediate_draw_t* idraw = ((neko_client_userdata_s*)neko_ecs()->user_data)->idraw;
+    neko_immediate_draw_t* idraw = g_client_userdata.idraw;
 
     const neko_vec2 fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
 
@@ -1022,7 +1024,7 @@ void render_chunk_immediate(neko_fallsand_render* fallsand, game_chunk_t* chunk)
 #if 1
 void chunk_update_mesh(neko_fallsand_render* fallsand, game_chunk_t* chunk) {
 
-    neko_immediate_draw_t* idraw = ((neko_client_userdata_s*)neko_ecs()->user_data)->idraw;
+    neko_immediate_draw_t* idraw = g_client_userdata.idraw;
 
     // std::lock_guard<std::mutex> locker(g_mutex_updatechunkmesh);
 

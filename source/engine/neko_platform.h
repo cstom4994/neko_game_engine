@@ -728,6 +728,8 @@ static inline void neko_mutex_unlock(neko_mutex *_mutex) { pthread_mutex_unlock(
 
 #if defined(NEKO_CPP_SRC)
 
+#include <memory>
+
 #ifdef UNICODE
 #define neko_unicode_convert_path(_newpath, _path) std::wstring _newpath(neko_utf8_to_wstring(_path))
 
