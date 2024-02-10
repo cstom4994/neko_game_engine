@@ -4,17 +4,11 @@
 
 #include "engine/neko.h"
 
-#ifdef NEKO_CPP_SRC
-extern "C" {
+// lua
 #include "libs/lua/lauxlib.h"
 #include "libs/lua/lua.h"
 #include "libs/lua/lualib.h"
-}
-#else
-#include "libs/lua/lauxlib.h"
-#include "libs/lua/lua.h"
-#include "libs/lua/lualib.h"
-#endif
+
 
 #ifndef _WIN32
 #include <stdint.h>

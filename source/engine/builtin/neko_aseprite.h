@@ -105,6 +105,7 @@ struct ase_tag_t {
     int from_frame;
     int to_frame;
     ase_animation_direction_t loop_animation_direction;
+    int repeat;
     u8 r, g, b;
     const char* name;
     ase_udata_t udata;
@@ -838,7 +839,8 @@ ase_t* neko_aseprite_load_from_memory(const void* memory, int size) {
                         tag.from_frame = (int)s_read_uint16(s);
                         tag.to_frame = (int)s_read_uint16(s);
                         tag.loop_animation_direction = (ase_animation_direction_t)s_read_uint8(s);
-                        s_skip(s, 8);  // For future (set to zero).
+                        tag.repeat = s_read_uint16(s);
+                        s_skip(s, 6);  // For future (set to zero).
                         tag.r = s_read_uint8(s);
                         tag.g = s_read_uint8(s);
                         tag.b = s_read_uint8(s);
@@ -914,7 +916,8 @@ ase_t* neko_aseprite_load_from_memory(const void* memory, int size) {
                             slice.center_y = (int)s_read_int32(s);
                             slice.center_w = (int)s_read_uint32(s);
                             slice.center_h = (int)s_read_uint32(s);
-                        } else if (flags & 2) {
+                        }
+                        if (flags & 2) {
                             // Has pivot information.
                             slice.has_pivot = 1;
                             slice.pivot_x = (int)s_read_int32(s);

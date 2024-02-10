@@ -12,6 +12,13 @@ set(CMAKE_C_STANDARD 17)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+if(NOT CMAKE_BUILD_TYPE)
+        set(CMAKE_BUILD_TYPE "Debug")
+endif()
+
+# 输出编译类型
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+
 if(MSVC)
         file(GLOB neko_engine_lib CONFIGURE_DEPENDS "dependencies/glfw/lib/*.lib")
         include_directories(
@@ -27,7 +34,16 @@ endif()
 
 include_directories("source/")
 
-add_definitions(-DDEBUG -D_DEBUG)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        add_definitions(-DDEBUG -D_DEBUG)
+        add_compile_options(
+                /RTC1
+
+                /JMC
+                /Gm-
+        )
+elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+endif()
 
 if(MSVC)
         add_definitions(-DWIN32 -D_WIN32 -D_WINDOWS -DNOMINMAX -DUNICODE -D_UNICODE)
@@ -57,18 +73,12 @@ if(MSVC)
                 /Zc:preprocessor
                 /Zc:wchar_t
                 /Zc:forScope
-                /RTC1
 
-                /JMC
                 /MP
-                /Gm-
-                /Od
         )
         add_link_options(
                 /MACHINE:X64
                 /SUBSYSTEM:CONSOLE
-                /NODEFAULTLIB:msvcrt.lib
-                /NODEFAULTLIB:LIBCMT
                 /INCREMENTAL
         )
 
@@ -79,10 +89,6 @@ if(MSVC)
 else()
         add_compile_options(
 
-                # -finput-charset=UTF-8            # Equivalent to /utf-8
-                # -pedantic-errors                 # Equivalent to /permissive (strict standards)
-                # -flto                            # Enable link-time optimization, similar to /bigobj
-                # -g                               # Generate debug information, similar to /ZI
                 -fno-strict-aliasing
 
                 -Wno-implicit-int
@@ -160,25 +166,3 @@ add_executable(sandbox ${neko_game_src_all})
 target_link_libraries(sandbox neko_engine)
 set_property(TARGET sandbox PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "./")
 target_link_libraries(sandbox neko_engine)
-
-# add_library(hotload SHARED ${neko_hotload_src})
-# target_link_libraries(hotload neko_engine)
-
-# add_executable(tools_packer ${tools_packer_src})
-# set_property(TARGET tools_packer PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "./")
-# target_link_libraries(tools_packer neko_engine)
-
-# Copy DLLs to the build directory
-# if(WIN32)
-# add_custom_command(
-# TARGET ${PROJECT_NAME} POST_BUILD
-# COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/dependencies/lib $<TARGET_FILE_DIR:${PROJECT_NAME}>
-# )
-# endif()
-
-# Copy Assets to the build directory
-# add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-# COMMAND ${CMAKE_COMMAND} -E copy_directory
-# ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:${PROJECT_NAME}>)
-
-# add_subdirectory(source/engine/managed)

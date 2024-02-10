@@ -19,30 +19,30 @@ extern const char* neko_png_error_reason;
 
 // 成功时返回1 失败时返回0
 int neko_png_inflate(void* in, int in_bytes, void* out, int out_bytes);
-int neko_png_save_png(const char* file_name, const neko_png_image_t* img);
+int neko_png_save(const char* file_name, const neko_png_image_t* img);
 
 typedef struct neko_png_saved_png_t {
     int size;
     void* data;
 } neko_png_saved_png_t;
 
-neko_png_saved_png_t neko_png_save_png_to_memory(const neko_png_image_t* img);
+neko_png_saved_png_t neko_png_save_to_memory(const neko_png_image_t* img);
 
 neko_png_image_t neko_png_make_atlas(int atlasWidth, int atlasHeight, const neko_png_image_t* pngs, int png_count, neko_png_atlas_image_t* imgs_out);
 
 int neko_png_default_save_atlas(const char* out_path_image, const char* out_path_atlas_txt, const neko_png_image_t* atlas, const neko_png_atlas_image_t* imgs, int img_count, const char** names);
 
-neko_png_image_t neko_png_load_png(const char* file_name);
-neko_png_image_t neko_png_load_png_mem(const void* png_data, int png_length);
+neko_png_image_t neko_png_load(const char* file_name);
+neko_png_image_t neko_png_load_mem(const void* png_data, int png_length);
 neko_png_image_t neko_png_load_blank(int w, int h);
-void neko_png_free_png(neko_png_image_t* img);
+void neko_png_free(neko_png_image_t* img);
 void neko_png_flip_image_horizontal(neko_png_image_t* img);
 
-void neko_png_load_png_wh(const void* png_data, int png_length, int* w, int* h);
+void neko_png_load_wh(const void* png_data, int png_length, int* w, int* h);
 
-neko_png_indexed_image_t neko_png_load_indexed_png(const char* file_name);
-neko_png_indexed_image_t neko_png_load_indexed_png_mem(const void* png_data, int png_length);
-void neko_png_free_indexed_png(neko_png_indexed_image_t* img);
+neko_png_indexed_image_t neko_png_load_indexed(const char* file_name);
+neko_png_indexed_image_t neko_png_load_indexed_mem(const void* png_data, int png_length);
+void neko_png_free_indexed(neko_png_indexed_image_t* img);
 
 neko_png_image_t neko_png_depallete_indexed_image(neko_png_indexed_image_t* img);
 
@@ -643,7 +643,7 @@ static void neko_png_save_data(neko_png_save_png_data_t* s, neko_png_image_t* im
     neko_png_put32(s, ~s->crc);
 }
 
-neko_png_saved_png_t neko_png_save_png_to_memory(const neko_png_image_t* img) {
+neko_png_saved_png_t neko_png_save_to_memory(const neko_png_image_t* img) {
     neko_png_saved_png_t result = {0};
     neko_png_save_png_data_t s = {0};
     long dataPos, dataSize, fileSize;
@@ -673,12 +673,12 @@ neko_png_saved_png_t neko_png_save_png_to_memory(const neko_png_image_t* img) {
     return result;
 }
 
-int neko_png_save_png(const char* file_name, const neko_png_image_t* img) {
+int neko_png_save(const char* file_name, const neko_png_image_t* img) {
     neko_png_saved_png_t s;
     long err;
     FILE* fp = fopen(file_name, "wb");
     if (!fp) return 1;
-    s = neko_png_save_png_to_memory(img);
+    s = neko_png_save_to_memory(img);
     fwrite(s.data, s.size, 1, fp);
     err = ferror(fp);
     fclose(fp);
@@ -830,7 +830,7 @@ static uint32_t neko_png_get_chunk_byte_length(const uint8_t* chunk) { return ne
 
 static int neko_png_out_size(neko_png_image_t* img, int bpp) { return (img->w + 1) * img->h * bpp; }
 
-neko_png_image_t neko_png_load_png_mem(const void* png_data, int png_length) {
+neko_png_image_t neko_png_load_mem(const void* png_data, int png_length) {
     const char* sig = "\211PNG\r\n\032\n";
     const uint8_t *ihdr, *first, *plte, *trns;
     int bit_depth, color_type, bpp, w, h, pix_bytes;
@@ -963,17 +963,17 @@ neko_png_image_t neko_png_load_blank(int w, int h) {
     return img;
 }
 
-neko_png_image_t neko_png_load_png(const char* file_name) {
+neko_png_image_t neko_png_load(const char* file_name) {
     neko_png_image_t img = {0};
     int len;
     void* data = neko_png_read_file_to_memory(file_name, &len);
     if (!data) return img;
-    img = neko_png_load_png_mem(data, len);
+    img = neko_png_load_mem(data, len);
     free(data);
     return img;
 }
 
-void neko_png_free_png(neko_png_image_t* img) {
+void neko_png_free(neko_png_image_t* img) {
     free(img->pix);
     img->pix = 0;
     img->w = img->h = 0;
@@ -997,7 +997,7 @@ void neko_png_flip_image_horizontal(neko_png_image_t* img) {
     }
 }
 
-void neko_png_load_png_wh(const void* png_data, int png_length, int* w_out, int* h_out) {
+void neko_png_load_wh(const void* png_data, int png_length, int* w_out, int* h_out) {
     const char* sig = "\211PNG\r\n\032\n";
     const uint8_t* ihdr;
     neko_png_raw_png_t png;
@@ -1023,12 +1023,12 @@ void neko_png_load_png_wh(const void* png_data, int png_length, int* w_out, int*
 neko_png_err:;
 }
 
-neko_png_indexed_image_t neko_png_load_indexed_png(const char* file_name) {
+neko_png_indexed_image_t neko_png_load_indexed(const char* file_name) {
     neko_png_indexed_image_t img = {0};
     int len;
     void* data = neko_png_read_file_to_memory(file_name, &len);
     if (!data) return img;
-    img = neko_png_load_indexed_png_mem(data, len);
+    img = neko_png_load_indexed_mem(data, len);
     free(data);
     return img;
 }
@@ -1055,7 +1055,7 @@ void neko_png_unpack_palette(neko_png_pixel_t* dst, const uint8_t* plte, int plt
     }
 }
 
-neko_png_indexed_image_t neko_png_load_indexed_png_mem(const void* png_data, int png_length) {
+neko_png_indexed_image_t neko_png_load_indexed_mem(const void* png_data, int png_length) {
     const char* sig = "\211PNG\r\n\032\n";
     const uint8_t *ihdr, *first, *plte, *trns;
     int bit_depth, color_type, bpp, w, h, pix_bytes;
@@ -1155,7 +1155,7 @@ neko_png_err:
     return img;
 }
 
-void neko_png_free_indexed_png(neko_png_indexed_image_t* img) {
+void neko_png_free_indexed(neko_png_indexed_image_t* img) {
     free(img->pix);
     img->pix = 0;
     img->w = img->h = 0;
@@ -1511,7 +1511,7 @@ int neko_png_default_save_atlas(const char* out_path_image, const char* out_path
     }
 
     // Save atlas image PNG to disk
-    NEKO_PNG_CHECK(neko_png_save_png(out_path_image, atlas), "failed to save atlas image to disk");
+    NEKO_PNG_CHECK(neko_png_save(out_path_image, atlas), "failed to save atlas image to disk");
 
 neko_png_err:
     fclose(fp);

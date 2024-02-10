@@ -8,13 +8,15 @@ local json = require "json"
 
 c_gameobject = require("gameobject")
 
-neko_app = {
+neko_game = {}
+
+neko_game.app = {
     title = "sandbox",
     width = 1440,
     height = 880
 }
 
-neko_cvar = {
+neko_game.cvar = {
     show_demo_window = false
 }
 
@@ -45,7 +47,7 @@ w:register("velocity2", {
 
 w:register("player", {ud})
 
-w:register("tiled_map", {ud})
+w:register("tiled_map", {path, ud})
 
 w:register("fallingsand", {ud})
 
@@ -56,6 +58,30 @@ w:register("custom_sprite", {ud})
 w:register("particle", {ud})
 
 local gd = game_data
+
+test_filewatch_callback = function(change, virtual_path)
+    print(change, virtual_path)
+
+    if change == "FILEWATCH_FILE_MODIFIED" then
+
+        for t in w:match("all", "tiled_map") do
+            if virtual_path == t.path then
+                neko_tiled_unload(t.ud)
+                neko_tiled_load(t.ud, neko_file_path("gamedir" .. t.path))
+            end
+        end
+
+    end
+end
+
+game_init_thread = function()
+    gd.assetsys = neko_assetsys_create()
+    gd.filewatch = neko_filewatch_create(gd.assetsys)
+
+    neko_filewatch_mount(gd.filewatch, neko_file_path("gamedir/maps"), "/maps");
+
+    neko_filewatch_start(gd.filewatch, "/maps")
+end
 
 game_init = function()
 
@@ -92,6 +118,7 @@ game_init = function()
             y = 20
         },
         tiled_map = {
+            path = "/maps/map.tmx",
             ud = neko_tiled_create(neko_file_path("gamedir/maps/map.tmx"))
         }
     }
@@ -171,6 +198,11 @@ game_shutdown = function()
     for v2, t in w:match("all", "vector2", "particle") do
         neko_particle_end(t.ud)
     end
+
+    neko_filewatch_stop(gd.filewatch, "/maps")
+
+    neko_filewatch_destory(gd.filewatch)
+    neko_assetsys_destory(gd.assetsys)
 end
 
 __NEKO_CONFIG_TYPE_INT = 0
@@ -179,11 +211,18 @@ __NEKO_CONFIG_TYPE_STRING = 2
 
 gd.tick = 0
 
+game_pre_update = function()
+    gd.tick = gd.tick + 1
+
+    if (gd.tick & 255) == 0 then
+        neko_filewatch_update(gd.filewatch)
+        neko_filewatch_notify(gd.filewatch)
+    end
+end
+
 game_update = function()
 
     for obj, v4, v, p in w:match("all", "gameobj", "vector2", "velocity2", "player") do
-
-        gd.tick = gd.tick + 1
 
         -- if gd.tick == 256 then
         --     gd.tick = 0
@@ -208,8 +247,7 @@ game_update = function()
         local player_v = 3.1
 
         if neko_key_pressed("NEKO_KEYCODE_T") then
-            -- print(c_gameobject.CGameObject_get_id(obj.sd))
-            neko_gameobject_inspect(obj.sd)
+            print(c_gameobject.CGameObject_get_id(obj.sd))
         end
 
         if neko_was_key_down("NEKO_KEYCODE_LEFT_SHIFT") then
@@ -262,6 +300,10 @@ game_render = function()
 
     for v2, t in w:match("all", "vector2", "particle") do
         neko_particle_render(t.ud, v2.x, v2.y)
+    end
+
+    for obj in w:match("all", "gameobj") do
+        neko_gameobject_inspect(obj.sd)
     end
 
     neko_draw_text(50.0, 50.0, "中文渲染测试 日本語レンダリングテスト Hello World! ")

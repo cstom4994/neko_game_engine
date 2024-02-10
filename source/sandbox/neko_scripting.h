@@ -19,7 +19,6 @@
 #include "engine/neko_engine.h"
 
 // lua
-#include "engine/util/neko_lua.h"
 #include "engine/util/neko_lua.hpp"
 
 struct lua_State;
@@ -232,13 +231,9 @@ static void InitLua(neko_scripting *lc) {
 
 #endif
 
-static void lua_reg_ecs(lua_State *L);
-
 static void neko_register(lua_State *L);
 
 static void lua_reg(lua_State *L) {
-
-    lua_reg_ecs(L);
 
     luaopen_cstruct_core(L);
     luaopen_cstruct_test(L);
@@ -306,32 +301,6 @@ void neko_scripting_update() {
     // auto &luawrap = this->s_lua;
     // auto OnUpdate = luawrap["OnUpdate"];
     // OnUpdate();
-}
-
-void neko_scripting_update_render() {}
-
-void neko_scripting_update_tick() {}
-
-static void lua_reg_ecs(lua_State *L) {
-    // neko_lua_register_t<>(L)
-    //         .def(&neko_ecs_make, "neko_ecs_make")
-    //         .def(&neko_ecs_destroy, "neko_ecs_destroy")
-    //         //.def(&neko_ecs_register_component, "neko_ecs_register_component")
-    //         //.def(&neko_ecs_register_system, "neko_ecs_register_system")
-    //         //.def(&neko_ecs_run_systems, "neko_ecs_run_systems")
-    //         //.def(&neko_ecs_run_system, "neko_ecs_run_system")
-    //         .def(&neko_ecs_for_count, "neko_ecs_for_count")
-    //         .def(&neko_ecs_get_ent, "neko_ecs_get_ent")
-    //         .def(&neko_ecs_ent_make, "neko_ecs_ent_make")
-    //         .def(&neko_ecs_ent_destroy, "neko_ecs_ent_destroy")
-    //         .def(&neko_ecs_ent_add_component, "neko_ecs_ent_add_component")
-    //         .def(&neko_ecs_ent_remove_component, "neko_ecs_ent_remove_component")
-    //         .def(&neko_ecs_ent_get_component, "neko_ecs_ent_get_component")
-    //         .def(&neko_ecs_ent_has_component, "neko_ecs_ent_has_component")
-    //         .def(&neko_ecs_ent_has_mask, "neko_ecs_ent_has_mask")
-    //         .def(&neko_ecs_ent_is_valid, "neko_ecs_ent_is_valid")
-    //         .def(&neko_ecs_ent_get_version, "neko_ecs_ent_get_version")
-    //         .def(&neko_ecs_ent_print, "neko_ecs_ent_print");
 }
 
 #endif

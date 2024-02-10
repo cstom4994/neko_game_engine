@@ -12,7 +12,9 @@
 #include <utility>
 #include <vector>
 
+extern "C" {
 #include "engine/util/neko_lua.h"
+}
 
 struct strtoll_tool_t {
     static long do_strtoll(const char *s, const char *, int) { return atol(s); }
@@ -1118,7 +1120,7 @@ struct void_ignore_t<void> {
 
 enum STACK_MIN_NUM_e { STACK_MIN_NUM = 20 };
 
-lua_State *neko_lua_wrap_create() {
+neko_inline lua_State *neko_lua_wrap_create() {
     lua_State *m_ls = ::luaL_newstate();
     ::luaL_openlibs(m_ls);
 
@@ -1127,7 +1129,7 @@ lua_State *neko_lua_wrap_create() {
     return m_ls;
 }
 
-void neko_lua_wrap_destory(lua_State *m_ls) {
+neko_inline void neko_lua_wrap_destory(lua_State *m_ls) {
     if (m_ls) {
         __neko_lua_auto_close(m_ls);
         ::lua_close(m_ls);
@@ -1144,9 +1146,9 @@ neko_static_inline void neko_lua_wrap_run_string(lua_State *m_ls, const char *st
 }
 neko_static_inline void neko_lua_wrap_run_string(lua_State *m_ls, const std::string &str_) { neko_lua_wrap_run_string(m_ls, str_.c_str()); }
 
-void neko_lua_wrap_dump_stack(lua_State *m_ls) { neko_lua_wrap_tool_t::dump_stack(m_ls); }
+neko_inline void neko_lua_wrap_dump_stack(lua_State *m_ls) { neko_lua_wrap_tool_t::dump_stack(m_ls); }
 
-int neko_lua_wrap_add_package_path(lua_State *m_ls, const std::string &str_) {
+neko_inline int neko_lua_wrap_add_package_path(lua_State *m_ls, const std::string &str_) {
     std::string new_path = "package.path = package.path .. \"";
     if (str_.empty()) {
         return -1;
@@ -1168,7 +1170,7 @@ int neko_lua_wrap_add_package_path(lua_State *m_ls, const std::string &str_) {
     return 0;
 }
 
-int neko_lua_wrap_load_file(lua_State *m_ls, const std::string &file_name_)  //
+neko_inline int neko_lua_wrap_load_file(lua_State *m_ls, const std::string &file_name_)  //
 {
     if (luaL_dofile(m_ls, file_name_.c_str())) {
         std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "cannot load file<%s>", file_name_.c_str());
@@ -1179,12 +1181,12 @@ int neko_lua_wrap_load_file(lua_State *m_ls, const std::string &file_name_)  //
     return 0;
 }
 
-inline int lua_pcall_wrap(lua_State *state, int argnum, int retnum) {
+neko_inline int lua_pcall_wrap(lua_State *state, int argnum, int retnum) {
     int result = lua_pcall(state, argnum, retnum, 0);
     return result;
 }
 
-bool neko_lua_wrap_do_file(lua_State *m_ls, const std::string &file) {
+neko_inline bool neko_lua_wrap_do_file(lua_State *m_ls, const std::string &file) {
     int status = luaL_loadfile(m_ls, file.c_str());
 
     if (status) {
@@ -1210,7 +1212,7 @@ int neko_lua_wrap_set_global_variable(lua_State *m_ls, const std::string &field_
 template <typename T>
 int neko_lua_wrap_set_global_variable(lua_State *m_ls, const char *field_name_, const T &value_);
 
-void neko_lua_wrap_register_raw_function(lua_State *m_ls, const char *func_name_, lua_function_t func_) {
+neko_inline void neko_lua_wrap_register_raw_function(lua_State *m_ls, const char *func_name_, lua_function_t func_) {
     lua_checkstack(m_ls, STACK_MIN_NUM);
 
     lua_pushcfunction(m_ls, func_);
@@ -1220,7 +1222,7 @@ void neko_lua_wrap_register_raw_function(lua_State *m_ls, const char *func_name_
 template <typename T>
 void neko_lua_wrap_reg(lua_State *m_ls, T a);
 
-void neko_lua_wrap_call(lua_State *m_ls, const char *func_name_) {
+neko_inline void neko_lua_wrap_call(lua_State *m_ls, const char *func_name_) {
     ::lua_getglobal(m_ls, func_name_);
 
     if (::lua_pcall(m_ls, 0, 0, 0) != 0) {
@@ -1229,7 +1231,8 @@ void neko_lua_wrap_call(lua_State *m_ls, const char *func_name_) {
         throw lua_exception_t(err);
     }
 }
-int __neko_lua_getFuncByName(lua_State *m_ls, const char *func_name_) {
+
+neko_inline int __neko_lua_getFuncByName(lua_State *m_ls, const char *func_name_) {
     // lua_getglobal(m_ls, func_name_);
     // return 0;
 
@@ -1354,9 +1357,7 @@ ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 
 }
 
 template <typename RET, typename ARG1, typename ARG2>
-ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 &arg1_, const ARG2 &arg2_)
-
-{
+ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 &arg1_, const ARG2 &arg2_) {
     ret(RET) ret = init_value_traits_t<ret(RET)>::value();
 
     int tmpArg = __neko_lua_getFuncByName(m_ls, func_name_);

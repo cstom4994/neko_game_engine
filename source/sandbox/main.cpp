@@ -740,7 +740,7 @@ typedef struct {
 neko_graphics_custom_batch_context_t *font_render;
 neko_graphics_custom_batch_shader_t font_shader;
 neko_graphics_custom_batch_renderable_t font_renderable;
-f32 font_scale = 5.f;
+f32 font_scale = 3.f;
 int font_vert_count;
 neko_font_vert_t *font_verts;
 neko_font_u64 test_font_tex_id;
@@ -972,67 +972,8 @@ neko_script_binary_t *ns_load_module(char *name) {
     return NULL;
 }
 
-void watch_map_callback(neko_filewatch_update_t change, const char *virtual_path, void *udata) {
-    const char *change_string = nullptr;
-    switch (change) {
-        case FILEWATCH_DIR_ADDED:
-            change_string = "FILEWATCH_DIR_ADDED";
-            break;
-        case FILEWATCH_DIR_REMOVED:
-            change_string = "FILEWATCH_DIR_REMOVED";
-            break;
-        case FILEWATCH_FILE_ADDED:
-            change_string = "FILEWATCH_FILE_ADDED";
-            break;
-        case FILEWATCH_FILE_REMOVED:
-            change_string = "FILEWATCH_FILE_REMOVED";
-            break;
-        case FILEWATCH_FILE_MODIFIED:
-            change_string = "FILEWATCH_FILE_MODIFIED";
-            break;
-    }
-
-    neko_println("%s at %s", change_string, virtual_path);
-
-    // if (!strcmp(virtual_path, "/maps/map.tmx") && change == FILEWATCH_FILE_MODIFIED) {
-    //     neko_tiled_renderer *tiled = static_cast<neko_tiled_renderer *>(neko_ecs_ent_get_component(neko_ecs(), neko_ecs_get_ent(neko_ecs(), __neko_ecs_ent_index(0)), COMPONENT_TILED));
-    //     neko_assert(tiled);
-    //     neko_tiled_unload(&tiled->map);
-    //     neko_tiled_load(&tiled->map, game_assets("gamedir/maps/map.tmx").c_str(), NULL);
-    // }
-}
-
-void watch_managed_callback(neko_filewatch_update_t change, const char *virtual_path, void *udata) {
-    const char *change_string = nullptr;
-    switch (change) {
-        case FILEWATCH_DIR_ADDED:
-            change_string = "FILEWATCH_DIR_ADDED";
-            break;
-        case FILEWATCH_DIR_REMOVED:
-            change_string = "FILEWATCH_DIR_REMOVED";
-            break;
-        case FILEWATCH_FILE_ADDED:
-            change_string = "FILEWATCH_FILE_ADDED";
-            break;
-        case FILEWATCH_FILE_REMOVED:
-            change_string = "FILEWATCH_FILE_REMOVED";
-            break;
-        case FILEWATCH_FILE_MODIFIED:
-            change_string = "FILEWATCH_FILE_MODIFIED";
-            break;
-    }
-
-    neko_println("%s at %s", change_string, virtual_path);
-
-    if (!strcmp(virtual_path, "/managed/Example.Managed.dll") && change == FILEWATCH_FILE_MODIFIED) {
-#ifdef GAME_CSHARP_ENABLED
-        g_csharp.hotfix();
-#endif
-    }
-}
-
-neko_assetsys_t *g_assetsys;
-neko_filewatch_t *g_filewatch;
+// neko_assetsys_t *g_assetsys;
+// neko_filewatch_t *g_filewatch;
 
 // 内部音频数据的资源句柄 由于音频必须在单独的线程上运行 因此这是必要的
 cs_audio_source_t *piano;
@@ -1055,16 +996,11 @@ int init_work(void *user_data) {
         thread_timer_t timer;
         thread_timer_init(&timer);
 
-        g_assetsys = neko_assetsys_create(0);
-        g_filewatch = neko_filewatch_create(g_assetsys, 0);
-
-        // filewatch_mount(filewatch, "./source", "/data");
-        neko_filewatch_mount(g_filewatch, game_assets("gamedir/style_sheets").c_str(), "/style_sheets");
-        neko_filewatch_mount(g_filewatch, game_assets("gamedir/maps").c_str(), "/maps");
-        neko_filewatch_mount(g_filewatch, game_assets("gamedir/managed/debug").c_str(), "/managed");
-
-        neko_filewatch_start_watching(g_filewatch, "/maps", watch_map_callback, 0);
-        neko_filewatch_start_watching(g_filewatch, "/managed", watch_managed_callback, 0);
+        try {
+            neko_lua_wrap_call(L, "game_init_thread");
+        } catch (std::exception &ex) {
+            neko_log_error("lua exception %s", ex.what());
+        }
 
         // thread_timer_wait(&timer, 1000000000);  // sleep for a second
 
@@ -1083,6 +1019,7 @@ void game_init() {
     neko_graphics_info_t *info = neko_graphics_info();
     if (!info->compute.available) {
         neko_log_error("%s", "Compute shaders not available.");
+        neko_quit();
         return;
     }
 
@@ -1126,8 +1063,14 @@ void game_init() {
 
         neko_lua_wrap_do_file(L, game_assets("lua_scripts/main.lua"));
 
+        // 获取 neko_game.table
+        lua_getglobal(L, "neko_game");
+        if (!lua_istable(L, -1)) {
+            neko_log_error("%s", "neko_game is not a table");
+        }
+
         neko_platform_running_desc_t t = {.title = "Neko Engine", .engine_args = ""};
-        if (lua_getglobal(L, "neko_app") == LUA_TNIL) throw std::exception("no app");
+        if (lua_getfield(L, -1, "app") == LUA_TNIL) throw std::exception("no app");
         if (lua_istable(L, -1)) {
             neko::meta::static_refl::TypeInfo<neko_platform_running_desc_t>::ForEachVarOf(t, [](auto field, auto &&value) {
                 static_assert(std::is_lvalue_reference_v<decltype(value)>);
@@ -1140,7 +1083,7 @@ void game_init() {
         lua_pop(L, 1);
 
         neko_engine_cvar_t cvar;
-        if (lua_getglobal(L, "neko_cvar") == LUA_TNIL) throw std::exception("no cvar");
+        if (lua_getfield(L, -1, "cvar") == LUA_TNIL) throw std::exception("no cvar");
         if (lua_istable(L, -1)) {
             neko::meta::static_refl::TypeInfo<neko_engine_cvar_t>::ForEachVarOf(cvar, [](auto field, auto &&value) {
                 static_assert(std::is_lvalue_reference_v<decltype(value)>);
@@ -1152,6 +1095,8 @@ void game_init() {
             throw std::exception("no cvar table");
         }
         lua_pop(L, 1);
+
+        lua_pop(L, 1);  // 弹出 neko_game.table
 
         neko_log_info("load game: %s %d %d", t.title, t.width, t.height);
 
@@ -1472,10 +1417,15 @@ void game_update() {
             neko_log_trace("init_work_thread done");
         }
 
-        neko_timed_action(250, {
-            neko_filewatch_update(g_filewatch);
-            neko_filewatch_notify(g_filewatch);
-        });
+        {
+            neko_profiler_scope_begin(lua_pre_update);
+            try {
+                neko_lua_wrap_call(L, "game_pre_update");
+            } catch (std::exception &ex) {
+                neko_log_error("lua exception %s", ex.what());
+            }
+            neko_profiler_scope_end(lua_pre_update);
+        }
 
         neko_vec2 fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
         const f32 t = neko_platform_elapsed_time();
@@ -2065,7 +2015,7 @@ void game_update() {
         };
 
         auto cvar_func = [gui_ctx]() {
-            if (neko_gui_begin(gui_ctx, "Hello Neko", neko_gui_layout_get_bounds_ex(&g_gui, "Hello Neko", neko_gui_rect(1050, 200, 350, 700)),
+            if (neko_gui_begin(gui_ctx, "Hello Neko", neko_gui_layout_get_bounds_ex(&g_gui, "Hello Neko", neko_gui_rect(30, 30, 350, 700)),
                                NEKO_GUI_WINDOW_BORDER | NEKO_GUI_WINDOW_MOVABLE | NEKO_GUI_WINDOW_SCALABLE | NEKO_GUI_WINDOW_MINIMIZABLE | NEKO_GUI_WINDOW_TITLE)) {
 
                 enum { EASY, HARD };
@@ -2320,11 +2270,6 @@ void game_shutdown() {
     neko_core_ui_free(&g_core_ui);
 
     neko_pack_destroy(&g_pack);
-
-    neko_filewatch_stop_watching(g_filewatch, "/gamedir");
-
-    neko_filewatch_free(g_filewatch);
-    neko_assetsys_destroy(g_assetsys);
 }
 
 #define NEKO_ARGS_IMPL
@@ -2358,8 +2303,7 @@ neko_game_desc_t neko_main(s32 argc, char **argv) {
     auto current_dir = std::filesystem::path(std::filesystem::current_path());
     for (int i = 0; i < 6; ++i)
         if (std::filesystem::exists(current_dir / "gamedir") &&  //
-                                                                 // std::filesystem::exists(current_dir / "gamedir" / "scripts") &&  //
-            std::filesystem::exists(current_dir / "gamedir" / "managed")) {
+            std::filesystem::exists(current_dir / "gamedir" / "assets")) {
             data_path = neko_fs_normalize_path(current_dir.string());
             neko_log_info(std::format("gamedir: {0} (base: {1})", data_path, std::filesystem::current_path().string()).c_str());
             break;

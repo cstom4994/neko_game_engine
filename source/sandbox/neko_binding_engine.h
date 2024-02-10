@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <string>
 
+#include "engine/neko.h"
 #include "engine/neko_engine.h"
 #include "engine/util/neko_asset.h"
 #include "engine/util/neko_lua.hpp"
@@ -12,8 +13,10 @@
 #include "engine/util/neko_tiled.h"
 
 // game
+#include "libs/imgui/imgui.h"
 #include "libs/lua/lua.h"
 #include "sandbox/game_chunk.h"
+#include "sandbox/neko_imgui_auto.hpp"
 
 neko_global lua_State* g_lua_bind;
 
@@ -517,6 +520,19 @@ static int __neko_bind_tiled_update(lua_State* L) {
     return 0;
 }
 
+static int __neko_bind_tiled_unload(lua_State* L) {
+    neko_tiled_renderer* user_handle = (neko_tiled_renderer*)lua_touserdata(L, 1);
+    neko_tiled_unload(&user_handle->map);
+    return 0;
+}
+
+static int __neko_bind_tiled_load(lua_State* L) {
+    neko_tiled_renderer* user_handle = (neko_tiled_renderer*)lua_touserdata(L, 1);
+    const_str path = lua_tostring(L, 2);
+    neko_tiled_load(&user_handle->map, path, NULL);
+    return 0;
+}
+
 static int __neko_bind_tiled_end(lua_State* L) {
     neko_tiled_renderer* user_handle = (neko_tiled_renderer*)lua_touserdata(L, 1);
     neko_tiled_unload(&user_handle->map);
@@ -700,11 +716,30 @@ struct CGameObject {
     bool selected;
 };
 
+template <>
+struct neko::meta::static_refl::TypeInfo<CGameObject> : TypeInfoBase<CGameObject> {
+    static constexpr AttrList attrs = {};
+    static constexpr FieldList fields = {
+            rf_field{TSTR("id"), &rf_type::id},              //
+            rf_field{TSTR("active"), &rf_type::active},      //
+            rf_field{TSTR("visible"), &rf_type::visible},    //
+            rf_field{TSTR("selected"), &rf_type::selected},  //
+    };
+};
+
 static int __neko_bind_gameobject_inspect(lua_State* L) {
 
     CGameObject* user_handle = (CGameObject*)lua_touserdata(L, 1);
 
-    neko_println("gameobj %d %s %s %s", user_handle->id, neko_bool_str(user_handle->active), neko_bool_str(user_handle->visible), neko_bool_str(user_handle->selected));
+    // neko_println("gameobj %d %s %s %s", user_handle->id, neko_bool_str(user_handle->active), neko_bool_str(user_handle->visible), neko_bool_str(user_handle->selected));
+
+    if (ImGui::Begin("GameObject Inspector")) {
+
+        ImGui::Text("GameObject_%d", user_handle->id);
+
+        neko::meta::static_refl::TypeInfo<CGameObject>::ForEachVarOf(*user_handle, [](auto field, auto&& value) { neko_imgui::Auto(value, std::string(field.name).c_str()); });
+    }
+    ImGui::End();
 
     // if (neko_gui_begin(ctx, editor_name, neko_gui_rect(200, 200, 300, 400),
     //                    NEKO_GUI_WINDOW_BORDER | NEKO_GUI_WINDOW_MOVABLE | NEKO_GUI_WINDOW_SCALABLE | NEKO_GUI_WINDOW_MINIMIZABLE | NEKO_GUI_WINDOW_TITLE)) {
@@ -717,6 +752,96 @@ static int __neko_bind_gameobject_inspect(lua_State* L) {
     // }
     // neko_gui_end(ctx);
 
+    return 0;
+}
+
+static int __neko_bind_assetsys_create(lua_State* L) {
+    neko_assetsys_t* filewatch = (neko_assetsys_t*)lua_newuserdata(L, sizeof(neko_assetsys_t));
+    memset(filewatch, 0, sizeof(neko_assetsys_t));
+    neko_assetsys_create_internal(filewatch, NULL);
+
+    return 1;
+}
+
+static int __neko_bind_assetsys_destory(lua_State* L) {
+    neko_assetsys_t* assetsys = (neko_assetsys_t*)lua_touserdata(L, 1);
+    neko_assetsys_destroy_internal(assetsys);
+    return 0;
+}
+
+static int __neko_bind_filewatch_create(lua_State* L) {
+    neko_assetsys_t* assetsys = (neko_assetsys_t*)lua_touserdata(L, 1);
+
+    neko_filewatch_t* filewatch = (neko_filewatch_t*)lua_newuserdata(L, sizeof(neko_filewatch_t));
+    memset(filewatch, 0, sizeof(neko_filewatch_t));
+    neko_filewatch_create_internal(filewatch, assetsys, NULL);
+    return 1;
+}
+
+static int __neko_bind_filewatch_destory(lua_State* L) {
+    neko_filewatch_t* filewatch = (neko_filewatch_t*)lua_touserdata(L, 1);
+    neko_filewatch_free_internal(filewatch);
+    return 0;
+}
+
+void watch_map_callback(neko_filewatch_update_t change, const char* virtual_path, void* udata) {
+    std::string change_string;
+    switch (change) {
+        case FILEWATCH_DIR_ADDED:
+            change_string = "FILEWATCH_DIR_ADDED";
+            break;
+        case FILEWATCH_DIR_REMOVED:
+            change_string = "FILEWATCH_DIR_REMOVED";
+            break;
+        case FILEWATCH_FILE_ADDED:
+            change_string = "FILEWATCH_FILE_ADDED";
+            break;
+        case FILEWATCH_FILE_REMOVED:
+            change_string = "FILEWATCH_FILE_REMOVED";
+            break;
+        case FILEWATCH_FILE_MODIFIED:
+            change_string = "FILEWATCH_FILE_MODIFIED";
+            break;
+    }
+
+    try {
+        neko_lua_wrap_call<void>(L, "test_filewatch_callback", change_string, std::string(virtual_path));
+    } catch (std::exception& ex) {
+        neko_log_error("lua exception %s", ex.what());
+    }
+}
+
+static int __neko_bind_filewatch_mount(lua_State* L) {
+    neko_filewatch_t* filewatch = (neko_filewatch_t*)lua_touserdata(L, 1);
+    const_str actual_path = lua_tostring(L, 2);
+    const_str virtual_path = lua_tostring(L, 3);
+    neko_filewatch_mount(filewatch, actual_path, virtual_path);
+    return 0;
+}
+
+static int __neko_bind_filewatch_start_watch(lua_State* L) {
+    neko_filewatch_t* filewatch = (neko_filewatch_t*)lua_touserdata(L, 1);
+    const_str virtual_path = lua_tostring(L, 2);
+    neko_filewatch_start_watching(filewatch, virtual_path, watch_map_callback, 0);
+    return 0;
+}
+
+static int __neko_bind_filewatch_stop_watching(lua_State* L) {
+    neko_filewatch_t* filewatch = (neko_filewatch_t*)lua_touserdata(L, 1);
+    const_str virtual_path = lua_tostring(L, 2);
+    neko_filewatch_stop_watching(filewatch, virtual_path);
+    return 0;
+}
+
+static int __neko_bind_filewatch_update(lua_State* L) {
+    neko_filewatch_t* filewatch = (neko_filewatch_t*)lua_touserdata(L, 1);
+    neko_filewatch_update(filewatch);
+    return 0;
+}
+
+static int __neko_bind_filewatch_notify(lua_State* L) {
+    neko_filewatch_t* filewatch = (neko_filewatch_t*)lua_touserdata(L, 1);
+    neko_filewatch_notify(filewatch);
     return 0;
 }
 
@@ -733,6 +858,8 @@ neko_inline void neko_register_test(lua_State* L) {
     lua_register(L, "neko_tiled_create", __neko_bind_tiled_create);
     lua_register(L, "neko_tiled_update", __neko_bind_tiled_update);
     lua_register(L, "neko_tiled_end", __neko_bind_tiled_end);
+    lua_register(L, "neko_tiled_load", __neko_bind_tiled_load);
+    lua_register(L, "neko_tiled_unload", __neko_bind_tiled_unload);
 
     lua_register(L, "neko_fallingsand_create", __neko_bind_fallingsand_create);
     lua_register(L, "neko_fallingsand_update", __neko_bind_fallingsand_update);
@@ -753,6 +880,17 @@ neko_inline void neko_register_test(lua_State* L) {
     lua_register(L, "neko_particle_end", __neko_bind_particle_end);
 
     lua_register(L, "neko_gameobject_inspect", __neko_bind_gameobject_inspect);
+
+    lua_register(L, "neko_assetsys_create", __neko_bind_assetsys_create);
+    lua_register(L, "neko_assetsys_destory", __neko_bind_assetsys_destory);
+
+    lua_register(L, "neko_filewatch_create", __neko_bind_filewatch_create);
+    lua_register(L, "neko_filewatch_destory", __neko_bind_filewatch_destory);
+    lua_register(L, "neko_filewatch_mount", __neko_bind_filewatch_mount);
+    lua_register(L, "neko_filewatch_start", __neko_bind_filewatch_start_watch);
+    lua_register(L, "neko_filewatch_stop", __neko_bind_filewatch_stop_watching);
+    lua_register(L, "neko_filewatch_update", __neko_bind_filewatch_update);
+    lua_register(L, "neko_filewatch_notify", __neko_bind_filewatch_notify);
 }
 
 #if 0

@@ -396,23 +396,6 @@ neko_force_inline void neko_printf(const char* fmt, ...) {
 #define neko_debugbreak()
 #endif
 
-#if defined(__cplusplus)
-#include <string>
-#if defined(__cpp_char8_t)
-template <typename T>
-const char* u8Cpp20(T&& t) noexcept {
-#pragma warning(disable : 26490)
-    return reinterpret_cast<const char*>(t);
-#pragma warning(default : 26490)
-}
-#define neko_str(x) u8Cpp20(u8##x)
-#else
-#define neko_str(x) u8##x
-#endif
-#else
-#define neko_str(x) x
-#endif
-
 // Helper macro for typedefing a struture definition
 #define neko_struct_def(name, ...) \
     typedef struct {               \

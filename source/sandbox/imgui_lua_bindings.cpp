@@ -9,7 +9,7 @@
 #include <vector>
 
 // neko lua
-#include "engine/util/neko_lua.h"
+#include "engine/util/neko_lua.hpp"
 
 // ImGui
 #include "neko_imgui_auto.hpp"
