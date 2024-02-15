@@ -354,11 +354,11 @@ neko_force_inline void neko_printf(const char* fmt, ...) {
 #define neko_log_info(...) log_info(__VA_ARGS__)
 #define neko_log_trace(...) log_trace(__VA_ARGS__)
 #define neko_log_warning(...) log_warn(__VA_ARGS__)
-#define neko_log_error(msg, ...)                                            \
-    do {                                                                    \
-        char tmp[512];                                                      \
-        neko_snprintf(tmp, 512, msg, __VA_ARGS__);                          \
-        log_error("%s (%s:%s:%zu)", tmp, __FILE__, __FUNCTION__, __LINE__); \
+#define neko_log_error(msg, ...)                                                                  \
+    do {                                                                                          \
+        char tmp[512];                                                                            \
+        neko_snprintf(tmp, 512, msg, __VA_ARGS__);                                                \
+        log_error("%s (%s:%s:%zu)", tmp, neko_fs_get_filename(__FILE__), __FUNCTION__, __LINE__); \
     } while (0)
 
 #define neko_enum_flag_operator(T)                                                                                                                                         \

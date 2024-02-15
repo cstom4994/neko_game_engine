@@ -20,7 +20,11 @@ endif()
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 if(MSVC)
-        file(GLOB neko_engine_lib CONFIGURE_DEPENDS "dependencies/glfw/lib/*.lib")
+        file(GLOB glfw_lib CONFIGURE_DEPENDS "dependencies/glfw/lib/*.lib")
+        file(GLOB 3rd_lib CONFIGURE_DEPENDS "dependencies/*.lib")
+
+        set(neko_engine_lib ${glfw_lib} ${3rd_lib})
+
         include_directories(
                 "dependencies/glfw/include/"
                 "dependencies/netcore/"

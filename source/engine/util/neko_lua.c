@@ -1316,19 +1316,19 @@ void neko_lua_debug_setup(lua_State *lua, const char *name, const char *globalNa
 
     debugger_lua_path = debugger_lua;
 
-    // Check that the module name was not already defined.
+    // 检查是否尚未定义模块名称
     lua_getfield(lua, LUA_REGISTRYINDEX, MODULE_NAME);
     neko_assert(lua_isnil(lua, -1) || strcmp(name, luaL_checkstring(lua, -1)));
     lua_pop(lua, 1);
 
-    // Push the module name into the registry.
+    // 将模块名称推送到注册表中
     lua_pushstring(lua, name);
     lua_setfield(lua, LUA_REGISTRYINDEX, MODULE_NAME);
 
-    // Preload the module
+    // 预加载模块
     luaL_requiref(lua, name, luaopen_debugger, false);
 
-    // Insert the msgh function into the registry.
+    // 将msgh函数插入注册表
     lua_getfield(lua, -1, "msgh");
     lua_setfield(lua, LUA_REGISTRYINDEX, MSGH);
 
@@ -1350,23 +1350,21 @@ void neko_lua_debug_setup(lua_State *lua, const char *name, const char *globalNa
 }
 
 int neko_lua_debug_pcall(lua_State *lua, int nargs, int nresults, int msgh) {
-    // Call regular lua_pcall() if a message handler is provided.
+    // 如果提供了消息处理程序 则调用常规的lua_pcall()
     if (msgh) return lua_pcall(lua, nargs, nresults, msgh);
 
-    // Grab the msgh function out of the registry.
+    // 从注册表中获取调试用msgh函数
     lua_getfield(lua, LUA_REGISTRYINDEX, MSGH);
     if (lua_isnil(lua, -1)) {
-        luaL_error(lua, "Tried to call dbg_call() before calling dbg_setup().");
+        luaL_error(lua, "Tried to call neko_lua_debug_pcall() before calling debugger setup.");
     }
 
-    // Move the error handler just below the function.
+    // 将错误处理程序移到函数的正下方
     msgh = lua_gettop(lua) - (1 + nargs);
     lua_insert(lua, msgh);
-
-    // Call the function.
     int err = lua_pcall(lua, nargs, nresults, msgh);
 
-    // Remove the debug handler.
+    // 删除调试处理程序
     lua_remove(lua, msgh);
 
     return err;

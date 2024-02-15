@@ -56,6 +56,7 @@
 #pragma comment(lib, "user32")    // SetWindowLong
 #pragma comment(lib, "DbgHelp")   // DbgHelp
 #pragma comment(lib, "winmm")     // timeBeginPeriod
+#pragma comment(lib, "ws2_32")    // socket
 
 #endif
 

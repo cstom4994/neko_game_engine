@@ -268,13 +268,13 @@ public:
 
     template <class T1, class T2>
     neko_serialize& operator&(std::pair<T1, T2>& v) {
-        *this& v.first& v.second;
+        *this& v.first & v.second;
         return *this;
     }
 
     template <class T1, class T2>
     const neko_serialize& operator&(const std::pair<T1, T2>& v) const {
-        *this& v.first& v.second;
+        *this& v.first & v.second;
         return *this;
     }
 

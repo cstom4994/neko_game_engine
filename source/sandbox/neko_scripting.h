@@ -231,7 +231,16 @@ static void InitLua(neko_scripting *lc) {
 
 #endif
 
-static void neko_register(lua_State *L);
+extern "C" int luaopen_socket_core(lua_State *L);
+
+#define PRELOAD(name, function)     \
+    lua_getglobal(L, "package");    \
+    lua_getfield(L, -1, "preload"); \
+    lua_pushcfunction(L, function); \
+    lua_setfield(L, -2, name);      \
+    lua_pop(L, 2)
+
+void neko_register(lua_State *L);
 
 static void lua_reg(lua_State *L) {
 
@@ -242,7 +251,10 @@ static void lua_reg(lua_State *L) {
 
     neko_register(L);
 
-    neko_lua_debug_setup(L, "debugger", "dbg", NULL, NULL, game_assets("lua_scripts/libs/debugger.lua").c_str());
+    PRELOAD("socket.core", luaopen_socket_core);
+
+    // luaL_requiref(L, "socket.core", luaopen_socket_core, 1);
+    // lua_pop(L, 1);
 }
 
 static int __neko_lua_catch_panic(lua_State *L) {
@@ -251,7 +263,7 @@ static int __neko_lua_catch_panic(lua_State *L) {
     return 0;
 }
 
-lua_State *neko_scripting_init() {
+neko_inline lua_State *neko_scripting_init() {
     neko_timer timer;
     timer.start();
 
@@ -260,6 +272,8 @@ lua_State *neko_scripting_init() {
     try {
 
         lua_atpanic(L, __neko_lua_catch_panic);
+
+        neko_lua_debug_setup(L, "debugger", "dbg", NULL, NULL, game_assets("lua_scripts/libs/debugger.lua").c_str());
 
         lua_reg(L);
 
@@ -290,9 +304,9 @@ lua_State *neko_scripting_init() {
     return L;
 }
 
-void neko_scripting_end(lua_State *L) { neko_lua_wrap_destory(L); }
+neko_inline void neko_scripting_end(lua_State *L) { neko_lua_wrap_destory(L); }
 
-void neko_scripting_update() {
+neko_inline void neko_scripting_update() {
     // luaL_loadstring(_struct->L, s_couroutineFileSrc.c_str());
     // if (__neko_lua_debug_pcall(_struct->L, 0, LUA_MULTRET, 0) != LUA_OK) {
     //     print_error(_struct->L);

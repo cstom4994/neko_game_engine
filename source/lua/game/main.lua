@@ -1,10 +1,12 @@
-inspect = require("inspect")
 sandbox = require("sandbox")
 
 local dump_func = require "common/dump"
 
 local ECS = require "ecs"
 local json = require "json"
+local dbg = require("libs.debugger")
+
+neko_web_console = require "web_console"
 
 c_gameobject = require("gameobject")
 
@@ -275,6 +277,9 @@ game_update = function()
         v.dx = v.dx / 2.0
         v.dy = v.dy / 2.0
     end
+
+    neko_web_console.update()
+
 end
 
 game_render = function()
@@ -347,8 +352,11 @@ test_update = function()
 
     if neko_key_pressed("NEKO_KEYCODE_F2") then
         -- neko_dolua("lua_scripts/test_map.lua")
-        neko_dolua("lua_scripts/test.lua")
+        -- neko_dolua("lua_scripts/test.lua")
         -- neko_dolua("lua_scripts/test_cstruct.lua")
+        neko_dolua("lua_scripts/test_class.lua")
+
+        -- dbg()
 
         -- print(dump_func(w))
     end

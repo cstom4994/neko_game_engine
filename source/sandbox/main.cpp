@@ -984,6 +984,15 @@ cs_sound_params_t params = cs_sound_params_default();
 
 game_editor_console console_new;
 
+#ifdef NEKO_SURFACE_ENABLE
+#include "engine/builtin/neko_surface.h"
+#include "engine/builtin/neko_surface_gl.h"
+MEsurface_context *g_surface;
+
+#include "sandbox/tests/demo.h"
+DemoData demodata;
+#endif
+
 // lua
 #include "neko_scripting.h"
 
@@ -1179,6 +1188,18 @@ void game_init() {
     neko_gui::ctx = &g_gui.neko_gui_ctx;
 
     g_client_userdata.nui = &g_gui;
+
+#ifdef NEKO_SURFACE_ENABLE
+    g_surface = ME_surface_CreateGL3(ME_SURFACE_ANTIALIAS | ME_SURFACE_STENCIL_STROKES | ME_SURFACE_DEBUG);
+
+    if (g_surface == NULL) {
+        printf("Could not init surface.\n");
+    }
+
+    if (loadDemoData(g_surface, &demodata) == -1) {
+        printf("Could not init surface demo.\n");
+    }
+#endif
 
     // AI
     // Set up camera
@@ -2230,6 +2251,12 @@ void game_update() {
             neko_profiler_scope_end(render_submit);
         }
 
+#ifdef NEKO_SURFACE_ENABLE
+        ME_surface_BeginFrame(g_surface, fbs.x, fbs.y, 1.0f);
+        renderDemo(g_surface, mp.x, mp.y, fbs.x, fbs.y, t / 1000.f, 0, &demodata);
+        ME_surface_EndFrame(g_surface);
+#endif
+
         neko_check_gl_error();
     }
 }
@@ -2245,6 +2272,12 @@ void game_shutdown() {
 
 #ifdef GAME_CSHARP_ENABLED
     g_csharp.shutdown();
+#endif
+
+#ifdef NEKO_SURFACE_ENABLE
+    freeDemoData(g_surface, &demodata);
+
+    ME_surface_DeleteGL3(g_surface);
 #endif
 
     neko_safe_free(font_verts);

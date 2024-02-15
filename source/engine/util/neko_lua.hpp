@@ -4,6 +4,7 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <format>
 #include <list>
 #include <map>
 #include <set>
@@ -1139,7 +1140,7 @@ neko_inline void neko_lua_wrap_destory(lua_State *m_ls) {
 
 neko_static_inline void neko_lua_wrap_run_string(lua_State *m_ls, const char *str_) {
     if (luaL_dostring(m_ls, str_)) {
-        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "run_string ::lua_pcall failed str<%s>", str_);
+        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "run_string ::lua_pcall_wrap failed str<%s>", str_);
         ::lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1181,8 +1182,8 @@ neko_inline int neko_lua_wrap_load_file(lua_State *m_ls, const std::string &file
     return 0;
 }
 
-neko_inline int lua_pcall_wrap(lua_State *state, int argnum, int retnum) {
-    int result = lua_pcall(state, argnum, retnum, 0);
+neko_inline int neko_lua_pcall_wrap(lua_State *state, int argnum, int retnum, int msgh) {
+    int result = neko_lua_debug_pcall(state, argnum, retnum, msgh);
     return result;
 }
 
@@ -1190,13 +1191,17 @@ neko_inline bool neko_lua_wrap_do_file(lua_State *m_ls, const std::string &file)
     int status = luaL_loadfile(m_ls, file.c_str());
 
     if (status) {
-        throw lua_exception_t(std::to_string(status));
+        const char *err = lua_tostring(m_ls, -1);
+        throw lua_exception_t(std::format("luaL_loadfile ret {}\n{}\n", status, err));
+        lua_pop(m_ls, 1);
         return false;
     }
 
-    status = lua_pcall_wrap(m_ls, 0, LUA_MULTRET);
+    status = neko_lua_pcall_wrap(m_ls, 0, LUA_MULTRET, 0);
     if (status) {
-        throw lua_exception_t(std::to_string(status));
+        const char *err = lua_tostring(m_ls, -1);
+        throw lua_exception_t(std::format("lua_pcall_wrap ret {}\n{}\n", status, err));
+        lua_pop(m_ls, 1);
         return false;
     }
     return true;
@@ -1225,8 +1230,8 @@ void neko_lua_wrap_reg(lua_State *m_ls, T a);
 neko_inline void neko_lua_wrap_call(lua_State *m_ls, const char *func_name_) {
     ::lua_getglobal(m_ls, func_name_);
 
-    if (::lua_pcall(m_ls, 0, 0, 0) != 0) {
-        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall failed func_name<%s>", func_name_);
+    if (::neko_lua_pcall_wrap(m_ls, 0, 0, 0) != 0) {
+        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         ::lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1312,8 +1317,8 @@ ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_) {
 
     int tmpArg = __neko_lua_getFuncByName(m_ls, func_name_);
 
-    if (lua_pcall(m_ls, tmpArg + 0, 1, 0) != 0) {
-        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall failed func_name<%s>", func_name_);
+    if (neko_lua_pcall_wrap(m_ls, tmpArg + 0, 1, 0) != 0) {
+        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1338,8 +1343,8 @@ ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 
 
     __lua_op_t<ARG1>::push_stack(m_ls, arg1_);
 
-    if (lua_pcall(m_ls, tmpArg + 1, 1, 0) != 0) {
-        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall failed func_name<%s>", func_name_);
+    if (neko_lua_pcall_wrap(m_ls, tmpArg + 1, 1, 0) != 0) {
+        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1365,8 +1370,8 @@ ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 
     __lua_op_t<ARG1>::push_stack(m_ls, arg1_);
     __lua_op_t<ARG2>::push_stack(m_ls, arg2_);
 
-    if (lua_pcall(m_ls, tmpArg + 2, 1, 0) != 0) {
-        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall failed func_name<%s>", func_name_);
+    if (neko_lua_pcall_wrap(m_ls, tmpArg + 2, 1, 0) != 0) {
+        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1393,8 +1398,8 @@ ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 
     __lua_op_t<ARG2>::push_stack(m_ls, arg2_);
     __lua_op_t<ARG3>::push_stack(m_ls, arg3_);
 
-    if (lua_pcall(m_ls, tmpArg + 3, 1, 0) != 0) {
-        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall failed func_name<%s>", func_name_);
+    if (neko_lua_pcall_wrap(m_ls, tmpArg + 3, 1, 0) != 0) {
+        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1422,8 +1427,8 @@ ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 
     __lua_op_t<ARG3>::push_stack(m_ls, arg3_);
     __lua_op_t<ARG4>::push_stack(m_ls, arg4_);
 
-    if (lua_pcall(m_ls, tmpArg + 4, 1, 0) != 0) {
-        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall failed func_name<%s>", func_name_);
+    if (neko_lua_pcall_wrap(m_ls, tmpArg + 4, 1, 0) != 0) {
+        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1452,8 +1457,8 @@ ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 
     __lua_op_t<ARG4>::push_stack(m_ls, arg4_);
     __lua_op_t<ARG5>::push_stack(m_ls, arg5_);
 
-    if (lua_pcall(m_ls, tmpArg + 5, 1, 0) != 0) {
-        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall failed func_name<%s>", func_name_);
+    if (neko_lua_pcall_wrap(m_ls, tmpArg + 5, 1, 0) != 0) {
+        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1483,8 +1488,8 @@ ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 
     __lua_op_t<ARG5>::push_stack(m_ls, arg5_);
     __lua_op_t<ARG6>::push_stack(m_ls, arg6_);
 
-    if (lua_pcall(m_ls, tmpArg + 6, 1, 0) != 0) {
-        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall failed func_name<%s>", func_name_);
+    if (neko_lua_pcall_wrap(m_ls, tmpArg + 6, 1, 0) != 0) {
+        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1516,8 +1521,8 @@ ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 
     __lua_op_t<ARG6>::push_stack(m_ls, arg6_);
     __lua_op_t<ARG7>::push_stack(m_ls, arg7_);
 
-    if (lua_pcall(m_ls, tmpArg + 7, 1, 0) != 0) {
-        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall failed func_name<%s>", func_name_);
+    if (neko_lua_pcall_wrap(m_ls, tmpArg + 7, 1, 0) != 0) {
+        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1550,8 +1555,8 @@ ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 
     __lua_op_t<ARG7>::push_stack(m_ls, arg7_);
     __lua_op_t<ARG8>::push_stack(m_ls, arg8_);
 
-    if (lua_pcall(m_ls, tmpArg + 8, 1, 0) != 0) {
-        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall failed func_name<%s>", func_name_);
+    if (neko_lua_pcall_wrap(m_ls, tmpArg + 8, 1, 0) != 0) {
+        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1585,8 +1590,8 @@ ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 
     __lua_op_t<ARG8>::push_stack(m_ls, arg8_);
     __lua_op_t<ARG9>::push_stack(m_ls, arg9_);
 
-    if (lua_pcall(m_ls, tmpArg + 9, 1, 0) != 0) {
-        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall failed func_name<%s>", func_name_);
+    if (neko_lua_pcall_wrap(m_ls, tmpArg + 9, 1, 0) != 0) {
+        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
