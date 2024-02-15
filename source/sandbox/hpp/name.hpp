@@ -18,8 +18,8 @@
 #include <unordered_set>
 #include <vector>
 
-#include "neko_cpp_utils.hpp"
 #include "neko_cpp_misc.hpp"
+#include "neko_cpp_utils.hpp"
 
 namespace neko::cpp {
 template <auto V>
@@ -1065,85 +1065,85 @@ constexpr std::string_view neko::cpp::type_name_add_const_rvalue_reference(std::
 #pragma region Type
 
 namespace neko::cpp {
-class name_id {
+class neko_cpp_nameid {
 public:
-    static constexpr std::size_t InvalidValue() noexcept { return static_cast<std::size_t>(-1); }
+    static constexpr std::size_t invalid_value() noexcept { return static_cast<std::size_t>(-1); }
 
-    constexpr name_id() noexcept : value{InvalidValue()} {}
-    explicit constexpr name_id(std::size_t value) noexcept : value{value} {}
-    constexpr name_id(std::string_view str) noexcept : value{string_hash(str)} {}
+    constexpr neko_cpp_nameid() noexcept : value{invalid_value()} {}
+    explicit constexpr neko_cpp_nameid(std::size_t value) noexcept : value{value} {}
+    constexpr neko_cpp_nameid(std::string_view str) noexcept : value{string_hash(str)} {}
     template <std::size_t N>
-    constexpr name_id(const char (&str)[N]) noexcept : value{string_hash(str)} {}
+    constexpr neko_cpp_nameid(const char (&str)[N]) noexcept : value{string_hash(str)} {}
 
-    constexpr std::size_t GetValue() const noexcept { return value; }
+    constexpr std::size_t get_value() const noexcept { return value; }
 
-    constexpr bool Valid() const noexcept { return value != InvalidValue(); }
+    constexpr bool valid() const noexcept { return value != invalid_value(); }
 
-    constexpr bool Is(std::string_view str) const noexcept { return value == name_id{str}.GetValue(); }
+    constexpr bool Is(std::string_view str) const noexcept { return value == neko_cpp_nameid{str}.get_value(); }
 
-    explicit constexpr operator bool() const noexcept { return Valid(); }
+    explicit constexpr operator bool() const noexcept { return valid(); }
 
-    constexpr std::strong_ordering operator<=>(const name_id& rhs) const noexcept = default;
+    constexpr std::strong_ordering operator<=>(const neko_cpp_nameid& rhs) const noexcept = default;
 
 private:
     std::size_t value;
 };
 
-class TypeID {
+class neko_cpp_typeid {
 public:
-    static constexpr std::size_t InvalidValue() noexcept { return static_cast<std::size_t>(-1); }
+    static constexpr std::size_t invalid_value() noexcept { return static_cast<std::size_t>(-1); }
 
-    constexpr TypeID() noexcept : nameID{InvalidValue()} {}
-    explicit constexpr TypeID(std::size_t value) noexcept : nameID{value} {}
-    constexpr TypeID(std::string_view str) noexcept : nameID{str} {}
+    constexpr neko_cpp_typeid() noexcept : nameID{invalid_value()} {}
+    explicit constexpr neko_cpp_typeid(std::size_t value) noexcept : nameID{value} {}
+    constexpr neko_cpp_typeid(std::string_view str) noexcept : nameID{str} {}
     template <std::size_t N>
-    constexpr TypeID(const char (&str)[N]) noexcept : nameID{str} {}
+    constexpr neko_cpp_typeid(const char (&str)[N]) noexcept : nameID{str} {}
 
-    constexpr std::size_t GetValue() const noexcept { return nameID.GetValue(); }
+    constexpr std::size_t get_value() const noexcept { return nameID.get_value(); }
 
-    constexpr bool Valid() const noexcept { return nameID.Valid(); }
+    constexpr bool valid() const noexcept { return nameID.valid(); }
 
     constexpr bool Is(std::string_view str) const noexcept { return nameID.Is(str); }
 
     template <typename T>
     constexpr bool Is() const noexcept {
-        return GetValue() == TypeID{type_name<T>().View()}.GetValue();
+        return get_value() == neko_cpp_typeid{type_name<T>().View()}.get_value();
     }
 
-    explicit constexpr operator bool() const noexcept { return Valid(); }
+    explicit constexpr operator bool() const noexcept { return valid(); }
 
-    constexpr std::strong_ordering operator<=>(const TypeID& rhs) const noexcept = default;
+    constexpr std::strong_ordering operator<=>(const neko_cpp_typeid& rhs) const noexcept = default;
 
 private:
-    name_id nameID;
+    neko_cpp_nameid nameID;
 };
 
 template <typename T>
-constexpr TypeID TypeID_of = TypeID{type_name<T>().View()};
+constexpr neko_cpp_typeid NEKO_TYPEID_OF = neko_cpp_typeid{type_name<T>().View()};
 
 template <typename X, typename Y>
-        struct TypeID_Less : std::bool_constant < TypeID_of<X><TypeID_of<Y>> {
-    static_assert(std::is_same_v<X, Y> || TypeID_of<X> != TypeID_of<Y>);
+        struct TypeID_Less : std::bool_constant < NEKO_TYPEID_OF<X><NEKO_TYPEID_OF<Y>> {
+    static_assert(std::is_same_v<X, Y> || NEKO_TYPEID_OF<X> != NEKO_TYPEID_OF<Y>);
 };
 
 template <typename X, typename Y>
 constexpr bool TypeID_Less_v = TypeID_Less<X, Y>::value;
 
-class the_name {
+class neko_cpp_name {
 public:
-    constexpr the_name() noexcept = default;
-    constexpr the_name(std::string_view str) noexcept : str{str}, nameID{str} {}
+    constexpr neko_cpp_name() noexcept = default;
+    constexpr neko_cpp_name(std::string_view str) noexcept : str{str}, nameID{str} {}
     template <std::size_t N>
-    constexpr the_name(const char (&str)[N]) noexcept : the_name{std::string_view{str}} {}
-    constexpr the_name(std::string_view str, name_id nameID) noexcept : str{str}, nameID{nameID} { neko_assert(name_id{str} == nameID); }
+    constexpr neko_cpp_name(const char (&str)[N]) noexcept : neko_cpp_name{std::string_view{str}} {}
+    constexpr neko_cpp_name(std::string_view str, neko_cpp_nameid nameID) noexcept : str{str}, nameID{nameID} { neko_assert(neko_cpp_nameid{str} == nameID); }
     constexpr std::string_view get_view() const noexcept { return str; }
     constexpr operator std::string_view() const noexcept { return get_view(); }
-    constexpr name_id get_id() const noexcept { return nameID; }
-    constexpr operator name_id() const noexcept { return get_id(); }
-    constexpr bool valid() const noexcept { return !str.empty() && nameID.Valid(); }
+    constexpr neko_cpp_nameid get_id() const noexcept { return nameID; }
+    constexpr operator neko_cpp_nameid() const noexcept { return get_id(); }
+    constexpr bool valid() const noexcept { return !str.empty() && nameID.valid(); }
     constexpr operator bool() const noexcept { return valid(); }
-    constexpr std::strong_ordering operator<=>(const the_name& rhs) const noexcept { return nameID <=> rhs.nameID; }
-    friend constexpr bool operator==(const the_name& lhs, const the_name& rhs) noexcept {
+    constexpr std::strong_ordering operator<=>(const neko_cpp_name& rhs) const noexcept { return nameID <=> rhs.nameID; }
+    friend constexpr bool operator==(const neko_cpp_name& lhs, const neko_cpp_name& rhs) noexcept {
         if (lhs.nameID == rhs.nameID) {
             neko_assert(lhs.str == rhs.str);
             return true;
@@ -1155,27 +1155,27 @@ public:
 
 private:
     std::string_view str;
-    name_id nameID;
+    neko_cpp_nameid nameID;
 };
 
-class Type {
+class neko_cpp_type {
 public:
-    constexpr Type() noexcept = default;
-    constexpr Type(std::string_view str) noexcept : name{str} {}
+    constexpr neko_cpp_type() noexcept = default;
+    constexpr neko_cpp_type(std::string_view str) noexcept : name{str} {}
     template <std::size_t N>
-    constexpr Type(const char (&str)[N]) noexcept : name{std::string_view{str}} {}
-    constexpr Type(std::string_view str, TypeID typeID) noexcept : name{str, name_id{typeID.GetValue()}} {}
+    constexpr neko_cpp_type(const char (&str)[N]) noexcept : name{std::string_view{str}} {}
+    constexpr neko_cpp_type(std::string_view str, neko_cpp_typeid typeID) noexcept : name{str, neko_cpp_nameid{typeID.get_value()}} {}
     constexpr std::string_view get_name() const noexcept { return name.get_view(); }
     constexpr operator std::string_view() const noexcept { return get_name(); }
-    constexpr TypeID get_id() const noexcept { return TypeID{name.get_id().GetValue()}; }
-    constexpr operator TypeID() const noexcept { return get_id(); }
+    constexpr neko_cpp_typeid get_id() const noexcept { return neko_cpp_typeid{name.get_id().get_value()}; }
+    constexpr operator neko_cpp_typeid() const noexcept { return get_id(); }
     constexpr bool valid() const noexcept { return name.valid(); }
     constexpr operator bool() const noexcept { return valid(); }
-    constexpr std::strong_ordering operator<=>(const Type& rhs) const noexcept = default;
+    constexpr std::strong_ordering operator<=>(const neko_cpp_type& rhs) const noexcept = default;
 
     template <typename T>
     constexpr bool Is() const noexcept {
-        if (get_id() == TypeID_of<T>) {
+        if (get_id() == NEKO_TYPEID_OF<T>) {
             neko_assert(name.Is(type_name<T>().View()));
             return true;
         }
@@ -1234,63 +1234,63 @@ public:
     constexpr std::string_view Name_RemoveExtent() const noexcept { return type_name_remove_extent(name.get_view()); }
     constexpr std::string_view Name_RemoveAllExtents() const noexcept { return type_name_remove_all_extents(name.get_view()); }
 
-    constexpr Type RemoveCV() const noexcept { return FastGetType(Name_RemoveCV()); }
-    constexpr Type RemoveConst() const noexcept { return FastGetType(Name_RemoveConst()); }
-    constexpr Type RemoveTopMostVolatile() const noexcept { return FastGetType(Name_RemoveTopMostVolatile()); }
-    constexpr Type RemoveLValueReference() const noexcept { return FastGetType(Name_RemoveLValueReference()); }
-    constexpr Type RemoveRValueReference() const noexcept { return FastGetType(Name_RemoveRValueReference()); }
-    constexpr Type RemoveReference() const noexcept { return FastGetType(Name_RemoveReference()); }
-    constexpr Type RemovePointer() const noexcept { return FastGetType(Name_RemovePointer()); }
-    constexpr Type RemoveCVRef() const noexcept { return FastGetType(Name_RemoveCVRef()); }
-    constexpr Type RemoveExtent() const noexcept { return FastGetType(Name_RemoveExtent()); }
-    constexpr Type RemoveAllExtents() const noexcept { return FastGetType(Name_RemoveAllExtents()); }
+    constexpr neko_cpp_type RemoveCV() const noexcept { return FastGetType(Name_RemoveCV()); }
+    constexpr neko_cpp_type RemoveConst() const noexcept { return FastGetType(Name_RemoveConst()); }
+    constexpr neko_cpp_type RemoveTopMostVolatile() const noexcept { return FastGetType(Name_RemoveTopMostVolatile()); }
+    constexpr neko_cpp_type RemoveLValueReference() const noexcept { return FastGetType(Name_RemoveLValueReference()); }
+    constexpr neko_cpp_type RemoveRValueReference() const noexcept { return FastGetType(Name_RemoveRValueReference()); }
+    constexpr neko_cpp_type RemoveReference() const noexcept { return FastGetType(Name_RemoveReference()); }
+    constexpr neko_cpp_type RemovePointer() const noexcept { return FastGetType(Name_RemovePointer()); }
+    constexpr neko_cpp_type RemoveCVRef() const noexcept { return FastGetType(Name_RemoveCVRef()); }
+    constexpr neko_cpp_type RemoveExtent() const noexcept { return FastGetType(Name_RemoveExtent()); }
+    constexpr neko_cpp_type RemoveAllExtents() const noexcept { return FastGetType(Name_RemoveAllExtents()); }
 
     // modification (add, ID)
 
-    constexpr TypeID ID_AddConst() const noexcept { return TypeID{type_name_add_const_hash(name.get_view())}; }
-    constexpr TypeID ID_AddVolatile() const noexcept { return TypeID{type_name_add_volatile_hash(name.get_view())}; }
-    constexpr TypeID ID_AddCV() const noexcept { return TypeID{type_name_add_cv_hash(name.get_view())}; }
-    constexpr TypeID ID_AddLValueReference() const noexcept { return TypeID{type_name_add_lvalue_reference_hash(name.get_view())}; }
+    constexpr neko_cpp_typeid ID_AddConst() const noexcept { return neko_cpp_typeid{type_name_add_const_hash(name.get_view())}; }
+    constexpr neko_cpp_typeid ID_AddVolatile() const noexcept { return neko_cpp_typeid{type_name_add_volatile_hash(name.get_view())}; }
+    constexpr neko_cpp_typeid ID_AddCV() const noexcept { return neko_cpp_typeid{type_name_add_cv_hash(name.get_view())}; }
+    constexpr neko_cpp_typeid ID_AddLValueReference() const noexcept { return neko_cpp_typeid{type_name_add_lvalue_reference_hash(name.get_view())}; }
     // same with type_name_add_lvalue_reference_hash, but it won't change &&{T}
-    constexpr TypeID ID_AddLValueReferenceWeak() const noexcept { return TypeID{type_name_add_lvalue_reference_weak_hash(name.get_view())}; }
-    constexpr TypeID ID_AddRValueReference() const noexcept { return TypeID{type_name_add_rvalue_reference_hash(name.get_view())}; }
-    constexpr TypeID ID_AddPointer() const noexcept { return TypeID{type_name_add_pointer_hash(name.get_view())}; }
-    constexpr TypeID ID_AddConstLValueReference() const noexcept { return TypeID{type_name_add_const_lvalue_reference_hash(name.get_view())}; }
-    constexpr TypeID ID_AddConstRValueReference() const noexcept { return TypeID{type_name_add_const_rvalue_reference_hash(name.get_view())}; }
+    constexpr neko_cpp_typeid ID_AddLValueReferenceWeak() const noexcept { return neko_cpp_typeid{type_name_add_lvalue_reference_weak_hash(name.get_view())}; }
+    constexpr neko_cpp_typeid ID_AddRValueReference() const noexcept { return neko_cpp_typeid{type_name_add_rvalue_reference_hash(name.get_view())}; }
+    constexpr neko_cpp_typeid ID_AddPointer() const noexcept { return neko_cpp_typeid{type_name_add_pointer_hash(name.get_view())}; }
+    constexpr neko_cpp_typeid ID_AddConstLValueReference() const noexcept { return neko_cpp_typeid{type_name_add_const_lvalue_reference_hash(name.get_view())}; }
+    constexpr neko_cpp_typeid ID_AddConstRValueReference() const noexcept { return neko_cpp_typeid{type_name_add_const_rvalue_reference_hash(name.get_view())}; }
 
 private:
     // avoid hash
-    constexpr Type FastGetType(std::string_view str) const noexcept { return name.get_view().data() == str.data() ? *this : Type{str}; }
+    constexpr neko_cpp_type FastGetType(std::string_view str) const noexcept { return name.get_view().data() == str.data() ? *this : neko_cpp_type{str}; }
 
-    the_name name;
+    neko_cpp_name name;
 };
 
 template <typename T>
-constexpr Type Type_of = Type{type_name<T>().View()};
+constexpr neko_cpp_type NEKO_TYPE_OF = neko_cpp_type{type_name<T>().View()};
 
 template <typename X, typename Y>
-        struct Type_Less : std::bool_constant < Type_of<X><Type_of<Y>> {
-    static_assert(std::is_same_v<X, Y> || Type_of<X> != Type_of<Y>);
+        struct Type_Less : std::bool_constant < NEKO_TYPE_OF<X><NEKO_TYPE_OF<Y>> {
+    static_assert(std::is_same_v<X, Y> || NEKO_TYPE_OF<X> != NEKO_TYPE_OF<Y>);
 };
 
 template <typename X, typename Y>
 constexpr bool Type_Less_v = Type_Less<X, Y>::value;
 
 template <std::size_t N>
-class TempNameIDs : public TempArray<name_id, N> {
-    using TempArray<name_id, N>::TempArray;
+class TempNameIDs : public TempArray<neko_cpp_nameid, N> {
+    using TempArray<neko_cpp_nameid, N>::neko_cpp_nameid;
 };
 template <std::size_t N>
-class TempTypeIDs : public TempArray<TypeID, N> {
-    using TempArray<TypeID, N>::TempArray;
+class TempTypeIDs : public TempArray<neko_cpp_typeid, N> {
+    using TempArray<neko_cpp_typeid, N>::neko_cpp_typeid;
 };
 template <std::size_t N>
-class TempNames : public TempArray<the_name, N> {
-    using TempArray<the_name, N>::TempArray;
+class TempNames : public TempArray<neko_cpp_name, N> {
+    using TempArray<neko_cpp_name, N>::neko_cpp_name;
 };
 template <std::size_t N>
-class TempTypes : public TempArray<Type, N> {
-    using TempArray<Type, N>::TempArray;
+class TempTypes : public TempArray<neko_cpp_type, N> {
+    using TempArray<neko_cpp_type, N>::TempArray;
 };
 template <typename... Ts>
 TempNameIDs(Ts...) -> TempNameIDs<sizeof...(Ts)>;
@@ -1301,29 +1301,29 @@ TempNames(Ts...) -> TempNames<sizeof...(Ts)>;
 template <typename... Ts>
 TempTypes(Ts...) -> TempTypes<sizeof...(Ts)>;
 template <typename... Ts>
-constexpr auto TypeIDs_of = TempTypeIDs{TypeID_of<Ts>...};
+constexpr auto NEKO_TYPEIDS_OF = TempTypeIDs{NEKO_TYPEID_OF<Ts>...};
 template <typename... Ts>
-constexpr auto Types_of = TempTypes{Type_of<Ts>...};
+constexpr auto NEKO_TYPES_OF = TempTypes{NEKO_TYPE_OF<Ts>...};
 }  // namespace neko::cpp
 
 template <>
-struct std::hash<neko::cpp::name_id> {
-    std::size_t operator()(const neko::cpp::name_id& ID) const noexcept { return ID.GetValue(); }
+struct std::hash<neko::cpp::neko_cpp_nameid> {
+    std::size_t operator()(const neko::cpp::neko_cpp_nameid& ID) const noexcept { return ID.get_value(); }
 };
 
 template <>
-struct std::hash<neko::cpp::TypeID> {
-    std::size_t operator()(const neko::cpp::TypeID& ID) const noexcept { return ID.GetValue(); }
+struct std::hash<neko::cpp::neko_cpp_typeid> {
+    std::size_t operator()(const neko::cpp::neko_cpp_typeid& ID) const noexcept { return ID.get_value(); }
 };
 
 template <>
-struct std::hash<neko::cpp::the_name> {
-    std::size_t operator()(const neko::cpp::the_name& name) const noexcept { return name.get_id().GetValue(); }
+struct std::hash<neko::cpp::neko_cpp_name> {
+    std::size_t operator()(const neko::cpp::neko_cpp_name& name) const noexcept { return name.get_id().get_value(); }
 };
 
 template <>
-struct std::hash<neko::cpp::Type> {
-    std::size_t operator()(const neko::cpp::Type& type) const noexcept { return type.get_id().GetValue(); }
+struct std::hash<neko::cpp::neko_cpp_type> {
+    std::size_t operator()(const neko::cpp::neko_cpp_type& type) const noexcept { return type.get_id().get_value(); }
 };
 
 #pragma endregion Type

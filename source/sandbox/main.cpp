@@ -145,6 +145,7 @@ typedef struct neko_engine_cvar_s {
     bool show_profiler_window = false;
 
     bool show_gui = false;
+    bool show_console = false;
 
     bool hello_ai_shit = false;
 
@@ -166,6 +167,7 @@ struct neko::meta::static_refl::TypeInfo<neko_engine_cvar_t> : TypeInfoBase<neko
             rf_field{TSTR("show_pack_editor"), &rf_type::show_pack_editor},          //
             rf_field{TSTR("show_profiler_window"), &rf_type::show_profiler_window},  //
             rf_field{TSTR("show_gui"), &rf_type::show_gui},                          //
+            rf_field{TSTR("show_console"), &rf_type::show_console},                  //
             rf_field{TSTR("hello_ai_shit"), &rf_type::hello_ai_shit},                //
             rf_field{TSTR("is_hotfix"), &rf_type::is_hotfix},                        //
             rf_field{TSTR("vsync"), &rf_type::vsync},                                //
@@ -180,6 +182,7 @@ neko_struct(neko_engine_cvar_t,                            //
             _Fs(show_pack_editor, "pack editor"),          //
             _Fs(show_profiler_window, "profiler"),         //
             _Fs(show_gui, "neko gui"),                     //
+            _Fs(show_console, "neko console"),             //
             _Fs(hello_ai_shit, "Test AI"),                 //
             _Fs(bg, "bg color")                            //
 );
@@ -979,6 +982,8 @@ neko_script_binary_t *ns_load_module(char *name) {
 cs_audio_source_t *piano;
 cs_sound_params_t params = cs_sound_params_default();
 
+game_editor_console console_new;
+
 // lua
 #include "neko_scripting.h"
 
@@ -1437,6 +1442,7 @@ void game_update() {
         struct neko_gui_context *gui_ctx = &g_gui.neko_gui_ctx;
 
         if (neko_platform_key_pressed(NEKO_KEYCODE_ESC)) g_cvar.show_editor ^= true;
+        if (neko_platform_key_pressed(NEKO_KEYCODE_SLASH)) g_cvar.show_console ^= true;
 
 #ifdef GAME_CSHARP_ENABLED
         {
@@ -1813,7 +1819,11 @@ void game_update() {
             ImGui::ShowDemoWindow();
         }
 
+        bool bInteractingWithTextbox = false;
+        if (g_cvar.show_console) console_new.display_full(&bInteractingWithTextbox);
+
         // neko_imgui::Auto(g_cvar.bg);
+        inspect_shader("sprite_shader", sprite_shader.program);  // TEST
 
         if (g_cvar.show_editor) {
             if (ImGui::BeginMainMenuBar()) {

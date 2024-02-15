@@ -82,9 +82,9 @@ ImplT& instance() {
 }  // namespace neko::modules
 
 namespace neko {
-template <typename ModuleT>
-ModuleT& the() {
-    return modules::instance<ModuleT>();
+template <typename T>
+T& the() {
+    return modules::instance<T>();
 }
 }  // namespace neko
 

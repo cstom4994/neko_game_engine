@@ -39,6 +39,14 @@ neko_inline neko_color_t imvec_to_rgba(ImVec4 iv) {
     return neko_color_t{newr, newg, newb, newa};
 }
 
+neko_inline ImVec4 rgba_to_imvec(int r, int g, int b, int a = 255) {
+    float newr = r / 255.f;
+    float newg = g / 255.f;
+    float newb = b / 255.f;
+    float newa = a / 255.f;
+    return ImVec4(newr, newg, newb, newa);
+}
+
 namespace neko_imgui {
 
 // 这就是这个库实现的功能 只是类 neko_imgui::Auto_t<T> 的包装

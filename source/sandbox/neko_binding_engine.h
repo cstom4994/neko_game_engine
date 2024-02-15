@@ -845,7 +845,14 @@ static int __neko_bind_filewatch_notify(lua_State* L) {
     return 0;
 }
 
+// static int __neko_bind_filewatch_notify(lua_State* L) {
+//     neko_filewatch_t* filewatch = (neko_filewatch_t*)lua_touserdata(L, 1);
+//     neko_filewatch_notify(filewatch);
+//     return 0;
+// }
+
 neko_inline void neko_register_test(lua_State* L) {
+
     //
     lua_register(L, "neko_player_create", __neko_bind_player_create);
     lua_register(L, "neko_player_update", __neko_bind_player_update);
