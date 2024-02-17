@@ -19,9 +19,9 @@
 #include "engine/util/neko_gui.h"
 #include "engine/util/neko_idraw.h"
 #include "engine/util/neko_imgui.h"
+#include "engine/util/neko_script.h"
 #include "engine/util/neko_sprite.h"
 #include "engine/util/neko_tiled.h"
-#include "engine/util/neko_vm.h"
 
 // builtin
 #include "engine/builtin/neko_aseprite.h"
@@ -29,13 +29,13 @@
 // game
 #include "game_editor.h"
 #include "game_scripts.h"
+#include "libs/imgui/imgui.h"
 #include "neko_hash.h"
-#include "neko_nui_auto.hpp"
 
 // hpp
-#include "hpp/neko_static_refl.hpp"
-#include "hpp/neko_struct.hpp"
-#include "sandbox/neko_imgui_auto.hpp"
+#include "sandbox/hpp/neko_static_refl.hpp"
+#include "sandbox/hpp/neko_struct.hpp"
+#include "sandbox/neko_gui_auto.hpp"
 
 #define NEKO_CONSOLE_IMPL
 #include "engine/util/neko_console.h"
@@ -49,10 +49,8 @@
 #define NEKO_PNG_IMPLEMENTATION
 #include "engine/builtin/neko_png.h"
 
-#define STRPOOL_IMPLEMENTATION
-#define NEKO_FILEWATCH_IMPL
-#define NEKO_ASSETSYS_IMPL
-#include "engine/builtin/neko_filewatch.h"
+// fs
+#include "engine/builtin/neko_fs.h"
 
 // opengl
 #include "libs/glad/glad.h"
@@ -147,6 +145,8 @@ typedef struct neko_engine_cvar_s {
     bool show_gui = false;
     bool show_console = false;
 
+    bool shader_inspect = false;
+
     bool hello_ai_shit = false;
 
     bool vsync = true;
@@ -168,6 +168,7 @@ struct neko::meta::static_refl::TypeInfo<neko_engine_cvar_t> : TypeInfoBase<neko
             rf_field{TSTR("show_profiler_window"), &rf_type::show_profiler_window},  //
             rf_field{TSTR("show_gui"), &rf_type::show_gui},                          //
             rf_field{TSTR("show_console"), &rf_type::show_console},                  //
+            rf_field{TSTR("shader_inspect"), &rf_type::shader_inspect},              //
             rf_field{TSTR("hello_ai_shit"), &rf_type::hello_ai_shit},                //
             rf_field{TSTR("is_hotfix"), &rf_type::is_hotfix},                        //
             rf_field{TSTR("vsync"), &rf_type::vsync},                                //
@@ -183,6 +184,7 @@ neko_struct(neko_engine_cvar_t,                            //
             _Fs(show_profiler_window, "profiler"),         //
             _Fs(show_gui, "neko gui"),                     //
             _Fs(show_console, "neko console"),             //
+            _Fs(shader_inspect, "shaders"),                //
             _Fs(hello_ai_shit, "Test AI"),                 //
             _Fs(bg, "bg color")                            //
 );
@@ -931,20 +933,22 @@ void unload_images() {
     for (s32 i = 0; i < images_count; ++i) neko_png_free(images + i);
 }
 
-void draw_text(neko_font_t *font, const char *text, float x, float y, float line_height, float clip_region, float wrap_x) {
+void draw_text(neko_font_t *font, const char *text, float x, float y, float line_height, float clip_region, float wrap_x, f32 scale) {
     f32 text_w = (f32)neko_font_text_width(font, text);
     f32 text_h = (f32)neko_font_text_height(font, text);
 
     neko_vec2 fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
 
-    neko_font_rect_t clip_rect;
-    clip_rect.left = -fbs.x / font_scale * clip_region;
-    clip_rect.right = fbs.x / font_scale * clip_region + 0.5f;
-    clip_rect.top = fbs.y / font_scale * clip_region + 0.5f;
-    clip_rect.bottom = -fbs.y / font_scale * clip_region;
+    if (scale == 0.f) scale = font_scale;
 
-    f32 x0 = (x - fbs.x / 2.f) / font_scale /*+ -text_w / 2.f*/;
-    f32 y0 = (fbs.y / 2.f - y) / font_scale + text_h / 2.f;
+    neko_font_rect_t clip_rect;
+    clip_rect.left = -fbs.x / scale * clip_region;
+    clip_rect.right = fbs.x / scale * clip_region + 0.5f;
+    clip_rect.top = fbs.y / scale * clip_region + 0.5f;
+    clip_rect.bottom = -fbs.y / scale * clip_region;
+
+    f32 x0 = (x - fbs.x / 2.f) / scale /*+ -text_w / 2.f*/;
+    f32 y0 = (fbs.y / 2.f - y) / scale + text_h / 2.f;
     f32 wrap_width = wrap_x - x0;
 
     neko_font_fill_vertex_buffer(font, text, x0, y0, wrap_width, line_height, &clip_rect, font_verts, 1024 * 2, &font_vert_count);
@@ -987,7 +991,7 @@ game_editor_console console_new;
 #ifdef NEKO_SURFACE_ENABLE
 #include "engine/builtin/neko_surface.h"
 #include "engine/builtin/neko_surface_gl.h"
-MEsurface_context *g_surface;
+neko_surface_context *g_surface;
 
 #include "sandbox/tests/demo.h"
 DemoData demodata;
@@ -1190,7 +1194,7 @@ void game_init() {
     g_client_userdata.nui = &g_gui;
 
 #ifdef NEKO_SURFACE_ENABLE
-    g_surface = ME_surface_CreateGL3(ME_SURFACE_ANTIALIAS | ME_SURFACE_STENCIL_STROKES | ME_SURFACE_DEBUG);
+    g_surface = neko_surface_CreateGL3(NEKO_SURFACE_ANTIALIAS | NEKO_SURFACE_STENCIL_STROKES | NEKO_SURFACE_DEBUG);
 
     if (g_surface == NULL) {
         printf("Could not init surface.\n");
@@ -1844,7 +1848,10 @@ void game_update() {
         if (g_cvar.show_console) console_new.display_full(&bInteractingWithTextbox);
 
         // neko_imgui::Auto(g_cvar.bg);
-        inspect_shader("sprite_shader", sprite_shader.program);  // TEST
+        if (g_cvar.shader_inspect && ImGui::Begin("Shaders")) {
+            inspect_shader("sprite_shader", sprite_shader.program);  // TEST
+            ImGui::End();
+        }
 
         if (g_cvar.show_editor) {
             if (ImGui::BeginMainMenuBar()) {
@@ -2252,9 +2259,9 @@ void game_update() {
         }
 
 #ifdef NEKO_SURFACE_ENABLE
-        ME_surface_BeginFrame(g_surface, fbs.x, fbs.y, 1.0f);
+        neko_surface_BeginFrame(g_surface, fbs.x, fbs.y, 1.0f);
         renderDemo(g_surface, mp.x, mp.y, fbs.x, fbs.y, t / 1000.f, 0, &demodata);
-        ME_surface_EndFrame(g_surface);
+        neko_surface_EndFrame(g_surface);
 #endif
 
         neko_check_gl_error();
@@ -2277,7 +2284,7 @@ void game_shutdown() {
 #ifdef NEKO_SURFACE_ENABLE
     freeDemoData(g_surface, &demodata);
 
-    ME_surface_DeleteGL3(g_surface);
+    neko_surface_DeleteGL3(g_surface);
 #endif
 
     neko_safe_free(font_verts);

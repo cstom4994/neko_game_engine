@@ -1984,10 +1984,9 @@ void neko_quit() {
 #define NEKO_IMPL
 #include "engine/builtin/neko_aseprite.h"
 #include "engine/builtin/neko_gui_internal.h"
-#include "engine/builtin/neko_hashtable.h"
 
 #define NEKO_PNG_IMPLEMENTATION
 #include "engine/builtin/neko_png.h"
 
-#define CUTE_C2_IMPLEMENTATION
+#define NEKO_C2_IMPLEMENTATION
 #include "engine/builtin/cute_c2.h"

@@ -2,10 +2,10 @@
 #include "engine/neko_audio.h"
 #include "engine/neko_engine.h"
 
-#define CUTE_SOUND_IMPLEMENTATION
-#define CUTE_SOUND_PLATFORM_WINDOWS
-// #define CUTE_SOUND_ALLOC(size, ctx) neko_safe_malloc((size_t)size)
-// #define CUTE_SOUND_FREE(mem, ctx) neko_safe_free(mem)
+#define NEKO_SOUND_IMPLEMENTATION
+#define NEKO_SOUND_PLATFORM_WINDOWS
+// #define NEKO_SOUND_ALLOC(size, ctx) neko_safe_malloc((size_t)size)
+// #define NEKO_SOUND_FREE(mem, ctx) neko_safe_free(mem)
 // #define HASHTABLE_MALLOC(ctx, size) (neko_gc_malloc(&g_gc, size))
 // #define HASHTABLE_FREE(ctx, ptr) (neko_gc_free(&g_gc, ptr))
 #include "engine/builtin/cute_sound.h"

@@ -98,7 +98,7 @@ void neko_graphics_print_errors_internal(const char* file, u32 line) {
 
         const char* str = gl_get_error_string(code);
         const char* des = gl_get_error_description(code);
-        neko_println("OpenGL Error %s (%u): %u, %s, %s:", last_slash, line, code, str, des);
+        neko_println("OpenGL Error %s (%u): %u, %s, %s", last_slash, line, code, str, des);
     }
 }
 

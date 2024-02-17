@@ -1,4 +1,4 @@
-#include "neko_vm.h"
+#include "neko_script.h"
 
 #include <ctype.h>
 #include <setjmp.h>

@@ -61,6 +61,14 @@ w:register("particle", {ud})
 
 local gd = game_data
 
+SAFE_UD = function(tb)
+    if tb.ud ~= nil then
+        return tb.ud
+    else
+        dbg()
+    end
+end
+
 test_filewatch_callback = function(change, virtual_path)
     print(change, virtual_path)
 
@@ -110,7 +118,7 @@ game_init = function()
             dy = 0
         },
         player = {
-            ud = neko_player_create(gd.test_witch_spr)
+            ud = neko_aseprite_create(gd.test_witch_spr)
         }
     }
 
@@ -118,6 +126,10 @@ game_init = function()
         vector2 = {
             x = 20,
             y = 20
+        },
+        velocity2 = {
+            dx = 0,
+            dy = 0
         },
         tiled_map = {
             path = "/maps/map.tmx",
@@ -182,23 +194,23 @@ game_shutdown = function()
     neko_sprite_end(gd.test_witch_spr)
 
     for v2, t in w:match("all", "vector2", "tiled_map") do
-        neko_tiled_end(t.ud)
+        neko_tiled_end(SAFE_UD(t))
     end
 
     for v2, t in w:match("all", "vector2", "custom_sprite") do
-        neko_custom_sprite_end(t.ud)
+        neko_custom_sprite_end(SAFE_UD(t))
     end
 
     for v2, t in w:match("all", "vector2", "fallingsand") do
-        neko_fallingsand_end(t.ud)
+        neko_fallingsand_end(SAFE_UD(t))
     end
 
     for v2, t in w:match("all", "vector2", "gfxt") do
-        neko_gfxt_end(t.ud)
+        neko_gfxt_end(SAFE_UD(t))
     end
 
     for v2, t in w:match("all", "vector2", "particle") do
-        neko_particle_end(t.ud)
+        neko_particle_end(SAFE_UD(t))
     end
 
     neko_filewatch_stop(gd.filewatch, "/maps")
@@ -232,9 +244,9 @@ game_update = function()
 
         if (gd.tick & 31) == 0 then
             if math.abs(v.dx) >= 0.5 or math.abs(v.dy) >= 0.5 then
-                neko_player_update_animation(p.ud, "Run");
+                neko_aseprite_update_animation(p.ud, "Run");
             else
-                neko_player_update_animation(p.ud, "Idle");
+                neko_aseprite_update_animation(p.ud, "Idle");
             end
         end
 
@@ -244,7 +256,7 @@ game_update = function()
         --     else
         --         neko_sprite_renderer_play(sprite, "Idle");
 
-        neko_player_update(p.ud)
+        neko_aseprite_update(SAFE_UD(p))
 
         local player_v = 3.1
 
@@ -278,40 +290,70 @@ game_update = function()
         v.dy = v.dy / 2.0
     end
 
+    for v2, v, t in w:match("all", "vector2", "velocity2", "tiled_map") do
+
+        local player_v = 2.1
+
+        if neko_was_key_down("NEKO_KEYCODE_LEFT_SHIFT") then
+            player_v = 5.1
+        else
+            player_v = 2.1
+        end
+
+        if neko_was_key_down("NEKO_KEYCODE_LEFT") then
+            v.dx = v.dx - player_v
+        end
+        if neko_was_key_down("NEKO_KEYCODE_RIGHT") then
+            v.dx = v.dx + player_v
+        end
+        if neko_was_key_down("NEKO_KEYCODE_UP") then
+            v.dy = v.dy - player_v
+        end
+        if neko_was_key_down("NEKO_KEYCODE_DOWN") then
+            v.dy = v.dy + player_v
+        end
+
+        v2.x = v2.x + v.dx
+        v2.y = v2.y + v.dy
+
+        v.dx = v.dx / 2.0
+        v.dy = v.dy / 2.0
+    end
+
     neko_web_console.update()
 
 end
 
 game_render = function()
-    for v4, v, p in w:match("all", "vector2", "velocity2", "player") do
-        neko_player_render(p.ud, v4.x, v4.y)
+    for v2, v, p in w:match("all", "vector2", "velocity2", "player") do
+        neko_aseprite_render(SAFE_UD(p), v2)
     end
 
     for v2, t in w:match("all", "vector2", "tiled_map") do
-        neko_tiled_update(t.ud)
+        neko_tiled_render(SAFE_UD(t), v2)
     end
 
     for v2, t in w:match("all", "vector2", "custom_sprite") do
-        neko_custom_sprite_render(t.ud)
+        neko_custom_sprite_render(SAFE_UD(t))
     end
 
     for v2, t in w:match("all", "vector2", "fallingsand") do
-        neko_fallingsand_update(t.ud)
+        neko_fallingsand_update(SAFE_UD(t))
     end
 
     for v2, t in w:match("all", "vector2", "gfxt") do
-        neko_gfxt_update(t.ud)
+        neko_gfxt_update(SAFE_UD(t))
     end
 
     for v2, t in w:match("all", "vector2", "particle") do
-        neko_particle_render(t.ud, v2.x, v2.y)
+        neko_particle_render(SAFE_UD(t), v2)
     end
 
     for obj in w:match("all", "gameobj") do
         neko_gameobject_inspect(obj.sd)
     end
 
-    neko_draw_text(50.0, 50.0, "中文渲染测试 日本語レンダリングテスト Hello World! ")
+    neko_draw_text(50.0, 50.0, "中文渲染测试 日本語レンダリングテスト Hello World! ", 3.0)
 
     -- local sliderFloat = {0.1, 0.5}
     -- local clearColor = {0.2, 0.2, 0.2}
@@ -354,11 +396,20 @@ test_update = function()
         -- neko_dolua("lua_scripts/test_map.lua")
         -- neko_dolua("lua_scripts/test.lua")
         -- neko_dolua("lua_scripts/test_cstruct.lua")
-        neko_dolua("lua_scripts/test_class.lua")
+        -- neko_dolua("lua_scripts/test_class.lua")
 
         -- dbg()
 
         -- print(dump_func(w))
+
+        neko_callback_save("callback1", function(ha)
+            print("This is callback 1 " .. ha)
+        end)
+        neko_callback_save("callback2", function(ha, haa)
+            print("This is callback 2 " .. ha .. haa)
+        end)
+        neko_callback_call("callback1", "haha1")
+        neko_callback_call("callback2", "haha2", "haha3")
     end
 
     win_w, win_h = neko_window_size(neko_main_window())

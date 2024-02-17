@@ -10,18 +10,23 @@ makefile
 cmake-*/
 
 .luarc.json
+*.zip
+*.nbt
+
+gamedir/
 
 *.dylib
 
-data/assets/
-data/*.pack
-gamedir/
+gamedir/assets/
+gamedir/*.pack
 docs/
 assets/
 dependencies/
 
 Resources/
+old/
 source/generated
+source/libs
 
 build.bat
 compile_commands.json

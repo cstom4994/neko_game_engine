@@ -13,12 +13,87 @@
 #include "engine/util/neko_tiled.h"
 
 // game
-#include "libs/imgui/imgui.h"
-#include "libs/lua/lua.h"
 #include "sandbox/game_chunk.h"
-#include "sandbox/neko_imgui_auto.hpp"
+#include "sandbox/neko_gui_auto.hpp"
 
 neko_global lua_State* g_lua_bind;
+
+neko_inline neko_vec2 __neko_lua_table_to_v2(lua_State* L, int idx) {
+    if (!lua_istable(L, idx)) {
+        neko_log_warning("not a table on top");
+        return neko_default_val();
+    }
+
+    lua_pushstring(L, "x");
+    lua_gettable(L, -2);
+    f32 x = lua_tonumber(L, -1);
+    lua_pop(L, 1);
+
+    lua_pushstring(L, "y");
+    lua_gettable(L, -2);
+    f32 y = lua_tonumber(L, -1);
+    lua_pop(L, 1);
+
+    return {x, y};
+}
+
+static int g_lua_callbacks_table_ref = LUA_NOREF;
+
+int __neko_bind_callback_save(lua_State* L) {
+    // 检查传递给函数的参数是否是一个字符串和一个函数
+    const char* identifier = luaL_checkstring(L, 1);
+    luaL_checktype(L, 2, LUA_TFUNCTION);
+
+    // 如果之前没有保存的Lua函数引用，则创建一个新的table
+    if (g_lua_callbacks_table_ref == LUA_NOREF) {
+        lua_newtable(L);
+        g_lua_callbacks_table_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    }
+
+    // 获取保存的table
+    lua_rawgeti(L, LUA_REGISTRYINDEX, g_lua_callbacks_table_ref);
+
+    // 将传递给函数的Lua函数压入栈顶
+    lua_pushvalue(L, 2);
+
+    // 将函数放入table中，使用标识符作为键
+    lua_setfield(L, -2, identifier);
+
+    // 弹出保存的table
+    lua_pop(L, 1);
+
+    return 0;
+}
+
+int __neko_bind_callback_call(lua_State* L) {
+    // 检查之前是否有保存的Lua函数引用
+    if (g_lua_callbacks_table_ref != LUA_NOREF) {
+        // 获取标识符参数
+        const char* identifier = luaL_checkstring(L, 1);
+
+        // 获取保存的table
+        lua_rawgeti(L, LUA_REGISTRYINDEX, g_lua_callbacks_table_ref);
+
+        // 获取table中对应标识符的Lua函数
+        lua_getfield(L, -1, identifier);
+
+        if (lua_isfunction(L, -1)) {
+            // 将额外的参数依次压入栈顶
+            int nargs = lua_gettop(L) - 1;  // 获取参数数量 减去标识符参数
+            for (int i = 2; i <= nargs + 1; ++i) {
+                lua_pushvalue(L, i);
+            }
+            lua_call(L, nargs, 0);  // 调用
+        } else {
+            throw lua_exception_t(std::format("callback with identifier '{}' not found or is not a function.", identifier));
+        }
+
+        // 弹出保存的table
+        lua_pop(L, 1);
+    }
+
+    return 0;
+}
 
 static bool __neko_bind_platform_key_pressed(const_str key) {
     neko_platform_keycode cval;
@@ -361,7 +436,7 @@ static int __neko_bind_pack_assets_load(lua_State* L) {
 }
 */
 
-static int __neko_bind_player_create(lua_State* L) {
+static int __neko_bind_aseprite_create(lua_State* L) {
 
     neko_sprite* sprite_data = (neko_sprite*)lua_touserdata(L, 1);
 
@@ -375,7 +450,7 @@ static int __neko_bind_player_create(lua_State* L) {
     return 1;
 }
 
-static int __neko_bind_player_update(lua_State* L) {
+static int __neko_bind_aseprite_update(lua_State* L) {
     neko_sprite_renderer* user_handle = (neko_sprite_renderer*)lua_touserdata(L, 1);
 
     neko_t* engine = neko_instance();
@@ -385,19 +460,17 @@ static int __neko_bind_player_update(lua_State* L) {
     return 0;
 }
 
-static int __neko_bind_player_update_animation(lua_State* L) {
+static int __neko_bind_aseprite_update_animation(lua_State* L) {
     neko_sprite_renderer* user_handle = (neko_sprite_renderer*)lua_touserdata(L, 1);
     const_str by_tag = lua_tostring(L, 2);
     neko_sprite_renderer_play(user_handle, by_tag);
     return 0;
 }
 
-static int __neko_bind_player_render(lua_State* L) {
+static int __neko_bind_aseprite_render(lua_State* L) {
     neko_sprite_renderer* user_handle = (neko_sprite_renderer*)lua_touserdata(L, 1);
 
-    neko_vec2 xform = {};
-    xform.x = lua_tonumber(L, 2);
-    xform.y = lua_tonumber(L, 3);
+    neko_vec2 xform = __neko_lua_table_to_v2(L, 2);
 
     neko_t* engine = neko_instance();
 
@@ -450,8 +523,10 @@ static int __neko_bind_tiled_create(lua_State* L) {
     return 1;
 }
 
-static int __neko_bind_tiled_update(lua_State* L) {
+static int __neko_bind_tiled_render(lua_State* L) {
     neko_tiled_renderer* tiled_render = (neko_tiled_renderer*)lua_touserdata(L, 1);
+
+    neko_vec2 xform = __neko_lua_table_to_v2(L, 2);
 
     neko_command_buffer_t* cb = &g_cb;
 
@@ -471,7 +546,7 @@ static int __neko_bind_tiled_update(lua_State* L) {
                         neko_tiled_quad_t quad = {.tileset_id = tile->tileset_id,
                                                   .texture = tileset->texture,
                                                   .texture_size = {(f32)tileset->width, (f32)tileset->height},
-                                                  .position = {(f32)(x * tileset->tile_width * SPRITE_SCALE), (f32)(y * tileset->tile_height * SPRITE_SCALE)},
+                                                  .position = {(f32)(x * tileset->tile_width * SPRITE_SCALE) + xform.x, (f32)(y * tileset->tile_height * SPRITE_SCALE) + xform.y},
                                                   .dimentions = {(f32)(tileset->tile_width * SPRITE_SCALE), (f32)(tileset->tile_height * SPRITE_SCALE)},
                                                   .rectangle = {(f32)tsxx, (f32)tsyy, (f32)tileset->tile_width, (f32)tileset->tile_height},
                                                   .color = layer->tint,
@@ -645,11 +720,17 @@ static int __neko_bind_gfxt_end(lua_State* L) {
 
 static int __neko_bind_draw_text(lua_State* L) {
 
+    int numArgs = lua_gettop(L);  // 获取参数数量
+
     f32 x = lua_tonumber(L, 1);
     f32 y = lua_tonumber(L, 2);
     const_str text = lua_tostring(L, 3);
 
-    draw_text(test_font_bmfont, text, x, y, 1, 1.f, 800.f);
+    f32 scale = 0.f;
+
+    if (numArgs > 3) scale = lua_tonumber(L, 4);
+
+    draw_text(test_font_bmfont, text, x, y, 1, 1.f, 800.f, scale);
 
     return 0;
 }
@@ -690,9 +771,7 @@ static int __neko_bind_particle_create(lua_State* L) {
 static int __neko_bind_particle_render(lua_State* L) {
     neko_particle_renderer* user_handle = (neko_particle_renderer*)lua_touserdata(L, 1);
 
-    neko_vec2 xform = {};
-    xform.x = lua_tonumber(L, 2);
-    xform.y = lua_tonumber(L, 3);
+    neko_vec2 xform = __neko_lua_table_to_v2(L, 2);
 
     neko_graphics_t* gfx = neko_instance()->ctx.graphics;
 
@@ -804,8 +883,10 @@ void watch_map_callback(neko_filewatch_update_t change, const char* virtual_path
             break;
     }
 
+    const_str callback_funcname = (const_str)udata;
+
     try {
-        neko_lua_wrap_call<void>(L, "test_filewatch_callback", change_string, std::string(virtual_path));
+        neko_lua_wrap_call<void>(L, callback_funcname, change_string, std::string(virtual_path));
     } catch (std::exception& ex) {
         neko_log_error("lua exception %s", ex.what());
     }
@@ -822,7 +903,8 @@ static int __neko_bind_filewatch_mount(lua_State* L) {
 static int __neko_bind_filewatch_start_watch(lua_State* L) {
     neko_filewatch_t* filewatch = (neko_filewatch_t*)lua_touserdata(L, 1);
     const_str virtual_path = lua_tostring(L, 2);
-    neko_filewatch_start_watching(filewatch, virtual_path, watch_map_callback, 0);
+    const_str callback_funcname = lua_tostring(L, 3);
+    neko_filewatch_start_watching(filewatch, virtual_path, watch_map_callback, (void*)callback_funcname);
     return 0;
 }
 
@@ -854,16 +936,16 @@ static int __neko_bind_filewatch_notify(lua_State* L) {
 neko_inline void neko_register_test(lua_State* L) {
 
     //
-    lua_register(L, "neko_player_create", __neko_bind_player_create);
-    lua_register(L, "neko_player_update", __neko_bind_player_update);
-    lua_register(L, "neko_player_render", __neko_bind_player_render);
-    lua_register(L, "neko_player_update_animation", __neko_bind_player_update_animation);
+    lua_register(L, "neko_aseprite_create", __neko_bind_aseprite_create);
+    lua_register(L, "neko_aseprite_update", __neko_bind_aseprite_update);
+    lua_register(L, "neko_aseprite_render", __neko_bind_aseprite_render);
+    lua_register(L, "neko_aseprite_update_animation", __neko_bind_aseprite_update_animation);
 
     lua_register(L, "neko_sprite_create", __neko_bind_sprite_create);
     lua_register(L, "neko_sprite_end", __neko_bind_sprite_end);
 
     lua_register(L, "neko_tiled_create", __neko_bind_tiled_create);
-    lua_register(L, "neko_tiled_update", __neko_bind_tiled_update);
+    lua_register(L, "neko_tiled_render", __neko_bind_tiled_render);
     lua_register(L, "neko_tiled_end", __neko_bind_tiled_end);
     lua_register(L, "neko_tiled_load", __neko_bind_tiled_load);
     lua_register(L, "neko_tiled_unload", __neko_bind_tiled_unload);
@@ -898,6 +980,9 @@ neko_inline void neko_register_test(lua_State* L) {
     lua_register(L, "neko_filewatch_stop", __neko_bind_filewatch_stop_watching);
     lua_register(L, "neko_filewatch_update", __neko_bind_filewatch_update);
     lua_register(L, "neko_filewatch_notify", __neko_bind_filewatch_notify);
+
+    lua_register(L, "neko_callback_save", __neko_bind_callback_save);
+    lua_register(L, "neko_callback_call", __neko_bind_callback_call);
 }
 
 #if 0
@@ -1068,6 +1153,9 @@ neko_inline void neko_register_common(lua_State* L) {
             .def(&__neko_lua_info, "log_info")
             .def(&neko_rand_xorshf32, "neko_rand")
             .def(&__neko_dolua, "neko_dolua");
+
+    neko_lua_wrap_register_t<>(L).def(
+            +[](const_str str) { return neko_hash_str64(str); }, "neko_hash");
 
     //.def(&__neko_add_packagepath, "add_packagepath")
     //.def(+[]() -> bool { return (bool)neko_is_debug(); }, "neko_is_debug");

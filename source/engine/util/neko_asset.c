@@ -3268,14 +3268,14 @@ static void neko_font_scan(neko_font_img_t *img, int *x, int *y, int *row_height
     }
 }
 
-#define CUTE_FONT_CHECK(X, Y)           \
+#define NEKO_FONT_CHECK(X, Y)           \
     do {                                \
         if (!(X)) {                     \
             neko_font_error_reason = Y; \
             goto neko_font_err;         \
         }                               \
     } while (0)
-#define CUTE_FONT_FAIL_IF(X)    \
+#define NEKO_FONT_FAIL_IF(X)    \
     do {                        \
         if (X) {                \
             goto neko_font_err; \
@@ -3315,7 +3315,7 @@ neko_font_t *neko_font_load(neko_font_u64 atlas_id, const void *pixels, int w, i
             font->glyph_count = 256 - 32;
             break;
         default:
-            CUTE_FONT_CHECK(0, "Unknown codepage encountered.");
+            NEKO_FONT_CHECK(0, "Unknown codepage encountered.");
     }
     font->codes = (int *)neko_safe_malloc(sizeof(int) * font->glyph_count);
     font->glyphs = (neko_font_glyph_t *)neko_safe_malloc(sizeof(neko_font_glyph_t) * font->glyph_count);
@@ -3326,7 +3326,7 @@ neko_font_t *neko_font_load(neko_font_u64 atlas_id, const void *pixels, int w, i
         neko_font_glyph_t *glyph = NULL;
         int w = 0, h = 0;
         neko_font_scan(&img, &x, &y, &font_height);
-        CUTE_FONT_CHECK(y < img.w, "Unable to properly scan glyph width. Are the text borders drawn properly?");
+        NEKO_FONT_CHECK(y < img.w, "Unable to properly scan glyph width. Are the text borders drawn properly?");
 
         while (!neko_font_is_border(&img, x + w, y)) ++w;
         while (!neko_font_is_border(&img, x, y + h)) ++h;
@@ -3337,7 +3337,7 @@ neko_font_t *neko_font_load(neko_font_u64 atlas_id, const void *pixels, int w, i
         else if (codepage == 1252)
             font->codes[i - 32] = neko_font_cp1252[i - 128];
         else
-            CUTE_FONT_CHECK(0, "Unknown glyph index found.");
+            NEKO_FONT_CHECK(0, "Unknown glyph index found.");
 
         glyph->xadvance = w + 1;
         glyph->w = (float)w;
@@ -3384,20 +3384,20 @@ neko_font_t *neko_font_load_ascii(neko_font_u64 atlas_id, const void *pixels, in
 
 neko_font_t *neko_font_load_1252(neko_font_u64 atlas_id, const void *pixels, int w, int h, int stride, void *mem_ctx) { return neko_font_load(atlas_id, pixels, w, h, stride, mem_ctx, 1252); }
 
-#define CUTE_FONT_INTERNAL_BUFFER_MAX 1024
+#define NEKO_FONT_INTERNAL_BUFFER_MAX 1024
 
 typedef struct neko_font_parse_t {
     const char *in;
     const char *end;
     int scratch_len;
-    char scratch[CUTE_FONT_INTERNAL_BUFFER_MAX];
+    char scratch[NEKO_FONT_INTERNAL_BUFFER_MAX];
 } neko_font_parse_t;
 
 static int neko_font_isspace(char c) { return (c == ' ') | (c == '\t') | (c == '\n') | (c == '\v') | (c == '\f') | (c == '\r'); }
 
 static int neko_font_next_internal(neko_font_parse_t *p, char *c) {
-    CUTE_FONT_CHECK(p->in < p->end, "Attempted to read past input buffer.");
-    while (neko_font_isspace(*c = *p->in++)) CUTE_FONT_CHECK(p->in < p->end, "Attempted to read past input buffer.");
+    NEKO_FONT_CHECK(p->in < p->end, "Attempted to read past input buffer.");
+    while (neko_font_isspace(*c = *p->in++)) NEKO_FONT_CHECK(p->in < p->end, "Attempted to read past input buffer.");
     return 1;
 
 neko_font_err:
@@ -3406,7 +3406,7 @@ neko_font_err:
 
 #define neko_font_next(p, c)                               \
     do {                                                   \
-        CUTE_FONT_FAIL_IF(!neko_font_next_internal(p, c)); \
+        NEKO_FONT_FAIL_IF(!neko_font_next_internal(p, c)); \
     } while (0)
 
 static char neko_font_parse_char(char c) {
@@ -3436,7 +3436,7 @@ static char neko_font_parse_char(char c) {
     do {                                                                      \
         char neko_font_char;                                                  \
         neko_font_next(p, &neko_font_char);                                   \
-        CUTE_FONT_CHECK(neko_font_char == expect, "Found unexpected token."); \
+        NEKO_FONT_CHECK(neko_font_char == expect, "Found unexpected token."); \
     } while (0)
 
 static int neko_font_read_string_internal(neko_font_parse_t *p) {
@@ -3446,7 +3446,7 @@ static int neko_font_read_string_internal(neko_font_parse_t *p) {
 
     while (!done) {
         char c = 0;
-        CUTE_FONT_CHECK(count < CUTE_FONT_INTERNAL_BUFFER_MAX, "String too large to parse.");
+        NEKO_FONT_CHECK(count < NEKO_FONT_INTERNAL_BUFFER_MAX, "String too large to parse.");
         neko_font_next(p, &c);
 
         switch (c) {
@@ -3477,7 +3477,7 @@ neko_font_err:
 
 #define neko_font_read_string(p)                               \
     do {                                                       \
-        CUTE_FONT_FAIL_IF(!neko_font_read_string_internal(p)); \
+        NEKO_FONT_FAIL_IF(!neko_font_read_string_internal(p)); \
     } while (0)
 
 static int neko_font_read_identifier_internal(neko_font_parse_t *p) {
@@ -3486,8 +3486,8 @@ static int neko_font_read_identifier_internal(neko_font_parse_t *p) {
 
     while (1) {
         char c = 0;
-        CUTE_FONT_CHECK(p->in < p->end, "Attempted to read past input buffer.");
-        CUTE_FONT_CHECK(count < CUTE_FONT_INTERNAL_BUFFER_MAX, "String too large to parse.");
+        NEKO_FONT_CHECK(p->in < p->end, "Attempted to read past input buffer.");
+        NEKO_FONT_CHECK(count < NEKO_FONT_INTERNAL_BUFFER_MAX, "String too large to parse.");
         c = *p->in;
         if (!neko_font_isspace(c)) break;
         p->in++;
@@ -3495,8 +3495,8 @@ static int neko_font_read_identifier_internal(neko_font_parse_t *p) {
 
     while (!done) {
         char c = 0;
-        CUTE_FONT_CHECK(p->in < p->end, "Attempted to read past input buffer.");
-        CUTE_FONT_CHECK(count < CUTE_FONT_INTERNAL_BUFFER_MAX, "String too large to parse.");
+        NEKO_FONT_CHECK(p->in < p->end, "Attempted to read past input buffer.");
+        NEKO_FONT_CHECK(count < NEKO_FONT_INTERNAL_BUFFER_MAX, "String too large to parse.");
         c = *p->in++;
 
         if (neko_font_isspace(c)) {
@@ -3532,13 +3532,13 @@ neko_font_err:
 
 #define neko_font_read_identifier(p)                               \
     do {                                                           \
-        CUTE_FONT_FAIL_IF(!neko_font_read_identifier_internal(p)); \
+        NEKO_FONT_FAIL_IF(!neko_font_read_identifier_internal(p)); \
     } while (0)
 
 static int neko_font_read_int_internal(neko_font_parse_t *p, int *out) {
     char *end;
     int val = (int)strtoll(p->in, &end, 10);
-    CUTE_FONT_CHECK(p->in != end, "Invalid integer found during parse.");
+    NEKO_FONT_CHECK(p->in != end, "Invalid integer found during parse.");
     p->in = end;
     *out = val;
     return 1;
@@ -3549,13 +3549,13 @@ neko_font_err:
 
 #define neko_font_read_int(p, num)                               \
     do {                                                         \
-        CUTE_FONT_FAIL_IF(!neko_font_read_int_internal(p, num)); \
+        NEKO_FONT_FAIL_IF(!neko_font_read_int_internal(p, num)); \
     } while (0)
 
 static int neko_font_read_float_internal(neko_font_parse_t *p, float *out) {
     char *end;
     float val = (float)strtod(p->in, &end);
-    CUTE_FONT_CHECK(p->in != end, "Error reading float.");
+    NEKO_FONT_CHECK(p->in != end, "Error reading float.");
     p->in = end;
     *out = val;
     return 1;
@@ -3566,7 +3566,7 @@ neko_font_err:
 
 #define neko_font_read_float(p, num)                                                   \
     do {                                                                               \
-        CUTE_FONT_FAIL_IF(neko_font_read_float_internal(p, num) != CUTE_FONT_SUCCESS); \
+        NEKO_FONT_FAIL_IF(neko_font_read_float_internal(p, num) != NEKO_FONT_SUCCESS); \
     } while (0)
 
 int neko_font_expect_string_internal(neko_font_parse_t *p, const char *str) {
@@ -3581,7 +3581,7 @@ neko_font_err:
 
 #define neko_font_expect_string(p, str)                               \
     do {                                                              \
-        CUTE_FONT_FAIL_IF(!neko_font_expect_string_internal(p, str)); \
+        NEKO_FONT_FAIL_IF(!neko_font_expect_string_internal(p, str)); \
     } while (0)
 
 int neko_font_expect_identifier_internal(neko_font_parse_t *p, const char *str) {
@@ -3596,7 +3596,7 @@ neko_font_err:
 
 #define neko_font_expect_identifier(p, str)                               \
     do {                                                                  \
-        CUTE_FONT_FAIL_IF(!neko_font_expect_identifier_internal(p, str)); \
+        NEKO_FONT_FAIL_IF(!neko_font_expect_identifier_internal(p, str)); \
     } while (0)
 
 typedef struct neko_font_kern_t {
@@ -4049,22 +4049,22 @@ int neko_font_fill_vertex_buffer(neko_font_t *font, const char *text, float x0, 
             d.u = bu;
             d.v = bv;
 
-            CUTE_FONT_CHECK(i < buffer_max, "`buffer_max` is too small.");
+            NEKO_FONT_CHECK(i < buffer_max, "`buffer_max` is too small.");
             buffer[i++] = a;
 
-            CUTE_FONT_CHECK(i < buffer_max, "`buffer_max` is too small.");
+            NEKO_FONT_CHECK(i < buffer_max, "`buffer_max` is too small.");
             buffer[i++] = b;
 
-            CUTE_FONT_CHECK(i < buffer_max, "`buffer_max` is too small.");
+            NEKO_FONT_CHECK(i < buffer_max, "`buffer_max` is too small.");
             buffer[i++] = d;
 
-            CUTE_FONT_CHECK(i < buffer_max, "`buffer_max` is too small.");
+            NEKO_FONT_CHECK(i < buffer_max, "`buffer_max` is too small.");
             buffer[i++] = d;
 
-            CUTE_FONT_CHECK(i < buffer_max, "`buffer_max` is too small.");
+            NEKO_FONT_CHECK(i < buffer_max, "`buffer_max` is too small.");
             buffer[i++] = b;
 
-            CUTE_FONT_CHECK(i < buffer_max, "`buffer_max` is too small.");
+            NEKO_FONT_CHECK(i < buffer_max, "`buffer_max` is too small.");
             buffer[i++] = c;
         }
 

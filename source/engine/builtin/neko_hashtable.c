@@ -1,52 +1,13 @@
 
 
-#ifdef NEKO_IMPL
+#include "engine/neko.h"
 
-#ifndef HASHTABLE_SIZE_T
-#undef _CRT_NONSTDC_NO_DEPRECATE
-#define _CRT_NONSTDC_NO_DEPRECATE
-#undef _CRT_SECURE_NO_WARNINGS
-#define _CRT_SECURE_NO_WARNINGS
-#include <stddef.h>
 #define HASHTABLE_SIZE_T size_t
-#endif
 
-#ifndef HASHTABLE_ASSERT
-#undef _CRT_NONSTDC_NO_DEPRECATE
-#define _CRT_NONSTDC_NO_DEPRECATE
-#undef _CRT_SECURE_NO_WARNINGS
-#define _CRT_SECURE_NO_WARNINGS
-#include <assert.h>
-#define HASHTABLE_ASSERT(x) assert(x)
-#endif
-
-#ifndef HASHTABLE_MEMSET
-#undef _CRT_NONSTDC_NO_DEPRECATE
-#define _CRT_NONSTDC_NO_DEPRECATE
-#undef _CRT_SECURE_NO_WARNINGS
-#define _CRT_SECURE_NO_WARNINGS
-#include <string.h>
 #define HASHTABLE_MEMSET(ptr, val, cnt) (memset(ptr, val, cnt))
-#endif
-
-#ifndef HASHTABLE_MEMCPY
-#undef _CRT_NONSTDC_NO_DEPRECATE
-#define _CRT_NONSTDC_NO_DEPRECATE
-#undef _CRT_SECURE_NO_WARNINGS
-#define _CRT_SECURE_NO_WARNINGS
-#include <string.h>
 #define HASHTABLE_MEMCPY(dst, src, cnt) (memcpy(dst, src, cnt))
-#endif
-
-#ifndef HASHTABLE_MALLOC
-#undef _CRT_NONSTDC_NO_DEPRECATE
-#define _CRT_NONSTDC_NO_DEPRECATE
-#undef _CRT_SECURE_NO_WARNINGS
-#define _CRT_SECURE_NO_WARNINGS
-#include <stdlib.h>
 #define HASHTABLE_MALLOC(ctx, size) (malloc(size))
 #define HASHTABLE_FREE(ctx, ptr) (free(ptr))
-#endif
 
 static HASHTABLE_U32 hashtable_internal_pow2ceil(HASHTABLE_U32 v) {
     --v;
@@ -68,11 +29,11 @@ void hashtable_init(hashtable_t* table, int item_size, int initial_capacity, voi
     table->slot_capacity = (int)hashtable_internal_pow2ceil((HASHTABLE_U32)(initial_capacity + initial_capacity / 2));
     int slots_size = (int)(table->slot_capacity * sizeof(*table->slots));
     table->slots = (struct hashtable_internal_slot_t*)HASHTABLE_MALLOC(table->memctx, (HASHTABLE_SIZE_T)slots_size);
-    HASHTABLE_ASSERT(table->slots);
+    neko_assert(table->slots);
     HASHTABLE_MEMSET(table->slots, 0, (HASHTABLE_SIZE_T)slots_size);
     table->item_capacity = (int)hashtable_internal_pow2ceil((HASHTABLE_U32)initial_capacity);
     table->items_key = (HASHTABLE_U64*)HASHTABLE_MALLOC(table->memctx, table->item_capacity * (sizeof(*table->items_key) + sizeof(*table->items_slot) + table->item_size) + table->item_size);
-    HASHTABLE_ASSERT(table->items_key);
+    neko_assert(table->items_key);
     table->items_slot = (int*)(table->items_key + table->item_capacity);
     table->items_data = (void*)(table->items_slot + table->item_capacity);
     table->swap_temp = (void*)(((uintptr_t)table->items_data) + table->item_size * table->item_capacity);
@@ -91,7 +52,7 @@ static HASHTABLE_U32 hashtable_internal_calculate_hash(HASHTABLE_U64 key) {
     key = key ^ (key >> 11);
     key = key + (key << 6);
     key = key ^ (key >> 22);
-    HASHTABLE_ASSERT(key);
+    neko_assert(key);
     return (HASHTABLE_U32)key;
 }
 
@@ -108,7 +69,7 @@ static int hashtable_internal_find_slot(hashtable_t const* table, HASHTABLE_U64 
         if (slot_hash) {
             int slot_base = (int)(slot_hash & (HASHTABLE_U32)slot_mask);
             if (slot_base == base_slot) {
-                HASHTABLE_ASSERT(base_count > 0);
+                neko_assert(base_count > 0);
                 --base_count;
                 if (slot_hash == hash && table->items_key[table->slots[slot].item_index] == key) return slot;
             }
@@ -128,7 +89,7 @@ static void hashtable_internal_expand_slots(hashtable_t* table) {
 
     int const size = (int)(table->slot_capacity * sizeof(*table->slots));
     table->slots = (struct hashtable_internal_slot_t*)HASHTABLE_MALLOC(table->memctx, (HASHTABLE_SIZE_T)size);
-    HASHTABLE_ASSERT(table->slots);
+    neko_assert(table->slots);
     HASHTABLE_MEMSET(table->slots, 0, (HASHTABLE_SIZE_T)size);
 
     for (int i = 0; i < old_capacity; ++i) {
@@ -152,7 +113,7 @@ static void hashtable_internal_expand_items(hashtable_t* table) {
     table->item_capacity *= 2;
     HASHTABLE_U64* const new_items_key =
             (HASHTABLE_U64*)HASHTABLE_MALLOC(table->memctx, table->item_capacity * (sizeof(*table->items_key) + sizeof(*table->items_slot) + table->item_size) + table->item_size);
-    HASHTABLE_ASSERT(new_items_key);
+    neko_assert(new_items_key);
 
     int* const new_items_slot = (int*)(new_items_key + table->item_capacity);
     void* const new_items_data = (void*)(new_items_slot + table->item_capacity);
@@ -171,7 +132,7 @@ static void hashtable_internal_expand_items(hashtable_t* table) {
 }
 
 void* hashtable_insert(hashtable_t* table, HASHTABLE_U64 key, void const* item) {
-    HASHTABLE_ASSERT(hashtable_internal_find_slot(table, key) < 0);
+    neko_assert(hashtable_internal_find_slot(table, key) < 0);
 
     if (table->count >= (table->slot_capacity - table->slot_capacity / 3)) hashtable_internal_expand_slots(table);
 
@@ -195,8 +156,8 @@ void* hashtable_insert(hashtable_t* table, HASHTABLE_U64 key, void const* item) 
 
     if (table->count >= table->item_capacity) hashtable_internal_expand_items(table);
 
-    HASHTABLE_ASSERT(!table->slots[slot].key_hash && (hash & (HASHTABLE_U32)slot_mask) == (HASHTABLE_U32)base_slot);
-    HASHTABLE_ASSERT(hash);
+    neko_assert(!table->slots[slot].key_hash && (hash & (HASHTABLE_U32)slot_mask) == (HASHTABLE_U32)base_slot);
+    neko_assert(hash);
     table->slots[slot].key_hash = hash;
     table->slots[slot].item_index = table->count;
     ++table->slots[base_slot].base_count;
@@ -212,12 +173,12 @@ void* hashtable_insert(hashtable_t* table, HASHTABLE_U64 key, void const* item) 
 
 void hashtable_remove(hashtable_t* table, HASHTABLE_U64 key) {
     int const slot = hashtable_internal_find_slot(table, key);
-    HASHTABLE_ASSERT(slot >= 0);
+    neko_assert(slot >= 0);
 
     int const slot_mask = table->slot_capacity - 1;
     HASHTABLE_U32 const hash = table->slots[slot].key_hash;
     int const base_slot = (int)(hash & (HASHTABLE_U32)slot_mask);
-    HASHTABLE_ASSERT(hash);
+    neko_assert(hash);
     --table->slots[base_slot].base_count;
     table->slots[slot].key_hash = 0;
 
@@ -276,8 +237,6 @@ void hashtable_swap(hashtable_t* table, int index_a, int index_b) {
     table->slots[slot_a].item_index = index_b;
     table->slots[slot_b].item_index = index_a;
 }
-
-#endif
 
 /*
 

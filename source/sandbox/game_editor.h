@@ -1,7 +1,7 @@
 #ifndef GAME_EDITOR_H
 #define GAME_EDITOR_H
 
-#include "sandbox/neko_imgui_auto.hpp"
+#include "sandbox/neko_gui_auto.hpp"
 #include "sandbox/neko_profiler.h"
 
 #define __neko_desired_frame_rate 30.0f
