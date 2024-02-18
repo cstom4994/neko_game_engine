@@ -232,6 +232,7 @@ static void InitLua(neko_scripting *lc) {
 #endif
 
 extern "C" int luaopen_socket_core(lua_State *L);
+extern "C" int luaopen_neko_gui(lua_State *L);
 
 #define PRELOAD(name, function)     \
     lua_getglobal(L, "package");    \
@@ -246,12 +247,16 @@ static void lua_reg(lua_State *L) {
 
     luaopen_cstruct_core(L);
     luaopen_cstruct_test(L);
-    luaopen_datalist(L);
+    // luaopen_datalist(L);
     luaopen_neko_ecs(L);
 
     neko_register(L);
 
     PRELOAD("socket.core", luaopen_socket_core);
+
+    PRELOAD("neko_lua_ds.core", luaopen_ds_core);
+    PRELOAD("neko_lua_datalist.core", luaopen_datalist);
+    PRELOAD("neko_gui", luaopen_neko_gui);
 
     // luaL_requiref(L, "socket.core", luaopen_socket_core, 1);
     // lua_pop(L, 1);

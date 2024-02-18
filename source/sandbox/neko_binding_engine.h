@@ -796,7 +796,7 @@ struct CGameObject {
 };
 
 template <>
-struct neko::meta::static_refl::TypeInfo<CGameObject> : TypeInfoBase<CGameObject> {
+struct neko::static_refl::neko_type_info<CGameObject> : neko_type_info_base<CGameObject> {
     static constexpr AttrList attrs = {};
     static constexpr FieldList fields = {
             rf_field{TSTR("id"), &rf_type::id},              //
@@ -816,20 +816,9 @@ static int __neko_bind_gameobject_inspect(lua_State* L) {
 
         ImGui::Text("GameObject_%d", user_handle->id);
 
-        neko::meta::static_refl::TypeInfo<CGameObject>::ForEachVarOf(*user_handle, [](auto field, auto&& value) { neko_imgui::Auto(value, std::string(field.name).c_str()); });
+        neko::static_refl::neko_type_info<CGameObject>::ForEachVarOf(*user_handle, [](auto field, auto&& value) { neko_imgui::Auto(value, std::string(field.name).c_str()); });
     }
     ImGui::End();
-
-    // if (neko_gui_begin(ctx, editor_name, neko_gui_rect(200, 200, 300, 400),
-    //                    NEKO_GUI_WINDOW_BORDER | NEKO_GUI_WINDOW_MOVABLE | NEKO_GUI_WINDOW_SCALABLE | NEKO_GUI_WINDOW_MINIMIZABLE | NEKO_GUI_WINDOW_TITLE)) {
-
-    //     neko_gui_layout_row_static(ctx, 30, 150, 1);
-
-    //     neko_gui::gui_auto(gameobj->name, "name");
-    //     neko_gui::gui_auto(gameobj->visible, "visible");
-    //     neko_gui::gui_auto(gameobj->active, "active");
-    // }
-    // neko_gui_end(ctx);
 
     return 0;
 }

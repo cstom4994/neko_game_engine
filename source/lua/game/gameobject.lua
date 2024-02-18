@@ -1,19 +1,17 @@
 local M = {}
 
-local caccessor = require "cstruct"
+local cstruct = require "common/cstruct"
 
 M.test_code = [[
-
 struct CGameObject {
 	int id;
 	bool active;
 	bool visible;
 	bool selected;
 };
-
 ]]
 
-M.s = caccessor.datastruct(M.test_code)
+M.s = cstruct.struct(M.test_code)
 
 M.sz = M.s:size "struct CGameObject"
 

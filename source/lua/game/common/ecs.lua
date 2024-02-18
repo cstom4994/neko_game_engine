@@ -1,8 +1,8 @@
-local the_ecs = {}
+local ecs = {}
 local c = __neko_ecs
 local worlds = {}
 
-function the_ecs.fetch_world(name)
+function ecs.fetch_world(name)
     local w = worlds[name]
     if not w then
         w = c.create_world()
@@ -11,5 +11,5 @@ function the_ecs.fetch_world(name)
     return w
 end
 
-return the_ecs
+return ecs
 

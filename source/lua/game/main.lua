@@ -1,10 +1,15 @@
-sandbox = require("sandbox")
-
 local dump_func = require "common/dump"
 
-local ECS = require "ecs"
+local ECS = require "common/ecs"
 local json = require "json"
 local dbg = require("libs.debugger")
+
+gui = require "neko_gui"
+-- nuklear = require 'nuklear'
+
+require("common/hotfix")
+
+local hot_code = neko_load("test_hot.lua")
 
 neko_web_console = require "web_console"
 
@@ -90,7 +95,7 @@ game_init_thread = function()
 
     neko_filewatch_mount(gd.filewatch, neko_file_path("gamedir/maps"), "/maps");
 
-    neko_filewatch_start(gd.filewatch, "/maps")
+    neko_filewatch_start(gd.filewatch, "/maps", "test_filewatch_callback")
 end
 
 game_init = function()
@@ -101,6 +106,11 @@ game_init = function()
     -- default_font = neko_fontcache_load(test_handle, 18.0)
 
     -- neko_fontcache_set_default_font(default_font)
+
+    print(hot_code)
+    for k, v in pairs(hot_code) do
+        print(k, v)
+    end
 
     gd.test_witch_spr = neko_sprite_create(neko_file_path("gamedir/assets/textures/B_witch.ase"));
 
@@ -168,24 +178,24 @@ game_init = function()
     --     }
     -- }
 
-    eid6 = w:new{
-        vector2 = {
-            x = 100,
-            y = 100
-        },
-        particle = {
-            ud = neko_particle_create()
-        }
-    }
+    -- eid6 = w:new{
+    --     vector2 = {
+    --         x = 100,
+    --         y = 100
+    --     },
+    --     particle = {
+    --         ud = neko_particle_create()
+    --     }
+    -- }
 
-    local safefunc = sandbox.protect([[
-        -- test_audio_src = neko_audio_load(neko_file_path("data/assets/audio/test.mp3"))
-        -- test_audio_ins = neko_audio_instance(test_audio_src, 0.2)
-        -- neko_audio_play(test_audio_ins)
-        -- log_info("sandbox here?")
-    ]])
+    -- local safefunc = sandbox.protect([[
+    --     -- test_audio_src = neko_audio_load(neko_file_path("data/assets/audio/test.mp3"))
+    --     -- test_audio_ins = neko_audio_instance(test_audio_src, 0.2)
+    --     -- neko_audio_play(test_audio_ins)
+    --     -- log_info("sandbox here?")
+    -- ]])
 
-    safefunc()
+    -- safefunc()
 end
 
 game_shutdown = function()
@@ -231,30 +241,28 @@ game_pre_update = function()
     if (gd.tick & 255) == 0 then
         neko_filewatch_update(gd.filewatch)
         neko_filewatch_notify(gd.filewatch)
+
+        neko_hotload("test_hot.lua")
+        -- hot_code.foo()
+        hot_code.g_foo()
     end
 end
 
 game_update = function()
 
-    for obj, v4, v, p in w:match("all", "gameobj", "vector2", "velocity2", "player") do
+    for obj, v2, v, p in w:match("all", "gameobj", "vector2", "velocity2", "player") do
 
         -- if gd.tick == 256 then
         --     gd.tick = 0
         -- end
 
         if (gd.tick & 31) == 0 then
-            if math.abs(v.dx) >= 0.5 or math.abs(v.dy) >= 0.5 then
+            if math.abs(v.dx) >= 0.6 or math.abs(v.dy) >= 0.6 then
                 neko_aseprite_update_animation(p.ud, "Run");
             else
                 neko_aseprite_update_animation(p.ud, "Idle");
             end
         end
-
-        -- if ((tick++ & 31) == 0)
-        --     if (fabs(velocity->dx) >= 0.5 || fabs(velocity->dy) >= 0.5)
-        --         neko_sprite_renderer_play(sprite, "Run");
-        --     else
-        --         neko_sprite_renderer_play(sprite, "Idle");
 
         neko_aseprite_update(SAFE_UD(p))
 
@@ -283,8 +291,8 @@ game_update = function()
             v.dy = v.dy + player_v
         end
 
-        v4.x = v4.x + v.dx
-        v4.y = v4.y + v.dy
+        v2.x = v2.x + v.dx
+        v2.y = v2.y + v.dy
 
         v.dx = v.dx / 2.0
         v.dy = v.dy / 2.0
@@ -394,22 +402,24 @@ test_update = function()
 
     if neko_key_pressed("NEKO_KEYCODE_F2") then
         -- neko_dolua("lua_scripts/test_map.lua")
+        -- neko_dolua("lua_scripts/test_datalist.lua")
         -- neko_dolua("lua_scripts/test.lua")
         -- neko_dolua("lua_scripts/test_cstruct.lua")
         -- neko_dolua("lua_scripts/test_class.lua")
+        -- neko_dolua("lua_scripts/test_ds.lua")
 
         -- dbg()
 
         -- print(dump_func(w))
 
-        neko_callback_save("callback1", function(ha)
-            print("This is callback 1 " .. ha)
-        end)
-        neko_callback_save("callback2", function(ha, haa)
-            print("This is callback 2 " .. ha .. haa)
-        end)
-        neko_callback_call("callback1", "haha1")
-        neko_callback_call("callback2", "haha2", "haha3")
+        -- neko_callback_save("callback1", function(ha)
+        --     print("This is callback 1 " .. neko_hash(ha))
+        -- end)
+        -- neko_callback_save("callback2", function(ha, haa)
+        --     print("This is callback 2 " .. ha .. haa)
+        -- end)
+        -- neko_callback_call("callback1", "haha1")
+        -- neko_callback_call("callback2", "haha2", "haha3")
     end
 
     win_w, win_h = neko_window_size(neko_main_window())

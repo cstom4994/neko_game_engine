@@ -67,14 +67,6 @@ T neko_lua_to(lua_State *L, int index) {
     }
 }
 
-neko_inline bool neko_lua_equal(lua_State *state, int index1, int index2) {
-#if LUA_VERSION_NUM <= 501
-    return lua_equal(state, index1, index2) == 1;
-#else
-    return lua_compare(state, index1, index2, LUA_OPEQ) == 1;
-#endif
-}
-
 template <typename Iterable>
 neko_inline bool neko_lua_equal(lua_State *state, const Iterable &indices) {
     auto it = indices.begin();

@@ -116,7 +116,7 @@ ai_t ai;
 
 // decl static reflection
 template <>
-struct neko::meta::static_refl::TypeInfo<neko_platform_running_desc_t> : TypeInfoBase<neko_platform_running_desc_t> {
+struct neko::static_refl::neko_type_info<neko_platform_running_desc_t> : neko_type_info_base<neko_platform_running_desc_t> {
     static constexpr AttrList attrs = {};
     static constexpr FieldList fields = {
             rf_field{TSTR("title"), &rf_type::title},                  // 窗口标题
@@ -157,7 +157,7 @@ typedef struct neko_engine_cvar_s {
 } neko_engine_cvar_t;
 
 template <>
-struct neko::meta::static_refl::TypeInfo<neko_engine_cvar_t> : TypeInfoBase<neko_engine_cvar_t> {
+struct neko::static_refl::neko_type_info<neko_engine_cvar_t> : neko_type_info_base<neko_engine_cvar_t> {
     static constexpr AttrList attrs = {};
     static constexpr FieldList fields = {
             rf_field{TSTR("show_editor"), &rf_type::show_editor},                    //
@@ -735,7 +735,7 @@ vertex_t sprite_verts[SPRITE_VERTS_MAX];
 
 // example of a game sprite
 typedef struct {
-    SPRITEBATCH_U64 image_id;
+    NEKO_SPRITEBATCH_U64 image_id;
     int depth;
     f32 x, y;
     f32 sx, sy;
@@ -766,7 +766,7 @@ spritebatch_config_t get_demo_config() {
     return config;
 }
 
-neko_sprite_t make_sprite(SPRITEBATCH_U64 image_id, f32 x, f32 y, f32 scale, f32 angle_radians, int depth) {
+neko_sprite_t make_sprite(NEKO_SPRITEBATCH_U64 image_id, f32 x, f32 y, f32 scale, f32 angle_radians, int depth) {
 
     neko_vec2 fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
 
@@ -796,7 +796,7 @@ void push_sprite(neko_sprite_t sp) {
     s.sy = sp.sy;
     s.c = sp.c;
     s.s = sp.s;
-    s.sort_bits = (SPRITEBATCH_U64)sp.depth;
+    s.sort_bits = (NEKO_SPRITEBATCH_U64)sp.depth;
     spritebatch_push(&sb, s);
 }
 
@@ -902,12 +902,12 @@ void batch_report(spritebatch_sprite_t *sprites, int count, int texture_w, int t
     neko_graphics_custom_batch_push_draw_call(sprite_batch, call);
 }
 
-void get_pixels(SPRITEBATCH_U64 image_id, void *buffer, int bytes_to_fill, void *udata) {
+void get_pixels(NEKO_SPRITEBATCH_U64 image_id, void *buffer, int bytes_to_fill, void *udata) {
     (void)udata;
     memcpy(buffer, images[image_id].pix, bytes_to_fill);
 }
 
-SPRITEBATCH_U64 generate_texture_handle(void *pixels, int w, int h, void *udata) {
+NEKO_SPRITEBATCH_U64 generate_texture_handle(void *pixels, int w, int h, void *udata) {
     (void)udata;
     GLuint location;
     glGenTextures(1, &location);
@@ -916,10 +916,10 @@ SPRITEBATCH_U64 generate_texture_handle(void *pixels, int w, int h, void *udata)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
     glBindTexture(GL_TEXTURE_2D, 0);
-    return (SPRITEBATCH_U64)location;
+    return (NEKO_SPRITEBATCH_U64)location;
 }
 
-void destroy_texture_handle(SPRITEBATCH_U64 texture_id, void *udata) {
+void destroy_texture_handle(NEKO_SPRITEBATCH_U64 texture_id, void *udata) {
     (void)udata;
     GLuint id = (GLuint)texture_id;
     glDeleteTextures(1, &id);
@@ -1090,7 +1090,7 @@ void game_init() {
         neko_platform_running_desc_t t = {.title = "Neko Engine", .engine_args = ""};
         if (lua_getfield(L, -1, "app") == LUA_TNIL) throw std::exception("no app");
         if (lua_istable(L, -1)) {
-            neko::meta::static_refl::TypeInfo<neko_platform_running_desc_t>::ForEachVarOf(t, [](auto field, auto &&value) {
+            neko::static_refl::neko_type_info<neko_platform_running_desc_t>::ForEachVarOf(t, [](auto field, auto &&value) {
                 static_assert(std::is_lvalue_reference_v<decltype(value)>);
                 if (lua_getfield(L, -1, std::string(field.name).c_str()) != LUA_TNIL) value = neko_lua_to<std::remove_reference_t<decltype(value)>>(L, -1);
                 lua_pop(L, 1);
@@ -1103,7 +1103,7 @@ void game_init() {
         neko_engine_cvar_t cvar;
         if (lua_getfield(L, -1, "cvar") == LUA_TNIL) throw std::exception("no cvar");
         if (lua_istable(L, -1)) {
-            neko::meta::static_refl::TypeInfo<neko_engine_cvar_t>::ForEachVarOf(cvar, [](auto field, auto &&value) {
+            neko::static_refl::neko_type_info<neko_engine_cvar_t>::ForEachVarOf(cvar, [](auto field, auto &&value) {
                 static_assert(std::is_lvalue_reference_v<decltype(value)>);
                 if (lua_getfield(L, -1, std::string(field.name).c_str()) != LUA_TNIL) value = neko_lua_to<std::remove_reference_t<decltype(value)>>(L, -1);
                 lua_pop(L, 1);
@@ -1840,9 +1840,7 @@ void game_update() {
         }
         neko_core_ui_end(&g_core_ui, !g_gui.mouse_is_hover);
 
-        if (g_cvar.show_demo_window) {
-            ImGui::ShowDemoWindow();
-        }
+        if (g_cvar.show_demo_window) ImGui::ShowDemoWindow();
 
         bool bInteractingWithTextbox = false;
         if (g_cvar.show_console) console_new.display_full(&bInteractingWithTextbox);

@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "engine/builtin/neko_png.h"
+#include "engine/neko.h"
 
 #if defined(NEKO_PLATFORM_LINUX)
 #include <errno.h>
@@ -214,14 +215,14 @@ bool neko_asset_ascii_font_load_from_file(const_str path, void *out, u32 point_s
     size_t len = 0;
     char *ttf = neko_platform_read_file_contents(path, "rb", &len);
     if (!point_size) {
-        neko_log_warning("font: %s: point size not declared. setting to default 16.", path);
+        neko_log_warning("font: %s: point size not declared. setting to default 16.", neko_fs_get_filename(path));
         point_size = 16;
     }
     bool ret = neko_asset_ascii_font_load_from_memory(ttf, len, out, point_size);
     if (!ret) {
-        neko_log_warning("font failed to load: %s", path);
+        neko_log_warning("font failed to load: %s", neko_fs_get_filename(path));
     } else {
-        neko_log_trace("font successfully loaded: %s", path);
+        neko_log_trace("font successfully loaded: %s", neko_fs_get_filename(path));
     }
     neko_safe_free(ttf);
     return ret;

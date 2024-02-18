@@ -1192,20 +1192,9 @@ int neko_filewatch_virtual_path_to_actual_path(neko_filewatch_t* filewatch, cons
 
 // #include "strpool.h"
 
-#ifndef ASSETSYS_ASSERT
-#define _CRT_NONSTDC_NO_DEPRECATE
-#define _CRT_SECURE_NO_WARNINGS
-#include <assert.h>
 #define ASSETSYS_ASSERT(expression, message) assert((expression) && (message))
-#endif
-
-#ifndef ASSETSYS_MALLOC
-#define _CRT_NONSTDC_NO_DEPRECATE
-#define _CRT_SECURE_NO_WARNINGS
-#include <stdlib.h>
 #define ASSETSYS_MALLOC(ctx, size) (malloc(size))
 #define ASSETSYS_FREE(ctx, ptr) (free(ptr))
-#endif
 
 #if defined(_WIN32)
 #define _CRT_NONSTDC_NO_DEPRECATE

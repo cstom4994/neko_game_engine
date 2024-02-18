@@ -1070,11 +1070,13 @@ template <auto c>
 using TStr_of_a = TStr<fixed_cstring<decltype(c), 1>(c)>;
 }  // namespace neko::cpp
 
-#define TSTR(s)                                                                                                      \
+#define TSTR_IMPL(s)                                                                                                 \
     ([] {                                                                                                            \
         constexpr std::basic_string_view str{s};                                                                     \
         return ::neko::cpp::TStr<::neko::cpp::fixed_cstring<typename decltype(str)::value_type, str.size()>{str}>{}; \
     }())
+
+#define TSTR(s) TSTR_IMPL(s)
 
 #endif  // NEKO_TSTR
 

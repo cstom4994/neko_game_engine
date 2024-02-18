@@ -9,7 +9,6 @@
 #include "libs/lua/lua.h"
 #include "libs/lua/lualib.h"
 
-
 #ifndef _WIN32
 #include <stdint.h>
 #define SPRINTF_F snprintf
@@ -495,6 +494,14 @@ void neko_lua_auto_function_register_type(lua_State *L, void *src_func, neko_lua
         lua_setglobal(L, FUNCTIONS[i].name);                      \
     }
 
+neko_inline bool neko_lua_equal(lua_State *state, int index1, int index2) {
+#if LUA_VERSION_NUM <= 501
+    return lua_equal(state, index1, index2) == 1;
+#else
+    return lua_compare(state, index1, index2, LUA_OPEQ) == 1;
+#endif
+}
+
 NEKO_API_DECL void neko_lua_debug_setup(lua_State *lua, const char *name, const char *globalName, lua_CFunction readFunc, lua_CFunction writeFunc, const_str debugger_lua);
 NEKO_API_DECL int neko_lua_debug_pcall(lua_State *lua, int nargs, int nresults, int msgh);
 
@@ -508,6 +515,7 @@ void neko_lua_loadover(lua_State *L, const luaL_Reg *l, const char *name);
 NEKO_API_DECL int luaopen_cstruct_core(lua_State *L);
 NEKO_API_DECL int luaopen_cstruct_test(lua_State *L);
 NEKO_API_DECL int luaopen_datalist(lua_State *L);
+NEKO_API_DECL int luaopen_ds_core(lua_State *L);
 
 // neko
 NEKO_API_DECL int luaopen_neko_ecs(lua_State *L);
