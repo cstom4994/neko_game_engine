@@ -15,6 +15,12 @@ print(dump_func({
     thread = {1, 2, 3, 4}
 }))
 
+common = require "common/common"
+
+neko_file_path = common.memoize(function(path)
+    return __neko_file_path(path)
+end)
+
 function starts_with(str, start)
     return str:sub(1, #start) == start
 end
@@ -28,3 +34,7 @@ function sleep(n)
     while os.clock() - t0 <= n do
     end
 end
+
+__NEKO_CONFIG_TYPE_INT = 0
+__NEKO_CONFIG_TYPE_FLOAT = 1
+__NEKO_CONFIG_TYPE_STRING = 2

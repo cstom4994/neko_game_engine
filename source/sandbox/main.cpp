@@ -153,6 +153,9 @@ typedef struct neko_engine_cvar_s {
 
     bool is_hotfix = true;
 
+    // 实验性功能开关
+    bool enable_nekolua = false;
+
     f32 bg[3] = {28, 28, 28};
 } neko_engine_cvar_t;
 
@@ -172,6 +175,7 @@ struct neko::static_refl::neko_type_info<neko_engine_cvar_t> : neko_type_info_ba
             rf_field{TSTR("hello_ai_shit"), &rf_type::hello_ai_shit},                //
             rf_field{TSTR("is_hotfix"), &rf_type::is_hotfix},                        //
             rf_field{TSTR("vsync"), &rf_type::vsync},                                //
+            rf_field{TSTR("enable_nekolua"), &rf_type::enable_nekolua},              //
     };
 };
 
@@ -1011,8 +1015,11 @@ int init_work(void *user_data) {
 
     if (thread_atomic_int_load(this_init_thread_flag) == 0) {
 
-        thread_timer_t timer;
-        thread_timer_init(&timer);
+        thread_timer_t thread_timer;
+        thread_timer_init(&thread_timer);
+
+        neko_timer timer;
+        timer.start();
 
         try {
             neko_lua_wrap_call(L, "game_init_thread");
@@ -1020,9 +1027,12 @@ int init_work(void *user_data) {
             neko_log_error("lua exception %s", ex.what());
         }
 
-        // thread_timer_wait(&timer, 1000000000);  // sleep for a second
+        timer.stop();
+        neko_log_info(std::format("game_init_thread loading done in {0:.3f} ms", timer.get()).c_str());
 
-        thread_timer_term(&timer);
+        // thread_timer_wait(&thread_timer, 1000000000);  // sleep for a second
+
+        thread_timer_term(&thread_timer);
 
         thread_atomic_int_store(this_init_thread_flag, 1);
     }
@@ -1070,7 +1080,7 @@ void game_init() {
 
     {
         neko_lua_wrap_register_t<>(L).def(
-                +[](const_str path) -> neko_string { return game_assets(path); }, "neko_file_path");
+                +[](const_str path) -> neko_string { return game_assets(path); }, "__neko_file_path");
 
         lua_newtable(L);
         for (int n = 0; n < neko_instance()->ctx.game.argc; ++n) {

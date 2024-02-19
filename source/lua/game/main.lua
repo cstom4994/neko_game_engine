@@ -24,7 +24,10 @@ neko_game.app = {
 }
 
 neko_game.cvar = {
-    show_demo_window = false
+    show_demo_window = false,
+
+    -- experimental features 实验性功能
+    enable_nekolua = false
 }
 
 game_data = {}
@@ -96,6 +99,13 @@ game_init_thread = function()
     neko_filewatch_mount(gd.filewatch, neko_file_path("gamedir/maps"), "/maps");
 
     neko_filewatch_start(gd.filewatch, "/maps", "test_filewatch_callback")
+
+    if not neko_game.cvar.enable_nekolua then
+        print("Not enable nekolua")
+    else
+        nekolua = require "common/nekolua/init"
+        nekolua.register()
+    end
 end
 
 game_init = function()
@@ -133,6 +143,10 @@ game_init = function()
     }
 
     eid2 = w:new{
+        gameobj = {
+            name = "tiled_map_1",
+            sd = c_gameobject.new_obj(1002, true, true)
+        },
         vector2 = {
             x = 20,
             y = 20
@@ -228,10 +242,6 @@ game_shutdown = function()
     neko_filewatch_destory(gd.filewatch)
     neko_assetsys_destory(gd.assetsys)
 end
-
-__NEKO_CONFIG_TYPE_INT = 0
-__NEKO_CONFIG_TYPE_FLOAT = 1
-__NEKO_CONFIG_TYPE_STRING = 2
 
 gd.tick = 0
 
@@ -334,7 +344,11 @@ end
 
 game_render = function()
     for v2, v, p in w:match("all", "vector2", "velocity2", "player") do
-        neko_aseprite_render(SAFE_UD(p), v2)
+        local direction = 0
+        if v.dx < 0 then
+            direction = 1
+        end
+        neko_aseprite_render(SAFE_UD(p), v2, direction)
     end
 
     for v2, t in w:match("all", "vector2", "tiled_map") do
@@ -407,6 +421,9 @@ test_update = function()
         -- neko_dolua("lua_scripts/test_cstruct.lua")
         -- neko_dolua("lua_scripts/test_class.lua")
         -- neko_dolua("lua_scripts/test_ds.lua")
+        -- neko_dolua("lua_scripts/test_events.lua")
+        -- neko_dolua("lua_scripts/test_nekolua.lua")
+        neko_dolua("lua_scripts/test_common.lua")
 
         -- dbg()
 

@@ -25,12 +25,12 @@ neko_inline neko_vec2 __neko_lua_table_to_v2(lua_State* L, int idx) {
     }
 
     lua_pushstring(L, "x");
-    lua_gettable(L, -2);
+    lua_gettable(L, idx);
     f32 x = lua_tonumber(L, -1);
     lua_pop(L, 1);
 
     lua_pushstring(L, "y");
-    lua_gettable(L, -2);
+    lua_gettable(L, idx);
     f32 y = lua_tonumber(L, -1);
     lua_pop(L, 1);
 
@@ -468,9 +468,18 @@ static int __neko_bind_aseprite_update_animation(lua_State* L) {
 }
 
 static int __neko_bind_aseprite_render(lua_State* L) {
+
+    if (lua_gettop(L) != 3) {
+        return luaL_error(L, "Function expects exactly three arguments");
+    }
+
     neko_sprite_renderer* user_handle = (neko_sprite_renderer*)lua_touserdata(L, 1);
 
     neko_vec2 xform = __neko_lua_table_to_v2(L, 2);
+
+    int direction = neko_lua_to<int>(L, 3);
+
+    // int direction = 1;
 
     neko_t* engine = neko_instance();
 
@@ -486,7 +495,10 @@ static int __neko_bind_aseprite_render(lua_State* L) {
     neko_sprite* spr = user_handle->sprite;
     neko_sprite_frame f = spr->frames[index];
 
-    neko_idraw_rect_textured_ext(&g_idraw, xform.x, xform.y, xform.x + spr->width * 4.f, xform.y + spr->height * 4.f, f.u0, f.v0, f.u1, f.v1, user_handle->sprite->img.id, NEKO_COLOR_WHITE);
+    if (direction)
+        neko_idraw_rect_textured_ext(&g_idraw, xform.x, xform.y, xform.x + spr->width * 4.f, xform.y + spr->height * 4.f, f.u1, f.v0, f.u0, f.v1, user_handle->sprite->img.id, NEKO_COLOR_WHITE);
+    else
+        neko_idraw_rect_textured_ext(&g_idraw, xform.x, xform.y, xform.x + spr->width * 4.f, xform.y + spr->height * 4.f, f.u0, f.v0, f.u1, f.v1, user_handle->sprite->img.id, NEKO_COLOR_WHITE);
 
     return 0;
 }

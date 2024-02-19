@@ -263,7 +263,7 @@ static void lua_reg(lua_State *L) {
 }
 
 static int __neko_lua_catch_panic(lua_State *L) {
-    const char *msg = lua_tostring(L, -1);
+    auto msg = neko_lua_to<const_str>(L, -1);
     neko_log_error("[lua] panic error: %s", msg);
     return 0;
 }
@@ -304,7 +304,7 @@ neko_inline lua_State *neko_scripting_init() {
     }
 
     timer.stop();
-    neko_log_info(std::format("lua loading done in {0:.4f} ms", timer.get()).c_str());
+    neko_log_info(std::format("lua init done in {0:.3f} ms", timer.get()).c_str());
 
     return L;
 }
