@@ -84,37 +84,38 @@ typedef enum neko_core_ui_alt_drag_mode_type {
 } neko_core_ui_alt_drag_mode_type;
 
 enum {
-    NEKO_CORE_UI_OPT_NOSTYLESHADOW = (1 << 0),
-    NEKO_CORE_UI_OPT_NOSTYLEBORDER = (1 << 1),
-    NEKO_CORE_UI_OPT_NOINTERACT = (1 << 2),
-    NEKO_CORE_UI_OPT_NOFRAME = (1 << 3),
-    NEKO_CORE_UI_OPT_NORESIZE = (1 << 4),
-    NEKO_CORE_UI_OPT_NOSCROLL = (1 << 5),
-    NEKO_CORE_UI_OPT_NOCLOSE = (1 << 6),
-    NEKO_CORE_UI_OPT_NOTITLE = (1 << 7),
-    NEKO_CORE_UI_OPT_HOLDFOCUS = (1 << 8),
-    NEKO_CORE_UI_OPT_AUTOSIZE = (1 << 9),
-    NEKO_CORE_UI_OPT_POPUP = (1 << 10),
-    NEKO_CORE_UI_OPT_CLOSED = (1 << 11),
-    NEKO_CORE_UI_OPT_EXPANDED = (1 << 12),
-    NEKO_CORE_UI_OPT_NOHOVER = (1 << 13),
-    NEKO_CORE_UI_OPT_FORCESETRECT = (1 << 14),
-    NEKO_CORE_UI_OPT_NOFOCUS = (1 << 15),
-    NEKO_CORE_UI_OPT_FORCEFOCUS = (1 << 16),
-    NEKO_CORE_UI_OPT_NOMOVE = (1 << 17),
-    NEKO_CORE_UI_OPT_NOCLIP = (1 << 18),
-    NEKO_CORE_UI_OPT_NODOCK = (1 << 19),
-    NEKO_CORE_UI_OPT_FULLSCREEN = (1 << 20),
-    NEKO_CORE_UI_OPT_DOCKSPACE = (1 << 21),
-    NEKO_CORE_UI_OPT_NOBRINGTOFRONT = (1 << 22),
-    NEKO_CORE_UI_OPT_LEFTCLICKONLY = (1 << 23),
-    NEKO_CORE_UI_OPT_NOSWITCHSTATE = (1 << 24),
-    NEKO_CORE_UI_OPT_NOBORDER = (1 << 25),
-    NEKO_CORE_UI_OPT_ISCONTENT = (1 << 26),
-    NEKO_CORE_UI_OPT_NOCARET = (1 << 27),
-    NEKO_CORE_UI_OPT_NOSCROLLHORIZONTAL = (1 << 28),
-    NEKO_CORE_UI_OPT_NOSCROLLVERTICAL = (1 << 29),
-    NEKO_CORE_UI_OPT_NOSTYLEBACKGROUND = (1 << 30)
+    NEKO_CORE_UI_OPT_NOSTYLESHADOW = (1ULL << 0),
+    NEKO_CORE_UI_OPT_NOSTYLEBORDER = (1ULL << 1),
+    NEKO_CORE_UI_OPT_NOINTERACT = (1ULL << 2),
+    NEKO_CORE_UI_OPT_NOFRAME = (1ULL << 3),
+    NEKO_CORE_UI_OPT_NORESIZE = (1ULL << 4),
+    NEKO_CORE_UI_OPT_NOSCROLL = (1ULL << 5),
+    NEKO_CORE_UI_OPT_NOCLOSE = (1ULL << 6),
+    NEKO_CORE_UI_OPT_NOTITLE = (1ULL << 7),
+    NEKO_CORE_UI_OPT_HOLDFOCUS = (1ULL << 8),
+    NEKO_CORE_UI_OPT_AUTOSIZE = (1ULL << 9),
+    NEKO_CORE_UI_OPT_POPUP = (1ULL << 10),
+    NEKO_CORE_UI_OPT_CLOSED = (1ULL << 11),
+    NEKO_CORE_UI_OPT_EXPANDED = (1ULL << 12),
+    NEKO_CORE_UI_OPT_NOHOVER = (1ULL << 13),
+    NEKO_CORE_UI_OPT_FORCESETRECT = (1ULL << 14),
+    NEKO_CORE_UI_OPT_NOFOCUS = (1ULL << 15),
+    NEKO_CORE_UI_OPT_FORCEFOCUS = (1ULL << 16),
+    NEKO_CORE_UI_OPT_NOMOVE = (1ULL << 17),
+    NEKO_CORE_UI_OPT_NOCLIP = (1ULL << 18),
+    NEKO_CORE_UI_OPT_NODOCK = (1ULL << 19),
+    NEKO_CORE_UI_OPT_FULLSCREEN = (1ULL << 20),
+    NEKO_CORE_UI_OPT_DOCKSPACE = (1ULL << 21),
+    NEKO_CORE_UI_OPT_NOBRINGTOFRONT = (1ULL << 22),
+    NEKO_CORE_UI_OPT_LEFTCLICKONLY = (1ULL << 23),
+    NEKO_CORE_UI_OPT_NOSWITCHSTATE = (1ULL << 24),
+    NEKO_CORE_UI_OPT_NOBORDER = (1ULL << 25),
+    NEKO_CORE_UI_OPT_ISCONTENT = (1ULL << 26),
+    NEKO_CORE_UI_OPT_NOCARET = (1ULL << 27),
+    NEKO_CORE_UI_OPT_NOSCROLLHORIZONTAL = (1ULL << 28),
+    NEKO_CORE_UI_OPT_NOSCROLLVERTICAL = (1ULL << 29),
+    NEKO_CORE_UI_OPT_NOSTYLEBACKGROUND = (1ULL << 30),
+    NEKO_CORE_UI_OPT_PARSEIDTAGONLY = (1ULL << 31)
 };
 
 enum { NEKO_CORE_UI_MOUSE_LEFT = (1 << 0), NEKO_CORE_UI_MOUSE_RIGHT = (1 << 1), NEKO_CORE_UI_MOUSE_MIDDLE = (1 << 2) };
@@ -221,7 +222,7 @@ typedef struct {
     neko_color_t color;
 } neko_core_ui_shapecommand_t;
 
-// NOTE: This is wasteful, given how I'm pushing into the byte buffer anyway for heterogenous types
+// 注意 考虑到如何将异构类型推入字节缓冲区 这是浪费的
 typedef union {
     s32 type;
     neko_core_ui_basecommand_t base;
@@ -237,7 +238,7 @@ typedef union {
 
 struct neko_core_ui_context_t;
 
-typedef void (*neko_core_ui_on_draw_button_callback)(struct neko_core_ui_context_t* ctx, neko_core_ui_rect_t rect, neko_core_ui_id id, bool hovered, bool focused, s32 opt, const char* label,
+typedef void (*neko_core_ui_on_draw_button_callback)(struct neko_core_ui_context_t* ctx, neko_core_ui_rect_t rect, neko_core_ui_id id, bool hovered, bool focused, u64 opt, const char* label,
                                                      s32 icon);
 
 typedef enum {
@@ -843,7 +844,7 @@ NEKO_API_DECL void neko_core_ui_render(neko_core_ui_context_t* ctx, neko_command
 //=== Util ===//
 NEKO_API_DECL void neko_core_ui_renderpass_submit(neko_core_ui_context_t* ctx, neko_command_buffer_t* cb, neko_color_t clear);
 NEKO_API_DECL void neko_core_ui_renderpass_submit_ex(neko_core_ui_context_t* ctx, neko_command_buffer_t* cb, neko_graphics_clear_action_t* action);
-NEKO_API_DECL void neko_core_ui_parse_id_tag(neko_core_ui_context_t* ctx, const char* str, char* buffer, size_t sz);
+NEKO_API_DECL void neko_core_ui_parse_id_tag(neko_core_ui_context_t* ctx, const char* str, char* buffer, size_t sz, u64 opt);
 NEKO_API_DECL void neko_core_ui_parse_label_tag(neko_core_ui_context_t* ctx, const char* str, char* buffer, size_t sz);
 
 //=== Main API ===//
@@ -890,6 +891,9 @@ NEKO_API_DECL void neko_core_ui_set_element_style(neko_core_ui_context_t* ctx, n
 NEKO_API_DECL void neko_core_ui_style_sheet_set_element_styles(neko_core_ui_style_sheet_t* style_sheet, neko_core_ui_element_type element, neko_core_ui_element_state state,
                                                                neko_core_ui_style_element_t* styles, size_t size);
 NEKO_API_DECL void neko_core_ui_set_style_sheet(neko_core_ui_context_t* ctx, neko_core_ui_style_sheet_t* style_sheet);
+
+NEKO_API_DECL void neko_core_ui_push_inline_style(neko_core_ui_context_t* ctx, neko_core_ui_element_type elementid, neko_core_ui_inline_style_desc_t* desc);
+NEKO_API_DECL void neko_core_ui_pop_inline_style(neko_core_ui_context_t* ctx, neko_core_ui_element_type elementid);
 
 NEKO_API_DECL neko_core_ui_style_t* neko_core_ui_push_style(neko_core_ui_context_t* ctx, neko_core_ui_style_t* style);
 NEKO_API_DECL void neko_core_ui_pop_style(neko_core_ui_context_t* ctx, neko_core_ui_style_t* style);

@@ -1365,7 +1365,7 @@ end
     assert(base_ptr == foo_ptr);
 }
 
-void __neko_bind_imgui(lua_State* L);
+extern void __neko_bind_imgui(lua_State* L);
 
 int register_mt_aseprite(lua_State* L) {
     luaL_Reg reg[] = {

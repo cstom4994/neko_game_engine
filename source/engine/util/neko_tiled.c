@@ -305,10 +305,11 @@ void neko_tiled_render_begin(neko_command_buffer_t *cb, neko_tiled_renderer *ren
 }
 
 void neko_tiled_render_flush(neko_command_buffer_t *cb, neko_tiled_renderer *renderer) {
+
     const neko_vec2 ws = neko_platform_window_sizev(neko_platform_main_window());
     neko_graphics_set_viewport(cb, 0, 0, ws.x, ws.y);
 
-    neko_mat4 camera_mat = neko_mat4_ortho(0.0f, ws.x, ws.y, 0.0f, -1.0f, 1.0f);
+    renderer->camera_mat = neko_mat4_ortho(0.0f, ws.x, ws.y, 0.0f, -1.0f, 1.0f);
 
     // clang-format off
     neko_graphics_bind_desc_t binds = {
@@ -316,7 +317,7 @@ void neko_tiled_render_flush(neko_command_buffer_t *cb, neko_tiled_renderer *ren
     .index_buffers = {.desc = &(neko_graphics_bind_index_buffer_desc_t){.buffer = renderer->ib}},
     .uniforms = {
         .desc = (neko_graphics_bind_uniform_desc_t[2]){
-            {.uniform = renderer->u_camera, .data = &camera_mat},
+            {.uniform = renderer->u_camera, .data = &renderer->camera_mat},
             {.uniform = renderer->u_batch_tex, .data = &renderer->batch_texture}
         },
         .size = 2 * sizeof(neko_graphics_bind_uniform_desc_t)

@@ -102,138 +102,138 @@ static neko_core_ui_style_sheet_t neko_core_ui_default_style_sheet = neko_defaul
 static neko_core_ui_style_t neko_core_ui_get_current_element_style(neko_core_ui_context_t* ctx, const neko_core_ui_selector_desc_t* desc, s32 elementid, s32 state) {
 
 #define NEKO_CORE_UI_APPLY_STYLE(SE)                                               \
-    do {                                                                         \
-        switch ((SE)->type) {                                                    \
+    do {                                                                           \
+        switch ((SE)->type) {                                                      \
             case NEKO_CORE_UI_STYLE_WIDTH:                                         \
-                style.size[0] = (float)(SE)->value;                              \
-                break;                                                           \
+                style.size[0] = (float)(SE)->value;                                \
+                break;                                                             \
             case NEKO_CORE_UI_STYLE_HEIGHT:                                        \
-                style.size[1] = (float)(SE)->value;                              \
-                break;                                                           \
-                                                                                 \
+                style.size[1] = (float)(SE)->value;                                \
+                break;                                                             \
+                                                                                   \
             case NEKO_CORE_UI_STYLE_PADDING: {                                     \
                 style.padding[NEKO_CORE_UI_PADDING_LEFT] = (s32)(SE)->value;       \
                 style.padding[NEKO_CORE_UI_PADDING_TOP] = (s32)(SE)->value;        \
                 style.padding[NEKO_CORE_UI_PADDING_RIGHT] = (s32)(SE)->value;      \
                 style.padding[NEKO_CORE_UI_PADDING_BOTTOM] = (s32)(SE)->value;     \
-            }                                                                    \
-                                                                                 \
+            }                                                                      \
+                                                                                   \
             case NEKO_CORE_UI_STYLE_PADDING_LEFT:                                  \
                 style.padding[NEKO_CORE_UI_PADDING_LEFT] = (s32)(SE)->value;       \
-                break;                                                           \
+                break;                                                             \
             case NEKO_CORE_UI_STYLE_PADDING_TOP:                                   \
                 style.padding[NEKO_CORE_UI_PADDING_TOP] = (s32)(SE)->value;        \
-                break;                                                           \
+                break;                                                             \
             case NEKO_CORE_UI_STYLE_PADDING_RIGHT:                                 \
                 style.padding[NEKO_CORE_UI_PADDING_RIGHT] = (s32)(SE)->value;      \
-                break;                                                           \
+                break;                                                             \
             case NEKO_CORE_UI_STYLE_PADDING_BOTTOM:                                \
                 style.padding[NEKO_CORE_UI_PADDING_BOTTOM] = (s32)(SE)->value;     \
-                break;                                                           \
-                                                                                 \
+                break;                                                             \
+                                                                                   \
             case NEKO_CORE_UI_STYLE_MARGIN: {                                      \
                 style.margin[NEKO_CORE_UI_MARGIN_LEFT] = (s32)(SE)->value;         \
                 style.margin[NEKO_CORE_UI_MARGIN_TOP] = (s32)(SE)->value;          \
                 style.margin[NEKO_CORE_UI_MARGIN_RIGHT] = (s32)(SE)->value;        \
                 style.margin[NEKO_CORE_UI_MARGIN_BOTTOM] = (s32)(SE)->value;       \
-            } break;                                                             \
-                                                                                 \
+            } break;                                                               \
+                                                                                   \
             case NEKO_CORE_UI_STYLE_MARGIN_LEFT:                                   \
                 style.margin[NEKO_CORE_UI_MARGIN_LEFT] = (s32)(SE)->value;         \
-                break;                                                           \
+                break;                                                             \
             case NEKO_CORE_UI_STYLE_MARGIN_TOP:                                    \
                 style.margin[NEKO_CORE_UI_MARGIN_TOP] = (s32)(SE)->value;          \
-                break;                                                           \
+                break;                                                             \
             case NEKO_CORE_UI_STYLE_MARGIN_RIGHT:                                  \
                 style.margin[NEKO_CORE_UI_MARGIN_RIGHT] = (s32)(SE)->value;        \
-                break;                                                           \
+                break;                                                             \
             case NEKO_CORE_UI_STYLE_MARGIN_BOTTOM:                                 \
                 style.margin[NEKO_CORE_UI_MARGIN_BOTTOM] = (s32)(SE)->value;       \
-                break;                                                           \
-                                                                                 \
+                break;                                                             \
+                                                                                   \
             case NEKO_CORE_UI_STYLE_BORDER_RADIUS: {                               \
-                style.border_radius[0] = (SE)->value;                            \
-                style.border_radius[1] = (SE)->value;                            \
-                style.border_radius[2] = (SE)->value;                            \
-                style.border_radius[3] = (SE)->value;                            \
-            } break;                                                             \
-                                                                                 \
+                style.border_radius[0] = (SE)->value;                              \
+                style.border_radius[1] = (SE)->value;                              \
+                style.border_radius[2] = (SE)->value;                              \
+                style.border_radius[3] = (SE)->value;                              \
+            } break;                                                               \
+                                                                                   \
             case NEKO_CORE_UI_STYLE_BORDER_RADIUS_LEFT:                            \
-                style.border_radius[0] = (SE)->value;                            \
-                break;                                                           \
+                style.border_radius[0] = (SE)->value;                              \
+                break;                                                             \
             case NEKO_CORE_UI_STYLE_BORDER_RADIUS_RIGHT:                           \
-                style.border_radius[1] = (SE)->value;                            \
-                break;                                                           \
+                style.border_radius[1] = (SE)->value;                              \
+                break;                                                             \
             case NEKO_CORE_UI_STYLE_BORDER_RADIUS_TOP:                             \
-                style.border_radius[2] = (SE)->value;                            \
-                break;                                                           \
+                style.border_radius[2] = (SE)->value;                              \
+                break;                                                             \
             case NEKO_CORE_UI_STYLE_BORDER_RADIUS_BOTTOM:                          \
-                style.border_radius[3] = (SE)->value;                            \
-                break;                                                           \
-                                                                                 \
+                style.border_radius[3] = (SE)->value;                              \
+                break;                                                             \
+                                                                                   \
             case NEKO_CORE_UI_STYLE_BORDER_WIDTH: {                                \
-                style.border_width[0] = (SE)->value;                             \
-                style.border_width[1] = (SE)->value;                             \
-                style.border_width[2] = (SE)->value;                             \
-                style.border_width[3] = (SE)->value;                             \
-            } break;                                                             \
-                                                                                 \
+                style.border_width[0] = (SE)->value;                               \
+                style.border_width[1] = (SE)->value;                               \
+                style.border_width[2] = (SE)->value;                               \
+                style.border_width[3] = (SE)->value;                               \
+            } break;                                                               \
+                                                                                   \
             case NEKO_CORE_UI_STYLE_BORDER_WIDTH_LEFT:                             \
-                style.border_width[0] = (SE)->value;                             \
-                break;                                                           \
+                style.border_width[0] = (SE)->value;                               \
+                break;                                                             \
             case NEKO_CORE_UI_STYLE_BORDER_WIDTH_RIGHT:                            \
-                style.border_width[1] = (SE)->value;                             \
-                break;                                                           \
+                style.border_width[1] = (SE)->value;                               \
+                break;                                                             \
             case NEKO_CORE_UI_STYLE_BORDER_WIDTH_TOP:                              \
-                style.border_width[2] = (SE)->value;                             \
-                break;                                                           \
+                style.border_width[2] = (SE)->value;                               \
+                break;                                                             \
             case NEKO_CORE_UI_STYLE_BORDER_WIDTH_BOTTOM:                           \
-                style.border_width[3] = (SE)->value;                             \
-                break;                                                           \
-                                                                                 \
+                style.border_width[3] = (SE)->value;                               \
+                break;                                                             \
+                                                                                   \
             case NEKO_CORE_UI_STYLE_DIRECTION:                                     \
-                style.direction = (s32)(SE)->value;                              \
-                break;                                                           \
+                style.direction = (s32)(SE)->value;                                \
+                break;                                                             \
             case NEKO_CORE_UI_STYLE_ALIGN_CONTENT:                                 \
-                style.align_content = (s32)(SE)->value;                          \
-                break;                                                           \
+                style.align_content = (s32)(SE)->value;                            \
+                break;                                                             \
             case NEKO_CORE_UI_STYLE_JUSTIFY_CONTENT:                               \
-                style.justify_content = (s32)(SE)->value;                        \
-                break;                                                           \
-                                                                                 \
+                style.justify_content = (s32)(SE)->value;                          \
+                break;                                                             \
+                                                                                   \
             case NEKO_CORE_UI_STYLE_SHADOW_X:                                      \
-                style.shadow_x = (s32)(SE)->value;                               \
-                break;                                                           \
+                style.shadow_x = (s32)(SE)->value;                                 \
+                break;                                                             \
             case NEKO_CORE_UI_STYLE_SHADOW_Y:                                      \
-                style.shadow_y = (s32)(SE)->value;                               \
-                break;                                                           \
-                                                                                 \
+                style.shadow_y = (s32)(SE)->value;                                 \
+                break;                                                             \
+                                                                                   \
             case NEKO_CORE_UI_STYLE_COLOR_BACKGROUND:                              \
                 style.colors[NEKO_CORE_UI_COLOR_BACKGROUND] = (SE)->color;         \
-                break;                                                           \
+                break;                                                             \
             case NEKO_CORE_UI_STYLE_COLOR_BORDER:                                  \
                 style.colors[NEKO_CORE_UI_COLOR_BORDER] = (SE)->color;             \
-                break;                                                           \
+                break;                                                             \
             case NEKO_CORE_UI_STYLE_COLOR_SHADOW:                                  \
                 style.colors[NEKO_CORE_UI_COLOR_SHADOW] = (SE)->color;             \
-                break;                                                           \
+                break;                                                             \
             case NEKO_CORE_UI_STYLE_COLOR_CONTENT:                                 \
                 style.colors[NEKO_CORE_UI_COLOR_CONTENT] = (SE)->color;            \
-                break;                                                           \
+                break;                                                             \
             case NEKO_CORE_UI_STYLE_COLOR_CONTENT_BACKGROUND:                      \
                 style.colors[NEKO_CORE_UI_COLOR_CONTENT_BACKGROUND] = (SE)->color; \
-                break;                                                           \
+                break;                                                             \
             case NEKO_CORE_UI_STYLE_COLOR_CONTENT_BORDER:                          \
                 style.colors[NEKO_CORE_UI_COLOR_CONTENT_BORDER] = (SE)->color;     \
-                break;                                                           \
+                break;                                                             \
             case NEKO_CORE_UI_STYLE_COLOR_CONTENT_SHADOW:                          \
                 style.colors[NEKO_CORE_UI_COLOR_CONTENT_SHADOW] = (SE)->color;     \
-                break;                                                           \
-                                                                                 \
+                break;                                                             \
+                                                                                   \
             case NEKO_CORE_UI_STYLE_FONT:                                          \
-                style.font = (SE)->font;                                         \
-                break;                                                           \
-        }                                                                        \
+                style.font = (SE)->font;                                           \
+                break;                                                             \
+        }                                                                          \
     } while (0)
 
     neko_core_ui_style_t style = ctx->style_sheet->styles[elementid][state];
@@ -354,7 +354,7 @@ NEKO_API_DECL neko_core_ui_style_t neko_core_ui_animation_get_blend_style(neko_c
         }
     }
 
-#define NEKO_CORE_UI_BLEND_COLOR(TYPE)                                                             \
+#define NEKO_CORE_UI_BLEND_COLOR(TYPE)                                                           \
     do {                                                                                         \
         neko_color_t* c0 = &s0.colors[TYPE];                                                     \
         neko_color_t* c1 = &s1.colors[TYPE];                                                     \
@@ -365,24 +365,24 @@ NEKO_API_DECL neko_core_ui_style_t neko_core_ui_animation_get_blend_style(neko_c
         ret.colors[TYPE] = neko_color((u8)r, (u8)g, (u8)b, (u8)a);                               \
     } while (0)
 
-#define NEKO_CORE_UI_BLEND_VALUE(FIELD, TYPE)                  \
+#define NEKO_CORE_UI_BLEND_VALUE(FIELD, TYPE)                \
     do {                                                     \
         float v0 = (float)s0.FIELD;                          \
         float v1 = (float)s1.FIELD;                          \
         ret.FIELD = (TYPE)neko_interp_smoothstep(v0, v1, t); \
     } while (0)
 
-#define NEKO_CORE_UI_BLEND_PROPERTIES(LIST)                                                                                                              \
+#define NEKO_CORE_UI_BLEND_PROPERTIES(LIST)                                                                                                            \
     do {                                                                                                                                               \
         for (u32 i = 0; i < neko_dyn_array_size(LIST); ++i) {                                                                                          \
             const neko_core_ui_animation_property_t* prop = &LIST[i];                                                                                  \
             float t = 0.f;                                                                                                                             \
             switch (anim->direction) {                                                                                                                 \
                 default:                                                                                                                               \
-                case NEKO_CORE_UI_ANIMATION_DIRECTION_FORWARD: {                                                                                         \
+                case NEKO_CORE_UI_ANIMATION_DIRECTION_FORWARD: {                                                                                       \
                     t = neko_clamp(neko_map_range((float)prop->delay, (float)prop->time + (float)prop->delay, 0.f, 1.f, (float)anim->time), 0.f, 1.f); \
                 } break;                                                                                                                               \
-                case NEKO_CORE_UI_ANIMATION_DIRECTION_BACKWARD: {                                                                                        \
+                case NEKO_CORE_UI_ANIMATION_DIRECTION_BACKWARD: {                                                                                      \
                     if (prop->time <= 0.f)                                                                                                             \
                         t = 1.f;                                                                                                                       \
                     else                                                                                                                               \
@@ -391,110 +391,110 @@ NEKO_API_DECL neko_core_ui_style_t neko_core_ui_animation_get_blend_style(neko_c
             }                                                                                                                                          \
                                                                                                                                                        \
             switch (prop->type) {                                                                                                                      \
-                case NEKO_CORE_UI_STYLE_COLOR_BACKGROUND: {                                                                                              \
-                    NEKO_CORE_UI_BLEND_COLOR(NEKO_CORE_UI_COLOR_BACKGROUND);                                                                               \
+                case NEKO_CORE_UI_STYLE_COLOR_BACKGROUND: {                                                                                            \
+                    NEKO_CORE_UI_BLEND_COLOR(NEKO_CORE_UI_COLOR_BACKGROUND);                                                                           \
                 } break;                                                                                                                               \
-                case NEKO_CORE_UI_STYLE_COLOR_SHADOW: {                                                                                                  \
-                    NEKO_CORE_UI_BLEND_COLOR(NEKO_CORE_UI_COLOR_SHADOW);                                                                                   \
+                case NEKO_CORE_UI_STYLE_COLOR_SHADOW: {                                                                                                \
+                    NEKO_CORE_UI_BLEND_COLOR(NEKO_CORE_UI_COLOR_SHADOW);                                                                               \
                 } break;                                                                                                                               \
-                case NEKO_CORE_UI_STYLE_COLOR_BORDER: {                                                                                                  \
-                    NEKO_CORE_UI_BLEND_COLOR(NEKO_CORE_UI_COLOR_BORDER);                                                                                   \
+                case NEKO_CORE_UI_STYLE_COLOR_BORDER: {                                                                                                \
+                    NEKO_CORE_UI_BLEND_COLOR(NEKO_CORE_UI_COLOR_BORDER);                                                                               \
                 } break;                                                                                                                               \
-                case NEKO_CORE_UI_STYLE_COLOR_CONTENT: {                                                                                                 \
-                    NEKO_CORE_UI_BLEND_COLOR(NEKO_CORE_UI_COLOR_CONTENT);                                                                                  \
+                case NEKO_CORE_UI_STYLE_COLOR_CONTENT: {                                                                                               \
+                    NEKO_CORE_UI_BLEND_COLOR(NEKO_CORE_UI_COLOR_CONTENT);                                                                              \
                 } break;                                                                                                                               \
-                case NEKO_CORE_UI_STYLE_COLOR_CONTENT_BACKGROUND: {                                                                                      \
-                    NEKO_CORE_UI_BLEND_COLOR(NEKO_CORE_UI_COLOR_CONTENT_BACKGROUND);                                                                       \
+                case NEKO_CORE_UI_STYLE_COLOR_CONTENT_BACKGROUND: {                                                                                    \
+                    NEKO_CORE_UI_BLEND_COLOR(NEKO_CORE_UI_COLOR_CONTENT_BACKGROUND);                                                                   \
                 } break;                                                                                                                               \
-                case NEKO_CORE_UI_STYLE_COLOR_CONTENT_SHADOW: {                                                                                          \
-                    NEKO_CORE_UI_BLEND_COLOR(NEKO_CORE_UI_COLOR_CONTENT_SHADOW);                                                                           \
+                case NEKO_CORE_UI_STYLE_COLOR_CONTENT_SHADOW: {                                                                                        \
+                    NEKO_CORE_UI_BLEND_COLOR(NEKO_CORE_UI_COLOR_CONTENT_SHADOW);                                                                       \
                 } break;                                                                                                                               \
-                case NEKO_CORE_UI_STYLE_COLOR_CONTENT_BORDER: {                                                                                          \
-                    NEKO_CORE_UI_BLEND_COLOR(NEKO_CORE_UI_COLOR_CONTENT_BORDER);                                                                           \
+                case NEKO_CORE_UI_STYLE_COLOR_CONTENT_BORDER: {                                                                                        \
+                    NEKO_CORE_UI_BLEND_COLOR(NEKO_CORE_UI_COLOR_CONTENT_BORDER);                                                                       \
                 } break;                                                                                                                               \
-                case NEKO_CORE_UI_STYLE_WIDTH: {                                                                                                         \
-                    NEKO_CORE_UI_BLEND_VALUE(size[0], float);                                                                                            \
+                case NEKO_CORE_UI_STYLE_WIDTH: {                                                                                                       \
+                    NEKO_CORE_UI_BLEND_VALUE(size[0], float);                                                                                          \
                 } break;                                                                                                                               \
-                case NEKO_CORE_UI_STYLE_HEIGHT: {                                                                                                        \
-                    NEKO_CORE_UI_BLEND_VALUE(size[1], float);                                                                                            \
+                case NEKO_CORE_UI_STYLE_HEIGHT: {                                                                                                      \
+                    NEKO_CORE_UI_BLEND_VALUE(size[1], float);                                                                                          \
                 } break;                                                                                                                               \
-                case NEKO_CORE_UI_STYLE_BORDER_WIDTH: {                                                                                                  \
-                    NEKO_CORE_UI_BLEND_VALUE(border_width[0], s16);                                                                                      \
-                    NEKO_CORE_UI_BLEND_VALUE(border_width[1], s16);                                                                                      \
-                    NEKO_CORE_UI_BLEND_VALUE(border_width[2], s16);                                                                                      \
-                    NEKO_CORE_UI_BLEND_VALUE(border_width[3], s16);                                                                                      \
+                case NEKO_CORE_UI_STYLE_BORDER_WIDTH: {                                                                                                \
+                    NEKO_CORE_UI_BLEND_VALUE(border_width[0], s16);                                                                                    \
+                    NEKO_CORE_UI_BLEND_VALUE(border_width[1], s16);                                                                                    \
+                    NEKO_CORE_UI_BLEND_VALUE(border_width[2], s16);                                                                                    \
+                    NEKO_CORE_UI_BLEND_VALUE(border_width[3], s16);                                                                                    \
                 } break;                                                                                                                               \
-                case NEKO_CORE_UI_STYLE_BORDER_WIDTH_LEFT: {                                                                                             \
-                    NEKO_CORE_UI_BLEND_VALUE(border_width[0], s16);                                                                                      \
+                case NEKO_CORE_UI_STYLE_BORDER_WIDTH_LEFT: {                                                                                           \
+                    NEKO_CORE_UI_BLEND_VALUE(border_width[0], s16);                                                                                    \
                 } break;                                                                                                                               \
-                case NEKO_CORE_UI_STYLE_BORDER_WIDTH_RIGHT: {                                                                                            \
-                    NEKO_CORE_UI_BLEND_VALUE(border_width[1], s16);                                                                                      \
+                case NEKO_CORE_UI_STYLE_BORDER_WIDTH_RIGHT: {                                                                                          \
+                    NEKO_CORE_UI_BLEND_VALUE(border_width[1], s16);                                                                                    \
                 } break;                                                                                                                               \
-                case NEKO_CORE_UI_STYLE_BORDER_WIDTH_TOP: {                                                                                              \
-                    NEKO_CORE_UI_BLEND_VALUE(border_width[2], s16);                                                                                      \
+                case NEKO_CORE_UI_STYLE_BORDER_WIDTH_TOP: {                                                                                            \
+                    NEKO_CORE_UI_BLEND_VALUE(border_width[2], s16);                                                                                    \
                 } break;                                                                                                                               \
-                case NEKO_CORE_UI_STYLE_BORDER_WIDTH_BOTTOM: {                                                                                           \
-                    NEKO_CORE_UI_BLEND_VALUE(border_width[3], s16);                                                                                      \
+                case NEKO_CORE_UI_STYLE_BORDER_WIDTH_BOTTOM: {                                                                                         \
+                    NEKO_CORE_UI_BLEND_VALUE(border_width[3], s16);                                                                                    \
                 } break;                                                                                                                               \
-                case NEKO_CORE_UI_STYLE_BORDER_RADIUS: {                                                                                                 \
-                    NEKO_CORE_UI_BLEND_VALUE(border_radius[0], s16);                                                                                     \
-                    NEKO_CORE_UI_BLEND_VALUE(border_radius[1], s16);                                                                                     \
-                    NEKO_CORE_UI_BLEND_VALUE(border_radius[2], s16);                                                                                     \
-                    NEKO_CORE_UI_BLEND_VALUE(border_radius[3], s16);                                                                                     \
+                case NEKO_CORE_UI_STYLE_BORDER_RADIUS: {                                                                                               \
+                    NEKO_CORE_UI_BLEND_VALUE(border_radius[0], s16);                                                                                   \
+                    NEKO_CORE_UI_BLEND_VALUE(border_radius[1], s16);                                                                                   \
+                    NEKO_CORE_UI_BLEND_VALUE(border_radius[2], s16);                                                                                   \
+                    NEKO_CORE_UI_BLEND_VALUE(border_radius[3], s16);                                                                                   \
                 } break;                                                                                                                               \
-                case NEKO_CORE_UI_STYLE_BORDER_RADIUS_LEFT: {                                                                                            \
-                    NEKO_CORE_UI_BLEND_VALUE(border_radius[0], s16);                                                                                     \
+                case NEKO_CORE_UI_STYLE_BORDER_RADIUS_LEFT: {                                                                                          \
+                    NEKO_CORE_UI_BLEND_VALUE(border_radius[0], s16);                                                                                   \
                 } break;                                                                                                                               \
-                case NEKO_CORE_UI_STYLE_BORDER_RADIUS_RIGHT: {                                                                                           \
-                    NEKO_CORE_UI_BLEND_VALUE(border_radius[1], s16);                                                                                     \
+                case NEKO_CORE_UI_STYLE_BORDER_RADIUS_RIGHT: {                                                                                         \
+                    NEKO_CORE_UI_BLEND_VALUE(border_radius[1], s16);                                                                                   \
                 } break;                                                                                                                               \
-                case NEKO_CORE_UI_STYLE_BORDER_RADIUS_TOP: {                                                                                             \
-                    NEKO_CORE_UI_BLEND_VALUE(border_radius[2], s16);                                                                                     \
+                case NEKO_CORE_UI_STYLE_BORDER_RADIUS_TOP: {                                                                                           \
+                    NEKO_CORE_UI_BLEND_VALUE(border_radius[2], s16);                                                                                   \
                 } break;                                                                                                                               \
-                case NEKO_CORE_UI_STYLE_BORDER_RADIUS_BOTTOM: {                                                                                          \
-                    NEKO_CORE_UI_BLEND_VALUE(border_radius[3], s16);                                                                                     \
+                case NEKO_CORE_UI_STYLE_BORDER_RADIUS_BOTTOM: {                                                                                        \
+                    NEKO_CORE_UI_BLEND_VALUE(border_radius[3], s16);                                                                                   \
                 } break;                                                                                                                               \
-                case NEKO_CORE_UI_STYLE_MARGIN_BOTTOM: {                                                                                                 \
-                    NEKO_CORE_UI_BLEND_VALUE(margin[NEKO_CORE_UI_MARGIN_BOTTOM], s16);                                                                     \
+                case NEKO_CORE_UI_STYLE_MARGIN_BOTTOM: {                                                                                               \
+                    NEKO_CORE_UI_BLEND_VALUE(margin[NEKO_CORE_UI_MARGIN_BOTTOM], s16);                                                                 \
                 } break;                                                                                                                               \
-                case NEKO_CORE_UI_STYLE_MARGIN_TOP: {                                                                                                    \
-                    NEKO_CORE_UI_BLEND_VALUE(margin[NEKO_CORE_UI_MARGIN_TOP], s16);                                                                        \
+                case NEKO_CORE_UI_STYLE_MARGIN_TOP: {                                                                                                  \
+                    NEKO_CORE_UI_BLEND_VALUE(margin[NEKO_CORE_UI_MARGIN_TOP], s16);                                                                    \
                 } break;                                                                                                                               \
-                case NEKO_CORE_UI_STYLE_MARGIN_LEFT: {                                                                                                   \
-                    NEKO_CORE_UI_BLEND_VALUE(margin[NEKO_CORE_UI_MARGIN_LEFT], s16);                                                                       \
+                case NEKO_CORE_UI_STYLE_MARGIN_LEFT: {                                                                                                 \
+                    NEKO_CORE_UI_BLEND_VALUE(margin[NEKO_CORE_UI_MARGIN_LEFT], s16);                                                                   \
                 } break;                                                                                                                               \
-                case NEKO_CORE_UI_STYLE_MARGIN_RIGHT: {                                                                                                  \
-                    NEKO_CORE_UI_BLEND_VALUE(margin[NEKO_CORE_UI_MARGIN_RIGHT], s16);                                                                      \
+                case NEKO_CORE_UI_STYLE_MARGIN_RIGHT: {                                                                                                \
+                    NEKO_CORE_UI_BLEND_VALUE(margin[NEKO_CORE_UI_MARGIN_RIGHT], s16);                                                                  \
                 } break;                                                                                                                               \
-                case NEKO_CORE_UI_STYLE_MARGIN: {                                                                                                        \
-                    NEKO_CORE_UI_BLEND_VALUE(margin[0], s16);                                                                                            \
-                    NEKO_CORE_UI_BLEND_VALUE(margin[1], s16);                                                                                            \
-                    NEKO_CORE_UI_BLEND_VALUE(margin[2], s16);                                                                                            \
-                    NEKO_CORE_UI_BLEND_VALUE(margin[3], s16);                                                                                            \
+                case NEKO_CORE_UI_STYLE_MARGIN: {                                                                                                      \
+                    NEKO_CORE_UI_BLEND_VALUE(margin[0], s16);                                                                                          \
+                    NEKO_CORE_UI_BLEND_VALUE(margin[1], s16);                                                                                          \
+                    NEKO_CORE_UI_BLEND_VALUE(margin[2], s16);                                                                                          \
+                    NEKO_CORE_UI_BLEND_VALUE(margin[3], s16);                                                                                          \
                 } break;                                                                                                                               \
-                case NEKO_CORE_UI_STYLE_PADDING_BOTTOM: {                                                                                                \
-                    NEKO_CORE_UI_BLEND_VALUE(padding[NEKO_CORE_UI_PADDING_BOTTOM], s32);                                                                   \
+                case NEKO_CORE_UI_STYLE_PADDING_BOTTOM: {                                                                                              \
+                    NEKO_CORE_UI_BLEND_VALUE(padding[NEKO_CORE_UI_PADDING_BOTTOM], s32);                                                               \
                 } break;                                                                                                                               \
-                case NEKO_CORE_UI_STYLE_PADDING_TOP: {                                                                                                   \
-                    NEKO_CORE_UI_BLEND_VALUE(padding[NEKO_CORE_UI_PADDING_TOP], s32);                                                                      \
+                case NEKO_CORE_UI_STYLE_PADDING_TOP: {                                                                                                 \
+                    NEKO_CORE_UI_BLEND_VALUE(padding[NEKO_CORE_UI_PADDING_TOP], s32);                                                                  \
                 } break;                                                                                                                               \
-                case NEKO_CORE_UI_STYLE_PADDING_LEFT: {                                                                                                  \
-                    NEKO_CORE_UI_BLEND_VALUE(padding[NEKO_CORE_UI_PADDING_LEFT], s32);                                                                     \
+                case NEKO_CORE_UI_STYLE_PADDING_LEFT: {                                                                                                \
+                    NEKO_CORE_UI_BLEND_VALUE(padding[NEKO_CORE_UI_PADDING_LEFT], s32);                                                                 \
                 } break;                                                                                                                               \
-                case NEKO_CORE_UI_STYLE_PADDING_RIGHT: {                                                                                                 \
-                    NEKO_CORE_UI_BLEND_VALUE(padding[NEKO_CORE_UI_PADDING_RIGHT], s32);                                                                    \
+                case NEKO_CORE_UI_STYLE_PADDING_RIGHT: {                                                                                               \
+                    NEKO_CORE_UI_BLEND_VALUE(padding[NEKO_CORE_UI_PADDING_RIGHT], s32);                                                                \
                 } break;                                                                                                                               \
-                case NEKO_CORE_UI_STYLE_PADDING: {                                                                                                       \
-                    NEKO_CORE_UI_BLEND_VALUE(padding[0], s32);                                                                                           \
-                    NEKO_CORE_UI_BLEND_VALUE(padding[1], s32);                                                                                           \
-                    NEKO_CORE_UI_BLEND_VALUE(padding[2], s32);                                                                                           \
-                    NEKO_CORE_UI_BLEND_VALUE(padding[3], s32);                                                                                           \
+                case NEKO_CORE_UI_STYLE_PADDING: {                                                                                                     \
+                    NEKO_CORE_UI_BLEND_VALUE(padding[0], s32);                                                                                         \
+                    NEKO_CORE_UI_BLEND_VALUE(padding[1], s32);                                                                                         \
+                    NEKO_CORE_UI_BLEND_VALUE(padding[2], s32);                                                                                         \
+                    NEKO_CORE_UI_BLEND_VALUE(padding[3], s32);                                                                                         \
                 } break;                                                                                                                               \
-                case NEKO_CORE_UI_STYLE_SHADOW_X: {                                                                                                      \
-                    NEKO_CORE_UI_BLEND_VALUE(shadow_x, s16);                                                                                             \
+                case NEKO_CORE_UI_STYLE_SHADOW_X: {                                                                                                    \
+                    NEKO_CORE_UI_BLEND_VALUE(shadow_x, s16);                                                                                           \
                 } break;                                                                                                                               \
-                case NEKO_CORE_UI_STYLE_SHADOW_Y: {                                                                                                      \
-                    NEKO_CORE_UI_BLEND_VALUE(shadow_y, s16);                                                                                             \
+                case NEKO_CORE_UI_STYLE_SHADOW_Y: {                                                                                                    \
+                    NEKO_CORE_UI_BLEND_VALUE(shadow_y, s16);                                                                                           \
                 } break;                                                                                                                               \
             }                                                                                                                                          \
         }                                                                                                                                              \
@@ -989,7 +989,7 @@ neko_core_ui_style_t* neko_core_ui_push_style(neko_core_ui_context_t* ctx, neko_
     return save;
 }
 
-static void neko_core_ui_push_inline_style(neko_core_ui_context_t* ctx, neko_core_ui_element_type elementid, neko_core_ui_inline_style_desc_t* desc) {
+void neko_core_ui_push_inline_style(neko_core_ui_context_t* ctx, neko_core_ui_element_type elementid, neko_core_ui_inline_style_desc_t* desc) {
     if (elementid >= NEKO_CORE_UI_ELEMENT_COUNT || !desc) {
         return;
     }
@@ -1033,7 +1033,7 @@ static void neko_core_ui_push_inline_style(neko_core_ui_context_t* ctx, neko_cor
         }
     }
 
-#define NEKO_CORE_UI_COPY_INLINE_STYLE(TYPE, INDEX)                                           \
+#define NEKO_CORE_UI_COPY_INLINE_STYLE(TYPE, INDEX)                                         \
     do {                                                                                    \
         if (desc->TYPE.style.data && desc->TYPE.style.size) {                               \
             u32 ct = desc->TYPE.style.size / sizeof(neko_core_ui_style_element_t);          \
@@ -1067,7 +1067,7 @@ static void neko_core_ui_push_inline_style(neko_core_ui_context_t* ctx, neko_cor
     neko_dyn_array_push(iss->animation_counts, anim_ct[2]);
 }
 
-static void neko_core_ui_pop_inline_style(neko_core_ui_context_t* ctx, neko_core_ui_element_type elementid) {
+void neko_core_ui_pop_inline_style(neko_core_ui_context_t* ctx, neko_core_ui_element_type elementid) {
     if (elementid >= NEKO_CORE_UI_ELEMENT_COUNT) {
         return;
     }
@@ -1136,81 +1136,81 @@ static void neko_core_ui_pop_container(neko_core_ui_context_t* ctx) {
     neko_core_ui_pop_id(ctx);
 }
 
-#define neko_core_ui_scrollbar(ctx, cnt, b, cs, x, y, w, h)                                                                                                             \
-    do {                                                                                                                                                                \
-        /* only add scrollbar if content size is larger than body */                                                                                                    \
-        s32 maxscroll = (s32)(cs.y - b->h);                                                                                                                             \
-                                                                                                                                                                        \
-        if (maxscroll > 0 && b->h > 0) {                                                                                                                                \
-            neko_core_ui_rect_t base, thumb;                                                                                                                            \
-            neko_core_ui_id id = neko_core_ui_get_id(ctx, "!scrollbar" #y, 11);                                                                                         \
+#define neko_core_ui_scrollbar(ctx, cnt, b, cs, x, y, w, h)                                                                                                               \
+    do {                                                                                                                                                                  \
+        /* only add scrollbar if content size is larger than body */                                                                                                      \
+        s32 maxscroll = (s32)(cs.y - b->h);                                                                                                                               \
+                                                                                                                                                                          \
+        if (maxscroll > 0 && b->h > 0) {                                                                                                                                  \
+            neko_core_ui_rect_t base, thumb;                                                                                                                              \
+            neko_core_ui_id id = neko_core_ui_get_id(ctx, "!scrollbar" #y, 11);                                                                                           \
             const s32 elementid = NEKO_CORE_UI_ELEMENT_SCROLL;                                                                                                            \
-            neko_core_ui_style_t style = neko_default_val();                                                                                                            \
-            neko_core_ui_animation_t* anim = neko_core_ui_get_animation(ctx, id, desc, elementid);                                                                      \
-                                                                                                                                                                        \
-            /* Update anim (keep states locally within animation, only way to do this)*/                                                                                \
-            if (anim) {                                                                                                                                                 \
-                neko_core_ui_animation_update(ctx, anim);                                                                                                               \
-                                                                                                                                                                        \
-                /* Get blended style based on animation*/                                                                                                               \
-                style = neko_core_ui_animation_get_blend_style(ctx, anim, desc, elementid);                                                                             \
-            } else {                                                                                                                                                    \
-                style = ctx->focus == id   ? neko_core_ui_get_current_element_style(ctx, desc, elementid, 0x02)                                                         \
-                        : ctx->hover == id ? neko_core_ui_get_current_element_style(ctx, desc, elementid, 0x01)                                                         \
-                                           : neko_core_ui_get_current_element_style(ctx, desc, elementid, 0x00);                                                        \
-            }                                                                                                                                                           \
-                                                                                                                                                                        \
-            s32 sz = (s32)style.size[0];                                                                                                                                \
-            if (cs.y > cnt->body.h) {                                                                                                                                   \
-                body->w -= sz;                                                                                                                                          \
-            }                                                                                                                                                           \
-            if (cs.x > cnt->body.w) {                                                                                                                                   \
-                body->h -= sz;                                                                                                                                          \
-            }                                                                                                                                                           \
-                                                                                                                                                                        \
-            /* get sizing / positioning */                                                                                                                              \
-            base = *b;                                                                                                                                                  \
-            base.x = b->x + b->w;                                                                                                                                       \
-            base.w = style.size[0];                                                                                                                                     \
-                                                                                                                                                                        \
-            /* handle input */                                                                                                                                          \
-            neko_core_ui_update_control(ctx, id, base, 0);                                                                                                              \
+            neko_core_ui_style_t style = neko_default_val();                                                                                                              \
+            neko_core_ui_animation_t* anim = neko_core_ui_get_animation(ctx, id, desc, elementid);                                                                        \
+                                                                                                                                                                          \
+            /* Update anim (keep states locally within animation, only way to do this)*/                                                                                  \
+            if (anim) {                                                                                                                                                   \
+                neko_core_ui_animation_update(ctx, anim);                                                                                                                 \
+                                                                                                                                                                          \
+                /* Get blended style based on animation*/                                                                                                                 \
+                style = neko_core_ui_animation_get_blend_style(ctx, anim, desc, elementid);                                                                               \
+            } else {                                                                                                                                                      \
+                style = ctx->focus == id   ? neko_core_ui_get_current_element_style(ctx, desc, elementid, 0x02)                                                           \
+                        : ctx->hover == id ? neko_core_ui_get_current_element_style(ctx, desc, elementid, 0x01)                                                           \
+                                           : neko_core_ui_get_current_element_style(ctx, desc, elementid, 0x00);                                                          \
+            }                                                                                                                                                             \
+                                                                                                                                                                          \
+            s32 sz = (s32)style.size[0];                                                                                                                                  \
+            if (cs.y > cnt->body.h) {                                                                                                                                     \
+                body->w -= sz;                                                                                                                                            \
+            }                                                                                                                                                             \
+            if (cs.x > cnt->body.w) {                                                                                                                                     \
+                body->h -= sz;                                                                                                                                            \
+            }                                                                                                                                                             \
+                                                                                                                                                                          \
+            /* get sizing / positioning */                                                                                                                                \
+            base = *b;                                                                                                                                                    \
+            base.x = b->x + b->w;                                                                                                                                         \
+            base.w = style.size[0];                                                                                                                                       \
+                                                                                                                                                                          \
+            /* handle input */                                                                                                                                            \
+            neko_core_ui_update_control(ctx, id, base, 0);                                                                                                                \
             if (ctx->focus == id && ctx->mouse_down == NEKO_CORE_UI_MOUSE_LEFT) {                                                                                         \
-                cnt->scroll.y += ctx->mouse_delta.y * cs.y / base.h;                                                                                                    \
-            }                                                                                                                                                           \
-            /* clamp scroll to limits */                                                                                                                                \
-            cnt->scroll.y = neko_clamp(cnt->scroll.y, 0, maxscroll);                                                                                                    \
-            s32 state = ctx->focus == id ? NEKO_CORE_UI_ELEMENT_STATE_FOCUS : ctx->hover == id ? NEKO_CORE_UI_ELEMENT_STATE_HOVER : 0x00;                                   \
-                                                                                                                                                                        \
-            /* draw base and thumb */                                                                                                                                   \
+                cnt->scroll.y += ctx->mouse_delta.y * cs.y / base.h;                                                                                                      \
+            }                                                                                                                                                             \
+            /* clamp scroll to limits */                                                                                                                                  \
+            cnt->scroll.y = neko_clamp(cnt->scroll.y, 0, maxscroll);                                                                                                      \
+            s32 state = ctx->focus == id ? NEKO_CORE_UI_ELEMENT_STATE_FOCUS : ctx->hover == id ? NEKO_CORE_UI_ELEMENT_STATE_HOVER : 0x00;                                 \
+                                                                                                                                                                          \
+            /* draw base and thumb */                                                                                                                                     \
             neko_core_ui_draw_rect(ctx, base, style.colors[NEKO_CORE_UI_COLOR_BACKGROUND]);                                                                               \
-            /* draw border*/                                                                                                                                            \
+            /* draw border*/                                                                                                                                              \
             if (style.colors[NEKO_CORE_UI_COLOR_BORDER].a) {                                                                                                              \
                 neko_core_ui_draw_box(ctx, neko_core_ui_expand_rect(base, (s16*)style.border_width), (s16*)style.border_width, style.colors[NEKO_CORE_UI_COLOR_BORDER]);  \
-            }                                                                                                                                                           \
+            }                                                                                                                                                             \
             float pl = ((float)style.padding[NEKO_CORE_UI_PADDING_LEFT]);                                                                                                 \
             float pr = ((float)style.padding[NEKO_CORE_UI_PADDING_RIGHT]);                                                                                                \
             float pt = ((float)style.padding[NEKO_CORE_UI_PADDING_TOP]);                                                                                                  \
             float pb = ((float)style.padding[NEKO_CORE_UI_PADDING_BOTTOM]);                                                                                               \
-            float w = ((float)base.w - pr);                                                                                                                             \
-            float x = (float)(base.x + pl);                                                                                                                             \
-            thumb = base;                                                                                                                                               \
-            thumb.x = x;                                                                                                                                                \
-            thumb.w = w;                                                                                                                                                \
-            thumb.h = neko_max(style.thumb_size, base.h * b->h / cs.y) - pb;                                                                                            \
-            thumb.y += cnt->scroll.y * (base.h - thumb.h) / maxscroll + pt;                                                                                             \
+            float w = ((float)base.w - pr);                                                                                                                               \
+            float x = (float)(base.x + pl);                                                                                                                               \
+            thumb = base;                                                                                                                                                 \
+            thumb.x = x;                                                                                                                                                  \
+            thumb.w = w;                                                                                                                                                  \
+            thumb.h = neko_max(style.thumb_size, base.h * b->h / cs.y) - pb;                                                                                              \
+            thumb.y += cnt->scroll.y * (base.h - thumb.h) / maxscroll + pt;                                                                                               \
             neko_core_ui_draw_rect(ctx, thumb, style.colors[NEKO_CORE_UI_COLOR_CONTENT]);                                                                                 \
-            /* draw border*/                                                                                                                                            \
+            /* draw border*/                                                                                                                                              \
             if (style.colors[NEKO_CORE_UI_COLOR_BORDER].a) {                                                                                                              \
                 neko_core_ui_draw_box(ctx, neko_core_ui_expand_rect(thumb, (s16*)style.border_width), (s16*)style.border_width, style.colors[NEKO_CORE_UI_COLOR_BORDER]); \
-            }                                                                                                                                                           \
-                                                                                                                                                                        \
-            /* set this as the scroll_target (will get scrolled on mousewheel) */                                                                                       \
-            /* if the mouse is over it */                                                                                                                               \
-            if (neko_core_ui_mouse_over(ctx, *b) || neko_core_ui_mouse_over(ctx, base) || neko_core_ui_mouse_over(ctx, thumb)) {                                        \
-                ctx->scroll_target = cnt;                                                                                                                               \
-            }                                                                                                                                                           \
-        }                                                                                                                                                               \
+            }                                                                                                                                                             \
+                                                                                                                                                                          \
+            /* set this as the scroll_target (will get scrolled on mousewheel) */                                                                                         \
+            /* if the mouse is over it */                                                                                                                                 \
+            if (neko_core_ui_mouse_over(ctx, *b) || neko_core_ui_mouse_over(ctx, base) || neko_core_ui_mouse_over(ctx, thumb)) {                                          \
+                ctx->scroll_target = cnt;                                                                                                                                 \
+            }                                                                                                                                                             \
+        }                                                                                                                                                                 \
     } while (0)
 
 static void neko_core_ui_scrollbars(neko_core_ui_context_t* ctx, neko_core_ui_container_t* cnt, neko_core_ui_rect_t* body, const neko_core_ui_selector_desc_t* desc, u64 opt) {
@@ -1294,10 +1294,10 @@ static void neko_core_ui_root_container_end(neko_core_ui_context_t* ctx) {
 }
 
 #define NEKO_CORE_UI_COPY_STYLES(DST, SRC, ELEM) \
-    do {                                       \
-        DST[ELEM][0x00] = SRC[ELEM][0x00];     \
-        DST[ELEM][0x01] = SRC[ELEM][0x01];     \
-        DST[ELEM][0x02] = SRC[ELEM][0x02];     \
+    do {                                         \
+        DST[ELEM][0x00] = SRC[ELEM][0x00];       \
+        DST[ELEM][0x01] = SRC[ELEM][0x01];       \
+        DST[ELEM][0x02] = SRC[ELEM][0x02];       \
     } while (0)
 
 NEKO_API_DECL neko_core_ui_style_sheet_t neko_core_ui_style_sheet_create(neko_core_ui_context_t* ctx, neko_core_ui_style_sheet_desc_t* desc) {
@@ -1318,18 +1318,18 @@ NEKO_API_DECL neko_core_ui_style_sheet_t neko_core_ui_style_sheet_create(neko_co
     // neko_core_ui_style_element_t* styles, size_t size);
 
 #define NEKO_CORE_UI_APPLY_STYLE_ELEMENT(ELEMENT, TYPE)                                                                                                                \
-    do {                                                                                                                                                             \
-        if ((ELEMENT).all.style.data) {                                                                                                                              \
+    do {                                                                                                                                                               \
+        if ((ELEMENT).all.style.data) {                                                                                                                                \
             neko_core_ui_style_sheet_set_element_styles(&style_sheet, TYPE, NEKO_CORE_UI_ELEMENT_STATE_NEG, (ELEMENT).all.style.data, (ELEMENT).all.style.size);       \
-        } else if ((ELEMENT).def.style.data) {                                                                                                                       \
+        } else if ((ELEMENT).def.style.data) {                                                                                                                         \
             neko_core_ui_style_sheet_set_element_styles(&style_sheet, TYPE, NEKO_CORE_UI_ELEMENT_STATE_DEFAULT, (ELEMENT).def.style.data, (ELEMENT).def.style.size);   \
-        }                                                                                                                                                            \
-        if ((ELEMENT).hover.style.data) {                                                                                                                            \
+        }                                                                                                                                                              \
+        if ((ELEMENT).hover.style.data) {                                                                                                                              \
             neko_core_ui_style_sheet_set_element_styles(&style_sheet, TYPE, NEKO_CORE_UI_ELEMENT_STATE_HOVER, (ELEMENT).hover.style.data, (ELEMENT).hover.style.size); \
-        }                                                                                                                                                            \
-        if ((ELEMENT).focus.style.data) {                                                                                                                            \
+        }                                                                                                                                                              \
+        if ((ELEMENT).focus.style.data) {                                                                                                                              \
             neko_core_ui_style_sheet_set_element_styles(&style_sheet, TYPE, NEKO_CORE_UI_ELEMENT_STATE_FOCUS, (ELEMENT).focus.style.data, (ELEMENT).focus.style.size); \
-        }                                                                                                                                                            \
+        }                                                                                                                                                              \
     } while (0)
 
     // Iterate through descriptor
@@ -2223,7 +2223,7 @@ NEKO_API_DECL void neko_core_ui_undock_ex_cnt(neko_core_ui_context_t* ctx, neko_
 
         neko_core_ui_split_node_t* remain_node = split->children[NEKO_CORE_UI_SPLIT_NODE_CHILD].container == cnt    ? &split->children[NEKO_CORE_UI_SPLIT_NODE_PARENT]
                                                  : split->children[NEKO_CORE_UI_SPLIT_NODE_PARENT].container == cnt ? &split->children[NEKO_CORE_UI_SPLIT_NODE_CHILD]
-                                                                                                                  : NULL;
+                                                                                                                    : NULL;
 
         neko_assert(remain_node);
 
@@ -2280,7 +2280,7 @@ NEKO_API_DECL void neko_core_ui_undock_ex_cnt(neko_core_ui_context_t* ctx, neko_
 // ============================= //
 
 #define NEKO_CORE_UI_COPY_STYLE(DST, SRC)              \
-    do {                                             \
+    do {                                               \
         DST[NEKO_CORE_UI_ELEMENT_STATE_DEFAULT] = SRC; \
         DST[NEKO_CORE_UI_ELEMENT_STATE_HOVER] = SRC;   \
         DST[NEKO_CORE_UI_ELEMENT_STATE_FOCUS] = SRC;   \
@@ -2359,10 +2359,10 @@ static void neko_core_ui_init_default_styles(neko_core_ui_context_t* ctx) {
     style->colors[NEKO_CORE_UI_COLOR_CONTENT] = neko_color(255, 255, 255, 100);
 
 #define NEKO_CORE_UI_COPY(DST, SRC) \
-    do {                          \
-        DST[0x00] = SRC[0x00];    \
-        DST[0x01] = SRC[0x01];    \
-        DST[0x02] = SRC[0x02];    \
+    do {                            \
+        DST[0x00] = SRC[0x00];      \
+        DST[0x01] = SRC[0x01];      \
+        DST[0x02] = SRC[0x02];      \
     } while (0)
 
     NEKO_CORE_UI_COPY(neko_core_ui_default_style_sheet.styles[NEKO_CORE_UI_ELEMENT_CONTAINER], neko_core_ui_default_container_style);
@@ -2579,7 +2579,8 @@ static void neko_core_ui_draw_splits(neko_core_ui_context_t* ctx, neko_core_ui_s
                 } break;
 
                 case NEKO_CORE_UI_SPLIT_RIGHT: {
-                    r = neko_core_ui_rect(sr->x + sr->w * (1.f - ratio) - NEKO_CORE_UI_SPLIT_SIZE * 0.5f, sr->y + NEKO_CORE_UI_SPLIT_SIZE, NEKO_CORE_UI_SPLIT_SIZE, sr->h - 2.f * NEKO_CORE_UI_SPLIT_SIZE);
+                    r = neko_core_ui_rect(sr->x + sr->w * (1.f - ratio) - NEKO_CORE_UI_SPLIT_SIZE * 0.5f, sr->y + NEKO_CORE_UI_SPLIT_SIZE, NEKO_CORE_UI_SPLIT_SIZE,
+                                          sr->h - 2.f * NEKO_CORE_UI_SPLIT_SIZE);
                 } break;
 
                 case NEKO_CORE_UI_SPLIT_TOP: {
@@ -2587,7 +2588,8 @@ static void neko_core_ui_draw_splits(neko_core_ui_context_t* ctx, neko_core_ui_s
                 } break;
 
                 case NEKO_CORE_UI_SPLIT_BOTTOM: {
-                    r = neko_core_ui_rect(sr->x + NEKO_CORE_UI_SPLIT_SIZE, sr->y + sr->h * (1.f - ratio) - NEKO_CORE_UI_SPLIT_SIZE * 0.5f, sr->w - 2.f * NEKO_CORE_UI_SPLIT_SIZE, NEKO_CORE_UI_SPLIT_SIZE);
+                    r = neko_core_ui_rect(sr->x + NEKO_CORE_UI_SPLIT_SIZE, sr->y + sr->h * (1.f - ratio) - NEKO_CORE_UI_SPLIT_SIZE * 0.5f, sr->w - 2.f * NEKO_CORE_UI_SPLIT_SIZE,
+                                          NEKO_CORE_UI_SPLIT_SIZE);
                 } break;
             }
 
@@ -2621,7 +2623,8 @@ static void neko_core_ui_draw_splits(neko_core_ui_context_t* ctx, neko_core_ui_s
                     } break;
 
                     case NEKO_CORE_UI_SPLIT_RIGHT: {
-                        r = neko_core_ui_rect(sr->x + sr->w * (1.f - ratio) - NEKO_CORE_UI_SPLIT_SIZE * 0.5f, sr->y + NEKO_CORE_UI_SPLIT_SIZE, NEKO_CORE_UI_SPLIT_SIZE, sr->h - 2.f * NEKO_CORE_UI_SPLIT_SIZE);
+                        r = neko_core_ui_rect(sr->x + sr->w * (1.f - ratio) - NEKO_CORE_UI_SPLIT_SIZE * 0.5f, sr->y + NEKO_CORE_UI_SPLIT_SIZE, NEKO_CORE_UI_SPLIT_SIZE,
+                                              sr->h - 2.f * NEKO_CORE_UI_SPLIT_SIZE);
                     } break;
 
                     case NEKO_CORE_UI_SPLIT_TOP: {
@@ -2629,7 +2632,8 @@ static void neko_core_ui_draw_splits(neko_core_ui_context_t* ctx, neko_core_ui_s
                     } break;
 
                     case NEKO_CORE_UI_SPLIT_BOTTOM: {
-                        r = neko_core_ui_rect(sr->x + NEKO_CORE_UI_SPLIT_SIZE, sr->y + sr->h * (1.f - ratio) - NEKO_CORE_UI_SPLIT_SIZE * 0.5f, sr->w - 2.f * NEKO_CORE_UI_SPLIT_SIZE, NEKO_CORE_UI_SPLIT_SIZE);
+                        r = neko_core_ui_rect(sr->x + NEKO_CORE_UI_SPLIT_SIZE, sr->y + sr->h * (1.f - ratio) - NEKO_CORE_UI_SPLIT_SIZE * 0.5f, sr->w - 2.f * NEKO_CORE_UI_SPLIT_SIZE,
+                                              NEKO_CORE_UI_SPLIT_SIZE);
                     } break;
                 }
 
@@ -2830,20 +2834,13 @@ NEKO_API_DECL void neko_core_ui_begin(neko_core_ui_context_t* ctx, const neko_co
     neko_idraw_defaults(&ctx->overlay_draw_list);
     neko_idraw_camera2D(&ctx->overlay_draw_list, (u32)ctx->viewport.w, (u32)ctx->viewport.h);  // Need to pass in a viewport for this instead
 
-    /*
-    for (
-        neko_slot_array_iter it = neko_slot_array_iter_new(ctx->splits);
-        neko_slot_array_iter_valid(ctx->splits, it);
-        neko_slot_array_iter_advance(ctx->splits, it)
-    )
-    {
+    for (neko_slot_array_iter it = neko_slot_array_iter_new(ctx->splits); neko_slot_array_iter_valid(ctx->splits, it); neko_slot_array_iter_advance(ctx->splits, it)) {
         if (!it) continue;
 
         neko_core_ui_split_t* split = neko_slot_array_iter_getp(ctx->splits, it);
 
         // Root split
-        if (!split->parent)
-        {
+        if (!split->parent) {
             neko_core_ui_container_t* root_cnt = neko_core_ui_get_root_container_from_split(ctx, split);
             neko_core_ui_rect_t r = split->rect;
             r.x -= 10.f;
@@ -2851,26 +2848,24 @@ NEKO_API_DECL void neko_core_ui_begin(neko_core_ui_context_t* ctx, const neko_co
             r.y -= 10.f;
             r.h += 20.f;
             neko_snprintfc(TMP, 256, "!dockspace%zu", (size_t)split);
-            s32 opt = NEKO_CORE_UI_OPT_NOFRAME |
-                          NEKO_CORE_UI_OPT_FORCESETRECT |
-                          NEKO_CORE_UI_OPT_NOMOVE |
-                          NEKO_CORE_UI_OPT_NOTITLE |
-                          NEKO_CORE_UI_OPT_NOSCROLL |
-                          NEKO_CORE_UI_OPT_NOCLIP |
-                          NEKO_CORE_UI_OPT_NODOCK |
-                          NEKO_CORE_UI_OPT_DOCKSPACE |
-                          NEKO_CORE_UI_OPT_NOBORDER;
-            neko_core_ui_window_begin_ex(ctx, TMP, r, NULL, opt);
+            u64 opt = NEKO_CORE_UI_OPT_NOFRAME | NEKO_CORE_UI_OPT_FORCESETRECT | NEKO_CORE_UI_OPT_NOMOVE | NEKO_CORE_UI_OPT_NOTITLE | NEKO_CORE_UI_OPT_NOSCROLL | NEKO_CORE_UI_OPT_NOCLIP |
+                      NEKO_CORE_UI_OPT_NODOCK | NEKO_CORE_UI_OPT_DOCKSPACE | NEKO_CORE_UI_OPT_NOBORDER;
+            neko_core_ui_window_begin_ex(ctx, TMP, r, NULL, NULL, opt);
             {
                 // Set zindex for sorting (always below the bottom most window in this split tree)
                 neko_core_ui_container_t* ds = neko_core_ui_get_current_container(ctx);
                 s32 zindex = INT32_MAX - 1;
                 neko_core_ui_get_split_lowest_zindex(ctx, split, &zindex);
-                if (root_cnt->opt & NEKO_CORE_UI_OPT_DOCKSPACE) ds->zindex = 0;
-                else ds->zindex = neko_clamp((s32)zindex - 1, 0, INT32_MAX);
+                if (root_cnt->opt & NEKO_CORE_UI_OPT_DOCKSPACE)
+                    ds->zindex = 0;
+                else
+                    ds->zindex = neko_clamp((s32)zindex - 1, 0, INT32_MAX);
 
                 neko_core_ui_rect_t fr = split->rect;
-                fr.x += NEKO_CORE_UI_SPLIT_SIZE; fr.y += NEKO_CORE_UI_SPLIT_SIZE; fr.w -= 2.f * NEKO_CORE_UI_SPLIT_SIZE; fr.h -= 2.f * NEKO_CORE_UI_SPLIT_SIZE;
+                fr.x += NEKO_CORE_UI_SPLIT_SIZE;
+                fr.y += NEKO_CORE_UI_SPLIT_SIZE;
+                fr.w -= 2.f * NEKO_CORE_UI_SPLIT_SIZE;
+                fr.h -= 2.f * NEKO_CORE_UI_SPLIT_SIZE;
                 // neko_core_ui_draw_frame(ctx, fr, &ctx->style_sheet->styles[NEKO_CORE_UI_ELEMENT_CONTAINER][0x00]);
 
                 // Draw splits
@@ -2879,9 +2874,7 @@ NEKO_API_DECL void neko_core_ui_begin(neko_core_ui_context_t* ctx, const neko_co
                 // Do resize controls for editor_dockspace
                 neko_core_ui_container_t* top = neko_core_ui_get_top_most_container(ctx, split);
                 const neko_core_ui_rect_t* sr = &split->rect;
-                neko_core_ui_container_t* hover_cnt = ctx->hover_root ? ctx->hover_root :
-                        ctx->next_hover_root ? ctx->next_hover_root :
-                        NULL;
+                neko_core_ui_container_t* hover_cnt = ctx->hover_root ? ctx->hover_root : ctx->next_hover_root ? ctx->next_hover_root : NULL;
                 bool valid_hover = hover_cnt && hover_cnt->zindex > top->zindex;
 
                 // W
@@ -2889,12 +2882,12 @@ NEKO_API_DECL void neko_core_ui_begin(neko_core_ui_context_t* ctx, const neko_co
                     // Cache rect
                     neko_core_ui_rect_t lr = neko_core_ui_rect(fr.x - 2.f * NEKO_CORE_UI_SPLIT_SIZE, fr.y, NEKO_CORE_UI_SPLIT_SIZE, fr.h);
                     neko_core_ui_rect_t ex = lr;
-                    ex.x -= 10.f; ex.w += 20.f;
+                    ex.x -= 10.f;
+                    ex.w += 20.f;
                     neko_core_ui_id id = neko_core_ui_get_id(ctx, "!hov_l", 6);
                     neko_core_ui_update_control(ctx, id, ex, opt);
 
-                    if (id == ctx->focus && ctx->mouse_down == NEKO_CORE_UI_MOUSE_LEFT)
-                    {
+                    if (id == ctx->focus && ctx->mouse_down == NEKO_CORE_UI_MOUSE_LEFT) {
                         neko_core_ui_draw_control_frame(ctx, id, lr, NEKO_CORE_UI_ELEMENT_BUTTON, 0x00);
                         ctx->next_hover_root = top;
                         neko_core_ui_request_t req = neko_default_val();
@@ -2913,8 +2906,7 @@ NEKO_API_DECL void neko_core_ui_begin(neko_core_ui_context_t* ctx, const neko_co
                     neko_core_ui_id id = neko_core_ui_get_id(ctx, "!hov_r", 6);
                     neko_core_ui_update_control(ctx, id, ex, opt);
 
-                    if (id == ctx->focus && ctx->mouse_down == NEKO_CORE_UI_MOUSE_LEFT)
-                    {
+                    if (id == ctx->focus && ctx->mouse_down == NEKO_CORE_UI_MOUSE_LEFT) {
                         neko_core_ui_draw_control_frame(ctx, id, rr, NEKO_CORE_UI_ELEMENT_BUTTON, 0x00);
                         ctx->next_hover_root = top;
                         neko_core_ui_request_t req = neko_default_val();
@@ -2934,8 +2926,7 @@ NEKO_API_DECL void neko_core_ui_begin(neko_core_ui_context_t* ctx, const neko_co
                     neko_core_ui_id id = neko_core_ui_get_id(ctx, "!hov_t", 6);
                     neko_core_ui_update_control(ctx, id, ex, opt);
 
-                    if (id == ctx->focus && ctx->mouse_down == NEKO_CORE_UI_MOUSE_LEFT)
-                    {
+                    if (id == ctx->focus && ctx->mouse_down == NEKO_CORE_UI_MOUSE_LEFT) {
                         neko_core_ui_draw_control_frame(ctx, id, tr, NEKO_CORE_UI_ELEMENT_BUTTON, 0x00);
                         ctx->next_hover_root = top;
                         neko_core_ui_request_t req = neko_default_val();
@@ -2954,8 +2945,7 @@ NEKO_API_DECL void neko_core_ui_begin(neko_core_ui_context_t* ctx, const neko_co
                     neko_core_ui_id id = neko_core_ui_get_id(ctx, "!hov_b", 6);
                     neko_core_ui_update_control(ctx, id, ex, opt);
 
-                    if (id == ctx->focus && ctx->mouse_down == NEKO_CORE_UI_MOUSE_LEFT)
-                    {
+                    if (id == ctx->focus && ctx->mouse_down == NEKO_CORE_UI_MOUSE_LEFT) {
                         neko_core_ui_draw_control_frame(ctx, id, br, NEKO_CORE_UI_ELEMENT_BUTTON, 0x00);
                         ctx->next_hover_root = top;
                         neko_core_ui_request_t req = neko_default_val();
@@ -2968,7 +2958,6 @@ NEKO_API_DECL void neko_core_ui_begin(neko_core_ui_context_t* ctx, const neko_co
             neko_core_ui_window_end(ctx);
         }
     }
-    */
 
     if (ctx->mouse_down != NEKO_CORE_UI_MOUSE_LEFT) {
         ctx->lock_focus = 0x00;
@@ -3974,37 +3963,37 @@ NEKO_API_DECL void neko_core_ui_draw_text(neko_core_ui_context_t* ctx, neko_asse
         font = neko_idraw_default_font();
     }
 
-#define DRAW_TEXT(TEXT, RECT, COLOR)                                                                             \
-    do {                                                                                                         \
-        neko_core_ui_command_t* cmd;                                                                             \
-        neko_vec2 td = neko_core_ui_text_dimensions(font, TEXT, -1);                                             \
-        neko_core_ui_rect_t rect = (RECT);                                                                       \
-        s32 clipped = neko_core_ui_check_clip(ctx, rect);                                                        \
-                                                                                                                 \
+#define DRAW_TEXT(TEXT, RECT, COLOR)                                                                               \
+    do {                                                                                                           \
+        neko_core_ui_command_t* cmd;                                                                               \
+        neko_vec2 td = neko_core_ui_text_dimensions(font, TEXT, -1);                                               \
+        neko_core_ui_rect_t rect = (RECT);                                                                         \
+        s32 clipped = neko_core_ui_check_clip(ctx, rect);                                                          \
+                                                                                                                   \
         if (clipped == NEKO_CORE_UI_CLIP_ALL) {                                                                    \
-            return;                                                                                              \
-        }                                                                                                        \
-                                                                                                                 \
+            return;                                                                                                \
+        }                                                                                                          \
+                                                                                                                   \
         if (clipped == NEKO_CORE_UI_CLIP_PART) {                                                                   \
-            neko_core_ui_rect_t crect = neko_core_ui_get_clip_rect(ctx);                                         \
-            neko_core_ui_set_clip(ctx, crect);                                                                   \
-        }                                                                                                        \
-                                                                                                                 \
-        /* add command */                                                                                        \
-        if (len < 0) {                                                                                           \
-            len = strlen(TEXT);                                                                                  \
-        }                                                                                                        \
-                                                                                                                 \
+            neko_core_ui_rect_t crect = neko_core_ui_get_clip_rect(ctx);                                           \
+            neko_core_ui_set_clip(ctx, crect);                                                                     \
+        }                                                                                                          \
+                                                                                                                   \
+        /* add command */                                                                                          \
+        if (len < 0) {                                                                                             \
+            len = strlen(TEXT);                                                                                    \
+        }                                                                                                          \
+                                                                                                                   \
         cmd = neko_core_ui_push_command(ctx, NEKO_CORE_UI_COMMAND_TEXT, sizeof(neko_core_ui_textcommand_t) + len); \
-        memcpy(cmd->text.str, TEXT, len);                                                                        \
-        cmd->text.str[len] = '\0';                                                                               \
-        cmd->text.pos = neko_v2(rect.x, rect.y);                                                                 \
-        cmd->text.color = COLOR;                                                                                 \
-        cmd->text.font = font;                                                                                   \
-                                                                                                                 \
-        if (clipped) {                                                                                           \
-            neko_core_ui_set_clip(ctx, neko_core_ui_unclipped_rect);                                             \
-        }                                                                                                        \
+        memcpy(cmd->text.str, TEXT, len);                                                                          \
+        cmd->text.str[len] = '\0';                                                                                 \
+        cmd->text.pos = neko_v2(rect.x, rect.y);                                                                   \
+        cmd->text.color = COLOR;                                                                                   \
+        cmd->text.font = font;                                                                                     \
+                                                                                                                   \
+        if (clipped) {                                                                                             \
+            neko_core_ui_set_clip(ctx, neko_core_ui_unclipped_rect);                                               \
+        }                                                                                                          \
     } while (0)
 
     // Draw shadow
@@ -4640,8 +4629,8 @@ NEKO_API_DECL void neko_core_ui_update_control(neko_core_ui_context_t* ctx, neko
             ctx->prev_focus = ctx->focus;
         }
 
-        if (ctx->last_hover_state == NEKO_CORE_UI_ELEMENT_STATE_ON_HOVER || ctx->last_hover_state == NEKO_CORE_UI_ELEMENT_STATE_OFF_HOVER || ctx->last_focus_state == NEKO_CORE_UI_ELEMENT_STATE_ON_FOCUS ||
-            ctx->last_focus_state == NEKO_CORE_UI_ELEMENT_STATE_OFF_FOCUS) {
+        if (ctx->last_hover_state == NEKO_CORE_UI_ELEMENT_STATE_ON_HOVER || ctx->last_hover_state == NEKO_CORE_UI_ELEMENT_STATE_OFF_HOVER ||
+            ctx->last_focus_state == NEKO_CORE_UI_ELEMENT_STATE_ON_FOCUS || ctx->last_focus_state == NEKO_CORE_UI_ELEMENT_STATE_OFF_FOCUS) {
             // Don't have a hover state switch if focused
             ctx->switch_state = ctx->last_focus_state ? ctx->last_focus_state : ctx->focus != id ? ctx->last_hover_state : NEKO_CORE_UI_ELEMENT_STATE_DEFAULT;
             switch (ctx->switch_state) {
@@ -4781,7 +4770,7 @@ NEKO_API_DECL s32 neko_core_ui_label_ex(neko_core_ui_context_t* ctx, const char*
 
     char id_tag[256] = neko_default_val();
     char label_tag[256] = neko_default_val();
-    neko_core_ui_parse_id_tag(ctx, label, id_tag, sizeof(id_tag));
+    neko_core_ui_parse_id_tag(ctx, label, id_tag, sizeof(id_tag), opt);
     neko_core_ui_parse_label_tag(ctx, label, label_tag, sizeof(label_tag));
 
     if (id_tag) neko_core_ui_push_id(ctx, id_tag, strlen(id_tag));
@@ -4905,24 +4894,29 @@ NEKO_API_DECL void neko_core_ui_parse_label_tag(neko_core_ui_context_t* ctx, con
     memcpy(buffer, str, neko_min(sz, strlen(str) + 1));
 }
 
-NEKO_API_DECL void neko_core_ui_parse_id_tag(neko_core_ui_context_t* ctx, const char* str, char* buffer, size_t sz) {
-    neko_lexer_t lex = neko_lexer_c_ctor(str);
-    while (neko_lexer_can_lex(&lex)) {
-        neko_token_t token = neko_lexer_next_token(&lex);
-        switch (token.type) {
-            case NEKO_TOKEN_HASH: {
-                if (neko_lexer_peek(&lex).type == NEKO_TOKEN_HASH) {
-                    neko_token_t end = neko_lexer_next_token(&lex);
-                    end = neko_lexer_next_token(&lex);
-
-                    // Determine len
-                    size_t len = neko_min((str + strlen(str)) - end.text, sz);
-
-                    memcpy(buffer, end.text, len);
-                    return;
-                }
-            } break;
+NEKO_API_DECL void neko_core_ui_parse_id_tag(neko_core_ui_context_t* ctx, const char* str, char* buffer, size_t sz, u64 opt) {
+    if (opt & NEKO_CORE_UI_OPT_PARSEIDTAGONLY) {
+        neko_lexer_t lex = neko_lexer_c_ctor(str);
+        while (neko_lexer_can_lex(&lex)) {
+            neko_token_t token = neko_lexer_next_token(&lex);
+            switch (token.type) {
+                case NEKO_TOKEN_HASH: {
+                    if (neko_lexer_peek(&lex).type == NEKO_TOKEN_HASH) {
+                        neko_token_t end = neko_lexer_next_token(&lex);
+                        end = neko_lexer_next_token(&lex);
+                        // 确定长度
+                        size_t len = neko_min((str + strlen(str)) - end.text, sz);
+                        memcpy(buffer, end.text, len);
+                        return;
+                    }
+                } break;
+            }
         }
+    } else {
+        size_t str_sz = strlen(str);
+        size_t actual_sz = neko_min(str_sz, sz - 1);
+        memcpy(buffer, str, actual_sz);
+        buffer[actual_sz] = 0;
     }
 }
 
@@ -4935,7 +4929,7 @@ NEKO_API_DECL s32 neko_core_ui_button_ex(neko_core_ui_context_t* ctx, const char
 
     char id_tag[256] = neko_default_val();
     char label_tag[256] = neko_default_val();
-    neko_core_ui_parse_id_tag(ctx, label, id_tag, sizeof(id_tag));
+    neko_core_ui_parse_id_tag(ctx, label, id_tag, sizeof(id_tag), opt);
     neko_core_ui_parse_label_tag(ctx, label, label_tag, sizeof(label_tag));
 
     neko_core_ui_style_t style = neko_default_val();
@@ -5055,16 +5049,38 @@ NEKO_API_DECL s32 neko_core_ui_textbox_raw(neko_core_ui_context_t* ctx, char* bu
             res |= NEKO_CORE_UI_RES_CHANGE;
         }
 
-        /* handle backspace */
+        // handle backspace
         if (ctx->key_pressed & NEKO_CORE_UI_KEY_BACKSPACE && len > 0) {
-            /* skip utf-8 continuation bytes */
-            while ((buf[--len] & 0xc0) == 0x80 && len > 0)
-                ;
+            if (ctx->key_down & NEKO_CORE_UI_KEY_CTRL) {
+                for (--len; len > 0; len--) {
+                    // 跳过 utf-8 连续字节
+                    if ((buf[len - 1] & 0xc0) == 0x80) continue;
+                    // 查找直到分隔符
+                    if (strchr(" ()[]{},.-+*=/\\^~|\"'&%#@!<>;:", buf[len - 1])) break;
+                }
+            } else {
+                // 跳过 utf-8 连续字节
+                while ((buf[--len] & 0xc0) == 0x80 && len > 0)
+                    ;
+            }
             buf[len] = '\0';
             res |= NEKO_CORE_UI_RES_CHANGE;
         }
 
-        /* handle return */
+        // 处理粘贴
+        if (neko_platform_key_pressed(NEKO_KEYCODE_V) && ctx->key_down & NEKO_CORE_UI_KEY_CTRL) {
+            const_str clipboard = neko_platform_window_get_clipboard(ctx->window_hndl);
+            printf("%s --\n", clipboard);
+            s32 n = neko_min(bufsz - len - 1, (s32)strlen(clipboard));
+            if (n > 0) {
+                memcpy(buf + len, clipboard, n);
+                len += n;
+                buf[len] = '\0';
+                res |= NEKO_CORE_UI_RES_CHANGE;
+            }
+        }
+
+        // handle return
         if (ctx->key_pressed & NEKO_CORE_UI_KEY_RETURN) {
             neko_core_ui_set_focus(ctx, 0);
             res |= NEKO_CORE_UI_RES_SUBMIT;
@@ -5344,15 +5360,16 @@ NEKO_API_DECL s32 neko_core_ui_number_ex(neko_core_ui_context_t* ctx, neko_core_
 static s32 _neko_core_ui_header(neko_core_ui_context_t* ctx, const char* label, s32 istreenode, const neko_core_ui_selector_desc_t* desc, u64 opt) {
     neko_core_ui_rect_t r;
     s32 active, expanded;
-    neko_core_ui_id id = neko_core_ui_get_id(ctx, label, strlen(label));
-    s32 idx = neko_core_ui_pool_get(ctx, ctx->treenode_pool, NEKO_CORE_UI_TREENODEPOOL_SIZE, id);
     s32 width = -1;
     neko_core_ui_layout_row(ctx, 1, &width, 0);
 
     char id_tag[256] = neko_default_val();
     char label_tag[256] = neko_default_val();
-    neko_core_ui_parse_id_tag(ctx, label, id_tag, sizeof(id_tag));
+    neko_core_ui_parse_id_tag(ctx, label, id_tag, sizeof(id_tag), opt);
     neko_core_ui_parse_label_tag(ctx, label, label_tag, sizeof(label_tag));
+
+    neko_core_ui_id id = neko_core_ui_get_id(ctx, id_tag, strlen(id_tag));
+    s32 idx = neko_core_ui_pool_get(ctx, ctx->treenode_pool, NEKO_CORE_UI_TREENODEPOOL_SIZE, id);
 
     if (id_tag) neko_core_ui_push_id(ctx, id_tag, strlen(id_tag));
 
@@ -5457,7 +5474,7 @@ NEKO_API_DECL s32 neko_core_ui_window_begin_ex(neko_core_ui_context_t* ctx, cons
 
     char id_tag[256] = neko_default_val();
     char label_tag[256] = neko_default_val();
-    neko_core_ui_parse_id_tag(ctx, title, id_tag, sizeof(id_tag));
+    neko_core_ui_parse_id_tag(ctx, title, id_tag, sizeof(id_tag), opt);
     neko_core_ui_parse_label_tag(ctx, title, label_tag, sizeof(label_tag));
 
     if (cnt && open) {
@@ -5806,7 +5823,7 @@ NEKO_API_DECL s32 neko_core_ui_window_begin_ex(neko_core_ui_context_t* ctx, cons
                 root_style = state == NEKO_CORE_UI_ELEMENT_STATE_FOCUS        ? style
                              : root_state == NEKO_CORE_UI_ELEMENT_STATE_FOCUS ? &ctx->style_sheet->styles[NEKO_CORE_UI_ELEMENT_CONTAINER][root_state]
                              : root_state == NEKO_CORE_UI_ELEMENT_STATE_HOVER ? &ctx->style_sheet->styles[NEKO_CORE_UI_ELEMENT_CONTAINER][root_state]
-                                                                            : style;
+                                                                              : style;
             }
             if (~opt & NEKO_CORE_UI_OPT_NOBORDER && root_style->colors[NEKO_CORE_UI_COLOR_BORDER].a) {
                 neko_core_ui_draw_box(ctx, neko_core_ui_expand_rect(split->rect, (s16*)root_style->border_width), (s16*)root_style->border_width, root_style->colors[NEKO_CORE_UI_COLOR_BORDER]);
@@ -6222,6 +6239,14 @@ NEKO_API_DECL void neko_core_ui_window_end(neko_core_ui_context_t* ctx) {
                                     }
                                 });
 
+        // move instead of resize?
+        _gui_window_resize_ctrl(neko_core_ui_get_id(ctx, "!res_c", 6), neko_core_ui_rect(r->x + r->w * border_ratio, r->y + r->h * border_ratio, r->w * border_ratio, r->h * border_ratio),
+                                NEKO_CORE_UI_MOUSE_LEFT, NEKO_CORE_UI_SPLIT_MOVE, NEKO_CORE_UI_KEY_ALT, {
+                                    ctx->next_focus_root = cnt;
+                                    r->x += ctx->mouse_delta.x;
+                                    r->y += ctx->mouse_delta.y;
+                                });
+
         static bool capture = false;
         static neko_vec2 mp = {0};
         static neko_core_ui_rect_t _rect = {0};
@@ -6335,7 +6360,7 @@ NEKO_API_DECL void neko_core_ui_panel_begin_ex(neko_core_ui_context_t* ctx, cons
     neko_core_ui_container_t* cnt;
     const s32 elementid = NEKO_CORE_UI_ELEMENT_PANEL;
     char id_tag[256] = neko_default_val();
-    neko_core_ui_parse_id_tag(ctx, name, id_tag, sizeof(id_tag));
+    neko_core_ui_parse_id_tag(ctx, name, id_tag, sizeof(id_tag), opt);
 
     // if (id_tag) neko_core_ui_push_id(ctx, id_tag, strlen(id_tag));
     // else neko_core_ui_push_id(ctx, name, strlen(name));
@@ -6456,7 +6481,7 @@ static neko_gizmo_scale_t neko_gizmo_scale(const neko_vqs* parent) {
     neko_vqs local = neko_vqs_default();
     neko_vqs abs = neko_vqs_default();
 
-#define NEKO_CORE_UI_GIZMO_AXIS_DEFINE_SCALE(MEMBER, OFFSET, DEG, AXIS)                               \
+#define NEKO_CORE_UI_GIZMO_AXIS_DEFINE_SCALE(MEMBER, OFFSET, DEG, AXIS)                             \
     do {                                                                                            \
         /* Axis */                                                                                  \
         {                                                                                           \
@@ -6497,7 +6522,7 @@ static neko_gizmo_translate_t neko_gizmo_translate(const neko_vqs* parent) {
     neko_vqs local = neko_vqs_default();
     neko_vqs abs = neko_vqs_default();
 
-#define NEKO_CORE_UI_GIZMO_AXIS_DEFINE_TRANSLATE(MEMBER, OFFSET, DEG, AXIS)                           \
+#define NEKO_CORE_UI_GIZMO_AXIS_DEFINE_TRANSLATE(MEMBER, OFFSET, DEG, AXIS)                         \
     do {                                                                                            \
         /* Axis */                                                                                  \
         {                                                                                           \
@@ -6538,7 +6563,7 @@ static neko_gizmo_rotate_t neko_gizmo_rotate(const neko_vqs* parent) {
     neko_vqs local = neko_vqs_default();
     neko_vqs abs = neko_vqs_default();
 
-#define NEKO_CORE_UI_GIZMO_AXIS_DEFINE_ROTATE(MEMBER, OFFSET, DEG, AXIS)                            \
+#define NEKO_CORE_UI_GIZMO_AXIS_DEFINE_ROTATE(MEMBER, OFFSET, DEG, AXIS)                          \
     do {                                                                                          \
         /* Axis */                                                                                \
         {                                                                                         \
@@ -6591,7 +6616,7 @@ static void neko_core_ui_gizmo_render(neko_core_ui_context_t* ctx, neko_core_ui_
     neko_graphics_set_viewport(&gui_idraw->commands, (u32)viewport.x, (u32)(fbs.y - viewport.h - viewport.y), (u32)viewport.w, (u32)viewport.h);
     neko_graphics_primitive_type primitive = NEKO_GRAPHICS_PRIMITIVE_TRIANGLES;
 
-#define NEKO_CORE_UI_GIZMO_AXIS_TRANSLATE(ID, AXIS, COLOR)                                                                                                                         \
+#define NEKO_CORE_UI_GIZMO_AXIS_TRANSLATE(ID, AXIS, COLOR)                                                                                                                       \
     do {                                                                                                                                                                         \
         neko_core_ui_id id = neko_core_ui_get_id_hash(ctx, ID, strlen(ID), cmd->hash);                                                                                           \
         bool hover = cmd->hover == id;                                                                                                                                           \
@@ -6620,7 +6645,7 @@ static void neko_core_ui_gizmo_render(neko_core_ui_context_t* ctx, neko_core_ui_
         }                                                                                                                                                                        \
     } while (0)
 
-#define NEKO_CORE_UI_GIZMO_AXIS_SCALE(ID, AXIS, COLOR)                                                                                                                             \
+#define NEKO_CORE_UI_GIZMO_AXIS_SCALE(ID, AXIS, COLOR)                                                                                                                           \
     do {                                                                                                                                                                         \
         neko_core_ui_id id = neko_core_ui_get_id_hash(ctx, ID, strlen(ID), cmd->hash);                                                                                           \
         bool hover = cmd->hover == id;                                                                                                                                           \
@@ -6651,7 +6676,7 @@ static void neko_core_ui_gizmo_render(neko_core_ui_context_t* ctx, neko_core_ui_
         }                                                                                                                                                                        \
     } while (0)
 
-#define NEKO_CORE_UI_GIZMO_AXIS_ROTATE(ID, AXIS, COLOR)                                                                                                   \
+#define NEKO_CORE_UI_GIZMO_AXIS_ROTATE(ID, AXIS, COLOR)                                                                                                 \
     do {                                                                                                                                                \
         neko_color_t def_color = (COLOR);                                                                                                               \
         neko_core_ui_id id = neko_core_ui_get_id_hash(ctx, ID, strlen(ID), cmd->hash);                                                                  \
@@ -6696,7 +6721,7 @@ static void neko_core_ui_gizmo_render(neko_core_ui_context_t* ctx, neko_core_ui_
             NEKO_CORE_UI_GIZMO_AXIS_ROTATE("#gizmo_rotate_right", right, (cmd->focus == id_u || cmd->focus == id_f) ? neko_color_alpha(NEKO_COLOR_RED, 25) : neko_color_alpha(NEKO_COLOR_RED, alpha));
             NEKO_CORE_UI_GIZMO_AXIS_ROTATE("#gizmo_rotate_up", up, (cmd->focus == id_r || cmd->focus == id_f) ? neko_color_alpha(NEKO_COLOR_GREEN, 25) : neko_color_alpha(NEKO_COLOR_GREEN, alpha));
             NEKO_CORE_UI_GIZMO_AXIS_ROTATE("#gizmo_rotate_forward", forward,
-                                         (cmd->focus == id_r || cmd->focus == id_u) ? neko_color_alpha(NEKO_COLOR_BLUE, 25) : neko_color_alpha(NEKO_COLOR_BLUE, alpha));
+                                           (cmd->focus == id_r || cmd->focus == id_u) ? neko_color_alpha(NEKO_COLOR_BLUE, 25) : neko_color_alpha(NEKO_COLOR_BLUE, alpha));
         } break;
     }
 
@@ -6835,57 +6860,57 @@ NEKO_API_DECL s32 neko_core_ui_gizmo(neko_core_ui_context_t* ctx, neko_camera_t*
         } break;
     }
 
-#define UPDATE_GIZMO_CONTROL(ID, RAY, SHAPE, MODEL, FUNC, CAP_SHAPE, CAP_MODEL, CAP_FUNC, INFO)                                                         \
-    do {                                                                                                                                                \
-        s32 mouseover = 0;                                                                                                                              \
-        neko_core_ui_id id = (ID);                                                                                                                      \
-        neko_contact_info_t info0 = neko_default_val();                                                                                                 \
-        neko_contact_info_t info1 = neko_default_val();                                                                                                 \
-        if (in_hover_root) {                                                                                                                            \
-            FUNC(&(SHAPE), &(MODEL), &(RAY), NULL, &info0);                                                                                             \
-            info0.depth = neko_vec3_dist(info0.point, (RAY).p);                                                                                         \
-            CAP_FUNC(&(CAP_SHAPE), &(CAP_MODEL), &(RAY), NULL, &info1);                                                                                 \
-            info1.depth = neko_vec3_dist(info1.point, (RAY).p);                                                                                         \
-        }                                                                                                                                               \
-        neko_contact_info_t* info = info0.depth < info1.depth ? &info0 : &info1;                                                                        \
-        mouseover = info->hit && info->depth <= INFO.depth && in_hover_root && !ctx->hover_split && !ctx->lock_hover_id;                                \
-        if (ctx->focus == id) {                                                                                                                         \
-            ctx->updated_focus = 1;                                                                                                                     \
-        }                                                                                                                                               \
-        if (~opt & NEKO_CORE_UI_OPT_NOINTERACT) {                                                                                                         \
-            /* Check for hold focus here */                                                                                                             \
-            if (mouseover && !ctx->mouse_down) {                                                                                                        \
-                neko_core_ui_set_hover(ctx, id);                                                                                                        \
-                INFO = *info;                                                                                                                           \
-            }                                                                                                                                           \
-                                                                                                                                                        \
-            if (ctx->focus == id) {                                                                                                                     \
-                res |= NEKO_CORE_UI_RES_ACTIVE;                                                                                                           \
-                just_set_focus = false;                                                                                                                 \
-                neko_core_ui_set_focus(ctx, id);                                                                                                        \
-                if (ctx->mouse_pressed && !mouseover) {                                                                                                 \
-                    neko_core_ui_set_focus(ctx, 0);                                                                                                     \
-                }                                                                                                                                       \
-                if (!ctx->mouse_down && ~opt & NEKO_CORE_UI_OPT_HOLDFOCUS) {                                                                              \
-                    neko_core_ui_set_focus(ctx, 0);                                                                                                     \
-                }                                                                                                                                       \
-            }                                                                                                                                           \
-                                                                                                                                                        \
-            if (ctx->prev_hover == id && !mouseover) {                                                                                                  \
-                ctx->prev_hover = ctx->hover;                                                                                                           \
-            }                                                                                                                                           \
-                                                                                                                                                        \
-            if (ctx->hover == id) {                                                                                                                     \
-                if (ctx->mouse_pressed) {                                                                                                               \
+#define UPDATE_GIZMO_CONTROL(ID, RAY, SHAPE, MODEL, FUNC, CAP_SHAPE, CAP_MODEL, CAP_FUNC, INFO)                                                               \
+    do {                                                                                                                                                      \
+        s32 mouseover = 0;                                                                                                                                    \
+        neko_core_ui_id id = (ID);                                                                                                                            \
+        neko_contact_info_t info0 = neko_default_val();                                                                                                       \
+        neko_contact_info_t info1 = neko_default_val();                                                                                                       \
+        if (in_hover_root) {                                                                                                                                  \
+            FUNC(&(SHAPE), &(MODEL), &(RAY), NULL, &info0);                                                                                                   \
+            info0.depth = neko_vec3_dist(info0.point, (RAY).p);                                                                                               \
+            CAP_FUNC(&(CAP_SHAPE), &(CAP_MODEL), &(RAY), NULL, &info1);                                                                                       \
+            info1.depth = neko_vec3_dist(info1.point, (RAY).p);                                                                                               \
+        }                                                                                                                                                     \
+        neko_contact_info_t* info = info0.depth < info1.depth ? &info0 : &info1;                                                                              \
+        mouseover = info->hit && info->depth <= INFO.depth && in_hover_root && !ctx->hover_split && !ctx->lock_hover_id;                                      \
+        if (ctx->focus == id) {                                                                                                                               \
+            ctx->updated_focus = 1;                                                                                                                           \
+        }                                                                                                                                                     \
+        if (~opt & NEKO_CORE_UI_OPT_NOINTERACT) {                                                                                                             \
+            /* Check for hold focus here */                                                                                                                   \
+            if (mouseover && !ctx->mouse_down) {                                                                                                              \
+                neko_core_ui_set_hover(ctx, id);                                                                                                              \
+                INFO = *info;                                                                                                                                 \
+            }                                                                                                                                                 \
+                                                                                                                                                              \
+            if (ctx->focus == id) {                                                                                                                           \
+                res |= NEKO_CORE_UI_RES_ACTIVE;                                                                                                               \
+                just_set_focus = false;                                                                                                                       \
+                neko_core_ui_set_focus(ctx, id);                                                                                                              \
+                if (ctx->mouse_pressed && !mouseover) {                                                                                                       \
+                    neko_core_ui_set_focus(ctx, 0);                                                                                                           \
+                }                                                                                                                                             \
+                if (!ctx->mouse_down && ~opt & NEKO_CORE_UI_OPT_HOLDFOCUS) {                                                                                  \
+                    neko_core_ui_set_focus(ctx, 0);                                                                                                           \
+                }                                                                                                                                             \
+            }                                                                                                                                                 \
+                                                                                                                                                              \
+            if (ctx->prev_hover == id && !mouseover) {                                                                                                        \
+                ctx->prev_hover = ctx->hover;                                                                                                                 \
+            }                                                                                                                                                 \
+                                                                                                                                                              \
+            if (ctx->hover == id) {                                                                                                                           \
+                if (ctx->mouse_pressed) {                                                                                                                     \
                     if ((opt & NEKO_CORE_UI_OPT_LEFTCLICKONLY && ctx->mouse_pressed == NEKO_CORE_UI_MOUSE_LEFT) || (~opt & NEKO_CORE_UI_OPT_LEFTCLICKONLY)) { \
-                        neko_core_ui_set_focus(ctx, id);                                                                                                \
-                        just_set_focus = true;                                                                                                          \
-                    }                                                                                                                                   \
-                } else if (!mouseover) {                                                                                                                \
-                    neko_core_ui_set_hover(ctx, 0);                                                                                                     \
-                }                                                                                                                                       \
-            }                                                                                                                                           \
-        }                                                                                                                                               \
+                        neko_core_ui_set_focus(ctx, id);                                                                                                      \
+                        just_set_focus = true;                                                                                                                \
+                    }                                                                                                                                         \
+                } else if (!mouseover) {                                                                                                                      \
+                    neko_core_ui_set_hover(ctx, 0);                                                                                                           \
+                }                                                                                                                                             \
+            }                                                                                                                                                 \
+        }                                                                                                                                                     \
     } while (0)
 
 #ifndef NEKO_PHYSICS_NO_CCD
@@ -7124,65 +7149,65 @@ NEKO_API_DECL s32 neko_core_ui_gizmo(neko_core_ui_context_t* ctx, neko_camera_t*
 
         } break;
 
-#define UPDATE_GIZMO_CONTROL_ROTATE(ID, RAY, SHAPE, MODEL, AXIS, INFO)                                                                                  \
-    do {                                                                                                                                                \
-        s32 mouseover = 0;                                                                                                                              \
-        neko_core_ui_id id = (ID);                                                                                                                      \
-        neko_contact_info_t info = neko_default_val();                                                                                                  \
-        neko_vec3 axis = neko_quat_rotate(desc.xform.rotation, AXIS);                                                                                   \
-        info.normal = axis;                                                                                                                             \
-        if (in_hover_root) {                                                                                                                            \
-            neko_plane_t ip = neko_plane_from_pt_normal(desc.xform.translation, axis);                                                                  \
-            float denom = neko_vec3_dot(neko_v3(ip.a, ip.b, ip.c), ray.d);                                                                              \
-            denom = fabsf(denom) >= neko_epsilon ? denom : 0.00001f;                                                                                    \
-            info.depth = -(ip.a * ray.p.x + ip.b * ray.p.y + ip.c * ray.p.z + ip.d) / denom;                                                            \
-            neko_core_ui_gizmo_line_intersection_result_t res = neko_default_val();                                                                     \
-            res.point = neko_vec3_add(ray.p, neko_vec3_scale(ray.d, info.depth));                                                                       \
-            float dist = neko_vec3_dist(res.point, model->translation);                                                                                 \
-            float scl = neko_vec3_len(desc.xform.scale);                                                                                                \
-            if (dist <= 0.6f * scl && dist >= 0.45f * scl) {                                                                                            \
-                info.hit = true;                                                                                                                        \
-            }                                                                                                                                           \
-        }                                                                                                                                               \
-        mouseover = info.hit && info.depth <= INFO.depth && in_hover_root && !ctx->hover_split && !ctx->lock_hover_id;                                  \
-        if (ctx->focus == id) {                                                                                                                         \
-            ctx->updated_focus = 1;                                                                                                                     \
-            INFO = info;                                                                                                                                \
-        }                                                                                                                                               \
-        if (~opt & NEKO_CORE_UI_OPT_NOINTERACT) {                                                                                                         \
-            /* Check for hold focus here */                                                                                                             \
-            if (mouseover && !ctx->mouse_down) {                                                                                                        \
-                neko_core_ui_set_hover(ctx, id);                                                                                                        \
-                INFO = info;                                                                                                                            \
-            }                                                                                                                                           \
-                                                                                                                                                        \
-            if (ctx->focus == id) {                                                                                                                     \
-                res |= NEKO_CORE_UI_RES_ACTIVE;                                                                                                           \
-                just_set_focus = false;                                                                                                                 \
-                neko_core_ui_set_focus(ctx, id);                                                                                                        \
-                if (ctx->mouse_pressed && !mouseover) {                                                                                                 \
-                    neko_core_ui_set_focus(ctx, 0);                                                                                                     \
-                }                                                                                                                                       \
-                if (!ctx->mouse_down && ~opt & NEKO_CORE_UI_OPT_HOLDFOCUS) {                                                                              \
-                    neko_core_ui_set_focus(ctx, 0);                                                                                                     \
-                }                                                                                                                                       \
-            }                                                                                                                                           \
-                                                                                                                                                        \
-            if (ctx->prev_hover == id && !mouseover) {                                                                                                  \
-                ctx->prev_hover = ctx->hover;                                                                                                           \
-            }                                                                                                                                           \
-                                                                                                                                                        \
-            if (ctx->hover == id) {                                                                                                                     \
-                if (ctx->mouse_pressed) {                                                                                                               \
+#define UPDATE_GIZMO_CONTROL_ROTATE(ID, RAY, SHAPE, MODEL, AXIS, INFO)                                                                                        \
+    do {                                                                                                                                                      \
+        s32 mouseover = 0;                                                                                                                                    \
+        neko_core_ui_id id = (ID);                                                                                                                            \
+        neko_contact_info_t info = neko_default_val();                                                                                                        \
+        neko_vec3 axis = neko_quat_rotate(desc.xform.rotation, AXIS);                                                                                         \
+        info.normal = axis;                                                                                                                                   \
+        if (in_hover_root) {                                                                                                                                  \
+            neko_plane_t ip = neko_plane_from_pt_normal(desc.xform.translation, axis);                                                                        \
+            float denom = neko_vec3_dot(neko_v3(ip.a, ip.b, ip.c), ray.d);                                                                                    \
+            denom = fabsf(denom) >= neko_epsilon ? denom : 0.00001f;                                                                                          \
+            info.depth = -(ip.a * ray.p.x + ip.b * ray.p.y + ip.c * ray.p.z + ip.d) / denom;                                                                  \
+            neko_core_ui_gizmo_line_intersection_result_t res = neko_default_val();                                                                           \
+            res.point = neko_vec3_add(ray.p, neko_vec3_scale(ray.d, info.depth));                                                                             \
+            float dist = neko_vec3_dist(res.point, model->translation);                                                                                       \
+            float scl = neko_vec3_len(desc.xform.scale);                                                                                                      \
+            if (dist <= 0.6f * scl && dist >= 0.45f * scl) {                                                                                                  \
+                info.hit = true;                                                                                                                              \
+            }                                                                                                                                                 \
+        }                                                                                                                                                     \
+        mouseover = info.hit && info.depth <= INFO.depth && in_hover_root && !ctx->hover_split && !ctx->lock_hover_id;                                        \
+        if (ctx->focus == id) {                                                                                                                               \
+            ctx->updated_focus = 1;                                                                                                                           \
+            INFO = info;                                                                                                                                      \
+        }                                                                                                                                                     \
+        if (~opt & NEKO_CORE_UI_OPT_NOINTERACT) {                                                                                                             \
+            /* Check for hold focus here */                                                                                                                   \
+            if (mouseover && !ctx->mouse_down) {                                                                                                              \
+                neko_core_ui_set_hover(ctx, id);                                                                                                              \
+                INFO = info;                                                                                                                                  \
+            }                                                                                                                                                 \
+                                                                                                                                                              \
+            if (ctx->focus == id) {                                                                                                                           \
+                res |= NEKO_CORE_UI_RES_ACTIVE;                                                                                                               \
+                just_set_focus = false;                                                                                                                       \
+                neko_core_ui_set_focus(ctx, id);                                                                                                              \
+                if (ctx->mouse_pressed && !mouseover) {                                                                                                       \
+                    neko_core_ui_set_focus(ctx, 0);                                                                                                           \
+                }                                                                                                                                             \
+                if (!ctx->mouse_down && ~opt & NEKO_CORE_UI_OPT_HOLDFOCUS) {                                                                                  \
+                    neko_core_ui_set_focus(ctx, 0);                                                                                                           \
+                }                                                                                                                                             \
+            }                                                                                                                                                 \
+                                                                                                                                                              \
+            if (ctx->prev_hover == id && !mouseover) {                                                                                                        \
+                ctx->prev_hover = ctx->hover;                                                                                                                 \
+            }                                                                                                                                                 \
+                                                                                                                                                              \
+            if (ctx->hover == id) {                                                                                                                           \
+                if (ctx->mouse_pressed) {                                                                                                                     \
                     if ((opt & NEKO_CORE_UI_OPT_LEFTCLICKONLY && ctx->mouse_pressed == NEKO_CORE_UI_MOUSE_LEFT) || (~opt & NEKO_CORE_UI_OPT_LEFTCLICKONLY)) { \
-                        neko_core_ui_set_focus(ctx, id);                                                                                                \
-                        just_set_focus = true;                                                                                                          \
-                    }                                                                                                                                   \
-                } else if (!mouseover) {                                                                                                                \
-                    neko_core_ui_set_hover(ctx, 0);                                                                                                     \
-                }                                                                                                                                       \
-            }                                                                                                                                           \
-        }                                                                                                                                               \
+                        neko_core_ui_set_focus(ctx, id);                                                                                                      \
+                        just_set_focus = true;                                                                                                                \
+                    }                                                                                                                                         \
+                } else if (!mouseover) {                                                                                                                      \
+                    neko_core_ui_set_hover(ctx, 0);                                                                                                           \
+                }                                                                                                                                             \
+            }                                                                                                                                                 \
+        }                                                                                                                                                     \
     } while (0)
 
         case NEKO_CORE_UI_GIZMO_ROTATE: {
@@ -7204,7 +7229,7 @@ NEKO_API_DECL s32 neko_core_ui_gizmo(neko_core_ui_context_t* ctx, neko_camera_t*
 
             if (ctx->focus == id_r) {
                 desc.li = op == NEKO_CORE_UI_TRANSFORM_LOCAL ? neko_core_ui_gizmo_get_line_intersection(&desc.xform, NEKO_XAXIS, NEKO_YAXIS, NEKO_ZAXIS, camera, &ray, neko_v3s(0.f), false, false)
-                                                           : neko_core_ui_gizmo_get_line_intersection(&desc.xform, NEKO_XAXIS, NEKO_YAXIS, NEKO_ZAXIS, camera, &ray, neko_v3s(0.f), false, true);
+                                                             : neko_core_ui_gizmo_get_line_intersection(&desc.xform, NEKO_XAXIS, NEKO_YAXIS, NEKO_ZAXIS, camera, &ray, neko_v3s(0.f), false, true);
 
                 if (desc.li.hit) {
                     if (just_set_focus) {
@@ -7263,7 +7288,7 @@ NEKO_API_DECL s32 neko_core_ui_gizmo(neko_core_ui_context_t* ctx, neko_camera_t*
                 }
             } else if (ctx->focus == id_u) {
                 desc.li = op == NEKO_CORE_UI_TRANSFORM_LOCAL ? neko_core_ui_gizmo_get_line_intersection(&desc.xform, NEKO_YAXIS, NEKO_XAXIS, NEKO_ZAXIS, camera, &ray, neko_v3s(0.f), false, false)
-                                                           : neko_core_ui_gizmo_get_line_intersection(&desc.xform, NEKO_YAXIS, NEKO_XAXIS, NEKO_ZAXIS, camera, &ray, neko_v3s(0.f), false, true);
+                                                             : neko_core_ui_gizmo_get_line_intersection(&desc.xform, NEKO_YAXIS, NEKO_XAXIS, NEKO_ZAXIS, camera, &ray, neko_v3s(0.f), false, true);
 
                 if (desc.li.hit) {
                     if (just_set_focus) {
@@ -7322,7 +7347,7 @@ NEKO_API_DECL s32 neko_core_ui_gizmo(neko_core_ui_context_t* ctx, neko_camera_t*
                 }
             } else if (ctx->focus == id_f) {
                 desc.li = op == NEKO_CORE_UI_TRANSFORM_LOCAL ? neko_core_ui_gizmo_get_line_intersection(&desc.xform, NEKO_ZAXIS, NEKO_XAXIS, NEKO_YAXIS, camera, &ray, neko_v3s(0.f), false, false)
-                                                           : neko_core_ui_gizmo_get_line_intersection(&desc.xform, NEKO_ZAXIS, NEKO_XAXIS, NEKO_YAXIS, camera, &ray, neko_v3s(0.f), false, true);
+                                                             : neko_core_ui_gizmo_get_line_intersection(&desc.xform, NEKO_ZAXIS, NEKO_XAXIS, NEKO_YAXIS, camera, &ray, neko_v3s(0.f), false, true);
 
                 if (desc.li.hit) {
                     if (just_set_focus) {
@@ -7677,7 +7702,7 @@ typedef struct {
     neko_hash_table(u64, neko_core_ui_ss_var_def_t) variables;
 } neko_core_ui_ss_variables_t;
 
-#define _NEKO_CORE_UI_SS_GET_TO_VALUES(T0, T1)               \
+#define _NEKO_CORE_UI_SS_GET_TO_VALUES(T0, T1)             \
     do {                                                   \
         bool ret = neko_lexer_require_token_type(lex, T0); \
         ret &= neko_lexer_require_token_type(lex, T1);     \
@@ -7769,7 +7794,7 @@ bool _neko_core_ui_style_sheet_parse_attribute_transition(neko_core_ui_context_t
         prop.time = (s16)time_v;                                                                                                 \
         prop.delay = (s16)delay_v;                                                                                               \
         switch (state) {                                                                                                         \
-            case NEKO_CORE_UI_ELEMENT_STATE_DEFAULT: {                                                                             \
+            case NEKO_CORE_UI_ELEMENT_STATE_DEFAULT: {                                                                           \
                 for (u32 s = 0; s < 3; ++s) {                                                                                    \
                     neko_dyn_array_push(list->properties[s], prop);                                                              \
                 }                                                                                                                \
@@ -7876,7 +7901,7 @@ bool _neko_core_ui_style_sheet_parse_attribute_font(neko_core_ui_context_t* ctx,
 #define SET_FONT(FONT)                                                  \
     do {                                                                \
         switch (state) {                                                \
-            case NEKO_CORE_UI_ELEMENT_STATE_DEFAULT: {                    \
+            case NEKO_CORE_UI_ELEMENT_STATE_DEFAULT: {                  \
                 se.font = FONT;                                         \
                 for (u32 s = 0; s < 3; ++s) {                           \
                     if (idsl)                                           \
@@ -7975,7 +8000,7 @@ bool _neko_core_ui_style_sheet_parse_attribute_enum(neko_core_ui_context_t* ctx,
     do {                                                          \
         se.value = VAL;                                           \
         switch (state) {                                          \
-            case NEKO_CORE_UI_ELEMENT_STATE_DEFAULT: {              \
+            case NEKO_CORE_UI_ELEMENT_STATE_DEFAULT: {            \
                 if (idsl) {                                       \
                     for (u32 s = 0; s < 3; ++s) {                 \
                         neko_dyn_array_push(idsl->styles[s], se); \
@@ -8120,16 +8145,16 @@ bool _neko_core_ui_style_sheet_parse_attribute_val(neko_core_ui_context_t* ctx, 
                 u32 val = (u32)atoi(TMP);                                                                                                                      \
                 se.value = (T)val;                                                                                                                             \
                 switch (state) {                                                                                                                               \
-                    case NEKO_CORE_UI_ELEMENT_STATE_DEFAULT: {                                                                                                   \
+                    case NEKO_CORE_UI_ELEMENT_STATE_DEFAULT: {                                                                                                 \
                         if (idsl) {                                                                                                                            \
-                            neko_dyn_array_push(idsl->styles[NEKO_CORE_UI_ELEMENT_STATE_DEFAULT], se);                                                           \
-                            neko_dyn_array_push(idsl->styles[NEKO_CORE_UI_ELEMENT_STATE_HOVER], se);                                                             \
-                            neko_dyn_array_push(idsl->styles[NEKO_CORE_UI_ELEMENT_STATE_FOCUS], se);                                                             \
+                            neko_dyn_array_push(idsl->styles[NEKO_CORE_UI_ELEMENT_STATE_DEFAULT], se);                                                         \
+                            neko_dyn_array_push(idsl->styles[NEKO_CORE_UI_ELEMENT_STATE_HOVER], se);                                                           \
+                            neko_dyn_array_push(idsl->styles[NEKO_CORE_UI_ELEMENT_STATE_FOCUS], se);                                                           \
                         } else {                                                                                                                               \
                             for (u32 p = 0; p < 4; ++p) {                                                                                                      \
-                                ss->styles[elementid][NEKO_CORE_UI_ELEMENT_STATE_DEFAULT].COMP[p] = (T)val;                                                      \
-                                ss->styles[elementid][NEKO_CORE_UI_ELEMENT_STATE_HOVER].COMP[p] = (T)val;                                                        \
-                                ss->styles[elementid][NEKO_CORE_UI_ELEMENT_STATE_FOCUS].COMP[p] = (T)val;                                                        \
+                                ss->styles[elementid][NEKO_CORE_UI_ELEMENT_STATE_DEFAULT].COMP[p] = (T)val;                                                    \
+                                ss->styles[elementid][NEKO_CORE_UI_ELEMENT_STATE_HOVER].COMP[p] = (T)val;                                                      \
+                                ss->styles[elementid][NEKO_CORE_UI_ELEMENT_STATE_FOCUS].COMP[p] = (T)val;                                                      \
                             }                                                                                                                                  \
                         }                                                                                                                                      \
                     } break;                                                                                                                                   \
@@ -8161,16 +8186,16 @@ bool _neko_core_ui_style_sheet_parse_attribute_val(neko_core_ui_context_t* ctx, 
                 T val = var->val.number;                                                                                                                       \
                 se.value = val;                                                                                                                                \
                 switch (state) {                                                                                                                               \
-                    case NEKO_CORE_UI_ELEMENT_STATE_DEFAULT: {                                                                                                   \
+                    case NEKO_CORE_UI_ELEMENT_STATE_DEFAULT: {                                                                                                 \
                         if (idsl) {                                                                                                                            \
-                            neko_dyn_array_push(idsl->styles[NEKO_CORE_UI_ELEMENT_STATE_DEFAULT], se);                                                           \
-                            neko_dyn_array_push(idsl->styles[NEKO_CORE_UI_ELEMENT_STATE_HOVER], se);                                                             \
-                            neko_dyn_array_push(idsl->styles[NEKO_CORE_UI_ELEMENT_STATE_FOCUS], se);                                                             \
+                            neko_dyn_array_push(idsl->styles[NEKO_CORE_UI_ELEMENT_STATE_DEFAULT], se);                                                         \
+                            neko_dyn_array_push(idsl->styles[NEKO_CORE_UI_ELEMENT_STATE_HOVER], se);                                                           \
+                            neko_dyn_array_push(idsl->styles[NEKO_CORE_UI_ELEMENT_STATE_FOCUS], se);                                                           \
                         } else {                                                                                                                               \
                             for (u32 p = 0; p < 4; ++p) {                                                                                                      \
-                                ss->styles[elementid][NEKO_CORE_UI_ELEMENT_STATE_DEFAULT].COMP[p] = val;                                                         \
-                                ss->styles[elementid][NEKO_CORE_UI_ELEMENT_STATE_HOVER].COMP[p] = val;                                                           \
-                                ss->styles[elementid][NEKO_CORE_UI_ELEMENT_STATE_FOCUS].COMP[p] = val;                                                           \
+                                ss->styles[elementid][NEKO_CORE_UI_ELEMENT_STATE_DEFAULT].COMP[p] = val;                                                       \
+                                ss->styles[elementid][NEKO_CORE_UI_ELEMENT_STATE_HOVER].COMP[p] = val;                                                         \
+                                ss->styles[elementid][NEKO_CORE_UI_ELEMENT_STATE_FOCUS].COMP[p] = val;                                                         \
                             }                                                                                                                                  \
                         }                                                                                                                                      \
                     } break;                                                                                                                                   \
@@ -8237,23 +8262,23 @@ bool _neko_core_ui_style_sheet_parse_attribute_val(neko_core_ui_context_t* ctx, 
             } break;                                                                                                                                           \
         }                                                                                                                                                      \
         switch (state) {                                                                                                                                       \
-            case NEKO_CORE_UI_ELEMENT_STATE_DEFAULT: {                                                                                                           \
+            case NEKO_CORE_UI_ELEMENT_STATE_DEFAULT: {                                                                                                         \
                 if (idsl) {                                                                                                                                    \
                     se0.value = val;                                                                                                                           \
                     se1.value = val;                                                                                                                           \
-                    neko_dyn_array_push(idsl->styles[NEKO_CORE_UI_ELEMENT_STATE_DEFAULT], se0);                                                                  \
-                    neko_dyn_array_push(idsl->styles[NEKO_CORE_UI_ELEMENT_STATE_HOVER], se0);                                                                    \
-                    neko_dyn_array_push(idsl->styles[NEKO_CORE_UI_ELEMENT_STATE_FOCUS], se0);                                                                    \
-                    neko_dyn_array_push(idsl->styles[NEKO_CORE_UI_ELEMENT_STATE_DEFAULT], se1);                                                                  \
-                    neko_dyn_array_push(idsl->styles[NEKO_CORE_UI_ELEMENT_STATE_HOVER], se1);                                                                    \
-                    neko_dyn_array_push(idsl->styles[NEKO_CORE_UI_ELEMENT_STATE_FOCUS], se1);                                                                    \
+                    neko_dyn_array_push(idsl->styles[NEKO_CORE_UI_ELEMENT_STATE_DEFAULT], se0);                                                                \
+                    neko_dyn_array_push(idsl->styles[NEKO_CORE_UI_ELEMENT_STATE_HOVER], se0);                                                                  \
+                    neko_dyn_array_push(idsl->styles[NEKO_CORE_UI_ELEMENT_STATE_FOCUS], se0);                                                                  \
+                    neko_dyn_array_push(idsl->styles[NEKO_CORE_UI_ELEMENT_STATE_DEFAULT], se1);                                                                \
+                    neko_dyn_array_push(idsl->styles[NEKO_CORE_UI_ELEMENT_STATE_HOVER], se1);                                                                  \
+                    neko_dyn_array_push(idsl->styles[NEKO_CORE_UI_ELEMENT_STATE_FOCUS], se1);                                                                  \
                 } else {                                                                                                                                       \
-                    ss->styles[elementid][NEKO_CORE_UI_ELEMENT_STATE_DEFAULT].COMP0 = val;                                                                       \
-                    ss->styles[elementid][NEKO_CORE_UI_ELEMENT_STATE_HOVER].COMP0 = val;                                                                         \
-                    ss->styles[elementid][NEKO_CORE_UI_ELEMENT_STATE_FOCUS].COMP0 = val;                                                                         \
-                    ss->styles[elementid][NEKO_CORE_UI_ELEMENT_STATE_DEFAULT].COMP1 = val;                                                                       \
-                    ss->styles[elementid][NEKO_CORE_UI_ELEMENT_STATE_HOVER].COMP1 = val;                                                                         \
-                    ss->styles[elementid][NEKO_CORE_UI_ELEMENT_STATE_FOCUS].COMP1 = val;                                                                         \
+                    ss->styles[elementid][NEKO_CORE_UI_ELEMENT_STATE_DEFAULT].COMP0 = val;                                                                     \
+                    ss->styles[elementid][NEKO_CORE_UI_ELEMENT_STATE_HOVER].COMP0 = val;                                                                       \
+                    ss->styles[elementid][NEKO_CORE_UI_ELEMENT_STATE_FOCUS].COMP0 = val;                                                                       \
+                    ss->styles[elementid][NEKO_CORE_UI_ELEMENT_STATE_DEFAULT].COMP1 = val;                                                                     \
+                    ss->styles[elementid][NEKO_CORE_UI_ELEMENT_STATE_HOVER].COMP1 = val;                                                                       \
+                    ss->styles[elementid][NEKO_CORE_UI_ELEMENT_STATE_FOCUS].COMP1 = val;                                                                       \
                 }                                                                                                                                              \
             } break;                                                                                                                                           \
             default: {                                                                                                                                         \
@@ -8313,16 +8338,16 @@ bool _neko_core_ui_style_sheet_parse_attribute_val(neko_core_ui_context_t* ctx, 
             } break;                                                                                                                                           \
         }                                                                                                                                                      \
         switch (state) {                                                                                                                                       \
-            case NEKO_CORE_UI_ELEMENT_STATE_DEFAULT: {                                                                                                           \
+            case NEKO_CORE_UI_ELEMENT_STATE_DEFAULT: {                                                                                                         \
                 if (idsl) {                                                                                                                                    \
                     se.value = (s32)val;                                                                                                                       \
-                    neko_dyn_array_push(idsl->styles[NEKO_CORE_UI_ELEMENT_STATE_DEFAULT], se);                                                                   \
-                    neko_dyn_array_push(idsl->styles[NEKO_CORE_UI_ELEMENT_STATE_HOVER], se);                                                                     \
-                    neko_dyn_array_push(idsl->styles[NEKO_CORE_UI_ELEMENT_STATE_FOCUS], se);                                                                     \
+                    neko_dyn_array_push(idsl->styles[NEKO_CORE_UI_ELEMENT_STATE_DEFAULT], se);                                                                 \
+                    neko_dyn_array_push(idsl->styles[NEKO_CORE_UI_ELEMENT_STATE_HOVER], se);                                                                   \
+                    neko_dyn_array_push(idsl->styles[NEKO_CORE_UI_ELEMENT_STATE_FOCUS], se);                                                                   \
                 } else {                                                                                                                                       \
-                    ss->styles[elementid][NEKO_CORE_UI_ELEMENT_STATE_DEFAULT].COMP = val;                                                                        \
-                    ss->styles[elementid][NEKO_CORE_UI_ELEMENT_STATE_HOVER].COMP = val;                                                                          \
-                    ss->styles[elementid][NEKO_CORE_UI_ELEMENT_STATE_FOCUS].COMP = val;                                                                          \
+                    ss->styles[elementid][NEKO_CORE_UI_ELEMENT_STATE_DEFAULT].COMP = val;                                                                      \
+                    ss->styles[elementid][NEKO_CORE_UI_ELEMENT_STATE_HOVER].COMP = val;                                                                        \
+                    ss->styles[elementid][NEKO_CORE_UI_ELEMENT_STATE_FOCUS].COMP = val;                                                                        \
                 }                                                                                                                                              \
             } break;                                                                                                                                           \
             default: {                                                                                                                                         \

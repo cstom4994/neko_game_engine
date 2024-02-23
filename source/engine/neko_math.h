@@ -145,6 +145,12 @@ neko_inline f32 neko_vec2_dist(neko_vec2 a, neko_vec2 b) {
     return (float)(sqrt(dx * dx + dy * dy));
 }
 
+neko_inline f32 neko_vec2_dist2(neko_vec2 a, neko_vec2 b) {
+    f32 dx = (a.x - b.x);
+    f32 dy = (a.y - b.y);
+    return (float)(dx * dx + dy * dy);
+}
+
 neko_inline f32 neko_vec2_cross(neko_vec2 a, neko_vec2 b) { return a.x * b.y - a.y * b.x; }
 
 neko_inline f32 neko_vec2_angle(neko_vec2 a, neko_vec2 b) { return (float)acos(neko_vec2_dot(a, b) / (neko_vec2_len(a) * neko_vec2_len(b))); }

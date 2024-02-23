@@ -812,9 +812,9 @@ neko_force_inline b32 neko_util_file_exists(const char* file_path) {
     return false;
 }
 
-neko_force_inline void neko_util_get_file_extension(char* buffer, u32 buffer_size, const char* file_path) {
+neko_force_inline void neko_util_get_file_extension(char* buffer, u32 buffer_size, const_str file_path) {
     neko_assert(buffer && buffer_size);
-    const char* extension = strrchr(file_path, '.');
+    const_str extension = strrchr(file_path, '.');
     if (extension) {
         uint32_t extension_len = strlen(extension + 1);
         uint32_t len = (extension_len >= buffer_size) ? buffer_size - 1 : extension_len;

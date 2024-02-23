@@ -2620,6 +2620,16 @@ neko_vec2 neko_platform_get_window_dpi() {
     return v;
 }
 
+void neko_platform_window_set_clipboard(u32 handle, const_str str) {
+    neko_platform_window_t* win = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
+    glfwSetClipboardString((GLFWwindow*)win->hndl, str);
+}
+
+const_str neko_platform_window_get_clipboard(u32 handle) {
+    neko_platform_window_t* win = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
+    return glfwGetClipboardString((GLFWwindow*)win->hndl);
+}
+
 void neko_platform_set_cursor(u32 handle, neko_platform_cursor cursor) {
     neko_platform_t* platform = neko_subsystem(platform);
     neko_platform_window_t* win = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);

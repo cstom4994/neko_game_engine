@@ -1468,6 +1468,10 @@ void game_update() {
         // Do rendering
         neko_graphics_clear_action_t clear_action = {.color = {g_cvar.bg[0] / 255, g_cvar.bg[1] / 255, g_cvar.bg[2] / 255, 1.f}};
         neko_graphics_clear_desc_t clear = {.actions = &clear_action};
+
+        neko_graphics_clear_action_t b_clear_action = {.color = {0.0f, 0.0f, 0.0f, 1.f}};
+        neko_graphics_clear_desc_t b_clear = {.actions = &b_clear_action};
+
         neko_graphics_renderpass_begin(&g_cb, neko_renderpass_t{0});
         { neko_graphics_clear(&g_cb, &clear); }
         neko_graphics_renderpass_end(&g_cb);
@@ -1521,14 +1525,53 @@ void game_update() {
 
 #pragma endregion
 
-        neko_imgui_new_frame(&g_imgui);
-
         neko_graphics_renderpass_begin(&g_cb, NEKO_GRAPHICS_RENDER_PASS_DEFAULT);
         {
             neko_graphics_set_viewport(&g_cb, 0, 0, (u32)fbs.x, (u32)fbs.y);
             neko_idraw_draw(&g_idraw, &g_cb);  // 立即模式绘制 idraw
         }
         neko_graphics_renderpass_end(&g_cb);
+
+#pragma region FrameBuffer
+
+        neko_idraw_defaults(&g_idraw);
+
+        // Immediate rendering for offscreen buffer
+        neko_idraw_camera3D(&g_idraw, (uint32_t)fbs.x, (uint32_t)fbs.y);
+        neko_idraw_translatef(&g_idraw, 0.f, 0.f, -2.f);
+        neko_idraw_rotatev(&g_idraw, neko_platform_elapsed_time() * 0.0001f, NEKO_YAXIS);
+        neko_idraw_rotatev(&g_idraw, neko_platform_elapsed_time() * 0.0002f, NEKO_XAXIS);
+        neko_idraw_rotatev(&g_idraw, neko_platform_elapsed_time() * 0.0005f, NEKO_ZAXIS);
+        neko_idraw_box(&g_idraw, 0.f, 0.f, 0.f, 0.5f, 0.5f, 0.5f, 200, 100, 50, 255, NEKO_GRAPHICS_PRIMITIVE_LINES);
+
+        // Bind render pass for offscreen rendering then draw to buffer
+        neko_graphics_renderpass_begin(&g_cb, rp);
+        neko_graphics_set_viewport(&g_cb, 0, 0, (uint32_t)fbs.x, (uint32_t)fbs.y);
+        neko_graphics_clear(&g_cb, &b_clear);
+        neko_idraw_draw(&g_idraw, &g_cb);
+        neko_graphics_renderpass_end(&g_cb);
+
+        // Immediate rendering for back buffer
+        neko_idraw_camera3D(&g_idraw, (uint32_t)fbs.x, (uint32_t)fbs.y);
+        neko_idraw_depth_enabled(&g_idraw, true);
+        neko_idraw_face_cull_enabled(&g_idraw, true);
+        neko_idraw_translatef(&g_idraw, 0.f, 0.f, -1.f);
+        neko_idraw_texture(&g_idraw, rt);
+        neko_idraw_rotatev(&g_idraw, neko_platform_elapsed_time() * 0.0001f, NEKO_YAXIS);
+        neko_idraw_rotatev(&g_idraw, neko_platform_elapsed_time() * 0.0002f, NEKO_XAXIS);
+        neko_idraw_rotatev(&g_idraw, neko_platform_elapsed_time() * 0.0003f, NEKO_ZAXIS);
+        neko_idraw_box(&g_idraw, 0.f, 0.f, 0.f, 0.5f, 0.5f, 0.5f, 255, 255, 255, 255, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
+
+        // Render to back buffer
+        neko_graphics_renderpass_begin(&g_cb, NEKO_GRAPHICS_RENDER_PASS_DEFAULT);
+        neko_graphics_set_viewport(&g_cb, 0, 0, (int32_t)fbs.x, (int32_t)fbs.y);
+        // neko_graphics_clear(&g_cb, &clear);
+        neko_idraw_draw(&g_idraw, &g_cb);
+        neko_graphics_renderpass_end(&g_cb);
+
+#pragma endregion
+
+        neko_imgui_new_frame(&g_imgui);
 
         // 设置投影矩阵的 2D 相机
         neko_idraw_defaults(&g_idraw);

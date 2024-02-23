@@ -53,7 +53,7 @@ typedef struct object_group_s {
 } object_group_t;
 
 typedef struct map_s {
-    neko_xml_document_t* doc;
+    neko_xml_document_t* doc;  // xml doc
     neko_dyn_array(tileset_t) tilesets;
     neko_dyn_array(object_group_t) object_groups;
     neko_dyn_array(layer_t) layers;
@@ -96,7 +96,9 @@ typedef struct neko_tiled_renderer {
 
     u32 quad_count;
 
-    map_t map;
+    map_t map;  // tiled data
+
+    neko_mat4 camera_mat;
 } neko_tiled_renderer;
 
 NEKO_API_DECL void neko_tiled_render_init(neko_command_buffer_t* cb, neko_tiled_renderer* renderer, const_str vert_path, const_str frag_path);

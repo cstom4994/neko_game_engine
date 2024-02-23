@@ -641,6 +641,8 @@ NEKO_API_DECL void neko_platform_framebuffer_size(u32 handle, u32 *w, u32 *h);
 NEKO_API_DECL u32 neko_platform_framebuffer_width(u32 handle);
 NEKO_API_DECL u32 neko_platform_framebuffer_height(u32 handle);
 NEKO_API_DECL neko_vec2 neko_platform_monitor_sizev(u32 id);
+NEKO_API_DECL void neko_platform_window_set_clipboard(u32 handle, const_str str);
+NEKO_API_DECL const_str neko_platform_window_get_clipboard(u32 handle);
 
 NEKO_API_DECL neko_vec2 neko_platform_get_window_dpi();
 
