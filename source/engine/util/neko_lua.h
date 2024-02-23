@@ -502,11 +502,6 @@ neko_inline bool neko_lua_equal(lua_State *state, int index1, int index2) {
 #endif
 }
 
-NEKO_API_DECL void neko_lua_debug_setup(lua_State *lua, const char *name, const char *globalName, lua_CFunction readFunc, lua_CFunction writeFunc, const_str debugger_lua);
-NEKO_API_DECL int neko_lua_debug_pcall(lua_State *lua, int nargs, int nresults, int msgh);
-
-#define neko_lua_debug_dofile(lua, filename) (luaL_loadfile(lua, filename) || neko_lua_debug_pcall(lua, 0, LUA_MULTRET, 0))
-
 int neko_lua_preload(lua_State *L, lua_CFunction f, const char *name);
 int neko_lua_preload_auto(lua_State *L, lua_CFunction f, const char *name);
 void neko_lua_load(lua_State *L, const luaL_Reg *l, const char *name);

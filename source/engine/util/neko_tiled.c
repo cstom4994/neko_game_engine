@@ -1,12 +1,10 @@
 
 #include "neko_tiled.h"
 
-#include "engine/util/neko_asset.h"
-
 void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
 
-    neko_xml_document_t *doc = neko_xml_parse_file(tmx_path);
-    if (!doc) {
+    map->doc = neko_xml_parse_file(tmx_path);
+    if (!map->doc) {
         neko_log_error("Failed to parse XML: %s", neko_xml_get_error());
         return;
     }
@@ -18,7 +16,7 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
         strcpy(tmx_root_path, res_path);
     }
 
-    neko_xml_node_t *map_node = neko_xml_find_node(doc, "map");
+    neko_xml_node_t *map_node = neko_xml_find_node(map->doc, "map");
     neko_assert(map_node);  // Must have a map node!
 
     for (neko_xml_node_iter_t it = neko_xml_new_node_child_iter(map_node, "tileset"); neko_xml_node_iter_next(&it);) {
@@ -147,6 +145,8 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
         neko_xml_attribute_t *name_attrib = neko_xml_find_attribute(object_group_node, "name");
         if (name_attrib) {
             const char *namestring = name_attrib->value.string;
+
+            object_group.name = name_attrib->value.string;
             // u32 *cols = (u32 *)object_group.color.rgba;
             //*cols = (u32)strtol(hexstring + 1, NULL, 16);
             // object_group.color.a = 128;
@@ -202,8 +202,6 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
 
         neko_dyn_array_push(map->object_groups, object_group);
     }
-
-    neko_xml_free(doc);
 }
 
 void neko_tiled_unload(map_t *map) {
@@ -217,6 +215,8 @@ void neko_tiled_unload(map_t *map) {
 
     neko_dyn_array_free(map->layers);
     neko_dyn_array_free(map->tilesets);
+
+    neko_xml_free(map->doc);
 }
 
 void neko_tiled_render_init(neko_command_buffer_t *cb, neko_tiled_renderer *renderer, const_str vert_path, const_str frag_path) {

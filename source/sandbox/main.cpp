@@ -23,6 +23,9 @@
 #include "engine/util/neko_sprite.h"
 #include "engine/util/neko_tiled.h"
 
+// binding
+#include "neko_api.h"
+
 // builtin
 #include "engine/builtin/neko_aseprite.h"
 
@@ -82,21 +85,6 @@ game_csharp g_csharp;
 #endif
 
 // user data
-
-typedef struct neko_client_userdata_s {
-    neko_command_buffer_t *cb;
-    neko_immediate_draw_t *idraw;
-    neko_immediate_draw_static_data_t *idraw_sd;
-    neko_core_ui_context_t *igui;
-    neko_gui_ctx_t *nui;
-    neko_graphics_custom_batch_context_t *sprite_batch;
-
-    struct {
-        // 热加载模块
-        u32 module_count;
-        void (*module_func[16])(void);
-    } vm;
-} neko_client_userdata_t;
 
 neko_client_userdata_t g_client_userdata = neko_default_val();
 
@@ -992,19 +980,10 @@ cs_sound_params_t params = cs_sound_params_default();
 
 game_editor_console console_new;
 
-#ifdef NEKO_SURFACE_ENABLE
-#include "engine/builtin/neko_surface.h"
-#include "engine/builtin/neko_surface_gl.h"
-neko_surface_context *g_surface;
-
-#include "sandbox/tests/demo.h"
-DemoData demodata;
-#endif
-
 // lua
 #include "neko_scripting.h"
 
-lua_State *L = nullptr;
+lua_State *g_L = nullptr;
 
 thread_atomic_int_t init_thread_flag;
 thread_ptr_t init_work_thread;
@@ -1022,7 +1001,7 @@ int init_work(void *user_data) {
         timer.start();
 
         try {
-            neko_lua_wrap_call(L, "game_init_thread");
+            neko_lua_wrap_call(g_L, "game_init_thread");
         } catch (std::exception &ex) {
             neko_log_error("lua exception %s", ex.what());
         }
@@ -1058,11 +1037,9 @@ void game_init() {
     g_client_userdata.igui = &g_core_ui;
     g_client_userdata.idraw_sd = neko_immediate_draw_static_data_get();
 
-    // ctx.userdata = &g_client_userdata;
-
     g_vm.ctx = neko_script_ctx_new(nullptr);
 
-    L = neko_scripting_init();
+    g_L = neko_scripting_init();
 
     // 测试 csharp wrapper
 #ifdef GAME_CSHARP_ENABLED
@@ -1079,52 +1056,52 @@ void game_init() {
 #endif
 
     {
-        neko_lua_wrap_register_t<>(L).def(
+        neko_lua_wrap_register_t<>(g_L).def(
                 +[](const_str path) -> neko_string { return game_assets(path); }, "__neko_file_path");
 
-        lua_newtable(L);
+        lua_newtable(g_L);
         for (int n = 0; n < neko_instance()->ctx.game.argc; ++n) {
-            lua_pushstring(L, neko_instance()->ctx.game.argv[n]);
-            lua_rawseti(L, -2, n);
+            lua_pushstring(g_L, neko_instance()->ctx.game.argv[n]);
+            lua_rawseti(g_L, -2, n);
         }
-        lua_setglobal(L, "arg");
+        lua_setglobal(g_L, "arg");
 
-        neko_lua_wrap_do_file(L, game_assets("lua_scripts/main.lua"));
+        neko_lua_wrap_safe_dofile(g_L, "main");
 
         // 获取 neko_game.table
-        lua_getglobal(L, "neko_game");
-        if (!lua_istable(L, -1)) {
+        lua_getglobal(g_L, "neko_game");
+        if (!lua_istable(g_L, -1)) {
             neko_log_error("%s", "neko_game is not a table");
         }
 
         neko_platform_running_desc_t t = {.title = "Neko Engine", .engine_args = ""};
-        if (lua_getfield(L, -1, "app") == LUA_TNIL) throw std::exception("no app");
-        if (lua_istable(L, -1)) {
+        if (lua_getfield(g_L, -1, "app") == LUA_TNIL) throw std::exception("no app");
+        if (lua_istable(g_L, -1)) {
             neko::static_refl::neko_type_info<neko_platform_running_desc_t>::ForEachVarOf(t, [](auto field, auto &&value) {
                 static_assert(std::is_lvalue_reference_v<decltype(value)>);
-                if (lua_getfield(L, -1, std::string(field.name).c_str()) != LUA_TNIL) value = neko_lua_to<std::remove_reference_t<decltype(value)>>(L, -1);
-                lua_pop(L, 1);
+                if (lua_getfield(g_L, -1, std::string(field.name).c_str()) != LUA_TNIL) value = neko_lua_to<std::remove_reference_t<decltype(value)>>(g_L, -1);
+                lua_pop(g_L, 1);
             });
         } else {
             throw std::exception("no app table");
         }
-        lua_pop(L, 1);
+        lua_pop(g_L, 1);
 
         neko_engine_cvar_t cvar;
-        if (lua_getfield(L, -1, "cvar") == LUA_TNIL) throw std::exception("no cvar");
-        if (lua_istable(L, -1)) {
+        if (lua_getfield(g_L, -1, "cvar") == LUA_TNIL) throw std::exception("no cvar");
+        if (lua_istable(g_L, -1)) {
             neko::static_refl::neko_type_info<neko_engine_cvar_t>::ForEachVarOf(cvar, [](auto field, auto &&value) {
                 static_assert(std::is_lvalue_reference_v<decltype(value)>);
-                if (lua_getfield(L, -1, std::string(field.name).c_str()) != LUA_TNIL) value = neko_lua_to<std::remove_reference_t<decltype(value)>>(L, -1);
-                lua_pop(L, 1);
+                if (lua_getfield(g_L, -1, std::string(field.name).c_str()) != LUA_TNIL) value = neko_lua_to<std::remove_reference_t<decltype(value)>>(g_L, -1);
+                lua_pop(g_L, 1);
             });
             g_cvar = cvar;  // 复制到 g_cvar
         } else {
             throw std::exception("no cvar table");
         }
-        lua_pop(L, 1);
+        lua_pop(g_L, 1);
 
-        lua_pop(L, 1);  // 弹出 neko_game.table
+        lua_pop(g_L, 1);  // 弹出 neko_game.table
 
         neko_log_info("load game: %s %d %d", t.title, t.width, t.height);
 
@@ -1132,7 +1109,7 @@ void game_init() {
     }
 
     try {
-        neko_lua_wrap_call(L, "game_init");
+        neko_lua_wrap_call(g_L, "game_init");
     } catch (std::exception &ex) {
         neko_log_error("lua exception %s", ex.what());
     }
@@ -1202,18 +1179,6 @@ void game_init() {
     neko_gui::ctx = &g_gui.neko_gui_ctx;
 
     g_client_userdata.nui = &g_gui;
-
-#ifdef NEKO_SURFACE_ENABLE
-    g_surface = neko_surface_CreateGL3(NEKO_SURFACE_ANTIALIAS | NEKO_SURFACE_STENCIL_STROKES | NEKO_SURFACE_DEBUG);
-
-    if (g_surface == NULL) {
-        printf("Could not init surface.\n");
-    }
-
-    if (loadDemoData(g_surface, &demodata) == -1) {
-        printf("Could not init surface demo.\n");
-    }
-#endif
 
     // AI
     // Set up camera
@@ -1366,6 +1331,8 @@ void main() { out_col = texture(u_sprite_texture, v_uv); }
     neko_safe_free(test_font_mem);
     neko_png_free(&img);
 
+    g_client_userdata.test_font_bmfont = test_font_bmfont;
+
     font_verts = (neko_font_vert_t *)neko_safe_malloc(sizeof(neko_font_vert_t) * 1024 * 2);
 
     // Compute shader
@@ -1460,7 +1427,7 @@ void game_update() {
         {
             neko_profiler_scope_begin(lua_pre_update);
             try {
-                neko_lua_wrap_call(L, "game_pre_update");
+                neko_lua_wrap_call(g_L, "game_pre_update");
             } catch (std::exception &ex) {
                 neko_log_error("lua exception %s", ex.what());
             }
@@ -1490,8 +1457,8 @@ void game_update() {
         {
             neko_profiler_scope_begin(lua_update);
             try {
-                neko_lua_wrap_call(L, "game_update");
-                neko_lua_wrap_call(L, "test_update");
+                neko_lua_wrap_call(g_L, "game_update");
+                neko_lua_wrap_call(g_L, "test_update");
             } catch (std::exception &ex) {
                 neko_log_error("lua exception %s", ex.what());
             }
@@ -1570,7 +1537,7 @@ void game_update() {
         {
             neko_profiler_scope_begin(lua_render);
             try {
-                neko_lua_wrap_call(L, "game_render");
+                neko_lua_wrap_call(g_L, "game_render");
             } catch (std::exception &ex) {
                 neko_log_error("lua exception %s", ex.what());
             }
@@ -1584,19 +1551,20 @@ void game_update() {
         }
 
         call_count = 0;
-        neko_sprite_t dragon_zombie = make_sprite(0, 650, 500, 1, neko_rad2deg(t / 100000.f), 0);
-        neko_sprite_t night_spirit = make_sprite(1, 50, 250, 1, 0, 0);
-        push_sprite(dragon_zombie);
-        push_sprite(night_spirit);
-        neko_sprite_t polish = make_sprite(1, 250, 180, 1, neko_rad2deg(t / 50000.f), 0);
-        neko_sprite_t translated = polish;
-        for (int i = 0; i < 4; ++i) {
-            translated.x = polish.x + polish.sx * i;
-            for (int j = 0; j < 6; ++j) {
-                translated.y = polish.y - polish.sy * j;
-                push_sprite(translated);
-            }
-        }
+
+        // neko_sprite_t dragon_zombie = make_sprite(0, 650, 500, 1, neko_rad2deg(t / 100000.f), 0);
+        // neko_sprite_t night_spirit = make_sprite(1, 50, 250, 1, 0, 0);
+        // push_sprite(dragon_zombie);
+        // push_sprite(night_spirit);
+        // neko_sprite_t polish = make_sprite(1, 250, 180, 1, neko_rad2deg(t / 50000.f), 0);
+        // neko_sprite_t translated = polish;
+        // for (int i = 0; i < 4; ++i) {
+        //     translated.x = polish.x + polish.sx * i;
+        //     for (int j = 0; j < 6; ++j) {
+        //         translated.y = polish.y - polish.sy * j;
+        //         push_sprite(translated);
+        //     }
+        // }
 
         // 运行cute_spriteBatch查找sprite批次
         // 这是cute_psriteBatch最基本的用法 每个游戏循环进行一次defrag tick flush
@@ -1637,9 +1605,9 @@ void game_update() {
                         neko_core_ui_labelf("NekoScript Alloc: %.2lf mb", ((f64)max / 1024.0f));
                         neko_core_ui_labelf("NekoScript UsedMemory: %.2lf mb", ((f64)used / 1024.0f));
 
-                        lua_gc(L, LUA_GCCOLLECT, 0);
-                        lua_Integer kb = lua_gc(L, LUA_GCCOUNT, 0);
-                        lua_Integer bytes = lua_gc(L, LUA_GCCOUNTB, 0);
+                        lua_gc(g_L, LUA_GCCOLLECT, 0);
+                        lua_Integer kb = lua_gc(g_L, LUA_GCCOUNT, 0);
+                        lua_Integer bytes = lua_gc(g_L, LUA_GCCOUNTB, 0);
 
                         neko_core_ui_labelf("Lua MemoryUsage: %.2lf mb", ((f64)kb / 1024.0f));
                         neko_core_ui_labelf("Lua Remaining: %.2lf mb", ((f64)bytes / 1024.0f));
@@ -2266,33 +2234,21 @@ void game_update() {
             neko_profiler_scope_end(render_submit);
         }
 
-#ifdef NEKO_SURFACE_ENABLE
-        neko_surface_BeginFrame(g_surface, fbs.x, fbs.y, 1.0f);
-        renderDemo(g_surface, mp.x, mp.y, fbs.x, fbs.y, t / 1000.f, 0, &demodata);
-        neko_surface_EndFrame(g_surface);
-#endif
-
         neko_check_gl_error();
     }
 }
 
 void game_shutdown() {
     try {
-        neko_lua_wrap_call(L, "game_shutdown");
+        neko_lua_wrap_call(g_L, "game_shutdown");
     } catch (std::exception &ex) {
         neko_log_error("lua exception %s", ex.what());
     }
 
-    neko_scripting_end(L);
+    neko_scripting_end(g_L);
 
 #ifdef GAME_CSHARP_ENABLED
     g_csharp.shutdown();
-#endif
-
-#ifdef NEKO_SURFACE_ENABLE
-    freeDemoData(g_surface, &demodata);
-
-    neko_surface_DeleteGL3(g_surface);
 #endif
 
     neko_safe_free(font_verts);
@@ -2387,6 +2343,3 @@ void editor_dockspace(neko_core_ui_context_t *ctx) {
     }
     neko_core_ui_window_end(ctx);
 }
-
-// binding
-#include "neko_binding_engine.h"

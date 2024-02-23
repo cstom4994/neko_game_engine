@@ -1,7 +1,7 @@
 -- Copyright(c) 2022-2023, KaoruXun All rights reserved.
 -- runs on start of the engine
 -- used to load scripts
-local dump_func = require "common/dump"
+dump_func = require "common/dump"
 
 local safefunc = function()
 
@@ -33,6 +33,13 @@ function sleep(n)
     local t0 = os.clock()
     while os.clock() - t0 <= n do
     end
+end
+
+function to_vec2(x, y)
+    return {
+        x = x,
+        y = y
+    }
 end
 
 __NEKO_CONFIG_TYPE_INT = 0

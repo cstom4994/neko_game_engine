@@ -47,25 +47,25 @@ NEKO_API_DECL void neko_asset_importer_set_desc(neko_asset_importer_t* imp, neko
 #define gsa_imsa(IMPORTER, T) ((neko_slot_array(T))(IMPORTER)->slot_array)
 #endif
 
-#define neko_assets_register_importer(AM, T, DESC)                                             \
-    do {                                                                                       \
-        neko_asset_importer_t ai = neko_default_val();                                         \
-        ai.data_size = sizeof(T);                                                              \
-        ai.importer_id = (AM)->free_importer_id++;                                             \
-        neko_asset_importer_set_desc(&ai, (neko_asset_importer_desc_t*)DESC);                  \
-        size_t sz = 2 * sizeof(void*) + sizeof(T);                                             \
-        neko_slot_array(T) sa = NULL;                                                          \
-        neko_slot_array_init((void**)&sa, sizeof(*sa));                                        \
-        neko_dyn_array_init((void**)&sa->indices, sizeof(u32));                                \
-        neko_dyn_array_init((void**)&sa->data, sizeof(T));                                     \
-        ai.slot_array = (void*)sa;                                                             \
-        ai.tmp_ptr = (void*)&sa->tmp;                                                          \
-        ai.slot_array_indices_ptr = (void*)sa->indices;                                        \
-        ai.slot_array_data_ptr = (void*)sa->data;                                              \
-        if (!ai.desc.load_from_file) {                                                         \
-            ai.desc.load_from_file = (neko_asset_load_func)&neko_asset_default_load_from_file; \
-        }                                                                                      \
-        neko_hash_table_insert((AM)->importers, neko_hash_str64(neko_to_str(T)), ai);          \
+#define neko_assets_register_importer(AM, T, DESC)                                               \
+    do {                                                                                         \
+        neko_asset_importer_t ai = neko_default_val();                                           \
+        ai.data_size = sizeof(T);                                                                \
+        ai.importer_id = (AM)->free_importer_id++;                                               \
+        neko_asset_importer_set_desc(&ai, (neko_asset_importer_desc_t*)DESC);                    \
+        size_t sz = 2 * sizeof(void*) + sizeof(T);                                               \
+        neko_slot_array(T) sa = NULL;                                                            \
+        neko_slot_array_init((void**)&sa, sizeof(*sa));                                          \
+        neko_dyn_array_init((void**)&sa->indices, sizeof(u32));                                  \
+        neko_dyn_array_init((void**)&sa->data, sizeof(T));                                       \
+        ai.slot_array = (void*)sa;                                                               \
+        ai.tmp_ptr = (void*)&sa->tmp;                                                            \
+        ai.slot_array_indices_ptr = (void*)sa->indices;                                          \
+        ai.slot_array_data_ptr = (void*)sa->data;                                                \
+        if (!ai.desc.load_from_file) {                                                           \
+            ai.desc.load_from_file = (neko_asset_load_func) & neko_asset_default_load_from_file; \
+        }                                                                                        \
+        neko_hash_table_insert((AM)->importers, neko_hash_str64(neko_to_str(T)), ai);            \
     } while (0)
 
 // Need a way to be able to print upon assert
@@ -550,7 +550,7 @@ typedef struct neko_font_rect_t {
 NEKO_API_DECL int neko_font_fill_vertex_buffer(neko_font_t* font, const char* text, float x, float y, float wrap_w, float line_height, neko_font_rect_t* clip_rect, neko_font_vert_t* buffer,
                                                int buffer_max, int* count_written);
 
-// Decodes a utf8 codepoint and returns the advanced string pointer.
+// 解码 utf-8 代码点并返回字符串指针
 NEKO_API_DECL const char* neko_font_decode_utf8(const char* text, int* cp);
 
 #endif  // NEKO_ASSET_H

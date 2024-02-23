@@ -7,12 +7,14 @@
 #include "engine/neko_platform.h"
 #include "engine/util/neko_console.h"
 
+#if defined(NEKO_DISCRETE_GPU)
 // Use discrete GPU by default.
 // http://developer.download.nvidia.com/devzone/devcenter/gamegraphics/files/OptimusRenderingPolicies.pdf
 __declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
 
 // https://gpuopen.com/learn/amdpowerxpressrequesthighperformance/
 __declspec(dllexport) unsigned long AmdPowerXpressRequestHighPerformance = 0x00000001;
+#endif
 
 neko_global const char* __build_date = __DATE__;
 neko_global const char* mon[12] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};

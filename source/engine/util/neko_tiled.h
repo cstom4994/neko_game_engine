@@ -3,6 +3,7 @@
 #define NEKO_TILED_H
 
 #include "engine/neko_engine.h"
+#include "engine/util/neko_asset.h"
 
 // c2
 #include "engine/builtin/cute_c2.h"
@@ -47,9 +48,12 @@ typedef struct object_group_s {
     neko_dyn_array(object_t) objects;
 
     neko_color_t color;
+
+    const_str name;
 } object_group_t;
 
 typedef struct map_s {
+    neko_xml_document_t* doc;
     neko_dyn_array(tileset_t) tilesets;
     neko_dyn_array(object_group_t) object_groups;
     neko_dyn_array(layer_t) layers;

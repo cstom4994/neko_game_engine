@@ -1175,11 +1175,16 @@ neko_inline int neko_lua_wrap_load_file(lua_State *m_ls, const std::string &file
 }
 
 neko_inline int neko_lua_pcall_wrap(lua_State *state, int argnum, int retnum, int msgh) {
-    int result = neko_lua_debug_pcall(state, argnum, retnum, msgh);
+    int result = lua_pcall(state, argnum, retnum, msgh);
     return result;
 }
 
-neko_inline bool neko_lua_wrap_do_file(lua_State *m_ls, const std::string &file) {
+neko_inline int neko_lua_wrap_safe_dofile(lua_State *state, const std::string &file) {
+    neko_lua_wrap_run_string(state, std::format("xpcall(function ()\nrequire '{0}'\nend, function(err)\nprint(tostring(err))\nprint(debug.traceback(nil, 2))\n__neko_quit(1)\nend)\n", file));
+    return 0;
+}
+
+neko_inline bool neko_lua_wrap_dofile(lua_State *m_ls, const std::string &file) {
     int status = luaL_loadfile(m_ls, file.c_str());
 
     if (status) {

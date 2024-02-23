@@ -278,8 +278,6 @@ neko_inline lua_State *neko_scripting_init() {
 
         lua_atpanic(L, __neko_lua_catch_panic);
 
-        neko_lua_debug_setup(L, "debugger", "dbg", NULL, NULL, game_assets("lua_scripts/libs/debugger.lua").c_str());
-
         lua_reg(L);
 
         add_package_path(L, "./");
@@ -297,7 +295,7 @@ neko_inline lua_State *neko_scripting_init() {
         // 面向对象基础
         neko_lua_wrap_run_string(L, neko_lua_src_object);
 
-        neko_lua_wrap_do_file(L, game_assets("lua_scripts/init.lua"));
+        neko_lua_wrap_safe_dofile(L, "init");
 
     } catch (std::exception &ex) {
         neko_log_error("%s", ex.what());
@@ -310,16 +308,5 @@ neko_inline lua_State *neko_scripting_init() {
 }
 
 neko_inline void neko_scripting_end(lua_State *L) { neko_lua_wrap_destory(L); }
-
-neko_inline void neko_scripting_update() {
-    // luaL_loadstring(_struct->L, s_couroutineFileSrc.c_str());
-    // if (__neko_lua_debug_pcall(_struct->L, 0, LUA_MULTRET, 0) != LUA_OK) {
-    //     print_error(_struct->L);
-    //     return;
-    // }
-    // auto &luawrap = this->s_lua;
-    // auto OnUpdate = luawrap["OnUpdate"];
-    // OnUpdate();
-}
 
 #endif

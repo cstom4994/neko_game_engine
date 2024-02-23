@@ -62,7 +62,7 @@ function _G.neko_hotload(name)
     if type(t) == "table" then
         for k, v in pairs(t) do
             if type(_G[key][k]) ~= "nil" then
-                print(string.format("load [%s] ignore var [%s]. duplicate keys", name, k))
+                -- print(string.format("load [%s] ignore var [%s]. duplicate keys", name, k))
             end
             _G[key][k] = v
         end

@@ -963,6 +963,9 @@ neko_memory_info_t glfw_platform_meminfo() {
 #endif
 
     // TODO:: 支持AMD显卡获取显存信息
+
+#if defined(NEKO_DISCRETE_GPU)
+
 #define GL_GPU_MEM_INFO_TOTAL_AVAILABLE_MEM_NVX 0x9048
 #define GL_GPU_MEM_INFO_CURRENT_AVAILABLE_MEM_NVX 0x9049
 
@@ -974,6 +977,8 @@ neko_memory_info_t glfw_platform_meminfo() {
 
     meminfo.gpu_memory_used = total_mem_kb - cur_avail_mem_kb;
     meminfo.gpu_total_memory = cur_avail_mem_kb;
+
+#endif
 
     return meminfo;
 }
