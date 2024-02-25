@@ -1872,7 +1872,7 @@ NEKO_API_DECL void neko_frame() {
         // Update platform and process input
         neko_platform_update(platform);
 
-        if (win->focus || 1) {
+        if (win->focus || neko_app()->window.running_background) {
 
             // Process application context
             neko_instance()->ctx.game.update();

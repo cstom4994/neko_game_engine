@@ -101,7 +101,7 @@ typedef struct neko_tiled_renderer {
     neko_mat4 camera_mat;
 } neko_tiled_renderer;
 
-NEKO_API_DECL void neko_tiled_render_init(neko_command_buffer_t* cb, neko_tiled_renderer* renderer, const_str vert_path, const_str frag_path);
+NEKO_API_DECL void neko_tiled_render_init(neko_command_buffer_t* cb, neko_tiled_renderer* renderer, const_str vert_src, const_str frag_src);
 NEKO_API_DECL void neko_tiled_render_deinit(neko_tiled_renderer* renderer);
 NEKO_API_DECL void neko_tiled_render_begin(neko_command_buffer_t* cb, neko_tiled_renderer* renderer);
 NEKO_API_DECL void neko_tiled_render_flush(neko_command_buffer_t* cb, neko_tiled_renderer* renderer);

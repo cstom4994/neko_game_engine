@@ -843,7 +843,7 @@ NEKO_API_DECL void neko_core_ui_render(neko_core_ui_context_t* ctx, neko_command
 
 //=== Util ===//
 NEKO_API_DECL void neko_core_ui_renderpass_submit(neko_core_ui_context_t* ctx, neko_command_buffer_t* cb, neko_color_t clear);
-NEKO_API_DECL void neko_core_ui_renderpass_submit_ex(neko_core_ui_context_t* ctx, neko_command_buffer_t* cb, neko_graphics_clear_action_t* action);
+NEKO_API_DECL void neko_core_ui_renderpass_submit_ex(neko_core_ui_context_t* ctx, neko_command_buffer_t* cb, neko_graphics_clear_action_t action);
 NEKO_API_DECL void neko_core_ui_parse_id_tag(neko_core_ui_context_t* ctx, const char* str, char* buffer, size_t sz, u64 opt);
 NEKO_API_DECL void neko_core_ui_parse_label_tag(neko_core_ui_context_t* ctx, const char* str, char* buffer, size_t sz);
 

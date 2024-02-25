@@ -1,9 +1,7 @@
 local ECS = require "common/ecs"
-
 local PHY = require "common/physics"
 
 gui = require "neko_gui"
--- nuklear = require 'nuklear'
 
 require("common/hotfix")
 
@@ -98,13 +96,6 @@ test_filewatch_callback = function(change, virtual_path)
     end
 end
 
-local A = {
-    name = "A"
-}
-local B = {
-    name = "B"
-}
-
 phy_world = PHY.fetch_world(64)
 
 local function phy_world_get_cellsize(world, cx, cy)
@@ -127,7 +118,7 @@ local function phy_debug_draw(world)
 
             neko.idraw_defaults()
 
-            neko.idraw_rectv(v1, v2)
+            neko.idraw_rectv(v1, v2, "NEKO_GRAPHICS_PRIMITIVE_LINES")
 
         end
     end
@@ -152,7 +143,7 @@ local function draw_blocks()
         local v1 = to_vec2(block.x, block.y)
         local v2 = to_vec2(block.w, block.h)
 
-        neko.idraw_rectv(v1, v2)
+        neko.idraw_rectvd(v1, v2, "NEKO_GRAPHICS_PRIMITIVE_TRIANGLES")
     end
 end
 
@@ -182,6 +173,10 @@ end
 
 game_init = function()
 
+    gd.fbo = neko.graphics_framebuffer_create()
+    gd.rt = neko.graphics_texture_create()
+    gd.rp = neko.graphics_renderpass_create(gd.fbo, gd.rt)
+
     -- test_pack = neko_pack_construct("test_pack_handle", neko_file_path("gamedir/res.pack"))
     -- test_handle = neko_pack_assets_load(test_pack, ".\\fonts\\fusion-pixel.ttf")
 
@@ -199,8 +194,8 @@ game_init = function()
             sd = c_gameobject.new_obj(1001, true, true)
         },
         vector2 = {
-            x = 20,
-            y = 20
+            x = 120,
+            y = 120
         },
         velocity2 = {
             dx = 0,
@@ -233,7 +228,7 @@ game_init = function()
         },
         tiled_map = {
             path = "/maps/map.tmx",
-            ud = neko.tiled_create(neko_file_path("gamedir/maps/map.tmx"))
+            ud = neko.tiled_create(neko_file_path("gamedir/maps/map.tmx"), sprite_vs, sprite_fs)
         }
     }
 
@@ -251,6 +246,8 @@ game_init = function()
             end
         end
     end
+
+    test_audio = neko.audio_load("C:/Users/kaoruxun/Projects/Neko/dataWak/audio/otoha.wav")
 
     -- eid3 = ecs_world:new{
     --     vector2 = {
@@ -332,6 +329,12 @@ game_shutdown = function()
 
     neko.filewatch_destory(gd.filewatch)
     neko.assetsys_destory(gd.assetsys)
+
+    neko.audio_unload(test_audio)
+
+    neko.graphics_renderpass_destroy(gd.rp)
+    neko.graphics_texture_destroy(gd.rt)
+    neko.graphics_framebuffer_destroy(gd.fbo)
 end
 
 gd.tick = 0
@@ -339,29 +342,36 @@ gd.tick = 0
 game_pre_update = function()
     gd.tick = gd.tick + 1
 
-    if (gd.tick & 255) == 0 then
-        neko.filewatch_update(gd.filewatch)
-        neko.filewatch_notify(gd.filewatch)
+    if neko_game.cvar.enable_hotload then
+        if (gd.tick & 255) == 0 then
+            neko.filewatch_update(gd.filewatch)
+            neko.filewatch_notify(gd.filewatch)
 
-        if neko_game.cvar.enable_hotload then
             neko_hotload("player_update.lua")
         end
     end
 
 end
 
-game_update = function()
+local max_dt = 0.0
 
-    gd.hot_code.my_update()
+game_update = function(dt)
+
+    if dt > max_dt then
+        max_dt = dt
+        print("max_dt", max_dt)
+    end
+
+    gd.hot_code.my_update(dt)
 
     for v2, v, t in ecs_world:match("all", "vector2", "velocity2", "tiled_map") do
 
-        local player_v = 2.1
+        local player_v
 
         if neko_was_key_down("NEKO_KEYCODE_LEFT_SHIFT") then
-            player_v = 5.1
+            player_v = 50.1 * dt
         else
-            player_v = 2.1
+            player_v = 20.1 * dt
         end
 
         if neko_was_key_down("NEKO_KEYCODE_LEFT") then
@@ -389,6 +399,12 @@ game_update = function()
 end
 
 game_render = function()
+
+    fbs_x, fbs_y = neko_framebuffer_size()
+
+    neko.idraw_defaults()
+    neko.idraw_camera2d(fbs_x, fbs_y)
+
     for v2, v, p, obj in ecs_world:match("all", "vector2", "velocity2", "player", "gameobj") do
         local direction = 0
         if v.dx < 0 then
@@ -400,11 +416,15 @@ game_render = function()
         neko.idraw_rectv(v2, {
             x = obj.w * p.scale,
             y = obj.h * p.scale
-        })
+        }, "NEKO_GRAPHICS_PRIMITIVE_LINES")
     end
 
     for v2, t in ecs_world:match("all", "vector2", "tiled_map") do
         neko.tiled_render(SAFE_UD(t), v2)
+
+        neko.idraw_defaults()
+        neko.idraw_text(v2.x, v2.y - 10, ("tiled_map x:%f y:%f"):format(v2.x, v2.y))
+        neko.idraw_defaults()
     end
 
     for v2, t in ecs_world:match("all", "vector2", "custom_sprite") do
@@ -448,6 +468,40 @@ game_render = function()
 
     -- comboSelection = imgui.Combo("Combo", comboSelection, "combo1, haha", 4);
 
+    neko.graphics_renderpass_begin(0)
+    neko.graphics_set_viewport(0.0, 0.0, fbs_x, fbs_y)
+    neko.idraw_draw()
+    neko.graphics_renderpass_end()
+
+    -- neko.idraw_defaults()
+    -- neko.idraw_camera3d(fbs_x, fbs_y)
+    -- neko.idraw_translatef(0.0, 0.0, -2.0)
+    -- neko.idraw_rotatev(neko_platform_elapsed_time() * 0.0001, 1.0, 0.0, 0.0)
+    -- neko.idraw_rotatev(neko_platform_elapsed_time() * 0.0001, 0.0, 1.0, 0.0)
+    -- neko.idraw_rotatev(neko_platform_elapsed_time() * 0.0001, 0.0, 0.0, 1.0)
+    -- neko.idraw_box(0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 200, 100, 50, 255, "NEKO_GRAPHICS_PRIMITIVE_LINES")
+
+    -- neko.graphics_renderpass_begin(gd.rp)
+    -- neko.graphics_set_viewport(0.0, 0.0, fbs_x, fbs_y)
+    -- neko.graphics_clear(0.0, 0.0, 0.0, 1.0)
+    -- neko.idraw_draw()
+    -- neko.graphics_renderpass_end()
+
+    -- neko.idraw_camera3d(fbs_x, fbs_y)
+    -- neko.idraw_depth_enabled(true)
+    -- neko.idraw_face_cull_enabled(true)
+    -- neko.idraw_translatef(0.0, 0.0, -1.0)
+    -- neko.idraw_texture(gd.rt)
+    -- neko.idraw_rotatev(neko_platform_elapsed_time() * 0.0001, 1.0, 0.0, 0.0)
+    -- neko.idraw_rotatev(neko_platform_elapsed_time() * 0.0002, 0.0, 1.0, 0.0)
+    -- neko.idraw_rotatev(neko_platform_elapsed_time() * 0.0003, 0.0, 0.0, 1.0)
+    -- neko.idraw_box(0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 255, 255, 255, 255, "NEKO_GRAPHICS_PRIMITIVE_TRIANGLES")
+
+    -- neko.graphics_renderpass_begin(0)
+    -- neko.graphics_set_viewport(0.0, 0.0, fbs_x, fbs_y)
+    -- neko.idraw_draw()
+    -- neko.graphics_renderpass_end()
+
 end
 
 test_update = function()
@@ -465,7 +519,7 @@ test_update = function()
 
     if neko_key_pressed("NEKO_KEYCODE_T") then
         -- collectgarbage("collect")
-        __neko_print_registry_list()
+        -- __neko_print_registry_list()
     end
 
     if neko_key_pressed("NEKO_KEYCODE_F2") then
@@ -489,7 +543,11 @@ test_update = function()
         -- neko_dolua("lua_scripts/test_ds.lua")
         -- neko_dolua("lua_scripts/test_events.lua")
         -- neko_dolua("lua_scripts/test_nekolua.lua")
-        neko_dolua("lua_scripts/test_common.lua")
+        -- neko_dolua("lua_scripts/test_common.lua")
+        -- neko_dolua("lua_scripts/test_behavior.lua")
+        neko_dolua("lua_scripts/tests/test_loader.lua")
+
+        -- neko.audio_play(test_audio)
 
         -- print(dump_func(w))
 

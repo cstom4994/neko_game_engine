@@ -6,7 +6,7 @@
 #include "engine/neko.h"
 
 // OpenGL
-#include "libs/glad/glad.h"
+#include "engine/builtin/neko_gl.h"
 
 /*=============================
 // NEKO_GRAPHICS
@@ -371,7 +371,7 @@ typedef struct neko_graphics_clear_action_t {
 
 /* Graphics Clear Desc */
 typedef struct neko_graphics_clear_desc_t {
-    neko_graphics_clear_action_t* actions;  // Clear action array
+    neko_graphics_clear_action_t* actions;  // Clear action
     size_t size;                            // Size
 } neko_graphics_clear_desc_t;
 
@@ -822,7 +822,8 @@ NEKO_API_DECL void neko_graphics_renderpass_begin(neko_command_buffer_t* cb, nek
 NEKO_API_DECL void neko_graphics_renderpass_end(neko_command_buffer_t* cb);
 NEKO_API_DECL void neko_graphics_set_viewport(neko_command_buffer_t* cb, u32 x, u32 y, u32 w, u32 h);
 NEKO_API_DECL void neko_graphics_set_view_scissor(neko_command_buffer_t* cb, u32 x, u32 y, u32 w, u32 h);
-NEKO_API_DECL void neko_graphics_clear(neko_command_buffer_t* cb, neko_graphics_clear_desc_t* desc);
+NEKO_API_DECL void neko_graphics_clear(neko_command_buffer_t* cb, neko_graphics_clear_action_t action);
+NEKO_API_DECL void neko_graphics_clear_ex(neko_command_buffer_t* cb, neko_graphics_clear_desc_t* desc);
 NEKO_API_DECL void neko_graphics_pipeline_bind(neko_command_buffer_t* cb, neko_handle(neko_graphics_pipeline_t) hndl);
 NEKO_API_DECL void neko_graphics_apply_bindings(neko_command_buffer_t* cb, neko_graphics_bind_desc_t* binds);
 NEKO_API_DECL void neko_graphics_draw(neko_command_buffer_t* cb, neko_graphics_draw_desc_t* desc);

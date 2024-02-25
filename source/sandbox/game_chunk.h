@@ -5,7 +5,9 @@
 
 #include "engine/neko.h"
 #include "engine/neko_engine.h"
-#include "libs/glad/glad.h"
+
+// gl
+// #include "engine/builtin/neko_gl.h"
 
 // game
 #include "game_physics_math.hpp"
@@ -687,7 +689,7 @@ void game_chunk_update(neko_fallsand_render* fallsand) {
 
     const neko_vec2 fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
 
-    neko_idraw_camera2D(idraw, (u32)fbs.x, (u32)fbs.y);
+    neko_idraw_camera2d(idraw, (u32)fbs.x, (u32)fbs.y);
     neko_idraw_defaults(idraw);
 
     neko_idraw_rect_textured_ext(idraw, fallsand->chunk_render_pos.x, fallsand->chunk_render_pos.y, fallsand->chunk_render_pos.x + fallsand->render_w * fallsand->render_scale,
@@ -3346,9 +3348,9 @@ void drop_file_callback(void* platform_window, s32 count, const char** file_path
 
 #define STB_HBWANG_RAND() neko_rand_xorshf32()
 #define STB_HBWANG_IMPLEMENTATION
-#include "libs/stb/stb_herringbone_wang_tile.h"
-#include "libs/stb/stb_image.h"
-#include "libs/stb/stb_image_write.h"
+#include "deps/stb/stb_herringbone_wang_tile.h"
+#include "deps/stb/stb_image.h"
+#include "deps/stb/stb_image_write.h"
 
 void genwang(std::string filename, unsigned char* data, s32 xs, s32 ys, s32 w, s32 h) {
     stbhw_tileset ts;

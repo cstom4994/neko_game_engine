@@ -661,7 +661,7 @@ static int __neko_ecs_world_dump(lua_State *L) {
     return 0;
 }
 
-static int __neko_ecs_create_world(lua_State *L) {
+int __neko_ecs_create_world(lua_State *L) {
     int i;
     struct neko_ecs_world_t *w;
     struct match_ctx *mctx;
@@ -726,17 +726,5 @@ static int __neko_ecs_create_world(lua_State *L) {
     lua_pushliteral(L, "__tid");
     lua_setiuservalue(L, 1, WORLD_KEY_TID);
 
-    return 1;
-}
-
-int luaopen_neko_ecs(lua_State *L) {
-    luaL_Reg l[] = {
-            {"create_world", __neko_ecs_create_world},
-            {NULL, NULL},
-    };
-    luaL_checkversion(L);
-    // luaL_newlib(L, tbl);
-
-    neko_lua_load(L, l, "__neko_ecs");
     return 1;
 }

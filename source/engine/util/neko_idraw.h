@@ -130,7 +130,7 @@ NEKO_API_DECL void neko_idraw_set_view_scissor(neko_immediate_draw_t* neko_idraw
 // Final Submit / Merge
 NEKO_API_DECL void neko_idraw_draw(neko_immediate_draw_t* neko_idraw, neko_command_buffer_t* cb);
 NEKO_API_DECL void neko_idraw_renderpass_submit(neko_immediate_draw_t* neko_idraw, neko_command_buffer_t* cb, neko_vec4 viewport, neko_color_t clear_color);
-NEKO_API_DECL void neko_idraw_renderpass_submit_ex(neko_immediate_draw_t* neko_idraw, neko_command_buffer_t* cb, neko_vec4 viewport, neko_graphics_clear_action_t* action);
+NEKO_API_DECL void neko_idraw_renderpass_submit_ex(neko_immediate_draw_t* neko_idraw, neko_command_buffer_t* cb, neko_vec4 viewport, neko_graphics_clear_action_t action);
 
 // Core Matrix Functions
 NEKO_API_DECL void neko_idraw_push_matrix(neko_immediate_draw_t* neko_idraw, neko_idraw_matrix_type type);
@@ -150,8 +150,8 @@ NEKO_API_DECL void neko_idraw_scalef(neko_immediate_draw_t* neko_idraw, f32 x, f
 
 // Camera Utils
 NEKO_API_DECL void neko_idraw_camera(neko_immediate_draw_t* neko_idraw, neko_camera_t* cam, u32 width, u32 height);
-NEKO_API_DECL void neko_idraw_camera2D(neko_immediate_draw_t* neko_idraw, u32 width, u32 height);
-NEKO_API_DECL void neko_idraw_camera3D(neko_immediate_draw_t* neko_idraw, u32 width, u32 height);
+NEKO_API_DECL void neko_idraw_camera2d(neko_immediate_draw_t* neko_idraw, u32 width, u32 height);
+NEKO_API_DECL void neko_idraw_camera3d(neko_immediate_draw_t* neko_idraw, u32 width, u32 height);
 
 // Primitive Drawing Util
 NEKO_API_DECL void neko_idraw_triangle(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 x1, f32 y1, f32 x2, f32 y2, u8 r, u8 g, u8 b, u8 a, neko_graphics_primitive_type type);

@@ -17,22 +17,22 @@ neko_result __neko_audio_init(struct neko_audio_s *s) {
     neko_platform_t *platform = neko_subsystem(platform);
 
     HWND hwnd = (HWND)neko_platform_hwnd();
-    cs_init(hwnd, 44100, 1024, NULL);
+    neko_sound_init(hwnd, 44100, 1024, NULL);
 
-    cs_spawn_mix_thread();
-    // cs_mix_thread_sleep_delay(1);
+    neko_sound_spawn_mix_thread();
+    // neko_sound_mix_thread_sleep_delay(1);
 
     return NEKO_RESULT_SUCCESS;
 }
 neko_result __neko_audio_shutdown(struct neko_audio_s *s) {
 
-    cs_shutdown();
+    neko_sound_shutdown();
 
     return NEKO_RESULT_SUCCESS;
 }
 neko_result __neko_audio_update(struct neko_audio_s *s) {
 
-    cs_update(neko_subsystem(platform)->time.delta);
+    neko_sound_update(neko_subsystem(platform)->time.delta);
 
     return NEKO_RESULT_SUCCESS;
 }

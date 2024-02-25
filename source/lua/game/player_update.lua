@@ -14,29 +14,31 @@ function g_foo()
     -- print("g_foo")
 end
 
-function M.my_update()
+function M.my_update(dt)
     for obj, v2, v, p in ecs_world:match("all", "gameobj", "vector2", "velocity2", "player") do
 
         -- if gd.tick == 256 then
         --     gd.tick = 0
         -- end
 
+        local aseprite = SAFE_UD(p)
+
         if (gd.tick & 31) == 0 then
             if math.abs(v.dx) >= 0.6 or math.abs(v.dy) >= 0.6 then
-                SAFE_UD(p):update_animation("Run");
+                aseprite:update_animation("Run");
             else
-                SAFE_UD(p):update_animation("Idle");
+                aseprite:update_animation("Idle");
             end
         end
 
-        SAFE_UD(p):update()
+        aseprite:update()
 
-        local player_v = 3.1
+        local player_v
 
         if neko_was_key_down("NEKO_KEYCODE_LEFT_SHIFT") then
-            player_v = 5.1
+            player_v = 550.1 * dt
         else
-            player_v = 3.1
+            player_v = 220.1 * dt
         end
 
         if neko_was_key_down("NEKO_KEYCODE_A") then

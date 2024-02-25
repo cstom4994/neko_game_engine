@@ -16,18 +16,13 @@ if(NOT CMAKE_BUILD_TYPE)
         set(CMAKE_BUILD_TYPE "Debug")
 endif()
 
-# 输出编译类型
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 if(MSVC)
-        file(GLOB glfw_lib CONFIGURE_DEPENDS "dependencies/glfw/lib/*.lib")
-        file(GLOB 3rd_lib CONFIGURE_DEPENDS "dependencies/*.lib")
-
-        set(neko_engine_lib ${glfw_lib} ${3rd_lib})
-
+        file(GLOB glfw_lib CONFIGURE_DEPENDS "source/deps/glfw/lib/*.lib")
+        set(neko_engine_lib ${glfw_lib})
         include_directories(
-                "dependencies/glfw/include/"
-                "dependencies/netcore/"
+                "source/deps/glfw/include/"
         )
 else()
         find_package(OpenGL REQUIRED)
@@ -143,20 +138,60 @@ if(MSVC)
         endforeach()
 endif(MSVC)
 
+set(luasocket_src
+        source/deps/luasocket/auxiliar.c
+        source/deps/luasocket/buffer.c
+        source/deps/luasocket/compat.c
+        source/deps/luasocket/except.c
+        source/deps/luasocket/inet.c
+        source/deps/luasocket/io.c
+        source/deps/luasocket/luasocket.c
+        source/deps/luasocket/mime.c
+        source/deps/luasocket/options.c
+        source/deps/luasocket/select.c
+        source/deps/luasocket/tcp.c
+        source/deps/luasocket/timeout.c
+        source/deps/luasocket/udp.c
+)
+
+if(EMSCRIPTEN)
+        set(luasocket_src)
+        add_compile_definitions(LUA_USE_LONGJMP LUA_USE_POSIX)
+        set(CFLAGS -fno-exceptions)
+        set(LFLAGS -lpthread -sASYNCIFY -sALLOW_MEMORY_GROWTH -sUSE_WEBGL2)
+
+elseif(WIN32)
+        set(luasocket_src ${luasocket_src} source/deps/luasocket/wsocket.c)
+        add_compile_definitions(LUA_USE_LONGJMP)
+
+elseif(UNIX)
+        set(luasocket_src
+                ${luasocket_src}
+                source/deps/luasocket/serial.c
+                source/deps/luasocket/unix.c
+                source/deps/luasocket/unixdgram.c
+                source/deps/luasocket/unixstream.c
+                source/deps/luasocket/usocket.c
+        )
+        add_compile_definitions(LUA_USE_LINUX)
+        set(LFLAGS -lX11 -lXi -lXcursor -lasound -lGL -ldl -lpthread -lm)
+endif()
+
 file(GLOB_RECURSE neko_engine_src CONFIGURE_DEPENDS "source/engine/**.*")
 
-file(GLOB_RECURSE luaecs_src CONFIGURE_DEPENDS "source/libs/luaecs/**.*")
+file(GLOB_RECURSE luaecs_src CONFIGURE_DEPENDS "source/deps/luaecs/**.*")
 
 set(neko_engine_src_all
         ${neko_engine_src}
         ${luaecs_src}
-        "source/libs/impl_build.cpp"
+        "source/deps/impl_build.cpp"
 )
 
 file(GLOB_RECURSE neko_game_src CONFIGURE_DEPENDS "source/sandbox/**.*")
 
 set(neko_game_src_all
         ${neko_game_src}
+        ${luasocket_src}
 )
 
 set(tools_packer_src

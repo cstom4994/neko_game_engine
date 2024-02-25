@@ -296,7 +296,7 @@ NEKO_API_PRIVATE s32 _neko_ccd_gjk_internal(const void* c0, const neko_vqs* xfor
 
 #ifndef NEKO_PHYSICS_NO_CCD
 
-#include "libs/ccd/src/ccd/ccd_vec3.h"
+#include "deps/ccd/src/ccd/ccd_vec3.h"
 
 // Internal collision object conversion handle
 typedef struct _neko_collision_obj_handle_t {
@@ -428,9 +428,9 @@ NEKO_API_DECL neko_raycast_data_t neko_physics_scene_raycast(neko_physics_scene_
 
 // Includes
 #ifndef NEKO_PHYSICS_NO_CCD
-#include "libs/ccd/src/ccd/ccd.h"
-#include "libs/ccd/src/ccd/ccd_quat.h"
-#include "libs/ccd/src/ccd/ccd_vec3.h"
+#include "deps/ccd/src/ccd/ccd.h"
+#include "deps/ccd/src/ccd/ccd_quat.h"
+#include "deps/ccd/src/ccd/ccd_vec3.h"
 #endif
 
 /*==== Support Functions =====*/

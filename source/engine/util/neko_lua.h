@@ -5,9 +5,9 @@
 #include "engine/neko.h"
 
 // lua
-#include "libs/lua/lauxlib.h"
-#include "libs/lua/lua.h"
-#include "libs/lua/lualib.h"
+#include "deps/lua/lauxlib.h"
+#include "deps/lua/lua.h"
+#include "deps/lua/lualib.h"
 
 #ifndef _WIN32
 #include <stdint.h>
@@ -511,8 +511,5 @@ NEKO_API_DECL int luaopen_cstruct_core(lua_State *L);
 NEKO_API_DECL int luaopen_cstruct_test(lua_State *L);
 NEKO_API_DECL int luaopen_datalist(lua_State *L);
 NEKO_API_DECL int luaopen_ds_core(lua_State *L);
-
-// neko
-NEKO_API_DECL int luaopen_neko_ecs(lua_State *L);
 
 #endif

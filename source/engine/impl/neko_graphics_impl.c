@@ -24,8 +24,8 @@
 #ifndef NEKO_GRAPHICS_IMPL_H
 #define NEKO_GRAPHICS_IMPL_H
 
-#define GLAD_IMPL
-#include "libs/glad/glad_impl.h"
+#define NEKO_GL_IMPL
+#include "engine/builtin/neko_gl_impl.h"
 
 #ifndef NEKO_GRAPHICS_IMPL_CUSTOM
 #define NEKO_GRAPHICS_IMPL_DEFAULT
@@ -2467,7 +2467,15 @@ NEKO_API_DECL void neko_graphics_renderpass_end(neko_command_buffer_t* cb) {
                        });
 }
 
-NEKO_API_DECL void neko_graphics_clear(neko_command_buffer_t* cb, neko_graphics_clear_desc_t* desc) {
+NEKO_API_DECL void neko_graphics_clear(neko_command_buffer_t* cb, neko_graphics_clear_action_t action) {
+    __ogl_push_command(cb, NEKO_OPENGL_OP_CLEAR, {
+        u32 count = 1;
+        neko_byte_buffer_write(&cb->commands, u32, count);
+        neko_byte_buffer_write(&cb->commands, neko_graphics_clear_action_t, action);
+    });
+}
+
+NEKO_API_DECL void neko_graphics_clear_ex(neko_command_buffer_t* cb, neko_graphics_clear_desc_t* desc) {
     __ogl_push_command(cb, NEKO_OPENGL_OP_CLEAR, {
         u32 count = !desc->actions ? 0 : !desc->size ? 1 : (u32)((size_t)desc->size / (size_t)sizeof(neko_graphics_clear_action_t));
         neko_byte_buffer_write(&cb->commands, u32, count);

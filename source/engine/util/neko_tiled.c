@@ -219,10 +219,7 @@ void neko_tiled_unload(map_t *map) {
     neko_xml_free(map->doc);
 }
 
-void neko_tiled_render_init(neko_command_buffer_t *cb, neko_tiled_renderer *renderer, const_str vert_path, const_str frag_path) {
-
-    char *vert_src = neko_read_file_contents(vert_path, "rb", NULL);
-    char *frag_src = neko_read_file_contents(frag_path, "rb", NULL);
+void neko_tiled_render_init(neko_command_buffer_t *cb, neko_tiled_renderer *renderer, const_str vert_src, const_str frag_src) {
 
     neko_graphics_vertex_buffer_desc_t vb_decl = {
             .data = NULL,
@@ -274,9 +271,6 @@ void neko_tiled_render_init(neko_command_buffer_t *cb, neko_tiled_renderer *rend
                                                                 },
                                                         .size = 4 * sizeof(neko_graphics_vertex_attribute_desc_t)},
                                              .blend = {.func = NEKO_GRAPHICS_BLEND_EQUATION_ADD, .src = NEKO_GRAPHICS_BLEND_MODE_SRC_ALPHA, .dst = NEKO_GRAPHICS_BLEND_MODE_ONE_MINUS_SRC_ALPHA}});
-
-    neko_safe_free(vert_src);
-    neko_safe_free(frag_src);
 }
 
 void neko_tiled_render_deinit(neko_tiled_renderer *renderer) {

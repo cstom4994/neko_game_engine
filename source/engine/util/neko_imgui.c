@@ -2832,7 +2832,7 @@ NEKO_API_DECL void neko_core_ui_begin(neko_core_ui_context_t* ctx, const neko_co
     // Set up overlay draw list
     neko_vec2 fbs = ctx->framebuffer_size;
     neko_idraw_defaults(&ctx->overlay_draw_list);
-    neko_idraw_camera2D(&ctx->overlay_draw_list, (u32)ctx->viewport.w, (u32)ctx->viewport.h);  // Need to pass in a viewport for this instead
+    neko_idraw_camera2d(&ctx->overlay_draw_list, (u32)ctx->viewport.w, (u32)ctx->viewport.h);  // Need to pass in a viewport for this instead
 
     for (neko_slot_array_iter it = neko_slot_array_iter_new(ctx->splits); neko_slot_array_iter_valid(ctx->splits, it); neko_slot_array_iter_advance(ctx->splits, it)) {
         if (!it) continue;
@@ -3400,7 +3400,7 @@ NEKO_API_DECL void neko_core_ui_render(neko_core_ui_context_t* ctx, neko_command
 
     neko_idraw_defaults(&ctx->gui_idraw);
     // neko_idraw_camera2D(&ctx->gsi, (u32)fb.x, (u32)fb.y);
-    neko_idraw_camera2D(&ctx->gui_idraw, (u32)viewport->w, (u32)viewport->h);
+    neko_idraw_camera2d(&ctx->gui_idraw, (u32)viewport->w, (u32)viewport->h);
     neko_idraw_blend_enabled(&ctx->gui_idraw, true);
 
     neko_core_ui_rect_t clip = neko_core_ui_unclipped_rect;
@@ -3418,7 +3418,7 @@ NEKO_API_DECL void neko_core_ui_render(neko_core_ui_context_t* ctx, neko_command
 
                 neko_idraw_defaults(&ctx->gui_idraw);
                 // neko_idraw_camera2D(&ctx->gsi, (u32)fb.x, (u32)fb.y);
-                neko_idraw_camera2D(&ctx->gui_idraw, (u32)viewport->w, (u32)viewport->h);
+                neko_idraw_camera2d(&ctx->gui_idraw, (u32)viewport->w, (u32)viewport->h);
                 neko_idraw_blend_enabled(&ctx->gui_idraw, true);
                 // neko_graphics_set_viewport(&ctx->gsi.commands, 0, 0, (u32)fb.x, (u32)fb.y);
                 neko_graphics_set_viewport(&ctx->gui_idraw.commands, (u32)viewport->x, (u32)viewport->y, (u32)viewport->w, (u32)viewport->h);
@@ -3569,26 +3569,22 @@ NEKO_API_DECL void neko_core_ui_renderpass_submit(neko_core_ui_context_t* ctx, n
     action.color[1] = (float)c.g / 255.f;
     action.color[2] = (float)c.b / 255.f;
     action.color[3] = (float)c.a / 255.f;
-    neko_graphics_clear_desc_t clear = neko_default_val();
-    clear.actions = &action;
     neko_graphics_renderpass_begin(cb, NEKO_GRAPHICS_RENDER_PASS_DEFAULT);
     {
-        neko_graphics_clear(cb, &clear);
+        neko_graphics_clear(cb, action);
         neko_graphics_set_viewport(cb, (u32)vp->x, (u32)vp->y, (u32)vp->w, (u32)vp->h);
         neko_core_ui_render(ctx, cb);
     }
     neko_graphics_renderpass_end(cb);
 }
 
-NEKO_API_DECL void neko_core_ui_renderpass_submit_ex(neko_core_ui_context_t* ctx, neko_command_buffer_t* cb, neko_graphics_clear_action_t* action) {
+NEKO_API_DECL void neko_core_ui_renderpass_submit_ex(neko_core_ui_context_t* ctx, neko_command_buffer_t* cb, neko_graphics_clear_action_t action) {
     neko_vec2 fbs = ctx->framebuffer_size;
     neko_core_ui_rect_t* vp = &ctx->viewport;
-    neko_graphics_clear_desc_t clear = neko_default_val();
-    clear.actions = action;
     neko_renderpass_t pass = neko_default_val();
     neko_graphics_renderpass_begin(cb, pass);
     neko_graphics_set_viewport(cb, (u32)vp->x, (u32)vp->y, (u32)vp->w, (u32)vp->h);
-    neko_graphics_clear(cb, &clear);
+    neko_graphics_clear(cb, action);
     neko_core_ui_render(ctx, cb);
     neko_graphics_renderpass_end(cb);
 }

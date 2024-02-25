@@ -103,11 +103,11 @@ void neko_asset_default_load_from_file(const_str path, void *out) {
 ==========================*/
 
 // CGLTF
-#include "libs/cgltf/cgltf.h"
+#include "deps/cgltf/cgltf.h"
 
 // STB
-#include "libs/imgui/imstb_rectpack.h"
-#include "libs/imgui/imstb_truetype.h"
+#include "deps/imgui/imstb_rectpack.h"
+#include "deps/imgui/imstb_truetype.h"
 
 NEKO_API_DECL bool32_t neko_util_load_texture_data_from_memory(const void *memory, size_t sz, s32 *width, s32 *height, u32 *num_comps, void **data, bool32_t flip_vertically_on_load) {
     // Load texture data
@@ -1286,7 +1286,7 @@ static void neko_font_fnt_decode(neko_fnt *fnt, void *input_data, neko_font_fnt_
 
 #pragma region packer
 
-// #include "libs/lz4/lz4.h"
+// #include "deps/lz4/lz4.h"
 
 #if __linux__ || __APPLE__
 #define openFile(filePath, mode) fopen(filePath, mode)

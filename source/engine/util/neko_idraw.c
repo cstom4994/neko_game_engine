@@ -4,8 +4,8 @@
 #include "engine/builtin/neko_png.h"
 
 // STB
-#include "libs/imgui/imstb_rectpack.h"
-#include "libs/imgui/imstb_truetype.h"
+#include "deps/imgui/imstb_rectpack.h"
+#include "deps/imgui/imstb_truetype.h"
 
 // 立即绘制模式 静态数据的全局实例
 neko_immediate_draw_static_data_t* g_neko_idraw = NULL;
@@ -423,7 +423,7 @@ void neko_idraw_rect_textured_ext(neko_immediate_draw_t* neko_idraw, f32 x0, f32
     neko_idraw_texture(neko_idraw, (neko_texture_t){0});
 }
 
-/* Core Vertex Functions */
+// 核心顶点函数
 void neko_idraw_begin(neko_immediate_draw_t* neko_idraw, neko_graphics_primitive_type type) {
     switch (type) {
         default:
@@ -877,7 +877,7 @@ void neko_idraw_camera(neko_immediate_draw_t* neko_idraw, neko_camera_t* cam, u3
     neko_idraw_load_matrix(neko_idraw, neko_camera_get_view_projection(cam, width, height));
 }
 
-void neko_idraw_camera2D(neko_immediate_draw_t* neko_idraw, u32 width, u32 height) {
+void neko_idraw_camera2d(neko_immediate_draw_t* neko_idraw, u32 width, u32 height) {
     // Flush previous
     neko_idraw_flush(neko_idraw);
     f32 l = 0.f, r = (f32)width, tp = 0.f, b = (f32)height;
@@ -885,7 +885,7 @@ void neko_idraw_camera2D(neko_immediate_draw_t* neko_idraw, u32 width, u32 heigh
     neko_idraw_load_matrix(neko_idraw, ortho);
 }
 
-void neko_idraw_camera3D(neko_immediate_draw_t* neko_idraw, u32 width, u32 height) {
+void neko_idraw_camera3d(neko_immediate_draw_t* neko_idraw, u32 width, u32 height) {
     // Flush previous
     neko_idraw_flush(neko_idraw);
     neko_camera_t c = neko_camera_perspective();
@@ -1343,8 +1343,8 @@ void neko_idraw_sphere(neko_immediate_draw_t* neko_idraw, f32 cx, f32 cy, f32 cz
 #define make_vert(V, I, J, XZ, SECANGLE)                   \
     do {                                                   \
         /* vertex position (x, y, z) */                    \
-        V.p.x = cx + (XZ)*cosf((SECANGLE));                \
-        V.p.z = cz + (XZ)*sinf((SECANGLE));                \
+        V.p.x = cx + (XZ) * cosf((SECANGLE));              \
+        V.p.z = cz + (XZ) * sinf((SECANGLE));              \
         /* vertex tex coord (s, t) range between [0, 1] */ \
         V.uv.x = (f32)(J) / sectors;                       \
         V.uv.y = (f32)(I) / stacks;                        \
@@ -1598,23 +1598,19 @@ NEKO_API_DECL void neko_idraw_renderpass_submit(neko_immediate_draw_t* neko_idra
     action.color[1] = (f32)c.g / 255.f;
     action.color[2] = (f32)c.b / 255.f;
     action.color[3] = (f32)c.a / 255.f;
-    neko_graphics_clear_desc_t clear = neko_default_val();
-    clear.actions = &action;
     neko_renderpass_t pass = neko_default_val();
     neko_graphics_renderpass_begin(cb, pass);
     neko_graphics_set_viewport(cb, (u32)viewport.x, (u32)viewport.y, (u32)viewport.z, (u32)viewport.w);
-    neko_graphics_clear(cb, &clear);
+    neko_graphics_clear(cb, action);
     neko_idraw_draw(neko_idraw, cb);
     neko_graphics_renderpass_end(cb);
 }
 
-NEKO_API_DECL void neko_idraw_renderpass_submit_ex(neko_immediate_draw_t* neko_idraw, neko_command_buffer_t* cb, neko_vec4 viewport, neko_graphics_clear_action_t* action) {
-    neko_graphics_clear_desc_t clear = neko_default_val();
-    clear.actions = action;
+NEKO_API_DECL void neko_idraw_renderpass_submit_ex(neko_immediate_draw_t* neko_idraw, neko_command_buffer_t* cb, neko_vec4 viewport, neko_graphics_clear_action_t action) {
     neko_renderpass_t pass = neko_default_val();
     neko_graphics_renderpass_begin(cb, pass);
     neko_graphics_set_viewport(cb, (u32)viewport.x, (u32)viewport.y, (u32)viewport.z, (u32)viewport.w);
-    neko_graphics_clear(cb, &clear);
+    neko_graphics_clear(cb, action);
     neko_idraw_draw(neko_idraw, cb);
     neko_graphics_renderpass_end(cb);
 }

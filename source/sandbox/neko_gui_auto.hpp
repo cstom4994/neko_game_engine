@@ -24,7 +24,7 @@
 #include "engine/util/neko_gui.h"
 
 // ImGui
-#include "libs/imgui/imgui.h"
+#include "deps/imgui/imgui.h"
 
 #define neko_imgui_tree_max_elementsize sizeof(std::string)
 #define neko_imgui_tree_max_tuple 3

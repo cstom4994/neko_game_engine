@@ -247,8 +247,6 @@ static void lua_reg(lua_State *L) {
 
     luaopen_cstruct_core(L);
     luaopen_cstruct_test(L);
-    // luaopen_datalist(L);
-    luaopen_neko_ecs(L);
 
     neko_register(L);
 

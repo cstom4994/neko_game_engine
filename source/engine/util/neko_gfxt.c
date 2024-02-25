@@ -1,7 +1,7 @@
 
 #include "neko_gfxt.h"
 
-#include "libs/cgltf/cgltf.h"
+#include "deps/cgltf/cgltf.h"
 
 // Creation/Destruction
 NEKO_API_DECL neko_gfxt_pipeline_t neko_gfxt_pipeline_create(const neko_gfxt_pipeline_desc_t* desc) {

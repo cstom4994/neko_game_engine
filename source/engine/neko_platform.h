@@ -75,6 +75,7 @@ typedef struct neko_platform_running_desc_s {
     f32 frame_rate;
     const_str engine_args;
     bool center;
+    bool running_background;
 } neko_platform_running_desc_t;
 
 typedef struct neko_platform_window_s {
@@ -643,7 +644,6 @@ NEKO_API_DECL u32 neko_platform_framebuffer_height(u32 handle);
 NEKO_API_DECL neko_vec2 neko_platform_monitor_sizev(u32 id);
 NEKO_API_DECL void neko_platform_window_set_clipboard(u32 handle, const_str str);
 NEKO_API_DECL const_str neko_platform_window_get_clipboard(u32 handle);
-
 NEKO_API_DECL neko_vec2 neko_platform_get_window_dpi();
 
 // Platform callbacks
@@ -660,6 +660,7 @@ NEKO_API_DECL void neko_platform_msgbox(const_str msg);
 // Platform Internal
 NEKO_API_DECL void __neko_initialize_symbol_handler();
 NEKO_API_DECL const_str __neko_inter_stacktrace();
+NEKO_API_DECL bool __neko_platform_is_wine();
 
 /*============================================================
 // Platform Native
