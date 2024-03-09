@@ -4082,10 +4082,10 @@ NEKO_GUI_API const struct neko_gui_draw_command *neko_gui__draw_next(const struc
 
 #ifdef NEKO_GUI_INCLUDE_FONT_BAKING
 
-#include "libs/imgui/imstb_rectpack.h"
+#include "deps/imgui/imstb_rectpack.h"
 
 #define STBTT_MAX_OVERSAMPLE 8
-#include "libs/imgui/imstb_truetype.h"
+#include "deps/imgui/imstb_truetype.h"
 
 struct neko_gui_font_bake_data {
     struct stbtt_fontinfo info;

@@ -7,23 +7,24 @@ require("common/hotfix")
 
 neko_web_console = require "web_console"
 
+tweens = require "tweens"
+
 c_gameobject = require("gameobject")
 
-neko_game = {}
+neko_game = {
+    app = {
+        title = "sandbox",
+        width = 1440,
+        height = 880
+    },
+    cvar = {
+        show_demo_window = false,
+        show_physics_debug = false,
 
-neko_game.app = {
-    title = "sandbox",
-    width = 1440,
-    height = 880
-}
-
-neko_game.cvar = {
-    show_demo_window = false,
-    show_physics_debug = false,
-
-    -- experimental features 实验性功能
-    enable_nekolua = false,
-    enable_hotload = true
+        -- experimental features 实验性功能
+        enable_nekolua = false,
+        enable_hotload = true
+    }
 }
 
 game_data = {}
@@ -81,21 +82,6 @@ SAFE_SD = function(tb)
     end
 end
 
-test_filewatch_callback = function(change, virtual_path)
-    print(change, virtual_path)
-
-    if change == "FILEWATCH_FILE_MODIFIED" then
-
-        for t in ecs_world:match("all", "tiled_map") do
-            if virtual_path == t.path then
-                neko.tiled_unload(SAFE_UD(t))
-                neko.tiled_load(SAFE_UD(t), neko_file_path("gamedir" .. t.path))
-            end
-        end
-
-    end
-end
-
 phy_world = PHY.fetch_world(64)
 
 local function phy_world_get_cellsize(world, cx, cy)
@@ -126,15 +112,25 @@ end
 
 local blocks = {}
 
-local function phy_add_block(x, y, w, h)
+local function phy_add_block(x, y, w, h, type)
     local block = {
         x = x,
         y = y,
         w = w,
-        h = h
+        h = h,
+        type = type
     }
     blocks[#blocks + 1] = block
     phy_world:add(block, x, y, w, h)
+end
+
+local function phy_del_block_by_type(type)
+    for i, block in ipairs(blocks) do
+        if block.type == type then
+            blocks[i] = nil
+            phy_world:remove(block)
+        end
+    end
 end
 
 local function draw_blocks()
@@ -143,7 +139,45 @@ local function draw_blocks()
         local v1 = to_vec2(block.x, block.y)
         local v2 = to_vec2(block.w, block.h)
 
-        neko.idraw_rectvd(v1, v2, "NEKO_GRAPHICS_PRIMITIVE_TRIANGLES")
+        neko.idraw_rectvd(v1, v2, to_vec2(0.0, 0.0), to_vec2(1.0, 1.0), "NEKO_GRAPHICS_PRIMITIVE_TRIANGLES")
+    end
+end
+
+local function phy_world_tiled_load(tiled_ud)
+    print("phy_world_tiled_load()")
+    local object_groups = neko_tiled_get_objects(tiled_ud)
+    -- print(dump_func(ttttt))
+    for object_group_name, v in pairs(object_groups) do
+        if object_group_name == "collisions" then
+            for ii, vv in ipairs(v) do
+                print(("%s %d"):format(object_group_name, ii), dump_func(vv))
+                phy_add_block(vv[1], vv[2], vv[3], vv[4], "tiled")
+            end
+        end
+    end
+end
+
+local function phy_world_tiled_unload(tiled_ud)
+    print("phy_world_tiled_unload()")
+
+    phy_del_block_by_type("tiled")
+
+end
+
+test_filewatch_callback = function(change, virtual_path)
+    print(change, virtual_path)
+
+    if change == "FILEWATCH_FILE_MODIFIED" then
+
+        for t in ecs_world:match("all", "tiled_map") do
+            if virtual_path == t.path then
+                phy_world_tiled_unload(SAFE_UD(t))
+                neko.tiled_unload(SAFE_UD(t))
+                neko.tiled_load(SAFE_UD(t), neko_file_path("gamedir" .. t.path))
+                phy_world_tiled_load(SAFE_UD(t))
+            end
+        end
+
     end
 end
 
@@ -169,22 +203,27 @@ game_init_thread = function()
     --     print(k, v)
     -- end
 
+    test_pack = neko.pack_construct("test_pack_handle", neko_file_path("gamedir/res.pack"))
+    test_handle = neko.pack_assets_load(test_pack, ".\\data\\assets\\textures\\cat.aseprite")
+
 end
 
 game_init = function()
 
+    win_w, win_h = neko_window_size(neko_main_window())
+
     gd.fbo = neko.graphics_framebuffer_create()
-    gd.rt = neko.graphics_texture_create()
+    -- gd.rt = neko.graphics_texture_create(64 * 16 * 2, 32 * 16 * 2)
+    gd.rt = neko.graphics_texture_create(win_w, win_h)
     gd.rp = neko.graphics_renderpass_create(gd.fbo, gd.rt)
 
-    -- test_pack = neko_pack_construct("test_pack_handle", neko_file_path("gamedir/res.pack"))
-    -- test_handle = neko_pack_assets_load(test_pack, ".\\fonts\\fusion-pixel.ttf")
+    gd.cam = to_vec2(0.0, 0.0)
 
     -- default_font = neko_fontcache_load(test_handle, 18.0)
 
     -- neko_fontcache_set_default_font(default_font)
 
-    gd.test_witch_spr = neko.sprite_create(neko_file_path("gamedir/assets/textures/B_witch.ase"));
+    gd.test_witch_spr = neko.sprite.create(neko_file_path("gamedir/assets/textures/B_witch.ase"));
 
     eid1 = ecs_world:new{
         gameobj = {
@@ -194,8 +233,8 @@ game_init = function()
             sd = c_gameobject.new_obj(1001, true, true)
         },
         vector2 = {
-            x = 120,
-            y = 120
+            x = 360,
+            y = 420
         },
         velocity2 = {
             dx = 0,
@@ -211,7 +250,7 @@ game_init = function()
 
     phy_world:add(player, v2.x, v2.y, player_obj.w * player.scale, player_obj.h * player.scale)
 
-    phy_add_block(800 - 32, 120, 32, 600 - 32 * 2)
+    -- phy_add_block(800 - 32, 120, 32, 600 - 32 * 2)
 
     eid2 = ecs_world:new{
         gameobj = {
@@ -234,18 +273,7 @@ game_init = function()
 
     local tiled_v2, tiled_v, tiled, tiled_obj = ecs_world:get(eid2, "vector2", "velocity2", "tiled_map", "gameobj")
 
-    print("=======================")
-    local ttttt = neko_tiled_get_objects(SAFE_UD(tiled))
-    print(dump_func(ttttt))
-
-    for object_group_name, v in pairs(ttttt) do
-        if object_group_name == "collisions" then
-            for ii, vv in ipairs(v) do
-                print(("%s %d"):format(object_group_name, ii), dump_func(vv))
-                phy_add_block(vv[1], vv[2], vv[3], vv[4])
-            end
-        end
-    end
+    phy_world_tiled_load(SAFE_UD(tiled))
 
     test_audio = neko.audio_load("C:/Users/kaoruxun/Projects/Neko/dataWak/audio/otoha.wav")
 
@@ -301,9 +329,10 @@ game_init = function()
 end
 
 game_shutdown = function()
-    -- neko.pack_destroy(test_pack)
+    neko.pack_assets_unload(test_handle)
+    neko.pack_destroy(test_pack)
 
-    neko.sprite_end(gd.test_witch_spr)
+    -- neko.sprite_end(gd.test_witch_spr)
 
     for v2, t in ecs_world:match("all", "vector2", "tiled_map") do
         neko.tiled_end(SAFE_UD(t))
@@ -362,6 +391,8 @@ game_update = function(dt)
         print("max_dt", max_dt)
     end
 
+    tweens.update(dt)
+
     gd.hot_code.my_update(dt)
 
     for v2, v, t in ecs_world:match("all", "vector2", "velocity2", "tiled_map") do
@@ -369,9 +400,9 @@ game_update = function(dt)
         local player_v
 
         if neko_was_key_down("NEKO_KEYCODE_LEFT_SHIFT") then
-            player_v = 50.1 * dt
+            player_v = 250.1 * dt
         else
-            player_v = 20.1 * dt
+            player_v = 220.1 * dt
         end
 
         if neko_was_key_down("NEKO_KEYCODE_LEFT") then
@@ -387,8 +418,11 @@ game_update = function(dt)
             v.dy = v.dy + player_v
         end
 
-        v2.x = v2.x + v.dx
-        v2.y = v2.y + v.dy
+        gd.cam.x = gd.cam.x + v.dx
+        gd.cam.y = gd.cam.y + v.dy
+
+        -- v2.x = v2.x - v.dx
+        -- v2.y = v2.y - v.dy
 
         v.dx = v.dx / 2.0
         v.dy = v.dy / 2.0
@@ -403,7 +437,25 @@ game_render = function()
     fbs_x, fbs_y = neko_framebuffer_size()
 
     neko.idraw_defaults()
-    neko.idraw_camera2d(fbs_x, fbs_y)
+    -- neko.idraw_camera2d(fbs_x, fbs_y)
+    neko.idraw_camera2d_ex(gd.cam.x, fbs_x + gd.cam.x, gd.cam.y, fbs_y + gd.cam.y)
+
+    -- neko.idraw_defaults()
+    neko.idraw_rectv(to_vec2(0, 0), to_vec2(50, 50), "NEKO_GRAPHICS_PRIMITIVE_LINES")
+
+    for v2, t in ecs_world:match("all", "vector2", "tiled_map") do
+        neko.tiled_render(SAFE_UD(t), 0, to_vec2(0, 0), gd.cam.x, fbs_x + gd.cam.x, gd.cam.y, fbs_y + gd.cam.y)
+
+        -- neko.idraw_texture(gd.rt)
+        -- neko.idraw_rectvd(v2, to_vec2(64 * 16 * 2, 32 * 16 * 2), to_vec2(0.0, 1.0), to_vec2(1.0, 0.0),
+        --     "NEKO_GRAPHICS_PRIMITIVE_TRIANGLES")
+
+        neko.idraw_defaults()
+        neko.idraw_text(v2.x, v2.y - 10, ("tiled_map x:%f y:%f"):format(v2.x, v2.y))
+        neko.idraw_defaults()
+    end
+
+    local player_pos
 
     for v2, v, p, obj in ecs_world:match("all", "vector2", "velocity2", "player", "gameobj") do
         local direction = 0
@@ -413,19 +465,20 @@ game_render = function()
 
         SAFE_UD(p):render(v2, direction, p.scale)
 
+        player_pos = v2
+
         neko.idraw_rectv(v2, {
             x = obj.w * p.scale,
             y = obj.h * p.scale
         }, "NEKO_GRAPHICS_PRIMITIVE_LINES")
     end
 
-    for v2, t in ecs_world:match("all", "vector2", "tiled_map") do
-        neko.tiled_render(SAFE_UD(t), v2)
-
-        neko.idraw_defaults()
-        neko.idraw_text(v2.x, v2.y - 10, ("tiled_map x:%f y:%f"):format(v2.x, v2.y))
-        neko.idraw_defaults()
-    end
+    local cc_x = player_pos.x - win_w / 2 + 24 * 3
+    local cc_y = player_pos.y - win_h / 2 + 24 * 3
+    tweens.to(gd.cam, 1.5, {
+        x = cc_x,
+        y = cc_y
+    }):ease("cubicout")
 
     for v2, t in ecs_world:match("all", "vector2", "custom_sprite") do
         neko.custom_sprite_render(SAFE_UD(t))
@@ -447,7 +500,7 @@ game_render = function()
         neko.gameobject_inspect(SAFE_SD(obj))
     end
 
-    neko.draw_text(50.0, 50.0, "中文渲染测试 日本語レンダリングテスト Hello World! ", 3.0)
+    -- neko.draw_text(50.0, 50.0, "中文渲染测试 日本語レンダリングテスト Hello World! ", 3.0)
 
     if neko_game.cvar.show_physics_debug then
         phy_debug_draw()
@@ -560,8 +613,6 @@ test_update = function()
         -- neko_callback_call("callback1", "haha1")
         -- neko_callback_call("callback2", "haha2", "haha3")
     end
-
-    win_w, win_h = neko_window_size(neko_main_window())
 
     -- neko_text("NekoEngine 内部测试版本", default_font, 20, win_h - 20)
 

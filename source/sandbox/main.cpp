@@ -965,9 +965,6 @@ neko_script_binary_t *ns_load_module(char *name) {
     return NULL;
 }
 
-// neko_assetsys_t *g_assetsys;
-// neko_filewatch_t *g_filewatch;
-
 game_editor_console console_new;
 
 // lua
@@ -1437,19 +1434,19 @@ void game_update() {
         { neko_graphics_clear(&g_cb, clear); }
         neko_graphics_renderpass_end(&g_cb);
 
-        // 设置投影矩阵的 2D 相机
-        neko_idraw_defaults(&g_idraw);
-        neko_idraw_camera2d(&g_idraw, (u32)fbs.x, (u32)fbs.y);
+        // // 设置投影矩阵的 2D 相机
+        // neko_idraw_defaults(&g_idraw);
+        // neko_idraw_camera2d(&g_idraw, (u32)fbs.x, (u32)fbs.y);
 
-        // 底层图片
-        char background_text[64] = "Project: unknown";
+        // // 底层图片
+        // char background_text[64] = "Project: unknown";
 
-        neko_vec2 td = neko_asset_ascii_font_text_dimensions(neko_idraw_default_font(), background_text, -1);
-        neko_vec2 ts = neko_v2(512 + 128, 512 + 128);
+        // neko_vec2 td = neko_asset_ascii_font_text_dimensions(neko_idraw_default_font(), background_text, -1);
+        // neko_vec2 ts = neko_v2(512 + 128, 512 + 128);
 
-        neko_idraw_text(&g_idraw, (fbs.x - td.x) * 0.5f, (fbs.y - td.y) * 0.5f + ts.y / 2.f - 100.f, background_text, NULL, false, 255, 255, 255, 255);
-        neko_idraw_texture(&g_idraw, g_test_ase);
-        neko_idraw_rectvd(&g_idraw, neko_v2((fbs.x - ts.x) * 0.5f, (fbs.y - ts.y) * 0.5f - td.y - 50.f), ts, neko_v2(0.f, 1.f), neko_v2(1.f, 0.f), NEKO_COLOR_WHITE, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
+        // neko_idraw_text(&g_idraw, (fbs.x - td.x) * 0.5f, (fbs.y - td.y) * 0.5f + ts.y / 2.f - 100.f, background_text, NULL, false, 255, 255, 255, 255);
+        // neko_idraw_texture(&g_idraw, g_test_ase);
+        // neko_idraw_rectvd(&g_idraw, neko_v2((fbs.x - ts.x) * 0.5f, (fbs.y - ts.y) * 0.5f - td.y - 50.f), ts, neko_v2(0.f, 1.f), neko_v2(1.f, 0.f), NEKO_COLOR_WHITE, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
 
 #pragma region AI
 

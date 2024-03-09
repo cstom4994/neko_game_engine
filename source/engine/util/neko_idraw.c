@@ -873,7 +873,7 @@ void neko_idraw_scalef(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, f32 z) {
 void neko_idraw_scalev(neko_immediate_draw_t* neko_idraw, neko_vec3 v) { neko_idraw_mul_matrix(neko_idraw, neko_mat4_scalev(v)); }
 
 void neko_idraw_camera(neko_immediate_draw_t* neko_idraw, neko_camera_t* cam, u32 width, u32 height) {
-    // Just grab main window for now. Will need to grab top of viewport stack in future
+    // 现在只需集成主窗口即可 将来需要占据视口堆栈的顶部
     neko_idraw_load_matrix(neko_idraw, neko_camera_get_view_projection(cam, width, height));
 }
 
@@ -882,6 +882,13 @@ void neko_idraw_camera2d(neko_immediate_draw_t* neko_idraw, u32 width, u32 heigh
     neko_idraw_flush(neko_idraw);
     f32 l = 0.f, r = (f32)width, tp = 0.f, b = (f32)height;
     neko_mat4 ortho = neko_mat4_ortho(l, r, b, tp, -1.f, 1.f);
+    neko_idraw_load_matrix(neko_idraw, ortho);
+}
+
+void neko_idraw_camera2d_ex(neko_immediate_draw_t* neko_idraw, f32 l, f32 r, f32 t, f32 b) {
+    // Flush previous
+    neko_idraw_flush(neko_idraw);
+    neko_mat4 ortho = neko_mat4_ortho(l, r, b, t, -1.f, 1.f);
     neko_idraw_load_matrix(neko_idraw, ortho);
 }
 

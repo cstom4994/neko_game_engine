@@ -216,6 +216,8 @@ void neko_tiled_unload(map_t *map) {
     neko_dyn_array_free(map->layers);
     neko_dyn_array_free(map->tilesets);
 
+    neko_dyn_array_free(map->object_groups);
+
     neko_xml_free(map->doc);
 }
 
@@ -300,10 +302,10 @@ void neko_tiled_render_begin(neko_command_buffer_t *cb, neko_tiled_renderer *ren
 
 void neko_tiled_render_flush(neko_command_buffer_t *cb, neko_tiled_renderer *renderer) {
 
-    const neko_vec2 ws = neko_platform_window_sizev(neko_platform_main_window());
-    neko_graphics_set_viewport(cb, 0, 0, ws.x, ws.y);
+    // const neko_vec2 ws = neko_platform_window_sizev(neko_platform_main_window());
+    // neko_graphics_set_viewport(cb, 0, 0, ws.x, ws.y);
 
-    renderer->camera_mat = neko_mat4_ortho(0.0f, ws.x, ws.y, 0.0f, -1.0f, 1.0f);
+    // renderer->camera_mat = neko_mat4_ortho(0.0f, ws.x, ws.y, 0.0f, -1.0f, 1.0f);
 
     // clang-format off
     neko_graphics_bind_desc_t binds = {

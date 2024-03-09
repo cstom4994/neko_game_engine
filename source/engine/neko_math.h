@@ -621,14 +621,12 @@ neko_inline neko_mat4 neko_mat4_inverse(neko_mat4 m) {
     return res;
 }
 
-/*
-    f32 l : left
-    f32 r : right
-    f32 b : bottom
-    f32 t : top
-    f32 n : near
-    f32 f : far
-*/
+// f32 l : left
+// f32 r : right
+// f32 b : bottom
+// f32 t : top
+// f32 n : near
+// f32 f : far
 neko_inline neko_mat4 neko_mat4_ortho(f32 l, f32 r, f32 b, f32 t, f32 n, f32 f) {
     neko_mat4 m_res = neko_mat4_identity();
 

@@ -2417,7 +2417,7 @@ NEKO_API_DECL neko_platform_window_t neko_platform_window_create_internal(const 
 
     // Need to make sure this is ONLY done once.
     if (neko_slot_array_empty(neko_subsystem(platform)->windows)) {
-        if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+        if (!gladLoadGLLoader((neko_gl_loadproc)glfwGetProcAddress)) {
             neko_log_warning("Failed to initialize GLFW.");
             return win;
         }

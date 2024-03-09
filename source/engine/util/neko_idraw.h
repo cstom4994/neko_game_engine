@@ -151,6 +151,7 @@ NEKO_API_DECL void neko_idraw_scalef(neko_immediate_draw_t* neko_idraw, f32 x, f
 // Camera Utils
 NEKO_API_DECL void neko_idraw_camera(neko_immediate_draw_t* neko_idraw, neko_camera_t* cam, u32 width, u32 height);
 NEKO_API_DECL void neko_idraw_camera2d(neko_immediate_draw_t* neko_idraw, u32 width, u32 height);
+NEKO_API_DECL void neko_idraw_camera2d_ex(neko_immediate_draw_t* neko_idraw, f32 l, f32 r, f32 t, f32 b);
 NEKO_API_DECL void neko_idraw_camera3d(neko_immediate_draw_t* neko_idraw, u32 width, u32 height);
 
 // Primitive Drawing Util

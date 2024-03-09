@@ -49,6 +49,10 @@ function to_vec2(x, y)
     }
 end
 
+function easeOutCubic(x)
+    return 1 - math.pow(1 - x, 3)
+end
+
 __NEKO_CONFIG_TYPE_INT = 0
 __NEKO_CONFIG_TYPE_FLOAT = 1
 __NEKO_CONFIG_TYPE_STRING = 2

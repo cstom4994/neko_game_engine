@@ -59,8 +59,8 @@ function M.my_update(dt)
             v2.x, v2.y, cols, cols_len = phy_world:move(p, v2.x + v.dx, v2.y + v.dy)
             for i = 1, cols_len do
                 local col = cols[i]
-                print(("col[%d]: other = %s, type = %s, normal = %d,%d"):format(i, dump_func(col.other), col.type,
-                    col.normal.x, col.normal.y))
+                -- print(("col[%d]: other = %s, type = %s, normal = %d,%d"):format(i, dump_func(col.other), col.type,
+                --     col.normal.x, col.normal.y))
             end
         end
 

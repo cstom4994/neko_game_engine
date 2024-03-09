@@ -60,11 +60,17 @@ void __neko_lua_auto_open(lua_State *L) {
     neko_lua_auto_conversion(L, int, neko_lua_auto_push_int, neko_lua_auto_to_int);
     neko_lua_auto_conversion(L, unsigned int, neko_lua_auto_push_unsigned_int, neko_lua_auto_to_unsigned_int);
     neko_lua_auto_conversion(L, long, neko_lua_auto_push_long, neko_lua_auto_to_long);
+    neko_lua_auto_conversion(L, s32, neko_lua_auto_push_long, neko_lua_auto_to_long);
     neko_lua_auto_conversion(L, unsigned long, neko_lua_auto_push_unsigned_long, neko_lua_auto_to_unsigned_long);
+    neko_lua_auto_conversion(L, u32, neko_lua_auto_push_unsigned_long, neko_lua_auto_to_unsigned_long);
     neko_lua_auto_conversion(L, long long, neko_lua_auto_push_long_long, neko_lua_auto_to_long_long);
+    neko_lua_auto_conversion(L, s64, neko_lua_auto_push_long_long, neko_lua_auto_to_long_long);
     neko_lua_auto_conversion(L, unsigned long long, neko_lua_auto_push_unsigned_long_long, neko_lua_auto_to_unsigned_long_long);
+    neko_lua_auto_conversion(L, u64, neko_lua_auto_push_unsigned_long_long, neko_lua_auto_to_unsigned_long_long);
     neko_lua_auto_conversion(L, float, neko_lua_auto_push_float, neko_lua_auto_to_float);
+    neko_lua_auto_conversion(L, f32, neko_lua_auto_push_float, neko_lua_auto_to_float);
     neko_lua_auto_conversion(L, double, neko_lua_auto_push_double, neko_lua_auto_to_double);
+    neko_lua_auto_conversion(L, f64, neko_lua_auto_push_double, neko_lua_auto_to_double);
     neko_lua_auto_conversion(L, long double, neko_lua_auto_push_long_double, neko_lua_auto_to_long_double);
 
     neko_lua_auto_conversion_push_type(L, neko_lua_auto_type_add(L, "const bool", sizeof(bool)), neko_lua_auto_push_bool);

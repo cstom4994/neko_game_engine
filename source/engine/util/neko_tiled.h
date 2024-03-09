@@ -8,7 +8,7 @@
 // c2
 #include "engine/builtin/cute_c2.h"
 
-#define SPRITE_SCALE 2
+#define SPRITE_SCALE 3
 
 typedef struct tile_s {
     u32 id;

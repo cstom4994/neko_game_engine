@@ -179,11 +179,9 @@ endif()
 
 file(GLOB_RECURSE neko_engine_src CONFIGURE_DEPENDS "source/engine/**.*")
 
-file(GLOB_RECURSE luaecs_src CONFIGURE_DEPENDS "source/deps/luaecs/**.*")
-
 set(neko_engine_src_all
         ${neko_engine_src}
-        ${luaecs_src}
+        ${luasocket_src}
         "source/deps/impl_build.cpp"
 )
 
@@ -191,7 +189,6 @@ file(GLOB_RECURSE neko_game_src CONFIGURE_DEPENDS "source/sandbox/**.*")
 
 set(neko_game_src_all
         ${neko_game_src}
-        ${luasocket_src}
 )
 
 set(tools_packer_src

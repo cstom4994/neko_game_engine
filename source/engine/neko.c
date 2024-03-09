@@ -1065,8 +1065,6 @@ NEKO_API_DECL neko_mat4 neko_camera_get_proj(const neko_camera_t* cam, s32 view_
         case NEKO_PROJECTION_TYPE_PERSPECTIVE: {
             proj_mat = neko_mat4_perspective(cam->fov, (f32)view_width / (f32)view_height, cam->near_plane, cam->far_plane);
         } break;
-
-        // Don't like this...
         case NEKO_PROJECTION_TYPE_ORTHOGRAPHIC: {
             f32 _ar = (f32)view_width / (f32)view_height;
             f32 distance = 0.5f * (cam->far_plane - cam->near_plane);

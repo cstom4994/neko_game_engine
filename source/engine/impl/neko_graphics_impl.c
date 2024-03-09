@@ -24,9 +24,6 @@
 #ifndef NEKO_GRAPHICS_IMPL_H
 #define NEKO_GRAPHICS_IMPL_H
 
-#define NEKO_GL_IMPL
-#include "engine/builtin/neko_gl_impl.h"
-
 #ifndef NEKO_GRAPHICS_IMPL_CUSTOM
 #define NEKO_GRAPHICS_IMPL_DEFAULT
 #endif
