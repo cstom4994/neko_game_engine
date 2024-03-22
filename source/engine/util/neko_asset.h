@@ -271,11 +271,12 @@ struct neko_packreader_s {
     u32 data_size;
     u32 zip_size;
     pack_item search_item;
+    u32 file_ref_count;
 };
 
 typedef struct neko_packreader_s neko_packreader_t;
 
-NEKO_API_DECL neko_pack_result neko_pack_read(const_str filePath, u32 data_buffer_capacity, bool is_resources_directory, neko_packreader_t* pack_reader);
+NEKO_API_DECL neko_pack_result neko_pack_read(const_str file_path, u32 data_buffer_capacity, bool is_resources_directory, neko_packreader_t* pack_reader);
 NEKO_API_DECL void neko_pack_destroy(neko_packreader_t* pack_reader);
 
 NEKO_API_DECL u64 neko_pack_item_count(neko_packreader_t* pack_reader);
@@ -284,10 +285,11 @@ NEKO_API_DECL u32 neko_pack_item_size(neko_packreader_t* pack_reader, u64 index)
 NEKO_API_DECL const_str neko_pack_item_path(neko_packreader_t* pack_reader, u64 index);
 NEKO_API_DECL neko_pack_result neko_pack_item_data_with_index(neko_packreader_t* pack_reader, u64 index, const u8** data, u32* size);
 NEKO_API_DECL neko_pack_result neko_pack_item_data(neko_packreader_t* pack_reader, const_str path, const u8** data, u32* size);
+NEKO_API_DECL void neko_pack_item_free(neko_packreader_t* pack_reader, void* data);
 NEKO_API_DECL void neko_pack_free_buffers(neko_packreader_t* pack_reader);
-NEKO_API_DECL neko_pack_result neko_pack_unzip(const_str filePath, b8 printProgress);
-NEKO_API_DECL neko_pack_result neko_pack_files(const_str packPath, u64 fileCount, const_str* filePaths, b8 printProgress);
-NEKO_API_DECL neko_pack_result neko_pack_info(const_str filePath, u8* pack_version, b8* isLittleEndian, u64* itemCount);
+NEKO_API_DECL neko_pack_result neko_pack_unzip(const_str file_path, b8 print_progress);
+NEKO_API_DECL neko_pack_result neko_pack_build(const_str pack_path, u64 file_count, const_str* file_paths, b8 print_progress);
+NEKO_API_DECL neko_pack_result neko_pack_info(const_str file_path, u8* pack_version, b8* isLittleEndian, u64* item_count);
 
 neko_inline bool neko_pack_check(neko_pack_result result) {
     if (result == 0) return true;

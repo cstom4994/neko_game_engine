@@ -3,6 +3,8 @@
 -- used to load scripts
 dump_func = require "common/dump"
 
+ffi = require("cffi")
+
 unsafe_require = require
 
 local safefunc = function()
@@ -46,6 +48,15 @@ function to_vec2(x, y)
     return {
         x = x,
         y = y
+    }
+end
+
+function to_color(r, g, b, a)
+    return {
+        r = r,
+        g = g,
+        b = b,
+        a = a
     }
 end
 

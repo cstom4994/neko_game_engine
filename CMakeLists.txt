@@ -20,9 +20,12 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 if(MSVC)
         file(GLOB glfw_lib CONFIGURE_DEPENDS "source/deps/glfw/lib/*.lib")
-        set(neko_engine_lib ${glfw_lib})
+        file(GLOB ffi_lib CONFIGURE_DEPENDS "source/deps/libffi/lib/*.lib")
+
+        set(neko_engine_lib ${glfw_lib} ${ffi_lib})
         include_directories(
                 "source/deps/glfw/include/"
+                "source/deps/libffi/include/"
         )
 else()
         find_package(OpenGL REQUIRED)
@@ -45,7 +48,7 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
 endif()
 
 if(MSVC)
-        add_definitions(-DWIN32 -D_WIN32 -D_WINDOWS -DNOMINMAX -DUNICODE -D_UNICODE)
+        add_definitions(-DWIN32 -D_WIN32 -D_WINDOWS -DNOMINMAX -DUNICODE -D_UNICODE -DFFI_LITTLE_ENDIAN)
 
         add_compile_options(
                 /wd4005
@@ -177,11 +180,14 @@ elseif(UNIX)
         set(LFLAGS -lX11 -lXi -lXcursor -lasound -lGL -ldl -lpthread -lm)
 endif()
 
+file(GLOB_RECURSE luaffi_src CONFIGURE_DEPENDS "source/deps/luaffi/**.*")
+
 file(GLOB_RECURSE neko_engine_src CONFIGURE_DEPENDS "source/engine/**.*")
 
 set(neko_engine_src_all
         ${neko_engine_src}
         ${luasocket_src}
+        ${luaffi_src}
         "source/deps/impl_build.cpp"
 )
 

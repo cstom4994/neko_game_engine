@@ -14,7 +14,9 @@ typedef struct neko_client_userdata_s {
     neko_immediate_draw_static_data_t *idraw_sd;
     neko_core_ui_context_t *core_ui;
     neko_gui_ctx_t *gui;
-    neko_graphics_custom_batch_context_t *sprite_batch;
+    // neko_graphics_custom_batch_context_t *sprite_batch;
+
+    neko_packreader_t *pack;
 
     lua_State *L;
 
@@ -22,9 +24,27 @@ typedef struct neko_client_userdata_s {
 } neko_client_userdata_t;
 
 // TODO:
-neko_string game_assets(const neko_string &path);
+std::string game_assets(const std::string &path);
 void draw_text(neko_font_t *font, const char *text, float x, float y, float line_height, float clip_region, float wrap_x, f32 scale);
 
 void neko_register(lua_State *L);
+
+neko_inline u64 generate_texture_handle(void* pixels, int w, int h, void* udata) {
+    (void)udata;
+    GLuint location;
+    glGenTextures(1, &location);
+    glBindTexture(GL_TEXTURE_2D, location);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    return (u64)location;
+}
+
+neko_inline void destroy_texture_handle(u64 texture_id, void* udata) {
+    (void)udata;
+    GLuint id = (GLuint)texture_id;
+    glDeleteTextures(1, &id);
+}
 
 #endif

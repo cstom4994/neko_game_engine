@@ -102,7 +102,7 @@ static inline int component_add(lua_State *L, struct neko_ecs_world_t *w, struct
     cp = &w->component_pool[tid];
     if (cp->free >= cp->cap) {
         cp->cap *= 2;
-        cp->buf = realloc(cp->buf, cp->cap * sizeof(cp->buf[0]));
+        cp->buf = neko_safe_realloc(cp->buf, cp->cap * sizeof(cp->buf[0]));
     }
     c = &cp->buf[cp->free++];
     c->eid = e - w->entity_buf;
@@ -163,7 +163,7 @@ static inline struct entity *entity_alloc(struct neko_ecs_world_t *w) {
         int oldcap = w->entity_cap;
         int newcap = oldcap * 2;
         w->entity_cap = newcap;
-        w->entity_buf = realloc(w->entity_buf, newcap * sizeof(w->entity_buf[0]));
+        w->entity_buf = neko_safe_realloc(w->entity_buf, newcap * sizeof(w->entity_buf[0]));
         w->entity_free = oldcap + 1;
         e = &w->entity_buf[oldcap];
         for (i = w->entity_free; i < newcap - 1; i++) {
@@ -236,6 +236,20 @@ static inline void update_cid_in_entity(struct entity *e, int tid, int cid) {
     e->index[i] = cid;
 }
 
+static int __neko_ecs_world_end(lua_State *L) {
+    struct neko_ecs_world_t *w;
+    int type, tid;
+    struct component_pool *cp;
+    w = luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+    tid = w->type_idx;  // 总数-1(索引)
+    for (int i = 0; i <= tid; i++) {
+        cp = &w->component_pool[i];
+        neko_safe_free(cp->buf);
+    }
+    neko_safe_free(w->entity_buf);
+    return 0;
+}
+
 static int __neko_ecs_world_register(lua_State *L) {
     struct neko_ecs_world_t *w;
     int type, tid;
@@ -261,7 +275,7 @@ static int __neko_ecs_world_register(lua_State *L) {
     cp->dirty_tail = LINK_NIL;
     cp->dead_head = LINK_NIL;
     cp->dead_tail = LINK_NIL;
-    cp->buf = malloc(cp->cap * sizeof(cp->buf[0]));
+    cp->buf = neko_safe_malloc(cp->cap * sizeof(cp->buf[0]));
     // set proto id
     lua_pushvalue(L, 2);
     lua_pushinteger(L, tid);
@@ -671,7 +685,7 @@ int __neko_ecs_create_world(lua_State *L) {
     w->entity_free = 0;
     w->entity_dead = LINK_NIL;
     w->type_idx = 0;
-    w->entity_buf = malloc(w->entity_cap * sizeof(w->entity_buf[0]));
+    w->entity_buf = neko_safe_malloc(w->entity_cap * sizeof(w->entity_buf[0]));
     for (i = 0; i < w->entity_cap - 1; i++) {
         w->entity_buf[i].cn = -1;
         w->entity_buf[i].next = i + 1;
@@ -682,6 +696,7 @@ int __neko_ecs_create_world(lua_State *L) {
         luaL_Reg world_mt[] = {
                 {"__index", NULL},
                 {"__name", NULL},
+                {"__gc", __neko_ecs_world_end},
                 {"register", __neko_ecs_world_register},
                 {"new", __neko_ecs_world_new_entity},
                 {"del", __neko_ecs_world_del_entity},

@@ -38,8 +38,7 @@ end
 
 M.CGameObject_set_visible(M.test_obj, false)
 
-print(M.CGameObject_get_visible(M.test_obj))
-
-M.s:dump()
+-- print(M.CGameObject_get_visible(M.test_obj))
+-- M.s:dump()
 
 return M

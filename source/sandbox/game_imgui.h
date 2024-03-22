@@ -209,6 +209,8 @@ neko_imgui_context_t neko_imgui_new(u32 hndl, bool install_callbacks) {
     io.KeyMap[ImGuiKey_Y] = neko_platform_key_to_codepoint(NEKO_KEYCODE_Y);
     io.KeyMap[ImGuiKey_Z] = neko_platform_key_to_codepoint(NEKO_KEYCODE_Z);
 
+    io.Fonts->AddFontFromFileTTF(game_assets("gamedir/assets/fonts/fusion-pixel-12px-monospaced-zh_hans.ttf").c_str(), 18.0f, NULL, io.Fonts->GetGlyphRangesChineseFull());
+
     neko_imgui_device_create(&neko_imgui);
 
     //     io.SetClipboardTextFn = ImGui_ImplGlfw_SetClipboardText;

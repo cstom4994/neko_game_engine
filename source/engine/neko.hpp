@@ -77,9 +77,6 @@ constexpr std::size_t va_count(Args&&...) {
     neko_check_is_trivial(type, "try to init a non-trivial object"); \
     struct type* name = neko_malloc_init(type)
 
-typedef std::string neko_string;
-typedef std::string_view neko_string_view;
-
 // 一种向任何指针添加字节偏移量的可移植且安全的方法
 // https://stackoverflow.com/questions/15934111/portable-and-safe-way-to-add-byte-offset-to-any-pointer
 template <typename T>
@@ -938,7 +935,7 @@ struct neko_hashmap {
     u64 load = 0;
     u64 capacity = 0;
     T& operator[](u64 key);
-    T& operator[](const neko_string& key);
+    T& operator[](const std::string& key);
 };
 
 template <typename T>
@@ -1042,7 +1039,7 @@ T& neko_hashmap<T>::operator[](u64 key) {
 }
 
 template <typename T>
-T& neko_hashmap<T>::operator[](const neko_string& key) {
+T& neko_hashmap<T>::operator[](const std::string& key) {
     T* value;
     neko_hashmap_get(this, neko::hash(key.c_str()), &value);
     return *value;
@@ -1211,6 +1208,241 @@ T* begin(neko_array<T>& arr) {
 template <typename T>
 T* end(neko_array<T>& arr) {
     return &arr.data[arr.len];
+}
+
+struct neko_string {
+    char* data = nullptr;
+    u64 len = 0;
+
+    neko_string() = default;
+    neko_string(const char* cstr) : data((char*)cstr), len(strlen(cstr)) {}
+    neko_string(const char* cstr, u64 n) : data((char*)cstr), len(n) {}
+
+    inline bool is_cstr() { return data[len] == '\0'; }
+
+    inline neko_string substr(u64 i, u64 j) {
+        assert(i <= j);
+        assert(j <= (s64)len);
+        return {&data[i], j - i};
+    }
+
+    bool starts_with(neko_string match);
+
+    bool ends_with(neko_string match);
+
+    inline u64 first_of(char c) {
+        for (u64 i = 0; i < len; i++) {
+            if (data[i] == c) {
+                return i;
+            }
+        }
+
+        return (u64)-1;
+    }
+
+    inline u64 last_of(char c) {
+        for (u64 i = len; i > 0; i--) {
+            if (data[i - 1] == c) {
+                return i - 1;
+            }
+        }
+
+        return (u64)-1;
+    }
+
+    char* begin() { return data; }
+    char* end() { return &data[len]; }
+};
+
+inline neko_string to_cstr(neko_string str) {
+    char* buf = (char*)neko_safe_malloc(str.len + 1);
+    memcpy(buf, str.data, str.len);
+    buf[str.len] = 0;
+    return {buf, str.len};
+}
+
+constexpr u64 fnv1a(const char* str, u64 len) {
+    u64 hash = 14695981039346656037u;
+    for (u64 i = 0; i < len; i++) {
+        hash ^= (u8)str[i];
+        hash *= 1099511628211;
+    }
+    return hash;
+}
+
+inline u64 fnv1a(neko_string str) { return fnv1a(str.data, str.len); }
+
+constexpr u64 operator"" _hash(const char* str, size_t len) { return fnv1a(str, len); }
+
+inline bool operator==(neko_string lhs, neko_string rhs) {
+    if (lhs.len != rhs.len) {
+        return false;
+    }
+    return memcmp(lhs.data, rhs.data, lhs.len) == 0;
+}
+
+inline bool operator!=(neko_string lhs, neko_string rhs) { return !(lhs == rhs); }
+
+inline bool neko_string::starts_with(neko_string match) {
+    if (len < match.len) {
+        return false;
+    }
+    return substr(0, match.len) == match;
+}
+
+inline bool neko_string::ends_with(neko_string match) {
+    if (len < match.len) {
+        return false;
+    }
+    return substr(len - match.len, len) == match;
+}
+
+// Decomp
+
+// from stb.h - public domain
+// see: https://github.com/nothings/stb/blob/master/deprecated/stb.h#L10388
+
+using stb_uchar = unsigned char;
+using stb_uint = unsigned int;
+
+thread_local static unsigned char* stb__barrier;
+thread_local static unsigned char* stb__barrier2;
+thread_local static unsigned char* stb__barrier3;
+thread_local static unsigned char* stb__barrier4;
+
+static stb_uchar* stb__dout;
+static void stb__match(stb_uchar* data, stb_uint length) {
+    // INVERSE of memmove... write each byte before copying the next...
+    assert(stb__dout + length <= stb__barrier);
+    if (stb__dout + length > stb__barrier) {
+        stb__dout += length;
+        return;
+    }
+    if (data < stb__barrier4) {
+        stb__dout = stb__barrier + 1;
+        return;
+    }
+    while (length--) *stb__dout++ = *data++;
+}
+
+static void stb__lit(stb_uchar* data, stb_uint length) {
+    assert(stb__dout + length <= stb__barrier);
+    if (stb__dout + length > stb__barrier) {
+        stb__dout += length;
+        return;
+    }
+    if (data < stb__barrier2) {
+        stb__dout = stb__barrier + 1;
+        return;
+    }
+    memcpy(stb__dout, data, length);
+    stb__dout += length;
+}
+
+#define stb__in2(x) ((i[x] << 8) + i[(x) + 1])
+#define stb__in3(x) ((i[x] << 16) + stb__in2((x) + 1))
+#define stb__in4(x) ((i[x] << 24) + stb__in3((x) + 1))
+
+static stb_uchar* stb_decompress_token(stb_uchar* i) {
+    if (*i >= 0x20) {  // use fewer if's for cases that expand small
+        if (*i >= 0x80)
+            stb__match(stb__dout - i[1] - 1, i[0] - 0x80 + 1), i += 2;
+        else if (*i >= 0x40)
+            stb__match(stb__dout - (stb__in2(0) - 0x4000 + 1), i[2] + 1), i += 3;
+        else /* *i >= 0x20 */
+            stb__lit(i + 1, i[0] - 0x20 + 1), i += 1 + (i[0] - 0x20 + 1);
+    } else {  // more ifs for cases that expand large, since overhead is amortized
+        if (*i >= 0x18)
+            stb__match(stb__dout - (stb__in3(0) - 0x180000 + 1), i[3] + 1), i += 4;
+        else if (*i >= 0x10)
+            stb__match(stb__dout - (stb__in3(0) - 0x100000 + 1), stb__in2(3) + 1), i += 5;
+        else if (*i >= 0x08)
+            stb__lit(i + 2, stb__in2(0) - 0x0800 + 1), i += 2 + (stb__in2(0) - 0x0800 + 1);
+        else if (*i == 0x07)
+            stb__lit(i + 3, stb__in2(1) + 1), i += 3 + (stb__in2(1) + 1);
+        else if (*i == 0x06)
+            stb__match(stb__dout - (stb__in3(1) + 1), i[4] + 1), i += 5;
+        else if (*i == 0x04)
+            stb__match(stb__dout - (stb__in3(1) + 1), stb__in2(4) + 1), i += 6;
+    }
+    return i;
+}
+
+static stb_uint stb_decompress_length(stb_uchar* input) { return (input[8] << 24) + (input[9] << 16) + (input[10] << 8) + input[11]; }
+
+static stb_uint stb_adler32(stb_uint adler32, stb_uchar* buffer, stb_uint buflen) {
+    const unsigned long ADLER_MOD = 65521;
+    unsigned long s1 = adler32 & 0xffff, s2 = adler32 >> 16;
+    unsigned long blocklen, i;
+
+    blocklen = buflen % 5552;
+    while (buflen) {
+        for (i = 0; i + 7 < blocklen; i += 8) {
+            s1 += buffer[0], s2 += s1;
+            s1 += buffer[1], s2 += s1;
+            s1 += buffer[2], s2 += s1;
+            s1 += buffer[3], s2 += s1;
+            s1 += buffer[4], s2 += s1;
+            s1 += buffer[5], s2 += s1;
+            s1 += buffer[6], s2 += s1;
+            s1 += buffer[7], s2 += s1;
+
+            buffer += 8;
+        }
+
+        for (; i < blocklen; ++i) s1 += *buffer++, s2 += s1;
+
+        s1 %= ADLER_MOD, s2 %= ADLER_MOD;
+        buflen -= blocklen;
+        blocklen = 5552;
+    }
+    return (s2 << 16) + s1;
+}
+
+static stb_uint stb_decompress(stb_uchar* output, stb_uchar* i, stb_uint length) {
+    stb_uint olen;
+    if (stb__in4(0) != 0x57bC0000) return 0;
+    if (stb__in4(4) != 0) return 0;  // error! stream is > 4GB
+    olen = stb_decompress_length(i);
+    stb__barrier2 = i;
+    stb__barrier3 = i + length;
+    stb__barrier = output + olen;
+    stb__barrier4 = output;
+    i += 16;
+
+    stb__dout = output;
+    while (1) {
+        stb_uchar* old_i = i;
+        i = stb_decompress_token(i);
+        if (i == old_i) {
+            if (*i == 0x05 && i[1] == 0xfa) {
+                assert(stb__dout == output + olen);
+                if (stb__dout != output + olen) return 0;
+                if (stb_adler32(1, output, olen) != (stb_uint)stb__in4(2)) return 0;
+                return olen;
+            } else {
+                assert(0); /* NOTREACHED */
+                return 0;
+            }
+        }
+        assert(stb__dout <= output + olen);
+        if (stb__dout > output + olen) return 0;
+    }
+}
+
+// end stb.h
+
+inline neko_string stb_decompress_data(const unsigned int* data, const unsigned int size) {
+    u32 len = stb_decompress_length((u8*)data);
+    char* buf = (char*)neko_safe_malloc(len + 1);
+    stb_decompress((u8*)buf, (u8*)data, size);
+
+    buf[len] = '\0';
+
+    neko_string contents;
+    contents.data = buf;
+    contents.len = len;
+    return contents;
 }
 
 #endif

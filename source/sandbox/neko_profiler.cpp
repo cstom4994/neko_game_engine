@@ -65,7 +65,7 @@ void neko_profiler_get_frame(neko_profiler_frame_t *_data) {
     }
 }
 
-s32 neko_profiler_save(neko_profiler_frame_t *_data, void *_buffer, size_t _bufferSize) {
+s32 neko_profiler_save(neko_profiler_frame_t *_data, void *_buffer, size_t _buffer_size) {
     // fill string data
     string_store str_store;
     for (u32 i = 0; i < _data->num_scopes; ++i) {
@@ -78,9 +78,9 @@ s32 neko_profiler_save(neko_profiler_frame_t *_data, void *_buffer, size_t _buff
     }
 
     // calc data size
-    u32 totalSize = _data->num_scopes * sizeof(neko_profiler_scope_t) + _data->num_threads * sizeof(neko_profiler_thread) + sizeof(neko_profiler_frame_t) + str_store.total_size;
+    u32 total_size = _data->num_scopes * sizeof(neko_profiler_scope_t) + _data->num_threads * sizeof(neko_profiler_thread) + sizeof(neko_profiler_frame_t) + str_store.total_size;
 
-    u8 *buffer = new u8[totalSize];
+    u8 *buffer = new u8[total_size];
     u8 *bufPtr = buffer;
 
     write_var(buffer, _data->start_time);
@@ -111,31 +111,31 @@ s32 neko_profiler_save(neko_profiler_frame_t *_data, void *_buffer, size_t _buff
     }
 
     // write string data
-    u32 numStrings = (u32)str_store.strings.size();
-    write_var(buffer, numStrings);
+    u32 num_strings = (u32)str_store.strings.size();
+    write_var(buffer, num_strings);
 
     for (u32 i = 0; i < str_store.strings.size(); ++i) write_str(buffer, str_store.strings[i].c_str());
 
-    const int max_dst_size = neko_lz_bounds((s32)_bufferSize, 0);
-    s32 compSize = neko_lz_encode((const_str)bufPtr, (s32)(buffer - bufPtr), (char *)_buffer, max_dst_size, 9);
+    const int max_dst_size = neko_lz_bounds((s32)_buffer_size, 0);
+    s32 comp_size = neko_lz_encode((const_str)bufPtr, (s32)(buffer - bufPtr), (char *)_buffer, max_dst_size, 9);
 
-    // s32 compSize = LZ4_compress_default((const_str)bufPtr, (char *)_buffer, (s32)(buffer - bufPtr), (s32)_bufferSize);
+    // s32 compSize = LZ4_compress_default((const_str)bufPtr, (char *)_buffer, (s32)(buffer - bufPtr), (s32)_buffer_size);
     delete[] bufPtr;
-    return compSize;
+    return comp_size;
 }
 
-void neko_profiler_load(neko_profiler_frame_t *_data, void *_buffer, size_t _bufferSize) {
-    size_t bufferSize = _bufferSize;
+void neko_profiler_load(neko_profiler_frame_t *_data, void *_buffer, size_t _buffer_size) {
+    size_t buffer_size = _buffer_size;
     u8 *buffer = 0;
     u8 *bufferPtr;
 
     s32 decomp = -1;
     do {
         free(buffer);
-        bufferSize *= 2;
-        buffer = (u8 *)malloc(bufferSize * sizeof(u8));
-        // decomp = LZ4_decompress_safe((const_str)_buffer, (char *)buffer, (s32)_bufferSize, (s32)bufferSize);
-        decomp = neko_lz_decode((const_str)_buffer, (s32)_bufferSize, (char *)buffer, (s32)bufferSize);
+        buffer_size *= 2;
+        buffer = (u8 *)malloc(buffer_size * sizeof(u8));
+        // decomp = LZ4_decompress_safe((const_str)_buffer, (char *)buffer, (s32)_buffer_size, (s32)buffer_size);
+        decomp = neko_lz_decode((const_str)_buffer, (s32)_buffer_size, (char *)buffer, (s32)buffer_size);
 
     } while (decomp < 0);
 
@@ -253,34 +253,34 @@ void neko_profiler_load(neko_profiler_frame_t *_data, void *_buffer, size_t _buf
     }
 }
 
-void neko_profiler_load_time_only(f32 *_time, void *_buffer, size_t _bufferSize) {
-    size_t bufferSize = _bufferSize;
+void neko_profiler_load_time_only(f32 *_time, void *_buffer, size_t _buffer_size) {
+    size_t buffer_size = _buffer_size;
     u8 *buffer = 0;
     u8 *bufferPtr;
 
     s32 decomp = -1;
     do {
         delete[] buffer;
-        bufferSize *= 2;
-        buffer = new u8[bufferSize];
-        // decomp = LZ4_decompress_safe((const_str)_buffer, (char *)buffer, (s32)_bufferSize, (s32)bufferSize);
-        decomp = neko_lz_decode((const_str)_buffer, (s32)_bufferSize, (char *)buffer, (s32)bufferSize);
+        buffer_size *= 2;
+        buffer = new u8[buffer_size];
+        // decomp = LZ4_decompress_safe((const_str)_buffer, (char *)buffer, (s32)_buffer_size, (s32)buffer_size);
+        decomp = neko_lz_decode((const_str)_buffer, (s32)_buffer_size, (char *)buffer, (s32)buffer_size);
 
     } while (decomp < 0);
 
     bufferPtr = buffer;
 
-    u64 startTime;
-    u64 endtime;
+    u64 start_time;
+    u64 end_time;
     u8 dummy8;
     u64 frequency;
 
-    read_var(buffer, startTime);
-    read_var(buffer, endtime);
+    read_var(buffer, start_time);
+    read_var(buffer, end_time);
     read_var(buffer, frequency);  // dummy
     read_var(buffer, dummy8);     // dummy
     read_var(buffer, frequency);
-    *_time = __neko_profiler_clock2ms(endtime - startTime, frequency);
+    *_time = __neko_profiler_clock2ms(end_time - start_time, frequency);
 
     delete[] buffer;
 }
@@ -418,7 +418,7 @@ void neko_profiler_context_init(neko_profiler_context_t *ctx) {
 
     neko_profiler_free_list_create(sizeof(neko_profiler_scope_t), __neko_profiler_scopes_max, &ctx->scopes_allocator);
 
-    for (s32 i = 0; i < buffer_use::Count; ++i) {
+    for (s32 i = 0; i < buffer_use::count; ++i) {
         ctx->names_size[i] = 0;
         ctx->names_data[i] = ctx->names_data_buffers[i];
     }
@@ -463,13 +463,13 @@ void neko_profiler_context_begin_frame(neko_profiler_context_t *ctx) {
 
     u32 scopes_to_restart = 0;
 
-    ctx->names_size[buffer_use::Open] = 0;
+    ctx->names_size[buffer_use::open] = 0;
 
     static neko_profiler_scope_t scopesDisplay[__neko_profiler_scopes_max];
     for (u32 i = 0; i < ctx->scopes_open; ++i) {
         neko_profiler_scope_t *scope = ctx->scopes_capture[i];
 
-        if (scope->start == scope->end) scope->name = neko_profiler_context_add_string(ctx, scope->name, buffer_use::Open);
+        if (scope->start == scope->end) scope->name = neko_profiler_context_add_string(ctx, scope->name, buffer_use::open);
 
         scopesDisplay[i] = *scope;
 
@@ -496,7 +496,7 @@ void neko_profiler_context_begin_frame(neko_profiler_context_t *ctx) {
     if ((level == -1) && (ctx->time_threshold <= prevFrameTime)) ctx->threshold_crossed = true;
 
     if (ctx->threshold_crossed && !ctx->pause_profiling) {
-        std::swap(ctx->names_data[buffer_use::Capture], ctx->names_data[buffer_use::Display]);
+        std::swap(ctx->names_data[buffer_use::capture], ctx->names_data[buffer_use::display]);
 
         memcpy(ctx->scopes_display, scopesDisplay, sizeof(neko_profiler_scope_t) * ctx->scopes_open);
 
@@ -505,8 +505,8 @@ void neko_profiler_context_begin_frame(neko_profiler_context_t *ctx) {
         ctx->frame_end_time = frameEndTime;
     }
 
-    ctx->names_size[buffer_use::Capture] = 0;
-    for (u32 i = 0; i < scopes_to_restart; ++i) ctx->scopes_capture[i]->name = neko_profiler_context_add_string(ctx, ctx->scopes_capture[i]->name, buffer_use::Capture);
+    ctx->names_size[buffer_use::capture] = 0;
+    for (u32 i = 0; i < scopes_to_restart; ++i) ctx->scopes_capture[i]->name = neko_profiler_context_add_string(ctx, ctx->scopes_capture[i]->name, buffer_use::capture);
 
     ctx->scopes_open = scopes_to_restart;
     frameTime = frameEndTime - frameBeginTime;
@@ -544,7 +544,7 @@ neko_profiler_scope_t *neko_profiler_context_begin_scope(neko_profiler_context_t
         scope = (neko_profiler_scope_t *)neko_profiler_free_list_alloc(&ctx->scopes_allocator);
         ctx->scopes_capture[ctx->scopes_open++] = scope;
 
-        scope->name = neko_profiler_context_add_string(ctx, _name, buffer_use::Capture);
+        scope->name = neko_profiler_context_add_string(ctx, _name, buffer_use::capture);
         scope->start = neko_profiler_get_clock();
         scope->end = scope->start;
 

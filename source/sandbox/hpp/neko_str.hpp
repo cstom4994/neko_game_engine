@@ -92,7 +92,7 @@ struct neko_stringview {
 
 neko_inline bool neko_str_is_chinese_c(const char str) { return str & 0x80; }
 
-neko_inline bool neko_str_is_chinese_str(const neko_string &str) {
+neko_inline bool neko_str_is_chinese_str(const std::string &str) {
     for (int i = 0; i < str.length(); i++)
         if (neko_str_is_chinese_c(str[i])) return true;
     return false;
@@ -100,17 +100,17 @@ neko_inline bool neko_str_is_chinese_str(const neko_string &str) {
 
 neko_inline bool neko_str_equals(const char *a, const char *c) { return strcmp(a, c) == 0; }
 
-neko_inline bool neko_str_starts_with(neko_string_view s, neko_string_view prefix) { return prefix.size() <= s.size() && (strncmp(prefix.data(), s.data(), prefix.size()) == 0); }
+neko_inline bool neko_str_starts_with(std::string_view s, std::string_view prefix) { return prefix.size() <= s.size() && (strncmp(prefix.data(), s.data(), prefix.size()) == 0); }
 
-neko_inline bool neko_str_starts_with(neko_string_view s, char prefix) { return !s.empty() && s[0] == prefix; }
+neko_inline bool neko_str_starts_with(std::string_view s, char prefix) { return !s.empty() && s[0] == prefix; }
 
 neko_inline bool neko_str_starts_with(const char *s, const char *prefix) { return strncmp(s, prefix, strlen(prefix)) == 0; }
 
-neko_inline bool neko_str_ends_with(neko_string_view s, neko_string_view suffix) {
+neko_inline bool neko_str_ends_with(std::string_view s, std::string_view suffix) {
     return suffix.size() <= s.size() && strncmp(suffix.data(), s.data() + s.size() - suffix.size(), suffix.size()) == 0;
 }
 
-neko_inline bool neko_str_ends_with(neko_string_view s, char suffix) { return !s.empty() && s[s.size() - 1] == suffix; }
+neko_inline bool neko_str_ends_with(std::string_view s, char suffix) { return !s.empty() && s[s.size() - 1] == suffix; }
 
 neko_inline bool neko_str_ends_with(const char *s, const char *suffix) {
     auto sizeS = strlen(s);
@@ -136,7 +136,7 @@ neko_inline void neko_str_to_lower(char *s) {
     }
 }
 
-neko_inline void neko_str_to_lower(neko_string &ss) {
+neko_inline void neko_str_to_lower(std::string &ss) {
     int l = ss.size();
     auto s = ss.data();
     int ind = 0;
@@ -169,7 +169,7 @@ neko_inline void neko_str_to_upper(char *s) {
     }
 }
 
-neko_inline void neko_str_to_upper(neko_string &ss) {
+neko_inline void neko_str_to_upper(std::string &ss) {
     int l = ss.size();
     auto s = ss.data();
     int ind = 0;
@@ -194,7 +194,7 @@ neko_inline bool neko_str_replace_with(char *src, char what, char with) {
     }
 }
 
-neko_inline bool neko_str_replace_with(neko_string &src, char what, char with) {
+neko_inline bool neko_str_replace_with(std::string &src, char what, char with) {
     for (int i = 0; i < src.size(); ++i) {
         auto &id = src.data()[i];
         bool isWhat = id == what;
@@ -203,15 +203,15 @@ neko_inline bool neko_str_replace_with(neko_string &src, char what, char with) {
     return true;
 }
 
-neko_inline bool neko_str_replace_with(neko_string &src, const char *what, const char *with) {
-    neko_string out;
+neko_inline bool neko_str_replace_with(std::string &src, const char *what, const char *with) {
+    std::string out;
     size_t whatlen = strlen(what);
     out.reserve(src.size());
     size_t ind = 0;
     size_t lastInd = 0;
     while (true) {
         ind = src.find(what, ind);
-        if (ind == neko_string::npos) {
+        if (ind == std::string::npos) {
             out += src.substr(lastInd);
             break;
         }
@@ -223,7 +223,7 @@ neko_inline bool neko_str_replace_with(neko_string &src, const char *what, const
     return true;
 }
 
-neko_inline bool neko_str_replace_with(neko_string &src, const char *what, const char *with, int times) {
+neko_inline bool neko_str_replace_with(std::string &src, const char *what, const char *with, int times) {
     for (int i = 0; i < times; ++i) neko_str_replace_with(src, what, with);
     return true;
 }

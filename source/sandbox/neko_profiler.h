@@ -61,24 +61,17 @@ NEKO_API_DECL s32 neko_profiler_is_paused();
 NEKO_API_DECL s32 neko_profiler_was_threshold_crossed();
 NEKO_API_DECL void neko_profiler_set_paused(s32 _paused);
 NEKO_API_DECL void neko_profiler_get_frame(neko_profiler_frame_t *_data);
-NEKO_API_DECL s32 neko_profiler_save(neko_profiler_frame_t *_data, void *_buffer, size_t _bufferSize);
-NEKO_API_DECL void neko_profiler_load(neko_profiler_frame_t *_data, void *_buffer, size_t _bufferSize);
-NEKO_API_DECL void neko_profiler_load_time_only(f32 *_time, void *_buffer, size_t _bufferSize);
+NEKO_API_DECL s32 neko_profiler_save(neko_profiler_frame_t *_data, void *_buffer, size_t _buffer_size);
+NEKO_API_DECL void neko_profiler_load(neko_profiler_frame_t *_data, void *_buffer, size_t _buffer_size);
+NEKO_API_DECL void neko_profiler_load_time_only(f32 *_time, void *_buffer, size_t _buffer_size);
 NEKO_API_DECL void neko_profiler_release(neko_profiler_frame_t *_data);
 NEKO_API_DECL u64 neko_profiler_get_clock();
 NEKO_API_DECL u64 __neko_profiler_get_clock_frequency();
 NEKO_API_DECL f32 __neko_profiler_clock2ms(u64 _clock, u64 _frequency);
 
-struct neko_profiler_scoped {
-    uintptr_t scope;
-    // neko_profiler_scoped(const_str _file, s32 _line, const_str _name) { scope = neko_profiler_begin_scope(_file, _line, _name); }
-    //~neko_profiler_scoped() { neko_profiler_end_scope(scope); }
-};
-
 #ifndef NEKO_DISABLE_PROFILING
 
 #define neko_profiler_init() neko_profiler_init()
-// #define neko_profiler_scope_auto(x, ...) neko_profiler_scoped neko_concat(__neko_gen_profile_scope_, __LINE__)(__FILE__, __LINE__, x)
 #define neko_profiler_scope_begin(n, ...) \
     uintptr_t profileid_##n;              \
     profileid_##n = neko_profiler_begin_scope(__FILE__, __LINE__, #n)
@@ -108,12 +101,20 @@ NEKO_API_DECL void *neko_profiler_free_list_alloc(neko_profiler_free_list_t *_fr
 NEKO_API_DECL void neko_profiler_free_list_free(neko_profiler_free_list_t *_freeList, void *_ptr);
 NEKO_API_DECL s32 neko_profiler_free_list_check_ptr(neko_profiler_free_list_t *_freeList, void *_ptr);
 
-typedef enum { Capture, Display, Open, Count } buffer_use;
+typedef enum { capture, display, open, count } buffer_use;
 
 #if defined(__cplusplus)
 
 #include <map>
 #include <string>
+
+struct neko_profiler_scoped {
+    uintptr_t scope;
+    neko_profiler_scoped(const_str _file, s32 _line, const_str _name) { scope = neko_profiler_begin_scope(_file, _line, _name); }
+    ~neko_profiler_scoped() { neko_profiler_end_scope(scope); }
+};
+
+#define neko_profiler_scope_auto(x, ...) neko_profiler_scoped neko_concat(__neko_gen_profile_scope_, __LINE__)(__FILE__, __LINE__, x)
 
 typedef struct neko_profiler_context_s {
     neko_mutex internal_mutex;
@@ -130,9 +131,9 @@ typedef struct neko_profiler_context_s {
     f32 time_threshold;
     u32 level_threshold;
     bool pause_profiling;
-    char names_data_buffers[Count][__neko_profiler_text_max];
-    char *names_data[Count];
-    s32 names_size[Count];
+    char names_data_buffers[count][__neko_profiler_text_max];
+    char *names_data[count];
+    s32 names_size[count];
     u32 tls_level;
 
     // const_str thread_names[16];

@@ -196,7 +196,7 @@ void neko_sprite_end(neko_sprite* spr) {
 
 void neko_sprite_renderer_play(neko_sprite_renderer* sr, const_str tag) {
     neko_sprite_loop* loop = neko_hash_table_getp(sr->sprite->by_tag, neko_hash_str64(tag));
-    sr->loop = loop;
+    if (loop != NULL) sr->loop = loop;
     sr->current_frame = 0;
     sr->elapsed = 0;
 }

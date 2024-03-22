@@ -728,8 +728,6 @@ int neko_graphics_custom_batch_draw_call_count(void* ctx) {
     return context->count;
 }
 
-#include <math.h>
-
 void neko_graphics_custom_batch_perspective(float* m, float y_fov_radians, float aspect, float n, float f) {
     float a = 1.0f / (float)tanf(y_fov_radians / 2.0f);
 
@@ -3784,16 +3782,6 @@ NEKO_API_DECL void neko_graphics_init(neko_graphics_t* graphics) {
 
     // Submission (Main Thread)
     graphics->api.command_buffer_submit = neko_graphics_command_buffer_submit_impl;
-
-    /*============================================================
-    // Fontcache
-    ============================================================*/
-    // graphics->api.fontcache_create = &__neko_fontcache_create;
-    // graphics->api.fontcache_destroy = &__neko_fontcache_shutdown;
-    // graphics->api.fontcache_draw = &__neko_fontcache_draw;
-    // graphics->api.fontcache_load = &__neko_fontcache_load;
-    // graphics->api.fontcache_push = &__neko_fontcache_push;
-    // graphics->api.fontcache_push_x_y = &__neko_fontcache_push_x_y;
 }
 
 #endif  // NEKO_GRAPHICS_IMPL_OPENGL

@@ -1,15 +1,22 @@
-local ECS = require "common/ecs"
-local PHY = require "common/physics"
+local ECS = require("common/ecs")
+local PHY = require("common/physics")
+local deepcopy = require("common/nekolua/utils/deepcopy")
 
-gui = require "neko_gui"
-
+gui = require("neko_gui")
 require("common/hotfix")
-
-neko_web_console = require "web_console"
-
-tweens = require "tweens"
-
 c_gameobject = require("gameobject")
+
+USE_LUA_PAK = false
+
+if USE_LUA_PAK then
+    tweens = require("source/lua/game/tweens")
+    neko_web_console = require("source/lua/game/web_console")
+else
+    tweens = require("tweens")
+    neko_web_console = require("web_console")
+end
+
+-- print(dump_func(gui))
 
 neko_game = {
     app = {
@@ -28,6 +35,8 @@ neko_game = {
 }
 
 game_data = {}
+
+game_data.hot_code = {}
 
 ecs_world = ECS.fetch_world("sandbox")
 
@@ -53,6 +62,8 @@ ecs_world:register("velocity2", {
 })
 
 ecs_world:register("player", scale, {ud})
+
+ecs_world:register("npc", scale, {r, ud})
 
 ecs_world:register("tiled_map", {path, ud})
 
@@ -139,7 +150,8 @@ local function draw_blocks()
         local v1 = to_vec2(block.x, block.y)
         local v2 = to_vec2(block.w, block.h)
 
-        neko.idraw_rectvd(v1, v2, to_vec2(0.0, 0.0), to_vec2(1.0, 1.0), "NEKO_GRAPHICS_PRIMITIVE_TRIANGLES")
+        neko.idraw_rectvd(v1, v2, to_vec2(0.0, 0.0), to_vec2(1.0, 1.0), "NEKO_GRAPHICS_PRIMITIVE_TRIANGLES",
+            to_color(0, 255, 255, 255))
     end
 end
 
@@ -196,15 +208,24 @@ game_init_thread = function()
         nekolua.register()
     end
 
-    gd.hot_code = neko_load("player_update.lua")
+    gd.hot_code["player_update.lua"] = neko_load("player_update.lua")
+    gd.hot_code["npc.lua"] = neko_load("npc.lua")
 
-    -- print(gd.hot_code)
-    -- for k, v in pairs(gd.hot_code) do
-    --     print(k, v)
-    -- end
+    -- neko.pack_build(neko_file_path("gamedir/sc_build.pack"),
+    --     {"source/lua/game/web_console.lua", "source/lua/game/tweens.lua"})
 
-    test_pack = neko.pack_construct("test_pack_handle", neko_file_path("gamedir/res.pack"))
-    test_handle = neko.pack_assets_load(test_pack, ".\\data\\assets\\textures\\cat.aseprite")
+    -- neko.pack_build(neko_file_path("gamedir/res2.pack"),
+    --     {"gamedir/assets/textures/cat.aseprite", "gamedir/assets/textures/map1.ase", "gamedir/1.fnt"})
+
+    test_pack_1, test_pack_2, test_pack_3 = neko.pack_info(neko_file_path("gamedir/res2.pack"))
+
+    print("pack_info", test_pack_1, test_pack_2, test_pack_3)
+
+    test_pack = neko.pack_construct("test_pack_handle", neko_file_path("gamedir/res2.pack"))
+    test_handle = neko.pack_assets_load(test_pack, "gamedir/assets/textures/cat.aseprite")
+    test_items = neko.pack_items(test_pack)
+
+    print(dump_func(test_items))
 
 end
 
@@ -213,7 +234,6 @@ game_init = function()
     win_w, win_h = neko_window_size(neko_main_window())
 
     gd.fbo = neko.graphics_framebuffer_create()
-    -- gd.rt = neko.graphics_texture_create(64 * 16 * 2, 32 * 16 * 2)
     gd.rt = neko.graphics_texture_create(win_w, win_h)
     gd.rp = neko.graphics_renderpass_create(gd.fbo, gd.rt)
 
@@ -221,9 +241,11 @@ game_init = function()
 
     -- default_font = neko_fontcache_load(test_handle, 18.0)
 
-    -- neko_fontcache_set_default_font(default_font)
+    gd.test_witch_spr = neko.sprite.create(neko_file_path("gamedir/assets/textures/B_witch.ase"))
+    gd.test_harvester_spr = neko.sprite.create(neko_file_path("gamedir/assets/textures/TheHarvester.ase"))
+    gd.test_pdx_spr = neko.sprite.create(neko_file_path("gamedir/assets/textures/pdx.ase"))
 
-    gd.test_witch_spr = neko.sprite.create(neko_file_path("gamedir/assets/textures/B_witch.ase"));
+    gd.test_batch = neko.sprite_batch_create()
 
     eid1 = ecs_world:new{
         gameobj = {
@@ -248,7 +270,7 @@ game_init = function()
 
     local v2, v, player, player_obj = ecs_world:get(eid1, "vector2", "velocity2", "player", "gameobj")
 
-    phy_world:add(player, v2.x, v2.y, player_obj.w * player.scale, player_obj.h * player.scale)
+    phy_world:add(player, v2.x, v2.y, player_obj.w * player.scale - 100, player_obj.h * player.scale - 40)
 
     -- phy_add_block(800 - 32, 120, 32, 600 - 32 * 2)
 
@@ -326,10 +348,66 @@ game_init = function()
     -- ]])
 
     -- safefunc()
+
+    for i = 1, 10, 1 do
+        local e = ecs_world:new{
+            gameobj = {
+                name = "npc_pdx_" .. i,
+                w = 48,
+                h = 48,
+                sd = c_gameobject.new_obj(1010 + i, true, true)
+            },
+            vector2 = {
+                x = common.random(1, 1800),
+                y = common.random(1, 1800)
+            },
+            velocity2 = {
+                dx = 0,
+                dy = 0
+            },
+            npc = {
+                r = -1,
+                scale = 3.0,
+                ud = neko.aseprite.create(gd.test_pdx_spr)
+            }
+        }
+
+        local v2, v, player, player_obj = ecs_world:get(e, "vector2", "velocity2", "npc", "gameobj")
+
+        phy_world:add(player, v2.x, v2.y, player_obj.w * player.scale - 100, player_obj.h * player.scale - 40)
+    end
+
+    for i = 1, 5, 1 do
+        local e = ecs_world:new{
+            gameobj = {
+                name = "npc" .. i,
+                w = 48,
+                h = 48,
+                sd = c_gameobject.new_obj(1010 + i, true, true)
+            },
+            vector2 = {
+                x = common.random(1, 1800),
+                y = common.random(1, 1800)
+            },
+            velocity2 = {
+                dx = 0,
+                dy = 0
+            },
+            npc = {
+                r = -1,
+                scale = 4.0,
+                ud = neko.aseprite.create(gd.test_harvester_spr)
+            }
+        }
+
+        local v2, v, player, player_obj = ecs_world:get(e, "vector2", "velocity2", "npc", "gameobj")
+
+        phy_world:add(player, v2.x, v2.y, player_obj.w * player.scale - 100, player_obj.h * player.scale - 40)
+    end
 end
 
 game_shutdown = function()
-    neko.pack_assets_unload(test_handle)
+    neko.pack_assets_unload(test_pack, test_handle)
     neko.pack_destroy(test_pack)
 
     -- neko.sprite_end(gd.test_witch_spr)
@@ -364,6 +442,8 @@ game_shutdown = function()
     neko.graphics_renderpass_destroy(gd.rp)
     neko.graphics_texture_destroy(gd.rt)
     neko.graphics_framebuffer_destroy(gd.fbo)
+
+    neko.sprite_batch_end(gd.test_batch)
 end
 
 gd.tick = 0
@@ -376,7 +456,9 @@ game_pre_update = function()
             neko.filewatch_update(gd.filewatch)
             neko.filewatch_notify(gd.filewatch)
 
-            neko_hotload("player_update.lua")
+            for k, v in pairs(gd.hot_code) do
+                neko_hotload(k)
+            end
         end
     end
 
@@ -393,7 +475,11 @@ game_update = function(dt)
 
     tweens.update(dt)
 
-    gd.hot_code.my_update(dt)
+    for k, v in pairs(gd.hot_code) do
+        v.my_update(dt)
+    end
+
+    gd.mx, gd.my = neko_mouse_position()
 
     for v2, v, t in ecs_world:match("all", "vector2", "velocity2", "tiled_map") do
 
@@ -455,6 +541,33 @@ game_render = function()
         neko.idraw_defaults()
     end
 
+    for v2, v, p, obj in ecs_world:match("all", "vector2", "velocity2", "npc", "gameobj") do
+        local direction = 0
+        if v.dx < 0 then
+            direction = 1
+        end
+
+        player_pos = v2
+
+        local render_ase = deepcopy(v2)
+        render_ase.x = render_ase.x - 50
+        render_ase.y = render_ase.y - 20
+
+        SAFE_UD(p):render(render_ase, direction, p.scale)
+
+        if neko_game.cvar.show_physics_debug then
+            neko.idraw_rectv(render_ase, {
+                x = obj.w * p.scale,
+                y = obj.h * p.scale
+            }, "NEKO_GRAPHICS_PRIMITIVE_LINES", to_color(0, 144, 144, 255))
+
+            neko.idraw_rectv(v2, {
+                x = 10,
+                y = 10
+            }, "NEKO_GRAPHICS_PRIMITIVE_LINES", to_color(0, 144, 144, 255))
+        end
+    end
+
     local player_pos
 
     for v2, v, p, obj in ecs_world:match("all", "vector2", "velocity2", "player", "gameobj") do
@@ -463,14 +576,25 @@ game_render = function()
             direction = 1
         end
 
-        SAFE_UD(p):render(v2, direction, p.scale)
-
         player_pos = v2
 
-        neko.idraw_rectv(v2, {
-            x = obj.w * p.scale,
-            y = obj.h * p.scale
-        }, "NEKO_GRAPHICS_PRIMITIVE_LINES")
+        local render_ase = deepcopy(v2)
+        render_ase.x = render_ase.x - 50
+        render_ase.y = render_ase.y - 20
+
+        SAFE_UD(p):render(render_ase, direction, p.scale)
+
+        if neko_game.cvar.show_physics_debug then
+            neko.idraw_rectv(render_ase, {
+                x = obj.w * p.scale,
+                y = obj.h * p.scale
+            }, "NEKO_GRAPHICS_PRIMITIVE_LINES", to_color(255, 144, 144, 255))
+
+            neko.idraw_rectv(v2, {
+                x = 10,
+                y = 10
+            }, "NEKO_GRAPHICS_PRIMITIVE_LINES", to_color(255, 144, 144, 255))
+        end
     end
 
     local cc_x = player_pos.x - win_w / 2 + 24 * 3
@@ -479,6 +603,11 @@ game_render = function()
         x = cc_x,
         y = cc_y
     }):ease("cubicout")
+
+    neko.idraw_rectv(to_vec2(gd.mx + gd.cam.x, gd.my + gd.cam.y), {
+        x = 10,
+        y = 10
+    }, "NEKO_GRAPHICS_PRIMITIVE_TRIANGLES", to_color(255, 0, 0, 255))
 
     for v2, t in ecs_world:match("all", "vector2", "custom_sprite") do
         neko.custom_sprite_render(SAFE_UD(t))
@@ -496,9 +625,11 @@ game_render = function()
         neko.particle_render(SAFE_UD(t), v2)
     end
 
+    imgui.Begin("Hello")
     for obj in ecs_world:match("all", "gameobj") do
         neko.gameobject_inspect(SAFE_SD(obj))
     end
+    imgui.End()
 
     -- neko.draw_text(50.0, 50.0, "中文渲染测试 日本語レンダリングテスト Hello World! ", 3.0)
 
@@ -555,6 +686,9 @@ game_render = function()
     -- neko.idraw_draw()
     -- neko.graphics_renderpass_end()
 
+
+    -- neko.sprite_batch_render(gd.test_batch)
+
 end
 
 test_update = function()
@@ -573,6 +707,7 @@ test_update = function()
     if neko_key_pressed("NEKO_KEYCODE_T") then
         -- collectgarbage("collect")
         -- __neko_print_registry_list()
+        ecs_world:dump()
     end
 
     if neko_key_pressed("NEKO_KEYCODE_F2") then
@@ -598,7 +733,9 @@ test_update = function()
         -- neko_dolua("lua_scripts/test_nekolua.lua")
         -- neko_dolua("lua_scripts/test_common.lua")
         -- neko_dolua("lua_scripts/test_behavior.lua")
-        neko_dolua("lua_scripts/tests/test_loader.lua")
+        -- neko_dolua("lua_scripts/tests/test_loader.lua")
+        -- neko_dolua("lua_scripts/tests/cffi/t.lua")
+        neko_dolua("lua_scripts/stronger/example.lua")
 
         -- neko.audio_play(test_audio)
 

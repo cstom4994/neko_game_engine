@@ -69,14 +69,11 @@ neko_imgui_context_t g_imgui = neko_default_val();
 neko_texture_t g_test_ase = neko_default_val();
 neko_asset_manager_t g_am = neko_default_val();
 neko_asset_t tex_hndl = neko_default_val();
-neko_string data_path = neko_default_val();
+std::string data_path = neko_default_val();
 neko_packreader_t g_pack = neko_default_val();
+neko_packreader_t g_lua_pack = neko_default_val();
 
 game_vm_t g_vm = neko_default_val();
-
-#ifdef GAME_CSHARP_ENABLED
-game_csharp g_csharp;
-#endif
 
 // user data
 
@@ -123,6 +120,8 @@ typedef struct neko_engine_cvar_s {
     bool show_cvar_window = false;
     bool show_pack_editor = false;
     bool show_profiler_window = false;
+
+    bool show_test_window = false;
 
     bool show_gui = false;
     bool show_console = false;
@@ -180,13 +179,12 @@ neko_engine_cvar_t g_cvar = neko_default_val();
 void editor_dockspace(neko_core_ui_context_t *ctx);
 
 // test
-void test_xml(const neko_string &file);
+void test_xml(const std::string &file);
 void test_sr();
 void test_ut();
 void test_se();
 void test_containers();
 void test_nbt();
-void test_cs(std::string_view path);
 void test_thd(void);
 
 NEKO_API_DECL void test_sexpr();
@@ -260,17 +258,17 @@ neko_texture_t load_ase_texture_simple(const void *memory, int size) {
     return tex;
 }
 
-neko_string game_assets(const neko_string &path) {
+std::string game_assets(const std::string &path) {
     if (data_path.empty()) {
         neko_assert(!data_path.empty());  // game data path not detected
         return path;
     }
-    neko_string get_path(data_path);
+    std::string get_path(data_path);
 
     if (path.substr(0, 7) == "gamedir") {
         get_path.append(path);
     } else if (path.substr(0, 11) == "lua_scripts") {
-        neko_string lua_path = path;
+        std::string lua_path = path;
         get_path = std::filesystem::path(data_path).parent_path().string().append("/source/lua/game/").append(lua_path.replace(0, 12, ""));
     }
 
@@ -635,8 +633,8 @@ void __neko_cvar_gui_internal(T &&obj, int depth = 0, const char *fieldName = ""
 
         auto ff = [&]<typename S>(const char *name, auto &var, S &t) {
             if constexpr (std::is_same_v<std::decay_t<decltype(var)>, S>) {
-                neko_gui::gui_auto(var, name);
-                neko_gui_labelf(&g_gui.neko_gui_ctx, NEKO_GUI_TEXT_LEFT, "    [%s]", std::get<0>(fields));
+                neko_imgui::Auto(var, name);
+                ImGui::Text("    [%s]", std::get<0>(fields));
             }
         };
 
@@ -652,13 +650,13 @@ void neko_cvar_gui() {
             switch ((&neko_cv()->cvars[i])->type) {
                 default:
                 case __NEKO_CONFIG_TYPE_STRING:
-                    neko_gui::gui_auto((&neko_cv()->cvars[i])->value.s, (&neko_cv()->cvars[i])->name);
+                    neko_imgui::Auto((&neko_cv()->cvars[i])->value.s, (&neko_cv()->cvars[i])->name);
                     break;
                 case __NEKO_CONFIG_TYPE_FLOAT:
-                    neko_gui::gui_auto((&neko_cv()->cvars[i])->value.f, (&neko_cv()->cvars[i])->name);
+                    neko_imgui::Auto((&neko_cv()->cvars[i])->value.f, (&neko_cv()->cvars[i])->name);
                     break;
                 case __NEKO_CONFIG_TYPE_INT:
-                    neko_gui::gui_auto((&neko_cv()->cvars[i])->value.i, (&neko_cv()->cvars[i])->name);
+                    neko_imgui::Auto((&neko_cv()->cvars[i])->value.i, (&neko_cv()->cvars[i])->name);
                     break;
             };
         };
@@ -670,6 +668,8 @@ neko_handle(neko_graphics_texture_t) cmptex = {0};
 neko_handle(neko_graphics_pipeline_t) cmdpip = {0};
 neko_handle(neko_graphics_shader_t) cmpshd = {0};
 neko_handle(neko_graphics_storage_buffer_t) u_voxels = {0};
+
+neko_assetsys_t *g_assetsys;
 
 #define TEX_WIDTH 512
 #define TEX_HEIGHT 512
@@ -691,42 +691,7 @@ const char *comp_src =
         "imageStore(destTex, storePos, color);\n"
         "}";
 
-// clang-format off
-const_str image_names[] = {
-        "gamedir/assets/textures/dragon_zombie.png",
-        "gamedir/assets/textures/night_spirit.png",
-};
-// clang-format on
-
-int images_count = sizeof(image_names) / sizeof(*image_names);
-neko_png_image_t images[sizeof(image_names) / sizeof(*image_names)];
-
-spritebatch_t sb;
-
-neko_graphics_custom_batch_context_t *sprite_batch;
-neko_graphics_custom_batch_shader_t sprite_shader;
-neko_graphics_custom_batch_renderable_t sprite_renderable;
-f32 sprite_projection[16];
 f32 font_projection[16];
-
-// example data for storing + transforming sprite vertices on CPU
-typedef struct {
-    f32 x, y;
-    f32 u, v;
-} vertex_t;
-
-#define SPRITE_VERTS_MAX (1024 * 10)
-int sprite_verts_count;
-vertex_t sprite_verts[SPRITE_VERTS_MAX];
-
-// example of a game sprite
-typedef struct {
-    NEKO_SPRITEBATCH_U64 image_id;
-    int depth;
-    f32 x, y;
-    f32 sx, sy;
-    f32 c, s;
-} neko_sprite_t;
 
 neko_graphics_custom_batch_context_t *font_render;
 neko_graphics_custom_batch_shader_t font_shader;
@@ -736,188 +701,6 @@ int font_vert_count;
 neko_font_vert_t *font_verts;
 neko_font_u64 test_font_tex_id;
 neko_font_t *test_font_bmfont;
-
-spritebatch_config_t get_demo_config() {
-    spritebatch_config_t config;
-    spritebatch_set_default_config(&config);
-    config.pixel_stride = sizeof(uint8_t) * 4;  // RGBA uint8_t from cute_png.h
-    config.atlas_width_in_pixels = 1024;
-    config.atlas_height_in_pixels = 1024;
-    config.atlas_use_border_pixels = 0;
-    config.ticks_to_decay_texture = 3;
-    config.lonely_buffer_count_till_flush = 1;
-    config.ratio_to_decay_atlas = 0.5f;
-    config.ratio_to_merge_atlases = 0.25f;
-    config.allocator_context = 0;
-    return config;
-}
-
-neko_sprite_t make_sprite(NEKO_SPRITEBATCH_U64 image_id, f32 x, f32 y, f32 scale, f32 angle_radians, int depth) {
-
-    neko_vec2 fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
-
-    f32 x0 = (x - fbs.x / 2.f) / scale /*+ -text_w / 2.f*/;
-    f32 y0 = (fbs.y / 2.f - y) / scale / 2.f;
-
-    neko_sprite_t s;
-    s.image_id = image_id;
-    s.depth = depth;
-    s.x = x0;
-    s.y = y0;
-    s.sx = (f32)images[s.image_id].w * 2.0f * scale;
-    s.sy = (f32)images[s.image_id].h * 2.0f * scale;
-    s.c = cosf(angle_radians);
-    s.s = sinf(angle_radians);
-    return s;
-}
-
-void push_sprite(neko_sprite_t sp) {
-    spritebatch_sprite_t s;
-    s.image_id = sp.image_id;
-    s.w = images[sp.image_id].w;
-    s.h = images[sp.image_id].h;
-    s.x = sp.x;
-    s.y = sp.y;
-    s.sx = sp.sx;
-    s.sy = sp.sy;
-    s.c = sp.c;
-    s.s = sp.s;
-    s.sort_bits = (NEKO_SPRITEBATCH_U64)sp.depth;
-    spritebatch_push(&sb, s);
-}
-
-int call_count = 0;
-
-// callbacks for cute_spritebatch.h
-void batch_report(spritebatch_sprite_t *sprites, int count, int texture_w, int texture_h, void *udata) {
-    ++call_count;
-
-    (void)udata;
-    (void)texture_w;
-    (void)texture_h;
-    // printf("begin batch\n");
-    // for (int i = 0; i < count; ++i) printf("\t%llu\n", sprites[i].texture_id);
-    // printf("end batch\n");
-
-    // build the draw call
-    neko_graphics_custom_batch_draw_call_t call;
-    call.r = &sprite_renderable;
-    call.textures[0] = (u32)sprites[0].texture_id;
-    call.texture_count = 1;
-
-    // set texture uniform in shader
-    neko_graphics_custom_batch_send_texture(call.r->program, "u_sprite_texture", 0);
-
-    // NOTE:
-    // perform any additional sorting here
-
-    // build vertex buffer of quads from all sprite transforms
-    call.verts = sprite_verts + sprite_verts_count;
-    call.vert_count = count * 6;
-    sprite_verts_count += call.vert_count;
-    assert(sprite_verts_count < SPRITE_VERTS_MAX);
-
-    vertex_t *verts = (vertex_t *)call.verts;
-    for (int i = 0; i < count; ++i) {
-        spritebatch_sprite_t *s = sprites + i;
-
-        neko_vec2 quad[] = {
-                {-0.5f, 0.5f},
-                {0.5f, 0.5f},
-                {0.5f, -0.5f},
-                {-0.5f, -0.5f},
-        };
-
-        for (int j = 0; j < 4; ++j) {
-            f32 x = quad[j].x;
-            f32 y = quad[j].y;
-
-            // scale sprite about origin
-            x *= s->sx;
-            y *= s->sy;
-
-            // rotate sprite about origin
-            f32 x0 = s->c * x - s->s * y;
-            f32 y0 = s->s * x + s->c * y;
-            x = x0;
-            y = y0;
-
-            // translate sprite into the world
-            x += s->x;
-            y += s->y;
-
-            quad[j].x = x;
-            quad[j].y = y;
-        }
-
-        // output transformed quad into CPU buffer
-        vertex_t *out_verts = verts + i * 6;
-
-        out_verts[0].x = quad[0].x;
-        out_verts[0].y = quad[0].y;
-        out_verts[0].u = s->minx;
-        out_verts[0].v = s->maxy;
-
-        out_verts[1].x = quad[3].x;
-        out_verts[1].y = quad[3].y;
-        out_verts[1].u = s->minx;
-        out_verts[1].v = s->miny;
-
-        out_verts[2].x = quad[1].x;
-        out_verts[2].y = quad[1].y;
-        out_verts[2].u = s->maxx;
-        out_verts[2].v = s->maxy;
-
-        out_verts[3].x = quad[1].x;
-        out_verts[3].y = quad[1].y;
-        out_verts[3].u = s->maxx;
-        out_verts[3].v = s->maxy;
-
-        out_verts[4].x = quad[3].x;
-        out_verts[4].y = quad[3].y;
-        out_verts[4].u = s->minx;
-        out_verts[4].v = s->miny;
-
-        out_verts[5].x = quad[2].x;
-        out_verts[5].y = quad[2].y;
-        out_verts[5].u = s->maxx;
-        out_verts[5].v = s->miny;
-    }
-
-    // submit call to cute_gl (does not get flushed to screen until `gl_flush` is called)
-    neko_graphics_custom_batch_push_draw_call(sprite_batch, call);
-}
-
-void get_pixels(NEKO_SPRITEBATCH_U64 image_id, void *buffer, int bytes_to_fill, void *udata) {
-    (void)udata;
-    memcpy(buffer, images[image_id].pix, bytes_to_fill);
-}
-
-NEKO_SPRITEBATCH_U64 generate_texture_handle(void *pixels, int w, int h, void *udata) {
-    (void)udata;
-    GLuint location;
-    glGenTextures(1, &location);
-    glBindTexture(GL_TEXTURE_2D, location);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    return (NEKO_SPRITEBATCH_U64)location;
-}
-
-void destroy_texture_handle(NEKO_SPRITEBATCH_U64 texture_id, void *udata) {
-    (void)udata;
-    GLuint id = (GLuint)texture_id;
-    glDeleteTextures(1, &id);
-}
-
-void load_images() {
-    for (s32 i = 0; i < images_count; ++i) images[i] = neko_png_load(game_assets(image_names[i]).c_str());
-}
-
-void unload_images() {
-    for (s32 i = 0; i < images_count; ++i) neko_png_free(images + i);
-}
 
 void draw_text(neko_font_t *font, const char *text, float x, float y, float line_height, float clip_region, float wrap_x, f32 scale) {
     f32 text_w = (f32)neko_font_text_width(font, text);
@@ -1019,32 +802,27 @@ void game_init() {
 
     g_am = neko_asset_manager_new();
 
+    g_assetsys = neko_assetsys_create(0);
+
+    neko_assetsys_mount(g_assetsys, "./gamedir", "/gamedir");
+
     g_client_userdata.cb = &g_cb;
     g_client_userdata.idraw = &g_idraw;
     g_client_userdata.core_ui = &g_core_ui;
     g_client_userdata.idraw_sd = neko_immediate_draw_static_data_get();
 
+    g_client_userdata.pack = &g_lua_pack;
+
+    neko_pack_result result = neko_pack_read(game_assets("gamedir/sc.pack").c_str(), 0, false, &g_lua_pack);
+    neko_pack_check(result);
+
     g_vm.ctx = neko_script_ctx_new(nullptr);
 
     g_L = neko_scripting_init();
 
-    // 测试 csharp wrapper
-#ifdef GAME_CSHARP_ENABLED
-
-#ifdef NEKO_DEBUG
-    std::string managed_path(game_assets("gamedir/managed/debug"));
-#else
-    std::string managed_path(game_assets("gamedir/managed/release"));
-#endif
-
-    test_cs(managed_path);
-
-    g_csharp.init(managed_path);
-#endif
-
     {
         neko_lua_wrap_register_t<>(g_L).def(
-                +[](const_str path) -> neko_string { return game_assets(path); }, "__neko_file_path");
+                +[](const_str path) -> std::string { return game_assets(path); }, "__neko_file_path");
 
         lua_newtable(g_L);
         for (int n = 0; n < neko_instance()->ctx.game.argc; ++n) {
@@ -1101,7 +879,7 @@ void game_init() {
         neko_log_error("lua exception %s", ex.what());
     }
 
-    neko_pack_result result = neko_pack_read(game_assets("gamedir/res.pack").c_str(), 0, false, &g_pack);
+    result = neko_pack_read(game_assets("gamedir/res.pack").c_str(), 0, false, &g_pack);
     neko_pack_check(result);
 
     u8 *font_data, *cat_data;
@@ -1125,8 +903,8 @@ void game_init() {
     // neko_asset_ascii_font_load_from_memory(font_data, font_data_size, &g_font, 24);
     neko_asset_ascii_font_load_from_file(game_assets("gamedir/assets/fonts/monocraft.ttf").c_str(), &g_font, 24);
 
-    neko_safe_free(font_data);
-    neko_safe_free(cat_data);
+    neko_pack_item_free(&g_pack, font_data);
+    neko_pack_item_free(&g_pack, cat_data);
 
     auto GUI_FONT_STASH = []() -> neko_core_ui_font_stash_desc_t * {
         static neko_core_ui_font_desc_t font_decl[] = {{.key = "mc_regular", .font = &g_font}};
@@ -1177,67 +955,7 @@ void game_init() {
     // 我们将把 BT 的内部上下文用户数据设置为 AI 信息的地址
     bt.ctx.user_data = &ai;
 
-    sprite_batch = neko_graphics_custom_batch_make_ctx(32);
-
-    g_client_userdata.sprite_batch = sprite_batch;
-
     neko_vec2 fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
-
-    const char *vs = R"(
-#version 330
-
-uniform mat4 u_mvp;
-
-in vec2 in_pos; in vec2 in_uv;
-
-out vec2 v_uv;
-
-void main() {
-    v_uv = in_uv;
-    gl_Position = u_mvp * vec4(in_pos, 0, 1);
-}
-)";
-
-    const char *ps = R"(
-#version 330
-precision mediump float;
-uniform sampler2D u_sprite_texture;
-in vec2 v_uv; out vec4 out_col;
-void main() { out_col = texture(u_sprite_texture, v_uv); }
-)";
-
-    neko_graphics_custom_batch_vertex_data_t vd;
-    neko_graphics_custom_batch_make_vertex_data(&vd, 1024 * 1024, GL_TRIANGLES, sizeof(vertex_t), GL_DYNAMIC_DRAW);
-    neko_graphics_custom_batch_add_attribute(&vd, "in_pos", 2, NEKO_GL_CUSTOM_FLOAT, neko_offset(vertex_t, x));
-    neko_graphics_custom_batch_add_attribute(&vd, "in_uv", 2, NEKO_GL_CUSTOM_FLOAT, neko_offset(vertex_t, u));
-
-    neko_graphics_custom_batch_make_renderable(&sprite_renderable, &vd);
-    neko_graphics_custom_batch_load_shader(&sprite_shader, vs, ps);
-    neko_graphics_custom_batch_set_shader(&sprite_renderable, &sprite_shader);
-
-    // gl_make_frame_buffer(&sb_fb, &sprite_shader, (s32)fbs.x, (s32)fbs.y, 0);
-
-    neko_graphics_custom_batch_ortho_2d(fbs.x, fbs.y, 0, 0, sprite_projection);
-    // glViewport(0, 0, (s32)fbs.x, (s32)fbs.y);
-
-    neko_graphics_custom_batch_send_matrix(&sprite_shader, "u_mvp", sprite_projection);
-
-    load_images();
-
-    // setup cute_spritebatch configuration
-    // this configuration is specialized to test out the demo. don't use these settings
-    // in your own project. Instead, start with `spritebatch_set_default_config`.
-    spritebatch_config_t sb_config = get_demo_config();
-    // spritebatch_set_default_config(&config); // turn default config off to test out demo
-
-    // assign the 4 callbacks
-    sb_config.batch_callback = batch_report;                        // report batches of sprites from `spritebatch_flush`
-    sb_config.get_pixels_callback = get_pixels;                     // used to retrieve image pixels from `spritebatch_flush` and `spritebatch_defrag`
-    sb_config.generate_texture_callback = generate_texture_handle;  // used to generate a texture handle from `spritebatch_flush` and `spritebatch_defrag`
-    sb_config.delete_texture_callback = destroy_texture_handle;     // used to destroy a texture handle from `spritebatch_defrag`
-
-    // initialize cute_spritebatch
-    spritebatch_init(&sb, &sb_config, NULL);
 
     font_render = neko_graphics_custom_batch_make_ctx(32);
 
@@ -1245,9 +963,7 @@ void main() { out_col = texture(u_sprite_texture, v_uv); }
 #version 330
 
 uniform mat4 u_mvp;
-
 in vec2 in_pos; in vec2 in_uv;
-
 out vec2 v_uv;
 
 void main() {
@@ -1260,7 +976,6 @@ void main() {
 precision mediump float;
 
 uniform sampler2D u_sprite_texture;
-
 in vec2 v_uv; out vec4 out_col;
 
 void main() { out_col = texture(u_sprite_texture, v_uv); }
@@ -1271,14 +986,11 @@ void main() { out_col = texture(u_sprite_texture, v_uv); }
     neko_graphics_custom_batch_add_attribute(&font_vd, "in_pos", 2, NEKO_GL_CUSTOM_FLOAT, neko_offset(neko_font_vert_t, x));
     neko_graphics_custom_batch_add_attribute(&font_vd, "in_uv", 2, NEKO_GL_CUSTOM_FLOAT, neko_offset(neko_font_vert_t, u));
 
-    neko_graphics_custom_batch_make_renderable(&font_renderable, &vd);
+    neko_graphics_custom_batch_make_renderable(&font_renderable, &font_vd);
     neko_graphics_custom_batch_load_shader(&font_shader, font_vs, font_ps);
     neko_graphics_custom_batch_set_shader(&font_renderable, &font_shader);
 
     neko_graphics_custom_batch_ortho_2d(fbs.x / font_scale, fbs.y / font_scale, 0, 0, font_projection);
-
-    // neko_graphics_custom_batch_ortho_2d((float)640, (float)480, 0, 0, projection);
-    // glViewport(0, 0, 640, 480);
 
     neko_graphics_custom_batch_send_matrix(&font_shader, "u_mvp", font_projection);
 
@@ -1324,6 +1036,19 @@ void main() { out_col = texture(u_sprite_texture, v_uv); }
 
     u_voxels = neko_graphics_storage_buffer_create(
             neko_c_ref(neko_graphics_storage_buffer_desc_t, {.data = &data, .size = sizeof(neko_vec4), .name = "u_voxels", .usage = NEKO_GRAPHICS_BUFFER_USAGE_DYNAMIC}));
+
+    // Load a file
+    neko_assetsys_file_t file;
+    neko_assetsys_file(g_assetsys, "/gamedir/style_sheets/temp.ss", &file);
+    int size = neko_assetsys_file_size(g_assetsys, file);
+    // char *content = (char *)malloc(size + 1);  // extra space for '\0'
+    // int loaded_size = 0;
+    // neko_assetsys_file_load(g_assetsys, file, &loaded_size, content, size);
+    // content[size] = '\0';  // zero terminate the text file
+    // printf("%s\n", content);
+    // free(content);
+
+    neko_assetsys_destroy(g_assetsys);
 
     // 初始化工作
 
@@ -1407,23 +1132,14 @@ void game_update() {
         if (neko_platform_key_pressed(NEKO_KEYCODE_ESC)) g_cvar.show_editor ^= true;
         if (neko_platform_key_pressed(NEKO_KEYCODE_SLASH)) g_cvar.show_console ^= true;
 
-#ifdef GAME_CSHARP_ENABLED
         {
-            neko_profiler_scope_begin(csharp_update);
-            g_csharp.update();
-            neko_profiler_scope_end(csharp_update);
-        }
-#endif
-
-        {
-            neko_profiler_scope_begin(lua_update);
+            neko_profiler_scope_auto("lua_update");
             try {
                 neko_lua_wrap_call<void, f32>(g_L, "game_update", neko_platform_delta_time());
                 neko_lua_wrap_call(g_L, "test_update");
             } catch (std::exception &ex) {
                 neko_log_error("lua exception %s", ex.what());
             }
-            neko_profiler_scope_end(lua_update);
         }
 
         // Do rendering
@@ -1446,7 +1162,8 @@ void game_update() {
 
         // neko_idraw_text(&g_idraw, (fbs.x - td.x) * 0.5f, (fbs.y - td.y) * 0.5f + ts.y / 2.f - 100.f, background_text, NULL, false, 255, 255, 255, 255);
         // neko_idraw_texture(&g_idraw, g_test_ase);
-        // neko_idraw_rectvd(&g_idraw, neko_v2((fbs.x - ts.x) * 0.5f, (fbs.y - ts.y) * 0.5f - td.y - 50.f), ts, neko_v2(0.f, 1.f), neko_v2(1.f, 0.f), NEKO_COLOR_WHITE, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
+        // neko_idraw_rectvd(&g_idraw, neko_v2((fbs.x - ts.x) * 0.5f, (fbs.y - ts.y) * 0.5f - td.y - 50.f), ts, neko_v2(0.f, 1.f), neko_v2(1.f, 0.f), NEKO_COLOR_WHITE,
+        // NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
 
 #pragma region AI
 
@@ -1500,36 +1217,6 @@ void game_update() {
                 neko_log_error("lua exception %s", ex.what());
             }
             neko_profiler_scope_end(lua_render);
-        }
-
-        call_count = 0;
-
-        // neko_sprite_t dragon_zombie = make_sprite(0, 650, 500, 1, neko_rad2deg(t / 100000.f), 0);
-        // neko_sprite_t night_spirit = make_sprite(1, 50, 250, 1, 0, 0);
-        // push_sprite(dragon_zombie);
-        // push_sprite(night_spirit);
-        // neko_sprite_t polish = make_sprite(1, 250, 180, 1, neko_rad2deg(t / 50000.f), 0);
-        // neko_sprite_t translated = polish;
-        // for (int i = 0; i < 4; ++i) {
-        //     translated.x = polish.x + polish.sx * i;
-        //     for (int j = 0; j < 6; ++j) {
-        //         translated.y = polish.y - polish.sy * j;
-        //         push_sprite(translated);
-        //     }
-        // }
-
-        // 运行cute_spriteBatch查找sprite批次
-        // 这是cute_psriteBatch最基本的用法 每个游戏循环进行一次defrag tick flush
-        // 也可以每N帧只使用一次defrag(碎片整理)
-        // tick也可以在不同的时间间隔调用(例如每次游戏更新一次
-        // 但不一定每次屏幕呈现一次
-        {
-            neko_profiler_scope_begin(render_spritebatch);
-            spritebatch_defrag(&sb);
-            spritebatch_tick(&sb);
-            spritebatch_flush(&sb);
-            sprite_verts_count = 0;
-            neko_profiler_scope_end(render_spritebatch);
         }
 
 #pragma region gui
@@ -1776,8 +1463,17 @@ void game_update() {
         if (g_cvar.show_console) console_new.display_full(&bInteractingWithTextbox);
 
         // neko_imgui::Auto(g_cvar.bg);
-        if (g_cvar.shader_inspect && ImGui::Begin("Shaders")) {
-            inspect_shader("sprite_shader", sprite_shader.program);  // TEST
+        // if (g_cvar.shader_inspect && ImGui::Begin("Shaders")) {
+        //     inspect_shader("sprite_shader", sprite_shader.program);  // TEST
+        //     ImGui::End();
+        // }
+
+        if (g_cvar.show_cvar_window && ImGui::Begin("Cvar")) {
+            try {
+                neko_cvar_gui();
+            } catch (const std::exception &ex) {
+                neko_log_error("cvar exception %s", ex.what());
+            }
             ImGui::End();
         }
 
@@ -1854,7 +1550,7 @@ void game_update() {
         neko_graphics_renderpass_begin(&g_cb, NEKO_GRAPHICS_RENDER_PASS_DEFAULT);
         {
             neko_graphics_set_viewport(&g_cb, 0, 0, (u32)fbs.x, (u32)fbs.y);
-            neko_graphics_draw_batch(&g_cb, sprite_batch, 0, 0, 0);
+            // neko_graphics_draw_batch(&g_cb, sprite_batch, 0, 0, 0);
             neko_graphics_draw_batch(&g_cb, font_render, 0, 0, 0);
         }
         neko_graphics_renderpass_end(&g_cb);
@@ -1875,7 +1571,7 @@ void game_update() {
                 neko_private(bool) isLittleEndian;
                 neko_private(u64) itemCount;
 
-                neko_private(neko_string) file = game_assets("gamedir/res.pack");
+                neko_private(std::string) file = game_assets("gamedir/res.pack");
                 neko_private(bool) filebrowser = false;
 
                 neko_gui_layout_row_static(gui_ctx, 30, 400, 1);
@@ -1980,7 +1676,7 @@ void game_update() {
             neko_gui_style_pop_color(gui_ctx);
         };
 
-        auto cvar_func = [gui_ctx]() {
+        auto test_window = [gui_ctx]() {
             if (neko_gui_begin(gui_ctx, "Hello Neko", neko_gui_layout_get_bounds_ex(&g_gui, "Hello Neko", neko_gui_rect(30, 30, 350, 700)),
                                NEKO_GUI_WINDOW_BORDER | NEKO_GUI_WINDOW_MOVABLE | NEKO_GUI_WINDOW_SCALABLE | NEKO_GUI_WINDOW_MINIMIZABLE | NEKO_GUI_WINDOW_TITLE)) {
 
@@ -1995,12 +1691,6 @@ void game_update() {
                 static std::string *p_str = NULL;
 
                 neko_gui_layout_row_static(gui_ctx, 30, 125, 1);
-
-                try {
-                    neko_cvar_gui();
-                } catch (const std::exception &ex) {
-                    neko_log_error("cvar exception %s", ex.what());
-                }
 
                 neko_gui::gui_auto(property, "test_auto_1");
                 neko_gui::gui_auto(vec, "test_auto_2");
@@ -2126,7 +1816,7 @@ void game_update() {
 
         if (g_cvar.show_pack_editor) pack_editor_func();
 
-        if (g_cvar.show_cvar_window) cvar_func();
+        if (g_cvar.show_test_window) test_window();
 
         // loading_window_func();
 
@@ -2164,19 +1854,12 @@ void game_shutdown() {
 
     neko_scripting_end(g_L);
 
-#ifdef GAME_CSHARP_ENABLED
-    g_csharp.shutdown();
-#endif
-
     neko_safe_free(font_verts);
 
     neko_font_free(test_font_bmfont);
 
-    spritebatch_term(&sb);
-    unload_images();
 
     neko_graphics_custom_batch_free(font_render);
-    neko_graphics_custom_batch_free(sprite_batch);
 
     neko_immediate_draw_free(&g_idraw);
 
@@ -2201,6 +1884,8 @@ void game_shutdown() {
     neko_core_ui_free(&g_core_ui);
 
     neko_pack_destroy(&g_pack);
+
+    neko_pack_destroy(&g_lua_pack);
 }
 
 #define NEKO_ARGS_IMPL
@@ -2218,9 +1903,6 @@ neko_game_desc_t neko_main(s32 argc, char **argv) {
     neko_args_setup(&args);
 
 #define ARGS_STR(s0, s1) (0 == strcmp(s0, s1))
-
-    if (ARGS_STR(neko_args_key_at(0), "packer")) {
-    }
 
     if (ARGS_STR(neko_args_key_at(0), "vm")) {
         neko_vm_interpreter(neko_args_key_at(1));

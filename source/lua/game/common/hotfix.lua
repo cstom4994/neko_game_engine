@@ -10,7 +10,7 @@ function _G.MEMVAR(key, def)
 end
 
 local function neko_hotfix_get_file_key(name)
-    return "FILE:" .. name
+    return "__NEKO_HOTCODE_:" .. name
 end
 
 -- 加载一个热更新代码
@@ -67,6 +67,6 @@ function _G.neko_hotload(name)
             _G[key][k] = v
         end
     end
-    print(string.format("hotload [%s] ok", name))
+    -- print(string.format("hotload [%s] ok", name))
 end
 
