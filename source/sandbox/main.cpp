@@ -41,9 +41,6 @@
 #include "sandbox/hpp/neko_struct.hpp"
 #include "sandbox/neko_gui_auto.hpp"
 
-#define NEKO_CONSOLE_IMPL
-#include "engine/util/neko_console.h"
-
 #define NEKO_IMGUI_IMPL
 #include "game_imgui.h"
 
@@ -117,14 +114,12 @@ typedef struct neko_engine_cvar_s {
 
     bool show_demo_window = false;
     bool show_info_window = false;
-    bool show_cvar_window = false;
     bool show_pack_editor = false;
     bool show_profiler_window = false;
 
     bool show_test_window = false;
 
     bool show_gui = false;
-    bool show_console = false;
 
     bool shader_inspect = false;
 
@@ -147,11 +142,9 @@ struct neko::static_refl::neko_type_info<neko_engine_cvar_t> : neko_type_info_ba
             rf_field{TSTR("show_editor"), &rf_type::show_editor},                    //
             rf_field{TSTR("show_demo_window"), &rf_type::show_demo_window},          //
             rf_field{TSTR("show_info_window"), &rf_type::show_info_window},          //
-            rf_field{TSTR("show_cvar_window"), &rf_type::show_cvar_window},          //
             rf_field{TSTR("show_pack_editor"), &rf_type::show_pack_editor},          //
             rf_field{TSTR("show_profiler_window"), &rf_type::show_profiler_window},  //
             rf_field{TSTR("show_gui"), &rf_type::show_gui},                          //
-            rf_field{TSTR("show_console"), &rf_type::show_console},                  //
             rf_field{TSTR("shader_inspect"), &rf_type::shader_inspect},              //
             rf_field{TSTR("hello_ai_shit"), &rf_type::hello_ai_shit},                //
             rf_field{TSTR("is_hotfix"), &rf_type::is_hotfix},                        //
@@ -164,11 +157,9 @@ neko_struct(neko_engine_cvar_t,                            //
             _Fs(show_editor, "Is show editor"),            //
             _Fs(show_demo_window, "Is show nui demo"),     //
             _Fs(show_info_window, "Is show info window"),  //
-            _Fs(show_cvar_window, "cvar inspector"),       //
             _Fs(show_pack_editor, "pack editor"),          //
             _Fs(show_profiler_window, "profiler"),         //
             _Fs(show_gui, "neko gui"),                     //
-            _Fs(show_console, "neko console"),             //
             _Fs(shader_inspect, "shaders"),                //
             _Fs(hello_ai_shit, "Test AI"),                 //
             _Fs(bg, "bg color")                            //
@@ -482,6 +473,123 @@ void ai_task_target_move_to(struct neko_ai_bt_t *ctx, struct neko_ai_bt_node_t *
 
 #pragma region console
 
+NEKO_API_DECL void neko_console(neko_console_t *console, neko_core_ui_context_t *ctx, neko_core_ui_rect_t screen, const neko_core_ui_selector_desc_t *desc) {
+    if (console->open)
+        console->y += (screen.h * console->size - console->y) * console->open_speed;
+    else if (!console->open && console->y >= 1.0f)
+        console->y += (0 - console->y) * console->close_speed;
+    else
+        return;
+
+    const f32 sz = neko_min(console->y, 26);
+    if (neko_core_ui_window_begin_ex(
+                ctx, "neko_console_content", neko_core_ui_rect(screen.x, screen.y, screen.w, console->y - sz), NULL, NULL,
+                NEKO_CORE_UI_OPT_FORCESETRECT | NEKO_CORE_UI_OPT_NOTITLE | NEKO_CORE_UI_OPT_NORESIZE | NEKO_CORE_UI_OPT_NODOCK | NEKO_CORE_UI_OPT_FORCEFOCUS | NEKO_CORE_UI_OPT_HOLDFOCUS)) {
+        neko_core_ui_layout_row(ctx, 1, neko_core_ui_widths(-1), 0);
+        neko_core_ui_text(ctx, console->tb);
+        // neko_imgui_draw_text(console->tb, NEKO_COLOR_WHITE, 10.f, 10.f, false, NEKO_COLOR_BLACK);
+        if (console->autoscroll) neko_core_ui_get_current_container(ctx)->scroll.y = sizeof(console->tb) * 7 + 100;
+        neko_core_ui_container_t *ctn = neko_core_ui_get_current_container(ctx);
+        neko_core_ui_bring_to_front(ctx, ctn);
+        neko_core_ui_window_end(ctx);
+    }
+
+    if (neko_core_ui_window_begin_ex(
+                ctx, "neko_console_input", neko_core_ui_rect(screen.x, screen.y + console->y - sz, screen.w, sz), NULL, NULL,
+                NEKO_CORE_UI_OPT_FORCESETRECT | NEKO_CORE_UI_OPT_NOTITLE | NEKO_CORE_UI_OPT_NORESIZE | NEKO_CORE_UI_OPT_NODOCK | NEKO_CORE_UI_OPT_NOHOVER | NEKO_CORE_UI_OPT_NOINTERACT)) {
+        int len = strlen(console->cb[0]);
+        neko_core_ui_layout_row(ctx, 3, neko_core_ui_widths(14, len * 7 + 2, 10), 0);
+        neko_core_ui_text(ctx, "$>");
+        neko_core_ui_text(ctx, console->cb[0]);
+
+        if (!console->open || !console->last_open_state) {
+            //            goto console_input_handling_done;
+        }
+
+        // 处理文本输入
+        int32_t n = neko_min(sizeof(*console->cb) - len - 1, (int32_t)strlen(ctx->input_text));
+
+        if (neko_platform_key_pressed(NEKO_KEYCODE_UP)) {
+            console->current_cb_idx++;
+            if (console->current_cb_idx >= neko_arr_size(console->cb)) {
+                console->current_cb_idx = neko_arr_size(console->cb) - 1;
+            } else {
+                memcpy(&console->cb[0], &console->cb[console->current_cb_idx], sizeof(*console->cb));
+            }
+        } else if (neko_platform_key_pressed(NEKO_KEYCODE_DOWN)) {
+            console->current_cb_idx--;
+            if (console->current_cb_idx <= 0) {
+                console->current_cb_idx = 0;
+                memset(&console->cb[0], 0, sizeof(*console->cb));
+            } else {
+                memcpy(&console->cb[0], &console->cb[console->current_cb_idx], sizeof(*console->cb));
+            }
+        } else if (neko_platform_key_pressed(NEKO_KEYCODE_ENTER)) {
+            console->current_cb_idx = 0;
+            neko_console_printf(console, "$ %s\n", console->cb[0]);
+
+            memmove((uint8_t *)console->cb + sizeof(*console->cb), (uint8_t *)console->cb, sizeof(console->cb) - sizeof(*console->cb));
+
+            if (console->cb[0][0] && console->commands) {
+                char *tmp = console->cb[0];
+                int argc = 1;
+                while ((tmp = strchr(tmp, ' '))) {
+                    argc++;
+                    tmp++;
+                }
+
+                tmp = console->cb[0];
+                char *last_pos = console->cb[0];
+                char **argv = (char **)neko_safe_malloc(argc * sizeof(char *));
+                int i = 0;
+                while ((tmp = strchr(tmp, ' '))) {
+                    *tmp = 0;
+                    argv[i++] = last_pos;
+                    last_pos = ++tmp;
+                }
+                argv[argc - 1] = last_pos;
+
+                for (int i = 0; i < console->commands_len; i++) {
+                    if (console->commands[i].name && console->commands[i].func && strcmp(argv[0], console->commands[i].name) == 0) {
+                        console->commands[i].func(argc, argv);
+                        goto console_command_found;
+                    }
+                }
+                neko_console_printf(console, "[neko_console]: unrecognized command '%s'\n", argv[0]);
+            console_command_found:
+                console->cb[0][0] = '\0';
+                neko_safe_free(argv);
+            }
+        } else if (neko_platform_key_pressed(NEKO_KEYCODE_BACKSPACE)) {
+            console->current_cb_idx = 0;
+            // 跳过 utf-8 连续字节
+            while ((console->cb[0][--len] & 0xc0) == 0x80 && len > 0)
+                ;
+            console->cb[0][len] = '\0';
+        } else if (n > 0 && !neko_platform_key_pressed(NEKO_KEYCODE_GRAVE_ACCENT)) {
+            console->current_cb_idx = 0;
+            if (len + n + 1 < sizeof(*console->cb)) {
+                memcpy(console->cb[0] + len, ctx->input_text, n);
+                len += n;
+                console->cb[0][len] = '\0';
+            }
+        }
+
+    console_input_handling_done:
+
+        // 闪烁光标
+        neko_core_ui_get_layout(ctx)->body.x += len * 7 - 5;
+        if ((int)(neko_platform_elapsed_time() / 666.0f) & 1) neko_core_ui_text(ctx, "|");
+
+        neko_core_ui_container_t *ctn = neko_core_ui_get_current_container(ctx);
+        neko_core_ui_bring_to_front(ctx, ctn);
+
+        neko_core_ui_window_end(ctx);
+    }
+
+    console->last_open_state = console->open;
+}
+
 static bool window = 1, embeded;
 static int summons;
 
@@ -693,9 +801,9 @@ const char *comp_src =
 
 f32 font_projection[16];
 
-neko_graphics_custom_batch_context_t *font_render;
-neko_graphics_custom_batch_shader_t font_shader;
-neko_graphics_custom_batch_renderable_t font_renderable;
+neko_graphics_batch_context_t *font_render;
+neko_graphics_batch_shader_t font_shader;
+neko_graphics_batch_renderable_t font_renderable;
 f32 font_scale = 3.f;
 int font_vert_count;
 neko_font_vert_t *font_verts;
@@ -723,14 +831,14 @@ void draw_text(neko_font_t *font, const char *text, float x, float y, float line
     neko_font_fill_vertex_buffer(font, text, x0, y0, wrap_width, line_height, &clip_rect, font_verts, 1024 * 2, &font_vert_count);
 
     if (font_vert_count) {
-        neko_graphics_custom_batch_draw_call_t call;
+        neko_graphics_batch_draw_call_t call;
         call.textures[0] = (u32)font->atlas_id;
         call.texture_count = 1;
         call.r = &font_renderable;
         call.verts = font_verts;
         call.vert_count = font_vert_count;
 
-        neko_graphics_custom_batch_push_draw_call(font_render, call);
+        neko_graphics_batch_push_draw_call(font_render, call);
     }
 }
 
@@ -748,10 +856,49 @@ neko_script_binary_t *ns_load_module(char *name) {
     return NULL;
 }
 
-game_editor_console console_new;
-
 // lua
-#include "neko_scripting.h"
+#include "engine/util/neko_lua.hpp"
+
+void neko_register(lua_State *L);
+
+lua_State *neko_scripting_init() {
+    neko_timer timer;
+    timer.start();
+
+    lua_State *L = neko_lua_wrap_create();
+
+    try {
+        lua_atpanic(
+                L, +[](lua_State *L) {
+                    auto msg = neko_lua_to<const_str>(L, -1);
+                    neko_log_error("[lua] panic error: %s", msg);
+                    return 0;
+                });
+        neko_register(L);
+
+        neko_lua_wrap_run_string(L, std::format("package.path = "
+                                                "'{1}/?.lua;{0}/?.lua;{0}/libs/?.lua;{0}/libs/?/init.lua;{0}/libs/"
+                                                "?/?.lua;' .. package.path",
+                                                game_assets("lua_scripts"), neko_fs_normalize_path(std::filesystem::current_path().string()).c_str()));
+
+        neko_lua_wrap_run_string(L, std::format("package.cpath = "
+                                                "'{1}/?.{2};{0}/?.{2};{0}/libs/?.{2};{0}/libs/?/init.{2};{0}/libs/"
+                                                "?/?.{2};' .. package.cpath",
+                                                game_assets("lua_scripts"), neko_fs_normalize_path(std::filesystem::current_path().string()).c_str(), "dll"));
+
+        neko_lua_wrap_safe_dofile(L, "init");
+
+    } catch (std::exception &ex) {
+        neko_log_error("%s", ex.what());
+    }
+
+    timer.stop();
+    neko_log_info(std::format("lua init done in {0:.3f} ms", timer.get()).c_str());
+
+    return L;
+}
+
+void neko_scripting_end(lua_State *L) { neko_lua_wrap_destory(L); }
 
 lua_State *g_L = nullptr;
 
@@ -957,7 +1104,7 @@ void game_init() {
 
     neko_vec2 fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
 
-    font_render = neko_graphics_custom_batch_make_ctx(32);
+    font_render = neko_graphics_batch_make_ctx(32);
 
     const char *font_vs = R"(
 #version 330
@@ -981,18 +1128,18 @@ in vec2 v_uv; out vec4 out_col;
 void main() { out_col = texture(u_sprite_texture, v_uv); }
 )";
 
-    neko_graphics_custom_batch_vertex_data_t font_vd;
-    neko_graphics_custom_batch_make_vertex_data(&font_vd, 1024 * 1024, GL_TRIANGLES, sizeof(neko_font_vert_t), GL_DYNAMIC_DRAW);
-    neko_graphics_custom_batch_add_attribute(&font_vd, "in_pos", 2, NEKO_GL_CUSTOM_FLOAT, neko_offset(neko_font_vert_t, x));
-    neko_graphics_custom_batch_add_attribute(&font_vd, "in_uv", 2, NEKO_GL_CUSTOM_FLOAT, neko_offset(neko_font_vert_t, u));
+    neko_graphics_batch_vertex_data_t font_vd;
+    neko_graphics_batch_make_vertex_data(&font_vd, 1024 * 1024, GL_TRIANGLES, sizeof(neko_font_vert_t), GL_DYNAMIC_DRAW);
+    neko_graphics_batch_add_attribute(&font_vd, "in_pos", 2, NEKO_GL_CUSTOM_FLOAT, neko_offset(neko_font_vert_t, x));
+    neko_graphics_batch_add_attribute(&font_vd, "in_uv", 2, NEKO_GL_CUSTOM_FLOAT, neko_offset(neko_font_vert_t, u));
 
-    neko_graphics_custom_batch_make_renderable(&font_renderable, &font_vd);
-    neko_graphics_custom_batch_load_shader(&font_shader, font_vs, font_ps);
-    neko_graphics_custom_batch_set_shader(&font_renderable, &font_shader);
+    neko_graphics_batch_make_renderable(&font_renderable, &font_vd);
+    neko_graphics_batch_load_shader(&font_shader, font_vs, font_ps);
+    neko_graphics_batch_set_shader(&font_renderable, &font_shader);
 
-    neko_graphics_custom_batch_ortho_2d(fbs.x / font_scale, fbs.y / font_scale, 0, 0, font_projection);
+    neko_graphics_batch_ortho_2d(fbs.x / font_scale, fbs.y / font_scale, 0, 0, font_projection);
 
-    neko_graphics_custom_batch_send_matrix(&font_shader, "u_mvp", font_projection);
+    neko_graphics_batch_send_matrix(&font_shader, "u_mvp", font_projection);
 
     size_t test_font_size = 0;
     void *test_font_mem = neko_platform_read_file_contents(game_assets("gamedir/1.fnt").c_str(), "rb", &test_font_size);
@@ -1130,7 +1277,6 @@ void game_update() {
         struct neko_gui_context *gui_ctx = &g_gui.neko_gui_ctx;
 
         if (neko_platform_key_pressed(NEKO_KEYCODE_ESC)) g_cvar.show_editor ^= true;
-        if (neko_platform_key_pressed(NEKO_KEYCODE_SLASH)) g_cvar.show_console ^= true;
 
         {
             neko_profiler_scope_auto("lua_update");
@@ -1459,16 +1605,13 @@ void game_update() {
 
         if (g_cvar.show_demo_window) ImGui::ShowDemoWindow();
 
-        bool bInteractingWithTextbox = false;
-        if (g_cvar.show_console) console_new.display_full(&bInteractingWithTextbox);
-
         // neko_imgui::Auto(g_cvar.bg);
         // if (g_cvar.shader_inspect && ImGui::Begin("Shaders")) {
         //     inspect_shader("sprite_shader", sprite_shader.program);  // TEST
         //     ImGui::End();
         // }
 
-        if (g_cvar.show_cvar_window && ImGui::Begin("Cvar")) {
+        if (g_cvar.show_editor && ImGui::Begin("Cvar")) {
             try {
                 neko_cvar_gui();
             } catch (const std::exception &ex) {
@@ -1480,8 +1623,6 @@ void game_update() {
         if (g_cvar.show_editor) {
             if (ImGui::BeginMainMenuBar()) {
                 if (ImGui::BeginMenu("engine")) {
-                    if (ImGui::Checkbox("cvar", &g_cvar.show_cvar_window))
-                        ;
                     if (ImGui::Checkbox("vsync", &g_cvar.vsync)) neko_platform_enable_vsync(g_cvar.vsync);
                     if (ImGui::MenuItem("quit")) neko_quit();
                     ImGui::EndMenu();
@@ -1550,7 +1691,6 @@ void game_update() {
         neko_graphics_renderpass_begin(&g_cb, NEKO_GRAPHICS_RENDER_PASS_DEFAULT);
         {
             neko_graphics_set_viewport(&g_cb, 0, 0, (u32)fbs.x, (u32)fbs.y);
-            // neko_graphics_draw_batch(&g_cb, sprite_batch, 0, 0, 0);
             neko_graphics_draw_batch(&g_cb, font_render, 0, 0, 0);
         }
         neko_graphics_renderpass_end(&g_cb);
@@ -1858,8 +1998,7 @@ void game_shutdown() {
 
     neko_font_free(test_font_bmfont);
 
-
-    neko_graphics_custom_batch_free(font_render);
+    neko_graphics_batch_free(font_render);
 
     neko_immediate_draw_free(&g_idraw);
 
@@ -1927,7 +2066,7 @@ neko_game_desc_t neko_main(s32 argc, char **argv) {
     return neko_game_desc_t{.init = game_init,
                             .update = game_update,
                             .shutdown = game_shutdown,
-                            .window = {.width = 800, .height = 600, .vsync = false, .frame_rate = 60.f, .center = true, .running_background = true},
+                            .window = {.width = 1280, .height = 720, .vsync = false, .frame_rate = 60.f, .center = true, .running_background = true},
                             .argc = argc,
                             .argv = argv,
                             .console = &console};

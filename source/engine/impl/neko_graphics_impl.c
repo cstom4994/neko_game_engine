@@ -99,19 +99,19 @@ void neko_graphics_print_errors_internal(const char* file, u32 line) {
     }
 }
 
-struct neko_graphics_custom_batch_context_t {
+struct neko_graphics_batch_context_t {
     u32 max_draw_calls;
     u32 count;
-    neko_graphics_custom_batch_draw_call_t* calls;
+    neko_graphics_batch_draw_call_t* calls;
 };
 
-neko_graphics_custom_batch_context_t* neko_graphics_custom_batch_make_ctx(u32 max_draw_calls) {
-    neko_graphics_custom_batch_context_t* ctx = (neko_graphics_custom_batch_context_t*)neko_safe_malloc(sizeof(neko_graphics_custom_batch_context_t));
+neko_graphics_batch_context_t* neko_graphics_batch_make_ctx(u32 max_draw_calls) {
+    neko_graphics_batch_context_t* ctx = (neko_graphics_batch_context_t*)neko_safe_malloc(sizeof(neko_graphics_batch_context_t));
     // ctx->clear_bits = clear_bits;
     // ctx->settings_bits = settings_bits;
     ctx->max_draw_calls = max_draw_calls;
     ctx->count = 0;
-    ctx->calls = (neko_graphics_custom_batch_draw_call_t*)neko_safe_malloc(sizeof(neko_graphics_custom_batch_draw_call_t) * max_draw_calls);
+    ctx->calls = (neko_graphics_batch_draw_call_t*)neko_safe_malloc(sizeof(neko_graphics_batch_draw_call_t) * max_draw_calls);
     if (!ctx->calls) {
         neko_safe_free(ctx);
         return 0;
@@ -123,13 +123,13 @@ neko_graphics_custom_batch_context_t* neko_graphics_custom_batch_make_ctx(u32 ma
     return ctx;
 }
 
-void neko_graphics_custom_batch_free(void* ctx) {
-    neko_graphics_custom_batch_context_t* context = (neko_graphics_custom_batch_context_t*)ctx;
+void neko_graphics_batch_free(void* ctx) {
+    neko_graphics_batch_context_t* context = (neko_graphics_batch_context_t*)ctx;
     neko_safe_free(context->calls);
     neko_safe_free(context);
 }
 
-void neko_graphics_custom_batch_make_frame_buffer(neko_graphics_custom_batch_framebuffer_t* fb, neko_graphics_custom_batch_shader_t* shader, int w, int h, int use_depth_test) {
+void neko_graphics_batch_make_frame_buffer(neko_graphics_batch_framebuffer_t* fb, neko_graphics_batch_shader_t* shader, int w, int h, int use_depth_test) {
     // Generate the frame buffer
     GLuint fb_id;
     glGenFramebuffers(1, &fb_id);
@@ -180,13 +180,13 @@ void neko_graphics_custom_batch_make_frame_buffer(neko_graphics_custom_batch_fra
     fb->h = h;
 }
 
-void neko_graphics_custom_batch_free_frame_buffer(neko_graphics_custom_batch_framebuffer_t* fb) {
+void neko_graphics_batch_free_frame_buffer(neko_graphics_batch_framebuffer_t* fb) {
     glDeleteTextures(1, &fb->tex_id);
     glDeleteRenderbuffers(1, &fb->rb_id);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glDeleteFramebuffers(1, &fb->fb_id);
     glDeleteBuffers(1, &fb->quad_id);
-    memset(fb, 0, sizeof(neko_graphics_custom_batch_framebuffer_t));
+    memset(fb, 0, sizeof(neko_graphics_batch_framebuffer_t));
 }
 
 u64 gl_FNV1a(const char* str) {
@@ -201,7 +201,7 @@ u64 gl_FNV1a(const char* str) {
     return h;
 }
 
-void neko_graphics_custom_batch_make_vertex_data(neko_graphics_custom_batch_vertex_data_t* vd, u32 buffer_size, u32 primitive, u32 vertex_stride, u32 usage) {
+void neko_graphics_batch_make_vertex_data(neko_graphics_batch_vertex_data_t* vd, u32 buffer_size, u32 primitive, u32 vertex_stride, u32 usage) {
     vd->buffer_size = buffer_size;
     vd->vertex_stride = vertex_stride;
     vd->primitive = primitive;
@@ -245,8 +245,8 @@ static u32 gl_get_gl_type_internal(u32 type) {
     }
 }
 
-void neko_graphics_custom_batch_add_attribute(neko_graphics_custom_batch_vertex_data_t* vd, const char* name, u32 size, u32 type, u32 offset) {
-    neko_graphics_custom_batch_vertex_attribute_t va;
+void neko_graphics_batch_add_attribute(neko_graphics_batch_vertex_data_t* vd, const char* name, u32 size, u32 type, u32 offset) {
+    neko_graphics_batch_vertex_attribute_t va;
     va.name = name;
     va.hash = gl_FNV1a(name);
     va.size = size;
@@ -257,7 +257,7 @@ void neko_graphics_custom_batch_add_attribute(neko_graphics_custom_batch_vertex_
     vd->attributes[vd->attribute_count++] = va;
 }
 
-void neko_graphics_custom_batch_make_renderable(neko_graphics_custom_batch_renderable_t* r, neko_graphics_custom_batch_vertex_data_t* vd) {
+void neko_graphics_batch_make_renderable(neko_graphics_batch_renderable_t* r, neko_graphics_batch_vertex_data_t* vd) {
     r->data = *vd;
     r->index0 = 0;
     r->index1 = 0;
@@ -275,7 +275,7 @@ void neko_graphics_custom_batch_make_renderable(neko_graphics_custom_batch_rende
 
 // WARNING: Messes with GL global state via glUnmapBuffer(GL_ARRAY_BUFFER) and
 // glBindBuffer(GL_ARRAY_BUFFER, ...), so call gl_map_internal, fill in data, then call gl_unmap_internal.
-void* gl_map_internal(neko_graphics_custom_batch_renderable_t* r, u32 count) {
+void* gl_map_internal(neko_graphics_batch_renderable_t* r, u32 count) {
     // Cannot map a buffer when the buffer is too small
     // Make your buffer is bigger or draw less data
     neko_assert(count <= r->data.buffer_size);
@@ -323,7 +323,7 @@ void* gl_map_internal(neko_graphics_custom_batch_renderable_t* r, u32 count) {
 
 void gl_unmap_internal() { glUnmapBuffer(GL_ARRAY_BUFFER); }
 
-void neko_graphics_custom_batch_set_shader(neko_graphics_custom_batch_renderable_t* r, neko_graphics_custom_batch_shader_t* program) {
+void neko_graphics_batch_set_shader(neko_graphics_batch_renderable_t* r, neko_graphics_batch_shader_t* program) {
     // Cannot set the shader of a Renderable more than once
     neko_assert(!r->program);
 
@@ -348,13 +348,13 @@ void neko_graphics_custom_batch_set_shader(neko_graphics_custom_batch_renderable
         type = gl_get_gl_type_internal(type);
 
 #if NEKO_GL_CUSTOM_DEBUG_CHECKS
-        neko_graphics_custom_batch_vertex_attribute_t* a = 0;
+        neko_graphics_batch_vertex_attribute_t* a = 0;
 
         // Make sure data.AddAttribute(name, ...) has matching named attribute
         // Also make sure the GL::Type matches
         // This helps to catch common mismatch errors between glsl and C++
         for (u32 j = 0; j < r->data.attribute_count; ++j) {
-            neko_graphics_custom_batch_vertex_attribute_t* b = r->data.attributes + j;
+            neko_graphics_batch_vertex_attribute_t* b = r->data.attributes + j;
 
             if (b->hash == hash) {
                 a = b;
@@ -408,7 +408,7 @@ GLuint gl_compile_shader_internal(const char* Shader, u32 type) {
     return handle;
 }
 
-void neko_graphics_custom_batch_load_shader(neko_graphics_custom_batch_shader_t* s, const char* vertex, const char* pixel) {
+void neko_graphics_batch_load_shader(neko_graphics_batch_shader_t* s, const char* vertex, const char* pixel) {
     // Compile vertex and pixel Shader
     u32 program = glCreateProgram();
     u32 vs = gl_compile_shader_internal(vertex, GL_VERTEX_SHADER);
@@ -450,7 +450,7 @@ void neko_graphics_custom_batch_load_shader(neko_graphics_custom_batch_shader_t*
 
     for (u32 i = 0; i < (u32)uniform_count; ++i) {
         u32 nameLength;
-        neko_graphics_custom_batch_uniform_t u;
+        neko_graphics_batch_uniform_t u;
 
         glGetActiveUniform(program, (GLint)i, nameSize, (GLsizei*)&nameLength, (GLsizei*)&u.size, (GLenum*)&u.type, u.name);
 
@@ -474,18 +474,18 @@ void neko_graphics_custom_batch_load_shader(neko_graphics_custom_batch_shader_t*
 #endif
 }
 
-void neko_graphics_custom_batch_free_shader(neko_graphics_custom_batch_shader_t* s) {
+void neko_graphics_batch_free_shader(neko_graphics_batch_shader_t* s) {
     glDeleteProgram(s->program);
-    memset(s, 0, sizeof(neko_graphics_custom_batch_shader_t));
+    memset(s, 0, sizeof(neko_graphics_batch_shader_t));
 }
 
-neko_graphics_custom_batch_uniform_t* gl_find_uniform_internal(neko_graphics_custom_batch_shader_t* s, const char* name) {
+neko_graphics_batch_uniform_t* gl_find_uniform_internal(neko_graphics_batch_shader_t* s, const char* name) {
     u32 uniform_count = s->uniform_count;
-    neko_graphics_custom_batch_uniform_t* uniforms = s->uniforms;
+    neko_graphics_batch_uniform_t* uniforms = s->uniforms;
     u64 hash = gl_FNV1a(name);
 
     for (u32 i = 0; i < uniform_count; ++i) {
-        neko_graphics_custom_batch_uniform_t* u = uniforms + i;
+        neko_graphics_batch_uniform_t* u = uniforms + i;
 
         if (u->hash == hash) {
             return u;
@@ -495,12 +495,12 @@ neko_graphics_custom_batch_uniform_t* gl_find_uniform_internal(neko_graphics_cus
     return 0;
 }
 
-void neko_graphics_custom_batch_set_active_shader(neko_graphics_custom_batch_shader_t* s) { glUseProgram(s->program); }
+void neko_graphics_batch_set_active_shader(neko_graphics_batch_shader_t* s) { glUseProgram(s->program); }
 
-void neko_graphics_custom_batch_deactivate_shader() { glUseProgram(0); }
+void neko_graphics_batch_deactivate_shader() { glUseProgram(0); }
 
-void neko_graphics_custom_batch_send_f32(neko_graphics_custom_batch_shader_t* s, const char* uniform_name, u32 size, float* floats, u32 count) {
-    neko_graphics_custom_batch_uniform_t* u = gl_find_uniform_internal(s, uniform_name);
+void neko_graphics_batch_send_f32(neko_graphics_batch_shader_t* s, const char* uniform_name, u32 size, float* floats, u32 count) {
+    neko_graphics_batch_uniform_t* u = gl_find_uniform_internal(s, uniform_name);
 
     if (!u) {
         neko_log_warning("Unable to find uniform: %s", uniform_name);
@@ -510,7 +510,7 @@ void neko_graphics_custom_batch_send_f32(neko_graphics_custom_batch_shader_t* s,
     neko_assert(size == u->size);
     neko_assert(u->type == NEKO_GL_CUSTOM_FLOAT);
 
-    neko_graphics_custom_batch_set_active_shader(s);
+    neko_graphics_batch_set_active_shader(s);
     switch (count) {
         case 1:
             glUniform1f(u->location, floats[0]);
@@ -532,11 +532,11 @@ void neko_graphics_custom_batch_send_f32(neko_graphics_custom_batch_shader_t* s,
             neko_assert(0);
             break;
     }
-    neko_graphics_custom_batch_deactivate_shader();
+    neko_graphics_batch_deactivate_shader();
 }
 
-void neko_graphics_custom_batch_send_matrix(neko_graphics_custom_batch_shader_t* s, const char* uniform_name, float* floats) {
-    neko_graphics_custom_batch_uniform_t* u = gl_find_uniform_internal(s, uniform_name);
+void neko_graphics_batch_send_matrix(neko_graphics_batch_shader_t* s, const char* uniform_name, float* floats) {
+    neko_graphics_batch_uniform_t* u = gl_find_uniform_internal(s, uniform_name);
 
     if (!u) {
         neko_log_warning("Unable to find uniform: %s", uniform_name);
@@ -546,13 +546,13 @@ void neko_graphics_custom_batch_send_matrix(neko_graphics_custom_batch_shader_t*
     neko_assert(u->size == 1);
     neko_assert(u->type == NEKO_GL_CUSTOM_FLOAT);
 
-    neko_graphics_custom_batch_set_active_shader(s);
+    neko_graphics_batch_set_active_shader(s);
     glUniformMatrix4fv(u->id, 1, 0, floats);
-    neko_graphics_custom_batch_deactivate_shader();
+    neko_graphics_batch_deactivate_shader();
 }
 
-void neko_graphics_custom_batch_send_texture(neko_graphics_custom_batch_shader_t* s, const char* uniform_name, u32 index) {
-    neko_graphics_custom_batch_uniform_t* u = gl_find_uniform_internal(s, uniform_name);
+void neko_graphics_batch_send_texture(neko_graphics_batch_shader_t* s, const char* uniform_name, u32 index) {
+    neko_graphics_batch_uniform_t* u = gl_find_uniform_internal(s, uniform_name);
 
     if (!u) {
         neko_log_warning("Unable to find uniform: %s", uniform_name);
@@ -561,21 +561,21 @@ void neko_graphics_custom_batch_send_texture(neko_graphics_custom_batch_shader_t
 
     neko_assert(u->type == NEKO_GL_CUSTOM_SAMPLER);
 
-    neko_graphics_custom_batch_set_active_shader(s);
+    neko_graphics_batch_set_active_shader(s);
     glUniform1i(u->location, index);
-    neko_graphics_custom_batch_deactivate_shader();
+    neko_graphics_batch_deactivate_shader();
 }
 
-static u32 gl_call_sort_pred_internal(neko_graphics_custom_batch_draw_call_t* a, neko_graphics_custom_batch_draw_call_t* b) { return a->r->state.u.key < b->r->state.u.key; }
+static u32 gl_call_sort_pred_internal(neko_graphics_batch_draw_call_t* a, neko_graphics_batch_draw_call_t* b) { return a->r->state.u.key < b->r->state.u.key; }
 
-static void neko_custom_batch_qsort_internal(neko_graphics_custom_batch_draw_call_t* items, u32 count) {
+static void neko_custom_batch_qsort_internal(neko_graphics_batch_draw_call_t* items, u32 count) {
     if (count <= 1) return;
 
-    neko_graphics_custom_batch_draw_call_t pivot = items[count - 1];
+    neko_graphics_batch_draw_call_t pivot = items[count - 1];
     u32 low = 0;
     for (u32 i = 0; i < count - 1; ++i) {
         if (gl_call_sort_pred_internal(items + i, &pivot)) {
-            neko_graphics_custom_batch_draw_call_t tmp = items[i];
+            neko_graphics_batch_draw_call_t tmp = items[i];
             items[i] = items[low];
             items[low] = tmp;
             low++;
@@ -588,8 +588,8 @@ static void neko_custom_batch_qsort_internal(neko_graphics_custom_batch_draw_cal
     neko_custom_batch_qsort_internal(items + low + 1, count - 1 - low);
 }
 
-void neko_graphics_custom_batch_push_draw_call(void* ctx, neko_graphics_custom_batch_draw_call_t call) {
-    neko_graphics_custom_batch_context_t* context = (neko_graphics_custom_batch_context_t*)ctx;
+void neko_graphics_batch_push_draw_call(void* ctx, neko_graphics_batch_draw_call_t call) {
+    neko_graphics_batch_context_t* context = (neko_graphics_batch_context_t*)ctx;
     neko_assert(context->count < context->max_draw_calls);
     context->calls[context->count++] = call;
 }
@@ -610,15 +610,15 @@ u32 gl_get_enum(u32 type) {
     }
 }
 
-void gl_do_map_internal(neko_graphics_custom_batch_draw_call_t* call, neko_graphics_custom_batch_renderable_t* render) {
+void gl_do_map_internal(neko_graphics_batch_draw_call_t* call, neko_graphics_batch_renderable_t* render) {
     u32 count = call->vert_count;
     void* driver_memory = gl_map_internal(render, count);
     memcpy(driver_memory, call->verts, render->data.vertex_stride * count);
     gl_unmap_internal();
 }
 
-static void neko_custom_batch_render_internal(neko_graphics_custom_batch_draw_call_t* call) {
-    neko_graphics_custom_batch_renderable_t* render = call->r;
+static void neko_custom_batch_render_internal(neko_graphics_batch_draw_call_t* call) {
+    neko_graphics_batch_renderable_t* render = call->r;
     u32 texture_count = call->texture_count;
     u32* textures = call->textures;
 
@@ -630,19 +630,19 @@ static void neko_custom_batch_render_internal(neko_graphics_custom_batch_draw_ca
     } else
         gl_do_map_internal(call, render);
 
-    neko_graphics_custom_batch_vertex_data_t* data = &render->data;
-    neko_graphics_custom_batch_vertex_attribute_t* attributes = data->attributes;
+    neko_graphics_batch_vertex_data_t* data = &render->data;
+    neko_graphics_batch_vertex_attribute_t* attributes = data->attributes;
     u32 vertexStride = data->vertex_stride;
     u32 attributeCount = data->attribute_count;
 
-    neko_graphics_custom_batch_set_active_shader(render->program);
+    neko_graphics_batch_set_active_shader(render->program);
 
     u32 bufferNumber = render->buffer_number;
     u32 buffer = render->buffers[bufferNumber];
     glBindBuffer(GL_ARRAY_BUFFER, buffer);
 
     for (u32 i = 0; i < attributeCount; ++i) {
-        neko_graphics_custom_batch_vertex_attribute_t* attribute = attributes + i;
+        neko_graphics_batch_vertex_attribute_t* attribute = attributes + i;
 
         u32 location = attribute->location;
         u32 size = attribute->size;
@@ -671,7 +671,7 @@ static void neko_custom_batch_render_internal(neko_graphics_custom_batch_draw_ca
     }
 
     for (u32 i = 0; i < attributeCount; ++i) {
-        neko_graphics_custom_batch_vertex_attribute_t* attribute = attributes + i;
+        neko_graphics_batch_vertex_attribute_t* attribute = attributes + i;
 
         u32 location = attribute->location;
         glDisableVertexAttribArray(location);
@@ -681,8 +681,8 @@ static void neko_custom_batch_render_internal(neko_graphics_custom_batch_draw_ca
     glUseProgram(0);
 }
 
-void neko_custom_batch_present_internal(void* context, neko_graphics_custom_batch_framebuffer_t* fb, int w, int h) {
-    neko_graphics_custom_batch_context_t* ctx = (neko_graphics_custom_batch_context_t*)context;
+void neko_custom_batch_present_internal(void* context, neko_graphics_batch_framebuffer_t* fb, int w, int h) {
+    neko_graphics_batch_context_t* ctx = (neko_graphics_batch_context_t*)context;
     neko_custom_batch_qsort_internal(ctx->calls, ctx->count);
 
     if (fb) {
@@ -694,7 +694,7 @@ void neko_custom_batch_present_internal(void* context, neko_graphics_custom_batc
 
     // flush all draw calls to the GPU
     for (u32 i = 0; i < ctx->count; ++i) {
-        neko_graphics_custom_batch_draw_call_t* call = ctx->calls + i;
+        neko_graphics_batch_draw_call_t* call = ctx->calls + i;
         neko_custom_batch_render_internal(call);
     }
 
@@ -704,7 +704,7 @@ void neko_custom_batch_present_internal(void* context, neko_graphics_custom_batc
         glClear(GL_COLOR_BUFFER_BIT);
         glDisable(GL_DEPTH_TEST);
 
-        neko_graphics_custom_batch_set_active_shader(fb->shader);
+        neko_graphics_batch_set_active_shader(fb->shader);
         glBindBuffer(GL_ARRAY_BUFFER, fb->quad_id);
         glBindTexture(GL_TEXTURE_2D, fb->tex_id);
         glEnableVertexAttribArray(0);
@@ -713,22 +713,22 @@ void neko_custom_batch_present_internal(void* context, neko_graphics_custom_batc
         glVertexAttribPointer(1, 2, NEKO_GL_CUSTOM_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)(2 * sizeof(GLfloat)));
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
-        neko_graphics_custom_batch_deactivate_shader();
+        neko_graphics_batch_deactivate_shader();
     }
 }
 
-void neko_graphics_custom_batch_flush(void* ctx, neko_graphics_custom_batch_framebuffer_t* fb, int w, int h) {
+void neko_graphics_batch_flush(void* ctx, neko_graphics_batch_framebuffer_t* fb, int w, int h) {
     neko_custom_batch_present_internal(ctx, fb, w, h);
-    neko_graphics_custom_batch_context_t* context = (neko_graphics_custom_batch_context_t*)ctx;
+    neko_graphics_batch_context_t* context = (neko_graphics_batch_context_t*)ctx;
     context->count = 0;
 }
 
-int neko_graphics_custom_batch_draw_call_count(void* ctx) {
-    neko_graphics_custom_batch_context_t* context = (neko_graphics_custom_batch_context_t*)ctx;
+int neko_graphics_batch_draw_call_count(void* ctx) {
+    neko_graphics_batch_context_t* context = (neko_graphics_batch_context_t*)ctx;
     return context->count;
 }
 
-void neko_graphics_custom_batch_perspective(float* m, float y_fov_radians, float aspect, float n, float f) {
+void neko_graphics_batch_perspective(float* m, float y_fov_radians, float aspect, float n, float f) {
     float a = 1.0f / (float)tanf(y_fov_radians / 2.0f);
 
     m[0] = a / aspect;
@@ -752,7 +752,7 @@ void neko_graphics_custom_batch_perspective(float* m, float y_fov_radians, float
     m[15] = 0;
 }
 
-void neko_graphics_custom_batch_ortho_2d(float w, float h, float x, float y, float* m) {
+void neko_graphics_batch_ortho_2d(float w, float h, float x, float y, float* m) {
     float left = -w / 2;
     float right = w / 2;
     float top = h / 2;
@@ -773,11 +773,11 @@ void neko_graphics_custom_batch_ortho_2d(float w, float h, float x, float y, flo
     m[13] = -y;
 }
 
-void neko_graphics_custom_batch_copy(float* dst, float* src) {
+void neko_graphics_batch_copy(float* dst, float* src) {
     for (int i = 0; i < 16; ++i) dst[i] = src[i];
 }
 
-void neko_graphics_custom_batch_mul(float* a, float* b, float* out) {
+void neko_graphics_batch_mul(float* a, float* b, float* out) {
     float c[16];
 
     c[0 + 0 * 4] = a[0 + 0 * 4] * b[0 + 0 * 4] + a[0 + 1 * 4] * b[1 + 0 * 4] + a[0 + 2 * 4] * b[2 + 0 * 4] + a[0 + 3 * 4] * b[3 + 0 * 4];
@@ -797,7 +797,7 @@ void neko_graphics_custom_batch_mul(float* a, float* b, float* out) {
     c[3 + 2 * 4] = a[3 + 0 * 4] * b[0 + 2 * 4] + a[3 + 1 * 4] * b[1 + 2 * 4] + a[3 + 2 * 4] * b[2 + 2 * 4] + a[3 + 3 * 4] * b[3 + 2 * 4];
     c[3 + 3 * 4] = a[3 + 0 * 4] * b[0 + 3 * 4] + a[3 + 1 * 4] * b[1 + 3 * 4] + a[3 + 2 * 4] * b[2 + 3 * 4] + a[3 + 3 * 4] * b[3 + 3 * 4];
 
-    neko_graphics_custom_batch_copy(out, c);
+    neko_graphics_batch_copy(out, c);
 }
 
 void gl_mulv(float* a, float* b) {
@@ -814,7 +814,7 @@ void gl_mulv(float* a, float* b) {
     b[3] = result[3];
 }
 
-void neko_graphics_custom_batch_identity(float* m) {
+void neko_graphics_batch_identity(float* m) {
     memset(m, 0, sizeof(float) * 16);
     m[0] = 1.0f;
     m[5] = 1.0f;
@@ -2730,10 +2730,10 @@ void neko_graphics_draw(neko_command_buffer_t* cb, neko_graphics_draw_desc_t* de
     });
 }
 
-void neko_graphics_draw_batch(neko_command_buffer_t* cb, neko_graphics_custom_batch_context_t* ctx, neko_graphics_custom_batch_framebuffer_t* fb, s32 w, s32 h) {
+void neko_graphics_draw_batch(neko_command_buffer_t* cb, neko_graphics_batch_context_t* ctx, neko_graphics_batch_framebuffer_t* fb, s32 w, s32 h) {
     __ogl_push_command(cb, NEKO_OPENGL_OP_DRAW_BATCH, {
-        neko_byte_buffer_write(&cb->commands, neko_graphics_custom_batch_context_ptr, ctx);
-        neko_byte_buffer_write(&cb->commands, neko_graphics_custom_batch_framebuffer_ptr, fb);
+        neko_byte_buffer_write(&cb->commands, neko_graphics_batch_context_ptr, ctx);
+        neko_byte_buffer_write(&cb->commands, neko_graphics_batch_framebuffer_ptr, fb);
         neko_byte_buffer_write(&cb->commands, s32, w);
         neko_byte_buffer_write(&cb->commands, s32, h);
     });
@@ -3525,8 +3525,8 @@ void neko_graphics_command_buffer_submit_impl(neko_command_buffer_t* cb) {
             } break;
 
             case NEKO_OPENGL_OP_DRAW_BATCH: {
-                neko_byte_buffer_readc(&cb->commands, neko_graphics_custom_batch_context_ptr, batch_ctx);
-                neko_byte_buffer_readc(&cb->commands, neko_graphics_custom_batch_framebuffer_ptr, fb);
+                neko_byte_buffer_readc(&cb->commands, neko_graphics_batch_context_ptr, batch_ctx);
+                neko_byte_buffer_readc(&cb->commands, neko_graphics_batch_framebuffer_ptr, fb);
                 neko_byte_buffer_readc(&cb->commands, s32, w);
                 neko_byte_buffer_readc(&cb->commands, s32, h);
 
@@ -3536,7 +3536,7 @@ void neko_graphics_command_buffer_submit_impl(neko_command_buffer_t* cb) {
                 glBlendEquation(GL_FUNC_ADD);
                 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-                neko_graphics_custom_batch_flush(batch_ctx, fb, w, h);
+                neko_graphics_batch_flush(batch_ctx, fb, w, h);
             } break;
 
             case NEKO_OPENGL_OP_REQUEST_TEXTURE_UPDATE: {

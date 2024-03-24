@@ -488,7 +488,7 @@ typedef struct {
     va_list ap;
     const char* fmt;
     const char* file;
-    struct tm* time;
+    u32 time;
     FILE* udata;
     int line;
     int level;
@@ -511,7 +511,6 @@ NEKO_API_DECL void log_set_lock(neko_log_lock_fn fn, void* udata);
 NEKO_API_DECL void log_set_level(int level);
 NEKO_API_DECL void log_set_quiet(bool enable);
 NEKO_API_DECL int log_add_callback(neko_log_fn fn, void* udata, int level);
-NEKO_API_DECL int log_add_fp(FILE* fp, int level);
 
 NEKO_API_DECL void log_log(int level, const char* file, int line, const char* fmt, ...);
 
@@ -2437,6 +2436,8 @@ typedef struct neko_console_s {
     neko_console_command_t* commands;
     int commands_len;
 } neko_console_t;
+
+NEKO_API_DECL void neko_console_printf(neko_console_t* console, const char* fmt, ...);
 
 /*=============================
 // CVar

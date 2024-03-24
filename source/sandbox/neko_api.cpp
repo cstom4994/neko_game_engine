@@ -19,6 +19,7 @@
 // game
 #include "sandbox/game_chunk.h"
 #include "sandbox/neko_gui_auto.hpp"
+#include "sandbox/neko_profiler.h"
 
 // hpp
 #include "sandbox/hpp/neko_static_refl.hpp"
@@ -37,6 +38,15 @@
 #endif
 
 extern neko_client_userdata_t g_client_userdata;
+
+extern "C" int luaopen_socket_core(lua_State* L);
+extern "C" int luaopen_mime_core(lua_State* L);
+extern "C" int luaopen_neko_gui(lua_State* L);
+extern "C" int luaopen_cffi(lua_State* L);
+extern "C" int __neko_ecs_create_world(lua_State* L);
+extern "C" int luaopen_imgui(lua_State* L);
+
+extern int register_mt_imgui(lua_State* L);
 
 #define LUAOPEN_EMBED_DATA(func, name, compressed_data, compressed_size)              \
     static int func(lua_State* L) {                                                   \
@@ -86,9 +96,6 @@ static void package_preload(lua_State* L, const char* name, lua_CFunction functi
     lua_pop(L, 2);
 }
 
-extern "C" int luaopen_socket_core(lua_State* L);
-extern "C" int luaopen_mime_core(lua_State* L);
-
 void open_luasocket(lua_State* L) {
     package_preload(L, "socket.core", luaopen_socket_core);
     package_preload(L, "mime.core", luaopen_mime_core);
@@ -103,6 +110,43 @@ void open_luasocket(lua_State* L) {
     package_preload(L, "socket.smtp", open_embed_socket_smtp);
     package_preload(L, "socket.tp", open_embed_socket_tp);
     package_preload(L, "socket.url", open_embed_socket_url);
+}
+
+int neko_lua_add_package_path(lua_State* L, const std::string& str_) {
+    std::string new_path = "package.path = package.path .. \"";
+    if (str_.empty()) return -1;
+    if (str_[0] != ';') new_path += ";";
+    new_path += str_;
+    if (str_[str_.length() - 1] != '/') new_path += "/";
+    new_path += "?.lua\" ";
+    neko_lua_wrap_run_string(L, new_path);
+    return 0;
+}
+
+void __neko_lua_print_error(lua_State* state, int result) {
+    const char* message = lua_tostring(state, -1);
+    neko_log_error("LuaScript ERROR:\n  %s", (message ? message : "no message"));
+
+    if (result != 0) {
+        switch (result) {
+            case LUA_ERRRUN:
+                neko_log_error("%s", "Lua Runtime error");
+                break;
+            case LUA_ERRSYNTAX:
+                neko_log_error("%s", "Lua syntax error");
+                break;
+            case LUA_ERRMEM:
+                neko_log_error("%s", "Lua was unable to allocate the required memory");
+                break;
+            case LUA_ERRFILE:
+                neko_log_error("%s", "Lua was unable to find boot file");
+                break;
+            default:
+                neko_log_error("Unknown lua error: %d", result);
+        }
+    }
+
+    lua_pop(state, 1);
 }
 
 neko_inline neko_vec2 __neko_lua_table_to_v2(lua_State* L, int idx) {
@@ -646,42 +690,42 @@ static int __neko_bind_pack_assets_unload(lua_State* L) {
     return 0;
 }
 
-static int __neko_bind_aseprite_create(lua_State* L) {
+static int __neko_bind_aseprite_render_create(lua_State* L) {
 
-    neko_sprite* sprite_data = (neko_sprite*)luaL_checkudata(L, 1, "mt_sprite");
+    neko_aseprite* sprite_data = (neko_aseprite*)luaL_checkudata(L, 1, "mt_aseprite");
 
-    neko_sprite_renderer* user_handle = (neko_sprite_renderer*)lua_newuserdata(L, sizeof(neko_sprite_renderer));
-    memset(user_handle, 0, sizeof(neko_sprite_renderer));
+    neko_aseprite_renderer* user_handle = (neko_aseprite_renderer*)lua_newuserdata(L, sizeof(neko_aseprite_renderer));
+    memset(user_handle, 0, sizeof(neko_aseprite_renderer));
 
     user_handle->sprite = sprite_data;
 
-    neko_sprite_renderer_play(user_handle, "Idle");
+    neko_aseprite_renderer_play(user_handle, "Idle");
 
-    luaL_setmetatable(L, "mt_aseprite");
+    luaL_setmetatable(L, "mt_aseprite_renderer");
 
     return 1;
 }
 
-static int __neko_bind_aseprite_end(lua_State* L) {
-    neko_sprite_renderer* user_handle = (neko_sprite_renderer*)luaL_checkudata(L, 1, "mt_aseprite");
-    neko_log_trace("aseprite __gc %p", user_handle);
+static int __neko_bind_aseprite_render_gc(lua_State* L) {
+    neko_aseprite_renderer* user_handle = (neko_aseprite_renderer*)luaL_checkudata(L, 1, "mt_aseprite_renderer");
+    // neko_log_trace("aseprite_render __gc %p", user_handle);
     return 0;
 }
 
-static int __neko_bind_aseprite_update(lua_State* L) {
-    neko_sprite_renderer* user_handle = (neko_sprite_renderer*)luaL_checkudata(L, 1, "mt_aseprite");
+static int __neko_bind_aseprite_render_update(lua_State* L) {
+    neko_aseprite_renderer* user_handle = (neko_aseprite_renderer*)luaL_checkudata(L, 1, "mt_aseprite_renderer");
 
     neko_t* engine = neko_instance();
 
-    neko_sprite_renderer_update(user_handle, engine->ctx.platform->time.delta);
+    neko_aseprite_renderer_update(user_handle, engine->ctx.platform->time.delta);
 
     return 0;
 }
 
-static int __neko_bind_aseprite_update_animation(lua_State* L) {
-    neko_sprite_renderer* user_handle = (neko_sprite_renderer*)luaL_checkudata(L, 1, "mt_aseprite");
+static int __neko_bind_aseprite_render_update_animation(lua_State* L) {
+    neko_aseprite_renderer* user_handle = (neko_aseprite_renderer*)luaL_checkudata(L, 1, "mt_aseprite_renderer");
     const_str by_tag = lua_tostring(L, 2);
-    neko_sprite_renderer_play(user_handle, by_tag);
+    neko_aseprite_renderer_play(user_handle, by_tag);
     return 0;
 }
 
@@ -691,7 +735,7 @@ static int __neko_bind_aseprite_render(lua_State* L) {
         return luaL_error(L, "Function expects exactly three arguments");
     }
 
-    neko_sprite_renderer* user_handle = (neko_sprite_renderer*)luaL_checkudata(L, 1, "mt_aseprite");
+    neko_aseprite_renderer* user_handle = (neko_aseprite_renderer*)luaL_checkudata(L, 1, "mt_aseprite_renderer");
 
     neko_vec2 xform = __neko_lua_table_to_v2(L, 2);
 
@@ -709,8 +753,8 @@ static int __neko_bind_aseprite_render(lua_State* L) {
         index = user_handle->current_frame;
     }
 
-    neko_sprite* spr = user_handle->sprite;
-    neko_sprite_frame f = spr->frames[index];
+    neko_aseprite* spr = user_handle->sprite;
+    neko_aseprite_frame f = spr->frames[index];
 
     if (direction)
         neko_idraw_rect_textured_ext(g_client_userdata.idraw, xform.x, xform.y, xform.x + spr->width * scale, xform.y + spr->height * scale, f.u1, f.v0, f.u0, f.v1, user_handle->sprite->img.id,
@@ -722,23 +766,23 @@ static int __neko_bind_aseprite_render(lua_State* L) {
     return 0;
 }
 
-static int __neko_bind_sprite_create(lua_State* L) {
+static int __neko_bind_aseprite_create(lua_State* L) {
     const_str file_path = lua_tostring(L, 1);
 
-    neko_sprite* user_handle = (neko_sprite*)lua_newuserdata(L, sizeof(neko_sprite));
-    memset(user_handle, 0, sizeof(neko_sprite));
+    neko_aseprite* user_handle = (neko_aseprite*)lua_newuserdata(L, sizeof(neko_aseprite));
+    memset(user_handle, 0, sizeof(neko_aseprite));
 
-    neko_sprite_load(user_handle, file_path);
+    neko_aseprite_load(user_handle, file_path);
 
-    luaL_setmetatable(L, "mt_sprite");
+    luaL_setmetatable(L, "mt_aseprite");
 
     return 1;
 }
 
-static int __neko_bind_sprite_end(lua_State* L) {
-    neko_sprite* user_handle = (neko_sprite*)luaL_checkudata(L, 1, "mt_sprite");
-    if (user_handle->frames != NULL) neko_sprite_end(user_handle);
-    neko_log_trace("sprite __gc %p", user_handle);
+static int __neko_bind_aseprite_gc(lua_State* L) {
+    neko_aseprite* user_handle = (neko_aseprite*)luaL_checkudata(L, 1, "mt_aseprite");
+    if (user_handle->frames != NULL) neko_aseprite_end(user_handle);
+    // neko_log_trace("aseprite __gc %p", user_handle);
     return 0;
 }
 
@@ -1004,16 +1048,17 @@ const_str image_names[] = {
 int images_count = sizeof(image_names) / sizeof(*image_names);
 neko_png_image_t images[sizeof(image_names) / sizeof(*image_names)];
 
-// example of a game sprite
 typedef struct {
-    NEKO_SPRITEBATCH_U64 image_id;
+    u64 image_id;  // NEKO_SPRITEBATCH_U64
     int depth;
-    f32 x, y;
-    f32 sx, sy;
-    f32 c, s;
+    f32 x;
+    f32 y;
+    f32 sx;
+    f32 sy;
+    f32 c;
+    f32 s;
 } neko_sprite_t;
 
-// example data for storing + transforming sprite vertices on CPU
 typedef struct {
     f32 x, y;
     f32 u, v;
@@ -1025,9 +1070,9 @@ struct neko_sprite_batch_t {
 
     spritebatch_t sb;
 
-    neko_graphics_custom_batch_context_t* sprite_batch;
-    neko_graphics_custom_batch_shader_t sprite_shader;
-    neko_graphics_custom_batch_renderable_t sprite_renderable;
+    neko_graphics_batch_context_t* sprite_batch;
+    neko_graphics_batch_shader_t sprite_shader;
+    neko_graphics_batch_renderable_t sprite_renderable;
     f32 sprite_projection[16];
 
     int call_count = 0;
@@ -1051,37 +1096,35 @@ spritebatch_config_t get_demo_config() {
     return config;
 }
 
-neko_sprite_t make_sprite(NEKO_SPRITEBATCH_U64 image_id, f32 x, f32 y, f32 scale, f32 angle_radians, int depth) {
+void make_sprite(neko_sprite_t* sprite, NEKO_SPRITEBATCH_U64 image_id, f32 x, f32 y, f32 scale, f32 angle_radians, int depth) {
 
     neko_vec2 fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
 
     f32 x0 = (x - fbs.x / 2.f) / scale /*+ -text_w / 2.f*/;
     f32 y0 = (fbs.y / 2.f - y) / scale / 2.f;
 
-    neko_sprite_t s;
-    s.image_id = image_id;
-    s.depth = depth;
-    s.x = x0;
-    s.y = y0;
-    s.sx = (f32)images[s.image_id].w * 2.0f * scale;
-    s.sy = (f32)images[s.image_id].h * 2.0f * scale;
-    s.c = cosf(angle_radians);
-    s.s = sinf(angle_radians);
-    return s;
+    sprite->image_id = image_id;
+    sprite->depth = depth;
+    sprite->x = x0;
+    sprite->y = y0;
+    sprite->sx = (f32)images[sprite->image_id].w * 2.0f * scale;
+    sprite->sy = (f32)images[sprite->image_id].h * 2.0f * scale;
+    sprite->c = cosf(angle_radians);
+    sprite->s = sinf(angle_radians);
 }
 
-void push_sprite(neko_sprite_batch_t* user_handle, neko_sprite_t sp) {
+void push_sprite(neko_sprite_batch_t* user_handle, neko_sprite_t* sp) {
     spritebatch_sprite_t s;
-    s.image_id = sp.image_id;
-    s.w = images[sp.image_id].w;
-    s.h = images[sp.image_id].h;
-    s.x = sp.x;
-    s.y = sp.y;
-    s.sx = sp.sx;
-    s.sy = sp.sy;
-    s.c = sp.c;
-    s.s = sp.s;
-    s.sort_bits = (NEKO_SPRITEBATCH_U64)sp.depth;
+    s.image_id = sp->image_id;
+    s.w = images[sp->image_id].w;
+    s.h = images[sp->image_id].h;
+    s.x = sp->x;
+    s.y = sp->y;
+    s.sx = sp->sx;
+    s.sy = sp->sy;
+    s.c = sp->c;
+    s.s = sp->s;
+    s.sort_bits = (NEKO_SPRITEBATCH_U64)sp->depth;
     spritebatch_push(&user_handle->sb, s);
 }
 
@@ -1100,13 +1143,13 @@ void batch_report(spritebatch_sprite_t* sprites, int count, int texture_w, int t
     // printf("end batch\n");
 
     // build the draw call
-    neko_graphics_custom_batch_draw_call_t call;
+    neko_graphics_batch_draw_call_t call;
     call.r = &user_handle->sprite_renderable;
     call.textures[0] = (u32)sprites[0].texture_id;
     call.texture_count = 1;
 
     // set texture uniform in shader
-    neko_graphics_custom_batch_send_texture(call.r->program, "u_sprite_texture", 0);
+    neko_graphics_batch_send_texture(call.r->program, "u_sprite_texture", 0);
 
     // NOTE:
     // perform any additional sorting here
@@ -1185,7 +1228,7 @@ void batch_report(spritebatch_sprite_t* sprites, int count, int texture_w, int t
     }
 
     // submit call to cute_gl (does not get flushed to screen until `gl_flush` is called)
-    neko_graphics_custom_batch_push_draw_call(user_handle->sprite_batch, call);
+    neko_graphics_batch_push_draw_call(user_handle->sprite_batch, call);
 }
 
 void get_pixels(NEKO_SPRITEBATCH_U64 image_id, void* buffer, int bytes_to_fill, void* udata) {
@@ -1202,97 +1245,98 @@ void unload_images() {
 }
 
 static int __neko_bind_sprite_batch_create(lua_State* L) {
-    // const_str file_path = lua_tostring(L, 1);
+    const_str glsl_vs_src = lua_tostring(L, 1);
+    const_str glsl_ps_src = lua_tostring(L, 2);
 
     neko_sprite_batch_t* user_handle = (neko_sprite_batch_t*)lua_newuserdata(L, sizeof(neko_sprite_batch_t));
     memset(user_handle, 0, sizeof(neko_sprite_batch_t));
 
-    user_handle->sprite_batch = neko_graphics_custom_batch_make_ctx(32);
+    user_handle->sprite_batch = neko_graphics_batch_make_ctx(32);
 
     // g_client_userdata.sprite_batch = sprite_batch;
 
     neko_vec2 fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
 
-    const char* vs = R"(
-#version 330
+    neko_graphics_batch_vertex_data_t vd;
+    neko_graphics_batch_make_vertex_data(&vd, 1024 * 1024, GL_TRIANGLES, sizeof(vertex_t), GL_DYNAMIC_DRAW);
+    neko_graphics_batch_add_attribute(&vd, "in_pos", 2, NEKO_GL_CUSTOM_FLOAT, neko_offset(vertex_t, x));
+    neko_graphics_batch_add_attribute(&vd, "in_uv", 2, NEKO_GL_CUSTOM_FLOAT, neko_offset(vertex_t, u));
 
-uniform mat4 u_mvp;
-in vec2 in_pos; in vec2 in_uv;
-out vec2 v_uv;
+    neko_graphics_batch_make_renderable(&user_handle->sprite_renderable, &vd);
+    neko_graphics_batch_load_shader(&user_handle->sprite_shader, glsl_vs_src, glsl_ps_src);
+    neko_graphics_batch_set_shader(&user_handle->sprite_renderable, &user_handle->sprite_shader);
 
-void main() {
-    v_uv = in_uv;
-    gl_Position = u_mvp * vec4(in_pos, 0, 1);
-}
-)";
+    neko_graphics_batch_ortho_2d(fbs.x, fbs.y, 0, 0, user_handle->sprite_projection);
 
-    const char* ps = R"(
-#version 330
-
-precision mediump float;
-uniform sampler2D u_sprite_texture;
-in vec2 v_uv; out vec4 out_col;
-
-void main() { out_col = texture(u_sprite_texture, v_uv); }
-)";
-
-    neko_graphics_custom_batch_vertex_data_t vd;
-    neko_graphics_custom_batch_make_vertex_data(&vd, 1024 * 1024, GL_TRIANGLES, sizeof(vertex_t), GL_DYNAMIC_DRAW);
-    neko_graphics_custom_batch_add_attribute(&vd, "in_pos", 2, NEKO_GL_CUSTOM_FLOAT, neko_offset(vertex_t, x));
-    neko_graphics_custom_batch_add_attribute(&vd, "in_uv", 2, NEKO_GL_CUSTOM_FLOAT, neko_offset(vertex_t, u));
-
-    neko_graphics_custom_batch_make_renderable(&user_handle->sprite_renderable, &vd);
-    neko_graphics_custom_batch_load_shader(&user_handle->sprite_shader, vs, ps);
-    neko_graphics_custom_batch_set_shader(&user_handle->sprite_renderable, &user_handle->sprite_shader);
-
-    neko_graphics_custom_batch_ortho_2d(fbs.x, fbs.y, 0, 0, user_handle->sprite_projection);
-
-    neko_graphics_custom_batch_send_matrix(&user_handle->sprite_shader, "u_mvp", user_handle->sprite_projection);
+    neko_graphics_batch_send_matrix(&user_handle->sprite_shader, "u_mvp", user_handle->sprite_projection);
 
     load_images();
 
     spritebatch_config_t sb_config = get_demo_config();
 
-    // assign the 4 callbacks
     sb_config.batch_callback = batch_report;                        // report batches of sprites from `spritebatch_flush`
     sb_config.get_pixels_callback = get_pixels;                     // used to retrieve image pixels from `spritebatch_flush` and `spritebatch_defrag`
     sb_config.generate_texture_callback = generate_texture_handle;  // used to generate a texture handle from `spritebatch_flush` and `spritebatch_defrag`
     sb_config.delete_texture_callback = destroy_texture_handle;     // used to destroy a texture handle from `spritebatch_defrag`
 
-    // initialize cute_spritebatch
     spritebatch_init(&user_handle->sb, &sb_config, user_handle);
 
     return 1;
 }
 
-static int __neko_bind_sprite_batch_render(lua_State* L) {
+static int __neko_bind_sprite_batch_render_ortho(lua_State* L) {
     neko_sprite_batch_t* user_handle = (neko_sprite_batch_t*)lua_touserdata(L, 1);
 
-    const f32 t = neko_platform_elapsed_time();
+    f32 w = lua_tonumber(L, 2);
+    f32 h = lua_tonumber(L, 3);
+    f32 x = lua_tonumber(L, 4);
+    f32 y = lua_tonumber(L, 5);
+
+    neko_graphics_batch_ortho_2d(w, h, x / w, y / h, user_handle->sprite_projection);
+
+    neko_graphics_batch_send_matrix(&user_handle->sprite_shader, "u_mvp", user_handle->sprite_projection);
+
+    return 0;
+}
+
+static int __neko_bind_sprite_batch_make_sprite(lua_State* L) {
+    neko_sprite_batch_t* user_handle = (neko_sprite_batch_t*)lua_touserdata(L, 1);
+
+    auto image_id = lua_tointeger(L, 2);
+    auto x = lua_tonumber(L, 3);
+    auto y = lua_tonumber(L, 4);
+    auto scale = lua_tonumber(L, 5);
+    auto angle_radians = lua_tonumber(L, 6);
+    auto depth = lua_tonumber(L, 7);
+
+    neko_sprite_t* sprite_handle = (neko_sprite_t*)lua_newuserdata(L, sizeof(neko_sprite_t));
+    memset(sprite_handle, 0, sizeof(neko_sprite_t));
+
+    make_sprite(sprite_handle, image_id, x, y, scale, angle_radians, depth);
+
+    return 1;
+}
+
+static int __neko_bind_sprite_batch_push_sprite(lua_State* L) {
+    neko_sprite_batch_t* user_handle = (neko_sprite_batch_t*)lua_touserdata(L, 1);
+    neko_sprite_t* sprite_handle = (neko_sprite_t*)lua_touserdata(L, 2);
+    push_sprite(user_handle, sprite_handle);
+    return 0;
+}
+
+static int __neko_bind_sprite_batch_render_begin(lua_State* L) {
+    neko_sprite_batch_t* user_handle = (neko_sprite_batch_t*)lua_touserdata(L, 1);
 
     user_handle->call_count = 0;
 
-    neko_sprite_t dragon_zombie = make_sprite(0, 650, 500, 1, neko_rad2deg(t / 100000.f), 0);
-    neko_sprite_t night_spirit = make_sprite(1, 50, 250, 1, 0, 0);
-    push_sprite(user_handle, dragon_zombie);
-    push_sprite(user_handle, night_spirit);
-    neko_sprite_t polish = make_sprite(1, 250, 180, 1, neko_rad2deg(t / 50000.f), 0);
-    neko_sprite_t translated = polish;
-    for (int i = 0; i < 4; ++i) {
-        translated.x = polish.x + polish.sx * i;
-        for (int j = 0; j < 6; ++j) {
-            translated.y = polish.y - polish.sy * j;
-            push_sprite(user_handle, translated);
-        }
-    }
+    return 0;
+}
 
-    // 运行cute_spriteBatch查找sprite批次
-    // 这是cute_psriteBatch最基本的用法 每个游戏循环进行一次defrag tick flush
-    // 也可以每N帧只使用一次defrag(碎片整理)
-    // tick也可以在不同的时间间隔调用(例如每次游戏更新一次
-    // 但不一定每次屏幕呈现一次
+static int __neko_bind_sprite_batch_render_end(lua_State* L) {
+    neko_sprite_batch_t* user_handle = (neko_sprite_batch_t*)lua_touserdata(L, 1);
+
     {
-        // neko_profiler_scope_auto("render_spritebatch");
+        neko_profiler_scope_auto("render_spritebatch");
         spritebatch_defrag(&user_handle->sb);
         spritebatch_tick(&user_handle->sb);
         spritebatch_flush(&user_handle->sb);
@@ -1310,7 +1354,7 @@ static int __neko_bind_sprite_batch_end(lua_State* L) {
     spritebatch_term(&user_handle->sb);
     unload_images();
 
-    neko_graphics_custom_batch_free(user_handle->sprite_batch);
+    neko_graphics_batch_free(user_handle->sprite_batch);
 
     return 0;
 }
@@ -1390,11 +1434,13 @@ static int __neko_bind_gameobject_inspect(lua_State* L) {
 
     CGameObject* user_handle = (CGameObject*)lua_touserdata(L, 1);
 
+    if (user_handle == NULL) return 0;
+
     // neko_println("gameobj %d %s %s %s", user_handle->id, neko_bool_str(user_handle->active), neko_bool_str(user_handle->visible), neko_bool_str(user_handle->selected));
 
     ImGui::Text("GameObject_%d", user_handle->id);
 
-    auto f = [](auto& field, auto&& value) { neko_imgui::Auto(value, std::string(field.name).c_str()); };
+    auto f = [](auto&& field, auto&& value) { neko_imgui::Auto(std::forward<decltype(value)&>(value), std::string(field.name).c_str()); };
 
     neko::static_refl::neko_type_info<CGameObject>::ForEachVarOf((*user_handle), f);
 
@@ -2119,32 +2165,29 @@ end
     assert(base_ptr == foo_ptr);
 }
 
-extern void __neko_bind_imgui(lua_State* L);
-extern "C" int __neko_ecs_create_world(lua_State* L);
-
-int register_mt_aseprite(lua_State* L) {
+int register_mt_aseprite_renderer(lua_State* L) {
     luaL_Reg reg[] = {
-            {"__gc", __neko_bind_aseprite_end},
-            {"create", __neko_bind_aseprite_create},
-            {"update", __neko_bind_aseprite_update},
+            {"__gc", __neko_bind_aseprite_render_gc},
+            {"create", __neko_bind_aseprite_render_create},
+            {"update", __neko_bind_aseprite_render_update},
             {"render", __neko_bind_aseprite_render},
-            {"update_animation", __neko_bind_aseprite_update_animation},
+            {"update_animation", __neko_bind_aseprite_render_update_animation},
             {NULL, NULL},
     };
-    luaL_newmetatable(L, "mt_aseprite");
+    luaL_newmetatable(L, "mt_aseprite_renderer");
     luaL_setfuncs(L, reg, 0);
     lua_pushvalue(L, -1);            // # -1 复制一份 为了让 neko 主表设定
     lua_setfield(L, -2, "__index");  // # -2
     return 1;
 }
 
-int register_mt_sprite(lua_State* L) {
+int register_mt_aseprite(lua_State* L) {
     luaL_Reg reg[] = {
-            {"__gc", __neko_bind_sprite_end},
-            {"create", __neko_bind_sprite_create},
+            {"__gc", __neko_bind_aseprite_gc},
+            {"create", __neko_bind_aseprite_create},
             {NULL, NULL},
     };
-    luaL_newmetatable(L, "mt_sprite");
+    luaL_newmetatable(L, "mt_aseprite");
     luaL_setfuncs(L, reg, 0);
     lua_pushvalue(L, -1);            // # -1 复制一份 为了让 neko 主表设定
     lua_setfield(L, -2, "__index");  // # -2
@@ -2177,7 +2220,11 @@ int open_neko(lua_State* L) {
             {"custom_sprite_end", __neko_bind_custom_sprite_end},
 
             {"sprite_batch_create", __neko_bind_sprite_batch_create},
-            {"sprite_batch_render", __neko_bind_sprite_batch_render},
+            {"sprite_batch_render_ortho", __neko_bind_sprite_batch_render_ortho},
+            {"sprite_batch_render_begin", __neko_bind_sprite_batch_render_begin},
+            {"sprite_batch_render_end", __neko_bind_sprite_batch_render_end},
+            {"sprite_batch_make_sprite", __neko_bind_sprite_batch_make_sprite},
+            {"sprite_batch_push_sprite", __neko_bind_sprite_batch_push_sprite},
             {"sprite_batch_end", __neko_bind_sprite_batch_end},
 
             {"particle_create", __neko_bind_particle_create},
@@ -2246,14 +2293,19 @@ int open_neko(lua_State* L) {
     luaL_newlib(L, reg);
 
     {
+        register_mt_aseprite_renderer(L);
+        lua_setfield(L, -2, "aseprite_render");
+    }
+
+    {
         register_mt_aseprite(L);
         lua_setfield(L, -2, "aseprite");
     }
 
-    {
-        register_mt_sprite(L);
-        lua_setfield(L, -2, "sprite");
-    }
+    // {
+    //     register_mt_imgui(L);
+    //     lua_setfield(L, -2, "imgui");
+    // }
 
     return 1;
 }
@@ -2285,9 +2337,25 @@ static int __neko_loader(lua_State* L) {
     return 1;
 }
 
+#define PRELOAD(name, function)     \
+    lua_getglobal(L, "package");    \
+    lua_getfield(L, -1, "preload"); \
+    lua_pushcfunction(L, function); \
+    lua_setfield(L, -2, name);      \
+    lua_pop(L, 2)
+
 void neko_register(lua_State* L) {
 
     g_client_userdata.L = L;
+
+    luaopen_cstruct_core(L);
+    luaopen_cstruct_test(L);
+
+    PRELOAD("neko_lua_ds.core", luaopen_ds_core);
+    PRELOAD("neko_lua_datalist.core", luaopen_datalist);
+    PRELOAD("neko_gui", luaopen_neko_gui);
+    PRELOAD("cffi", luaopen_cffi);
+    PRELOAD("imgui", luaopen_imgui);
 
     luaL_requiref(L, "neko", open_neko, 1);
 
@@ -2296,12 +2364,12 @@ void neko_register(lua_State* L) {
     neko_register_test(L);
     neko_register_test_oop(L);
 
-    __neko_bind_imgui(L);
-
     open_luasocket(L);
 
     // 自定义加载器
     lua_register(L, "__neko_loader", __neko_loader);
     const char* str = "table.insert(package.searchers, 2, __neko_loader) \n";
     luaL_dostring(L, str);
+
+    neko_lua_add_package_path(L, "./");
 }

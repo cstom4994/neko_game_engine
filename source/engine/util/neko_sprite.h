@@ -8,19 +8,19 @@
 // game
 // #include "neko_hash.h"
 
-typedef struct neko_sprite_frame {
+typedef struct neko_aseprite_frame {
     s32 duration;
     f32 u0, v0, u1, v1;
-} neko_sprite_frame;
+} neko_aseprite_frame;
 
-typedef struct neko_sprite_loop {
+typedef struct neko_aseprite_loop {
     neko_dyn_array(s32) indices;
-} neko_sprite_loop;
+} neko_aseprite_loop;
 
-typedef struct neko_sprite {
+typedef struct neko_aseprite {
     // neko_array<neko_sprite_frame> frames;
-    neko_dyn_array(neko_sprite_frame) frames;
-    neko_hash_table(u64, neko_sprite_loop) by_tag;
+    neko_dyn_array(neko_aseprite_frame) frames;
+    neko_hash_table(u64, neko_aseprite_loop) by_tag;
     neko_texture_t img;
     s32 width;
     s32 height;
@@ -28,20 +28,20 @@ typedef struct neko_sprite {
     // #ifdef NEKO_DEBUG
     u64 mem_used;
     // #endif
-} neko_sprite;
+} neko_aseprite;
 
-typedef struct neko_sprite_renderer {
-    neko_sprite* sprite;
-    neko_sprite_loop* loop;
+typedef struct neko_aseprite_renderer {
+    neko_aseprite* sprite;
+    neko_aseprite_loop* loop;
     f32 elapsed;
     s32 current_frame;
-} neko_sprite_renderer;
+} neko_aseprite_renderer;
 
-NEKO_API_DECL bool neko_sprite_load(neko_sprite* spr, const_str filepath);
-NEKO_API_DECL void neko_sprite_end(neko_sprite* spr);
-NEKO_API_DECL void neko_sprite_renderer_play(neko_sprite_renderer* sr, const_str tag);
-NEKO_API_DECL void neko_sprite_renderer_update(neko_sprite_renderer* sr, f32 dt);
-NEKO_API_DECL void neko_sprite_renderer_set_frame(neko_sprite_renderer* sr, s32 frame);
+NEKO_API_DECL bool neko_aseprite_load(neko_aseprite* spr, const_str filepath);
+NEKO_API_DECL void neko_aseprite_end(neko_aseprite* spr);
+NEKO_API_DECL void neko_aseprite_renderer_play(neko_aseprite_renderer* sr, const_str tag);
+NEKO_API_DECL void neko_aseprite_renderer_update(neko_aseprite_renderer* sr, f32 dt);
+NEKO_API_DECL void neko_aseprite_renderer_set_frame(neko_aseprite_renderer* sr, s32 frame);
 
 typedef struct neko_particle_t {
     f64 x;

@@ -48,6 +48,9 @@ struct component_pool {
     struct component *buf;
 };
 
+// 每个Component类型都有一个数字id称为tid
+// 每个Component实例都有一个数字id称为cid
+// 根据tid和cid来找到某一个具体的Component实例
 struct component_ptr {
     int tid;
     int cid;

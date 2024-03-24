@@ -4,7 +4,8 @@ local deepcopy = require("common/nekolua/utils/deepcopy")
 
 gui = require("neko_gui")
 require("common/hotfix")
-c_gameobject = require("gameobject")
+CObject = require("cobject")
+imgui = require("imgui")
 
 USE_LUA_PAK = false
 
@@ -78,18 +79,18 @@ ecs_world:register("particle", {ud})
 local gd = game_data
 
 SAFE_UD = function(tb)
-    if tb.ud ~= nil then
+    if tb ~= nil and tb.ud ~= nil then
         return tb.ud
     else
-        dbg()
+        return nil
     end
 end
 
 SAFE_SD = function(tb)
-    if tb.sd ~= nil then
+    if tb ~= nil and tb.sd ~= nil then
         return tb.sd
     else
-        dbg()
+        return nil
     end
 end
 
@@ -241,18 +242,37 @@ game_init = function()
 
     -- default_font = neko_fontcache_load(test_handle, 18.0)
 
-    gd.test_witch_spr = neko.sprite.create(neko_file_path("gamedir/assets/textures/B_witch.ase"))
-    gd.test_harvester_spr = neko.sprite.create(neko_file_path("gamedir/assets/textures/TheHarvester.ase"))
-    gd.test_pdx_spr = neko.sprite.create(neko_file_path("gamedir/assets/textures/pdx.ase"))
+    gd.test_witch_spr = neko.aseprite.create(neko_file_path("gamedir/assets/textures/B_witch.ase"))
+    gd.test_harvester_spr = neko.aseprite.create(neko_file_path("gamedir/assets/textures/TheHarvester.ase"))
+    gd.test_pdx_spr = neko.aseprite.create(neko_file_path("gamedir/assets/textures/pdx.ase"))
 
-    gd.test_batch = neko.sprite_batch_create()
+    gd.test_batch = neko.sprite_batch_create([[
+#version 330
+
+uniform mat4 u_mvp;
+in vec2 in_pos; in vec2 in_uv;
+out vec2 v_uv;
+
+void main() {
+    v_uv = in_uv;
+    gl_Position = u_mvp * vec4(in_pos, 0, 1);
+}
+    ]], [[
+#version 330
+
+precision mediump float;
+uniform sampler2D u_sprite_texture;
+in vec2 v_uv; out vec4 out_col;
+
+void main() { out_col = texture(u_sprite_texture, v_uv); }
+    ]])
 
     eid1 = ecs_world:new{
         gameobj = {
             name = "player",
             w = 48,
             h = 48,
-            sd = c_gameobject.new_obj(1001, true, true)
+            sd = CObject.new_obj(1001, true, true)
         },
         vector2 = {
             x = 360,
@@ -264,7 +284,7 @@ game_init = function()
         },
         player = {
             scale = 3.0,
-            ud = neko.aseprite.create(gd.test_witch_spr)
+            ud = neko.aseprite_render.create(gd.test_witch_spr)
         }
     }
 
@@ -277,7 +297,7 @@ game_init = function()
     eid2 = ecs_world:new{
         gameobj = {
             name = "tiled_map_1",
-            sd = c_gameobject.new_obj(1002, true, true)
+            sd = CObject.new_obj(1002, true, true)
         },
         vector2 = {
             x = 20,
@@ -355,7 +375,7 @@ game_init = function()
                 name = "npc_pdx_" .. i,
                 w = 48,
                 h = 48,
-                sd = c_gameobject.new_obj(1010 + i, true, true)
+                sd = CObject.new_obj(1010 + i, true, true)
             },
             vector2 = {
                 x = common.random(1, 1800),
@@ -368,7 +388,7 @@ game_init = function()
             npc = {
                 r = -1,
                 scale = 3.0,
-                ud = neko.aseprite.create(gd.test_pdx_spr)
+                ud = neko.aseprite_render.create(gd.test_pdx_spr)
             }
         }
 
@@ -383,7 +403,7 @@ game_init = function()
                 name = "npc" .. i,
                 w = 48,
                 h = 48,
-                sd = c_gameobject.new_obj(1010 + i, true, true)
+                sd = CObject.new_obj(1010 + i, true, true)
             },
             vector2 = {
                 x = common.random(1, 1800),
@@ -396,7 +416,7 @@ game_init = function()
             npc = {
                 r = -1,
                 scale = 4.0,
-                ud = neko.aseprite.create(gd.test_harvester_spr)
+                ud = neko.aseprite_render.create(gd.test_harvester_spr)
             }
         }
 
@@ -514,13 +534,20 @@ game_update = function(dt)
         v.dy = v.dy / 2.0
     end
 
+    ecs_world:update()
+
     neko_web_console.update()
 
 end
 
+local obj_select
+local obj_view
+
 game_render = function()
 
     fbs_x, fbs_y = neko_framebuffer_size()
+
+    local t = neko_platform_elapsed_time()
 
     neko.idraw_defaults()
     -- neko.idraw_camera2d(fbs_x, fbs_y)
@@ -529,16 +556,18 @@ game_render = function()
     -- neko.idraw_defaults()
     neko.idraw_rectv(to_vec2(0, 0), to_vec2(50, 50), "NEKO_GRAPHICS_PRIMITIVE_LINES")
 
-    for v2, t in ecs_world:match("all", "vector2", "tiled_map") do
-        neko.tiled_render(SAFE_UD(t), 0, to_vec2(0, 0), gd.cam.x, fbs_x + gd.cam.x, gd.cam.y, fbs_y + gd.cam.y)
+    for v2, t, obj in ecs_world:match("all", "vector2", "tiled_map", "gameobj") do
+        if CObject.CGameObject_get_active(SAFE_SD(obj)) then
+            neko.tiled_render(SAFE_UD(t), 0, to_vec2(0, 0), gd.cam.x, fbs_x + gd.cam.x, gd.cam.y, fbs_y + gd.cam.y)
 
-        -- neko.idraw_texture(gd.rt)
-        -- neko.idraw_rectvd(v2, to_vec2(64 * 16 * 2, 32 * 16 * 2), to_vec2(0.0, 1.0), to_vec2(1.0, 0.0),
-        --     "NEKO_GRAPHICS_PRIMITIVE_TRIANGLES")
+            -- neko.idraw_texture(gd.rt)
+            -- neko.idraw_rectvd(v2, to_vec2(64 * 16 * 2, 32 * 16 * 2), to_vec2(0.0, 1.0), to_vec2(1.0, 0.0),
+            --     "NEKO_GRAPHICS_PRIMITIVE_TRIANGLES")
 
-        neko.idraw_defaults()
-        neko.idraw_text(v2.x, v2.y - 10, ("tiled_map x:%f y:%f"):format(v2.x, v2.y))
-        neko.idraw_defaults()
+            neko.idraw_defaults()
+            neko.idraw_text(v2.x, v2.y - 10, ("tiled_map x:%f y:%f"):format(v2.x, v2.y))
+            neko.idraw_defaults()
+        end
     end
 
     for v2, v, p, obj in ecs_world:match("all", "vector2", "velocity2", "npc", "gameobj") do
@@ -626,8 +655,33 @@ game_render = function()
     end
 
     imgui.Begin("Hello")
-    for obj in ecs_world:match("all", "gameobj") do
-        neko.gameobject_inspect(SAFE_SD(obj))
+    obj_select = obj_select or '' -- eid从0开始
+    imgui.PushID("TestCombo")
+    if imgui.BeginCombo("Type", obj_select) then
+        for obj in ecs_world:match("all", "gameobj") do
+            if imgui.SelectableEx(obj.name, obj_select == obj.name) then
+                obj_select = obj.name
+                obj_view = obj
+            end
+        end
+        imgui.EndCombo()
+    end
+    imgui.PopID()
+    if obj_view ~= nil then
+        local v2, v, player_obj = ecs_world:get(obj_view.__eid, "vector2", "velocity2", "gameobj")
+        neko.gameobject_inspect(SAFE_SD(obj_view))
+        imgui.Text("%d %s", obj_view.__eid, obj_view.name)
+        imgui.Text("坐标: %f %f", v2.x, v2.y)
+        imgui.Text("速度: %f %f (%f)", v.dx, v.dy, math.abs(math.sqrt(v.dx ^ 2 + v.dy ^ 2)))
+        -- ECS.select(ecs_world, function(c)
+        --     local s = {c.x}
+        --     imgui.DragFloat("啊？", s)
+        --     c.x = s[1]
+        -- end, "vector2")
+        -- imgui.Text("%d", n)
+        -- for i = 1, n, 1 do
+        --     imgui.DragFloat("啊？", {list[i].x})
+        -- end
     end
     imgui.End()
 
@@ -637,20 +691,6 @@ game_render = function()
         phy_debug_draw()
         draw_blocks()
     end
-
-    -- local sliderFloat = {0.1, 0.5}
-    -- local clearColor = {0.2, 0.2, 0.2}
-    -- local comboSelection = 1
-    -- local floatValue = 0
-
-    -- imgui.Text("Hello, world!");
-    -- clearColor[1], clearColor[2], clearColor[3] = imgui.ColorEdit3("Clear color", clearColor[1], clearColor[2],
-    --     clearColor[3]);
-
-    -- floatValue = imgui.SliderFloat("SliderFloat", floatValue, 0.0, 1.0);
-    -- sliderFloat[1], sliderFloat[2] = imgui.SliderFloat2("SliderFloat2", sliderFloat[1], sliderFloat[2], 0.0, 1.0);
-
-    -- comboSelection = imgui.Combo("Combo", comboSelection, "combo1, haha", 4);
 
     neko.graphics_renderpass_begin(0)
     neko.graphics_set_viewport(0.0, 0.0, fbs_x, fbs_y)
@@ -686,8 +726,29 @@ game_render = function()
     -- neko.idraw_draw()
     -- neko.graphics_renderpass_end()
 
+    neko.sprite_batch_render_ortho(gd.test_batch, fbs_x, fbs_y, 0, 0)
+    neko.sprite_batch_render_begin(gd.test_batch)
 
-    -- neko.sprite_batch_render(gd.test_batch)
+    local dragon_zombie = neko.sprite_batch_make_sprite(gd.test_batch, 0, 650, 500, 1, common.rad2deg(t / 100000.0), 0)
+    local night_spirit = neko.sprite_batch_make_sprite(gd.test_batch, 1, 50, 250, 1, 0, 0)
+    neko.sprite_batch_push_sprite(gd.test_batch, dragon_zombie)
+    neko.sprite_batch_push_sprite(gd.test_batch, night_spirit)
+
+    for i = 0, 4 do
+        local polish = neko.sprite_batch_make_sprite(gd.test_batch, 1, 200, 880, 1, common.rad2deg(t / 50000.0), 0)
+        local translated = polish
+        local polish_x = CObject.getter("neko_sprite_t", "x")(polish)
+        local polish_y = CObject.getter("neko_sprite_t", "y")(polish)
+        local polish_sx = CObject.getter("neko_sprite_t", "sx")(polish)
+        local polish_sy = CObject.getter("neko_sprite_t", "sy")(polish)
+        for j = 0, 6 do
+            CObject.setter("neko_sprite_t", "x")(translated, polish_x + polish_sx * i)
+            CObject.setter("neko_sprite_t", "y")(translated, polish_y + polish_sy * j)
+            neko.sprite_batch_push_sprite(gd.test_batch, translated)
+        end
+    end
+
+    neko.sprite_batch_render_end(gd.test_batch)
 
 end
 

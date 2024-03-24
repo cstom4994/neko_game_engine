@@ -647,29 +647,29 @@ enum {
     NEKO_GL_CUSTOM_UNKNOWN,
 };
 
-typedef struct neko_graphics_custom_batch_vertex_attribute_t {
+typedef struct neko_graphics_batch_vertex_attribute_t {
     const char* name;
     u64 hash;
     u32 size;
     u32 type;
     u32 offset;
     u32 location;
-} neko_graphics_custom_batch_vertex_attribute_t;
+} neko_graphics_batch_vertex_attribute_t;
 
 #define NEKO_GL_CUSTOM_ATTRIBUTE_MAX_COUNT 16
-typedef struct neko_graphics_custom_batch_vertex_data_t {
+typedef struct neko_graphics_batch_vertex_data_t {
     u32 buffer_size;
     u32 vertex_stride;
     u32 primitive;
     u32 usage;
 
     u32 attribute_count;
-    neko_graphics_custom_batch_vertex_attribute_t attributes[NEKO_GL_CUSTOM_ATTRIBUTE_MAX_COUNT];
-} neko_graphics_custom_batch_vertex_data_t;
+    neko_graphics_batch_vertex_attribute_t attributes[NEKO_GL_CUSTOM_ATTRIBUTE_MAX_COUNT];
+} neko_graphics_batch_vertex_data_t;
 
 // 根据需要调整此项以创建绘制调用顺序
 // see: http://realtimecollisiondetection.net/blog/?p=86
-typedef struct neko_graphics_custom_batch_render_internal_state_t {
+typedef struct neko_graphics_batch_render_internal_state_t {
     union {
         struct {
             int fullscreen : 2;
@@ -680,15 +680,15 @@ typedef struct neko_graphics_custom_batch_render_internal_state_t {
 
         u64 key;
     } u;
-} neko_graphics_custom_batch_render_internal_state_t;
+} neko_graphics_batch_render_internal_state_t;
 
-struct neko_graphics_custom_batch_shader_t;
-typedef struct neko_graphics_custom_batch_shader_t neko_graphics_custom_batch_shader_t;
+struct neko_graphics_batch_shader_t;
+typedef struct neko_graphics_batch_shader_t neko_graphics_batch_shader_t;
 
-typedef struct neko_graphics_custom_batch_renderable_t {
-    neko_graphics_custom_batch_vertex_data_t data;
-    neko_graphics_custom_batch_shader_t* program;
-    neko_graphics_custom_batch_render_internal_state_t state;
+typedef struct neko_graphics_batch_renderable_t {
+    neko_graphics_batch_vertex_data_t data;
+    neko_graphics_batch_shader_t* program;
+    neko_graphics_batch_render_internal_state_t state;
     u32 attribute_count;
 
     u32 index0;
@@ -698,80 +698,80 @@ typedef struct neko_graphics_custom_batch_renderable_t {
     u32 buffer_count;
     u32 buffers[3];
     GLsync fences[3];
-} neko_graphics_custom_batch_renderable_t;
+} neko_graphics_batch_renderable_t;
 
 #define NEKO_GL_CUSTOM_UNIFORM_NAME_LENGTH 64
 #define NEKO_GL_CUSTOM_UNIFORM_MAX_COUNT 16
 
-typedef struct neko_graphics_custom_batch_uniform_t {
+typedef struct neko_graphics_batch_uniform_t {
     char name[NEKO_GL_CUSTOM_UNIFORM_NAME_LENGTH];
     u32 id;
     u64 hash;
     u32 size;
     u32 type;
     u32 location;
-} neko_graphics_custom_batch_uniform_t;
+} neko_graphics_batch_uniform_t;
 
-struct neko_graphics_custom_batch_shader_t {
+struct neko_graphics_batch_shader_t {
     u32 program;
     u32 uniform_count;
-    neko_graphics_custom_batch_uniform_t uniforms[NEKO_GL_CUSTOM_UNIFORM_MAX_COUNT];
+    neko_graphics_batch_uniform_t uniforms[NEKO_GL_CUSTOM_UNIFORM_MAX_COUNT];
 };
 
-typedef struct neko_graphics_custom_batch_framebuffer_t {
+typedef struct neko_graphics_batch_framebuffer_t {
     u32 fb_id;
     u32 tex_id;
     u32 rb_id;
     u32 quad_id;
-    neko_graphics_custom_batch_shader_t* shader;
+    neko_graphics_batch_shader_t* shader;
     int w, h;
-} neko_graphics_custom_batch_framebuffer_t;
+} neko_graphics_batch_framebuffer_t;
 
 typedef struct {
     u32 vert_count;
     void* verts;
-    neko_graphics_custom_batch_renderable_t* r;
+    neko_graphics_batch_renderable_t* r;
     u32 texture_count;
     u32 textures[8];
-} neko_graphics_custom_batch_draw_call_t;
+} neko_graphics_batch_draw_call_t;
 
-struct neko_graphics_custom_batch_context_t;
-typedef struct neko_graphics_custom_batch_context_t neko_graphics_custom_batch_context_t;
-typedef struct neko_graphics_custom_batch_context_t* neko_graphics_custom_batch_context_ptr;
-typedef struct neko_graphics_custom_batch_framebuffer_t* neko_graphics_custom_batch_framebuffer_ptr;
+struct neko_graphics_batch_context_t;
+typedef struct neko_graphics_batch_context_t neko_graphics_batch_context_t;
+typedef struct neko_graphics_batch_context_t* neko_graphics_batch_context_ptr;
+typedef struct neko_graphics_batch_framebuffer_t* neko_graphics_batch_framebuffer_ptr;
 
-NEKO_API_DECL neko_graphics_custom_batch_context_t* neko_graphics_custom_batch_make_ctx(u32 max_draw_calls);
-NEKO_API_DECL void neko_graphics_custom_batch_free(void* ctx);
+NEKO_API_DECL neko_graphics_batch_context_t* neko_graphics_batch_make_ctx(u32 max_draw_calls);
+NEKO_API_DECL void neko_graphics_batch_free(void* ctx);
 
-NEKO_API_DECL void neko_graphics_custom_batch_make_frame_buffer(neko_graphics_custom_batch_framebuffer_t* fb, neko_graphics_custom_batch_shader_t* shader, int w, int h, int use_depth_test);
-NEKO_API_DECL void neko_graphics_custom_batch_free_frame_buffer(neko_graphics_custom_batch_framebuffer_t* fb);
+NEKO_API_DECL void neko_graphics_batch_make_frame_buffer(neko_graphics_batch_framebuffer_t* fb, neko_graphics_batch_shader_t* shader, int w, int h, int use_depth_test);
+NEKO_API_DECL void neko_graphics_batch_free_frame_buffer(neko_graphics_batch_framebuffer_t* fb);
 
-NEKO_API_DECL void neko_graphics_custom_batch_make_vertex_data(neko_graphics_custom_batch_vertex_data_t* vd, u32 buffer_size, u32 primitive, u32 vertex_stride, u32 usage);
-NEKO_API_DECL void neko_graphics_custom_batch_add_attribute(neko_graphics_custom_batch_vertex_data_t* vd, const char* name, u32 size, u32 type, u32 offset);
-NEKO_API_DECL void neko_graphics_custom_batch_make_renderable(neko_graphics_custom_batch_renderable_t* r, neko_graphics_custom_batch_vertex_data_t* vd);
+NEKO_API_DECL void neko_graphics_batch_make_vertex_data(neko_graphics_batch_vertex_data_t* vd, u32 buffer_size, u32 primitive, u32 vertex_stride, u32 usage);
+NEKO_API_DECL void neko_graphics_batch_add_attribute(neko_graphics_batch_vertex_data_t* vd, const char* name, u32 size, u32 type, u32 offset);
+NEKO_API_DECL void neko_graphics_batch_make_renderable(neko_graphics_batch_renderable_t* r, neko_graphics_batch_vertex_data_t* vd);
 
 // Must be called after gl_make_renderable
-NEKO_API_DECL void neko_graphics_custom_batch_set_shader(neko_graphics_custom_batch_renderable_t* r, neko_graphics_custom_batch_shader_t* s);
-NEKO_API_DECL void neko_graphics_custom_batch_load_shader(neko_graphics_custom_batch_shader_t* s, const char* vertex, const char* pixel);
-NEKO_API_DECL void neko_graphics_custom_batch_free_shader(neko_graphics_custom_batch_shader_t* s);
+NEKO_API_DECL void neko_graphics_batch_set_shader(neko_graphics_batch_renderable_t* r, neko_graphics_batch_shader_t* s);
+NEKO_API_DECL void neko_graphics_batch_load_shader(neko_graphics_batch_shader_t* s, const char* vertex, const char* pixel);
+NEKO_API_DECL void neko_graphics_batch_free_shader(neko_graphics_batch_shader_t* s);
 
-NEKO_API_DECL void neko_graphics_custom_batch_set_active_shader(neko_graphics_custom_batch_shader_t* s);
-NEKO_API_DECL void neko_graphics_custom_batch_deactivate_shader();
-NEKO_API_DECL void neko_graphics_custom_batch_send_f32(neko_graphics_custom_batch_shader_t* s, const char* uniform_name, u32 size, float* floats, u32 count);
-NEKO_API_DECL void neko_graphics_custom_batch_send_matrix(neko_graphics_custom_batch_shader_t* s, const char* uniform_name, float* floats);
-NEKO_API_DECL void neko_graphics_custom_batch_send_texture(neko_graphics_custom_batch_shader_t* s, const char* uniform_name, u32 index);
+NEKO_API_DECL void neko_graphics_batch_set_active_shader(neko_graphics_batch_shader_t* s);
+NEKO_API_DECL void neko_graphics_batch_deactivate_shader();
+NEKO_API_DECL void neko_graphics_batch_send_f32(neko_graphics_batch_shader_t* s, const char* uniform_name, u32 size, float* floats, u32 count);
+NEKO_API_DECL void neko_graphics_batch_send_matrix(neko_graphics_batch_shader_t* s, const char* uniform_name, float* floats);
+NEKO_API_DECL void neko_graphics_batch_send_texture(neko_graphics_batch_shader_t* s, const char* uniform_name, u32 index);
 
-NEKO_API_DECL void neko_graphics_custom_batch_push_draw_call(void* ctx, neko_graphics_custom_batch_draw_call_t call);
+NEKO_API_DECL void neko_graphics_batch_push_draw_call(void* ctx, neko_graphics_batch_draw_call_t call);
 
-NEKO_API_DECL void neko_graphics_custom_batch_flush(void* ctx, neko_graphics_custom_batch_framebuffer_t* fb, int w, int h);
-NEKO_API_DECL int neko_graphics_custom_batch_draw_call_count(void* ctx);
+NEKO_API_DECL void neko_graphics_batch_flush(void* ctx, neko_graphics_batch_framebuffer_t* fb, int w, int h);
+NEKO_API_DECL int neko_graphics_batch_draw_call_count(void* ctx);
 
 // 4x4 matrix helper functions
-NEKO_API_DECL void neko_graphics_custom_batch_ortho_2d(float w, float h, float x, float y, float* m);
-NEKO_API_DECL void neko_graphics_custom_batch_perspective(float* m, float y_fov_radians, float aspect, float n, float f);
-NEKO_API_DECL void neko_graphics_custom_batch_mul(float* a, float* b, float* out);  // perform a * b, stores result in out
-NEKO_API_DECL void neko_graphics_custom_batch_identity(float* m);
-NEKO_API_DECL void neko_graphics_custom_batch_copy(float* dst, float* src);
+NEKO_API_DECL void neko_graphics_batch_ortho_2d(float w, float h, float x, float y, float* m);
+NEKO_API_DECL void neko_graphics_batch_perspective(float* m, float y_fov_radians, float aspect, float n, float f);
+NEKO_API_DECL void neko_graphics_batch_mul(float* a, float* b, float* out);  // perform a * b, stores result in out
+NEKO_API_DECL void neko_graphics_batch_identity(float* m);
+NEKO_API_DECL void neko_graphics_batch_copy(float* dst, float* src);
 
 // Resource Creation
 // Create
@@ -827,7 +827,7 @@ NEKO_API_DECL void neko_graphics_clear_ex(neko_command_buffer_t* cb, neko_graphi
 NEKO_API_DECL void neko_graphics_pipeline_bind(neko_command_buffer_t* cb, neko_handle(neko_graphics_pipeline_t) hndl);
 NEKO_API_DECL void neko_graphics_apply_bindings(neko_command_buffer_t* cb, neko_graphics_bind_desc_t* binds);
 NEKO_API_DECL void neko_graphics_draw(neko_command_buffer_t* cb, neko_graphics_draw_desc_t* desc);
-NEKO_API_DECL void neko_graphics_draw_batch(neko_command_buffer_t* cb, neko_graphics_custom_batch_context_t* ctx, neko_graphics_custom_batch_framebuffer_t* fb, s32 w, s32 h);
+NEKO_API_DECL void neko_graphics_draw_batch(neko_command_buffer_t* cb, neko_graphics_batch_context_t* ctx, neko_graphics_batch_framebuffer_t* fb, s32 w, s32 h);
 NEKO_API_DECL void neko_graphics_dispatch_compute(neko_command_buffer_t* cb, u32 num_x_groups, u32 num_y_groups, u32 num_z_groups);
 
 // Macros

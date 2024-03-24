@@ -26,7 +26,7 @@ dependencies/
 Resources/
 old/
 source/generated
-source/libs
+source/deps
 
 build.bat
 compile_commands.json

@@ -5,7 +5,6 @@
 
 #include "engine/neko_engine.h"
 #include "engine/neko_platform.h"
-#include "engine/util/neko_console.h"
 
 #if defined(NEKO_DISCRETE_GPU)
 // Use discrete GPU by default.
@@ -126,23 +125,40 @@ NEKO_API_DECL neko_os_api_t neko_os_api_new_default() {
     return os;
 }
 
+NEKO_API_DECL void neko_console_printf(neko_console_t* console, const char* fmt, ...) {
+    char tmp[512] = {0};
+    va_list args;
+
+    va_start(args, fmt);
+    vsnprintf(tmp, sizeof(tmp), fmt, args);
+    va_end(args);
+
+    int n = sizeof(console->tb) - strlen(console->tb) - 1;
+    int resize = strlen(tmp) - n;
+    if (resize > 0) {
+        memmove(console->tb, console->tb + resize, sizeof(console->tb) - resize);
+        n = sizeof(console->tb) - strlen(console->tb) - 1;
+    }
+    strncat(console->tb, tmp, n);
+}
+
 // logging
 
-#define MAX_CALLBACKS 32
+#define MAX_CALLBACKS 8
 #define LOG_USE_COLOR
 
 typedef struct {
     neko_log_fn fn;
     void* udata;
     int level;
-} Callback;
+} neko_log_callback;
 
 static struct {
     void* udata;
     neko_log_lock_fn lock;
     int level;
     bool quiet;
-    Callback callbacks[MAX_CALLBACKS];
+    neko_log_callback callbacks[MAX_CALLBACKS];
 } L;
 
 static const char* level_strings[] = {"TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
@@ -150,32 +166,21 @@ static const char* level_strings[] = {"TRACE", "DEBUG", "INFO", "WARN", "ERROR",
 static const char* level_colors[] = {"\x1b[94m", "\x1b[36m", "\x1b[32m", "\x1b[33m", "\x1b[31m", "\x1b[35m"};
 
 static void stdout_callback(neko_log_event* ev) {
-    char buf[16];
-    buf[strftime(buf, sizeof(buf), "%H:%M:%S", ev->time)] = '\0';
 #ifdef LOG_USE_COLOR
-    fprintf(ev->udata, "%s %s%-5s\x1b[0m \x1b[90m%s:%d:\x1b[0m ", buf, level_colors[ev->level], level_strings[ev->level], neko_fs_get_filename(ev->file), ev->line);
+    fprintf(ev->udata, "%s[%-5s]\x1b[0m \x1b[90m%s:%d:\x1b[0m ", level_colors[ev->level], level_strings[ev->level], neko_fs_get_filename(ev->file), ev->line);
 #else
-    fprintf(ev->udata, "%s %-5s %s:%d: ", buf, level_strings[ev->level], neko_fs_get_filename(ev->file), ev->line);
+    fprintf(ev->udata, "%-5s %s:%d: ", level_strings[ev->level], neko_fs_get_filename(ev->file), ev->line);
 #endif
     vfprintf(ev->udata, ev->fmt, ev->ap);
     fprintf(ev->udata, "\n");
     fflush(ev->udata);
 
     // 需要修改 console的fmt并不正确
-    if (0 && NULL != neko_instance() && NULL != neko_instance()->ctx.game.console) {
-        neko_console_printf(neko_instance()->ctx.game.console, "%s %-5s %s:%d: ", buf, level_strings[ev->level], neko_fs_get_filename(ev->file), ev->line);
+    if (1 && NULL != neko_instance() && NULL != neko_instance()->ctx.game.console) {
+        neko_console_printf(neko_instance()->ctx.game.console, "%-5s %s:%d: ", level_strings[ev->level], neko_fs_get_filename(ev->file), ev->line);
         neko_console_printf(neko_instance()->ctx.game.console, ev->fmt, ev->ap);
         neko_console_printf(neko_instance()->ctx.game.console, "\n");
     }
-}
-
-static void file_callback(neko_log_event* ev) {
-    char buf[64];
-    buf[strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", ev->time)] = '\0';
-    fprintf(ev->udata, "%s %-5s %s:%d: ", buf, level_strings[ev->level], ev->file, ev->line);
-    vfprintf(ev->udata, ev->fmt, ev->ap);
-    fprintf(ev->udata, "\n");
-    fflush(ev->udata);
 }
 
 static void log_lock(void) {
@@ -204,19 +209,17 @@ void log_set_quiet(bool enable) { L.quiet = enable; }
 int log_add_callback(neko_log_fn fn, void* udata, int level) {
     for (int i = 0; i < MAX_CALLBACKS; i++) {
         if (!L.callbacks[i].fn) {
-            L.callbacks[i] = (Callback){fn, udata, level};
+            L.callbacks[i] = (neko_log_callback){fn, udata, level};
             return 0;
         }
     }
     return -1;
 }
 
-int log_add_fp(FILE* fp, int level) { return log_add_callback(file_callback, fp, level); }
-
 static void init_event(neko_log_event* ev, void* udata) {
+    static u32 t = 0;
     if (!ev->time) {
-        time_t t = time(NULL);
-        ev->time = localtime(&t);
+        ev->time = ++t;
     }
     ev->udata = (FILE*)udata;
 }
@@ -239,7 +242,7 @@ void log_log(int level, const char* file, int line, const char* fmt, ...) {
     }
 
     for (int i = 0; i < MAX_CALLBACKS && L.callbacks[i].fn; i++) {
-        Callback* cb = &L.callbacks[i];
+        neko_log_callback* cb = &L.callbacks[i];
         if (level >= cb->level) {
             init_event(&ev, cb->udata);
             va_start(ev.ap, fmt);

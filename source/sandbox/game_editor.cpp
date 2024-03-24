@@ -562,48 +562,6 @@ void neko_profiler_draw_stats(neko_profiler_frame_t *_data, bool _multi) {
     ImGui::End();
 }
 
-void game_editor_console::display(bool *bInteractingWithTextbox) noexcept {
-    for (auto &a : message_log) {
-        ImVec4 colour;
-        switch (a.second) {
-            case LOG_TYPE_WARNING:
-                colour = warning;
-                break;
-            case LOG_TYPE_ERROR:
-                colour = error;
-                break;
-            case LOG_TYPE_TRACE:
-                colour = note;
-                break;
-            case LOG_TYPE_SUCCESS:
-                colour = success;
-                break;
-            case LOG_TYPE_MESSAGE:
-                colour = message;
-                break;
-        }
-
-        ImGui::TextColored(colour, "%s", a.first.c_str());
-    }
-
-    static char command[256] = "";
-    if ((ImGui::InputTextWithHint("##Input", "Enter any command here", command, IM_ARRAYSIZE(command)) || ImGui::IsItemActive()) && bInteractingWithTextbox != nullptr) *bInteractingWithTextbox = true;
-    ImGui::SameLine();
-    if (ImGui::Button("Send##consoleCommand") || (bInteractingWithTextbox != nullptr && *bInteractingWithTextbox && ImGui::IsKeyDown(ImGuiKey_Enter))) {
-        if (command[0] != '\0') {
-            this->log(command, LOG_TYPE_WARNING);
-            memset(command, 0, sizeof(command));
-        }
-    }
-    if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY()) ImGui::SetScrollHereY(1.0f);
-}
-
-void game_editor_console::display_full(bool *bInteractingWithTextbox) noexcept {
-    ImGui::Begin("Developer Console");
-    display(bInteractingWithTextbox);
-    ImGui::End();
-}
-
 #define R_TO_STRING_GENERATOR(x) \
     case x:                      \
         return #x;               \

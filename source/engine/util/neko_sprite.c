@@ -19,7 +19,7 @@
 
 #define ROW_COL_CT 10
 
-bool neko_sprite_load(neko_sprite* spr, const_str filepath) {
+bool neko_aseprite_load(neko_aseprite* spr, const_str filepath) {
 
     ase_t* ase = neko_aseprite_load_from_file(filepath);
 
@@ -92,7 +92,7 @@ bool neko_sprite_load(neko_sprite* spr, const_str filepath) {
 
     s32 rect = ase->w * ase->h * 4;
 
-    neko_sprite s = neko_default_val();
+    neko_aseprite s = neko_default_val();
 
     // neko_array<neko_sprite_frame> frames = {};
     // neko_array_reserve(&frames, ase->frame_count);
@@ -106,7 +106,7 @@ bool neko_sprite_load(neko_sprite* spr, const_str filepath) {
     for (s32 i = 0; i < ase->frame_count; i++) {
         ase_frame_t* frame = &ase->frames[i];
 
-        neko_sprite_frame sf = neko_default_val();
+        neko_aseprite_frame sf = neko_default_val();
         sf.duration = frame->duration_milliseconds;
 
         sf.u0 = 0;
@@ -152,7 +152,7 @@ bool neko_sprite_load(neko_sprite* spr, const_str filepath) {
     for (s32 i = 0; i < ase->tag_count; i++) {
         ase_tag_t* tag = &ase->tags[i];
 
-        neko_sprite_loop loop = neko_default_val();
+        neko_aseprite_loop loop = neko_default_val();
 
         for (s32 j = tag->from_frame; j <= tag->to_frame; j++) {
             neko_dyn_array_push(loop.indices, j);
@@ -182,26 +182,26 @@ bool neko_sprite_load(neko_sprite* spr, const_str filepath) {
     return true;
 }
 
-void neko_sprite_end(neko_sprite* spr) {
+void neko_aseprite_end(neko_aseprite* spr) {
     neko_dyn_array_free(spr->frames);
 
     for (neko_hash_table_iter it = neko_hash_table_iter_new(spr->by_tag); neko_hash_table_iter_valid(spr->by_tag, it); neko_hash_table_iter_advance(spr->by_tag, it)) {
         u64 key = neko_hash_table_iter_getk(spr->by_tag, it);
-        neko_sprite_loop* v = neko_hash_table_getp(spr->by_tag, key);
+        neko_aseprite_loop* v = neko_hash_table_getp(spr->by_tag, key);
         neko_dyn_array_free(v->indices);
     }
 
     neko_hash_table_free(spr->by_tag);
 }
 
-void neko_sprite_renderer_play(neko_sprite_renderer* sr, const_str tag) {
-    neko_sprite_loop* loop = neko_hash_table_getp(sr->sprite->by_tag, neko_hash_str64(tag));
+void neko_aseprite_renderer_play(neko_aseprite_renderer* sr, const_str tag) {
+    neko_aseprite_loop* loop = neko_hash_table_getp(sr->sprite->by_tag, neko_hash_str64(tag));
     if (loop != NULL) sr->loop = loop;
     sr->current_frame = 0;
     sr->elapsed = 0;
 }
 
-void neko_sprite_renderer_update(neko_sprite_renderer* sr, f32 dt) {
+void neko_aseprite_renderer_update(neko_aseprite_renderer* sr, f32 dt) {
     s32 index;
     u64 len;
     if (sr->loop) {
@@ -212,7 +212,7 @@ void neko_sprite_renderer_update(neko_sprite_renderer* sr, f32 dt) {
         len = neko_dyn_array_size(sr->sprite->frames);
     }
 
-    neko_sprite_frame frame = sr->sprite->frames[index];
+    neko_aseprite_frame frame = sr->sprite->frames[index];
 
     sr->elapsed += dt * 1000;
     if (sr->elapsed > frame.duration) {
@@ -226,7 +226,7 @@ void neko_sprite_renderer_update(neko_sprite_renderer* sr, f32 dt) {
     }
 }
 
-void neko_sprite_renderer_set_frame(neko_sprite_renderer* sr, s32 frame) {
+void neko_aseprite_renderer_set_frame(neko_aseprite_renderer* sr, s32 frame) {
     s32 len;
     if (sr->loop) {
         len = neko_dyn_array_size(sr->loop->indices);

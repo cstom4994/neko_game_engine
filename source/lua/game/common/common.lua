@@ -9,6 +9,8 @@ local math_atan2 = math.atan2 or math.atan
 local math_sqrt = math.sqrt
 local math_abs = math.abs
 
+M.neko_pi = 3.14159265358979323846264
+
 local is_callable = function(x)
     if type(x) == "function" then
         return true
@@ -105,6 +107,10 @@ function M.uuid()
         return ("0123456789abcdef"):sub(r, r)
     end
     return (("xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"):gsub("[xy]", fn))
+end
+
+function M.rad2deg(__R)
+    return (__R * 180.0) / M.neko_pi
 end
 
 return M

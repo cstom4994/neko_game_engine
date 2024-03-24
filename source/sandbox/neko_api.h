@@ -14,7 +14,7 @@ typedef struct neko_client_userdata_s {
     neko_immediate_draw_static_data_t *idraw_sd;
     neko_core_ui_context_t *core_ui;
     neko_gui_ctx_t *gui;
-    // neko_graphics_custom_batch_context_t *sprite_batch;
+    // neko_graphics_batch_context_t *sprite_batch;
 
     neko_packreader_t *pack;
 

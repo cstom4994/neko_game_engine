@@ -21,17 +21,17 @@ function M.my_update(dt)
         --     gd.tick = 0
         -- end
 
-        local aseprite = SAFE_UD(p)
+        local aseprite_render = SAFE_UD(p)
 
         if (gd.tick & 31) == 0 then
             if math.abs(v.dx) >= 0.6 or math.abs(v.dy) >= 0.6 then
-                aseprite:update_animation("Run");
+                aseprite_render:update_animation("Run");
             else
-                aseprite:update_animation("Idle");
+                aseprite_render:update_animation("Idle");
             end
         end
 
-        aseprite:update()
+        aseprite_render:update()
 
         local player_v
 
