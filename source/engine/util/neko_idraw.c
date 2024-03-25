@@ -1507,7 +1507,7 @@ NEKO_API_DECL void neko_idraw_cone(neko_immediate_draw_t* neko_idraw, f32 x, f32
     neko_idraw_cylinder(neko_idraw, x, y, z, 0.f, radius, height, sides, r, g, b, a, type);
 }
 
-void neko_idraw_text(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, const char* text, const neko_asset_ascii_font_t* fp, bool32_t flip_vertical, u8 r, u8 g, u8 b, u8 a) {
+NEKO_API_DECL void neko_idraw_text(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, const char* text, const neko_asset_ascii_font_t* fp, bool32_t flip_vertical, neko_color_t col) {
     // 如果没有指定字体 则使用默认字体
     if (!fp) {
         fp = &neko_idraw()->font_default;
@@ -1527,7 +1527,7 @@ void neko_idraw_text(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, const char
     // Needs to be fixed in here. Not elsewhere.
     neko_idraw_begin(neko_idraw, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
     {
-        neko_idraw_c4ub(neko_idraw, r, g, b, a);
+        neko_idraw_c4ub(neko_idraw, col.r, col.g, col.b, col.a);
         while (text[0] != '\0') {
             char c = text[0];
             if (c >= 32 && c <= 127) {

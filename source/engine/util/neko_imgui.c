@@ -3486,7 +3486,7 @@ NEKO_API_DECL void neko_core_ui_render(neko_core_ui_context_t* ctx, neko_command
                 const char* ts = cmd->text.str;
                 const neko_color_t* tc = &cmd->text.color;
                 const neko_asset_ascii_font_t* tf = cmd->text.font;
-                neko_idraw_text(&ctx->gui_idraw, tp->x, tp->y, ts, tf, false, tc->r, tc->g, tc->b, tc->a);
+                neko_idraw_text(&ctx->gui_idraw, tp->x, tp->y, ts, tf, false, *tc);
             } break;
 
             case NEKO_CORE_UI_COMMAND_SHAPE: {

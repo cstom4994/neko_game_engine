@@ -499,12 +499,12 @@ typedef void (*neko_log_lock_fn)(bool lock, void* udata);
 
 enum { LOG_TRACE, LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL };
 
-#define log_trace(...) log_log(LOG_TRACE, __FILE__, __LINE__, __VA_ARGS__)
-#define log_debug(...) log_log(LOG_DEBUG, __FILE__, __LINE__, __VA_ARGS__)
-#define log_info(...) log_log(LOG_INFO, __FILE__, __LINE__, __VA_ARGS__)
-#define log_warn(...) log_log(LOG_WARN, __FILE__, __LINE__, __VA_ARGS__)
-#define log_error(...) log_log(LOG_ERROR, __FILE__, __LINE__, __VA_ARGS__)
-#define log_fatal(...) log_log(LOG_FATAL, __FILE__, __LINE__, __VA_ARGS__)
+#define log_trace(...) neko_log(LOG_TRACE, __FILE__, __LINE__, __VA_ARGS__)
+#define log_debug(...) neko_log(LOG_DEBUG, __FILE__, __LINE__, __VA_ARGS__)
+#define log_info(...) neko_log(LOG_INFO, __FILE__, __LINE__, __VA_ARGS__)
+#define log_warn(...) neko_log(LOG_WARN, __FILE__, __LINE__, __VA_ARGS__)
+#define log_error(...) neko_log(LOG_ERROR, __FILE__, __LINE__, __VA_ARGS__)
+#define log_fatal(...) neko_log(LOG_FATAL, __FILE__, __LINE__, __VA_ARGS__)
 
 NEKO_API_DECL const char* log_level_string(int level);
 NEKO_API_DECL void log_set_lock(neko_log_lock_fn fn, void* udata);
@@ -512,7 +512,7 @@ NEKO_API_DECL void log_set_level(int level);
 NEKO_API_DECL void log_set_quiet(bool enable);
 NEKO_API_DECL int log_add_callback(neko_log_fn fn, void* udata, int level);
 
-NEKO_API_DECL void log_log(int level, const char* file, int line, const char* fmt, ...);
+NEKO_API_DECL void neko_log(int level, const char* file, int line, const char* fmt, ...);
 
 /*============================================================
 // Result
@@ -2445,8 +2445,6 @@ NEKO_API_DECL void neko_console_printf(neko_console_t* console, const char* fmt,
 
 enum cmd_type { CVAR_VAR = 0, CVAR_FUNC = 1 };
 
-void __neko_engine_cvar_init();
-
 #define __NEKO_CVAR_STR_LEN 64
 
 typedef enum neko_cvar_type {
@@ -2472,7 +2470,6 @@ typedef struct neko_config_t {
 
 NEKO_API_DECL void __neko_config_init();
 NEKO_API_DECL void __neko_config_free();
-
 NEKO_API_DECL neko_cvar_t* __neko_config_get(const_str name);
 NEKO_API_DECL void neko_config_print();
 

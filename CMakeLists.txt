@@ -26,6 +26,7 @@ if(MSVC)
         include_directories(
                 "source/deps/glfw/include/"
                 "source/deps/libffi/include/"
+                "source/deps/enet/include/"
         )
 else()
         find_package(OpenGL REQUIRED)
@@ -141,53 +142,16 @@ if(MSVC)
         endforeach()
 endif(MSVC)
 
-set(luasocket_src
-        source/deps/luasocket/auxiliar.c
-        source/deps/luasocket/buffer.c
-        source/deps/luasocket/compat.c
-        source/deps/luasocket/except.c
-        source/deps/luasocket/inet.c
-        source/deps/luasocket/io.c
-        source/deps/luasocket/luasocket.c
-        source/deps/luasocket/mime.c
-        source/deps/luasocket/options.c
-        source/deps/luasocket/select.c
-        source/deps/luasocket/tcp.c
-        source/deps/luasocket/timeout.c
-        source/deps/luasocket/udp.c
-)
-
-if(EMSCRIPTEN)
-        set(luasocket_src)
-        add_compile_definitions(LUA_USE_LONGJMP LUA_USE_POSIX)
-        set(CFLAGS -fno-exceptions)
-        set(LFLAGS -lpthread -sASYNCIFY -sALLOW_MEMORY_GROWTH -sUSE_WEBGL2)
-
-elseif(WIN32)
-        set(luasocket_src ${luasocket_src} source/deps/luasocket/wsocket.c)
-        add_compile_definitions(LUA_USE_LONGJMP)
-
-elseif(UNIX)
-        set(luasocket_src
-                ${luasocket_src}
-                source/deps/luasocket/serial.c
-                source/deps/luasocket/unix.c
-                source/deps/luasocket/unixdgram.c
-                source/deps/luasocket/unixstream.c
-                source/deps/luasocket/usocket.c
-        )
-        add_compile_definitions(LUA_USE_LINUX)
-        set(LFLAGS -lX11 -lXi -lXcursor -lasound -lGL -ldl -lpthread -lm)
-endif()
-
 file(GLOB_RECURSE luaffi_src CONFIGURE_DEPENDS "source/deps/luaffi/**.*")
+
+file(GLOB_RECURSE enet_src CONFIGURE_DEPENDS "source/deps/enet/**.*")
 
 file(GLOB_RECURSE neko_engine_src CONFIGURE_DEPENDS "source/engine/**.*")
 
 set(neko_engine_src_all
         ${neko_engine_src}
-        ${luasocket_src}
         ${luaffi_src}
+        ${enet_src}
         "source/deps/impl_build.cpp"
 )
 
@@ -195,10 +159,6 @@ file(GLOB_RECURSE neko_game_src CONFIGURE_DEPENDS "source/sandbox/**.*")
 
 set(neko_game_src_all
         ${neko_game_src}
-)
-
-set(tools_packer_src
-        "source/tools/packer.c"
 )
 
 add_library(neko_engine STATIC ${neko_engine_src_all})

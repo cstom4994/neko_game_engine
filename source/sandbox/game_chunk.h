@@ -711,7 +711,7 @@ void game_chunk_update(neko_fallsand_render* fallsand) {
         char chunk_info[32];
         neko_snprintf(chunk_info, 32, "%d,%d[%d%d%d]", ch->index_x, ch->index_y, (int)ch->should_step, (int)ch->should_step_next_tick, (int)ch->all_has_been_updated);
 
-        neko_idraw_text(idraw, position.x + 4.f, position.y + 4.f, chunk_info, NULL, false, 255, 255, 255, 255);
+        neko_idraw_text(idraw, position.x + 4.f, position.y + 4.f, chunk_info, NULL, false, neko_color(255, 255, 255, 255));
         neko_idraw_defaults(idraw);
     }
 

@@ -7277,7 +7277,7 @@ static void init(lua_State* L) {
 }
 }  // namespace imgui_lua
 
-extern "C" int luaopen_imgui(lua_State* L) {
+extern "C" int luaopen_neko_imgui(lua_State* L) {
     imgui_lua::init(L);
     return 1;
 }
@@ -7292,7 +7292,7 @@ static int dDockBuilderGetCentralRect(lua_State* L) {
     return 4;
 }
 
-extern "C" int luaopen_imgui_internal(lua_State* L) {
+extern "C" int luaopen_neko_imgui_internal(lua_State* L) {
     lua_newtable(L);
     luaL_Reg l[] = {
             {"DockBuilderGetCentralRect", dDockBuilderGetCentralRect},

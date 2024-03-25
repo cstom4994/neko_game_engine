@@ -5,7 +5,7 @@
 
 // ImGui
 #include "engine/neko.h"
-#include "neko_gui_auto.hpp"
+#include "sandbox/game_imgui.h"
 
 static const s32 __profiler_max_level_colors = 11;
 static const ImU32 __profiler_level_colors[__profiler_max_level_colors] = {IM_COL32(90, 150, 110, 255), IM_COL32(80, 180, 115, 255),  IM_COL32(129, 195, 110, 255), IM_COL32(170, 190, 100, 255),

@@ -3,7 +3,6 @@
 
 #include "engine/neko.hpp"
 #include "engine/neko_engine.h"
-#include "engine/util/neko_gui.h"
 #include "engine/util/neko_idraw.h"
 #include "engine/util/neko_imgui.h"
 #include "engine/util/neko_lua.hpp"
@@ -13,8 +12,6 @@ typedef struct neko_client_userdata_s {
     neko_immediate_draw_t *idraw;
     neko_immediate_draw_static_data_t *idraw_sd;
     neko_core_ui_context_t *core_ui;
-    neko_gui_ctx_t *gui;
-    // neko_graphics_batch_context_t *sprite_batch;
 
     neko_packreader_t *pack;
 
@@ -29,7 +26,7 @@ void draw_text(neko_font_t *font, const char *text, float x, float y, float line
 
 void neko_register(lua_State *L);
 
-neko_inline u64 generate_texture_handle(void* pixels, int w, int h, void* udata) {
+neko_inline u64 generate_texture_handle(void *pixels, int w, int h, void *udata) {
     (void)udata;
     GLuint location;
     glGenTextures(1, &location);
@@ -41,7 +38,7 @@ neko_inline u64 generate_texture_handle(void* pixels, int w, int h, void* udata)
     return (u64)location;
 }
 
-neko_inline void destroy_texture_handle(u64 texture_id, void* udata) {
+neko_inline void destroy_texture_handle(u64 texture_id, void *udata) {
     (void)udata;
     GLuint id = (GLuint)texture_id;
     glDeleteTextures(1, &id);

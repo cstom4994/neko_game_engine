@@ -165,24 +165,6 @@ static const char* level_strings[] = {"TRACE", "DEBUG", "INFO", "WARN", "ERROR",
 
 static const char* level_colors[] = {"\x1b[94m", "\x1b[36m", "\x1b[32m", "\x1b[33m", "\x1b[31m", "\x1b[35m"};
 
-static void stdout_callback(neko_log_event* ev) {
-#ifdef LOG_USE_COLOR
-    fprintf(ev->udata, "%s[%-5s]\x1b[0m \x1b[90m%s:%d:\x1b[0m ", level_colors[ev->level], level_strings[ev->level], neko_fs_get_filename(ev->file), ev->line);
-#else
-    fprintf(ev->udata, "%-5s %s:%d: ", level_strings[ev->level], neko_fs_get_filename(ev->file), ev->line);
-#endif
-    vfprintf(ev->udata, ev->fmt, ev->ap);
-    fprintf(ev->udata, "\n");
-    fflush(ev->udata);
-
-    // 需要修改 console的fmt并不正确
-    if (1 && NULL != neko_instance() && NULL != neko_instance()->ctx.game.console) {
-        neko_console_printf(neko_instance()->ctx.game.console, "%-5s %s:%d: ", level_strings[ev->level], neko_fs_get_filename(ev->file), ev->line);
-        neko_console_printf(neko_instance()->ctx.game.console, ev->fmt, ev->ap);
-        neko_console_printf(neko_instance()->ctx.game.console, "\n");
-    }
-}
-
 static void log_lock(void) {
     if (L.lock) {
         L.lock(true, L.udata);
@@ -224,7 +206,7 @@ static void init_event(neko_log_event* ev, void* udata) {
     ev->udata = (FILE*)udata;
 }
 
-void log_log(int level, const char* file, int line, const char* fmt, ...) {
+void neko_log(int level, const char* file, int line, const char* fmt, ...) {
     neko_log_event ev = {
             .fmt = fmt,
             .file = file,
@@ -237,7 +219,22 @@ void log_log(int level, const char* file, int line, const char* fmt, ...) {
     if (!L.quiet && level >= L.level) {
         init_event(&ev, stderr);
         va_start(ev.ap, fmt);
-        stdout_callback(&ev);
+#ifdef LOG_USE_COLOR
+        fprintf(ev.udata, "%s[%-5s]\x1b[0m \x1b[90m%s:%d:\x1b[0m ", level_colors[ev.level], level_strings[ev.level], neko_fs_get_filename(ev.file), ev.line);
+#else
+        fprintf(ev.udata, "%-5s %s:%d: ", level_strings[ev.level], neko_fs_get_filename(ev.file), ev.line);
+#endif
+        vfprintf(ev.udata, ev.fmt, ev.ap);
+        fprintf(ev.udata, "\n");
+        fflush(ev.udata);
+
+        if (NULL != neko_instance() && NULL != neko_instance()->ctx.game.console) {
+            char buffer[512] = neko_default_val();
+            vsnprintf(buffer, 512, ev.fmt, ev.ap);
+            neko_console_printf(neko_instance()->ctx.game.console, "%-5s %s:%d: ", level_strings[ev.level], neko_fs_get_filename(ev.file), ev.line);
+            neko_console_printf(neko_instance()->ctx.game.console, buffer);
+            neko_console_printf(neko_instance()->ctx.game.console, "\n");
+        }
         va_end(ev.ap);
     }
 
@@ -1706,10 +1703,6 @@ NEKO_API_DECL neko_color_t neko_rand_gen_color(neko_mt_rand_t* rand) {
 // CVar
 //=============================
 
-void __neko_engine_cvar_init() {}
-
-void __neko_engine_cvar_reg() {}
-
 void __neko_config_init() {
     neko_cv() = (neko_config_t*)neko_malloc(sizeof(neko_config_t));
     neko_cv()->cvars = neko_dyn_array_new(neko_cvar_t);
@@ -1986,7 +1979,6 @@ void neko_quit() {
 // builtin
 #define NEKO_IMPL
 #include "engine/builtin/neko_aseprite.h"
-#include "engine/builtin/neko_gui_internal.h"
 
 #define NEKO_PNG_IMPLEMENTATION
 #include "engine/builtin/neko_png.h"

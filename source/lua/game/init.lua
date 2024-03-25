@@ -6,18 +6,7 @@ dump_func = require "common/dump"
 ffi = require("cffi")
 
 unsafe_require = require
-
-local safefunc = function()
-
-end
-
-love = {}
-
-print(dump_func({
-    f = print,
-    ud = safefunc,
-    thread = {1, 2, 3, 4}
-}))
+print = neko.print
 
 if os.getenv "LOCAL_LUA_DEBUGGER_VSCODE" == "1" then
     unsafe_require("lldebugger").start()
@@ -115,4 +104,27 @@ void main() {
 
     color = fs_in.color * texture_color;
 }
+]]
+
+batch_vs = [[
+#version 330
+
+uniform mat4 u_mvp;
+in vec2 in_pos; in vec2 in_uv;
+out vec2 v_uv;
+
+void main() {
+    v_uv = in_uv;
+    gl_Position = u_mvp * vec4(in_pos, 0, 1);
+}
+]]
+
+batch_ps = [[
+#version 330
+
+precision mediump float;
+uniform sampler2D u_sprite_texture;
+in vec2 v_uv; out vec4 out_col;
+
+void main() { out_col = texture(u_sprite_texture, v_uv); }
 ]]

@@ -195,7 +195,7 @@ NEKO_API_DECL void neko_idraw_cone(neko_immediate_draw_t* neko_idraw, f32 x, f32
 // Draw planes/poly groups
 
 // Text Drawing Util
-NEKO_API_DECL void neko_idraw_text(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, const char* text, const neko_asset_ascii_font_t* fp, bool32_t flip_vertical, u8 r, u8 g, u8 b, u8 a);
+NEKO_API_DECL void neko_idraw_text(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, const char* text, const neko_asset_ascii_font_t* fp, bool32_t flip_vertical, neko_color_t col);
 
 // Paths
 /*
