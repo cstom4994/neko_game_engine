@@ -773,33 +773,7 @@ void neko_cvar_gui() {
     }
 }
 
-neko_handle(neko_graphics_uniform_t) u_roll = {0};
-neko_handle(neko_graphics_texture_t) cmptex = {0};
-neko_handle(neko_graphics_pipeline_t) cmdpip = {0};
-neko_handle(neko_graphics_shader_t) cmpshd = {0};
 neko_handle(neko_graphics_storage_buffer_t) u_voxels = {0};
-
-neko_assetsys_t *g_assetsys;
-
-#define TEX_WIDTH 512
-#define TEX_HEIGHT 512
-
-const char *comp_src =
-        "#version 430 core\n"
-        "uniform float u_roll;\n"
-        "layout(rgba32f, binding = 0) uniform image2D destTex;\n"
-        "layout (std430, binding = 1) readonly buffer u_voxels {\n"
-        "   vec4 data;\n"
-        "};\n"
-        "layout (local_size_x = 16, local_size_y = 16) in;\n"
-        "void main() {\n"
-        "ivec2 storePos = ivec2(gl_GlobalInvocationID.xy);\n"
-        "float localCoef = length(vec2(ivec2(gl_LocalInvocationID.xy) - 8 ) / 8.0);\n"
-        "float globalCoef = sin(float(gl_WorkGroupID.x + gl_WorkGroupID.y) * 0.1 + u_roll) * 0.5;\n"
-        "vec4 rc = vec4(1.0 - globalCoef * localCoef, globalCoef * localCoef, 0.0, 1.0);\n"
-        "vec4 color = mix(rc, data, 0.5f);\n"
-        "imageStore(destTex, storePos, color);\n"
-        "}";
 
 f32 font_projection[16];
 
@@ -811,6 +785,8 @@ int font_vert_count;
 neko_font_vert_t *font_verts;
 neko_font_u64 test_font_tex_id;
 neko_font_t *test_font_bmfont;
+
+neko_assetsys_t *g_assetsys;
 
 void draw_text(neko_font_t *font, const char *text, float x, float y, float line_height, float clip_region, float wrap_x, f32 scale) {
     f32 text_w = (f32)neko_font_text_width(font, text);
@@ -1138,34 +1114,6 @@ void main() { out_col = texture(u_sprite_texture, v_uv); }
     g_client_userdata.test_font_bmfont = test_font_bmfont;
 
     font_verts = (neko_font_vert_t *)neko_safe_malloc(sizeof(neko_font_vert_t) * 1024 * 2);
-
-    // Compute shader
-    neko_graphics_shader_source_desc_t sources[] = {neko_graphics_shader_source_desc_t{.type = NEKO_GRAPHICS_SHADER_STAGE_COMPUTE, .source = comp_src}};
-
-    // Create shader
-    cmpshd = neko_graphics_shader_create(neko_c_ref(neko_graphics_shader_desc_t, {.sources = sources, .size = sizeof(sources), .name = "compute"}));
-
-    // Create uniform
-    u_roll = neko_graphics_uniform_create(
-            neko_c_ref(neko_graphics_uniform_desc_t, {.name = "u_roll", .layout = neko_c_ref(neko_graphics_uniform_layout_desc_t, {.type = NEKO_GRAPHICS_UNIFORM_FLOAT})}));
-
-    // Texture for compute shader output
-    cmptex = neko_graphics_texture_create(neko_c_ref(neko_graphics_texture_desc_t, {
-                                                                                           .width = TEX_WIDTH,
-                                                                                           .height = TEX_HEIGHT,
-                                                                                           .format = NEKO_GRAPHICS_TEXTURE_FORMAT_RGBA32F,
-                                                                                           .wrap_s = NEKO_GRAPHICS_TEXTURE_WRAP_REPEAT,
-                                                                                           .wrap_t = NEKO_GRAPHICS_TEXTURE_WRAP_REPEAT,
-                                                                                           .min_filter = NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST,
-                                                                                           .mag_filter = NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST,
-                                                                                   }));
-
-    cmdpip = neko_graphics_pipeline_create(neko_c_ref(neko_graphics_pipeline_desc_t, {.compute = {.shader = cmpshd}}));
-
-    neko_vec4 data = neko_v4(0.f, 1.f, 1.f, 1.f);
-
-    u_voxels = neko_graphics_storage_buffer_create(
-            neko_c_ref(neko_graphics_storage_buffer_desc_t, {.data = &data, .size = sizeof(neko_vec4), .name = "u_voxels", .usage = NEKO_GRAPHICS_BUFFER_USAGE_DYNAMIC}));
 
     // Load a file
     neko_assetsys_file_t file;
@@ -1599,6 +1547,8 @@ void game_update() {
                 neko_log_error("cvar exception %s", ex.what());
             }
 
+            neko_imgui::toggle("帧检查器", &g_cvar.show_profiler_window);
+
             ImGui::Separator();
 
             if (ImGui::Button("test_fnt")) {
@@ -1674,44 +1624,17 @@ void game_update() {
 
 #pragma endregion
 
-// Immediate rendering for back buffer
-// neko_idraw_defaults(&g_idraw);
-// neko_idraw_camera3D(&g_idraw, (uint32_t)fbs.x, (uint32_t)fbs.y);
-// neko_idraw_depth_enabled(&g_idraw, true);
-// neko_idraw_face_cull_enabled(&g_idraw, true);
-// neko_idraw_translatef(&g_idraw, 0.f, 0.f, -1.f);
-// neko_idraw_texture(&g_idraw, rt);
-// neko_idraw_rotatev(&g_idraw, neko_platform_elapsed_time() * 0.0001f, NEKO_YAXIS);
-// neko_idraw_rotatev(&g_idraw, neko_platform_elapsed_time() * 0.0002f, NEKO_XAXIS);
-// neko_idraw_rotatev(&g_idraw, neko_platform_elapsed_time() * 0.0003f, NEKO_ZAXIS);
-// neko_idraw_box(&g_idraw, 0.f, 0.f, 0.f, 0.5f, 0.5f, 0.5f, 255, 255, 255, 255, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
-
-// Compute pass
-#if 0
-    {
-        neko_profiler_scope_auto("Compute_pass");
-
-        float roll = neko_platform_elapsed_time() * .001f;
-
-        // Bindings for compute shader
-        neko_graphics_bind_desc_t binds = {
-                .uniforms = {.desc = neko_c_ref(neko_graphics_bind_uniform_desc_t, {.uniform = u_roll, .data = &roll})},
-                .image_buffers = {.desc = neko_c_ref(neko_graphics_bind_image_buffer_desc_t, {.tex = cmptex, .binding = 0, .access = NEKO_GRAPHICS_ACCESS_WRITE_ONLY})},
-                .storage_buffers = {neko_c_ref(neko_graphics_bind_storage_buffer_desc_t, {.buffer = u_voxels, .binding = 1})},
-        };
-
-        // Bind compute pipeline
-        neko_graphics_pipeline_bind(&g_cb, cmdpip);
-        // Bind compute bindings
-        neko_graphics_apply_bindings(&g_cb, &binds);
-        // Dispatch compute shader
-        neko_graphics_dispatch_compute(&g_cb, TEX_WIDTH / 16, TEX_HEIGHT / 16, 1);
-    }
-
-    neko_idraw_texture(&g_idraw, cmptex);
-    neko_idraw_rectvd(&g_idraw, neko_v2(0.f, 0.f), neko_v2((float)TEX_WIDTH, (float)TEX_HEIGHT), neko_v2(0.f, 0.f), neko_v2(1.f, 1.f), NEKO_COLOR_WHITE, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
-
-#endif
+        // Immediate rendering for back buffer
+        // neko_idraw_defaults(&g_idraw);
+        // neko_idraw_camera3D(&g_idraw, (uint32_t)fbs.x, (uint32_t)fbs.y);
+        // neko_idraw_depth_enabled(&g_idraw, true);
+        // neko_idraw_face_cull_enabled(&g_idraw, true);
+        // neko_idraw_translatef(&g_idraw, 0.f, 0.f, -1.f);
+        // neko_idraw_texture(&g_idraw, rt);
+        // neko_idraw_rotatev(&g_idraw, neko_platform_elapsed_time() * 0.0001f, NEKO_YAXIS);
+        // neko_idraw_rotatev(&g_idraw, neko_platform_elapsed_time() * 0.0002f, NEKO_XAXIS);
+        // neko_idraw_rotatev(&g_idraw, neko_platform_elapsed_time() * 0.0003f, NEKO_ZAXIS);
+        // neko_idraw_box(&g_idraw, 0.f, 0.f, 0.f, 0.5f, 0.5f, 0.5f, 255, 255, 255, 255, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
 
         neko_graphics_renderpass_begin(&g_cb, NEKO_GRAPHICS_RENDER_PASS_DEFAULT);
         {

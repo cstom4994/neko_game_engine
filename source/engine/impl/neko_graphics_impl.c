@@ -3212,10 +3212,14 @@ void neko_graphics_command_buffer_submit_impl(neko_command_buffer_t* cb) {
 
                             if ((sbo->block_idx == UINT32_MAX && sbo->block_idx != UINT32_MAX - 1)) {
                                 // Get uniform location based on name and bound shader
-                                CHECK_GL_CORE(sbo->block_idx = glGetProgramResourceIndex(shader, GL_SHADER_STORAGE_BLOCK, sbo->name ? sbo->name : "__EMPTY_BUFFER_NAME"); s32 params[1];
-                                              GLenum props[1] = {GL_BUFFER_BINDING}; glGetProgramResourceiv(shader, GL_SHADER_STORAGE_BLOCK, sbo->block_idx, 1, props, 1, NULL, params);
-                                              sbo->location = (u32)params[0]; neko_log_warning("Bind Storage Buffer: Binding \"%s\" to location %zu, block index: %zu, binding: %zu", sbo->name,
-                                                                                               sbo->location, sbo->block_idx, binding););
+                                CHECK_GL_CORE({
+                                    sbo->block_idx = glGetProgramResourceIndex(shader, GL_SHADER_STORAGE_BLOCK, sbo->name ? sbo->name : "__EMPTY_BUFFER_NAME");
+                                    s32 params[1];
+                                    GLenum props[1] = {GL_BUFFER_BINDING};
+                                    glGetProgramResourceiv(shader, GL_SHADER_STORAGE_BLOCK, sbo->block_idx, 1, props, 1, NULL, params);
+                                    sbo->location = (u32)params[0];
+                                    neko_log_warning("Bind Storage Buffer: Binding \"%s\" to location %u, block index: %u, binding: %u", sbo->name, sbo->location, sbo->block_idx, binding);
+                                });
 
                                 if (sbo->block_idx >= UINT32_MAX) {
                                     neko_log_warning("Bind Storage Buffer: Buffer not found: \"%s\"", sbo->name);

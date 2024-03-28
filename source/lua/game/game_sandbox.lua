@@ -292,13 +292,9 @@ M.sub_init = function()
 
     win_w, win_h = neko_window_size(neko_main_window())
 
-    gd.fbo = neko.graphics_framebuffer_create()
-    gd.rt = neko.graphics_texture_create(win_w, win_h)
-    gd.rp = neko.graphics_renderpass_create(gd.fbo, gd.rt)
+
 
     gd.cam = to_vec2(0.0, 0.0)
-
-    -- default_font = neko_fontcache_load(test_handle, 18.0)
 
     local texture_list = {"gamedir/assets/textures/dragon_zombie.png", "gamedir/assets/textures/night_spirit.png"}
     gd.test_batch = neko.sprite_batch_create(32, texture_list, batch_vs, batch_ps)
@@ -495,9 +491,7 @@ M.sub_shutdown = function()
 
     neko.audio_unload(test_audio)
 
-    neko.graphics_renderpass_destroy(gd.rp)
-    neko.graphics_texture_destroy(gd.rt)
-    neko.graphics_framebuffer_destroy(gd.fbo)
+
 
     neko.sprite_batch_end(gd.test_batch)
 
@@ -880,35 +874,6 @@ M.sub_render = function()
     neko.graphics_set_viewport(0.0, 0.0, fbs_x, fbs_y)
     neko.idraw_draw()
     neko.graphics_renderpass_end()
-
-    -- neko.idraw_defaults()
-    -- neko.idraw_camera3d(fbs_x, fbs_y)
-    -- neko.idraw_translatef(0.0, 0.0, -2.0)
-    -- neko.idraw_rotatev(neko_platform_elapsed_time() * 0.0001, 1.0, 0.0, 0.0)
-    -- neko.idraw_rotatev(neko_platform_elapsed_time() * 0.0001, 0.0, 1.0, 0.0)
-    -- neko.idraw_rotatev(neko_platform_elapsed_time() * 0.0001, 0.0, 0.0, 1.0)
-    -- neko.idraw_box(0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 200, 100, 50, 255, "NEKO_GRAPHICS_PRIMITIVE_LINES")
-
-    -- neko.graphics_renderpass_begin(gd.rp)
-    -- neko.graphics_set_viewport(0.0, 0.0, fbs_x, fbs_y)
-    -- neko.graphics_clear(0.0, 0.0, 0.0, 1.0)
-    -- neko.idraw_draw()
-    -- neko.graphics_renderpass_end()
-
-    -- neko.idraw_camera3d(fbs_x, fbs_y)
-    -- neko.idraw_depth_enabled(true)
-    -- neko.idraw_face_cull_enabled(true)
-    -- neko.idraw_translatef(0.0, 0.0, -1.0)
-    -- neko.idraw_texture(gd.rt)
-    -- neko.idraw_rotatev(neko_platform_elapsed_time() * 0.0001, 1.0, 0.0, 0.0)
-    -- neko.idraw_rotatev(neko_platform_elapsed_time() * 0.0002, 0.0, 1.0, 0.0)
-    -- neko.idraw_rotatev(neko_platform_elapsed_time() * 0.0003, 0.0, 0.0, 1.0)
-    -- neko.idraw_box(0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 255, 255, 255, 255, "NEKO_GRAPHICS_PRIMITIVE_TRIANGLES")
-
-    -- neko.graphics_renderpass_begin(0)
-    -- neko.graphics_set_viewport(0.0, 0.0, fbs_x, fbs_y)
-    -- neko.idraw_draw()
-    -- neko.graphics_renderpass_end()
 
     neko.sprite_batch_render_ortho(gd.test_batch, fbs_x, fbs_y, 0, 0)
     neko.sprite_batch_render_begin(gd.test_batch)

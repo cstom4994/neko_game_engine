@@ -128,3 +128,21 @@ in vec2 v_uv; out vec4 out_col;
 
 void main() { out_col = texture(u_sprite_texture, v_uv); }
 ]]
+
+comp_src = [[
+#version 430 core
+uniform float u_roll;
+layout(rgba32f, binding = 0) uniform image2D destTex;
+layout (std430, binding = 1) readonly buffer u_voxels {
+    vec4 data;
+};
+layout (local_size_x = 16, local_size_y = 16) in;
+void main() {
+ivec2 storePos = ivec2(gl_GlobalInvocationID.xy);
+float localCoef = length(vec2(ivec2(gl_LocalInvocationID.xy) - 8 ) / 8.0);
+float globalCoef = sin(float(gl_WorkGroupID.x + gl_WorkGroupID.y) * 0.1 + u_roll) * 0.5;
+vec4 rc = vec4(1.0 - globalCoef * localCoef, globalCoef * localCoef, 0.0, 1.0);
+vec4 color = mix(rc, data, 0.5f);
+imageStore(destTex, storePos, color);
+}
+]]

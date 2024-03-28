@@ -26,6 +26,7 @@
 #include "sandbox/neko_api.h"
 
 // ImGui
+#define IMGUI_DEFINE_MATH_OPERATORS
 #include "deps/imgui/imgui.h"
 #include "deps/imgui/imgui_internal.h"
 
@@ -1228,6 +1229,95 @@ neko_inline void neko_imgui_file_browser(std::string &path) {
     }
 }
 #endif
+
+neko_inline bool toggle(const char *label, bool *v) {
+    ImGuiWindow *window = ImGui::GetCurrentWindow();
+    if (window->SkipItems) return false;
+
+    ImGuiContext &g = *GImGui;
+    const ImGuiStyle &style = g.Style;
+    const ImGuiID id = window->GetID(label);
+    const ImVec2 label_size = ImGui::CalcTextSize(label, NULL, true);
+
+    f32 height = ImGui::GetFrameHeight();
+    const ImVec2 pos = window->DC.CursorPos;
+
+    f32 width = height * 2.f;
+    f32 radius = height * 0.50f;
+
+    const ImRect total_bb(pos, pos + ImVec2(width + (label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f), label_size.y + style.FramePadding.y * 2.0f));
+
+    ImGui::ItemSize(total_bb, style.FramePadding.y);
+    if (!ImGui::ItemAdd(total_bb, id)) return false;
+
+    f32 last_active_id_timer = g.LastActiveIdTimer;
+
+    bool hovered, held;
+    bool pressed = ImGui::ButtonBehavior(total_bb, id, &hovered, &held);
+    if (pressed) {
+        *v = !(*v);
+        ImGui::MarkItemEdited(id);
+        g.LastActiveIdTimer = 0.f;
+    }
+
+    if (g.LastActiveIdTimer == 0.f && g.LastActiveId == id && !pressed) g.LastActiveIdTimer = last_active_id_timer;
+
+    f32 t = *v ? 1.0f : 0.0f;
+
+    if (g.LastActiveId == id) {
+        f32 t_anim = ImSaturate(g.LastActiveIdTimer / 0.16f);
+        t = *v ? (t_anim) : (1.0f - t_anim);
+    }
+
+    ImU32 col_bg = ImGui::GetColorU32((held && hovered) ? ImGuiCol_FrameBgActive : hovered ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg);
+
+    const ImRect frame_bb(pos, pos + ImVec2(width, height));
+
+    ImGui::RenderFrame(frame_bb.Min, frame_bb.Max, col_bg, true, height * 0.5f);
+    ImGui::RenderNavHighlight(total_bb, id);
+
+    ImVec2 label_pos = ImVec2(frame_bb.Max.x + style.ItemInnerSpacing.x, frame_bb.Min.y + style.FramePadding.y);
+    ImGui::RenderText(label_pos, label);
+    window->DrawList->AddCircleFilled(ImVec2(pos.x + radius + t * (width - radius * 2.0f), pos.y + radius), radius - 1.5f, ImGui::GetColorU32(ImGuiCol_CheckMark), 36);
+
+    return pressed;
+}
+
+neko_inline bool button_scrollable_ex(const char *label, const ImVec2 &size_arg, ImGuiButtonFlags flags) {
+    ImGuiWindow *window = ImGui::GetCurrentWindow();
+    if (window->SkipItems) return false;
+
+    ImGuiContext &g = *GImGui;
+    const ImGuiStyle &style = g.Style;
+    const ImGuiID id = window->GetID(label);
+    const ImVec2 label_size = ImGui::CalcTextSize(label, NULL, true);
+
+    ImVec2 pos = window->DC.CursorPos;
+    if ((flags & ImGuiButtonFlags_AlignTextBaseLine) && style.FramePadding.y < window->DC.CurrLineTextBaseOffset) pos.y += window->DC.CurrLineTextBaseOffset - style.FramePadding.y;
+    ImVec2 size = ImGui::CalcItemSize(size_arg, label_size.x + style.FramePadding.x * 2.0f, label_size.y + style.FramePadding.y * 2.0f);
+
+    const ImRect bb(pos, pos + size);
+    ImGui::ItemSize(size, style.FramePadding.y);
+    if (!ImGui::ItemAdd(bb, id)) return false;
+
+    if (g.LastItemData.InFlags & ImGuiItemFlags_ButtonRepeat) flags |= ImGuiButtonFlags_Repeat;
+
+    bool hovered, held;
+    bool is_pressed = ImGui::ButtonBehavior(bb, id, &hovered, &held, flags);
+
+    const ImU32 col = ImGui::GetColorU32((held && hovered) ? ImGuiCol_ButtonActive : hovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button);
+    ImGui::RenderNavHighlight(bb, id);
+    ImGui::RenderFrame(bb.Min, bb.Max, col, true, style.FrameRounding);
+
+    const f32 offset = size.x >= label_size.x + style.FramePadding.x * 2.0f ? size.x + style.FramePadding.x
+                                                                            : static_cast<int>(g.Time * 60.f) % static_cast<int>(label_size.x + size.x + style.FramePadding.x * 2.f + 4);
+    const ImRect text = ImRect(ImVec2(bb.Min.x + size.x - offset + style.FramePadding.x * 2.f, bb.Min.y + style.FramePadding.y), bb.Max - style.FramePadding);
+
+    ImGui::RenderTextClipped(text.Min, text.Max, label, NULL, &label_size, size.x >= label_size.x + style.FramePadding.x * 2.0f ? g.Style.ButtonTextAlign : ImVec2(0, 0), &bb);
+    return is_pressed;
+}
+
+neko_inline bool button_scrollable(const char *label, const ImVec2 &size_arg) { return button_scrollable_ex(label, size_arg, ImGuiButtonFlags_None); }
 
 }  // namespace neko_imgui
 

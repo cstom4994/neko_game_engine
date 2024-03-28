@@ -53,6 +53,15 @@ M.s["neko_sprite_t"] = cstruct.struct([[
     };
     ]])
 
+M.s["neko_vec4_t"] = cstruct.struct([[
+    struct neko_vec4_t {
+        float x;
+        float y;
+        float z;
+        float w;
+    };
+    ]])
+
 M.getter = function(struct_name, field)
     return M.s[struct_name]:getter("struct " .. struct_name .. "." .. field)
 end

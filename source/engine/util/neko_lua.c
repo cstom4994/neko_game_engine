@@ -1339,6 +1339,18 @@ void neko_lua_loadover(lua_State *L, const luaL_Reg *l, const char *name) {
     lua_setglobal(L, name);
 }
 
+int neko_lua_get_table_pairs_count(lua_State *L, int index) {
+    int count = 0;
+    index = lua_absindex(L, index);
+    lua_pushnil(L);
+    while (lua_next(L, index) != 0) {
+        // 现在栈顶是value，下一个栈元素是key
+        count++;
+        lua_pop(L, 1);  // 移除value，保留key作为下一次迭代的key
+    }
+    return count;
+}
+
 #pragma region lua_struct
 
 #define TYPEID_int8 0
