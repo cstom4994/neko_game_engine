@@ -1,5 +1,4 @@
 local PHY = require("common/physics")
-local deepcopy = require("common/deepcopy")
 
 -- require "enet"
 
@@ -43,8 +42,6 @@ ecs_world:register("tiled_map", {path, ud})
 ecs_world:register("fallingsand", {ud})
 
 ecs_world:register("gfxt", {ud})
-
-ecs_world:register("custom_sprite", {ud})
 
 ecs_world:register("particle", {ud})
 
@@ -292,8 +289,6 @@ M.sub_init = function()
 
     win_w, win_h = neko_window_size(neko_main_window())
 
-
-
     gd.cam = to_vec2(0.0, 0.0)
 
     local texture_list = {"gamedir/assets/textures/dragon_zombie.png", "gamedir/assets/textures/night_spirit.png"}
@@ -369,16 +364,6 @@ M.sub_init = function()
     --     gfxt = {
     --         ud = neko.gfxt_create(neko_file_path("gamedir/assets/pipelines/simple.sf"),
     --             neko_file_path("gamedir/assets/meshes/Duck.gltf"), neko_file_path("gamedir/assets/textures/DuckCM.png"))
-    --     }
-    -- }
-
-    -- eid5 = ecs_world:new{
-    --     vector2 = {
-    --         x = 20,
-    --         y = 20
-    --     },
-    --     custom_sprite = {
-    --         ud = neko.custom_sprite_create()
     --     }
     -- }
 
@@ -468,10 +453,6 @@ M.sub_shutdown = function()
         neko.tiled_end(SAFE_UD(t))
     end
 
-    for v2, t in ecs_world:match("all", "vector2", "custom_sprite") do
-        neko.custom_sprite_end(SAFE_UD(t))
-    end
-
     for v2, t in ecs_world:match("all", "vector2", "fallingsand") do
         neko.fallingsand_end(SAFE_UD(t))
     end
@@ -490,8 +471,6 @@ M.sub_shutdown = function()
     neko.assetsys_destory(gd.assetsys)
 
     neko.audio_unload(test_audio)
-
-
 
     neko.sprite_batch_end(gd.test_batch)
 
@@ -743,7 +722,7 @@ M.sub_render = function()
 
         player_pos = v2
 
-        local render_ase = deepcopy(v2)
+        local render_ase = common.deepcopy(v2)
         render_ase.x = render_ase.x - 50
         render_ase.y = render_ase.y - 20
 
@@ -772,7 +751,7 @@ M.sub_render = function()
 
         player_pos = v2
 
-        local render_ase = deepcopy(v2)
+        local render_ase = common.deepcopy(v2)
         render_ase.x = render_ase.x - 50
         render_ase.y = render_ase.y - 20
 
@@ -811,10 +790,6 @@ M.sub_render = function()
         y = 10
     }, "NEKO_GRAPHICS_PRIMITIVE_TRIANGLES", to_color(255, 0, 0, 255))
 
-    for v2, t in ecs_world:match("all", "vector2", "custom_sprite") do
-        neko.custom_sprite_render(SAFE_UD(t))
-    end
-
     for v2, t in ecs_world:match("all", "vector2", "fallingsand") do
         neko.fallingsand_update(SAFE_UD(t))
     end
@@ -827,41 +802,41 @@ M.sub_render = function()
         neko.particle_render(SAFE_UD(t), v2)
     end
 
-    if imgui.Begin("Env", true) then
+    if ImGui.Begin("Env", true) then
         __neko_print_registry_list()
     end
-    imgui.End()
+    ImGui.End()
 
-    imgui.Begin("Hello")
+    ImGui.Begin("Hello")
     obj_select = obj_select or '' -- eid从0开始
-    imgui.PushID("TestCombo")
-    if imgui.BeginCombo("对象", obj_select) then
+    ImGui.PushID("TestCombo")
+    if ImGui.BeginCombo("对象", obj_select) then
         for obj in ecs_world:match("all", "gameobj") do
-            if imgui.SelectableEx(obj.name, obj_select == obj.name) then
+            if ImGui.SelectableEx(obj.name, obj_select == obj.name) then
                 obj_select = obj.name
                 obj_view = obj
             end
         end
-        imgui.EndCombo()
+        ImGui.EndCombo()
     end
-    imgui.PopID()
+    ImGui.PopID()
     if obj_view ~= nil then
         local v2, v, player_obj = ecs_world:get(obj_view.__eid, "vector2", "velocity2", "gameobj")
         neko.gameobject_inspect(SAFE_SD(obj_view))
-        imgui.Text("EID %d\n命名 %s", obj_view.__eid, obj_view.name)
-        imgui.Text("坐标: %f %f", v2.x, v2.y)
-        imgui.Text("速度: %f %f (%f)", v.dx, v.dy, math.abs(math.sqrt(v.dx ^ 2 + v.dy ^ 2)))
+        ImGui.Text("EID %d\n命名 %s", obj_view.__eid, obj_view.name)
+        ImGui.Text("坐标: %f %f", v2.x, v2.y)
+        ImGui.Text("速度: %f %f (%f)", v.dx, v.dy, math.abs(math.sqrt(v.dx ^ 2 + v.dy ^ 2)))
         -- ECS.select(ecs_world, function(c)
         --     local s = {c.x}
-        --     imgui.DragFloat("啊？", s)
+        --     ImGui.DragFloat("啊？", s)
         --     c.x = s[1]
         -- end, "vector2")
-        -- imgui.Text("%d", n)
+        -- ImGui.Text("%d", n)
         -- for i = 1, n, 1 do
-        --     imgui.DragFloat("啊？", {list[i].x})
+        --     ImGui.DragFloat("啊？", {list[i].x})
         -- end
     end
-    imgui.End()
+    ImGui.End()
 
     -- neko.draw_text(50.0, 50.0, "中文渲染测试 日本語レンダリングテスト Hello World! ", 3.0)
 

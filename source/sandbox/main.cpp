@@ -117,7 +117,6 @@ typedef struct neko_engine_cvar_s {
     bool show_editor = false;
 
     bool show_demo_window = false;
-    bool show_info_window = false;
     bool show_pack_editor = false;
     bool show_profiler_window = false;
 
@@ -145,7 +144,6 @@ struct neko::static_refl::neko_type_info<neko_engine_cvar_t> : neko_type_info_ba
     static constexpr FieldList fields = {
             rf_field{TSTR("show_editor"), &rf_type::show_editor},                    //
             rf_field{TSTR("show_demo_window"), &rf_type::show_demo_window},          //
-            rf_field{TSTR("show_info_window"), &rf_type::show_info_window},          //
             rf_field{TSTR("show_pack_editor"), &rf_type::show_pack_editor},          //
             rf_field{TSTR("show_profiler_window"), &rf_type::show_profiler_window},  //
             rf_field{TSTR("show_gui"), &rf_type::show_gui},                          //
@@ -157,16 +155,15 @@ struct neko::static_refl::neko_type_info<neko_engine_cvar_t> : neko_type_info_ba
     };
 };
 
-neko_struct(neko_engine_cvar_t,                            //
-            _Fs(show_editor, "Is show editor"),            //
-            _Fs(show_demo_window, "Is show nui demo"),     //
-            _Fs(show_info_window, "Is show info window"),  //
-            _Fs(show_pack_editor, "pack editor"),          //
-            _Fs(show_profiler_window, "profiler"),         //
-            _Fs(show_gui, "neko gui"),                     //
-            _Fs(shader_inspect, "shaders"),                //
-            _Fs(hello_ai_shit, "Test AI"),                 //
-            _Fs(bg, "bg color")                            //
+neko_struct(neko_engine_cvar_t,                         //
+            _Fs(show_editor, "Is show editor"),         //
+            _Fs(show_demo_window, "Is show nui demo"),  //
+            _Fs(show_pack_editor, "pack editor"),       //
+            _Fs(show_profiler_window, "profiler"),      //
+            _Fs(show_gui, "neko gui"),                  //
+            _Fs(shader_inspect, "shaders"),             //
+            _Fs(hello_ai_shit, "Test AI"),              //
+            _Fs(bg, "bg color")                         //
 );
 
 neko_engine_cvar_t g_cvar = neko_default_val();
@@ -1041,7 +1038,7 @@ void game_init() {
     neko_core_ui_init_font_stash(&g_core_ui, GUI_FONT_STASH);
 
     // Load style sheet from file now
-    // app_load_style_sheet(false);
+    app_load_style_sheet(false);
 
     // Dock windows before hand
     neko_core_ui_dock_ex(&g_core_ui, "Style_Editor", "Demo_Window", NEKO_CORE_UI_SPLIT_TAB, 0.5f);
@@ -1300,54 +1297,6 @@ void game_update() {
         {
             editor_dockspace(&g_core_ui);
 
-            if (g_cvar.show_info_window) {
-                neko_core_ui_window_begin_ex(&g_core_ui, "Info", neko_core_ui_rect(100, 100, 500, 500), &g_cvar.show_info_window, NULL, NULL);
-                {
-                    neko_core_ui_layout_row(&g_core_ui, 1, neko_core_ui_widths(-1), 0);
-                    {
-                        static neko_memory_info_t meminfo = neko_default_val();
-
-                        neko_timed_action(60, { meminfo = neko_platform_memory_info(); });
-
-                        neko_core_ui_labelf("GC MemAllocInUsed: %.2lf mb", (f64)(neko_mem_bytes_inuse() / 1048576.0));
-                        neko_core_ui_labelf("GC MemTotalAllocated: %.2lf mb", (f64)(g_allocation_metrics.total_allocated / 1048576.0));
-                        neko_core_ui_labelf("GC MemTotalFree: %.2lf mb", (f64)(g_allocation_metrics.total_free / 1048576.0));
-
-                        u64 max, used;
-                        neko_script_gc_count(&max, &used);
-
-                        neko_core_ui_labelf("NekoScript Alloc: %.2lf mb", ((f64)max / 1024.0f));
-                        neko_core_ui_labelf("NekoScript UsedMemory: %.2lf mb", ((f64)used / 1024.0f));
-
-                        lua_gc(g_L, LUA_GCCOLLECT, 0);
-                        lua_Integer kb = lua_gc(g_L, LUA_GCCOUNT, 0);
-                        lua_Integer bytes = lua_gc(g_L, LUA_GCCOUNTB, 0);
-
-                        neko_core_ui_labelf("Lua MemoryUsage: %.2lf mb", ((f64)kb / 1024.0f));
-                        neko_core_ui_labelf("Lua Remaining: %.2lf mb", ((f64)bytes / 1024.0f));
-
-                        // neko_core_ui_labelf("ImGui MemoryUsage: %.2lf mb", ((f64)__neko_core_ui_meminuse() / 1048576.0));
-
-                        neko_core_ui_labelf("Virtual MemoryUsage: %.2lf mb", ((f64)meminfo.virtual_memory_used / 1048576.0));
-                        neko_core_ui_labelf("Real MemoryUsage: %.2lf mb", ((f64)meminfo.physical_memory_used / 1048576.0));
-                        neko_core_ui_labelf("Virtual MemoryUsage Peak: %.2lf mb", ((f64)meminfo.peak_virtual_memory_used / 1048576.0));
-                        neko_core_ui_labelf("Real MemoryUsage Peak: %.2lf mb", ((f64)meminfo.peak_physical_memory_used / 1048576.0));
-
-                        neko_core_ui_labelf("GPU MemTotalAvailable: %.2lf mb", (f64)(meminfo.gpu_total_memory / 1024.0f));
-                        neko_core_ui_labelf("GPU MemCurrentUsage: %.2lf mb", (f64)(meminfo.gpu_memory_used / 1024.0f));
-
-                        neko_graphics_info_t *info = &neko_subsystem(graphics)->info;
-
-                        neko_core_ui_labelf("OpenGL vendor: %s", info->vendor);
-                        neko_core_ui_labelf("OpenGL version supported: %s", info->version);
-
-                        neko_vec2 opengl_ver = neko_platform_opengl_ver();
-                        neko_core_ui_labelf("OpenGL version: %d.%d", (s32)opengl_ver.x, (s32)opengl_ver.y);
-                    }
-                }
-                neko_core_ui_window_end(&g_core_ui);
-            }
-
             if (g_cvar.show_gui) {
 
                 neko_core_ui_demo_window(&g_core_ui, neko_core_ui_rect(100, 100, 500, 500), NULL);
@@ -1357,45 +1306,45 @@ void game_update() {
 
 #pragma region gui_ss
 
-#if 0
+#if 1
 
-            const neko_core_ui_style_sheet_t *ss = &style_sheet;
+                const neko_core_ui_style_sheet_t *ss = &style_sheet;
 
-            const neko_vec2 ss_ws = neko_v2(500.f, 300.f);
-            neko_core_ui_window_begin(&g_gui, "Window", neko_core_ui_rect((fbs.x - ss_ws.x) * 0.5f, (fbs.y - ss_ws.y) * 0.5f, ss_ws.x, ss_ws.y));
-            {
-                // Cache the current container
-                neko_core_ui_container_t *cnt = neko_core_ui_get_current_container(&g_gui);
+                const neko_vec2 ss_ws = neko_v2(500.f, 300.f);
+                neko_core_ui_window_begin(&g_core_ui, "Window", neko_core_ui_rect((fbs.x - ss_ws.x) * 0.5f, (fbs.y - ss_ws.y) * 0.5f, ss_ws.x, ss_ws.y));
+                {
+                    // Cache the current container
+                    neko_core_ui_container_t *cnt = neko_core_ui_get_current_container(&g_core_ui);
 
-                neko_core_ui_layout_row(&g_gui, 2, neko_core_ui_widths(200, 0), 0);
+                    neko_core_ui_layout_row(&g_core_ui, 2, neko_core_ui_widths(200, 0), 0);
 
-                neko_core_ui_text(&g_gui, "A regular element button.");
-                neko_core_ui_button(&g_gui, "button");
+                    neko_core_ui_text(&g_core_ui, "A regular element button.");
+                    neko_core_ui_button(&g_core_ui, "button");
 
-                neko_core_ui_text(&g_gui, "A regular element label.");
-                neko_core_ui_label(&g_gui, "label");
+                    neko_core_ui_text(&g_core_ui, "A regular element label.");
+                    neko_core_ui_label(&g_core_ui, "label");
 
-                neko_core_ui_text(&g_gui, "Button with classes: {.c0 .btn}");
+                    neko_core_ui_text(&g_core_ui, "Button with classes: {.c0 .btn}");
 
-                neko_core_ui_selector_desc_t selector_1 = {.classes = {"c0", "btn"}};
-                neko_core_ui_button_ex(&g_gui, "hello?##btn", &selector_1, 0x00);
+                    neko_core_ui_selector_desc_t selector_1 = {.classes = {"c0", "btn"}};
+                    neko_core_ui_button_ex(&g_core_ui, "hello?##btn", &selector_1, 0x00);
 
-                neko_core_ui_text(&g_gui, "Label with id #lbl and class .c0");
-                neko_core_ui_selector_desc_t selector_2 = {.id = "lbl", .classes = {"c0"}};
-                neko_core_ui_label_ex(&g_gui, "label##lbl", &selector_2, 0x00);
+                    neko_core_ui_text(&g_core_ui, "Label with id #lbl and class .c0");
+                    neko_core_ui_selector_desc_t selector_2 = {.id = "lbl", .classes = {"c0"}};
+                    neko_core_ui_label_ex(&g_core_ui, "label##lbl", &selector_2, 0x00);
 
-                const f32 m = cnt->body.w * 0.3f;
-                // neko_core_ui_layout_row(gui, 2, (int[]){m, -m}, 0);
-                // neko_core_ui_layout_next(gui); // Empty space at beginning
-                neko_core_ui_layout_row(&g_gui, 1, neko_core_ui_widths(0), 0);
-                neko_core_ui_selector_desc_t selector_3 = {.classes = {"reload_btn"}};
-                if (neko_core_ui_button_ex(&g_gui, "reload style sheet", &selector_3, 0x00)) {
-                    app_load_style_sheet(true);
+                    const f32 m = cnt->body.w * 0.3f;
+                    // neko_core_ui_layout_row(gui, 2, (int[]){m, -m}, 0);
+                    // neko_core_ui_layout_next(gui); // Empty space at beginning
+                    neko_core_ui_layout_row(&g_core_ui, 1, neko_core_ui_widths(0), 0);
+                    neko_core_ui_selector_desc_t selector_3 = {.classes = {"reload_btn"}};
+                    if (neko_core_ui_button_ex(&g_core_ui, "reload style sheet", &selector_3, 0x00)) {
+                        app_load_style_sheet(true);
+                    }
+
+                    button_custom(&g_core_ui, "Hello?");
                 }
-
-                button_custom(&g_gui, "Hello?");
-            }
-            neko_core_ui_window_end(&g_gui);
+                neko_core_ui_window_end(&g_core_ui);
 
 #endif
 
@@ -1461,9 +1410,9 @@ void game_update() {
 
                 neko_core_ui_labelf("FPS: %.2lf Delta: %.6lf", fps, delta * 1000.f);
 
-                // neko_core_ui_text_fc(&g_gui, "喵喵昂~");
+                // neko_core_ui_text_fc(&g_core_ui, "喵喵昂~");
 
-                // neko_core_ui_layout_row(&g_gui, 1, neko_core_ui_widths(-1), 0);
+                // neko_core_ui_layout_row(&g_core_ui, 1, neko_core_ui_widths(-1), 0);
 
                 neko_core_ui_labelf("Position: <%.2f %.2f>", mp.x, mp.y);
                 neko_core_ui_labelf("Wheel: <%.2f %.2f>", mw.x, mw.y);
@@ -1506,6 +1455,49 @@ void game_update() {
                     neko_core_ui_labelf("%d", mouse_down[btns[i].val]);
                     neko_core_ui_labelf("released: ");
                     neko_core_ui_labelf("%d", mouse_released[btns[i].val]);
+                }
+
+                neko_core_ui_layout_row(&g_core_ui, 1, neko_core_ui_widths(-1), 0);
+                {
+                    static neko_memory_info_t meminfo = neko_default_val();
+
+                    neko_timed_action(60, { meminfo = neko_platform_memory_info(); });
+
+                    neko_core_ui_labelf("GC MemAllocInUsed: %.2lf mb", (f64)(neko_mem_bytes_inuse() / 1048576.0));
+                    neko_core_ui_labelf("GC MemTotalAllocated: %.2lf mb", (f64)(g_allocation_metrics.total_allocated / 1048576.0));
+                    neko_core_ui_labelf("GC MemTotalFree: %.2lf mb", (f64)(g_allocation_metrics.total_free / 1048576.0));
+
+                    if (0) {
+                        u64 max, used;
+                        neko_script_gc_count(&max, &used);
+                        neko_core_ui_labelf("NekoScript Alloc: %.2lf mb", ((f64)max / 1024.0f));
+                        neko_core_ui_labelf("NekoScript UsedMemory: %.2lf mb", ((f64)used / 1024.0f));
+                    }
+                    
+                    // lua_gc(g_L, LUA_GCCOLLECT, 0);
+                    lua_Integer kb = lua_gc(g_L, LUA_GCCOUNT, 0);
+                    lua_Integer bytes = lua_gc(g_L, LUA_GCCOUNTB, 0);
+
+                    neko_core_ui_labelf("Lua MemoryUsage: %.2lf mb", ((f64)kb / 1024.0f));
+                    neko_core_ui_labelf("Lua Remaining: %.2lf mb", ((f64)bytes / 1024.0f));
+
+                    // neko_core_ui_labelf("ImGui MemoryUsage: %.2lf mb", ((f64)__neko_core_ui_meminuse() / 1048576.0));
+
+                    neko_core_ui_labelf("Virtual MemoryUsage: %.2lf mb", ((f64)meminfo.virtual_memory_used / 1048576.0));
+                    neko_core_ui_labelf("Real MemoryUsage: %.2lf mb", ((f64)meminfo.physical_memory_used / 1048576.0));
+                    neko_core_ui_labelf("Virtual MemoryUsage Peak: %.2lf mb", ((f64)meminfo.peak_virtual_memory_used / 1048576.0));
+                    neko_core_ui_labelf("Real MemoryUsage Peak: %.2lf mb", ((f64)meminfo.peak_physical_memory_used / 1048576.0));
+
+                    neko_core_ui_labelf("GPU MemTotalAvailable: %.2lf mb", (f64)(meminfo.gpu_total_memory / 1024.0f));
+                    neko_core_ui_labelf("GPU MemCurrentUsage: %.2lf mb", (f64)(meminfo.gpu_memory_used / 1024.0f));
+
+                    neko_graphics_info_t *info = &neko_subsystem(graphics)->info;
+
+                    neko_core_ui_labelf("OpenGL vendor: %s", info->vendor);
+                    neko_core_ui_labelf("OpenGL version supported: %s", info->version);
+
+                    neko_vec2 opengl_ver = neko_platform_opengl_ver();
+                    neko_core_ui_labelf("OpenGL version: %d.%d", (s32)opengl_ver.x, (s32)opengl_ver.y);
                 }
 
                 neko_core_ui_window_end(&g_core_ui);

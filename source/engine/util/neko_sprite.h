@@ -74,17 +74,4 @@ NEKO_API_DECL void neko_particle_renderer_free(neko_particle_renderer* pr);
 NEKO_API_DECL void neko_particle_renderer_update(neko_particle_renderer* pr, int elapsed);
 NEKO_API_DECL void neko_particle_renderer_draw(neko_particle_renderer* pr, neko_command_buffer_t* cb, neko_vec2 trans);
 
-typedef struct neko_fast_sprite_renderer {
-    neko_handle(neko_graphics_vertex_buffer_t) vbo;
-    neko_handle(neko_graphics_index_buffer_t) ibo;
-    neko_handle(neko_graphics_pipeline_t) pip;
-    neko_handle(neko_graphics_shader_t) shader;
-    neko_handle(neko_graphics_uniform_t) u_tex;
-    neko_handle(neko_graphics_texture_t) tex;
-
-} neko_fast_sprite_renderer;
-
-NEKO_API_DECL void neko_fast_sprite_renderer_construct(neko_fast_sprite_renderer* render, u32 width, u32 height, void* data);
-NEKO_API_DECL void neko_fast_sprite_renderer_draw(neko_fast_sprite_renderer* render, neko_command_buffer_t* cb);
-
 #endif

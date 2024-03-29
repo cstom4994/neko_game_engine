@@ -146,3 +146,28 @@ vec4 color = mix(rc, data, 0.5f);
 imageStore(destTex, storePos, color);
 }
 ]]
+
+custom_sprite_vs = [[
+#version 330 core
+layout(location = 0) in vec2 a_pos;
+layout(location = 1) in vec2 a_uv;
+precision mediump float;
+out vec2 uv;
+void main()
+{
+   gl_Position = vec4(a_pos, 0.0, 1.0);
+   uv = a_uv;
+}
+]]
+
+custom_sprite_fs = [[
+#version 330 core
+precision mediump float;
+uniform sampler2D u_tex;
+in vec2 uv;
+out vec4 frag_color;
+void main()
+{
+   frag_color = texture(u_tex, uv);
+}
+]]

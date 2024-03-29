@@ -62,6 +62,44 @@ M.s["neko_vec4_t"] = cstruct.struct([[
     };
     ]])
 
+M.s["__lua_quad_idata_t"] = cstruct.struct([[
+    struct __lua_quad_idata_t {
+        uint32_t v1;
+        uint32_t v2;
+        uint32_t v3;
+        uint32_t v4;
+        uint32_t v5;
+        uint32_t v6;
+    };
+    ]])
+
+M.s["__lua_quad_vdata_t"] = cstruct.struct([[
+    struct __lua_quad_vdata_t {
+        float v1;
+        float v2;
+        float v3;
+        float v4;
+        float v5;
+        float v6;
+        float v7;
+        float v8;
+        float v9;
+        float v10;
+        float v11;
+        float v12;
+        float v13;
+        float v14;
+        float v15;
+        float v16;
+    };
+    ]])
+
+M.s["__lua_tex_t"] = cstruct.struct([[
+    struct __lua_tex_t {
+        uint32_t id;
+    };
+    ]])
+
 M.getter = function(struct_name, field)
     return M.s[struct_name]:getter("struct " .. struct_name .. "." .. field)
 end

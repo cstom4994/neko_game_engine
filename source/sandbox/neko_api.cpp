@@ -1304,25 +1304,6 @@ static int __neko_bind_sprite_batch_end(lua_State* L) {
     return 0;
 }
 
-static int __neko_bind_custom_sprite_create(lua_State* L) {
-    neko_fast_sprite_renderer* user_handle = (neko_fast_sprite_renderer*)lua_newuserdata(L, sizeof(neko_fast_sprite_renderer));
-    memset(user_handle, 0, sizeof(neko_fast_sprite_renderer));
-
-    neko_fast_sprite_renderer_construct(user_handle, 0, 0, NULL);
-    return 1;
-}
-
-static int __neko_bind_custom_sprite_render(lua_State* L) {
-    neko_fast_sprite_renderer* user_handle = (neko_fast_sprite_renderer*)lua_touserdata(L, 1);
-    neko_fast_sprite_renderer_draw(user_handle, g_client_userdata.cb);
-    return 0;
-}
-
-static int __neko_bind_custom_sprite_end(lua_State* L) {
-    neko_fast_sprite_renderer* user_handle = (neko_fast_sprite_renderer*)lua_touserdata(L, 1);
-    return 0;
-}
-
 static int __neko_bind_particle_create(lua_State* L) {
     // const_str file_path = lua_tostring(L, 1);
 
@@ -1762,12 +1743,14 @@ static int __neko_bind_graphics_uniform_create(lua_State* L) {
     }
 
     neko_graphics_uniform_desc_t u_desc = {
-            .name = "unknown",
+            // .name = "unknown",
             .layout = layouts,
     };
 
-    strncpy(u_desc.name, uniform_name, sizeof(u_desc.name) - 1);
-    u_desc.name[sizeof(u_desc.name) - 1] = '\0';
+    if (!!strcmp(uniform_name, "default")) {
+        strncpy(u_desc.name, uniform_name, sizeof(u_desc.name) - 1);
+        u_desc.name[sizeof(u_desc.name) - 1] = '\0';
+    }
 
     if (lua_gettop(L) == 3) {
         neko_lua_auto_to(L, neko_graphics_shader_stage_type, &u_desc.stage, 3);
@@ -1789,8 +1772,9 @@ static int __neko_bind_graphics_pipeline_create(lua_State* L) {
     const_str pipeline_name = lua_tostring(L, 1);
     luaL_checktype(L, 2, LUA_TTABLE);              // 检查是否为table
     int n = neko_lua_get_table_pairs_count(L, 2);  //
-    const_str pipeline_type[] = {"compute", "layout"};
-    neko_shader_t shader_handle = neko_default_val();
+    const_str pipeline_type[] = {"compute", "layout", "raster"};
+
+    neko_graphics_pipeline_desc_t pipeline_desc = neko_default_val();
 
     for (int i = 0; i < neko_arr_size(pipeline_type); i++) {
         lua_pushstring(L, pipeline_type[i]);  // # -1
@@ -1798,21 +1782,142 @@ static int __neko_bind_graphics_pipeline_create(lua_State* L) {
         if (!lua_isnil(L, -1)) {
             luaL_checktype(L, -1, LUA_TTABLE);
 
-            lua_pushstring(L, "shader");  // # -1
-            lua_gettable(L, -2);          // pop # -1
-            if (!lua_isnil(L, -1)) {
-                neko_lua_auto_struct_to_member(L, neko_shader_t, id, &shader_handle, -1);
+            int n = neko_lua_get_table_pairs_count(L, -1);  //
+
+            switch (neko::hash(pipeline_type[i])) {
+                case neko::hash("compute"): {
+
+                    neko_shader_t shader_handle = neko_default_val();
+
+                    lua_pushstring(L, "shader");  // # -1
+                    lua_gettable(L, -2);          // pop # -1
+                    if (!lua_isnil(L, -1)) {
+                        neko_lua_auto_struct_to_member(L, neko_shader_t, id, &shader_handle, -1);
+                    }
+                    lua_pop(L, 1);  // # -1
+
+                    pipeline_desc.compute.shader = shader_handle;
+                } break;
+                case neko::hash("layout"): {
+                    neko_graphics_vertex_attribute_desc_t* vertex_attr = neko_default_val();
+
+                    lua_pushstring(L, "attrs");  // # -1
+                    lua_gettable(L, -2);         // pop # -1
+                    if (!lua_isnil(L, -1)) {
+                        vertex_attr = (neko_graphics_vertex_attribute_desc_t*)lua_touserdata(L, -1);
+                    }
+                    lua_pop(L, 1);  // # -1
+
+                    pipeline_desc.layout.attrs = vertex_attr;
+
+                    lua_pushstring(L, "size");  // # -1
+                    lua_gettable(L, -2);        // pop # -1
+                    if (lua_isinteger(L, -1)) {
+                        pipeline_desc.layout.size = (size_t)lua_tointeger(L, -1);
+                    } else
+                        neko_assert(false);
+                    lua_pop(L, 1);  // # -1
+                } break;
+                case neko::hash("raster"): {
+
+                    neko_shader_t shader_handle = neko_default_val();
+
+                    lua_pushstring(L, "shader");  // # -1
+                    lua_gettable(L, -2);          // pop # -1
+                    if (!lua_isnil(L, -1)) {
+                        neko_lua_auto_struct_to_member(L, neko_shader_t, id, &shader_handle, -1);
+                    }
+                    lua_pop(L, 1);  // # -1
+
+                    pipeline_desc.raster.shader = shader_handle;
+
+                    lua_pushstring(L, "index_buffer_element_size");  // # -1
+                    lua_gettable(L, -2);                             // pop # -1
+                    if (lua_isinteger(L, -1)) {
+                        pipeline_desc.raster.index_buffer_element_size = lua_tointeger(L, -1);
+                    } else
+                        neko_assert(false);
+                    lua_pop(L, 1);  // # -1
+
+                } break;
+                default:
+                    neko_assert(false);
+                    break;
             }
-            lua_pop(L, 1);  // # -1
         }
         lua_pop(L, 1);  // # -1
     }
 
     neko_pipeline_t pipeline_handle = neko_default_val();
-    neko_graphics_pipeline_desc_t pipeline_desc = {.compute = {.shader = shader_handle}};
     pipeline_handle = neko_graphics_pipeline_create(&pipeline_desc);
     neko_lua_auto_struct_push_member(L, neko_pipeline_t, id, &pipeline_handle);
     return 1;
+}
+
+static int __neko_bind_graphics_vertex_buffer_create(lua_State* L) {
+    const_str vertex_buffer_name = lua_tostring(L, 1);
+    void* data = lua_touserdata(L, 2);
+    size_t data_size = lua_tointeger(L, 3);
+    neko_vbo_t vertex_buffer_handle = neko_default_val();
+    neko_graphics_vertex_buffer_desc_t vertex_buffer_desc = {.data = data, .size = data_size};
+    vertex_buffer_handle = neko_graphics_vertex_buffer_create(&vertex_buffer_desc);
+    neko_lua_auto_struct_push_member(L, neko_vbo_t, id, &vertex_buffer_handle);
+    return 1;
+}
+
+static int __neko_bind_graphics_index_buffer_create(lua_State* L) {
+    const_str index_buffer_name = lua_tostring(L, 1);
+    void* data = lua_touserdata(L, 2);
+    size_t data_size = lua_tointeger(L, 3);
+    neko_ibo_t index_buffer_handle = neko_default_val();
+    neko_graphics_index_buffer_desc_t index_buffer_desc = {.data = data, .size = data_size};
+    index_buffer_handle = neko_graphics_index_buffer_create(&index_buffer_desc);
+    neko_lua_auto_struct_push_member(L, neko_ibo_t, id, &index_buffer_handle);
+    return 1;
+}
+
+static int __neko_bind_graphics_vertex_attribute_create(lua_State* L) {
+    const_str vertex_attribute_name = lua_tostring(L, 1);
+    luaL_checktype(L, 2, LUA_TTABLE);
+    int n = neko_lua_get_table_pairs_count(L, 2);  //
+
+    neko_graphics_vertex_attribute_desc_t* sources = (neko_graphics_vertex_attribute_desc_t*)neko_safe_malloc(n * sizeof(neko_graphics_vertex_attribute_desc_t));
+    memset(sources, 0, n * sizeof(neko_graphics_vertex_attribute_desc_t));
+
+    for (int i = 0; i < n; i++) {
+        lua_rawgeti(L, 2, i + 1);  // 将index=i的元素压入堆栈顶部
+        luaL_checktype(L, -1, LUA_TTABLE);
+
+        lua_pushstring(L, "name");  // # -1
+        lua_gettable(L, -2);        // pop # -1
+        if (!lua_isnil(L, -1)) {
+            const_str src = lua_tostring(L, -1);  // # -1
+            if (src != NULL) {
+                strncpy(sources[i].name, src, sizeof(sources[i].name) - 1);
+                sources[i].name[sizeof(sources[i].name) - 1] = '\0';
+            } else
+                neko_assert(false);
+        }
+        lua_pop(L, 1);  // # -1
+
+        lua_pushstring(L, "format");  // # -1
+        lua_gettable(L, -2);          // pop # -1
+        if (!lua_isnil(L, -1)) {
+            neko_lua_auto_to(L, neko_graphics_vertex_attribute_type, &sources[i].format, -1);
+        }
+        lua_pop(L, 1);  // # -1
+
+        lua_pop(L, 1);  // # -1
+    }
+
+    neko_graphics_vertex_attribute_desc_t* push_userdata = (neko_graphics_vertex_attribute_desc_t*)lua_newuserdata(L, n * sizeof(neko_graphics_vertex_attribute_desc_t));
+    memcpy(push_userdata, sources, n * sizeof(neko_graphics_vertex_attribute_desc_t));
+
+    neko_safe_free(sources);
+
+    lua_pushinteger(L, n * sizeof(neko_graphics_vertex_attribute_desc_t));
+
+    return 2;
 }
 
 static int __neko_bind_graphics_storage_buffer_create(lua_State* L) {
@@ -1849,15 +1954,17 @@ static int __neko_bind_graphics_apply_bindings(lua_State* L) {
 
     neko_graphics_bind_desc_t binds = neko_default_val();
 
-    const_str pipeline_type[] = {"uniforms", "image_buffers", "storage_buffers"};
+    const_str pipeline_type[] = {"uniforms", "image_buffers", "storage_buffers", "vertex_buffers", "index_buffers"};
 
     neko_graphics_bind_uniform_desc_t* u_desc = nullptr;
     neko_graphics_bind_image_buffer_desc_t* ib_desc = nullptr;
     neko_graphics_bind_storage_buffer_desc_t* sb_desc = nullptr;
-
-    f32 data;
+    neko_graphics_bind_vertex_buffer_desc_t* vbo_desc = nullptr;
+    neko_graphics_bind_index_buffer_desc_t* ibo_desc = nullptr;
 
     luaL_checktype(L, -1, LUA_TTABLE);
+
+    f32 data;  // TODO
 
     for (int i = 0; i < neko_arr_size(pipeline_type); i++) {
         lua_pushstring(L, pipeline_type[i]);  // # -1
@@ -1870,7 +1977,7 @@ static int __neko_bind_graphics_apply_bindings(lua_State* L) {
             switch (neko::hash(pipeline_type[i])) {
                 case neko::hash("uniforms"): {
 
-                    u_desc = (neko_graphics_bind_uniform_desc_t*)neko_safe_malloc(n * sizeof(neko_graphics_bind_uniform_desc_t));
+                    u_desc = (neko_graphics_bind_uniform_desc_t*)malloc(n * sizeof(neko_graphics_bind_uniform_desc_t));
                     memset(u_desc, 0, n * sizeof(neko_graphics_bind_uniform_desc_t));
 
                     binds.uniforms.desc = u_desc;
@@ -1893,9 +2000,11 @@ static int __neko_bind_graphics_apply_bindings(lua_State* L) {
                         if (!lua_isnil(L, -1)) {
                             int type = lua_type(L, -1);
                             switch (type) {
+                                case LUA_TUSERDATA:
+                                    u_desc[i - 1].data = lua_touserdata(L, -1);
+                                    break;
                                 case LUA_TNUMBER:
                                     data = lua_tonumber(L, -1);
-                                    // data = neko_platform_elapsed_time() * 0.001f;
                                     u_desc[i - 1].data = &data;
                                     break;
                                 default:
@@ -1917,7 +2026,7 @@ static int __neko_bind_graphics_apply_bindings(lua_State* L) {
                     }
                 } break;
                 case neko::hash("image_buffers"): {
-                    ib_desc = (neko_graphics_bind_image_buffer_desc_t*)neko_safe_malloc(n * sizeof(neko_graphics_bind_image_buffer_desc_t));
+                    ib_desc = (neko_graphics_bind_image_buffer_desc_t*)malloc(n * sizeof(neko_graphics_bind_image_buffer_desc_t));
                     memset(ib_desc, 0, n * sizeof(neko_graphics_bind_image_buffer_desc_t));
 
                     binds.image_buffers.desc = ib_desc;
@@ -1948,7 +2057,7 @@ static int __neko_bind_graphics_apply_bindings(lua_State* L) {
                     }
                 } break;
                 case neko::hash("storage_buffers"): {
-                    sb_desc = (neko_graphics_bind_storage_buffer_desc_t*)neko_safe_malloc(n * sizeof(neko_graphics_bind_storage_buffer_desc_t));
+                    sb_desc = (neko_graphics_bind_storage_buffer_desc_t*)malloc(n * sizeof(neko_graphics_bind_storage_buffer_desc_t));
                     memset(sb_desc, 0, n * sizeof(neko_graphics_bind_storage_buffer_desc_t));
 
                     binds.storage_buffers.desc = sb_desc;
@@ -1976,6 +2085,50 @@ static int __neko_bind_graphics_apply_bindings(lua_State* L) {
                         lua_pop(L, 1);  // # -1
                     }
                 } break;
+                case neko::hash("vertex_buffers"): {
+                    vbo_desc = (neko_graphics_bind_vertex_buffer_desc_t*)malloc(n * sizeof(neko_graphics_bind_vertex_buffer_desc_t));
+                    memset(vbo_desc, 0, n * sizeof(neko_graphics_bind_vertex_buffer_desc_t));
+
+                    binds.vertex_buffers.desc = vbo_desc;
+                    binds.vertex_buffers.size = n == 1 ? 0 : n * sizeof(neko_graphics_bind_vertex_buffer_desc_t);
+
+                    for (int i = 1; i <= n; i++) {
+                        lua_rawgeti(L, -1, i);  // 将index=i的元素压入堆栈顶部
+                        luaL_checktype(L, -1, LUA_TTABLE);
+
+                        lua_pushstring(L, "buffer");  // # -1
+                        lua_gettable(L, -2);          // pop # -1
+                        if (!lua_isnil(L, -1)) {
+                            neko_lua_auto_struct_to_member(L, neko_vbo_t, id, &vbo_desc[i - 1].buffer, -1);
+                        } else
+                            neko_assert(false);
+                        lua_pop(L, 1);  // # -1
+
+                        lua_pop(L, 1);  // # -1
+                    }
+                } break;
+                case neko::hash("index_buffers"): {
+                    ibo_desc = (neko_graphics_bind_index_buffer_desc_t*)malloc(n * sizeof(neko_graphics_bind_index_buffer_desc_t));
+                    memset(ibo_desc, 0, n * sizeof(neko_graphics_bind_index_buffer_desc_t));
+
+                    binds.index_buffers.desc = ibo_desc;
+                    binds.index_buffers.size = n == 1 ? 0 : n * sizeof(neko_graphics_bind_index_buffer_desc_t);
+
+                    for (int i = 1; i <= n; i++) {
+                        lua_rawgeti(L, -1, i);  // 将index=i的元素压入堆栈顶部
+                        luaL_checktype(L, -1, LUA_TTABLE);
+
+                        lua_pushstring(L, "buffer");  // # -1
+                        lua_gettable(L, -2);          // pop # -1
+                        if (!lua_isnil(L, -1)) {
+                            neko_lua_auto_struct_to_member(L, neko_ibo_t, id, &ibo_desc[i - 1].buffer, -1);
+                        } else
+                            neko_assert(false);
+                        lua_pop(L, 1);  // # -1
+
+                        lua_pop(L, 1);  // # -1
+                    }
+                } break;
                 default:
                     break;
             }
@@ -1985,11 +2138,35 @@ static int __neko_bind_graphics_apply_bindings(lua_State* L) {
 
     neko_graphics_apply_bindings(g_client_userdata.cb, &binds);
 
-    if (u_desc) neko_safe_free(u_desc);
-    if (ib_desc) neko_safe_free(ib_desc);
-    if (sb_desc) neko_safe_free(sb_desc);
+    if (u_desc) free(u_desc);
+    if (ib_desc) free(ib_desc);
+    if (sb_desc) free(sb_desc);
+    if (vbo_desc) free(vbo_desc);
+    if (ibo_desc) free(ibo_desc);
 
     return 0;
+}
+
+static int test_tex(lua_State* L) {
+
+#define ROW_COL_CT 10
+
+    neko_color_t c0 = NEKO_COLOR_WHITE;
+    neko_color_t c1 = neko_color(20, 50, 150, 255);
+    // neko_color_t pixels[ROW_COL_CT * ROW_COL_CT] = neko_default_val();
+
+    neko_color_t* pixels = (neko_color_t*)lua_newuserdata(L, sizeof(neko_color_t) * ROW_COL_CT * ROW_COL_CT);
+
+    for (u32 r = 0; r < ROW_COL_CT; ++r) {
+        for (u32 c = 0; c < ROW_COL_CT; ++c) {
+            const bool re = (r % 2) == 0;
+            const bool ce = (c % 2) == 0;
+            u32 idx = r * ROW_COL_CT + c;
+            pixels[idx] = (re && ce) ? c0 : (re) ? c1 : (ce) ? c1 : c0;
+        }
+    }
+
+    return 1;
 }
 
 static int __neko_bind_graphics_dispatch_compute(lua_State* L) {
@@ -2012,17 +2189,60 @@ static int __neko_bind_graphics_texture_create(lua_State* L) {
             .min_filter = NEKO_GRAPHICS_TEXTURE_FILTER_LINEAR,  // 纹理缩小过滤器
             .mag_filter = NEKO_GRAPHICS_TEXTURE_FILTER_LINEAR   // 纹理放大滤镜
     };
-    if (lua_gettop(L) == 7) {
-        // neko_lua_auto_struct_to_member(L, neko_graphics_texture_desc_t, format, &texture_desc, 3);
-        // neko_lua_auto_struct_to_member(L, neko_graphics_texture_desc_t, wrap_s, &texture_desc, 4);
-        // neko_lua_auto_struct_to_member(L, neko_graphics_texture_desc_t, wrap_t, &texture_desc, 5);
-        // neko_lua_auto_struct_to_member(L, neko_graphics_texture_desc_t, min_filter, &texture_desc, 6);
-        // neko_lua_auto_struct_to_member(L, neko_graphics_texture_desc_t, mag_filter, &texture_desc, 7);
-        neko_lua_auto_to(L, neko_graphics_texture_format_type, &texture_desc.format, 3);
-        neko_lua_auto_to(L, neko_graphics_texture_wrapping_type, &texture_desc.wrap_s, 4);
-        neko_lua_auto_to(L, neko_graphics_texture_wrapping_type, &texture_desc.wrap_t, 5);
-        neko_lua_auto_to(L, neko_graphics_texture_filtering_type, &texture_desc.min_filter, 6);
-        neko_lua_auto_to(L, neko_graphics_texture_filtering_type, &texture_desc.mag_filter, 7);
+    if (lua_gettop(L) == 3) {
+        if (!lua_isnil(L, -1)) {
+            luaL_checktype(L, -1, LUA_TTABLE);
+
+            lua_pushstring(L, "type");  // # -1
+            lua_gettable(L, -2);        // pop # -1
+            if (!lua_isnil(L, -1)) {
+                neko_lua_auto_to(L, neko_graphics_texture_type, &texture_desc.type, -1);
+            }
+            lua_pop(L, 1);  // # -1
+
+            lua_pushstring(L, "format");  // # -1
+            lua_gettable(L, -2);          // pop # -1
+            if (!lua_isnil(L, -1)) {
+                neko_lua_auto_to(L, neko_graphics_texture_format_type, &texture_desc.format, -1);
+            }
+            lua_pop(L, 1);  // # -1
+
+            lua_pushstring(L, "wrap_s");  // # -1
+            lua_gettable(L, -2);          // pop # -1
+            if (!lua_isnil(L, -1)) {
+                neko_lua_auto_to(L, neko_graphics_texture_wrapping_type, &texture_desc.wrap_s, -1);
+            }
+            lua_pop(L, 1);  // # -1
+
+            lua_pushstring(L, "wrap_t");  // # -1
+            lua_gettable(L, -2);          // pop # -1
+            if (!lua_isnil(L, -1)) {
+                neko_lua_auto_to(L, neko_graphics_texture_wrapping_type, &texture_desc.wrap_t, -1);
+            }
+            lua_pop(L, 1);  // # -1
+
+            lua_pushstring(L, "min_filter");  // # -1
+            lua_gettable(L, -2);              // pop # -1
+            if (!lua_isnil(L, -1)) {
+                neko_lua_auto_to(L, neko_graphics_texture_filtering_type, &texture_desc.min_filter, -1);
+            }
+            lua_pop(L, 1);  // # -1
+
+            lua_pushstring(L, "mag_filter");  // # -1
+            lua_gettable(L, -2);              // pop # -1
+            if (!lua_isnil(L, -1)) {
+                neko_lua_auto_to(L, neko_graphics_texture_filtering_type, &texture_desc.mag_filter, -1);
+            }
+            lua_pop(L, 1);  // # -1
+
+            lua_pushstring(L, "data");  // # -1
+            lua_gettable(L, -2);        // pop # -1
+            if (!lua_isnil(L, -1)) {
+                void* data = lua_touserdata(L, -1);
+                texture_desc.data[0] = data;
+            }
+            lua_pop(L, 1);  // # -1
+        }
     }
     neko_texture_t texture = neko_default_val();
     texture = neko_graphics_texture_create(&texture_desc);
@@ -2071,6 +2291,12 @@ static int __neko_bind_graphics_renderpass_begin(lua_State* L) {
 
 static int __neko_bind_graphics_renderpass_end(lua_State* L) {
     neko_graphics_renderpass_end(g_client_userdata.cb);
+    return 0;
+}
+
+static int __neko_bind_graphics_draw(lua_State* L) {
+    neko_graphics_draw_desc_t draw_desc = {.start = 0, .count = 6};
+    neko_graphics_draw(g_client_userdata.cb, &draw_desc);
     return 0;
 }
 
@@ -2184,11 +2410,35 @@ neko_inline void neko_register_test(lua_State* L) {
     neko_lua_auto_struct(L, neko_shader_t);
     neko_lua_auto_struct_member(L, neko_shader_t, id, unsigned int);
 
+    neko_lua_auto_struct(L, neko_vbo_t);
+    neko_lua_auto_struct_member(L, neko_vbo_t, id, unsigned int);
+
+    neko_lua_auto_struct(L, neko_ibo_t);
+    neko_lua_auto_struct_member(L, neko_ibo_t, id, unsigned int);
+
     neko_lua_auto_struct(L, neko_renderpass_t);
     neko_lua_auto_struct_member(L, neko_renderpass_t, id, unsigned int);
 
     neko_lua_auto_struct(L, neko_sound_playing_sound_t);
     neko_lua_auto_struct_member(L, neko_sound_playing_sound_t, id, unsigned long long);
+
+    neko_lua_auto_enum(L, neko_graphics_vertex_attribute_type);
+    neko_lua_auto_enum_value(L, neko_graphics_vertex_attribute_type, NEKO_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT4);
+    neko_lua_auto_enum_value(L, neko_graphics_vertex_attribute_type, NEKO_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3);
+    neko_lua_auto_enum_value(L, neko_graphics_vertex_attribute_type, NEKO_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT2);
+    neko_lua_auto_enum_value(L, neko_graphics_vertex_attribute_type, NEKO_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT);
+    neko_lua_auto_enum_value(L, neko_graphics_vertex_attribute_type, NEKO_GRAPHICS_VERTEX_ATTRIBUTE_UINT4);
+    neko_lua_auto_enum_value(L, neko_graphics_vertex_attribute_type, NEKO_GRAPHICS_VERTEX_ATTRIBUTE_UINT3);
+    neko_lua_auto_enum_value(L, neko_graphics_vertex_attribute_type, NEKO_GRAPHICS_VERTEX_ATTRIBUTE_UINT2);
+    neko_lua_auto_enum_value(L, neko_graphics_vertex_attribute_type, NEKO_GRAPHICS_VERTEX_ATTRIBUTE_UINT);
+    neko_lua_auto_enum_value(L, neko_graphics_vertex_attribute_type, NEKO_GRAPHICS_VERTEX_ATTRIBUTE_BYTE4);
+    neko_lua_auto_enum_value(L, neko_graphics_vertex_attribute_type, NEKO_GRAPHICS_VERTEX_ATTRIBUTE_BYTE3);
+    neko_lua_auto_enum_value(L, neko_graphics_vertex_attribute_type, NEKO_GRAPHICS_VERTEX_ATTRIBUTE_BYTE2);
+    neko_lua_auto_enum_value(L, neko_graphics_vertex_attribute_type, NEKO_GRAPHICS_VERTEX_ATTRIBUTE_BYTE);
+
+    neko_lua_auto_enum(L, neko_graphics_texture_type);
+    neko_lua_auto_enum_value(L, neko_graphics_texture_type, NEKO_GRAPHICS_TEXTURE_2D);
+    neko_lua_auto_enum_value(L, neko_graphics_texture_type, NEKO_GRAPHICS_TEXTURE_CUBEMAP);
 
     neko_lua_auto_enum(L, neko_graphics_shader_stage_type);
     neko_lua_auto_enum_value(L, neko_graphics_shader_stage_type, NEKO_GRAPHICS_SHADER_STAGE_VERTEX);
@@ -2538,10 +2788,6 @@ int open_neko(lua_State* L) {
 
             {"draw_text", __neko_bind_draw_text},
 
-            {"custom_sprite_create", __neko_bind_custom_sprite_create},
-            {"custom_sprite_render", __neko_bind_custom_sprite_render},
-            {"custom_sprite_end", __neko_bind_custom_sprite_end},
-
             {"sprite_batch_create", __neko_bind_sprite_batch_create},
             {"sprite_batch_render_ortho", __neko_bind_sprite_batch_render_ortho},
             {"sprite_batch_render_begin", __neko_bind_sprite_batch_render_begin},
@@ -2605,10 +2851,14 @@ int open_neko(lua_State* L) {
             {"graphics_uniform_create", __neko_bind_graphics_uniform_create},
             {"graphics_pipeline_create", __neko_bind_graphics_pipeline_create},
             {"graphics_storage_buffer_create", __neko_bind_graphics_storage_buffer_create},
-
+            {"graphics_vertex_buffer_create", __neko_bind_graphics_vertex_buffer_create},
+            {"graphics_index_buffer_create", __neko_bind_graphics_index_buffer_create},
+            {"graphics_vertex_attribute_create", __neko_bind_graphics_vertex_attribute_create},
             {"graphics_pipeline_bind", __neko_bind_graphics_pipeline_bind},
             {"graphics_apply_bindings", __neko_bind_graphics_apply_bindings},
             {"graphics_dispatch_compute", __neko_bind_graphics_dispatch_compute},
+            {"graphics_draw", __neko_bind_graphics_draw},
+            {"gen_tex", test_tex},
 
             {"pack_construct", __neko_bind_pack_construct},
             {"pack_destroy", __neko_bind_pack_destroy},
