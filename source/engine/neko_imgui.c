@@ -1,5 +1,5 @@
 
-#include "engine/util/neko_imgui.h"
+#include "engine/neko_imgui.h"
 
 #include "engine/neko_platform.h"
 
@@ -8130,9 +8130,9 @@ bool _neko_core_ui_style_sheet_parse_attribute_val(neko_core_ui_context_t* ctx, 
         bool ret = neko_lexer_require_token_type(lex, NEKO_TOKEN_COLON);                                                                                       \
         ret &= (neko_lexer_require_token_type(lex, NEKO_TOKEN_DOLLAR) || neko_lexer_require_token_type(lex, NEKO_TOKEN_NUMBER));                               \
         token = neko_lexer_current_token(lex);                                                                                                                 \
-        neko_token_debug_print(&token);                                                                                                                        \
         if (!ret) {                                                                                                                                            \
             neko_log_warning("Unidentified token.");                                                                                                           \
+            neko_token_debug_print(&token);                                                                                                                    \
             return false;                                                                                                                                      \
         }                                                                                                                                                      \
         switch (token.type) {                                                                                                                                  \

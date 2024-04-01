@@ -4,7 +4,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "engine/util/neko_lua.h"
+#include "deps/lua/lauxlib.h"
+#include "deps/lua/lua.h"
+#include "deps/lua/lualib.h"
+#include "neko.h"
+
 
 #define TYPE_MIN_ID 1
 #define TYPE_MAX_ID 255

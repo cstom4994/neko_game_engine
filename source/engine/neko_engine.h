@@ -6,7 +6,7 @@
 #include "engine/neko_audio.h"
 #include "engine/neko_graphics.h"
 #include "engine/neko_platform.h"
-// #include "engine/util/neko_console.h"
+// #include "engine/neko_console.h"
 
 /*==========================
 // NEKO_ENGINE / NEKO_APP

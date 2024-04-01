@@ -5,7 +5,7 @@
 #include <span>
 #include <tuple>
 
-#include "engine/util/neko_lua.hpp"
+#include "engine/neko_lua.h"
 #include "sandbox/game_imgui.h"
 
 namespace imgui_lua::util {

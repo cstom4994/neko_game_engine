@@ -1,7 +1,7 @@
 
 
 /*=============================
-// NEKO_GRAPHICS
+// NEKO_GRAPHICS_IMPL
 =============================*/
 
 #include "engine/neko_engine.h"
@@ -3790,3 +3790,64 @@ NEKO_API_DECL void neko_graphics_init(neko_graphics_t* graphics) {
 
 #endif  // NEKO_GRAPHICS_IMPL_OPENGL
 #endif
+
+// 资源构造函数
+NEKO_API_DECL neko_handle(neko_graphics_texture_t) neko_graphics_texture_create(const neko_graphics_texture_desc_t* desc) { return neko_graphics()->api.texture_create(desc); }
+
+NEKO_API_DECL neko_handle(neko_graphics_uniform_t) neko_graphics_uniform_create(const neko_graphics_uniform_desc_t* desc) { return neko_graphics()->api.uniform_create(desc); }
+
+NEKO_API_DECL neko_handle(neko_graphics_shader_t) neko_graphics_shader_create(const neko_graphics_shader_desc_t* desc) { return neko_graphics()->api.shader_create(desc); }
+
+NEKO_API_DECL neko_handle(neko_graphics_vertex_buffer_t) neko_graphics_vertex_buffer_create(const neko_graphics_vertex_buffer_desc_t* desc) { return neko_graphics()->api.vertex_buffer_create(desc); }
+
+NEKO_API_DECL neko_handle(neko_graphics_index_buffer_t) neko_graphics_index_buffer_create(const neko_graphics_index_buffer_desc_t* desc) { return neko_graphics()->api.index_buffer_create(desc); }
+
+NEKO_API_DECL neko_handle(neko_graphics_uniform_buffer_t) neko_graphics_uniform_buffer_create(const neko_graphics_uniform_buffer_desc_t* desc) {
+    return neko_graphics()->api.uniform_buffer_create(desc);
+}
+
+NEKO_API_DECL neko_handle(neko_graphics_storage_buffer_t) neko_graphics_storage_buffer_create(const neko_graphics_storage_buffer_desc_t* desc) {
+    return neko_graphics()->api.storage_buffer_create(desc);
+}
+
+NEKO_API_DECL neko_handle(neko_graphics_framebuffer_t) neko_graphics_framebuffer_create(const neko_graphics_framebuffer_desc_t* desc) { return neko_graphics()->api.framebuffer_create(desc); }
+
+NEKO_API_DECL neko_handle(neko_graphics_renderpass_t) neko_graphics_renderpass_create(const neko_graphics_renderpass_desc_t* desc) { return neko_graphics()->api.renderpass_create(desc); }
+
+NEKO_API_DECL neko_handle(neko_graphics_pipeline_t) neko_graphics_pipeline_create(const neko_graphics_pipeline_desc_t* desc) { return neko_graphics()->api.pipeline_create(desc); }
+
+// Destroy
+NEKO_API_DECL void neko_graphics_texture_destroy(neko_handle(neko_graphics_texture_t) hndl) { neko_graphics()->api.texture_destroy(hndl); }
+
+NEKO_API_DECL void neko_graphics_uniform_destroy(neko_handle(neko_graphics_uniform_t) hndl) { neko_graphics()->api.uniform_destroy(hndl); }
+
+NEKO_API_DECL void neko_graphics_shader_destroy(neko_handle(neko_graphics_shader_t) hndl) { neko_graphics()->api.shader_destroy(hndl); }
+
+NEKO_API_DECL void neko_graphics_vertex_buffer_destroy(neko_handle(neko_graphics_vertex_buffer_t) hndl) { neko_graphics()->api.vertex_buffer_destroy(hndl); }
+
+NEKO_API_DECL void neko_graphics_index_buffer_destroy(neko_handle(neko_graphics_index_buffer_t) hndl) { neko_graphics()->api.index_buffer_destroy(hndl); }
+
+NEKO_API_DECL void neko_graphics_uniform_buffer_destroy(neko_handle(neko_graphics_uniform_buffer_t) hndl) { neko_graphics()->api.uniform_buffer_destroy(hndl); }
+
+NEKO_API_DECL void neko_graphics_storage_buffer_destroy(neko_handle(neko_graphics_storage_buffer_t) hndl) { neko_graphics()->api.storage_buffer_destroy(hndl); }
+
+NEKO_API_DECL void neko_graphics_framebuffer_destroy(neko_handle(neko_graphics_framebuffer_t) hndl) { neko_graphics()->api.framebuffer_destroy(hndl); }
+
+NEKO_API_DECL void neko_graphics_renderpass_destroy(neko_handle(neko_graphics_renderpass_t) hndl) { neko_graphics()->api.renderpass_destroy(hndl); }
+
+NEKO_API_DECL void neko_graphics_pipeline_destroy(neko_handle(neko_graphics_pipeline_t) hndl) { neko_graphics()->api.pipeline_destroy(hndl); }
+
+// 资源更新 (仅限主线程)
+NEKO_API_DECL void neko_graphics_vertex_buffer_update(neko_handle(neko_graphics_vertex_buffer_t) hndl, neko_graphics_vertex_buffer_desc_t* desc) {
+    neko_graphics()->api.vertex_buffer_update(hndl, desc);
+}
+
+NEKO_API_DECL void neko_graphics_index_buffer_update(neko_handle(neko_graphics_index_buffer_t) hndl, neko_graphics_index_buffer_desc_t* desc) { neko_graphics()->api.index_buffer_update(hndl, desc); }
+
+NEKO_API_DECL void neko_graphics_storage_buffer_update(neko_handle(neko_graphics_storage_buffer_t) hndl, neko_graphics_storage_buffer_desc_t* desc) {
+    neko_graphics()->api.storage_buffer_update(hndl, desc);
+}
+
+NEKO_API_DECL void neko_graphics_texture_update(neko_handle(neko_graphics_texture_t) hndl, neko_graphics_texture_desc_t* desc) { neko_graphics()->api.texture_update(hndl, desc); }
+
+NEKO_API_DECL void neko_graphics_texture_read(neko_handle(neko_graphics_texture_t) hndl, neko_graphics_texture_desc_t* desc) { neko_graphics()->api.texture_read(hndl, desc); }

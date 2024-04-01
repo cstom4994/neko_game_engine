@@ -142,16 +142,10 @@ if(MSVC)
         endforeach()
 endif(MSVC)
 
-file(GLOB_RECURSE luaffi_src CONFIGURE_DEPENDS "source/deps/luaffi/**.*")
-
-file(GLOB_RECURSE enet_src CONFIGURE_DEPENDS "source/deps/enet/**.*")
-
 file(GLOB_RECURSE neko_engine_src CONFIGURE_DEPENDS "source/engine/**.*")
 
 set(neko_engine_src_all
         ${neko_engine_src}
-        ${luaffi_src}
-        ${enet_src}
         "source/deps/impl_build.cpp"
 )
 

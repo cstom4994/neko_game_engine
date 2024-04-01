@@ -1,12 +1,14 @@
 
 
 /*=============================
-// NEKO_PLATFORM
+// NEKO_PLATFORM_IMPL
 =============================*/
+
+#include "engine/neko_platform.h"
 
 #include "engine/neko.h"
 #include "engine/neko_engine.h"
-#include "engine/neko_platform.h"
+
 // #include "engine/neko_profiler.h"
 
 #ifndef NEKO_PLATFORM_IMPL_CUSTOM

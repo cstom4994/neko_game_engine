@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "engine/neko.h"
-#include "engine/util/neko_script.h"
+#include "engine/neko_script.h"
 
 neko_script_vector(neko_script_binary_t *) modules = NULL;
 

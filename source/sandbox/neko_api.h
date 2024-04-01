@@ -3,9 +3,9 @@
 
 #include "engine/neko.hpp"
 #include "engine/neko_engine.h"
-#include "engine/util/neko_idraw.h"
-#include "engine/util/neko_imgui.h"
-#include "engine/util/neko_lua.hpp"
+#include "engine/neko_idraw.h"
+#include "engine/neko_imgui.h"
+#include "engine/neko_lua.h"
 
 typedef struct neko_client_userdata_s {
     neko_command_buffer_t *cb;

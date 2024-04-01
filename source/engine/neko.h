@@ -1287,8 +1287,6 @@ NEKO_API_DECL void* neko_paged_allocator_allocate(neko_paged_allocator_t* pa);
 NEKO_API_DECL void neko_paged_allocator_deallocate(neko_paged_allocator_t* pa, void* data);
 NEKO_API_DECL void neko_paged_allocator_clear(neko_paged_allocator_t* pa);
 
-#include "neko_math.h"
-
 neko_inline const_str neko_fs_get_filename(const_str path) {
     int len = strlen(path);
     int flag = 0;
@@ -1356,37 +1354,6 @@ neko_inline f32 neko_rand_range_xor(f32 lo, f32 hi) {
     r = (hi - lo) * r + lo;
     return r;
 }
-
-/*================================================================================
-// Camera
-================================================================================*/
-
-typedef enum neko_projection_type { NEKO_PROJECTION_TYPE_ORTHOGRAPHIC, NEKO_PROJECTION_TYPE_PERSPECTIVE } neko_projection_type;
-
-typedef struct neko_camera_t {
-    neko_vqs transform;
-    f32 fov;
-    f32 aspect_ratio;
-    f32 near_plane;
-    f32 far_plane;
-    f32 ortho_scale;
-    neko_projection_type proj_type;
-} neko_camera_t;
-
-NEKO_API_DECL neko_camera_t neko_camera_default();
-NEKO_API_DECL neko_camera_t neko_camera_perspective();
-NEKO_API_DECL neko_mat4 neko_camera_get_view(const neko_camera_t* cam);
-NEKO_API_DECL neko_mat4 neko_camera_get_proj(const neko_camera_t* cam, s32 view_width, s32 view_height);
-NEKO_API_DECL neko_mat4 neko_camera_get_view_projection(const neko_camera_t* cam, s32 view_width, s32 view_height);
-NEKO_API_DECL neko_vec3 neko_camera_forward(const neko_camera_t* cam);
-NEKO_API_DECL neko_vec3 neko_camera_backward(const neko_camera_t* cam);
-NEKO_API_DECL neko_vec3 neko_camera_up(const neko_camera_t* cam);
-NEKO_API_DECL neko_vec3 neko_camera_down(const neko_camera_t* cam);
-NEKO_API_DECL neko_vec3 neko_camera_right(const neko_camera_t* cam);
-NEKO_API_DECL neko_vec3 neko_camera_left(const neko_camera_t* cam);
-NEKO_API_DECL neko_vec3 neko_camera_screen_to_world(const neko_camera_t* cam, neko_vec3 coords, s32 view_x, s32 view_y, s32 view_width, s32 view_height);
-NEKO_API_DECL neko_vec3 neko_camera_world_to_screen(const neko_camera_t* cam, neko_vec3 coords, s32 view_width, s32 view_height);
-NEKO_API_DECL void neko_camera_offset_orientation(neko_camera_t* cam, f32 yaw, f32 picth);
 
 /*=============================
 // Containers
@@ -1818,7 +1785,7 @@ neko_force_inline void __neko_hash_table_iter_advance_func(void** data, size_t k
 
 #define NEKO_SLOT_ARRAY_INVALID_HANDLE UINT32_MAX
 
-#define neko_slot_array_handle_valid(__SA, __ID) (__ID < neko_dyn_array_size((__SA)->indices) && (__SA)->indices[__ID] != NEKO_SLOT_ARRAY_INVALID_HANDLE)
+#define neko_slot_array_handle_valid(__SA, __ID) ((__SA) && __ID < neko_dyn_array_size((__SA)->indices) && (__SA)->indices[__ID] != NEKO_SLOT_ARRAY_INVALID_HANDLE)
 
 typedef struct __neko_slot_array_dummy_header {
     neko_dyn_array(u32) indices;
@@ -2571,5 +2538,93 @@ NEKO_API_DECL void neko_profiler_unregister_thread(u64 _threadID);
 NEKO_API_DECL void neko_profiler_begin_frame();
 NEKO_API_DECL uintptr_t neko_profiler_begin_scope(const_str _file, s32 _line, const_str _name);
 NEKO_API_DECL void neko_profiler_end_scope(uintptr_t _scopeHandle);
+
+/*===================================
+// Meta
+===================================*/
+
+// typedef enum neko_meta_property_type {
+//     META_PROPERTY_TYPE_U8 = 0x00,
+//     META_PROPERTY_TYPE_U16,
+//     META_PROPERTY_TYPE_U32,
+//     META_PROPERTY_TYPE_U64,
+//     META_PROPERTY_TYPE_S8,
+//     META_PROPERTY_TYPE_S16,
+//     META_PROPERTY_TYPE_S32,
+//     META_PROPERTY_TYPE_S64,
+//     META_PROPERTY_TYPE_F32,
+//     META_PROPERTY_TYPE_F64,
+//     META_PROPERTY_TYPE_SIZE_T,
+//     META_PROPERTY_TYPE_STR,
+//     META_PROPERTY_TYPE_COUNT
+// } neko_meta_property_type;
+
+typedef struct neko_meta_property_typeinfo_t {
+    const_str name;  // 显示名称
+    u32 id;          // 匹配属性类型 用于查找和 switch 语句
+} neko_meta_property_typeinfo_t;
+
+NEKO_API_DECL neko_meta_property_typeinfo_t __neko_meta_property_typeinfo_decl_impl(const_str name, u32 id);
+
+#define neko_meta_property_typeinfo_decl(TY, PROP_TYPE) __neko_meta_property_typeinfo_decl_impl(neko_to_str(TY), PROP_TYPE)
+
+#define neko_meta_property_typeinfo_U8 neko_meta_property_typeinfo_decl(u8, TYPE_KIND_U8)
+#define neko_meta_property_typeinfo_S8 neko_meta_property_typeinfo_decl(s8, TYPE_KIND_S8)
+#define neko_meta_property_typeinfo_U16 neko_meta_property_typeinfo_decl(u16, TYPE_KIND_U16)
+#define neko_meta_property_typeinfo_S16 neko_meta_property_typeinfo_decl(s16, TYPE_KIND_S16)
+#define neko_meta_property_typeinfo_U32 neko_meta_property_typeinfo_decl(u32, TYPE_KIND_U32)
+#define neko_meta_property_typeinfo_S32 neko_meta_property_typeinfo_decl(s32, TYPE_KIND_S32)
+#define neko_meta_property_typeinfo_U64 neko_meta_property_typeinfo_decl(u64, TYPE_KIND_U64)
+#define neko_meta_property_typeinfo_S64 neko_meta_property_typeinfo_decl(s64, TYPE_KIND_S64)
+#define neko_meta_property_typeinfo_F32 neko_meta_property_typeinfo_decl(f32, TYPE_KIND_F32)
+#define neko_meta_property_typeinfo_F64 neko_meta_property_typeinfo_decl(f64, TYPE_KIND_F64)
+// #define neko_meta_property_typeinfo_SIZE_T neko_meta_property_typeinfo_decl(size_t, META_PROPERTY_TYPE_SIZE_T)
+#define neko_meta_property_typeinfo_STR neko_meta_property_typeinfo_decl(char*, TYPE_KIND_STR)
+
+typedef struct neko_meta_property_t {
+    const_str name;                      // 字段的显示名称
+    u64 offset;                          // 结构体的字节偏移量
+    neko_meta_property_typeinfo_t type;  // 类型信息
+} neko_meta_property_t;
+
+NEKO_API_DECL neko_meta_property_t __neko_meta_property_impl(const_str name, u64 offset, neko_meta_property_typeinfo_t type);
+
+#define neko_meta_property(CLS, FIELD, TYPE) __neko_meta_property_impl(neko_to_str(FIELD), neko_offset(CLS, FIELD), (TYPE))
+
+typedef struct neko_meta_class_t {
+    const_str name;                    // 显示名称
+    u32 property_count;                // 列表中所有属性的计数
+    neko_meta_property_t* properties;  // 所有属性列表
+} neko_meta_class_t;
+
+typedef struct neko_meta_registry_t {
+    // neko_hashmap<neko_meta_class_t> classes_;
+    neko_hash_table(u64, neko_meta_class_t) classes_;
+} neko_meta_registry_t;
+
+typedef struct neko_meta_class_decl_t {
+    neko_meta_property_t* properties;  // 属性数组
+    u64 size;                          // 数组大小 以字节为单位
+} neko_meta_class_decl_t;
+
+// Functions
+NEKO_API_DECL neko_meta_registry_t neko_meta_registry_new();
+NEKO_API_DECL void neko_meta_registry_free(neko_meta_registry_t* meta);
+NEKO_API_DECL u64 __neko_meta_registry_register_class_impl(neko_meta_registry_t* meta, const_str name, const neko_meta_class_decl_t* decl);
+NEKO_API_DECL neko_meta_class_t* __neko_meta_class_getp_impl(neko_meta_registry_t* meta, const_str name);
+
+#define neko_meta_registry_decl_class(T) neko_meta_property_t __gen_##T##_property[]
+#define neko_meta_registry_register_class(META, T)                                                                                                         \
+    do {                                                                                                                                                   \
+        const u8 __gen_##T##_property_size = neko_arr_size(__gen_##T##_property);                                                                          \
+        neko_meta_class_decl_t __gen_##T##_class = {.properties = __gen_##T##_property, .size = __gen_##T##_property_size * sizeof(neko_meta_property_t)}; \
+        __neko_meta_registry_register_class_impl((META), neko_to_str(T), (&__gen_##T##_class));                                                            \
+    } while (0)
+
+#define neko_meta_registry_class_get(META, T) __neko_meta_class_getp_impl(META, neko_to_str(T))
+
+#define neko_meta_registry_getvp(OBJ, T, PROP) ((T*)((u8*)(OBJ) + (PROP)->offset))
+
+#define neko_meta_registry_getv(OBJ, T, PROP) (*((T*)((u8*)(OBJ) + (PROP)->offset)))
 
 #endif  // NEKO_H

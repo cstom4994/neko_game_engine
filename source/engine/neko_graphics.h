@@ -4,6 +4,7 @@
 #define NEKO_GRAPHICS_H
 
 #include "engine/neko.h"
+#include "engine/neko_math.h"
 
 // OpenGL
 #include "engine/builtin/neko_gl.h"
@@ -601,18 +602,7 @@ typedef struct neko_graphics_t {
         // Submission (Main Thread)
         void (*command_buffer_submit)(neko_command_buffer_t* cb);
 
-        /*============================================================
-        // Fontcache
-        ============================================================*/
-        // void (*fontcache_create)(void);
-        // void (*fontcache_destroy)(void);
-        // void (*fontcache_draw)(void);
-        // neko_font_index (*fontcache_load)(const void* data, size_t data_size, f32 font_size);
-        // void (*fontcache_push)(const char* text, const neko_font_index font, const neko_vec2 pos);
-        // void (*fontcache_push_x_y)(const char* text, const neko_font_index font, const f32 x, const f32 y);
-
-    } api;  // Interface for stable access across .dll boundaries
-
+    } api;
 } neko_graphics_t;
 
 /*==========================

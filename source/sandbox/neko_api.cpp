@@ -10,11 +10,9 @@
 #include "engine/builtin/neko_png.h"
 #include "engine/neko.h"
 #include "engine/neko_engine.h"
-#include "engine/util/neko_asset.h"
-#include "engine/util/neko_gfxt.h"
-#include "engine/util/neko_lua.hpp"
-#include "engine/util/neko_sprite.h"
-#include "engine/util/neko_tiled.h"
+#include "engine/neko_asset.h"
+#include "engine/neko_idraw.h"
+#include "engine/neko_lua.h"
 
 // game
 #include "sandbox/game_chunk.h"
@@ -968,16 +966,6 @@ static int __neko_bind_draw_text(lua_State* L) {
     return 0;
 }
 
-// // clang-format off
-// const_str image_names[] = {
-//         "gamedir/assets/textures/dragon_zombie.png",
-//         "gamedir/assets/textures/night_spirit.png",
-// };
-// // clang-format on
-
-// int images_count = sizeof(image_names) / sizeof(*image_names);
-// neko_png_image_t images[sizeof(image_names) / sizeof(*image_names)];
-
 typedef struct {
     u64 image_id;  // NEKO_SPRITEBATCH_U64
     int depth;
@@ -1301,36 +1289,6 @@ static int __neko_bind_sprite_batch_end(lua_State* L) {
 
     neko_graphics_batch_free(user_handle->sprite_batch);
 
-    return 0;
-}
-
-static int __neko_bind_particle_create(lua_State* L) {
-    // const_str file_path = lua_tostring(L, 1);
-
-    neko_particle_renderer* user_handle = (neko_particle_renderer*)lua_newuserdata(L, sizeof(neko_particle_renderer));
-    memset(user_handle, 0, sizeof(neko_particle_renderer));
-
-    neko_particle_renderer_construct(user_handle);
-
-    return 1;
-}
-
-static int __neko_bind_particle_render(lua_State* L) {
-    neko_particle_renderer* user_handle = (neko_particle_renderer*)lua_touserdata(L, 1);
-
-    auto xform = lua2struct::unpack<neko_vec2>(L, 2);
-
-    neko_graphics_t* gfx = neko_instance()->ctx.graphics;
-
-    neko_particle_renderer_update(user_handle, neko_instance()->ctx.platform->time.elapsed);
-
-    neko_particle_renderer_draw(user_handle, g_client_userdata.cb, xform);
-    return 0;
-}
-
-static int __neko_bind_particle_end(lua_State* L) {
-    neko_particle_renderer* user_handle = (neko_particle_renderer*)lua_touserdata(L, 1);
-    neko_particle_renderer_free(user_handle);
     return 0;
 }
 
@@ -2018,7 +1976,7 @@ static int __neko_bind_graphics_apply_bindings(lua_State* L) {
                         lua_pushstring(L, "binding");  // # -1
                         lua_gettable(L, -2);           // pop # -1
                         if (lua_isinteger(L, -1)) {
-                            u_desc[i - 1].binding = (u32)lua_tointeger(L, -1);
+                            u_desc[i - 1].binding = neko_lua_to<u32>(L, -1);
                         }
                         lua_pop(L, 1);  // # -1
 
@@ -2049,7 +2007,7 @@ static int __neko_bind_graphics_apply_bindings(lua_State* L) {
                         lua_pushstring(L, "binding");  // # -1
                         lua_gettable(L, -2);           // pop # -1
                         if (lua_isinteger(L, -1)) {
-                            ib_desc[i - 1].binding = (u32)lua_tointeger(L, -1);
+                            ib_desc[i - 1].binding = neko_lua_to<u32>(L, -1);
                         }
                         lua_pop(L, 1);  // # -1
 
@@ -2078,7 +2036,7 @@ static int __neko_bind_graphics_apply_bindings(lua_State* L) {
                         lua_pushstring(L, "binding");  // # -1
                         lua_gettable(L, -2);           // pop # -1
                         if (lua_isinteger(L, -1)) {
-                            sb_desc[i - 1].binding = (u32)lua_tointeger(L, -1);
+                            sb_desc[i - 1].binding = neko_lua_to<u32>(L, -1);
                         }
                         lua_pop(L, 1);  // # -1
 
@@ -2295,7 +2253,38 @@ static int __neko_bind_graphics_renderpass_end(lua_State* L) {
 }
 
 static int __neko_bind_graphics_draw(lua_State* L) {
-    neko_graphics_draw_desc_t draw_desc = {.start = 0, .count = 6};
+    neko_graphics_draw_desc_t draw_desc = neko_default_val();
+
+    if (!lua_isnil(L, -1)) {
+        luaL_checktype(L, -1, LUA_TTABLE);
+
+        lua_pushstring(L, "start");
+        lua_gettable(L, -2);
+        if (lua_isinteger(L, -1))
+            draw_desc.start = lua_tointeger(L, -1);
+        else
+            neko_assert(false);
+        lua_pop(L, 1);
+
+        lua_pushstring(L, "count");
+        lua_gettable(L, -2);
+        if (lua_isinteger(L, -1))
+            draw_desc.count = lua_tointeger(L, -1);
+        else
+            neko_assert(false);
+        lua_pop(L, 1);
+
+        lua_pushstring(L, "instances");
+        lua_gettable(L, -2);
+        if (lua_isinteger(L, -1)) draw_desc.instances = lua_tointeger(L, -1);
+        lua_pop(L, 1);
+
+        lua_pushstring(L, "base_vertex");
+        lua_gettable(L, -2);
+        if (lua_isinteger(L, -1)) draw_desc.base_vertex = lua_tointeger(L, -1);
+        lua_pop(L, 1);
+    }
+
     neko_graphics_draw(g_client_userdata.cb, &draw_desc);
     return 0;
 }
@@ -2795,10 +2784,6 @@ int open_neko(lua_State* L) {
             {"sprite_batch_make_sprite", __neko_bind_sprite_batch_make_sprite},
             {"sprite_batch_push_sprite", __neko_bind_sprite_batch_push_sprite},
             {"sprite_batch_end", __neko_bind_sprite_batch_end},
-
-            {"particle_create", __neko_bind_particle_create},
-            {"particle_render", __neko_bind_particle_render},
-            {"particle_end", __neko_bind_particle_end},
 
             {"gameobject_inspect", __neko_bind_gameobject_inspect},
 

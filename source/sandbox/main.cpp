@@ -13,14 +13,11 @@
 #include "engine/neko.h"
 #include "engine/neko.hpp"
 #include "engine/neko_platform.h"
-#include "engine/util/neko_ai.h"
-#include "engine/util/neko_asset.h"
-#include "engine/util/neko_gfxt.h"
-#include "engine/util/neko_idraw.h"
-#include "engine/util/neko_imgui.h"
-#include "engine/util/neko_script.h"
-#include "engine/util/neko_sprite.h"
-#include "engine/util/neko_tiled.h"
+#include "engine/neko_ai.h"
+#include "engine/neko_asset.h"
+#include "engine/neko_idraw.h"
+#include "engine/neko_imgui.h"
+#include "engine/neko_script.h"
 
 // binding
 #include "neko_api.h"
@@ -832,7 +829,7 @@ neko_script_binary_t *ns_load_module(char *name) {
 }
 
 // lua
-#include "engine/util/neko_lua.hpp"
+#include "engine/neko_lua.h"
 
 void neko_register(lua_State *L);
 

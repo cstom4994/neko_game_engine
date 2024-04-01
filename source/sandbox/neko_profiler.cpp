@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "engine/util/neko_asset.h"
+#include "engine/neko_asset.h"
 
 u64 __neko_profiler_get_clock_frequency();
 

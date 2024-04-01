@@ -167,7 +167,7 @@ typedef struct neko_asset_mesh_raw_data_t {
 } neko_asset_mesh_raw_data_t;
 
 NEKO_API_DECL bool neko_asset_mesh_load_from_file(const_str path, void* out, neko_asset_mesh_decl_t* decl, void* data_out, size_t data_size);
-NEKO_API_DECL bool neko_util_load_gltf_data_from_file(const_str path, neko_asset_mesh_decl_t* decl, neko_asset_mesh_raw_data_t** out, u32* mesh_count);
+// NEKO_API_DECL bool neko_util_load_gltf_data_from_file(const_str path, neko_asset_mesh_decl_t* decl, neko_asset_mesh_raw_data_t** out, u32* mesh_count);
 // NEKO_API_DECL bool neko_util_load_gltf_data_from_memory(const void* memory, size_t sz, neko_asset_mesh_decl_t* decl, neko_asset_mesh_raw_data_t** out, u32* mesh_count);
 
 /*==========================
@@ -554,5 +554,143 @@ NEKO_API_DECL int neko_font_fill_vertex_buffer(neko_font_t* font, const char* te
 
 // 解码 utf-8 代码点并返回字符串指针
 NEKO_API_DECL const char* neko_font_decode_utf8(const char* text, int* cp);
+
+typedef struct neko_aseprite_frame {
+    s32 duration;
+    f32 u0, v0, u1, v1;
+} neko_aseprite_frame;
+
+typedef struct neko_aseprite_loop {
+    neko_dyn_array(s32) indices;
+} neko_aseprite_loop;
+
+typedef struct neko_aseprite {
+    // neko_array<neko_sprite_frame> frames;
+    neko_dyn_array(neko_aseprite_frame) frames;
+    neko_hash_table(u64, neko_aseprite_loop) by_tag;
+    neko_texture_t img;
+    s32 width;
+    s32 height;
+
+    // #ifdef NEKO_DEBUG
+    u64 mem_used;
+    // #endif
+} neko_aseprite;
+
+typedef struct neko_aseprite_renderer {
+    neko_aseprite* sprite;
+    neko_aseprite_loop* loop;
+    f32 elapsed;
+    s32 current_frame;
+} neko_aseprite_renderer;
+
+NEKO_API_DECL bool neko_aseprite_load(neko_aseprite* spr, const_str filepath);
+NEKO_API_DECL void neko_aseprite_end(neko_aseprite* spr);
+NEKO_API_DECL void neko_aseprite_renderer_play(neko_aseprite_renderer* sr, const_str tag);
+NEKO_API_DECL void neko_aseprite_renderer_update(neko_aseprite_renderer* sr, f32 dt);
+NEKO_API_DECL void neko_aseprite_renderer_set_frame(neko_aseprite_renderer* sr, s32 frame);
+
+// c2
+#include "engine/builtin/cute_c2.h"
+
+#define SPRITE_SCALE 3
+
+typedef struct tile_s {
+    u32 id;
+    u32 tileset_id;
+} tile_t;
+
+typedef struct tileset_s {
+    neko_handle(neko_graphics_texture_t) texture;
+    u32 tile_count;
+    u32 tile_width;
+    u32 tile_height;
+    u32 first_gid;
+
+    u32 width, height;
+} tileset_t;
+
+typedef struct layer_s {
+    tile_t* tiles;
+    u32 width;
+    u32 height;
+
+    neko_color_t tint;
+} layer_t;
+
+typedef struct object_s {
+    u32 id;
+    s32 x, y, width, height;
+    C2_TYPE phy_type;
+    c2AABB aabb;
+    union {
+        c2AABB box;
+        c2Poly poly;
+    } phy;
+} object_t;
+
+typedef struct object_group_s {
+    neko_dyn_array(object_t) objects;
+
+    neko_color_t color;
+
+    const_str name;
+} object_group_t;
+
+typedef struct map_s {
+    neko_xml_document_t* doc;  // xml doc
+    neko_dyn_array(tileset_t) tilesets;
+    neko_dyn_array(object_group_t) object_groups;
+    neko_dyn_array(layer_t) layers;
+} map_t;
+
+NEKO_API_DECL void neko_tiled_load(map_t* map, const_str tmx_path, const_str res_path);
+NEKO_API_DECL void neko_tiled_unload(map_t* map);
+
+typedef struct neko_tiled_quad_s {
+    u32 tileset_id;
+    neko_handle(neko_graphics_texture_t) texture;
+    neko_vec2 texture_size;
+    neko_vec2 position;
+    neko_vec2 dimentions;
+    neko_vec4 rectangle;
+    neko_color_t color;
+    bool use_texture;
+} neko_tiled_quad_t;
+
+#define BATCH_SIZE 2048
+
+#define IND_PER_QUAD 6
+
+#define VERTS_PER_QUAD 4   // 一次发送多少个verts数据
+#define FLOATS_PER_VERT 9  // 每个verts数据的大小
+
+typedef struct neko_tiled_quad_list_s {
+    neko_dyn_array(neko_tiled_quad_t) quad_list;  // quad 绘制队列
+} neko_tiled_quad_list_t;
+
+typedef struct neko_tiled_renderer {
+    neko_handle(neko_graphics_vertex_buffer_t) vb;
+    neko_handle(neko_graphics_index_buffer_t) ib;
+    neko_handle(neko_graphics_pipeline_t) pip;
+    neko_handle(neko_graphics_shader_t) shader;
+    neko_handle(neko_graphics_uniform_t) u_camera;
+    neko_handle(neko_graphics_uniform_t) u_batch_tex;
+    neko_handle(neko_graphics_texture_t) batch_texture;       // 当前绘制所用贴图
+    neko_hash_table(u32, neko_tiled_quad_list_t) quad_table;  // 分层绘制哈希表
+
+    u32 quad_count;
+
+    map_t map;  // tiled data
+
+    neko_mat4 camera_mat;
+} neko_tiled_renderer;
+
+NEKO_API_DECL void neko_tiled_render_init(neko_command_buffer_t* cb, neko_tiled_renderer* renderer, const_str vert_src, const_str frag_src);
+NEKO_API_DECL void neko_tiled_render_deinit(neko_tiled_renderer* renderer);
+NEKO_API_DECL void neko_tiled_render_begin(neko_command_buffer_t* cb, neko_tiled_renderer* renderer);
+NEKO_API_DECL void neko_tiled_render_flush(neko_command_buffer_t* cb, neko_tiled_renderer* renderer);
+NEKO_API_DECL void neko_tiled_render_push(neko_command_buffer_t* cb, neko_tiled_renderer* renderer, neko_tiled_quad_t quad);
+NEKO_API_DECL void neko_tiled_render_draw(neko_command_buffer_t* cb, neko_tiled_renderer* renderer);
 
 #endif  // NEKO_ASSET_H

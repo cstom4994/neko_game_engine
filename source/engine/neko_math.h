@@ -2,6 +2,8 @@
 #ifndef NEKO_MATH_H
 #define NEKO_MATH_H
 
+#include "neko.h"
+
 /*========================
 // NEKO_MATH
 ========================*/
