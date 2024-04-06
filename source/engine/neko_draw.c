@@ -1,7 +1,6 @@
 
-#include "engine/neko_idraw.h"
-
-#include "engine/builtin/neko_png.h"
+#include "engine/neko_asset.h"
+#include "engine/neko_engine.h"
 
 // STB
 #include "deps/imgui/imstb_rectpack.h"
@@ -1993,8 +1992,8 @@ static const char __neko_proggy_clean_ttf_compressed_data_base85[11980 + 1] =
 
 NEKO_API_DECL const char* __neko_internal_GetDefaultCompressedFontDataTTFBase85() { return __neko_proggy_clean_ttf_compressed_data_base85; }
 
-NEKO_API_DECL neko_gfxt_pipeline_t neko_gfxt_pipeline_create(const neko_gfxt_pipeline_desc_t* desc) {
-    neko_gfxt_pipeline_t pip = neko_default_val();
+NEKO_API_DECL neko_draw_pipeline_t neko_draw_pipeline_create(const neko_draw_pipeline_desc_t* desc) {
+    neko_draw_pipeline_t pip = neko_default_val();
 
     if (!desc) {
         neko_assert(false);
@@ -2002,26 +2001,26 @@ NEKO_API_DECL neko_gfxt_pipeline_t neko_gfxt_pipeline_create(const neko_gfxt_pip
     }
 
     pip.hndl = neko_graphics_pipeline_create(&desc->pip_desc);
-    pip.ublock = neko_gfxt_uniform_block_create(&desc->ublock_desc);
+    pip.ublock = neko_draw_uniform_block_create(&desc->ublock_desc);
     pip.desc = desc->pip_desc;
     pip.desc.layout.attrs = neko_malloc(desc->pip_desc.layout.size);
     memcpy(pip.desc.layout.attrs, desc->pip_desc.layout.attrs, desc->pip_desc.layout.size);
     return pip;
 }
 
-NEKO_API_DECL neko_gfxt_uniform_block_t neko_gfxt_uniform_block_create(const neko_gfxt_uniform_block_desc_t* desc) {
-    neko_gfxt_uniform_block_t block = neko_default_val();
+NEKO_API_DECL neko_draw_uniform_block_t neko_draw_uniform_block_create(const neko_draw_uniform_block_desc_t* desc) {
+    neko_draw_uniform_block_t block = neko_default_val();
 
     if (!desc) return block;
 
     // Iterate through layout, construct uniforms, place them into hash table
     uint32_t offset = 0;
     uint32_t image2D_offset = 0;
-    uint32_t ct = desc->size / sizeof(neko_gfxt_uniform_desc_t);
+    uint32_t ct = desc->size / sizeof(neko_draw_uniform_desc_t);
     for (uint32_t i = 0; i < ct; ++i) {
-        neko_gfxt_uniform_desc_t* ud = &desc->layout[i];
+        neko_draw_uniform_desc_t* ud = &desc->layout[i];
 
-        neko_gfxt_uniform_t u = neko_default_val();
+        neko_draw_uniform_t u = neko_default_val();
         neko_graphics_uniform_desc_t u_desc = neko_default_val();
         neko_graphics_uniform_layout_desc_t u_layout = neko_default_val();
         u_layout.type = ud->type;
@@ -2084,10 +2083,10 @@ NEKO_API_DECL neko_gfxt_uniform_block_t neko_gfxt_uniform_block_create(const nek
     return block;
 }
 
-NEKO_API_DECL neko_gfxt_texture_t neko_gfxt_texture_create(neko_graphics_texture_desc_t* desc) { return neko_graphics_texture_create(desc); }
+NEKO_API_DECL neko_draw_texture_t neko_draw_texture_create(neko_graphics_texture_desc_t* desc) { return neko_graphics_texture_create(desc); }
 
-NEKO_API_DECL neko_gfxt_material_t neko_gfxt_material_create(neko_gfxt_material_desc_t* desc) {
-    neko_gfxt_material_t mat = neko_default_val();
+NEKO_API_DECL neko_draw_material_t neko_draw_material_create(neko_draw_material_desc_t* desc) {
+    neko_draw_material_t mat = neko_default_val();
 
     if (!desc) {
         neko_assert(false);
@@ -2095,8 +2094,8 @@ NEKO_API_DECL neko_gfxt_material_t neko_gfxt_material_create(neko_gfxt_material_
     }
 
     // Set desc information to defaults if not provided.
-    if (!desc->pip_func.func) desc->pip_func.func = neko_gfxt_raw_data_default_impl;
-    neko_gfxt_pipeline_t* pip = NEKO_GFXT_RAW_DATA(&desc->pip_func, neko_gfxt_pipeline_t);
+    if (!desc->pip_func.func) desc->pip_func.func = neko_draw_raw_data_default_impl;
+    neko_draw_pipeline_t* pip = NEKO_GFXT_RAW_DATA(&desc->pip_func, neko_draw_pipeline_t);
     neko_assert(pip);
 
     mat.desc = *desc;
@@ -2108,25 +2107,25 @@ NEKO_API_DECL neko_gfxt_material_t neko_gfxt_material_create(neko_gfxt_material_
     return mat;
 }
 
-NEKO_API_DECL neko_gfxt_mesh_t neko_gfxt_mesh_create(const neko_gfxt_mesh_desc_t* desc) {
-    neko_gfxt_mesh_t mesh = neko_default_val();
+NEKO_API_DECL neko_draw_mesh_t neko_draw_mesh_create(const neko_draw_mesh_desc_t* desc) {
+    neko_draw_mesh_t mesh = neko_default_val();
 
     if (!desc) {
         return mesh;
     }
 
-    const uint32_t mesh_count = desc->size / sizeof(neko_gfxt_mesh_raw_data_t);
+    const uint32_t mesh_count = desc->size / sizeof(neko_draw_mesh_raw_data_t);
 
     // Process all mesh data, add meshes
     for (uint32_t i = 0; i < mesh_count; ++i) {
-        neko_gfxt_mesh_raw_data_t* m = &desc->meshes[i];
+        neko_draw_mesh_raw_data_t* m = &desc->meshes[i];
 
         for (uint32_t p = 0; p < neko_dyn_array_size(m->primitives); ++p) {
             // Get raw vertex data
-            neko_gfxt_mesh_vertex_data_t* vdata = &m->primitives[p];
+            neko_draw_mesh_vertex_data_t* vdata = &m->primitives[p];
 
             // Construct primitive
-            neko_gfxt_mesh_primitive_t prim = neko_default_val();
+            neko_draw_mesh_primitive_t prim = neko_default_val();
             prim.count = vdata->count;
 
             // Positions
@@ -2242,7 +2241,7 @@ NEKO_API_DECL neko_gfxt_mesh_t neko_gfxt_mesh_create(const neko_gfxt_mesh_desc_t
     return mesh;
 }
 
-NEKO_API_DECL void neko_gfxt_mesh_update_or_create(neko_gfxt_mesh_t* mesh, const neko_gfxt_mesh_desc_t* desc) {
+NEKO_API_DECL void neko_draw_mesh_update_or_create(neko_draw_mesh_t* mesh, const neko_draw_mesh_desc_t* desc) {
     if (!desc || !mesh) {
         return;
     }
@@ -2250,25 +2249,25 @@ NEKO_API_DECL void neko_gfxt_mesh_update_or_create(neko_gfxt_mesh_t* mesh, const
     /*
     // Need to create mesh if not already done
     if (neko_dyn_array_empty(mesh->primitives)) {
-        *mesh = neko_gfxt_mesh_create(desc);
+        *mesh = neko_draw_mesh_create(desc);
         return;
     }
     */
 
-    const uint32_t mesh_count = desc->size / sizeof(neko_gfxt_mesh_raw_data_t);
+    const uint32_t mesh_count = desc->size / sizeof(neko_draw_mesh_raw_data_t);
 
     // Process all mesh data, add meshes
     for (uint32_t i = 0; i < mesh_count; ++i) {
-        neko_gfxt_mesh_raw_data_t* m = &desc->meshes[i];
+        neko_draw_mesh_raw_data_t* m = &desc->meshes[i];
 
         for (uint32_t p = 0; p < neko_dyn_array_size(m->primitives); ++p) {
             // Get raw vertex data
-            neko_gfxt_mesh_vertex_data_t* vdata = &m->primitives[p];
+            neko_draw_mesh_vertex_data_t* vdata = &m->primitives[p];
 
             // Construct or retrieve mesh primitive
-            neko_gfxt_mesh_primitive_t* prim = NULL;
+            neko_draw_mesh_primitive_t* prim = NULL;
             if (neko_dyn_array_empty(mesh->primitives) || neko_dyn_array_size(mesh->primitives) < p) {
-                neko_gfxt_mesh_primitive_t dprim = neko_default_val();
+                neko_draw_mesh_primitive_t dprim = neko_default_val();
                 neko_dyn_array_push(mesh->primitives, dprim);
             }
             prim = &mesh->primitives[p];
@@ -2445,8 +2444,8 @@ NEKO_API_DECL void neko_gfxt_mesh_update_or_create(neko_gfxt_mesh_t* mesh, const
     }
 }
 
-NEKO_API_DECL neko_gfxt_renderable_t neko_gfxt_renderable_create(const neko_gfxt_renderable_desc_t* desc) {
-    neko_gfxt_renderable_t rend = neko_default_val();
+NEKO_API_DECL neko_draw_renderable_t neko_draw_renderable_create(const neko_draw_renderable_desc_t* desc) {
+    neko_draw_renderable_t rend = neko_default_val();
 
     if (!desc) {
         return rend;
@@ -2459,18 +2458,18 @@ NEKO_API_DECL neko_gfxt_renderable_t neko_gfxt_renderable_create(const neko_gfxt
 }
 
 //=== Destruction ===//
-NEKO_API_DECL void neko_gfxt_texture_destroy(neko_gfxt_texture_t* texture) { neko_graphics_texture_destroy(*texture); }
+NEKO_API_DECL void neko_draw_texture_destroy(neko_draw_texture_t* texture) { neko_graphics_texture_destroy(*texture); }
 
-NEKO_API_DECL void neko_gfxt_material_destroy(neko_gfxt_material_t* material) {
+NEKO_API_DECL void neko_draw_material_destroy(neko_draw_material_t* material) {
     // Destroy all material data
     neko_byte_buffer_free(&material->uniform_data);
     neko_byte_buffer_free(&material->image_buffer_data);
 }
 
-NEKO_API_DECL void neko_gfxt_mesh_destroy(neko_gfxt_mesh_t* mesh) {
+NEKO_API_DECL void neko_draw_mesh_destroy(neko_draw_mesh_t* mesh) {
     // Iterate through all primitives, destroy all vertex and index buffers
     for (uint32_t p = 0; p < neko_dyn_array_size(mesh->primitives); ++p) {
-        neko_gfxt_mesh_primitive_t* prim = &mesh->primitives[p];
+        neko_draw_mesh_primitive_t* prim = &mesh->primitives[p];
 
         // Free index buffer
         if (prim->indices.id) neko_graphics_index_buffer_destroy(prim->indices);
@@ -2498,9 +2497,9 @@ NEKO_API_DECL void neko_gfxt_mesh_destroy(neko_gfxt_mesh_t* mesh) {
     }
 }
 
-NEKO_API_DECL void neko_gfxt_uniform_block_destroy(neko_gfxt_uniform_block_t* ub) {
+NEKO_API_DECL void neko_draw_uniform_block_destroy(neko_draw_uniform_block_t* ub) {
     for (uint32_t i = 0; i < neko_dyn_array_size(ub->uniforms); ++i) {
-        neko_gfxt_uniform_t* u = &ub->uniforms[i];
+        neko_draw_uniform_t* u = &ub->uniforms[i];
         neko_graphics_uniform_destroy(u->hndl);
     }
 
@@ -2508,9 +2507,9 @@ NEKO_API_DECL void neko_gfxt_uniform_block_destroy(neko_gfxt_uniform_block_t* ub
     neko_hash_table_free(ub->lookup);
 }
 
-NEKO_API_DECL void neko_gfxt_pipeline_destroy(neko_gfxt_pipeline_t* pipeline) {
+NEKO_API_DECL void neko_draw_pipeline_destroy(neko_draw_pipeline_t* pipeline) {
     // Destroy uniform block for pipeline
-    neko_gfxt_uniform_block_destroy(&pipeline->ublock);
+    neko_draw_uniform_block_destroy(&pipeline->ublock);
 
     // Free shaders (if responsible for them)
     neko_graphics_shader_destroy(pipeline->desc.raster.shader);
@@ -2523,14 +2522,14 @@ NEKO_API_DECL void neko_gfxt_pipeline_destroy(neko_gfxt_pipeline_t* pipeline) {
 
 //=== Copy API ===//
 
-NEKO_API_DECL neko_gfxt_material_t neko_gfxt_material_deep_copy(neko_gfxt_material_t* src) {
-    neko_gfxt_material_t mat = neko_gfxt_material_create(&src->desc);
+NEKO_API_DECL neko_draw_material_t neko_draw_material_deep_copy(neko_draw_material_t* src) {
+    neko_draw_material_t mat = neko_draw_material_create(&src->desc);
     neko_byte_buffer_copy_contents(&mat.uniform_data, &src->uniform_data);
     return mat;
 }
 
 //=== Pipeline API ===//
-NEKO_API_DECL neko_gfxt_uniform_t* neko_gfxt_pipeline_get_uniform(neko_gfxt_pipeline_t* pip, const char* name) {
+NEKO_API_DECL neko_draw_uniform_t* neko_draw_pipeline_get_uniform(neko_draw_pipeline_t* pip, const char* name) {
     uint64_t key = neko_hash_str64(name);
     if (!neko_hash_table_exists(pip->ublock.lookup, key)) {
         return NULL;
@@ -2543,10 +2542,10 @@ NEKO_API_DECL neko_gfxt_uniform_t* neko_gfxt_pipeline_get_uniform(neko_gfxt_pipe
 //=== Material API ===//
 
 NEKO_API_DECL
-void neko_gfxt_material_set_uniform(neko_gfxt_material_t* mat, const char* name, const void* data) {
+void neko_draw_material_set_uniform(neko_draw_material_t* mat, const char* name, const void* data) {
     if (!mat || !name || !data) return;
 
-    neko_gfxt_pipeline_t* pip = NEKO_GFXT_RAW_DATA(&mat->desc.pip_func, neko_gfxt_pipeline_t);
+    neko_draw_pipeline_t* pip = NEKO_GFXT_RAW_DATA(&mat->desc.pip_func, neko_draw_pipeline_t);
     neko_assert(pip);
 
     // Get key for name lookup
@@ -2558,7 +2557,7 @@ void neko_gfxt_material_set_uniform(neko_gfxt_material_t* mat, const char* name,
 
     // Based on name, need to get uniform
     uint32_t uidx = neko_hash_table_get(pip->ublock.lookup, key);
-    neko_gfxt_uniform_t* u = &pip->ublock.uniforms[uidx];
+    neko_draw_uniform_t* u = &pip->ublock.uniforms[uidx];
 
     // Seek to beginning of data
     neko_byte_buffer_seek_to_beg(&mat->uniform_data);
@@ -2606,35 +2605,35 @@ void neko_gfxt_material_set_uniform(neko_gfxt_material_t* mat, const char* name,
     }
 }
 
-NEKO_API_DECL neko_gfxt_pipeline_t* neko_gfxt_material_get_pipeline(neko_gfxt_material_t* mat) {
-    neko_gfxt_pipeline_t* pip = NEKO_GFXT_RAW_DATA(&mat->desc.pip_func, neko_gfxt_pipeline_t);
+NEKO_API_DECL neko_draw_pipeline_t* neko_draw_material_get_pipeline(neko_draw_material_t* mat) {
+    neko_draw_pipeline_t* pip = NEKO_GFXT_RAW_DATA(&mat->desc.pip_func, neko_draw_pipeline_t);
     return pip;
 }
 
 NEKO_API_DECL
-void neko_gfxt_material_bind(neko_command_buffer_t* cb, neko_gfxt_material_t* mat) {
-    neko_gfxt_material_bind_pipeline(cb, mat);
-    neko_gfxt_material_bind_uniforms(cb, mat);
+void neko_draw_material_bind(neko_command_buffer_t* cb, neko_draw_material_t* mat) {
+    neko_draw_material_bind_pipeline(cb, mat);
+    neko_draw_material_bind_uniforms(cb, mat);
 }
 
 NEKO_API_DECL
-void neko_gfxt_material_bind_pipeline(neko_command_buffer_t* cb, neko_gfxt_material_t* mat) {
+void neko_draw_material_bind_pipeline(neko_command_buffer_t* cb, neko_draw_material_t* mat) {
     // Binds the pipeline
-    neko_gfxt_pipeline_t* pip = NEKO_GFXT_RAW_DATA(&mat->desc.pip_func, neko_gfxt_pipeline_t);
+    neko_draw_pipeline_t* pip = NEKO_GFXT_RAW_DATA(&mat->desc.pip_func, neko_draw_pipeline_t);
     neko_assert(pip);
     neko_graphics_pipeline_bind(cb, pip->hndl);
 }
 
 NEKO_API_DECL
-void neko_gfxt_material_bind_uniforms(neko_command_buffer_t* cb, neko_gfxt_material_t* mat) {
+void neko_draw_material_bind_uniforms(neko_command_buffer_t* cb, neko_draw_material_t* mat) {
     if (!mat) return;
 
-    neko_gfxt_pipeline_t* pip = NEKO_GFXT_RAW_DATA(&mat->desc.pip_func, neko_gfxt_pipeline_t);
+    neko_draw_pipeline_t* pip = NEKO_GFXT_RAW_DATA(&mat->desc.pip_func, neko_draw_pipeline_t);
     neko_assert(pip);
 
     // Grab uniform layout from pipeline
     for (uint32_t i = 0; i < neko_dyn_array_size(pip->ublock.uniforms); ++i) {
-        neko_gfxt_uniform_t* u = &pip->ublock.uniforms[i];
+        neko_draw_uniform_t* u = &pip->ublock.uniforms[i];
         neko_graphics_bind_desc_t bind = neko_default_val();
 
         // Need to buffer these up so it's a single call...
@@ -2663,12 +2662,12 @@ void neko_gfxt_material_bind_uniforms(neko_command_buffer_t* cb, neko_gfxt_mater
 }
 
 // Mesh API
-NEKO_API_DECL void neko_gfxt_mesh_draw(neko_command_buffer_t* cb, neko_gfxt_mesh_t* mp) {
+NEKO_API_DECL void neko_draw_mesh_draw(neko_command_buffer_t* cb, neko_draw_mesh_t* mp) {
     /*
     // For each primitive in mesh
     for (uint32_t i = 0; i < neko_dyn_array_size(mp->primitives); ++i)
     {
-        neko_gfxt_mesh_primitive_t* prim = &mp->primitives[i];
+        neko_draw_mesh_primitive_t* prim = &mp->primitives[i];
 
         // Bindings for all buffers: vertex, index, uniform, sampler
         neko_graphics_bind_desc_t binds = neko_default_val();
@@ -2687,14 +2686,14 @@ NEKO_API_DECL void neko_gfxt_mesh_draw(neko_command_buffer_t* cb, neko_gfxt_mesh
     */
 }
 
-NEKO_API_DECL void neko_gfxt_mesh_primitive_draw_layout(neko_command_buffer_t* cb, neko_gfxt_mesh_primitive_t* prim, neko_gfxt_mesh_layout_t* layout, size_t layout_size, u32 instance_count) {
+NEKO_API_DECL void neko_draw_mesh_primitive_draw_layout(neko_command_buffer_t* cb, neko_draw_mesh_primitive_t* prim, neko_draw_mesh_layout_t* layout, size_t layout_size, u32 instance_count) {
     if (!layout || !layout_size || !prim || !cb) {
         return;
     }
 
     neko_graphics_bind_vertex_buffer_desc_t vbos[8] = {0};  // Make this a define
     uint32_t l = 0;
-    const uint32_t ct = layout_size / sizeof(neko_gfxt_mesh_layout_t);
+    const uint32_t ct = layout_size / sizeof(neko_draw_mesh_layout_t);
     for (uint32_t a = 0; a < ct; ++a) {
         vbos[l].data_type = NEKO_GRAPHICS_VERTEX_DATA_NONINTERLEAVED;
         switch (layout[a].type) {
@@ -2754,32 +2753,32 @@ NEKO_API_DECL void neko_gfxt_mesh_primitive_draw_layout(neko_command_buffer_t* c
     neko_graphics_draw(cb, &ddesc);
 }
 
-NEKO_API_DECL void neko_gfxt_mesh_draw_layout(neko_command_buffer_t* cb, neko_gfxt_mesh_t* mesh, neko_gfxt_mesh_layout_t* layout, size_t layout_size) {
+NEKO_API_DECL void neko_draw_mesh_draw_layout(neko_command_buffer_t* cb, neko_draw_mesh_t* mesh, neko_draw_mesh_layout_t* layout, size_t layout_size) {
     if (!layout || !mesh || !cb) {
         return;
     }
 
-    uint32_t ct = layout_size / sizeof(neko_gfxt_mesh_layout_t);
+    uint32_t ct = layout_size / sizeof(neko_draw_mesh_layout_t);
 
     // For each primitive in mesh
     for (uint32_t i = 0; i < neko_dyn_array_size(mesh->primitives); ++i) {
-        neko_gfxt_mesh_primitive_t* prim = &mesh->primitives[i];
-        neko_gfxt_mesh_primitive_draw_layout(cb, prim, layout, layout_size, 1);
+        neko_draw_mesh_primitive_t* prim = &mesh->primitives[i];
+        neko_draw_mesh_primitive_draw_layout(cb, prim, layout, layout_size, 1);
     }
 }
 
-NEKO_API_DECL void neko_gfxt_mesh_draw_materials(neko_command_buffer_t* cb, neko_gfxt_mesh_t* mesh, neko_gfxt_material_t** mats, size_t mats_size) {
+NEKO_API_DECL void neko_draw_mesh_draw_materials(neko_command_buffer_t* cb, neko_draw_mesh_t* mesh, neko_draw_material_t** mats, size_t mats_size) {
     // Iterate through primitives, draw each primitive with assigned mat
     if (!mats || !mats_size || !cb || !mesh) {
         return;
     }
 
-    const uint32_t ct = mats_size / sizeof(neko_gfxt_material_t*);
-    neko_gfxt_material_t* mat = NULL;
+    const uint32_t ct = mats_size / sizeof(neko_draw_material_t*);
+    neko_draw_material_t* mat = NULL;
 
     // For each primitive in mesh
     for (uint32_t i = 0; i < neko_dyn_array_size(mesh->primitives); ++i) {
-        neko_gfxt_mesh_primitive_t* prim = &mesh->primitives[i];
+        neko_draw_mesh_primitive_t* prim = &mesh->primitives[i];
 
         // Get corresponding material, if available
         uint32_t mat_idx = i < ct ? i : ct - 1;
@@ -2789,45 +2788,45 @@ NEKO_API_DECL void neko_gfxt_mesh_draw_materials(neko_command_buffer_t* cb, neko
         if (!mat) continue;
 
         // Bind material pipeline and uniforms
-        neko_gfxt_material_bind(cb, mat);
+        neko_draw_material_bind(cb, mat);
 
         // Get pipeline
-        neko_gfxt_pipeline_t* pip = neko_gfxt_material_get_pipeline(mat);
+        neko_draw_pipeline_t* pip = neko_draw_material_get_pipeline(mat);
 
-        neko_gfxt_mesh_primitive_draw_layout(cb, prim, pip->mesh_layout, neko_dyn_array_size(pip->mesh_layout) * sizeof(neko_gfxt_mesh_layout_t), 1);
+        neko_draw_mesh_primitive_draw_layout(cb, prim, pip->mesh_layout, neko_dyn_array_size(pip->mesh_layout) * sizeof(neko_draw_mesh_layout_t), 1);
     }
 }
 
-NEKO_API_DECL void neko_gfxt_mesh_draw_material(neko_command_buffer_t* cb, neko_gfxt_mesh_t* mesh, neko_gfxt_material_t* mat) {
+NEKO_API_DECL void neko_draw_mesh_draw_material(neko_command_buffer_t* cb, neko_draw_mesh_t* mesh, neko_draw_material_t* mat) {
     if (!mat || !mesh || !cb) {
         return;
     }
 
-    neko_gfxt_pipeline_t* pip = neko_gfxt_material_get_pipeline(mat);
-    neko_gfxt_mesh_draw_layout(cb, mesh, pip->mesh_layout, neko_dyn_array_size(pip->mesh_layout) * sizeof(neko_gfxt_mesh_layout_t));
+    neko_draw_pipeline_t* pip = neko_draw_material_get_pipeline(mat);
+    neko_draw_mesh_draw_layout(cb, mesh, pip->mesh_layout, neko_dyn_array_size(pip->mesh_layout) * sizeof(neko_draw_mesh_layout_t));
 }
 
-NEKO_API_DECL void neko_gfxt_mesh_draw_pipeline(neko_command_buffer_t* cb, neko_gfxt_mesh_t* mesh, neko_gfxt_pipeline_t* pip) {
+NEKO_API_DECL void neko_draw_mesh_draw_pipeline(neko_command_buffer_t* cb, neko_draw_mesh_t* mesh, neko_draw_pipeline_t* pip) {
     if (!pip || !mesh || !cb) {
         return;
     }
 
-    neko_gfxt_mesh_draw_layout(cb, mesh, pip->mesh_layout, neko_dyn_array_size(pip->mesh_layout) * sizeof(neko_gfxt_mesh_layout_t));
+    neko_draw_mesh_draw_layout(cb, mesh, pip->mesh_layout, neko_dyn_array_size(pip->mesh_layout) * sizeof(neko_draw_mesh_layout_t));
 }
 
 // Util API
 NEKO_API_DECL
-void* neko_gfxt_raw_data_default_impl(NEKO_GFXT_HNDL hndl, void* user_data) { return hndl; }
+void* neko_draw_raw_data_default_impl(NEKO_GFXT_HNDL hndl, void* user_data) { return hndl; }
 
-NEKO_API_DECL void neko_gfxt_mesh_import_options_free(neko_gfxt_mesh_import_options_t* opt) {
+NEKO_API_DECL void neko_draw_mesh_import_options_free(neko_draw_mesh_import_options_t* opt) {
     if (opt->layout) {
         neko_dyn_array_free(opt->layout);
     }
 }
 
 NEKO_API_DECL
-neko_gfxt_mesh_t neko_gfxt_mesh_load_from_file(const char* path, neko_gfxt_mesh_import_options_t* options) {
-    neko_gfxt_mesh_t mesh = neko_default_val();
+neko_draw_mesh_t neko_draw_mesh_load_from_file(const char* path, neko_draw_mesh_import_options_t* options) {
+    neko_draw_mesh_t mesh = neko_default_val();
 
     if (!neko_platform_file_exists(path)) {
         neko_log_trace("[gfxt] Warning:GFXT:MeshLoadFromFile:File does not exist: %s", path);
@@ -2836,14 +2835,14 @@ neko_gfxt_mesh_t neko_gfxt_mesh_load_from_file(const char* path, neko_gfxt_mesh_
 
     // Mesh data to fill out
     uint32_t mesh_count = 0;
-    neko_gfxt_mesh_raw_data_t* meshes = NULL;
+    neko_draw_mesh_raw_data_t* meshes = NULL;
 
     // Get file extension from path
     neko_transient_buffer(file_ext, 32);
     neko_platform_file_extension(file_ext, 32, path);
 
     if (neko_string_compare_equal(file_ext, "gltf")) {  // GLTF
-        // neko_gfxt_load_gltf_data_from_file(path, options, &meshes, &mesh_count);
+        // neko_draw_load_gltf_data_from_file(path, options, &meshes, &mesh_count);
         neko_assert(false);
     } else if (neko_string_compare_equal(file_ext, "glb")) {  // GLB
         neko_assert(false);
@@ -2852,19 +2851,19 @@ neko_gfxt_mesh_t neko_gfxt_mesh_load_from_file(const char* path, neko_gfxt_mesh_
         return mesh;
     }
 
-    neko_gfxt_mesh_desc_t mdesc = neko_default_val();
+    neko_draw_mesh_desc_t mdesc = neko_default_val();
     mdesc.meshes = meshes;
-    mdesc.size = mesh_count * sizeof(neko_gfxt_mesh_raw_data_t);
+    mdesc.size = mesh_count * sizeof(neko_draw_mesh_raw_data_t);
 
-    mesh = neko_gfxt_mesh_create(&mdesc);
+    mesh = neko_draw_mesh_create(&mdesc);
     mesh.desc = mdesc;
 
     return mesh;
 }
 
 NEKO_API_DECL
-neko_gfxt_mesh_t neko_gfxt_mesh_unit_quad_generate(neko_gfxt_mesh_import_options_t* options) {
-    neko_gfxt_mesh_t mesh = neko_default_val();
+neko_draw_mesh_t neko_draw_mesh_unit_quad_generate(neko_draw_mesh_import_options_t* options) {
+    neko_draw_mesh_t mesh = neko_default_val();
 
     neko_vec3 v_pos[] = {
             neko_v3(-1.0f, -1.0f, 0.f),  // Top Left
@@ -2894,10 +2893,10 @@ neko_gfxt_mesh_t neko_gfxt_mesh_unit_quad_generate(neko_gfxt_mesh_import_options
     };
 
     // Mesh data
-    neko_gfxt_mesh_raw_data_t mesh_data = neko_default_val();
+    neko_draw_mesh_raw_data_t mesh_data = neko_default_val();
 
     // Primitive to upload
-    neko_gfxt_mesh_vertex_data_t vert_data = neko_default_val();
+    neko_draw_mesh_vertex_data_t vert_data = neko_default_val();
     vert_data.positions.data = v_pos;
     vert_data.positions.size = sizeof(v_pos);
     vert_data.normals.data = v_norm;
@@ -2917,16 +2916,16 @@ neko_gfxt_mesh_t neko_gfxt_mesh_unit_quad_generate(neko_gfxt_mesh_import_options
 
     // If no decl, then just use default layout
     /*
-    neko_gfxt_mesh_import_options_t* moptions = options ? options : &def_options;
+    neko_draw_mesh_import_options_t* moptions = options ? options : &def_options;
     uint32_t ct = moptions->size / sizeof(neko_asset_mesh_layout_t);
     */
 
-    neko_gfxt_mesh_desc_t mdesc = neko_default_val();
+    neko_draw_mesh_desc_t mdesc = neko_default_val();
     mdesc.meshes = &mesh_data;
-    mdesc.size = 1 * sizeof(neko_gfxt_mesh_raw_data_t);
+    mdesc.size = 1 * sizeof(neko_draw_mesh_raw_data_t);
     mdesc.keep_data = true;
 
-    mesh = neko_gfxt_mesh_create(&mdesc);
+    mesh = neko_draw_mesh_create(&mdesc);
     mesh.desc = mdesc;
 
     // Free data
@@ -2935,7 +2934,7 @@ neko_gfxt_mesh_t neko_gfxt_mesh_unit_quad_generate(neko_gfxt_mesh_import_options
     return mesh;
 }
 
-neko_handle(neko_graphics_texture_t) neko_gfxt_texture_generate_default() {
+neko_handle(neko_graphics_texture_t) neko_draw_texture_generate_default() {
 // Generate procedural texture data (checkered texture)
 #define NEKO_GFXT_ROW_COL_CT 5
     neko_color_t c0 = NEKO_COLOR_WHITE;
@@ -2977,7 +2976,7 @@ typedef struct neko_shader_io_data_t {
 
 typedef struct neko_pipeline_parse_data_t {
     neko_dyn_array(neko_shader_io_data_t) io_list[3];
-    neko_dyn_array(neko_gfxt_mesh_layout_t) mesh_layout;
+    neko_dyn_array(neko_draw_mesh_layout_t) mesh_layout;
     neko_dyn_array(neko_graphics_vertex_attribute_type) vertex_layout;
     char* code[3];
     char dir[256];
@@ -3160,7 +3159,7 @@ const char* neko_uniform_string_from_type(neko_graphics_uniform_type type) {
 }
 
 // Make this an extern function that can be bubbled up to the app
-bool neko_parse_uniform_special_keyword(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* desc, neko_ppd_t* ppd, neko_graphics_shader_stage_type stage, neko_gfxt_uniform_desc_t* uniform) {
+bool neko_parse_uniform_special_keyword(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_t* ppd, neko_graphics_shader_stage_type stage, neko_draw_uniform_desc_t* uniform) {
     neko_token_t token = lex->current_token;
 
     // Determine if uniform is one of special key defines
@@ -3197,7 +3196,7 @@ bool neko_parse_uniform_special_keyword(neko_lexer_t* lex, neko_gfxt_pipeline_de
     return false;
 }
 
-bool neko_parse_uniforms(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* desc, neko_ppd_t* ppd, neko_graphics_shader_stage_type stage) {
+bool neko_parse_uniforms(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_t* ppd, neko_graphics_shader_stage_type stage) {
     uint32_t image_binding = 0;
 
     if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_LBRACE)) {
@@ -3217,7 +3216,7 @@ bool neko_parse_uniforms(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* desc, nek
             } break;
 
             case NEKO_TOKEN_IDENTIFIER: {
-                neko_gfxt_uniform_desc_t uniform = {0};
+                neko_draw_uniform_desc_t uniform = {0};
                 uniform.stage = stage;
 
                 bool special = neko_parse_uniform_special_keyword(lex, desc, ppd, stage, &uniform);
@@ -3255,7 +3254,7 @@ bool neko_parse_uniforms(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* desc, nek
     return true;
 }
 
-bool neko_parse_io(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* desc, neko_ppd_t* ppd, neko_graphics_shader_stage_type type) {
+bool neko_parse_io(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_t* ppd, neko_graphics_shader_stage_type type) {
     if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_LBRACE)) {
         neko_log_warning("Expected opening left brace. Unable to parse io from .sf resource");
         return false;
@@ -3315,7 +3314,7 @@ bool neko_parse_io(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* desc, neko_ppd_
     return true;
 }
 
-bool neko_parse_code(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* desc, neko_ppd_t* ppd, neko_graphics_shader_stage_type stage) {
+bool neko_parse_code(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_t* ppd, neko_graphics_shader_stage_type stage) {
     if (!neko_lexer_require_token_type(lex, NEKO_TOKEN_LBRACE)) {
         neko_log_warning("Expected opening left brace");
         return false;
@@ -3426,7 +3425,7 @@ bool neko_parse_code(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* desc, neko_pp
     return true;
 }
 
-neko_gfxt_mesh_attribute_type neko_mesh_attribute_type_from_token(const neko_token_t* token) {
+neko_draw_mesh_attribute_type neko_mesh_attribute_type_from_token(const neko_token_t* token) {
     if (neko_token_compare_text(token, "POSITION"))
         return NEKO_ASSET_MESH_ATTRIBUTE_TYPE_POSITION;
     else if (neko_token_compare_text(token, "NORMAL"))
@@ -3465,10 +3464,10 @@ neko_gfxt_mesh_attribute_type neko_mesh_attribute_type_from_token(const neko_tok
         return NEKO_ASSET_MESH_ATTRIBUTE_TYPE_UINT;
 
     // Default
-    return (neko_gfxt_mesh_attribute_type)0x00;
+    return (neko_draw_mesh_attribute_type)0x00;
 }
 
-bool neko_parse_vertex_mesh_attributes(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* desc, neko_ppd_t* ppd) {
+bool neko_parse_vertex_mesh_attributes(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_t* ppd) {
     if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_LBRACE)) {
         neko_assert(false);
     }
@@ -3496,7 +3495,7 @@ bool neko_parse_vertex_mesh_attributes(neko_lexer_t* lex, neko_gfxt_pipeline_des
 
 #define PUSH_ATTR(MESH_ATTR, VERT_ATTR)                                  \
     do {                                                                 \
-        neko_gfxt_mesh_layout_t layout = neko_default_val();             \
+        neko_draw_mesh_layout_t layout = neko_default_val();             \
         layout.type = NEKO_ASSET_MESH_ATTRIBUTE_TYPE_##MESH_ATTR;        \
         neko_dyn_array_push(ppd->mesh_layout, layout);                   \
         neko_graphics_vertex_attribute_desc_t attr = neko_default_val(); \
@@ -3559,9 +3558,9 @@ bool neko_parse_vertex_mesh_attributes(neko_lexer_t* lex, neko_gfxt_pipeline_des
     return true;
 }
 
-bool neko_parse_vertex_attributes(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* desc, neko_ppd_t* ppd) { return neko_parse_vertex_mesh_attributes(lex, desc, ppd); }
+bool neko_parse_vertex_attributes(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_t* ppd) { return neko_parse_vertex_mesh_attributes(lex, desc, ppd); }
 
-bool neko_parse_shader_stage(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* desc, neko_ppd_t* ppd, neko_graphics_shader_stage_type stage) {
+bool neko_parse_shader_stage(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_t* ppd, neko_graphics_shader_stage_type stage) {
     if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_LBRACE)) {
         neko_log_trace("[gfxt] error::neko_pipeline_load_from_file::error parsing raster from .sf resource");
         neko_assert(false);
@@ -3624,7 +3623,7 @@ bool neko_parse_shader_stage(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* desc,
     return true;
 }
 
-bool neko_parse_compute_shader_stage(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* desc, neko_ppd_t* ppd) {
+bool neko_parse_compute_shader_stage(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_t* ppd) {
     neko_parse_block(PIPELINE::COMPUTE_SHADER_STAGE, {
         if (neko_token_compare_text(&token, "uniforms")) {
             if (!neko_parse_uniforms(lex, desc, ppd, NEKO_GRAPHICS_SHADER_STAGE_COMPUTE)) {
@@ -3650,7 +3649,7 @@ bool neko_parse_compute_shader_stage(neko_lexer_t* lex, neko_gfxt_pipeline_desc_
     return true;
 }
 
-bool neko_parse_shader(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* desc, neko_ppd_t* ppd) {
+bool neko_parse_shader(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_t* ppd) {
     if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_LBRACE)) {
         neko_log_warning("Unable to parse shader from .sf resource. Expected opening left brace.");
         return false;
@@ -3702,7 +3701,7 @@ bool neko_parse_shader(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* desc, neko_
     return true;
 }
 
-bool neko_parse_depth(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* pdesc, neko_ppd_t* ppd) {
+bool neko_parse_depth(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, neko_ppd_t* ppd) {
     neko_parse_block(PIPELINE::DEPTH, {
         // Depth function
         if (neko_token_compare_text(&token, "func")) {
@@ -3768,7 +3767,7 @@ bool neko_parse_depth(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* pdesc, neko_
     return true;
 }
 
-bool neko_parse_blend(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* pdesc, neko_ppd_t* ppd) {
+bool neko_parse_blend(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, neko_ppd_t* ppd) {
     neko_parse_block(PIPELINE::BLEND, {
         // Blend function
         if (neko_token_compare_text(&token, "func")) {
@@ -3885,7 +3884,7 @@ bool neko_parse_blend(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* pdesc, neko_
     return true;
 }
 
-bool neko_parse_stencil(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* pdesc, neko_ppd_t* ppd) {
+bool neko_parse_stencil(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, neko_ppd_t* ppd) {
     neko_parse_block(PIPELINE::STENCIL, {
         // Function
         if (neko_token_compare_text(&token, "func")) {
@@ -4065,7 +4064,7 @@ bool neko_parse_stencil(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* pdesc, nek
     return true;
 }
 
-bool neko_parse_raster(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* pdesc, neko_ppd_t* ppd) {
+bool neko_parse_raster(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, neko_ppd_t* ppd) {
     neko_parse_block(PIPELINE::RASTER, {
         // Index Buffer Element Size
         if (neko_token_compare_text(&token, "index_buffer_element_size")) {
@@ -4153,7 +4152,7 @@ bool neko_parse_raster(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* pdesc, neko
     return true;
 }
 
-bool neko_parse_pipeline(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* desc, neko_ppd_t* ppd) {
+bool neko_parse_pipeline(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_t* ppd) {
     // Get next identifier
     while (lex->can_lex(lex)) {
         neko_token_t token = lex->next_token(lex);
@@ -4201,7 +4200,7 @@ bool neko_parse_pipeline(neko_lexer_t* lex, neko_gfxt_pipeline_desc_t* desc, nek
     return true;
 }
 
-char* neko_pipeline_generate_shader_code(neko_gfxt_pipeline_desc_t* pdesc, neko_ppd_t* ppd, neko_graphics_shader_stage_type stage) {
+char* neko_pipeline_generate_shader_code(neko_draw_pipeline_desc_t* pdesc, neko_ppd_t* ppd, neko_graphics_shader_stage_type stage) {
     neko_log_trace("[gfxt] GENERATING CODE...");
 
     // Get major/minor version of shader
@@ -4265,7 +4264,7 @@ char* neko_pipeline_generate_shader_code(neko_gfxt_pipeline_desc_t* pdesc, neko_
 
         // Uniforms
         for (uint32_t i = 0; i < neko_dyn_array_size(pdesc->ublock_desc.layout); ++i) {
-            neko_gfxt_uniform_desc_t* udesc = &pdesc->ublock_desc.layout[i];
+            neko_draw_uniform_desc_t* udesc = &pdesc->ublock_desc.layout[i];
 
             if (udesc->stage != stage) continue;
 
@@ -4369,25 +4368,25 @@ char* neko_pipeline_generate_shader_code(neko_gfxt_pipeline_desc_t* pdesc, neko_
     return src;
 }
 
-NEKO_API_DECL neko_gfxt_pipeline_t neko_gfxt_pipeline_load_from_file(const char* path) {
+NEKO_API_DECL neko_draw_pipeline_t neko_draw_pipeline_load_from_file(const char* path) {
     // Load file, generate lexer off of file data, parse contents for pipeline information
     size_t len = 0;
     char* file_data = neko_platform_read_file_contents(path, "rb", &len);
     neko_assert(file_data);
     neko_log_trace("Parsing pipeline: %s", path);
-    neko_gfxt_pipeline_t pip = neko_gfxt_pipeline_load_from_memory_ext(file_data, len, path);
+    neko_draw_pipeline_t pip = neko_draw_pipeline_load_from_memory_ext(file_data, len, path);
     neko_safe_free(file_data);
     return pip;
 }
 
-NEKO_API_DECL neko_gfxt_pipeline_t neko_gfxt_pipeline_load_from_memory(const char* file_data, size_t sz) { return neko_gfxt_pipeline_load_from_memory_ext(file_data, sz, "."); }
+NEKO_API_DECL neko_draw_pipeline_t neko_draw_pipeline_load_from_memory(const char* file_data, size_t sz) { return neko_draw_pipeline_load_from_memory_ext(file_data, sz, "."); }
 
-NEKO_API_DECL neko_gfxt_pipeline_t neko_gfxt_pipeline_load_from_memory_ext(const char* file_data, size_t sz, const char* file_path) {
+NEKO_API_DECL neko_draw_pipeline_t neko_draw_pipeline_load_from_memory_ext(const char* file_data, size_t sz, const char* file_path) {
     // Cast to pip
-    neko_gfxt_pipeline_t pip = neko_default_val();
+    neko_draw_pipeline_t pip = neko_default_val();
 
     neko_ppd_t ppd = neko_default_val();
-    neko_gfxt_pipeline_desc_t pdesc = neko_default_val();
+    neko_draw_pipeline_desc_t pdesc = neko_default_val();
     pdesc.pip_desc.raster.index_buffer_element_size = sizeof(uint32_t);
 
     // Determine original file directory from path
@@ -4467,10 +4466,10 @@ NEKO_API_DECL neko_gfxt_pipeline_t neko_gfxt_pipeline_load_from_memory_ext(const
     pdesc.pip_desc.layout.size = neko_dyn_array_size(pdesc.pip_desc.layout.attrs) * sizeof(neko_graphics_vertex_attribute_desc_t);
 
     // Set up ublock
-    pdesc.ublock_desc.size = neko_dyn_array_size(pdesc.ublock_desc.layout) * sizeof(neko_gfxt_uniform_desc_t);
+    pdesc.ublock_desc.size = neko_dyn_array_size(pdesc.ublock_desc.layout) * sizeof(neko_draw_uniform_desc_t);
 
     // Create pipeline
-    pip = neko_gfxt_pipeline_create(&pdesc);
+    pip = neko_draw_pipeline_create(&pdesc);
 
     // Create mesh layout
     if (ppd.mesh_layout) {
@@ -4496,7 +4495,7 @@ NEKO_API_DECL neko_gfxt_pipeline_t neko_gfxt_pipeline_load_from_memory_ext(const
     return pip;
 }
 
-NEKO_API_DECL neko_gfxt_texture_t neko_gfxt_texture_load_from_file(const char* path, neko_graphics_texture_desc_t* desc, bool flip, bool keep_data) {
+NEKO_API_DECL neko_draw_texture_t neko_draw_texture_load_from_file(const char* path, neko_graphics_texture_desc_t* desc, bool flip, bool keep_data) {
     neko_asset_texture_t tex = neko_default_val();
     neko_asset_texture_load_from_file(path, &tex, desc, flip, keep_data);
     if (desc) {
@@ -4505,7 +4504,7 @@ NEKO_API_DECL neko_gfxt_texture_t neko_gfxt_texture_load_from_file(const char* p
     return tex.hndl;
 }
 
-NEKO_API_DECL neko_gfxt_texture_t neko_gfxt_texture_load_from_memory(const char* data, size_t sz, neko_graphics_texture_desc_t* desc, bool flip, bool keep_data) {
+NEKO_API_DECL neko_draw_texture_t neko_draw_texture_load_from_memory(const char* data, size_t sz, neko_graphics_texture_desc_t* desc, bool flip, bool keep_data) {
     neko_asset_texture_t tex = neko_default_val();
     neko_asset_texture_load_from_memory(data, sz, &tex, desc, flip, keep_data);
     if (desc) {

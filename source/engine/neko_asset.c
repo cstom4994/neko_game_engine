@@ -9,8 +9,8 @@
 #include "engine/neko.h"
 
 // builtin
-#include "engine/builtin/neko_aseprite.h"
-#include "engine/builtin/neko_png.h"
+#include "engine/neko_aseprite.h"
+#include "engine/neko_png.h"
 
 #if defined(NEKO_PLATFORM_LINUX)
 #include <errno.h>

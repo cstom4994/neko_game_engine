@@ -4,9 +4,7 @@
 #define NEKO_FILEWATCH_H
 
 #include "engine/neko.h"
-
-// strpool
-#include "strpool.h"
+#include "engine/neko_common.h"
 
 #ifndef ASSETSYS_U64
 #define ASSETSYS_U64 unsigned long long
@@ -222,11 +220,9 @@ typedef struct neko_assetsys_file_t {
 NEKO_API_DECL neko_assetsys_error_t neko_assetsys_file(neko_assetsys_t* sys, char const* path, neko_assetsys_file_t* file);
 NEKO_API_DECL neko_assetsys_error_t neko_assetsys_file_load(neko_assetsys_t* sys, neko_assetsys_file_t file, int* size, void* buffer, int capacity);
 NEKO_API_DECL int neko_assetsys_file_size(neko_assetsys_t* sys, neko_assetsys_file_t file);
-
 NEKO_API_DECL int neko_assetsys_file_count(neko_assetsys_t* sys, char const* path);
 NEKO_API_DECL char const* neko_assetsys_file_name(neko_assetsys_t* sys, char const* path, int index);
 NEKO_API_DECL char const* neko_assetsys_file_path(neko_assetsys_t* sys, char const* path, int index);
-
 NEKO_API_DECL int neko_assetsys_subdir_count(neko_assetsys_t* sys, char const* path);
 NEKO_API_DECL char const* neko_assetsys_subdir_name(neko_assetsys_t* sys, char const* path, int index);
 NEKO_API_DECL char const* neko_assetsys_subdir_path(neko_assetsys_t* sys, char const* path, int index);
@@ -237,18 +233,14 @@ typedef struct neko_filewatch_t neko_filewatch_t;
 
 NEKO_API_DECL void neko_filewatch_create_internal(neko_filewatch_t* filewatch, struct neko_assetsys_t* assetsys, void* mem_ctx);
 NEKO_API_DECL neko_filewatch_t* neko_filewatch_create(struct neko_assetsys_t* assetsys, void* mem_ctx);
-
 NEKO_API_DECL void neko_filewatch_free_internal(neko_filewatch_t* filewatch);
 NEKO_API_DECL void neko_filewatch_free(neko_filewatch_t* filewatch);
 
 #define FILEWATCH_MAX_MOUNTS (128)
 
 NEKO_API_DECL int neko_filewatch_mount(neko_filewatch_t* filewatch, const char* actual_path, const char* mount_as_virtual_path);
-
 NEKO_API_DECL void neko_filewatch_dismount(neko_filewatch_t* filewatch, const char* actual_path, const char* virtual_path);
-
 NEKO_API_DECL int neko_filewatch_update(neko_filewatch_t* filewatch);
-
 NEKO_API_DECL void neko_filewatch_notify(neko_filewatch_t* filewatch);
 
 typedef enum neko_filewatch_update_t {
@@ -262,11 +254,8 @@ typedef enum neko_filewatch_update_t {
 typedef void(neko_filewatch_callback_t)(neko_filewatch_update_t change, const char* virtual_path, void* udata);
 
 NEKO_API_DECL int neko_filewatch_start_watching(neko_filewatch_t* filewatch, const char* virtual_path, neko_filewatch_callback_t* cb, void* udata);
-
 NEKO_API_DECL void neko_filewatch_stop_watching(neko_filewatch_t* filewatch, const char* virtual_path);
-
 NEKO_API_DECL int neko_filewatch_actual_path_to_virtual_path(neko_filewatch_t* filewatch, const char* actual_path, char* virtual_path, int virtual_path_capacity);
-
 NEKO_API_DECL int neko_filewatch_virtual_path_to_actual_path(neko_filewatch_t* filewatch, const char* virtual_path, char* actual_path, int actual_path_capacity);
 
 typedef struct neko_filewatch_path_t {

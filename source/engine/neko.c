@@ -1842,10 +1842,3 @@ void neko_quit() {
 
 // builtin
 #define NEKO_IMPL
-#include "engine/builtin/neko_aseprite.h"
-
-#define NEKO_PNG_IMPLEMENTATION
-#include "engine/builtin/neko_png.h"
-
-#define NEKO_C2_IMPLEMENTATION
-#include "engine/builtin/cute_c2.h"

@@ -7,11 +7,9 @@
 
 #include "engine/builtin/cute_spritebatch.h"
 #include "engine/builtin/neko_fs.h"
-#include "engine/builtin/neko_png.h"
 #include "engine/neko.h"
 #include "engine/neko_engine.h"
 #include "engine/neko_asset.h"
-#include "engine/neko_idraw.h"
 #include "engine/neko_lua.h"
 
 // game
@@ -876,30 +874,30 @@ static int __neko_bind_gfxt_create(lua_State* L) {
     const_str gltf_path = lua_tostring(L, 2);  // gamedir/assets/meshes/Duck.gltf
     const_str tex_path = lua_tostring(L, 3);   // gamedir/assets/textures/DuckCM.png
 
-    neko_gfxt_renderer* gfxt_render = (neko_gfxt_renderer*)lua_newuserdata(L, sizeof(neko_gfxt_renderer));
-    memset(gfxt_render, 0, sizeof(neko_gfxt_renderer));
+    neko_draw_renderer* gfxt_render = (neko_draw_renderer*)lua_newuserdata(L, sizeof(neko_draw_renderer));
+    memset(gfxt_render, 0, sizeof(neko_draw_renderer));
 
     // Load pipeline from resource file
-    gfxt_render->pip = neko_gfxt_pipeline_load_from_file(pip_path);
+    gfxt_render->pip = neko_draw_pipeline_load_from_file(pip_path);
 
     // Create material using this pipeline
-    neko_gfxt_material_desc_t mat_decl = {.pip_func = {.hndl = &gfxt_render->pip}};
-    gfxt_render->mat = neko_gfxt_material_create(&mat_decl);
+    neko_draw_material_desc_t mat_decl = {.pip_func = {.hndl = &gfxt_render->pip}};
+    gfxt_render->mat = neko_draw_material_create(&mat_decl);
 
     // Create mesh that uses the layout from the pipeline's requested mesh layout
-    neko_gfxt_mesh_import_options_t mesh_decl = {.layout = gfxt_render->pip.mesh_layout,
-                                                 .size = neko_dyn_array_size(gfxt_render->pip.mesh_layout) * sizeof(neko_gfxt_mesh_layout_t),
+    neko_draw_mesh_import_options_t mesh_decl = {.layout = gfxt_render->pip.mesh_layout,
+                                                 .size = neko_dyn_array_size(gfxt_render->pip.mesh_layout) * sizeof(neko_draw_mesh_layout_t),
                                                  .index_buffer_element_size = gfxt_render->pip.desc.raster.index_buffer_element_size};
 
-    gfxt_render->mesh = neko_gfxt_mesh_load_from_file(gltf_path, &mesh_decl);
+    gfxt_render->mesh = neko_draw_mesh_load_from_file(gltf_path, &mesh_decl);
 
-    gfxt_render->texture = neko_gfxt_texture_load_from_file(tex_path, NULL, false, false);
+    gfxt_render->texture = neko_draw_texture_load_from_file(tex_path, NULL, false, false);
 
     return 1;
 }
 
 static int __neko_bind_gfxt_update(lua_State* L) {
-    neko_gfxt_renderer* gfxt_render = (neko_gfxt_renderer*)lua_touserdata(L, 1);
+    neko_draw_renderer* gfxt_render = (neko_draw_renderer*)lua_touserdata(L, 1);
 
     neko_vec2 fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
     const f32 t = neko_platform_elapsed_time();
@@ -915,8 +913,8 @@ static int __neko_bind_gfxt_update(lua_State* L) {
     neko_mat4 mvp = neko_mat4_mul(vp, model);
 
     // Apply material uniforms
-    neko_gfxt_material_set_uniform(&gfxt_render->mat, "u_mvp", &mvp);
-    neko_gfxt_material_set_uniform(&gfxt_render->mat, "u_tex", &gfxt_render->texture);
+    neko_draw_material_set_uniform(&gfxt_render->mat, "u_mvp", &mvp);
+    neko_draw_material_set_uniform(&gfxt_render->mat, "u_tex", &gfxt_render->texture);
 
     // Rendering
     neko_graphics_renderpass_begin(cb, NEKO_GRAPHICS_RENDER_PASS_DEFAULT);
@@ -925,13 +923,13 @@ static int __neko_bind_gfxt_update(lua_State* L) {
         neko_graphics_set_viewport(cb, 0, 0, (int)fbs.x, (int)fbs.y);
 
         // Bind material
-        neko_gfxt_material_bind(cb, &gfxt_render->mat);
+        neko_draw_material_bind(cb, &gfxt_render->mat);
 
         // Bind material uniforms
-        neko_gfxt_material_bind_uniforms(cb, &gfxt_render->mat);
+        neko_draw_material_bind_uniforms(cb, &gfxt_render->mat);
 
         // Render mesh
-        neko_gfxt_mesh_draw_material(cb, &gfxt_render->mesh, &gfxt_render->mat);
+        neko_draw_mesh_draw_material(cb, &gfxt_render->mesh, &gfxt_render->mat);
     }
     neko_graphics_renderpass_end(cb);
 
@@ -939,12 +937,12 @@ static int __neko_bind_gfxt_update(lua_State* L) {
 }
 
 static int __neko_bind_gfxt_end(lua_State* L) {
-    neko_gfxt_renderer* user_handle = (neko_gfxt_renderer*)lua_touserdata(L, 1);
+    neko_draw_renderer* user_handle = (neko_draw_renderer*)lua_touserdata(L, 1);
 
-    neko_gfxt_texture_destroy(&user_handle->texture);
-    neko_gfxt_mesh_destroy(&user_handle->mesh);
-    neko_gfxt_material_destroy(&user_handle->mat);
-    neko_gfxt_pipeline_destroy(&user_handle->pip);
+    neko_draw_texture_destroy(&user_handle->texture);
+    neko_draw_mesh_destroy(&user_handle->mesh);
+    neko_draw_material_destroy(&user_handle->mat);
+    neko_draw_pipeline_destroy(&user_handle->pip);
 
     return 0;
 }

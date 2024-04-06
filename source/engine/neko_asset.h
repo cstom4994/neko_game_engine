@@ -3,6 +3,7 @@
 #define NEKO_ASSET_IMPL
 
 #include "engine/neko_engine.h"
+#include "engine/neko_physics.h"
 
 // Asset handle
 typedef struct neko_asset_s {
@@ -94,81 +95,6 @@ NEKO_API_DECL void* __neko_assets_getp_impl(neko_asset_manager_t* am, u64 type_i
 #define neko_assets_getp(AM, T, HNDL) (T*)(__neko_assets_getp_impl(AM, neko_hash_str64(neko_to_str(T)), HNDL))
 
 #define neko_assets_get(AM, T, HNDL) *(neko_assets_getp(AM, T, HNDL));
-
-/*==========================
-// NEKO_ASSET_TYPES
-==========================*/
-
-// Texture
-typedef struct neko_asset_texture_t {
-    neko_handle(neko_graphics_texture_t) hndl;
-    neko_graphics_texture_desc_t desc;
-} neko_asset_texture_t;
-
-NEKO_API_DECL bool neko_asset_texture_load_from_file(const_str path, void* out, neko_graphics_texture_desc_t* desc, bool32_t flip_on_load, bool32_t keep_data);
-NEKO_API_DECL bool neko_asset_texture_load_from_memory(const void* memory, size_t sz, void* out, neko_graphics_texture_desc_t* desc, bool32_t flip_on_load, bool32_t keep_data);
-
-// Font
-typedef struct neko_baked_char_t {
-    u32 codepoint;
-    u16 x0, y0, x1, y1;
-    float xoff, yoff, advance;
-    u32 width, height;
-} neko_baked_char_t;
-
-typedef struct neko_asset_ascii_font_t {
-    void* font_info;
-    neko_baked_char_t glyphs[96];
-    neko_asset_texture_t texture;
-    float ascent;
-    float descent;
-    float line_gap;
-} neko_asset_ascii_font_t;
-
-NEKO_API_DECL bool neko_asset_ascii_font_load_from_file(const_str path, void* out, u32 point_size);
-NEKO_API_DECL bool neko_asset_ascii_font_load_from_memory(const void* memory, size_t sz, void* out, u32 point_size);
-NEKO_API_DECL neko_vec2 neko_asset_ascii_font_text_dimensions(const neko_asset_ascii_font_t* font, const_str text, s32 len);
-NEKO_API_DECL neko_vec2 neko_asset_ascii_font_text_dimensions_ex(const neko_asset_ascii_font_t* fp, const_str text, s32 len, bool32_t include_past_baseline);
-NEKO_API_DECL float neko_asset_ascii_font_max_height(const neko_asset_ascii_font_t* font);
-
-// Mesh
-neko_enum_decl(neko_asset_mesh_attribute_type, NEKO_ASSET_MESH_ATTRIBUTE_TYPE_POSITION, NEKO_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL, NEKO_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT,
-               NEKO_ASSET_MESH_ATTRIBUTE_TYPE_JOINT, NEKO_ASSET_MESH_ATTRIBUTE_TYPE_WEIGHT, NEKO_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD, NEKO_ASSET_MESH_ATTRIBUTE_TYPE_COLOR,
-               NEKO_ASSET_MESH_ATTRIBUTE_TYPE_UINT);
-
-typedef struct neko_asset_mesh_layout_t {
-    neko_asset_mesh_attribute_type type;  // Type of attribute
-    u32 idx;                              // Optional index (for joint/weight/texcoord/color)
-} neko_asset_mesh_layout_t;
-
-typedef struct neko_asset_mesh_decl_t {
-    neko_asset_mesh_layout_t* layout;  // Mesh attribute layout array
-    size_t layout_size;                // Size of mesh attribute layout array in bytes
-    size_t index_buffer_element_size;  // Size of index data size in bytes
-} neko_asset_mesh_decl_t;
-
-typedef struct neko_asset_mesh_primitive_t {
-    neko_handle(neko_graphics_vertex_buffer_t) vbo;
-    neko_handle(neko_graphics_index_buffer_t) ibo;
-    u32 count;
-} neko_asset_mesh_primitive_t;
-
-typedef struct neko_asset_mesh_t {
-    neko_dyn_array(neko_asset_mesh_primitive_t) primitives;
-} neko_asset_mesh_t;
-
-// Structured/packed raw mesh data
-typedef struct neko_asset_mesh_raw_data_t {
-    u32 prim_count;
-    size_t* vertex_sizes;
-    size_t* index_sizes;
-    void** vertices;
-    void** indices;
-} neko_asset_mesh_raw_data_t;
-
-NEKO_API_DECL bool neko_asset_mesh_load_from_file(const_str path, void* out, neko_asset_mesh_decl_t* decl, void* data_out, size_t data_size);
-// NEKO_API_DECL bool neko_util_load_gltf_data_from_file(const_str path, neko_asset_mesh_decl_t* decl, neko_asset_mesh_raw_data_t** out, u32* mesh_count);
-// NEKO_API_DECL bool neko_util_load_gltf_data_from_memory(const void* memory, size_t sz, neko_asset_mesh_decl_t* decl, neko_asset_mesh_raw_data_t** out, u32* mesh_count);
 
 /*==========================
 // LZ77
@@ -590,9 +516,6 @@ NEKO_API_DECL void neko_aseprite_renderer_play(neko_aseprite_renderer* sr, const
 NEKO_API_DECL void neko_aseprite_renderer_update(neko_aseprite_renderer* sr, f32 dt);
 NEKO_API_DECL void neko_aseprite_renderer_set_frame(neko_aseprite_renderer* sr, s32 frame);
 
-// c2
-#include "engine/builtin/cute_c2.h"
-
 #define SPRITE_SCALE 3
 
 typedef struct tile_s {
@@ -692,5 +615,301 @@ NEKO_API_DECL void neko_tiled_render_begin(neko_command_buffer_t* cb, neko_tiled
 NEKO_API_DECL void neko_tiled_render_flush(neko_command_buffer_t* cb, neko_tiled_renderer* renderer);
 NEKO_API_DECL void neko_tiled_render_push(neko_command_buffer_t* cb, neko_tiled_renderer* renderer, neko_tiled_quad_t quad);
 NEKO_API_DECL void neko_tiled_render_draw(neko_command_buffer_t* cb, neko_tiled_renderer* renderer);
+
+typedef struct ase_t ase_t;
+
+NEKO_API_DECL ase_t* neko_aseprite_load_from_file(const char* path);
+NEKO_API_DECL ase_t* neko_aseprite_load_from_memory(const void* memory, int size);
+NEKO_API_DECL void neko_aseprite_free(ase_t* aseprite);
+NEKO_API_DECL void neko_aseprite_default_blend_bind(ase_t* aseprite);  // 默认图块混合管线
+
+#define __NEKO_ASEPRITE_MAX_LAYERS (64)
+#define __NEKO_ASEPRITE_MAX_SLICES (128)
+#define __NEKO_ASEPRITE_MAX_PALETTE_ENTRIES (1024)
+#define __NEKO_ASEPRITE_MAX_TAGS (256)
+
+typedef struct ase_frame_t ase_frame_t;
+typedef struct ase_layer_t ase_layer_t;
+typedef struct ase_cel_t ase_cel_t;
+typedef struct ase_tag_t ase_tag_t;
+typedef struct ase_slice_t ase_slice_t;
+typedef struct ase_palette_entry_t ase_palette_entry_t;
+typedef struct ase_palette_t ase_palette_t;
+typedef struct ase_udata_t ase_udata_t;
+typedef struct ase_cel_extra_chunk_t ase_cel_extra_chunk_t;
+typedef struct ase_color_profile_t ase_color_profile_t;
+typedef struct ase_fixed_t ase_fixed_t;
+typedef struct ase_cel_extra_chunk_t ase_cel_extra_chunk_t;
+
+struct ase_fixed_t {
+    u16 a;
+    u16 b;
+};
+
+struct ase_udata_t {
+    int has_color;
+    neko_color_t color;
+    int has_text;
+    const char* text;
+};
+
+typedef enum ase_layer_flags_t {
+    NEKO_ASE_LAYER_FLAGS_VISIBLE = 0x01,
+    NEKO_ASE_LAYER_FLAGS_EDITABLE = 0x02,
+    NEKO_ASE_LAYER_FLAGS_LOCK_MOVEMENT = 0x04,
+    NEKO_ASE_LAYER_FLAGS_BACKGROUND = 0x08,
+    NEKO_ASE_LAYER_FLAGS_PREFER_LINKED_CELS = 0x10,
+    NEKO_ASE_LAYER_FLAGS_COLLAPSED = 0x20,
+    NEKO_ASE_LAYER_FLAGS_REFERENCE = 0x40,
+} ase_layer_flags_t;
+
+typedef enum ase_layer_type_t {
+    NEKO_ASE_LAYER_TYPE_NORMAL,
+    NEKO_ASE_LAYER_TYPE_GROUP,
+    NEKO_ASE_LAYER_TYPE_TILEMAP,
+} ase_layer_type_t;
+
+struct ase_layer_t {
+    ase_layer_flags_t flags;
+    ase_layer_type_t type;
+    const char* name;
+    ase_layer_t* parent;
+    float opacity;
+    ase_udata_t udata;
+};
+
+struct ase_cel_extra_chunk_t {
+    int precise_bounds_are_set;
+    ase_fixed_t precise_x;
+    ase_fixed_t precise_y;
+    ase_fixed_t w, h;
+};
+
+struct ase_cel_t {
+    ase_layer_t* layer;
+    void* cel_pixels;  // 图块的pixels数据是唯一的
+    int w, h;
+    int x, y;
+    float opacity;
+    int is_linked;
+    u16 linked_frame_index;
+    int has_extra;
+    ase_cel_extra_chunk_t extra;
+    ase_udata_t udata;
+};
+
+struct ase_frame_t {
+    ase_t* ase;
+    int duration_milliseconds;
+    int pixel_count;
+    neko_color_t* pixels[__NEKO_ASEPRITE_MAX_LAYERS];  // 支持每层一个pixels数据
+    int cel_count;
+    ase_cel_t cels[__NEKO_ASEPRITE_MAX_LAYERS];
+};
+
+typedef enum ase_animation_direction_t {
+    NEKO_ASE_ANIMATION_DIRECTION_FORWARDS,
+    NEKO_ASE_ANIMATION_DIRECTION_BACKWORDS,
+    NEKO_ASE_ANIMATION_DIRECTION_PINGPONG,
+} ase_animation_direction_t;
+
+struct ase_tag_t {
+    int from_frame;
+    int to_frame;
+    ase_animation_direction_t loop_animation_direction;
+    int repeat;
+    u8 r, g, b;
+    const char* name;
+    ase_udata_t udata;
+};
+
+struct ase_slice_t {
+    const char* name;
+    int frame_number;
+    int origin_x;
+    int origin_y;
+    int w, h;
+
+    int has_center_as_9_slice;
+    int center_x;
+    int center_y;
+    int center_w;
+    int center_h;
+
+    int has_pivot;
+    int pivot_x;
+    int pivot_y;
+
+    ase_udata_t udata;
+};
+
+struct ase_palette_entry_t {
+    neko_color_t color;
+    const char* color_name;
+};
+
+struct ase_palette_t {
+    int entry_count;
+    ase_palette_entry_t entries[__NEKO_ASEPRITE_MAX_PALETTE_ENTRIES];
+};
+
+typedef enum ase_color_profile_type_t {
+    NEKO_ASE_COLOR_PROFILE_TYPE_NONE,
+    NEKO_ASE_COLOR_PROFILE_TYPE_SRGB,
+    NEKO_ASE_COLOR_PROFILE_TYPE_EMBEDDED_ICC,
+} ase_color_profile_type_t;
+
+struct ase_color_profile_t {
+    ase_color_profile_type_t type;
+    int use_fixed_gamma;
+    ase_fixed_t gamma;
+    u32 icc_profile_data_length;
+    void* icc_profile_data;
+};
+
+typedef enum ase_mode_t { NEKO_ASE_MODE_RGBA, NEKO_ASE_MODE_GRAYSCALE, NEKO_ASE_MODE_INDEXED } ase_mode_t;
+
+struct ase_t {
+    ase_mode_t mode;
+    int w, h;
+    int transparent_palette_entry_index;
+    int number_of_colors;
+    int pixel_w;
+    int pixel_h;
+    int grid_x;
+    int grid_y;
+    int grid_w;
+    int grid_h;
+    int has_color_profile;
+    ase_color_profile_t color_profile;
+    ase_palette_t palette;
+
+    int layer_count;
+    ase_layer_t layers[__NEKO_ASEPRITE_MAX_LAYERS];
+
+    int frame_count;
+    ase_frame_t* frames;
+
+    int tag_count;
+    ase_tag_t tags[__NEKO_ASEPRITE_MAX_TAGS];
+
+    int slice_count;
+    ase_slice_t slices[__NEKO_ASEPRITE_MAX_SLICES];
+};
+
+neko_inline int s_mul_un8(int a, int b) {
+    int t = (a * b) + 0x80;
+    return (((t >> 8) + t) >> 8);
+}
+
+neko_inline neko_color_t s_blend(neko_color_t src, neko_color_t dst, u8 opacity) {
+    src.a = (u8)s_mul_un8(src.a, opacity);
+    int a = src.a + dst.a - s_mul_un8(src.a, dst.a);
+    int r, g, b;
+    if (a == 0) {
+        r = g = b = 0;
+    } else {
+        r = dst.r + (src.r - dst.r) * src.a / a;
+        g = dst.g + (src.g - dst.g) * src.a / a;
+        b = dst.b + (src.b - dst.b) * src.a / a;
+    }
+    neko_color_t ret = {(u8)r, (u8)g, (u8)b, (u8)a};
+    return ret;
+}
+
+neko_inline neko_color_t s_color(ase_t* ase, void* src, int index) {
+    neko_color_t result;
+    if (ase->mode == NEKO_ASE_MODE_RGBA) {
+        result = ((neko_color_t*)src)[index];
+    } else if (ase->mode == NEKO_ASE_MODE_GRAYSCALE) {
+        u8 saturation = ((u8*)src)[index * 2];
+        u8 a = ((u8*)src)[index * 2 + 1];
+        result.r = result.g = result.b = saturation;
+        result.a = a;
+    } else {
+        neko_assert(ase->mode == NEKO_ASE_MODE_INDEXED);
+        u8 palette_index = ((u8*)src)[index];
+        if (palette_index == ase->transparent_palette_entry_index) {
+            result = neko_color_ctor(0, 0, 0, 0);
+        } else {
+            result = ase->palette.entries[palette_index].color;
+        }
+    }
+    return result;
+}
+
+#define NEKO_PNG_ATLAS_MUST_FIT 1              // 如果输入图像不适合 则从NEKO_PNG_MAKE_ATLAS返回错误
+#define NEKO_PNG_ATLAS_FLIP_Y_AXIS_FOR_UV 1    // 翻转输出UV坐标的y
+#define NEKO_PNG_ATLAS_EMPTY_COLOR 0x000000FF  // 纹理贴图集中空白区域的填充颜色(RGBA)
+
+typedef struct neko_png_pixel_t neko_png_pixel_t;
+typedef struct neko_png_image_t neko_png_image_t;
+typedef struct neko_png_indexed_image_t neko_png_indexed_image_t;
+typedef struct neko_png_atlas_image_t neko_png_atlas_image_t;
+
+// 在任何函数出现错误的情况下阅读此内容
+extern const char* neko_png_error_reason;
+
+// 成功时返回1 失败时返回0
+NEKO_API_DECL int neko_png_inflate(void* in, int in_bytes, void* out, int out_bytes);
+NEKO_API_DECL int neko_png_save(const char* file_name, const neko_png_image_t* img);
+
+typedef struct neko_png_saved_png_t {
+    int size;
+    void* data;
+} neko_png_saved_png_t;
+
+NEKO_API_DECL struct neko_png_saved_png_t neko_png_save_to_memory(const neko_png_image_t* img);
+
+NEKO_API_DECL struct neko_png_image_t neko_png_make_atlas(int atlasWidth, int atlasHeight, const neko_png_image_t* pngs, int png_count, neko_png_atlas_image_t* imgs_out);
+
+int neko_png_default_save_atlas(const char* out_path_image, const char* out_path_atlas_txt, const neko_png_image_t* atlas, const neko_png_atlas_image_t* imgs, int img_count, const char** names);
+
+NEKO_API_DECL struct neko_png_image_t neko_png_load(const char* file_name);
+NEKO_API_DECL struct neko_png_image_t neko_png_load_mem(const void* png_data, int png_length);
+NEKO_API_DECL struct neko_png_image_t neko_png_load_blank(int w, int h);
+NEKO_API_DECL void neko_png_free(neko_png_image_t* img);
+NEKO_API_DECL void neko_png_flip_image_horizontal(neko_png_image_t* img);
+
+NEKO_API_DECL void neko_png_load_wh(const void* png_data, int png_length, int* w, int* h);
+
+NEKO_API_DECL struct neko_png_indexed_image_t neko_png_load_indexed(const char* file_name);
+NEKO_API_DECL struct neko_png_indexed_image_t neko_png_load_indexed_mem(const void* png_data, int png_length);
+NEKO_API_DECL void neko_png_free_indexed(neko_png_indexed_image_t* img);
+
+NEKO_API_DECL neko_png_image_t neko_png_depallete_indexed_image(neko_png_indexed_image_t* img);
+
+// 对像素进行预处理 将图像数据转换为预乘的Alpha格式
+// http://www.essentialmath.com/GDC2015/VanVerth_Jim_DoingMathwRGB.pdf
+void neko_png_premultiply(neko_png_image_t* img);
+
+struct neko_png_pixel_t {
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+    uint8_t a;
+};
+
+struct neko_png_image_t {
+    int w;
+    int h;
+    neko_png_pixel_t* pix;
+};
+
+struct neko_png_indexed_image_t {
+    int w;
+    int h;
+    uint8_t* pix;
+    uint8_t palette_len;
+    neko_png_pixel_t palette[256];
+};
+
+struct neko_png_atlas_image_t {
+    int img_index;     // index into the `imgs` array
+    int w, h;          // pixel w/h of original image
+    float minx, miny;  // u coordinate
+    float maxx, maxy;  // v coordinate
+    int fit;           // non-zero if image fit and was placed into the atlas
+};
 
 #endif  // NEKO_ASSET_H

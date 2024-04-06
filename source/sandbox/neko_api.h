@@ -2,16 +2,17 @@
 #define NEKO_BINDING_ENGINE_H
 
 #include "engine/neko.hpp"
+#include "engine/neko_asset.h"
 #include "engine/neko_engine.h"
-#include "engine/neko_idraw.h"
-#include "engine/neko_imgui.h"
 #include "engine/neko_lua.h"
+#include "engine/neko_math.h"
+
 
 typedef struct neko_client_userdata_s {
     neko_command_buffer_t *cb;
     neko_immediate_draw_t *idraw;
     neko_immediate_draw_static_data_t *idraw_sd;
-    neko_core_ui_context_t *core_ui;
+    neko_ui_context_t *core_ui;
 
     neko_packreader_t *pack;
 

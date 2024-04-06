@@ -2,6 +2,9 @@
 #ifndef NEKO_PHYSICS_H
 #define NEKO_PHYSICS_H
 
+#include "neko.h"
+#include "neko_math.h"
+
 /*==== Collision Shapes ====*/
 
 #define NEKO_PHYSICS_NO_CCD
@@ -151,6 +154,8 @@ typedef struct neko_contact_info_t {
     float depth;
     neko_vec3 point;
 } neko_contact_info_t;
+
+NEKO_API_DECL b32 neko_aabb_vs_aabb(neko_aabb_t* a, neko_aabb_t* b);
 
 /* Line/Segment */
 NEKO_API_DECL neko_line_t neko_line_closest_line(const neko_line_t* l, neko_vec3 p);
@@ -411,1192 +416,456 @@ NEKO_API_DECL void neko_physics_scene_destroy_body(neko_physics_scene_t* scene, 
 NEKO_API_DECL void neko_physics_scene_destroy_all_bodies(neko_physics_scene_t* scene);
 NEKO_API_DECL neko_raycast_data_t neko_physics_scene_raycast(neko_physics_scene_t* scene, neko_query_callback_t* cb);
 
-/*
-    Scene
-    Contact Manager
-    Collision Solver
-    Dynamics Engine
-    Rigid Body
-    Collision Shape
-*/
+// this can be adjusted as necessary, but is highly recommended to be kept at 8.
+// higher numbers will incur quite a bit of memory overhead, and convex shapes
+// over 8 verts start to just look like spheres, which can be implicitly rep-
+// resented as a point + radius. usually tools that generate polygons should be
+// constructed so they do not output polygons with too many verts.
+// Note: polygons in cute_c2 are all *convex*.
+#define C2_MAX_POLYGON_VERTS 8
 
-/** @} */  // end of neko_physics_util
+// 2d vector
+typedef struct c2v {
+    float x;
+    float y;
+} c2v;
 
-/*==== Implementation ====*/
+// 2d rotation composed of cos/sin pair for a single angle
+// We use two floats as a small optimization to avoid computing sin/cos unnecessarily
+typedef struct c2r {
+    float c;
+    float s;
+} c2r;
 
-#ifdef NEKO_PHYSICS_IMPL
+// 2d rotation matrix
+typedef struct c2m {
+    c2v x;
+    c2v y;
+} c2m;
 
-// Includes
-#ifndef NEKO_PHYSICS_NO_CCD
-#include "deps/ccd/src/ccd/ccd.h"
-#include "deps/ccd/src/ccd/ccd_quat.h"
-#include "deps/ccd/src/ccd/ccd_vec3.h"
+// 2d transformation "x"
+// These are used especially for c2Poly when a c2Poly is passed to a function.
+// Since polygons are prime for "instancing" a c2x transform can be used to
+// transform a polygon from local space to world space. In functions that take
+// a c2x pointer (like c2PolytoPoly), these pointers can be NULL, which represents
+// an identity transformation and assumes the verts inside of c2Poly are already
+// in world space.
+typedef struct c2x {
+    c2v p;
+    c2r r;
+} c2x;
+
+// 2d halfspace (aka plane, aka line)
+typedef struct c2h {
+    c2v n;    // normal, normalized
+    float d;  // distance to origin from plane, or ax + by = d
+} c2h;
+
+typedef struct c2Circle {
+    c2v p;
+    float r;
+} c2Circle;
+
+typedef struct c2AABB {
+    c2v min;
+    c2v max;
+} c2AABB;
+
+// a capsule is defined as a line segment (from a to b) and radius r
+typedef struct c2Capsule {
+    c2v a;
+    c2v b;
+    float r;
+} c2Capsule;
+
+typedef struct c2Poly {
+    int count;
+    c2v verts[C2_MAX_POLYGON_VERTS];
+    c2v norms[C2_MAX_POLYGON_VERTS];
+} c2Poly;
+
+// IMPORTANT:
+// Many algorithms in this file are sensitive to the magnitude of the
+// ray direction (c2Ray::d). It is highly recommended to normalize the
+// ray direction and use t to specify a distance. Please see this link
+// for an in-depth explanation: https://github.com/RandyGaul/cute_headers/issues/30
+typedef struct c2Ray {
+    c2v p;    // position
+    c2v d;    // direction (normalized)
+    float t;  // distance along d from position p to find endpoint of ray
+} c2Ray;
+
+typedef struct c2Raycast {
+    float t;  // time of impact
+    c2v n;    // normal of surface at impact (unit length)
+} c2Raycast;
+
+// position of impact p = ray.p + ray.d * raycast.t
+#define c2Impact(ray, t) c2Add(ray.p, c2Mulvs(ray.d, t))
+
+// contains all information necessary to resolve a collision, or in other words
+// this is the information needed to separate shapes that are colliding. Doing
+// the resolution step is *not* included in cute_c2.
+typedef struct c2Manifold {
+    int count;
+    float depths[2];
+    c2v contact_points[2];
+
+    // always points from shape A to shape B (first and second shapes passed into
+    // any of the c2***to***Manifold functions)
+    c2v n;
+} c2Manifold;
+
+// This define allows exporting/importing of the header to a dynamic library.
+// Here's an example.
+// #define NEKO_C2_API extern "C" __declspec(dllexport)
+#if !defined(NEKO_C2_API)
+#define NEKO_C2_API
 #endif
 
-/*==== Support Functions =====*/
-
-// Poly
-NEKO_API_DECL void neko_support_poly(const void* _o, const neko_vqs* xform, const neko_vec3* dir, neko_vec3* out) {
-    const neko_poly_t* p = (neko_poly_t*)_o;
-
-    // Bring direction vector into rotation space
-    neko_quat qinv = neko_quat_inverse(xform->rotation);
-    neko_vec3 d = neko_quat_rotate(qinv, *dir);
-
-    // Iterate over all points, find dot farthest in direction of d
-    double max_dot, dot = 0.0;
-    max_dot = (double)-FLT_MAX;
-    for (u32 i = 0; i < p->cnt; i++) {
-        dot = (double)neko_vec3_dot(d, p->verts[i]);
-        if (dot > max_dot) {
-            *out = p->verts[i];
-            max_dot = dot;
-        }
-    }
-
-    // Transform support point by rotation and translation of object
-    *out = neko_quat_rotate(xform->rotation, *out);
-    *out = neko_vec3_mul(xform->scale, *out);
-    *out = neko_vec3_add(xform->position, *out);
-}
-
-// Sphere
-NEKO_API_DECL void neko_support_sphere(const void* _o, const neko_vqs* xform, const neko_vec3* dir, neko_vec3* out) {
-    // Support function is made according to Gino van den Bergen's paper
-    //  A Fast and Robust CCD Implementation for Collision Detection of
-    //  Convex Objects
-    const neko_sphere_t* s = (neko_sphere_t*)_o;
-    float scl = neko_max(xform->scale.x, neko_max(xform->scale.z, xform->scale.y));
-    *out = neko_vec3_add(neko_vec3_scale(neko_vec3_norm(*dir), scl * s->r), neko_vec3_add(xform->position, s->c));
-}
-
-// Ray
-NEKO_API_DECL void neko_support_ray(const void* _r, const neko_vqs* xform, const neko_vec3* dir, neko_vec3* out) {
-    const neko_ray_t* r = (neko_ray_t*)_r;
-
-    // Bring direction vector into rotation space
-    neko_quat qinv = neko_quat_inverse(xform->rotation);
-    neko_vec3 d = neko_quat_rotate(qinv, *dir);
-
-    neko_vec3 rs = r->p;
-    neko_vec3 re = neko_vec3_add(r->p, neko_vec3_scale(r->d, r->len));
-
-    if (neko_vec3_dot(rs, d) > neko_vec3_dot(re, d)) {
-        *out = rs;
-    } else {
-        *out = re;
-    }
-
-    // Transform support point by rotation and translation of object
-    *out = neko_quat_rotate(xform->rotation, *out);
-    *out = neko_vec3_mul(xform->scale, *out);
-    *out = neko_vec3_add(xform->position, *out);
-}
-
-// AABB
-NEKO_API_DECL void neko_support_aabb(const void* _o, const neko_vqs* xform, const neko_vec3* dir, neko_vec3* out) {
-    const neko_aabb_t* a = (neko_aabb_t*)_o;
-
-    // Bring direction vector into rotation space
-    neko_quat qinv = neko_quat_inverse(xform->rotation);
-    neko_vec3 d = neko_quat_rotate(qinv, *dir);
-
-    // Compute half coordinates and sign for aabb (scale by transform)
-    const float hx = (a->max.x - a->min.x) * 0.5f * xform->scale.x;
-    const float hy = (a->max.y - a->min.y) * 0.5f * xform->scale.y;
-    const float hz = (a->max.z - a->min.z) * 0.5f * xform->scale.z;
-    neko_vec3 s = neko_vec3_sign(d);
-
-    // Compure support for aabb
-    *out = neko_v3(s.x * hx, s.y * hy, s.z * hz);
-
-    // Transform support point by rotation and translation of object
-    *out = neko_quat_rotate(xform->rotation, *out);
-    *out = neko_vec3_add(xform->position, *out);
-}
-
-// Cylinder
-NEKO_API_DECL void neko_support_cylinder(const void* _o, const neko_vqs* xform, const neko_vec3* dir, neko_vec3* out) {
-    // Support function is made according to Gino van den Bergen's paper
-    //  A Fast and Robust CCD Implementation for Collision Detection of
-    //  Convex Objects
-
-    const neko_cylinder_t* c = (const neko_cylinder_t*)_o;
-
-    // Bring direction vector into rotation space
-    neko_quat qinv = neko_quat_inverse(xform->rotation);
-    neko_vec3 d = neko_quat_rotate(qinv, *dir);
-
-    // Compute support point (cylinder is standing on y axis, half height at origin)
-    double zdist = sqrt(d.x * d.x + d.z * d.z);
-    double hh = (double)c->height * 0.5 * xform->scale.y;
-    if (zdist == 0.0) {
-        *out = neko_v3(0.0, neko_vec3_signY(d) * hh, 0.0);
-    } else {
-        double r = (double)c->r / zdist;
-        *out = neko_v3(r * d.x * xform->scale.x, neko_vec3_signY(d) * hh, r * d.z * xform->scale.z);
-    }
-
-    // Transform support point into world space
-    *out = neko_quat_rotate(xform->rotation, *out);
-    *out = neko_vec3_add(neko_vec3_add(xform->position, c->base), *out);
-}
-
-// Capsule
-NEKO_API_DECL void neko_support_capsule(const void* _o, const neko_vqs* xform, const neko_vec3* dir, neko_vec3* out) {
-    const neko_capsule_t* c = (const neko_capsule_t*)_o;
-
-    // Bring direction vector into rotation space
-    neko_quat qinv = neko_quat_inverse(xform->rotation);
-    neko_vec3 d = neko_quat_rotate(qinv, *dir);
-
-    // Compute support point (cone is standing on y axis, half height at origin)
-    const float s = neko_max(xform->scale.x, xform->scale.z);
-    *out = neko_vec3_scale(neko_vec3_norm(d), c->r * s);
-    double hh = (double)c->height * 0.5 * xform->scale.y;
-
-    if (neko_vec3_dot(d, NEKO_YAXIS) > 0.0) {
-        out->y += hh;
-    } else {
-        out->y -= hh;
-    }
-
-    // Transform support point into world space
-    *out = neko_quat_rotate(xform->rotation, *out);
-    *out = neko_vec3_add(neko_vec3_add(xform->position, c->base), *out);
-}
-
-// Cone
-NEKO_API_DECL void neko_support_cone(const void* _o, const neko_vqs* xform, const neko_vec3* dir, neko_vec3* out) {
-    const neko_cone_t* c = (const neko_cone_t*)_o;
-
-    // Bring direction vector into rotation space
-    neko_quat qinv = neko_quat_inverse(xform->rotation);
-    neko_vec3 d = neko_quat_rotate(qinv, *dir);
-
-    // Compute support point (cone is standing on y axis, half height at origin)
-    double sin_angle = c->r / sqrt((double)c->r * (double)c->r + (double)c->height * (double)c->height);
-    double hh = (double)c->height * 0.5 * xform->scale.y;
-    double len = sqrt(neko_vec3_len2(d));
-
-    if (d.y > len * sin_angle) {
-        *out = neko_v3(0.0f, (float)hh, 0.0f);
-    } else {
-        double s = sqrt(d.x * d.x + d.z * d.z);
-        if (s > (double)NEKO_GJK_EPSILON) {
-            double _d = (double)c->r / s;
-            *out = neko_v3(d.x * _d * xform->scale.x, (float)-hh, d.z * _d * xform->scale.z);
-        } else {
-            *out = neko_v3(0.0, (float)-hh, 0.0);
-        }
-    }
-
-    // Transform support point into world space
-    *out = neko_quat_rotate(xform->rotation, *out);
-    *out = neko_vec3_add(neko_vec3_add(xform->position, c->base), *out);
-}
-
-/*==== Collision Shapes ====*/
-
-/* Line/Segment */
-
-NEKO_API_DECL neko_line_t neko_line_closest_line(const neko_line_t* l, neko_vec3 p) {
-    neko_vec3 cp = neko_line_closest_point(l, p);
-    return neko_line(p, cp);
-}
-
-NEKO_API_DECL neko_vec3 neko_line_closest_point(const neko_line_t* l, neko_vec3 p) {
-    neko_vec3 pt = neko_default_val();
-    neko_vec3 ab = neko_vec3_sub(l->b, l->a);
-    neko_vec3 pa = neko_vec3_sub(p, l->a);
-    float t = neko_vec3_dot(pa, ab) / neko_vec3_dot(ab, ab);
-    t = neko_clamp(t, 0.f, 1.f);
-    pt = neko_vec3_add(l->a, neko_vec3_scale(ab, t));
-    return pt;
-}
-
-NEKO_API_DECL neko_vec3 neko_line_direction(const neko_line_t* l) { return neko_vec3_norm(neko_vec3_sub(l->b, l->a)); }
-
-/* Plane */
-
-// Modified from: https://graphics.stanford.edu/~mdfisher/Code/Engine/Plane.cpp.html
-NEKO_API_DECL neko_plane_t neko_plane_from_pt_normal(neko_vec3 pt, neko_vec3 n) {
-    neko_plane_t p = neko_default_val();
-    neko_vec3 nn = neko_vec3_norm(n);
-    p.a = nn.x;
-    p.b = nn.y;
-    p.c = nn.z;
-    p.d = -neko_vec3_dot(pt, nn);
-    return p;
-}
-
-NEKO_API_DECL neko_plane_t neko_plane_from_pts(neko_vec3 a, neko_vec3 b, neko_vec3 c) {
-    neko_vec3 n = neko_vec3_norm(neko_vec3_cross(neko_vec3_sub(b, a), neko_vec3_sub(c, a)));
-    return neko_plane_from_pt_normal(a, n);
-}
-
-NEKO_API_DECL neko_vec3 neko_plane_normal(const neko_plane_t* p) { return neko_vec3_norm(neko_v3(p->a, p->b, p->c)); }
-
-NEKO_API_DECL neko_vec3 neko_plane_closest_point(const neko_plane_t* p, neko_vec3 pt) { return neko_vec3_sub(pt, neko_vec3_scale(neko_plane_normal(p), neko_plane_signed_distance(p, pt))); }
-
-NEKO_API_DECL float neko_plane_signed_distance(const neko_plane_t* p, neko_vec3 pt) { return (p->a * pt.x + p->b * pt.y + p->c * pt.z + p->d); }
-
-NEKO_API_DECL float neko_plane_unsigned_distance(const neko_plane_t* p, neko_vec3 pt) { return fabsf(neko_plane_signed_distance(p, pt)); }
-
-NEKO_API_DECL neko_plane_t neko_plane_normalized(const neko_plane_t* p) {
-    neko_plane_t pn = neko_default_val();
-    float d = sqrtf(p->a * p->a + p->b * p->b + p->c * p->c);
-    pn.a = p->a / d;
-    pn.b = p->b / d;
-    pn.c = p->c / d;
-    pn.d = p->d / d;
-    return pn;
-}
-
-NEKO_API_DECL s32 neko_plane_vs_sphere(const neko_plane_t* a, neko_vqs* xform_a, const neko_sphere_t* b, neko_vqs* xform_b, struct neko_contact_info_t* res) {
-    // Cache necesary transforms, matrices
-    neko_mat4 mat = xform_a ? neko_vqs_to_mat4(xform_a) : neko_mat4_identity();
-    neko_mat4 inv = xform_a ? neko_mat4_inverse(mat) : neko_mat4_identity();
-    neko_vqs local = neko_vqs_relative_transform(xform_a, xform_b);
-
-    // Transform sphere center into local cone space
-    neko_vec3 sc = xform_a ? neko_mat4_mul_vec3(inv, xform_b ? neko_vec3_add(xform_b->position, b->c) : b->c) : b->c;
-
-    // Determine closest point from sphere center to plane
-    neko_vec3 cp = neko_plane_closest_point(a, sc);
-
-    // Determine if sphere is intersecting this point
-    float sb = xform_b ? neko_max(local.scale.x, neko_max(local.scale.y, local.scale.z)) : 1.f;
-    neko_vec3 dir = neko_vec3_sub(cp, sc);
-    neko_vec3 n = neko_vec3_norm(dir);
-    float d = neko_vec3_len(dir);
-    float r = sb * b->r;
-
-    if (d > r) {
-        return false;
-    }
-
-    // Construct contact information
-    if (res) {
-        res->hit = true;
-        res->depth = (r - d);
-        res->normal = neko_mat4_mul_vec3(mat, n);
-        res->point = neko_mat4_mul_vec3(mat, cp);
-    }
-
-    return true;
-}
-
-/* Ray */
-
-/* Frustum */
-
-/* Hit */
-
-#ifndef NEKO_PHYSICS_NO_CCD
-
-#define _NEKO_COLLIDE_FUNC_IMPL(_TA, _TB, _F0, _F1)                                                                                                             \
-    NEKO_API_DECL s32 neko_##_TA##_vs_##_TB(const neko_##_TA##_t* a, const neko_vqs* xa, const neko_##_TB##_t* b, const neko_vqs* xb, neko_contact_info_t* r) { \
-        return _neko_ccd_gjk_internal(a, xa, (_F0), b, xb, (_F1), r);                                                                                           \
-    }
-
-/* Sphere */
-
-_NEKO_COLLIDE_FUNC_IMPL(sphere, sphere, neko_support_sphere, neko_support_sphere);      // Sphere vs. Sphere
-_NEKO_COLLIDE_FUNC_IMPL(sphere, cylinder, neko_support_sphere, neko_support_cylinder);  // Sphere vs. Cylinder
-_NEKO_COLLIDE_FUNC_IMPL(sphere, cone, neko_support_sphere, neko_support_cone);          // Sphere vs. Cone
-_NEKO_COLLIDE_FUNC_IMPL(sphere, aabb, neko_support_sphere, neko_support_aabb);          // Sphere vs. AABB
-_NEKO_COLLIDE_FUNC_IMPL(sphere, capsule, neko_support_sphere, neko_support_capsule);    // Sphere vs. Capsule
-_NEKO_COLLIDE_FUNC_IMPL(sphere, poly, neko_support_sphere, neko_support_poly);          // Sphere vs. Poly
-_NEKO_COLLIDE_FUNC_IMPL(sphere, ray, neko_support_sphere, neko_support_ray);            // Sphere vs. Ray
-/* AABB */
-
-_NEKO_COLLIDE_FUNC_IMPL(aabb, aabb, neko_support_aabb, neko_support_aabb);          // AABB vs. AABB
-_NEKO_COLLIDE_FUNC_IMPL(aabb, cylinder, neko_support_aabb, neko_support_cylinder);  // AABB vs. Cylinder
-_NEKO_COLLIDE_FUNC_IMPL(aabb, cone, neko_support_aabb, neko_support_cone);          // AABB vs. Cone
-_NEKO_COLLIDE_FUNC_IMPL(aabb, sphere, neko_support_aabb, neko_support_sphere);      // AABB vs. Sphere
-_NEKO_COLLIDE_FUNC_IMPL(aabb, capsule, neko_support_aabb, neko_support_capsule);    // AABB vs. Capsule
-_NEKO_COLLIDE_FUNC_IMPL(aabb, poly, neko_support_aabb, neko_support_poly);          // AABB vs. Poly
-_NEKO_COLLIDE_FUNC_IMPL(aabb, ray, neko_support_aabb, neko_support_ray);            // AABB vs. Ray
-
-/* Capsule */
-
-_NEKO_COLLIDE_FUNC_IMPL(capsule, capsule, neko_support_capsule, neko_support_capsule);    // Capsule vs. Capsule
-_NEKO_COLLIDE_FUNC_IMPL(capsule, cylinder, neko_support_capsule, neko_support_cylinder);  // Capsule vs. Cylinder
-_NEKO_COLLIDE_FUNC_IMPL(capsule, cone, neko_support_capsule, neko_support_cone);          // Capsule vs. Cone
-_NEKO_COLLIDE_FUNC_IMPL(capsule, sphere, neko_support_capsule, neko_support_sphere);      // Capsule vs. Sphere
-_NEKO_COLLIDE_FUNC_IMPL(capsule, aabb, neko_support_capsule, neko_support_aabb);          // Capsule vs. AABB
-_NEKO_COLLIDE_FUNC_IMPL(capsule, poly, neko_support_capsule, neko_support_poly);          // Capsule vs. Poly
-_NEKO_COLLIDE_FUNC_IMPL(capsule, ray, neko_support_capsule, neko_support_ray);            // Capsule vs. Ray
-
-/* Poly */
-
-_NEKO_COLLIDE_FUNC_IMPL(poly, poly, neko_support_poly, neko_support_poly);          // Poly vs. Poly
-_NEKO_COLLIDE_FUNC_IMPL(poly, cylinder, neko_support_poly, neko_support_cylinder);  // Poly vs. Cylinder
-_NEKO_COLLIDE_FUNC_IMPL(poly, cone, neko_support_poly, neko_support_cone);          // Poly vs. Cone
-_NEKO_COLLIDE_FUNC_IMPL(poly, sphere, neko_support_poly, neko_support_sphere);      // Poly vs. Sphere
-_NEKO_COLLIDE_FUNC_IMPL(poly, aabb, neko_support_poly, neko_support_aabb);          // Poly vs. AABB
-_NEKO_COLLIDE_FUNC_IMPL(poly, capsule, neko_support_poly, neko_support_capsule);    // Poly vs. Capsule
-_NEKO_COLLIDE_FUNC_IMPL(poly, ray, neko_support_poly, neko_support_ray);            // Poly vs. Ray
-
-/* Cylinder */
-
-_NEKO_COLLIDE_FUNC_IMPL(cylinder, cylinder, neko_support_cylinder, neko_support_cylinder);  // Cylinder vs. Cylinder
-_NEKO_COLLIDE_FUNC_IMPL(cylinder, poly, neko_support_poly, neko_support_poly);              // Cylinder vs. Poly
-_NEKO_COLLIDE_FUNC_IMPL(cylinder, cone, neko_support_cylinder, neko_support_cone);          // Cylinder vs. Cone
-_NEKO_COLLIDE_FUNC_IMPL(cylinder, sphere, neko_support_cylinder, neko_support_sphere);      // Cylinder vs. Sphere
-_NEKO_COLLIDE_FUNC_IMPL(cylinder, aabb, neko_support_cylinder, neko_support_aabb);          // Cylinder vs. AABB
-_NEKO_COLLIDE_FUNC_IMPL(cylinder, capsule, neko_support_cylinder, neko_support_capsule);    // Cylinder vs. Capsule
-_NEKO_COLLIDE_FUNC_IMPL(cylinder, ray, neko_support_cylinder, neko_support_ray);            // Cylinder vs. Ray
-
-/* Cone */
-
-_NEKO_COLLIDE_FUNC_IMPL(cone, cone, neko_support_cone, neko_support_cone);          // Cone vs. Cone
-_NEKO_COLLIDE_FUNC_IMPL(cone, poly, neko_support_poly, neko_support_poly);          // Cone vs. Poly
-_NEKO_COLLIDE_FUNC_IMPL(cone, cylinder, neko_support_cone, neko_support_cylinder);  // Cone vs. Cylinder
-_NEKO_COLLIDE_FUNC_IMPL(cone, sphere, neko_support_cone, neko_support_sphere);      // Cone vs. Sphere
-_NEKO_COLLIDE_FUNC_IMPL(cone, aabb, neko_support_cone, neko_support_aabb);          // Cone vs. AABB
-_NEKO_COLLIDE_FUNC_IMPL(cone, capsule, neko_support_cone, neko_support_capsule);    // Cone vs. Capsule
-_NEKO_COLLIDE_FUNC_IMPL(cone, ray, neko_support_cone, neko_support_ray);            // Cone vs. Ray
-
+// boolean collision detection
+// these versions are faster than the manifold versions, but only give a YES/NO result
+NEKO_C2_API int c2CircletoCircle(c2Circle A, c2Circle B);
+NEKO_C2_API int c2CircletoAABB(c2Circle A, c2AABB B);
+NEKO_C2_API int c2CircletoCapsule(c2Circle A, c2Capsule B);
+NEKO_C2_API int c2AABBtoAABB(c2AABB A, c2AABB B);
+NEKO_C2_API int c2AABBtoCapsule(c2AABB A, c2Capsule B);
+NEKO_C2_API int c2CapsuletoCapsule(c2Capsule A, c2Capsule B);
+NEKO_C2_API int c2CircletoPoly(c2Circle A, const c2Poly* B, const c2x* bx);
+NEKO_C2_API int c2AABBtoPoly(c2AABB A, const c2Poly* B, const c2x* bx);
+NEKO_C2_API int c2CapsuletoPoly(c2Capsule A, const c2Poly* B, const c2x* bx);
+NEKO_C2_API int c2PolytoPoly(const c2Poly* A, const c2x* ax, const c2Poly* B, const c2x* bx);
+
+// ray operations
+// output is placed into the c2Raycast struct, which represents the hit location
+// of the ray. the out param contains no meaningful information if these funcs
+// return 0
+NEKO_C2_API int c2RaytoCircle(c2Ray A, c2Circle B, c2Raycast* out);
+NEKO_C2_API int c2RaytoAABB(c2Ray A, c2AABB B, c2Raycast* out);
+NEKO_C2_API int c2RaytoCapsule(c2Ray A, c2Capsule B, c2Raycast* out);
+NEKO_C2_API int c2RaytoPoly(c2Ray A, const c2Poly* B, const c2x* bx_ptr, c2Raycast* out);
+
+// manifold generation
+// These functions are (generally) slower than the boolean versions, but will compute one
+// or two points that represent the plane of contact. This information is usually needed
+// to resolve and prevent shapes from colliding. If no collision occured the count member
+// of the manifold struct is set to 0.
+NEKO_C2_API void c2CircletoCircleManifold(c2Circle A, c2Circle B, c2Manifold* m);
+NEKO_C2_API void c2CircletoAABBManifold(c2Circle A, c2AABB B, c2Manifold* m);
+NEKO_C2_API void c2CircletoCapsuleManifold(c2Circle A, c2Capsule B, c2Manifold* m);
+NEKO_C2_API void c2AABBtoAABBManifold(c2AABB A, c2AABB B, c2Manifold* m);
+NEKO_C2_API void c2AABBtoCapsuleManifold(c2AABB A, c2Capsule B, c2Manifold* m);
+NEKO_C2_API void c2CapsuletoCapsuleManifold(c2Capsule A, c2Capsule B, c2Manifold* m);
+NEKO_C2_API void c2CircletoPolyManifold(c2Circle A, const c2Poly* B, const c2x* bx, c2Manifold* m);
+NEKO_C2_API void c2AABBtoPolyManifold(c2AABB A, const c2Poly* B, const c2x* bx, c2Manifold* m);
+NEKO_C2_API void c2CapsuletoPolyManifold(c2Capsule A, const c2Poly* B, const c2x* bx, c2Manifold* m);
+NEKO_C2_API void c2PolytoPolyManifold(const c2Poly* A, const c2x* ax, const c2Poly* B, const c2x* bx, c2Manifold* m);
+
+typedef enum { C2_TYPE_CIRCLE, C2_TYPE_AABB, C2_TYPE_CAPSULE, C2_TYPE_POLY } C2_TYPE;
+
+// This struct is only for advanced usage of the c2GJK function. See comments inside of the
+// c2GJK function for more details.
+typedef struct c2GJKCache {
+    float metric;
+    int count;
+    int iA[3];
+    int iB[3];
+    float div;
+} c2GJKCache;
+
+// This is an advanced function, intended to be used by people who know what they're doing.
+//
+// Runs the GJK algorithm to find closest points, returns distance between closest points.
+// outA and outB can be NULL, in this case only distance is returned. ax_ptr and bx_ptr
+// can be NULL, and represent local to world transformations for shapes A and B respectively.
+// use_radius will apply radii for capsules and circles (if set to false, spheres are
+// treated as points and capsules are treated as line segments i.e. rays). The cache parameter
+// should be NULL, as it is only for advanced usage (unless you know what you're doing, then
+// go ahead and use it). iterations is an optional parameter.
+//
+// IMPORTANT NOTE:
+// The GJK function is sensitive to large shapes, since it internally will compute signed area
+// values. `c2GJK` is called throughout cute c2 in many ways, so try to make sure all of your
+// collision shapes are not gigantic. For example, try to keep the volume of all your shapes
+// less than 100.0f. If you need large shapes, you should use tiny collision geometry for all
+// cute c2 function, and simply render the geometry larger on-screen by scaling it up.
+NEKO_C2_API float c2GJK(const void* A, C2_TYPE typeA, const c2x* ax_ptr, const void* B, C2_TYPE typeB, const c2x* bx_ptr, c2v* outA, c2v* outB, int use_radius, int* iterations, c2GJKCache* cache);
+
+// Stores results of a time of impact calculation done by `c2TOI`.
+typedef struct c2TOIResult {
+    int hit;         // 1 if shapes were touching at the TOI, 0 if they never hit.
+    float toi;       // The time of impact between two shapes.
+    c2v n;           // Surface normal from shape A to B at the time of impact.
+    c2v p;           // Point of contact between shapes A and B at time of impact.
+    int iterations;  // Number of iterations the solver underwent.
+} c2TOIResult;
+
+// This is an advanced function, intended to be used by people who know what they're doing.
+//
+// Computes the time of impact from shape A and shape B. The velocity of each shape is provided
+// by vA and vB respectively. The shapes are *not* allowed to rotate over time. The velocity is
+// assumed to represent the change in motion from time 0 to time 1, and so the return value will
+// be a number from 0 to 1. To move each shape to the colliding configuration, multiply vA and vB
+// each by the return value. ax_ptr and bx_ptr are optional parameters to transforms for each shape,
+// and are typically used for polygon shapes to transform from model to world space. Set these to
+// NULL to represent identity transforms. iterations is an optional parameter. use_radius
+// will apply radii for capsules and circles (if set to false, spheres are treated as points and
+// capsules are treated as line segments i.e. rays).
+//
+// IMPORTANT NOTE:
+// The c2TOI function can be used to implement a "swept character controller", but it can be
+// difficult to do so. Say we compute a time of impact with `c2TOI` and move the shapes to the
+// time of impact, and adjust the velocity by zeroing out the velocity along the surface normal.
+// If we then call `c2TOI` again, it will fail since the shapes will be considered to start in
+// a colliding configuration. There are many styles of tricks to get around this problem, and
+// all of them involve giving the next call to `c2TOI` some breathing room. It is recommended
+// to use some variation of the following algorithm:
+//
+// 1. Call c2TOI.
+// 2. Move the shapes to the TOI.
+// 3. Slightly inflate the size of one, or both, of the shapes so they will be intersecting.
+//    The purpose is to make the shapes numerically intersecting, but not visually intersecting.
+//    Another option is to call c2TOI with slightly deflated shapes.
+//    See the function `c2Inflate` for some more details.
+// 4. Compute the collision manifold between the inflated shapes (for example, use c2PolytoPolyManifold).
+// 5. Gently push the shapes apart. This will give the next call to c2TOI some breathing room.
+NEKO_C2_API c2TOIResult c2TOI(const void* A, C2_TYPE typeA, const c2x* ax_ptr, c2v vA, const void* B, C2_TYPE typeB, const c2x* bx_ptr, c2v vB, int use_radius);
+
+// Inflating a shape.
+//
+// This is useful to numerically grow or shrink a polytope. For example, when calling
+// a time of impact function it can be good to use a slightly smaller shape. Then, once
+// both shapes are moved to the time of impact a collision manifold can be made from the
+// slightly larger (and now overlapping) shapes.
+//
+// IMPORTANT NOTE
+// Inflating a shape with sharp corners can cause those corners to move dramatically.
+// Deflating a shape can avoid this problem, but deflating a very small shape can invert
+// the planes and result in something that is no longer convex. Make sure to pick an
+// appropriately small skin factor, for example 1.0e-6f.
+NEKO_C2_API void c2Inflate(void* shape, C2_TYPE type, float skin_factor);
+
+// Computes 2D convex hull. Will not do anything if less than two verts supplied. If
+// more than C2_MAX_POLYGON_VERTS are supplied extras are ignored.
+NEKO_C2_API int c2Hull(c2v* verts, int count);
+NEKO_C2_API void c2Norms(c2v* verts, c2v* norms, int count);
+
+// runs c2Hull and c2Norms, assumes p->verts and p->count are both set to valid values
+NEKO_C2_API void c2MakePoly(c2Poly* p);
+
+// Generic collision detection routines, useful for games that want to use some poly-
+// morphism to write more generic-styled code. Internally calls various above functions.
+// For AABBs/Circles/Capsules ax and bx are ignored. For polys ax and bx can define
+// model to world transformations (for polys only), or be NULL for identity transforms.
+NEKO_C2_API int c2Collided(const void* A, const c2x* ax, C2_TYPE typeA, const void* B, const c2x* bx, C2_TYPE typeB);
+NEKO_C2_API void c2Collide(const void* A, const c2x* ax, C2_TYPE typeA, const void* B, const c2x* bx, C2_TYPE typeB, c2Manifold* m);
+NEKO_C2_API int c2CastRay(c2Ray A, const void* B, const c2x* bx, C2_TYPE typeB, c2Raycast* out);
+
+#ifdef _MSC_VER
+#define C2_INLINE __forceinline
+#else
+#define C2_INLINE inline __attribute__((always_inline))
 #endif
 
-/*==== GKJ ====*/
+// adjust these primitives as seen fit
+#include <math.h>
+#include <string.h>  // memcpy
+#define c2Sin(radians) sinf(radians)
+#define c2Cos(radians) cosf(radians)
+#define c2Sqrt(a) sqrtf(a)
+#define c2Min(a, b) ((a) < (b) ? (a) : (b))
+#define c2Max(a, b) ((a) > (b) ? (a) : (b))
+#define c2Abs(a) ((a) < 0 ? -(a) : (a))
+#define c2Clamp(a, lo, hi) c2Max(lo, c2Min(a, hi))
+C2_INLINE void c2SinCos(float radians, float* s, float* c) {
+    *c = c2Cos(radians);
+    *s = c2Sin(radians);
+}
+#define c2Sign(a) (a < 0 ? -1.0f : 1.0f)
 
-// Need 2D GJK/EPA impl in external (modify from chipmunk 2d)
+// The rest of the functions in the header-only portion are all for internal use
+// and use the author's personal naming conventions. It is recommended to use one's
+// own math library instead of the one embedded here in cute_c2, but for those
+// curious or interested in trying it out here's the details:
 
-// Internal functions
-/*
-bool neko_gjk_check_if_simplex_contains_origin(neko_gjk_simplex_t* simplex, neko_vec3* search_dir, neko_gjk_dimension dimension);
-void neko_gjk_simplex_push(neko_gjk_simplex_t* simplex, neko_gjk_support_point_t p);
-void neko_gjk_simplex_push_back(neko_gjk_simplex_t* simplex, neko_gjk_support_point_t p);
-void neko_gjk_simplex_push_front(neko_gjk_simplex_t* simplex, neko_gjk_support_point_t p);
-void neko_gjk_simplex_insert(neko_gjk_simplex_t* simplex, u32 idx, neko_gjk_support_point_t p);
-void neko_gjk_bary(neko_vec3 p, neko_vec3 a, neko_vec3 b, neko_vec3 c, float* u, float* v, float* w);
-// neko_gjk_epa_edge_t neko_gjk_epa_find_closest_edge(neko_gjk_simplex_t* simplex);
-neko_gjk_support_point_t neko_gjk_generate_support_point(const neko_gjk_collider_info_t* ci0, const neko_gjk_collider_info_t* ci1, neko_vec3 dir);
-neko_gjk_epa_edge_t neko_gjk_epa_find_closest_edge(neko_dyn_array(neko_gjk_support_point_t) polytope);
+// The Mul functions are used to perform multiplication. x stands for transform,
+// v stands for vector, s stands for scalar, r stands for rotation, h stands for
+// halfspace and T stands for transpose.For example c2MulxvT stands for "multiply
+// a transform with a vector, and transpose the transform".
 
-// Modified from: https://github.com/Nightmask3/Physics-Framework/blob/master/PhysicsFramework/PhysicsManager.cpp
-s32 neko_gjk(const neko_gjk_collider_info_t* ci0, const neko_gjk_collider_info_t* ci1, neko_gjk_dimension dimension, neko_contact_info_t* res)
-{
-    // Simplex simplex;
-    neko_gjk_simplex_t simplex = neko_default_val();
-    neko_vec3 search_dir = neko_v3s(1.f);
-    neko_gjk_support_point_t new_pt = neko_gjk_generate_support_point(ci0, ci1, search_dir);
-
-    // Stability check
-    if (neko_vec3_dot(search_dir, new_pt.minkowski_hull_vert) >= neko_vec3_len(new_pt.minkowski_hull_vert) * 0.8f)
-    {
-        // the chosen direction is invalid, will produce (0,0,0) for a subsequent direction later
-        search_dir = neko_v3(0.f, 1.f, 0.f);
-        new_pt = neko_gjk_generate_support_point(ci0, ci1, search_dir);
-    }
-    neko_gjk_simplex_push(&simplex, new_pt);
-
-    // Invert the search direction for the next point
-    search_dir = neko_vec3_neg(search_dir);
-
-    u32 iterationCount = 0;
-
-    while (true)
-    {
-        if (iterationCount++ >= NEKO_GJK_MAX_ITERATIONS)
-            return false;
-        // Stability check
-        // Error, for some reason the direction vector is broken
-        if (neko_vec3_len(search_dir) <= 0.0001f)
-            return false;
-
-        // Add a new point to the simplex
-        neko_gjk_support_point_t new_pt = neko_gjk_generate_support_point(ci0, ci1, search_dir);
-        neko_gjk_simplex_push(&simplex, new_pt);
-
-        // If projection of newly added point along the search direction has not crossed the origin,
-        // the Minkowski Difference could not contain the origin, objects are not colliding
-        if (neko_vec3_dot(new_pt.minkowski_hull_vert, search_dir) < 0.0f)
-        {
-            return false;
-        }
-        else
-        {
-            // If the new point IS past the origin, check if the simplex contains the origin,
-            // If it doesn't modify search direction to point towards to origin
-            if (neko_gjk_check_if_simplex_contains_origin(&simplex, &search_dir, dimension))
-            {
-                // Capture collision data using EPA if requested by user
-                if (res)
-                {
-                    switch (dimension) {
-                        case NEKO_GJK_DIMENSION_3D: *res = neko_gjk_epa(&simplex, ci0, ci1); break;
-                        case NEKO_GJK_DIMENSION_2D: *res = neko_gjk_epa_2d(&simplex, ci0, ci1); break;
-                    }
-                    return res->hit;
-                }
-                else
-                {
-                    return true;
-                }
-            }
-        }
-    }
+// vector ops
+C2_INLINE c2v c2V(float x, float y) {
+    c2v a;
+    a.x = x;
+    a.y = y;
+    return a;
+}
+C2_INLINE c2v c2Add(c2v a, c2v b) {
+    a.x += b.x;
+    a.y += b.y;
+    return a;
+}
+C2_INLINE c2v c2Sub(c2v a, c2v b) {
+    a.x -= b.x;
+    a.y -= b.y;
+    return a;
+}
+C2_INLINE float c2Dot(c2v a, c2v b) { return a.x * b.x + a.y * b.y; }
+C2_INLINE c2v c2Mulvs(c2v a, float b) {
+    a.x *= b;
+    a.y *= b;
+    return a;
+}
+C2_INLINE c2v c2Mulvv(c2v a, c2v b) {
+    a.x *= b.x;
+    a.y *= b.y;
+    return a;
+}
+C2_INLINE c2v c2Div(c2v a, float b) { return c2Mulvs(a, 1.0f / b); }
+C2_INLINE c2v c2Skew(c2v a) {
+    c2v b;
+    b.x = -a.y;
+    b.y = a.x;
+    return b;
+}
+C2_INLINE c2v c2CCW90(c2v a) {
+    c2v b;
+    b.x = a.y;
+    b.y = -a.x;
+    return b;
+}
+C2_INLINE float c2Det2(c2v a, c2v b) { return a.x * b.y - a.y * b.x; }
+C2_INLINE c2v c2Minv(c2v a, c2v b) { return c2V(c2Min(a.x, b.x), c2Min(a.y, b.y)); }
+C2_INLINE c2v c2Maxv(c2v a, c2v b) { return c2V(c2Max(a.x, b.x), c2Max(a.y, b.y)); }
+C2_INLINE c2v c2Clampv(c2v a, c2v lo, c2v hi) { return c2Maxv(lo, c2Minv(a, hi)); }
+C2_INLINE c2v c2Absv(c2v a) { return c2V(c2Abs(a.x), c2Abs(a.y)); }
+C2_INLINE float c2Hmin(c2v a) { return c2Min(a.x, a.y); }
+C2_INLINE float c2Hmax(c2v a) { return c2Max(a.x, a.y); }
+C2_INLINE float c2Len(c2v a) { return c2Sqrt(c2Dot(a, a)); }
+C2_INLINE c2v c2Norm(c2v a) { return c2Div(a, c2Len(a)); }
+C2_INLINE c2v c2SafeNorm(c2v a) {
+    float sq = c2Dot(a, a);
+    return sq ? c2Div(a, c2Len(a)) : c2V(0, 0);
+}
+C2_INLINE c2v c2Neg(c2v a) { return c2V(-a.x, -a.y); }
+C2_INLINE c2v c2Lerp(c2v a, c2v b, float t) { return c2Add(a, c2Mulvs(c2Sub(b, a), t)); }
+C2_INLINE int c2Parallel(c2v a, c2v b, float kTol) {
+    float k = c2Len(a) / c2Len(b);
+    b = c2Mulvs(b, k);
+    if (c2Abs(a.x - b.x) < kTol && c2Abs(a.y - b.y) < kTol) return 1;
+    return 0;
 }
 
-NEKO_API_DECL neko_gjk_support_point_t neko_gjk_generate_support_point(const neko_gjk_collider_info_t* ci0, const neko_gjk_collider_info_t* ci1, neko_vec3 dir)
-{
-   neko_gjk_support_point_t sp = {0};
-   sp.support_a = ci0->func(ci0->collider, ci0->xform, dir);
-   sp.support_b = ci1->func(ci1->collider, ci1->xform, neko_vec3_neg(dir));
-   sp.minkowski_hull_vert = neko_vec3_sub(sp.support_a, sp.support_b);
-   return sp;
-}
-
-// Closest point method taken from Erin Catto's GDC 2010 slides
-// Returns the closest point
-neko_vec3 neko_closest_point_on_line_from_target_point(neko_line_t line, neko_vec3 point, float* u, float* v)
-{
-    neko_vec3 line_seg = neko_vec3_sub(line.b, line.a);
-    neko_vec3 normalized = neko_vec3_norm(line_seg);
-    *v = neko_vec3_dot(neko_vec3_neg(line.a), normalized) / neko_vec3_len(line_seg);
-    *u = neko_vec3_dot(line.b, normalized) / neko_vec3_len(line_seg);
-    neko_vec3 closest_point;
-    if (*u <= 0.0f)
-    {
-        closest_point = line.b;
-    }
-    else if (*v <= 0.0f)
-    {
-        closest_point = line.a;
-    }
-    else
-    {
-        closest_point = neko_vec3_add(neko_vec3_scale(line.a, *u), neko_vec3_scale(line.b, *v));
-    }
-
-    return closest_point;
-}
-
-void neko_gjk_simplex_push(neko_gjk_simplex_t* simplex, neko_gjk_support_point_t p)
-{
-    simplex->ct = neko_min(simplex->ct + 1, 4);
-
-    for (s32 i = simplex->ct - 1; i > 0; i--)
-        simplex->points[i] = simplex->points[i - 1];
-
-    simplex->points[0] = p;
-}
-
-void neko_gjk_simplex_push_back(neko_gjk_simplex_t* simplex, neko_gjk_support_point_t p)
-{
-    if (simplex->ct >= 4) return;
-    simplex->ct = neko_min(simplex->ct + 1, 4);
-    simplex->points[simplex->ct - 1] = p;
-}
-
-void neko_gjk_simplex_push_front(neko_gjk_simplex_t* simplex, neko_gjk_support_point_t p)
-{
-    if (simplex->ct == 3) {
-        simplex->points[3] = simplex->points[2];
-        simplex->points[2] = simplex->points[1];
-        simplex->points[1] = simplex->points[0];
-        simplex->points[0] = p;
-    }
-    else if (simplex->ct == 2) {
-        simplex->points[2] = simplex->points[1];
-        simplex->points[1] = simplex->points[0];
-        simplex->points[0] = p;
-    }
-    simplex->ct = neko_min(simplex->ct + 1, 4);
-}
-
-void neko_gjk_simplex_insert(neko_gjk_simplex_t* simplex, u32 idx, neko_gjk_support_point_t p)
-{
-    // Need more points (this is where polytope comes into play, I think...)
-    // Splice the simplex by index
-
-    if (idx > 4) return;
-
-    simplex->ct = neko_min(simplex->ct + 1, 4);
-
-    for (s32 i = simplex->ct - 1; i > idx; i--)
-        simplex->points[i] = simplex->points[i - 1];
-
-    simplex->points[idx] = p;
-}
-
-void neko_gjk_simplex_clear(neko_gjk_simplex_t* simplex)
-{
-    simplex->ct = 0;
-}
-
-void neko_gjk_simplex_set1(neko_gjk_simplex_t* simplex, neko_gjk_support_point_t a)
-{
-    simplex->ct = 1;
-    simplex->a = a;
-}
-
-void neko_gjk_simplex_set2(neko_gjk_simplex_t* simplex, neko_gjk_support_point_t a, neko_gjk_support_point_t b)
-{
-    simplex->ct = 2;
-    simplex->a = a;
-    simplex->b = b;
-}
-
-void neko_gjk_simplex_set3(neko_gjk_simplex_t* simplex, neko_gjk_support_point_t a, neko_gjk_support_point_t b, neko_gjk_support_point_t c)
-{
-    simplex->ct = 3;
-    simplex->a = a;
-    simplex->b = b;
-    simplex->c = c;
-}
-
-void neko_gjk_simplex_set4(neko_gjk_simplex_t* simplex, neko_gjk_support_point_t a, neko_gjk_support_point_t b, neko_gjk_support_point_t c, neko_gjk_support_point_t d)
-{
-    simplex->ct = 4;
-    simplex->a = a;
-    simplex->b = b;
-    simplex->c = c;
-    simplex->d = d;
-}
-
-bool neko_gjk_check_if_simplex_contains_origin(neko_gjk_simplex_t* simplex, neko_vec3* search_dir, neko_gjk_dimension dimension)
-{
-    // Line case
-    if (simplex->ct == 2)
-    {
-        // Line cannot contain the origin, only search for the direction to it
-        neko_vec3 new_point_to_old_point = neko_vec3_sub(simplex->b.minkowski_hull_vert, simplex->a.minkowski_hull_vert);
-        neko_vec3 new_point_to_origin = neko_vec3_neg(simplex->a.minkowski_hull_vert);
-
-        // Method given by Erin Catto in GDC 2010 presentation
-        float u = 0.0f, v = 0.0f;
-        neko_line_t line = neko_line(simplex->a.minkowski_hull_vert, simplex->b.minkowski_hull_vert);
-        neko_vec3 origin = neko_v3s(0.f);
-        neko_vec3 closest_point = neko_closest_point_on_line_from_target_point(line, origin, &u, &v);
-
-        // Test vertex region of new simplex point first as highest chance to be there
-        if (v <= 0.0f)
-        {
-            neko_gjk_simplex_set1(simplex, simplex->a);
-            *search_dir = neko_vec3_neg(closest_point);
-            return false;
-        }
-        else if (u <= 0.0f)
-        {
-            neko_gjk_simplex_set1(simplex, simplex->b);
-            *search_dir = neko_vec3_neg(closest_point);
-            return false;
-        }
-        else
-        {
-            *search_dir = neko_vec3_neg(closest_point);
-            return false;
-        }
-    }
-
-    // Triangle case
-    else if (simplex->ct == 3)
-    {
-        // Find the newly added features
-        neko_vec3 new_point_to_origin = neko_vec3_neg(simplex->a.minkowski_hull_vert);
-        neko_vec3 edge1 = neko_vec3_sub(simplex->b.minkowski_hull_vert, simplex->a.minkowski_hull_vert);    // AB
-        neko_vec3 edge2 = neko_vec3_sub(simplex->c.minkowski_hull_vert, simplex->a.minkowski_hull_vert);    // AC
-        // Find the normals to the triangle and the two edges
-        neko_vec3 triangle_normal = neko_vec3_cross(edge1, edge2);  // ABC
-        neko_vec3 edge1_normal = neko_vec3_cross(edge1, triangle_normal);
-        neko_vec3 edge2_normal = neko_vec3_cross(triangle_normal, edge2);
-
-        // If origin is closer to the area along the second edge normal (if same_dir(AB X ABC, -A))
-        if (neko_vec3_dot(edge2_normal, new_point_to_origin) > 0.0f)
-        {
-            // If closer to the edge then find the normal that points towards the origin
-            if (neko_vec3_dot(edge2, new_point_to_origin) > 0.0f)
-            {
-                // [AC]
-                *search_dir = neko_vec3_triple_cross_product(edge2, new_point_to_origin, edge2);
-                neko_gjk_simplex_clear(simplex);
-                neko_gjk_simplex_set2(simplex, simplex->a, simplex->c);
-                return false;
-            }
-            // If closer to the new simplex point
-            else
-            {
-                // The "Star case" from the Muratori lecture
-                // If new search direction should be along edge normal
-                if (neko_vec3_dot(edge1, new_point_to_origin) > 0.0f)
-                {
-                    // [AB]
-                    *search_dir = neko_vec3_triple_cross_product(edge1, new_point_to_origin, edge1);
-                    neko_gjk_simplex_clear(simplex);
-                    neko_gjk_simplex_set2(simplex, simplex->a, simplex->b);
-                    return false;
-                }
-                else // If new search direction should be along the new Simplex point
-                {
-                    // Return new simplex point alone [A]
-                    *search_dir = new_point_to_origin;
-                    neko_gjk_simplex_clear(simplex);
-                    neko_gjk_simplex_set1(simplex, simplex->a);
-                    return false;
-                }
-            }
-        }
-        // In 2D, this is a "success" case, otherwise keep going for 3D
-        else
-        {
-            // Max simplex dimension is a triangle
-            if (dimension == NEKO_GJK_DIMENSION_2D)
-            {
-                return true;
-            }
-
-            // The "Star case" from the Muratori lecture
-            // If closer to the first edge normal
-            if (neko_vec3_dot(edge1_normal, new_point_to_origin) > 0.0f)
-            {
-                // If new search direction should be along edge normal
-                if (neko_vec3_dot(edge1, new_point_to_origin) > 0.0f)
-                {
-                    // Return it as [A, B]
-                    *search_dir = neko_vec3_triple_cross_product(edge1, new_point_to_origin, edge1);
-                    neko_gjk_simplex_clear(simplex);
-                    neko_gjk_simplex_set2(simplex, simplex->a, simplex->b);
-                    return false;
-                }
-                else // If new search direction should be along the new Simplex point
-                {
-                    // Return new simplex point alone [A]
-                    *search_dir = new_point_to_origin;
-                    neko_gjk_simplex_clear(simplex);
-                    neko_gjk_simplex_set1(simplex, simplex->a);
-                    return false;
-                }
-            }
-            else
-            {
-                // Check if it is above the triangle
-                if (neko_vec3_dot(triangle_normal, new_point_to_origin) > 0.0f)
-                {
-                    // No need to change the simplex, return as [A, B, C]
-                    *search_dir = triangle_normal;
-                    return false;
-                }
-                else // Has to be below the triangle, all 4 other possible regions checked
-                {
-                    // Return simplex as [A, C, B]
-                    *search_dir = neko_vec3_neg(triangle_normal);
-                    neko_gjk_simplex_set3(simplex, simplex->a, simplex->c, simplex->b);
-                    return false;
-                }
-            }
-        }
-    }
-    // Tetrahedron for 3D case
-    else if (simplex->ct == 4)
-    {
-        // the simplex is a tetrahedron, must check if it is outside any of the side triangles,
-        // if it is then set the simplex equal to that triangle and continue, otherwise we know
-        // there is an intersection and exit
-
-        neko_vec3 edge1 = neko_vec3_sub(simplex->b.minkowski_hull_vert, simplex->a.minkowski_hull_vert);
-        neko_vec3 edge2 = neko_vec3_sub(simplex->c.minkowski_hull_vert, simplex->a.minkowski_hull_vert);
-        neko_vec3 edge3 = neko_vec3_sub(simplex->d.minkowski_hull_vert, simplex->a.minkowski_hull_vert);
-
-        neko_vec3 face1_normal = neko_vec3_cross(edge1, edge2);
-        neko_vec3 face2_normal = neko_vec3_cross(edge2, edge3);
-        neko_vec3 face3_normal = neko_vec3_cross(edge3, edge1);
-
-        neko_vec3 new_point_to_origin = neko_vec3_neg(simplex->a.minkowski_hull_vert);
-
-        bool contains = true;
-        if (neko_vec3_dot(face1_normal, new_point_to_origin) > 0.0f)
-        {
-            // Origin is in front of first face, simplex is correct already
-            // goto tag;
-            contains = false;
-        }
-
-        if (!contains && neko_vec3_dot(face2_normal, new_point_to_origin) > 0.0f)
-        {
-            // Origin is in front of second face, simplex is set to this triangle [A, C, D]
-            neko_gjk_simplex_clear(simplex);
-            neko_gjk_simplex_set3(simplex, simplex->a, simplex->c, simplex->d);
-            contains = false;
-        }
-
-        if (!contains && neko_vec3_dot(face3_normal, new_point_to_origin) > 0.0f)
-        {
-            // Origin is in front of third face, simplex is set to this triangle [A, D, B]
-            neko_gjk_simplex_clear(simplex);
-            neko_gjk_simplex_set3(simplex, simplex->a, simplex->d, simplex->b);
-            contains = false;
-        }
-
-        // If reached here it means the simplex MUST contain the origin, intersection confirmed
-        if (contains) {
-            return true;
-        }
-
-        neko_vec3 edge1_normal = neko_vec3_cross(edge1, face1_normal);
-        if (neko_vec3_dot(edge1_normal, new_point_to_origin) > 0.0f)
-        {
-            // Origin is along the normal of edge1, set the simplex to that edge [A, B]
-            *search_dir = neko_vec3_triple_cross_product(edge1, new_point_to_origin, edge1);
-            neko_gjk_simplex_clear(simplex);
-            neko_gjk_simplex_set2(simplex, simplex->a, simplex->b);
-            return false;
-        }
-
-        neko_vec3 edge2Normal = neko_vec3_cross(face1_normal, edge2);
-        if (neko_vec3_dot(edge2Normal, new_point_to_origin) > 0.0f)
-        {
-            // Origin is along the normal of edge2, set the simplex to that edge [A, C]
-            *search_dir = neko_vec3_triple_cross_product(edge2, new_point_to_origin, edge2);
-            neko_gjk_simplex_clear(simplex);
-            neko_gjk_simplex_set2(simplex, simplex->a, simplex->c);
-            return false;
-        }
-
-        // If reached here the origin is along the first face normal, set the simplex to this face [A, B, C]
-        *search_dir = face1_normal;
-        neko_gjk_simplex_clear(simplex);
-        neko_gjk_simplex_set3(simplex, simplex->a, simplex->b, simplex->c);
-        return false;
-    }
-    return false;
-}
-
-
-// Find barycentric coordinates of triangle with respect to p
-NEKO_API_DECL void neko_gjk_bary(neko_vec3 p, neko_vec3 a, neko_vec3 b, neko_vec3 c, float* u, float* v, float* w)
-{
-    neko_vec3 v0 = neko_vec3_sub(b, a), v1 = neko_vec3_sub(c, a), v2 = neko_vec3_sub(p, a);
-    float d00 = neko_vec3_dot(v0, v0);
-    float d01 = neko_vec3_dot(v0, v1);
-    float d11 = neko_vec3_dot(v1, v1);
-    float d20 = neko_vec3_dot(v2, v0);
-    float d21 = neko_vec3_dot(v2, v1);
-    float denom = d00 * d11 - d01 * d01;
-    *v = (d11 * d20 - d01 * d21) / denom;
-    *w = (d00 * d21 - d01 * d20) / denom;
-    *u = 1.0f - *v - *w;
-}
-
-//Expanding Polytope Algorithm
-NEKO_API_DECL neko_contact_info_t neko_gjk_epa(
-    const neko_gjk_simplex_t* simplex,
-    const neko_gjk_collider_info_t* ci0,
-    const neko_gjk_collider_info_t* ci1
-)
-{
-    neko_contact_info_t res = {0};
-
-    // Cache pointers for collider 0
-    void* c0 = ci0->collider;
-    neko_gjk_support_func_t f0 = ci0->func;
-    neko_phys_xform_t* xform_0 = ci0->xform;
-
-    // Cache pointers for collider 1
-    void* c1 = ci1->collider;
-    neko_gjk_support_func_t f1 = ci1->func;
-    neko_phys_xform_t* xform_1 = ci1->xform;
-
-    // Array of polytope faces, each with 3 support points and a normal
-    neko_gjk_polytope_face_t faces[NEKO_EPA_MAX_NUM_FACES] = {0};
-    neko_vec3 bma = neko_vec3_sub(simplex->b.minkowski_hull_vert, simplex->a.minkowski_hull_vert);
-    neko_vec3 cma = neko_vec3_sub(simplex->c.minkowski_hull_vert, simplex->a.minkowski_hull_vert);
-    neko_vec3 dma = neko_vec3_sub(simplex->d.minkowski_hull_vert, simplex->a.minkowski_hull_vert);
-    neko_vec3 cmb = neko_vec3_sub(simplex->c.minkowski_hull_vert, simplex->b.minkowski_hull_vert);
-    neko_vec3 dmb = neko_vec3_sub(simplex->d.minkowski_hull_vert, simplex->b.minkowski_hull_vert);
-
-    faces[0] = neko_ctor(neko_gjk_polytope_face_t, {simplex->a, simplex->b, simplex->c}, neko_vec3_norm(neko_vec3_cross(bma, cma)));    // ABC
-    faces[1] = neko_ctor(neko_gjk_polytope_face_t, {simplex->a, simplex->c, simplex->d}, neko_vec3_norm(neko_vec3_cross(cma, dma)));    // ACD
-    faces[2] = neko_ctor(neko_gjk_polytope_face_t, {simplex->a, simplex->d, simplex->b}, neko_vec3_norm(neko_vec3_cross(dma, bma)));    // ADB
-    faces[3] = neko_ctor(neko_gjk_polytope_face_t, {simplex->b, simplex->d, simplex->c}, neko_vec3_norm(neko_vec3_cross(dmb, cmb)));    // BDC
-
-    s32 num_faces = 4;
-    s32 closest_face;
-
-    for (s32 iterations = 0; iterations < NEKO_EPA_MAX_NUM_ITERATIONS; ++iterations)
-    {
-        //Find face that's closest to origin
-        float min_dist = neko_vec3_dot(faces[0].points[0].minkowski_hull_vert, faces[0].normal);
-        closest_face = 0;
-        for (s32 i = 1; i < num_faces; ++i)
-        {
-            float dist = neko_vec3_dot(faces[i].points[0].minkowski_hull_vert, faces[i].normal);
-            if (dist < min_dist)
-            {
-                min_dist = dist;
-                closest_face = i;
-            }
-        }
-
-        // Search normal to face that's closest to origin
-        neko_vec3 search_dir = faces[closest_face].normal;
-        neko_gjk_support_point_t p = neko_gjk_generate_support_point(ci0, ci1, search_dir);
-        float depth = neko_vec3_dot(p.minkowski_hull_vert, search_dir);
-
-        // Within tolerance, so extract contact information from hull
-        if (depth - min_dist < NEKO_EPA_TOLERANCE)
-        {
-            // Cache local pointers
-            neko_gjk_polytope_face_t* f = &faces[closest_face];
-            neko_vec3* n = &f->normal;
-            neko_gjk_support_point_t* sp0 = &f->points[0];
-            neko_gjk_support_point_t* sp1 = &f->points[1];
-            neko_gjk_support_point_t* sp2 = &f->points[2];
-            neko_vec3* p0 = &sp0->minkowski_hull_vert;
-            neko_vec3* p1 = &sp1->minkowski_hull_vert;
-            neko_vec3* p2 = &sp2->minkowski_hull_vert;
-
-            // Normal and depth information
-            res.hit = true;
-            res.normal = neko_vec3_norm(*n);
-            res.depth = depth;
-
-            // Get barycentric coordinates of resulting triangle face
-            float u = 0.f, v = 0.f, w = 0.f;
-            neko_gjk_bary(*n, *p0, *p1, *p2, &u, &v, &w);
-
-            neko_vec3* support_0, *support_1, *support_2;
-
-            // A Contact points
-            support_0 = &sp0->support_a;
-            support_1 = &sp1->support_a;
-            support_2 = &sp2->support_a;
-
-            // Contact point on collider a
-            res.points[0] = neko_vec3_add(neko_vec3_add(neko_vec3_scale(*support_0, u), neko_vec3_scale(*support_1, v)), neko_vec3_scale(*support_2, w));
-
-            // B Contact points
-            support_0 = &sp0->support_b;
-            support_1 = &sp1->support_b;
-            support_2 = &sp2->support_b;
-
-            // Contact point on collider b
-            res.points[1] = neko_vec3_add(neko_vec3_add(neko_vec3_scale(*support_0, u), neko_vec3_scale(*support_1, v)), neko_vec3_scale(*support_2, w));
-
-            return res;
-        }
-
-        // Fix Edges
-        neko_gjk_support_point_t loose_edges[NEKO_EPA_MAX_NUM_LOOSE_EDGES][2];
-        s32 num_loose_edges = 0;
-
-        // Find all triangles that are facing p
-        for (s32 i = 0; i < num_faces; ++i)
-        {
-            // Grab direction from first point on face at p to i
-            neko_vec3 dir = neko_vec3_sub(p.minkowski_hull_vert, faces[i].points[0].minkowski_hull_vert);
-
-            // Triangle i faces p, remove it
-            if (neko_vec3_same_dir(faces[i].normal, dir))
-            {
-                // Add removed triangle's edges to loose edge list.
-                // If it's already there, remove it (both triangles it belonged to are gone)
-                for (s32 j = 0; j < 3; ++j)
-                {
-                    neko_gjk_support_point_t current_edge[2] = {faces[i].points[j], faces[i].points[(j + 1) % 3]};
-                    bool found_edge = false;
-                    for (s32 k = 0; k < num_loose_edges; ++k) //Check if current edge is already in list
-                    {
-                        //Edge is already in the list, remove it
-                        if (neko_vec3_eq(loose_edges[k][1].minkowski_hull_vert, current_edge[0].minkowski_hull_vert)
-                                && neko_vec3_eq(loose_edges[k][0].minkowski_hull_vert, current_edge[1].minkowski_hull_vert))
-                        {
-                            // Overwrite current edge with last edge in list
-                            loose_edges[k][0] = loose_edges[num_loose_edges - 1][0];
-                            loose_edges[k][1] = loose_edges[num_loose_edges - 1][1];
-                            num_loose_edges--;
-
-                             // Exit loop because edge can only be shared once
-                            found_edge = true;
-                            k = num_loose_edges;
-                        }
-                    }
-
-                    // Add current edge to list (is unique)
-                    if (!found_edge)
-                    {
-                        if (num_loose_edges >= NEKO_EPA_MAX_NUM_LOOSE_EDGES) break;
-                        loose_edges[num_loose_edges][0] = current_edge[0];
-                        loose_edges[num_loose_edges][1] = current_edge[1];
-                        num_loose_edges++;
-                    }
-                }
-
-                // Remove triangle i from list
-                faces[i].points[0] = faces[num_faces - 1].points[0];
-                faces[i].points[1] = faces[num_faces - 1].points[1];
-                faces[i].points[2] = faces[num_faces - 1].points[2];
-                faces[i].normal = faces[num_faces - 1].normal;
-                num_faces--;
-                i--;
-            }
-        }
-
-        // Reconstruct polytope with p now added
-        for (s32 i = 0; i < num_loose_edges; ++i)
-        {
-            if (num_faces >= NEKO_EPA_MAX_NUM_FACES) break;
-            faces[num_faces].points[0] = loose_edges[i][0];
-            faces[num_faces].points[1] = loose_edges[i][1];
-            faces[num_faces].points[2] = p;
-            neko_vec3 zmo = neko_vec3_sub(loose_edges[i][0].minkowski_hull_vert, loose_edges[i][1].minkowski_hull_vert);
-            neko_vec3 zmp = neko_vec3_sub(loose_edges[i][0].minkowski_hull_vert, p.minkowski_hull_vert);
-            faces[num_faces].normal = neko_vec3_norm(neko_vec3_cross(zmo, zmp));
-
-            //Check for wrong normal to maintain CCW winding
-            // In case dot result is only slightly < 0 (because origin is on face)
-            float bias = 0.000001;
-            if (neko_vec3_dot(faces[num_faces].points[0].minkowski_hull_vert, faces[num_faces].normal) + bias < 0.f){
-                neko_gjk_support_point_t temp = faces[num_faces].points[0];
-                faces[num_faces].points[0] = faces[num_faces].points[1];
-                faces[num_faces].points[1] = temp;
-                faces[num_faces].normal = neko_vec3_scale(faces[num_faces].normal, -1.f);
-            }
-            num_faces++;
-        }
-    }
-
-    // Return most recent closest point
-    float dot = neko_vec3_dot(faces[closest_face].points[0].minkowski_hull_vert, faces[closest_face].normal);
-    neko_vec3 norm = neko_vec3_scale(faces[closest_face].normal, dot);
-    res.hit = false;
-    res.normal = neko_vec3_norm(norm);
-    res.depth = neko_vec3_len(norm);
-    return res;
-}
-
-// Expanding Polytope Algorithm 2D
-NEKO_API_DECL neko_contact_info_t neko_gjk_epa_2d(
-    const neko_gjk_simplex_t* simplex,
-    const neko_gjk_collider_info_t* ci0,
-    const neko_gjk_collider_info_t* ci1
-)
-{
-    neko_dyn_array(neko_gjk_support_point_t) polytope = NULL;
-    neko_contact_info_t res = neko_default_val();
-    neko_gjk_support_point_t p = neko_default_val();
-
-    // Copy over simplex into polytope array
-    for (u32 i = 0; i < simplex->ct; ++i) {
-        neko_dyn_array_push(polytope, simplex->points[i]);
-    }
-
-    // p = neko_gjk_generate_support_point(ci0, ci1, neko_v3s(1.f));
-    // neko_gjk_simplex_push_front(simplex, p);
-    neko_gjk_epa_edge_t e = neko_default_val();
-    u32 iterations = 0;
-    while (iterations < NEKO_EPA_MAX_NUM_ITERATIONS)
-    {
-        // Find closest edge to origin from simplex
-        e = neko_gjk_epa_find_closest_edge(polytope);
-        p = neko_gjk_generate_support_point(ci0, ci1, e.normal);
-
-        double d = (double)neko_vec3_dot(p.minkowski_hull_vert, e.normal);
-
-        // Success, calculate results
-        if (d - e.distance < NEKO_EPA_TOLERANCE)
-        {
-            // Normal and depth information
-            res.normal = neko_vec3_norm(e.normal);
-            res.depth = d;
-            break;
-        }
-        else
-        {
-            // Need to think about this more. This is fucked.
-            // Need an "expanding" simplex, that only allows for unique points to be included.
-            // This is just overwriting. I need to actually insert then push back.
-            // neko_gjk_simplex_insert(simplex, e.index + 1, p);
-            // Insert into polytope array at idx + 1
-            for (u32 i = 0; i < neko_dyn_array_size(polytope); ++i)
-            {
-               neko_vec3* p = &polytope[i].minkowski_hull_vert;
-               neko_printf("<%.2f, %.2f>, ", p->x, p->y);
-            }
-            neko_dyn_array_push(polytope, p);
-
-            for (s32 i = neko_dyn_array_size(polytope) - 1; i > e.index + 1; i--)
-                polytope[i] = polytope[i - 1];
-
-            polytope[e.index + 1] = p;
-
-            neko_println("pts after: ");
-            for (u32 i = 0; i < neko_dyn_array_size(polytope); ++i)
-            {
-               neko_vec3* p = &polytope[i].minkowski_hull_vert;
-               neko_printf("<%.2f, %.2f>, ", p->x, p->y);
-            }
-        }
-
-        // Increment iterations
-        iterations++;
-    }
-
-    // neko_vec3 line_vec = neko_vec3_sub(e.a.minkowski_hull_vert, e.b.minkowski_hull_vert);
-    // neko_vec3 projO = neko_vec3_scale(neko_vec3_scale(line_vec, 1.f / neko_vec3_len2(line_vec)), neko_vec3_dot(line_vec, neko_vec3_neg(e.b.minkowski_hull_vert)));
-    // float s, t;
-    // s = sqrt(neko_vec3_len2(projO) / neko_vec3_len2(line_vec));
-    // t = 1.f - s;
-    // s32 next_idx = (e.index + 1) % simplex->ct;
-    res.hit = true;
-    // res.points[0] = neko_vec3_add(neko_vec3_scale(simplex->points[e.index].support_a, s), neko_vec3_scale(simplex->points[next_idx].support_a, t));
-    // res.points[1] = neko_vec3_add(neko_vec3_scale(simplex->points[e.index].support_b, s), neko_vec3_scale(simplex->points[next_idx].support_b, t));
-
-    return res;
-
-}
-
-neko_gjk_epa_edge_t neko_gjk_epa_find_closest_edge(neko_dyn_array(neko_gjk_support_point_t) polytope)
-{
-   neko_gjk_epa_edge_t res = neko_default_val();
-   float min_dist = FLT_MAX;
-   u32 min_index = 0;
-   neko_vec3 min_normal = neko_default_val();
-   for (u32 i = 0; i < neko_dyn_array_size(polytope); ++i)
-   {
-        u32 j = (i + 1) % neko_dyn_array_size(polytope);
-        neko_gjk_support_point_t* a = &polytope[0];
-        neko_gjk_support_point_t* b = &polytope[1];
-        neko_vec3 dir = neko_vec3_sub(b->minkowski_hull_vert, a->minkowski_hull_vert);
-        neko_vec3 norm = neko_vec3_norm(neko_v3(dir.y, -dir.x, 0.f));
-        float dist = neko_vec3_dot(norm, a->minkowski_hull_vert);
-
-        // If distance is negative, then we need to correct for winding order mistakes
-        if (dist < 0) {
-            dist *= -1;
-            norm = neko_vec3_neg(norm);
-        }
-
-        // Check for min distance
-        if (dist < min_dist) {
-            min_dist = dist;
-            min_normal = norm;
-            min_index = j;
-        }
-   }
-   res.index = min_index;
-   res.normal = min_normal;
-   res.distance = min_dist;
-   return res;
-}
-
-neko_gjk_epa_edge_t neko_gjk_epa_find_closest_edge2(neko_gjk_simplex_t* simplex)
-{
-    neko_gjk_epa_edge_t result = neko_default_val();
-    u32 next_idx = 0;
-    float min_dist = FLT_MAX, curr_dist = 0.f;
-    neko_vec3 norm, edge;
-    neko_vec3 norm_3d;
-
-    for (s32 i = 0; i < simplex->ct; ++i)
-    {
-        next_idx = (i + 1) % simplex->ct;
-        edge = neko_vec3_sub(simplex->points[next_idx].minkowski_hull_vert, simplex->points[i].minkowski_hull_vert);
-        norm_3d = neko_vec3_triple_cross_product(neko_v3(edge.x, edge.y, 0),
-            neko_v3(simplex->points[i].minkowski_hull_vert.x, simplex->points[i].minkowski_hull_vert.y, 0.f),
-            neko_v3(edge.x, edge.y, 0.f));
-        norm.x = norm_3d.x;
-        norm.y = norm_3d.y;
-
-        norm = neko_vec3_norm(norm);
-        curr_dist = neko_vec3_dot(norm, simplex->points[i].minkowski_hull_vert);
-        if (curr_dist < min_dist)
-        {
-            min_dist = curr_dist;
-            result.a = simplex->points[i];
-            result.b = simplex->points[next_idx];
-            result.normal = norm;
-            result.distance = curr_dist;
-            result.index = i;
-        }
-    }
-
-    return result;
-}
-*/
-
-/*===== CCD ======*/
-
-#ifndef NEKO_PHYSICS_NO_CCD
-
-// Useful CCD conversions
-void _neko_ccdv32gsv3(const ccd_vec3_t* _in, neko_vec3* _out) {
-    // Safe check against NaNs
-    if (neko_is_nan(_in->v[0]) || neko_is_nan(_in->v[1]) || neko_is_nan(_in->v[2])) return;
-    *_out = neko_ctor(neko_vec3, (float)_in->v[0], (float)_in->v[1], (float)_in->v[2]);
-}
-
-void _neko_gsv32ccdv3(const neko_vec3* _in, ccd_vec3_t* _out) { ccdVec3Set(_out, CCD_REAL(_in->x), CCD_REAL(_in->y), CCD_REAL(_in->z)); }
-
-NEKO_API_PRIVATE s32 _neko_ccd_gjk_internal(const void* c0, const neko_vqs* xform_a, neko_support_func_t f0, const void* c1, const neko_vqs* xform_b, neko_support_func_t f1, neko_contact_info_t* res
-
-) {
-    // Convert to appropriate gjk internals, then call ccd
-    ccd_t ccd = neko_default_val();
-    CCD_INIT(&ccd);
-
-    // set up ccd_t struct
-    ccd.support1 = _neko_ccd_support_func;  // support function for first object
-    ccd.support2 = _neko_ccd_support_func;  // support function for second object
-    ccd.max_iterations = 100;               // maximal number of iterations
-    ccd.epa_tolerance = 0.0001;             // maximal tolerance for epa to succeed
-
-    // Default transforms
-    neko_vqs _xa = neko_vqs_default(), _xb = neko_vqs_default();
-
-    // Collision object 1
-    _neko_collision_obj_handle_t h0 = neko_default_val();
-    h0.support = f0;
-    h0.obj = c0;
-    h0.xform = xform_a ? xform_a : &_xa;
-
-    // Collision object 2
-    _neko_collision_obj_handle_t h1 = neko_default_val();
-    h1.support = f1;
-    h1.obj = c1;
-    h1.xform = xform_b ? xform_b : &_xb;
-
-    // Call ccd, cache results into res for user
-    ccd_real_t depth = CCD_REAL(0.0);
-    ccd_vec3_t n = neko_ctor(ccd_vec3_t, 0.f, 0.f, 0.f), p = neko_ctor(ccd_vec3_t, 0.f, 0.f, 0.f);
-    s32 r = ccdGJKPenetration(&h0, &h1, &ccd, &depth, &n, &p);
-    b32 hit = r >= 0 && !neko_is_nan(n.v[0]) && !neko_is_nan(n.v[1]) && !neko_is_nan(n.v[2]);
-
-    if (hit && res) {
-        res->hit = true;
-        res->depth = (float)depth;
-        _neko_ccdv32gsv3(&p, &res->point);
-        _neko_ccdv32gsv3(&n, &res->normal);
-    }
-
+// rotation ops
+C2_INLINE c2r c2Rot(float radians) {
+    c2r r;
+    c2SinCos(radians, &r.s, &r.c);
     return r;
 }
-
-// typedef void (*ccd_support_fn)(const void *obj, const ccd_vec3_t *dir,
-//                                ccd_vec3_t *vec);
-
-// Internal support function for neko -> ccd
-NEKO_API_DECL void _neko_ccd_support_func(const void* _obj, const ccd_vec3_t* _dir, ccd_vec3_t* _out) {
-    const _neko_collision_obj_handle_t* obj = (const _neko_collision_obj_handle_t*)_obj;
-    if (obj->support) {
-        // Temp copy conversion for direction vector
-        neko_vec3 dir = neko_default_val(), out = neko_default_val();
-        _neko_ccdv32gsv3((const ccd_vec3_t*)_dir, &dir);
-
-        // Call user provided support function
-        // Think I found it...
-        obj->support(obj->obj, obj->xform, &dir, &out);
-
-        // Copy over out result for ccd
-        _neko_gsv32ccdv3(&out, (ccd_vec3_t*)_out);
-    }
+C2_INLINE c2r c2RotIdentity(void) {
+    c2r r;
+    r.c = 1.0f;
+    r.s = 0;
+    return r;
+}
+C2_INLINE c2v c2RotX(c2r r) { return c2V(r.c, r.s); }
+C2_INLINE c2v c2RotY(c2r r) { return c2V(-r.s, r.c); }
+C2_INLINE c2v c2Mulrv(c2r a, c2v b) { return c2V(a.c * b.x - a.s * b.y, a.s * b.x + a.c * b.y); }
+C2_INLINE c2v c2MulrvT(c2r a, c2v b) { return c2V(a.c * b.x + a.s * b.y, -a.s * b.x + a.c * b.y); }
+C2_INLINE c2r c2Mulrr(c2r a, c2r b) {
+    c2r c;
+    c.c = a.c * b.c - a.s * b.s;
+    c.s = a.s * b.c + a.c * b.s;
+    return c;
+}
+C2_INLINE c2r c2MulrrT(c2r a, c2r b) {
+    c2r c;
+    c.c = a.c * b.c + a.s * b.s;
+    c.s = a.c * b.s - a.s * b.c;
+    return c;
 }
 
-#endif
+C2_INLINE c2v c2Mulmv(c2m a, c2v b) {
+    c2v c;
+    c.x = a.x.x * b.x + a.y.x * b.y;
+    c.y = a.x.y * b.x + a.y.y * b.y;
+    return c;
+}
+C2_INLINE c2v c2MulmvT(c2m a, c2v b) {
+    c2v c;
+    c.x = a.x.x * b.x + a.x.y * b.y;
+    c.y = a.y.x * b.x + a.y.y * b.y;
+    return c;
+}
+C2_INLINE c2m c2Mulmm(c2m a, c2m b) {
+    c2m c;
+    c.x = c2Mulmv(a, b.x);
+    c.y = c2Mulmv(a, b.y);
+    return c;
+}
+C2_INLINE c2m c2MulmmT(c2m a, c2m b) {
+    c2m c;
+    c.x = c2MulmvT(a, b.x);
+    c.y = c2MulmvT(a, b.y);
+    return c;
+}
 
-#endif  // NEKO_PHYSICS_IMPL
+// transform ops
+C2_INLINE c2x c2xIdentity(void) {
+    c2x x;
+    x.p = c2V(0, 0);
+    x.r = c2RotIdentity();
+    return x;
+}
+C2_INLINE c2v c2Mulxv(c2x a, c2v b) { return c2Add(c2Mulrv(a.r, b), a.p); }
+C2_INLINE c2v c2MulxvT(c2x a, c2v b) { return c2MulrvT(a.r, c2Sub(b, a.p)); }
+C2_INLINE c2x c2Mulxx(c2x a, c2x b) {
+    c2x c;
+    c.r = c2Mulrr(a.r, b.r);
+    c.p = c2Add(c2Mulrv(a.r, b.p), a.p);
+    return c;
+}
+C2_INLINE c2x c2MulxxT(c2x a, c2x b) {
+    c2x c;
+    c.r = c2MulrrT(a.r, b.r);
+    c.p = c2MulrvT(a.r, c2Sub(b.p, a.p));
+    return c;
+}
+C2_INLINE c2x c2Transform(c2v p, float radians) {
+    c2x x;
+    x.r = c2Rot(radians);
+    x.p = p;
+    return x;
+}
+
+// halfspace ops
+C2_INLINE c2v c2Origin(c2h h) { return c2Mulvs(h.n, h.d); }
+C2_INLINE float c2Dist(c2h h, c2v p) { return c2Dot(h.n, p) - h.d; }
+C2_INLINE c2v c2Project(c2h h, c2v p) { return c2Sub(p, c2Mulvs(h.n, c2Dist(h, p))); }
+C2_INLINE c2h c2Mulxh(c2x a, c2h b) {
+    c2h c;
+    c.n = c2Mulrv(a.r, b.n);
+    c.d = c2Dot(c2Mulxv(a, c2Origin(b)), c.n);
+    return c;
+}
+C2_INLINE c2h c2MulxhT(c2x a, c2h b) {
+    c2h c;
+    c.n = c2MulrvT(a.r, b.n);
+    c.d = c2Dot(c2MulxvT(a, c2Origin(b)), c.n);
+    return c;
+}
+C2_INLINE c2v c2Intersect(c2v a, c2v b, float da, float db) { return c2Add(a, c2Mulvs(c2Sub(b, a), (da / (da - db)))); }
+
+C2_INLINE void c2BBVerts(c2v* out, c2AABB* bb) {
+    out[0] = bb->min;
+    out[1] = c2V(bb->max.x, bb->min.y);
+    out[2] = bb->max;
+    out[3] = c2V(bb->min.x, bb->max.y);
+}
+
+C2_INLINE c2v top_left(c2AABB bb) { return c2V(bb.min.x, bb.max.y); }
+C2_INLINE c2v top_right(c2AABB bb) { return c2V(bb.max.x, bb.max.y); }
+C2_INLINE c2v bottom_left(c2AABB bb) { return c2V(bb.min.x, bb.min.y); }
+C2_INLINE c2v bottom_right(c2AABB bb) { return c2V(bb.max.x, bb.min.y); }
+
 #endif  // NEKO_PHYSICS_H

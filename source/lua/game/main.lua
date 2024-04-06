@@ -119,7 +119,6 @@ game_init = function()
     CObject.setter("__lua_tex_t", "id")(test_custom_sprite.tex_userdata, test_custom_sprite.tex)
 
     local v = {-0.5, -0.5, 0.0, 0.0, 0.5, -0.5, 1.0, 0.0, -0.5, 0.5, 0.0, 1.0, 0.5, 0.5, 1.0, 1.0}
-
     test_custom_sprite.vdata = __neko_cstruct_test.udata(CObject.s["__lua_quad_vdata_t"]:size(
         "struct __lua_quad_vdata_t"))
 
@@ -245,7 +244,10 @@ game_render = function()
             buffer = test_custom_sprite.ibo
         }}
     })
-    neko.graphics_draw()
+    neko.graphics_draw({
+        start = 0,
+        count = 6
+    })
     neko.graphics_renderpass_end()
 
     ImGui.Begin("Demo")
