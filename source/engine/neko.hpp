@@ -693,18 +693,20 @@ struct string_store {
     u32 get_string(const char* _str) { return str_index_map[_str]; }
 };
 
+namespace neko {
+
 template <typename T>
-struct neko_span {
-    neko_span() : __begin(nullptr), __end(nullptr) {}
-    neko_span(T* begin, u32 len) : __begin(begin), __end(begin + len) {}
-    neko_span(T* begin, T* end) : __begin(begin), __end(end) {}
+struct span {
+    span() : __begin(nullptr), __end(nullptr) {}
+    span(T* begin, u32 len) : __begin(begin), __end(begin + len) {}
+    span(T* begin, T* end) : __begin(begin), __end(end) {}
     template <int N>
-    neko_span(T (&value)[N]) : __begin(value), __end(value + N) {}
+    span(T (&value)[N]) : __begin(value), __end(value + N) {}
     T& operator[](u32 idx) const {
         neko_assert(__begin + idx < __end);
         return __begin[idx];
     }
-    operator neko_span<const T>() const { return neko_span<const T>(__begin, __end); }
+    operator span<const T>() const { return span<const T>(__begin, __end); }
     void remove_prefix(u32 count) {
         neko_assert(count <= length());
         __begin += count;
@@ -713,13 +715,13 @@ struct neko_span {
         neko_assert(count <= length());
         __end -= count;
     }
-    [[nodiscard]] neko_span from_left(u32 count) const {
+    [[nodiscard]] span from_left(u32 count) const {
         neko_assert(count <= length());
-        return neko_span(__begin + count, __end);
+        return span(__begin + count, __end);
     }
-    [[nodiscard]] neko_span from_right(u32 count) const {
+    [[nodiscard]] span from_right(u32 count) const {
         neko_assert(count <= length());
-        return neko_span(__begin, __end - count);
+        return span(__begin, __end - count);
     }
     T& back() {
         neko_assert(length() > 0);
@@ -729,7 +731,7 @@ struct neko_span {
         neko_assert(length() > 0);
         return *(__end - 1);
     }
-    bool equals(const neko_span<T>& rhs) {
+    bool equals(const span<T>& rhs) {
         bool res = true;
         if (length() != rhs.length()) return false;
         for (const T& v : *this) {
@@ -757,8 +759,6 @@ struct neko_span {
 };
 
 // hash 计算相关函数
-
-namespace neko {
 
 typedef unsigned long long hash_value;
 
@@ -897,6 +897,120 @@ constexpr hash_value hash(const std::vector<T>& v) {
         h = xor64(h);
     }
     return h;
+}
+
+template <typename ForwardIterator, typename SpaceDetector>
+constexpr ForwardIterator find_terminating_word(ForwardIterator begin, ForwardIterator end, SpaceDetector&& is_space_pred) {
+    auto rend = std::reverse_iterator(begin);
+    auto rbegin = std::reverse_iterator(end);
+
+    int sp_size = 0;
+    auto is_space = [&sp_size, &is_space_pred, &end](char c) {
+        sp_size = is_space_pred(std::string_view{&c, static_cast<unsigned>(&*std::prev(end) - &c)});
+        return sp_size > 0;
+    };
+
+    auto search = std::find_if(rbegin, rend, is_space);
+    if (search == rend) {
+        return begin;
+    }
+    ForwardIterator it = std::prev(search.base());
+    it += sp_size;
+    return it;
+}
+
+template <typename ForwardIt, typename OutputIt>
+constexpr void copy(ForwardIt src_beg, ForwardIt src_end, OutputIt dest_beg, OutputIt dest_end) {
+    while (src_beg != src_end && dest_beg != dest_end) {
+        *dest_beg++ = *src_beg++;
+    }
+}
+
+struct string {
+    char* data = nullptr;
+    u64 len = 0;
+
+    string() = default;
+    string(const char* cstr) : data((char*)cstr), len(strlen(cstr)) {}
+    string(const char* cstr, u64 n) : data((char*)cstr), len(n) {}
+
+    inline bool is_cstr() { return data[len] == '\0'; }
+
+    inline string substr(u64 i, u64 j) {
+        assert(i <= j);
+        assert(j <= (s64)len);
+        return {&data[i], j - i};
+    }
+
+    bool starts_with(string match);
+
+    bool ends_with(string match);
+
+    inline u64 first_of(char c) {
+        for (u64 i = 0; i < len; i++) {
+            if (data[i] == c) {
+                return i;
+            }
+        }
+
+        return (u64)-1;
+    }
+
+    inline u64 last_of(char c) {
+        for (u64 i = len; i > 0; i--) {
+            if (data[i - 1] == c) {
+                return i - 1;
+            }
+        }
+
+        return (u64)-1;
+    }
+
+    char* begin() { return data; }
+    char* end() { return &data[len]; }
+};
+
+inline string to_cstr(string str) {
+    char* buf = (char*)neko_safe_malloc(str.len + 1);
+    memcpy(buf, str.data, str.len);
+    buf[str.len] = 0;
+    return {buf, str.len};
+}
+
+constexpr u64 fnv1a(const char* str, u64 len) {
+    u64 hash = 14695981039346656037u;
+    for (u64 i = 0; i < len; i++) {
+        hash ^= (u8)str[i];
+        hash *= 1099511628211;
+    }
+    return hash;
+}
+
+inline u64 fnv1a(string str) { return fnv1a(str.data, str.len); }
+
+constexpr u64 operator"" _hash(const char* str, size_t len) { return fnv1a(str, len); }
+
+inline bool operator==(string lhs, string rhs) {
+    if (lhs.len != rhs.len) {
+        return false;
+    }
+    return memcmp(lhs.data, rhs.data, lhs.len) == 0;
+}
+
+inline bool operator!=(string lhs, string rhs) { return !(lhs == rhs); }
+
+inline bool string::starts_with(string match) {
+    if (len < match.len) {
+        return false;
+    }
+    return substr(0, match.len) == match;
+}
+
+inline bool string::ends_with(string match) {
+    if (len < match.len) {
+        return false;
+    }
+    return substr(len - match.len, len) == match;
 }
 
 }  // namespace neko
@@ -1208,241 +1322,6 @@ T* begin(neko_array<T>& arr) {
 template <typename T>
 T* end(neko_array<T>& arr) {
     return &arr.data[arr.len];
-}
-
-struct neko_string {
-    char* data = nullptr;
-    u64 len = 0;
-
-    neko_string() = default;
-    neko_string(const char* cstr) : data((char*)cstr), len(strlen(cstr)) {}
-    neko_string(const char* cstr, u64 n) : data((char*)cstr), len(n) {}
-
-    inline bool is_cstr() { return data[len] == '\0'; }
-
-    inline neko_string substr(u64 i, u64 j) {
-        assert(i <= j);
-        assert(j <= (s64)len);
-        return {&data[i], j - i};
-    }
-
-    bool starts_with(neko_string match);
-
-    bool ends_with(neko_string match);
-
-    inline u64 first_of(char c) {
-        for (u64 i = 0; i < len; i++) {
-            if (data[i] == c) {
-                return i;
-            }
-        }
-
-        return (u64)-1;
-    }
-
-    inline u64 last_of(char c) {
-        for (u64 i = len; i > 0; i--) {
-            if (data[i - 1] == c) {
-                return i - 1;
-            }
-        }
-
-        return (u64)-1;
-    }
-
-    char* begin() { return data; }
-    char* end() { return &data[len]; }
-};
-
-inline neko_string to_cstr(neko_string str) {
-    char* buf = (char*)neko_safe_malloc(str.len + 1);
-    memcpy(buf, str.data, str.len);
-    buf[str.len] = 0;
-    return {buf, str.len};
-}
-
-constexpr u64 fnv1a(const char* str, u64 len) {
-    u64 hash = 14695981039346656037u;
-    for (u64 i = 0; i < len; i++) {
-        hash ^= (u8)str[i];
-        hash *= 1099511628211;
-    }
-    return hash;
-}
-
-inline u64 fnv1a(neko_string str) { return fnv1a(str.data, str.len); }
-
-constexpr u64 operator"" _hash(const char* str, size_t len) { return fnv1a(str, len); }
-
-inline bool operator==(neko_string lhs, neko_string rhs) {
-    if (lhs.len != rhs.len) {
-        return false;
-    }
-    return memcmp(lhs.data, rhs.data, lhs.len) == 0;
-}
-
-inline bool operator!=(neko_string lhs, neko_string rhs) { return !(lhs == rhs); }
-
-inline bool neko_string::starts_with(neko_string match) {
-    if (len < match.len) {
-        return false;
-    }
-    return substr(0, match.len) == match;
-}
-
-inline bool neko_string::ends_with(neko_string match) {
-    if (len < match.len) {
-        return false;
-    }
-    return substr(len - match.len, len) == match;
-}
-
-// Decomp
-
-// from stb.h - public domain
-// see: https://github.com/nothings/stb/blob/master/deprecated/stb.h#L10388
-
-using stb_uchar = unsigned char;
-using stb_uint = unsigned int;
-
-thread_local static unsigned char* stb__barrier;
-thread_local static unsigned char* stb__barrier2;
-thread_local static unsigned char* stb__barrier3;
-thread_local static unsigned char* stb__barrier4;
-
-static stb_uchar* stb__dout;
-static void stb__match(stb_uchar* data, stb_uint length) {
-    // INVERSE of memmove... write each byte before copying the next...
-    assert(stb__dout + length <= stb__barrier);
-    if (stb__dout + length > stb__barrier) {
-        stb__dout += length;
-        return;
-    }
-    if (data < stb__barrier4) {
-        stb__dout = stb__barrier + 1;
-        return;
-    }
-    while (length--) *stb__dout++ = *data++;
-}
-
-static void stb__lit(stb_uchar* data, stb_uint length) {
-    assert(stb__dout + length <= stb__barrier);
-    if (stb__dout + length > stb__barrier) {
-        stb__dout += length;
-        return;
-    }
-    if (data < stb__barrier2) {
-        stb__dout = stb__barrier + 1;
-        return;
-    }
-    memcpy(stb__dout, data, length);
-    stb__dout += length;
-}
-
-#define stb__in2(x) ((i[x] << 8) + i[(x) + 1])
-#define stb__in3(x) ((i[x] << 16) + stb__in2((x) + 1))
-#define stb__in4(x) ((i[x] << 24) + stb__in3((x) + 1))
-
-static stb_uchar* stb_decompress_token(stb_uchar* i) {
-    if (*i >= 0x20) {  // use fewer if's for cases that expand small
-        if (*i >= 0x80)
-            stb__match(stb__dout - i[1] - 1, i[0] - 0x80 + 1), i += 2;
-        else if (*i >= 0x40)
-            stb__match(stb__dout - (stb__in2(0) - 0x4000 + 1), i[2] + 1), i += 3;
-        else /* *i >= 0x20 */
-            stb__lit(i + 1, i[0] - 0x20 + 1), i += 1 + (i[0] - 0x20 + 1);
-    } else {  // more ifs for cases that expand large, since overhead is amortized
-        if (*i >= 0x18)
-            stb__match(stb__dout - (stb__in3(0) - 0x180000 + 1), i[3] + 1), i += 4;
-        else if (*i >= 0x10)
-            stb__match(stb__dout - (stb__in3(0) - 0x100000 + 1), stb__in2(3) + 1), i += 5;
-        else if (*i >= 0x08)
-            stb__lit(i + 2, stb__in2(0) - 0x0800 + 1), i += 2 + (stb__in2(0) - 0x0800 + 1);
-        else if (*i == 0x07)
-            stb__lit(i + 3, stb__in2(1) + 1), i += 3 + (stb__in2(1) + 1);
-        else if (*i == 0x06)
-            stb__match(stb__dout - (stb__in3(1) + 1), i[4] + 1), i += 5;
-        else if (*i == 0x04)
-            stb__match(stb__dout - (stb__in3(1) + 1), stb__in2(4) + 1), i += 6;
-    }
-    return i;
-}
-
-static stb_uint stb_decompress_length(stb_uchar* input) { return (input[8] << 24) + (input[9] << 16) + (input[10] << 8) + input[11]; }
-
-static stb_uint stb_adler32(stb_uint adler32, stb_uchar* buffer, stb_uint buflen) {
-    const unsigned long ADLER_MOD = 65521;
-    unsigned long s1 = adler32 & 0xffff, s2 = adler32 >> 16;
-    unsigned long blocklen, i;
-
-    blocklen = buflen % 5552;
-    while (buflen) {
-        for (i = 0; i + 7 < blocklen; i += 8) {
-            s1 += buffer[0], s2 += s1;
-            s1 += buffer[1], s2 += s1;
-            s1 += buffer[2], s2 += s1;
-            s1 += buffer[3], s2 += s1;
-            s1 += buffer[4], s2 += s1;
-            s1 += buffer[5], s2 += s1;
-            s1 += buffer[6], s2 += s1;
-            s1 += buffer[7], s2 += s1;
-
-            buffer += 8;
-        }
-
-        for (; i < blocklen; ++i) s1 += *buffer++, s2 += s1;
-
-        s1 %= ADLER_MOD, s2 %= ADLER_MOD;
-        buflen -= blocklen;
-        blocklen = 5552;
-    }
-    return (s2 << 16) + s1;
-}
-
-static stb_uint stb_decompress(stb_uchar* output, stb_uchar* i, stb_uint length) {
-    stb_uint olen;
-    if (stb__in4(0) != 0x57bC0000) return 0;
-    if (stb__in4(4) != 0) return 0;  // error! stream is > 4GB
-    olen = stb_decompress_length(i);
-    stb__barrier2 = i;
-    stb__barrier3 = i + length;
-    stb__barrier = output + olen;
-    stb__barrier4 = output;
-    i += 16;
-
-    stb__dout = output;
-    while (1) {
-        stb_uchar* old_i = i;
-        i = stb_decompress_token(i);
-        if (i == old_i) {
-            if (*i == 0x05 && i[1] == 0xfa) {
-                assert(stb__dout == output + olen);
-                if (stb__dout != output + olen) return 0;
-                if (stb_adler32(1, output, olen) != (stb_uint)stb__in4(2)) return 0;
-                return olen;
-            } else {
-                assert(0); /* NOTREACHED */
-                return 0;
-            }
-        }
-        assert(stb__dout <= output + olen);
-        if (stb__dout > output + olen) return 0;
-    }
-}
-
-// end stb.h
-
-inline neko_string stb_decompress_data(const unsigned int* data, const unsigned int size) {
-    u32 len = stb_decompress_length((u8*)data);
-    char* buf = (char*)neko_safe_malloc(len + 1);
-    stb_decompress((u8*)buf, (u8*)data, size);
-
-    buf[len] = '\0';
-
-    neko_string contents;
-    contents.data = buf;
-    contents.len = len;
-    return contents;
 }
 
 #endif

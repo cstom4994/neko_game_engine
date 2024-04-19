@@ -802,11 +802,6 @@ M.sub_render = function()
         neko.particle_render(SAFE_UD(t), v2)
     end
 
-    if ImGui.Begin("Env", true) then
-        __neko_print_registry_list()
-    end
-    ImGui.End()
-
     ImGui.Begin("Hello")
     obj_select = obj_select or '' -- eid从0开始
     ImGui.PushID("TestCombo")

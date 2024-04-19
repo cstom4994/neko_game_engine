@@ -580,6 +580,8 @@ T neko_lua_to(lua_State *L, int index) {
     } else if constexpr (std::same_as<T, bool>) {
         luaL_argcheck(L, lua_isboolean(L, index), index, "boolean expected");
         return lua_toboolean(L, index) != 0;
+    } else if constexpr (std::is_pointer_v<T>) {
+        return reinterpret_cast<T>(lua_topointer(L, index));
     } else {
         static_assert(std::is_same_v<T, void>, "Unsupported type for neko_lua_to");
     }

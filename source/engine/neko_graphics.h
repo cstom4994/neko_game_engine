@@ -7,7 +7,7 @@
 #include "engine/neko_math.h"
 
 // OpenGL
-#include "engine/builtin/neko_gl.h"
+#include <glad/glad.h>
 
 /*=============================
 // NEKO_GRAPHICS
@@ -2383,7 +2383,7 @@ NEKO_API_DECL neko_ui_rect_t neko_ui_layout_anchor(const neko_ui_rect_t* parent,
 #define neko_ui_labelf(STR, ...)                         \
     do {                                                 \
         neko_snprintfc(BUFFER, 256, STR, ##__VA_ARGS__); \
-        neko_ui_label(&g_ui, BUFFER);               \
+        neko_ui_label(&g_ui, BUFFER);                    \
     } while (0)
 
 //=== Elements (Extended) ===//
@@ -2426,6 +2426,179 @@ NEKO_API_DECL void neko_ui_undock_ex_cnt(neko_ui_context_t* ctx, neko_ui_contain
 //=== Gizmo ===//
 
 NEKO_API_DECL s32 neko_ui_gizmo(neko_ui_context_t* ctx, neko_camera_t* camera, neko_vqs* model, neko_ui_rect_t viewport, bool invert_view_y, float snap, s32 op, s32 mode, u64 opt);
+
+#endif
+
+#ifndef NEKO_BATCH
+#define NEKO_BATCH
+
+typedef unsigned long long NEKO_SPRITEBATCH_U64;
+
+typedef struct spritebatch_t spritebatch_t;
+typedef struct spritebatch_config_t spritebatch_config_t;
+typedef struct spritebatch_sprite_t spritebatch_sprite_t;
+
+struct spritebatch_sprite_t {
+
+    NEKO_SPRITEBATCH_U64 image_id;
+
+    NEKO_SPRITEBATCH_U64 texture_id;
+
+    int w, h;
+    float x, y;
+    float sx, sy;
+    float c, s;
+    float minx, miny;
+    float maxx, maxy;
+
+    int sort_bits;
+
+#ifdef SPRITEBATCH_SPRITE_USERDATA
+    SPRITEBATCH_SPRITE_USERDATA udata;
+#endif
+};
+
+NEKO_API_DECL int spritebatch_push(spritebatch_t* sb, spritebatch_sprite_t sprite);
+
+NEKO_API_DECL void spritebatch_prefetch(spritebatch_t* sb, NEKO_SPRITEBATCH_U64 image_id, int w, int h);
+
+NEKO_API_DECL struct spritebatch_sprite_t spritebatch_fetch(spritebatch_t* sb, NEKO_SPRITEBATCH_U64 image_id, int w, int h);
+
+NEKO_API_DECL void spritebatch_tick(spritebatch_t* sb);
+
+NEKO_API_DECL int spritebatch_flush(spritebatch_t* sb);
+
+NEKO_API_DECL int spritebatch_defrag(spritebatch_t* sb);
+
+NEKO_API_DECL int spritebatch_init(spritebatch_t* sb, spritebatch_config_t* config, void* udata);
+NEKO_API_DECL void spritebatch_term(spritebatch_t* sb);
+
+NEKO_API_DECL void spritebatch_register_premade_atlas(spritebatch_t* sb, NEKO_SPRITEBATCH_U64 image_id, int w, int h);
+NEKO_API_DECL void spritebatch_cleanup_premade_atlas(spritebatch_t* sb, NEKO_SPRITEBATCH_U64 image_id);
+
+typedef void(submit_batch_fn)(spritebatch_sprite_t* sprites, int count, int texture_w, int texture_h, void* udata);
+
+typedef void(get_pixels_fn)(NEKO_SPRITEBATCH_U64 image_id, void* buffer, int bytes_to_fill, void* udata);
+
+typedef NEKO_SPRITEBATCH_U64(generate_texture_handle_fn)(void* pixels, int w, int h, void* udata);
+
+typedef void(destroy_texture_handle_fn)(NEKO_SPRITEBATCH_U64 texture_id, void* udata);
+
+typedef void(sprites_sorter_fn)(spritebatch_sprite_t* sprites, int count);
+
+NEKO_API_DECL void spritebatch_reset_function_ptrs(spritebatch_t* sb, submit_batch_fn* batch_callback, get_pixels_fn* get_pixels_callback, generate_texture_handle_fn* generate_texture_callback,
+                                                   destroy_texture_handle_fn* delete_texture_callback, sprites_sorter_fn* sprites_sorter_callback);
+
+NEKO_API_DECL void spritebatch_set_default_config(spritebatch_config_t* config);
+
+struct spritebatch_config_t {
+    int pixel_stride;
+    int atlas_width_in_pixels;
+    int atlas_height_in_pixels;
+    int atlas_use_border_pixels;
+    int ticks_to_decay_texture;
+    int lonely_buffer_count_till_flush;
+
+    float ratio_to_decay_atlas;
+    float ratio_to_merge_atlases;
+    submit_batch_fn* batch_callback;
+    get_pixels_fn* get_pixels_callback;
+    generate_texture_handle_fn* generate_texture_callback;
+    destroy_texture_handle_fn* delete_texture_callback;
+    sprites_sorter_fn* sprites_sorter_callback;
+};
+
+typedef struct {
+    NEKO_SPRITEBATCH_U64 image_id;
+    int sort_bits;
+    int w;
+    int h;
+    float x, y;
+    float sx, sy;
+    float c, s;
+
+    float premade_minx, premade_miny;
+    float premade_maxx, premade_maxy;
+
+#ifdef SPRITEBATCH_SPRITE_USERDATA
+    SPRITEBATCH_SPRITE_USERDATA udata;
+#endif
+} spritebatch_internal_sprite_t;
+
+typedef struct {
+    int timestamp;
+    int w, h;
+    float minx, miny;
+    float maxx, maxy;
+    NEKO_SPRITEBATCH_U64 image_id;
+} spritebatch_internal_texture_t;
+
+typedef struct spritebatch_internal_atlas_t {
+    NEKO_SPRITEBATCH_U64 texture_id;
+    float volume_ratio;
+    hashtable_t sprites_to_textures;
+    struct spritebatch_internal_atlas_t* next;
+    struct spritebatch_internal_atlas_t* prev;
+} spritebatch_internal_atlas_t;
+
+typedef struct {
+    int timestamp;
+    int w, h;
+    NEKO_SPRITEBATCH_U64 image_id;
+    NEKO_SPRITEBATCH_U64 texture_id;
+} spritebatch_internal_lonely_texture_t;
+
+typedef struct {
+    int w, h;
+    int mark_for_cleanup;
+    NEKO_SPRITEBATCH_U64 image_id;
+    NEKO_SPRITEBATCH_U64 texture_id;
+} spritebatch_internal_premade_atlas;
+
+struct spritebatch_t {
+    int input_count;
+    int input_capacity;
+    spritebatch_internal_sprite_t* input_buffer;
+
+    int sprite_count;
+    int sprite_capacity;
+    spritebatch_sprite_t* sprites;
+    spritebatch_sprite_t* sprites_scratch;
+
+    int key_buffer_count;
+    int key_buffer_capacity;
+    NEKO_SPRITEBATCH_U64* key_buffer;
+
+    int pixel_buffer_size;
+    void* pixel_buffer;
+
+    hashtable_t sprites_to_premade_textures;
+    hashtable_t sprites_to_lonely_textures;
+    hashtable_t sprites_to_atlases;
+
+    spritebatch_internal_atlas_t* atlases;
+
+    int pixel_stride;
+    int atlas_width_in_pixels;
+    int atlas_height_in_pixels;
+    int atlas_use_border_pixels;
+    int ticks_to_decay_texture;
+    int lonely_buffer_count_till_flush;
+    int lonely_buffer_count_till_decay;
+    float ratio_to_decay_atlas;
+    float ratio_to_merge_atlases;
+    submit_batch_fn* batch_callback;
+    get_pixels_fn* get_pixels_callback;
+    generate_texture_handle_fn* generate_texture_callback;
+    destroy_texture_handle_fn* delete_texture_callback;
+    sprites_sorter_fn* sprites_sorter_callback;
+    void* udata;
+};
+
+#define SPRITEBATCH_ATLAS_FLIP_Y_AXIS_FOR_UV 1
+
+#define SPRITEBATCH_LONELY_FLIP_Y_AXIS_FOR_UV 1
+#define SPRITEBATCH_ATLAS_EMPTY_COLOR 0x00000000
 
 #endif
 

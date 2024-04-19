@@ -49,8 +49,7 @@ typedef struct neko_audio_s {
 } neko_audio_t;
 
 // Extern internal functions
-NEKO_API_DECL struct neko_audio_s *__neko_audio_construct();
-
+NEKO_API_DECL neko_audio_t *__neko_audio_construct();
 NEKO_API_DECL void neko_audio_shutdown(neko_audio_t *);
 NEKO_API_DECL void neko_audio_destroy(neko_audio_t *);
 

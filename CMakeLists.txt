@@ -24,6 +24,7 @@ if(MSVC)
 
         set(neko_engine_lib ${glfw_lib} ${ffi_lib})
         include_directories(
+                "source/deps/glad/include/"
                 "source/deps/glfw/include/"
                 "source/deps/libffi/include/"
                 "source/deps/enet/include/"

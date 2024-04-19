@@ -26,8 +26,6 @@
 #ifndef NEKO_PLATFORM_IMPL_H
 #define NEKO_PLATFORM_IMPL_H
 
-// #include "engine/builtin/neko_gl.h"
-
 /*=================================
 // Default Platform Implemenattion
 =================================*/
@@ -811,7 +809,8 @@ NEKO_API_DECL void* neko_platform_library_proc_address_default_impl(void* lib, c
 // GLFW Implemenation
 ======================*/
 
-#include "engine/builtin/neko_gl.h"
+// glad
+#include <glad/glad.h>
 
 // glfw
 #include <GLFW/glfw3.h>
@@ -2172,6 +2171,7 @@ void __glfw_key_callback(GLFWwindow* window, s32 code, s32 scancode, s32 action,
     neko_platform_event_t evt = neko_default_val();
     evt.type = NEKO_PLATFORM_EVENT_KEY;
     evt.key.codepoint = code;
+    evt.key.scancode = scancode;
     evt.key.keycode = key;
     evt.key.modifier = (neko_platform_key_modifier_type)mods;
 
@@ -2419,7 +2419,7 @@ NEKO_API_DECL neko_platform_window_t neko_platform_window_create_internal(const 
 
     // Need to make sure this is ONLY done once.
     if (neko_slot_array_empty(neko_subsystem(platform)->windows)) {
-        if (!gladLoadGLLoader((neko_gl_loadproc)glfwGetProcAddress)) {
+        if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
             neko_log_warning("Failed to initialize GLFW.");
             return win;
         }

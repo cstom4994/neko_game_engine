@@ -381,6 +381,7 @@ typedef enum neko_platform_key_action_type { NEKO_PLATFORM_KEY_PRESSED, NEKO_PLA
 
 typedef struct neko_platform_key_event_t {
     s32 codepoint;
+    s32 scancode;
     neko_platform_keycode keycode;
     neko_platform_key_action_type action;
     neko_platform_key_modifier_type modifier;

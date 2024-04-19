@@ -43,7 +43,7 @@ neko_result __neko_audio_update(struct neko_audio_s *s) {
 }
 neko_result __neko_audio_commit(struct neko_audio_s *s) { return NEKO_RESULT_SUCCESS; }
 
-NEKO_API_DECL struct neko_audio_s *__neko_audio_construct() {
+NEKO_API_DECL neko_audio_t *__neko_audio_construct() {
     neko_audio_t *audio = (neko_audio_t *)neko_safe_malloc(sizeof(neko_audio_t));
     neko_audio_data_t *data = (neko_audio_data_t *)neko_safe_malloc(sizeof(neko_audio_data_t));
 

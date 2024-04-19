@@ -4512,3 +4512,1122 @@ NEKO_API_DECL neko_draw_texture_t neko_draw_texture_load_from_memory(const char*
     }
     return tex.hndl;
 }
+
+#include <stdbool.h>
+
+bool sprite_batch_internal_use_scratch_buffer(spritebatch_t* sb) { return sb->sprites_sorter_callback == 0; }
+
+int spritebatch_init(spritebatch_t* sb, spritebatch_config_t* config, void* udata) {
+    // read config params
+    if (!config | !sb) return 1;
+    sb->pixel_stride = config->pixel_stride;
+    sb->atlas_width_in_pixels = config->atlas_width_in_pixels;
+    sb->atlas_height_in_pixels = config->atlas_height_in_pixels;
+    sb->atlas_use_border_pixels = config->atlas_use_border_pixels;
+    sb->ticks_to_decay_texture = config->ticks_to_decay_texture;
+    sb->lonely_buffer_count_till_flush = config->lonely_buffer_count_till_flush;
+    sb->lonely_buffer_count_till_decay = sb->lonely_buffer_count_till_flush / 2;
+    if (sb->lonely_buffer_count_till_decay <= 0) sb->lonely_buffer_count_till_decay = 1;
+    sb->ratio_to_decay_atlas = config->ratio_to_decay_atlas;
+    sb->ratio_to_merge_atlases = config->ratio_to_merge_atlases;
+    sb->batch_callback = config->batch_callback;
+    sb->get_pixels_callback = config->get_pixels_callback;
+    sb->generate_texture_callback = config->generate_texture_callback;
+    sb->delete_texture_callback = config->delete_texture_callback;
+    sb->sprites_sorter_callback = config->sprites_sorter_callback;
+    sb->udata = udata;
+
+    if (sb->atlas_width_in_pixels < 1 || sb->atlas_height_in_pixels < 1) return 1;
+    if (sb->ticks_to_decay_texture < 1) return 1;
+    if (sb->ratio_to_decay_atlas < 0 || sb->ratio_to_decay_atlas > 1.0f) return 1;
+    if (sb->ratio_to_merge_atlases < 0 || sb->ratio_to_merge_atlases > 0.5f) return 1;
+    if (!sb->batch_callback) return 1;
+    if (!sb->get_pixels_callback) return 1;
+    if (!sb->generate_texture_callback) return 1;
+    if (!sb->delete_texture_callback) return 1;
+
+    // initialize input buffer
+    sb->input_count = 0;
+    sb->input_capacity = 1024;
+    sb->input_buffer = (spritebatch_internal_sprite_t*)malloc(sizeof(spritebatch_internal_sprite_t) * sb->input_capacity);
+    if (!sb->input_buffer) return 1;
+
+    // initialize sprite buffer
+    sb->sprite_count = 0;
+    sb->sprite_capacity = 1024;
+    sb->sprites = (spritebatch_sprite_t*)malloc(sizeof(spritebatch_sprite_t) * sb->sprite_capacity);
+
+    sb->sprites_scratch = 0;
+    if (sprite_batch_internal_use_scratch_buffer(sb)) {
+        sb->sprites_scratch = (spritebatch_sprite_t*)malloc(sizeof(spritebatch_sprite_t) * sb->sprite_capacity);
+    }
+    if (!sb->sprites) return 1;
+
+    if (sprite_batch_internal_use_scratch_buffer(sb)) {
+        if (!sb->sprites_scratch) return 1;
+    }
+
+    // initialize key buffer (for marking hash table entries for deletion)
+    sb->key_buffer_count = 0;
+    sb->key_buffer_capacity = 1024;
+    sb->key_buffer = (NEKO_SPRITEBATCH_U64*)malloc(sizeof(NEKO_SPRITEBATCH_U64) * sb->key_buffer_capacity);
+
+    // initialize pixel buffer for grabbing pixel data from the user as needed
+    sb->pixel_buffer_size = 1024;
+    sb->pixel_buffer = malloc(sb->pixel_buffer_size * sb->pixel_stride);
+
+    // setup tables
+    hashtable_init(&sb->sprites_to_lonely_textures, sizeof(spritebatch_internal_lonely_texture_t), 1024, NULL);
+    hashtable_init(&sb->sprites_to_premade_textures, sizeof(spritebatch_internal_premade_atlas), 16, NULL);
+    hashtable_init(&sb->sprites_to_atlases, sizeof(spritebatch_internal_atlas_t*), 16, NULL);
+
+    sb->atlases = 0;
+
+    return 0;
+}
+
+void spritebatch_term(spritebatch_t* sb) {
+    free(sb->input_buffer);
+    free(sb->sprites);
+    if (sb->sprites_scratch) {
+        free(sb->sprites_scratch);
+    }
+    free(sb->key_buffer);
+    free(sb->pixel_buffer);
+    hashtable_term(&sb->sprites_to_lonely_textures);
+    hashtable_term(&sb->sprites_to_premade_textures);
+    hashtable_term(&sb->sprites_to_atlases);
+
+    if (sb->atlases) {
+        spritebatch_internal_atlas_t* atlas = sb->atlases;
+        spritebatch_internal_atlas_t* sentinel = sb->atlases;
+        do {
+            hashtable_term(&atlas->sprites_to_textures);
+            spritebatch_internal_atlas_t* next = atlas->next;
+            free(atlas);
+            atlas = next;
+        } while (atlas != sentinel);
+    }
+
+    memset(sb, 0, sizeof(spritebatch_t));
+}
+
+void spritebatch_reset_function_ptrs(spritebatch_t* sb, submit_batch_fn* batch_callback, get_pixels_fn* get_pixels_callback, generate_texture_handle_fn* generate_texture_callback,
+                                     destroy_texture_handle_fn* delete_texture_callback, sprites_sorter_fn* sprites_sorter_callback) {
+    sb->batch_callback = batch_callback;
+    sb->get_pixels_callback = get_pixels_callback;
+    sb->generate_texture_callback = generate_texture_callback;
+    sb->delete_texture_callback = delete_texture_callback;
+    sb->sprites_sorter_callback = sprites_sorter_callback;
+}
+
+void spritebatch_set_default_config(spritebatch_config_t* config) {
+    config->pixel_stride = sizeof(char) * 4;
+    config->atlas_width_in_pixels = 1024;
+    config->atlas_height_in_pixels = 1024;
+    config->atlas_use_border_pixels = 0;
+    config->ticks_to_decay_texture = 60 * 30;
+    config->lonely_buffer_count_till_flush = 64;
+    config->ratio_to_decay_atlas = 0.5f;
+    config->ratio_to_merge_atlases = 0.25f;
+    config->batch_callback = 0;
+    config->generate_texture_callback = 0;
+    config->delete_texture_callback = 0;
+    config->sprites_sorter_callback = 0;
+}
+
+#define SPRITEBATCH_CHECK_BUFFER_GROW(ctx, count, capacity, data, type) \
+    do {                                                                \
+        if (ctx->count == ctx->capacity) {                              \
+            int new_capacity = ctx->capacity * 2;                       \
+            void* new_data = malloc(sizeof(type) * new_capacity);       \
+            if (!new_data) return 0;                                    \
+            memcpy(new_data, ctx->data, sizeof(type) * ctx->count);     \
+            free(ctx->data);                                            \
+            ctx->data = (type*)new_data;                                \
+            ctx->capacity = new_capacity;                               \
+        }                                                               \
+    } while (0)
+
+int spritebatch_internal_fill_internal_sprite(spritebatch_t* sb, spritebatch_sprite_t sprite, spritebatch_internal_sprite_t* out) {
+    neko_assert(sprite.w <= sb->atlas_width_in_pixels);
+    neko_assert(sprite.h <= sb->atlas_height_in_pixels);
+    SPRITEBATCH_CHECK_BUFFER_GROW(sb, input_count, input_capacity, input_buffer, spritebatch_internal_sprite_t);
+
+    out->image_id = sprite.image_id;
+    out->sort_bits = sprite.sort_bits;
+    out->w = sprite.w;
+    out->h = sprite.h;
+    out->x = sprite.x;
+    out->y = sprite.y;
+    out->sx = sprite.sx + (sb->atlas_use_border_pixels ? (sprite.sx / (float)sprite.w) * 2.0f : 0);
+    out->sy = sprite.sy + (sb->atlas_use_border_pixels ? (sprite.sy / (float)sprite.h) * 2.0f : 0);
+    out->c = sprite.c;
+    out->s = sprite.s;
+
+    out->premade_minx = sprite.minx;
+    out->premade_miny = sprite.miny;
+    out->premade_maxx = sprite.maxx;
+    out->premade_maxy = sprite.maxy;
+
+#ifdef SPRITEBATCH_SPRITE_USERDATA
+    out->udata = sprite.udata;
+#endif
+
+    return 1;
+}
+
+void spritebatch_internal_append_sprite(spritebatch_t* sb, spritebatch_internal_sprite_t sprite) { sb->input_buffer[sb->input_count++] = sprite; }
+
+int spritebatch_push(spritebatch_t* sb, spritebatch_sprite_t sprite) {
+    spritebatch_internal_sprite_t sprite_out;
+
+    spritebatch_internal_fill_internal_sprite(sb, sprite, &sprite_out);
+
+    sb->input_buffer[sb->input_count++] = sprite_out;
+    return 1;
+}
+
+void spritebatch_register_premade_atlas(spritebatch_t* sb, NEKO_SPRITEBATCH_U64 image_id, int w, int h) {
+    spritebatch_internal_premade_atlas info;
+    info.w = w;
+    info.h = h;
+    info.image_id = image_id;
+    info.texture_id = ~0ULL;
+    info.mark_for_cleanup = false;
+
+    hashtable_insert(&sb->sprites_to_premade_textures, image_id, &info);
+}
+
+void spritebatch_cleanup_premade_atlas(spritebatch_t* sb, NEKO_SPRITEBATCH_U64 image_id) {
+    spritebatch_internal_premade_atlas* tex = (spritebatch_internal_premade_atlas*)hashtable_find(&sb->sprites_to_premade_textures, image_id);
+    if (tex) tex->mark_for_cleanup = true;
+}
+
+int spritebatch_internal_lonely_sprite(spritebatch_t* sb, NEKO_SPRITEBATCH_U64 image_id, int w, int h, spritebatch_sprite_t* sprite_out, int skip_missing_textures);
+spritebatch_internal_premade_atlas* spritebatch_internal_premade_sprite(spritebatch_t* sb, NEKO_SPRITEBATCH_U64 image_id, spritebatch_sprite_t* sprite_out, int skip_missing_textures);
+
+void spritebatch_prefetch(spritebatch_t* sb, NEKO_SPRITEBATCH_U64 image_id, int w, int h) {
+    spritebatch_internal_premade_atlas* premade_atlas = spritebatch_internal_premade_sprite(sb, image_id, NULL, 0);
+    if (!premade_atlas) {
+        void* atlas_ptr = hashtable_find(&sb->sprites_to_atlases, image_id);
+        if (!atlas_ptr) spritebatch_internal_lonely_sprite(sb, image_id, w, h, NULL, 0);
+    }
+}
+
+spritebatch_sprite_t spritebatch_fetch(spritebatch_t* sb, NEKO_SPRITEBATCH_U64 image_id, int w, int h) {
+    spritebatch_sprite_t s;
+    memset(&s, 0, sizeof(s));
+
+    s.w = w;
+    s.h = h;
+    s.c = 1;
+    s.s = 0;
+
+    spritebatch_internal_premade_atlas* tex = (spritebatch_internal_premade_atlas*)hashtable_find(&sb->sprites_to_premade_textures, image_id);
+    if (!tex) {
+        void* atlas_ptr = hashtable_find(&sb->sprites_to_atlases, image_id);
+        if (atlas_ptr) {
+            spritebatch_internal_atlas_t* atlas = *(spritebatch_internal_atlas_t**)atlas_ptr;
+            s.texture_id = atlas->texture_id;
+
+            spritebatch_internal_texture_t* tex = (spritebatch_internal_texture_t*)hashtable_find(&atlas->sprites_to_textures, image_id);
+            if (tex) {
+                s.maxx = tex->maxx;
+                s.maxy = tex->maxy;
+                s.minx = tex->minx;
+                s.miny = tex->miny;
+            }
+        } else {
+            spritebatch_internal_lonely_sprite(sb, image_id, w, h, &s, 0);
+        }
+    } else {
+        spritebatch_internal_premade_sprite(sb, image_id, &s, 0);
+    }
+    return s;
+}
+
+static int spritebatch_internal_sprite_less_than_or_equal(spritebatch_sprite_t* a, spritebatch_sprite_t* b) {
+    if (a->sort_bits < b->sort_bits) return 1;
+    if (a->sort_bits == b->sort_bits && a->texture_id <= b->texture_id) return 1;
+    return 0;
+}
+
+void spritebatch_internal_merge_sort_iteration(spritebatch_sprite_t* a, int lo, int split, int hi, spritebatch_sprite_t* b) {
+    int i = lo, j = split;
+    for (int k = lo; k < hi; k++) {
+        if (i < split && (j >= hi || spritebatch_internal_sprite_less_than_or_equal(a + i, a + j))) {
+            b[k] = a[i];
+            i = i + 1;
+        } else {
+            b[k] = a[j];
+            j = j + 1;
+        }
+    }
+}
+
+void spritebatch_internal_merge_sort_recurse(spritebatch_sprite_t* b, int lo, int hi, spritebatch_sprite_t* a) {
+    if (hi - lo <= 1) return;
+    int split = (lo + hi) / 2;
+    spritebatch_internal_merge_sort_recurse(a, lo, split, b);
+    spritebatch_internal_merge_sort_recurse(a, split, hi, b);
+    spritebatch_internal_merge_sort_iteration(b, lo, split, hi, a);
+}
+
+void spritebatch_internal_merge_sort(spritebatch_sprite_t* a, spritebatch_sprite_t* b, int n) {
+    memcpy(b, a, sizeof(spritebatch_sprite_t) * n);
+    spritebatch_internal_merge_sort_recurse(b, 0, n, a);
+}
+
+void spritebatch_internal_sort_sprites(spritebatch_t* sb) {
+    if (sb->sprites_sorter_callback)
+        sb->sprites_sorter_callback(sb->sprites, sb->sprite_count);
+    else
+        spritebatch_internal_merge_sort(sb->sprites, sb->sprites_scratch, sb->sprite_count);
+}
+
+static inline void spritebatch_internal_get_pixels(spritebatch_t* sb, NEKO_SPRITEBATCH_U64 image_id, int w, int h) {
+    int size = sb->atlas_use_border_pixels ? sb->pixel_stride * (w + 2) * (h + 2) : sb->pixel_stride * w * h;
+    if (size > sb->pixel_buffer_size) {
+        free(sb->pixel_buffer);
+        sb->pixel_buffer_size = size;
+        sb->pixel_buffer = malloc(sb->pixel_buffer_size);
+        if (!sb->pixel_buffer) return;
+    }
+
+    memset(sb->pixel_buffer, 0, size);
+    int size_from_user = sb->pixel_stride * w * h;
+    sb->get_pixels_callback(image_id, sb->pixel_buffer, size_from_user, sb->udata);
+
+    if (sb->atlas_use_border_pixels) {
+        // Expand image from top-left corner, offset by (1, 1).
+        int w0 = w;
+        int h0 = h;
+        w += 2;
+        h += 2;
+        char* buffer = (char*)sb->pixel_buffer;
+        int dst_row_stride = w * sb->pixel_stride;
+        int src_row_stride = w0 * sb->pixel_stride;
+        int src_row_offset = sb->pixel_stride;
+        for (int i = 0; i < h - 2; ++i) {
+            char* src_row = buffer + (h0 - i - 1) * src_row_stride;
+            char* dst_row = buffer + (h - i - 2) * dst_row_stride + src_row_offset;
+            memmove(dst_row, src_row, src_row_stride);
+        }
+
+        // Clear the border pixels.
+        int pixel_stride = sb->pixel_stride;
+        memset(buffer, 0, dst_row_stride);
+        for (int i = 1; i < h - 1; ++i) {
+            memset(buffer + i * dst_row_stride, 0, pixel_stride);
+            memset(buffer + i * dst_row_stride + src_row_stride + src_row_offset, 0, pixel_stride);
+        }
+        memset(buffer + (h - 1) * dst_row_stride, 0, dst_row_stride);
+    }
+}
+
+static inline NEKO_SPRITEBATCH_U64 spritebatch_internal_generate_texture_handle(spritebatch_t* sb, NEKO_SPRITEBATCH_U64 image_id, int w, int h) {
+    spritebatch_internal_get_pixels(sb, image_id, w, h);
+    if (sb->atlas_use_border_pixels) {
+        w += 2;
+        h += 2;
+    }
+    return sb->generate_texture_callback(sb->pixel_buffer, w, h, sb->udata);
+}
+
+spritebatch_internal_lonely_texture_t* spritebatch_internal_lonelybuffer_push(spritebatch_t* sb, NEKO_SPRITEBATCH_U64 image_id, int w, int h, int make_tex) {
+    spritebatch_internal_lonely_texture_t texture;
+    texture.timestamp = 0;
+    texture.w = w;
+    texture.h = h;
+    texture.image_id = image_id;
+    texture.texture_id = make_tex ? spritebatch_internal_generate_texture_handle(sb, image_id, w, h) : ~0;
+    return (spritebatch_internal_lonely_texture_t*)hashtable_insert(&sb->sprites_to_lonely_textures, image_id, &texture);
+}
+
+spritebatch_internal_premade_atlas* spritebatch_internal_premadebuffer_push(spritebatch_t* sb, NEKO_SPRITEBATCH_U64 image_id, int w, int h, int make_tex) {
+    spritebatch_internal_premade_atlas texture;
+    texture.w = w;
+    texture.h = h;
+    texture.image_id = image_id;
+    texture.texture_id = make_tex ? spritebatch_internal_generate_texture_handle(sb, image_id, w, h) : ~0;
+    return (spritebatch_internal_premade_atlas*)hashtable_insert(&sb->sprites_to_premade_textures, image_id, &texture);
+}
+
+int spritebatch_internal_lonely_sprite(spritebatch_t* sb, NEKO_SPRITEBATCH_U64 image_id, int w, int h, spritebatch_sprite_t* sprite_out, int skip_missing_textures) {
+    spritebatch_internal_lonely_texture_t* tex = (spritebatch_internal_lonely_texture_t*)hashtable_find(&sb->sprites_to_lonely_textures, image_id);
+
+    if (skip_missing_textures) {
+        if (!tex) spritebatch_internal_lonelybuffer_push(sb, image_id, w, h, 0);
+        return 1;
+    }
+
+    else {
+        if (!tex)
+            tex = spritebatch_internal_lonelybuffer_push(sb, image_id, w, h, 1);
+        else if (tex->texture_id == ~0)
+            tex->texture_id = spritebatch_internal_generate_texture_handle(sb, image_id, w, h);
+        tex->timestamp = 0;
+
+        if (sprite_out) {
+            sprite_out->texture_id = tex->texture_id;
+            sprite_out->minx = sprite_out->miny = 0;
+            sprite_out->maxx = sprite_out->maxy = 1.0f;
+
+            if (SPRITEBATCH_LONELY_FLIP_Y_AXIS_FOR_UV) {
+                float tmp = sprite_out->miny;
+                sprite_out->miny = sprite_out->maxy;
+                sprite_out->maxy = tmp;
+            }
+        }
+
+        return 0;
+    }
+}
+
+spritebatch_internal_premade_atlas* spritebatch_internal_premade_sprite(spritebatch_t* sb, NEKO_SPRITEBATCH_U64 image_id, spritebatch_sprite_t* sprite_out, int skip_missing_textures) {
+    spritebatch_internal_premade_atlas* tex = (spritebatch_internal_premade_atlas*)hashtable_find(&sb->sprites_to_premade_textures, image_id);
+
+    if (!skip_missing_textures) {
+        if (!tex) return tex;
+
+        if (tex->texture_id == ~0) {
+            int w = tex->w;
+            int h = tex->h;
+            tex->texture_id = spritebatch_internal_generate_texture_handle(sb, image_id, w, h);
+        }
+
+        if (sprite_out) {
+            sprite_out->texture_id = tex->texture_id;
+        }
+    }
+
+    return tex;
+}
+
+int spritebatch_internal_push_sprite(spritebatch_t* sb, spritebatch_internal_sprite_t* s, int skip_missing_textures) {
+    int skipped_tex = 0;
+    spritebatch_sprite_t sprite;
+    sprite.image_id = s->image_id;
+    sprite.sort_bits = s->sort_bits;
+    sprite.x = s->x;
+    sprite.y = s->y;
+    sprite.w = s->w;
+    sprite.h = s->h;
+    sprite.sx = s->sx;
+    sprite.sy = s->sy;
+    sprite.c = s->c;
+    sprite.s = s->s;
+
+    sprite.minx = s->premade_minx;
+    sprite.miny = s->premade_miny;
+    sprite.maxx = s->premade_maxx;
+    sprite.maxy = s->premade_maxy;
+#ifdef SPRITEBATCH_SPRITE_USERDATA
+    sprite.udata = s->udata;
+#endif
+
+    spritebatch_internal_premade_atlas* premade_atlas = spritebatch_internal_premade_sprite(sb, s->image_id, &sprite, skip_missing_textures);
+
+    if (!premade_atlas) {
+        void* atlas_ptr = hashtable_find(&sb->sprites_to_atlases, s->image_id);
+        if (atlas_ptr) {
+            spritebatch_internal_atlas_t* atlas = *(spritebatch_internal_atlas_t**)atlas_ptr;
+            sprite.texture_id = atlas->texture_id;
+
+            spritebatch_internal_texture_t* tex = (spritebatch_internal_texture_t*)hashtable_find(&atlas->sprites_to_textures, s->image_id);
+            neko_assert(tex);
+            tex->timestamp = 0;
+            sprite.w = tex->w;
+            sprite.h = tex->h;
+            sprite.minx = tex->minx;
+            sprite.miny = tex->miny;
+            sprite.maxx = tex->maxx;
+            sprite.maxy = tex->maxy;
+        } else
+            skipped_tex = spritebatch_internal_lonely_sprite(sb, s->image_id, s->w, s->h, &sprite, skip_missing_textures);
+    }
+
+    if (!skipped_tex) {
+        if (sb->sprite_count >= sb->sprite_capacity) {
+            int new_capacity = sb->sprite_capacity * 2;
+            void* new_data = malloc(sizeof(spritebatch_sprite_t) * new_capacity);
+            if (!new_data) return 0;
+            memcpy(new_data, sb->sprites, sizeof(spritebatch_sprite_t) * sb->sprite_count);
+            free(sb->sprites);
+            sb->sprites = (spritebatch_sprite_t*)new_data;
+            sb->sprite_capacity = new_capacity;
+
+            if (sb->sprites_scratch) {
+                free(sb->sprites_scratch);
+            }
+
+            if (sprite_batch_internal_use_scratch_buffer(sb)) {
+                sb->sprites_scratch = (spritebatch_sprite_t*)malloc(sizeof(spritebatch_sprite_t) * new_capacity);
+            }
+        }
+        sb->sprites[sb->sprite_count++] = sprite;
+    }
+    return skipped_tex;
+}
+
+void spritebatch_internal_process_input(spritebatch_t* sb, int skip_missing_textures) {
+    int skipped_index = 0;
+    for (int i = 0; i < sb->input_count; ++i) {
+        spritebatch_internal_sprite_t* s = sb->input_buffer + i;
+        int skipped = spritebatch_internal_push_sprite(sb, s, skip_missing_textures);
+        if (skip_missing_textures && skipped) sb->input_buffer[skipped_index++] = *s;
+    }
+
+    sb->input_count = skipped_index;
+}
+
+void spritebatch_tick(spritebatch_t* sb) {
+    spritebatch_internal_atlas_t* atlas = sb->atlases;
+    if (atlas) {
+        spritebatch_internal_atlas_t* sentinel = atlas;
+        do {
+            int texture_count = hashtable_count(&atlas->sprites_to_textures);
+            spritebatch_internal_texture_t* textures = (spritebatch_internal_texture_t*)hashtable_items(&atlas->sprites_to_textures);
+            for (int i = 0; i < texture_count; ++i) textures[i].timestamp += 1;
+            atlas = atlas->next;
+        } while (atlas != sentinel);
+    }
+
+    int texture_count = hashtable_count(&sb->sprites_to_lonely_textures);
+    spritebatch_internal_lonely_texture_t* lonely_textures = (spritebatch_internal_lonely_texture_t*)hashtable_items(&sb->sprites_to_lonely_textures);
+    for (int i = 0; i < texture_count; ++i) lonely_textures[i].timestamp += 1;
+}
+
+int spritebatch_flush(spritebatch_t* sb) {
+    // process input buffer, make any necessary lonely textures
+    // convert user sprites to internal format
+    // lookup uv coordinates
+    spritebatch_internal_process_input(sb, 0);
+
+    // patchup any missing lonely textures that may have come from atlases decaying and whatnot
+    int texture_count = hashtable_count(&sb->sprites_to_lonely_textures);
+    spritebatch_internal_lonely_texture_t* lonely_textures = (spritebatch_internal_lonely_texture_t*)hashtable_items(&sb->sprites_to_lonely_textures);
+    for (int i = 0; i < texture_count; ++i) {
+        spritebatch_internal_lonely_texture_t* lonely = lonely_textures + i;
+        if (lonely->texture_id == ~0) lonely->texture_id = spritebatch_internal_generate_texture_handle(sb, lonely->image_id, lonely->w, lonely->h);
+    }
+
+    // sort internal sprite buffer and submit batches
+    spritebatch_internal_sort_sprites(sb);
+
+    int min = 0;
+    int max = 0;
+    int done = !sb->sprite_count;
+    int count = 0;
+    while (!done) {
+        NEKO_SPRITEBATCH_U64 id = sb->sprites[min].texture_id;
+        NEKO_SPRITEBATCH_U64 image_id = sb->sprites[min].image_id;
+
+        while (1) {
+            if (max == sb->sprite_count) {
+                done = 1;
+                break;
+            }
+
+            if (id != sb->sprites[max].texture_id) break;
+
+            ++max;
+        }
+
+        int batch_count = max - min;
+        if (batch_count) {
+            int w, h;
+            spritebatch_internal_premade_atlas* premade_atlas = (spritebatch_internal_premade_atlas*)hashtable_find(&sb->sprites_to_premade_textures, image_id);
+            if (!premade_atlas) {
+                void* atlas_ptr = hashtable_find(&sb->sprites_to_atlases, image_id);
+
+                if (atlas_ptr) {
+                    w = sb->atlas_width_in_pixels;
+                    h = sb->atlas_height_in_pixels;
+                }
+
+                else {
+                    spritebatch_internal_lonely_texture_t* tex = (spritebatch_internal_lonely_texture_t*)hashtable_find(&sb->sprites_to_lonely_textures, image_id);
+                    neko_assert(tex);
+                    w = tex->w;
+                    h = tex->h;
+                    if (sb->atlas_use_border_pixels) {
+                        w += 2;
+                        h += 2;
+                    }
+                }
+            } else {
+                w = premade_atlas->w;
+                h = premade_atlas->h;
+            }
+
+            sb->batch_callback(sb->sprites + min, batch_count, w, h, sb->udata);
+            ++count;
+        }
+        min = max;
+    }
+
+    sb->sprite_count = 0;
+    if (count > 1) {
+        neko_log_trace("[batch] Flushed %d batches.", count);
+    }
+
+    return count;
+}
+
+typedef struct {
+    int x;
+    int y;
+} spritebatch_v2_t;
+
+typedef struct {
+    int img_index;
+    spritebatch_v2_t size;
+    spritebatch_v2_t min;
+    spritebatch_v2_t max;
+    int fit;
+} spritebatch_internal_integer_image_t;
+
+static spritebatch_v2_t spritebatch_v2(int x, int y) {
+    spritebatch_v2_t v;
+    v.x = x;
+    v.y = y;
+    return v;
+}
+
+static spritebatch_v2_t spritebatch_sub(spritebatch_v2_t a, spritebatch_v2_t b) {
+    spritebatch_v2_t v;
+    v.x = a.x - b.x;
+    v.y = a.y - b.y;
+    return v;
+}
+
+static spritebatch_v2_t spritebatch_add(spritebatch_v2_t a, spritebatch_v2_t b) {
+    spritebatch_v2_t v;
+    v.x = a.x + b.x;
+    v.y = a.y + b.y;
+    return v;
+}
+
+typedef struct {
+    spritebatch_v2_t size;
+    spritebatch_v2_t min;
+    spritebatch_v2_t max;
+} spritebatch_internal_atlas_node_t;
+
+static spritebatch_internal_atlas_node_t* spritebatch_best_fit(int sp, int w, int h, spritebatch_internal_atlas_node_t* nodes) {
+    int best_volume = INT_MAX;
+    spritebatch_internal_atlas_node_t* best_node = 0;
+    int img_volume = w * h;
+
+    for (int i = 0; i < sp; ++i) {
+        spritebatch_internal_atlas_node_t* node = nodes + i;
+        int can_contain = node->size.x >= w && node->size.y >= h;
+        if (can_contain) {
+            int node_volume = node->size.x * node->size.y;
+            if (node_volume == img_volume) return node;
+            if (node_volume < best_volume) {
+                best_volume = node_volume;
+                best_node = node;
+            }
+        }
+    }
+
+    return best_node;
+}
+
+static int spritebatch_internal_image_less_than_or_equal(spritebatch_internal_integer_image_t* a, spritebatch_internal_integer_image_t* b) {
+    int perimeterA = 2 * (a->size.x + a->size.y);
+    int perimeterB = 2 * (b->size.x + b->size.y);
+    return perimeterB <= perimeterA;
+}
+
+void spritebatch_internal_image_merge_sort_iteration(spritebatch_internal_integer_image_t* a, int lo, int split, int hi, spritebatch_internal_integer_image_t* b) {
+    int i = lo, j = split;
+    for (int k = lo; k < hi; k++) {
+        if (i < split && (j >= hi || spritebatch_internal_image_less_than_or_equal(a + i, a + j))) {
+            b[k] = a[i];
+            i = i + 1;
+        } else {
+            b[k] = a[j];
+            j = j + 1;
+        }
+    }
+}
+
+void spritebatch_internal_image_merge_sort_recurse(spritebatch_internal_integer_image_t* b, int lo, int hi, spritebatch_internal_integer_image_t* a) {
+    if (hi - lo <= 1) return;
+    int split = (lo + hi) / 2;
+    spritebatch_internal_image_merge_sort_recurse(a, lo, split, b);
+    spritebatch_internal_image_merge_sort_recurse(a, split, hi, b);
+    spritebatch_internal_image_merge_sort_iteration(b, lo, split, hi, a);
+}
+
+void spritebatch_internal_image_merge_sort(spritebatch_internal_integer_image_t* a, spritebatch_internal_integer_image_t* b, int n) {
+    memcpy(b, a, sizeof(spritebatch_internal_integer_image_t) * n);
+    spritebatch_internal_image_merge_sort_recurse(b, 0, n, a);
+}
+
+typedef struct {
+    int img_index;     // index into the `imgs` array
+    int w, h;          // pixel w/h of original image
+    float minx, miny;  // u coordinate
+    float maxx, maxy;  // v coordinate
+    int fit;           // non-zero if image fit and was placed into the atlas
+} spritebatch_internal_atlas_image_t;
+
+void spritebatch_make_atlas(spritebatch_t* sb, spritebatch_internal_atlas_t* atlas_out, const spritebatch_internal_lonely_texture_t* imgs, int img_count) {
+    float w0, h0, div, wTol, hTol;
+    int atlas_image_size, atlas_stride, sp;
+    void* atlas_pixels = 0;
+    int atlas_node_capacity = img_count * 2;
+    spritebatch_internal_integer_image_t* images = 0;
+    spritebatch_internal_integer_image_t* images_scratch = 0;
+    spritebatch_internal_atlas_node_t* nodes = 0;
+    int pixel_stride = sb->pixel_stride;
+    int atlas_width = sb->atlas_width_in_pixels;
+    int atlas_height = sb->atlas_height_in_pixels;
+    float volume_used = 0;
+
+    images = (spritebatch_internal_integer_image_t*)malloc(sizeof(spritebatch_internal_integer_image_t) * img_count);
+    images_scratch = (spritebatch_internal_integer_image_t*)malloc(sizeof(spritebatch_internal_integer_image_t) * img_count);
+    nodes = (spritebatch_internal_atlas_node_t*)malloc(sizeof(spritebatch_internal_atlas_node_t) * atlas_node_capacity);
+    neko_assert(images && "out of mem");
+    neko_assert(nodes && "out of mem");
+
+    for (int i = 0; i < img_count; ++i) {
+        const spritebatch_internal_lonely_texture_t* img = imgs + i;
+        spritebatch_internal_integer_image_t* image = images + i;
+        image->fit = 0;
+        image->size = sb->atlas_use_border_pixels ? spritebatch_v2(img->w + 2, img->h + 2) : spritebatch_v2(img->w, img->h);
+        image->img_index = i;
+    }
+
+    // Sort PNGs from largest to smallest
+    spritebatch_internal_image_merge_sort(images, images_scratch, img_count);
+
+    // stack pointer, the stack is the nodes array which we will
+    // allocate nodes from as necessary.
+    sp = 1;
+
+    nodes[0].min = spritebatch_v2(0, 0);
+    nodes[0].max = spritebatch_v2(atlas_width, atlas_height);
+    nodes[0].size = spritebatch_v2(atlas_width, atlas_height);
+
+    // Nodes represent empty space in the atlas. Placing a texture into the
+    // atlas involves splitting a node into two smaller pieces (or, if a
+    // perfect fit is found, deleting the node).
+    for (int i = 0; i < img_count; ++i) {
+        spritebatch_internal_integer_image_t* image = images + i;
+        int width = image->size.x;
+        int height = image->size.y;
+        spritebatch_internal_atlas_node_t* best_fit = spritebatch_best_fit(sp, width, height, nodes);
+
+        if (!best_fit) {
+            image->fit = 0;
+            continue;
+        }
+
+        image->min = best_fit->min;
+        image->max = spritebatch_add(image->min, image->size);
+
+        if (best_fit->size.x == width && best_fit->size.y == height) {
+            spritebatch_internal_atlas_node_t* last_node = nodes + --sp;
+            *best_fit = *last_node;
+            image->fit = 1;
+
+            continue;
+        }
+
+        image->fit = 1;
+
+        if (sp == atlas_node_capacity) {
+            int new_capacity = atlas_node_capacity * 2;
+            spritebatch_internal_atlas_node_t* new_nodes = (spritebatch_internal_atlas_node_t*)malloc(sizeof(spritebatch_internal_atlas_node_t) * new_capacity);
+            neko_assert(new_nodes && "out of mem");
+            memcpy(new_nodes, nodes, sizeof(spritebatch_internal_atlas_node_t) * sp);
+            free(nodes);
+            nodes = new_nodes;
+            atlas_node_capacity = new_capacity;
+        }
+
+        spritebatch_internal_atlas_node_t* new_node = nodes + sp++;
+        new_node->min = best_fit->min;
+
+        // Split bestFit along x or y, whichever minimizes
+        // fragmentation of empty space
+        spritebatch_v2_t d = spritebatch_sub(best_fit->size, spritebatch_v2(width, height));
+        if (d.x < d.y) {
+            new_node->size.x = d.x;
+            new_node->size.y = height;
+            new_node->min.x += width;
+
+            best_fit->size.y = d.y;
+            best_fit->min.y += height;
+        }
+
+        else {
+            new_node->size.x = width;
+            new_node->size.y = d.y;
+            new_node->min.y += height;
+
+            best_fit->size.x = d.x;
+            best_fit->min.x += width;
+        }
+
+        new_node->max = spritebatch_add(new_node->min, new_node->size);
+    }
+
+    // Write the final atlas image, use SPRITEBATCH_ATLAS_EMPTY_COLOR as base color
+    atlas_stride = atlas_width * pixel_stride;
+    atlas_image_size = atlas_width * atlas_height * pixel_stride;
+    atlas_pixels = malloc(atlas_image_size);
+    neko_assert(atlas_image_size && "out of mem");
+    memset(atlas_pixels, SPRITEBATCH_ATLAS_EMPTY_COLOR, atlas_image_size);
+
+    for (int i = 0; i < img_count; ++i) {
+        spritebatch_internal_integer_image_t* image = images + i;
+
+        if (image->fit) {
+            const spritebatch_internal_lonely_texture_t* img = imgs + image->img_index;
+            spritebatch_internal_get_pixels(sb, img->image_id, img->w, img->h);
+            char* pixels = (char*)sb->pixel_buffer;
+
+            spritebatch_v2_t min = image->min;
+            spritebatch_v2_t max = image->max;
+            int atlas_offset = min.x * pixel_stride;
+            int tex_stride = image->size.x * pixel_stride;
+
+            for (int row = min.y, y = 0; row < max.y; ++row, ++y) {
+                void* row_ptr = (char*)atlas_pixels + (row * atlas_stride + atlas_offset);
+                memcpy(row_ptr, pixels + y * tex_stride, tex_stride);
+            }
+        }
+    }
+
+    hashtable_init(&atlas_out->sprites_to_textures, sizeof(spritebatch_internal_texture_t), img_count, NULL);
+    atlas_out->texture_id = sb->generate_texture_callback(atlas_pixels, atlas_width, atlas_height, sb->udata);
+
+    // squeeze UVs inward by 128th of a pixel
+    // this prevents atlas bleeding. tune as necessary for good results.
+    w0 = 1.0f / (float)(atlas_width);
+    h0 = 1.0f / (float)(atlas_height);
+    div = 1.0f / 128.0f;
+    wTol = w0 * div;
+    hTol = h0 * div;
+
+    for (int i = 0; i < img_count; ++i) {
+        spritebatch_internal_integer_image_t* img = images + i;
+
+        if (img->fit) {
+            spritebatch_v2_t min = img->min;
+            spritebatch_v2_t max = img->max;
+            volume_used += img->size.x * img->size.y;
+
+            float min_x = (float)min.x * w0 + wTol;
+            float min_y = (float)min.y * h0 + hTol;
+            float max_x = (float)max.x * w0 - wTol;
+            float max_y = (float)max.y * h0 - hTol;
+
+            // flip image on y axis
+            if (SPRITEBATCH_ATLAS_FLIP_Y_AXIS_FOR_UV) {
+                float tmp = min_y;
+                min_y = max_y;
+                max_y = tmp;
+            }
+
+            spritebatch_internal_texture_t texture;
+            texture.w = img->size.x;
+            texture.h = img->size.y;
+            texture.timestamp = 0;
+            texture.minx = min_x;
+            texture.miny = min_y;
+            texture.maxx = max_x;
+            texture.maxy = max_y;
+            neko_assert(!(img->size.x < 0));
+            neko_assert(!(img->size.y < 0));
+            neko_assert(!(min_x < 0));
+            neko_assert(!(max_x < 0));
+            neko_assert(!(min_y < 0));
+            neko_assert(!(max_y < 0));
+            texture.image_id = imgs[img->img_index].image_id;
+            hashtable_insert(&atlas_out->sprites_to_textures, texture.image_id, &texture);
+        }
+    }
+
+    // Need to adjust atlas_width and atlas_height in config params, as none of the images for this
+    // atlas actually fit inside of the atlas! Either adjust the config, or stop sending giant images
+    // to the sprite batcher.
+    neko_assert(volume_used > 0);
+
+    atlas_out->volume_ratio = volume_used / (atlas_width * atlas_height);
+
+sb_err:
+    // no specific error handling needed here (yet)
+
+    free(atlas_pixels);
+    free(nodes);
+    free(images);
+    free(images_scratch);
+    return;
+}
+
+static int spritebatch_internal_lonely_pred(spritebatch_internal_lonely_texture_t* a, spritebatch_internal_lonely_texture_t* b) { return a->timestamp < b->timestamp; }
+
+static void spritebatch_internal_qsort_lonely(hashtable_t* lonely_table, spritebatch_internal_lonely_texture_t* items, int count) {
+    if (count <= 1) return;
+
+    spritebatch_internal_lonely_texture_t pivot = items[count - 1];
+    int low = 0;
+    for (int i = 0; i < count - 1; ++i) {
+        if (spritebatch_internal_lonely_pred(items + i, &pivot)) {
+            hashtable_swap(lonely_table, i, low);
+            low++;
+        }
+    }
+
+    hashtable_swap(lonely_table, low, count - 1);
+    spritebatch_internal_qsort_lonely(lonely_table, items, low);
+    spritebatch_internal_qsort_lonely(lonely_table, items + low + 1, count - 1 - low);
+}
+
+int spritebatch_internal_buffer_key(spritebatch_t* sb, NEKO_SPRITEBATCH_U64 key) {
+    SPRITEBATCH_CHECK_BUFFER_GROW(sb, key_buffer_count, key_buffer_capacity, key_buffer, NEKO_SPRITEBATCH_U64);
+    sb->key_buffer[sb->key_buffer_count++] = key;
+    return 0;
+}
+
+void spritebatch_internal_remove_table_entries(spritebatch_t* sb, hashtable_t* table) {
+    for (int i = 0; i < sb->key_buffer_count; ++i) hashtable_remove(table, sb->key_buffer[i]);
+    sb->key_buffer_count = 0;
+}
+
+void spritebatch_internal_flush_atlas(spritebatch_t* sb, spritebatch_internal_atlas_t* atlas, spritebatch_internal_atlas_t** sentinel, spritebatch_internal_atlas_t** next) {
+    int ticks_to_decay_texture = sb->ticks_to_decay_texture;
+    int texture_count = hashtable_count(&atlas->sprites_to_textures);
+    spritebatch_internal_texture_t* textures = (spritebatch_internal_texture_t*)hashtable_items(&atlas->sprites_to_textures);
+
+    for (int i = 0; i < texture_count; ++i) {
+        spritebatch_internal_texture_t* atlas_texture = textures + i;
+        if (atlas_texture->timestamp < ticks_to_decay_texture) {
+            int w = atlas_texture->w;
+            int h = atlas_texture->h;
+            if (sb->atlas_use_border_pixels) {
+                w -= 2;
+                h -= 2;
+            }
+            spritebatch_internal_lonely_texture_t* lonely_texture = spritebatch_internal_lonelybuffer_push(sb, atlas_texture->image_id, w, h, 0);
+            lonely_texture->timestamp = atlas_texture->timestamp;
+        }
+        hashtable_remove(&sb->sprites_to_atlases, atlas_texture->image_id);
+    }
+
+    if (sb->atlases == atlas) {
+        if (atlas->next == atlas)
+            sb->atlases = 0;
+        else
+            sb->atlases = atlas->prev;
+    }
+
+    // handle loop end conditions if sentinel was removed from the chain
+    if (sentinel && next) {
+        if (*sentinel == atlas) {
+            neko_log_trace("[batch] sentinel was also atlas: %p", *sentinel);
+            if ((*next)->next != *sentinel) {
+                neko_log_trace("[batch] *next = (*next)->next : %p = (*next)->%p", *next, (*next)->next);
+                *next = (*next)->next;
+            }
+
+            neko_log_trace("[batch] *sentinel = *next : %p =  %p", *sentinel, *next);
+            *sentinel = *next;
+        }
+    }
+
+    atlas->next->prev = atlas->prev;
+    atlas->prev->next = atlas->next;
+    hashtable_term(&atlas->sprites_to_textures);
+    sb->delete_texture_callback(atlas->texture_id, sb->udata);
+    free(atlas);
+}
+
+void spritebatch_internal_log_chain(spritebatch_internal_atlas_t* atlas) {
+    if (atlas) {
+        // spritebatch_internal_atlas_t* sentinel = atlas;
+        // neko_log_trace("[batch] sentinel: %p", sentinel);
+        // do {
+        //     spritebatch_internal_atlas_t* next = atlas->next;
+        //     neko_log_trace("[batch] atlas %p", atlas);
+        //     atlas = next;
+        // } while (atlas != sentinel);
+    }
+}
+
+int spritebatch_defrag(spritebatch_t* sb) {
+    // remove decayed atlases and flush them to the lonely buffer
+    // only flush textures that are not decayed
+    int ticks_to_decay_texture = sb->ticks_to_decay_texture;
+    float ratio_to_decay_atlas = sb->ratio_to_decay_atlas;
+    spritebatch_internal_atlas_t* atlas = sb->atlases;
+    if (atlas) {
+        spritebatch_internal_log_chain(atlas);
+        spritebatch_internal_atlas_t* sentinel = atlas;
+        do {
+            spritebatch_internal_atlas_t* next = atlas->next;
+            int texture_count = hashtable_count(&atlas->sprites_to_textures);
+            spritebatch_internal_texture_t* textures = (spritebatch_internal_texture_t*)hashtable_items(&atlas->sprites_to_textures);
+            int decayed_texture_count = 0;
+            for (int i = 0; i < texture_count; ++i)
+                if (textures[i].timestamp >= ticks_to_decay_texture) decayed_texture_count++;
+
+            float ratio;
+            if (!decayed_texture_count)
+                ratio = 0;
+            else
+                ratio = (float)texture_count / (float)decayed_texture_count;
+            if (ratio > ratio_to_decay_atlas) {
+                neko_log_trace("[batch] flushed atlas %p", atlas);
+                spritebatch_internal_flush_atlas(sb, atlas, &sentinel, &next);
+            }
+            atlas = next;
+        } while (atlas != sentinel);
+    }
+
+    // merge mostly empty atlases
+    float ratio_to_merge_atlases = sb->ratio_to_merge_atlases;
+    atlas = sb->atlases;
+    if (atlas) {
+        int sp = 0;
+        spritebatch_internal_atlas_t* merge_stack[2];
+
+        spritebatch_internal_atlas_t* sentinel = atlas;
+        do {
+            spritebatch_internal_atlas_t* next = atlas->next;
+
+            neko_assert(sp >= 0 && sp <= 2);
+            if (sp == 2) {
+                neko_log_trace("[batch] merged 2 atlases");
+                spritebatch_internal_flush_atlas(sb, merge_stack[0], &sentinel, &next);
+                spritebatch_internal_flush_atlas(sb, merge_stack[1], &sentinel, &next);
+                sp = 0;
+            }
+
+            float ratio = atlas->volume_ratio;
+            if (ratio < ratio_to_merge_atlases) merge_stack[sp++] = atlas;
+
+            atlas = next;
+        } while (atlas != sentinel);
+
+        if (sp == 2) {
+            neko_log_trace("[batch] merged 2 atlases (out of loop)");
+            spritebatch_internal_flush_atlas(sb, merge_stack[0], 0, 0);
+            spritebatch_internal_flush_atlas(sb, merge_stack[1], 0, 0);
+        }
+    }
+
+    // remove decayed textures from the lonely buffer
+    int lonely_buffer_count_till_decay = sb->lonely_buffer_count_till_decay;
+    int lonely_count = hashtable_count(&sb->sprites_to_lonely_textures);
+    spritebatch_internal_lonely_texture_t* lonely_textures = (spritebatch_internal_lonely_texture_t*)hashtable_items(&sb->sprites_to_lonely_textures);
+    if (lonely_count >= lonely_buffer_count_till_decay) {
+        spritebatch_internal_qsort_lonely(&sb->sprites_to_lonely_textures, lonely_textures, lonely_count);
+        int index = 0;
+        while (1) {
+            if (index == lonely_count) break;
+            if (lonely_textures[index].timestamp >= ticks_to_decay_texture) break;
+            ++index;
+        }
+        for (int i = index; i < lonely_count; ++i) {
+            NEKO_SPRITEBATCH_U64 texture_id = lonely_textures[i].texture_id;
+            if (texture_id != ~0) sb->delete_texture_callback(texture_id, sb->udata);
+            spritebatch_internal_buffer_key(sb, lonely_textures[i].image_id);
+            neko_log_trace("[batch] lonely texture decayed");
+        }
+        spritebatch_internal_remove_table_entries(sb, &sb->sprites_to_lonely_textures);
+        lonely_count -= lonely_count - index;
+        neko_assert(lonely_count == hashtable_count(&sb->sprites_to_lonely_textures));
+    }
+
+    // process input, but don't make textures just yet
+    spritebatch_internal_process_input(sb, 1);
+    lonely_count = hashtable_count(&sb->sprites_to_lonely_textures);
+
+    // while greater than lonely_buffer_count_till_flush elements in lonely buffer
+    // grab lonely_buffer_count_till_flush of them and make an atlas
+    int lonely_buffer_count_till_flush = sb->lonely_buffer_count_till_flush;
+    int stuck = 0;
+    while (lonely_count > lonely_buffer_count_till_flush && !stuck) {
+        atlas = (spritebatch_internal_atlas_t*)malloc(sizeof(spritebatch_internal_atlas_t));
+        if (sb->atlases) {
+            atlas->prev = sb->atlases;
+            atlas->next = sb->atlases->next;
+            sb->atlases->next->prev = atlas;
+            sb->atlases->next = atlas;
+        }
+
+        else {
+            atlas->next = atlas;
+            atlas->prev = atlas;
+            sb->atlases = atlas;
+        }
+
+        spritebatch_make_atlas(sb, atlas, lonely_textures, lonely_count);
+        neko_log_trace("[batch] making atlas");
+
+        int tex_count_in_atlas = hashtable_count(&atlas->sprites_to_textures);
+        if (tex_count_in_atlas != lonely_count) {
+            int hit_count = 0;
+            for (int i = 0; i < lonely_count; ++i) {
+                NEKO_SPRITEBATCH_U64 key = lonely_textures[i].image_id;
+                if (hashtable_find(&atlas->sprites_to_textures, key)) {
+                    spritebatch_internal_buffer_key(sb, key);
+                    NEKO_SPRITEBATCH_U64 texture_id = lonely_textures[i].texture_id;
+                    if (texture_id != ~0) sb->delete_texture_callback(texture_id, sb->udata);
+                    hashtable_insert(&sb->sprites_to_atlases, key, &atlas);
+                    neko_log_trace("[batch] removing lonely texture for atlas%s", texture_id != ~0 ? "" : " (tex was ~0)");
+                } else {
+                    hit_count++;
+                    neko_assert(lonely_textures[i].w <= sb->atlas_width_in_pixels);
+                    neko_assert(lonely_textures[i].h <= sb->atlas_height_in_pixels);
+                }
+            }
+            spritebatch_internal_remove_table_entries(sb, &sb->sprites_to_lonely_textures);
+
+            lonely_count = hashtable_count(&sb->sprites_to_lonely_textures);
+
+            if (!hit_count) {
+                // TODO
+                // handle case where none fit in atlas
+                stuck = 1;
+                neko_assert(0);
+            }
+        }
+
+        else {
+            for (int i = 0; i < lonely_count; ++i) {
+                NEKO_SPRITEBATCH_U64 key = lonely_textures[i].image_id;
+                NEKO_SPRITEBATCH_U64 texture_id = lonely_textures[i].texture_id;
+                if (texture_id != ~0) sb->delete_texture_callback(texture_id, sb->udata);
+                hashtable_insert(&sb->sprites_to_atlases, key, &atlas);
+                neko_log_trace("[batch] (fast path) removing lonely texture for atlas%s", texture_id != ~0 ? "" : " (tex was ~0)");
+            }
+            hashtable_clear(&sb->sprites_to_lonely_textures);
+            lonely_count = 0;
+            break;
+        }
+    }
+
+    int total_premade_count = hashtable_count(&sb->sprites_to_premade_textures);
+    const spritebatch_internal_premade_atlas* premade_atlases = (const spritebatch_internal_premade_atlas*)hashtable_items(&sb->sprites_to_premade_textures);
+    for (int i = 0; i < total_premade_count; ++i) {
+        if (premade_atlases[i].mark_for_cleanup) {
+            const NEKO_SPRITEBATCH_U64 texture_id = premade_atlases[i].texture_id;
+            if (texture_id != ~0) sb->delete_texture_callback(texture_id, sb->udata);
+            spritebatch_internal_buffer_key(sb, premade_atlases[i].image_id);
+            neko_log_trace("[batch] premade atlas texture cleanedup");
+        }
+    }
+    spritebatch_internal_remove_table_entries(sb, &sb->sprites_to_premade_textures);
+
+    return 1;
+}

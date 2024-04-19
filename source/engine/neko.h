@@ -244,6 +244,10 @@ enum neko_type_kind {
 
 #define neko_for_range(__COUNT) for (u32 neko_macro_token_paste(__T, __LINE__) = 0; neko_macro_token_paste(__T, __LINE__) < __COUNT; ++(neko_macro_token_paste(__T, __LINE__)))
 
+#define neko_str_ncpy(des, src)         \
+    strncpy(des, src, sizeof(des) - 1); \
+    des[sizeof(des) - 1] = '\0'
+
 #define neko_max(A, B) ((A) > (B) ? (A) : (B))
 
 #define neko_min(A, B) ((A) < (B) ? (A) : (B))

@@ -6,9 +6,6 @@
 #include "engine/neko.h"
 #include "engine/neko_engine.h"
 
-// gl
-// #include "engine/builtin/neko_gl.h"
-
 // game
 #include "game_physics_math.hpp"
 

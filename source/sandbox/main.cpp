@@ -13,6 +13,7 @@
 #include "engine/neko.h"
 #include "engine/neko.hpp"
 #include "engine/neko_asset.h"
+#include "engine/neko_filesystem.h"
 #include "engine/neko_platform.h"
 #include "engine/neko_script.h"
 
@@ -23,7 +24,7 @@
 #include "game_editor.h"
 
 // opengl
-#include "engine/builtin/neko_gl.h"
+#include <glad/glad.h>
 
 // hpp
 #include "sandbox/hpp/neko_static_refl.hpp"
@@ -32,11 +33,7 @@
 #define NEKO_IMGUI_IMPL
 #include "game_imgui.h"
 
-#define SPRITEBATCH_IMPLEMENTATION
-#include "engine/builtin/cute_spritebatch.h"
-
 // fs
-#include "engine/builtin/neko_fs.h"
 
 // nekoscript interpreter
 #include "interpreter.h"
@@ -1333,7 +1330,6 @@ void game_update() {
                         neko_ui_labelf("NekoScript UsedMemory: %.2lf mb", ((f64)used / 1024.0f));
                     }
 
-                    // lua_gc(g_L, LUA_GCCOLLECT, 0);
                     lua_Integer kb = lua_gc(g_L, LUA_GCCOUNT, 0);
                     lua_Integer bytes = lua_gc(g_L, LUA_GCCOUNTB, 0);
 

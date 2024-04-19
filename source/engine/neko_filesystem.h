@@ -92,63 +92,6 @@ typedef enum neko_assetsys_error_t {
     ASSETSYS_ERROR_BUFFER_TOO_SMALL = -9,
 } neko_assetsys_error_t;
 
-struct strpool_embedded_internal_hash_slot_t;
-struct strpool_embedded_internal_entry_t;
-struct strpool_embedded_internal_handle_t;
-struct strpool_embedded_internal_block_t;
-
-struct strpool_embedded_t {
-    void* memctx;
-    int ignore_case;
-    int counter_shift;
-    u64 counter_mask;
-    u64 index_mask;
-
-    int initial_entry_capacity;
-    int initial_block_capacity;
-    int block_size;
-    int min_data_size;
-
-    struct strpool_embedded_internal_hash_slot_t* hash_table;
-    int hash_capacity;
-
-    struct strpool_embedded_internal_entry_t* entries;
-    int entry_capacity;
-    int entry_count;
-
-    struct strpool_embedded_internal_handle_t* handles;
-    int handle_capacity;
-    int handle_count;
-    int handle_freelist_head;
-    int handle_freelist_tail;
-
-    struct strpool_embedded_internal_block_t* blocks;
-    int block_capacity;
-    int block_count;
-    int current_block;
-};
-
-typedef struct strpool_embedded_t strpool_embedded_t;
-
-typedef struct strpool_embedded_config_t {
-    void* memctx;
-    int ignore_case;
-    int counter_bits;
-    int index_bits;
-    int entry_capacity;
-    int block_capacity;
-    int block_size;
-    int min_length;
-} strpool_embedded_config_t;
-
-extern strpool_embedded_config_t const strpool_embedded_default_config;
-
-NEKO_API_DECL void strpool_embedded_init(strpool_embedded_t* pool, strpool_embedded_config_t const* config);
-NEKO_API_DECL void strpool_embedded_term(strpool_embedded_t* pool);
-
-NEKO_API_DECL u64 strpool_embedded_inject(strpool_embedded_t* pool, char const* string, int length);
-NEKO_API_DECL char const* strpool_embedded_cstr(strpool_embedded_t const* pool, u64 handle);
-
 struct neko_assetsys_internal_file_t {
     int size;
     int zip_index;
@@ -298,7 +241,7 @@ struct neko_filewatch_t {
     neko_filewatch_notification_internal_t* notifications;
 
     void* mem_ctx;
-    strpool_embedded_t strpool;
+    strpool_t strpool;
 };
 
 #define NEKO_FILEWATCH_H

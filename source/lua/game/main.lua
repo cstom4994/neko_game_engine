@@ -58,6 +58,18 @@ end
 
 local gd = {}
 
+neko.hooks.add("render", "main", function(v)
+    ImGui.Begin("Render hooks")
+    ImGui.Text("%s", v)
+    ImGui.End()
+end)
+
+-- hooks.add("inputPressed","test",function(v)
+--     ImGui.Begin("inputPressed hooks")
+--     ImGui.Text("%s", v)
+--     ImGui.End()
+-- end)
+
 game_init = function()
 
     local win_w, win_h = neko_window_size(neko_main_window())
@@ -167,6 +179,8 @@ game_init = function()
         }
     })
 
+    luainspector = __neko_luainspector_init()
+
     play.sub_init()
 end
 
@@ -189,6 +203,7 @@ game_update = function(dt)
         play.sub_update(dt)
         play.test_update()
     end
+
 end
 
 game_render = function()
@@ -229,26 +244,26 @@ game_render = function()
     neko.idraw_draw()
     neko.graphics_renderpass_end()
 
-    neko.graphics_renderpass_begin(0)
-    neko.graphics_pipeline_bind(test_custom_sprite.pipeline)
-    neko.graphics_apply_bindings({
-        uniforms = {{
-            uniform = test_custom_sprite.uniform,
-            data = test_custom_sprite.tex_userdata,
-            binding = 0
-        }},
-        vertex_buffers = {{
-            buffer = test_custom_sprite.vbo
-        }},
-        index_buffers = {{
-            buffer = test_custom_sprite.ibo
-        }}
-    })
-    neko.graphics_draw({
-        start = 0,
-        count = 6
-    })
-    neko.graphics_renderpass_end()
+    -- neko.graphics_renderpass_begin(0)
+    -- neko.graphics_pipeline_bind(test_custom_sprite.pipeline)
+    -- neko.graphics_apply_bindings({
+    --     uniforms = {{
+    --         uniform = test_custom_sprite.uniform,
+    --         data = test_custom_sprite.tex_userdata,
+    --         binding = 0
+    --     }},
+    --     vertex_buffers = {{
+    --         buffer = test_custom_sprite.vbo
+    --     }},
+    --     index_buffers = {{
+    --         buffer = test_custom_sprite.ibo
+    --     }}
+    -- })
+    -- neko.graphics_draw({
+    --     start = 0,
+    --     count = 6
+    -- })
+    -- neko.graphics_renderpass_end()
 
     ImGui.Begin("Demo")
     ImGui.Text("选择测试Demo")
@@ -259,6 +274,10 @@ game_render = function()
         play = require("game_sandbox")
         play.sub_init()
         play.sub_init_thread()
+    end
+    if ImGui.Button("Run") then
+        local red = Vector(255, 0, 0)
+        print(tostring(red))
     end
     -- if ImGui.Button("Run") then
     --     running = true
@@ -272,9 +291,13 @@ game_render = function()
     ImGui.Image(test_custom_sprite.tex, 100.0, 100.0)
     ImGui.End()
 
+    __neko_luainspector_draw(__neko_luainspector_get())
+
     if running then
         play.sub_render()
     end
+
+    neko.hooks.run()
 
     -- neko.idraw_defaults()
     -- neko.idraw_camera3d(fbs_x, fbs_y)

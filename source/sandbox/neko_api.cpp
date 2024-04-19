@@ -5,16 +5,16 @@
 #include <filesystem>
 #include <string>
 
-#include "engine/builtin/cute_spritebatch.h"
-#include "engine/builtin/neko_fs.h"
 #include "engine/neko.h"
-#include "engine/neko_engine.h"
 #include "engine/neko_asset.h"
+#include "engine/neko_engine.h"
+#include "engine/neko_filesystem.h"
 #include "engine/neko_lua.h"
 
 // game
 #include "sandbox/game_chunk.h"
 #include "sandbox/game_imgui.h"
+#include "sandbox/imgui_lua_inspector.hpp"
 #include "sandbox/neko_profiler.h"
 
 // hpp
@@ -23,36 +23,35 @@
 extern neko_client_userdata_t g_client_userdata;
 
 extern "C" int luaopen_cffi(lua_State* L);
-
 extern "C" int luaopen_neko_imgui(lua_State* L);
 extern "C" int luaopen_neko_enet(lua_State* l);
 extern "C" int __neko_ecs_create_world(lua_State* L);
 
 extern int register_mt_imgui(lua_State* L);
 
-#define LUAOPEN_EMBED_DATA(func, name, compressed_data, compressed_size)              \
-    static int func(lua_State* L) {                                                   \
-        s32 top = lua_gettop(L);                                                      \
-                                                                                      \
-        neko_string contents = stb_decompress_data(compressed_data, compressed_size); \
-        neko_defer({ neko_safe_free(contents.data); });                               \
-                                                                                      \
-        if (luaL_loadbuffer(L, contents.data, contents.len, name) != LUA_OK) {        \
-            luaL_error(L, "%s", lua_tostring(L, -1));                                 \
-            return 0;                                                                 \
-        }                                                                             \
-                                                                                      \
-        if (lua_pcall(L, 0, LUA_MULTRET, 1) != LUA_OK) {                              \
-            luaL_error(L, "%s", lua_tostring(L, -1));                                 \
-            return 0;                                                                 \
-        }                                                                             \
-                                                                                      \
-        return lua_gettop(L) - top;                                                   \
-    }
+// #define LUAOPEN_EMBED_DATA(func, name, compressed_data, compressed_size)              \
+//     static int func(lua_State* L) {                                                   \
+//         s32 top = lua_gettop(L);                                                      \
+//                                                                                       \
+//         neko_string contents = stb_decompress_data(compressed_data, compressed_size); \
+//         neko_defer({ neko_safe_free(contents.data); });                               \
+//                                                                                       \
+//         if (luaL_loadbuffer(L, contents.data, contents.len, name) != LUA_OK) {        \
+//             luaL_error(L, "%s", lua_tostring(L, -1));                                 \
+//             return 0;                                                                 \
+//         }                                                                             \
+//                                                                                       \
+//         if (lua_pcall(L, 0, LUA_MULTRET, 1) != LUA_OK) {                              \
+//             luaL_error(L, "%s", lua_tostring(L, -1));                                 \
+//             return 0;                                                                 \
+//         }                                                                             \
+//                                                                                       \
+//         return lua_gettop(L) - top;                                                   \
+//     }
 
 // LUAOPEN_EMBED_DATA(open_embed_xxx, "xxx.lua", xxx_compressed_data, xxx_compressed_size);
 
-static void package_preload(lua_State* L, const char* name, lua_CFunction function) {
+static void package_preload(lua_State* L, const_str name, lua_CFunction function) {
     lua_getglobal(L, "package");
     lua_getfield(L, -1, "preload");
     lua_pushcfunction(L, function);
@@ -72,7 +71,7 @@ int neko_lua_add_package_path(lua_State* L, const std::string& str_) {
 }
 
 void __neko_lua_print_error(lua_State* state, int result) {
-    const char* message = lua_tostring(state, -1);
+    const_str message = lua_tostring(state, -1);
     neko_log_error("LuaScript ERROR:\n  %s", (message ? message : "no message"));
 
     if (result != 0) {
@@ -133,7 +132,7 @@ static int g_lua_callbacks_table_ref = LUA_NOREF;
 
 static int __neko_bind_callback_save(lua_State* L) {
     // 检查传递给函数的参数是否是一个字符串和一个函数
-    const char* identifier = luaL_checkstring(L, 1);
+    const_str identifier = luaL_checkstring(L, 1);
     luaL_checktype(L, 2, LUA_TFUNCTION);
 
     // 如果之前没有保存的Lua函数引用，则创建一个新的table
@@ -161,7 +160,7 @@ static int __neko_bind_callback_call(lua_State* L) {
     // 检查之前是否有保存的Lua函数引用
     if (g_lua_callbacks_table_ref != LUA_NOREF) {
         // 获取标识符参数
-        const char* identifier = luaL_checkstring(L, 1);
+        const_str identifier = luaL_checkstring(L, 1);
 
         // 获取保存的table
         lua_rawgeti(L, LUA_REGISTRYINDEX, g_lua_callbacks_table_ref);
@@ -527,11 +526,11 @@ static int __neko_bind_pack_build(lua_State* L) {
     int n = lua_tointeger(L, -1);      //
     lua_pop(L, 1);                     // 弹出长度值
 
-    const char** item_paths = (const char**)neko_safe_malloc(n * sizeof(const char*));
+    const_str* item_paths = (const_str*)neko_safe_malloc(n * sizeof(const_str));
 
     for (int i = 1; i <= n; i++) {
-        lua_rawgeti(L, 2, i);                   // 将index=i的元素压入堆栈顶部
-        const char* str = lua_tostring(L, -1);  // # -1
+        lua_rawgeti(L, 2, i);                 // 将index=i的元素压入堆栈顶部
+        const_str str = lua_tostring(L, -1);  // # -1
         if (str != NULL) {
             item_paths[i - 1] = str;
         }
@@ -1200,7 +1199,6 @@ static int __neko_bind_sprite_batch_create(lua_State* L) {
     sb_config.lonely_buffer_count_till_flush = 1;
     sb_config.ratio_to_decay_atlas = 0.5f;
     sb_config.ratio_to_merge_atlases = 0.25f;
-    sb_config.allocator_context = 0;
 
     sb_config.batch_callback = batch_report;                        // report batches of sprites from `spritebatch_flush`
     sb_config.get_pixels_callback = get_pixels;                     // used to retrieve image pixels from `spritebatch_flush` and `spritebatch_defrag`
@@ -1358,7 +1356,7 @@ static int __neko_bind_filewatch_destory(lua_State* L) {
     return 0;
 }
 
-static void watch_map_callback(neko_filewatch_update_t change, const char* virtual_path, void* udata) {
+static void watch_map_callback(neko_filewatch_update_t change, const_str virtual_path, void* udata) {
     std::string change_string;
     switch (change) {
         case FILEWATCH_DIR_ADDED:
@@ -1704,8 +1702,7 @@ static int __neko_bind_graphics_uniform_create(lua_State* L) {
     };
 
     if (!!strcmp(uniform_name, "default")) {
-        strncpy(u_desc.name, uniform_name, sizeof(u_desc.name) - 1);
-        u_desc.name[sizeof(u_desc.name) - 1] = '\0';
+        neko_str_ncpy(u_desc.name, uniform_name);
     }
 
     if (lua_gettop(L) == 3) {
@@ -1849,8 +1846,7 @@ static int __neko_bind_graphics_vertex_attribute_create(lua_State* L) {
         if (!lua_isnil(L, -1)) {
             const_str src = lua_tostring(L, -1);  // # -1
             if (src != NULL) {
-                strncpy(sources[i].name, src, sizeof(sources[i].name) - 1);
-                sources[i].name[sizeof(sources[i].name) - 1] = '\0';
+                neko_str_ncpy(sources[i].name, src);
             } else
                 neko_assert(false);
         }
@@ -1888,8 +1884,7 @@ static int __neko_bind_graphics_storage_buffer_create(lua_State* L) {
     neko_graphics_storage_buffer_desc_t storage_buffer_desc = {.data = data, .size = data_size, .name = "unknown", .usage = NEKO_GRAPHICS_BUFFER_USAGE_DYNAMIC};
 
     if (storage_buffer_name != NULL) {
-        strncpy(storage_buffer_desc.name, storage_buffer_name, sizeof(storage_buffer_desc.name) - 1);
-        storage_buffer_desc.name[sizeof(storage_buffer_desc.name) - 1] = '\0';
+        neko_str_ncpy(storage_buffer_desc.name, storage_buffer_name);
     }
 
     storage_buffer_handle = neko_graphics_storage_buffer_create(&storage_buffer_desc);
@@ -2306,35 +2301,11 @@ static int __neko_bind_graphics_clear(lua_State* L) {
     return 0;
 }
 
-int neko_print_registry_list(lua_State* L) {
-    lua_pushglobaltable(L);  // 将注册表表压入栈中
-    ImGui::Text("Registry contents:");
-    lua_pushnil(L);
-    while (lua_next(L, -2) != 0) {
-        int type = lua_type(L, -1);
-        switch (type) {
-            case LUA_TSTRING:
-                ImGui::Text("%s\t%s\t%s", lua_tostring(L, -2), lua_typename(L, lua_type(L, -1)), lua_tostring(L, -1));
-                break;
-            case LUA_TNUMBER:
-                ImGui::Text("%s\t%s\t%f", lua_tostring(L, -2), lua_typename(L, lua_type(L, -1)), lua_tonumber(L, -1));
-                break;
-            case LUA_TFUNCTION:
-                ImGui::Text("%s\t%s\t%p", lua_tostring(L, -2), lua_typename(L, lua_type(L, -1)), lua_topointer(L, -1));
-                break;
-            default:
-                ImGui::Text("Unknown");
-                break;
-        }
-        lua_pop(L, 1);
-    }
-    lua_pop(L, 1);  // 弹出注册表表
-    return 0;
-}
-
 neko_inline void neko_register_test(lua_State* L) {
 
-    lua_register(L, "__neko_print_registry_list", neko_print_registry_list);
+    lua_register(L, "__neko_luainspector_init", neko::luainspector::luainspector_init);
+    lua_register(L, "__neko_luainspector_draw", neko::luainspector::luainspector_draw);
+    lua_register(L, "__neko_luainspector_get", neko::luainspector::luainspector_get);
 
     neko_lua_wrap_register_t<>(L).def(&__neko_bind_tiled_get_objects, "neko_tiled_get_objects");
 
@@ -2557,7 +2528,7 @@ static int __neko_bind_print(lua_State* L) {
     int i;
     for (i = 1; i <= n; i++) {
         size_t l;
-        const char* s = luaL_tolstring(L, i, &l);
+        const_str s = luaL_tolstring(L, i, &l);
         if (i > 1) str.append("\t");
         str.append(std::string(s, l));
         lua_pop(L, 1);
@@ -2603,6 +2574,480 @@ int __neko_ls(lua_State* L) {
 
 bool __neko_dolua(const_str file) { return neko_lua_wrap_dofile(g_client_userdata.L, game_assets(file)); }
 
+struct neko_lua_hook_pool g_lua_hook_pool = {NULL, 0};
+
+struct neko_lua_hook_t think = {"think", NULL, 0, &think, NULL, neko_lua_hook_status::hook_update};
+
+struct neko_lua_hook_callbacks* neko_lua_hook_callback_create(size_t dataSize, enum neko_lua_dataType dataType) {
+    struct neko_lua_hook_callbacks* callback = (struct neko_lua_hook_callbacks*)malloc(sizeof(struct neko_lua_hook_callbacks));
+
+    if (callback) {
+        callback->dataSize = dataSize;
+        callback->data = malloc(dataSize);
+        callback->dataType = dataType;
+    } else {
+        neko_log_warning("[lua] Callback \"?\" errored with: Memory allocation error");
+    }
+
+    return callback;
+}
+
+void neko_lua_hook_callback_set(struct neko_lua_hook_callbacks* callback, const void* data) { memcpy(callback->data, data, callback->dataSize); }
+
+void* neko_lua_hook_callback_get(const struct neko_lua_hook_callbacks* callback) { return callback->data; }
+
+void neko_lua_hook_register(struct neko_lua_hook_t hookData) {
+    struct neko_lua_hook_t* temp = (struct neko_lua_hook_t*)realloc(g_lua_hook_pool.hooks, (g_lua_hook_pool.count + 1) * sizeof(struct neko_lua_hook_t));
+
+    if (temp) {
+        g_lua_hook_pool.hooks = temp;
+        g_lua_hook_pool.hooks[g_lua_hook_pool.count] = hookData;
+        g_lua_hook_pool.count += 1;
+    } else {
+        neko_log_warning("[lua] Hook \"pool\" errored with: Memory allocation error");
+    }
+}
+
+void neko_lua_hook_add(struct neko_lua_hook_t* instance, const_str name, void (*func)(lua_State*, struct neko_lua_hook_t* instance, int, struct neko_lua_hook_callbacks* callback), int ref) {
+    for (size_t i = 0; i < instance->pool; ++i) {
+        if (strcmp(instance->stack[i].name, name) == 0) {
+            instance->stack[i].func = func;
+            instance->stack[i].ref = ref;
+
+            return;
+        }
+    }
+
+    struct neko_lua_hook_stack* temp = (struct neko_lua_hook_stack*)realloc(instance->stack, (instance->pool + 1) * sizeof(struct neko_lua_hook_stack));
+
+    if (temp) {
+        instance->stack = temp;
+        instance->stack[instance->pool].name = strdup(name);
+        instance->stack[instance->pool].func = func;
+        instance->stack[instance->pool].ref = ref;
+        instance->pool += 1;
+    } else {
+        neko_log_warning("[lua] Hook \"%s\" errored with: Memory allocation error", instance->hookName);
+    }
+}
+
+void neko_lua_hook_remove(struct neko_lua_hook_t* instance, const_str name) {
+    for (size_t i = 0; i < instance->pool; ++i) {
+        if (strcmp(instance->stack[i].name, name) == 0) {
+            for (size_t j = i; j < instance->pool - 1; ++j) {
+                instance->stack[j] = instance->stack[j + 1];
+            }
+
+            struct neko_lua_hook_stack* temp = (struct neko_lua_hook_stack*)malloc((instance->pool - 1) * sizeof(struct neko_lua_hook_stack));
+
+            if (temp) {
+                memcpy(temp, instance->stack, i * sizeof(struct neko_lua_hook_stack));
+                memcpy(temp + i, instance->stack + i + 1, (instance->pool - i - 1) * sizeof(struct neko_lua_hook_stack));
+
+                free(instance->stack);
+
+                instance->stack = temp;
+                instance->pool -= 1;
+            } else {
+                neko_log_warning("[lua] Hook \"%s\" errored with: Memory allocation error", instance->hookName);
+            }
+
+            return;
+        }
+    }
+
+    neko_snprintfc(temp, 64, "'%s' not found", name);
+    neko_log_warning("[lua] Hook \"%s\" errored with: %s", instance->hookName, temp);
+}
+
+void neko_lua_hook_run(struct neko_lua_hook_t* instance, lua_State* L) {
+    if (!instance || !L) {
+        neko_log_warning("[lua] Hook \"?\" errored with: Failed to get neko_lua_hook_t instance");
+
+        return;
+    }
+
+    if (instance->handle) {
+        instance->handle(instance, L);
+    }
+
+    for (size_t i = 0; i < instance->pool; ++i) {
+        if (instance->stack[i].func) {
+            if (instance->status != neko_lua_hook_status::hook_idle) {
+                instance->stack[i].func(L, instance, i, instance->callback);
+            }
+        } else {
+            neko_log_warning("[lua] Hook \"%s\" errored with: Could not find function reference", instance->hookName);
+        }
+    }
+
+    if (instance->status == neko_lua_hook_status::hook_awaiting) {
+        instance->status = neko_lua_hook_status::hook_idle;
+    }
+}
+
+void neko_lua_hook_free(struct neko_lua_hook_t* instance, lua_State* L) {
+    for (size_t i = 0; i < instance->pool; ++i) {
+        if (instance->stack[i].ref != LUA_NOREF) {
+            luaL_unref(L, LUA_REGISTRYINDEX, instance->stack[i].ref);
+        }
+    }
+
+    instance->stack = NULL;
+    instance->pool = 0;
+
+    free(instance->stack);
+}
+
+void neko_lua_hook_luafunc(lua_State* L, struct neko_lua_hook_t* instance, int index, struct neko_lua_hook_callbacks* callback) {
+    lua_rawgeti(L, LUA_REGISTRYINDEX, instance->stack[index].ref);
+
+    if (callback && callback->data) {
+        for (size_t i = 0; i < callback->dataSize; ++i) {
+            void* value = ((char*)callback->data) + (i * callback->dataSize);
+
+            switch (callback->dataType) {
+                case neko_lua_dataType::number:
+                    lua_pushnumber(L, *(double*)value);
+                    break;
+                case neko_lua_dataType::string:
+                    lua_pushstring(L, (const_str)value);
+                    break;
+                case neko_lua_dataType::integer:
+                    lua_pushinteger(L, *(int*)value);
+                    break;
+                case neko_lua_dataType::lua_bool:
+                    lua_pushboolean(L, *(int*)value);
+                    break;
+                case neko_lua_dataType::function:
+                    lua_rawgeti(L, LUA_REGISTRYINDEX, *((int*)value));
+                    break;
+                default:
+                    lua_pushnil(L);
+                    break;
+            }
+        }
+    }
+
+    if (lua_pcall(L, callback ? callback->dataSize : 0, LUA_MULTRET, 0) != LUA_OK) {
+        neko_log_warning("[lua] Hook \"%s\" errored with: %s", instance->hookName, lua_tostring(L, -1));
+
+        lua_pop(L, 1);
+
+        return;
+    }
+}
+
+struct neko_lua_hook_t* neko_lua_hook_find(const_str hookName) {
+    for (size_t i = 0; i < g_lua_hook_pool.count; ++i) {
+        if (strcmp(g_lua_hook_pool.hooks[i].hookName, hookName) == 0) {
+            return &g_lua_hook_pool.hooks[i];
+        }
+    }
+
+    return NULL;
+}
+
+int neko_lua_hook_bind_add(lua_State* L) {
+    const_str hookName = luaL_checkstring(L, 1);
+    const_str name = luaL_checkstring(L, 2);
+
+    struct neko_lua_hook_t* instance = neko_lua_hook_find(hookName);
+
+    if (instance) {
+        if (lua_isfunction(L, 3)) {
+            lua_pushvalue(L, 3);
+
+            int ref = luaL_ref(L, LUA_REGISTRYINDEX);
+
+            neko_lua_hook_add(instance->address, name, neko_lua_hook_luafunc, ref);
+        } else {
+            neko_log_warning("[lua] Hook \"%s\" errored with: Third argument must be a function", instance->hookName);
+        }
+    } else {
+        neko_log_warning("[lua] Hook \"%s\" errored with: Not found", hookName);
+    }
+
+    return 0;
+}
+
+int neko_lua_hook_bind_remove(lua_State* L) {
+    const_str hookName = luaL_checkstring(L, 1);
+    const_str name = luaL_checkstring(L, 2);
+
+    struct neko_lua_hook_t* instance = neko_lua_hook_find(hookName);
+
+    if (instance) {
+        neko_lua_hook_remove(instance->address, name);
+    } else {
+        neko_log_warning("[lua] Hook \"%s\" errored with: Not found", hookName);
+    }
+
+    return 0;
+}
+
+int neko_lua_hook_bind_run(lua_State* L) {
+    for (size_t i = 0; i < g_lua_hook_pool.count; ++i) {
+        neko_lua_hook_run(g_lua_hook_pool.hooks[i].address, L);
+    }
+
+    return 0;
+}
+
+int neko_lua_hook_bind_free(lua_State* L) {
+    const_str hookName = luaL_checkstring(L, 1);
+
+    struct neko_lua_hook_t* instance = neko_lua_hook_find(hookName);
+
+    if (instance) {
+        neko_lua_hook_free(instance->address, L);
+    } else {
+        neko_log_warning("[lua] Hook \"%s\" errored with: Not found", hookName);
+    }
+
+    return 0;
+}
+
+void renderHandle(struct neko_lua_hook_t* instance, lua_State* L) {
+
+    //     instance->status = hook_idle;
+
+    int v = 10;
+
+    instance->callback = neko_lua_hook_callback_create(sizeof(int), neko_lua_dataType::integer);
+    neko_lua_hook_callback_set(instance->callback, &v);
+
+    instance->status = neko_lua_hook_status::hook_update;
+}
+
+struct neko_lua_hook_t render = {"render", NULL, 0, &render, renderHandle, neko_lua_hook_status::hook_update};
+
+void addMethods(lua_State* L, const_str name, const luaL_Reg* methods) {
+    luaL_newmetatable(L, name);
+
+    lua_pushstring(L, "__index");
+    lua_newtable(L);
+
+    for (const luaL_Reg* method = methods; method->name != NULL; ++method) {
+        lua_pushcfunction(L, method->func);
+        lua_setfield(L, -2, method->name);
+    }
+
+    lua_settable(L, -3);
+
+    lua_setmetatable(L, -2);
+}
+
+void setFieldInt(lua_State* L, const_str key, float data) {
+    lua_pushstring(L, key);
+    lua_pushinteger(L, data);
+    lua_settable(L, -3);
+}
+
+void setFieldFloat(lua_State* L, const_str key, float data) {
+    lua_pushstring(L, key);
+    lua_pushnumber(L, data);
+    lua_settable(L, -3);
+}
+
+int tostring(lua_State* L) {
+    lua_getfield(L, 1, "x");
+    lua_getfield(L, 1, "y");
+    lua_getfield(L, 1, "z");
+
+    const_str x = lua_tostring(L, -3);
+    const_str y = lua_tostring(L, -2);
+    const_str z = lua_tostring(L, -1);
+
+    neko_snprintfc(temp, 64, "%f, %f, %f", x, y, z);
+
+    lua_pop(L, 3);
+
+    lua_pushstring(L, temp);
+
+    return 1;
+}
+
+static const luaL_Reg tableMethods[] = {{"tostring", tostring}, {NULL, NULL}};
+
+int Vector(lua_State* L) {
+    float x = luaL_optnumber(L, 1, 0.0f);
+    float y = luaL_optnumber(L, 2, 0.0f);
+    float z = luaL_optnumber(L, 3, 0.0f);
+
+    lua_newtable(L);
+    setFieldFloat(L, "x", x);
+    setFieldFloat(L, "y", y);
+    setFieldFloat(L, "z", z);
+
+    addMethods(L, "table", tableMethods);
+
+    return 1;
+}
+
+int Angle(lua_State* L) {
+    float roll = luaL_optnumber(L, 1, 0.0f);
+    float pitch = luaL_optnumber(L, 2, 0.0f);
+    float yaw = luaL_optnumber(L, 3, 0.0f);
+
+    lua_newtable(L);
+    setFieldFloat(L, "roll", roll);
+    setFieldFloat(L, "pitch", pitch);
+    setFieldFloat(L, "yaw", yaw);
+
+    addMethods(L, "table", tableMethods);
+
+    return 1;
+}
+
+int rgbToHSV(lua_State* L) {
+    lua_getfield(L, 1, "r");
+    lua_getfield(L, 1, "g");
+    lua_getfield(L, 1, "b");
+    lua_getfield(L, 1, "a");
+
+    float r = lua_tonumber(L, -4);
+    float g = lua_tonumber(L, -3);
+    float b = lua_tonumber(L, -2);
+    float a = lua_tonumber(L, -1);
+
+    float min, max, delta;
+    float h, s, v;
+
+    min = fminf(r, fminf(g, b));
+    max = fmaxf(r, fmaxf(g, b));
+    v = max;
+
+    if (max != 0)
+        s = (max - min) / max;
+    else {
+        s = 0;
+        h = -1;  // Undefined
+    }
+
+    delta = max - min;
+    if (delta == 0) {
+        h = 0;
+    } else if (r == max) {
+        h = (g - b) / delta;
+    } else if (g == max) {
+        h = 2 + (b - r) / delta;
+    } else {
+        h = 4 + (r - g) / delta;
+    }
+
+    h *= 60;
+    if (h < 0) h += 360;
+
+    lua_newtable(L);
+    setFieldInt(L, "r", h);
+    setFieldInt(L, "g", s);
+    setFieldInt(L, "b", v);
+    setFieldInt(L, "a", a);
+
+    return 1;
+}
+
+int hsvToRGB(lua_State* L) {
+    lua_getfield(L, 1, "r");
+    lua_getfield(L, 1, "g");
+    lua_getfield(L, 1, "b");
+    lua_getfield(L, 1, "a");
+
+    double h = lua_tonumber(L, -4);
+    double s = lua_tonumber(L, -3) / 100.0f;
+    double v = lua_tonumber(L, -2) / 100.0f;
+    double a = lua_tonumber(L, -1);
+
+    double r, g, b;
+
+    if (s == 0) {
+        r = v;
+        g = v;
+        b = v;
+    } else {
+        if (h >= 360)
+            h = 0;
+        else
+            h = h / 60.0f;
+
+        int i = (int)trunc(h);
+        double f = h - i;  // h 的小数部分
+
+        double p = v * (1.0f - s);
+        double q = v * (1.0f - (s * f));
+        double t = v * (1.0f - (s * (1.0f - f)));
+
+        switch (i) {
+            case 0:
+                r = v;
+                g = t;
+                b = p;
+                break;
+            case 1:
+                r = q;
+                g = v;
+                b = p;
+                break;
+            case 2:
+                r = p;
+                g = v;
+                b = t;
+                break;
+            case 3:
+                r = p;
+                g = q;
+                b = v;
+                break;
+            case 4:
+                r = t;
+                g = p;
+                b = v;
+                break;
+            default:
+                r = v;
+                g = p;
+                b = q;
+                break;
+        }
+    }
+
+    lua_newtable(L);
+    setFieldInt(L, "r", r * 255);
+    setFieldInt(L, "g", g * 255);
+    setFieldInt(L, "b", b * 255);
+    setFieldInt(L, "a", a);
+
+    return 1;
+}
+
+static const luaL_Reg colorMethods[] = {{"rgbToHSV", rgbToHSV}, {"hsvToRGB", hsvToRGB}, {NULL, NULL}};
+
+int Color(lua_State* L) {
+    float r = luaL_optnumber(L, 1, 255.0f);
+    float g = luaL_optnumber(L, 2, 255.0f);
+    float b = luaL_optnumber(L, 3, 255.0f);
+    float a = luaL_optnumber(L, 4, 255.0f);
+
+    lua_newtable(L);
+    setFieldInt(L, "r", r);
+    setFieldInt(L, "g", g);
+    setFieldInt(L, "b", b);
+    setFieldInt(L, "a", a);
+
+    addMethods(L, "color", colorMethods);
+
+    return 1;
+}
+
+void registerGlobals(lua_State* L, const neko_luaL_reg* funcs) {
+    for (; funcs->name != NULL; ++funcs) {
+        lua_pushstring(L, funcs->name);
+        funcs->func(L);
+        lua_setglobal(L, funcs->name);
+    }
+}
+
 neko_inline void neko_register_common(lua_State* L) {
 
     neko_lua_wrap_register_t<>(L)
@@ -2624,6 +3069,20 @@ neko_inline void neko_register_common(lua_State* L) {
 
     lua_pushstring(L, game_assets("gamedir").c_str());
     lua_setglobal(L, "neko_game_data_path");
+
+    // const neko_luaL_reg luaReg[] = {{"hooks", neko_lua_hook_init}, {NULL, NULL}};
+    // registerGlobals(L, luaReg);
+
+    const luaL_Reg luaCommon[] = {
+            {"Vector", Vector},  //
+            {"Color", Color},    //
+            {NULL, NULL}         //
+    };
+
+    for (const luaL_Reg* reg = luaCommon; reg->name != NULL && reg->func != NULL; ++reg) {
+        lua_pushcfunction(L, reg->func);
+        lua_setglobal(L, reg->name);
+    }
 
     neko_lua_auto_enum(L, neko_cvar_type);
     neko_lua_auto_enum_value(L, neko_cvar_type, __NEKO_CONFIG_TYPE_INT);
@@ -2723,6 +3182,15 @@ end
     assert(foo_ptr == neko_lua_wrap_call<foo_t*>(L, "test_ret_object", foo_ptr));
     base_t* base_ptr = neko_lua_wrap_call<base_t*>(L, "test_ret_base_object", foo_ptr);
     assert(base_ptr == foo_ptr);
+}
+
+int register_mt_hooks(lua_State* L) {
+    luaL_Reg reg[] = {{"add", neko_lua_hook_bind_add}, {"remove", neko_lua_hook_bind_remove}, {"run", neko_lua_hook_bind_run}, {"free", neko_lua_hook_bind_free}, {NULL, NULL}};
+    luaL_newmetatable(L, "mt_hooks");
+    luaL_setfuncs(L, reg, 0);
+    lua_pushvalue(L, -1);            // # -1 复制一份 为了让 neko 主表设定
+    lua_setfield(L, -2, "__index");  // # -2
+    return 1;
 }
 
 int register_mt_aseprite_renderer(lua_State* L) {
@@ -2874,6 +3342,15 @@ int open_neko(lua_State* L) {
     //     lua_setfield(L, -2, "imgui");
     // }
 
+    {
+        register_mt_hooks(L);
+        lua_setfield(L, -2, "hooks");
+        
+        // 注册引擎 hooks
+        neko_lua_hook_register(think);
+        neko_lua_hook_register(render);
+    }
+
     return 1;
 }
 
@@ -2935,7 +3412,7 @@ void neko_register(lua_State* L) {
 
     // 自定义加载器
     lua_register(L, "__neko_loader", __neko_loader);
-    const char* str = "table.insert(package.searchers, 2, __neko_loader) \n";
+    const_str str = "table.insert(package.searchers, 2, __neko_loader) \n";
     luaL_dostring(L, str);
 
     neko_lua_add_package_path(L, "./");

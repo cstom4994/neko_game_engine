@@ -311,7 +311,17 @@ neko_inline neko_imgui_context_t neko_imgui_new(u32 hndl, bool install_callbacks
 
     neko_imgui_style();
 
-    io.Fonts->AddFontFromFileTTF(game_assets("gamedir/assets/fonts/fusion-pixel-12px-monospaced-zh_hans.ttf").c_str(), 18.0f, NULL, io.Fonts->GetGlyphRangesChineseFull());
+    io.FontGlobalScale = 1.0f;
+    io.FontAllowUserScaling = false;
+
+    ImFontConfig config;
+    // config.OversampleH = 3;
+    // config.OversampleV = 3;
+    // config.PixelSnapH = 1;
+
+    io.FontGlobalScale = 1.75f;
+
+    // io.Fonts->AddFontFromFileTTF(game_assets("gamedir/assets/fonts/fusion-pixel-12px-monospaced-zh_hans.ttf").c_str(), 22.0f, &config, io.Fonts->GetGlyphRangesChineseFull());
 
     neko_imgui_device_create(&neko_imgui);
 
@@ -363,6 +373,9 @@ neko_inline neko_imgui_context_t neko_imgui_new(u32 hndl, bool install_callbacks
 }
 
 neko_inline void neko_imgui_update_mouse_and_keys(neko_imgui_context_t *ctx) {
+
+    // auto window = (GLFWwindow *)neko_slot_array_getp(neko_subsystem(platform)->windows, neko_platform_main_window())->hndl;
+
     ImGuiIO &io = ImGui::GetIO();
 
     neko_platform_event_t evt = {};
@@ -371,15 +384,7 @@ neko_inline void neko_imgui_update_mouse_and_keys(neko_imgui_context_t *ctx) {
             case NEKO_PLATFORM_EVENT_KEY: {
                 switch (evt.key.action) {
                     case NEKO_PLATFORM_KEY_PRESSED: {
-                        if (evt.key.keycode <= 48) {
-                            u32 cp = evt.key.codepoint;
-                            if (cp <= IM_UNICODE_CODEPOINT_MAX) {
-                                io.AddInputCharacter(cp);
-                            }
-                        }
-
                         io.KeysDown[evt.key.codepoint] = true;
-
                     } break;
 
                     case NEKO_PLATFORM_KEY_RELEASED: {
@@ -388,6 +393,14 @@ neko_inline void neko_imgui_update_mouse_and_keys(neko_imgui_context_t *ctx) {
 
                     default:
                         break;
+                }
+
+            } break;
+
+            case NEKO_PLATFORM_EVENT_TEXT: {
+                u32 cp = evt.text.codepoint;
+                if (cp <= IM_UNICODE_CODEPOINT_MAX) {
+                    io.AddInputCharacter(cp);
                 }
             } break;
 
@@ -1318,6 +1331,66 @@ neko_inline bool button_scrollable_ex(const char *label, const ImVec2 &size_arg,
 }
 
 neko_inline bool button_scrollable(const char *label, const ImVec2 &size_arg) { return button_scrollable_ex(label, size_arg, ImGuiButtonFlags_None); }
+
+struct InputTextCallback_UserData {
+    std::string *Str;
+    ImGuiInputTextCallback ChainCallback;
+    void *ChainCallbackUserData;
+};
+
+static int InputTextCallback(ImGuiInputTextCallbackData *data) {
+    InputTextCallback_UserData *user_data = (InputTextCallback_UserData *)data->UserData;
+    if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
+        std::string *str = user_data->Str;
+        neko_assert(data->Buf == str->c_str());
+        str->resize(data->BufTextLen);
+        data->Buf = (char *)str->c_str();
+    } else if (user_data->ChainCallback) {
+        data->UserData = user_data->ChainCallbackUserData;
+        return user_data->ChainCallback(data);
+    }
+    return 0;
+}
+
+neko_inline bool InputText(const char *label, std::string *str, ImGuiInputTextFlags flags = 0, ImGuiInputTextCallback callback = nullptr, void *user_data = nullptr) {
+    IM_ASSERT((flags & ImGuiInputTextFlags_CallbackResize) == 0);
+    flags |= ImGuiInputTextFlags_CallbackResize;
+
+    InputTextCallback_UserData cb_user_data;
+    cb_user_data.Str = str;
+    cb_user_data.ChainCallback = callback;
+    cb_user_data.ChainCallbackUserData = user_data;
+    return ImGui::InputText(label, (char *)str->c_str(), str->capacity() + 1, flags, InputTextCallback, &cb_user_data);
+}
+
+neko_inline bool InputTextMultiline(const char *label, std::string *str, const ImVec2 &size = ImVec2(0, 0), ImGuiInputTextFlags flags = 0, ImGuiInputTextCallback callback = nullptr,
+                                    void *user_data = nullptr) {
+    IM_ASSERT((flags & ImGuiInputTextFlags_CallbackResize) == 0);
+    flags |= ImGuiInputTextFlags_CallbackResize;
+
+    InputTextCallback_UserData cb_user_data;
+    cb_user_data.Str = str;
+    cb_user_data.ChainCallback = callback;
+    cb_user_data.ChainCallbackUserData = user_data;
+    return ImGui::InputTextMultiline(label, (char *)str->c_str(), str->capacity() + 1, size, flags, InputTextCallback, &cb_user_data);
+}
+
+neko_inline bool InputTextWithHint(const char *label, const char *hint, std::string *str, ImGuiInputTextFlags flags = 0, ImGuiInputTextCallback callback = nullptr, void *user_data = nullptr) {
+    IM_ASSERT((flags & ImGuiInputTextFlags_CallbackResize) == 0);
+    flags |= ImGuiInputTextFlags_CallbackResize;
+
+    InputTextCallback_UserData cb_user_data;
+    cb_user_data.Str = str;
+    cb_user_data.ChainCallback = callback;
+    cb_user_data.ChainCallbackUserData = user_data;
+    return ImGui::InputTextWithHint(label, hint, (char *)str->c_str(), str->capacity() + 1, flags, InputTextCallback, &cb_user_data);
+}
+
+template <typename T, typename... Args>
+neko_inline void TextFmt(T &&fmt, const Args &...args) {
+    std::string str = std::format(std::forward<T>(fmt), args...);
+    ImGui::TextUnformatted(&*str.begin(), &*str.end());
+}
 
 }  // namespace neko_imgui
 
