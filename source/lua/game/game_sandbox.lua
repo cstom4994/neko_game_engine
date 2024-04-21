@@ -1,8 +1,6 @@
-local PHY = require("common/physics")
-
--- require "enet"
-
-local network = require "common/network"
+local PHY = require "bump"
+local network = require "sock"
+local tweens = require "flux"
 
 local M = {}
 
@@ -104,7 +102,7 @@ add_struct("player_action", [[
         uint16_t action;
     ]], {"id", "action"})
 
-local phy_world = PHY.fetch_world(64)
+local phy_world = PHY.newWorld(64)
 
 local function phy_world_get_cellsize(world, cx, cy)
     local cellSize = phy_world.cellSize

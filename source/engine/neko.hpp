@@ -31,6 +31,15 @@ const char* u8Cpp20(T&& t) noexcept {
 #define neko_str(x) x
 #endif
 
+#define NEKO_DYNAMIC_CAST(type, input_var, cast_var_name) \
+    neko_assert(value);                                   \
+    type* cast_var_name = dynamic_cast<type*>(input_var); \
+    neko_assert(cast_var_name)
+#define NEKO_STATIC_CAST(type, input_var, cast_var_name) \
+    neko_assert(value);                                  \
+    type* cast_var_name = static_cast<type*>(input_var); \
+    neko_assert(cast_var_name)
+
 namespace detail {
 template <typename... Args>
 constexpr std::size_t va_count(Args&&...) {

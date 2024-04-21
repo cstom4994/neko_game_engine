@@ -2,7 +2,6 @@ ImGui = require("imgui")
 CObject = require("cobject")
 CVar = neko.cvar
 ECS = require("common/ecs")
-tweens = require("common/tweens")
 
 -- fake game proxy
 local fake_game = {

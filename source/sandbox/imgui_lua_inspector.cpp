@@ -13,7 +13,11 @@ static int __luainspector_echo(lua_State* L) {
 
 static int __luainspector_gc(lua_State* L) {
     neko::luainspector* m = *static_cast<neko::luainspector**>(lua_touserdata(L, 1));
-    if (m) m->setL(0x0);
+    if (m) {
+        m->variable_pool_free();
+        m->setL(0x0);
+    }
+    neko_log_trace("luainspector __gc %p", m);
     return 0;
 }
 
@@ -771,6 +775,8 @@ void neko::luainspector::inspect_table(lua_State* L, inspect_table_config& cfg) 
     }
 }
 
+neko::CCharacter cJohn;
+
 int neko::luainspector::luainspector_init(lua_State* L) {
 
     void* model_mem = lua_newuserdata(L, sizeof(neko::luainspector));
@@ -779,6 +785,16 @@ int neko::luainspector::luainspector_init(lua_State* L) {
 
     inspector->setL(L);
     inspector->m_history.resize(8);
+
+    inspector->register_function<float>(std::bind(&luainspector_property_st::Render_TypeFloat, std::placeholders::_1, std::placeholders::_2));
+    inspector->register_function<bool>(std::bind(&luainspector_property_st::Render_TypeBool, std::placeholders::_1, std::placeholders::_2));
+    inspector->register_function<char>(std::bind(&luainspector_property_st::Render_TypeConstChar, std::placeholders::_1, std::placeholders::_2));
+    inspector->register_function<double>(std::bind(&luainspector_property_st::Render_TypeDouble, std::placeholders::_1, std::placeholders::_2));
+    inspector->register_function<int>(std::bind(&luainspector_property_st::Render_TypeInt, std::placeholders::_1, std::placeholders::_2));
+
+    inspector->register_function<CCharacter>(std::bind(&luainspector_property_st::Render_TypeCharacter, std::placeholders::_1, std::placeholders::_2));
+
+    inspector->property_register<CCharacter>("John", &cJohn, "John");
 
     return 1;
 }
@@ -838,6 +854,28 @@ int neko::luainspector::luainspector_draw(lua_State* L) {
                 ImGui::EndChild();
 
                 lua_pop(L, 1);  // pop _G
+                ImGui::EndTabItem();
+            }
+
+            if (ImGui::BeginTabItem("Property")) {
+
+                auto& properties = model->m_property_map;
+
+                ImGui::Text("Property count: %lld\nType count: %lld", properties.size(), model->m_type_render_functions.size());
+
+                for (auto& property_it : properties) {
+
+                    auto prop_render_func_it = model->m_type_render_functions.find(property_it.param_type);
+                    neko_assert(prop_render_func_it != model->m_type_render_functions.end());  // unsupported type, render function not found
+                    const_str label = property_it.label.c_str();
+                    void* value = property_it.param;
+                    if (ImGui::CollapsingHeader(std::format("{0} | {1}", label, property_it.param_type.name()).c_str())) {
+                        ImGui::Indent();
+                        prop_render_func_it->second(label, value);
+                        ImGui::Unindent();
+                    }
+                }
+
                 ImGui::EndTabItem();
             }
 

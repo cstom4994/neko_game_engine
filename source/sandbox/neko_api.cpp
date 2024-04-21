@@ -669,7 +669,7 @@ static int __neko_bind_aseprite_render(lua_State* L) {
 
     neko_t* engine = neko_instance();
 
-    neko_graphics_t* gfx = neko_instance()->ctx.graphics;
+    neko_graphics_t* gfx = engine->ctx.graphics;
 
     s32 index;
     if (user_handle->loop) {
@@ -3345,7 +3345,7 @@ int open_neko(lua_State* L) {
     {
         register_mt_hooks(L);
         lua_setfield(L, -2, "hooks");
-        
+
         // 注册引擎 hooks
         neko_lua_hook_register(think);
         neko_lua_hook_register(render);

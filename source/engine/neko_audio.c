@@ -7,14 +7,6 @@
 // NEKO_AUDIO_IMPL
 =============================*/
 
-#define NEKO_SOUND_IMPLEMENTATION
-#define NEKO_SOUND_PLATFORM_WINDOWS
-// #define NEKO_SOUND_ALLOC(size, ctx) neko_safe_malloc((size_t)size)
-// #define NEKO_SOUND_FREE(mem, ctx) neko_safe_free(mem)
-// #define HASHTABLE_MALLOC(ctx, size) (neko_gc_malloc(&g_gc, size))
-// #define HASHTABLE_FREE(ctx, ptr) (neko_gc_free(&g_gc, ptr))
-#include "engine/builtin/cute_sound.h"
-
 void __neko_audio_set_default_functions(struct neko_audio_s *audio);
 
 neko_result __neko_audio_init(struct neko_audio_s *s) {
@@ -22,7 +14,7 @@ neko_result __neko_audio_init(struct neko_audio_s *s) {
     neko_platform_t *platform = neko_subsystem(platform);
 
     HWND hwnd = (HWND)neko_platform_hwnd();
-    neko_sound_init(hwnd, 44100, 1024, NULL);
+    neko_sound_init(hwnd, 44100, 1024);
 
     neko_sound_spawn_mix_thread();
     // neko_sound_mix_thread_sleep_delay(1);

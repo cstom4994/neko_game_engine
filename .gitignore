@@ -27,6 +27,7 @@ Resources/
 old/
 source/generated
 source/deps
+source/lua/libs
 
 build.bat
 compile_commands.json

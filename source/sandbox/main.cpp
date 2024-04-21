@@ -741,12 +741,12 @@ lua_State *neko_scripting_init() {
         neko_register(L);
 
         neko_lua_wrap_run_string(L, std::format("package.path = "
-                                                "'{1}/?.lua;{0}/?.lua;{0}/libs/?.lua;{0}/libs/?/init.lua;{0}/libs/"
+                                                "'{1}/?.lua;{0}/?.lua;{0}/../libs/?.lua;{0}/../libs/?/init.lua;{0}/../libs/"
                                                 "?/?.lua;' .. package.path",
                                                 game_assets("lua_scripts"), neko_fs_normalize_path(std::filesystem::current_path().string()).c_str()));
 
         neko_lua_wrap_run_string(L, std::format("package.cpath = "
-                                                "'{1}/?.{2};{0}/?.{2};{0}/libs/?.{2};{0}/libs/?/init.{2};{0}/libs/"
+                                                "'{1}/?.{2};{0}/?.{2};{0}/../libs/?.{2};{0}/../libs/?/init.{2};{0}/../libs/"
                                                 "?/?.{2};' .. package.cpath",
                                                 game_assets("lua_scripts"), neko_fs_normalize_path(std::filesystem::current_path().string()).c_str(), "dll"));
 
