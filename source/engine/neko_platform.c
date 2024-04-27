@@ -877,9 +877,7 @@ void neko_platform_init(neko_platform_t* pf) {
 
 #ifdef NEKO_PLATFORM_WIN
     setlocale(LC_ALL, "en_us.utf8");
-
     SetConsoleOutputCP(CP_UTF8);
-
     SetProcessDPIAware();
     void* shcore = __native_library_load("shcore.dll");
     if (shcore) {
@@ -887,8 +885,9 @@ void neko_platform_init(neko_platform_t* pf) {
         if (setter) setter(PROCESS_PER_MONITOR_DPI_AWARE);
     }
     if (shcore) __native_library_unload(shcore);
-
     __neko_initialize_symbol_handler();
+#elif NEKO_PLATFORM_LINUX
+    // handle linux symbol
 #endif
 
     glfwInit();
@@ -902,20 +901,16 @@ void neko_platform_init(neko_platform_t* pf) {
             glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
             glfwWindowHint(GLFW_COCOA_RETINA_FRAMEBUFFER, GLFW_FALSE);
 #else
-            glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
             if (pf->settings.video.graphics.debug) {
                 glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
-                glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-                glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
             } else {
-                // glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, platform->settings.video.graphics.opengl.major_version);
-                // glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, platform->settings.video.graphics.opengl.minor_version);
-                // glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-                // glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
-                // glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-                // glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+                glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+                glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
             }
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 #endif
+            if (pf->settings.video.graphics.hdpi) glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
             glfwSwapInterval(pf->settings.video.vsync_enabled);
         } break;
 
@@ -4084,25 +4079,21 @@ tick_t neko_timer_system(void) {
 
 #pragma region neko_thread
 
-#if !THREAD_USE_MCMP
-
 struct thread_queue_t {
-    thread_signal_t data_ready;
-    thread_signal_t space_open;
-    thread_atomic_int_t count;
-    thread_atomic_int_t head;
-    thread_atomic_int_t tail;
+    neko_thread_signal_t data_ready;
+    neko_thread_signal_t space_open;
+    neko_thread_atomic_int_t count;
+    neko_thread_atomic_int_t head;
+    neko_thread_atomic_int_t tail;
     void** values;
     int size;
 #ifndef NDEBUG
-    thread_atomic_int_t id_produce_is_set;
-    thread_id_t id_produce;
-    thread_atomic_int_t id_consume_is_set;
-    thread_id_t id_consume;
+    neko_thread_atomic_int_t id_produce_is_set;
+    neko_thread_id_t id_produce;
+    neko_thread_atomic_int_t id_consume_is_set;
+    neko_thread_id_t id_consume;
 #endif
 };
-
-#endif
 
 #if defined(_WIN32)
 
@@ -4134,7 +4125,7 @@ typedef struct tagTHREADNAME_INFO {
 #include <assert.h>
 #endif
 
-thread_id_t thread_current_thread_id(void) {
+neko_thread_id_t thread_current_thread_id(void) {
 #if defined(_WIN32)
 
     return (void*)(uintptr_t)GetCurrentThreadId();
@@ -4176,7 +4167,7 @@ void thread_exit(int return_code) {
 #endif
 }
 
-thread_ptr_t thread_init(int (*thread_proc)(void*), void* user_data, char const* name, int stack_size) {
+neko_thread_ptr_t thread_init(int (*thread_proc)(void*), void* user_data, char const* name, int stack_size) {
 #if defined(_WIN32)
 
     DWORD thread_id;
@@ -4199,7 +4190,7 @@ thread_ptr_t thread_init(int (*thread_proc)(void*), void* user_data, char const*
     }
 #endif
 
-    return (thread_ptr_t)handle;
+    return (neko_thread_ptr_t)handle;
 
 #elif defined(__linux__) || defined(__APPLE__) || defined(__ANDROID__) || defined(__EMSCRIPTEN__)
 
@@ -4217,7 +4208,7 @@ thread_ptr_t thread_init(int (*thread_proc)(void*), void* user_data, char const*
 #endif
 }
 
-void thread_term(thread_ptr_t thread) {
+void thread_term(neko_thread_ptr_t thread) {
 #if defined(_WIN32)
 
     WaitForSingleObject((HANDLE)thread, INFINITE);
@@ -4232,7 +4223,7 @@ void thread_term(thread_ptr_t thread) {
 #endif
 }
 
-int thread_join(thread_ptr_t thread) {
+int thread_join(neko_thread_ptr_t thread) {
 #if defined(_WIN32)
 
     WaitForSingleObject((HANDLE)thread, INFINITE);
@@ -4251,7 +4242,7 @@ int thread_join(thread_ptr_t thread) {
 #endif
 }
 
-int thread_detach(thread_ptr_t thread) {
+int thread_detach(neko_thread_ptr_t thread) {
 #if defined(_WIN32)
 
     return CloseHandle((HANDLE)thread) != 0;
@@ -4282,14 +4273,14 @@ void thread_set_high_priority(void) {
 #endif
 }
 
-void thread_mutex_init(thread_mutex_t* mutex) {
+void thread_mutex_init(neko_thread_mutex_t* mutex) {
 #if defined(_WIN32)
 
 // Compile-time size check
 #pragma warning(push)
 #pragma warning(disable : 4214)  // nonstandard extension used: bit field types other than int
     struct x {
-        char thread_mutex_type_too_small : (sizeof(thread_mutex_t) < sizeof(CRITICAL_SECTION) ? 0 : 1);
+        char thread_mutex_type_too_small : (sizeof(neko_thread_mutex_t) < sizeof(CRITICAL_SECTION) ? 0 : 1);
     };
 #pragma warning(pop)
 
@@ -4309,7 +4300,7 @@ void thread_mutex_init(thread_mutex_t* mutex) {
 #endif
 }
 
-void thread_mutex_term(thread_mutex_t* mutex) {
+void thread_mutex_term(neko_thread_mutex_t* mutex) {
 #if defined(_WIN32)
 
     DeleteCriticalSection((CRITICAL_SECTION*)mutex);
@@ -4323,7 +4314,7 @@ void thread_mutex_term(thread_mutex_t* mutex) {
 #endif
 }
 
-void thread_mutex_lock(thread_mutex_t* mutex) {
+void thread_mutex_lock(neko_thread_mutex_t* mutex) {
 #if defined(_WIN32)
 
     EnterCriticalSection((CRITICAL_SECTION*)mutex);
@@ -4337,7 +4328,7 @@ void thread_mutex_lock(thread_mutex_t* mutex) {
 #endif
 }
 
-void thread_mutex_unlock(thread_mutex_t* mutex) {
+void thread_mutex_unlock(neko_thread_mutex_t* mutex) {
 #if defined(_WIN32)
 
     LeaveCriticalSection((CRITICAL_SECTION*)mutex);
@@ -4373,10 +4364,10 @@ struct thread_internal_signal_t {
 #endif
 };
 
-void thread_signal_init(thread_signal_t* signal) {
+void thread_signal_init(neko_thread_signal_t* signal) {
     // Compile-time size check
     struct x {
-        char thread_signal_type_too_small : (sizeof(thread_signal_t) < sizeof(struct thread_internal_signal_t) ? 0 : 1);
+        char thread_signal_type_too_small : (sizeof(neko_thread_signal_t) < sizeof(struct thread_internal_signal_t) ? 0 : 1);
     };
 
     struct thread_internal_signal_t* internal = (struct thread_internal_signal_t*)signal;
@@ -4402,7 +4393,7 @@ void thread_signal_init(thread_signal_t* signal) {
 #endif
 }
 
-void thread_signal_term(thread_signal_t* signal) {
+void thread_signal_term(neko_thread_signal_t* signal) {
     struct thread_internal_signal_t* internal = (struct thread_internal_signal_t*)signal;
 
 #if defined(_WIN32)
@@ -4423,7 +4414,7 @@ void thread_signal_term(thread_signal_t* signal) {
 #endif
 }
 
-void thread_signal_raise(thread_signal_t* signal) {
+void thread_signal_raise(neko_thread_signal_t* signal) {
     struct thread_internal_signal_t* internal = (struct thread_internal_signal_t*)signal;
 
 #if defined(_WIN32)
@@ -4449,7 +4440,7 @@ void thread_signal_raise(thread_signal_t* signal) {
 #endif
 }
 
-int thread_signal_wait(thread_signal_t* signal, int timeout_ms) {
+int thread_signal_wait(neko_thread_signal_t* signal, int timeout_ms) {
     struct thread_internal_signal_t* internal = (struct thread_internal_signal_t*)signal;
 
 #if defined(_WIN32)
@@ -4505,7 +4496,7 @@ int thread_signal_wait(thread_signal_t* signal, int timeout_ms) {
 
 #if THREAD_HAS_ATOMIC
 
-int thread_atomic_int_load(thread_atomic_int_t* atomic) {
+int thread_atomic_int_load(neko_thread_atomic_int_t* atomic) {
 #if defined(_WIN32)
 
     return InterlockedCompareExchange(&atomic->i, 0, 0);
@@ -4519,7 +4510,7 @@ int thread_atomic_int_load(thread_atomic_int_t* atomic) {
 #endif
 }
 
-void thread_atomic_int_store(thread_atomic_int_t* atomic, int desired) {
+void thread_atomic_int_store(neko_thread_atomic_int_t* atomic, int desired) {
 #if defined(_WIN32)
 
     InterlockedExchange(&atomic->i, desired);
@@ -4534,7 +4525,7 @@ void thread_atomic_int_store(thread_atomic_int_t* atomic, int desired) {
 #endif
 }
 
-int thread_atomic_int_inc(thread_atomic_int_t* atomic) {
+int thread_atomic_int_inc(neko_thread_atomic_int_t* atomic) {
 #if defined(_WIN32)
 
     return InterlockedIncrement(&atomic->i) - 1;
@@ -4548,7 +4539,7 @@ int thread_atomic_int_inc(thread_atomic_int_t* atomic) {
 #endif
 }
 
-int thread_atomic_int_dec(thread_atomic_int_t* atomic) {
+int thread_atomic_int_dec(neko_thread_atomic_int_t* atomic) {
 #if defined(_WIN32)
 
     return InterlockedDecrement(&atomic->i) + 1;
@@ -4562,7 +4553,7 @@ int thread_atomic_int_dec(thread_atomic_int_t* atomic) {
 #endif
 }
 
-int thread_atomic_int_add(thread_atomic_int_t* atomic, int value) {
+int thread_atomic_int_add(neko_thread_atomic_int_t* atomic, int value) {
 #if defined(_WIN32)
 
     return InterlockedExchangeAdd(&atomic->i, value);
@@ -4576,7 +4567,7 @@ int thread_atomic_int_add(thread_atomic_int_t* atomic, int value) {
 #endif
 }
 
-int thread_atomic_int_sub(thread_atomic_int_t* atomic, int value) {
+int thread_atomic_int_sub(neko_thread_atomic_int_t* atomic, int value) {
 #if defined(_WIN32)
 
     return InterlockedExchangeAdd(&atomic->i, -value);
@@ -4590,7 +4581,7 @@ int thread_atomic_int_sub(thread_atomic_int_t* atomic, int value) {
 #endif
 }
 
-int thread_atomic_int_swap(thread_atomic_int_t* atomic, int desired) {
+int thread_atomic_int_swap(neko_thread_atomic_int_t* atomic, int desired) {
 #if defined(_WIN32)
 
     return InterlockedExchange(&atomic->i, desired);
@@ -4606,7 +4597,7 @@ int thread_atomic_int_swap(thread_atomic_int_t* atomic, int desired) {
 #endif
 }
 
-int thread_atomic_int_compare_and_swap(thread_atomic_int_t* atomic, int expected, int desired) {
+int thread_atomic_int_compare_and_swap(neko_thread_atomic_int_t* atomic, int expected, int desired) {
 #if defined(_WIN32)
 
     return InterlockedCompareExchange(&atomic->i, desired, expected);
@@ -4620,7 +4611,7 @@ int thread_atomic_int_compare_and_swap(thread_atomic_int_t* atomic, int expected
 #endif
 }
 
-void* thread_atomic_ptr_load(thread_atomic_ptr_t* atomic) {
+void* thread_atomic_ptr_load(neko_thread_atomic_ptr_t* atomic) {
 #if defined(_WIN32)
 
     return InterlockedCompareExchangePointer(&atomic->ptr, 0, 0);
@@ -4634,7 +4625,7 @@ void* thread_atomic_ptr_load(thread_atomic_ptr_t* atomic) {
 #endif
 }
 
-void thread_atomic_ptr_store(thread_atomic_ptr_t* atomic, void* desired) {
+void thread_atomic_ptr_store(neko_thread_atomic_ptr_t* atomic, void* desired) {
 #if defined(_WIN32)
 
     InterlockedExchangePointer(&atomic->ptr, desired);
@@ -4649,7 +4640,7 @@ void thread_atomic_ptr_store(thread_atomic_ptr_t* atomic, void* desired) {
 #endif
 }
 
-void* thread_atomic_ptr_swap(thread_atomic_ptr_t* atomic, void* desired) {
+void* thread_atomic_ptr_swap(neko_thread_atomic_ptr_t* atomic, void* desired) {
 #if defined(_WIN32)
 
     return InterlockedExchangePointer(&atomic->ptr, desired);
@@ -4665,7 +4656,7 @@ void* thread_atomic_ptr_swap(thread_atomic_ptr_t* atomic, void* desired) {
 #endif
 }
 
-void* thread_atomic_ptr_compare_and_swap(thread_atomic_ptr_t* atomic, void* expected, void* desired) {
+void* thread_atomic_ptr_compare_and_swap(neko_thread_atomic_ptr_t* atomic, void* expected, void* desired) {
 #if defined(_WIN32)
 
     return InterlockedCompareExchangePointer(&atomic->ptr, desired, expected);
@@ -4681,11 +4672,11 @@ void* thread_atomic_ptr_compare_and_swap(thread_atomic_ptr_t* atomic, void* expe
 
 #endif  // THREAD_HAS_ATOMIC
 
-void thread_timer_init(thread_timer_t* timer) {
+void thread_timer_init(neko_thread_timer_t* timer) {
 #if defined(_WIN32)
 
     struct x {
-        char thread_timer_type_too_small : (sizeof(thread_mutex_t) < sizeof(HANDLE) ? 0 : 1);
+        char thread_timer_type_too_small : (sizeof(neko_thread_mutex_t) < sizeof(HANDLE) ? 0 : 1);
     };
 
     TIMECAPS tc;
@@ -4702,7 +4693,7 @@ void thread_timer_init(thread_timer_t* timer) {
 #endif
 }
 
-void thread_timer_term(thread_timer_t* timer) {
+void thread_timer_term(neko_thread_timer_t* timer) {
 #if defined(_WIN32)
 
     CloseHandle(*(HANDLE*)timer);
@@ -4719,7 +4710,7 @@ void thread_timer_term(thread_timer_t* timer) {
 #endif
 }
 
-void thread_timer_wait(thread_timer_t* timer, THREAD_U64 nanoseconds) {
+void thread_timer_wait(neko_thread_timer_t* timer, THREAD_U64 nanoseconds) {
 #if defined(_WIN32)
 
     LARGE_INTEGER due_time;
@@ -4741,14 +4732,14 @@ void thread_timer_wait(thread_timer_t* timer, THREAD_U64 nanoseconds) {
 #endif
 }
 
-thread_tls_t thread_tls_create(void) {
+neko_thread_tls_t thread_tls_create(void) {
 #if defined(_WIN32)
 
     DWORD tls = TlsAlloc();
     if (tls == TLS_OUT_OF_INDEXES)
         return NULL;
     else
-        return (thread_tls_t)(uintptr_t)tls;
+        return (neko_thread_tls_t)(uintptr_t)tls;
 
 #elif defined(__linux__) || defined(__APPLE__) || defined(__ANDROID__) || defined(__EMSCRIPTEN__)
 
@@ -4763,7 +4754,7 @@ thread_tls_t thread_tls_create(void) {
 #endif
 }
 
-void thread_tls_destroy(thread_tls_t tls) {
+void thread_tls_destroy(neko_thread_tls_t tls) {
 #if defined(_WIN32)
 
     TlsFree((DWORD)(uintptr_t)tls);
@@ -4777,7 +4768,7 @@ void thread_tls_destroy(thread_tls_t tls) {
 #endif
 }
 
-void thread_tls_set(thread_tls_t tls, void* value) {
+void thread_tls_set(neko_thread_tls_t tls, void* value) {
 #if defined(_WIN32)
 
     TlsSetValue((DWORD)(uintptr_t)tls, value);
@@ -4791,7 +4782,7 @@ void thread_tls_set(thread_tls_t tls, void* value) {
 #endif
 }
 
-void* thread_tls_get(thread_tls_t tls) {
+void* thread_tls_get(neko_thread_tls_t tls) {
 #if defined(_WIN32)
 
     return TlsGetValue((DWORD)(uintptr_t)tls);
@@ -4804,149 +4795,5 @@ void* thread_tls_get(thread_tls_t tls) {
 #error Unknown platform.
 #endif
 }
-
-#if !THREAD_USE_MCMP
-
-void thread_queue_init(thread_queue_t* queue, int size, void** values, int count) {
-    queue->values = values;
-    thread_signal_init(&queue->data_ready);
-    thread_signal_init(&queue->space_open);
-    thread_atomic_int_store(&queue->head, 0);
-    thread_atomic_int_store(&queue->tail, count > size ? size : count);
-    thread_atomic_int_store(&queue->count, count > size ? size : count);
-    queue->size = size;
-#ifndef NDEBUG
-    thread_atomic_int_store(&queue->id_produce_is_set, 0);
-    thread_atomic_int_store(&queue->id_consume_is_set, 0);
-#endif
-}
-
-void thread_queue_term(thread_queue_t* queue) {
-    thread_signal_term(&queue->space_open);
-    thread_signal_term(&queue->data_ready);
-}
-
-int thread_queue_produce(thread_queue_t* queue, void* value, int timeout_ms) {
-#ifndef NDEBUG
-    if (thread_atomic_int_compare_and_swap(&queue->id_produce_is_set, 0, 1) == 0) queue->id_produce = thread_current_thread_id();
-    assert(thread_current_thread_id() == queue->id_produce && "thread_queue_produce called from multiple threads");
-#endif
-    while (thread_atomic_int_load(&queue->count) == queue->size)  // TODO: fix signal so that this can be an "if" instead of "while"
-    {
-        if (timeout_ms == 0) return 0;
-        if (thread_signal_wait(&queue->space_open, timeout_ms == THREAD_QUEUE_WAIT_INFINITE ? THREAD_SIGNAL_WAIT_INFINITE : timeout_ms) == 0) return 0;
-    }
-    int tail = thread_atomic_int_inc(&queue->tail);
-    queue->values[tail % queue->size] = value;
-    if (thread_atomic_int_inc(&queue->count) == 0) thread_signal_raise(&queue->data_ready);
-    return 1;
-}
-
-void* thread_queue_consume(thread_queue_t* queue, int timeout_ms) {
-#ifndef NDEBUG
-    if (thread_atomic_int_compare_and_swap(&queue->id_consume_is_set, 0, 1) == 0) queue->id_consume = thread_current_thread_id();
-    assert(thread_current_thread_id() == queue->id_consume && "thread_queue_consume called from multiple threads");
-#endif
-    while (thread_atomic_int_load(&queue->count) == 0)  // TODO: fix signal so that this can be an "if" instead of "while"
-    {
-        if (timeout_ms == 0) return NULL;
-        if (thread_signal_wait(&queue->data_ready, timeout_ms == THREAD_QUEUE_WAIT_INFINITE ? THREAD_SIGNAL_WAIT_INFINITE : timeout_ms) == 0) return NULL;
-    }
-    int head = thread_atomic_int_inc(&queue->head);
-    void* retval = queue->values[head % queue->size];
-    if (thread_atomic_int_dec(&queue->count) == queue->size) thread_signal_raise(&queue->space_open);
-    return retval;
-}
-
-int thread_queue_count(thread_queue_t* queue) { return thread_atomic_int_load(&queue->count); }
-
-#else  // THREAD_USE_MCMP
-
-// # lockfree queues (multiple consumer-multiple producer) #####################
-// License: WTFPL. https://github.com/darkautism/lfqueue
-// Use -O0 flag to compile (needed?).
-
-struct mcmp;
-
-int mcmp_new(struct mcmp* ctx);
-int mcmp_del(struct mcmp* ctx);
-int mcmp_add(struct mcmp* ctx, void* data);
-void* mcmp_pop(struct mcmp* ctx);
-
-#ifdef _WIN32
-#include <intrin.h>
-#define __sync_add_and_fetch(p, x) (_InterlockedExchangeAdd64((__int64 volatile*)(p), (x)) + (x))
-#define __sync_bool_compare_and_swap(p, c, s) (_InterlockedCompareExchange64((__int64 volatile*)(p), (__int64)(s), (__int64)(c)) == (__int64)(c))
-#define __sync_lock_test_and_set(p, v) (_InterlockedExchange64((__int64 volatile*)(p), (__int64)(v)))
-#endif
-
-struct mcmp_node {
-    void* data;
-    struct mcmp_node* next;
-};
-
-struct mcmp {
-    struct mcmp_node* head;
-    struct mcmp_node* tail;
-    size_t count;  // int
-};
-
-int mcmp_new(struct mcmp* ctx) {
-    struct mcmp_node* tmpnode = memset((char*)REALLOC(0, sizeof(struct mcmp_node)), 0, sizeof(struct mcmp_node));
-    if (!tmpnode) return -errno;
-
-    memset(ctx, 0, sizeof(struct mcmp));
-    ctx->head = ctx->tail = tmpnode;
-    return 1;
-}
-
-int mcmp_del(struct mcmp* ctx) {
-    if (ctx->tail && ctx->head) {  // if have data in queue
-        struct mcmp_node *walker = ctx->head, *tmp;
-        while (walker != ctx->tail) {  // while still have node
-            tmp = walker->next;
-            REALLOC(walker, 0);
-            walker = tmp;
-        }
-        REALLOC(ctx->head, 0);  // free the empty node
-        memset(ctx, 0, sizeof(struct mcmp));
-    }
-    return 1;
-}
-
-int mcmp_add(struct mcmp* ctx, void* data) {
-    struct mcmp_node* p;
-    struct mcmp_node* tmpnode = memset((char*)REALLOC(0, sizeof(struct mcmp_node)), 0, sizeof(struct mcmp_node));
-    tmpnode->data = data;
-    do {
-        p = ctx->tail;
-        if (__sync_bool_compare_and_swap(&ctx->tail, p, tmpnode)) {
-            p->next = tmpnode;
-            break;
-        }
-    } while (1);
-    __sync_add_and_fetch(&ctx->count, 1);
-    return 1;
-}
-
-void* mcmp_pop(struct mcmp* ctx) {
-    void* ret = 0;
-    struct mcmp_node* p;
-    do {
-        p = ctx->head;
-    } while (p == 0 || !__sync_bool_compare_and_swap(&ctx->head, p, 0));
-
-    if (p->next == 0) {
-        ctx->head = p;
-        return 0;
-    }
-    ret = p->next->data;
-    ctx->head = p->next;
-    __sync_add_and_fetch(&ctx->count, -1);
-    REALLOC(p, 0);
-    return ret;
-}
-
-#endif  // mcmp.h
 
 #pragma endregion

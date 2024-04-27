@@ -32,6 +32,8 @@
 
 // glfw
 #include <GLFW/glfw3.h>
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h>
 
 // Main context for necessary imgui information
 typedef struct neko_imgui_context_s {
@@ -54,6 +56,9 @@ typedef struct neko_imgui_vertex_t {
     float uv[2];
     uint8_t col[4];
 } neko_imgui_vertex_t;
+
+extern neko_imgui_context_t g_imgui;
+extern neko_command_buffer_t g_cb;
 
 #ifdef NEKO_PLATFORM_WEB
 #define NEKO_IMGUI_SHADER_VERSION "#version 300 es\n"
@@ -84,6 +89,14 @@ neko_inline std::size_t __neko_imgui_meminuse() { return g_imgui_mem_usage; }
 neko_inline static const char *neko_imgui_clipboard_getter(void *user_data) { return neko_platform_window_get_clipboard(neko_platform_main_window()); }
 
 neko_inline static void neko_imgui_clipboard_setter(void *user_data, const char *text) { neko_platform_window_set_clipboard(neko_platform_main_window(), text); }
+
+static void neko_imgui_opengl_init_platform_interface();
+
+neko_inline auto neko_imgui_glfw_window() {
+    struct neko_platform_t *platform = neko_instance()->ctx.platform;
+    GLFWwindow *win = (GLFWwindow *)(neko_slot_array_getp(platform->windows, neko_platform_main_window()))->hndl;
+    return win;
+}
 
 neko_inline void neko_imgui_style() {
     ImGuiStyle &style = ImGui::GetStyle();
@@ -284,6 +297,12 @@ neko_inline neko_imgui_context_t neko_imgui_new(u32 hndl, bool install_callbacks
     // Setup backend capabilities flags
     ImGuiIO &io = ImGui::GetIO();
     io.BackendPlatformName = "imgui_impl_neko";
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;   // Enable Gamepad Controls
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;      // Enable Docking
+    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;    // Enable Multi-Viewport / Platform Windows
+    // io.ConfigViewportsNoAutoMerge = true;
+    // io.ConfigViewportsNoTaskBarIcon = true;
 
     // Keyboard mapping. ImGui will use those indices to peek into the io.KeysDown[] array.
     io.KeyMap[ImGuiKey_Tab] = neko_platform_key_to_codepoint(NEKO_KEYCODE_TAB);
@@ -319,9 +338,9 @@ neko_inline neko_imgui_context_t neko_imgui_new(u32 hndl, bool install_callbacks
     // config.OversampleV = 3;
     // config.PixelSnapH = 1;
 
-    io.FontGlobalScale = 1.75f;
+    // io.FontGlobalScale = 1.5f;
 
-    // io.Fonts->AddFontFromFileTTF(game_assets("gamedir/assets/fonts/fusion-pixel-12px-monospaced-zh_hans.ttf").c_str(), 22.0f, &config, io.Fonts->GetGlyphRangesChineseFull());
+    io.Fonts->AddFontFromFileTTF(game_assets("gamedir/assets/fonts/fusion-pixel-12px-monospaced-zh_hans.ttf").c_str(), 22.0f, &config, io.Fonts->GetGlyphRangesChineseFull());
 
     neko_imgui_device_create(&neko_imgui);
 
@@ -329,45 +348,24 @@ neko_inline neko_imgui_context_t neko_imgui_new(u32 hndl, bool install_callbacks
     io.GetClipboardTextFn = neko_imgui_clipboard_getter;
     io.ClipboardUserData = nullptr;
 
-    auto viewport = ImGui::GetMainViewport();
-    viewport->PlatformHandleRaw = (void *)neko_platform_hwnd();
+    // auto viewport = ImGui::GetMainViewport();
+    // viewport->PlatformHandleRaw = (void *)neko_platform_hwnd();
 
-    // Create mouse cursors
-    // (By design, on X11 cursors are user configurable and some cursors may be missing. When a cursor doesn't exist,
-    // GLFW will emit an error which will often be printed by the app, so we temporarily disable error reporting.
-    // Missing cursors will return NULL and our _UpdateMouseCursor() function will use the Arrow cursor instead.)
-    //     GLFWerrorfun prev_error_callback = glfwSetErrorCallback(NULL);
-    //     g_MouseCursors[ImGuiMouseCursor_Arrow] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
-    //     g_MouseCursors[ImGuiMouseCursor_TextInput] = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
-    //     g_MouseCursors[ImGuiMouseCursor_ResizeNS] = glfwCreateStandardCursor(GLFW_VRESIZE_CURSOR);
-    //     g_MouseCursors[ImGuiMouseCursor_ResizeEW] = glfwCreateStandardCursor(GLFW_HRESIZE_CURSOR);
-    //     g_MouseCursors[ImGuiMouseCursor_Hand] = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
-    // #if GLFW_HAS_NEW_CURSORS
-    //     g_MouseCursors[ImGuiMouseCursor_ResizeAll] = glfwCreateStandardCursor(GLFW_RESIZE_ALL_CURSOR);
-    //     g_MouseCursors[ImGuiMouseCursor_ResizeNESW] = glfwCreateStandardCursor(GLFW_RESIZE_NESW_CURSOR);
-    //     g_MouseCursors[ImGuiMouseCursor_ResizeNWSE] = glfwCreateStandardCursor(GLFW_RESIZE_NWSE_CURSOR);
-    //     g_MouseCursors[ImGuiMouseCursor_NotAllowed] = glfwCreateStandardCursor(GLFW_NOT_ALLOWED_CURSOR);
-    // #else
-    //     g_MouseCursors[ImGuiMouseCursor_ResizeAll] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
-    //     g_MouseCursors[ImGuiMouseCursor_ResizeNESW] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
-    //     g_MouseCursors[ImGuiMouseCursor_ResizeNWSE] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
-    //     g_MouseCursors[ImGuiMouseCursor_NotAllowed] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
-    // #endif
-    //     glfwSetErrorCallback(prev_error_callback);
+    auto win = neko_imgui_glfw_window();
 
-    // Chain GLFW callbacks: our callbacks will call the user's previously installed callbacks, if any.
-    // g_PrevUserCallbackMousebutton = NULL;
-    // g_PrevUserCallbackScroll = NULL;
-    // g_PrevUserCallbackKey = NULL;
-    // g_PrevUserCallbackChar = NULL;
-    // if (install_callbacks)
-    // {
-    //     g_InstalledCallbacks = true;
-    //     g_PrevUserCallbackMousebutton = glfwSetMouseButtonCallback(window, ImGui_ImplGlfw_MouseButtonCallback);
-    //     g_PrevUserCallbackScroll = glfwSetScrollCallback(window, ImGui_ImplGlfw_ScrollCallback);
-    //     g_PrevUserCallbackKey = glfwSetKeyCallback(window, ImGui_ImplGlfw_KeyCallback);
-    //     g_PrevUserCallbackChar = glfwSetCharCallback(window, ImGui_ImplGlfw_CharCallback);
-    // }
+    // Set platform dependent data in viewport
+    ImGuiViewport *main_viewport = ImGui::GetMainViewport();
+    main_viewport->PlatformHandle = (void *)win;
+#ifdef _WIN32
+    main_viewport->PlatformHandleRaw = glfwGetWin32Window(win);
+#elif defined(__APPLE__)
+    main_viewport->PlatformHandleRaw = (void *)glfwGetCocoaWindow(win);
+#else
+    IM_UNUSED(main_viewport);
+#endif
+    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+        neko_imgui_opengl_init_platform_interface();
+    }
 
     return neko_imgui;
 }
@@ -465,12 +463,11 @@ neko_inline void neko_imgui_new_frame(neko_imgui_context_t *neko_imgui) {
     ImGui::NewFrame();
 }
 
-neko_inline void neko_imgui_render(neko_imgui_context_t *neko_imgui, neko_command_buffer_t *cb) {
-    ImGui::SetCurrentContext(neko_imgui->ctx);
+neko_inline void neko_imgui_render_window(ImDrawData *draw_data) {
 
-    ImGui::Render();
+    neko_command_buffer_t *cb = &g_cb;
 
-    ImDrawData *draw_data = ImGui::GetDrawData();
+    // ImDrawData *draw_data = ImGui::GetDrawData();
 
     // Avoid rendering when minimized, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
     int fb_width = (int)(draw_data->DisplaySize.x * draw_data->FramebufferScale.x);
@@ -494,13 +491,13 @@ neko_inline void neko_imgui_render(neko_imgui_context_t *neko_imgui, neko_comman
 
     // Set up data binds
     neko_graphics_bind_vertex_buffer_desc_t vbuffers = {};
-    vbuffers.buffer = neko_imgui->vbo;
+    vbuffers.buffer = g_imgui.vbo;
 
     neko_graphics_bind_index_buffer_desc_t ibuffers = {};
-    ibuffers.buffer = neko_imgui->ibo;
+    ibuffers.buffer = g_imgui.ibo;
 
     neko_graphics_bind_uniform_desc_t ubuffers = {};
-    ubuffers.uniform = neko_imgui->u_proj;
+    ubuffers.uniform = g_imgui.u_proj;
     ubuffers.data = &m;
 
     // Set up data binds
@@ -524,7 +521,7 @@ neko_inline void neko_imgui_render(neko_imgui_context_t *neko_imgui, neko_comman
     neko_graphics_renderpass_begin(cb, def_pass);
     {
         // Bind pipeline
-        neko_graphics_pipeline_bind(cb, neko_imgui->pip);
+        neko_graphics_pipeline_bind(cb, g_imgui.pip);
 
         // Set viewport
         neko_graphics_set_viewport(cb, 0, 0, fb_width, fb_height);
@@ -541,14 +538,14 @@ neko_inline void neko_imgui_render(neko_imgui_context_t *neko_imgui, neko_comman
             vdesc.usage = NEKO_GRAPHICS_BUFFER_USAGE_STREAM;
             vdesc.data = cmd_list->VtxBuffer.Data;
             vdesc.size = cmd_list->VtxBuffer.Size * sizeof(ImDrawVert);
-            neko_graphics_vertex_buffer_request_update(cb, neko_imgui->vbo, &vdesc);
+            neko_graphics_vertex_buffer_request_update(cb, g_imgui.vbo, &vdesc);
 
             // Update index buffer
             neko_graphics_index_buffer_desc_t idesc = {};
             idesc.usage = NEKO_GRAPHICS_BUFFER_USAGE_STREAM;
             idesc.data = cmd_list->IdxBuffer.Data;
             idesc.size = cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx);
-            neko_graphics_index_buffer_request_update(cb, neko_imgui->ibo, &idesc);
+            neko_graphics_index_buffer_request_update(cb, g_imgui.ibo, &idesc);
 
             // Iterate through command buffer
             for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++) {
@@ -578,7 +575,7 @@ neko_inline void neko_imgui_render(neko_imgui_context_t *neko_imgui, neko_comman
                         neko_handle(neko_graphics_texture_t) tex = neko_handle_create(neko_graphics_texture_t, (u32)(intptr_t)pcmd->TextureId);
 
                         neko_graphics_bind_uniform_desc_t sbuffer = {};
-                        sbuffer.uniform = neko_imgui->u_tex;
+                        sbuffer.uniform = g_imgui.u_tex;
                         sbuffer.data = &tex;
                         sbuffer.binding = 0;
 
@@ -600,6 +597,40 @@ neko_inline void neko_imgui_render(neko_imgui_context_t *neko_imgui, neko_comman
         }
     }
     neko_graphics_renderpass_end(cb);
+}
+
+static void neko_imgui_internal_render(ImGuiViewport *viewport, void *) {
+    if (!(viewport->Flags & ImGuiViewportFlags_NoRendererClear)) {
+        ImVec4 clear_color = ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
+        glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+        glClear(GL_COLOR_BUFFER_BIT);
+    }
+    neko_imgui_render_window(viewport->DrawData);
+}
+
+static void neko_imgui_opengl_init_platform_interface() {
+    ImGuiPlatformIO &platform_io = ImGui::GetPlatformIO();
+    platform_io.Renderer_RenderWindow = neko_imgui_internal_render;
+}
+
+// static void ImGui_ImplOpenGL3_ShutdownPlatformInterface() { ImGui::DestroyPlatformWindows(); }
+
+neko_inline void neko_imgui_render() {
+    ImGuiIO &io = ImGui::GetIO();
+    (void)io;
+
+    ImGui::SetCurrentContext(g_imgui.ctx);
+
+    ImGui::Render();
+
+    neko_imgui_render_window(ImGui::GetDrawData());
+
+    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+        GLFWwindow *backup_current_context = glfwGetCurrentContext();
+        ImGui::UpdatePlatformWindows();
+        ImGui::RenderPlatformWindowsDefault();
+        glfwMakeContextCurrent(backup_current_context);
+    }
 }
 
 neko_inline void neko_imgui_draw_text(std::string text, neko_color_t col, int x, int y, bool outline, neko_color_t outline_col) {
@@ -1055,7 +1086,7 @@ neko_imgui_def_inline_p((template <typename T, std::size_t N>), (detail::c_array
 neko_imgui_def_inline_p((template <typename T, std::size_t N>), (const detail::c_array_t<T, N>), neko_imgui::detail::AutoContainerValues("Array " + name, *(const std::array<T, N> *)(&var)););
 
 neko_imgui_def_begin_p((template <typename T1, typename T2>),
-                       (std::pair<T1, T2>)) if ((std::is_fundamental_v<T1> || std::is_same_v<std::string, T1>)&&(std::is_fundamental_v<T2> || std::is_same_v<std::string, T2>)) {
+                       (std::pair<T1, T2>)) if ((std::is_fundamental_v<T1> || std::is_same_v<std::string, T1>) && (std::is_fundamental_v<T2> || std::is_same_v<std::string, T2>)) {
     float width = ImGui::CalcItemWidth();
     ImGui::PushItemWidth(width * 0.4 - 10);  // a bit less than half
     neko_imgui::detail::AutoExpand<T1>(name + ".first", var.first);

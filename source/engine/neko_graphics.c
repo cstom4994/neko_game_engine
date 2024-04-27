@@ -1589,7 +1589,7 @@ size_t neko_gl_uniform_data_size_in_bytes(neko_graphics_uniform_type type) {
     return sz;
 }
 
-thread_mutex_t g_graphics_mutex;
+neko_thread_mutex_t g_graphics_mutex;
 
 /* Graphics Interface Creation / Initialization / Shutdown / Destruction */
 NEKO_API_DECL neko_graphics_t* neko_graphics_create() {

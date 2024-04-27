@@ -1,6 +1,12 @@
 local PHY = require "bump"
-local network = require "sock"
+-- local network = require "sock"
 local tweens = require "flux"
+
+local behavior = require "common.behavior"
+
+local selector = behavior.func_selector
+local sequence = behavior.func_sequence
+local repeatNode = behavior.func_repeat
 
 local M = {}
 
@@ -238,45 +244,45 @@ M.sub_init_thread = function()
 
     -- server_load()
 
-    M.client = network.newClient("localhost", 22122)
-    M.server = network.newServer("localhost", 22122)
+    -- M.client = network.newClient("localhost", 22122)
+    -- M.server = network.newServer("localhost", 22122)
 
-    M.server:on("connect", function(data, peer)
-        local msg = "Hello from server!"
-        peer:send("hello", msg)
-    end)
+    -- M.server:on("connect", function(data, peer)
+    --     local msg = "Hello from server!"
+    --     peer:send("hello", msg)
+    -- end)
 
-    M.server:on("player_position", function(data)
+    -- M.server:on("player_position", function(data)
 
-        local header = common.cdata:decode("packet_type", data)
-        local map = packets[header.type]
+    --     local header = common.cdata:decode("packet_type", data)
+    --     local map = packets[header.type]
 
-        if not map then
-            error(string.format("Invalid packet type (%s) received!", header.type))
-            return
-        end
+    --     if not map then
+    --         error(string.format("Invalid packet type (%s) received!", header.type))
+    --         return
+    --     end
 
-        local decoded = common.cdata:decode(map.name, data)
+    --     local decoded = common.cdata:decode(map.name, data)
 
-        s_player_pos = {
-            x = decoded.position_x,
-            y = decoded.position_y
-        }
-    end)
+    --     s_player_pos = {
+    --         x = decoded.position_x,
+    --         y = decoded.position_y
+    --     }
+    -- end)
 
-    M.client:on("connect", function(data)
-        print("Client connected to the server.")
-    end)
+    -- M.client:on("connect", function(data)
+    --     print("Client connected to the server.")
+    -- end)
 
-    M.client:on("disconnect", function(data)
-        print("Client disconnected from the server.")
-    end)
+    -- M.client:on("disconnect", function(data)
+    --     print("Client disconnected from the server.")
+    -- end)
 
-    M.client:on("hello", function(msg)
-        print("The server replied: " .. msg)
-    end)
+    -- M.client:on("hello", function(msg)
+    --     print("The server replied: " .. msg)
+    -- end)
 
-    M.client:connect()
+    -- M.client:connect()
 
 end
 
@@ -284,6 +290,10 @@ local win_w, win_h
 local test_audio
 
 M.sub_init = function()
+
+    test_ase_witch = neko.aseprite.create(neko_file_path("gamedir/assets/textures/B_witch.ase"))
+    test_ase_harvester = neko.aseprite.create(neko_file_path("gamedir/assets/textures/TheHarvester.ase"))
+    test_ase_pdx = neko.aseprite.create(neko_file_path("gamedir/assets/textures/pdx.ase"))
 
     win_w, win_h = neko_window_size(neko_main_window())
 
@@ -472,9 +482,9 @@ M.sub_shutdown = function()
 
     neko.sprite_batch_end(gd.test_batch)
 
-    M.client:disconnect()
+    -- M.client:disconnect()
 
-    M.server:destroy()
+    -- M.server:destroy()
 end
 
 gd.tick = 0
@@ -506,8 +516,8 @@ gd.mx, gd.my = 0.0, 0.0
 
 M.sub_update = function(dt)
 
-    M.server:update()
-    M.client:update()
+    -- M.server:update()
+    -- M.client:update()
 
     if dt > max_dt then
         max_dt = dt
@@ -522,54 +532,7 @@ M.sub_update = function(dt)
         end
     end
 
-    for obj, v2, v, p in ecs_world:match("all", "gameobj", "vector2", "velocity2", "npc") do
-
-        local aseprite_render = SAFE_UD(p)
-
-        if (gd.tick & 15) == 0 then
-            p.r = common.random(0, 100)
-        end
-
-        local r = p.r
-
-        if (gd.tick & 31) == 0 then
-            if math.abs(v.dx) >= 0.6 or math.abs(v.dy) >= 0.6 then
-                aseprite_render:update_animation("walk");
-            else
-                aseprite_render:update_animation("Idle");
-            end
-        end
-
-        aseprite_render:update()
-
-        local player_v = 110.1 * dt
-
-        if r >= 0 and r <= 25 then
-            v.dx = v.dx - player_v
-        end
-        if r >= 25 and r <= 50 then
-            v.dx = v.dx + player_v
-        end
-        if r >= 50 and r <= 75 then
-            v.dy = v.dy - player_v
-        end
-        if r >= 75 and r <= 100 then
-            v.dy = v.dy + player_v
-        end
-
-        if v.dx ~= 0 or v.dy ~= 0 then
-            local cols
-            v2.x, v2.y, cols, cols_len = phy_world:move(p, v2.x + v.dx, v2.y + v.dy)
-            for i = 1, cols_len do
-                local col = cols[i]
-                -- print(("col[%d]: other = %s, type = %s, normal = %d,%d"):format(i, dump_func(col.other), col.type,
-                --     col.normal.x, col.normal.y))
-            end
-        end
-
-        v.dx = v.dx / 2.0
-        v.dy = v.dy / 2.0
-    end
+    local this_player = {}
 
     for obj, v2, v, p in ecs_world:match("all", "gameobj", "vector2", "velocity2", "player") do
 
@@ -639,8 +602,129 @@ M.sub_update = function(dt)
             local struct = common.cdata:set_struct("player_update", data)
             local encoded = common.cdata:encode(struct)
 
-            M.client:send("player_position", encoded)
+            -- M.client:send("player_position", encoded)
         end
+
+        this_player.p = p
+        this_player.pos = v2
+    end
+
+    local lineOfSightSystem = {
+        canSeePlayer = function(self, entity)
+            local self_pos = entity.v2 or to_vec2(0, 0)
+            local d = common.distance(this_player.pos.x, this_player.pos.y, self_pos.x, self_pos.y, true)
+            -- print(entity,d, this_player.pos.x, this_player.pos.y, self_pos.x, self_pos.y)
+            return math.abs(d) <= 30000
+        end
+    }
+
+    -- 询问其他系统该实体是否可以看到玩家
+    local function canSeePlayer(entity, dt)
+        if lineOfSightSystem:canSeePlayer(entity) then
+            -- print(entity, "canSeePlayer")
+            return behavior.success
+        else
+            return behavior.fail
+        end
+    end
+
+    -- 等待一段时间才能成功
+    local function waitRandom(low, hi)
+        local elapsed = 0
+        local span = math.random(low, hi)
+
+        return function(entity, dt)
+            elapsed = elapsed + dt
+            if elapsed >= span then
+                elapsed = 0
+                span = math.random(low, hi)
+                return 'success'
+            end
+            return behavior.running
+        end
+    end
+
+    local function wanderOnPlatform(entity, dt)
+
+        local p = entity.p
+        local v = entity.v
+
+        if (gd.tick & 15) == 0 then
+            p.r = common.random(0, 100)
+        end
+
+        local r = p.r
+
+        local player_v = 1.5 * dt
+
+        if r >= 0 and r <= 25 then
+            v.dx = v.dx - player_v
+        end
+        if r >= 25 and r <= 50 then
+            v.dx = v.dx + player_v
+        end
+        if r >= 50 and r <= 75 then
+            v.dy = v.dy - player_v
+        end
+        if r >= 75 and r <= 100 then
+            v.dy = v.dy + player_v
+        end
+
+        return 'success'
+    end
+
+    -- Walk to the edge of the platform, then wait a bit.
+    local function walkAround()
+        return sequence({wanderOnPlatform, waitRandom(1, 3)})
+    end
+
+    -- If the player is visible, then shoot them 3 times in rapid succession.
+    local function shootPlayer()
+        -- print('shootPlayer            called once at beginning and that is it!')
+        -- return sequence({canSeePlayer, repeatNode(3, sequence({shootBlaster, waitRandom(1, 1)}))})
+        return sequence({canSeePlayer})
+    end
+
+    local function makeBrain()
+        return selector({shootPlayer(), walkAround()})
+    end
+
+    local brain = makeBrain()
+
+    for obj, v2, v, p in ecs_world:match("all", "gameobj", "vector2", "velocity2", "npc") do
+
+        local aseprite_render = SAFE_UD(p)
+
+        if (gd.tick & 31) == 0 then
+            if math.abs(v.dx) >= 0.6 or math.abs(v.dy) >= 0.6 then
+                aseprite_render:update_animation("walk");
+            else
+                aseprite_render:update_animation("Idle");
+            end
+        end
+
+        aseprite_render:update()
+
+        local e = {
+            p = p,
+            v = v,
+            v2 = v2
+        }
+
+        brain(e, 1)
+
+        if v.dx ~= 0 or v.dy ~= 0 then
+            local cols
+            v2.x, v2.y, cols, cols_len = phy_world:move(p, v2.x + v.dx, v2.y + v.dy)
+            for i = 1, cols_len do
+                local col = cols[i]
+                -- print(("col[%d]: other = %s, type = %s, normal = %d,%d"):format(i, dump_func(col.other), col.type,
+                --     col.normal.x, col.normal.y))
+            end
+        end
+
+        v.dx = v.dx / 2.0
+        v.dy = v.dy / 2.0
     end
 
     gd.mx, gd.my = neko_mouse_position()
@@ -783,10 +867,10 @@ M.sub_render = function()
         y = cc_y
     }):ease("cubicout")
 
-    neko.idraw_rectv(to_vec2(gd.mx + gd.cam.x, gd.my + gd.cam.y), {
-        x = 10,
-        y = 10
-    }, "NEKO_GRAPHICS_PRIMITIVE_TRIANGLES", to_color(255, 0, 0, 255))
+    -- neko.idraw_rectv(to_vec2(gd.mx + gd.cam.x, gd.my + gd.cam.y), {
+    --     x = 10,
+    --     y = 10
+    -- }, "NEKO_GRAPHICS_PRIMITIVE_TRIANGLES", to_color(255, 0, 0, 255))
 
     for v2, t in ecs_world:match("all", "vector2", "fallingsand") do
         neko.fallingsand_update(SAFE_UD(t))
@@ -899,35 +983,6 @@ M.test_update = function()
 
     if neko_key_pressed("NEKO_KEYCODE_F2") then
         neko_game.cvar.show_physics_debug = not neko_game.cvar.show_physics_debug
-    end
-
-    if neko_key_pressed("NEKO_KEYCODE_F4") then
-        -- neko_dolua("lua_scripts/test_map.lua")
-        -- neko_dolua("lua_scripts/test_datalist.lua")
-        -- neko_dolua("lua_scripts/test.lua")
-        -- neko_dolua("lua_scripts/test_cstruct.lua")
-        -- neko_dolua("lua_scripts/test_class.lua")
-        -- neko_dolua("lua_scripts/test_ds.lua")
-        -- neko_dolua("lua_scripts/test_events.lua")
-        -- neko_dolua("lua_scripts/test_nekolua.lua")
-        -- neko_dolua("lua_scripts/test_common.lua")
-        -- neko_dolua("lua_scripts/test_behavior.lua")
-        -- neko_dolua("lua_scripts/tests/test_loader.lua")
-        -- neko_dolua("lua_scripts/tests/cffi/t.lua")
-        neko_dolua("lua_scripts/stronger/example.lua")
-
-        -- neko.audio_play(test_audio)
-
-        -- print(dump_func(w))
-
-        -- neko_callback_save("callback1", function(ha)
-        --     print("This is callback 1 " .. neko_hash(ha))
-        -- end)
-        -- neko_callback_save("callback2", function(ha, haa)
-        --     print("This is callback 2 " .. ha .. haa)
-        -- end)
-        -- neko_callback_call("callback1", "haha1")
-        -- neko_callback_call("callback2", "haha2", "haha3")
     end
 
     -- neko_text("NekoEngine 内部测试版本", default_font, 20, win_h - 20)

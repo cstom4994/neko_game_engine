@@ -1752,10 +1752,10 @@ NEKO_API_DECL void neko_frame() {
         neko_dyn_array_clear(platform->events);
 
         {
-            // for (neko_slot_array_iter it = 0; neko_slot_array_iter_valid(platform->windows, it); neko_slot_array_iter_advance(platform->windows, it)) {
-            //     neko_platform_window_swap_buffer(it);
-            // }
-            neko_platform_window_swap_buffer(neko_platform_main_window());
+            for (neko_slot_array_iter it = 0; neko_slot_array_iter_valid(platform->windows, it); neko_slot_array_iter_advance(platform->windows, it)) {
+                neko_platform_window_swap_buffer(it);
+            }
+            // neko_platform_window_swap_buffer(neko_platform_main_window());
         }
 
         // Frame locking (not sure if this should be done here, but it is what it is)
@@ -1769,7 +1769,6 @@ NEKO_API_DECL void neko_frame() {
 
         if (platform->time.frame < target) {
             neko_platform_sleep((f32)(target - platform->time.frame));
-
             platform->time.elapsed = (f32)neko_platform_elapsed_time();
             double wait_time = platform->time.elapsed - platform->time.previous;
             platform->time.previous = platform->time.elapsed;

@@ -4,6 +4,7 @@ M.fail = "fail"
 M.success = "success"
 M.running = "running"
 
+-- 反转结果
 M.func_invert = function(child)
     return function(entity, dt)
         local result = child(entity, dt)
@@ -17,6 +18,7 @@ M.func_invert = function(child)
     end
 end
 
+-- 平行执行
 M.func_parallel = function(children)
     return function(...)
         local last_result = M.success
@@ -31,6 +33,7 @@ M.func_parallel = function(children)
     end
 end
 
+-- 重复执行
 M.func_repeat = function(times, child)
     local count = 1
     return function(...)
@@ -50,6 +53,7 @@ M.func_repeat = function(times, child)
     end
 end
 
+-- 选择器
 M.func_selector = function(children)
     local index = 1
     return function(...)
@@ -70,6 +74,7 @@ M.func_selector = function(children)
     end
 end
 
+-- 线性执行
 M.func_sequence = function(children)
     local index = 1
     return function(...)

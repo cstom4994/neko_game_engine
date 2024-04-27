@@ -24,7 +24,6 @@ extern neko_client_userdata_t g_client_userdata;
 
 extern "C" int luaopen_cffi(lua_State* L);
 extern "C" int luaopen_neko_imgui(lua_State* L);
-extern "C" int luaopen_neko_enet(lua_State* l);
 extern "C" int __neko_ecs_create_world(lua_State* L);
 
 extern int register_mt_imgui(lua_State* L);
@@ -457,8 +456,7 @@ neko_inline void neko_register_platform(lua_State* L) {
                     +[]() -> u32 { return neko_platform_main_window(); }, "neko_main_window")
             .def(
                     +[](u32 handle, u32 width, u32 height) { neko_platform_set_window_size(handle, width, height); }, "neko_set_window_size")
-            .def(
-                    +[](u32 handle, f64 x, f64 y) { neko_platform_mouse_set_position(handle, x, y); }, "neko_set_mouse_position");
+            .def(+[](u32 handle, f64 x, f64 y) { neko_platform_mouse_set_position(handle, x, y); }, "neko_set_mouse_position");
 
     //.def(+[](const_str path) -> std::string { return neko_engine_subsystem(platform)->get_path(path); }, "neko_file_path")
     //.def(+[](const_str title, u32 width, u32 height) -> neko_resource_handle { return neko_engine_subsystem(platform)->create_window(title, width, height); }, "neko_create_window")
@@ -1586,7 +1584,7 @@ static int __neko_bind_audio_load(lua_State* L) {
 
 static int __neko_bind_audio_unload(lua_State* L) {
     neko_sound_audio_source_t* audio = (neko_sound_audio_source_t*)lua_touserdata(L, 1);
-    neko_sound_free_audio_source(audio);
+    if (audio != NULL) neko_sound_free_audio_source(audio);
     return 0;
 }
 
@@ -2301,6 +2299,30 @@ static int __neko_bind_graphics_clear(lua_State* L) {
     return 0;
 }
 
+static int l_base64_encode(lua_State* L) {
+    const char* input = luaL_checkstring(L, 1);
+    unsigned char* encoded = neko_base64_encode((unsigned char*)input);
+    if (encoded) {
+        lua_pushstring(L, (const char*)encoded);
+        neko_safe_free(encoded);
+    } else {
+        lua_pushnil(L);
+    }
+    return 1;
+}
+
+static int l_base64_decode(lua_State* L) {
+    const char* input = luaL_checkstring(L, 1);
+    unsigned char* decoded = neko_base64_decode((unsigned char*)input);
+    if (decoded) {
+        lua_pushstring(L, (const char*)decoded);
+        neko_safe_free(decoded);
+    } else {
+        lua_pushnil(L);
+    }
+    return 1;
+}
+
 neko_inline void neko_register_test(lua_State* L) {
 
     lua_register(L, "__neko_luainspector_init", neko::luainspector::luainspector_init);
@@ -2582,9 +2604,9 @@ struct neko_lua_hook_callbacks* neko_lua_hook_callback_create(size_t dataSize, e
     struct neko_lua_hook_callbacks* callback = (struct neko_lua_hook_callbacks*)malloc(sizeof(struct neko_lua_hook_callbacks));
 
     if (callback) {
-        callback->dataSize = dataSize;
+        callback->data_size = dataSize;
         callback->data = malloc(dataSize);
-        callback->dataType = dataType;
+        callback->data_type = dataType;
     } else {
         neko_log_warning("[lua] Callback \"?\" errored with: Memory allocation error");
     }
@@ -2592,7 +2614,7 @@ struct neko_lua_hook_callbacks* neko_lua_hook_callback_create(size_t dataSize, e
     return callback;
 }
 
-void neko_lua_hook_callback_set(struct neko_lua_hook_callbacks* callback, const void* data) { memcpy(callback->data, data, callback->dataSize); }
+void neko_lua_hook_callback_set(struct neko_lua_hook_callbacks* callback, const void* data) { memcpy(callback->data, data, callback->data_size); }
 
 void* neko_lua_hook_callback_get(const struct neko_lua_hook_callbacks* callback) { return callback->data; }
 
@@ -2703,10 +2725,10 @@ void neko_lua_hook_luafunc(lua_State* L, struct neko_lua_hook_t* instance, int i
     lua_rawgeti(L, LUA_REGISTRYINDEX, instance->stack[index].ref);
 
     if (callback && callback->data) {
-        for (size_t i = 0; i < callback->dataSize; ++i) {
-            void* value = ((char*)callback->data) + (i * callback->dataSize);
+        for (size_t i = 0; i < callback->data_size; ++i) {
+            void* value = ((char*)callback->data) + (i * callback->data_size);
 
-            switch (callback->dataType) {
+            switch (callback->data_type) {
                 case neko_lua_dataType::number:
                     lua_pushnumber(L, *(double*)value);
                     break;
@@ -2729,7 +2751,7 @@ void neko_lua_hook_luafunc(lua_State* L, struct neko_lua_hook_t* instance, int i
         }
     }
 
-    if (lua_pcall(L, callback ? callback->dataSize : 0, LUA_MULTRET, 0) != LUA_OK) {
+    if (lua_pcall(L, callback ? callback->data_size : 0, LUA_MULTRET, 0) != LUA_OK) {
         neko_log_warning("[lua] Hook \"%s\" errored with: %s", instance->hookName, lua_tostring(L, -1));
 
         lua_pop(L, 1);
@@ -3064,8 +3086,7 @@ neko_inline void neko_register_common(lua_State* L) {
                     +[](const_str str) { return neko_hash_str64(str); }, "neko_hash")
             .def(
                     +[](int op) { return neko_quit(); }, "__neko_quit")
-            .def(
-                    +[]() { return neko_platform_elapsed_time(); }, "neko_platform_elapsed_time");
+            .def(+[]() { return neko_platform_elapsed_time(); }, "neko_platform_elapsed_time");
 
     lua_pushstring(L, game_assets("gamedir").c_str());
     lua_setglobal(L, "neko_game_data_path");
@@ -3322,6 +3343,9 @@ int open_neko(lua_State* L) {
             {"cvar", __neko_bind_cvar},
             {"print", __neko_bind_print},
 
+            {"base64_encode", l_base64_encode},
+            {"base64_decode", l_base64_decode},
+
             {NULL, NULL},
     };
 
@@ -3399,7 +3423,7 @@ void neko_register(lua_State* L) {
     PRELOAD("neko_lua_datalist.core", luaopen_datalist);
     PRELOAD("cffi", luaopen_cffi);
     PRELOAD("imgui", luaopen_neko_imgui);
-    PRELOAD("enet", luaopen_neko_enet);
+    // PRELOAD("enet", luaopen_neko_enet);
 
     luaL_requiref(L, "neko", open_neko, 1);
 

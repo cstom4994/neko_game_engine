@@ -32,9 +32,9 @@ enum class neko_lua_dataType { number, string, integer, lua_bool, function };
 enum class neko_lua_hook_status { hook_awaiting, hook_update, hook_idle };
 
 struct neko_lua_hook_callbacks {
-    size_t dataSize;
+    size_t data_size;
     void *data;
-    enum neko_lua_dataType dataType;
+    enum neko_lua_dataType data_type;
 };
 
 struct neko_lua_hook_pool {

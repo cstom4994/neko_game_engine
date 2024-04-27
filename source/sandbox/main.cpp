@@ -453,8 +453,7 @@ NEKO_API_DECL void neko_console(neko_console_t *console, neko_ui_context_t *ctx,
         } else if (neko_platform_key_pressed(NEKO_KEYCODE_BACKSPACE)) {
             console->current_cb_idx = 0;
             // 跳过 utf-8 连续字节
-            while ((console->cb[0][--len] & 0xc0) == 0x80 && len > 0)
-                ;
+            while ((console->cb[0][--len] & 0xc0) == 0x80 && len > 0);
             console->cb[0][len] = '\0';
         } else if (n > 0 && !neko_platform_key_pressed(NEKO_KEYCODE_GRAVE_ACCENT)) {
             console->current_cb_idx = 0;
@@ -726,7 +725,7 @@ neko_script_binary_t *ns_load_module(char *name) {
 void neko_register(lua_State *L);
 
 lua_State *neko_scripting_init() {
-    neko_timer timer;
+    neko::timer timer;
     timer.start();
 
     lua_State *L = neko_lua_wrap_create();
@@ -743,12 +742,12 @@ lua_State *neko_scripting_init() {
         neko_lua_wrap_run_string(L, std::format("package.path = "
                                                 "'{1}/?.lua;{0}/?.lua;{0}/../libs/?.lua;{0}/../libs/?/init.lua;{0}/../libs/"
                                                 "?/?.lua;' .. package.path",
-                                                game_assets("lua_scripts"), neko_fs_normalize_path(std::filesystem::current_path().string()).c_str()));
+                                                game_assets("lua_scripts"), neko::fs_normalize_path(std::filesystem::current_path().string()).c_str()));
 
         neko_lua_wrap_run_string(L, std::format("package.cpath = "
                                                 "'{1}/?.{2};{0}/?.{2};{0}/../libs/?.{2};{0}/../libs/?/init.{2};{0}/../libs/"
                                                 "?/?.{2};' .. package.cpath",
-                                                game_assets("lua_scripts"), neko_fs_normalize_path(std::filesystem::current_path().string()).c_str(), "dll"));
+                                                game_assets("lua_scripts"), neko::fs_normalize_path(std::filesystem::current_path().string()).c_str(), "dll"));
 
         neko_lua_wrap_safe_dofile(L, "init");
 
@@ -766,19 +765,19 @@ void neko_scripting_end(lua_State *L) { neko_lua_wrap_destory(L); }
 
 lua_State *g_L = nullptr;
 
-thread_atomic_int_t init_thread_flag;
-thread_ptr_t init_work_thread;
+neko_thread_atomic_int_t init_thread_flag;
+neko_thread_ptr_t init_work_thread;
 
 int init_work(void *user_data) {
 
-    thread_atomic_int_t *this_init_thread_flag = (thread_atomic_int_t *)user_data;
+    neko_thread_atomic_int_t *this_init_thread_flag = (neko_thread_atomic_int_t *)user_data;
 
     if (thread_atomic_int_load(this_init_thread_flag) == 0) {
 
-        thread_timer_t thread_timer;
+        neko_thread_timer_t thread_timer;
         thread_timer_init(&thread_timer);
 
-        neko_timer timer;
+        neko::timer timer;
         timer.start();
 
         try {
@@ -832,8 +831,7 @@ void game_init() {
     g_L = neko_scripting_init();
 
     {
-        neko_lua_wrap_register_t<>(g_L).def(
-                +[](const_str path) -> std::string { return game_assets(path); }, "__neko_file_path");
+        neko_lua_wrap_register_t<>(g_L).def(+[](const_str path) -> std::string { return game_assets(path); }, "__neko_file_path");
 
         lua_newtable(g_L);
         for (int n = 0; n < neko_instance()->ctx.game.argc; ++n) {
@@ -1336,7 +1334,7 @@ void game_update() {
                     neko_ui_labelf("Lua MemoryUsage: %.2lf mb", ((f64)kb / 1024.0f));
                     neko_ui_labelf("Lua Remaining: %.2lf mb", ((f64)bytes / 1024.0f));
 
-                    // neko_ui_labelf("ImGui MemoryUsage: %.2lf mb", ((f64)__neko_ui_meminuse() / 1048576.0));
+                    neko_ui_labelf("ImGui MemoryUsage: %.2lf mb", ((f64)__neko_imgui_meminuse() / 1048576.0));
 
                     neko_ui_labelf("Virtual MemoryUsage: %.2lf mb", ((f64)meminfo.virtual_memory_used / 1048576.0));
                     neko_ui_labelf("Real MemoryUsage: %.2lf mb", ((f64)meminfo.physical_memory_used / 1048576.0));
@@ -1395,6 +1393,8 @@ void game_update() {
             }
 
             neko_imgui::toggle("帧检查器", &g_cvar.show_profiler_window);
+
+            ImGui::DragFloat("Max FPS", &neko_subsystem(platform)->time.max_fps, 5.0f, 30.0f, 2000.0f);
 
             ImGui::Separator();
 
@@ -1504,7 +1504,7 @@ void game_update() {
         }
         neko_graphics_renderpass_end(&g_cb);
 
-        neko_imgui_render(&g_imgui, &g_cb);
+        neko_imgui_render();
 
         // Submits to cb
         {
@@ -1560,7 +1560,7 @@ neko_game_desc_t neko_main(s32 argc, char **argv) {
     for (int i = 0; i < 6; ++i)
         if (std::filesystem::exists(current_dir / "gamedir") &&  //
             std::filesystem::exists(current_dir / "gamedir" / "assets")) {
-            data_path = neko_fs_normalize_path(current_dir.string());
+            data_path = neko::fs_normalize_path(current_dir.string());
             neko_log_info(std::format("gamedir: {0} (base: {1})", data_path, std::filesystem::current_path().string()).c_str());
             break;
         } else {

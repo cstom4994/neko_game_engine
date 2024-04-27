@@ -730,7 +730,7 @@ neko_force_inline u32 neko_string_length(const char* txt) {
     return sz;
 }
 
-#define neko_strlen neko_string_length
+#define neko_strlen(str) neko_string_length((const char*)str)
 
 // Expects null terminated strings
 neko_force_inline b32 neko_string_compare_equal(const char* txt, const char* cmp) {

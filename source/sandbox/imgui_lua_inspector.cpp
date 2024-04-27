@@ -511,7 +511,9 @@ void neko::luainspector::console_draw(bool& textbox_react) noexcept {
 
     ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
 
-    ImVec2 size = ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetWindowSize().y - 125);
+    const float TEXT_BASE_HIGHT = ImGui::CalcTextSize("A").y;
+
+    ImVec2 size = ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetWindowSize().y - 80 - TEXT_BASE_HIGHT * 2);
     if (ImGui::BeginChild("##console_log", size)) {
         ImGui::PushTextWrapPos(ImGui::GetContentRegionAvail().x);
 
@@ -828,11 +830,12 @@ int neko::luainspector::luainspector_draw(lua_State* L) {
 
                 ImGui::Text("Registry contents:");
 
-                ImVec2 size = ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetWindowSize().y - 180);
+                const float TEXT_BASE_WIDTH = ImGui::CalcTextSize("A").x;
+                const float TEXT_BASE_HIGHT = ImGui::CalcTextSize("A").y;
+
+                ImVec2 size = ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetWindowSize().y - 100 - TEXT_BASE_HIGHT * 4);
                 if (ImGui::BeginChild("##lua_registry", size)) {
                     ImGui::PushTextWrapPos(ImGui::GetContentRegionAvail().x);
-
-                    const float TEXT_BASE_WIDTH = ImGui::CalcTextSize("A").x;
 
                     static ImGuiTableFlags flags = ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
 

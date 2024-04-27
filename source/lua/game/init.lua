@@ -53,6 +53,18 @@ function easeOutCubic(x)
     return 1 - math.pow(1 - x, 3)
 end
 
+function read_file(filename)
+    local file = io.open(filename, "r") -- 打开文件只读模式
+    if not file then
+        return nil
+    end -- 文件不存在或者无法打开时返回nil
+
+    local content = file:read("*all") -- 读取文件内容
+    file:close() -- 关闭文件
+
+    return content -- 返回文件内容
+end
+
 __NEKO_CONFIG_TYPE_INT = 0
 __NEKO_CONFIG_TYPE_FLOAT = 1
 __NEKO_CONFIG_TYPE_STRING = 2

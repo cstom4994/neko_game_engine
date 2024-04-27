@@ -4,6 +4,9 @@
 
 // #include <intrin.h>
 
+#include <algorithm>
+#include <chrono>
+#include <fstream>
 #include <functional>
 #include <memory>
 #include <string>
@@ -196,16 +199,31 @@ struct alloc {
     }
 #endif
 
-#include <algorithm>
-#include <chrono>
-#include <fstream>
+namespace neko {
 
-neko_force_inline auto neko_get_time() -> s64 {
+#define neko_time_count(x) std::chrono::time_point_cast<std::chrono::microseconds>(x).time_since_epoch().count()
+
+class timer {
+public:
+    inline void start() noexcept { startPos = std::chrono::high_resolution_clock::now(); }
+    inline void stop() noexcept {
+        auto endTime = std::chrono::high_resolution_clock::now();
+        duration = static_cast<f64>(neko_time_count(endTime) - neko_time_count(startPos)) * 0.001;
+    }
+    [[nodiscard]] inline f64 get() const noexcept { return duration; }
+    ~timer() noexcept { stop(); }
+
+private:
+    f64 duration = 0;
+    std::chrono::time_point<std::chrono::high_resolution_clock> startPos;
+};
+
+neko_force_inline auto time() -> s64 {
     s64 ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     return ms;
 }
 
-neko_force_inline f64 neko_get_time_d() {
+neko_force_inline f64 time_d() {
     f64 t;
     // #ifdef _WIN32
     //     FILETIME ft;
@@ -220,7 +238,7 @@ neko_force_inline f64 neko_get_time_d() {
     return t;
 }
 
-neko_static_inline time_t neko_get_time_mkgmtime(struct tm* unixdate) {
+neko_static_inline time_t time_mkgmtime(struct tm* unixdate) {
     neko_assert(unixdate != nullptr);
     time_t fakeUnixtime = mktime(unixdate);
     struct tm* fakeDate = gmtime(&fakeUnixtime);
@@ -232,30 +250,13 @@ neko_static_inline time_t neko_get_time_mkgmtime(struct tm* unixdate) {
     return fakeUnixtime - nOffSet * 3600;
 }
 
-neko_static_inline auto neko_time_to_string(std::time_t now = std::time(nullptr)) -> std::string {
+neko_static_inline auto time_to_string(std::time_t now = std::time(nullptr)) -> std::string {
     const auto tp = std::localtime(&now);
     char buffer[32];
     return std::strftime(buffer, sizeof(buffer), "%Y-%m-%d_%H-%M-%S", tp) ? buffer : "1970-01-01_00:00:00";
 }
 
-#define neko_time_count(x) std::chrono::time_point_cast<std::chrono::microseconds>(x).time_since_epoch().count()
-
-class neko_timer {
-public:
-    inline void start() noexcept { startPos = std::chrono::high_resolution_clock::now(); }
-    inline void stop() noexcept {
-        auto endTime = std::chrono::high_resolution_clock::now();
-        duration = static_cast<f64>(neko_time_count(endTime) - neko_time_count(startPos)) * 0.001;
-    }
-    [[nodiscard]] inline f64 get() const noexcept { return duration; }
-    ~neko_timer() noexcept { stop(); }
-
-private:
-    f64 duration = 0;
-    std::chrono::time_point<std::chrono::high_resolution_clock> startPos;
-};
-
-neko_static_inline std::string neko_fs_normalize_path(const std::string& path, char delimiter = '/') {
+neko_static_inline std::string fs_normalize_path(const std::string& path, char delimiter = '/') {
     static constexpr char delims[] = "/\\";
 
     std::string norm;
@@ -287,10 +288,12 @@ neko_static_inline std::string neko_fs_normalize_path(const std::string& path, c
     return norm;
 }
 
-neko_inline bool neko_fs_exists(const std::string& filename) {
+neko_inline bool fs_exists(const std::string& filename) {
     std::ifstream file(filename);
     return file.good();
 }
+
+}  // namespace neko
 
 neko_inline void neko_utils_write_ppm(const int width, const int height, unsigned char* buffer, const char* filename) {
 

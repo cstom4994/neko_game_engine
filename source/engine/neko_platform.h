@@ -349,6 +349,7 @@ typedef struct neko_opengl_video_settings_t {
 typedef union neko_graphics_api_settings_t {
     neko_opengl_video_settings_t opengl;
     b32 debug;
+    b32 hdpi;
 } neko_graphics_api_settings_t;
 
 typedef struct neko_platform_video_settings_t {
@@ -869,164 +870,85 @@ typedef struct neko_platform_interface_s
 #endif
 
 #define THREAD_HAS_ATOMIC 1
-
-// ref: https://github.com/ufbx/ufbx/blob/master/ufbx.c
-// ref: https://github.com/gingerBill/gb/blob/master/gb.h
-#if defined __TINYC__ && !defined _WIN32
-#undef THREAD_HAS_ATOMIC
-#define THREAD_HAS_ATOMIC 0
-
-#if defined(__x86_64__) || defined(_AMD64_)
-static size_t tcc_atomic_add(volatile size_t *dst, size_t value) {
-    __asm__ __volatile__("lock; xaddq %0, %1;" : "+r"(value), "=m"(*dst) : "m"(dst));
-    return value;
-}
-static size_t tcc_atomic_compare_exchange(volatile size_t *dst, size_t expected, size_t desired) {
-    size_t original;
-    __asm__ __volatile__("lock; cmpxchgq %2, %1" : "=a"(original), "+m"(*dst) : "q"(desired), "0"(expected));
-    return original;
-}
-static size_t tcc_atomic_exchanged(volatile size_t *dst, size_t desired) {
-    size_t original;
-    __asm__ __volatile__("xchgq %0, %1" : "=r"(original), "+m"(*dst) : "0"(desired));
-    return original;
-}
-#elif defined(__i386__) || defined(_X86_)
-static size_t tcc_atomic_add(volatile size_t *dst, size_t value) {
-    __asm__ __volatile__("lock; xaddl %0, %1;" : "+r"(value), "=m"(*dst) : "m"(dst));
-    return value;
-}
-static size_t tcc_atomic_compare_exchange(volatile size_t *a, size_t expected, size_t desired) {
-    size_t original;
-    __asm__ __volatile__("lock; cmpxchgl %2, %1" : "=a"(original), "+m"(*dst) : "q"(desired), "0"(expected));
-    return original;
-}
-static size_t tcc_atomic_exchanged(volatile size_t *a, size_t desired) {
-    size_t original;
-    __asm__ __volatile__("xchgl %0, %1" : "=r"(original), "+m"(*dst) : "0"(desired));
-    return original;
-}
-#else
-#error Unexpected TCC architecture
-#endif
-
-typedef volatile size_t thread_atomic_int_t;
-#define thread_atomic_int_inc(ptr) tcc_atomic_add((ptr), 1)
-#define thread_atomic_int_dec(ptr) tcc_atomic_add((ptr), SIZE_MAX)
-// #define thread_atomic_int_add(ptr,v)   tcc_atomic_add((ptr), (v))
-// #define thread_atomic_int_sub(ptr,v)   tcc_atomic_add((ptr), -(v)) // meh
-#define thread_atomic_int_load(ptr) (*(ptr) = 0)        // meh
-#define thread_atomic_int_store(ptr, v) (*(ptr) = (v))  // meh
-// #define thread_atomic_int_swap(ptr,desired) tcc_atomic_exchanged((ptr),desired)
-#define thread_atomic_int_compare_and_swap(ptr, expected, desired) tcc_atomic_compare_exchange((ptr), (expected), (desired))
-
-#elif defined __TINYC__ && defined _WIN32
-#define THREAD_USE_MCMP 1
-#endif
-
 #define THREAD_STACK_SIZE_DEFAULT (0)
 #define THREAD_SIGNAL_WAIT_INFINITE (-1)
 #define THREAD_QUEUE_WAIT_INFINITE (-1)
 
-union thread_mutex_t {
+union neko_thread_mutex_t {
     void *align;
     char data[64];
 };
 
-union thread_signal_t {
+union neko_thread_signal_t {
     void *align;
     char data[116];
 };
 
-union thread_atomic_int_t {
+union neko_thread_atomic_int_t {
     void *align;
     long i;
 };
 
-union thread_atomic_ptr_t {
+union neko_thread_atomic_ptr_t {
     void *ptr;
 };
 
-union thread_timer_t {
+union neko_thread_timer_t {
     void *data;
     char d[8];
 };
 
-typedef void *thread_id_t;
-NEKO_API_DECL thread_id_t thread_current_thread_id(void);
+typedef void *neko_thread_id_t;
+NEKO_API_DECL neko_thread_id_t thread_current_thread_id(void);
 NEKO_API_DECL void thread_yield(void);
 NEKO_API_DECL void thread_set_high_priority(void);
 NEKO_API_DECL void thread_exit(int return_code);
 
-typedef void *thread_ptr_t;
-NEKO_API_DECL thread_ptr_t thread_init(int (*thread_proc)(void *), void *user_data, char const *name, int stack_size);
-NEKO_API_DECL void thread_term(thread_ptr_t thread);
-NEKO_API_DECL int thread_join(thread_ptr_t thread);
-NEKO_API_DECL int thread_detach(thread_ptr_t thread);
+typedef void *neko_thread_ptr_t;
+NEKO_API_DECL neko_thread_ptr_t thread_init(int (*thread_proc)(void *), void *user_data, char const *name, int stack_size);
+NEKO_API_DECL void thread_term(neko_thread_ptr_t thread);
+NEKO_API_DECL int thread_join(neko_thread_ptr_t thread);
+NEKO_API_DECL int thread_detach(neko_thread_ptr_t thread);
 
-typedef union thread_mutex_t thread_mutex_t;
-NEKO_API_DECL void thread_mutex_init(thread_mutex_t *mutex);
-NEKO_API_DECL void thread_mutex_term(thread_mutex_t *mutex);
-NEKO_API_DECL void thread_mutex_lock(thread_mutex_t *mutex);
-NEKO_API_DECL void thread_mutex_unlock(thread_mutex_t *mutex);
+typedef union neko_thread_mutex_t neko_thread_mutex_t;
+NEKO_API_DECL void thread_mutex_init(neko_thread_mutex_t *mutex);
+NEKO_API_DECL void thread_mutex_term(neko_thread_mutex_t *mutex);
+NEKO_API_DECL void thread_mutex_lock(neko_thread_mutex_t *mutex);
+NEKO_API_DECL void thread_mutex_unlock(neko_thread_mutex_t *mutex);
 
-typedef union thread_signal_t thread_signal_t;
-NEKO_API_DECL void thread_signal_init(thread_signal_t *signal);
-NEKO_API_DECL void thread_signal_term(thread_signal_t *signal);
-NEKO_API_DECL void thread_signal_raise(thread_signal_t *signal);
-NEKO_API_DECL int thread_signal_wait(thread_signal_t *signal, int timeout_ms);
+typedef union neko_thread_signal_t neko_thread_signal_t;
+NEKO_API_DECL void thread_signal_init(neko_thread_signal_t *signal);
+NEKO_API_DECL void thread_signal_term(neko_thread_signal_t *signal);
+NEKO_API_DECL void thread_signal_raise(neko_thread_signal_t *signal);
+NEKO_API_DECL int thread_signal_wait(neko_thread_signal_t *signal, int timeout_ms);
 
 #if THREAD_HAS_ATOMIC
-typedef union thread_atomic_int_t thread_atomic_int_t;
-NEKO_API_DECL int thread_atomic_int_load(thread_atomic_int_t *atomic);
-NEKO_API_DECL void thread_atomic_int_store(thread_atomic_int_t *atomic, int desired);
-NEKO_API_DECL int thread_atomic_int_inc(thread_atomic_int_t *atomic);
-NEKO_API_DECL int thread_atomic_int_dec(thread_atomic_int_t *atomic);
-NEKO_API_DECL int thread_atomic_int_add(thread_atomic_int_t *atomic, int value);
-NEKO_API_DECL int thread_atomic_int_sub(thread_atomic_int_t *atomic, int value);
-NEKO_API_DECL int thread_atomic_int_swap(thread_atomic_int_t *atomic, int desired);
-NEKO_API_DECL int thread_atomic_int_compare_and_swap(thread_atomic_int_t *atomic, int expected, int desired);
+typedef union neko_thread_atomic_int_t neko_thread_atomic_int_t;
+NEKO_API_DECL int thread_atomic_int_load(neko_thread_atomic_int_t *atomic);
+NEKO_API_DECL void thread_atomic_int_store(neko_thread_atomic_int_t *atomic, int desired);
+NEKO_API_DECL int thread_atomic_int_inc(neko_thread_atomic_int_t *atomic);
+NEKO_API_DECL int thread_atomic_int_dec(neko_thread_atomic_int_t *atomic);
+NEKO_API_DECL int thread_atomic_int_add(neko_thread_atomic_int_t *atomic, int value);
+NEKO_API_DECL int thread_atomic_int_sub(neko_thread_atomic_int_t *atomic, int value);
+NEKO_API_DECL int thread_atomic_int_swap(neko_thread_atomic_int_t *atomic, int desired);
+NEKO_API_DECL int thread_atomic_int_compare_and_swap(neko_thread_atomic_int_t *atomic, int expected, int desired);
 
-typedef union thread_atomic_ptr_t thread_atomic_ptr_t;
-NEKO_API_DECL void *thread_atomic_ptr_load(thread_atomic_ptr_t *atomic);
-NEKO_API_DECL void thread_atomic_ptr_store(thread_atomic_ptr_t *atomic, void *desired);
-NEKO_API_DECL void *thread_atomic_ptr_swap(thread_atomic_ptr_t *atomic, void *desired);
-NEKO_API_DECL void *thread_atomic_ptr_compare_and_swap(thread_atomic_ptr_t *atomic, void *expected, void *desired);
+typedef union neko_thread_atomic_ptr_t neko_thread_atomic_ptr_t;
+NEKO_API_DECL void *thread_atomic_ptr_load(neko_thread_atomic_ptr_t *atomic);
+NEKO_API_DECL void thread_atomic_ptr_store(neko_thread_atomic_ptr_t *atomic, void *desired);
+NEKO_API_DECL void *thread_atomic_ptr_swap(neko_thread_atomic_ptr_t *atomic, void *desired);
+NEKO_API_DECL void *thread_atomic_ptr_compare_and_swap(neko_thread_atomic_ptr_t *atomic, void *expected, void *desired);
 #endif
 
-typedef union thread_timer_t thread_timer_t;
-NEKO_API_DECL void thread_timer_init(thread_timer_t *timer);
-NEKO_API_DECL void thread_timer_term(thread_timer_t *timer);
-NEKO_API_DECL void thread_timer_wait(thread_timer_t *timer, THREAD_U64 nanoseconds);
+typedef union neko_thread_timer_t neko_thread_timer_t;
+NEKO_API_DECL void thread_timer_init(neko_thread_timer_t *timer);
+NEKO_API_DECL void thread_timer_term(neko_thread_timer_t *timer);
+NEKO_API_DECL void thread_timer_wait(neko_thread_timer_t *timer, THREAD_U64 nanoseconds);
 
-typedef void *thread_tls_t;
-NEKO_API_DECL thread_tls_t thread_tls_create(void);
-NEKO_API_DECL void thread_tls_destroy(thread_tls_t tls);
-NEKO_API_DECL void thread_tls_set(thread_tls_t tls, void *value);
-NEKO_API_DECL void *thread_tls_get(thread_tls_t tls);
-
-typedef struct thread_queue_t thread_queue_t;
-NEKO_API_DECL void thread_queue_init(thread_queue_t *queue, int size, void **values, int count);
-NEKO_API_DECL void thread_queue_term(thread_queue_t *queue);
-NEKO_API_DECL int thread_queue_produce(thread_queue_t *queue, void *value, int timeout_ms);
-NEKO_API_DECL void *thread_queue_consume(thread_queue_t *queue, int timeout_ms);
-NEKO_API_DECL int thread_queue_count(thread_queue_t *queue);
-
-#if THREAD_USE_MCMP
-
-struct mcmp;
-int mcmp_new(struct mcmp *ctx);
-int mcmp_del(struct mcmp *ctx);
-int mcmp_add(struct mcmp *ctx, void *data);
-void *mcmp_pop(struct mcmp *ctx);
-
-#define thread_queue_t struct mcmp
-#define thread_queue_init(t, a, b, c) mcmp_new(t)
-#define thread_queue_produce(t, v, a) mcmp_add(t, v)
-#define thread_queue_consume(t, a) mcmp_pop(t)
-#define thread_queue_term(t) mcmp_del(t)
-#define thread_queue_count(t) exit(-123)
-
-#endif
+typedef void *neko_thread_tls_t;
+NEKO_API_DECL neko_thread_tls_t thread_tls_create(void);
+NEKO_API_DECL void thread_tls_destroy(neko_thread_tls_t tls);
+NEKO_API_DECL void thread_tls_set(neko_thread_tls_t tls, void *value);
+NEKO_API_DECL void *thread_tls_get(neko_thread_tls_t tls);
 
 #endif  // !NEKO_PLATFORM_H
