@@ -1656,6 +1656,7 @@ NEKO_API_DECL neko_t* neko_create(neko_game_desc_t app_desc) {
 
         // 启用图形 API 调试
         neko_subsystem(platform)->settings.video.graphics.debug = app_desc.debug_gfx;
+        neko_subsystem(platform)->settings.video.graphics.hdpi = app_desc.window.hdpi;
 
         // 此处平台的默认初始化
         neko_platform_init(neko_subsystem(platform));

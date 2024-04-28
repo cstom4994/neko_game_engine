@@ -1982,7 +1982,7 @@ static int lcstruct(lua_State *L) {
     }
 }
 
-int luaopen_cstruct_core(lua_State *L) {
+int neko_luaopen_cstruct_core(lua_State *L) {
     luaL_checkversion(L);
     luaL_Reg l[] = {
             {"cstruct", lcstruct},
@@ -2001,7 +2001,7 @@ static int newudata(lua_State *L) {
     return 1;
 }
 
-int luaopen_cstruct_test(lua_State *L) {
+int neko_luaopen_cstruct_test(lua_State *L) {
     luaL_checkversion(L);
     luaL_Reg l[] = {
             {"udata", newudata},
@@ -2029,6 +2029,7 @@ int luaopen_cstruct_test(lua_State *L) {
 #define CONVERTER 2
 #define REF_CACHE 3
 #define REF_UNSOLVED 4
+#define TAB_SPACE 4
 
 typedef uintptr_t objectid;
 
@@ -2116,7 +2117,7 @@ static int is_hexnumber(struct lex_state *LS) {
 }
 
 static void parse_atom(struct lex_state *LS) {
-    static const char *separator = " \t\r\n,{}[]$:=\"'";
+    static const char *separator = " \t\r\n,{}[]$:\"'";
     const char *ptr = LS->source + LS->position;
     const char *endptr = LS->source + LS->sz;
     char head = *ptr;
@@ -2235,7 +2236,6 @@ static int next_token(struct lex_state *LS) {
                 }
                 return 1;
             case ':':
-            case '=':
                 LS->n.type = TOKEN_MAP;
                 LS->n.from = LS->position;
                 LS->n.to = ++LS->position;
@@ -2473,6 +2473,18 @@ static void push_token(lua_State *L, struct lex_state *LS, struct token *t) {
 }
 
 static inline int token_length(struct token *t) { return (int)(t->to - t->from); }
+
+static inline int token_ident(struct lex_state *LS) {
+    struct token *t = &LS->c;
+    const char *ptr = LS->source + t->from;
+    const char *endptr = LS->source + t->to;
+    int ident = token_length(t);
+    while (endptr > ptr) {
+        if (*ptr == '\t') ident += TAB_SPACE - 1;
+        ++ptr;
+    }
+    return ident;
+}
 
 static inline int token_symbol(struct lex_state *LS) { return LS->source[LS->c.from]; }
 
@@ -2730,7 +2742,7 @@ static void parse_converter(lua_State *L, struct lex_state *LS, int layer, int i
     switch (LS->c.type) {
         case TOKEN_NEWLINE:
             if (ident < 0) invalid(L, LS, "Invalid newline , Use { } for a struct instead");
-            next_ident = token_length(&LS->c);
+            next_ident = token_ident(LS);
             if (next_ident < ident) {
                 invalid(L, LS, "Invalid new section ident");
             }
@@ -2764,7 +2776,7 @@ static void parse_converter(lua_State *L, struct lex_state *LS, int layer, int i
 static int next_item(lua_State *L, struct lex_state *LS, int ident) {
     int t = LS->c.type;
     if (t == TOKEN_NEWLINE) {
-        int next_ident = token_length(&LS->c);
+        int next_ident = token_ident(LS);
         if (next_ident == ident) {
             if (LS->n.type == TOKEN_LIST) return 0;
             read_token(L, LS);
@@ -2811,7 +2823,7 @@ static void parse_section_map(lua_State *L, struct lex_state *LS, int ident, int
                 parse_converter(L, LS, layer + 1, ident + 1);
                 break;
             case TOKEN_NEWLINE: {
-                int next_ident = token_length(&LS->c);
+                int next_ident = token_ident(LS);
                 if (next_ident <= ident) {
                     invalid(L, LS, "Invalid new section ident");
                 }
@@ -2862,7 +2874,7 @@ static void parse_section_sequence(lua_State *L, struct lex_state *LS, int ident
 static int next_list(lua_State *L, struct lex_state *LS, int ident) {
     int t = LS->c.type;
     if (t == TOKEN_NEWLINE) {
-        int next_ident = token_length(&LS->c);
+        int next_ident = token_ident(LS);
         if (next_ident == ident) {
             switch (read_token(L, LS)) {
                 case TOKEN_EOF:
@@ -2914,7 +2926,7 @@ static void parse_section_list(lua_State *L, struct lex_state *LS, int ident, in
                 parse_converter(L, LS, layer + 1, ident);
                 break;
             case TOKEN_NEWLINE: {
-                int next_ident = token_length(&LS->c);
+                int next_ident = token_ident(LS);
                 if (next_ident >= ident) {
                     new_table(L, layer + 1, tag);
                     if (LS->n.type != TOKEN_LIST || next_ident > ident) {
@@ -2942,7 +2954,7 @@ static void parse_section_list(lua_State *L, struct lex_state *LS, int ident, in
 }
 
 static void parse_section(lua_State *L, struct lex_state *LS, int layer) {
-    int ident = token_length(&LS->c);
+    int ident = token_ident(LS);
     switch (read_token(L, LS)) {
         case TOKEN_ATOM:
             if (LS->n.type == TOKEN_MAP) {
@@ -3087,7 +3099,7 @@ static int lquote(lua_State *L) {
     return 1;
 }
 
-int luaopen_datalist(lua_State *L) {
+int neko_luaopen_nekonode(lua_State *L) {
     luaL_checkversion(L);
     luaL_Reg l[] = {
             {"parse", lparse}, {"parse_list", lparse_list}, {"token", ltoken}, {"quote", lquote}, {NULL, NULL},

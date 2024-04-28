@@ -147,8 +147,8 @@ void test_sr();
 void test_ut();
 void test_se();
 void test_containers();
-void test_nbt();
-void test_thd(void);
+void test_thd();
+void test_fgd();
 
 NEKO_API_DECL void test_sexpr();
 NEKO_API_DECL void test_ttf();
@@ -1398,29 +1398,14 @@ void game_update() {
 
             ImGui::Separator();
 
-            if (ImGui::Button("test_fnt")) {
-                FILE *file = fopen("1.fnt", "rb");
-                neko_fnt *fnt = neko_font_fnt_read(file);
-                fclose(file);
-                if (NULL != fnt && fnt->num_glyphs > 0) {
-                    neko_println("Got FNT! %i glyphs", fnt->num_glyphs);
-                    // printf("First glyph is '%c' in page '%s'.\n", fnt->glyphs[0].ch, fnt->page_names[fnt->glyphs[0].page]);
-
-                    for (int i = 0; i < fnt->num_glyphs; i += 10) {
-                        neko_println("glyph '%u' in '%s'", fnt->glyphs[i].ch, fnt->page_names[fnt->glyphs[i].page]);
-                    }
-                }
-                neko_font_fnt_free(fnt);
-            }
-
             if (ImGui::Button("test_xml")) test_xml(game_assets("gamedir/tests/test.xml"));
+            if (ImGui::Button("test_fgd")) test_fgd();
             if (ImGui::Button("test_se")) test_se();
             if (ImGui::Button("test_sr")) test_sr();
             if (ImGui::Button("test_ut")) test_ut();
             if (ImGui::Button("test_backtrace")) __neko_inter_stacktrace();
             if (ImGui::Button("test_containers")) test_containers();
             if (ImGui::Button("test_sexpr")) test_sexpr();
-            if (ImGui::Button("test_nbt")) test_nbt();
             if (ImGui::Button("test_thread")) test_thd();
             if (ImGui::Button("test_sc")) {
                 neko_timer_do(t, neko_println("%llu", t), { test_sc(); });
@@ -1453,7 +1438,10 @@ void game_update() {
             if (ImGui::BeginMainMenuBar()) {
                 if (ImGui::BeginMenu("engine")) {
                     if (ImGui::Checkbox("vsync", &g_cvar.vsync)) neko_platform_enable_vsync(g_cvar.vsync);
-                    if (ImGui::MenuItem("quit")) neko_quit();
+                    if (ImGui::MenuItem("quit")) {
+                        ImGui::OpenPopup("Delete?");
+                    }
+
                     ImGui::EndMenu();
                 }
                 ImGui::EndMainMenuBar();
@@ -1570,7 +1558,7 @@ neko_game_desc_t neko_main(s32 argc, char **argv) {
     return neko_game_desc_t{.init = game_init,
                             .update = game_update,
                             .shutdown = game_shutdown,
-                            .window = {.width = 1280, .height = 720, .vsync = false, .frame_rate = 60.f, .center = true, .running_background = true},
+                            .window = {.width = 1280, .height = 720, .vsync = false, .frame_rate = 60.f, .hdpi = false, .center = true, .running_background = true},
                             .argc = argc,
                             .argv = argv,
                             .console = &console};

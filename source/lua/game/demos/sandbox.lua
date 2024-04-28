@@ -205,6 +205,8 @@ test_filewatch_callback = function(change, virtual_path)
             end
         end
 
+        -- TODO 热更新进度提示?需要异步
+
     end
 end
 

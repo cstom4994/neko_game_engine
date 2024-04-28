@@ -105,51 +105,6 @@ NEKO_API_DECL u32 neko_lz_decode(const void* in, u32 inlen, void* out, u32 outle
 NEKO_API_DECL u32 neko_lz_bounds(u32 inlen, u32 flags);
 
 /*==========================
-// NEKO_FNT
-==========================*/
-
-typedef struct {
-    u32 ch;
-    u16 x;
-    u16 y;
-    u16 width;
-    u16 height;
-    s16 offset_x;
-    s16 offset_y;
-    s16 advance_x;
-    u8 page;
-    u8 channel;
-} neko_font_fnt_glyph;
-
-typedef struct {
-    u32 first_char;
-    u32 second_char;
-    s16 amount;
-} neko_font_fnt_kerning;
-
-// fnt 二进制文件存储格式见
-// http://www.angelcode.com/products/bmfont/doc/file_format.html
-typedef struct {
-    char* name;
-    int size;
-    int line_height;
-    int base;
-    size_t num_pages;
-    char** page_names;
-    size_t num_glyphs;
-    neko_font_fnt_glyph* glyphs;
-    size_t num_kerning_pairs;
-    neko_font_fnt_kerning* kerning_pairs;
-    const char* error_message;
-} neko_fnt;
-
-typedef size_t (*neko_font_fnt_read_func_t)(void* user_data, u8* buffer, size_t count);
-
-NEKO_API_DECL neko_fnt* neko_font_fnt_read(FILE* file);
-NEKO_API_DECL void neko_font_fnt_free(neko_fnt* fnt);
-NEKO_API_DECL neko_fnt* neko_font_fnt_read_from_callbacks(void* user_data, neko_font_fnt_read_func_t read_func);
-
-/*==========================
 // NEKO_PACK
 ==========================*/
 
@@ -188,7 +143,7 @@ typedef struct pack_item {
     char* path;
 } pack_item;
 
-struct neko_packreader_s {
+typedef struct neko_packreader_s {
     FILE* file;
     u64 item_count;
     pack_item* items;
@@ -198,9 +153,7 @@ struct neko_packreader_s {
     u32 zip_size;
     pack_item search_item;
     u32 file_ref_count;
-};
-
-typedef struct neko_packreader_s neko_packreader_t;
+} neko_packreader_t;
 
 NEKO_API_DECL neko_pack_result neko_pack_read(const_str file_path, u32 data_buffer_capacity, bool is_resources_directory, neko_packreader_t* pack_reader);
 NEKO_API_DECL void neko_pack_destroy(neko_packreader_t* pack_reader);
@@ -277,136 +230,6 @@ NEKO_API_DECL const_str neko_xml_get_error();
 NEKO_API_DECL neko_xml_node_iter_t neko_xml_new_node_iter(neko_xml_document_t* doc, const_str name);
 NEKO_API_DECL neko_xml_node_iter_t neko_xml_new_node_child_iter(neko_xml_node_t* node, const_str name);
 NEKO_API_DECL bool neko_xml_node_iter_next(neko_xml_node_iter_t* iter);
-
-/*==========================
-// NEKO_NBT
-==========================*/
-
-// Based on https://wiki.vg/NBT (Named binary tag be used in Minecraft)
-
-#define NEKO_NBT_BUFFER_SIZE 32768
-
-typedef enum {
-    NBT_TYPE_END,
-    NBT_TYPE_BYTE,
-    NBT_TYPE_SHORT,
-    NBT_TYPE_INT,
-    NBT_TYPE_LONG,
-    NBT_TYPE_FLOAT,
-    NBT_TYPE_DOUBLE,
-    NBT_TYPE_BYTE_ARRAY,
-    NBT_TYPE_STRING,
-    NBT_TYPE_LIST,
-    NBT_TYPE_COMPOUND,
-    NBT_TYPE_INT_ARRAY,
-    NBT_TYPE_LONG_ARRAY,
-    NBT_NO_OVERRIDE
-} neko_nbt_tag_type_t;
-
-typedef struct neko_nbt_tag_t neko_nbt_tag_t;
-
-struct neko_nbt_tag_t {
-
-    neko_nbt_tag_type_t type;
-
-    char* name;
-    size_t name_size;
-
-    union {
-        struct {
-            s8 value;
-        } tag_byte;
-        struct {
-            s16 value;
-        } tag_short;
-        struct {
-            s32 value;
-        } tag_int;
-        struct {
-            s64 value;
-        } tag_long;
-        struct {
-            float value;
-        } tag_float;
-        struct {
-            double value;
-        } tag_double;
-        struct {
-            s8* value;
-            size_t size;
-        } tag_byte_array;
-        struct {
-            char* value;
-            size_t size;
-        } tag_string;
-        struct {
-            neko_nbt_tag_t** value;
-            neko_nbt_tag_type_t type;
-            size_t size;
-        } tag_list;
-        struct {
-            neko_nbt_tag_t** value;
-            size_t size;
-        } tag_compound;
-        struct {
-            s32* value;
-            size_t size;
-        } tag_int_array;
-        struct {
-            s64* value;
-            size_t size;
-        } tag_long_array;
-    };
-};
-
-typedef struct {
-    size_t (*read)(void* userdata, u8* data, size_t size);
-    void* userdata;
-} neko_nbt_reader_t;
-
-typedef struct {
-    size_t (*write)(void* userdata, u8* data, size_t size);
-    void* userdata;
-} neko_nbt_writer_t;
-
-typedef enum {
-    NBT_PARSE_FLAG_USE_RAW = 1,
-} neko_nbt_parse_flags_t;
-
-typedef enum { NBT_WRITE_FLAG_USE_RAW = 1 } neko_nbt_write_flags_t;
-
-NEKO_API_DECL neko_nbt_tag_t* neko_nbt_parse(neko_nbt_reader_t reader, int parse_flags);
-NEKO_API_DECL void neko_nbt_write(neko_nbt_writer_t writer, neko_nbt_tag_t* tag, int write_flags);
-
-NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_byte(s8 value);
-NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_short(s16 value);
-NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_int(s32 value);
-NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_long(s64 value);
-NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_float(float value);
-NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_double(double value);
-NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_byte_array(s8* value, size_t size);
-NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_string(const char* value, size_t size);
-NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_list(neko_nbt_tag_type_t type);
-NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_compound(void);
-NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_int_array(s32* value, size_t size);
-NEKO_API_DECL neko_nbt_tag_t* neko_nbt_new_tag_long_array(s64* value, size_t size);
-
-NEKO_API_DECL void neko_nbt_set_tag_name(neko_nbt_tag_t* tag, const char* name, size_t size);
-
-NEKO_API_DECL void neko_nbt_tag_list_append(neko_nbt_tag_t* list, neko_nbt_tag_t* value);
-NEKO_API_DECL neko_nbt_tag_t* neko_nbt_tag_list_get(neko_nbt_tag_t* tag, size_t index);
-NEKO_API_DECL void neko_nbt_tag_compound_append(neko_nbt_tag_t* compound, neko_nbt_tag_t* value);
-NEKO_API_DECL neko_nbt_tag_t* neko_nbt_tag_compound_get(neko_nbt_tag_t* tag, const char* key);
-
-NEKO_API_DECL void neko_nbt_free_tag(neko_nbt_tag_t* tag);
-
-NEKO_API_DECL neko_nbt_tag_t* neko_read_nbt_file_default(const char* name, int flags);
-NEKO_API_DECL void neko_write_nbt_file_default(const char* name, neko_nbt_tag_t* tag, int flags);
-
-#define neko_nbt_readfile neko_read_nbt_file_default
-#define neko_nbt_writefile neko_write_nbt_file_default
-
-NEKO_API_DECL void neko_nbt_print_tree(neko_nbt_tag_t* tag, int indentation);
 
 /*==========================
 // NEKO_FONT

@@ -8,6 +8,7 @@
 
 // game
 #include "game_physics_math.hpp"
+#include "game_pixelui.h"
 
 #define g_window_width 1280
 #define g_window_height 740
@@ -17,10 +18,6 @@ extern neko_client_userdata_t g_client_userdata;
 
 // neko engine cpp
 using namespace neko;
-
-typedef neko_color_t cell_color_t;
-
-typedef u32 mat_id_t;
 
 enum mat_physics_type {
     AIR = 0,
@@ -95,67 +92,6 @@ typedef struct mat_t {
 s32 l;
 s32 l_check;
 
-// For now, all particle information will simply be a value to determine its material mat_id
-#define mat_id_empty (mat_id_t)0
-#define mat_id_sand (mat_id_t)1
-#define mat_id_water (mat_id_t)2
-#define mat_id_salt (mat_id_t)3
-#define mat_id_wood (mat_id_t)4
-#define mat_id_fire (mat_id_t)5
-#define mat_id_smoke (mat_id_t)6
-#define mat_id_ember (mat_id_t)7
-#define mat_id_steam (mat_id_t)8
-#define mat_id_gunpowder (mat_id_t)9
-#define mat_id_oil (mat_id_t)10
-#define mat_id_lava (mat_id_t)11
-#define mat_id_stone (mat_id_t)12
-#define mat_id_acid (mat_id_t)13
-
-// Colors
-#define mat_col_empty \
-    cell_color_t { 0, 0, 0, 0 }
-#define mat_col_sand \
-    cell_color_t { 150, 100, 50, 255 }
-#define mat_col_salt \
-    cell_color_t { 200, 180, 190, 255 }
-#define mat_col_water \
-    cell_color_t { 20, 100, 170, 200 }
-#define mat_col_stone \
-    cell_color_t { 120, 110, 120, 255 }
-#define mat_col_wood \
-    cell_color_t { 60, 40, 20, 255 }
-#define mat_col_fire \
-    cell_color_t { 150, 20, 0, 255 }
-#define mat_col_smoke \
-    cell_color_t { 50, 50, 50, 255 }
-#define mat_col_ember \
-    cell_color_t { 200, 120, 20, 255 }
-#define mat_col_steam \
-    cell_color_t { 220, 220, 250, 255 }
-#define mat_col_gunpowder \
-    cell_color_t { 60, 60, 60, 255 }
-#define mat_col_oil \
-    cell_color_t { 80, 70, 60, 255 }
-#define mat_col_lava \
-    cell_color_t { 200, 50, 0, 255 }
-#define mat_col_acid \
-    cell_color_t { 90, 200, 60, 255 }
-
-typedef enum material_selection {
-    mat_sel_sand = 0x00,
-    mat_sel_water,
-    mat_sel_salt,
-    mat_sel_wood,
-    mat_sel_fire,
-    mat_sel_smoke,
-    mat_sel_steam,
-    mat_sel_gunpowder,
-    mat_sel_oil,
-    mat_sel_lava,
-    mat_sel_stone,
-    mat_sel_acid
-} material_selection;
-
 typedef struct neko_fallsand_render {
 
     f32 render_scale = 5;
@@ -169,15 +105,10 @@ typedef struct neko_fallsand_render {
     f32 brush_size = 0.3f;
     f32 world_gravity = 10.f;
 
-    neko_texture_t tex_ui = {0};
-
     neko_vec2 chunk_render_pos;
 
     // Material selection for "painting" / default to sand
     material_selection material_selection = mat_sel_sand;
-
-    // UI texture buffer
-    cell_color_t* ui_buffer = {0};
 
     // Frame counter
     u32 frame_counter = 0;
@@ -194,7 +125,6 @@ typedef struct neko_fallsand_render {
     cell_color_t* texture_buffer;
     neko_texture_t tex;
 
-    u64 update_time;
 } neko_fallsand_render;
 
 // neko_global neko_fallsand_render g_fallsand;
@@ -592,25 +522,13 @@ void game_chunk_init(neko_fallsand_render* fallsand) {
     fallsand->data = (unsigned char*)neko_safe_malloc(sizeof(unsigned char) * fallsand->render_w * fallsand->render_h);
     fallsand->edgeSeen = (bool*)neko_safe_malloc(sizeof(bool) * fallsand->render_w * fallsand->render_h);
 
-    fallsand->ui_buffer = (cell_color_t*)neko_safe_malloc(g_pixelui_texture_width * g_pixelui_texture_height * sizeof(cell_color_t));
-    memset(fallsand->ui_buffer, 0, g_pixelui_texture_width * g_pixelui_texture_height);
-
-    neko_graphics_texture_desc_t t_desc = neko_default_val();
-    t_desc.format = NEKO_GRAPHICS_TEXTURE_FORMAT_RGBA8;
-    t_desc.mag_filter = NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST;
-    t_desc.min_filter = NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST;
-    t_desc.num_mips = 0;
-    t_desc.width = g_pixelui_texture_width;
-    t_desc.height = g_pixelui_texture_height;
-    t_desc.data[0] = fallsand->ui_buffer;
-
-    fallsand->tex_ui = neko_graphics_texture_create(&t_desc);
-
     fallsand->world_particle_data = (particle_t*)neko_safe_malloc(fallsand->render_w * fallsand->render_h * sizeof(particle_t));
     fallsand->texture_buffer = (cell_color_t*)neko_safe_malloc(fallsand->render_w * fallsand->render_h * sizeof(cell_color_t));
 
     memset(fallsand->texture_buffer, 0, fallsand->render_w * fallsand->render_h * sizeof(cell_color_t));
     memset(fallsand->world_particle_data, 0, fallsand->render_w * fallsand->render_h * sizeof(particle_t));
+
+    neko_graphics_texture_desc_t t_desc = neko_default_val();
 
     t_desc = neko_default_val();
     t_desc.format = NEKO_GRAPHICS_TEXTURE_FORMAT_RGBA8;
@@ -634,9 +552,6 @@ void game_chunk_init(neko_fallsand_render* fallsand) {
         neko_dyn_array_push(fallsand->chunk_data, ch);
     }
 
-    // Load UI font texture data from file
-    construct_font_data(g_font_data);
-
     // Set up callback for dropping them files, yo.
     // neko_platform_set_dropped_files_callback(neko_platform_main_window(), &drop_file_callback);
 }
@@ -655,14 +570,13 @@ void game_chunk_destroy(neko_fallsand_render* fallsand) {
     neko_safe_free(fallsand->world_particle_data);
     neko_safe_free(fallsand->texture_buffer);
 
-    neko_graphics_texture_destroy(fallsand->tex_ui);
-    neko_safe_free(fallsand->ui_buffer);
-
     game_matdata_destroy(fallsand);
 }
+
 void game_chunk_update(neko_fallsand_render* fallsand) {
 
-    bool ui_interaction = update_ui(fallsand);
+    // bool ui_interaction = update_ui(fallsand);
+    bool ui_interaction = false;
 
     if (!ui_interaction) {
         update_input(fallsand);
@@ -713,8 +627,6 @@ void game_chunk_update(neko_fallsand_render* fallsand) {
     }
 
     chunk_update_mesh(fallsand, NULL);
-
-    neko_idraw_rect_textured_ext(idraw, 0, 0, fbs.x, fbs.y, 0, 1, 1, 0, fallsand->tex_ui.id, NEKO_COLOR_WHITE);
 
     // Update frame counter
     fallsand->frame_counter = (fallsand->frame_counter + 1) % u32_max;
@@ -986,7 +898,7 @@ void chunk_update_particle(neko_fallsand_render* fallsand, game_chunk_t* chunk) 
                     // Update particle's lifetime (I guess just use frames)? Or should I have sublife?
                     fallsand->world_particle_data[read_idx].life_time += 1.f * dt;
 
-                    fallsand->update_time++;
+                    // fallsand->update_time++;
 
                     // 检测在静态 mat_list 序列中
                     // 否则检测动态 g_mat_data 哈希表

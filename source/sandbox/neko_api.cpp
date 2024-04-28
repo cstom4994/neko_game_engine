@@ -14,6 +14,7 @@
 // game
 #include "sandbox/game_chunk.h"
 #include "sandbox/game_imgui.h"
+#include "sandbox/game_pixelui.h"
 #include "sandbox/imgui_lua_inspector.hpp"
 #include "sandbox/neko_profiler.h"
 
@@ -863,6 +864,38 @@ static int __neko_bind_fallingsand_update(lua_State* L) {
 static int __neko_bind_fallingsand_end(lua_State* L) {
     neko_fallsand_render* user_handle = (neko_fallsand_render*)lua_touserdata(L, 1);
     game_chunk_destroy(user_handle);
+    return 0;
+}
+
+static int __neko_bind_pixelui_create(lua_State* L) {
+    // const_str file_path = lua_tostring(L, 1);
+
+    pixelui_t* user_handle = (pixelui_t*)lua_newuserdata(L, sizeof(pixelui_t));
+    memset(user_handle, 0, sizeof(pixelui_t));
+
+    // user_handle->show_frame_count = true;
+    user_handle->show_material_selection_panel = true;
+
+    pixelui_init(user_handle);
+
+    return 1;
+}
+
+static int __neko_bind_pixelui_update(lua_State* L) {
+    pixelui_t* user_handle = (pixelui_t*)lua_touserdata(L, 1);
+    update_ui(user_handle);
+    return 0;
+}
+
+static int __neko_bind_pixelui_tex(lua_State* L) {
+    pixelui_t* user_handle = (pixelui_t*)lua_touserdata(L, 1);
+    neko_lua_auto_struct_push_member(L, neko_texture_t, id, &user_handle->tex_ui);
+    return 1;
+}
+
+static int __neko_bind_pixelui_end(lua_State* L) {
+    pixelui_t* user_handle = (pixelui_t*)lua_touserdata(L, 1);
+    pixelui_destroy(user_handle);
     return 0;
 }
 
@@ -3258,6 +3291,11 @@ int open_neko(lua_State* L) {
             {"fallingsand_update", __neko_bind_fallingsand_update},
             {"fallingsand_end", __neko_bind_fallingsand_end},
 
+            {"pixelui_create", __neko_bind_pixelui_create},
+            {"pixelui_update", __neko_bind_pixelui_update},
+            {"pixelui_end", __neko_bind_pixelui_end},
+            {"pixelui_tex", __neko_bind_pixelui_tex},
+
             {"gfxt_create", __neko_bind_gfxt_create},
             {"gfxt_update", __neko_bind_gfxt_update},
             {"gfxt_end", __neko_bind_gfxt_end},
@@ -3416,11 +3454,11 @@ void neko_register(lua_State* L) {
 
     g_client_userdata.L = L;
 
-    luaopen_cstruct_core(L);
-    luaopen_cstruct_test(L);
+    neko_luaopen_cstruct_core(L);
+    neko_luaopen_cstruct_test(L);
 
     PRELOAD("neko_lua_ds.core", luaopen_ds_core);
-    PRELOAD("neko_lua_datalist.core", luaopen_datalist);
+    PRELOAD("neko_nekonode", neko_luaopen_nekonode);
     PRELOAD("cffi", luaopen_cffi);
     PRELOAD("imgui", luaopen_neko_imgui);
     // PRELOAD("enet", luaopen_neko_enet);

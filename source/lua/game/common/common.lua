@@ -185,6 +185,21 @@ function M.rad2deg(__R)
     return (__R * 180.0) / M.neko_pi
 end
 
+function M.str2bytes(str)
+    local bytes = {}
+    local length = string.len(str)
+    for i = 1, length do
+        local s = string.sub(str, i, i)
+        local b = string.byte(s)
+        table.insert(bytes, b)
+    end
+    return bytes
+end
+
+function M.bytes2str(bytes)
+    return string.char(table.unpack(bytes))
+end
+
 local cdata = {}
 
 function cdata:new_struct(name, struct)

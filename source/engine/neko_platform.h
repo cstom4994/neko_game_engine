@@ -73,6 +73,7 @@ typedef struct neko_platform_running_desc_s {
     u32 monitor_index;
     b32 vsync;
     f32 frame_rate;
+    b32 hdpi;
     const_str engine_args;
     bool center;
     bool running_background;
