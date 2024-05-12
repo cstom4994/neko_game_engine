@@ -39,7 +39,7 @@ ecs_world:register("velocity2", {
 
 ecs_world:register("player", scale, {ud})
 
-ecs_world:register("npc", scale, {r, ud})
+ecs_world:register("npc", scale, {r, ud, npc_typename})
 
 ecs_world:register("tiled_map", {path, ud})
 
@@ -291,6 +291,9 @@ end
 local win_w, win_h
 local test_audio
 
+local fbs_x = 640 * 1.5
+local fbs_y = 360 * 1.5
+
 M.sub_init = function()
 
     test_ase_witch = neko.aseprite.create(neko_file_path("gamedir/assets/textures/B_witch.ase"))
@@ -299,10 +302,18 @@ M.sub_init = function()
 
     win_w, win_h = neko_window_size(neko_main_window())
 
-    gd.cam = to_vec2(0.0, 0.0)
+    gd.main_fbo = neko.graphics_framebuffer_create()
+    gd.main_rt = neko.graphics_texture_create(fbs_x, fbs_y, {
+        type = "NEKO_GRAPHICS_TEXTURE_2D",
+        format = "NEKO_GRAPHICS_TEXTURE_FORMAT_RGBA32F",
+        wrap_s = "NEKO_GRAPHICS_TEXTURE_WRAP_REPEAT",
+        wrap_t = "NEKO_GRAPHICS_TEXTURE_WRAP_REPEAT",
+        min_filter = "NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST",
+        mag_filter = "NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST"
+    })
+    gd.main_rp = neko.graphics_renderpass_create(gd.main_fbo, gd.main_rt)
 
-    local texture_list = {"gamedir/assets/textures/dragon_zombie.png", "gamedir/assets/textures/night_spirit.png"}
-    gd.test_batch = neko.sprite_batch_create(32, texture_list, batch_vs, batch_ps)
+    gd.cam = to_vec2(0.0, 0.0)
 
     local eid1 = ecs_world:new{
         gameobj = {
@@ -396,7 +407,7 @@ M.sub_init = function()
 
     -- safefunc()
 
-    for i = 1, 1, 1 do
+    for i = 1, 10, 1 do
         local e = ecs_world:new{
             gameobj = {
                 name = "npc_pdx_" .. i,
@@ -415,7 +426,8 @@ M.sub_init = function()
             npc = {
                 r = -1,
                 scale = 3.0,
-                ud = neko.aseprite_render.create(test_ase_pdx)
+                ud = neko.aseprite_render.create(test_ase_pdx),
+                npc_typename = "pdx"
             }
         }
 
@@ -443,7 +455,8 @@ M.sub_init = function()
             npc = {
                 r = -1,
                 scale = 4.0,
-                ud = neko.aseprite_render.create(test_ase_harvester)
+                ud = neko.aseprite_render.create(test_ase_harvester),
+                npc_typename = "harvester"
             }
         }
 
@@ -482,11 +495,13 @@ M.sub_shutdown = function()
 
     neko.audio_unload(test_audio)
 
-    neko.sprite_batch_end(gd.test_batch)
-
     -- M.client:disconnect()
 
     -- M.server:destroy()
+
+    neko.graphics_renderpass_destroy(gd.main_rp)
+    neko.graphics_texture_destroy(gd.main_rt)
+    neko.graphics_framebuffer_destroy(gd.main_fbo)
 end
 
 gd.tick = 0
@@ -715,9 +730,25 @@ M.sub_update = function(dt)
 
         brain(e, 1)
 
+        local Filter = function(item, other)
+            -- if     other.isCoin   then return 'cross'
+            -- elseif other.isWall   then return 'slide'
+            -- elseif other.isExit   then return 'touch'
+            -- elseif other.isSpring then return 'bounce'
+            -- end
+
+            if p.npc_typename == "pdx" then
+                return "cross"
+            else
+                return "slide"
+            end
+
+            -- else return nil
+        end
+
         if v.dx ~= 0 or v.dy ~= 0 then
             local cols
-            v2.x, v2.y, cols, cols_len = phy_world:move(p, v2.x + v.dx, v2.y + v.dy)
+            v2.x, v2.y, cols, cols_len = phy_world:move(p, v2.x + v.dx, v2.y + v.dy, Filter)
             for i = 1, cols_len do
                 local col = cols[i]
                 -- print(("col[%d]: other = %s, type = %s, normal = %d,%d"):format(i, dump_func(col.other), col.type,
@@ -773,9 +804,15 @@ local obj_view
 
 M.sub_render = function()
 
-    fbs_x, fbs_y = neko_framebuffer_size()
+    -- local fbs_x, fbs_y = neko_framebuffer_size()
+    win_w, win_h = neko_window_size(neko_main_window())
 
     local t = neko_platform_elapsed_time()
+
+    neko.graphics_renderpass_begin(gd.main_rp)
+    neko.graphics_set_viewport(0.0, 0.0, fbs_x, fbs_y)
+    neko.graphics_clear(0.0, 0.0, 0.0, 0.0)
+    neko.graphics_renderpass_end()
 
     neko.idraw_defaults()
     -- neko.idraw_camera2d(fbs_x, fbs_y)
@@ -786,7 +823,8 @@ M.sub_render = function()
 
     for v2, t, obj in ecs_world:match("all", "vector2", "tiled_map", "gameobj") do
         if CObject.CGameObject_get_active(SAFE_SD(obj)) then
-            neko.tiled_render(SAFE_UD(t), 0, to_vec2(0, 0), gd.cam.x, fbs_x + gd.cam.x, gd.cam.y, fbs_y + gd.cam.y)
+            neko.tiled_render(SAFE_UD(t), gd.main_rp, to_vec2(0, 0), gd.cam.x, fbs_x + gd.cam.x, gd.cam.y,
+                fbs_y + gd.cam.y)
 
             -- neko.idraw_texture(gd.rt)
             -- neko.idraw_rectvd(v2, to_vec2(64 * 16 * 2, 32 * 16 * 2), to_vec2(0.0, 1.0), to_vec2(1.0, 0.0),
@@ -862,8 +900,8 @@ M.sub_render = function()
         y = 48 * 3.0
     }, "NEKO_GRAPHICS_PRIMITIVE_LINES", to_color(255, 255, 144, 255))
 
-    local cc_x = player_pos.x - win_w / 2 + 24 * 3
-    local cc_y = player_pos.y - win_h / 2 + 24 * 3
+    local cc_x = player_pos.x - fbs_x / 2 + 24 * 3
+    local cc_y = player_pos.y - fbs_y / 2 + 24 * 3
     tweens.to(gd.cam, 1.5, {
         x = cc_x,
         y = cc_y
@@ -924,34 +962,21 @@ M.sub_render = function()
         draw_blocks()
     end
 
-    neko.graphics_renderpass_begin(0)
+    neko.graphics_renderpass_begin(gd.main_rp)
     neko.graphics_set_viewport(0.0, 0.0, fbs_x, fbs_y)
     neko.idraw_draw()
     neko.graphics_renderpass_end()
 
-    neko.sprite_batch_render_ortho(gd.test_batch, fbs_x, fbs_y, 0, 0)
-    neko.sprite_batch_render_begin(gd.test_batch)
+    neko.idraw_defaults()
+    neko.idraw_camera2d(win_w, win_h)
+    neko.idraw_texture(gd.main_rt)
+    neko.idraw_rectvd(to_vec2(0.0, 0.0), to_vec2(win_w, win_h), to_vec2(0.0, 1.0), to_vec2(1.0, 0.0),
+        "NEKO_GRAPHICS_PRIMITIVE_TRIANGLES", to_color(255, 255, 255, 255))
 
-    local dragon_zombie = neko.sprite_batch_make_sprite(gd.test_batch, 0, 650, 500, 1, common.rad2deg(t / 100000.0), 0)
-    local night_spirit = neko.sprite_batch_make_sprite(gd.test_batch, 1, 0, 500, 1, 0, 0)
-    neko.sprite_batch_push_sprite(gd.test_batch, dragon_zombie)
-    neko.sprite_batch_push_sprite(gd.test_batch, night_spirit)
-
-    -- for i = 0, 4 do
-    --     local polish = neko.sprite_batch_make_sprite(gd.test_batch, 1, 200, 880, 1, common.rad2deg(t / 50000.0), 0)
-    --     local translated = polish
-    --     local polish_x = CObject.getter("neko_sprite_t", "x")(polish)
-    --     local polish_y = CObject.getter("neko_sprite_t", "y")(polish)
-    --     local polish_sx = CObject.getter("neko_sprite_t", "sx")(polish)
-    --     local polish_sy = CObject.getter("neko_sprite_t", "sy")(polish)
-    --     for j = 0, 6 do
-    --         CObject.setter("neko_sprite_t", "x")(translated, polish_x + polish_sx * i)
-    --         CObject.setter("neko_sprite_t", "y")(translated, polish_y + polish_sy * j)
-    --         neko.sprite_batch_push_sprite(gd.test_batch, translated)
-    --     end
-    -- end
-
-    neko.sprite_batch_render_end(gd.test_batch)
+    neko.graphics_renderpass_begin(0)
+    neko.graphics_set_viewport(0.0, 0.0, win_w, win_h)
+    neko.idraw_draw()
+    neko.graphics_renderpass_end()
 
 end
 

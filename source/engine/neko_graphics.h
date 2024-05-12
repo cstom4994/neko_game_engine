@@ -570,7 +570,7 @@ typedef struct neko_graphics_t {
 
         // Create
         neko_handle(neko_graphics_texture_t) (*texture_create)(const neko_graphics_texture_desc_t* desc);
-        neko_handle(neko_graphics_uniform_t) (*uniform_create)(const neko_graphics_uniform_desc_t* desc);
+        neko_handle(neko_graphics_uniform_t) (*uniform_create)(const neko_graphics_uniform_desc_t desc);
         neko_handle(neko_graphics_shader_t) (*shader_create)(const neko_graphics_shader_desc_t* desc);
         neko_handle(neko_graphics_vertex_buffer_t) (*vertex_buffer_create)(const neko_graphics_vertex_buffer_desc_t* desc);
         neko_handle(neko_graphics_index_buffer_t) (*index_buffer_create)(const neko_graphics_index_buffer_desc_t* desc);
@@ -766,7 +766,7 @@ NEKO_API_DECL void neko_graphics_batch_copy(float* dst, float* src);
 // Resource Creation
 // Create
 NEKO_API_DECL neko_handle(neko_graphics_texture_t) neko_graphics_texture_create(const neko_graphics_texture_desc_t* desc);
-NEKO_API_DECL neko_handle(neko_graphics_uniform_t) neko_graphics_uniform_create(const neko_graphics_uniform_desc_t* desc);
+NEKO_API_DECL neko_handle(neko_graphics_uniform_t) neko_graphics_uniform_create(const neko_graphics_uniform_desc_t desc);
 NEKO_API_DECL neko_handle(neko_graphics_shader_t) neko_graphics_shader_create(const neko_graphics_shader_desc_t* desc);
 NEKO_API_DECL neko_handle(neko_graphics_vertex_buffer_t) neko_graphics_vertex_buffer_create(const neko_graphics_vertex_buffer_desc_t* desc);
 NEKO_API_DECL neko_handle(neko_graphics_index_buffer_t) neko_graphics_index_buffer_create(const neko_graphics_index_buffer_desc_t* desc);

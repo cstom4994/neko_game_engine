@@ -3254,7 +3254,7 @@ void neko_tiled_render_init(neko_command_buffer_t *cb, neko_tiled_renderer *rend
             .layout = &(neko_graphics_uniform_layout_desc_t){.type = NEKO_GRAPHICS_UNIFORM_SAMPLER2D},
     };
 
-    renderer->u_batch_tex = neko_graphics_uniform_create(&u_desc);
+    renderer->u_batch_tex = neko_graphics_uniform_create(u_desc);
 
     renderer->shader = neko_graphics_shader_create(&(neko_graphics_shader_desc_t){.sources =
                                                                                           (neko_graphics_shader_source_desc_t[]){
@@ -3265,7 +3265,7 @@ void neko_tiled_render_init(neko_command_buffer_t *cb, neko_tiled_renderer *rend
                                                                                   .name = "tiled_sprite_shader"});
 
     renderer->u_camera =
-            neko_graphics_uniform_create(&(neko_graphics_uniform_desc_t){.name = "tiled_sprite_camera", .layout = &(neko_graphics_uniform_layout_desc_t){.type = NEKO_GRAPHICS_UNIFORM_MAT4}});
+            neko_graphics_uniform_create((neko_graphics_uniform_desc_t){.name = "tiled_sprite_camera", .layout = &(neko_graphics_uniform_layout_desc_t){.type = NEKO_GRAPHICS_UNIFORM_MAT4}});
 
     renderer->pip = neko_graphics_pipeline_create(
             &(neko_graphics_pipeline_desc_t){.raster = {.shader = renderer->shader, .index_buffer_element_size = sizeof(uint32_t)},

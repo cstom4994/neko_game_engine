@@ -22,22 +22,20 @@ void putpixel(pixelui_t* pui, s32 x, s32 y) {
     }
 }
 
-// Function to put pixels
-// at subsequence points
-void drawCircle(pixelui_t* pui, s32 xc, s32 yc, s32 x, s32 y) {
-    putpixel(pui, xc + x, yc + y);
-    putpixel(pui, xc - x, yc + y);
-    putpixel(pui, xc + x, yc - y);
-    putpixel(pui, xc - x, yc - y);
-    putpixel(pui, xc + y, yc + x);
-    putpixel(pui, xc - y, yc + x);
-    putpixel(pui, xc + y, yc - x);
-    putpixel(pui, xc - y, yc - x);
-}
-
 // Function for circle-generation
 // using Bresenham's algorithm
 void circle_bres(pixelui_t* pui, s32 xc, s32 yc, s32 r) {
+    auto drawCircle = [](pixelui_t* pui, s32 xc, s32 yc, s32 x, s32 y) {
+        putpixel(pui, xc + x, yc + y);
+        putpixel(pui, xc - x, yc + y);
+        putpixel(pui, xc + x, yc - y);
+        putpixel(pui, xc - x, yc - y);
+        putpixel(pui, xc + y, yc + x);
+        putpixel(pui, xc - y, yc + x);
+        putpixel(pui, xc + y, yc - x);
+        putpixel(pui, xc - y, yc - x);
+    };
+
     s32 x = 0, y = r;
     s32 d = 3 - 2 * r;
     drawCircle(pui, xc, yc, x, y);

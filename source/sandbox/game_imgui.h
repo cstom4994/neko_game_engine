@@ -183,7 +183,7 @@ void main(){
     neko_graphics_uniform_desc_t utexdesc = {};
     memcpy(utexdesc.name, "Texture", 64);
     utexdesc.layout = &slayout;
-    neko_imgui->u_tex = neko_graphics_uniform_create(&utexdesc);
+    neko_imgui->u_tex = neko_graphics_uniform_create(utexdesc);
 
     // Construct uniform
     neko_graphics_uniform_layout_desc_t ulayout = neko_default_val();
@@ -193,7 +193,7 @@ void main(){
     udesc.layout = &ulayout;
 
     // Construct project matrix uniform
-    neko_imgui->u_proj = neko_graphics_uniform_create(&udesc);
+    neko_imgui->u_proj = neko_graphics_uniform_create(udesc);
 
     // Vertex buffer description
     neko_graphics_vertex_buffer_desc_t vbufdesc = {};

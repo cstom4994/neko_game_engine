@@ -195,7 +195,7 @@ s32 neko_profiler_draw_frame(neko_profiler_frame_t *_data, void *_buffer, size_t
 
     bool resetZoom = false;
     static f32 threshold = 0.0f;
-    static s32 thresholdLevel = 0;
+    static s32 threshold_level = 0;
 
     if (_inGame) {
         ImGui::PushItemWidth(210);
@@ -203,7 +203,7 @@ s32 neko_profiler_draw_frame(neko_profiler_frame_t *_data, void *_buffer, size_t
 
         ImGui::SameLine();
         ImGui::PushItemWidth(120);
-        ImGui::SliderInt("阈值级别", &thresholdLevel, 0, 23);
+        ImGui::SliderInt("阈值级别", &threshold_level, 0, 23);
 
         ImGui::SameLine();
         if (ImGui::Button("保存帧")) ret = neko_profiler_save(_data, _buffer, _bufferSize);
@@ -270,7 +270,7 @@ s32 neko_profiler_draw_frame(neko_profiler_frame_t *_data, void *_buffer, size_t
     }
 
     neko_profiler_set_paused(pause);
-    neko_profiler_set_threshold(threshold, thresholdLevel);
+    neko_profiler_set_threshold(threshold, threshold_level);
 
     static const s32 ME_MAX_FRAME_TIMES = 128;
     static f32 s_frameTimes[ME_MAX_FRAME_TIMES];
@@ -393,7 +393,7 @@ s32 neko_profiler_draw_frame(neko_profiler_frame_t *_data, void *_buffer, size_t
             stat_clicked_level = cs.level;
         }
 
-        if ((thresholdLevel == (s32)cs.level + 1) && (threshold <= __neko_profiler_clock2ms(cs.end - cs.start, _data->cpu_frequency))) flash_color(drawColor, currTime - _data->end_time);
+        if ((threshold_level == (s32)cs.level + 1) && (threshold <= __neko_profiler_clock2ms(cs.end - cs.start, _data->cpu_frequency))) flash_color(drawColor, currTime - _data->end_time);
 
         draw_list->PushClipRect(tl, br, true);
         draw_list->AddRectFilled(tl, br, drawColor);

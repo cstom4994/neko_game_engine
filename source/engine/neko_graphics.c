@@ -1867,31 +1867,31 @@ NEKO_API_DECL neko_handle(neko_graphics_texture_t) neko_graphics_texture_create_
     return (neko_handle_create(neko_graphics_texture_t, neko_slot_array_insert(ogl->textures, tex)));
 }
 
-NEKO_API_DECL neko_handle(neko_graphics_uniform_t) neko_graphics_uniform_create_impl(const neko_graphics_uniform_desc_t* desc) {
+NEKO_API_DECL neko_handle(neko_graphics_uniform_t) neko_graphics_uniform_create_impl(const neko_graphics_uniform_desc_t desc) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(graphics)->user_data;
 
     // Assert if data isn't named
-    if (desc->name == NULL) {
+    if (desc.name == NULL) {
         neko_log_warning("Uniform must be named for OpenGL.");
         return neko_handle_invalid(neko_graphics_uniform_t);
     }
 
-    u32 ct = !desc->layout ? 0 : !desc->layout_size ? 1 : (u32)desc->layout_size / (u32)sizeof(neko_graphics_uniform_layout_desc_t);
+    u32 ct = !desc.layout ? 0 : !desc.layout_size ? 1 : (u32)desc.layout_size / (u32)sizeof(neko_graphics_uniform_layout_desc_t);
     if (ct < 1) {
-        neko_log_warning("Uniform layout description must not be empty for: %s.", desc->name);
+        neko_log_warning("Uniform layout description must not be empty for: %s.", desc.name);
         return neko_handle_invalid(neko_graphics_uniform_t);
     }
 
     // Construct list for uniform handles
     neko_gl_uniform_list_t ul = neko_default_val();
-    memcpy(ul.name, desc->name, 64);
+    memcpy(ul.name, desc.name, 64);
 
     // Iterate layout, construct individual handles
     for (u32 i = 0; i < ct; ++i) {
         // Uniform to fill out
         neko_gl_uniform_t u = neko_default_val();
         // Cache layout
-        neko_graphics_uniform_layout_desc_t* layout = &desc->layout[i];
+        neko_graphics_uniform_layout_desc_t* layout = &desc.layout[i];
 
         memcpy(u.name, layout->fname, 64);
         u.type = neko_gl_uniform_type_to_gl_uniform_type(layout->type);
@@ -3794,7 +3794,7 @@ NEKO_API_DECL void neko_graphics_init(neko_graphics_t* graphics) {
 // 资源构造函数
 NEKO_API_DECL neko_handle(neko_graphics_texture_t) neko_graphics_texture_create(const neko_graphics_texture_desc_t* desc) { return neko_graphics()->api.texture_create(desc); }
 
-NEKO_API_DECL neko_handle(neko_graphics_uniform_t) neko_graphics_uniform_create(const neko_graphics_uniform_desc_t* desc) { return neko_graphics()->api.uniform_create(desc); }
+NEKO_API_DECL neko_handle(neko_graphics_uniform_t) neko_graphics_uniform_create(const neko_graphics_uniform_desc_t desc) { return neko_graphics()->api.uniform_create(desc); }
 
 NEKO_API_DECL neko_handle(neko_graphics_shader_t) neko_graphics_shader_create(const neko_graphics_shader_desc_t* desc) { return neko_graphics()->api.shader_create(desc); }
 

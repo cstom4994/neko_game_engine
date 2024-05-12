@@ -1007,7 +1007,6 @@ void main() { out_col = texture(u_sprite_texture, v_uv); }
 }
 
 void game_update() {
-    //    if (is_hotfix_loaded) neko_hotload_module_update(ctx);
 
     int this_init_thread_flag = thread_atomic_int_load(&init_thread_flag);
 
@@ -1475,19 +1474,7 @@ void game_update() {
         {
             neko_graphics_set_viewport(&g_cb, 0, 0, (u32)fbs.x, (u32)fbs.y);
             neko_idraw_draw(&g_idraw, &g_cb);  // 立即模式绘制 idraw
-        }
-        neko_graphics_renderpass_end(&g_cb);
-
-        neko_graphics_renderpass_begin(&g_cb, NEKO_GRAPHICS_RENDER_PASS_DEFAULT);
-        {
-            neko_graphics_set_viewport(&g_cb, 0, 0, (u32)fbs.x, (u32)fbs.y);
             neko_graphics_draw_batch(&g_cb, font_render, 0, 0, 0);
-        }
-        neko_graphics_renderpass_end(&g_cb);
-
-        neko_graphics_renderpass_begin(&g_cb, NEKO_GRAPHICS_RENDER_PASS_DEFAULT);
-        {
-            neko_graphics_set_viewport(&g_cb, 0, 0, (u32)fbs.x, (u32)fbs.y);
             neko_ui_render(&g_ui, &g_cb);
         }
         neko_graphics_renderpass_end(&g_cb);

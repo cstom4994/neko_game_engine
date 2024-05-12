@@ -1,5 +1,5 @@
-local TEX_WIDTH = 512
-local TEX_HEIGHT = 512
+local TEX_WIDTH = 128
+local TEX_HEIGHT = 128
 
 local text = ImGui.StringBuf("12344")
 local fnt_text = ImGui.StringBuf("中文渲染测试 日本語レンダリングテスト Hello World! ")
@@ -13,7 +13,7 @@ neko.hooks.add("render", "main", function(v)
     ImGui.Text("%s", v)
     ImGui.End()
 
-    -- neko.draw_text(50.0, 50.0, tostring(fnt_text), 3.0)
+    neko.draw_text(50.0, 50.0, tostring(fnt_text), 3.0)
 
 end)
 
@@ -31,6 +31,17 @@ local M = {
     sub_init = function()
 
         local win_w, win_h = neko_window_size(neko_main_window())
+
+        gd.main_fbo = neko.graphics_framebuffer_create()
+        gd.main_rt = neko.graphics_texture_create(win_w, win_h, {
+            type = "NEKO_GRAPHICS_TEXTURE_2D",
+            format = "NEKO_GRAPHICS_TEXTURE_FORMAT_RGBA32F",
+            wrap_s = "NEKO_GRAPHICS_TEXTURE_WRAP_REPEAT",
+            wrap_t = "NEKO_GRAPHICS_TEXTURE_WRAP_REPEAT",
+            min_filter = "NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST",
+            mag_filter = "NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST"
+        })
+        gd.main_rp = neko.graphics_renderpass_create(gd.main_fbo, gd.main_rt)
 
         gd.fbo = neko.graphics_framebuffer_create()
         gd.rt = neko.graphics_texture_create(win_w, win_h)
@@ -132,13 +143,23 @@ local M = {
                 size = test_custom_sprite.v_attr_size
             }
         })
+
+        local texture_list = {"gamedir/assets/textures/dragon_zombie.png", "gamedir/assets/textures/night_spirit.png"}
+        gd.test_batch = neko.sprite_batch_create(32, texture_list, batch_vs, batch_ps)
+
     end,
 
     sub_shutdown = function()
 
+        neko.sprite_batch_end(gd.test_batch)
+
         neko.graphics_renderpass_destroy(gd.rp)
         neko.graphics_texture_destroy(gd.rt)
         neko.graphics_framebuffer_destroy(gd.fbo)
+
+        neko.graphics_renderpass_destroy(gd.main_rp)
+        neko.graphics_texture_destroy(gd.main_rt)
+        neko.graphics_framebuffer_destroy(gd.main_fbo)
     end,
 
     sub_pre_update = function()
@@ -149,10 +170,12 @@ local M = {
     end,
     sub_render = function()
 
-        local fbs_x, fbs_y = neko_framebuffer_size()
+        local t = neko_platform_elapsed_time()
 
-        neko.idraw_defaults()
-        neko.idraw_camera2d(fbs_x, fbs_y)
+        local fbs_x = 640
+        local fbs_y = 360
+
+        local win_w, win_h = neko_window_size(neko_main_window())
 
         local roll = neko_platform_elapsed_time() * 0.001
 
@@ -176,16 +199,20 @@ local M = {
         local v1 = to_vec2(0.0, 0.0)
         local v2 = to_vec2(TEX_WIDTH, TEX_HEIGHT)
 
+        neko.idraw_defaults()
+        neko.idraw_camera2d(fbs_x, fbs_y)
+
         neko.idraw_texture(test_tex)
         neko.idraw_rectvd(v1, v2, to_vec2(0.0, 0.0), to_vec2(1.0, 1.0), "NEKO_GRAPHICS_PRIMITIVE_TRIANGLES",
             to_color(255, 255, 255, 255))
 
-        neko.graphics_renderpass_begin(0)
+        neko.graphics_renderpass_begin(gd.main_rp)
         neko.graphics_set_viewport(0.0, 0.0, fbs_x, fbs_y)
+        neko.graphics_clear(0.0, 0.0, 0.0, 0.0)
         neko.idraw_draw()
         neko.graphics_renderpass_end()
 
-        neko.graphics_renderpass_begin(0)
+        neko.graphics_renderpass_begin(gd.main_rp)
         neko.graphics_pipeline_bind(test_custom_sprite.pipeline)
         neko.graphics_apply_bindings({
             uniforms = {{
@@ -234,6 +261,43 @@ local M = {
         -- neko.graphics_set_viewport(0.0, 0.0, fbs_x, fbs_y)
         -- neko.idraw_draw()
         -- neko.graphics_renderpass_end()
+
+        neko.idraw_defaults()
+        neko.idraw_camera2d(fbs_x, fbs_y)
+        neko.idraw_texture(gd.main_rt)
+        neko.idraw_rectvd(to_vec2(0.0, 0.0), to_vec2(win_w, win_h), to_vec2(0.0, 0.0), to_vec2(1.0, 1.0),
+            "NEKO_GRAPHICS_PRIMITIVE_TRIANGLES", to_color(255, 255, 255, 255))
+
+        neko.graphics_renderpass_begin(0)
+        neko.graphics_set_viewport(0.0, 0.0, win_w, win_h)
+        neko.idraw_draw()
+        neko.graphics_renderpass_end()
+
+        neko.sprite_batch_render_ortho(gd.test_batch, fbs_x, fbs_y, 0, 0)
+        neko.sprite_batch_render_begin(gd.test_batch)
+
+        local dragon_zombie = neko.sprite_batch_make_sprite(gd.test_batch, 0, 250, 200, 1, common.rad2deg(t / 100000.0),
+            0)
+        local night_spirit = neko.sprite_batch_make_sprite(gd.test_batch, 1, 0, 200, 1, 0, 0)
+        neko.sprite_batch_push_sprite(gd.test_batch, dragon_zombie)
+        neko.sprite_batch_push_sprite(gd.test_batch, night_spirit)
+
+        -- for i = 0, 4 do
+        --     local polish = neko.sprite_batch_make_sprite(gd.test_batch, 1, 200, 880, 1, common.rad2deg(t / 50000.0), 0)
+        --     local translated = polish
+        --     local polish_x = CObject.getter("neko_sprite_t", "x")(polish)
+        --     local polish_y = CObject.getter("neko_sprite_t", "y")(polish)
+        --     local polish_sx = CObject.getter("neko_sprite_t", "sx")(polish)
+        --     local polish_sy = CObject.getter("neko_sprite_t", "sy")(polish)
+        --     for j = 0, 6 do
+        --         CObject.setter("neko_sprite_t", "x")(translated, polish_x + polish_sx * i)
+        --         CObject.setter("neko_sprite_t", "y")(translated, polish_y + polish_sy * j)
+        --         neko.sprite_batch_push_sprite(gd.test_batch, translated)
+        --     end
+        -- end
+
+        neko.sprite_batch_render_end(gd.test_batch)
+
     end,
     test_update = function()
 

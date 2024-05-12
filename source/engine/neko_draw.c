@@ -230,7 +230,7 @@ void neko_immediate_draw_static_data_init() {
     neko_graphics_uniform_desc_t udesc = neko_default_val();
     memcpy(udesc.name, NEKO_IDRAW_UNIFORM_MVP_MATRIX, sizeof(NEKO_IDRAW_UNIFORM_MVP_MATRIX));
     udesc.layout = &uldesc;
-    neko_idraw()->uniform = neko_graphics_uniform_create(&udesc);
+    neko_idraw()->uniform = neko_graphics_uniform_create(udesc);
 
     // Create sampler buffer
     neko_graphics_uniform_layout_desc_t sldesc = neko_default_val();
@@ -238,7 +238,7 @@ void neko_immediate_draw_static_data_init() {
     neko_graphics_uniform_desc_t sbdesc = neko_default_val();
     memcpy(sbdesc.name, NEKO_IDRAW_UNIFORM_TEXTURE2D, sizeof(NEKO_IDRAW_UNIFORM_TEXTURE2D));
     sbdesc.layout = &sldesc;
-    neko_idraw()->sampler = neko_graphics_uniform_create(&sbdesc);
+    neko_idraw()->sampler = neko_graphics_uniform_create(sbdesc);
 
     // Create default texture (4x4 white)
     neko_color_t pixels[16] = neko_default_val();
@@ -2036,7 +2036,7 @@ NEKO_API_DECL neko_draw_uniform_block_t neko_draw_uniform_block_create(const nek
             } break;
 
             default: {
-                u.hndl = neko_graphics_uniform_create(&u_desc);
+                u.hndl = neko_graphics_uniform_create(u_desc);
                 u.offset = offset;
             } break;
         }

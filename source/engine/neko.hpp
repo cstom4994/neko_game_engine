@@ -1287,6 +1287,8 @@ struct neko_array {
         neko_assert(i >= 0 && i < len);
         return data[i];
     }
+
+    void dctor() { neko_safe_free(data); }
 };
 
 template <typename T>

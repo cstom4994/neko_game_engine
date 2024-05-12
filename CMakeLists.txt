@@ -24,6 +24,7 @@ if(MSVC)
 
         set(neko_engine_lib ${glfw_lib} ${ffi_lib})
         include_directories(
+                "source/deps/box2d/"
                 "source/deps/glad/include/"
                 "source/deps/glfw/include/"
                 "source/deps/libffi/include/"
@@ -143,10 +144,61 @@ if(MSVC)
         endforeach()
 endif(MSVC)
 
+
+set(box2d_src
+        source/deps/box2d/collision/b2_broad_phase.cpp
+        source/deps/box2d/collision/b2_chain_shape.cpp
+        source/deps/box2d/collision/b2_circle_shape.cpp
+        source/deps/box2d/collision/b2_collide_circle.cpp
+        source/deps/box2d/collision/b2_collide_edge.cpp
+        source/deps/box2d/collision/b2_collide_polygon.cpp
+        source/deps/box2d/collision/b2_collision.cpp
+        source/deps/box2d/collision/b2_distance.cpp
+        source/deps/box2d/collision/b2_dynamic_tree.cpp
+        source/deps/box2d/collision/b2_edge_shape.cpp
+        source/deps/box2d/collision/b2_polygon_shape.cpp
+        source/deps/box2d/collision/b2_time_of_impact.cpp
+        source/deps/box2d/common/b2_block_allocator.cpp
+        source/deps/box2d/common/b2_draw.cpp
+        source/deps/box2d/common/b2_math.cpp
+        source/deps/box2d/common/b2_settings.cpp
+        source/deps/box2d/common/b2_stack_allocator.cpp
+        source/deps/box2d/common/b2_timer.cpp
+        source/deps/box2d/dynamics/b2_body.cpp
+        source/deps/box2d/dynamics/b2_chain_circle_contact.cpp
+        source/deps/box2d/dynamics/b2_chain_polygon_contact.cpp
+        source/deps/box2d/dynamics/b2_circle_contact.cpp
+        source/deps/box2d/dynamics/b2_contact.cpp
+        source/deps/box2d/dynamics/b2_contact_manager.cpp
+        source/deps/box2d/dynamics/b2_contact_solver.cpp
+        source/deps/box2d/dynamics/b2_distance_joint.cpp
+        source/deps/box2d/dynamics/b2_edge_circle_contact.cpp
+        source/deps/box2d/dynamics/b2_edge_polygon_contact.cpp
+        source/deps/box2d/dynamics/b2_fixture.cpp
+        source/deps/box2d/dynamics/b2_friction_joint.cpp
+        source/deps/box2d/dynamics/b2_gear_joint.cpp
+        source/deps/box2d/dynamics/b2_island.cpp
+        source/deps/box2d/dynamics/b2_joint.cpp
+        source/deps/box2d/dynamics/b2_motor_joint.cpp
+        source/deps/box2d/dynamics/b2_mouse_joint.cpp
+        source/deps/box2d/dynamics/b2_polygon_circle_contact.cpp
+        source/deps/box2d/dynamics/b2_polygon_contact.cpp
+        source/deps/box2d/dynamics/b2_prismatic_joint.cpp
+        source/deps/box2d/dynamics/b2_pulley_joint.cpp
+        source/deps/box2d/dynamics/b2_revolute_joint.cpp
+        source/deps/box2d/dynamics/b2_weld_joint.cpp
+        source/deps/box2d/dynamics/b2_wheel_joint.cpp
+        source/deps/box2d/dynamics/b2_world.cpp
+        source/deps/box2d/dynamics/b2_world_callbacks.cpp
+        source/deps/box2d/rope/b2_rope.cpp
+)
+
+
 file(GLOB_RECURSE neko_engine_src CONFIGURE_DEPENDS "source/engine/**.*")
 
 set(neko_engine_src_all
         ${neko_engine_src}
+        ${box2d_src}
         "source/deps/impl_build.cpp"
 )
 
