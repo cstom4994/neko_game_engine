@@ -921,6 +921,9 @@ void neko_platform_init(neko_platform_t* pf) {
         } break;
     }
 
+//    glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
+    //    glfwWindowHint(GLFW_DECORATED, GLFW_FALSE); // 设置窗口无边框
+
     // Construct cursors
     pf->cursors[(u32)NEKO_PLATFORM_CURSOR_ARROW] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
     pf->cursors[(u32)NEKO_PLATFORM_CURSOR_IBEAM] = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);

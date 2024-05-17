@@ -21,7 +21,7 @@ static void contact_run_cb(lua_State *L, s32 ref, s32 a, s32 b, s32 msgh) {
 
 struct PhysicsContactListener : public b2ContactListener {
     lua_State *L = nullptr;
-    Physics physics = {};
+    neko_physics physics = {};
     s32 begin_contact_ref = LUA_REFNIL;
     s32 end_contact_ref = LUA_REFNIL;
 
@@ -29,10 +29,10 @@ struct PhysicsContactListener : public b2ContactListener {
         lua_pushcfunction(L, luax_msgh);
         *msgh = lua_gettop(L);
 
-        Physics a = physics_weak_copy(&physics);
+        neko_physics a = physics_weak_copy(&physics);
         a.fixture = contact->GetFixtureA();
 
-        Physics b = physics_weak_copy(&physics);
+        neko_physics b = physics_weak_copy(&physics);
         b.fixture = contact->GetFixtureB();
 
         luax_new_userdata(L, a, "mt_b2_fixture");
@@ -77,8 +77,8 @@ struct PhysicsContactListener : public b2ContactListener {
     }
 };
 
-Physics physics_world_make(lua_State *L, b2Vec2 gravity, f32 meter) {
-    Physics physics = {};
+neko_physics physics_world_make(lua_State *L, b2Vec2 gravity, f32 meter) {
+    neko_physics physics = {};
     physics.world = new b2World(gravity);
     physics.meter = meter;
     physics.contact_listener = new PhysicsContactListener;
@@ -90,7 +90,7 @@ Physics physics_world_make(lua_State *L, b2Vec2 gravity, f32 meter) {
     return physics;
 }
 
-void physics_world_trash(lua_State *L, Physics *p) {
+void physics_world_trash(lua_State *L, neko_physics *p) {
     if (p == nullptr) {
         return;
     }
@@ -108,7 +108,7 @@ void physics_world_trash(lua_State *L, Physics *p) {
     p->world = nullptr;
 }
 
-void physics_world_begin_contact(lua_State *L, Physics *p, s32 arg) {
+void physics_world_begin_contact(lua_State *L, neko_physics *p, s32 arg) {
     if (p->contact_listener->begin_contact_ref != LUA_REFNIL) {
         luaL_unref(L, LUA_REGISTRYINDEX, p->contact_listener->begin_contact_ref);
     }
@@ -118,7 +118,7 @@ void physics_world_begin_contact(lua_State *L, Physics *p, s32 arg) {
     p->contact_listener->begin_contact_ref = ref;
 }
 
-void physics_world_end_contact(lua_State *L, Physics *p, s32 arg) {
+void physics_world_end_contact(lua_State *L, neko_physics *p, s32 arg) {
     if (p->contact_listener->end_contact_ref != LUA_REFNIL) {
         luaL_unref(L, LUA_REGISTRYINDEX, p->contact_listener->end_contact_ref);
     }
@@ -128,8 +128,8 @@ void physics_world_end_contact(lua_State *L, Physics *p, s32 arg) {
     p->contact_listener->end_contact_ref = ref;
 }
 
-Physics physics_weak_copy(Physics *p) {
-    Physics physics = {};
+neko_physics physics_weak_copy(neko_physics *p) {
+    neko_physics physics = {};
     physics.world = p->world;
     physics.contact_listener = p->contact_listener;
     physics.meter = p->meter;
@@ -152,7 +152,7 @@ static void drop_physics_udata(lua_State *L, neko_physics_userdata *pud) {
     }
 }
 
-void physics_destroy_body(lua_State *L, Physics *physics) {
+void physics_destroy_body(lua_State *L, neko_physics *physics) {
     neko_array<neko_physics_userdata *> puds = {};
     neko_defer(puds.dctor());
 

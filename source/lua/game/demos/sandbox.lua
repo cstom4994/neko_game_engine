@@ -313,6 +313,9 @@ M.sub_init = function()
     })
     gd.main_rp = neko.graphics_renderpass_create(gd.main_fbo, gd.main_rt)
 
+    local texture_list = {"gamedir/assets/textures/dragon_zombie.png", "gamedir/assets/textures/night_spirit.png"}
+    gd.test_batch = neko.sprite_batch_create(32, texture_list, batch_vs, batch_ps)
+
     gd.cam = to_vec2(0.0, 0.0)
 
     local eid1 = ecs_world:new{
@@ -498,6 +501,8 @@ M.sub_shutdown = function()
     -- M.client:disconnect()
 
     -- M.server:destroy()
+
+    neko.sprite_batch_end(gd.test_batch)
 
     neko.graphics_renderpass_destroy(gd.main_rp)
     neko.graphics_texture_destroy(gd.main_rt)
@@ -977,6 +982,30 @@ M.sub_render = function()
     neko.graphics_set_viewport(0.0, 0.0, win_w, win_h)
     neko.idraw_draw()
     neko.graphics_renderpass_end()
+
+    neko.sprite_batch_render_ortho(gd.test_batch, fbs_x, fbs_y, 0, 0)
+    neko.sprite_batch_render_begin(gd.test_batch)
+
+    local dragon_zombie = neko.sprite_batch_make_sprite(gd.test_batch, 0, 250, 200, 1, common.rad2deg(t / 100000.0), 0)
+    local night_spirit = neko.sprite_batch_make_sprite(gd.test_batch, 1, 0, 200, 1, 0, 0)
+    neko.sprite_batch_push_sprite(gd.test_batch, dragon_zombie)
+    neko.sprite_batch_push_sprite(gd.test_batch, night_spirit)
+
+    -- for i = 0, 4 do
+    --     local polish = neko.sprite_batch_make_sprite(gd.test_batch, 1, 200, 880, 1, common.rad2deg(t / 50000.0), 0)
+    --     local translated = polish
+    --     local polish_x = CObject.getter("neko_sprite_t", "x")(polish)
+    --     local polish_y = CObject.getter("neko_sprite_t", "y")(polish)
+    --     local polish_sx = CObject.getter("neko_sprite_t", "sx")(polish)
+    --     local polish_sy = CObject.getter("neko_sprite_t", "sy")(polish)
+    --     for j = 0, 6 do
+    --         CObject.setter("neko_sprite_t", "x")(translated, polish_x + polish_sx * i)
+    --         CObject.setter("neko_sprite_t", "y")(translated, polish_y + polish_sy * j)
+    --         neko.sprite_batch_push_sprite(gd.test_batch, translated)
+    --     end
+    -- end
+
+    neko.sprite_batch_render_end(gd.test_batch)
 
 end
 

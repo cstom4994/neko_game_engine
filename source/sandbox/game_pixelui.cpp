@@ -22,8 +22,8 @@ void putpixel(pixelui_t* pui, s32 x, s32 y) {
     }
 }
 
-// Function for circle-generation
-// using Bresenham's algorithm
+// 圆生成函数
+// 使用 Bresenham 算法
 void circle_bres(pixelui_t* pui, s32 xc, s32 yc, s32 r) {
     auto drawCircle = [](pixelui_t* pui, s32 xc, s32 yc, s32 x, s32 y) {
         putpixel(pui, xc + x, yc + y);
@@ -152,19 +152,12 @@ bool update_ui(pixelui_t* pui) {
         const s32 offset = 12;
         s32 xoff = 20;
         s32 base = 10;
-        // Sand Selection
-        __gui_interaction(pui->g_pixelui_texture_width - xoff, base + offset * 0, 10, 10, mat_col_sand, "Sand", mat_sel_sand);
-        __gui_interaction(pui->g_pixelui_texture_width - xoff, base + offset * 1, 10, 10, mat_col_water, "Water", mat_sel_water);
-        __gui_interaction(pui->g_pixelui_texture_width - xoff, base + offset * 2, 10, 10, mat_col_smoke, "Smoke", mat_sel_smoke);
-        __gui_interaction(pui->g_pixelui_texture_width - xoff, base + offset * 3, 10, 10, mat_col_fire, "Fire", mat_sel_fire);
-        __gui_interaction(pui->g_pixelui_texture_width - xoff, base + offset * 4, 10, 10, mat_col_steam, "Steam", mat_sel_steam);
-        __gui_interaction(pui->g_pixelui_texture_width - xoff, base + offset * 5, 10, 10, mat_col_oil, "Oil", mat_sel_oil);
-        __gui_interaction(pui->g_pixelui_texture_width - xoff, base + offset * 6, 10, 10, mat_col_salt, "Salt", mat_sel_salt);
-        __gui_interaction(pui->g_pixelui_texture_width - xoff, base + offset * 7, 10, 10, mat_col_wood, "Wood", mat_sel_wood);
-        __gui_interaction(pui->g_pixelui_texture_width - xoff, base + offset * 8, 10, 10, mat_col_stone, "Stone", mat_sel_stone);
-        __gui_interaction(pui->g_pixelui_texture_width - xoff, base + offset * 9, 10, 10, mat_col_lava, "Lava", mat_sel_lava);
-        __gui_interaction(pui->g_pixelui_texture_width - xoff, base + offset * 10, 10, 10, mat_col_gunpowder, "GunPowder", mat_sel_gunpowder);
-        __gui_interaction(pui->g_pixelui_texture_width - xoff, base + offset * 11, 10, 10, mat_col_acid, "Acid", mat_sel_acid);
+
+        auto& mat_map = MagicPixelFactory::Instance()->get_registy();
+        for (auto& mat_reg : mat_map) {
+            auto mat = mat_reg.second();
+            __gui_interaction(pui->g_pixelui_texture_width - xoff, base + offset * (u32)mat->material_, 10, 10, mat->color_, "Sand", mat->material_);
+        }
     }
 
     if (pui->show_frame_count) {
@@ -173,17 +166,13 @@ bool update_ui(pixelui_t* pui) {
         neko_snprintf(frame_time_str, sizeof(frame_time_str), "frame: %6.2f ms %llu", neko_platform_frame_time(), pui->update_time);
         draw_string_at(pui, &pixel_font, pui->ui_buffer, 10, 10, frame_time_str, strlen(frame_time_str), neko_color_t{255, 255, 255, 255});
 
-        char sim_state_str[256];
-        neko_snprintf(sim_state_str, sizeof(sim_state_str), "state: %s", "running");
-        draw_string_at(pui, &pixel_font, pui->ui_buffer, 10, 20, sim_state_str, strlen(sim_state_str), neko_color_t{255, 255, 255, 255});
-
         // gfx->fontcache_push_x_y(std::format("test: {0} {1}", l_check, neko_buildnum()), g_basic_font, 40, 160);
     }
 
     pui->update_time = 0;
 
     // 围绕鼠标指针绘制圆圈
-    s32 R = 0.5f * pui->g_pixelui_scale;
+    s32 R = pui->brush_size * pui->g_pixelui_scale;
     circle_bres(pui, (s32)(mp.x), (s32)(mp.y), R);
 
     // 将更新后的纹理数据上传到 GPU

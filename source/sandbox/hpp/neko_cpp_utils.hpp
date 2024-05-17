@@ -11,10 +11,12 @@
 #include <cstdint>
 #include <functional>
 #include <locale>
+#include <map>
 #include <span>
 #include <string_view>
 #include <type_traits>
 #include <unordered_map>
+#include <vector>
 
 #include "engine/neko.hpp"
 
@@ -1732,5 +1734,39 @@ neko_defer<F> defer_func(F f) {
 }
 
 #define neko_defer(code) auto neko_concat(_defer_, __COUNTER__) = defer_func([&]() { code; })
+
+template <typename T>
+struct neko_is_vector : std::false_type {};
+
+template <typename T, typename Alloc>
+struct neko_is_vector<std::vector<T, Alloc>> : std::true_type {};
+
+namespace detail {
+// 某些旧版本的 GCC 需要
+template <typename...>
+struct voider {
+    using type = void;
+};
+
+// std::void_t 将成为 C++17 的一部分 但在这里我还是自己实现吧
+template <typename... T>
+using void_t = typename voider<T...>::type;
+
+template <typename T, typename U = void>
+struct is_mappish_impl : std::false_type {};
+
+template <typename T>
+struct is_mappish_impl<T, void_t<typename T::key_type, typename T::mapped_type, decltype(std::declval<T &>()[std::declval<const typename T::key_type &>()])>> : std::true_type {};
+}  // namespace detail
+
+template <typename T>
+struct neko_is_mappish : detail::is_mappish_impl<T>::type {};
+
+template <class... Ts>
+struct neko_overloaded : Ts... {
+    using Ts::operator()...;
+};
+template <class... Ts>
+neko_overloaded(Ts...) -> neko_overloaded<Ts...>;
 
 #endif

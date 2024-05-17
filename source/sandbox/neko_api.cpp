@@ -12,7 +12,6 @@
 #include "engine/neko_lua.h"
 
 // game
-#include "sandbox/game_chunk.h"
 #include "sandbox/game_imgui.h"
 #include "sandbox/game_physics.h"
 #include "sandbox/game_pixelui.h"
@@ -556,7 +555,7 @@ neko_inline void neko_register_platform(lua_State* L) {
 // box2d fixture
 
 static int mt_b2_fixture_friction(lua_State* L) {
-    Physics* physics = (Physics*)luaL_checkudata(L, 1, "mt_b2_fixture");
+    neko_physics* physics = (neko_physics*)luaL_checkudata(L, 1, "mt_b2_fixture");
     b2Fixture* fixture = physics->fixture;
 
     float friction = fixture->GetFriction();
@@ -565,7 +564,7 @@ static int mt_b2_fixture_friction(lua_State* L) {
 }
 
 static int mt_b2_fixture_restitution(lua_State* L) {
-    Physics* physics = (Physics*)luaL_checkudata(L, 1, "mt_b2_fixture");
+    neko_physics* physics = (neko_physics*)luaL_checkudata(L, 1, "mt_b2_fixture");
     b2Fixture* fixture = physics->fixture;
 
     float restitution = fixture->GetRestitution();
@@ -574,7 +573,7 @@ static int mt_b2_fixture_restitution(lua_State* L) {
 }
 
 static int mt_b2_fixture_is_sensor(lua_State* L) {
-    Physics* physics = (Physics*)luaL_checkudata(L, 1, "mt_b2_fixture");
+    neko_physics* physics = (neko_physics*)luaL_checkudata(L, 1, "mt_b2_fixture");
     b2Fixture* fixture = physics->fixture;
 
     float sensor = fixture->IsSensor();
@@ -583,7 +582,7 @@ static int mt_b2_fixture_is_sensor(lua_State* L) {
 }
 
 static int mt_b2_fixture_set_friction(lua_State* L) {
-    Physics* physics = (Physics*)luaL_checkudata(L, 1, "mt_b2_fixture");
+    neko_physics* physics = (neko_physics*)luaL_checkudata(L, 1, "mt_b2_fixture");
     b2Fixture* fixture = physics->fixture;
 
     float friction = luaL_checknumber(L, 2);
@@ -592,7 +591,7 @@ static int mt_b2_fixture_set_friction(lua_State* L) {
 }
 
 static int mt_b2_fixture_set_restitution(lua_State* L) {
-    Physics* physics = (Physics*)luaL_checkudata(L, 1, "mt_b2_fixture");
+    neko_physics* physics = (neko_physics*)luaL_checkudata(L, 1, "mt_b2_fixture");
     b2Fixture* fixture = physics->fixture;
 
     float restitution = luaL_checknumber(L, 2);
@@ -601,7 +600,7 @@ static int mt_b2_fixture_set_restitution(lua_State* L) {
 }
 
 static int mt_b2_fixture_set_sensor(lua_State* L) {
-    Physics* physics = (Physics*)luaL_checkudata(L, 1, "mt_b2_fixture");
+    neko_physics* physics = (neko_physics*)luaL_checkudata(L, 1, "mt_b2_fixture");
     b2Fixture* fixture = physics->fixture;
 
     bool sensor = lua_toboolean(L, 2);
@@ -610,7 +609,7 @@ static int mt_b2_fixture_set_sensor(lua_State* L) {
 }
 
 static int mt_b2_fixture_body(lua_State* L) {
-    Physics* physics = (Physics*)luaL_checkudata(L, 1, "mt_b2_fixture");
+    neko_physics* physics = (neko_physics*)luaL_checkudata(L, 1, "mt_b2_fixture");
     b2Fixture* fixture = physics->fixture;
 
     b2Body* body = fixture->GetBody();
@@ -619,7 +618,7 @@ static int mt_b2_fixture_body(lua_State* L) {
     assert(pud != nullptr);
     pud->ref_count++;
 
-    Physics p = physics_weak_copy(physics);
+    neko_physics p = physics_weak_copy(physics);
     p.body = body;
 
     luax_new_userdata(L, p, "mt_b2_body");
@@ -627,7 +626,7 @@ static int mt_b2_fixture_body(lua_State* L) {
 }
 
 static int mt_b2_fixture_udata(lua_State* L) {
-    Physics* physics = (Physics*)luaL_checkudata(L, 1, "mt_b2_fixture");
+    neko_physics* physics = (neko_physics*)luaL_checkudata(L, 1, "mt_b2_fixture");
     b2Fixture* fixture = physics->fixture;
 
     physics_push_userdata(L, fixture->GetUserData().pointer);
@@ -654,7 +653,7 @@ static int open_mt_b2_fixture(lua_State* L) {
 // box2d body
 
 static int b2_body_unref(lua_State* L, bool destroy) {
-    Physics* physics = (Physics*)luaL_checkudata(L, 1, "mt_b2_body");
+    neko_physics* physics = (neko_physics*)luaL_checkudata(L, 1, "mt_b2_body");
     if (physics->body != nullptr) {
         neko_physics_userdata* pud = (neko_physics_userdata*)physics->body->GetUserData().pointer;
         assert(pud != nullptr);
@@ -689,7 +688,7 @@ static b2FixtureDef b2_fixture_def(lua_State* L, s32 arg) {
 }
 
 static int mt_b2_body_make_box_fixture(lua_State* L) {
-    Physics* physics = (Physics*)luaL_checkudata(L, 1, "mt_b2_body");
+    neko_physics* physics = (neko_physics*)luaL_checkudata(L, 1, "mt_b2_body");
     b2Body* body = physics->body;
     b2FixtureDef fixture_def = b2_fixture_def(L, 2);
 
@@ -705,7 +704,7 @@ static int mt_b2_body_make_box_fixture(lua_State* L) {
     box.SetAsBox((float)w / physics->meter, (float)h / physics->meter, pos, angle);
     fixture_def.shape = &box;
 
-    Physics p = physics_weak_copy(physics);
+    neko_physics p = physics_weak_copy(physics);
     p.fixture = body->CreateFixture(&fixture_def);
 
     luax_new_userdata(L, p, "mt_b2_fixture");
@@ -713,7 +712,7 @@ static int mt_b2_body_make_box_fixture(lua_State* L) {
 }
 
 static int mt_b2_body_make_circle_fixture(lua_State* L) {
-    Physics* physics = (Physics*)luaL_checkudata(L, 1, "mt_b2_body");
+    neko_physics* physics = (neko_physics*)luaL_checkudata(L, 1, "mt_b2_body");
     b2Body* body = physics->body;
     b2FixtureDef fixture_def = b2_fixture_def(L, 2);
 
@@ -726,7 +725,7 @@ static int mt_b2_body_make_circle_fixture(lua_State* L) {
     circle.m_p = {(float)x / physics->meter, (float)y / physics->meter};
     fixture_def.shape = &circle;
 
-    Physics p = physics_weak_copy(physics);
+    neko_physics p = physics_weak_copy(physics);
     p.fixture = body->CreateFixture(&fixture_def);
 
     luax_new_userdata(L, p, "mt_b2_fixture");
@@ -734,7 +733,7 @@ static int mt_b2_body_make_circle_fixture(lua_State* L) {
 }
 
 static int mt_b2_body_position(lua_State* L) {
-    Physics* physics = (Physics*)luaL_checkudata(L, 1, "mt_b2_body");
+    neko_physics* physics = (neko_physics*)luaL_checkudata(L, 1, "mt_b2_body");
     b2Body* body = physics->body;
 
     b2Vec2 pos = body->GetPosition();
@@ -745,7 +744,7 @@ static int mt_b2_body_position(lua_State* L) {
 }
 
 static int mt_b2_body_velocity(lua_State* L) {
-    Physics* physics = (Physics*)luaL_checkudata(L, 1, "mt_b2_body");
+    neko_physics* physics = (neko_physics*)luaL_checkudata(L, 1, "mt_b2_body");
     b2Body* body = physics->body;
 
     b2Vec2 vel = body->GetLinearVelocity();
@@ -756,7 +755,7 @@ static int mt_b2_body_velocity(lua_State* L) {
 }
 
 static int mt_b2_body_angle(lua_State* L) {
-    Physics* physics = (Physics*)luaL_checkudata(L, 1, "mt_b2_body");
+    neko_physics* physics = (neko_physics*)luaL_checkudata(L, 1, "mt_b2_body");
     b2Body* body = physics->body;
 
     lua_pushnumber(L, body->GetAngle());
@@ -764,7 +763,7 @@ static int mt_b2_body_angle(lua_State* L) {
 }
 
 static int mt_b2_body_linear_damping(lua_State* L) {
-    Physics* physics = (Physics*)luaL_checkudata(L, 1, "mt_b2_body");
+    neko_physics* physics = (neko_physics*)luaL_checkudata(L, 1, "mt_b2_body");
     b2Body* body = physics->body;
 
     lua_pushnumber(L, body->GetLinearDamping());
@@ -772,7 +771,7 @@ static int mt_b2_body_linear_damping(lua_State* L) {
 }
 
 static int mt_b2_body_fixed_rotation(lua_State* L) {
-    Physics* physics = (Physics*)luaL_checkudata(L, 1, "mt_b2_body");
+    neko_physics* physics = (neko_physics*)luaL_checkudata(L, 1, "mt_b2_body");
     b2Body* body = physics->body;
 
     lua_pushboolean(L, body->IsFixedRotation());
@@ -780,7 +779,7 @@ static int mt_b2_body_fixed_rotation(lua_State* L) {
 }
 
 static int mt_b2_body_apply_force(lua_State* L) {
-    Physics* physics = (Physics*)luaL_checkudata(L, 1, "mt_b2_body");
+    neko_physics* physics = (neko_physics*)luaL_checkudata(L, 1, "mt_b2_body");
     b2Body* body = physics->body;
 
     float x = luaL_checknumber(L, 2);
@@ -791,7 +790,7 @@ static int mt_b2_body_apply_force(lua_State* L) {
 }
 
 static int mt_b2_body_apply_impulse(lua_State* L) {
-    Physics* physics = (Physics*)luaL_checkudata(L, 1, "mt_b2_body");
+    neko_physics* physics = (neko_physics*)luaL_checkudata(L, 1, "mt_b2_body");
     b2Body* body = physics->body;
 
     float x = luaL_checknumber(L, 2);
@@ -802,7 +801,7 @@ static int mt_b2_body_apply_impulse(lua_State* L) {
 }
 
 static int mt_b2_body_set_position(lua_State* L) {
-    Physics* physics = (Physics*)luaL_checkudata(L, 1, "mt_b2_body");
+    neko_physics* physics = (neko_physics*)luaL_checkudata(L, 1, "mt_b2_body");
     b2Body* body = physics->body;
 
     float x = luaL_checknumber(L, 2);
@@ -813,7 +812,7 @@ static int mt_b2_body_set_position(lua_State* L) {
 }
 
 static int mt_b2_body_set_velocity(lua_State* L) {
-    Physics* physics = (Physics*)luaL_checkudata(L, 1, "mt_b2_body");
+    neko_physics* physics = (neko_physics*)luaL_checkudata(L, 1, "mt_b2_body");
     b2Body* body = physics->body;
 
     float x = luaL_checknumber(L, 2);
@@ -824,7 +823,7 @@ static int mt_b2_body_set_velocity(lua_State* L) {
 }
 
 static int mt_b2_body_set_angle(lua_State* L) {
-    Physics* physics = (Physics*)luaL_checkudata(L, 1, "mt_b2_body");
+    neko_physics* physics = (neko_physics*)luaL_checkudata(L, 1, "mt_b2_body");
     b2Body* body = physics->body;
 
     float angle = luaL_checknumber(L, 2);
@@ -834,7 +833,7 @@ static int mt_b2_body_set_angle(lua_State* L) {
 }
 
 static int mt_b2_body_set_linear_damping(lua_State* L) {
-    Physics* physics = (Physics*)luaL_checkudata(L, 1, "mt_b2_body");
+    neko_physics* physics = (neko_physics*)luaL_checkudata(L, 1, "mt_b2_body");
     b2Body* body = physics->body;
 
     float damping = luaL_checknumber(L, 2);
@@ -844,7 +843,7 @@ static int mt_b2_body_set_linear_damping(lua_State* L) {
 }
 
 static int mt_b2_body_set_fixed_rotation(lua_State* L) {
-    Physics* physics = (Physics*)luaL_checkudata(L, 1, "mt_b2_body");
+    neko_physics* physics = (neko_physics*)luaL_checkudata(L, 1, "mt_b2_body");
     b2Body* body = physics->body;
 
     bool fixed = lua_toboolean(L, 2);
@@ -854,7 +853,7 @@ static int mt_b2_body_set_fixed_rotation(lua_State* L) {
 }
 
 static int mt_b2_body_set_transform(lua_State* L) {
-    Physics* physics = (Physics*)luaL_checkudata(L, 1, "mt_b2_body");
+    neko_physics* physics = (neko_physics*)luaL_checkudata(L, 1, "mt_b2_body");
     b2Body* body = physics->body;
 
     float x = luaL_checknumber(L, 2);
@@ -866,7 +865,7 @@ static int mt_b2_body_set_transform(lua_State* L) {
 }
 
 static int mt_b2_body_draw_fixtures(lua_State* L) {
-    Physics* physics = (Physics*)luaL_checkudata(L, 1, "mt_b2_body");
+    neko_physics* physics = (neko_physics*)luaL_checkudata(L, 1, "mt_b2_body");
     b2Body* body = physics->body;
 
     draw_fixtures_for_body(body, physics->meter);
@@ -875,7 +874,7 @@ static int mt_b2_body_draw_fixtures(lua_State* L) {
 }
 
 static int mt_b2_body_udata(lua_State* L) {
-    Physics* physics = (Physics*)luaL_checkudata(L, 1, "mt_b2_body");
+    neko_physics* physics = (neko_physics*)luaL_checkudata(L, 1, "mt_b2_body");
     b2Body* body = physics->body;
 
     physics_push_userdata(L, body->GetUserData().pointer);
@@ -913,13 +912,13 @@ static int open_mt_b2_body(lua_State* L) {
 // box2d world
 
 static int mt_b2_world_gc(lua_State* L) {
-    Physics* physics = (Physics*)luaL_checkudata(L, 1, "mt_b2_world");
+    neko_physics* physics = (neko_physics*)luaL_checkudata(L, 1, "mt_b2_world");
     physics_world_trash(L, physics);
     return 0;
 }
 
 static int mt_b2_world_step(lua_State* L) {
-    Physics* physics = (Physics*)luaL_checkudata(L, 1, "mt_b2_world");
+    neko_physics* physics = (neko_physics*)luaL_checkudata(L, 1, "mt_b2_world");
     // lua_Number dt = luaL_optnumber(L, 2, g_app->time.delta);
     lua_Number dt = lua_tonumber(L, 2);
     lua_Integer vel_iters = luaL_optinteger(L, 3, 6);
@@ -929,7 +928,7 @@ static int mt_b2_world_step(lua_State* L) {
     return 0;
 }
 
-static b2BodyDef b2_body_def(lua_State* L, s32 arg, Physics* physics) {
+static b2BodyDef b2_body_def(lua_State* L, s32 arg, neko_physics* physics) {
     lua_Number x = luax_number_field(L, arg, "x");
     lua_Number y = luax_number_field(L, arg, "y");
     lua_Number vx = luax_opt_number_field(L, arg, "vx", 0);
@@ -950,11 +949,11 @@ static b2BodyDef b2_body_def(lua_State* L, s32 arg, Physics* physics) {
 }
 
 static int b2_make_body(lua_State* L, b2BodyType type) {
-    Physics* physics = (Physics*)luaL_checkudata(L, 1, "mt_b2_world");
+    neko_physics* physics = (neko_physics*)luaL_checkudata(L, 1, "mt_b2_world");
     b2BodyDef body_def = b2_body_def(L, 2, physics);
     body_def.type = type;
 
-    Physics p = physics_weak_copy(physics);
+    neko_physics p = physics_weak_copy(physics);
     p.body = physics->world->CreateBody(&body_def);
 
     luax_new_userdata(L, p, "mt_b2_body");
@@ -968,7 +967,7 @@ static int mt_b2_world_make_kinematic_body(lua_State* L) { return b2_make_body(L
 static int mt_b2_world_make_dynamic_body(lua_State* L) { return b2_make_body(L, b2_dynamicBody); }
 
 static int mt_b2_world_begin_contact(lua_State* L) {
-    Physics* physics = (Physics*)luaL_checkudata(L, 1, "mt_b2_world");
+    neko_physics* physics = (neko_physics*)luaL_checkudata(L, 1, "mt_b2_world");
     if (lua_type(L, 2) != LUA_TFUNCTION) {
         return luaL_error(L, "expected argument 2 to be a function");
     }
@@ -978,7 +977,7 @@ static int mt_b2_world_begin_contact(lua_State* L) {
 }
 
 static int mt_b2_world_end_contact(lua_State* L) {
-    Physics* physics = (Physics*)luaL_checkudata(L, 1, "mt_b2_world");
+    neko_physics* physics = (neko_physics*)luaL_checkudata(L, 1, "mt_b2_world");
     if (lua_type(L, 2) != LUA_TFUNCTION) {
         return luaL_error(L, "expected argument 2 to be a function");
     }
@@ -1011,7 +1010,7 @@ static int spry_b2_world(lua_State* L) {
 
     b2Vec2 gravity = {(float)gx, (float)gy};
 
-    Physics p = physics_world_make(L, gravity, meter);
+    neko_physics p = physics_world_make(L, gravity, meter);
     luax_new_userdata(L, p, "mt_b2_world");
     return 1;
 }
@@ -1385,31 +1384,6 @@ auto __neko_bind_tiled_get_objects(void* tiled_render_ud) {
         }
     }
     return data;
-}
-
-static int __neko_bind_fallingsand_create(lua_State* L) {
-    // const_str file_path = lua_tostring(L, 1);
-
-    neko_fallsand_render* user_handle = (neko_fallsand_render*)lua_newuserdata(L, sizeof(neko_fallsand_render));
-    memset(user_handle, 0, sizeof(neko_fallsand_render));
-
-    game_chunk_init(user_handle);
-
-    return 1;
-}
-
-static int __neko_bind_fallingsand_update(lua_State* L) {
-    neko_fallsand_render* user_handle = (neko_fallsand_render*)lua_touserdata(L, 1);
-
-    neko_timer_do(t, neko_timed_action(500, printf("game_chunk_update : %llu\n", t);), { game_chunk_update(user_handle); });
-
-    return 0;
-}
-
-static int __neko_bind_fallingsand_end(lua_State* L) {
-    neko_fallsand_render* user_handle = (neko_fallsand_render*)lua_touserdata(L, 1);
-    game_chunk_destroy(user_handle);
-    return 0;
 }
 
 static int __neko_bind_pixelui_create(lua_State* L) {
@@ -1885,6 +1859,12 @@ struct neko::static_refl::neko_type_info<CGameObject> : neko_type_info_base<CGam
 
 neko_imgui_def_begin(template <>, CGameObject) {
     neko::static_refl::neko_type_info<CGameObject>::ForEachVarOf(var, [&](const auto& field, auto&& value) { neko_imgui::Auto(value, std::string(field.name)); });
+}
+neko_imgui_def_end();
+
+neko_imgui_def_begin(template <>, neko_vec2_t) {
+    //    neko::static_refl::neko_type_info<CGameObject>::ForEachVarOf(var, [&](const auto& field, auto&& value) { neko_imgui::Auto(value, std::string(field.name)); });
+    ImGui::Text("%f %f", var.x, var.y);
 }
 neko_imgui_def_end();
 
@@ -3831,10 +3811,6 @@ int open_neko(lua_State* L) {
             {"tiled_end", __neko_bind_tiled_end},
             {"tiled_load", __neko_bind_tiled_load},
             {"tiled_unload", __neko_bind_tiled_unload},
-
-            {"fallingsand_create", __neko_bind_fallingsand_create},
-            {"fallingsand_update", __neko_bind_fallingsand_update},
-            {"fallingsand_end", __neko_bind_fallingsand_end},
 
             {"pixelui_create", __neko_bind_pixelui_create},
             {"pixelui_update", __neko_bind_pixelui_update},

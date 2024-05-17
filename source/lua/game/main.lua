@@ -53,9 +53,9 @@ end
 
 game_init = function()
 
-    luainspector = __neko_luainspector_init()
+    --luainspector = __neko_luainspector_init()
 
-    pixelui = neko.pixelui_create()
+    -- pixelui = neko.pixelui_create()
 
     play.sub_init()
 end
@@ -63,7 +63,7 @@ end
 game_shutdown = function()
     play.sub_shutdown()
 
-    neko.pixelui_end(pixelui)
+    -- neko.pixelui_end(pixelui)
 end
 
 game_pre_update = function()
@@ -72,7 +72,7 @@ game_pre_update = function()
     end
 end
 
-game_update = function(dt)
+game_loop = function(dt)
     if running then
         play.sub_update(dt)
         play.test_update()
@@ -155,7 +155,7 @@ game_render = function()
     -- ImGui.Image(test_custom_sprite.tex, 100.0, 100.0)
     ImGui.End()
 
-    __neko_luainspector_draw(__neko_luainspector_get())
+    --__neko_luainspector_draw(__neko_luainspector_get())
 
     if running then
         play.sub_render()
@@ -163,22 +163,22 @@ game_render = function()
 
     neko.hooks.run()
 
-    local fbs_x, fbs_y = neko_framebuffer_size()
+    -- local fbs_x, fbs_y = neko_framebuffer_size()
 
-    neko.idraw_defaults()
-    neko.idraw_camera2d(fbs_x, fbs_y)
+    -- neko.idraw_defaults()
+    -- neko.idraw_camera2d(fbs_x, fbs_y)
 
-    neko.pixelui_update(pixelui)
-    -- neko_idraw_rect_textured_ext(idraw, 0, 0, fbs.x, fbs.y, 0, 1, 1, 0, pui->tex_ui.id, NEKO_COLOR_WHITE);
+    -- neko.pixelui_update(pixelui)
+    -- -- neko_idraw_rect_textured_ext(idraw, 0, 0, fbs.x, fbs.y, 0, 1, 1, 0, pui->tex_ui.id, NEKO_COLOR_WHITE);
 
-    neko.idraw_texture(neko.pixelui_tex(pixelui))
-    neko.idraw_rectvd(to_vec2(0.0, 0.0), to_vec2(fbs_x, fbs_y), to_vec2(0.0, 0.0), to_vec2(1.0, 1.0),
-        "NEKO_GRAPHICS_PRIMITIVE_TRIANGLES", to_color(255, 255, 255, 255))
+    -- neko.idraw_texture(neko.pixelui_tex(pixelui))
+    -- neko.idraw_rectvd(to_vec2(0.0, 0.0), to_vec2(fbs_x, fbs_y), to_vec2(0.0, 0.0), to_vec2(1.0, 1.0),
+    --     "NEKO_GRAPHICS_PRIMITIVE_TRIANGLES", to_color(255, 255, 255, 255))
 
-    neko.graphics_renderpass_begin(0)
-    neko.graphics_set_viewport(0.0, 0.0, fbs_x, fbs_y)
-    neko.idraw_draw()
-    neko.graphics_renderpass_end()
+    -- neko.graphics_renderpass_begin(0)
+    -- neko.graphics_set_viewport(0.0, 0.0, fbs_x, fbs_y)
+    -- neko.idraw_draw()
+    -- neko.graphics_renderpass_end()
 
 end
 
