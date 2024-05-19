@@ -52,7 +52,6 @@ game_init_thread = function()
 end
 
 game_init = function()
-
     --luainspector = __neko_luainspector_init()
 
     -- pixelui = neko.pixelui_create()
@@ -103,11 +102,9 @@ game_loop = function(dt)
         -- neko_callback_call("callback1", "haha1")
         -- neko_callback_call("callback2", "haha2", "haha3")
     end
-
 end
 
 game_render = function()
-
     ImGui.Begin("Demo")
     ImGui.Text("选择测试Demo")
 
@@ -127,24 +124,23 @@ game_render = function()
         play.sub_init_thread()
     end
 
-    if ImGui.Button("test_prefab") then
-        local file_content = read_file("D:/Projects/Neko/Dev/source/lua/game/test_prefab.neko")
-        if file_content then
-            local map_node = NODE.load(file_content)
-            print(NODE.check(map_node))
-            print(NODE.node_type(map_node))
-            print(dump_func(map_node))
-        else
-            print("无法打开文件或文件不存在")
-        end
-
-        -- local encoded = neko.base64_encode(file_content)
-        -- print("Encoded:", encoded)
-
-        -- local decoded = neko.base64_decode(encoded)
-        -- print("Decoded:", decoded)
-
-    end
+    --if ImGui.Button("test_prefab") then
+    --    local file_content = read_file("D:/Projects/Neko/Dev/source/lua/game/test_prefab.neko")
+    --    if file_content then
+    --        local map_node = NODE.load(file_content)
+    --        print(NODE.check(map_node))
+    --        print(NODE.node_type(map_node))
+    --        print(dump_func(map_node))
+    --    else
+    --        print("无法打开文件或文件不存在")
+    --    end
+    --
+    --    -- local encoded = neko.base64_encode(file_content)
+    --    -- print("Encoded:", encoded)
+    --
+    --    -- local decoded = neko.base64_decode(encoded)
+    --    -- print("Decoded:", decoded)
+    --end
 
     ImGui.Separator()
     -- if ImGui.InputText("TEST", text) then
@@ -179,6 +175,4 @@ game_render = function()
     -- neko.graphics_set_viewport(0.0, 0.0, fbs_x, fbs_y)
     -- neko.idraw_draw()
     -- neko.graphics_renderpass_end()
-
 end
-

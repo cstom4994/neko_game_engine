@@ -15,7 +15,7 @@ struct pixelui_t {
     // UI texture buffer
     neko_color_t* ui_buffer = {0};
 
-    f32 brush_size = 0.3f;
+    s32 brush_size;
 
     neko_global const s32 g_pixelui_scale = 4;
     neko_global const s32 g_pixelui_texture_width = window_width / g_pixelui_scale;

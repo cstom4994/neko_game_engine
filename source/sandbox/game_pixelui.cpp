@@ -1,6 +1,7 @@
 
 #include "game_pixelui.h"
 
+#include "game_main.h"
 #include "neko_api.h"
 
 #define NEKO_BUILTIN_IMPL
@@ -172,8 +173,7 @@ bool update_ui(pixelui_t* pui) {
     pui->update_time = 0;
 
     // 围绕鼠标指针绘制圆圈
-    s32 R = pui->brush_size * pui->g_pixelui_scale;
-    circle_bres(pui, (s32)(mp.x), (s32)(mp.y), R);
+    circle_bres(pui, (s32)(mp.x), (s32)(mp.y), pui->brush_size);
 
     // 将更新后的纹理数据上传到 GPU
     neko_graphics_texture_desc_t t_desc = neko_default_val();
@@ -218,7 +218,7 @@ void pixelui_destroy(pixelui_t* pui) {
 }
 
 void pixelui_draw(pixelui_t* pui) {
-    neko_immediate_draw_t* idraw = g_client_userdata.idraw;
+    neko_immediate_draw_t* idraw = &CL_GAME_USERDATA()->idraw;
     const neko_vec2 fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
     neko_idraw_rect_textured_ext(idraw, 0, 0, fbs.x, fbs.y, 0, 1, 1, 0, pui->tex_ui.id, NEKO_COLOR_WHITE);
 }

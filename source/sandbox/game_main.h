@@ -13,8 +13,66 @@
 #include "engine/neko.hpp"
 #include "engine/neko_engine.h"
 #include "engine/neko_math.h"
+#include "sandbox/game_imgui.h"
 #include "sandbox/game_pixelui.h"
 #include "sandbox/magic_pixel.h"
+
+class sandbox_game;
+class neko_assetsys_t;
+
+typedef struct neko_client_userdata_s {
+
+    neko_command_buffer_t cb = neko_default_val();
+    neko_ui_context_t ui = neko_default_val();
+    neko_ui_style_sheet_t style_sheet;
+    neko_immediate_draw_t idraw = neko_default_val();
+    neko_asset_ascii_font_t font;
+    neko_imgui_context_t imgui = neko_default_val();
+    neko_texture_t test_ase = neko_default_val();
+    neko_asset_manager_t am = neko_default_val();
+    neko_asset_t tex_hndl = neko_default_val();
+    std::string data_path = neko_default_val();
+    neko_packreader_t pack = neko_default_val();
+    neko_packreader_t lua_pack = neko_default_val();
+
+    neko_handle(neko_graphics_renderpass_t) main_rp = {0};
+    neko_handle(neko_graphics_framebuffer_t) main_fbo = {0};
+    neko_handle(neko_graphics_texture_t) main_rt = {0};
+
+    //    neko_command_buffer_t *cb;
+    //    neko_immediate_draw_t *idraw;
+    //    neko_immediate_draw_static_data_t *idraw_sd;
+    //    neko_ui_context_t *core_ui;
+
+    //    neko_packreader_t *pack;
+
+    lua_State* L;
+
+    neko_font_t* test_font_bmfont;
+
+    neko_engine_cvar_t g_cvar = neko_default_val();
+
+    neko_thread_atomic_int_t init_thread_flag;
+    neko_thread_ptr_t init_work_thread;
+
+    neko_assetsys_t* g_assetsys;
+
+    neko_vec2_t fbs = {640 * 1.5, 360 * 1.5};
+    neko_vec2_t cam = {512, 512};
+
+    sandbox_game* game = nullptr;
+
+    f32 player_v = 100.f;
+
+} neko_client_userdata_t;
+
+extern neko_client_userdata_t g_client_userdata;
+
+neko_inline neko_client_userdata_t* CL_GAME_USERDATA() { return &g_client_userdata; }
+
+// TODO:
+std::string game_assets(const std::string& path);
+void draw_text(neko_font_t* font, const char* text, float x, float y, float line_height, float clip_region, float wrap_x, f32 scale);
 
 class Graphics {
 public:
@@ -38,21 +96,21 @@ public:
 private:
 };
 
-class Simulation;
-class Game {
+class sandbox_simulation;
+class sandbox_game {
 public:
-    Game(neko_immediate_draw_t* idraw);
-    ~Game();
-    void PreUpdate();
-    void Update();
-    void LateUpdate();
-    void Render();
-    void Clean();
-    void SetMaterial(int material);
-    void Pause(int x);
-    void ResetSimulation(int x);
+    sandbox_game(neko_immediate_draw_t* idraw);
+    ~sandbox_game();
+    void pre_update();
+    void update();
+    void late_update();
+    void render();
+    void clean();
+    void set_material(int material);
+    void pause(int x);
+    void reset_simulation(int x);
 
-    Simulation* get_sim() const { return simulation; }
+    sandbox_simulation* get_sim() const { return simulation; }
 
 public:
     static neko_immediate_draw_t* idraw;
@@ -60,21 +118,22 @@ public:
     f32 fbs_scale;
     f32 draw_scale;
 
-private:
-    void Init(neko_immediate_draw_t* idraw);
-    void CreateSimulation();
-    void CreateViewPort();
-    void CreateUI();
-    void ResetVariables();
-    Simulation* simulation;
-    sandbox_object* viewport;
-    pixelui_t pixelui;
     u32 tick_count;
     u16 draw_radius;
     material_type material;
     int count;
-    bool debug_mode = false;
+    u8 debug_mode;
     bool paused = false;
+
+private:
+    void init(neko_immediate_draw_t* idraw);
+    void create_simulation();
+    void create_viewport();
+    void create_ui();
+    void reset_variables();
+    sandbox_simulation* simulation;
+    sandbox_object* viewport;
+    pixelui_t pixelui;
 };
 
 ///////////////////////////////////////////////

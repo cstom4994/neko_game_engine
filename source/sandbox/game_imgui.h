@@ -37,6 +37,7 @@
 
 // Main context for necessary imgui information
 typedef struct neko_imgui_context_s {
+    neko_command_buffer_t *cb;
     u32 win_hndl;
     double time;
     bool mouse_just_pressed[ImGuiMouseButton_COUNT];
@@ -57,8 +58,8 @@ typedef struct neko_imgui_vertex_t {
     uint8_t col[4];
 } neko_imgui_vertex_t;
 
-extern neko_imgui_context_t g_imgui;
-extern neko_command_buffer_t g_cb;
+// extern neko_imgui_context_t g_imgui;
+// extern neko_command_buffer_t g_cb;
 
 #ifdef NEKO_PLATFORM_WEB
 #define NEKO_IMGUI_SHADER_VERSION "#version 300 es\n"
@@ -234,9 +235,11 @@ void main(){
     neko_imgui_create_fonts_texture(neko_imgui);
 }
 
-neko_inline neko_imgui_context_t neko_imgui_new(u32 hndl, bool install_callbacks) {
-    neko_imgui_context_t neko_imgui = {};
+neko_inline neko_imgui_context_t neko_imgui_new(neko_command_buffer_t *cb, u32 hndl, bool install_callbacks) {
+    neko_assert(cb);
 
+    neko_imgui_context_t neko_imgui = {};
+    neko_imgui.cb = cb;
     neko_imgui.ctx = ImGui::CreateContext();
     ImGui::SetCurrentContext(neko_imgui.ctx);
 
@@ -291,7 +294,7 @@ neko_inline neko_imgui_context_t neko_imgui_new(u32 hndl, bool install_callbacks
 
     // io.FontGlobalScale = 1.5f;
 
-    io.Fonts->AddFontFromFileTTF(game_assets("gamedir/assets/fonts/fusion-pixel-12px-monospaced-zh_hans.ttf").c_str(), 22.0f, &config, io.Fonts->GetGlyphRangesChineseFull());
+    //    io.Fonts->AddFontFromFileTTF(game_assets("gamedir/assets/fonts/fusion-pixel-12px-monospaced-zh_hans.ttf").c_str(), 22.0f, &config, io.Fonts->GetGlyphRangesChineseFull());
 
     neko_imgui_device_create(&neko_imgui);
 
@@ -414,9 +417,7 @@ neko_inline void neko_imgui_new_frame(neko_imgui_context_t *neko_imgui) {
     ImGui::NewFrame();
 }
 
-neko_inline void neko_imgui_render_window(ImDrawData *draw_data) {
-
-    neko_command_buffer_t *cb = &g_cb;
+neko_inline void neko_imgui_render_window(neko_imgui_context_t *neko_imgui, ImDrawData *draw_data) {
 
     // ImDrawData *draw_data = ImGui::GetDrawData();
 
@@ -442,13 +443,13 @@ neko_inline void neko_imgui_render_window(ImDrawData *draw_data) {
 
     // Set up data binds
     neko_graphics_bind_vertex_buffer_desc_t vbuffers = {};
-    vbuffers.buffer = g_imgui.vbo;
+    vbuffers.buffer = neko_imgui->vbo;
 
     neko_graphics_bind_index_buffer_desc_t ibuffers = {};
-    ibuffers.buffer = g_imgui.ibo;
+    ibuffers.buffer = neko_imgui->ibo;
 
     neko_graphics_bind_uniform_desc_t ubuffers = {};
-    ubuffers.uniform = g_imgui.u_proj;
+    ubuffers.uniform = neko_imgui->u_proj;
     ubuffers.data = &m;
 
     // Set up data binds
@@ -469,16 +470,16 @@ neko_inline void neko_imgui_render_window(ImDrawData *draw_data) {
     def_pass.id = 0;
 
     // Render pass action for clearing screen (could handle this if you wanted to render gui into a separate frame buffer)
-    neko_graphics_renderpass_begin(cb, def_pass);
+    neko_graphics_renderpass_begin(neko_imgui->cb, def_pass);
     {
         // Bind pipeline
-        neko_graphics_pipeline_bind(cb, g_imgui.pip);
+        neko_graphics_pipeline_bind(neko_imgui->cb, neko_imgui->pip);
 
         // Set viewport
-        neko_graphics_set_viewport(cb, 0, 0, fb_width, fb_height);
+        neko_graphics_set_viewport(neko_imgui->cb, 0, 0, fb_width, fb_height);
 
         // Global bindings for pipeline
-        neko_graphics_apply_bindings(cb, &binds);
+        neko_graphics_apply_bindings(neko_imgui->cb, &binds);
 
         // Render command lists
         for (int n = 0; n < draw_data->CmdListsCount; n++) {
@@ -489,14 +490,14 @@ neko_inline void neko_imgui_render_window(ImDrawData *draw_data) {
             vdesc.usage = NEKO_GRAPHICS_BUFFER_USAGE_STREAM;
             vdesc.data = cmd_list->VtxBuffer.Data;
             vdesc.size = cmd_list->VtxBuffer.Size * sizeof(ImDrawVert);
-            neko_graphics_vertex_buffer_request_update(cb, g_imgui.vbo, &vdesc);
+            neko_graphics_vertex_buffer_request_update(neko_imgui->cb, neko_imgui->vbo, &vdesc);
 
             // Update index buffer
             neko_graphics_index_buffer_desc_t idesc = {};
             idesc.usage = NEKO_GRAPHICS_BUFFER_USAGE_STREAM;
             idesc.data = cmd_list->IdxBuffer.Data;
             idesc.size = cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx);
-            neko_graphics_index_buffer_request_update(cb, g_imgui.ibo, &idesc);
+            neko_graphics_index_buffer_request_update(neko_imgui->cb, neko_imgui->ibo, &idesc);
 
             // Iterate through command buffer
             for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++) {
@@ -520,13 +521,13 @@ neko_inline void neko_imgui_render_window(ImDrawData *draw_data) {
                     // Render
                     if (clip_rect.x < fb_width && clip_rect.y < fb_height && clip_rect.z >= 0.0f && clip_rect.w >= 0.0f) {
                         // Set view scissor
-                        neko_graphics_set_view_scissor(cb, (int)clip_rect.x, (int)(fb_height - clip_rect.w), (int)(clip_rect.z - clip_rect.x), (int)(clip_rect.w - clip_rect.y));
+                        neko_graphics_set_view_scissor(neko_imgui->cb, (int)clip_rect.x, (int)(fb_height - clip_rect.w), (int)(clip_rect.z - clip_rect.x), (int)(clip_rect.w - clip_rect.y));
 
                         // Grab handle from command texture id
                         neko_handle(neko_graphics_texture_t) tex = neko_handle_create(neko_graphics_texture_t, (u32)(intptr_t)pcmd->TextureId);
 
                         neko_graphics_bind_uniform_desc_t sbuffer = {};
-                        sbuffer.uniform = g_imgui.u_tex;
+                        sbuffer.uniform = neko_imgui->u_tex;
                         sbuffer.data = &tex;
                         sbuffer.binding = 0;
 
@@ -535,19 +536,19 @@ neko_inline void neko_imgui_render_window(ImDrawData *draw_data) {
                         sbind.uniforms.size = sizeof(sbuffer);
 
                         // Bind individual texture bind
-                        neko_graphics_apply_bindings(cb, &sbind);
+                        neko_graphics_apply_bindings(neko_imgui->cb, &sbind);
 
                         // Draw elements
                         neko_graphics_draw_desc_t draw = {};
                         draw.start = (size_t)(intptr_t)(pcmd->IdxOffset * sizeof(ImDrawIdx));
                         draw.count = (size_t)pcmd->ElemCount;
-                        neko_graphics_draw(cb, &draw);
+                        neko_graphics_draw(neko_imgui->cb, &draw);
                     }
                 }
             }
         }
     }
-    neko_graphics_renderpass_end(cb);
+    neko_graphics_renderpass_end(neko_imgui->cb);
 }
 
 static void neko_imgui_internal_render(ImGuiViewport *viewport, void *) {
@@ -556,7 +557,7 @@ static void neko_imgui_internal_render(ImGuiViewport *viewport, void *) {
         glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
         glClear(GL_COLOR_BUFFER_BIT);
     }
-    neko_imgui_render_window(viewport->DrawData);
+    //    neko_imgui_render_window(viewport->DrawData);
 }
 
 static void neko_imgui_opengl_init_platform_interface() {
@@ -566,16 +567,16 @@ static void neko_imgui_opengl_init_platform_interface() {
 
 // static void ImGui_ImplOpenGL3_ShutdownPlatformInterface() { ImGui::DestroyPlatformWindows(); }
 
-neko_inline void neko_imgui_render() {
+neko_inline void neko_imgui_render(neko_imgui_context_t *neko_imgui) {
 
     ImGuiIO &io = ImGui::GetIO();
     (void)io;
 
-    ImGui::SetCurrentContext(g_imgui.ctx);
+    ImGui::SetCurrentContext(neko_imgui->ctx);
 
     ImGui::Render();
 
-    neko_imgui_render_window(ImGui::GetDrawData());
+    neko_imgui_render_window(neko_imgui, ImGui::GetDrawData());
 
     if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
         GLFWwindow *backup_current_context = glfwGetCurrentContext();
@@ -999,12 +1000,12 @@ neko_imgui_def_inline(template <>, const ImVec4, ImGui::Text("%s(%f,%f,%f,%f)", 
     neko_imgui_def_inline(template <>, _c, ImGui::InputScalar(name.c_str(), ImGuiDataType_##_imn, &var);); \
     neko_imgui_def_inline(template <>, const _c, neko_imgui::Auto_t<const std::string>::Auto(std::to_string(var), name);)
 
-// INTERNAL_NUM(u8, U8);
-// INTERNAL_NUM(u16, U16);
-// INTERNAL_NUM(u64, U64);
-// INTERNAL_NUM(s8, S8);
-// INTERNAL_NUM(s16, S16);
-// INTERNAL_NUM(s64, S64);
+INTERNAL_NUM(u8, U8);
+INTERNAL_NUM(u16, U16);
+INTERNAL_NUM(u64, U64);
+INTERNAL_NUM(s8, S8);
+INTERNAL_NUM(s16, S16);
+INTERNAL_NUM(s64, S64);
 
 neko_imgui_def_inline_p((template <>), (detail::c_array_t<float, 1>), ImGui::DragFloat(name.c_str(), &var[0]););
 neko_imgui_def_inline_p((template <>), (const detail::c_array_t<float, 1>), ImGui::Text("%s%f", (name.empty() ? "" : name + "=").c_str(), var[0]););
@@ -1177,6 +1178,12 @@ neko_imgui_def_end();
 
 neko_imgui_def_inline(template <>, std::add_pointer_t<void()>, if (ImGui::Button(name.c_str())) var(););
 neko_imgui_def_inline(template <>, const std::add_pointer_t<void()>, if (ImGui::Button(name.c_str())) var(););
+
+neko_imgui_def_begin(template <>, neko_vec2_t) {
+    //    neko::static_refl::neko_type_info<CGameObject>::ForEachVarOf(var, [&](const auto& field, auto&& value) { neko_imgui::Auto(value, std::string(field.name)); });
+    ImGui::Text("%f %f", var.x, var.y);
+}
+neko_imgui_def_end();
 
 namespace neko_imgui {
 
