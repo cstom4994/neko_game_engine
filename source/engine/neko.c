@@ -1682,10 +1682,6 @@ NEKO_API_DECL neko_t* neko_create(neko_game_desc_t app_desc) {
         // 初始化音频
         neko_subsystem(audio)->init(neko_subsystem(audio));
 
-        // 初始化帧检查器
-        neko_profiler_init();
-        neko_profiler_register_thread("Main thread", 0);  // 注册主线程
-
         // 初始化应用程序并设置为运行
         app_desc.init();
         neko_ctx()->game.is_running = true;
@@ -1711,11 +1707,9 @@ NEKO_API_DECL void neko_frame() {
     neko_private(u32) curr_ticks = 0;
     neko_private(u32) prev_ticks = 0;
 
-    neko_profiler_begin_frame();
-
     {
-        uintptr_t profile_id_engine;
-        profile_id_engine = neko_profiler_begin_scope(__FILE__, __LINE__, "engine");
+        //        uintptr_t profile_id_engine;
+        //        profile_id_engine = neko_profiler_begin_scope(__FILE__, __LINE__, "engine");
 
         // Cache platform pointer
         neko_platform_t* platform = neko_subsystem(platform);
@@ -1777,7 +1771,7 @@ NEKO_API_DECL void neko_frame() {
             platform->time.delta = platform->time.frame / 1000.f;
         }
 
-        neko_profiler_end_scope(profile_id_engine);
+        //        neko_profiler_end_scope(profile_id_engine);
     }
 
     if (!neko_instance()->ctx.game.is_running) {
@@ -1790,8 +1784,6 @@ void neko_destroy() {
     // Shutdown application
     neko_ctx()->game.shutdown();
     neko_ctx()->game.is_running = false;
-
-    neko_profiler_shutdown();
 
     neko_graphics_shutdown(neko_subsystem(graphics));
     neko_graphics_destroy(neko_subsystem(graphics));

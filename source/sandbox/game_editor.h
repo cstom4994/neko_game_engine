@@ -2,36 +2,6 @@
 #define GAME_EDITOR_H
 
 #include "sandbox/game_imgui.h"
-#include "sandbox/neko_profiler.h"
-
-#define __neko_desired_frame_rate 30.0f
-#define __neko_minimum_frame_rate 20.0f
-#define __neko_flash_time_in_ms 333.0
-
-struct pan_and_zoon {
-    f32 offset;
-    f32 start_pan;
-    f32 zoom;
-
-    pan_and_zoon() {
-        offset = 0.0f;
-        start_pan = 0.0f;
-        zoom = 1.0f;
-    }
-
-    inline f32 w2s(f32 wld, f32 minX, f32 maxX) { return minX + wld * (maxX - minX) * zoom - offset; }
-    inline f32 w2sdelta(f32 wld, f32 minX, f32 maxX) { return wld * (maxX - minX) * zoom; }
-    inline f32 s2w(f32 scr, f32 minX, f32 maxX) { return (scr + offset - minX) / ((maxX - minX) * zoom); }
-};
-
-struct frame_info {
-    f32 time;
-    u32 offset;
-    u32 size;
-};
-
-int neko_profiler_draw_frame(neko_profiler_frame_t *_data, void *_buffer = 0, size_t _bufferSize = 0, bool _inGame = true, bool _multi = false);
-void neko_profiler_draw_stats(neko_profiler_frame_t *_data, bool _multi = false);
 
 // 生成宏 以避免始终重复代码
 #define R_INTROSPECTION_GENERATE_VARIABLE_RENDER(cputype, count, gltype, glread, glwrite, imguifunc) \

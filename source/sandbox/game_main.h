@@ -11,6 +11,7 @@
 #include <thread>
 
 #include "engine/neko.hpp"
+#include "engine/neko_ecs.h"
 #include "engine/neko_engine.h"
 #include "engine/neko_math.h"
 #include "sandbox/game_imgui.h"
@@ -34,6 +35,11 @@ typedef struct neko_client_userdata_s {
     std::string data_path = neko_default_val();
     neko_packreader_t pack = neko_default_val();
     neko_packreader_t lua_pack = neko_default_val();
+
+    //    ecs_world_t* world;
+    //    neko_dyn_array(ecs_entity_t) entities;
+
+    neko_ecs* ecs;
 
     neko_handle(neko_graphics_renderpass_t) main_rp = {0};
     neko_handle(neko_graphics_framebuffer_t) main_fbo = {0};

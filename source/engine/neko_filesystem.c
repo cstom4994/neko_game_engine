@@ -58,27 +58,16 @@
 #endif
 
 const char* neko_file_get_ext(neko_file_file_t* file);
-
 void neko_file_traverse(const char* path, neko_file_callback_t* cb, void* udata);
-
 int neko_file_read_file(neko_file_dir_t* dir, neko_file_file_t* file);
-
 void neko_file_dir_next(neko_file_dir_t* dir);
-
 void neko_file_dir_close(neko_file_dir_t* dir);
-
 int neko_file_dir_open(neko_file_dir_t* dir, const char* path);
-
 int neko_file_compare_file_times_by_path(const char* path_a, const char* path_b);
-
 int neko_file_get_file_time(const char* path, neko_file_time_t* time);
-
 int neko_file_compare_file_times(neko_file_time_t* time_a, neko_file_time_t* time_b);
-
 int neko_file_file_exists(const char* path);
-
 int neko_file_match_ext(neko_file_file_t* file, const char* ext);
-
 void neko_file_do_unit_tests();
 
 #define NEKO_FILES_H

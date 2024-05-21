@@ -2,37 +2,17 @@
 #ifndef NEKO_LUA_H
 #define NEKO_LUA_H
 
-#include <array>
-#include <cstdlib>
-#include <cstring>
-#include <format>
-#include <limits>
-#include <list>
-#include <map>
-#include <set>
-#include <sstream>
-#include <string>
-#include <string_view>
-#include <unordered_map>
-#include <utility>
-#include <vector>
-
 #include "engine/neko.h"
 
 // lua
+#ifdef __cplusplus
 extern "C" {
+#endif
 #include "deps/lua/lauxlib.h"
 #include "deps/lua/lua.h"
 #include "deps/lua/lualib.h"
+#ifdef __cplusplus
 }
-
-#ifndef _WIN32
-#include <stdint.h>
-#define SPRINTF_F snprintf
-#else
-
-#define SPRINTF_F _snprintf_s
-
 #endif
 
 #pragma region LuaA
@@ -511,7 +491,7 @@ void neko_lua_auto_function_register_type(lua_State *L, void *src_func, neko_lua
         lua_setglobal(L, FUNCTIONS[i].name);                      \
     }
 
-neko_inline bool neko_lua_equal(lua_State *state, int index1, int index2) {
+NEKO_API_DECL neko_inline bool neko_lua_equal(lua_State *state, int index1, int index2) {
 #if LUA_VERSION_NUM <= 501
     return lua_equal(state, index1, index2) == 1;
 #else
@@ -519,21 +499,42 @@ neko_inline bool neko_lua_equal(lua_State *state, int index1, int index2) {
 #endif
 }
 
-int neko_lua_preload(lua_State *L, lua_CFunction f, const char *name);
-int neko_lua_preload_auto(lua_State *L, lua_CFunction f, const char *name);
-void neko_lua_load(lua_State *L, const luaL_Reg *l, const char *name);
-void neko_lua_loadover(lua_State *L, const luaL_Reg *l, const char *name);
-int neko_lua_get_table_pairs_count(lua_State *L, int index);
+NEKO_API_DECL int neko_lua_preload(lua_State *L, lua_CFunction f, const char *name);
+NEKO_API_DECL int neko_lua_preload_auto(lua_State *L, lua_CFunction f, const char *name);
+NEKO_API_DECL void neko_lua_load(lua_State *L, const luaL_Reg *l, const char *name);
+NEKO_API_DECL void neko_lua_loadover(lua_State *L, const luaL_Reg *l, const char *name);
+NEKO_API_DECL int neko_lua_get_table_pairs_count(lua_State *L, int index);
 
 NEKO_API_DECL int neko_luaopen_cstruct_core(lua_State *L);
 NEKO_API_DECL int neko_luaopen_cstruct_test(lua_State *L);
 NEKO_API_DECL int neko_luaopen_nekonode(lua_State *L);
 NEKO_API_DECL int luaopen_ds_core(lua_State *L);
 
-#endif
+#ifdef __cplusplus
 
-#ifndef NEKO_LUA_HPP
-#define NEKO_LUA_HPP
+#include <array>
+#include <cstdlib>
+#include <cstring>
+#include <format>
+#include <limits>
+#include <list>
+#include <map>
+#include <set>
+#include <sstream>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+
+#ifndef _WIN32
+#include <stdint.h>
+#define SPRINTF_F snprintf
+#else
+
+#define SPRINTF_F _snprintf_s
+
+#endif
 
 struct strtoll_tool_t {
     static long do_strtoll(const char *s, const char *, int) { return atol(s); }
@@ -4901,5 +4902,7 @@ void pack_struct(lua_State *L, const T &v) {
     }
 }
 }  // namespace lua2struct
+
+#endif
 
 #endif

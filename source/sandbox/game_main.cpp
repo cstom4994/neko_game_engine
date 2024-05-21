@@ -14,6 +14,7 @@
 #include "engine/neko.h"
 #include "engine/neko.hpp"
 #include "engine/neko_asset.h"
+#include "engine/neko_ecs.h"
 #include "engine/neko_engine.h"
 #include "engine/neko_filesystem.h"
 #include "engine/neko_platform.h"
@@ -183,6 +184,54 @@ std::string game_assets(const std::string &path) {
     }
 
     return get_path;
+}
+
+// clang-format off
+unsigned char random_table[256] = {
+    246, 44, 11, 243, 99, 68, 235, 255, 40, 141, 188, 125, 228, 115, 33,
+    248, 60, 235, 232, 58, 81, 140, 8, 68, 88, 143, 44, 100, 149, 214, 39,
+    199, 52, 250, 217, 55, 231, 108, 68, 241, 50, 200, 121, 22, 51, 189,
+    203, 193, 105, 72, 42, 235, 242, 142, 12, 139, 134, 87, 241, 239, 128,
+    221, 225, 251, 248, 255, 123, 32, 148, 182, 193, 204, 79, 154, 182,
+    26, 152, 54, 16, 162, 78, 220, 90, 65, 66, 242, 25, 79, 187, 74, 217,
+    236, 56, 6, 125, 208, 132, 161, 193, 111, 52, 49, 218, 197, 111, 250,
+    192, 230, 229, 204, 168, 230, 78, 58, 165, 131, 54, 94, 118, 29, 62,
+    112, 180, 146, 71, 148, 5, 54, 158, 158, 91, 17, 95, 107, 38, 91, 198,
+    47, 70, 228, 15, 175, 222, 225, 83, 80, 20, 253, 77, 163, 134, 158, 6,
+    248, 111, 212, 81, 98, 168, 131, 158, 208, 30, 255, 208, 120, 175, 149,
+    7, 124, 49, 142, 71, 211, 162, 26, 154, 194, 51, 128, 217, 162, 31,
+    191, 158, 82, 223, 115, 108, 209, 62, 168, 51, 235, 212, 199, 151,
+    11, 182, 245, 5, 10, 188, 231, 122, 166, 149, 54, 251, 153, 143, 107,
+    98, 154, 90, 171, 78, 24, 41, 64, 187, 237, 58, 208, 106, 226, 176,
+    228, 167, 17, 4, 148, 219, 18, 124, 70, 214, 105, 231, 206, 195, 127,
+    182, 11, 208, 224, 56, 197, 11, 62, 138, 218, 18, 234, 245, 242
+};
+// clang-format on
+
+neko_global int rnd_index = 0;
+
+int g_random(void) {
+    rnd_index = (rnd_index + 1) & 0xff;
+    return random_table[rnd_index];
+}
+
+s32 random_val(s32 lower, s32 upper) {
+    if (upper < lower) {
+        s32 tmp = lower;
+        lower = upper;
+        upper = tmp;
+    }
+    return (rand() % (upper - lower + 1) + lower);
+}
+
+s32 random_tlb_val(s32 lower, s32 upper) {
+    s32 rand_num = g_random();
+    if (upper < lower) {
+        s32 tmp = lower;
+        lower = upper;
+        upper = tmp;
+    }
+    return (rand_num % (upper - lower + 1) + lower);
 }
 
 void app_load_style_sheet(bool destroy) {
@@ -362,6 +411,151 @@ neko_color_t kEmptyPixelValue = neko_color(0, 0, 0, 0);
 neko_vec2_t cursor = {-1, -1};
 
 thread_local std::mt19937 rng;
+
+// int32_t random_val(int32_t lower, int32_t upper) { return ((rand() % (upper - lower + 1)) + lower); }
+
+#if 0
+
+// Move system
+void move_system(ecs_iter_t *it) {
+    const neko_vec2_t ws = neko_platform_window_sizev(neko_platform_main_window());
+
+    // Get columns from system signature and cache local pointers to arrays
+    //    ECS_COLUMN(it, position_t, p, 1);
+    //    ECS_COLUMN(it, velocity_t, v, 2);
+    //    ECS_COLUMN(it, bounds_t, b, 3);
+
+    position_t *p = ecs_field(it, position_t, 1);
+    velocity_t *v = ecs_field(it, velocity_t, 2);
+    bounds_t *b = ecs_field(it, bounds_t, 3);
+
+    for (int32_t i = 0; i < it->count; ++i) {
+        neko_vec2_t min = neko_vec2_add(p[i], v[i]);
+        neko_vec2_t max = neko_vec2_add(min, b[i]);
+
+        // Resolve collision and change velocity direction if necessary
+        if (min.x < 0 || max.x >= ws.x) {
+            v[i].x *= -1.f;
+        }
+        if (min.y < 0 || max.y >= ws.y) {
+            v[i].y *= -1.f;
+        }
+        p[i] = neko_vec2_add(p[i], v[i]);
+    }
+}
+
+void render_system(ecs_iter_t *it) {
+    //    app_data_t *app = gs_user_data(app_data_t);
+    const neko_vec2_t fbs = neko_platform_window_sizev(neko_platform_main_window());
+
+    // Grab position from column data
+    //    ECS_COLUMN(it, position_t, p, 1);
+    //    ECS_COLUMN(it, bounds_t, b, 2);
+    //    ECS_COLUMN(it, color_t, c, 3);
+
+    position_t *p = ecs_field(it, position_t, 1);
+    bounds_t *b = ecs_field(it, bounds_t, 2);
+    color_t *c = ecs_field(it, color_t, 3);
+
+    neko_idraw_defaults(&CL_GAME_USERDATA()->idraw);
+    neko_idraw_camera2d(&CL_GAME_USERDATA()->idraw, fbs.x, fbs.y);
+
+    // Render all into immediate draw instance data
+    for (int32_t i = 0; i < it->count; ++i) {
+        auto pi = p[i];
+        auto bi = b[i];
+        neko_idraw_rectvd(&CL_GAME_USERDATA()->idraw, pi, bi, neko_v2(0.f, 0.f), neko_v2(1.f, 1.f), (neko_color_t)c[i], NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
+    }
+}
+
+#endif
+
+neko_ecs_decl_system(movement_system, MOVEMENT_SYSTEM, 4, COMPONENT_TRANSFORM, COMPONENT_VELOCITY, COMPONENT_BOUNDS, COMPONENT_COLOR) {
+
+    const neko_vec2_t ws = neko_platform_window_sizev(neko_platform_main_window());
+
+    for (u32 i = 0; i < neko_ecs_for_count(ecs); i++) {
+        neko_ecs_ent e = neko_ecs_get_ent(ecs, i);
+        if (neko_ecs_ent_has_mask(ecs, e, neko_ecs_get_mask(MOVEMENT_SYSTEM))) {
+            position_t *p = (position_t *)neko_ecs_ent_get_component(ecs, e, COMPONENT_TRANSFORM);
+            velocity_t *v = (velocity_t *)neko_ecs_ent_get_component(ecs, e, COMPONENT_VELOCITY);
+            bounds_t *b = (bounds_t *)neko_ecs_ent_get_component(ecs, e, COMPONENT_BOUNDS);
+            color_t *c = (color_t *)neko_ecs_ent_get_component(ecs, e, COMPONENT_COLOR);
+
+            // Grab global instance of engine
+            neko_t *engine = neko_instance();
+
+            //            static u8 tick = 0;
+            //
+            //            if ((tick++ & 31) == 0)
+            //                if (fabs(velocity->dx) >= 0.5 || fabs(velocity->dy) >= 0.5)
+            //                    neko_sprite_renderer_play(sprite, "Run");
+            //                else
+            //                    neko_sprite_renderer_play(sprite, "Idle");
+            //
+            //            neko_sprite_renderer_update(sprite, engine->ctx.platform->time.delta);
+            //
+            //            neko_ecs_ent player = e;
+            //            CVelocity *player_v = static_cast<CVelocity *>(neko_ecs_ent_get_component(CL_GAME_USERDATA()->ecs, player, COMPONENT_VELOCITY));
+
+            neko_vec2_t min = neko_vec2_add(*p, *v);
+            neko_vec2_t max = neko_vec2_add(min, *b);
+
+            // Resolve collision and change velocity direction if necessary
+            if (min.x < 0 || max.x >= ws.x) {
+                v->x *= -1.f;
+            }
+            if (min.y < 0 || max.y >= ws.y) {
+                v->y *= -1.f;
+            }
+            *p = neko_vec2_add(*p, *v);
+        }
+    }
+}
+
+neko_ecs_decl_system(render_system, RENDER_SYSTEM, 4, COMPONENT_TRANSFORM, COMPONENT_VELOCITY, COMPONENT_BOUNDS, COMPONENT_COLOR) {
+
+    const neko_vec2_t ws = neko_platform_window_sizev(neko_platform_main_window());
+
+    neko_idraw_defaults(&CL_GAME_USERDATA()->idraw);
+    neko_idraw_camera2d(&CL_GAME_USERDATA()->idraw, ws.x, ws.y);
+
+    for (u32 i = 0; i < neko_ecs_for_count(ecs); i++) {
+        neko_ecs_ent e = neko_ecs_get_ent(ecs, i);
+        if (neko_ecs_ent_has_mask(ecs, e, neko_ecs_get_mask(MOVEMENT_SYSTEM))) {
+            position_t *p = (position_t *)neko_ecs_ent_get_component(ecs, e, COMPONENT_TRANSFORM);
+            velocity_t *v = (velocity_t *)neko_ecs_ent_get_component(ecs, e, COMPONENT_VELOCITY);
+            bounds_t *b = (bounds_t *)neko_ecs_ent_get_component(ecs, e, COMPONENT_BOUNDS);
+            color_t *c = (color_t *)neko_ecs_ent_get_component(ecs, e, COMPONENT_COLOR);
+
+            // Grab global instance of engine
+            neko_t *engine = neko_instance();
+
+            auto pi = *p;
+            auto bi = *b;
+            neko_idraw_rectvd(&CL_GAME_USERDATA()->idraw, pi, bi, neko_v2(0.f, 0.f), neko_v2(1.f, 1.f), (neko_color_t)*c, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
+        }
+    }
+}
+
+void register_components(neko_ecs *ecs) {
+    // neko_ecs, component index, component pool size, size of component, and component free func
+    neko_ecs_register_component(ecs, COMPONENT_GAMEOBJECT, 1024 * 64, sizeof(CGameObjectTest), NULL);
+    neko_ecs_register_component(ecs, COMPONENT_TRANSFORM, 1024 * 64, sizeof(position_t), NULL);
+    neko_ecs_register_component(ecs, COMPONENT_VELOCITY, 1024 * 64, sizeof(velocity_t), NULL);
+    neko_ecs_register_component(ecs, COMPONENT_BOUNDS, 1024 * 64, sizeof(bounds_t), NULL);
+    neko_ecs_register_component(ecs, COMPONENT_COLOR, 1024 * 64, sizeof(color_t), NULL);
+}
+
+void register_systems(neko_ecs *ecs) {
+    // ecs_run_systems 将按照系统注册的顺序运行系统
+    // 如果希望单独处理每个系统 也可以使用 ecs_run_system
+
+    neko_ecs_register_system(ecs, movement_system, ECS_SYSTEM_UPDATE);
+    neko_ecs_register_system(ecs, render_system, ECS_SYSTEM_RENDER_IMMEDIATE);
+    //    neko_ecs_register_system(ecs, fast_sprite_render_system, ECS_SYSTEM_RENDER_DEFERRED);
+    //    neko_ecs_register_system(ecs, editor_system, ECS_SYSTEM_EDITOR);
+}
 
 sandbox_object::sandbox_object(neko_vec4_t rect) {
 
@@ -730,14 +924,10 @@ void sandbox_game::pre_update() {
     frame_count++;
     //    delta_time = (current_tick - last_tick) / 1000.0f;
 
-    {
-        neko_profiler_scope_begin(lua_pre_update);
-        try {
-            neko_lua_wrap_call(CL_GAME_USERDATA()->L, "game_pre_update");
-        } catch (std::exception &ex) {
-            neko_log_error("lua exception %s", ex.what());
-        }
-        neko_profiler_scope_end(lua_pre_update);
+    try {
+        neko_lua_wrap_call(CL_GAME_USERDATA()->L, "game_pre_update");
+    } catch (std::exception &ex) {
+        neko_log_error("lua exception %s", ex.what());
     }
 
     f32 dt = neko_platform_delta_time();
@@ -745,7 +935,6 @@ void sandbox_game::pre_update() {
     if (neko_platform_key_pressed(NEKO_KEYCODE_ESC)) CL_GAME_USERDATA()->g_cvar.show_editor ^= true;
 
     {
-        neko_profiler_scope_auto("lua_update");
         try {
             neko_lua_wrap_call<void, f32>(CL_GAME_USERDATA()->L, "game_loop", dt);
         } catch (std::exception &ex) {
@@ -1155,6 +1344,93 @@ void main() { out_col = texture(u_sprite_texture, v_uv); }
 
     CL_GAME_USERDATA()->game = new sandbox_game(&CL_GAME_USERDATA()->idraw);
 
+    const neko_vec2_t ws = neko_platform_window_sizev(neko_platform_main_window());
+
+#if 0
+    // Create world
+    CL_GAME_USERDATA()->world = ecs_init_w_args(0, NULL);
+
+    neko_ecs_com_init(CL_GAME_USERDATA()->world);
+
+    // Register system with world
+    ECS_SYSTEM(CL_GAME_USERDATA()->world, move_system, EcsOnUpdate, position_t, velocity_t, bounds_t);
+    ECS_SYSTEM(CL_GAME_USERDATA()->world, render_system, EcsOnUpdate, position_t, bounds_t, color_t);
+
+    auto ecs = flecs::world(CL_GAME_USERDATA()->world);
+
+    // Create entities with random data
+    for (uint32_t i = 0; i < 5; ++i) {
+
+        //        auto e = ecs.entity().set([](Position &p, Velocity &v) {
+        //            p = {10, 20};
+        //            v = {1, 2};
+        //        });
+        //        ecs_entity_t e = ecs_new_w_type(CL_GAME_USERDATA()->world, 0);
+
+        ecs_entity_t e = ecs_new_id(ecs);
+
+        neko_vec2_t bounds = neko_v2((f32)random_val(10, 100), (f32)random_val(10, 100));
+
+        // Set data for entity
+        position_t p = {(f32)random_val(0, (int32_t)ws.x - (int32_t)bounds.x), (f32)random_val(0, (int32_t)ws.y - (int32_t)bounds.y)};
+        ecs_set_id(CL_GAME_USERDATA()->world, e, ecs_id(position_t), sizeof(position_t), &p);
+        velocity_t v = {(f32)random_val(1, 10), (f32)random_val(1, 10)};
+        ecs_set_id(CL_GAME_USERDATA()->world, e, ecs_id(velocity_t), sizeof(velocity_t), &v);
+        bounds_t b = {(f32)random_val(10, 100), (f32)random_val(10, 100)};
+        ecs_set_id(CL_GAME_USERDATA()->world, e, ecs_id(bounds_t), sizeof(bounds_t), &b);
+        color_t c = {(u8)random_val(50, 255), (u8)random_val(50, 255), (u8)random_val(50, 255), 255};
+        ecs_set_id(CL_GAME_USERDATA()->world, e, ecs_id(color_t), sizeof(color_t), &c);
+    }
+#endif
+    CL_GAME_USERDATA()->ecs = neko_ecs_make(1024 * 64, COMPONENT_COUNT, 2);
+
+    register_components(CL_GAME_USERDATA()->ecs);
+    register_systems(CL_GAME_USERDATA()->ecs);
+
+    // 测试用
+    neko_ecs_ent e1 = neko_ecs_ent_make(CL_GAME_USERDATA()->ecs);
+    CGameObjectTest gameobj = neko_default_val();
+
+#if 0
+
+    neko_ui_renderer ui_render = neko_default_val();
+    ui_render.type = neko_ui_renderer::type::LABEL;
+    neko_snprintf(ui_render.text, 128, "%s", "啊对对对");
+
+    // neko_fast_sprite_renderer test_fast_sprite = neko_default_val();
+    // neko_fast_sprite_renderer_construct(&test_fast_sprite, 0, 0, NULL);
+
+    gameobj.visible = true;
+    gameobj.active = true;
+    neko_snprintf(gameobj.name, 64, "%s", "AAA_ent");
+
+    neko_ecs_ent_add_component(CL_GAME_USERDATA()->ecs, e1, COMPONENT_GAMEOBJECT, &gameobj);
+    neko_ecs_ent_add_component(CL_GAME_USERDATA()->ecs, e1, COMPONENT_TRANSFORM, &xform);
+    neko_ecs_ent_add_component(CL_GAME_USERDATA()->ecs, e1, COMPONENT_VELOCITY, &velocity);
+
+#endif
+
+    for (int i = 0; i < 1024 * 16; i++) {
+
+        neko_vec2_t bounds = neko_v2((f32)random_val(10, 100), (f32)random_val(10, 100));
+
+        position_t p = {(f32)random_val(0, (int32_t)ws.x - (int32_t)bounds.x), (f32)random_val(0, (int32_t)ws.y - (int32_t)bounds.y)};
+        velocity_t v = {(f32)random_val(1, 10), (f32)random_val(1, 10)};
+        bounds_t b = {(f32)random_val(10, 100), (f32)random_val(10, 100)};
+        color_t c = {(u8)random_val(50, 255), (u8)random_val(50, 255), (u8)random_val(50, 255), 255};
+
+        neko_snprintf(gameobj.name, 64, "%s_%d", "Test_ent", i);
+        gameobj.visible = true;
+        gameobj.active = false;
+
+        neko_ecs_ent e = neko_ecs_ent_make(CL_GAME_USERDATA()->ecs);
+        neko_ecs_ent_add_component(CL_GAME_USERDATA()->ecs, e, COMPONENT_GAMEOBJECT, &gameobj);
+        neko_ecs_ent_add_component(CL_GAME_USERDATA()->ecs, e, COMPONENT_TRANSFORM, &p);
+        neko_ecs_ent_add_component(CL_GAME_USERDATA()->ecs, e, COMPONENT_VELOCITY, &v);
+        neko_ecs_ent_add_component(CL_GAME_USERDATA()->ecs, e, COMPONENT_BOUNDS, &b);
+        neko_ecs_ent_add_component(CL_GAME_USERDATA()->ecs, e, COMPONENT_COLOR, &c);
+    }
+
     // 初始化工作
 
     thread_atomic_int_store(&CL_GAME_USERDATA()->init_thread_flag, 0);
@@ -1258,14 +1534,10 @@ void game_loop() {
 
         neko_imgui_new_frame(&CL_GAME_USERDATA()->imgui);
 
-        {
-            neko_profiler_scope_begin(lua_render);
-            try {
-                neko_lua_wrap_call(CL_GAME_USERDATA()->L, "game_render");
-            } catch (std::exception &ex) {
-                neko_log_error("lua exception %s", ex.what());
-            }
-            neko_profiler_scope_end(lua_render);
+        try {
+            neko_lua_wrap_call(CL_GAME_USERDATA()->L, "game_render");
+        } catch (std::exception &ex) {
+            neko_log_error("lua exception %s", ex.what());
         }
 
 #pragma region gui
@@ -1540,13 +1812,6 @@ void game_loop() {
             }
         }
 
-        if (CL_GAME_USERDATA()->g_cvar.show_profiler_window) {
-            static neko_profiler_frame_t frame_data;
-            neko_profiler_get_frame(&frame_data);
-            static char buffer[10 * 1024];
-            neko_profiler_draw_frame(&frame_data, buffer, 10 * 1024);
-        }
-
 #pragma endregion
 
         //        sandbox_update(sb);
@@ -1568,6 +1833,10 @@ void game_loop() {
         neko_idraw_rectvd(&CL_GAME_USERDATA()->idraw, neko_v2(0.0, 0.0), neko_v2((u32)win_size.x, (u32)win_size.y), neko_v2(0.0, 1.0), neko_v2(1.0, 0.0), neko_color(255, 255, 255, 255),
                           NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
 
+        //        ecs_progress(CL_GAME_USERDATA()->world, 0);
+        neko_ecs_run_systems(CL_GAME_USERDATA()->ecs, ECS_SYSTEM_UPDATE);
+        neko_ecs_run_systems(CL_GAME_USERDATA()->ecs, ECS_SYSTEM_RENDER_IMMEDIATE);
+
         neko_graphics_renderpass_begin(&CL_GAME_USERDATA()->cb, NEKO_GRAPHICS_RENDER_PASS_DEFAULT);
         {
             neko_graphics_set_viewport(&CL_GAME_USERDATA()->cb, 0.0, 0.0, win_size.x, win_size.y);
@@ -1579,11 +1848,7 @@ void game_loop() {
         neko_imgui_render(&CL_GAME_USERDATA()->imgui);
 
         // Submits to cb
-        {
-            neko_profiler_scope_begin(render_submit);
-            neko_graphics_command_buffer_submit(&CL_GAME_USERDATA()->cb);
-            neko_profiler_scope_end(render_submit);
-        }
+        neko_graphics_command_buffer_submit(&CL_GAME_USERDATA()->cb);
 
         neko_check_gl_error();
     }
@@ -1615,6 +1880,9 @@ void game_shutdown() {
     neko_command_buffer_free(&CL_GAME_USERDATA()->cb);
 
     destroy_texture_handle(test_font_tex_id, NULL);
+
+    //    ecs_fini(CL_GAME_USERDATA()->world);
+    neko_ecs_destroy(CL_GAME_USERDATA()->ecs);
 
     neko_imgui_shutdown(&CL_GAME_USERDATA()->imgui);
     neko_ui_free(&CL_GAME_USERDATA()->ui);
@@ -2049,51 +2317,3 @@ void test_wang() {
 }
 
 #endif
-
-// clang-format off
-unsigned char random_table[256] = {
-    246, 44, 11, 243, 99, 68, 235, 255, 40, 141, 188, 125, 228, 115, 33,
-    248, 60, 235, 232, 58, 81, 140, 8, 68, 88, 143, 44, 100, 149, 214, 39,
-    199, 52, 250, 217, 55, 231, 108, 68, 241, 50, 200, 121, 22, 51, 189,
-    203, 193, 105, 72, 42, 235, 242, 142, 12, 139, 134, 87, 241, 239, 128,
-    221, 225, 251, 248, 255, 123, 32, 148, 182, 193, 204, 79, 154, 182,
-    26, 152, 54, 16, 162, 78, 220, 90, 65, 66, 242, 25, 79, 187, 74, 217,
-    236, 56, 6, 125, 208, 132, 161, 193, 111, 52, 49, 218, 197, 111, 250,
-    192, 230, 229, 204, 168, 230, 78, 58, 165, 131, 54, 94, 118, 29, 62,
-    112, 180, 146, 71, 148, 5, 54, 158, 158, 91, 17, 95, 107, 38, 91, 198,
-    47, 70, 228, 15, 175, 222, 225, 83, 80, 20, 253, 77, 163, 134, 158, 6,
-    248, 111, 212, 81, 98, 168, 131, 158, 208, 30, 255, 208, 120, 175, 149,
-    7, 124, 49, 142, 71, 211, 162, 26, 154, 194, 51, 128, 217, 162, 31,
-    191, 158, 82, 223, 115, 108, 209, 62, 168, 51, 235, 212, 199, 151,
-    11, 182, 245, 5, 10, 188, 231, 122, 166, 149, 54, 251, 153, 143, 107,
-    98, 154, 90, 171, 78, 24, 41, 64, 187, 237, 58, 208, 106, 226, 176,
-    228, 167, 17, 4, 148, 219, 18, 124, 70, 214, 105, 231, 206, 195, 127,
-    182, 11, 208, 224, 56, 197, 11, 62, 138, 218, 18, 234, 245, 242
-};
-// clang-format on
-
-neko_global int rnd_index = 0;
-
-int g_random(void) {
-    rnd_index = (rnd_index + 1) & 0xff;
-    return random_table[rnd_index];
-}
-
-s32 random_val(s32 lower, s32 upper) {
-    if (upper < lower) {
-        s32 tmp = lower;
-        lower = upper;
-        upper = tmp;
-    }
-    return (rand() % (upper - lower + 1) + lower);
-}
-
-s32 random_tlb_val(s32 lower, s32 upper) {
-    s32 rand_num = g_random();
-    if (upper < lower) {
-        s32 tmp = lower;
-        lower = upper;
-        upper = tmp;
-    }
-    return (rand_num % (upper - lower + 1) + lower);
-}

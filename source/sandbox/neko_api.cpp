@@ -17,7 +17,6 @@
 #include "sandbox/game_physics.h"
 #include "sandbox/game_pixelui.h"
 #include "sandbox/imgui_lua_inspector.hpp"
-#include "sandbox/neko_profiler.h"
 
 // hpp
 #include "sandbox/hpp/neko_static_refl.hpp"
@@ -1811,7 +1810,6 @@ static int __neko_bind_sprite_batch_render_end(lua_State* L) {
     neko_sprite_batch_t* user_handle = (neko_sprite_batch_t*)lua_touserdata(L, 1);
 
     {
-        neko_profiler_scope_auto("render_spritebatch");
         spritebatch_defrag(&user_handle->sb);
         spritebatch_tick(&user_handle->sb);
         spritebatch_flush(&user_handle->sb);
