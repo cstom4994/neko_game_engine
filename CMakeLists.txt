@@ -197,20 +197,25 @@ set(box2d_src
 
 
 file(GLOB_RECURSE neko_engine_src CONFIGURE_DEPENDS "source/engine/**.*")
-file(GLOB_RECURSE flecs_src CONFIGURE_DEPENDS "source/deps/flecs/**.*")
+file(GLOB_RECURSE neko_sandbox_src CONFIGURE_DEPENDS "source/sandbox/**.*")
 
 set(neko_engine_src_all
         ${neko_engine_src}
         ${box2d_src}
-        ${flecs_src}
         "source/deps/impl_build.cpp"
 )
 
-file(GLOB_RECURSE neko_game_src CONFIGURE_DEPENDS "source/sandbox/**.*")
-
 set(neko_game_src_all
-        ${neko_game_src}
-        ${magic_src}
+        ${neko_sandbox_src}
+        # "source/game_cvar.cpp"
+        # "source/game_editor.cpp"
+        # "source/game_main.cpp"
+        # "source/game_physics_math.cpp"
+        # "source/game_physics.cpp"
+        # "source/helper.cpp"
+        # "source/imgui_lua.cpp"
+        # "source/neko_api.cpp"
+        # "source/sound.cpp"
 )
 
 add_library(neko_engine STATIC ${neko_engine_src_all})

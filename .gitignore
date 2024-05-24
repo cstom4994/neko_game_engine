@@ -28,10 +28,12 @@ old/
 source/generated
 source/deps
 source/lua/libs
+source/sandbox/tests
 
 build.bat
 compile_commands.json
 imgui.ini
+CMakeSettings.json
 
 # clangd
 .clangd/

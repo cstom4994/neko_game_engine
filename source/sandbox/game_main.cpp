@@ -20,15 +20,14 @@
 #include "engine/neko_platform.h"
 
 // binding
-#include "neko_api.h"
-#include "neko_refl.hpp"
+#include "engine/neko_api.h"
+#include "engine/neko_refl.hpp"
 
 // game
 #include "game_editor.h"
 #include "game_main.h"
 #include "game_physics_math.hpp"
-#include "neko_api.h"
-#include "simulation.h"
+#include "helper.h"
 
 // lua
 #include "engine/neko_lua.h"
@@ -41,9 +40,7 @@
 #include "sandbox/hpp/neko_struct.hpp"
 
 #define NEKO_IMGUI_IMPL
-#include "game_imgui.h"
-
-NEKO_HIJACK_MAIN();
+#include "engine/neko_imgui.h"
 
 // user data
 
@@ -192,47 +189,7 @@ void app_load_style_sheet(bool destroy) {
     neko_ui_set_style_sheet(&CL_GAME_USERDATA()->ui, &CL_GAME_USERDATA()->style_sheet);
 }
 
-f32 font_projection[16];
-neko_graphics_batch_context_t *font_render;
-neko_graphics_batch_shader_t font_shader;
-neko_graphics_batch_renderable_t font_renderable;
-f32 font_scale = 3.f;
-int font_vert_count;
-neko_font_vert_t *font_verts;
-neko_font_u64 test_font_tex_id;
-neko_font_t *test_font_bmfont;
-
-void draw_text(neko_font_t *font, const char *text, float x, float y, float line_height, float clip_region, float wrap_x, f32 scale) {
-    f32 text_w = (f32)neko_font_text_width(font, text);
-    f32 text_h = (f32)neko_font_text_height(font, text);
-
-    //    neko_vec2 fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
-
-    if (scale == 0.f) scale = font_scale;
-
-    neko_font_rect_t clip_rect;
-    clip_rect.left = -CL_GAME_USERDATA()->fbs.x / scale * clip_region;
-    clip_rect.right = CL_GAME_USERDATA()->fbs.x / scale * clip_region + 0.5f;
-    clip_rect.top = CL_GAME_USERDATA()->fbs.y / scale * clip_region + 0.5f;
-    clip_rect.bottom = -CL_GAME_USERDATA()->fbs.y / scale * clip_region;
-
-    f32 x0 = (x - CL_GAME_USERDATA()->fbs.x / 2.f) / scale /*+ -text_w / 2.f*/;
-    f32 y0 = (CL_GAME_USERDATA()->fbs.y / 2.f - y) / scale + text_h / 2.f;
-    f32 wrap_width = wrap_x - x0;
-
-    neko_font_fill_vertex_buffer(font, text, x0, y0, wrap_width, line_height, &clip_rect, font_verts, 1024 * 2, &font_vert_count);
-
-    if (font_vert_count) {
-        neko_graphics_batch_draw_call_t call;
-        call.textures[0] = (u32)font->atlas_id;
-        call.texture_count = 1;
-        call.r = &font_renderable;
-        call.verts = font_verts;
-        call.vert_count = font_vert_count;
-
-        neko_graphics_batch_push_draw_call(font_render, call);
-    }
-}
+neko_fontbatch_t font_render_batch;
 
 // int32_t random_val(int32_t lower, int32_t upper) { return ((rand() % (upper - lower + 1)) + lower); }
 
@@ -590,68 +547,20 @@ void game_init() {
 
     //    neko_vec2 fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
 
-    font_render = neko_graphics_batch_make_ctx(32);
-
-    const char *font_vs = R"(
-#version 330
-
-uniform mat4 u_mvp;
-in vec2 in_pos; in vec2 in_uv;
-out vec2 v_uv;
-
-void main() {
-    v_uv = in_uv;
-    gl_Position = u_mvp * vec4(in_pos, 0, 1);
-})";
-
-    const char *font_ps = R"(
-#version 330
-precision mediump float;
-
-uniform sampler2D u_sprite_texture;
-in vec2 v_uv; out vec4 out_col;
-
-void main() { out_col = texture(u_sprite_texture, v_uv); }
-)";
-
-    neko_graphics_batch_vertex_data_t font_vd;
-    neko_graphics_batch_make_vertex_data(&font_vd, 1024 * 1024, GL_TRIANGLES, sizeof(neko_font_vert_t), GL_DYNAMIC_DRAW);
-    neko_graphics_batch_add_attribute(&font_vd, "in_pos", 2, NEKO_GL_CUSTOM_FLOAT, neko_offset(neko_font_vert_t, x));
-    neko_graphics_batch_add_attribute(&font_vd, "in_uv", 2, NEKO_GL_CUSTOM_FLOAT, neko_offset(neko_font_vert_t, u));
-
-    neko_graphics_batch_make_renderable(&font_renderable, &font_vd);
-    neko_graphics_batch_load_shader(&font_shader, font_vs, font_ps);
-    neko_graphics_batch_set_shader(&font_renderable, &font_shader);
-
-    neko_graphics_batch_ortho_2d(CL_GAME_USERDATA()->fbs.x / font_scale, CL_GAME_USERDATA()->fbs.y / font_scale, 0, 0, font_projection);
-
-    neko_graphics_batch_send_matrix(&font_shader, "u_mvp", font_projection);
-
-    size_t test_font_size = 0;
-    void *test_font_mem = neko_platform_read_file_contents(game_assets("gamedir/1.fnt").c_str(), "rb", &test_font_size);
-    neko_png_image_t img = neko_png_load(game_assets("gamedir/1_0.png").c_str());
-    test_font_tex_id = generate_texture_handle(img.pix, img.w, img.h, NULL);
-    test_font_bmfont = neko_font_load_bmfont(test_font_tex_id, test_font_mem, test_font_size, 0);
-    if (test_font_bmfont->atlas_w != img.w || test_font_bmfont->atlas_h != img.h) {
-        neko_log_warning("failed to load font");
-    }
-    neko_safe_free(test_font_mem);
-    neko_png_free(&img);
-
-    g_client_userdata.test_font_bmfont = test_font_bmfont;
-
-    font_verts = (neko_font_vert_t *)neko_safe_malloc(sizeof(neko_font_vert_t) * 1024 * 2);
-
     // Load a file
     neko_filesystem_file_t file;
-    neko_filesystem_file(CL_GAME_USERDATA()->assetsys, "/gamedir/style_sheets/temp.ss", &file);
+    neko_filesystem_file(CL_GAME_USERDATA()->assetsys, "/gamedir/1.fnt", &file);
     int size = neko_filesystem_file_size(CL_GAME_USERDATA()->assetsys, file);
-    // char *content = (char *)malloc(size + 1);  // extra space for '\0'
-    // int loaded_size = 0;
-    // neko_filesystem_file_load(g_assetsys, file, &loaded_size, content, size);
-    // content[size] = '\0';  // zero terminate the text file
-    // printf("%s\n", content);
-    // free(content);
+    char *content = (char *)malloc(size + 1);  // extra space for '\0'
+    int loaded_size = 0;
+    neko_filesystem_file_load(CL_GAME_USERDATA()->assetsys, file, &loaded_size, content, size);
+    content[size] = '\0';  // zero terminate the text file
+
+    neko_fontbatch_init(&font_render_batch, CL_GAME_USERDATA()->fbs, game_assets("gamedir/1_0.png").c_str(), content, loaded_size);
+
+    free(content);
+
+    CL_GAME_USERDATA()->font_render_batch = &font_render_batch;
 
     // Construct frame buffer
     CL_GAME_USERDATA()->main_fbo = neko_graphics_framebuffer_create({});
@@ -684,8 +593,7 @@ void main() { out_col = texture(u_sprite_texture, v_uv); }
 
     auto ecs = flecs::world(CL_GAME_USERDATA()->ecs_world);
 
-    // Create entities with random data
-    for (uint32_t i = 0; i < 5; ++i) {
+    for (uint32_t i = 0; i < 4; ++i) {
 
         //        auto e = ecs.entity().set([](Position &p, Velocity &v) {
         //            p = {10, 20};
@@ -710,6 +618,7 @@ void main() { out_col = texture(u_sprite_texture, v_uv); }
 #endif
 
 #if 1
+
     CL_GAME_USERDATA()->ecs = neko_ecs_make(1024 * 64, COMPONENT_COUNT, 2);
 
     register_components(CL_GAME_USERDATA()->ecs);
@@ -944,7 +853,7 @@ void game_loop() {
             neko_graphics_set_viewport(&CL_GAME_USERDATA()->cb, 0, 0, (u32)CL_GAME_USERDATA()->fbs.x, (u32)CL_GAME_USERDATA()->fbs.y);
             neko_graphics_clear(&CL_GAME_USERDATA()->cb, clear);
             neko_idraw_draw(&CL_GAME_USERDATA()->idraw, &CL_GAME_USERDATA()->cb);  // 立即模式绘制 idraw
-            neko_graphics_draw_batch(&CL_GAME_USERDATA()->cb, font_render, 0, 0, 0);
+            neko_graphics_draw_batch(&CL_GAME_USERDATA()->cb, font_render_batch.font_render, 0, 0, 0);
         }
         neko_graphics_renderpass_end(&CL_GAME_USERDATA()->cb);
 
@@ -998,15 +907,15 @@ void game_shutdown() {
     }
 
     neko_scripting_end(CL_GAME_USERDATA()->L);
-    neko_safe_free(font_verts);
+    neko_safe_free(font_render_batch.font_verts);
 
-    neko_font_free(test_font_bmfont);
-    neko_graphics_batch_free(font_render);
+    neko_font_free(font_render_batch.font);
+    neko_graphics_batch_free(font_render_batch.font_render);
 
     neko_immediate_draw_free(&CL_GAME_USERDATA()->idraw);
     neko_command_buffer_free(&CL_GAME_USERDATA()->cb);
 
-    destroy_texture_handle(test_font_tex_id, NULL);
+    destroy_texture_handle(font_render_batch.font_tex_id, NULL);
 
     // ecs_fini(CL_GAME_USERDATA()->ecs_world);
     neko_ecs_destroy(CL_GAME_USERDATA()->ecs);

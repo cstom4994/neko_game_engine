@@ -58,24 +58,6 @@ extern struct neko_lua_hook_pool g_lua_hook_pool;
 
 void neko_register(lua_State *L);
 
-neko_inline u64 generate_texture_handle(void *pixels, int w, int h, void *udata) {
-    (void)udata;
-    GLuint location;
-    glGenTextures(1, &location);
-    glBindTexture(GL_TEXTURE_2D, location);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    return (u64)location;
-}
-
-neko_inline void destroy_texture_handle(u64 texture_id, void *udata) {
-    (void)udata;
-    GLuint id = (GLuint)texture_id;
-    glDeleteTextures(1, &id);
-}
-
 lua_Number luax_number_field(lua_State *L, s32 arg, const char *key);
 lua_Number luax_opt_number_field(lua_State *L, s32 arg, const char *key, lua_Number fallback);
 

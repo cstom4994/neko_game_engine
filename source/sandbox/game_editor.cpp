@@ -10,7 +10,7 @@
 
 // ImGui
 #include "engine/neko.h"
-#include "game_imgui.h"
+#include "engine/neko_imgui.h"
 
 // 生成宏 以避免始终重复代码
 #define INSPECTOR_GENERATE_VARIABLE(cputype, count, gltype, glread, glwrite, imguifunc) \

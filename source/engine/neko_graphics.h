@@ -805,6 +805,24 @@ typedef neko_handle(neko_graphics_storage_buffer_t) neko_storage_buffer_t;
 
 #endif
 
+neko_inline u64 generate_texture_handle(void* pixels, int w, int h, void* udata) {
+    (void)udata;
+    GLuint location;
+    glGenTextures(1, &location);
+    glBindTexture(GL_TEXTURE_2D, location);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    return (u64)location;
+}
+
+neko_inline void destroy_texture_handle(u64 texture_id, void* udata) {
+    (void)udata;
+    GLuint id = (GLuint)texture_id;
+    glDeleteTextures(1, &id);
+}
+
 // Mesh
 neko_enum_decl(neko_asset_mesh_attribute_type, NEKO_ASSET_MESH_ATTRIBUTE_TYPE_POSITION, NEKO_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL, NEKO_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT,
                NEKO_ASSET_MESH_ATTRIBUTE_TYPE_JOINT, NEKO_ASSET_MESH_ATTRIBUTE_TYPE_WEIGHT, NEKO_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD, NEKO_ASSET_MESH_ATTRIBUTE_TYPE_COLOR,

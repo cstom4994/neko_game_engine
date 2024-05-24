@@ -921,7 +921,7 @@ void neko_platform_init(neko_platform_t* pf) {
         } break;
     }
 
-//    glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
+    //    glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
     //    glfwWindowHint(GLFW_DECORATED, GLFW_FALSE); // 设置窗口无边框
 
     // Construct cursors
@@ -4713,7 +4713,7 @@ void thread_timer_term(neko_thread_timer_t* timer) {
 #endif
 }
 
-void thread_timer_wait(neko_thread_timer_t* timer, THREAD_U64 nanoseconds) {
+void thread_timer_wait(neko_thread_timer_t* timer, u64 nanoseconds) {
 #if defined(_WIN32)
 
     LARGE_INTEGER due_time;

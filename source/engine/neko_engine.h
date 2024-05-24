@@ -44,11 +44,11 @@ typedef struct neko_context_t {
     neko_audio_t* audio;
     neko_game_desc_t game;
     neko_os_api_t os;
+    void (*shutdown)();
 } neko_context_t;
 
 typedef struct neko_t {
     neko_context_t ctx;
-    void (*shutdown)();
 } neko_t;
 
 NEKO_API_DECL neko_t* neko_create(neko_game_desc_t app_desc);

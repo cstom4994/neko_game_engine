@@ -7,16 +7,16 @@
 
 #include "engine/neko.h"
 #include "engine/neko_asset.h"
+#include "engine/neko_cl.h"
 #include "engine/neko_engine.h"
 #include "engine/neko_filesystem.h"
-#include "engine/neko_lua.h"
+#include "engine/neko_lua.hpp"
 
 // game
-#include "game_cvar.h"
-#include "game_editor.h"
-#include "game_imgui.h"
-#include "game_main.h"
-#include "game_physics.h"
+#include "sandbox/game_cvar.h"
+#include "sandbox/game_editor.h"
+#include "sandbox/game_main.h"
+#include "sandbox/game_physics.h"
 
 // hpp
 #include "sandbox/hpp/neko_static_refl.hpp"
@@ -1508,7 +1508,7 @@ static int __neko_bind_draw_text(lua_State* L) {
 
     if (numArgs > 3) scale = lua_tonumber(L, 4);
 
-    draw_text(CL_GAME_USERDATA()->test_font_bmfont, text, x, y, 1, 1.f, 800.f, scale);
+    neko_fontbatch_draw(CL_GAME_USERDATA()->font_render_batch, CL_GAME_USERDATA()->fbs, text, x, y, 1, 1.f, 800.f, scale);
 
     return 0;
 }

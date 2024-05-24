@@ -846,29 +846,9 @@ NEKO_API_DECL tick_t neko_timer_system(void);
         timer_do;                                          \
     } while (0)
 
-#define NEKO_HIJACK_MAIN()                                 \
-    s32 main(s32 argv, char **argc) {                      \
-        neko_t *inst = neko_create(neko_main(argv, argc)); \
-        while (neko_app()->is_running) {                   \
-            neko_frame();                                  \
-        }                                                  \
-        neko_free(inst);                                   \
-        return 0;                                          \
-    }
-
-/*
-typedef struct neko_platform_interface_s
-{
-} neko_platform_interface_t;
-*/
-
 /*===================================
 // Thread
 ===================================*/
-
-#ifndef THREAD_U64
-#define THREAD_U64 unsigned long long
-#endif
 
 #define THREAD_HAS_ATOMIC 1
 #define THREAD_STACK_SIZE_DEFAULT (0)
@@ -944,7 +924,7 @@ NEKO_API_DECL void *thread_atomic_ptr_compare_and_swap(neko_thread_atomic_ptr_t 
 typedef union neko_thread_timer_t neko_thread_timer_t;
 NEKO_API_DECL void thread_timer_init(neko_thread_timer_t *timer);
 NEKO_API_DECL void thread_timer_term(neko_thread_timer_t *timer);
-NEKO_API_DECL void thread_timer_wait(neko_thread_timer_t *timer, THREAD_U64 nanoseconds);
+NEKO_API_DECL void thread_timer_wait(neko_thread_timer_t *timer, u64 nanoseconds);
 
 typedef void *neko_thread_tls_t;
 NEKO_API_DECL neko_thread_tls_t thread_tls_create(void);

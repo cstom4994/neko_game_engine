@@ -2,7 +2,7 @@
 #include "game_cvar.h"
 
 #include "engine/neko.hpp"
-#include "game_imgui.h"
+#include "engine/neko_imgui.h"
 #include "sandbox/hpp/neko_static_refl.hpp"
 #include "sandbox/hpp/neko_struct.hpp"
 

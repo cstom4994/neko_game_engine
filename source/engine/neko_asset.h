@@ -304,6 +304,29 @@ NEKO_API_DECL int neko_font_fill_vertex_buffer(neko_font_t* font, const char* te
 // 解码 utf-8 代码点并返回字符串指针
 NEKO_API_DECL const char* neko_font_decode_utf8(const char* text, int* cp);
 
+/*==========================
+// Text draw
+==========================*/
+
+typedef struct neko_fontbatch_s {
+    f32 font_projection[16];
+    neko_graphics_batch_context_t* font_render;
+    neko_graphics_batch_shader_t font_shader;
+    neko_graphics_batch_renderable_t font_renderable;
+    f32 font_scale;
+    s32 font_vert_count;
+    neko_font_vert_t* font_verts;
+    neko_font_u64 font_tex_id;
+    neko_font_t* font;
+} neko_fontbatch_t;
+
+NEKO_API_DECL void neko_fontbatch_init(neko_fontbatch_t* font_batch, const neko_vec2_t fbs, const_str img_path, char* content, int content_size);
+NEKO_API_DECL void neko_fontbatch_draw(neko_fontbatch_t* font_batch, const neko_vec2_t fbs, const char* text, float x, float y, float line_height, float clip_region, float wrap_x, f32 scale);
+
+/*==========================
+// Aseprite draw
+==========================*/
+
 typedef struct neko_aseprite_frame {
     s32 duration;
     f32 u0, v0, u1, v1;
@@ -340,6 +363,10 @@ NEKO_API_DECL void neko_aseprite_renderer_update(neko_aseprite_renderer* sr, f32
 NEKO_API_DECL void neko_aseprite_renderer_set_frame(neko_aseprite_renderer* sr, s32 frame);
 
 #define SPRITE_SCALE 3
+
+/*==========================
+// Tiled draw
+==========================*/
 
 typedef struct tile_s {
     u32 id;

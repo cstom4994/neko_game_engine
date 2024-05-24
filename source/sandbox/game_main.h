@@ -13,13 +13,14 @@
 #include "engine/neko.hpp"
 #include "engine/neko_ecs.h"
 #include "engine/neko_engine.h"
+#include "engine/neko_imgui.h"
 #include "engine/neko_math.h"
 #include "game_cvar.h"
-#include "game_imgui.h"
 #include "sound.h"
 
 class sandbox_game;
 class neko_filesystem_t;
+struct game_font_render_batch;
 
 typedef struct neko_client_userdata_s {
 
@@ -46,7 +47,7 @@ typedef struct neko_client_userdata_s {
 
     lua_State* L;
 
-    neko_font_t* test_font_bmfont;
+    neko_fontbatch_t* font_render_batch;
 
     neko_engine_cvar_t cl_cvar = neko_default_val();
 
@@ -74,7 +75,6 @@ neko_inline neko_client_userdata_t* CL_GAME_USERDATA() { return &g_client_userda
 
 // TODO:
 std::string game_assets(const std::string& path);
-void draw_text(neko_font_t* font, const char* text, float x, float y, float line_height, float clip_region, float wrap_x, f32 scale);
 
 class Graphics {
 public:

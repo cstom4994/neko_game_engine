@@ -1646,7 +1646,7 @@ NEKO_API_DECL neko_t* neko_create(neko_game_desc_t app_desc) {
         neko_instance()->ctx.game = app_desc;
 
         // 设置函数指针
-        neko_instance()->shutdown = &neko_destroy;
+        neko_instance()->ctx.shutdown = &neko_destroy;
 
         // 初始化 cvars
         __neko_config_init();
@@ -1775,7 +1775,7 @@ NEKO_API_DECL void neko_frame() {
     }
 
     if (!neko_instance()->ctx.game.is_running) {
-        neko_instance()->shutdown();
+        neko_instance()->ctx.shutdown();
         return;
     }
 }
