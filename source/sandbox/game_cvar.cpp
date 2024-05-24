@@ -287,7 +287,7 @@ void __neko_cvar_gui_internal(T &&obj, int depth = 0, const char *fieldName = ""
             }
         };
 
-        neko::invoke::apply([&](auto &&...args) { (ff(fieldName, obj, args), ...); }, std::tuple<CVAR_TYPES()>());
+        std::apply([&](auto &&...args) { (ff(fieldName, obj, args), ...); }, std::tuple<CVAR_TYPES()>());
     }
 }
 

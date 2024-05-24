@@ -15,9 +15,9 @@ __declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
 __declspec(dllexport) unsigned long AmdPowerXpressRequestHighPerformance = 0x00000001;
 #endif
 
-neko_global const char* __build_date = __DATE__;
-neko_global const char* mon[12] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
-neko_global const char mond[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+NEKO_STATIC const char* __build_date = __DATE__;
+NEKO_STATIC const char* mon[12] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+NEKO_STATIC const char mond[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
 s32 neko_buildnum(void) {
     s32 m = 0, d = 0, y = 0;
@@ -1615,7 +1615,7 @@ NEKO_API_DECL void neko_default_app_func();
 
 NEKO_API_DECL void neko_default_main_window_close_callback(void* window);
 
-neko_global neko_t* _neko_instance = neko_default_val();
+NEKO_STATIC neko_t* _neko_instance = neko_default_val();
 
 NEKO_API_DECL neko_t* neko_create(neko_game_desc_t app_desc) {
     if (neko_instance() == NULL) {
@@ -1704,8 +1704,8 @@ NEKO_API_DECL neko_game_desc_t* neko_app() { return &neko_instance()->ctx.game; 
 // Define main frame function for framework to step
 NEKO_API_DECL void neko_frame() {
     // Remove these...
-    neko_private(u32) curr_ticks = 0;
-    neko_private(u32) prev_ticks = 0;
+    NEKO_PRIVATE(u32) curr_ticks = 0;
+    NEKO_PRIVATE(u32) prev_ticks = 0;
 
     {
         //        uintptr_t profile_id_engine;

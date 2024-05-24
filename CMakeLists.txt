@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(neko_engine)
+project(neko_engine LANGUAGES C CXX)
 
-# set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS ON)
 set(CMAKE_CXX_STANDARD 20)
 
@@ -53,7 +53,8 @@ elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
 endif ()
 
 if (MSVC)
-    add_definitions(-DWIN32 -D_WIN32 -D_WINDOWS -DNOMINMAX -DUNICODE -D_UNICODE -DFFI_LITTLE_ENDIAN -Dflecs_STATIC)
+    add_definitions(-DWIN32 -D_WIN32 -D_WINDOWS -DNOMINMAX -DFFI_LITTLE_ENDIAN)
+#     add_definitions(-DUNICODE -D_UNICODE)
 
     add_compile_options(
             /wd4005
@@ -78,7 +79,7 @@ if (MSVC)
             /permissive
             /bigobj
             /Zc:preprocessor
-            /Zc:wchar_t
+        #     /Zc:wchar_t
             /Zc:forScope
 
             /MP

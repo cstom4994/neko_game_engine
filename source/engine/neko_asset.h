@@ -170,7 +170,7 @@ NEKO_API_DECL neko_pack_result neko_pack_unzip(const_str file_path, b8 print_pro
 NEKO_API_DECL neko_pack_result neko_pack_build(const_str pack_path, u64 file_count, const_str* file_paths, b8 print_progress);
 NEKO_API_DECL neko_pack_result neko_pack_info(const_str file_path, u8* pack_version, b8* isLittleEndian, u64* item_count);
 
-neko_inline bool neko_pack_check(neko_pack_result result) {
+NEKO_INLINE bool neko_pack_check(neko_pack_result result) {
     if (result == 0) return true;
     neko_log_warning("read pack faild: %d", result);
     return false;
@@ -321,6 +321,7 @@ typedef struct neko_fontbatch_s {
 } neko_fontbatch_t;
 
 NEKO_API_DECL void neko_fontbatch_init(neko_fontbatch_t* font_batch, const neko_vec2_t fbs, const_str img_path, char* content, int content_size);
+NEKO_API_DECL void neko_fontbatch_end(neko_fontbatch_t* font_batch);
 NEKO_API_DECL void neko_fontbatch_draw(neko_fontbatch_t* font_batch, const neko_vec2_t fbs, const char* text, float x, float y, float line_height, float clip_region, float wrap_x, f32 scale);
 
 /*==========================
@@ -647,12 +648,12 @@ struct ase_t {
     ase_slice_t slices[__NEKO_ASEPRITE_MAX_SLICES];
 };
 
-neko_inline int s_mul_un8(int a, int b) {
+NEKO_INLINE int s_mul_un8(int a, int b) {
     int t = (a * b) + 0x80;
     return (((t >> 8) + t) >> 8);
 }
 
-neko_inline neko_color_t s_blend(neko_color_t src, neko_color_t dst, u8 opacity) {
+NEKO_INLINE neko_color_t s_blend(neko_color_t src, neko_color_t dst, u8 opacity) {
     src.a = (u8)s_mul_un8(src.a, opacity);
     int a = src.a + dst.a - s_mul_un8(src.a, dst.a);
     int r, g, b;
@@ -667,7 +668,7 @@ neko_inline neko_color_t s_blend(neko_color_t src, neko_color_t dst, u8 opacity)
     return ret;
 }
 
-neko_inline neko_color_t s_color(ase_t* ase, void* src, int index) {
+NEKO_INLINE neko_color_t s_color(ase_t* ase, void* src, int index) {
     neko_color_t result;
     if (ase->mode == NEKO_ASE_MODE_RGBA) {
         result = ((neko_color_t*)src)[index];

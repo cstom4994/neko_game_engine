@@ -16,7 +16,6 @@
 #include "engine/neko_asset.h"
 #include "engine/neko_ecs.h"
 #include "engine/neko_engine.h"
-#include "engine/neko_filesystem.h"
 #include "engine/neko_platform.h"
 
 // binding
@@ -415,6 +414,7 @@ int init_work(void *user_data) {
 }
 
 void game_init() {
+
     CL_GAME_USERDATA()->cb = neko_command_buffer_new();
     CL_GAME_USERDATA()->idraw = neko_immediate_draw_new();
 
@@ -427,16 +427,10 @@ void game_init() {
 
     CL_GAME_USERDATA()->am = neko_asset_manager_new();
 
-    CL_GAME_USERDATA()->assetsys = neko_filesystem_create(0);
+    auto mount = neko::vfs_mount("./");
 
-    neko_filesystem_mount(CL_GAME_USERDATA()->assetsys, "./gamedir", "/gamedir");
-
-    //    g_client_userdata.cb = &CL_GAME_USERDATA()->cb;
-    //    g_client_userdata.idraw = &CL_GAME_USERDATA()->idraw;
-    //    CL_GAME_USERDATA()->core_ui = &CL_GAME_USERDATA()->ui;
-    //    CL_GAME_USERDATA()->idraw_sd = neko_immediate_draw_static_data_get();
-
-    //    g_client_userdata.pack = &CL_GAME_USERDATA()->lua_pack;
+    // CL_GAME_USERDATA()->assetsys = neko_filesystem_create(0);
+    // neko_filesystem_mount(CL_GAME_USERDATA()->assetsys, "./gamedir", "/gamedir");
 
     neko_pack_result result = neko_pack_read(game_assets("gamedir/sc.pack").c_str(), 0, false, &CL_GAME_USERDATA()->lua_pack);
     neko_pack_check(result);
@@ -548,17 +542,12 @@ void game_init() {
     //    neko_vec2 fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
 
     // Load a file
-    neko_filesystem_file_t file;
-    neko_filesystem_file(CL_GAME_USERDATA()->assetsys, "/gamedir/1.fnt", &file);
-    int size = neko_filesystem_file_size(CL_GAME_USERDATA()->assetsys, file);
-    char *content = (char *)malloc(size + 1);  // extra space for '\0'
-    int loaded_size = 0;
-    neko_filesystem_file_load(CL_GAME_USERDATA()->assetsys, file, &loaded_size, content, size);
-    content[size] = '\0';  // zero terminate the text file
 
-    neko_fontbatch_init(&font_render_batch, CL_GAME_USERDATA()->fbs, game_assets("gamedir/1_0.png").c_str(), content, loaded_size);
-
-    free(content);
+    neko::string contents = {};
+    bool ok = vfs_read_entire_file(&contents, "gamedir/1.fnt");
+    neko_assert(ok);
+    neko_fontbatch_init(&font_render_batch, CL_GAME_USERDATA()->fbs, game_assets("gamedir/1_0.png").c_str(), contents.data, (s32)contents.len);
+    neko_defer(neko_safe_free(contents.data));
 
     CL_GAME_USERDATA()->font_render_batch = &font_render_batch;
 
@@ -907,15 +896,11 @@ void game_shutdown() {
     }
 
     neko_scripting_end(CL_GAME_USERDATA()->L);
-    neko_safe_free(font_render_batch.font_verts);
 
-    neko_font_free(font_render_batch.font);
-    neko_graphics_batch_free(font_render_batch.font_render);
+    neko_fontbatch_end(&font_render_batch);
 
     neko_immediate_draw_free(&CL_GAME_USERDATA()->idraw);
     neko_command_buffer_free(&CL_GAME_USERDATA()->cb);
-
-    destroy_texture_handle(font_render_batch.font_tex_id, NULL);
 
     // ecs_fini(CL_GAME_USERDATA()->ecs_world);
     neko_ecs_destroy(CL_GAME_USERDATA()->ecs);
@@ -925,7 +910,11 @@ void game_shutdown() {
     neko_pack_destroy(&CL_GAME_USERDATA()->pack);
     neko_pack_destroy(&CL_GAME_USERDATA()->lua_pack);
 
-    neko_filesystem_destroy(CL_GAME_USERDATA()->assetsys);
+    neko::vfs_trash();
+
+#ifdef USE_PROFILER
+    neko::profile_shutdown();
+#endif
 }
 
 neko_game_desc_t neko_main(s32 argc, char **argv) {

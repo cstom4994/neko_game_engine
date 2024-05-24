@@ -54,7 +54,7 @@ typedef struct neko_client_userdata_s {
     neko_thread_atomic_int_t init_thread_flag;
     neko_thread_ptr_t init_work_thread;
 
-    neko_filesystem_t* assetsys;
+    // neko_filesystem_t* assetsys;
 
     neko_vec2_t fbs = {640 * 1.5, 360 * 1.5};
     neko_vec2_t cam = {512, 512};
@@ -71,7 +71,7 @@ typedef struct neko_client_userdata_s {
 
 extern neko_client_userdata_t g_client_userdata;
 
-neko_inline neko_client_userdata_t* CL_GAME_USERDATA() { return &g_client_userdata; }
+NEKO_INLINE neko_client_userdata_t* CL_GAME_USERDATA() { return &g_client_userdata; }
 
 // TODO:
 std::string game_assets(const std::string& path);

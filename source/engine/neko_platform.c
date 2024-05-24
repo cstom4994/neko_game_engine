@@ -879,12 +879,14 @@ void neko_platform_init(neko_platform_t* pf) {
     setlocale(LC_ALL, "en_us.utf8");
     SetConsoleOutputCP(CP_UTF8);
     SetProcessDPIAware();
-    void* shcore = __native_library_load("shcore.dll");
-    if (shcore) {
-        SetProcessDpiAwareness_func setter = (SetProcessDpiAwareness_func)__native_library_get_symbol(shcore, "SetProcessDpiAwareness");
-        if (setter) setter(PROCESS_PER_MONITOR_DPI_AWARE);
-    }
-    if (shcore) __native_library_unload(shcore);
+
+    // void* shcore = __native_library_load("shcore.dll");
+    // if (shcore) {
+    //     SetProcessDpiAwareness_func setter = (SetProcessDpiAwareness_func)__native_library_get_symbol(shcore, "SetProcessDpiAwareness");
+    //     if (setter) setter(PROCESS_PER_MONITOR_DPI_AWARE);
+    // }
+    // if (shcore) __native_library_unload(shcore);
+
     __neko_initialize_symbol_handler();
 #elif NEKO_PLATFORM_LINUX
     // handle linux symbol

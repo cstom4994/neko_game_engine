@@ -34,7 +34,7 @@ struct strtoll_tool_t {
 #define strtoll strtoll_tool_t::do_strtoll
 #define strtoull (unsigned long)strtoll_tool_t::do_strtoll
 
-neko_inline void neko_lua_print_stack(lua_State *L) {
+NEKO_INLINE void neko_lua_print_stack(lua_State *L) {
     int top = lua_gettop(L);  // 获取堆栈上的元素个数
     printf("Stack size: %d\n", top);
 
@@ -81,7 +81,7 @@ T neko_lua_to(lua_State *L, int index) {
 }
 
 template <typename Iterable>
-neko_inline bool neko_lua_equal(lua_State *state, const Iterable &indices) {
+NEKO_INLINE bool neko_lua_equal(lua_State *state, const Iterable &indices) {
     auto it = indices.begin();
     auto end = indices.end();
     if (it == end) return true;
@@ -1126,8 +1126,21 @@ struct void_ignore_t<void> {
 
 enum STACK_MIN_NUM_e { STACK_MIN_NUM = 20 };
 
-neko_inline lua_State *neko_lua_wrap_create() {
-    lua_State *m_ls = ::luaL_newstate();
+NEKO_STATIC_INLINE size_t lua_mem_usage;
+
+NEKO_STATIC_INLINE void *Allocf(void *ud, void *ptr, size_t osize, size_t nsize) {
+    if (!ptr) osize = 0;
+    if (!nsize) {
+        lua_mem_usage -= osize;
+        free(ptr);
+        return NULL;
+    }
+    lua_mem_usage += (nsize - osize);
+    return realloc(ptr, nsize);
+}
+
+NEKO_INLINE lua_State *neko_lua_wrap_create() {
+    lua_State *m_ls = ::lua_newstate(Allocf, NULL);
     ::luaL_openlibs(m_ls);
 
     __neko_lua_auto_open(m_ls);
@@ -1135,7 +1148,7 @@ neko_inline lua_State *neko_lua_wrap_create() {
     return m_ls;
 }
 
-neko_inline void neko_lua_wrap_destory(lua_State *m_ls) {
+NEKO_INLINE void neko_lua_wrap_destory(lua_State *m_ls) {
     if (m_ls) {
         __neko_lua_auto_close(m_ls);
         ::lua_close(m_ls);
@@ -1143,18 +1156,18 @@ neko_inline void neko_lua_wrap_destory(lua_State *m_ls) {
     }
 }
 
-neko_static_inline void neko_lua_wrap_run_string(lua_State *m_ls, const char *str_) {
+NEKO_STATIC_INLINE void neko_lua_wrap_run_string(lua_State *m_ls, const char *str_) {
     if (luaL_dostring(m_ls, str_)) {
         std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "run_string ::lua_pcall_wrap failed str<%s>", str_);
         ::lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
 }
-neko_static_inline void neko_lua_wrap_run_string(lua_State *m_ls, const std::string &str_) { neko_lua_wrap_run_string(m_ls, str_.c_str()); }
+NEKO_STATIC_INLINE void neko_lua_wrap_run_string(lua_State *m_ls, const std::string &str_) { neko_lua_wrap_run_string(m_ls, str_.c_str()); }
 
-neko_inline void neko_lua_wrap_dump_stack(lua_State *m_ls) { neko_lua_wrap_tool_t::dump_stack(m_ls); }
+NEKO_INLINE void neko_lua_wrap_dump_stack(lua_State *m_ls) { neko_lua_wrap_tool_t::dump_stack(m_ls); }
 
-neko_inline int neko_lua_wrap_add_package_path(lua_State *m_ls, const std::string &str_) {
+NEKO_INLINE int neko_lua_wrap_add_package_path(lua_State *m_ls, const std::string &str_) {
     std::string new_path = "package.path = package.path .. \"";
     if (str_.empty()) {
         return -1;
@@ -1176,7 +1189,7 @@ neko_inline int neko_lua_wrap_add_package_path(lua_State *m_ls, const std::strin
     return 0;
 }
 
-neko_inline int neko_lua_wrap_load_file(lua_State *m_ls, const std::string &file_name_)  //
+NEKO_INLINE int neko_lua_wrap_load_file(lua_State *m_ls, const std::string &file_name_)  //
 {
     if (luaL_dofile(m_ls, file_name_.c_str())) {
         std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "cannot load file<%s>", file_name_.c_str());
@@ -1187,17 +1200,17 @@ neko_inline int neko_lua_wrap_load_file(lua_State *m_ls, const std::string &file
     return 0;
 }
 
-neko_inline int neko_lua_pcall_wrap(lua_State *state, int argnum, int retnum, int msgh) {
+NEKO_INLINE int neko_lua_pcall_wrap(lua_State *state, int argnum, int retnum, int msgh) {
     int result = lua_pcall(state, argnum, retnum, msgh);
     return result;
 }
 
-neko_inline int neko_lua_wrap_safe_dofile(lua_State *state, const std::string &file) {
+NEKO_INLINE int neko_lua_wrap_safe_dofile(lua_State *state, const std::string &file) {
     neko_lua_wrap_run_string(state, std::format("xpcall(function ()\nrequire '{0}'\nend, function(err)\nprint(tostring(err))\nprint(debug.traceback(nil, 2))\n__neko_quit(1)\nend)\n", file));
     return 0;
 }
 
-neko_inline bool neko_lua_wrap_dofile(lua_State *m_ls, const std::string &file) {
+NEKO_INLINE bool neko_lua_wrap_dofile(lua_State *m_ls, const std::string &file) {
     int status = luaL_loadfile(m_ls, file.c_str());
 
     if (status) {
@@ -1227,7 +1240,7 @@ int neko_lua_wrap_set_global_variable(lua_State *m_ls, const std::string &field_
 template <typename T>
 int neko_lua_wrap_set_global_variable(lua_State *m_ls, const char *field_name_, const T &value_);
 
-neko_inline void neko_lua_wrap_register_raw_function(lua_State *m_ls, const char *func_name_, lua_function_t func_) {
+NEKO_INLINE void neko_lua_wrap_register_raw_function(lua_State *m_ls, const char *func_name_, lua_function_t func_) {
     lua_checkstack(m_ls, STACK_MIN_NUM);
 
     lua_pushcfunction(m_ls, func_);
@@ -1237,7 +1250,7 @@ neko_inline void neko_lua_wrap_register_raw_function(lua_State *m_ls, const char
 template <typename T>
 void neko_lua_wrap_reg(lua_State *m_ls, T a);
 
-neko_inline void neko_lua_wrap_call(lua_State *m_ls, const char *func_name_) {
+NEKO_INLINE void neko_lua_wrap_call(lua_State *m_ls, const char *func_name_) {
     ::lua_getglobal(m_ls, func_name_);
 
     if (::neko_lua_pcall_wrap(m_ls, 0, 0, 0) != 0) {
@@ -1247,7 +1260,7 @@ neko_inline void neko_lua_wrap_call(lua_State *m_ls, const char *func_name_) {
     }
 }
 
-neko_inline int __neko_lua_getFuncByName(lua_State *m_ls, const char *func_name_) {
+NEKO_INLINE int __neko_lua_getFuncByName(lua_State *m_ls, const char *func_name_) {
     // lua_getglobal(m_ls, func_name_);
     // return 0;
 

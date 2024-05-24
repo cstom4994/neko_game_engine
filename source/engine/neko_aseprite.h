@@ -5,8 +5,8 @@
 #include "engine/neko.h"
 #include "engine/neko_asset.h"
 
-neko_global const_str s_error_file = NULL;  // 正在解析的文件的文件路径 如果来自内存则为 NULL
-neko_global const_str s_error_reason;       // 用于捕获 DEFLATE 解析期间的错误
+NEKO_STATIC const_str s_error_file = NULL;  // 正在解析的文件的文件路径 如果来自内存则为 NULL
+NEKO_STATIC const_str s_error_reason;       // 用于捕获 DEFLATE 解析期间的错误
 
 #define __NEKO_ASEPRITE_FAIL() \
     do {                       \
@@ -29,18 +29,18 @@ neko_global const_str s_error_reason;       // 用于捕获 DEFLATE 解析期间
 #define __NEKO_ASEPRITE_DEFLATE_MAX_BITLEN 15
 
 // DEFLATE tables from RFC 1951
-neko_global u8 s_fixed_table[288 + 32] = {
+NEKO_STATIC u8 s_fixed_table[288 + 32] = {
         8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
         8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
         8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
         9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
         7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
 };                                                                                                                                                                                           // 3.2.6
-neko_global u8 s_permutation_order[19] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};                                                                                 // 3.2.7
-neko_global u8 s_len_extra_bits[29 + 2] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0, 0, 0};                                                     // 3.2.5
-neko_global u32 s_len_base[29 + 2] = {3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258, 0, 0};                              // 3.2.5
-neko_global u8 s_dist_extra_bits[30 + 2] = {0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 0, 0};                                         // 3.2.5
-neko_global u32 s_dist_base[30 + 2] = {1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577, 0, 0};  // 3.2.5
+NEKO_STATIC u8 s_permutation_order[19] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};                                                                                 // 3.2.7
+NEKO_STATIC u8 s_len_extra_bits[29 + 2] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0, 0, 0};                                                     // 3.2.5
+NEKO_STATIC u32 s_len_base[29 + 2] = {3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258, 0, 0};                              // 3.2.5
+NEKO_STATIC u8 s_dist_extra_bits[30 + 2] = {0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 0, 0};                                         // 3.2.5
+NEKO_STATIC u32 s_dist_base[30 + 2] = {1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577, 0, 0};  // 3.2.5
 
 typedef struct deflate_t {
     u64 bits;
@@ -65,14 +65,14 @@ typedef struct deflate_t {
     u32 nlen;
 } deflate_t;
 
-neko_global int s_would_overflow(deflate_t* s, int num_bits) { return (s->bits_left + s->count) - num_bits < 0; }
+NEKO_STATIC int s_would_overflow(deflate_t* s, int num_bits) { return (s->bits_left + s->count) - num_bits < 0; }
 
-neko_global char* s_ptr(deflate_t* s) {
+NEKO_STATIC char* s_ptr(deflate_t* s) {
     neko_assert(!(s->bits_left & 7));
     return (char*)(s->words + s->word_index) - (s->count / 8);
 }
 
-neko_global u64 s_peak_bits(deflate_t* s, int num_bits_to_read) {
+NEKO_STATIC u64 s_peak_bits(deflate_t* s, int num_bits_to_read) {
     if (s->count < num_bits_to_read) {
         if (s->word_index < s->word_count) {
             u32 word = s->words[s->word_index++];
@@ -92,7 +92,7 @@ neko_global u64 s_peak_bits(deflate_t* s, int num_bits_to_read) {
     return s->bits;
 }
 
-neko_global u32 s_consume_bits(deflate_t* s, int num_bits_to_read) {
+NEKO_STATIC u32 s_consume_bits(deflate_t* s, int num_bits_to_read) {
     neko_assert(s->count >= num_bits_to_read);
     u32 bits = (u32)(s->bits & (((u64)1 << num_bits_to_read) - 1));
     s->bits >>= num_bits_to_read;
@@ -101,7 +101,7 @@ neko_global u32 s_consume_bits(deflate_t* s, int num_bits_to_read) {
     return bits;
 }
 
-neko_global u32 s_read_bits(deflate_t* s, int num_bits_to_read) {
+NEKO_STATIC u32 s_read_bits(deflate_t* s, int num_bits_to_read) {
     neko_assert(num_bits_to_read <= 32);
     neko_assert(num_bits_to_read >= 0);
     neko_assert(s->bits_left > 0);
@@ -112,7 +112,7 @@ neko_global u32 s_read_bits(deflate_t* s, int num_bits_to_read) {
     return bits;
 }
 
-neko_global u32 s_rev16(u32 a) {
+NEKO_STATIC u32 s_rev16(u32 a) {
     a = ((a & 0xAAAA) >> 1) | ((a & 0x5555) << 1);
     a = ((a & 0xCCCC) >> 2) | ((a & 0x3333) << 2);
     a = ((a & 0xF0F0) >> 4) | ((a & 0x0F0F) << 4);
@@ -121,7 +121,7 @@ neko_global u32 s_rev16(u32 a) {
 }
 
 // RFC 1951 section 3.2.2
-neko_global u32 s_build(deflate_t* s, u32* tree, u8* lens, int sym_count) {
+NEKO_STATIC u32 s_build(deflate_t* s, u32* tree, u8* lens, int sym_count) {
     int n, codes[16], first[16], counts[16] = {0};
     neko_unused(s);
 
@@ -149,7 +149,7 @@ neko_global u32 s_build(deflate_t* s, u32* tree, u8* lens, int sym_count) {
     return (u32)first[15];
 }
 
-neko_global int s_stored(deflate_t* s) {
+NEKO_STATIC int s_stored(deflate_t* s) {
     char* p;
 
     // 3.2.3
@@ -172,13 +172,13 @@ ase_err:
 }
 
 // 3.2.6
-neko_global int s_fixed(deflate_t* s) {
+NEKO_STATIC int s_fixed(deflate_t* s) {
     s->nlit = s_build(s, s->lit, s_fixed_table, 288);
     s->ndst = s_build(0, s->dst, s_fixed_table + 288, 32);
     return 1;
 }
 
-neko_global int s_decode(deflate_t* s, u32* tree, int hi) {
+NEKO_STATIC int s_decode(deflate_t* s, u32* tree, int hi) {
     u64 bits = s_peak_bits(s, 16);
     u32 search = (s_rev16((u32)bits) << 16) | 0xFFFF;
     int lo = 0;
@@ -199,7 +199,7 @@ neko_global int s_decode(deflate_t* s, u32* tree, int hi) {
 }
 
 // 3.2.7
-neko_global int s_dynamic(deflate_t* s) {
+NEKO_STATIC int s_dynamic(deflate_t* s) {
     u8 lenlens[19] = {0};
 
     u32 nlit = 257 + s_read_bits(s, 5);
@@ -236,7 +236,7 @@ neko_global int s_dynamic(deflate_t* s) {
 }
 
 // 3.2.3
-neko_global int s_block(deflate_t* s) {
+NEKO_STATIC int s_block(deflate_t* s) {
     while (1) {
         int symbol = s_decode(s, s->lit, (int)s->nlit);
 
@@ -277,7 +277,7 @@ ase_err:
 }
 
 // 3.2.3
-neko_global int s_inflate(const void* in, int in_bytes, void* out, int out_bytes) {
+NEKO_STATIC int s_inflate(const void* in, int in_bytes, void* out, int out_bytes) {
     deflate_t* s = (deflate_t*)neko_safe_malloc(sizeof(deflate_t));
     s->bits = 0;
     s->count = 0;
@@ -340,7 +340,7 @@ typedef struct ase_state_t {
     u8* end;
 } ase_state_t;
 
-neko_global u8 s_read_uint8(ase_state_t* s) {
+NEKO_STATIC u8 s_read_uint8(ase_state_t* s) {
     neko_assert(s->in <= s->end + sizeof(u8));
     u8** p = &s->in;
     u8 value = **p;
@@ -348,7 +348,7 @@ neko_global u8 s_read_uint8(ase_state_t* s) {
     return value;
 }
 
-neko_global u16 s_read_uint16(ase_state_t* s) {
+NEKO_STATIC u16 s_read_uint16(ase_state_t* s) {
     neko_assert(s->in <= s->end + sizeof(u16));
     u8** p = &s->in;
     u16 value;
@@ -358,14 +358,14 @@ neko_global u16 s_read_uint16(ase_state_t* s) {
     return value;
 }
 
-neko_global ase_fixed_t s_read_fixed(ase_state_t* s) {
+NEKO_STATIC ase_fixed_t s_read_fixed(ase_state_t* s) {
     ase_fixed_t value;
     value.a = s_read_uint16(s);
     value.b = s_read_uint16(s);
     return value;
 }
 
-neko_global u32 s_read_uint32(ase_state_t* s) {
+NEKO_STATIC u32 s_read_uint32(ase_state_t* s) {
     neko_assert(s->in <= s->end + sizeof(u32));
     u8** p = &s->in;
     u32 value;
@@ -377,10 +377,10 @@ neko_global u32 s_read_uint32(ase_state_t* s) {
     return value;
 }
 
-neko_global s16 s_read_int16(ase_state_t* s) { return (s16)s_read_uint16(s); }
-neko_global s16 s_read_int32(ase_state_t* s) { return (s32)s_read_uint32(s); }
+NEKO_STATIC s16 s_read_int16(ase_state_t* s) { return (s16)s_read_uint16(s); }
+NEKO_STATIC s16 s_read_int32(ase_state_t* s) { return (s32)s_read_uint32(s); }
 
-neko_global const char* s_read_string(ase_state_t* s) {
+NEKO_STATIC const char* s_read_string(ase_state_t* s) {
     int len = (int)s_read_uint16(s);
     char* bytes = (char*)neko_safe_malloc(len + 1);
     for (int i = 0; i < len; ++i) {
@@ -390,12 +390,12 @@ neko_global const char* s_read_string(ase_state_t* s) {
     return bytes;
 }
 
-neko_global void s_skip(ase_state_t* ase, int num_bytes) {
+NEKO_STATIC void s_skip(ase_state_t* ase, int num_bytes) {
     neko_assert(ase->in <= ase->end + num_bytes);
     ase->in += num_bytes;
 }
 
-neko_global char* s_fopen(const char* path, int* size) {
+NEKO_STATIC char* s_fopen(const char* path, int* size) {
     char* data = 0;
     FILE* fp = fopen(path, "rb");
     int sz = 0;

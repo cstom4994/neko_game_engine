@@ -150,7 +150,7 @@ unsigned char random_table[256] = {
 };
 // clang-format on
 
-neko_global int rnd_index = 0;
+NEKO_STATIC int rnd_index = 0;
 
 int g_random(void) {
     rnd_index = (rnd_index + 1) & 0xff;

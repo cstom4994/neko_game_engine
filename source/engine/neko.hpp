@@ -4,10 +4,14 @@
 
 // #include <intrin.h>
 
+#include <stdint.h>
+
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <fstream>
 #include <functional>
+#include <future>
 #include <memory>
 #include <mutex>
 #include <queue>
@@ -17,7 +21,7 @@
 
 #include "engine/neko.h"
 
-#define neko_va_count(...) detail::va_count(__VA_ARGS__)
+#define NEKO_VA_COUNT(...) detail::va_count(__VA_ARGS__)
 
 #if defined(__cplusplus)
 #include <string>
@@ -28,12 +32,12 @@ const char* u8Cpp20(T&& t) noexcept {
     return reinterpret_cast<const char*>(t);
 #pragma warning(default : 26490)
 }
-#define neko_str(x) u8Cpp20(u8##x)
+#define NEKO_STR(x) u8Cpp20(u8##x)
 #else
-#define neko_str(x) u8##x
+#define NEKO_STR(x) u8##x
 #endif
 #else
-#define neko_str(x) x
+#define NEKO_STR(x) x
 #endif
 
 #define NEKO_DYNAMIC_CAST(type, input_var, cast_var_name) \
@@ -94,13 +98,13 @@ constexpr std::size_t va_count(Args&&...) {
 // 一种向任何指针添加字节偏移量的可移植且安全的方法
 // https://stackoverflow.com/questions/15934111/portable-and-safe-way-to-add-byte-offset-to-any-pointer
 template <typename T>
-neko_inline void neko_addoffset(std::ptrdiff_t offset, T*& ptr) {
+NEKO_INLINE void neko_addoffset(std::ptrdiff_t offset, T*& ptr) {
     if (!ptr) return;
     ptr = (T*)((unsigned char*)ptr + offset);
 }
 
 template <typename T>
-neko_inline T* neko_addoffset_r(std::ptrdiff_t offset, T* ptr) {
+NEKO_INLINE T* neko_addoffset_r(std::ptrdiff_t offset, T* ptr) {
     if (!ptr) return nullptr;
     return (T*)((unsigned char*)ptr + offset);
 }
@@ -171,6 +175,20 @@ struct neko_named_func {
     neko_function<T> func;
 };
 
+template <typename F>
+struct neko_defer {
+    F f;
+    neko_defer(F f) : f(f) {}
+    ~neko_defer() { f(); }
+};
+
+template <typename F>
+neko_defer<F> defer_func(F f) {
+    return neko_defer<F>(f);
+}
+
+#define neko_defer(code) auto neko_concat(_defer_, __COUNTER__) = neko::defer_func([&]() { code; })
+
 }  // namespace neko
 
 // 单纯用来测试的 new 和 delete
@@ -220,12 +238,12 @@ private:
     std::chrono::time_point<std::chrono::high_resolution_clock> startPos;
 };
 
-neko_force_inline auto time() -> s64 {
+NEKO_FORCE_INLINE auto time() -> s64 {
     s64 ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     return ms;
 }
 
-neko_force_inline f64 time_d() {
+NEKO_FORCE_INLINE f64 time_d() {
     f64 t;
     // #ifdef _WIN32
     //     FILETIME ft;
@@ -240,7 +258,7 @@ neko_force_inline f64 time_d() {
     return t;
 }
 
-neko_static_inline time_t time_mkgmtime(struct tm* unixdate) {
+NEKO_STATIC_INLINE time_t time_mkgmtime(struct tm* unixdate) {
     neko_assert(unixdate != nullptr);
     time_t fakeUnixtime = mktime(unixdate);
     struct tm* fakeDate = gmtime(&fakeUnixtime);
@@ -252,13 +270,13 @@ neko_static_inline time_t time_mkgmtime(struct tm* unixdate) {
     return fakeUnixtime - nOffSet * 3600;
 }
 
-neko_static_inline auto time_to_string(std::time_t now = std::time(nullptr)) -> std::string {
+NEKO_STATIC_INLINE auto time_to_string(std::time_t now = std::time(nullptr)) -> std::string {
     const auto tp = std::localtime(&now);
     char buffer[32];
     return std::strftime(buffer, sizeof(buffer), "%Y-%m-%d_%H-%M-%S", tp) ? buffer : "1970-01-01_00:00:00";
 }
 
-neko_static_inline std::string fs_normalize_path(const std::string& path, char delimiter = '/') {
+NEKO_STATIC_INLINE std::string fs_normalize_path(const std::string& path, char delimiter = '/') {
     static constexpr char delims[] = "/\\";
 
     std::string norm;
@@ -290,14 +308,14 @@ neko_static_inline std::string fs_normalize_path(const std::string& path, char d
     return norm;
 }
 
-neko_inline bool fs_exists(const std::string& filename) {
+NEKO_INLINE bool fs_exists(const std::string& filename) {
     std::ifstream file(filename);
     return file.good();
 }
 
 }  // namespace neko
 
-neko_inline void neko_utils_write_ppm(const int width, const int height, unsigned char* buffer, const char* filename) {
+NEKO_INLINE void neko_utils_write_ppm(const int width, const int height, unsigned char* buffer, const char* filename) {
 
     FILE* fp = fopen(filename, "wb");
 
@@ -314,7 +332,7 @@ neko_inline void neko_utils_write_ppm(const int width, const int height, unsigne
     (void)fclose(fp);
 };
 
-neko_inline void neko_tex_flip_vertically(int width, int height, u8* data) {
+NEKO_INLINE void neko_tex_flip_vertically(int width, int height, u8* data) {
     u8 rgb[4];
     for (int y = 0; y < height / 2; y++) {
         for (int x = 0; x < width; x++) {
@@ -584,10 +602,6 @@ inline void forEachProp(T& val, F&& func) {
 
 #endif
 
-#include <array>
-#include <future>
-#include <string_view>
-
 #pragma region neko_enum_name
 
 namespace neko {
@@ -644,19 +658,19 @@ constexpr auto enum_name(T value) {
 #pragma endregion
 
 template <typename T>
-neko_inline void neko_swap(T& a, T& b) {
+NEKO_INLINE void neko_swap(T& a, T& b) {
     T tmp = a;
     a = b;
     b = tmp;
 }
 
 template <typename T>
-neko_static_inline void write_var(u8*& _buffer, T _var) {
+NEKO_STATIC_INLINE void write_var(u8*& _buffer, T _var) {
     memcpy(_buffer, &_var, sizeof(T));
     _buffer += sizeof(T);
 }
 
-neko_static_inline void write_str(u8*& _buffer, const char* _str) {
+NEKO_STATIC_INLINE void write_str(u8*& _buffer, const char* _str) {
     u32 len = (u32)strlen(_str);
     write_var(_buffer, len);
     memcpy(_buffer, _str, len);
@@ -664,12 +678,12 @@ neko_static_inline void write_str(u8*& _buffer, const char* _str) {
 }
 
 template <typename T>
-neko_static_inline void read_var(u8*& _buffer, T& _var) {
+NEKO_STATIC_INLINE void read_var(u8*& _buffer, T& _var) {
     memcpy(&_var, _buffer, sizeof(T));
     _buffer += sizeof(T);
 }
 
-neko_static_inline char* read_string(u8*& _buffer) {
+NEKO_STATIC_INLINE char* read_string(u8*& _buffer) {
     u32 len;
     read_var(_buffer, len);
     char* str = new char[len + 1];
@@ -679,7 +693,7 @@ neko_static_inline char* read_string(u8*& _buffer) {
     return str;
 }
 
-neko_static_inline const char* duplicate_string(const char* _str) {
+NEKO_STATIC_INLINE const char* duplicate_string(const char* _str) {
     char* str = new char[strlen(_str) + 1];
     strcpy(str, _str);
     return str;
@@ -1028,6 +1042,33 @@ inline bool string::ends_with(string match) {
     return substr(len - match.len, len) == match;
 }
 
+NEKO_INLINE string str_fmt(const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    s32 len = vsnprintf(nullptr, 0, fmt, args);
+    va_end(args);
+
+    if (len > 0) {
+        char* data = (char*)neko_safe_malloc(len + 1);
+        va_start(args, fmt);
+        vsnprintf(data, len + 1, fmt, args);
+        va_end(args);
+        return {data, (u64)len};
+    }
+
+    return {};
+}
+
+NEKO_INLINE string tmp_fmt(const char* fmt, ...) {
+    static char s_buf[1024] = {};
+
+    va_list args;
+    va_start(args, fmt);
+    s32 len = vsnprintf(s_buf, sizeof(s_buf), fmt, args);
+    va_end(args);
+    return {s_buf, (u64)len};
+}
+
 }  // namespace neko
 
 // 哈希映射容器
@@ -1040,7 +1081,7 @@ enum neko_hashmap_kind : u8 {
 
 #define HASH_MAP_LOAD_FACTOR 0.75f
 
-neko_inline u64 neko_hashmap_reserve_size(u64 size) {
+NEKO_INLINE u64 neko_hashmap_reserve_size(u64 size) {
     u64 n = (u64)(size / HASH_MAP_LOAD_FACTOR) + 1;
 
     // next pow of 2
@@ -1278,10 +1319,12 @@ neko_hashmap_iterator<T> end(neko_hashmap<T>& map) {
 //     return it;
 // }
 
+namespace neko {
+
 // 基本泛型容器
 
 template <typename T>
-struct neko_array {
+struct array {
     T* data = nullptr;
     u64 len = 0;
     u64 capacity = 0;
@@ -1291,57 +1334,83 @@ struct neko_array {
         return data[i];
     }
 
-    void dctor() { neko_safe_free(data); }
+    void trash() { neko_safe_free(data); }
+
+    void reserve(u64 cap) {
+        if (cap > capacity) {
+            T* buf = (T*)neko_safe_malloc(sizeof(T) * cap);
+            memcpy(buf, data, sizeof(T) * len);
+            neko_safe_free(data);
+            data = buf;
+            capacity = cap;
+        }
+    }
+
+    void resize(u64 n) {
+        reserve(n);
+        len = n;
+    }
+
+    void push(T item) {
+        if (len == capacity) {
+            reserve(len > 0 ? len * 2 : 8);
+        }
+        data[len] = item;
+        len++;
+    }
+
+    void pop() {
+        neko_assert(data->len != 0);
+        // 直接标记长度简短 优化方法
+        data->len--;
+    }
+
+    T* begin() { return data; }
+    T* end() { return &data[len]; }
 };
 
-template <typename T>
-void neko_array_dctor(neko_array<T>* arr) {
-    neko_safe_free(arr->data);
-}
+struct arena_node;
+struct arena {
+    arena_node* head;
 
-template <typename T>
-void neko_array_reserve(neko_array<T>* arr, u64 capacity) {
-    if (capacity > arr->capacity) {
-        size_t bytes = sizeof(T) * capacity;
-        T* buf = (T*)neko_safe_malloc(bytes);
-        memcpy(buf, arr->data, sizeof(T) * arr->len);
-        neko_safe_free(arr->data);
-        arr->data = buf;
-        arr->capacity = capacity;
-    }
-}
+    void trash();
+    void* bump(u64 size);
+    void* rebump(void* ptr, u64 old, u64 size);
+    string bump_string(string s);
+};
 
-template <typename T>
-void neko_array_resize(neko_array<T>* arr, u64 len) {
-    neko_array_reserve(arr, len);
-    arr->len = len;
-}
+struct string_builder {
+    char* data;
+    u64 len;       // 不包括空项
+    u64 capacity;  // 包括空项
 
-template <typename T>
-void neko_array_push(neko_array<T>* arr, T item) {
-    if (arr->len == arr->capacity) {
-        neko_array_reserve(arr, arr->capacity * 2 + 8);
-    }
-    arr->data[arr->len++] = item;
-}
+    string_builder();
 
-template <typename T>
-void neko_array_pop(neko_array<T>* arr) {
-    neko_assert(arr->len != 0);
-    // 直接标记长度简短 优化方法
-    arr->len--;
-}
+    void trash();
+    void reserve(u64 capacity);
+    void clear();
+    void swap_filename(string filepath, string file);
+    void concat(string str, s32 times);
 
-template <typename T>
-T* begin(neko_array<T>& arr) {
-    return arr.data;
-}
-template <typename T>
-T* end(neko_array<T>& arr) {
-    return &arr.data[arr.len];
-}
+    string_builder& operator<<(string str);
+    explicit operator string();
+};
 
-namespace neko {
+struct mount_result {
+    bool ok;
+    bool can_hot_reload;
+    bool is_fused;
+};
+
+mount_result vfs_mount(const char* filepath);
+void vfs_trash();
+
+bool vfs_file_exists(string filepath);
+bool vfs_read_entire_file(string* out, string filepath);
+bool vfs_write_entire_file(string filepath, string contents);
+bool vfs_list_all_files(array<string>* files);
+
+void* vfs_for_miniaudio();
 
 template <typename T>
 class safe_queue {

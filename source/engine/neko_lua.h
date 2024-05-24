@@ -491,7 +491,7 @@ void neko_lua_auto_function_register_type(lua_State *L, void *src_func, neko_lua
         lua_setglobal(L, FUNCTIONS[i].name);                      \
     }
 
-NEKO_API_DECL neko_inline bool neko_lua_equal(lua_State *state, int index1, int index2) {
+NEKO_API_DECL NEKO_INLINE bool neko_lua_equal(lua_State *state, int index1, int index2) {
 #if LUA_VERSION_NUM <= 501
     return lua_equal(state, index1, index2) == 1;
 #else

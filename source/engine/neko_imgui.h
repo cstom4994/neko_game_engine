@@ -67,9 +67,9 @@ typedef struct neko_imgui_vertex_t {
 #define NEKO_IMGUI_SHADER_VERSION "#version 330 core\n"
 #endif
 
-neko_static_inline std::size_t g_imgui_mem_usage = 0;
+NEKO_STATIC_INLINE std::size_t g_imgui_mem_usage = 0;
 
-neko_private(void *) __neko_imgui_malloc(size_t sz, void *user_data) {
+NEKO_PRIVATE(void *) __neko_imgui_malloc(size_t sz, void *user_data) {
 #ifdef NEKO_IMGUI_USE_GC
     return __neko_mem_safe_alloc((sz), (char *)__FILE__, __LINE__, &g_imgui_mem_usage);
 #else
@@ -77,7 +77,7 @@ neko_private(void *) __neko_imgui_malloc(size_t sz, void *user_data) {
 #endif
 }
 
-neko_private(void) __neko_imgui_free(void *ptr, void *user_data) {
+NEKO_PRIVATE(void) __neko_imgui_free(void *ptr, void *user_data) {
 #ifdef NEKO_IMGUI_USE_GC
     __neko_mem_safe_free(ptr, &g_imgui_mem_usage);
 #else
@@ -85,21 +85,21 @@ neko_private(void) __neko_imgui_free(void *ptr, void *user_data) {
 #endif
 }
 
-neko_inline std::size_t __neko_imgui_meminuse() { return g_imgui_mem_usage; }
+NEKO_INLINE std::size_t __neko_imgui_meminuse() { return g_imgui_mem_usage; }
 
-neko_inline static const char *neko_imgui_clipboard_getter(void *user_data) { return neko_platform_window_get_clipboard(neko_platform_main_window()); }
+NEKO_INLINE static const char *neko_imgui_clipboard_getter(void *user_data) { return neko_platform_window_get_clipboard(neko_platform_main_window()); }
 
-neko_inline static void neko_imgui_clipboard_setter(void *user_data, const char *text) { neko_platform_window_set_clipboard(neko_platform_main_window(), text); }
+NEKO_INLINE static void neko_imgui_clipboard_setter(void *user_data, const char *text) { neko_platform_window_set_clipboard(neko_platform_main_window(), text); }
 
 static void neko_imgui_opengl_init_platform_interface();
 
-neko_inline auto neko_imgui_glfw_window() {
+NEKO_INLINE auto neko_imgui_glfw_window() {
     struct neko_platform_t *platform = neko_instance()->ctx.platform;
     GLFWwindow *win = (GLFWwindow *)(neko_slot_array_getp(platform->windows, neko_platform_main_window()))->hndl;
     return win;
 }
 
-neko_inline void neko_imgui_style() {
+NEKO_INLINE void neko_imgui_style() {
     ImGuiStyle &style = ImGui::GetStyle();
     // style.WindowRounding = 5.3f;
     // style.GrabRounding = style.FrameRounding = 2.3f;
@@ -108,7 +108,7 @@ neko_inline void neko_imgui_style() {
     // style.ItemSpacing.y = 6.5f;
 }
 
-neko_inline bool neko_imgui_create_fonts_texture(neko_imgui_context_t *neko_imgui) {
+NEKO_INLINE bool neko_imgui_create_fonts_texture(neko_imgui_context_t *neko_imgui) {
     // Build texture atlas
     ImGuiIO &io = ImGui::GetIO();
     unsigned char *pixels;
@@ -134,7 +134,7 @@ neko_inline bool neko_imgui_create_fonts_texture(neko_imgui_context_t *neko_imgu
     return true;
 }
 
-neko_inline void neko_imgui_device_create(neko_imgui_context_t *neko_imgui) {
+NEKO_INLINE void neko_imgui_device_create(neko_imgui_context_t *neko_imgui) {
     static const char *imgui_vertsrc = NEKO_IMGUI_SHADER_VERSION
             R"(
 uniform mat4 ProjMtx;
@@ -235,7 +235,7 @@ void main(){
     neko_imgui_create_fonts_texture(neko_imgui);
 }
 
-neko_inline neko_imgui_context_t neko_imgui_new(neko_command_buffer_t *cb, u32 hndl, bool install_callbacks) {
+NEKO_INLINE neko_imgui_context_t neko_imgui_new(neko_command_buffer_t *cb, u32 hndl, bool install_callbacks) {
     neko_assert(cb);
 
     neko_imgui_context_t neko_imgui = {};
@@ -324,7 +324,7 @@ neko_inline neko_imgui_context_t neko_imgui_new(neko_command_buffer_t *cb, u32 h
     return neko_imgui;
 }
 
-neko_inline void neko_imgui_update_mouse_and_keys(neko_imgui_context_t *ctx) {
+NEKO_INLINE void neko_imgui_update_mouse_and_keys(neko_imgui_context_t *ctx) {
 
     // auto window = (GLFWwindow *)neko_slot_array_getp(neko_subsystem(platform)->windows, neko_platform_main_window())->hndl;
 
@@ -389,9 +389,9 @@ neko_inline void neko_imgui_update_mouse_and_keys(neko_imgui_context_t *ctx) {
     neko_platform_mouse_wheel(&io.MouseWheelH, &io.MouseWheel);
 }
 
-neko_inline void neko_imgui_shutdown(neko_imgui_context_t *neko_imgui) { ImGui::DestroyContext(neko_imgui->ctx); }
+NEKO_INLINE void neko_imgui_shutdown(neko_imgui_context_t *neko_imgui) { ImGui::DestroyContext(neko_imgui->ctx); }
 
-neko_inline void neko_imgui_new_frame(neko_imgui_context_t *neko_imgui) {
+NEKO_INLINE void neko_imgui_new_frame(neko_imgui_context_t *neko_imgui) {
     neko_assert(neko_imgui->ctx != nullptr);
     ImGui::SetCurrentContext(neko_imgui->ctx);
     neko_assert(ImGui::GetCurrentContext() != nullptr);
@@ -417,7 +417,7 @@ neko_inline void neko_imgui_new_frame(neko_imgui_context_t *neko_imgui) {
     ImGui::NewFrame();
 }
 
-neko_inline void neko_imgui_render_window(neko_imgui_context_t *neko_imgui, ImDrawData *draw_data) {
+NEKO_INLINE void neko_imgui_render_window(neko_imgui_context_t *neko_imgui, ImDrawData *draw_data) {
 
     // ImDrawData *draw_data = ImGui::GetDrawData();
 
@@ -567,7 +567,7 @@ static void neko_imgui_opengl_init_platform_interface() {
 
 // static void ImGui_ImplOpenGL3_ShutdownPlatformInterface() { ImGui::DestroyPlatformWindows(); }
 
-neko_inline void neko_imgui_render(neko_imgui_context_t *neko_imgui) {
+NEKO_INLINE void neko_imgui_render(neko_imgui_context_t *neko_imgui) {
 
     ImGuiIO &io = ImGui::GetIO();
     (void)io;
@@ -586,7 +586,7 @@ neko_inline void neko_imgui_render(neko_imgui_context_t *neko_imgui) {
     }
 }
 
-neko_inline void neko_imgui_draw_text(std::string text, neko_color_t col, int x, int y, bool outline, neko_color_t outline_col) {
+NEKO_INLINE void neko_imgui_draw_text(std::string text, neko_color_t col, int x, int y, bool outline, neko_color_t outline_col) {
 
     ImGuiViewport *viewport = ImGui::GetMainViewport();
     ImDrawList *draw_list = ImGui::GetBackgroundDrawList(viewport);
@@ -697,10 +697,10 @@ void neko_gui_layout_save(neko_gui_ctx_t* neko_nui) {
 #define neko_imgui_tree_max_elementsize sizeof(std::string)
 #define neko_imgui_tree_max_tuple 3
 
-neko_static_inline ImVec4 vec4_to_imvec4(const neko_vec4 &v4) { return {v4.x, v4.y, v4.z, v4.w}; }
-neko_static_inline ImColor vec4_to_imcolor(const neko_vec4 &v4) { return {v4.x * 255.0f, v4.y * 255.0f, v4.z * 255.0f, v4.w * 255.0f}; }
+NEKO_STATIC_INLINE ImVec4 vec4_to_imvec4(const neko_vec4 &v4) { return {v4.x, v4.y, v4.z, v4.w}; }
+NEKO_STATIC_INLINE ImColor vec4_to_imcolor(const neko_vec4 &v4) { return {v4.x * 255.0f, v4.y * 255.0f, v4.z * 255.0f, v4.w * 255.0f}; }
 
-neko_inline neko_color_t imvec_to_rgba(ImVec4 iv) {
+NEKO_INLINE neko_color_t imvec_to_rgba(ImVec4 iv) {
     u8 newr = iv.x * 255;
     u8 newg = iv.y * 255;
     u8 newb = iv.z * 255;
@@ -708,7 +708,7 @@ neko_inline neko_color_t imvec_to_rgba(ImVec4 iv) {
     return neko_color_t{newr, newg, newb, newa};
 }
 
-neko_inline ImVec4 rgba_to_imvec(int r, int g, int b, int a = 255) {
+NEKO_INLINE ImVec4 rgba_to_imvec(int r, int g, int b, int a = 255) {
     float newr = r / 255.f;
     float newg = g / 255.f;
     float newb = b / 255.f;
@@ -1187,7 +1187,7 @@ neko_imgui_def_end();
 
 namespace neko::imgui {
 
-neko_inline ImVec4 neko_rgba2imvec(int r, int g, int b, int a = 255) {
+NEKO_INLINE ImVec4 neko_rgba2imvec(int r, int g, int b, int a = 255) {
     float newr = r / 255.f;
     float newg = g / 255.f;
     float newb = b / 255.f;
@@ -1195,7 +1195,7 @@ neko_inline ImVec4 neko_rgba2imvec(int r, int g, int b, int a = 255) {
     return ImVec4(newr, newg, newb, newa);
 }
 
-neko_inline void neko_imgui_help_marker(const_str desc) {
+NEKO_INLINE void neko_imgui_help_marker(const_str desc) {
     ImGui::TextDisabled("(?)");
     if (ImGui::IsItemHovered()) {
         ImGui::BeginTooltip();
@@ -1207,7 +1207,7 @@ neko_inline void neko_imgui_help_marker(const_str desc) {
 }
 
 #if 1
-neko_inline void neko_imgui_file_browser(std::string &path) {
+NEKO_INLINE void neko_imgui_file_browser(std::string &path) {
 
     ImGui::Text("Current Path: %s", path.c_str());
     ImGui::Separator();
@@ -1233,7 +1233,7 @@ neko_inline void neko_imgui_file_browser(std::string &path) {
 }
 #endif
 
-neko_inline bool toggle(const char *label, bool *v) {
+NEKO_INLINE bool toggle(const char *label, bool *v) {
     ImGuiWindow *window = ImGui::GetCurrentWindow();
     if (window->SkipItems) return false;
 
@@ -1286,7 +1286,7 @@ neko_inline bool toggle(const char *label, bool *v) {
     return pressed;
 }
 
-neko_inline bool button_scrollable_ex(const char *label, const ImVec2 &size_arg, ImGuiButtonFlags flags) {
+NEKO_INLINE bool button_scrollable_ex(const char *label, const ImVec2 &size_arg, ImGuiButtonFlags flags) {
     ImGuiWindow *window = ImGui::GetCurrentWindow();
     if (window->SkipItems) return false;
 
@@ -1320,7 +1320,7 @@ neko_inline bool button_scrollable_ex(const char *label, const ImVec2 &size_arg,
     return is_pressed;
 }
 
-neko_inline bool button_scrollable(const char *label, const ImVec2 &size_arg) { return button_scrollable_ex(label, size_arg, ImGuiButtonFlags_None); }
+NEKO_INLINE bool button_scrollable(const char *label, const ImVec2 &size_arg) { return button_scrollable_ex(label, size_arg, ImGuiButtonFlags_None); }
 
 struct InputTextCallback_UserData {
     std::string *Str;
@@ -1342,7 +1342,7 @@ static int InputTextCallback(ImGuiInputTextCallbackData *data) {
     return 0;
 }
 
-neko_inline bool InputText(const char *label, std::string *str, ImGuiInputTextFlags flags = 0, ImGuiInputTextCallback callback = nullptr, void *user_data = nullptr) {
+NEKO_INLINE bool InputText(const char *label, std::string *str, ImGuiInputTextFlags flags = 0, ImGuiInputTextCallback callback = nullptr, void *user_data = nullptr) {
     IM_ASSERT((flags & ImGuiInputTextFlags_CallbackResize) == 0);
     flags |= ImGuiInputTextFlags_CallbackResize;
 
@@ -1353,7 +1353,7 @@ neko_inline bool InputText(const char *label, std::string *str, ImGuiInputTextFl
     return ImGui::InputText(label, (char *)str->c_str(), str->capacity() + 1, flags, InputTextCallback, &cb_user_data);
 }
 
-neko_inline bool InputTextMultiline(const char *label, std::string *str, const ImVec2 &size = ImVec2(0, 0), ImGuiInputTextFlags flags = 0, ImGuiInputTextCallback callback = nullptr,
+NEKO_INLINE bool InputTextMultiline(const char *label, std::string *str, const ImVec2 &size = ImVec2(0, 0), ImGuiInputTextFlags flags = 0, ImGuiInputTextCallback callback = nullptr,
                                     void *user_data = nullptr) {
     IM_ASSERT((flags & ImGuiInputTextFlags_CallbackResize) == 0);
     flags |= ImGuiInputTextFlags_CallbackResize;
@@ -1365,7 +1365,7 @@ neko_inline bool InputTextMultiline(const char *label, std::string *str, const I
     return ImGui::InputTextMultiline(label, (char *)str->c_str(), str->capacity() + 1, size, flags, InputTextCallback, &cb_user_data);
 }
 
-neko_inline bool InputTextWithHint(const char *label, const char *hint, std::string *str, ImGuiInputTextFlags flags = 0, ImGuiInputTextCallback callback = nullptr, void *user_data = nullptr) {
+NEKO_INLINE bool InputTextWithHint(const char *label, const char *hint, std::string *str, ImGuiInputTextFlags flags = 0, ImGuiInputTextCallback callback = nullptr, void *user_data = nullptr) {
     IM_ASSERT((flags & ImGuiInputTextFlags_CallbackResize) == 0);
     flags |= ImGuiInputTextFlags_CallbackResize;
 
@@ -1377,7 +1377,7 @@ neko_inline bool InputTextWithHint(const char *label, const char *hint, std::str
 }
 
 template <typename T, typename... Args>
-neko_inline void TextFmt(T &&fmt, const Args &...args) {
+NEKO_INLINE void TextFmt(T &&fmt, const Args &...args) {
     std::string str = std::format(std::forward<T>(fmt), args...);
     ImGui::TextUnformatted(&*str.begin(), &*str.end());
 }

@@ -503,7 +503,7 @@ typedef struct neko_graphics_draw_desc_t {
     } range;
 } neko_graphics_draw_desc_t;
 
-neko_inline neko_handle(neko_graphics_renderpass_t) __neko_renderpass_default_impl() {
+NEKO_INLINE neko_handle(neko_graphics_renderpass_t) __neko_renderpass_default_impl() {
     neko_handle(neko_graphics_renderpass_t) hndl = neko_default_val();
     return hndl;
 }
@@ -805,7 +805,7 @@ typedef neko_handle(neko_graphics_storage_buffer_t) neko_storage_buffer_t;
 
 #endif
 
-neko_inline u64 generate_texture_handle(void* pixels, int w, int h, void* udata) {
+NEKO_INLINE u64 generate_texture_handle(void* pixels, int w, int h, void* udata) {
     (void)udata;
     GLuint location;
     glGenTextures(1, &location);
@@ -817,7 +817,7 @@ neko_inline u64 generate_texture_handle(void* pixels, int w, int h, void* udata)
     return (u64)location;
 }
 
-neko_inline void destroy_texture_handle(u64 texture_id, void* udata) {
+NEKO_INLINE void destroy_texture_handle(u64 texture_id, void* udata) {
     (void)udata;
     GLuint id = (GLuint)texture_id;
     glDeleteTextures(1, &id);

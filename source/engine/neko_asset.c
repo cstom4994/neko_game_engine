@@ -423,20 +423,20 @@ typedef struct NEKO_LZ_WORKMEM {
 
 // Utils
 
-neko_static_inline u16 UnalignedLoad16(const void *p) { return *(const u16 *)(p); }
-neko_static_inline u32 UnalignedLoad32(const void *p) { return *(const u32 *)(p); }
-neko_static_inline void UnalignedStore16(void *p, u16 x) { *(u16 *)(p) = x; }
-neko_static_inline void UnalignedCopy64(void *d, const void *s) { *(u64 *)(d) = *(const u64 *)(s); }
+NEKO_STATIC_INLINE u16 UnalignedLoad16(const void *p) { return *(const u16 *)(p); }
+NEKO_STATIC_INLINE u32 UnalignedLoad32(const void *p) { return *(const u32 *)(p); }
+NEKO_STATIC_INLINE void UnalignedStore16(void *p, u16 x) { *(u16 *)(p) = x; }
+NEKO_STATIC_INLINE void UnalignedCopy64(void *d, const void *s) { *(u64 *)(d) = *(const u64 *)(s); }
 
-neko_static_inline void __neko_ulz_wild_copy(u8 *d, const u8 *s, int n) {
+NEKO_STATIC_INLINE void __neko_ulz_wild_copy(u8 *d, const u8 *s, int n) {
     UnalignedCopy64(d, s);
 
     for (int i = 8; i < n; i += 8) UnalignedCopy64(d + i, s + i);
 }
 
-neko_static_inline u32 __neko_ulz_hash32(const void *p) { return (UnalignedLoad32(p) * 0x9E3779B9) >> (32 - NEKO_LZ_HASH_BITS); }
+NEKO_STATIC_INLINE u32 __neko_ulz_hash32(const void *p) { return (UnalignedLoad32(p) * 0x9E3779B9) >> (32 - NEKO_LZ_HASH_BITS); }
 
-neko_static_inline void __neko_ulz_encode_mod(u8 **p, u32 x) {
+NEKO_STATIC_INLINE void __neko_ulz_encode_mod(u8 **p, u32 x) {
     while (x >= 128) {
         x -= 128;
         *(*p)++ = 128 + (x & 127);
@@ -445,7 +445,7 @@ neko_static_inline void __neko_ulz_encode_mod(u8 **p, u32 x) {
     *(*p)++ = x;
 }
 
-neko_static_inline u32 __neko_ulz_decode_mod(const u8 **p) {
+NEKO_STATIC_INLINE u32 __neko_ulz_decode_mod(const u8 **p) {
     u32 x = 0;
     for (int i = 0; i <= 21; i += 7) {
         const u32 c = *(*p)++;
@@ -457,7 +457,7 @@ neko_static_inline u32 __neko_ulz_decode_mod(const u8 **p) {
 
 // LZ77
 
-neko_global int __neko_ulz_compress_fast(const u8 *in, int inlen, u8 *out, int outlen) {
+NEKO_STATIC int __neko_ulz_compress_fast(const u8 *in, int inlen, u8 *out, int outlen) {
     NEKO_LZ_WORKMEM *u = (NEKO_LZ_WORKMEM *)neko_realloc(0, sizeof(NEKO_LZ_WORKMEM));
 
     for (int i = 0; i < NEKO_LZ_HASH_SIZE; ++i) u->HashTable[i] = NEKO_LZ_NIL;
@@ -537,7 +537,7 @@ neko_global int __neko_ulz_compress_fast(const u8 *in, int inlen, u8 *out, int o
     return op - out;
 }
 
-neko_global int __neko_ulz_compress(const u8 *in, int inlen, u8 *out, int outlen, int level) {
+NEKO_STATIC int __neko_ulz_compress(const u8 *in, int inlen, u8 *out, int outlen, int level) {
     if (level < 1 || level > 9) return 0;
     const int max_chain = (level < 9) ? 1 << level : 1 << 13;
 
@@ -655,7 +655,7 @@ neko_global int __neko_ulz_compress(const u8 *in, int inlen, u8 *out, int outlen
     return op - out;
 }
 
-neko_global int __neko_ulz_decompress(const u8 *in, int inlen, u8 *out, int outlen) {
+NEKO_STATIC int __neko_ulz_decompress(const u8 *in, int inlen, u8 *out, int outlen) {
     u8 *op = out;
     const u8 *ip = in;
     const u8 *ip_end = ip + inlen;
@@ -738,14 +738,14 @@ inline static FILE *openFile(const char *filePath, const char *mode) {
 
 #define closeFile(file) fclose(file)
 
-neko_private(void) destroy_pack_items(u64 item_count, pack_item *items) {
+NEKO_PRIVATE(void) destroy_pack_items(u64 item_count, pack_item *items) {
     neko_assert(item_count == 0 || (item_count > 0 && items));
 
     for (u64 i = 0; i < item_count; i++) neko_safe_free(items[i].path);
     neko_safe_free(items);
 }
 
-neko_private(neko_pack_result) create_pack_items(FILE *packFile, u64 item_count, pack_item **_items) {
+NEKO_PRIVATE(neko_pack_result) create_pack_items(FILE *packFile, u64 item_count, pack_item **_items) {
     neko_assert(packFile);
     neko_assert(item_count > 0);
     neko_assert(_items);
@@ -920,7 +920,7 @@ u64 neko_pack_item_count(neko_packreader_t *pack_reader) {
     return pack_reader->item_count;
 }
 
-neko_private(int) neko_compare_pack_items(const void *_a, const void *_b) {
+NEKO_PRIVATE(int) neko_compare_pack_items(const void *_a, const void *_b) {
     // NOTE: a and b should not be NULL!
     // Skipping here neko_assertions for debug build speed.
 
@@ -1081,7 +1081,7 @@ void neko_pack_free_buffers(neko_packreader_t *pack_reader) {
     pack_reader->zip_buffer = NULL;
 }
 
-neko_private(void) neko_pack_remove_item(u64 item_count, pack_item *pack_items) {
+NEKO_PRIVATE(void) neko_pack_remove_item(u64 item_count, pack_item *pack_items) {
     neko_assert(item_count == 0 || (item_count > 0 && pack_items));
 
     for (u64 i = 0; i < item_count; i++) remove(pack_items[i].path);
@@ -1170,7 +1170,7 @@ neko_pack_result neko_pack_unzip(const_str file_path, b8 print_progress) {
     return 0;
 }
 
-neko_private(neko_pack_result) neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b8 print_progress) {
+NEKO_PRIVATE(neko_pack_result) neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b8 print_progress) {
     neko_assert(pack_file);
     neko_assert(item_count > 0);
     neko_assert(item_paths);
@@ -1355,7 +1355,7 @@ neko_private(neko_pack_result) neko_write_pack_items(FILE *pack_file, u64 item_c
     return 0;
 }
 
-neko_private(int) neko_pack_compare_item_paths(const void *_a, const void *_b) {
+NEKO_PRIVATE(int) neko_pack_compare_item_paths(const void *_a, const void *_b) {
     // 要保证a与b不为NULL
     char *a = *(char **)_a;
     char *b = *(char **)_b;
@@ -2825,6 +2825,13 @@ void neko_fontbatch_init(neko_fontbatch_t *font_batch, const neko_vec2_t fbs, co
     neko_png_free(&img);
 
     font_batch->font_verts = (neko_font_vert_t *)neko_safe_malloc(sizeof(neko_font_vert_t) * 1024 * 2);
+}
+
+void neko_fontbatch_end(neko_fontbatch_t *font_batch) {
+    neko_safe_free(font_batch->font_verts);
+    neko_font_free(font_batch->font);
+    neko_graphics_batch_free(font_batch->font_render);
+    destroy_texture_handle(font_batch->font_tex_id, NULL);
 }
 
 void neko_fontbatch_draw(neko_fontbatch_t *font_batch, const neko_vec2_t fbs, const char *text, float x, float y, float line_height, float clip_region, float wrap_x, f32 scale) {

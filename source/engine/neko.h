@@ -22,99 +22,36 @@
 // PLATFORM DEFINES
 ===================*/
 
-/* Platform Android */
 #if (defined __ANDROID__)
 
 #define NEKO_PLATFORM_ANDROID
 
-/* Platform Apple */
 #elif (defined __APPLE__ || defined _APPLE)
 
 #define NEKO_PLATFORM_APPLE
 
-/* Platform Windows */
 #elif (defined _WIN32 || defined _WIN64)
 
-#define __USE_MINGW_ANSI_STDIO 1
-
-// Necessary windows defines before including windows.h, because it's retarded.
-#define OEMRESOURCE
-
 #define NEKO_PLATFORM_WIN
-
+#define __USE_MINGW_ANSI_STDIO 1
+#define OEMRESOURCE
 #define _WINSOCKAPI_
 #include <windows.h>
-
 #define WIN32_LEAN_AND_MEAN
 
-/* Platform Linux */
 #elif (defined linux || defined _linux || defined __linux__)
 
 #define NEKO_PLATFORM_LINUX
-
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
 
-/* Platform Emscripten */
 #elif (defined __EMSCRIPTEN__)
-
 #define NEKO_PLATFORM_WEB
-
-/* Else - Platform Undefined and Unsupported or custom */
-
 #endif
 
 #if defined(DEBUG) || defined(_DEBUG)
 #define NEKO_DEBUG
-#endif
-
-/*========================
-// Defines
-========================*/
-
-#ifndef neko_inline
-#if defined(NEKO_PLATFORM_LINUX)
-#define neko_inline static inline
-#else
-#define neko_inline inline
-#endif
-#endif
-
-#ifndef neko_local_persist
-#define neko_local_persist static
-#endif
-
-#ifndef neko_global
-#define neko_global static
-#endif
-
-#ifndef neko_static_inline
-#define neko_static_inline static inline
-#endif
-
-#if (defined _WIN32 || defined _WIN64)
-#define neko_force_inline neko_inline
-#elif (defined __APPLE__ || defined _APPLE)
-#define neko_force_inline static __attribute__((always_inline))
-#else
-#define neko_force_inline neko_inline
-#endif
-
-#ifndef neko_private
-#define neko_private(_result_type) static _result_type
-#endif
-
-#ifndef neko_public
-#define neko_public(_result_type) _result_type
-#endif
-
-#ifndef neko_little_endian
-#define neko_little_endian 1
-#endif
-
-#ifndef neko_bit
-#define neko_bit(x) (1 << x)
 #endif
 
 /*===================
@@ -138,6 +75,46 @@
 
 #define NEKO_API_DECL NEKO_API_EXTERN
 #define NEKO_API_PRIVATE NEKO_API_EXTERN
+
+/*========================
+// Defines
+========================*/
+
+#ifndef NEKO_INLINE
+#if defined(NEKO_PLATFORM_LINUX)
+#define NEKO_INLINE static inline
+#else
+#define NEKO_INLINE inline
+#endif
+#endif
+
+#ifndef NEKO_STATIC
+#define NEKO_STATIC static
+#endif
+
+#ifndef NEKO_STATIC_INLINE
+#define NEKO_STATIC_INLINE static inline
+#endif
+
+#if (defined _WIN32 || defined _WIN64)
+#define NEKO_FORCE_INLINE NEKO_INLINE
+#elif (defined __APPLE__ || defined _APPLE)
+#define NEKO_FORCE_INLINE static __attribute__((always_inline))
+#else
+#define NEKO_FORCE_INLINE NEKO_INLINE
+#endif
+
+#ifndef NEKO_PRIVATE
+#define NEKO_PRIVATE(_result_type) static _result_type
+#endif
+
+#ifndef neko_little_endian
+#define neko_little_endian 1
+#endif
+
+#ifndef neko_bit
+#define neko_bit(x) (1 << x)
+#endif
 
 /*============================================================
 // C primitive types
@@ -344,7 +321,7 @@ enum neko_type_kind {
 #define neko_printf(__FMT, ...) ((void)__android_log_print(ANDROID_LOG_INFO, "native-activity", __FMT, ##__VA_ARGS__))
 
 #else
-neko_force_inline void neko_printf(const char* fmt, ...) {
+NEKO_FORCE_INLINE void neko_printf(const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
     vprintf(fmt, args);
@@ -536,13 +513,13 @@ typedef enum neko_result { NEKO_RESULT_SUCCESS, NEKO_RESULT_IN_PROGRESS, NEKO_RE
     typedef struct {                                                  \
         u32 id;                                                       \
     } neko_handle(TYPE);                                              \
-    neko_inline neko_handle(TYPE) neko_handle_invalid_##TYPE() {      \
+    NEKO_INLINE neko_handle(TYPE) neko_handle_invalid_##TYPE() {      \
         neko_handle(TYPE) h;                                          \
         h.id = UINT32_MAX;                                            \
         return h;                                                     \
     }                                                                 \
                                                                       \
-    neko_inline neko_handle(TYPE) neko_handle_create_##TYPE(u32 id) { \
+    NEKO_INLINE neko_handle(TYPE) neko_handle_create_##TYPE(u32 id) { \
         neko_handle(TYPE) h;                                          \
         h.id = id;                                                    \
         return h;                                                     \
@@ -570,7 +547,7 @@ typedef struct neko_hsv_t {
     };
 } neko_hsv_t;
 
-neko_force_inline neko_hsv_t neko_hsv_ctor(f32 h, f32 s, f32 v) {
+NEKO_FORCE_INLINE neko_hsv_t neko_hsv_ctor(f32 h, f32 s, f32 v) {
     neko_hsv_t hsv;
     hsv.h = h;
     hsv.s = s;
@@ -587,7 +564,7 @@ typedef struct neko_color_t {
     };
 } neko_color_t;
 
-neko_force_inline neko_color_t neko_color_ctor(u8 r, u8 g, u8 b, u8 a) {
+NEKO_FORCE_INLINE neko_color_t neko_color_ctor(u8 r, u8 g, u8 b, u8 a) {
     neko_color_t color;
     color.r = r;
     color.g = g;
@@ -607,9 +584,9 @@ neko_force_inline neko_color_t neko_color_ctor(u8 r, u8 g, u8 b, u8 a) {
 #define NEKO_COLOR_MAROON neko_color(128, 0, 0, 255)
 #define NEKO_COLOR_BROWN neko_color(165, 42, 42, 255)
 
-neko_force_inline neko_color_t neko_color_alpha(neko_color_t c, u8 a) { return neko_color(c.r, c.g, c.b, a); }
+NEKO_FORCE_INLINE neko_color_t neko_color_alpha(neko_color_t c, u8 a) { return neko_color(c.r, c.g, c.b, a); }
 
-neko_force_inline neko_hsv_t neko_rgb2hsv(neko_color_t in) {
+NEKO_FORCE_INLINE neko_hsv_t neko_rgb2hsv(neko_color_t in) {
     f32 ir = (f32)in.r / 255.f;
     f32 ig = (f32)in.g / 255.f;
     f32 ib = (f32)in.b / 255.f;
@@ -655,7 +632,7 @@ neko_force_inline neko_hsv_t neko_rgb2hsv(neko_color_t in) {
     return out;
 }
 
-neko_force_inline neko_color_t neko_hsv2rgb(neko_hsv_t in) {
+NEKO_FORCE_INLINE neko_color_t neko_hsv2rgb(neko_hsv_t in) {
     f64 hh, p, q, t, ff;
     long i;
     neko_color_t out;
@@ -722,7 +699,7 @@ neko_force_inline neko_color_t neko_hsv2rgb(neko_hsv_t in) {
 // String Utils
 ===================================*/
 
-neko_force_inline u32 neko_string_length(const char* txt) {
+NEKO_FORCE_INLINE u32 neko_string_length(const char* txt) {
     u32 sz = 0;
     while (txt != NULL && txt[sz] != '\0') {
         sz++;
@@ -733,7 +710,7 @@ neko_force_inline u32 neko_string_length(const char* txt) {
 #define neko_strlen(str) neko_string_length((const char*)str)
 
 // Expects null terminated strings
-neko_force_inline b32 neko_string_compare_equal(const char* txt, const char* cmp) {
+NEKO_FORCE_INLINE b32 neko_string_compare_equal(const char* txt, const char* cmp) {
     // Grab sizes of both strings
     u32 a_sz = neko_string_length(txt);
     u32 b_sz = neko_string_length(cmp);
@@ -752,7 +729,7 @@ neko_force_inline b32 neko_string_compare_equal(const char* txt, const char* cmp
     return true;
 }
 
-neko_force_inline b32 neko_string_compare_equal_n(const char* txt, const char* cmp, u32 n) {
+NEKO_FORCE_INLINE b32 neko_string_compare_equal_n(const char* txt, const char* cmp, u32 n) {
     u32 a_sz = neko_string_length(txt);
     u32 b_sz = neko_string_length(cmp);
 
@@ -770,7 +747,7 @@ neko_force_inline b32 neko_string_compare_equal_n(const char* txt, const char* c
     return true;
 }
 
-neko_force_inline char* neko_util_string_concat(char* s1, const char* s2) {
+NEKO_FORCE_INLINE char* neko_util_string_concat(char* s1, const char* s2) {
     const size_t a = strlen(s1);
     const size_t b = strlen(s2);
     const size_t ab = a + b + 1;
@@ -779,7 +756,7 @@ neko_force_inline char* neko_util_string_concat(char* s1, const char* s2) {
     return s1;
 }
 
-neko_force_inline void neko_util_str_to_lower(const char* src, char* buffer, size_t buffer_sz) {
+NEKO_FORCE_INLINE void neko_util_str_to_lower(const char* src, char* buffer, size_t buffer_sz) {
     size_t src_sz = neko_string_length(src);
     size_t len = neko_min(src_sz, buffer_sz - 1);
 
@@ -789,7 +766,7 @@ neko_force_inline void neko_util_str_to_lower(const char* src, char* buffer, siz
     if (len) buffer[len] = '\0';
 }
 
-neko_force_inline b32 neko_util_str_is_numeric(const char* str) {
+NEKO_FORCE_INLINE b32 neko_util_str_is_numeric(const char* str) {
     const char* at = str;
     while (at && *at) {
         while (*at == '\n' || *at == '\t' || *at == ' ' || *at == '\r') at++;
@@ -806,7 +783,7 @@ neko_force_inline b32 neko_util_str_is_numeric(const char* str) {
 // Will return a null buffer if file does not exist or allocation fails
 NEKO_API_DECL char* neko_read_file_contents(const char* file_path, const char* mode, size_t* _sz);
 
-neko_force_inline b32 neko_util_file_exists(const char* file_path) {
+NEKO_FORCE_INLINE b32 neko_util_file_exists(const char* file_path) {
     FILE* fp = fopen(file_path, "r");
     if (fp) {
         fclose(fp);
@@ -815,7 +792,7 @@ neko_force_inline b32 neko_util_file_exists(const char* file_path) {
     return false;
 }
 
-neko_force_inline void neko_util_get_file_extension(char* buffer, u32 buffer_size, const_str file_path) {
+NEKO_FORCE_INLINE void neko_util_get_file_extension(char* buffer, u32 buffer_size, const_str file_path) {
     neko_assert(buffer && buffer_size);
     const_str extension = strrchr(file_path, '.');
     if (extension) {
@@ -828,7 +805,7 @@ neko_force_inline void neko_util_get_file_extension(char* buffer, u32 buffer_siz
     }
 }
 
-neko_force_inline void neko_util_get_dir_from_file(char* buffer, u32 buffer_size, const char* file_path) {
+NEKO_FORCE_INLINE void neko_util_get_dir_from_file(char* buffer, u32 buffer_size, const char* file_path) {
     u32 str_len = neko_string_length(file_path);
     const char* end = (file_path + str_len);
     for (u32 i = 0; i < str_len; ++i) {
@@ -844,7 +821,7 @@ neko_force_inline void neko_util_get_dir_from_file(char* buffer, u32 buffer_size
     }
 }
 
-neko_force_inline void neko_util_get_file_name(char* buffer, u32 buffer_size, const char* file_path) {
+NEKO_FORCE_INLINE void neko_util_get_file_name(char* buffer, u32 buffer_size, const char* file_path) {
     u32 str_len = neko_string_length(file_path);
     const char* file_start = file_path;
     const char* file_end = (file_path + str_len);
@@ -863,7 +840,7 @@ neko_force_inline void neko_util_get_file_name(char* buffer, u32 buffer_size, co
     }
 }
 
-neko_force_inline void neko_util_string_substring(const char* src, char* dst, size_t sz, u32 start, u32 end) {
+NEKO_FORCE_INLINE void neko_util_string_substring(const char* src, char* dst, size_t sz, u32 start, u32 end) {
     u32 str_len = neko_string_length(src);
     if (end > str_len) {
         end = str_len;
@@ -882,7 +859,7 @@ neko_force_inline void neko_util_string_substring(const char* src, char* dst, si
     }
 }
 
-neko_force_inline void neko_util_string_remove_character(const char* src, char* buffer, u32 buffer_size, char delimiter) {
+NEKO_FORCE_INLINE void neko_util_string_remove_character(const char* src, char* buffer, u32 buffer_size, char delimiter) {
     u32 ct = 0;
     u32 str_len = neko_string_length(src);
     const char* at = src;
@@ -896,7 +873,7 @@ neko_force_inline void neko_util_string_remove_character(const char* src, char* 
     }
 }
 
-neko_force_inline void neko_util_string_replace(char* buffer, size_t buffer_sz, const char* replace, char fallback) {
+NEKO_FORCE_INLINE void neko_util_string_replace(char* buffer, size_t buffer_sz, const char* replace, char fallback) {
     // Replace all characters with characters of keyword, then the rest replace with spaces
     size_t len = neko_string_length(replace);
     for (u32 c = 0; c < buffer_sz; ++c) {
@@ -908,7 +885,7 @@ neko_force_inline void neko_util_string_replace(char* buffer, size_t buffer_sz, 
     }
 }
 
-neko_force_inline void neko_util_string_replace_delim(const char* source_str, char* buffer, u32 buffer_size, char delimiter, char replace) {
+NEKO_FORCE_INLINE void neko_util_string_replace_delim(const char* source_str, char* buffer, u32 buffer_size, char delimiter, char replace) {
     u32 str_len = neko_string_length(source_str);
     const char* at = source_str;
     while (at && *at != '\0') {
@@ -921,7 +898,7 @@ neko_force_inline void neko_util_string_replace_delim(const char* source_str, ch
     }
 }
 
-neko_force_inline void neko_util_normalize_path(const char* path, char* buffer, u32 buffer_size) {
+NEKO_FORCE_INLINE void neko_util_normalize_path(const char* path, char* buffer, u32 buffer_size) {
     // Normalize the path somehow...
 }
 
@@ -938,7 +915,7 @@ neko_force_inline void neko_util_normalize_path(const char* path, char* buffer, 
 #endif
 
 #ifndef neko_fprintf
-neko_force_inline void neko_fprintf(FILE* fp, const char* fmt, ...) {
+NEKO_FORCE_INLINE void neko_fprintf(FILE* fp, const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
     vfprintf(fp, fmt, args);
@@ -946,7 +923,7 @@ neko_force_inline void neko_fprintf(FILE* fp, const char* fmt, ...) {
 }
 #endif
 
-neko_force_inline void neko_fprintln(FILE* fp, const char* fmt, ...) {
+NEKO_FORCE_INLINE void neko_fprintln(FILE* fp, const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
     vfprintf(fp, fmt, args);
@@ -954,7 +931,7 @@ neko_force_inline void neko_fprintln(FILE* fp, const char* fmt, ...) {
     neko_fprintf(fp, "\n");
 }
 
-neko_force_inline void neko_fprintln_t(FILE* fp, u32 tabs, const char* fmt, ...) {
+NEKO_FORCE_INLINE void neko_fprintln_t(FILE* fp, u32 tabs, const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
     for (u32 i = 0; i < tabs; ++i) {
@@ -968,7 +945,7 @@ neko_force_inline void neko_fprintln_t(FILE* fp, u32 tabs, const char* fmt, ...)
 #ifdef __MINGW32__
 #define neko_snprintf(__NAME, __SZ, __FMT, ...) __mingw_snprintf(__NAME, __SZ, __FMT, ##__VA_ARGS__)
 #else
-neko_force_inline void neko_snprintf(char* buffer, size_t buffer_size, const char* fmt, ...) {
+NEKO_FORCE_INLINE void neko_snprintf(char* buffer, size_t buffer_size, const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
     vsnprintf(buffer, buffer_size, fmt, args);
@@ -984,13 +961,13 @@ neko_force_inline void neko_snprintf(char* buffer, size_t buffer_size, const cha
     char __NAME[__SZ] = neko_default_val();      \
     neko_snprintf(__NAME, __SZ, __FMT, ##__VA_ARGS__);
 
-neko_force_inline u32 neko_util_safe_truncate_u64(u64 value) {
+NEKO_FORCE_INLINE u32 neko_util_safe_truncate_u64(u64 value) {
     neko_assert(value <= 0xFFFFFFFF);
     u32 result = (u32)value;
     return result;
 }
 
-neko_force_inline u32 neko_hash_u32(u32 x) {
+NEKO_FORCE_INLINE u32 neko_hash_u32(u32 x) {
     x = ((x >> 16) ^ x) * 0x45d9f3b;
     x = ((x >> 16) ^ x) * 0x45d9f3b;
     x = (x >> 16) ^ x;
@@ -1004,7 +981,7 @@ neko_force_inline u32 neko_hash_u32(u32 x) {
         __OUT = (__OUT >> 16) ^ __OUT;               \
     } while (0)
 
-neko_force_inline u32 neko_hash_u64(u64 x) {
+NEKO_FORCE_INLINE u32 neko_hash_u64(u64 x) {
     x = (x ^ (x >> 31) ^ (x >> 62)) * UINT64_C(0x319642b2d24d8ec3);
     x = (x ^ (x >> 27) ^ (x >> 54)) * UINT64_C(0x96de1b173f119089);
     x = x ^ (x >> 30) ^ (x >> 60);
@@ -1013,7 +990,7 @@ neko_force_inline u32 neko_hash_u64(u64 x) {
 
 // Note: source: http://www.cse.yorku.ca/~oz/hash.html
 // djb2 hash by dan bernstein
-neko_force_inline u32 neko_hash_str(const char* str) {
+NEKO_FORCE_INLINE u32 neko_hash_str(const char* str) {
     u32 hash = 5381;
     s32 c;
     while ((c = *str++)) {
@@ -1022,7 +999,7 @@ neko_force_inline u32 neko_hash_str(const char* str) {
     return hash;
 }
 
-neko_force_inline u64 neko_hash_str64(const char* str) {
+NEKO_FORCE_INLINE u64 neko_hash_str64(const char* str) {
     u32 hash1 = 5381;
     u32 hash2 = 52711;
     u32 i = neko_string_length(str);
@@ -1035,7 +1012,7 @@ neko_force_inline u64 neko_hash_str64(const char* str) {
     return (hash1 >> 0) * 4096 + (hash2 >> 0);
 }
 
-neko_force_inline bool neko_compare_bytes(void* b0, void* b1, size_t len) { return 0 == memcmp(b0, b1, len); }
+NEKO_FORCE_INLINE bool neko_compare_bytes(void* b0, void* b1, size_t len) { return 0 == memcmp(b0, b1, len); }
 
 // Hash generic bytes using (ripped directly from Sean Barret's stb_ds.h)
 #define NEKO_SIZE_T_BITS ((sizeof(size_t)) * 8)
@@ -1044,7 +1021,7 @@ neko_force_inline bool neko_compare_bytes(void* b0, void* b1, size_t len) { retu
 #define neko_rotate_left(__V, __N) (((__V) << (__N)) | ((__V) >> (NEKO_SIZE_T_BITS - (__N))))
 #define neko_rotate_right(__V, __N) (((__V) >> (__N)) | ((__V) << (NEKO_SIZE_T_BITS - (__N))))
 
-neko_force_inline size_t neko_hash_siphash_bytes(void* p, size_t len, size_t seed) {
+NEKO_FORCE_INLINE size_t neko_hash_siphash_bytes(void* p, size_t len, size_t seed) {
     unsigned char* d = (unsigned char*)p;
     size_t i, j;
     size_t v0, v1, v2, v3, data;
@@ -1123,7 +1100,7 @@ neko_force_inline size_t neko_hash_siphash_bytes(void* p, size_t len, size_t see
 #endif
 }
 
-neko_force_inline size_t neko_hash_bytes(void* p, size_t len, size_t seed) {
+NEKO_FORCE_INLINE size_t neko_hash_bytes(void* p, size_t len, size_t seed) {
 #if 0
   return neko_hash_siphash_bytes(p,len,seed);
 #else
@@ -1170,9 +1147,9 @@ neko_force_inline size_t neko_hash_bytes(void* p, size_t len, size_t seed) {
 NEKO_API_DECL bool32_t neko_util_load_texture_data_from_file(const char* file_path, s32* width, s32* height, u32* num_comps, void** data, bool32_t flip_vertically_on_load);
 NEKO_API_DECL bool32_t neko_util_load_texture_data_from_memory(const void* memory, size_t sz, s32* width, s32* height, u32* num_comps, void** data, bool32_t flip_vertically_on_load);
 
-neko_static_inline u16 neko_read_LE16(const u8* data) { return (u16)((data[1] << 8) | data[0]); }
+NEKO_STATIC_INLINE u16 neko_read_LE16(const u8* data) { return (u16)((data[1] << 8) | data[0]); }
 
-neko_static_inline u32 neko_read_LE32(const u8* data) { return (((u32)data[3] << 24) | ((u32)data[2] << 16) | ((u32)data[1] << 8) | (u32)data[0]); }
+NEKO_STATIC_INLINE u32 neko_read_LE32(const u8* data) { return (((u32)data[3] << 24) | ((u32)data[2] << 16) | ((u32)data[1] << 8) | (u32)data[0]); }
 
 /*========================
 // NEKO_MEMORY
@@ -1291,7 +1268,7 @@ NEKO_API_DECL void* neko_paged_allocator_allocate(neko_paged_allocator_t* pa);
 NEKO_API_DECL void neko_paged_allocator_deallocate(neko_paged_allocator_t* pa, void* data);
 NEKO_API_DECL void neko_paged_allocator_clear(neko_paged_allocator_t* pa);
 
-neko_inline const_str neko_fs_get_filename(const_str path) {
+NEKO_INLINE const_str neko_fs_get_filename(const_str path) {
     int len = strlen(path);
     int flag = 0;
 
@@ -1328,7 +1305,7 @@ NEKO_API_DECL neko_color_t neko_rand_gen_color(neko_mt_rand_t* rand);
 // http://www.iro.umontreal.ca/~lecuyer/myftp/papers/xorshift.pdf
 // xyzw -> [0, 2^32 - 1]
 
-neko_inline u32 neko_rand_xorshf32(void) {
+NEKO_INLINE u32 neko_rand_xorshf32(void) {
 
     u32 __neko_rand_xorshf32_x = time(NULL), __neko_rand_xorshf32_y = time(NULL), __neko_rand_xorshf32_z = time(NULL), __neko_rand_xorshf32_w = time(NULL);
 
@@ -1345,14 +1322,14 @@ neko_inline u32 neko_rand_xorshf32(void) {
 #define neko_rand_xorshf32_max 0xFFFFFFFF
 
 // Random number in range [-1,1]
-neko_inline f32 neko_rand_xor() {
+NEKO_INLINE f32 neko_rand_xor() {
     f32 r = (f32)neko_rand_xorshf32();
     r /= neko_rand_xorshf32_max;
     r = 2.0f * r - 1.0f;
     return r;
 }
 
-neko_inline f32 neko_rand_range_xor(f32 lo, f32 hi) {
+NEKO_INLINE f32 neko_rand_range_xor(f32 lo, f32 hi) {
     f32 r = (f32)neko_rand_xorshf32();
     r /= neko_rand_xorshf32_max;
     r = (hi - lo) * r + lo;
@@ -1481,7 +1458,7 @@ NEKO_API_DECL void** neko_dyn_array_init(void** arr, size_t val_len);
 
 NEKO_API_DECL void neko_dyn_array_push_data(void** arr, void* val, size_t val_len);
 
-neko_force_inline void neko_dyn_array_set_data_i(void** arr, void* val, size_t val_len, u32 offset) { memcpy(((char*)(*arr)) + offset * val_len, val, val_len); }
+NEKO_FORCE_INLINE void neko_dyn_array_set_data_i(void** arr, void* val, size_t val_len, u32 offset) { memcpy(((char*)(*arr)) + offset * val_len, val, val_len); }
 
 #define neko_dyn_array_push(__ARR, __ARRVAL)                               \
     do {                                                                   \
@@ -1673,7 +1650,7 @@ NEKO_API_DECL void __neko_hash_table_init_impl(void** ht, size_t sz);
 // Need size difference between two entries
 // Need size of key + val
 
-neko_force_inline u32 neko_hash_table_get_key_index_func(void** data, void* key, size_t key_len, size_t val_len, size_t stride, size_t klpvl) {
+NEKO_FORCE_INLINE u32 neko_hash_table_get_key_index_func(void** data, void* key, size_t key_len, size_t val_len, size_t stride, size_t klpvl) {
     if (!data || !key) return NEKO_HASH_TABLE_INVALID_INDEX;
 
     // Need a better way to handle this. Can't do it like this anymore.
@@ -1741,7 +1718,7 @@ neko_force_inline u32 neko_hash_table_get_key_index_func(void** data, void* key,
 
 typedef u32 neko_hash_table_iter;
 
-neko_force_inline u32 __neko_find_first_valid_iterator(void* data, size_t key_len, size_t val_len, u32 idx, size_t stride, size_t klpvl) {
+NEKO_FORCE_INLINE u32 __neko_find_first_valid_iterator(void* data, size_t key_len, size_t val_len, u32 idx, size_t stride, size_t klpvl) {
     u32 it = (u32)idx;
     for (; it < (u32)neko_dyn_array_capacity(data); ++it) {
         size_t offset = (it * stride);
@@ -1759,7 +1736,7 @@ neko_force_inline u32 __neko_find_first_valid_iterator(void* data, size_t key_le
 #define neko_hash_table_iter_valid(__HT, __IT) ((__IT) < neko_hash_table_capacity((__HT)))
 
 // Have to be able to do this for hash table...
-neko_force_inline void __neko_hash_table_iter_advance_func(void** data, size_t key_len, size_t val_len, u32* it, size_t stride, size_t klpvl) {
+NEKO_FORCE_INLINE void __neko_hash_table_iter_advance_func(void** data, size_t key_len, size_t val_len, u32* it, size_t stride, size_t klpvl) {
     (*it)++;
     for (; *it < (u32)neko_dyn_array_capacity(*data); ++*it) {
         size_t offset = (size_t)(*it * stride);
@@ -1805,7 +1782,7 @@ typedef struct __neko_slot_array_dummy_header {
 
 #define neko_slot_array_new(__T) NULL
 
-neko_force_inline u32 __neko_slot_array_find_next_available_index(neko_dyn_array(u32) indices) {
+NEKO_FORCE_INLINE u32 __neko_slot_array_find_next_available_index(neko_dyn_array(u32) indices) {
     u32 idx = NEKO_SLOT_ARRAY_INVALID_HANDLE;
     for (u32 i = 0; i < (u32)neko_dyn_array_size(indices); ++i) {
         u32 handle = indices[i];
@@ -1826,7 +1803,7 @@ NEKO_API_DECL void** neko_slot_array_init(void** sa, size_t sz);
 #define neko_slot_array_init_all(__SA) \
     (neko_slot_array_init((void**)&(__SA), sizeof(*(__SA))), neko_dyn_array_init((void**)&((__SA)->indices), sizeof(u32)), neko_dyn_array_init((void**)&((__SA)->data), sizeof((__SA)->tmp)))
 
-neko_force_inline u32 neko_slot_array_insert_func(void** indices, void** data, void* val, size_t val_len, u32* ip) {
+NEKO_FORCE_INLINE u32 neko_slot_array_insert_func(void** indices, void** data, void* val, size_t val_len, u32* ip) {
     // Find next available index
     u32 idx = __neko_slot_array_find_next_available_index((u32*)*indices);
 
@@ -1931,7 +1908,7 @@ typedef u32 neko_slot_array_iter;
 
 #define neko_slot_array_iter_valid(__SA, __IT) (__SA && neko_slot_array_exists(__SA, __IT))
 
-neko_force_inline void _neko_slot_array_iter_advance_func(neko_dyn_array(u32) indices, u32* it) {
+NEKO_FORCE_INLINE void _neko_slot_array_iter_advance_func(neko_dyn_array(u32) indices, u32* it) {
     if (!indices) {
         *it = NEKO_SLOT_ARRAY_INVALID_HANDLE;
         return;
@@ -1945,7 +1922,7 @@ neko_force_inline void _neko_slot_array_iter_advance_func(neko_dyn_array(u32) in
     }
 }
 
-neko_force_inline u32 _neko_slot_array_iter_find_first_valid_index(neko_dyn_array(u32) indices) {
+NEKO_FORCE_INLINE u32 _neko_slot_array_iter_find_first_valid_index(neko_dyn_array(u32) indices) {
     if (!indices) return NEKO_SLOT_ARRAY_INVALID_HANDLE;
 
     for (u32 i = 0; i < (u32)neko_dyn_array_size(indices); ++i) {
@@ -2054,7 +2031,7 @@ typedef struct neko_command_buffer_s {
     neko_byte_buffer_t commands;
 } neko_command_buffer_t;
 
-neko_force_inline neko_command_buffer_t neko_command_buffer_new() {
+NEKO_FORCE_INLINE neko_command_buffer_t neko_command_buffer_new() {
     neko_command_buffer_t cb = neko_default_val();
     cb.commands = neko_byte_buffer_new();
     return cb;
@@ -2068,12 +2045,12 @@ neko_force_inline neko_command_buffer_t neko_command_buffer_new() {
         neko_byte_buffer_write(&__cb->commands, __T, (__VAL)); \
     } while (0)
 
-neko_force_inline void neko_command_buffer_clear(neko_command_buffer_t* cb) {
+NEKO_FORCE_INLINE void neko_command_buffer_clear(neko_command_buffer_t* cb) {
     cb->num_commands = 0;
     neko_byte_buffer_clear(&cb->commands);
 }
 
-neko_force_inline void neko_command_buffer_free(neko_command_buffer_t* cb) { neko_byte_buffer_free(&cb->commands); }
+NEKO_FORCE_INLINE void neko_command_buffer_free(neko_command_buffer_t* cb) { neko_byte_buffer_free(&cb->commands); }
 
 #define neko_command_buffer_readc(__CB, __T, __NAME) \
     __T __NAME = neko_default_val();                 \
@@ -2136,7 +2113,7 @@ NEKO_API_DECL void hashtable_swap(hashtable_t* table, int index_a, int index_b);
 // Utils
 ================================================================================*/
 
-neko_inline u32 neko_abs(s32 v) {
+NEKO_INLINE u32 neko_abs(s32 v) {
     unsigned int r;
     int const mask = v >> sizeof(int) * CHAR_BIT - 1;
     r = (v + mask) ^ mask;
@@ -2144,7 +2121,7 @@ neko_inline u32 neko_abs(s32 v) {
 }
 
 // 将UTF-8编码字符转换为Unicode
-neko_inline u32 neko_utf8_to_unicode(const_str utf8, s32* bytes_read) {
+NEKO_INLINE u32 neko_utf8_to_unicode(const_str utf8, s32* bytes_read) {
     u32 unicode = 0;
     s32 len = 0;
     unsigned char utf8char = utf8[0];
@@ -2190,7 +2167,7 @@ typedef struct neko_aabb_t
 } neko_aabb_t;
 
 // Collision Resolution: Minimum Translation Vector
-neko_force_inline
+NEKO_FORCE_INLINE
 neko_vec2 neko_aabb_aabb_mtv(neko_aabb_t* a0, neko_aabb_t* a1)
 {
     neko_vec2 diff = neko_v2(a0->min.x - a1->min.x, a0->min.y - a1->min.y);
@@ -2216,7 +2193,7 @@ neko_vec2 neko_aabb_aabb_mtv(neko_aabb_t* a0, neko_aabb_t* a1)
 }
 
 // 2D AABB collision detection (rect. vs. rect.)
-neko_force_inline
+NEKO_FORCE_INLINE
 b32 neko_aabb_vs_aabb(neko_aabb_t* a, neko_aabb_t* b)
 {
     if (a->max.x > b->min.x &&
@@ -2230,7 +2207,7 @@ b32 neko_aabb_vs_aabb(neko_aabb_t* a, neko_aabb_t* b)
     return false;
 }
 
-neko_force_inline
+NEKO_FORCE_INLINE
 neko_vec4 neko_aabb_window_coords(neko_aabb_t* aabb, neko_camera_t* camera, neko_vec2 window_size)
 {
     // AABB of the player
@@ -2333,10 +2310,10 @@ NEKO_API_DECL bool neko_char_is_white_space(char c);
 NEKO_API_DECL bool neko_char_is_alpha(char c);
 NEKO_API_DECL bool neko_char_is_numeric(char c);
 
-neko_inline b8 neko_token_is_end_of_line(char c) { return (c == '\n' || c == '\r'); }
-neko_inline b8 neko_token_char_is_white_space(char c) { return (c == '\t' || c == ' ' || neko_token_is_end_of_line(c)); }
-neko_inline b8 neko_token_char_is_alpha(char c) { return ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')); }
-neko_inline b8 neko_token_char_is_numeric(char c) { return (c >= '0' && c <= '9'); }
+NEKO_INLINE b8 neko_token_is_end_of_line(char c) { return (c == '\n' || c == '\r'); }
+NEKO_INLINE b8 neko_token_char_is_white_space(char c) { return (c == '\t' || c == ' ' || neko_token_is_end_of_line(c)); }
+NEKO_INLINE b8 neko_token_char_is_alpha(char c) { return ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')); }
+NEKO_INLINE b8 neko_token_char_is_numeric(char c) { return (c >= '0' && c <= '9'); }
 
 //==== [ Lexer ] ============================================================//
 
@@ -2370,7 +2347,7 @@ NEKO_API_DECL void neko_lexer_c_eat_white_space(neko_lexer_t* lex);
 NEKO_API_DECL neko_token_t neko_lexer_c_next_token(neko_lexer_t* lex);
 NEKO_API_DECL void neko_lexer_set_token(neko_lexer_t* lex, neko_token_t token);
 
-neko_inline u32 neko_darken_color(u32 color, f32 brightness) {
+NEKO_INLINE u32 neko_darken_color(u32 color, f32 brightness) {
     s32 a = (color >> 24) & 0xFF;
     s32 r = (s32)(((color >> 16) & 0xFF) * brightness);
     s32 g = (s32)(((color >> 8) & 0xFF) * brightness);

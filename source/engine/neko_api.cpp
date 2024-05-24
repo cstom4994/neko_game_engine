@@ -8,8 +8,8 @@
 #include "engine/neko.h"
 #include "engine/neko_asset.h"
 #include "engine/neko_cl.h"
+#include "engine/neko_common.h"
 #include "engine/neko_engine.h"
-#include "engine/neko_filesystem.h"
 #include "engine/neko_lua.hpp"
 
 // game
@@ -389,7 +389,7 @@ static int __neko_bind_platform_set_window_title(lua_State* L) {
     return 0;
 }
 
-neko_inline void neko_register_platform(lua_State* L) {
+NEKO_INLINE void neko_register_platform(lua_State* L) {
 
     neko_lua_auto_enum(L, neko_platform_keycode);
     neko_lua_auto_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_INVALID);
@@ -1876,6 +1876,7 @@ static int __neko_bind_gameobject_inspect(lua_State* L) {
     return 0;
 }
 
+#if 0
 static int __neko_bind_filesystem_create(lua_State* L) {
     neko_filesystem_t* filewatch = (neko_filesystem_t*)lua_newuserdata(L, sizeof(neko_filesystem_t));
     memset(filewatch, 0, sizeof(neko_filesystem_t));
@@ -1972,6 +1973,7 @@ static int __neko_bind_filewatch_notify(lua_State* L) {
     neko_filewatch_notify(filewatch);
     return 0;
 }
+#endif
 
 static int __neko_bind_idraw_get(lua_State* L) {
     lua_pushlightuserdata(L, &CL_GAME_USERDATA()->idraw);
@@ -2876,7 +2878,7 @@ static int l_base64_decode(lua_State* L) {
     return 1;
 }
 
-neko_inline void neko_register_test(lua_State* L) {
+NEKO_INLINE void neko_register_test(lua_State* L) {
 
     lua_register(L, "__neko_luainspector_init", neko::luainspector::luainspector_init);
     lua_register(L, "__neko_luainspector_draw", neko::luainspector::luainspector_draw);
@@ -3623,7 +3625,7 @@ void registerGlobals(lua_State* L, const neko_luaL_reg* funcs) {
     }
 }
 
-neko_inline void neko_register_common(lua_State* L) {
+NEKO_INLINE void neko_register_common(lua_State* L) {
 
     neko_lua_wrap_register_t<>(L)
             .def(&__neko_lua_trace, "log_trace")
@@ -3828,16 +3830,15 @@ int open_neko(lua_State* L) {
 
             {"gameobject_inspect", __neko_bind_gameobject_inspect},
 
-            {"filesystem_create", __neko_bind_filesystem_create},
-            {"filesystem_destory", __neko_bind_filesystem_destory},
-
-            {"filewatch_create", __neko_bind_filewatch_create},
-            {"filewatch_destory", __neko_bind_filewatch_destory},
-            {"filewatch_mount", __neko_bind_filewatch_mount},
-            {"filewatch_start", __neko_bind_filewatch_start_watch},
-            {"filewatch_stop", __neko_bind_filewatch_stop_watching},
-            {"filewatch_update", __neko_bind_filewatch_update},
-            {"filewatch_notify", __neko_bind_filewatch_notify},
+            // {"filesystem_create", __neko_bind_filesystem_create},
+            // {"filesystem_destory", __neko_bind_filesystem_destory},
+            // {"filewatch_create", __neko_bind_filewatch_create},
+            // {"filewatch_destory", __neko_bind_filewatch_destory},
+            // {"filewatch_mount", __neko_bind_filewatch_mount},
+            // {"filewatch_start", __neko_bind_filewatch_start_watch},
+            // {"filewatch_stop", __neko_bind_filewatch_stop_watching},
+            // {"filewatch_update", __neko_bind_filewatch_update},
+            // {"filewatch_notify", __neko_bind_filewatch_notify},
 
             {"callback_save", __neko_bind_callback_save},
             {"callback_call", __neko_bind_callback_call},

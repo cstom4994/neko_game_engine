@@ -153,14 +153,14 @@ static void drop_physics_udata(lua_State *L, neko_physics_userdata *pud) {
 }
 
 void physics_destroy_body(lua_State *L, neko_physics *physics) {
-    neko_array<neko_physics_userdata *> puds = {};
-    neko_defer(puds.dctor());
+    neko::array<neko_physics_userdata *> puds = {};
+    neko_defer(puds.trash());
 
     for (b2Fixture *f = physics->body->GetFixtureList(); f != nullptr; f = f->GetNext()) {
-        neko_array_push(&puds, (neko_physics_userdata *)f->GetUserData().pointer);
+        puds.push((neko_physics_userdata *)f->GetUserData().pointer);
     }
 
-    neko_array_push(&puds, (neko_physics_userdata *)physics->body->GetUserData().pointer);
+    puds.push((neko_physics_userdata *)physics->body->GetUserData().pointer);
 
     physics->world->DestroyBody(physics->body);
     physics->body = nullptr;

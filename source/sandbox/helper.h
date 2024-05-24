@@ -236,7 +236,7 @@ public:
     static int dy[8];
 };
 
-neko_inline neko_color_t neko_color_interpolate(neko_color_t x, neko_color_t y, float t) {
+NEKO_INLINE neko_color_t neko_color_interpolate(neko_color_t x, neko_color_t y, float t) {
     u8 r = (u8)(x.r + (y.r - x.r) * t);
     u8 g = (u8)(x.g + (y.g - x.g) * t);
     u8 b = (u8)(x.b + (y.b - x.b) * t);

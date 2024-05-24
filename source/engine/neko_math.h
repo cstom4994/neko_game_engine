@@ -43,38 +43,38 @@
 // Source: https://codeplea.com/simple-interpolation
 
 // Returns v based on t
-neko_inline float neko_interp_linear(float a, float b, float t) { return (a + t * (b - a)); }
+NEKO_INLINE float neko_interp_linear(float a, float b, float t) { return (a + t * (b - a)); }
 
 // Returns t based on v
-neko_inline float neko_interp_linear_inv(float a, float b, float v) { return (v - a) / (b - a); }
+NEKO_INLINE float neko_interp_linear_inv(float a, float b, float v) { return (v - a) / (b - a); }
 
-neko_inline float neko_interp_smoothstep(float a, float b, float t) { return neko_interp_linear(a, b, t * t * (3.0f - 2.0f * t)); }
+NEKO_INLINE float neko_interp_smoothstep(float a, float b, float t) { return neko_interp_linear(a, b, t * t * (3.0f - 2.0f * t)); }
 
-neko_inline float neko_interp_cosine(float a, float b, float t) { return neko_interp_linear(a, b, (float)-cos(neko_pi * t) * 0.5f + 0.5f); }
+NEKO_INLINE float neko_interp_cosine(float a, float b, float t) { return neko_interp_linear(a, b, (float)-cos(neko_pi * t) * 0.5f + 0.5f); }
 
-neko_inline float neko_interp_acceleration(float a, float b, float t) { return neko_interp_linear(a, b, t * t); }
+NEKO_INLINE float neko_interp_acceleration(float a, float b, float t) { return neko_interp_linear(a, b, t * t); }
 
-neko_inline float neko_interp_deceleration(float a, float b, float t) { return neko_interp_linear(a, b, 1.0f - (1.0f - t) * (1.0f - t)); }
+NEKO_INLINE float neko_interp_deceleration(float a, float b, float t) { return neko_interp_linear(a, b, 1.0f - (1.0f - t) * (1.0f - t)); }
 
-neko_inline float neko_round(float val) { return (float)floor(val + 0.5f); }
+NEKO_INLINE float neko_round(float val) { return (float)floor(val + 0.5f); }
 
-neko_inline float neko_map_range(float input_start, float input_end, float output_start, float output_end, float val) {
+NEKO_INLINE float neko_map_range(float input_start, float input_end, float output_start, float output_end, float val) {
     float slope = (output_end - output_start) / (input_end - input_start);
     return (output_start + (slope * (val - input_start)));
 }
 
 // 缓动来自：https://github.com/raysan5/raylib/blob/ea0f6c7a26f3a61f3be542aa8f066ce033766a9f/examples/others/easings.h
-neko_inline float neko_ease_cubic_in(float t, float b, float c, float d) {
+NEKO_INLINE float neko_ease_cubic_in(float t, float b, float c, float d) {
     t /= d;
     return (c * t * t * t + b);
 }
 
-neko_inline float neko_ease_cubic_out(float t, float b, float c, float d) {
+NEKO_INLINE float neko_ease_cubic_out(float t, float b, float c, float d) {
     t = t / d - 1.0f;
     return (c * (t * t * t + 1.0f) + b);
 }
 
-neko_inline float neko_ease_cubic_in_out(float t, float b, float c, float d) {
+NEKO_INLINE float neko_ease_cubic_in_out(float t, float b, float c, float d) {
     if ((t /= d / 2.0f) < 1.0f) {
         return (c / 2.0f * t * t * t + b);
     }
@@ -98,35 +98,35 @@ typedef struct {
 
 typedef neko_vec2_t neko_vec2;
 
-neko_inline neko_vec2 neko_vec2_ctor(f32 _x, f32 _y) {
+NEKO_INLINE neko_vec2 neko_vec2_ctor(f32 _x, f32 _y) {
     neko_vec2 v;
     v.x = _x;
     v.y = _y;
     return v;
 }
 
-neko_inline bool neko_vec2_nan(neko_vec2 v) {
+NEKO_INLINE bool neko_vec2_nan(neko_vec2 v) {
     if (v.x != v.x || v.y != v.y) return true;
     return false;
 }
 
-neko_inline neko_vec2 neko_vec2_add(neko_vec2 v0, neko_vec2 v1) { return neko_vec2_ctor(v0.x + v1.x, v0.y + v1.y); }
+NEKO_INLINE neko_vec2 neko_vec2_add(neko_vec2 v0, neko_vec2 v1) { return neko_vec2_ctor(v0.x + v1.x, v0.y + v1.y); }
 
-neko_inline neko_vec2 neko_vec2_sub(neko_vec2 v0, neko_vec2 v1) { return neko_vec2_ctor(v0.x - v1.x, v0.y - v1.y); }
+NEKO_INLINE neko_vec2 neko_vec2_sub(neko_vec2 v0, neko_vec2 v1) { return neko_vec2_ctor(v0.x - v1.x, v0.y - v1.y); }
 
-neko_inline neko_vec2 neko_vec2_mul(neko_vec2 v0, neko_vec2 v1) { return neko_vec2_ctor(v0.x * v1.x, v0.y * v1.y); }
+NEKO_INLINE neko_vec2 neko_vec2_mul(neko_vec2 v0, neko_vec2 v1) { return neko_vec2_ctor(v0.x * v1.x, v0.y * v1.y); }
 
-neko_inline neko_vec2 neko_vec2_div(neko_vec2 v0, neko_vec2 v1) { return neko_vec2_ctor(v0.x / v1.x, v0.y / v1.y); }
+NEKO_INLINE neko_vec2 neko_vec2_div(neko_vec2 v0, neko_vec2 v1) { return neko_vec2_ctor(v0.x / v1.x, v0.y / v1.y); }
 
-neko_inline bool neko_vec2_equals(neko_vec2 v0, neko_vec2 v1) { return (v0.x == v1.x && v0.y == v1.y); }
+NEKO_INLINE bool neko_vec2_equals(neko_vec2 v0, neko_vec2 v1) { return (v0.x == v1.x && v0.y == v1.y); }
 
-neko_inline neko_vec2 neko_vec2_scale(neko_vec2 v, f32 s) { return neko_vec2_ctor(v.x * s, v.y * s); }
+NEKO_INLINE neko_vec2 neko_vec2_scale(neko_vec2 v, f32 s) { return neko_vec2_ctor(v.x * s, v.y * s); }
 
-neko_inline f32 neko_vec2_dot(neko_vec2 v0, neko_vec2 v1) { return (f32)(v0.x * v1.x + v0.y * v1.y); }
+NEKO_INLINE f32 neko_vec2_dot(neko_vec2 v0, neko_vec2 v1) { return (f32)(v0.x * v1.x + v0.y * v1.y); }
 
-neko_inline f32 neko_vec2_len(neko_vec2 v) { return (f32)sqrt(neko_vec2_dot(v, v)); }
+NEKO_INLINE f32 neko_vec2_len(neko_vec2 v) { return (f32)sqrt(neko_vec2_dot(v, v)); }
 
-neko_inline neko_vec2 neko_vec2_project_onto(neko_vec2 v0, neko_vec2 v1) {
+NEKO_INLINE neko_vec2 neko_vec2_project_onto(neko_vec2 v0, neko_vec2 v1) {
     f32 dot = neko_vec2_dot(v0, v1);
     f32 len = neko_vec2_dot(v1, v1);
 
@@ -136,28 +136,28 @@ neko_inline neko_vec2 neko_vec2_project_onto(neko_vec2 v0, neko_vec2 v1) {
     return neko_vec2_scale(v1, dot / len);
 }
 
-neko_inline neko_vec2 neko_vec2_norm(neko_vec2 v) {
+NEKO_INLINE neko_vec2 neko_vec2_norm(neko_vec2 v) {
     f32 len = neko_vec2_len(v);
     return neko_vec2_scale(v, len != 0.f ? 1.0f / neko_vec2_len(v) : 1.f);
 }
 
-neko_inline f32 neko_vec2_dist(neko_vec2 a, neko_vec2 b) {
+NEKO_INLINE f32 neko_vec2_dist(neko_vec2 a, neko_vec2 b) {
     f32 dx = (a.x - b.x);
     f32 dy = (a.y - b.y);
     return (float)(sqrt(dx * dx + dy * dy));
 }
 
-neko_inline f32 neko_vec2_dist2(neko_vec2 a, neko_vec2 b) {
+NEKO_INLINE f32 neko_vec2_dist2(neko_vec2 a, neko_vec2 b) {
     f32 dx = (a.x - b.x);
     f32 dy = (a.y - b.y);
     return (float)(dx * dx + dy * dy);
 }
 
-neko_inline f32 neko_vec2_cross(neko_vec2 a, neko_vec2 b) { return a.x * b.y - a.y * b.x; }
+NEKO_INLINE f32 neko_vec2_cross(neko_vec2 a, neko_vec2 b) { return a.x * b.y - a.y * b.x; }
 
-neko_inline f32 neko_vec2_angle(neko_vec2 a, neko_vec2 b) { return (float)acos(neko_vec2_dot(a, b) / (neko_vec2_len(a) * neko_vec2_len(b))); }
+NEKO_INLINE f32 neko_vec2_angle(neko_vec2 a, neko_vec2 b) { return (float)acos(neko_vec2_dot(a, b) / (neko_vec2_len(a) * neko_vec2_len(b))); }
 
-neko_inline b32 neko_vec2_equal(neko_vec2 a, neko_vec2 b) { return (a.x == b.x && a.y == b.y); }
+NEKO_INLINE b32 neko_vec2_equal(neko_vec2 a, neko_vec2 b) { return (a.x == b.x && a.y == b.y); }
 
 /*================================================================================
 // Vec3
@@ -175,7 +175,7 @@ typedef struct {
 
 typedef neko_vec3_t neko_vec3;
 
-neko_inline neko_vec3 neko_vec3_ctor(f32 _x, f32 _y, f32 _z) {
+NEKO_INLINE neko_vec3 neko_vec3_ctor(f32 _x, f32 _y, f32 _z) {
     neko_vec3 v;
     v.x = _x;
     v.y = _y;
@@ -183,42 +183,42 @@ neko_inline neko_vec3 neko_vec3_ctor(f32 _x, f32 _y, f32 _z) {
     return v;
 }
 
-neko_inline bool neko_vec3_eq(neko_vec3 v0, neko_vec3 v1) { return (v0.x == v1.x && v0.y == v1.y && v0.z == v1.z); }
+NEKO_INLINE bool neko_vec3_eq(neko_vec3 v0, neko_vec3 v1) { return (v0.x == v1.x && v0.y == v1.y && v0.z == v1.z); }
 
-neko_inline neko_vec3 neko_vec3_add(neko_vec3 v0, neko_vec3 v1) { return neko_vec3_ctor(v0.x + v1.x, v0.y + v1.y, v0.z + v1.z); }
+NEKO_INLINE neko_vec3 neko_vec3_add(neko_vec3 v0, neko_vec3 v1) { return neko_vec3_ctor(v0.x + v1.x, v0.y + v1.y, v0.z + v1.z); }
 
-neko_inline neko_vec3 neko_vec3_sub(neko_vec3 v0, neko_vec3 v1) { return neko_vec3_ctor(v0.x - v1.x, v0.y - v1.y, v0.z - v1.z); }
+NEKO_INLINE neko_vec3 neko_vec3_sub(neko_vec3 v0, neko_vec3 v1) { return neko_vec3_ctor(v0.x - v1.x, v0.y - v1.y, v0.z - v1.z); }
 
-neko_inline neko_vec3 neko_vec3_mul(neko_vec3 v0, neko_vec3 v1) { return neko_vec3_ctor(v0.x * v1.x, v0.y * v1.y, v0.z * v1.z); }
+NEKO_INLINE neko_vec3 neko_vec3_mul(neko_vec3 v0, neko_vec3 v1) { return neko_vec3_ctor(v0.x * v1.x, v0.y * v1.y, v0.z * v1.z); }
 
-neko_inline neko_vec3 neko_vec3_div(neko_vec3 v0, neko_vec3 v1) { return neko_vec3_ctor(v0.x / v1.x, v0.y / v1.y, v0.z / v1.z); }
+NEKO_INLINE neko_vec3 neko_vec3_div(neko_vec3 v0, neko_vec3 v1) { return neko_vec3_ctor(v0.x / v1.x, v0.y / v1.y, v0.z / v1.z); }
 
-neko_inline neko_vec3 neko_vec3_scale(neko_vec3 v, f32 s) { return neko_vec3_ctor(v.x * s, v.y * s, v.z * s); }
+NEKO_INLINE neko_vec3 neko_vec3_scale(neko_vec3 v, f32 s) { return neko_vec3_ctor(v.x * s, v.y * s, v.z * s); }
 
-neko_inline neko_vec3 neko_vec3_neg(neko_vec3 v) { return neko_vec3_scale(v, -1.f); }
+NEKO_INLINE neko_vec3 neko_vec3_neg(neko_vec3 v) { return neko_vec3_scale(v, -1.f); }
 
-neko_inline f32 neko_vec3_dot(neko_vec3 v0, neko_vec3 v1) {
+NEKO_INLINE f32 neko_vec3_dot(neko_vec3 v0, neko_vec3 v1) {
     f32 dot = (f32)((v0.x * v1.x) + (v0.y * v1.y) + v0.z * v1.z);
     return dot;
 }
 
-neko_inline bool neko_vec3_same_dir(neko_vec3 v0, neko_vec3 v1) { return (neko_vec3_dot(v0, v1) > 0.f); }
+NEKO_INLINE bool neko_vec3_same_dir(neko_vec3 v0, neko_vec3 v1) { return (neko_vec3_dot(v0, v1) > 0.f); }
 
-neko_inline neko_vec3 neko_vec3_sign(neko_vec3 v) {
+NEKO_INLINE neko_vec3 neko_vec3_sign(neko_vec3 v) {
     return (neko_vec3_ctor(v.x < 0.f ? -1.f : v.x > 0.f ? 1.f : 0.f, v.y < 0.f ? -1.f : v.y > 0.f ? 1.f : 0.f, v.z < 0.f ? -1.f : v.z > 0.f ? 1.f : 0.f));
 }
 
-neko_inline float neko_vec3_signX(neko_vec3 v) { return (v.x < 0.f ? -1.f : v.x > 0.f ? 1.f : 0.f); }
+NEKO_INLINE float neko_vec3_signX(neko_vec3 v) { return (v.x < 0.f ? -1.f : v.x > 0.f ? 1.f : 0.f); }
 
-neko_inline float neko_vec3_signY(neko_vec3 v) { return (v.y < 0.f ? -1.f : v.y > 0.f ? 1.f : 0.f); }
+NEKO_INLINE float neko_vec3_signY(neko_vec3 v) { return (v.y < 0.f ? -1.f : v.y > 0.f ? 1.f : 0.f); }
 
-neko_inline float neko_vec3_signZ(neko_vec3 v) { return (v.z < 0.f ? -1.f : v.z > 0.f ? 1.f : 0.f); }
+NEKO_INLINE float neko_vec3_signZ(neko_vec3 v) { return (v.z < 0.f ? -1.f : v.z > 0.f ? 1.f : 0.f); }
 
-neko_inline f32 neko_vec3_len(neko_vec3 v) { return (f32)sqrt(neko_vec3_dot(v, v)); }
+NEKO_INLINE f32 neko_vec3_len(neko_vec3 v) { return (f32)sqrt(neko_vec3_dot(v, v)); }
 
-neko_inline f32 neko_vec3_len2(neko_vec3 v) { return (f32)(neko_vec3_dot(v, v)); }
+NEKO_INLINE f32 neko_vec3_len2(neko_vec3 v) { return (f32)(neko_vec3_dot(v, v)); }
 
-neko_inline neko_vec3 neko_vec3_project_onto(neko_vec3 v0, neko_vec3 v1) {
+NEKO_INLINE neko_vec3 neko_vec3_project_onto(neko_vec3 v0, neko_vec3 v1) {
     f32 dot = neko_vec3_dot(v0, v1);
     f32 len = neko_vec3_dot(v1, v1);
 
@@ -228,38 +228,38 @@ neko_inline neko_vec3 neko_vec3_project_onto(neko_vec3 v0, neko_vec3 v1) {
     return neko_vec3_scale(v1, dot / len);
 }
 
-neko_inline bool neko_vec3_nan(neko_vec3 v) {
+NEKO_INLINE bool neko_vec3_nan(neko_vec3 v) {
     if (v.x != v.x || v.y != v.y || v.z != v.z) return true;
     return false;
 }
 
-neko_inline f32 neko_vec3_dist2(neko_vec3 a, neko_vec3 b) {
+NEKO_INLINE f32 neko_vec3_dist2(neko_vec3 a, neko_vec3 b) {
     f32 dx = (a.x - b.x);
     f32 dy = (a.y - b.y);
     f32 dz = (a.z - b.z);
     return (dx * dx + dy * dy + dz * dz);
 }
 
-neko_inline f32 neko_vec3_dist(neko_vec3 a, neko_vec3 b) { return sqrt(neko_vec3_dist2(a, b)); }
+NEKO_INLINE f32 neko_vec3_dist(neko_vec3 a, neko_vec3 b) { return sqrt(neko_vec3_dist2(a, b)); }
 
-neko_inline neko_vec3 neko_vec3_norm(neko_vec3 v) {
+NEKO_INLINE neko_vec3 neko_vec3_norm(neko_vec3 v) {
     f32 len = neko_vec3_len(v);
     return len == 0.f ? v : neko_vec3_scale(v, 1.f / len);
 }
 
-neko_inline neko_vec3 neko_vec3_cross(neko_vec3 v0, neko_vec3 v1) { return neko_vec3_ctor(v0.y * v1.z - v0.z * v1.y, v0.z * v1.x - v0.x * v1.z, v0.x * v1.y - v0.y * v1.x); }
+NEKO_INLINE neko_vec3 neko_vec3_cross(neko_vec3 v0, neko_vec3 v1) { return neko_vec3_ctor(v0.y * v1.z - v0.z * v1.y, v0.z * v1.x - v0.x * v1.z, v0.x * v1.y - v0.y * v1.x); }
 
-neko_inline void neko_vec3_scale_ip(neko_vec3* vp, f32 s) {
+NEKO_INLINE void neko_vec3_scale_ip(neko_vec3* vp, f32 s) {
     vp->x *= s;
     vp->y *= s;
     vp->z *= s;
 }
 
-neko_inline float neko_vec3_angle_between(neko_vec3 v0, neko_vec3 v1) { return acosf(neko_vec3_dot(v0, v1)); }
+NEKO_INLINE float neko_vec3_angle_between(neko_vec3 v0, neko_vec3 v1) { return acosf(neko_vec3_dot(v0, v1)); }
 
-neko_inline float neko_vec3_angle_between_signed(neko_vec3 v0, neko_vec3 v1) { return asinf(neko_vec3_len(neko_vec3_cross(v0, v1))); }
+NEKO_INLINE float neko_vec3_angle_between_signed(neko_vec3 v0, neko_vec3 v1) { return asinf(neko_vec3_len(neko_vec3_cross(v0, v1))); }
 
-neko_inline neko_vec3 neko_vec3_triple_cross_product(neko_vec3 a, neko_vec3 b, neko_vec3 c) {
+NEKO_INLINE neko_vec3 neko_vec3_triple_cross_product(neko_vec3 a, neko_vec3 b, neko_vec3 c) {
     return neko_vec3_sub((neko_vec3_scale(b, neko_vec3_dot(c, a))), (neko_vec3_scale(a, neko_vec3_dot(c, b))));
 }
 
@@ -278,7 +278,7 @@ typedef struct {
 
 typedef neko_vec4_t neko_vec4;
 
-neko_inline neko_vec4 neko_vec4_ctor(f32 _x, f32 _y, f32 _z, f32 _w) {
+NEKO_INLINE neko_vec4 neko_vec4_ctor(f32 _x, f32 _y, f32 _z, f32 _w) {
     neko_vec4 v;
     v.x = _x;
     v.y = _y;
@@ -287,21 +287,21 @@ neko_inline neko_vec4 neko_vec4_ctor(f32 _x, f32 _y, f32 _z, f32 _w) {
     return v;
 }
 
-neko_inline neko_vec4 neko_vec4_add(neko_vec4 v0, neko_vec4 v1) { return neko_vec4_ctor(v0.x + v1.x, v0.y + v1.y, v0.z + v1.z, v0.w + v1.w); }
+NEKO_INLINE neko_vec4 neko_vec4_add(neko_vec4 v0, neko_vec4 v1) { return neko_vec4_ctor(v0.x + v1.x, v0.y + v1.y, v0.z + v1.z, v0.w + v1.w); }
 
-neko_inline neko_vec4 neko_vec4_sub(neko_vec4 v0, neko_vec4 v1) { return neko_vec4_ctor(v0.x - v1.x, v0.y - v1.y, v0.z - v1.z, v0.w - v1.w); }
+NEKO_INLINE neko_vec4 neko_vec4_sub(neko_vec4 v0, neko_vec4 v1) { return neko_vec4_ctor(v0.x - v1.x, v0.y - v1.y, v0.z - v1.z, v0.w - v1.w); }
 
-neko_inline neko_vec4 neko_vec4_mul(neko_vec4 v0, neko_vec4 v1) { return neko_vec4_ctor(v0.x * v1.x, v0.y * v1.y, v0.z * v1.z, v0.w * v1.w); }
+NEKO_INLINE neko_vec4 neko_vec4_mul(neko_vec4 v0, neko_vec4 v1) { return neko_vec4_ctor(v0.x * v1.x, v0.y * v1.y, v0.z * v1.z, v0.w * v1.w); }
 
-neko_inline neko_vec4 neko_vec4_div(neko_vec4 v0, neko_vec4 v1) { return neko_vec4_ctor(v0.x / v1.x, v0.y / v1.y, v0.z / v1.z, v0.w / v1.w); }
+NEKO_INLINE neko_vec4 neko_vec4_div(neko_vec4 v0, neko_vec4 v1) { return neko_vec4_ctor(v0.x / v1.x, v0.y / v1.y, v0.z / v1.z, v0.w / v1.w); }
 
-neko_inline neko_vec4 neko_vec4_scale(neko_vec4 v, f32 s) { return neko_vec4_ctor(v.x * s, v.y * s, v.z * s, v.w * s); }
+NEKO_INLINE neko_vec4 neko_vec4_scale(neko_vec4 v, f32 s) { return neko_vec4_ctor(v.x * s, v.y * s, v.z * s, v.w * s); }
 
-neko_inline f32 neko_vec4_dot(neko_vec4 v0, neko_vec4 v1) { return (f32)(v0.x * v1.x + v0.y * v1.y + v0.z * v1.z + v0.w * v1.w); }
+NEKO_INLINE f32 neko_vec4_dot(neko_vec4 v0, neko_vec4 v1) { return (f32)(v0.x * v1.x + v0.y * v1.y + v0.z * v1.z + v0.w * v1.w); }
 
-neko_inline f32 neko_vec4_len(neko_vec4 v) { return (f32)sqrt(neko_vec4_dot(v, v)); }
+NEKO_INLINE f32 neko_vec4_len(neko_vec4 v) { return (f32)sqrt(neko_vec4_dot(v, v)); }
 
-neko_inline neko_vec4 neko_vec4_project_onto(neko_vec4 v0, neko_vec4 v1) {
+NEKO_INLINE neko_vec4 neko_vec4_project_onto(neko_vec4 v0, neko_vec4 v1) {
     f32 dot = neko_vec4_dot(v0, v1);
     f32 len = neko_vec4_dot(v1, v1);
 
@@ -311,9 +311,9 @@ neko_inline neko_vec4 neko_vec4_project_onto(neko_vec4 v0, neko_vec4 v1) {
     return neko_vec4_scale(v1, dot / len);
 }
 
-neko_inline neko_vec4 neko_vec4_norm(neko_vec4 v) { return neko_vec4_scale(v, 1.0f / neko_vec4_len(v)); }
+NEKO_INLINE neko_vec4 neko_vec4_norm(neko_vec4 v) { return neko_vec4_scale(v, 1.0f / neko_vec4_len(v)); }
 
-neko_inline f32 neko_vec4_dist(neko_vec4 v0, neko_vec4 v1) {
+NEKO_INLINE f32 neko_vec4_dist(neko_vec4 v0, neko_vec4 v1) {
     f32 dx = (v0.x - v1.x);
     f32 dy = (v0.y - v1.y);
     f32 dz = (v0.z - v1.z);
@@ -325,11 +325,11 @@ neko_inline f32 neko_vec4_dist(neko_vec4 v0, neko_vec4 v1) {
 // Useful Vector Functions
 ================================================================================*/
 
-neko_inline neko_vec3 neko_v4tov3(neko_vec4 v) { return neko_v3(v.x, v.y, v.z); }
+NEKO_INLINE neko_vec3 neko_v4tov3(neko_vec4 v) { return neko_v3(v.x, v.y, v.z); }
 
-neko_inline neko_vec2 neko_v3tov2(neko_vec3 v) { return neko_v2(v.x, v.y); }
+NEKO_INLINE neko_vec2 neko_v3tov2(neko_vec3 v) { return neko_v2(v.x, v.y); }
 
-neko_inline neko_vec3 neko_v2tov3(neko_vec2 v) { return neko_v3(v.x, v.y, 0.f); }
+NEKO_INLINE neko_vec3 neko_v2tov3(neko_vec2 v) { return neko_v3(v.x, v.y, 0.f); }
 
 /*================================================================================
 // Mat3x3
@@ -343,7 +343,7 @@ typedef struct neko_mat3 {
     f32 m[9];
 } neko_mat3;
 
-neko_inline neko_mat3 neko_mat3_diag(float val) {
+NEKO_INLINE neko_mat3 neko_mat3_diag(float val) {
     neko_mat3 m = neko_default_val();
     m.m[0 + 0 * 3] = val;
     m.m[1 + 1 * 3] = val;
@@ -353,7 +353,7 @@ neko_inline neko_mat3 neko_mat3_diag(float val) {
 
 #define neko_mat3_identity() neko_mat3_diag(1.f)
 
-neko_inline neko_mat3 neko_mat3_mul(neko_mat3 m0, neko_mat3 m1) {
+NEKO_INLINE neko_mat3 neko_mat3_mul(neko_mat3 m0, neko_mat3 m1) {
     neko_mat3 m = neko_default_val();
 
     for (u32 y = 0; y < 3; ++y) {
@@ -369,11 +369,11 @@ neko_inline neko_mat3 neko_mat3_mul(neko_mat3 m0, neko_mat3 m1) {
     return m;
 }
 
-neko_inline neko_vec3 neko_mat3_mul_vec3(neko_mat3 m, neko_vec3 v) {
+NEKO_INLINE neko_vec3 neko_mat3_mul_vec3(neko_mat3 m, neko_vec3 v) {
     return neko_vec3_ctor(m.m[0] * v.x + m.m[1] * v.y + m.m[2] * v.z, m.m[3] * v.x + m.m[4] * v.y + m.m[5] * v.z, m.m[6] * v.x + m.m[7] * v.y + m.m[8] * v.z);
 }
 
-neko_inline neko_mat3 neko_mat3_scale(float x, float y, float z) {
+NEKO_INLINE neko_mat3 neko_mat3_scale(float x, float y, float z) {
     neko_mat3 m = neko_default_val();
     m.m[0] = x;
     m.m[4] = y;
@@ -381,7 +381,7 @@ neko_inline neko_mat3 neko_mat3_scale(float x, float y, float z) {
     return m;
 }
 
-neko_inline neko_mat3 neko_mat3_rotate(float radians, float x, float y, float z) {
+NEKO_INLINE neko_mat3 neko_mat3_rotate(float radians, float x, float y, float z) {
     neko_mat3 m = neko_default_val();
     float s = sinf(radians), c = cosf(radians), c1 = 1.f - c;
     float xy = x * y;
@@ -402,10 +402,10 @@ neko_inline neko_mat3 neko_mat3_rotate(float radians, float x, float y, float z)
     return m;
 }
 
-neko_inline neko_mat3 neko_mat3_rotatev(float radians, neko_vec3 axis) { return neko_mat3_rotate(radians, axis.x, axis.y, axis.z); }
+NEKO_INLINE neko_mat3 neko_mat3_rotatev(float radians, neko_vec3 axis) { return neko_mat3_rotate(radians, axis.x, axis.y, axis.z); }
 
 // Turn quaternion into mat3
-neko_inline neko_mat3 neko_mat3_rotateq(neko_vec4 q) {
+NEKO_INLINE neko_mat3 neko_mat3_rotateq(neko_vec4 q) {
     neko_mat3 m = neko_default_val();
     float x2 = q.x * q.x, y2 = q.y * q.y, z2 = q.z * q.z, w2 = q.w * q.w;
     float xz = q.x * q.z, xy = q.x * q.y, yz = q.y * q.z, wz = q.w * q.z, wy = q.w * q.y, wx = q.w * q.x;
@@ -421,13 +421,13 @@ neko_inline neko_mat3 neko_mat3_rotateq(neko_vec4 q) {
     return m;
 }
 
-neko_inline neko_mat3 neko_mat3_rsq(neko_vec4 q, neko_vec3 s) {
+NEKO_INLINE neko_mat3 neko_mat3_rsq(neko_vec4 q, neko_vec3 s) {
     neko_mat3 mr = neko_mat3_rotateq(q);
     neko_mat3 ms = neko_mat3_scale(s.x, s.y, s.z);
     return neko_mat3_mul(mr, ms);
 }
 
-neko_inline neko_mat3 neko_mat3_inverse(neko_mat3 m) {
+NEKO_INLINE neko_mat3 neko_mat3_inverse(neko_mat3 m) {
     neko_mat3 r = neko_default_val();
 
     double det = (double)(m.m[0 * 3 + 0] * (m.m[1 * 3 + 1] * m.m[2 * 3 + 2] - m.m[2 * 3 + 1] * m.m[1 * 3 + 2]) - m.m[0 * 3 + 1] * (m.m[1 * 3 + 0] * m.m[2 * 3 + 2] - m.m[1 * 3 + 2] * m.m[2 * 3 + 0]) +
@@ -469,7 +469,7 @@ typedef struct neko_mat4 {
 
 typedef neko_mat4_t neko_mat4;
 
-neko_inline neko_mat4 neko_mat4_diag(f32 val) {
+NEKO_INLINE neko_mat4 neko_mat4_diag(f32 val) {
     neko_mat4 m;
     memset(m.elements, 0, sizeof(m.elements));
     m.elements[0 + 0 * 4] = val;
@@ -481,18 +481,18 @@ neko_inline neko_mat4 neko_mat4_diag(f32 val) {
 
 #define neko_mat4_identity() neko_mat4_diag(1.0f)
 
-neko_inline neko_mat4 neko_mat4_ctor() {
+NEKO_INLINE neko_mat4 neko_mat4_ctor() {
     neko_mat4 mat = neko_default_val();
     return mat;
 }
 
-neko_inline neko_mat4 neko_mat4_elem(const float* elements) {
+NEKO_INLINE neko_mat4 neko_mat4_elem(const float* elements) {
     neko_mat4 mat = neko_mat4_ctor();
     memcpy(mat.elements, elements, sizeof(f32) * 16);
     return mat;
 }
 
-neko_inline neko_mat4 neko_mat4_mul(neko_mat4 m0, neko_mat4 m1) {
+NEKO_INLINE neko_mat4 neko_mat4_mul(neko_mat4 m0, neko_mat4 m1) {
     neko_mat4 m_res = neko_mat4_ctor();
     for (u32 y = 0; y < 4; ++y) {
         for (u32 x = 0; x < 4; ++x) {
@@ -507,7 +507,7 @@ neko_inline neko_mat4 neko_mat4_mul(neko_mat4 m0, neko_mat4 m1) {
     return m_res;
 }
 
-neko_inline neko_mat4 neko_mat4_mul_list(uint32_t count, ...) {
+NEKO_INLINE neko_mat4 neko_mat4_mul_list(uint32_t count, ...) {
     va_list ap;
     neko_mat4 m = neko_mat4_identity();
     va_start(ap, count);
@@ -518,13 +518,13 @@ neko_inline neko_mat4 neko_mat4_mul_list(uint32_t count, ...) {
     return m;
 }
 
-neko_inline void neko_mat4_set_elements(neko_mat4* m, float* elements, uint32_t count) {
+NEKO_INLINE void neko_mat4_set_elements(neko_mat4* m, float* elements, uint32_t count) {
     for (u32 i = 0; i < count; ++i) {
         m->elements[i] = elements[i];
     }
 }
 
-neko_inline neko_mat4 neko_mat4_ortho_norm(const neko_mat4* m) {
+NEKO_INLINE neko_mat4 neko_mat4_ortho_norm(const neko_mat4* m) {
     neko_mat4 r = *m;
     r.v.right = neko_vec4_norm(r.v.right);
     r.v.up = neko_vec4_norm(r.v.up);
@@ -532,7 +532,7 @@ neko_inline neko_mat4 neko_mat4_ortho_norm(const neko_mat4* m) {
     return r;
 }
 
-neko_inline neko_mat4 neko_mat4_transpose(neko_mat4 m) {
+NEKO_INLINE neko_mat4 neko_mat4_transpose(neko_mat4 m) {
     neko_mat4 t = neko_mat4_identity();
 
     // First row
@@ -562,7 +562,7 @@ neko_inline neko_mat4 neko_mat4_transpose(neko_mat4 m) {
     return t;
 }
 
-neko_inline neko_mat4 neko_mat4_inverse(neko_mat4 m) {
+NEKO_INLINE neko_mat4 neko_mat4_inverse(neko_mat4 m) {
     neko_mat4 res = neko_mat4_identity();
 
     f32 temp[16];
@@ -629,7 +629,7 @@ neko_inline neko_mat4 neko_mat4_inverse(neko_mat4 m) {
 // f32 t : top
 // f32 n : near
 // f32 f : far
-neko_inline neko_mat4 neko_mat4_ortho(f32 l, f32 r, f32 b, f32 t, f32 n, f32 f) {
+NEKO_INLINE neko_mat4 neko_mat4_ortho(f32 l, f32 r, f32 b, f32 t, f32 n, f32 f) {
     neko_mat4 m_res = neko_mat4_identity();
 
     // Main diagonal
@@ -645,7 +645,7 @@ neko_inline neko_mat4 neko_mat4_ortho(f32 l, f32 r, f32 b, f32 t, f32 n, f32 f) 
     return m_res;
 }
 
-neko_inline neko_mat4 neko_mat4_perspective(f32 fov, f32 asp_ratio, f32 n, f32 f) {
+NEKO_INLINE neko_mat4 neko_mat4_perspective(f32 fov, f32 asp_ratio, f32 n, f32 f) {
     // Zero matrix
     neko_mat4 m_res = neko_mat4_ctor();
 
@@ -663,7 +663,7 @@ neko_inline neko_mat4 neko_mat4_perspective(f32 fov, f32 asp_ratio, f32 n, f32 f
     return m_res;
 }
 
-neko_inline neko_mat4 neko_mat4_translatev(const neko_vec3 v) {
+NEKO_INLINE neko_mat4 neko_mat4_translatev(const neko_vec3 v) {
     neko_mat4 m_res = neko_mat4_identity();
 
     m_res.elements[0 + 4 * 3] = v.x;
@@ -673,9 +673,9 @@ neko_inline neko_mat4 neko_mat4_translatev(const neko_vec3 v) {
     return m_res;
 }
 
-neko_inline neko_mat4 neko_mat4_translate(float x, float y, float z) { return neko_mat4_translatev(neko_v3(x, y, z)); }
+NEKO_INLINE neko_mat4 neko_mat4_translate(float x, float y, float z) { return neko_mat4_translatev(neko_v3(x, y, z)); }
 
-neko_inline neko_mat4 neko_mat4_scalev(const neko_vec3 v) {
+NEKO_INLINE neko_mat4 neko_mat4_scalev(const neko_vec3 v) {
     neko_mat4 m_res = neko_mat4_identity();
     m_res.elements[0 + 0 * 4] = v.x;
     m_res.elements[1 + 1 * 4] = v.y;
@@ -683,10 +683,10 @@ neko_inline neko_mat4 neko_mat4_scalev(const neko_vec3 v) {
     return m_res;
 }
 
-neko_inline neko_mat4 neko_mat4_scale(float x, float y, float z) { return (neko_mat4_scalev(neko_v3(x, y, z))); }
+NEKO_INLINE neko_mat4 neko_mat4_scale(float x, float y, float z) { return (neko_mat4_scalev(neko_v3(x, y, z))); }
 
 // Assumes normalized axis
-neko_inline neko_mat4 neko_mat4_rotatev(float angle, neko_vec3 axis) {
+NEKO_INLINE neko_mat4 neko_mat4_rotatev(float angle, neko_vec3 axis) {
     neko_mat4 m_res = neko_mat4_identity();
 
     float a = angle;
@@ -716,9 +716,9 @@ neko_inline neko_mat4 neko_mat4_rotatev(float angle, neko_vec3 axis) {
     return m_res;
 }
 
-neko_inline neko_mat4 neko_mat4_rotate(float angle, float x, float y, float z) { return neko_mat4_rotatev(angle, neko_v3(x, y, z)); }
+NEKO_INLINE neko_mat4 neko_mat4_rotate(float angle, float x, float y, float z) { return neko_mat4_rotatev(angle, neko_v3(x, y, z)); }
 
-neko_inline neko_mat4 neko_mat4_look_at(neko_vec3 position, neko_vec3 target, neko_vec3 up) {
+NEKO_INLINE neko_mat4 neko_mat4_look_at(neko_vec3 position, neko_vec3 target, neko_vec3 up) {
     neko_vec3 f = neko_vec3_norm(neko_vec3_sub(target, position));
     neko_vec3 s = neko_vec3_norm(neko_vec3_cross(f, up));
     neko_vec3 u = neko_vec3_cross(s, f);
@@ -746,7 +746,7 @@ neko_inline neko_mat4 neko_mat4_look_at(neko_vec3 position, neko_vec3 target, ne
 
 // Modified from github.com/CedricGuillemet/ImGuizmo/blob/master/ImGuizmo.cpp
 
-neko_inline void neko_mat4_decompose(const neko_mat4* m, float* translation, float* rotation, float* scale) {
+NEKO_INLINE void neko_mat4_decompose(const neko_mat4* m, float* translation, float* rotation, float* scale) {
     neko_mat4 mat = *m;
 
     scale[0] = neko_vec4_len(mat.v.right);
@@ -766,7 +766,7 @@ neko_inline void neko_mat4_decompose(const neko_mat4* m, float* translation, flo
 
 // Modified from github.com/CedricGuillemet/ImGuizmo/blob/master/ImGuizmo.cpp
 
-neko_inline neko_mat4 neko_mat4_recompose(const float* translation, const float* rotation, const float* scale) {
+NEKO_INLINE neko_mat4 neko_mat4_recompose(const float* translation, const float* rotation, const float* scale) {
     neko_mat4 mat = neko_mat4_identity();
 
     neko_vec3 direction_unary[3] = {NEKO_XAXIS, NEKO_YAXIS, NEKO_ZAXIS};
@@ -791,14 +791,14 @@ neko_inline neko_mat4 neko_mat4_recompose(const float* translation, const float*
     return mat;
 }
 
-neko_inline neko_vec4 neko_mat4_mul_vec4(neko_mat4 m, neko_vec4 v) {
+NEKO_INLINE neko_vec4 neko_mat4_mul_vec4(neko_mat4 m, neko_vec4 v) {
     return neko_vec4_ctor(m.elements[0 + 4 * 0] * v.x + m.elements[0 + 4 * 1] * v.y + m.elements[0 + 4 * 2] * v.z + m.elements[0 + 4 * 3] * v.w,
                           m.elements[1 + 4 * 0] * v.x + m.elements[1 + 4 * 1] * v.y + m.elements[1 + 4 * 2] * v.z + m.elements[1 + 4 * 3] * v.w,
                           m.elements[2 + 4 * 0] * v.x + m.elements[2 + 4 * 1] * v.y + m.elements[2 + 4 * 2] * v.z + m.elements[2 + 4 * 3] * v.w,
                           m.elements[3 + 4 * 0] * v.x + m.elements[3 + 4 * 1] * v.y + m.elements[3 + 4 * 2] * v.z + m.elements[3 + 4 * 3] * v.w);
 }
 
-neko_inline neko_vec3 neko_mat4_mul_vec3(neko_mat4 m, neko_vec3 v) { return neko_v4tov3(neko_mat4_mul_vec4(m, neko_v4_xyz_s(v, 1.f))); }
+NEKO_INLINE neko_vec3 neko_mat4_mul_vec3(neko_mat4 m, neko_vec3 v) { return neko_v4tov3(neko_mat4_mul_vec4(m, neko_v4_xyz_s(v, 1.f))); }
 
 /*================================================================================
 // Quaternion
@@ -823,7 +823,7 @@ typedef struct {
 
 typedef neko_quat_t neko_quat;
 
-neko_inline neko_quat neko_quat_default() {
+NEKO_INLINE neko_quat neko_quat_default() {
     neko_quat q;
     q.x = 0.f;
     q.y = 0.f;
@@ -832,7 +832,7 @@ neko_inline neko_quat neko_quat_default() {
     return q;
 }
 
-neko_inline neko_quat neko_quat_ctor(f32 _x, f32 _y, f32 _z, f32 _w) {
+NEKO_INLINE neko_quat neko_quat_ctor(f32 _x, f32 _y, f32 _z, f32 _w) {
     neko_quat q;
     q.x = _x;
     q.y = _y;
@@ -841,16 +841,16 @@ neko_inline neko_quat neko_quat_ctor(f32 _x, f32 _y, f32 _z, f32 _w) {
     return q;
 }
 
-neko_inline neko_quat neko_quat_add(neko_quat q0, neko_quat q1) { return neko_quat_ctor(q0.x + q1.x, q0.y + q1.y, q0.z + q1.z, q0.w + q1.w); }
+NEKO_INLINE neko_quat neko_quat_add(neko_quat q0, neko_quat q1) { return neko_quat_ctor(q0.x + q1.x, q0.y + q1.y, q0.z + q1.z, q0.w + q1.w); }
 
-neko_inline neko_quat neko_quat_sub(neko_quat q0, neko_quat q1) { return neko_quat_ctor(q0.x - q1.x, q0.y - q1.y, q0.z - q1.z, q0.w - q1.w); }
+NEKO_INLINE neko_quat neko_quat_sub(neko_quat q0, neko_quat q1) { return neko_quat_ctor(q0.x - q1.x, q0.y - q1.y, q0.z - q1.z, q0.w - q1.w); }
 
-neko_inline neko_quat neko_quat_mul(neko_quat q0, neko_quat q1) {
+NEKO_INLINE neko_quat neko_quat_mul(neko_quat q0, neko_quat q1) {
     return neko_quat_ctor(q0.w * q1.x + q1.w * q0.x + q0.y * q1.z - q1.y * q0.z, q0.w * q1.y + q1.w * q0.y + q0.z * q1.x - q1.z * q0.x, q0.w * q1.z + q1.w * q0.z + q0.x * q1.y - q1.x * q0.y,
                           q0.w * q1.w - q0.x * q1.x - q0.y * q1.y - q0.z * q1.z);
 }
 
-neko_inline neko_quat neko_quat_mul_list(u32 count, ...) {
+NEKO_INLINE neko_quat neko_quat_mul_list(u32 count, ...) {
     va_list ap;
     neko_quat q = neko_quat_default();
     va_start(ap, count);
@@ -861,30 +861,30 @@ neko_inline neko_quat neko_quat_mul_list(u32 count, ...) {
     return q;
 }
 
-neko_inline neko_quat neko_quat_mul_quat(neko_quat q0, neko_quat q1) {
+NEKO_INLINE neko_quat neko_quat_mul_quat(neko_quat q0, neko_quat q1) {
     return neko_quat_ctor(q0.w * q1.x + q1.w * q0.x + q0.y * q1.z - q1.y * q0.z, q0.w * q1.y + q1.w * q0.y + q0.z * q1.x - q1.z * q0.x, q0.w * q1.z + q1.w * q0.z + q0.x * q1.y - q1.x * q0.y,
                           q0.w * q1.w - q0.x * q1.x - q0.y * q1.y - q0.z * q1.z);
 }
 
-neko_inline neko_quat neko_quat_scale(neko_quat q, f32 s) { return neko_quat_ctor(q.x * s, q.y * s, q.z * s, q.w * s); }
+NEKO_INLINE neko_quat neko_quat_scale(neko_quat q, f32 s) { return neko_quat_ctor(q.x * s, q.y * s, q.z * s, q.w * s); }
 
-neko_inline f32 neko_quat_dot(neko_quat q0, neko_quat q1) { return (f32)(q0.x * q1.x + q0.y * q1.y + q0.z * q1.z + q0.w * q1.w); }
+NEKO_INLINE f32 neko_quat_dot(neko_quat q0, neko_quat q1) { return (f32)(q0.x * q1.x + q0.y * q1.y + q0.z * q1.z + q0.w * q1.w); }
 
-neko_inline neko_quat neko_quat_conjugate(neko_quat q) { return (neko_quat_ctor(-q.x, -q.y, -q.z, q.w)); }
+NEKO_INLINE neko_quat neko_quat_conjugate(neko_quat q) { return (neko_quat_ctor(-q.x, -q.y, -q.z, q.w)); }
 
-neko_inline f32 neko_quat_len(neko_quat q) { return (f32)sqrt(neko_quat_dot(q, q)); }
+NEKO_INLINE f32 neko_quat_len(neko_quat q) { return (f32)sqrt(neko_quat_dot(q, q)); }
 
-neko_inline neko_quat neko_quat_norm(neko_quat q) { return neko_quat_scale(q, 1.0f / neko_quat_len(q)); }
+NEKO_INLINE neko_quat neko_quat_norm(neko_quat q) { return neko_quat_scale(q, 1.0f / neko_quat_len(q)); }
 
-neko_inline neko_quat neko_quat_cross(neko_quat q0, neko_quat q1) {
+NEKO_INLINE neko_quat neko_quat_cross(neko_quat q0, neko_quat q1) {
     return neko_quat_ctor(q0.x * q1.x + q0.x * q1.w + q0.y * q1.z - q0.z * q1.y, q0.w * q1.y + q0.y * q1.w + q0.z * q1.x - q0.x * q1.z, q0.w * q1.z + q0.z * q1.w + q0.x * q1.y - q0.y * q1.x,
                           q0.w * q1.w - q0.x * q1.x - q0.y * q1.y - q0.z * q1.z);
 }
 
 // Inverse := Conjugate / Dot;
-neko_inline neko_quat neko_quat_inverse(neko_quat q) { return (neko_quat_scale(neko_quat_conjugate(q), 1.0f / neko_quat_dot(q, q))); }
+NEKO_INLINE neko_quat neko_quat_inverse(neko_quat q) { return (neko_quat_scale(neko_quat_conjugate(q), 1.0f / neko_quat_dot(q, q))); }
 
-neko_inline neko_quat neko_quat_angle_axis(f32 rad, neko_vec3 axis) {
+NEKO_INLINE neko_quat neko_quat_angle_axis(f32 rad, neko_vec3 axis) {
     // Normalize axis
     neko_vec3 a = neko_vec3_norm(axis);
 
@@ -895,7 +895,7 @@ neko_inline neko_quat neko_quat_angle_axis(f32 rad, neko_vec3 axis) {
     return neko_quat_ctor(a.x * s, a.y * s, a.z * s, (float)cos(half_angle));
 }
 
-neko_inline neko_vec3 neko_quat_rotate(neko_quat q, neko_vec3 v) {
+NEKO_INLINE neko_vec3 neko_quat_rotate(neko_quat q, neko_vec3 v) {
     // nVidia SDK implementation
     neko_vec3 qvec = neko_vec3_ctor(q.x, q.y, q.z);
     neko_vec3 uv = neko_vec3_cross(qvec, v);
@@ -905,19 +905,19 @@ neko_inline neko_vec3 neko_quat_rotate(neko_quat q, neko_vec3 v) {
     return (neko_vec3_add(v, neko_vec3_add(uv, uuv)));
 }
 
-neko_inline neko_vec3 neko_quat_forward(neko_quat q) { return neko_quat_rotate(q, neko_v3(0.f, 0.f, -1.f)); }
+NEKO_INLINE neko_vec3 neko_quat_forward(neko_quat q) { return neko_quat_rotate(q, neko_v3(0.f, 0.f, -1.f)); }
 
-neko_inline neko_vec3 neko_quat_backward(neko_quat q) { return neko_quat_rotate(q, neko_v3(0.f, 0.f, 1.f)); }
+NEKO_INLINE neko_vec3 neko_quat_backward(neko_quat q) { return neko_quat_rotate(q, neko_v3(0.f, 0.f, 1.f)); }
 
-neko_inline neko_vec3 neko_quat_left(neko_quat q) { return neko_quat_rotate(q, neko_v3(-1.f, 0.f, 0.f)); }
+NEKO_INLINE neko_vec3 neko_quat_left(neko_quat q) { return neko_quat_rotate(q, neko_v3(-1.f, 0.f, 0.f)); }
 
-neko_inline neko_vec3 neko_quat_right(neko_quat q) { return neko_quat_rotate(q, neko_v3(1.f, 0.f, 0.f)); }
+NEKO_INLINE neko_vec3 neko_quat_right(neko_quat q) { return neko_quat_rotate(q, neko_v3(1.f, 0.f, 0.f)); }
 
-neko_inline neko_vec3 neko_quat_up(neko_quat q) { return neko_quat_rotate(q, neko_v3(0.f, 1.f, 0.f)); }
+NEKO_INLINE neko_vec3 neko_quat_up(neko_quat q) { return neko_quat_rotate(q, neko_v3(0.f, 1.f, 0.f)); }
 
-neko_inline neko_vec3 neko_quat_down(neko_quat q) { return neko_quat_rotate(q, neko_v3(0.f, -1.f, 0.f)); }
+NEKO_INLINE neko_vec3 neko_quat_down(neko_quat q) { return neko_quat_rotate(q, neko_v3(0.f, -1.f, 0.f)); }
 
-neko_inline neko_quat neko_quat_from_to_rotation(neko_vec3 src, neko_vec3 dst) {
+NEKO_INLINE neko_quat neko_quat_from_to_rotation(neko_vec3 src, neko_vec3 dst) {
     src = neko_vec3_norm(src);
     dst = neko_vec3_norm(dst);
     const float d = neko_vec3_dot(src, dst);
@@ -940,7 +940,7 @@ neko_inline neko_quat neko_quat_from_to_rotation(neko_vec3 src, neko_vec3 dst) {
     }
 }
 
-neko_inline neko_quat neko_quat_look_rotation(neko_vec3 position, neko_vec3 target, neko_vec3 up) {
+NEKO_INLINE neko_quat neko_quat_look_rotation(neko_vec3 position, neko_vec3 target, neko_vec3 up) {
     const neko_vec3 forward = neko_vec3_norm(neko_vec3_sub(position, target));
     const neko_quat q0 = neko_quat_from_to_rotation(NEKO_ZAXIS, forward);
     if (neko_vec3_len2(neko_vec3_cross(forward, up)) < 1e-6) {
@@ -953,7 +953,7 @@ neko_inline neko_quat neko_quat_look_rotation(neko_vec3 position, neko_vec3 targ
     return neko_quat_mul(q1, q0);
 }
 
-neko_inline neko_quat neko_quat_slerp(neko_quat a, neko_quat b, f32 t) {
+NEKO_INLINE neko_quat neko_quat_slerp(neko_quat a, neko_quat b, f32 t) {
     f32 c = neko_quat_dot(a, b);
     neko_quat end = b;
 
@@ -993,7 +993,7 @@ neko_inline neko_quat neko_quat_slerp(neko_quat a, neko_quat b, f32 t) {
  * @brief Convert given quaternion param into equivalent 4x4 rotation matrix
  * @note: From http://www.euclideanspace.com/maths/geometry/rotations/conversions/quaternionToMatrix/index.htm
  */
-neko_inline neko_mat4 neko_quat_to_mat4(neko_quat _q) {
+NEKO_INLINE neko_mat4 neko_quat_to_mat4(neko_quat _q) {
     neko_mat4 mat = neko_mat4_identity();
     neko_quat q = neko_quat_norm(_q);
 
@@ -1022,7 +1022,7 @@ neko_inline neko_mat4 neko_quat_to_mat4(neko_quat _q) {
     return mat;
 }
 
-neko_inline neko_quat neko_quat_from_euler(f32 yaw_deg, f32 pitch_deg, f32 roll_deg) {
+NEKO_INLINE neko_quat neko_quat_from_euler(f32 yaw_deg, f32 pitch_deg, f32 roll_deg) {
     f32 yaw = neko_deg2rad(yaw_deg);
     f32 pitch = neko_deg2rad(pitch_deg);
     f32 roll = neko_deg2rad(roll_deg);
@@ -1043,13 +1043,13 @@ neko_inline neko_quat neko_quat_from_euler(f32 yaw_deg, f32 pitch_deg, f32 roll_
     return q;
 }
 
-neko_inline float neko_quat_pitch(neko_quat* q) { return atan2(2.0f * q->y * q->z + q->w * q->x, q->w * q->w - q->x * q->x - q->y * q->y + q->z * q->z); }
+NEKO_INLINE float neko_quat_pitch(neko_quat* q) { return atan2(2.0f * q->y * q->z + q->w * q->x, q->w * q->w - q->x * q->x - q->y * q->y + q->z * q->z); }
 
-neko_inline float neko_quat_yaw(neko_quat* q) { return asin(-2.0f * (q->x * q->z - q->w * q->y)); }
+NEKO_INLINE float neko_quat_yaw(neko_quat* q) { return asin(-2.0f * (q->x * q->z - q->w * q->y)); }
 
-neko_inline float neko_quat_roll(neko_quat* q) { return atan2(2.0f * q->x * q->y + q->z * q->w, q->x * q->x + q->w * q->w - q->y * q->y - q->z * q->z); }
+NEKO_INLINE float neko_quat_roll(neko_quat* q) { return atan2(2.0f * q->x * q->y + q->z * q->w, q->x * q->x + q->w * q->w - q->y * q->y - q->z * q->z); }
 
-neko_inline neko_vec3 neko_quat_to_euler(neko_quat* q) { return neko_v3(neko_quat_yaw(q), neko_quat_pitch(q), neko_quat_roll(q)); }
+NEKO_INLINE neko_vec3 neko_quat_to_euler(neko_quat* q) { return neko_v3(neko_quat_yaw(q), neko_quat_pitch(q), neko_quat_roll(q)); }
 
 /*================================================================================
 // Transform (Non-Uniform Scalar VQS)
@@ -1073,7 +1073,7 @@ typedef struct {
 
 typedef neko_vqs_t neko_vqs;
 
-neko_inline neko_vqs neko_vqs_ctor(neko_vec3 tns, neko_quat rot, neko_vec3 scl) {
+NEKO_INLINE neko_vqs neko_vqs_ctor(neko_vec3 tns, neko_quat rot, neko_vec3 scl) {
     neko_vqs t;
     t.position = tns;
     t.rotation = rot;
@@ -1081,7 +1081,7 @@ neko_inline neko_vqs neko_vqs_ctor(neko_vec3 tns, neko_quat rot, neko_vec3 scl) 
     return t;
 }
 
-neko_inline neko_vqs neko_vqs_default() {
+NEKO_INLINE neko_vqs neko_vqs_default() {
     neko_vqs t = neko_vqs_ctor(neko_vec3_ctor(0.0f, 0.0f, 0.0f), neko_quat_ctor(0.0f, 0.0f, 0.0f, 1.0f), neko_vec3_ctor(1.0f, 1.0f, 1.0f));
     return t;
 }
@@ -1089,7 +1089,7 @@ neko_inline neko_vqs neko_vqs_default() {
 // AbsScale = ParentScale * LocalScale
 // AbsRot   = LocalRot * ParentRot
 // AbsTrans = ParentPos + [ParentRot * (ParentScale * LocalPos)]
-neko_inline neko_vqs neko_vqs_absolute_transform(const neko_vqs* local, const neko_vqs* parent) {
+NEKO_INLINE neko_vqs neko_vqs_absolute_transform(const neko_vqs* local, const neko_vqs* parent) {
     if (!local || !parent) {
         return neko_vqs_default();
     }
@@ -1111,7 +1111,7 @@ neko_inline neko_vqs neko_vqs_absolute_transform(const neko_vqs* local, const ne
 // RelScale = AbsScale / ParentScale
 // RelRot   = Inverse(ParentRot) * AbsRot
 // RelTrans = [Inverse(ParentRot) * (AbsPos - ParentPosition)] / ParentScale;
-neko_inline neko_vqs neko_vqs_relative_transform(const neko_vqs* absolute, const neko_vqs* parent) {
+NEKO_INLINE neko_vqs neko_vqs_relative_transform(const neko_vqs* absolute, const neko_vqs* parent) {
     if (!absolute || !parent) {
         return neko_vqs_default();
     }
@@ -1131,7 +1131,7 @@ neko_inline neko_vqs neko_vqs_relative_transform(const neko_vqs* absolute, const
     return neko_vqs_ctor(tns, rot, scl);
 }
 
-neko_inline neko_mat4 neko_vqs_to_mat4(const neko_vqs* transform) {
+NEKO_INLINE neko_mat4 neko_vqs_to_mat4(const neko_vqs* transform) {
     neko_mat4 mat = neko_mat4_identity();
     neko_mat4 trans = neko_mat4_translatev(transform->position);
     neko_mat4 rot = neko_quat_to_mat4(transform->rotation);
@@ -1142,23 +1142,23 @@ neko_inline neko_mat4 neko_vqs_to_mat4(const neko_vqs* transform) {
     return mat;
 }
 
-neko_inline neko_vqs neko_vqs_from_mat4(const neko_mat4* m) {
+NEKO_INLINE neko_vqs neko_vqs_from_mat4(const neko_mat4* m) {
     neko_vec3 translation = neko_v3s(0.f), rotation = neko_v3s(0.f), scale = neko_v3s(1.f);
     neko_mat4_decompose(m, (float*)&translation, (float*)&rotation, (float*)&scale);
     return neko_vqs_ctor(translation, neko_quat_from_euler(rotation.x, rotation.y, rotation.z), scale);
 }
 
-neko_inline neko_vec3 neko_vqs_forward(const neko_vqs* transform) { return (neko_quat_rotate(transform->rotation, neko_v3(0.0f, 0.0f, -1.0f))); }
+NEKO_INLINE neko_vec3 neko_vqs_forward(const neko_vqs* transform) { return (neko_quat_rotate(transform->rotation, neko_v3(0.0f, 0.0f, -1.0f))); }
 
-neko_inline neko_vec3 neko_vqs_backward(const neko_vqs* transform) { return (neko_quat_rotate(transform->rotation, neko_v3(0.0f, 0.0f, 1.0f))); }
+NEKO_INLINE neko_vec3 neko_vqs_backward(const neko_vqs* transform) { return (neko_quat_rotate(transform->rotation, neko_v3(0.0f, 0.0f, 1.0f))); }
 
-neko_inline neko_vec3 neko_vqs_left(const neko_vqs* transform) { return (neko_quat_rotate(transform->rotation, neko_v3(-1.0f, 0.0f, 0.0f))); }
+NEKO_INLINE neko_vec3 neko_vqs_left(const neko_vqs* transform) { return (neko_quat_rotate(transform->rotation, neko_v3(-1.0f, 0.0f, 0.0f))); }
 
-neko_inline neko_vec3 neko_vqs_right(const neko_vqs* transform) { return (neko_quat_rotate(transform->rotation, neko_v3(1.0f, 0.0f, 0.0f))); }
+NEKO_INLINE neko_vec3 neko_vqs_right(const neko_vqs* transform) { return (neko_quat_rotate(transform->rotation, neko_v3(1.0f, 0.0f, 0.0f))); }
 
-neko_inline neko_vec3 neko_vqs_up(const neko_vqs* transform) { return (neko_quat_rotate(transform->rotation, neko_v3(0.0f, 1.0f, 0.0f))); }
+NEKO_INLINE neko_vec3 neko_vqs_up(const neko_vqs* transform) { return (neko_quat_rotate(transform->rotation, neko_v3(0.0f, 1.0f, 0.0f))); }
 
-neko_inline neko_vec3 neko_vqs_down(const neko_vqs* transform) { return (neko_quat_rotate(transform->rotation, neko_v3(0.0f, -1.0f, 0.0f))); }
+NEKO_INLINE neko_vec3 neko_vqs_down(const neko_vqs* transform) { return (neko_quat_rotate(transform->rotation, neko_v3(0.0f, -1.0f, 0.0f))); }
 
 #pragma region neko_fast_math
 
@@ -1270,13 +1270,13 @@ typedef neko_fast_quat neko_voxel_quat;
 #define NEKO_MATH_MAX(x, y) ((x) > (y) ? (x) : (y))
 #define NEKO_MATH_ABS(x) ((x) > 0 ? (x) : -(x))
 
-neko_static_inline float NEKO_MATH_PREFIX(rad_to_deg)(float rad) { return rad * 57.2957795131f; }
+NEKO_STATIC_INLINE float NEKO_MATH_PREFIX(rad_to_deg)(float rad) { return rad * 57.2957795131f; }
 
-neko_static_inline float NEKO_MATH_PREFIX(deg_to_rad)(float deg) { return deg * 0.01745329251f; }
+NEKO_STATIC_INLINE float NEKO_MATH_PREFIX(deg_to_rad)(float deg) { return deg * 0.01745329251f; }
 
 #if NEKO_MATH_USE_SSE
 
-neko_static_inline __m128 NEKO_MATH_PREFIX(mat4_mult_column_sse)(__m128 c1, neko_fast_mat4 m2) {
+NEKO_STATIC_INLINE __m128 NEKO_MATH_PREFIX(mat4_mult_column_sse)(__m128 c1, neko_fast_mat4 m2) {
     __m128 result;
 
     result = _mm_mul_ps(_mm_shuffle_ps(c1, c1, _MM_SHUFFLE(0, 0, 0, 0)), m2.packed[0]);
@@ -1294,7 +1294,7 @@ neko_static_inline __m128 NEKO_MATH_PREFIX(mat4_mult_column_sse)(__m128 c1, neko
 
 // addition:
 
-neko_static_inline neko_fast_vec2 NEKO_MATH_PREFIX(vec2_add)(neko_fast_vec2 v1, neko_fast_vec2 v2) {
+NEKO_STATIC_INLINE neko_fast_vec2 NEKO_MATH_PREFIX(vec2_add)(neko_fast_vec2 v1, neko_fast_vec2 v2) {
     neko_fast_vec2 result;
 
     result.x = v1.x + v2.x;
@@ -1303,7 +1303,7 @@ neko_static_inline neko_fast_vec2 NEKO_MATH_PREFIX(vec2_add)(neko_fast_vec2 v1, 
     return result;
 }
 
-neko_static_inline neko_fast_vec3 NEKO_MATH_PREFIX(vec3_add)(neko_fast_vec3 v1, neko_fast_vec3 v2) {
+NEKO_STATIC_INLINE neko_fast_vec3 NEKO_MATH_PREFIX(vec3_add)(neko_fast_vec3 v1, neko_fast_vec3 v2) {
     neko_fast_vec3 result;
 
     result.x = v1.x + v2.x;
@@ -1313,7 +1313,7 @@ neko_static_inline neko_fast_vec3 NEKO_MATH_PREFIX(vec3_add)(neko_fast_vec3 v1, 
     return result;
 }
 
-neko_static_inline neko_fast_vec4 NEKO_MATH_PREFIX(vec4_add)(neko_fast_vec4 v1, neko_fast_vec4 v2) {
+NEKO_STATIC_INLINE neko_fast_vec4 NEKO_MATH_PREFIX(vec4_add)(neko_fast_vec4 v1, neko_fast_vec4 v2) {
     neko_fast_vec4 result;
 
 #if NEKO_MATH_USE_SSE
@@ -1334,7 +1334,7 @@ neko_static_inline neko_fast_vec4 NEKO_MATH_PREFIX(vec4_add)(neko_fast_vec4 v1, 
 
 // subtraction:
 
-neko_static_inline neko_fast_vec2 NEKO_MATH_PREFIX(vec2_sub)(neko_fast_vec2 v1, neko_fast_vec2 v2) {
+NEKO_STATIC_INLINE neko_fast_vec2 NEKO_MATH_PREFIX(vec2_sub)(neko_fast_vec2 v1, neko_fast_vec2 v2) {
     neko_fast_vec2 result;
 
     result.x = v1.x - v2.x;
@@ -1343,7 +1343,7 @@ neko_static_inline neko_fast_vec2 NEKO_MATH_PREFIX(vec2_sub)(neko_fast_vec2 v1, 
     return result;
 }
 
-neko_static_inline neko_fast_vec3 NEKO_MATH_PREFIX(vec3_sub)(neko_fast_vec3 v1, neko_fast_vec3 v2) {
+NEKO_STATIC_INLINE neko_fast_vec3 NEKO_MATH_PREFIX(vec3_sub)(neko_fast_vec3 v1, neko_fast_vec3 v2) {
     neko_fast_vec3 result;
 
     result.x = v1.x - v2.x;
@@ -1353,7 +1353,7 @@ neko_static_inline neko_fast_vec3 NEKO_MATH_PREFIX(vec3_sub)(neko_fast_vec3 v1, 
     return result;
 }
 
-neko_static_inline neko_fast_vec4 NEKO_MATH_PREFIX(vec4_sub)(neko_fast_vec4 v1, neko_fast_vec4 v2) {
+NEKO_STATIC_INLINE neko_fast_vec4 NEKO_MATH_PREFIX(vec4_sub)(neko_fast_vec4 v1, neko_fast_vec4 v2) {
     neko_fast_vec4 result;
 
 #if NEKO_MATH_USE_SSE
@@ -1374,7 +1374,7 @@ neko_static_inline neko_fast_vec4 NEKO_MATH_PREFIX(vec4_sub)(neko_fast_vec4 v1, 
 
 // multiplication:
 
-neko_static_inline neko_fast_vec2 NEKO_MATH_PREFIX(vec2_mult)(neko_fast_vec2 v1, neko_fast_vec2 v2) {
+NEKO_STATIC_INLINE neko_fast_vec2 NEKO_MATH_PREFIX(vec2_mult)(neko_fast_vec2 v1, neko_fast_vec2 v2) {
     neko_fast_vec2 result;
 
     result.x = v1.x * v2.x;
@@ -1383,7 +1383,7 @@ neko_static_inline neko_fast_vec2 NEKO_MATH_PREFIX(vec2_mult)(neko_fast_vec2 v1,
     return result;
 }
 
-neko_static_inline neko_fast_vec3 NEKO_MATH_PREFIX(vec3_mult)(neko_fast_vec3 v1, neko_fast_vec3 v2) {
+NEKO_STATIC_INLINE neko_fast_vec3 NEKO_MATH_PREFIX(vec3_mult)(neko_fast_vec3 v1, neko_fast_vec3 v2) {
     neko_fast_vec3 result;
 
     result.x = v1.x * v2.x;
@@ -1393,7 +1393,7 @@ neko_static_inline neko_fast_vec3 NEKO_MATH_PREFIX(vec3_mult)(neko_fast_vec3 v1,
     return result;
 }
 
-neko_static_inline neko_fast_vec4 NEKO_MATH_PREFIX(vec4_mult)(neko_fast_vec4 v1, neko_fast_vec4 v2) {
+NEKO_STATIC_INLINE neko_fast_vec4 NEKO_MATH_PREFIX(vec4_mult)(neko_fast_vec4 v1, neko_fast_vec4 v2) {
     neko_fast_vec4 result;
 
 #if NEKO_MATH_USE_SSE
@@ -1414,7 +1414,7 @@ neko_static_inline neko_fast_vec4 NEKO_MATH_PREFIX(vec4_mult)(neko_fast_vec4 v1,
 
 // division:
 
-neko_static_inline neko_fast_vec2 NEKO_MATH_PREFIX(vec2_div)(neko_fast_vec2 v1, neko_fast_vec2 v2) {
+NEKO_STATIC_INLINE neko_fast_vec2 NEKO_MATH_PREFIX(vec2_div)(neko_fast_vec2 v1, neko_fast_vec2 v2) {
     neko_fast_vec2 result;
 
     result.x = v1.x / v2.x;
@@ -1423,7 +1423,7 @@ neko_static_inline neko_fast_vec2 NEKO_MATH_PREFIX(vec2_div)(neko_fast_vec2 v1, 
     return result;
 }
 
-neko_static_inline neko_fast_vec3 NEKO_MATH_PREFIX(vec3_div)(neko_fast_vec3 v1, neko_fast_vec3 v2) {
+NEKO_STATIC_INLINE neko_fast_vec3 NEKO_MATH_PREFIX(vec3_div)(neko_fast_vec3 v1, neko_fast_vec3 v2) {
     neko_fast_vec3 result;
 
     result.x = v1.x / v2.x;
@@ -1433,7 +1433,7 @@ neko_static_inline neko_fast_vec3 NEKO_MATH_PREFIX(vec3_div)(neko_fast_vec3 v1, 
     return result;
 }
 
-neko_static_inline neko_fast_vec4 NEKO_MATH_PREFIX(vec4_div)(neko_fast_vec4 v1, neko_fast_vec4 v2) {
+NEKO_STATIC_INLINE neko_fast_vec4 NEKO_MATH_PREFIX(vec4_div)(neko_fast_vec4 v1, neko_fast_vec4 v2) {
     neko_fast_vec4 result;
 
 #if NEKO_MATH_USE_SSE
@@ -1454,7 +1454,7 @@ neko_static_inline neko_fast_vec4 NEKO_MATH_PREFIX(vec4_div)(neko_fast_vec4 v1, 
 
 // scalar multiplication:
 
-neko_static_inline neko_fast_vec2 NEKO_MATH_PREFIX(vec2_scale)(neko_fast_vec2 v, float s) {
+NEKO_STATIC_INLINE neko_fast_vec2 NEKO_MATH_PREFIX(vec2_scale)(neko_fast_vec2 v, float s) {
     neko_fast_vec2 result;
 
     result.x = v.x * s;
@@ -1463,7 +1463,7 @@ neko_static_inline neko_fast_vec2 NEKO_MATH_PREFIX(vec2_scale)(neko_fast_vec2 v,
     return result;
 }
 
-neko_static_inline neko_fast_vec3 NEKO_MATH_PREFIX(vec3_scale)(neko_fast_vec3 v, float s) {
+NEKO_STATIC_INLINE neko_fast_vec3 NEKO_MATH_PREFIX(vec3_scale)(neko_fast_vec3 v, float s) {
     neko_fast_vec3 result;
 
     result.x = v.x * s;
@@ -1473,7 +1473,7 @@ neko_static_inline neko_fast_vec3 NEKO_MATH_PREFIX(vec3_scale)(neko_fast_vec3 v,
     return result;
 }
 
-neko_static_inline neko_fast_vec4 NEKO_MATH_PREFIX(vec4_scale)(neko_fast_vec4 v, float s) {
+NEKO_STATIC_INLINE neko_fast_vec4 NEKO_MATH_PREFIX(vec4_scale)(neko_fast_vec4 v, float s) {
     neko_fast_vec4 result;
 
 #if NEKO_MATH_USE_SSE
@@ -1495,7 +1495,7 @@ neko_static_inline neko_fast_vec4 NEKO_MATH_PREFIX(vec4_scale)(neko_fast_vec4 v,
 
 // dot product:
 
-neko_static_inline float NEKO_MATH_PREFIX(vec2_dot)(neko_fast_vec2 v1, neko_fast_vec2 v2) {
+NEKO_STATIC_INLINE float NEKO_MATH_PREFIX(vec2_dot)(neko_fast_vec2 v1, neko_fast_vec2 v2) {
     float result;
 
     result = v1.x * v2.x + v1.y * v2.y;
@@ -1503,7 +1503,7 @@ neko_static_inline float NEKO_MATH_PREFIX(vec2_dot)(neko_fast_vec2 v1, neko_fast
     return result;
 }
 
-neko_static_inline float NEKO_MATH_PREFIX(vec3_dot)(neko_fast_vec3 v1, neko_fast_vec3 v2) {
+NEKO_STATIC_INLINE float NEKO_MATH_PREFIX(vec3_dot)(neko_fast_vec3 v1, neko_fast_vec3 v2) {
     float result;
 
     result = v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
@@ -1511,7 +1511,7 @@ neko_static_inline float NEKO_MATH_PREFIX(vec3_dot)(neko_fast_vec3 v1, neko_fast
     return result;
 }
 
-neko_static_inline float NEKO_MATH_PREFIX(vec4_dot)(neko_fast_vec4 v1, neko_fast_vec4 v2) {
+NEKO_STATIC_INLINE float NEKO_MATH_PREFIX(vec4_dot)(neko_fast_vec4 v1, neko_fast_vec4 v2) {
     float result;
 
 #if NEKO_MATH_USE_SSE
@@ -1532,7 +1532,7 @@ neko_static_inline float NEKO_MATH_PREFIX(vec4_dot)(neko_fast_vec4 v1, neko_fast
 
 // cross product
 
-neko_static_inline neko_fast_vec3 NEKO_MATH_PREFIX(vec3_cross)(neko_fast_vec3 v1, neko_fast_vec3 v2) {
+NEKO_STATIC_INLINE neko_fast_vec3 NEKO_MATH_PREFIX(vec3_cross)(neko_fast_vec3 v1, neko_fast_vec3 v2) {
     neko_fast_vec3 result;
 
     result.x = (v1.y * v2.z) - (v1.z * v2.y);
@@ -1544,7 +1544,7 @@ neko_static_inline neko_fast_vec3 NEKO_MATH_PREFIX(vec3_cross)(neko_fast_vec3 v1
 
 // length:
 
-neko_static_inline float NEKO_MATH_PREFIX(vec2_length)(neko_fast_vec2 v) {
+NEKO_STATIC_INLINE float NEKO_MATH_PREFIX(vec2_length)(neko_fast_vec2 v) {
     float result;
 
     result = NEKO_MATH_SQRTF(NEKO_MATH_PREFIX(vec2_dot)(v, v));
@@ -1552,7 +1552,7 @@ neko_static_inline float NEKO_MATH_PREFIX(vec2_length)(neko_fast_vec2 v) {
     return result;
 }
 
-neko_static_inline float NEKO_MATH_PREFIX(vec3_length)(neko_fast_vec3 v) {
+NEKO_STATIC_INLINE float NEKO_MATH_PREFIX(vec3_length)(neko_fast_vec3 v) {
     float result;
 
     result = NEKO_MATH_SQRTF(NEKO_MATH_PREFIX(vec3_dot)(v, v));
@@ -1560,7 +1560,7 @@ neko_static_inline float NEKO_MATH_PREFIX(vec3_length)(neko_fast_vec3 v) {
     return result;
 }
 
-neko_static_inline float NEKO_MATH_PREFIX(vec4_length)(neko_fast_vec4 v) {
+NEKO_STATIC_INLINE float NEKO_MATH_PREFIX(vec4_length)(neko_fast_vec4 v) {
     float result;
 
     result = NEKO_MATH_SQRTF(NEKO_MATH_PREFIX(vec4_dot)(v, v));
@@ -1570,7 +1570,7 @@ neko_static_inline float NEKO_MATH_PREFIX(vec4_length)(neko_fast_vec4 v) {
 
 // normalize:
 
-neko_static_inline neko_fast_vec2 NEKO_MATH_PREFIX(vec2_normalize)(neko_fast_vec2 v) {
+NEKO_STATIC_INLINE neko_fast_vec2 NEKO_MATH_PREFIX(vec2_normalize)(neko_fast_vec2 v) {
     neko_fast_vec2 result = {0};
 
     float invLen = NEKO_MATH_PREFIX(vec2_length)(v);
@@ -1583,7 +1583,7 @@ neko_static_inline neko_fast_vec2 NEKO_MATH_PREFIX(vec2_normalize)(neko_fast_vec
     return result;
 }
 
-neko_static_inline neko_fast_vec3 NEKO_MATH_PREFIX(vec3_normalize)(neko_fast_vec3 v) {
+NEKO_STATIC_INLINE neko_fast_vec3 NEKO_MATH_PREFIX(vec3_normalize)(neko_fast_vec3 v) {
     neko_fast_vec3 result = {0};
 
     float invLen = NEKO_MATH_PREFIX(vec3_length)(v);
@@ -1597,7 +1597,7 @@ neko_static_inline neko_fast_vec3 NEKO_MATH_PREFIX(vec3_normalize)(neko_fast_vec
     return result;
 }
 
-neko_static_inline neko_fast_vec4 NEKO_MATH_PREFIX(vec4_normalize)(neko_fast_vec4 v) {
+NEKO_STATIC_INLINE neko_fast_vec4 NEKO_MATH_PREFIX(vec4_normalize)(neko_fast_vec4 v) {
     neko_fast_vec4 result = {0};
 
     float len = NEKO_MATH_PREFIX(vec4_length)(v);
@@ -1624,7 +1624,7 @@ neko_static_inline neko_fast_vec4 NEKO_MATH_PREFIX(vec4_normalize)(neko_fast_vec
 
 // distance:
 
-neko_static_inline float NEKO_MATH_PREFIX(vec2_distance)(neko_fast_vec2 v1, neko_fast_vec2 v2) {
+NEKO_STATIC_INLINE float NEKO_MATH_PREFIX(vec2_distance)(neko_fast_vec2 v1, neko_fast_vec2 v2) {
     float result;
 
     neko_fast_vec2 to = NEKO_MATH_PREFIX(vec2_sub)(v1, v2);
@@ -1633,7 +1633,7 @@ neko_static_inline float NEKO_MATH_PREFIX(vec2_distance)(neko_fast_vec2 v1, neko
     return result;
 }
 
-neko_static_inline float NEKO_MATH_PREFIX(vec3_distance)(neko_fast_vec3 v1, neko_fast_vec3 v2) {
+NEKO_STATIC_INLINE float NEKO_MATH_PREFIX(vec3_distance)(neko_fast_vec3 v1, neko_fast_vec3 v2) {
     float result;
 
     neko_fast_vec3 to = NEKO_MATH_PREFIX(vec3_sub)(v1, v2);
@@ -1642,7 +1642,7 @@ neko_static_inline float NEKO_MATH_PREFIX(vec3_distance)(neko_fast_vec3 v1, neko
     return result;
 }
 
-neko_static_inline float NEKO_MATH_PREFIX(vec4_distance)(neko_fast_vec4 v1, neko_fast_vec4 v2) {
+NEKO_STATIC_INLINE float NEKO_MATH_PREFIX(vec4_distance)(neko_fast_vec4 v1, neko_fast_vec4 v2) {
     float result;
 
     neko_fast_vec4 to = NEKO_MATH_PREFIX(vec4_sub)(v1, v2);
@@ -1653,7 +1653,7 @@ neko_static_inline float NEKO_MATH_PREFIX(vec4_distance)(neko_fast_vec4 v1, neko
 
 // equality:
 
-neko_static_inline neko_fast_bool NEKO_MATH_PREFIX(vec2_equals)(neko_fast_vec2 v1, neko_fast_vec2 v2) {
+NEKO_STATIC_INLINE neko_fast_bool NEKO_MATH_PREFIX(vec2_equals)(neko_fast_vec2 v1, neko_fast_vec2 v2) {
     neko_fast_bool result;
 
     result = (v1.x == v2.x) && (v1.y == v2.y);
@@ -1661,7 +1661,7 @@ neko_static_inline neko_fast_bool NEKO_MATH_PREFIX(vec2_equals)(neko_fast_vec2 v
     return result;
 }
 
-neko_static_inline neko_fast_bool NEKO_MATH_PREFIX(vec3_equals)(neko_fast_vec3 v1, neko_fast_vec3 v2) {
+NEKO_STATIC_INLINE neko_fast_bool NEKO_MATH_PREFIX(vec3_equals)(neko_fast_vec3 v1, neko_fast_vec3 v2) {
     neko_fast_bool result;
 
     result = (v1.x == v2.x) && (v1.y == v2.y) && (v1.z == v2.z);
@@ -1669,7 +1669,7 @@ neko_static_inline neko_fast_bool NEKO_MATH_PREFIX(vec3_equals)(neko_fast_vec3 v
     return result;
 }
 
-neko_static_inline neko_fast_bool NEKO_MATH_PREFIX(vec4_equals)(neko_fast_vec4 v1, neko_fast_vec4 v2) {
+NEKO_STATIC_INLINE neko_fast_bool NEKO_MATH_PREFIX(vec4_equals)(neko_fast_vec4 v1, neko_fast_vec4 v2) {
     neko_fast_bool result;
 
     // TODO: there are SIMD instructions for floating point equality, find a way to get a single bool from them
@@ -1680,7 +1680,7 @@ neko_static_inline neko_fast_bool NEKO_MATH_PREFIX(vec4_equals)(neko_fast_vec4 v
 
 // min:
 
-neko_static_inline neko_fast_vec2 NEKO_MATH_PREFIX(vec2_min)(neko_fast_vec2 v1, neko_fast_vec2 v2) {
+NEKO_STATIC_INLINE neko_fast_vec2 NEKO_MATH_PREFIX(vec2_min)(neko_fast_vec2 v1, neko_fast_vec2 v2) {
     neko_fast_vec2 result;
 
     result.x = NEKO_MATH_MIN(v1.x, v2.x);
@@ -1689,7 +1689,7 @@ neko_static_inline neko_fast_vec2 NEKO_MATH_PREFIX(vec2_min)(neko_fast_vec2 v1, 
     return result;
 }
 
-neko_static_inline neko_fast_vec3 NEKO_MATH_PREFIX(vec3_min)(neko_fast_vec3 v1, neko_fast_vec3 v2) {
+NEKO_STATIC_INLINE neko_fast_vec3 NEKO_MATH_PREFIX(vec3_min)(neko_fast_vec3 v1, neko_fast_vec3 v2) {
     neko_fast_vec3 result;
 
     result.x = NEKO_MATH_MIN(v1.x, v2.x);
@@ -1699,7 +1699,7 @@ neko_static_inline neko_fast_vec3 NEKO_MATH_PREFIX(vec3_min)(neko_fast_vec3 v1, 
     return result;
 }
 
-neko_static_inline neko_fast_vec4 NEKO_MATH_PREFIX(vec4_min)(neko_fast_vec4 v1, neko_fast_vec4 v2) {
+NEKO_STATIC_INLINE neko_fast_vec4 NEKO_MATH_PREFIX(vec4_min)(neko_fast_vec4 v1, neko_fast_vec4 v2) {
     neko_fast_vec4 result;
 
 #if NEKO_MATH_USE_SSE
@@ -1720,7 +1720,7 @@ neko_static_inline neko_fast_vec4 NEKO_MATH_PREFIX(vec4_min)(neko_fast_vec4 v1, 
 
 // max:
 
-neko_static_inline neko_fast_vec2 NEKO_MATH_PREFIX(vec2_max)(neko_fast_vec2 v1, neko_fast_vec2 v2) {
+NEKO_STATIC_INLINE neko_fast_vec2 NEKO_MATH_PREFIX(vec2_max)(neko_fast_vec2 v1, neko_fast_vec2 v2) {
     neko_fast_vec2 result;
 
     result.x = NEKO_MATH_MAX(v1.x, v2.x);
@@ -1729,7 +1729,7 @@ neko_static_inline neko_fast_vec2 NEKO_MATH_PREFIX(vec2_max)(neko_fast_vec2 v1, 
     return result;
 }
 
-neko_static_inline neko_fast_vec3 NEKO_MATH_PREFIX(vec3_max)(neko_fast_vec3 v1, neko_fast_vec3 v2) {
+NEKO_STATIC_INLINE neko_fast_vec3 NEKO_MATH_PREFIX(vec3_max)(neko_fast_vec3 v1, neko_fast_vec3 v2) {
     neko_fast_vec3 result;
 
     result.x = NEKO_MATH_MAX(v1.x, v2.x);
@@ -1739,7 +1739,7 @@ neko_static_inline neko_fast_vec3 NEKO_MATH_PREFIX(vec3_max)(neko_fast_vec3 v1, 
     return result;
 }
 
-neko_static_inline neko_fast_vec4 NEKO_MATH_PREFIX(vec4_max)(neko_fast_vec4 v1, neko_fast_vec4 v2) {
+NEKO_STATIC_INLINE neko_fast_vec4 NEKO_MATH_PREFIX(vec4_max)(neko_fast_vec4 v1, neko_fast_vec4 v2) {
     neko_fast_vec4 result;
 
 #if NEKO_MATH_USE_SSE
@@ -1763,13 +1763,13 @@ neko_static_inline neko_fast_vec4 NEKO_MATH_PREFIX(vec4_max)(neko_fast_vec4 v1, 
 
 // initialization:
 
-neko_static_inline neko_fast_mat3 NEKO_MATH_PREFIX(mat3_identity)() {
+NEKO_STATIC_INLINE neko_fast_mat3 NEKO_MATH_PREFIX(mat3_identity)() {
     neko_fast_mat3 result = {1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f};
 
     return result;
 }
 
-neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_identity)() {
+NEKO_STATIC_INLINE neko_fast_mat4 NEKO_MATH_PREFIX(mat4_identity)() {
     neko_fast_mat4 result = {1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f};
 
     return result;
@@ -1777,7 +1777,7 @@ neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_identity)() {
 
 // addition:
 
-neko_static_inline neko_fast_mat3 NEKO_MATH_PREFIX(mat3_add)(neko_fast_mat3 m1, neko_fast_mat3 m2) {
+NEKO_STATIC_INLINE neko_fast_mat3 NEKO_MATH_PREFIX(mat3_add)(neko_fast_mat3 m1, neko_fast_mat3 m2) {
     neko_fast_mat3 result;
 
     result.m[0][0] = m1.m[0][0] + m2.m[0][0];
@@ -1793,7 +1793,7 @@ neko_static_inline neko_fast_mat3 NEKO_MATH_PREFIX(mat3_add)(neko_fast_mat3 m1, 
     return result;
 }
 
-neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_add)(neko_fast_mat4 m1, neko_fast_mat4 m2) {
+NEKO_STATIC_INLINE neko_fast_mat4 NEKO_MATH_PREFIX(mat4_add)(neko_fast_mat4 m1, neko_fast_mat4 m2) {
     neko_fast_mat4 result;
 
 #if NEKO_MATH_USE_SSE
@@ -1829,7 +1829,7 @@ neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_add)(neko_fast_mat4 m1, 
 
 // subtraction:
 
-neko_static_inline neko_fast_mat3 NEKO_MATH_PREFIX(mat3_sub)(neko_fast_mat3 m1, neko_fast_mat3 m2) {
+NEKO_STATIC_INLINE neko_fast_mat3 NEKO_MATH_PREFIX(mat3_sub)(neko_fast_mat3 m1, neko_fast_mat3 m2) {
     neko_fast_mat3 result;
 
     result.m[0][0] = m1.m[0][0] - m2.m[0][0];
@@ -1845,7 +1845,7 @@ neko_static_inline neko_fast_mat3 NEKO_MATH_PREFIX(mat3_sub)(neko_fast_mat3 m1, 
     return result;
 }
 
-neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_sub)(neko_fast_mat4 m1, neko_fast_mat4 m2) {
+NEKO_STATIC_INLINE neko_fast_mat4 NEKO_MATH_PREFIX(mat4_sub)(neko_fast_mat4 m1, neko_fast_mat4 m2) {
     neko_fast_mat4 result;
 
 #if NEKO_MATH_USE_SSE
@@ -1881,7 +1881,7 @@ neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_sub)(neko_fast_mat4 m1, 
 
 // multiplication:
 
-neko_static_inline neko_fast_mat3 NEKO_MATH_PREFIX(mat3_mult)(neko_fast_mat3 m1, neko_fast_mat3 m2) {
+NEKO_STATIC_INLINE neko_fast_mat3 NEKO_MATH_PREFIX(mat3_mult)(neko_fast_mat3 m1, neko_fast_mat3 m2) {
     neko_fast_mat3 result;
 
     result.m[0][0] = m1.m[0][0] * m2.m[0][0] + m1.m[1][0] * m2.m[0][1] + m1.m[2][0] * m2.m[0][2];
@@ -1897,7 +1897,7 @@ neko_static_inline neko_fast_mat3 NEKO_MATH_PREFIX(mat3_mult)(neko_fast_mat3 m1,
     return result;
 }
 
-neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_mult)(neko_fast_mat4 m1, neko_fast_mat4 m2) {
+NEKO_STATIC_INLINE neko_fast_mat4 NEKO_MATH_PREFIX(mat4_mult)(neko_fast_mat4 m1, neko_fast_mat4 m2) {
     neko_fast_mat4 result;
 
 #if NEKO_MATH_USE_SSE
@@ -1931,7 +1931,7 @@ neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_mult)(neko_fast_mat4 m1,
     return result;
 }
 
-neko_static_inline neko_fast_vec3 NEKO_MATH_PREFIX(mat3_mult_vec3)(neko_fast_mat3 m, neko_fast_vec3 v) {
+NEKO_STATIC_INLINE neko_fast_vec3 NEKO_MATH_PREFIX(mat3_mult_vec3)(neko_fast_mat3 m, neko_fast_vec3 v) {
     neko_fast_vec3 result;
 
     result.x = m.m[0][0] * v.x + m.m[1][0] * v.y + m.m[2][0] * v.z;
@@ -1941,7 +1941,7 @@ neko_static_inline neko_fast_vec3 NEKO_MATH_PREFIX(mat3_mult_vec3)(neko_fast_mat
     return result;
 }
 
-neko_static_inline neko_fast_vec4 NEKO_MATH_PREFIX(mat4_mult_vec4)(neko_fast_mat4 m, neko_fast_vec4 v) {
+NEKO_STATIC_INLINE neko_fast_vec4 NEKO_MATH_PREFIX(mat4_mult_vec4)(neko_fast_mat4 m, neko_fast_vec4 v) {
     neko_fast_vec4 result;
 
 #if NEKO_MATH_USE_SSE
@@ -1962,7 +1962,7 @@ neko_static_inline neko_fast_vec4 NEKO_MATH_PREFIX(mat4_mult_vec4)(neko_fast_mat
 
 // transpose:
 
-neko_static_inline neko_fast_mat3 NEKO_MATH_PREFIX(mat3_transpose)(neko_fast_mat3 m) {
+NEKO_STATIC_INLINE neko_fast_mat3 NEKO_MATH_PREFIX(mat3_transpose)(neko_fast_mat3 m) {
     neko_fast_mat3 result;
 
     result.m[0][0] = m.m[0][0];
@@ -1978,7 +1978,7 @@ neko_static_inline neko_fast_mat3 NEKO_MATH_PREFIX(mat3_transpose)(neko_fast_mat
     return result;
 }
 
-neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_transpose)(neko_fast_mat4 m) {
+NEKO_STATIC_INLINE neko_fast_mat4 NEKO_MATH_PREFIX(mat4_transpose)(neko_fast_mat4 m) {
     neko_fast_mat4 result = m;
 
 #if NEKO_MATH_USE_SSE
@@ -2011,7 +2011,7 @@ neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_transpose)(neko_fast_mat
 
 // inverse:
 
-neko_static_inline neko_fast_mat3 NEKO_MATH_PREFIX(mat3_inv)(neko_fast_mat3 m) {
+NEKO_STATIC_INLINE neko_fast_mat3 NEKO_MATH_PREFIX(mat3_inv)(neko_fast_mat3 m) {
     neko_fast_mat3 result;
 
     float det;
@@ -2042,7 +2042,7 @@ neko_static_inline neko_fast_mat3 NEKO_MATH_PREFIX(mat3_inv)(neko_fast_mat3 m) {
     return result;
 }
 
-neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_inv)(neko_fast_mat4 mat) {
+NEKO_STATIC_INLINE neko_fast_mat4 NEKO_MATH_PREFIX(mat4_inv)(neko_fast_mat4 mat) {
     // TODO: this function is not SIMD optimized, figure out how to do it
 
     neko_fast_mat4 result;
@@ -2129,7 +2129,7 @@ neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_inv)(neko_fast_mat4 mat)
 
 // translation:
 
-neko_static_inline neko_fast_mat3 NEKO_MATH_PREFIX(mat3_translate)(neko_fast_vec2 t) {
+NEKO_STATIC_INLINE neko_fast_mat3 NEKO_MATH_PREFIX(mat3_translate)(neko_fast_vec2 t) {
     neko_fast_mat3 result = NEKO_MATH_PREFIX(mat3_identity)();
 
     result.m[2][0] = t.x;
@@ -2138,7 +2138,7 @@ neko_static_inline neko_fast_mat3 NEKO_MATH_PREFIX(mat3_translate)(neko_fast_vec
     return result;
 }
 
-neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_translate)(neko_fast_vec3 t) {
+NEKO_STATIC_INLINE neko_fast_mat4 NEKO_MATH_PREFIX(mat4_translate)(neko_fast_vec3 t) {
     neko_fast_mat4 result = NEKO_MATH_PREFIX(mat4_identity)();
 
     result.m[3][0] = t.x;
@@ -2150,7 +2150,7 @@ neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_translate)(neko_fast_vec
 
 // scaling:
 
-neko_static_inline neko_fast_mat3 NEKO_MATH_PREFIX(mat3_scale)(neko_fast_vec2 s) {
+NEKO_STATIC_INLINE neko_fast_mat3 NEKO_MATH_PREFIX(mat3_scale)(neko_fast_vec2 s) {
     neko_fast_mat3 result = NEKO_MATH_PREFIX(mat3_identity)();
 
     result.m[0][0] = s.x;
@@ -2159,7 +2159,7 @@ neko_static_inline neko_fast_mat3 NEKO_MATH_PREFIX(mat3_scale)(neko_fast_vec2 s)
     return result;
 }
 
-neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_scale)(neko_fast_vec3 s) {
+NEKO_STATIC_INLINE neko_fast_mat4 NEKO_MATH_PREFIX(mat4_scale)(neko_fast_vec3 s) {
     neko_fast_mat4 result = NEKO_MATH_PREFIX(mat4_identity)();
 
     result.m[0][0] = s.x;
@@ -2171,7 +2171,7 @@ neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_scale)(neko_fast_vec3 s)
 
 // rotation:
 
-neko_static_inline neko_fast_mat3 NEKO_MATH_PREFIX(mat3_rotate)(float angle) {
+NEKO_STATIC_INLINE neko_fast_mat3 NEKO_MATH_PREFIX(mat3_rotate)(float angle) {
     neko_fast_mat3 result = NEKO_MATH_PREFIX(mat3_identity)();
 
     float radians = NEKO_MATH_PREFIX(deg_to_rad)(angle);
@@ -2186,7 +2186,7 @@ neko_static_inline neko_fast_mat3 NEKO_MATH_PREFIX(mat3_rotate)(float angle) {
     return result;
 }
 
-neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_rotate)(neko_fast_vec3 axis, float angle) {
+NEKO_STATIC_INLINE neko_fast_mat4 NEKO_MATH_PREFIX(mat4_rotate)(neko_fast_vec3 axis, float angle) {
     neko_fast_mat4 result = NEKO_MATH_PREFIX(mat4_identity)();
 
     axis = NEKO_MATH_PREFIX(vec3_normalize)(axis);
@@ -2209,7 +2209,7 @@ neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_rotate)(neko_fast_vec3 a
     return result;
 }
 
-neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_rotate_euler)(neko_fast_vec3 angles) {
+NEKO_STATIC_INLINE neko_fast_mat4 NEKO_MATH_PREFIX(mat4_rotate_euler)(neko_fast_vec3 angles) {
     neko_fast_mat4 result = NEKO_MATH_PREFIX(mat4_identity)();
 
     neko_fast_vec3 radians;
@@ -2239,7 +2239,7 @@ neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_rotate_euler)(neko_fast_
 
 // to mat3:
 
-neko_static_inline neko_fast_mat3 NEKO_MATH_PREFIX(mat4_top_left)(neko_fast_mat4 m) {
+NEKO_STATIC_INLINE neko_fast_mat3 NEKO_MATH_PREFIX(mat4_top_left)(neko_fast_mat4 m) {
     neko_fast_mat3 result;
 
     result.m[0][0] = m.m[0][0];
@@ -2257,7 +2257,7 @@ neko_static_inline neko_fast_mat3 NEKO_MATH_PREFIX(mat4_top_left)(neko_fast_mat4
 
 // projection:
 
-neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_perspective)(float fov, float aspect, float n, float f) {
+NEKO_STATIC_INLINE neko_fast_mat4 NEKO_MATH_PREFIX(mat4_perspective)(float fov, float aspect, float n, float f) {
     neko_fast_mat4 result = {0};
 
     float scale = NEKO_MATH_TANF(NEKO_MATH_PREFIX(deg_to_rad)(fov * 0.5f)) * n;
@@ -2276,7 +2276,7 @@ neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_perspective)(float fov, 
     return result;
 }
 
-neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_orthographic)(float left, float right, float bot, float top, float n, float f) {
+NEKO_STATIC_INLINE neko_fast_mat4 NEKO_MATH_PREFIX(mat4_orthographic)(float left, float right, float bot, float top, float n, float f) {
     neko_fast_mat4 result = NEKO_MATH_PREFIX(mat4_identity)();
 
     result.m[0][0] = 2.0f / (right - left);
@@ -2292,7 +2292,7 @@ neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_orthographic)(float left
 
 // view matrix:
 
-neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_look)(neko_fast_vec3 pos, neko_fast_vec3 dir, neko_fast_vec3 up) {
+NEKO_STATIC_INLINE neko_fast_mat4 NEKO_MATH_PREFIX(mat4_look)(neko_fast_vec3 pos, neko_fast_vec3 dir, neko_fast_vec3 up) {
     neko_fast_mat4 result;
 
     neko_fast_vec3 r = NEKO_MATH_PREFIX(vec3_normalize)(NEKO_MATH_PREFIX(vec3_cross)(up, dir));
@@ -2315,7 +2315,7 @@ neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_look)(neko_fast_vec3 pos
     return result;
 }
 
-neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_lookat)(neko_fast_vec3 pos, neko_fast_vec3 target, neko_fast_vec3 up) {
+NEKO_STATIC_INLINE neko_fast_mat4 NEKO_MATH_PREFIX(mat4_lookat)(neko_fast_vec3 pos, neko_fast_vec3 target, neko_fast_vec3 up) {
     neko_fast_mat4 result;
 
     neko_fast_vec3 dir = NEKO_MATH_PREFIX(vec3_normalize)(NEKO_MATH_PREFIX(vec3_sub)(pos, target));
@@ -2327,7 +2327,7 @@ neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(mat4_lookat)(neko_fast_vec3 p
 //----------------------------------------------------------------------//
 // QUATERNION FUNCTIONS:
 
-neko_static_inline neko_fast_quat NEKO_MATH_PREFIX(quat_identity)() {
+NEKO_STATIC_INLINE neko_fast_quat NEKO_MATH_PREFIX(quat_identity)() {
     neko_fast_quat result;
 
     result.x = 0.0f;
@@ -2338,7 +2338,7 @@ neko_static_inline neko_fast_quat NEKO_MATH_PREFIX(quat_identity)() {
     return result;
 }
 
-neko_static_inline neko_fast_quat NEKO_MATH_PREFIX(quat_add)(neko_fast_quat q1, neko_fast_quat q2) {
+NEKO_STATIC_INLINE neko_fast_quat NEKO_MATH_PREFIX(quat_add)(neko_fast_quat q1, neko_fast_quat q2) {
     neko_fast_quat result;
 
 #if NEKO_MATH_USE_SSE
@@ -2357,7 +2357,7 @@ neko_static_inline neko_fast_quat NEKO_MATH_PREFIX(quat_add)(neko_fast_quat q1, 
     return result;
 }
 
-neko_static_inline neko_fast_quat NEKO_MATH_PREFIX(quat_sub)(neko_fast_quat q1, neko_fast_quat q2) {
+NEKO_STATIC_INLINE neko_fast_quat NEKO_MATH_PREFIX(quat_sub)(neko_fast_quat q1, neko_fast_quat q2) {
     neko_fast_quat result;
 
 #if NEKO_MATH_USE_SSE
@@ -2376,7 +2376,7 @@ neko_static_inline neko_fast_quat NEKO_MATH_PREFIX(quat_sub)(neko_fast_quat q1, 
     return result;
 }
 
-neko_static_inline neko_fast_quat NEKO_MATH_PREFIX(quat_mult)(neko_fast_quat q1, neko_fast_quat q2) {
+NEKO_STATIC_INLINE neko_fast_quat NEKO_MATH_PREFIX(quat_mult)(neko_fast_quat q1, neko_fast_quat q2) {
     neko_fast_quat result;
 
 #if NEKO_MATH_USE_SSE
@@ -2412,7 +2412,7 @@ neko_static_inline neko_fast_quat NEKO_MATH_PREFIX(quat_mult)(neko_fast_quat q1,
     return result;
 }
 
-neko_static_inline neko_fast_quat NEKO_MATH_PREFIX(quat_scale)(neko_fast_quat q, float s) {
+NEKO_STATIC_INLINE neko_fast_quat NEKO_MATH_PREFIX(quat_scale)(neko_fast_quat q, float s) {
     neko_fast_quat result;
 
 #if NEKO_MATH_USE_SSE
@@ -2432,7 +2432,7 @@ neko_static_inline neko_fast_quat NEKO_MATH_PREFIX(quat_scale)(neko_fast_quat q,
     return result;
 }
 
-neko_static_inline float NEKO_MATH_PREFIX(quat_dot)(neko_fast_quat q1, neko_fast_quat q2) {
+NEKO_STATIC_INLINE float NEKO_MATH_PREFIX(quat_dot)(neko_fast_quat q1, neko_fast_quat q2) {
     float result;
 
 #if NEKO_MATH_USE_SSE
@@ -2451,7 +2451,7 @@ neko_static_inline float NEKO_MATH_PREFIX(quat_dot)(neko_fast_quat q1, neko_fast
     return result;
 }
 
-neko_static_inline float NEKO_MATH_PREFIX(quat_length)(neko_fast_quat q) {
+NEKO_STATIC_INLINE float NEKO_MATH_PREFIX(quat_length)(neko_fast_quat q) {
     float result;
 
     result = NEKO_MATH_SQRTF(NEKO_MATH_PREFIX(quat_dot)(q, q));
@@ -2459,7 +2459,7 @@ neko_static_inline float NEKO_MATH_PREFIX(quat_length)(neko_fast_quat q) {
     return result;
 }
 
-neko_static_inline neko_fast_quat NEKO_MATH_PREFIX(quat_normalize)(neko_fast_quat q) {
+NEKO_STATIC_INLINE neko_fast_quat NEKO_MATH_PREFIX(quat_normalize)(neko_fast_quat q) {
     neko_fast_quat result = {0};
 
     float len = NEKO_MATH_PREFIX(quat_length)(q);
@@ -2484,7 +2484,7 @@ neko_static_inline neko_fast_quat NEKO_MATH_PREFIX(quat_normalize)(neko_fast_qua
     return result;
 }
 
-neko_static_inline neko_fast_quat NEKO_MATH_PREFIX(quat_conjugate)(neko_fast_quat q) {
+NEKO_STATIC_INLINE neko_fast_quat NEKO_MATH_PREFIX(quat_conjugate)(neko_fast_quat q) {
     neko_fast_quat result;
 
     result.x = -q.x;
@@ -2495,7 +2495,7 @@ neko_static_inline neko_fast_quat NEKO_MATH_PREFIX(quat_conjugate)(neko_fast_qua
     return result;
 }
 
-neko_static_inline neko_fast_quat NEKO_MATH_PREFIX(quat_inv)(neko_fast_quat q) {
+NEKO_STATIC_INLINE neko_fast_quat NEKO_MATH_PREFIX(quat_inv)(neko_fast_quat q) {
     neko_fast_quat result;
 
     result.x = -q.x;
@@ -2522,7 +2522,7 @@ neko_static_inline neko_fast_quat NEKO_MATH_PREFIX(quat_inv)(neko_fast_quat q) {
     return result;
 }
 
-neko_static_inline neko_fast_quat NEKO_MATH_PREFIX(quat_slerp)(neko_fast_quat q1, neko_fast_quat q2, float a) {
+NEKO_STATIC_INLINE neko_fast_quat NEKO_MATH_PREFIX(quat_slerp)(neko_fast_quat q1, neko_fast_quat q2, float a) {
     neko_fast_quat result;
 
     float cosine = NEKO_MATH_PREFIX(quat_dot)(q1, q2);
@@ -2541,7 +2541,7 @@ neko_static_inline neko_fast_quat NEKO_MATH_PREFIX(quat_slerp)(neko_fast_quat q1
     return result;
 }
 
-neko_static_inline neko_fast_quat NEKO_MATH_PREFIX(quat_from_axis_angle)(neko_fast_vec3 axis, float angle) {
+NEKO_STATIC_INLINE neko_fast_quat NEKO_MATH_PREFIX(quat_from_axis_angle)(neko_fast_vec3 axis, float angle) {
     neko_fast_quat result;
 
     float radians = NEKO_MATH_PREFIX(deg_to_rad)(angle * 0.5f);
@@ -2556,7 +2556,7 @@ neko_static_inline neko_fast_quat NEKO_MATH_PREFIX(quat_from_axis_angle)(neko_fa
     return result;
 }
 
-neko_static_inline neko_fast_quat NEKO_MATH_PREFIX(quat_from_euler)(neko_fast_vec3 angles) {
+NEKO_STATIC_INLINE neko_fast_quat NEKO_MATH_PREFIX(quat_from_euler)(neko_fast_vec3 angles) {
     neko_fast_quat result;
 
     neko_fast_vec3 radians;
@@ -2597,7 +2597,7 @@ neko_static_inline neko_fast_quat NEKO_MATH_PREFIX(quat_from_euler)(neko_fast_ve
     return result;
 }
 
-neko_static_inline neko_fast_mat4 NEKO_MATH_PREFIX(quat_to_mat4)(neko_fast_quat q) {
+NEKO_STATIC_INLINE neko_fast_mat4 NEKO_MATH_PREFIX(quat_to_mat4)(neko_fast_quat q) {
     neko_fast_mat4 result = NEKO_MATH_PREFIX(mat4_identity)();
 
     float x2 = q.x + q.x;

@@ -20,9 +20,9 @@
 
 namespace neko {
 
-neko_inline bool IsValid(f32 x) { return isfinite(x); }
+NEKO_INLINE bool IsValid(f32 x) { return isfinite(x); }
 
-neko_inline auto RectToPoint(const neko_vec2 &v) {
+NEKO_INLINE auto RectToPoint(const neko_vec2 &v) {
     neko_vec2 a1 = {v.x / 2.0f, v.y / 2.0f};
     neko_vec2 a2 = {v.x / -2.0f, v.y / 2.0f};
     neko_vec2 b1 = {v.x / -2.0f, v.y / -2.0f};
