@@ -6,7 +6,7 @@
 #include <tuple>
 
 #include "engine/neko_lua.h"
-#include "sandbox/game_imgui.h"
+#include "game_imgui.h"
 
 namespace imgui_lua::util {
 

@@ -6,8 +6,6 @@
 #include "engine/neko_engine.h"
 #include "engine/neko_lua.h"
 #include "engine/neko_math.h"
-#include "sandbox/game_cvar.h"
-#include "sandbox/game_imgui.h"
 
 typedef struct {
     const char *name;

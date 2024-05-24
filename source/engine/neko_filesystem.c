@@ -333,7 +333,7 @@ const char* neko_filewatch_error_reason;
         }                                                                                      \
     } while (0)
 
-void neko_filewatch_create_internal(neko_filewatch_t* filewatch, struct neko_assetsys_t* assetsys, void* mem_ctx) {
+void neko_filewatch_create_internal(neko_filewatch_t* filewatch, struct neko_filesystem_t* assetsys, void* mem_ctx) {
     // neko_filewatch_t* filewatch = (neko_filewatch_t*)NEKO_FILEWATCH_MALLOC(sizeof(neko_filewatch_t), mem_ctx);
     NEKO_FILEWATCH_MEMSET(filewatch, 0, sizeof(neko_filewatch_t));
     filewatch->mem_ctx = mem_ctx;
@@ -342,7 +342,7 @@ void neko_filewatch_create_internal(neko_filewatch_t* filewatch, struct neko_ass
     // return filewatch;
 }
 
-neko_filewatch_t* neko_filewatch_create(struct neko_assetsys_t* assetsys, void* mem_ctx) {
+neko_filewatch_t* neko_filewatch_create(struct neko_filesystem_t* assetsys, void* mem_ctx) {
     neko_filewatch_t* filewatch = (neko_filewatch_t*)NEKO_FILEWATCH_MALLOC(sizeof(neko_filewatch_t), mem_ctx);
     NEKO_FILEWATCH_MEMSET(filewatch, 0, sizeof(neko_filewatch_t));
     filewatch->mem_ctx = mem_ctx;
@@ -376,7 +376,7 @@ void neko_filewatch_free(neko_filewatch_t* filewatch) {
 int neko_filewatch_mount(neko_filewatch_t* filewatch, const char* actual_path, const char* mount_as_virtual_path) {
     u64 actual_id;
     u64 virtual_id;
-    neko_assetsys_error_t ret;
+    neko_filesystem_error_t ret;
     neko_filewatch_path_t path;
 
     NEKO_FILEWATCH_CHECK(filewatch->mount_count < FILEWATCH_MAX_MOUNTS, "Can not mount more than `FILEWATCH_MAX_MOUNTS` times simultaneously.");
@@ -386,8 +386,8 @@ int neko_filewatch_mount(neko_filewatch_t* filewatch, const char* actual_path, c
     path.actual_id = actual_id;
     path.virtual_id = virtual_id;
     filewatch->mount_paths[filewatch->mount_count++] = path;
-    ret = neko_assetsys_mount(filewatch->assetsys, actual_path, mount_as_virtual_path);
-    NEKO_FILEWATCH_CHECK(ret == ASSETSYS_SUCCESS, "assetsys failed to initialize.");
+    ret = neko_filesystem_mount(filewatch->assetsys, actual_path, mount_as_virtual_path);
+    NEKO_FILEWATCH_CHECK(ret == FILESYSTEM_SUCCESS, "assetsys failed to initialize.");
 
     return 1;
 
@@ -406,7 +406,7 @@ void neko_filewatch_dismount(neko_filewatch_t* filewatch, const char* actual_pat
         if (path.actual_id == actual_id && path.virtual_id == virtual_id) {
             const char* mount_as = NEKO_FILEWATCH_CSTR(filewatch, path.virtual_id);
             const char* mount_path = NEKO_FILEWATCH_CSTR(filewatch, path.actual_id);
-            neko_assetsys_dismount(filewatch->assetsys, mount_path, mount_as);
+            neko_filesystem_dismount(filewatch->assetsys, mount_path, mount_as);
             mount_paths[i] = mount_paths[--filewatch->mount_count];
             break;
         }
@@ -578,8 +578,8 @@ int neko_filewatch_update(neko_filewatch_t* filewatch) {
         neko_filewatch_path_t path = remount_paths[i];
         const char* actual_path = NEKO_FILEWATCH_CSTR(filewatch, path.actual_id);
         const char* virtual_path = NEKO_FILEWATCH_CSTR(filewatch, path.virtual_id);
-        neko_assetsys_dismount(filewatch->assetsys, actual_path, virtual_path);
-        neko_assetsys_mount(filewatch->assetsys, actual_path, virtual_path);
+        neko_filesystem_dismount(filewatch->assetsys, actual_path, virtual_path);
+        neko_filesystem_mount(filewatch->assetsys, actual_path, virtual_path);
     }
 
     return 1;
@@ -717,7 +717,7 @@ int neko_filewatch_virtual_path_to_actual_path(neko_filewatch_t* filewatch, cons
 
 #endif
 
-// NEKO_ASSETSYS_IMPL
+// NEKO_FILESYSTEM_IMPL
 
 #define _CRT_NONSTDC_NO_DEPRECATE
 #define _CRT_SECURE_NO_WARNINGS
@@ -726,9 +726,9 @@ int neko_filewatch_virtual_path_to_actual_path(neko_filewatch_t* filewatch, cons
 
 // #include "strpool.h"
 
-#define ASSETSYS_ASSERT(expression, message) assert((expression) && (message))
-#define ASSETSYS_MALLOC(ctx, size) (malloc(size))
-#define ASSETSYS_FREE(ctx, ptr) (free(ptr))
+#define FILESYSTEM_ASSERT(expression, message) assert((expression) && (message))
+#define FILESYSTEM_MALLOC(ctx, size) (malloc(size))
+#define FILESYSTEM_FREE(ctx, ptr) (free(ptr))
 
 #if defined(_WIN32)
 #define _CRT_NONSTDC_NO_DEPRECATE
@@ -746,18 +746,18 @@ int neko_filewatch_virtual_path_to_actual_path(neko_filewatch_t* filewatch, cons
 #include <windows.h>
 #pragma warning(pop)
 
-struct neko_assetsys_internal_dir_entry_t {
+struct neko_filesystem_internal_dir_entry_t {
     char name[MAX_PATH];
     BOOL is_folder;
 };
 
-struct neko_assetsys_internal_dir_t {
+struct neko_filesystem_internal_dir_t {
     HANDLE handle;
     WIN32_FIND_DATAA data;
-    struct neko_assetsys_internal_dir_entry_t entry;
+    struct neko_filesystem_internal_dir_entry_t entry;
 };
 
-static void neko_assetsys_internal_dir_open(struct neko_assetsys_internal_dir_t* dir, char const* path) {
+static void neko_filesystem_internal_dir_open(struct neko_filesystem_internal_dir_t* dir, char const* path) {
     size_t path_len = strlen(path);
     BOOL trailing_path_separator = path[path_len - 1] == '\\' || path[path_len - 1] == '/';
     const char* string_to_append = "*.*";
@@ -775,11 +775,11 @@ static void neko_assetsys_internal_dir_open(struct neko_assetsys_internal_dir_t*
     dir->data = data;
 }
 
-static void neko_assetsys_internal_dir_close(struct neko_assetsys_internal_dir_t* dir) {
+static void neko_filesystem_internal_dir_close(struct neko_filesystem_internal_dir_t* dir) {
     if (dir->handle != INVALID_HANDLE_VALUE) FindClose(dir->handle);
 }
 
-static struct neko_assetsys_internal_dir_entry_t* neko_assetsys_internal_dir_read(struct neko_assetsys_internal_dir_t* dir) {
+static struct neko_filesystem_internal_dir_entry_t* neko_filesystem_internal_dir_read(struct neko_filesystem_internal_dir_t* dir) {
     if (dir->handle == INVALID_HANDLE_VALUE) return NULL;
 
     strcpy(dir->entry.name, dir->data.cFileName);
@@ -794,84 +794,84 @@ static struct neko_assetsys_internal_dir_entry_t* neko_assetsys_internal_dir_rea
     return &dir->entry;
 }
 
-static char const* neko_assetsys_internal_dir_name(struct neko_assetsys_internal_dir_entry_t* entry) { return entry->name; }
+static char const* neko_filesystem_internal_dir_name(struct neko_filesystem_internal_dir_entry_t* entry) { return entry->name; }
 
-static int neko_assetsys_internal_dir_is_file(struct neko_assetsys_internal_dir_entry_t* entry) { return entry->is_folder == FALSE; }
+static int neko_filesystem_internal_dir_is_file(struct neko_filesystem_internal_dir_entry_t* entry) { return entry->is_folder == FALSE; }
 
-static int neko_assetsys_internal_dir_is_folder(struct neko_assetsys_internal_dir_entry_t* entry) { return entry->is_folder == TRUE; }
+static int neko_filesystem_internal_dir_is_folder(struct neko_filesystem_internal_dir_entry_t* entry) { return entry->is_folder == TRUE; }
 
 #else
 
 #include <dirent.h>
 
-struct neko_assetsys_internal_dir_t {
+struct neko_filesystem_internal_dir_t {
     DIR* dir;
 };
 
-typedef struct neko_assetsys_internal_dir_entry_t neko_assetsys_internal_dir_entry_t;
+typedef struct neko_filesystem_internal_dir_entry_t neko_filesystem_internal_dir_entry_t;
 
-static void neko_assetsys_internal_dir_open(struct neko_assetsys_internal_dir_t* dir, char const* path) { dir->dir = opendir(path); }
+static void neko_filesystem_internal_dir_open(struct neko_filesystem_internal_dir_t* dir, char const* path) { dir->dir = opendir(path); }
 
-static void neko_assetsys_internal_dir_close(struct neko_assetsys_internal_dir_t* dir) { closedir(dir->dir); }
+static void neko_filesystem_internal_dir_close(struct neko_filesystem_internal_dir_t* dir) { closedir(dir->dir); }
 
-static neko_assetsys_internal_dir_entry_t* neko_assetsys_internal_dir_read(struct neko_assetsys_internal_dir_t* dir) { return (neko_assetsys_internal_dir_entry_t*)readdir(dir->dir); }
+static neko_filesystem_internal_dir_entry_t* neko_filesystem_internal_dir_read(struct neko_filesystem_internal_dir_t* dir) { return (neko_filesystem_internal_dir_entry_t*)readdir(dir->dir); }
 
-static char const* neko_assetsys_internal_dir_name(neko_assetsys_internal_dir_entry_t* entry) { return ((struct dirent*)entry)->d_name; }
+static char const* neko_filesystem_internal_dir_name(neko_filesystem_internal_dir_entry_t* entry) { return ((struct dirent*)entry)->d_name; }
 
-static int neko_assetsys_internal_dir_is_file(neko_assetsys_internal_dir_entry_t* entry) { return ((struct dirent*)entry)->d_type == DT_REG; }
+static int neko_filesystem_internal_dir_is_file(neko_filesystem_internal_dir_entry_t* entry) { return ((struct dirent*)entry)->d_type == DT_REG; }
 
-static int neko_assetsys_internal_dir_is_folder(neko_assetsys_internal_dir_entry_t* entry) { return ((struct dirent*)entry)->d_type == DT_DIR; }
+static int neko_filesystem_internal_dir_is_folder(neko_filesystem_internal_dir_entry_t* entry) { return ((struct dirent*)entry)->d_type == DT_DIR; }
 
 #endif
 
-static void* neko_assetsys_internal_mz_alloc(void* memctx, size_t items, size_t size) {
+static void* neko_filesystem_internal_mz_alloc(void* memctx, size_t items, size_t size) {
     (void)memctx;
     (void)items;
     (void)size;
-    ASSETSYS_U64* p = (ASSETSYS_U64*)ASSETSYS_MALLOC(memctx, (items * size) + sizeof(ASSETSYS_U64));
+    FILESYSTEM_U64* p = (FILESYSTEM_U64*)FILESYSTEM_MALLOC(memctx, (items * size) + sizeof(FILESYSTEM_U64));
     *p = (items * size);
     return p + 1;
 }
 
-static void neko_assetsys_internal_mz_free(void* memctx, void* ptr) {
+static void neko_filesystem_internal_mz_free(void* memctx, void* ptr) {
     (void)memctx;
     (void)ptr;
     if (!ptr) return;
-    ASSETSYS_U64* p = ((ASSETSYS_U64*)ptr) - 1;
-    ASSETSYS_FREE(memctx, p);
+    FILESYSTEM_U64* p = ((FILESYSTEM_U64*)ptr) - 1;
+    FILESYSTEM_FREE(memctx, p);
 }
 
-static void* neko_assetsys_internal_mz_realloc(void* memctx, void* ptr, size_t items, size_t size) {
+static void* neko_filesystem_internal_mz_realloc(void* memctx, void* ptr, size_t items, size_t size) {
     (void)memctx;
     (void)ptr;
     (void)items;
     (void)size;
-    if (!ptr) return neko_assetsys_internal_mz_alloc(memctx, items, size);
+    if (!ptr) return neko_filesystem_internal_mz_alloc(memctx, items, size);
 
-    ASSETSYS_U64* p = ((ASSETSYS_U64*)ptr) - 1;
-    ASSETSYS_U64 prev_size = *p;
+    FILESYSTEM_U64* p = ((FILESYSTEM_U64*)ptr) - 1;
+    FILESYSTEM_U64 prev_size = *p;
     if (prev_size >= (items * size)) return ptr;
 
-    ASSETSYS_U64* new_ptr = (ASSETSYS_U64*)ASSETSYS_MALLOC(memctx, (items * size) + sizeof(ASSETSYS_U64));
+    FILESYSTEM_U64* new_ptr = (FILESYSTEM_U64*)FILESYSTEM_MALLOC(memctx, (items * size) + sizeof(FILESYSTEM_U64));
     *new_ptr = (items * size);
     ++new_ptr;
     memcpy(new_ptr, ptr, (size_t)prev_size);
-    ASSETSYS_FREE(memctx, p);
+    FILESYSTEM_FREE(memctx, p);
     return new_ptr;
 }
 
-static char* neko_assetsys_internal_dirname(char const* path);
+static char* neko_filesystem_internal_dirname(char const* path);
 
-static ASSETSYS_U64 neko_assetsys_internal_add_string(neko_assetsys_t* sys, char const* const str) {
-    ASSETSYS_U64 h = strpool_inject(&sys->strpool, str, (int)strlen(str));
+static FILESYSTEM_U64 neko_filesystem_internal_add_string(neko_filesystem_t* sys, char const* const str) {
+    FILESYSTEM_U64 h = strpool_inject(&sys->strpool, str, (int)strlen(str));
     strpool_incref(&sys->strpool, h);
     return h;
 }
 
-static char const* neko_assetsys_internal_get_string(neko_assetsys_t* sys, ASSETSYS_U64 const handle) { return strpool_cstr(&sys->strpool, handle); }
+static char const* neko_filesystem_internal_get_string(neko_filesystem_t* sys, FILESYSTEM_U64 const handle) { return strpool_cstr(&sys->strpool, handle); }
 
-void neko_assetsys_create_internal(neko_assetsys_t* sys, void* memctx) {
-    // neko_assetsys_t* sys = (neko_assetsys_t*)ASSETSYS_MALLOC(memctx, sizeof(neko_assetsys_t));
+void neko_filesystem_create_internal(neko_filesystem_t* sys, void* memctx) {
+    // neko_filesystem_t* sys = (neko_filesystem_t*)FILESYSTEM_MALLOC(memctx, sizeof(neko_filesystem_t));
     sys->memctx = memctx;
 
     strpool_config_t config = strpool_default_config;
@@ -880,56 +880,44 @@ void neko_assetsys_create_internal(neko_assetsys_t* sys, void* memctx) {
 
     sys->mounts_count = 0;
     sys->mounts_capacity = 16;
-    sys->mounts = (struct neko_assetsys_internal_mount_t*)ASSETSYS_MALLOC(memctx, sizeof(*sys->mounts) * sys->mounts_capacity);
+    sys->mounts = (struct neko_filesystem_internal_mount_t*)FILESYSTEM_MALLOC(memctx, sizeof(*sys->mounts) * sys->mounts_capacity);
 
     sys->collated_count = 0;
     sys->collated_capacity = 16384;
-    sys->collated = (struct neko_assetsys_internal_collated_t*)ASSETSYS_MALLOC(memctx, sizeof(*sys->collated) * sys->collated_capacity);
+    sys->collated = (struct neko_filesystem_internal_collated_t*)FILESYSTEM_MALLOC(memctx, sizeof(*sys->collated) * sys->collated_capacity);
     // return sys;
 }
 
-neko_assetsys_t* neko_assetsys_create(void* memctx) {
-    neko_assetsys_t* sys = (neko_assetsys_t*)ASSETSYS_MALLOC(memctx, sizeof(neko_assetsys_t));
-    sys->memctx = memctx;
-
-    strpool_config_t config = strpool_default_config;
-    config.memctx = memctx;
-    strpool_init(&sys->strpool, &config);
-
-    sys->mounts_count = 0;
-    sys->mounts_capacity = 16;
-    sys->mounts = (struct neko_assetsys_internal_mount_t*)ASSETSYS_MALLOC(memctx, sizeof(*sys->mounts) * sys->mounts_capacity);
-
-    sys->collated_count = 0;
-    sys->collated_capacity = 16384;
-    sys->collated = (struct neko_assetsys_internal_collated_t*)ASSETSYS_MALLOC(memctx, sizeof(*sys->collated) * sys->collated_capacity);
+neko_filesystem_t* neko_filesystem_create(void* memctx) {
+    neko_filesystem_t* sys = (neko_filesystem_t*)FILESYSTEM_MALLOC(memctx, sizeof(neko_filesystem_t));
+    neko_filesystem_create_internal(sys, memctx);
     return sys;
 }
 
-void neko_assetsys_destroy_internal(neko_assetsys_t* sys) {
+void neko_filesystem_destroy_internal(neko_filesystem_t* sys) {
     while (sys->mounts_count > 0) {
-        neko_assetsys_dismount(sys, neko_assetsys_internal_get_string(sys, sys->mounts[0].path), neko_assetsys_internal_get_string(sys, sys->mounts[0].mounted_as));
+        neko_filesystem_dismount(sys, neko_filesystem_internal_get_string(sys, sys->mounts[0].path), neko_filesystem_internal_get_string(sys, sys->mounts[0].mounted_as));
     }
-    ASSETSYS_FREE(sys->memctx, sys->collated);
-    ASSETSYS_FREE(sys->memctx, sys->mounts);
+    FILESYSTEM_FREE(sys->memctx, sys->collated);
+    FILESYSTEM_FREE(sys->memctx, sys->mounts);
     strpool_term(&sys->strpool);
-    // ASSETSYS_FREE(sys->memctx, sys);
+    // FILESYSTEM_FREE(sys->memctx, sys);
 }
 
-void neko_assetsys_destroy(neko_assetsys_t* sys) {
-    neko_assetsys_destroy_internal(sys);
-    ASSETSYS_FREE(sys->memctx, sys);
+void neko_filesystem_destroy(neko_filesystem_t* sys) {
+    neko_filesystem_destroy_internal(sys);
+    FILESYSTEM_FREE(sys->memctx, sys);
 }
 
-static int neko_assetsys_internal_register_collated(neko_assetsys_t* sys, char const* path, int const is_file) {
+static int neko_filesystem_internal_register_collated(neko_filesystem_t* sys, char const* path, int const is_file) {
     if (path[0] == '/' && path[1] == '/') ++path;
 
-    ASSETSYS_U64 handle = strpool_inject(&sys->strpool, path, (int)strlen(path));
+    FILESYSTEM_U64 handle = strpool_inject(&sys->strpool, path, (int)strlen(path));
 
     int first_free = -1;
     for (int i = 0; i < sys->collated_count; ++i) {
         if (sys->collated[i].ref_count > 0 && sys->collated[i].path == handle) {
-            ASSETSYS_ASSERT(is_file == sys->collated[i].is_file, "Entry type mismatch");
+            FILESYSTEM_ASSERT(is_file == sys->collated[i].is_file, "Entry type mismatch");
             ++sys->collated[i].ref_count;
             strpool_discard(&sys->strpool, handle);
             return i;
@@ -940,15 +928,15 @@ static int neko_assetsys_internal_register_collated(neko_assetsys_t* sys, char c
     if (first_free < 0) {
         if (sys->collated_count >= sys->collated_capacity) {
             sys->collated_capacity *= 2;
-            struct neko_assetsys_internal_collated_t* new_collated = (struct neko_assetsys_internal_collated_t*)ASSETSYS_MALLOC(sys->memctx, sizeof(*sys->collated) * sys->collated_capacity);
+            struct neko_filesystem_internal_collated_t* new_collated = (struct neko_filesystem_internal_collated_t*)FILESYSTEM_MALLOC(sys->memctx, sizeof(*sys->collated) * sys->collated_capacity);
             memcpy(new_collated, sys->collated, sizeof(*sys->collated) * sys->collated_count);
-            ASSETSYS_FREE(sys->memctx, sys->collated);
+            FILESYSTEM_FREE(sys->memctx, sys->collated);
             sys->collated = new_collated;
         }
         first_free = sys->collated_count++;
     }
 
-    struct neko_assetsys_internal_collated_t* dir = &sys->collated[first_free];
+    struct neko_filesystem_internal_collated_t* dir = &sys->collated[first_free];
     dir->path = handle;
     strpool_incref(&sys->strpool, handle);
     dir->parent = -1;
@@ -957,17 +945,17 @@ static int neko_assetsys_internal_register_collated(neko_assetsys_t* sys, char c
     return first_free;
 }
 
-static void neko_assetsys_internal_collate_directories(neko_assetsys_t* sys, struct neko_assetsys_internal_mount_t* const mount) {
+static void neko_filesystem_internal_collate_directories(neko_filesystem_t* sys, struct neko_filesystem_internal_mount_t* const mount) {
     for (int i = 0; i < mount->dirs_count; ++i) {
-        struct neko_assetsys_internal_collated_t* subdir = &sys->collated[mount->dirs[i].collated_index];
+        struct neko_filesystem_internal_collated_t* subdir = &sys->collated[mount->dirs[i].collated_index];
         if (subdir->parent < 0) {
-            char const* a = neko_assetsys_internal_get_string(sys, subdir->path);
+            char const* a = neko_filesystem_internal_get_string(sys, subdir->path);
             (void)a;
-            char* sub_path = neko_assetsys_internal_dirname(neko_assetsys_internal_get_string(sys, subdir->path));
-            ASSETSYS_U64 handle = strpool_inject(&sys->strpool, sub_path, (int)strlen(sub_path) - 1);
+            char* sub_path = neko_filesystem_internal_dirname(neko_filesystem_internal_get_string(sys, subdir->path));
+            FILESYSTEM_U64 handle = strpool_inject(&sys->strpool, sub_path, (int)strlen(sub_path) - 1);
             for (int j = 0; j < sys->collated_count; ++j) {
-                struct neko_assetsys_internal_collated_t* dir = &sys->collated[j];
-                char const* b = neko_assetsys_internal_get_string(sys, dir->path);
+                struct neko_filesystem_internal_collated_t* dir = &sys->collated[j];
+                char const* b = neko_filesystem_internal_get_string(sys, dir->path);
                 (void)b;
                 if (dir->path == handle) {
                     subdir->parent = j;
@@ -979,12 +967,12 @@ static void neko_assetsys_internal_collate_directories(neko_assetsys_t* sys, str
     }
 
     for (int i = 0; i < mount->files_count; ++i) {
-        struct neko_assetsys_internal_collated_t* file = &sys->collated[mount->files[i].collated_index];
+        struct neko_filesystem_internal_collated_t* file = &sys->collated[mount->files[i].collated_index];
         if (file->parent < 0) {
-            char* file_path = neko_assetsys_internal_dirname(neko_assetsys_internal_get_string(sys, file->path));
-            ASSETSYS_U64 handle = strpool_inject(&sys->strpool, file_path, (int)strlen(file_path) - 1);
+            char* file_path = neko_filesystem_internal_dirname(neko_filesystem_internal_get_string(sys, file->path));
+            FILESYSTEM_U64 handle = strpool_inject(&sys->strpool, file_path, (int)strlen(file_path) - 1);
             for (int j = 0; j < sys->collated_count; ++j) {
-                struct neko_assetsys_internal_collated_t* dir = &sys->collated[j];
+                struct neko_filesystem_internal_collated_t* dir = &sys->collated[j];
                 if (dir->path == handle) {
                     file->parent = j;
                     break;
@@ -995,30 +983,30 @@ static void neko_assetsys_internal_collate_directories(neko_assetsys_t* sys, str
     }
 }
 
-static void neko_assetsys_internal_recurse_directories(neko_assetsys_t* sys, int const collated_index, struct neko_assetsys_internal_mount_t* const mount) {
-    char const* path = neko_assetsys_internal_get_string(sys, sys->collated[collated_index].path);
+static void neko_filesystem_internal_recurse_directories(neko_filesystem_t* sys, int const collated_index, struct neko_filesystem_internal_mount_t* const mount) {
+    char const* path = neko_filesystem_internal_get_string(sys, sys->collated[collated_index].path);
     path += mount->mount_len;
     if (*path == '/') ++path;
 
-    strcpy(sys->temp, neko_assetsys_internal_get_string(sys, mount->path));
+    strcpy(sys->temp, neko_filesystem_internal_get_string(sys, mount->path));
     strcat(sys->temp, (*path == '\0' || *sys->temp == '\0') ? "" : "/");
     strcat(sys->temp, path);
 
-    struct neko_assetsys_internal_dir_t dir;
-    neko_assetsys_internal_dir_open(&dir, *sys->temp == '\0' ? "." : sys->temp);
+    struct neko_filesystem_internal_dir_t dir;
+    neko_filesystem_internal_dir_open(&dir, *sys->temp == '\0' ? "." : sys->temp);
 
-    struct neko_assetsys_internal_dir_entry_t* dirent;
-    for (dirent = neko_assetsys_internal_dir_read(&dir); dirent != NULL; dirent = neko_assetsys_internal_dir_read(&dir)) {
-        char const* name = neko_assetsys_internal_dir_name(dirent);
+    struct neko_filesystem_internal_dir_entry_t* dirent;
+    for (dirent = neko_filesystem_internal_dir_read(&dir); dirent != NULL; dirent = neko_filesystem_internal_dir_read(&dir)) {
+        char const* name = neko_filesystem_internal_dir_name(dirent);
         if (!name || *name == '\0' || strcmp(name, ".") == 0 || strcmp(name, "..") == 0) continue;
-        int is_file = neko_assetsys_internal_dir_is_file(dirent);
-        int is_folder = neko_assetsys_internal_dir_is_folder(dirent);
+        int is_file = neko_filesystem_internal_dir_is_file(dirent);
+        int is_folder = neko_filesystem_internal_dir_is_folder(dirent);
         if (is_file) {
-            char const* file_path = neko_assetsys_internal_get_string(sys, sys->collated[collated_index].path);
+            char const* file_path = neko_filesystem_internal_get_string(sys, sys->collated[collated_index].path);
             file_path += mount->mount_len;
             if (*file_path == '/') ++file_path;
 
-            strcpy(sys->temp, neko_assetsys_internal_get_string(sys, mount->path));
+            strcpy(sys->temp, neko_filesystem_internal_get_string(sys, mount->path));
             strcat(sys->temp, (*file_path == '\0' || *sys->temp == '\0') ? "" : "/");
             strcat(sys->temp, file_path);
             strcat(sys->temp, *sys->temp == '\0' ? "" : "/");
@@ -1026,7 +1014,7 @@ static void neko_assetsys_internal_recurse_directories(neko_assetsys_t* sys, int
 
             struct stat s;
             if (stat(sys->temp, &s) == 0) {
-                strcpy(sys->temp, neko_assetsys_internal_get_string(sys, mount->mounted_as));
+                strcpy(sys->temp, neko_filesystem_internal_get_string(sys, mount->mounted_as));
                 strcat(sys->temp, "/");
                 strcat(sys->temp, file_path);
                 strcat(sys->temp, *file_path == '\0' ? "" : "/");
@@ -1034,23 +1022,23 @@ static void neko_assetsys_internal_recurse_directories(neko_assetsys_t* sys, int
 
                 if (mount->files_count >= mount->files_capacity) {
                     mount->files_capacity *= 2;
-                    struct neko_assetsys_internal_file_t* new_files = (struct neko_assetsys_internal_file_t*)ASSETSYS_MALLOC(sys->memctx, sizeof(*(mount->files)) * mount->files_capacity);
+                    struct neko_filesystem_internal_file_t* new_files = (struct neko_filesystem_internal_file_t*)FILESYSTEM_MALLOC(sys->memctx, sizeof(*(mount->files)) * mount->files_capacity);
                     memcpy(new_files, mount->files, sizeof(*(mount->files)) * mount->files_count);
-                    ASSETSYS_FREE(sys->memctx, mount->files);
+                    FILESYSTEM_FREE(sys->memctx, mount->files);
                     mount->files = new_files;
                 }
 
-                struct neko_assetsys_internal_file_t* file = &mount->files[mount->files_count++];
+                struct neko_filesystem_internal_file_t* file = &mount->files[mount->files_count++];
                 file->size = (int)s.st_size;
                 file->zip_index = -1;
-                file->collated_index = neko_assetsys_internal_register_collated(sys, sys->temp, 1);
+                file->collated_index = neko_filesystem_internal_register_collated(sys, sys->temp, 1);
             }
         } else if (is_folder) {
-            char const* folder_path = neko_assetsys_internal_get_string(sys, sys->collated[collated_index].path);
+            char const* folder_path = neko_filesystem_internal_get_string(sys, sys->collated[collated_index].path);
             folder_path += mount->mount_len;
             if (*folder_path == '/') ++folder_path;
 
-            strcpy(sys->temp, neko_assetsys_internal_get_string(sys, mount->path));
+            strcpy(sys->temp, neko_filesystem_internal_get_string(sys, mount->path));
             strcat(sys->temp, (*folder_path == '\0' || *sys->temp == '\0') ? "" : "/");
             strcat(sys->temp, folder_path);
             strcat(sys->temp, *sys->temp == '\0' ? "" : "/");
@@ -1058,7 +1046,7 @@ static void neko_assetsys_internal_recurse_directories(neko_assetsys_t* sys, int
 
             struct stat s;
             if (stat(sys->temp, &s) == 0) {
-                strcpy(sys->temp, neko_assetsys_internal_get_string(sys, mount->mounted_as));
+                strcpy(sys->temp, neko_filesystem_internal_get_string(sys, mount->mounted_as));
                 strcat(sys->temp, "/");
                 strcat(sys->temp, folder_path);
                 strcat(sys->temp, *folder_path == '\0' ? "" : "/");
@@ -1066,58 +1054,58 @@ static void neko_assetsys_internal_recurse_directories(neko_assetsys_t* sys, int
 
                 if (mount->dirs_count >= mount->dirs_capacity) {
                     mount->dirs_capacity *= 2;
-                    struct neko_assetsys_internal_folder_t* new_dirs = (struct neko_assetsys_internal_folder_t*)ASSETSYS_MALLOC(sys->memctx, sizeof(*(mount->dirs)) * mount->dirs_capacity);
+                    struct neko_filesystem_internal_folder_t* new_dirs = (struct neko_filesystem_internal_folder_t*)FILESYSTEM_MALLOC(sys->memctx, sizeof(*(mount->dirs)) * mount->dirs_capacity);
                     memcpy(new_dirs, mount->dirs, sizeof(*(mount->dirs)) * mount->dirs_count);
-                    ASSETSYS_FREE(sys->memctx, mount->dirs);
+                    FILESYSTEM_FREE(sys->memctx, mount->dirs);
                     mount->dirs = new_dirs;
                 }
-                struct neko_assetsys_internal_folder_t* as_dir = &mount->dirs[mount->dirs_count++];
-                as_dir->collated_index = neko_assetsys_internal_register_collated(sys, sys->temp, 0);
-                neko_assetsys_internal_recurse_directories(sys, as_dir->collated_index, mount);
+                struct neko_filesystem_internal_folder_t* as_dir = &mount->dirs[mount->dirs_count++];
+                as_dir->collated_index = neko_filesystem_internal_register_collated(sys, sys->temp, 0);
+                neko_filesystem_internal_recurse_directories(sys, as_dir->collated_index, mount);
             }
         }
     }
-    neko_assetsys_internal_dir_close(&dir);
+    neko_filesystem_internal_dir_close(&dir);
 }
 
-struct neko_assetsys_internal_mount_t* neko_assetsys_internal_create_mount(neko_assetsys_t* sys, enum neko_assetsys_internal_mount_type_t type, char const* path, char const* mount_as) {
+struct neko_filesystem_internal_mount_t* neko_filesystem_internal_create_mount(neko_filesystem_t* sys, enum neko_filesystem_internal_mount_type_t type, char const* path, char const* mount_as) {
     if (sys->mounts_count >= sys->mounts_capacity) {
         sys->mounts_capacity *= 2;
-        struct neko_assetsys_internal_mount_t* new_mounts = (struct neko_assetsys_internal_mount_t*)ASSETSYS_MALLOC(sys->memctx, sizeof(*sys->mounts) * sys->mounts_capacity);
+        struct neko_filesystem_internal_mount_t* new_mounts = (struct neko_filesystem_internal_mount_t*)FILESYSTEM_MALLOC(sys->memctx, sizeof(*sys->mounts) * sys->mounts_capacity);
         memcpy(new_mounts, sys->mounts, sizeof(*sys->mounts) * sys->mounts_count);
-        ASSETSYS_FREE(sys->memctx, sys->mounts);
+        FILESYSTEM_FREE(sys->memctx, sys->mounts);
         sys->mounts = new_mounts;
     }
 
-    struct neko_assetsys_internal_mount_t* mount = &sys->mounts[sys->mounts_count];
+    struct neko_filesystem_internal_mount_t* mount = &sys->mounts[sys->mounts_count];
 
-    mount->mounted_as = neko_assetsys_internal_add_string(sys, mount_as ? mount_as : "");
+    mount->mounted_as = neko_filesystem_internal_add_string(sys, mount_as ? mount_as : "");
     mount->mount_len = mount_as ? (int)strlen(mount_as) : 0;
-    mount->path = neko_assetsys_internal_add_string(sys, path);
+    mount->path = neko_filesystem_internal_add_string(sys, path);
     mount->type = type;
 
     mount->files_count = 0;
     mount->files_capacity = 4096;
-    mount->files = (struct neko_assetsys_internal_file_t*)ASSETSYS_MALLOC(sys->memctx, sizeof(*(mount->files)) * mount->files_capacity);
+    mount->files = (struct neko_filesystem_internal_file_t*)FILESYSTEM_MALLOC(sys->memctx, sizeof(*(mount->files)) * mount->files_capacity);
 
     mount->dirs_count = 0;
     mount->dirs_capacity = 1024;
-    mount->dirs = (struct neko_assetsys_internal_folder_t*)ASSETSYS_MALLOC(sys->memctx, sizeof(*(mount->dirs)) * mount->dirs_capacity);
+    mount->dirs = (struct neko_filesystem_internal_folder_t*)FILESYSTEM_MALLOC(sys->memctx, sizeof(*(mount->dirs)) * mount->dirs_capacity);
 
     return mount;
 }
 
-neko_assetsys_error_t neko_assetsys_mount(neko_assetsys_t* sys, char const* path, char const* mount_as) {
-    if (!path) return ASSETSYS_ERROR_INVALID_PARAMETER;
-    if (!mount_as) return ASSETSYS_ERROR_INVALID_PARAMETER;
-    if (strchr(path, '\\')) return ASSETSYS_ERROR_INVALID_PATH;
-    if (strchr(mount_as, '\\')) return ASSETSYS_ERROR_INVALID_PATH;
+neko_filesystem_error_t neko_filesystem_mount(neko_filesystem_t* sys, char const* path, char const* mount_as) {
+    if (!path) return FILESYSTEM_ERROR_INVALID_PARAMETER;
+    if (!mount_as) return FILESYSTEM_ERROR_INVALID_PARAMETER;
+    if (strchr(path, '\\')) return FILESYSTEM_ERROR_INVALID_PATH;
+    if (strchr(mount_as, '\\')) return FILESYSTEM_ERROR_INVALID_PATH;
     int len = (int)strlen(path);
-    if (len > 1 && path[len - 1] == '/') return ASSETSYS_ERROR_INVALID_PATH;
+    if (len > 1 && path[len - 1] == '/') return FILESYSTEM_ERROR_INVALID_PATH;
     int mount_len = (int)strlen(mount_as);
-    if (mount_len == 0 || mount_as[0] != '/' || (mount_len > 1 && mount_as[mount_len - 1] == '/')) return ASSETSYS_ERROR_INVALID_PATH;
+    if (mount_len == 0 || mount_as[0] != '/' || (mount_len > 1 && mount_as[mount_len - 1] == '/')) return FILESYSTEM_ERROR_INVALID_PATH;
 
-    enum neko_assetsys_internal_mount_type_t type;
+    enum neko_filesystem_internal_mount_type_t type;
 
 #if defined(_MSC_VER) && _MSC_VER >= 1400
     struct _stat64 s;
@@ -1128,34 +1116,34 @@ neko_assetsys_error_t neko_assetsys_mount(neko_assetsys_t* sys, char const* path
 #endif
     if (res == 0) {
         if (s.st_mode & S_IFDIR) {
-            type = ASSETSYS_INTERNAL_MOUNT_TYPE_DIR;
+            type = FILESYSTEM_INTERNAL_MOUNT_TYPE_DIR;
         } else if (s.st_mode & S_IFREG) {
-            // type = ASSETSYS_INTERNAL_MOUNT_TYPE_ZIP;
+            // type = FILESYSTEM_INTERNAL_MOUNT_TYPE_ZIP;
         } else {
-            return ASSETSYS_ERROR_INVALID_PATH;
+            return FILESYSTEM_ERROR_INVALID_PATH;
         }
     } else {
-        return ASSETSYS_ERROR_INVALID_PATH;
+        return FILESYSTEM_ERROR_INVALID_PATH;
     }
 
-    struct neko_assetsys_internal_mount_t* mount = neko_assetsys_internal_create_mount(sys, type, path, mount_as);
+    struct neko_filesystem_internal_mount_t* mount = neko_filesystem_internal_create_mount(sys, type, path, mount_as);
 
-    if (type == ASSETSYS_INTERNAL_MOUNT_TYPE_DIR) {
-        struct neko_assetsys_internal_folder_t* dir = &mount->dirs[mount->dirs_count++];
-        dir->collated_index = neko_assetsys_internal_register_collated(sys, mount_as, 0);
-        neko_assetsys_internal_recurse_directories(sys, dir->collated_index, mount);
+    if (type == FILESYSTEM_INTERNAL_MOUNT_TYPE_DIR) {
+        struct neko_filesystem_internal_folder_t* dir = &mount->dirs[mount->dirs_count++];
+        dir->collated_index = neko_filesystem_internal_register_collated(sys, mount_as, 0);
+        neko_filesystem_internal_recurse_directories(sys, dir->collated_index, mount);
     } else {
     }
 
-    neko_assetsys_internal_collate_directories(sys, mount);
+    neko_filesystem_internal_collate_directories(sys, mount);
 
     ++sys->mounts_count;
-    return ASSETSYS_SUCCESS;
+    return FILESYSTEM_SUCCESS;
 }
 
-static void neko_assetsys_internal_remove_collated(neko_assetsys_t* sys, int const index) {
-    struct neko_assetsys_internal_collated_t* coll = &sys->collated[index];
-    ASSETSYS_ASSERT(coll->ref_count > 0, "Invalid ref count");
+static void neko_filesystem_internal_remove_collated(neko_filesystem_t* sys, int const index) {
+    struct neko_filesystem_internal_collated_t* coll = &sys->collated[index];
+    FILESYSTEM_ASSERT(coll->ref_count > 0, "Invalid ref count");
     --coll->ref_count;
     if (coll->ref_count == 0) {
         strpool_decref(&sys->strpool, coll->path);
@@ -1163,89 +1151,89 @@ static void neko_assetsys_internal_remove_collated(neko_assetsys_t* sys, int con
     }
 }
 
-neko_assetsys_error_t neko_assetsys_dismount(neko_assetsys_t* sys, char const* path, char const* mounted_as) {
-    if (!path) return ASSETSYS_ERROR_INVALID_PARAMETER;
-    if (!mounted_as) return ASSETSYS_ERROR_INVALID_MOUNT;
+neko_filesystem_error_t neko_filesystem_dismount(neko_filesystem_t* sys, char const* path, char const* mounted_as) {
+    if (!path) return FILESYSTEM_ERROR_INVALID_PARAMETER;
+    if (!mounted_as) return FILESYSTEM_ERROR_INVALID_MOUNT;
 
-    ASSETSYS_U64 path_handle = strpool_inject(&sys->strpool, path, (int)strlen(path));
-    ASSETSYS_U64 mount_handle = strpool_inject(&sys->strpool, mounted_as, (int)strlen(mounted_as));
+    FILESYSTEM_U64 path_handle = strpool_inject(&sys->strpool, path, (int)strlen(path));
+    FILESYSTEM_U64 mount_handle = strpool_inject(&sys->strpool, mounted_as, (int)strlen(mounted_as));
 
     for (int i = 0; i < sys->mounts_count; ++i) {
-        struct neko_assetsys_internal_mount_t* mount = &sys->mounts[i];
+        struct neko_filesystem_internal_mount_t* mount = &sys->mounts[i];
         if (mount->mounted_as == mount_handle && mount->path == path_handle) {
             // mz_bool result = 1;
-            // if (mount->type == ASSETSYS_INTERNAL_MOUNT_TYPE_ZIP) result = mz_zip_reader_end(&mount->zip);
+            // if (mount->type == FILESYSTEM_INTERNAL_MOUNT_TYPE_ZIP) result = mz_zip_reader_end(&mount->zip);
 
             strpool_decref(&sys->strpool, mount->mounted_as);
             strpool_decref(&sys->strpool, mount->path);
             strpool_discard(&sys->strpool, mount_handle);
             strpool_discard(&sys->strpool, path_handle);
 
-            for (int j = 0; j < mount->dirs_count; ++j) neko_assetsys_internal_remove_collated(sys, mount->dirs[j].collated_index);
+            for (int j = 0; j < mount->dirs_count; ++j) neko_filesystem_internal_remove_collated(sys, mount->dirs[j].collated_index);
 
-            for (int j = 0; j < mount->files_count; ++j) neko_assetsys_internal_remove_collated(sys, mount->files[j].collated_index);
+            for (int j = 0; j < mount->files_count; ++j) neko_filesystem_internal_remove_collated(sys, mount->files[j].collated_index);
 
-            ASSETSYS_FREE(sys->memctx, mount->dirs);
-            ASSETSYS_FREE(sys->memctx, mount->files);
+            FILESYSTEM_FREE(sys->memctx, mount->dirs);
+            FILESYSTEM_FREE(sys->memctx, mount->files);
 
             int count = sys->mounts_count - i;
             if (count > 0) memcpy(&sys->mounts[i], &sys->mounts[i + 1], sizeof(*sys->mounts) * count);
             --sys->mounts_count;
 
-            return ASSETSYS_SUCCESS;
+            return FILESYSTEM_SUCCESS;
         }
     }
 
     strpool_discard(&sys->strpool, mount_handle);
     strpool_discard(&sys->strpool, path_handle);
-    return ASSETSYS_ERROR_INVALID_MOUNT;
+    return FILESYSTEM_ERROR_INVALID_MOUNT;
 }
 
-neko_assetsys_error_t neko_assetsys_file(neko_assetsys_t* sys, char const* path, neko_assetsys_file_t* file) {
-    if (!file || !path) return ASSETSYS_ERROR_INVALID_PARAMETER;
+neko_filesystem_error_t neko_filesystem_file(neko_filesystem_t* sys, char const* path, neko_filesystem_file_t* file) {
+    if (!file || !path) return FILESYSTEM_ERROR_INVALID_PARAMETER;
 
-    ASSETSYS_U64 handle = strpool_inject(&sys->strpool, path, (int)strlen(path));
+    FILESYSTEM_U64 handle = strpool_inject(&sys->strpool, path, (int)strlen(path));
 
     int m = sys->mounts_count;
     while (m > 0) {
         --m;
-        struct neko_assetsys_internal_mount_t* mount = &sys->mounts[m];
+        struct neko_filesystem_internal_mount_t* mount = &sys->mounts[m];
         for (int i = 0; i < mount->files_count; ++i) {
-            ASSETSYS_U64 h = sys->collated[mount->files[i].collated_index].path;
+            FILESYSTEM_U64 h = sys->collated[mount->files[i].collated_index].path;
             if (handle == h) {
                 file->mount = mount->mounted_as;
                 file->path = mount->path;
                 file->index = i;
-                return ASSETSYS_SUCCESS;
+                return FILESYSTEM_SUCCESS;
             }
         }
     }
 
     strpool_discard(&sys->strpool, handle);
-    return ASSETSYS_ERROR_FILE_NOT_FOUND;
+    return FILESYSTEM_ERROR_FILE_NOT_FOUND;
 }
 
-static int neko_assetsys_internal_find_mount_index(neko_assetsys_t* sys, ASSETSYS_U64 const mount, ASSETSYS_U64 const path) {
+static int neko_filesystem_internal_find_mount_index(neko_filesystem_t* sys, FILESYSTEM_U64 const mount, FILESYSTEM_U64 const path) {
     for (int i = 0; i < sys->mounts_count; ++i) {
         if (sys->mounts[i].mounted_as == mount && sys->mounts[i].path == path) return i;
     }
     return -1;
 }
 
-neko_assetsys_error_t neko_assetsys_file_load(neko_assetsys_t* sys, neko_assetsys_file_t f, int* size, void* buffer, int capacity) {
-    int mount_index = neko_assetsys_internal_find_mount_index(sys, f.mount, f.path);
-    if (mount_index < 0) return ASSETSYS_ERROR_INVALID_MOUNT;
+neko_filesystem_error_t neko_filesystem_file_load(neko_filesystem_t* sys, neko_filesystem_file_t f, int* size, void* buffer, int capacity) {
+    int mount_index = neko_filesystem_internal_find_mount_index(sys, f.mount, f.path);
+    if (mount_index < 0) return FILESYSTEM_ERROR_INVALID_MOUNT;
 
-    struct neko_assetsys_internal_mount_t* mount = &sys->mounts[mount_index];
-    struct neko_assetsys_internal_file_t* file = &mount->files[f.index];
-    if (mount->type == ASSETSYS_INTERNAL_MOUNT_TYPE_DIR) {
+    struct neko_filesystem_internal_mount_t* mount = &sys->mounts[mount_index];
+    struct neko_filesystem_internal_file_t* file = &mount->files[f.index];
+    if (mount->type == FILESYSTEM_INTERNAL_MOUNT_TYPE_DIR) {
         if (size) *size = file->size;
-        strcpy(sys->temp, neko_assetsys_internal_get_string(sys, mount->path));
+        strcpy(sys->temp, neko_filesystem_internal_get_string(sys, mount->path));
         strcat(sys->temp, *sys->temp == '\0' ? "" : "/");
-        strcat(sys->temp, neko_assetsys_internal_get_string(sys, sys->collated[file->collated_index].path) +
-                                  (strcmp(neko_assetsys_internal_get_string(sys, mount->mounted_as), "/") == 0 ? 0 : mount->mount_len + 1));
+        strcat(sys->temp, neko_filesystem_internal_get_string(sys, sys->collated[file->collated_index].path) +
+                                  (strcmp(neko_filesystem_internal_get_string(sys, mount->mounted_as), "/") == 0 ? 0 : mount->mount_len + 1));
         FILE* fp = fopen(sys->temp, "rb");
-        if (!fp) return ASSETSYS_ERROR_FAILED_TO_READ_FILE;
+        if (!fp) return FILESYSTEM_ERROR_FAILED_TO_READ_FILE;
 
         fseek(fp, 0, SEEK_END);
         int file_size = (int)ftell(fp);
@@ -1254,28 +1242,28 @@ neko_assetsys_error_t neko_assetsys_file_load(neko_assetsys_t* sys, neko_assetsy
 
         if (file_size > capacity) {
             fclose(fp);
-            return ASSETSYS_ERROR_BUFFER_TOO_SMALL;
+            return FILESYSTEM_ERROR_BUFFER_TOO_SMALL;
         }
 
         int size_read = (int)fread(buffer, 1, (size_t)file_size, fp);
         fclose(fp);
-        if (size_read != file_size) return ASSETSYS_ERROR_FAILED_TO_READ_FILE;
+        if (size_read != file_size) return FILESYSTEM_ERROR_FAILED_TO_READ_FILE;
 
-        return ASSETSYS_SUCCESS;
+        return FILESYSTEM_SUCCESS;
     }
 
-    return ASSETSYS_SUCCESS;
+    return FILESYSTEM_SUCCESS;
 }
 
-int neko_assetsys_file_size(neko_assetsys_t* sys, neko_assetsys_file_t file) {
-    int mount_index = neko_assetsys_internal_find_mount_index(sys, file.mount, file.path);
+int neko_filesystem_file_size(neko_filesystem_t* sys, neko_filesystem_file_t file) {
+    int mount_index = neko_filesystem_internal_find_mount_index(sys, file.mount, file.path);
     if (mount_index < 0) return 0;
 
-    struct neko_assetsys_internal_mount_t* mount = &sys->mounts[mount_index];
-    if (mount->type == ASSETSYS_INTERNAL_MOUNT_TYPE_DIR) {
-        strcpy(sys->temp, neko_assetsys_internal_get_string(sys, mount->path));
+    struct neko_filesystem_internal_mount_t* mount = &sys->mounts[mount_index];
+    if (mount->type == FILESYSTEM_INTERNAL_MOUNT_TYPE_DIR) {
+        strcpy(sys->temp, neko_filesystem_internal_get_string(sys, mount->path));
         strcat(sys->temp, *sys->temp == '\0' ? "" : "/");
-        strcat(sys->temp, neko_assetsys_internal_get_string(sys, sys->collated[mount->files[file.index].collated_index].path) + mount->mount_len + 1);
+        strcat(sys->temp, neko_filesystem_internal_get_string(sys, sys->collated[mount->files[file.index].collated_index].path) + mount->mount_len + 1);
         struct stat s;
         if (stat(sys->temp, &s) == 0) mount->files[file.index].size = (int)s.st_size;
     }
@@ -1283,8 +1271,8 @@ int neko_assetsys_file_size(neko_assetsys_t* sys, neko_assetsys_file_t file) {
     return mount->files[file.index].size;
 }
 
-static int neko_assetsys_internal_find_collated(neko_assetsys_t* sys, char const* const path) {
-    ASSETSYS_U64 handle = strpool_inject(&sys->strpool, path, (int)strlen(path));
+static int neko_filesystem_internal_find_collated(neko_filesystem_t* sys, char const* const path) {
+    FILESYSTEM_U64 handle = strpool_inject(&sys->strpool, path, (int)strlen(path));
 
     for (int i = 0; i < sys->collated_count; ++i) {
         if (sys->collated[i].path == handle) {
@@ -1296,9 +1284,9 @@ static int neko_assetsys_internal_find_collated(neko_assetsys_t* sys, char const
     return -1;
 }
 
-int neko_assetsys_file_count(neko_assetsys_t* sys, char const* path) {
+int neko_filesystem_file_count(neko_filesystem_t* sys, char const* path) {
     if (!path) return 0;
-    int dir = neko_assetsys_internal_find_collated(sys, path);
+    int dir = neko_filesystem_internal_find_collated(sys, path);
     int count = 0;
     for (int i = 0; i < sys->collated_count; ++i) {
         if (sys->collated[i].is_file && sys->collated[i].parent == dir) {
@@ -1308,8 +1296,8 @@ int neko_assetsys_file_count(neko_assetsys_t* sys, char const* path) {
     return count;
 }
 
-char const* neko_assetsys_file_name(neko_assetsys_t* sys, char const* path, int index) {
-    char const* file_path = neko_assetsys_file_path(sys, path, index);
+char const* neko_filesystem_file_name(neko_filesystem_t* sys, char const* path, int index) {
+    char const* file_path = neko_filesystem_file_path(sys, path, index);
     if (file_path) {
         char const* name = strrchr(file_path, '/');
         if (!name) return file_path;
@@ -1319,22 +1307,22 @@ char const* neko_assetsys_file_name(neko_assetsys_t* sys, char const* path, int 
     return NULL;
 }
 
-char const* neko_assetsys_file_path(neko_assetsys_t* sys, char const* path, int index) {
+char const* neko_filesystem_file_path(neko_filesystem_t* sys, char const* path, int index) {
     if (!path) return 0;
-    int dir = neko_assetsys_internal_find_collated(sys, path);
+    int dir = neko_filesystem_internal_find_collated(sys, path);
     int count = 0;
     for (int i = 0; i < sys->collated_count; ++i) {
         if (sys->collated[i].is_file && sys->collated[i].parent == dir) {
-            if (count == index) return neko_assetsys_internal_get_string(sys, sys->collated[i].path);
+            if (count == index) return neko_filesystem_internal_get_string(sys, sys->collated[i].path);
             ++count;
         }
     }
     return NULL;
 }
 
-int neko_assetsys_subdir_count(neko_assetsys_t* sys, char const* path) {
+int neko_filesystem_subdir_count(neko_filesystem_t* sys, char const* path) {
     if (!path) return 0;
-    int dir = neko_assetsys_internal_find_collated(sys, path);
+    int dir = neko_filesystem_internal_find_collated(sys, path);
     int count = 0;
     for (int i = 0; i < sys->collated_count; ++i) {
         if (!sys->collated[i].is_file && sys->collated[i].parent == dir) {
@@ -1344,8 +1332,8 @@ int neko_assetsys_subdir_count(neko_assetsys_t* sys, char const* path) {
     return count;
 }
 
-char const* neko_assetsys_subdir_name(neko_assetsys_t* sys, char const* path, int index) {
-    char const* subdir_path = neko_assetsys_subdir_path(sys, path, index);
+char const* neko_filesystem_subdir_name(neko_filesystem_t* sys, char const* path, int index) {
+    char const* subdir_path = neko_filesystem_subdir_path(sys, path, index);
     if (subdir_path) {
         char const* name = strrchr(subdir_path, '/');
         if (!name) return subdir_path;
@@ -1355,20 +1343,20 @@ char const* neko_assetsys_subdir_name(neko_assetsys_t* sys, char const* path, in
     return NULL;
 }
 
-char const* neko_assetsys_subdir_path(neko_assetsys_t* sys, char const* path, int index) {
+char const* neko_filesystem_subdir_path(neko_filesystem_t* sys, char const* path, int index) {
     if (!path) return 0;
-    int dir = neko_assetsys_internal_find_collated(sys, path);
+    int dir = neko_filesystem_internal_find_collated(sys, path);
     int count = 0;
     for (int i = 0; i < sys->collated_count; ++i) {
         if (!sys->collated[i].is_file && sys->collated[i].parent == dir) {
-            if (count == index) return neko_assetsys_internal_get_string(sys, sys->collated[i].path);
+            if (count == index) return neko_filesystem_internal_get_string(sys, sys->collated[i].path);
             ++count;
         }
     }
     return NULL;
 }
 
-static char* neko_assetsys_internal_dirname(char const* path) {
+static char* neko_filesystem_internal_dirname(char const* path) {
     static char result[260];
     strncpy(result, path, sizeof(result));
 

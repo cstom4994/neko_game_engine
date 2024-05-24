@@ -3,85 +3,10 @@
 #ifndef NEKO_ENGINE_NEKO_ECS_H
 #define NEKO_ENGINE_NEKO_ECS_H
 
-// #include <flecs.h>
-
 #include "neko.h"
 #include "neko_math.h"
 
-#ifndef NEKO_ENT_alignof
-#define NEKO_ENT_alignof(type) \
-    offsetof(                  \
-            struct {           \
-                char c;        \
-                type d;        \
-            },                 \
-            d)
-#endif
-
-typedef unsigned short neko_entitytainer_entity;
-#define NEKO_ENT_InvalidEntity ((neko_entitytainer_entity)0u)
-#define NEKO_ENT_EntityFormat "%hu"
-typedef unsigned short neko_entitytainer_entry;
-#define NEKO_ENT_BucketMask 0x3fff
-#define NEKO_ENT_BucketListBitCount 2
-#define NEKO_ENT_BucketListOffset (sizeof(neko_entitytainer_entry) * 8 - NEKO_ENT_BucketListBitCount)
-#define NEKO_ENT_NoFreeBucket ((neko_entitytainer_entity) - 1)
-#define NEKO_ENT_ShrinkMargin 1
-#define NEKO_ENT_MAX_BUCKET_LISTS 8
-#define NEKO_ENT_DEFENSIVE_CHECKS 0
-#define NEKO_ENT_DEFENSIVE_ASSERTS 0
-
-struct neko_entitytainer_config {
-    void* memory;
-    int memory_size;
-    int num_entries;
-    int bucket_sizes[NEKO_ENT_MAX_BUCKET_LISTS];
-    int bucket_list_sizes[NEKO_ENT_MAX_BUCKET_LISTS];
-    int num_bucket_lists;
-    bool remove_with_holes;
-    bool keep_capacity_on_remove;
-    // char  name[256];
-};
-
-typedef struct {
-    neko_entitytainer_entity* bucket_data;
-    int bucket_size;
-    int total_buckets;
-    int first_free_bucket;
-    int used_buckets;
-} neko_entitytainer_bucketlist;
-
-typedef struct {
-    struct neko_entitytainer_config config;
-    neko_entitytainer_entry* entry_lookup;
-    neko_entitytainer_entity* entry_parent_lookup;
-    neko_entitytainer_bucketlist* bucket_lists;
-    int num_bucket_lists;
-    int entry_lookup_size;
-    bool remove_with_holes;
-    bool keep_capacity_on_remove;
-} neko_entitytainer;
-
-NEKO_API_DECL int neko_ent_needed_size(struct neko_entitytainer_config* config);
-NEKO_API_DECL neko_entitytainer* neko_ent_create(struct neko_entitytainer_config* config);
-NEKO_API_DECL neko_entitytainer* neko_ent_realloc(neko_entitytainer* entitytainer_old, void* memory, int memory_size, float growth);
-NEKO_API_DECL bool neko_ent_needs_realloc(neko_entitytainer* entitytainer, float percent_free, int num_free_buckets);
-NEKO_API_DECL void neko_ent_add_entity(neko_entitytainer* entitytainer, neko_entitytainer_entity entity);
-NEKO_API_DECL void neko_ent_remove_entity(neko_entitytainer* entitytainer, neko_entitytainer_entity entity);
-NEKO_API_DECL void neko_ent_reserve(neko_entitytainer* entitytainer, neko_entitytainer_entity parent, int capacity);
-NEKO_API_DECL void neko_ent_add_child(neko_entitytainer* entitytainer, neko_entitytainer_entity parent, neko_entitytainer_entity child);
-NEKO_API_DECL void neko_ent_add_child_at_index(neko_entitytainer* entitytainer, neko_entitytainer_entity parent, neko_entitytainer_entity child, int index);
-NEKO_API_DECL void neko_ent_remove_child_no_holes(neko_entitytainer* entitytainer, neko_entitytainer_entity parent, neko_entitytainer_entity child);
-NEKO_API_DECL void neko_ent_remove_child_with_holes(neko_entitytainer* entitytainer, neko_entitytainer_entity parent, neko_entitytainer_entity child);
-NEKO_API_DECL void neko_ent_get_children(neko_entitytainer* entitytainer, neko_entitytainer_entity parent, neko_entitytainer_entity** children, int* num_children, int* capacity);
-NEKO_API_DECL int neko_ent_num_children(neko_entitytainer* entitytainer, neko_entitytainer_entity parent);
-NEKO_API_DECL int neko_ent_get_child_index(neko_entitytainer* entitytainer, neko_entitytainer_entity parent, neko_entitytainer_entity child);
-NEKO_API_DECL neko_entitytainer_entity neko_ent_get_parent(neko_entitytainer* entitytainer, neko_entitytainer_entity child);
-NEKO_API_DECL bool neko_ent_is_added(neko_entitytainer* entitytainer, neko_entitytainer_entity entity);
-NEKO_API_DECL void neko_ent_remove_holes(neko_entitytainer* entitytainer, neko_entitytainer_entity entity);
-NEKO_API_DECL int neko_ent_save(neko_entitytainer* entitytainer, unsigned char* buffer, int buffer_size);
-NEKO_API_DECL neko_entitytainer* neko_ent_load(unsigned char* buffer, int buffer_size);
-NEKO_API_DECL void neko_ent_load_into(neko_entitytainer* entitytainer_dst, const neko_entitytainer* entitytainer_src);
+#if 1
 
 typedef u64 neko_ecs_ent;
 typedef u32 neko_ecs_component_type;
@@ -182,6 +107,8 @@ typedef struct neko_ecs_ent_view {
 NEKO_API_DECL neko_ecs_ent_view neko_ecs_ent_view_single(neko_ecs* ecs, neko_ecs_component_type component_type);
 NEKO_API_DECL b32 neko_ecs_ent_view_valid(neko_ecs_ent_view* view);
 NEKO_API_DECL void neko_ecs_ent_view_next(neko_ecs_ent_view* view);
+
+#endif
 
 #define MAX_ENTITY_COUNT 100
 

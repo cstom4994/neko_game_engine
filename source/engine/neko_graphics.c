@@ -7,30 +7,17 @@
 #include "engine/neko_engine.h"
 #include "engine/neko_platform.h"
 
-#ifndef NEKO_GRAPHICS_IMPL_CUSTOM
-
 #if (defined NEKO_PLATFORM_WIN || defined NEKO_PLATFORM_APPLE || defined NEKO_PLATFORM_LINUX)
-
 #define NEKO_GRAPHICS_IMPL_OPENGL_CORE
-
 #else
-
 #define NEKO_GRAPHICS_IMPL_OPENGL_ES
-
 #endif
 
-#endif
-
-#ifndef NEKO_GRAPHICS_IMPL_H
-#define NEKO_GRAPHICS_IMPL_H
-
-#ifndef NEKO_GRAPHICS_IMPL_CUSTOM
 #define NEKO_GRAPHICS_IMPL_DEFAULT
-#endif
 
 #ifdef NEKO_GRAPHICS_IMPL_DEFAULT
 
-/* Graphics Info Object Query */
+// 图形信息对象查询
 neko_graphics_info_t* neko_graphics_info() { return &neko_subsystem(graphics)->info; }
 
 #endif
@@ -43,23 +30,158 @@ neko_graphics_info_t* neko_graphics_info() { return &neko_subsystem(graphics)->i
 #define CHECK_GL_CORE(...) neko_empty_instruction(void)
 #endif
 
-const char* gl_get_error_string(GLenum error_code) {
-    switch (error_code) {
-        case GL_NO_ERROR:
-            return "GL_NO_ERROR";
-        case GL_INVALID_ENUM:
-            return "GL_INVALID_ENUM";
-        case GL_INVALID_VALUE:
-            return "GL_INVALID_VALUE";
-        case GL_INVALID_OPERATION:
-            return "GL_INVALID_OPERATION";
-        case GL_OUT_OF_MEMORY:
-            return "GL_OUT_OF_MEMORY";
-        case GL_INVALID_FRAMEBUFFER_OPERATION:
-            return "GL_INVALID_FRAMEBUFFER_OPERATION";
-        default:
-            return "UNKNOWN_ERROR";
+const_str neko_opengl_string(GLenum e) {
+
+#define XX(x)      \
+    case x:        \
+        return #x; \
+        break;
+
+    switch (e) {
+        // shader:
+        XX(GL_VERTEX_SHADER);
+        XX(GL_GEOMETRY_SHADER);
+        XX(GL_FRAGMENT_SHADER);
+
+        // buffer usage:
+        XX(GL_STREAM_DRAW);
+        XX(GL_STREAM_READ);
+        XX(GL_STREAM_COPY);
+        XX(GL_STATIC_DRAW);
+        XX(GL_STATIC_READ);
+        XX(GL_STATIC_COPY);
+        XX(GL_DYNAMIC_DRAW);
+        XX(GL_DYNAMIC_READ);
+        XX(GL_DYNAMIC_COPY);
+
+        // errors:
+        XX(GL_NO_ERROR);
+        XX(GL_INVALID_ENUM);
+        XX(GL_INVALID_VALUE);
+        XX(GL_INVALID_OPERATION);
+        XX(GL_INVALID_FRAMEBUFFER_OPERATION);
+        XX(GL_OUT_OF_MEMORY);
+        XX(GL_STACK_UNDERFLOW);
+        XX(GL_STACK_OVERFLOW);
+
+        // types:
+        XX(GL_BYTE);
+        XX(GL_UNSIGNED_BYTE);
+        XX(GL_SHORT);
+        XX(GL_UNSIGNED_SHORT);
+        XX(GL_FLOAT);
+        XX(GL_FLOAT_VEC2);
+        XX(GL_FLOAT_VEC3);
+        XX(GL_FLOAT_VEC4);
+        XX(GL_DOUBLE);
+        XX(GL_DOUBLE_VEC2);
+        XX(GL_DOUBLE_VEC3);
+        XX(GL_DOUBLE_VEC4);
+        XX(GL_INT);
+        XX(GL_INT_VEC2);
+        XX(GL_INT_VEC3);
+        XX(GL_INT_VEC4);
+        XX(GL_UNSIGNED_INT);
+        XX(GL_UNSIGNED_INT_VEC2);
+        XX(GL_UNSIGNED_INT_VEC3);
+        XX(GL_UNSIGNED_INT_VEC4);
+        XX(GL_BOOL);
+        XX(GL_BOOL_VEC2);
+        XX(GL_BOOL_VEC3);
+        XX(GL_BOOL_VEC4);
+        XX(GL_FLOAT_MAT2);
+        XX(GL_FLOAT_MAT3);
+        XX(GL_FLOAT_MAT4);
+        XX(GL_FLOAT_MAT2x3);
+        XX(GL_FLOAT_MAT2x4);
+        XX(GL_FLOAT_MAT3x2);
+        XX(GL_FLOAT_MAT3x4);
+        XX(GL_FLOAT_MAT4x2);
+        XX(GL_FLOAT_MAT4x3);
+        XX(GL_DOUBLE_MAT2);
+        XX(GL_DOUBLE_MAT3);
+        XX(GL_DOUBLE_MAT4);
+        XX(GL_DOUBLE_MAT2x3);
+        XX(GL_DOUBLE_MAT2x4);
+        XX(GL_DOUBLE_MAT3x2);
+        XX(GL_DOUBLE_MAT3x4);
+        XX(GL_DOUBLE_MAT4x2);
+        XX(GL_DOUBLE_MAT4x3);
+        XX(GL_SAMPLER_1D);
+        XX(GL_SAMPLER_2D);
+        XX(GL_SAMPLER_3D);
+        XX(GL_SAMPLER_CUBE);
+        XX(GL_SAMPLER_1D_SHADOW);
+        XX(GL_SAMPLER_2D_SHADOW);
+        XX(GL_SAMPLER_1D_ARRAY);
+        XX(GL_SAMPLER_2D_ARRAY);
+        XX(GL_SAMPLER_1D_ARRAY_SHADOW);
+        XX(GL_SAMPLER_2D_ARRAY_SHADOW);
+        XX(GL_SAMPLER_2D_MULTISAMPLE);
+        XX(GL_SAMPLER_2D_MULTISAMPLE_ARRAY);
+        XX(GL_SAMPLER_CUBE_SHADOW);
+        XX(GL_SAMPLER_BUFFER);
+        XX(GL_SAMPLER_2D_RECT);
+        XX(GL_SAMPLER_2D_RECT_SHADOW);
+        XX(GL_INT_SAMPLER_1D);
+        XX(GL_INT_SAMPLER_2D);
+        XX(GL_INT_SAMPLER_3D);
+        XX(GL_INT_SAMPLER_CUBE);
+        XX(GL_INT_SAMPLER_1D_ARRAY);
+        XX(GL_INT_SAMPLER_2D_ARRAY);
+        XX(GL_INT_SAMPLER_2D_MULTISAMPLE);
+        XX(GL_INT_SAMPLER_2D_MULTISAMPLE_ARRAY);
+        XX(GL_INT_SAMPLER_BUFFER);
+        XX(GL_INT_SAMPLER_2D_RECT);
+        XX(GL_UNSIGNED_INT_SAMPLER_1D);
+        XX(GL_UNSIGNED_INT_SAMPLER_2D);
+        XX(GL_UNSIGNED_INT_SAMPLER_3D);
+        XX(GL_UNSIGNED_INT_SAMPLER_CUBE);
+        XX(GL_UNSIGNED_INT_SAMPLER_1D_ARRAY);
+        XX(GL_UNSIGNED_INT_SAMPLER_2D_ARRAY);
+        XX(GL_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE);
+        XX(GL_UNSIGNED_INT_SAMPLER_2D_MULTISAMPLE_ARRAY);
+        XX(GL_UNSIGNED_INT_SAMPLER_BUFFER);
+        XX(GL_UNSIGNED_INT_SAMPLER_2D_RECT);
+
+        XX(GL_IMAGE_1D);
+        XX(GL_IMAGE_2D);
+        XX(GL_IMAGE_3D);
+        XX(GL_IMAGE_2D_RECT);
+        XX(GL_IMAGE_CUBE);
+        XX(GL_IMAGE_BUFFER);
+        XX(GL_IMAGE_1D_ARRAY);
+        XX(GL_IMAGE_2D_ARRAY);
+        XX(GL_IMAGE_2D_MULTISAMPLE);
+        XX(GL_IMAGE_2D_MULTISAMPLE_ARRAY);
+        XX(GL_INT_IMAGE_1D);
+        XX(GL_INT_IMAGE_2D);
+        XX(GL_INT_IMAGE_3D);
+        XX(GL_INT_IMAGE_2D_RECT);
+        XX(GL_INT_IMAGE_CUBE);
+        XX(GL_INT_IMAGE_BUFFER);
+        XX(GL_INT_IMAGE_1D_ARRAY);
+        XX(GL_INT_IMAGE_2D_ARRAY);
+        XX(GL_INT_IMAGE_2D_MULTISAMPLE);
+        XX(GL_INT_IMAGE_2D_MULTISAMPLE_ARRAY);
+        XX(GL_UNSIGNED_INT_IMAGE_1D);
+        XX(GL_UNSIGNED_INT_IMAGE_2D);
+        XX(GL_UNSIGNED_INT_IMAGE_3D);
+        XX(GL_UNSIGNED_INT_IMAGE_2D_RECT);
+        XX(GL_UNSIGNED_INT_IMAGE_CUBE);
+        XX(GL_UNSIGNED_INT_IMAGE_BUFFER);
+        XX(GL_UNSIGNED_INT_IMAGE_1D_ARRAY);
+        XX(GL_UNSIGNED_INT_IMAGE_2D_ARRAY);
+        XX(GL_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE);
+        XX(GL_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE_ARRAY);
+        XX(GL_UNSIGNED_INT_ATOMIC_COUNTER);
     }
+
+#undef XX
+
+    static char buffer[32];
+    sprintf(buffer, "Unknown GLenum: (0x%04x)", e);
+    return buffer;
 }
 
 const char* gl_get_error_description(GLenum error_code) {
@@ -85,7 +207,7 @@ void neko_graphics_print_errors_internal(const char* file, u32 line) {
     GLenum code = glGetError();
 
     if (code != GL_NO_ERROR) {
-        const char* last_slash = file;
+        const_str last_slash = file;
 
         while (*file) {
             char c = *file;
@@ -93,8 +215,8 @@ void neko_graphics_print_errors_internal(const char* file, u32 line) {
             ++file;
         }
 
-        const char* str = gl_get_error_string(code);
-        const char* des = gl_get_error_description(code);
+        const_str str = neko_opengl_string(code);
+        const_str des = gl_get_error_description(code);
         neko_println("OpenGL Error %s (%u): %u, %s, %s", last_slash, line, code, str, des);
     }
 }
@@ -1860,9 +1982,9 @@ neko_gl_texture_t gl_texture_update_internal(const neko_graphics_texture_desc_t*
 }
 
 /* Resource Creation */
-NEKO_API_DECL neko_handle(neko_graphics_texture_t) neko_graphics_texture_create_impl(const neko_graphics_texture_desc_t* desc) {
+NEKO_API_DECL neko_handle(neko_graphics_texture_t) neko_graphics_texture_create_impl(const neko_graphics_texture_desc_t desc) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(graphics)->user_data;
-    neko_gl_texture_t tex = gl_texture_update_internal(desc, 0);
+    neko_gl_texture_t tex = gl_texture_update_internal(&desc, 0);
     // Add texture to internal resource pool and return handle
     return (neko_handle_create(neko_graphics_texture_t, neko_slot_array_insert(ogl->textures, tex)));
 }
@@ -1909,64 +2031,64 @@ NEKO_API_DECL neko_handle(neko_graphics_uniform_t) neko_graphics_uniform_create_
     return neko_handle_create(neko_graphics_uniform_t, neko_slot_array_insert(ogl->uniforms, ul));
 }
 
-NEKO_API_DECL neko_handle(neko_graphics_vertex_buffer_t) neko_graphics_vertex_buffer_create_impl(const neko_graphics_vertex_buffer_desc_t* desc) {
+NEKO_API_DECL neko_handle(neko_graphics_vertex_buffer_t) neko_graphics_vertex_buffer_create_impl(const neko_graphics_vertex_buffer_desc_t desc) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(graphics)->user_data;
     neko_handle(neko_graphics_vertex_buffer_t) hndl = neko_default_val();
     neko_gl_buffer_t buffer = 0;
 
     // Assert if data isn't filled for vertex data when static draw enabled
-    if (desc->usage == NEKO_GRAPHICS_BUFFER_USAGE_STATIC && !desc->data) {
+    if (desc.usage == NEKO_GRAPHICS_BUFFER_USAGE_STATIC && !desc.data) {
         neko_println("Error: Vertex buffer desc must contain data when NEKO_GRAPHICS_BUFFER_USAGE_STATIC set.");
         neko_assert(false);
     }
 
     glGenBuffers(1, &buffer);
     glBindBuffer(GL_ARRAY_BUFFER, buffer);
-    glBufferData(GL_ARRAY_BUFFER, desc->size, desc->data, neko_gl_buffer_usage_to_gl_enum(desc->usage));
+    glBufferData(GL_ARRAY_BUFFER, desc.size, desc.data, neko_gl_buffer_usage_to_gl_enum(desc.usage));
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     hndl = neko_handle_create(neko_graphics_vertex_buffer_t, neko_slot_array_insert(ogl->vertex_buffers, buffer));
 
     return hndl;
 }
 
-NEKO_API_DECL neko_handle(neko_graphics_index_buffer_t) neko_graphics_index_buffer_create_impl(const neko_graphics_index_buffer_desc_t* desc) {
+NEKO_API_DECL neko_handle(neko_graphics_index_buffer_t) neko_graphics_index_buffer_create_impl(const neko_graphics_index_buffer_desc_t desc) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(graphics)->user_data;
     neko_handle(neko_graphics_index_buffer_t) hndl = neko_default_val();
     neko_gl_buffer_t buffer = 0;
 
     // Assert if data isn't filled for vertex data when static draw enabled
-    if (desc->usage == NEKO_GRAPHICS_BUFFER_USAGE_STATIC && !desc->data) {
+    if (desc.usage == NEKO_GRAPHICS_BUFFER_USAGE_STATIC && !desc.data) {
         neko_println("Error: Index buffer desc must contain data when NEKO_GRAPHICS_BUFFER_USAGE_STATIC set.");
         neko_assert(false);
     }
 
     glGenBuffers(1, &buffer);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, desc->size, desc->data, neko_gl_buffer_usage_to_gl_enum(desc->usage));
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, desc.size, desc.data, neko_gl_buffer_usage_to_gl_enum(desc.usage));
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     hndl = neko_handle_create(neko_graphics_index_buffer_t, neko_slot_array_insert(ogl->index_buffers, buffer));
 
     return hndl;
 }
 
-NEKO_API_DECL neko_handle(neko_graphics_uniform_buffer_t) neko_graphics_uniform_buffer_create_impl(const neko_graphics_uniform_buffer_desc_t* desc) {
+NEKO_API_DECL neko_handle(neko_graphics_uniform_buffer_t) neko_graphics_uniform_buffer_create_impl(const neko_graphics_uniform_buffer_desc_t desc) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(graphics)->user_data;
     neko_handle(neko_graphics_uniform_buffer_t) hndl = neko_default_val();
 
     // Assert if data isn't named
-    if (desc->name == NULL) {
+    if (desc.name == NULL) {
         neko_log_warning("Uniform buffer must be named for Opengl.");
     }
 
     neko_gl_uniform_buffer_t u = neko_default_val();
-    memcpy(u.name, desc->name, 64);
-    u.size = desc->size;
+    memcpy(u.name, desc.name, 64);
+    u.size = desc.size;
     u.location = UINT32_MAX;
 
     // Generate buffer (if needed)
     glGenBuffers(1, &u.ubo);
     glBindBuffer(GL_UNIFORM_BUFFER, u.ubo);
-    glBufferData(GL_UNIFORM_BUFFER, u.size, 0, neko_gl_buffer_usage_to_gl_enum(desc->usage));
+    glBufferData(GL_UNIFORM_BUFFER, u.size, 0, neko_gl_buffer_usage_to_gl_enum(desc.usage));
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     hndl = neko_handle_create(neko_graphics_uniform_buffer_t, neko_slot_array_insert(ogl->uniform_buffers, u));
@@ -1974,28 +2096,28 @@ NEKO_API_DECL neko_handle(neko_graphics_uniform_buffer_t) neko_graphics_uniform_
     return hndl;
 }
 
-NEKO_API_DECL neko_handle(neko_graphics_storage_buffer_t) neko_graphics_storage_buffer_create_impl(const neko_graphics_storage_buffer_desc_t* desc) {
+NEKO_API_DECL neko_handle(neko_graphics_storage_buffer_t) neko_graphics_storage_buffer_create_impl(const neko_graphics_storage_buffer_desc_t desc) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(graphics)->user_data;
     neko_handle(neko_graphics_storage_buffer_t) hndl = neko_default_val();
     neko_gl_storage_buffer_t sbo = neko_default_val();
 
-    if (desc->name == NULL) {
+    if (desc.name == NULL) {
         neko_log_warning("Storage buffer must be named for Opengl.");
     }
 
-    if (desc->usage == NEKO_GRAPHICS_BUFFER_USAGE_STATIC && !desc->data) {
+    if (desc.usage == NEKO_GRAPHICS_BUFFER_USAGE_STATIC && !desc.data) {
         neko_println("Error: Storage buffer desc must contain data when NEKO_GRAPHICS_BUFFER_USAGE_STATIC set.");
         neko_assert(false);
     }
 
     glGenBuffers(1, &sbo.buffer);
 
-    CHECK_GL_CORE(glBindBuffer(GL_SHADER_STORAGE_BUFFER, sbo.buffer); glBufferData(GL_SHADER_STORAGE_BUFFER, desc->size, desc->data, neko_gl_buffer_usage_to_gl_enum(desc->usage));
+    CHECK_GL_CORE(glBindBuffer(GL_SHADER_STORAGE_BUFFER, sbo.buffer); glBufferData(GL_SHADER_STORAGE_BUFFER, desc.size, desc.data, neko_gl_buffer_usage_to_gl_enum(desc.usage));
                   glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT); glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0););
 
-    memcpy(sbo.name, desc->name, 64);
-    sbo.access = desc->access;
-    sbo.size = desc->size;
+    memcpy(sbo.name, desc.name, 64);
+    sbo.access = desc.access;
+    sbo.size = desc.size;
     sbo.block_idx = UINT32_MAX;
 
     hndl = neko_handle_create(neko_graphics_storage_buffer_t, neko_slot_array_insert(ogl->storage_buffers, sbo));
@@ -2003,7 +2125,7 @@ NEKO_API_DECL neko_handle(neko_graphics_storage_buffer_t) neko_graphics_storage_
     return hndl;
 }
 
-NEKO_API_DECL neko_handle(neko_graphics_framebuffer_t) neko_graphics_framebuffer_create_impl(const neko_graphics_framebuffer_desc_t* desc) {
+NEKO_API_DECL neko_handle(neko_graphics_framebuffer_t) neko_graphics_framebuffer_create_impl(const neko_graphics_framebuffer_desc_t desc) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(graphics)->user_data;
     neko_handle(neko_graphics_framebuffer_t) hndl = neko_default_val();
     neko_gl_buffer_t buffer = 0;
@@ -2016,7 +2138,7 @@ NEKO_API_DECL neko_handle(neko_graphics_framebuffer_t) neko_graphics_framebuffer
 #define NEKO_GL_GRAPHICS_SHADER_PIPELINE_COMPUTE 0x02
 #define NEKO_GL_GRAPHICS_MAX_SID 128
 
-NEKO_API_DECL neko_handle(neko_graphics_shader_t) neko_graphics_shader_create_impl(const neko_graphics_shader_desc_t* desc) {
+NEKO_API_DECL neko_handle(neko_graphics_shader_t) neko_graphics_shader_create_impl(const neko_graphics_shader_desc_t desc) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(graphics)->user_data;
     neko_gl_shader_t shader = 0;
     u32 pip = 0x00;
@@ -2027,10 +2149,10 @@ NEKO_API_DECL neko_handle(neko_graphics_shader_t) neko_graphics_shader_create_im
     // Create shader program
     shader = glCreateProgram();
 
-    u32 ct = (u32)desc->size / (u32)sizeof(neko_graphics_shader_source_desc_t);
+    u32 ct = (u32)desc.size / (u32)sizeof(neko_graphics_shader_source_desc_t);
     for (u32 i = 0; i < ct; ++i) {
-        if (desc->sources[i].type == NEKO_GRAPHICS_SHADER_STAGE_VERTEX) pip |= NEKO_GL_GRAPHICS_SHADER_PIPELINE_GFX;
-        if (desc->sources[i].type == NEKO_GRAPHICS_SHADER_STAGE_COMPUTE) pip |= NEKO_GL_GRAPHICS_SHADER_PIPELINE_COMPUTE;
+        if (desc.sources[i].type == NEKO_GRAPHICS_SHADER_STAGE_VERTEX) pip |= NEKO_GL_GRAPHICS_SHADER_PIPELINE_GFX;
+        if (desc.sources[i].type == NEKO_GRAPHICS_SHADER_STAGE_COMPUTE) pip |= NEKO_GL_GRAPHICS_SHADER_PIPELINE_COMPUTE;
 
         // Validity Check: Desc must have vertex source if compute not selected. All other source is optional.
         if ((pip & NEKO_GL_GRAPHICS_SHADER_PIPELINE_COMPUTE) && ((pip & NEKO_GL_GRAPHICS_SHADER_PIPELINE_GFX))) {
@@ -2038,16 +2160,16 @@ NEKO_API_DECL neko_handle(neko_graphics_shader_t) neko_graphics_shader_create_im
             neko_assert(false);
         }
 
-        u32 stage = neko_gl_shader_stage_to_gl_stage(desc->sources[i].type);
+        u32 stage = neko_gl_shader_stage_to_gl_stage(desc.sources[i].type);
         u32 sid = glCreateShader(stage);
 
         if (!sid) {
-            neko_println("Error: Failed to allocate memory for shader: '%s': stage: {put stage id here}", desc->name);
+            neko_println("Error: Failed to allocate memory for shader: '%s': stage: {put stage id here}", desc.name);
             neko_assert(sid);
         }
 
         // Set source
-        glShaderSource(sid, 1, &desc->sources[i].source, NULL);
+        glShaderSource(sid, 1, &desc.sources[i].source, NULL);
 
         // Compile shader
         glCompileShader(sid);
@@ -2070,7 +2192,7 @@ NEKO_API_DECL neko_handle(neko_graphics_shader_t) neko_graphics_shader_create_im
             glDeleteShader(shader);
 
             // Provide the infolog
-            neko_println("Opengl::opengl_compile_shader::shader: '%s'\nFAILED_TO_COMPILE: %s\n %s", desc->name, log, desc->sources[i].source);
+            neko_println("Opengl::opengl_compile_shader::shader: '%s'\nFAILED_TO_COMPILE: %s\n %s", desc.name, log, desc.sources[i].source);
 
             neko_safe_free(log);
             log = NULL;
@@ -2101,7 +2223,7 @@ NEKO_API_DECL neko_handle(neko_graphics_shader_t) neko_graphics_shader_create_im
         glGetProgramInfoLog(shader, max_len, &max_len, log);
 
         // Print error
-        neko_log_error("Fail To Link::opengl_link_shaders::shader: '%s', \n%s", desc->name, log);
+        neko_log_error("Fail To Link::opengl_link_shaders::shader: '%s', \n%s", desc.name, log);
 
         // //We don't need the program anymore.
         glDeleteProgram(shader);
@@ -2116,7 +2238,7 @@ NEKO_API_DECL neko_handle(neko_graphics_shader_t) neko_graphics_shader_create_im
     glValidateProgram(shader);
     glGetProgramiv(shader, GL_VALIDATE_STATUS, &is_good);
     if (!is_good) {
-        neko_log_error("Failed to validate shader: '%s'", desc->name);
+        neko_log_error("Failed to validate shader: '%s'", desc.name);
     }
 
     // Free shaders after use
@@ -2145,43 +2267,43 @@ NEKO_API_DECL neko_handle(neko_graphics_shader_t) neko_graphics_shader_create_im
     return (neko_handle_create(neko_graphics_shader_t, neko_slot_array_insert(ogl->shaders, shader)));
 }
 
-NEKO_API_DECL neko_handle(neko_graphics_renderpass_t) neko_graphics_renderpass_create_impl(const neko_graphics_renderpass_desc_t* desc) {
+NEKO_API_DECL neko_handle(neko_graphics_renderpass_t) neko_graphics_renderpass_create_impl(const neko_graphics_renderpass_desc_t desc) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(graphics)->user_data;
 
     neko_gl_renderpass_t pass = neko_default_val();
 
     // Set fbo
-    pass.fbo = desc->fbo;
+    pass.fbo = desc.fbo;
 
     // Set color attachments
-    u32 ct = (u32)desc->color_size / (u32)sizeof(neko_handle(neko_graphics_texture_t));
+    u32 ct = (u32)desc.color_size / (u32)sizeof(neko_handle(neko_graphics_texture_t));
     for (u32 i = 0; i < ct; ++i) {
-        neko_dyn_array_push(pass.color, desc->color[i]);
+        neko_dyn_array_push(pass.color, desc.color[i]);
     }
     // Set depth attachment
-    pass.depth = desc->depth;
+    pass.depth = desc.depth;
 
     // Create handle and return
     return (neko_handle_create(neko_graphics_renderpass_t, neko_slot_array_insert(ogl->renderpasses, pass)));
 }
 
-NEKO_API_DECL neko_handle(neko_graphics_pipeline_t) neko_graphics_pipeline_create_impl(const neko_graphics_pipeline_desc_t* desc) {
+NEKO_API_DECL neko_handle(neko_graphics_pipeline_t) neko_graphics_pipeline_create_impl(const neko_graphics_pipeline_desc_t desc) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(graphics)->user_data;
 
     neko_gl_pipeline_t pipe = neko_default_val();
 
     // Add states
-    pipe.blend = desc->blend;
-    pipe.depth = desc->depth;
-    pipe.raster = desc->raster;
-    pipe.stencil = desc->stencil;
-    pipe.compute = desc->compute;
+    pipe.blend = desc.blend;
+    pipe.depth = desc.depth;
+    pipe.raster = desc.raster;
+    pipe.stencil = desc.stencil;
+    pipe.compute = desc.compute;
 
     // Add layout
-    u32 ct = (u32)desc->layout.size / (u32)sizeof(neko_graphics_vertex_attribute_desc_t);
+    u32 ct = (u32)desc.layout.size / (u32)sizeof(neko_graphics_vertex_attribute_desc_t);
     neko_dyn_array_reserve(pipe.layout, ct);
     for (u32 i = 0; i < ct; ++i) {
-        neko_dyn_array_push(pipe.layout, desc->layout.attrs[i]);
+        neko_dyn_array_push(pipe.layout, desc.layout.attrs[i]);
     }
 
     // Create handle and return
@@ -2364,7 +2486,7 @@ NEKO_API_DECL void neko_graphics_vertex_buffer_update_impl(neko_handle(neko_grap
         // Write data
         neko_byte_buffer_write_bulk(&cb->commands, data, sz);
     }
-    __neko_graphics_update_buffer_internal(cb, hndl.id, NEKO_GRAPHICS_BUFFER_VERTEX, desc->usage, desc->size, desc->update.offset, desc->update.type, desc->data);
+    __neko_graphics_update_buffer_internal(cb, hndl.id, NEKO_GRAPHICS_BUFFER_VERTEX, desc.usage, desc.size, desc.update.offset, desc.update.type, desc.data);
     */
 
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(graphics)->user_data;
@@ -3789,32 +3911,31 @@ NEKO_API_DECL void neko_graphics_init(neko_graphics_t* graphics) {
 }
 
 #endif  // NEKO_GRAPHICS_IMPL_OPENGL
-#endif
 
 // 资源构造函数
-NEKO_API_DECL neko_handle(neko_graphics_texture_t) neko_graphics_texture_create(const neko_graphics_texture_desc_t* desc) { return neko_graphics()->api.texture_create(desc); }
+NEKO_API_DECL neko_handle(neko_graphics_texture_t) neko_graphics_texture_create(const neko_graphics_texture_desc_t desc) { return neko_graphics()->api.texture_create(desc); }
 
 NEKO_API_DECL neko_handle(neko_graphics_uniform_t) neko_graphics_uniform_create(const neko_graphics_uniform_desc_t desc) { return neko_graphics()->api.uniform_create(desc); }
 
-NEKO_API_DECL neko_handle(neko_graphics_shader_t) neko_graphics_shader_create(const neko_graphics_shader_desc_t* desc) { return neko_graphics()->api.shader_create(desc); }
+NEKO_API_DECL neko_handle(neko_graphics_shader_t) neko_graphics_shader_create(const neko_graphics_shader_desc_t desc) { return neko_graphics()->api.shader_create(desc); }
 
-NEKO_API_DECL neko_handle(neko_graphics_vertex_buffer_t) neko_graphics_vertex_buffer_create(const neko_graphics_vertex_buffer_desc_t* desc) { return neko_graphics()->api.vertex_buffer_create(desc); }
+NEKO_API_DECL neko_handle(neko_graphics_vertex_buffer_t) neko_graphics_vertex_buffer_create(const neko_graphics_vertex_buffer_desc_t desc) { return neko_graphics()->api.vertex_buffer_create(desc); }
 
-NEKO_API_DECL neko_handle(neko_graphics_index_buffer_t) neko_graphics_index_buffer_create(const neko_graphics_index_buffer_desc_t* desc) { return neko_graphics()->api.index_buffer_create(desc); }
+NEKO_API_DECL neko_handle(neko_graphics_index_buffer_t) neko_graphics_index_buffer_create(const neko_graphics_index_buffer_desc_t desc) { return neko_graphics()->api.index_buffer_create(desc); }
 
-NEKO_API_DECL neko_handle(neko_graphics_uniform_buffer_t) neko_graphics_uniform_buffer_create(const neko_graphics_uniform_buffer_desc_t* desc) {
+NEKO_API_DECL neko_handle(neko_graphics_uniform_buffer_t) neko_graphics_uniform_buffer_create(const neko_graphics_uniform_buffer_desc_t desc) {
     return neko_graphics()->api.uniform_buffer_create(desc);
 }
 
-NEKO_API_DECL neko_handle(neko_graphics_storage_buffer_t) neko_graphics_storage_buffer_create(const neko_graphics_storage_buffer_desc_t* desc) {
+NEKO_API_DECL neko_handle(neko_graphics_storage_buffer_t) neko_graphics_storage_buffer_create(const neko_graphics_storage_buffer_desc_t desc) {
     return neko_graphics()->api.storage_buffer_create(desc);
 }
 
-NEKO_API_DECL neko_handle(neko_graphics_framebuffer_t) neko_graphics_framebuffer_create(const neko_graphics_framebuffer_desc_t* desc) { return neko_graphics()->api.framebuffer_create(desc); }
+NEKO_API_DECL neko_handle(neko_graphics_framebuffer_t) neko_graphics_framebuffer_create(const neko_graphics_framebuffer_desc_t desc) { return neko_graphics()->api.framebuffer_create(desc); }
 
-NEKO_API_DECL neko_handle(neko_graphics_renderpass_t) neko_graphics_renderpass_create(const neko_graphics_renderpass_desc_t* desc) { return neko_graphics()->api.renderpass_create(desc); }
+NEKO_API_DECL neko_handle(neko_graphics_renderpass_t) neko_graphics_renderpass_create(const neko_graphics_renderpass_desc_t desc) { return neko_graphics()->api.renderpass_create(desc); }
 
-NEKO_API_DECL neko_handle(neko_graphics_pipeline_t) neko_graphics_pipeline_create(const neko_graphics_pipeline_desc_t* desc) { return neko_graphics()->api.pipeline_create(desc); }
+NEKO_API_DECL neko_handle(neko_graphics_pipeline_t) neko_graphics_pipeline_create(const neko_graphics_pipeline_desc_t desc) { return neko_graphics()->api.pipeline_create(desc); }
 
 // Destroy
 NEKO_API_DECL void neko_graphics_texture_destroy(neko_handle(neko_graphics_texture_t) hndl) { neko_graphics()->api.texture_destroy(hndl); }

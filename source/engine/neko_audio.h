@@ -1,23 +1,11 @@
 #ifndef NEKO_AUDIO_H
 #define NEKO_AUDIO_H
 
-#include "engine/neko.h"
-
-// well fix this
-// #if defined(NEKO_CPP_SRC)
-// extern "C" {
-// #include "engine/builtin/cute_sound.h"
-// }
-// #else
-// #include "engine/builtin/cute_sound.h"
-// #endif
-
-#if !defined(NEKO_SOUND_H)
-#define NEKO_SOUND_H
-
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#include "engine/neko.h"
 
 // -------------------------------------------------------------------------------------------------
 // Error handling.
@@ -87,29 +75,10 @@ NEKO_API_DECL neko_sound_audio_source_t* neko_sound_load_wav(const char* path, n
 NEKO_API_DECL neko_sound_audio_source_t* neko_sound_read_mem_wav(const void* memory, size_t size, neko_sound_error_t* err /* = NULL */);
 NEKO_API_DECL void neko_sound_free_audio_source(neko_sound_audio_source_t* audio);
 
-// If stb_vorbis was included *before* cute_sound go ahead and create
-// some functions for dealing with OGG files.
 #ifdef STB_VORBIS_INCLUDE_STB_VORBIS_H
-
 neko_sound_audio_source_t* neko_sound_load_ogg(const char* path, neko_sound_error_t* err /* = NULL */);
 neko_sound_audio_source_t* neko_sound_read_mem_ogg(const void* memory, size_t size, neko_sound_error_t* err /* = NULL */);
-
 #endif
-
-// SDL_RWops specific functions
-#if defined(SDL_rwops_h_) && defined(NEKO_SOUND_SDL_RWOPS)
-
-// Provides the ability to use neko_sound_load_wav with an SDL_RWops object.
-neko_sound_audio_source_t* neko_sound_load_wav_rw(SDL_RWops* context, neko_sound_error_t* err /* = NULL */);
-
-#ifdef STB_VORBIS_INCLUDE_STB_VORBIS_H
-
-// Provides the ability to use neko_sound_load_ogg with an SDL_RWops object.
-neko_sound_audio_source_t* neko_sound_load_ogg_rw(SDL_RWops* rw, neko_sound_error_t* err /* = NULL */);
-
-#endif
-
-#endif  // SDL_rwops_h_
 
 // -------------------------------------------------------------------------------------------------
 // Music sounds.
@@ -162,8 +131,6 @@ NEKO_API_DECL void neko_sound_stop_all_playing_sounds();
 
 NEKO_API_DECL void* neko_sound_get_global_context();
 NEKO_API_DECL void neko_sound_set_global_context(void* context);
-
-#endif
 
 /*=====================
 // Internal Audio Data

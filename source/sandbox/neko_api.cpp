@@ -10,13 +10,13 @@
 #include "engine/neko_engine.h"
 #include "engine/neko_filesystem.h"
 #include "engine/neko_lua.h"
-#include "sandbox/game_main.h"
 
 // game
-#include "sandbox/game_imgui.h"
-#include "sandbox/game_physics.h"
-#include "sandbox/game_pixelui.h"
-#include "sandbox/imgui_lua_inspector.hpp"
+#include "game_cvar.h"
+#include "game_editor.h"
+#include "game_imgui.h"
+#include "game_main.h"
+#include "game_physics.h"
 
 // hpp
 #include "sandbox/hpp/neko_static_refl.hpp"
@@ -1384,6 +1384,7 @@ auto __neko_bind_tiled_get_objects(void* tiled_render_ud) {
     return data;
 }
 
+#if 0
 static int __neko_bind_pixelui_create(lua_State* L) {
     // const_str file_path = lua_tostring(L, 1);
 
@@ -1415,6 +1416,7 @@ static int __neko_bind_pixelui_end(lua_State* L) {
     pixelui_destroy(user_handle);
     return 0;
 }
+#endif
 
 static int __neko_bind_gfxt_create(lua_State* L) {
     const_str pip_path = lua_tostring(L, 1);   // gamedir/assets/pipelines/simple.sf
@@ -1547,7 +1549,7 @@ struct neko_sprite_batch_t {
     int images_count = 0;
 };
 
-static void make_sprite(neko_sprite_batch_t* user_handle, neko_sprite_t* sprite, NEKO_SPRITEBATCH_U64 image_id, f32 x, f32 y, f32 scale, f32 angle_radians, int depth) {
+static void make_sprite(neko_sprite_batch_t* user_handle, neko_sprite_t* sprite, u64 image_id, f32 x, f32 y, f32 scale, f32 angle_radians, int depth) {
 
     neko_vec2 fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
 
@@ -1578,7 +1580,7 @@ static void push_sprite(neko_sprite_batch_t* user_handle, neko_sprite_t* sp) {
     s.sy = sp->sy;
     s.c = sp->c;
     s.s = sp->s;
-    s.sort_bits = (NEKO_SPRITEBATCH_U64)sp->depth;
+    s.sort_bits = (u64)sp->depth;
     spritebatch_push(&user_handle->sb, s);
 }
 
@@ -1683,7 +1685,7 @@ static void batch_report(spritebatch_sprite_t* sprites, int count, int texture_w
     neko_graphics_batch_push_draw_call(user_handle->sprite_batch, call);
 }
 
-void get_pixels(NEKO_SPRITEBATCH_U64 image_id, void* buffer, int bytes_to_fill, void* udata) {
+void get_pixels(u64 image_id, void* buffer, int bytes_to_fill, void* udata) {
     neko_sprite_batch_t* user_handle = (neko_sprite_batch_t*)udata;
     memcpy(buffer, user_handle->images[image_id].pix, bytes_to_fill);
 }
@@ -1855,7 +1857,7 @@ struct neko::static_refl::neko_type_info<CGameObject> : neko_type_info_base<CGam
 };
 
 neko_imgui_def_begin(template <>, CGameObject) {
-    neko::static_refl::neko_type_info<CGameObject>::ForEachVarOf(var, [&](const auto& field, auto&& value) { neko_imgui::Auto(value, std::string(field.name)); });
+    neko::static_refl::neko_type_info<CGameObject>::ForEachVarOf(var, [&](const auto& field, auto&& value) { neko::imgui::Auto(value, std::string(field.name)); });
 }
 neko_imgui_def_end();
 
@@ -1869,27 +1871,27 @@ static int __neko_bind_gameobject_inspect(lua_State* L) {
 
     ImGui::Text("GameObject_%d", user_handle->id);
 
-    neko_imgui::Auto(user_handle, "CGameObject");
+    neko::imgui::Auto(user_handle, "CGameObject");
 
     return 0;
 }
 
-static int __neko_bind_assetsys_create(lua_State* L) {
-    neko_assetsys_t* filewatch = (neko_assetsys_t*)lua_newuserdata(L, sizeof(neko_assetsys_t));
-    memset(filewatch, 0, sizeof(neko_assetsys_t));
-    neko_assetsys_create_internal(filewatch, NULL);
+static int __neko_bind_filesystem_create(lua_State* L) {
+    neko_filesystem_t* filewatch = (neko_filesystem_t*)lua_newuserdata(L, sizeof(neko_filesystem_t));
+    memset(filewatch, 0, sizeof(neko_filesystem_t));
+    neko_filesystem_create_internal(filewatch, NULL);
 
     return 1;
 }
 
-static int __neko_bind_assetsys_destory(lua_State* L) {
-    neko_assetsys_t* assetsys = (neko_assetsys_t*)lua_touserdata(L, 1);
-    neko_assetsys_destroy_internal(assetsys);
+static int __neko_bind_filesystem_destory(lua_State* L) {
+    neko_filesystem_t* assetsys = (neko_filesystem_t*)lua_touserdata(L, 1);
+    neko_filesystem_destroy_internal(assetsys);
     return 0;
 }
 
 static int __neko_bind_filewatch_create(lua_State* L) {
-    neko_assetsys_t* assetsys = (neko_assetsys_t*)lua_touserdata(L, 1);
+    neko_filesystem_t* assetsys = (neko_filesystem_t*)lua_touserdata(L, 1);
 
     neko_filewatch_t* filewatch = (neko_filewatch_t*)lua_newuserdata(L, sizeof(neko_filewatch_t));
     memset(filewatch, 0, sizeof(neko_filewatch_t));
@@ -2124,6 +2126,7 @@ static int __neko_bind_idraw_texture(lua_State* L) {
     return 0;
 }
 
+#if 0
 static int __neko_bind_audio_load(lua_State* L) {
     const_str file = lua_tostring(L, 1);
     neko_sound_audio_source_t* audio_src = neko_sound_load_wav(file, NULL);
@@ -2144,10 +2147,11 @@ static int __neko_bind_audio_play(lua_State* L) {
     neko_lua_auto_struct_push_member(L, neko_sound_playing_sound_t, id, &pl);
     return 1;
 }
+#endif
 
 static int __neko_bind_graphics_framebuffer_create(lua_State* L) {
     neko_framebuffer_t fbo = neko_default_val();
-    fbo = neko_graphics_framebuffer_create(NULL);
+    fbo = neko_graphics_framebuffer_create({});
     neko_lua_auto_struct_push_member(L, neko_framebuffer_t, id, &fbo);
     return 1;
 }
@@ -2192,7 +2196,7 @@ static int __neko_bind_graphics_shader_create(lua_State* L) {
     strncpy(shader_desc.name, shader_name, sizeof(shader_desc.name) - 1);
     shader_desc.name[sizeof(shader_desc.name) - 1] = '\0';
 
-    shader_handle = neko_graphics_shader_create(&shader_desc);
+    shader_handle = neko_graphics_shader_create(shader_desc);
 
     neko_safe_free(sources);
 
@@ -2349,7 +2353,7 @@ static int __neko_bind_graphics_pipeline_create(lua_State* L) {
     }
 
     neko_pipeline_t pipeline_handle = neko_default_val();
-    pipeline_handle = neko_graphics_pipeline_create(&pipeline_desc);
+    pipeline_handle = neko_graphics_pipeline_create(pipeline_desc);
     neko_lua_auto_struct_push_member(L, neko_pipeline_t, id, &pipeline_handle);
     return 1;
 }
@@ -2360,7 +2364,7 @@ static int __neko_bind_graphics_vertex_buffer_create(lua_State* L) {
     size_t data_size = lua_tointeger(L, 3);
     neko_vbo_t vertex_buffer_handle = neko_default_val();
     neko_graphics_vertex_buffer_desc_t vertex_buffer_desc = {.data = data, .size = data_size};
-    vertex_buffer_handle = neko_graphics_vertex_buffer_create(&vertex_buffer_desc);
+    vertex_buffer_handle = neko_graphics_vertex_buffer_create(vertex_buffer_desc);
     neko_lua_auto_struct_push_member(L, neko_vbo_t, id, &vertex_buffer_handle);
     return 1;
 }
@@ -2371,7 +2375,7 @@ static int __neko_bind_graphics_index_buffer_create(lua_State* L) {
     size_t data_size = lua_tointeger(L, 3);
     neko_ibo_t index_buffer_handle = neko_default_val();
     neko_graphics_index_buffer_desc_t index_buffer_desc = {.data = data, .size = data_size};
-    index_buffer_handle = neko_graphics_index_buffer_create(&index_buffer_desc);
+    index_buffer_handle = neko_graphics_index_buffer_create(index_buffer_desc);
     neko_lua_auto_struct_push_member(L, neko_ibo_t, id, &index_buffer_handle);
     return 1;
 }
@@ -2434,7 +2438,7 @@ static int __neko_bind_graphics_storage_buffer_create(lua_State* L) {
         neko_str_ncpy(storage_buffer_desc.name, storage_buffer_name);
     }
 
-    storage_buffer_handle = neko_graphics_storage_buffer_create(&storage_buffer_desc);
+    storage_buffer_handle = neko_graphics_storage_buffer_create(storage_buffer_desc);
 
     neko_lua_auto_struct_push_member(L, neko_storage_buffer_t, id, &storage_buffer_handle);
 
@@ -2743,7 +2747,7 @@ static int __neko_bind_graphics_texture_create(lua_State* L) {
         }
     }
     neko_texture_t texture = neko_default_val();
-    texture = neko_graphics_texture_create(&texture_desc);
+    texture = neko_graphics_texture_create(texture_desc);
     neko_lua_auto_struct_push_member(L, neko_texture_t, id, &texture);
     return 1;
 }
@@ -2764,11 +2768,11 @@ static int __neko_bind_graphics_renderpass_create(lua_State* L) {
     neko_lua_auto_struct_to_member(L, neko_texture_t, id, &rt, 2);
 
     neko_renderpass_t rp = neko_default_val();
-    rp = neko_graphics_renderpass_create(neko_c_ref(neko_graphics_renderpass_desc_t, {
-                                                                                             .fbo = fbo,               // Frame buffer to bind for render pass
-                                                                                             .color = &rt,             // Color buffer array to bind to frame buffer
-                                                                                             .color_size = sizeof(rt)  // Size of color attachment array in bytes
-                                                                                     }));
+    rp = neko_graphics_renderpass_create(neko_graphics_renderpass_desc_t{
+            .fbo = fbo,               // Frame buffer to bind for render pass
+            .color = &rt,             // Color buffer array to bind to frame buffer
+            .color_size = sizeof(rt)  // Size of color attachment array in bytes
+    });
     neko_lua_auto_struct_push_member(L, neko_renderpass_t, id, &rp);
     return 1;
 }
@@ -3803,10 +3807,10 @@ int open_neko(lua_State* L) {
             {"tiled_load", __neko_bind_tiled_load},
             {"tiled_unload", __neko_bind_tiled_unload},
 
-            {"pixelui_create", __neko_bind_pixelui_create},
-            {"pixelui_update", __neko_bind_pixelui_update},
-            {"pixelui_end", __neko_bind_pixelui_end},
-            {"pixelui_tex", __neko_bind_pixelui_tex},
+            // {"pixelui_create", __neko_bind_pixelui_create},
+            // {"pixelui_update", __neko_bind_pixelui_update},
+            // {"pixelui_end", __neko_bind_pixelui_end},
+            // {"pixelui_tex", __neko_bind_pixelui_tex},
 
             {"gfxt_create", __neko_bind_gfxt_create},
             {"gfxt_update", __neko_bind_gfxt_update},
@@ -3824,8 +3828,8 @@ int open_neko(lua_State* L) {
 
             {"gameobject_inspect", __neko_bind_gameobject_inspect},
 
-            {"assetsys_create", __neko_bind_assetsys_create},
-            {"assetsys_destory", __neko_bind_assetsys_destory},
+            {"filesystem_create", __neko_bind_filesystem_create},
+            {"filesystem_destory", __neko_bind_filesystem_destory},
 
             {"filewatch_create", __neko_bind_filewatch_create},
             {"filewatch_destory", __neko_bind_filewatch_destory},
@@ -3855,9 +3859,9 @@ int open_neko(lua_State* L) {
             {"idraw_face_cull_enabled", __neko_bind_idraw_face_cull_enabled},
             {"idraw_texture", __neko_bind_idraw_texture},
 
-            {"audio_load", __neko_bind_audio_load},
-            {"audio_unload", __neko_bind_audio_unload},
-            {"audio_play", __neko_bind_audio_play},
+            // {"audio_load", __neko_bind_audio_load},
+            // {"audio_unload", __neko_bind_audio_unload},
+            // {"audio_play", __neko_bind_audio_play},
 
             {"graphics_framebuffer_create", __neko_bind_graphics_framebuffer_create},
             {"graphics_framebuffer_destroy", __neko_bind_graphics_framebuffer_destroy},

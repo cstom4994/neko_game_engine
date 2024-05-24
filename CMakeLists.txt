@@ -30,7 +30,7 @@ if (MSVC)
             "source/deps/glfw/include/"
             "source/deps/libffi/include/"
             "source/deps/enet/include/"
-            #                "source/deps/sdl2/include/"
+            "source/deps/flecs/include/"
     )
 else ()
     find_package(OpenGL REQUIRED)
@@ -40,7 +40,6 @@ else ()
 endif ()
 
 include_directories("source/")
-include_directories("source/magic")
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_definitions(-DDEBUG -D_DEBUG)
@@ -54,7 +53,7 @@ elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
 endif ()
 
 if (MSVC)
-    add_definitions(-DWIN32 -D_WIN32 -D_WINDOWS -DNOMINMAX -DUNICODE -D_UNICODE -DFFI_LITTLE_ENDIAN)
+    add_definitions(-DWIN32 -D_WIN32 -D_WINDOWS -DNOMINMAX -DUNICODE -D_UNICODE -DFFI_LITTLE_ENDIAN -Dflecs_STATIC)
 
     add_compile_options(
             /wd4005
@@ -198,11 +197,12 @@ set(box2d_src
 
 
 file(GLOB_RECURSE neko_engine_src CONFIGURE_DEPENDS "source/engine/**.*")
-file(GLOB_RECURSE magic_src CONFIGURE_DEPENDS "source/magic/**.*")
+file(GLOB_RECURSE flecs_src CONFIGURE_DEPENDS "source/deps/flecs/**.*")
 
 set(neko_engine_src_all
         ${neko_engine_src}
         ${box2d_src}
+        ${flecs_src}
         "source/deps/impl_build.cpp"
 )
 

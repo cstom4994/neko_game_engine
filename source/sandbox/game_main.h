@@ -14,12 +14,12 @@
 #include "engine/neko_ecs.h"
 #include "engine/neko_engine.h"
 #include "engine/neko_math.h"
-#include "sandbox/game_imgui.h"
-#include "sandbox/game_pixelui.h"
-#include "sandbox/magic_pixel.h"
+#include "game_cvar.h"
+#include "game_imgui.h"
+#include "sound.h"
 
 class sandbox_game;
-class neko_assetsys_t;
+class neko_filesystem_t;
 
 typedef struct neko_client_userdata_s {
 
@@ -36,39 +36,35 @@ typedef struct neko_client_userdata_s {
     neko_packreader_t pack = neko_default_val();
     neko_packreader_t lua_pack = neko_default_val();
 
-    //    ecs_world_t* world;
-    //    neko_dyn_array(ecs_entity_t) entities;
-
+    // ecs_world_t* ecs_world;
+    // neko_dyn_array(ecs_entity_t) entities;
     neko_ecs* ecs;
 
     neko_handle(neko_graphics_renderpass_t) main_rp = {0};
     neko_handle(neko_graphics_framebuffer_t) main_fbo = {0};
     neko_handle(neko_graphics_texture_t) main_rt = {0};
 
-    //    neko_command_buffer_t *cb;
-    //    neko_immediate_draw_t *idraw;
-    //    neko_immediate_draw_static_data_t *idraw_sd;
-    //    neko_ui_context_t *core_ui;
-
-    //    neko_packreader_t *pack;
-
     lua_State* L;
 
     neko_font_t* test_font_bmfont;
 
-    neko_engine_cvar_t g_cvar = neko_default_val();
+    neko_engine_cvar_t cl_cvar = neko_default_val();
 
     neko_thread_atomic_int_t init_thread_flag;
     neko_thread_ptr_t init_work_thread;
 
-    neko_assetsys_t* g_assetsys;
+    neko_filesystem_t* assetsys;
 
     neko_vec2_t fbs = {640 * 1.5, 360 * 1.5};
     neko_vec2_t cam = {512, 512};
 
-    sandbox_game* game = nullptr;
+    u8 debug_mode;
+
+    // sandbox_game* game = nullptr;
 
     f32 player_v = 100.f;
+
+    neko_audio_engine audio_engine;
 
 } neko_client_userdata_t;
 
@@ -83,63 +79,6 @@ void draw_text(neko_font_t* font, const char* text, float x, float y, float line
 class Graphics {
 public:
     static void DrawCircle(neko_immediate_draw_t* idraw, const neko_vec2_t center, const neko_vec4_t bounds, u16 radius);
-};
-
-class sandbox_object {
-public:
-    sandbox_object(neko_vec4_t rect);
-    //    ~GameObject();
-    void clean();
-    void update();
-    void render(f32 scale);
-    void chunk_mask_update_mesh();
-    neko_texture_t object_texture;
-    neko_color_t* draw_buffer;
-    neko_vec4_t rect;
-    unsigned char* data;
-    bool* edgeSeen;
-
-private:
-};
-
-class sandbox_simulation;
-class sandbox_game {
-public:
-    sandbox_game(neko_immediate_draw_t* idraw);
-    ~sandbox_game();
-    void pre_update();
-    void update();
-    void late_update();
-    void render();
-    void clean();
-    void set_material(int material);
-    void pause(int x);
-    void reset_simulation(int x);
-
-    sandbox_simulation* get_sim() const { return simulation; }
-
-public:
-    static neko_immediate_draw_t* idraw;
-
-    f32 fbs_scale;
-    f32 draw_scale;
-
-    u32 tick_count;
-    u16 draw_radius;
-    material_type material;
-    int count;
-    u8 debug_mode;
-    bool paused = false;
-
-private:
-    void init(neko_immediate_draw_t* idraw);
-    void create_simulation();
-    void create_viewport();
-    void create_ui();
-    void reset_variables();
-    sandbox_simulation* simulation;
-    sandbox_object* viewport;
-    pixelui_t pixelui;
 };
 
 ///////////////////////////////////////////////

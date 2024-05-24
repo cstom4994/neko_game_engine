@@ -220,8 +220,8 @@ __neko_sound_m128i neko_sound_mm_packs_epi32(__neko_sound_m128i a, __neko_sound_
 
 #endif  // NEKO_SOUND_SCALAR_MODE
 
-#define NEKO_SOUND_ALIGN(X, Y) ((((size_t)X) + ((Y)-1)) & ~((Y)-1))
-#define NEKO_SOUND_TRUNC(X, Y) ((size_t)(X) & ~((Y)-1))
+#define NEKO_SOUND_ALIGN(X, Y) ((((size_t)X) + ((Y) - 1)) & ~((Y) - 1))
+#define NEKO_SOUND_TRUNC(X, Y) ((size_t)(X) & ~((Y) - 1))
 
 // -------------------------------------------------------------------------------------------------
 // Doubly list.
@@ -1602,46 +1602,6 @@ void neko_sound_free_audio_source(neko_sound_audio_source_t* audio) {
     }
 }
 
-#if NEKO_SOUND_PLATFORM == NEKO_SOUND_SDL && defined(SDL_rwops_h_) && defined(NEKO_SOUND_SDL_RWOPS)
-
-// Load an SDL_RWops object's data into memory.
-// Ripped straight from: https://wiki.libsdl.org/SDL_RWread
-static void* neko_sound_read_rw_to_memory(SDL_RWops* rw, int* size, void* mem_ctx) {
-    Sint64 res_size = SDL_RWsize(rw);
-    char* data = (char*)NEKO_SOUND_ALLOC((size_t)(res_size + 1), mem_ctx);
-
-    Sint64 nb_read_total = 0, nb_read = 1;
-    char* buf = data;
-    while (nb_read_total < res_size && nb_read != 0) {
-        nb_read = SDL_RWread(rw, buf, 1, (size_t)(res_size - nb_read_total));
-        nb_read_total += nb_read;
-        buf += nb_read;
-    }
-
-    SDL_RWclose(rw);
-
-    if (nb_read_total != res_size) {
-        NEKO_SOUND_FREE(data, NULL);
-        return NULL;
-    }
-
-    if (size) *size = (int)res_size;
-    return data;
-}
-
-neko_sound_audio_source_t* neko_sound_load_wav_rw(SDL_RWops* context, neko_sound_error_t* err) {
-    int size;
-    char* wav = (char*)neko_sound_read_rw_to_memory(context, &size);
-    if (!memory) return NULL;
-    neko_sound_audio_source_t* audio = neko_sound_read_mem_wav(wav, length, err);
-    NEKO_SOUND_FREE(wav);
-    return audio;
-}
-
-#endif
-
-// If stb_vorbis was included *before* cute_sound go ahead and create
-// some functions for dealing with OGG files.
 #ifdef STB_VORBIS_INCLUDE_STB_VORBIS_H
 
 neko_sound_audio_source_t* neko_sound_read_mem_ogg(const void* memory, size_t length, neko_sound_error_t* err) {

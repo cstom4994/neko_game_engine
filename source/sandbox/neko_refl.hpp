@@ -1,13 +1,9 @@
-//
-// Created by KaoruXun on 24-5-17.
-//
-
 #ifndef NEKO_ENGINE_NEKO_REFL_HPP
 #define NEKO_ENGINE_NEKO_REFL_HPP
 
 #include "engine/neko.hpp"
 #include "engine/neko_engine.h"
-#include "sandbox/game_cvar.h"
+#include "game_cvar.h"
 #include "sandbox/hpp/neko_static_refl.hpp"
 
 // decl static reflection

@@ -6,8 +6,8 @@
 #include "engine/neko.h"
 #include "engine/neko_common.h"
 
-#ifndef ASSETSYS_U64
-#define ASSETSYS_U64 unsigned long long
+#ifndef FILESYSTEM_U64
+#define FILESYSTEM_U64 unsigned long long
 #endif
 
 #define NEKO_FILES_MAX_PATH 1024
@@ -79,103 +79,103 @@ struct neko_file_time_t {
 
 #endif
 
-typedef enum neko_assetsys_error_t {
-    ASSETSYS_SUCCESS = 0,
-    ASSETSYS_ERROR_INVALID_PATH = -1,
-    ASSETSYS_ERROR_INVALID_MOUNT = -2,
-    ASSETSYS_ERROR_FAILED_TO_READ_ZIP = -3,
-    ASSETSYS_ERROR_FAILED_TO_CLOSE_ZIP = -4,
-    ASSETSYS_ERROR_FAILED_TO_READ_FILE = -5,
-    ASSETSYS_ERROR_FILE_NOT_FOUND = -6,
-    ASSETSYS_ERROR_DIR_NOT_FOUND = -7,
-    ASSETSYS_ERROR_INVALID_PARAMETER = -8,
-    ASSETSYS_ERROR_BUFFER_TOO_SMALL = -9,
-} neko_assetsys_error_t;
+typedef enum neko_filesystem_error_t {
+    FILESYSTEM_SUCCESS = 0,
+    FILESYSTEM_ERROR_INVALID_PATH = -1,
+    FILESYSTEM_ERROR_INVALID_MOUNT = -2,
+    FILESYSTEM_ERROR_FAILED_TO_READ_ZIP = -3,
+    FILESYSTEM_ERROR_FAILED_TO_CLOSE_ZIP = -4,
+    FILESYSTEM_ERROR_FAILED_TO_READ_FILE = -5,
+    FILESYSTEM_ERROR_FILE_NOT_FOUND = -6,
+    FILESYSTEM_ERROR_DIR_NOT_FOUND = -7,
+    FILESYSTEM_ERROR_INVALID_PARAMETER = -8,
+    FILESYSTEM_ERROR_BUFFER_TOO_SMALL = -9,
+} neko_filesystem_error_t;
 
-struct neko_assetsys_internal_file_t {
+struct neko_filesystem_internal_file_t {
     int size;
     int zip_index;
     int collated_index;
 };
 
-struct neko_assetsys_internal_folder_t {
+struct neko_filesystem_internal_folder_t {
     int collated_index;
 };
 
-enum neko_assetsys_internal_mount_type_t {
-    ASSETSYS_INTERNAL_MOUNT_TYPE_DIR,
+enum neko_filesystem_internal_mount_type_t {
+    FILESYSTEM_INTERNAL_MOUNT_TYPE_DIR,
 };
 
-struct neko_assetsys_internal_mount_t {
-    ASSETSYS_U64 path;
-    ASSETSYS_U64 mounted_as;
+struct neko_filesystem_internal_mount_t {
+    FILESYSTEM_U64 path;
+    FILESYSTEM_U64 mounted_as;
     int mount_len;
-    enum neko_assetsys_internal_mount_type_t type;
+    enum neko_filesystem_internal_mount_type_t type;
 
-    struct neko_assetsys_internal_file_t* files;
+    struct neko_filesystem_internal_file_t* files;
     int files_count;
     int files_capacity;
 
-    struct neko_assetsys_internal_folder_t* dirs;
+    struct neko_filesystem_internal_folder_t* dirs;
     int dirs_count;
     int dirs_capacity;
 };
 
-struct neko_assetsys_internal_collated_t {
-    ASSETSYS_U64 path;
+struct neko_filesystem_internal_collated_t {
+    FILESYSTEM_U64 path;
     int parent;
     int ref_count;
     int is_file;
 };
 
-struct neko_assetsys_t {
+struct neko_filesystem_t {
     void* memctx;
     strpool_t strpool;
 
-    struct neko_assetsys_internal_mount_t* mounts;
+    struct neko_filesystem_internal_mount_t* mounts;
     int mounts_count;
     int mounts_capacity;
 
-    struct neko_assetsys_internal_collated_t* collated;
+    struct neko_filesystem_internal_collated_t* collated;
     int collated_count;
     int collated_capacity;
 
     char temp[260];
 };
 
-typedef struct neko_assetsys_t neko_assetsys_t;
+typedef struct neko_filesystem_t neko_filesystem_t;
 
-NEKO_API_DECL void neko_assetsys_create_internal(neko_assetsys_t* sys, void* memctx);
-NEKO_API_DECL neko_assetsys_t* neko_assetsys_create(void* memctx);
-NEKO_API_DECL void neko_assetsys_destroy_internal(neko_assetsys_t* sys);
-NEKO_API_DECL void neko_assetsys_destroy(neko_assetsys_t* sys);
+NEKO_API_DECL void neko_filesystem_create_internal(neko_filesystem_t* sys, void* memctx);
+NEKO_API_DECL neko_filesystem_t* neko_filesystem_create(void* memctx);
+NEKO_API_DECL void neko_filesystem_destroy_internal(neko_filesystem_t* sys);
+NEKO_API_DECL void neko_filesystem_destroy(neko_filesystem_t* sys);
 
-NEKO_API_DECL neko_assetsys_error_t neko_assetsys_mount(neko_assetsys_t* sys, char const* path, char const* mount_as);
-NEKO_API_DECL neko_assetsys_error_t neko_assetsys_mount_from_memory(neko_assetsys_t* sys, void const* data, int size, char const* mount_as);
-NEKO_API_DECL neko_assetsys_error_t neko_assetsys_dismount(neko_assetsys_t* sys, char const* path, char const* mounted_as);
+NEKO_API_DECL neko_filesystem_error_t neko_filesystem_mount(neko_filesystem_t* sys, char const* path, char const* mount_as);
+NEKO_API_DECL neko_filesystem_error_t neko_filesystem_mount_from_memory(neko_filesystem_t* sys, void const* data, int size, char const* mount_as);
+NEKO_API_DECL neko_filesystem_error_t neko_filesystem_dismount(neko_filesystem_t* sys, char const* path, char const* mounted_as);
 
-typedef struct neko_assetsys_file_t {
-    ASSETSYS_U64 mount;
-    ASSETSYS_U64 path;
+typedef struct neko_filesystem_file_t {
+    FILESYSTEM_U64 mount;
+    FILESYSTEM_U64 path;
     int index;
-} neko_assetsys_file_t;
+} neko_filesystem_file_t;
 
-NEKO_API_DECL neko_assetsys_error_t neko_assetsys_file(neko_assetsys_t* sys, char const* path, neko_assetsys_file_t* file);
-NEKO_API_DECL neko_assetsys_error_t neko_assetsys_file_load(neko_assetsys_t* sys, neko_assetsys_file_t file, int* size, void* buffer, int capacity);
-NEKO_API_DECL int neko_assetsys_file_size(neko_assetsys_t* sys, neko_assetsys_file_t file);
-NEKO_API_DECL int neko_assetsys_file_count(neko_assetsys_t* sys, char const* path);
-NEKO_API_DECL char const* neko_assetsys_file_name(neko_assetsys_t* sys, char const* path, int index);
-NEKO_API_DECL char const* neko_assetsys_file_path(neko_assetsys_t* sys, char const* path, int index);
-NEKO_API_DECL int neko_assetsys_subdir_count(neko_assetsys_t* sys, char const* path);
-NEKO_API_DECL char const* neko_assetsys_subdir_name(neko_assetsys_t* sys, char const* path, int index);
-NEKO_API_DECL char const* neko_assetsys_subdir_path(neko_assetsys_t* sys, char const* path, int index);
+NEKO_API_DECL neko_filesystem_error_t neko_filesystem_file(neko_filesystem_t* sys, char const* path, neko_filesystem_file_t* file);
+NEKO_API_DECL neko_filesystem_error_t neko_filesystem_file_load(neko_filesystem_t* sys, neko_filesystem_file_t file, int* size, void* buffer, int capacity);
+NEKO_API_DECL int neko_filesystem_file_size(neko_filesystem_t* sys, neko_filesystem_file_t file);
+NEKO_API_DECL int neko_filesystem_file_count(neko_filesystem_t* sys, char const* path);
+NEKO_API_DECL char const* neko_filesystem_file_name(neko_filesystem_t* sys, char const* path, int index);
+NEKO_API_DECL char const* neko_filesystem_file_path(neko_filesystem_t* sys, char const* path, int index);
+NEKO_API_DECL int neko_filesystem_subdir_count(neko_filesystem_t* sys, char const* path);
+NEKO_API_DECL char const* neko_filesystem_subdir_name(neko_filesystem_t* sys, char const* path, int index);
+NEKO_API_DECL char const* neko_filesystem_subdir_path(neko_filesystem_t* sys, char const* path, int index);
 
 extern const char* neko_filewatch_error_reason;
 
 typedef struct neko_filewatch_t neko_filewatch_t;
 
-NEKO_API_DECL void neko_filewatch_create_internal(neko_filewatch_t* filewatch, struct neko_assetsys_t* assetsys, void* mem_ctx);
-NEKO_API_DECL neko_filewatch_t* neko_filewatch_create(struct neko_assetsys_t* assetsys, void* mem_ctx);
+NEKO_API_DECL void neko_filewatch_create_internal(neko_filewatch_t* filewatch, struct neko_filesystem_t* assetsys, void* mem_ctx);
+NEKO_API_DECL neko_filewatch_t* neko_filewatch_create(struct neko_filesystem_t* assetsys, void* mem_ctx);
 NEKO_API_DECL void neko_filewatch_free_internal(neko_filewatch_t* filewatch);
 NEKO_API_DECL void neko_filewatch_free(neko_filewatch_t* filewatch);
 
@@ -228,7 +228,7 @@ typedef struct neko_filewatch_notification_internal_t {
 } neko_filewatch_notification_internal_t;
 
 struct neko_filewatch_t {
-    neko_assetsys_t* assetsys;
+    neko_filesystem_t* assetsys;
     int mount_count;
     neko_filewatch_path_t mount_paths[FILEWATCH_MAX_MOUNTS];
 

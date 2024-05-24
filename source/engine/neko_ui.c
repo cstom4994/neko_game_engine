@@ -5034,7 +5034,8 @@ NEKO_API_DECL s32 neko_ui_textbox_raw(neko_ui_context_t* ctx, char* buf, s32 buf
                 }
             } else {
                 // 跳过 utf-8 连续字节
-                while ((buf[--len] & 0xc0) == 0x80 && len > 0);
+                while ((buf[--len] & 0xc0) == 0x80 && len > 0)
+                    ;
             }
             buf[len] = '\0';
             res |= NEKO_UI_RES_CHANGE;
@@ -8710,9 +8711,9 @@ NEKO_API_DECL neko_ui_style_sheet_t neko_ui_style_sheet_load_from_file(neko_ui_c
     ss = neko_ui_style_sheet_load_from_memory(ctx, fd, sz, &success);
 
     if (success) {
-        neko_log_trace("Successfully loaded style sheet %s.", file_path);
+        neko_log_trace("successfully loaded style sheet %s.", file_path);
     } else {
-        neko_log_warning("Failed to loaded style sheet %s.", file_path);
+        neko_log_warning("failed to loaded style sheet %s.", file_path);
     }
 
     neko_safe_free(fd);
@@ -8963,9 +8964,9 @@ NEKO_API_DECL neko_ui_style_sheet_t neko_ui_style_sheet_load_from_memory(neko_ui
 
     if (!sp) {
         if (success) {
-            neko_log_trace("Successfully loaded style sheet from memory.");
+            neko_log_trace("successfully loaded style sheet from memory.");
         } else {
-            neko_log_warning("Failed to loaded style sheet from memory.");
+            neko_log_warning("failed to loaded style sheet from memory.");
         }
     } else {
         *sp = success;

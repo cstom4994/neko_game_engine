@@ -2,7 +2,7 @@
 #include "game_cvar.h"
 
 #include "engine/neko.hpp"
-#include "sandbox/game_imgui.h"
+#include "game_imgui.h"
 #include "sandbox/hpp/neko_static_refl.hpp"
 #include "sandbox/hpp/neko_struct.hpp"
 
@@ -96,8 +96,7 @@ NEKO_API_DECL void neko_console(neko_console_t *console, neko_ui_context_t *ctx,
         } else if (neko_platform_key_pressed(NEKO_KEYCODE_BACKSPACE)) {
             console->current_cb_idx = 0;
             // 跳过 utf-8 连续字节
-            while ((console->cb[0][--len] & 0xc0) == 0x80 && len > 0)
-                ;
+            while ((console->cb[0][--len] & 0xc0) == 0x80 && len > 0);
             console->cb[0][len] = '\0';
         } else if (n > 0 && !neko_platform_key_pressed(NEKO_KEYCODE_GRAVE_ACCENT)) {
             console->current_cb_idx = 0;
@@ -283,7 +282,7 @@ void __neko_cvar_gui_internal(T &&obj, int depth = 0, const char *fieldName = ""
 
         auto ff = [&]<typename S>(const char *name, auto &var, S &t) {
             if constexpr (std::is_same_v<std::decay_t<decltype(var)>, S>) {
-                neko_imgui::Auto(var, name);
+                neko::imgui::Auto(var, name);
                 ImGui::Text("    [%s]", std::get<0>(fields));
             }
         };
@@ -300,13 +299,13 @@ void neko_cvar_gui(neko_engine_cvar_t &cvar) {
             switch ((&neko_cv()->cvars[i])->type) {
                 default:
                 case __NEKO_CONFIG_TYPE_STRING:
-                    neko_imgui::Auto((&neko_cv()->cvars[i])->value.s, (&neko_cv()->cvars[i])->name);
+                    neko::imgui::Auto((&neko_cv()->cvars[i])->value.s, (&neko_cv()->cvars[i])->name);
                     break;
                 case __NEKO_CONFIG_TYPE_FLOAT:
-                    neko_imgui::Auto((&neko_cv()->cvars[i])->value.f, (&neko_cv()->cvars[i])->name);
+                    neko::imgui::Auto((&neko_cv()->cvars[i])->value.f, (&neko_cv()->cvars[i])->name);
                     break;
                 case __NEKO_CONFIG_TYPE_INT:
-                    neko_imgui::Auto((&neko_cv()->cvars[i])->value.i, (&neko_cv()->cvars[i])->name);
+                    neko::imgui::Auto((&neko_cv()->cvars[i])->value.i, (&neko_cv()->cvars[i])->name);
                     break;
             };
         };

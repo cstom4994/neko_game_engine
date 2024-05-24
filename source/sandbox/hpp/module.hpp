@@ -42,9 +42,9 @@ public:
         return *instance_;
     }
 
-    virtual void init(){};
-    virtual void end(){};
-    virtual void update(){};
+    virtual void init() {};
+    virtual void end() {};
+    virtual void update() {};
     // virtual void registerLua(lua_wrapper::neko_lua_wrap* p_lua){};
 
 private:

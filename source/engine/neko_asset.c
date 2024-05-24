@@ -156,7 +156,7 @@ NEKO_API_DECL bool neko_asset_texture_load_from_file(const_str path, void *out, 
         return false;
     }
 
-    t->hndl = neko_graphics_texture_create(&t->desc);
+    t->hndl = neko_graphics_texture_create(t->desc);
 
     if (!keep_data) {
         neko_png_free(&img);
@@ -201,7 +201,7 @@ bool neko_asset_texture_load_from_memory(const void *memory, size_t sz, void *ou
         return false;
     }
 
-    t->hndl = neko_graphics_texture_create(&t->desc);
+    t->hndl = neko_graphics_texture_create(t->desc);
 
     if (!keep_data) {
         neko_free(t->desc.data);
@@ -272,7 +272,7 @@ bool neko_asset_ascii_font_load_from_memory(const void *memory, size_t sz, void 
     desc.mag_filter = NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST;
 
     // 使用位图数据生成位图的图集纹理
-    f->texture.hndl = neko_graphics_texture_create(&desc);
+    f->texture.hndl = neko_graphics_texture_create(desc);
     f->texture.desc = desc;
     *f->texture.desc.data = NULL;
 
@@ -379,7 +379,7 @@ bool neko_asset_mesh_load_from_file(const_str path, void *out, neko_asset_mesh_d
             vdesc.size = m->vertex_sizes[p];
 
             // Construct vertex buffer for primitive
-            prim.vbo = neko_graphics_vertex_buffer_create(&vdesc);
+            prim.vbo = neko_graphics_vertex_buffer_create(vdesc);
 
             // Index buffer decl
             neko_graphics_index_buffer_desc_t idesc = neko_default_val();
@@ -387,7 +387,7 @@ bool neko_asset_mesh_load_from_file(const_str path, void *out, neko_asset_mesh_d
             idesc.size = m->index_sizes[p];
 
             // Construct index buffer for primitive
-            prim.ibo = neko_graphics_index_buffer_create(&idesc);
+            prim.ibo = neko_graphics_index_buffer_create(idesc);
 
             // Add primitive to mesh
             neko_dyn_array_push(mesh->primitives, prim);
@@ -2900,7 +2900,7 @@ bool neko_aseprite_load(neko_aseprite *spr, const_str filepath) {
     // neko_tex_flip_vertically(ase->w, ase->h * ase->frame_count, (u8 *)pixels.data);
     t_desc.data[0] = pixels;
 
-    neko_texture_t tex = neko_graphics_texture_create(&t_desc);
+    neko_texture_t tex = neko_graphics_texture_create(t_desc);
 
     neko_safe_free(pixels);
 
@@ -3069,7 +3069,7 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
 
         tileset_tex_decl.data[0] = tex_data;
 
-        tileset.texture = neko_graphics_texture_create(&tileset_tex_decl);
+        tileset.texture = neko_graphics_texture_create(tileset_tex_decl);
 
         tileset.width = w;
         tileset.height = h;
@@ -3234,7 +3234,7 @@ void neko_tiled_render_init(neko_command_buffer_t *cb, neko_tiled_renderer *rend
             .usage = NEKO_GRAPHICS_BUFFER_USAGE_DYNAMIC,
     };
 
-    renderer->vb = neko_graphics_vertex_buffer_create(&vb_decl);
+    renderer->vb = neko_graphics_vertex_buffer_create(vb_decl);
 
     neko_graphics_index_buffer_desc_t ib_decl = {
             .data = NULL,
@@ -3242,7 +3242,7 @@ void neko_tiled_render_init(neko_command_buffer_t *cb, neko_tiled_renderer *rend
             .usage = NEKO_GRAPHICS_BUFFER_USAGE_DYNAMIC,
     };
 
-    renderer->ib = neko_graphics_index_buffer_create(&ib_decl);
+    renderer->ib = neko_graphics_index_buffer_create(ib_decl);
 
     if (!vert_src || !frag_src) {
         neko_log_error("%s", "Failed to load tiled renderer shaders.");
@@ -3256,28 +3256,28 @@ void neko_tiled_render_init(neko_command_buffer_t *cb, neko_tiled_renderer *rend
 
     renderer->u_batch_tex = neko_graphics_uniform_create(u_desc);
 
-    renderer->shader = neko_graphics_shader_create(&(neko_graphics_shader_desc_t){.sources =
-                                                                                          (neko_graphics_shader_source_desc_t[]){
-                                                                                                  {.type = NEKO_GRAPHICS_SHADER_STAGE_VERTEX, .source = vert_src},
-                                                                                                  {.type = NEKO_GRAPHICS_SHADER_STAGE_FRAGMENT, .source = frag_src},
-                                                                                          },
-                                                                                  .size = 2 * sizeof(neko_graphics_shader_source_desc_t),
-                                                                                  .name = "tiled_sprite_shader"});
+    renderer->shader = neko_graphics_shader_create((neko_graphics_shader_desc_t){.sources =
+                                                                                         (neko_graphics_shader_source_desc_t[]){
+                                                                                                 {.type = NEKO_GRAPHICS_SHADER_STAGE_VERTEX, .source = vert_src},
+                                                                                                 {.type = NEKO_GRAPHICS_SHADER_STAGE_FRAGMENT, .source = frag_src},
+                                                                                         },
+                                                                                 .size = 2 * sizeof(neko_graphics_shader_source_desc_t),
+                                                                                 .name = "tiled_sprite_shader"});
 
     renderer->u_camera =
             neko_graphics_uniform_create((neko_graphics_uniform_desc_t){.name = "tiled_sprite_camera", .layout = &(neko_graphics_uniform_layout_desc_t){.type = NEKO_GRAPHICS_UNIFORM_MAT4}});
 
     renderer->pip = neko_graphics_pipeline_create(
-            &(neko_graphics_pipeline_desc_t){.raster = {.shader = renderer->shader, .index_buffer_element_size = sizeof(uint32_t)},
-                                             .layout = {.attrs =
-                                                                (neko_graphics_vertex_attribute_desc_t[]){
-                                                                        {.format = NEKO_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT2, .name = "position"},
-                                                                        {.format = NEKO_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT2, .name = "uv"},
-                                                                        {.format = NEKO_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT4, .name = "color"},
-                                                                        {.format = NEKO_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT, .name = "use_texture"},
-                                                                },
-                                                        .size = 4 * sizeof(neko_graphics_vertex_attribute_desc_t)},
-                                             .blend = {.func = NEKO_GRAPHICS_BLEND_EQUATION_ADD, .src = NEKO_GRAPHICS_BLEND_MODE_SRC_ALPHA, .dst = NEKO_GRAPHICS_BLEND_MODE_ONE_MINUS_SRC_ALPHA}});
+            (neko_graphics_pipeline_desc_t){.raster = {.shader = renderer->shader, .index_buffer_element_size = sizeof(uint32_t)},
+                                            .layout = {.attrs =
+                                                               (neko_graphics_vertex_attribute_desc_t[]){
+                                                                       {.format = NEKO_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT2, .name = "position"},
+                                                                       {.format = NEKO_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT2, .name = "uv"},
+                                                                       {.format = NEKO_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT4, .name = "color"},
+                                                                       {.format = NEKO_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT, .name = "use_texture"},
+                                                               },
+                                                       .size = 4 * sizeof(neko_graphics_vertex_attribute_desc_t)},
+                                            .blend = {.func = NEKO_GRAPHICS_BLEND_EQUATION_ADD, .src = NEKO_GRAPHICS_BLEND_MODE_SRC_ALPHA, .dst = NEKO_GRAPHICS_BLEND_MODE_ONE_MINUS_SRC_ALPHA}});
 }
 
 void neko_tiled_render_deinit(neko_tiled_renderer *renderer) {
