@@ -39,7 +39,7 @@ typedef struct neko_client_userdata_s {
 
     // ecs_world_t* ecs_world;
     // neko_dyn_array(ecs_entity_t) entities;
-    neko_ecs* ecs;
+    ecs_registry_t* ecs;
 
     neko_handle(neko_graphics_renderpass_t) main_rp = {0};
     neko_handle(neko_graphics_framebuffer_t) main_fbo = {0};
@@ -47,9 +47,9 @@ typedef struct neko_client_userdata_s {
 
     lua_State* L;
 
-    neko_fontbatch_t* font_render_batch;
+    neko_fontbatch_t font_render_batch;
 
-    neko_engine_cvar_t cl_cvar = neko_default_val();
+    neko_client_cvar_t cl_cvar = neko_default_val();
 
     neko_thread_atomic_int_t init_thread_flag;
     neko_thread_ptr_t init_work_thread;

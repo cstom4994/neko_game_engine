@@ -263,7 +263,7 @@ void help(int argc, char **argv) {
 
 #pragma endregion
 
-neko_struct(neko_engine_cvar_t,                         //
+neko_struct(neko_client_cvar_t,                         //
             _Fs(show_editor, "Is show editor"),         //
             _Fs(show_demo_window, "Is show nui demo"),  //
             _Fs(show_pack_editor, "pack editor"),       //
@@ -291,7 +291,7 @@ void __neko_cvar_gui_internal(T &&obj, int depth = 0, const char *fieldName = ""
     }
 }
 
-void neko_cvar_gui(neko_engine_cvar_t &cvar) {
+void neko_cvar_gui(neko_client_cvar_t &cvar) {
     __neko_cvar_gui_internal(cvar);
 
     for (size_t i = 0; i < neko_dyn_array_size(neko_cv()->cvars); i++) {

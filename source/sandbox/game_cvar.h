@@ -47,9 +47,9 @@ typedef struct neko_engine_cvar_s {
     bool enable_nekolua = false;
 
     f32 bg[3] = {28, 28, 28};
-} neko_engine_cvar_t;
+} neko_client_cvar_t;
 
-void neko_cvar_gui(neko_engine_cvar_t &cvar);
+void neko_cvar_gui(neko_client_cvar_t &cvar);
 
 extern neko_console_command_t commands[];
 extern neko_console_t g_console;

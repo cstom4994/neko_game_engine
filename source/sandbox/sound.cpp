@@ -11,7 +11,7 @@ static void on_sound_end(void *udata, neko_sound *ma) {
 }
 
 Sound *sound_load(neko::string filepath) {
-    // PROFILE_FUNC();
+    
 
     ma_result res = MA_SUCCESS;
 

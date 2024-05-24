@@ -7,89 +7,6 @@
 
 #include "engine/neko.h"
 
-// template <int SIZE>
-// struct __neko_static_string;
-
-struct neko_stringview {
-    neko_stringview() {}
-    neko_stringview(const char *str) : begin(str), end(str ? str + std::strlen(str) : 0) {}
-    neko_stringview(const char *str, u32 len) : begin(str), end(str + len) {}
-    neko_stringview(const char *begin, const char *end) : begin(begin), end(end) {}
-    // template <int N>
-    // neko_stringview(const __neko_static_string<N> &str);
-
-    u32 size() const { return u32(end - begin); }
-    char operator[](u32 idx) {
-        neko_assert(!end || begin + idx < end);
-        return begin[idx];
-    }
-    char back() const {
-        neko_assert(end && begin != end);
-        return *(end - 1);
-    }
-    void removeSuffix(u32 count) {
-        neko_assert(count <= size());
-        end -= count;
-    }
-    void removePrefix(u32 count) {
-        neko_assert(count <= size());
-        begin += count;
-    }
-    bool empty() const { return begin == end || !begin[0]; }
-
-    const char *begin = nullptr;
-    const char *end = nullptr;
-};
-
-// template <int SIZE>
-// struct __neko_static_string {
-//     __neko_static_string() { data[0] = '\0'; }
-//
-//     template <typename... Args>
-//     __neko_static_string(Args... args) {
-//         data[0] = '\0';
-//         append(args...);
-//     }
-//
-//     template <typename... Args>
-//     void append(Args... args) {
-//         Span dst(data + stringLength(data), data + SIZE);
-//         int tmp[] = {(add(args, dst), 0)...};
-//         (void)tmp;
-//     }
-//
-//     void operator=(const char *str) { copyString(data, str); }
-//     bool operator<(const char *str) const { return compareString(data, str) < 0; }
-//     bool operator==(const char *str) const { return equalStrings(data, str); }
-//     bool operator!=(const char *str) const { return !equalStrings(data, str); }
-//
-//     bool empty() const { return data[0] == '\0'; }
-//     operator const char *() const { return data; }
-//
-//     char data[SIZE];
-//
-// private:
-//     template <int S>
-//     void add(__neko_static_string<S> &value, Span<char> &dst) {
-//         dst.m_begin = copyString(dst, value);
-//     }
-//     void add(StringView value, Span<char> &dst) { dst.m_begin = copyString(dst, value); }
-//     void add(StableHash value, Span<char> &dst) { add(value.getHashValue(), dst); }
-//     void add(float value, Span<char> &dst) { dst.m_begin = toCString(value, dst, 3); }
-//     void add(double value, Span<char> &dst) { dst.m_begin = toCString(value, dst, 10); }
-//     void add(u32 value, Span<char> &dst) { dst.m_begin = toCString(value, dst); }
-//     void add(i32 value, Span<char> &dst) { dst.m_begin = toCString(value, dst); }
-//     void add(u64 value, Span<char> &dst) { dst.m_begin = toCString(value, dst); }
-//     void add(i64 value, Span<char> &dst) { dst.m_begin = toCString(value, dst); }
-//
-//     void add(char value, Span<char> &dst) {
-//         if (dst.length() < 2) return;
-//         dst[0] = value;
-//         dst[1] = '\0';
-//         dst.m_begin += 1;
-//     }
-// };
-
 NEKO_INLINE bool neko_str_is_chinese_c(const char str) { return str & 0x80; }
 
 NEKO_INLINE bool neko_str_is_chinese_str(const std::string &str) {
@@ -226,24 +143,6 @@ NEKO_INLINE bool neko_str_replace_with(std::string &src, const char *what, const
 NEKO_INLINE bool neko_str_replace_with(std::string &src, const char *what, const char *with, int times) {
     for (int i = 0; i < times; ++i) neko_str_replace_with(src, what, with);
     return true;
-}
-
-NEKO_INLINE char *neko_str_copy(neko_span<char> dst, neko_stringview src) {
-    if (dst.length() < 1) return dst.begin();
-
-    neko_assert(dst.begin() >= src.end || dst.begin() <= src.begin);
-
-    u32 length = dst.length();
-    char *tmp = dst.begin();
-    const char *srcp = src.begin;
-    while (srcp != src.end && length > 1) {
-        *tmp = *srcp;
-        --length;
-        ++tmp;
-        ++srcp;
-    }
-    *tmp = 0;
-    return tmp;
 }
 
 #endif  // !NEKO_STR_H

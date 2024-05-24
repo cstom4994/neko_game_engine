@@ -124,6 +124,8 @@ template class size_checker<u16, 2>;
 template class size_checker<u8, 1>;
 template class size_checker<b32, 4>;
 
+struct lua_State;
+
 namespace neko {
 
 template <typename V, typename Alloc = std::allocator<V>>
@@ -1071,192 +1073,186 @@ NEKO_INLINE string tmp_fmt(const char* fmt, ...) {
 
 }  // namespace neko
 
+namespace neko {
+
 // 哈希映射容器
 
-enum neko_hashmap_kind : u8 {
-    neko_hashmap_kind_none,
-    neko_hashmap_kind_some,
-    neko_hashmap_kind_tombstone,
+enum HashMapKind : u8 {
+    HashMapKind_None,
+    HashMapKind_Some,
+    HashMapKind_Tombstone,
 };
 
 #define HASH_MAP_LOAD_FACTOR 0.75f
 
-NEKO_INLINE u64 neko_hashmap_reserve_size(u64 size) {
-    u64 n = (u64)(size / HASH_MAP_LOAD_FACTOR) + 1;
-
-    // next pow of 2
-    n--;
-    n |= n >> 1;
-    n |= n >> 2;
-    n |= n >> 4;
-    n |= n >> 8;
-    n |= n >> 16;
-    n |= n >> 32;
-    n++;
-
-    return n;
-}
-
 template <typename T>
-struct neko_hashmap {
+struct HashMap {
     u64* keys = nullptr;
     T* values = nullptr;
-    neko_hashmap_kind* kinds = nullptr;
+    HashMapKind* kinds = nullptr;
     u64 load = 0;
     u64 capacity = 0;
-    T& operator[](u64 key);
-    T& operator[](const std::string& key);
+
+    void trash() {
+        neko_safe_free(keys);
+        neko_safe_free(values);
+        neko_safe_free(kinds);
+    }
+
+    u64 find_entry(u64 key) const {
+        u64 index = key & (capacity - 1);
+        u64 tombstone = (u64)-1;
+        while (true) {
+            HashMapKind kind = kinds[index];
+            if (kind == HashMapKind_None) {
+                return tombstone != (u64)-1 ? tombstone : index;
+            } else if (kind == HashMapKind_Tombstone) {
+                tombstone = index;
+            } else if (keys[index] == key) {
+                return index;
+            }
+
+            index = (index + 1) & (capacity - 1);
+        }
+    }
+
+    void real_reserve(u64 cap) {
+        if (cap <= capacity) {
+            return;
+        }
+
+        HashMap<T> map = {};
+        map.capacity = cap;
+
+        size_t bytes = sizeof(u64) * cap;
+        map.keys = (u64*)neko_safe_malloc(bytes);
+        memset(map.keys, 0, bytes);
+
+        map.values = (T*)neko_safe_malloc(sizeof(T) * cap);
+        memset(map.values, 0, sizeof(T) * cap);
+
+        map.kinds = (HashMapKind*)neko_safe_malloc(sizeof(HashMapKind) * cap);
+        memset(map.kinds, 0, sizeof(HashMapKind) * cap);
+
+        for (u64 i = 0; i < capacity; i++) {
+            HashMapKind kind = kinds[i];
+            if (kind != HashMapKind_Some) {
+                continue;
+            }
+
+            u64 index = map.find_entry(keys[i]);
+            map.keys[index] = keys[i];
+            map.values[index] = values[i];
+            map.kinds[index] = HashMapKind_Some;
+            map.load++;
+        }
+
+        neko_safe_free(keys);
+        neko_safe_free(values);
+        neko_safe_free(kinds);
+        *this = map;
+    }
+
+    void reserve(u64 capacity) {
+        u64 n = (u64)(capacity / HASH_MAP_LOAD_FACTOR) + 1;
+
+        // next pow of 2
+        n--;
+        n |= n >> 1;
+        n |= n >> 2;
+        n |= n >> 4;
+        n |= n >> 8;
+        n |= n >> 16;
+        n |= n >> 32;
+        n++;
+
+        real_reserve(n);
+    }
+
+    T* get(u64 key) {
+        if (load == 0) {
+            return nullptr;
+        }
+        u64 index = find_entry(key);
+        return kinds[index] == HashMapKind_Some ? &values[index] : nullptr;
+    }
+
+    const T* get(u64 key) const {
+        if (load == 0) {
+            return nullptr;
+        }
+        u64 index = find_entry(key);
+        return kinds[index] == HashMapKind_Some ? &values[index] : nullptr;
+    }
+
+    bool find_or_insert(u64 key, T** value) {
+        if (load >= capacity * HASH_MAP_LOAD_FACTOR) {
+            real_reserve(capacity > 0 ? capacity * 2 : 16);
+        }
+
+        u64 index = find_entry(key);
+        bool exists = kinds[index] == HashMapKind_Some;
+        if (!exists) {
+            values[index] = {};
+        }
+
+        if (kinds[index] == HashMapKind_None) {
+            load++;
+            keys[index] = key;
+            kinds[index] = HashMapKind_Some;
+        }
+
+        *value = &values[index];
+        return exists;
+    }
+
+    T& operator[](u64 key) {
+        T* value;
+        find_or_insert(key, &value);
+        return *value;
+    }
+
+    void unset(u64 key) {
+        if (load == 0) {
+            return;
+        }
+
+        u64 index = find_entry(key);
+        if (kinds[index] != HashMapKind_None) {
+            kinds[index] = HashMapKind_Tombstone;
+        }
+    }
+
+    void clear() {
+        memset(keys, 0, sizeof(u64) * capacity);
+        memset(values, 0, sizeof(T) * capacity);
+        memset(kinds, 0, sizeof(HashMapKind) * capacity);
+        load = 0;
+    }
 };
 
 template <typename T>
-void neko_hashmap_dctor(neko_hashmap<T>* map) {
-    neko_safe_free(map->keys);
-    neko_safe_free(map->values);
-    neko_safe_free(map->kinds);
-}
-
-template <typename T>
-u64 neko_hashmap_find_entry(neko_hashmap<T>* map, u64 key) {
-    u64 index = key & (map->capacity - 1);
-    u64 tombstone = (u64)-1;
-    while (true) {
-        neko_hashmap_kind kind = map->kinds[index];
-        if (kind == neko_hashmap_kind_none) {
-            return tombstone != (u64)-1 ? tombstone : index;
-        } else if (kind == neko_hashmap_kind_tombstone) {
-            tombstone = index;
-        } else if (map->keys[index] == key) {
-            return index;
-        }
-
-        index = (index + 1) & (map->capacity - 1);
-    }
-}
-
-// capacity must be a power of 2
-template <typename T>
-void neko_hashmap_reserve(neko_hashmap<T>* old, u64 capacity) {
-    if (capacity <= old->capacity) {
-        return;
-    }
-
-    neko_hashmap<T> map = {};
-    map.capacity = capacity;
-
-    size_t bytes = sizeof(u64) * capacity;
-    map.keys = (u64*)neko_safe_malloc(bytes);
-    memset(map.keys, 0, bytes);
-
-    map.values = (T*)neko_safe_malloc(sizeof(T) * capacity);
-    memset(map.values, 0, sizeof(T) * capacity);
-
-    map.kinds = (neko_hashmap_kind*)neko_safe_malloc(sizeof(neko_hashmap_kind) * capacity);
-    memset(map.kinds, 0, sizeof(neko_hashmap_kind) * capacity);
-
-    for (u64 i = 0; i < old->capacity; i++) {
-        neko_hashmap_kind kind = old->kinds[i];
-        if (kind != neko_hashmap_kind_some) {
-            continue;
-        }
-
-        u64 index = neko_hashmap_find_entry(&map, old->keys[i]);
-        map.keys[index] = old->keys[i];
-        map.values[index] = old->values[i];
-        map.kinds[index] = neko_hashmap_kind_some;
-        map.load++;
-    }
-
-    neko_safe_free(old->keys);
-    neko_safe_free(old->values);
-    neko_safe_free(old->kinds);
-    *old = map;
-}
-
-template <typename T>
-T* neko_hashmap_get(neko_hashmap<T>* map, u64 key) {
-    if (map->load == 0) {
-        return nullptr;
-    }
-
-    u64 index = neko_hashmap_find_entry(map, key);
-    return map->kinds[index] == neko_hashmap_kind_some ? &map->values[index] : nullptr;
-}
-
-template <typename T>
-bool neko_hashmap_get(neko_hashmap<T>* map, u64 key, T** value) {
-    if (map->load >= map->capacity * HASH_MAP_LOAD_FACTOR) {
-        neko_hashmap_reserve(map, map->capacity > 0 ? map->capacity * 2 : 16);
-    }
-
-    u64 index = neko_hashmap_find_entry(map, key);
-    bool exists = map->kinds[index] == neko_hashmap_kind_some;
-    if (map->kinds[index] == neko_hashmap_kind_none) {
-        map->load++;
-        map->keys[index] = key;
-        map->values[index] = {};
-        map->kinds[index] = neko_hashmap_kind_some;
-    }
-
-    *value = &map->values[index];
-    return exists;
-}
-
-template <typename T>
-T& neko_hashmap<T>::operator[](u64 key) {
-    T* value;
-    neko_hashmap_get(this, key, &value);
-    return *value;
-}
-
-template <typename T>
-T& neko_hashmap<T>::operator[](const std::string& key) {
-    T* value;
-    neko_hashmap_get(this, neko::hash(key.c_str()), &value);
-    return *value;
-}
-
-template <typename T>
-void neko_hashmap_unset(neko_hashmap<T>* map, u64 key) {
-    if (map->load == 0) {
-        return;
-    }
-
-    u64 index = neko_hashmap_find_entry(map, key);
-    if (map->kinds[index] != neko_hashmap_kind_none) {
-        map->kinds[index] = neko_hashmap_kind_tombstone;
-    }
-}
-
-template <typename T>
-void clear(neko_hashmap<T>* map) {
-    memset(map->keys, 0, sizeof(u64) * map->capacity);
-    memset(map->values, 0, sizeof(T) * map->capacity);
-    memset(map->kinds, 0, sizeof(neko_hashmap_kind) * map->capacity);
-    map->load = 0;
-}
-
-template <typename T>
-struct neko_hashmap_kv {
+struct HashMapKV {
     u64 key;
     T* value;
 };
 
 template <typename T>
-struct neko_hashmap_iterator {
-    neko_hashmap<T>* map;
+struct HashMapIterator {
+    HashMap<T>* map;
     u64 cursor;
 
-    neko_hashmap_kv<T> operator*() const {
-        neko_hashmap_kv<T> kv;
+    HashMapKV<T> operator*() const {
+        HashMapKV<T> kv;
         kv.key = map->keys[cursor];
         kv.value = &map->values[cursor];
         return kv;
     }
 
-    neko_hashmap_iterator& operator++() {
+    HashMapIterator& operator++() {
         cursor++;
         while (cursor != map->capacity) {
-            if (map->kinds[cursor] == neko_hashmap_kind_some) {
+            if (map->kinds[cursor] == HashMapKind_Some) {
                 return *this;
             }
             cursor++;
@@ -1267,18 +1263,18 @@ struct neko_hashmap_iterator {
 };
 
 template <typename T>
-bool operator!=(neko_hashmap_iterator<T> lhs, neko_hashmap_iterator<T> rhs) {
+bool operator!=(HashMapIterator<T> lhs, HashMapIterator<T> rhs) {
     return lhs.map != rhs.map || lhs.cursor != rhs.cursor;
 }
 
 template <typename T>
-neko_hashmap_iterator<T> begin(neko_hashmap<T>& map) {
-    neko_hashmap_iterator<T> it = {};
+HashMapIterator<T> begin(HashMap<T>& map) {
+    HashMapIterator<T> it = {};
     it.map = &map;
     it.cursor = map.capacity;
 
     for (u64 i = 0; i < map.capacity; i++) {
-        if (map.kinds[i] == neko_hashmap_kind_some) {
+        if (map.kinds[i] == HashMapKind_Some) {
             it.cursor = i;
             break;
         }
@@ -1288,38 +1284,12 @@ neko_hashmap_iterator<T> begin(neko_hashmap<T>& map) {
 }
 
 template <typename T>
-neko_hashmap_iterator<T> end(neko_hashmap<T>& map) {
-    neko_hashmap_iterator<T> it = {};
+HashMapIterator<T> end(HashMap<T>& map) {
+    HashMapIterator<T> it = {};
     it.map = &map;
     it.cursor = map.capacity;
     return it;
 }
-
-// template <typename T>
-// neko_hashmap_iterator<T> begin(const neko_hashmap<T>& map) {
-//     neko_hashmap_iterator<T> it = {};
-//     it.map = &map;
-//     it.cursor = map.capacity;
-//
-//     for (u64 i = 0; i < map.capacity; i++) {
-//         if (map.kinds[i] == neko_hashmap_kind_some) {
-//             it.cursor = i;
-//             break;
-//         }
-//     }
-//
-//     return it;
-// }
-//
-// template <typename T>
-// neko_hashmap_iterator<T> end(const neko_hashmap<T>& map) {
-//     neko_hashmap_iterator<T> it = {};
-//     it.map = &map;
-//     it.cursor = map.capacity;
-//     return it;
-// }
-
-namespace neko {
 
 // 基本泛型容器
 
@@ -1412,123 +1382,74 @@ bool vfs_list_all_files(array<string>* files);
 
 void* vfs_for_miniaudio();
 
-template <typename T>
-class safe_queue {
-private:
-    std::queue<T> m_queue;
-    std::mutex m_mutex;
+s64 luax_len(lua_State* L, s32 arg);
+string luax_check_string(lua_State* L, s32 arg);
 
-public:
-    safe_queue() {}
-
-    //    safe_queue(safe_queue& other) {}
-
-    ~safe_queue() {}
-
-    bool empty() {
-        std::unique_lock<std::mutex> lock(m_mutex);
-        return m_queue.empty();
-    }
-
-    int size() {
-        std::unique_lock<std::mutex> lock(m_mutex);
-        return m_queue.size();
-    }
-
-    void enqueue(T& t) {
-        std::unique_lock<std::mutex> lock(m_mutex);
-        m_queue.push(t);
-    }
-
-    bool dequeue(T& t) {
-        std::unique_lock<std::mutex> lock(m_mutex);
-
-        if (m_queue.empty()) {
-            return false;
-        }
-        t = std::move(m_queue.front());
-
-        m_queue.pop();
-        return true;
-    }
+enum JSONKind : s32 {
+    JSONKind_Null,
+    JSONKind_Object,
+    JSONKind_Array,
+    JSONKind_String,
+    JSONKind_Number,
+    JSONKind_Boolean,
 };
 
-class thread_pool {
-private:
-    class thread_worker {
-    private:
-        int m_id;
-        thread_pool* m_pool;
-
-    public:
-        thread_worker(thread_pool* pool, const int id) : m_pool(pool), m_id(id) {}
-
-        void operator()() {
-            std::function<void()> func;
-            bool dequeued;
-            while (!m_pool->m_shutdown) {
-                {
-                    std::unique_lock<std::mutex> lock(m_pool->m_conditional_mutex);
-                    if (m_pool->m_queue.empty()) {
-                        m_pool->m_conditional_lock.wait(lock);
-                    }
-                    dequeued = m_pool->m_queue.dequeue(func);
-                }
-                if (dequeued) {
-                    func();
-                }
-            }
-        }
+struct JSONObject;
+struct JSONArray;
+struct JSON {
+    union {
+        JSONObject* object;
+        JSONArray* array;
+        string str;
+        double number;
+        bool boolean;
     };
+    JSONKind kind;
 
-    bool m_shutdown;
-    safe_queue<std::function<void()>> m_queue;
-    std::vector<std::thread> m_threads;
-    std::mutex m_conditional_mutex;
-    std::condition_variable m_conditional_lock;
+    JSON lookup(string key, bool* ok);
+    JSON index(s32 i, bool* ok);
 
-public:
-    thread_pool(const int n_threads) : m_threads(std::vector<std::thread>(n_threads)), m_shutdown(false) {}
+    JSONObject* as_object(bool* ok);
+    JSONArray* as_array(bool* ok);
+    string as_string(bool* ok);
+    double as_number(bool* ok);
 
-    thread_pool(const thread_pool&) = delete;
-    thread_pool(thread_pool&&) = delete;
+    JSONObject* lookup_object(string key, bool* ok);
+    JSONArray* lookup_array(string key, bool* ok);
+    string lookup_string(string key, bool* ok);
+    double lookup_number(string key, bool* ok);
 
-    thread_pool& operator=(const thread_pool&) = delete;
-    thread_pool& operator=(thread_pool&&) = delete;
-
-    void init() {
-        for (int i = 0; i < m_threads.size(); ++i) {
-            m_threads[i] = std::thread(thread_worker(this, i));
-        }
-    }
-
-    void shutdown() {
-        m_shutdown = true;
-        m_conditional_lock.notify_all();
-
-        for (int i = 0; i < m_threads.size(); ++i) {
-            if (m_threads[i].joinable()) {
-                m_threads[i].join();
-            }
-        }
-    }
-
-    // 提交要由池异步执行的函数
-    template <typename F, typename... Args>
-    auto submit(F&& f, Args&&... args) -> std::future<decltype(f(args...))> {
-        // 创建一个具有边界参数的函数 准备执行
-        std::function<decltype(f(args...))()> func = std::bind(std::forward<F>(f), std::forward<Args>(args)...);
-        // 将其封装到共享的ptr中 以便能够复制构造
-        auto task_ptr = std::make_shared<std::packaged_task<decltype(f(args...))()>>(func);
-
-        std::function<void()> wrapper_func = [task_ptr]() { (*task_ptr)(); };
-        m_queue.enqueue(wrapper_func);
-
-        // 如果一个线程正在等待 则唤醒它
-        m_conditional_lock.notify_one();
-        return task_ptr->get_future();
-    }
+    double index_number(s32 i, bool* ok);
 };
+
+struct JSONObject {
+    JSON value;
+    string key;
+    JSONObject* next;
+    u64 hash;
+};
+
+struct JSONArray {
+    JSON value;
+    JSONArray* next;
+    u64 index;
+};
+
+struct JSONDocument {
+    JSON root;
+    string error;
+    arena arena;
+
+    void parse(string contents);
+    void trash();
+};
+
+struct StringBuilder;
+void json_write_string(StringBuilder* sb, JSON* json);
+void json_print(JSON* json);
+
+void json_to_lua(lua_State* L, JSON* json);
+string lua_to_json_string(lua_State* L, s32 arg, string* contents, s32 width);
 
 }  // namespace neko
 

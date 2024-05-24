@@ -24,7 +24,7 @@ struct neko::static_refl::neko_type_info<neko_platform_running_desc_t> : neko_ty
 };
 
 template <>
-struct neko::static_refl::neko_type_info<neko_engine_cvar_t> : neko_type_info_base<neko_engine_cvar_t> {
+struct neko::static_refl::neko_type_info<neko_client_cvar_t> : neko_type_info_base<neko_client_cvar_t> {
     static constexpr AttrList attrs = {};
     static constexpr FieldList fields = {
             rf_field{TSTR("show_editor"), &rf_type::show_editor},                    //

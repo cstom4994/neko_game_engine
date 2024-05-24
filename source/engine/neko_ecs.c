@@ -2,14 +2,15 @@
 #include "neko_ecs.h"
 
 #include <assert.h>
+#include <malloc.h>  // alloca
+#include <stdarg.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "deps/lua/lauxlib.h"
-#include "deps/lua/lua.h"
-#include "deps/lua/lualib.h"
-#include "neko.h"
+#include "engine/neko.h"
+#include "engine/neko_lua.h"
 
 #define TYPE_MIN_ID 1
 #define TYPE_MAX_ID 255
@@ -756,328 +757,927 @@ int __neko_ecs_create_world(lua_State *L) {
 // ECS
 =============================*/
 
-#if 1
+#define OUT_OF_MEMORY "out of memory"
+#define OUT_OF_BOUNDS "index out of bounds"
+#define FAILED_LOOKUP "lookup failed and returned null"
+#define NOT_IMPLEMENTED "not implemented"
+#define SOMETHING_TERRIBLE "something went terribly wrong"
 
-neko_ecs_stack *neko_ecs_stack_make(u64 capacity) {
-    neko_ecs_stack *s = (neko_ecs_stack *)neko_malloc(sizeof(neko_ecs_stack));
-    s->data = (u32 *)neko_malloc(sizeof(*s->data) * capacity);
-    s->capacity = capacity;
-    s->top = 0;
-    s->empty = true;
+#define ECS_ABORT(error)                                            \
+    fprintf(stderr, "ABORT %s:%d %s\n", __FILE__, __LINE__, error); \
+    abort();
 
-    return s;
-}
-
-void neko_ecs_stack_destroy(neko_ecs_stack *s) {
-    neko_free(s->data);
-    neko_free(s);
-}
-
-b32 neko_ecs_stack_empty(neko_ecs_stack *s) { return s->empty; }
-
-b32 neko_ecs_stack_full(neko_ecs_stack *s) { return s->top == s->capacity; }
-
-u64 neko_ecs_stack_capacity(neko_ecs_stack *s) { return s->capacity; }
-
-u64 neko_ecs_stack_top(neko_ecs_stack *s) { return s->top; }
-
-u32 neko_ecs_stack_peek(neko_ecs_stack *s) {
-    if (s->empty) {
-        neko_log_warning("[ECS] Failed to peek, stack is full");
-        return 0;
-    }
-    return s->data[s->top - 1];
-}
-
-void neko_ecs_stack_push(neko_ecs_stack *s, u32 val) {
-    if (neko_ecs_stack_full(s)) {
-        neko_log_warning("[ECS] Failed to push %u, stack is full", val);
-        return;
+#define ECS_ENSURE(cond, error)                            \
+    if (!(cond)) {                                         \
+        fprintf(stderr, "condition not met: %s\n", #cond); \
+        ECS_ABORT(error);                                  \
     }
 
-    s->empty = false;
-    s->data[s->top++] = val;
+#ifndef NDEBUG
+#define ECS_ASSERT(cond, error) ECS_ENSURE(cond, error);
+#else
+#define ECS_ASSERT(cond, error)
+#endif
+
+#define ECS_OFFSET(p, offset) ((void *)(((char *)(p)) + (offset)))
+
+static inline void *ecs_malloc(size_t bytes) {
+    void *mem = malloc(bytes);
+    ECS_ENSURE(mem != NULL, OUT_OF_MEMORY);
+    return mem;
 }
 
-u32 neko_ecs_stack_pop(neko_ecs_stack *s) {
-    if (s->empty) {
-        neko_log_warning("[ECS] Failed to pop, stack is empty");
-        return 0;
+static inline void *ecs_calloc(size_t items, size_t bytes) {
+    void *mem = calloc(items, bytes);
+    ECS_ENSURE(mem != NULL, OUT_OF_MEMORY);
+    return mem;
+}
+
+static inline void ecs_realloc(void **mem, size_t bytes) {
+    *mem = realloc(*mem, bytes);
+    if (bytes != 0) {
+        ECS_ENSURE(*mem != NULL, OUT_OF_MEMORY);
     }
-
-    if (s->top == 1) s->empty = true;
-    return s->data[--s->top];
 }
 
-neko_ecs_component_pool neko_ecs_component_pool_make(u32 count, u32 size, neko_ecs_component_destroy destroy_func) {
-    neko_ecs_component_pool pool;
-    pool.data = neko_malloc(count * size);
-    pool.count = count;
-    pool.size = size;
-    pool.destroy_func = destroy_func;
-    pool.indexes = neko_ecs_stack_make(count);
+typedef struct ecs_bucket_t {
+    const void *key;
+    u32 index;
+} ecs_bucket_t;
 
-    for (u32 i = count; i-- > 0;) {
-        neko_ecs_stack_push(pool.indexes, i);
-    }
+struct ecs_map_t {
+    ecs_hash_fn hash;
+    ecs_key_equal_fn key_equal;
+    size_t key_size;
+    size_t item_size;
+    u32 count;
+    u32 load_capacity;
+    ecs_bucket_t *sparse;
+    u32 *reverse_lookup;
+    void *dense;
+};
 
-    return pool;
+struct ecs_type_t {
+    u32 capacity;
+    u32 count;
+    ecs_entity_t *elements;
+};
+
+struct ecs_signature_t {
+    u32 count;
+    ecs_entity_t components[];
+};
+
+typedef struct ecs_system_t {
+    ecs_archetype_t *archetype;
+    ecs_signature_t *sig;
+    ecs_system_fn run;
+} ecs_system_t;
+
+struct ecs_edge_t {
+    ecs_entity_t component;
+    ecs_archetype_t *archetype;
+};
+
+struct ecs_edge_list_t {
+    u32 capacity;
+    u32 count;
+    ecs_edge_t *edges;
+};
+
+typedef struct ecs_record_t {
+    ecs_archetype_t *archetype;
+    u32 row;
+} ecs_record_t;
+
+struct ecs_archetype_t {
+    u32 capacity;
+    u32 count;
+    ecs_type_t *type;
+    ecs_entity_t *entity_ids;
+    void **components;
+    ecs_edge_list_t *left_edges;
+    ecs_edge_list_t *right_edges;
+};
+
+struct ecs_registry_t {
+    ecs_map_t *entity_index;     // <ecs_entity_t, ecs_record_t>
+    ecs_map_t *component_index;  // <ecs_entity_t, size_t>
+    ecs_map_t *system_index;     // <ecs_entity_t, ecs_system_t>
+    ecs_map_t *type_index;       // <ecs_type_t *, ecs_archetype_t *>
+    ecs_archetype_t *root;
+    ecs_entity_t next_entity_id;
+};
+
+#define MAP_LOAD_FACTOR 0.5
+#define MAP_COLLISION_THRESHOLD 30
+#define MAP_TOMESTONE ((u32) - 1)
+
+ecs_map_t *ecs_map_new(size_t key_size, size_t item_size, ecs_hash_fn hash_fn, ecs_key_equal_fn key_equal_fn, u32 capacity) {
+    ecs_map_t *map = ecs_malloc(sizeof(ecs_map_t));
+    map->hash = hash_fn;
+    map->key_equal = key_equal_fn;
+    map->sparse = ecs_calloc(sizeof(ecs_bucket_t), capacity);
+    map->reverse_lookup = ecs_malloc(sizeof(u32) * (capacity * MAP_LOAD_FACTOR + 1));
+    map->dense = ecs_malloc(item_size * (capacity * MAP_LOAD_FACTOR + 1));
+    map->key_size = key_size;
+    map->item_size = item_size;
+    map->load_capacity = capacity;
+    map->count = 0;
+    return map;
 }
 
-void neko_ecs_component_pool_destroy(neko_ecs_component_pool *pool) {
-    // for (u32 i = 0; i < pool->count; i++) {
-    //     u8* ptr = (u8*)((u8*)pool->data + (i * pool->size));
-    //     if (pool->destroy_func) pool->destroy_func(ptr);
-    // }
-    neko_free(pool->data);
-    neko_ecs_stack_destroy(pool->indexes);
+void ecs_map_free(ecs_map_t *map) {
+    free(map->sparse);
+    free(map->reverse_lookup);
+    free(map->dense);
+    free(map);
 }
 
-void neko_ecs_component_pool_push(neko_ecs_component_pool *pool, u32 index) {
-    u8 *ptr = (u8 *)((u8 *)pool->data + (index * pool->size));
-    if (pool->destroy_func) pool->destroy_func(ptr);
-    neko_ecs_stack_push(pool->indexes, index);
+static inline u32 next_pow_of_2(u32 n) {
+    n--;
+    n |= n >> 1;
+    n |= n >> 2;
+    n |= n >> 4;
+    n |= n >> 8;
+    n |= n >> 16;
+    n++;
+
+    return n;
 }
 
-u32 neko_ecs_component_pool_pop(neko_ecs_component_pool *pool, void *data) {
-    u32 index = neko_ecs_stack_pop(pool->indexes);
-    u8 *ptr = (u8 *)((u8 *)pool->data + (index * pool->size));
-    if (NULL != data)
-        memcpy(ptr, data, pool->size);  // 初始化组件数据是以深拷贝进行
-    else
-        memset(ptr, 0, pool->size);  // 默认组件数据为NULL 一般发生在组件数据需要特殊初始化
-    return index;
-}
+void *ecs_map_get(const ecs_map_t *map, const void *key) {
+    u32 i = map->hash(key);
+    ecs_bucket_t bucket = map->sparse[i % map->load_capacity];
+    u32 collisions = 0;
 
-neko_ecs *neko_ecs_make(u32 max_entities, u32 component_count, u32 system_count) {
-    neko_ecs *ecs = (neko_ecs *)neko_malloc(sizeof(*ecs));
-    ecs->max_entities = max_entities;
-    ecs->component_count = component_count;
-    ecs->system_count = system_count;
-    ecs->indexes = neko_ecs_stack_make(max_entities);
-    ecs->max_index = 0;
-    ecs->versions = (u32 *)neko_malloc(max_entities * sizeof(u32));
-    ecs->components = (u32 *)neko_malloc(max_entities * component_count * sizeof(u32));
-    ecs->component_masks = (b32 *)neko_malloc(max_entities * component_count * sizeof(b32));
-    ecs->pool = (neko_ecs_component_pool *)neko_malloc(component_count * sizeof(*ecs->pool));
-    ecs->systems = (neko_ecs_system *)neko_malloc(system_count * sizeof(*ecs->systems));
-    ecs->systems_top = 0;
-
-    for (u32 i = max_entities; i-- > 0;) {
-        neko_ecs_stack_push(ecs->indexes, i);
-
-        ecs->versions[i] = 0;
-        for (u32 j = 0; j < component_count; j++) {
-            ecs->components[i * component_count + j] = 0;
-            ecs->component_masks[i * component_count + j] = 0;
+    while (bucket.index != 0) {
+        if (map->key_equal(bucket.key, key) && bucket.index != MAP_TOMESTONE) {
+            break;
         }
+
+        i += next_pow_of_2(collisions++);
+        bucket = map->sparse[i % map->load_capacity];
     }
 
-    for (u32 i = 0; i < system_count; i++) {
-        ecs->systems[i].func = NULL;
-    }
-
-    for (u32 i = 0; i < ecs->component_count; i++) {
-        ecs->pool[i].data = NULL;
-    }
-
-    //    size_t needed_memory_size = (max_entities * sizeof(u32)) + (max_entities * component_count * sizeof(u32)) + (max_entities * component_count * sizeof(b32)) +
-    //                                (component_count * sizeof(*ecs->pool)) + (system_count * sizeof(*ecs->systems)) + (sizeof(u32) * max_entities);
-    //    neko_log_trace("[ECS] mem used: %llu", needed_memory_size);
-
-    return ecs;
-}
-
-void neko_ecs_destroy(neko_ecs *ecs) {
-
-    for (u32 i = 0; i < ecs->component_count; i++) {
-        neko_ecs_component_pool_destroy(&ecs->pool[i]);
-    }
-
-    neko_ecs_stack_destroy(ecs->indexes);
-
-    neko_free(ecs->versions);
-    neko_free(ecs->components);
-    neko_free(ecs->component_masks);
-    neko_free(ecs->pool);
-    neko_free(ecs->systems);
-
-    neko_free(ecs);
-}
-
-void neko_ecs_register_component(neko_ecs *ecs, neko_ecs_component_type component_type, u32 count, u32 size, neko_ecs_component_destroy destroy_func) {
-    if (ecs->pool[component_type].data != NULL) {
-        neko_log_warning("[ECS] Registered Component type %u more than once.", component_type);
-        return;
-    }
-
-    if (count * size <= 0) {
-        neko_log_warning("[ECS] Registering Component type %u (count*size) is less than 0.", component_type);
-        return;
-    }
-
-    ecs->pool[component_type] = neko_ecs_component_pool_make(count, size, destroy_func);
-}
-
-void neko_ecs_register_system(neko_ecs *ecs, neko_ecs_system_func func, neko_ecs_system_type type) {
-    neko_ecs_system *sys = &ecs->systems[ecs->systems_top++];
-    sys->func = func;
-    sys->type = type;
-}
-
-void neko_ecs_run_systems(neko_ecs *ecs, neko_ecs_system_type type) {
-    for (u32 i = 0; i < ecs->systems_top; i++) {
-        neko_ecs_system *sys = &ecs->systems[i];
-        if (sys->type == type) sys->func(ecs);
-    }
-}
-
-void neko_ecs_run_system(neko_ecs *ecs, u32 system_index) { ecs->systems[system_index].func(ecs); }
-
-u32 neko_ecs_for_count(neko_ecs *ecs) { return ecs->max_index + 1; }
-
-neko_ecs_ent neko_ecs_get_ent(neko_ecs *ecs, u32 index) { return __neko_ecs_ent_id(index, ecs->versions[index]); }
-
-neko_ecs_ent neko_ecs_ent_make(neko_ecs *ecs) {
-    u32 index = neko_ecs_stack_pop(ecs->indexes);
-    u32 ver = ecs->versions[index];
-
-    if (index > ecs->max_index) ecs->max_index = index;
-
-    neko_ecs_ent ent_id = __neko_ecs_ent_id(index, ver);
-
-    return ent_id;
-}
-
-void neko_ecs_ent_destroy(neko_ecs *ecs, neko_ecs_ent e) {
-    u32 index = __neko_ecs_ent_index(e);
-
-    ecs->versions[index]++;
-    for (u32 i = 0; i < ecs->component_count; i++) {
-        neko_ecs_ent_remove_component(ecs, e, i);
-    }
-
-    neko_ecs_stack_push(ecs->indexes, index);
-}
-
-void neko_ecs_ent_add_component(neko_ecs *ecs, neko_ecs_ent e, neko_ecs_component_type type, void *component_data) {
-    u32 index = __neko_ecs_ent_index(e);
-
-    if (neko_ecs_ent_has_component(ecs, e, type)) {
-        neko_log_warning("[ECS] Component %u already exists on neko_ecs_ent %lu (Index %u)", type, e, index);
-        return;
-    }
-
-    neko_ecs_component_pool *pool = &ecs->pool[type];
-    u32 c_index = neko_ecs_component_pool_pop(pool, component_data);
-    ecs->components[index * ecs->component_count + type] = c_index;
-    ecs->component_masks[index * ecs->component_count + type] = true;
-}
-
-void neko_ecs_ent_remove_component(neko_ecs *ecs, neko_ecs_ent e, neko_ecs_component_type type) {
-    u32 index = __neko_ecs_ent_index(e);
-
-    if (!neko_ecs_ent_has_component(ecs, e, type)) {
-        neko_log_warning("[ECS] Component %u doesn't exist on neko_ecs_ent %lu (Index %u)", type, e, index);
-        return;
-    }
-
-    neko_ecs_component_pool *pool = &ecs->pool[type];
-    neko_ecs_component_pool_push(pool, ecs->components[index * ecs->component_count + type]);
-    ecs->component_masks[index * ecs->component_count + type] = false;
-}
-
-void *neko_ecs_ent_get_component(neko_ecs *ecs, neko_ecs_ent e, neko_ecs_component_type type) {
-    u32 index = __neko_ecs_ent_index(e);
-
-    if (!neko_ecs_ent_has_component(ecs, e, type)) {
-        neko_log_warning("[ECS] Trying to get non existent component %u on neko_ecs_ent %lu (Index %u)", type, e, index);
+    if (bucket.index == 0 || bucket.index == MAP_TOMESTONE) {
         return NULL;
     }
 
-    u32 c_index = ecs->components[index * ecs->component_count + type];
-    u8 *ptr = (u8 *)((u8 *)ecs->pool[type].data + (c_index * ecs->pool[type].size));
-    return ptr;
+    return ECS_OFFSET(map->dense, map->item_size * bucket.index);
 }
 
-b32 neko_ecs_ent_is_valid(neko_ecs *ecs, neko_ecs_ent e) { return ecs->versions[__neko_ecs_ent_index(e)] == __neko_ecs_ent_ver(e); }
+static void ecs_map_grow(ecs_map_t *map, float growth_factor) {
+    u32 new_capacity = map->load_capacity * growth_factor;
+    ecs_bucket_t *new_sparse = ecs_calloc(sizeof(ecs_bucket_t), new_capacity);
+    free(map->reverse_lookup);
+    map->reverse_lookup = ecs_malloc(sizeof(u32) * (new_capacity * MAP_LOAD_FACTOR + 1));
+    ecs_realloc(&map->dense, map->item_size * (new_capacity * MAP_LOAD_FACTOR + 1));
 
-b32 neko_ecs_ent_has_component(neko_ecs *ecs, neko_ecs_ent e, neko_ecs_component_type component_type) { return ecs->component_masks[__neko_ecs_ent_index(e) * ecs->component_count + component_type]; }
+    for (u32 i = 0; i < map->load_capacity; i++) {
+        ecs_bucket_t bucket = map->sparse[i];
 
-b32 neko_ecs_ent_has_mask(neko_ecs *ecs, neko_ecs_ent e, u32 component_type_count, neko_ecs_component_type component_types[]) {
-    for (u32 i = 0; i < component_type_count; i++) {
-        if (!neko_ecs_ent_has_component(ecs, e, component_types[i])) return false;
+        if (bucket.index != 0 && bucket.index != MAP_TOMESTONE) {
+            u32 hashed = map->hash(bucket.key);
+            ecs_bucket_t *other = &new_sparse[hashed % new_capacity];
+            u32 collisions = 0;
+
+            while (other->index != 0) {
+                hashed += next_pow_of_2(collisions++);
+                other = &new_sparse[hashed % new_capacity];
+            }
+
+            other->key = bucket.key;
+            other->index = bucket.index;
+            map->reverse_lookup[bucket.index] = hashed % new_capacity;
+        }
+    }
+
+    free(map->sparse);
+    map->sparse = new_sparse;
+    map->load_capacity = new_capacity;
+}
+
+void ecs_map_set(ecs_map_t *map, const void *key, const void *payload) {
+    u32 i = map->hash(key);
+    ecs_bucket_t *bucket = &map->sparse[i % map->load_capacity];
+    u32 collisions = 0;
+    ecs_bucket_t *first_tomestone = NULL;
+
+    while (bucket->index != 0) {
+        if (map->key_equal(bucket->key, key) && bucket->index != MAP_TOMESTONE) {
+            void *loc = ECS_OFFSET(map->dense, map->item_size * bucket->index);
+            memcpy(loc, payload, map->item_size);
+            return;
+        }
+
+        if (!first_tomestone && bucket->index == MAP_TOMESTONE) {
+            first_tomestone = bucket;
+        }
+
+        i += next_pow_of_2(collisions++);
+        ECS_ASSERT(collisions < MAP_COLLISION_THRESHOLD, "too many hash collisions");
+        bucket = &map->sparse[i % map->load_capacity];
+    }
+
+    if (first_tomestone) {
+        bucket = first_tomestone;
+    }
+
+    bucket->key = key;
+    bucket->index = map->count + 1;
+    void *loc = ECS_OFFSET(map->dense, map->item_size * bucket->index);
+    memcpy(loc, payload, map->item_size);
+    map->reverse_lookup[bucket->index] = i % map->load_capacity;
+    map->count++;
+
+    if (map->count >= map->load_capacity * MAP_LOAD_FACTOR) {
+        ecs_map_grow(map, 2);
+    }
+}
+
+void ecs_map_remove(ecs_map_t *map, const void *key) {
+    u32 i = map->hash(key);
+    ecs_bucket_t bucket = map->sparse[i % map->load_capacity];
+    u32 next = 0;
+
+    while (bucket.index != 0) {
+        if (map->key_equal(bucket.key, key) && bucket.index != MAP_TOMESTONE) {
+            break;
+        }
+
+        i += next_pow_of_2(next++);
+        bucket = map->sparse[i % map->load_capacity];
+    }
+
+    if (bucket.index == 0 || bucket.index == MAP_TOMESTONE) {
+        return;
+    }
+
+    char **tmp = alloca(sizeof(char *) * map->item_size);
+    void *left = ECS_OFFSET(map->dense, map->item_size * bucket.index);
+    void *right = ECS_OFFSET(map->dense, map->item_size * map->count);
+    memcpy(tmp, left, map->item_size);
+    memcpy(left, right, map->item_size);
+    memcpy(right, tmp, map->item_size);
+
+    map->sparse[map->reverse_lookup[map->count]].index = bucket.index;
+    map->sparse[map->reverse_lookup[bucket.index]].index = MAP_TOMESTONE;
+
+    u32 reverse_tmp = map->reverse_lookup[bucket.index];
+    map->reverse_lookup[bucket.index] = map->reverse_lookup[map->count];
+    map->reverse_lookup[map->count] = reverse_tmp;
+
+    map->count--;
+}
+
+void *ecs_map_values(ecs_map_t *map) { return ECS_OFFSET(map->dense, map->item_size); }
+
+u32 ecs_map_len(ecs_map_t *map) { return map->count; }
+
+u32 ecs_map_hash_intptr(const void *key) {
+    uintptr_t hashed = (uintptr_t)key;
+    hashed = ((hashed >> 16) ^ hashed) * 0x45d9f3b;
+    hashed = ((hashed >> 16) ^ hashed) * 0x45d9f3b;
+    hashed = (hashed >> 16) ^ hashed;
+    return hashed;
+}
+
+u32 ecs_map_hash_string(const void *key) {
+    char *str = (char *)key;
+    u32 hash = 5381;
+    char c;
+
+    while ((c = *str++)) {
+        hash = ((hash << 5) + hash) + c;
+    }
+
+    return hash;
+}
+
+u32 ecs_map_hash_type(const void *key) {
+    ecs_type_t *type = (ecs_type_t *)key;
+    u32 hash = 5381;
+    ECS_TYPE_EACH(type, e, { hash = ((hash << 5) + hash) + e; });
+    return hash;
+}
+
+bool ecs_map_equal_intptr(const void *a, const void *b) { return a == b; }
+
+bool ecs_map_equal_string(const void *a, const void *b) { return strcmp(a, b) == 0; }
+
+bool ecs_map_equal_type(const void *a, const void *b) { return ecs_type_equal((ecs_type_t *)a, (ecs_type_t *)b); }
+
+#ifndef NDEBUG
+void ecs_map_inspect(ecs_map_t *map) {
+    printf("\nmap: {\n"
+           "  item_size: %lld bytes\n"
+           "  count: %d items\n"
+           "  load_capacity: %d\n",
+           map->item_size, map->count, map->load_capacity);
+
+    printf("  sparse: [\n");
+    for (u32 i = 0; i < map->load_capacity; i++) {
+        ecs_bucket_t bucket = map->sparse[i];
+        printf("    %d: { key: %llu, index: %d }\n", i, (uintptr_t)bucket.key, bucket.index);
+    }
+    printf("  ]\n");
+
+    printf("  dense: [\n");
+    for (u32 i = 0; i < map->load_capacity * MAP_LOAD_FACTOR + 1; i++) {
+        if (i == map->count + 1) {
+            printf("    -- end of load --\n");
+        }
+
+        int item = *(int *)ECS_OFFSET(map->dense, map->item_size * i);
+        printf("    %d: %d\n", i, item);
+    }
+    printf("  ]\n");
+
+    printf("  reverse_lookup: [\n");
+    for (u32 i = 0; i < map->load_capacity * MAP_LOAD_FACTOR + 1; i++) {
+        if (i == map->count + 1) {
+            printf("    -- end of load --\n");
+        }
+
+        printf("    %d: %d\n", i, map->reverse_lookup[i]);
+    }
+    printf("  ]\n");
+
+    printf("}\n");
+}
+#endif  // NDEBUG
+
+ecs_type_t *ecs_type_new(u32 capacity) {
+    ecs_type_t *type = ecs_malloc(sizeof(ecs_type_t));
+    type->elements = ecs_malloc(sizeof(ecs_entity_t) * capacity);
+    type->capacity = capacity;
+    type->count = 0;
+    return type;
+}
+
+void ecs_type_free(ecs_type_t *type) {
+    free(type->elements);
+    free(type);
+}
+
+ecs_type_t *ecs_type_copy(const ecs_type_t *from) {
+    ecs_type_t *type = ecs_malloc(sizeof(ecs_type_t));
+    type->elements = ecs_malloc(sizeof(ecs_entity_t) * from->capacity);
+    type->capacity = from->capacity;
+    type->count = from->count;
+    memcpy(type->elements, from->elements, sizeof(ecs_entity_t) * from->count);
+    return type;
+}
+
+u32 ecs_type_len(const ecs_type_t *type) { return type->count; }
+
+bool ecs_type_equal(const ecs_type_t *a, const ecs_type_t *b) {
+    if (a == b) {
+        return true;
+    }
+
+    if (a->count != b->count) {
+        return false;
+    }
+
+    for (u32 i = 0; i < a->count; i++) {
+        if (a->elements[i] != b->elements[i]) {
+            return false;
+        }
     }
 
     return true;
 }
 
-u32 neko_ecs_ent_get_version(neko_ecs *ecs, neko_ecs_ent e) { return ecs->versions[__neko_ecs_ent_index(e)]; }
-
-void neko_ecs_ent_print(neko_ecs *ecs, neko_ecs_ent e) {
-    u32 index = __neko_ecs_ent_index(e);
-
-    neko_printf("---- neko_ecs_ent ----\nIndex: %d\nVersion: %d\nMask: ", index, ecs->versions[index]);
-
-    for (u32 i = ecs->component_count; i-- > 0;) {
-        neko_printf("%u", ecs->component_masks[index * ecs->component_count + i]);
-    }
-    neko_printf("\n");
-
-    for (u32 i = 0; i < ecs->component_count; i++) {
-        if (neko_ecs_ent_has_component(ecs, e, i)) {
-            // neko_println("Component Type: %s (Index: %d)", std::string(neko::enum_name((ComponentType)i)).c_str(), ecs->components[index * ecs->component_count + i]);
+s32 ecs_type_index_of(const ecs_type_t *type, ecs_entity_t e) {
+    for (u32 i = 0; i < type->count; i++) {
+        if (type->elements[i] == e) {
+            return i;
         }
     }
 
-    neko_println("----------------");
+    return -1;
 }
 
-neko_ecs_ent_view neko_ecs_ent_view_single(neko_ecs *ecs, neko_ecs_component_type component_type) {
-
-    neko_ecs_ent_view view = neko_default_val();
-
-    view.view_type = component_type;
-    view.ecs = ecs;
-
-    for (view.i = 0; view.i < neko_ecs_for_count(view.ecs); view.i++) {
-        neko_ecs_ent e = neko_ecs_get_ent(view.ecs, view.i);
-        if (neko_ecs_ent_has_component(view.ecs, e, component_type)) {
-            view.ent = e;
-            view.valid = true;
-            return view;
+void ecs_type_add(ecs_type_t *type, ecs_entity_t e) {
+    if (type->count == type->capacity) {
+        if (type->capacity == 0) {
+            type->capacity = 1;
         }
+
+        const u32 growth = 2;
+        ecs_realloc((void **)&type->elements, sizeof(ecs_entity_t) * type->capacity * growth);
+        type->capacity *= growth;
     }
 
-    view.valid = false;
-    return view;
+    u32 i = 0;
+    while (i < type->count && type->elements[i] < e) {
+        i++;
+    }
+
+    if (i < type->count && type->elements[i] == e) {
+        return;
+    }
+
+    ecs_entity_t held = e;
+    ecs_entity_t tmp;
+    while (i < type->count) {
+        tmp = type->elements[i];
+        type->elements[i] = held;
+        held = tmp;
+        i++;
+    }
+
+    type->elements[i] = held;
+    type->count++;
 }
 
-b32 neko_ecs_ent_view_valid(neko_ecs_ent_view *view) {
-    neko_assert(view);
-    return (view->valid && view->i != neko_ecs_for_count(view->ecs));
+void ecs_type_remove(ecs_type_t *type, ecs_entity_t e) {
+    u32 i = 0;
+    while (i < type->count && type->elements[i] < e) {
+        i++;
+    }
+
+    if (i == type->count || type->elements[i] != e) {
+        return;
+    }
+
+    ECS_ASSERT(i < type->count, OUT_OF_BOUNDS);
+
+    while (i < type->count - 1) {
+        type->elements[i] = type->elements[i + 1];
+        i++;
+    }
+
+    type->count--;
 }
 
-void neko_ecs_ent_view_next(neko_ecs_ent_view *view) {
-    neko_assert(view->ecs);
-    neko_assert(view);
+bool ecs_type_is_superset(const ecs_type_t *super, const ecs_type_t *sub) {
+    u32 left = 0, right = 0;
+    u32 super_len = ecs_type_len(super);
+    u32 sub_len = ecs_type_len(sub);
 
-    view->valid = false;  // 重置有效状态
-    view->i++;            // next
+    if (super_len < sub_len) {
+        return false;
+    }
 
-    while (view->i < neko_ecs_for_count(view->ecs)) {
-        neko_ecs_ent e = neko_ecs_get_ent(view->ecs, view->i);
-        if (neko_ecs_ent_has_component(view->ecs, e, view->view_type)) {
-            view->ent = e;
-            view->valid = true;
-            break;
+    while (left < super_len && right < sub_len) {
+        if (super->elements[left] < sub->elements[right]) {
+            left++;
+        } else if (super->elements[left] == sub->elements[right]) {
+            left++;
+            right++;
         } else {
-            view->i++;
+            return false;
         }
     }
+
+    return right == sub_len;
 }
 
+#ifndef NDEBUG
+void ecs_type_inspect(ecs_type_t *type) {
+    printf("\ntype: {\n");
+    printf("  capacity: %d\n", type->capacity);
+    printf("  count: %d\n", type->count);
+
+    printf("  elements: [\n");
+    for (u32 i = 0; i < type->count; i++) {
+        printf("    %d: %llu\n", i, type->elements[i]);
+    }
+    printf("  ]\n");
+
+    printf("}\n");
+}
 #endif
+
+ecs_signature_t *ecs_signature_new(u32 count) {
+    ecs_signature_t *sig = ecs_malloc(sizeof(ecs_signature_t) + (sizeof(ecs_entity_t) * count));
+    sig->count = 0;
+    return sig;
+}
+
+ecs_signature_t *ecs_signature_new_n(u32 count, ...) {
+    ecs_signature_t *sig = ecs_signature_new(count);
+    sig->count = count;
+
+    va_list args;
+    va_start(args, count);
+
+    for (u32 i = 0; i < count; i++) {
+        sig->components[i] = va_arg(args, ecs_entity_t);
+    }
+
+    va_end(args);
+
+    return sig;
+}
+
+void ecs_signature_free(ecs_signature_t *sig) { free(sig); }
+
+ecs_type_t *ecs_signature_as_type(const ecs_signature_t *sig) {
+    ecs_type_t *type = ecs_type_new(sig->count);
+
+    for (u32 i = 0; i < sig->count; i++) {
+        ecs_type_add(type, sig->components[i]);
+    }
+
+    return type;
+}
+
+ecs_edge_list_t *ecs_edge_list_new(void) {
+    ecs_edge_list_t *edge_list = ecs_malloc(sizeof(ecs_edge_list_t));
+    edge_list->capacity = 8;
+    edge_list->count = 0;
+    edge_list->edges = ecs_malloc(sizeof(ecs_edge_t) * edge_list->capacity);
+    return edge_list;
+}
+
+void ecs_edge_list_free(ecs_edge_list_t *edge_list) {
+    free(edge_list->edges);
+    free(edge_list);
+}
+
+u32 ecs_edge_list_len(const ecs_edge_list_t *edge_list) { return edge_list->count; }
+
+void ecs_edge_list_add(ecs_edge_list_t *edge_list, ecs_edge_t edge) {
+    if (edge_list->count == edge_list->capacity) {
+        const u32 growth = 2;
+        ecs_realloc((void **)&edge_list->edges, sizeof(ecs_edge_t) * edge_list->capacity * growth);
+    }
+
+    edge_list->edges[edge_list->count++] = edge;
+}
+
+void ecs_edge_list_remove(ecs_edge_list_t *edge_list, ecs_entity_t component) {
+    ecs_edge_t *edges = edge_list->edges;
+
+    u32 i = 0;
+    while (i < edge_list->count && edges[i].component != component) {
+        i++;
+    }
+
+    if (i == edge_list->count) {
+        return;
+    }
+
+    ecs_edge_t tmp = edges[i];
+    edges[i] = edges[edge_list->count];
+    edges[edge_list->count--] = tmp;
+}
+
+#define ARCHETYPE_INITIAL_CAPACITY 16
+
+static void ecs_archetype_resize_component_array(ecs_archetype_t *archetype, const ecs_map_t *component_index, u32 capacity) {
+    u32 i = 0;
+    ECS_TYPE_EACH(archetype->type, e, {
+        size_t *component_size = ecs_map_get(component_index, (void *)e);
+        ECS_ASSERT(component_size != NULL, FAILED_LOOKUP);
+        ecs_realloc(&archetype->components[i], sizeof(*component_size) * capacity);
+        archetype->capacity = capacity;
+        i++;
+    });
+}
+
+ecs_archetype_t *ecs_archetype_new(ecs_type_t *type, const ecs_map_t *component_index, ecs_map_t *type_index) {
+    ECS_ENSURE(ecs_map_get(type_index, type) == NULL, "archetype already exists");
+
+    ecs_archetype_t *archetype = ecs_malloc(sizeof(ecs_archetype_t));
+
+    archetype->capacity = ARCHETYPE_INITIAL_CAPACITY;
+    archetype->count = 0;
+    archetype->type = type;
+    archetype->entity_ids = ecs_malloc(sizeof(ecs_entity_t) * ARCHETYPE_INITIAL_CAPACITY);
+    archetype->components = ecs_calloc(sizeof(void *), ecs_type_len(type));
+    archetype->left_edges = ecs_edge_list_new();
+    archetype->right_edges = ecs_edge_list_new();
+
+    ecs_archetype_resize_component_array(archetype, component_index, ARCHETYPE_INITIAL_CAPACITY);
+    ecs_map_set(type_index, type, &archetype);
+
+    return archetype;
+}
+
+void ecs_archetype_free(ecs_archetype_t *archetype) {
+    u32 component_count = ecs_type_len(archetype->type);
+    for (u32 i = 0; i < component_count; i++) {
+        free(archetype->components[i]);
+    }
+    free(archetype->components);
+
+    ecs_type_free(archetype->type);
+    ecs_edge_list_free(archetype->left_edges);
+    ecs_edge_list_free(archetype->right_edges);
+    free(archetype->entity_ids);
+    free(archetype);
+}
+
+u32 ecs_archetype_add(ecs_archetype_t *archetype, const ecs_map_t *component_index, ecs_map_t *entity_index, ecs_entity_t e) {
+    if (archetype->count == archetype->capacity) {
+        const u32 growth = 2;
+        ecs_realloc((void **)&archetype->entity_ids, sizeof(ecs_entity_t) * archetype->capacity * growth);
+        ecs_archetype_resize_component_array(archetype, component_index, archetype->capacity * growth);
+    }
+
+    archetype->entity_ids[archetype->count] = e;
+    ecs_map_set(entity_index, (void *)e, &(ecs_record_t){archetype, archetype->count});
+
+    return archetype->count++;
+}
+
+u32 ecs_archetype_move_entity_right(ecs_archetype_t *left, ecs_archetype_t *right, const ecs_map_t *component_index, ecs_map_t *entity_index, u32 left_row) {
+    ECS_ASSERT(left_row < left->count, OUT_OF_BOUNDS);
+    ecs_entity_t removed = left->entity_ids[left_row];
+    left->entity_ids[left_row] = left->entity_ids[left->count - 1];
+
+    u32 right_row = ecs_archetype_add(right, component_index, entity_index, removed);
+
+    u32 i = 0, j = 0;
+    ECS_TYPE_EACH(left->type, e, {
+        ECS_ASSERT(e >= right->type->elements[j], "elements in types mismatched");
+
+        while (e != right->type->elements[j]) {
+            j++;
+        }
+
+        size_t *component_size = ecs_map_get(component_index, (void *)e);
+        ECS_ASSERT(component_size != NULL, FAILED_LOOKUP);
+        void *left_component_array = left->components[i];
+        void *right_component_array = right->components[j];
+
+        void *insert_component = ECS_OFFSET(right_component_array, *component_size * right_row);
+        void *remove_component = ECS_OFFSET(left_component_array, *component_size * left_row);
+        void *swap_component = ECS_OFFSET(left_component_array, *component_size * (left->count - 1));
+
+        memcpy(insert_component, remove_component, *component_size);
+        memcpy(remove_component, swap_component, *component_size);
+
+        i++;
+    });
+
+    left->count--;
+    return right_row;
+}
+
+static inline void ecs_archetype_make_edges(ecs_archetype_t *left, ecs_archetype_t *right, ecs_entity_t component) {
+    ecs_edge_list_add(left->right_edges, (ecs_edge_t){component, right});
+    ecs_edge_list_add(right->left_edges, (ecs_edge_t){component, left});
+}
+
+static void ecs_archetype_insert_vertex_help(ecs_archetype_t *node, ecs_archetype_t *new_node) {
+    u32 node_type_len = ecs_type_len(node->type);
+    u32 new_type_len = ecs_type_len(new_node->type);
+
+    if (node_type_len > new_type_len - 1) {
+        return;
+    }
+
+    if (node_type_len < new_type_len - 1) {
+        ECS_EDGE_LIST_EACH(node->right_edges, edge, { ecs_archetype_insert_vertex_help(edge.archetype, new_node); });
+        return;
+    }
+
+    if (!ecs_type_is_superset(node->type, new_node->type)) {
+        return;
+    }
+
+    u32 i;
+    u32 new_node_type_len = ecs_type_len(new_node->type);
+    for (i = 0; i < new_node_type_len && node->type->elements[i] == new_node->type->elements[i]; i++);
+    ecs_archetype_make_edges(new_node, node, node->type->elements[i]);
+}
+
+ecs_archetype_t *ecs_archetype_insert_vertex(ecs_archetype_t *root, ecs_archetype_t *left_neighbour, ecs_type_t *new_vertex_type, ecs_entity_t component_for_edge, const ecs_map_t *component_index,
+                                             ecs_map_t *type_index) {
+    ecs_archetype_t *vertex = ecs_archetype_new(new_vertex_type, component_index, type_index);
+    ecs_archetype_make_edges(left_neighbour, vertex, component_for_edge);
+    ecs_archetype_insert_vertex_help(root, vertex);
+    return vertex;
+}
+
+static ecs_archetype_t *ecs_archetype_traverse_and_create_help(ecs_archetype_t *vertex, const ecs_type_t *type, u32 stack_n, ecs_entity_t acc[], u32 acc_top, ecs_archetype_t *root,
+                                                               const ecs_map_t *component_index, ecs_map_t *type_index) {
+    if (stack_n == 0) {
+        ECS_ASSERT(ecs_type_equal(vertex->type, type), SOMETHING_TERRIBLE);
+        return vertex;
+    }
+
+    ECS_EDGE_LIST_EACH(vertex->right_edges, edge, {
+        if (ecs_type_index_of(type, edge.component) != -1) {
+            acc[acc_top] = edge.component;
+            return ecs_archetype_traverse_and_create_help(edge.archetype, type, stack_n - 1, acc, acc_top + 1, root, component_index, type_index);
+        }
+    });
+
+    u32 i;
+    ecs_type_t *new_type = ecs_type_new(acc_top);
+    for (i = 0; i < acc_top; i++) {
+        ecs_type_add(new_type, acc[i]);
+    }
+
+    i = 0;
+    ecs_entity_t new_component = 0;
+    ECS_TYPE_EACH(type, e, {
+        if (e != new_type->elements[i]) {
+            new_component = e;
+            ecs_type_add(new_type, new_component);
+            acc[acc_top] = new_component;
+            break;
+        }
+
+        i++;
+    });
+
+    ECS_ASSERT(new_component != 0, SOMETHING_TERRIBLE);
+    ecs_archetype_t *new_vertex = ecs_archetype_insert_vertex(root, vertex, new_type, new_component, component_index, type_index);
+
+    return ecs_archetype_traverse_and_create_help(new_vertex, type, stack_n - 1, acc, acc_top + 1, root, component_index, type_index);
+}
+
+ecs_archetype_t *ecs_archetype_traverse_and_create(ecs_archetype_t *root, const ecs_type_t *type, const ecs_map_t *component_index, ecs_map_t *type_index) {
+    u32 len = ecs_type_len(type);
+    ecs_entity_t *acc = alloca(sizeof(ecs_entity_t) * len);
+    return ecs_archetype_traverse_and_create_help(root, type, len, acc, 0, root, component_index, type_index);
+}
+
+#ifndef NDEBUG
+void ecs_inspect(ecs_registry_t *registry) {
+    ecs_archetype_t *archetype = registry->root;
+    printf("\narchetype: {\n");
+    printf("  self: %p\n", (void *)archetype);
+    printf("  capacity: %d\n", archetype->capacity);
+    printf("  count: %d\n", archetype->count);
+
+    printf("  type: %p\n", (void *)archetype->type);
+    printf("  type: [ ");
+    ECS_TYPE_EACH(archetype->type, e, { printf("%llu ", e); });
+    printf("]\n");
+
+    printf("  entity_ids: [\n");
+    for (u32 i = 0; i < archetype->count; i++) {
+        printf("    %llu\n", archetype->entity_ids[i]);
+    }
+    printf("  ]\n");
+
+    printf("  left_edges: [\n");
+    ECS_EDGE_LIST_EACH(archetype->left_edges, edge, { printf("    { %llu, %p }\n", edge.component, (void *)edge.archetype); });
+    printf("  ]\n");
+
+    printf("  right_edges: [\n");
+    ECS_EDGE_LIST_EACH(archetype->right_edges, edge, { printf("    { %llu, %p }\n", edge.component, (void *)edge.archetype); });
+    printf("  ]\n");
+
+    printf("  components: [\n");
+    u32 type_len = ecs_type_len(archetype->type);
+    for (u32 i = 0; i < type_len; i++) {
+        printf("    %d: [\n", i);
+        for (u32 j = 0; j < archetype->capacity; j++) {
+            if (j == archetype->count) {
+                printf("      -- end of load --\n");
+            }
+            printf("      %d: %f\n", j, *(float *)ECS_OFFSET(archetype->components[i], j * sizeof(float)));
+        }
+        printf("    ]\n");
+    }
+    printf("  ]\n");
+
+    printf("}\n");
+}
+#endif
+
+ecs_registry_t *ecs_init(void) {
+    ecs_registry_t *registry = ecs_malloc(sizeof(ecs_registry_t));
+    registry->entity_index = ECS_MAP(intptr, ecs_entity_t, ecs_record_t, 16);
+    registry->component_index = ECS_MAP(intptr, ecs_entity_t, size_t, 8);
+    registry->system_index = ECS_MAP(intptr, ecs_entity_t, ecs_system_t, 4);
+    registry->type_index = ECS_MAP(type, ecs_type_t *, ecs_archetype_t *, 8);
+
+    ecs_type_t *root_type = ecs_type_new(0);
+    registry->root = ecs_archetype_new(root_type, registry->component_index, registry->type_index);
+    registry->next_entity_id = 1;
+    return registry;
+}
+
+void ecs_destroy(ecs_registry_t *registry) {
+    ECS_MAP_VALUES_EACH(registry->system_index, ecs_system_t, system, { ecs_signature_free(system->sig); });
+    ECS_MAP_VALUES_EACH(registry->type_index, ecs_archetype_t *, archetype, { ecs_archetype_free(*archetype); });
+    ecs_map_free(registry->type_index);
+    ecs_map_free(registry->entity_index);
+    ecs_map_free(registry->component_index);
+    ecs_map_free(registry->system_index);
+    free(registry);
+}
+
+ecs_entity_t ecs_entity(ecs_registry_t *registry) {
+    ecs_archetype_t *root = registry->root;
+    u32 row = ecs_archetype_add(root, registry->component_index, registry->entity_index, registry->next_entity_id);
+    ecs_map_set(registry->entity_index, (void *)registry->next_entity_id, &(ecs_record_t){root, row});
+    return registry->next_entity_id++;
+}
+
+ecs_entity_t ecs_component(ecs_registry_t *registry, size_t component_size) {
+    ecs_map_set(registry->component_index, (void *)registry->next_entity_id, &(size_t){component_size});
+    return registry->next_entity_id++;
+}
+
+ecs_entity_t ecs_system(ecs_registry_t *registry, ecs_signature_t *signature, ecs_system_fn system) {
+    ecs_type_t *type = ecs_signature_as_type(signature);
+    ecs_archetype_t **maybe_archetype = ecs_map_get(registry->type_index, type);
+    ecs_archetype_t *archetype;
+
+    if (maybe_archetype == NULL) {
+        archetype = ecs_archetype_traverse_and_create(registry->root, type, registry->component_index, registry->type_index);
+    } else {
+        archetype = *maybe_archetype;
+        ecs_type_free(type);
+    }
+
+    ecs_map_set(registry->system_index, (void *)registry->next_entity_id, &(ecs_system_t){archetype, signature, system});
+    return registry->next_entity_id++;
+}
+
+void ecs_attach(ecs_registry_t *registry, ecs_entity_t entity, ecs_entity_t component) {
+    ecs_record_t *record = ecs_map_get(registry->entity_index, (void *)entity);
+
+    if (record == NULL) {
+        char err[255];
+        sprintf(err, "attaching component %llu to unknown entity %llu", component, entity);
+        ECS_ABORT(err);
+    }
+
+    ecs_type_t *init_type = record->archetype->type;
+    ecs_type_t *fini_type = ecs_type_copy(init_type);
+    ecs_type_add(fini_type, component);
+
+    ecs_archetype_t **maybe_fini_archetype = ecs_map_get(registry->type_index, fini_type);
+    ecs_archetype_t *fini_archetype;
+
+    if (maybe_fini_archetype == NULL) {
+        fini_archetype = ecs_archetype_insert_vertex(registry->root, record->archetype, fini_type, component, registry->component_index, registry->type_index);
+    } else {
+        ecs_type_free(fini_type);
+        fini_archetype = *maybe_fini_archetype;
+    }
+
+    u32 new_row = ecs_archetype_move_entity_right(record->archetype, fini_archetype, registry->component_index, registry->entity_index, record->row);
+    ecs_map_set(registry->entity_index, (void *)entity, &(ecs_record_t){fini_archetype, new_row});
+}
+
+void ecs_set(ecs_registry_t *registry, ecs_entity_t entity, ecs_entity_t component, const void *data) {
+    size_t *component_size = ecs_map_get(registry->component_index, (void *)component);
+    ECS_ENSURE(component_size != NULL, FAILED_LOOKUP);
+
+    ecs_record_t *record = ecs_map_get(registry->entity_index, (void *)entity);
+    ECS_ENSURE(record != NULL, FAILED_LOOKUP);
+
+    s32 column = ecs_type_index_of(record->archetype->type, component);
+    ECS_ENSURE(column != -1, OUT_OF_BOUNDS);
+
+    void *component_array = record->archetype->components[column];
+    void *element = ECS_OFFSET(component_array, *component_size * record->row);
+    memcpy(element, data, *component_size);
+}
+
+static void ecs_step_help(ecs_archetype_t *archetype, const ecs_map_t *component_index, const ecs_signature_t *sig, ecs_system_fn run) {
+    if (archetype == NULL) {
+        return;
+    }
+
+    u32 *signature_to_index = alloca(sizeof(u32) * sig->count);
+    u32 *component_sizes = alloca(sizeof(u32) * sig->count);
+
+    for (u32 slow = 0; slow < sig->count; slow++) {
+        u32 type_len = ecs_type_len(archetype->type);
+        for (u32 fast = 0; fast < type_len; fast++) {
+            ecs_entity_t component = archetype->type->elements[fast];
+            if (component == sig->components[slow]) {
+                size_t *component_size = ecs_map_get(component_index, (void *)component);
+                ECS_ENSURE(component_size != NULL, FAILED_LOOKUP);
+
+                component_sizes[slow] = *component_size;
+                signature_to_index[slow] = fast;
+                break;
+            }
+        }
+    }
+
+    ecs_view_t view = {archetype->components, signature_to_index, component_sizes};
+    for (u32 i = 0; i < archetype->count; i++) {
+        run(view, i);
+    }
+
+    ECS_EDGE_LIST_EACH(archetype->right_edges, edge, { ecs_step_help(edge.archetype, component_index, sig, run); });
+}
+
+void ecs_step(ecs_registry_t *registry) {
+    ECS_MAP_VALUES_EACH(registry->system_index, ecs_system_t, sys, { ecs_step_help(sys->archetype, registry->component_index, sys->sig, sys->run); });
+}
+
+void *ecs_view(ecs_view_t view, u32 row, u32 column) {
+    void *component_array = view.component_arrays[view.signature_to_index[column]];
+    return ECS_OFFSET(component_array, view.component_sizes[column] * row);
+}
 
 #if 0
 

@@ -3,112 +3,171 @@
 #ifndef NEKO_ENGINE_NEKO_ECS_H
 #define NEKO_ENGINE_NEKO_ECS_H
 
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdlib.h>
+
 #include "neko.h"
 #include "neko_math.h"
 
-#if 1
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-typedef u64 neko_ecs_ent;
-typedef u32 neko_ecs_component_type;
+typedef u64 ecs_entity_t;
 
-#define neko_ecs_decl_system(name, mask_name, ctypes_count, ...)            \
-    neko_ecs_component_type mask_name##_MASK[ctypes_count] = {__VA_ARGS__}; \
-    u32 mask_name##_MASK_COUNT = ctypes_count;                              \
-    void name(neko_ecs* ecs)
+// -- MAP --------------------------------------------------------------------
+// type unsafe hashtable
 
-#define neko_ecs_get_mask(name) name##_MASK_COUNT, name##_MASK
+typedef struct ecs_map_t ecs_map_t;
+
+typedef u32 (*ecs_hash_fn)(const void *);
+typedef bool (*ecs_key_equal_fn)(const void *, const void *);
+
+#define ECS_MAP(fn, k, v, capacity) ecs_map_new(sizeof(k), sizeof(v), ecs_map_hash_##fn, ecs_map_equal_##fn, capacity)
+
+ecs_map_t *ecs_map_new(size_t key_size, size_t item_size, ecs_hash_fn hash_fn, ecs_key_equal_fn key_equal_fn, u32 capacity);
+void ecs_map_free(ecs_map_t *map);
+void *ecs_map_get(const ecs_map_t *map, const void *key);
+void ecs_map_set(ecs_map_t *map, const void *key, const void *payload);
+void ecs_map_remove(ecs_map_t *map, const void *key);
+void *ecs_map_values(ecs_map_t *map);
+u32 ecs_map_len(ecs_map_t *map);
+u32 ecs_map_hash_intptr(const void *key);
+u32 ecs_map_hash_string(const void *key);
+u32 ecs_map_hash_type(const void *key);
+bool ecs_map_equal_intptr(const void *a, const void *b);
+bool ecs_map_equal_string(const void *a, const void *b);
+bool ecs_map_equal_type(const void *a, const void *b);
+
+#define ECS_MAP_VALUES_EACH(map, T, var, ...)                     \
+    do {                                                          \
+        u32 var##_count = ecs_map_len(map);                       \
+        T *var##_values = ecs_map_values(map);                    \
+        for (u32 var##_i = 0; var##_i < var##_count; var##_i++) { \
+            T *var = &var##_values[var##_i];                      \
+            __VA_ARGS__                                           \
+        }                                                         \
+    } while (0)
+
+#ifndef NDEBUG
+void ecs_map_inspect(ecs_map_t *map);  // 假设键和值都是整数
+#endif
+
+// -- TYPE -------------------------------------------------------------------
+// 按排序顺序排列的组件 ID 集
+
+typedef struct ecs_type_t ecs_type_t;
+
+ecs_type_t *ecs_type_new(u32 capacity);
+void ecs_type_free(ecs_type_t *type);
+ecs_type_t *ecs_type_copy(const ecs_type_t *from);
+u32 ecs_type_len(const ecs_type_t *type);
+bool ecs_type_equal(const ecs_type_t *a, const ecs_type_t *b);
+int32_t ecs_type_index_of(const ecs_type_t *type, ecs_entity_t e);
+void ecs_type_add(ecs_type_t *type, ecs_entity_t e);
+void ecs_type_remove(ecs_type_t *type, ecs_entity_t e);
+bool ecs_type_is_superset(const ecs_type_t *super, const ecs_type_t *sub);
+
+#define ECS_TYPE_ADD(type, e, s) ecs_type_add(type, (ecs_component_t){e, sizeof(s)});
+
+#define ECS_TYPE_EACH(type, var, ...)                             \
+    do {                                                          \
+        u32 var##_count = ecs_type_len(type);                     \
+        for (u32 var##_i = 0; var##_i < var##_count; var##_i++) { \
+            ecs_entity_t var = type->elements[var##_i];           \
+            __VA_ARGS__                                           \
+        }                                                         \
+    } while (0)
+
+#ifndef NDEBUG
+void ecs_type_inspect(ecs_type_t *type);
+#endif
+
+// -- SIGNATURE --------------------------------------------------------------
+// component ids in a defined order
+
+typedef struct ecs_signature_t ecs_signature_t;
+
+ecs_signature_t *ecs_signature_new(u32 count);
+ecs_signature_t *ecs_signature_new_n(u32 count, ...);
+void ecs_signature_free(ecs_signature_t *sig);
+ecs_type_t *ecs_signature_as_type(const ecs_signature_t *sig);
+
+// -- EDGE LIST --------------------------------------------------------------
+// archetype edges for graph traversal
+
+typedef struct ecs_edge_t ecs_edge_t;
+typedef struct ecs_edge_list_t ecs_edge_list_t;
+
+ecs_edge_list_t *ecs_edge_list_new(void);
+void ecs_edge_list_free(ecs_edge_list_t *edge_list);
+u32 ecs_edge_list_len(const ecs_edge_list_t *edge_list);
+void ecs_edge_list_add(ecs_edge_list_t *edge_list, ecs_edge_t edge);
+void ecs_edge_list_remove(ecs_edge_list_t *edge_list, ecs_entity_t component);
+
+#define ECS_EDGE_LIST_EACH(edge_list, var, ...)                   \
+    do {                                                          \
+        u32 var##_count = ecs_edge_list_len(edge_list);           \
+        for (u32 var##_i = 0; var##_i < var##_count; var##_i++) { \
+            ecs_edge_t var = edge_list->edges[var##_i];           \
+            __VA_ARGS__                                           \
+        }                                                         \
+    } while (0)
+
+// -- ARCHETYPE --------------------------------------------------------------
+// graph vertex. archetypes are tables where columns represent component data
+// and rows represent each entity. left edges point to other archetypes with
+// one less component, and right edges point to archetypes that store one
+// additional component.
+
+typedef struct ecs_archetype_t ecs_archetype_t;
+
+ecs_archetype_t *ecs_archetype_new(ecs_type_t *type, const ecs_map_t *component_index, ecs_map_t *type_index);
+void ecs_archetype_free(ecs_archetype_t *archetype);
+u32 ecs_archetype_add(ecs_archetype_t *archetype, const ecs_map_t *component_index, ecs_map_t *entity_index, ecs_entity_t e);
+u32 ecs_archetype_move_entity_right(ecs_archetype_t *left, ecs_archetype_t *right, const ecs_map_t *component_index, ecs_map_t *entity_index, u32 left_row);
+ecs_archetype_t *ecs_archetype_insert_vertex(ecs_archetype_t *root, ecs_archetype_t *left_neighbour, ecs_type_t *new_vertex_type, ecs_entity_t component_for_edge, const ecs_map_t *component_index,
+                                             ecs_map_t *type_index);
+ecs_archetype_t *ecs_archetype_traverse_and_create(ecs_archetype_t *root, const ecs_type_t *type, const ecs_map_t *component_index, ecs_map_t *type_index);
+
+// -- ENTITY COMPONENT SYSTEM ------------------------------------------------
+// 下面的函数是预期的公共 API
+
+typedef struct ecs_view_t {
+    void **component_arrays;
+    u32 *signature_to_index;
+    u32 *component_sizes;
+} ecs_view_t;
+
+typedef void (*ecs_system_fn)(ecs_view_t, u32);
+
+typedef struct ecs_registry_t ecs_registry_t;
+
+ecs_registry_t *ecs_init(void);
+void ecs_destroy(ecs_registry_t *registry);
+ecs_entity_t ecs_entity(ecs_registry_t *registry);
+ecs_entity_t ecs_component(ecs_registry_t *registry, size_t component_size);
+ecs_entity_t ecs_system(ecs_registry_t *registry, ecs_signature_t *signature, ecs_system_fn system);
+void ecs_attach(ecs_registry_t *registry, ecs_entity_t entity, ecs_entity_t component);
+void ecs_set(ecs_registry_t *registry, ecs_entity_t entity, ecs_entity_t component, const void *data);
+void ecs_step(ecs_registry_t *registry);
+void *ecs_view(ecs_view_t view, u32 row, u32 column);
+
+#ifndef NDEBUG
+void ecs_inspect(ecs_registry_t *registry);
+#endif
+
+#define ECS_COMPONENT(registry, T) ecs_component(registry, sizeof(T));
+#define ECS_SYSTEM(registry, system, n, ...) ecs_system(registry, ecs_signature_new_n(n, __VA_ARGS__), system)
+
+#ifdef __cplusplus
+}  // extern "C"
+#endif
 
 #define __neko_ecs_ent_id(index, ver) (((u64)ver << 32) | index)
 #define __neko_ecs_ent_index(id) ((u32)id)
 #define __neko_ecs_ent_ver(id) ((u32)(id >> 32))
-
-typedef void (*neko_ecs_system_func)(struct neko_ecs* ecs);
-typedef void (*neko_ecs_component_destroy)(void* data);
-
-typedef enum { ECS_SYSTEM_UPDATE, ECS_SYSTEM_RENDER_IMMEDIATE, ECS_SYSTEM_RENDER_DEFERRED, ECS_SYSTEM_EDITOR } neko_ecs_system_type;
-
-typedef struct neko_ecs_stack {
-    u32* data;
-    u64 capacity;
-    u64 top;
-    b32 empty;
-} neko_ecs_stack;
-
-typedef struct neko_ecs_component_pool {
-    void* data;
-    u32 count;
-    u32 size;
-
-    neko_ecs_component_destroy destroy_func;
-
-    neko_ecs_stack* indexes;
-
-} neko_ecs_component_pool;
-
-typedef struct neko_ecs_system {
-    neko_ecs_system_func func;
-    neko_ecs_system_type type;
-} neko_ecs_system;
-
-typedef struct neko_ecs {
-    u32 max_entities;
-    u32 component_count;
-    u32 system_count;
-
-    neko_ecs_stack* indexes;
-
-    // max_index 用来优化
-    u32 max_index;
-    u32* versions;
-
-    // components 是组件的索引
-    // 最大值为 (实体数 * component_count)
-    // 索引通过 (index * comp_count + comp_type) 实现
-    // component_masks 的工作原理相同 只是检查 mask 是否启用
-    u32* components;
-    b32* component_masks;
-
-    neko_ecs_component_pool* pool;
-
-    neko_ecs_system* systems;
-    u32 systems_top;
-
-    // 额外数据
-    void* user_data;
-} neko_ecs;
-
-NEKO_API_DECL neko_ecs* neko_ecs_make(u32 max_entities, u32 component_count, u32 system_count);
-NEKO_API_DECL void neko_ecs_destroy(neko_ecs* ecs);
-NEKO_API_DECL void neko_ecs_register_component(neko_ecs* ecs, neko_ecs_component_type component_type, u32 count, u32 size, neko_ecs_component_destroy destroy_func);
-NEKO_API_DECL void neko_ecs_register_system(neko_ecs* ecs, neko_ecs_system_func func, neko_ecs_system_type type);
-NEKO_API_DECL void neko_ecs_run_systems(neko_ecs* ecs, neko_ecs_system_type type);
-NEKO_API_DECL void neko_ecs_run_system(neko_ecs* ecs, u32 system_index);
-NEKO_API_DECL u32 neko_ecs_for_count(neko_ecs* ecs);
-NEKO_API_DECL neko_ecs_ent neko_ecs_get_ent(neko_ecs* ecs, u32 index);
-NEKO_API_DECL neko_ecs_ent neko_ecs_ent_make(neko_ecs* ecs);
-NEKO_API_DECL void neko_ecs_ent_destroy(neko_ecs* ecs, neko_ecs_ent e);
-NEKO_API_DECL void neko_ecs_ent_add_component(neko_ecs* ecs, neko_ecs_ent e, neko_ecs_component_type type, void* component_data);
-NEKO_API_DECL void neko_ecs_ent_remove_component(neko_ecs* ecs, neko_ecs_ent e, neko_ecs_component_type type);
-NEKO_API_DECL void* neko_ecs_ent_get_component(neko_ecs* ecs, neko_ecs_ent e, neko_ecs_component_type type);
-NEKO_API_DECL b32 neko_ecs_ent_has_component(neko_ecs* ecs, neko_ecs_ent e, neko_ecs_component_type component_type);
-NEKO_API_DECL b32 neko_ecs_ent_has_mask(neko_ecs* ecs, neko_ecs_ent e, u32 component_type_count, neko_ecs_component_type component_types[]);
-NEKO_API_DECL b32 neko_ecs_ent_is_valid(neko_ecs* ecs, neko_ecs_ent e);
-NEKO_API_DECL u32 neko_ecs_ent_get_version(neko_ecs* ecs, neko_ecs_ent e);
-NEKO_API_DECL void neko_ecs_ent_print(neko_ecs* ecs, neko_ecs_ent e);
-
-typedef struct neko_ecs_ent_view {
-    neko_ecs* ecs;
-    neko_ecs_ent ent;
-    neko_ecs_component_type view_type;
-    u32 i;
-    b32 valid;
-} neko_ecs_ent_view;
-
-NEKO_API_DECL neko_ecs_ent_view neko_ecs_ent_view_single(neko_ecs* ecs, neko_ecs_component_type component_type);
-NEKO_API_DECL b32 neko_ecs_ent_view_valid(neko_ecs_ent_view* view);
-NEKO_API_DECL void neko_ecs_ent_view_next(neko_ecs_ent_view* view);
-
-#endif
 
 #define MAX_ENTITY_COUNT 100
 
