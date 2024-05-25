@@ -4,8 +4,10 @@
 #include <box2d/box2d.h>
 
 #include "engine/neko.hpp"
-#include "engine/neko_engine.h"
 #include "engine/neko_api.h"
+#include "engine/neko_engine.h"
+
+#if 0
 
 struct neko_physics_userdata {
     s32 begin_contact_ref;
@@ -42,5 +44,7 @@ void physics_destroy_body(lua_State *L, neko_physics *physics);
 neko_physics_userdata *physics_userdata(lua_State *L);
 void physics_push_userdata(lua_State *L, u64 ptr);
 void draw_fixtures_for_body(b2Body *body, f32 meter);
+
+#endif
 
 #endif

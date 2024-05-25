@@ -4,6 +4,8 @@
 
 #include "sandbox/hpp/neko_cpp_utils.hpp"
 
+#if 0
+
 static void contact_run_cb(lua_State *L, s32 ref, s32 a, s32 b, s32 msgh) {
     if (ref != LUA_REFNIL) {
         assert(ref != 0);
@@ -248,3 +250,5 @@ void draw_fixtures_for_body(b2Body *body, f32 meter) {
     //     }
     // }
 }
+
+#endif

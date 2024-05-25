@@ -604,8 +604,6 @@ inline void forEachProp(T& val, F&& func) {
 
 #endif
 
-#pragma region neko_enum_name
-
 namespace neko {
 
 template <auto value>
@@ -657,137 +655,7 @@ constexpr auto enum_name(T value) {
 
 }  // namespace neko
 
-#pragma endregion
-
-template <typename T>
-NEKO_INLINE void neko_swap(T& a, T& b) {
-    T tmp = a;
-    a = b;
-    b = tmp;
-}
-
-template <typename T>
-NEKO_STATIC_INLINE void write_var(u8*& _buffer, T _var) {
-    memcpy(_buffer, &_var, sizeof(T));
-    _buffer += sizeof(T);
-}
-
-NEKO_STATIC_INLINE void write_str(u8*& _buffer, const char* _str) {
-    u32 len = (u32)strlen(_str);
-    write_var(_buffer, len);
-    memcpy(_buffer, _str, len);
-    _buffer += len;
-}
-
-template <typename T>
-NEKO_STATIC_INLINE void read_var(u8*& _buffer, T& _var) {
-    memcpy(&_var, _buffer, sizeof(T));
-    _buffer += sizeof(T);
-}
-
-NEKO_STATIC_INLINE char* read_string(u8*& _buffer) {
-    u32 len;
-    read_var(_buffer, len);
-    char* str = new char[len + 1];
-    memcpy(str, _buffer, len);
-    str[len] = 0;
-    _buffer += len;
-    return str;
-}
-
-NEKO_STATIC_INLINE const char* duplicate_string(const char* _str) {
-    char* str = new char[strlen(_str) + 1];
-    strcpy(str, _str);
-    return str;
-}
-
-struct string_store {
-    typedef std::unordered_map<std::string, u32> string_to_index_type;
-    typedef std::unordered_map<u32, std::string> index_to_string_type;
-
-    u32 total_size;
-    string_to_index_type str_index_map;
-    index_to_string_type strings;
-
-    string_store() : total_size(0) {}
-
-    void add_string(const char* _str) {
-        string_to_index_type::iterator it = str_index_map.find(_str);
-        if (it == str_index_map.end()) {
-            u32 index = (u32)str_index_map.size();
-            total_size += 4 + (u32)strlen(_str);
-            str_index_map[_str] = index;
-            strings[index] = _str;
-        }
-    }
-
-    u32 get_string(const char* _str) { return str_index_map[_str]; }
-};
-
 namespace neko {
-
-template <typename T>
-struct span {
-    span() : __begin(nullptr), __end(nullptr) {}
-    span(T* begin, u32 len) : __begin(begin), __end(begin + len) {}
-    span(T* begin, T* end) : __begin(begin), __end(end) {}
-    template <int N>
-    span(T (&value)[N]) : __begin(value), __end(value + N) {}
-    T& operator[](u32 idx) const {
-        neko_assert(__begin + idx < __end);
-        return __begin[idx];
-    }
-    operator span<const T>() const { return span<const T>(__begin, __end); }
-    void remove_prefix(u32 count) {
-        neko_assert(count <= length());
-        __begin += count;
-    }
-    void remove_suffix(u32 count) {
-        neko_assert(count <= length());
-        __end -= count;
-    }
-    [[nodiscard]] span from_left(u32 count) const {
-        neko_assert(count <= length());
-        return span(__begin + count, __end);
-    }
-    [[nodiscard]] span from_right(u32 count) const {
-        neko_assert(count <= length());
-        return span(__begin, __end - count);
-    }
-    T& back() {
-        neko_assert(length() > 0);
-        return *(__end - 1);
-    }
-    const T& back() const {
-        neko_assert(length() > 0);
-        return *(__end - 1);
-    }
-    bool equals(const span<T>& rhs) {
-        bool res = true;
-        if (length() != rhs.length()) return false;
-        for (const T& v : *this) {
-            u32 i = u32(&v - __begin);
-            if (v != rhs.__begin[i]) return false;
-        }
-        return true;
-    }
-
-    template <typename F>
-    s32 find(const F& f) const {
-        for (u32 i = 0, c = length(); i < c; ++i) {
-            if (f(__begin[i])) return i;
-        }
-        return -1;
-    }
-
-    u32 length() const { return (u32)(__end - __begin); }
-
-    T* begin() const { return __begin; }
-    T* end() const { return __end; }
-
-    T* __begin;
-    T* __end;
-};
 
 // hash 计算相关函数
 
@@ -1077,7 +945,7 @@ namespace neko {
 
 // 哈希映射容器
 
-enum HashMapKind : u8 {
+enum hashmap_kind : u8 {
     HashMapKind_None,
     HashMapKind_Some,
     HashMapKind_Tombstone,
@@ -1086,10 +954,10 @@ enum HashMapKind : u8 {
 #define HASH_MAP_LOAD_FACTOR 0.75f
 
 template <typename T>
-struct HashMap {
+struct hashmap {
     u64* keys = nullptr;
     T* values = nullptr;
-    HashMapKind* kinds = nullptr;
+    hashmap_kind* kinds = nullptr;
     u64 load = 0;
     u64 capacity = 0;
 
@@ -1103,7 +971,7 @@ struct HashMap {
         u64 index = key & (capacity - 1);
         u64 tombstone = (u64)-1;
         while (true) {
-            HashMapKind kind = kinds[index];
+            hashmap_kind kind = kinds[index];
             if (kind == HashMapKind_None) {
                 return tombstone != (u64)-1 ? tombstone : index;
             } else if (kind == HashMapKind_Tombstone) {
@@ -1121,7 +989,7 @@ struct HashMap {
             return;
         }
 
-        HashMap<T> map = {};
+        hashmap<T> map = {};
         map.capacity = cap;
 
         size_t bytes = sizeof(u64) * cap;
@@ -1131,11 +999,11 @@ struct HashMap {
         map.values = (T*)neko_safe_malloc(sizeof(T) * cap);
         memset(map.values, 0, sizeof(T) * cap);
 
-        map.kinds = (HashMapKind*)neko_safe_malloc(sizeof(HashMapKind) * cap);
-        memset(map.kinds, 0, sizeof(HashMapKind) * cap);
+        map.kinds = (hashmap_kind*)neko_safe_malloc(sizeof(hashmap_kind) * cap);
+        memset(map.kinds, 0, sizeof(hashmap_kind) * cap);
 
         for (u64 i = 0; i < capacity; i++) {
-            HashMapKind kind = kinds[i];
+            hashmap_kind kind = kinds[i];
             if (kind != HashMapKind_Some) {
                 continue;
             }
@@ -1226,30 +1094,30 @@ struct HashMap {
     void clear() {
         memset(keys, 0, sizeof(u64) * capacity);
         memset(values, 0, sizeof(T) * capacity);
-        memset(kinds, 0, sizeof(HashMapKind) * capacity);
+        memset(kinds, 0, sizeof(hashmap_kind) * capacity);
         load = 0;
     }
 };
 
 template <typename T>
-struct HashMapKV {
+struct hashmap_kv {
     u64 key;
     T* value;
 };
 
 template <typename T>
-struct HashMapIterator {
-    HashMap<T>* map;
+struct hashmap_iter {
+    hashmap<T>* map;
     u64 cursor;
 
-    HashMapKV<T> operator*() const {
-        HashMapKV<T> kv;
+    hashmap_kv<T> operator*() const {
+        hashmap_kv<T> kv;
         kv.key = map->keys[cursor];
         kv.value = &map->values[cursor];
         return kv;
     }
 
-    HashMapIterator& operator++() {
+    hashmap_iter& operator++() {
         cursor++;
         while (cursor != map->capacity) {
             if (map->kinds[cursor] == HashMapKind_Some) {
@@ -1263,13 +1131,13 @@ struct HashMapIterator {
 };
 
 template <typename T>
-bool operator!=(HashMapIterator<T> lhs, HashMapIterator<T> rhs) {
+bool operator!=(hashmap_iter<T> lhs, hashmap_iter<T> rhs) {
     return lhs.map != rhs.map || lhs.cursor != rhs.cursor;
 }
 
 template <typename T>
-HashMapIterator<T> begin(HashMap<T>& map) {
-    HashMapIterator<T> it = {};
+hashmap_iter<T> begin(hashmap<T>& map) {
+    hashmap_iter<T> it = {};
     it.map = &map;
     it.cursor = map.capacity;
 
@@ -1284,8 +1152,8 @@ HashMapIterator<T> begin(HashMap<T>& map) {
 }
 
 template <typename T>
-HashMapIterator<T> end(HashMap<T>& map) {
-    HashMapIterator<T> it = {};
+hashmap_iter<T> end(hashmap<T>& map) {
+    hashmap_iter<T> it = {};
     it.map = &map;
     it.cursor = map.capacity;
     return it;

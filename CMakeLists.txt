@@ -2,13 +2,13 @@ cmake_minimum_required(VERSION 3.21)
 
 project(neko_engine LANGUAGES C CXX)
 
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS ON)
-set(CMAKE_CXX_STANDARD 20)
 
-# set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_EXTENSIONS ON)
 set(CMAKE_C_STANDARD 17)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -25,7 +25,8 @@ if (MSVC)
 
     set(neko_engine_lib ${glfw_lib} ${ffi_lib})
     include_directories(
-            "source/deps/box2d/"
+            # "source/deps/box2d/"
+            "source/deps/box2c/include/"
             "source/deps/glad/include/"
             "source/deps/glfw/include/"
             "source/deps/libffi/include/"
@@ -90,6 +91,8 @@ if (MSVC)
             /INCREMENTAL
     )
 
+    add_compile_options(/experimental:c11atomics)
+
     SET(CMAKE_CXX_FLAGS_DEBUG "/ZI /Od ")
     SET(CMAKE_CXX_FLAGS_RELEASE "/Zi /O2")
     SET(CMAKE_C_FLAGS_DEBUG "/ZI /Od")
@@ -147,62 +150,74 @@ if (MSVC)
     endforeach ()
 endif (MSVC)
 
-
-set(box2d_src
-        source/deps/box2d/collision/b2_broad_phase.cpp
-        source/deps/box2d/collision/b2_chain_shape.cpp
-        source/deps/box2d/collision/b2_circle_shape.cpp
-        source/deps/box2d/collision/b2_collide_circle.cpp
-        source/deps/box2d/collision/b2_collide_edge.cpp
-        source/deps/box2d/collision/b2_collide_polygon.cpp
-        source/deps/box2d/collision/b2_collision.cpp
-        source/deps/box2d/collision/b2_distance.cpp
-        source/deps/box2d/collision/b2_dynamic_tree.cpp
-        source/deps/box2d/collision/b2_edge_shape.cpp
-        source/deps/box2d/collision/b2_polygon_shape.cpp
-        source/deps/box2d/collision/b2_time_of_impact.cpp
-        source/deps/box2d/common/b2_block_allocator.cpp
-        source/deps/box2d/common/b2_draw.cpp
-        source/deps/box2d/common/b2_math.cpp
-        source/deps/box2d/common/b2_settings.cpp
-        source/deps/box2d/common/b2_stack_allocator.cpp
-        source/deps/box2d/common/b2_timer.cpp
-        source/deps/box2d/dynamics/b2_body.cpp
-        source/deps/box2d/dynamics/b2_chain_circle_contact.cpp
-        source/deps/box2d/dynamics/b2_chain_polygon_contact.cpp
-        source/deps/box2d/dynamics/b2_circle_contact.cpp
-        source/deps/box2d/dynamics/b2_contact.cpp
-        source/deps/box2d/dynamics/b2_contact_manager.cpp
-        source/deps/box2d/dynamics/b2_contact_solver.cpp
-        source/deps/box2d/dynamics/b2_distance_joint.cpp
-        source/deps/box2d/dynamics/b2_edge_circle_contact.cpp
-        source/deps/box2d/dynamics/b2_edge_polygon_contact.cpp
-        source/deps/box2d/dynamics/b2_fixture.cpp
-        source/deps/box2d/dynamics/b2_friction_joint.cpp
-        source/deps/box2d/dynamics/b2_gear_joint.cpp
-        source/deps/box2d/dynamics/b2_island.cpp
-        source/deps/box2d/dynamics/b2_joint.cpp
-        source/deps/box2d/dynamics/b2_motor_joint.cpp
-        source/deps/box2d/dynamics/b2_mouse_joint.cpp
-        source/deps/box2d/dynamics/b2_polygon_circle_contact.cpp
-        source/deps/box2d/dynamics/b2_polygon_contact.cpp
-        source/deps/box2d/dynamics/b2_prismatic_joint.cpp
-        source/deps/box2d/dynamics/b2_pulley_joint.cpp
-        source/deps/box2d/dynamics/b2_revolute_joint.cpp
-        source/deps/box2d/dynamics/b2_weld_joint.cpp
-        source/deps/box2d/dynamics/b2_wheel_joint.cpp
-        source/deps/box2d/dynamics/b2_world.cpp
-        source/deps/box2d/dynamics/b2_world_callbacks.cpp
-        source/deps/box2d/rope/b2_rope.cpp
+set(box2c_src
+        source/deps/box2c/src/aabb.c
+        source/deps/box2c/src/aabb.h
+        source/deps/box2c/src/allocate.c
+        source/deps/box2c/src/allocate.h
+        source/deps/box2c/src/array.c
+        source/deps/box2c/src/array.h
+        source/deps/box2c/src/bitset.c
+        source/deps/box2c/src/bitset.h
+        source/deps/box2c/src/block_allocator.c
+        source/deps/box2c/src/block_allocator.h
+        source/deps/box2c/src/block_array.c
+        source/deps/box2c/src/block_array.h
+        source/deps/box2c/src/body.c
+        source/deps/box2c/src/body.h
+        source/deps/box2c/src/broad_phase.c
+        source/deps/box2c/src/broad_phase.h
+        source/deps/box2c/src/constraint_graph.c
+        source/deps/box2c/src/constraint_graph.h
+        source/deps/box2c/src/contact.c
+        source/deps/box2c/src/contact.h
+        source/deps/box2c/src/contact_solver.c
+        source/deps/box2c/src/contact_solver.h
+        source/deps/box2c/src/core.c
+        source/deps/box2c/src/core.h
+        source/deps/box2c/src/ctz.h
+        source/deps/box2c/src/distance.c
+        source/deps/box2c/src/distance_joint.c
+        source/deps/box2c/src/dynamic_tree.c
+        source/deps/box2c/src/geometry.c
+        source/deps/box2c/src/hull.c
+        source/deps/box2c/src/id_pool.c
+        source/deps/box2c/src/id_pool.h
+        source/deps/box2c/src/island.c
+        source/deps/box2c/src/island.h
+        source/deps/box2c/src/joint.c
+        source/deps/box2c/src/joint.h
+        source/deps/box2c/src/manifold.c
+        source/deps/box2c/src/math_functions.c
+        source/deps/box2c/src/motor_joint.c
+        source/deps/box2c/src/mouse_joint.c
+        source/deps/box2c/src/prismatic_joint.c
+        source/deps/box2c/src/revolute_joint.c
+        source/deps/box2c/src/shape.c
+        source/deps/box2c/src/shape.h
+        source/deps/box2c/src/solver.c
+        source/deps/box2c/src/solver.h
+        source/deps/box2c/src/solver_set.c
+        source/deps/box2c/src/solver_set.h
+        source/deps/box2c/src/stack_allocator.c
+        source/deps/box2c/src/stack_allocator.h
+        source/deps/box2c/src/table.c
+        source/deps/box2c/src/table.h
+        source/deps/box2c/src/timer.c
+        source/deps/box2c/src/types.c
+        source/deps/box2c/src/util.h
+        source/deps/box2c/src/weld_joint.c
+        source/deps/box2c/src/wheel_joint.c
+        source/deps/box2c/src/world.c
+        source/deps/box2c/src/world.h
 )
-
 
 file(GLOB_RECURSE neko_engine_src CONFIGURE_DEPENDS "source/engine/**.*")
 file(GLOB_RECURSE neko_sandbox_src CONFIGURE_DEPENDS "source/sandbox/**.*")
 
 set(neko_engine_src_all
         ${neko_engine_src}
-        ${box2d_src}
+        ${box2c_src}
         "source/deps/impl_build.cpp"
 )
 

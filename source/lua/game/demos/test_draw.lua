@@ -14,7 +14,6 @@ neko.hooks.add("render", "main", function(v)
     ImGui.End()
 
     neko.draw_text(50.0, 50.0, tostring(fnt_text), 3.0)
-
 end)
 
 -- hooks.add("inputPressed","test",function(v)
@@ -29,7 +28,6 @@ local M = {
 
     end,
     sub_init = function()
-
         local win_w, win_h = neko_window_size(neko_main_window())
 
         gd.main_fbo = neko.graphics_framebuffer_create()
@@ -53,9 +51,9 @@ local M = {
             COMPUTE = comp_src
         })
 
-        test_uniform = neko.graphics_uniform_create("u_roll", {{
+        test_uniform = neko.graphics_uniform_create("u_roll", { {
             type = "NEKO_GRAPHICS_UNIFORM_FLOAT"
-        }})
+        } })
 
         test_tex = neko.graphics_texture_create(TEX_WIDTH, TEX_HEIGHT, {
             type = "NEKO_GRAPHICS_TEXTURE_2D",
@@ -95,7 +93,7 @@ local M = {
         test_custom_sprite.tex_userdata = __neko_cstruct_test.udata(CObject.s["__lua_tex_t"]:size("struct __lua_tex_t"))
         CObject.setter("__lua_tex_t", "id")(test_custom_sprite.tex_userdata, test_custom_sprite.tex)
 
-        local v = {-0.5, -0.5, 0.0, 0.0, 0.5, -0.5, 1.0, 0.0, -0.5, 0.5, 0.0, 1.0, 0.5, 0.5, 1.0, 1.0}
+        local v = { -0.5, -0.5, 0.0, 0.0, 0.5, -0.5, 1.0, 0.0, -0.5, 0.5, 0.0, 1.0, 0.5, 0.5, 1.0, 1.0 }
         test_custom_sprite.vdata = __neko_cstruct_test.udata(
             CObject.s["__lua_quad_vdata_t"]:size("struct __lua_quad_vdata_t"))
 
@@ -103,7 +101,7 @@ local M = {
             CObject.setter("__lua_quad_vdata_t", "v" .. i)(test_custom_sprite.vdata, v)
         end
 
-        v = {0, 3, 2, 0, 1, 3}
+        v = { 0, 3, 2, 0, 1, 3 }
         test_custom_sprite.idata = __neko_cstruct_test.udata(
             CObject.s["__lua_quad_idata_t"]:size("struct __lua_quad_idata_t"))
         for i, v in ipairs(v) do
@@ -115,9 +113,9 @@ local M = {
         test_custom_sprite.ibo = neko.graphics_index_buffer_create("ibo", test_custom_sprite.idata,
             CObject.s["__lua_quad_idata_t"]:size("struct __lua_quad_idata_t"))
 
-        test_custom_sprite.uniform = neko.graphics_uniform_create("u_tex", {{
+        test_custom_sprite.uniform = neko.graphics_uniform_create("u_tex", { {
             type = "NEKO_GRAPHICS_UNIFORM_SAMPLER2D"
-        }}, "NEKO_GRAPHICS_SHADER_STAGE_FRAGMENT")
+        } }, "NEKO_GRAPHICS_SHADER_STAGE_FRAGMENT")
 
         test_custom_sprite.shader = neko.graphics_shader_create("quad", {
             VERTEX = custom_sprite_vs,
@@ -125,13 +123,13 @@ local M = {
         })
 
         test_custom_sprite.v_attr, test_custom_sprite.v_attr_size =
-            neko.graphics_vertex_attribute_create("vertex_attribute_name", {{
+            neko.graphics_vertex_attribute_create("vertex_attribute_name", { {
                 name = "a_pos",
                 format = "NEKO_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT2"
             }, {
                 name = "a_uv",
                 format = "NEKO_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT2"
-            }})
+            } })
 
         test_custom_sprite.pipeline = neko.graphics_pipeline_create("test_pipeline", {
             raster = {
@@ -143,11 +141,9 @@ local M = {
                 size = test_custom_sprite.v_attr_size
             }
         })
-
     end,
 
     sub_shutdown = function()
-
         neko.graphics_renderpass_destroy(gd.rp)
         neko.graphics_texture_destroy(gd.rt)
         neko.graphics_framebuffer_destroy(gd.fbo)
@@ -164,7 +160,6 @@ local M = {
 
     end,
     sub_render = function()
-
         local t = neko_platform_elapsed_time()
 
         local fbs_x = 640
@@ -176,18 +171,18 @@ local M = {
 
         neko.graphics_pipeline_bind(test_pipeline)
         neko.graphics_apply_bindings({
-            uniforms = {{
+            uniforms = { {
                 uniform = test_uniform,
                 data = roll
-            }},
-            image_buffers = {{
+            } },
+            image_buffers = { {
                 tex = test_tex,
                 binding = 0
-            }},
-            storage_buffers = {{
+            } },
+            storage_buffers = { {
                 buffer = test_storage_buffer,
                 binding = 1
-            }}
+            } }
         })
         neko.graphics_dispatch_compute(TEX_WIDTH / 16, TEX_HEIGHT / 16, 1)
 
@@ -210,17 +205,17 @@ local M = {
         neko.graphics_renderpass_begin(gd.main_rp)
         neko.graphics_pipeline_bind(test_custom_sprite.pipeline)
         neko.graphics_apply_bindings({
-            uniforms = {{
+            uniforms = { {
                 uniform = test_custom_sprite.uniform,
                 data = test_custom_sprite.tex_userdata,
                 binding = 0
-            }},
-            vertex_buffers = {{
+            } },
+            vertex_buffers = { {
                 buffer = test_custom_sprite.vbo
-            }},
-            index_buffers = {{
+            } },
+            index_buffers = { {
                 buffer = test_custom_sprite.ibo
-            }}
+            } }
         })
         neko.graphics_draw({
             start = 0,
@@ -228,34 +223,34 @@ local M = {
         })
         neko.graphics_renderpass_end()
 
-         neko.idraw_defaults()
-         neko.idraw_camera3d(fbs_x, fbs_y)
-         neko.idraw_translatef(0.0, 0.0, -2.0)
-         neko.idraw_rotatev(neko_platform_elapsed_time() * 0.0001, 1.0, 0.0, 0.0)
-         neko.idraw_rotatev(neko_platform_elapsed_time() * 0.0001, 0.0, 1.0, 0.0)
-         neko.idraw_rotatev(neko_platform_elapsed_time() * 0.0001, 0.0, 0.0, 1.0)
-         neko.idraw_box(0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 200, 100, 50, 255, "NEKO_GRAPHICS_PRIMITIVE_LINES")
+        neko.idraw_defaults()
+        neko.idraw_camera3d(fbs_x, fbs_y)
+        neko.idraw_translatef(0.0, 0.0, -2.0)
+        neko.idraw_rotatev(neko_platform_elapsed_time() * 0.0001, 1.0, 0.0, 0.0)
+        neko.idraw_rotatev(neko_platform_elapsed_time() * 0.0001, 0.0, 1.0, 0.0)
+        neko.idraw_rotatev(neko_platform_elapsed_time() * 0.0001, 0.0, 0.0, 1.0)
+        neko.idraw_box(0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 200, 100, 50, 255, "NEKO_GRAPHICS_PRIMITIVE_LINES")
 
-         neko.graphics_renderpass_begin(gd.rp)
-         neko.graphics_set_viewport(0.0, 0.0, fbs_x, fbs_y)
-         neko.graphics_clear(0.0, 0.0, 0.0, 1.0)
-         neko.idraw_draw()
-         neko.graphics_renderpass_end()
+        neko.graphics_renderpass_begin(gd.rp)
+        neko.graphics_set_viewport(0.0, 0.0, fbs_x, fbs_y)
+        neko.graphics_clear(0.0, 0.0, 0.0, 1.0)
+        neko.idraw_draw()
+        neko.graphics_renderpass_end()
 
-         neko.idraw_camera3d(fbs_x, fbs_y)
-         neko.idraw_depth_enabled(true)
-         neko.idraw_face_cull_enabled(true)
-         neko.idraw_translatef(0.0, 0.0, -1.0)
-         neko.idraw_texture(gd.rt)
-         neko.idraw_rotatev(neko_platform_elapsed_time() * 0.0001, 1.0, 0.0, 0.0)
-         neko.idraw_rotatev(neko_platform_elapsed_time() * 0.0002, 0.0, 1.0, 0.0)
-         neko.idraw_rotatev(neko_platform_elapsed_time() * 0.0003, 0.0, 0.0, 1.0)
-         neko.idraw_box(0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 255, 255, 255, 255, "NEKO_GRAPHICS_PRIMITIVE_TRIANGLES")
+        neko.idraw_camera3d(fbs_x, fbs_y)
+        neko.idraw_depth_enabled(true)
+        neko.idraw_face_cull_enabled(true)
+        neko.idraw_translatef(0.0, 0.0, -1.0)
+        neko.idraw_texture(gd.rt)
+        neko.idraw_rotatev(neko_platform_elapsed_time() * 0.0001, 1.0, 0.0, 0.0)
+        neko.idraw_rotatev(neko_platform_elapsed_time() * 0.0002, 0.0, 1.0, 0.0)
+        neko.idraw_rotatev(neko_platform_elapsed_time() * 0.0003, 0.0, 0.0, 1.0)
+        neko.idraw_box(0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 255, 255, 255, 255, "NEKO_GRAPHICS_PRIMITIVE_TRIANGLES")
 
-         neko.graphics_renderpass_begin(0)
-         neko.graphics_set_viewport(0.0, 0.0, fbs_x, fbs_y)
-         neko.idraw_draw()
-         neko.graphics_renderpass_end()
+        neko.graphics_renderpass_begin(0)
+        neko.graphics_set_viewport(0.0, 0.0, fbs_x, fbs_y)
+        neko.idraw_draw()
+        neko.graphics_renderpass_end()
 
         neko.idraw_defaults()
         neko.idraw_camera2d(fbs_x, fbs_y)
@@ -267,7 +262,6 @@ local M = {
         neko.graphics_set_viewport(0.0, 0.0, win_w, win_h)
         neko.idraw_draw()
         neko.graphics_renderpass_end()
-
     end,
     test_update = function()
 

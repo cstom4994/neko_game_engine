@@ -129,8 +129,6 @@ NEKO_API_DECL u32 neko_lz_bounds(u32 inlen, u32 flags);
 //     PACK_RESULT_COUNT = 15,
 // } neko_packresult_t;
 
-typedef b32 neko_pack_result;
-
 typedef struct pack_iteminfo {
     u32 zip_size;
     u32 data_size;
@@ -155,26 +153,20 @@ typedef struct neko_packreader_s {
     u32 file_ref_count;
 } neko_packreader_t;
 
-NEKO_API_DECL neko_pack_result neko_pack_read(const_str file_path, u32 data_buffer_capacity, bool is_resources_directory, neko_packreader_t* pack_reader);
+NEKO_API_DECL int neko_pack_read(const_str file_path, u32 data_buffer_capacity, bool is_resources_directory, neko_packreader_t* pack_reader);
 NEKO_API_DECL void neko_pack_destroy(neko_packreader_t* pack_reader);
 
 NEKO_API_DECL u64 neko_pack_item_count(neko_packreader_t* pack_reader);
 NEKO_API_DECL b8 neko_pack_item_index(neko_packreader_t* pack_reader, const_str path, u64* index);
 NEKO_API_DECL u32 neko_pack_item_size(neko_packreader_t* pack_reader, u64 index);
 NEKO_API_DECL const_str neko_pack_item_path(neko_packreader_t* pack_reader, u64 index);
-NEKO_API_DECL neko_pack_result neko_pack_item_data_with_index(neko_packreader_t* pack_reader, u64 index, const u8** data, u32* size);
-NEKO_API_DECL neko_pack_result neko_pack_item_data(neko_packreader_t* pack_reader, const_str path, const u8** data, u32* size);
+NEKO_API_DECL int neko_pack_item_data_with_index(neko_packreader_t* pack_reader, u64 index, const u8** data, u32* size);
+NEKO_API_DECL int neko_pack_item_data(neko_packreader_t* pack_reader, const_str path, const u8** data, u32* size);
 NEKO_API_DECL void neko_pack_item_free(neko_packreader_t* pack_reader, void* data);
 NEKO_API_DECL void neko_pack_free_buffers(neko_packreader_t* pack_reader);
-NEKO_API_DECL neko_pack_result neko_pack_unzip(const_str file_path, b8 print_progress);
-NEKO_API_DECL neko_pack_result neko_pack_build(const_str pack_path, u64 file_count, const_str* file_paths, b8 print_progress);
-NEKO_API_DECL neko_pack_result neko_pack_info(const_str file_path, u8* pack_version, b8* isLittleEndian, u64* item_count);
-
-NEKO_INLINE bool neko_pack_check(neko_pack_result result) {
-    if (result == 0) return true;
-    neko_log_warning("read pack faild: %d", result);
-    return false;
-}
+NEKO_API_DECL int neko_pack_unzip(const_str file_path, b8 print_progress);
+NEKO_API_DECL int neko_pack_build(const_str pack_path, u64 file_count, const_str* file_paths, b8 print_progress);
+NEKO_API_DECL int neko_pack_info(const_str file_path, u8* pack_version, b8* isLittleEndian, u64* item_count);
 
 typedef enum neko_xml_attribute_type_t {
     NEKO_XML_ATTRIBUTE_NUMBER,

@@ -163,23 +163,6 @@ neko_texture_t load_ase_texture_simple(const void *memory, int size) {
     return tex;
 }
 
-std::string game_assets(const std::string &path) {
-    if (CL_GAME_USERDATA()->data_path.empty()) {
-        neko_assert(!CL_GAME_USERDATA()->data_path.empty());  // game data path not detected
-        return path;
-    }
-    std::string get_path(CL_GAME_USERDATA()->data_path);
-
-    if (path.substr(0, 7) == "gamedir") {
-        get_path.append(path);
-    } else if (path.substr(0, 11) == "lua_scripts") {
-        std::string lua_path = path;
-        get_path = std::filesystem::path(CL_GAME_USERDATA()->data_path).parent_path().string().append("/source/lua/game/").append(lua_path.replace(0, 12, ""));
-    }
-
-    return get_path;
-}
-
 void app_load_style_sheet(bool destroy) {
     if (destroy) {
         neko_ui_style_sheet_destroy(&CL_GAME_USERDATA()->style_sheet);
@@ -400,8 +383,7 @@ void game_init() {
 
     auto mount = neko::vfs_mount(game_assets("gamedir/../").c_str());
 
-    neko_pack_result result = neko_pack_read(game_assets("gamedir/sc.pack").c_str(), 0, false, &CL_GAME_USERDATA()->lua_pack);
-    neko_pack_check(result);
+    neko_pack_read(game_assets("gamedir/sc.pack").c_str(), 0, false, &CL_GAME_USERDATA()->lua_pack);
 
     CL_GAME_USERDATA()->L = neko_scripting_init();
 
@@ -463,17 +445,13 @@ void game_init() {
         neko_log_error("lua exception %s", ex.what());
     }
 
-    result = neko_pack_read(game_assets("gamedir/res.pack").c_str(), 0, false, &CL_GAME_USERDATA()->pack);
-    neko_pack_check(result);
+    neko_pack_read(game_assets("gamedir/res.pack").c_str(), 0, false, &CL_GAME_USERDATA()->pack);
 
     u8 *font_data, *cat_data;
     u32 font_data_size, cat_data_size;
 
-    result = neko_pack_item_data(&CL_GAME_USERDATA()->pack, ".\\data\\assets\\fonts\\fusion-pixel-12px-monospaced.ttf", (const u8 **)&font_data, &font_data_size);
-    neko_pack_check(result);
-
-    result = neko_pack_item_data(&CL_GAME_USERDATA()->pack, ".\\data\\assets\\textures\\cat.aseprite", (const u8 **)&cat_data, &cat_data_size);
-    neko_pack_check(result);
+    neko_pack_item_data(&CL_GAME_USERDATA()->pack, ".\\data\\assets\\fonts\\fusion-pixel-12px-monospaced.ttf", (const u8 **)&font_data, &font_data_size);
+    neko_pack_item_data(&CL_GAME_USERDATA()->pack, ".\\data\\assets\\textures\\cat.aseprite", (const u8 **)&cat_data, &cat_data_size);
 
     CL_GAME_USERDATA()->test_ase = load_ase_texture_simple(cat_data, cat_data_size);
 
@@ -496,18 +474,13 @@ void game_init() {
         return &font_stash;
     }();
 
-    // neko_ui_font_stash_desc_t font_stash = {.fonts = (neko_ui_font_desc_t[]){{.key = "mc_regular", .font = &font}, .size = 1 * sizeof(neko_ui_font_desc_t)};
     neko_ui_init_font_stash(&CL_GAME_USERDATA()->ui, GUI_FONT_STASH);
 
-    // Load style sheet from file now
     app_load_style_sheet(false);
 
-    // Dock windows before hand
     neko_ui_dock_ex(&CL_GAME_USERDATA()->ui, "Style_Editor", "Demo_Window", NEKO_UI_SPLIT_TAB, 0.5f);
 
     CL_GAME_USERDATA()->imgui = neko_imgui_new(&CL_GAME_USERDATA()->cb, neko_platform_main_window(), false);
-
-    //    neko_vec2 fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
 
     // Load a file
 
@@ -532,63 +505,16 @@ void game_init() {
     neko_graphics_renderpass_desc_t main_rp_desc = {.fbo = CL_GAME_USERDATA()->main_fbo, .color = &CL_GAME_USERDATA()->main_rt, .color_size = sizeof(CL_GAME_USERDATA()->main_rt)};
     CL_GAME_USERDATA()->main_rp = neko_graphics_renderpass_create(main_rp_desc);
 
-    // CL_GAME_USERDATA()->game = new sandbox_game(&CL_GAME_USERDATA()->idraw);
-
     const neko_vec2_t ws = neko_platform_window_sizev(neko_platform_main_window());
 
-#if 0
-    // Create world
-    CL_GAME_USERDATA()->ecs_world = ecs_init_w_args(0, NULL);
-
-    neko_ecs_com_init(CL_GAME_USERDATA()->ecs_world);
-
-    // Register system with world
-    ECS_SYSTEM(CL_GAME_USERDATA()->ecs_world, move_system, EcsOnUpdate, position_t, velocity_t, bounds_t);
-    ECS_SYSTEM(CL_GAME_USERDATA()->ecs_world, render_system, EcsOnUpdate, position_t, bounds_t, color_t);
-
-    auto ecs = flecs::world(CL_GAME_USERDATA()->ecs_world);
-
-    for (uint32_t i = 0; i < 4; ++i) {
-
-        //        auto e = ecs.entity().set([](Position &p, Velocity &v) {
-        //            p = {10, 20};
-        //            v = {1, 2};
-        //        });
-        //        ecs_entity_t e = ecs_new_w_type(CL_GAME_USERDATA()->world, 0);
-
-        ecs_entity_t e = ecs_new_id(ecs);
-
-        neko_vec2_t bounds = neko_v2((f32)random_val(10, 100), (f32)random_val(10, 100));
-
-        // Set data for entity
-        position_t p = {(f32)random_val(0, (int32_t)ws.x - (int32_t)bounds.x), (f32)random_val(0, (int32_t)ws.y - (int32_t)bounds.y)};
-        ecs_set_id(CL_GAME_USERDATA()->ecs_world, e, ecs_id(position_t), sizeof(position_t), &p);
-        velocity_t v = {(f32)random_val(1, 10), (f32)random_val(1, 10)};
-        ecs_set_id(CL_GAME_USERDATA()->ecs_world, e, ecs_id(velocity_t), sizeof(velocity_t), &v);
-        bounds_t b = {(f32)random_val(10, 100), (f32)random_val(10, 100)};
-        ecs_set_id(CL_GAME_USERDATA()->ecs_world, e, ecs_id(bounds_t), sizeof(bounds_t), &b);
-        color_t c = {(u8)random_val(50, 255), (u8)random_val(50, 255), (u8)random_val(50, 255), 255};
-        ecs_set_id(CL_GAME_USERDATA()->ecs_world, e, ecs_id(color_t), sizeof(color_t), &c);
-    }
-#endif
-
-#if 1
-
-    // CL_GAME_USERDATA()->ecs = neko_ecs_make(1024 * 64, COMPONENT_COUNT, 2);
     CL_GAME_USERDATA()->ecs = ecs_init();
 
     auto registry = CL_GAME_USERDATA()->ecs;
-
-    // register_components(CL_GAME_USERDATA()->ecs);
-    // register_systems(CL_GAME_USERDATA()->ecs);
-
     const ecs_entity_t pos_component = ECS_COMPONENT(registry, position_t);
     const ecs_entity_t vel_component = ECS_COMPONENT(registry, velocity_t);
     const ecs_entity_t bou_component = ECS_COMPONENT(registry, bounds_t);
     const ecs_entity_t col_component = ECS_COMPONENT(registry, color_t);
 
-    // 测试用
-    // neko_ecs_ent e1 = neko_ecs_ent_make(CL_GAME_USERDATA()->ecs);
     CGameObjectTest gameobj = neko_default_val();
 
     for (int i = 0; i < 64; i++) {
@@ -619,8 +545,6 @@ void game_init() {
 
     ECS_SYSTEM(registry, movement_system, 4, pos_component, vel_component, bou_component, col_component);
     ECS_SYSTEM(registry, render_system, 4, pos_component, vel_component, bou_component, col_component);
-
-#endif
 
     // 初始化工作
 
@@ -703,36 +627,12 @@ void game_loop() {
             }
         }
 
-        // CL_GAME_USERDATA()->game->update();
-
         // Do rendering
         neko_graphics_clear_action_t clear = {.color = {CL_GAME_USERDATA()->cl_cvar.bg[0] / 255, CL_GAME_USERDATA()->cl_cvar.bg[1] / 255, CL_GAME_USERDATA()->cl_cvar.bg[2] / 255, 1.f}};
         neko_graphics_clear_action_t b_clear = {.color = {0.0f, 0.0f, 0.0f, 1.f}};
 
         neko_graphics_renderpass_begin(&CL_GAME_USERDATA()->cb, NEKO_GRAPHICS_RENDER_PASS_DEFAULT);
         { neko_graphics_clear(&CL_GAME_USERDATA()->cb, clear); }
-        neko_graphics_renderpass_end(&CL_GAME_USERDATA()->cb);
-
-        // // 设置投影矩阵的 2D 相机
-        // neko_idraw_defaults(&CL_GAME_USERDATA()->idraw);
-        // neko_idraw_camera2d(&CL_GAME_USERDATA()->idraw, (u32)fbs.x, (u32)fbs.y);
-
-        // // 底层图片
-        // char background_text[64] = "Project: unknown";
-
-        // neko_vec2 td = neko_asset_ascii_font_text_dimensions(neko_idraw_default_font(), background_text, -1);
-        // neko_vec2 ts = neko_v2(512 + 128, 512 + 128);
-
-        // neko_idraw_text(&CL_GAME_USERDATA()->idraw, (fbs.x - td.x) * 0.5f, (fbs.y - td.y) * 0.5f + ts.y / 2.f - 100.f, background_text, NULL, false, 255, 255, 255, 255);
-        // neko_idraw_texture(&CL_GAME_USERDATA()->idraw, g_test_ase);
-        // neko_idraw_rectvd(&CL_GAME_USERDATA()->idraw, neko_v2((fbs.x - ts.x) * 0.5f, (fbs.y - ts.y) * 0.5f - td.y - 50.f), ts, neko_v2(0.f, 1.f), neko_v2(1.f, 0.f), NEKO_COLOR_WHITE,
-        // NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
-
-        neko_graphics_renderpass_begin(&CL_GAME_USERDATA()->cb, NEKO_GRAPHICS_RENDER_PASS_DEFAULT);
-        {
-            neko_graphics_set_viewport(&CL_GAME_USERDATA()->cb, 0, 0, (u32)CL_GAME_USERDATA()->fbs.x, (u32)CL_GAME_USERDATA()->fbs.y);
-            neko_idraw_draw(&CL_GAME_USERDATA()->idraw, &CL_GAME_USERDATA()->cb);  // 立即模式绘制 idraw
-        }
         neko_graphics_renderpass_end(&CL_GAME_USERDATA()->cb);
 
         neko_imgui_new_frame(&CL_GAME_USERDATA()->imgui);
@@ -821,8 +721,6 @@ void game_loop() {
         neko_idraw_camera2d_ex(&CL_GAME_USERDATA()->idraw, CL_GAME_USERDATA()->cam.x, CL_GAME_USERDATA()->cam.x + CL_GAME_USERDATA()->fbs.x, CL_GAME_USERDATA()->cam.y,
                                CL_GAME_USERDATA()->cam.y + CL_GAME_USERDATA()->fbs.y);
 
-        // CL_GAME_USERDATA()->game->render();
-
         neko_graphics_renderpass_begin(&CL_GAME_USERDATA()->cb, CL_GAME_USERDATA()->main_rp);
         {
             neko_graphics_set_viewport(&CL_GAME_USERDATA()->cb, 0, 0, (u32)CL_GAME_USERDATA()->fbs.x, (u32)CL_GAME_USERDATA()->fbs.y);
@@ -872,10 +770,6 @@ void game_loop() {
 }
 
 void game_shutdown() {
-
-    //    sandbox_destroy(sb);
-
-    // CL_GAME_USERDATA()->game->clean();
 
     neko_graphics_renderpass_destroy(CL_GAME_USERDATA()->main_rp);
     neko_graphics_texture_destroy(CL_GAME_USERDATA()->main_rt);
@@ -942,398 +836,26 @@ void editor_dockspace(neko_ui_context_t *ctx) {
     neko_ui_window_end(ctx);
 }
 
+std::string game_assets(const std::string &path) {
+    if (CL_GAME_USERDATA()->data_path.empty()) {
+        neko_assert(!CL_GAME_USERDATA()->data_path.empty());  // game data path not detected
+        return path;
+    }
+    std::string get_path(CL_GAME_USERDATA()->data_path);
+
+    if (path.substr(0, 7) == "gamedir") {
+        get_path.append(path);
+    } else if (path.substr(0, 11) == "lua_scripts") {
+        std::string lua_path = path;
+        get_path = std::filesystem::path(CL_GAME_USERDATA()->data_path).parent_path().string().append("/source/lua/game/").append(lua_path.replace(0, 12, ""));
+    }
+
+    return get_path;
+}
+
 ///////////////////////////////////////////////
 //
-//  位图边缘检测算法
-
-#if 0
-
-static neko_vec2 last_point;
-
-void render_test() {
-
-    u8* alpha = neko_tex_rgba_to_alpha((u8*)g_texture_buffer, ch->chunk_w, ch->chunk_h);
-    u8* thresholded = neko_tex_alpha_to_thresholded(alpha, ch->chunk_w, ch->chunk_h, 90);
-    u8* outlined = neko_tex_thresholded_to_outlined(thresholded, ch->chunk_w, ch->chunk_h);
-    neko_safe_free(alpha);
-    neko_safe_free(thresholded);
-
-    neko_tex_point* outline = neko_tex_extract_outline_path(outlined, ch->chunk_w, ch->chunk_h, &l, 0);
-    while (l) {
-        s32 l0 = l;
-        neko_tex_distance_based_path_simplification(outline, &l, 0.5f);
-        // printf("simplified outline: %d -> %d\n", l0, l);
-
-        l_check = l;
-
-        for (s32 i = 0; i < l; i++) {
-            // gfx->immediate.draw_line_ext(cb, neko_vec2_mul(last_point, {4.f, 4.f}), neko_vec2_mul(neko_vec2{(f32)outline[i].x, (f32)outline[i].y}, {4.f, 4.f}), 2.f, neko_color_white);
-
-            last_point = {(f32)outline[i].x, (f32)outline[i].y};
-        }
-
-        outline = neko_tex_extract_outline_path(outlined, ch->chunk_w, ch->chunk_h, &l, outline);
-    };
-
-    neko_safe_free(outline);
-    neko_safe_free(outlined);
-}
-
-#endif
-
-// image manipulation functions
-u8 *neko_tex_rgba_to_alpha(const u8 *data, s32 w, s32 h) {
-    u8 *result = (u8 *)neko_safe_malloc(w * h);
-    s32 x, y;
-    for (y = 0; y < h; y++)
-        for (x = 0; x < w; x++) result[y * w + x] = data[(y * w + x) * 4 + 3];
-    return result;
-}
-
-u8 *neko_tex_alpha_to_thresholded(const u8 *data, s32 w, s32 h, u8 threshold) {
-    u8 *result = (u8 *)neko_safe_malloc(w * h);
-    s32 x, y;
-    for (y = 0; y < h; y++)
-        for (x = 0; x < w; x++) result[y * w + x] = data[y * w + x] >= threshold ? 255 : 0;
-    return result;
-}
-
-u8 *neko_tex_dilate_thresholded(const u8 *data, s32 w, s32 h) {
-    s32 x, y, dx, dy, cx, cy;
-    u8 *result = (u8 *)neko_safe_malloc(w * h);
-    for (y = 0; y < h; y++) {
-        for (x = 0; x < w; x++) {
-            result[y * w + x] = 0;
-            for (dy = -1; dy <= 1; dy++) {
-                for (dx = -1; dx <= 1; dx++) {
-                    cx = x + dx;
-                    cy = y + dy;
-                    if (cx >= 0 && cx < w && cy >= 0 && cy < h) {
-                        if (data[cy * w + cx]) {
-                            result[y * w + x] = 255;
-                            dy = 1;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-    }
-    return result;
-}
-
-u8 *neko_tex_thresholded_to_outlined(const u8 *data, s32 w, s32 h) {
-    u8 *result = (u8 *)neko_safe_malloc(w * h);
-    s32 x, y;
-    for (x = 0; x < w; x++) {
-        result[x] = data[x];
-        result[(h - 1) * w + x] = data[(h - 1) * w + x];
-    }
-    for (y = 1; y < h - 1; y++) {
-        result[y * w] = data[y * w];
-        for (x = 1; x < w - 1; x++) {
-            if (data[y * w + x] && (!data[y * w + x - 1] || !data[y * w + x + 1] || !data[y * w + x - w] || !data[y * w + x + w])) {
-                result[y * w + x] = 255;
-            } else {
-                result[y * w + x] = 0;
-            }
-        }
-        result[y * w + w - 1] = data[y * w + w - 1];
-    }
-    return result;
-}
-
-// outline path procedures
-static neko_tex_bool neko_tex_find_first_filled_pixel(const u8 *data, s32 w, s32 h, neko_tex_point *first) {
-    s32 x, y;
-    for (y = 0; y < h; y++) {
-        for (x = 0; x < w; x++) {
-            if (data[y * w + x]) {
-                first->x = (short)x;
-                first->y = (short)y;
-                return 1;
-            }
-        }
-    }
-    return 0;
-}
-
-static neko_tex_bool neko_tex_find_next_filled_pixel(const u8 *data, s32 w, s32 h, neko_tex_point current, neko_tex_direction *dir, neko_tex_point *next) {
-    // turn around 180°, then make a clockwise scan for a filled pixel
-    *dir = __neko_tex_direction_opposite(*dir);
-    s32 i;
-    for (i = 0; i < 8; i++) {
-        __neko_tex_point_add(*next, current, neko_tex_direction_to_pixel_offset[*dir]);
-
-        if (__neko_tex_point_is_inside(*next, w, h) && data[next->y * w + next->x]) return 1;
-
-        // move to next angle (clockwise)
-        *dir = *dir - 1;
-        if (*dir < 0) *dir = 7;
-    }
-    return 0;
-}
-
-neko_tex_point *neko_tex_extract_outline_path(u8 *data, s32 w, s32 h, s32 *point_count, neko_tex_point *reusable_outline) {
-    neko_tex_point *outline = reusable_outline;
-    if (!outline) outline = (neko_tex_point *)neko_safe_malloc(w * h * sizeof(neko_tex_point));
-
-    neko_tex_point current, next;
-
-restart:
-    if (!neko_tex_find_first_filled_pixel(data, w, h, &current)) {
-        *point_count = 0;
-        return outline;
-    }
-
-    s32 count = 0;
-    neko_tex_direction dir = 0;
-
-    while (__neko_tex_point_is_inside(current, w, h)) {
-        data[current.y * w + current.x] = 0;  // clear the visited path
-        outline[count++] = current;           // add our current point to the outline
-        if (!neko_tex_find_next_filled_pixel(data, w, h, current, &dir, &next)) {
-            // find loop connection
-            neko_tex_bool found = 0;
-            s32 i;
-            for (i = 0; i < count / 2; i++)  // only allow big loops
-            {
-                if (__neko_tex_point_is_next_to(current, outline[i])) {
-                    found = 1;
-                    break;
-                }
-            }
-
-            if (found) {
-                break;
-            } else {
-                // go backwards until we see outline pixels again
-                dir = __neko_tex_direction_opposite(dir);
-                count--;  // back up
-                s32 prev;
-                for (prev = count; prev >= 0; prev--) {
-                    current = outline[prev];
-                    outline[count++] = current;  // add our current point to the outline again
-                    if (neko_tex_find_next_filled_pixel(data, w, h, current, &dir, &next)) break;
-                }
-            }
-        }
-        current = next;
-    }
-
-    if (count <= 2)  // too small, discard and try again!
-        goto restart;
-    *point_count = count;
-    return outline;
-}
-
-void neko_tex_distance_based_path_simplification(neko_tex_point *outline, s32 *outline_length, f32 distance_threshold) {
-    s32 length = *outline_length;
-    s32 l;
-    for (l = length / 2 /*length - 1*/; l > 1; l--) {
-        s32 a, b = l;
-        for (a = 0; a < length; a++) {
-            neko_tex_point ab;
-            __neko_tex_point_sub(ab, outline[b], outline[a]);
-            f32 lab = sqrtf((f32)(ab.x * ab.x + ab.y * ab.y));
-            f32 ilab = 1.0f / lab;
-            f32 abnx = ab.x * ilab, abny = ab.y * ilab;
-
-            if (lab != 0.0f) {
-                neko_tex_bool found = 1;
-                s32 i = (a + 1) % length;
-                while (i != b) {
-                    neko_tex_point ai;
-                    __neko_tex_point_sub(ai, outline[i], outline[a]);
-                    f32 t = (abnx * ai.x + abny * ai.y) * ilab;
-                    f32 distance = -abny * ai.x + abnx * ai.y;
-                    if (t < 0.0f || t > 1.0f || distance > distance_threshold || -distance > distance_threshold) {
-                        found = 0;
-                        break;
-                    }
-
-                    if (++i == length) i = 0;
-                }
-
-                if (found) {
-                    s32 i;
-                    if (a < b) {
-                        for (i = 0; i < length - b; i++) outline[a + i + 1] = outline[b + i];
-                        length -= b - a - 1;
-                    } else {
-                        length = a - b + 1;
-                        for (i = 0; i < length; i++) outline[i] = outline[b + i];
-                    }
-                    if (l >= length) l = length - 1;
-                }
-            }
-
-            if (++b >= length) b = 0;
-        }
-    }
-    *outline_length = length;
-}
-
-#if 1
-
-// color brightness as perceived:
-f32 brightness(neko_color_t c) { return ((f32)c.r * 0.299f + (f32)c.g * 0.587f + (f32)c.b * 0.114f) / 256.f; }
-
-f32 color_num(neko_color_t c) {
-    const f32 bright_factor = 100.0f;
-    const f32 sat_factor = 0.1f;
-    neko_hsv_t hsv = neko_rgb_to_hsv(c);
-    return hsv.s * sat_factor + brightness(c) * bright_factor;
-}
-
-// particle_t get_closest_particle_from_color(neko_color_t c) {
-//     particle_t p = particle_empty();
-//     f32 min_dist = f32_max;
-//     neko_vec4 c_vec = neko_vec4{(f32)c.r, (f32)c.g, (f32)c.b, (f32)c.a};
-//     u8 id = mat_id_empty;
-//
-//     __check_dist_euclidean(c, mat_col_sand, particle_sand);
-//     __check_dist_euclidean(c, mat_col_water, particle_water);
-//     __check_dist_euclidean(c, mat_col_salt, particle_salt);
-//     __check_dist_euclidean(c, mat_col_wood, particle_wood);
-//     __check_dist_euclidean(c, mat_col_fire, particle_fire);
-//     __check_dist_euclidean(c, mat_col_smoke, particle_smoke);
-//     __check_dist_euclidean(c, mat_col_steam, particle_steam);
-//     __check_dist_euclidean(c, mat_col_gunpowder, particle_gunpowder);
-//     __check_dist_euclidean(c, mat_col_oil, particle_oil);
-//     __check_dist_euclidean(c, mat_col_lava, particle_lava);
-//     __check_dist_euclidean(c, mat_col_stone, particle_stone);
-//     __check_dist_euclidean(c, mat_col_acid, particle_acid);
-//
-//     return p;
-// }
-
-#if 0
-void drop_file_callback(void* platform_window, s32 count, const char** file_paths) {
-    if (count < 1) return;
-
-    // Just do first one for now...
-    if (count > 1) count = 1;
-
-    // We'll place at the mouse position as well, for shiggles
-    neko_vec2 mp = calculate_mouse_position();
-
-    for (s32 i = 0; i < count; ++i) {
-        // Need to verify this IS an image first.
-        char temp_file_extension_buffer[16] = {0};
-        neko_util_get_file_extension(temp_file_extension_buffer, sizeof(temp_file_extension_buffer), file_paths[0]);
-        if (neko_string_compare_equal(temp_file_extension_buffer, "png") || neko_string_compare_equal(temp_file_extension_buffer, "jpg") ||
-            neko_string_compare_equal(temp_file_extension_buffer, "jpeg") || neko_string_compare_equal(temp_file_extension_buffer, "bmp")) {
-            // Load texture into memory
-            s32 _w, _h;
-            u32 _n;
-            void* texture_data = NULL;
-
-            // Force texture data to 3 components
-            neko_util_load_texture_data_from_file(file_paths[i], &_w, &_h, &_n, &texture_data, false);
-            _n = 3;
-
-            // Not sure what the format should be, so this is ...blah. Need to find a way to determine this beforehand.
-            u8* data = (u8*)texture_data;
-
-            s32 sx = (ch->render_w - _w) / 2;
-            s32 sy = (ch->render_h - _h) / 2;
-
-            // Now we need to process the data and place it into our particle/color buffers
-            for (u32 h = 0; h < _h; ++h) {
-                for (u32 w = 0; w < _w; ++w) {
-                    neko_color_t c = {data[(h * _w + w) * _n + 0], data[(h * _w + w) * _n + 1], data[(h * _w + w) * _n + 2], 255};
-
-                    // Get color of this pixel in the image
-                    particle_t p = get_closest_particle_from_color(c);
-
-                    // chunk_update_mask_t* chunk = neko_hash_table_getp(ch->chunk_data, 0);
-
-                    // Let's place this thing in the center instead...
-                    if (in_bounds(sx + w, sy + h)) {
-
-                        u32 idx = compute_idx(sx + w, sy + h);
-
-                        chunk_write_data(ch,idx, p);
-                    }
-                }
-            }
-
-            // Free texture data
-            free(texture_data);
-        }
-    }
-}
-#endif
-
-#endif
-
-#if 0
-
-#define STB_HBWANG_RAND() neko_rand_xorshf32()
-#define STB_HBWANG_IMPLEMENTATION
-#include "deps/stb/stb_herringbone_wang_tile.h"
-#include "deps/stb/stb_image.h"
-#include "deps/stb/stb_image_write.h"
-
-void genwang(std::string filename, unsigned char* data, s32 xs, s32 ys, s32 w, s32 h) {
-    stbhw_tileset ts;
-    if (xs < 1 || xs > 1000) {
-        fprintf(stderr, "xsize invalid or out of range\n");
-        exit(1);
-    }
-    if (ys < 1 || ys > 1000) {
-        fprintf(stderr, "ysize invalid or out of range\n");
-        exit(1);
-    }
-
-    stbhw_build_tileset_from_image(&ts, data, w * 3, w, h);
-    // allocate a buffer to create the final image to
-    s32 yimg = ys + 4;
-    auto buff = static_cast<unsigned char*>(malloc(3 * xs * yimg));
-    stbhw_generate_image(&ts, NULL, buff, xs * 3, xs, yimg);
-    stbi_write_png(filename.c_str(), xs, yimg, 3, buff, xs * 3);
-    stbhw_free_tileset(&ts);
-    free(buff);
-}
-
-void test_wang() {
-
-    // mapgen {tile-file} {xsize} {ysize} {seed} [n]
-
-    s32 xs = 128;
-    s32 ys = 128;
-
-    s32 n = 1;
-
-    s32 w, h;
-
-    unsigned char* data = stbi_load(neko_file_path("gamedir/assets/textures/wang_test.png"), &w, &h, NULL, 3);
-
-    neko_assert(data);
-
-    printf("Output size: %dx%d\n", xs, ys);
-
-    {
-        u32 seed = neko_rand_xorshf32();
-
-        // s32 num = seed + xs + 11 * (xs / -11) - 12 * (seed / 12);
-        s32 num = xs % 11 + seed % 12;
-
-        for (s32 i = 0; i < n; ++i) {
-
-            auto filename = std::string("output_wang");
-            filename = filename.substr(0, filename.size() - 4);
-            filename = filename + std::to_string(seed) + "#" + std::to_string(i) + ".png";
-
-            genwang(filename, data, xs, ys, w, h);
-        }
-    }
-
-    free(data);
-}
-
-#endif
+//  测试UI
 
 s32 button_custom(neko_ui_context_t *ctx, const char *label) {
     // Do original button call

@@ -744,7 +744,7 @@ NEKO_PRIVATE(void) destroy_pack_items(u64 item_count, pack_item *items) {
     neko_safe_free(items);
 }
 
-NEKO_PRIVATE(neko_pack_result) create_pack_items(FILE *packFile, u64 item_count, pack_item **_items) {
+NEKO_PRIVATE(int) create_pack_items(FILE *packFile, u64 item_count, pack_item **_items) {
     neko_assert(packFile);
     neko_assert(item_count > 0);
     neko_assert(_items);
@@ -802,7 +802,7 @@ NEKO_PRIVATE(neko_pack_result) create_pack_items(FILE *packFile, u64 item_count,
     return 0;
 }
 
-neko_pack_result neko_pack_read(const_str file_path, u32 data_buffer_capacity, bool is_resources_directory, neko_packreader_t *pack_reader) {
+int neko_pack_read(const_str file_path, u32 data_buffer_capacity, bool is_resources_directory, neko_packreader_t *pack_reader) {
     neko_assert(file_path);
     neko_assert(pack_reader);
 
@@ -868,7 +868,7 @@ neko_pack_result neko_pack_read(const_str file_path, u32 data_buffer_capacity, b
 
     pack_item *items;
 
-    neko_pack_result pack_result = create_pack_items(file, item_count, &items);
+    int pack_result = create_pack_items(file, item_count, &items);
 
     if (pack_result != 0) {
         neko_pack_destroy(pack_reader);
@@ -964,7 +964,7 @@ const_str neko_pack_item_path(neko_packreader_t *pack_reader, u64 index) {
     return pack_reader->items[index].path;
 }
 
-neko_pack_result neko_pack_item_data_with_index(neko_packreader_t *pack_reader, u64 index, const u8 **data, u32 *size) {
+int neko_pack_item_data_with_index(neko_packreader_t *pack_reader, u64 index, const u8 **data, u32 *size) {
     neko_assert(pack_reader);
     neko_assert(index < pack_reader->item_count);
     neko_assert(data);
@@ -1051,7 +1051,7 @@ neko_pack_result neko_pack_item_data_with_index(neko_packreader_t *pack_reader, 
     return 0;
 }
 
-neko_pack_result neko_pack_item_data(neko_packreader_t *pack_reader, const_str path, const u8 **data, u32 *size) {
+int neko_pack_item_data(neko_packreader_t *pack_reader, const_str path, const u8 **data, u32 *size) {
     neko_assert(pack_reader);
     neko_assert(path);
     neko_assert(data);
@@ -1086,12 +1086,12 @@ NEKO_PRIVATE(void) neko_pack_remove_item(u64 item_count, pack_item *pack_items) 
     for (u64 i = 0; i < item_count; i++) remove(pack_items[i].path);
 }
 
-neko_pack_result neko_pack_unzip(const_str file_path, b8 print_progress) {
+int neko_pack_unzip(const_str file_path, b8 print_progress) {
     neko_assert(file_path);
 
     neko_packreader_t pack_reader;
 
-    neko_pack_result pack_result = neko_pack_read(file_path, 128, false, &pack_reader);
+    int pack_result = neko_pack_read(file_path, 128, false, &pack_reader);
 
     if (pack_result != 0) return pack_result;
 
@@ -1169,7 +1169,7 @@ neko_pack_result neko_pack_unzip(const_str file_path, b8 print_progress) {
     return 0;
 }
 
-NEKO_PRIVATE(neko_pack_result) neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b8 print_progress) {
+NEKO_PRIVATE(int) neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b8 print_progress) {
     neko_assert(pack_file);
     neko_assert(item_count > 0);
     neko_assert(item_paths);
@@ -1365,7 +1365,7 @@ NEKO_PRIVATE(int) neko_pack_compare_item_paths(const void *_a, const void *_b) {
     return memcmp(a, b, al * sizeof(u8));
 }
 
-neko_pack_result neko_pack_build(const_str file_path, u64 file_count, const_str *file_paths, b8 print_progress) {
+int neko_pack_build(const_str file_path, u64 file_count, const_str *file_paths, b8 print_progress) {
     neko_assert(file_path);
     neko_assert(file_count > 0);
     neko_assert(file_paths);
@@ -1420,7 +1420,7 @@ neko_pack_result neko_pack_build(const_str file_path, u64 file_count, const_str 
         return -1; /*FAILED_TO_WRITE_FILE_PACK_RESULT*/
     }
 
-    neko_pack_result pack_result = neko_write_pack_items(pack_file, item_count, item_paths, print_progress);
+    int pack_result = neko_write_pack_items(pack_file, item_count, item_paths, print_progress);
 
     neko_safe_free(item_paths);
     closeFile(pack_file);
@@ -1433,7 +1433,7 @@ neko_pack_result neko_pack_build(const_str file_path, u64 file_count, const_str 
     return 0;
 }
 
-neko_pack_result neko_pack_info(const_str file_path, u8 *pack_version, b8 *isLittleEndian, u64 *_item_count) {
+int neko_pack_info(const_str file_path, u8 *pack_version, b8 *isLittleEndian, u64 *_item_count) {
     neko_assert(file_path);
     neko_assert(pack_version);
     neko_assert(isLittleEndian);

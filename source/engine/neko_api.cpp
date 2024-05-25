@@ -550,6 +550,8 @@ NEKO_INLINE void neko_register_platform(lua_State* L) {
     lua_register(L, "neko_set_window_title", __neko_bind_platform_set_window_title);
 }
 
+#if 0
+
 // box2d fixture
 
 static int mt_b2_fixture_friction(lua_State* L) {
@@ -1001,7 +1003,7 @@ static int open_mt_b2_world(lua_State* L) {
     return 0;
 }
 
-static int spry_b2_world(lua_State* L) {
+static int neko_b2_world(lua_State* L) {
     lua_Number gx = luax_opt_number_field(L, 1, "gx", 0);
     lua_Number gy = luax_opt_number_field(L, 1, "gy", 9.81);
     lua_Number meter = luax_opt_number_field(L, 1, "meter", 16);
@@ -1011,6 +1013,189 @@ static int spry_b2_world(lua_State* L) {
     neko_physics p = physics_world_make(L, gravity, meter);
     luax_new_userdata(L, p, "mt_b2_world");
     return 1;
+}
+
+#endif
+
+// mt_sound
+
+static ma_sound* sound_ma(lua_State* L) {
+    Sound* sound = *(Sound**)luaL_checkudata(L, 1, "mt_sound");
+    return &sound->ma;
+}
+
+static int mt_sound_gc(lua_State* L) {
+    Sound* sound = *(Sound**)luaL_checkudata(L, 1, "mt_sound");
+
+    if (ma_sound_at_end(&sound->ma)) {
+        sound->trash();
+        neko_safe_free(sound);
+    } else {
+        sound->zombie = true;
+        // g_app->garbage_sounds.push(sound); // TODO:: 建立 garbage_sounds 每帧清理
+    }
+
+    return 0;
+}
+
+static int mt_sound_frames(lua_State* L) {
+    unsigned long long frames = 0;
+    ma_result res = ma_sound_get_length_in_pcm_frames(sound_ma(L), &frames);
+    if (res != MA_SUCCESS) {
+        return 0;
+    }
+
+    lua_pushinteger(L, (lua_Integer)frames);
+    return 1;
+}
+
+static int mt_sound_start(lua_State* L) {
+    ma_result res = ma_sound_start(sound_ma(L));
+    if (res != MA_SUCCESS) {
+        luaL_error(L, "failed to start sound");
+    }
+
+    return 0;
+}
+
+static int mt_sound_stop(lua_State* L) {
+    ma_result res = ma_sound_stop(sound_ma(L));
+    if (res != MA_SUCCESS) {
+        luaL_error(L, "failed to stop sound");
+    }
+
+    return 0;
+}
+
+static int mt_sound_seek(lua_State* L) {
+    lua_Number f = luaL_optnumber(L, 2, 0);
+
+    ma_result res = ma_sound_seek_to_pcm_frame(sound_ma(L), f);
+    if (res != MA_SUCCESS) {
+        luaL_error(L, "failed to seek to frame");
+    }
+
+    return 0;
+}
+
+static int mt_sound_secs(lua_State* L) {
+    float len = 0;
+    ma_result res = ma_sound_get_length_in_seconds(sound_ma(L), &len);
+    if (res != MA_SUCCESS) {
+        return 0;
+    }
+
+    lua_pushnumber(L, len);
+    return 1;
+}
+
+static int mt_sound_vol(lua_State* L) {
+    lua_pushnumber(L, ma_sound_get_volume(sound_ma(L)));
+    return 1;
+}
+
+static int mt_sound_set_vol(lua_State* L) {
+    ma_sound_set_volume(sound_ma(L), (float)luaL_optnumber(L, 2, 0));
+    return 0;
+}
+
+static int mt_sound_pan(lua_State* L) {
+    lua_pushnumber(L, ma_sound_get_pan(sound_ma(L)));
+    return 1;
+}
+
+static int mt_sound_set_pan(lua_State* L) {
+    ma_sound_set_pan(sound_ma(L), (float)luaL_optnumber(L, 2, 0));
+    return 0;
+}
+
+static int mt_sound_pitch(lua_State* L) {
+    lua_pushnumber(L, ma_sound_get_pitch(sound_ma(L)));
+    return 1;
+}
+
+static int mt_sound_set_pitch(lua_State* L) {
+    ma_sound_set_pitch(sound_ma(L), (float)luaL_optnumber(L, 2, 0));
+    return 0;
+}
+
+static int mt_sound_loop(lua_State* L) {
+    lua_pushboolean(L, ma_sound_is_looping(sound_ma(L)));
+    return 1;
+}
+
+static int mt_sound_set_loop(lua_State* L) {
+    ma_sound_set_looping(sound_ma(L), lua_toboolean(L, 2));
+    return 0;
+}
+
+static int mt_sound_pos(lua_State* L) {
+    ma_vec3f pos = ma_sound_get_position(sound_ma(L));
+    lua_pushnumber(L, pos.x);
+    lua_pushnumber(L, pos.y);
+    return 2;
+}
+
+static int mt_sound_set_pos(lua_State* L) {
+    lua_Number x = luaL_optnumber(L, 2, 0);
+    lua_Number y = luaL_optnumber(L, 3, 0);
+    ma_sound_set_position(sound_ma(L), (float)x, (float)y, 0.0f);
+    return 0;
+}
+
+static int mt_sound_dir(lua_State* L) {
+    ma_vec3f dir = ma_sound_get_direction(sound_ma(L));
+    lua_pushnumber(L, dir.x);
+    lua_pushnumber(L, dir.y);
+    return 2;
+}
+
+static int mt_sound_set_dir(lua_State* L) {
+    lua_Number x = luaL_optnumber(L, 2, 0);
+    lua_Number y = luaL_optnumber(L, 3, 0);
+    ma_sound_set_direction(sound_ma(L), (float)x, (float)y, 0.0f);
+    return 0;
+}
+
+static int mt_sound_vel(lua_State* L) {
+    ma_vec3f vel = ma_sound_get_velocity(sound_ma(L));
+    lua_pushnumber(L, vel.x);
+    lua_pushnumber(L, vel.y);
+    return 2;
+}
+
+static int mt_sound_set_vel(lua_State* L) {
+    lua_Number x = luaL_optnumber(L, 2, 0);
+    lua_Number y = luaL_optnumber(L, 3, 0);
+    ma_sound_set_velocity(sound_ma(L), (float)x, (float)y, 0.0f);
+    return 0;
+}
+
+static int mt_sound_set_fade(lua_State* L) {
+    lua_Number from = luaL_optnumber(L, 2, 0);
+    lua_Number to = luaL_optnumber(L, 3, 0);
+    lua_Number ms = luaL_optnumber(L, 4, 0);
+    ma_sound_set_fade_in_milliseconds(sound_ma(L), (float)from, (float)to, (u64)ms);
+    return 0;
+}
+
+static int open_mt_sound(lua_State* L) {
+    luaL_Reg reg[] = {
+            {"__gc", mt_sound_gc},           {"frames", mt_sound_frames},
+            {"secs", mt_sound_secs},         {"start", mt_sound_start},
+            {"stop", mt_sound_stop},         {"seek", mt_sound_seek},
+            {"vol", mt_sound_vol},           {"set_vol", mt_sound_set_vol},
+            {"pan", mt_sound_pan},           {"set_pan", mt_sound_set_pan},
+            {"pitch", mt_sound_pitch},       {"set_pitch", mt_sound_set_pitch},
+            {"loop", mt_sound_loop},         {"set_loop", mt_sound_set_loop},
+            {"pos", mt_sound_pos},           {"set_pos", mt_sound_set_pos},
+            {"dir", mt_sound_dir},           {"set_dir", mt_sound_set_dir},
+            {"vel", mt_sound_vel},           {"set_vel", mt_sound_set_vel},
+            {"set_fade", mt_sound_set_fade}, {nullptr, nullptr},
+    };
+
+    luax_new_class(L, "mt_sound", reg);
+    return 0;
 }
 
 struct neko_lua_handle_t {
@@ -1030,9 +1215,9 @@ static int __neko_bind_pack_construct(lua_State* L) {
 
     userdata_ptr->data = neko_safe_malloc(sizeof(neko_packreader_t));
 
-    neko_pack_result result = neko_pack_read(path, 0, false, (neko_packreader_t*)userdata_ptr->data);
+    int result = neko_pack_read(path, 0, false, (neko_packreader_t*)userdata_ptr->data);
 
-    if (!neko_pack_check(result)) {
+    if (result) {
         const_str error_message = "neko_pack_check failed";
         lua_pushstring(L, error_message);  // 将错误信息压入堆栈
         return lua_error(L);               // 抛出lua错误
@@ -1078,11 +1263,11 @@ static int __neko_bind_pack_build(lua_State* L) {
         lua_pop(L, 1);  // # -1
     }
 
-    neko_pack_result result = neko_pack_build(path, n, item_paths, true);
+    int result = neko_pack_build(path, n, item_paths, true);
 
     neko_safe_free(item_paths);
 
-    if (!neko_pack_check(result)) {
+    if (result) {
         const_str error_message = "__neko_bind_pack_build failed";
         lua_pushstring(L, error_message);  // 将错误信息压入堆栈
         return lua_error(L);               // 抛出lua错误
@@ -1099,7 +1284,7 @@ static int __neko_bind_pack_info(lua_State* L) {
     bool is_little_endian;
     u64 item_count;
 
-    neko_pack_result result = neko_pack_info(path, &pack_version, &is_little_endian, &item_count);
+    int result = neko_pack_info(path, &pack_version, &is_little_endian, &item_count);
 
     lua_pushinteger(L, pack_version);
     lua_pushboolean(L, is_little_endian);
@@ -1134,9 +1319,9 @@ static int __neko_bind_pack_assets_load(lua_State* L) {
     assets_user_handle->name = path;
     assets_user_handle->size = 0;
 
-    neko_pack_result result = neko_pack_item_data(pack, path, (const u8**)&assets_user_handle->data, (u32*)&assets_user_handle->size);
+    int result = neko_pack_item_data(pack, path, (const u8**)&assets_user_handle->data, (u32*)&assets_user_handle->size);
 
-    if (!neko_pack_check(result)) {
+    if (result) {
         const_str error_message = "__neko_bind_pack_assets_load failed";
         lua_pushstring(L, error_message);  // 将错误信息压入堆栈
         return lua_error(L);               // 抛出lua错误
@@ -1417,6 +1602,40 @@ static int __neko_bind_pixelui_end(lua_State* L) {
     return 0;
 }
 #endif
+
+static int __neko_bind_json_read(lua_State* L) {
+
+    neko::string str = luax_check_string(L, 1);
+
+    neko::JSONDocument doc = {};
+    doc.parse(str);
+    neko_defer(doc.trash());
+
+    if (doc.error.len != 0) {
+        lua_pushnil(L);
+        lua_pushlstring(L, doc.error.data, doc.error.len);
+        return 2;
+    }
+
+    json_to_lua(L, &doc.root);
+    return 1;
+}
+
+static int __neko_bind_json_write(lua_State* L) {
+    lua_Integer width = luaL_optinteger(L, 2, 0);
+
+    neko::string contents = {};
+    neko::string err = lua_to_json_string(L, 1, &contents, width);
+    if (err.len != 0) {
+        lua_pushnil(L);
+        lua_pushlstring(L, err.data, err.len);
+        return 2;
+    }
+
+    lua_pushlstring(L, contents.data, contents.len);
+    neko_safe_free(contents.data);
+    return 1;
+}
 
 static int __neko_bind_gfxt_create(lua_State* L) {
     const_str pip_path = lua_tostring(L, 1);   // gamedir/assets/pipelines/simple.sf
@@ -2954,8 +3173,8 @@ NEKO_INLINE void neko_register_test(lua_State* L) {
     neko_lua_auto_struct(L, neko_renderpass_t);
     neko_lua_auto_struct_member(L, neko_renderpass_t, id, unsigned int);
 
-    neko_lua_auto_struct(L, neko_sound_playing_sound_t);
-    neko_lua_auto_struct_member(L, neko_sound_playing_sound_t, id, unsigned long long);
+    // neko_lua_auto_struct(L, neko_sound_playing_sound_t);
+    // neko_lua_auto_struct_member(L, neko_sound_playing_sound_t, id, unsigned long long);
 
     neko_lua_auto_enum(L, neko_graphics_vertex_attribute_type);
     neko_lua_auto_enum_value(L, neko_graphics_vertex_attribute_type, NEKO_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT4);
@@ -3669,97 +3888,6 @@ NEKO_INLINE void neko_register_common(lua_State* L) {
     lua_register(L, "neko_ls", __neko_ls);
 }
 
-class base_t {
-public:
-    base_t() : v(789) {}
-    void dump() {
-        // printf("in %s a:%dn", __FUNCTION__, v);
-    }
-    int v;
-};
-
-class foo_t : public base_t {
-public:
-    foo_t(int b) : a(b) {
-        // printf("in %s b:%d this=%pn", __FUNCTION__, b, this);
-    }
-
-    ~foo_t() {
-        // printf("in %sn", __FUNCTION__);
-    }
-
-    void print(int64_t a, base_t* p) const {
-        // printf("in foo_t::print a:%ld p:%pn", (long)a, p);
-    }
-
-    static void dumy() {
-        // printf("in %sn", __FUNCTION__);
-    }
-    int a;
-};
-
-//! lua talbe 可以自动转换为stl 对象
-void dumy(std::map<std::string, std::string> ret, std::vector<int> a, std::list<std::string> b, std::set<int64_t> c) {
-    printf("in %s begin ------------n", __FUNCTION__);
-    for (std::map<std::string, std::string>::iterator it = ret.begin(); it != ret.end(); ++it) {
-        printf("map:%s, val:%s:n", it->first.c_str(), it->second.c_str());
-    }
-    printf("in %s end ------------n", __FUNCTION__);
-}
-
-void neko_register_test_oop(lua_State* L) {
-    //! 注册基类函数, ctor() 为构造函数的类型
-    neko_lua_wrap_register_t<base_t, void_ctor()>(L, "base_t")  //! 注册构造函数
-            .def(&base_t::dump, "dump")                         //! 注册基类的函数
-            .def(&base_t::v, "v");                              //! 注册基类的属性
-
-    //! 注册子类，ctor(int) 为构造函数， foo_t为类型名称， base_t为继承的基类名称
-    neko_lua_wrap_register_t<foo_t, void_ctor(int)>(L, "foo_t", "base_t")
-            .def(&foo_t::print, "print")  //! 子类的函数
-            .def(&foo_t::a, "a");         //! 子类的字段
-
-    neko_lua_wrap_register_t<>(L).def(&dumy, "dumy");  //! 注册静态函数
-                                                       /*支持注册基类
-                                                       fflua_register_t<base_t, virtual_ctor()>(ls, "base_t");
-                                                       */
-
-    std::string test_script = R"(
-
-function test_object(foo_obj)
-    --测试构造
-    base = base_t:new()
-    -- 每个对象都有一个get_pointer获取指针
-    -- print("base ptr:", base:get_pointer())
-    -- 测试C++对象函数
-    foo_obj:print(12333, base)
-    base:delete()
-    --基类的函数
-    foo_obj:dump()
-    -- 测试对象属性
-    -- print("foo property", foo_obj.a)
-    -- print("base property", foo_obj.v)
-end
-
-function test_ret_object(foo_obj)
-    return foo_obj
-end
-
-function test_ret_base_object(foo_obj)
-    return foo_obj
-end
-
-    )";
-
-    neko_lua_wrap_run_string(L, test_script);
-
-    foo_t* foo_ptr = new foo_t(456);
-    neko_lua_wrap_call<void>(L, "test_object", foo_ptr);
-
-    assert(foo_ptr == neko_lua_wrap_call<foo_t*>(L, "test_ret_object", foo_ptr));
-    base_t* base_ptr = neko_lua_wrap_call<base_t*>(L, "test_ret_base_object", foo_ptr);
-    assert(base_ptr == foo_ptr);
-}
-
 int register_mt_hooks(lua_State* L) {
     luaL_Reg reg[] = {{"add", neko_lua_hook_bind_add}, {"remove", neko_lua_hook_bind_remove}, {"run", neko_lua_hook_bind_run}, {"free", neko_lua_hook_bind_free}, {NULL, NULL}};
     luaL_newmetatable(L, "mt_hooks");
@@ -3895,13 +4023,15 @@ int open_neko(lua_State* L) {
             {"pack_assets_load", __neko_bind_pack_assets_load},
             {"pack_assets_unload", __neko_bind_pack_assets_unload},
 
-            {"b2_world", spry_b2_world},
+            // {"b2_world", neko_b2_world},
 
             {"cvar", __neko_bind_cvar},
             {"print", __neko_bind_print},
 
             {"base64_encode", l_base64_encode},
             {"base64_decode", l_base64_decode},
+            {"json_read", __neko_bind_json_read},
+            {"json_write", __neko_bind_json_write},
 
             {NULL, NULL},
     };
@@ -3943,12 +4073,10 @@ static int __neko_loader(lua_State* L) {
 
     // neko_println("fuck:%s", path.c_str());
 
-    neko_pack_result result;
-
     u8* data;
     u32 data_size;
 
-    result = neko_pack_item_data(&CL_GAME_USERDATA()->pack, path.c_str(), (const u8**)&data, &data_size);
+    int result = neko_pack_item_data(&CL_GAME_USERDATA()->pack, path.c_str(), (const u8**)&data, &data_size);
     if (result == 0) {
         if (luaL_loadbuffer(L, (char*)data, data_size, name) != LUA_OK) {
             lua_pop(L, 1);
@@ -3983,9 +4111,10 @@ void neko_register(lua_State* L) {
     // PRELOAD("enet", luaopen_neko_enet);
 
     lua_CFunction mt_funcs[] = {
-            open_mt_b2_fixture,
-            open_mt_b2_body,
-            open_mt_b2_world,
+            // open_mt_b2_fixture,
+            // open_mt_b2_body,
+            // open_mt_b2_world,
+            open_mt_sound,
     };
 
     for (u32 i = 0; i < neko_arr_size(mt_funcs); i++) {
@@ -3997,7 +4126,6 @@ void neko_register(lua_State* L) {
     neko_register_common(L);
     neko_register_platform(L);
     neko_register_test(L);
-    neko_register_test_oop(L);
 
     // package_preload(L, "xxx", open_embed_xxx);
 

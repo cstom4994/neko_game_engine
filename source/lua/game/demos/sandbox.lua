@@ -218,12 +218,11 @@ local s_player_pos = {
 local test_pack, test_handle, test_items
 
 M.sub_init_thread = function()
-    gd.assetsys = neko.assetsys_create()
-    gd.filewatch = neko.filewatch_create(gd.assetsys)
+    -- gd.assetsys = neko.filesystem_create()
+    -- gd.filewatch = neko.filewatch_create(gd.assetsys)
 
-    neko.filewatch_mount(gd.filewatch, neko_file_path("gamedir/maps"), "/maps");
-
-    neko.filewatch_start(gd.filewatch, "/maps", "test_filewatch_callback")
+    -- neko.filewatch_mount(gd.filewatch, neko_file_path("gamedir/maps"), "/maps");
+    -- neko.filewatch_start(gd.filewatch, "/maps", "test_filewatch_callback")
 
     -- gd.hot_code["player_update.lua"] = neko_load("player_update.lua")
     -- gd.hot_code["npc.lua"] = neko_load("npc.lua")
@@ -289,7 +288,7 @@ M.sub_init_thread = function()
 end
 
 local win_w, win_h
-local test_audio
+-- local test_audio
 
 local fbs_x = 640 * 1.5
 local fbs_y = 360 * 1.5
@@ -368,7 +367,7 @@ M.sub_init = function()
 
     phy_world_tiled_load(SAFE_UD(tiled))
 
-    test_audio = neko.audio_load("C:/Users/kaoruxun/Projects/Neko/dataWak/audio/otoha.wav")
+    -- test_audio = neko.audio_load("C:/Users/kaoruxun/Projects/Neko/dataWak/audio/otoha.wav")
 
     -- eid3 = ecs_world:new{
     --     vector2 = {
@@ -491,12 +490,12 @@ M.sub_shutdown = function()
         neko.particle_end(SAFE_UD(t))
     end
 
-    neko.filewatch_stop(gd.filewatch, "/maps")
+    -- neko.filewatch_stop(gd.filewatch, "/maps")
 
-    neko.filewatch_destory(gd.filewatch)
-    neko.assetsys_destory(gd.assetsys)
+    -- neko.filewatch_destory(gd.filewatch)
+    -- neko.filesystem_destory(gd.assetsys)
 
-    neko.audio_unload(test_audio)
+    -- neko.audio_unload(test_audio)
 
     -- M.client:disconnect()
 
@@ -516,8 +515,8 @@ M.sub_pre_update = function()
 
     if neko_game.cvar.enable_hotload then
         if (gd.tick & 255) == 0 then
-            neko.filewatch_update(gd.filewatch)
-            neko.filewatch_notify(gd.filewatch)
+            -- neko.filewatch_update(gd.filewatch)
+            -- neko.filewatch_notify(gd.filewatch)
 
             for k, v in pairs(gd.hot_code) do
                 neko_hotload(k)

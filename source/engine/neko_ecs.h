@@ -179,14 +179,6 @@ typedef struct {
     bool selected;
 } CGameObjectTest;
 
-// typedef struct {
-//     f32 x, y;
-// } CTransform;
-//
-// typedef struct {
-//     f32 dx, dy;
-// } CVelocity;
-
 enum ComponentType {
     COMPONENT_GAMEOBJECT,
     COMPONENT_TRANSFORM,

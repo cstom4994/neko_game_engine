@@ -3,10 +3,8 @@
 #define NEKO_ENGINE_H
 
 #include "engine/neko.h"
-#include "engine/neko_audio.h"
 #include "engine/neko_graphics.h"
 #include "engine/neko_platform.h"
-// #include "engine/neko_console.h"
 
 /*==========================
 // NEKO_ENGINE / NEKO_APP
@@ -41,7 +39,6 @@ typedef struct neko_game_desc_s {
 typedef struct neko_context_t {
     neko_platform_t* platform;
     neko_graphics_t* graphics;
-    neko_audio_t* audio;
     neko_game_desc_t game;
     neko_os_api_t os;
     void (*shutdown)();

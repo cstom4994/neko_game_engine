@@ -1322,7 +1322,7 @@ void json_to_lua(lua_State *L, JSON *json) {
     }
 }
 
-static void lua_to_json_string(string_builder &sb, lua_State *L, HashMap<bool> *visited, string *err, s32 width, s32 level) {
+static void lua_to_json_string(string_builder &sb, lua_State *L, hashmap<bool> *visited, string *err, s32 width, s32 level) {
     auto indent = [&](s32 offset) {
         if (width > 0) {
             sb << "\n";
@@ -1447,7 +1447,7 @@ static void lua_to_json_string(string_builder &sb, lua_State *L, HashMap<bool> *
 string lua_to_json_string(lua_State *L, s32 arg, string *contents, s32 width) {
     string_builder sb = {};
 
-    HashMap<bool> visited = {};
+    hashmap<bool> visited = {};
     neko_defer(visited.trash());
 
     string err = {};
