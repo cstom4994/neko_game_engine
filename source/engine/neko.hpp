@@ -317,36 +317,6 @@ NEKO_INLINE bool fs_exists(const std::string& filename) {
 
 }  // namespace neko
 
-NEKO_INLINE void neko_utils_write_ppm(const int width, const int height, unsigned char* buffer, const char* filename) {
-
-    FILE* fp = fopen(filename, "wb");
-
-    (void)fprintf(fp, "P6\n%d %d\n255\n", width, height);
-
-    for (int i = 0; i < width * height; ++i) {
-        static unsigned char color[3];
-        color[0] = buffer[i];
-        color[1] = buffer[i];
-        color[2] = buffer[i];
-        (void)fwrite(color, 1, 3, fp);
-    }
-
-    (void)fclose(fp);
-};
-
-NEKO_INLINE void neko_tex_flip_vertically(int width, int height, u8* data) {
-    u8 rgb[4];
-    for (int y = 0; y < height / 2; y++) {
-        for (int x = 0; x < width; x++) {
-            int top = 4 * (x + y * width);
-            int bottom = 4 * (x + (height - y - 1) * width);
-            memcpy(rgb, data + top, sizeof(rgb));
-            memcpy(data + top, data + bottom, sizeof(rgb));
-            memcpy(data + bottom, rgb, sizeof(rgb));
-        }
-    }
-}
-
 #if !defined(NEKO_PROP)
 #define NEKO_PROP
 

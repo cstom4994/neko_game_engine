@@ -19,8 +19,8 @@ extern "C" {
 
 #define NEKO_LUA_AUTO_REGISTER_PREFIX "neko_lua_auto_"
 
-NEKO_API_DECL void __neko_lua_auto_open(lua_State *L);
-NEKO_API_DECL void __neko_lua_auto_close(lua_State *L);
+NEKO_API_DECL void __neko_lua_auto_init(lua_State *L);
+NEKO_API_DECL void __neko_lua_auto_fini(lua_State *L);
 
 #define neko_lua_auto_type(L, type) neko_lua_auto_type_add(L, #type, sizeof(type))
 

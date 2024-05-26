@@ -69,12 +69,11 @@ typedef struct neko_platform_running_desc_s {
     u32 width;
     u32 height;
     u32 flags;
-    u32 num_samples;  // Multisamples (if 0, then disabled)
+    u32 num_samples;  // 多重样本 0为禁用
     u32 monitor_index;
     b32 vsync;
     f32 frame_rate;
     b32 hdpi;
-    const_str engine_args;
     bool center;
     bool running_background;
 } neko_platform_running_desc_t;
@@ -349,8 +348,8 @@ typedef struct neko_opengl_video_settings_t {
 
 typedef union neko_graphics_api_settings_t {
     neko_opengl_video_settings_t opengl;
-    b32 debug;
-    b32 hdpi;
+    // b32 debug;
+    // b32 hdpi;
 } neko_graphics_api_settings_t;
 
 typedef struct neko_platform_video_settings_t {
@@ -585,6 +584,7 @@ NEKO_API_DECL neko_platform_file_stats_t neko_platform_file_stats(const char *fi
 NEKO_API_DECL void *neko_platform_library_load_default_impl(const char *lib_path);
 NEKO_API_DECL void neko_platform_library_unload_default_impl(void *lib);
 NEKO_API_DECL void *neko_platform_library_proc_address_default_impl(void *lib, const char *func);
+NEKO_API_DECL int neko_platform_chdir_default_impl(const char *path);
 
 // Default file implementations
 #define neko_platform_read_file_contents neko_platform_read_file_contents_default_impl
@@ -599,6 +599,7 @@ NEKO_API_DECL void *neko_platform_library_proc_address_default_impl(void *lib, c
 #define neko_platform_library_load neko_platform_library_load_default_impl
 #define neko_platform_library_unload neko_platform_library_unload_default_impl
 #define neko_platform_library_proc_address neko_platform_library_proc_address_default_impl
+#define neko_platform_chdir neko_platform_chdir_default_impl
 
 #define neko_platform_open_file fopen
 
@@ -690,23 +691,6 @@ static inline u64 neko_get_thread_id() {
 NEKO_INLINE void __native_debug_output(const char *msg) { OutputDebugStringA(msg); }
 
 #endif
-
-NEKO_API_DECL int neko_timer_initialize(void);
-NEKO_API_DECL void neko_timer_shutdown(void);
-NEKO_API_DECL tick_t neko_timer_current(void);
-NEKO_API_DECL deltatime_t neko_timer_elapsed(const tick_t t);
-NEKO_API_DECL tick_t neko_timer_elapsed_ticks(const tick_t t);
-NEKO_API_DECL tick_t neko_timer_ticks_per_second(void);
-NEKO_API_DECL deltatime_t neko_timer_ticks_to_seconds(const tick_t dt);
-NEKO_API_DECL tick_t neko_timer_system(void);
-
-#define neko_timer_do(timer_name, timer_do, ...)           \
-    do {                                                   \
-        tick_t timer_name = neko_timer_current();          \
-        __VA_ARGS__;                                       \
-        timer_name = neko_timer_elapsed_ticks(timer_name); \
-        timer_do;                                          \
-    } while (0)
 
 /*===================================
 // Thread

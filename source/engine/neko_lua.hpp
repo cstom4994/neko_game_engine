@@ -115,7 +115,7 @@ private:
     std::string m_err;
 };
 
-class neko_lua_wrap_tool_t {
+class neko_lua_tool_t {
 public:
     static void dump_stack(lua_State *ls_) {
         int i;
@@ -1139,60 +1139,49 @@ NEKO_STATIC_INLINE void *Allocf(void *ud, void *ptr, size_t osize, size_t nsize)
     return realloc(ptr, nsize);
 }
 
-NEKO_INLINE lua_State *neko_lua_wrap_create() {
+NEKO_INLINE lua_State *neko_lua_create() {
     lua_State *m_ls = ::lua_newstate(Allocf, NULL);
     ::luaL_openlibs(m_ls);
 
-    __neko_lua_auto_open(m_ls);
+    __neko_lua_auto_init(m_ls);
 
     return m_ls;
 }
 
-NEKO_INLINE void neko_lua_wrap_destory(lua_State *m_ls) {
+NEKO_INLINE void neko_lua_fini(lua_State *m_ls) {
     if (m_ls) {
-        __neko_lua_auto_close(m_ls);
+        __neko_lua_auto_fini(m_ls);
         ::lua_close(m_ls);
         m_ls = NULL;
     }
 }
 
-NEKO_STATIC_INLINE void neko_lua_wrap_run_string(lua_State *m_ls, const char *str_) {
+NEKO_STATIC_INLINE void neko_lua_run_string(lua_State *m_ls, const char *str_) {
     if (luaL_dostring(m_ls, str_)) {
-        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "run_string ::lua_pcall_wrap failed str<%s>", str_);
+        std::string err = neko_lua_tool_t::dump_error(m_ls, "run_string ::lua_pcall_wrap failed str<%s>", str_);
         ::lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
 }
-NEKO_STATIC_INLINE void neko_lua_wrap_run_string(lua_State *m_ls, const std::string &str_) { neko_lua_wrap_run_string(m_ls, str_.c_str()); }
+NEKO_STATIC_INLINE void neko_lua_run_string(lua_State *m_ls, const std::string &str_) { neko_lua_run_string(m_ls, str_.c_str()); }
 
-NEKO_INLINE void neko_lua_wrap_dump_stack(lua_State *m_ls) { neko_lua_wrap_tool_t::dump_stack(m_ls); }
+NEKO_INLINE void neko_lua_dump_stack(lua_State *m_ls) { neko_lua_tool_t::dump_stack(m_ls); }
 
-NEKO_INLINE int neko_lua_wrap_add_package_path(lua_State *m_ls, const std::string &str_) {
+NEKO_INLINE int neko_lua_add_package_path(lua_State *L, const std::string &str_) {
     std::string new_path = "package.path = package.path .. \"";
-    if (str_.empty()) {
-        return -1;
-    }
-
-    if (str_[0] != ';') {
-        new_path += ";";
-    }
-
+    if (str_.empty()) return -1;
+    if (str_[0] != ';') new_path += ";";
     new_path += str_;
-
-    if (str_[str_.length() - 1] != '/') {
-        new_path += "/";
-    }
-
+    if (str_[str_.length() - 1] != '/') new_path += "/";
     new_path += "?.lua\" ";
-
-    neko_lua_wrap_run_string(m_ls, new_path);
+    neko_lua_run_string(L, new_path);
     return 0;
 }
 
-NEKO_INLINE int neko_lua_wrap_load_file(lua_State *m_ls, const std::string &file_name_)  //
+NEKO_INLINE int neko_lua_load_file(lua_State *m_ls, const std::string &file_name_)  //
 {
     if (luaL_dofile(m_ls, file_name_.c_str())) {
-        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "cannot load file<%s>", file_name_.c_str());
+        std::string err = neko_lua_tool_t::dump_error(m_ls, "cannot load file<%s>", file_name_.c_str());
         ::lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1205,12 +1194,12 @@ NEKO_INLINE int neko_lua_pcall_wrap(lua_State *state, int argnum, int retnum, in
     return result;
 }
 
-NEKO_INLINE int neko_lua_wrap_safe_dofile(lua_State *state, const std::string &file) {
-    neko_lua_wrap_run_string(state, std::format("xpcall(function ()\nrequire '{0}'\nend, function(err)\nprint(tostring(err))\nprint(debug.traceback(nil, 2))\n__neko_quit(1)\nend)\n", file));
+NEKO_INLINE int neko_lua_safe_dofile(lua_State *state, const std::string &file) {
+    neko_lua_run_string(state, std::format("xpcall(function ()\nrequire '{0}'\nend, function(err)\nprint(tostring(err))\nprint(debug.traceback(nil, 2))\n__neko_quit(1)\nend)\n", file));
     return 0;
 }
 
-NEKO_INLINE bool neko_lua_wrap_dofile(lua_State *m_ls, const std::string &file) {
+NEKO_INLINE bool neko_lua_dofile(lua_State *m_ls, const std::string &file) {
     int status = luaL_loadfile(m_ls, file.c_str());
 
     if (status) {
@@ -1231,16 +1220,16 @@ NEKO_INLINE bool neko_lua_wrap_dofile(lua_State *m_ls, const std::string &file) 
 }
 
 template <typename T>
-int neko_lua_wrap_get_global_variable(lua_State *m_ls, const std::string &field_name_, T &ret_);
+int neko_lua_get_global_variable(lua_State *m_ls, const std::string &field_name_, T &ret_);
 template <typename T>
-int neko_lua_wrap_get_global_variable(lua_State *m_ls, const char *field_name_, T &ret_);
+int neko_lua_get_global_variable(lua_State *m_ls, const char *field_name_, T &ret_);
 
 template <typename T>
-int neko_lua_wrap_set_global_variable(lua_State *m_ls, const std::string &field_name_, const T &value_);
+int neko_lua_set_global_variable(lua_State *m_ls, const std::string &field_name_, const T &value_);
 template <typename T>
-int neko_lua_wrap_set_global_variable(lua_State *m_ls, const char *field_name_, const T &value_);
+int neko_lua_set_global_variable(lua_State *m_ls, const char *field_name_, const T &value_);
 
-NEKO_INLINE void neko_lua_wrap_register_raw_function(lua_State *m_ls, const char *func_name_, lua_function_t func_) {
+NEKO_INLINE void neko_lua_register_raw_function(lua_State *m_ls, const char *func_name_, lua_function_t func_) {
     lua_checkstack(m_ls, STACK_MIN_NUM);
 
     lua_pushcfunction(m_ls, func_);
@@ -1248,13 +1237,13 @@ NEKO_INLINE void neko_lua_wrap_register_raw_function(lua_State *m_ls, const char
 }
 
 template <typename T>
-void neko_lua_wrap_reg(lua_State *m_ls, T a);
+void neko_lua_reg(lua_State *m_ls, T a);
 
-NEKO_INLINE void neko_lua_wrap_call(lua_State *m_ls, const char *func_name_) {
+NEKO_INLINE void neko_lua_call(lua_State *m_ls, const char *func_name_) {
     ::lua_getglobal(m_ls, func_name_);
 
     if (::neko_lua_pcall_wrap(m_ls, 0, 0, 0) != 0) {
-        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
+        std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         ::lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1296,17 +1285,12 @@ NEKO_INLINE int __neko_lua_getFuncByName(lua_State *m_ls, const char *func_name_
 }
 
 template <typename T>
-void neko_lua_wrap_open_lib(lua_State *m_ls, T arg_) {
-    arg_(m_ls);
-}
-
-template <typename T>
-int neko_lua_wrap_get_global_variable(lua_State *m_ls, const std::string &field_name_, T &ret_) {
+int neko_lua_get_global_variable(lua_State *m_ls, const std::string &field_name_, T &ret_) {
     return get_global_variable<T>(field_name_.c_str(), ret_);
 }
 
 template <typename T>
-int neko_lua_wrap_get_global_variable(lua_State *m_ls, const char *field_name_, T &ret_) {
+int neko_lua_get_global_variable(lua_State *m_ls, const char *field_name_, T &ret_) {
     int ret = 0;
 
     lua_getglobal(m_ls, field_name_);
@@ -1317,31 +1301,31 @@ int neko_lua_wrap_get_global_variable(lua_State *m_ls, const char *field_name_, 
 }
 
 template <typename T>
-int neko_lua_wrap_set_global_variable(lua_State *m_ls, const std::string &field_name_, const T &value_) {
+int neko_lua_set_global_variable(lua_State *m_ls, const std::string &field_name_, const T &value_) {
     return set_global_variable<T>(field_name_.c_str(), value_);
 }
 
 template <typename T>
-int neko_lua_wrap_set_global_variable(lua_State *m_ls, const char *field_name_, const T &value_) {
+int neko_lua_set_global_variable(lua_State *m_ls, const char *field_name_, const T &value_) {
     __lua_op_t<T>::push_stack(m_ls, value_);
     lua_setglobal(m_ls, field_name_);
     return 0;
 }
 
 // template <typename T>
-// void neko_lua_wrap_reg(lua_State *m_ls, T a) {
+// void neko_lua_reg(lua_State *m_ls, T a) {
 //     a(this->get_lua_state());
 // }
 
 //! impl for common RET
 template <typename RET>
-ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_) {
+ret(RET) neko_lua_call(lua_State *m_ls, const char *func_name_) {
     ret(RET) ret = init_value_traits_t<ret(RET)>::value();
 
     int tmpArg = __neko_lua_getFuncByName(m_ls, func_name_);
 
     if (neko_lua_pcall_wrap(m_ls, tmpArg + 0, 1, 0) != 0) {
-        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
+        std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1359,7 +1343,7 @@ ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_) {
 }
 
 template <typename RET, typename ARG1>
-ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 &arg1_) {
+ret(RET) neko_lua_call(lua_State *m_ls, const char *func_name_, const ARG1 &arg1_) {
     ret(RET) ret = init_value_traits_t<ret(RET)>::value();
 
     int tmpArg = __neko_lua_getFuncByName(m_ls, func_name_);
@@ -1367,7 +1351,7 @@ ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 
     __lua_op_t<ARG1>::push_stack(m_ls, arg1_);
 
     if (neko_lua_pcall_wrap(m_ls, tmpArg + 1, 1, 0) != 0) {
-        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
+        std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1385,7 +1369,7 @@ ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 
 }
 
 template <typename RET, typename ARG1, typename ARG2>
-ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 &arg1_, const ARG2 &arg2_) {
+ret(RET) neko_lua_call(lua_State *m_ls, const char *func_name_, const ARG1 &arg1_, const ARG2 &arg2_) {
     ret(RET) ret = init_value_traits_t<ret(RET)>::value();
 
     int tmpArg = __neko_lua_getFuncByName(m_ls, func_name_);
@@ -1394,7 +1378,7 @@ ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 
     __lua_op_t<ARG2>::push_stack(m_ls, arg2_);
 
     if (neko_lua_pcall_wrap(m_ls, tmpArg + 2, 1, 0) != 0) {
-        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
+        std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1412,7 +1396,7 @@ ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 
 }
 
 template <typename RET, typename ARG1, typename ARG2, typename ARG3>
-ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 &arg1_, const ARG2 &arg2_, const ARG3 &arg3_) {
+ret(RET) neko_lua_call(lua_State *m_ls, const char *func_name_, const ARG1 &arg1_, const ARG2 &arg2_, const ARG3 &arg3_) {
     ret(RET) ret = init_value_traits_t<ret(RET)>::value();
 
     int tmpArg = __neko_lua_getFuncByName(m_ls, func_name_);
@@ -1422,7 +1406,7 @@ ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 
     __lua_op_t<ARG3>::push_stack(m_ls, arg3_);
 
     if (neko_lua_pcall_wrap(m_ls, tmpArg + 3, 1, 0) != 0) {
-        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
+        std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1440,7 +1424,7 @@ ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 
 }
 
 template <typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4>
-ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 &arg1_, const ARG2 &arg2_, const ARG3 &arg3_, const ARG4 &arg4_) {
+ret(RET) neko_lua_call(lua_State *m_ls, const char *func_name_, const ARG1 &arg1_, const ARG2 &arg2_, const ARG3 &arg3_, const ARG4 &arg4_) {
     ret(RET) ret = init_value_traits_t<ret(RET)>::value();
 
     int tmpArg = __neko_lua_getFuncByName(m_ls, func_name_);
@@ -1451,7 +1435,7 @@ ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 
     __lua_op_t<ARG4>::push_stack(m_ls, arg4_);
 
     if (neko_lua_pcall_wrap(m_ls, tmpArg + 4, 1, 0) != 0) {
-        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
+        std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1469,7 +1453,7 @@ ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 
 }
 
 template <typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5>
-ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 &arg1_, const ARG2 &arg2_, const ARG3 &arg3_, const ARG4 &arg4_, const ARG5 &arg5_) {
+ret(RET) neko_lua_call(lua_State *m_ls, const char *func_name_, const ARG1 &arg1_, const ARG2 &arg2_, const ARG3 &arg3_, const ARG4 &arg4_, const ARG5 &arg5_) {
     ret(RET) ret = init_value_traits_t<ret(RET)>::value();
 
     int tmpArg = __neko_lua_getFuncByName(m_ls, func_name_);
@@ -1481,7 +1465,7 @@ ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 
     __lua_op_t<ARG5>::push_stack(m_ls, arg5_);
 
     if (neko_lua_pcall_wrap(m_ls, tmpArg + 5, 1, 0) != 0) {
-        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
+        std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1499,7 +1483,7 @@ ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 
 }
 
 template <typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6>
-ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 &arg1_, const ARG2 &arg2_, const ARG3 &arg3_, const ARG4 &arg4_, const ARG5 &arg5_, const ARG6 &arg6_) {
+ret(RET) neko_lua_call(lua_State *m_ls, const char *func_name_, const ARG1 &arg1_, const ARG2 &arg2_, const ARG3 &arg3_, const ARG4 &arg4_, const ARG5 &arg5_, const ARG6 &arg6_) {
     ret(RET) ret = init_value_traits_t<ret(RET)>::value();
 
     int tmpArg = __neko_lua_getFuncByName(m_ls, func_name_);
@@ -1512,7 +1496,7 @@ ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 
     __lua_op_t<ARG6>::push_stack(m_ls, arg6_);
 
     if (neko_lua_pcall_wrap(m_ls, tmpArg + 6, 1, 0) != 0) {
-        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
+        std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1530,8 +1514,7 @@ ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 
 }
 
 template <typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7>
-ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 &arg1_, const ARG2 &arg2_, const ARG3 &arg3_, const ARG4 &arg4_, const ARG5 &arg5_, const ARG6 &arg6_,
-                            const ARG7 &arg7_) {
+ret(RET) neko_lua_call(lua_State *m_ls, const char *func_name_, const ARG1 &arg1_, const ARG2 &arg2_, const ARG3 &arg3_, const ARG4 &arg4_, const ARG5 &arg5_, const ARG6 &arg6_, const ARG7 &arg7_) {
     ret(RET) ret = init_value_traits_t<ret(RET)>::value();
 
     int tmpArg = __neko_lua_getFuncByName(m_ls, func_name_);
@@ -1545,7 +1528,7 @@ ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 
     __lua_op_t<ARG7>::push_stack(m_ls, arg7_);
 
     if (neko_lua_pcall_wrap(m_ls, tmpArg + 7, 1, 0) != 0) {
-        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
+        std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1563,8 +1546,8 @@ ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 
 }
 
 template <typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7, typename ARG8>
-ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 &arg1_, const ARG2 &arg2_, const ARG3 &arg3_, const ARG4 &arg4_, const ARG5 &arg5_, const ARG6 &arg6_,
-                            const ARG7 &arg7_, const ARG8 &arg8_) {
+ret(RET) neko_lua_call(lua_State *m_ls, const char *func_name_, const ARG1 &arg1_, const ARG2 &arg2_, const ARG3 &arg3_, const ARG4 &arg4_, const ARG5 &arg5_, const ARG6 &arg6_, const ARG7 &arg7_,
+                       const ARG8 &arg8_) {
     ret(RET) ret = init_value_traits_t<ret(RET)>::value();
 
     int tmpArg = __neko_lua_getFuncByName(m_ls, func_name_);
@@ -1579,7 +1562,7 @@ ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 
     __lua_op_t<ARG8>::push_stack(m_ls, arg8_);
 
     if (neko_lua_pcall_wrap(m_ls, tmpArg + 8, 1, 0) != 0) {
-        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
+        std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1597,8 +1580,8 @@ ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 
 }
 
 template <typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7, typename ARG8, typename ARG9>
-ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 &arg1_, const ARG2 &arg2_, const ARG3 &arg3_, const ARG4 &arg4_, const ARG5 &arg5_, const ARG6 &arg6_,
-                            const ARG7 &arg7_, const ARG8 &arg8_, const ARG9 &arg9_) {
+ret(RET) neko_lua_call(lua_State *m_ls, const char *func_name_, const ARG1 &arg1_, const ARG2 &arg2_, const ARG3 &arg3_, const ARG4 &arg4_, const ARG5 &arg5_, const ARG6 &arg6_, const ARG7 &arg7_,
+                       const ARG8 &arg8_, const ARG9 &arg9_) {
     ret(RET) ret = init_value_traits_t<ret(RET)>::value();
 
     int tmpArg = __neko_lua_getFuncByName(m_ls, func_name_);
@@ -1614,7 +1597,7 @@ ret(RET) neko_lua_wrap_call(lua_State *m_ls, const char *func_name_, const ARG1 
     __lua_op_t<ARG9>::push_stack(m_ls, arg9_);
 
     if (neko_lua_pcall_wrap(m_ls, tmpArg + 9, 1, 0) != 0) {
-        std::string err = neko_lua_wrap_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
+        std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
         throw lua_exception_t(err);
     }
@@ -1808,9 +1791,9 @@ struct function_traits_t;
 
 //! CLASS_TYPE 为要注册的类型, CTOR_TYPE为构造函数类型
 template <typename T>
-struct neko_lua_wrap_register_router_t;
+struct neko_lua_register_router_t;
 template <typename T>
-struct neko_lua_wrap_register_router_t {
+struct neko_lua_register_router_t {
     template <typename REG_TYPE>
     static void call(REG_TYPE *reg_, T arg_, const std::string &s_) {
         reg_->def_class_property(arg_, s_);
@@ -1818,19 +1801,19 @@ struct neko_lua_wrap_register_router_t {
 };
 
 template <typename CLASS_TYPE = op_tool_t, typename CTOR_TYPE = void()>
-class neko_lua_wrap_register_t {
+class neko_lua_register_t {
 public:
-    neko_lua_wrap_register_t(lua_State *ls_) : m_ls(ls_) {}
-    neko_lua_wrap_register_t(lua_State *ls_, const std::string &class_name_, std::string inherit_name_ = "");
+    neko_lua_register_t(lua_State *ls_) : m_ls(ls_) {}
+    neko_lua_register_t(lua_State *ls_, const std::string &class_name_, std::string inherit_name_ = "");
 
     template <typename FUNC_TYPE>
-    neko_lua_wrap_register_t &def(FUNC_TYPE func, const std::string &s_) {
-        neko_lua_wrap_register_router_t<FUNC_TYPE>::call(this, func, s_);
+    neko_lua_register_t &def(FUNC_TYPE func, const std::string &s_) {
+        neko_lua_register_router_t<FUNC_TYPE>::call(this, func, s_);
         return *this;
     }
 
     template <typename FUNC>
-    neko_lua_wrap_register_t &def_func(FUNC func_, const std::string &func_name_) {
+    neko_lua_register_t &def_func(FUNC func_, const std::string &func_name_) {
         if (m_class_name.empty()) {
             lua_function_t lua_func = function_traits_t<FUNC>::lua_function;
 
@@ -2328,70 +2311,70 @@ struct function_traits_t<RET (*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8,
 };
 
 template <typename RET>
-struct neko_lua_wrap_register_router_t<RET (*)()> {
+struct neko_lua_register_router_t<RET (*)()> {
     template <typename REG_TYPE>
     static void call(REG_TYPE *reg_, RET (*arg_)(), const std::string &s_) {
         reg_->def_func(arg_, s_);
     }
 };
 template <typename RET, typename ARG1>
-struct neko_lua_wrap_register_router_t<RET (*)(ARG1)> {
+struct neko_lua_register_router_t<RET (*)(ARG1)> {
     template <typename REG_TYPE>
     static void call(REG_TYPE *reg_, RET (*arg_)(ARG1), const std::string &s_) {
         reg_->def_func(arg_, s_);
     }
 };
 template <typename RET, typename ARG1, typename ARG2>
-struct neko_lua_wrap_register_router_t<RET (*)(ARG1, ARG2)> {
+struct neko_lua_register_router_t<RET (*)(ARG1, ARG2)> {
     template <typename REG_TYPE>
     static void call(REG_TYPE *reg_, RET (*arg_)(ARG1, ARG2), const std::string &s_) {
         reg_->def_func(arg_, s_);
     }
 };
 template <typename RET, typename ARG1, typename ARG2, typename ARG3>
-struct neko_lua_wrap_register_router_t<RET (*)(ARG1, ARG2, ARG3)> {
+struct neko_lua_register_router_t<RET (*)(ARG1, ARG2, ARG3)> {
     template <typename REG_TYPE>
     static void call(REG_TYPE *reg_, RET (*arg_)(ARG1, ARG2, ARG3), const std::string &s_) {
         reg_->def_func(arg_, s_);
     }
 };
 template <typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4>
-struct neko_lua_wrap_register_router_t<RET (*)(ARG1, ARG2, ARG3, ARG4)> {
+struct neko_lua_register_router_t<RET (*)(ARG1, ARG2, ARG3, ARG4)> {
     template <typename REG_TYPE>
     static void call(REG_TYPE *reg_, RET (*arg_)(ARG1, ARG2, ARG3, ARG4), const std::string &s_) {
         reg_->def_func(arg_, s_);
     }
 };
 template <typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5>
-struct neko_lua_wrap_register_router_t<RET (*)(ARG1, ARG2, ARG3, ARG4, ARG5)> {
+struct neko_lua_register_router_t<RET (*)(ARG1, ARG2, ARG3, ARG4, ARG5)> {
     template <typename REG_TYPE>
     static void call(REG_TYPE *reg_, RET (*arg_)(ARG1, ARG2, ARG3, ARG4, ARG5), const std::string &s_) {
         reg_->def_func(arg_, s_);
     }
 };
 template <typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6>
-struct neko_lua_wrap_register_router_t<RET (*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6)> {
+struct neko_lua_register_router_t<RET (*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6)> {
     template <typename REG_TYPE>
     static void call(REG_TYPE *reg_, RET (*arg_)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6), const std::string &s_) {
         reg_->def_func(arg_, s_);
     }
 };
 template <typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7>
-struct neko_lua_wrap_register_router_t<RET (*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7)> {
+struct neko_lua_register_router_t<RET (*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7)> {
     template <typename REG_TYPE>
     static void call(REG_TYPE *reg_, RET (*arg_)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7), const std::string &s_) {
         reg_->def_func(arg_, s_);
     }
 };
 template <typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7, typename ARG8>
-struct neko_lua_wrap_register_router_t<RET (*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8)> {
+struct neko_lua_register_router_t<RET (*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8)> {
     template <typename REG_TYPE>
     static void call(REG_TYPE *reg_, RET (*arg_)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8), const std::string &s_) {
         reg_->def_func(arg_, s_);
     }
 };
 template <typename RET, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7, typename ARG8, typename ARG9>
-struct neko_lua_wrap_register_router_t<RET (*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9)> {
+struct neko_lua_register_router_t<RET (*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9)> {
     template <typename REG_TYPE>
     static void call(REG_TYPE *reg_, RET (*arg_)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9), const std::string &s_) {
         reg_->def_func(arg_, s_);
@@ -2399,70 +2382,70 @@ struct neko_lua_wrap_register_router_t<RET (*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG
 };
 
 template <typename RET, typename CLASS_TYPE>
-struct neko_lua_wrap_register_router_t<RET (CLASS_TYPE::*)()> {
+struct neko_lua_register_router_t<RET (CLASS_TYPE::*)()> {
     template <typename REG_TYPE>
     static void call(REG_TYPE *reg_, RET (CLASS_TYPE::*arg_)(), const std::string &s_) {
         reg_->def_class_func(arg_, s_);
     }
 };
 template <typename RET, typename CLASS_TYPE, typename ARG1>
-struct neko_lua_wrap_register_router_t<RET (CLASS_TYPE::*)(ARG1)> {
+struct neko_lua_register_router_t<RET (CLASS_TYPE::*)(ARG1)> {
     template <typename REG_TYPE>
     static void call(REG_TYPE *reg_, RET (CLASS_TYPE::*arg_)(ARG1), const std::string &s_) {
         reg_->def_class_func(arg_, s_);
     }
 };
 template <typename RET, typename CLASS_TYPE, typename ARG1, typename ARG2>
-struct neko_lua_wrap_register_router_t<RET (CLASS_TYPE::*)(ARG1, ARG2)> {
+struct neko_lua_register_router_t<RET (CLASS_TYPE::*)(ARG1, ARG2)> {
     template <typename REG_TYPE>
     static void call(REG_TYPE *reg_, RET (CLASS_TYPE::*arg_)(ARG1, ARG2), const std::string &s_) {
         reg_->def_class_func(arg_, s_);
     }
 };
 template <typename RET, typename CLASS_TYPE, typename ARG1, typename ARG2, typename ARG3>
-struct neko_lua_wrap_register_router_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3)> {
+struct neko_lua_register_router_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3)> {
     template <typename REG_TYPE>
     static void call(REG_TYPE *reg_, RET (CLASS_TYPE::*arg_)(ARG1, ARG2, ARG3), const std::string &s_) {
         reg_->def_class_func(arg_, s_);
     }
 };
 template <typename RET, typename CLASS_TYPE, typename ARG1, typename ARG2, typename ARG3, typename ARG4>
-struct neko_lua_wrap_register_router_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4)> {
+struct neko_lua_register_router_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4)> {
     template <typename REG_TYPE>
     static void call(REG_TYPE *reg_, RET (CLASS_TYPE::*arg_)(ARG1, ARG2, ARG3, ARG4), const std::string &s_) {
         reg_->def_class_func(arg_, s_);
     }
 };
 template <typename RET, typename CLASS_TYPE, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5>
-struct neko_lua_wrap_register_router_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5)> {
+struct neko_lua_register_router_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5)> {
     template <typename REG_TYPE>
     static void call(REG_TYPE *reg_, RET (CLASS_TYPE::*arg_)(ARG1, ARG2, ARG3, ARG4, ARG5), const std::string &s_) {
         reg_->def_class_func(arg_, s_);
     }
 };
 template <typename RET, typename CLASS_TYPE, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6>
-struct neko_lua_wrap_register_router_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6)> {
+struct neko_lua_register_router_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6)> {
     template <typename REG_TYPE>
     static void call(REG_TYPE *reg_, RET (CLASS_TYPE::*arg_)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6), const std::string &s_) {
         reg_->def_class_func(arg_, s_);
     }
 };
 template <typename RET, typename CLASS_TYPE, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7>
-struct neko_lua_wrap_register_router_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7)> {
+struct neko_lua_register_router_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7)> {
     template <typename REG_TYPE>
     static void call(REG_TYPE *reg_, RET (CLASS_TYPE::*arg_)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7), const std::string &s_) {
         reg_->def_class_func(arg_, s_);
     }
 };
 template <typename RET, typename CLASS_TYPE, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7, typename ARG8>
-struct neko_lua_wrap_register_router_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8)> {
+struct neko_lua_register_router_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8)> {
     template <typename REG_TYPE>
     static void call(REG_TYPE *reg_, RET (CLASS_TYPE::*arg_)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8), const std::string &s_) {
         reg_->def_class_func(arg_, s_);
     }
 };
 template <typename RET, typename CLASS_TYPE, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7, typename ARG8, typename ARG9>
-struct neko_lua_wrap_register_router_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9)> {
+struct neko_lua_register_router_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9)> {
     template <typename REG_TYPE>
     static void call(REG_TYPE *reg_, RET (CLASS_TYPE::*arg_)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9), const std::string &s_) {
         reg_->def_class_func(arg_, s_);
@@ -2470,70 +2453,70 @@ struct neko_lua_wrap_register_router_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG
 };
 
 template <typename RET, typename CLASS_TYPE>
-struct neko_lua_wrap_register_router_t<RET (CLASS_TYPE::*)() const> {
+struct neko_lua_register_router_t<RET (CLASS_TYPE::*)() const> {
     template <typename REG_TYPE>
     static void call(REG_TYPE *reg_, RET (CLASS_TYPE::*arg_)() const, const std::string &s_) {
         reg_->def_class_func(arg_, s_);
     }
 };
 template <typename RET, typename CLASS_TYPE, typename ARG1>
-struct neko_lua_wrap_register_router_t<RET (CLASS_TYPE::*)(ARG1) const> {
+struct neko_lua_register_router_t<RET (CLASS_TYPE::*)(ARG1) const> {
     template <typename REG_TYPE>
     static void call(REG_TYPE *reg_, RET (CLASS_TYPE::*arg_)(ARG1) const, const std::string &s_) {
         reg_->def_class_func(arg_, s_);
     }
 };
 template <typename RET, typename CLASS_TYPE, typename ARG1, typename ARG2>
-struct neko_lua_wrap_register_router_t<RET (CLASS_TYPE::*)(ARG1, ARG2) const> {
+struct neko_lua_register_router_t<RET (CLASS_TYPE::*)(ARG1, ARG2) const> {
     template <typename REG_TYPE>
     static void call(REG_TYPE *reg_, RET (CLASS_TYPE::*arg_)(ARG1, ARG2) const, const std::string &s_) {
         reg_->def_class_func(arg_, s_);
     }
 };
 template <typename RET, typename CLASS_TYPE, typename ARG1, typename ARG2, typename ARG3>
-struct neko_lua_wrap_register_router_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3) const> {
+struct neko_lua_register_router_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3) const> {
     template <typename REG_TYPE>
     static void call(REG_TYPE *reg_, RET (CLASS_TYPE::*arg_)(ARG1, ARG2, ARG3) const, const std::string &s_) {
         reg_->def_class_func(arg_, s_);
     }
 };
 template <typename RET, typename CLASS_TYPE, typename ARG1, typename ARG2, typename ARG3, typename ARG4>
-struct neko_lua_wrap_register_router_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4) const> {
+struct neko_lua_register_router_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4) const> {
     template <typename REG_TYPE>
     static void call(REG_TYPE *reg_, RET (CLASS_TYPE::*arg_)(ARG1, ARG2, ARG3, ARG4) const, const std::string &s_) {
         reg_->def_class_func(arg_, s_);
     }
 };
 template <typename RET, typename CLASS_TYPE, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5>
-struct neko_lua_wrap_register_router_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5) const> {
+struct neko_lua_register_router_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5) const> {
     template <typename REG_TYPE>
     static void call(REG_TYPE *reg_, RET (CLASS_TYPE::*arg_)(ARG1, ARG2, ARG3, ARG4, ARG5) const, const std::string &s_) {
         reg_->def_class_func(arg_, s_);
     }
 };
 template <typename RET, typename CLASS_TYPE, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6>
-struct neko_lua_wrap_register_router_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6) const> {
+struct neko_lua_register_router_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6) const> {
     template <typename REG_TYPE>
     static void call(REG_TYPE *reg_, RET (CLASS_TYPE::*arg_)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6) const, const std::string &s_) {
         reg_->def_class_func(arg_, s_);
     }
 };
 template <typename RET, typename CLASS_TYPE, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7>
-struct neko_lua_wrap_register_router_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7) const> {
+struct neko_lua_register_router_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7) const> {
     template <typename REG_TYPE>
     static void call(REG_TYPE *reg_, RET (CLASS_TYPE::*arg_)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7) const, const std::string &s_) {
         reg_->def_class_func(arg_, s_);
     }
 };
 template <typename RET, typename CLASS_TYPE, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7, typename ARG8>
-struct neko_lua_wrap_register_router_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8) const> {
+struct neko_lua_register_router_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8) const> {
     template <typename REG_TYPE>
     static void call(REG_TYPE *reg_, RET (CLASS_TYPE::*arg_)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8) const, const std::string &s_) {
         reg_->def_class_func(arg_, s_);
     }
 };
 template <typename RET, typename CLASS_TYPE, typename ARG1, typename ARG2, typename ARG3, typename ARG4, typename ARG5, typename ARG6, typename ARG7, typename ARG8, typename ARG9>
-struct neko_lua_wrap_register_router_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9) const> {
+struct neko_lua_register_router_t<RET (CLASS_TYPE::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9) const> {
     template <typename REG_TYPE>
     static void call(REG_TYPE *reg_, RET (CLASS_TYPE::*arg_)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9) const, const std::string &s_) {
         reg_->def_class_func(arg_, s_);

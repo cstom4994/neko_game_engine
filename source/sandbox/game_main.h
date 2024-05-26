@@ -33,13 +33,12 @@ typedef struct neko_client_userdata_s {
     neko_texture_t test_ase = neko_default_val();
     neko_asset_manager_t am = neko_default_val();
     neko_asset_t tex_hndl = neko_default_val();
-    std::string data_path = neko_default_val();
     neko_packreader_t pack = neko_default_val();
     neko_packreader_t lua_pack = neko_default_val();
 
     // ecs_world_t* ecs_world;
     // neko_dyn_array(ecs_entity_t) entities;
-    ecs_registry_t* ecs;
+    neko_ecs_t* ecs;
 
     neko_handle(neko_graphics_renderpass_t) main_rp = {0};
     neko_handle(neko_graphics_framebuffer_t) main_fbo = {0};
@@ -75,8 +74,3 @@ NEKO_INLINE neko_client_userdata_t* CL_GAME_USERDATA() { return &g_client_userda
 
 // TODO:
 std::string game_assets(const std::string& path);
-
-class Graphics {
-public:
-    static void DrawCircle(neko_immediate_draw_t* idraw, const neko_vec2_t center, const neko_vec4_t bounds, u16 radius);
-};

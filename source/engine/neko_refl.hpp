@@ -19,7 +19,6 @@ struct neko::static_refl::neko_type_info<neko_platform_running_desc_t> : neko_ty
             rf_field{TSTR("monitor_index"), &rf_type::monitor_index},  //
             rf_field{TSTR("vsync"), &rf_type::vsync},                  // 启用 vsync
             rf_field{TSTR("frame_rate"), &rf_type::frame_rate},        // 限制帧率
-            rf_field{TSTR("engine_args"), &rf_type::engine_args},      // 引擎参数
     };
 };
 

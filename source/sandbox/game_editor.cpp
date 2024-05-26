@@ -616,7 +616,7 @@ bool neko::luainspector::try_eval(std::string m_buffcmd, bool addreturn) {
     }
 }
 
-// Avoid error when calling with non-strings
+// 避免使用非字符串调用时错误
 static inline std::string adjust_error_msg(lua_State* L, int idx) {
     const int t = lua_type(L, idx);
     if (t == LUA_TSTRING) return lua_tostring(L, idx);

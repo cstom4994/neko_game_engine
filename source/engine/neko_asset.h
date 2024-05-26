@@ -349,6 +349,7 @@ typedef struct neko_aseprite_renderer {
     s32 current_frame;
 } neko_aseprite_renderer;
 
+NEKO_API_DECL neko_texture_t neko_aseprite_simple(const void *memory, int size);
 NEKO_API_DECL bool neko_aseprite_load(neko_aseprite* spr, const_str filepath);
 NEKO_API_DECL void neko_aseprite_end(neko_aseprite* spr);
 NEKO_API_DECL void neko_aseprite_renderer_play(neko_aseprite_renderer* sr, const_str tag);

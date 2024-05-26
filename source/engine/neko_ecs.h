@@ -8,6 +8,7 @@
 #include <stdlib.h>
 
 #include "neko.h"
+#include "neko_lua.h"
 #include "neko_math.h"
 
 #ifdef __cplusplus
@@ -142,23 +143,25 @@ typedef struct ecs_view_t {
 
 typedef void (*ecs_system_fn)(ecs_view_t, u32);
 
-typedef struct ecs_registry_t ecs_registry_t;
+typedef struct neko_ecs_t neko_ecs_t;
 
-ecs_registry_t *ecs_init(void);
-void ecs_destroy(ecs_registry_t *registry);
-ecs_entity_t ecs_entity(ecs_registry_t *registry);
-ecs_entity_t ecs_component(ecs_registry_t *registry, size_t component_size);
-ecs_entity_t ecs_system(ecs_registry_t *registry, ecs_signature_t *signature, ecs_system_fn system);
-void ecs_attach(ecs_registry_t *registry, ecs_entity_t entity, ecs_entity_t component);
-void ecs_set(ecs_registry_t *registry, ecs_entity_t entity, ecs_entity_t component, const void *data);
-void ecs_step(ecs_registry_t *registry);
+neko_ecs_t *ecs_init_i(neko_ecs_t *registry);
+neko_ecs_t *ecs_init(lua_State *L);
+void ecs_fini_i(neko_ecs_t *registry);
+void ecs_fini(neko_ecs_t *registry);
+ecs_entity_t ecs_entity(neko_ecs_t *registry);
+ecs_entity_t ecs_component_w(neko_ecs_t *registry, const_str component_name, size_t component_size);
+ecs_entity_t ecs_system(neko_ecs_t *registry, ecs_signature_t *signature, ecs_system_fn system);
+void ecs_attach(neko_ecs_t *registry, ecs_entity_t entity, ecs_entity_t component);
+void ecs_set(neko_ecs_t *registry, ecs_entity_t entity, ecs_entity_t component, const void *data);
+void ecs_step(neko_ecs_t *registry);
 void *ecs_view(ecs_view_t view, u32 row, u32 column);
 
 #ifndef NDEBUG
-void ecs_inspect(ecs_registry_t *registry);
+void ecs_inspect(neko_ecs_t *registry);
 #endif
 
-#define ECS_COMPONENT(registry, T) ecs_component(registry, sizeof(T));
+#define ECS_COMPONENT(registry, T) ecs_component_w(registry, #T, sizeof(T));
 #define ECS_SYSTEM(registry, system, n, ...) ecs_system(registry, ecs_signature_new_n(n, __VA_ARGS__), system)
 
 #ifdef __cplusplus
@@ -188,6 +191,9 @@ enum ComponentType {
 
     COMPONENT_COUNT
 };
+
+#define ECS_WORLD_UDATA_NAME "__NEKO_ECS_WORLD"
+#define ECS_WORLD (1)
 
 typedef neko_vec2_t position_t;  // Position component
 typedef neko_vec2_t velocity_t;  // Velocity component

@@ -87,82 +87,6 @@ struct Comp(Name) {
 // `forEachComponentType` to iterate all component types
 UseComponentTypes();
 
-bool SDL_PointInRect(const neko_vec2_t p, const neko_vec4_t r) {
-    //    if (p == NULL || r == NULL) {
-    //        return false;
-    //    }
-    return (p.x >= r.x && p.x < (r.x + r.w) && p.y >= r.y && p.y < (r.y + r.z));
-}
-
-void Graphics::DrawCircle(neko_immediate_draw_t *idraw, const neko_vec2_t center, const neko_vec4_t bounds, u16 radius) {
-    if (!SDL_PointInRect(center, bounds)) {
-        return;
-    }
-
-    s32 x = radius;
-    s32 y = 0;
-    s32 tx = 1;
-    s32 ty = 1;
-    s32 error = tx - radius * 2;
-
-    while (x >= y) {
-        s32 lookup[16] = {x, -y, x, y, -x, -y, -x, y, y, -x, y, x, -y, -x, -y, x};
-        for (int i = 0; i < 8; ++i) {
-            s32 drawX = std::clamp(center.x + lookup[i * 2], bounds.x, bounds.x + bounds.w);
-            s32 drawY = std::clamp(center.y + lookup[i * 2 + 1], bounds.y, bounds.y + bounds.z - 1);
-            //            SDL_RenderDrawPoint(renderer, drawX, drawY);
-        }
-        if (error <= 0) {
-            ++y;
-            ty += 2;
-            error += ty;
-        }
-        if (error > 0) {
-            --x;
-            tx += 2;
-            error += tx - radius * 2;
-        }
-    }
-}
-
-neko_texture_t load_ase_texture_simple(const void *memory, int size) {
-
-    ase_t *ase = neko_aseprite_load_from_memory(memory, size);
-    neko_defer({ neko_aseprite_free(ase); });
-
-    if (NULL == ase) {
-        neko_log_error("unable to load ase %p", memory);
-        return neko_default_val();
-    }
-
-    neko_assert(ase->frame_count == 1);  // load_ase_texture_simple used to load simple aseprite
-
-    neko_aseprite_default_blend_bind(ase);
-
-    neko_graphics_t *gfx = neko_instance()->ctx.graphics;
-
-    neko_log_trace(std::format("load aseprite - frame_count {0} - palette.entry_count{1} - w={2} h={3}", ase->frame_count, ase->palette.entry_count, ase->w, ase->h).c_str());
-
-    s32 bpp = 4;
-
-    neko_graphics_texture_desc_t t_desc = {};
-
-    t_desc.format = NEKO_GRAPHICS_TEXTURE_FORMAT_RGBA8;
-    t_desc.mag_filter = NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST;
-    t_desc.min_filter = NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST;
-    t_desc.num_mips = 0;
-    t_desc.width = ase->w;
-    t_desc.height = ase->h;
-    // t_desc.num_comps = 4;
-    t_desc.data[0] = ase->frames->pixels[0];
-
-    neko_tex_flip_vertically(ase->w, ase->h, (u8 *)(t_desc.data[0]));
-
-    neko_texture_t tex = neko_graphics_texture_create(t_desc);
-
-    return tex;
-}
-
 void app_load_style_sheet(bool destroy) {
     if (destroy) {
         neko_ui_style_sheet_destroy(&CL_GAME_USERDATA()->style_sheet);
@@ -180,7 +104,6 @@ void movement_system(ecs_view_t view, unsigned int row) {
     neko_vec2_t min = neko_vec2_add(*p, *v);
     neko_vec2_t max = neko_vec2_add(min, *b);
 
-    // const neko_vec2_t ws = neko_platform_window_sizev(neko_platform_main_window());
     auto ws = CL_GAME_USERDATA()->fbs;
 
     // Resolve collision and change velocity direction if necessary
@@ -203,6 +126,8 @@ void render_system(ecs_view_t view, unsigned int row) {
     auto bi = *b;
     neko_idraw_rectvd(&CL_GAME_USERDATA()->idraw, pi, bi, neko_v2(0.f, 0.f), neko_v2(1.f, 1.f), (neko_color_t)*c, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
 }
+
+void aseprite_render_system(ecs_view_t view, unsigned int row) { position_t *p = (position_t *)ecs_view(view, row, 0); }
 
 #if 0
 
@@ -299,7 +224,7 @@ lua_State *neko_scripting_init() {
     neko::timer timer;
     timer.start();
 
-    lua_State *L = neko_lua_wrap_create();
+    lua_State *L = neko_lua_create();
 
     try {
         lua_atpanic(
@@ -310,17 +235,17 @@ lua_State *neko_scripting_init() {
                 });
         neko_register(L);
 
-        neko_lua_wrap_run_string(L, std::format("package.path = "
-                                                "'{1}/?.lua;{0}/?.lua;{0}/../libs/?.lua;{0}/../libs/?/init.lua;{0}/../libs/"
-                                                "?/?.lua;' .. package.path",
-                                                game_assets("lua_scripts"), neko::fs_normalize_path(std::filesystem::current_path().string()).c_str()));
+        neko_lua_run_string(L, std::format("package.path = "
+                                           "'{1}/?.lua;{0}/?.lua;{0}/../libs/?.lua;{0}/../libs/?/init.lua;{0}/../libs/"
+                                           "?/?.lua;' .. package.path",
+                                           game_assets("lua_scripts"), neko::fs_normalize_path(std::filesystem::current_path().string()).c_str()));
 
-        neko_lua_wrap_run_string(L, std::format("package.cpath = "
-                                                "'{1}/?.{2};{0}/?.{2};{0}/../libs/?.{2};{0}/../libs/?/init.{2};{0}/../libs/"
-                                                "?/?.{2};' .. package.cpath",
-                                                game_assets("lua_scripts"), neko::fs_normalize_path(std::filesystem::current_path().string()).c_str(), "dll"));
+        neko_lua_run_string(L, std::format("package.cpath = "
+                                           "'{1}/?.{2};{0}/?.{2};{0}/../libs/?.{2};{0}/../libs/?/init.{2};{0}/../libs/"
+                                           "?/?.{2};' .. package.cpath",
+                                           game_assets("lua_scripts"), neko::fs_normalize_path(std::filesystem::current_path().string()).c_str(), "dll"));
 
-        neko_lua_wrap_safe_dofile(L, "init");
+        neko_lua_safe_dofile(L, "init");
 
     } catch (std::exception &ex) {
         neko_log_error("%s", ex.what());
@@ -332,7 +257,7 @@ lua_State *neko_scripting_init() {
     return L;
 }
 
-void neko_scripting_end(lua_State *L) { neko_lua_wrap_destory(L); }
+void neko_scripting_end(lua_State *L) { neko_lua_fini(L); }
 
 void draw_gui();
 
@@ -349,7 +274,7 @@ int init_work(void *user_data) {
         timer.start();
 
         try {
-            neko_lua_wrap_call(CL_GAME_USERDATA()->L, "game_init_thread");
+            neko_lua_call(CL_GAME_USERDATA()->L, "game_init_thread");
         } catch (std::exception &ex) {
             neko_log_error("lua exception %s", ex.what());
         }
@@ -369,35 +294,27 @@ int init_work(void *user_data) {
 
 void game_init() {
 
+    auto mount = neko::vfs_mount(game_assets("gamedir/../").c_str());
+    CL_GAME_USERDATA()->L = neko_scripting_init();
+
     CL_GAME_USERDATA()->cb = neko_command_buffer_new();
     CL_GAME_USERDATA()->idraw = neko_immediate_draw_new();
 
-    neko_graphics_info_t *info = neko_graphics_info();
-    if (!info->compute.available) {
-        neko_log_error("%s", "Compute shaders not available.");
-        neko_quit();
-        return;
-    }
-
     CL_GAME_USERDATA()->am = neko_asset_manager_new();
-
-    auto mount = neko::vfs_mount(game_assets("gamedir/../").c_str());
 
     neko_pack_read(game_assets("gamedir/sc.pack").c_str(), 0, false, &CL_GAME_USERDATA()->lua_pack);
 
-    CL_GAME_USERDATA()->L = neko_scripting_init();
-
     {
-        neko_lua_wrap_register_t<>(CL_GAME_USERDATA()->L).def(+[](const_str path) -> std::string { return game_assets(path); }, "__neko_file_path");
+        neko_lua_register_t<>(CL_GAME_USERDATA()->L).def(+[](const_str path) -> std::string { return game_assets(path); }, "__neko_file_path");
 
         lua_newtable(CL_GAME_USERDATA()->L);
-        for (int n = 0; n < neko_instance()->ctx.game.argc; ++n) {
-            lua_pushstring(CL_GAME_USERDATA()->L, neko_instance()->ctx.game.argv[n]);
+        for (int n = 0; n < neko_instance()->argc; ++n) {
+            lua_pushstring(CL_GAME_USERDATA()->L, neko_instance()->argv[n]);
             lua_rawseti(CL_GAME_USERDATA()->L, -2, n);
         }
         lua_setglobal(CL_GAME_USERDATA()->L, "arg");
 
-        neko_lua_wrap_safe_dofile(CL_GAME_USERDATA()->L, "main");
+        neko_lua_safe_dofile(CL_GAME_USERDATA()->L, "main");
 
         // 获取 neko_game.table
         lua_getglobal(CL_GAME_USERDATA()->L, "neko_game");
@@ -405,7 +322,7 @@ void game_init() {
             neko_log_error("%s", "neko_game is not a table");
         }
 
-        neko_platform_running_desc_t t = {.title = "Neko Engine", .engine_args = ""};
+        neko_platform_running_desc_t t = {.title = "Neko Engine"};
         if (lua_getfield(CL_GAME_USERDATA()->L, -1, "app") == LUA_TNIL) throw std::exception("no app");
         if (lua_istable(CL_GAME_USERDATA()->L, -1)) {
             neko::static_refl::neko_type_info<neko_platform_running_desc_t>::ForEachVarOf(t, [](auto field, auto &&value) {
@@ -439,8 +356,10 @@ void game_init() {
         neko_platform_set_window_title(neko_platform_main_window(), t.title);
     }
 
+    CL_GAME_USERDATA()->fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
+
     try {
-        neko_lua_wrap_call(CL_GAME_USERDATA()->L, "game_init");
+        neko_lua_call(CL_GAME_USERDATA()->L, "game_init");
     } catch (std::exception &ex) {
         neko_log_error("lua exception %s", ex.what());
     }
@@ -453,7 +372,7 @@ void game_init() {
     neko_pack_item_data(&CL_GAME_USERDATA()->pack, ".\\data\\assets\\fonts\\fusion-pixel-12px-monospaced.ttf", (const u8 **)&font_data, &font_data_size);
     neko_pack_item_data(&CL_GAME_USERDATA()->pack, ".\\data\\assets\\textures\\cat.aseprite", (const u8 **)&cat_data, &cat_data_size);
 
-    CL_GAME_USERDATA()->test_ase = load_ase_texture_simple(cat_data, cat_data_size);
+    CL_GAME_USERDATA()->test_ase = neko_aseprite_simple(cat_data, cat_data_size);
 
     neko_asset_texture_t tex0 = {0};
     neko_asset_texture_load_from_file(game_assets("gamedir/assets/textures/yzh.png").c_str(), &tex0, NULL, false, false);
@@ -507,7 +426,7 @@ void game_init() {
 
     const neko_vec2_t ws = neko_platform_window_sizev(neko_platform_main_window());
 
-    CL_GAME_USERDATA()->ecs = ecs_init();
+    CL_GAME_USERDATA()->ecs = ecs_init(CL_GAME_USERDATA()->L);
 
     auto registry = CL_GAME_USERDATA()->ecs;
     const ecs_entity_t pos_component = ECS_COMPONENT(registry, position_t);
@@ -517,7 +436,7 @@ void game_init() {
 
     CGameObjectTest gameobj = neko_default_val();
 
-    for (int i = 0; i < 64; i++) {
+    for (int i = 0; i < 5; i++) {
 
         neko_vec2_t bounds = neko_v2((f32)random_val(10, 100), (f32)random_val(10, 100));
 
@@ -545,6 +464,12 @@ void game_init() {
 
     ECS_SYSTEM(registry, movement_system, 4, pos_component, vel_component, bou_component, col_component);
     ECS_SYSTEM(registry, render_system, 4, pos_component, vel_component, bou_component, col_component);
+
+    // const ecs_entity_t test_component = ECS_COMPONENT(registry, uptr);
+    // for (int i = 0; i < 16; i++) {
+    //     ecs_entity_t e = ecs_entity(registry);
+    //     ecs_attach(registry, e, test_component);
+    // }
 
     // 初始化工作
 
@@ -612,7 +537,7 @@ void game_loop() {
         f32 dt = neko_platform_delta_time();
 
         try {
-            neko_lua_wrap_call(CL_GAME_USERDATA()->L, "game_pre_update");
+            neko_lua_call(CL_GAME_USERDATA()->L, "game_pre_update");
         } catch (std::exception &ex) {
             neko_log_error("lua exception %s", ex.what());
         }
@@ -621,7 +546,7 @@ void game_loop() {
 
         {
             try {
-                neko_lua_wrap_call<void, f32>(CL_GAME_USERDATA()->L, "game_loop", dt);
+                neko_lua_call<void, f32>(CL_GAME_USERDATA()->L, "game_loop", dt);
             } catch (std::exception &ex) {
                 neko_log_error("lua exception %s", ex.what());
             }
@@ -678,7 +603,7 @@ void game_loop() {
             if (ImGui::Button("test_sexpr")) test_sexpr();
             if (ImGui::Button("test_thread")) test_thd();
             if (ImGui::Button("test_ttf")) {
-                neko_timer_do(t, neko_println("%llu", t), { test_ttf(); });
+                // neko_timer_do(t, neko_println("%llu", t), { test_ttf(); });
             }
             if (ImGui::Button("test_ecs_cpp")) {
                 forEachComponentType([&]<typename T>() {
@@ -755,7 +680,7 @@ void game_loop() {
         neko_graphics_renderpass_end(&CL_GAME_USERDATA()->cb);
 
         try {
-            neko_lua_wrap_call(CL_GAME_USERDATA()->L, "game_render");
+            neko_lua_call(CL_GAME_USERDATA()->L, "game_render");
         } catch (std::exception &ex) {
             neko_log_error("lua exception %s", ex.what());
         }
@@ -776,12 +701,10 @@ void game_shutdown() {
     neko_graphics_framebuffer_destroy(CL_GAME_USERDATA()->main_fbo);
 
     try {
-        neko_lua_wrap_call(CL_GAME_USERDATA()->L, "game_shutdown");
+        neko_lua_call(CL_GAME_USERDATA()->L, "game_shutdown");
     } catch (std::exception &ex) {
         neko_log_error("lua exception %s", ex.what());
     }
-
-    neko_scripting_end(CL_GAME_USERDATA()->L);
 
     neko_fontbatch_end(&CL_GAME_USERDATA()->font_render_batch);
 
@@ -789,7 +712,7 @@ void game_shutdown() {
     neko_command_buffer_free(&CL_GAME_USERDATA()->cb);
 
     // ecs_fini(CL_GAME_USERDATA()->ecs_world);
-    ecs_destroy(CL_GAME_USERDATA()->ecs);
+    // ecs_fini(CL_GAME_USERDATA()->ecs);
 
     neko_imgui_shutdown(&CL_GAME_USERDATA()->imgui);
     neko_ui_free(&CL_GAME_USERDATA()->ui);
@@ -798,32 +721,11 @@ void game_shutdown() {
 
     neko::vfs_trash();
 
+    neko_scripting_end(CL_GAME_USERDATA()->L);
+
 #ifdef USE_PROFILER
     neko::profile_shutdown();
 #endif
-}
-
-neko_game_desc_t neko_main(s32 argc, char **argv) {
-
-    // 确定运行路径
-    auto current_dir = std::filesystem::path(std::filesystem::current_path());
-    for (int i = 0; i < 6; ++i)
-        if (std::filesystem::exists(current_dir / "gamedir") &&  //
-            std::filesystem::exists(current_dir / "gamedir" / "assets")) {
-            CL_GAME_USERDATA()->data_path = neko::fs_normalize_path(current_dir.string());
-            neko_log_info(std::format("gamedir: {0} (base: {1})", CL_GAME_USERDATA()->data_path, std::filesystem::current_path().string()).c_str());
-            break;
-        } else {
-            current_dir = current_dir.parent_path();
-        }
-
-    return neko_game_desc_t{.init = game_init,
-                            .update = game_loop,
-                            .shutdown = game_shutdown,
-                            .window = {.width = 1280, .height = 720, .vsync = false, .frame_rate = 60.f, .hdpi = false, .center = true, .running_background = true},
-                            .argc = argc,
-                            .argv = argv,
-                            .console = &g_console};
 }
 
 void editor_dockspace(neko_ui_context_t *ctx) {
@@ -837,17 +739,13 @@ void editor_dockspace(neko_ui_context_t *ctx) {
 }
 
 std::string game_assets(const std::string &path) {
-    if (CL_GAME_USERDATA()->data_path.empty()) {
-        neko_assert(!CL_GAME_USERDATA()->data_path.empty());  // game data path not detected
-        return path;
-    }
-    std::string get_path(CL_GAME_USERDATA()->data_path);
+    std::string get_path;
 
-    if (path.substr(0, 7) == "gamedir") {
-        get_path.append(path);
-    } else if (path.substr(0, 11) == "lua_scripts") {
+    if (path.substr(0, 11) == "lua_scripts") {
         std::string lua_path = path;
-        get_path = std::filesystem::path(CL_GAME_USERDATA()->data_path).parent_path().string().append("/source/lua/game/").append(lua_path.replace(0, 12, ""));
+        get_path.append("./source/lua/game/").append(lua_path.replace(0, 12, ""));
+    } else {
+        get_path.append(path);
     }
 
     return get_path;
@@ -1168,4 +1066,19 @@ void draw_gui() {
         neko_console(&g_console, &CL_GAME_USERDATA()->ui, screen, NULL);
     }
     neko_ui_end(&CL_GAME_USERDATA()->ui, true);
+}
+
+// neko_game_desc_t *neko_main() {
+//     static neko_game_desc_t gd = {.init = game_init,
+//                                   .update = game_loop,
+//                                   .shutdown = game_shutdown,
+//                                   .window = {.width = 1280, .height = 720, .vsync = false, .frame_rate = 60.f, .hdpi = false, .center = true, .running_background = true},
+//                                   .console = &g_console};
+//     return &gd;
+// }
+
+void neko_app() {
+    if (neko_instance()->update == NULL) neko_instance()->update = &game_loop;
+    if (neko_instance()->shutdown == NULL) neko_instance()->shutdown = &game_shutdown;
+    if (neko_instance()->init == NULL) neko_instance()->init = &game_init;
 }

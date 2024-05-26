@@ -47,21 +47,10 @@ s32 neko_buildnum(void) {
 ==========================*/
 
 NEKO_API_DECL
-void* _neko_malloc_init_impl(size_t sz) {
+void* neko_malloc_init_impl(size_t sz) {
     void* data = neko_malloc(sz);
     memset(data, 0, sz);
     return data;
-}
-
-NEKO_API_DECL neko_os_api_t neko_os_api_new_default() {
-    neko_os_api_t os = neko_default_val();
-    os.malloc = malloc;
-    os.malloc_init = _neko_malloc_init_impl;
-    os.free = free;
-    os.realloc = realloc;
-    os.calloc = calloc;
-    os.strdup = strdup;
-    return os;
 }
 
 NEKO_API_DECL void neko_console_printf(neko_console_t* console, const char* fmt, ...) {
@@ -167,12 +156,12 @@ void neko_log(int level, const char* file, int line, const char* fmt, ...) {
         fprintf(ev.udata, "\n");
         fflush(ev.udata);
 
-        if (NULL != neko_instance() && NULL != neko_instance()->ctx.game.console) {
+        if (NULL != neko_instance() && NULL != neko_instance()->console) {
             char buffer[512] = neko_default_val();
             vsnprintf(buffer, 512, ev.fmt, ev.ap);
-            neko_console_printf(neko_instance()->ctx.game.console, "%-5s %s:%d: ", level_strings[ev.level], neko_fs_get_filename(ev.file), ev.line);
-            neko_console_printf(neko_instance()->ctx.game.console, buffer);
-            neko_console_printf(neko_instance()->ctx.game.console, "\n");
+            neko_console_printf(neko_instance()->console, "%-5s %s:%d: ", level_strings[ev.level], neko_fs_get_filename(ev.file), ev.line);
+            neko_console_printf(neko_instance()->console, buffer);
+            neko_console_printf(neko_instance()->console, "\n");
         }
         va_end(ev.ap);
     }
@@ -763,7 +752,7 @@ NEKO_API_DECL void* neko_paged_allocator_allocate(neko_paged_allocator_t* pa) {
         pa->free_list = data->next;
         return data;
     } else {
-        neko_paged_allocator_page_t* page = (neko_paged_allocator_page_t*)_neko_malloc_init_impl(pa->block_size * pa->blocks_per_page + sizeof(neko_paged_allocator_page_t));
+        neko_paged_allocator_page_t* page = (neko_paged_allocator_page_t*)neko_malloc_init_impl(pa->block_size * pa->blocks_per_page + sizeof(neko_paged_allocator_page_t));
         pa->page_count++;
 
         page->next = pa->pages;
@@ -836,12 +825,12 @@ NEKO_API_DECL void neko_paged_allocator_clear(neko_paged_allocator_t* pa) {
 
 NEKO_API_DECL neko_heap_allocator_t neko_heap_allocate_new() {
     neko_heap_allocator_t ha = neko_default_val();
-    ha.memory = (neko_heap_allocator_header_t*)_neko_malloc_init_impl(NEKO_HEAP_ALLOC_DEFAULT_SIZE);
+    ha.memory = (neko_heap_allocator_header_t*)neko_malloc_init_impl(NEKO_HEAP_ALLOC_DEFAULT_SIZE);
     ha.memory->next = NULL;
     ha.memory->prev = NULL;
     ha.memory->size = NEKO_HEAP_ALLOC_DEFAULT_SIZE;
 
-    ha.free_blocks = (neko_heap_allocator_free_block_t*)_neko_malloc_init_impl(sizeof(neko_heap_allocator_free_block_t) * NEKO_HEAP_ALLOC_DEFAULT_CAPCITY);
+    ha.free_blocks = (neko_heap_allocator_free_block_t*)neko_malloc_init_impl(sizeof(neko_heap_allocator_free_block_t) * NEKO_HEAP_ALLOC_DEFAULT_CAPCITY);
     ha.free_block_count = 1;
     ha.free_block_capacity = NEKO_HEAP_ALLOC_DEFAULT_CAPCITY;
 
@@ -932,521 +921,6 @@ bool32_t neko_util_load_texture_data_from_file(const char* file_path, s32* width
     }
     neko_safe_free(file_data);
     return ret;
-}
-
-/*========================
-// NEKO_LEXER
-========================*/
-
-//==== [ Token ] ============================================================//
-
-NEKO_API_DECL neko_token_t neko_token_invalid_token() {
-    neko_token_t t = neko_default_val();
-    t.text = "";
-    t.type = NEKO_TOKEN_UNKNOWN;
-    t.len = 0;
-    return t;
-}
-
-NEKO_API_DECL bool neko_token_compare_type(const neko_token_t* t, neko_token_type type) { return (t->type == type); }
-
-NEKO_API_DECL bool neko_token_compare_text(const neko_token_t* t, const char* match) { return (neko_string_compare_equal_n(t->text, match, t->len)); }
-
-NEKO_API_DECL void neko_token_print_text(const neko_token_t* t) { neko_println("%.*s\n", t->len, t->text); }
-
-NEKO_API_DECL void neko_token_debug_print(const neko_token_t* t) { neko_println("%s: %.*s", neko_token_type_to_str(t->type), t->len, t->text); }
-
-NEKO_API_DECL const char* neko_token_type_to_str(neko_token_type type) {
-    switch (type) {
-        default:
-        case NEKO_TOKEN_UNKNOWN:
-            return neko_to_str(NEKO_TOKEN_UNKNOWN);
-            break;
-        case NEKO_TOKEN_LPAREN:
-            return neko_to_str(NEKO_TOKEN_LPAREN);
-            break;
-        case NEKO_TOKEN_RPAREN:
-            return neko_to_str(NEKO_TOKEN_RPAREN);
-            break;
-        case NEKO_TOKEN_LTHAN:
-            return neko_to_str(NEKO_TOKEN_LTHAN);
-            break;
-        case NEKO_TOKEN_GTHAN:
-            return neko_to_str(NEKO_TOKEN_GTHAN);
-            break;
-        case NEKO_TOKEN_SEMICOLON:
-            return neko_to_str(NEKO_TOKEN_SEMICOLON);
-            break;
-        case NEKO_TOKEN_COLON:
-            return neko_to_str(NEKO_TOKEN_COLON);
-            break;
-        case NEKO_TOKEN_COMMA:
-            return neko_to_str(NEKO_TOKEN_COMMA);
-            break;
-        case NEKO_TOKEN_EQUAL:
-            return neko_to_str(NEKO_TOKEN_EQUAL);
-            break;
-        case NEKO_TOKEN_NOT:
-            return neko_to_str(NEKO_TOKEN_NOT);
-            break;
-        case NEKO_TOKEN_HASH:
-            return neko_to_str(NEKO_TOKEN_HASH);
-            break;
-        case NEKO_TOKEN_PIPE:
-            return neko_to_str(NEKO_TOKEN_PIPE);
-            break;
-        case NEKO_TOKEN_AMPERSAND:
-            return neko_to_str(NEKO_TOKEN_AMPERSAND);
-            break;
-        case NEKO_TOKEN_LBRACE:
-            return neko_to_str(NEKO_TOKEN_LBRACE);
-            break;
-        case NEKO_TOKEN_RBRACE:
-            return neko_to_str(NEKO_TOKEN_RBRACE);
-            break;
-        case NEKO_TOKEN_LBRACKET:
-            return neko_to_str(NEKO_TOKEN_LBRACKET);
-            break;
-        case NEKO_TOKEN_RBRACKET:
-            return neko_to_str(NEKO_TOKEN_RBRACKET);
-            break;
-        case NEKO_TOKEN_MINUS:
-            return neko_to_str(NEKO_TOKEN_MINUS);
-            break;
-        case NEKO_TOKEN_PLUS:
-            return neko_to_str(NEKO_TOKEN_PLUS);
-            break;
-        case NEKO_TOKEN_ASTERISK:
-            return neko_to_str(NEKO_TOKEN_ASTERISK);
-            break;
-        case NEKO_TOKEN_BSLASH:
-            return neko_to_str(NEKO_TOKEN_BLASH);
-            break;
-        case NEKO_TOKEN_FSLASH:
-            return neko_to_str(NEKO_TOKEN_FLASH);
-            break;
-        case NEKO_TOKEN_QMARK:
-            return neko_to_str(NEKO_TOKEN_QMARK);
-            break;
-        case NEKO_TOKEN_DOLLAR:
-            return neko_to_str(NEKO_TOKEN_DOLLAR);
-            break;
-        case NEKO_TOKEN_SPACE:
-            return neko_to_str(NEKO_TOKEN_SPACE);
-            break;
-        case NEKO_TOKEN_NEWLINE:
-            return neko_to_str(NEKO_TOKEN_NEWLINE);
-            break;
-        case NEKO_TOKEN_TAB:
-            return neko_to_str(NEKO_TOKEN_TAB);
-            break;
-        case NEKO_TOKEN_SINGLE_LINE_COMMENT:
-            return neko_to_str(NEKO_TOKEN_SINGLE_LINE_COMMENT);
-            break;
-        case NEKO_TOKEN_MULTI_LINE_COMMENT:
-            return neko_to_str(NEKO_TOKEN_MULTI_LINE_COMMENT);
-            break;
-        case NEKO_TOKEN_IDENTIFIER:
-            return neko_to_str(NEKO_TOKEN_IDENTIFIER);
-            break;
-        case NEKO_TOKEN_NUMBER:
-            return neko_to_str(NEKO_TOKEN_NUMBER);
-            break;
-    }
-}
-
-NEKO_API_DECL bool neko_char_is_null_term(char c) { return (c == '\0'); }
-
-NEKO_API_DECL bool neko_char_is_end_of_line(char c) { return (c == '\n' || c == '\r'); }
-
-NEKO_API_DECL bool neko_char_is_white_space(char c) { return (c == '\t' || c == ' ' || neko_char_is_end_of_line(c)); }
-
-NEKO_API_DECL bool neko_char_is_alpha(char c) { return ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')); }
-
-NEKO_API_DECL bool neko_char_is_numeric(char c) { return (c >= '0' && c <= '9'); }
-
-//==== [ Lexer ] ============================================================//
-
-NEKO_API_DECL void neko_lexer_set_contents(neko_lexer_t* lex, const char* contents) {
-    lex->at = contents;
-    lex->current_token = neko_token_invalid_token();
-}
-
-NEKO_API_DECL bool neko_lexer_c_can_lex(neko_lexer_t* lex) {
-    bool size_pass = lex->contents_size ? lex->size < lex->contents_size : true;
-    return (size_pass && lex->at && !neko_char_is_null_term(*(lex->at)));
-}
-
-NEKO_API_DECL void neko_lexer_set_token(neko_lexer_t* lex, neko_token_t token) {
-    lex->at = token.text;
-    lex->current_token = token;
-}
-
-NEKO_API_DECL void neko_lexer_c_eat_white_space(neko_lexer_t* lex) {
-    for (;;) {
-        if (neko_char_is_white_space(*lex->at)) {
-            lex->at++;
-        }
-
-        // Single line comment
-        else if ((lex->at[0] == '/') && (lex->at[1]) && (lex->at[1] == '/')) {
-            lex->at += 2;
-            while (*lex->at && !neko_char_is_end_of_line(*lex->at)) {
-                lex->at++;
-            }
-        }
-
-        // Multi-line comment
-        else if ((lex->at[0] == '/') && (lex->at[1]) && (lex->at[1] == '*')) {
-            lex->at += 2;
-            while (lex->at[0] && lex->at[1] && !(lex->at[0] == '*' && lex->at[1] == '/')) {
-                lex->at++;
-            }
-            if (lex->at[0] == '*') {
-                lex->at++;
-            }
-        }
-
-        else {
-            break;
-        }
-    }
-}
-
-NEKO_API_DECL neko_token_t neko_lexer_c_next_token(neko_lexer_t* lex) {
-    if (lex->skip_white_space) {
-        lex->eat_white_space(lex);
-    }
-
-    neko_token_t t = neko_token_invalid_token();
-    t.text = lex->at;
-    t.len = 1;
-
-    if (lex->can_lex(lex)) {
-        char c = *lex->at;
-        switch (c) {
-            case '(': {
-                t.type = NEKO_TOKEN_LPAREN;
-                lex->at++;
-            } break;
-            case ')': {
-                t.type = NEKO_TOKEN_RPAREN;
-                lex->at++;
-            } break;
-            case '<': {
-                t.type = NEKO_TOKEN_LTHAN;
-                lex->at++;
-            } break;
-            case '>': {
-                t.type = NEKO_TOKEN_GTHAN;
-                lex->at++;
-            } break;
-            case ';': {
-                t.type = NEKO_TOKEN_SEMICOLON;
-                lex->at++;
-            } break;
-            case ':': {
-                t.type = NEKO_TOKEN_COLON;
-                lex->at++;
-            } break;
-            case ',': {
-                t.type = NEKO_TOKEN_COMMA;
-                lex->at++;
-            } break;
-            case '=': {
-                t.type = NEKO_TOKEN_EQUAL;
-                lex->at++;
-            } break;
-            case '!': {
-                t.type = NEKO_TOKEN_NOT;
-                lex->at++;
-            } break;
-            case '#': {
-                t.type = NEKO_TOKEN_HASH;
-                lex->at++;
-            } break;
-            case '|': {
-                t.type = NEKO_TOKEN_PIPE;
-                lex->at++;
-            } break;
-            case '&': {
-                t.type = NEKO_TOKEN_AMPERSAND;
-                lex->at++;
-            } break;
-            case '{': {
-                t.type = NEKO_TOKEN_LBRACE;
-                lex->at++;
-            } break;
-            case '}': {
-                t.type = NEKO_TOKEN_RBRACE;
-                lex->at++;
-            } break;
-            case '[': {
-                t.type = NEKO_TOKEN_LBRACKET;
-                lex->at++;
-            } break;
-            case ']': {
-                t.type = NEKO_TOKEN_RBRACKET;
-                lex->at++;
-            } break;
-            case '+': {
-                t.type = NEKO_TOKEN_PLUS;
-                lex->at++;
-            } break;
-            case '*': {
-                t.type = NEKO_TOKEN_ASTERISK;
-                lex->at++;
-            } break;
-            case '\\': {
-                t.type = NEKO_TOKEN_BSLASH;
-                lex->at++;
-            } break;
-            case '?': {
-                t.type = NEKO_TOKEN_QMARK;
-                lex->at++;
-            } break;
-            case '%': {
-                t.type = NEKO_TOKEN_PERCENT;
-                lex->at++;
-            } break;
-            case '$': {
-                t.type = NEKO_TOKEN_DOLLAR;
-                lex->at++;
-            } break;
-            case ' ': {
-                t.type = NEKO_TOKEN_SPACE;
-                lex->at++;
-            } break;
-            case '\n': {
-                t.type = NEKO_TOKEN_NEWLINE;
-                lex->at++;
-            } break;
-            case '\r': {
-                t.type = NEKO_TOKEN_NEWLINE;
-                lex->at++;
-            } break;
-            case '\t': {
-                t.type = NEKO_TOKEN_TAB;
-                lex->at++;
-            } break;
-            case '.': {
-                t.type = NEKO_TOKEN_PERIOD;
-                lex->at++;
-            } break;
-
-            case '-': {
-                if (lex->at[1] && !neko_char_is_numeric(lex->at[1])) {
-                    t.type = NEKO_TOKEN_MINUS;
-                    lex->at++;
-                } else {
-                    lex->at++;
-                    u32 num_decimals = 0;
-                    while (lex->at[0] && (neko_char_is_numeric(lex->at[0]) || (lex->at[0] == '.' && num_decimals == 0) || lex->at[0] == 'f')) {
-                        // Grab decimal
-                        num_decimals = lex->at[0] == '.' ? num_decimals++ : num_decimals;
-
-                        // Increment
-                        lex->at++;
-                    }
-
-                    t.len = lex->at - t.text;
-                    t.type = NEKO_TOKEN_NUMBER;
-                }
-
-            } break;
-
-            case '/': {
-                // Single line comment
-                if ((lex->at[0] == '/') && (lex->at[1]) && (lex->at[1] == '/')) {
-                    lex->at += 2;
-                    while (lex->at[0] && !neko_char_is_end_of_line(lex->at[0])) {
-                        lex->at++;
-                    }
-                    t.len = lex->at - t.text;
-                    t.type = NEKO_TOKEN_SINGLE_LINE_COMMENT;
-                }
-
-                // Multi line comment
-                else if ((lex->at[0] == '/') && (lex->at[1]) && (lex->at[1] == '*')) {
-                    lex->at += 2;
-                    while (lex->can_lex(lex)) {
-                        if (lex->at[0] == '*' && lex->at[1] == '/') {
-                            lex->at += 2;
-                            break;
-                        }
-                        lex->at++;
-                    }
-                    t.len = lex->at - t.text;
-                    t.type = NEKO_TOKEN_MULTI_LINE_COMMENT;
-                }
-                // it's just a forward slash
-                else {
-                    t.type = NEKO_TOKEN_FSLASH;
-                    lex->at++;
-                }
-            } break;
-
-            case '"': {
-                // Move forward after finding first quotation
-                lex->at++;
-
-                while (lex->at && *lex->at != '"') {
-                    if (lex->at[0] == '\\' && lex->at[1]) {
-                        lex->at++;
-                    }
-                    lex->at++;
-                }
-
-                // Move past quotation
-                lex->at++;
-                t.len = lex->at - t.text;
-                t.type = NEKO_TOKEN_STRING;
-            } break;
-
-            // Alpha/Numeric/Identifier
-            default: {
-                if ((neko_char_is_alpha(c) || c == '_') && c != '-') {
-                    while (neko_char_is_alpha(lex->at[0]) || neko_char_is_numeric(lex->at[0]) || lex->at[0] == '_') {
-                        lex->at++;
-                    }
-
-                    t.len = lex->at - t.text;
-                    t.type = NEKO_TOKEN_IDENTIFIER;
-                } else if (neko_char_is_numeric(c) && c != '-') {
-                    u32 num_decimals = 0;
-                    while (neko_char_is_numeric(lex->at[0]) || (lex->at[0] == '.' && num_decimals == 0) || lex->at[0] == 'f') {
-                        // Grab decimal
-                        num_decimals = lex->at[0] == '.' ? num_decimals++ : num_decimals;
-
-                        // Increment
-                        lex->at++;
-                    }
-
-                    t.len = lex->at - t.text;
-                    t.type = NEKO_TOKEN_NUMBER;
-                } else {
-                    t.type = NEKO_TOKEN_UNKNOWN;
-                    lex->at++;
-                }
-
-            } break;
-        }
-    }
-
-    // Set current token for lex
-    lex->current_token = t;
-
-    // Record size
-    lex->size += t.len;
-
-    return t;
-}
-
-NEKO_API_DECL neko_token_t neko_lexer_next_token(neko_lexer_t* lex) { return lex->next_token(lex); }
-
-NEKO_API_DECL bool neko_lexer_can_lex(neko_lexer_t* lex) { return lex->can_lex(lex); }
-
-NEKO_API_DECL neko_token_t neko_lexer_current_token(const neko_lexer_t* lex) { return lex->current_token; }
-
-NEKO_API_DECL bool neko_lexer_current_token_compare_type(const neko_lexer_t* lex, neko_token_type type) { return (lex->current_token.type == type); }
-
-NEKO_API_DECL neko_token_t neko_lexer_peek(neko_lexer_t* lex) {
-    // Store current at and current token
-    const char* at = lex->at;
-    neko_token_t cur_t = neko_lexer_current_token(lex);
-
-    // Get next token
-    neko_token_t next_t = lex->next_token(lex);
-
-    // Reset
-    lex->current_token = cur_t;
-    lex->at = at;
-
-    // Return
-    return next_t;
-}
-
-// Check to see if token type of next valid token matches 'match'. Restores place in lex if not.
-NEKO_API_DECL bool neko_lexer_require_token_text(neko_lexer_t* lex, const char* match) {
-    // Store current position and token
-    const char* at = lex->at;
-    neko_token_t cur_t = lex->current_token;
-
-    // Get next token
-    neko_token_t next_t = lex->next_token(lex);
-
-    // Compare token text
-    if (neko_token_compare_text(&next_t, match)) {
-        return true;
-    }
-
-    // Error
-    neko_log_warning("neko_lexer_require_token_text::%.*s, expected: %s", cur_t.len, cur_t.text, match);
-
-    // Reset
-    lex->at = at;
-    lex->current_token = cur_t;
-
-    return false;
-}
-
-NEKO_API_DECL bool neko_lexer_require_token_type(neko_lexer_t* lex, neko_token_type type) {
-    // Store current position and token
-    const char* at = lex->at;
-    neko_token_t cur_t = lex->current_token;
-
-    // Get next token
-    neko_token_t next_t = lex->next_token(lex);
-
-    // Compare token type
-    if (neko_token_compare_type(&next_t, type)) {
-        return true;
-    }
-
-    // Error
-    // neko_println("error::neko_lexer_require_token_type::%s, expected: %s", neko_token_type_to_str(next_t.type), neko_token_type_to_str(type));
-
-    // Reset
-    lex->at = at;
-    lex->current_token = cur_t;
-
-    return false;
-}
-
-// Advances until next token of given type is found
-NEKO_API_DECL bool neko_lexer_find_next_token_type(neko_lexer_t* lex, neko_token_type type) {
-    neko_token_t t = lex->next_token(lex);
-    while (lex->can_lex(lex)) {
-        if (neko_token_compare_type(&t, type)) {
-            return true;
-        }
-        t = lex->next_token(lex);
-    }
-    return false;
-}
-
-NEKO_API_DECL neko_token_t neko_lexer_advance_before_next_token_type(neko_lexer_t* lex, neko_token_type type) {
-    neko_token_t t = lex->current_token;
-    neko_token_t peek_t = neko_lexer_peek(lex);
-
-    // Continue right up until required token type
-    while (!neko_token_compare_type(&peek_t, type)) {
-        t = lex->next_token(lex);
-        peek_t = neko_lexer_peek(lex);
-    }
-
-    return t;
-}
-
-NEKO_API_DECL neko_lexer_t neko_lexer_c_ctor(const char* contents) {
-    neko_lexer_t lex = neko_default_val();
-    lex.contents = contents;
-    lex.at = contents;
-    lex.can_lex = neko_lexer_c_can_lex;
-    lex.eat_white_space = neko_lexer_c_eat_white_space;
-    lex.next_token = neko_lexer_c_next_token;
-    lex.skip_white_space = true;
-    return lex;
 }
 
 /*================================================================================
@@ -1563,64 +1037,64 @@ void neko_config_print() {
 // NEKO_ENGINE
 //=============================
 
-NEKO_API_DECL void neko_default_app_func();
-
 NEKO_API_DECL void neko_default_main_window_close_callback(void* window);
 
-NEKO_STATIC neko_t* _neko_instance = neko_default_val();
+NEKO_STATIC neko_t* g_neko_instance = neko_default_val();
 
-NEKO_API_DECL neko_t* neko_create(neko_game_desc_t app_desc) {
+NEKO_API_DECL neko_t* neko_instance() { return g_neko_instance; }
+
+NEKO_API_DECL neko_context_t* neko_ctx() { return &neko_instance()->ctx; }
+
+NEKO_API_DECL neko_t* neko_create(int argc, char** argv) {
     if (neko_instance() == NULL) {
-        // Check app desc for defaults
-        if (app_desc.window.width == 0) app_desc.window.width = 800;
-        if (app_desc.window.height == 0) app_desc.window.height = 600;
-        if (app_desc.window.title == 0) app_desc.window.title = "Neko Engine";
-        if (app_desc.window.frame_rate <= 0.f) app_desc.window.frame_rate = 60.f;
-        if (app_desc.update == NULL) app_desc.update = &neko_default_app_func;
-        if (app_desc.shutdown == NULL) app_desc.shutdown = &neko_default_app_func;
-        if (app_desc.init == NULL) app_desc.init = &neko_default_app_func;
 
-        __neko_mem_init(app_desc.argc, app_desc.argv);
-
-        neko_timer_initialize();
-
-        // 首先设置 osapi?
-        neko_os_api_t os = neko_os_api_new();
+        __neko_mem_init(argc, argv);
 
         // 构造实例并设置
-        _neko_instance = (neko_t*)os.malloc(sizeof(neko_t));
-        memset(_neko_instance, 0, sizeof(neko_t));
-
-        // 设置现在已分配的 osapi
-        neko_instance()->ctx.os = os;
+        g_neko_instance = (neko_t*)neko_malloc(sizeof(neko_t));
+        memset(g_neko_instance, 0, sizeof(neko_t));
 
         // 设置框架的应用描述
-        neko_instance()->ctx.game = app_desc;
+        // neko_instance()->ctx.game = *app_desc;
 
         // 设置函数指针
         neko_instance()->ctx.shutdown = &neko_destroy;
 
+        neko_app();
+
+        neko_instance()->console = &g_console;
+
         // 初始化 cvars
         __neko_config_init();
 
+        neko_cvar_lnew("app_desc.window.width", __NEKO_CONFIG_TYPE_INT, 1280);
+        neko_cvar_lnew("app_desc.window.height", __NEKO_CONFIG_TYPE_INT, 720);
+        neko_cvar_lnew("app_desc.window.vsync", __NEKO_CONFIG_TYPE_INT, 0);
+        neko_cvar_lnew("app_desc.window.frame_rate", __NEKO_CONFIG_TYPE_FLOAT, 60.f);
+        neko_cvar_lnew("app_desc.window.hdpi", __NEKO_CONFIG_TYPE_INT, 0);
+        neko_cvar_lnew("app_desc.window.center", __NEKO_CONFIG_TYPE_INT, 1);
+        neko_cvar_lnew("app_desc.window.running_background", __NEKO_CONFIG_TYPE_INT, 1);
+        neko_cvar_lnew("app_desc.window.monitor_index", __NEKO_CONFIG_TYPE_INT, 0);
+
+        neko_cvar_lnew("settings.video.graphics.debug", __NEKO_CONFIG_TYPE_INT, 0);
+        neko_cvar_lnew("settings.video.graphics.hdpi", __NEKO_CONFIG_TYPE_INT, 0);
+
         // 需要从用户那里传递视频设置
         neko_subsystem(platform) = neko_platform_create();
-
-        // 启用图形 API 调试
-        neko_subsystem(platform)->settings.video.graphics.debug = app_desc.debug_gfx;
-        neko_subsystem(platform)->settings.video.graphics.hdpi = app_desc.window.hdpi;
 
         // 此处平台的默认初始化
         neko_platform_init(neko_subsystem(platform));
 
         // 设置应用程序的帧速率
-        neko_subsystem(platform)->time.max_fps = app_desc.window.frame_rate;
+        neko_subsystem(platform)->time.max_fps = neko_cvar("app_desc.window.frame_rate")->value.f;
+
+        neko_platform_running_desc_t window = {.title = "Neko Engine", .width = 1280, .height = 720, .vsync = false, .frame_rate = 60.f, .hdpi = false, .center = true, .running_background = true};
 
         // 构建主窗口
-        neko_platform_window_create(&app_desc.window);
+        neko_platform_window_create(&window);
 
         // 设置视频垂直同步
-        neko_platform_enable_vsync(app_desc.window.vsync);
+        neko_platform_enable_vsync(neko_cvar("app_desc.window.vsync")->value.i);
 
         // 构建图形API
         neko_subsystem(graphics) = neko_graphics_create();
@@ -1635,8 +1109,8 @@ NEKO_API_DECL neko_t* neko_create(neko_game_desc_t app_desc) {
         // neko_subsystem(audio)->init(neko_subsystem(audio));
 
         // 初始化应用程序并设置为运行
-        app_desc.init();
-        neko_ctx()->game.is_running = true;
+        neko_instance()->init();
+        neko_instance()->game.is_running = true;
 
         // 设置按下主窗口关闭按钮时的默认回调
         neko_platform_set_window_close_callback(neko_platform_main_window(), &neko_default_main_window_close_callback);
@@ -1645,15 +1119,7 @@ NEKO_API_DECL neko_t* neko_create(neko_game_desc_t app_desc) {
     return neko_instance();
 }
 
-NEKO_API_DECL void neko_set_instance(neko_t* neko) { _neko_instance = neko; }
-
-NEKO_API_DECL neko_t* neko_instance() { return _neko_instance; }
-
-NEKO_API_DECL neko_context_t* neko_ctx() { return &neko_instance()->ctx; }
-
-NEKO_API_DECL neko_game_desc_t* neko_app() { return &neko_instance()->ctx.game; }
-
-// Define main frame function for framework to step
+// 主框架函数
 NEKO_API_DECL void neko_frame() {
     // Remove these...
     NEKO_PRIVATE(u32) curr_ticks = 0;
@@ -1677,10 +1143,10 @@ NEKO_API_DECL void neko_frame() {
         // Update platform and process input
         neko_platform_update(platform);
 
-        if (win->focus || neko_app()->window.running_background) {
+        if (win->focus /*|| neko_instance()->game.window.running_background*/) {
 
             // Process application context
-            neko_instance()->ctx.game.update();
+            neko_instance()->update();
 
             {
                 // TODO:: 这里设置清理 garbage_sounds
@@ -1727,7 +1193,7 @@ NEKO_API_DECL void neko_frame() {
         //        neko_profiler_end_scope(profile_id_engine);
     }
 
-    if (!neko_instance()->ctx.game.is_running) {
+    if (!neko_instance()->game.is_running) {
         neko_instance()->ctx.shutdown();
         return;
     }
@@ -1735,8 +1201,8 @@ NEKO_API_DECL void neko_frame() {
 
 void neko_destroy() {
     // Shutdown application
-    neko_ctx()->game.shutdown();
-    neko_ctx()->game.is_running = false;
+    neko_instance()->shutdown();
+    neko_instance()->game.is_running = false;
 
     neko_graphics_shutdown(neko_subsystem(graphics));
     neko_graphics_destroy(neko_subsystem(graphics));
@@ -1749,21 +1215,15 @@ void neko_destroy() {
 
     __neko_config_free();
 
-    neko_timer_shutdown();
-
     // 在 app 结束后进行内存检查
     __neko_mem_end();
 }
 
-NEKO_API_DECL void neko_default_app_func() {
-    // Nothing...
-}
-
-NEKO_API_DECL void neko_default_main_window_close_callback(void* window) { neko_instance()->ctx.game.is_running = false; }
+NEKO_API_DECL void neko_default_main_window_close_callback(void* window) { neko_instance()->game.is_running = false; }
 
 void neko_quit() {
 #ifndef NEKO_PLATFORM_WEB
-    neko_instance()->ctx.game.is_running = false;
+    neko_instance()->game.is_running = false;
 #endif
 }
 

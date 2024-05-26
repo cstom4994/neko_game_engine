@@ -3846,18 +3846,19 @@ NEKO_API_DECL void neko_graphics_init(neko_graphics_t* graphics) {
     glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, (GLint*)&info->max_texture_units);
 
     // Compute shader info
-    CHECK_GL_CORE(info->compute.available = info->major_version >= 4 && info->minor_version >= 3; if (info->compute.available) {
-        // Work group counts
-        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, (s32*)&info->compute.max_work_group_count[0]);
-        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 1, (s32*)&info->compute.max_work_group_count[1]);
-        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 2, (s32*)&info->compute.max_work_group_count[2]);
-        // Work group sizes
-        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, (s32*)&info->compute.max_work_group_size[0]);
-        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1, (s32*)&info->compute.max_work_group_size[1]);
-        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, (s32*)&info->compute.max_work_group_size[2]);
-        // Work group invocations
-        glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, (s32*)&info->compute.max_work_group_invocations);
-    });
+    CHECK_GL_CORE(
+            info->compute.available = info->major_version >= 4 && info->minor_version >= 3; if (info->compute.available) {
+                // Work group counts
+                glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, (s32*)&info->compute.max_work_group_count[0]);
+                glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 1, (s32*)&info->compute.max_work_group_count[1]);
+                glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 2, (s32*)&info->compute.max_work_group_count[2]);
+                // Work group sizes
+                glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, (s32*)&info->compute.max_work_group_size[0]);
+                glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1, (s32*)&info->compute.max_work_group_size[1]);
+                glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, (s32*)&info->compute.max_work_group_size[2]);
+                // Work group invocations
+                glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, (s32*)&info->compute.max_work_group_invocations);
+            } else { neko_log_error("%s", "Compute shaders not available."); });
 
     const GLubyte* glslv = glGetString(GL_SHADING_LANGUAGE_VERSION);
     neko_log_info("GLSL Version: %s", glslv);

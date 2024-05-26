@@ -802,6 +802,21 @@ NEKO_API_DECL void* neko_platform_library_proc_address_default_impl(void* lib, c
     return NULL;
 }
 
+NEKO_API_DECL int neko_platform_chdir_default_impl(const char* path) {
+
+#if (defined NEKO_PLATFORM_WIN)
+
+    return chdir(path);
+
+#elif (defined NEKO_PLATFORM_LINUX || defined NEKO_PLATFORM_APPLE || defined NEKO_PLATFORM_ANDROID)
+
+    return _chdir(path);
+
+#endif
+
+    return 1;
+}
+
 #undef NEKO_PLATFORM_IMPL_DEFAULT
 #endif  // NEKO_PLATFORM_IMPL_DEFAULT
 
@@ -903,7 +918,7 @@ void neko_platform_init(neko_platform_t* pf) {
             glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
             glfwWindowHint(GLFW_COCOA_RETINA_FRAMEBUFFER, GLFW_FALSE);
 #else
-            if (pf->settings.video.graphics.debug) {
+            if (neko_cvar("settings.video.graphics.debug")->value.i) {
                 glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
             } else {
                 glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
@@ -912,7 +927,7 @@ void neko_platform_init(neko_platform_t* pf) {
             glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
             glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 #endif
-            if (pf->settings.video.graphics.hdpi) glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
+            if (neko_cvar("settings.video.graphics.hdpi")->value.i) glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
             glfwSwapInterval(pf->settings.video.vsync_enabled);
         } break;
 
@@ -2427,7 +2442,7 @@ NEKO_API_DECL neko_platform_window_t neko_platform_window_create_internal(const 
         switch (neko_subsystem(platform)->settings.video.driver) {
             case NEKO_PLATFORM_VIDEO_DRIVER_TYPE_OPENGL: {
                 neko_log_info("OpenGL Version: %s", glGetString(GL_VERSION));
-                if (neko_subsystem(platform)->settings.video.graphics.debug) {
+                if (neko_cvar("settings.video.graphics.debug")->value.i) {
                     glDebugMessageCallback(__neko_platform_gl_debug, NULL);
                 }
             } break;
@@ -2552,7 +2567,7 @@ void neko_platform_set_window_fullscreen(u32 handle, bool32_t fullscreen) {
     glfwGetWindowSize((GLFWwindow*)win->hndl, &w, &h);
 
     if (fullscreen) {
-        u32 monitor_index = neko_instance()->ctx.game.window.monitor_index;
+        u32 monitor_index = neko_cvar("app_desc.window.monitor_index")->value.i;
         int monitor_count;
         GLFWmonitor** monitors = glfwGetMonitors(&monitor_count);
         if (monitor_index < monitor_count) {
@@ -2775,7 +2790,7 @@ const_str __neko_inter_stacktrace() {
 
 bool __neko_platform_is_wine() {
     HMODULE ntdll = GetModuleHandleA("ntdll.dll");
-    void* wine_get_version = GetProcAddress(ntdll, "wine_get_version");
+    void* wine_get_version = neko_platform_library_proc_address(ntdll, "wine_get_version");
     return wine_get_version != NULL;
 }
 
@@ -3968,101 +3983,6 @@ s32 main(s32 argc, char** argv) {
 
 #undef NEKO_PLATFORM_IMPL_EMSCRIPTEN
 #endif  // NEKO_PLATFORM_IMPL_EMSCRIPTEN
-
-static tick_t timerlib_freq = 0;
-static double timerlib_oofreq = 0;
-
-int neko_timer_initialize(void) {
-#if defined(NEKO_PLATFORM_WIN)
-    tick_t unused;
-    if (!QueryPerformanceFrequency((LARGE_INTEGER*)&timerlib_freq) || !QueryPerformanceCounter((LARGE_INTEGER*)&unused)) return -1;
-#elif defined(NEKO_PLATFORM_LINUX)
-    struct timespec ts = {.tv_sec = 0, .tv_nsec = 0};
-    if (clock_gettime(CLOCK_MONOTONIC, &ts)) return -1;
-    timerlib_freq = 1000000000ULL;
-#endif
-
-    timerlib_oofreq = 1.0 / (double)timerlib_freq;
-
-    return 0;
-}
-
-void neko_timer_shutdown(void) {}
-
-tick_t neko_timer_current(void) {
-#if defined(NEKO_PLATFORM_WIN)
-
-    tick_t curclock;
-    QueryPerformanceCounter((LARGE_INTEGER*)&curclock);
-    return curclock;
-
-#elif defined(NEKO_PLATFORM_LINUX)
-
-    struct timespec ts = {.tv_sec = 0, .tv_nsec = 0};
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return ((u64)ts.tv_sec * 1000000000ULL) + ts.tv_nsec;
-
-#endif
-}
-
-tick_t neko_timer_ticks_per_second(void) { return timerlib_freq; }
-
-deltatime_t neko_timer_elapsed(const tick_t t) { return (deltatime_t)((double)neko_timer_elapsed_ticks(t) * timerlib_oofreq); }
-
-tick_t neko_timer_elapsed_ticks(const tick_t t) {
-    tick_t dt = 0;
-
-#if defined(NEKO_PLATFORM_WIN)
-
-    tick_t curclock = t;
-    QueryPerformanceCounter((LARGE_INTEGER*)&curclock);
-    dt = curclock - t;
-
-#elif defined(NEKO_PLATFORM_LINUX)
-
-    tick_t curclock;
-    struct timespec ts = {.tv_sec = 0, .tv_nsec = 0};
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-
-    curclock = ((tick_t)ts.tv_sec * 1000000000ULL) + ts.tv_nsec;
-    dt = curclock - t;
-
-#endif
-
-    return dt;
-}
-
-deltatime_t neko_timer_ticks_to_seconds(const tick_t dt) { return (deltatime_t)((double)dt * timerlib_oofreq); }
-
-#if defined(NEKO_PLATFORM_WIN)
-#ifndef NEKO_CPP_SRC
-struct __timeb64 {
-    __time64_t time;
-    unsigned short millitm;
-    short timezone;
-    short dstflag;
-};
-_CRTIMP errno_t __cdecl _ftime64_s(_Out_ struct __timeb64* _Time);
-#else
-#include <sys/timeb.h>
-#endif
-#endif
-
-tick_t neko_timer_system(void) {
-#if defined(NEKO_PLATFORM_WIN)
-
-    struct __timeb64 tb;
-    _ftime64_s(&tb);
-    return ((tick_t)tb.time * 1000ULL) + (tick_t)tb.millitm;
-
-#elif defined(NEKO_PLATFORM_LINUX)
-
-    struct timespec ts = {.tv_sec = 0, .tv_nsec = 0};
-    clock_gettime(CLOCK_REALTIME, &ts);
-    return ((u64)ts.tv_sec * 1000ULL) + (ts.tv_nsec / 1000000ULL);
-
-#endif
-}
 
 #endif
 

@@ -1,4 +1,5 @@
 
+#include "engine/neko_common.h"
 #include "engine/neko_graphics.h"
 #include "engine/neko_physics.h"
 #include "engine/neko_platform.h"
@@ -5034,8 +5035,7 @@ NEKO_API_DECL s32 neko_ui_textbox_raw(neko_ui_context_t* ctx, char* buf, s32 buf
                 }
             } else {
                 // 跳过 utf-8 连续字节
-                while ((buf[--len] & 0xc0) == 0x80 && len > 0)
-                    ;
+                while ((buf[--len] & 0xc0) == 0x80 && len > 0);
             }
             buf[len] = '\0';
             res |= NEKO_UI_RES_CHANGE;

@@ -1,6 +1,7 @@
 
-#include "engine/neko_asset.h"
-#include "engine/neko_engine.h"
+#include "engine/neko_common.h"
+#include "engine/neko_graphics.h"
+#include "engine/neko_platform.h"
 
 // STB
 #include "deps/imgui/imstb_rectpack.h"

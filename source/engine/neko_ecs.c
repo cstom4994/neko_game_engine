@@ -12,12 +12,137 @@
 #include "engine/neko.h"
 #include "engine/neko_lua.h"
 
+/*=============================
+// ECS
+=============================*/
+
+#define OUT_OF_MEMORY "out of memory"
+#define OUT_OF_BOUNDS "index out of bounds"
+#define FAILED_LOOKUP "lookup failed and returned null"
+#define NOT_IMPLEMENTED "not implemented"
+#define SOMETHING_TERRIBLE "something went terribly wrong"
+
+#define ECS_ABORT(error)                                            \
+    fprintf(stderr, "ABORT %s:%d %s\n", __FILE__, __LINE__, error); \
+    abort();
+
+#define ECS_ENSURE(cond, error)                            \
+    if (!(cond)) {                                         \
+        fprintf(stderr, "condition not met: %s\n", #cond); \
+        ECS_ABORT(error);                                  \
+    }
+
+#ifndef NDEBUG
+#define ECS_ASSERT(cond, error) ECS_ENSURE(cond, error);
+#else
+#define ECS_ASSERT(cond, error)
+#endif
+
+#define ECS_OFFSET(p, offset) ((void *)(((char *)(p)) + (offset)))
+
+static inline void *ecs_malloc(size_t bytes) {
+    void *mem = malloc(bytes);
+    ECS_ENSURE(mem != NULL, OUT_OF_MEMORY);
+    return mem;
+}
+
+static inline void *ecs_calloc(size_t items, size_t bytes) {
+    void *mem = calloc(items, bytes);
+    ECS_ENSURE(mem != NULL, OUT_OF_MEMORY);
+    return mem;
+}
+
+static inline void ecs_realloc(void **mem, size_t bytes) {
+    *mem = realloc(*mem, bytes);
+    if (bytes != 0) {
+        ECS_ENSURE(*mem != NULL, OUT_OF_MEMORY);
+    }
+}
+
+#define MAP_LOAD_FACTOR 0.5
+#define MAP_COLLISION_THRESHOLD 30
+#define MAP_TOMESTONE ((u32) - 1)
+
+typedef struct ecs_bucket_t {
+    const void *key;
+    u32 index;
+} ecs_bucket_t;
+
+struct ecs_map_t {
+    ecs_hash_fn hash;
+    ecs_key_equal_fn key_equal;
+    size_t key_size;
+    size_t item_size;
+    u32 count;
+    u32 load_capacity;
+    ecs_bucket_t *sparse;
+    u32 *reverse_lookup;
+    void *dense;
+};
+
+struct ecs_type_t {
+    u32 capacity;
+    u32 count;
+    ecs_entity_t *elements;
+};
+
+struct ecs_signature_t {
+    u32 count;
+    ecs_entity_t components[];
+};
+
+typedef struct ecs_system_t {
+    ecs_archetype_t *archetype;
+    ecs_signature_t *sig;
+    ecs_system_fn run;
+} ecs_system_t;
+
+struct ecs_edge_t {
+    ecs_entity_t component;
+    ecs_archetype_t *archetype;
+};
+
+struct ecs_edge_list_t {
+    u32 capacity;
+    u32 count;
+    ecs_edge_t *edges;
+};
+
+typedef struct ecs_record_t {
+    ecs_archetype_t *archetype;
+    u32 row;
+} ecs_record_t;
+
+struct ecs_archetype_t {
+    u32 capacity;
+    u32 count;
+    ecs_type_t *type;
+    ecs_entity_t *entity_ids;
+    void **components;
+    ecs_edge_list_t *left_edges;
+    ecs_edge_list_t *right_edges;
+};
+
+struct neko_ecs_t {
+    ecs_map_t *entity_index;     // <ecs_entity_t, ecs_record_t>
+    ecs_map_t *component_index;  // <ecs_entity_t, size_t>
+    ecs_map_t *system_index;     // <ecs_entity_t, ecs_system_t>
+    ecs_map_t *type_index;       // <ecs_type_t *, ecs_archetype_t *>
+    ecs_archetype_t *root;
+    ecs_entity_t next_entity_id;
+
+    lua_State *L;
+};
+
+#define MY_TABLE_KEY "my_integer_keyed_table"
+
+enum ECS_LUA_UPVALUES { NEKO_ECS_COMPONENTS_NAME = 1, NEKO_ECS_UPVAL_N };
+
+#if 1
+
 #define TYPE_MIN_ID 1
 #define TYPE_MAX_ID 255
 #define TYPE_COUNT 256
-
-#define ECS_WORLD (1)
-#define ECS_WORLD_UDATA_NAME "__NEKO_ECS_WORLD"
 
 #define WORLD_PROTO_ID 1
 #define WORLD_PROTO_DEFINE 2
@@ -739,7 +864,7 @@ int __neko_ecs_create_world(lua_State *L) {
     lua_createtable(L, TYPE_MAX_ID, 0);
     lua_setiuservalue(L, 1, WORLD_COMPONENTS);
 
-    mctx = lua_newuserdatauv(L, sizeof(*mctx), 1);
+    mctx = (struct match_ctx *)lua_newuserdatauv(L, sizeof(*mctx), 1);
     lua_pushvalue(L, 1);
     lua_setiuservalue(L, -2, 1);
     lua_setiuservalue(L, 1, WORLD_MATCH_CTX);
@@ -753,125 +878,33 @@ int __neko_ecs_create_world(lua_State *L) {
     return 1;
 }
 
-/*=============================
-// ECS
-=============================*/
-
-#define OUT_OF_MEMORY "out of memory"
-#define OUT_OF_BOUNDS "index out of bounds"
-#define FAILED_LOOKUP "lookup failed and returned null"
-#define NOT_IMPLEMENTED "not implemented"
-#define SOMETHING_TERRIBLE "something went terribly wrong"
-
-#define ECS_ABORT(error)                                            \
-    fprintf(stderr, "ABORT %s:%d %s\n", __FILE__, __LINE__, error); \
-    abort();
-
-#define ECS_ENSURE(cond, error)                            \
-    if (!(cond)) {                                         \
-        fprintf(stderr, "condition not met: %s\n", #cond); \
-        ECS_ABORT(error);                                  \
-    }
-
-#ifndef NDEBUG
-#define ECS_ASSERT(cond, error) ECS_ENSURE(cond, error);
-#else
-#define ECS_ASSERT(cond, error)
 #endif
 
-#define ECS_OFFSET(p, offset) ((void *)(((char *)(p)) + (offset)))
+static int __neko_ecs_lua_create_ent(lua_State *L) {
+    struct neko_ecs_t *w = (struct neko_ecs_t *)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
 
-static inline void *ecs_malloc(size_t bytes) {
-    void *mem = malloc(bytes);
-    ECS_ENSURE(mem != NULL, OUT_OF_MEMORY);
-    return mem;
+    ecs_entity_t e = ecs_entity(w);
+
+    lua_pushinteger(L, e);
+
+    return 1;
 }
 
-static inline void *ecs_calloc(size_t items, size_t bytes) {
-    void *mem = calloc(items, bytes);
-    ECS_ENSURE(mem != NULL, OUT_OF_MEMORY);
-    return mem;
+static int __neko_ecs_lua_get_com(lua_State *L) {
+    struct neko_ecs_t *w = luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+
+    lua_getiuservalue(L, 1, NEKO_ECS_COMPONENTS_NAME);
+    lua_getiuservalue(L, 1, NEKO_ECS_UPVAL_N);
+
+    return 2;
 }
 
-static inline void ecs_realloc(void **mem, size_t bytes) {
-    *mem = realloc(*mem, bytes);
-    if (bytes != 0) {
-        ECS_ENSURE(*mem != NULL, OUT_OF_MEMORY);
-    }
+static int __neko_ecs_lua_gc(lua_State *L) {
+    struct neko_ecs_t *w = luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+    ecs_fini_i(w);
+    neko_log_info("ecs_lua_gc");
+    return 0;
 }
-
-typedef struct ecs_bucket_t {
-    const void *key;
-    u32 index;
-} ecs_bucket_t;
-
-struct ecs_map_t {
-    ecs_hash_fn hash;
-    ecs_key_equal_fn key_equal;
-    size_t key_size;
-    size_t item_size;
-    u32 count;
-    u32 load_capacity;
-    ecs_bucket_t *sparse;
-    u32 *reverse_lookup;
-    void *dense;
-};
-
-struct ecs_type_t {
-    u32 capacity;
-    u32 count;
-    ecs_entity_t *elements;
-};
-
-struct ecs_signature_t {
-    u32 count;
-    ecs_entity_t components[];
-};
-
-typedef struct ecs_system_t {
-    ecs_archetype_t *archetype;
-    ecs_signature_t *sig;
-    ecs_system_fn run;
-} ecs_system_t;
-
-struct ecs_edge_t {
-    ecs_entity_t component;
-    ecs_archetype_t *archetype;
-};
-
-struct ecs_edge_list_t {
-    u32 capacity;
-    u32 count;
-    ecs_edge_t *edges;
-};
-
-typedef struct ecs_record_t {
-    ecs_archetype_t *archetype;
-    u32 row;
-} ecs_record_t;
-
-struct ecs_archetype_t {
-    u32 capacity;
-    u32 count;
-    ecs_type_t *type;
-    ecs_entity_t *entity_ids;
-    void **components;
-    ecs_edge_list_t *left_edges;
-    ecs_edge_list_t *right_edges;
-};
-
-struct ecs_registry_t {
-    ecs_map_t *entity_index;     // <ecs_entity_t, ecs_record_t>
-    ecs_map_t *component_index;  // <ecs_entity_t, size_t>
-    ecs_map_t *system_index;     // <ecs_entity_t, ecs_system_t>
-    ecs_map_t *type_index;       // <ecs_type_t *, ecs_archetype_t *>
-    ecs_archetype_t *root;
-    ecs_entity_t next_entity_id;
-};
-
-#define MAP_LOAD_FACTOR 0.5
-#define MAP_COLLISION_THRESHOLD 30
-#define MAP_TOMESTONE ((u32) - 1)
 
 ecs_map_t *ecs_map_new(size_t key_size, size_t item_size, ecs_hash_fn hash_fn, ecs_key_equal_fn key_equal_fn, u32 capacity) {
     ecs_map_t *map = ecs_malloc(sizeof(ecs_map_t));
@@ -1502,7 +1535,7 @@ ecs_archetype_t *ecs_archetype_traverse_and_create(ecs_archetype_t *root, const 
 }
 
 #ifndef NDEBUG
-void ecs_inspect(ecs_registry_t *registry) {
+void ecs_inspect(neko_ecs_t *registry) {
     ecs_archetype_t *archetype = registry->root;
     printf("\narchetype: {\n");
     printf("  self: %p\n", (void *)archetype);
@@ -1546,8 +1579,8 @@ void ecs_inspect(ecs_registry_t *registry) {
 }
 #endif
 
-ecs_registry_t *ecs_init(void) {
-    ecs_registry_t *registry = ecs_malloc(sizeof(ecs_registry_t));
+neko_ecs_t *ecs_init_i(neko_ecs_t *registry) {
+    // neko_ecs_t *registry = ecs_malloc(sizeof(neko_ecs_t));
     registry->entity_index = ECS_MAP(intptr, ecs_entity_t, ecs_record_t, 16);
     registry->component_index = ECS_MAP(intptr, ecs_entity_t, size_t, 8);
     registry->system_index = ECS_MAP(intptr, ecs_entity_t, ecs_system_t, 4);
@@ -1559,29 +1592,96 @@ ecs_registry_t *ecs_init(void) {
     return registry;
 }
 
-void ecs_destroy(ecs_registry_t *registry) {
+neko_ecs_t *ecs_init(lua_State *L) {
+    neko_assert(L);
+    neko_ecs_t *registry = (neko_ecs_t *)lua_newuserdatauv(L, sizeof(neko_ecs_t), NEKO_ECS_UPVAL_N);  // # -1
+    registry = ecs_init_i(registry);
+    if (registry == NULL) {
+        // return luaL_error(L, "Failed to initialize neko_ecs_t");
+    }
+    registry->L = L;
+
+    if (luaL_getmetatable(L, ECS_WORLD_UDATA_NAME) == LUA_TNIL) {  // # -2
+        luaL_Reg world_mt[] = {
+                {"__gc", __neko_ecs_lua_gc},
+                {"create_ent", __neko_ecs_lua_create_ent},
+                {"get_com", __neko_ecs_lua_get_com},
+                {NULL, NULL},
+        };
+        lua_pop(L, 1);                  // # pop -2
+        luaL_newlibtable(L, world_mt);  // # -2
+        luaL_setfuncs(L, world_mt, 0);
+        lua_pushvalue(L, -1);                                      // # -3
+        lua_setfield(L, -2, "__index");                            // pop -3
+        lua_pushliteral(L, ECS_WORLD_UDATA_NAME);                  // # -3
+        lua_setfield(L, -2, "__name");                             // pop -3
+        lua_pushvalue(L, -1);                                      // # -3
+        lua_setfield(L, LUA_REGISTRYINDEX, ECS_WORLD_UDATA_NAME);  // pop -3
+    }
+    lua_setmetatable(L, -2);  // pop -2
+
+    // lua_newtable(L);  // components name 表
+    // lua_setfield(L, LUA_REGISTRYINDEX, MY_TABLE_KEY);
+    lua_createtable(L, ENTITY_MAX_COMPONENTS, 0);
+    lua_setiuservalue(L, -2, NEKO_ECS_COMPONENTS_NAME);
+
+    lua_pushstring(L, "test_lit");
+    lua_setiuservalue(L, -2, NEKO_ECS_UPVAL_N);
+
+    // lua_pushvalue(L, -1);
+    lua_setfield(L, LUA_REGISTRYINDEX, "__NEKO_ECS_CORE");
+
+    // lua_setglobal(L, "__NEKO_ECS_CORE");
+
+    return registry;
+}
+
+void ecs_fini_i(neko_ecs_t *registry) {
     ECS_MAP_VALUES_EACH(registry->system_index, ecs_system_t, system, { ecs_signature_free(system->sig); });
     ECS_MAP_VALUES_EACH(registry->type_index, ecs_archetype_t *, archetype, { ecs_archetype_free(*archetype); });
     ecs_map_free(registry->type_index);
     ecs_map_free(registry->entity_index);
     ecs_map_free(registry->component_index);
     ecs_map_free(registry->system_index);
-    free(registry);
 }
 
-ecs_entity_t ecs_entity(ecs_registry_t *registry) {
+// void ecs_fini(neko_ecs_t *registry) {
+//     ecs_fini_i(registry);
+//     free(registry);
+// }
+
+ecs_entity_t ecs_entity(neko_ecs_t *registry) {
     ecs_archetype_t *root = registry->root;
     u32 row = ecs_archetype_add(root, registry->component_index, registry->entity_index, registry->next_entity_id);
     ecs_map_set(registry->entity_index, (void *)registry->next_entity_id, &(ecs_record_t){root, row});
     return registry->next_entity_id++;
 }
 
-ecs_entity_t ecs_component(ecs_registry_t *registry, size_t component_size) {
+ecs_entity_t ecs_component_w(neko_ecs_t *registry, const_str component_name, size_t component_size) {
+
     ecs_map_set(registry->component_index, (void *)registry->next_entity_id, &(size_t){component_size});
-    return registry->next_entity_id++;
+    ecs_entity_t id = registry->next_entity_id++;
+
+    lua_State *L = registry->L;
+
+    // lua_getglobal(L, "__NEKO_ECS_CORE");  // # 1
+    lua_getfield(L, LUA_REGISTRYINDEX, "__NEKO_ECS_CORE");
+
+    lua_getiuservalue(L, -1, NEKO_ECS_COMPONENTS_NAME);
+    if (lua_istable(L, -1)) {
+        lua_pushstring(L, component_name);  // 压入值
+        lua_rawseti(L, -2, id);             // 设置表中的数组元素，索引从 1 开始
+        lua_pop(L, 1);
+    } else {
+        printf("Error: Failed to get first user value\n");
+        lua_pop(L, 1);
+    }
+    lua_pop(L, 1);  // pop 1
+
+    return id;
 }
 
-ecs_entity_t ecs_system(ecs_registry_t *registry, ecs_signature_t *signature, ecs_system_fn system) {
+ecs_entity_t ecs_system(neko_ecs_t *registry, ecs_signature_t *signature, ecs_system_fn system) {
     ecs_type_t *type = ecs_signature_as_type(signature);
     ecs_archetype_t **maybe_archetype = ecs_map_get(registry->type_index, type);
     ecs_archetype_t *archetype;
@@ -1597,7 +1697,7 @@ ecs_entity_t ecs_system(ecs_registry_t *registry, ecs_signature_t *signature, ec
     return registry->next_entity_id++;
 }
 
-void ecs_attach(ecs_registry_t *registry, ecs_entity_t entity, ecs_entity_t component) {
+void ecs_attach(neko_ecs_t *registry, ecs_entity_t entity, ecs_entity_t component) {
     ecs_record_t *record = ecs_map_get(registry->entity_index, (void *)entity);
 
     if (record == NULL) {
@@ -1624,7 +1724,7 @@ void ecs_attach(ecs_registry_t *registry, ecs_entity_t entity, ecs_entity_t comp
     ecs_map_set(registry->entity_index, (void *)entity, &(ecs_record_t){fini_archetype, new_row});
 }
 
-void ecs_set(ecs_registry_t *registry, ecs_entity_t entity, ecs_entity_t component, const void *data) {
+void ecs_set(neko_ecs_t *registry, ecs_entity_t entity, ecs_entity_t component, const void *data) {
     size_t *component_size = ecs_map_get(registry->component_index, (void *)component);
     ECS_ENSURE(component_size != NULL, FAILED_LOOKUP);
 
@@ -1670,7 +1770,7 @@ static void ecs_step_help(ecs_archetype_t *archetype, const ecs_map_t *component
     ECS_EDGE_LIST_EACH(archetype->right_edges, edge, { ecs_step_help(edge.archetype, component_index, sig, run); });
 }
 
-void ecs_step(ecs_registry_t *registry) {
+void ecs_step(neko_ecs_t *registry) {
     ECS_MAP_VALUES_EACH(registry->system_index, ecs_system_t, sys, { ecs_step_help(sys->archetype, registry->component_index, sys->sig, sys->run); });
 }
 

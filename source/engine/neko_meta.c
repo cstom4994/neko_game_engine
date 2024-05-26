@@ -7,12 +7,18 @@ NEKO_API_DECL neko_meta_registry_t neko_meta_registry_new() {
 }
 
 NEKO_API_DECL void neko_meta_registry_free(neko_meta_registry_t* meta) {
-    // Free all entries in classes
+    // 释放类
     for (neko_hash_table_iter it = neko_hash_table_iter_new(meta->classes); neko_hash_table_iter_valid(meta->classes, it); neko_hash_table_iter_advance(meta->classes, it)) {
         neko_meta_class_t* cls = neko_hash_table_iter_getp(meta->classes, it);
         neko_safe_free(cls->properties);
     }
     neko_hash_table_free(meta->classes);
+    // 释放枚举
+    for (neko_hash_table_iter it = neko_hash_table_iter_new(meta->enums); neko_hash_table_iter_valid(meta->enums, it); neko_hash_table_iter_advance(meta->enums, it)) {
+        neko_meta_enum_t* enm = neko_hash_table_iter_getp(meta->enums, it);
+        neko_safe_free(enm->values);
+    }
+    neko_hash_table_free(meta->enums);
 }
 
 neko_meta_property_t neko_meta_property_impl(const char* field_type_name, const char* field, size_t size, uint32_t offset, neko_meta_property_type_info_t type) {

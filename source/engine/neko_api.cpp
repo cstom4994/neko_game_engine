@@ -9,6 +9,7 @@
 #include "engine/neko_asset.h"
 #include "engine/neko_cl.h"
 #include "engine/neko_common.h"
+#include "engine/neko_ecs.h"
 #include "engine/neko_engine.h"
 #include "engine/neko_lua.hpp"
 
@@ -23,7 +24,6 @@
 
 extern "C" int luaopen_cffi(lua_State* L);
 extern "C" int luaopen_neko_imgui(lua_State* L);
-extern "C" int __neko_ecs_create_world(lua_State* L);
 
 extern int register_mt_imgui(lua_State* L);
 
@@ -55,17 +55,6 @@ static void package_preload(lua_State* L, const_str name, lua_CFunction function
     lua_pushcfunction(L, function);
     lua_setfield(L, -2, name);
     lua_pop(L, 2);
-}
-
-int neko_lua_add_package_path(lua_State* L, const std::string& str_) {
-    std::string new_path = "package.path = package.path .. \"";
-    if (str_.empty()) return -1;
-    if (str_[0] != ';') new_path += ";";
-    new_path += str_;
-    if (str_[str_.length() - 1] != '/') new_path += "/";
-    new_path += "?.lua\" ";
-    neko_lua_wrap_run_string(L, new_path);
-    return 0;
 }
 
 void __neko_lua_print_error(lua_State* state, int result) {
@@ -521,7 +510,7 @@ NEKO_INLINE void neko_register_platform(lua_State* L) {
     neko_lua_auto_enum_value(L, neko_platform_mouse_button_code, NEKO_MOUSE_MBUTTON);
     neko_lua_auto_enum_value(L, neko_platform_mouse_button_code, NEKO_MOUSE_BUTTON_CODE_COUNT);
 
-    neko_lua_wrap_register_t<>(L)
+    neko_lua_register_t<>(L)
             .def(&__neko_bind_platform_key_pressed, "neko_key_pressed")
             .def(&__neko_bind_platform_was_key_down, "neko_was_key_down")
             .def(&__neko_bind_platform_was_mouse_down, "neko_was_mouse_down")
@@ -2152,7 +2141,7 @@ static void watch_map_callback(neko_filewatch_update_t change, const_str virtual
     lua_pop(CL_GAME_USERDATA()->L, 1);
 
     if (is_callback) try {
-            neko_lua_wrap_call<void>(CL_GAME_USERDATA()->L, callback_funcname, change_string, std::string(virtual_path));
+            neko_lua_call<void>(CL_GAME_USERDATA()->L, callback_funcname, change_string, std::string(virtual_path));
         } catch (std::exception& ex) {
             neko_log_error("lua exception %s", ex.what());
         }
@@ -3103,7 +3092,7 @@ NEKO_INLINE void neko_register_test(lua_State* L) {
     lua_register(L, "__neko_luainspector_draw", neko::luainspector::luainspector_draw);
     lua_register(L, "__neko_luainspector_get", neko::luainspector::luainspector_get);
 
-    neko_lua_wrap_register_t<>(L).def(&__neko_bind_tiled_get_objects, "neko_tiled_get_objects");
+    neko_lua_register_t<>(L).def(&__neko_bind_tiled_get_objects, "neko_tiled_get_objects");
 
     neko_lua_auto_enum(L, neko_projection_type);
     neko_lua_auto_enum_value(L, neko_projection_type, NEKO_PROJECTION_TYPE_ORTHOGRAPHIC);
@@ -3368,7 +3357,7 @@ int __neko_ls(lua_State* L) {
     return 1;
 }
 
-bool __neko_dolua(const_str file) { return neko_lua_wrap_dofile(CL_GAME_USERDATA()->L, game_assets(file)); }
+bool __neko_dolua(const_str file) { return neko_lua_dofile(CL_GAME_USERDATA()->L, game_assets(file)); }
 
 struct neko_lua_hook_pool g_lua_hook_pool = {NULL, 0};
 
@@ -3846,7 +3835,7 @@ void registerGlobals(lua_State* L, const neko_luaL_reg* funcs) {
 
 NEKO_INLINE void neko_register_common(lua_State* L) {
 
-    neko_lua_wrap_register_t<>(L)
+    neko_lua_register_t<>(L)
             .def(&__neko_lua_trace, "log_trace")
             .def(&__neko_lua_bug, "log_debug")
             .def(&__neko_lua_error, "log_error")
@@ -3855,7 +3844,7 @@ NEKO_INLINE void neko_register_common(lua_State* L) {
             .def(&neko_rand_xorshf32, "neko_rand")
             .def(&__neko_dolua, "neko_dolua");
 
-    neko_lua_wrap_register_t<>(L)
+    neko_lua_register_t<>(L)
             .def(
                     +[](const_str str) { return neko_hash_str64(str); }, "neko_hash")
             .def(
@@ -3926,10 +3915,16 @@ int register_mt_aseprite(lua_State* L) {
     return 1;
 }
 
+static int __neko_bind_ecs_f(lua_State* L) {
+    lua_getfield(L, LUA_REGISTRYINDEX, "__NEKO_ECS_CORE");
+    return 1;
+}
+
 int open_neko(lua_State* L) {
     luaL_Reg reg[] = {
 
-            {"ecs_create_world", __neko_ecs_create_world},
+            // {"ecs_create_world", __neko_ecs_create_world},
+            {"ecs_f", __neko_bind_ecs_f},
 
             {"tiled_create", __neko_bind_tiled_create},
             {"tiled_render", __neko_bind_tiled_render},

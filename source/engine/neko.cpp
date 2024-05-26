@@ -270,7 +270,7 @@ struct DirectoryFileSystem : IFileSystem {
         string path = to_cstr(filepath);
         neko_defer(neko_safe_free(path.data));
 
-        s32 res = chdir(path.data);
+        s32 res = neko_platform_chdir(path.data);
         return res == 0;
     }
 

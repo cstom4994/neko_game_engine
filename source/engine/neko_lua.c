@@ -11,7 +11,7 @@
 
 #pragma region LuaA
 
-void __neko_lua_auto_open(lua_State *L) {
+void __neko_lua_auto_init(lua_State *L) {
 
     lua_pushinteger(L, 0);
     lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "type_index");
@@ -97,7 +97,7 @@ void __neko_lua_auto_open(lua_State *L) {
     neko_lua_auto_conversion_push_type(L, neko_lua_auto_type_add(L, "void", 1), neko_lua_auto_push_void);  // sizeof(void) is 1 on gcc
 }
 
-void __neko_lua_auto_close(lua_State *L) {
+void __neko_lua_auto_fini(lua_State *L) {
 
     lua_pushnil(L);
     lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "type_index");

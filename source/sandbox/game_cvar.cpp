@@ -183,7 +183,7 @@ neko_console_command_t commands[] = {{
 
 neko_console_t g_console = {
         .tb = "",
-        .cb = "",
+        .cb = {},
         .size = 0.4,
         .open_speed = 0.2,
         .close_speed = 0.3,
