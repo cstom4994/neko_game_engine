@@ -13,22 +13,12 @@
 #define NEKO_GRAPHICS_IMPL_OPENGL_ES
 #endif
 
-#define NEKO_GRAPHICS_IMPL_DEFAULT
-
-#ifdef NEKO_GRAPHICS_IMPL_DEFAULT
-
 // 图形信息对象查询
 neko_graphics_info_t* neko_graphics_info() { return &neko_subsystem(graphics)->info; }
 
-#endif
-
 #if (defined NEKO_GRAPHICS_IMPL_OPENGL_CORE || defined NEKO_GRAPHICS_IMPL_OPENGL_ES)
 
-#ifdef NEKO_GRAPHICS_IMPL_OPENGL_CORE
 #define CHECK_GL_CORE(...) __VA_ARGS__
-#else
-#define CHECK_GL_CORE(...) neko_empty_instruction(void)
-#endif
 
 const_str neko_opengl_string(GLenum e) {
 
@@ -229,8 +219,7 @@ struct neko_graphics_batch_context_t {
 
 neko_graphics_batch_context_t* neko_graphics_batch_make_ctx(u32 max_draw_calls) {
     neko_graphics_batch_context_t* ctx = (neko_graphics_batch_context_t*)neko_safe_malloc(sizeof(neko_graphics_batch_context_t));
-    // ctx->clear_bits = clear_bits;
-    // ctx->settings_bits = settings_bits;
+
     ctx->max_draw_calls = max_draw_calls;
     ctx->count = 0;
     ctx->calls = (neko_graphics_batch_draw_call_t*)neko_safe_malloc(sizeof(neko_graphics_batch_draw_call_t) * max_draw_calls);
@@ -337,7 +326,7 @@ static u32 gl_get_gl_type_internal(u32 type) {
         case GL_INT_VEC2:
         case GL_INT_VEC3:
         case GL_INT_VEC4:
-            return NEKO_GL_CUSTOM_INT;
+            return NEKO_GRAPHICS_BATCH_INT;
 
         case GL_FLOAT:
         case GL_FLOAT_VEC2:
@@ -346,13 +335,13 @@ static u32 gl_get_gl_type_internal(u32 type) {
         case GL_FLOAT_MAT2:
         case GL_FLOAT_MAT3:
         case GL_FLOAT_MAT4:
-            return NEKO_GL_CUSTOM_FLOAT;
+            return NEKO_GRAPHICS_BATCH_FLOAT;
 
         case GL_BOOL:
         case GL_BOOL_VEC2:
         case GL_BOOL_VEC3:
         case GL_BOOL_VEC4:
-            return NEKO_GL_CUSTOM_BOOL;
+            return NEKO_GRAPHICS_BATCH_BOOL;
 
 // seems undefined for GLES
 #if GL_SAMPLER_1D
@@ -360,10 +349,10 @@ static u32 gl_get_gl_type_internal(u32 type) {
 #endif
         case GL_SAMPLER_2D:
         case GL_SAMPLER_3D:
-            return NEKO_GL_CUSTOM_SAMPLER;
+            return NEKO_GRAPHICS_BATCH_SAMPLER;
 
         default:
-            return NEKO_GL_CUSTOM_UNKNOWN;
+            return NEKO_GRAPHICS_BATCH_UNKNOWN;
     }
 }
 
@@ -375,7 +364,7 @@ void neko_graphics_batch_add_attribute(neko_graphics_batch_vertex_data_t* vd, co
     va.type = type;
     va.offset = offset;
 
-    neko_assert(vd->attribute_count < NEKO_GL_CUSTOM_ATTRIBUTE_MAX_COUNT);
+    neko_assert(vd->attribute_count < NEKO_GRAPHICS_BATCH_ATTRIBUTE_MAX_COUNT);
     vd->attributes[vd->attribute_count++] = va;
 }
 
@@ -433,7 +422,7 @@ void* gl_map_internal(neko_graphics_batch_renderable_t* r, u32 count) {
     u32 stream_size = (r->index1 - r->index0) * r->data.vertex_stride;
     void* memory = glMapBufferRange(GL_ARRAY_BUFFER, r->index0 * r->data.vertex_stride, stream_size, GL_MAP_WRITE_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
 
-#if NEKO_GL_CUSTOM_DEBUG_CHECKS
+#if NEKO_GRAPHICS_BATCH_DEBUG_CHECKS
     if (!memory) {
         neko_log_warning("\n%u\n", glGetError());
         neko_assert(memory);
@@ -452,7 +441,7 @@ void neko_graphics_batch_set_shader(neko_graphics_batch_renderable_t* r, neko_gr
     r->program = program;
     glGetProgramiv(program->program, GL_ACTIVE_ATTRIBUTES, (GLint*)&r->attribute_count);
 
-#if NEKO_GL_CUSTOM_DEBUG_CHECKS
+#if NEKO_GRAPHICS_BATCH_DEBUG_CHECKS
     if (r->attribute_count != r->data.attribute_count) {
         neko_log_warning("Mismatch between VertexData attribute count (%d), and shader attribute count (%d).", r->attribute_count, r->data.attribute_count);
     }
@@ -469,7 +458,7 @@ void neko_graphics_batch_set_shader(neko_graphics_batch_renderable_t* r, neko_gr
         hash = gl_FNV1a(buffer);
         type = gl_get_gl_type_internal(type);
 
-#if NEKO_GL_CUSTOM_DEBUG_CHECKS
+#if NEKO_GRAPHICS_BATCH_DEBUG_CHECKS
         neko_graphics_batch_vertex_attribute_t* a = 0;
 
         // Make sure data.AddAttribute(name, ...) has matching named attribute
@@ -516,7 +505,7 @@ GLuint gl_compile_shader_internal(const char* Shader, u32 type) {
     u32 compiled;
     glGetShaderiv(handle, GL_COMPILE_STATUS, (GLint*)&compiled);
 
-#if NEKO_GL_CUSTOM_DEBUG_CHECKS
+#if NEKO_GRAPHICS_BATCH_DEBUG_CHECKS
     if (!compiled) {
         neko_log_warning("Shader of type %d failed compilation.", type);
         char out[2000];
@@ -544,7 +533,7 @@ void neko_graphics_batch_load_shader(neko_graphics_batch_shader_t* s, const char
     u32 linked;
     glGetProgramiv(program, GL_LINK_STATUS, (GLint*)&linked);
 
-#if NEKO_GL_CUSTOM_DEBUG_CHECKS
+#if NEKO_GRAPHICS_BATCH_DEBUG_CHECKS
     if (!linked) {
         neko_log_warning("Shaders failed to link.");
         char out[2000];
@@ -565,9 +554,9 @@ void neko_graphics_batch_load_shader(neko_graphics_batch_shader_t* s, const char
 
     // Query Uniform information and fill out the Shader Uniforms
     GLint uniform_count;
-    u32 nameSize = sizeof(char) * NEKO_GL_CUSTOM_UNIFORM_NAME_LENGTH;
+    u32 nameSize = sizeof(char) * NEKO_GRAPHICS_BATCH_UNIFORM_NAME_LENGTH;
     glGetProgramiv(program, GL_ACTIVE_UNIFORMS, &uniform_count);
-    neko_assert(uniform_count < NEKO_GL_CUSTOM_UNIFORM_MAX_COUNT);
+    neko_assert(uniform_count < NEKO_GRAPHICS_BATCH_UNIFORM_MAX_COUNT);
     s->uniform_count = uniform_count;
 
     for (u32 i = 0; i < (u32)uniform_count; ++i) {
@@ -577,7 +566,7 @@ void neko_graphics_batch_load_shader(neko_graphics_batch_shader_t* s, const char
         glGetActiveUniform(program, (GLint)i, nameSize, (GLsizei*)&nameLength, (GLsizei*)&u.size, (GLenum*)&u.type, u.name);
 
         // Uniform named in a Shader is too long for the UNIFORM_NAME_LENGTH constant
-        neko_assert(nameLength <= NEKO_GL_CUSTOM_UNIFORM_NAME_LENGTH);
+        neko_assert(nameLength <= NEKO_GRAPHICS_BATCH_UNIFORM_NAME_LENGTH);
 
         u.location = glGetUniformLocation(program, u.name);
         u.type = gl_get_gl_type_internal(u.type);
@@ -589,7 +578,7 @@ void neko_graphics_batch_load_shader(neko_graphics_batch_shader_t* s, const char
         s->uniforms[i] = u;
     }
 
-#if NEKO_GL_CUSTOM_DEBUG_CHECKS
+#if NEKO_GRAPHICS_BATCH_DEBUG_CHECKS
     // prevent hash collisions
     for (u32 i = 0; i < (u32)uniform_count; ++i)
         for (u32 j = i + 1; j < (u32)uniform_count; ++j) neko_assert(s->uniforms[i].hash != s->uniforms[j].hash);
@@ -630,7 +619,7 @@ void neko_graphics_batch_send_f32(neko_graphics_batch_shader_t* s, const char* u
     }
 
     neko_assert(size == u->size);
-    neko_assert(u->type == NEKO_GL_CUSTOM_FLOAT);
+    neko_assert(u->type == NEKO_GRAPHICS_BATCH_FLOAT);
 
     neko_graphics_batch_set_active_shader(s);
     switch (count) {
@@ -666,7 +655,7 @@ void neko_graphics_batch_send_matrix(neko_graphics_batch_shader_t* s, const char
     }
 
     neko_assert(u->size == 1);
-    neko_assert(u->type == NEKO_GL_CUSTOM_FLOAT);
+    neko_assert(u->type == NEKO_GRAPHICS_BATCH_FLOAT);
 
     neko_graphics_batch_set_active_shader(s);
     glUniformMatrix4fv(u->id, 1, 0, floats);
@@ -681,7 +670,7 @@ void neko_graphics_batch_send_texture(neko_graphics_batch_shader_t* s, const cha
         return;
     }
 
-    neko_assert(u->type == NEKO_GL_CUSTOM_SAMPLER);
+    neko_assert(u->type == NEKO_GRAPHICS_BATCH_SAMPLER);
 
     neko_graphics_batch_set_active_shader(s);
     glUniform1i(u->location, index);
@@ -690,7 +679,7 @@ void neko_graphics_batch_send_texture(neko_graphics_batch_shader_t* s, const cha
 
 static u32 gl_call_sort_pred_internal(neko_graphics_batch_draw_call_t* a, neko_graphics_batch_draw_call_t* b) { return a->r->state.u.key < b->r->state.u.key; }
 
-static void neko_custom_batch_qsort_internal(neko_graphics_batch_draw_call_t* items, u32 count) {
+static void neko_graphics_batch_qsort_internal(neko_graphics_batch_draw_call_t* items, u32 count) {
     if (count <= 1) return;
 
     neko_graphics_batch_draw_call_t pivot = items[count - 1];
@@ -706,8 +695,8 @@ static void neko_custom_batch_qsort_internal(neko_graphics_batch_draw_call_t* it
 
     items[count - 1] = items[low];
     items[low] = pivot;
-    neko_custom_batch_qsort_internal(items, low);
-    neko_custom_batch_qsort_internal(items + low + 1, count - 1 - low);
+    neko_graphics_batch_qsort_internal(items, low);
+    neko_graphics_batch_qsort_internal(items + low + 1, count - 1 - low);
 }
 
 void neko_graphics_batch_push_draw_call(void* ctx, neko_graphics_batch_draw_call_t call) {
@@ -718,11 +707,11 @@ void neko_graphics_batch_push_draw_call(void* ctx, neko_graphics_batch_draw_call
 
 u32 gl_get_enum(u32 type) {
     switch (type) {
-        case NEKO_GL_CUSTOM_FLOAT:
+        case NEKO_GRAPHICS_BATCH_FLOAT:
             return GL_FLOAT;
             break;
 
-        case NEKO_GL_CUSTOM_INT:
+        case NEKO_GRAPHICS_BATCH_INT:
             return GL_UNSIGNED_BYTE;
             break;
 
@@ -739,7 +728,7 @@ void gl_do_map_internal(neko_graphics_batch_draw_call_t* call, neko_graphics_bat
     gl_unmap_internal();
 }
 
-static void neko_custom_batch_render_internal(neko_graphics_batch_draw_call_t* call) {
+static void neko_graphics_batch_render_internal(neko_graphics_batch_draw_call_t* call) {
     neko_graphics_batch_renderable_t* render = call->r;
     u32 texture_count = call->texture_count;
     u32* textures = call->textures;
@@ -803,21 +792,19 @@ static void neko_custom_batch_render_internal(neko_graphics_batch_draw_call_t* c
     glUseProgram(0);
 }
 
-void neko_custom_batch_present_internal(void* context, neko_graphics_batch_framebuffer_t* fb, int w, int h) {
+void neko_graphics_batch_present_internal(void* context, neko_graphics_batch_framebuffer_t* fb, int w, int h) {
     neko_graphics_batch_context_t* ctx = (neko_graphics_batch_context_t*)context;
-    neko_custom_batch_qsort_internal(ctx->calls, ctx->count);
+    neko_graphics_batch_qsort_internal(ctx->calls, ctx->count);
 
     if (fb) {
         glBindFramebuffer(GL_FRAMEBUFFER, fb->fb_id);
         glViewport(0, 0, fb->w, fb->h);
     }
-    // if (ctx->clear_bits) glClear(ctx->clear_bits);
-    // if (ctx->settings_bits) glEnable(ctx->settings_bits);
 
-    // flush all draw calls to the GPU
+    // 将所有绘制调用刷新到 GPU
     for (u32 i = 0; i < ctx->count; ++i) {
         neko_graphics_batch_draw_call_t* call = ctx->calls + i;
-        neko_custom_batch_render_internal(call);
+        neko_graphics_batch_render_internal(call);
     }
 
     if (fb) {
@@ -830,9 +817,9 @@ void neko_custom_batch_present_internal(void* context, neko_graphics_batch_frame
         glBindBuffer(GL_ARRAY_BUFFER, fb->quad_id);
         glBindTexture(GL_TEXTURE_2D, fb->tex_id);
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 2, NEKO_GL_CUSTOM_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)0);
+        glVertexAttribPointer(0, 2, NEKO_GRAPHICS_BATCH_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)0);
         glEnableVertexAttribArray(1);
-        glVertexAttribPointer(1, 2, NEKO_GL_CUSTOM_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)(2 * sizeof(GLfloat)));
+        glVertexAttribPointer(1, 2, NEKO_GRAPHICS_BATCH_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)(2 * sizeof(GLfloat)));
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         neko_graphics_batch_deactivate_shader();
@@ -840,7 +827,7 @@ void neko_custom_batch_present_internal(void* context, neko_graphics_batch_frame
 }
 
 void neko_graphics_batch_flush(void* ctx, neko_graphics_batch_framebuffer_t* fb, int w, int h) {
-    neko_custom_batch_present_internal(ctx, fb, w, h);
+    neko_graphics_batch_present_internal(ctx, fb, w, h);
     neko_graphics_batch_context_t* context = (neko_graphics_batch_context_t*)ctx;
     context->count = 0;
 }
@@ -943,141 +930,6 @@ void neko_graphics_batch_identity(float* m) {
     m[10] = 1.0f;
     m[15] = 1.0f;
 }
-
-typedef enum neko_gl_uniform_type {
-    NEKO_GL_UNIFORMTYPE_FLOAT,
-    NEKO_GL_UNIFORMTYPE_INT,
-    NEKO_GL_UNIFORMTYPE_VEC2,
-    NEKO_GL_UNIFORMTYPE_VEC3,
-    NEKO_GL_UNIFORMTYPE_VEC4,
-    NEKO_GL_UNIFORMTYPE_MAT4,
-    NEKO_GL_UNIFORMTYPE_SAMPLER2D,
-    NEKO_GL_UNIFORMTYPE_SAMPLERCUBE
-} neko_gl_uniform_type;
-
-/* Uniform (stores samplers as well as primitive uniforms) */
-typedef struct neko_gl_uniform_t {
-    char name[64];              // Name of uniform to find location
-    neko_gl_uniform_type type;  // Type of uniform data
-    u32 location;               // Location of uniform
-    size_t size;                // Total data size of uniform
-    u32 sid;                    // Shader id (should probably inverse this, but I don't want to force a map lookup)
-    u32 count;                  // Count (used for arrays)
-} neko_gl_uniform_t;
-
-// When a user passes in a uniform layout, that handle could then pass to a WHOLE list of uniforms (if describing a struct)
-typedef struct neko_gl_uniform_list_t {
-    neko_dyn_array(neko_gl_uniform_t) uniforms;  // Individual uniforms in list
-    size_t size;                                 // Total size of uniform data
-    char name[64];                               // Base name of uniform
-} neko_gl_uniform_list_t;
-
-typedef struct neko_gl_uniform_buffer_t {
-    char name[64];
-    u32 location;
-    size_t size;
-    u32 ubo;
-    u32 sid;
-} neko_gl_uniform_buffer_t;
-
-typedef struct neko_gl_storage_buffer_t {
-    char name[64];
-    u32 buffer;
-    s32 access;
-    size_t size;
-    u32 block_idx;
-    u32 location;
-} neko_gl_storage_buffer_t;
-
-/* Pipeline */
-typedef struct neko_gl_pipeline_t {
-    neko_graphics_blend_state_desc_t blend;
-    neko_graphics_depth_state_desc_t depth;
-    neko_graphics_raster_state_desc_t raster;
-    neko_graphics_stencil_state_desc_t stencil;
-    neko_graphics_compute_state_desc_t compute;
-    neko_dyn_array(neko_graphics_vertex_attribute_desc_t) layout;
-} neko_gl_pipeline_t;
-
-/* Render Pass */
-typedef struct neko_gl_renderpass_t {
-    neko_handle(neko_graphics_framebuffer_t) fbo;
-    neko_dyn_array(neko_handle(neko_graphics_texture_t)) color;
-    neko_handle(neko_graphics_texture_t) depth;
-    neko_handle(neko_graphics_texture_t) stencil;
-} neko_gl_renderpass_t;
-
-/* Shader */
-typedef u32 neko_gl_shader_t;
-
-/* Gfx Buffer */
-typedef u32 neko_gl_buffer_t;
-
-/* Texture */
-typedef struct neko_gl_texture_t {
-    u32 id;
-    neko_graphics_texture_desc_t desc;
-} neko_gl_texture_t;
-
-typedef struct neko_gl_vertex_buffer_decl_t {
-    neko_gl_buffer_t vbo;
-    neko_graphics_vertex_data_type data_type;
-    size_t offset;
-} neko_gl_vertex_buffer_decl_t;
-
-/* Cached data between draws */
-typedef struct neko_gl_data_cache_t {
-    neko_gl_buffer_t vao;
-    neko_gl_buffer_t ibo;
-    size_t ibo_elem_sz;
-    neko_dyn_array(neko_gl_vertex_buffer_decl_t) vdecls;
-    neko_handle(neko_graphics_pipeline_t) pipeline;
-} neko_gl_data_cache_t;
-
-/* Internal Opengl Data */
-typedef struct neko_gl_data_t {
-    neko_slot_array(neko_gl_shader_t) shaders;
-    neko_slot_array(neko_gl_texture_t) textures;
-    neko_slot_array(neko_gl_buffer_t) vertex_buffers;
-    neko_slot_array(neko_gl_uniform_buffer_t) uniform_buffers;
-    neko_slot_array(neko_gl_storage_buffer_t) storage_buffers;
-    neko_slot_array(neko_gl_buffer_t) index_buffers;
-    neko_slot_array(neko_gl_buffer_t) frame_buffers;
-    neko_slot_array(neko_gl_uniform_list_t) uniforms;
-    neko_slot_array(neko_gl_pipeline_t) pipelines;
-    neko_slot_array(neko_gl_renderpass_t) renderpasses;
-
-    // All the required uniform data for strict aliasing.
-    struct {
-        neko_dyn_array(u32) ui32;
-        neko_dyn_array(s32) i32;
-        neko_dyn_array(float) flt;
-        neko_dyn_array(neko_vec2) vec2;
-        neko_dyn_array(neko_vec3) vec3;
-        neko_dyn_array(neko_vec4) vec4;
-        neko_dyn_array(neko_mat4) mat4;
-    } uniform_data;
-
-    // Cached data between draw calls (to minimize state changes)
-    neko_gl_data_cache_t cache;
-
-} neko_gl_data_t;
-
-// 内部OpenGL命令缓冲指令
-typedef enum neko_opengl_op_code_type {
-    NEKO_OPENGL_OP_BEGIN_RENDER_PASS = 0x00,
-    NEKO_OPENGL_OP_END_RENDER_PASS,
-    NEKO_OPENGL_OP_SET_VIEWPORT,
-    NEKO_OPENGL_OP_SET_VIEW_SCISSOR,
-    NEKO_OPENGL_OP_CLEAR,
-    NEKO_OPENGL_OP_REQUEST_BUFFER_UPDATE,
-    NEKO_OPENGL_OP_REQUEST_TEXTURE_UPDATE,
-    NEKO_OPENGL_OP_BIND_PIPELINE,
-    NEKO_OPENGL_OP_APPLY_BINDINGS,
-    NEKO_OPENGL_OP_DISPATCH_COMPUTE,
-    NEKO_OPENGL_OP_DRAW,
-    NEKO_OPENGL_OP_DRAW_BATCH,
-} neko_opengl_op_code_type;
 
 void neko_gl_reset_data_cache(neko_gl_data_cache_t* cache) {
     cache->ibo = 0;
@@ -3874,7 +3726,7 @@ NEKO_API_DECL void neko_graphics_init(neko_graphics_t* graphics) {
     neko_printf("\n");
 #endif
 
-    // Set up all function pointers for graphics context
+    // 设置Render上下文的所有函数指针
 
     // Create
     graphics->api.texture_create = neko_graphics_texture_create_impl;

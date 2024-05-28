@@ -334,7 +334,7 @@ void neko_platform_update(neko_platform_t* platform) {
     // neko_profiler_scope_end(platform_update);
 }
 
-bool neko_platform_poll_events(neko_platform_event_t* evt, bool32_t consume) {
+bool neko_platform_poll_events(neko_platform_event_t* evt, b32 consume) {
     neko_platform_t* platform = neko_subsystem(platform);
 
     if (!evt) return false;
@@ -999,7 +999,7 @@ neko_memory_info_t glfw_platform_meminfo() {
     return meminfo;
 }
 
-neko_vec2 glfw_get_opengl_version() {
+neko_vec2 glfw_gl_version() {
     neko_vec2 ver = neko_default_val();
     struct neko_platform_t* platform = neko_instance()->ctx.platform;
     GLFWwindow* win = (GLFWwindow*)(neko_slot_array_getp(platform->windows, neko_platform_main_window()))->hndl;
@@ -1008,7 +1008,7 @@ neko_vec2 glfw_get_opengl_version() {
     return ver;
 }
 
-void* glfw_get_sys_handle() {
+void* glfw_proc_handle() {
 #if defined(NEKO_PLATFORM_WIN)
     struct neko_platform_t* platform = neko_instance()->ctx.platform;
     GLFWwindow* win = (GLFWwindow*)(neko_slot_array_getp(platform->windows, neko_platform_main_window()))->hndl;
@@ -1021,13 +1021,13 @@ void* glfw_get_sys_handle() {
 #endif
 }
 
-void* neko_platform_hwnd() { return glfw_get_sys_handle(); }
+void* neko_platform_hwnd() { return glfw_proc_handle(); }
 neko_memory_info_t neko_platform_memory_info() { return glfw_platform_meminfo(); }
-neko_vec2 neko_platform_opengl_ver() { return glfw_get_opengl_version(); }
+neko_vec2 neko_platform_gl_version() { return glfw_gl_version(); }
 
 void neko_platform_msgbox(const_str msg) {
 #if defined(NEKO_PLATFORM_WIN)
-    MessageBoxA((HWND)glfw_get_sys_handle(), msg, "Neko Error", MB_OK | MB_SETFOREGROUND | MB_ICONSTOP);
+    MessageBoxA((HWND)glfw_proc_handle(), msg, "Neko Error", MB_OK | MB_SETFOREGROUND | MB_ICONSTOP);
 #elif defined(NEKO_PLATFORM_LINUX)
     char info[128];
     neko_snprintf(info, 128, "notify-send \"%s\"", msg);
@@ -2527,7 +2527,7 @@ u32 neko_platform_window_height(u32 handle) {
     return (u32)window->window_size.y;
 }
 
-bool32_t neko_platform_window_fullscreen(u32 handle) {
+b32 neko_platform_window_fullscreen(u32 handle) {
     neko_platform_window_t* window = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
     return glfwGetWindowMonitor((GLFWwindow*)window->hndl) != NULL;
 }
@@ -2558,7 +2558,7 @@ void neko_platform_set_window_sizev(u32 handle, neko_vec2 v) {
     glfwSetWindowSize((GLFWwindow*)window->hndl, (u32)v.x, (u32)v.y);
 }
 
-void neko_platform_set_window_fullscreen(u32 handle, bool32_t fullscreen) {
+void neko_platform_set_window_fullscreen(u32 handle, b32 fullscreen) {
     neko_platform_window_t* win = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
     GLFWmonitor* monitor = NULL;
 
@@ -2654,7 +2654,7 @@ void neko_platform_set_cursor(u32 handle, neko_platform_cursor cursor) {
     glfwSetCursor((GLFWwindow*)win->hndl, cp);
 }
 
-void neko_platform_lock_mouse(u32 handle, bool32_t lock) {
+void neko_platform_lock_mouse(u32 handle, b32 lock) {
     __neko_input()->mouse.locked = lock;
     neko_platform_t* platform = neko_subsystem(platform);
     neko_platform_window_t* win = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
@@ -2747,7 +2747,7 @@ void __neko_initialize_symbol_handler() {
 }
 
 // 打印函数调用栈信息 包括函数名和源码文件名
-const_str __neko_inter_stacktrace() {
+const_str __neko_platform_stacktrace() {
 
     static char trace_info[4096];
 
@@ -2797,7 +2797,7 @@ bool __neko_platform_is_wine() {
 #else
 
 void __neko_initialize_symbol_handler() {}
-const_str __neko_inter_stacktrace() { return ""; }
+const_str __neko_platform_stacktrace() { return ""; }
 bool __neko_platform_is_wine() { return false; }
 
 #endif
@@ -2825,7 +2825,7 @@ typedef struct neko_ems_t {
     double canvas_width;
     double canvas_height;
     EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx;
-    bool32_t mouse_down[NEKO_MOUSE_BUTTON_CODE_COUNT];
+    b32 mouse_down[NEKO_MOUSE_BUTTON_CODE_COUNT];
 } neko_ems_t;
 
 #define NEKO_EMS_DATA() ((neko_ems_t*)(neko_subsystem(platform)->user_data))
@@ -3824,7 +3824,7 @@ NEKO_API_DECL void neko_platform_init(neko_platform_t* platform) {
     }
 }
 
-NEKO_API_DECL void neko_platform_lock_mouse(u32 handle, bool32_t lock) {
+NEKO_API_DECL void neko_platform_lock_mouse(u32 handle, b32 lock) {
     neko_platform_t* platform = neko_subsystem(platform);
     neko_ems_t* ems = (neko_ems_t*)platform->user_data;
     // if (platform->input.mouse.locked == lock) return;
@@ -3909,7 +3909,7 @@ NEKO_API_DECL u32 neko_platform_window_height(u32 handle) {
     return (u32)ems->canvas_height;
 }
 
-NEKO_API_DECL bool32_t neko_platform_window_fullscreen(u32 handle) { return false; }
+NEKO_API_DECL b32 neko_platform_window_fullscreen(u32 handle) { return false; }
 
 NEKO_API_DECL void neko_platform_window_position(u32 handle, u32* x, u32* y) {}
 
@@ -3929,7 +3929,7 @@ NEKO_API_DECL void neko_platform_set_window_sizev(u32 handle, neko_vec2 v) {
     ems->canvas_height = (u32)v.y;
 }
 
-NEKO_API_DECL void neko_platform_set_window_fullscreen(u32 handle, bool32_t fullscreen) {}
+NEKO_API_DECL void neko_platform_set_window_fullscreen(u32 handle, b32 fullscreen) {}
 
 NEKO_API_DECL void neko_platform_set_window_position(u32 handle, u32 x, u32 y) {}
 
@@ -3970,7 +3970,7 @@ NEKO_API_DECL u32 neko_platform_framebuffer_height(u32 handle) {
 }
 
 void __neko_initialize_symbol_handler() {}
-void __neko_inter_stacktrace() {}
+void __neko_platform_stacktrace() {}
 
 #ifndef NEKO_NO_HIJACK_MAIN
 s32 main(s32 argc, char** argv) {

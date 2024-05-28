@@ -1750,7 +1750,7 @@ struct neko_sprite_batch_t {
     int sprite_verts_count;
     vertex_t sprite_verts[SPRITE_VERTS_MAX];
 
-    neko_png_image_t* images;
+    neko_image_t* images;
     int images_count = 0;
 };
 
@@ -1928,8 +1928,8 @@ static int __neko_bind_sprite_batch_create(lua_State* L) {
 
     neko_graphics_batch_vertex_data_t vd;
     neko_graphics_batch_make_vertex_data(&vd, 1024 * 1024, GL_TRIANGLES, sizeof(vertex_t), GL_DYNAMIC_DRAW);
-    neko_graphics_batch_add_attribute(&vd, "in_pos", 2, NEKO_GL_CUSTOM_FLOAT, neko_offset(vertex_t, x));
-    neko_graphics_batch_add_attribute(&vd, "in_uv", 2, NEKO_GL_CUSTOM_FLOAT, neko_offset(vertex_t, u));
+    neko_graphics_batch_add_attribute(&vd, "in_pos", 2, NEKO_GRAPHICS_BATCH_FLOAT, neko_offset(vertex_t, x));
+    neko_graphics_batch_add_attribute(&vd, "in_uv", 2, NEKO_GRAPHICS_BATCH_FLOAT, neko_offset(vertex_t, u));
 
     neko_graphics_batch_make_renderable(&user_handle->sprite_renderable, &vd);
     neko_graphics_batch_load_shader(&user_handle->sprite_shader, glsl_vs_src, glsl_ps_src);
@@ -1940,9 +1940,9 @@ static int __neko_bind_sprite_batch_create(lua_State* L) {
     neko_graphics_batch_send_matrix(&user_handle->sprite_shader, "u_mvp", user_handle->sprite_projection);
 
     user_handle->images_count = count;
-    user_handle->images = (neko_png_image_t*)neko_safe_malloc(sizeof(neko_png_image_t) * count);
+    user_handle->images = (neko_image_t*)neko_safe_malloc(sizeof(neko_image_t) * count);
 
-    for (s32 i = 0; i < user_handle->images_count; ++i) user_handle->images[i] = neko_png_load(game_assets(texture_list[i]).c_str());
+    for (s32 i = 0; i < user_handle->images_count; ++i) user_handle->images[i] = neko_image_load(game_assets(texture_list[i]).c_str());
 
     neko_spritebatch_config_t sb_config;
     neko_spritebatch_set_default_config(&sb_config);
@@ -2033,7 +2033,9 @@ static int __neko_bind_sprite_batch_end(lua_State* L) {
 
     neko_spritebatch_term(&user_handle->sb);
 
-    for (s32 i = 0; i < user_handle->images_count; ++i) neko_png_free(user_handle->images + i);
+    for (s32 i = 0; i < user_handle->images_count; ++i) {
+        neko_image_free(*(user_handle->images + i));
+    }
 
     neko_safe_free(user_handle->images);
 
@@ -3844,7 +3846,6 @@ NEKO_INLINE void neko_register_common(lua_State* L) {
     neko::lua_bind::bind("neko_hash_str64", +[](const_str str) { return neko_hash_str64(str); });
     neko::lua_bind::bind("__neko_quit", +[](int op) { return neko_quit(); });
     neko::lua_bind::bind("neko_platform_elapsed_time", +[]() { return neko_platform_elapsed_time(); });
-    ;
 
     lua_pushstring(L, game_assets("gamedir").c_str());
     lua_setglobal(L, "neko_game_data_path");
@@ -3910,15 +3911,110 @@ int register_mt_aseprite(lua_State* L) {
     return 1;
 }
 
+typedef struct neko_lua_profiler_data {
+    int linedefined;
+    char source[LUA_IDSIZE];
+} neko_lua_profiler_data;
+
+typedef struct neko_lua_profiler_count {
+    u32 total;
+    u32 index;
+    // u64 t;
+} neko_lua_profiler_count;
+
+static void neko_lua_profiler_hook(lua_State* L, lua_Debug* ar) {
+    if (lua_rawgetp(L, LUA_REGISTRYINDEX, L) != LUA_TUSERDATA) {
+        lua_pop(L, 1);
+        return;
+    }
+    neko_lua_profiler_count* p = (neko_lua_profiler_count*)lua_touserdata(L, -1);
+    lua_pop(L, 1);
+    neko_lua_profiler_data* log = (neko_lua_profiler_data*)(p + 1);
+    int index = p->index++;
+    while (index >= p->total) {
+        index -= p->total;
+    }
+    if (lua_getinfo(L, "S", ar) != 0) {
+        log[index].linedefined = ar->linedefined;
+        strcpy(log[index].source, ar->short_src);
+    } else {
+        log[index].linedefined = 1;
+        strcpy(log[index].source, "[unknown]");
+    }
+}
+
+static int neko_lua_profiler_start(lua_State* L) {
+    lua_State* cL = L;  // 支持多线程
+    int args = 0;
+    if (lua_isthread(L, 1)) {
+        cL = lua_tothread(L, 1);
+        args = 1;
+    }
+    int c = luaL_optinteger(L, args + 1, 1000);    // 记录数量
+    int ival = luaL_optinteger(L, args + 2, 100);  // 检测间隔
+    neko_lua_profiler_count* p = (neko_lua_profiler_count*)lua_newuserdata(L, sizeof(neko_lua_profiler_count) + c * sizeof(neko_lua_profiler_data));
+    p->total = c;
+    p->index = 0;
+    // p->t = neko_platform_elapsed_time();
+    lua_pushvalue(L, -1);
+    lua_rawsetp(L, LUA_REGISTRYINDEX, cL);
+    lua_sethook(cL, neko_lua_profiler_hook, LUA_MASKCOUNT, ival);
+    return 0;
+}
+
+static int neko_lua_profiler_stop(lua_State* L) {
+    lua_State* cL = L;  // 支持多线程
+    if (lua_isthread(L, 1)) {
+        cL = lua_tothread(L, 1);
+    }
+    if (lua_rawgetp(L, LUA_REGISTRYINDEX, cL) != LUA_TNIL) {
+        lua_pushnil(L);
+        lua_rawsetp(L, LUA_REGISTRYINDEX, cL);
+        lua_sethook(cL, NULL, 0, 0);
+    } else {
+        return luaL_error(L, "thread profiler not begin");
+    }
+    return 0;
+}
+
+static int neko_lua_profiler_info(lua_State* L) {
+    lua_State* cL = L;
+    if (lua_isthread(L, 1)) {
+        cL = lua_tothread(L, 1);
+    }
+    if (lua_rawgetp(L, LUA_REGISTRYINDEX, cL) != LUA_TUSERDATA) {
+        return luaL_error(L, "thread profiler not begin");
+    }
+    neko_lua_profiler_count* p = (neko_lua_profiler_count*)lua_touserdata(L, -1);
+    neko_lua_profiler_data* log = (neko_lua_profiler_data*)(p + 1);
+    lua_newtable(L);
+    int n = (p->index > p->total) ? p->total : p->index;
+    int i;
+    for (i = 0; i < n; i++) {
+        luaL_getsubtable(L, -1, log[i].source);
+        lua_rawgeti(L, -1, log[i].linedefined);
+        int c = lua_tointeger(L, -1);
+        lua_pushinteger(L, c + 1);
+        // subtbl, c, c + 1
+        lua_rawseti(L, -3, log[i].linedefined);
+        lua_pop(L, 2);
+    }
+    lua_pushinteger(L, p->index);
+    // lua_pushinteger(L, neko_platform_elapsed_time() - p->t);
+    return 2;
+}
+
 static int __neko_bind_ecs_f(lua_State* L) {
     lua_getfield(L, LUA_REGISTRYINDEX, "__NEKO_ECS_CORE");
     return 1;
 }
 
 int open_neko(lua_State* L) {
+
+    luaL_checkversion(L);
+
     luaL_Reg reg[] = {
 
-            // {"ecs_create_world", __neko_ecs_create_world},
             {"ecs_f", __neko_bind_ecs_f},
 
             {"tiled_create", __neko_bind_tiled_create},
@@ -4023,6 +4119,10 @@ int open_neko(lua_State* L) {
             {"json_read", __neko_bind_json_read},
             {"json_write", __neko_bind_json_write},
 
+            {"profiler_start", neko_lua_profiler_start},
+            {"profiler_stop", neko_lua_profiler_stop},
+            {"profiler_info", neko_lua_profiler_info},
+
             {NULL, NULL},
     };
 
@@ -4050,6 +4150,17 @@ int open_neko(lua_State* L) {
         // 注册引擎 hooks
         neko_lua_hook_register(think);
         neko_lua_hook_register(render);
+    }
+
+    lua_CFunction mt_funcs[] = {
+            // open_mt_b2_fixture,
+            // open_mt_b2_body,
+            // open_mt_b2_world,
+            open_mt_sound,
+    };
+
+    for (u32 i = 0; i < neko_arr_size(mt_funcs); i++) {
+        mt_funcs[i](L);
     }
 
     return 1;
@@ -4099,17 +4210,6 @@ void neko_register(lua_State* L) {
     PRELOAD("cffi", luaopen_cffi);
     PRELOAD("imgui", luaopen_neko_imgui);
     // PRELOAD("enet", luaopen_neko_enet);
-
-    lua_CFunction mt_funcs[] = {
-            // open_mt_b2_fixture,
-            // open_mt_b2_body,
-            // open_mt_b2_world,
-            open_mt_sound,
-    };
-
-    for (u32 i = 0; i < neko_arr_size(mt_funcs); i++) {
-        mt_funcs[i](L);
-    }
 
     // luaL_requiref(L, "neko", open_neko, 1);
     PRELOAD("neko", open_neko);

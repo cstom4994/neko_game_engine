@@ -9,8 +9,8 @@
 #include "engine/neko.h"
 #include "engine/neko_common.h"
 
-// builtin
-#include "engine/neko_png.h"
+// stb_image
+#include "deps/stb_image.h"
 
 #if defined(NEKO_PLATFORM_LINUX)
 #include <errno.h>
@@ -109,25 +109,33 @@ void neko_asset_default_load_from_file(const_str path, void *out) {
 #include "deps/imgui/imstb_rectpack.h"
 #include "deps/imgui/imstb_truetype.h"
 
-NEKO_API_DECL bool32_t neko_util_load_texture_data_from_memory(const void *memory, size_t sz, s32 *width, s32 *height, u32 *num_comps, void **data, bool32_t flip_vertically_on_load) {
+NEKO_API_DECL neko_image_t neko_image_load(const_str path) {
+    int width, height, channels;
+    unsigned char *image = stbi_load(path, &width, &height, &channels, 0);
+    return (neko_image_t){.w = width, .h = height, .pix = image};
+}
+
+NEKO_API_DECL void neko_image_free(neko_image_t img) { stbi_image_free(img.pix); }
+
+NEKO_API_DECL b32 neko_util_load_texture_data_from_memory(const void *memory, size_t sz, s32 *width, s32 *height, u32 *num_comps, void **data, b32 flip_vertically_on_load) {
     // Load texture data
 
-    neko_png_image_t img = neko_png_load_mem(memory, sz);
+    int channels;
+    unsigned char *image = stbi_load_from_memory(memory, sz, width, height, &channels, 0);
 
-    if (flip_vertically_on_load) neko_png_flip_image_horizontal(&img);
+    // if (flip_vertically_on_load) neko_png_flip_image_horizontal(&img);
 
-    *data = img.pix;
-    *width = img.w;
-    *height = img.h;
+    *data = image;
 
     if (!*data) {
-        neko_png_free(&img);
+        // neko_image_free(&img);
+        neko_log_warning("could not load image %p", memory);
         return false;
     }
     return true;
 }
 
-NEKO_API_DECL bool neko_asset_texture_load_from_file(const_str path, void *out, neko_graphics_texture_desc_t *desc, bool32_t flip_on_load, bool32_t keep_data) {
+NEKO_API_DECL bool neko_asset_texture_load_from_file(const_str path, void *out, neko_graphics_texture_desc_t *desc, b32 flip_on_load, b32 keep_data) {
     neko_asset_texture_t *t = (neko_asset_texture_t *)out;
 
     memset(&t->desc, 0, sizeof(neko_graphics_texture_desc_t));
@@ -143,15 +151,15 @@ NEKO_API_DECL bool neko_asset_texture_load_from_file(const_str path, void *out, 
     }
 
     // Load texture data
-    neko_png_image_t img = neko_png_load(path);
-
-    if (t->desc.flip_y) neko_png_flip_image_horizontal(&img);
+    neko_image_t img = neko_image_load(path);
+    // if (t->desc.flip_y) neko_png_flip_image_horizontal(&img);
 
     t->desc.data[0] = img.pix;
     t->desc.width = img.w;
     t->desc.height = img.h;
 
     if (!t->desc.data) {
+        neko_image_free(img);
         neko_log_warning("failed to load texture data %s", path);
         return false;
     }
@@ -159,7 +167,7 @@ NEKO_API_DECL bool neko_asset_texture_load_from_file(const_str path, void *out, 
     t->hndl = neko_graphics_texture_create(t->desc);
 
     if (!keep_data) {
-        neko_png_free(&img);
+        // neko_image_free(&img);
         *t->desc.data = NULL;
     }
 
@@ -167,18 +175,18 @@ NEKO_API_DECL bool neko_asset_texture_load_from_file(const_str path, void *out, 
 }
 
 /*
-bool neko_asset_texture_load_from_file(const char* path, void* out, neko_graphics_texture_desc_t* desc, bool32_t flip_on_load, bool32_t keep_data)
+bool neko_asset_texture_load_from_file(const char* path, void* out, neko_graphics_texture_desc_t* desc, b32 flip_on_load, b32 keep_data)
 {
     size_t len = 0;
     char* file_data = neko_platform_read_file_contents(path, "rb", &len);
     neko_assert(file_data);
-    bool32_t ret = neko_asset_texture_load_from_memory(file_data, len, out, desc, flip_on_load, keep_data);
+    b32 ret = neko_asset_texture_load_from_memory(file_data, len, out, desc, flip_on_load, keep_data);
     neko_free(file_data);
     return ret;
 }
  */
 
-bool neko_asset_texture_load_from_memory(const void *memory, size_t sz, void *out, neko_graphics_texture_desc_t *desc, bool32_t flip_on_load, bool32_t keep_data) {
+bool neko_asset_texture_load_from_memory(const void *memory, size_t sz, void *out, neko_graphics_texture_desc_t *desc, b32 flip_on_load, b32 keep_data) {
     neko_asset_texture_t *t = (neko_asset_texture_t *)out;
 
     memset(&t->desc, 0, sizeof(neko_graphics_texture_desc_t));
@@ -195,7 +203,7 @@ bool neko_asset_texture_load_from_memory(const void *memory, size_t sz, void *ou
 
     // Load texture data
     s32 num_comps = 0;
-    bool32_t loaded = neko_util_load_texture_data_from_memory(memory, sz, (s32 *)&t->desc.width, (s32 *)&t->desc.height, (u32 *)&num_comps, (void **)&t->desc.data, t->desc.flip_y);
+    b32 loaded = neko_util_load_texture_data_from_memory(memory, sz, (s32 *)&t->desc.width, (s32 *)&t->desc.height, (u32 *)&num_comps, (void **)&t->desc.data, t->desc.flip_y);
 
     if (!loaded) {
         return false;
@@ -307,7 +315,7 @@ NEKO_API_DECL f32 neko_asset_ascii_font_max_height(const neko_asset_ascii_font_t
 
 NEKO_API_DECL neko_vec2 neko_asset_ascii_font_text_dimensions(const neko_asset_ascii_font_t *fp, const_str text, s32 len) { return neko_asset_ascii_font_text_dimensions_ex(fp, text, len, 0); }
 
-NEKO_API_DECL neko_vec2 neko_asset_ascii_font_text_dimensions_ex(const neko_asset_ascii_font_t *fp, const_str text, s32 len, bool32_t include_past_baseline) {
+NEKO_API_DECL neko_vec2 neko_asset_ascii_font_text_dimensions_ex(const neko_asset_ascii_font_t *fp, const_str text, s32 len, b32 include_past_baseline) {
     neko_vec2 dimensions = neko_v2s(0.f);
 
     if (!fp || !text) return dimensions;

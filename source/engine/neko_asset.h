@@ -349,7 +349,7 @@ typedef struct neko_aseprite_renderer {
     s32 current_frame;
 } neko_aseprite_renderer;
 
-NEKO_API_DECL neko_texture_t neko_aseprite_simple(const void *memory, int size);
+NEKO_API_DECL neko_texture_t neko_aseprite_simple(const void* memory, int size);
 NEKO_API_DECL bool neko_aseprite_load(neko_aseprite* spr, const_str filepath);
 NEKO_API_DECL void neko_aseprite_end(neko_aseprite* spr);
 NEKO_API_DECL void neko_aseprite_renderer_play(neko_aseprite_renderer* sr, const_str tag);
@@ -388,12 +388,12 @@ typedef struct layer_s {
 typedef struct object_s {
     u32 id;
     s32 x, y, width, height;
-    C2_TYPE phy_type;
-    c2AABB aabb;
-    union {
-        c2AABB box;
-        c2Poly poly;
-    } phy;
+    // C2_TYPE phy_type;
+    // c2AABB aabb;
+    // union {
+    //     c2AABB box;
+    //     c2Poly poly;
+    // } phy;
 } object_t;
 
 typedef struct object_group_s {
@@ -682,78 +682,13 @@ NEKO_INLINE neko_color_t s_color(ase_t* ase, void* src, int index) {
     return result;
 }
 
-#define NEKO_PNG_ATLAS_MUST_FIT 1              // 如果输入图像不适合 则从NEKO_PNG_MAKE_ATLAS返回错误
-#define NEKO_PNG_ATLAS_FLIP_Y_AXIS_FOR_UV 1    // 翻转输出UV坐标的y
-#define NEKO_PNG_ATLAS_EMPTY_COLOR 0x000000FF  // 纹理贴图集中空白区域的填充颜色(RGBA)
-
-typedef struct neko_png_pixel_t neko_png_pixel_t;
-typedef struct neko_png_image_t neko_png_image_t;
-typedef struct neko_png_indexed_image_t neko_png_indexed_image_t;
-typedef struct neko_png_atlas_image_t neko_png_atlas_image_t;
-
-// 在任何函数出现错误的情况下阅读此内容
-extern const char* neko_png_error_reason;
-
-// 成功时返回1 失败时返回0
-NEKO_API_DECL int neko_png_inflate(void* in, int in_bytes, void* out, int out_bytes);
-NEKO_API_DECL int neko_png_save(const char* file_name, const neko_png_image_t* img);
-
-typedef struct neko_png_saved_png_t {
-    int size;
-    void* data;
-} neko_png_saved_png_t;
-
-NEKO_API_DECL struct neko_png_saved_png_t neko_png_save_to_memory(const neko_png_image_t* img);
-
-NEKO_API_DECL struct neko_png_image_t neko_png_make_atlas(int atlasWidth, int atlasHeight, const neko_png_image_t* pngs, int png_count, neko_png_atlas_image_t* imgs_out);
-
-int neko_png_default_save_atlas(const char* out_path_image, const char* out_path_atlas_txt, const neko_png_image_t* atlas, const neko_png_atlas_image_t* imgs, int img_count, const char** names);
-
-NEKO_API_DECL struct neko_png_image_t neko_png_load(const char* file_name);
-NEKO_API_DECL struct neko_png_image_t neko_png_load_mem(const void* png_data, int png_length);
-NEKO_API_DECL struct neko_png_image_t neko_png_load_blank(int w, int h);
-NEKO_API_DECL void neko_png_free(neko_png_image_t* img);
-NEKO_API_DECL void neko_png_flip_image_horizontal(neko_png_image_t* img);
-
-NEKO_API_DECL void neko_png_load_wh(const void* png_data, int png_length, int* w, int* h);
-
-NEKO_API_DECL struct neko_png_indexed_image_t neko_png_load_indexed(const char* file_name);
-NEKO_API_DECL struct neko_png_indexed_image_t neko_png_load_indexed_mem(const void* png_data, int png_length);
-NEKO_API_DECL void neko_png_free_indexed(neko_png_indexed_image_t* img);
-
-NEKO_API_DECL neko_png_image_t neko_png_depallete_indexed_image(neko_png_indexed_image_t* img);
-
-// 对像素进行预处理 将图像数据转换为预乘的Alpha格式
-// http://www.essentialmath.com/GDC2015/VanVerth_Jim_DoingMathwRGB.pdf
-void neko_png_premultiply(neko_png_image_t* img);
-
-struct neko_png_pixel_t {
-    uint8_t r;
-    uint8_t g;
-    uint8_t b;
-    uint8_t a;
-};
-
-struct neko_png_image_t {
+typedef struct neko_image_t {
     int w;
     int h;
-    neko_png_pixel_t* pix;
-};
+    unsigned char* pix;
+} neko_image_t;
 
-struct neko_png_indexed_image_t {
-    int w;
-    int h;
-    uint8_t* pix;
-    uint8_t palette_len;
-    neko_png_pixel_t palette[256];
-};
-
-struct neko_png_atlas_image_t {
-    int img_index;     // index into the `imgs` array
-    int w, h;          // pixel w/h of original image
-    float minx, miny;  // u coordinate
-    float maxx, maxy;  // v coordinate
-    int fit;           // non-zero if image fit and was placed into the atlas
-};
+NEKO_API_DECL neko_image_t neko_image_load(const_str path);
+NEKO_API_DECL void neko_image_free(neko_image_t img);
 
 #endif  // NEKO_ASSET_H

@@ -586,21 +586,15 @@ NEKO_API_DECL void neko_graphics_shutdown(neko_graphics_t* graphics);
 // Graphics Info Object Query
 NEKO_API_DECL neko_graphics_info_t* neko_graphics_info();
 
-// Custom Batch
-
 // recommended to leave this on as long as possible (perhaps until release)
-#define NEKO_GL_CUSTOM_DEBUG_CHECKS 1
-
-// feel free to turn this off if unused.
-// This is used to render lines on-top of all other rendering (besides post fx); rendered with no depth testing.
-#define NEKO_GL_CUSTOM_LINE_RENDERER 1
+#define NEKO_GRAPHICS_BATCH_DEBUG_CHECKS 1
 
 enum {
-    NEKO_GL_CUSTOM_FLOAT,
-    NEKO_GL_CUSTOM_INT,
-    NEKO_GL_CUSTOM_BOOL,
-    NEKO_GL_CUSTOM_SAMPLER,
-    NEKO_GL_CUSTOM_UNKNOWN,
+    NEKO_GRAPHICS_BATCH_FLOAT,
+    NEKO_GRAPHICS_BATCH_INT,
+    NEKO_GRAPHICS_BATCH_BOOL,
+    NEKO_GRAPHICS_BATCH_SAMPLER,
+    NEKO_GRAPHICS_BATCH_UNKNOWN,
 };
 
 typedef struct neko_graphics_batch_vertex_attribute_t {
@@ -612,7 +606,7 @@ typedef struct neko_graphics_batch_vertex_attribute_t {
     u32 location;
 } neko_graphics_batch_vertex_attribute_t;
 
-#define NEKO_GL_CUSTOM_ATTRIBUTE_MAX_COUNT 16
+#define NEKO_GRAPHICS_BATCH_ATTRIBUTE_MAX_COUNT 16
 typedef struct neko_graphics_batch_vertex_data_t {
     u32 buffer_size;
     u32 vertex_stride;
@@ -620,7 +614,7 @@ typedef struct neko_graphics_batch_vertex_data_t {
     u32 usage;
 
     u32 attribute_count;
-    neko_graphics_batch_vertex_attribute_t attributes[NEKO_GL_CUSTOM_ATTRIBUTE_MAX_COUNT];
+    neko_graphics_batch_vertex_attribute_t attributes[NEKO_GRAPHICS_BATCH_ATTRIBUTE_MAX_COUNT];
 } neko_graphics_batch_vertex_data_t;
 
 // 根据需要调整此项以创建绘制调用顺序
@@ -656,11 +650,11 @@ typedef struct neko_graphics_batch_renderable_t {
     GLsync fences[3];
 } neko_graphics_batch_renderable_t;
 
-#define NEKO_GL_CUSTOM_UNIFORM_NAME_LENGTH 64
-#define NEKO_GL_CUSTOM_UNIFORM_MAX_COUNT 16
+#define NEKO_GRAPHICS_BATCH_UNIFORM_NAME_LENGTH 64
+#define NEKO_GRAPHICS_BATCH_UNIFORM_MAX_COUNT 16
 
 typedef struct neko_graphics_batch_uniform_t {
-    char name[NEKO_GL_CUSTOM_UNIFORM_NAME_LENGTH];
+    char name[NEKO_GRAPHICS_BATCH_UNIFORM_NAME_LENGTH];
     u32 id;
     u64 hash;
     u32 size;
@@ -671,7 +665,7 @@ typedef struct neko_graphics_batch_uniform_t {
 struct neko_graphics_batch_shader_t {
     u32 program;
     u32 uniform_count;
-    neko_graphics_batch_uniform_t uniforms[NEKO_GL_CUSTOM_UNIFORM_MAX_COUNT];
+    neko_graphics_batch_uniform_t uniforms[NEKO_GRAPHICS_BATCH_UNIFORM_MAX_COUNT];
 };
 
 typedef struct neko_graphics_batch_framebuffer_t {
@@ -788,7 +782,6 @@ NEKO_API_DECL void neko_graphics_dispatch_compute(neko_command_buffer_t* cb, u32
 
 // Macros
 #define neko_graphics_command_buffer_submit(CB) neko_graphics()->api.command_buffer_submit((CB))
-// #define neko_graphics_fc_text(text, font, x, y) ((neko_instance()->ctx.graphics))->api.fontcache_push_x_y(text, font, x, y)
 
 #ifndef NEKO_NO_SHORT_NAME
 
@@ -804,6 +797,149 @@ typedef neko_handle(neko_graphics_uniform_t) neko_uniform_t;
 typedef neko_handle(neko_graphics_storage_buffer_t) neko_storage_buffer_t;
 
 #endif
+
+/*=============================
+// NEKO_OPENGL
+=============================*/
+
+typedef enum neko_gl_uniform_type {
+    NEKO_GL_UNIFORMTYPE_FLOAT,
+    NEKO_GL_UNIFORMTYPE_INT,
+    NEKO_GL_UNIFORMTYPE_VEC2,
+    NEKO_GL_UNIFORMTYPE_VEC3,
+    NEKO_GL_UNIFORMTYPE_VEC4,
+    NEKO_GL_UNIFORMTYPE_MAT4,
+    NEKO_GL_UNIFORMTYPE_SAMPLER2D,
+    NEKO_GL_UNIFORMTYPE_SAMPLERCUBE
+} neko_gl_uniform_type;
+
+/* Uniform (stores samplers as well as primitive uniforms) */
+typedef struct neko_gl_uniform_t {
+    char name[64];              // Name of uniform to find location
+    neko_gl_uniform_type type;  // Type of uniform data
+    u32 location;               // Location of uniform
+    size_t size;                // Total data size of uniform
+    u32 sid;                    // Shader id (should probably inverse this, but I don't want to force a map lookup)
+    u32 count;                  // Count (used for arrays)
+} neko_gl_uniform_t;
+
+// When a user passes in a uniform layout, that handle could then pass to a WHOLE list of uniforms (if describing a struct)
+typedef struct neko_gl_uniform_list_t {
+    neko_dyn_array(neko_gl_uniform_t) uniforms;  // Individual uniforms in list
+    size_t size;                                 // Total size of uniform data
+    char name[64];                               // Base name of uniform
+} neko_gl_uniform_list_t;
+
+typedef struct neko_gl_uniform_buffer_t {
+    char name[64];
+    u32 location;
+    size_t size;
+    u32 ubo;
+    u32 sid;
+} neko_gl_uniform_buffer_t;
+
+typedef struct neko_gl_storage_buffer_t {
+    char name[64];
+    u32 buffer;
+    s32 access;
+    size_t size;
+    u32 block_idx;
+    u32 location;
+} neko_gl_storage_buffer_t;
+
+/* Pipeline */
+typedef struct neko_gl_pipeline_t {
+    neko_graphics_blend_state_desc_t blend;
+    neko_graphics_depth_state_desc_t depth;
+    neko_graphics_raster_state_desc_t raster;
+    neko_graphics_stencil_state_desc_t stencil;
+    neko_graphics_compute_state_desc_t compute;
+    neko_dyn_array(neko_graphics_vertex_attribute_desc_t) layout;
+} neko_gl_pipeline_t;
+
+/* Render Pass */
+typedef struct neko_gl_renderpass_t {
+    neko_handle(neko_graphics_framebuffer_t) fbo;
+    neko_dyn_array(neko_handle(neko_graphics_texture_t)) color;
+    neko_handle(neko_graphics_texture_t) depth;
+    neko_handle(neko_graphics_texture_t) stencil;
+} neko_gl_renderpass_t;
+
+/* Shader */
+typedef u32 neko_gl_shader_t;
+
+/* Gfx Buffer */
+typedef u32 neko_gl_buffer_t;
+
+/* Texture */
+typedef struct neko_gl_texture_t {
+    u32 id;
+    neko_graphics_texture_desc_t desc;
+} neko_gl_texture_t;
+
+typedef struct neko_gl_vertex_buffer_decl_t {
+    neko_gl_buffer_t vbo;
+    neko_graphics_vertex_data_type data_type;
+    size_t offset;
+} neko_gl_vertex_buffer_decl_t;
+
+// 绘制之间的缓存数据
+typedef struct neko_gl_data_cache_t {
+    neko_gl_buffer_t vao;
+    neko_gl_buffer_t ibo;
+    size_t ibo_elem_sz;
+    neko_dyn_array(neko_gl_vertex_buffer_decl_t) vdecls;
+    neko_handle(neko_graphics_pipeline_t) pipeline;
+} neko_gl_data_cache_t;
+
+// 内部 OpenGL 数据
+typedef struct neko_gl_data_t {
+    neko_slot_array(neko_gl_shader_t) shaders;
+    neko_slot_array(neko_gl_texture_t) textures;
+    neko_slot_array(neko_gl_buffer_t) vertex_buffers;
+    neko_slot_array(neko_gl_uniform_buffer_t) uniform_buffers;
+    neko_slot_array(neko_gl_storage_buffer_t) storage_buffers;
+    neko_slot_array(neko_gl_buffer_t) index_buffers;
+    neko_slot_array(neko_gl_buffer_t) frame_buffers;
+    neko_slot_array(neko_gl_uniform_list_t) uniforms;
+    neko_slot_array(neko_gl_pipeline_t) pipelines;
+    neko_slot_array(neko_gl_renderpass_t) renderpasses;
+
+    // All the required uniform data for strict aliasing.
+    struct {
+        neko_dyn_array(u32) ui32;
+        neko_dyn_array(s32) i32;
+        neko_dyn_array(float) flt;
+        neko_dyn_array(neko_vec2) vec2;
+        neko_dyn_array(neko_vec3) vec3;
+        neko_dyn_array(neko_vec4) vec4;
+        neko_dyn_array(neko_mat4) mat4;
+    } uniform_data;
+
+    // Cached data between draw calls (to minimize state changes)
+    neko_gl_data_cache_t cache;
+
+} neko_gl_data_t;
+
+// 内部OpenGL命令缓冲指令
+typedef enum neko_opengl_op_code_type {
+    NEKO_OPENGL_OP_BEGIN_RENDER_PASS = 0x00,
+    NEKO_OPENGL_OP_END_RENDER_PASS,
+    NEKO_OPENGL_OP_SET_VIEWPORT,
+    NEKO_OPENGL_OP_SET_VIEW_SCISSOR,
+    NEKO_OPENGL_OP_CLEAR,
+    NEKO_OPENGL_OP_REQUEST_BUFFER_UPDATE,
+    NEKO_OPENGL_OP_REQUEST_TEXTURE_UPDATE,
+    NEKO_OPENGL_OP_BIND_PIPELINE,
+    NEKO_OPENGL_OP_APPLY_BINDINGS,
+    NEKO_OPENGL_OP_DISPATCH_COMPUTE,
+    NEKO_OPENGL_OP_DRAW,
+    NEKO_OPENGL_OP_DRAW_BATCH,
+} neko_opengl_op_code_type;
+
+/*=============================
+//
+=============================*/
 
 NEKO_INLINE u64 generate_texture_handle(void* pixels, int w, int h, void* udata) {
     (void)udata;
@@ -885,14 +1021,14 @@ typedef struct neko_asset_ascii_font_t {
 
 // Texture
 
-NEKO_API_DECL bool neko_asset_texture_load_from_file(const_str path, void* out, neko_graphics_texture_desc_t* desc, bool32_t flip_on_load, bool32_t keep_data);
-NEKO_API_DECL bool neko_asset_texture_load_from_memory(const void* memory, size_t sz, void* out, neko_graphics_texture_desc_t* desc, bool32_t flip_on_load, bool32_t keep_data);
+NEKO_API_DECL bool neko_asset_texture_load_from_file(const_str path, void* out, neko_graphics_texture_desc_t* desc, b32 flip_on_load, b32 keep_data);
+NEKO_API_DECL bool neko_asset_texture_load_from_memory(const void* memory, size_t sz, void* out, neko_graphics_texture_desc_t* desc, b32 flip_on_load, b32 keep_data);
 
 // Font
 NEKO_API_DECL bool neko_asset_ascii_font_load_from_file(const_str path, void* out, u32 point_size);
 NEKO_API_DECL bool neko_asset_ascii_font_load_from_memory(const void* memory, size_t sz, void* out, u32 point_size);
 NEKO_API_DECL neko_vec2 neko_asset_ascii_font_text_dimensions(const neko_asset_ascii_font_t* font, const_str text, s32 len);
-NEKO_API_DECL neko_vec2 neko_asset_ascii_font_text_dimensions_ex(const neko_asset_ascii_font_t* fp, const_str text, s32 len, bool32_t include_past_baseline);
+NEKO_API_DECL neko_vec2 neko_asset_ascii_font_text_dimensions_ex(const neko_asset_ascii_font_t* fp, const_str text, s32 len, b32 include_past_baseline);
 NEKO_API_DECL float neko_asset_ascii_font_max_height(const neko_asset_ascii_font_t* font);
 
 NEKO_API_DECL bool neko_asset_mesh_load_from_file(const_str path, void* out, neko_asset_mesh_decl_t* decl, void* data_out, size_t data_size);
@@ -1124,7 +1260,7 @@ NEKO_API_DECL void neko_idraw_cone(neko_immediate_draw_t* neko_idraw, f32 x, f32
 // Draw planes/poly groups
 
 // Text Drawing Util
-NEKO_API_DECL void neko_idraw_text(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, const char* text, const neko_asset_ascii_font_t* fp, bool32_t flip_vertical, neko_color_t col);
+NEKO_API_DECL void neko_idraw_text(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, const char* text, const neko_asset_ascii_font_t* fp, b32 flip_vertical, neko_color_t col);
 
 // Paths
 /*

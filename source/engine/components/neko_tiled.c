@@ -171,8 +171,6 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
             object.x = (s32)neko_xml_find_attribute(object_node, "x")->value.number;
             object.y = (s32)neko_xml_find_attribute(object_node, "y")->value.number;
 
-            object.phy_type = C2_TYPE_POLY;
-
             neko_xml_attribute_t *attrib;
             if (attrib = neko_xml_find_attribute(object_node, "width")) {
                 object.width = attrib->value.number;
@@ -186,6 +184,9 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
                 object.height = 1;
             }
 
+#if 0
+            object.phy_type = C2_TYPE_POLY;
+
             object.aabb = (c2AABB){c2V(object.x, object.y), c2V(object.width, object.height)};
 
             if (object.phy_type == C2_TYPE_POLY) {
@@ -196,6 +197,7 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
                 object.phy.poly.count = 4;
                 c2Norms(object.phy.poly.verts, object.phy.poly.norms, object.phy.poly.count);
             }
+#endif
 
             neko_dyn_array_push(object_group.objects, object);
         }

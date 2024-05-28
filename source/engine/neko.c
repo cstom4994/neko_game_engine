@@ -911,11 +911,11 @@ NEKO_API_DECL char* neko_read_file_contents(const char* file_path, const char* m
     return buffer;
 }
 
-bool32_t neko_util_load_texture_data_from_file(const char* file_path, s32* width, s32* height, u32* num_comps, void** data, bool32_t flip_vertically_on_load) {
+b32 neko_util_load_texture_data_from_file(const char* file_path, s32* width, s32* height, u32* num_comps, void** data, b32 flip_vertically_on_load) {
     size_t len = 0;
     char* file_data = neko_platform_read_file_contents(file_path, "rb", &len);
     neko_assert(file_data);
-    bool32_t ret = neko_util_load_texture_data_from_memory(file_data, len, width, height, num_comps, data, flip_vertically_on_load);
+    b32 ret = neko_util_load_texture_data_from_memory(file_data, len, width, height, num_comps, data, flip_vertically_on_load);
     if (!ret) {
         neko_log_warning("Could not load texture: %s", file_path);
     }

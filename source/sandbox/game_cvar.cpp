@@ -228,7 +228,7 @@ void summon(int argc, char **argv) {
 
 void crash(int argc, char **argv) {
 
-    const_str trace_info = __neko_inter_stacktrace();
+    const_str trace_info = __neko_platform_stacktrace();
 
     neko_platform_msgbox(std::format("Crash...\n{0}", trace_info).c_str());
 }

@@ -142,15 +142,12 @@ typedef uint16_t u16;
 typedef int16_t s16;
 typedef uint32_t u32;
 typedef int32_t s32;
-typedef s32 b32;
+typedef int32_t b32;
 typedef uint64_t u64;
 typedef int64_t s64;
 typedef float f32;
 typedef double f64;
 typedef const char* const_str;
-typedef int32_t bool32_t;
-
-typedef bool32_t b32;
 typedef intptr_t iptr;
 typedef uintptr_t uptr;
 
@@ -159,9 +156,6 @@ typedef uintptr_t uptr;
 #define s32_max INT32_MAX
 #define f32_max FLT_MAX
 #define f32_min FLT_MIN
-
-// Helper macro for compiling to nothing
-#define neko_empty_instruction(...)
 
 #define neko_arr_size(__ARR) sizeof(__ARR) / sizeof(__ARR[0])
 
@@ -1103,8 +1097,8 @@ NEKO_FORCE_INLINE size_t neko_hash_bytes(void* p, size_t len, size_t seed) {
 }
 
 /* Resource Loading Util */
-NEKO_API_DECL bool32_t neko_util_load_texture_data_from_file(const char* file_path, s32* width, s32* height, u32* num_comps, void** data, bool32_t flip_vertically_on_load);
-NEKO_API_DECL bool32_t neko_util_load_texture_data_from_memory(const void* memory, size_t sz, s32* width, s32* height, u32* num_comps, void** data, bool32_t flip_vertically_on_load);
+NEKO_API_DECL b32 neko_util_load_texture_data_from_file(const char* file_path, s32* width, s32* height, u32* num_comps, void** data, b32 flip_vertically_on_load);
+NEKO_API_DECL b32 neko_util_load_texture_data_from_memory(const void* memory, size_t sz, s32* width, s32* height, u32* num_comps, void** data, b32 flip_vertically_on_load);
 
 NEKO_STATIC_INLINE u16 neko_read_LE16(const u8* data) { return (u16)((data[1] << 8) | data[0]); }
 

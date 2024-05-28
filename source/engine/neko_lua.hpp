@@ -41,6 +41,201 @@ struct userdata_for_object_t {
     T* obj;
 };
 
+NEKO_STATIC_INLINE size_t lua_mem_usage;
+
+NEKO_INLINE size_t neko_lua_mem_usage() { return lua_mem_usage; }
+
+NEKO_STATIC_INLINE void* Allocf(void* ud, void* ptr, size_t osize, size_t nsize) {
+    if (!ptr) osize = 0;
+    if (!nsize) {
+        lua_mem_usage -= osize;
+        neko_safe_free(ptr);
+        return NULL;
+    }
+    lua_mem_usage += (nsize - osize);
+    return neko_safe_realloc(ptr, nsize);
+}
+
+class neko_lua_tool_t {
+public:
+    static void function_call_err(const_str name, int params) { neko_log_warning("[lua] invalid parameters to function: \"%s\" as %d", name, params); }
+
+    static lua_State* mark_create(const_str mark_name) {
+        lua_State* L = lua_newstate(Allocf, NULL);
+        lua_newtable(L);
+        lua_setglobal(L, mark_name);
+        return L;
+    }
+
+    static void mark_table(lua_State* L, void* table, const_str mark_name) {
+        lua_getglobal(L, mark_name);
+        lua_pushlightuserdata(L, table);
+        lua_pushboolean(L, 1);
+        lua_settable(L, -3);
+        lua_pop(L, 1);
+    }
+
+    static int mark_table_check(lua_State* L, void* table, const_str mark_name) {
+        int result = 0;
+        lua_getglobal(L, mark_name);
+        lua_pushlightuserdata(L, table);
+        lua_gettable(L, -2);
+        if (!lua_isnil(L, -1)) {
+            result = 1;
+        }
+        lua_pop(L, 2);
+        return result;
+    }
+
+    static void dump_stack(lua_State* L) {
+        int top = lua_gettop(L);
+        lua_State* visited = mark_create("visited");
+
+        for (int i = 1; i <= top; i++) {
+            int t = lua_type(L, i);
+
+            const char* name = get_object_name(L, i);
+            printf("%d: [%s] ", i, name);
+
+            switch (t) {
+                case LUA_TSTRING:
+                    printf("`%s'", lua_tostring(L, i));
+                    break;
+                case LUA_TBOOLEAN:
+                    printf(lua_toboolean(L, i) ? "true" : "false");
+                    break;
+                case LUA_TNUMBER:
+                    printf("`%g`", lua_tonumber(L, i));
+                    break;
+                case LUA_TTABLE:
+                    printf("table {\n");
+                    dump_table(L, i, 1, visited);
+                    printf("}");
+                    break;
+                default:
+                    printf("`%s`", lua_typename(L, t));
+                    break;
+            }
+            printf("\n");
+        }
+        lua_close(visited);
+    }
+
+    static void dump_table(lua_State* L, int index, int depth, lua_State* visited) {
+        // 确保索引是绝对的，以避免 lua_next 改变它
+        index = lua_absindex(L, index);
+
+        // 检查该表是否已经访问过
+        if (mark_table_check(visited, (void*)lua_topointer(L, index), "visited")) {
+            for (int i = 0; i < depth; i++) {
+                printf("  ");
+            }
+            printf("[recursive table]\n");
+            return;
+        }
+        // 标记该表为已访问
+        mark_table(visited, (void*)lua_topointer(L, index), "visited");
+
+        lua_pushnil(L);  // 首个键
+        while (lua_next(L, index) != 0) {
+            // 缩进以反映深度
+            for (int i = 0; i < depth; i++) {
+                printf("  ");
+            }
+
+            // 获取键和值的类型和名称
+            const char* key_name = get_object_name(L, -2);
+            const char* key_type = lua_typename(L, lua_type(L, -2));
+            const char* value_type = lua_typename(L, lua_type(L, -1));
+
+            printf("%s (%s) - %s: ", key_name, key_type, value_type);
+
+            // 打印值
+            switch (lua_type(L, -1)) {
+                case LUA_TSTRING:
+                    printf("`%s'", lua_tostring(L, -1));
+                    break;
+                case LUA_TBOOLEAN:
+                    printf(lua_toboolean(L, -1) ? "true" : "false");
+                    break;
+                case LUA_TNUMBER:
+                    printf("`%g`", lua_tonumber(L, -1));
+                    break;
+                case LUA_TTABLE:
+                    printf("table {\n");
+                    dump_table(L, lua_gettop(L), depth + 1, visited);
+                    for (int i = 0; i < depth; i++) {
+                        printf("  ");
+                    }
+                    printf("}");
+                    break;
+                default:
+                    printf("`%s`", lua_typename(L, lua_type(L, -1)));
+                    break;
+            }
+            printf("\n");
+
+            lua_pop(L, 1);  // 弹出值，保留键以进行下一次迭代
+        }
+    }
+
+    static const char* get_object_name(lua_State* L, int index) {
+        const char* name = NULL;
+
+        // 尝试通过局部变量名获取
+        lua_Debug ar;
+        if (lua_getstack(L, 1, &ar)) {
+            int i = 1;
+            const char* local_name;
+            while ((local_name = lua_getlocal(L, &ar, i++)) != NULL) {
+                if (lua_rawequal(L, index, -1)) {
+                    name = local_name;
+                    lua_pop(L, 1);
+                    break;
+                }
+                lua_pop(L, 1);  // 弹出值
+            }
+        }
+
+        // 尝试通过全局变量名获取
+        if (!name) {
+            lua_pushglobaltable(L);
+            lua_pushnil(L);  // 首个键
+            while (lua_next(L, -2) != 0) {
+                if (lua_rawequal(L, index, -1)) {
+                    name = lua_tostring(L, -2);
+                    lua_pop(L, 2);  // 弹出值和键
+                    break;
+                }
+                lua_pop(L, 1);  // 弹出值，保留键以进行下一次迭代
+            }
+            lua_pop(L, 1);  // 弹出全局表
+        }
+
+        return name ? name : "unknown";
+    }
+
+    static std::string dump_error(lua_State* ls_, const char* fmt, ...) {
+        std::string ret;
+        char buff[4096];
+
+        va_list argp;
+        va_start(argp, fmt);
+#ifndef _WIN32
+        vsnprintf(buff, sizeof(buff), fmt, argp);
+#else
+        vsnprintf_s(buff, sizeof(buff), sizeof(buff), fmt, argp);
+#endif
+        va_end(argp);
+
+        ret = buff;
+        SPRINTF_F(buff, sizeof(buff), " tracback:\n\t%s", lua_tostring(ls_, -1));
+        ret += buff;
+
+        return ret;
+    }
+};
+
 template <typename T>
 struct lua_type_info_t {
     static void set_name(const std::string& name_, std::string inherit_name_ = "") {
@@ -781,7 +976,7 @@ struct __lua_op_t<std::map<K, V>> {
 };
 
 namespace neko {
-extern lua_State* gLuaState;
+extern lua_State* g_L;
 
 // 包含能够连接到脚本表的必要信息的类
 class ScriptReference {
@@ -796,11 +991,11 @@ public:
 
     //
     // @return The state associated with this script reference object.
-    inline lua_State* getCurrentState() const { return __lua_state; }
+    inline lua_State* getCurrentState() const { return __lua; }
 
 protected:
     int script_ref;
-    lua_State* __lua_state;
+    lua_State* __lua;
 };
 
 class ScriptObject;
@@ -829,7 +1024,7 @@ public:
 
 private:
     int script_ref;
-    lua_State* __lua_state;
+    lua_State* __lua;
     int mNumPopsRequired;
 };
 
@@ -856,7 +1051,7 @@ public:
 
 private:
     int script_ref;
-    lua_State* __lua_state;
+    lua_State* __lua;
 };
 
 template <class T>
@@ -878,18 +1073,30 @@ struct lua_value {
     }
 };
 
-template <>
-struct lua_value<int> {
-    static bool pop(lua_State* L, int& value) {
-        bool ok = lua_isnumber(L, -1) == 1;
-        if (ok) value = (int)lua_tointeger(L, -1);
-
-        lua_pop(L, 1);
-        return ok;
+#define XX_TYPE(T, check_func, tofunc, pushfunc)                         \
+    template <>                                                          \
+    struct lua_value<T> {                                                \
+        static bool pop(lua_State* L, T& value) {                        \
+            bool ok = check_func(L, -1) == 1;                            \
+            if (ok) value = (T)tofunc(L, -1);                            \
+            lua_pop(L, 1);                                               \
+            return ok;                                                   \
+        }                                                                \
+        static void push(lua_State* L, T& value) { pushfunc(L, value); } \
     }
 
-    static void push(lua_State* L, int& value) { lua_pushinteger(L, (lua_Integer)value); }
-};
+XX_TYPE(s8, lua_isnumber, lua_tointeger, lua_pushinteger);
+XX_TYPE(s16, lua_isnumber, lua_tointeger, lua_pushinteger);
+XX_TYPE(s32, lua_isnumber, lua_tointeger, lua_pushinteger);
+XX_TYPE(s64, lua_isnumber, lua_tointeger, lua_pushinteger);
+XX_TYPE(u8, lua_isnumber, lua_tointeger, lua_pushinteger);
+XX_TYPE(u16, lua_isnumber, lua_tointeger, lua_pushinteger);
+XX_TYPE(u32, lua_isnumber, lua_tointeger, lua_pushinteger);
+XX_TYPE(u64, lua_isnumber, lua_tointeger, lua_pushinteger);
+XX_TYPE(f32, lua_isnumber, lua_tointeger, lua_pushinteger);
+XX_TYPE(f64, lua_isnumber, lua_tointeger, lua_pushinteger);
+
+#undef XX_TYPE
 
 template <>
 struct lua_value<const_str> {
@@ -915,19 +1122,6 @@ struct lua_value<std::string> {
     }
 
     static void push(lua_State* L, std::string& value) { lua_pushstring(L, value.c_str()); }
-};
-
-template <>
-struct lua_value<double> {
-    static bool pop(lua_State* L, double& value) {
-        bool ok = lua_isnumber(L, -1) == 1;
-        if (ok) value = (double)lua_tonumber(L, -1);
-
-        lua_pop(L, 1);
-        return ok;
-    }
-
-    static void push(lua_State* L, double& value) { lua_pushnumber(L, (lua_Number)value); }
 };
 
 template <class C>
@@ -998,19 +1192,6 @@ struct lua_value<ScriptObjectPtr<C>> {
         lua_rawgeti(L, LUA_REGISTRYINDEX, value->getId());
         lua_getref(L, value->getId());
     }
-};
-
-template <>
-struct lua_value<float> {
-    static bool pop(lua_State* L, float& value) {
-        bool ok = lua_isnumber(L, -1) == 1;
-        if (ok) value = (float)lua_tonumber(L, -1);
-
-        lua_pop(L, 1);
-        return ok;
-    }
-
-    static void push(lua_State* L, float& value) { lua_pushnumber(L, (lua_Number)value); }
 };
 
 template <>
@@ -1086,22 +1267,22 @@ public:
     template <typename P1>
     void invoke(const_str method_name, P1 p1) {
 #ifdef _DEBUG
-        int top1 = lua_gettop(__lua_state);
+        int top1 = lua_gettop(__lua);
 #endif
 
         if (!findAndPushMethod(method_name)) return;
 
         // Push this + parameters
-        lua_rawgeti(__lua_state, LUA_REGISTRYINDEX, script_ref);
-        lua_value<P1>::push(__lua_state, p1);
+        lua_rawgeti(__lua, LUA_REGISTRYINDEX, script_ref);
+        lua_value<P1>::push(__lua, p1);
 
         // Call script
-        if (lua_pcall(__lua_state, 2, 0, NULL) != 0) {
-            std::cerr << "ERROR " << lua_tostring(__lua_state, -1) << std::endl;
-            lua_pop(__lua_state, 1);
+        if (lua_pcall(__lua, 2, 0, NULL) != 0) {
+            neko_log_warning("[lua] err: %s", lua_tostring(__lua, -1));
+            lua_pop(__lua, 1);
         }
 #ifdef _DEBUG
-        int top2 = lua_gettop(__lua_state);
+        int top2 = lua_gettop(__lua);
         assert(top1 == top2 && "The stack has become corrupt");
 #endif
     }
@@ -1109,22 +1290,22 @@ public:
     template <typename P1, typename P2>
     void invoke(const_str method_name, P1 p1, P2 p2) {
 #ifdef _DEBUG
-        int top1 = lua_gettop(__lua_state);
+        int top1 = lua_gettop(__lua);
 #endif
         if (!findAndPushMethod(method_name)) return;
 
         // Push this + parameters
-        lua_rawgeti(__lua_state, LUA_REGISTRYINDEX, script_ref);
-        lua_value<P1>::push(__lua_state, p1);
-        lua_value<P2>::push(__lua_state, p2);
+        lua_rawgeti(__lua, LUA_REGISTRYINDEX, script_ref);
+        lua_value<P1>::push(__lua, p1);
+        lua_value<P2>::push(__lua, p2);
 
         // Call script
-        if (lua_pcall(__lua_state, 3, 0, NULL) != 0) {
-            std::cerr << "ERROR " << lua_tostring(__lua_state, -1) << std::endl;
-            lua_pop(__lua_state, 1);
+        if (lua_pcall(__lua, 3, 0, NULL) != 0) {
+            neko_log_warning("[lua] err: %s", lua_tostring(__lua, -1));
+            lua_pop(__lua, 1);
         }
 #ifdef _DEBUG
-        int top2 = lua_gettop(__lua_state);
+        int top2 = lua_gettop(__lua);
         assert(top1 == top2 && "The stack has become corrupt");
 #endif
     }
@@ -1132,25 +1313,25 @@ public:
     template <typename P1, typename P2, typename P3>
     void invoke(const_str method_name, P1 p1, P2 p2, P3 p3) {
 #ifdef _DEBUG
-        int top1 = lua_gettop(__lua_state);
+        int top1 = lua_gettop(__lua);
 #endif
 
         if (!findAndPushMethod(method_name)) return;
 
         // Push this + parameters
-        lua_rawgeti(__lua_state, LUA_REGISTRYINDEX, script_ref);
-        lua_value<P1>::push(__lua_state, p1);
-        lua_value<P2>::push(__lua_state, p2);
-        lua_value<P3>::push(__lua_state, p3);
+        lua_rawgeti(__lua, LUA_REGISTRYINDEX, script_ref);
+        lua_value<P1>::push(__lua, p1);
+        lua_value<P2>::push(__lua, p2);
+        lua_value<P3>::push(__lua, p3);
 
         // Call script
-        if (lua_pcall(__lua_state, 4, 0, NULL) != 0) {
-            std::cerr << "ERROR " << lua_tostring(__lua_state, -1) << std::endl;
-            lua_pop(__lua_state, 1);
+        if (lua_pcall(__lua, 4, 0, NULL) != 0) {
+            neko_log_warning("[lua] err: %s", lua_tostring(__lua, -1));
+            lua_pop(__lua, 1);
         }
 
 #ifdef _DEBUG
-        int top2 = lua_gettop(__lua_state);
+        int top2 = lua_gettop(__lua);
         assert(top1 == top2 && "The stack has become corrupt");
 #endif
     }
@@ -1158,25 +1339,25 @@ public:
     template <typename P1, typename P2, typename P3, typename P4>
     void invoke(const_str method_name, P1 p1, P2 p2, P3 p3, P4 p4) {
 #ifdef _DEBUG
-        int top1 = lua_gettop(__lua_state);
+        int top1 = lua_gettop(__lua);
 #endif
         if (!findAndPushMethod(method_name)) return;
 
         // Push this + parameters
-        lua_rawgeti(__lua_state, LUA_REGISTRYINDEX, script_ref);
-        lua_value<P1>::push(__lua_state, p1);
-        lua_value<P2>::push(__lua_state, p2);
-        lua_value<P3>::push(__lua_state, p3);
-        lua_value<P4>::push(__lua_state, p4);
+        lua_rawgeti(__lua, LUA_REGISTRYINDEX, script_ref);
+        lua_value<P1>::push(__lua, p1);
+        lua_value<P2>::push(__lua, p2);
+        lua_value<P3>::push(__lua, p3);
+        lua_value<P4>::push(__lua, p4);
 
         // Call script
-        if (lua_pcall(__lua_state, 5, 0, NULL) != 0) {
-            std::cerr << "ERROR " << lua_tostring(__lua_state, -1) << std::endl;
-            lua_pop(__lua_state, 1);
+        if (lua_pcall(__lua, 5, 0, NULL) != 0) {
+            neko_log_warning("[lua] err: %s", lua_tostring(__lua, -1));
+            lua_pop(__lua, 1);
         }
 
 #ifdef _DEBUG
-        int top2 = lua_gettop(__lua_state);
+        int top2 = lua_gettop(__lua);
         assert(top1 == top2 && "The stack has become corrupt");
 #endif
     }
@@ -1184,23 +1365,23 @@ public:
     template <typename R>
     bool invoke_get(const_str method_name, R& result) {
 #ifdef _DEBUG
-        int top1 = lua_gettop(__lua_state);
+        int top1 = lua_gettop(__lua);
 #endif
         if (!findAndPushMethod(method_name)) return false;
 
         // Push this
-        lua_rawgeti(__lua_state, LUA_REGISTRYINDEX, script_ref);
+        lua_rawgeti(__lua, LUA_REGISTRYINDEX, script_ref);
 
         // Call script
-        if (lua_pcall(__lua_state, 1, 1, NULL) != 0) {
-            std::cerr << "ERROR " << lua_tostring(__lua_state, -1) << std::endl;
-            lua_pop(__lua_state, 1);
+        if (lua_pcall(__lua, 1, 1, NULL) != 0) {
+            neko_log_warning("[lua] err: %s", lua_tostring(__lua, -1));
+            lua_pop(__lua, 1);
             return false;
         }
 
-        bool ok = lua_value<R>::pop(__lua_state, result);
+        bool ok = lua_value<R>::pop(__lua, result);
 #ifdef _DEBUG
-        int top2 = lua_gettop(__lua_state);
+        int top2 = lua_gettop(__lua);
         assert(top1 == top2 && "The stack has become corrupt");
 #endif
         return ok;
@@ -1209,24 +1390,24 @@ public:
     template <typename R, typename P1>
     bool invoke_get(const_str method_name, P1 p1, R& result) {
 #ifdef _DEBUG
-        int top1 = lua_gettop(__lua_state);
+        int top1 = lua_gettop(__lua);
 #endif
         if (!findAndPushMethod(method_name)) return false;
 
         // Push this + parameters
-        lua_rawgeti(__lua_state, LUA_REGISTRYINDEX, script_ref);
-        lua_value<P1>::push(__lua_state, p1);
+        lua_rawgeti(__lua, LUA_REGISTRYINDEX, script_ref);
+        lua_value<P1>::push(__lua, p1);
 
         // Call script
-        if (lua_pcall(__lua_state, 2, 1, NULL) != 0) {
-            std::cerr << "ERROR " << lua_tostring(__lua_state, -1) << std::endl;
-            lua_pop(__lua_state, 1);
+        if (lua_pcall(__lua, 2, 1, NULL) != 0) {
+            neko_log_warning("[lua] err: %s", lua_tostring(__lua, -1));
+            lua_pop(__lua, 1);
             return false;
         }
 
-        bool ok = lua_value<R>::pop(__lua_state, result);
+        bool ok = lua_value<R>::pop(__lua, result);
 #ifdef _DEBUG
-        int top2 = lua_gettop(__lua_state);
+        int top2 = lua_gettop(__lua);
         assert(top1 == top2 && "The stack has become corrupt");
 #endif
         return ok;
@@ -1235,25 +1416,25 @@ public:
     template <typename R, typename P1, typename P2>
     bool invoke_get(const_str method_name, P1 p1, P2 p2, R& result) {
 #ifdef _DEBUG
-        int top1 = lua_gettop(__lua_state);
+        int top1 = lua_gettop(__lua);
 #endif
         if (!findAndPushMethod(method_name)) return false;
 
         // Push this + parameters
-        lua_rawgeti(__lua_state, LUA_REGISTRYINDEX, script_ref);
-        lua_value<P1>::push(__lua_state, p1);
-        lua_value<P2>::push(__lua_state, p2);
+        lua_rawgeti(__lua, LUA_REGISTRYINDEX, script_ref);
+        lua_value<P1>::push(__lua, p1);
+        lua_value<P2>::push(__lua, p2);
 
         // Call script
-        if (lua_pcall(__lua_state, 3, 1, NULL) != 0) {
-            std::cerr << "ERROR " << lua_tostring(__lua_state, -1) << std::endl;
-            lua_pop(__lua_state, 1);
+        if (lua_pcall(__lua, 3, 1, NULL) != 0) {
+            neko_log_warning("[lua] err: %s", lua_tostring(__lua, -1));
+            lua_pop(__lua, 1);
             return false;
         }
 
-        bool ok = lua_value<R>::pop(__lua_state, result);
+        bool ok = lua_value<R>::pop(__lua, result);
 #ifdef _DEBUG
-        int top2 = lua_gettop(__lua_state);
+        int top2 = lua_gettop(__lua);
         assert(top1 == top2 && "The stack has become corrupt");
 #endif
         return ok;
@@ -1262,26 +1443,26 @@ public:
     template <typename R, typename P1, typename P2, typename P3>
     bool invoke_get(const_str method_name, P1 p1, P2 p2, P3 p3, R& result) {
 #ifdef _DEBUG
-        int top1 = lua_gettop(__lua_state);
+        int top1 = lua_gettop(__lua);
 #endif
         if (!findAndPushMethod(method_name)) return false;
 
         // Push this + parameters
-        lua_rawgeti(__lua_state, LUA_REGISTRYINDEX, script_ref);
-        lua_value<P1>::push(__lua_state, p1);
-        lua_value<P2>::push(__lua_state, p2);
-        lua_value<P3>::push(__lua_state, p3);
+        lua_rawgeti(__lua, LUA_REGISTRYINDEX, script_ref);
+        lua_value<P1>::push(__lua, p1);
+        lua_value<P2>::push(__lua, p2);
+        lua_value<P3>::push(__lua, p3);
 
         // Call script
-        if (lua_pcall(__lua_state, 4, 1, NULL) != 0) {
-            std::cerr << "ERROR " << lua_tostring(__lua_state, -1) << std::endl;
-            lua_pop(__lua_state, 1);
+        if (lua_pcall(__lua, 4, 1, NULL) != 0) {
+            neko_log_warning("[lua] err: %s", lua_tostring(__lua, -1));
+            lua_pop(__lua, 1);
             return false;
         }
 
-        bool ok = lua_value<R>::pop(__lua_state, result);
+        bool ok = lua_value<R>::pop(__lua, result);
 #ifdef _DEBUG
-        int top2 = lua_gettop(__lua_state);
+        int top2 = lua_gettop(__lua);
         assert(top1 == top2 && "The stack has become corrupt");
 #endif
         return ok;
@@ -1290,27 +1471,27 @@ public:
     template <typename R, typename P1, typename P2, typename P3, typename P4>
     bool invoke_get(const_str method_name, P1 p1, P2 p2, P3 p3, P4 p4, R& result) {
 #ifdef _DEBUG
-        int top1 = lua_gettop(__lua_state);
+        int top1 = lua_gettop(__lua);
 #endif
         if (!findAndPushMethod(method_name)) return false;
 
         // Push this + parameters
-        lua_rawgeti(__lua_state, LUA_REGISTRYINDEX, script_ref);
-        lua_value<P1>::push(__lua_state, p1);
-        lua_value<P2>::push(__lua_state, p2);
-        lua_value<P3>::push(__lua_state, p3);
-        lua_value<P4>::push(__lua_state, p4);
+        lua_rawgeti(__lua, LUA_REGISTRYINDEX, script_ref);
+        lua_value<P1>::push(__lua, p1);
+        lua_value<P2>::push(__lua, p2);
+        lua_value<P3>::push(__lua, p3);
+        lua_value<P4>::push(__lua, p4);
 
         // Call script
-        if (lua_pcall(__lua_state, 5, 1, NULL) != 0) {
-            std::cerr << "ERROR " << lua_tostring(__lua_state, -1) << std::endl;
-            lua_pop(__lua_state, 1);
+        if (lua_pcall(__lua, 5, 1, NULL) != 0) {
+            neko_log_warning("[lua] err: %s", lua_tostring(__lua, -1));
+            lua_pop(__lua, 1);
             return false;
         }
 
-        bool ok = lua_value<R>::pop(__lua_state, result);
+        bool ok = lua_value<R>::pop(__lua, result);
 #ifdef _DEBUG
-        int top2 = lua_gettop(__lua_state);
+        int top2 = lua_gettop(__lua);
         assert(top1 == top2 && "The stack has become corrupt");
 #endif
         return ok;
@@ -1392,7 +1573,7 @@ int lua_method_void_0args(lua_State* L) {
     int params = lua_gettop(L);
     if (params <= 0) {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        std::cerr << "Invalid num parameters for method with name: " << name << std::endl;
+        neko_lua_tool_t::function_call_err(name, params);
         return 0;
     }
 
@@ -1405,7 +1586,7 @@ int lua_method_void_0args(lua_State* L) {
         (self->*wrapper->methodPtr)();
     } else {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        std::cerr << "Invalid parameters to method with name: " << name << std::endl;
+        neko_lua_tool_t::function_call_err(name, params);
     }
 
     return 0;
@@ -1416,7 +1597,7 @@ int lua_method_void_1args(lua_State* L) {
     int params = lua_gettop(L);
     if (params < 2) {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        std::cerr << "Invalid num parameters for method with name: " << name << std::endl;
+        neko_lua_tool_t::function_call_err(name, params);
         lua_pop(L, params);
         return 0;
     }
@@ -1433,7 +1614,7 @@ int lua_method_void_1args(lua_State* L) {
         (self->*wrapper->methodPtr)(p1);
     } else {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        std::cerr << "Invalid parameters to method with name: " << name << std::endl;
+        neko_lua_tool_t::function_call_err(name, params);
     }
 
     return 0;
@@ -1444,7 +1625,7 @@ int lua_method_void_2args(lua_State* L) {
     int params = lua_gettop(L);
     if (params < 3) {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        std::cerr << "Invalid num parameters for method with name: " << name << std::endl;
+        neko_lua_tool_t::function_call_err(name, params);
         lua_pop(L, params);
         return 0;
     }
@@ -1463,7 +1644,7 @@ int lua_method_void_2args(lua_State* L) {
         (self->*wrapper->methodPtr)(p1, p2);
     } else {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        std::cerr << "Invalid parameters to method with name: " << name << std::endl;
+        neko_lua_tool_t::function_call_err(name, params);
     }
 
     return 0;
@@ -1474,7 +1655,7 @@ int lua_method_void_3args(lua_State* L) {
     int params = lua_gettop(L);
     if (params < 4) {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        std::cerr << "Invalid num parameters for method with name: " << name << std::endl;
+        neko_lua_tool_t::function_call_err(name, params);
         lua_pop(L, params);
         return 0;
     }
@@ -1495,7 +1676,7 @@ int lua_method_void_3args(lua_State* L) {
         (self->*wrapper->methodPtr)(p1, p2, p3);
     } else {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        std::cerr << "Invalid parameters to method with name: " << name << std::endl;
+        neko_lua_tool_t::function_call_err(name, params);
     }
 
     return 0;
@@ -1506,7 +1687,7 @@ int lua_method_void_3args(lua_State* L) {
     int params = lua_gettop(L);
     if (params < 5) {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        std::cerr << "Invalid num parameters for method with name: " << name << std::endl;
+        neko_lua_tool_t::function_call_err(name, params);
         lua_pop(L, params);
         return 0;
     }
@@ -1529,7 +1710,7 @@ int lua_method_void_3args(lua_State* L) {
         (self->*wrapper->methodPtr)(p1, p2, p3, p4);
     } else {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        std::cerr << "Invalid parameters to method with name: " << name << std::endl;
+        neko_lua_tool_t::function_call_err(name, params);
     }
 
     lua_pop(L, params);
@@ -1550,12 +1731,12 @@ int lua_method_R_0args(lua_State* L) {
             lua_value<R>::push(L, ret);
         } else {
             const_str name = lua_tostring(L, lua_upvalueindex(2));
-            std::cerr << "Invalid parameters to method with name: " << name << std::endl;
+            neko_lua_tool_t::function_call_err(name, params);
             lua_pushnil(L);
         }
     } else {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        std::cerr << "Invalid num parameters for method with name: " << name << std::endl;
+        neko_lua_tool_t::function_call_err(name, params);
         lua_pop(L, params);
         lua_pushnil(L);
     }
@@ -1580,12 +1761,12 @@ int lua_method_R_1args(lua_State* L) {
             lua_value<R>::push(L, ret);
         } else {
             const_str name = lua_tostring(L, lua_upvalueindex(2));
-            std::cerr << "Invalid parameters to method with name: " << name << std::endl;
+            neko_lua_tool_t::function_call_err(name, params);
             lua_pushnil(L);
         }
     } else {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        std::cerr << "Invalid num parameters for method with name: " << name << std::endl;
+        neko_lua_tool_t::function_call_err(name, params);
         lua_pop(L, params);
         lua_pushnil(L);
     }
@@ -1612,12 +1793,12 @@ int lua_method_R_2args(lua_State* L) {
             lua_value<R>::push(L, ret);
         } else {
             const_str name = lua_tostring(L, lua_upvalueindex(2));
-            std::cerr << "Invalid parameters to method with name: " << name << std::endl;
+            neko_lua_tool_t::function_call_err(name, params);
             lua_pushnil(L);
         }
     } else {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        std::cerr << "Invalid num parameters for method with name: " << name << std::endl;
+        neko_lua_tool_t::function_call_err(name, params);
         lua_pop(L, params);
         lua_pushnil(L);
     }
@@ -1646,12 +1827,12 @@ int lua_method_R_3args(lua_State* L) {
             lua_value<R>::push(L, ret);
         } else {
             const_str name = lua_tostring(L, lua_upvalueindex(2));
-            std::cerr << "Invalid parameters to method with name: " << name << std::endl;
+            neko_lua_tool_t::function_call_err(name, params);
             lua_pushnil(L);
         }
     } else {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        std::cerr << "Invalid num parameters for method with name: " << name << std::endl;
+        neko_lua_tool_t::function_call_err(name, params);
         lua_pop(L, params);
         lua_pushnil(L);
     }
@@ -1682,12 +1863,12 @@ int lua_method_R_3args(lua_State* L) {
             lua_value<R>::push(L, ret);
         } else {
             const_str name = lua_tostring(L, lua_upvalueindex(2));
-            std::cerr << "Invalid parameters to method with name: " << name << std::endl;
+            neko_lua_tool_t::function_call_err(name, params);
             lua_pushnil(L);
         }
     } else {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        std::cerr << "Invalid num parameters for method with name: " << name << std::endl;
+        neko_lua_tool_t::function_call_err(name, params);
         lua_pop(L, params);
         lua_pushnil(L);
     }
@@ -1723,14 +1904,27 @@ int lua_ScriptObject_init(lua_State* L) {
     return 0;
 }
 
-int lua_function_void_0args(lua_State* L);
+NEKO_STATIC_INLINE int lua_function_void_0args(lua_State* L) {
+    int params = lua_gettop(L);
+    if (params != 0) {
+        const_str name = lua_tostring(L, lua_upvalueindex(2));
+        neko_lua_tool_t::function_call_err(name, params);
+        lua_pop(L, params);
+        return 0;
+    }
+
+    typedef void (*F)(void);
+    F func = (F)lua_touserdata(L, lua_upvalueindex(1));
+    (*func)();
+    return 0;
+}
 
 template <typename P1>
 int lua_function_void_1args(lua_State* L) {
     int params = lua_gettop(L);
     if (params == 0) {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        std::cerr << "Invalid num parameters to function:" << name << std::endl;
+        neko_lua_tool_t::function_call_err(name, params);
         return 0;
     }
 
@@ -1756,7 +1950,7 @@ int lua_function_void_2args(lua_State* L) {
     int params = lua_gettop(L);
     if (params < 2) {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        std::cerr << "Invalid num parameters to function:" << name << std::endl;
+        neko_lua_tool_t::function_call_err(name, params);
         lua_pop(L, params);
         return 0;
     }
@@ -1785,7 +1979,7 @@ int lua_function_void_3args(lua_State* L) {
     int params = lua_gettop(L);
     if (params < 3) {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        std::cerr << "Invalid num parameters to function:" << name << std::endl;
+        neko_lua_tool_t::function_call_err(name, params);
         lua_pop(L, params);
         return 0;
     }
@@ -1816,7 +2010,7 @@ int lua_function_void_4args(lua_State* L) {
     int params = lua_gettop(L);
     if (params < 4) {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        std::cerr << "Invalid num parameters to function:" << name << std::endl;
+        neko_lua_tool_t::function_call_err(name, params);
         lua_pop(L, params);
         return 0;
     }
@@ -1847,9 +2041,9 @@ int lua_function_void_4args(lua_State* L) {
 template <typename R>
 int lua_function_R_0args(lua_State* L) {
     int params = lua_gettop(L);
-    if (params == 0) {
+    if (params != 0) {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        std::cerr << "Invalid num parameters to function:" << name << std::endl;
+        neko_lua_tool_t::function_call_err(name, params);
         lua_pushnil(L);
         return 1;
     }
@@ -1881,7 +2075,7 @@ int lua_function_R_1args(lua_State* L) {
         }
     } else {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        std::cerr << "Invalid num parameters to function:" << name << std::endl;
+        neko_lua_tool_t::function_call_err(name, params);
         lua_pushnil(L);
     }
 
@@ -1911,7 +2105,7 @@ int lua_function_R_2args(lua_State* L) {
         }
     } else {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        std::cerr << "Invalid num parameters to function:" << name << std::endl;
+        neko_lua_tool_t::function_call_err(name, params);
         lua_pop(L, params);
         lua_pushnil(L);
     }
@@ -1944,7 +2138,7 @@ int lua_function_R_3args(lua_State* L) {
         }
     } else {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        std::cerr << "Invalid num parameters to function:" << name << std::endl;
+        neko_lua_tool_t::function_call_err(name, params);
         lua_pop(L, params);
         lua_pushnil(L);
     }
@@ -1979,7 +2173,7 @@ int lua_function_R_4args(lua_State* L) {
         }
     } else {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        std::cerr << "Invalid num parameters to function:" << name << std::endl;
+        neko_lua_tool_t::function_call_err(name, params);
         lua_pop(L, params);
         lua_pushnil(L);
     }
@@ -2216,8 +2410,6 @@ private:
     lua_State* m_L;
 };
 
-class ScriptObject;
-
 struct ScriptObjectEntry {
     ScriptObjectEntry() : prev(0), ptr(0), next(0) {}
     ~ScriptObjectEntry() {}
@@ -2247,65 +2439,65 @@ public:
     virtual void onRemove();
 
 public:
-    void detachPointer(ScriptObjectEntry* entry);
-    ScriptObjectEntry* attachPointer(ScriptObject** ptr);
-    void releasePointers();
+    void detach_pointer(ScriptObjectEntry* entry);
+    ScriptObjectEntry* attach_pointer(ScriptObject** ptr);
+    void release_pointers();
 
 private:
-    ScriptObjectEntry* mScriptObjectPtrLastEntry;
+    ScriptObjectEntry* obj_last_entry;
 };
 
 template <class T>
 class ScriptObjectPtr {
 public:
-    ScriptObjectPtr() : mPointer(NULL), mLinkedListEntry(NULL) {}
+    ScriptObjectPtr() : obj_pointer(NULL), linkedlist_entry(NULL) {}
 
-    ScriptObjectPtr(const ScriptObjectPtr<T>& other) : mPointer(const_cast<T*>(static_cast<const T*>(other.mPointer))), mLinkedListEntry(NULL) {
-        if (mPointer != NULL) mLinkedListEntry = mPointer->attachPointer(&mPointer);
+    ScriptObjectPtr(const ScriptObjectPtr<T>& other) : obj_pointer(const_cast<T*>(static_cast<const T*>(other.obj_pointer))), linkedlist_entry(NULL) {
+        if (obj_pointer != NULL) linkedlist_entry = obj_pointer->attach_pointer(&obj_pointer);
     }
 
-    ScriptObjectPtr(T* ptr) : mPointer(ptr), mLinkedListEntry(NULL) {
-        if (mPointer != NULL) mLinkedListEntry = mPointer->attachPointer(&mPointer);
+    ScriptObjectPtr(T* ptr) : obj_pointer(ptr), linkedlist_entry(NULL) {
+        if (obj_pointer != NULL) linkedlist_entry = obj_pointer->attach_pointer(&obj_pointer);
     }
 
     virtual ~ScriptObjectPtr() {
-        if (mPointer) mPointer->detachPointer(mLinkedListEntry);
+        if (obj_pointer) obj_pointer->detach_pointer(linkedlist_entry);
     }
 
     void set(T* ptr) {
-        if (mPointer != NULL) mPointer->detachPointer(mLinkedListEntry);
-        mPointer = ptr;
-        if (mPointer != NULL) mLinkedListEntry = mPointer->attachPointer(&mPointer);
+        if (obj_pointer != NULL) obj_pointer->detach_pointer(linkedlist_entry);
+        obj_pointer = ptr;
+        if (obj_pointer != NULL) linkedlist_entry = obj_pointer->attach_pointer(&obj_pointer);
     }
 
     T& operator*() {
-        if (mPointer == NULL) return NULL;
+        if (obj_pointer == NULL) return NULL;
 
-        return *static_cast<T*>(mPointer);
+        return *static_cast<T*>(obj_pointer);
     }
 
     const T& operator*() const {
-        if (mPointer == NULL) return NULL;
+        if (obj_pointer == NULL) return NULL;
 
-        return *static_cast<T*>(mPointer);
+        return *static_cast<T*>(obj_pointer);
     }
 
     T* operator->() {
-        if (mPointer == NULL) return NULL;
+        if (obj_pointer == NULL) return NULL;
 
-        return static_cast<T*>(mPointer);
+        return static_cast<T*>(obj_pointer);
     }
 
     const T* operator->() const {
-        if (mPointer == NULL) return NULL;
+        if (obj_pointer == NULL) return NULL;
 
-        return static_cast<T*>(mPointer);
+        return static_cast<T*>(obj_pointer);
     }
 
     T* get() const {
-        if (mPointer == NULL) return NULL;
+        if (obj_pointer == NULL) return NULL;
 
-        return static_cast<T*>(mPointer);
+        return static_cast<T*>(obj_pointer);
     }
 
     ScriptObjectPtr<T>& operator=(T* ptr) {
@@ -2316,7 +2508,7 @@ public:
     ScriptObjectPtr<T>& operator=(ScriptObjectPtr<T>& other) {
         if (&other == this) return *this;
 
-        set(static_cast<T*>(other.mPointer));
+        set(static_cast<T*>(other.obj_pointer));
         return *this;
     }
 
@@ -2328,18 +2520,18 @@ public:
         return *this;
     }
 
-    bool exists() const { return mPointer != NULL; }
+    bool exists() const { return obj_pointer != NULL; }
 
-    bool operator==(const ScriptObjectPtr<T>& other) const { return mPointer == other.mPointer; }
+    bool operator==(const ScriptObjectPtr<T>& other) const { return obj_pointer == other.obj_pointer; }
 
     template <class U>
     bool operator==(const ScriptObjectPtr<U>& other) const {
-        return mPointer == static_cast<const ScriptObject*>(other.mPointer);
+        return obj_pointer == static_cast<const ScriptObject*>(other.obj_pointer);
     }
 
 private:
-    ScriptObject* mPointer;
-    ScriptObjectEntry* mLinkedListEntry;
+    ScriptObject* obj_pointer;
+    ScriptObjectEntry* linkedlist_entry;
 };
 
 //
@@ -2358,13 +2550,13 @@ struct lua_bind {
         return *C::getStaticClassDef();
     }
 
-    static inline void bind(const_str funcName, lua_CFunction function) { lua_register(gLuaState, funcName, function); }
+    static inline void bind(const_str funcName, lua_CFunction function) { lua_register(g_L, funcName, function); }
 
-    static inline void bind(const_str funcName, void (*funcPtr)()) {
-        lua_pushlightuserdata(gLuaState, funcPtr);
-        lua_pushstring(gLuaState, funcName);
-        lua_pushcclosure(gLuaState, &lua_function_void_0args, 2);
-        lua_setglobal(gLuaState, funcName);
+    static inline void bind(const_str funcName, void (*funcPtr)(void)) {
+        lua_pushlightuserdata(g_L, funcPtr);
+        lua_pushstring(g_L, funcName);
+        lua_pushcclosure(g_L, &lua_function_void_0args, 2);
+        lua_setglobal(g_L, funcName);
     }
 
     template <typename P1>
@@ -2408,7 +2600,7 @@ struct lua_bind {
     }
 
     template <typename R>
-    static void bind(const_str funcName, R (*funcPtr)()) {
+    static void bind(const_str funcName, R (*funcPtr)(void)) {
         lua_State* L = getLuaState();
 
         lua_pushlightuserdata(L, funcPtr);
@@ -2516,184 +2708,6 @@ NEKO_INLINE bool neko_lua_equal(lua_State* state, const Iterable& indices) {
     return true;
 }
 
-class neko_lua_tool_t {
-public:
-    static lua_State* create_visited_table() {
-        lua_State* visited = luaL_newstate();
-        lua_newtable(visited);
-        lua_setglobal(visited, "visited");
-        return visited;
-    }
-
-    static void mark_table_as_visited(lua_State* visited, void* table) {
-        lua_getglobal(visited, "visited");
-        lua_pushlightuserdata(visited, table);
-        lua_pushboolean(visited, 1);
-        lua_settable(visited, -3);
-        lua_pop(visited, 1);
-    }
-
-    static int is_table_visited(lua_State* visited, void* table) {
-        int result = 0;
-        lua_getglobal(visited, "visited");
-        lua_pushlightuserdata(visited, table);
-        lua_gettable(visited, -2);
-        if (!lua_isnil(visited, -1)) {
-            result = 1;
-        }
-        lua_pop(visited, 2);
-        return result;
-    }
-
-    static void dump_stack(lua_State* L) {
-        int top = lua_gettop(L);
-        lua_State* visited = create_visited_table();
-
-        for (int i = 1; i <= top; i++) {
-            int t = lua_type(L, i);
-
-            const char* name = get_object_name(L, i);
-            printf("%d: [%s] ", i, name);
-
-            switch (t) {
-                case LUA_TSTRING:
-                    printf("`%s'", lua_tostring(L, i));
-                    break;
-                case LUA_TBOOLEAN:
-                    printf(lua_toboolean(L, i) ? "true" : "false");
-                    break;
-                case LUA_TNUMBER:
-                    printf("`%g`", lua_tonumber(L, i));
-                    break;
-                case LUA_TTABLE:
-                    printf("table {\n");
-                    dump_table(L, i, 1, visited);
-                    printf("}");
-                    break;
-                default:
-                    printf("`%s`", lua_typename(L, t));
-                    break;
-            }
-            printf("\n");
-        }
-        lua_close(visited);
-    }
-
-    static void dump_table(lua_State* L, int index, int depth, lua_State* visited) {
-        // 确保索引是绝对的，以避免 lua_next 改变它
-        index = lua_absindex(L, index);
-
-        // 检查该表是否已经访问过
-        if (is_table_visited(visited, (void*)lua_topointer(L, index))) {
-            for (int i = 0; i < depth; i++) {
-                printf("  ");
-            }
-            printf("[recursive table]\n");
-            return;
-        }
-        // 标记该表为已访问
-        mark_table_as_visited(visited, (void*)lua_topointer(L, index));
-
-        lua_pushnil(L);  // 首个键
-        while (lua_next(L, index) != 0) {
-            // 缩进以反映深度
-            for (int i = 0; i < depth; i++) {
-                printf("  ");
-            }
-
-            // 获取键和值的类型和名称
-            const char* key_name = get_object_name(L, -2);
-            const char* key_type = lua_typename(L, lua_type(L, -2));
-            const char* value_type = lua_typename(L, lua_type(L, -1));
-
-            printf("%s (%s) - %s: ", key_name, key_type, value_type);
-
-            // 打印值
-            switch (lua_type(L, -1)) {
-                case LUA_TSTRING:
-                    printf("`%s'", lua_tostring(L, -1));
-                    break;
-                case LUA_TBOOLEAN:
-                    printf(lua_toboolean(L, -1) ? "true" : "false");
-                    break;
-                case LUA_TNUMBER:
-                    printf("`%g`", lua_tonumber(L, -1));
-                    break;
-                case LUA_TTABLE:
-                    printf("table {\n");
-                    dump_table(L, lua_gettop(L), depth + 1, visited);
-                    for (int i = 0; i < depth; i++) {
-                        printf("  ");
-                    }
-                    printf("}");
-                    break;
-                default:
-                    printf("`%s`", lua_typename(L, lua_type(L, -1)));
-                    break;
-            }
-            printf("\n");
-
-            lua_pop(L, 1);  // 弹出值，保留键以进行下一次迭代
-        }
-    }
-
-    static const char* get_object_name(lua_State* L, int index) {
-        const char* name = NULL;
-
-        // 尝试通过局部变量名获取
-        lua_Debug ar;
-        if (lua_getstack(L, 1, &ar)) {
-            int i = 1;
-            const char* local_name;
-            while ((local_name = lua_getlocal(L, &ar, i++)) != NULL) {
-                if (lua_rawequal(L, index, -1)) {
-                    name = local_name;
-                    lua_pop(L, 1);
-                    break;
-                }
-                lua_pop(L, 1);  // 弹出值
-            }
-        }
-
-        // 尝试通过全局变量名获取
-        if (!name) {
-            lua_pushglobaltable(L);
-            lua_pushnil(L);  // 首个键
-            while (lua_next(L, -2) != 0) {
-                if (lua_rawequal(L, index, -1)) {
-                    name = lua_tostring(L, -2);
-                    lua_pop(L, 2);  // 弹出值和键
-                    break;
-                }
-                lua_pop(L, 1);  // 弹出值，保留键以进行下一次迭代
-            }
-            lua_pop(L, 1);  // 弹出全局表
-        }
-
-        return name ? name : "unknown";
-    }
-
-    static std::string dump_error(lua_State* ls_, const char* fmt, ...) {
-        std::string ret;
-        char buff[4096];
-
-        va_list argp;
-        va_start(argp, fmt);
-#ifndef _WIN32
-        vsnprintf(buff, sizeof(buff), fmt, argp);
-#else
-        vsnprintf_s(buff, sizeof(buff), sizeof(buff), fmt, argp);
-#endif
-        va_end(argp);
-
-        ret = buff;
-        SPRINTF_F(buff, sizeof(buff), " tracback:\n\t%s", lua_tostring(ls_, -1));
-        ret += buff;
-
-        return ret;
-    }
-};
-
 //! 表示void类型，由于void类型不能return，用void_ignore_t适配
 template <typename T>
 struct void_ignore_t;
@@ -2712,21 +2726,6 @@ struct void_ignore_t<void> {
 
 enum STACK_MIN_NUM_e { STACK_MIN_NUM = 20 };
 
-NEKO_STATIC_INLINE size_t lua_mem_usage;
-
-NEKO_INLINE size_t neko_lua_mem_usage() { return lua_mem_usage; }
-
-NEKO_STATIC_INLINE void* Allocf(void* ud, void* ptr, size_t osize, size_t nsize) {
-    if (!ptr) osize = 0;
-    if (!nsize) {
-        lua_mem_usage -= osize;
-        neko_safe_free(ptr);
-        return NULL;
-    }
-    lua_mem_usage += (nsize - osize);
-    return neko_safe_realloc(ptr, nsize);
-}
-
 NEKO_INLINE lua_State* neko_lua_create() {
     lua_State* m_ls = ::lua_newstate(Allocf, NULL);
     ::luaL_openlibs(m_ls);
@@ -2743,7 +2742,7 @@ NEKO_INLINE void neko_lua_fini(lua_State* m_ls) {
         int top = lua_gettop(m_ls);
         if (top != 0) {
             neko_lua_tool_t::dump_stack(m_ls);
-            neko_log_warning("Lua Stack isn't 0 which means that we have a memory leak somewhere");
+            neko_log_warning("[;ua] luastack isn't 0 which means that we have a memory leak somewhere");
         }
         ::lua_close(m_ls);
         m_ls = NULL;
@@ -2754,7 +2753,7 @@ NEKO_STATIC_INLINE void neko_lua_run_string(lua_State* m_ls, const char* str_) {
     if (luaL_dostring(m_ls, str_)) {
         std::string err = neko_lua_tool_t::dump_error(m_ls, "run_string ::lua_pcall_wrap failed str<%s>", str_);
         ::lua_pop(m_ls, 1);
-        //
+        neko_log_error("%s", err.c_str());
     }
 }
 NEKO_STATIC_INLINE void neko_lua_run_string(lua_State* m_ls, const std::string& str_) { neko_lua_run_string(m_ls, str_.c_str()); }
@@ -2777,7 +2776,7 @@ NEKO_INLINE int neko_lua_load_file(lua_State* m_ls, const std::string& file_name
     if (luaL_dofile(m_ls, file_name_.c_str())) {
         std::string err = neko_lua_tool_t::dump_error(m_ls, "cannot load file<%s>", file_name_.c_str());
         ::lua_pop(m_ls, 1);
-        //
+        neko_log_error("%s", err.c_str());
     }
 
     return 0;
@@ -2798,7 +2797,7 @@ NEKO_INLINE bool neko_lua_dofile(lua_State* m_ls, const std::string& file) {
 
     if (status) {
         const char* err = lua_tostring(m_ls, -1);
-        // throw lua_exception_t(std::format("luaL_loadfile ret {}\n{}\n", status, err));
+        neko_log_warning("luaL_loadfile ret %d\n%s\n", status, err);
         lua_pop(m_ls, 1);
         return false;
     }
@@ -2806,7 +2805,7 @@ NEKO_INLINE bool neko_lua_dofile(lua_State* m_ls, const std::string& file) {
     status = neko_lua_pcall_wrap(m_ls, 0, LUA_MULTRET, 0);
     if (status) {
         const char* err = lua_tostring(m_ls, -1);
-        // throw lua_exception_t(std::format("lua_pcall_wrap ret {}\n{}\n", status, err));
+        neko_log_warning("lua_pcall_wrap ret %d\n%s\n", status, err);
         lua_pop(m_ls, 1);
         return false;
     }
@@ -2839,7 +2838,7 @@ NEKO_INLINE void neko_lua_call(lua_State* m_ls, const char* func_name_) {
     if (::neko_lua_pcall_wrap(m_ls, 0, 0, 0) != 0) {
         std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         ::lua_pop(m_ls, 1);
-        //
+        neko_log_error("%s", err.c_str());
     }
 }
 
@@ -2921,13 +2920,14 @@ ret(RET) neko_lua_call(lua_State* m_ls, const char* func_name_) {
     if (neko_lua_pcall_wrap(m_ls, tmpArg + 0, 1, 0) != 0) {
         std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
+        neko_log_error("%s", err.c_str());
     }
 
     if (__lua_op_t<ret(RET)>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
         SPRINTF_F(buff, sizeof(buff), "callfunc [arg0] get_ret_value failed  func_name<%s>", func_name_);
-        throw lua_exception_t(buff);
+        neko_log_error("%s", buff);
     }
 
     lua_pop(m_ls, 1);
@@ -2946,12 +2946,14 @@ ret(RET) neko_lua_call(lua_State* m_ls, const char* func_name_, const ARG1& arg1
     if (neko_lua_pcall_wrap(m_ls, tmpArg + 1, 1, 0) != 0) {
         std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
+        neko_log_error("%s", err.c_str());
     }
 
     if (__lua_op_t<ret(RET)>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
         SPRINTF_F(buff, sizeof(buff), "callfunc [arg1] get_ret_value failed  func_name<%s>", func_name_);
+        neko_log_error("%s", buff);
     }
 
     lua_pop(m_ls, 1);
@@ -2971,13 +2973,14 @@ ret(RET) neko_lua_call(lua_State* m_ls, const char* func_name_, const ARG1& arg1
     if (neko_lua_pcall_wrap(m_ls, tmpArg + 2, 1, 0) != 0) {
         std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
+        neko_log_error("%s", err.c_str());
     }
 
     if (__lua_op_t<ret(RET)>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
         SPRINTF_F(buff, sizeof(buff), "callfunc [arg2] get_ret_value failed  func_name<%s>", func_name_);
-        throw lua_exception_t(buff);
+        neko_log_error("%s", buff);
     }
 
     lua_pop(m_ls, 1);
@@ -2998,13 +3001,14 @@ ret(RET) neko_lua_call(lua_State* m_ls, const char* func_name_, const ARG1& arg1
     if (neko_lua_pcall_wrap(m_ls, tmpArg + 3, 1, 0) != 0) {
         std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
+        neko_log_error("%s", err.c_str());
     }
 
     if (__lua_op_t<ret(RET)>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
         SPRINTF_F(buff, sizeof(buff), "callfunc [arg3] get_ret_value failed  func_name<%s>", func_name_);
-        throw lua_exception_t(buff);
+        neko_log_error("%s", buff);
     }
 
     lua_pop(m_ls, 1);
@@ -3026,13 +3030,14 @@ ret(RET) neko_lua_call(lua_State* m_ls, const char* func_name_, const ARG1& arg1
     if (neko_lua_pcall_wrap(m_ls, tmpArg + 4, 1, 0) != 0) {
         std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
+        neko_log_error("%s", err.c_str());
     }
 
     if (__lua_op_t<ret(RET)>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
         SPRINTF_F(buff, sizeof(buff), "callfunc [arg4] get_ret_value failed  func_name<%s>", func_name_);
-        throw lua_exception_t(buff);
+        neko_log_error("%s", buff);
     }
 
     lua_pop(m_ls, 1);
@@ -3055,13 +3060,14 @@ ret(RET) neko_lua_call(lua_State* m_ls, const char* func_name_, const ARG1& arg1
     if (neko_lua_pcall_wrap(m_ls, tmpArg + 5, 1, 0) != 0) {
         std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
+        neko_log_error("%s", err.c_str());
     }
 
     if (__lua_op_t<ret(RET)>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
         SPRINTF_F(buff, sizeof(buff), "callfunc [arg5] get_ret_value failed  func_name<%s>", func_name_);
-        throw lua_exception_t(buff);
+        neko_log_error("%s", buff);
     }
 
     lua_pop(m_ls, 1);
@@ -3085,13 +3091,14 @@ ret(RET) neko_lua_call(lua_State* m_ls, const char* func_name_, const ARG1& arg1
     if (neko_lua_pcall_wrap(m_ls, tmpArg + 6, 1, 0) != 0) {
         std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
+        neko_log_error("%s", err.c_str());
     }
 
     if (__lua_op_t<ret(RET)>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
         SPRINTF_F(buff, sizeof(buff), "callfunc [arg6] get_ret_value failed  func_name<%s>", func_name_);
-        throw lua_exception_t(buff);
+        neko_log_error("%s", buff);
     }
 
     lua_pop(m_ls, 1);
@@ -3116,13 +3123,14 @@ ret(RET) neko_lua_call(lua_State* m_ls, const char* func_name_, const ARG1& arg1
     if (neko_lua_pcall_wrap(m_ls, tmpArg + 7, 1, 0) != 0) {
         std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
+        neko_log_error("%s", err.c_str());
     }
 
     if (__lua_op_t<ret(RET)>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
         SPRINTF_F(buff, sizeof(buff), "callfunc [arg7] get_ret_value failed  func_name<%s>", func_name_);
-        throw lua_exception_t(buff);
+        neko_log_error("%s", buff);
     }
 
     lua_pop(m_ls, 1);
@@ -3149,13 +3157,14 @@ ret(RET) neko_lua_call(lua_State* m_ls, const char* func_name_, const ARG1& arg1
     if (neko_lua_pcall_wrap(m_ls, tmpArg + 8, 1, 0) != 0) {
         std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
+        neko_log_error("%s", err.c_str());
     }
 
     if (__lua_op_t<ret(RET)>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
         SPRINTF_F(buff, sizeof(buff), "callfunc [arg8] get_ret_value failed  func_name<%s>", func_name_);
-        throw lua_exception_t(buff);
+        neko_log_error("%s", buff);
     }
 
     lua_pop(m_ls, 1);
@@ -3183,13 +3192,14 @@ ret(RET) neko_lua_call(lua_State* m_ls, const char* func_name_, const ARG1& arg1
     if (neko_lua_pcall_wrap(m_ls, tmpArg + 9, 1, 0) != 0) {
         std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
+        neko_log_error("%s", err.c_str());
     }
 
     if (__lua_op_t<ret(RET)>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
         SPRINTF_F(buff, sizeof(buff), "callfunc [arg9] get_ret_value failed func_name<%s>", func_name_);
-        throw lua_exception_t(buff);
+        neko_log_error("%s", buff);
     }
 
     lua_pop(m_ls, 1);

@@ -556,7 +556,7 @@ NEKO_API_DECL neko_vec2 neko_platform_touch_positionv(u32 idx);
 NEKO_API_DECL void neko_platform_touch_position(u32 idx, f32 *x, f32 *y);
 
 // Platform Events
-NEKO_API_DECL bool neko_platform_poll_events(neko_platform_event_t *evt, bool32_t consume);
+NEKO_API_DECL bool neko_platform_poll_events(neko_platform_event_t *evt, b32 consume);
 NEKO_API_DECL void neko_platform_add_event(neko_platform_event_t *evt);
 
 // Platform Window
@@ -622,7 +622,7 @@ NEKO_API_DECL void neko_platform_process_input(neko_platform_input_t *input);
 NEKO_API_DECL u32 neko_platform_key_to_codepoint(neko_platform_keycode code);
 NEKO_API_DECL neko_platform_keycode neko_platform_codepoint_to_key(u32 code);
 NEKO_API_DECL void neko_platform_mouse_set_position(u32 handle, f32 x, f32 y);
-NEKO_API_DECL void neko_platform_lock_mouse(u32 handle, bool32_t lock);
+NEKO_API_DECL void neko_platform_lock_mouse(u32 handle, b32 lock);
 
 NEKO_API_DECL neko_platform_window_t neko_platform_window_create_internal(const neko_platform_running_desc_t *desc);
 NEKO_API_DECL void neko_platform_window_swap_buffer(u32 handle);
@@ -630,13 +630,13 @@ NEKO_API_DECL neko_vec2 neko_platform_window_sizev(u32 handle);
 NEKO_API_DECL void neko_platform_window_size(u32 handle, u32 *width, u32 *height);
 NEKO_API_DECL u32 neko_platform_window_width(u32 handle);
 NEKO_API_DECL u32 neko_platform_window_height(u32 handle);
-NEKO_API_DECL bool32_t neko_platform_window_fullscreen(u32 handle);
+NEKO_API_DECL b32 neko_platform_window_fullscreen(u32 handle);
 NEKO_API_DECL neko_vec2 neko_platform_window_positionv(u32 handle);
 NEKO_API_DECL void neko_platform_window_position(u32 handle, u32 *x, u32 *y);
 NEKO_API_DECL void neko_platform_set_window_title(u32 handle, const_str title);
 NEKO_API_DECL void neko_platform_set_window_size(u32 handle, u32 width, u32 height);
 NEKO_API_DECL void neko_platform_set_window_sizev(u32 handle, neko_vec2 v);
-NEKO_API_DECL void neko_platform_set_window_fullscreen(u32 handle, bool32_t fullscreen);
+NEKO_API_DECL void neko_platform_set_window_fullscreen(u32 handle, b32 fullscreen);
 NEKO_API_DECL void neko_platform_set_window_position(u32 handle, u32 x, u32 y);
 NEKO_API_DECL void neko_platform_set_window_positionv(u32 handle, neko_vec2 v);
 NEKO_API_DECL void neko_platform_set_cursor(u32 handle, neko_platform_cursor cursor);
@@ -658,12 +658,12 @@ NEKO_API_DECL void neko_platform_set_character_callback(u32 handle, neko_charact
 
 NEKO_API_DECL void *neko_platform_hwnd();
 NEKO_API_DECL neko_memory_info_t neko_platform_memory_info();
-NEKO_API_DECL neko_vec2 neko_platform_opengl_ver();
+NEKO_API_DECL neko_vec2 neko_platform_gl_version();
 NEKO_API_DECL void neko_platform_msgbox(const_str msg);
 
 // Platform Internal
 NEKO_API_DECL void __neko_initialize_symbol_handler();
-NEKO_API_DECL const_str __neko_inter_stacktrace();
+NEKO_API_DECL const_str __neko_platform_stacktrace();
 NEKO_API_DECL bool __neko_platform_is_wine();
 
 /*============================================================
