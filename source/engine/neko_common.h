@@ -5,8 +5,8 @@
 
 #include "neko.h"
 
-NEKO_API_DECL unsigned char* neko_base64_encode(unsigned char* str);
-NEKO_API_DECL unsigned char* neko_base64_decode(unsigned char* code);
+NEKO_API_DECL const char* neko_base64_encode(const char* str);
+NEKO_API_DECL const char* neko_base64_decode(const char* code);
 
 #ifndef NEKO_SEXPR
 #define NEKO_SEXPR

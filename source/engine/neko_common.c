@@ -7,9 +7,9 @@
 // Base64
 // https://blog.csdn.net/qq_26093511/article/details/78836087
 
-unsigned char* neko_base64_encode(unsigned char* str) {
+const char* neko_base64_encode(const char* str) {
     long len, str_len;
-    unsigned char* res;
+    char* res;
     int i, j;
     // 定义base64编码表
     unsigned char* base64_table = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -21,7 +21,7 @@ unsigned char* neko_base64_encode(unsigned char* str) {
     else
         len = (str_len / 3 + 1) * 4;
 
-    res = neko_safe_malloc(sizeof(unsigned char) * len + 1);
+    res = neko_safe_malloc(sizeof(char) * len + 1);
     res[len] = '\0';
 
     // 以3个8位字符为一组进行编码
@@ -45,14 +45,14 @@ unsigned char* neko_base64_encode(unsigned char* str) {
     return res;
 }
 
-unsigned char* neko_base64_decode(unsigned char* code) {
+const char* neko_base64_decode(const char* code) {
     // 根据base64表，以字符找到对应的十进制数据
     int table[] = {0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
                    0,  0,  62, 0,  0,  0,  63, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 0,  0,  0,  0,  0,  0,  0,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16,
                    17, 18, 19, 20, 21, 22, 23, 24, 25, 0,  0,  0,  0,  0,  0,  26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51};
 
     long len, str_len;
-    unsigned char* res;
+    char* res;
     int i, j;
 
     // 计算解码后的字符串长度
@@ -65,7 +65,7 @@ unsigned char* neko_base64_decode(unsigned char* code) {
     else
         str_len = len / 4 * 3;
 
-    res = neko_safe_malloc(sizeof(unsigned char) * str_len + 1);
+    res = neko_safe_malloc(sizeof(char) * str_len + 1);
     res[str_len] = '\0';
 
     // 以4个字符为一位进行解码

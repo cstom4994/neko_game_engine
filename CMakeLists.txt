@@ -25,13 +25,7 @@ if (MSVC)
 
     set(neko_engine_lib ${glfw_lib} ${ffi_lib})
     include_directories(
-            # "source/deps/box2d/"
-            "source/deps/box2c/include/"
-            "source/deps/glad/include/"
-            "source/deps/glfw/include/"
             "source/deps/libffi/include/"
-            "source/deps/enet/include/"
-            "source/deps/flecs/include/"
     )
 else ()
     find_package(OpenGL REQUIRED)
@@ -41,6 +35,11 @@ else ()
 endif ()
 
 include_directories("source/")
+
+include_directories(
+    "source/deps/glad/include/"
+    "source/deps/glfw/include/"
+)
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_definitions(-DDEBUG -D_DEBUG)
@@ -150,74 +149,11 @@ if (MSVC)
     endforeach ()
 endif (MSVC)
 
-set(box2c_src
-        source/deps/box2c/src/aabb.c
-        source/deps/box2c/src/aabb.h
-        source/deps/box2c/src/allocate.c
-        source/deps/box2c/src/allocate.h
-        source/deps/box2c/src/array.c
-        source/deps/box2c/src/array.h
-        source/deps/box2c/src/bitset.c
-        source/deps/box2c/src/bitset.h
-        source/deps/box2c/src/block_allocator.c
-        source/deps/box2c/src/block_allocator.h
-        source/deps/box2c/src/block_array.c
-        source/deps/box2c/src/block_array.h
-        source/deps/box2c/src/body.c
-        source/deps/box2c/src/body.h
-        source/deps/box2c/src/broad_phase.c
-        source/deps/box2c/src/broad_phase.h
-        source/deps/box2c/src/constraint_graph.c
-        source/deps/box2c/src/constraint_graph.h
-        source/deps/box2c/src/contact.c
-        source/deps/box2c/src/contact.h
-        source/deps/box2c/src/contact_solver.c
-        source/deps/box2c/src/contact_solver.h
-        source/deps/box2c/src/core.c
-        source/deps/box2c/src/core.h
-        source/deps/box2c/src/ctz.h
-        source/deps/box2c/src/distance.c
-        source/deps/box2c/src/distance_joint.c
-        source/deps/box2c/src/dynamic_tree.c
-        source/deps/box2c/src/geometry.c
-        source/deps/box2c/src/hull.c
-        source/deps/box2c/src/id_pool.c
-        source/deps/box2c/src/id_pool.h
-        source/deps/box2c/src/island.c
-        source/deps/box2c/src/island.h
-        source/deps/box2c/src/joint.c
-        source/deps/box2c/src/joint.h
-        source/deps/box2c/src/manifold.c
-        source/deps/box2c/src/math_functions.c
-        source/deps/box2c/src/motor_joint.c
-        source/deps/box2c/src/mouse_joint.c
-        source/deps/box2c/src/prismatic_joint.c
-        source/deps/box2c/src/revolute_joint.c
-        source/deps/box2c/src/shape.c
-        source/deps/box2c/src/shape.h
-        source/deps/box2c/src/solver.c
-        source/deps/box2c/src/solver.h
-        source/deps/box2c/src/solver_set.c
-        source/deps/box2c/src/solver_set.h
-        source/deps/box2c/src/stack_allocator.c
-        source/deps/box2c/src/stack_allocator.h
-        source/deps/box2c/src/table.c
-        source/deps/box2c/src/table.h
-        source/deps/box2c/src/timer.c
-        source/deps/box2c/src/types.c
-        source/deps/box2c/src/util.h
-        source/deps/box2c/src/weld_joint.c
-        source/deps/box2c/src/wheel_joint.c
-        source/deps/box2c/src/world.c
-        source/deps/box2c/src/world.h
-)
-
 file(GLOB_RECURSE neko_engine_src CONFIGURE_DEPENDS "source/engine/**.*")
 file(GLOB_RECURSE neko_sandbox_src CONFIGURE_DEPENDS "source/sandbox/**.*")
 
 set(neko_engine_src_all
         ${neko_engine_src}
-        ${box2c_src}
         "source/deps/impl_build.cpp"
 )
 

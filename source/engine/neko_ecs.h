@@ -175,7 +175,7 @@ void ecs_inspect(neko_ecs_t *registry);
 #define MAX_ENTITY_COUNT 100
 
 // 测试 ECS 用
-typedef struct {
+typedef struct CGameObjectTest {
     char name[64];
     bool active;
     bool visible;

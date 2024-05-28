@@ -40,24 +40,28 @@
 
 #define ECS_OFFSET(p, offset) ((void *)(((char *)(p)) + (offset)))
 
+#define ECS_ARCHETYPE_INITIAL_CAPACITY 64
+
 static inline void *ecs_malloc(size_t bytes) {
-    void *mem = malloc(bytes);
+    void *mem = neko_safe_malloc(bytes);
     ECS_ENSURE(mem != NULL, OUT_OF_MEMORY);
     return mem;
 }
 
 static inline void *ecs_calloc(size_t items, size_t bytes) {
-    void *mem = calloc(items, bytes);
+    void *mem = neko_safe_calloc(items, bytes);
     ECS_ENSURE(mem != NULL, OUT_OF_MEMORY);
     return mem;
 }
 
 static inline void ecs_realloc(void **mem, size_t bytes) {
-    *mem = realloc(*mem, bytes);
+    *mem = neko_safe_realloc(*mem, bytes);
     if (bytes != 0) {
         ECS_ENSURE(*mem != NULL, OUT_OF_MEMORY);
     }
 }
+
+static inline void ecs_free(void *mem) { neko_safe_free(mem); }
 
 #define MAP_LOAD_FACTOR 0.5
 #define MAP_COLLISION_THRESHOLD 30
@@ -882,12 +886,41 @@ int __neko_ecs_create_world(lua_State *L) {
 
 static int __neko_ecs_lua_create_ent(lua_State *L) {
     struct neko_ecs_t *w = (struct neko_ecs_t *)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
-
     ecs_entity_t e = ecs_entity(w);
-
     lua_pushinteger(L, e);
-
     return 1;
+}
+
+const ecs_entity_t __neko_ecs_lua_component_id_w(lua_State *L, const_str component_name) {
+    lua_getfield(L, LUA_REGISTRYINDEX, "__NEKO_ECS_CORE");  // # -5
+    lua_getiuservalue(L, -1, NEKO_ECS_COMPONENTS_NAME);     // # -4
+    lua_getfield(L, -1, "comp_map");                        // # -3
+    lua_pushinteger(L, neko_hash_str(component_name));      // 使用 32 位哈希以适应 Lua 数字范围
+    lua_gettable(L, -2);                                    // # -2
+    lua_getfield(L, -1, "id");                              // # -1
+    const ecs_entity_t c = lua_tointeger(L, -1);
+    lua_pop(L, 5);
+    return c;
+}
+
+static int __neko_ecs_lua_attach(lua_State *L) {
+    int n = lua_gettop(L);
+    luaL_argcheck(L, n >= 3, 1, "lost the component name");
+
+    struct neko_ecs_t *w = (struct neko_ecs_t *)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+    ecs_entity_t e = luaL_checkinteger(L, 2);
+
+    for (int i = 3; i <= n; i++) {
+        if (lua_isstring(L, i)) {
+            const_str component_name = lua_tostring(L, i);
+            const ecs_entity_t c = __neko_ecs_lua_component_id_w(L, component_name);
+            ecs_attach(w, e, c);
+        } else {
+            neko_log_warning("argument %d is not a string", i);
+        }
+    }
+
+    return 0;
 }
 
 static int __neko_ecs_lua_get_com(lua_State *L) {
@@ -921,10 +954,10 @@ ecs_map_t *ecs_map_new(size_t key_size, size_t item_size, ecs_hash_fn hash_fn, e
 }
 
 void ecs_map_free(ecs_map_t *map) {
-    free(map->sparse);
-    free(map->reverse_lookup);
-    free(map->dense);
-    free(map);
+    ecs_free(map->sparse);
+    ecs_free(map->reverse_lookup);
+    ecs_free(map->dense);
+    ecs_free(map);
 }
 
 static inline u32 next_pow_of_2(u32 n) {
@@ -963,7 +996,7 @@ void *ecs_map_get(const ecs_map_t *map, const void *key) {
 static void ecs_map_grow(ecs_map_t *map, float growth_factor) {
     u32 new_capacity = map->load_capacity * growth_factor;
     ecs_bucket_t *new_sparse = ecs_calloc(sizeof(ecs_bucket_t), new_capacity);
-    free(map->reverse_lookup);
+    ecs_free(map->reverse_lookup);
     map->reverse_lookup = ecs_malloc(sizeof(u32) * (new_capacity * MAP_LOAD_FACTOR + 1));
     ecs_realloc(&map->dense, map->item_size * (new_capacity * MAP_LOAD_FACTOR + 1));
 
@@ -986,7 +1019,7 @@ static void ecs_map_grow(ecs_map_t *map, float growth_factor) {
         }
     }
 
-    free(map->sparse);
+    ecs_free(map->sparse);
     map->sparse = new_sparse;
     map->load_capacity = new_capacity;
 }
@@ -1150,8 +1183,8 @@ ecs_type_t *ecs_type_new(u32 capacity) {
 }
 
 void ecs_type_free(ecs_type_t *type) {
-    free(type->elements);
-    free(type);
+    ecs_free(type->elements);
+    ecs_free(type);
 }
 
 ecs_type_t *ecs_type_copy(const ecs_type_t *from) {
@@ -1307,7 +1340,7 @@ ecs_signature_t *ecs_signature_new_n(u32 count, ...) {
     return sig;
 }
 
-void ecs_signature_free(ecs_signature_t *sig) { free(sig); }
+void ecs_signature_free(ecs_signature_t *sig) { ecs_free(sig); }
 
 ecs_type_t *ecs_signature_as_type(const ecs_signature_t *sig) {
     ecs_type_t *type = ecs_type_new(sig->count);
@@ -1328,8 +1361,8 @@ ecs_edge_list_t *ecs_edge_list_new(void) {
 }
 
 void ecs_edge_list_free(ecs_edge_list_t *edge_list) {
-    free(edge_list->edges);
-    free(edge_list);
+    ecs_free(edge_list->edges);
+    ecs_free(edge_list);
 }
 
 u32 ecs_edge_list_len(const ecs_edge_list_t *edge_list) { return edge_list->count; }
@@ -1360,8 +1393,6 @@ void ecs_edge_list_remove(ecs_edge_list_t *edge_list, ecs_entity_t component) {
     edges[edge_list->count--] = tmp;
 }
 
-#define ARCHETYPE_INITIAL_CAPACITY 16
-
 static void ecs_archetype_resize_component_array(ecs_archetype_t *archetype, const ecs_map_t *component_index, u32 capacity) {
     u32 i = 0;
     ECS_TYPE_EACH(archetype->type, e, {
@@ -1378,15 +1409,15 @@ ecs_archetype_t *ecs_archetype_new(ecs_type_t *type, const ecs_map_t *component_
 
     ecs_archetype_t *archetype = ecs_malloc(sizeof(ecs_archetype_t));
 
-    archetype->capacity = ARCHETYPE_INITIAL_CAPACITY;
+    archetype->capacity = ECS_ARCHETYPE_INITIAL_CAPACITY;
     archetype->count = 0;
     archetype->type = type;
-    archetype->entity_ids = ecs_malloc(sizeof(ecs_entity_t) * ARCHETYPE_INITIAL_CAPACITY);
+    archetype->entity_ids = ecs_malloc(sizeof(ecs_entity_t) * ECS_ARCHETYPE_INITIAL_CAPACITY);
     archetype->components = ecs_calloc(sizeof(void *), ecs_type_len(type));
     archetype->left_edges = ecs_edge_list_new();
     archetype->right_edges = ecs_edge_list_new();
 
-    ecs_archetype_resize_component_array(archetype, component_index, ARCHETYPE_INITIAL_CAPACITY);
+    ecs_archetype_resize_component_array(archetype, component_index, ECS_ARCHETYPE_INITIAL_CAPACITY);
     ecs_map_set(type_index, type, &archetype);
 
     return archetype;
@@ -1395,15 +1426,15 @@ ecs_archetype_t *ecs_archetype_new(ecs_type_t *type, const ecs_map_t *component_
 void ecs_archetype_free(ecs_archetype_t *archetype) {
     u32 component_count = ecs_type_len(archetype->type);
     for (u32 i = 0; i < component_count; i++) {
-        free(archetype->components[i]);
+        ecs_free(archetype->components[i]);
     }
-    free(archetype->components);
+    ecs_free(archetype->components);
 
     ecs_type_free(archetype->type);
     ecs_edge_list_free(archetype->left_edges);
     ecs_edge_list_free(archetype->right_edges);
-    free(archetype->entity_ids);
-    free(archetype);
+    ecs_free(archetype->entity_ids);
+    ecs_free(archetype);
 }
 
 u32 ecs_archetype_add(ecs_archetype_t *archetype, const ecs_map_t *component_index, ecs_map_t *entity_index, ecs_entity_t e) {
@@ -1597,16 +1628,14 @@ neko_ecs_t *ecs_init(lua_State *L) {
     neko_ecs_t *registry = (neko_ecs_t *)lua_newuserdatauv(L, sizeof(neko_ecs_t), NEKO_ECS_UPVAL_N);  // # -1
     registry = ecs_init_i(registry);
     if (registry == NULL) {
-        // return luaL_error(L, "Failed to initialize neko_ecs_t");
+        neko_log_error("%s", "failed to initialize neko_ecs_t");
+        return NULL;
     }
     registry->L = L;
 
     if (luaL_getmetatable(L, ECS_WORLD_UDATA_NAME) == LUA_TNIL) {  // # -2
         luaL_Reg world_mt[] = {
-                {"__gc", __neko_ecs_lua_gc},
-                {"create_ent", __neko_ecs_lua_create_ent},
-                {"get_com", __neko_ecs_lua_get_com},
-                {NULL, NULL},
+                {"__gc", __neko_ecs_lua_gc}, {"create_ent", __neko_ecs_lua_create_ent}, {"attach", __neko_ecs_lua_attach}, {"get_com", __neko_ecs_lua_get_com}, {NULL, NULL},
         };
         lua_pop(L, 1);                  // # pop -2
         luaL_newlibtable(L, world_mt);  // # -2
@@ -1622,10 +1651,17 @@ neko_ecs_t *ecs_init(lua_State *L) {
 
     // lua_newtable(L);  // components name 表
     // lua_setfield(L, LUA_REGISTRYINDEX, MY_TABLE_KEY);
-    lua_createtable(L, ENTITY_MAX_COMPONENTS, 0);
+    //
+    // lua_setiuservalue(L, -2, NEKO_ECS_COMPONENTS_NAME);
+
+    lua_newtable(L);
+    lua_pushstring(L, "comp_map");
+    lua_createtable(L, 0, ENTITY_MAX_COMPONENTS);
+    lua_settable(L, -3);
     lua_setiuservalue(L, -2, NEKO_ECS_COMPONENTS_NAME);
 
-    lua_pushstring(L, "test_lit");
+    const_str s = "Is man one of God's blunders? Or is God one of man's blunders?";
+    lua_pushstring(L, s);
     lua_setiuservalue(L, -2, NEKO_ECS_UPVAL_N);
 
     // lua_pushvalue(L, -1);
@@ -1669,11 +1705,25 @@ ecs_entity_t ecs_component_w(neko_ecs_t *registry, const_str component_name, siz
 
     lua_getiuservalue(L, -1, NEKO_ECS_COMPONENTS_NAME);
     if (lua_istable(L, -1)) {
-        lua_pushstring(L, component_name);  // 压入值
-        lua_rawseti(L, -2, id);             // 设置表中的数组元素，索引从 1 开始
+        lua_getfield(L, -1, "comp_map");
+        if (lua_istable(L, -1)) {
+            lua_pushinteger(L, neko_hash_str(component_name));  // 使用 32 位哈希以适应 Lua 数字范围
+
+            lua_createtable(L, 0, 2);
+            lua_pushinteger(L, id);
+            lua_setfield(L, -2, "id");
+            lua_pushstring(L, component_name);
+            lua_setfield(L, -2, "name");
+
+            lua_settable(L, -3);
+            lua_pop(L, 1);
+        } else {
+            neko_log_error("%s", "failed to get comp_map");
+            lua_pop(L, 1);
+        }
         lua_pop(L, 1);
     } else {
-        printf("Error: Failed to get first user value\n");
+        neko_log_error("%s", "failed to get upvalue NEKO_ECS_COMPONENTS_NAME");
         lua_pop(L, 1);
     }
     lua_pop(L, 1);  // pop 1

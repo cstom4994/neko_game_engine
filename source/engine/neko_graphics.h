@@ -2416,11 +2416,11 @@ NEKO_API_DECL s32 neko_ui_gizmo(neko_ui_context_t* ctx, neko_camera_t* camera, n
 #ifndef NEKO_BATCH
 #define NEKO_BATCH
 
-typedef struct spritebatch_t spritebatch_t;
-typedef struct spritebatch_config_t spritebatch_config_t;
-typedef struct spritebatch_sprite_t spritebatch_sprite_t;
+typedef struct neko_spritebatch_t neko_spritebatch_t;
+typedef struct neko_spritebatch_config_t neko_spritebatch_config_t;
+typedef struct neko_spritebatch_sprite_t neko_spritebatch_sprite_t;
 
-struct spritebatch_sprite_t {
+struct neko_spritebatch_sprite_t {
 
     u64 image_id;
 
@@ -2440,28 +2440,29 @@ struct spritebatch_sprite_t {
 #endif
 };
 
-NEKO_API_DECL int spritebatch_push(spritebatch_t* sb, spritebatch_sprite_t sprite);
-NEKO_API_DECL void spritebatch_prefetch(spritebatch_t* sb, u64 image_id, int w, int h);
-NEKO_API_DECL struct spritebatch_sprite_t spritebatch_fetch(spritebatch_t* sb, u64 image_id, int w, int h);
-NEKO_API_DECL void spritebatch_tick(spritebatch_t* sb);
-NEKO_API_DECL int spritebatch_flush(spritebatch_t* sb);
-NEKO_API_DECL int spritebatch_defrag(spritebatch_t* sb);
-NEKO_API_DECL int spritebatch_init(spritebatch_t* sb, spritebatch_config_t* config, void* udata);
-NEKO_API_DECL void spritebatch_term(spritebatch_t* sb);
-NEKO_API_DECL void spritebatch_register_premade_atlas(spritebatch_t* sb, u64 image_id, int w, int h);
-NEKO_API_DECL void spritebatch_cleanup_premade_atlas(spritebatch_t* sb, u64 image_id);
+NEKO_API_DECL int neko_spritebatch_push(neko_spritebatch_t* sb, neko_spritebatch_sprite_t sprite);
+NEKO_API_DECL void neko_spritebatch_prefetch(neko_spritebatch_t* sb, u64 image_id, int w, int h);
+NEKO_API_DECL struct neko_spritebatch_sprite_t neko_spritebatch_fetch(neko_spritebatch_t* sb, u64 image_id, int w, int h);
+NEKO_API_DECL void neko_spritebatch_tick(neko_spritebatch_t* sb);
+NEKO_API_DECL int neko_spritebatch_flush(neko_spritebatch_t* sb);
+NEKO_API_DECL int neko_spritebatch_defrag(neko_spritebatch_t* sb);
+NEKO_API_DECL int neko_spritebatch_init(neko_spritebatch_t* sb, neko_spritebatch_config_t* config, void* udata);
+NEKO_API_DECL void neko_spritebatch_term(neko_spritebatch_t* sb);
+NEKO_API_DECL void neko_spritebatch_register_premade_atlas(neko_spritebatch_t* sb, u64 image_id, int w, int h);
+NEKO_API_DECL void neko_spritebatch_cleanup_premade_atlas(neko_spritebatch_t* sb, u64 image_id);
 
-typedef void(submit_batch_fn)(spritebatch_sprite_t* sprites, int count, int texture_w, int texture_h, void* udata);
+typedef void(submit_batch_fn)(neko_spritebatch_sprite_t* sprites, int count, int texture_w, int texture_h, void* udata);
 typedef void(get_pixels_fn)(u64 image_id, void* buffer, int bytes_to_fill, void* udata);
 typedef u64(generate_texture_handle_fn)(void* pixels, int w, int h, void* udata);
 typedef void(destroy_texture_handle_fn)(u64 texture_id, void* udata);
-typedef void(sprites_sorter_fn)(spritebatch_sprite_t* sprites, int count);
+typedef void(sprites_sorter_fn)(neko_spritebatch_sprite_t* sprites, int count);
 
-NEKO_API_DECL void spritebatch_reset_function_ptrs(spritebatch_t* sb, submit_batch_fn* batch_callback, get_pixels_fn* get_pixels_callback, generate_texture_handle_fn* generate_texture_callback,
-                                                   destroy_texture_handle_fn* delete_texture_callback, sprites_sorter_fn* sprites_sorter_callback);
-NEKO_API_DECL void spritebatch_set_default_config(spritebatch_config_t* config);
+NEKO_API_DECL void neko_spritebatch_reset_function_ptrs(neko_spritebatch_t* sb, submit_batch_fn* batch_callback, get_pixels_fn* get_pixels_callback,
+                                                        generate_texture_handle_fn* generate_texture_callback, destroy_texture_handle_fn* delete_texture_callback,
+                                                        sprites_sorter_fn* sprites_sorter_callback);
+NEKO_API_DECL void neko_spritebatch_set_default_config(neko_spritebatch_config_t* config);
 
-struct spritebatch_config_t {
+struct neko_spritebatch_config_t {
     int pixel_stride;
     int atlas_width_in_pixels;
     int atlas_height_in_pixels;
@@ -2493,7 +2494,7 @@ typedef struct {
 #ifdef SPRITEBATCH_SPRITE_USERDATA
     SPRITEBATCH_SPRITE_USERDATA udata;
 #endif
-} spritebatch_internal_sprite_t;
+} neko_spritebatch_internal_sprite_t;
 
 typedef struct {
     int timestamp;
@@ -2501,39 +2502,39 @@ typedef struct {
     float minx, miny;
     float maxx, maxy;
     u64 image_id;
-} spritebatch_internal_texture_t;
+} neko_spritebatch_internal_texture_t;
 
-typedef struct spritebatch_internal_atlas_t {
+typedef struct neko_spritebatch_internal_atlas_t {
     u64 texture_id;
     float volume_ratio;
     hashtable_t sprites_to_textures;
-    struct spritebatch_internal_atlas_t* next;
-    struct spritebatch_internal_atlas_t* prev;
-} spritebatch_internal_atlas_t;
+    struct neko_spritebatch_internal_atlas_t* next;
+    struct neko_spritebatch_internal_atlas_t* prev;
+} neko_spritebatch_internal_atlas_t;
 
 typedef struct {
     int timestamp;
     int w, h;
     u64 image_id;
     u64 texture_id;
-} spritebatch_internal_lonely_texture_t;
+} neko_spritebatch_internal_lonely_texture_t;
 
 typedef struct {
     int w, h;
     int mark_for_cleanup;
     u64 image_id;
     u64 texture_id;
-} spritebatch_internal_premade_atlas;
+} neko_spritebatch_internal_premade_atlas;
 
-struct spritebatch_t {
+struct neko_spritebatch_t {
     int input_count;
     int input_capacity;
-    spritebatch_internal_sprite_t* input_buffer;
+    neko_spritebatch_internal_sprite_t* input_buffer;
 
     int sprite_count;
     int sprite_capacity;
-    spritebatch_sprite_t* sprites;
-    spritebatch_sprite_t* sprites_scratch;
+    neko_spritebatch_sprite_t* sprites;
+    neko_spritebatch_sprite_t* sprites_scratch;
 
     int key_buffer_count;
     int key_buffer_capacity;
@@ -2546,7 +2547,7 @@ struct spritebatch_t {
     hashtable_t sprites_to_lonely_textures;
     hashtable_t sprites_to_atlases;
 
-    spritebatch_internal_atlas_t* atlases;
+    neko_spritebatch_internal_atlas_t* atlases;
 
     int pixel_stride;
     int atlas_width_in_pixels;

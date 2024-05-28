@@ -422,7 +422,7 @@ template <>
 struct neko_prop_counter<0> {
     static constexpr auto num = 0;
 };
-[[maybe_unused]] inline static neko_prop_counter<0> numProps(neko_prop_counter<0>);
+[[maybe_unused]] static inline neko_prop_counter<0> numProps(neko_prop_counter<0>);
 
 template <int N>
 struct neko_prop_index {
@@ -432,7 +432,7 @@ struct neko_prop_index {
 template <typename T, int N>
 struct neko_prop_tag_wrapper {
     struct tag {
-        inline static neko_prop_attribs attribs = T::getPropAttribs(neko_prop_index<N>{});
+        static inline neko_prop_attribs attribs = T::getPropAttribs(neko_prop_index<N>{});
     };
 };
 template <typename T, int N>
@@ -445,7 +445,7 @@ using neko_prop_tag = typename neko_prop_tag_wrapper<T, N>::tag;
 #define neko_prop(type, name_, ...) neko_prop_named(#name_, type, name_, __VA_ARGS__)
 #define neko_prop_named(nameStr, type, name_, ...)                                                                                                                                             \
     using name_##_Index = neko_prop_index<decltype(numProps(neko_prop_counter<maxNumProps>()))::num>;                                                                                          \
-    inline static neko_prop_counter<decltype(numProps(neko_prop_counter<maxNumProps>()))::num + 1> numProps(neko_prop_counter<decltype(numProps(neko_prop_counter<maxNumProps>()))::num + 1>); \
+    static inline neko_prop_counter<decltype(numProps(neko_prop_counter<maxNumProps>()))::num + 1> numProps(neko_prop_counter<decltype(numProps(neko_prop_counter<maxNumProps>()))::num + 1>); \
     static std::type_identity<PROP_PARENS_1(PROP_PARENS_3 type)> propType(name_##_Index);                                                                                                      \
     static constexpr neko_prop_attribs getPropAttribs(name_##_Index) { return {.name = #name_, __VA_ARGS__}; };                                                                                \
     std::type_identity_t<PROP_PARENS_1(PROP_PARENS_3 type)> name_
@@ -753,7 +753,7 @@ inline hash_value hash(long long int v) { return hash_simple(v); }
 inline hash_value hash(short int v) { return hash_simple(v); }
 inline hash_value hash(double v) { return hash_simple(v); }
 inline hash_value hash(float v) { return hash_simple(v); }
-// inline hash_value hash(long double v) { return hash_simple(v); }
+inline hash_value hash(long double v) { return hash_simple(v); }
 inline hash_value hash(wchar_t v) { return hash_simple(v); }
 constexpr hash_value hash(char const* input) { return hash_fnv(input); }
 constexpr hash_value hash(const std::string& input) { return hash_fnv(input.c_str()); }

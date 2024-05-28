@@ -7,7 +7,6 @@
 
 #include "engine/neko.h"
 #include "engine/neko_asset.h"
-#include "engine/neko_cl.h"
 #include "engine/neko_common.h"
 #include "engine/neko_ecs.h"
 #include "engine/neko_engine.h"
@@ -244,7 +243,7 @@ static int __neko_bind_callback_call(lua_State* L) {
             }
             lua_call(L, nargs, 0);  // 调用
         } else {
-            throw lua_exception_t(std::format("callback with identifier '{}' not found or is not a function.", identifier));
+            // throw lua_exception_t(std::format("callback with identifier '{}' not found or is not a function.", identifier));
         }
 
         // 弹出保存的table
@@ -510,22 +509,18 @@ NEKO_INLINE void neko_register_platform(lua_State* L) {
     neko_lua_auto_enum_value(L, neko_platform_mouse_button_code, NEKO_MOUSE_MBUTTON);
     neko_lua_auto_enum_value(L, neko_platform_mouse_button_code, NEKO_MOUSE_BUTTON_CODE_COUNT);
 
-    neko_lua_register_t<>(L)
-            .def(&__neko_bind_platform_key_pressed, "neko_key_pressed")
-            .def(&__neko_bind_platform_was_key_down, "neko_was_key_down")
-            .def(&__neko_bind_platform_was_mouse_down, "neko_was_mouse_down")
-            .def(&__neko_bind_platform_key_down, "neko_key_down")
-            .def(&__neko_bind_platform_key_released, "neko_key_released")
-            .def(&__neko_bind_platform_mouse_down, "neko_mouse_down")
-            .def(&__neko_bind_platform_mouse_pressed, "neko_mouse_pressed")
-            .def(&__neko_bind_platform_mouse_released, "neko_mouse_released")
-            .def(
-                    +[]() -> bool { return neko_platform_mouse_moved(); }, "neko_mouse_moved")
-            .def(
-                    +[]() -> u32 { return neko_platform_main_window(); }, "neko_main_window")
-            .def(
-                    +[](u32 handle, u32 width, u32 height) { neko_platform_set_window_size(handle, width, height); }, "neko_set_window_size")
-            .def(+[](u32 handle, f64 x, f64 y) { neko_platform_mouse_set_position(handle, x, y); }, "neko_set_mouse_position");
+    neko::lua_bind::bind("neko_key_pressed", &__neko_bind_platform_key_pressed);
+    neko::lua_bind::bind("neko_was_key_down", &__neko_bind_platform_was_key_down);
+    neko::lua_bind::bind("neko_was_mouse_down", &__neko_bind_platform_was_mouse_down);
+    neko::lua_bind::bind("neko_key_down", &__neko_bind_platform_key_down);
+    neko::lua_bind::bind("neko_key_released", &__neko_bind_platform_key_released);
+    neko::lua_bind::bind("neko_mouse_down", &__neko_bind_platform_mouse_down);
+    neko::lua_bind::bind("neko_mouse_pressed", &__neko_bind_platform_mouse_pressed);
+    neko::lua_bind::bind("neko_mouse_released", &__neko_bind_platform_mouse_released);
+    neko::lua_bind::bind("neko_mouse_moved", +[]() -> bool { return neko_platform_mouse_moved(); });
+    neko::lua_bind::bind("neko_main_window", +[]() -> u32 { return neko_platform_main_window(); });
+    neko::lua_bind::bind("neko_set_window_size", +[](u32 handle, u32 width, u32 height) { neko_platform_set_window_size(handle, width, height); });
+    neko::lua_bind::bind("neko_set_mouse_position", +[](u32 handle, f64 x, f64 y) { neko_platform_mouse_set_position(handle, x, y); });
 
     //.def(+[](const_str path) -> std::string { return neko_engine_subsystem(platform)->get_path(path); }, "neko_file_path")
     //.def(+[](const_str title, u32 width, u32 height) -> neko_resource_handle { return neko_engine_subsystem(platform)->create_window(title, width, height); }, "neko_create_window")
@@ -1375,6 +1370,8 @@ static int __neko_bind_aseprite_render(lua_State* L) {
         return luaL_error(L, "Function expects exactly 4 arguments");
     }
 
+    luaL_argcheck(L, lua_gettop(L) == 4, 1, "expects exactly 4 arguments");
+
     neko_aseprite_renderer* user_handle = (neko_aseprite_renderer*)luaL_checkudata(L, 1, "mt_aseprite_renderer");
 
     auto xform = lua2struct::unpack<neko_vec2>(L, 2);
@@ -1741,7 +1738,7 @@ typedef struct {
 
 struct neko_sprite_batch_t {
 
-    spritebatch_t sb;
+    neko_spritebatch_t sb;
 
     neko_graphics_batch_context_t* sprite_batch;
     neko_graphics_batch_shader_t sprite_shader;
@@ -1778,7 +1775,7 @@ static void make_sprite(neko_sprite_batch_t* user_handle, neko_sprite_t* sprite,
 }
 
 static void push_sprite(neko_sprite_batch_t* user_handle, neko_sprite_t* sp) {
-    spritebatch_sprite_t s;
+    neko_spritebatch_sprite_t s;
     s.image_id = sp->image_id;
     s.w = user_handle->images[sp->image_id].w;
     s.h = user_handle->images[sp->image_id].h;
@@ -1789,10 +1786,10 @@ static void push_sprite(neko_sprite_batch_t* user_handle, neko_sprite_t* sp) {
     s.c = sp->c;
     s.s = sp->s;
     s.sort_bits = (u64)sp->depth;
-    spritebatch_push(&user_handle->sb, s);
+    neko_spritebatch_push(&user_handle->sb, s);
 }
 
-static void batch_report(spritebatch_sprite_t* sprites, int count, int texture_w, int texture_h, void* udata) {
+static void batch_report(neko_spritebatch_sprite_t* sprites, int count, int texture_w, int texture_h, void* udata) {
 
     (void)texture_w;
     (void)texture_h;
@@ -1824,7 +1821,7 @@ static void batch_report(spritebatch_sprite_t* sprites, int count, int texture_w
 
     vertex_t* verts = (vertex_t*)call.verts;
     for (int i = 0; i < count; ++i) {
-        spritebatch_sprite_t* s = sprites + i;
+        neko_spritebatch_sprite_t* s = sprites + i;
 
         neko_vec2 quad[] = {
                 {-0.5f, 0.5f},
@@ -1947,8 +1944,8 @@ static int __neko_bind_sprite_batch_create(lua_State* L) {
 
     for (s32 i = 0; i < user_handle->images_count; ++i) user_handle->images[i] = neko_png_load(game_assets(texture_list[i]).c_str());
 
-    spritebatch_config_t sb_config;
-    spritebatch_set_default_config(&sb_config);
+    neko_spritebatch_config_t sb_config;
+    neko_spritebatch_set_default_config(&sb_config);
     sb_config.pixel_stride = sizeof(u8) * 4;
     sb_config.atlas_width_in_pixels = 1024;
     sb_config.atlas_height_in_pixels = 1024;
@@ -1958,12 +1955,12 @@ static int __neko_bind_sprite_batch_create(lua_State* L) {
     sb_config.ratio_to_decay_atlas = 0.5f;
     sb_config.ratio_to_merge_atlases = 0.25f;
 
-    sb_config.batch_callback = batch_report;                        // report batches of sprites from `spritebatch_flush`
-    sb_config.get_pixels_callback = get_pixels;                     // used to retrieve image pixels from `spritebatch_flush` and `spritebatch_defrag`
-    sb_config.generate_texture_callback = generate_texture_handle;  // used to generate a texture handle from `spritebatch_flush` and `spritebatch_defrag`
-    sb_config.delete_texture_callback = destroy_texture_handle;     // used to destroy a texture handle from `spritebatch_defrag`
+    sb_config.batch_callback = batch_report;                        // report batches of sprites from `neko_spritebatch_flush`
+    sb_config.get_pixels_callback = get_pixels;                     // used to retrieve image pixels from `neko_spritebatch_flush` and `neko_spritebatch_defrag`
+    sb_config.generate_texture_callback = generate_texture_handle;  // used to generate a texture handle from `neko_spritebatch_flush` and `neko_spritebatch_defrag`
+    sb_config.delete_texture_callback = destroy_texture_handle;     // used to destroy a texture handle from `neko_spritebatch_defrag`
 
-    spritebatch_init(&user_handle->sb, &sb_config, user_handle);
+    neko_spritebatch_init(&user_handle->sb, &sb_config, user_handle);
 
     return 1;
 }
@@ -2020,9 +2017,9 @@ static int __neko_bind_sprite_batch_render_end(lua_State* L) {
     neko_sprite_batch_t* user_handle = (neko_sprite_batch_t*)lua_touserdata(L, 1);
 
     {
-        spritebatch_defrag(&user_handle->sb);
-        spritebatch_tick(&user_handle->sb);
-        spritebatch_flush(&user_handle->sb);
+        neko_spritebatch_defrag(&user_handle->sb);
+        neko_spritebatch_tick(&user_handle->sb);
+        neko_spritebatch_flush(&user_handle->sb);
         user_handle->sprite_verts_count = 0;
     }
 
@@ -2034,7 +2031,7 @@ static int __neko_bind_sprite_batch_render_end(lua_State* L) {
 static int __neko_bind_sprite_batch_end(lua_State* L) {
     neko_sprite_batch_t* user_handle = (neko_sprite_batch_t*)lua_touserdata(L, 1);
 
-    spritebatch_term(&user_handle->sb);
+    neko_spritebatch_term(&user_handle->sb);
 
     for (s32 i = 0; i < user_handle->images_count; ++i) neko_png_free(user_handle->images + i);
 
@@ -3064,7 +3061,7 @@ static int __neko_bind_graphics_clear(lua_State* L) {
 
 static int l_base64_encode(lua_State* L) {
     const char* input = luaL_checkstring(L, 1);
-    unsigned char* encoded = neko_base64_encode((unsigned char*)input);
+    const char* encoded = neko_base64_encode(input);
     if (encoded) {
         lua_pushstring(L, (const char*)encoded);
         neko_safe_free(encoded);
@@ -3076,7 +3073,7 @@ static int l_base64_encode(lua_State* L) {
 
 static int l_base64_decode(lua_State* L) {
     const char* input = luaL_checkstring(L, 1);
-    unsigned char* decoded = neko_base64_decode((unsigned char*)input);
+    const char* decoded = neko_base64_decode(input);
     if (decoded) {
         lua_pushstring(L, (const char*)decoded);
         neko_safe_free(decoded);
@@ -3092,7 +3089,7 @@ NEKO_INLINE void neko_register_test(lua_State* L) {
     lua_register(L, "__neko_luainspector_draw", neko::luainspector::luainspector_draw);
     lua_register(L, "__neko_luainspector_get", neko::luainspector::luainspector_get);
 
-    neko_lua_register_t<>(L).def(&__neko_bind_tiled_get_objects, "neko_tiled_get_objects");
+    neko::lua_bind::bind("neko_tiled_get_objects", &__neko_bind_tiled_get_objects);
 
     neko_lua_auto_enum(L, neko_projection_type);
     neko_lua_auto_enum_value(L, neko_projection_type, NEKO_PROJECTION_TYPE_ORTHOGRAPHIC);
@@ -3835,21 +3832,19 @@ void registerGlobals(lua_State* L, const neko_luaL_reg* funcs) {
 
 NEKO_INLINE void neko_register_common(lua_State* L) {
 
-    neko_lua_register_t<>(L)
-            .def(&__neko_lua_trace, "log_trace")
-            .def(&__neko_lua_bug, "log_debug")
-            .def(&__neko_lua_error, "log_error")
-            .def(&__neko_lua_warn, "log_warn")
-            .def(&__neko_lua_info, "log_info")
-            .def(&neko_rand_xorshf32, "neko_rand")
-            .def(&__neko_dolua, "neko_dolua");
+    neko::lua_bind::bind("log_trace", &__neko_lua_trace);
+    neko::lua_bind::bind("log_debug", &__neko_lua_bug);
+    neko::lua_bind::bind("log_error", &__neko_lua_error);
+    neko::lua_bind::bind("log_warn", &__neko_lua_warn);
+    neko::lua_bind::bind("log_info", &__neko_lua_info);
+    neko::lua_bind::bind("neko_rand", &neko_rand_xorshf32);
+    neko::lua_bind::bind("neko_dolua", &__neko_dolua);
 
-    neko_lua_register_t<>(L)
-            .def(
-                    +[](const_str str) { return neko_hash_str64(str); }, "neko_hash")
-            .def(
-                    +[](int op) { return neko_quit(); }, "__neko_quit")
-            .def(+[]() { return neko_platform_elapsed_time(); }, "neko_platform_elapsed_time");
+    neko::lua_bind::bind("neko_hash_str", +[](const_str str) { return neko_hash_str(str); });
+    neko::lua_bind::bind("neko_hash_str64", +[](const_str str) { return neko_hash_str64(str); });
+    neko::lua_bind::bind("__neko_quit", +[](int op) { return neko_quit(); });
+    neko::lua_bind::bind("neko_platform_elapsed_time", +[]() { return neko_platform_elapsed_time(); });
+    ;
 
     lua_pushstring(L, game_assets("gamedir").c_str());
     lua_setglobal(L, "neko_game_data_path");
@@ -3874,7 +3869,7 @@ NEKO_INLINE void neko_register_common(lua_State* L) {
     neko_lua_auto_enum_value(L, neko_cvar_type, __NEKO_CONFIG_TYPE_STRING);
     neko_lua_auto_enum_value(L, neko_cvar_type, __NEKO_CONFIG_TYPE_COUNT);
 
-    lua_register(L, "neko_ls", __neko_ls);
+    lua_register(L, "__neko_ls", __neko_ls);
 }
 
 int register_mt_hooks(lua_State* L) {
@@ -4076,7 +4071,7 @@ static int __neko_loader(lua_State* L) {
         if (luaL_loadbuffer(L, (char*)data, data_size, name) != LUA_OK) {
             lua_pop(L, 1);
         } else {
-            // neko_println("loaded:%s", path.c_str());
+            neko_println("loaded:%s", path.c_str());
         }
 
         neko_pack_item_free(&CL_GAME_USERDATA()->pack, data);
@@ -4116,7 +4111,8 @@ void neko_register(lua_State* L) {
         mt_funcs[i](L);
     }
 
-    luaL_requiref(L, "neko", open_neko, 1);
+    // luaL_requiref(L, "neko", open_neko, 1);
+    PRELOAD("neko", open_neko);
 
     neko_register_common(L);
     neko_register_platform(L);

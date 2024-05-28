@@ -1,7 +1,5 @@
 #include "game_physics.h"
 
-#include <box2d/box2d.h>
-
 #include "sandbox/hpp/neko_cpp_utils.hpp"
 
 #if 0

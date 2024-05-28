@@ -2110,7 +2110,7 @@ NEKO_API_DECL void neko_console_printf(neko_console_t* console, const char* fmt,
 
 enum cmd_type { CVAR_VAR = 0, CVAR_FUNC = 1 };
 
-#define __NEKO_CVAR_STR_LEN 64
+#define NEKO_CVAR_STR_LEN 64
 
 typedef enum neko_cvar_type {
     __NEKO_CONFIG_TYPE_INT,
@@ -2120,9 +2120,9 @@ typedef enum neko_cvar_type {
 } neko_cvar_type;
 
 typedef struct neko_cvar_t {
-    char name[__NEKO_CVAR_STR_LEN];  // 直接开辟好空间
-    neko_cvar_type type;             // cvar 类型
-    union {                          // 联合体存值
+    char name[NEKO_CVAR_STR_LEN];  // 直接开辟好空间
+    neko_cvar_type type;           // cvar 类型
+    union {                        // 联合体存值
         f32 f;
         s32 i;
         char* s;
@@ -2167,24 +2167,24 @@ NEKO_API_DECL void neko_config_print();
     } while (0)
 
 // 由于 float -> char* 转换 很难将其写成单个宏
-#define neko_cvar_new_str(n, t, v)                                                         \
-    do {                                                                                   \
-        neko_cvar_t cvar = {.name = n, .type = t, .value = {0}};                           \
-        cvar.value.s = (char*)neko_malloc(__NEKO_CVAR_STR_LEN);                            \
-        memset(cvar.value.s, 0, __NEKO_CVAR_STR_LEN);                                      \
-        memcpy(cvar.value.s, v, neko_min(__NEKO_CVAR_STR_LEN - 1, neko_string_length(v))); \
-        neko_dyn_array_push((neko_instance()->config)->cvars, cvar);                       \
+#define neko_cvar_new_str(n, t, v)                                                       \
+    do {                                                                                 \
+        neko_cvar_t cvar = {.name = n, .type = t, .value = {0}};                         \
+        cvar.value.s = (char*)neko_malloc(NEKO_CVAR_STR_LEN);                            \
+        memset(cvar.value.s, 0, NEKO_CVAR_STR_LEN);                                      \
+        memcpy(cvar.value.s, v, neko_min(NEKO_CVAR_STR_LEN - 1, neko_string_length(v))); \
+        neko_dyn_array_push((neko_instance()->config)->cvars, cvar);                     \
     } while (0)
 
-#define neko_cvar_lnew_str(n, t, v)                                                        \
-    do {                                                                                   \
-        neko_cvar_t cvar = {.type = t, .value = {0}};                                      \
-        strncpy(cvar.name, n, sizeof(cvar.name) - 1);                                      \
-        cvar.name[sizeof(cvar.name) - 1] = '\0';                                           \
-        cvar.value.s = (char*)neko_malloc(__NEKO_CVAR_STR_LEN);                            \
-        memset(cvar.value.s, 0, __NEKO_CVAR_STR_LEN);                                      \
-        memcpy(cvar.value.s, v, neko_min(__NEKO_CVAR_STR_LEN - 1, neko_string_length(v))); \
-        neko_dyn_array_push((neko_instance()->config)->cvars, cvar);                       \
+#define neko_cvar_lnew_str(n, t, v)                                                      \
+    do {                                                                                 \
+        neko_cvar_t cvar = {.type = t, .value = {0}};                                    \
+        strncpy(cvar.name, n, sizeof(cvar.name) - 1);                                    \
+        cvar.name[sizeof(cvar.name) - 1] = '\0';                                         \
+        cvar.value.s = (char*)neko_malloc(NEKO_CVAR_STR_LEN);                            \
+        memset(cvar.value.s, 0, NEKO_CVAR_STR_LEN);                                      \
+        memcpy(cvar.value.s, v, neko_min(NEKO_CVAR_STR_LEN - 1, neko_string_length(v))); \
+        neko_dyn_array_push((neko_instance()->config)->cvars, cvar);                     \
     } while (0)
 
 #define neko_cvar(n) __neko_config_get(n)
