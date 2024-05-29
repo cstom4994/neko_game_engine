@@ -10,7 +10,7 @@
 
 // ImGui
 #include "engine/neko.h"
-#include "engine/neko_imgui.h"
+#include "engine/neko_imgui.hpp"
 
 // 生成宏 以避免始终重复代码
 #define INSPECTOR_GENERATE_VARIABLE(cputype, count, gltype, glread, glwrite, imguifunc) \
@@ -168,8 +168,8 @@ void render_uniform_variable(GLuint program, GLenum type, const char* name, GLin
 float get_scrollable_height() { return ImGui::GetTextLineHeight() * 16; }
 
 void inspect_shader(const char* label, GLuint program) {
-    neko_assert(label != nullptr);
-    neko_assert(glIsProgram(program));
+    NEKO_ASSERT(label != nullptr);
+    NEKO_ASSERT(glIsProgram(program));
 
     ImGui::PushID(label);
     if (ImGui::CollapsingHeader(label)) {
@@ -240,8 +240,8 @@ void inspect_shader(const char* label, GLuint program) {
 }
 
 void inspect_vertex_array(const char* label, GLuint vao) {
-    neko_assert(label != nullptr);
-    neko_assert(glIsVertexArray(vao));
+    NEKO_ASSERT(label != nullptr);
+    NEKO_ASSERT(glIsVertexArray(vao));
 
     ImGui::PushID(label);
     if (ImGui::CollapsingHeader(label)) {
@@ -774,7 +774,7 @@ int neko::luainspector::command_line_input_callback(ImGuiInputTextCallbackData* 
 
     if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
         std::string* str = user_data->Str;
-        neko_assert(data->Buf == str->c_str());
+        NEKO_ASSERT(data->Buf == str->c_str());
         str->resize(data->BufTextLen);
         data->Buf = (char*)str->c_str();
     } else if (user_data->ChainCallback) {
@@ -1129,7 +1129,7 @@ void neko::luainspector::inspect_table(lua_State* L, inspect_table_config& cfg) 
                 const_str metafields[] = {"__name", "__index"};
 
                 if (lua_getmetatable(L, -1)) {
-                    for (int i = 0; i < neko_arr_size(metafields); i++) {
+                    for (int i = 0; i < NEKO_ARR_SIZE(metafields); i++) {
                         lua_pushstring(L, metafields[i]);
                         lua_gettable(L, -2);
                         if (lua_isstring(L, -1)) {
@@ -1156,7 +1156,7 @@ void neko::luainspector::inspect_table(lua_State* L, inspect_table_config& cfg) 
             ImGui::TableNextColumn();
             ImGui::TextDisabled("%s", lua_typename(L, lua_type(L, -1)));
             ImGui::TableNextColumn();
-            ImGui::TextColored(rgba_to_imvec(220, 160, 40, 255), "%s", neko_bool_str(lua_toboolean(L, -1)));
+            ImGui::TextColored(rgba_to_imvec(220, 160, 40, 255), "%s", NEKO_BOOL_STR(lua_toboolean(L, -1)));
         } else {
             ImGui::TreeNodeEx(name, tree_node_flags | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_Bullet | ImGuiTreeNodeFlags_NoTreePushOnOpen);
             ImGui::TableNextColumn();
@@ -1265,7 +1265,7 @@ int neko::luainspector::luainspector_draw(lua_State* L) {
                 for (auto& property_it : properties) {
 
                     auto prop_render_func_it = model->m_type_render_functions.find(property_it.param_type);
-                    neko_assert(prop_render_func_it != model->m_type_render_functions.end());  // unsupported type, render function not found
+                    NEKO_ASSERT(prop_render_func_it != model->m_type_render_functions.end());  // unsupported type, render function not found
                     const_str label = property_it.label.c_str();
                     void* value = property_it.param;
                     if (ImGui::CollapsingHeader(std::format("{0} | {1}", label, property_it.param_type.name()).c_str())) {

@@ -36,8 +36,16 @@ neko_game = {
         height = 720
     },
     cvar = {
+        show_editor = false,
         show_demo_window = false,
-        show_physics_debug = false,
+        show_pack_editor = false,
+        show_profiler_window = false,
+        show_test_window = false,
+        show_gui = false,
+        shader_inspect = false,
+        hello_ai_shit = false,
+        vsync = false,
+        is_hotfix = false,
 
         -- experimental features 实验性功能
         enable_hotload = true
@@ -48,11 +56,22 @@ local play = fake_game
 local running = true
 
 game_init_thread = function()
+
+    -- neko.pack_build(neko_file_path("gamedir/res2.pack"),
+    --     {"gamedir/assets/textures/cat.aseprite", "gamedir/assets/textures/map1.ase", "gamedir/1.fnt"})
+
+    -- neko.pack_build(neko_file_path("gamedir/res3.pack"), neko_ls(neko_file_path("gamedir")))
+
+    -- local test_pack = neko.pack_construct("test_pack_handle", neko_file_path("gamedir/res3.pack"))
+    -- local test_items = neko.pack_items(test_pack)
+    -- print(dump_func(test_items))
+    -- neko.pack_destroy(test_pack)
+
     play.sub_init_thread()
 end
 
 game_init = function()
-    --luainspector = __neko_luainspector_init()
+    -- luainspector = __neko_luainspector_init()
 
     -- pixelui = neko.pixelui_create()
 
@@ -78,16 +97,13 @@ game_loop = function(dt)
     end
 
     if neko_key_pressed("NEKO_KEYCODE_F4") then
-        -- neko_dolua("lua_scripts/test_datalist.lua")
-        -- neko_dolua("lua_scripts/tests/test_cstruct.lua")
-        -- neko_dolua("lua_scripts/tests/test_class.lua")
-        -- neko_dolua("lua_scripts/tests/test_ds.lua")
-        -- neko_dolua("lua_scripts/tests/test_events.lua")
-        -- neko_dolua("lua_scripts/tests/test_common.lua")
-        -- neko_dolua("lua_scripts/tests/test_behavior.lua")
-        -- neko_dolua("lua_scripts/tests/cffi/t.lua")
-        -- neko_dolua("lua_scripts/tests/nekolua_1.lua")
-        neko_dolua("lua_scripts/tests/test_codegen.lua")
+        neko_dolua("lua_scripts/tests/test_cstruct.lua")
+        neko_dolua("lua_scripts/tests/test_class.lua")
+        neko_dolua("lua_scripts/tests/test_ds.lua")
+        neko_dolua("lua_scripts/tests/test_events.lua")
+        neko_dolua("lua_scripts/tests/test_common.lua")
+        neko_dolua("lua_scripts/tests/nekolua_1.lua")
+        neko_dolua("lua_scripts/tests/nekolua_2.lua")
 
         -- neko.audio_play(test_audio)
 
@@ -116,6 +132,14 @@ game_render = function()
         play.sub_init_thread()
     end
 
+    if ImGui.Button("fluid") then
+        play.sub_shutdown()
+        collectgarbage()
+        play = require("demos/fluid")
+        play.sub_init()
+        play.sub_init_thread()
+    end
+
     if ImGui.Button("test_draw") then
         play.sub_shutdown()
         collectgarbage()
@@ -124,23 +148,94 @@ game_render = function()
         play.sub_init_thread()
     end
 
-    --if ImGui.Button("test_prefab") then
-    --    local file_content = read_file("D:/Projects/Neko/Dev/source/lua/game/test_prefab.neko")
-    --    if file_content then
-    --        local map_node = NODE.load(file_content)
-    --        print(NODE.check(map_node))
-    --        print(NODE.node_type(map_node))
-    --        print(dump_func(map_node))
-    --    else
-    --        print("无法打开文件或文件不存在")
-    --    end
-    --
-    --    -- local encoded = neko.base64_encode(file_content)
-    --    -- print("Encoded:", encoded)
-    --
-    --    -- local decoded = neko.base64_decode(encoded)
-    --    -- print("Decoded:", decoded)
-    --end
+    if ImGui.Button("test_ecs") then
+
+        for i = 1, 10, 1 do
+            local w = neko.ecs_f()
+            local e = w:create_ent()
+            w:attach(e, "position_t", "velocity_t")
+            print(e)
+            local tb, ss = w:get_com()
+            print(ss)
+            dump_func(tb)
+
+            local hash = neko_hash_str("bounds_t")
+            if tb["comp_map"][hash] then
+                print(tb["comp_map"][hash].id)
+            else
+                print("component not found")
+            end
+        end
+
+        -- for i = 1, 1024 * 256, 1 do
+        --     local w = neko.ecs_f()
+        --     local e = w:create_ent()
+        --     w:attach(e, "position_t", "velocity_t")
+        --     -- print(e)
+        -- end
+
+        collectgarbage()
+
+        -- for i, k in pairs(tb) do
+        --     print(i, k)
+        -- end
+        -- local jsondata, err = neko.json_write(tb)
+        -- print(jsondata)
+    end
+
+    if ImGui.Button("test_prefab") then
+        local file_content = read_file("source/lua/game/test_prefab.neko")
+        if file_content then
+            local map_node = NODE.load(file_content)
+            print(NODE.check(map_node))
+            print(NODE.node_type(map_node))
+            dump_func(map_node)
+        else
+            print("无法打开文件或文件不存在")
+        end
+
+        local encoded = neko.base64_encode(file_content)
+        print("Encoded:", encoded)
+
+        local decoded = neko.base64_decode(encoded)
+        print("Decoded:", decoded)
+    end
+
+    if ImGui.Button("test_profiler") then
+
+        local function fact(n)
+            if n <= 1 then
+                return 1
+            else
+                return fact(n - 1) * n
+            end
+        end
+
+        local function foo(n)
+            local s = 0
+            for i = 1, n do
+                s = s + fact(i)
+            end
+            return s
+        end
+
+        neko.profiler_start(10000, 10)
+
+        foo(2000)
+
+        local info, n, t = neko.profiler_info()
+
+        neko.profiler_stop()
+
+        for filename, line_t in pairs(info) do
+            for line, count in pairs(line_t) do
+                print(filename, line, count)
+            end
+        end
+
+        print("total=", n, "t=", t)
+
+    end
 
     ImGui.Separator()
     -- if ImGui.InputText("TEST", text) then
@@ -151,7 +246,7 @@ game_render = function()
     -- ImGui.Image(test_custom_sprite.tex, 100.0, 100.0)
     ImGui.End()
 
-    --__neko_luainspector_draw(__neko_luainspector_get())
+    -- __neko_luainspector_draw(__neko_luainspector_get())
 
     if running then
         play.sub_render()
@@ -169,7 +264,7 @@ game_render = function()
 
     -- neko.idraw_texture(neko.pixelui_tex(pixelui))
     -- neko.idraw_rectvd(to_vec2(0.0, 0.0), to_vec2(fbs_x, fbs_y), to_vec2(0.0, 0.0), to_vec2(1.0, 1.0),
-    --     "NEKO_GRAPHICS_PRIMITIVE_TRIANGLES", to_color(255, 255, 255, 255))
+    --     "NEKO_RENDER_PRIMITIVE_TRIANGLES", to_color(255, 255, 255, 255))
 
     -- neko.graphics_renderpass_begin(0)
     -- neko.graphics_set_viewport(0.0, 0.0, fbs_x, fbs_y)

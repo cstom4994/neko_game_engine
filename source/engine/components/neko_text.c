@@ -5,7 +5,7 @@ void neko_fontbatch_init(neko_fontbatch_t *font_batch, const neko_vec2_t fbs, co
 
     font_batch->font_scale = 3.0f;
 
-    font_batch->font_render = neko_graphics_batch_make_ctx(32);
+    font_batch->font_render = neko_render_batch_make_ctx(32);
 
     const char *font_vs =
             "#version 330\n"
@@ -23,18 +23,18 @@ void neko_fontbatch_init(neko_fontbatch_t *font_batch, const neko_vec2_t fbs, co
             "in vec2 v_uv; out vec4 out_col;\n"
             "void main() { out_col = texture(u_sprite_texture, v_uv); }\n";
 
-    neko_graphics_batch_vertex_data_t font_vd;
-    neko_graphics_batch_make_vertex_data(&font_vd, 1024 * 1024, GL_TRIANGLES, sizeof(neko_font_vert_t), GL_DYNAMIC_DRAW);
-    neko_graphics_batch_add_attribute(&font_vd, "in_pos", 2, NEKO_GRAPHICS_BATCH_FLOAT, neko_offset(neko_font_vert_t, x));
-    neko_graphics_batch_add_attribute(&font_vd, "in_uv", 2, NEKO_GRAPHICS_BATCH_FLOAT, neko_offset(neko_font_vert_t, u));
+    neko_render_batch_vertex_data_t font_vd;
+    neko_render_batch_make_vertex_data(&font_vd, 1024 * 1024, GL_TRIANGLES, sizeof(neko_font_vert_t), GL_DYNAMIC_DRAW);
+    neko_render_batch_add_attribute(&font_vd, "in_pos", 2, NEKO_RENDER_BATCH_FLOAT, NEKO_OFFSET(neko_font_vert_t, x));
+    neko_render_batch_add_attribute(&font_vd, "in_uv", 2, NEKO_RENDER_BATCH_FLOAT, NEKO_OFFSET(neko_font_vert_t, u));
 
-    neko_graphics_batch_make_renderable(&font_batch->font_renderable, &font_vd);
-    neko_graphics_batch_load_shader(&font_batch->font_shader, font_vs, font_ps);
-    neko_graphics_batch_set_shader(&font_batch->font_renderable, &font_batch->font_shader);
+    neko_render_batch_make_renderable(&font_batch->font_renderable, &font_vd);
+    neko_render_batch_load_shader(&font_batch->font_shader, font_vs, font_ps);
+    neko_render_batch_set_shader(&font_batch->font_renderable, &font_batch->font_shader);
 
-    neko_graphics_batch_ortho_2d(fbs.x / font_batch->font_scale, fbs.y / font_batch->font_scale, 0, 0, font_batch->font_projection);
+    neko_render_batch_ortho_2d(fbs.x / font_batch->font_scale, fbs.y / font_batch->font_scale, 0, 0, font_batch->font_projection);
 
-    neko_graphics_batch_send_matrix(&font_batch->font_shader, "u_mvp", font_batch->font_projection);
+    neko_render_batch_send_matrix(&font_batch->font_shader, "u_mvp", font_batch->font_projection);
 
     neko_image_t img = neko_image_load(img_path);
     font_batch->font_tex_id = generate_texture_handle(img.pix, img.w, img.h, NULL);
@@ -50,7 +50,7 @@ void neko_fontbatch_init(neko_fontbatch_t *font_batch, const neko_vec2_t fbs, co
 void neko_fontbatch_end(neko_fontbatch_t *font_batch) {
     neko_safe_free(font_batch->font_verts);
     neko_font_free(font_batch->font);
-    neko_graphics_batch_free(font_batch->font_render);
+    neko_render_batch_free(font_batch->font_render);
     destroy_texture_handle(font_batch->font_tex_id, NULL);
 }
 
@@ -73,14 +73,14 @@ void neko_fontbatch_draw(neko_fontbatch_t *font_batch, const neko_vec2_t fbs, co
     neko_font_fill_vertex_buffer(font_batch->font, text, x0, y0, wrap_width, line_height, &clip_rect, font_batch->font_verts, 1024 * 2, &font_batch->font_vert_count);
 
     if (font_batch->font_vert_count) {
-        neko_graphics_batch_draw_call_t call;
+        neko_render_batch_draw_call_t call;
         call.textures[0] = (u32)font_batch->font->atlas_id;
         call.texture_count = 1;
         call.r = &font_batch->font_renderable;
         call.verts = font_batch->font_verts;
         call.vert_count = font_batch->font_vert_count;
 
-        neko_graphics_batch_push_draw_call(font_batch->font_render, call);
+        neko_render_batch_push_draw_call(font_batch->font_render, call);
     }
 }
 

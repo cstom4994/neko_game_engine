@@ -622,17 +622,17 @@ constexpr std::size_t neko::cpp::type_name_extent(std::string_view name, std::si
     while (N != 0) {
         if (name[idx] != '[') return false;
         ++idx;
-        while (name[idx++] != ']') neko_assert(idx < name.size());
+        while (name[idx++] != ']') NEKO_ASSERT(idx < name.size());
         --N;
     }
 
-    neko_assert(idx < name.size());
+    NEKO_ASSERT(idx < name.size());
 
     if (name[idx] != '[') return 0;
 
     std::size_t extent = 0;
     while (name[++idx] != ']') {
-        neko_assert(idx < name.size());
+        NEKO_ASSERT(idx < name.size());
         extent = 10 * extent + name[idx] - '0';
     }
 
@@ -643,12 +643,12 @@ constexpr neko::cpp::CVRefMode neko::cpp::type_name_cvref_mode(std::string_view 
     if (name.empty()) return CVRefMode::None;
 
     if (name[0] == '&') {
-        neko_assert(name.size() >= 4);
+        NEKO_ASSERT(name.size() >= 4);
         if (name[1] == '&') {
-            neko_assert(name[2] == '{' && name.back() == '}');
+            NEKO_ASSERT(name[2] == '{' && name.back() == '}');
             std::string_view unref_name{name.data() + 3, name.size() - 4};
             if (unref_name.starts_with("const")) {
-                neko_assert(unref_name.size() >= 6);
+                NEKO_ASSERT(unref_name.size() >= 6);
                 if (unref_name[5] == '{')
                     return CVRefMode::ConstRight;
                 else if (unref_name[5] == ' ')
@@ -660,10 +660,10 @@ constexpr neko::cpp::CVRefMode neko::cpp::type_name_cvref_mode(std::string_view 
             else
                 return CVRefMode::Right;
         } else {
-            neko_assert(name[1] == '{' && name.back() == '}');
+            NEKO_ASSERT(name[1] == '{' && name.back() == '}');
             std::string_view unref_name{name.data() + 2, name.size() - 3};
             if (unref_name.starts_with("const")) {
-                neko_assert(unref_name.size() >= 6);
+                NEKO_ASSERT(unref_name.size() >= 6);
                 if (unref_name[5] == '{')
                     return CVRefMode::ConstLeft;
                 else if (unref_name[5] == ' ')
@@ -677,7 +677,7 @@ constexpr neko::cpp::CVRefMode neko::cpp::type_name_cvref_mode(std::string_view 
         }
     } else {
         if (name.starts_with("const")) {
-            neko_assert(name.size() >= 6);
+            NEKO_ASSERT(name.size() >= 6);
             if (name[5] == '{')
                 return CVRefMode::Const;
             else if (name[5] == ' ')
@@ -695,17 +695,17 @@ constexpr neko::cpp::CVRefMode neko::cpp::type_name_cvref_mode(std::string_view 
 
 constexpr std::string_view neko::cpp::type_name_remove_cv(std::string_view name) noexcept {
     if (name.starts_with(std::string_view{"const"})) {
-        neko_assert(name.size() >= 6);
+        NEKO_ASSERT(name.size() >= 6);
         if (name[5] == '{') {
-            neko_assert(name.back() == '}');
+            NEKO_ASSERT(name.back() == '}');
             return {name.data() + 6, name.size() - 7};
         } else if (name[5] == ' ') {
-            neko_assert(name.starts_with(std::string_view{"const volatile{"}) && name.back() == '}');
+            NEKO_ASSERT(name.starts_with(std::string_view{"const volatile{"}) && name.back() == '}');
             return {name.data() + 15, name.size() - 16};
         } else
             return name;
     } else if (name.starts_with(std::string_view{"volatile{"})) {
-        neko_assert(name.back() == '}');
+        NEKO_ASSERT(name.back() == '}');
         return {name.data() + 9, name.size() - 10};
     } else
         return name;
@@ -714,10 +714,10 @@ constexpr std::string_view neko::cpp::type_name_remove_cv(std::string_view name)
 constexpr std::string_view neko::cpp::type_name_remove_const(std::string_view name) noexcept {
     if (!name.starts_with(std::string_view{"const"})) return name;
 
-    neko_assert(name.size() >= 6);
+    NEKO_ASSERT(name.size() >= 6);
 
     if (name[5] == '{') {
-        neko_assert(name.back() == '}');
+        NEKO_ASSERT(name.back() == '}');
         return {name.data() + 6, name.size() - 7};
     } else if (name[5] == ' ')
         return {name.data() + 6};
@@ -728,7 +728,7 @@ constexpr std::string_view neko::cpp::type_name_remove_const(std::string_view na
 constexpr std::string_view neko::cpp::type_name_remove_topmost_volatile(std::string_view name) noexcept {
     if (!name.starts_with(std::string_view{"volatile{"})) return name;
 
-    neko_assert(name.back() == '}');
+    NEKO_ASSERT(name.back() == '}');
 
     return {name.data() + 9, name.size() - 10};
 }
@@ -736,14 +736,14 @@ constexpr std::string_view neko::cpp::type_name_remove_topmost_volatile(std::str
 constexpr std::string_view neko::cpp::type_name_remove_lvalue_reference(std::string_view name) noexcept {
     if (name.size() <= 2 || name[0] != '&' || name[1] != '{') return name;
 
-    neko_assert(name.size() >= 3 && name.back() == '}');
+    NEKO_ASSERT(name.size() >= 3 && name.back() == '}');
     return {name.data() + 2, name.size() - 3};
 }
 
 constexpr std::string_view neko::cpp::type_name_remove_rvalue_reference(std::string_view name) noexcept {
     if (name.size() <= 2 || name[0] != '&' || name[1] != '&') return name;
 
-    neko_assert(name.size() >= 4 && name[2] == '{' && name.back() == '}');
+    NEKO_ASSERT(name.size() >= 4 && name[2] == '{' && name.back() == '}');
     return {name.data() + 3, name.size() - 4};
 }
 
@@ -751,10 +751,10 @@ constexpr std::string_view neko::cpp::type_name_remove_reference(std::string_vie
     if (name.size() <= 2 || name[0] != '&') return name;
 
     if (name[1] == '{') {
-        neko_assert(name.size() >= 3 && name.back() == '}');
+        NEKO_ASSERT(name.size() >= 3 && name.back() == '}');
         return {name.data() + 2, name.size() - 3};
     } else {
-        neko_assert(name.size() >= 4 && name[1] == '&' && name[2] == '{' && name.back() == '}');
+        NEKO_ASSERT(name.size() >= 4 && name[1] == '&' && name[2] == '{' && name.back() == '}');
         return {name.data() + 3, name.size() - 4};
     }
 }
@@ -763,7 +763,7 @@ constexpr std::string_view neko::cpp::type_name_remove_pointer(std::string_view 
     name = type_name_remove_cvref(name);
     if (!name.starts_with(std::string_view{"*"})) return name;
 
-    neko_assert(name.size() >= 3 && name[1] == '{' && name.back() == '}');
+    NEKO_ASSERT(name.size() >= 3 && name[1] == '{' && name.back() == '}');
     return {name.data() + 2, name.size() - 3};
 }
 
@@ -777,14 +777,14 @@ constexpr std::string_view neko::cpp::type_name_remove_extent(std::string_view n
     if (name[idx] != '[') return name;
 
     ++idx;
-    while (name[idx++] != ']') neko_assert(idx < name.size());
+    while (name[idx++] != ']') NEKO_ASSERT(idx < name.size());
 
-    neko_assert(name.size() > idx);
+    NEKO_ASSERT(name.size() > idx);
 
     if (name[idx] == '[')
         return {name.data() + idx, name.size() - idx};
     else {
-        neko_assert(name[idx] == '{' && name.back() == '}');
+        NEKO_ASSERT(name[idx] == '{' && name.back() == '}');
         return {name.data() + idx + 1, name.size() - idx - 2};
     }
 }
@@ -1135,7 +1135,7 @@ public:
     constexpr neko_cpp_name(std::string_view str) noexcept : str{str}, nameID{str} {}
     template <std::size_t N>
     constexpr neko_cpp_name(const char (&str)[N]) noexcept : neko_cpp_name{std::string_view{str}} {}
-    constexpr neko_cpp_name(std::string_view str, neko_cpp_nameid nameID) noexcept : str{str}, nameID{nameID} { neko_assert(neko_cpp_nameid{str} == nameID); }
+    constexpr neko_cpp_name(std::string_view str, neko_cpp_nameid nameID) noexcept : str{str}, nameID{nameID} { NEKO_ASSERT(neko_cpp_nameid{str} == nameID); }
     constexpr std::string_view get_view() const noexcept { return str; }
     constexpr operator std::string_view() const noexcept { return get_view(); }
     constexpr neko_cpp_nameid get_id() const noexcept { return nameID; }
@@ -1145,7 +1145,7 @@ public:
     constexpr std::strong_ordering operator<=>(const neko_cpp_name& rhs) const noexcept { return nameID <=> rhs.nameID; }
     friend constexpr bool operator==(const neko_cpp_name& lhs, const neko_cpp_name& rhs) noexcept {
         if (lhs.nameID == rhs.nameID) {
-            neko_assert(lhs.str == rhs.str);
+            NEKO_ASSERT(lhs.str == rhs.str);
             return true;
         }
 
@@ -1176,7 +1176,7 @@ public:
     template <typename T>
     constexpr bool Is() const noexcept {
         if (get_id() == NEKO_TYPEID_OF<T>) {
-            neko_assert(name.Is(type_name<T>().View()));
+            NEKO_ASSERT(name.Is(type_name<T>().View()));
             return true;
         }
         return false;

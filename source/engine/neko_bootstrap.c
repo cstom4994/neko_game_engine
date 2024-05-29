@@ -8,7 +8,7 @@
 
 NEKO_API_DECL void neko_default_main_window_close_callback(void* window);
 
-NEKO_STATIC neko_t* g_neko_instance = neko_default_val();
+NEKO_STATIC neko_t* g_neko_instance = NEKO_DEFAULT_VAL();
 
 NEKO_API_DECL neko_t* neko_instance() { return g_neko_instance; }
 
@@ -27,7 +27,7 @@ NEKO_API_DECL neko_t* neko_create(int argc, char** argv) {
         // neko_instance()->ctx.game = *app_desc;
 
         // 设置函数指针
-        neko_instance()->ctx.shutdown = &neko_destroy;
+        neko_instance()->ctx.fini = &neko_fini;
 
         neko_app();
 
@@ -36,17 +36,16 @@ NEKO_API_DECL neko_t* neko_create(int argc, char** argv) {
         // 初始化 cvars
         __neko_config_init();
 
-        neko_cvar_lnew("app_desc.window.width", __NEKO_CONFIG_TYPE_INT, 1280);
-        neko_cvar_lnew("app_desc.window.height", __NEKO_CONFIG_TYPE_INT, 720);
-        neko_cvar_lnew("app_desc.window.vsync", __NEKO_CONFIG_TYPE_INT, 0);
-        neko_cvar_lnew("app_desc.window.frame_rate", __NEKO_CONFIG_TYPE_FLOAT, 60.f);
-        neko_cvar_lnew("app_desc.window.hdpi", __NEKO_CONFIG_TYPE_INT, 0);
-        neko_cvar_lnew("app_desc.window.center", __NEKO_CONFIG_TYPE_INT, 1);
-        neko_cvar_lnew("app_desc.window.running_background", __NEKO_CONFIG_TYPE_INT, 1);
-        neko_cvar_lnew("app_desc.window.monitor_index", __NEKO_CONFIG_TYPE_INT, 0);
-
-        neko_cvar_lnew("settings.video.graphics.debug", __NEKO_CONFIG_TYPE_INT, 0);
-        neko_cvar_lnew("settings.video.graphics.hdpi", __NEKO_CONFIG_TYPE_INT, 0);
+        neko_cvar_lnew("settings.window.width", __NEKO_CONFIG_TYPE_INT, 1280);
+        neko_cvar_lnew("settings.window.height", __NEKO_CONFIG_TYPE_INT, 720);
+        neko_cvar_lnew("settings.window.vsync", __NEKO_CONFIG_TYPE_INT, 0);
+        neko_cvar_lnew("settings.window.frame_rate", __NEKO_CONFIG_TYPE_FLOAT, 60.f);
+        neko_cvar_lnew("settings.window.hdpi", __NEKO_CONFIG_TYPE_INT, 0);
+        neko_cvar_lnew("settings.window.center", __NEKO_CONFIG_TYPE_INT, 1);
+        neko_cvar_lnew("settings.window.running_background", __NEKO_CONFIG_TYPE_INT, 1);
+        neko_cvar_lnew("settings.window.monitor_index", __NEKO_CONFIG_TYPE_INT, 0);
+        neko_cvar_lnew("settings.video.render.debug", __NEKO_CONFIG_TYPE_INT, 0);
+        neko_cvar_lnew("settings.video.render.hdpi", __NEKO_CONFIG_TYPE_INT, 0);
 
         // 需要从用户那里传递视频设置
         neko_subsystem(platform) = neko_platform_create();
@@ -55,7 +54,7 @@ NEKO_API_DECL neko_t* neko_create(int argc, char** argv) {
         neko_platform_init(neko_subsystem(platform));
 
         // 设置应用程序的帧速率
-        neko_subsystem(platform)->time.max_fps = neko_cvar("app_desc.window.frame_rate")->value.f;
+        neko_subsystem(platform)->time.max_fps = neko_cvar("settings.window.frame_rate")->value.f;
 
         neko_platform_running_desc_t window = {.title = "Neko Engine", .width = 1280, .height = 720, .vsync = false, .frame_rate = 60.f, .hdpi = false, .center = true, .running_background = true};
 
@@ -63,13 +62,13 @@ NEKO_API_DECL neko_t* neko_create(int argc, char** argv) {
         neko_platform_window_create(&window);
 
         // 设置视频垂直同步
-        neko_platform_enable_vsync(neko_cvar("app_desc.window.vsync")->value.i);
+        neko_platform_enable_vsync(neko_cvar("settings.window.vsync")->value.i);
 
         // 构建图形API
-        neko_subsystem(graphics) = neko_graphics_create();
+        neko_subsystem(render) = neko_render_create();
 
         // 初始化图形
-        neko_graphics_init(neko_subsystem(graphics));
+        neko_render_init(neko_subsystem(render));
 
         // // 构建音频API
         // neko_subsystem(audio) = __neko_audio_construct();
@@ -163,18 +162,18 @@ NEKO_API_DECL void neko_frame() {
     }
 
     if (!neko_instance()->game.is_running) {
-        neko_instance()->ctx.shutdown();
+        neko_instance()->ctx.fini();
         return;
     }
 }
 
-void neko_destroy() {
+void neko_fini() {
     // Shutdown application
     neko_instance()->shutdown();
     neko_instance()->game.is_running = false;
 
-    neko_graphics_shutdown(neko_subsystem(graphics));
-    neko_graphics_destroy(neko_subsystem(graphics));
+    neko_render_shutdown(neko_subsystem(render));
+    neko_render_destroy(neko_subsystem(render));
 
     // neko_audio_shutdown(neko_subsystem(audio));
     // neko_audio_destroy(neko_subsystem(audio));

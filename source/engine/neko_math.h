@@ -344,7 +344,7 @@ typedef struct neko_mat3 {
 } neko_mat3;
 
 NEKO_INLINE neko_mat3 neko_mat3_diag(float val) {
-    neko_mat3 m = neko_default_val();
+    neko_mat3 m = NEKO_DEFAULT_VAL();
     m.m[0 + 0 * 3] = val;
     m.m[1 + 1 * 3] = val;
     m.m[2 + 2 * 3] = val;
@@ -354,7 +354,7 @@ NEKO_INLINE neko_mat3 neko_mat3_diag(float val) {
 #define neko_mat3_identity() neko_mat3_diag(1.f)
 
 NEKO_INLINE neko_mat3 neko_mat3_mul(neko_mat3 m0, neko_mat3 m1) {
-    neko_mat3 m = neko_default_val();
+    neko_mat3 m = NEKO_DEFAULT_VAL();
 
     for (u32 y = 0; y < 3; ++y) {
         for (u32 x = 0; x < 3; ++x) {
@@ -374,7 +374,7 @@ NEKO_INLINE neko_vec3 neko_mat3_mul_vec3(neko_mat3 m, neko_vec3 v) {
 }
 
 NEKO_INLINE neko_mat3 neko_mat3_scale(float x, float y, float z) {
-    neko_mat3 m = neko_default_val();
+    neko_mat3 m = NEKO_DEFAULT_VAL();
     m.m[0] = x;
     m.m[4] = y;
     m.m[8] = z;
@@ -382,7 +382,7 @@ NEKO_INLINE neko_mat3 neko_mat3_scale(float x, float y, float z) {
 }
 
 NEKO_INLINE neko_mat3 neko_mat3_rotate(float radians, float x, float y, float z) {
-    neko_mat3 m = neko_default_val();
+    neko_mat3 m = NEKO_DEFAULT_VAL();
     float s = sinf(radians), c = cosf(radians), c1 = 1.f - c;
     float xy = x * y;
     float yz = y * z;
@@ -406,7 +406,7 @@ NEKO_INLINE neko_mat3 neko_mat3_rotatev(float radians, neko_vec3 axis) { return 
 
 // Turn quaternion into mat3
 NEKO_INLINE neko_mat3 neko_mat3_rotateq(neko_vec4 q) {
-    neko_mat3 m = neko_default_val();
+    neko_mat3 m = NEKO_DEFAULT_VAL();
     float x2 = q.x * q.x, y2 = q.y * q.y, z2 = q.z * q.z, w2 = q.w * q.w;
     float xz = q.x * q.z, xy = q.x * q.y, yz = q.y * q.z, wz = q.w * q.z, wy = q.w * q.y, wx = q.w * q.x;
     m.m[0] = 1 - 2 * (y2 + z2);
@@ -428,7 +428,7 @@ NEKO_INLINE neko_mat3 neko_mat3_rsq(neko_vec4 q, neko_vec3 s) {
 }
 
 NEKO_INLINE neko_mat3 neko_mat3_inverse(neko_mat3 m) {
-    neko_mat3 r = neko_default_val();
+    neko_mat3 r = NEKO_DEFAULT_VAL();
 
     double det = (double)(m.m[0 * 3 + 0] * (m.m[1 * 3 + 1] * m.m[2 * 3 + 2] - m.m[2 * 3 + 1] * m.m[1 * 3 + 2]) - m.m[0 * 3 + 1] * (m.m[1 * 3 + 0] * m.m[2 * 3 + 2] - m.m[1 * 3 + 2] * m.m[2 * 3 + 0]) +
                           m.m[0 * 3 + 2] * (m.m[1 * 3 + 0] * m.m[2 * 3 + 1] - m.m[1 * 3 + 1] * m.m[2 * 3 + 0]));
@@ -482,7 +482,7 @@ NEKO_INLINE neko_mat4 neko_mat4_diag(f32 val) {
 #define neko_mat4_identity() neko_mat4_diag(1.0f)
 
 NEKO_INLINE neko_mat4 neko_mat4_ctor() {
-    neko_mat4 mat = neko_default_val();
+    neko_mat4 mat = NEKO_DEFAULT_VAL();
     return mat;
 }
 
@@ -778,7 +778,7 @@ NEKO_INLINE neko_mat4 neko_mat4_recompose(const float* translation, const float*
 
     mat = neko_mat4_mul_list(3, rot[2], rot[1], rot[0]);
 
-    float valid_scale[3] = neko_default_val();
+    float valid_scale[3] = NEKO_DEFAULT_VAL();
     for (uint32_t i = 0; i < 3; ++i) {
         valid_scale[i] = fabsf(scale[i]) < neko_epsilon ? 0.001f : scale[i];
     }
@@ -1159,5 +1159,89 @@ NEKO_INLINE neko_vec3 neko_vqs_right(const neko_vqs* transform) { return (neko_q
 NEKO_INLINE neko_vec3 neko_vqs_up(const neko_vqs* transform) { return (neko_quat_rotate(transform->rotation, neko_v3(0.0f, 1.0f, 0.0f))); }
 
 NEKO_INLINE neko_vec3 neko_vqs_down(const neko_vqs* transform) { return (neko_quat_rotate(transform->rotation, neko_v3(0.0f, -1.0f, 0.0f))); }
+
+// AABBs
+/*
+    min is top left of rect,
+    max is bottom right
+*/
+
+typedef struct neko_aabb_t {
+    neko_vec2 min;
+    neko_vec2 max;
+} neko_aabb_t;
+
+// Collision Resolution: Minimum Translation Vector
+NEKO_FORCE_INLINE
+neko_vec2 neko_aabb_aabb_mtv(neko_aabb_t* a0, neko_aabb_t* a1) {
+    neko_vec2 diff = neko_v2(a0->min.x - a1->min.x, a0->min.y - a1->min.y);
+
+    f32 l, r, b, t;
+    neko_vec2 mtv = neko_v2(0.f, 0.f);
+
+    l = a1->min.x - a0->max.x;
+    r = a1->max.x - a0->min.x;
+    b = a1->min.y - a0->max.y;
+    t = a1->max.y - a0->min.y;
+
+    mtv.x = fabsf(l) > r ? r : l;
+    mtv.y = fabsf(b) > t ? t : b;
+
+    if (fabsf(mtv.x) <= fabsf(mtv.y)) {
+        mtv.y = 0.f;
+    } else {
+        mtv.x = 0.f;
+    }
+
+    return mtv;
+}
+
+// 2D AABB collision detection (rect. vs. rect.)
+NEKO_FORCE_INLINE
+b32 neko_aabb_vs_aabb(neko_aabb_t* a, neko_aabb_t* b) {
+    if (a->max.x > b->min.x && a->max.y > b->min.y && a->min.x < b->max.x && a->min.y < b->max.y) {
+        return true;
+    }
+
+    return false;
+}
+
+/*
+NEKO_FORCE_INLINE
+neko_vec4 neko_aabb_window_coords(neko_aabb_t* aabb, neko_camera_t* camera, neko_vec2 window_size) {
+    // AABB of the player
+    neko_vec4 bounds = NEKO_DEFAULT_VAL();
+    neko_vec4 tl = neko_v4(aabb->min.x, aabb->min.y, 0.f, 1.f);
+    neko_vec4 br = neko_v4(aabb->max.x, aabb->max.y, 0.f, 1.f);
+
+    neko_mat4 view_mtx = neko_camera_get_view(camera);
+    neko_mat4 proj_mtx = neko_camera_get_proj(camera, (s32)window_size.x, (s32)window_size.y);
+    neko_mat4 vp = neko_mat4_mul(proj_mtx, view_mtx);
+
+    // Transform verts
+    tl = neko_mat4_mul_vec4(vp, tl);
+    br = neko_mat4_mul_vec4(vp, br);
+
+    // Perspective divide
+    tl = neko_vec4_scale(tl, 1.f / tl.w);
+    br = neko_vec4_scale(br, 1.f / br.w);
+
+    // NDC [0.f, 1.f] and NDC
+    tl.x = (tl.x * 0.5f + 0.5f);
+    tl.y = (tl.y * 0.5f + 0.5f);
+    br.x = (br.x * 0.5f + 0.5f);
+    br.y = (br.y * 0.5f + 0.5f);
+
+    // Window Space
+    tl.x = tl.x * window_size.x;
+    tl.y = neko_map_range(1.f, 0.f, 0.f, 1.f, tl.y) * window_size.y;
+    br.x = br.x * window_size.x;
+    br.y = neko_map_range(1.f, 0.f, 0.f, 1.f, br.y) * window_size.y;
+
+    bounds = neko_v4(tl.x, tl.y, br.x, br.y);
+
+    return bounds;
+}
+*/
 
 #endif

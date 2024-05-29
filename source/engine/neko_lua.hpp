@@ -3483,7 +3483,7 @@ T unpack(lua_State* L, int arg) {
         }
         luaL_error(L, "unpack integer limit exceeded", arg);
     }
-    neko_assert(false);
+    NEKO_ASSERT(false);
     return T{};
 }
 
@@ -3597,7 +3597,7 @@ void pack(lua_State* L, const T& v) {
             lua_pushinteger(L, static_cast<lua_Integer>(v));
         }
         luaL_error(L, "pack integer limit exceeded");
-        neko_assert(false);
+        NEKO_ASSERT(false);
     }
 }
 

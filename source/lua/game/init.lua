@@ -1,11 +1,30 @@
 -- Copyright(c) 2022-2023, KaoruXun All rights reserved.
 -- runs on start of the engine
 -- used to load scripts
-dump_func = require "common/dump"
+neko = require "neko"
+
+dump_func = function(tbl, indent)
+    if not indent then
+        indent = 0
+        print("inspect: \"" .. tostring(tbl) .. "\"")
+    end
+    for k, v in pairs(tbl) do
+        formatting = string.rep("  ", indent) .. k .. ": "
+        if type(v) == "table" then
+            print(formatting)
+            dump_func(v, indent + 1)
+        elseif type(v) == 'boolean' then
+            print(formatting .. tostring(v))
+        else
+            print(formatting .. v)
+        end
+    end
+end
 
 ffi = require("cffi")
 
 unsafe_require = require
+print_ = print
 print = neko.print
 
 if os.getenv "LOCAL_LUA_DEBUGGER_VSCODE" == "1" then
@@ -63,6 +82,34 @@ function read_file(filename)
     file:close() -- 关闭文件
 
     return content -- 返回文件内容
+end
+
+function table_merge(t1, t2)
+    for k, v in pairs(t2) do
+        if type(v) == "table" then
+            if type(t1[k] or false) == "table" then
+                table_merge(t1[k] or {}, t2[k] or {})
+            else
+                t1[k] = v
+            end
+        else
+            t1[k] = v
+        end
+    end
+    return t1
+end
+
+function neko_ls(path)
+    local result = {}
+    local tb = __neko_ls(path)
+    for _, tb1 in pairs(tb) do
+        if tb1["isDirectory"] == true then
+            result = table_merge(result, neko_ls(tb1["path"]))
+        else
+            table.insert(result, tb1["path"])
+        end
+    end
+    return result
 end
 
 __NEKO_CONFIG_TYPE_INT = 0

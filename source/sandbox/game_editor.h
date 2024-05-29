@@ -5,7 +5,7 @@
 #include <typeindex>
 #include <vector>
 
-#include "engine/neko_imgui.h"
+#include "engine/neko_imgui.hpp"
 #include "engine/neko_lua.hpp"
 
 void render_uniform_variable(GLuint program, GLenum type, const char* name, GLint location);

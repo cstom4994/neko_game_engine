@@ -53,7 +53,7 @@ typedef enum neko_meta_property_type {
 
 NEKO_API_PRIVATE neko_meta_property_type_info_t neko_meta_property_type_decl_impl(const char* name, u32 id);
 
-#define neko_meta_property_type_decl(T, PROP_TYPE) neko_meta_property_type_decl_impl(neko_to_str(T), PROP_TYPE)
+#define neko_meta_property_type_decl(T, PROP_TYPE) neko_meta_property_type_decl_impl(NEKO_TO_STR(T), PROP_TYPE)
 
 // 默认元属性类型信息定义
 #define NEKO_META_PROPERTY_TYPE_INFO_U8 neko_meta_property_type_decl(uint8_t, NEKO_META_PROPERTY_TYPE_U8)
@@ -94,7 +94,7 @@ typedef struct neko_meta_enum_value_t {
 
 NEKO_API_PRIVATE neko_meta_property_t neko_meta_property_impl(const char* field_type_name, const char* field, size_t sz, uint32_t offset, neko_meta_property_type_info_t type);
 
-#define neko_meta_property(CLS, FIELD_TYPE, FIELD, TYPE) neko_meta_property_impl(neko_to_str(FIELD_TYPE), neko_to_str(FIELD), sizeof(FIELD_TYPE), neko_offset(CLS, FIELD), TYPE)
+#define neko_meta_property(CLS, FIELD_TYPE, FIELD, TYPE) neko_meta_property_impl(NEKO_TO_STR(FIELD_TYPE), NEKO_TO_STR(FIELD), sizeof(FIELD_TYPE), NEKO_OFFSET(CLS, FIELD), TYPE)
 
 typedef struct neko_meta_vtable_t {
     neko_hash_table(u64, void*) funcs;  // 哈希函数名称到函数指针
@@ -147,7 +147,7 @@ NEKO_API_DECL u64 neko_meta_class_register(neko_meta_registry_t* meta, const nek
 NEKO_API_DECL void neko_meta_class_unregister(neko_meta_registry_t* meta, u64 id);
 NEKO_API_DECL u64 neko_meta_enum_register(neko_meta_registry_t* meta, const neko_meta_enum_decl_t* decl);
 
-#define neko_meta_class_get(META, T) (neko_hash_table_getp((META)->classes, neko_hash_str64(neko_to_str(T))))
+#define neko_meta_class_get(META, T) (neko_hash_table_getp((META)->classes, neko_hash_str64(NEKO_TO_STR(T))))
 
 #define neko_meta_class_get_w_name(META, NAME) (neko_hash_table_getp((META)->classes, neko_hash_str64(NAME)))
 
@@ -161,9 +161,9 @@ NEKO_API_DECL u64 neko_meta_enum_register(neko_meta_registry_t* meta, const neko
 
 #define neko_meta_setv(OBJ, T, PROP, VAL) (*((T*)((uint8_t*)(OBJ) + (PROP)->offset)) = VAL)
 
-#define neko_meta_func_get(CLS, NAME) (neko_meta_func_get_internal(CLS, neko_to_str(NAME)));
+#define neko_meta_func_get(CLS, NAME) (neko_meta_func_get_internal(CLS, NEKO_TO_STR(NAME)));
 
-#define neko_meta_func_get_w_id(META, ID, NAME) (neko_meta_func_get_internal_w_id(META, ID, neko_to_str(NAME)));
+#define neko_meta_func_get_w_id(META, ID, NAME) (neko_meta_func_get_internal_w_id(META, ID, NEKO_TO_STR(NAME)));
 
 NEKO_API_DECL void* neko_meta_func_get_internal(const neko_meta_class_t* cls, const char* func_name);
 NEKO_API_DECL void* neko_meta_func_get_internal_w_id(const neko_meta_registry_t* meta, u64 id, const char* func_name);

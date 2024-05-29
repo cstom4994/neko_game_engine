@@ -86,7 +86,7 @@ const char* neko_base64_decode(const char* code) {
 #define HASHTABLE_MALLOC(ctx, size) (neko_safe_malloc(size))
 #define HASHTABLE_FREE(ctx, ptr) (neko_safe_free(ptr))
 
-static HASHTABLE_U32 hashtable_internal_pow2ceil(HASHTABLE_U32 v) {
+static u32 hashtable_internal_pow2ceil(u32 v) {
     --v;
     v |= v >> 1;
     v |= v >> 2;
@@ -99,18 +99,18 @@ static HASHTABLE_U32 hashtable_internal_pow2ceil(HASHTABLE_U32 v) {
 }
 
 void hashtable_init(hashtable_t* table, int item_size, int initial_capacity, void* memctx) {
-    initial_capacity = (int)hashtable_internal_pow2ceil(initial_capacity >= 0 ? (HASHTABLE_U32)initial_capacity : 32U);
+    initial_capacity = (int)hashtable_internal_pow2ceil(initial_capacity >= 0 ? (u32)initial_capacity : 32U);
     table->memctx = memctx;
     table->count = 0;
     table->item_size = item_size;
-    table->slot_capacity = (int)hashtable_internal_pow2ceil((HASHTABLE_U32)(initial_capacity + initial_capacity / 2));
+    table->slot_capacity = (int)hashtable_internal_pow2ceil((u32)(initial_capacity + initial_capacity / 2));
     int slots_size = (int)(table->slot_capacity * sizeof(*table->slots));
     table->slots = (struct hashtable_internal_slot_t*)HASHTABLE_MALLOC(table->memctx, (size_t)slots_size);
-    neko_assert(table->slots);
+    NEKO_ASSERT(table->slots);
     HASHTABLE_MEMSET(table->slots, 0, (size_t)slots_size);
-    table->item_capacity = (int)hashtable_internal_pow2ceil((HASHTABLE_U32)initial_capacity);
-    table->items_key = (HASHTABLE_U64*)HASHTABLE_MALLOC(table->memctx, table->item_capacity * (sizeof(*table->items_key) + sizeof(*table->items_slot) + table->item_size) + table->item_size);
-    neko_assert(table->items_key);
+    table->item_capacity = (int)hashtable_internal_pow2ceil((u32)initial_capacity);
+    table->items_key = (u64*)HASHTABLE_MALLOC(table->memctx, table->item_capacity * (sizeof(*table->items_key) + sizeof(*table->items_slot) + table->item_size) + table->item_size);
+    NEKO_ASSERT(table->items_key);
     table->items_slot = (int*)(table->items_key + table->item_capacity);
     table->items_data = (void*)(table->items_slot + table->item_capacity);
     table->swap_temp = (void*)(((uintptr_t)table->items_data) + table->item_size * table->item_capacity);
@@ -122,31 +122,31 @@ void hashtable_term(hashtable_t* table) {
 }
 
 // from https://gist.github.com/badboy/6267743
-static HASHTABLE_U32 hashtable_internal_calculate_hash(HASHTABLE_U64 key) {
+static u32 hashtable_internal_calculate_hash(u64 key) {
     key = (~key) + (key << 18);
     key = key ^ (key >> 31);
     key = key * 21;
     key = key ^ (key >> 11);
     key = key + (key << 6);
     key = key ^ (key >> 22);
-    neko_assert(key);
-    return (HASHTABLE_U32)key;
+    NEKO_ASSERT(key);
+    return (u32)key;
 }
 
-static int hashtable_internal_find_slot(hashtable_t const* table, HASHTABLE_U64 key) {
+static int hashtable_internal_find_slot(hashtable_t const* table, u64 key) {
     int const slot_mask = table->slot_capacity - 1;
-    HASHTABLE_U32 const hash = hashtable_internal_calculate_hash(key);
+    u32 const hash = hashtable_internal_calculate_hash(key);
 
-    int const base_slot = (int)(hash & (HASHTABLE_U32)slot_mask);
+    int const base_slot = (int)(hash & (u32)slot_mask);
     int base_count = table->slots[base_slot].base_count;
     int slot = base_slot;
 
     while (base_count > 0) {
-        HASHTABLE_U32 slot_hash = table->slots[slot].key_hash;
+        u32 slot_hash = table->slots[slot].key_hash;
         if (slot_hash) {
-            int slot_base = (int)(slot_hash & (HASHTABLE_U32)slot_mask);
+            int slot_base = (int)(slot_hash & (u32)slot_mask);
             if (slot_base == base_slot) {
-                neko_assert(base_count > 0);
+                NEKO_ASSERT(base_count > 0);
                 --base_count;
                 if (slot_hash == hash && table->items_key[table->slots[slot].item_index] == key) return slot;
             }
@@ -166,13 +166,13 @@ static void hashtable_internal_expand_slots(hashtable_t* table) {
 
     int const size = (int)(table->slot_capacity * sizeof(*table->slots));
     table->slots = (struct hashtable_internal_slot_t*)HASHTABLE_MALLOC(table->memctx, (size_t)size);
-    neko_assert(table->slots);
+    NEKO_ASSERT(table->slots);
     HASHTABLE_MEMSET(table->slots, 0, (size_t)size);
 
     for (int i = 0; i < old_capacity; ++i) {
-        HASHTABLE_U32 const hash = old_slots[i].key_hash;
+        u32 const hash = old_slots[i].key_hash;
         if (hash) {
-            int const base_slot = (int)(hash & (HASHTABLE_U32)slot_mask);
+            int const base_slot = (int)(hash & (u32)slot_mask);
             int slot = base_slot;
             while (table->slots[slot].key_hash) slot = (slot + 1) & slot_mask;
             table->slots[slot].key_hash = hash;
@@ -188,9 +188,9 @@ static void hashtable_internal_expand_slots(hashtable_t* table) {
 
 static void hashtable_internal_expand_items(hashtable_t* table) {
     table->item_capacity *= 2;
-    HASHTABLE_U64* const new_items_key =
-            (HASHTABLE_U64*)HASHTABLE_MALLOC(table->memctx, table->item_capacity * (sizeof(*table->items_key) + sizeof(*table->items_slot) + table->item_size) + table->item_size);
-    neko_assert(new_items_key);
+    u64* const new_items_key =
+            (u64*)HASHTABLE_MALLOC(table->memctx, table->item_capacity * (sizeof(*table->items_key) + sizeof(*table->items_slot) + table->item_size) + table->item_size);
+    NEKO_ASSERT(new_items_key);
 
     int* const new_items_slot = (int*)(new_items_key + table->item_capacity);
     void* const new_items_data = (void*)(new_items_slot + table->item_capacity);
@@ -208,22 +208,22 @@ static void hashtable_internal_expand_items(hashtable_t* table) {
     table->swap_temp = new_swap_temp;
 }
 
-void* hashtable_insert(hashtable_t* table, HASHTABLE_U64 key, void const* item) {
-    neko_assert(hashtable_internal_find_slot(table, key) < 0);
+void* hashtable_insert(hashtable_t* table, u64 key, void const* item) {
+    NEKO_ASSERT(hashtable_internal_find_slot(table, key) < 0);
 
     if (table->count >= (table->slot_capacity - table->slot_capacity / 3)) hashtable_internal_expand_slots(table);
 
     int const slot_mask = table->slot_capacity - 1;
-    HASHTABLE_U32 const hash = hashtable_internal_calculate_hash(key);
+    u32 const hash = hashtable_internal_calculate_hash(key);
 
-    int const base_slot = (int)(hash & (HASHTABLE_U32)slot_mask);
+    int const base_slot = (int)(hash & (u32)slot_mask);
     int base_count = table->slots[base_slot].base_count;
     int slot = base_slot;
     int first_free = slot;
     while (base_count) {
-        HASHTABLE_U32 const slot_hash = table->slots[slot].key_hash;
+        u32 const slot_hash = table->slots[slot].key_hash;
         if (slot_hash == 0 && table->slots[first_free].key_hash != 0) first_free = slot;
-        int slot_base = (int)(slot_hash & (HASHTABLE_U32)slot_mask);
+        int slot_base = (int)(slot_hash & (u32)slot_mask);
         if (slot_base == base_slot) --base_count;
         slot = (slot + 1) & slot_mask;
     }
@@ -233,8 +233,8 @@ void* hashtable_insert(hashtable_t* table, HASHTABLE_U64 key, void const* item) 
 
     if (table->count >= table->item_capacity) hashtable_internal_expand_items(table);
 
-    neko_assert(!table->slots[slot].key_hash && (hash & (HASHTABLE_U32)slot_mask) == (HASHTABLE_U32)base_slot);
-    neko_assert(hash);
+    NEKO_ASSERT(!table->slots[slot].key_hash && (hash & (u32)slot_mask) == (u32)base_slot);
+    NEKO_ASSERT(hash);
     table->slots[slot].key_hash = hash;
     table->slots[slot].item_index = table->count;
     ++table->slots[base_slot].base_count;
@@ -248,14 +248,14 @@ void* hashtable_insert(hashtable_t* table, HASHTABLE_U64 key, void const* item) 
     return dest_item;
 }
 
-void hashtable_remove(hashtable_t* table, HASHTABLE_U64 key) {
+void hashtable_remove(hashtable_t* table, u64 key) {
     int const slot = hashtable_internal_find_slot(table, key);
-    neko_assert(slot >= 0);
+    NEKO_ASSERT(slot >= 0);
 
     int const slot_mask = table->slot_capacity - 1;
-    HASHTABLE_U32 const hash = table->slots[slot].key_hash;
-    int const base_slot = (int)(hash & (HASHTABLE_U32)slot_mask);
-    neko_assert(hash);
+    u32 const hash = table->slots[slot].key_hash;
+    int const base_slot = (int)(hash & (u32)slot_mask);
+    NEKO_ASSERT(hash);
     --table->slots[base_slot].base_count;
     table->slots[slot].key_hash = 0;
 
@@ -277,7 +277,7 @@ void hashtable_clear(hashtable_t* table) {
     HASHTABLE_MEMSET(table->slots, 0, table->slot_capacity * sizeof(*table->slots));
 }
 
-void* hashtable_find(hashtable_t const* table, HASHTABLE_U64 key) {
+void* hashtable_find(hashtable_t const* table, u64 key) {
     int const slot = hashtable_internal_find_slot(table, key);
     if (slot < 0) return 0;
 
@@ -290,7 +290,7 @@ int hashtable_count(hashtable_t const* table) { return table->count; }
 
 void* hashtable_items(hashtable_t const* table) { return table->items_data; }
 
-HASHTABLE_U64 const* hashtable_keys(hashtable_t const* table) { return table->items_key; }
+u64 const* hashtable_keys(hashtable_t const* table) { return table->items_key; }
 
 void hashtable_swap(hashtable_t* table, int index_a, int index_b) {
     if (index_a < 0 || index_a >= table->count || index_b < 0 || index_b >= table->count) return;
@@ -301,7 +301,7 @@ void hashtable_swap(hashtable_t* table, int index_a, int index_b) {
     table->items_slot[index_a] = slot_b;
     table->items_slot[index_b] = slot_a;
 
-    HASHTABLE_U64 temp_key = table->items_key[index_a];
+    u64 temp_key = table->items_key[index_a];
     table->items_key[index_a] = table->items_key[index_b];
     table->items_key[index_b] = temp_key;
 
@@ -339,22 +339,22 @@ void hashtable_swap(hashtable_t* table, int index_a, int index_b) {
         // (don't bother to fill in all the fields for this sample)
         value_t value_a = { "Item A" };
         value_t value_b = { "Item B" };
-        hashtable_insert( &table, (HASHTABLE_U64)(uintptr_t)key_a, &value_a );
-        hashtable_insert( &table, (HASHTABLE_U64)(uintptr_t)key_b, &value_b );
+        hashtable_insert( &table, (u64)(uintptr_t)key_a, &value_a );
+        hashtable_insert( &table, (u64)(uintptr_t)key_b, &value_b );
         }
 
         // find the values by key
-        value_t* value_a = (value_t*)hashtable_find( &table, (HASHTABLE_U64)(uintptr_t)key_a );
+        value_t* value_a = (value_t*)hashtable_find( &table, (u64)(uintptr_t)key_a );
         printf( "First item: %s\n", value_a->id );
-        value_t* value_b = (value_t*)hashtable_find( &table, (HASHTABLE_U64)(uintptr_t)key_b );
+        value_t* value_b = (value_t*)hashtable_find( &table, (u64)(uintptr_t)key_b );
         printf( "Second item: %s\n", value_b->id );
 
         // remove one of the items
-        hashtable_remove( &table, (HASHTABLE_U64)(uintptr_t)key_a );
+        hashtable_remove( &table, (u64)(uintptr_t)key_a );
 
         // it is possible to enumerate keys and values
         int count = hashtable_count( &table );
-        HASHTABLE_U64 const* keys = hashtable_keys( &table );
+        u64 const* keys = hashtable_keys( &table );
         value_t* items = (value_t*)hashtable_items( &table );
         printf( "\nEnumeration:\n" );
         for( int i = 0; i < count; ++i ) {
@@ -377,7 +377,7 @@ void hashtable_swap(hashtable_t* table, int index_a, int index_b) {
 //==== [ Token ] ============================================================//
 
 NEKO_API_DECL neko_token_t neko_token_invalid_token() {
-    neko_token_t t = neko_default_val();
+    neko_token_t t = NEKO_DEFAULT_VAL();
     t.text = "";
     t.type = NEKO_TOKEN_UNKNOWN;
     t.len = 0;
@@ -396,97 +396,97 @@ NEKO_API_DECL const char* neko_token_type_to_str(neko_token_type type) {
     switch (type) {
         default:
         case NEKO_TOKEN_UNKNOWN:
-            return neko_to_str(NEKO_TOKEN_UNKNOWN);
+            return NEKO_TO_STR(NEKO_TOKEN_UNKNOWN);
             break;
         case NEKO_TOKEN_LPAREN:
-            return neko_to_str(NEKO_TOKEN_LPAREN);
+            return NEKO_TO_STR(NEKO_TOKEN_LPAREN);
             break;
         case NEKO_TOKEN_RPAREN:
-            return neko_to_str(NEKO_TOKEN_RPAREN);
+            return NEKO_TO_STR(NEKO_TOKEN_RPAREN);
             break;
         case NEKO_TOKEN_LTHAN:
-            return neko_to_str(NEKO_TOKEN_LTHAN);
+            return NEKO_TO_STR(NEKO_TOKEN_LTHAN);
             break;
         case NEKO_TOKEN_GTHAN:
-            return neko_to_str(NEKO_TOKEN_GTHAN);
+            return NEKO_TO_STR(NEKO_TOKEN_GTHAN);
             break;
         case NEKO_TOKEN_SEMICOLON:
-            return neko_to_str(NEKO_TOKEN_SEMICOLON);
+            return NEKO_TO_STR(NEKO_TOKEN_SEMICOLON);
             break;
         case NEKO_TOKEN_COLON:
-            return neko_to_str(NEKO_TOKEN_COLON);
+            return NEKO_TO_STR(NEKO_TOKEN_COLON);
             break;
         case NEKO_TOKEN_COMMA:
-            return neko_to_str(NEKO_TOKEN_COMMA);
+            return NEKO_TO_STR(NEKO_TOKEN_COMMA);
             break;
         case NEKO_TOKEN_EQUAL:
-            return neko_to_str(NEKO_TOKEN_EQUAL);
+            return NEKO_TO_STR(NEKO_TOKEN_EQUAL);
             break;
         case NEKO_TOKEN_NOT:
-            return neko_to_str(NEKO_TOKEN_NOT);
+            return NEKO_TO_STR(NEKO_TOKEN_NOT);
             break;
         case NEKO_TOKEN_HASH:
-            return neko_to_str(NEKO_TOKEN_HASH);
+            return NEKO_TO_STR(NEKO_TOKEN_HASH);
             break;
         case NEKO_TOKEN_PIPE:
-            return neko_to_str(NEKO_TOKEN_PIPE);
+            return NEKO_TO_STR(NEKO_TOKEN_PIPE);
             break;
         case NEKO_TOKEN_AMPERSAND:
-            return neko_to_str(NEKO_TOKEN_AMPERSAND);
+            return NEKO_TO_STR(NEKO_TOKEN_AMPERSAND);
             break;
         case NEKO_TOKEN_LBRACE:
-            return neko_to_str(NEKO_TOKEN_LBRACE);
+            return NEKO_TO_STR(NEKO_TOKEN_LBRACE);
             break;
         case NEKO_TOKEN_RBRACE:
-            return neko_to_str(NEKO_TOKEN_RBRACE);
+            return NEKO_TO_STR(NEKO_TOKEN_RBRACE);
             break;
         case NEKO_TOKEN_LBRACKET:
-            return neko_to_str(NEKO_TOKEN_LBRACKET);
+            return NEKO_TO_STR(NEKO_TOKEN_LBRACKET);
             break;
         case NEKO_TOKEN_RBRACKET:
-            return neko_to_str(NEKO_TOKEN_RBRACKET);
+            return NEKO_TO_STR(NEKO_TOKEN_RBRACKET);
             break;
         case NEKO_TOKEN_MINUS:
-            return neko_to_str(NEKO_TOKEN_MINUS);
+            return NEKO_TO_STR(NEKO_TOKEN_MINUS);
             break;
         case NEKO_TOKEN_PLUS:
-            return neko_to_str(NEKO_TOKEN_PLUS);
+            return NEKO_TO_STR(NEKO_TOKEN_PLUS);
             break;
         case NEKO_TOKEN_ASTERISK:
-            return neko_to_str(NEKO_TOKEN_ASTERISK);
+            return NEKO_TO_STR(NEKO_TOKEN_ASTERISK);
             break;
         case NEKO_TOKEN_BSLASH:
-            return neko_to_str(NEKO_TOKEN_BLASH);
+            return NEKO_TO_STR(NEKO_TOKEN_BLASH);
             break;
         case NEKO_TOKEN_FSLASH:
-            return neko_to_str(NEKO_TOKEN_FLASH);
+            return NEKO_TO_STR(NEKO_TOKEN_FLASH);
             break;
         case NEKO_TOKEN_QMARK:
-            return neko_to_str(NEKO_TOKEN_QMARK);
+            return NEKO_TO_STR(NEKO_TOKEN_QMARK);
             break;
         case NEKO_TOKEN_DOLLAR:
-            return neko_to_str(NEKO_TOKEN_DOLLAR);
+            return NEKO_TO_STR(NEKO_TOKEN_DOLLAR);
             break;
         case NEKO_TOKEN_SPACE:
-            return neko_to_str(NEKO_TOKEN_SPACE);
+            return NEKO_TO_STR(NEKO_TOKEN_SPACE);
             break;
         case NEKO_TOKEN_NEWLINE:
-            return neko_to_str(NEKO_TOKEN_NEWLINE);
+            return NEKO_TO_STR(NEKO_TOKEN_NEWLINE);
             break;
         case NEKO_TOKEN_TAB:
-            return neko_to_str(NEKO_TOKEN_TAB);
+            return NEKO_TO_STR(NEKO_TOKEN_TAB);
             break;
         case NEKO_TOKEN_SINGLE_LINE_COMMENT:
-            return neko_to_str(NEKO_TOKEN_SINGLE_LINE_COMMENT);
+            return NEKO_TO_STR(NEKO_TOKEN_SINGLE_LINE_COMMENT);
             break;
         case NEKO_TOKEN_MULTI_LINE_COMMENT:
-            return neko_to_str(NEKO_TOKEN_MULTI_LINE_COMMENT);
+            return NEKO_TO_STR(NEKO_TOKEN_MULTI_LINE_COMMENT);
             break;
         case NEKO_TOKEN_IDENTIFIER:
-            return neko_to_str(NEKO_TOKEN_IDENTIFIER);
+            return NEKO_TO_STR(NEKO_TOKEN_IDENTIFIER);
             break;
         case NEKO_TOKEN_NUMBER:
-            return neko_to_str(NEKO_TOKEN_NUMBER);
+            return NEKO_TO_STR(NEKO_TOKEN_NUMBER);
             break;
     }
 }
@@ -875,7 +875,7 @@ NEKO_API_DECL neko_token_t neko_lexer_advance_before_next_token_type(neko_lexer_
 }
 
 NEKO_API_DECL neko_lexer_t neko_lexer_c_ctor(const char* contents) {
-    neko_lexer_t lex = neko_default_val();
+    neko_lexer_t lex = NEKO_DEFAULT_VAL();
     lex.contents = contents;
     lex.at = contents;
     lex.can_lex = neko_lexer_c_can_lex;

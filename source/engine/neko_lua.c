@@ -2284,7 +2284,7 @@ static inline int to_hex(char c) {
 static int push_token_string(lua_State *L, const char *ptr, size_t sz) {
     char tmp[SHORT_STRING];
     char *buffer = tmp;
-    neko_assert(sz > 0);
+    NEKO_ASSERT(sz > 0);
     if (sz > SHORT_STRING) {
         buffer = (char *)lua_newuserdatauv(L, sz, 0);
     }
@@ -2296,7 +2296,7 @@ static int push_token_string(lua_State *L, const char *ptr, size_t sz) {
         } else {
             ++ptr;
             ++i;
-            neko_assert(i < sz);
+            NEKO_ASSERT(i < sz);
             char c = *ptr;
             if (c >= '0' && c <= '9') {
                 // escape dec ascii
@@ -3008,7 +3008,7 @@ static void parse_all(lua_State *L, struct lex_state *LS) {
     lua_rotate(L, -3, 2);
     int tt = read_token(L, LS);
     if (tt == TOKEN_EOF) return;
-    neko_assert(tt == TOKEN_NEWLINE);
+    NEKO_ASSERT(tt == TOKEN_NEWLINE);
     parse_section(L, LS, 0);
     if (LS->c.type != TOKEN_EOF) {
         invalid(L, LS, "not end");

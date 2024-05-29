@@ -3,7 +3,7 @@
 
 #include <cstdio>
 
-#include "engine/neko_graphics.h"
+#include "engine/neko_render.h"
 
 namespace neko {
 
@@ -2376,7 +2376,7 @@ void test_wang() {
 
     unsigned char* data = stbi_load(neko_file_path("gamedir/assets/textures/wang_test.png"), &w, &h, NULL, 3);
 
-    neko_assert(data);
+    NEKO_ASSERT(data);
 
     printf("Output size: %dx%d\n", xs, ys);
 

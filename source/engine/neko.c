@@ -157,7 +157,7 @@ void neko_log(int level, const char* file, int line, const char* fmt, ...) {
         fflush(ev.udata);
 
         if (NULL != neko_instance() && NULL != neko_instance()->console) {
-            char buffer[512] = neko_default_val();
+            char buffer[512] = NEKO_DEFAULT_VAL();
             vsnprintf(buffer, 512, ev.fmt, ev.ap);
             neko_console_printf(neko_instance()->console, "%-5s %s:%d: ", level_strings[ev.level], neko_fs_get_filename(ev.file), ev.line);
             neko_console_printf(neko_instance()->console, buffer);
@@ -213,7 +213,7 @@ size_t neko_byte_buffer_size(neko_byte_buffer_t* buffer) { return buffer->size; 
 
 void neko_byte_buffer_resize(neko_byte_buffer_t* buffer, size_t sz) {
 
-    // if (sz == 4096) neko_assert(0);
+    // if (sz == 4096) NEKO_ASSERT(0);
 
     u8* data = (u8*)neko_safe_realloc(buffer->data, sz);
 
@@ -295,7 +295,7 @@ neko_result neko_byte_buffer_read_from_file(neko_byte_buffer_t* buffer, const ch
 
     buffer->data = (u8*)neko_platform_read_file_contents(file_path, "rb", (size_t*)&buffer->size);
     if (!buffer->data) {
-        neko_assert(false);
+        NEKO_ASSERT(false);
         return NEKO_RESULT_FAILURE;
     }
 
@@ -568,17 +568,17 @@ void __neko_mem_end() { neko_mem_check_leaks(true); }
 // } neko_memory_block_t;
 
 NEKO_API_DECL neko_memory_block_t neko_memory_block_new(size_t sz) {
-    neko_memory_block_t mem = neko_default_val();
+    neko_memory_block_t mem = NEKO_DEFAULT_VAL();
     mem.data = (u8*)neko_malloc(sz);
-    neko_assert(mem.data);
+    NEKO_ASSERT(mem.data);
     memset(mem.data, 0, sz);
     mem.size = sz;
     return mem;
 }
 
 NEKO_API_DECL void neko_memory_block_free(neko_memory_block_t* mem) {
-    neko_assert(mem);
-    neko_assert(mem->data);
+    NEKO_ASSERT(mem);
+    NEKO_ASSERT(mem->data);
     neko_free(mem->data);
     mem->data = NULL;
     mem->size = 0;
@@ -620,7 +620,7 @@ NEKO_API_DECL size_t neko_memory_calc_padding_w_header(size_t base_address, size
 // } neko_linear_allocator_t;
 
 NEKO_API_DECL neko_linear_allocator_t neko_linear_allocator_new(size_t sz) {
-    neko_linear_allocator_t la = neko_default_val();
+    neko_linear_allocator_t la = NEKO_DEFAULT_VAL();
     la.memory = (u8*)neko_malloc(sz);
     memset(la.memory, 0, sz);
     la.offset = 0;
@@ -629,14 +629,14 @@ NEKO_API_DECL neko_linear_allocator_t neko_linear_allocator_new(size_t sz) {
 }
 
 NEKO_API_DECL void neko_linear_allocator_free(neko_linear_allocator_t* la) {
-    neko_assert(la);
-    neko_assert(la->memory);
+    NEKO_ASSERT(la);
+    NEKO_ASSERT(la->memory);
     neko_free(la->memory);
     la->memory = NULL;
 }
 
 NEKO_API_DECL void* neko_linear_allocator_allocate(neko_linear_allocator_t* la, size_t sz, size_t alignment) {
-    neko_assert(la);
+    NEKO_ASSERT(la);
     size_t padding = 0;
     size_t padding_address = 0;
     size_t cur_address = (size_t)la->memory + la->offset;
@@ -659,7 +659,7 @@ NEKO_API_DECL void* neko_linear_allocator_allocate(neko_linear_allocator_t* la, 
 }
 
 NEKO_API_DECL void neko_linear_allocator_clear(neko_linear_allocator_t* la) {
-    neko_assert(la);
+    NEKO_ASSERT(la);
     la->offset = 0;
 }
 
@@ -668,7 +668,7 @@ NEKO_API_DECL void neko_linear_allocator_clear(neko_linear_allocator_t* la) {
 ================================================================================*/
 
 NEKO_API_DECL neko_stack_allocator_t neko_stack_allocator_new(size_t sz) {
-    neko_stack_allocator_t alloc = neko_default_val();
+    neko_stack_allocator_t alloc = NEKO_DEFAULT_VAL();
     alloc.memory = neko_memory_block_new(sz);
     return alloc;
 }
@@ -735,7 +735,7 @@ NEKO_API_DECL void neko_stack_allocator_clear(neko_stack_allocator_t* sa) {
 ================================================================================*/
 
 NEKO_API_DECL neko_paged_allocator_t neko_paged_allocator_new(size_t block_size, size_t blocks_per_page) {
-    neko_paged_allocator_t pa = neko_default_val();
+    neko_paged_allocator_t pa = NEKO_DEFAULT_VAL();
     pa.block_size = block_size;
     pa.blocks_per_page = blocks_per_page;
     pa.pages = NULL;
@@ -824,7 +824,7 @@ NEKO_API_DECL void neko_paged_allocator_clear(neko_paged_allocator_t* pa) {
 // } neko_heap_allocator_t;
 
 NEKO_API_DECL neko_heap_allocator_t neko_heap_allocate_new() {
-    neko_heap_allocator_t ha = neko_default_val();
+    neko_heap_allocator_t ha = NEKO_DEFAULT_VAL();
     ha.memory = (neko_heap_allocator_header_t*)neko_malloc_init_impl(NEKO_HEAP_ALLOC_DEFAULT_SIZE);
     ha.memory->next = NULL;
     ha.memory->prev = NULL;
@@ -884,10 +884,6 @@ NEKO_API_DECL void neko_heap_allocator_deallocate(neko_heap_allocator_t* ha, voi
     // Fill this out...
 }
 
-/*========================
-// Random
-========================*/
-
 /*=============================
 // NEKO_UTIL
 =============================*/
@@ -914,7 +910,7 @@ NEKO_API_DECL char* neko_read_file_contents(const char* file_path, const char* m
 b32 neko_util_load_texture_data_from_file(const char* file_path, s32* width, s32* height, u32* num_comps, void** data, b32 flip_vertically_on_load) {
     size_t len = 0;
     char* file_data = neko_platform_read_file_contents(file_path, "rb", &len);
-    neko_assert(file_data);
+    NEKO_ASSERT(file_data);
     b32 ret = neko_util_load_texture_data_from_memory(file_data, len, width, height, num_comps, data, flip_vertically_on_load);
     if (!ret) {
         neko_log_warning("Could not load texture: %s", file_path);
@@ -923,9 +919,9 @@ b32 neko_util_load_texture_data_from_file(const char* file_path, s32* width, s32
     return ret;
 }
 
-/*================================================================================
+/*========================
 // Random
-================================================================================*/
+========================*/
 
 #define NEKO_RAND_UPPER_MASK 0x80000000
 #define NEKO_RAND_LOWER_MASK 0x7fffffff
@@ -981,7 +977,7 @@ NEKO_API_DECL uint64_t neko_rand_gen_range_long(neko_mt_rand_t* rand, int32_t mi
 NEKO_API_DECL double neko_rand_gen_range(neko_mt_rand_t* rand, double min, double max) { return neko_map_range(0.0, 1.0, min, max, neko_rand_gen(rand)); }
 
 NEKO_API_DECL neko_color_t neko_rand_gen_color(neko_mt_rand_t* rand) {
-    neko_color_t c = neko_default_val();
+    neko_color_t c = NEKO_DEFAULT_VAL();
     c.r = (u8)neko_rand_gen_range_long(rand, 0, 255);
     c.g = (u8)neko_rand_gen_range_long(rand, 0, 255);
     c.b = (u8)neko_rand_gen_range_long(rand, 0, 255);
@@ -1033,23 +1029,259 @@ void neko_config_print() {
     }
 }
 
-#if defined(NEKO_ALL_IN_ONE)
+//=============================
+// Console
+//=============================
 
-#include "engine/impl/neko_audio_impl.c"
-#include "engine/impl/neko_graphics_impl.c"
-#include "engine/impl/neko_platform_impl.c"
-#include "engine/neko_ai.c"
-#include "engine/neko_asset.c"
-#include "engine/neko_gfxt.c"
-#include "engine/neko_gui.c"
-#include "engine/neko_idraw.c"
-#include "engine/neko_meta.c"
-#include "engine/neko_nbt.c"
-#include "engine/neko_script.c"
-#include "engine/neko_tiled.c"
-#include "engine/neko_xml.c"
 
-#endif
 
-// builtin
-#define NEKO_IMPL
+NEKO_API_DECL void neko_console(neko_console_t* console, neko_ui_context_t* ctx, neko_ui_rect_t screen, const neko_ui_selector_desc_t* desc) {
+    if (console->open)
+        console->y += (screen.h * console->size - console->y) * console->open_speed;
+    else if (!console->open && console->y >= 1.0f)
+        console->y += (0 - console->y) * console->close_speed;
+    else
+        return;
+
+    const f32 sz = NEKO_MIN(console->y, 26);
+    if (neko_ui_window_begin_ex(ctx, "neko_console_content", neko_ui_rect(screen.x, screen.y, screen.w, console->y - sz), NULL, NULL,
+                                NEKO_UI_OPT_FORCESETRECT | NEKO_UI_OPT_NOTITLE | NEKO_UI_OPT_NORESIZE | NEKO_UI_OPT_NODOCK | NEKO_UI_OPT_FORCEFOCUS | NEKO_UI_OPT_HOLDFOCUS)) {
+        neko_ui_layout_row(ctx, 1, neko_ui_widths(-1), 0);
+        neko_ui_text(ctx, console->tb);
+        // neko_imgui_draw_text(console->tb, NEKO_COLOR_WHITE, 10.f, 10.f, true, NEKO_COLOR_BLACK);
+        if (console->autoscroll) neko_ui_get_current_container(ctx)->scroll.y = sizeof(console->tb) * 7 + 100;
+        neko_ui_container_t* ctn = neko_ui_get_current_container(ctx);
+        neko_ui_bring_to_front(ctx, ctn);
+        neko_ui_window_end(ctx);
+    }
+
+    if (neko_ui_window_begin_ex(ctx, "neko_console_input", neko_ui_rect(screen.x, screen.y + console->y - sz, screen.w, sz), NULL, NULL,
+                                NEKO_UI_OPT_FORCESETRECT | NEKO_UI_OPT_NOTITLE | NEKO_UI_OPT_NORESIZE | NEKO_UI_OPT_NODOCK | NEKO_UI_OPT_NOHOVER | NEKO_UI_OPT_NOINTERACT)) {
+        int len = strlen(console->cb[0]);
+        neko_ui_layout_row(ctx, 3, neko_ui_widths(14, len * 7 + 2, 10), 0);
+        neko_ui_text(ctx, "$>");
+        neko_ui_text(ctx, console->cb[0]);
+
+        if (!console->open || !console->last_open_state) {
+            goto console_input_handling_done;
+        }
+
+        // 处理文本输入
+        int32_t n = NEKO_MIN(sizeof(*console->cb) - len - 1, (int32_t)strlen(ctx->input_text));
+
+        if (neko_platform_key_pressed(NEKO_KEYCODE_UP)) {
+            console->current_cb_idx++;
+            if (console->current_cb_idx >= NEKO_ARR_SIZE(console->cb)) {
+                console->current_cb_idx = NEKO_ARR_SIZE(console->cb) - 1;
+            } else {
+                memcpy(&console->cb[0], &console->cb[console->current_cb_idx], sizeof(*console->cb));
+            }
+        } else if (neko_platform_key_pressed(NEKO_KEYCODE_DOWN)) {
+            console->current_cb_idx--;
+            if (console->current_cb_idx <= 0) {
+                console->current_cb_idx = 0;
+                memset(&console->cb[0], 0, sizeof(*console->cb));
+            } else {
+                memcpy(&console->cb[0], &console->cb[console->current_cb_idx], sizeof(*console->cb));
+            }
+        } else if (neko_platform_key_pressed(NEKO_KEYCODE_ENTER)) {
+            console->current_cb_idx = 0;
+            neko_console_printf(console, "$ %s\n", console->cb[0]);
+
+            memmove((uint8_t*)console->cb + sizeof(*console->cb), (uint8_t*)console->cb, sizeof(console->cb) - sizeof(*console->cb));
+
+            if (console->cb[0][0] && console->commands) {
+                char* tmp = console->cb[0];
+                int argc = 1;
+                while ((tmp = strchr(tmp, ' '))) {
+                    argc++;
+                    tmp++;
+                }
+
+                tmp = console->cb[0];
+                char* last_pos = console->cb[0];
+                char** argv = (char**)neko_safe_malloc(argc * sizeof(char*));
+                int i = 0;
+                while ((tmp = strchr(tmp, ' '))) {
+                    *tmp = 0;
+                    argv[i++] = last_pos;
+                    last_pos = ++tmp;
+                }
+                argv[argc - 1] = last_pos;
+
+                for (int i = 0; i < console->commands_len; i++) {
+                    if (console->commands[i].name && console->commands[i].func && strcmp(argv[0], console->commands[i].name) == 0) {
+                        console->commands[i].func(argc, argv);
+                        goto console_command_found;
+                    }
+                }
+                neko_console_printf(console, "[neko_console]: unrecognized command '%s'\n", argv[0]);
+            console_command_found:
+                console->cb[0][0] = '\0';
+                neko_safe_free(argv);
+            }
+        } else if (neko_platform_key_pressed(NEKO_KEYCODE_BACKSPACE)) {
+            console->current_cb_idx = 0;
+            // 跳过 utf-8 连续字节
+            while ((console->cb[0][--len] & 0xc0) == 0x80 && len > 0);
+            console->cb[0][len] = '\0';
+        } else if (n > 0 && !neko_platform_key_pressed(NEKO_KEYCODE_GRAVE_ACCENT)) {
+            console->current_cb_idx = 0;
+            if (len + n + 1 < sizeof(*console->cb)) {
+                memcpy(console->cb[0] + len, ctx->input_text, n);
+                len += n;
+                console->cb[0][len] = '\0';
+            }
+        }
+
+    console_input_handling_done:
+
+        // 闪烁光标
+        neko_ui_get_layout(ctx)->body.x += len * 7 - 5;
+        if ((int)(neko_platform_elapsed_time() / 666.0f) & 1) neko_ui_text(ctx, "|");
+
+        neko_ui_container_t* ctn = neko_ui_get_current_container(ctx);
+        neko_ui_bring_to_front(ctx, ctn);
+
+        neko_ui_window_end(ctx);
+    }
+
+    console->last_open_state = console->open;
+}
+
+static bool window = 1, embeded;
+static int summons;
+
+static void toggle_window(int argc, char** argv);
+static void toggle_embedded(int argc, char** argv);
+static void help(int argc, char** argv);
+static void echo(int argc, char** argv);
+static void spam(int argc, char** argv);
+static void crash(int argc, char** argv);
+void summon(int argc, char** argv);
+void exec(int argc, char** argv);
+void sz(int argc, char** argv);
+
+neko_console_command_t commands[] = {{
+                                             .func = echo,
+                                             .name = "echo",
+                                             .desc = "repeat what was entered",
+                                     },
+                                     {
+                                             .func = spam,
+                                             .name = "spam",
+                                             .desc = "send the word arg1, arg2 amount of times",
+                                     },
+                                     {
+                                             .func = help,
+                                             .name = "help",
+                                             .desc = "sends a list of commands",
+                                     },
+                                     {
+                                             .func = toggle_window,
+                                             .name = "window",
+                                             .desc = "toggles gui window",
+                                     },
+                                     {
+                                             .func = toggle_embedded,
+                                             .name = "embed",
+                                             .desc = "places the console inside the window",
+                                     },
+                                     {
+                                             .func = summon,
+                                             .name = "summon",
+                                             .desc = "summons a gui window",
+                                     },
+                                     {
+                                             .func = sz,
+                                             .name = "sz",
+                                             .desc = "change console size",
+                                     },
+                                     {
+                                             .func = crash,
+                                             .name = "crash",
+                                             .desc = "test crashhhhhhhhh.....",
+                                     },
+                                     {
+                                             .func = exec,
+                                             .name = "exec",
+                                             .desc = "run nekoscript",
+                                     }};
+
+neko_console_t g_console = {
+        .tb = "",
+        .cb = {},
+        .size = 0.4,
+        .open_speed = 0.2,
+        .close_speed = 0.3,
+        .autoscroll = true,
+        .commands = commands,
+        .commands_len = NEKO_ARR_SIZE(commands),
+};
+
+void sz(int argc, char** argv) {
+    if (argc != 2) {
+        neko_console_printf(&g_console, "[sz]: needs 1 argument!\n");
+        return;
+    }
+    f32 sz = atof(argv[1]);
+    if (sz > 1 || sz < 0) {
+        neko_console_printf(&g_console, "[sz]: number needs to be between (0, 1)");
+        return;
+    }
+    g_console.size = sz;
+
+    neko_console_printf(&g_console, "console size is now %f\n", sz);
+}
+
+void toggle_window(int argc, char** argv) {
+    if (window && embeded)
+        neko_console_printf(&g_console, "Unable to turn off window, console is embeded!\n");
+    else
+        neko_console_printf(&g_console, "GUI Window turned %s\n", (window = !window) ? "on" : "off");
+}
+
+void toggle_embedded(int argc, char** argv) {
+    if (!window && !embeded)
+        neko_console_printf(&g_console, "Unable to embed into window, open window first!\n");
+    else
+        neko_console_printf(&g_console, "console embedded turned %s\n", (embeded = !embeded) ? "on" : "off");
+}
+
+void summon(int argc, char** argv) {
+    neko_console_printf(&g_console, "A summoner has cast his spell! A window has appeared!!!!\n");
+    summons++;
+}
+
+void crash(int argc, char** argv) {
+    const_str trace_info = neko_platform_stacktrace();
+    // neko_platform_msgbox(std::format("Crash...\n{0}", trace_info).c_str());
+}
+
+void spam(int argc, char** argv) {
+    int count;
+    if (argc != 3) goto spam_invalid_command;
+    count = atoi(argv[2]);
+    if (!count) goto spam_invalid_command;
+    while (count--) neko_console_printf(&g_console, "%s\n", argv[1]);
+    return;
+spam_invalid_command:
+    neko_console_printf(&g_console, "[spam]: invalid usage. It should be 'spam word [int count]''\n");
+}
+
+void echo(int argc, char** argv) {
+    for (int i = 1; i < argc; i++) neko_console_printf(&g_console, "%s ", argv[i]);
+    neko_console_printf(&g_console, "\n");
+}
+
+void exec(int argc, char** argv) {
+    if (argc != 2) return;
+    // neko_vm_interpreter(argv[1]);
+}
+
+void help(int argc, char** argv) {
+    for (int i = 0; i < NEKO_ARR_SIZE(commands); i++) {
+        if (commands[i].name) neko_console_printf(&g_console, "* Command: %s\n", commands[i].name);
+        if (commands[i].desc) neko_console_printf(&g_console, "- desc: %s\n", commands[i].desc);
+    }
+}

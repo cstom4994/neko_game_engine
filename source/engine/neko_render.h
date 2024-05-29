@@ -1,7 +1,7 @@
 
 
-#ifndef NEKO_GRAPHICS_H
-#define NEKO_GRAPHICS_H
+#ifndef NEKO_RENDER_H
+#define NEKO_RENDER_H
 
 #include "engine/neko.h"
 #include "engine/neko_math.h"
@@ -16,8 +16,8 @@
 NEKO_API_DECL const_str __neko_gl_error_string(GLenum const err);
 NEKO_API_DECL const_str neko_opengl_string(GLenum e);
 
-#define neko_check_gl_error() neko_graphics_print_errors_internal(__FILE__, __LINE__)
-NEKO_API_DECL void neko_graphics_print_errors_internal(const char* file, u32 line);
+#define neko_check_gl_error() neko_render_print_error(__FILE__, __LINE__)
+NEKO_API_DECL void neko_render_print_error(const char* file, u32 line);
 
 // OpenGL
 #define __neko_gl_state_backup()                                                \
@@ -107,157 +107,155 @@ NEKO_API_DECL void neko_graphics_print_errors_internal(const char* file, u32 lin
 #define neko_enum_count(NAME) _neko_##NAME##_count
 
 /* Shader Stage Type */
-neko_enum_decl(neko_graphics_shader_stage_type, NEKO_GRAPHICS_SHADER_STAGE_VERTEX, NEKO_GRAPHICS_SHADER_STAGE_FRAGMENT, NEKO_GRAPHICS_SHADER_STAGE_COMPUTE);
+neko_enum_decl(neko_render_shader_stage_type, NEKO_RENDER_SHADER_STAGE_VERTEX, NEKO_RENDER_SHADER_STAGE_FRAGMENT, NEKO_RENDER_SHADER_STAGE_COMPUTE);
 
 /* Winding Order Type */
-neko_enum_decl(neko_graphics_winding_order_type, NEKO_GRAPHICS_WINDING_ORDER_CW, NEKO_GRAPHICS_WINDING_ORDER_CCW);
+neko_enum_decl(neko_render_winding_order_type, NEKO_RENDER_WINDING_ORDER_CW, NEKO_RENDER_WINDING_ORDER_CCW);
 
 /* Face Culling Type */
-neko_enum_decl(neko_graphics_face_culling_type, NEKO_GRAPHICS_FACE_CULLING_FRONT, NEKO_GRAPHICS_FACE_CULLING_BACK, NEKO_GRAPHICS_FACE_CULLING_FRONT_AND_BACK);
+neko_enum_decl(neko_render_face_culling_type, NEKO_RENDER_FACE_CULLING_FRONT, NEKO_RENDER_FACE_CULLING_BACK, NEKO_RENDER_FACE_CULLING_FRONT_AND_BACK);
 
 /* Blend Equation Type */
-neko_enum_decl(neko_graphics_blend_equation_type, NEKO_GRAPHICS_BLEND_EQUATION_ADD, NEKO_GRAPHICS_BLEND_EQUATION_SUBTRACT, NEKO_GRAPHICS_BLEND_EQUATION_REVERSE_SUBTRACT,
-               NEKO_GRAPHICS_BLEND_EQUATION_MIN, NEKO_GRAPHICS_BLEND_EQUATION_MAX);
+neko_enum_decl(neko_render_blend_equation_type, NEKO_RENDER_BLEND_EQUATION_ADD, NEKO_RENDER_BLEND_EQUATION_SUBTRACT, NEKO_RENDER_BLEND_EQUATION_REVERSE_SUBTRACT, NEKO_RENDER_BLEND_EQUATION_MIN,
+               NEKO_RENDER_BLEND_EQUATION_MAX);
 
 /* Blend Mode Type */
-neko_enum_decl(neko_graphics_blend_mode_type, NEKO_GRAPHICS_BLEND_MODE_ZERO, NEKO_GRAPHICS_BLEND_MODE_ONE, NEKO_GRAPHICS_BLEND_MODE_SRC_COLOR, NEKO_GRAPHICS_BLEND_MODE_ONE_MINUS_SRC_COLOR,
-               NEKO_GRAPHICS_BLEND_MODE_DST_COLOR, NEKO_GRAPHICS_BLEND_MODE_ONE_MINUS_DST_COLOR, NEKO_GRAPHICS_BLEND_MODE_SRC_ALPHA, NEKO_GRAPHICS_BLEND_MODE_ONE_MINUS_SRC_ALPHA,
-               NEKO_GRAPHICS_BLEND_MODE_DST_ALPHA, NEKO_GRAPHICS_BLEND_MODE_ONE_MINUS_DST_ALPHA, NEKO_GRAPHICS_BLEND_MODE_CONSTANT_COLOR, NEKO_GRAPHICS_BLEND_MODE_ONE_MINUS_CONSTANT_COLOR,
-               NEKO_GRAPHICS_BLEND_MODE_CONSTANT_ALPHA, NEKO_GRAPHICS_BLEND_MODE_ONE_MINUS_CONSTANT_ALPHA);
+neko_enum_decl(neko_render_blend_mode_type, NEKO_RENDER_BLEND_MODE_ZERO, NEKO_RENDER_BLEND_MODE_ONE, NEKO_RENDER_BLEND_MODE_SRC_COLOR, NEKO_RENDER_BLEND_MODE_ONE_MINUS_SRC_COLOR,
+               NEKO_RENDER_BLEND_MODE_DST_COLOR, NEKO_RENDER_BLEND_MODE_ONE_MINUS_DST_COLOR, NEKO_RENDER_BLEND_MODE_SRC_ALPHA, NEKO_RENDER_BLEND_MODE_ONE_MINUS_SRC_ALPHA,
+               NEKO_RENDER_BLEND_MODE_DST_ALPHA, NEKO_RENDER_BLEND_MODE_ONE_MINUS_DST_ALPHA, NEKO_RENDER_BLEND_MODE_CONSTANT_COLOR, NEKO_RENDER_BLEND_MODE_ONE_MINUS_CONSTANT_COLOR,
+               NEKO_RENDER_BLEND_MODE_CONSTANT_ALPHA, NEKO_RENDER_BLEND_MODE_ONE_MINUS_CONSTANT_ALPHA);
 
 /* Shader Language Type */
-neko_enum_decl(neko_graphics_shader_language_type, NEKO_GRAPHICS_SHADER_LANGUAGE_GLSL);
+neko_enum_decl(neko_render_shader_language_type, NEKO_RENDER_SHADER_LANGUAGE_GLSL);
 
 /* Push Constant Type */
 // Really don't want to handle "auto-merging" of data types
 
 /* Uniform Type */
-neko_enum_decl(neko_graphics_uniform_type, NEKO_GRAPHICS_UNIFORM_FLOAT, NEKO_GRAPHICS_UNIFORM_INT, NEKO_GRAPHICS_UNIFORM_VEC2, NEKO_GRAPHICS_UNIFORM_VEC3, NEKO_GRAPHICS_UNIFORM_VEC4,
-               NEKO_GRAPHICS_UNIFORM_MAT4, NEKO_GRAPHICS_UNIFORM_SAMPLER2D, NEKO_GRAPHICS_UNIFORM_USAMPLER2D, NEKO_GRAPHICS_UNIFORM_SAMPLERCUBE, NEKO_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F,
-               NEKO_GRAPHICS_UNIFORM_BLOCK);
+neko_enum_decl(neko_render_uniform_type, NEKO_RENDER_UNIFORM_FLOAT, NEKO_RENDER_UNIFORM_INT, NEKO_RENDER_UNIFORM_VEC2, NEKO_RENDER_UNIFORM_VEC3, NEKO_RENDER_UNIFORM_VEC4, NEKO_RENDER_UNIFORM_MAT4,
+               NEKO_RENDER_UNIFORM_SAMPLER2D, NEKO_RENDER_UNIFORM_USAMPLER2D, NEKO_RENDER_UNIFORM_SAMPLERCUBE, NEKO_RENDER_UNIFORM_IMAGE2D_RGBA32F, NEKO_RENDER_UNIFORM_BLOCK);
 
 /* Uniform Block Usage Type */
-neko_enum_decl(neko_graphics_uniform_block_usage_type,
-               NEKO_GRAPHICS_UNIFORM_BLOCK_USAGE_STATIC,  // Default of 0x00 is static
-               NEKO_GRAPHICS_UNIFORM_BLOCK_USAGE_PUSH_CONSTANT);
+neko_enum_decl(neko_render_uniform_block_usage_type,
+               NEKO_RENDER_UNIFORM_BLOCK_USAGE_STATIC,  // Default of 0x00 is static
+               NEKO_RENDER_UNIFORM_BLOCK_USAGE_PUSH_CONSTANT);
 
 /* Sampler Type */
-neko_enum_decl(neko_graphics_sampler_type, NEKO_GRAPHICS_SAMPLER_2D);
+neko_enum_decl(neko_render_sampler_type, NEKO_RENDER_SAMPLER_2D);
 
 /* Primitive Type */
-neko_enum_decl(neko_graphics_primitive_type, NEKO_GRAPHICS_PRIMITIVE_LINES, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES, NEKO_GRAPHICS_PRIMITIVE_QUADS);
+neko_enum_decl(neko_render_primitive_type, NEKO_RENDER_PRIMITIVE_LINES, NEKO_RENDER_PRIMITIVE_TRIANGLES, NEKO_RENDER_PRIMITIVE_QUADS);
 
 /* Vertex Atribute Type */
-neko_enum_decl(neko_graphics_vertex_attribute_type, NEKO_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT4, NEKO_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3, NEKO_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT2,
-               NEKO_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT, NEKO_GRAPHICS_VERTEX_ATTRIBUTE_UINT4, NEKO_GRAPHICS_VERTEX_ATTRIBUTE_UINT3, NEKO_GRAPHICS_VERTEX_ATTRIBUTE_UINT2,
-               NEKO_GRAPHICS_VERTEX_ATTRIBUTE_UINT, NEKO_GRAPHICS_VERTEX_ATTRIBUTE_BYTE4, NEKO_GRAPHICS_VERTEX_ATTRIBUTE_BYTE3, NEKO_GRAPHICS_VERTEX_ATTRIBUTE_BYTE2,
-               NEKO_GRAPHICS_VERTEX_ATTRIBUTE_BYTE);
+neko_enum_decl(neko_render_vertex_attribute_type, NEKO_RENDER_VERTEX_ATTRIBUTE_FLOAT4, NEKO_RENDER_VERTEX_ATTRIBUTE_FLOAT3, NEKO_RENDER_VERTEX_ATTRIBUTE_FLOAT2, NEKO_RENDER_VERTEX_ATTRIBUTE_FLOAT,
+               NEKO_RENDER_VERTEX_ATTRIBUTE_UINT4, NEKO_RENDER_VERTEX_ATTRIBUTE_UINT3, NEKO_RENDER_VERTEX_ATTRIBUTE_UINT2, NEKO_RENDER_VERTEX_ATTRIBUTE_UINT, NEKO_RENDER_VERTEX_ATTRIBUTE_BYTE4,
+               NEKO_RENDER_VERTEX_ATTRIBUTE_BYTE3, NEKO_RENDER_VERTEX_ATTRIBUTE_BYTE2, NEKO_RENDER_VERTEX_ATTRIBUTE_BYTE);
 
 /* Buffer Type */
-neko_enum_decl(neko_graphics_buffer_type, NEKO_GRAPHICS_BUFFER_VERTEX, NEKO_GRAPHICS_BUFFER_INDEX, NEKO_GRAPHICS_BUFFER_FRAME, NEKO_GRAPHICS_BUFFER_UNIFORM, NEKO_GRAPHICS_BUFFER_UNIFORM_CONSTANT,
-               NEKO_GRAPHICS_BUFFER_SHADER_STORAGE, NEKO_GRAPHICS_BUFFER_SAMPLER);
+neko_enum_decl(neko_render_buffer_type, NEKO_RENDER_BUFFER_VERTEX, NEKO_RENDER_BUFFER_INDEX, NEKO_RENDER_BUFFER_FRAME, NEKO_RENDER_BUFFER_UNIFORM, NEKO_RENDER_BUFFER_UNIFORM_CONSTANT,
+               NEKO_RENDER_BUFFER_SHADER_STORAGE, NEKO_RENDER_BUFFER_SAMPLER);
 
 /* Buffer Usage Type */
-neko_enum_decl(neko_graphics_buffer_usage_type, NEKO_GRAPHICS_BUFFER_USAGE_STATIC, NEKO_GRAPHICS_BUFFER_USAGE_STREAM, NEKO_GRAPHICS_BUFFER_USAGE_DYNAMIC);
+neko_enum_decl(neko_render_buffer_usage_type, NEKO_RENDER_BUFFER_USAGE_STATIC, NEKO_RENDER_BUFFER_USAGE_STREAM, NEKO_RENDER_BUFFER_USAGE_DYNAMIC);
 
 /* Buffer Update Type */
-neko_enum_decl(neko_graphics_buffer_update_type, NEKO_GRAPHICS_BUFFER_UPDATE_RECREATE, NEKO_GRAPHICS_BUFFER_UPDATE_SUBDATA);
+neko_enum_decl(neko_render_buffer_update_type, NEKO_RENDER_BUFFER_UPDATE_RECREATE, NEKO_RENDER_BUFFER_UPDATE_SUBDATA);
 
-neko_enum_decl(neko_graphics_access_type, NEKO_GRAPHICS_ACCESS_READ_ONLY, NEKO_GRAPHICS_ACCESS_WRITE_ONLY, NEKO_GRAPHICS_ACCESS_READ_WRITE);
+neko_enum_decl(neko_render_access_type, NEKO_RENDER_ACCESS_READ_ONLY, NEKO_RENDER_ACCESS_WRITE_ONLY, NEKO_RENDER_ACCESS_READ_WRITE);
 
 //=== Texture ===//
-typedef enum { NEKO_GRAPHICS_TEXTURE_2D = 0x00, NEKO_GRAPHICS_TEXTURE_CUBEMAP } neko_graphics_texture_type;
+typedef enum { NEKO_RENDER_TEXTURE_2D = 0x00, NEKO_RENDER_TEXTURE_CUBEMAP } neko_render_texture_type;
 
 typedef enum {
-    NEKO_GRAPHICS_TEXTURE_CUBEMAP_POSITIVE_X = 0x00,
-    NEKO_GRAPHICS_TEXTURE_CUBEMAP_NEGATIVE_X,
-    NEKO_GRAPHICS_TEXTURE_CUBEMAP_POSITIVE_Y,
-    NEKO_GRAPHICS_TEXTURE_CUBEMAP_NEGATIVE_Y,
-    NEKO_GRAPHICS_TEXTURE_CUBEMAP_POSITIVE_Z,
-    NEKO_GRAPHICS_TEXTURE_CUBEMAP_NEGATIVE_Z
-} neko_graphics_cubemap_face_type;
+    NEKO_RENDER_TEXTURE_CUBEMAP_POSITIVE_X = 0x00,
+    NEKO_RENDER_TEXTURE_CUBEMAP_NEGATIVE_X,
+    NEKO_RENDER_TEXTURE_CUBEMAP_POSITIVE_Y,
+    NEKO_RENDER_TEXTURE_CUBEMAP_NEGATIVE_Y,
+    NEKO_RENDER_TEXTURE_CUBEMAP_POSITIVE_Z,
+    NEKO_RENDER_TEXTURE_CUBEMAP_NEGATIVE_Z
+} neko_render_cubemap_face_type;
 
-neko_enum_decl(neko_graphics_texture_format_type, NEKO_GRAPHICS_TEXTURE_FORMAT_RGBA8, NEKO_GRAPHICS_TEXTURE_FORMAT_RGB8, NEKO_GRAPHICS_TEXTURE_FORMAT_RG8, NEKO_GRAPHICS_TEXTURE_FORMAT_R32,
-               NEKO_GRAPHICS_TEXTURE_FORMAT_R32F, NEKO_GRAPHICS_TEXTURE_FORMAT_RGBA16F, NEKO_GRAPHICS_TEXTURE_FORMAT_RGBA32F, NEKO_GRAPHICS_TEXTURE_FORMAT_A8, NEKO_GRAPHICS_TEXTURE_FORMAT_R8,
-               NEKO_GRAPHICS_TEXTURE_FORMAT_DEPTH8, NEKO_GRAPHICS_TEXTURE_FORMAT_DEPTH16, NEKO_GRAPHICS_TEXTURE_FORMAT_DEPTH24, NEKO_GRAPHICS_TEXTURE_FORMAT_DEPTH32F,
-               NEKO_GRAPHICS_TEXTURE_FORMAT_DEPTH24_STENCIL8, NEKO_GRAPHICS_TEXTURE_FORMAT_DEPTH32F_STENCIL8, NEKO_GRAPHICS_TEXTURE_FORMAT_STENCIL8);
+neko_enum_decl(neko_render_texture_format_type, NEKO_RENDER_TEXTURE_FORMAT_RGBA8, NEKO_RENDER_TEXTURE_FORMAT_RGB8, NEKO_RENDER_TEXTURE_FORMAT_RG8, NEKO_RENDER_TEXTURE_FORMAT_R32,
+               NEKO_RENDER_TEXTURE_FORMAT_R32F, NEKO_RENDER_TEXTURE_FORMAT_RGBA16F, NEKO_RENDER_TEXTURE_FORMAT_RGBA32F, NEKO_RENDER_TEXTURE_FORMAT_A8, NEKO_RENDER_TEXTURE_FORMAT_R8,
+               NEKO_RENDER_TEXTURE_FORMAT_DEPTH8, NEKO_RENDER_TEXTURE_FORMAT_DEPTH16, NEKO_RENDER_TEXTURE_FORMAT_DEPTH24, NEKO_RENDER_TEXTURE_FORMAT_DEPTH32F,
+               NEKO_RENDER_TEXTURE_FORMAT_DEPTH24_STENCIL8, NEKO_RENDER_TEXTURE_FORMAT_DEPTH32F_STENCIL8, NEKO_RENDER_TEXTURE_FORMAT_STENCIL8);
 
-neko_enum_decl(neko_graphics_texture_wrapping_type, NEKO_GRAPHICS_TEXTURE_WRAP_REPEAT, NEKO_GRAPHICS_TEXTURE_WRAP_MIRRORED_REPEAT, NEKO_GRAPHICS_TEXTURE_WRAP_CLAMP_TO_EDGE,
-               NEKO_GRAPHICS_TEXTURE_WRAP_CLAMP_TO_BORDER);
+neko_enum_decl(neko_render_texture_wrapping_type, NEKO_RENDER_TEXTURE_WRAP_REPEAT, NEKO_RENDER_TEXTURE_WRAP_MIRRORED_REPEAT, NEKO_RENDER_TEXTURE_WRAP_CLAMP_TO_EDGE,
+               NEKO_RENDER_TEXTURE_WRAP_CLAMP_TO_BORDER);
 
-neko_enum_decl(neko_graphics_texture_filtering_type, NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST, NEKO_GRAPHICS_TEXTURE_FILTER_LINEAR);
+neko_enum_decl(neko_render_texture_filtering_type, NEKO_RENDER_TEXTURE_FILTER_NEAREST, NEKO_RENDER_TEXTURE_FILTER_LINEAR);
 
 //=== Clear ===//
-neko_enum_decl(neko_graphics_clear_flag, NEKO_GRAPHICS_CLEAR_COLOR = 0x01, NEKO_GRAPHICS_CLEAR_DEPTH = 0x02, NEKO_GRAPHICS_CLEAR_STENCIL = 0x04, NEKO_GRAPHICS_CLEAR_NONE = 0x08);
+neko_enum_decl(neko_render_clear_flag, NEKO_RENDER_CLEAR_COLOR = 0x01, NEKO_RENDER_CLEAR_DEPTH = 0x02, NEKO_RENDER_CLEAR_STENCIL = 0x04, NEKO_RENDER_CLEAR_NONE = 0x08);
 
-#define NEKO_GRAPHICS_CLEAR_ALL NEKO_GRAPHICS_CLEAR_COLOR | NEKO_GRAPHICS_CLEAR_DEPTH | NEKO_GRAPHICS_CLEAR_STENCIL
+#define NEKO_RENDER_CLEAR_ALL NEKO_RENDER_CLEAR_COLOR | NEKO_RENDER_CLEAR_DEPTH | NEKO_RENDER_CLEAR_STENCIL
 
 //=== Bind Type ===//
-neko_enum_decl(neko_graphics_bind_type, NEKO_GRAPHICS_BIND_VERTEX_BUFFER, NEKO_GRAPHICS_BIND_INDEX_BUFFER, NEKO_GRAPHICS_BIND_UNIFORM_BUFFER, NEKO_GRAPHICS_BIND_STORAGE_BUFFER,
-               NEKO_GRAPHICS_BIND_IMAGE_BUFFER, NEKO_GRAPHICS_BIND_UNIFORM);
+neko_enum_decl(neko_render_bind_type, NEKO_RENDER_BIND_VERTEX_BUFFER, NEKO_RENDER_BIND_INDEX_BUFFER, NEKO_RENDER_BIND_UNIFORM_BUFFER, NEKO_RENDER_BIND_STORAGE_BUFFER, NEKO_RENDER_BIND_IMAGE_BUFFER,
+               NEKO_RENDER_BIND_UNIFORM);
 
 /* Depth Function Type */
-neko_enum_decl(neko_graphics_depth_func_type,  // Default value of 0x00 means depth is disabled
-               NEKO_GRAPHICS_DEPTH_FUNC_NEVER, NEKO_GRAPHICS_DEPTH_FUNC_LESS, NEKO_GRAPHICS_DEPTH_FUNC_EQUAL, NEKO_GRAPHICS_DEPTH_FUNC_LEQUAL, NEKO_GRAPHICS_DEPTH_FUNC_GREATER,
-               NEKO_GRAPHICS_DEPTH_FUNC_NOTEQUAL, NEKO_GRAPHICS_DEPTH_FUNC_GEQUAL, NEKO_GRAPHICS_DEPTH_FUNC_ALWAYS);
+neko_enum_decl(neko_render_depth_func_type,  // Default value of 0x00 means depth is disabled
+               NEKO_RENDER_DEPTH_FUNC_NEVER, NEKO_RENDER_DEPTH_FUNC_LESS, NEKO_RENDER_DEPTH_FUNC_EQUAL, NEKO_RENDER_DEPTH_FUNC_LEQUAL, NEKO_RENDER_DEPTH_FUNC_GREATER, NEKO_RENDER_DEPTH_FUNC_NOTEQUAL,
+               NEKO_RENDER_DEPTH_FUNC_GEQUAL, NEKO_RENDER_DEPTH_FUNC_ALWAYS);
 
-neko_enum_decl(neko_graphics_depth_mask_type,  // Default value 0x00 means depth writing enabled
-               NEKO_GRAPHICS_DEPTH_MASK_ENABLED, NEKO_GRAPHICS_DEPTH_MASK_DISABLED);
+neko_enum_decl(neko_render_depth_mask_type,  // Default value 0x00 means depth writing enabled
+               NEKO_RENDER_DEPTH_MASK_ENABLED, NEKO_RENDER_DEPTH_MASK_DISABLED);
 
 /* Stencil Function Type */
-neko_enum_decl(neko_graphics_stencil_func_type,
-               NEKO_GRAPHICS_STENCIL_FUNC_NEVER,  // Default value of 0x00 means stencil is disabled
-               NEKO_GRAPHICS_STENCIL_FUNC_LESS, NEKO_GRAPHICS_STENCIL_FUNC_EQUAL, NEKO_GRAPHICS_STENCIL_FUNC_LEQUAL, NEKO_GRAPHICS_STENCIL_FUNC_GREATER, NEKO_GRAPHICS_STENCIL_FUNC_NOTEQUAL,
-               NEKO_GRAPHICS_STENCIL_FUNC_GEQUAL, NEKO_GRAPHICS_STENCIL_FUNC_ALWAYS);
+neko_enum_decl(neko_render_stencil_func_type,
+               NEKO_RENDER_STENCIL_FUNC_NEVER,  // Default value of 0x00 means stencil is disabled
+               NEKO_RENDER_STENCIL_FUNC_LESS, NEKO_RENDER_STENCIL_FUNC_EQUAL, NEKO_RENDER_STENCIL_FUNC_LEQUAL, NEKO_RENDER_STENCIL_FUNC_GREATER, NEKO_RENDER_STENCIL_FUNC_NOTEQUAL,
+               NEKO_RENDER_STENCIL_FUNC_GEQUAL, NEKO_RENDER_STENCIL_FUNC_ALWAYS);
 
 /* Stencil Op Type */
-neko_enum_decl(neko_graphics_stencil_op_type,  // Default value of 0x00 means keep is used
-               NEKO_GRAPHICS_STENCIL_OP_KEEP, NEKO_GRAPHICS_STENCIL_OP_ZERO, NEKO_GRAPHICS_STENCIL_OP_REPLACE, NEKO_GRAPHICS_STENCIL_OP_INCR, NEKO_GRAPHICS_STENCIL_OP_INCR_WRAP,
-               NEKO_GRAPHICS_STENCIL_OP_DECR, NEKO_GRAPHICS_STENCIL_OP_DECR_WRAP, NEKO_GRAPHICS_STENCIL_OP_INVERT);
+neko_enum_decl(neko_render_stencil_op_type,  // Default value of 0x00 means keep is used
+               NEKO_RENDER_STENCIL_OP_KEEP, NEKO_RENDER_STENCIL_OP_ZERO, NEKO_RENDER_STENCIL_OP_REPLACE, NEKO_RENDER_STENCIL_OP_INCR, NEKO_RENDER_STENCIL_OP_INCR_WRAP, NEKO_RENDER_STENCIL_OP_DECR,
+               NEKO_RENDER_STENCIL_OP_DECR_WRAP, NEKO_RENDER_STENCIL_OP_INVERT);
 
 /* Internal Graphics Resource Handles */
-neko_handle_decl(neko_graphics_shader_t);
-neko_handle_decl(neko_graphics_texture_t);
-neko_handle_decl(neko_graphics_vertex_buffer_t);
-neko_handle_decl(neko_graphics_index_buffer_t);
-neko_handle_decl(neko_graphics_uniform_buffer_t);
-neko_handle_decl(neko_graphics_storage_buffer_t);
-neko_handle_decl(neko_graphics_framebuffer_t);
-neko_handle_decl(neko_graphics_uniform_t);
-neko_handle_decl(neko_graphics_renderpass_t);
-neko_handle_decl(neko_graphics_pipeline_t);
+neko_handle_decl(neko_render_shader_t);
+neko_handle_decl(neko_render_texture_t);
+neko_handle_decl(neko_render_vertex_buffer_t);
+neko_handle_decl(neko_render_index_buffer_t);
+neko_handle_decl(neko_render_uniform_buffer_t);
+neko_handle_decl(neko_render_storage_buffer_t);
+neko_handle_decl(neko_render_framebuffer_t);
+neko_handle_decl(neko_render_uniform_t);
+neko_handle_decl(neko_render_renderpass_t);
+neko_handle_decl(neko_render_pipeline_t);
 
 /* Graphics Shader Source Desc */
-typedef struct neko_graphics_shader_source_desc_t {
-    neko_graphics_shader_stage_type type;  // Shader stage type (vertex, fragment, tesselation, geometry, compute)
-    const char* source;                    // Source for shader
-} neko_graphics_shader_source_desc_t;
+typedef struct neko_render_shader_source_desc_t {
+    neko_render_shader_stage_type type;  // Shader stage type (vertex, fragment, tesselation, geometry, compute)
+    const char* source;                  // Source for shader
+} neko_render_shader_source_desc_t;
 
 /* Graphics Shader Desc */
-typedef struct neko_graphics_shader_desc_t {
-    neko_graphics_shader_source_desc_t* sources;  // Array of shader source descriptions
-    size_t size;                                  // Size in bytes of shader source desc array
-    char name[64];                                // Optional (for logging and debugging mainly)
-} neko_graphics_shader_desc_t;
+typedef struct neko_render_shader_desc_t {
+    neko_render_shader_source_desc_t* sources;  // Array of shader source descriptions
+    size_t size;                                // Size in bytes of shader source desc array
+    char name[64];                              // Optional (for logging and debugging mainly)
+} neko_render_shader_desc_t;
 
-#define NEKO_GRAPHICS_TEXTURE_DATA_MAX 6
+#define NEKO_RENDER_TEXTURE_DATA_MAX 6
 
 /* Graphics Texture Desc */
-typedef struct neko_graphics_texture_desc_t {
-    neko_graphics_texture_type type;
-    u32 width;                                        // Width of texture in texels
-    u32 height;                                       // Height of texture in texels
-    u32 depth;                                        // Depth of texture
-    void* data[NEKO_GRAPHICS_TEXTURE_DATA_MAX];       // Texture data to upload (can be null)
-    neko_graphics_texture_format_type format;         // Format of texture data (rgba32, rgba8, rgba32f, r8, depth32f, etc...)
-    neko_graphics_texture_wrapping_type wrap_s;       // Wrapping type for s axis of texture
-    neko_graphics_texture_wrapping_type wrap_t;       // Wrapping type for t axis of texture
-    neko_graphics_texture_wrapping_type wrap_r;       // Wrapping type for r axis of texture
-    neko_graphics_texture_filtering_type min_filter;  // Minification filter for texture
-    neko_graphics_texture_filtering_type mag_filter;  // Magnification filter for texture
-    neko_graphics_texture_filtering_type mip_filter;  // Mip filter for texture
-    neko_vec2 offset;                                 // Offset for updates
-    u32 num_mips;                                     // Number of mips to generate (default 0 is disable mip generation)
+typedef struct neko_render_texture_desc_t {
+    neko_render_texture_type type;
+    u32 width;                                      // Width of texture in texels
+    u32 height;                                     // Height of texture in texels
+    u32 depth;                                      // Depth of texture
+    void* data[NEKO_RENDER_TEXTURE_DATA_MAX];       // Texture data to upload (can be null)
+    neko_render_texture_format_type format;         // Format of texture data (rgba32, rgba8, rgba32f, r8, depth32f, etc...)
+    neko_render_texture_wrapping_type wrap_s;       // Wrapping type for s axis of texture
+    neko_render_texture_wrapping_type wrap_t;       // Wrapping type for t axis of texture
+    neko_render_texture_wrapping_type wrap_r;       // Wrapping type for r axis of texture
+    neko_render_texture_filtering_type min_filter;  // Minification filter for texture
+    neko_render_texture_filtering_type mag_filter;  // Magnification filter for texture
+    neko_render_texture_filtering_type mip_filter;  // Mip filter for texture
+    neko_vec2 offset;                               // Offset for updates
+    u32 num_mips;                                   // Number of mips to generate (default 0 is disable mip generation)
     struct {
         u32 x;        // X offset in texels to start read
         u32 y;        // Y offset in texels to start read
@@ -266,233 +264,233 @@ typedef struct neko_graphics_texture_desc_t {
         size_t size;  // Size in bytes for data to be read
     } read;
     u16 flip_y;  // Whether or not y is flipped
-} neko_graphics_texture_desc_t;
+} neko_render_texture_desc_t;
 
 /* Graphics Uniform Layout Desc */
-typedef struct neko_graphics_uniform_layout_desc_t {
-    neko_graphics_uniform_type type;  // Type of field
-    char fname[64];                   // The name of field (required for implicit APIs, like OpenGL/ES)
-    u32 count;                        // Count variable (used for arrays such as glUniformXXXv)
-} neko_graphics_uniform_layout_desc_t;
+typedef struct neko_render_uniform_layout_desc_t {
+    neko_render_uniform_type type;  // Type of field
+    char fname[64];                 // The name of field (required for implicit APIs, like OpenGL/ES)
+    u32 count;                      // Count variable (used for arrays such as glUniformXXXv)
+} neko_render_uniform_layout_desc_t;
 
 /* Graphics Uniform Desc */
-typedef struct neko_graphics_uniform_desc_t {
-    neko_graphics_shader_stage_type stage;
-    char name[64];                                // The name of uniform (required for OpenGL/ES, WebGL)
-    neko_graphics_uniform_layout_desc_t* layout;  // Layout array for uniform data
-    size_t layout_size;                           // Size of uniform data in bytes
-} neko_graphics_uniform_desc_t;
+typedef struct neko_render_uniform_desc_t {
+    neko_render_shader_stage_type stage;
+    char name[64];                              // The name of uniform (required for OpenGL/ES, WebGL)
+    neko_render_uniform_layout_desc_t* layout;  // Layout array for uniform data
+    size_t layout_size;                         // Size of uniform data in bytes
+} neko_render_uniform_desc_t;
 
-typedef struct neko_graphics_buffer_update_desc_t {
-    neko_graphics_buffer_update_type type;
+typedef struct neko_render_buffer_update_desc_t {
+    neko_render_buffer_update_type type;
     size_t offset;
-} neko_graphics_buffer_update_desc_t;
+} neko_render_buffer_update_desc_t;
 
 /* Graphics Buffer Desc General */
-typedef struct neko_graphics_buffer_base_desc_t {
+typedef struct neko_render_buffer_base_desc_t {
     void* data;
     size_t size;
-    neko_graphics_buffer_usage_type usage;
-} neko_graphics_buffer_base_desc_t;
+    neko_render_buffer_usage_type usage;
+} neko_render_buffer_base_desc_t;
 
-typedef struct neko_graphics_vertex_buffer_desc_t {
+typedef struct neko_render_vertex_buffer_desc_t {
     void* data;
     size_t size;
-    neko_graphics_buffer_usage_type usage;
-    neko_graphics_buffer_update_desc_t update;
-} neko_graphics_vertex_buffer_desc_t;
+    neko_render_buffer_usage_type usage;
+    neko_render_buffer_update_desc_t update;
+} neko_render_vertex_buffer_desc_t;
 
-typedef neko_graphics_vertex_buffer_desc_t neko_graphics_index_buffer_desc_t;
+typedef neko_render_vertex_buffer_desc_t neko_render_index_buffer_desc_t;
 
-typedef struct neko_graphics_uniform_buffer_desc_t {
+typedef struct neko_render_uniform_buffer_desc_t {
     void* data;
     size_t size;
-    neko_graphics_buffer_usage_type usage;
+    neko_render_buffer_usage_type usage;
     const char* name;
-    neko_graphics_shader_stage_type stage;
-    neko_graphics_buffer_update_desc_t update;
-} neko_graphics_uniform_buffer_desc_t;
+    neko_render_shader_stage_type stage;
+    neko_render_buffer_update_desc_t update;
+} neko_render_uniform_buffer_desc_t;
 
-typedef struct neko_graphics_storage_buffer_desc_t {
+typedef struct neko_render_storage_buffer_desc_t {
     void* data;
     size_t size;
     char name[64];
-    neko_graphics_buffer_usage_type usage;
-    neko_graphics_access_type access;
-    neko_graphics_buffer_update_desc_t update;
-} neko_graphics_storage_buffer_desc_t;
+    neko_render_buffer_usage_type usage;
+    neko_render_access_type access;
+    neko_render_buffer_update_desc_t update;
+} neko_render_storage_buffer_desc_t;
 
-typedef struct neko_graphics_framebuffer_desc_t {
+typedef struct neko_render_framebuffer_desc_t {
     void* data;
-} neko_graphics_framebuffer_desc_t;
+} neko_render_framebuffer_desc_t;
 
 /* Graphics Clear Action */
-typedef struct neko_graphics_clear_action_t {
-    neko_graphics_clear_flag flag;  // Flag to be set (clear color, clear depth, clear stencil, clear all)
+typedef struct neko_render_clear_action_t {
+    neko_render_clear_flag flag;  // Flag to be set (clear color, clear depth, clear stencil, clear all)
     union {
         float color[4];   // Clear color value
         float depth;      // Clear depth value
         int32_t stencil;  // Clear stencil value
     };
-} neko_graphics_clear_action_t;
+} neko_render_clear_action_t;
 
 /* Graphics Clear Desc */
-typedef struct neko_graphics_clear_desc_t {
-    neko_graphics_clear_action_t* actions;  // Clear action
-    size_t size;                            // Size
-} neko_graphics_clear_desc_t;
+typedef struct neko_render_clear_desc_t {
+    neko_render_clear_action_t* actions;  // Clear action
+    size_t size;                          // Size
+} neko_render_clear_desc_t;
 
 /* Graphics Render Pass Desc */
-typedef struct neko_graphics_renderpass_desc_t {
-    neko_handle(neko_graphics_framebuffer_t) fbo;  // Default is set to invalid for backbuffer
-    neko_handle(neko_graphics_texture_t) * color;  // Array of color attachments to be bound (useful for MRT, if supported)
-    size_t color_size;                             // Size of color attachment array
-    neko_handle(neko_graphics_texture_t) depth;    // Depth attachment to be bound
-    neko_handle(neko_graphics_texture_t) stencil;  // Depth attachment to be bound
-} neko_graphics_renderpass_desc_t;
+typedef struct neko_render_renderpass_desc_t {
+    neko_handle(neko_render_framebuffer_t) fbo;  // Default is set to invalid for backbuffer
+    neko_handle(neko_render_texture_t) * color;  // Array of color attachments to be bound (useful for MRT, if supported)
+    size_t color_size;                           // Size of color attachment array
+    neko_handle(neko_render_texture_t) depth;    // Depth attachment to be bound
+    neko_handle(neko_render_texture_t) stencil;  // Depth attachment to be bound
+} neko_render_renderpass_desc_t;
 
 /*
     // If you want to write to a color attachment, you have to have a frame buffer attached that isn't the backbuffer
 */
 
-typedef enum neko_graphics_vertex_data_type { NEKO_GRAPHICS_VERTEX_DATA_INTERLEAVED = 0x00, NEKO_GRAPHICS_VERTEX_DATA_NONINTERLEAVED } neko_graphics_vertex_data_type;
+typedef enum neko_render_vertex_data_type { NEKO_RENDER_VERTEX_DATA_INTERLEAVED = 0x00, NEKO_RENDER_VERTEX_DATA_NONINTERLEAVED } neko_render_vertex_data_type;
 
-typedef struct neko_graphics_bind_vertex_buffer_desc_t {
-    neko_handle(neko_graphics_vertex_buffer_t) buffer;
+typedef struct neko_render_bind_vertex_buffer_desc_t {
+    neko_handle(neko_render_vertex_buffer_t) buffer;
     size_t offset;
-    neko_graphics_vertex_data_type data_type;
-} neko_graphics_bind_vertex_buffer_desc_t;
+    neko_render_vertex_data_type data_type;
+} neko_render_bind_vertex_buffer_desc_t;
 
-typedef struct neko_graphics_bind_index_buffer_desc_t {
-    neko_handle(neko_graphics_index_buffer_t) buffer;
-} neko_graphics_bind_index_buffer_desc_t;
+typedef struct neko_render_bind_index_buffer_desc_t {
+    neko_handle(neko_render_index_buffer_t) buffer;
+} neko_render_bind_index_buffer_desc_t;
 
-typedef struct neko_graphics_bind_image_buffer_desc_t {
-    neko_handle(neko_graphics_texture_t) tex;
+typedef struct neko_render_bind_image_buffer_desc_t {
+    neko_handle(neko_render_texture_t) tex;
     u32 binding;
-    neko_graphics_access_type access;
-} neko_graphics_bind_image_buffer_desc_t;
+    neko_render_access_type access;
+} neko_render_bind_image_buffer_desc_t;
 
-typedef struct neko_graphics_bind_uniform_buffer_desc_t {
-    neko_handle(neko_graphics_uniform_buffer_t) buffer;
+typedef struct neko_render_bind_uniform_buffer_desc_t {
+    neko_handle(neko_render_uniform_buffer_t) buffer;
     u32 binding;
     struct {
         size_t offset;  // Specify an offset for ranged binds.
         size_t size;    // Specify size for ranged binds.
     } range;
-} neko_graphics_bind_uniform_buffer_desc_t;
+} neko_render_bind_uniform_buffer_desc_t;
 
-typedef struct neko_graphics_bind_storage_buffer_desc_t {
-    neko_handle(neko_graphics_storage_buffer_t) buffer;
+typedef struct neko_render_bind_storage_buffer_desc_t {
+    neko_handle(neko_render_storage_buffer_t) buffer;
     u32 binding;
-} neko_graphics_bind_storage_buffer_desc_t;
+} neko_render_bind_storage_buffer_desc_t;
 
-typedef struct neko_graphics_bind_uniform_desc_t {
-    neko_handle(neko_graphics_uniform_t) uniform;
+typedef struct neko_render_bind_uniform_desc_t {
+    neko_handle(neko_render_uniform_t) uniform;
     void* data;
     u32 binding;  // Base binding for samplers?
-} neko_graphics_bind_uniform_desc_t;
+} neko_render_bind_uniform_desc_t;
 
 /* Graphics Binding Desc */
-typedef struct neko_graphics_bind_desc_t {
+typedef struct neko_render_bind_desc_t {
     struct {
-        neko_graphics_bind_vertex_buffer_desc_t* desc;  // Array of vertex buffer declarations (NULL by default)
-        size_t size;                                    // Size of array in bytes (optional if only one)
+        neko_render_bind_vertex_buffer_desc_t* desc;  // Array of vertex buffer declarations (NULL by default)
+        size_t size;                                  // Size of array in bytes (optional if only one)
     } vertex_buffers;
 
     struct {
-        neko_graphics_bind_index_buffer_desc_t* desc;  // Array of index buffer declarations (NULL by default)
-        size_t size;                                   // Size of array in bytes (optional if only one)
+        neko_render_bind_index_buffer_desc_t* desc;  // Array of index buffer declarations (NULL by default)
+        size_t size;                                 // Size of array in bytes (optional if only one)
     } index_buffers;
 
     struct {
-        neko_graphics_bind_uniform_buffer_desc_t* desc;  // Array of uniform buffer declarations (NULL by default)
-        size_t size;                                     // Size of array in bytes (optional if only one)
+        neko_render_bind_uniform_buffer_desc_t* desc;  // Array of uniform buffer declarations (NULL by default)
+        size_t size;                                   // Size of array in bytes (optional if only one)
     } uniform_buffers;
 
     struct {
-        neko_graphics_bind_uniform_desc_t* desc;  // Array of uniform declarations (NULL by default)
-        size_t size;                              // Size of array in bytes (optional if one)
+        neko_render_bind_uniform_desc_t* desc;  // Array of uniform declarations (NULL by default)
+        size_t size;                            // Size of array in bytes (optional if one)
     } uniforms;
 
     struct {
-        neko_graphics_bind_image_buffer_desc_t* desc;
+        neko_render_bind_image_buffer_desc_t* desc;
         size_t size;
     } image_buffers;
 
     struct {
-        neko_graphics_bind_storage_buffer_desc_t* desc;
+        neko_render_bind_storage_buffer_desc_t* desc;
         size_t size;
     } storage_buffers;
 
-} neko_graphics_bind_desc_t;
+} neko_render_bind_desc_t;
 
 /* Graphics Blend State Desc */
-typedef struct neko_graphics_blend_state_desc_t {
-    neko_graphics_blend_equation_type func;  // Equation function to use for blend ops
-    neko_graphics_blend_mode_type src;       // Source blend mode
-    neko_graphics_blend_mode_type dst;       // Destination blend mode
-} neko_graphics_blend_state_desc_t;
+typedef struct neko_render_blend_state_desc_t {
+    neko_render_blend_equation_type func;  // Equation function to use for blend ops
+    neko_render_blend_mode_type src;       // Source blend mode
+    neko_render_blend_mode_type dst;       // Destination blend mode
+} neko_render_blend_state_desc_t;
 
 /* Graphics Depth State Desc */
-typedef struct neko_graphics_depth_state_desc_t {
-    neko_graphics_depth_func_type func;  // Function to set for depth test
-    neko_graphics_depth_mask_type mask;  // Whether or not writing is enabled/disabled
-} neko_graphics_depth_state_desc_t;
+typedef struct neko_render_depth_state_desc_t {
+    neko_render_depth_func_type func;  // Function to set for depth test
+    neko_render_depth_mask_type mask;  // Whether or not writing is enabled/disabled
+} neko_render_depth_state_desc_t;
 
 /* Graphics Stencil State Desc */
-typedef struct neko_graphics_stencil_state_desc_t {
-    neko_graphics_stencil_func_type func;  // Function to set for stencil test
-    u32 ref;                               // Specifies reference val for stencil test
-    u32 comp_mask;                         // Specifies mask that is ANDed with both ref val and stored stencil val
-    u32 write_mask;                        // Specifies mask that is ANDed with both ref val and stored stencil val
-    neko_graphics_stencil_op_type sfail;   // Action to take when stencil test fails
-    neko_graphics_stencil_op_type dpfail;  // Action to take when stencil test passes but depth test fails
-    neko_graphics_stencil_op_type dppass;  // Action to take when both stencil test passes and either depth passes or is not enabled
-} neko_graphics_stencil_state_desc_t;
+typedef struct neko_render_stencil_state_desc_t {
+    neko_render_stencil_func_type func;  // Function to set for stencil test
+    u32 ref;                             // Specifies reference val for stencil test
+    u32 comp_mask;                       // Specifies mask that is ANDed with both ref val and stored stencil val
+    u32 write_mask;                      // Specifies mask that is ANDed with both ref val and stored stencil val
+    neko_render_stencil_op_type sfail;   // Action to take when stencil test fails
+    neko_render_stencil_op_type dpfail;  // Action to take when stencil test passes but depth test fails
+    neko_render_stencil_op_type dppass;  // Action to take when both stencil test passes and either depth passes or is not enabled
+} neko_render_stencil_state_desc_t;
 
 /* Graphics Raster State Desc */
-typedef struct neko_graphics_raster_state_desc_t {
-    neko_graphics_face_culling_type face_culling;    // Face culling mode to be used (front, back, front and back)
-    neko_graphics_winding_order_type winding_order;  // Winding order mode to be used (ccw, cw)
-    neko_graphics_primitive_type primitive;          // Primitive type for drawing (lines, quads, triangles, triangle strip)
-    neko_handle(neko_graphics_shader_t) shader;      // Shader to bind and use (might be in bindables later on, not sure)
-    size_t index_buffer_element_size;                // Element size of index buffer (used for parsing internal data)
-} neko_graphics_raster_state_desc_t;
+typedef struct neko_render_raster_state_desc_t {
+    neko_render_face_culling_type face_culling;    // Face culling mode to be used (front, back, front and back)
+    neko_render_winding_order_type winding_order;  // Winding order mode to be used (ccw, cw)
+    neko_render_primitive_type primitive;          // Primitive type for drawing (lines, quads, triangles, triangle strip)
+    neko_handle(neko_render_shader_t) shader;      // Shader to bind and use (might be in bindables later on, not sure)
+    size_t index_buffer_element_size;              // Element size of index buffer (used for parsing internal data)
+} neko_render_raster_state_desc_t;
 
 /* Graphics Compute State Desc */
-typedef struct neko_graphics_compute_state_desc_t {
-    neko_handle(neko_graphics_shader_t) shader;  // Compute shader to bind
-} neko_graphics_compute_state_desc_t;
+typedef struct neko_render_compute_state_desc_t {
+    neko_handle(neko_render_shader_t) shader;  // Compute shader to bind
+} neko_render_compute_state_desc_t;
 
 /* Graphics Vertex Attribute Desc */
-typedef struct neko_graphics_vertex_attribute_desc_t {
-    char name[64];                               // Attribute name (required for lower versions of OpenGL and ES)
-    neko_graphics_vertex_attribute_type format;  // Format for vertex attribute
-    size_t stride;                               // Total stride of vertex layout (optional, calculated by default)
-    size_t offset;                               // Offset of this vertex from base pointer of data (optional, calaculated by default)
-    size_t divisor;                              // Used for instancing. (optional, default = 0x00 for no instancing)
-    u32 buffer_idx;                              // Vertex buffer to use (optional, default = 0x00)
-} neko_graphics_vertex_attribute_desc_t;
+typedef struct neko_render_vertex_attribute_desc_t {
+    char name[64];                             // Attribute name (required for lower versions of OpenGL and ES)
+    neko_render_vertex_attribute_type format;  // Format for vertex attribute
+    size_t stride;                             // Total stride of vertex layout (optional, calculated by default)
+    size_t offset;                             // Offset of this vertex from base pointer of data (optional, calaculated by default)
+    size_t divisor;                            // Used for instancing. (optional, default = 0x00 for no instancing)
+    u32 buffer_idx;                            // Vertex buffer to use (optional, default = 0x00)
+} neko_render_vertex_attribute_desc_t;
 
 /* Graphics Vertex Layout Desc */
-typedef struct neko_graphics_vertex_layout_desc_t {
-    neko_graphics_vertex_attribute_desc_t* attrs;  // Vertex attribute array
-    size_t size;                                   // Size in bytes of vertex attribute array
-} neko_graphics_vertex_layout_desc_t;
+typedef struct neko_render_vertex_layout_desc_t {
+    neko_render_vertex_attribute_desc_t* attrs;  // Vertex attribute array
+    size_t size;                                 // Size in bytes of vertex attribute array
+} neko_render_vertex_layout_desc_t;
 
 /* Graphics Pipeline Desc */
-typedef struct neko_graphics_pipeline_desc_t {
-    neko_graphics_blend_state_desc_t blend;      // Blend state desc for pipeline
-    neko_graphics_depth_state_desc_t depth;      // Depth state desc for pipeline
-    neko_graphics_raster_state_desc_t raster;    // Raster state desc for pipeline
-    neko_graphics_stencil_state_desc_t stencil;  // Stencil state desc for pipeline
-    neko_graphics_compute_state_desc_t compute;  // Compute state desc for pipeline
-    neko_graphics_vertex_layout_desc_t layout;   // Vertex layout desc for pipeline
-} neko_graphics_pipeline_desc_t;
+typedef struct neko_render_pipeline_desc_t {
+    neko_render_blend_state_desc_t blend;      // Blend state desc for pipeline
+    neko_render_depth_state_desc_t depth;      // Depth state desc for pipeline
+    neko_render_raster_state_desc_t raster;    // Raster state desc for pipeline
+    neko_render_stencil_state_desc_t stencil;  // Stencil state desc for pipeline
+    neko_render_compute_state_desc_t compute;  // Compute state desc for pipeline
+    neko_render_vertex_layout_desc_t layout;   // Vertex layout desc for pipeline
+} neko_render_pipeline_desc_t;
 
 /* Graphics Draw Desc */
-typedef struct neko_graphics_draw_desc_t {
+typedef struct neko_render_draw_desc_t {
     u32 start;
     u32 count;
     u32 instances;
@@ -501,17 +499,17 @@ typedef struct neko_graphics_draw_desc_t {
         u32 start;
         u32 end;
     } range;
-} neko_graphics_draw_desc_t;
+} neko_render_draw_desc_t;
 
-NEKO_INLINE neko_handle(neko_graphics_renderpass_t) __neko_renderpass_default_impl() {
-    neko_handle(neko_graphics_renderpass_t) hndl = neko_default_val();
+NEKO_INLINE neko_handle(neko_render_renderpass_t) __neko_renderpass_default_impl() {
+    neko_handle(neko_render_renderpass_t) hndl = NEKO_DEFAULT_VAL();
     return hndl;
 }
 
 // Convenience define for default render pass to back buffer
-#define NEKO_GRAPHICS_RENDER_PASS_DEFAULT __neko_renderpass_default_impl()
+#define NEKO_RENDER_RENDER_PASS_DEFAULT __neko_renderpass_default_impl()
 
-typedef struct neko_graphics_info_t {
+typedef struct neko_render_info_t {
     const_str version;
     const_str vendor;
     u32 major_version;
@@ -523,103 +521,103 @@ typedef struct neko_graphics_info_t {
         u32 max_work_group_size[3];
         u32 max_work_group_invocations;
     } compute;
-} neko_graphics_info_t;
+} neko_render_info_t;
 
 /*==========================
 // Graphics Interface
 ==========================*/
 
-typedef struct neko_graphics_t {
-    void* user_data;            // For internal use
-    neko_graphics_info_t info;  // Used for querying by user for features
+typedef struct neko_render_t {
+    void* user_data;          // For internal use
+    neko_render_info_t info;  // Used for querying by user for features
     struct {
 
         // Create
-        neko_handle(neko_graphics_texture_t) (*texture_create)(const neko_graphics_texture_desc_t desc);
-        neko_handle(neko_graphics_uniform_t) (*uniform_create)(const neko_graphics_uniform_desc_t desc);
-        neko_handle(neko_graphics_shader_t) (*shader_create)(const neko_graphics_shader_desc_t desc);
-        neko_handle(neko_graphics_vertex_buffer_t) (*vertex_buffer_create)(const neko_graphics_vertex_buffer_desc_t desc);
-        neko_handle(neko_graphics_index_buffer_t) (*index_buffer_create)(const neko_graphics_index_buffer_desc_t desc);
-        neko_handle(neko_graphics_uniform_buffer_t) (*uniform_buffer_create)(const neko_graphics_uniform_buffer_desc_t desc);
-        neko_handle(neko_graphics_storage_buffer_t) (*storage_buffer_create)(const neko_graphics_storage_buffer_desc_t desc);
-        neko_handle(neko_graphics_framebuffer_t) (*framebuffer_create)(const neko_graphics_framebuffer_desc_t desc);
-        neko_handle(neko_graphics_renderpass_t) (*renderpass_create)(const neko_graphics_renderpass_desc_t desc);
-        neko_handle(neko_graphics_pipeline_t) (*pipeline_create)(const neko_graphics_pipeline_desc_t desc);
+        neko_handle(neko_render_texture_t) (*texture_create)(const neko_render_texture_desc_t desc);
+        neko_handle(neko_render_uniform_t) (*uniform_create)(const neko_render_uniform_desc_t desc);
+        neko_handle(neko_render_shader_t) (*shader_create)(const neko_render_shader_desc_t desc);
+        neko_handle(neko_render_vertex_buffer_t) (*vertex_buffer_create)(const neko_render_vertex_buffer_desc_t desc);
+        neko_handle(neko_render_index_buffer_t) (*index_buffer_create)(const neko_render_index_buffer_desc_t desc);
+        neko_handle(neko_render_uniform_buffer_t) (*uniform_buffer_create)(const neko_render_uniform_buffer_desc_t desc);
+        neko_handle(neko_render_storage_buffer_t) (*storage_buffer_create)(const neko_render_storage_buffer_desc_t desc);
+        neko_handle(neko_render_framebuffer_t) (*framebuffer_create)(const neko_render_framebuffer_desc_t desc);
+        neko_handle(neko_render_renderpass_t) (*renderpass_create)(const neko_render_renderpass_desc_t desc);
+        neko_handle(neko_render_pipeline_t) (*pipeline_create)(const neko_render_pipeline_desc_t desc);
 
         // Destroy
-        void (*texture_destroy)(neko_handle(neko_graphics_texture_t) hndl);
-        void (*uniform_destroy)(neko_handle(neko_graphics_uniform_t) hndl);
-        void (*shader_destroy)(neko_handle(neko_graphics_shader_t) hndl);
-        void (*vertex_buffer_destroy)(neko_handle(neko_graphics_vertex_buffer_t) hndl);
-        void (*index_buffer_destroy)(neko_handle(neko_graphics_index_buffer_t) hndl);
-        void (*uniform_buffer_destroy)(neko_handle(neko_graphics_uniform_buffer_t) hndl);
-        void (*storage_buffer_destroy)(neko_handle(neko_graphics_storage_buffer_t) hndl);
-        void (*framebuffer_destroy)(neko_handle(neko_graphics_framebuffer_t) hndl);
-        void (*renderpass_destroy)(neko_handle(neko_graphics_renderpass_t) hndl);
-        void (*pipeline_destroy)(neko_handle(neko_graphics_pipeline_t) hndl);
+        void (*texture_destroy)(neko_handle(neko_render_texture_t) hndl);
+        void (*uniform_destroy)(neko_handle(neko_render_uniform_t) hndl);
+        void (*shader_destroy)(neko_handle(neko_render_shader_t) hndl);
+        void (*vertex_buffer_destroy)(neko_handle(neko_render_vertex_buffer_t) hndl);
+        void (*index_buffer_destroy)(neko_handle(neko_render_index_buffer_t) hndl);
+        void (*uniform_buffer_destroy)(neko_handle(neko_render_uniform_buffer_t) hndl);
+        void (*storage_buffer_destroy)(neko_handle(neko_render_storage_buffer_t) hndl);
+        void (*framebuffer_destroy)(neko_handle(neko_render_framebuffer_t) hndl);
+        void (*renderpass_destroy)(neko_handle(neko_render_renderpass_t) hndl);
+        void (*pipeline_destroy)(neko_handle(neko_render_pipeline_t) hndl);
 
         // Resource Updates (main thread only)
-        void (*vertex_buffer_update)(neko_handle(neko_graphics_vertex_buffer_t) hndl, neko_graphics_vertex_buffer_desc_t* desc);
-        void (*index_buffer_update)(neko_handle(neko_graphics_index_buffer_t) hndl, neko_graphics_index_buffer_desc_t* desc);
-        void (*storage_buffer_update)(neko_handle(neko_graphics_storage_buffer_t) hndl, neko_graphics_storage_buffer_desc_t* desc);
-        void (*texture_update)(neko_handle(neko_graphics_texture_t) hndl, neko_graphics_texture_desc_t* desc);
-        void (*texture_read)(neko_handle(neko_graphics_texture_t) hndl, neko_graphics_texture_desc_t* desc);
+        void (*vertex_buffer_update)(neko_handle(neko_render_vertex_buffer_t) hndl, neko_render_vertex_buffer_desc_t* desc);
+        void (*index_buffer_update)(neko_handle(neko_render_index_buffer_t) hndl, neko_render_index_buffer_desc_t* desc);
+        void (*storage_buffer_update)(neko_handle(neko_render_storage_buffer_t) hndl, neko_render_storage_buffer_desc_t* desc);
+        void (*texture_update)(neko_handle(neko_render_texture_t) hndl, neko_render_texture_desc_t* desc);
+        void (*texture_read)(neko_handle(neko_render_texture_t) hndl, neko_render_texture_desc_t* desc);
 
         // Submission (Main Thread)
         void (*command_buffer_submit)(neko_command_buffer_t* cb);
 
     } api;
-} neko_graphics_t;
+} neko_render_t;
 
 /*==========================
 // Graphics API
 ==========================*/
 
-#define neko_graphics() neko_ctx()->graphics
+#define neko_render() neko_ctx()->render
 
 // Graphics Interface Creation / Initialization / Shutdown / Destruction
-NEKO_API_DECL neko_graphics_t* neko_graphics_create();
-NEKO_API_DECL void neko_graphics_destroy(neko_graphics_t* graphics);
-NEKO_API_DECL void neko_graphics_init(neko_graphics_t* graphics);
-NEKO_API_DECL void neko_graphics_shutdown(neko_graphics_t* graphics);
+NEKO_API_DECL neko_render_t* neko_render_create();
+NEKO_API_DECL void neko_render_destroy(neko_render_t* render);
+NEKO_API_DECL void neko_render_init(neko_render_t* render);
+NEKO_API_DECL void neko_render_shutdown(neko_render_t* render);
 
 // Graphics Info Object Query
-NEKO_API_DECL neko_graphics_info_t* neko_graphics_info();
+NEKO_API_DECL neko_render_info_t* neko_render_info();
 
 // recommended to leave this on as long as possible (perhaps until release)
-#define NEKO_GRAPHICS_BATCH_DEBUG_CHECKS 1
+#define NEKO_RENDER_BATCH_DEBUG_CHECKS 1
 
 enum {
-    NEKO_GRAPHICS_BATCH_FLOAT,
-    NEKO_GRAPHICS_BATCH_INT,
-    NEKO_GRAPHICS_BATCH_BOOL,
-    NEKO_GRAPHICS_BATCH_SAMPLER,
-    NEKO_GRAPHICS_BATCH_UNKNOWN,
+    NEKO_RENDER_BATCH_FLOAT,
+    NEKO_RENDER_BATCH_INT,
+    NEKO_RENDER_BATCH_BOOL,
+    NEKO_RENDER_BATCH_SAMPLER,
+    NEKO_RENDER_BATCH_UNKNOWN,
 };
 
-typedef struct neko_graphics_batch_vertex_attribute_t {
+typedef struct neko_render_batch_vertex_attribute_t {
     const char* name;
     u64 hash;
     u32 size;
     u32 type;
     u32 offset;
     u32 location;
-} neko_graphics_batch_vertex_attribute_t;
+} neko_render_batch_vertex_attribute_t;
 
-#define NEKO_GRAPHICS_BATCH_ATTRIBUTE_MAX_COUNT 16
-typedef struct neko_graphics_batch_vertex_data_t {
+#define NEKO_RENDER_BATCH_ATTRIBUTE_MAX_COUNT 16
+typedef struct neko_render_batch_vertex_data_t {
     u32 buffer_size;
     u32 vertex_stride;
     u32 primitive;
     u32 usage;
 
     u32 attribute_count;
-    neko_graphics_batch_vertex_attribute_t attributes[NEKO_GRAPHICS_BATCH_ATTRIBUTE_MAX_COUNT];
-} neko_graphics_batch_vertex_data_t;
+    neko_render_batch_vertex_attribute_t attributes[NEKO_RENDER_BATCH_ATTRIBUTE_MAX_COUNT];
+} neko_render_batch_vertex_data_t;
 
 // 根据需要调整此项以创建绘制调用顺序
 // see: http://realtimecollisiondetection.net/blog/?p=86
-typedef struct neko_graphics_batch_render_internal_state_t {
+typedef struct neko_render_batch_render_internal_state_t {
     union {
         struct {
             int fullscreen : 2;
@@ -630,15 +628,15 @@ typedef struct neko_graphics_batch_render_internal_state_t {
 
         u64 key;
     } u;
-} neko_graphics_batch_render_internal_state_t;
+} neko_render_batch_render_internal_state_t;
 
-struct neko_graphics_batch_shader_t;
-typedef struct neko_graphics_batch_shader_t neko_graphics_batch_shader_t;
+struct neko_render_batch_shader_t;
+typedef struct neko_render_batch_shader_t neko_render_batch_shader_t;
 
-typedef struct neko_graphics_batch_renderable_t {
-    neko_graphics_batch_vertex_data_t data;
-    neko_graphics_batch_shader_t* program;
-    neko_graphics_batch_render_internal_state_t state;
+typedef struct neko_render_batch_renderable_t {
+    neko_render_batch_vertex_data_t data;
+    neko_render_batch_shader_t* program;
+    neko_render_batch_render_internal_state_t state;
     u32 attribute_count;
 
     u32 index0;
@@ -648,155 +646,151 @@ typedef struct neko_graphics_batch_renderable_t {
     u32 buffer_count;
     u32 buffers[3];
     GLsync fences[3];
-} neko_graphics_batch_renderable_t;
+} neko_render_batch_renderable_t;
 
-#define NEKO_GRAPHICS_BATCH_UNIFORM_NAME_LENGTH 64
-#define NEKO_GRAPHICS_BATCH_UNIFORM_MAX_COUNT 16
+#define NEKO_RENDER_BATCH_UNIFORM_NAME_LENGTH 64
+#define NEKO_RENDER_BATCH_UNIFORM_MAX_COUNT 16
 
-typedef struct neko_graphics_batch_uniform_t {
-    char name[NEKO_GRAPHICS_BATCH_UNIFORM_NAME_LENGTH];
+typedef struct neko_render_batch_uniform_t {
+    char name[NEKO_RENDER_BATCH_UNIFORM_NAME_LENGTH];
     u32 id;
     u64 hash;
     u32 size;
     u32 type;
     u32 location;
-} neko_graphics_batch_uniform_t;
+} neko_render_batch_uniform_t;
 
-struct neko_graphics_batch_shader_t {
+struct neko_render_batch_shader_t {
     u32 program;
     u32 uniform_count;
-    neko_graphics_batch_uniform_t uniforms[NEKO_GRAPHICS_BATCH_UNIFORM_MAX_COUNT];
+    neko_render_batch_uniform_t uniforms[NEKO_RENDER_BATCH_UNIFORM_MAX_COUNT];
 };
 
-typedef struct neko_graphics_batch_framebuffer_t {
+typedef struct neko_render_batch_framebuffer_t {
     u32 fb_id;
     u32 tex_id;
     u32 rb_id;
     u32 quad_id;
-    neko_graphics_batch_shader_t* shader;
+    neko_render_batch_shader_t* shader;
     int w, h;
-} neko_graphics_batch_framebuffer_t;
+} neko_render_batch_framebuffer_t;
 
 typedef struct {
     u32 vert_count;
     void* verts;
-    neko_graphics_batch_renderable_t* r;
+    neko_render_batch_renderable_t* r;
     u32 texture_count;
     u32 textures[8];
-} neko_graphics_batch_draw_call_t;
+} neko_render_batch_draw_call_t;
 
-struct neko_graphics_batch_context_t;
-typedef struct neko_graphics_batch_context_t neko_graphics_batch_context_t;
-typedef struct neko_graphics_batch_context_t* neko_graphics_batch_context_ptr;
-typedef struct neko_graphics_batch_framebuffer_t* neko_graphics_batch_framebuffer_ptr;
+struct neko_render_batch_context_t;
+typedef struct neko_render_batch_context_t neko_render_batch_context_t;
+typedef struct neko_render_batch_context_t* neko_render_batch_context_ptr;
+typedef struct neko_render_batch_framebuffer_t* neko_render_batch_framebuffer_ptr;
 
-NEKO_API_DECL neko_graphics_batch_context_t* neko_graphics_batch_make_ctx(u32 max_draw_calls);
-NEKO_API_DECL void neko_graphics_batch_free(void* ctx);
+NEKO_API_DECL neko_render_batch_context_t* neko_render_batch_make_ctx(u32 max_draw_calls);
+NEKO_API_DECL void neko_render_batch_free(void* ctx);
 
-NEKO_API_DECL void neko_graphics_batch_make_frame_buffer(neko_graphics_batch_framebuffer_t* fb, neko_graphics_batch_shader_t* shader, int w, int h, int use_depth_test);
-NEKO_API_DECL void neko_graphics_batch_free_frame_buffer(neko_graphics_batch_framebuffer_t* fb);
+NEKO_API_DECL void neko_render_batch_make_frame_buffer(neko_render_batch_framebuffer_t* fb, neko_render_batch_shader_t* shader, int w, int h, int use_depth_test);
+NEKO_API_DECL void neko_render_batch_free_frame_buffer(neko_render_batch_framebuffer_t* fb);
 
-NEKO_API_DECL void neko_graphics_batch_make_vertex_data(neko_graphics_batch_vertex_data_t* vd, u32 buffer_size, u32 primitive, u32 vertex_stride, u32 usage);
-NEKO_API_DECL void neko_graphics_batch_add_attribute(neko_graphics_batch_vertex_data_t* vd, const char* name, u32 size, u32 type, u32 offset);
-NEKO_API_DECL void neko_graphics_batch_make_renderable(neko_graphics_batch_renderable_t* r, neko_graphics_batch_vertex_data_t* vd);
+NEKO_API_DECL void neko_render_batch_make_vertex_data(neko_render_batch_vertex_data_t* vd, u32 buffer_size, u32 primitive, u32 vertex_stride, u32 usage);
+NEKO_API_DECL void neko_render_batch_add_attribute(neko_render_batch_vertex_data_t* vd, const char* name, u32 size, u32 type, u32 offset);
+NEKO_API_DECL void neko_render_batch_make_renderable(neko_render_batch_renderable_t* r, neko_render_batch_vertex_data_t* vd);
 
 // Must be called after gl_make_renderable
-NEKO_API_DECL void neko_graphics_batch_set_shader(neko_graphics_batch_renderable_t* r, neko_graphics_batch_shader_t* s);
-NEKO_API_DECL void neko_graphics_batch_load_shader(neko_graphics_batch_shader_t* s, const char* vertex, const char* pixel);
-NEKO_API_DECL void neko_graphics_batch_free_shader(neko_graphics_batch_shader_t* s);
+NEKO_API_DECL void neko_render_batch_set_shader(neko_render_batch_renderable_t* r, neko_render_batch_shader_t* s);
+NEKO_API_DECL void neko_render_batch_load_shader(neko_render_batch_shader_t* s, const char* vertex, const char* pixel);
+NEKO_API_DECL void neko_render_batch_free_shader(neko_render_batch_shader_t* s);
 
-NEKO_API_DECL void neko_graphics_batch_set_active_shader(neko_graphics_batch_shader_t* s);
-NEKO_API_DECL void neko_graphics_batch_deactivate_shader();
-NEKO_API_DECL void neko_graphics_batch_send_f32(neko_graphics_batch_shader_t* s, const char* uniform_name, u32 size, float* floats, u32 count);
-NEKO_API_DECL void neko_graphics_batch_send_matrix(neko_graphics_batch_shader_t* s, const char* uniform_name, float* floats);
-NEKO_API_DECL void neko_graphics_batch_send_texture(neko_graphics_batch_shader_t* s, const char* uniform_name, u32 index);
+NEKO_API_DECL void neko_render_batch_set_active_shader(neko_render_batch_shader_t* s);
+NEKO_API_DECL void neko_render_batch_deactivate_shader();
+NEKO_API_DECL void neko_render_batch_send_f32(neko_render_batch_shader_t* s, const char* uniform_name, u32 size, float* floats, u32 count);
+NEKO_API_DECL void neko_render_batch_send_matrix(neko_render_batch_shader_t* s, const char* uniform_name, float* floats);
+NEKO_API_DECL void neko_render_batch_send_texture(neko_render_batch_shader_t* s, const char* uniform_name, u32 index);
 
-NEKO_API_DECL void neko_graphics_batch_push_draw_call(void* ctx, neko_graphics_batch_draw_call_t call);
+NEKO_API_DECL void neko_render_batch_push_draw_call(void* ctx, neko_render_batch_draw_call_t call);
 
-NEKO_API_DECL void neko_graphics_batch_flush(void* ctx, neko_graphics_batch_framebuffer_t* fb, int w, int h);
-NEKO_API_DECL int neko_graphics_batch_draw_call_count(void* ctx);
+NEKO_API_DECL void neko_render_batch_flush(void* ctx, neko_render_batch_framebuffer_t* fb, int w, int h);
+NEKO_API_DECL int neko_render_batch_draw_call_count(void* ctx);
 
 // 4x4 matrix helper functions
-NEKO_API_DECL void neko_graphics_batch_ortho_2d(float w, float h, float x, float y, float* m);
-NEKO_API_DECL void neko_graphics_batch_perspective(float* m, float y_fov_radians, float aspect, float n, float f);
-NEKO_API_DECL void neko_graphics_batch_mul(float* a, float* b, float* out);  // perform a * b, stores result in out
-NEKO_API_DECL void neko_graphics_batch_identity(float* m);
-NEKO_API_DECL void neko_graphics_batch_copy(float* dst, float* src);
+NEKO_API_DECL void neko_render_batch_ortho_2d(float w, float h, float x, float y, float* m);
+NEKO_API_DECL void neko_render_batch_perspective(float* m, float y_fov_radians, float aspect, float n, float f);
+NEKO_API_DECL void neko_render_batch_mul(float* a, float* b, float* out);  // perform a * b, stores result in out
+NEKO_API_DECL void neko_render_batch_identity(float* m);
+NEKO_API_DECL void neko_render_batch_copy(float* dst, float* src);
 
 // Resource Creation
 // Create
-NEKO_API_DECL neko_handle(neko_graphics_texture_t) neko_graphics_texture_create(const neko_graphics_texture_desc_t desc);
-NEKO_API_DECL neko_handle(neko_graphics_uniform_t) neko_graphics_uniform_create(const neko_graphics_uniform_desc_t desc);
-NEKO_API_DECL neko_handle(neko_graphics_shader_t) neko_graphics_shader_create(const neko_graphics_shader_desc_t desc);
-NEKO_API_DECL neko_handle(neko_graphics_vertex_buffer_t) neko_graphics_vertex_buffer_create(const neko_graphics_vertex_buffer_desc_t desc);
-NEKO_API_DECL neko_handle(neko_graphics_index_buffer_t) neko_graphics_index_buffer_create(const neko_graphics_index_buffer_desc_t desc);
-NEKO_API_DECL neko_handle(neko_graphics_uniform_buffer_t) neko_graphics_uniform_buffer_create(const neko_graphics_uniform_buffer_desc_t desc);
-NEKO_API_DECL neko_handle(neko_graphics_storage_buffer_t) neko_graphics_storage_buffer_create(const neko_graphics_storage_buffer_desc_t desc);
-NEKO_API_DECL neko_handle(neko_graphics_framebuffer_t) neko_graphics_framebuffer_create(const neko_graphics_framebuffer_desc_t desc);
-NEKO_API_DECL neko_handle(neko_graphics_renderpass_t) neko_graphics_renderpass_create(const neko_graphics_renderpass_desc_t desc);
-NEKO_API_DECL neko_handle(neko_graphics_pipeline_t) neko_graphics_pipeline_create(const neko_graphics_pipeline_desc_t desc);
+NEKO_API_DECL neko_handle(neko_render_texture_t) neko_render_texture_create(const neko_render_texture_desc_t desc);
+NEKO_API_DECL neko_handle(neko_render_uniform_t) neko_render_uniform_create(const neko_render_uniform_desc_t desc);
+NEKO_API_DECL neko_handle(neko_render_shader_t) neko_render_shader_create(const neko_render_shader_desc_t desc);
+NEKO_API_DECL neko_handle(neko_render_vertex_buffer_t) neko_render_vertex_buffer_create(const neko_render_vertex_buffer_desc_t desc);
+NEKO_API_DECL neko_handle(neko_render_index_buffer_t) neko_render_index_buffer_create(const neko_render_index_buffer_desc_t desc);
+NEKO_API_DECL neko_handle(neko_render_uniform_buffer_t) neko_render_uniform_buffer_create(const neko_render_uniform_buffer_desc_t desc);
+NEKO_API_DECL neko_handle(neko_render_storage_buffer_t) neko_render_storage_buffer_create(const neko_render_storage_buffer_desc_t desc);
+NEKO_API_DECL neko_handle(neko_render_framebuffer_t) neko_render_framebuffer_create(const neko_render_framebuffer_desc_t desc);
+NEKO_API_DECL neko_handle(neko_render_renderpass_t) neko_render_renderpass_create(const neko_render_renderpass_desc_t desc);
+NEKO_API_DECL neko_handle(neko_render_pipeline_t) neko_render_pipeline_create(const neko_render_pipeline_desc_t desc);
 
 // Destroy
-NEKO_API_DECL void neko_graphics_texture_destroy(neko_handle(neko_graphics_texture_t) hndl);
-NEKO_API_DECL void neko_graphics_uniform_destroy(neko_handle(neko_graphics_uniform_t) hndl);
-NEKO_API_DECL void neko_graphics_shader_destroy(neko_handle(neko_graphics_shader_t) hndl);
-NEKO_API_DECL void neko_graphics_vertex_buffer_destroy(neko_handle(neko_graphics_vertex_buffer_t) hndl);
-NEKO_API_DECL void neko_graphics_index_buffer_destroy(neko_handle(neko_graphics_index_buffer_t) hndl);
-NEKO_API_DECL void neko_graphics_uniform_buffer_destroy(neko_handle(neko_graphics_uniform_buffer_t) hndl);
-NEKO_API_DECL void neko_graphics_storage_buffer_destroy(neko_handle(neko_graphics_storage_buffer_t) hndl);
-NEKO_API_DECL void neko_graphics_framebuffer_destroy(neko_handle(neko_graphics_framebuffer_t) hndl);
-NEKO_API_DECL void neko_graphics_renderpass_destroy(neko_handle(neko_graphics_renderpass_t) hndl);
-NEKO_API_DECL void neko_graphics_pipeline_destroy(neko_handle(neko_graphics_pipeline_t) hndl);
+NEKO_API_DECL void neko_render_texture_destroy(neko_handle(neko_render_texture_t) hndl);
+NEKO_API_DECL void neko_render_uniform_destroy(neko_handle(neko_render_uniform_t) hndl);
+NEKO_API_DECL void neko_render_shader_destroy(neko_handle(neko_render_shader_t) hndl);
+NEKO_API_DECL void neko_render_vertex_buffer_destroy(neko_handle(neko_render_vertex_buffer_t) hndl);
+NEKO_API_DECL void neko_render_index_buffer_destroy(neko_handle(neko_render_index_buffer_t) hndl);
+NEKO_API_DECL void neko_render_uniform_buffer_destroy(neko_handle(neko_render_uniform_buffer_t) hndl);
+NEKO_API_DECL void neko_render_storage_buffer_destroy(neko_handle(neko_render_storage_buffer_t) hndl);
+NEKO_API_DECL void neko_render_framebuffer_destroy(neko_handle(neko_render_framebuffer_t) hndl);
+NEKO_API_DECL void neko_render_renderpass_destroy(neko_handle(neko_render_renderpass_t) hndl);
+NEKO_API_DECL void neko_render_pipeline_destroy(neko_handle(neko_render_pipeline_t) hndl);
 
 // Resource Updates (main thread only)
-NEKO_API_DECL void neko_graphics_vertex_buffer_update(neko_handle(neko_graphics_vertex_buffer_t) hndl, neko_graphics_vertex_buffer_desc_t* desc);
-NEKO_API_DECL void neko_graphics_index_buffer_update(neko_handle(neko_graphics_index_buffer_t) hndl, neko_graphics_index_buffer_desc_t* desc);
-NEKO_API_DECL void neko_graphics_storage_buffer_update(neko_handle(neko_graphics_storage_buffer_t) hndl, neko_graphics_storage_buffer_desc_t* desc);
-NEKO_API_DECL void neko_graphics_texture_update(neko_handle(neko_graphics_texture_t) hndl, neko_graphics_texture_desc_t* desc);
-NEKO_API_DECL void neko_graphics_texture_read(neko_handle(neko_graphics_texture_t) hndl, neko_graphics_texture_desc_t* desc);
+NEKO_API_DECL void neko_render_vertex_buffer_update(neko_handle(neko_render_vertex_buffer_t) hndl, neko_render_vertex_buffer_desc_t* desc);
+NEKO_API_DECL void neko_render_index_buffer_update(neko_handle(neko_render_index_buffer_t) hndl, neko_render_index_buffer_desc_t* desc);
+NEKO_API_DECL void neko_render_storage_buffer_update(neko_handle(neko_render_storage_buffer_t) hndl, neko_render_storage_buffer_desc_t* desc);
+NEKO_API_DECL void neko_render_texture_update(neko_handle(neko_render_texture_t) hndl, neko_render_texture_desc_t* desc);
+NEKO_API_DECL void neko_render_texture_read(neko_handle(neko_render_texture_t) hndl, neko_render_texture_desc_t* desc);
 
 // Resource Queries
-NEKO_API_DECL void neko_graphics_pipeline_desc_query(neko_handle(neko_graphics_pipeline_t) hndl, neko_graphics_pipeline_desc_t* out);
-NEKO_API_DECL void neko_graphics_texture_desc_query(neko_handle(neko_graphics_texture_t) hndl, neko_graphics_texture_desc_t* out);
-NEKO_API_DECL size_t neko_graphics_uniform_size_query(neko_handle(neko_graphics_uniform_t) hndl);
+NEKO_API_DECL void neko_render_pipeline_desc_query(neko_handle(neko_render_pipeline_t) hndl, neko_render_pipeline_desc_t* out);
+NEKO_API_DECL void neko_render_texture_desc_query(neko_handle(neko_render_texture_t) hndl, neko_render_texture_desc_t* out);
+NEKO_API_DECL size_t neko_render_uniform_size_query(neko_handle(neko_render_uniform_t) hndl);
 
 // Resource In-Flight Update
-NEKO_API_DECL void neko_graphics_texture_request_update(neko_command_buffer_t* cb, neko_handle(neko_graphics_texture_t) hndl, neko_graphics_texture_desc_t* desc);
-NEKO_API_DECL void neko_graphics_vertex_buffer_request_update(neko_command_buffer_t* cb, neko_handle(neko_graphics_vertex_buffer_t) hndl, neko_graphics_vertex_buffer_desc_t* desc);
-NEKO_API_DECL void neko_graphics_index_buffer_request_update(neko_command_buffer_t* cb, neko_handle(neko_graphics_index_buffer_t) hndl, neko_graphics_index_buffer_desc_t* desc);
-NEKO_API_DECL void neko_graphics_uniform_buffer_request_update(neko_command_buffer_t* cb, neko_handle(neko_graphics_uniform_buffer_t) hndl, neko_graphics_uniform_buffer_desc_t* desc);
-NEKO_API_DECL void neko_graphics_storage_buffer_request_update(neko_command_buffer_t* cb, neko_handle(neko_graphics_storage_buffer_t) hndl, neko_graphics_storage_buffer_desc_t* desc);
+NEKO_API_DECL void neko_render_texture_request_update(neko_command_buffer_t* cb, neko_handle(neko_render_texture_t) hndl, neko_render_texture_desc_t* desc);
+NEKO_API_DECL void neko_render_vertex_buffer_request_update(neko_command_buffer_t* cb, neko_handle(neko_render_vertex_buffer_t) hndl, neko_render_vertex_buffer_desc_t* desc);
+NEKO_API_DECL void neko_render_index_buffer_request_update(neko_command_buffer_t* cb, neko_handle(neko_render_index_buffer_t) hndl, neko_render_index_buffer_desc_t* desc);
+NEKO_API_DECL void neko_render_uniform_buffer_request_update(neko_command_buffer_t* cb, neko_handle(neko_render_uniform_buffer_t) hndl, neko_render_uniform_buffer_desc_t* desc);
+NEKO_API_DECL void neko_render_storage_buffer_request_update(neko_command_buffer_t* cb, neko_handle(neko_render_storage_buffer_t) hndl, neko_render_storage_buffer_desc_t* desc);
 
 // Pipeline / Pass / Bind / Draw
-NEKO_API_DECL void neko_graphics_renderpass_begin(neko_command_buffer_t* cb, neko_handle(neko_graphics_renderpass_t) hndl);
-NEKO_API_DECL void neko_graphics_renderpass_end(neko_command_buffer_t* cb);
-NEKO_API_DECL void neko_graphics_set_viewport(neko_command_buffer_t* cb, u32 x, u32 y, u32 w, u32 h);
-NEKO_API_DECL void neko_graphics_set_view_scissor(neko_command_buffer_t* cb, u32 x, u32 y, u32 w, u32 h);
-NEKO_API_DECL void neko_graphics_clear(neko_command_buffer_t* cb, neko_graphics_clear_action_t action);
-NEKO_API_DECL void neko_graphics_clear_ex(neko_command_buffer_t* cb, neko_graphics_clear_desc_t* desc);
-NEKO_API_DECL void neko_graphics_pipeline_bind(neko_command_buffer_t* cb, neko_handle(neko_graphics_pipeline_t) hndl);
-NEKO_API_DECL void neko_graphics_apply_bindings(neko_command_buffer_t* cb, neko_graphics_bind_desc_t* binds);
-NEKO_API_DECL void neko_graphics_draw(neko_command_buffer_t* cb, neko_graphics_draw_desc_t* desc);
-NEKO_API_DECL void neko_graphics_draw_batch(neko_command_buffer_t* cb, neko_graphics_batch_context_t* ctx, neko_graphics_batch_framebuffer_t* fb, s32 w, s32 h);
-NEKO_API_DECL void neko_graphics_dispatch_compute(neko_command_buffer_t* cb, u32 num_x_groups, u32 num_y_groups, u32 num_z_groups);
+NEKO_API_DECL void neko_render_renderpass_begin(neko_command_buffer_t* cb, neko_handle(neko_render_renderpass_t) hndl);
+NEKO_API_DECL void neko_render_renderpass_end(neko_command_buffer_t* cb);
+NEKO_API_DECL void neko_render_set_viewport(neko_command_buffer_t* cb, u32 x, u32 y, u32 w, u32 h);
+NEKO_API_DECL void neko_render_set_view_scissor(neko_command_buffer_t* cb, u32 x, u32 y, u32 w, u32 h);
+NEKO_API_DECL void neko_render_clear(neko_command_buffer_t* cb, neko_render_clear_action_t action);
+NEKO_API_DECL void neko_render_clear_ex(neko_command_buffer_t* cb, neko_render_clear_desc_t* desc);
+NEKO_API_DECL void neko_render_pipeline_bind(neko_command_buffer_t* cb, neko_handle(neko_render_pipeline_t) hndl);
+NEKO_API_DECL void neko_render_apply_bindings(neko_command_buffer_t* cb, neko_render_bind_desc_t* binds);
+NEKO_API_DECL void neko_render_draw(neko_command_buffer_t* cb, neko_render_draw_desc_t* desc);
+NEKO_API_DECL void neko_render_draw_batch(neko_command_buffer_t* cb, neko_render_batch_context_t* ctx, neko_render_batch_framebuffer_t* fb, s32 w, s32 h);
+NEKO_API_DECL void neko_render_dispatch_compute(neko_command_buffer_t* cb, u32 num_x_groups, u32 num_y_groups, u32 num_z_groups);
 
 // Macros
-#define neko_graphics_command_buffer_submit(CB) neko_graphics()->api.command_buffer_submit((CB))
+#define neko_render_command_buffer_submit(CB) neko_render()->api.command_buffer_submit((CB))
 
-#ifndef NEKO_NO_SHORT_NAME
-
-typedef neko_handle(neko_graphics_shader_t) neko_shader_t;
-typedef neko_handle(neko_graphics_texture_t) neko_texture_t;
-typedef neko_handle(neko_graphics_renderpass_t) neko_renderpass_t;
-typedef neko_handle(neko_graphics_framebuffer_t) neko_framebuffer_t;
-typedef neko_handle(neko_graphics_pipeline_t) neko_pipeline_t;
-typedef neko_handle(neko_graphics_vertex_buffer_t) neko_vbo_t;
-typedef neko_handle(neko_graphics_index_buffer_t) neko_ibo_t;
-typedef neko_handle(neko_graphics_uniform_buffer_t) neko_ubo_t;
-typedef neko_handle(neko_graphics_uniform_t) neko_uniform_t;
-typedef neko_handle(neko_graphics_storage_buffer_t) neko_storage_buffer_t;
-
-#endif
+typedef neko_handle(neko_render_shader_t) neko_shader_t;
+typedef neko_handle(neko_render_texture_t) neko_texture_t;
+typedef neko_handle(neko_render_renderpass_t) neko_renderpass_t;
+typedef neko_handle(neko_render_framebuffer_t) neko_framebuffer_t;
+typedef neko_handle(neko_render_pipeline_t) neko_pipeline_t;
+typedef neko_handle(neko_render_vertex_buffer_t) neko_vbo_t;
+typedef neko_handle(neko_render_index_buffer_t) neko_ibo_t;
+typedef neko_handle(neko_render_uniform_buffer_t) neko_ubo_t;
+typedef neko_handle(neko_render_uniform_t) neko_uniform_t;
+typedef neko_handle(neko_render_storage_buffer_t) neko_storage_buffer_t;
 
 /*=============================
 // NEKO_OPENGL
@@ -849,20 +843,20 @@ typedef struct neko_gl_storage_buffer_t {
 
 /* Pipeline */
 typedef struct neko_gl_pipeline_t {
-    neko_graphics_blend_state_desc_t blend;
-    neko_graphics_depth_state_desc_t depth;
-    neko_graphics_raster_state_desc_t raster;
-    neko_graphics_stencil_state_desc_t stencil;
-    neko_graphics_compute_state_desc_t compute;
-    neko_dyn_array(neko_graphics_vertex_attribute_desc_t) layout;
+    neko_render_blend_state_desc_t blend;
+    neko_render_depth_state_desc_t depth;
+    neko_render_raster_state_desc_t raster;
+    neko_render_stencil_state_desc_t stencil;
+    neko_render_compute_state_desc_t compute;
+    neko_dyn_array(neko_render_vertex_attribute_desc_t) layout;
 } neko_gl_pipeline_t;
 
 /* Render Pass */
 typedef struct neko_gl_renderpass_t {
-    neko_handle(neko_graphics_framebuffer_t) fbo;
-    neko_dyn_array(neko_handle(neko_graphics_texture_t)) color;
-    neko_handle(neko_graphics_texture_t) depth;
-    neko_handle(neko_graphics_texture_t) stencil;
+    neko_handle(neko_render_framebuffer_t) fbo;
+    neko_dyn_array(neko_handle(neko_render_texture_t)) color;
+    neko_handle(neko_render_texture_t) depth;
+    neko_handle(neko_render_texture_t) stencil;
 } neko_gl_renderpass_t;
 
 /* Shader */
@@ -874,12 +868,12 @@ typedef u32 neko_gl_buffer_t;
 /* Texture */
 typedef struct neko_gl_texture_t {
     u32 id;
-    neko_graphics_texture_desc_t desc;
+    neko_render_texture_desc_t desc;
 } neko_gl_texture_t;
 
 typedef struct neko_gl_vertex_buffer_decl_t {
     neko_gl_buffer_t vbo;
-    neko_graphics_vertex_data_type data_type;
+    neko_render_vertex_data_type data_type;
     size_t offset;
 } neko_gl_vertex_buffer_decl_t;
 
@@ -889,7 +883,7 @@ typedef struct neko_gl_data_cache_t {
     neko_gl_buffer_t ibo;
     size_t ibo_elem_sz;
     neko_dyn_array(neko_gl_vertex_buffer_decl_t) vdecls;
-    neko_handle(neko_graphics_pipeline_t) pipeline;
+    neko_handle(neko_render_pipeline_t) pipeline;
 } neko_gl_data_cache_t;
 
 // 内部 OpenGL 数据
@@ -976,8 +970,8 @@ typedef struct neko_asset_mesh_decl_t {
 } neko_asset_mesh_decl_t;
 
 typedef struct neko_asset_mesh_primitive_t {
-    neko_handle(neko_graphics_vertex_buffer_t) vbo;
-    neko_handle(neko_graphics_index_buffer_t) ibo;
+    neko_handle(neko_render_vertex_buffer_t) vbo;
+    neko_handle(neko_render_index_buffer_t) ibo;
     u32 count;
 } neko_asset_mesh_primitive_t;
 
@@ -995,8 +989,8 @@ typedef struct neko_asset_mesh_raw_data_t {
 } neko_asset_mesh_raw_data_t;
 
 typedef struct neko_asset_texture_t {
-    neko_handle(neko_graphics_texture_t) hndl;
-    neko_graphics_texture_desc_t desc;
+    neko_handle(neko_render_texture_t) hndl;
+    neko_render_texture_desc_t desc;
 } neko_asset_texture_t;
 
 typedef struct neko_baked_char_t {
@@ -1021,8 +1015,8 @@ typedef struct neko_asset_ascii_font_t {
 
 // Texture
 
-NEKO_API_DECL bool neko_asset_texture_load_from_file(const_str path, void* out, neko_graphics_texture_desc_t* desc, b32 flip_on_load, b32 keep_data);
-NEKO_API_DECL bool neko_asset_texture_load_from_memory(const void* memory, size_t sz, void* out, neko_graphics_texture_desc_t* desc, b32 flip_on_load, b32 keep_data);
+NEKO_API_DECL bool neko_asset_texture_load_from_file(const_str path, void* out, neko_render_texture_desc_t* desc, b32 flip_on_load, b32 keep_data);
+NEKO_API_DECL bool neko_asset_texture_load_from_memory(const void* memory, size_t sz, void* out, neko_render_texture_desc_t* desc, b32 flip_on_load, b32 keep_data);
 
 // Font
 NEKO_API_DECL bool neko_asset_ascii_font_load_from_file(const_str path, void* out, u32 point_size);
@@ -1108,24 +1102,24 @@ typedef struct neko_immediate_vert_t {
 } neko_immediate_vert_t;
 
 typedef struct neko_immediate_cache_t {
-    neko_dyn_array(neko_handle(neko_graphics_pipeline_t)) pipelines;
+    neko_dyn_array(neko_handle(neko_render_pipeline_t)) pipelines;
     neko_dyn_array(neko_mat4) modelview;
     neko_dyn_array(neko_mat4) projection;
     neko_dyn_array(neko_idraw_matrix_type) modes;
     neko_vec2 uv;
     neko_color_t color;
-    neko_handle(neko_graphics_texture_t) texture;
+    neko_handle(neko_render_texture_t) texture;
     neko_idraw_pipeline_state_attr_t pipeline;
 } neko_immediate_cache_t;
 
 typedef struct neko_immediate_draw_static_data_t {
-    neko_handle(neko_graphics_texture_t) tex_default;
+    neko_handle(neko_render_texture_t) tex_default;
     neko_asset_ascii_font_t font_default;  // Idraw font
-    neko_hash_table(neko_idraw_pipeline_state_attr_t, neko_handle(neko_graphics_pipeline_t)) pipeline_table;
-    neko_handle(neko_graphics_uniform_t) uniform;
-    neko_handle(neko_graphics_uniform_t) sampler;
-    neko_handle(neko_graphics_vertex_buffer_t) vbo;
-    neko_handle(neko_graphics_index_buffer_t) ibo;
+    neko_hash_table(neko_idraw_pipeline_state_attr_t, neko_handle(neko_render_pipeline_t)) pipeline_table;
+    neko_handle(neko_render_uniform_t) uniform;
+    neko_handle(neko_render_uniform_t) sampler;
+    neko_handle(neko_render_vertex_buffer_t) vbo;
+    neko_handle(neko_render_index_buffer_t) ibo;
 } neko_immediate_draw_static_data_t;
 
 typedef struct neko_immediate_draw_t {
@@ -1139,11 +1133,9 @@ typedef struct neko_immediate_draw_t {
     u32 flags;
 } neko_immediate_draw_t;
 
-#ifndef NEKO_NO_SHORT_NAME
 typedef neko_immediate_draw_t gsid;
 #define neko_idraw_create neko_immediate_draw_new
 #define neko_idraw_free neko_immediate_draw_free
-#endif
 
 // Create / Init / Shutdown / Free
 NEKO_API_DECL neko_immediate_draw_t neko_immediate_draw_new();
@@ -1152,13 +1144,13 @@ NEKO_API_DECL void neko_immediate_draw_static_data_set(neko_immediate_draw_stati
 NEKO_API_DECL neko_immediate_draw_static_data_t* neko_immediate_draw_static_data_get();  // 用于热更新
 
 // Get pipeline from state
-NEKO_API_DECL neko_handle(neko_graphics_pipeline_t) neko_idraw_get_pipeline(neko_immediate_draw_t* neko_idraw, neko_idraw_pipeline_state_attr_t state);
+NEKO_API_DECL neko_handle(neko_render_pipeline_t) neko_idraw_get_pipeline(neko_immediate_draw_t* neko_idraw, neko_idraw_pipeline_state_attr_t state);
 
 // Get default font asset pointer
 NEKO_API_DECL neko_asset_ascii_font_t* neko_idraw_default_font();
 
 // Core Vertex Functions
-NEKO_API_DECL void neko_idraw_begin(neko_immediate_draw_t* neko_idraw, neko_graphics_primitive_type type);
+NEKO_API_DECL void neko_idraw_begin(neko_immediate_draw_t* neko_idraw, neko_render_primitive_type type);
 NEKO_API_DECL void neko_idraw_end(neko_immediate_draw_t* neko_idraw);
 NEKO_API_DECL void neko_idraw_tc2f(neko_immediate_draw_t* neko_idraw, f32 u, f32 v);
 NEKO_API_DECL void neko_idraw_tc2fv(neko_immediate_draw_t* neko_idraw, neko_vec2 uv);
@@ -1169,7 +1161,7 @@ NEKO_API_DECL void neko_idraw_v2fv(neko_immediate_draw_t* neko_idraw, neko_vec2 
 NEKO_API_DECL void neko_idraw_v3f(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, f32 z);
 NEKO_API_DECL void neko_idraw_v3fv(neko_immediate_draw_t* neko_idraw, neko_vec3 v);
 NEKO_API_DECL void neko_idraw_flush(neko_immediate_draw_t* neko_idraw);
-NEKO_API_DECL void neko_idraw_texture(neko_immediate_draw_t* neko_idraw, neko_handle(neko_graphics_texture_t) texture);
+NEKO_API_DECL void neko_idraw_texture(neko_immediate_draw_t* neko_idraw, neko_handle(neko_render_texture_t) texture);
 
 NEKO_API_DECL neko_hsv_t neko_rgb_to_hsv(neko_color_t c);
 NEKO_API_DECL f32 neko_hue_dist(f32 h1, f32 h2);
@@ -1184,7 +1176,7 @@ NEKO_API_DECL void neko_idraw_stencil_enabled(neko_immediate_draw_t* neko_idraw,
 NEKO_API_DECL void neko_idraw_face_cull_enabled(neko_immediate_draw_t* neko_idraw, bool enabled);
 NEKO_API_DECL void neko_idraw_defaults(neko_immediate_draw_t* neko_idraw);
 NEKO_API_DECL void neko_idraw_pipeline_set(neko_immediate_draw_t* neko_idraw,
-                                           neko_handle(neko_graphics_pipeline_t) pipeline);  // Binds custom user pipeline, sets flag NEKO_IDRAW_FLAG_NO_BIND_CACHED_PIPELINES
+                                           neko_handle(neko_render_pipeline_t) pipeline);  // Binds custom user pipeline, sets flag NEKO_IDRAW_FLAG_NO_BIND_CACHED_PIPELINES
 NEKO_API_DECL void neko_idraw_vattr_list(neko_immediate_draw_t* neko_idraw, neko_idraw_vattr_type* layout, size_t sz);  // Sets user vertex attribute list for custom bound pipeline
 NEKO_API_DECL void neko_idraw_vattr_list_mesh(neko_immediate_draw_t* neko_idraw, neko_asset_mesh_layout_t* layout,
                                               size_t sz);  // Same as above but uses mesh layout to determine which vertex attributes to bind and in what order
@@ -1195,7 +1187,7 @@ NEKO_API_DECL void neko_idraw_set_view_scissor(neko_immediate_draw_t* neko_idraw
 // Final Submit / Merge
 NEKO_API_DECL void neko_idraw_draw(neko_immediate_draw_t* neko_idraw, neko_command_buffer_t* cb);
 NEKO_API_DECL void neko_idraw_renderpass_submit(neko_immediate_draw_t* neko_idraw, neko_command_buffer_t* cb, neko_vec4 viewport, neko_color_t clear_color);
-NEKO_API_DECL void neko_idraw_renderpass_submit_ex(neko_immediate_draw_t* neko_idraw, neko_command_buffer_t* cb, neko_vec4 viewport, neko_graphics_clear_action_t action);
+NEKO_API_DECL void neko_idraw_renderpass_submit_ex(neko_immediate_draw_t* neko_idraw, neko_command_buffer_t* cb, neko_vec4 viewport, neko_render_clear_action_t action);
 
 // Core Matrix Functions
 NEKO_API_DECL void neko_idraw_push_matrix(neko_immediate_draw_t* neko_idraw, neko_idraw_matrix_type type);
@@ -1220,14 +1212,14 @@ NEKO_API_DECL void neko_idraw_camera2d_ex(neko_immediate_draw_t* neko_idraw, f32
 NEKO_API_DECL void neko_idraw_camera3d(neko_immediate_draw_t* neko_idraw, u32 width, u32 height);
 
 // Primitive Drawing Util
-NEKO_API_DECL void neko_idraw_triangle(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 x1, f32 y1, f32 x2, f32 y2, u8 r, u8 g, u8 b, u8 a, neko_graphics_primitive_type type);
-NEKO_API_DECL void neko_idraw_trianglev(neko_immediate_draw_t* neko_idraw, neko_vec2 a, neko_vec2 b, neko_vec2 c, neko_color_t color, neko_graphics_primitive_type type);
+NEKO_API_DECL void neko_idraw_triangle(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 x1, f32 y1, f32 x2, f32 y2, u8 r, u8 g, u8 b, u8 a, neko_render_primitive_type type);
+NEKO_API_DECL void neko_idraw_trianglev(neko_immediate_draw_t* neko_idraw, neko_vec2 a, neko_vec2 b, neko_vec2 c, neko_color_t color, neko_render_primitive_type type);
 NEKO_API_DECL void neko_idraw_trianglex(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 z0, f32 x1, f32 y1, f32 z1, f32 x2, f32 y2, f32 z2, f32 u0, f32 v0, f32 u1, f32 v1, f32 u2, f32 v2, u8 r,
-                                        u8 g, u8 b, u8 a, neko_graphics_primitive_type type);
+                                        u8 g, u8 b, u8 a, neko_render_primitive_type type);
 NEKO_API_DECL void neko_idraw_trianglevx(neko_immediate_draw_t* neko_idraw, neko_vec3 v0, neko_vec3 v1, neko_vec3 v2, neko_vec2 uv0, neko_vec2 uv1, neko_vec2 uv2, neko_color_t color,
-                                         neko_graphics_primitive_type type);
+                                         neko_render_primitive_type type);
 NEKO_API_DECL void neko_idraw_trianglevxmc(neko_immediate_draw_t* neko_idraw, neko_vec3 v0, neko_vec3 v1, neko_vec3 v2, neko_vec2 uv0, neko_vec2 uv1, neko_vec2 uv2, neko_color_t c0, neko_color_t c1,
-                                           neko_color_t c2, neko_graphics_primitive_type type);
+                                           neko_color_t c2, neko_render_primitive_type type);
 NEKO_API_DECL void neko_idraw_line(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 x1, f32 y1, u8 r, u8 g, u8 b, u8 a);
 NEKO_API_DECL void neko_idraw_linev(neko_immediate_draw_t* neko_idraw, neko_vec2 v0, neko_vec2 v1, neko_color_t c);
 NEKO_API_DECL void neko_idraw_line3D(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 z0, f32 x1, f32 y1, f32 z1, u8 r, u8 g, u8 b, u8 a);
@@ -1235,27 +1227,27 @@ NEKO_API_DECL void neko_idraw_line3Dv(neko_immediate_draw_t* neko_idraw, neko_ve
 NEKO_API_DECL void neko_idraw_line3Dmc(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 z0, f32 x1, f32 y1, f32 z1, u8 r0, u8 g0, u8 b0, u8 a0, u8 r1, u8 g1, u8 b1, u8 a1);
 
 // Shape Drawing Util
-NEKO_API_DECL void neko_idraw_rect(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 x1, f32 y1, u8 r, u8 g, u8 b, u8 a, neko_graphics_primitive_type type);
-NEKO_API_DECL void neko_idraw_rectv(neko_immediate_draw_t* neko_idraw, neko_vec2 bl, neko_vec2 tr, neko_color_t color, neko_graphics_primitive_type type);
-NEKO_API_DECL void neko_idraw_rectx(neko_immediate_draw_t* neko_idraw, f32 l, f32 b, f32 r, f32 t, f32 u0, f32 v0, f32 u1, f32 v1, u8 _r, u8 _g, u8 _b, u8 _a, neko_graphics_primitive_type type);
-NEKO_API_DECL void neko_idraw_rectvx(neko_immediate_draw_t* neko_idraw, neko_vec2 bl, neko_vec2 tr, neko_vec2 uv0, neko_vec2 uv1, neko_color_t color, neko_graphics_primitive_type type);
-NEKO_API_DECL void neko_idraw_rectvd(neko_immediate_draw_t* neko_idraw, neko_vec2 xy, neko_vec2 wh, neko_vec2 uv0, neko_vec2 uv1, neko_color_t color, neko_graphics_primitive_type type);
-NEKO_API_DECL void neko_idraw_rect3Dv(neko_immediate_draw_t* neko_idraw, neko_vec3 min, neko_vec3 max, neko_vec2 uv0, neko_vec2 uv1, neko_color_t color, neko_graphics_primitive_type type);
-NEKO_API_DECL void neko_idraw_rect3Dvd(neko_immediate_draw_t* neko_idraw, neko_vec3 xyz, neko_vec3 whd, neko_vec2 uv0, neko_vec2 uv1, neko_color_t c, neko_graphics_primitive_type type);
-NEKO_API_DECL void neko_idraw_circle(neko_immediate_draw_t* neko_idraw, f32 cx, f32 cy, f32 radius, int32_t segments, u8 r, u8 g, u8 b, u8 a, neko_graphics_primitive_type type);
-NEKO_API_DECL void neko_idraw_circlevx(neko_immediate_draw_t* neko_idraw, neko_vec3 c, f32 radius, int32_t segments, neko_color_t color, neko_graphics_primitive_type type);
+NEKO_API_DECL void neko_idraw_rect(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 x1, f32 y1, u8 r, u8 g, u8 b, u8 a, neko_render_primitive_type type);
+NEKO_API_DECL void neko_idraw_rectv(neko_immediate_draw_t* neko_idraw, neko_vec2 bl, neko_vec2 tr, neko_color_t color, neko_render_primitive_type type);
+NEKO_API_DECL void neko_idraw_rectx(neko_immediate_draw_t* neko_idraw, f32 l, f32 b, f32 r, f32 t, f32 u0, f32 v0, f32 u1, f32 v1, u8 _r, u8 _g, u8 _b, u8 _a, neko_render_primitive_type type);
+NEKO_API_DECL void neko_idraw_rectvx(neko_immediate_draw_t* neko_idraw, neko_vec2 bl, neko_vec2 tr, neko_vec2 uv0, neko_vec2 uv1, neko_color_t color, neko_render_primitive_type type);
+NEKO_API_DECL void neko_idraw_rectvd(neko_immediate_draw_t* neko_idraw, neko_vec2 xy, neko_vec2 wh, neko_vec2 uv0, neko_vec2 uv1, neko_color_t color, neko_render_primitive_type type);
+NEKO_API_DECL void neko_idraw_rect3Dv(neko_immediate_draw_t* neko_idraw, neko_vec3 min, neko_vec3 max, neko_vec2 uv0, neko_vec2 uv1, neko_color_t color, neko_render_primitive_type type);
+NEKO_API_DECL void neko_idraw_rect3Dvd(neko_immediate_draw_t* neko_idraw, neko_vec3 xyz, neko_vec3 whd, neko_vec2 uv0, neko_vec2 uv1, neko_color_t c, neko_render_primitive_type type);
+NEKO_API_DECL void neko_idraw_circle(neko_immediate_draw_t* neko_idraw, f32 cx, f32 cy, f32 radius, int32_t segments, u8 r, u8 g, u8 b, u8 a, neko_render_primitive_type type);
+NEKO_API_DECL void neko_idraw_circlevx(neko_immediate_draw_t* neko_idraw, neko_vec3 c, f32 radius, int32_t segments, neko_color_t color, neko_render_primitive_type type);
 NEKO_API_DECL void neko_idraw_circle_sector(neko_immediate_draw_t* neko_idraw, f32 cx, f32 cy, f32 radius, int32_t start_angle, int32_t end_angle, int32_t segments, u8 r, u8 g, u8 b, u8 a,
-                                            neko_graphics_primitive_type type);
+                                            neko_render_primitive_type type);
 NEKO_API_DECL void neko_idraw_circle_sectorvx(neko_immediate_draw_t* neko_idraw, neko_vec3 c, f32 radius, int32_t start_angle, int32_t end_angle, int32_t segments, neko_color_t color,
-                                              neko_graphics_primitive_type type);
+                                              neko_render_primitive_type type);
 NEKO_API_DECL void neko_idraw_arc(neko_immediate_draw_t* neko_idraw, f32 cx, f32 cy, f32 radius_inner, f32 radius_outer, f32 start_angle, f32 end_angle, int32_t segments, u8 r, u8 g, u8 b, u8 a,
-                                  neko_graphics_primitive_type type);
-NEKO_API_DECL void neko_idraw_box(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 z0, f32 hx, f32 hy, f32 hz, u8 r, u8 g, u8 b, u8 a, neko_graphics_primitive_type type);
-NEKO_API_DECL void neko_idraw_sphere(neko_immediate_draw_t* neko_idraw, f32 cx, f32 cy, f32 cz, f32 radius, u8 r, u8 g, u8 b, u8 a, neko_graphics_primitive_type type);
+                                  neko_render_primitive_type type);
+NEKO_API_DECL void neko_idraw_box(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 z0, f32 hx, f32 hy, f32 hz, u8 r, u8 g, u8 b, u8 a, neko_render_primitive_type type);
+NEKO_API_DECL void neko_idraw_sphere(neko_immediate_draw_t* neko_idraw, f32 cx, f32 cy, f32 cz, f32 radius, u8 r, u8 g, u8 b, u8 a, neko_render_primitive_type type);
 NEKO_API_DECL void neko_idraw_bezier(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 x1, f32 y1, u8 r, u8 g, u8 b, u8 a);
 NEKO_API_DECL void neko_idraw_cylinder(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, f32 z, f32 r_top, f32 r_bottom, f32 height, int32_t sides, u8 r, u8 g, u8 b, u8 a,
-                                       neko_graphics_primitive_type type);
-NEKO_API_DECL void neko_idraw_cone(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, f32 z, f32 radius, f32 height, int32_t sides, u8 r, u8 g, u8 b, u8 a, neko_graphics_primitive_type type);
+                                       neko_render_primitive_type type);
+NEKO_API_DECL void neko_idraw_cone(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, f32 z, f32 radius, f32 height, int32_t sides, u8 r, u8 g, u8 b, u8 a, neko_render_primitive_type type);
 
 // Draw planes/poly groups
 
@@ -1307,20 +1299,20 @@ typedef struct neko_draw_raw_data_func_desc_t {
 
 //=== Uniforms/Uniform blocks ===//
 typedef struct neko_draw_uniform_desc_t {
-    char name[64];                          // the_name of uniform (for binding to shader)
-    neko_graphics_uniform_type type;        // Type of uniform: NEKO_GRAPHICS_UNIFORM_VEC2, NEKO_GRAPHICS_UNIFORM_VEC3, etc.
-    uint32_t binding;                       // Binding for this uniform in shader
-    neko_graphics_shader_stage_type stage;  // Shader stage for this uniform
-    neko_graphics_access_type access_type;  // Access type for this uniform (compute only)
+    char name[64];                        // the_name of uniform (for binding to shader)
+    neko_render_uniform_type type;        // Type of uniform: NEKO_RENDER_UNIFORM_VEC2, NEKO_RENDER_UNIFORM_VEC3, etc.
+    uint32_t binding;                     // Binding for this uniform in shader
+    neko_render_shader_stage_type stage;  // Shader stage for this uniform
+    neko_render_access_type access_type;  // Access type for this uniform (compute only)
 } neko_draw_uniform_desc_t;
 
 typedef struct neko_draw_uniform_t {
-    neko_handle(neko_graphics_uniform_t) hndl;  // Graphics handle resource for actual uniform
-    uint32_t offset;                            // Individual offset for this uniform in material byte buffer data
-    uint32_t binding;                           // Binding for this uniform
-    size_t size;                                // Size of this uniform data in bytes
-    neko_graphics_uniform_type type;            // Type of this uniform
-    neko_graphics_access_type access_type;      // Access type of uniform (compute only)
+    neko_handle(neko_render_uniform_t) hndl;  // Graphics handle resource for actual uniform
+    uint32_t offset;                          // Individual offset for this uniform in material byte buffer data
+    uint32_t binding;                         // Binding for this uniform
+    size_t size;                              // Size of this uniform data in bytes
+    neko_render_uniform_type type;            // Type of this uniform
+    neko_render_access_type access_type;      // Access type of uniform (compute only)
 } neko_draw_uniform_t;
 
 typedef struct neko_draw_uniform_block_desc_t {
@@ -1339,7 +1331,7 @@ typedef struct neko_draw_uniform_block_t {
 } neko_draw_uniform_block_t;
 
 //=== Texture ===//
-typedef neko_handle(neko_graphics_texture_t) neko_draw_texture_t;
+typedef neko_handle(neko_render_texture_t) neko_draw_texture_t;
 
 //=== Mesh ===//
 typedef neko_asset_mesh_attribute_type neko_draw_mesh_attribute_type;
@@ -1404,20 +1396,20 @@ typedef struct neko_draw_mesh_desc_s {
 } neko_draw_mesh_desc_t;
 
 typedef struct neko_draw_vertex_stream_s {
-    neko_handle(neko_graphics_vertex_buffer_t) positions;
-    neko_handle(neko_graphics_vertex_buffer_t) normals;
-    neko_handle(neko_graphics_vertex_buffer_t) tangents;
-    neko_handle(neko_graphics_vertex_buffer_t) colors[NEKO_GFXT_COLOR_MAX];
-    neko_handle(neko_graphics_vertex_buffer_t) tex_coords[NEKO_GFXT_TEX_COORD_MAX];
-    neko_handle(neko_graphics_vertex_buffer_t) joints[NEKO_GFXT_JOINT_MAX];
-    neko_handle(neko_graphics_vertex_buffer_t) weights[NEKO_GFXT_WEIGHT_MAX];
-    neko_handle(neko_graphics_vertex_buffer_t) custom_uint[NEKO_GFXT_CUSTOM_UINT_MAX];
+    neko_handle(neko_render_vertex_buffer_t) positions;
+    neko_handle(neko_render_vertex_buffer_t) normals;
+    neko_handle(neko_render_vertex_buffer_t) tangents;
+    neko_handle(neko_render_vertex_buffer_t) colors[NEKO_GFXT_COLOR_MAX];
+    neko_handle(neko_render_vertex_buffer_t) tex_coords[NEKO_GFXT_TEX_COORD_MAX];
+    neko_handle(neko_render_vertex_buffer_t) joints[NEKO_GFXT_JOINT_MAX];
+    neko_handle(neko_render_vertex_buffer_t) weights[NEKO_GFXT_WEIGHT_MAX];
+    neko_handle(neko_render_vertex_buffer_t) custom_uint[NEKO_GFXT_CUSTOM_UINT_MAX];
 } neko_draw_vertex_stream_t;
 
 typedef struct neko_draw_mesh_primitive_s {
-    neko_draw_vertex_stream_t stream;                   // All vertex data streams
-    neko_handle(neko_graphics_index_buffer_t) indices;  // Index buffer
-    uint32_t count;                                     // Total number of vertices
+    neko_draw_vertex_stream_t stream;                 // All vertex data streams
+    neko_handle(neko_render_index_buffer_t) indices;  // Index buffer
+    uint32_t count;                                   // Total number of vertices
 } neko_draw_mesh_primitive_t;
 
 typedef struct neko_draw_mesh_s {
@@ -1427,15 +1419,15 @@ typedef struct neko_draw_mesh_s {
 
 //=== Pipeline ===//
 typedef struct neko_draw_pipeline_desc_s {
-    neko_graphics_pipeline_desc_t pip_desc;      // Description for constructing pipeline object
+    neko_render_pipeline_desc_t pip_desc;        // Description for constructing pipeline object
     neko_draw_uniform_block_desc_t ublock_desc;  // Description for constructing uniform block object
 } neko_draw_pipeline_desc_t;
 
 typedef struct neko_draw_pipeline_s {
-    neko_handle(neko_graphics_pipeline_t) hndl;  // Graphics handle resource for actual pipeline
-    neko_draw_uniform_block_t ublock;            // Uniform block for holding all uniform data
+    neko_handle(neko_render_pipeline_t) hndl;  // Graphics handle resource for actual pipeline
+    neko_draw_uniform_block_t ublock;          // Uniform block for holding all uniform data
     neko_dyn_array(neko_draw_mesh_layout_t) mesh_layout;
-    neko_graphics_pipeline_desc_t desc;
+    neko_render_pipeline_desc_t desc;
 } neko_draw_pipeline_t;
 
 //=== Material ===//
@@ -1474,7 +1466,7 @@ NEKO_API_DECL neko_draw_mesh_t neko_draw_mesh_create(const neko_draw_mesh_desc_t
 NEKO_API_DECL void neko_draw_mesh_update_or_create(neko_draw_mesh_t* mesh, const neko_draw_mesh_desc_t* desc);
 NEKO_API_DECL neko_draw_renderable_t neko_draw_renderable_create(const neko_draw_renderable_desc_t* desc);
 NEKO_API_DECL neko_draw_uniform_block_t neko_draw_uniform_block_create(const neko_draw_uniform_block_desc_t* desc);
-NEKO_API_DECL neko_draw_texture_t neko_draw_texture_create(neko_graphics_texture_desc_t desc);
+NEKO_API_DECL neko_draw_texture_t neko_draw_texture_create(neko_render_texture_desc_t desc);
 
 //=== Destruction ===//
 NEKO_API_DECL void neko_draw_texture_destroy(neko_draw_texture_t* texture);
@@ -1487,8 +1479,8 @@ NEKO_API_DECL void neko_draw_pipeline_destroy(neko_draw_pipeline_t* pipeline);
 NEKO_API_DECL neko_draw_pipeline_t neko_draw_pipeline_load_from_file(const char* path);
 NEKO_API_DECL neko_draw_pipeline_t neko_draw_pipeline_load_from_memory(const char* data, size_t sz);
 NEKO_API_DECL neko_draw_pipeline_t neko_draw_pipeline_load_from_memory_ext(const char* data, size_t sz, const char* file_dir);
-NEKO_API_DECL neko_draw_texture_t neko_draw_texture_load_from_file(const char* path, neko_graphics_texture_desc_t* desc, bool flip, bool keep_data);
-NEKO_API_DECL neko_draw_texture_t neko_draw_texture_load_from_memory(const char* data, size_t sz, neko_graphics_texture_desc_t* desc, bool flip, bool keep_data);
+NEKO_API_DECL neko_draw_texture_t neko_draw_texture_load_from_file(const char* path, neko_render_texture_desc_t* desc, bool flip, bool keep_data);
+NEKO_API_DECL neko_draw_texture_t neko_draw_texture_load_from_memory(const char* data, size_t sz, neko_render_texture_desc_t* desc, bool flip, bool keep_data);
 
 //=== Copy ===//
 NEKO_API_DECL neko_draw_material_t neko_draw_material_deep_copy(neko_draw_material_t* src);
@@ -1516,7 +1508,7 @@ NEKO_API_DECL void* neko_draw_raw_data_default_impl(NEKO_GFXT_HNDL hndl, void* u
 
 // Mesh Generation API
 NEKO_API_DECL neko_draw_mesh_t neko_draw_mesh_unit_quad_generate(neko_draw_mesh_import_options_t* options);
-NEKO_API_DECL neko_handle(neko_graphics_texture_t) neko_draw_texture_generate_default();
+NEKO_API_DECL neko_handle(neko_render_texture_t) neko_draw_texture_generate_default();
 
 // ECS component
 typedef struct neko_draw_renderer {
@@ -1553,11 +1545,16 @@ typedef struct neko_draw_renderer {
 #define NEKO_UI_TAB_ITEM_MAX 24
 #define NEKO_UI_CLS_SELECTOR_MAX 4
 
+#ifdef __cplusplus
 #define neko_ui_widths(...)                       \
     [&]() -> const s32* {                         \
         static s32 temp_widths[] = {__VA_ARGS__}; \
         return temp_widths;                       \
     }()
+#else
+#define neko_ui_widths(...) \
+    (int[]) { __VA_ARGS__ }
+#endif
 
 #define neko_ui_stack(T, n) \
     struct {                \
@@ -1698,7 +1695,7 @@ typedef struct {
 
 typedef struct {
     neko_ui_basecommand_t base;
-    neko_handle(neko_graphics_pipeline_t) pipeline;
+    neko_handle(neko_render_pipeline_t) pipeline;
     neko_idraw_layout_type layout_type;
     void* layout;
     size_t layout_sz;
@@ -1713,7 +1710,7 @@ typedef struct {
 typedef struct {
     neko_ui_basecommand_t base;
     neko_ui_rect_t rect;
-    neko_handle(neko_graphics_texture_t) hndl;
+    neko_handle(neko_render_texture_t) hndl;
     neko_vec4 uvs;
     neko_color_t color;
 } neko_ui_imagecommand_t;
@@ -2367,7 +2364,7 @@ NEKO_API_DECL void neko_ui_render(neko_ui_context_t* ctx, neko_command_buffer_t*
 
 //=== Util ===//
 NEKO_API_DECL void neko_ui_renderpass_submit(neko_ui_context_t* ctx, neko_command_buffer_t* cb, neko_color_t clear);
-NEKO_API_DECL void neko_ui_renderpass_submit_ex(neko_ui_context_t* ctx, neko_command_buffer_t* cb, neko_graphics_clear_action_t action);
+NEKO_API_DECL void neko_ui_renderpass_submit_ex(neko_ui_context_t* ctx, neko_command_buffer_t* cb, neko_render_clear_action_t action);
 NEKO_API_DECL void neko_ui_parse_id_tag(neko_ui_context_t* ctx, const char* str, char* buffer, size_t sz, u64 opt);
 NEKO_API_DECL void neko_ui_parse_label_tag(neko_ui_context_t* ctx, const char* str, char* buffer, size_t sz);
 
@@ -2447,8 +2444,8 @@ NEKO_API_DECL void neko_ui_input_text(neko_ui_context_t* ctx, const char* text);
 NEKO_API_DECL neko_ui_command_t* neko_ui_push_command(neko_ui_context_t* ctx, s32 type, s32 size);
 NEKO_API_DECL s32 neko_ui_next_command(neko_ui_context_t* ctx, neko_ui_command_t** cmd);
 NEKO_API_DECL void neko_ui_set_clip(neko_ui_context_t* ctx, neko_ui_rect_t rect);
-NEKO_API_DECL void neko_ui_set_pipeline(neko_ui_context_t* ctx, neko_handle(neko_graphics_pipeline_t) pip, void* layout, size_t layout_sz, neko_idraw_layout_type layout_type);
-NEKO_API_DECL void neko_ui_bind_uniforms(neko_ui_context_t* ctx, neko_graphics_bind_uniform_desc_t* uniforms, size_t uniforms_sz);
+NEKO_API_DECL void neko_ui_set_pipeline(neko_ui_context_t* ctx, neko_handle(neko_render_pipeline_t) pip, void* layout, size_t layout_sz, neko_idraw_layout_type layout_type);
+NEKO_API_DECL void neko_ui_bind_uniforms(neko_ui_context_t* ctx, neko_render_bind_uniform_desc_t* uniforms, size_t uniforms_sz);
 
 //=== Drawing ===//
 
@@ -2459,9 +2456,9 @@ NEKO_API_DECL void neko_ui_draw_box(neko_ui_context_t* ctx, neko_ui_rect_t rect,
 NEKO_API_DECL void neko_ui_draw_line(neko_ui_context_t* ctx, neko_vec2 start, neko_vec2 end, neko_color_t color);
 NEKO_API_DECL void neko_ui_draw_text(neko_ui_context_t* ctx, neko_asset_ascii_font_t* font, const char* str, s32 len, neko_vec2 pos, neko_color_t color, s32 shadow_x, s32 shadow_y,
                                      neko_color_t shadow_color);
-NEKO_API_DECL void neko_ui_draw_image(neko_ui_context_t* ctx, neko_handle(neko_graphics_texture_t) hndl, neko_ui_rect_t rect, neko_vec2 uv0, neko_vec2 uv1, neko_color_t color);
-NEKO_API_DECL void neko_ui_draw_nine_rect(neko_ui_context_t* ctx, neko_handle(neko_graphics_texture_t) hndl, neko_ui_rect_t rect, neko_vec2 uv0, neko_vec2 uv1, u32 left, u32 right, u32 top,
-                                          u32 bottom, neko_color_t color);
+NEKO_API_DECL void neko_ui_draw_image(neko_ui_context_t* ctx, neko_handle(neko_render_texture_t) hndl, neko_ui_rect_t rect, neko_vec2 uv0, neko_vec2 uv1, neko_color_t color);
+NEKO_API_DECL void neko_ui_draw_nine_rect(neko_ui_context_t* ctx, neko_handle(neko_render_texture_t) hndl, neko_ui_rect_t rect, neko_vec2 uv0, neko_vec2 uv1, u32 left, u32 right, u32 top, u32 bottom,
+                                          neko_color_t color);
 NEKO_API_DECL void neko_ui_draw_control_frame(neko_ui_context_t* ctx, neko_ui_id id, neko_ui_rect_t rect, s32 elementid, u64 opt);
 NEKO_API_DECL void neko_ui_draw_control_text(neko_ui_context_t* ctx, const char* str, neko_ui_rect_t rect, const neko_ui_style_t* style, u64 opt);
 NEKO_API_DECL void neko_ui_draw_custom(neko_ui_context_t* ctx, neko_ui_rect_t rect, neko_ui_draw_callback_t cb, void* data, size_t sz);
@@ -2508,7 +2505,7 @@ NEKO_API_DECL neko_ui_rect_t neko_ui_layout_anchor(const neko_ui_rect_t* parent,
 
 //=== Elements (Extended) ===//
 
-NEKO_API_DECL s32 neko_ui_image_ex(neko_ui_context_t* ctx, neko_handle(neko_graphics_texture_t) hndl, neko_vec2 uv0, neko_vec2 uv1, const neko_ui_selector_desc_t* desc, u64 opt);
+NEKO_API_DECL s32 neko_ui_image_ex(neko_ui_context_t* ctx, neko_handle(neko_render_texture_t) hndl, neko_vec2 uv0, neko_vec2 uv1, const neko_ui_selector_desc_t* desc, u64 opt);
 NEKO_API_DECL s32 neko_ui_text_ex(neko_ui_context_t* ctx, const char* text, s32 text_wrap, const neko_ui_selector_desc_t* desc, u64 opt);
 NEKO_API_DECL s32 neko_ui_label_ex(neko_ui_context_t* ctx, const char* text, const neko_ui_selector_desc_t* desc, u64 opt);
 NEKO_API_DECL s32 neko_ui_button_ex(neko_ui_context_t* ctx, const char* label, const neko_ui_selector_desc_t* desc, u64 opt);

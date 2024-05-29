@@ -2,7 +2,7 @@
 #include "neko_meta.h"
 
 NEKO_API_DECL neko_meta_registry_t neko_meta_registry_new() {
-    neko_meta_registry_t meta = neko_default_val();
+    neko_meta_registry_t meta = NEKO_DEFAULT_VAL();
     return meta;
 }
 
@@ -22,7 +22,7 @@ NEKO_API_DECL void neko_meta_registry_free(neko_meta_registry_t* meta) {
 }
 
 neko_meta_property_t neko_meta_property_impl(const char* field_type_name, const char* field, size_t size, uint32_t offset, neko_meta_property_type_info_t type) {
-    neko_meta_property_t mp = neko_default_val();
+    neko_meta_property_t mp = NEKO_DEFAULT_VAL();
     mp.name = field;
     mp.type_name = field_type_name;
     mp.offset = offset;
@@ -33,7 +33,7 @@ neko_meta_property_t neko_meta_property_impl(const char* field_type_name, const 
 
 u64 neko_meta_class_register(neko_meta_registry_t* meta, const neko_meta_class_decl_t decl) {
     uint32_t ct = decl.size / sizeof(neko_meta_property_t);
-    neko_meta_class_t cls = neko_default_val();
+    neko_meta_class_t cls = NEKO_DEFAULT_VAL();
     cls.properties = (neko_meta_property_t*)neko_safe_malloc(decl.size);
     cls.property_count = ct;
     memcpy(cls.properties, decl.properties, decl.size);
@@ -60,7 +60,7 @@ NEKO_API_DECL void neko_meta_class_unregister(neko_meta_registry_t* meta, u64 id
 
 NEKO_API_DECL u64 neko_meta_enum_register(neko_meta_registry_t* meta, const neko_meta_enum_decl_t* decl) {
     uint32_t ct = decl->size / sizeof(neko_meta_enum_value_t);
-    neko_meta_enum_t enm = neko_default_val();
+    neko_meta_enum_t enm = NEKO_DEFAULT_VAL();
     enm.values = (neko_meta_enum_value_t*)neko_safe_malloc(decl->size);
     enm.value_count = ct;
     enm.name = decl->name;
@@ -72,7 +72,7 @@ NEKO_API_DECL u64 neko_meta_enum_register(neko_meta_registry_t* meta, const neko
 }
 
 NEKO_API_PRIVATE neko_meta_property_type_info_t neko_meta_property_type_decl_impl(const char* name, uint32_t id) {
-    neko_meta_property_type_info_t info = neko_default_val();
+    neko_meta_property_type_info_t info = NEKO_DEFAULT_VAL();
     info.name = name;
     info.id = id;
     return info;

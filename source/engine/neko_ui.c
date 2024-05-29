@@ -1,21 +1,20 @@
 
 #include "engine/neko_common.h"
-#include "engine/neko_graphics.h"
-#include "engine/neko_physics.h"
+#include "engine/neko_render.h"
 #include "engine/neko_platform.h"
 
 #define neko_ui_unused(x) ((void)(x))
 
 #define neko_ui_stack_push(stk, val)                                                \
     do {                                                                            \
-        neko_expect((stk).idx < (s32)(sizeof((stk).items) / sizeof(*(stk).items))); \
+        NEKO_EXPECT((stk).idx < (s32)(sizeof((stk).items) / sizeof(*(stk).items))); \
         (stk).items[(stk).idx] = (val);                                             \
         (stk).idx++; /* incremented after incase `val` uses this value */           \
     } while (0)
 
 #define neko_ui_stack_pop(stk)      \
     do {                            \
-        neko_expect((stk).idx > 0); \
+        NEKO_EXPECT((stk).idx > 0); \
         (stk).idx--;                \
     } while (0)
 
@@ -32,14 +31,14 @@ static void neko_ui_hash(neko_ui_id* hash, const void* data, s32 size) {
 static neko_ui_rect_t neko_ui_unclipped_rect = {0, 0, 0x1000000, 0x1000000};
 
 // Default styles
-static neko_ui_style_t neko_ui_default_container_style[3] = neko_default_val();
-static neko_ui_style_t neko_ui_default_button_style[3] = neko_default_val();
-static neko_ui_style_t neko_ui_default_text_style[3] = neko_default_val();
-static neko_ui_style_t neko_ui_default_label_style[3] = neko_default_val();
-static neko_ui_style_t neko_ui_default_panel_style[3] = neko_default_val();
-static neko_ui_style_t neko_ui_default_input_style[3] = neko_default_val();
-static neko_ui_style_t neko_ui_default_scroll_style[3] = neko_default_val();
-static neko_ui_style_t neko_ui_default_image_style[3] = neko_default_val();
+static neko_ui_style_t neko_ui_default_container_style[3] = NEKO_DEFAULT_VAL();
+static neko_ui_style_t neko_ui_default_button_style[3] = NEKO_DEFAULT_VAL();
+static neko_ui_style_t neko_ui_default_text_style[3] = NEKO_DEFAULT_VAL();
+static neko_ui_style_t neko_ui_default_label_style[3] = NEKO_DEFAULT_VAL();
+static neko_ui_style_t neko_ui_default_panel_style[3] = NEKO_DEFAULT_VAL();
+static neko_ui_style_t neko_ui_default_input_style[3] = NEKO_DEFAULT_VAL();
+static neko_ui_style_t neko_ui_default_scroll_style[3] = NEKO_DEFAULT_VAL();
+static neko_ui_style_t neko_ui_default_image_style[3] = NEKO_DEFAULT_VAL();
 
 static neko_ui_style_t neko_ui_default_style = {
         // font | size | spacing | indent | title_height | scroll_width | thumb_width
@@ -83,7 +82,7 @@ static neko_ui_style_t neko_ui_default_style = {
         1,
         1};
 
-static neko_ui_style_sheet_t neko_ui_default_style_sheet = neko_default_val();
+static neko_ui_style_sheet_t neko_ui_default_style_sheet = NEKO_DEFAULT_VAL();
 
 static neko_ui_style_t neko_ui_get_current_element_style(neko_ui_context_t* ctx, const neko_ui_selector_desc_t* desc, s32 elementid, s32 state) {
 
@@ -226,10 +225,10 @@ static neko_ui_style_t neko_ui_get_current_element_style(neko_ui_context_t* ctx,
 
     // Look for id tag style
     neko_ui_style_list_t* id_styles = NULL;
-    neko_ui_style_list_t* cls_styles[NEKO_UI_CLS_SELECTOR_MAX] = neko_default_val();
+    neko_ui_style_list_t* cls_styles[NEKO_UI_CLS_SELECTOR_MAX] = NEKO_DEFAULT_VAL();
 
     if (desc) {
-        char TMP[256] = neko_default_val();
+        char TMP[256] = NEKO_DEFAULT_VAL();
 
         // ID selector
         neko_snprintf(TMP, sizeof(TMP), "#%s", desc->id);
@@ -286,7 +285,7 @@ static neko_ui_style_t neko_ui_get_current_element_style(neko_ui_context_t* ctx,
 }
 
 NEKO_API_DECL neko_ui_style_t neko_ui_animation_get_blend_style(neko_ui_context_t* ctx, neko_ui_animation_t* anim, const neko_ui_selector_desc_t* desc, s32 elementid) {
-    neko_ui_style_t ret = neko_default_val();
+    neko_ui_style_t ret = NEKO_DEFAULT_VAL();
 
     s32 focus_state = anim->focus_state;
     s32 hover_state = anim->hover_state;
@@ -311,11 +310,11 @@ NEKO_API_DECL neko_ui_style_t neko_ui_animation_get_blend_style(neko_ui_context_
     }
 
     const neko_ui_animation_property_list_t* id_list = NULL;
-    const neko_ui_animation_property_list_t* cls_list[NEKO_UI_CLS_SELECTOR_MAX] = neko_default_val();
+    const neko_ui_animation_property_list_t* cls_list[NEKO_UI_CLS_SELECTOR_MAX] = NEKO_DEFAULT_VAL();
     bool has_class_animations = false;
 
     if (desc) {
-        char TMP[256] = neko_default_val();
+        char TMP[256] = NEKO_DEFAULT_VAL();
 
         // ID animations
         if (desc->id) {
@@ -366,13 +365,13 @@ NEKO_API_DECL neko_ui_style_t neko_ui_animation_get_blend_style(neko_ui_context_
             switch (anim->direction) {                                                                                                                 \
                 default:                                                                                                                               \
                 case NEKO_UI_ANIMATION_DIRECTION_FORWARD: {                                                                                            \
-                    t = neko_clamp(neko_map_range((float)prop->delay, (float)prop->time + (float)prop->delay, 0.f, 1.f, (float)anim->time), 0.f, 1.f); \
+                    t = NEKO_CLAMP(neko_map_range((float)prop->delay, (float)prop->time + (float)prop->delay, 0.f, 1.f, (float)anim->time), 0.f, 1.f); \
                 } break;                                                                                                                               \
                 case NEKO_UI_ANIMATION_DIRECTION_BACKWARD: {                                                                                           \
                     if (prop->time <= 0.f)                                                                                                             \
                         t = 1.f;                                                                                                                       \
                     else                                                                                                                               \
-                        t = neko_clamp(neko_map_range((float)0.f, (float)anim->max - (float)prop->delay, 0.f, 1.f, (float)anim->time), 0.f, 1.f);      \
+                        t = NEKO_CLAMP(neko_map_range((float)0.f, (float)anim->max - (float)prop->delay, 0.f, 1.f, (float)anim->time), 0.f, 1.f);      \
                 } break;                                                                                                                               \
             }                                                                                                                                          \
                                                                                                                                                        \
@@ -521,13 +520,13 @@ static void __neko_ui_animation_get_time(neko_ui_context_t* ctx, neko_ui_id id, 
         act = state == 0x00 ? iss->animation_counts[scz - 3] : state == 0x01 ? iss->animation_counts[scz - 2] : iss->animation_counts[scz - 1];
         ssz = neko_dyn_array_size(iss->animations[state]);
     }
-    neko_ui_animation_property_list_t* cls_list[NEKO_UI_CLS_SELECTOR_MAX] = neko_default_val();
+    neko_ui_animation_property_list_t* cls_list[NEKO_UI_CLS_SELECTOR_MAX] = NEKO_DEFAULT_VAL();
     const neko_ui_animation_property_list_t* id_list = NULL;
     const neko_ui_animation_property_list_t* list = NULL;
     bool has_class_animations = false;
 
     if (desc) {
-        char TMP[256] = neko_default_val();
+        char TMP[256] = NEKO_DEFAULT_VAL();
 
         // Id animations
         neko_snprintf(TMP, sizeof(TMP), "#%s", desc->id);
@@ -554,7 +553,7 @@ static void __neko_ui_animation_get_time(neko_ui_context_t* ctx, neko_ui_id id, 
     }
 
     // Fill properties in order of specificity
-    neko_ui_animation_property_t properties[NEKO_UI_STYLE_COUNT] = neko_default_val();
+    neko_ui_animation_property_t properties[NEKO_UI_STYLE_COUNT] = NEKO_DEFAULT_VAL();
     for (u32 i = 0; i < NEKO_UI_STYLE_COUNT; ++i) {
         properties[i].type = (neko_ui_style_element_type)i;
     }
@@ -607,7 +606,7 @@ static void __neko_ui_animation_get_time(neko_ui_context_t* ctx, neko_ui_id id, 
 
     // Finalize time
     anim->max += anim->delay;
-    anim->max = neko_max(anim->max, 5);
+    anim->max = NEKO_MAX(anim->max, 5);
 }
 
 NEKO_API_DECL neko_ui_animation_t* neko_ui_get_animation(neko_ui_context_t* ctx, neko_ui_id id, const neko_ui_selector_desc_t* desc, s32 elementid) {
@@ -618,7 +617,7 @@ NEKO_API_DECL neko_ui_animation_t* neko_ui_get_animation(neko_ui_context_t* ctx,
     // Construct new animation if necessary to insert
     if (ctx->state_switch_id == id) {
         if (!neko_hash_table_exists(ctx->animations, id)) {
-            neko_ui_animation_t val = neko_default_val();
+            neko_ui_animation_t val = NEKO_DEFAULT_VAL();
             neko_hash_table_insert(ctx->animations, id, val);
         }
 
@@ -749,10 +748,10 @@ NEKO_API_DECL neko_ui_rect_t neko_ui_rect(float x, float y, float w, float h) {
 static neko_ui_rect_t neko_ui_expand_rect(neko_ui_rect_t rect, s16 v[4]) { return neko_ui_rect(rect.x - v[0], rect.y - v[2], rect.w + v[0] + v[1], rect.h + v[2] + v[3]); }
 
 static neko_ui_rect_t neko_ui_intersect_rects(neko_ui_rect_t r1, neko_ui_rect_t r2) {
-    s32 x1 = (s32)neko_max(r1.x, r2.x);
-    s32 y1 = (s32)neko_max(r1.y, r2.y);
-    s32 x2 = (s32)neko_min(r1.x + r1.w, r2.x + r2.w);
-    s32 y2 = (s32)neko_min(r1.y + r1.h, r2.y + r2.h);
+    s32 x1 = (s32)NEKO_MAX(r1.x, r2.x);
+    s32 y1 = (s32)NEKO_MAX(r1.y, r2.y);
+    s32 x2 = (s32)NEKO_MIN(r1.x + r1.w, r2.x + r2.w);
+    s32 y2 = (s32)NEKO_MIN(r1.y + r1.h, r2.y + r2.h);
     if (x2 < x1) {
         x2 = x1;
     }
@@ -981,15 +980,15 @@ void neko_ui_push_inline_style(neko_ui_context_t* ctx, neko_ui_element_type elem
     }
 
     if (!neko_hash_table_exists(ctx->inline_styles, elementid)) {
-        neko_ui_inline_style_stack_t v = neko_default_val();
+        neko_ui_inline_style_stack_t v = NEKO_DEFAULT_VAL();
         neko_hash_table_insert(ctx->inline_styles, elementid, v);
     }
 
     neko_ui_inline_style_stack_t* iss = neko_hash_table_getp(ctx->inline_styles, elementid);
-    neko_assert(iss);
+    NEKO_ASSERT(iss);
 
     // Counts to keep for popping off
-    u32 style_ct[3] = neko_default_val(), anim_ct[3] = neko_default_val();
+    u32 style_ct[3] = NEKO_DEFAULT_VAL(), anim_ct[3] = NEKO_DEFAULT_VAL();
 
     if (desc->all.style.data && desc->all.style.size) {
         // Total amount to write for each section
@@ -1063,7 +1062,7 @@ void neko_ui_pop_inline_style(neko_ui_context_t* ctx, neko_ui_element_type eleme
     }
 
     neko_ui_inline_style_stack_t* iss = neko_hash_table_getp(ctx->inline_styles, elementid);
-    neko_assert(iss);
+    NEKO_ASSERT(iss);
 
     if (neko_dyn_array_size(iss->style_counts) >= 3) {
         const u32 sz = neko_dyn_array_size(iss->style_counts);
@@ -1131,7 +1130,7 @@ static void neko_ui_pop_container(neko_ui_context_t* ctx) {
             neko_ui_rect_t base, thumb;                                                                                                                    \
             neko_ui_id id = neko_ui_get_id(ctx, "!scrollbar" #y, 11);                                                                                      \
             const s32 elementid = NEKO_UI_ELEMENT_SCROLL;                                                                                                  \
-            neko_ui_style_t style = neko_default_val();                                                                                                    \
+            neko_ui_style_t style = NEKO_DEFAULT_VAL();                                                                                                    \
             neko_ui_animation_t* anim = neko_ui_get_animation(ctx, id, desc, elementid);                                                                   \
                                                                                                                                                            \
             /* Update anim (keep states locally within animation, only way to do this)*/                                                                   \
@@ -1165,7 +1164,7 @@ static void neko_ui_pop_container(neko_ui_context_t* ctx) {
                 cnt->scroll.y += ctx->mouse_delta.y * cs.y / base.h;                                                                                       \
             }                                                                                                                                              \
             /* clamp scroll to limits */                                                                                                                   \
-            cnt->scroll.y = neko_clamp(cnt->scroll.y, 0, maxscroll);                                                                                       \
+            cnt->scroll.y = NEKO_CLAMP(cnt->scroll.y, 0, maxscroll);                                                                                       \
             s32 state = ctx->focus == id ? NEKO_UI_ELEMENT_STATE_FOCUS : ctx->hover == id ? NEKO_UI_ELEMENT_STATE_HOVER : 0x00;                            \
                                                                                                                                                            \
             /* draw base and thumb */                                                                                                                      \
@@ -1183,7 +1182,7 @@ static void neko_ui_pop_container(neko_ui_context_t* ctx) {
             thumb = base;                                                                                                                                  \
             thumb.x = x;                                                                                                                                   \
             thumb.w = w;                                                                                                                                   \
-            thumb.h = neko_max(style.thumb_size, base.h * b->h / cs.y) - pb;                                                                               \
+            thumb.h = NEKO_MAX(style.thumb_size, base.h * b->h / cs.y) - pb;                                                                               \
             thumb.y += cnt->scroll.y * (base.h - thumb.h) / maxscroll + pt;                                                                                \
             neko_ui_draw_rect(ctx, thumb, style.colors[NEKO_UI_COLOR_CONTENT]);                                                                            \
             /* draw border*/                                                                                                                               \
@@ -1288,7 +1287,7 @@ static void neko_ui_root_container_end(neko_ui_context_t* ctx) {
 
 NEKO_API_DECL neko_ui_style_sheet_t neko_ui_style_sheet_create(neko_ui_context_t* ctx, neko_ui_style_sheet_desc_t* desc) {
     // Generate new style sheet based on default element styles
-    neko_ui_style_sheet_t style_sheet = neko_default_val();
+    neko_ui_style_sheet_t style_sheet = NEKO_DEFAULT_VAL();
 
     // Copy all default styles
     NEKO_UI_COPY_STYLES(style_sheet.styles, neko_ui_default_style_sheet.styles, NEKO_UI_ELEMENT_CONTAINER);
@@ -1335,11 +1334,11 @@ NEKO_API_DECL neko_ui_style_sheet_t neko_ui_style_sheet_create(neko_ui_context_t
         if (desc->TYPE.all.animation.data) {                                                                 \
             s32 cnt = desc->TYPE.all.animation.size / sizeof(neko_ui_animation_property_t);                  \
             if (!neko_hash_table_exists(style_sheet.animations, ELEMENT)) {                                  \
-                neko_ui_animation_property_list_t v = neko_default_val();                                    \
+                neko_ui_animation_property_list_t v = NEKO_DEFAULT_VAL();                                    \
                 neko_hash_table_insert(style_sheet.animations, ELEMENT, v);                                  \
             }                                                                                                \
             neko_ui_animation_property_list_t* list = neko_hash_table_getp(style_sheet.animations, ELEMENT); \
-            neko_assert(list);                                                                               \
+            NEKO_ASSERT(list);                                                                               \
             /* Register animation properties for all */                                                      \
             for (u32 i = 0; i < 3; ++i) {                                                                    \
                 for (u32 c = 0; c < cnt; ++c) {                                                              \
@@ -1770,7 +1769,7 @@ static neko_vec2 neko_ui_text_dimensions(neko_asset_ascii_font_t* font, const ch
 // =========================== //
 
 NEKO_API_DECL void neko_ui_dock_ex(neko_ui_context_t* ctx, const char* dst, const char* src, s32 split_type, float ratio) {
-    neko_ui_hints_t hints = neko_default_val();
+    neko_ui_hints_t hints = NEKO_DEFAULT_VAL();
     hints.framebuffer_size = neko_platform_framebuffer_sizev(ctx->window_hndl);
     hints.viewport = neko_ui_rect(0.f, 0.f, 0.f, 0.f);
     u32 f = ctx->frame;
@@ -1813,7 +1812,7 @@ NEKO_API_DECL void neko_ui_dock_ex_cnt(neko_ui_context_t* ctx, neko_ui_container
             neko_println("add to tab bar");
 
             neko_ui_tab_bar_t* tab_bar = neko_slot_array_getp(ctx->tab_bars, parent->tab_bar);
-            neko_assert(tab_bar);
+            NEKO_ASSERT(tab_bar);
 
             // Set all tab bar children to this as well, if has children, then release previous tab bar
             if (child->tab_bar) {
@@ -1851,10 +1850,10 @@ NEKO_API_DECL void neko_ui_dock_ex_cnt(neko_ui_context_t* ctx, neko_ui_container
             neko_log_info("create tab bar");
 
             // Create tab bar
-            neko_ui_tab_bar_t tb = neko_default_val();
+            neko_ui_tab_bar_t tb = NEKO_DEFAULT_VAL();
             u32 hndl = neko_slot_array_insert(ctx->tab_bars, tb);
             neko_ui_tab_bar_t* tab_bar = neko_slot_array_getp(ctx->tab_bars, hndl);
-            neko_assert(tab_bar);
+            NEKO_ASSERT(tab_bar);
 
             // Create tab items
             neko_ui_tab_item_t* parent_tab_item = &tab_bar->items[tab_bar->size];
@@ -1918,13 +1917,13 @@ NEKO_API_DECL void neko_ui_dock_ex_cnt(neko_ui_context_t* ctx, neko_ui_container
 
         neko_ui_tab_bar_t* tab_bar = neko_ui_get_tab_bar(ctx, parent);
 
-        neko_ui_split_t split = neko_default_val();
+        neko_ui_split_t split = NEKO_DEFAULT_VAL();
         split.type = (neko_ui_split_type)split_type;
         split.ratio = ratio;
-        neko_ui_split_node_t c0 = neko_default_val();
+        neko_ui_split_node_t c0 = NEKO_DEFAULT_VAL();
         c0.type = NEKO_UI_SPLIT_NODE_CONTAINER;
         c0.container = child;
-        neko_ui_split_node_t c1 = neko_default_val();
+        neko_ui_split_node_t c1 = NEKO_DEFAULT_VAL();
         c1.type = NEKO_UI_SPLIT_NODE_CONTAINER;
         c1.container = parent;
         split.children[NEKO_UI_SPLIT_NODE_CHILD] = c0;
@@ -2055,7 +2054,7 @@ NEKO_API_DECL void neko_ui_undock_ex_cnt(neko_ui_context_t* ctx, neko_ui_contain
 
                 // Set focus to first window
                 tab_bar->focus = idx ? idx - 1 : idx;
-                neko_assert(tab_bar->items[tab_bar->focus].data != cnt);
+                NEKO_ASSERT(tab_bar->items[tab_bar->focus].data != cnt);
 
                 // Set split for focus
                 if (parent == cnt) {
@@ -2114,7 +2113,7 @@ NEKO_API_DECL void neko_ui_undock_ex_cnt(neko_ui_context_t* ctx, neko_ui_contain
                 if (parent == cnt) {
                     tab_bar->focus = idx ? idx - 1 : idx;
 
-                    neko_assert((neko_ui_container_t*)tab_bar->items[tab_bar->focus].data != cnt);
+                    NEKO_ASSERT((neko_ui_container_t*)tab_bar->items[tab_bar->focus].data != cnt);
 
                     neko_ui_container_t* fcnt = (neko_ui_container_t*)tab_bar->items[tab_bar->focus].data;
                     fcnt->split = parent->split;
@@ -2208,7 +2207,7 @@ NEKO_API_DECL void neko_ui_undock_ex_cnt(neko_ui_context_t* ctx, neko_ui_contain
                                             : split->children[NEKO_UI_SPLIT_NODE_PARENT].container == cnt ? &split->children[NEKO_UI_SPLIT_NODE_CHILD]
                                                                                                           : NULL;
 
-        neko_assert(remain_node);
+        NEKO_ASSERT(remain_node);
 
         // Set child split in prev container split to split container parent
         if (ps) {
@@ -2361,11 +2360,11 @@ static void neko_ui_init_default_styles(neko_ui_context_t* ctx) {
     ctx->style = &ctx->style_sheet->styles[NEKO_UI_ELEMENT_CONTAINER][0x00];
 }
 
-static char button_map[256] = neko_default_val();
-static char key_map[512] = neko_default_val();
+static char button_map[256] = NEKO_DEFAULT_VAL();
+static char key_map[512] = NEKO_DEFAULT_VAL();
 
 NEKO_API_DECL neko_ui_context_t neko_ui_new(u32 window_hndl) {
-    neko_ui_context_t ctx = neko_default_val();
+    neko_ui_context_t ctx = NEKO_DEFAULT_VAL();
     neko_ui_init(&ctx, window_hndl);
     return ctx;
 }
@@ -2378,10 +2377,10 @@ NEKO_API_DECL void neko_ui_init(neko_ui_context_t* ctx, u32 window_hndl) {
     ctx->window_hndl = window_hndl;
     ctx->last_zindex = 1000;
     neko_slot_array_reserve(ctx->splits, NEKO_UI_NEKO_UI_SPLIT_SIZE);
-    neko_ui_split_t split = neko_default_val();
+    neko_ui_split_t split = NEKO_DEFAULT_VAL();
     neko_slot_array_insert(ctx->splits, split);  // First item is set for 0x00 invalid
     neko_slot_array_reserve(ctx->tab_bars, NEKO_UI_NEKO_UI_TAB_SIZE);
-    neko_ui_tab_bar_t tb = neko_default_val();
+    neko_ui_tab_bar_t tb = NEKO_DEFAULT_VAL();
     neko_slot_array_insert(ctx->tab_bars, tb);
 
     button_map[NEKO_MOUSE_LBUTTON & 0xff] = NEKO_UI_MOUSE_LEFT;
@@ -2407,7 +2406,7 @@ NEKO_API_DECL void neko_ui_init_font_stash(neko_ui_context_t* ctx, neko_ui_font_
 }
 
 NEKO_API_DECL neko_ui_context_t neko_ui_context_new(u32 window_hndl) {
-    neko_ui_context_t gui = neko_default_val();
+    neko_ui_context_t gui = NEKO_DEFAULT_VAL();
     neko_ui_init(&gui, window_hndl);
     return gui;
 }
@@ -2533,7 +2532,7 @@ static void neko_ui_draw_splits(neko_ui_context_t* ctx, neko_ui_split_t* split) 
     // Draw split
     const neko_ui_rect_t* sr = &split->rect;
     neko_vec2 hd = neko_v2(sr->w * 0.5f, sr->h * 0.5f);
-    neko_ui_rect_t r = neko_default_val();
+    neko_ui_rect_t r = NEKO_DEFAULT_VAL();
     neko_color_t c = neko_color(0, 0, 0, 0);
     const float ratio = split->ratio;
     neko_ui_container_t* top = neko_ui_get_top_most_container(ctx, root_split);
@@ -2584,7 +2583,7 @@ static void neko_ui_draw_splits(neko_ui_context_t* ctx, neko_ui_split_t* split) 
             bool active = ctx->focus_split == split;
             if (active && valid) {
                 ctx->next_hover_root = top;
-                neko_ui_request_t req = neko_default_val();
+                neko_ui_request_t req = NEKO_DEFAULT_VAL();
                 req.type = NEKO_UI_SPLIT_RATIO;
                 req.split = split;
                 neko_dyn_array_push(ctx->requests, req);
@@ -2626,7 +2625,7 @@ static void neko_ui_draw_splits(neko_ui_context_t* ctx, neko_ui_split_t* split) 
                 bool active = ctx->focus_split == split;
                 if (active) {
                     ctx->next_hover_root = top;
-                    neko_ui_request_t req = neko_default_val();
+                    neko_ui_request_t req = NEKO_DEFAULT_VAL();
                     req.type = NEKO_UI_SPLIT_RATIO;
                     req.split = split;
                     neko_dyn_array_push(ctx->requests, req);
@@ -2682,7 +2681,7 @@ static void neko_ui_get_split_lowest_zindex(neko_ui_context_t* ctx, neko_ui_spli
 }
 
 NEKO_API_DECL void neko_ui_begin(neko_ui_context_t* ctx, const neko_ui_hints_t* hints) {
-    neko_ui_hints_t default_hints = neko_default_val();
+    neko_ui_hints_t default_hints = NEKO_DEFAULT_VAL();
     default_hints.framebuffer_size = neko_platform_framebuffer_sizev(ctx->window_hndl);
     default_hints.viewport = neko_ui_rect(0.f, 0.f, default_hints.framebuffer_size.x, default_hints.framebuffer_size.y);
     neko_ui_hints_t hint = hints ? *hints : default_hints;
@@ -2714,7 +2713,7 @@ NEKO_API_DECL void neko_ui_begin(neko_ui_context_t* ctx, const neko_ui_hints_t* 
         mouse_pos = neko_v2(xv, yv);
     }
 
-    neko_platform_event_t evt = neko_default_val();
+    neko_platform_event_t evt = NEKO_DEFAULT_VAL();
     while (neko_platform_poll_events(&evt, false)) {
         switch (evt.type) {
             case NEKO_PLATFORM_EVENT_MOUSE: {
@@ -2838,7 +2837,7 @@ NEKO_API_DECL void neko_ui_begin(neko_ui_context_t* ctx, const neko_ui_hints_t* 
                 if (root_cnt->opt & NEKO_UI_OPT_DOCKSPACE)
                     ds->zindex = 0;
                 else
-                    ds->zindex = neko_clamp((s32)zindex - 1, 0, INT32_MAX);
+                    ds->zindex = NEKO_CLAMP((s32)zindex - 1, 0, INT32_MAX);
 
                 neko_ui_rect_t fr = split->rect;
                 fr.x += NEKO_UI_SPLIT_SIZE;
@@ -2869,7 +2868,7 @@ NEKO_API_DECL void neko_ui_begin(neko_ui_context_t* ctx, const neko_ui_hints_t* 
                     if (id == ctx->focus && ctx->mouse_down == NEKO_UI_MOUSE_LEFT) {
                         neko_ui_draw_control_frame(ctx, id, lr, NEKO_UI_ELEMENT_BUTTON, 0x00);
                         ctx->next_hover_root = top;
-                        neko_ui_request_t req = neko_default_val();
+                        neko_ui_request_t req = NEKO_DEFAULT_VAL();
                         req.type = NEKO_UI_SPLIT_RESIZE_W;
                         req.split = split;
                         neko_dyn_array_push(ctx->requests, req);
@@ -2888,7 +2887,7 @@ NEKO_API_DECL void neko_ui_begin(neko_ui_context_t* ctx, const neko_ui_hints_t* 
                     if (id == ctx->focus && ctx->mouse_down == NEKO_UI_MOUSE_LEFT) {
                         neko_ui_draw_control_frame(ctx, id, rr, NEKO_UI_ELEMENT_BUTTON, 0x00);
                         ctx->next_hover_root = top;
-                        neko_ui_request_t req = neko_default_val();
+                        neko_ui_request_t req = NEKO_DEFAULT_VAL();
                         req.type = NEKO_UI_SPLIT_RESIZE_E;
                         req.split = split;
                         neko_dyn_array_push(ctx->requests, req);
@@ -2908,7 +2907,7 @@ NEKO_API_DECL void neko_ui_begin(neko_ui_context_t* ctx, const neko_ui_hints_t* 
                     if (id == ctx->focus && ctx->mouse_down == NEKO_UI_MOUSE_LEFT) {
                         neko_ui_draw_control_frame(ctx, id, tr, NEKO_UI_ELEMENT_BUTTON, 0x00);
                         ctx->next_hover_root = top;
-                        neko_ui_request_t req = neko_default_val();
+                        neko_ui_request_t req = NEKO_DEFAULT_VAL();
                         req.type = NEKO_UI_SPLIT_RESIZE_N;
                         req.split = split;
                         neko_dyn_array_push(ctx->requests, req);
@@ -2927,7 +2926,7 @@ NEKO_API_DECL void neko_ui_begin(neko_ui_context_t* ctx, const neko_ui_hints_t* 
                     if (id == ctx->focus && ctx->mouse_down == NEKO_UI_MOUSE_LEFT) {
                         neko_ui_draw_control_frame(ctx, id, br, NEKO_UI_ELEMENT_BUTTON, 0x00);
                         ctx->next_hover_root = top;
-                        neko_ui_request_t req = neko_default_val();
+                        neko_ui_request_t req = NEKO_DEFAULT_VAL();
                         req.type = NEKO_UI_SPLIT_RESIZE_S;
                         req.split = split;
                         neko_dyn_array_push(ctx->requests, req);
@@ -2960,7 +2959,7 @@ static void neko_ui_docking(neko_ui_context_t* ctx) {
         // Cache hoverable tile information
         neko_vec2 c = neko_v2(cnt->rect.x + cnt->rect.w / 2.f, cnt->rect.y + cnt->rect.h / 2.f);
 
-        const float sz = neko_clamp(neko_min(cnt->rect.w * 0.1f, cnt->rect.h * 0.1f), 15.f, 25.f);
+        const float sz = NEKO_CLAMP(NEKO_MIN(cnt->rect.w * 0.1f, cnt->rect.h * 0.1f), 15.f, 25.f);
         const float off = sz + sz * 0.2f;
         neko_color_t def_col = neko_color_alpha(ctx->style_sheet->styles[NEKO_UI_ELEMENT_BUTTON][NEKO_UI_ELEMENT_STATE_FOCUS].colors[NEKO_UI_COLOR_BACKGROUND], 100);
         neko_color_t hov_col = neko_color_alpha(ctx->style_sheet->styles[NEKO_UI_ELEMENT_BUTTON][NEKO_UI_ELEMENT_STATE_FOCUS].colors[NEKO_UI_COLOR_BACKGROUND], 150);
@@ -3004,21 +3003,21 @@ static void neko_ui_docking(neko_ui_context_t* ctx) {
             bool is_dockspace = ctx->dockable_root->opt & NEKO_UI_OPT_DOCKSPACE;
 
             // Draw center rect
-            neko_idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w, center.h), neko_v2s(0.f), neko_v2s(1.f), hov_c ? hov_col : def_col, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
-            // neko_idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w + 1, center.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, NEKO_GRAPHICS_PRIMITIVE_LINES);
+            neko_idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w, center.h), neko_v2s(0.f), neko_v2s(1.f), hov_c ? hov_col : def_col, NEKO_RENDER_PRIMITIVE_TRIANGLES);
+            // neko_idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w + 1, center.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, NEKO_RENDER_PRIMITIVE_LINES);
 
             if (!is_dockspace) {
-                neko_idraw_rectvd(dl, neko_v2(left.x, left.y), neko_v2(left.w, left.h), neko_v2s(0.f), neko_v2s(1.f), hov_l ? hov_col : def_col, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
-                // neko_idraw_rectvd(dl, neko_v2(left.x, left.y), neko_v2(left.w, left.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, NEKO_GRAPHICS_PRIMITIVE_LINES);
+                neko_idraw_rectvd(dl, neko_v2(left.x, left.y), neko_v2(left.w, left.h), neko_v2s(0.f), neko_v2s(1.f), hov_l ? hov_col : def_col, NEKO_RENDER_PRIMITIVE_TRIANGLES);
+                // neko_idraw_rectvd(dl, neko_v2(left.x, left.y), neko_v2(left.w, left.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, NEKO_RENDER_PRIMITIVE_LINES);
 
-                neko_idraw_rectvd(dl, neko_v2(right.x, right.y), neko_v2(right.w, right.h), neko_v2s(0.f), neko_v2s(1.f), hov_r ? hov_col : def_col, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
-                // neko_idraw_rectvd(dl, neko_v2(right.x, right.y), neko_v2(right.w, right.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, NEKO_GRAPHICS_PRIMITIVE_LINES);
+                neko_idraw_rectvd(dl, neko_v2(right.x, right.y), neko_v2(right.w, right.h), neko_v2s(0.f), neko_v2s(1.f), hov_r ? hov_col : def_col, NEKO_RENDER_PRIMITIVE_TRIANGLES);
+                // neko_idraw_rectvd(dl, neko_v2(right.x, right.y), neko_v2(right.w, right.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, NEKO_RENDER_PRIMITIVE_LINES);
 
-                neko_idraw_rectvd(dl, neko_v2(top.x, top.y), neko_v2(top.w, top.h), neko_v2s(0.f), neko_v2s(1.f), hov_t ? hov_col : def_col, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
-                // neko_idraw_rectvd(dl, neko_v2(top.x, top.y), neko_v2(top.w, top.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, NEKO_GRAPHICS_PRIMITIVE_LINES);
+                neko_idraw_rectvd(dl, neko_v2(top.x, top.y), neko_v2(top.w, top.h), neko_v2s(0.f), neko_v2s(1.f), hov_t ? hov_col : def_col, NEKO_RENDER_PRIMITIVE_TRIANGLES);
+                // neko_idraw_rectvd(dl, neko_v2(top.x, top.y), neko_v2(top.w, top.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, NEKO_RENDER_PRIMITIVE_LINES);
 
-                neko_idraw_rectvd(dl, neko_v2(bottom.x, bottom.y), neko_v2(bottom.w, bottom.h), neko_v2s(0.f), neko_v2s(1.f), hov_b ? hov_col : def_col, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
-                // neko_idraw_rectvd(dl, neko_v2(bottom.x, bottom.y), neko_v2(bottom.w, bottom.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, NEKO_GRAPHICS_PRIMITIVE_LINES);
+                neko_idraw_rectvd(dl, neko_v2(bottom.x, bottom.y), neko_v2(bottom.w, bottom.h), neko_v2s(0.f), neko_v2s(1.f), hov_b ? hov_col : def_col, NEKO_RENDER_PRIMITIVE_TRIANGLES);
+                // neko_idraw_rectvd(dl, neko_v2(bottom.x, bottom.y), neko_v2(bottom.w, bottom.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, NEKO_RENDER_PRIMITIVE_LINES);
             }
 
             const float d = 0.5f;
@@ -3027,30 +3026,30 @@ static void neko_ui_docking(neko_ui_context_t* ctx) {
             if (is_dockspace) {
                 if (hov_c) {
                     center = neko_ui_rect(cnt->rect.x, cnt->rect.y, cnt->rect.w, cnt->rect.h);
-                    neko_idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w, center.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, NEKO_GRAPHICS_PRIMITIVE_LINES);
-                    neko_idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w, center.h), neko_v2s(0.f), neko_v2s(1.f), def_col, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
+                    neko_idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w, center.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, NEKO_RENDER_PRIMITIVE_LINES);
+                    neko_idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w, center.h), neko_v2s(0.f), neko_v2s(1.f), def_col, NEKO_RENDER_PRIMITIVE_TRIANGLES);
                 }
             } else {
                 if (hov_c && !ctx->focus_root->split) {
                     center = neko_ui_rect(cnt->rect.x, cnt->rect.y, cnt->rect.w, cnt->rect.h);
-                    neko_idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w, center.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, NEKO_GRAPHICS_PRIMITIVE_LINES);
-                    neko_idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w, center.h), neko_v2s(0.f), neko_v2s(1.f), def_col, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
+                    neko_idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w, center.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, NEKO_RENDER_PRIMITIVE_LINES);
+                    neko_idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w, center.h), neko_v2s(0.f), neko_v2s(1.f), def_col, NEKO_RENDER_PRIMITIVE_TRIANGLES);
                 } else if (hov_l) {
                     left = neko_ui_rect(cnt->rect.x, cnt->rect.y, cnt->rect.w * d + hs, cnt->rect.h);
-                    neko_idraw_rectvd(dl, neko_v2(left.x, left.y), neko_v2(left.w, left.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, NEKO_GRAPHICS_PRIMITIVE_LINES);
-                    neko_idraw_rectvd(dl, neko_v2(left.x, left.y), neko_v2(left.w, left.h), neko_v2s(0.f), neko_v2s(1.f), def_col, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
+                    neko_idraw_rectvd(dl, neko_v2(left.x, left.y), neko_v2(left.w, left.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, NEKO_RENDER_PRIMITIVE_LINES);
+                    neko_idraw_rectvd(dl, neko_v2(left.x, left.y), neko_v2(left.w, left.h), neko_v2s(0.f), neko_v2s(1.f), def_col, NEKO_RENDER_PRIMITIVE_TRIANGLES);
                 } else if (hov_r) {
                     right = neko_ui_rect(cnt->rect.x + cnt->rect.w * d + hs, cnt->rect.y, cnt->rect.w * (1.f - d) - hs, cnt->rect.h);
-                    neko_idraw_rectvd(dl, neko_v2(right.x, right.y), neko_v2(right.w, right.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, NEKO_GRAPHICS_PRIMITIVE_LINES);
-                    neko_idraw_rectvd(dl, neko_v2(right.x, right.y), neko_v2(right.w, right.h), neko_v2s(0.f), neko_v2s(1.f), def_col, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
+                    neko_idraw_rectvd(dl, neko_v2(right.x, right.y), neko_v2(right.w, right.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, NEKO_RENDER_PRIMITIVE_LINES);
+                    neko_idraw_rectvd(dl, neko_v2(right.x, right.y), neko_v2(right.w, right.h), neko_v2s(0.f), neko_v2s(1.f), def_col, NEKO_RENDER_PRIMITIVE_TRIANGLES);
                 } else if (hov_b) {
                     bottom = neko_ui_rect(cnt->rect.x, cnt->rect.y + cnt->rect.h * d + hs, cnt->rect.w, cnt->rect.h * (1.f - d) - hs);
-                    neko_idraw_rectvd(dl, neko_v2(bottom.x, bottom.y), neko_v2(bottom.w, bottom.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, NEKO_GRAPHICS_PRIMITIVE_LINES);
-                    neko_idraw_rectvd(dl, neko_v2(bottom.x, bottom.y), neko_v2(bottom.w, bottom.h), neko_v2s(0.f), neko_v2s(1.f), def_col, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
+                    neko_idraw_rectvd(dl, neko_v2(bottom.x, bottom.y), neko_v2(bottom.w, bottom.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, NEKO_RENDER_PRIMITIVE_LINES);
+                    neko_idraw_rectvd(dl, neko_v2(bottom.x, bottom.y), neko_v2(bottom.w, bottom.h), neko_v2s(0.f), neko_v2s(1.f), def_col, NEKO_RENDER_PRIMITIVE_TRIANGLES);
                 } else if (hov_t) {
                     top = neko_ui_rect(cnt->rect.x, cnt->rect.y, cnt->rect.w, cnt->rect.h * d + hs);
-                    neko_idraw_rectvd(dl, neko_v2(top.x, top.y), neko_v2(top.w, top.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, NEKO_GRAPHICS_PRIMITIVE_LINES);
-                    neko_idraw_rectvd(dl, neko_v2(top.x, top.y), neko_v2(top.w, top.h), neko_v2s(0.f), neko_v2s(1.f), def_col, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
+                    neko_idraw_rectvd(dl, neko_v2(top.x, top.y), neko_v2(top.w, top.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, NEKO_RENDER_PRIMITIVE_LINES);
+                    neko_idraw_rectvd(dl, neko_v2(top.x, top.y), neko_v2(top.w, top.h), neko_v2s(0.f), neko_v2s(1.f), def_col, NEKO_RENDER_PRIMITIVE_TRIANGLES);
                 }
             }
         }
@@ -3099,7 +3098,7 @@ NEKO_API_DECL void neko_ui_end(neko_ui_context_t* ctx, b32 update) {
 
                     if (req->cnt->tab_bar) {
                         neko_ui_tab_bar_t* tb = neko_slot_array_getp(ctx->tab_bars, req->cnt->tab_bar);
-                        neko_assert(tb);
+                        NEKO_ASSERT(tb);
                         tb->rect.x += ctx->mouse_delta.x;
                         tb->rect.y += ctx->mouse_delta.y;
                     }
@@ -3111,7 +3110,7 @@ NEKO_API_DECL void neko_ui_end(neko_ui_context_t* ctx, b32 update) {
                 if (!req->cnt) break;
 
                 neko_ui_container_t* cnt = (neko_ui_container_t*)req->cnt;
-                neko_assert(cnt);
+                NEKO_ASSERT(cnt);
 
                 neko_ui_split_t* rs = neko_ui_get_root_split(ctx, cnt);
 
@@ -3150,8 +3149,8 @@ NEKO_API_DECL void neko_ui_end(neko_ui_context_t* ctx, b32 update) {
             case NEKO_UI_SPLIT_RESIZE_SE: {
                 if (req->split) {
                     neko_ui_rect_t* r = &req->split->rect;
-                    r->w = neko_max(r->w + ctx->mouse_delta.x, 40);
-                    r->h = neko_max(r->h + ctx->mouse_delta.y, 40);
+                    r->w = NEKO_MAX(r->w + ctx->mouse_delta.x, 40);
+                    r->h = NEKO_MAX(r->h + ctx->mouse_delta.y, 40);
                     neko_ui_update_split(ctx, req->split);
                 }
             } break;
@@ -3161,9 +3160,9 @@ NEKO_API_DECL void neko_ui_end(neko_ui_context_t* ctx, b32 update) {
                     neko_ui_rect_t* r = &req->split->rect;
                     float w = r->w;
                     float max_x = r->x + r->w;
-                    r->w = neko_max(r->w - ctx->mouse_delta.x, 40);
+                    r->w = NEKO_MAX(r->w - ctx->mouse_delta.x, 40);
                     if (fabsf(r->w - w) > 0.f) {
-                        r->x = neko_min(r->x + ctx->mouse_delta.x, max_x);
+                        r->x = NEKO_MIN(r->x + ctx->mouse_delta.x, max_x);
                     }
                     neko_ui_update_split(ctx, req->split);
                 }
@@ -3172,7 +3171,7 @@ NEKO_API_DECL void neko_ui_end(neko_ui_context_t* ctx, b32 update) {
             case NEKO_UI_SPLIT_RESIZE_E: {
                 if (req->split) {
                     neko_ui_rect_t* r = &req->split->rect;
-                    r->w = neko_max(r->w + ctx->mouse_delta.x, 40);
+                    r->w = NEKO_MAX(r->w + ctx->mouse_delta.x, 40);
                     neko_ui_update_split(ctx, req->split);
                 }
             } break;
@@ -3182,9 +3181,9 @@ NEKO_API_DECL void neko_ui_end(neko_ui_context_t* ctx, b32 update) {
                     neko_ui_rect_t* r = &req->split->rect;
                     float h = r->h;
                     float max_y = h + r->y;
-                    r->h = neko_max(r->h - ctx->mouse_delta.y, 40);
+                    r->h = NEKO_MAX(r->h - ctx->mouse_delta.y, 40);
                     if (fabsf(r->h - h) > 0.f) {
-                        r->y = neko_min(r->y + ctx->mouse_delta.y, max_y);
+                        r->y = NEKO_MIN(r->y + ctx->mouse_delta.y, max_y);
                     }
                     neko_ui_update_split(ctx, req->split);
                 }
@@ -3193,12 +3192,12 @@ NEKO_API_DECL void neko_ui_end(neko_ui_context_t* ctx, b32 update) {
             case NEKO_UI_SPLIT_RESIZE_NE: {
                 if (req->split) {
                     neko_ui_rect_t* r = &req->split->rect;
-                    r->w = neko_max(r->w + ctx->mouse_delta.x, 40);
+                    r->w = NEKO_MAX(r->w + ctx->mouse_delta.x, 40);
                     float h = r->h;
                     float max_y = h + r->y;
-                    r->h = neko_max(r->h - ctx->mouse_delta.y, 40);
+                    r->h = NEKO_MAX(r->h - ctx->mouse_delta.y, 40);
                     if (fabsf(r->h - h) > 0.f) {
-                        r->y = neko_min(r->y + ctx->mouse_delta.y, max_y);
+                        r->y = NEKO_MIN(r->y + ctx->mouse_delta.y, max_y);
                     }
                     neko_ui_update_split(ctx, req->split);
                 }
@@ -3209,16 +3208,16 @@ NEKO_API_DECL void neko_ui_end(neko_ui_context_t* ctx, b32 update) {
                     neko_ui_rect_t* r = &req->split->rect;
                     float h = r->h;
                     float max_y = h + r->y;
-                    r->h = neko_max(r->h - ctx->mouse_delta.y, 40);
+                    r->h = NEKO_MAX(r->h - ctx->mouse_delta.y, 40);
                     if (fabsf(r->h - h) > 0.f) {
-                        r->y = neko_min(r->y + ctx->mouse_delta.y, max_y);
+                        r->y = NEKO_MIN(r->y + ctx->mouse_delta.y, max_y);
                     }
 
                     float w = r->w;
                     float max_x = r->x + r->w;
-                    r->w = neko_max(r->w - ctx->mouse_delta.x, 40);
+                    r->w = NEKO_MAX(r->w - ctx->mouse_delta.x, 40);
                     if (fabsf(r->w - w) > 0.f) {
-                        r->x = neko_min(r->x + ctx->mouse_delta.x, max_x);
+                        r->x = NEKO_MIN(r->x + ctx->mouse_delta.x, max_x);
                     }
                     neko_ui_update_split(ctx, req->split);
                 }
@@ -3227,7 +3226,7 @@ NEKO_API_DECL void neko_ui_end(neko_ui_context_t* ctx, b32 update) {
             case NEKO_UI_SPLIT_RESIZE_S: {
                 if (req->split) {
                     neko_ui_rect_t* r = &req->split->rect;
-                    r->h = neko_max(r->h + ctx->mouse_delta.y, 40);
+                    r->h = NEKO_MAX(r->h + ctx->mouse_delta.y, 40);
                     neko_ui_update_split(ctx, req->split);
                 }
             } break;
@@ -3237,13 +3236,13 @@ NEKO_API_DECL void neko_ui_end(neko_ui_context_t* ctx, b32 update) {
                     neko_ui_rect_t* r = &req->split->rect;
                     float h = r->h;
                     float max_y = h + r->y;
-                    r->h = neko_max(r->h + ctx->mouse_delta.y, 40);
+                    r->h = NEKO_MAX(r->h + ctx->mouse_delta.y, 40);
 
                     float w = r->w;
                     float max_x = r->x + r->w;
-                    r->w = neko_max(r->w - ctx->mouse_delta.x, 40);
+                    r->w = NEKO_MAX(r->w - ctx->mouse_delta.x, 40);
                     if (fabsf(r->w - w) > 0.f) {
-                        r->x = neko_min(r->x + ctx->mouse_delta.x, max_x);
+                        r->x = NEKO_MIN(r->x + ctx->mouse_delta.x, max_x);
                     }
                     neko_ui_update_split(ctx, req->split);
                 }
@@ -3256,22 +3255,22 @@ NEKO_API_DECL void neko_ui_end(neko_ui_context_t* ctx, b32 update) {
 
                 switch (split->type) {
                     case NEKO_UI_SPLIT_LEFT: {
-                        split->ratio = neko_clamp(split->ratio + ctx->mouse_delta.x / split->rect.w, smin, smax);
+                        split->ratio = NEKO_CLAMP(split->ratio + ctx->mouse_delta.x / split->rect.w, smin, smax);
                         neko_ui_update_split(ctx, split);
                     } break;
 
                     case NEKO_UI_SPLIT_RIGHT: {
-                        split->ratio = neko_clamp(split->ratio - ctx->mouse_delta.x / split->rect.w, smin, smax);
+                        split->ratio = NEKO_CLAMP(split->ratio - ctx->mouse_delta.x / split->rect.w, smin, smax);
                         neko_ui_update_split(ctx, split);
                     } break;
 
                     case NEKO_UI_SPLIT_TOP: {
-                        split->ratio = neko_clamp(split->ratio + ctx->mouse_delta.y / split->rect.h, smin, smax);
+                        split->ratio = NEKO_CLAMP(split->ratio + ctx->mouse_delta.y / split->rect.h, smin, smax);
                         neko_ui_update_split(ctx, split);
                     } break;
 
                     case NEKO_UI_SPLIT_BOTTOM: {
-                        split->ratio = neko_clamp(split->ratio - ctx->mouse_delta.y / split->rect.h, smin, smax);
+                        split->ratio = NEKO_CLAMP(split->ratio - ctx->mouse_delta.y / split->rect.h, smin, smax);
                         neko_ui_update_split(ctx, split);
                     } break;
                 }
@@ -3295,10 +3294,10 @@ NEKO_API_DECL void neko_ui_end(neko_ui_context_t* ctx, b32 update) {
     neko_dyn_array_clear(ctx->requests);
 
     // Check stacks
-    neko_expect(ctx->container_stack.idx == 0);
-    neko_expect(ctx->clip_stack.idx == 0);
-    neko_expect(ctx->id_stack.idx == 0);
-    neko_expect(ctx->layout_stack.idx == 0);
+    NEKO_EXPECT(ctx->container_stack.idx == 0);
+    NEKO_EXPECT(ctx->clip_stack.idx == 0);
+    NEKO_EXPECT(ctx->id_stack.idx == 0);
+    NEKO_EXPECT(ctx->layout_stack.idx == 0);
 
     // Have to clear style stacks
 
@@ -3399,8 +3398,8 @@ NEKO_API_DECL void neko_ui_render(neko_ui_context_t* ctx, neko_command_buffer_t*
                 // neko_idraw_camera2D(&ctx->gsi, (u32)fb.x, (u32)fb.y);
                 neko_idraw_camera2d(&ctx->gui_idraw, (u32)viewport->w, (u32)viewport->h);
                 neko_idraw_blend_enabled(&ctx->gui_idraw, true);
-                // neko_graphics_set_viewport(&ctx->gsi.commands, 0, 0, (u32)fb.x, (u32)fb.y);
-                neko_graphics_set_viewport(&ctx->gui_idraw.commands, (u32)viewport->x, (u32)viewport->y, (u32)viewport->w, (u32)viewport->h);
+                // neko_render_set_viewport(&ctx->gsi.commands, 0, 0, (u32)fb.x, (u32)fb.y);
+                neko_render_set_viewport(&ctx->gui_idraw.commands, (u32)viewport->x, (u32)viewport->y, (u32)viewport->w, (u32)viewport->h);
 
                 neko_idraw_set_view_scissor(&ctx->gui_idraw, (s32)(clip.x), (s32)(fb.y - clip.h - clip.y), (s32)(clip.w), (s32)(clip.h));
 
@@ -3430,15 +3429,15 @@ NEKO_API_DECL void neko_ui_render(neko_ui_context_t* ctx, neko_command_buffer_t*
             } break;
 
             case NEKO_UI_COMMAND_UNIFORMS: {
-                neko_graphics_bind_desc_t bind = neko_default_val();
+                neko_render_bind_desc_t bind = NEKO_DEFAULT_VAL();
 
                 // Set uniform bind
-                neko_graphics_bind_uniform_desc_t uniforms[1] = neko_default_val();
+                neko_render_bind_uniform_desc_t uniforms[1] = NEKO_DEFAULT_VAL();
                 bind.uniforms.desc = uniforms;
                 bind.uniforms.size = sizeof(uniforms);
 
                 // Treat as byte buffer, read data
-                neko_byte_buffer_t buffer = neko_default_val();
+                neko_byte_buffer_t buffer = NEKO_DEFAULT_VAL();
                 buffer.capacity = NEKO_UI_COMMANDLIST_SIZE;
                 buffer.data = (u8*)cmd->uniforms.data;
 
@@ -3447,7 +3446,7 @@ NEKO_API_DECL void neko_ui_render(neko_ui_context_t* ctx, neko_command_buffer_t*
 
                 // Iterate through all uniforms, memcpy data as needed for each uniform in list
                 for (u32 i = 0; i < ct; ++i) {
-                    neko_byte_buffer_readc(&buffer, neko_handle(neko_graphics_uniform_t), hndl);
+                    neko_byte_buffer_readc(&buffer, neko_handle(neko_render_uniform_t), hndl);
                     neko_byte_buffer_readc(&buffer, size_t, sz);
                     neko_byte_buffer_readc(&buffer, u16, binding);
                     void* udata = (buffer.data + buffer.position);
@@ -3456,7 +3455,7 @@ NEKO_API_DECL void neko_ui_render(neko_ui_context_t* ctx, neko_command_buffer_t*
                     uniforms[0].uniform = hndl;
                     uniforms[0].binding = binding;
                     uniforms[0].data = udata;
-                    neko_graphics_apply_bindings(&ctx->gui_idraw.commands, &bind);
+                    neko_render_apply_bindings(&ctx->gui_idraw.commands, &bind);
                 }
             } break;
 
@@ -3469,26 +3468,26 @@ NEKO_API_DECL void neko_ui_render(neko_ui_context_t* ctx, neko_command_buffer_t*
             } break;
 
             case NEKO_UI_COMMAND_SHAPE: {
-                neko_idraw_texture(&ctx->gui_idraw, neko_handle_invalid(neko_graphics_texture_t));
+                neko_idraw_texture(&ctx->gui_idraw, neko_handle_invalid(neko_render_texture_t));
                 neko_color_t* c = &cmd->shape.color;
 
                 switch (cmd->shape.type) {
                     case NEKO_UI_SHAPE_RECT: {
                         neko_ui_rect_t* r = &cmd->shape.rect;
-                        neko_idraw_rectvd(&ctx->gui_idraw, neko_v2(r->x, r->y), neko_v2(r->w, r->h), neko_v2s(0.f), neko_v2s(1.f), *c, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
+                        neko_idraw_rectvd(&ctx->gui_idraw, neko_v2(r->x, r->y), neko_v2(r->w, r->h), neko_v2s(0.f), neko_v2s(1.f), *c, NEKO_RENDER_PRIMITIVE_TRIANGLES);
                     } break;
 
                     case NEKO_UI_SHAPE_CIRCLE: {
                         neko_vec2* cp = &cmd->shape.circle.center;
                         float* r = &cmd->shape.circle.radius;
-                        neko_idraw_circle(&ctx->gui_idraw, cp->x, cp->y, *r, 16, c->r, c->g, c->b, c->a, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
+                        neko_idraw_circle(&ctx->gui_idraw, cp->x, cp->y, *r, 16, c->r, c->g, c->b, c->a, NEKO_RENDER_PRIMITIVE_TRIANGLES);
                     } break;
 
                     case NEKO_UI_SHAPE_TRIANGLE: {
                         neko_vec2* pa = &cmd->shape.triangle.points[0];
                         neko_vec2* pb = &cmd->shape.triangle.points[1];
                         neko_vec2* pc = &cmd->shape.triangle.points[2];
-                        neko_idraw_trianglev(&ctx->gui_idraw, *pa, *pb, *pc, *c, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
+                        neko_idraw_trianglev(&ctx->gui_idraw, *pa, *pb, *pc, *c, NEKO_RENDER_PRIMITIVE_TRIANGLES);
 
                     } break;
 
@@ -3506,7 +3505,7 @@ NEKO_API_DECL void neko_ui_render(neko_ui_context_t* ctx, neko_command_buffer_t*
                 neko_color_t* c = &cmd->image.color;
                 neko_ui_rect_t* r = &cmd->image.rect;
                 neko_vec4* uvs = &cmd->image.uvs;
-                neko_idraw_rectvd(&ctx->gui_idraw, neko_v2(r->x, r->y), neko_v2(r->w, r->h), neko_v2(uvs->x, uvs->y), neko_v2(uvs->z, uvs->w), *c, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
+                neko_idraw_rectvd(&ctx->gui_idraw, neko_v2(r->x, r->y), neko_v2(r->w, r->h), neko_v2(uvs->x, uvs->y), neko_v2(uvs->z, uvs->w), *c, NEKO_RENDER_PRIMITIVE_TRIANGLES);
             } break;
 
             case NEKO_UI_COMMAND_CLIP: {
@@ -3520,10 +3519,10 @@ NEKO_API_DECL void neko_ui_render(neko_ui_context_t* ctx, neko_command_buffer_t*
                 clip_rect.w = (cmd->clip.rect.w - clip_off.x) * clip_scale.x;
                 clip_rect.h = (cmd->clip.rect.h - clip_off.y) * clip_scale.y;
 
-                clip_rect.x = neko_max(clip_rect.x, 0.f);
-                clip_rect.y = neko_max(clip_rect.y, 0.f);
-                clip_rect.w = neko_max(clip_rect.w, 0.f);
-                clip_rect.h = neko_max(clip_rect.h, 0.f);
+                clip_rect.x = NEKO_MAX(clip_rect.x, 0.f);
+                clip_rect.y = NEKO_MAX(clip_rect.y, 0.f);
+                clip_rect.w = NEKO_MAX(clip_rect.w, 0.f);
+                clip_rect.h = NEKO_MAX(clip_rect.h, 0.f);
 
                 clip = clip_rect;
 
@@ -3543,29 +3542,29 @@ NEKO_API_DECL void neko_ui_render(neko_ui_context_t* ctx, neko_command_buffer_t*
 NEKO_API_DECL void neko_ui_renderpass_submit(neko_ui_context_t* ctx, neko_command_buffer_t* cb, neko_color_t c) {
     neko_vec2 fbs = ctx->framebuffer_size;
     neko_ui_rect_t* vp = &ctx->viewport;
-    neko_graphics_clear_action_t action = neko_default_val();
+    neko_render_clear_action_t action = NEKO_DEFAULT_VAL();
     action.color[0] = (float)c.r / 255.f;
     action.color[1] = (float)c.g / 255.f;
     action.color[2] = (float)c.b / 255.f;
     action.color[3] = (float)c.a / 255.f;
-    neko_graphics_renderpass_begin(cb, NEKO_GRAPHICS_RENDER_PASS_DEFAULT);
+    neko_render_renderpass_begin(cb, NEKO_RENDER_RENDER_PASS_DEFAULT);
     {
-        neko_graphics_clear(cb, action);
-        neko_graphics_set_viewport(cb, (u32)vp->x, (u32)vp->y, (u32)vp->w, (u32)vp->h);
+        neko_render_clear(cb, action);
+        neko_render_set_viewport(cb, (u32)vp->x, (u32)vp->y, (u32)vp->w, (u32)vp->h);
         neko_ui_render(ctx, cb);
     }
-    neko_graphics_renderpass_end(cb);
+    neko_render_renderpass_end(cb);
 }
 
-NEKO_API_DECL void neko_ui_renderpass_submit_ex(neko_ui_context_t* ctx, neko_command_buffer_t* cb, neko_graphics_clear_action_t action) {
+NEKO_API_DECL void neko_ui_renderpass_submit_ex(neko_ui_context_t* ctx, neko_command_buffer_t* cb, neko_render_clear_action_t action) {
     neko_vec2 fbs = ctx->framebuffer_size;
     neko_ui_rect_t* vp = &ctx->viewport;
-    neko_renderpass_t pass = neko_default_val();
-    neko_graphics_renderpass_begin(cb, pass);
-    neko_graphics_set_viewport(cb, (u32)vp->x, (u32)vp->y, (u32)vp->w, (u32)vp->h);
-    neko_graphics_clear(cb, action);
+    neko_renderpass_t pass = NEKO_DEFAULT_VAL();
+    neko_render_renderpass_begin(cb, pass);
+    neko_render_set_viewport(cb, (u32)vp->x, (u32)vp->y, (u32)vp->w, (u32)vp->h);
+    neko_render_clear(cb, action);
     neko_ui_render(ctx, cb);
-    neko_graphics_renderpass_end(cb);
+    neko_render_renderpass_end(cb);
 }
 
 NEKO_API_DECL void neko_ui_set_hover(neko_ui_context_t* ctx, neko_ui_id id) {
@@ -3607,7 +3606,7 @@ NEKO_API_DECL void neko_ui_push_clip_rect(neko_ui_context_t* ctx, neko_ui_rect_t
 NEKO_API_DECL void neko_ui_pop_clip_rect(neko_ui_context_t* ctx) { neko_ui_stack_pop(ctx->clip_stack); }
 
 NEKO_API_DECL neko_ui_rect_t neko_ui_get_clip_rect(neko_ui_context_t* ctx) {
-    neko_expect(ctx->clip_stack.idx > 0);
+    NEKO_EXPECT(ctx->clip_stack.idx > 0);
     return ctx->clip_stack.items[ctx->clip_stack.idx - 1];
 }
 
@@ -3626,7 +3625,7 @@ NEKO_API_DECL s32 neko_ui_check_clip(neko_ui_context_t* ctx, neko_ui_rect_t r) {
 }
 
 NEKO_API_DECL neko_ui_container_t* neko_ui_get_current_container(neko_ui_context_t* ctx) {
-    neko_expect(ctx->container_stack.idx > 0);
+    NEKO_EXPECT(ctx->container_stack.idx > 0);
     return ctx->container_stack.items[ctx->container_stack.idx - 1];
 }
 
@@ -3679,7 +3678,7 @@ NEKO_API_DECL s32 neko_ui_pool_init(neko_ui_context_t* ctx, neko_ui_pool_item_t*
         }
     }
 
-    neko_expect(n > -1);
+    NEKO_EXPECT(n > -1);
     items[n].id = id;
     neko_ui_pool_update(ctx, items, n);
 
@@ -3742,7 +3741,7 @@ NEKO_API_DECL void neko_ui_input_text(neko_ui_context_t* ctx, const char* text) 
 
 NEKO_API_DECL neko_ui_command_t* neko_ui_push_command(neko_ui_context_t* ctx, s32 type, s32 size) {
     neko_ui_command_t* cmd = (neko_ui_command_t*)(ctx->command_list.items + ctx->command_list.idx);
-    neko_expect(ctx->command_list.idx + size < NEKO_UI_COMMANDLIST_SIZE);
+    NEKO_EXPECT(ctx->command_list.idx + size < NEKO_UI_COMMANDLIST_SIZE);
     cmd->base.type = type;
     cmd->base.size = size;
     ctx->command_list.idx += size;
@@ -3771,7 +3770,7 @@ NEKO_API_DECL void neko_ui_set_clip(neko_ui_context_t* ctx, neko_ui_rect_t rect)
     cmd->clip.rect = rect;
 }
 
-NEKO_API_DECL void neko_ui_set_pipeline(neko_ui_context_t* ctx, neko_handle(neko_graphics_pipeline_t) pip, void* layout, size_t sz, neko_idraw_layout_type type) {
+NEKO_API_DECL void neko_ui_set_pipeline(neko_ui_context_t* ctx, neko_handle(neko_render_pipeline_t) pip, void* layout, size_t sz, neko_idraw_layout_type type) {
     neko_ui_command_t* cmd;
     cmd = neko_ui_push_command(ctx, NEKO_UI_COMMAND_PIPELINE, sizeof(neko_ui_pipelinecommand_t));
     cmd->pipeline.pipeline = pip;
@@ -3785,27 +3784,27 @@ NEKO_API_DECL void neko_ui_set_pipeline(neko_ui_context_t* ctx, neko_handle(neko
     ctx->command_list.idx += sz;
 }
 
-NEKO_API_DECL void neko_ui_bind_uniforms(neko_ui_context_t* ctx, neko_graphics_bind_uniform_desc_t* uniforms, size_t uniforms_sz) {
+NEKO_API_DECL void neko_ui_bind_uniforms(neko_ui_context_t* ctx, neko_render_bind_uniform_desc_t* uniforms, size_t uniforms_sz) {
     neko_ui_command_t* cmd;
     cmd = neko_ui_push_command(ctx, NEKO_UI_COMMAND_UNIFORMS, sizeof(neko_ui_binduniformscommand_t));
     cmd->uniforms.data = ctx->command_list.items + ctx->command_list.idx;
 
     // Treat as byte buffer, write into data then set size
-    neko_byte_buffer_t buffer = neko_default_val();
+    neko_byte_buffer_t buffer = NEKO_DEFAULT_VAL();
     buffer.capacity = NEKO_UI_COMMANDLIST_SIZE;
     buffer.data = (u8*)cmd->uniforms.data;
 
-    const u16 ct = uniforms_sz / sizeof(neko_graphics_bind_uniform_desc_t);
+    const u16 ct = uniforms_sz / sizeof(neko_render_bind_uniform_desc_t);
 
     // Write count
     neko_byte_buffer_write(&buffer, u16, ct);
 
     // Iterate through all uniforms, memcpy data as needed for each uniform in list
     for (u32 i = 0; i < ct; ++i) {
-        neko_graphics_bind_uniform_desc_t* decl = &uniforms[i];
-        neko_handle(neko_graphics_uniform_t) hndl = decl->uniform;
-        const size_t sz = neko_graphics_uniform_size_query(hndl);
-        neko_byte_buffer_write(&buffer, neko_handle(neko_graphics_uniform_t), hndl);
+        neko_render_bind_uniform_desc_t* decl = &uniforms[i];
+        neko_handle(neko_render_uniform_t) hndl = decl->uniform;
+        const size_t sz = neko_render_uniform_size_query(hndl);
+        neko_byte_buffer_write(&buffer, neko_handle(neko_render_uniform_t), hndl);
         neko_byte_buffer_write(&buffer, size_t, sz);
         neko_byte_buffer_write(&buffer, u16, (u16)decl->binding);
         neko_byte_buffer_write_bulk(&buffer, decl->data, sz);
@@ -3819,7 +3818,7 @@ NEKO_API_DECL void neko_ui_bind_uniforms(neko_ui_context_t* ctx, neko_graphics_b
 
 NEKO_API_DECL void neko_ui_draw_line(neko_ui_context_t* ctx, neko_vec2 start, neko_vec2 end, neko_color_t color) {
     neko_ui_command_t* cmd;
-    neko_ui_rect_t rect = neko_default_val();
+    neko_ui_rect_t rect = NEKO_DEFAULT_VAL();
     neko_vec2 s = start.x < end.x ? start : end;
     neko_vec2 e = start.x < end.x ? end : start;
     neko_ui_rect(s.x, s.y, e.x - s.x, e.y - s.y);
@@ -3922,7 +3921,7 @@ NEKO_API_DECL void neko_ui_draw_triangle(neko_ui_context_t* ctx, neko_vec2 a, ne
 
 NEKO_API_DECL void neko_ui_draw_box(neko_ui_context_t* ctx, neko_ui_rect_t rect, s16* w, neko_color_t color) {
     neko_immediate_draw_t* dl = &ctx->overlay_draw_list;
-    // neko_idraw_rectvd(dl, neko_v2(rect.x, rect.y), neko_v2(rect.w, rect.h), neko_v2s(0.f), neko_v2s(1.f), NEKO_COLOR_RED, NEKO_GRAPHICS_PRIMITIVE_LINES);
+    // neko_idraw_rectvd(dl, neko_v2(rect.x, rect.y), neko_v2(rect.w, rect.h), neko_v2s(0.f), neko_v2s(1.f), NEKO_COLOR_RED, NEKO_RENDER_PRIMITIVE_LINES);
 
     const float l = (float)w[0], r = (float)w[1], t = (float)w[2], b = (float)w[3];
     neko_ui_draw_rect(ctx, neko_ui_rect(rect.x + l, rect.y, rect.w - r - l, t), color);               // top
@@ -3980,7 +3979,7 @@ NEKO_API_DECL void neko_ui_draw_text(neko_ui_context_t* ctx, neko_asset_ascii_fo
     { DRAW_TEXT(str, neko_ui_rect(pos.x, pos.y, td.x, td.y), color); }
 }
 
-NEKO_API_DECL void neko_ui_draw_image(neko_ui_context_t* ctx, neko_handle(neko_graphics_texture_t) hndl, neko_ui_rect_t rect, neko_vec2 uv0, neko_vec2 uv1, neko_color_t color) {
+NEKO_API_DECL void neko_ui_draw_image(neko_ui_context_t* ctx, neko_handle(neko_render_texture_t) hndl, neko_ui_rect_t rect, neko_vec2 uv0, neko_vec2 uv1, neko_color_t color) {
     neko_ui_command_t* cmd;
 
     /* do clip command if the rect isn't fully contained within the cliprect */
@@ -4046,11 +4045,11 @@ NEKO_API_DECL void neko_ui_draw_custom(neko_ui_context_t* ctx, neko_ui_rect_t re
     }
 }
 
-NEKO_API_DECL void neko_ui_draw_nine_rect(neko_ui_context_t* ctx, neko_handle(neko_graphics_texture_t) hndl, neko_ui_rect_t rect, neko_vec2 uv0, neko_vec2 uv1, u32 left, u32 right, u32 top,
-                                          u32 bottom, neko_color_t color) {
+NEKO_API_DECL void neko_ui_draw_nine_rect(neko_ui_context_t* ctx, neko_handle(neko_render_texture_t) hndl, neko_ui_rect_t rect, neko_vec2 uv0, neko_vec2 uv1, u32 left, u32 right, u32 top, u32 bottom,
+                                          neko_color_t color) {
     // Draw images based on rect, slice image based on uvs (uv0, uv1), original texture dimensions (width, height) and control margins (left, right, top, bottom)
-    neko_graphics_texture_desc_t desc = neko_default_val();
-    neko_graphics_texture_desc_query(hndl, &desc);
+    neko_render_texture_desc_t desc = NEKO_DEFAULT_VAL();
+    neko_render_texture_desc_query(hndl, &desc);
     u32 width = desc.width;
     u32 height = desc.height;
 
@@ -4213,10 +4212,10 @@ NEKO_API_DECL void neko_ui_layout_column_end(neko_ui_context_t* ctx) {
 
     /* inherit position/next_row/max from child layout if they are greater */
     a = neko_ui_get_layout(ctx);
-    a->position.x = neko_max(a->position.x, b->position.x + b->body.x - a->body.x);
-    a->next_row = (s32)neko_max((f32)a->next_row, (f32)b->next_row + (f32)b->body.y - (f32)a->body.y);
-    a->max.x = neko_max(a->max.x, b->max.x);
-    a->max.y = neko_max(a->max.y, b->max.y);
+    a->position.x = NEKO_MAX(a->position.x, b->position.x + b->body.x - a->body.x);
+    a->next_row = (s32)NEKO_MAX((f32)a->next_row, (f32)b->next_row + (f32)b->body.y - (f32)a->body.y);
+    a->max.x = NEKO_MAX(a->max.x, b->max.x);
+    a->max.y = NEKO_MAX(a->max.y, b->max.y);
 }
 
 NEKO_API_DECL void neko_ui_layout_row(neko_ui_context_t* ctx, s32 items, const s32* widths, s32 height) {
@@ -4224,7 +4223,7 @@ NEKO_API_DECL void neko_ui_layout_row(neko_ui_context_t* ctx, s32 items, const s
     neko_ui_layout_t* layout = neko_ui_get_layout(ctx);
 
     if (widths) {
-        neko_expect(items <= NEKO_UI_MAX_WIDTHS);
+        NEKO_EXPECT(items <= NEKO_UI_MAX_WIDTHS);
         memcpy(layout->widths, widths, items * sizeof(widths[0]));
     }
     layout->items = items;
@@ -4326,15 +4325,15 @@ NEKO_API_DECL neko_ui_rect_t neko_ui_layout_peek_next(neko_ui_context_t* ctx) {
 
     /* update position */
     layout.position.x += res.w + style->margin[NEKO_UI_MARGIN_RIGHT];
-    layout.next_row = (s32)neko_max(layout.next_row, res.y + res.h + style->margin[NEKO_UI_MARGIN_BOTTOM]);
+    layout.next_row = (s32)NEKO_MAX(layout.next_row, res.y + res.h + style->margin[NEKO_UI_MARGIN_BOTTOM]);
 
     /* apply body offset */
     res.x += layout.body.x;
     res.y += layout.body.y;
 
     /* update max position */
-    layout.max.x = neko_max(layout.max.x, res.x + res.w);
-    layout.max.y = neko_max(layout.max.y, res.y + res.h);
+    layout.max.x = NEKO_MAX(layout.max.x, res.x + res.w);
+    layout.max.y = NEKO_MAX(layout.max.y, res.y + res.h);
 
     return res;
 }
@@ -4397,15 +4396,15 @@ NEKO_API_DECL neko_ui_rect_t neko_ui_layout_next(neko_ui_context_t* ctx) {
 
     /* update position */
     layout->position.x += res.w + style->margin[NEKO_UI_MARGIN_RIGHT];
-    layout->next_row = (s32)neko_max(layout->next_row, res.y + res.h + style->margin[NEKO_UI_MARGIN_BOTTOM]);  //  + style->margin[NEKO_UI_MARGIN_TOP] * 0.5f);
+    layout->next_row = (s32)NEKO_MAX(layout->next_row, res.y + res.h + style->margin[NEKO_UI_MARGIN_BOTTOM]);  //  + style->margin[NEKO_UI_MARGIN_TOP] * 0.5f);
 
     /* apply body offset */
     res.x += layout->body.x;
     res.y += layout->body.y;
 
     /* update max position */
-    layout->max.x = neko_max(layout->max.x, res.x + res.w);
-    layout->max.y = neko_max(layout->max.y, res.y + res.h);
+    layout->max.x = NEKO_MAX(layout->max.x, res.x + res.w);
+    layout->max.y = NEKO_MAX(layout->max.y, res.y + res.h);
 
     return (ctx->last_rect = res);
 }
@@ -4628,7 +4627,7 @@ NEKO_API_DECL s32 neko_ui_text_ex(neko_ui_context_t* ctx, const char* text, s32 
     s32 res = 0, elementid = NEKO_UI_ELEMENT_TEXT;
     neko_ui_id id = neko_ui_get_id(ctx, text, strlen(text));
     neko_immediate_draw_t* dl = &ctx->overlay_draw_list;
-    neko_ui_style_t style = neko_default_val();
+    neko_ui_style_t style = NEKO_DEFAULT_VAL();
     neko_ui_animation_t* anim = neko_ui_get_animation(ctx, id, desc, elementid);
 
     const char *start, *end, *p = text;
@@ -4732,7 +4731,7 @@ NEKO_API_DECL s32 neko_ui_text_ex(neko_ui_context_t* ctx, const char* text, s32 
 //     neko_ui_layout_row(ctx, 1, &width, th);
 //     neko_ui_layout_t* layout = neko_ui_get_layout(ctx);
 //     if (fontindex == -1) fontindex = ctx->gui_idraw.data->font_fc_default;
-//     neko_graphics_fc_text(text, fontindex, layout->body.x, layout->body.y + layout->body.h / 2);
+//     neko_render_fc_text(text, fontindex, layout->body.x, layout->body.y + layout->body.h / 2);
 //     neko_ui_layout_column_end(ctx);
 //     return 0;
 // }
@@ -4743,14 +4742,14 @@ NEKO_API_DECL s32 neko_ui_label_ex(neko_ui_context_t* ctx, const char* label, co
     s32 elementid = NEKO_UI_ELEMENT_LABEL;
     neko_ui_id id = neko_ui_get_id(ctx, label, neko_strlen(label));
 
-    char id_tag[256] = neko_default_val();
-    char label_tag[256] = neko_default_val();
+    char id_tag[256] = NEKO_DEFAULT_VAL();
+    char label_tag[256] = NEKO_DEFAULT_VAL();
     neko_ui_parse_id_tag(ctx, label, id_tag, sizeof(id_tag), opt);
     neko_ui_parse_label_tag(ctx, label, label_tag, sizeof(label_tag));
 
     if (id_tag) neko_ui_push_id(ctx, id_tag, strlen(id_tag));
 
-    neko_ui_style_t style = neko_default_val();
+    neko_ui_style_t style = NEKO_DEFAULT_VAL();
     neko_ui_animation_t* anim = neko_ui_get_animation(ctx, id, desc, elementid);
 
     if (anim) {
@@ -4779,12 +4778,12 @@ NEKO_API_DECL s32 neko_ui_label_ex(neko_ui_context_t* ctx, const char* label, co
     return res;
 }
 
-NEKO_API_DECL s32 neko_ui_image_ex(neko_ui_context_t* ctx, neko_handle(neko_graphics_texture_t) hndl, neko_vec2 uv0, neko_vec2 uv1, const neko_ui_selector_desc_t* desc, u64 opt) {
+NEKO_API_DECL s32 neko_ui_image_ex(neko_ui_context_t* ctx, neko_handle(neko_render_texture_t) hndl, neko_vec2 uv0, neko_vec2 uv1, const neko_ui_selector_desc_t* desc, u64 opt) {
     s32 res = 0;
     neko_ui_id id = neko_ui_get_id(ctx, &hndl, sizeof(hndl));
     const s32 elementid = NEKO_UI_ELEMENT_IMAGE;
 
-    neko_ui_style_t style = neko_default_val();
+    neko_ui_style_t style = NEKO_DEFAULT_VAL();
     neko_ui_animation_t* anim = neko_ui_get_animation(ctx, id, desc, elementid);
 
     // Update anim (keep states locally within animation, only way to do this)
@@ -4856,7 +4855,7 @@ NEKO_API_DECL void neko_ui_parse_label_tag(neko_ui_context_t* ctx, const char* s
                     neko_token_t end = neko_lexer_current_token(&lex);
 
                     // Determine len
-                    size_t len = neko_min(end.text - str, sz);
+                    size_t len = NEKO_MIN(end.text - str, sz);
 
                     memcpy(buffer, str, len);
                     return;
@@ -4866,7 +4865,7 @@ NEKO_API_DECL void neko_ui_parse_label_tag(neko_ui_context_t* ctx, const char* s
     }
 
     // Reached end, so just memcpy
-    memcpy(buffer, str, neko_min(sz, strlen(str) + 1));
+    memcpy(buffer, str, NEKO_MIN(sz, strlen(str) + 1));
 }
 
 NEKO_API_DECL void neko_ui_parse_id_tag(neko_ui_context_t* ctx, const char* str, char* buffer, size_t sz, u64 opt) {
@@ -4880,7 +4879,7 @@ NEKO_API_DECL void neko_ui_parse_id_tag(neko_ui_context_t* ctx, const char* str,
                         neko_token_t end = neko_lexer_next_token(&lex);
                         end = neko_lexer_next_token(&lex);
                         // 确定长度
-                        size_t len = neko_min((str + strlen(str)) - end.text, sz);
+                        size_t len = NEKO_MIN((str + strlen(str)) - end.text, sz);
                         memcpy(buffer, end.text, len);
                         return;
                     }
@@ -4889,7 +4888,7 @@ NEKO_API_DECL void neko_ui_parse_id_tag(neko_ui_context_t* ctx, const char* str,
         }
     } else {
         size_t str_sz = strlen(str);
-        size_t actual_sz = neko_min(str_sz, sz - 1);
+        size_t actual_sz = NEKO_MIN(str_sz, sz - 1);
         memcpy(buffer, str, actual_sz);
         buffer[actual_sz] = 0;
     }
@@ -4902,12 +4901,12 @@ NEKO_API_DECL s32 neko_ui_button_ex(neko_ui_context_t* ctx, const char* label, c
     neko_ui_id id = neko_ui_get_id(ctx, label, strlen(label));
     neko_immediate_draw_t* dl = &ctx->overlay_draw_list;
 
-    char id_tag[256] = neko_default_val();
-    char label_tag[256] = neko_default_val();
+    char id_tag[256] = NEKO_DEFAULT_VAL();
+    char label_tag[256] = NEKO_DEFAULT_VAL();
     neko_ui_parse_id_tag(ctx, label, id_tag, sizeof(id_tag), opt);
     neko_ui_parse_label_tag(ctx, label, label_tag, sizeof(label_tag));
 
-    neko_ui_style_t style = neko_default_val();
+    neko_ui_style_t style = NEKO_DEFAULT_VAL();
     neko_ui_animation_t* anim = neko_ui_get_animation(ctx, id, desc, NEKO_UI_ELEMENT_BUTTON);
 
     // Push id if tag available
@@ -4965,7 +4964,7 @@ NEKO_API_DECL s32 neko_ui_checkbox_ex(neko_ui_context_t* ctx, const char* label,
     neko_ui_update_control(ctx, id, r, 0);
 
     s32 elementid = NEKO_UI_ELEMENT_BUTTON;
-    neko_ui_style_t style = neko_default_val();
+    neko_ui_style_t style = NEKO_DEFAULT_VAL();
     style = ctx->focus == id   ? neko_ui_get_current_element_style(ctx, desc, elementid, 0x02)
             : ctx->hover == id ? neko_ui_get_current_element_style(ctx, desc, elementid, 0x01)
                                : neko_ui_get_current_element_style(ctx, desc, elementid, 0x00);
@@ -4992,7 +4991,7 @@ NEKO_API_DECL s32 neko_ui_textbox_raw(neko_ui_context_t* ctx, char* buf, s32 buf
     s32 res = 0;
 
     s32 elementid = NEKO_UI_ELEMENT_INPUT;
-    neko_ui_style_t style = neko_default_val();
+    neko_ui_style_t style = NEKO_DEFAULT_VAL();
     neko_ui_animation_t* anim = neko_ui_get_animation(ctx, id, desc, elementid);
 
     // Update anim (keep states locally within animation, only way to do this)
@@ -5016,7 +5015,7 @@ NEKO_API_DECL s32 neko_ui_textbox_raw(neko_ui_context_t* ctx, char* buf, s32 buf
     if (ctx->focus == id) {
         /* handle text input */
         s32 len = strlen(buf);
-        s32 n = neko_min(bufsz - len - 1, (s32)strlen(ctx->input_text));
+        s32 n = NEKO_MIN(bufsz - len - 1, (s32)strlen(ctx->input_text));
         if (n > 0) {
             memcpy(buf + len, ctx->input_text, n);
             len += n;
@@ -5045,7 +5044,7 @@ NEKO_API_DECL s32 neko_ui_textbox_raw(neko_ui_context_t* ctx, char* buf, s32 buf
         if (neko_platform_key_pressed(NEKO_KEYCODE_V) && ctx->key_down & NEKO_UI_KEY_CTRL) {
             const_str clipboard = neko_platform_window_get_clipboard(ctx->window_hndl);
             printf("%s --\n", clipboard);
-            s32 n = neko_min(bufsz - len - 1, (s32)strlen(clipboard));
+            s32 n = NEKO_MIN(bufsz - len - 1, (s32)strlen(clipboard));
             if (n > 0) {
                 memcpy(buf + len, clipboard, n);
                 len += n;
@@ -5080,7 +5079,7 @@ NEKO_API_DECL s32 neko_ui_textbox_raw(neko_ui_context_t* ctx, char* buf, s32 buf
         s32 textw = neko_ui_text_width(font, buf, -1);
         s32 texth = neko_ui_font_height(font);
         s32 ofx = (s32)(rect.w - sp->padding[NEKO_UI_PADDING_RIGHT] - textw - 1);
-        s32 textx = (s32)(rect.x + neko_min(ofx, sp->padding[NEKO_UI_PADDING_LEFT]));
+        s32 textx = (s32)(rect.x + NEKO_MIN(ofx, sp->padding[NEKO_UI_PADDING_LEFT]));
         s32 texty = (s32)(rect.y + (rect.h - texth) / 2);
         s32 cary = (s32)(rect.y + 1);
         neko_ui_push_clip_rect(ctx, rect);
@@ -5181,7 +5180,7 @@ NEKO_API_DECL s32 neko_ui_textbox_ex(neko_ui_context_t* ctx, char* buf, s32 bufs
     s32 res = 0;
     neko_ui_id id = neko_ui_get_id(ctx, &buf, sizeof(buf));
     s32 elementid = NEKO_UI_ELEMENT_INPUT;
-    neko_ui_style_t style = neko_default_val();
+    neko_ui_style_t style = NEKO_DEFAULT_VAL();
     neko_ui_animation_t* anim = neko_ui_get_animation(ctx, id, desc, elementid);
 
     // Update anim (keep states locally within animation, only way to do this)
@@ -5215,7 +5214,7 @@ NEKO_API_DECL s32 neko_ui_slider_ex(neko_ui_context_t* ctx, neko_ui_real* value,
     neko_ui_real last = *value, v = last;
     neko_ui_id id = neko_ui_get_id(ctx, &value, sizeof(value));
     s32 elementid = NEKO_UI_ELEMENT_INPUT;
-    neko_ui_style_t style = neko_default_val();
+    neko_ui_style_t style = NEKO_DEFAULT_VAL();
     neko_ui_animation_t* anim = neko_ui_get_animation(ctx, id, desc, elementid);
     s32 state = ctx->focus == id ? NEKO_UI_ELEMENT_STATE_FOCUS : ctx->hover == id ? NEKO_UI_ELEMENT_STATE_HOVER : NEKO_UI_ELEMENT_STATE_DEFAULT;
 
@@ -5250,7 +5249,7 @@ NEKO_API_DECL s32 neko_ui_slider_ex(neko_ui_context_t* ctx, neko_ui_real* value,
     }
 
     /* clamp and store value, update res */
-    *value = v = neko_clamp(v, low, high);
+    *value = v = NEKO_CLAMP(v, low, high);
     if (last != v) {
         res |= NEKO_UI_RES_CHANGE;
     }
@@ -5280,7 +5279,7 @@ NEKO_API_DECL s32 neko_ui_number_ex(neko_ui_context_t* ctx, neko_ui_real* value,
     s32 res = 0;
     neko_ui_id id = neko_ui_get_id(ctx, &value, sizeof(value));
     s32 elementid = NEKO_UI_ELEMENT_INPUT;
-    neko_ui_style_t style = neko_default_val();
+    neko_ui_style_t style = NEKO_DEFAULT_VAL();
     neko_ui_animation_t* anim = neko_ui_get_animation(ctx, id, desc, elementid);
 
     // Update anim (keep states locally within animation, only way to do this)
@@ -5337,8 +5336,8 @@ static s32 __neko_ui_header(neko_ui_context_t* ctx, const char* label, s32 istre
     s32 width = -1;
     neko_ui_layout_row(ctx, 1, &width, 0);
 
-    char id_tag[256] = neko_default_val();
-    char label_tag[256] = neko_default_val();
+    char id_tag[256] = NEKO_DEFAULT_VAL();
+    char label_tag[256] = NEKO_DEFAULT_VAL();
     neko_ui_parse_id_tag(ctx, label, id_tag, sizeof(id_tag), opt);
     neko_ui_parse_label_tag(ctx, label, label_tag, sizeof(label_tag));
 
@@ -5422,7 +5421,7 @@ NEKO_API_DECL void neko_ui_tab_item_swap(neko_ui_context_t* ctx, neko_ui_contain
     if (!tab_bar) return;
 
     s32 item = (s32)cnt->tab_item;
-    s32 idx = neko_clamp(item + direction, 0, (s32)tab_bar->size - 1);
+    s32 idx = NEKO_CLAMP(item + direction, 0, (s32)tab_bar->size - 1);
 
     neko_ui_container_t* scnt = (neko_ui_container_t*)tab_bar->items[idx].data;
 
@@ -5446,8 +5445,8 @@ NEKO_API_DECL s32 neko_ui_window_begin_ex(neko_ui_context_t* ctx, const char* ti
     neko_ui_id id = neko_ui_get_id(ctx, title, strlen(title));
     neko_ui_container_t* cnt = neko_ui_get_container_ex(ctx, id, opt);
 
-    char id_tag[256] = neko_default_val();
-    char label_tag[256] = neko_default_val();
+    char id_tag[256] = NEKO_DEFAULT_VAL();
+    char label_tag[256] = NEKO_DEFAULT_VAL();
     neko_ui_parse_id_tag(ctx, title, id_tag, sizeof(id_tag), opt);
     neko_ui_parse_label_tag(ctx, title, label_tag, sizeof(label_tag));
 
@@ -5624,12 +5623,12 @@ NEKO_API_DECL s32 neko_ui_window_begin_ex(neko_ui_context_t* ctx, const char* ti
             }
 
             if (root_split) {
-                neko_ui_request_t req = neko_default_val();
+                neko_ui_request_t req = NEKO_DEFAULT_VAL();
                 req.type = NEKO_UI_SPLIT_MOVE;
                 req.split = root_split;
                 neko_dyn_array_push(ctx->requests, req);
             } else {
-                neko_ui_request_t req = neko_default_val();
+                neko_ui_request_t req = NEKO_DEFAULT_VAL();
                 req.type = NEKO_UI_CNT_MOVE;
                 req.cnt = cnt;
                 neko_dyn_array_push(ctx->requests, req);
@@ -5650,7 +5649,7 @@ NEKO_API_DECL s32 neko_ui_window_begin_ex(neko_ui_context_t* ctx, const char* ti
             neko_ui_rect_t* r = &tab_bar->rect;
 
             // Determine width
-            s32 tab_width = (s32)neko_min(r->w / (float)tab_bar->size, title_max_size);
+            s32 tab_width = (s32)NEKO_MIN(r->w / (float)tab_bar->size, title_max_size);
             tw = tab_item->zindex ? (s32)tab_width : (s32)(tab_width + 1.f);
 
             // Determine position (based on zindex and total width)
@@ -5676,7 +5675,7 @@ NEKO_API_DECL s32 neko_ui_window_begin_ex(neko_ui_context_t* ctx, const char* ti
                 }
 
                 if (tab_bar->focus != tab_item->idx) {
-                    neko_ui_request_t req = neko_default_val();
+                    neko_ui_request_t req = NEKO_DEFAULT_VAL();
                     req.type = NEKO_UI_CNT_FOCUS;
                     req.cnt = cnt;
                     neko_dyn_array_push(ctx->requests, req);
@@ -5689,7 +5688,7 @@ NEKO_API_DECL s32 neko_ui_window_begin_ex(neko_ui_context_t* ctx, const char* ti
                     ctx->undock_root = cnt;
                 }
             } else {
-                neko_ui_request_t req = neko_default_val();
+                neko_ui_request_t req = NEKO_DEFAULT_VAL();
                 req.type = NEKO_UI_CNT_MOVE;
                 req.cnt = cnt;
                 neko_dyn_array_push(ctx->requests, req);
@@ -5715,12 +5714,12 @@ NEKO_API_DECL s32 neko_ui_window_begin_ex(neko_ui_context_t* ctx, const char* ti
             ctx->active_root = cnt;
             ctx->next_focus_root = cnt;
             if (root_split) {
-                neko_ui_request_t req = neko_default_val();
+                neko_ui_request_t req = NEKO_DEFAULT_VAL();
                 req.type = NEKO_UI_SPLIT_MOVE;
                 req.split = root_split;
                 neko_dyn_array_push(ctx->requests, req);
             } else if (tab_bar) {
-                neko_ui_request_t req = neko_default_val();
+                neko_ui_request_t req = NEKO_DEFAULT_VAL();
                 req.type = NEKO_UI_CNT_FOCUS;
                 req.cnt = cnt;
                 neko_dyn_array_push(ctx->requests, req);
@@ -5729,7 +5728,7 @@ NEKO_API_DECL s32 neko_ui_window_begin_ex(neko_ui_context_t* ctx, const char* ti
                 req.cnt = cnt;
                 neko_dyn_array_push(ctx->requests, req);
             } else {
-                neko_ui_request_t req = neko_default_val();
+                neko_ui_request_t req = NEKO_DEFAULT_VAL();
                 req.type = NEKO_UI_CNT_MOVE;
                 req.cnt = cnt;
                 neko_dyn_array_push(ctx->requests, req);
@@ -5868,7 +5867,7 @@ NEKO_API_DECL s32 neko_ui_window_begin_ex(neko_ui_context_t* ctx, const char* ti
                 neko_ui_rect_t* r = &tab_bar->rect;
 
                 // Determine width
-                s32 tab_width = (s32)neko_min(r->w / (float)tab_bar->size, title_max_size);
+                s32 tab_width = (s32)NEKO_MIN(r->w / (float)tab_bar->size, title_max_size);
                 tw = (s32)(tab_width - 2.f);
 
                 // Determine position (based on zindex and total width)
@@ -5882,7 +5881,7 @@ NEKO_API_DECL s32 neko_ui_window_begin_ex(neko_ui_context_t* ctx, const char* ti
 
             if (in_root && neko_ui_rect_overlaps_vec2(r, ctx->mouse_pos)) {
                 neko_immediate_draw_t* dl = &ctx->overlay_draw_list;
-                // neko_idraw_rectvd(dl, neko_v2(r.x, r.y), neko_v2(r.w, r.h), neko_v2s(0.f), neko_v2s(1.f), NEKO_COLOR_WHITE, NEKO_GRAPHICS_PRIMITIVE_LINES);
+                // neko_idraw_rectvd(dl, neko_v2(r.x, r.y), neko_v2(r.w, r.h), neko_v2s(0.f), neko_v2s(1.f), NEKO_COLOR_WHITE, NEKO_RENDER_PRIMITIVE_LINES);
                 hovered = true;
             }
 
@@ -5901,7 +5900,7 @@ NEKO_API_DECL s32 neko_ui_window_begin_ex(neko_ui_context_t* ctx, const char* ti
                 ctx->lock_focus = id;
 
                 if (tab_item && tab_bar->focus != tab_item->idx) {
-                    neko_ui_request_t req = neko_default_val();
+                    neko_ui_request_t req = NEKO_DEFAULT_VAL();
                     req.type = NEKO_UI_CNT_FOCUS;
                     req.cnt = cnt;
                     neko_dyn_array_push(ctx->requests, req);
@@ -5910,13 +5909,13 @@ NEKO_API_DECL s32 neko_ui_window_begin_ex(neko_ui_context_t* ctx, const char* ti
 
             if (!other_root_active && ctx->mouse_down == NEKO_UI_MOUSE_LEFT && ctx->focus == id) {
                 if (ctx->mouse_pos.x < r.x) {
-                    neko_ui_request_t req = neko_default_val();
+                    neko_ui_request_t req = NEKO_DEFAULT_VAL();
                     req.type = NEKO_UI_TAB_SWAP_LEFT;
                     req.cnt = cnt;
                     neko_dyn_array_push(ctx->requests, req);
                 }
                 if (ctx->mouse_pos.x > r.x + r.w) {
-                    neko_ui_request_t req = neko_default_val();
+                    neko_ui_request_t req = NEKO_DEFAULT_VAL();
                     req.type = NEKO_UI_TAB_SWAP_RIGHT;
                     req.cnt = cnt;
                     neko_dyn_array_push(ctx->requests, req);
@@ -6030,13 +6029,13 @@ NEKO_API_DECL void neko_ui_window_end(neko_ui_context_t* ctx) {
         if (id == ctx->focus && ctx->mouse_down == NEKO_UI_MOUSE_LEFT) {
             ctx->active_root = cnt;
             if (root_split) {
-                neko_ui_request_t req = neko_default_val();
+                neko_ui_request_t req = NEKO_DEFAULT_VAL();
                 req.type = NEKO_UI_SPLIT_RESIZE_SE;
                 req.split = root_split;
                 neko_dyn_array_push(ctx->requests, req);
             } else {
-                cnt->rect.w = neko_max(96, cnt->rect.w + ctx->mouse_delta.x);
-                cnt->rect.h = neko_max(64, cnt->rect.h + ctx->mouse_delta.y);
+                cnt->rect.w = NEKO_MAX(96, cnt->rect.w + ctx->mouse_delta.x);
+                cnt->rect.h = NEKO_MAX(64, cnt->rect.h + ctx->mouse_delta.y);
             }
         }
 
@@ -6088,7 +6087,7 @@ NEKO_API_DECL void neko_ui_window_end(neko_ui_context_t* ctx) {
             if (_ID == ctx->focus && ctx->mouse_down == (MOUSE)) {         \
                 neko_ui_draw_rect(ctx, _R, NEKO_COLOR_WHITE);              \
                 if (root_split) {                                          \
-                    neko_ui_request_t req = neko_default_val();            \
+                    neko_ui_request_t req = NEKO_DEFAULT_VAL();            \
                     req.type = (SPLIT_TYPE);                               \
                     req.split = root_split;                                \
                     neko_dyn_array_push(ctx->requests, req);               \
@@ -6140,58 +6139,58 @@ NEKO_API_DECL void neko_ui_window_end(neko_ui_context_t* ctx) {
                                 NEKO_UI_SPLIT_RESIZE_W, NEKO_UI_KEY_ALT, {
                                     float w = r->w;
                                     float max_x = r->x + r->w;
-                                    r->w = neko_max(r->w - ctx->mouse_delta.x, 40);
+                                    r->w = NEKO_MAX(r->w - ctx->mouse_delta.x, 40);
                                     if (fabsf(r->w - w) > 0.f) {
-                                        r->x = neko_min(r->x + ctx->mouse_delta.x, max_x);
+                                        r->x = NEKO_MIN(r->x + ctx->mouse_delta.x, max_x);
                                     }
                                 });
 
         _gui_window_resize_ctrl(neko_ui_get_id(ctx, "!res_e", 6), neko_ui_rect(r->x + r->w * (1.f - border_ratio), r->y + r->h * border_ratio, r->w * border_ratio, r->h * (1.f - 2.f * border_ratio)),
-                                NEKO_UI_MOUSE_LEFT, NEKO_UI_SPLIT_RESIZE_E, NEKO_UI_KEY_ALT, { r->w = neko_max(r->w + ctx->mouse_delta.x, 40); });
+                                NEKO_UI_MOUSE_LEFT, NEKO_UI_SPLIT_RESIZE_E, NEKO_UI_KEY_ALT, { r->w = NEKO_MAX(r->w + ctx->mouse_delta.x, 40); });
 
         _gui_window_resize_ctrl(neko_ui_get_id(ctx, "!res_n", 6), neko_ui_rect(r->x + r->w * border_ratio, r->y, r->w * (1.f - 2.f * border_ratio), r->h * border_ratio), NEKO_UI_MOUSE_LEFT,
                                 NEKO_UI_SPLIT_RESIZE_N, NEKO_UI_KEY_ALT, {
                                     float h = r->h;
                                     float max_y = h + r->y;
-                                    r->h = neko_max(r->h - ctx->mouse_delta.y, 40);
+                                    r->h = NEKO_MAX(r->h - ctx->mouse_delta.y, 40);
                                     if (fabsf(r->h - h) > 0.f) {
-                                        r->y = neko_min(r->y + ctx->mouse_delta.y, max_y);
+                                        r->y = NEKO_MIN(r->y + ctx->mouse_delta.y, max_y);
                                     }
                                 });
 
         _gui_window_resize_ctrl(neko_ui_get_id(ctx, "!res_s", 6), neko_ui_rect(r->x + r->w * border_ratio, r->y + r->h * (1.f - border_ratio), r->w * (1.f - 2.f * border_ratio), r->h * border_ratio),
-                                NEKO_UI_MOUSE_LEFT, NEKO_UI_SPLIT_RESIZE_S, NEKO_UI_KEY_ALT, { r->h = neko_max(r->h + ctx->mouse_delta.y, 40); });
+                                NEKO_UI_MOUSE_LEFT, NEKO_UI_SPLIT_RESIZE_S, NEKO_UI_KEY_ALT, { r->h = NEKO_MAX(r->h + ctx->mouse_delta.y, 40); });
 
         _gui_window_resize_ctrl(neko_ui_get_id(ctx, "!res_se", 7), neko_ui_rect(r->x + r->w - r->w * border_ratio, r->y + r->h * (1.f - border_ratio), r->w * border_ratio, r->h * border_ratio),
                                 NEKO_UI_MOUSE_LEFT, NEKO_UI_SPLIT_RESIZE_SE, NEKO_UI_KEY_ALT, {
-                                    r->w = neko_max(r->w + ctx->mouse_delta.x, 40);
-                                    r->h = neko_max(r->h + ctx->mouse_delta.y, 40);
+                                    r->w = NEKO_MAX(r->w + ctx->mouse_delta.x, 40);
+                                    r->h = NEKO_MAX(r->h + ctx->mouse_delta.y, 40);
                                 });
 
         _gui_window_resize_ctrl(neko_ui_get_id(ctx, "!res_ne", 7), neko_ui_rect(r->x + r->w - r->w * border_ratio, r->y, r->w * border_ratio, r->h * border_ratio), NEKO_UI_MOUSE_LEFT,
                                 NEKO_UI_SPLIT_RESIZE_NE, NEKO_UI_KEY_ALT, {
-                                    r->w = neko_max(r->w + ctx->mouse_delta.x, 40);
+                                    r->w = NEKO_MAX(r->w + ctx->mouse_delta.x, 40);
                                     float h = r->h;
                                     float max_y = h + r->y;
-                                    r->h = neko_max(r->h - ctx->mouse_delta.y, 40);
+                                    r->h = NEKO_MAX(r->h - ctx->mouse_delta.y, 40);
                                     if (fabsf(r->h - h) > 0.f) {
-                                        r->y = neko_min(r->y + ctx->mouse_delta.y, max_y);
+                                        r->y = NEKO_MIN(r->y + ctx->mouse_delta.y, max_y);
                                     }
                                 });
 
         _gui_window_resize_ctrl(neko_ui_get_id(ctx, "!res_nw", 7), neko_ui_rect(r->x, r->y, r->w * border_ratio, r->h * border_ratio), NEKO_UI_MOUSE_LEFT, NEKO_UI_SPLIT_RESIZE_NW, NEKO_UI_KEY_ALT, {
             float h = r->h;
             float max_y = h + r->y;
-            r->h = neko_max(r->h - ctx->mouse_delta.y, 40);
+            r->h = NEKO_MAX(r->h - ctx->mouse_delta.y, 40);
             if (fabsf(r->h - h) > 0.f) {
-                r->y = neko_min(r->y + ctx->mouse_delta.y, max_y);
+                r->y = NEKO_MIN(r->y + ctx->mouse_delta.y, max_y);
             }
 
             float w = r->w;
             float max_x = r->x + r->w;
-            r->w = neko_max(r->w - ctx->mouse_delta.x, 40);
+            r->w = NEKO_MAX(r->w - ctx->mouse_delta.x, 40);
             if (fabsf(r->w - w) > 0.f) {
-                r->x = neko_min(r->x + ctx->mouse_delta.x, max_x);
+                r->x = NEKO_MIN(r->x + ctx->mouse_delta.x, max_x);
             }
         });
 
@@ -6199,13 +6198,13 @@ NEKO_API_DECL void neko_ui_window_end(neko_ui_context_t* ctx) {
                                 NEKO_UI_SPLIT_RESIZE_SW, NEKO_UI_KEY_ALT, {
                                     float h = r->h;
                                     float max_y = h + r->y;
-                                    r->h = neko_max(r->h + ctx->mouse_delta.y, 40);
+                                    r->h = NEKO_MAX(r->h + ctx->mouse_delta.y, 40);
 
                                     float w = r->w;
                                     float max_x = r->x + r->w;
-                                    r->w = neko_max(r->w - ctx->mouse_delta.x, 40);
+                                    r->w = NEKO_MAX(r->w - ctx->mouse_delta.x, 40);
                                     if (fabsf(r->w - w) > 0.f) {
-                                        r->x = neko_min(r->x + ctx->mouse_delta.x, max_x);
+                                        r->x = NEKO_MIN(r->x + ctx->mouse_delta.x, max_x);
                                     }
                                 });
 
@@ -6253,18 +6252,18 @@ NEKO_API_DECL void neko_ui_window_end(neko_ui_context_t* ctx) {
                 // Equidistant resize from middle (grow rect based on delta)
                 float h = r->h;
                 float max_y = h + r->y;
-                r->h = neko_max(r->h - ctx->mouse_delta.y, 40);
+                r->h = NEKO_MAX(r->h - ctx->mouse_delta.y, 40);
                 if (fabsf(r->h - h) > 0.f)
                 {
-                    r->y = neko_min(r->y - ctx->mouse_delta.y, max_y);
+                    r->y = NEKO_MIN(r->y - ctx->mouse_delta.y, max_y);
                 }
 
                 float w = r->w;
                 float max_x = r->x + r->w;
-                r->w = neko_max(r->w - ctx->mouse_delta.x, 40);
+                r->w = NEKO_MAX(r->w - ctx->mouse_delta.x, 40);
                 if (fabsf(r->w - w) > 0.f)
                 {
-                    r->x = neko_min(r->x - ctx->mouse_delta.x, max_x);
+                    r->x = NEKO_MIN(r->x - ctx->mouse_delta.x, max_x);
                 }
             });
         */
@@ -6329,7 +6328,7 @@ NEKO_API_DECL void neko_ui_popup_end(neko_ui_context_t* ctx) { neko_ui_window_en
 NEKO_API_DECL void neko_ui_panel_begin_ex(neko_ui_context_t* ctx, const char* name, const neko_ui_selector_desc_t* desc, u64 opt) {
     neko_ui_container_t* cnt;
     const s32 elementid = NEKO_UI_ELEMENT_PANEL;
-    char id_tag[256] = neko_default_val();
+    char id_tag[256] = NEKO_DEFAULT_VAL();
     neko_ui_parse_id_tag(ctx, name, id_tag, sizeof(id_tag), opt);
 
     // if (id_tag) neko_ui_push_id(ctx, id_tag, strlen(id_tag));
@@ -6340,7 +6339,7 @@ NEKO_API_DECL void neko_ui_panel_begin_ex(neko_ui_context_t* ctx, const char* na
 
     const neko_ui_id id = neko_ui_get_id(ctx, name, strlen(name));
 
-    neko_ui_style_t style = neko_default_val();
+    neko_ui_style_t style = NEKO_DEFAULT_VAL();
     neko_ui_animation_t* anim = neko_ui_get_animation(ctx, id, desc, elementid);
 
     // Update anim (keep states locally within animation, only way to do this)
@@ -6397,992 +6396,6 @@ static s16 int16_slider(neko_ui_context_t* ctx, s16* value, s32 low, s32 high, c
     int res = neko_ui_slider_ex(ctx, &tmp, (neko_ui_real)low, (neko_ui_real)high, 0, "%.0f", desc, opt);
     *value = (s16)tmp;
     neko_ui_pop_id(ctx);
-    return res;
-}
-
-//=== Gizmo ===//
-
-typedef struct {
-    b32 hit;
-    neko_vec3 point;
-} neko_ui_gizmo_line_intersection_result_t;
-
-enum { NEKO_UI_AXIS_RIGHT = 0x01, NEKO_UI_AXIS_UP, NEKO_UI_AXIS_FORWARD };
-
-typedef struct {
-    struct {
-        neko_vqs model;
-        union {
-            neko_cylinder_t cylinder;
-            neko_plane_t plane;
-        } shape;
-    } axis;
-    struct {
-        neko_vqs model;
-        union {
-            neko_cone_t cone;
-            neko_aabb_t aabb;
-        } shape;
-    } cap;
-} neko_ui_axis_t;
-
-typedef struct {
-    neko_ui_axis_t right;
-    neko_ui_axis_t up;
-    neko_ui_axis_t forward;
-} neko_gizmo_translate_t;
-
-typedef struct {
-    neko_ui_axis_t right;
-    neko_ui_axis_t up;
-    neko_ui_axis_t forward;
-} neko_gizmo_scale_t;
-
-typedef struct {
-    neko_ui_axis_t right;
-    neko_ui_axis_t up;
-    neko_ui_axis_t forward;
-} neko_gizmo_rotate_t;
-
-static neko_gizmo_scale_t neko_gizmo_scale(const neko_vqs* parent) {
-    neko_gizmo_scale_t gizmo = neko_default_val();
-    const neko_vec3 ax_scl = neko_v3(0.03f, 1.f, 0.03f);
-    const neko_vec3 cap_scl = neko_vec3_scale(neko_v3s(0.05f), 2.f * neko_vec3_len(parent->scale));
-    neko_vqs local = neko_vqs_default();
-    neko_vqs abs = neko_vqs_default();
-
-#define NEKO_UI_GIZMO_AXIS_DEFINE_SCALE(MEMBER, OFFSET, DEG, AXIS)                                  \
-    do {                                                                                            \
-        /* Axis */                                                                                  \
-        {                                                                                           \
-            local = neko_vqs_ctor(OFFSET, neko_quat_angle_axis(neko_deg2rad(DEG), AXIS), ax_scl);   \
-            gizmo.MEMBER.axis.model = neko_vqs_absolute_transform(&local, parent);                  \
-            neko_cylinder_t axis = neko_default_val();                                              \
-            axis.r = 1.f;                                                                           \
-            axis.base = neko_v3(0.f, 0.0f, 0.f);                                                    \
-            axis.height = 1.f;                                                                      \
-            gizmo.MEMBER.axis.shape.cylinder = axis;                                                \
-        }                                                                                           \
-                                                                                                    \
-        /* Cap */                                                                                   \
-        {                                                                                           \
-            local = neko_vqs_ctor(neko_v3(0.f, 0.5f, 0.f), neko_quat_default(), neko_v3s(1.f));     \
-                                                                                                    \
-            gizmo.MEMBER.cap.model = neko_vqs_absolute_transform(&local, &gizmo.MEMBER.axis.model); \
-            gizmo.MEMBER.cap.model.scale = cap_scl;                                                 \
-            neko_aabb_t aabb = neko_default_val();                                                  \
-            aabb.min = neko_v3s(-0.5f);                                                             \
-            aabb.max = neko_v3s(0.5f);                                                              \
-            gizmo.MEMBER.cap.shape.aabb = aabb;                                                     \
-        }                                                                                           \
-    } while (0)
-
-    const float off = 0.6f;
-    NEKO_UI_GIZMO_AXIS_DEFINE_SCALE(right, neko_v3(-off, 0.f, 0.f), 90.f, NEKO_ZAXIS);
-    NEKO_UI_GIZMO_AXIS_DEFINE_SCALE(up, neko_v3(0.f, off, 0.f), 0.f, NEKO_YAXIS);
-    NEKO_UI_GIZMO_AXIS_DEFINE_SCALE(forward, neko_v3(0.f, 0.f, off), 90.f, NEKO_XAXIS);
-
-    return gizmo;
-}
-
-static neko_gizmo_translate_t neko_gizmo_translate(const neko_vqs* parent) {
-    neko_gizmo_translate_t trans = neko_default_val();
-    const neko_vec3 ax_scl = neko_v3(0.03f, 1.f, 0.03f);
-    const neko_vec3 cap_scl = neko_vec3_scale(neko_v3(0.02f, 0.05f, 0.02f), 2.f * neko_vec3_len(parent->scale));
-    neko_vqs local = neko_vqs_default();
-    neko_vqs abs = neko_vqs_default();
-
-#define NEKO_UI_GIZMO_AXIS_DEFINE_TRANSLATE(MEMBER, OFFSET, DEG, AXIS)                              \
-    do {                                                                                            \
-        /* Axis */                                                                                  \
-        {                                                                                           \
-            local = neko_vqs_ctor(OFFSET, neko_quat_angle_axis(neko_deg2rad(DEG), AXIS), ax_scl);   \
-            trans.MEMBER.axis.model = neko_vqs_absolute_transform(&local, parent);                  \
-            neko_cylinder_t axis = neko_default_val();                                              \
-            axis.r = 1.f;                                                                           \
-            axis.base = neko_v3(0.f, 0.0f, 0.f);                                                    \
-            axis.height = 1.f;                                                                      \
-            trans.MEMBER.axis.shape.cylinder = axis;                                                \
-        }                                                                                           \
-                                                                                                    \
-        /* Cap */                                                                                   \
-        {                                                                                           \
-            local = neko_vqs_ctor(neko_v3(0.f, 0.5f, 0.f), neko_quat_default(), neko_v3s(1.f));     \
-                                                                                                    \
-            trans.MEMBER.cap.model = neko_vqs_absolute_transform(&local, &trans.MEMBER.axis.model); \
-            trans.MEMBER.cap.model.scale = cap_scl;                                                 \
-            neko_cone_t cap = neko_default_val();                                                   \
-            cap.r = 1.f;                                                                            \
-            cap.base = neko_v3(0.f, 0.0f, 0.f);                                                     \
-            cap.height = 1.0f;                                                                      \
-            trans.MEMBER.cap.shape.cone = cap;                                                      \
-        }                                                                                           \
-    } while (0)
-
-    const float off = 0.6f;
-    NEKO_UI_GIZMO_AXIS_DEFINE_TRANSLATE(right, neko_v3(-off, 0.f, 0.f), 90.f, NEKO_ZAXIS);
-    NEKO_UI_GIZMO_AXIS_DEFINE_TRANSLATE(up, neko_v3(0.f, off, 0.f), 0.f, NEKO_YAXIS);
-    NEKO_UI_GIZMO_AXIS_DEFINE_TRANSLATE(forward, neko_v3(0.f, 0.f, off), 90.f, NEKO_XAXIS);
-
-    return trans;
-}
-
-static neko_gizmo_rotate_t neko_gizmo_rotate(const neko_vqs* parent) {
-    neko_gizmo_rotate_t gizmo = neko_default_val();
-    const neko_vec3 ax_scl = neko_v3(1.f, 1.f, 1.f);
-    neko_vqs local = neko_vqs_default();
-    neko_vqs abs = neko_vqs_default();
-
-#define NEKO_UI_GIZMO_AXIS_DEFINE_ROTATE(MEMBER, OFFSET, DEG, AXIS)                               \
-    do {                                                                                          \
-        /* Axis */                                                                                \
-        {                                                                                         \
-            local = neko_vqs_ctor(OFFSET, neko_quat_angle_axis(neko_deg2rad(DEG), AXIS), ax_scl); \
-            gizmo.MEMBER.axis.model = neko_vqs_absolute_transform(&local, parent);                \
-            neko_plane_t axis = neko_plane_from_pt_normal(neko_v3s(0.f), NEKO_ZAXIS);             \
-            gizmo.MEMBER.axis.shape.plane = axis;                                                 \
-        }                                                                                         \
-    } while (0)
-
-    NEKO_UI_GIZMO_AXIS_DEFINE_ROTATE(right, neko_v3(0.f, 0.f, 0.f), 90.f, NEKO_YAXIS);
-    NEKO_UI_GIZMO_AXIS_DEFINE_ROTATE(up, neko_v3(0.f, 0.f, 0.f), -90.f, NEKO_XAXIS);
-    NEKO_UI_GIZMO_AXIS_DEFINE_ROTATE(forward, neko_v3(0.f, 0.f, 0.f), 0.f, NEKO_ZAXIS);
-
-    return gizmo;
-}
-
-typedef struct {
-    s32 op;
-    s32 mode;
-    neko_vqs xform;
-    neko_contact_info_t info;
-    union {
-        neko_gizmo_translate_t translate;
-        neko_gizmo_scale_t scale;
-        neko_gizmo_rotate_t rotate;
-    } gizmo;
-    s16 hover;
-    neko_camera_t camera;
-    neko_ui_rect_t viewport;
-    neko_ui_gizmo_line_intersection_result_t li;
-} neko_gizmo_desc_t;
-
-static void neko_ui_gizmo_render(neko_ui_context_t* ctx, neko_ui_customcommand_t* cmd) {
-    const neko_vec2 fbs = ctx->framebuffer_size;
-    const float t = neko_platform_elapsed_time();
-    neko_immediate_draw_t* gui_idraw = &ctx->gui_idraw;
-    neko_gizmo_desc_t* desc = (neko_gizmo_desc_t*)cmd->data;
-    neko_ui_rect_t clip = cmd->clip;
-    neko_ui_rect_t viewport = desc->viewport;
-    neko_camera_t cam = desc->camera;
-    const u16 segments = 4;
-    const neko_ui_gizmo_line_intersection_result_t* li = &desc->li;
-    const neko_contact_info_t* info = &desc->info;
-    const u8 alpha = 150;
-
-    neko_idraw_defaults(gui_idraw);
-    neko_idraw_depth_enabled(gui_idraw, false);
-    neko_idraw_camera(gui_idraw, &cam, (u32)viewport.w, (u32)viewport.h);
-    neko_graphics_set_viewport(&gui_idraw->commands, (u32)viewport.x, (u32)(fbs.y - viewport.h - viewport.y), (u32)viewport.w, (u32)viewport.h);
-    neko_graphics_primitive_type primitive = NEKO_GRAPHICS_PRIMITIVE_TRIANGLES;
-
-#define NEKO_UI_GIZMO_AXIS_TRANSLATE(ID, AXIS, COLOR)                                                                                                                            \
-    do {                                                                                                                                                                         \
-        neko_ui_id id = neko_ui_get_id_hash(ctx, ID, strlen(ID), cmd->hash);                                                                                                     \
-        bool hover = cmd->hover == id;                                                                                                                                           \
-        bool focus = cmd->focus == id;                                                                                                                                           \
-        neko_color_t color = hover || focus ? NEKO_COLOR_YELLOW : COLOR;                                                                                                         \
-        /* Axis */                                                                                                                                                               \
-        {                                                                                                                                                                        \
-            neko_idraw_push_matrix(gui_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);                                                                                                      \
-            neko_idraw_mul_matrix(gui_idraw, neko_vqs_to_mat4(&desc->gizmo.translate.AXIS.axis.model));                                                                          \
-            {                                                                                                                                                                    \
-                neko_cylinder_t* axis = &desc->gizmo.translate.AXIS.axis.shape.cylinder;                                                                                         \
-                neko_idraw_cylinder(gui_idraw, axis->base.x, axis->base.y, axis->base.z, axis->r, axis->r, axis->height, segments, color.r, color.g, color.b, alpha, primitive); \
-            }                                                                                                                                                                    \
-            neko_idraw_pop_matrix(gui_idraw);                                                                                                                                    \
-        }                                                                                                                                                                        \
-                                                                                                                                                                                 \
-        /* Cap */                                                                                                                                                                \
-        {                                                                                                                                                                        \
-            neko_idraw_push_matrix(gui_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);                                                                                                      \
-            neko_idraw_mul_matrix(gui_idraw, neko_vqs_to_mat4(&desc->gizmo.translate.AXIS.cap.model));                                                                           \
-            {                                                                                                                                                                    \
-                neko_cone_t* cap = &desc->gizmo.translate.AXIS.cap.shape.cone;                                                                                                   \
-                neko_idraw_cone(gui_idraw, cap->base.x, cap->base.y, cap->base.z, cap->r, cap->height, segments, color.r, color.g, color.b, alpha, primitive);                   \
-            }                                                                                                                                                                    \
-            neko_idraw_pop_matrix(gui_idraw);                                                                                                                                    \
-        }                                                                                                                                                                        \
-    } while (0)
-
-#define NEKO_UI_GIZMO_AXIS_SCALE(ID, AXIS, COLOR)                                                                                                                                \
-    do {                                                                                                                                                                         \
-        neko_ui_id id = neko_ui_get_id_hash(ctx, ID, strlen(ID), cmd->hash);                                                                                                     \
-        bool hover = cmd->hover == id;                                                                                                                                           \
-        bool focus = cmd->focus == id;                                                                                                                                           \
-        neko_color_t color = hover || focus ? NEKO_COLOR_YELLOW : COLOR;                                                                                                         \
-        /* Axis */                                                                                                                                                               \
-        {                                                                                                                                                                        \
-            neko_idraw_push_matrix(gui_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);                                                                                                      \
-            neko_idraw_mul_matrix(gui_idraw, neko_vqs_to_mat4(&desc->gizmo.scale.AXIS.axis.model));                                                                              \
-            {                                                                                                                                                                    \
-                neko_cylinder_t* axis = &desc->gizmo.scale.AXIS.axis.shape.cylinder;                                                                                             \
-                neko_idraw_cylinder(gui_idraw, axis->base.x, axis->base.y, axis->base.z, axis->r, axis->r, axis->height, segments, color.r, color.g, color.b, alpha, primitive); \
-            }                                                                                                                                                                    \
-            neko_idraw_pop_matrix(gui_idraw);                                                                                                                                    \
-        }                                                                                                                                                                        \
-                                                                                                                                                                                 \
-        /* Cap */                                                                                                                                                                \
-        {                                                                                                                                                                        \
-            neko_idraw_push_matrix(gui_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);                                                                                                      \
-            neko_idraw_mul_matrix(gui_idraw, neko_vqs_to_mat4(&desc->gizmo.scale.AXIS.cap.model));                                                                               \
-            {                                                                                                                                                                    \
-                neko_aabb_t* cap = &desc->gizmo.scale.AXIS.cap.shape.aabb;                                                                                                       \
-                neko_vec3 hd = neko_vec3_scale(neko_vec3_sub(cap->max, cap->min), 0.5f);                                                                                         \
-                neko_vec3 c = neko_vec3_add(cap->min, hd);                                                                                                                       \
-                neko_idraw_box(gui_idraw, c.x, c.y, c.z, hd.x, hd.y, hd.z, color.r, color.g, color.b, alpha, primitive);                                                         \
-            }                                                                                                                                                                    \
-            neko_idraw_pop_matrix(gui_idraw);                                                                                                                                    \
-        }                                                                                                                                                                        \
-    } while (0)
-
-#define NEKO_UI_GIZMO_AXIS_ROTATE(ID, AXIS, COLOR)                                                                                                      \
-    do {                                                                                                                                                \
-        neko_color_t def_color = (COLOR);                                                                                                               \
-        neko_ui_id id = neko_ui_get_id_hash(ctx, ID, strlen(ID), cmd->hash);                                                                            \
-        bool hover = cmd->hover == id;                                                                                                                  \
-        bool focus = cmd->focus == id;                                                                                                                  \
-        neko_color_t color = hover || focus ? NEKO_COLOR_YELLOW : def_color;                                                                            \
-        /* Axis */                                                                                                                                      \
-        {                                                                                                                                               \
-            neko_idraw_push_matrix(gui_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);                                                                             \
-            neko_idraw_mul_matrix(gui_idraw, neko_vqs_to_mat4(&desc->gizmo.rotate.AXIS.axis.model));                                                    \
-            {                                                                                                                                           \
-                neko_plane_t* axis = &desc->gizmo.rotate.AXIS.axis.shape.plane;                                                                         \
-                neko_idraw_arc(gui_idraw, 0.f, 0.f, 0.92f, 1.f, 0.f, 360.f, 48, color.r, color.g, color.b, color.a, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES); \
-            }                                                                                                                                           \
-            neko_idraw_pop_matrix(gui_idraw);                                                                                                           \
-            if (focus) {                                                                                                                                \
-                neko_vec3 ls = desc->xform.translation;                                                                                                 \
-                neko_vec3 le = neko_vec3_add(ls, neko_vec3_scale(info->normal, 0.5f));                                                                  \
-                neko_idraw_line3Dv(gui_idraw, ls, le, NEKO_COLOR_BLUE);                                                                                 \
-            }                                                                                                                                           \
-        }                                                                                                                                               \
-    } while (0)
-
-    switch (desc->op) {
-        case NEKO_UI_GIZMO_TRANSLATE: {
-            NEKO_UI_GIZMO_AXIS_TRANSLATE("#gizmo_trans_right", right, NEKO_COLOR_RED);
-            NEKO_UI_GIZMO_AXIS_TRANSLATE("#gizmo_trans_up", up, NEKO_COLOR_GREEN);
-            NEKO_UI_GIZMO_AXIS_TRANSLATE("#gizmo_trans_forward", forward, NEKO_COLOR_BLUE);
-        } break;
-
-        case NEKO_UI_GIZMO_SCALE: {
-            NEKO_UI_GIZMO_AXIS_SCALE("#gizmo_scale_right", right, NEKO_COLOR_RED);
-            NEKO_UI_GIZMO_AXIS_SCALE("#gizmo_scale_up", up, NEKO_COLOR_GREEN);
-            NEKO_UI_GIZMO_AXIS_SCALE("#gizmo_scale_forward", forward, NEKO_COLOR_BLUE);
-        } break;
-
-        case NEKO_UI_GIZMO_ROTATE: {
-            neko_ui_id id_r = neko_ui_get_id_hash(ctx, "#gizmo_rotate_right", strlen("#gizmo_rotate_right"), cmd->hash);
-            neko_ui_id id_u = neko_ui_get_id_hash(ctx, "#gizmo_rotate_up", strlen("#gizmo_rotate_up"), cmd->hash);
-            neko_ui_id id_f = neko_ui_get_id_hash(ctx, "#gizmo_rotate_forward", strlen("#gizmo_rotate_forward"), cmd->hash);
-
-            NEKO_UI_GIZMO_AXIS_ROTATE("#gizmo_rotate_right", right, (cmd->focus == id_u || cmd->focus == id_f) ? neko_color_alpha(NEKO_COLOR_RED, 25) : neko_color_alpha(NEKO_COLOR_RED, alpha));
-            NEKO_UI_GIZMO_AXIS_ROTATE("#gizmo_rotate_up", up, (cmd->focus == id_r || cmd->focus == id_f) ? neko_color_alpha(NEKO_COLOR_GREEN, 25) : neko_color_alpha(NEKO_COLOR_GREEN, alpha));
-            NEKO_UI_GIZMO_AXIS_ROTATE("#gizmo_rotate_forward", forward, (cmd->focus == id_r || cmd->focus == id_u) ? neko_color_alpha(NEKO_COLOR_BLUE, 25) : neko_color_alpha(NEKO_COLOR_BLUE, alpha));
-        } break;
-    }
-
-    if (li->hit) {
-        neko_idraw_sphere(gui_idraw, li->point.x, li->point.y, li->point.z, 0.005f, 255, 0, 0, 255, NEKO_GRAPHICS_PRIMITIVE_LINES);
-        neko_idraw_line3Dv(gui_idraw, li->point, desc->xform.translation, neko_color(255, 0, 0, 255));
-    }
-}
-
-static neko_ui_gizmo_line_intersection_result_t neko_ui_gizmo_get_line_intersection(const neko_vqs* model, neko_vec3 axis_a, neko_vec3 axis_b, neko_vec3 axis_c, const neko_camera_t* camera,
-                                                                                    const neko_ray_t* ray, neko_vec3 plane_normal_axis, bool compare_supporting_axes, bool override_axis) {
-    neko_ui_gizmo_line_intersection_result_t res = neko_default_val();
-
-    // Find absolute dot between cam forward and right axis
-    neko_vec3 cf = neko_vec3_norm(neko_camera_forward(camera));
-    neko_vec3 ta = neko_vec3_norm(neko_quat_rotate(model->rotation, axis_a));
-    float cfdta = fabsf(neko_vec3_dot(cf, ta));
-
-    // This doesn't really make sense. I want to project along the x/y or x/z planes.
-
-    neko_plane_t intersection_plane = neko_default_val();
-    neko_vec3 op = model->translation;
-
-    if (compare_supporting_axes) {
-        // Now determine appropriate axis to move along
-        neko_vec3 tb = neko_vec3_norm(neko_quat_rotate(model->rotation, axis_b));
-        neko_vec3 tc = neko_vec3_norm(neko_quat_rotate(model->rotation, axis_c));
-
-        float cfdtb = fabsf(neko_vec3_dot(cf, tb));
-        float cfdtc = fabsf(neko_vec3_dot(cf, tc));
-
-        intersection_plane = cfdtb < cfdtc ? neko_plane_from_pt_normal(op, tc) : neko_plane_from_pt_normal(op, tb);
-    } else {
-        if (override_axis) {
-            intersection_plane = neko_plane_from_pt_normal(op, plane_normal_axis);
-        } else {
-            intersection_plane = neko_plane_from_pt_normal(op, ta);
-        }
-    }
-
-    // Get line intersection from ray and chosen intersection plane
-    neko_plane_t* ip = &intersection_plane;
-    float denom = neko_vec3_dot(neko_v3(ip->a, ip->b, ip->c), ray->d);
-    if (fabsf(denom) >= neko_epsilon) {
-        float t = -(ip->a * ray->p.x + ip->b * ray->p.y + ip->c * ray->p.z + ip->d) / denom;
-        res.hit = t >= 0.f ? true : false;
-        res.point = neko_vec3_add(ray->p, neko_vec3_scale(ray->d, t));
-    }
-
-    return res;
-}
-
-static neko_vec3 s_intersection_start = neko_default_val();
-static neko_vqs s_delta = neko_default_val();
-static bool just_set_focus = false;
-
-NEKO_API_DECL s32 neko_ui_gizmo(neko_ui_context_t* ctx, neko_camera_t* camera, neko_vqs* model, neko_ui_rect_t viewport, bool invert_view_y, float snap, s32 op, s32 mode, u64 opt) {
-    s32 res = 0;
-    if (model->rotation.w == 0.f) model->rotation = neko_quat_default();
-    if (neko_vec3_len(model->scale) == 0.f) model->scale = neko_v3s(1.f);
-
-    const neko_vec2 fbs = ctx->framebuffer_size;
-    const float t = neko_platform_elapsed_time();
-    const bool in_hover_root = neko_ui_in_hover_root(ctx);
-
-    neko_immediate_draw_t* dl = &ctx->overlay_draw_list;
-
-    // This doesn't actually work for the clip...
-    neko_ui_rect_t clip = viewport;
-    if (invert_view_y) {
-        clip.y = fbs.y - clip.h - clip.y;
-    }
-
-    // Capture event information (might have to do something like this for smaller framebuffers scaled to higher viewports)
-    /*
-    neko_vec2 mc = neko_platform_mouse_positionv();
-
-    // Check for scale and bias
-    s32 flags = 0x00;
-    if (flags & NEKO_UI_HINT_FLAG_NO_SCALE_BIAS_MOUSE) {
-        float px = (mc.x - clip.x) / clip.w;
-        float py = (mc.y - clip.y) / clip.h;
-        float xv = clip.w * px;
-        float yv = clip.h * py;
-        mc = neko_v2(xv, yv);
-    }
-    else {
-        neko_vec2 fb_vp_ratio = neko_v2(fbs.x / clip.w, fbs.y / clip.h);
-        float px = mc.x - (clip.x * fb_vp_ratio.x);
-        float py = mc.y + (clip.y * fb_vp_ratio.y);
-        float xv = px / fb_vp_ratio.x;
-        float yv = py / fb_vp_ratio.y;
-        mc = neko_v2(xv, yv);
-    }
-    */
-
-    neko_vec2 mc = neko_platform_mouse_positionv();
-    mc = neko_vec2_sub(mc, neko_v2(clip.x, clip.y));
-
-    // Project ray to world
-    const float ray_len = 1000.f;
-    neko_vec3 ms = neko_v3(mc.x, mc.y, 0.f);
-    neko_vec3 me = neko_v3(mc.x, mc.y, -ray_len);
-    neko_vec3 ro = neko_camera_screen_to_world(camera, ms, 0, 0, (s32)clip.w, (s32)clip.h);
-    neko_vec3 rd = neko_camera_screen_to_world(camera, me, 0, 0, (s32)clip.w, (s32)clip.h);
-    rd = neko_vec3_norm(neko_vec3_sub(ro, rd));
-
-    neko_ray_t ray = neko_default_val();
-    ray.p = ro;
-    ray.d = rd;
-    ray.len = ray_len;
-
-    // Check for nan
-    if (neko_vec3_nan(ray.p)) ray.p = neko_v3s(0.f);
-    if (neko_vec3_nan(ray.d)) ray.d = neko_v3s(0.f);
-
-    neko_gizmo_desc_t desc = neko_default_val();
-    desc.op = op;
-    desc.mode = mode;
-    desc.camera = *camera;
-    desc.info.depth = FLT_MAX;
-    desc.viewport = clip;
-
-    desc.xform = neko_vqs_default();
-    desc.xform.translation = model->translation;
-    desc.xform.rotation = (mode == NEKO_UI_TRANSFORM_LOCAL || op == NEKO_UI_GIZMO_SCALE) ? model->rotation : neko_quat_default();  // This depends on the mode (local/world)
-
-    switch (camera->proj_type) {
-        case NEKO_PROJECTION_TYPE_ORTHOGRAPHIC: {
-            desc.xform.scale = neko_v3s(camera->ortho_scale * 0.2f);
-        } break;
-
-        case NEKO_PROJECTION_TYPE_PERSPECTIVE: {
-            float dist_from_cam = neko_vec3_dist(desc.xform.translation, camera->transform.translation);
-            desc.xform.scale = neko_v3s(dist_from_cam * 0.3f);
-        } break;
-    }
-
-#define UPDATE_GIZMO_CONTROL(ID, RAY, SHAPE, MODEL, FUNC, CAP_SHAPE, CAP_MODEL, CAP_FUNC, INFO)                                                \
-    do {                                                                                                                                       \
-        s32 mouseover = 0;                                                                                                                     \
-        neko_ui_id id = (ID);                                                                                                                  \
-        neko_contact_info_t info0 = neko_default_val();                                                                                        \
-        neko_contact_info_t info1 = neko_default_val();                                                                                        \
-        if (in_hover_root) {                                                                                                                   \
-            FUNC(&(SHAPE), &(MODEL), &(RAY), NULL, &info0);                                                                                    \
-            info0.depth = neko_vec3_dist(info0.point, (RAY).p);                                                                                \
-            CAP_FUNC(&(CAP_SHAPE), &(CAP_MODEL), &(RAY), NULL, &info1);                                                                        \
-            info1.depth = neko_vec3_dist(info1.point, (RAY).p);                                                                                \
-        }                                                                                                                                      \
-        neko_contact_info_t* info = info0.depth < info1.depth ? &info0 : &info1;                                                               \
-        mouseover = info->hit && info->depth <= INFO.depth && in_hover_root && !ctx->hover_split && !ctx->lock_hover_id;                       \
-        if (ctx->focus == id) {                                                                                                                \
-            ctx->updated_focus = 1;                                                                                                            \
-        }                                                                                                                                      \
-        if (~opt & NEKO_UI_OPT_NOINTERACT) {                                                                                                   \
-            /* Check for hold focus here */                                                                                                    \
-            if (mouseover && !ctx->mouse_down) {                                                                                               \
-                neko_ui_set_hover(ctx, id);                                                                                                    \
-                INFO = *info;                                                                                                                  \
-            }                                                                                                                                  \
-                                                                                                                                               \
-            if (ctx->focus == id) {                                                                                                            \
-                res |= NEKO_UI_RES_ACTIVE;                                                                                                     \
-                just_set_focus = false;                                                                                                        \
-                neko_ui_set_focus(ctx, id);                                                                                                    \
-                if (ctx->mouse_pressed && !mouseover) {                                                                                        \
-                    neko_ui_set_focus(ctx, 0);                                                                                                 \
-                }                                                                                                                              \
-                if (!ctx->mouse_down && ~opt & NEKO_UI_OPT_HOLDFOCUS) {                                                                        \
-                    neko_ui_set_focus(ctx, 0);                                                                                                 \
-                }                                                                                                                              \
-            }                                                                                                                                  \
-                                                                                                                                               \
-            if (ctx->prev_hover == id && !mouseover) {                                                                                         \
-                ctx->prev_hover = ctx->hover;                                                                                                  \
-            }                                                                                                                                  \
-                                                                                                                                               \
-            if (ctx->hover == id) {                                                                                                            \
-                if (ctx->mouse_pressed) {                                                                                                      \
-                    if ((opt & NEKO_UI_OPT_LEFTCLICKONLY && ctx->mouse_pressed == NEKO_UI_MOUSE_LEFT) || (~opt & NEKO_UI_OPT_LEFTCLICKONLY)) { \
-                        neko_ui_set_focus(ctx, id);                                                                                            \
-                        just_set_focus = true;                                                                                                 \
-                    }                                                                                                                          \
-                } else if (!mouseover) {                                                                                                       \
-                    neko_ui_set_hover(ctx, 0);                                                                                                 \
-                }                                                                                                                              \
-            }                                                                                                                                  \
-        }                                                                                                                                      \
-    } while (0)
-
-#ifndef NEKO_PHYSICS_NO_CCD
-
-    switch (op) {
-        case NEKO_UI_GIZMO_TRANSLATE: {
-            // Construct translate gizmo for this frame based on given parent transform
-            desc.gizmo.translate = neko_gizmo_translate(&desc.xform);
-
-            neko_ui_id id_r = neko_ui_get_id(ctx, "#gizmo_trans_right", strlen("#gizmo_trans_right"));
-            neko_ui_id id_u = neko_ui_get_id(ctx, "#gizmo_trans_up", strlen("#gizmo_trans_up"));
-            neko_ui_id id_f = neko_ui_get_id(ctx, "#gizmo_trans_forward", strlen("#gizmo_trans_forward"));
-
-            // Right
-            UPDATE_GIZMO_CONTROL(id_r, ray, desc.gizmo.translate.right.axis.shape.cylinder, desc.gizmo.translate.right.axis.model, neko_cylinder_vs_ray, desc.gizmo.translate.right.cap.shape.cone,
-                                 desc.gizmo.translate.right.cap.model, neko_cone_vs_ray, desc.info);
-
-            // Up
-            UPDATE_GIZMO_CONTROL(id_u, ray, desc.gizmo.translate.up.axis.shape.cylinder, desc.gizmo.translate.up.axis.model, neko_cylinder_vs_ray, desc.gizmo.translate.up.cap.shape.cone,
-                                 desc.gizmo.translate.up.cap.model, neko_cone_vs_ray, desc.info);
-
-            // Forward
-            UPDATE_GIZMO_CONTROL(id_f, ray, desc.gizmo.translate.forward.axis.shape.cylinder, desc.gizmo.translate.forward.axis.model, neko_cylinder_vs_ray,
-                                 desc.gizmo.translate.forward.cap.shape.cone, desc.gizmo.translate.forward.cap.model, neko_cone_vs_ray, desc.info);
-
-            // Control
-            if (ctx->focus == id_r) {
-                desc.li = neko_ui_gizmo_get_line_intersection(&desc.xform, NEKO_XAXIS, NEKO_YAXIS, NEKO_ZAXIS, camera, &ray, neko_v3s(0.f), true, false);
-
-                if (just_set_focus) {
-                    s_intersection_start = desc.li.point;
-                    memset(&s_delta, 0, sizeof(s_delta));
-                    s_delta.rotation = neko_quat(model->translation.x, model->translation.y, model->translation.z, 0.f);
-                }
-
-                if (desc.li.hit) {
-                    neko_vec3 axis = neko_vec3_norm(neko_quat_rotate(desc.xform.rotation, NEKO_XAXIS));
-                    neko_vec3 u = neko_vec3_sub(desc.li.point, s_intersection_start);
-                    float udotn = neko_vec3_dot(u, axis);
-                    s_delta.translation = neko_vec3_scale(axis, udotn);
-                    s_intersection_start = neko_vec3_add(s_intersection_start, s_delta.translation);
-                    if (neko_vec3_eq(axis, NEKO_XAXIS)) {
-                        s_delta.translation.y = 0.f;
-                        s_delta.translation.z = 0.f;
-                    }
-                    if (snap > 0.f) {
-                        s_delta.scale = neko_vec3_add(s_delta.scale, s_delta.translation);  // Store total delta since interaction began
-                        float snap_len = round(neko_vec3_len(s_delta.scale) / snap) * snap;
-                        neko_vec3 norm = neko_vec3_norm(s_delta.scale);
-                        neko_vec3 delta = neko_vec3_scale(neko_vec3_norm(s_delta.scale), snap_len);
-                        neko_vec3 op = neko_v3(s_delta.rotation.x, s_delta.rotation.y, s_delta.rotation.z);
-                        model->translation = neko_vec3_add(op, delta);
-                    } else {
-                        // Set final translation
-                        model->translation = neko_vec3_add(desc.xform.translation, s_delta.translation);
-                    }
-                }
-            } else if (ctx->focus == id_u) {
-                desc.li = neko_ui_gizmo_get_line_intersection(&desc.xform, NEKO_YAXIS, NEKO_XAXIS, NEKO_ZAXIS, camera, &ray, neko_v3s(0.f), true, false);
-
-                if (just_set_focus) {
-                    s_intersection_start = desc.li.point;
-                    memset(&s_delta, 0, sizeof(s_delta));
-                    s_delta.rotation = neko_quat(model->translation.x, model->translation.y, model->translation.z, 0.f);
-                }
-
-                if (desc.li.hit) {
-                    neko_vec3 axis = neko_vec3_norm(neko_quat_rotate(desc.xform.rotation, NEKO_YAXIS));
-                    neko_vec3 u = neko_vec3_sub(desc.li.point, s_intersection_start);
-                    float udotn = neko_vec3_dot(u, axis);
-                    s_delta.translation = neko_vec3_scale(axis, udotn);
-                    s_intersection_start = neko_vec3_add(s_intersection_start, s_delta.translation);
-                    if (neko_vec3_eq(axis, NEKO_YAXIS)) {
-                        s_delta.translation.x = 0.f;
-                        s_delta.translation.z = 0.f;
-                    }
-                    if (snap > 0.f) {
-                        s_delta.scale = neko_vec3_add(s_delta.scale, s_delta.translation);  // Store total delta since interaction began
-                        float snap_len = round(neko_vec3_len(s_delta.scale) / snap) * snap;
-                        neko_vec3 norm = neko_vec3_norm(s_delta.scale);
-                        neko_vec3 delta = neko_vec3_scale(neko_vec3_norm(s_delta.scale), snap_len);
-                        neko_vec3 op = neko_v3(s_delta.rotation.x, s_delta.rotation.y, s_delta.rotation.z);
-                        model->translation = neko_vec3_add(op, delta);
-                    } else {
-                        // Set final translation
-                        model->translation = neko_vec3_add(desc.xform.translation, s_delta.translation);
-                    }
-                }
-            } else if (ctx->focus == id_f) {
-                desc.li = neko_ui_gizmo_get_line_intersection(&desc.xform, NEKO_ZAXIS, NEKO_XAXIS, NEKO_YAXIS, camera, &ray, neko_v3s(0.f), true, false);
-
-                if (just_set_focus) {
-                    s_intersection_start = desc.li.point;
-                    memset(&s_delta, 0, sizeof(s_delta));
-                    s_delta.rotation = neko_quat(model->translation.x, model->translation.y, model->translation.z, 0.f);
-                }
-
-                if (desc.li.hit) {
-                    neko_vec3 axis = neko_vec3_norm(neko_quat_rotate(desc.xform.rotation, NEKO_ZAXIS));
-                    neko_vec3 u = neko_vec3_sub(desc.li.point, s_intersection_start);
-                    float udotn = neko_vec3_dot(u, axis);
-                    s_delta.translation = neko_vec3_scale(axis, udotn);
-                    s_intersection_start = neko_vec3_add(s_intersection_start, s_delta.translation);
-                    if (neko_vec3_eq(axis, NEKO_ZAXIS)) {
-                        s_delta.translation.x = 0.f;
-                        s_delta.translation.y = 0.f;
-                    }
-                    if (snap > 0.f) {
-                        s_delta.scale = neko_vec3_add(s_delta.scale, s_delta.translation);  // Store total delta since interaction began
-                        float snap_len = round(neko_vec3_len(s_delta.scale) / snap) * snap;
-                        neko_vec3 norm = neko_vec3_norm(s_delta.scale);
-                        neko_vec3 delta = neko_vec3_scale(neko_vec3_norm(s_delta.scale), snap_len);
-                        neko_vec3 op = neko_v3(s_delta.rotation.x, s_delta.rotation.y, s_delta.rotation.z);
-                        model->translation = neko_vec3_add(op, delta);
-                    } else {
-                        // Set final translation
-                        model->translation = neko_vec3_add(desc.xform.translation, s_delta.translation);
-                    }
-                }
-            }
-
-        } break;
-
-        case NEKO_UI_GIZMO_SCALE: {
-            // Construct translate gizmo for this frame based on given parent transform
-            desc.gizmo.scale = neko_gizmo_scale(&desc.xform);
-
-            neko_ui_id id_r = neko_ui_get_id(ctx, "#gizmo_scale_right", strlen("#gizmo_scale_right"));
-            neko_ui_id id_u = neko_ui_get_id(ctx, "#gizmo_scale_up", strlen("#gizmo_scale_up"));
-            neko_ui_id id_f = neko_ui_get_id(ctx, "#gizmo_scale_forward", strlen("#gizmo_scale_forward"));
-
-            // Right
-            UPDATE_GIZMO_CONTROL(id_r, ray, desc.gizmo.scale.right.axis.shape.cylinder, desc.gizmo.scale.right.axis.model, neko_cylinder_vs_ray, desc.gizmo.scale.right.cap.shape.aabb,
-                                 desc.gizmo.scale.right.cap.model, neko_aabb_vs_ray, desc.info);
-
-            // Up
-            UPDATE_GIZMO_CONTROL(id_u, ray, desc.gizmo.scale.up.axis.shape.cylinder, desc.gizmo.scale.up.axis.model, neko_cylinder_vs_ray, desc.gizmo.scale.up.cap.shape.aabb,
-                                 desc.gizmo.scale.up.cap.model, neko_aabb_vs_ray, desc.info);
-
-            // Forward
-            UPDATE_GIZMO_CONTROL(id_f, ray, desc.gizmo.scale.forward.axis.shape.cylinder, desc.gizmo.scale.forward.axis.model, neko_cylinder_vs_ray, desc.gizmo.scale.forward.cap.shape.aabb,
-                                 desc.gizmo.scale.forward.cap.model, neko_aabb_vs_ray, desc.info);
-
-            // Control
-            if (ctx->focus == id_r) {
-                desc.li = neko_ui_gizmo_get_line_intersection(&desc.xform, NEKO_XAXIS, NEKO_YAXIS, NEKO_ZAXIS, camera, &ray, neko_v3s(0.f), true, false);
-
-                if (desc.li.hit) {
-                    if (just_set_focus) {
-                        s_intersection_start = desc.li.point;
-                        memset(&s_delta, 0, sizeof(s_delta));
-                        s_delta.rotation = neko_quat(model->scale.x, model->scale.y, model->scale.z, 0.f);
-                    }
-
-                    neko_vec3 axis = neko_vec3_norm(neko_quat_rotate(desc.xform.rotation, NEKO_XAXIS));
-                    neko_vec3 u = neko_vec3_sub(desc.li.point, s_intersection_start);
-                    float udotn = neko_vec3_dot(u, axis);
-                    float neg = neko_vec3_dot(axis, NEKO_XAXIS) < 0.f ? 1.f : -1.f;
-                    s_delta.translation = neko_vec3_scale(axis, udotn);
-                    s_intersection_start = neko_vec3_add(s_intersection_start, s_delta.translation);
-                    s_delta.translation = neko_vec3_scale(s_delta.translation, neg);
-                    s_delta.translation.z = 0.f;
-                    s_delta.translation.y = 0.f;
-                    if (snap > 0.f) {
-                        s_delta.scale = neko_vec3_add(s_delta.scale, s_delta.translation);  // Store total delta since interaction began
-                        float snap_len = round(neko_vec3_len(s_delta.scale) / snap) * snap;
-                        neko_vec3 norm = neko_vec3_norm(s_delta.scale);
-                        neko_vec3 delta = neko_vec3_scale(neko_vec3_norm(s_delta.scale), snap_len);
-                        neko_vec3 os = neko_v3(s_delta.rotation.x, s_delta.rotation.y, s_delta.rotation.z);
-                        model->scale = neko_vec3_add(os, delta);
-                    } else {
-                        model->scale = neko_vec3_add(model->scale, s_delta.translation);
-                    }
-                }
-            } else if (ctx->focus == id_u) {
-                desc.li = neko_ui_gizmo_get_line_intersection(&desc.xform, NEKO_YAXIS, NEKO_XAXIS, NEKO_ZAXIS, camera, &ray, neko_v3s(0.f), true, false);
-
-                if (desc.li.hit) {
-                    if (just_set_focus) {
-                        s_intersection_start = desc.li.point;
-                        memset(&s_delta, 0, sizeof(s_delta));
-                        s_delta.rotation = neko_quat(model->scale.x, model->scale.y, model->scale.z, 0.f);
-                    }
-
-                    neko_vec3 axis = neko_vec3_norm(neko_quat_rotate(desc.xform.rotation, NEKO_YAXIS));
-                    neko_vec3 u = neko_vec3_sub(desc.li.point, s_intersection_start);
-                    float udotn = neko_vec3_dot(u, axis);
-                    s_delta.translation = neko_vec3_scale(axis, udotn);
-                    float neg = neko_vec3_dot(axis, NEKO_YAXIS) < 0.f ? -1.f : 1.f;
-                    s_intersection_start = neko_vec3_add(s_intersection_start, s_delta.translation);
-                    s_delta.translation = neko_vec3_scale(s_delta.translation, neg);
-                    s_delta.translation.z = 0.f;
-                    s_delta.translation.x = 0.f;
-                    if (snap > 0.f) {
-                        s_delta.scale = neko_vec3_add(s_delta.scale, s_delta.translation);  // Store total delta since interaction began
-                        float snap_len = round(neko_vec3_len(s_delta.scale) / snap) * snap;
-                        neko_vec3 norm = neko_vec3_norm(s_delta.scale);
-                        neko_vec3 delta = neko_vec3_scale(neko_vec3_norm(s_delta.scale), snap_len);
-                        neko_vec3 os = neko_v3(s_delta.rotation.x, s_delta.rotation.y, s_delta.rotation.z);
-                        model->scale = neko_vec3_add(os, delta);
-                    } else {
-                        model->scale = neko_vec3_add(model->scale, s_delta.translation);
-                    }
-                }
-            } else if (ctx->focus == id_f) {
-                desc.li = neko_ui_gizmo_get_line_intersection(&desc.xform, NEKO_ZAXIS, NEKO_XAXIS, NEKO_YAXIS, camera, &ray, neko_v3s(0.f), true, false);
-
-                if (desc.li.hit) {
-                    if (just_set_focus) {
-                        s_intersection_start = desc.li.point;
-                        memset(&s_delta, 0, sizeof(s_delta));
-                        s_delta.rotation = neko_quat(model->scale.x, model->scale.y, model->scale.z, 0.f);
-                    }
-
-                    neko_vec3 axis = neko_vec3_norm(neko_quat_rotate(desc.xform.rotation, NEKO_ZAXIS));
-                    neko_vec3 u = neko_vec3_sub(desc.li.point, s_intersection_start);
-                    float udotn = neko_vec3_dot(u, axis);
-                    float neg = neko_vec3_dot(axis, NEKO_ZAXIS) < 0.f ? -1.f : 1.f;
-                    s_delta.translation = neko_vec3_scale(axis, udotn);
-                    s_intersection_start = neko_vec3_add(s_intersection_start, s_delta.translation);
-                    s_delta.translation = neko_vec3_scale(s_delta.translation, neg);
-                    s_delta.translation.y = 0.f;
-                    s_delta.translation.x = 0.f;
-                    if (snap > 0.f) {
-                        s_delta.scale = neko_vec3_add(s_delta.scale, s_delta.translation);  // Store total delta since interaction began
-                        float snap_len = round(neko_vec3_len(s_delta.scale) / snap) * snap;
-                        neko_vec3 norm = neko_vec3_norm(s_delta.scale);
-                        neko_vec3 delta = neko_vec3_scale(neko_vec3_norm(s_delta.scale), snap_len);
-                        neko_vec3 os = neko_v3(s_delta.rotation.x, s_delta.rotation.y, s_delta.rotation.z);
-                        model->scale = neko_vec3_add(os, delta);
-                    } else {
-                        model->scale = neko_vec3_add(model->scale, s_delta.translation);
-                    }
-                }
-            }
-
-        } break;
-
-#define UPDATE_GIZMO_CONTROL_ROTATE(ID, RAY, SHAPE, MODEL, AXIS, INFO)                                                                         \
-    do {                                                                                                                                       \
-        s32 mouseover = 0;                                                                                                                     \
-        neko_ui_id id = (ID);                                                                                                                  \
-        neko_contact_info_t info = neko_default_val();                                                                                         \
-        neko_vec3 axis = neko_quat_rotate(desc.xform.rotation, AXIS);                                                                          \
-        info.normal = axis;                                                                                                                    \
-        if (in_hover_root) {                                                                                                                   \
-            neko_plane_t ip = neko_plane_from_pt_normal(desc.xform.translation, axis);                                                         \
-            float denom = neko_vec3_dot(neko_v3(ip.a, ip.b, ip.c), ray.d);                                                                     \
-            denom = fabsf(denom) >= neko_epsilon ? denom : 0.00001f;                                                                           \
-            info.depth = -(ip.a * ray.p.x + ip.b * ray.p.y + ip.c * ray.p.z + ip.d) / denom;                                                   \
-            neko_ui_gizmo_line_intersection_result_t res = neko_default_val();                                                                 \
-            res.point = neko_vec3_add(ray.p, neko_vec3_scale(ray.d, info.depth));                                                              \
-            float dist = neko_vec3_dist(res.point, model->translation);                                                                        \
-            float scl = neko_vec3_len(desc.xform.scale);                                                                                       \
-            if (dist <= 0.6f * scl && dist >= 0.45f * scl) {                                                                                   \
-                info.hit = true;                                                                                                               \
-            }                                                                                                                                  \
-        }                                                                                                                                      \
-        mouseover = info.hit && info.depth <= INFO.depth && in_hover_root && !ctx->hover_split && !ctx->lock_hover_id;                         \
-        if (ctx->focus == id) {                                                                                                                \
-            ctx->updated_focus = 1;                                                                                                            \
-            INFO = info;                                                                                                                       \
-        }                                                                                                                                      \
-        if (~opt & NEKO_UI_OPT_NOINTERACT) {                                                                                                   \
-            /* Check for hold focus here */                                                                                                    \
-            if (mouseover && !ctx->mouse_down) {                                                                                               \
-                neko_ui_set_hover(ctx, id);                                                                                                    \
-                INFO = info;                                                                                                                   \
-            }                                                                                                                                  \
-                                                                                                                                               \
-            if (ctx->focus == id) {                                                                                                            \
-                res |= NEKO_UI_RES_ACTIVE;                                                                                                     \
-                just_set_focus = false;                                                                                                        \
-                neko_ui_set_focus(ctx, id);                                                                                                    \
-                if (ctx->mouse_pressed && !mouseover) {                                                                                        \
-                    neko_ui_set_focus(ctx, 0);                                                                                                 \
-                }                                                                                                                              \
-                if (!ctx->mouse_down && ~opt & NEKO_UI_OPT_HOLDFOCUS) {                                                                        \
-                    neko_ui_set_focus(ctx, 0);                                                                                                 \
-                }                                                                                                                              \
-            }                                                                                                                                  \
-                                                                                                                                               \
-            if (ctx->prev_hover == id && !mouseover) {                                                                                         \
-                ctx->prev_hover = ctx->hover;                                                                                                  \
-            }                                                                                                                                  \
-                                                                                                                                               \
-            if (ctx->hover == id) {                                                                                                            \
-                if (ctx->mouse_pressed) {                                                                                                      \
-                    if ((opt & NEKO_UI_OPT_LEFTCLICKONLY && ctx->mouse_pressed == NEKO_UI_MOUSE_LEFT) || (~opt & NEKO_UI_OPT_LEFTCLICKONLY)) { \
-                        neko_ui_set_focus(ctx, id);                                                                                            \
-                        just_set_focus = true;                                                                                                 \
-                    }                                                                                                                          \
-                } else if (!mouseover) {                                                                                                       \
-                    neko_ui_set_hover(ctx, 0);                                                                                                 \
-                }                                                                                                                              \
-            }                                                                                                                                  \
-        }                                                                                                                                      \
-    } while (0)
-
-        case NEKO_UI_GIZMO_ROTATE: {
-            // Construct translate gizmo for this frame based on given parent transform
-            desc.gizmo.rotate = neko_gizmo_rotate(&desc.xform);
-
-            neko_ui_id id_r = neko_ui_get_id(ctx, "#gizmo_rotate_right", strlen("#gizmo_rotate_right"));
-            neko_ui_id id_u = neko_ui_get_id(ctx, "#gizmo_rotate_up", strlen("#gizmo_rotate_up"));
-            neko_ui_id id_f = neko_ui_get_id(ctx, "#gizmo_rotate_forward", strlen("#gizmo_rotate_forward"));
-
-            // Right
-            UPDATE_GIZMO_CONTROL_ROTATE(id_r, ray, desc.gizmo.rotate.right.axis.shape.plane, desc.gizmo.rotate.right.axis.model, NEKO_XAXIS, desc.info);
-
-            // Up
-            UPDATE_GIZMO_CONTROL_ROTATE(id_u, ray, desc.gizmo.rotate.up.axis.shape.plane, desc.gizmo.rotate.up.axis.model, NEKO_YAXIS, desc.info);
-
-            // Forward
-            UPDATE_GIZMO_CONTROL_ROTATE(id_f, ray, desc.gizmo.rotate.forward.axis.shape.plane, desc.gizmo.rotate.forward.axis.model, NEKO_ZAXIS, desc.info);
-
-            if (ctx->focus == id_r) {
-                desc.li = op == NEKO_UI_TRANSFORM_LOCAL ? neko_ui_gizmo_get_line_intersection(&desc.xform, NEKO_XAXIS, NEKO_YAXIS, NEKO_ZAXIS, camera, &ray, neko_v3s(0.f), false, false)
-                                                        : neko_ui_gizmo_get_line_intersection(&desc.xform, NEKO_XAXIS, NEKO_YAXIS, NEKO_ZAXIS, camera, &ray, neko_v3s(0.f), false, true);
-
-                if (desc.li.hit) {
-                    if (just_set_focus) {
-                        s_intersection_start = desc.li.point;
-                        memset(&s_delta, 0, sizeof(s_delta));
-                        s_delta.translation = neko_v3(model->rotation.x, model->rotation.y, model->rotation.z);
-                        s_delta.scale.y = model->rotation.w;
-                    }
-
-                    float dist_from_cam = neko_vec3_dist(desc.xform.translation, camera->transform.translation);
-                    const float denom = dist_from_cam != 0.f ? dist_from_cam : 2.f;
-                    const neko_vec3 end_vector = neko_vec3_sub(desc.li.point, desc.xform.translation);
-                    const neko_vec3 start_norm = neko_vec3_norm(neko_vec3_sub(s_intersection_start, desc.xform.translation));
-                    const neko_vec3 end_norm = neko_vec3_norm(end_vector);
-                    const neko_vec3 rot_local = neko_quat_rotate(desc.xform.rotation, NEKO_XAXIS);
-
-                    float len = neko_vec3_len(end_vector) / denom;
-                    float angle = neko_vec3_angle_between_signed(start_norm, end_norm);
-
-                    if (len > 1.f) {
-                        angle *= len;
-                    }
-
-                    neko_vec3 cross = neko_vec3_cross(start_norm, end_norm);
-                    if (neko_vec3_dot(rot_local, cross) < 0.f) {
-                        angle *= -1.f;
-                    }
-
-                    s_intersection_start = desc.li.point;
-                    float delta = neko_rad2deg(angle);
-                    s_delta.scale.x += delta;
-                    s_delta.rotation = neko_quat_angle_axis(neko_deg2rad(delta), NEKO_XAXIS);
-
-                    if (snap > 0.f) {
-                        float snap_delta = round(s_delta.scale.x / snap) * snap;
-                        s_delta.rotation = neko_quat_angle_axis(neko_deg2rad(snap_delta), NEKO_XAXIS);
-                        neko_quat orot = neko_quat(s_delta.translation.x, s_delta.translation.y, s_delta.translation.z, s_delta.scale.y);
-                        switch (mode) {
-                            case NEKO_UI_TRANSFORM_WORLD:
-                                model->rotation = neko_quat_mul(s_delta.rotation, orot);
-                                break;
-                            case NEKO_UI_TRANSFORM_LOCAL:
-                                model->rotation = neko_quat_mul(orot, s_delta.rotation);
-                                break;
-                        }
-                    } else {
-                        switch (mode) {
-                            case NEKO_UI_TRANSFORM_WORLD:
-                                model->rotation = neko_quat_mul(s_delta.rotation, model->rotation);
-                                break;
-                            case NEKO_UI_TRANSFORM_LOCAL:
-                                model->rotation = neko_quat_mul(model->rotation, s_delta.rotation);
-                                break;
-                        }
-                    }
-                }
-            } else if (ctx->focus == id_u) {
-                desc.li = op == NEKO_UI_TRANSFORM_LOCAL ? neko_ui_gizmo_get_line_intersection(&desc.xform, NEKO_YAXIS, NEKO_XAXIS, NEKO_ZAXIS, camera, &ray, neko_v3s(0.f), false, false)
-                                                        : neko_ui_gizmo_get_line_intersection(&desc.xform, NEKO_YAXIS, NEKO_XAXIS, NEKO_ZAXIS, camera, &ray, neko_v3s(0.f), false, true);
-
-                if (desc.li.hit) {
-                    if (just_set_focus) {
-                        s_intersection_start = desc.li.point;
-                        memset(&s_delta, 0, sizeof(s_delta));
-                        s_delta.translation = neko_v3(model->rotation.x, model->rotation.y, model->rotation.z);
-                        s_delta.scale.y = model->rotation.w;
-                    }
-
-                    float dist_from_cam = neko_vec3_dist(desc.xform.translation, camera->transform.translation);
-                    const float denom = dist_from_cam != 0.f ? dist_from_cam : 2.f;
-                    const neko_vec3 end_vector = neko_vec3_sub(desc.li.point, desc.xform.translation);
-                    const neko_vec3 start_norm = neko_vec3_norm(neko_vec3_sub(s_intersection_start, desc.xform.translation));
-                    const neko_vec3 end_norm = neko_vec3_norm(end_vector);
-                    const neko_vec3 rot_local = neko_quat_rotate(desc.xform.rotation, NEKO_YAXIS);
-
-                    float len = neko_vec3_len(end_vector) / denom;
-                    float angle = neko_vec3_angle_between_signed(start_norm, end_norm);
-
-                    if (len > 1.f) {
-                        angle *= len;
-                    }
-
-                    neko_vec3 cross = neko_vec3_cross(start_norm, end_norm);
-                    if (neko_vec3_dot(rot_local, cross) < 0.f) {
-                        angle *= -1.f;
-                    }
-
-                    s_intersection_start = desc.li.point;
-                    float delta = neko_rad2deg(angle);
-                    s_delta.scale.x += delta;
-                    s_delta.rotation = neko_quat_angle_axis(neko_deg2rad(delta), NEKO_YAXIS);
-
-                    if (snap > 0.f) {
-                        float snap_delta = round(s_delta.scale.x / snap) * snap;
-                        s_delta.rotation = neko_quat_angle_axis(neko_deg2rad(snap_delta), NEKO_YAXIS);
-                        neko_quat orot = neko_quat(s_delta.translation.x, s_delta.translation.y, s_delta.translation.z, s_delta.scale.y);
-                        switch (mode) {
-                            case NEKO_UI_TRANSFORM_WORLD:
-                                model->rotation = neko_quat_mul(s_delta.rotation, orot);
-                                break;
-                            case NEKO_UI_TRANSFORM_LOCAL:
-                                model->rotation = neko_quat_mul(orot, s_delta.rotation);
-                                break;
-                        }
-                    } else {
-                        switch (mode) {
-                            case NEKO_UI_TRANSFORM_WORLD:
-                                model->rotation = neko_quat_mul(s_delta.rotation, model->rotation);
-                                break;
-                            case NEKO_UI_TRANSFORM_LOCAL:
-                                model->rotation = neko_quat_mul(model->rotation, s_delta.rotation);
-                                break;
-                        }
-                    }
-                }
-            } else if (ctx->focus == id_f) {
-                desc.li = op == NEKO_UI_TRANSFORM_LOCAL ? neko_ui_gizmo_get_line_intersection(&desc.xform, NEKO_ZAXIS, NEKO_XAXIS, NEKO_YAXIS, camera, &ray, neko_v3s(0.f), false, false)
-                                                        : neko_ui_gizmo_get_line_intersection(&desc.xform, NEKO_ZAXIS, NEKO_XAXIS, NEKO_YAXIS, camera, &ray, neko_v3s(0.f), false, true);
-
-                if (desc.li.hit) {
-                    if (just_set_focus) {
-                        s_intersection_start = desc.li.point;
-                        memset(&s_delta, 0, sizeof(s_delta));
-                        s_delta.translation = neko_v3(model->rotation.x, model->rotation.y, model->rotation.z);
-                        s_delta.scale.y = model->rotation.w;
-                    }
-
-                    float dist_from_cam = neko_vec3_dist(desc.xform.translation, camera->transform.translation);
-                    const float denom = dist_from_cam != 0.f ? dist_from_cam : 2.f;
-                    const neko_vec3 end_vector = neko_vec3_sub(desc.li.point, desc.xform.translation);
-                    const neko_vec3 start_norm = neko_vec3_norm(neko_vec3_sub(s_intersection_start, desc.xform.translation));
-                    const neko_vec3 end_norm = neko_vec3_norm(end_vector);
-                    const neko_vec3 rot_local = neko_quat_rotate(desc.xform.rotation, NEKO_ZAXIS);
-
-                    float len = neko_vec3_len(end_vector) / denom;
-                    float angle = neko_vec3_angle_between_signed(start_norm, end_norm);
-
-                    if (len > 1.f) {
-                        angle *= len;
-                    }
-
-                    neko_vec3 cross = neko_vec3_cross(start_norm, end_norm);
-                    if (neko_vec3_dot(rot_local, cross) < 0.f) {
-                        angle *= -1.f;
-                    }
-
-                    s_intersection_start = desc.li.point;
-                    float delta = neko_rad2deg(angle);
-                    s_delta.scale.x += delta;
-                    s_delta.rotation = neko_quat_angle_axis(neko_deg2rad(delta), NEKO_ZAXIS);
-
-                    if (snap > 0.f) {
-                        float snap_delta = round(s_delta.scale.x / snap) * snap;
-                        s_delta.rotation = neko_quat_angle_axis(neko_deg2rad(snap_delta), NEKO_ZAXIS);
-                        neko_quat orot = neko_quat(s_delta.translation.x, s_delta.translation.y, s_delta.translation.z, s_delta.scale.y);
-                        switch (mode) {
-                            case NEKO_UI_TRANSFORM_WORLD:
-                                model->rotation = neko_quat_mul(s_delta.rotation, orot);
-                                break;
-                            case NEKO_UI_TRANSFORM_LOCAL:
-                                model->rotation = neko_quat_mul(orot, s_delta.rotation);
-                                break;
-                        }
-                    } else {
-                        switch (mode) {
-                            case NEKO_UI_TRANSFORM_WORLD:
-                                model->rotation = neko_quat_mul(s_delta.rotation, model->rotation);
-                                break;
-                            case NEKO_UI_TRANSFORM_LOCAL:
-                                model->rotation = neko_quat_mul(model->rotation, s_delta.rotation);
-                                break;
-                        }
-                    }
-                }
-            }
-
-        } break;
-    }
-
-#endif
-
-    // Have to render the gizmo using view/projection (so a custom render command)
-    neko_ui_draw_custom(ctx, clip, neko_ui_gizmo_render, &desc, sizeof(desc));
-
     return res;
 }
 
@@ -7690,7 +6703,7 @@ bool __neko_ui_style_sheet_parse_attribute_transition(neko_ui_context_t* ctx, ne
 
     if (id_tag) {
         if (!neko_hash_table_exists(ss->cid_animations, id_tag)) {
-            neko_ui_animation_property_list_t sl = neko_default_val();
+            neko_ui_animation_property_list_t sl = NEKO_DEFAULT_VAL();
             neko_hash_table_insert(ss->cid_animations, id_tag, sl);
         }
     }
@@ -7758,7 +6771,7 @@ bool __neko_ui_style_sheet_parse_attribute_transition(neko_ui_context_t* ctx, ne
                 }                                                                                                                \
             } break;                                                                                                             \
         }                                                                                                                        \
-        neko_ui_animation_property_t prop = neko_default_val();                                                                  \
+        neko_ui_animation_property_t prop = NEKO_DEFAULT_VAL();                                                                  \
         prop.type = T;                                                                                                           \
         prop.time = (s16)time_v;                                                                                                 \
         prop.delay = (s16)delay_v;                                                                                               \
@@ -7782,7 +6795,7 @@ bool __neko_ui_style_sheet_parse_attribute_transition(neko_ui_context_t* ctx, ne
     _NEKO_UI_SS_GET_TO_VALUES(NEKO_TOKEN_COLON, NEKO_TOKEN_LBRACE);
 
     if (!neko_hash_table_exists(ss->animations, (neko_ui_element_type)elementid)) {
-        neko_ui_animation_property_list_t list = neko_default_val();
+        neko_ui_animation_property_list_t list = NEKO_DEFAULT_VAL();
         neko_hash_table_insert(ss->animations, (neko_ui_element_type)elementid, list);
     }
     neko_ui_animation_property_list_t* list = id_tag ? neko_hash_table_getp(ss->cid_animations, id_tag) : neko_hash_table_getp(ss->animations, (neko_ui_element_type)elementid);
@@ -7860,7 +6873,7 @@ bool __neko_ui_style_sheet_parse_attribute_font(neko_ui_context_t* ctx, neko_lex
     if (id_tag) {
         const u64 idhash = id_tag;
         if (!neko_hash_table_exists(ss->cid_styles, idhash)) {
-            neko_ui_style_list_t sl = neko_default_val();
+            neko_ui_style_list_t sl = NEKO_DEFAULT_VAL();
             neko_hash_table_insert(ss->cid_styles, idhash, sl);
         }
         idsl = neko_hash_table_getp(ss->cid_styles, idhash);
@@ -7893,10 +6906,10 @@ bool __neko_ui_style_sheet_parse_attribute_font(neko_ui_context_t* ctx, neko_lex
             neko_log_warning("Missing either string value or variable.");
             return false;
         }
-        neko_ui_style_element_t se = neko_default_val();
+        neko_ui_style_element_t se = NEKO_DEFAULT_VAL();
         se.type = NEKO_UI_STYLE_FONT;
         token = neko_lexer_current_token(lex);
-        char FONT[64] = neko_default_val();
+        char FONT[64] = NEKO_DEFAULT_VAL();
         switch (token.type) {
             case NEKO_TOKEN_STRING: {
                 neko_snprintf(FONT, sizeof(FONT), "%.*s", token.len - 2, token.text + 1);
@@ -7957,7 +6970,7 @@ bool __neko_ui_style_sheet_parse_attribute_enum(neko_ui_context_t* ctx, neko_lex
     if (id_tag) {
         const u64 idhash = id_tag;
         if (!neko_hash_table_exists(ss->cid_styles, idhash)) {
-            neko_ui_style_list_t sl = neko_default_val();
+            neko_ui_style_list_t sl = NEKO_DEFAULT_VAL();
             neko_hash_table_insert(ss->cid_styles, idhash, sl);
         }
         idsl = neko_hash_table_getp(ss->cid_styles, idhash);
@@ -7988,7 +7001,7 @@ bool __neko_ui_style_sheet_parse_attribute_enum(neko_ui_context_t* ctx, neko_lex
     } while (0)
 
     if (neko_token_compare_text(&token, "justify_content")) {
-        neko_ui_style_element_t se = neko_default_val();
+        neko_ui_style_element_t se = NEKO_DEFAULT_VAL();
         se.type = NEKO_UI_STYLE_JUSTIFY_CONTENT;
         bool ret = neko_lexer_require_token_type(lex, NEKO_TOKEN_COLON);
         ret &= (neko_lexer_require_token_type(lex, NEKO_TOKEN_IDENTIFIER) || neko_lexer_require_token_type(lex, NEKO_TOKEN_DOLLAR));
@@ -8031,7 +7044,7 @@ bool __neko_ui_style_sheet_parse_attribute_enum(neko_ui_context_t* ctx, neko_lex
             } break;
         }
     } else if (neko_token_compare_text(&token, "align_content")) {
-        neko_ui_style_element_t se = neko_default_val();
+        neko_ui_style_element_t se = NEKO_DEFAULT_VAL();
         se.type = NEKO_UI_STYLE_ALIGN_CONTENT;
         bool ret = neko_lexer_require_token_type(lex, NEKO_TOKEN_COLON);
         ret &= (neko_lexer_require_token_type(lex, NEKO_TOKEN_IDENTIFIER) || neko_lexer_require_token_type(lex, NEKO_TOKEN_DOLLAR));
@@ -8087,7 +7100,7 @@ bool __neko_ui_style_sheet_parse_attribute_val(neko_ui_context_t* ctx, neko_lexe
     if (id_tag) {
         const u64 idhash = id_tag;
         if (!neko_hash_table_exists(ss->cid_styles, idhash)) {
-            neko_ui_style_list_t sl = neko_default_val();
+            neko_ui_style_list_t sl = NEKO_DEFAULT_VAL();
             neko_hash_table_insert(ss->cid_styles, idhash, sl);
         }
         idsl = neko_hash_table_getp(ss->cid_styles, idhash);
@@ -8095,7 +7108,7 @@ bool __neko_ui_style_sheet_parse_attribute_val(neko_ui_context_t* ctx, neko_lexe
 
 #define SET_VAL4(COMP, T, SE)                                                                                                                             \
     do {                                                                                                                                                  \
-        neko_ui_style_element_t se = neko_default_val();                                                                                                  \
+        neko_ui_style_element_t se = NEKO_DEFAULT_VAL();                                                                                                  \
         se.type = SE;                                                                                                                                     \
         bool ret = neko_lexer_require_token_type(lex, NEKO_TOKEN_COLON);                                                                                  \
         ret &= (neko_lexer_require_token_type(lex, NEKO_TOKEN_DOLLAR) || neko_lexer_require_token_type(lex, NEKO_TOKEN_NUMBER));                          \
@@ -8187,8 +7200,8 @@ bool __neko_ui_style_sheet_parse_attribute_val(neko_ui_context_t* ctx, neko_lexe
 
 #define SET_VAL2(COMP0, COMP1, T, SE0, SE1)                                                                                                               \
     do {                                                                                                                                                  \
-        neko_ui_style_element_t se0 = neko_default_val();                                                                                                 \
-        neko_ui_style_element_t se1 = neko_default_val();                                                                                                 \
+        neko_ui_style_element_t se0 = NEKO_DEFAULT_VAL();                                                                                                 \
+        neko_ui_style_element_t se1 = NEKO_DEFAULT_VAL();                                                                                                 \
         se0.type = SE0;                                                                                                                                   \
         se1.type = SE1;                                                                                                                                   \
         bool ret = neko_lexer_require_token_type(lex, NEKO_TOKEN_COLON);                                                                                  \
@@ -8271,7 +7284,7 @@ bool __neko_ui_style_sheet_parse_attribute_val(neko_ui_context_t* ctx, neko_lexe
             neko_log_warning("Unidentified token: %.*s", token.len, token.text);                                                                          \
             return false;                                                                                                                                 \
         }                                                                                                                                                 \
-        neko_ui_style_element_t se = neko_default_val();                                                                                                  \
+        neko_ui_style_element_t se = NEKO_DEFAULT_VAL();                                                                                                  \
         se.type = SE;                                                                                                                                     \
         T val = 0;                                                                                                                                        \
         switch (token.type) {                                                                                                                             \
@@ -8376,7 +7389,7 @@ bool __neko_ui_style_sheet_parse_attribute_color(neko_ui_context_t* ctx, neko_le
     if (id_tag) {
         const u64 idhash = id_tag;
         if (!neko_hash_table_exists(ss->cid_styles, idhash)) {
-            neko_ui_style_list_t sl = neko_default_val();
+            neko_ui_style_list_t sl = NEKO_DEFAULT_VAL();
             neko_hash_table_insert(ss->cid_styles, idhash, sl);
         }
         idsl = neko_hash_table_getp(ss->cid_styles, idhash);
@@ -8417,7 +7430,7 @@ bool __neko_ui_style_sheet_parse_attribute_color(neko_ui_context_t* ctx, neko_le
         return false;
     }
 
-    neko_ui_style_element_t se = neko_default_val();
+    neko_ui_style_element_t se = NEKO_DEFAULT_VAL();
     se.type = type;
 
     token = neko_lexer_next_token(lex);
@@ -8697,7 +7710,7 @@ bool __neko_ui_style_sheet_parse_cid_tag(neko_ui_context_t* ctx, neko_lexer_t* l
 
 NEKO_API_DECL neko_ui_style_sheet_t neko_ui_style_sheet_load_from_file(neko_ui_context_t* ctx, const char* file_path) {
     // Generate new style sheet based on default element styles
-    neko_ui_style_sheet_t ss = neko_default_val();
+    neko_ui_style_sheet_t ss = NEKO_DEFAULT_VAL();
     bool success = true;
 
     size_t sz = 0;
@@ -8730,7 +7743,7 @@ static bool __neko_ui_style_sheet_parse_variable(neko_ui_context_t* ctx, neko_le
     }
 
     // Copy name of variable
-    memcpy(name_buf, token.text, neko_min(token.len, sz));
+    memcpy(name_buf, token.text, NEKO_MIN(token.len, sz));
 
     // Expect colon
     token = neko_lexer_next_token(lex);
@@ -8825,10 +7838,10 @@ static bool __neko_ui_style_sheet_parse_variable(neko_ui_context_t* ctx, neko_le
 // Going to require a lot of parsing
 NEKO_API_DECL neko_ui_style_sheet_t neko_ui_style_sheet_load_from_memory(neko_ui_context_t* ctx, const char* fd, size_t sz, bool* sp) {
     // Generate new style sheet based on default element styles
-    neko_ui_style_sheet_t ss = neko_default_val();
+    neko_ui_style_sheet_t ss = NEKO_DEFAULT_VAL();
     bool success = true;
 
-    neko_ui_ss_variables_t variables = neko_default_val();
+    neko_ui_ss_variables_t variables = NEKO_DEFAULT_VAL();
 
     // Copy all default styles
     NEKO_UI_COPY_STYLES(ss.styles, neko_ui_default_style_sheet.styles, NEKO_UI_ELEMENT_CONTAINER);
@@ -8882,7 +7895,7 @@ NEKO_API_DECL neko_ui_style_sheet_t neko_ui_style_sheet_load_from_memory(neko_ui
             case NEKO_TOKEN_PERIOD: {
                 // Do single class for now
                 neko_token_t cls_tag = neko_lexer_next_token(&lex);
-                char CLS_TAG[256] = neko_default_val();
+                char CLS_TAG[256] = NEKO_DEFAULT_VAL();
                 CLS_TAG[0] = '.';
                 memcpy(CLS_TAG + 1, cls_tag.text, cls_tag.len);
                 u64 cls_hash = neko_hash_str64(CLS_TAG);
@@ -8896,7 +7909,7 @@ NEKO_API_DECL neko_ui_style_sheet_t neko_ui_style_sheet_load_from_memory(neko_ui
 
             case NEKO_TOKEN_HASH: {
                 neko_token_t id_tag = neko_lexer_next_token(&lex);
-                char ID_TAG[256] = neko_default_val();
+                char ID_TAG[256] = NEKO_DEFAULT_VAL();
                 ID_TAG[0] = '#';
                 memcpy(ID_TAG + 1, id_tag.text, id_tag.len);
                 u64 id_hash = neko_hash_str64(ID_TAG);
@@ -8929,8 +7942,8 @@ NEKO_API_DECL neko_ui_style_sheet_t neko_ui_style_sheet_load_from_memory(neko_ui
             } break;
 
             case NEKO_TOKEN_DOLLAR: {
-                neko_ui_ss_var_def_t variable = neko_default_val();
-                char variable_name[256] = neko_default_val();
+                neko_ui_ss_var_def_t variable = NEKO_DEFAULT_VAL();
+                char variable_name[256] = NEKO_DEFAULT_VAL();
                 if (!__neko_ui_style_sheet_parse_variable(ctx, &lex, &ss, variable_name, sizeof(variable_name), &variable)) {
                     neko_log_warning("Failed to parse variable: %s", variable_name);
                     success = false;

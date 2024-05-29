@@ -117,8 +117,8 @@ template <typename T, typename... Args>
 struct ConstructorWrapper<T(Args...)> {
     static constexpr auto run() {
         return static_cast<void (*)(T*, Args...)>([](T* ptr, Args... args) {
-#ifdef neko_assert
-            neko_assert(ptr != nullptr);
+#ifdef NEKO_ASSERT
+            NEKO_ASSERT(ptr != nullptr);
 #endif
             /*return*/ new (ptr) T{std::forward<Args>(args)...};
         });
@@ -138,7 +138,7 @@ constexpr auto WrapConstructor() {
 template <typename T>
 constexpr auto WrapDestructor() {
     return static_cast<void (*)(T*)>([](T* ptr) {
-        neko_assert(ptr != nullptr);
+        NEKO_ASSERT(ptr != nullptr);
         ptr->~T();
     });
 }

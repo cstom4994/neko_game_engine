@@ -157,18 +157,18 @@ typedef uintptr_t uptr;
 #define f32_max FLT_MAX
 #define f32_min FLT_MIN
 
-#define neko_arr_size(__ARR) sizeof(__ARR) / sizeof(__ARR[0])
+#define NEKO_ARR_SIZE(__ARR) sizeof(__ARR) / sizeof(__ARR[0])
 
 #ifdef NEKO_DEBUG
-#define neko_assert(x, ...)                                                                                            \
+#define NEKO_ASSERT(x, ...)                                                                                            \
     do {                                                                                                               \
         if (!(x)) {                                                                                                    \
             neko_printf("assertion failed: (%s), function %s, file %s, line %d.\n", #x, __func__, __FILE__, __LINE__); \
-            neko_debugbreak();                                                                                         \
+            NEKO_DEBUGBREAK();                                                                                         \
         }                                                                                                              \
     } while (0)
 #else
-#define neko_assert(x, ...)                                                                                            \
+#define NEKO_ASSERT(x, ...)                                                                                            \
     do {                                                                                                               \
         if (!(x)) {                                                                                                    \
             neko_printf("assertion failed: (%s), function %s, file %s, line %d.\n", #x, __func__, __FILE__, __LINE__); \
@@ -177,78 +177,64 @@ typedef uintptr_t uptr;
 #endif
 
 #if defined(NEKO_CPP_SRC)
-#define neko_default_val() \
+#define NEKO_DEFAULT_VAL() \
     {}
 #else
-#define neko_default_val() \
+#define NEKO_DEFAULT_VAL() \
     { 0 }
 #endif
 
-// Helper macro for an in place for-range loop
-#define neko_for_range_i(__COUNT) for (u32 i = 0; i < __COUNT; ++i)
+#define NEKO_FOR_RANGE_N(__COUNT, N) for (u32 N = 0; N < __COUNT; ++N)
 
-// Helper macro for an in place for-range loop
-#define neko_for_range_j(__COUNT) for (u32 j = 0; j < __COUNT; ++j)
+#define NEKO_FOR_RANGE(__COUNT) for (u32 NEKO_TOKEN_PASTE(__T, __LINE__) = 0; NEKO_TOKEN_PASTE(__T, __LINE__) < __COUNT; ++(NEKO_TOKEN_PASTE(__T, __LINE__)))
 
-#define neko_for_range(__COUNT) for (u32 neko_macro_token_paste(__T, __LINE__) = 0; neko_macro_token_paste(__T, __LINE__) < __COUNT; ++(neko_macro_token_paste(__T, __LINE__)))
-
-#define neko_str_ncpy(des, src)         \
+#define NEKO_STR_CPY(des, src)          \
     strncpy(des, src, sizeof(des) - 1); \
     des[sizeof(des) - 1] = '\0'
 
-#define neko_max(A, B) ((A) > (B) ? (A) : (B))
+#define NEKO_MAX(A, B) ((A) > (B) ? (A) : (B))
 
-#define neko_min(A, B) ((A) < (B) ? (A) : (B))
+#define NEKO_MIN(A, B) ((A) < (B) ? (A) : (B))
 
-#define neko_clamp(V, MIN, MAX) ((V) > (MAX) ? (MAX) : (V) < (MIN) ? (MIN) : (V))
+#define NEKO_CLAMP(V, MIN, MAX) ((V) > (MAX) ? (MAX) : (V) < (MIN) ? (MIN) : (V))
 
-#define neko_is_nan(V) ((V) != (V))
+#define NEKO_IS_NAN(V) ((V) != (V))
 
-#define neko_bool_str(V) (V ? "true" : "false")
-
-// Helpful macro for casting one type to another
-#define neko_cast(A, B) ((A*)(B))
-
-#define neko_r_cast reinterpret_cast
-#define neko_s_cast static_cast
-#define neko_c_cast const_cast
+#define NEKO_BOOL_STR(V) (V ? "true" : "false")
 
 #ifdef __cplusplus
-#define neko_ctor(TYPE, ...) (TYPE{__VA_ARGS__})
+#define NEKO_CTOR(TYPE, ...) (TYPE{__VA_ARGS__})
 #else
-#define neko_ctor(TYPE, ...) ((TYPE){__VA_ARGS__})
+#define NEKO_CTOR(TYPE, ...) ((TYPE){__VA_ARGS__})
 #endif
 
 // Helpful marco for calculating offset (in bytes) of an element from a given structure type
-#define neko_offset(TYPE, ELEMENT) ((size_t)(&(((TYPE*)(0))->ELEMENT)))
+#define NEKO_OFFSET(TYPE, ELEMENT) ((size_t)(&(((TYPE*)(0))->ELEMENT)))
 
 // macro for turning any given type into a const char* of itself
-#define neko_to_str(TYPE) ((const char*)#TYPE)
+#define NEKO_TO_STR(TYPE) ((const char*)#TYPE)
 
-#define neko_macro_token_paste(X, Y) X##Y
-#define neko_macro_cat(X, Y) neko_macro_token_paste(X, Y)
+#define NEKO_TOKEN_PASTE(X, Y) X##Y
+#define NEKO_CONCAT(X, Y) NEKO_TOKEN_PASTE(X, Y)
 
-#define neko_timed_action(INTERVAL, ...)                                     \
-    do {                                                                     \
-        static u32 neko_macro_cat(neko_macro_cat(__T, __LINE__), t) = 0;     \
-        if (neko_macro_cat(neko_macro_cat(__T, __LINE__), t)++ > INTERVAL) { \
-            neko_macro_cat(neko_macro_cat(__T, __LINE__), t) = 0;            \
-            __VA_ARGS__                                                      \
-        }                                                                    \
+#define NEKO_TIMED_ACTION(INTERVAL, ...)                               \
+    do {                                                               \
+        static u32 NEKO_CONCAT(NEKO_CONCAT(__T, __LINE__), t) = 0;     \
+        if (NEKO_CONCAT(NEKO_CONCAT(__T, __LINE__), t)++ > INTERVAL) { \
+            NEKO_CONCAT(NEKO_CONCAT(__T, __LINE__), t) = 0;            \
+            __VA_ARGS__                                                \
+        }                                                              \
     } while (0)
 
-#define neko_concat(x, y) neko_concat_impl(x, y)
-#define neko_concat_impl(x, y) x##y
-
 #ifdef __cplusplus
-#define neko_invoke_once(...)                           \
-    static char neko_concat(unused, __LINE__) = [&]() { \
+#define NEKO_INVOKE_ONCE(...)                           \
+    static char NEKO_CONCAT(unused, __LINE__) = [&]() { \
         __VA_ARGS__;                                    \
         return '\0';                                    \
     }();                                                \
-    (void)neko_concat(unused, __LINE__)
+    (void)NEKO_CONCAT(unused, __LINE__)
 #else
-#define neko_invoke_once(...) \
+#define NEKO_INVOKE_ONCE(...) \
     do {                      \
         static u8 did = 0;    \
         if (!did) {           \
@@ -258,17 +244,9 @@ typedef uintptr_t uptr;
     } while (0)
 #endif
 
-#define neko_int2voidp(I) (void*)(uintptr_t)(I)
+#define NEKO_INT2VOIDP(I) (void*)(uintptr_t)(I)
 
-#define neko_if(INIT, CHECK, ...) \
-    do {                          \
-        INIT;                     \
-        if (CHECK) {              \
-            __VA_ARGS__           \
-        }                         \
-    } while (0)
-
-#define neko_expect(x)                                                   \
+#define NEKO_EXPECT(x)                                                   \
     do {                                                                 \
         if (!(x)) {                                                      \
             neko_log_error("Unexpect error: assertion '%s' failed", #x); \
@@ -276,7 +254,7 @@ typedef uintptr_t uptr;
         }                                                                \
     } while (0)
 
-#define neko_choose(type, ...) ((type[]){__VA_ARGS__})[rand() % (sizeof((type[]){__VA_ARGS__}) / sizeof(type))]
+#define NEKO_CHOOSE(type, ...) ((type[]){__VA_ARGS__})[rand() % (sizeof((type[]){__VA_ARGS__}) / sizeof(type))]
 
 // Custom printf defines
 #ifndef neko_printf
@@ -313,7 +291,7 @@ NEKO_FORCE_INLINE void neko_printf(const char* fmt, ...) {
         log_error("%s (%s:%s:%zu)", tmp, neko_fs_get_filename(__FILE__), __FUNCTION__, __LINE__); \
     } while (0)
 
-#define neko_enum_flag_operator(T)                                                                                                                                         \
+#define NEKO_ENUM_FLAG(T)                                                                                                                                                  \
     inline T operator~(T a) { return static_cast<T>(~static_cast<std::underlying_type<T>::type>(a)); }                                                                     \
     inline T operator|(T a, T b) { return static_cast<T>(static_cast<std::underlying_type<T>::type>(a) | static_cast<std::underlying_type<T>::type>(b)); }                 \
     inline T operator&(T a, T b) { return static_cast<T>(static_cast<std::underlying_type<T>::type>(a) & static_cast<std::underlying_type<T>::type>(b)); }                 \
@@ -322,44 +300,23 @@ NEKO_FORCE_INLINE void neko_printf(const char* fmt, ...) {
     inline T& operator&=(T& a, T b) { return reinterpret_cast<T&>(reinterpret_cast<std::underlying_type<T>::type&>(a) &= static_cast<std::underlying_type<T>::type>(b)); } \
     inline T& operator^=(T& a, T b) { return reinterpret_cast<T&>(reinterpret_cast<std::underlying_type<T>::type&>(a) ^= static_cast<std::underlying_type<T>::type>(b)); }
 
-#define neko_move_only(class_name)                     \
+#define NEKO_MOVEONLY(class_name)                      \
     class_name(const class_name&) = delete;            \
     class_name& operator=(const class_name&) = delete; \
     class_name(class_name&&) = default;                \
     class_name& operator=(class_name&&) = default
 
-#define neko_aligned_buffer(name) alignas(16) static const std::u8 name[]
+// #define neko_aligned_buffer(name) alignas(16) static const std::u8 name[]
 
-#define neko_va_unpack(...) __VA_ARGS__  // 用于解包括号 带逗号的宏参数需要它
-
-#define neko_offsetof(s, m) ((::size_t) & reinterpret_cast<char const volatile&>((((s*)0)->m)))
-
-#if defined(_MSC_VER)
-#define neko_unused(x) (void)x
-#else
-#define neko_unused(x) (void)(sizeof(x))
-#endif
+#define NEKO_VA_UNPACK(...) __VA_ARGS__  // 用于解包括号 带逗号的宏参数需要它
 
 #if defined(__clang__)
-#define neko_debugbreak() __builtin_debugtrap()
+#define NEKO_DEBUGBREAK() __builtin_debugtrap()
 #elif defined(_MSC_VER)
-#define neko_debugbreak() __debugbreak()
+#define NEKO_DEBUGBREAK() __debugbreak()
 #else
-#define neko_debugbreak()
+#define NEKO_DEBUGBREAK()
 #endif
-
-// Helper macro for typedefing a struture definition
-#define neko_struct_def(name, ...) \
-    typedef struct {               \
-        __VA_ARGS__                \
-    } name
-
-// Definition for derived struct (based another parent struct)
-#define neko_derive_def(name, parent, ...) neko_struct_def(name, parent _base; __VA_ARGS__)
-
-#define neko_engine_check(statement) (statement) ? true : false
-
-#define _base(base_type) base_type _base
 
 /*=============================
 // Memory
@@ -545,7 +502,7 @@ NEKO_FORCE_INLINE neko_hsv_t neko_rgb2hsv(neko_color_t in) {
     f32 ib = (f32)in.b / 255.f;
     f32 ia = (f32)in.a / 255.f;
 
-    neko_hsv_t out = neko_default_val();
+    neko_hsv_t out = NEKO_DEFAULT_VAL();
     f64 min, max, delta;
 
     min = ir < ig ? ir : ig;
@@ -711,7 +668,7 @@ NEKO_FORCE_INLINE char* neko_util_string_concat(char* s1, const char* s2) {
 
 NEKO_FORCE_INLINE void neko_util_str_to_lower(const char* src, char* buffer, size_t buffer_sz) {
     size_t src_sz = neko_string_length(src);
-    size_t len = neko_min(src_sz, buffer_sz - 1);
+    size_t len = NEKO_MIN(src_sz, buffer_sz - 1);
 
     for (u32 i = 0; i < len; ++i) {
         buffer[i] = tolower(src[i]);
@@ -746,7 +703,7 @@ NEKO_FORCE_INLINE b32 neko_util_file_exists(const char* file_path) {
 }
 
 NEKO_FORCE_INLINE void neko_util_get_file_extension(char* buffer, u32 buffer_size, const_str file_path) {
-    neko_assert(buffer && buffer_size);
+    NEKO_ASSERT(buffer && buffer_size);
     const_str extension = strrchr(file_path, '.');
     if (extension) {
         uint32_t extension_len = strlen(extension + 1);
@@ -768,7 +725,7 @@ NEKO_FORCE_INLINE void neko_util_get_dir_from_file(char* buffer, u32 buffer_size
     }
 
     size_t dir_len = end - file_path;
-    memcpy(buffer, file_path, neko_min(buffer_size, dir_len + 1));
+    memcpy(buffer, file_path, NEKO_MIN(buffer_size, dir_len + 1));
     if (dir_len + 1 <= buffer_size) {
         buffer[dir_len] = '\0';
     }
@@ -787,7 +744,7 @@ NEKO_FORCE_INLINE void neko_util_get_file_name(char* buffer, u32 buffer_size, co
     }
 
     size_t dir_len = file_end - file_start;
-    memcpy(buffer, file_start, neko_min(buffer_size, dir_len + 1));
+    memcpy(buffer, file_start, NEKO_MIN(buffer_size, dir_len + 1));
     if (dir_len + 1 <= buffer_size) {
         buffer[dir_len] = '\0';
     }
@@ -907,15 +864,15 @@ NEKO_FORCE_INLINE void neko_snprintf(char* buffer, size_t buffer_size, const cha
 #endif
 
 #define neko_transient_buffer(__N, __SZ) \
-    char __N[__SZ] = neko_default_val(); \
+    char __N[__SZ] = NEKO_DEFAULT_VAL(); \
     memset(__N, 0, __SZ);
 
 #define neko_snprintfc(__NAME, __SZ, __FMT, ...) \
-    char __NAME[__SZ] = neko_default_val();      \
+    char __NAME[__SZ] = NEKO_DEFAULT_VAL();      \
     neko_snprintf(__NAME, __SZ, __FMT, ##__VA_ARGS__);
 
 NEKO_FORCE_INLINE u32 neko_util_safe_truncate_u64(u64 value) {
-    neko_assert(value <= 0xFFFFFFFF);
+    NEKO_ASSERT(value <= 0xFFFFFFFF);
     u32 result = (u32)value;
     return result;
 }
@@ -1346,13 +1303,13 @@ typedef struct neko_byte_buffer_t {
 // Defines variable and sets value from buffer in place
 // Use to construct a new variable
 #define neko_byte_buffer_readc(__BUFFER, __T, __NAME) \
-    __T __NAME = neko_default_val();                  \
+    __T __NAME = NEKO_DEFAULT_VAL();                  \
     neko_byte_buffer_read((__BUFFER), __T, &__NAME);
 
 #define neko_byte_buffer_read_bulkc(__BUFFER, __T, __NAME, __SZ) \
-    __T __NAME = neko_default_val();                             \
-    __T* neko_macro_cat(__NAME, __LINE__) = &(__NAME);           \
-    neko_byte_buffer_read_bulk(__BUFFER, (void**)&neko_macro_cat(__NAME, __LINE__), __SZ);
+    __T __NAME = NEKO_DEFAULT_VAL();                             \
+    __T* NEKO_CONCAT(__NAME, __LINE__) = &(__NAME);              \
+    neko_byte_buffer_read_bulk(__BUFFER, (void**)&NEKO_CONCAT(__NAME, __LINE__), __SZ);
 
 NEKO_API_DECL void neko_byte_buffer_init(neko_byte_buffer_t* buffer);
 NEKO_API_DECL neko_byte_buffer_t neko_byte_buffer_new();
@@ -1987,7 +1944,7 @@ typedef struct neko_command_buffer_s {
 } neko_command_buffer_t;
 
 NEKO_FORCE_INLINE neko_command_buffer_t neko_command_buffer_new() {
-    neko_command_buffer_t cb = neko_default_val();
+    neko_command_buffer_t cb = NEKO_DEFAULT_VAL();
     cb.commands = neko_byte_buffer_new();
     return cb;
 }
@@ -2008,23 +1965,13 @@ NEKO_FORCE_INLINE void neko_command_buffer_clear(neko_command_buffer_t* cb) {
 NEKO_FORCE_INLINE void neko_command_buffer_free(neko_command_buffer_t* cb) { neko_byte_buffer_free(&cb->commands); }
 
 #define neko_command_buffer_readc(__CB, __T, __NAME) \
-    __T __NAME = neko_default_val();                 \
+    __T __NAME = NEKO_DEFAULT_VAL();                 \
     neko_byte_buffer_read(&(__CB)->commands, __T, &__NAME);
 
-#ifndef NEKO_NO_SHORT_NAME
 typedef neko_command_buffer_t neko_cmdbuf;
-#endif
-
-#ifndef HASHTABLE_U64
-#define HASHTABLE_U64 unsigned long long
-#endif
-
-#ifndef HASHTABLE_U32
-#define HASHTABLE_U32 unsigned int
-#endif
 
 struct hashtable_internal_slot_t {
-    HASHTABLE_U32 key_hash;
+    u32 key_hash;
     int item_index;
     int base_count;
 };
@@ -2037,7 +1984,7 @@ struct hashtable_t {
     struct hashtable_internal_slot_t* slots;
     int slot_capacity;
 
-    HASHTABLE_U64* items_key;
+    u64* items_key;
     int* items_slot;
     void* items_data;
     int item_capacity;
@@ -2049,17 +1996,13 @@ typedef struct hashtable_t hashtable_t;
 
 NEKO_API_DECL void hashtable_init(hashtable_t* table, int item_size, int initial_capacity, void* memctx);
 NEKO_API_DECL void hashtable_term(hashtable_t* table);
-
-NEKO_API_DECL void* hashtable_insert(hashtable_t* table, HASHTABLE_U64 key, void const* item);
-NEKO_API_DECL void hashtable_remove(hashtable_t* table, HASHTABLE_U64 key);
+NEKO_API_DECL void* hashtable_insert(hashtable_t* table, u64 key, void const* item);
+NEKO_API_DECL void hashtable_remove(hashtable_t* table, u64 key);
 NEKO_API_DECL void hashtable_clear(hashtable_t* table);
-
-NEKO_API_DECL void* hashtable_find(hashtable_t const* table, HASHTABLE_U64 key);
-
+NEKO_API_DECL void* hashtable_find(hashtable_t const* table, u64 key);
 NEKO_API_DECL int hashtable_count(hashtable_t const* table);
 NEKO_API_DECL void* hashtable_items(hashtable_t const* table);
-NEKO_API_DECL HASHTABLE_U64 const* hashtable_keys(hashtable_t const* table);
-
+NEKO_API_DECL u64 const* hashtable_keys(hashtable_t const* table);
 NEKO_API_DECL void hashtable_swap(hashtable_t* table, int index_a, int index_b);
 
 #endif
@@ -2140,7 +2083,7 @@ NEKO_API_DECL void neko_config_print();
         } else if (t == __NEKO_CONFIG_TYPE_FLOAT) {                  \
             cvar.value.f = v;                                        \
         } else {                                                     \
-            neko_assert(false);                                      \
+            NEKO_ASSERT(false);                                      \
         }                                                            \
         neko_dyn_array_push((neko_instance()->config)->cvars, cvar); \
     } while (0)
@@ -2155,7 +2098,7 @@ NEKO_API_DECL void neko_config_print();
         } else if (t == __NEKO_CONFIG_TYPE_FLOAT) {                  \
             cvar.value.f = v;                                        \
         } else {                                                     \
-            neko_assert(false);                                      \
+            NEKO_ASSERT(false);                                      \
         }                                                            \
         neko_dyn_array_push((neko_instance()->config)->cvars, cvar); \
     } while (0)
@@ -2166,7 +2109,7 @@ NEKO_API_DECL void neko_config_print();
         neko_cvar_t cvar = {.name = n, .type = t, .value = {0}};                         \
         cvar.value.s = (char*)neko_malloc(NEKO_CVAR_STR_LEN);                            \
         memset(cvar.value.s, 0, NEKO_CVAR_STR_LEN);                                      \
-        memcpy(cvar.value.s, v, neko_min(NEKO_CVAR_STR_LEN - 1, neko_string_length(v))); \
+        memcpy(cvar.value.s, v, NEKO_MIN(NEKO_CVAR_STR_LEN - 1, neko_string_length(v))); \
         neko_dyn_array_push((neko_instance()->config)->cvars, cvar);                     \
     } while (0)
 
@@ -2177,7 +2120,7 @@ NEKO_API_DECL void neko_config_print();
         cvar.name[sizeof(cvar.name) - 1] = '\0';                                         \
         cvar.value.s = (char*)neko_malloc(NEKO_CVAR_STR_LEN);                            \
         memset(cvar.value.s, 0, NEKO_CVAR_STR_LEN);                                      \
-        memcpy(cvar.value.s, v, neko_min(NEKO_CVAR_STR_LEN - 1, neko_string_length(v))); \
+        memcpy(cvar.value.s, v, NEKO_MIN(NEKO_CVAR_STR_LEN - 1, neko_string_length(v))); \
         neko_dyn_array_push((neko_instance()->config)->cvars, cvar);                     \
     } while (0)
 

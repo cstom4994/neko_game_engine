@@ -45,7 +45,7 @@ bool neko_aseprite_load(neko_aseprite *spr, const_str filepath) {
                         break;
                     }
                 }
-                neko_assert(found);
+                NEKO_ASSERT(found);
             }
 
             void *src = cel->cel_pixels;
@@ -54,12 +54,12 @@ bool neko_aseprite_load(neko_aseprite *spr, const_str filepath) {
             int cy = cel->y;
             int cw = cel->w;
             int ch = cel->h;
-            int cl = -neko_min(cx, 0);
-            int ct = -neko_min(cy, 0);
-            int dl = neko_max(cx, 0);
-            int dt = neko_max(cy, 0);
-            int dr = neko_min(ase->w, cw + cx);
-            int db = neko_min(ase->h, ch + cy);
+            int cl = -NEKO_MIN(cx, 0);
+            int ct = -NEKO_MIN(cy, 0);
+            int dl = NEKO_MAX(cx, 0);
+            int dt = NEKO_MAX(cy, 0);
+            int dr = NEKO_MIN(ase->w, cw + cx);
+            int db = NEKO_MIN(ase->h, ch + cy);
             int aw = ase->w;
             for (int dx = dl, sx = cl; dx < dr; dx++, sx++) {
                 for (int dy = dt, sy = ct; dy < db; dy++, sy++) {
@@ -75,7 +75,7 @@ bool neko_aseprite_load(neko_aseprite *spr, const_str filepath) {
 
     s32 rect = ase->w * ase->h * 4;
 
-    neko_aseprite s = neko_default_val();
+    neko_aseprite s = NEKO_DEFAULT_VAL();
 
     // neko_array<neko_sprite_frame> frames = {};
     // neko_array_reserve(&frames, ase->frame_count);
@@ -89,7 +89,7 @@ bool neko_aseprite_load(neko_aseprite *spr, const_str filepath) {
     for (s32 i = 0; i < ase->frame_count; i++) {
         ase_frame_t *frame = &ase->frames[i];
 
-        neko_aseprite_frame sf = neko_default_val();
+        neko_aseprite_frame sf = NEKO_DEFAULT_VAL();
         sf.duration = frame->duration_milliseconds;
 
         sf.u0 = 0;
@@ -105,13 +105,11 @@ bool neko_aseprite_load(neko_aseprite *spr, const_str filepath) {
         memcpy(pixels + (i * rect), &data[0].r, rect);
     }
 
-    neko_graphics_t *gfx = neko_instance()->ctx.graphics;
+    neko_render_texture_desc_t t_desc = NEKO_DEFAULT_VAL();
 
-    neko_graphics_texture_desc_t t_desc = neko_default_val();
-
-    t_desc.format = NEKO_GRAPHICS_TEXTURE_FORMAT_RGBA8;
-    t_desc.mag_filter = NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST;
-    t_desc.min_filter = NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST;
+    t_desc.format = NEKO_RENDER_TEXTURE_FORMAT_RGBA8;
+    t_desc.mag_filter = NEKO_RENDER_TEXTURE_FILTER_NEAREST;
+    t_desc.min_filter = NEKO_RENDER_TEXTURE_FILTER_NEAREST;
     t_desc.num_mips = 0;
     t_desc.width = ase->w;
     t_desc.height = ase->h * ase->frame_count;
@@ -121,7 +119,7 @@ bool neko_aseprite_load(neko_aseprite *spr, const_str filepath) {
     // neko_tex_flip_vertically(ase->w, ase->h * ase->frame_count, (u8 *)pixels.data);
     t_desc.data[0] = pixels;
 
-    neko_texture_t tex = neko_graphics_texture_create(t_desc);
+    neko_texture_t tex = neko_render_texture_create(t_desc);
 
     neko_safe_free(pixels);
 
@@ -135,7 +133,7 @@ bool neko_aseprite_load(neko_aseprite *spr, const_str filepath) {
     for (s32 i = 0; i < ase->tag_count; i++) {
         ase_tag_t *tag = &ase->tags[i];
 
-        neko_aseprite_loop loop = neko_default_val();
+        neko_aseprite_loop loop = NEKO_DEFAULT_VAL();
 
         for (s32 j = tag->from_frame; j <= tag->to_frame; j++) {
             neko_dyn_array_push(loop.indices, j);
@@ -232,21 +230,19 @@ neko_texture_t neko_aseprite_simple(const void *memory, int size) {
         return (neko_texture_t){0};
     }
 
-    neko_assert(ase->frame_count == 1);  // load_ase_texture_simple used to load simple aseprite
+    NEKO_ASSERT(ase->frame_count == 1);  // load_ase_texture_simple used to load simple aseprite
 
     neko_aseprite_default_blend_bind(ase);
-
-    neko_graphics_t *gfx = neko_instance()->ctx.graphics;
 
     neko_log_trace("load aseprite - frame_count %d - palette.entry_count %d - w=%d h=%d", ase->frame_count, ase->palette.entry_count, ase->w, ase->h);
 
     s32 bpp = 4;
 
-    neko_graphics_texture_desc_t t_desc = {};
+    neko_render_texture_desc_t t_desc = {};
 
-    t_desc.format = NEKO_GRAPHICS_TEXTURE_FORMAT_RGBA8;
-    t_desc.mag_filter = NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST;
-    t_desc.min_filter = NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST;
+    t_desc.format = NEKO_RENDER_TEXTURE_FORMAT_RGBA8;
+    t_desc.mag_filter = NEKO_RENDER_TEXTURE_FILTER_NEAREST;
+    t_desc.min_filter = NEKO_RENDER_TEXTURE_FILTER_NEAREST;
     t_desc.num_mips = 0;
     t_desc.width = ase->w;
     t_desc.height = ase->h;
@@ -255,7 +251,7 @@ neko_texture_t neko_aseprite_simple(const void *memory, int size) {
 
     neko_tex_flip_vertically(ase->w, ase->h, (u8 *)(t_desc.data[0]));
 
-    neko_texture_t tex = neko_graphics_texture_create(t_desc);
+    neko_texture_t tex = neko_render_texture_create(t_desc);
 
     neko_aseprite_free(ase);
 

@@ -486,7 +486,7 @@ void neko_lua_auto_function_register_type(lua_State *L, void *src_func, neko_lua
 #pragma endregion LuaA
 
 #define neko_lua_register(FUNCTIONS)                              \
-    for (unsigned i = 0; i < neko_arr_size(FUNCTIONS) - 1; ++i) { \
+    for (unsigned i = 0; i < NEKO_ARR_SIZE(FUNCTIONS) - 1; ++i) { \
         lua_pushcfunction(L, FUNCTIONS[i].func);                  \
         lua_setglobal(L, FUNCTIONS[i].name);                      \
     }

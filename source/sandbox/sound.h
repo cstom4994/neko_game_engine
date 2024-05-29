@@ -3,7 +3,7 @@
 #define GAME_SOUND_H
 
 #include "deps/miniaudio.h"
-#include "engine/neko_api.h"
+#include "engine/neko_api.hpp"
 
 typedef ma_engine neko_audio_engine;
 typedef ma_sound neko_sound;

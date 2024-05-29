@@ -3,7 +3,7 @@
 #define NEKO_ENGINE_H
 
 #include "engine/neko.h"
-#include "engine/neko_graphics.h"
+#include "engine/neko_render.h"
 #include "engine/neko_platform.h"
 
 /*==========================
@@ -12,9 +12,9 @@
 
 typedef struct neko_context_t {
     neko_platform_t* platform;
-    neko_graphics_t* graphics;
+    neko_render_t* render;
 
-    void (*shutdown)();
+    void (*fini)();
 } neko_context_t;
 
 typedef struct neko_t {
@@ -49,7 +49,7 @@ typedef struct neko_t {
 } neko_t;
 
 NEKO_API_DECL neko_t* neko_create(int argc, char** argv);
-NEKO_API_DECL void neko_destroy();
+NEKO_API_DECL void neko_fini();
 NEKO_API_DECL neko_t* neko_instance();
 NEKO_API_DECL neko_context_t* neko_ctx();
 NEKO_API_DECL void neko_frame();

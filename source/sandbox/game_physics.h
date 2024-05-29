@@ -4,7 +4,7 @@
 // #include <box2d/box2d.h>
 
 #include "engine/neko.hpp"
-#include "engine/neko_api.h"
+#include "engine/neko_api.hpp"
 #include "engine/neko_engine.h"
 
 #if 0

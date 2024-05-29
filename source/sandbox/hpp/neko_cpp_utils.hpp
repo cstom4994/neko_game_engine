@@ -377,7 +377,7 @@ struct ::neko::cpp::IsIValue<::neko::cpp::IValue<T, v>> : std::true_type {};
 template <size_t N>
 constexpr std::size_t neko::cpp::lengthof(const char (&str)[N]) noexcept {
     static_assert(N > 0);
-    neko_assert(str[N - 1] == 0);  // c-style string
+    NEKO_ASSERT(str[N - 1] == 0);  // c-style string
     return N - 1;
 }
 

@@ -1,5 +1,5 @@
 
-#include "neko_imgui_lua.h"
+#include "neko_imgui.hpp"
 
 namespace imgui_lua {
 
@@ -7341,7 +7341,7 @@ bool field_toboolean(lua_State* L, int idx, lua_Integer i) {
 }
 
 ImTextureID get_texture_id(lua_State* L, int idx) {
-    neko_texture_t texture = neko_default_val();
+    neko_texture_t texture = NEKO_DEFAULT_VAL();
     neko_lua_auto_struct_to_member(L, neko_texture_t, id, &texture, 1);
     return reinterpret_cast<ImTextureID>(texture.id);
 }

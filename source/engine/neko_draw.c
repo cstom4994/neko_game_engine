@@ -1,6 +1,6 @@
 
 #include "engine/neko_common.h"
-#include "engine/neko_graphics.h"
+#include "engine/neko_render.h"
 #include "engine/neko_platform.h"
 
 // STB
@@ -13,7 +13,7 @@
 
 NEKO_API_DECL neko_camera_t neko_camera_default() {
     // Construct default camera parameters
-    neko_camera_t cam = neko_default_val();
+    neko_camera_t cam = NEKO_DEFAULT_VAL();
     cam.transform = neko_vqs_default();
     cam.transform.position.z = 1.f;
     cam.fov = 60.f;
@@ -64,7 +64,7 @@ NEKO_API_DECL neko_vec3 neko_camera_world_to_screen(const neko_camera_t* cam, ne
 }
 
 NEKO_API_DECL neko_vec3 neko_camera_screen_to_world(const neko_camera_t* cam, neko_vec3 coords, s32 view_x, s32 view_y, s32 view_width, s32 view_height) {
-    neko_vec3 wc = neko_default_val();
+    neko_vec3 wc = NEKO_DEFAULT_VAL();
 
     // Get inverse of view projection from camera
     neko_mat4 inverse_vp = neko_mat4_inverse(neko_camera_get_view_projection(cam, view_width, view_height));
@@ -191,12 +191,12 @@ const char* neko_idraw_f_fillsrc = NEKO_IDRAW_GL_VERSION_STR
         "}\n";
 
 neko_idraw_pipeline_state_attr_t neko_idraw_pipeline_state_default() {
-    neko_idraw_pipeline_state_attr_t attr = neko_default_val();
+    neko_idraw_pipeline_state_attr_t attr = NEKO_DEFAULT_VAL();
     attr.depth_enabled = false;
     attr.stencil_enabled = false;
     attr.blend_enabled = true;
     attr.face_cull_enabled = false;
-    attr.prim_type = (u16)NEKO_GRAPHICS_PRIMITIVE_TRIANGLES;
+    attr.prim_type = (u16)NEKO_RENDER_PRIMITIVE_TRIANGLES;
     return attr;
 }
 
@@ -226,60 +226,60 @@ void neko_immediate_draw_static_data_init() {
     neko_idraw() = neko_malloc_init(neko_immediate_draw_static_data_t);
 
     // Create uniform buffer
-    neko_graphics_uniform_layout_desc_t uldesc = neko_default_val();
-    uldesc.type = NEKO_GRAPHICS_UNIFORM_MAT4;
-    neko_graphics_uniform_desc_t udesc = neko_default_val();
+    neko_render_uniform_layout_desc_t uldesc = NEKO_DEFAULT_VAL();
+    uldesc.type = NEKO_RENDER_UNIFORM_MAT4;
+    neko_render_uniform_desc_t udesc = NEKO_DEFAULT_VAL();
     memcpy(udesc.name, NEKO_IDRAW_UNIFORM_MVP_MATRIX, sizeof(NEKO_IDRAW_UNIFORM_MVP_MATRIX));
     udesc.layout = &uldesc;
-    neko_idraw()->uniform = neko_graphics_uniform_create(udesc);
+    neko_idraw()->uniform = neko_render_uniform_create(udesc);
 
     // Create sampler buffer
-    neko_graphics_uniform_layout_desc_t sldesc = neko_default_val();
-    sldesc.type = NEKO_GRAPHICS_UNIFORM_SAMPLER2D;
-    neko_graphics_uniform_desc_t sbdesc = neko_default_val();
+    neko_render_uniform_layout_desc_t sldesc = NEKO_DEFAULT_VAL();
+    sldesc.type = NEKO_RENDER_UNIFORM_SAMPLER2D;
+    neko_render_uniform_desc_t sbdesc = NEKO_DEFAULT_VAL();
     memcpy(sbdesc.name, NEKO_IDRAW_UNIFORM_TEXTURE2D, sizeof(NEKO_IDRAW_UNIFORM_TEXTURE2D));
     sbdesc.layout = &sldesc;
-    neko_idraw()->sampler = neko_graphics_uniform_create(sbdesc);
+    neko_idraw()->sampler = neko_render_uniform_create(sbdesc);
 
     // Create default texture (4x4 white)
-    neko_color_t pixels[16] = neko_default_val();
+    neko_color_t pixels[16] = NEKO_DEFAULT_VAL();
     memset(pixels, 255, 16 * sizeof(neko_color_t));
 
-    neko_graphics_texture_desc_t tdesc = neko_default_val();
+    neko_render_texture_desc_t tdesc = NEKO_DEFAULT_VAL();
     tdesc.width = 4;
     tdesc.height = 4;
-    tdesc.format = NEKO_GRAPHICS_TEXTURE_FORMAT_RGBA8;
-    tdesc.min_filter = NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST;
-    tdesc.mag_filter = NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST;
+    tdesc.format = NEKO_RENDER_TEXTURE_FORMAT_RGBA8;
+    tdesc.min_filter = NEKO_RENDER_TEXTURE_FILTER_NEAREST;
+    tdesc.mag_filter = NEKO_RENDER_TEXTURE_FILTER_NEAREST;
     *tdesc.data = pixels;
 
-    neko_idraw()->tex_default = neko_graphics_texture_create(tdesc);
+    neko_idraw()->tex_default = neko_render_texture_create(tdesc);
 
     // Create shader
-    neko_graphics_shader_source_desc_t vsrc;
-    vsrc.type = NEKO_GRAPHICS_SHADER_STAGE_VERTEX;
+    neko_render_shader_source_desc_t vsrc;
+    vsrc.type = NEKO_RENDER_SHADER_STAGE_VERTEX;
     vsrc.source = neko_idraw_v_fillsrc;
-    neko_graphics_shader_source_desc_t fsrc;
-    fsrc.type = NEKO_GRAPHICS_SHADER_STAGE_FRAGMENT;
+    neko_render_shader_source_desc_t fsrc;
+    fsrc.type = NEKO_RENDER_SHADER_STAGE_FRAGMENT;
     fsrc.source = neko_idraw_f_fillsrc;
-    neko_graphics_shader_source_desc_t neko_idraw_sources[] = {vsrc, fsrc};
+    neko_render_shader_source_desc_t neko_idraw_sources[] = {vsrc, fsrc};
 
-    neko_graphics_shader_desc_t sdesc = neko_default_val();
+    neko_render_shader_desc_t sdesc = NEKO_DEFAULT_VAL();
     sdesc.sources = neko_idraw_sources;
     sdesc.size = sizeof(neko_idraw_sources);
     memcpy(sdesc.name, "neko_immediate_default_fill_shader", sizeof("neko_immediate_default_fill_shader"));
 
     // Vertex attr layout
-    neko_graphics_vertex_attribute_desc_t neko_idraw_vattrs[3] = neko_default_val();
-    neko_idraw_vattrs[0].format = NEKO_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3;
+    neko_render_vertex_attribute_desc_t neko_idraw_vattrs[3] = NEKO_DEFAULT_VAL();
+    neko_idraw_vattrs[0].format = NEKO_RENDER_VERTEX_ATTRIBUTE_FLOAT3;
     memcpy(neko_idraw_vattrs[0].name, "a_position", sizeof("a_position"));
-    neko_idraw_vattrs[1].format = NEKO_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT2;
+    neko_idraw_vattrs[1].format = NEKO_RENDER_VERTEX_ATTRIBUTE_FLOAT2;
     memcpy(neko_idraw_vattrs[1].name, "a_uv", sizeof("a_uv"));
-    neko_idraw_vattrs[2].format = NEKO_GRAPHICS_VERTEX_ATTRIBUTE_BYTE4;
+    neko_idraw_vattrs[2].format = NEKO_RENDER_VERTEX_ATTRIBUTE_BYTE4;
     memcpy(neko_idraw_vattrs[2].name, "a_color", sizeof("a_color"));
 
     // Iterate through attribute list, then create custom pipelines requested.
-    neko_handle(neko_graphics_shader_t) shader = neko_graphics_shader_create(sdesc);
+    neko_handle(neko_render_shader_t) shader = neko_render_shader_create(sdesc);
 
     // Pipelines
     for (u16 d = 0; d < 2; ++d)                  // Depth
@@ -288,41 +288,41 @@ void neko_immediate_draw_static_data_init() {
                 for (u16 f = 0; f < 2; ++f)      // Face Cull
                     for (u16 p = 0; p < 2; ++p)  // Prim Type
                     {
-                        neko_idraw_pipeline_state_attr_t attr = neko_default_val();
+                        neko_idraw_pipeline_state_attr_t attr = NEKO_DEFAULT_VAL();
 
                         attr.depth_enabled = d;
                         attr.stencil_enabled = s;
                         attr.blend_enabled = b;
                         attr.face_cull_enabled = f;
-                        attr.prim_type = p ? (u16)NEKO_GRAPHICS_PRIMITIVE_TRIANGLES : (u16)NEKO_GRAPHICS_PRIMITIVE_LINES;
+                        attr.prim_type = p ? (u16)NEKO_RENDER_PRIMITIVE_TRIANGLES : (u16)NEKO_RENDER_PRIMITIVE_LINES;
 
                         // Create new pipeline based on this arrangement
-                        neko_graphics_pipeline_desc_t pdesc = neko_default_val();
+                        neko_render_pipeline_desc_t pdesc = NEKO_DEFAULT_VAL();
                         pdesc.raster.shader = shader;
                         pdesc.raster.index_buffer_element_size = sizeof(u16);
-                        pdesc.raster.face_culling = attr.face_cull_enabled ? NEKO_GRAPHICS_FACE_CULLING_BACK : (neko_graphics_face_culling_type)0x00;
-                        pdesc.raster.primitive = (neko_graphics_primitive_type)attr.prim_type;
-                        pdesc.blend.func = attr.blend_enabled ? NEKO_GRAPHICS_BLEND_EQUATION_ADD : (neko_graphics_blend_equation_type)0x00;
-                        pdesc.blend.src = NEKO_GRAPHICS_BLEND_MODE_SRC_ALPHA;
-                        pdesc.blend.dst = NEKO_GRAPHICS_BLEND_MODE_ONE_MINUS_SRC_ALPHA;
-                        pdesc.depth.func = d ? NEKO_GRAPHICS_DEPTH_FUNC_LESS : (neko_graphics_depth_func_type)0x00;
-                        pdesc.stencil.func = s ? NEKO_GRAPHICS_STENCIL_FUNC_ALWAYS : (neko_graphics_stencil_func_type)0x00;
+                        pdesc.raster.face_culling = attr.face_cull_enabled ? NEKO_RENDER_FACE_CULLING_BACK : (neko_render_face_culling_type)0x00;
+                        pdesc.raster.primitive = (neko_render_primitive_type)attr.prim_type;
+                        pdesc.blend.func = attr.blend_enabled ? NEKO_RENDER_BLEND_EQUATION_ADD : (neko_render_blend_equation_type)0x00;
+                        pdesc.blend.src = NEKO_RENDER_BLEND_MODE_SRC_ALPHA;
+                        pdesc.blend.dst = NEKO_RENDER_BLEND_MODE_ONE_MINUS_SRC_ALPHA;
+                        pdesc.depth.func = d ? NEKO_RENDER_DEPTH_FUNC_LESS : (neko_render_depth_func_type)0x00;
+                        pdesc.stencil.func = s ? NEKO_RENDER_STENCIL_FUNC_ALWAYS : (neko_render_stencil_func_type)0x00;
                         pdesc.stencil.ref = s ? 1 : 0x00;
                         pdesc.stencil.comp_mask = s ? 0xFF : 0x00;
                         pdesc.stencil.write_mask = s ? 0xFF : 0x00;
-                        pdesc.stencil.sfail = s ? NEKO_GRAPHICS_STENCIL_OP_KEEP : (neko_graphics_stencil_op_type)0x00;
-                        pdesc.stencil.dpfail = s ? NEKO_GRAPHICS_STENCIL_OP_KEEP : (neko_graphics_stencil_op_type)0x00;
-                        pdesc.stencil.dppass = s ? NEKO_GRAPHICS_STENCIL_OP_REPLACE : (neko_graphics_stencil_op_type)0x00;
+                        pdesc.stencil.sfail = s ? NEKO_RENDER_STENCIL_OP_KEEP : (neko_render_stencil_op_type)0x00;
+                        pdesc.stencil.dpfail = s ? NEKO_RENDER_STENCIL_OP_KEEP : (neko_render_stencil_op_type)0x00;
+                        pdesc.stencil.dppass = s ? NEKO_RENDER_STENCIL_OP_REPLACE : (neko_render_stencil_op_type)0x00;
                         pdesc.layout.attrs = neko_idraw_vattrs;
                         pdesc.layout.size = sizeof(neko_idraw_vattrs);
 
-                        neko_handle(neko_graphics_pipeline_t) hndl = neko_graphics_pipeline_create(pdesc);
+                        neko_handle(neko_render_pipeline_t) hndl = neko_render_pipeline_create(pdesc);
                         neko_hash_table_insert(neko_idraw()->pipeline_table, attr, hndl);
                     }
 
     // Create default font
     neko_asset_ascii_font_t* f = &neko_idraw()->font_default;
-    stbtt_fontinfo font = neko_default_val();
+    stbtt_fontinfo font = NEKO_DEFAULT_VAL();
     const char* compressed_ttf_data_base85 = __neko_internal_GetDefaultCompressedFontDataTTFBase85();
     s32 compressed_ttf_size = (((s32)strlen(compressed_ttf_data_base85) + 4) / 5) * 4;
     void* compressed_ttf_data = neko_malloc((usize)compressed_ttf_size);
@@ -355,25 +355,25 @@ void neko_immediate_draw_static_data_init() {
         r--;
     }
 
-    neko_graphics_texture_desc_t desc = neko_default_val();
+    neko_render_texture_desc_t desc = NEKO_DEFAULT_VAL();
     desc.width = w;
     desc.height = h;
     *desc.data = flipmap;
-    desc.format = NEKO_GRAPHICS_TEXTURE_FORMAT_RGBA8;
-    desc.min_filter = NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST;
-    desc.mag_filter = NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST;
+    desc.format = NEKO_RENDER_TEXTURE_FORMAT_RGBA8;
+    desc.min_filter = NEKO_RENDER_TEXTURE_FILTER_NEAREST;
+    desc.mag_filter = NEKO_RENDER_TEXTURE_FILTER_NEAREST;
 
     // Generate atlas texture for bitmap with bitmap data
-    f->texture.hndl = neko_graphics_texture_create(desc);
+    f->texture.hndl = neko_render_texture_create(desc);
     f->texture.desc = desc;
     *f->texture.desc.data = NULL;
 
     // Create vertex buffer
-    neko_graphics_vertex_buffer_desc_t vdesc = neko_default_val();
+    neko_render_vertex_buffer_desc_t vdesc = NEKO_DEFAULT_VAL();
     vdesc.data = NULL;
     vdesc.size = 0;
-    vdesc.usage = NEKO_GRAPHICS_BUFFER_USAGE_STREAM;
-    neko_idraw()->vbo = neko_graphics_vertex_buffer_create(vdesc);
+    vdesc.usage = NEKO_RENDER_BUFFER_USAGE_STREAM;
+    neko_idraw()->vbo = neko_render_vertex_buffer_create(vdesc);
 
     neko_free(compressed_ttf_data);
     neko_free(buf_decompressed_data);
@@ -392,7 +392,7 @@ neko_immediate_draw_t neko_immediate_draw_new() {
         neko_immediate_draw_static_data_init();
     }
 
-    neko_immediate_draw_t neko_idraw = neko_default_val();
+    neko_immediate_draw_t neko_idraw = NEKO_DEFAULT_VAL();
     memset(&neko_idraw, 0, sizeof(neko_idraw));
 
     // Set neko_idraw static data
@@ -428,9 +428,9 @@ NEKO_API_DECL neko_asset_ascii_font_t* neko_idraw_default_font() {
     return NULL;
 }
 
-NEKO_API_DECL neko_handle(neko_graphics_pipeline_t) neko_idraw_get_pipeline(neko_immediate_draw_t* neko_idraw, neko_idraw_pipeline_state_attr_t state) {
+NEKO_API_DECL neko_handle(neko_render_pipeline_t) neko_idraw_get_pipeline(neko_immediate_draw_t* neko_idraw, neko_idraw_pipeline_state_attr_t state) {
     // Bind pipeline
-    neko_assert(neko_hash_table_key_exists(neko_idraw()->pipeline_table, state));
+    NEKO_ASSERT(neko_hash_table_key_exists(neko_idraw()->pipeline_table, state));
     return neko_hash_table_get(neko_idraw()->pipeline_table, state);
 }
 
@@ -440,17 +440,17 @@ void neko_immediate_draw_set_pipeline(neko_immediate_draw_t* neko_idraw) {
     }
 
     // Check validity
-    if (neko_idraw->cache.pipeline.prim_type != (u16)NEKO_GRAPHICS_PRIMITIVE_TRIANGLES && neko_idraw->cache.pipeline.prim_type != (u16)NEKO_GRAPHICS_PRIMITIVE_LINES) {
-        neko_idraw->cache.pipeline.prim_type = (u16)NEKO_GRAPHICS_PRIMITIVE_TRIANGLES;
+    if (neko_idraw->cache.pipeline.prim_type != (u16)NEKO_RENDER_PRIMITIVE_TRIANGLES && neko_idraw->cache.pipeline.prim_type != (u16)NEKO_RENDER_PRIMITIVE_LINES) {
+        neko_idraw->cache.pipeline.prim_type = (u16)NEKO_RENDER_PRIMITIVE_TRIANGLES;
     }
-    neko_idraw->cache.pipeline.depth_enabled = neko_clamp(neko_idraw->cache.pipeline.depth_enabled, 0, 1);
-    neko_idraw->cache.pipeline.stencil_enabled = neko_clamp(neko_idraw->cache.pipeline.stencil_enabled, 0, 1);
-    neko_idraw->cache.pipeline.face_cull_enabled = neko_clamp(neko_idraw->cache.pipeline.face_cull_enabled, 0, 1);
-    neko_idraw->cache.pipeline.blend_enabled = neko_clamp(neko_idraw->cache.pipeline.blend_enabled, 0, 1);
+    neko_idraw->cache.pipeline.depth_enabled = NEKO_CLAMP(neko_idraw->cache.pipeline.depth_enabled, 0, 1);
+    neko_idraw->cache.pipeline.stencil_enabled = NEKO_CLAMP(neko_idraw->cache.pipeline.stencil_enabled, 0, 1);
+    neko_idraw->cache.pipeline.face_cull_enabled = NEKO_CLAMP(neko_idraw->cache.pipeline.face_cull_enabled, 0, 1);
+    neko_idraw->cache.pipeline.blend_enabled = NEKO_CLAMP(neko_idraw->cache.pipeline.blend_enabled, 0, 1);
 
     // Bind pipeline
-    neko_assert(neko_hash_table_key_exists(neko_idraw()->pipeline_table, neko_idraw->cache.pipeline));
-    neko_graphics_pipeline_bind(&neko_idraw->commands, neko_hash_table_get(neko_idraw()->pipeline_table, neko_idraw->cache.pipeline));
+    NEKO_ASSERT(neko_hash_table_key_exists(neko_idraw()->pipeline_table, neko_idraw->cache.pipeline));
+    neko_render_pipeline_bind(&neko_idraw->commands, neko_hash_table_get(neko_idraw()->pipeline_table, neko_idraw->cache.pipeline));
 }
 
 // From on: https://gist.github.com/fairlight1337/4935ae72bcbcc1ba5c72
@@ -458,8 +458,8 @@ neko_hsv_t neko_rgb_to_hsv(neko_color_t c) {
     neko_vec3 cv = (neko_vec3){(f32)c.r / 255.f, (f32)c.g / 255.f, (f32)c.b / 255.f};
     f32 fR = cv.x, fG = cv.y, fB = cv.z;
 
-    f32 fCMax = neko_max(neko_max(fR, fG), fB);
-    f32 fCMin = neko_min(neko_min(fR, fG), fB);
+    f32 fCMax = NEKO_MAX(NEKO_MAX(fR, fG), fB);
+    f32 fCMin = NEKO_MIN(NEKO_MIN(fR, fG), fB);
     f32 fDelta = fCMax - fCMin;
 
     neko_hsv_t hsv;
@@ -511,7 +511,7 @@ void __neko_draw_rect_2d_impl(neko_immediate_draw_t* neko_idraw, neko_vec2 a, ne
     neko_vec2 bl_uv = neko_v2(uv0.x, uv0.y);
     neko_vec2 br_uv = neko_v2(uv1.x, uv0.y);
 
-    neko_idraw_begin(neko_idraw, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
+    neko_idraw_begin(neko_idraw, NEKO_RENDER_PRIMITIVE_TRIANGLES);
     {
         neko_idraw_c4ubv(neko_idraw, color);
 
@@ -542,7 +542,7 @@ void neko_idraw_rect_textured(neko_immediate_draw_t* neko_idraw, neko_vec2 a, ne
 
 void neko_idraw_rect_textured_ext(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 x1, f32 y1, f32 u0, f32 v0, f32 u1, f32 v1, u32 tex_id, neko_color_t color) {
 
-    neko_handle(neko_graphics_texture_t) tex = neko_default_val();
+    neko_handle(neko_render_texture_t) tex = NEKO_DEFAULT_VAL();
     tex.id = tex_id;
 
     neko_idraw_texture(neko_idraw, tex);
@@ -551,14 +551,14 @@ void neko_idraw_rect_textured_ext(neko_immediate_draw_t* neko_idraw, f32 x0, f32
 }
 
 // 核心顶点函数
-void neko_idraw_begin(neko_immediate_draw_t* neko_idraw, neko_graphics_primitive_type type) {
+void neko_idraw_begin(neko_immediate_draw_t* neko_idraw, neko_render_primitive_type type) {
     switch (type) {
         default:
-        case NEKO_GRAPHICS_PRIMITIVE_TRIANGLES:
-            type = NEKO_GRAPHICS_PRIMITIVE_TRIANGLES;
+        case NEKO_RENDER_PRIMITIVE_TRIANGLES:
+            type = NEKO_RENDER_PRIMITIVE_TRIANGLES;
             break;
-        case NEKO_GRAPHICS_PRIMITIVE_LINES:
-            type = NEKO_GRAPHICS_PRIMITIVE_LINES;
+        case NEKO_RENDER_PRIMITIVE_LINES:
+            type = NEKO_RENDER_PRIMITIVE_LINES;
             break;
     }
 
@@ -603,12 +603,12 @@ void neko_idraw_flush(neko_immediate_draw_t* neko_idraw) {
     neko_mat4 mvp = neko_mat4_mul(proj, mv);
 
     // 更新顶点缓冲区 (使用命令缓冲区)
-    neko_graphics_vertex_buffer_desc_t vdesc = neko_default_val();
+    neko_render_vertex_buffer_desc_t vdesc = NEKO_DEFAULT_VAL();
     vdesc.data = neko_idraw->vertices.data;
     vdesc.size = neko_byte_buffer_size(&neko_idraw->vertices);
-    vdesc.usage = NEKO_GRAPHICS_BUFFER_USAGE_STREAM;
+    vdesc.usage = NEKO_RENDER_BUFFER_USAGE_STREAM;
 
-    neko_graphics_vertex_buffer_request_update(&neko_idraw->commands, neko_idraw()->vbo, &vdesc);
+    neko_render_vertex_buffer_request_update(&neko_idraw->commands, neko_idraw()->vbo, &vdesc);
 
     // 计算绘制数量
     size_t vsz = sizeof(neko_immediate_vert_t);
@@ -637,10 +637,10 @@ void neko_idraw_flush(neko_immediate_draw_t* neko_idraw) {
     u32 ct = neko_byte_buffer_size(&neko_idraw->vertices) / vsz;
 
     // 设置所有绑定数据
-    neko_graphics_bind_vertex_buffer_desc_t vbuffer = neko_default_val();
+    neko_render_bind_vertex_buffer_desc_t vbuffer = NEKO_DEFAULT_VAL();
     vbuffer.buffer = neko_idraw()->vbo;
 
-    neko_graphics_bind_uniform_desc_t ubinds[2] = neko_default_val();
+    neko_render_bind_uniform_desc_t ubinds[2] = NEKO_DEFAULT_VAL();
     ubinds[0].uniform = neko_idraw()->uniform;
     ubinds[0].data = &mvp;
     ubinds[1].uniform = neko_idraw()->sampler;
@@ -648,7 +648,7 @@ void neko_idraw_flush(neko_immediate_draw_t* neko_idraw) {
     ubinds[1].binding = 0;
 
     // 所有缓冲区的绑定 vertex,uniform,sampler
-    neko_graphics_bind_desc_t binds = neko_default_val();
+    neko_render_bind_desc_t binds = NEKO_DEFAULT_VAL();
     binds.vertex_buffers.desc = &vbuffer;
 
     // if (neko_dyn_array_empty(neko_idraw->vattributes))
@@ -658,13 +658,13 @@ void neko_idraw_flush(neko_immediate_draw_t* neko_idraw) {
     }
 
     // 绑定
-    neko_graphics_apply_bindings(&neko_idraw->commands, &binds);
+    neko_render_apply_bindings(&neko_idraw->commands, &binds);
 
     // 提交绘制
-    neko_graphics_draw_desc_t draw = neko_default_val();
+    neko_render_draw_desc_t draw = NEKO_DEFAULT_VAL();
     draw.start = 0;
     draw.count = ct;
-    neko_graphics_draw(&neko_idraw->commands, &draw);
+    neko_render_draw(&neko_idraw->commands, &draw);
 
     // 绘制后清理缓冲区
     neko_byte_buffer_clear(&neko_idraw->vertices);
@@ -736,7 +736,7 @@ void neko_idraw_face_cull_enabled(neko_immediate_draw_t* neko_idraw, bool enable
     neko_immediate_draw_set_pipeline(neko_idraw);
 }
 
-NEKO_API_DECL void neko_idraw_texture(neko_immediate_draw_t* neko_idraw, neko_handle(neko_graphics_texture_t) texture) {
+NEKO_API_DECL void neko_idraw_texture(neko_immediate_draw_t* neko_idraw, neko_handle(neko_render_texture_t) texture) {
     // Push a new pipeline?
     if (neko_idraw->cache.texture.id == texture.id) {
         return;
@@ -749,12 +749,12 @@ NEKO_API_DECL void neko_idraw_texture(neko_immediate_draw_t* neko_idraw, neko_ha
     neko_idraw->cache.texture = (texture.id && texture.id != UINT32_MAX) ? texture : neko_idraw()->tex_default;
 }
 
-NEKO_API_DECL void neko_idraw_pipeline_set(neko_immediate_draw_t* neko_idraw, neko_handle(neko_graphics_pipeline_t) pipeline) {
+NEKO_API_DECL void neko_idraw_pipeline_set(neko_immediate_draw_t* neko_idraw, neko_handle(neko_render_pipeline_t) pipeline) {
     neko_idraw_flush(neko_idraw);
 
     // Bind if valid
     if (pipeline.id) {
-        neko_graphics_pipeline_bind(&neko_idraw->commands, pipeline);
+        neko_render_pipeline_bind(&neko_idraw->commands, pipeline);
         neko_idraw->flags |= NEKO_IDRAW_FLAG_NO_BIND_CACHED_PIPELINES;
     }
     // Otherwise we set back to cache, clear vattributes, clear flag
@@ -860,7 +860,7 @@ void neko_idraw_v3fv(neko_immediate_draw_t* neko_idraw, neko_vec3 p) {
             }
         }
     } else {
-        neko_immediate_vert_t v = neko_default_val();
+        neko_immediate_vert_t v = NEKO_DEFAULT_VAL();
         v.position = p;
         v.uv = neko_idraw->cache.uv;
         v.color = neko_idraw->cache.color;
@@ -1027,20 +1027,20 @@ void neko_idraw_camera3d(neko_immediate_draw_t* neko_idraw, u32 width, u32 heigh
 }
 
 // Shape Drawing Utils
-void neko_idraw_triangle(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 x1, f32 y1, f32 x2, f32 y2, u8 r, u8 g, u8 b, u8 a, neko_graphics_primitive_type type) {
+void neko_idraw_triangle(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 x1, f32 y1, f32 x2, f32 y2, u8 r, u8 g, u8 b, u8 a, neko_render_primitive_type type) {
     neko_idraw_trianglex(neko_idraw, x0, y0, 0.f, x1, y1, 0.f, x2, y2, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, r, g, b, a, type);
 }
 
-void neko_idraw_trianglev(neko_immediate_draw_t* neko_idraw, neko_vec2 a, neko_vec2 b, neko_vec2 c, neko_color_t color, neko_graphics_primitive_type type) {
+void neko_idraw_trianglev(neko_immediate_draw_t* neko_idraw, neko_vec2 a, neko_vec2 b, neko_vec2 c, neko_color_t color, neko_render_primitive_type type) {
     neko_idraw_triangle(neko_idraw, a.x, a.y, b.x, b.y, c.x, c.y, color.r, color.g, color.b, color.a, type);
 }
 
 void neko_idraw_trianglex(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 z0, f32 x1, f32 y1, f32 z1, f32 x2, f32 y2, f32 z2, f32 u0, f32 v0, f32 u1, f32 v1, f32 u2, f32 v2, u8 r, u8 g, u8 b,
-                          u8 a, neko_graphics_primitive_type type) {
+                          u8 a, neko_render_primitive_type type) {
     switch (type) {
         default:
-        case NEKO_GRAPHICS_PRIMITIVE_TRIANGLES: {
-            neko_idraw_begin(neko_idraw, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
+        case NEKO_RENDER_PRIMITIVE_TRIANGLES: {
+            neko_idraw_begin(neko_idraw, NEKO_RENDER_PRIMITIVE_TRIANGLES);
             neko_idraw_c4ub(neko_idraw, r, g, b, a);
             neko_idraw_tc2f(neko_idraw, u0, v0);
             neko_idraw_v3f(neko_idraw, x0, y0, z0);
@@ -1051,7 +1051,7 @@ void neko_idraw_trianglex(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32
             neko_idraw_end(neko_idraw);
         } break;
 
-        case NEKO_GRAPHICS_PRIMITIVE_LINES: {
+        case NEKO_RENDER_PRIMITIVE_LINES: {
             neko_idraw_line3D(neko_idraw, x0, y0, z0, x1, y1, z1, r, g, b, a);
             neko_idraw_line3D(neko_idraw, x1, y1, z1, x2, y2, z2, r, g, b, a);
             neko_idraw_line3D(neko_idraw, x2, y2, z2, x0, y0, z0, r, g, b, a);
@@ -1060,16 +1060,16 @@ void neko_idraw_trianglex(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32
 }
 
 void neko_idraw_trianglevx(neko_immediate_draw_t* neko_idraw, neko_vec3 v0, neko_vec3 v1, neko_vec3 v2, neko_vec2 uv0, neko_vec2 uv1, neko_vec2 uv2, neko_color_t color,
-                           neko_graphics_primitive_type type) {
+                           neko_render_primitive_type type) {
     neko_idraw_trianglex(neko_idraw, v0.x, v0.y, v0.z, v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, uv0.x, uv0.y, uv1.x, uv1.y, uv2.x, uv2.y, color.r, color.g, color.b, color.a, type);
 }
 
 NEKO_API_DECL void neko_idraw_trianglevxmc(neko_immediate_draw_t* neko_idraw, neko_vec3 v0, neko_vec3 v1, neko_vec3 v2, neko_vec2 uv0, neko_vec2 uv1, neko_vec2 uv2, neko_color_t c0, neko_color_t c1,
-                                           neko_color_t c2, neko_graphics_primitive_type type) {
+                                           neko_color_t c2, neko_render_primitive_type type) {
     switch (type) {
         default:
-        case NEKO_GRAPHICS_PRIMITIVE_TRIANGLES: {
-            neko_idraw_begin(neko_idraw, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
+        case NEKO_RENDER_PRIMITIVE_TRIANGLES: {
+            neko_idraw_begin(neko_idraw, NEKO_RENDER_PRIMITIVE_TRIANGLES);
 
             // First vert
             neko_idraw_c4ub(neko_idraw, c0.r, c0.g, c0.b, c0.a);
@@ -1089,7 +1089,7 @@ NEKO_API_DECL void neko_idraw_trianglevxmc(neko_immediate_draw_t* neko_idraw, ne
             neko_idraw_end(neko_idraw);
         } break;
 
-        case NEKO_GRAPHICS_PRIMITIVE_LINES: {
+        case NEKO_RENDER_PRIMITIVE_LINES: {
             neko_idraw_line3Dmc(neko_idraw, v0.x, v0.y, v0.z, v1.x, v1.y, v1.z, c0.r, c0.g, c0.b, c0.a, c1.r, c1.g, c1.b, c1.a);
             neko_idraw_line3Dmc(neko_idraw, v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, c1.r, c1.g, c1.b, c1.a, c2.r, c2.g, c2.b, c2.a);
             neko_idraw_line3Dmc(neko_idraw, v2.x, v2.y, v2.z, v0.x, v0.y, v0.z, c2.r, c2.g, c2.b, c2.a, c0.r, c0.g, c0.b, c0.a);
@@ -1098,7 +1098,7 @@ NEKO_API_DECL void neko_idraw_trianglevxmc(neko_immediate_draw_t* neko_idraw, ne
 }
 
 void neko_idraw_line3Dmc(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 z0, f32 x1, f32 y1, f32 z1, u8 r0, u8 g0, u8 b0, u8 a0, u8 r1, u8 g1, u8 b1, u8 a1) {
-    neko_idraw_begin(neko_idraw, NEKO_GRAPHICS_PRIMITIVE_LINES);
+    neko_idraw_begin(neko_idraw, NEKO_RENDER_PRIMITIVE_LINES);
 
     neko_idraw_tc2f(neko_idraw, 0.f, 0.f);
 
@@ -1113,7 +1113,7 @@ void neko_idraw_line3Dmc(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 
 }
 
 void neko_idraw_line3D(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 z0, f32 x1, f32 y1, f32 z1, u8 r, u8 g, u8 b, u8 a) {
-    neko_idraw_begin(neko_idraw, NEKO_GRAPHICS_PRIMITIVE_LINES);
+    neko_idraw_begin(neko_idraw, NEKO_RENDER_PRIMITIVE_LINES);
     neko_idraw_tc2f(neko_idraw, 0.f, 0.f);
     neko_idraw_c4ub(neko_idraw, r, g, b, a);
     neko_idraw_v3f(neko_idraw, x0, y0, z0);
@@ -1129,10 +1129,10 @@ void neko_idraw_line(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 x1, 
 
 void neko_idraw_linev(neko_immediate_draw_t* neko_idraw, neko_vec2 v0, neko_vec2 v1, neko_color_t c) { neko_idraw_line(neko_idraw, v0.x, v0.y, v1.x, v1.y, c.r, c.g, c.b, c.a); }
 
-void neko_idraw_rectx(neko_immediate_draw_t* neko_idraw, f32 l, f32 b, f32 r, f32 t, f32 u0, f32 v0, f32 u1, f32 v1, u8 _r, u8 _g, u8 _b, u8 _a, neko_graphics_primitive_type type) {
+void neko_idraw_rectx(neko_immediate_draw_t* neko_idraw, f32 l, f32 b, f32 r, f32 t, f32 u0, f32 v0, f32 u1, f32 v1, u8 _r, u8 _g, u8 _b, u8 _a, neko_render_primitive_type type) {
     // Shouldn't use triangles, because need to declare texture coordinates.
     switch (type) {
-        case NEKO_GRAPHICS_PRIMITIVE_LINES: {
+        case NEKO_RENDER_PRIMITIVE_LINES: {
             // First triangle
             neko_idraw_line(neko_idraw, l, b, r, b, _r, _g, _b, _a);
             neko_idraw_line(neko_idraw, r, b, r, t, _r, _g, _b, _a);
@@ -1143,8 +1143,8 @@ void neko_idraw_rectx(neko_immediate_draw_t* neko_idraw, f32 l, f32 b, f32 r, f3
             // neko_idraw_triangle(neko_idraw, r, b, r, t, l, t, _r, _g, _b, _a, type);
         } break;
 
-        case NEKO_GRAPHICS_PRIMITIVE_TRIANGLES: {
-            neko_idraw_begin(neko_idraw, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
+        case NEKO_RENDER_PRIMITIVE_TRIANGLES: {
+            neko_idraw_begin(neko_idraw, NEKO_RENDER_PRIMITIVE_TRIANGLES);
 
             neko_idraw_c4ub(neko_idraw, _r, _g, _b, _a);
 
@@ -1170,38 +1170,38 @@ void neko_idraw_rectx(neko_immediate_draw_t* neko_idraw, f32 l, f32 b, f32 r, f3
     }
 }
 
-void neko_idraw_rect(neko_immediate_draw_t* neko_idraw, f32 l, f32 b, f32 r, f32 t, u8 _r, u8 _g, u8 _b, u8 _a, neko_graphics_primitive_type type) {
+void neko_idraw_rect(neko_immediate_draw_t* neko_idraw, f32 l, f32 b, f32 r, f32 t, u8 _r, u8 _g, u8 _b, u8 _a, neko_render_primitive_type type) {
     neko_idraw_rectx(neko_idraw, l, b, r, t, 0.f, 0.f, 1.f, 1.f, _r, _g, _b, _a, type);
 }
 
-void neko_idraw_rectv(neko_immediate_draw_t* neko_idraw, neko_vec2 bl, neko_vec2 tr, neko_color_t color, neko_graphics_primitive_type type) {
+void neko_idraw_rectv(neko_immediate_draw_t* neko_idraw, neko_vec2 bl, neko_vec2 tr, neko_color_t color, neko_render_primitive_type type) {
     neko_idraw_rectx(neko_idraw, bl.x, bl.y, tr.x, tr.y, 0.f, 0.f, 1.f, 1.f, color.r, color.g, color.b, color.a, type);
 }
 
-void neko_idraw_rectvx(neko_immediate_draw_t* neko_idraw, neko_vec2 bl, neko_vec2 tr, neko_vec2 uv0, neko_vec2 uv1, neko_color_t color, neko_graphics_primitive_type type) {
+void neko_idraw_rectvx(neko_immediate_draw_t* neko_idraw, neko_vec2 bl, neko_vec2 tr, neko_vec2 uv0, neko_vec2 uv1, neko_color_t color, neko_render_primitive_type type) {
     neko_idraw_rectx(neko_idraw, bl.x, bl.y, tr.x, tr.y, uv0.x, uv0.y, uv1.x, uv1.y, color.r, color.g, color.b, color.a, type);
 }
 
-void neko_idraw_rectvd(neko_immediate_draw_t* neko_idraw, neko_vec2 xy, neko_vec2 wh, neko_vec2 uv0, neko_vec2 uv1, neko_color_t color, neko_graphics_primitive_type type) {
+void neko_idraw_rectvd(neko_immediate_draw_t* neko_idraw, neko_vec2 xy, neko_vec2 wh, neko_vec2 uv0, neko_vec2 uv1, neko_color_t color, neko_render_primitive_type type) {
     neko_idraw_rectx(neko_idraw, xy.x, xy.y, xy.x + wh.x, xy.y + wh.y, uv0.x, uv0.y, uv1.x, uv1.y, color.r, color.g, color.b, color.a, type);
 }
 
-NEKO_API_DECL void neko_idraw_rect3Dv(neko_immediate_draw_t* neko_idraw, neko_vec3 min, neko_vec3 max, neko_vec2 uv0, neko_vec2 uv1, neko_color_t c, neko_graphics_primitive_type type) {
+NEKO_API_DECL void neko_idraw_rect3Dv(neko_immediate_draw_t* neko_idraw, neko_vec3 min, neko_vec3 max, neko_vec2 uv0, neko_vec2 uv1, neko_color_t c, neko_render_primitive_type type) {
     const neko_vec3 vt0 = min;
     const neko_vec3 vt1 = neko_v3(max.x, min.y, min.z);
     const neko_vec3 vt2 = neko_v3(min.x, max.y, max.z);
     const neko_vec3 vt3 = max;
 
     switch (type) {
-        case NEKO_GRAPHICS_PRIMITIVE_LINES: {
+        case NEKO_RENDER_PRIMITIVE_LINES: {
             neko_idraw_line3Dv(neko_idraw, vt0, vt1, c);
             neko_idraw_line3Dv(neko_idraw, vt1, vt2, c);
             neko_idraw_line3Dv(neko_idraw, vt2, vt3, c);
             neko_idraw_line3Dv(neko_idraw, vt3, vt0, c);
         } break;
 
-        case NEKO_GRAPHICS_PRIMITIVE_TRIANGLES: {
-            neko_idraw_begin(neko_idraw, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
+        case NEKO_RENDER_PRIMITIVE_TRIANGLES: {
+            neko_idraw_begin(neko_idraw, NEKO_RENDER_PRIMITIVE_TRIANGLES);
 
             neko_idraw_c4ub(neko_idraw, c.r, c.g, c.b, c.a);
 
@@ -1234,12 +1234,12 @@ NEKO_API_DECL void neko_idraw_rect3Dv(neko_immediate_draw_t* neko_idraw, neko_ve
     }
 }
 
-NEKO_API_DECL void neko_idraw_rect3Dvd(neko_immediate_draw_t* neko_idraw, neko_vec3 xyz, neko_vec3 whd, neko_vec2 uv0, neko_vec2 uv1, neko_color_t c, neko_graphics_primitive_type type) {
+NEKO_API_DECL void neko_idraw_rect3Dvd(neko_immediate_draw_t* neko_idraw, neko_vec3 xyz, neko_vec3 whd, neko_vec2 uv0, neko_vec2 uv1, neko_color_t c, neko_render_primitive_type type) {
     neko_idraw_rect3Dv(neko_idraw, xyz, neko_vec3_add(xyz, whd), uv0, uv1, c, type);
 }
 
 void neko_idraw_circle_sector(neko_immediate_draw_t* neko_idraw, f32 cx, f32 cy, f32 radius, int32_t start_angle, int32_t end_angle, int32_t segments, u8 r, u8 g, u8 b, u8 a,
-                              neko_graphics_primitive_type type) {
+                              neko_render_primitive_type type) {
     if (radius <= 0.0f) {
         radius = 0.1f;
     }
@@ -1263,7 +1263,7 @@ void neko_idraw_circle_sector(neko_immediate_draw_t* neko_idraw, f32 cx, f32 cy,
 
     f32 step = (f32)(end_angle - start_angle) / (f32)segments;
     f32 angle = (f32)start_angle;
-    neko_for_range_i(segments) {
+    NEKO_FOR_RANGE_N(segments, i) {
         neko_vec2 _a = neko_v2(cx, cy);
         neko_vec2 _b = neko_v2(cx + sinf(neko_idraw_deg2rad * angle) * radius, cy + cosf(neko_idraw_deg2rad * angle) * radius);
         neko_vec2 _c = neko_v2(cx + sinf(neko_idraw_deg2rad * (angle + step)) * radius, cy + cosf(neko_idraw_deg2rad * (angle + step)) * radius);
@@ -1273,7 +1273,7 @@ void neko_idraw_circle_sector(neko_immediate_draw_t* neko_idraw, f32 cx, f32 cy,
 }
 
 void neko_idraw_circle_sectorvx(neko_immediate_draw_t* neko_idraw, neko_vec3 c, f32 radius, int32_t start_angle, int32_t end_angle, int32_t segments, neko_color_t color,
-                                neko_graphics_primitive_type type) {
+                                neko_render_primitive_type type) {
     if (radius <= 0.0f) {
         radius = 0.1f;
     }
@@ -1300,7 +1300,7 @@ void neko_idraw_circle_sectorvx(neko_immediate_draw_t* neko_idraw, neko_vec3 c, 
 
     f32 step = (f32)(end_angle - start_angle) / (f32)segments;
     f32 angle = (f32)start_angle;
-    neko_for_range_i(segments) {
+    NEKO_FOR_RANGE_N(segments, i) {
         neko_vec3 _a = neko_v3(cx, cy, cz);
         neko_vec3 _b = neko_v3(cx + sinf(neko_idraw_deg2rad * angle) * radius, cy + cosf(neko_idraw_deg2rad * angle) * radius, cz);
         neko_vec3 _c = neko_v3(cx + sinf(neko_idraw_deg2rad * (angle + step)) * radius, cy + cosf(neko_idraw_deg2rad * (angle + step)) * radius, cz);
@@ -1309,16 +1309,16 @@ void neko_idraw_circle_sectorvx(neko_immediate_draw_t* neko_idraw, neko_vec3 c, 
     }
 }
 
-void neko_idraw_circle(neko_immediate_draw_t* neko_idraw, f32 cx, f32 cy, f32 radius, int32_t segments, u8 r, u8 g, u8 b, u8 a, neko_graphics_primitive_type type) {
+void neko_idraw_circle(neko_immediate_draw_t* neko_idraw, f32 cx, f32 cy, f32 radius, int32_t segments, u8 r, u8 g, u8 b, u8 a, neko_render_primitive_type type) {
     neko_idraw_circle_sector(neko_idraw, cx, cy, radius, 0, 360, segments, r, g, b, a, type);
 }
 
-void neko_idraw_circlevx(neko_immediate_draw_t* neko_idraw, neko_vec3 c, f32 radius, int32_t segments, neko_color_t color, neko_graphics_primitive_type type) {
+void neko_idraw_circlevx(neko_immediate_draw_t* neko_idraw, neko_vec3 c, f32 radius, int32_t segments, neko_color_t color, neko_render_primitive_type type) {
     neko_idraw_circle_sectorvx(neko_idraw, c, radius, 0, 360, segments, color, type);
 }
 
 NEKO_API_DECL void neko_idraw_arc(neko_immediate_draw_t* neko_idraw, f32 cx, f32 cy, f32 radius_inner, f32 radius_outer, f32 start_angle, f32 end_angle, int32_t segments, u8 r, u8 g, u8 b, u8 a,
-                                  neko_graphics_primitive_type type) {
+                                  neko_render_primitive_type type) {
     if (start_angle == end_angle) return;
 
     if (start_angle > end_angle) {
@@ -1365,7 +1365,7 @@ NEKO_API_DECL void neko_idraw_arc(neko_immediate_draw_t* neko_idraw, f32 cx, f32
     }
 }
 
-void neko_idraw_box(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, f32 z, f32 hx, f32 hy, f32 hz, u8 r, u8 g, u8 b, u8 a, neko_graphics_primitive_type type) {
+void neko_idraw_box(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, f32 z, f32 hx, f32 hy, f32 hz, u8 r, u8 g, u8 b, u8 a, neko_render_primitive_type type) {
     f32 width = hx;
     f32 height = hy;
     f32 length = hz;
@@ -1382,8 +1382,8 @@ void neko_idraw_box(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, f32 z, f32 
     neko_color_t color = neko_color(r, g, b, a);
 
     switch (type) {
-        case NEKO_GRAPHICS_PRIMITIVE_TRIANGLES: {
-            neko_idraw_begin(neko_idraw, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
+        case NEKO_RENDER_PRIMITIVE_TRIANGLES: {
+            neko_idraw_begin(neko_idraw, NEKO_RENDER_PRIMITIVE_TRIANGLES);
             {
                 neko_vec2 uv0 = neko_v2(0.f, 0.f);
                 neko_vec2 uv1 = neko_v2(1.f, 0.f);
@@ -1417,7 +1417,7 @@ void neko_idraw_box(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, f32 z, f32 
             neko_idraw_end(neko_idraw);
         } break;
 
-        case NEKO_GRAPHICS_PRIMITIVE_LINES: {
+        case NEKO_RENDER_PRIMITIVE_LINES: {
             neko_color_t color = neko_color(r, g, b, a);
             neko_idraw_tc2f(neko_idraw, 0.f, 0.f);
 
@@ -1461,7 +1461,7 @@ void neko_idraw_box(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, f32 z, f32 
     }
 }
 
-void neko_idraw_sphere(neko_immediate_draw_t* neko_idraw, f32 cx, f32 cy, f32 cz, f32 radius, u8 r, u8 g, u8 b, u8 a, neko_graphics_primitive_type type) {
+void neko_idraw_sphere(neko_immediate_draw_t* neko_idraw, f32 cx, f32 cy, f32 cz, f32 radius, u8 r, u8 g, u8 b, u8 a, neko_render_primitive_type type) {
     // Modified from: http://www.songho.ca/opengl/gl_sphere.html
     const u32 stacks = 16;
     const u32 sectors = 32;
@@ -1526,7 +1526,7 @@ void neko_idraw_bezier(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 x1
     neko_vec2 start = neko_v2(x0, y0);
     neko_vec2 end = neko_v2(x1, y1);
     neko_vec2 previous = start;
-    neko_vec2 current = neko_default_val();
+    neko_vec2 current = NEKO_DEFAULT_VAL();
     neko_color_t color = neko_color(r, g, b, a);
     const u32 bezier_line_divisions = 24;
 
@@ -1539,7 +1539,7 @@ void neko_idraw_bezier(neko_immediate_draw_t* neko_idraw, f32 x0, f32 y0, f32 x1
 }
 
 NEKO_API_DECL void neko_idraw_cylinder(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, f32 z, f32 r_top, f32 r_bottom, f32 height, int32_t sides, u8 r, u8 g, u8 b, u8 a,
-                                       neko_graphics_primitive_type type) {
+                                       neko_render_primitive_type type) {
     if (sides < 3) sides = 3;
 
     int32_t numVertex = sides * 8;
@@ -1547,8 +1547,8 @@ NEKO_API_DECL void neko_idraw_cylinder(neko_immediate_draw_t* neko_idraw, f32 x,
 
     switch (type) {
         default:
-        case NEKO_GRAPHICS_PRIMITIVE_TRIANGLES: {
-            neko_idraw_begin(neko_idraw, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
+        case NEKO_RENDER_PRIMITIVE_TRIANGLES: {
+            neko_idraw_begin(neko_idraw, NEKO_RENDER_PRIMITIVE_TRIANGLES);
             {
                 neko_idraw_c4ub(neko_idraw, r, g, b, a);
 
@@ -1594,8 +1594,8 @@ NEKO_API_DECL void neko_idraw_cylinder(neko_immediate_draw_t* neko_idraw, f32 x,
             neko_idraw_end(neko_idraw);
         } break;
 
-        case NEKO_GRAPHICS_PRIMITIVE_LINES: {
-            neko_idraw_begin(neko_idraw, NEKO_GRAPHICS_PRIMITIVE_LINES);
+        case NEKO_RENDER_PRIMITIVE_LINES: {
+            neko_idraw_begin(neko_idraw, NEKO_RENDER_PRIMITIVE_LINES);
             {
                 neko_idraw_c4ub(neko_idraw, r, g, b, a);
 
@@ -1630,7 +1630,7 @@ NEKO_API_DECL void neko_idraw_cylinder(neko_immediate_draw_t* neko_idraw, f32 x,
     }
 }
 
-NEKO_API_DECL void neko_idraw_cone(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, f32 z, f32 radius, f32 height, int32_t sides, u8 r, u8 g, u8 b, u8 a, neko_graphics_primitive_type type) {
+NEKO_API_DECL void neko_idraw_cone(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, f32 z, f32 radius, f32 height, int32_t sides, u8 r, u8 g, u8 b, u8 a, neko_render_primitive_type type) {
     neko_idraw_cylinder(neko_idraw, x, y, z, 0.f, radius, height, sides, r, g, b, a, type);
 }
 
@@ -1649,16 +1649,16 @@ NEKO_API_DECL void neko_idraw_text(neko_immediate_draw_t* neko_idraw, f32 x, f32
     f32 th = neko_asset_ascii_font_max_height(fp);
 
     // Move text to accomdate height
-    y += neko_max(td.y, th);
+    y += NEKO_MAX(td.y, th);
 
     // Needs to be fixed in here. Not elsewhere.
-    neko_idraw_begin(neko_idraw, NEKO_GRAPHICS_PRIMITIVE_TRIANGLES);
+    neko_idraw_begin(neko_idraw, NEKO_RENDER_PRIMITIVE_TRIANGLES);
     {
         neko_idraw_c4ub(neko_idraw, col.r, col.g, col.b, col.a);
         while (text[0] != '\0') {
             char c = text[0];
             if (c >= 32 && c <= 127) {
-                stbtt_aligned_quad q = neko_default_val();
+                stbtt_aligned_quad q = NEKO_DEFAULT_VAL();
                 stbtt_GetBakedQuad((stbtt_bakedchar*)fp->glyphs, fp->texture.desc.width, fp->texture.desc.height, c - 32, &x, &y, &q, 1);
 
                 neko_vec3 v0 = neko_v3(q.x0, q.y0, 0.f);  // TL
@@ -1708,7 +1708,7 @@ NEKO_API_DECL void neko_idraw_set_view_scissor(neko_immediate_draw_t* neko_idraw
     neko_idraw_flush(neko_idraw);
 
     // Set graphics viewport scissor
-    neko_graphics_set_view_scissor(&neko_idraw->commands, x, y, w, h);
+    neko_render_set_view_scissor(&neko_idraw->commands, x, y, w, h);
 }
 
 // Final Submit / Merge
@@ -1727,26 +1727,26 @@ NEKO_API_DECL void neko_idraw_draw(neko_immediate_draw_t* neko_idraw, neko_comma
 }
 
 NEKO_API_DECL void neko_idraw_renderpass_submit(neko_immediate_draw_t* neko_idraw, neko_command_buffer_t* cb, neko_vec4 viewport, neko_color_t c) {
-    neko_graphics_clear_action_t action = neko_default_val();
+    neko_render_clear_action_t action = NEKO_DEFAULT_VAL();
     action.color[0] = (f32)c.r / 255.f;
     action.color[1] = (f32)c.g / 255.f;
     action.color[2] = (f32)c.b / 255.f;
     action.color[3] = (f32)c.a / 255.f;
-    neko_renderpass_t pass = neko_default_val();
-    neko_graphics_renderpass_begin(cb, pass);
-    neko_graphics_set_viewport(cb, (u32)viewport.x, (u32)viewport.y, (u32)viewport.z, (u32)viewport.w);
-    neko_graphics_clear(cb, action);
+    neko_renderpass_t pass = NEKO_DEFAULT_VAL();
+    neko_render_renderpass_begin(cb, pass);
+    neko_render_set_viewport(cb, (u32)viewport.x, (u32)viewport.y, (u32)viewport.z, (u32)viewport.w);
+    neko_render_clear(cb, action);
     neko_idraw_draw(neko_idraw, cb);
-    neko_graphics_renderpass_end(cb);
+    neko_render_renderpass_end(cb);
 }
 
-NEKO_API_DECL void neko_idraw_renderpass_submit_ex(neko_immediate_draw_t* neko_idraw, neko_command_buffer_t* cb, neko_vec4 viewport, neko_graphics_clear_action_t action) {
-    neko_renderpass_t pass = neko_default_val();
-    neko_graphics_renderpass_begin(cb, pass);
-    neko_graphics_set_viewport(cb, (u32)viewport.x, (u32)viewport.y, (u32)viewport.z, (u32)viewport.w);
-    neko_graphics_clear(cb, action);
+NEKO_API_DECL void neko_idraw_renderpass_submit_ex(neko_immediate_draw_t* neko_idraw, neko_command_buffer_t* cb, neko_vec4 viewport, neko_render_clear_action_t action) {
+    neko_renderpass_t pass = NEKO_DEFAULT_VAL();
+    neko_render_renderpass_begin(cb, pass);
+    neko_render_set_viewport(cb, (u32)viewport.x, (u32)viewport.y, (u32)viewport.z, (u32)viewport.w);
+    neko_render_clear(cb, action);
     neko_idraw_draw(neko_idraw, cb);
-    neko_graphics_renderpass_end(cb);
+    neko_render_renderpass_end(cb);
 }
 
 //-----------------------------------------------------------------------------
@@ -1994,14 +1994,14 @@ static const char __neko_proggy_clean_ttf_compressed_data_base85[11980 + 1] =
 NEKO_API_DECL const char* __neko_internal_GetDefaultCompressedFontDataTTFBase85() { return __neko_proggy_clean_ttf_compressed_data_base85; }
 
 NEKO_API_DECL neko_draw_pipeline_t neko_draw_pipeline_create(const neko_draw_pipeline_desc_t* desc) {
-    neko_draw_pipeline_t pip = neko_default_val();
+    neko_draw_pipeline_t pip = NEKO_DEFAULT_VAL();
 
     if (!desc) {
-        neko_assert(false);
+        NEKO_ASSERT(false);
         return pip;
     }
 
-    pip.hndl = neko_graphics_pipeline_create(desc->pip_desc);
+    pip.hndl = neko_render_pipeline_create(desc->pip_desc);
     pip.ublock = neko_draw_uniform_block_create(&desc->ublock_desc);
     pip.desc = desc->pip_desc;
     pip.desc.layout.attrs = neko_malloc(desc->pip_desc.layout.size);
@@ -2010,7 +2010,7 @@ NEKO_API_DECL neko_draw_pipeline_t neko_draw_pipeline_create(const neko_draw_pip
 }
 
 NEKO_API_DECL neko_draw_uniform_block_t neko_draw_uniform_block_create(const neko_draw_uniform_block_desc_t* desc) {
-    neko_draw_uniform_block_t block = neko_default_val();
+    neko_draw_uniform_block_t block = NEKO_DEFAULT_VAL();
 
     if (!desc) return block;
 
@@ -2021,9 +2021,9 @@ NEKO_API_DECL neko_draw_uniform_block_t neko_draw_uniform_block_create(const nek
     for (uint32_t i = 0; i < ct; ++i) {
         neko_draw_uniform_desc_t* ud = &desc->layout[i];
 
-        neko_draw_uniform_t u = neko_default_val();
-        neko_graphics_uniform_desc_t u_desc = neko_default_val();
-        neko_graphics_uniform_layout_desc_t u_layout = neko_default_val();
+        neko_draw_uniform_t u = NEKO_DEFAULT_VAL();
+        neko_render_uniform_desc_t u_desc = NEKO_DEFAULT_VAL();
+        neko_render_uniform_layout_desc_t u_layout = NEKO_DEFAULT_VAL();
         u_layout.type = ud->type;
         memcpy(u_desc.name, ud->name, 64);
         u_desc.layout = &u_layout;
@@ -2032,12 +2032,12 @@ NEKO_API_DECL neko_draw_uniform_block_t neko_draw_uniform_block_create(const nek
 
         // Determine offset/hndl
         switch (ud->type) {
-            case NEKO_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F: {
+            case NEKO_RENDER_UNIFORM_IMAGE2D_RGBA32F: {
                 u.offset = image2D_offset;
             } break;
 
             default: {
-                u.hndl = neko_graphics_uniform_create(u_desc);
+                u.hndl = neko_render_uniform_create(u_desc);
                 u.offset = offset;
             } break;
         }
@@ -2045,32 +2045,32 @@ NEKO_API_DECL neko_draw_uniform_block_t neko_draw_uniform_block_create(const nek
         // Add to data offset based on type
         switch (ud->type) {
             default:
-            case NEKO_GRAPHICS_UNIFORM_FLOAT:
+            case NEKO_RENDER_UNIFORM_FLOAT:
                 offset += sizeof(float);
                 break;
-            case NEKO_GRAPHICS_UNIFORM_INT:
+            case NEKO_RENDER_UNIFORM_INT:
                 offset += sizeof(int32_t);
                 break;
-            case NEKO_GRAPHICS_UNIFORM_VEC2:
+            case NEKO_RENDER_UNIFORM_VEC2:
                 offset += sizeof(neko_vec2);
                 break;
-            case NEKO_GRAPHICS_UNIFORM_VEC3:
+            case NEKO_RENDER_UNIFORM_VEC3:
                 offset += sizeof(neko_vec3);
                 break;
-            case NEKO_GRAPHICS_UNIFORM_VEC4:
+            case NEKO_RENDER_UNIFORM_VEC4:
                 offset += sizeof(neko_vec4);
                 break;
-            case NEKO_GRAPHICS_UNIFORM_MAT4:
+            case NEKO_RENDER_UNIFORM_MAT4:
                 offset += sizeof(neko_mat4);
                 break;
-            case NEKO_GRAPHICS_UNIFORM_SAMPLER2D:
-                offset += sizeof(neko_handle(neko_graphics_texture_t));
+            case NEKO_RENDER_UNIFORM_SAMPLER2D:
+                offset += sizeof(neko_handle(neko_render_texture_t));
                 break;
-            case NEKO_GRAPHICS_UNIFORM_USAMPLER2D:
-                offset += sizeof(neko_handle(neko_graphics_texture_t));
+            case NEKO_RENDER_UNIFORM_USAMPLER2D:
+                offset += sizeof(neko_handle(neko_render_texture_t));
                 break;
-            case NEKO_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F: {
-                image2D_offset += sizeof(neko_handle(neko_graphics_texture_t));
+            case NEKO_RENDER_UNIFORM_IMAGE2D_RGBA32F: {
+                image2D_offset += sizeof(neko_handle(neko_render_texture_t));
             } break;
         }
 
@@ -2084,20 +2084,20 @@ NEKO_API_DECL neko_draw_uniform_block_t neko_draw_uniform_block_create(const nek
     return block;
 }
 
-NEKO_API_DECL neko_draw_texture_t neko_draw_texture_create(neko_graphics_texture_desc_t desc) { return neko_graphics_texture_create(desc); }
+NEKO_API_DECL neko_draw_texture_t neko_draw_texture_create(neko_render_texture_desc_t desc) { return neko_render_texture_create(desc); }
 
 NEKO_API_DECL neko_draw_material_t neko_draw_material_create(neko_draw_material_desc_t* desc) {
-    neko_draw_material_t mat = neko_default_val();
+    neko_draw_material_t mat = NEKO_DEFAULT_VAL();
 
     if (!desc) {
-        neko_assert(false);
+        NEKO_ASSERT(false);
         return mat;
     }
 
     // Set desc information to defaults if not provided.
     if (!desc->pip_func.func) desc->pip_func.func = neko_draw_raw_data_default_impl;
     neko_draw_pipeline_t* pip = NEKO_GFXT_RAW_DATA(&desc->pip_func, neko_draw_pipeline_t);
-    neko_assert(pip);
+    NEKO_ASSERT(pip);
 
     mat.desc = *desc;
     mat.uniform_data = neko_byte_buffer_new();
@@ -2109,7 +2109,7 @@ NEKO_API_DECL neko_draw_material_t neko_draw_material_create(neko_draw_material_
 }
 
 NEKO_API_DECL neko_draw_mesh_t neko_draw_mesh_create(const neko_draw_mesh_desc_t* desc) {
-    neko_draw_mesh_t mesh = neko_default_val();
+    neko_draw_mesh_t mesh = NEKO_DEFAULT_VAL();
 
     if (!desc) {
         return mesh;
@@ -2126,15 +2126,15 @@ NEKO_API_DECL neko_draw_mesh_t neko_draw_mesh_create(const neko_draw_mesh_desc_t
             neko_draw_mesh_vertex_data_t* vdata = &m->primitives[p];
 
             // Construct primitive
-            neko_draw_mesh_primitive_t prim = neko_default_val();
+            neko_draw_mesh_primitive_t prim = NEKO_DEFAULT_VAL();
             prim.count = vdata->count;
 
             // Positions
             if (vdata->positions.data) {
-                neko_graphics_vertex_buffer_desc_t vdesc = neko_default_val();
+                neko_render_vertex_buffer_desc_t vdesc = NEKO_DEFAULT_VAL();
                 vdesc.data = vdata->positions.data;
                 vdesc.size = vdata->positions.size;
-                prim.stream.positions = neko_graphics_vertex_buffer_create(vdesc);
+                prim.stream.positions = neko_render_vertex_buffer_create(vdesc);
                 if (!desc->keep_data) {
                     neko_free(vdata->positions.data);
                 }
@@ -2142,10 +2142,10 @@ NEKO_API_DECL neko_draw_mesh_t neko_draw_mesh_create(const neko_draw_mesh_desc_t
 
             // Normals
             if (vdata->normals.data) {
-                neko_graphics_vertex_buffer_desc_t vdesc = neko_default_val();
+                neko_render_vertex_buffer_desc_t vdesc = NEKO_DEFAULT_VAL();
                 vdesc.data = vdata->normals.data;
                 vdesc.size = vdata->normals.size;
-                prim.stream.normals = neko_graphics_vertex_buffer_create(vdesc);
+                prim.stream.normals = neko_render_vertex_buffer_create(vdesc);
                 if (!desc->keep_data) {
                     neko_free(vdata->normals.data);
                 }
@@ -2153,10 +2153,10 @@ NEKO_API_DECL neko_draw_mesh_t neko_draw_mesh_create(const neko_draw_mesh_desc_t
 
             // Tangents
             if (vdata->tangents.data) {
-                neko_graphics_vertex_buffer_desc_t vdesc = neko_default_val();
+                neko_render_vertex_buffer_desc_t vdesc = NEKO_DEFAULT_VAL();
                 vdesc.data = vdata->tangents.data;
                 vdesc.size = vdata->tangents.size;
-                prim.stream.tangents = neko_graphics_vertex_buffer_create(vdesc);
+                prim.stream.tangents = neko_render_vertex_buffer_create(vdesc);
                 if (!desc->keep_data) {
                     neko_free(vdata->tangents.data);
                 }
@@ -2165,10 +2165,10 @@ NEKO_API_DECL neko_draw_mesh_t neko_draw_mesh_create(const neko_draw_mesh_desc_t
             // Texcoords
             for (uint32_t j = 0; j < NEKO_GFXT_TEX_COORD_MAX; ++j) {
                 if (vdata->tex_coords[j].data) {
-                    neko_graphics_vertex_buffer_desc_t vdesc = neko_default_val();
+                    neko_render_vertex_buffer_desc_t vdesc = NEKO_DEFAULT_VAL();
                     vdesc.data = vdata->tex_coords[j].data;
                     vdesc.size = vdata->tex_coords[j].size;
-                    prim.stream.tex_coords[j] = neko_graphics_vertex_buffer_create(vdesc);
+                    prim.stream.tex_coords[j] = neko_render_vertex_buffer_create(vdesc);
                     if (!desc->keep_data) {
                         neko_free(vdata->tex_coords[j].data);
                     }
@@ -2178,10 +2178,10 @@ NEKO_API_DECL neko_draw_mesh_t neko_draw_mesh_create(const neko_draw_mesh_desc_t
             // Colors
             for (uint32_t j = 0; j < NEKO_GFXT_COLOR_MAX; ++j) {
                 if (vdata->colors[j].data) {
-                    neko_graphics_vertex_buffer_desc_t vdesc = neko_default_val();
+                    neko_render_vertex_buffer_desc_t vdesc = NEKO_DEFAULT_VAL();
                     vdesc.data = vdata->colors[j].data;
                     vdesc.size = vdata->colors[j].size;
-                    prim.stream.colors[j] = neko_graphics_vertex_buffer_create(vdesc);
+                    prim.stream.colors[j] = neko_render_vertex_buffer_create(vdesc);
                     if (!desc->keep_data) {
                         neko_free(vdata->colors[j].data);
                     }
@@ -2191,10 +2191,10 @@ NEKO_API_DECL neko_draw_mesh_t neko_draw_mesh_create(const neko_draw_mesh_desc_t
             // Joints
             for (uint32_t j = 0; j < NEKO_GFXT_JOINT_MAX; ++j) {
                 if (vdata->joints[j].data) {
-                    neko_graphics_vertex_buffer_desc_t vdesc = neko_default_val();
+                    neko_render_vertex_buffer_desc_t vdesc = NEKO_DEFAULT_VAL();
                     vdesc.data = vdata->joints[j].data;
                     vdesc.size = vdata->joints[j].size;
-                    prim.stream.joints[j] = neko_graphics_vertex_buffer_create(vdesc);
+                    prim.stream.joints[j] = neko_render_vertex_buffer_create(vdesc);
                     if (!desc->keep_data) {
                         neko_free(vdata->joints[j].data);
                     }
@@ -2204,10 +2204,10 @@ NEKO_API_DECL neko_draw_mesh_t neko_draw_mesh_create(const neko_draw_mesh_desc_t
             // Weights
             for (uint32_t j = 0; j < NEKO_GFXT_WEIGHT_MAX; ++j) {
                 if (vdata->weights[j].data) {
-                    neko_graphics_vertex_buffer_desc_t vdesc = neko_default_val();
+                    neko_render_vertex_buffer_desc_t vdesc = NEKO_DEFAULT_VAL();
                     vdesc.data = vdata->weights[j].data;
                     vdesc.size = vdata->weights[j].size;
-                    prim.stream.weights[j] = neko_graphics_vertex_buffer_create(vdesc);
+                    prim.stream.weights[j] = neko_render_vertex_buffer_create(vdesc);
                     if (!desc->keep_data) {
                         neko_free(vdata->weights[j].data);
                     }
@@ -2215,12 +2215,12 @@ NEKO_API_DECL neko_draw_mesh_t neko_draw_mesh_create(const neko_draw_mesh_desc_t
             }
 
             // Index buffer decl
-            neko_graphics_index_buffer_desc_t idesc = neko_default_val();
+            neko_render_index_buffer_desc_t idesc = NEKO_DEFAULT_VAL();
             idesc.data = vdata->indices.data;
             idesc.size = vdata->indices.size;
 
             // Construct index buffer for primitive
-            prim.indices = neko_graphics_index_buffer_create(idesc);
+            prim.indices = neko_render_index_buffer_create(idesc);
 
             if (!desc->keep_data) {
                 neko_free(vdata->indices.data);
@@ -2268,7 +2268,7 @@ NEKO_API_DECL void neko_draw_mesh_update_or_create(neko_draw_mesh_t* mesh, const
             // Construct or retrieve mesh primitive
             neko_draw_mesh_primitive_t* prim = NULL;
             if (neko_dyn_array_empty(mesh->primitives) || neko_dyn_array_size(mesh->primitives) < p) {
-                neko_draw_mesh_primitive_t dprim = neko_default_val();
+                neko_draw_mesh_primitive_t dprim = NEKO_DEFAULT_VAL();
                 neko_dyn_array_push(mesh->primitives, dprim);
             }
             prim = &mesh->primitives[p];
@@ -2278,17 +2278,17 @@ NEKO_API_DECL void neko_draw_mesh_update_or_create(neko_draw_mesh_t* mesh, const
 
             // Positions
             if (vdata->positions.data) {
-                neko_graphics_vertex_buffer_desc_t vdesc = neko_default_val();
+                neko_render_vertex_buffer_desc_t vdesc = NEKO_DEFAULT_VAL();
                 vdesc.data = vdata->positions.data;
                 vdesc.size = vdata->positions.size;
 
                 // Update
                 if (prim->stream.positions.id) {
-                    neko_graphics_vertex_buffer_update(prim->stream.positions, &vdesc);
+                    neko_render_vertex_buffer_update(prim->stream.positions, &vdesc);
                 }
                 // Create
                 else {
-                    prim->stream.positions = neko_graphics_vertex_buffer_create(vdesc);
+                    prim->stream.positions = neko_render_vertex_buffer_create(vdesc);
                 }
                 if (!desc->keep_data) {
                     neko_free(vdata->positions.data);
@@ -2297,15 +2297,15 @@ NEKO_API_DECL void neko_draw_mesh_update_or_create(neko_draw_mesh_t* mesh, const
 
             // Normals
             if (vdata->normals.data) {
-                neko_graphics_vertex_buffer_desc_t vdesc = neko_default_val();
+                neko_render_vertex_buffer_desc_t vdesc = NEKO_DEFAULT_VAL();
                 vdesc.data = vdata->normals.data;
                 vdesc.size = vdata->normals.size;
 
                 // Update
                 if (prim->stream.normals.id) {
-                    neko_graphics_vertex_buffer_update(prim->stream.normals, &vdesc);
+                    neko_render_vertex_buffer_update(prim->stream.normals, &vdesc);
                 } else {
-                    prim->stream.normals = neko_graphics_vertex_buffer_create(vdesc);
+                    prim->stream.normals = neko_render_vertex_buffer_create(vdesc);
                 }
                 if (!desc->keep_data) {
                     neko_free(vdata->normals.data);
@@ -2314,14 +2314,14 @@ NEKO_API_DECL void neko_draw_mesh_update_or_create(neko_draw_mesh_t* mesh, const
 
             // Tangents
             if (vdata->tangents.data) {
-                neko_graphics_vertex_buffer_desc_t vdesc = neko_default_val();
+                neko_render_vertex_buffer_desc_t vdesc = NEKO_DEFAULT_VAL();
                 vdesc.data = vdata->tangents.data;
                 vdesc.size = vdata->tangents.size;
 
                 if (prim->stream.tangents.id) {
-                    neko_graphics_vertex_buffer_update(prim->stream.tangents, &vdesc);
+                    neko_render_vertex_buffer_update(prim->stream.tangents, &vdesc);
                 } else {
-                    prim->stream.tangents = neko_graphics_vertex_buffer_create(vdesc);
+                    prim->stream.tangents = neko_render_vertex_buffer_create(vdesc);
                 }
                 if (!desc->keep_data) {
                     neko_free(vdata->tangents.data);
@@ -2331,14 +2331,14 @@ NEKO_API_DECL void neko_draw_mesh_update_or_create(neko_draw_mesh_t* mesh, const
             // Texcoords
             for (uint32_t j = 0; j < NEKO_GFXT_TEX_COORD_MAX; ++j) {
                 if (vdata->tex_coords[j].data) {
-                    neko_graphics_vertex_buffer_desc_t vdesc = neko_default_val();
+                    neko_render_vertex_buffer_desc_t vdesc = NEKO_DEFAULT_VAL();
                     vdesc.data = vdata->tex_coords[j].data;
                     vdesc.size = vdata->tex_coords[j].size;
 
                     if (prim->stream.tex_coords[j].id) {
-                        neko_graphics_vertex_buffer_update(prim->stream.tex_coords[j], &vdesc);
+                        neko_render_vertex_buffer_update(prim->stream.tex_coords[j], &vdesc);
                     } else {
-                        prim->stream.tex_coords[j] = neko_graphics_vertex_buffer_create(vdesc);
+                        prim->stream.tex_coords[j] = neko_render_vertex_buffer_create(vdesc);
                     }
                     if (!desc->keep_data) {
                         neko_free(vdata->tex_coords[j].data);
@@ -2349,14 +2349,14 @@ NEKO_API_DECL void neko_draw_mesh_update_or_create(neko_draw_mesh_t* mesh, const
             // Colors
             for (uint32_t j = 0; j < NEKO_GFXT_COLOR_MAX; ++j) {
                 if (vdata->colors[j].data) {
-                    neko_graphics_vertex_buffer_desc_t vdesc = neko_default_val();
+                    neko_render_vertex_buffer_desc_t vdesc = NEKO_DEFAULT_VAL();
                     vdesc.data = vdata->colors[j].data;
                     vdesc.size = vdata->colors[j].size;
 
                     if (prim->stream.colors[j].id) {
-                        neko_graphics_vertex_buffer_update(prim->stream.colors[j], &vdesc);
+                        neko_render_vertex_buffer_update(prim->stream.colors[j], &vdesc);
                     } else {
-                        prim->stream.colors[j] = neko_graphics_vertex_buffer_create(vdesc);
+                        prim->stream.colors[j] = neko_render_vertex_buffer_create(vdesc);
                     }
                     if (!desc->keep_data) {
                         neko_free(vdata->colors[j].data);
@@ -2367,14 +2367,14 @@ NEKO_API_DECL void neko_draw_mesh_update_or_create(neko_draw_mesh_t* mesh, const
             // Joints
             for (uint32_t j = 0; j < NEKO_GFXT_JOINT_MAX; ++j) {
                 if (vdata->joints[j].data) {
-                    neko_graphics_vertex_buffer_desc_t vdesc = neko_default_val();
+                    neko_render_vertex_buffer_desc_t vdesc = NEKO_DEFAULT_VAL();
                     vdesc.data = vdata->joints[j].data;
                     vdesc.size = vdata->joints[j].size;
 
                     if (prim->stream.joints[j].id) {
-                        neko_graphics_vertex_buffer_update(prim->stream.joints[j], &vdesc);
+                        neko_render_vertex_buffer_update(prim->stream.joints[j], &vdesc);
                     } else {
-                        prim->stream.joints[j] = neko_graphics_vertex_buffer_create(vdesc);
+                        prim->stream.joints[j] = neko_render_vertex_buffer_create(vdesc);
                     }
                     if (!desc->keep_data) {
                         neko_free(vdata->joints[j].data);
@@ -2385,14 +2385,14 @@ NEKO_API_DECL void neko_draw_mesh_update_or_create(neko_draw_mesh_t* mesh, const
             // Weights
             for (uint32_t j = 0; j < NEKO_GFXT_WEIGHT_MAX; ++j) {
                 if (vdata->weights[j].data) {
-                    neko_graphics_vertex_buffer_desc_t vdesc = neko_default_val();
+                    neko_render_vertex_buffer_desc_t vdesc = NEKO_DEFAULT_VAL();
                     vdesc.data = vdata->weights[j].data;
                     vdesc.size = vdata->weights[j].size;
 
                     if (prim->stream.weights[j].id) {
-                        neko_graphics_vertex_buffer_update(prim->stream.weights[j], &vdesc);
+                        neko_render_vertex_buffer_update(prim->stream.weights[j], &vdesc);
                     } else {
-                        prim->stream.weights[j] = neko_graphics_vertex_buffer_create(vdesc);
+                        prim->stream.weights[j] = neko_render_vertex_buffer_create(vdesc);
                     }
                     if (!desc->keep_data) {
                         neko_free(vdata->weights[j].data);
@@ -2403,14 +2403,14 @@ NEKO_API_DECL void neko_draw_mesh_update_or_create(neko_draw_mesh_t* mesh, const
             // Custom uint
             for (uint32_t j = 0; j < NEKO_GFXT_CUSTOM_UINT_MAX; ++j) {
                 if (vdata->custom_uint[j].data) {
-                    neko_graphics_vertex_buffer_desc_t vdesc = neko_default_val();
+                    neko_render_vertex_buffer_desc_t vdesc = NEKO_DEFAULT_VAL();
                     vdesc.data = vdata->custom_uint[j].data;
                     vdesc.size = vdata->custom_uint[j].size;
 
                     if (prim->stream.custom_uint[j].id) {
-                        neko_graphics_vertex_buffer_update(prim->stream.custom_uint[j], &vdesc);
+                        neko_render_vertex_buffer_update(prim->stream.custom_uint[j], &vdesc);
                     } else {
-                        prim->stream.custom_uint[j] = neko_graphics_vertex_buffer_create(vdesc);
+                        prim->stream.custom_uint[j] = neko_render_vertex_buffer_create(vdesc);
                     }
                     if (!desc->keep_data) {
                         neko_free(vdata->custom_uint[j].data);
@@ -2419,15 +2419,15 @@ NEKO_API_DECL void neko_draw_mesh_update_or_create(neko_draw_mesh_t* mesh, const
             }
 
             // Index buffer decl
-            neko_graphics_index_buffer_desc_t idesc = neko_default_val();
+            neko_render_index_buffer_desc_t idesc = NEKO_DEFAULT_VAL();
             idesc.data = vdata->indices.data;
             idesc.size = vdata->indices.size;
 
             // Construct index buffer for primitive
             if (prim->indices.id) {
-                neko_graphics_index_buffer_update(prim->indices, &idesc);
+                neko_render_index_buffer_update(prim->indices, &idesc);
             } else {
-                prim->indices = neko_graphics_index_buffer_create(idesc);
+                prim->indices = neko_render_index_buffer_create(idesc);
             }
 
             if (!desc->keep_data) {
@@ -2446,7 +2446,7 @@ NEKO_API_DECL void neko_draw_mesh_update_or_create(neko_draw_mesh_t* mesh, const
 }
 
 NEKO_API_DECL neko_draw_renderable_t neko_draw_renderable_create(const neko_draw_renderable_desc_t* desc) {
-    neko_draw_renderable_t rend = neko_default_val();
+    neko_draw_renderable_t rend = NEKO_DEFAULT_VAL();
 
     if (!desc) {
         return rend;
@@ -2459,7 +2459,7 @@ NEKO_API_DECL neko_draw_renderable_t neko_draw_renderable_create(const neko_draw
 }
 
 //=== Destruction ===//
-NEKO_API_DECL void neko_draw_texture_destroy(neko_draw_texture_t* texture) { neko_graphics_texture_destroy(*texture); }
+NEKO_API_DECL void neko_draw_texture_destroy(neko_draw_texture_t* texture) { neko_render_texture_destroy(*texture); }
 
 NEKO_API_DECL void neko_draw_material_destroy(neko_draw_material_t* material) {
     // Destroy all material data
@@ -2473,27 +2473,27 @@ NEKO_API_DECL void neko_draw_mesh_destroy(neko_draw_mesh_t* mesh) {
         neko_draw_mesh_primitive_t* prim = &mesh->primitives[p];
 
         // Free index buffer
-        if (prim->indices.id) neko_graphics_index_buffer_destroy(prim->indices);
+        if (prim->indices.id) neko_render_index_buffer_destroy(prim->indices);
 
         // Free vertex stream
-        if (prim->stream.positions.id) neko_graphics_vertex_buffer_destroy(prim->stream.positions);
-        if (prim->stream.normals.id) neko_graphics_vertex_buffer_destroy(prim->stream.normals);
-        if (prim->stream.tangents.id) neko_graphics_vertex_buffer_destroy(prim->stream.tangents);
+        if (prim->stream.positions.id) neko_render_vertex_buffer_destroy(prim->stream.positions);
+        if (prim->stream.normals.id) neko_render_vertex_buffer_destroy(prim->stream.normals);
+        if (prim->stream.tangents.id) neko_render_vertex_buffer_destroy(prim->stream.tangents);
 
         for (uint32_t i = 0; i < NEKO_GFXT_COLOR_MAX; ++i) {
-            if (prim->stream.colors[i].id) neko_graphics_vertex_buffer_destroy(prim->stream.colors[i]);
+            if (prim->stream.colors[i].id) neko_render_vertex_buffer_destroy(prim->stream.colors[i]);
         }
 
         for (uint32_t i = 0; i < NEKO_GFXT_TEX_COORD_MAX; ++i) {
-            if (prim->stream.tex_coords[i].id) neko_graphics_vertex_buffer_destroy(prim->stream.tex_coords[i]);
+            if (prim->stream.tex_coords[i].id) neko_render_vertex_buffer_destroy(prim->stream.tex_coords[i]);
         }
 
         for (uint32_t i = 0; i < NEKO_GFXT_JOINT_MAX; ++i) {
-            if (prim->stream.joints[i].id) neko_graphics_vertex_buffer_destroy(prim->stream.joints[i]);
+            if (prim->stream.joints[i].id) neko_render_vertex_buffer_destroy(prim->stream.joints[i]);
         }
 
         for (uint32_t i = 0; i < NEKO_GFXT_WEIGHT_MAX; ++i) {
-            if (prim->stream.weights[i].id) neko_graphics_vertex_buffer_destroy(prim->stream.weights[i]);
+            if (prim->stream.weights[i].id) neko_render_vertex_buffer_destroy(prim->stream.weights[i]);
         }
     }
 }
@@ -2501,7 +2501,7 @@ NEKO_API_DECL void neko_draw_mesh_destroy(neko_draw_mesh_t* mesh) {
 NEKO_API_DECL void neko_draw_uniform_block_destroy(neko_draw_uniform_block_t* ub) {
     for (uint32_t i = 0; i < neko_dyn_array_size(ub->uniforms); ++i) {
         neko_draw_uniform_t* u = &ub->uniforms[i];
-        neko_graphics_uniform_destroy(u->hndl);
+        neko_render_uniform_destroy(u->hndl);
     }
 
     neko_dyn_array_free(ub->uniforms);
@@ -2513,12 +2513,12 @@ NEKO_API_DECL void neko_draw_pipeline_destroy(neko_draw_pipeline_t* pipeline) {
     neko_draw_uniform_block_destroy(&pipeline->ublock);
 
     // Free shaders (if responsible for them)
-    neko_graphics_shader_destroy(pipeline->desc.raster.shader);
+    neko_render_shader_destroy(pipeline->desc.raster.shader);
 
     // Destroy pipeline
     if (pipeline->desc.layout.attrs) neko_free(pipeline->desc.layout.attrs);
     if (pipeline->mesh_layout) neko_dyn_array_free(pipeline->mesh_layout);
-    neko_graphics_pipeline_destroy(pipeline->hndl);
+    neko_render_pipeline_destroy(pipeline->hndl);
 }
 
 //=== Copy API ===//
@@ -2547,12 +2547,12 @@ void neko_draw_material_set_uniform(neko_draw_material_t* mat, const char* name,
     if (!mat || !name || !data) return;
 
     neko_draw_pipeline_t* pip = NEKO_GFXT_RAW_DATA(&mat->desc.pip_func, neko_draw_pipeline_t);
-    neko_assert(pip);
+    NEKO_ASSERT(pip);
 
     // Get key for name lookup
     uint64_t key = neko_hash_str64(name);
     if (!neko_hash_table_exists(pip->ublock.lookup, key)) {
-        neko_timed_action(60, { neko_log_warning("Unable to find uniform: %s", name); });
+        NEKO_TIMED_ACTION(60, { neko_log_warning("Unable to find uniform: %s", name); });
         return;
     }
 
@@ -2566,7 +2566,7 @@ void neko_draw_material_set_uniform(neko_draw_material_t* mat, const char* name,
 
     // Advance by offset
     switch (u->type) {
-        case NEKO_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F:
+        case NEKO_RENDER_UNIFORM_IMAGE2D_RGBA32F:
             neko_byte_buffer_advance_position(&mat->image_buffer_data, u->offset);
             break;
         default:
@@ -2575,33 +2575,33 @@ void neko_draw_material_set_uniform(neko_draw_material_t* mat, const char* name,
     }
 
     switch (u->type) {
-        case NEKO_GRAPHICS_UNIFORM_FLOAT:
+        case NEKO_RENDER_UNIFORM_FLOAT:
             neko_byte_buffer_write(&mat->uniform_data, float, *(float*)data);
             break;
-        case NEKO_GRAPHICS_UNIFORM_INT:
+        case NEKO_RENDER_UNIFORM_INT:
             neko_byte_buffer_write(&mat->uniform_data, int32_t, *(int32_t*)data);
             break;
-        case NEKO_GRAPHICS_UNIFORM_VEC2:
+        case NEKO_RENDER_UNIFORM_VEC2:
             neko_byte_buffer_write(&mat->uniform_data, neko_vec2, *(neko_vec2*)data);
             break;
-        case NEKO_GRAPHICS_UNIFORM_VEC3:
+        case NEKO_RENDER_UNIFORM_VEC3:
             neko_byte_buffer_write(&mat->uniform_data, neko_vec3, *(neko_vec3*)data);
             break;
-        case NEKO_GRAPHICS_UNIFORM_VEC4:
+        case NEKO_RENDER_UNIFORM_VEC4:
             neko_byte_buffer_write(&mat->uniform_data, neko_vec4, *(neko_vec4*)data);
             break;
-        case NEKO_GRAPHICS_UNIFORM_MAT4:
+        case NEKO_RENDER_UNIFORM_MAT4:
             neko_byte_buffer_write(&mat->uniform_data, neko_mat4, *(neko_mat4*)data);
             break;
 
-        case NEKO_GRAPHICS_UNIFORM_SAMPLERCUBE:
-        case NEKO_GRAPHICS_UNIFORM_SAMPLER2D:
-        case NEKO_GRAPHICS_UNIFORM_USAMPLER2D: {
-            neko_byte_buffer_write(&mat->uniform_data, neko_handle(neko_graphics_texture_t), *(neko_handle(neko_graphics_texture_t)*)data);
+        case NEKO_RENDER_UNIFORM_SAMPLERCUBE:
+        case NEKO_RENDER_UNIFORM_SAMPLER2D:
+        case NEKO_RENDER_UNIFORM_USAMPLER2D: {
+            neko_byte_buffer_write(&mat->uniform_data, neko_handle(neko_render_texture_t), *(neko_handle(neko_render_texture_t)*)data);
         } break;
 
-        case NEKO_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F: {
-            neko_byte_buffer_write(&mat->image_buffer_data, neko_handle(neko_graphics_texture_t), *(neko_handle(neko_graphics_texture_t)*)data);
+        case NEKO_RENDER_UNIFORM_IMAGE2D_RGBA32F: {
+            neko_byte_buffer_write(&mat->image_buffer_data, neko_handle(neko_render_texture_t), *(neko_handle(neko_render_texture_t)*)data);
         } break;
     }
 }
@@ -2621,8 +2621,8 @@ NEKO_API_DECL
 void neko_draw_material_bind_pipeline(neko_command_buffer_t* cb, neko_draw_material_t* mat) {
     // Binds the pipeline
     neko_draw_pipeline_t* pip = NEKO_GFXT_RAW_DATA(&mat->desc.pip_func, neko_draw_pipeline_t);
-    neko_assert(pip);
-    neko_graphics_pipeline_bind(cb, pip->hndl);
+    NEKO_ASSERT(pip);
+    neko_render_pipeline_bind(cb, pip->hndl);
 }
 
 NEKO_API_DECL
@@ -2630,33 +2630,33 @@ void neko_draw_material_bind_uniforms(neko_command_buffer_t* cb, neko_draw_mater
     if (!mat) return;
 
     neko_draw_pipeline_t* pip = NEKO_GFXT_RAW_DATA(&mat->desc.pip_func, neko_draw_pipeline_t);
-    neko_assert(pip);
+    NEKO_ASSERT(pip);
 
     // Grab uniform layout from pipeline
     for (uint32_t i = 0; i < neko_dyn_array_size(pip->ublock.uniforms); ++i) {
         neko_draw_uniform_t* u = &pip->ublock.uniforms[i];
-        neko_graphics_bind_desc_t bind = neko_default_val();
+        neko_render_bind_desc_t bind = NEKO_DEFAULT_VAL();
 
         // Need to buffer these up so it's a single call...
         switch (u->type) {
-            case NEKO_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F: {
-                neko_graphics_bind_image_buffer_desc_t ibuffer[1];
-                ibuffer[0].tex = *(neko_handle(neko_graphics_texture_t)*)(mat->image_buffer_data.data + u->offset);
+            case NEKO_RENDER_UNIFORM_IMAGE2D_RGBA32F: {
+                neko_render_bind_image_buffer_desc_t ibuffer[1];
+                ibuffer[0].tex = *(neko_handle(neko_render_texture_t)*)(mat->image_buffer_data.data + u->offset);
                 ibuffer[0].binding = u->binding;
-                ibuffer[0].access = NEKO_GRAPHICS_ACCESS_WRITE_ONLY;
+                ibuffer[0].access = NEKO_RENDER_ACCESS_WRITE_ONLY;
                 bind.image_buffers.desc = ibuffer;
                 bind.image_buffers.size = sizeof(ibuffer);
-                neko_graphics_apply_bindings(cb, &bind);
+                neko_render_apply_bindings(cb, &bind);
             } break;
 
             default: {
-                neko_graphics_bind_uniform_desc_t uniforms[1];
+                neko_render_bind_uniform_desc_t uniforms[1];
                 uniforms[0].uniform = u->hndl;
                 uniforms[0].data = (mat->uniform_data.data + u->offset);
                 uniforms[0].binding = u->binding;
                 bind.uniforms.desc = uniforms;
                 bind.uniforms.size = sizeof(uniforms);
-                neko_graphics_apply_bindings(cb, &bind);
+                neko_render_apply_bindings(cb, &bind);
             } break;
         }
     }
@@ -2671,18 +2671,18 @@ NEKO_API_DECL void neko_draw_mesh_draw(neko_command_buffer_t* cb, neko_draw_mesh
         neko_draw_mesh_primitive_t* prim = &mp->primitives[i];
 
         // Bindings for all buffers: vertex, index, uniform, sampler
-        neko_graphics_bind_desc_t binds = neko_default_val();
-        neko_graphics_bind_vertex_buffer_desc_t vdesc = neko_default_val();
-        neko_graphics_bind_index_buffer_desc_t idesc = neko_default_val();
+        neko_render_bind_desc_t binds = NEKO_DEFAULT_VAL();
+        neko_render_bind_vertex_buffer_desc_t vdesc = NEKO_DEFAULT_VAL();
+        neko_render_bind_index_buffer_desc_t idesc = NEKO_DEFAULT_VAL();
         vdesc.buffer = prim->vbo;
         idesc.buffer = prim->indices;
         binds.vertex_buffers.desc = &vdesc;
         binds.index_buffers.desc = &idesc;
-        neko_graphics_draw_desc_t ddesc = neko_default_val();
+        neko_render_draw_desc_t ddesc = NEKO_DEFAULT_VAL();
         ddesc.start = 0;
         ddesc.count = prim->count;
-        neko_graphics_apply_bindings(cb, &binds);
-        neko_graphics_draw(cb, &ddesc);
+        neko_render_apply_bindings(cb, &binds);
+        neko_render_draw(cb, &ddesc);
     }
     */
 }
@@ -2692,11 +2692,11 @@ NEKO_API_DECL void neko_draw_mesh_primitive_draw_layout(neko_command_buffer_t* c
         return;
     }
 
-    neko_graphics_bind_vertex_buffer_desc_t vbos[8] = {0};  // Make this a define
+    neko_render_bind_vertex_buffer_desc_t vbos[8] = {0};  // Make this a define
     uint32_t l = 0;
     const uint32_t ct = layout_size / sizeof(neko_draw_mesh_layout_t);
     for (uint32_t a = 0; a < ct; ++a) {
-        vbos[l].data_type = NEKO_GRAPHICS_VERTEX_DATA_NONINTERLEAVED;
+        vbos[l].data_type = NEKO_RENDER_VERTEX_DATA_NONINTERLEAVED;
         switch (layout[a].type) {
             case NEKO_ASSET_MESH_ATTRIBUTE_TYPE_POSITION: {
                 if (!prim->stream.positions.id) continue;
@@ -2734,24 +2734,24 @@ NEKO_API_DECL void neko_draw_mesh_primitive_draw_layout(neko_command_buffer_t* c
         ++l;
     }
 
-    neko_graphics_bind_index_buffer_desc_t ibos = neko_default_val();
+    neko_render_bind_index_buffer_desc_t ibos = NEKO_DEFAULT_VAL();
     ibos.buffer = prim->indices;
 
     // Bindings for all buffers: vertex, index, uniform, sampler
-    neko_graphics_bind_desc_t binds = neko_default_val();
+    neko_render_bind_desc_t binds = NEKO_DEFAULT_VAL();
 
     // .vertex_buffers = {.desc = vbos, .size = sizeof(vbos)},
     binds.vertex_buffers.desc = vbos;
-    binds.vertex_buffers.size = l * sizeof(neko_graphics_bind_vertex_buffer_desc_t);
+    binds.vertex_buffers.size = l * sizeof(neko_render_bind_vertex_buffer_desc_t);
     binds.index_buffers.desc = &ibos;
 
-    neko_graphics_draw_desc_t ddesc = neko_default_val();
+    neko_render_draw_desc_t ddesc = NEKO_DEFAULT_VAL();
     ddesc.start = 0;
     ddesc.count = prim->count;
     ddesc.instances = instance_count;
 
-    neko_graphics_apply_bindings(cb, &binds);
-    neko_graphics_draw(cb, &ddesc);
+    neko_render_apply_bindings(cb, &binds);
+    neko_render_draw(cb, &ddesc);
 }
 
 NEKO_API_DECL void neko_draw_mesh_draw_layout(neko_command_buffer_t* cb, neko_draw_mesh_t* mesh, neko_draw_mesh_layout_t* layout, size_t layout_size) {
@@ -2827,7 +2827,7 @@ NEKO_API_DECL void neko_draw_mesh_import_options_free(neko_draw_mesh_import_opti
 
 NEKO_API_DECL
 neko_draw_mesh_t neko_draw_mesh_load_from_file(const char* path, neko_draw_mesh_import_options_t* options) {
-    neko_draw_mesh_t mesh = neko_default_val();
+    neko_draw_mesh_t mesh = NEKO_DEFAULT_VAL();
 
     if (!neko_platform_file_exists(path)) {
         neko_log_trace("[gfxt] Warning:GFXT:MeshLoadFromFile:File does not exist: %s", path);
@@ -2844,15 +2844,15 @@ neko_draw_mesh_t neko_draw_mesh_load_from_file(const char* path, neko_draw_mesh_
 
     if (neko_string_compare_equal(file_ext, "gltf")) {  // GLTF
         // neko_draw_load_gltf_data_from_file(path, options, &meshes, &mesh_count);
-        neko_assert(false);
+        NEKO_ASSERT(false);
     } else if (neko_string_compare_equal(file_ext, "glb")) {  // GLB
-        neko_assert(false);
+        NEKO_ASSERT(false);
     } else {
         neko_log_trace("[gfxt] Warning:GFXT:MeshLoadFromFile:File extension not supported: %s, file: %s", file_ext, path);
         return mesh;
     }
 
-    neko_draw_mesh_desc_t mdesc = neko_default_val();
+    neko_draw_mesh_desc_t mdesc = NEKO_DEFAULT_VAL();
     mdesc.meshes = meshes;
     mdesc.size = mesh_count * sizeof(neko_draw_mesh_raw_data_t);
 
@@ -2864,7 +2864,7 @@ neko_draw_mesh_t neko_draw_mesh_load_from_file(const char* path, neko_draw_mesh_
 
 NEKO_API_DECL
 neko_draw_mesh_t neko_draw_mesh_unit_quad_generate(neko_draw_mesh_import_options_t* options) {
-    neko_draw_mesh_t mesh = neko_default_val();
+    neko_draw_mesh_t mesh = NEKO_DEFAULT_VAL();
 
     neko_vec3 v_pos[] = {
             neko_v3(-1.0f, -1.0f, 0.f),  // Top Left
@@ -2894,10 +2894,10 @@ neko_draw_mesh_t neko_draw_mesh_unit_quad_generate(neko_draw_mesh_import_options
     };
 
     // Mesh data
-    neko_draw_mesh_raw_data_t mesh_data = neko_default_val();
+    neko_draw_mesh_raw_data_t mesh_data = NEKO_DEFAULT_VAL();
 
     // Primitive to upload
-    neko_draw_mesh_vertex_data_t vert_data = neko_default_val();
+    neko_draw_mesh_vertex_data_t vert_data = NEKO_DEFAULT_VAL();
     vert_data.positions.data = v_pos;
     vert_data.positions.size = sizeof(v_pos);
     vert_data.normals.data = v_norm;
@@ -2921,7 +2921,7 @@ neko_draw_mesh_t neko_draw_mesh_unit_quad_generate(neko_draw_mesh_import_options
     uint32_t ct = moptions->size / sizeof(neko_asset_mesh_layout_t);
     */
 
-    neko_draw_mesh_desc_t mdesc = neko_default_val();
+    neko_draw_mesh_desc_t mdesc = NEKO_DEFAULT_VAL();
     mdesc.meshes = &mesh_data;
     mdesc.size = 1 * sizeof(neko_draw_mesh_raw_data_t);
     mdesc.keep_data = true;
@@ -2935,12 +2935,12 @@ neko_draw_mesh_t neko_draw_mesh_unit_quad_generate(neko_draw_mesh_import_options
     return mesh;
 }
 
-neko_handle(neko_graphics_texture_t) neko_draw_texture_generate_default() {
+neko_handle(neko_render_texture_t) neko_draw_texture_generate_default() {
 // Generate procedural texture data (checkered texture)
 #define NEKO_GFXT_ROW_COL_CT 5
     neko_color_t c0 = NEKO_COLOR_WHITE;
     neko_color_t c1 = neko_color(20, 50, 150, 255);
-    neko_color_t pixels[NEKO_GFXT_ROW_COL_CT * NEKO_GFXT_ROW_COL_CT] = neko_default_val();
+    neko_color_t pixels[NEKO_GFXT_ROW_COL_CT * NEKO_GFXT_ROW_COL_CT] = NEKO_DEFAULT_VAL();
     for (uint32_t r = 0; r < NEKO_GFXT_ROW_COL_CT; ++r) {
         for (uint32_t c = 0; c < NEKO_GFXT_ROW_COL_CT; ++c) {
             const bool re = (r % 2) == 0;
@@ -2950,18 +2950,18 @@ neko_handle(neko_graphics_texture_t) neko_draw_texture_generate_default() {
         }
     }
 
-    neko_graphics_texture_desc_t desc = neko_default_val();
+    neko_render_texture_desc_t desc = NEKO_DEFAULT_VAL();
     desc.width = NEKO_GFXT_ROW_COL_CT;
     desc.height = NEKO_GFXT_ROW_COL_CT;
-    desc.format = NEKO_GRAPHICS_TEXTURE_FORMAT_RGBA8;
-    desc.min_filter = NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST;
-    desc.mag_filter = NEKO_GRAPHICS_TEXTURE_FILTER_NEAREST;
-    desc.wrap_s = NEKO_GRAPHICS_TEXTURE_WRAP_REPEAT;
-    desc.wrap_t = NEKO_GRAPHICS_TEXTURE_WRAP_REPEAT;
+    desc.format = NEKO_RENDER_TEXTURE_FORMAT_RGBA8;
+    desc.min_filter = NEKO_RENDER_TEXTURE_FILTER_NEAREST;
+    desc.mag_filter = NEKO_RENDER_TEXTURE_FILTER_NEAREST;
+    desc.wrap_s = NEKO_RENDER_TEXTURE_WRAP_REPEAT;
+    desc.wrap_t = NEKO_RENDER_TEXTURE_WRAP_REPEAT;
     *desc.data = pixels;
 
     // Create dynamic texture
-    return neko_graphics_texture_create(desc);
+    return neko_render_texture_create(desc);
 }
 
 //=== Resource Loading ===//
@@ -2978,7 +2978,7 @@ typedef struct neko_shader_io_data_t {
 typedef struct neko_pipeline_parse_data_t {
     neko_dyn_array(neko_shader_io_data_t) io_list[3];
     neko_dyn_array(neko_draw_mesh_layout_t) mesh_layout;
-    neko_dyn_array(neko_graphics_vertex_attribute_type) vertex_layout;
+    neko_dyn_array(neko_render_vertex_attribute_type) vertex_layout;
     char* code[3];
     char dir[256];
 } neko_ppd_t;
@@ -2995,7 +2995,7 @@ typedef struct neko_pipeline_parse_data_t {
         neko_printf("ERROR::");            \
         neko_printf(TXT, ##__VA_ARGS__);   \
         neko_log_trace("[gfxt] ");         \
-        if (ASSERT) neko_assert(false);    \
+        if (ASSERT) NEKO_ASSERT(false);    \
     } while (0)
 
 #define neko_parse_block(NAME, ...)                                                                               \
@@ -3003,7 +3003,7 @@ typedef struct neko_pipeline_parse_data_t {
         neko_log_trace("[gfxt] neko_pipeline_load_from_file::parsing::%s", #NAME);                                \
         if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_LBRACE)) {                                           \
             neko_log_trace("[gfxt] error::neko_pipeline_load_from_file::error parsing raster from .sf resource"); \
-            neko_assert(false);                                                                                   \
+            NEKO_ASSERT(false);                                                                                   \
         }                                                                                                         \
                                                                                                                   \
         uint32_t bc = 1;                                                                                          \
@@ -3024,42 +3024,42 @@ typedef struct neko_pipeline_parse_data_t {
         }                                                                                                         \
     } while (0)
 
-const char* neko_get_vertex_attribute_string(neko_graphics_vertex_attribute_type type) {
+const char* neko_get_vertex_attribute_string(neko_render_vertex_attribute_type type) {
     switch (type) {
-        case NEKO_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT:
+        case NEKO_RENDER_VERTEX_ATTRIBUTE_FLOAT:
             return "float";
             break;
-        case NEKO_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT2:
+        case NEKO_RENDER_VERTEX_ATTRIBUTE_FLOAT2:
             return "vec2";
             break;
-        case NEKO_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3:
+        case NEKO_RENDER_VERTEX_ATTRIBUTE_FLOAT3:
             return "vec3";
             break;
-        case NEKO_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT4:
+        case NEKO_RENDER_VERTEX_ATTRIBUTE_FLOAT4:
             return "vec4";
             break;
-        case NEKO_GRAPHICS_VERTEX_ATTRIBUTE_UINT:
+        case NEKO_RENDER_VERTEX_ATTRIBUTE_UINT:
             return "int";
             break;
-        case NEKO_GRAPHICS_VERTEX_ATTRIBUTE_UINT2:
+        case NEKO_RENDER_VERTEX_ATTRIBUTE_UINT2:
             return "vec2";
             break;
-        case NEKO_GRAPHICS_VERTEX_ATTRIBUTE_UINT3:
+        case NEKO_RENDER_VERTEX_ATTRIBUTE_UINT3:
             return "vec3";
             break;
-        case NEKO_GRAPHICS_VERTEX_ATTRIBUTE_UINT4:
+        case NEKO_RENDER_VERTEX_ATTRIBUTE_UINT4:
             return "vec4";
             break;
-        case NEKO_GRAPHICS_VERTEX_ATTRIBUTE_BYTE:
+        case NEKO_RENDER_VERTEX_ATTRIBUTE_BYTE:
             return "float";
             break;
-        case NEKO_GRAPHICS_VERTEX_ATTRIBUTE_BYTE2:
+        case NEKO_RENDER_VERTEX_ATTRIBUTE_BYTE2:
             return "vec2";
             break;
-        case NEKO_GRAPHICS_VERTEX_ATTRIBUTE_BYTE3:
+        case NEKO_RENDER_VERTEX_ATTRIBUTE_BYTE3:
             return "vec3";
             break;
-        case NEKO_GRAPHICS_VERTEX_ATTRIBUTE_BYTE4:
+        case NEKO_RENDER_VERTEX_ATTRIBUTE_BYTE4:
             return "vec4";
             break;
         default:
@@ -3068,88 +3068,88 @@ const char* neko_get_vertex_attribute_string(neko_graphics_vertex_attribute_type
     }
 }
 
-neko_graphics_vertex_attribute_type neko_get_vertex_attribute_from_token(const neko_token_t* t) {
+neko_render_vertex_attribute_type neko_get_vertex_attribute_from_token(const neko_token_t* t) {
     if (neko_token_compare_text(t, "float"))
-        return NEKO_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT;
+        return NEKO_RENDER_VERTEX_ATTRIBUTE_FLOAT;
     else if (neko_token_compare_text(t, "float2"))
-        return NEKO_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT2;
+        return NEKO_RENDER_VERTEX_ATTRIBUTE_FLOAT2;
     else if (neko_token_compare_text(t, "float3"))
-        return NEKO_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3;
+        return NEKO_RENDER_VERTEX_ATTRIBUTE_FLOAT3;
     else if (neko_token_compare_text(t, "float4"))
-        return NEKO_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT4;
+        return NEKO_RENDER_VERTEX_ATTRIBUTE_FLOAT4;
     else if (neko_token_compare_text(t, "uint4"))
-        return NEKO_GRAPHICS_VERTEX_ATTRIBUTE_UINT4;
+        return NEKO_RENDER_VERTEX_ATTRIBUTE_UINT4;
     else if (neko_token_compare_text(t, "uint3"))
-        return NEKO_GRAPHICS_VERTEX_ATTRIBUTE_UINT3;
+        return NEKO_RENDER_VERTEX_ATTRIBUTE_UINT3;
     else if (neko_token_compare_text(t, "uint2"))
-        return NEKO_GRAPHICS_VERTEX_ATTRIBUTE_UINT2;
+        return NEKO_RENDER_VERTEX_ATTRIBUTE_UINT2;
     else if (neko_token_compare_text(t, "uint"))
-        return NEKO_GRAPHICS_VERTEX_ATTRIBUTE_UINT;
+        return NEKO_RENDER_VERTEX_ATTRIBUTE_UINT;
     else if (neko_token_compare_text(t, "byte4"))
-        return NEKO_GRAPHICS_VERTEX_ATTRIBUTE_BYTE4;
+        return NEKO_RENDER_VERTEX_ATTRIBUTE_BYTE4;
     else if (neko_token_compare_text(t, "byte3"))
-        return NEKO_GRAPHICS_VERTEX_ATTRIBUTE_BYTE3;
+        return NEKO_RENDER_VERTEX_ATTRIBUTE_BYTE3;
     else if (neko_token_compare_text(t, "byte2"))
-        return NEKO_GRAPHICS_VERTEX_ATTRIBUTE_BYTE2;
+        return NEKO_RENDER_VERTEX_ATTRIBUTE_BYTE2;
     else if (neko_token_compare_text(t, "byte"))
-        return NEKO_GRAPHICS_VERTEX_ATTRIBUTE_BYTE;
-    return (neko_graphics_vertex_attribute_type)0x00;
+        return NEKO_RENDER_VERTEX_ATTRIBUTE_BYTE;
+    return (neko_render_vertex_attribute_type)0x00;
 }
 
-neko_graphics_uniform_type neko_uniform_type_from_token(const neko_token_t* t) {
+neko_render_uniform_type neko_uniform_type_from_token(const neko_token_t* t) {
     if (neko_token_compare_text(t, "float"))
-        return NEKO_GRAPHICS_UNIFORM_FLOAT;
+        return NEKO_RENDER_UNIFORM_FLOAT;
     else if (neko_token_compare_text(t, "int"))
-        return NEKO_GRAPHICS_UNIFORM_INT;
+        return NEKO_RENDER_UNIFORM_INT;
     else if (neko_token_compare_text(t, "vec2"))
-        return NEKO_GRAPHICS_UNIFORM_VEC2;
+        return NEKO_RENDER_UNIFORM_VEC2;
     else if (neko_token_compare_text(t, "vec3"))
-        return NEKO_GRAPHICS_UNIFORM_VEC3;
+        return NEKO_RENDER_UNIFORM_VEC3;
     else if (neko_token_compare_text(t, "vec4"))
-        return NEKO_GRAPHICS_UNIFORM_VEC4;
+        return NEKO_RENDER_UNIFORM_VEC4;
     else if (neko_token_compare_text(t, "mat4"))
-        return NEKO_GRAPHICS_UNIFORM_MAT4;
+        return NEKO_RENDER_UNIFORM_MAT4;
     else if (neko_token_compare_text(t, "sampler2D"))
-        return NEKO_GRAPHICS_UNIFORM_SAMPLER2D;
+        return NEKO_RENDER_UNIFORM_SAMPLER2D;
     else if (neko_token_compare_text(t, "usampler2D"))
-        return NEKO_GRAPHICS_UNIFORM_USAMPLER2D;
+        return NEKO_RENDER_UNIFORM_USAMPLER2D;
     else if (neko_token_compare_text(t, "samplerCube"))
-        return NEKO_GRAPHICS_UNIFORM_SAMPLERCUBE;
+        return NEKO_RENDER_UNIFORM_SAMPLERCUBE;
     else if (neko_token_compare_text(t, "img2D_rgba32f"))
-        return NEKO_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F;
-    return (neko_graphics_uniform_type)0x00;
+        return NEKO_RENDER_UNIFORM_IMAGE2D_RGBA32F;
+    return (neko_render_uniform_type)0x00;
 }
 
-const char* neko_uniform_string_from_type(neko_graphics_uniform_type type) {
+const char* neko_uniform_string_from_type(neko_render_uniform_type type) {
     switch (type) {
-        case NEKO_GRAPHICS_UNIFORM_FLOAT:
+        case NEKO_RENDER_UNIFORM_FLOAT:
             return "float";
             break;
-        case NEKO_GRAPHICS_UNIFORM_INT:
+        case NEKO_RENDER_UNIFORM_INT:
             return "int";
             break;
-        case NEKO_GRAPHICS_UNIFORM_VEC2:
+        case NEKO_RENDER_UNIFORM_VEC2:
             return "vec2";
             break;
-        case NEKO_GRAPHICS_UNIFORM_VEC3:
+        case NEKO_RENDER_UNIFORM_VEC3:
             return "vec3";
             break;
-        case NEKO_GRAPHICS_UNIFORM_VEC4:
+        case NEKO_RENDER_UNIFORM_VEC4:
             return "vec4";
             break;
-        case NEKO_GRAPHICS_UNIFORM_MAT4:
+        case NEKO_RENDER_UNIFORM_MAT4:
             return "mat4";
             break;
-        case NEKO_GRAPHICS_UNIFORM_SAMPLER2D:
+        case NEKO_RENDER_UNIFORM_SAMPLER2D:
             return "sampler2D";
             break;
-        case NEKO_GRAPHICS_UNIFORM_USAMPLER2D:
+        case NEKO_RENDER_UNIFORM_USAMPLER2D:
             return "usampler2D";
             break;
-        case NEKO_GRAPHICS_UNIFORM_SAMPLERCUBE:
+        case NEKO_RENDER_UNIFORM_SAMPLERCUBE:
             return "samplerCube";
             break;
-        case NEKO_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F:
+        case NEKO_RENDER_UNIFORM_IMAGE2D_RGBA32F:
             return "image2D";
             break;
         default:
@@ -3160,36 +3160,36 @@ const char* neko_uniform_string_from_type(neko_graphics_uniform_type type) {
 }
 
 // Make this an extern function that can be bubbled up to the app
-bool neko_parse_uniform_special_keyword(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_t* ppd, neko_graphics_shader_stage_type stage, neko_draw_uniform_desc_t* uniform) {
+bool neko_parse_uniform_special_keyword(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_t* ppd, neko_render_shader_stage_type stage, neko_draw_uniform_desc_t* uniform) {
     neko_token_t token = lex->current_token;
 
     // Determine if uniform is one of special key defines
     if (neko_token_compare_text(&token, "NEKO_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX")) {
-        uniform->type = NEKO_GRAPHICS_UNIFORM_MAT4;
+        uniform->type = NEKO_RENDER_UNIFORM_MAT4;
         memcpy(uniform->name, NEKO_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX, sizeof(NEKO_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX));
         return true;
     } else if (neko_token_compare_text(&token, "NEKO_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX")) {
-        uniform->type = NEKO_GRAPHICS_UNIFORM_MAT4;
+        uniform->type = NEKO_RENDER_UNIFORM_MAT4;
         memcpy(uniform->name, NEKO_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX, sizeof(NEKO_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX));
         return true;
     } else if (neko_token_compare_text(&token, "NEKO_GFXT_UNIFORM_MODEL_MATRIX")) {
-        uniform->type = NEKO_GRAPHICS_UNIFORM_MAT4;
+        uniform->type = NEKO_RENDER_UNIFORM_MAT4;
         memcpy(uniform->name, NEKO_GFXT_UNIFORM_MODEL_MATRIX, sizeof(NEKO_GFXT_UNIFORM_MODEL_MATRIX));
         return true;
     } else if (neko_token_compare_text(&token, "NEKO_GFXT_UNIFORM_INVERSE_MODEL_MATRIX")) {
-        uniform->type = NEKO_GRAPHICS_UNIFORM_MAT4;
+        uniform->type = NEKO_RENDER_UNIFORM_MAT4;
         memcpy(uniform->name, NEKO_GFXT_UNIFORM_INVERSE_MODEL_MATRIX, sizeof(NEKO_GFXT_UNIFORM_INVERSE_MODEL_MATRIX));
         return true;
     } else if (neko_token_compare_text(&token, "NEKO_GFXT_UNIFORM_PROJECTION_MATRIX")) {
-        uniform->type = NEKO_GRAPHICS_UNIFORM_MAT4;
+        uniform->type = NEKO_RENDER_UNIFORM_MAT4;
         memcpy(uniform->name, NEKO_GFXT_UNIFORM_PROJECTION_MATRIX, sizeof(NEKO_GFXT_UNIFORM_PROJECTION_MATRIX));
         return true;
     } else if (neko_token_compare_text(&token, "NEKO_GFXT_UNIFORM_VIEW_MATRIX")) {
-        uniform->type = NEKO_GRAPHICS_UNIFORM_MAT4;
+        uniform->type = NEKO_RENDER_UNIFORM_MAT4;
         memcpy(uniform->name, NEKO_GFXT_UNIFORM_VIEW_MATRIX, sizeof(NEKO_GFXT_UNIFORM_VIEW_MATRIX));
         return true;
     } else if (neko_token_compare_text(&token, "NEKO_GFXT_UNIFORM_TIME")) {
-        uniform->type = NEKO_GRAPHICS_UNIFORM_FLOAT;
+        uniform->type = NEKO_RENDER_UNIFORM_FLOAT;
         memcpy(uniform->name, NEKO_GFXT_UNIFORM_TIME, sizeof(NEKO_GFXT_UNIFORM_TIME));
         return true;
     }
@@ -3197,7 +3197,7 @@ bool neko_parse_uniform_special_keyword(neko_lexer_t* lex, neko_draw_pipeline_de
     return false;
 }
 
-bool neko_parse_uniforms(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_t* ppd, neko_graphics_shader_stage_type stage) {
+bool neko_parse_uniforms(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_t* ppd, neko_render_shader_stage_type stage) {
     uint32_t image_binding = 0;
 
     if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_LBRACE)) {
@@ -3229,9 +3229,9 @@ bool neko_parse_uniforms(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, nek
                         default:
                             break;
 
-                        case NEKO_GRAPHICS_UNIFORM_SAMPLER2D:
-                        case NEKO_GRAPHICS_UNIFORM_USAMPLER2D:
-                        case NEKO_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F: {
+                        case NEKO_RENDER_UNIFORM_SAMPLER2D:
+                        case NEKO_RENDER_UNIFORM_USAMPLER2D:
+                        case NEKO_RENDER_UNIFORM_IMAGE2D_RGBA32F: {
                             uniform.binding = image_binding++;
                         } break;
                     }
@@ -3255,7 +3255,7 @@ bool neko_parse_uniforms(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, nek
     return true;
 }
 
-bool neko_parse_io(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_t* ppd, neko_graphics_shader_stage_type type) {
+bool neko_parse_io(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_t* ppd, neko_render_shader_stage_type type) {
     if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_LBRACE)) {
         neko_log_warning("Expected opening left brace. Unable to parse io from .sf resource");
         return false;
@@ -3276,7 +3276,7 @@ bool neko_parse_io(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_
                 memcpy(io.type, token.text, token.len);
 
                 switch (type) {
-                    case NEKO_GRAPHICS_SHADER_STAGE_VERTEX: {
+                    case NEKO_RENDER_SHADER_STAGE_VERTEX: {
                         if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_IDENTIFIER)) {
                             neko_log_warning("IO expected identifier name after type, shader stage vertex.");
                             neko_token_debug_print(&lex->current_token);
@@ -3287,7 +3287,7 @@ bool neko_parse_io(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_
                         neko_dyn_array_push(ppd->io_list[0], io);
                     } break;
 
-                    case NEKO_GRAPHICS_SHADER_STAGE_FRAGMENT: {
+                    case NEKO_RENDER_SHADER_STAGE_FRAGMENT: {
                         if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_IDENTIFIER)) {
                             neko_log_warning("IO expected identifier name after type, shader stage fragment.");
                             neko_token_debug_print(&lex->current_token);
@@ -3298,7 +3298,7 @@ bool neko_parse_io(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_
                         neko_dyn_array_push(ppd->io_list[1], io);
                     } break;
 
-                    case NEKO_GRAPHICS_SHADER_STAGE_COMPUTE: {
+                    case NEKO_RENDER_SHADER_STAGE_COMPUTE: {
                         if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_NUMBER)) {
                             neko_log_warning("IO expected number after type, shader stage compute.");
                             neko_token_debug_print(&lex->current_token);
@@ -3315,7 +3315,7 @@ bool neko_parse_io(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_
     return true;
 }
 
-bool neko_parse_code(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_t* ppd, neko_graphics_shader_stage_type stage) {
+bool neko_parse_code(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_t* ppd, neko_render_shader_stage_type stage) {
     if (!neko_lexer_require_token_type(lex, NEKO_TOKEN_LBRACE)) {
         neko_log_warning("Expected opening left brace");
         return false;
@@ -3403,7 +3403,7 @@ bool neko_parse_code(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_pp
         // Load include using final path and relative path from include
         size_t len = 0;
         char* inc_src = neko_platform_read_file_contents(FINAL_PATH, "rb", &len);
-        neko_assert(inc_src);
+        NEKO_ASSERT(inc_src);
 
         // Realloc previous code to greater size, shift contents around
         char* cat = neko_util_string_concat(inc_src, code);
@@ -3412,13 +3412,13 @@ bool neko_parse_code(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_pp
     }
 
     switch (stage) {
-        case NEKO_GRAPHICS_SHADER_STAGE_VERTEX:
+        case NEKO_RENDER_SHADER_STAGE_VERTEX:
             ppd->code[0] = code;
             break;
-        case NEKO_GRAPHICS_SHADER_STAGE_FRAGMENT:
+        case NEKO_RENDER_SHADER_STAGE_FRAGMENT:
             ppd->code[1] = code;
             break;
-        case NEKO_GRAPHICS_SHADER_STAGE_COMPUTE:
+        case NEKO_RENDER_SHADER_STAGE_COMPUTE:
             ppd->code[2] = code;
             break;
     }
@@ -3470,7 +3470,7 @@ neko_draw_mesh_attribute_type neko_mesh_attribute_type_from_token(const neko_tok
 
 bool neko_parse_vertex_mesh_attributes(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_t* ppd) {
     if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_LBRACE)) {
-        neko_assert(false);
+        NEKO_ASSERT(false);
     }
 
     uint32_t bc = 1;
@@ -3488,7 +3488,7 @@ bool neko_parse_vertex_mesh_attributes(neko_lexer_t* lex, neko_draw_pipeline_des
             case NEKO_TOKEN_IDENTIFIER: {
                 // Get attribute name
                 if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_IDENTIFIER)) {
-                    neko_assert(false);
+                    NEKO_ASSERT(false);
                 }
 
                 neko_token_t token_name = lex->current_token;
@@ -3496,12 +3496,12 @@ bool neko_parse_vertex_mesh_attributes(neko_lexer_t* lex, neko_draw_pipeline_des
 
 #define PUSH_ATTR(MESH_ATTR, VERT_ATTR)                                  \
     do {                                                                 \
-        neko_draw_mesh_layout_t layout = neko_default_val();             \
+        neko_draw_mesh_layout_t layout = NEKO_DEFAULT_VAL();             \
         layout.type = NEKO_ASSET_MESH_ATTRIBUTE_TYPE_##MESH_ATTR;        \
         neko_dyn_array_push(ppd->mesh_layout, layout);                   \
-        neko_graphics_vertex_attribute_desc_t attr = neko_default_val(); \
+        neko_render_vertex_attribute_desc_t attr = NEKO_DEFAULT_VAL(); \
         memcpy(attr.name, token_name.text, token_name.len);              \
-        attr.format = NEKO_GRAPHICS_VERTEX_ATTRIBUTE_##VERT_ATTR;        \
+        attr.format = NEKO_RENDER_VERTEX_ATTRIBUTE_##VERT_ATTR;        \
         neko_dyn_array_push(desc->pip_desc.layout.attrs, attr);          \
         /*neko_log_trace("[gfxt] %s: %s", #MESH_ATTR, #VERT_ATTR);*/     \
     } while (0)
@@ -3561,10 +3561,10 @@ bool neko_parse_vertex_mesh_attributes(neko_lexer_t* lex, neko_draw_pipeline_des
 
 bool neko_parse_vertex_attributes(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_t* ppd) { return neko_parse_vertex_mesh_attributes(lex, desc, ppd); }
 
-bool neko_parse_shader_stage(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_t* ppd, neko_graphics_shader_stage_type stage) {
+bool neko_parse_shader_stage(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_t* ppd, neko_render_shader_stage_type stage) {
     if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_LBRACE)) {
         neko_log_trace("[gfxt] error::neko_pipeline_load_from_file::error parsing raster from .sf resource");
-        neko_assert(false);
+        NEKO_ASSERT(false);
     }
 
     uint32_t bc = 1;
@@ -3579,7 +3579,7 @@ bool neko_parse_shader_stage(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc,
             } break;
 
             case NEKO_TOKEN_IDENTIFIER: {
-                if (stage == NEKO_GRAPHICS_SHADER_STAGE_VERTEX && neko_token_compare_text(&token, "attributes")) {
+                if (stage == NEKO_RENDER_SHADER_STAGE_VERTEX && neko_token_compare_text(&token, "attributes")) {
                     neko_log_trace("[gfxt] parsing attributes...");
                     if (!neko_parse_vertex_attributes(lex, desc, ppd)) {
                         neko_log_warning("Unable to parse vertex attributes.");
@@ -3627,21 +3627,21 @@ bool neko_parse_shader_stage(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc,
 bool neko_parse_compute_shader_stage(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_t* ppd) {
     neko_parse_block(PIPELINE::COMPUTE_SHADER_STAGE, {
         if (neko_token_compare_text(&token, "uniforms")) {
-            if (!neko_parse_uniforms(lex, desc, ppd, NEKO_GRAPHICS_SHADER_STAGE_COMPUTE)) {
+            if (!neko_parse_uniforms(lex, desc, ppd, NEKO_RENDER_SHADER_STAGE_COMPUTE)) {
                 neko_log_warning("Unable to parse 'uniforms' for compute shader");
                 return false;
             }
         }
 
         else if (neko_token_compare_text(&token, "in")) {
-            if (!neko_parse_io(lex, desc, ppd, NEKO_GRAPHICS_SHADER_STAGE_COMPUTE)) {
+            if (!neko_parse_io(lex, desc, ppd, NEKO_RENDER_SHADER_STAGE_COMPUTE)) {
                 neko_log_warning("Unable to parse 'in' for compute shader");
                 return false;
             }
         }
 
         else if (neko_token_compare_text(&token, "code")) {
-            if (!neko_parse_code(lex, desc, ppd, NEKO_GRAPHICS_SHADER_STAGE_COMPUTE)) {
+            if (!neko_parse_code(lex, desc, ppd, NEKO_RENDER_SHADER_STAGE_COMPUTE)) {
                 neko_log_warning("Unable to parse 'code' for compute shader");
                 return false;
             }
@@ -3672,7 +3672,7 @@ bool neko_parse_shader(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_
                 // Vertex shader
                 if (neko_token_compare_text(&token, "vertex")) {
                     neko_log_trace("[gfxt] parsing vertex shader");
-                    if (!neko_parse_shader_stage(lex, desc, ppd, NEKO_GRAPHICS_SHADER_STAGE_VERTEX)) {
+                    if (!neko_parse_shader_stage(lex, desc, ppd, NEKO_RENDER_SHADER_STAGE_VERTEX)) {
                         neko_log_warning("Unable to parse shader stage: Vertex");
                         return false;
                     }
@@ -3681,7 +3681,7 @@ bool neko_parse_shader(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_
                 // Fragment shader
                 else if (neko_token_compare_text(&token, "fragment")) {
                     neko_log_trace("[gfxt] parsing fragment shader");
-                    if (!neko_parse_shader_stage(lex, desc, ppd, NEKO_GRAPHICS_SHADER_STAGE_FRAGMENT)) {
+                    if (!neko_parse_shader_stage(lex, desc, ppd, NEKO_RENDER_SHADER_STAGE_FRAGMENT)) {
                         neko_log_warning("Unable to parse shader stage: Fragment");
                         return false;
                     }
@@ -3690,7 +3690,7 @@ bool neko_parse_shader(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_
                 // Compute shader
                 else if (neko_token_compare_text(&token, "compute")) {
                     neko_log_trace("[gfxt] parsing compute shader");
-                    if (!neko_parse_shader_stage(lex, desc, ppd, NEKO_GRAPHICS_SHADER_STAGE_COMPUTE)) {
+                    if (!neko_parse_shader_stage(lex, desc, ppd, NEKO_RENDER_SHADER_STAGE_COMPUTE)) {
                         neko_log_warning("Unable to parse shader stage: Compute");
                         return false;
                     }
@@ -3715,21 +3715,21 @@ bool neko_parse_depth(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, neko_
             token = lex->current_token;
 
             if (neko_token_compare_text(&token, "LESS"))
-                pdesc->pip_desc.depth.func = NEKO_GRAPHICS_DEPTH_FUNC_LESS;
+                pdesc->pip_desc.depth.func = NEKO_RENDER_DEPTH_FUNC_LESS;
             else if (neko_token_compare_text(&token, "EQUAL"))
-                pdesc->pip_desc.depth.func = NEKO_GRAPHICS_DEPTH_FUNC_EQUAL;
+                pdesc->pip_desc.depth.func = NEKO_RENDER_DEPTH_FUNC_EQUAL;
             else if (neko_token_compare_text(&token, "LEQUAL"))
-                pdesc->pip_desc.depth.func = NEKO_GRAPHICS_DEPTH_FUNC_LEQUAL;
+                pdesc->pip_desc.depth.func = NEKO_RENDER_DEPTH_FUNC_LEQUAL;
             else if (neko_token_compare_text(&token, "GREATER"))
-                pdesc->pip_desc.depth.func = NEKO_GRAPHICS_DEPTH_FUNC_GREATER;
+                pdesc->pip_desc.depth.func = NEKO_RENDER_DEPTH_FUNC_GREATER;
             else if (neko_token_compare_text(&token, "NOTEQUAL"))
-                pdesc->pip_desc.depth.func = NEKO_GRAPHICS_DEPTH_FUNC_NOTEQUAL;
+                pdesc->pip_desc.depth.func = NEKO_RENDER_DEPTH_FUNC_NOTEQUAL;
             else if (neko_token_compare_text(&token, "GEQUAL"))
-                pdesc->pip_desc.depth.func = NEKO_GRAPHICS_DEPTH_FUNC_GEQUAL;
+                pdesc->pip_desc.depth.func = NEKO_RENDER_DEPTH_FUNC_GEQUAL;
             else if (neko_token_compare_text(&token, "ALWAYS"))
-                pdesc->pip_desc.depth.func = NEKO_GRAPHICS_DEPTH_FUNC_ALWAYS;
+                pdesc->pip_desc.depth.func = NEKO_RENDER_DEPTH_FUNC_ALWAYS;
             else if (neko_token_compare_text(&token, "NEVER"))
-                pdesc->pip_desc.depth.func = NEKO_GRAPHICS_DEPTH_FUNC_NEVER;
+                pdesc->pip_desc.depth.func = NEKO_RENDER_DEPTH_FUNC_NEVER;
             else {
                 token = lex->current_token;
                 neko_log_warning("Func type %.*s not valid.", token.len, token.text);
@@ -3746,17 +3746,17 @@ bool neko_parse_depth(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, neko_
             token = lex->current_token;
 
             if (neko_token_compare_text(&token, "ENABLED"))
-                pdesc->pip_desc.depth.mask = NEKO_GRAPHICS_DEPTH_MASK_ENABLED;
+                pdesc->pip_desc.depth.mask = NEKO_RENDER_DEPTH_MASK_ENABLED;
             else if (neko_token_compare_text(&token, "TRUE"))
-                pdesc->pip_desc.depth.mask = NEKO_GRAPHICS_DEPTH_MASK_ENABLED;
+                pdesc->pip_desc.depth.mask = NEKO_RENDER_DEPTH_MASK_ENABLED;
             else if (neko_token_compare_text(&token, "true"))
-                pdesc->pip_desc.depth.mask = NEKO_GRAPHICS_DEPTH_MASK_ENABLED;
+                pdesc->pip_desc.depth.mask = NEKO_RENDER_DEPTH_MASK_ENABLED;
             else if (neko_token_compare_text(&token, "DISABLED"))
-                pdesc->pip_desc.depth.mask = NEKO_GRAPHICS_DEPTH_MASK_DISABLED;
+                pdesc->pip_desc.depth.mask = NEKO_RENDER_DEPTH_MASK_DISABLED;
             else if (neko_token_compare_text(&token, "FALSE"))
-                pdesc->pip_desc.depth.mask = NEKO_GRAPHICS_DEPTH_MASK_DISABLED;
+                pdesc->pip_desc.depth.mask = NEKO_RENDER_DEPTH_MASK_DISABLED;
             else if (neko_token_compare_text(&token, "false"))
-                pdesc->pip_desc.depth.mask = NEKO_GRAPHICS_DEPTH_MASK_DISABLED;
+                pdesc->pip_desc.depth.mask = NEKO_RENDER_DEPTH_MASK_DISABLED;
             else {
                 token = lex->current_token;
                 neko_log_warning("Mask type %.*s not valid.", token.len, token.text);
@@ -3780,15 +3780,15 @@ bool neko_parse_blend(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, neko_
             token = lex->current_token;
 
             if (neko_token_compare_text(&token, "ADD"))
-                pdesc->pip_desc.blend.func = NEKO_GRAPHICS_BLEND_EQUATION_ADD;
+                pdesc->pip_desc.blend.func = NEKO_RENDER_BLEND_EQUATION_ADD;
             else if (neko_token_compare_text(&token, "SUBTRACT"))
-                pdesc->pip_desc.blend.func = NEKO_GRAPHICS_BLEND_EQUATION_SUBTRACT;
+                pdesc->pip_desc.blend.func = NEKO_RENDER_BLEND_EQUATION_SUBTRACT;
             else if (neko_token_compare_text(&token, "REVERSE_SUBTRACT"))
-                pdesc->pip_desc.blend.func = NEKO_GRAPHICS_BLEND_EQUATION_REVERSE_SUBTRACT;
+                pdesc->pip_desc.blend.func = NEKO_RENDER_BLEND_EQUATION_REVERSE_SUBTRACT;
             else if (neko_token_compare_text(&token, "MIN"))
-                pdesc->pip_desc.blend.func = NEKO_GRAPHICS_BLEND_EQUATION_MIN;
+                pdesc->pip_desc.blend.func = NEKO_RENDER_BLEND_EQUATION_MIN;
             else if (neko_token_compare_text(&token, "MAX"))
-                pdesc->pip_desc.blend.func = NEKO_GRAPHICS_BLEND_EQUATION_MAX;
+                pdesc->pip_desc.blend.func = NEKO_RENDER_BLEND_EQUATION_MAX;
             else {
                 neko_log_warning("Blend func type %.*s not valid.", token.len, token.text);
                 return false;
@@ -3805,33 +3805,33 @@ bool neko_parse_blend(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, neko_
             token = lex->current_token;
 
             if (neko_token_compare_text(&token, "ZERO"))
-                pdesc->pip_desc.blend.src = NEKO_GRAPHICS_BLEND_MODE_ZERO;
+                pdesc->pip_desc.blend.src = NEKO_RENDER_BLEND_MODE_ZERO;
             else if (neko_token_compare_text(&token, "ONE"))
-                pdesc->pip_desc.blend.src = NEKO_GRAPHICS_BLEND_MODE_ONE;
+                pdesc->pip_desc.blend.src = NEKO_RENDER_BLEND_MODE_ONE;
             else if (neko_token_compare_text(&token, "SRC_COLOR"))
-                pdesc->pip_desc.blend.src = NEKO_GRAPHICS_BLEND_MODE_SRC_COLOR;
+                pdesc->pip_desc.blend.src = NEKO_RENDER_BLEND_MODE_SRC_COLOR;
             else if (neko_token_compare_text(&token, "ONE_MINUS_SRC_COLOR"))
-                pdesc->pip_desc.blend.src = NEKO_GRAPHICS_BLEND_MODE_ONE_MINUS_SRC_COLOR;
+                pdesc->pip_desc.blend.src = NEKO_RENDER_BLEND_MODE_ONE_MINUS_SRC_COLOR;
             else if (neko_token_compare_text(&token, "DST_COLOR"))
-                pdesc->pip_desc.blend.src = NEKO_GRAPHICS_BLEND_MODE_DST_COLOR;
+                pdesc->pip_desc.blend.src = NEKO_RENDER_BLEND_MODE_DST_COLOR;
             else if (neko_token_compare_text(&token, "ONE_MINUS_DST_COLOR"))
-                pdesc->pip_desc.blend.src = NEKO_GRAPHICS_BLEND_MODE_ONE_MINUS_DST_COLOR;
+                pdesc->pip_desc.blend.src = NEKO_RENDER_BLEND_MODE_ONE_MINUS_DST_COLOR;
             else if (neko_token_compare_text(&token, "SRC_ALPHA"))
-                pdesc->pip_desc.blend.src = NEKO_GRAPHICS_BLEND_MODE_SRC_ALPHA;
+                pdesc->pip_desc.blend.src = NEKO_RENDER_BLEND_MODE_SRC_ALPHA;
             else if (neko_token_compare_text(&token, "ONE_MINUS_SRC_ALPHA"))
-                pdesc->pip_desc.blend.src = NEKO_GRAPHICS_BLEND_MODE_ONE_MINUS_SRC_ALPHA;
+                pdesc->pip_desc.blend.src = NEKO_RENDER_BLEND_MODE_ONE_MINUS_SRC_ALPHA;
             else if (neko_token_compare_text(&token, "DST_ALPHA"))
-                pdesc->pip_desc.blend.src = NEKO_GRAPHICS_BLEND_MODE_DST_ALPHA;
+                pdesc->pip_desc.blend.src = NEKO_RENDER_BLEND_MODE_DST_ALPHA;
             else if (neko_token_compare_text(&token, "ONE_MINUS_DST_ALPHA"))
-                pdesc->pip_desc.blend.src = NEKO_GRAPHICS_BLEND_MODE_ONE_MINUS_DST_ALPHA;
+                pdesc->pip_desc.blend.src = NEKO_RENDER_BLEND_MODE_ONE_MINUS_DST_ALPHA;
             else if (neko_token_compare_text(&token, "CONSTANT_COLOR"))
-                pdesc->pip_desc.blend.src = NEKO_GRAPHICS_BLEND_MODE_CONSTANT_COLOR;
+                pdesc->pip_desc.blend.src = NEKO_RENDER_BLEND_MODE_CONSTANT_COLOR;
             else if (neko_token_compare_text(&token, "ONE_MINUS_CONSTANT_COLOR"))
-                pdesc->pip_desc.blend.src = NEKO_GRAPHICS_BLEND_MODE_ONE_MINUS_CONSTANT_ALPHA;
+                pdesc->pip_desc.blend.src = NEKO_RENDER_BLEND_MODE_ONE_MINUS_CONSTANT_ALPHA;
             else if (neko_token_compare_text(&token, "CONSTANT_ALPHA"))
-                pdesc->pip_desc.blend.src = NEKO_GRAPHICS_BLEND_MODE_CONSTANT_ALPHA;
+                pdesc->pip_desc.blend.src = NEKO_RENDER_BLEND_MODE_CONSTANT_ALPHA;
             else if (neko_token_compare_text(&token, "ONE_MINUS_CONSTANT_ALPHA"))
-                pdesc->pip_desc.blend.src = NEKO_GRAPHICS_BLEND_MODE_ONE_MINUS_CONSTANT_ALPHA;
+                pdesc->pip_desc.blend.src = NEKO_RENDER_BLEND_MODE_ONE_MINUS_CONSTANT_ALPHA;
             else {
                 neko_log_warning("Blend src type %.*s not valid.", token.len, token.text);
                 return false;
@@ -3848,33 +3848,33 @@ bool neko_parse_blend(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, neko_
             token = lex->current_token;
 
             if (neko_token_compare_text(&token, "ZERO"))
-                pdesc->pip_desc.blend.dst = NEKO_GRAPHICS_BLEND_MODE_ZERO;
+                pdesc->pip_desc.blend.dst = NEKO_RENDER_BLEND_MODE_ZERO;
             else if (neko_token_compare_text(&token, "ONE"))
-                pdesc->pip_desc.blend.dst = NEKO_GRAPHICS_BLEND_MODE_ONE;
+                pdesc->pip_desc.blend.dst = NEKO_RENDER_BLEND_MODE_ONE;
             else if (neko_token_compare_text(&token, "SRC_COLOR"))
-                pdesc->pip_desc.blend.dst = NEKO_GRAPHICS_BLEND_MODE_SRC_COLOR;
+                pdesc->pip_desc.blend.dst = NEKO_RENDER_BLEND_MODE_SRC_COLOR;
             else if (neko_token_compare_text(&token, "ONE_MINUS_SRC_COLOR"))
-                pdesc->pip_desc.blend.dst = NEKO_GRAPHICS_BLEND_MODE_ONE_MINUS_SRC_COLOR;
+                pdesc->pip_desc.blend.dst = NEKO_RENDER_BLEND_MODE_ONE_MINUS_SRC_COLOR;
             else if (neko_token_compare_text(&token, "DST_COLOR"))
-                pdesc->pip_desc.blend.dst = NEKO_GRAPHICS_BLEND_MODE_DST_COLOR;
+                pdesc->pip_desc.blend.dst = NEKO_RENDER_BLEND_MODE_DST_COLOR;
             else if (neko_token_compare_text(&token, "ONE_MINUS_DST_COLOR"))
-                pdesc->pip_desc.blend.dst = NEKO_GRAPHICS_BLEND_MODE_ONE_MINUS_DST_COLOR;
+                pdesc->pip_desc.blend.dst = NEKO_RENDER_BLEND_MODE_ONE_MINUS_DST_COLOR;
             else if (neko_token_compare_text(&token, "SRC_ALPHA"))
-                pdesc->pip_desc.blend.dst = NEKO_GRAPHICS_BLEND_MODE_SRC_ALPHA;
+                pdesc->pip_desc.blend.dst = NEKO_RENDER_BLEND_MODE_SRC_ALPHA;
             else if (neko_token_compare_text(&token, "ONE_MINUS_SRC_ALPHA"))
-                pdesc->pip_desc.blend.dst = NEKO_GRAPHICS_BLEND_MODE_ONE_MINUS_SRC_ALPHA;
+                pdesc->pip_desc.blend.dst = NEKO_RENDER_BLEND_MODE_ONE_MINUS_SRC_ALPHA;
             else if (neko_token_compare_text(&token, "DST_ALPHA"))
-                pdesc->pip_desc.blend.dst = NEKO_GRAPHICS_BLEND_MODE_DST_ALPHA;
+                pdesc->pip_desc.blend.dst = NEKO_RENDER_BLEND_MODE_DST_ALPHA;
             else if (neko_token_compare_text(&token, "ONE_MINUS_DST_ALPHA"))
-                pdesc->pip_desc.blend.dst = NEKO_GRAPHICS_BLEND_MODE_ONE_MINUS_DST_ALPHA;
+                pdesc->pip_desc.blend.dst = NEKO_RENDER_BLEND_MODE_ONE_MINUS_DST_ALPHA;
             else if (neko_token_compare_text(&token, "CONSTANT_COLOR"))
-                pdesc->pip_desc.blend.dst = NEKO_GRAPHICS_BLEND_MODE_CONSTANT_COLOR;
+                pdesc->pip_desc.blend.dst = NEKO_RENDER_BLEND_MODE_CONSTANT_COLOR;
             else if (neko_token_compare_text(&token, "ONE_MINUS_CONSTANT_COLOR"))
-                pdesc->pip_desc.blend.dst = NEKO_GRAPHICS_BLEND_MODE_ONE_MINUS_CONSTANT_ALPHA;
+                pdesc->pip_desc.blend.dst = NEKO_RENDER_BLEND_MODE_ONE_MINUS_CONSTANT_ALPHA;
             else if (neko_token_compare_text(&token, "CONSTANT_ALPHA"))
-                pdesc->pip_desc.blend.dst = NEKO_GRAPHICS_BLEND_MODE_CONSTANT_ALPHA;
+                pdesc->pip_desc.blend.dst = NEKO_RENDER_BLEND_MODE_CONSTANT_ALPHA;
             else if (neko_token_compare_text(&token, "ONE_MINUS_CONSTANT_ALPHA"))
-                pdesc->pip_desc.blend.dst = NEKO_GRAPHICS_BLEND_MODE_ONE_MINUS_CONSTANT_ALPHA;
+                pdesc->pip_desc.blend.dst = NEKO_RENDER_BLEND_MODE_ONE_MINUS_CONSTANT_ALPHA;
             else {
                 neko_log_warning("Blend dst type %.*s not valid.", token.len, token.text);
                 return false;
@@ -3898,21 +3898,21 @@ bool neko_parse_stencil(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, nek
                 token = lex->current_token;
 
                 if (neko_token_compare_text(&token, "LESS"))
-                    pdesc->pip_desc.stencil.func = NEKO_GRAPHICS_STENCIL_FUNC_LESS;
+                    pdesc->pip_desc.stencil.func = NEKO_RENDER_STENCIL_FUNC_LESS;
                 else if (neko_token_compare_text(&token, "EQUAL"))
-                    pdesc->pip_desc.stencil.func = NEKO_GRAPHICS_STENCIL_FUNC_EQUAL;
+                    pdesc->pip_desc.stencil.func = NEKO_RENDER_STENCIL_FUNC_EQUAL;
                 else if (neko_token_compare_text(&token, "LEQUAL"))
-                    pdesc->pip_desc.stencil.func = NEKO_GRAPHICS_STENCIL_FUNC_LEQUAL;
+                    pdesc->pip_desc.stencil.func = NEKO_RENDER_STENCIL_FUNC_LEQUAL;
                 else if (neko_token_compare_text(&token, "GREATER"))
-                    pdesc->pip_desc.stencil.func = NEKO_GRAPHICS_STENCIL_FUNC_GREATER;
+                    pdesc->pip_desc.stencil.func = NEKO_RENDER_STENCIL_FUNC_GREATER;
                 else if (neko_token_compare_text(&token, "NOTEQUAL"))
-                    pdesc->pip_desc.stencil.func = NEKO_GRAPHICS_STENCIL_FUNC_NOTEQUAL;
+                    pdesc->pip_desc.stencil.func = NEKO_RENDER_STENCIL_FUNC_NOTEQUAL;
                 else if (neko_token_compare_text(&token, "GEQUAL"))
-                    pdesc->pip_desc.stencil.func = NEKO_GRAPHICS_STENCIL_FUNC_GEQUAL;
+                    pdesc->pip_desc.stencil.func = NEKO_RENDER_STENCIL_FUNC_GEQUAL;
                 else if (neko_token_compare_text(&token, "ALWAYS"))
-                    pdesc->pip_desc.stencil.func = NEKO_GRAPHICS_STENCIL_FUNC_ALWAYS;
+                    pdesc->pip_desc.stencil.func = NEKO_RENDER_STENCIL_FUNC_ALWAYS;
                 else if (neko_token_compare_text(&token, "NEVER"))
-                    pdesc->pip_desc.stencil.func = NEKO_GRAPHICS_STENCIL_FUNC_NEVER;
+                    pdesc->pip_desc.stencil.func = NEKO_RENDER_STENCIL_FUNC_NEVER;
                 else {
                     neko_log_warning("Stencil func type %.*s not valid.", token.len, token.text);
                     return false;
@@ -3974,21 +3974,21 @@ bool neko_parse_stencil(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, nek
                 token = lex->current_token;
 
                 if (neko_token_compare_text(&token, "KEEP"))
-                    pdesc->pip_desc.stencil.sfail = NEKO_GRAPHICS_STENCIL_OP_KEEP;
+                    pdesc->pip_desc.stencil.sfail = NEKO_RENDER_STENCIL_OP_KEEP;
                 else if (neko_token_compare_text(&token, "ZERO"))
-                    pdesc->pip_desc.stencil.sfail = NEKO_GRAPHICS_STENCIL_OP_ZERO;
+                    pdesc->pip_desc.stencil.sfail = NEKO_RENDER_STENCIL_OP_ZERO;
                 else if (neko_token_compare_text(&token, "REPLACE"))
-                    pdesc->pip_desc.stencil.sfail = NEKO_GRAPHICS_STENCIL_OP_REPLACE;
+                    pdesc->pip_desc.stencil.sfail = NEKO_RENDER_STENCIL_OP_REPLACE;
                 else if (neko_token_compare_text(&token, "INCR"))
-                    pdesc->pip_desc.stencil.sfail = NEKO_GRAPHICS_STENCIL_OP_INCR;
+                    pdesc->pip_desc.stencil.sfail = NEKO_RENDER_STENCIL_OP_INCR;
                 else if (neko_token_compare_text(&token, "INCR_WRAP"))
-                    pdesc->pip_desc.stencil.sfail = NEKO_GRAPHICS_STENCIL_OP_INCR_WRAP;
+                    pdesc->pip_desc.stencil.sfail = NEKO_RENDER_STENCIL_OP_INCR_WRAP;
                 else if (neko_token_compare_text(&token, "DECR"))
-                    pdesc->pip_desc.stencil.sfail = NEKO_GRAPHICS_STENCIL_OP_DECR;
+                    pdesc->pip_desc.stencil.sfail = NEKO_RENDER_STENCIL_OP_DECR;
                 else if (neko_token_compare_text(&token, "DECR_WRAP"))
-                    pdesc->pip_desc.stencil.sfail = NEKO_GRAPHICS_STENCIL_OP_DECR_WRAP;
+                    pdesc->pip_desc.stencil.sfail = NEKO_RENDER_STENCIL_OP_DECR_WRAP;
                 else if (neko_token_compare_text(&token, "INVERT"))
-                    pdesc->pip_desc.stencil.sfail = NEKO_GRAPHICS_STENCIL_OP_INVERT;
+                    pdesc->pip_desc.stencil.sfail = NEKO_RENDER_STENCIL_OP_INVERT;
                 else {
                     neko_log_warning("Stencil sfail type %.*s not valid.", token.len, token.text);
                     return false;
@@ -4007,21 +4007,21 @@ bool neko_parse_stencil(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, nek
                 token = lex->current_token;
 
                 if (neko_token_compare_text(&token, "KEEP"))
-                    pdesc->pip_desc.stencil.dpfail = NEKO_GRAPHICS_STENCIL_OP_KEEP;
+                    pdesc->pip_desc.stencil.dpfail = NEKO_RENDER_STENCIL_OP_KEEP;
                 else if (neko_token_compare_text(&token, "ZERO"))
-                    pdesc->pip_desc.stencil.dpfail = NEKO_GRAPHICS_STENCIL_OP_ZERO;
+                    pdesc->pip_desc.stencil.dpfail = NEKO_RENDER_STENCIL_OP_ZERO;
                 else if (neko_token_compare_text(&token, "REPLACE"))
-                    pdesc->pip_desc.stencil.dpfail = NEKO_GRAPHICS_STENCIL_OP_REPLACE;
+                    pdesc->pip_desc.stencil.dpfail = NEKO_RENDER_STENCIL_OP_REPLACE;
                 else if (neko_token_compare_text(&token, "INCR"))
-                    pdesc->pip_desc.stencil.dpfail = NEKO_GRAPHICS_STENCIL_OP_INCR;
+                    pdesc->pip_desc.stencil.dpfail = NEKO_RENDER_STENCIL_OP_INCR;
                 else if (neko_token_compare_text(&token, "INCR_WRAP"))
-                    pdesc->pip_desc.stencil.dpfail = NEKO_GRAPHICS_STENCIL_OP_INCR_WRAP;
+                    pdesc->pip_desc.stencil.dpfail = NEKO_RENDER_STENCIL_OP_INCR_WRAP;
                 else if (neko_token_compare_text(&token, "DECR"))
-                    pdesc->pip_desc.stencil.dpfail = NEKO_GRAPHICS_STENCIL_OP_DECR;
+                    pdesc->pip_desc.stencil.dpfail = NEKO_RENDER_STENCIL_OP_DECR;
                 else if (neko_token_compare_text(&token, "DECR_WRAP"))
-                    pdesc->pip_desc.stencil.dpfail = NEKO_GRAPHICS_STENCIL_OP_DECR_WRAP;
+                    pdesc->pip_desc.stencil.dpfail = NEKO_RENDER_STENCIL_OP_DECR_WRAP;
                 else if (neko_token_compare_text(&token, "INVERT"))
-                    pdesc->pip_desc.stencil.dpfail = NEKO_GRAPHICS_STENCIL_OP_INVERT;
+                    pdesc->pip_desc.stencil.dpfail = NEKO_RENDER_STENCIL_OP_INVERT;
                 else {
                     neko_log_warning("Stencil dpfail type %.*s not valid.", token.len, token.text);
                     return false;
@@ -4040,21 +4040,21 @@ bool neko_parse_stencil(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, nek
                 token = lex->current_token;
 
                 if (neko_token_compare_text(&token, "KEEP"))
-                    pdesc->pip_desc.stencil.dppass = NEKO_GRAPHICS_STENCIL_OP_KEEP;
+                    pdesc->pip_desc.stencil.dppass = NEKO_RENDER_STENCIL_OP_KEEP;
                 else if (neko_token_compare_text(&token, "ZERO"))
-                    pdesc->pip_desc.stencil.dppass = NEKO_GRAPHICS_STENCIL_OP_ZERO;
+                    pdesc->pip_desc.stencil.dppass = NEKO_RENDER_STENCIL_OP_ZERO;
                 else if (neko_token_compare_text(&token, "REPLACE"))
-                    pdesc->pip_desc.stencil.dppass = NEKO_GRAPHICS_STENCIL_OP_REPLACE;
+                    pdesc->pip_desc.stencil.dppass = NEKO_RENDER_STENCIL_OP_REPLACE;
                 else if (neko_token_compare_text(&token, "INCR"))
-                    pdesc->pip_desc.stencil.dppass = NEKO_GRAPHICS_STENCIL_OP_INCR;
+                    pdesc->pip_desc.stencil.dppass = NEKO_RENDER_STENCIL_OP_INCR;
                 else if (neko_token_compare_text(&token, "INCR_WRAP"))
-                    pdesc->pip_desc.stencil.dppass = NEKO_GRAPHICS_STENCIL_OP_INCR_WRAP;
+                    pdesc->pip_desc.stencil.dppass = NEKO_RENDER_STENCIL_OP_INCR_WRAP;
                 else if (neko_token_compare_text(&token, "DECR"))
-                    pdesc->pip_desc.stencil.dppass = NEKO_GRAPHICS_STENCIL_OP_DECR;
+                    pdesc->pip_desc.stencil.dppass = NEKO_RENDER_STENCIL_OP_DECR;
                 else if (neko_token_compare_text(&token, "DECR_WRAP"))
-                    pdesc->pip_desc.stencil.dppass = NEKO_GRAPHICS_STENCIL_OP_DECR_WRAP;
+                    pdesc->pip_desc.stencil.dppass = NEKO_RENDER_STENCIL_OP_DECR_WRAP;
                 else if (neko_token_compare_text(&token, "INVERT"))
-                    pdesc->pip_desc.stencil.dppass = NEKO_GRAPHICS_STENCIL_OP_INVERT;
+                    pdesc->pip_desc.stencil.dppass = NEKO_RENDER_STENCIL_OP_INVERT;
                 else {
                     neko_log_warning("Stencil dppass type %.*s not valid.", token.len, token.text);
                     return false;
@@ -4099,11 +4099,11 @@ bool neko_parse_raster(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, neko
             token = lex->current_token;
 
             if (neko_token_compare_text(&token, "FRONT"))
-                pdesc->pip_desc.raster.face_culling = NEKO_GRAPHICS_FACE_CULLING_FRONT;
+                pdesc->pip_desc.raster.face_culling = NEKO_RENDER_FACE_CULLING_FRONT;
             else if (neko_token_compare_text(&token, "BACK"))
-                pdesc->pip_desc.raster.face_culling = NEKO_GRAPHICS_FACE_CULLING_BACK;
+                pdesc->pip_desc.raster.face_culling = NEKO_RENDER_FACE_CULLING_BACK;
             else if (neko_token_compare_text(&token, "FRONT_AND_BACK"))
-                pdesc->pip_desc.raster.face_culling = NEKO_GRAPHICS_FACE_CULLING_FRONT_AND_BACK;
+                pdesc->pip_desc.raster.face_culling = NEKO_RENDER_FACE_CULLING_FRONT_AND_BACK;
             else {
                 neko_log_warning("Raster face culling type %.*s not valid.", token.len, token.text);
                 return false;
@@ -4120,9 +4120,9 @@ bool neko_parse_raster(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, neko
             token = lex->current_token;
 
             if (neko_token_compare_text(&token, "CW"))
-                pdesc->pip_desc.raster.winding_order = NEKO_GRAPHICS_WINDING_ORDER_CW;
+                pdesc->pip_desc.raster.winding_order = NEKO_RENDER_WINDING_ORDER_CW;
             else if (neko_token_compare_text(&token, "CCW"))
-                pdesc->pip_desc.raster.winding_order = NEKO_GRAPHICS_WINDING_ORDER_CCW;
+                pdesc->pip_desc.raster.winding_order = NEKO_RENDER_WINDING_ORDER_CCW;
             else {
                 neko_log_warning("Raster winding order type %.*s not valid.", token.len, token.text);
                 return false;
@@ -4139,11 +4139,11 @@ bool neko_parse_raster(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, neko
             token = lex->current_token;
 
             if (neko_token_compare_text(&token, "LINES"))
-                pdesc->pip_desc.raster.primitive = NEKO_GRAPHICS_PRIMITIVE_LINES;
+                pdesc->pip_desc.raster.primitive = NEKO_RENDER_PRIMITIVE_LINES;
             else if (neko_token_compare_text(&token, "TRIANGLES"))
-                pdesc->pip_desc.raster.primitive = NEKO_GRAPHICS_PRIMITIVE_TRIANGLES;
+                pdesc->pip_desc.raster.primitive = NEKO_RENDER_PRIMITIVE_TRIANGLES;
             else if (neko_token_compare_text(&token, "QUADS"))
-                pdesc->pip_desc.raster.primitive = NEKO_GRAPHICS_PRIMITIVE_QUADS;
+                pdesc->pip_desc.raster.primitive = NEKO_RENDER_PRIMITIVE_QUADS;
             else {
                 neko_log_warning("Raster primitive type %.*s not valid.", token.len, token.text);
                 return false;
@@ -4201,11 +4201,11 @@ bool neko_parse_pipeline(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, nek
     return true;
 }
 
-char* neko_pipeline_generate_shader_code(neko_draw_pipeline_desc_t* pdesc, neko_ppd_t* ppd, neko_graphics_shader_stage_type stage) {
+char* neko_pipeline_generate_shader_code(neko_draw_pipeline_desc_t* pdesc, neko_ppd_t* ppd, neko_render_shader_stage_type stage) {
     neko_log_trace("[gfxt] GENERATING CODE...");
 
     // Get major/minor version of shader
-    neko_graphics_info_t* ginfo = neko_graphics_info();
+    neko_render_info_t* ginfo = neko_render_info();
     neko_snprintfc(MAJMINSTR, 128, "#version %u%u0\n", ginfo->major_version, ginfo->minor_version);
 
 // Shaders
@@ -4221,13 +4221,13 @@ char* neko_pipeline_generate_shader_code(neko_draw_pipeline_desc_t* pdesc, neko_
 
     // Set sidx
     switch (stage) {
-        case NEKO_GRAPHICS_SHADER_STAGE_VERTEX:
+        case NEKO_RENDER_SHADER_STAGE_VERTEX:
             sidx = 0;
             break;
-        case NEKO_GRAPHICS_SHADER_STAGE_FRAGMENT:
+        case NEKO_RENDER_SHADER_STAGE_FRAGMENT:
             sidx = 1;
             break;
-        case NEKO_GRAPHICS_SHADER_STAGE_COMPUTE:
+        case NEKO_RENDER_SHADER_STAGE_COMPUTE:
             sidx = 2;
             break;
     }
@@ -4238,7 +4238,7 @@ char* neko_pipeline_generate_shader_code(neko_draw_pipeline_desc_t* pdesc, neko_
     }
 
     // Shader header
-    neko_snprintfc(shader_header, 512, "%s precision mediump float;\n", stage == NEKO_GRAPHICS_SHADER_STAGE_COMPUTE ? "#version 430\n" : _NEKO_VERSION_STR);
+    neko_snprintfc(shader_header, 512, "%s precision mediump float;\n", stage == NEKO_RENDER_SHADER_STAGE_COMPUTE ? "#version 430\n" : _NEKO_VERSION_STR);
 
     // Generate shader code
     if (ppd->code[sidx]) {
@@ -4249,7 +4249,7 @@ char* neko_pipeline_generate_shader_code(neko_draw_pipeline_desc_t* pdesc, neko_
         strncat(src, shader_header, header_sz);
 
         // Attributes
-        if (stage == NEKO_GRAPHICS_SHADER_STAGE_VERTEX) {
+        if (stage == NEKO_RENDER_SHADER_STAGE_VERTEX) {
             for (uint32_t i = 0; i < neko_dyn_array_size(pdesc->pip_desc.layout.attrs); ++i) {
                 const char* aname = pdesc->pip_desc.layout.attrs[i].name;
                 const char* atype = neko_get_vertex_attribute_string(pdesc->pip_desc.layout.attrs[i].format);
@@ -4270,7 +4270,7 @@ char* neko_pipeline_generate_shader_code(neko_draw_pipeline_desc_t* pdesc, neko_
             if (udesc->stage != stage) continue;
 
             switch (stage) {
-                case NEKO_GRAPHICS_SHADER_STAGE_COMPUTE: {
+                case NEKO_RENDER_SHADER_STAGE_COMPUTE: {
                     // Need to go from uniform type to string
                     const char* utype = neko_uniform_string_from_type(udesc->type);
                     const char* uname = udesc->name;
@@ -4282,7 +4282,7 @@ char* neko_pipeline_generate_shader_code(neko_draw_pipeline_desc_t* pdesc, neko_
                             strncat(src, TMP, sz);
                         } break;
 
-                        case NEKO_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F: {
+                        case NEKO_RENDER_UNIFORM_IMAGE2D_RGBA32F: {
                             neko_snprintfc(TMP, 64, "layout (rgba32f, binding = %zu) uniform image2D %s;\n", img_binding++, uname);
                             const size_t sz = neko_string_length(TMP);
                             strncat(src, TMP, sz);
@@ -4303,14 +4303,14 @@ char* neko_pipeline_generate_shader_code(neko_draw_pipeline_desc_t* pdesc, neko_
 
         // Out
         switch (stage) {
-            case NEKO_GRAPHICS_SHADER_STAGE_FRAGMENT:
-            case NEKO_GRAPHICS_SHADER_STAGE_VERTEX: {
+            case NEKO_RENDER_SHADER_STAGE_FRAGMENT:
+            case NEKO_RENDER_SHADER_STAGE_VERTEX: {
                 for (uint32_t i = 0; i < neko_dyn_array_size(ppd->io_list[sidx]); ++i) {
                     neko_shader_io_data_t* out = &ppd->io_list[sidx][i];
                     const char* otype = out->type;
                     const char* oname = out->name;
                     neko_transient_buffer(TMP, 64);
-                    if (stage == NEKO_GRAPHICS_SHADER_STAGE_FRAGMENT) {
+                    if (stage == NEKO_RENDER_SHADER_STAGE_FRAGMENT) {
                         neko_snprintf(TMP, 64, "layout(location = %zu) out %s %s;\n", i, otype, oname);
                     } else {
                         neko_snprintf(TMP, 64, "out %s %s;\n", otype, oname);
@@ -4326,7 +4326,7 @@ char* neko_pipeline_generate_shader_code(neko_draw_pipeline_desc_t* pdesc, neko_
 
         // In
         switch (stage) {
-            case NEKO_GRAPHICS_SHADER_STAGE_FRAGMENT: {
+            case NEKO_RENDER_SHADER_STAGE_FRAGMENT: {
                 for (uint32_t i = 0; i < neko_dyn_array_size(ppd->io_list[0]); ++i) {
                     neko_shader_io_data_t* out = &ppd->io_list[0][i];
                     const char* otype = out->type;
@@ -4338,7 +4338,7 @@ char* neko_pipeline_generate_shader_code(neko_draw_pipeline_desc_t* pdesc, neko_
             } break;
 
                 /*
-                case NEKO_GRAPHICS_SHADER_STAGE_COMPUTE: {
+                case NEKO_RENDER_SHADER_STAGE_COMPUTE: {
                     neko_snprintfc(TMP, 64, "layout(");
                     strncat(src, "layout(", 7);
 
@@ -4373,7 +4373,7 @@ NEKO_API_DECL neko_draw_pipeline_t neko_draw_pipeline_load_from_file(const char*
     // Load file, generate lexer off of file data, parse contents for pipeline information
     size_t len = 0;
     char* file_data = neko_platform_read_file_contents(path, "rb", &len);
-    neko_assert(file_data);
+    NEKO_ASSERT(file_data);
     neko_log_trace("Parsing pipeline: %s", path);
     neko_draw_pipeline_t pip = neko_draw_pipeline_load_from_memory_ext(file_data, len, path);
     neko_safe_free(file_data);
@@ -4384,10 +4384,10 @@ NEKO_API_DECL neko_draw_pipeline_t neko_draw_pipeline_load_from_memory(const cha
 
 NEKO_API_DECL neko_draw_pipeline_t neko_draw_pipeline_load_from_memory_ext(const char* file_data, size_t sz, const char* file_path) {
     // Cast to pip
-    neko_draw_pipeline_t pip = neko_default_val();
+    neko_draw_pipeline_t pip = NEKO_DEFAULT_VAL();
 
-    neko_ppd_t ppd = neko_default_val();
-    neko_draw_pipeline_desc_t pdesc = neko_default_val();
+    neko_ppd_t ppd = NEKO_DEFAULT_VAL();
+    neko_draw_pipeline_desc_t pdesc = NEKO_DEFAULT_VAL();
     pdesc.pip_desc.raster.index_buffer_element_size = sizeof(uint32_t);
 
     // Determine original file directory from path
@@ -4427,44 +4427,44 @@ NEKO_API_DECL neko_draw_pipeline_t neko_draw_pipeline_load_from_memory_ext(const
     }
 
     // Generate vertex shader code
-    char* v_src = neko_pipeline_generate_shader_code(&pdesc, &ppd, NEKO_GRAPHICS_SHADER_STAGE_VERTEX);
+    char* v_src = neko_pipeline_generate_shader_code(&pdesc, &ppd, NEKO_RENDER_SHADER_STAGE_VERTEX);
     // neko_log_trace("[gfxt] %s", v_src);
 
     // Generate fragment shader code
-    char* f_src = neko_pipeline_generate_shader_code(&pdesc, &ppd, NEKO_GRAPHICS_SHADER_STAGE_FRAGMENT);
+    char* f_src = neko_pipeline_generate_shader_code(&pdesc, &ppd, NEKO_RENDER_SHADER_STAGE_FRAGMENT);
     // neko_log_trace("[gfxt] %s", f_src);
 
     // Generate compute shader code (need to check for this first)
-    char* c_src = neko_pipeline_generate_shader_code(&pdesc, &ppd, NEKO_GRAPHICS_SHADER_STAGE_COMPUTE);
+    char* c_src = neko_pipeline_generate_shader_code(&pdesc, &ppd, NEKO_RENDER_SHADER_STAGE_COMPUTE);
     // neko_log_trace("[gfxt] %s", c_src);
 
     // Construct compute shader
     if (c_src) {
-        neko_graphics_shader_desc_t sdesc = neko_default_val();
-        neko_graphics_shader_source_desc_t source_desc[1] = neko_default_val();
-        source_desc[0].type = NEKO_GRAPHICS_SHADER_STAGE_COMPUTE;
+        neko_render_shader_desc_t sdesc = NEKO_DEFAULT_VAL();
+        neko_render_shader_source_desc_t source_desc[1] = NEKO_DEFAULT_VAL();
+        source_desc[0].type = NEKO_RENDER_SHADER_STAGE_COMPUTE;
         source_desc[0].source = c_src;
         sdesc.sources = source_desc;
-        sdesc.size = 1 * sizeof(neko_graphics_shader_source_desc_t);
+        sdesc.size = 1 * sizeof(neko_render_shader_source_desc_t);
 
-        pdesc.pip_desc.compute.shader = neko_graphics_shader_create(sdesc);
+        pdesc.pip_desc.compute.shader = neko_render_shader_create(sdesc);
     }
     // Construct raster shader
     else {
-        neko_graphics_shader_desc_t sdesc = neko_default_val();
-        neko_graphics_shader_source_desc_t source_desc[2] = neko_default_val();
-        source_desc[0].type = NEKO_GRAPHICS_SHADER_STAGE_VERTEX;
+        neko_render_shader_desc_t sdesc = NEKO_DEFAULT_VAL();
+        neko_render_shader_source_desc_t source_desc[2] = NEKO_DEFAULT_VAL();
+        source_desc[0].type = NEKO_RENDER_SHADER_STAGE_VERTEX;
         source_desc[0].source = v_src;
-        source_desc[1].type = NEKO_GRAPHICS_SHADER_STAGE_FRAGMENT;
+        source_desc[1].type = NEKO_RENDER_SHADER_STAGE_FRAGMENT;
         source_desc[1].source = f_src;
         sdesc.sources = source_desc;
-        sdesc.size = 2 * sizeof(neko_graphics_shader_source_desc_t);
+        sdesc.size = 2 * sizeof(neko_render_shader_source_desc_t);
 
-        pdesc.pip_desc.raster.shader = neko_graphics_shader_create(sdesc);
+        pdesc.pip_desc.raster.shader = neko_render_shader_create(sdesc);
     }
 
     // Set up layout
-    pdesc.pip_desc.layout.size = neko_dyn_array_size(pdesc.pip_desc.layout.attrs) * sizeof(neko_graphics_vertex_attribute_desc_t);
+    pdesc.pip_desc.layout.size = neko_dyn_array_size(pdesc.pip_desc.layout.attrs) * sizeof(neko_render_vertex_attribute_desc_t);
 
     // Set up ublock
     pdesc.ublock_desc.size = neko_dyn_array_size(pdesc.ublock_desc.layout) * sizeof(neko_draw_uniform_desc_t);
@@ -4496,8 +4496,8 @@ NEKO_API_DECL neko_draw_pipeline_t neko_draw_pipeline_load_from_memory_ext(const
     return pip;
 }
 
-NEKO_API_DECL neko_draw_texture_t neko_draw_texture_load_from_file(const char* path, neko_graphics_texture_desc_t* desc, bool flip, bool keep_data) {
-    neko_asset_texture_t tex = neko_default_val();
+NEKO_API_DECL neko_draw_texture_t neko_draw_texture_load_from_file(const char* path, neko_render_texture_desc_t* desc, bool flip, bool keep_data) {
+    neko_asset_texture_t tex = NEKO_DEFAULT_VAL();
     neko_asset_texture_load_from_file(path, &tex, desc, flip, keep_data);
     if (desc) {
         *desc = tex.desc;
@@ -4505,8 +4505,8 @@ NEKO_API_DECL neko_draw_texture_t neko_draw_texture_load_from_file(const char* p
     return tex.hndl;
 }
 
-NEKO_API_DECL neko_draw_texture_t neko_draw_texture_load_from_memory(const char* data, size_t sz, neko_graphics_texture_desc_t* desc, bool flip, bool keep_data) {
-    neko_asset_texture_t tex = neko_default_val();
+NEKO_API_DECL neko_draw_texture_t neko_draw_texture_load_from_memory(const char* data, size_t sz, neko_render_texture_desc_t* desc, bool flip, bool keep_data) {
+    neko_asset_texture_t tex = NEKO_DEFAULT_VAL();
     neko_asset_texture_load_from_memory(data, sz, &tex, desc, flip, keep_data);
     if (desc) {
         *desc = tex.desc;
@@ -4651,8 +4651,8 @@ void neko_spritebatch_set_default_config(neko_spritebatch_config_t* config) {
     } while (0)
 
 int neko_spritebatch_internal_fill_internal_sprite(neko_spritebatch_t* sb, neko_spritebatch_sprite_t sprite, neko_spritebatch_internal_sprite_t* out) {
-    neko_assert(sprite.w <= sb->atlas_width_in_pixels);
-    neko_assert(sprite.h <= sb->atlas_height_in_pixels);
+    NEKO_ASSERT(sprite.w <= sb->atlas_width_in_pixels);
+    NEKO_ASSERT(sprite.h <= sb->atlas_height_in_pixels);
     SPRITEBATCH_CHECK_BUFFER_GROW(sb, input_count, input_capacity, input_buffer, neko_spritebatch_internal_sprite_t);
 
     out->image_id = sprite.image_id;
@@ -4937,7 +4937,7 @@ int neko_spritebatch_internal_push_sprite(neko_spritebatch_t* sb, neko_spritebat
             sprite.texture_id = atlas->texture_id;
 
             neko_spritebatch_internal_texture_t* tex = (neko_spritebatch_internal_texture_t*)hashtable_find(&atlas->sprites_to_textures, s->image_id);
-            neko_assert(tex);
+            NEKO_ASSERT(tex);
             tex->timestamp = 0;
             sprite.w = tex->w;
             sprite.h = tex->h;
@@ -5050,7 +5050,7 @@ int neko_spritebatch_flush(neko_spritebatch_t* sb) {
 
                 else {
                     neko_spritebatch_internal_lonely_texture_t* tex = (neko_spritebatch_internal_lonely_texture_t*)hashtable_find(&sb->sprites_to_lonely_textures, image_id);
-                    neko_assert(tex);
+                    NEKO_ASSERT(tex);
                     w = tex->w;
                     h = tex->h;
                     if (sb->atlas_use_border_pixels) {
@@ -5194,8 +5194,8 @@ void neko_spritebatch_make_atlas(neko_spritebatch_t* sb, neko_spritebatch_intern
     images = (neko_spritebatch_internal_integer_image_t*)malloc(sizeof(neko_spritebatch_internal_integer_image_t) * img_count);
     images_scratch = (neko_spritebatch_internal_integer_image_t*)malloc(sizeof(neko_spritebatch_internal_integer_image_t) * img_count);
     nodes = (neko_spritebatch_internal_atlas_node_t*)malloc(sizeof(neko_spritebatch_internal_atlas_node_t) * atlas_node_capacity);
-    neko_assert(images && "out of mem");
-    neko_assert(nodes && "out of mem");
+    NEKO_ASSERT(images && "out of mem");
+    NEKO_ASSERT(nodes && "out of mem");
 
     for (int i = 0; i < img_count; ++i) {
         const neko_spritebatch_internal_lonely_texture_t* img = imgs + i;
@@ -5246,7 +5246,7 @@ void neko_spritebatch_make_atlas(neko_spritebatch_t* sb, neko_spritebatch_intern
         if (sp == atlas_node_capacity) {
             int new_capacity = atlas_node_capacity * 2;
             neko_spritebatch_internal_atlas_node_t* new_nodes = (neko_spritebatch_internal_atlas_node_t*)malloc(sizeof(neko_spritebatch_internal_atlas_node_t) * new_capacity);
-            neko_assert(new_nodes && "out of mem");
+            NEKO_ASSERT(new_nodes && "out of mem");
             memcpy(new_nodes, nodes, sizeof(neko_spritebatch_internal_atlas_node_t) * sp);
             free(nodes);
             nodes = new_nodes;
@@ -5284,7 +5284,7 @@ void neko_spritebatch_make_atlas(neko_spritebatch_t* sb, neko_spritebatch_intern
     atlas_stride = atlas_width * pixel_stride;
     atlas_image_size = atlas_width * atlas_height * pixel_stride;
     atlas_pixels = malloc(atlas_image_size);
-    neko_assert(atlas_image_size && "out of mem");
+    NEKO_ASSERT(atlas_image_size && "out of mem");
     memset(atlas_pixels, SPRITEBATCH_ATLAS_EMPTY_COLOR, atlas_image_size);
 
     for (int i = 0; i < img_count; ++i) {
@@ -5346,12 +5346,12 @@ void neko_spritebatch_make_atlas(neko_spritebatch_t* sb, neko_spritebatch_intern
             texture.miny = min_y;
             texture.maxx = max_x;
             texture.maxy = max_y;
-            neko_assert(!(img->size.x < 0));
-            neko_assert(!(img->size.y < 0));
-            neko_assert(!(min_x < 0));
-            neko_assert(!(max_x < 0));
-            neko_assert(!(min_y < 0));
-            neko_assert(!(max_y < 0));
+            NEKO_ASSERT(!(img->size.x < 0));
+            NEKO_ASSERT(!(img->size.y < 0));
+            NEKO_ASSERT(!(min_x < 0));
+            NEKO_ASSERT(!(max_x < 0));
+            NEKO_ASSERT(!(min_y < 0));
+            NEKO_ASSERT(!(max_y < 0));
             texture.image_id = imgs[img->img_index].image_id;
             hashtable_insert(&atlas_out->sprites_to_textures, texture.image_id, &texture);
         }
@@ -5360,7 +5360,7 @@ void neko_spritebatch_make_atlas(neko_spritebatch_t* sb, neko_spritebatch_intern
     // Need to adjust atlas_width and atlas_height in config params, as none of the images for this
     // atlas actually fit inside of the atlas! Either adjust the config, or stop sending giant images
     // to the sprite batcher.
-    neko_assert(volume_used > 0);
+    NEKO_ASSERT(volume_used > 0);
 
     atlas_out->volume_ratio = volume_used / (atlas_width * atlas_height);
 
@@ -5505,7 +5505,7 @@ int neko_spritebatch_defrag(neko_spritebatch_t* sb) {
         do {
             neko_spritebatch_internal_atlas_t* next = atlas->next;
 
-            neko_assert(sp >= 0 && sp <= 2);
+            NEKO_ASSERT(sp >= 0 && sp <= 2);
             if (sp == 2) {
                 neko_log_trace("[batch] merged 2 atlases");
                 neko_spritebatch_internal_flush_atlas(sb, merge_stack[0], &sentinel, &next);
@@ -5546,7 +5546,7 @@ int neko_spritebatch_defrag(neko_spritebatch_t* sb) {
         }
         neko_spritebatch_internal_remove_table_entries(sb, &sb->sprites_to_lonely_textures);
         lonely_count -= lonely_count - index;
-        neko_assert(lonely_count == hashtable_count(&sb->sprites_to_lonely_textures));
+        NEKO_ASSERT(lonely_count == hashtable_count(&sb->sprites_to_lonely_textures));
     }
 
     // process input, but don't make textures just yet
@@ -5588,8 +5588,8 @@ int neko_spritebatch_defrag(neko_spritebatch_t* sb) {
                     neko_log_trace("[batch] removing lonely texture for atlas%s", texture_id != ~0 ? "" : " (tex was ~0)");
                 } else {
                     hit_count++;
-                    neko_assert(lonely_textures[i].w <= sb->atlas_width_in_pixels);
-                    neko_assert(lonely_textures[i].h <= sb->atlas_height_in_pixels);
+                    NEKO_ASSERT(lonely_textures[i].w <= sb->atlas_width_in_pixels);
+                    NEKO_ASSERT(lonely_textures[i].h <= sb->atlas_height_in_pixels);
                 }
             }
             neko_spritebatch_internal_remove_table_entries(sb, &sb->sprites_to_lonely_textures);
@@ -5600,7 +5600,7 @@ int neko_spritebatch_defrag(neko_spritebatch_t* sb) {
                 // TODO
                 // handle case where none fit in atlas
                 stuck = 1;
-                neko_assert(0);
+                NEKO_ASSERT(0);
             }
         }
 

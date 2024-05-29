@@ -41,13 +41,13 @@ const char* u8Cpp20(T&& t) noexcept {
 #endif
 
 #define NEKO_DYNAMIC_CAST(type, input_var, cast_var_name) \
-    neko_assert(value);                                   \
+    NEKO_ASSERT(value);                                   \
     type* cast_var_name = dynamic_cast<type*>(input_var); \
-    neko_assert(cast_var_name)
+    NEKO_ASSERT(cast_var_name)
 #define NEKO_STATIC_CAST(type, input_var, cast_var_name) \
-    neko_assert(value);                                  \
+    NEKO_ASSERT(value);                                  \
     type* cast_var_name = static_cast<type*>(input_var); \
-    neko_assert(cast_var_name)
+    NEKO_ASSERT(cast_var_name)
 
 namespace detail {
 template <typename... Args>
@@ -71,16 +71,16 @@ constexpr std::size_t va_count(Args&&...) {
             }(__VA_ARGS__);                                                            \
     } while (0)
 
-#define neko_c_ref(T, ...)                                                                                       \
-    [&]() -> T* {                                                                                                \
-        static T neko_macro_cat(__neko_gen_, neko_macro_cat(T, neko_macro_cat(_cref_, __LINE__))) = __VA_ARGS__; \
-        return &neko_macro_cat(__neko_gen_, neko_macro_cat(T, neko_macro_cat(_cref_, __LINE__)));                \
+#define neko_c_ref(T, ...)                                                                              \
+    [&]() -> T* {                                                                                       \
+        static T NEKO_CONCAT(__neko_gen_, NEKO_CONCAT(T, NEKO_CONCAT(_cref_, __LINE__))) = __VA_ARGS__; \
+        return &NEKO_CONCAT(__neko_gen_, NEKO_CONCAT(T, NEKO_CONCAT(_cref_, __LINE__)));                \
     }()
 
-#define neko_arr_ref(T, ...)                                                                                                            \
-    [&]() -> T* {                                                                                                                       \
-        static T neko_macro_cat(neko_macro_cat(__neko_gen_, neko_macro_cat(T, neko_macro_cat(_arr_ref_, __LINE__))), []) = __VA_ARGS__; \
-        return neko_macro_cat(__neko_gen_, neko_macro_cat(T, neko_macro_cat(_arr_ref_, __LINE__)));                                     \
+#define neko_arr_ref(T, ...)                                                                                                \
+    [&]() -> T* {                                                                                                           \
+        static T NEKO_CONCAT(NEKO_CONCAT(__neko_gen_, NEKO_CONCAT(T, NEKO_CONCAT(_arr_ref_, __LINE__))), []) = __VA_ARGS__; \
+        return NEKO_CONCAT(__neko_gen_, NEKO_CONCAT(T, NEKO_CONCAT(_arr_ref_, __LINE__)));                                  \
     }()
 
 #ifndef neko_check_is_trivial
@@ -189,7 +189,7 @@ neko_defer<F> defer_func(F f) {
     return neko_defer<F>(f);
 }
 
-#define neko_defer(code) auto neko_concat(_defer_, __COUNTER__) = neko::defer_func([&]() { code; })
+#define neko_defer(code) auto NEKO_CONCAT(_defer_, __COUNTER__) = neko::defer_func([&]() { code; })
 
 }  // namespace neko
 
@@ -261,7 +261,7 @@ NEKO_FORCE_INLINE f64 time_d() {
 }
 
 NEKO_STATIC_INLINE time_t time_mkgmtime(struct tm* unixdate) {
-    neko_assert(unixdate != nullptr);
+    NEKO_ASSERT(unixdate != nullptr);
     time_t fakeUnixtime = mktime(unixdate);
     struct tm* fakeDate = gmtime(&fakeUnixtime);
 
@@ -664,109 +664,8 @@ constexpr hash_value hash_fnv(const char* string) {
     return Hash;
 }
 
-constexpr hash_value hash_fnv(const char* string, const char* end) {
-    hash_value MagicPrime = 0x00000100000001b3ULL;
-    hash_value Hash = 0xcbf29ce484222325ULL;
-
-    for (; string != end; string++) Hash = (Hash ^ *string) * MagicPrime;
-
-    return Hash;
-}
-
-constexpr void next(hash_value& h) { h = xor64(h); }
-
-inline hash_value hash_from_clock() {
-    hash_value h = __rdtsc();
-    next(h);
-    return h;
-}
-
-template <typename T>
-T next_range(hash_value& h, T min, T max) {
-    if (max < min) return next_range(h, max, min);
-    next(h);
-    min += h % (max - min);
-    return min;
-}
-
-template <typename T1, typename T2>
-T1 next_range(hash_value& h, T1 min, T2 max) {
-    return next_range<T1>(h, min, (T1)max);
-}
-
-inline float nextf(hash_value& h) {
-    next(h);
-
-    union {
-        hash_value u_x;
-        float u_f;
-    };
-
-    // 以某种方式操作浮点数的指数和分数 使得从 1（包括）和 2（不包括）中得到一个数字
-    u_x = h;
-    u_x &= 0x007FFFFF007FFFFF;
-    u_x |= 0x3F8000003F800000;
-
-    return u_f - 1.0f;
-}
-
-inline float nextf(hash_value& h, float min, float max) {
-    if (max < min) return nextf(h, max, min);
-    return min + nextf(h) * (max - min);
-}
-
-inline int nexti(hash_value& h) {
-    next(h);
-
-    union {
-        hash_value u_x;
-        int u_i;
-    };
-
-    u_x = h;
-
-    return u_i;
-}
-
-template <class T>
-inline hash_value hash_simple(T value) {
-    static_assert(sizeof(T) <= sizeof(hash_value), "sizeof(T) can't be bigger than sizeof(hash_value)");
-    union {
-        hash_value u_h;
-        T u_f;
-    };
-    u_h = 0;
-    u_f = value;
-    return u_h;
-}
-
-constexpr hash_value hash(unsigned char v) { return v; }
-constexpr hash_value hash(unsigned int v) { return v; }
-constexpr hash_value hash(unsigned long int v) { return v; }
-constexpr hash_value hash(unsigned long long int v) { return v; }
-constexpr hash_value hash(unsigned short int v) { return v; }
-constexpr hash_value hash(bool v) { return v ? 1 : 0; }
-inline hash_value hash(signed char v) { return hash_simple(v); }
-inline hash_value hash(int v) { return hash_simple(v); }
-inline hash_value hash(long int v) { return hash_simple(v); }
-inline hash_value hash(long long int v) { return hash_simple(v); }
-inline hash_value hash(short int v) { return hash_simple(v); }
-inline hash_value hash(double v) { return hash_simple(v); }
-inline hash_value hash(float v) { return hash_simple(v); }
-inline hash_value hash(long double v) { return hash_simple(v); }
-inline hash_value hash(wchar_t v) { return hash_simple(v); }
 constexpr hash_value hash(char const* input) { return hash_fnv(input); }
 constexpr hash_value hash(const std::string& input) { return hash_fnv(input.c_str()); }
-
-template <class T>
-constexpr hash_value hash(const std::vector<T>& v) {
-    hash_value h = 0;
-    for (auto& o : v) {
-        h ^= hash(o);
-        h = xor64(h);
-    }
-    return h;
-}
 
 template <typename ForwardIterator, typename SpaceDetector>
 constexpr ForwardIterator find_terminating_word(ForwardIterator begin, ForwardIterator end, SpaceDetector&& is_space_pred) {
@@ -1138,7 +1037,7 @@ struct array {
     u64 capacity = 0;
 
     T& operator[](size_t i) {
-        neko_assert(i >= 0 && i < len);
+        NEKO_ASSERT(i >= 0 && i < len);
         return data[i];
     }
 
@@ -1168,7 +1067,7 @@ struct array {
     }
 
     void pop() {
-        neko_assert(data->len != 0);
+        NEKO_ASSERT(data->len != 0);
         // 直接标记长度简短 优化方法
         data->len--;
     }
@@ -1290,5 +1189,30 @@ void json_to_lua(lua_State* L, JSON* json);
 string lua_to_json_string(lua_State* L, s32 arg, string* contents, s32 width);
 
 }  // namespace neko
+
+#define CVAR_TYPES() bool, s32, f32, f32*
+
+typedef struct neko_engine_cvar_s {
+    bool show_editor;
+    bool show_demo_window;
+    bool show_pack_editor;
+    bool show_profiler_window;
+    bool show_test_window;
+    bool show_gui;
+    bool shader_inspect;
+    bool hello_ai_shit;
+    bool vsync;
+    bool is_hotfix;
+
+    // 实验性功能开关
+    bool enable_nekolua;
+
+    f32 bg[3];  //
+} neko_client_cvar_t;
+
+void neko_cvar_gui(neko_client_cvar_t& cvar);
+
+extern neko_console_command_t commands[];
+extern neko_console_t g_console;
 
 #endif

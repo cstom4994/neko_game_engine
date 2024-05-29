@@ -676,7 +676,7 @@ static int __neko_ecs_world_match_component(lua_State *L) {
     }
     if (iter == NULL) return luaL_argerror(L, 2, "mode can only be[all,dirty,dead]");
     luaL_argcheck(L, top >= 3, 3, "lost the component name");
-    luaL_argcheck(L, top < neko_arr_size(mctx->keys), top, "too many component");
+    luaL_argcheck(L, top < NEKO_ARR_SIZE(mctx->keys), top, "too many component");
     lua_getiuservalue(L, ECS_WORLD, WORLD_PROTO_ID);
     lua_pushcfunction(L, iter);
     lua_getiuservalue(L, ECS_WORLD, WORLD_MATCH_CTX);
@@ -1624,7 +1624,7 @@ neko_ecs_t *ecs_init_i(neko_ecs_t *registry) {
 }
 
 neko_ecs_t *ecs_init(lua_State *L) {
-    neko_assert(L);
+    NEKO_ASSERT(L);
     neko_ecs_t *registry = (neko_ecs_t *)lua_newuserdatauv(L, sizeof(neko_ecs_t), NEKO_ECS_UPVAL_N);  // # -1
     registry = ecs_init_i(registry);
     if (registry == NULL) {

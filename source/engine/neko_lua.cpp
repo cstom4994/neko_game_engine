@@ -13,7 +13,7 @@ std::string default_str("");
 
 ScriptReference::ScriptReference() : script_ref(0), __lua(g_L) {}
 
-ScriptReference::~ScriptReference() { neko_assert(script_ref == 0, "Warning, you have deleted an instance without unregistering it"); }
+ScriptReference::~ScriptReference() { NEKO_ASSERT(script_ref == 0, "Warning, you have deleted an instance without unregistering it"); }
 
 lua_table::lua_table() : __lua(NULL), script_ref(0) {}
 
@@ -190,13 +190,13 @@ bool lua_table_iter::hasNext() {
 }
 
 std::string lua_table_iter::getKey() const {
-    neko_assert(script_ref > 0, "This iterator instance is corrupter. Are you sure that hasNext() returned true?");
+    NEKO_ASSERT(script_ref > 0, "This iterator instance is corrupter. Are you sure that hasNext() returned true?");
     std::string key = lua_tostring(__lua, -2);
     return key;
 }
 
 std::string lua_table_iter::getString() {
-    neko_assert(script_ref > 0, "This iterator instance is corrupter. Are you sure that hasNext() returned true?");
+    NEKO_ASSERT(script_ref > 0, "This iterator instance is corrupter. Are you sure that hasNext() returned true?");
     std::string val = lua_tostring(__lua, -1);
     lua_pop(__lua, 1);
     mNumPopsRequired--;
@@ -204,7 +204,7 @@ std::string lua_table_iter::getString() {
 }
 
 double lua_table_iter::getDouble() {
-    neko_assert(script_ref > 0, "This iterator instance is corrupter. Are you sure that hasNext() returned true?");
+    NEKO_ASSERT(script_ref > 0, "This iterator instance is corrupter. Are you sure that hasNext() returned true?");
     double val = lua_tonumber(__lua, -1);
     lua_pop(__lua, 1);
     mNumPopsRequired--;
@@ -212,7 +212,7 @@ double lua_table_iter::getDouble() {
 }
 
 float lua_table_iter::getFloat() {
-    neko_assert(script_ref > 0, "This iterator instance is corrupter. Are you sure that hasNext() returned true?");
+    NEKO_ASSERT(script_ref > 0, "This iterator instance is corrupter. Are you sure that hasNext() returned true?");
     float val = (float)lua_tonumber(__lua, -1);
     lua_pop(__lua, 1);
     mNumPopsRequired--;
@@ -220,7 +220,7 @@ float lua_table_iter::getFloat() {
 }
 
 int lua_table_iter::getInt() {
-    neko_assert(script_ref > 0, "This iterator instance is corrupter. Are you sure that hasNext() returned true?");
+    NEKO_ASSERT(script_ref > 0, "This iterator instance is corrupter. Are you sure that hasNext() returned true?");
     int val = lua_tointeger(__lua, -1);
     lua_pop(__lua, 1);
     mNumPopsRequired--;
@@ -228,7 +228,7 @@ int lua_table_iter::getInt() {
 }
 
 bool lua_table_iter::getBool() {
-    neko_assert(script_ref > 0, "This iterator instance is corrupter. Are you sure that hasNext() returned true?");
+    NEKO_ASSERT(script_ref > 0, "This iterator instance is corrupter. Are you sure that hasNext() returned true?");
     bool val = lua_toboolean(__lua, -1) != 0;
     lua_pop(__lua, 1);
     mNumPopsRequired--;
@@ -236,7 +236,7 @@ bool lua_table_iter::getBool() {
 }
 
 ScriptObject* lua_table_iter::getPointer() {
-    neko_assert(script_ref > 0, "This iterator instance is corrupter. Are you sure that hasNext() returned true?");
+    NEKO_ASSERT(script_ref > 0, "This iterator instance is corrupter. Are you sure that hasNext() returned true?");
     ScriptObject* ptr = NULL;
     lua_value<ScriptObject*>::pop(__lua, ptr);
     mNumPopsRequired--;
@@ -244,7 +244,7 @@ ScriptObject* lua_table_iter::getPointer() {
 }
 
 lua_table lua_table_iter::get_table() {
-    neko_assert(script_ref > 0, "This iterator instance is corrupter. Are you sure that hasNext() returned true?");
+    NEKO_ASSERT(script_ref > 0, "This iterator instance is corrupter. Are you sure that hasNext() returned true?");
     lua_table dict;
     lua_value<lua_table>::pop(__lua, dict);
     mNumPopsRequired--;
@@ -269,14 +269,14 @@ void ScriptInvoker::invoke(const_str method) {
 
 #ifdef _DEBUG
     int currentStack = lua_gettop(__lua);
-    neko_assert(top1 == currentStack, "The stack after the method call is corrupt");
+    NEKO_ASSERT(top1 == currentStack, "The stack after the method call is corrupt");
 #endif
 }
 
 bool ScriptInvoker::findAndPushMethod(const_str method_name) {
     if (method_name == NULL) return false;
 
-    neko_assert(script_ref != 0, "You must register this instance using 'registerObject' before you can invoke any script methods on it");
+    NEKO_ASSERT(script_ref != 0, "You must register this instance using 'registerObject' before you can invoke any script methods on it");
 
     lua_rawgeti(__lua, LUA_REGISTRYINDEX, script_ref);
     if (lua_istable(__lua, -1)) {
@@ -289,7 +289,7 @@ bool ScriptInvoker::findAndPushMethod(const_str method_name) {
     }
     lua_pop(__lua, 1);
 
-    neko_log_warning("[lua] not find method \"%s\" wiht script_ref_%d", method_name, script_ref);
+    neko_log_warning("[lua] not find method \"%s\" with script_ref_%d", method_name, script_ref);
 
     return false;
 }
@@ -297,7 +297,7 @@ bool ScriptInvoker::findAndPushMethod(const_str method_name) {
 bool ScriptInvoker::isMethodDefined(const_str method_name) const {
     if (method_name == NULL) return false;
 
-    neko_assert(script_ref != 0, "You must register this instance before you can invoke any script methods on it");
+    NEKO_ASSERT(script_ref != 0, "You must register this instance before you can invoke any script methods on it");
 
     lua_rawgeti(__lua, LUA_REGISTRYINDEX, script_ref);
     if (lua_istable(__lua, -1)) {
@@ -327,7 +327,7 @@ ScriptObject::ScriptObject() : ScriptInvoker(), obj_last_entry(NULL) {}
 ScriptObject::~ScriptObject() {}
 
 bool ScriptObject::registerObject() {
-    neko_assert(script_ref == 0, "You are trying to register the same object twice");
+    NEKO_ASSERT(script_ref == 0, "You are trying to register the same object twice");
 
     // Get the global lua state
     script_ref = getClassDef()->instantiate(__lua, this);
@@ -341,7 +341,7 @@ bool ScriptObject::registerObject() {
 }
 
 bool ScriptObject::registerObject(int refId) {
-    neko_assert(script_ref == 0, "You are trying to register the same object twice");
+    NEKO_ASSERT(script_ref == 0, "You are trying to register the same object twice");
 
     script_ref = refId;
 
@@ -361,7 +361,7 @@ bool ScriptObject::registerObject(int refId) {
 }
 
 void ScriptObject::unregisterObject() {
-    neko_assert(script_ref != 0, "You are trying to unregister the same object twice");
+    NEKO_ASSERT(script_ref != 0, "You are trying to unregister the same object twice");
 
     onRemove();
 

@@ -14,7 +14,7 @@
 // 一些 winapi 调用可能会失败 但我们没有任何已知的方法来“修复”该问题
 // 其中一些调用不是致命的（例如如果无法移动窗口）因此我们只需断言 DEBUG_CHECK
 #define DEBUG_CHECK(R) \
-    if (!(R)) neko_assert(false)
+    if (!(R)) NEKO_ASSERT(false)
 
 /*============================================================
 // Platform Time
@@ -322,13 +322,6 @@ typedef struct neko_platform_input_t {
 // Enumeration of all platform types
 typedef enum neko_platform_type { NEKO_PLATFORM_TYPE_UNKNOWN = 0, NEKO_PLATFORM_TYPE_WINDOWS, NEKO_PLATFORM_TYPE_LINUX, NEKO_PLATFORM_TYPE_MAC, NEKO_PLATFORM_TYPE_WEB } neko_platform_type;
 
-typedef enum neko_platform_video_driver_type {
-    NEKO_PLATFORM_VIDEO_DRIVER_TYPE_NONE = 0,
-    NEKO_PLATFORM_VIDEO_DRIVER_TYPE_OPENGL,
-    NEKO_PLATFORM_VIDEO_DRIVER_TYPE_OPENGLES,
-    NEKO_PLATFORM_VIDEO_DRIVER_TYPE_SOFTWARE
-} neko_platform_video_driver_type;
-
 typedef enum neko_opengl_compatibility_flags {
     NEKO_OPENGL_COMPATIBILITY_FLAGS_LEGACY = 0,
     NEKO_OPENGL_COMPATIBILITY_FLAGS_CORE = 1 << 1,
@@ -336,31 +329,6 @@ typedef enum neko_opengl_compatibility_flags {
     NEKO_OPENGL_COMPATIBILITY_FLAGS_FORWARD = 1 << 3,
     NEKO_OPENGL_COMPATIBILITY_FLAGS_ES = 1 << 4,
 } neko_opengl_compatibility_flags;
-
-// A structure that contains OpenGL video settings
-typedef struct neko_opengl_video_settings_t {
-    neko_opengl_compatibility_flags compability_flags;
-    u32 major_version;
-    u32 minor_version;
-    u8 multi_sampling_count;
-    void *ctx;
-} neko_opengl_video_settings_t;
-
-typedef union neko_graphics_api_settings_t {
-    neko_opengl_video_settings_t opengl;
-    // b32 debug;
-    // b32 hdpi;
-} neko_graphics_api_settings_t;
-
-typedef struct neko_platform_video_settings_t {
-    neko_graphics_api_settings_t graphics;
-    neko_platform_video_driver_type driver;
-    b32 vsync_enabled;
-} neko_platform_video_settings_t;
-
-typedef struct neko_platform_settings_t {
-    neko_platform_video_settings_t video;
-} neko_platform_settings_t;
 
 typedef enum neko_platform_event_type {
     NEKO_PLATFORM_EVENT_MOUSE,
@@ -471,9 +439,6 @@ typedef void (*neko_framebuffer_resize_callback_t)(void *, s32 width, s32 height
 struct neko_platform_interface_s;
 
 typedef struct neko_platform_t {
-    // Settings for platform, including video
-    neko_platform_settings_t settings;
-
     // Time
     neko_platform_time_t time;
 
@@ -662,9 +627,8 @@ NEKO_API_DECL neko_vec2 neko_platform_gl_version();
 NEKO_API_DECL void neko_platform_msgbox(const_str msg);
 
 // Platform Internal
-NEKO_API_DECL void __neko_initialize_symbol_handler();
-NEKO_API_DECL const_str __neko_platform_stacktrace();
-NEKO_API_DECL bool __neko_platform_is_wine();
+NEKO_API_DECL void neko_platform_symbol_handler_init();
+NEKO_API_DECL const_str neko_platform_stacktrace();
 
 /*============================================================
 // Platform Native

@@ -3,7 +3,6 @@
 #define NEKO_ASSET_IMPL
 
 #include "engine/neko_engine.h"
-#include "engine/neko_physics.h"
 
 // Asset handle
 typedef struct neko_asset_s {
@@ -14,7 +13,7 @@ typedef struct neko_asset_s {
 
 NEKO_API_DECL neko_asset_t __neko_asset_handle_create_impl(u64 type_id, u32 asset_id, u32 importer_id);
 
-#define neko_asset_handle_create(T, ID, IMPID) __neko_asset_handle_create_impl(neko_hash_str64(neko_to_str(T)), ID, IMPID)
+#define neko_asset_handle_create(T, ID, IMPID) __neko_asset_handle_create_impl(neko_hash_str64(NEKO_TO_STR(T)), ID, IMPID)
 
 typedef void (*neko_asset_load_func)(const_str, void*, ...);
 typedef neko_asset_t (*neko_asset_default_func)(void*);
@@ -40,7 +39,7 @@ NEKO_API_DECL void neko_asset_default_load_from_file(const_str path, void* out);
 NEKO_API_DECL neko_asset_t neko_asset_default_asset();
 NEKO_API_DECL void neko_asset_importer_set_desc(neko_asset_importer_t* imp, neko_asset_importer_desc_t* desc);
 
-#define neko_assets_get_importerp(AM, T) (neko_hash_table_getp((AM)->importers, neko_hash_str64(neko_to_str(T))))
+#define neko_assets_get_importerp(AM, T) (neko_hash_table_getp((AM)->importers, neko_hash_str64(NEKO_TO_STR(T))))
 
 #ifdef __cplusplus
 #define gsa_imsa(IMPORTER, T) (decltype(neko_slot_array(T))(IMPORTER)->slot_array)
@@ -50,7 +49,7 @@ NEKO_API_DECL void neko_asset_importer_set_desc(neko_asset_importer_t* imp, neko
 
 #define neko_assets_register_importer(AM, T, DESC)                                               \
     do {                                                                                         \
-        neko_asset_importer_t ai = neko_default_val();                                           \
+        neko_asset_importer_t ai = NEKO_DEFAULT_VAL();                                           \
         ai.data_size = sizeof(T);                                                                \
         ai.importer_id = (AM)->free_importer_id++;                                               \
         neko_asset_importer_set_desc(&ai, (neko_asset_importer_desc_t*)DESC);                    \
@@ -66,19 +65,19 @@ NEKO_API_DECL void neko_asset_importer_set_desc(neko_asset_importer_t* imp, neko
         if (!ai.desc.load_from_file) {                                                           \
             ai.desc.load_from_file = (neko_asset_load_func) & neko_asset_default_load_from_file; \
         }                                                                                        \
-        neko_hash_table_insert((AM)->importers, neko_hash_str64(neko_to_str(T)), ai);            \
+        neko_hash_table_insert((AM)->importers, neko_hash_str64(NEKO_TO_STR(T)), ai);            \
     } while (0)
 
 // Need a way to be able to print upon assert
 #define neko_assets_load_from_file(AM, T, PATH, ...)                                                                                                                           \
-    (/*neko_assert(neko_hash_table_key_exists((AM)->importers, neko_hash_str64(neko_to_str(T)))),*/                                                                            \
-     (AM)->tmpi = neko_hash_table_getp((AM)->importers, neko_hash_str64(neko_to_str(T))), (AM)->tmpi->desc.load_from_file(PATH, (AM)->tmpi->tmp_ptr, ##__VA_ARGS__),           \
+    (/*NEKO_ASSERT(neko_hash_table_key_exists((AM)->importers, neko_hash_str64(NEKO_TO_STR(T)))),*/                                                                            \
+     (AM)->tmpi = neko_hash_table_getp((AM)->importers, neko_hash_str64(NEKO_TO_STR(T))), (AM)->tmpi->desc.load_from_file(PATH, (AM)->tmpi->tmp_ptr, ##__VA_ARGS__),           \
      (AM)->tmpi->tmpid = neko_slot_array_insert_func(&(AM)->tmpi->slot_array_indices_ptr, &(AM)->tmpi->slot_array_data_ptr, (AM)->tmpi->tmp_ptr, (AM)->tmpi->data_size, NULL), \
      neko_asset_handle_create(T, (AM)->tmpi->tmpid, (AM)->tmpi->importer_id))
 
 #define neko_assets_create_asset(AM, T, DATA)                                                                                                                                  \
-    (/*neko_assert(neko_hash_table_key_exists((AM)->importers, neko_hash_str64(neko_to_str(T)))),*/                                                                            \
-     (AM)->tmpi = neko_hash_table_getp((AM)->importers, neko_hash_str64(neko_to_str(T))), (AM)->tmpi->tmp_ptr = (DATA),                                                        \
+    (/*NEKO_ASSERT(neko_hash_table_key_exists((AM)->importers, neko_hash_str64(NEKO_TO_STR(T)))),*/                                                                            \
+     (AM)->tmpi = neko_hash_table_getp((AM)->importers, neko_hash_str64(NEKO_TO_STR(T))), (AM)->tmpi->tmp_ptr = (DATA),                                                        \
      (AM)->tmpi->tmpid = neko_slot_array_insert_func(&(AM)->tmpi->slot_array_indices_ptr, &(AM)->tmpi->slot_array_data_ptr, (AM)->tmpi->tmp_ptr, (AM)->tmpi->data_size, NULL), \
      neko_asset_handle_create(T, (AM)->tmpi->tmpid, (AM)->tmpi->importer_id))
 
@@ -92,7 +91,7 @@ NEKO_API_DECL neko_asset_manager_t neko_asset_manager_new();
 NEKO_API_DECL void neko_asset_manager_free(neko_asset_manager_t* am);
 NEKO_API_DECL void* __neko_assets_getp_impl(neko_asset_manager_t* am, u64 type_id, neko_asset_t hndl);
 
-#define neko_assets_getp(AM, T, HNDL) (T*)(__neko_assets_getp_impl(AM, neko_hash_str64(neko_to_str(T)), HNDL))
+#define neko_assets_getp(AM, T, HNDL) (T*)(__neko_assets_getp_impl(AM, neko_hash_str64(NEKO_TO_STR(T)), HNDL))
 
 #define neko_assets_get(AM, T, HNDL) *(neko_assets_getp(AM, T, HNDL));
 
@@ -302,9 +301,9 @@ NEKO_API_DECL const char* neko_font_decode_utf8(const char* text, int* cp);
 
 typedef struct neko_fontbatch_s {
     f32 font_projection[16];
-    neko_graphics_batch_context_t* font_render;
-    neko_graphics_batch_shader_t font_shader;
-    neko_graphics_batch_renderable_t font_renderable;
+    neko_render_batch_context_t* font_render;
+    neko_render_batch_shader_t font_shader;
+    neko_render_batch_renderable_t font_renderable;
     f32 font_scale;
     s32 font_vert_count;
     neko_font_vert_t* font_verts;
@@ -368,7 +367,7 @@ typedef struct tile_s {
 } tile_t;
 
 typedef struct tileset_s {
-    neko_handle(neko_graphics_texture_t) texture;
+    neko_handle(neko_render_texture_t) texture;
     u32 tile_count;
     u32 tile_width;
     u32 tile_height;
@@ -416,7 +415,7 @@ NEKO_API_DECL void neko_tiled_unload(map_t* map);
 
 typedef struct neko_tiled_quad_s {
     u32 tileset_id;
-    neko_handle(neko_graphics_texture_t) texture;
+    neko_handle(neko_render_texture_t) texture;
     neko_vec2 texture_size;
     neko_vec2 position;
     neko_vec2 dimentions;
@@ -437,13 +436,13 @@ typedef struct neko_tiled_quad_list_s {
 } neko_tiled_quad_list_t;
 
 typedef struct neko_tiled_renderer {
-    neko_handle(neko_graphics_vertex_buffer_t) vb;
-    neko_handle(neko_graphics_index_buffer_t) ib;
-    neko_handle(neko_graphics_pipeline_t) pip;
-    neko_handle(neko_graphics_shader_t) shader;
-    neko_handle(neko_graphics_uniform_t) u_camera;
-    neko_handle(neko_graphics_uniform_t) u_batch_tex;
-    neko_handle(neko_graphics_texture_t) batch_texture;       // 当前绘制所用贴图
+    neko_handle(neko_render_vertex_buffer_t) vb;
+    neko_handle(neko_render_index_buffer_t) ib;
+    neko_handle(neko_render_pipeline_t) pip;
+    neko_handle(neko_render_shader_t) shader;
+    neko_handle(neko_render_uniform_t) u_camera;
+    neko_handle(neko_render_uniform_t) u_batch_tex;
+    neko_handle(neko_render_texture_t) batch_texture;         // 当前绘制所用贴图
     neko_hash_table(u32, neko_tiled_quad_list_t) quad_table;  // 分层绘制哈希表
 
     u32 quad_count;
@@ -671,7 +670,7 @@ NEKO_INLINE neko_color_t s_color(ase_t* ase, void* src, int index) {
         result.r = result.g = result.b = saturation;
         result.a = a;
     } else {
-        neko_assert(ase->mode == NEKO_ASE_MODE_INDEXED);
+        NEKO_ASSERT(ase->mode == NEKO_ASE_MODE_INDEXED);
         u8 palette_index = ((u8*)src)[index];
         if (palette_index == ase->transparent_palette_entry_index) {
             result = neko_color_ctor(0, 0, 0, 0);

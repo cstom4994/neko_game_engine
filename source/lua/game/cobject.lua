@@ -73,32 +73,21 @@ M.s["__lua_quad_idata_t"] = cstruct.struct([[
     };
     ]])
 
-M.s["__lua_quad_vdata_t"] = cstruct.struct([[
-    struct __lua_quad_vdata_t {
-        float v1;
-        float v2;
-        float v3;
-        float v4;
-        float v5;
-        float v6;
-        float v7;
-        float v8;
-        float v9;
-        float v10;
-        float v11;
-        float v12;
-        float v13;
-        float v14;
-        float v15;
-        float v16;
-    };
-    ]])
-
 M.s["__lua_tex_t"] = cstruct.struct([[
     struct __lua_tex_t {
         uint32_t id;
     };
     ]])
+
+M.generate_array_type = function(name, base_type, n)
+    local code = "struct " .. name .. "{\n"
+    for i = 1, n do
+        code = code .. base_type .. " v" .. i .. ";\n"
+    end
+    code = code .. "};"
+    M.s[name] = cstruct.struct(code)
+    return M.s[name]
+end
 
 M.getter = function(struct_name, field)
     return M.s[struct_name]:getter("struct " .. struct_name .. "." .. field)

@@ -69,9 +69,6 @@ NEKO_API_DECL neko_platform_t* neko_platform_create() {
     // Initialize windows
     platform->windows = neko_slot_array_new(neko_platform_window_t);
 
-    // Set up video mode (for now, just do opengl)
-    platform->settings.video.driver = NEKO_PLATFORM_VIDEO_DRIVER_TYPE_OPENGL;
-
     // neko_job_init();
 
     return platform;
@@ -93,7 +90,7 @@ NEKO_API_DECL void neko_platform_destroy(neko_platform_t* platform) {
 }
 
 NEKO_API_DECL u32 neko_platform_window_create(const neko_platform_running_desc_t* desc) {
-    neko_assert(neko_instance() != NULL);
+    NEKO_ASSERT(neko_instance() != NULL);
     neko_platform_t* platform = neko_subsystem(platform);
     neko_platform_window_t win = neko_platform_window_create_internal(desc);
 
@@ -181,10 +178,10 @@ NEKO_API_DECL neko_platform_input_t* neko_platform_input() { return &neko_subsys
 void neko_platform_update_input(neko_platform_input_t* input) {
     // Update all input and mouse keys from previous frame
     // Previous key presses
-    neko_for_range_i(NEKO_KEYCODE_COUNT) { input->prev_key_map[i] = input->key_map[i]; }
+    NEKO_FOR_RANGE_N(NEKO_KEYCODE_COUNT, i) { input->prev_key_map[i] = input->key_map[i]; }
 
     // Previous mouse button presses
-    neko_for_range_i(NEKO_MOUSE_BUTTON_CODE_COUNT) { input->mouse.prev_button_map[i] = input->mouse.button_map[i]; }
+    NEKO_FOR_RANGE_N(NEKO_MOUSE_BUTTON_CODE_COUNT, i) { input->mouse.prev_button_map[i] = input->mouse.button_map[i]; }
 
     input->mouse.wheel = neko_v2s(0.0f);
     input->mouse.delta = neko_v2s(0.f);
@@ -204,7 +201,7 @@ void neko_platform_poll_all_events() {
     platform->input.mouse.delta.y = 0;
 
     // Iterate through events, don't consume
-    neko_platform_event_t evt = neko_default_val();
+    neko_platform_event_t evt = NEKO_DEFAULT_VAL();
     while (neko_platform_poll_events(&evt, false)) {
         switch (evt.type) {
             case NEKO_PLATFORM_EVENT_MOUSE: {
@@ -455,7 +452,7 @@ void neko_platform_mouse_delta(f32* x, f32* y) {
 
 neko_vec2 neko_platform_mouse_deltav() {
     neko_platform_input_t* input = __neko_input();
-    neko_vec2 delta = neko_default_val();
+    neko_vec2 delta = NEKO_DEFAULT_VAL();
     neko_platform_mouse_delta(&delta.x, &delta.y);
     return delta;
 }
@@ -479,7 +476,7 @@ void neko_platform_mouse_wheel(f32* x, f32* y) {
 }
 
 NEKO_API_DECL neko_vec2 neko_platform_mouse_wheelv() {
-    neko_vec2 wheel = neko_default_val();
+    neko_vec2 wheel = NEKO_DEFAULT_VAL();
     neko_platform_mouse_wheel(&wheel.x, &wheel.y);
     return wheel;
 }
@@ -509,7 +506,7 @@ void neko_platform_touch_position(u32 idx, f32* x, f32* y) {
 }
 
 neko_vec2 neko_platform_touch_positionv(u32 idx) {
-    neko_vec2 p = neko_default_val();
+    neko_vec2 p = NEKO_DEFAULT_VAL();
     neko_platform_touch_position(idx, &p.x, &p.y);
     return p;
 }
@@ -703,7 +700,7 @@ NEKO_API_DECL s32 neko_platform_file_copy_default_impl(const char* src_path, con
 
     FILE* file_w = NULL;
     FILE* file_r = NULL;
-    char buffer[2048] = neko_default_val();
+    char buffer[2048] = NEKO_DEFAULT_VAL();
 
     if ((file_w = fopen(src_path, "wb")) == NULL) {
         return 0;
@@ -730,14 +727,14 @@ NEKO_API_DECL s32 neko_platform_file_copy_default_impl(const char* src_path, con
 NEKO_API_DECL s32 neko_platform_file_compare_time(u64 time_a, u64 time_b) { return time_a < time_b ? -1 : time_a == time_b ? 0 : 1; }
 
 NEKO_API_DECL neko_platform_file_stats_t neko_platform_file_stats(const char* file_path) {
-    neko_platform_file_stats_t stats = neko_default_val();
+    neko_platform_file_stats_t stats = NEKO_DEFAULT_VAL();
 
 #if (defined NEKO_PLATFORM_WIN)
 
-    WIN32_FILE_ATTRIBUTE_DATA data = neko_default_val();
-    FILETIME ftime = neko_default_val();
-    FILETIME ctime = neko_default_val();
-    FILETIME atime = neko_default_val();
+    WIN32_FILE_ATTRIBUTE_DATA data = NEKO_DEFAULT_VAL();
+    FILETIME ftime = NEKO_DEFAULT_VAL();
+    FILETIME ctime = NEKO_DEFAULT_VAL();
+    FILETIME atime = NEKO_DEFAULT_VAL();
     if (GetFileAttributesExA(file_path, GetFileExInfoStandard, &data)) {
         ftime = data.ftLastWriteTime;
         ctime = data.ftCreationTime;
@@ -749,7 +746,7 @@ NEKO_API_DECL neko_platform_file_stats_t neko_platform_file_stats(const char* fi
     stats.creation_time = *((u64*)&ctime);
 
 #elif (defined NEKO_PLATFORM_LINUX || defined NEKO_PLATFORM_APPLE || defined NEKO_PLATFORM_ANDROID)
-    struct stat attr = neko_default_val();
+    struct stat attr = NEKO_DEFAULT_VAL();
     stat(file_path, &attr);
     stats.modified_time = *((u64*)&attr.st_mtime);
 
@@ -886,7 +883,7 @@ b32 __glfw_set_window_center(GLFWwindow* window);
 /*== Platform Init / Shutdown == */
 
 void neko_platform_init(neko_platform_t* pf) {
-    neko_assert(pf);
+    NEKO_ASSERT(pf);
 
     neko_log_trace("Initializing GLFW");
 
@@ -902,41 +899,31 @@ void neko_platform_init(neko_platform_t* pf) {
     // }
     // if (shcore) __native_library_unload(shcore);
 
-    __neko_initialize_symbol_handler();
+    neko_platform_symbol_handler_init();
 #elif NEKO_PLATFORM_LINUX
     // handle linux symbol
 #endif
 
     glfwInit();
 
-    switch (pf->settings.video.driver) {
-        case NEKO_PLATFORM_VIDEO_DRIVER_TYPE_OPENGL: {
 #if (defined NEKO_PLATFORM_APPLE)
-            glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-            glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
-            glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-            glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-            glfwWindowHint(GLFW_COCOA_RETINA_FRAMEBUFFER, GLFW_FALSE);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_COCOA_RETINA_FRAMEBUFFER, GLFW_FALSE);
 #else
-            if (neko_cvar("settings.video.graphics.debug")->value.i) {
-                glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
-            } else {
-                glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-                glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-            }
-            glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-            glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-#endif
-            if (neko_cvar("settings.video.graphics.hdpi")->value.i) glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
-            glfwSwapInterval(pf->settings.video.vsync_enabled);
-        } break;
-
-        default: {
-            // Default to no output at all.
-            neko_log_warning("Video format not supported.");
-            neko_assert(false);
-        } break;
+    if (neko_cvar("settings.video.render.debug")->value.i) {
+        glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
+    } else {
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     }
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+#endif
+    if (neko_cvar("settings.video.render.hdpi")->value.i) glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
+    // glfwSwapInterval(pf->settings.video.vsync_enabled);
 
     //    glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
     //    glfwWindowHint(GLFW_DECORATED, GLFW_FALSE); // 设置窗口无边框
@@ -1000,7 +987,7 @@ neko_memory_info_t glfw_platform_meminfo() {
 }
 
 neko_vec2 glfw_gl_version() {
-    neko_vec2 ver = neko_default_val();
+    neko_vec2 ver = NEKO_DEFAULT_VAL();
     struct neko_platform_t* platform = neko_instance()->ctx.platform;
     GLFWwindow* win = (GLFWwindow*)(neko_slot_array_getp(platform->windows, neko_platform_main_window()))->hndl;
     ver.x = glfwGetWindowAttrib(win, GLFW_CONTEXT_VERSION_MAJOR);
@@ -1065,14 +1052,14 @@ NEKO_API_DECL void neko_platform_update_internal(neko_platform_t* platform) {
         if (gp->present) {
             s32 count = 0;
             const f32* axes = glfwGetJoystickAxes(GLFW_JOYSTICK_1 + i, &count);
-            count = neko_min(count, NEKO_PLATFORM_JOYSTICK_AXIS_COUNT);
+            count = NEKO_MIN(count, NEKO_PLATFORM_JOYSTICK_AXIS_COUNT);
 
             for (u32 a = 0; a < count; ++a) {
                 gp->axes[a] = axes[a];
             }
 
             const u8* buttons = (u8*)glfwGetJoystickButtons(GLFW_JOYSTICK_1 + i, &count);
-            count = neko_min(count, NEKO_PLATFORM_GAMEPAD_BUTTON_COUNT);
+            count = NEKO_MIN(count, NEKO_PLATFORM_GAMEPAD_BUTTON_COUNT);
 
             for (u32 b = 0; b < count; ++b) {
                 gp->buttons[b] = buttons[b];
@@ -2167,7 +2154,7 @@ void __glfw_char_callback(GLFWwindow* window, u32 codepoint) {
     // Grab platform instance from engine
     neko_platform_t* platform = neko_subsystem(platform);
 
-    neko_platform_event_t evt = neko_default_val();
+    neko_platform_event_t evt = NEKO_DEFAULT_VAL();
     evt.type = NEKO_PLATFORM_EVENT_TEXT;
     evt.text.codepoint = codepoint;
 
@@ -2183,7 +2170,7 @@ void __glfw_key_callback(GLFWwindow* window, s32 code, s32 scancode, s32 action,
     neko_platform_keycode key = glfw_key_to_neko_keycode(code);
 
     // Push back event into platform events
-    neko_platform_event_t evt = neko_default_val();
+    neko_platform_event_t evt = NEKO_DEFAULT_VAL();
     evt.type = NEKO_PLATFORM_EVENT_KEY;
     evt.key.codepoint = code;
     evt.key.scancode = scancode;
@@ -2225,7 +2212,7 @@ void __glfw_mouse_button_callback(GLFWwindow* window, s32 code, s32 action, s32 
     neko_platform_mouse_button_code button = __glfw_button_to_neko_mouse_button(code);
 
     // Push back event into platform events
-    neko_platform_event_t evt = neko_default_val();
+    neko_platform_event_t evt = NEKO_DEFAULT_VAL();
     evt.type = NEKO_PLATFORM_EVENT_MOUSE;
     evt.mouse.codepoint = code;
     evt.mouse.button = button;
@@ -2259,7 +2246,7 @@ void __glfw_mouse_cursor_position_callback(GLFWwindow* window, f64 x, f64 y) {
     // platform->input.mouse.position = neko_v2((f32)x, (f32)y);
     // platform->input.mouse.moved_this_frame = true;
 
-    neko_platform_event_t neko_evt = neko_default_val();
+    neko_platform_event_t neko_evt = NEKO_DEFAULT_VAL();
     neko_evt.type = NEKO_PLATFORM_EVENT_MOUSE;
     neko_evt.mouse.action = NEKO_PLATFORM_MOUSE_MOVE;
 
@@ -2299,7 +2286,7 @@ void __glfw_mouse_scroll_wheel_callback(GLFWwindow* window, f64 x, f64 y) {
     platform->input.mouse.wheel = neko_v2((f32)x, (f32)y);
 
     // Push back event into platform events
-    neko_platform_event_t neko_evt = neko_default_val();
+    neko_platform_event_t neko_evt = NEKO_DEFAULT_VAL();
     neko_evt.type = NEKO_PLATFORM_EVENT_MOUSE;
     neko_evt.mouse.action = NEKO_PLATFORM_MOUSE_WHEEL;
     neko_evt.mouse.wheel = neko_v2((f32)x, (f32)y);
@@ -2309,7 +2296,7 @@ void __glfw_mouse_scroll_wheel_callback(GLFWwindow* window, f64 x, f64 y) {
 // Gets called when mouse enters or leaves frame of window
 void __glfw_mouse_cursor_enter_callback(GLFWwindow* window, s32 entered) {
     neko_platform_t* platform = neko_subsystem(platform);
-    neko_platform_event_t neko_evt = neko_default_val();
+    neko_platform_event_t neko_evt = NEKO_DEFAULT_VAL();
     neko_evt.type = NEKO_PLATFORM_EVENT_MOUSE;
     neko_evt.mouse.action = entered ? NEKO_PLATFORM_MOUSE_ENTER : NEKO_PLATFORM_MOUSE_LEAVE;
     neko_platform_add_event(&neko_evt);
@@ -2340,7 +2327,7 @@ void neko_platform_sleep(f32 ms) {
         return;
     }
 
-    struct timespec ts = neko_default_val();
+    struct timespec ts = NEKO_DEFAULT_VAL();
     s32 res = 0;
     ts.tv_sec = ms / 1000.f;
     ts.tv_nsec = ((u64)ms % 1000) * 1000000;
@@ -2371,7 +2358,7 @@ void GLAPIENTRY __neko_platform_gl_debug(GLenum source, GLenum type, GLuint id, 
 /*== Platform Window == */
 
 NEKO_API_DECL neko_platform_window_t neko_platform_window_create_internal(const neko_platform_running_desc_t* desc) {
-    neko_platform_window_t win = neko_default_val();
+    neko_platform_window_t win = NEKO_DEFAULT_VAL();
 
     if (!desc) {
         // Log warning
@@ -2432,23 +2419,16 @@ NEKO_API_DECL neko_platform_window_t neko_platform_window_create_internal(const 
     win.framebuffer_size = neko_v2((f32)fx, (f32)fy);
     win.focus = true;
 
-    // Need to make sure this is ONLY done once.
+    // 只执行一次
     if (neko_slot_array_empty(neko_subsystem(platform)->windows)) {
         if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
             neko_log_warning("Failed to initialize GLFW.");
             return win;
         }
 
-        switch (neko_subsystem(platform)->settings.video.driver) {
-            case NEKO_PLATFORM_VIDEO_DRIVER_TYPE_OPENGL: {
-                neko_log_info("OpenGL Version: %s", glGetString(GL_VERSION));
-                if (neko_cvar("settings.video.graphics.debug")->value.i) {
-                    glDebugMessageCallback(__neko_platform_gl_debug, NULL);
-                }
-            } break;
-
-            default:
-                break;
+        neko_log_info("OpenGL Version: %s", glGetString(GL_VERSION));
+        if (neko_cvar("settings.video.render.debug")->value.i) {
+            glDebugMessageCallback(__neko_platform_gl_debug, NULL);
         }
     }
 
@@ -2567,7 +2547,7 @@ void neko_platform_set_window_fullscreen(u32 handle, b32 fullscreen) {
     glfwGetWindowSize((GLFWwindow*)win->hndl, &w, &h);
 
     if (fullscreen) {
-        u32 monitor_index = neko_cvar("app_desc.window.monitor_index")->value.i;
+        u32 monitor_index = neko_cvar("settings.window.monitor_index")->value.i;
         int monitor_count;
         GLFWmonitor** monitors = glfwGetMonitors(&monitor_count);
         if (monitor_index < monitor_count) {
@@ -2632,7 +2612,7 @@ NEKO_API_DECL neko_vec2 neko_platform_monitor_sizev(u32 id) {
 }
 
 neko_vec2 neko_platform_get_window_dpi() {
-    neko_vec2 v = neko_default_val();
+    neko_vec2 v = NEKO_DEFAULT_VAL();
     glfwGetMonitorContentScale(glfwGetPrimaryMonitor(), &v.x, &v.y);
     return v;
 }
@@ -2691,14 +2671,14 @@ b32 __glfw_set_window_center(GLFWwindow* window) {
         if (!mode) continue;
 
         // Get intersection of two rectangles - screen and window
-        int minX = neko_max(mx, px);
-        int minY = neko_max(my, py);
+        int minX = NEKO_MAX(mx, px);
+        int minY = NEKO_MAX(my, py);
 
-        int maxX = neko_min(mx + mode->width, px + sx);
-        int maxY = neko_min(my + mode->height, py + sy);
+        int maxX = NEKO_MIN(mx + mode->width, px + sx);
+        int maxY = NEKO_MIN(my + mode->height, py + sy);
 
         // Calculate area of the intersection
-        int area = neko_max(maxX - minX, 0) * neko_max(maxY - minY, 0);
+        int area = NEKO_MAX(maxX - minX, 0) * NEKO_MAX(maxY - minY, 0);
 
         // If its bigger than actual (window covers more space on this monitor)
         if (area > best_area) {
@@ -2741,13 +2721,13 @@ b32 __glfw_set_window_center(GLFWwindow* window) {
 #define MAX_STACK_DEPTH 64
 
 // 初始化符号处理器
-void __neko_initialize_symbol_handler() {
+void neko_platform_symbol_handler_init() {
     SymSetOptions(SYMOPT_DEFERRED_LOADS | SYMOPT_LOAD_LINES);
     SymInitialize(GetCurrentProcess(), NULL, TRUE);
 }
 
 // 打印函数调用栈信息 包括函数名和源码文件名
-const_str __neko_platform_stacktrace() {
+const_str neko_platform_stacktrace() {
 
     static char trace_info[4096];
 
@@ -2788,17 +2768,10 @@ const_str __neko_platform_stacktrace() {
     return trace_info;
 }
 
-bool __neko_platform_is_wine() {
-    HMODULE ntdll = GetModuleHandleA("ntdll.dll");
-    void* wine_get_version = neko_platform_library_proc_address(ntdll, "wine_get_version");
-    return wine_get_version != NULL;
-}
-
 #else
 
-void __neko_initialize_symbol_handler() {}
-const_str __neko_platform_stacktrace() { return ""; }
-bool __neko_platform_is_wine() { return false; }
+void neko_platform_symbol_handler_init() {}
+const_str neko_platform_stacktrace() { return ""; }
 
 #endif
 
@@ -3203,8 +3176,8 @@ u32 neko_platform_key_to_codepoint(neko_platform_keycode key) {
 }
 
 /*
-    key_to_code_map[count] = neko_default_val();
-    code_to_key_map[count] = neko_default_val();
+    key_to_code_map[count] = NEKO_DEFAULT_VAL();
+    code_to_key_map[count] = NEKO_DEFAULT_VAL();
 */
 
 // This doesn't work. Have to set up keycodes for emscripten instead. FUN.
@@ -3637,7 +3610,7 @@ EM_BOOL neko_ems_key_cb(s32 type, const EmscriptenKeyboardEvent* evt, void* user
     (void)user_data;
 
     // Push back event into platform events
-    neko_platform_event_t neko_evt = neko_default_val();
+    neko_platform_event_t neko_evt = NEKO_DEFAULT_VAL();
     neko_evt.type = NEKO_PLATFORM_EVENT_KEY;
     neko_evt.key.codepoint = evt->which;
     neko_evt.key.keycode = neko_platform_codepoint_to_key(evt->which);
@@ -3686,7 +3659,7 @@ EM_BOOL neko_ems_mouse_cb(s32 type, const EmscriptenMouseEvent* evt, void* user_
     }
 
     // Push back event into platform events
-    neko_platform_event_t neko_evt = neko_default_val();
+    neko_platform_event_t neko_evt = NEKO_DEFAULT_VAL();
     neko_evt.type = NEKO_PLATFORM_EVENT_MOUSE;
     neko_evt.mouse.codepoint = evt->button;
     neko_evt.mouse.button = button;
@@ -3753,7 +3726,7 @@ EM_BOOL neko_ems_mousewheel_cb(s32 type, const EmscriptenWheelEvent* evt, void* 
     (void)user_data;
 
     // Push back event into platform events
-    neko_platform_event_t neko_evt = neko_default_val();
+    neko_platform_event_t neko_evt = NEKO_DEFAULT_VAL();
     neko_evt.type = NEKO_PLATFORM_EVENT_MOUSE;
     neko_evt.mouse.action = NEKO_PLATFORM_MOUSE_WHEEL;
     neko_evt.mouse.wheel = neko_v2((f32)evt->deltaX, -(f32)evt->deltaY);
@@ -3865,7 +3838,7 @@ NEKO_API_DECL void neko_platform_process_input(neko_platform_input_t* input) {
     */
 
     // Check for pointerlock, because Chrome is retarded.
-    EmscriptenPointerlockChangeEvent evt = neko_default_val();
+    EmscriptenPointerlockChangeEvent evt = NEKO_DEFAULT_VAL();
     emscripten_get_pointerlock_status(&evt);
     if (neko_platform_mouse_locked() && !evt.isActive) {
         neko_subsystem(platform)->input.mouse.locked = false;
@@ -3880,7 +3853,7 @@ NEKO_API_DECL void neko_platform_mouse_set_position(u32 handle, f32 x, f32 y) {
 
 NEKO_API_DECL neko_platform_window_t neko_platform_window_create_internal(const neko_platform_window_desc_t* desc) {
     // Nothing for now, since we just create this internally...
-    neko_platform_window_t win = neko_default_val();
+    neko_platform_window_t win = NEKO_DEFAULT_VAL();
     return win;
 }
 
@@ -3969,8 +3942,8 @@ NEKO_API_DECL u32 neko_platform_framebuffer_height(u32 handle) {
     return (u32)ems->canvas_height;
 }
 
-void __neko_initialize_symbol_handler() {}
-void __neko_platform_stacktrace() {}
+void neko_platform_symbol_handler_init() {}
+void neko_platform_stacktrace() {}
 
 #ifndef NEKO_NO_HIJACK_MAIN
 s32 main(s32 argc, char** argv) {

@@ -3,7 +3,6 @@
 
 #include "engine/neko.hpp"
 #include "engine/neko_engine.h"
-#include "game_cvar.h"
 #include "sandbox/hpp/neko_static_refl.hpp"
 
 // decl static reflection

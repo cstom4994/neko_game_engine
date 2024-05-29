@@ -4,8 +4,10 @@
 #include <filesystem>
 #include <new>
 
+#include "engine/neko_engine.h"
+#include "engine/neko_imgui.hpp"
 #include "engine/neko_lua.hpp"
-#include "engine/neko_platform.h"
+#include "sandbox/hpp/neko_struct.hpp"
 
 // deps
 #include <direct.h>
@@ -512,7 +514,7 @@ static bool vfs_mount_type(string mount) {
 
 // string os_program_path2() {
 //     static char s_buf[2048];
-//     DWORD len = GetModuleFileNameA(NULL, s_buf, neko_arr_size(s_buf));
+//     DWORD len = GetModuleFileNameA(NULL, s_buf, NEKO_ARR_SIZE(s_buf));
 //     for (s32 i = 0; s_buf[i]; i++) {
 //         if (s_buf[i] == '\\') {
 //             s_buf[i] = '/';
@@ -1464,3 +1466,52 @@ string lua_to_json_string(lua_State *L, s32 arg, string *contents, s32 width) {
 }
 
 }  // namespace neko
+
+neko_struct(neko_client_cvar_t,                         //
+            _Fs(show_editor, "Is show editor"),         //
+            _Fs(show_demo_window, "Is show nui demo"),  //
+            _Fs(show_pack_editor, "pack editor"),       //
+            _Fs(show_profiler_window, "profiler"),      //
+            _Fs(show_gui, "neko gui"),                  //
+            _Fs(shader_inspect, "shaders"),             //
+            _Fs(hello_ai_shit, "Test AI"),              //
+            _Fs(bg, "bg color")                         //
+);
+
+template <typename T, typename Fields = std::tuple<>>
+void __neko_cvar_gui_internal(T &&obj, int depth = 0, const char *fieldName = "", Fields &&fields = std::make_tuple()) {
+    if constexpr (std::is_class_v<std::decay_t<T>>) {
+        neko_struct_foreach(obj, [depth](auto &&fieldName, auto &&value, auto &&info) { __neko_cvar_gui_internal(value, depth + 1, fieldName, info); });
+    } else {
+
+        auto ff = [&]<typename S>(const char *name, auto &var, S &t) {
+            if constexpr (std::is_same_v<std::decay_t<decltype(var)>, S>) {
+                neko::imgui::Auto(var, name);
+                ImGui::Text("    [%s]", std::get<0>(fields));
+            }
+        };
+
+        std::apply([&](auto &&...args) { (ff(fieldName, obj, args), ...); }, std::tuple<CVAR_TYPES()>());
+    }
+}
+
+void neko_cvar_gui(neko_client_cvar_t &cvar) {
+    __neko_cvar_gui_internal(cvar);
+
+    for (size_t i = 0; i < neko_dyn_array_size(neko_cv()->cvars); i++) {
+        {
+            switch ((&neko_cv()->cvars[i])->type) {
+                default:
+                case __NEKO_CONFIG_TYPE_STRING:
+                    neko::imgui::Auto((&neko_cv()->cvars[i])->value.s, (&neko_cv()->cvars[i])->name);
+                    break;
+                case __NEKO_CONFIG_TYPE_FLOAT:
+                    neko::imgui::Auto((&neko_cv()->cvars[i])->value.f, (&neko_cv()->cvars[i])->name);
+                    break;
+                case __NEKO_CONFIG_TYPE_INT:
+                    neko::imgui::Auto((&neko_cv()->cvars[i])->value.i, (&neko_cv()->cvars[i])->name);
+                    break;
+            };
+        };
+    }
+}
