@@ -71,21 +71,7 @@ constexpr std::size_t va_count(Args&&...) {
             }(__VA_ARGS__);                                                            \
     } while (0)
 
-#define neko_c_ref(T, ...)                                                                              \
-    [&]() -> T* {                                                                                       \
-        static T NEKO_CONCAT(__neko_gen_, NEKO_CONCAT(T, NEKO_CONCAT(_cref_, __LINE__))) = __VA_ARGS__; \
-        return &NEKO_CONCAT(__neko_gen_, NEKO_CONCAT(T, NEKO_CONCAT(_cref_, __LINE__)));                \
-    }()
-
-#define neko_arr_ref(T, ...)                                                                                                \
-    [&]() -> T* {                                                                                                           \
-        static T NEKO_CONCAT(NEKO_CONCAT(__neko_gen_, NEKO_CONCAT(T, NEKO_CONCAT(_arr_ref_, __LINE__))), []) = __VA_ARGS__; \
-        return NEKO_CONCAT(__neko_gen_, NEKO_CONCAT(T, NEKO_CONCAT(_arr_ref_, __LINE__)));                                  \
-    }()
-
-#ifndef neko_check_is_trivial
-#define neko_check_is_trivial(type, err) static_assert(std::is_trivial<type>::value, err)
-#endif
+#define neko_check_is_trivial(type, ...) static_assert(std::is_trivial<type>::value, __VA_ARGS__)
 
 //#define neko_malloc_init(type)                   \
 //    (type*)_neko_malloc_init_impl(sizeof(type)); \

@@ -30,6 +30,10 @@
 
 #define INHERIT_TABLE "inherit_table"
 
+#define lua_value __lua_op_t
+
+namespace neko {
+
 typedef int (*lua_function_t)(lua_State* L);
 
 class lua_nil_t {};
@@ -294,6 +298,28 @@ struct init_value_traits_t<const std::string&> {
     static inline const_str value() { return ""; }
 };
 
+extern lua_State* g_L;
+
+// 包含能够连接到脚本表的必要信息的类
+class ScriptReference {
+public:
+    ScriptReference();
+    virtual ~ScriptReference();
+
+    //
+    // @return The ID which connects this instance to a script-represented version of this class.
+    //		0 if it isn't connected (i.e. it isn't registered).
+    inline int getId() const { return script_ref; }
+
+    //
+    // @return The state associated with this script reference object.
+    inline lua_State* getCurrentState() const { return __lua; }
+
+protected:
+    int script_ref;
+    lua_State* __lua;
+};
+
 template <typename T>
 struct __lua_op_t {
     static void push_stack(lua_State* ls_, const_str arg_) { lua_pushstring(ls_, arg_); }
@@ -304,6 +330,17 @@ struct __lua_op_t {
         param_ = (char*)str;
         return 0;
     }*/
+
+    static bool pop(lua_State* L, T& value) {
+        neko_log_warning("[lua] cannot pop unknown type: %s", typeid(T).name());
+        lua_pop(L, 1);
+        return true;
+    }
+
+    static void push(lua_State* L, T& value) {
+        neko_log_warning("[lua] cannot push unknown type: %s", typeid(T).name());
+        lua_pushnil(L);
+    }
 };
 
 template <>
@@ -314,7 +351,18 @@ struct __lua_op_t<const_str> {
         param_ = (char*)str;
         return 0;
     }
+
+    static bool pop(lua_State* L, const_str& value) {
+        bool ok = lua_isstring(L, -1) == 1;
+        if (ok) value = lua_tostring(L, -1);
+
+        lua_pop(L, 1);
+        return ok;
+    }
+
+    static void push(lua_State* L, const_str& value) { lua_pushstring(L, value); }
 };
+
 template <>
 struct __lua_op_t<char*> {
     static void push_stack(lua_State* ls_, const_str arg_) { lua_pushstring(ls_, arg_); }
@@ -335,45 +383,59 @@ struct __lua_op_t<cpp_void_t> {
     static int get_ret_value(lua_State* ls_, int pos_, cpp_void_t& param_) { return 0; }
 };
 
-template <>
-struct __lua_op_t<int64_t> {
-    static void push_stack(lua_State* ls_, int64_t arg_) {
-#if LUA_VERSION_NUM >= 503
-        lua_pushinteger(ls_, arg_);
-#else
-        stringstream ss;
-        ss << arg_;
-        string str = ss.str();
-        lua_pushlstring(ls_, str.c_str(), str.length());
-#endif
+#define XX_TYPE(T, isfunc, checkfunc, tofunc, pushfunc)                                     \
+    template <>                                                                             \
+    struct __lua_op_t<T> {                                                                  \
+        static bool pop(lua_State* L, T& value) {                                           \
+            bool ok = isfunc(L, -1) == 1;                                                   \
+            if (ok) value = (T)tofunc(L, -1);                                               \
+            lua_pop(L, 1);                                                                  \
+            return ok;                                                                      \
+        }                                                                                   \
+        static void push(lua_State* L, T& value) { pushfunc(L, value); }                    \
+        static void push_stack(lua_State* ls_, T arg_) { pushfunc(ls_, (lua_Number)arg_); } \
+        static int get_ret_value(lua_State* ls_, int pos_, T& param_) {                     \
+            if (!isfunc(ls_, pos_)) {                                                       \
+                return -1;                                                                  \
+            }                                                                               \
+            param_ = (T)tofunc(ls_, pos_);                                                  \
+            return 0;                                                                       \
+        }                                                                                   \
+        static int lua_to_value(lua_State* ls_, int pos_, T& param_) {                      \
+            param_ = (T)checkfunc(ls_, pos_);                                               \
+            return 0;                                                                       \
+        }                                                                                   \
     }
 
+XX_TYPE(s8, lua_isnumber, luaL_checkinteger, lua_tointeger, lua_pushinteger);
+XX_TYPE(s16, lua_isnumber, luaL_checkinteger, lua_tointeger, lua_pushinteger);
+XX_TYPE(s32, lua_isnumber, luaL_checkinteger, lua_tointeger, lua_pushinteger);
+XX_TYPE(s64, lua_isnumber, luaL_checkinteger, lua_tointeger, lua_pushinteger);
+XX_TYPE(u8, lua_isnumber, luaL_checkinteger, lua_tointeger, lua_pushinteger);
+XX_TYPE(u16, lua_isnumber, luaL_checkinteger, lua_tointeger, lua_pushinteger);
+XX_TYPE(u32, lua_isnumber, luaL_checkinteger, lua_tointeger, lua_pushinteger);
+XX_TYPE(u64, lua_isnumber, luaL_checkinteger, lua_tointeger, lua_pushinteger);
+XX_TYPE(f32, lua_isnumber, luaL_checknumber, lua_tonumber, lua_pushnumber);
+XX_TYPE(f64, lua_isnumber, luaL_checknumber, lua_tonumber, lua_pushnumber);
+
+#undef XX_TYPE
+
+#if 0
+
+template <>
+struct __lua_op_t<int64_t> {
+    static void push_stack(lua_State* ls_, int64_t arg_) { lua_pushinteger(ls_, arg_); }
+
     static int get_ret_value(lua_State* ls_, int pos_, int64_t& param_) {
-#if LUA_VERSION_NUM >= 503
         if (!lua_isinteger(ls_, pos_)) {
             return -1;
         }
         param_ = lua_tointeger(ls_, pos_);
-#else
-        if (!lua_isstring(ls_, pos_)) {
-            return -1;
-        }
-
-        size_t len = 0;
-        const_str src = lua_tolstring(ls_, pos_, &len);
-        param_ = (int64_t)strtoll(src, NULL, 10);
-#endif
         return 0;
     }
 
     static int lua_to_value(lua_State* ls_, int pos_, int64_t& param_) {
-#if LUA_VERSION_NUM >= 503
         param_ = luaL_checkinteger(ls_, pos_);
-#else
-        size_t len = 0;
-        const_str str = luaL_checklstring(ls_, pos_, &len);
-        param_ = (int64_t)strtoll(str, NULL, 10);
-#endif
         return 0;
     }
 };
@@ -406,40 +468,9 @@ struct __lua_op_t<uint64_t> {
     }
 };
 
-template <>
-struct __lua_op_t<int8_t> {
+#endif
 
-    static void push_stack(lua_State* ls_, int8_t arg_) { lua_pushnumber(ls_, (lua_Number)arg_); }
-    static int get_ret_value(lua_State* ls_, int pos_, int8_t& param_) {
-        if (!lua_isnumber(ls_, pos_)) {
-            return -1;
-        }
-        param_ = (int8_t)lua_tonumber(ls_, pos_);
-        return 0;
-    }
-    static int lua_to_value(lua_State* ls_, int pos_, int8_t& param_) {
-        param_ = (int8_t)luaL_checknumber(ls_, pos_);
-        return 0;
-    }
-};
-
-template <>
-struct __lua_op_t<uint8_t> {
-    static void push_stack(lua_State* ls_, uint8_t arg_) { lua_pushnumber(ls_, (lua_Number)arg_); }
-    static int get_ret_value(lua_State* ls_, int pos_, uint8_t& param_) {
-        if (!lua_isnumber(ls_, pos_)) {
-            return -1;
-        }
-        param_ = (uint8_t)lua_tonumber(ls_, pos_);
-        return 0;
-    }
-    static int lua_to_value(lua_State* ls_, int pos_, uint8_t& param_) {
-        param_ = (uint8_t)luaL_checknumber(ls_, pos_);
-        return 0;
-    }
-};
 #ifdef _WIN32
-
 template <>
 struct __lua_op_t<char> {
 
@@ -456,70 +487,7 @@ struct __lua_op_t<char> {
         return 0;
     }
 };
-
 #endif
-template <>
-struct __lua_op_t<int16_t> {
-    static void push_stack(lua_State* ls_, int16_t arg_) { lua_pushnumber(ls_, (lua_Number)arg_); }
-    static int get_ret_value(lua_State* ls_, int pos_, int16_t& param_) {
-        if (!lua_isnumber(ls_, pos_)) {
-            return -1;
-        }
-        param_ = (int16_t)lua_tonumber(ls_, pos_);
-        return 0;
-    }
-    static int lua_to_value(lua_State* ls_, int pos_, int16_t& param_) {
-        param_ = (int16_t)luaL_checknumber(ls_, pos_);
-        return 0;
-    }
-};
-template <>
-struct __lua_op_t<uint16_t> {
-
-    static void push_stack(lua_State* ls_, uint16_t arg_) { lua_pushnumber(ls_, (lua_Number)arg_); }
-    static int get_ret_value(lua_State* ls_, int pos_, uint16_t& param_) {
-        if (!lua_isnumber(ls_, pos_)) {
-            return -1;
-        }
-        param_ = (uint16_t)lua_tonumber(ls_, pos_);
-        return 0;
-    }
-    static int lua_to_value(lua_State* ls_, int pos_, uint16_t& param_) {
-        param_ = (uint16_t)luaL_checknumber(ls_, pos_);
-        return 0;
-    }
-};
-template <>
-struct __lua_op_t<int32_t> {
-    static void push_stack(lua_State* ls_, int32_t arg_) { lua_pushnumber(ls_, (lua_Number)arg_); }
-    static int get_ret_value(lua_State* ls_, int pos_, int32_t& param_) {
-        if (!lua_isnumber(ls_, pos_)) {
-            return -1;
-        }
-        param_ = (int32_t)lua_tonumber(ls_, pos_);
-        return 0;
-    }
-    static int lua_to_value(lua_State* ls_, int pos_, int32_t& param_) {
-        param_ = (int32_t)luaL_checknumber(ls_, pos_);
-        return 0;
-    }
-};
-template <>
-struct __lua_op_t<uint32_t> {
-
-    static void push_stack(lua_State* ls_, uint32_t arg_) { lua_pushnumber(ls_, (lua_Number)arg_); }
-    static int get_ret_value(lua_State* ls_, int pos_, uint32_t& param_) {
-        if (!lua_isnumber(ls_, pos_)) {
-            return -1;
-        }
-        param_ = (uint32_t)lua_tonumber(ls_, pos_);
-        return 0;
-    }
-    static int lua_to_value(lua_State* ls_, int pos_, uint32_t& param_) {
-        param_ = (uint32_t)luaL_checknumber(ls_, pos_);
-        return 0;
-    }
-};
 
 template <>
 struct __lua_op_t<bool> {
@@ -543,6 +511,16 @@ struct __lua_op_t<bool> {
         param_ = (0 != lua_toboolean(ls_, pos_));
         return 0;
     }
+
+    static bool pop(lua_State* L, bool& value) {
+        bool ok = lua_isboolean(L, -1);
+        if (ok) value = lua_toboolean(L, -1) != 0;
+
+        lua_pop(L, 1);
+        return false;
+    }
+
+    static void push(lua_State* L, bool& value) { lua_pushboolean(L, value ? 1 : 0); }
 };
 
 template <>
@@ -569,6 +547,16 @@ struct __lua_op_t<std::string> {
         param_.assign(str, len);
         return 0;
     }
+
+    static bool pop(lua_State* L, std::string& value) {
+        bool ok = lua_isstring(L, -1) == 1;
+        if (ok) value = std::string(lua_tostring(L, -1));
+
+        lua_pop(L, 1);
+        return ok;
+    }
+
+    static void push(lua_State* L, std::string& value) { lua_pushstring(L, value.c_str()); }
 };
 
 template <>
@@ -595,58 +583,7 @@ struct __lua_op_t<const std::string&> {
         return 0;
     }
 };
-template <>
-struct __lua_op_t<float> {
-    static void push_stack(lua_State* ls_, float arg_) { lua_pushnumber(ls_, (lua_Number)arg_); }
-    static int get_ret_value(lua_State* ls_, int pos_, float& param_) {
-        if (!lua_isnumber(ls_, pos_)) {
-            return -1;
-        }
-        param_ = (float)lua_tonumber(ls_, pos_);
-        return 0;
-    }
-    static int lua_to_value(lua_State* ls_, int pos_, float& param_) {
-        param_ = (float)luaL_checknumber(ls_, pos_);
-        return 0;
-    }
-};
-template <>
-struct __lua_op_t<double> {
-    static void push_stack(lua_State* ls_, double arg_) { lua_pushnumber(ls_, (lua_Number)arg_); }
-    static int get_ret_value(lua_State* ls_, int pos_, double& param_) {
-        if (!lua_isnumber(ls_, pos_)) {
-            return -1;
-        }
-        param_ = (double)lua_tonumber(ls_, pos_);
-        return 0;
-    }
-    static int lua_to_value(lua_State* ls_, int pos_, double& param_) {
-        param_ = (double)luaL_checknumber(ls_, pos_);
-        return 0;
-    }
-};
-/*template<> struct __lua_op_t<long>
-{
 
-    static void push_stack(lua_State* ls_, long arg_)
-    {
-        lua_pushnumber(ls_, (lua_Number)arg_);
-    }
-    static int get_ret_value(lua_State* ls_, int pos_, long& param_)
-    {
-        if (!lua_isnumber(ls_, pos_))
-        {
-            return -1;
-        }
-        param_ = (long)lua_tonumber(ls_, pos_);
-        return 0;
-    }
-    static int lua_to_value(lua_State* ls_, int pos_, long& param_)
-    {
-        param_ = (long)luaL_checknumber(ls_, pos_);
-        return 0;
-    }
-};*/
 template <>
 struct __lua_op_t<void*> {
     static void push_stack(lua_State* ls_, void* arg_) { lua_pushlightuserdata(ls_, arg_); }
@@ -770,6 +707,40 @@ struct __lua_op_t<T*> {
         param_ = ret_ptr;
         return 0;
     }
+
+    static bool pop(lua_State* L, T*& value) {
+        bool ok = lua_istable(L, -1);
+        if (ok) {
+            lua_pushstring(L, "_instance");
+            lua_gettable(L, -2);
+
+            ok = lua_isuserdata(L, -1) == 1;
+            if (ok) {
+                void* userdata = lua_touserdata(L, -1);
+                ScriptReference* refValue = reinterpret_cast<ScriptReference*>(userdata);
+                value = dynamic_cast<T*>(refValue);
+                ok = value != NULL;
+                if (!ok) {
+                    neko_log_warning("[lua] cannot cast pointer to \"%s\"", typeid(T).name());
+                }
+            } else if (lua_isnil(L, -1)) {
+                neko_log_warning("[lua] a \"%s\" instance you are trying to use is deleted", typeid(T).name());
+            }
+            lua_pop(L, 1);
+        }
+
+        lua_pop(L, 1);
+        return ok;
+    }
+
+    static void push(lua_State* L, T*& value) {
+        if (value == NULL || value->getId() == 0) {
+            lua_pushnil(L);
+            return;
+        }
+
+        lua_rawgeti(L, LUA_REGISTRYINDEX, value->getId());
+    }
 };
 
 template <typename T>
@@ -825,6 +796,30 @@ struct __lua_op_t<std::vector<T>> {
             lua_pop(ls_, 1);
         }
         return 0;
+    }
+
+    static bool pop(lua_State* L, std::vector<T>& value) {
+#ifdef _DEBUG
+        int top1 = lua_gettop(L);
+#endif
+        bool ok = lua_istable(L, -1);
+        if (ok) {
+            lua_pushnil(L);
+            while (lua_next(L, -2) != 0) {
+                T item;
+                if (lua_value<T>::pop(L, item)) {
+                    value.push_back(item);
+                }
+            }
+        }
+
+        lua_pop(L, 1);
+        return false;
+    }
+
+    static void push(lua_State* L, std::vector<T>& value) {
+        neko_log_warning("[lua] cannot push a std::vector type back to LUA at the moment");
+        lua_pushnil(L);
     }
 };
 
@@ -975,29 +970,6 @@ struct __lua_op_t<std::map<K, V>> {
     }
 };
 
-namespace neko {
-extern lua_State* g_L;
-
-// 包含能够连接到脚本表的必要信息的类
-class ScriptReference {
-public:
-    ScriptReference();
-    virtual ~ScriptReference();
-
-    //
-    // @return The ID which connects this instance to a script-represented version of this class.
-    //		0 if it isn't connected (i.e. it isn't registered).
-    inline int getId() const { return script_ref; }
-
-    //
-    // @return The state associated with this script reference object.
-    inline lua_State* getCurrentState() const { return __lua; }
-
-protected:
-    int script_ref;
-    lua_State* __lua;
-};
-
 class ScriptObject;
 class lua_table;
 
@@ -1057,110 +1029,6 @@ private:
 template <class T>
 class ScriptObjectPtr;
 
-#if 1
-
-template <typename value_type>
-struct lua_value {
-    static bool pop(lua_State* L, value_type& value) {
-        neko_log_warning("[lua] cannot pop unknown type: %s", typeid(value_type).name());
-        lua_pop(L, 1);
-        return true;
-    }
-
-    static void push(lua_State* L, value_type& value) {
-        neko_log_warning("[lua] cannot push unknown type: %s", typeid(value_type).name());
-        lua_pushnil(L);
-    }
-};
-
-#define XX_TYPE(T, check_func, tofunc, pushfunc)                         \
-    template <>                                                          \
-    struct lua_value<T> {                                                \
-        static bool pop(lua_State* L, T& value) {                        \
-            bool ok = check_func(L, -1) == 1;                            \
-            if (ok) value = (T)tofunc(L, -1);                            \
-            lua_pop(L, 1);                                               \
-            return ok;                                                   \
-        }                                                                \
-        static void push(lua_State* L, T& value) { pushfunc(L, value); } \
-    }
-
-XX_TYPE(s8, lua_isnumber, lua_tointeger, lua_pushinteger);
-XX_TYPE(s16, lua_isnumber, lua_tointeger, lua_pushinteger);
-XX_TYPE(s32, lua_isnumber, lua_tointeger, lua_pushinteger);
-XX_TYPE(s64, lua_isnumber, lua_tointeger, lua_pushinteger);
-XX_TYPE(u8, lua_isnumber, lua_tointeger, lua_pushinteger);
-XX_TYPE(u16, lua_isnumber, lua_tointeger, lua_pushinteger);
-XX_TYPE(u32, lua_isnumber, lua_tointeger, lua_pushinteger);
-XX_TYPE(u64, lua_isnumber, lua_tointeger, lua_pushinteger);
-XX_TYPE(f32, lua_isnumber, lua_tointeger, lua_pushinteger);
-XX_TYPE(f64, lua_isnumber, lua_tointeger, lua_pushinteger);
-
-#undef XX_TYPE
-
-template <>
-struct lua_value<const_str> {
-    static bool pop(lua_State* L, const_str& value) {
-        bool ok = lua_isstring(L, -1) == 1;
-        if (ok) value = lua_tostring(L, -1);
-
-        lua_pop(L, 1);
-        return ok;
-    }
-
-    static void push(lua_State* L, const_str& value) { lua_pushstring(L, value); }
-};
-
-template <>
-struct lua_value<std::string> {
-    static bool pop(lua_State* L, std::string& value) {
-        bool ok = lua_isstring(L, -1) == 1;
-        if (ok) value = std::string(lua_tostring(L, -1));
-
-        lua_pop(L, 1);
-        return ok;
-    }
-
-    static void push(lua_State* L, std::string& value) { lua_pushstring(L, value.c_str()); }
-};
-
-template <class C>
-struct lua_value<C*> {
-    static bool pop(lua_State* L, C*& value) {
-        bool ok = lua_istable(L, -1);
-        if (ok) {
-            lua_pushstring(L, "_instance");
-            lua_gettable(L, -2);
-
-            ok = lua_isuserdata(L, -1) == 1;
-            if (ok) {
-                void* userdata = lua_touserdata(L, -1);
-                ScriptReference* refValue = reinterpret_cast<ScriptReference*>(userdata);
-                value = dynamic_cast<C*>(refValue);
-                ok = value != NULL;
-                if (!ok) {
-                    neko_log_warning("[lua] cannot cast pointer to \"%s\"", typeid(C).name());
-                }
-            } else if (lua_isnil(L, -1)) {
-                neko_log_warning("[lua] a \"%s\" instance you are trying to use is deleted", typeid(C).name());
-            }
-            lua_pop(L, 1);
-        }
-
-        lua_pop(L, 1);
-        return ok;
-    }
-
-    static void push(lua_State* L, C*& value) {
-        if (value == NULL || value->getId() == 0) {
-            lua_pushnil(L);
-            return;
-        }
-
-        lua_rawgeti(L, LUA_REGISTRYINDEX, value->getId());
-    }
-};
-
 template <class C>
 struct lua_value<ScriptObjectPtr<C>> {
     static bool pop(lua_State* L, ScriptObjectPtr<C>& value) {
@@ -1195,19 +1063,6 @@ struct lua_value<ScriptObjectPtr<C>> {
 };
 
 template <>
-struct lua_value<bool> {
-    static bool pop(lua_State* L, bool& value) {
-        bool ok = lua_isboolean(L, -1);
-        if (ok) value = lua_toboolean(L, -1) != 0;
-
-        lua_pop(L, 1);
-        return false;
-    }
-
-    static void push(lua_State* L, bool& value) { lua_pushboolean(L, value ? 1 : 0); }
-};
-
-template <>
 struct lua_value<lua_table> {
     static bool pop(lua_State* L, lua_table& value) {
         bool ok = lua_istable(L, -1);
@@ -1223,36 +1078,6 @@ struct lua_value<lua_table> {
         lua_pushnil(L);
     }
 };
-
-template <typename item_type>
-struct lua_value<std::vector<item_type>> {
-    static bool pop(lua_State* L, std::vector<item_type>& value) {
-#ifdef _DEBUG
-        int top1 = lua_gettop(L);
-#endif
-        bool ok = lua_istable(L, -1);
-        if (ok) {
-            lua_pushnil(L);
-            while (lua_next(L, -2) != 0) {
-                item_type item;
-                if (lua_value<item_type>::pop(L, item)) {
-                    value.push_back(item);
-                }
-            }
-        }
-
-        lua_pop(L, 1);
-        return false;
-    }
-
-    static void push(lua_State* L, std::vector<item_type>& value) {
-        neko_log_warning("[lua] cannot push a std::vector type back to LUA at the moment");
-        lua_pushnil(L);
-    }
-};
-#else
-#define lua_value __lua_op_t
-#endif
 
 class ScriptInvoker : public ScriptReference {
 public:
@@ -2650,23 +2475,6 @@ struct lua_bind {
     }
 };
 
-}  // namespace neko
-
-#define IMPLEMENT_LUA_CLASS(C, Parent)                                                    \
-    neko::lua_class_define* C::getClassDef() const { return &C::lua_class_defs; }         \
-    neko::lua_class_define_impl<C>* C::getStaticClassDef() { return &C::lua_class_defs; } \
-    neko::lua_class_define_impl<C> C::lua_class_defs(#C, Parent::getStaticClassDef());
-
-#define IMPLEMENT_LUA_CLASS_WITH_NAME(C, CName, Parent)                                   \
-    neko::lua_class_define* C::getClassDef() const { return &C::lua_class_defs; }         \
-    neko::lua_class_define_impl<C>* C::getStaticClassDef() { return &C::lua_class_defs; } \
-    neko::lua_class_define_impl<C> C::lua_class_defs(CName, Parent::getStaticClassDef());
-
-#define DEFINE_LUA_CLASS(C)                                     \
-    virtual neko::lua_class_define* getClassDef() const;        \
-    static neko::lua_class_define_impl<C>* getStaticClassDef(); \
-    static neko::lua_class_define_impl<C> lua_class_defs;
-
 struct strtoll_tool_t {
     static long do_strtoll(const char* s, const char*, int) { return atol(s); }
 };
@@ -2835,7 +2643,7 @@ void neko_lua_reg(lua_State* m_ls, T a);
 NEKO_INLINE void neko_lua_call(lua_State* m_ls, const char* func_name_) {
     ::lua_getglobal(m_ls, func_name_);
 
-    if (::neko_lua_pcall_wrap(m_ls, 0, 0, 0) != 0) {
+    if (neko_lua_pcall_wrap(m_ls, 0, 0, 0) != 0) {
         std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         ::lua_pop(m_ls, 1);
         neko_log_error("%s", err.c_str());
@@ -3206,6 +3014,23 @@ ret(RET) neko_lua_call(lua_State* m_ls, const char* func_name_, const ARG1& arg1
 
     return ret;
 }
+
+}  // namespace neko
+
+#define IMPLEMENT_LUA_CLASS(C, Parent)                                                    \
+    neko::lua_class_define* C::getClassDef() const { return &C::lua_class_defs; }         \
+    neko::lua_class_define_impl<C>* C::getStaticClassDef() { return &C::lua_class_defs; } \
+    neko::lua_class_define_impl<C> C::lua_class_defs(#C, Parent::getStaticClassDef());
+
+#define IMPLEMENT_LUA_CLASS_WITH_NAME(C, CName, Parent)                                   \
+    neko::lua_class_define* C::getClassDef() const { return &C::lua_class_defs; }         \
+    neko::lua_class_define_impl<C>* C::getStaticClassDef() { return &C::lua_class_defs; } \
+    neko::lua_class_define_impl<C> C::lua_class_defs(CName, Parent::getStaticClassDef());
+
+#define DEFINE_LUA_CLASS(C)                                     \
+    virtual neko::lua_class_define* getClassDef() const;        \
+    static neko::lua_class_define_impl<C>* getStaticClassDef(); \
+    static neko::lua_class_define_impl<C> lua_class_defs;
 
 // lua2struct
 

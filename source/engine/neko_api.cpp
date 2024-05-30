@@ -1375,8 +1375,8 @@ static int __neko_bind_aseprite_render(lua_State* L) {
 
     auto xform = lua2struct::unpack<neko_vec2>(L, 2);
 
-    int direction = neko_lua_to<int>(L, 3);
-    f32 scale = neko_lua_to<f32>(L, 4);
+    int direction = neko::neko_lua_to<int>(L, 3);
+    f32 scale = neko::neko_lua_to<f32>(L, 4);
 
     neko_t* engine = neko_instance();
 
@@ -2726,7 +2726,7 @@ static int __neko_bind_graphics_apply_bindings(lua_State* L) {
                         lua_pushstring(L, "binding");  // # -1
                         lua_gettable(L, -2);           // pop # -1
                         if (lua_isinteger(L, -1)) {
-                            u_desc[i - 1].binding = neko_lua_to<u32>(L, -1);
+                            u_desc[i - 1].binding = neko::neko_lua_to<u32>(L, -1);
                         }
                         lua_pop(L, 1);  // # -1
 
@@ -2757,7 +2757,7 @@ static int __neko_bind_graphics_apply_bindings(lua_State* L) {
                         lua_pushstring(L, "binding");  // # -1
                         lua_gettable(L, -2);           // pop # -1
                         if (lua_isinteger(L, -1)) {
-                            ib_desc[i - 1].binding = neko_lua_to<u32>(L, -1);
+                            ib_desc[i - 1].binding = neko::neko_lua_to<u32>(L, -1);
                         }
                         lua_pop(L, 1);  // # -1
 
@@ -2786,7 +2786,7 @@ static int __neko_bind_graphics_apply_bindings(lua_State* L) {
                         lua_pushstring(L, "binding");  // # -1
                         lua_gettable(L, -2);           // pop # -1
                         if (lua_isinteger(L, -1)) {
-                            sb_desc[i - 1].binding = neko_lua_to<u32>(L, -1);
+                            sb_desc[i - 1].binding = neko::neko_lua_to<u32>(L, -1);
                         }
                         lua_pop(L, 1);  // # -1
 
@@ -2889,8 +2889,8 @@ static int __neko_bind_graphics_texture_create(lua_State* L) {
     u32 w = lua_tointeger(L, 1);
     u32 h = lua_tointeger(L, 2);
     neko_render_texture_desc_t texture_desc = {
-            .width = w,                                         // 纹理的宽度
-            .height = h,                                        // 纹理的高度
+            .width = w,                                       // 纹理的宽度
+            .height = h,                                      // 纹理的高度
             .format = NEKO_RENDER_TEXTURE_FORMAT_RGBA8,       // 纹理数据的格式
             .wrap_s = NEKO_RENDER_TEXTURE_WRAP_REPEAT,        // 纹理 s 轴的包裹类型
             .wrap_t = NEKO_RENDER_TEXTURE_WRAP_REPEAT,        // 纹理 t 轴的包裹类型
@@ -3088,7 +3088,7 @@ NEKO_INLINE void neko_register_test(lua_State* L) {
     lua_register(L, "__neko_luainspector_draw", neko::luainspector::luainspector_draw);
     lua_register(L, "__neko_luainspector_get", neko::luainspector::luainspector_get);
 
-    neko::lua_bind::bind("neko_tiled_get_objects", &__neko_bind_tiled_get_objects);
+    // neko::lua_bind::bind("neko_tiled_get_objects", &__neko_bind_tiled_get_objects);
 
     neko_lua_auto_enum(L, neko_projection_type);
     neko_lua_auto_enum_value(L, neko_projection_type, NEKO_PROJECTION_TYPE_ORTHOGRAPHIC);
@@ -3235,7 +3235,7 @@ static int __neko_bind_cvar(lua_State* L) {
     neko_cvar_t* cv = __neko_config_get(name);
     if (NULL != cv) {
         if (args == 2) {
-            neko_cvar_set(cv, neko_lua_to<const_str>(L, 2));
+            neko_cvar_set(cv, neko::neko_lua_to<const_str>(L, 2));
             return 0;
         } else if (args == 1) {  // 读取
             switch (cv->type) {
@@ -3278,13 +3278,13 @@ static int __neko_bind_cvar(lua_State* L) {
 
             switch (cval) {
                 case __NEKO_CONFIG_TYPE_INT:
-                    neko_cvar_lnew(name, cval, neko_lua_to<int>(L, 3));
+                    neko_cvar_lnew(name, cval, neko::neko_lua_to<int>(L, 3));
                     break;
                 case __NEKO_CONFIG_TYPE_FLOAT:
-                    neko_cvar_lnew(name, cval, neko_lua_to<float>(L, 3));
+                    neko_cvar_lnew(name, cval, neko::neko_lua_to<float>(L, 3));
                     break;
                 case __NEKO_CONFIG_TYPE_STRING:
-                    neko_cvar_lnew_str(name, cval, neko_lua_to<const_str>(L, 3));
+                    neko_cvar_lnew_str(name, cval, neko::neko_lua_to<const_str>(L, 3));
                     break;
                 case __NEKO_CONFIG_TYPE_COUNT:
                 default:
@@ -3353,7 +3353,7 @@ int __neko_ls(lua_State* L) {
     return 1;
 }
 
-bool __neko_dolua(const_str file) { return neko_lua_dofile(CL_GAME_USERDATA()->L, game_assets(file)); }
+bool __neko_dolua(const_str file) { return neko::neko_lua_dofile(CL_GAME_USERDATA()->L, game_assets(file)); }
 
 struct neko_lua_hook_pool g_lua_hook_pool = {NULL, 0};
 
@@ -4222,5 +4222,5 @@ void neko_register(lua_State* L) {
     const_str str = "table.insert(package.searchers, 2, __neko_loader) \n";
     luaL_dostring(L, str);
 
-    neko_lua_add_package_path(L, "./");
+    neko::neko_lua_add_package_path(L, "./");
 }
