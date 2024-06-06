@@ -107,9 +107,9 @@ bool neko_aseprite_load(neko_aseprite *spr, const_str filepath) {
 
     neko_render_texture_desc_t t_desc = NEKO_DEFAULT_VAL();
 
-    t_desc.format = NEKO_RENDER_TEXTURE_FORMAT_RGBA8;
-    t_desc.mag_filter = NEKO_RENDER_TEXTURE_FILTER_NEAREST;
-    t_desc.min_filter = NEKO_RENDER_TEXTURE_FILTER_NEAREST;
+    t_desc.format = R_TEXTURE_FORMAT_RGBA8;
+    t_desc.mag_filter = R_TEXTURE_FILTER_NEAREST;
+    t_desc.min_filter = R_TEXTURE_FILTER_NEAREST;
     t_desc.num_mips = 0;
     t_desc.width = ase->w;
     t_desc.height = ase->h * ase->frame_count;
@@ -240,9 +240,9 @@ neko_texture_t neko_aseprite_simple(const void *memory, int size) {
 
     neko_render_texture_desc_t t_desc = {};
 
-    t_desc.format = NEKO_RENDER_TEXTURE_FORMAT_RGBA8;
-    t_desc.mag_filter = NEKO_RENDER_TEXTURE_FILTER_NEAREST;
-    t_desc.min_filter = NEKO_RENDER_TEXTURE_FILTER_NEAREST;
+    t_desc.format = R_TEXTURE_FORMAT_RGBA8;
+    t_desc.mag_filter = R_TEXTURE_FILTER_NEAREST;
+    t_desc.min_filter = R_TEXTURE_FILTER_NEAREST;
     t_desc.num_mips = 0;
     t_desc.width = ase->w;
     t_desc.height = ase->h;

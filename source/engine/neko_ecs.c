@@ -1565,7 +1565,6 @@ ecs_archetype_t *ecs_archetype_traverse_and_create(ecs_archetype_t *root, const 
     return ecs_archetype_traverse_and_create_help(root, type, len, acc, 0, root, component_index, type_index);
 }
 
-#ifndef NDEBUG
 void ecs_inspect(neko_ecs_t *registry) {
     ecs_archetype_t *archetype = registry->root;
     printf("\narchetype: {\n");
@@ -1608,7 +1607,6 @@ void ecs_inspect(neko_ecs_t *registry) {
 
     printf("}\n");
 }
-#endif
 
 neko_ecs_t *ecs_init_i(neko_ecs_t *registry) {
     // neko_ecs_t *registry = ecs_malloc(sizeof(neko_ecs_t));

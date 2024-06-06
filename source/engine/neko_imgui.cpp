@@ -23,9 +23,9 @@ bool neko_imgui_create_fonts_texture(neko_imgui_context_t* neko_imgui) {
     neko_render_texture_desc_t tdesc = {};
     tdesc.width = width;
     tdesc.height = height;
-    tdesc.format = NEKO_RENDER_TEXTURE_FORMAT_RGBA8;
-    tdesc.min_filter = NEKO_RENDER_TEXTURE_FILTER_LINEAR;
-    tdesc.mag_filter = NEKO_RENDER_TEXTURE_FILTER_LINEAR;
+    tdesc.format = R_TEXTURE_FORMAT_RGBA8;
+    tdesc.min_filter = R_TEXTURE_FILTER_LINEAR;
+    tdesc.mag_filter = R_TEXTURE_FILTER_LINEAR;
     *tdesc.data = (void*)pixels;
 
     neko_imgui->font_tex = neko_render_texture_create(tdesc);
@@ -66,9 +66,9 @@ void main(){
 
     // Shader source description
     neko_render_shader_source_desc_t sources[2] = {};
-    sources[0].type = NEKO_RENDER_SHADER_STAGE_VERTEX;
+    sources[0].type = R_SHADER_STAGE_VERTEX;
     sources[0].source = imgui_vertsrc;
-    sources[1].type = NEKO_RENDER_SHADER_STAGE_FRAGMENT;
+    sources[1].type = R_SHADER_STAGE_FRAGMENT;
     sources[1].source = imgui_fragsrc;
 
     // Shader desc
@@ -82,7 +82,7 @@ void main(){
 
     // Uniform texture
     neko_render_uniform_layout_desc_t slayout = NEKO_DEFAULT_VAL();
-    slayout.type = NEKO_RENDER_UNIFORM_SAMPLER2D;
+    slayout.type = R_UNIFORM_SAMPLER2D;
     neko_render_uniform_desc_t utexdesc = {};
     memcpy(utexdesc.name, "Texture", 64);
     utexdesc.layout = &slayout;
@@ -90,7 +90,7 @@ void main(){
 
     // Construct uniform
     neko_render_uniform_layout_desc_t ulayout = NEKO_DEFAULT_VAL();
-    ulayout.type = NEKO_RENDER_UNIFORM_MAT4;
+    ulayout.type = R_UNIFORM_MAT4;
     neko_render_uniform_desc_t udesc = {};
     memcpy(udesc.name, "ProjMtx", 64);
     udesc.layout = &ulayout;
@@ -100,7 +100,7 @@ void main(){
 
     // Vertex buffer description
     neko_render_vertex_buffer_desc_t vbufdesc = {};
-    vbufdesc.usage = NEKO_RENDER_BUFFER_USAGE_STREAM;
+    vbufdesc.usage = R_BUFFER_USAGE_STREAM;
     vbufdesc.data = NULL;
 
     // Construct vertex buffer
@@ -108,7 +108,7 @@ void main(){
 
     // Index buffer desc
     neko_render_index_buffer_desc_t ibufdesc = {};
-    ibufdesc.usage = NEKO_RENDER_BUFFER_USAGE_STREAM;
+    ibufdesc.usage = R_BUFFER_USAGE_STREAM;
     ibufdesc.data = NULL;
 
     // Create index buffer
@@ -116,17 +116,17 @@ void main(){
 
     // Vertex attr layout
     neko_render_vertex_attribute_desc_t vattrs[3] = {};
-    vattrs[0].format = NEKO_RENDER_VERTEX_ATTRIBUTE_FLOAT2;  // Position
-    vattrs[1].format = NEKO_RENDER_VERTEX_ATTRIBUTE_FLOAT2;  // UV
-    vattrs[2].format = NEKO_RENDER_VERTEX_ATTRIBUTE_BYTE4;   // Color
+    vattrs[0].format = R_VERTEX_ATTRIBUTE_FLOAT2;  // Position
+    vattrs[1].format = R_VERTEX_ATTRIBUTE_FLOAT2;  // UV
+    vattrs[2].format = R_VERTEX_ATTRIBUTE_BYTE4;   // Color
 
     // Pipeline desc
     neko_render_pipeline_desc_t pdesc = {};
     pdesc.raster.shader = neko_imgui->shader;
     pdesc.raster.index_buffer_element_size = (sizeof(ImDrawIdx) == 2) ? sizeof(uint16_t) : sizeof(u32);
-    pdesc.blend.func = NEKO_RENDER_BLEND_EQUATION_ADD;
-    pdesc.blend.src = NEKO_RENDER_BLEND_MODE_SRC_ALPHA;
-    pdesc.blend.dst = NEKO_RENDER_BLEND_MODE_ONE_MINUS_SRC_ALPHA;
+    pdesc.blend.func = R_BLEND_EQUATION_ADD;
+    pdesc.blend.src = R_BLEND_MODE_SRC_ALPHA;
+    pdesc.blend.dst = R_BLEND_MODE_ONE_MINUS_SRC_ALPHA;
     pdesc.layout.attrs = vattrs;
     pdesc.layout.size = sizeof(vattrs);
 
@@ -389,14 +389,14 @@ void neko_imgui_render_window(neko_imgui_context_t* neko_imgui, ImDrawData* draw
 
             // Update vertex buffer
             neko_render_vertex_buffer_desc_t vdesc = {};
-            vdesc.usage = NEKO_RENDER_BUFFER_USAGE_STREAM;
+            vdesc.usage = R_BUFFER_USAGE_STREAM;
             vdesc.data = cmd_list->VtxBuffer.Data;
             vdesc.size = cmd_list->VtxBuffer.Size * sizeof(ImDrawVert);
             neko_render_vertex_buffer_request_update(neko_imgui->cb, neko_imgui->vbo, &vdesc);
 
             // Update index buffer
             neko_render_index_buffer_desc_t idesc = {};
-            idesc.usage = NEKO_RENDER_BUFFER_USAGE_STREAM;
+            idesc.usage = R_BUFFER_USAGE_STREAM;
             idesc.data = cmd_list->IdxBuffer.Data;
             idesc.size = cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx);
             neko_render_index_buffer_request_update(neko_imgui->cb, neko_imgui->ibo, &idesc);
@@ -7788,7 +7788,7 @@ static void init(lua_State* L) {
 }
 }  // namespace imgui_lua
 
-extern "C" int luaopen_neko_imgui(lua_State* L) {
+extern "C" int open_embed_imgui(lua_State* L) {
     imgui_lua::init(L);
     return 1;
 }
@@ -7803,7 +7803,7 @@ static int dDockBuilderGetCentralRect(lua_State* L) {
     return 4;
 }
 
-extern "C" int luaopen_neko_imgui_internal(lua_State* L) {
+extern "C" int open_embed_imgui_internal(lua_State* L) {
     lua_newtable(L);
     luaL_Reg l[] = {
             {"DockBuilderGetCentralRect", dDockBuilderGetCentralRect},

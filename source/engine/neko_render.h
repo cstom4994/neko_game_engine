@@ -107,111 +107,101 @@ NEKO_API_DECL void neko_render_print_error(const char* file, u32 line);
 #define neko_enum_count(NAME) _neko_##NAME##_count
 
 /* Shader Stage Type */
-neko_enum_decl(neko_render_shader_stage_type, NEKO_RENDER_SHADER_STAGE_VERTEX, NEKO_RENDER_SHADER_STAGE_FRAGMENT, NEKO_RENDER_SHADER_STAGE_COMPUTE);
+neko_enum_decl(neko_render_shader_stage_type, R_SHADER_STAGE_VERTEX, R_SHADER_STAGE_FRAGMENT, R_SHADER_STAGE_COMPUTE);
 
 /* Winding Order Type */
-neko_enum_decl(neko_render_winding_order_type, NEKO_RENDER_WINDING_ORDER_CW, NEKO_RENDER_WINDING_ORDER_CCW);
+neko_enum_decl(neko_render_winding_order_type, R_WINDING_ORDER_CW, R_WINDING_ORDER_CCW);
 
 /* Face Culling Type */
-neko_enum_decl(neko_render_face_culling_type, NEKO_RENDER_FACE_CULLING_FRONT, NEKO_RENDER_FACE_CULLING_BACK, NEKO_RENDER_FACE_CULLING_FRONT_AND_BACK);
+neko_enum_decl(neko_render_face_culling_type, R_FACE_CULLING_FRONT, R_FACE_CULLING_BACK, R_FACE_CULLING_FRONT_AND_BACK);
 
 /* Blend Equation Type */
-neko_enum_decl(neko_render_blend_equation_type, NEKO_RENDER_BLEND_EQUATION_ADD, NEKO_RENDER_BLEND_EQUATION_SUBTRACT, NEKO_RENDER_BLEND_EQUATION_REVERSE_SUBTRACT, NEKO_RENDER_BLEND_EQUATION_MIN,
-               NEKO_RENDER_BLEND_EQUATION_MAX);
+neko_enum_decl(neko_render_blend_equation_type, R_BLEND_EQUATION_ADD, R_BLEND_EQUATION_SUBTRACT, R_BLEND_EQUATION_REVERSE_SUBTRACT, R_BLEND_EQUATION_MIN, R_BLEND_EQUATION_MAX);
 
 /* Blend Mode Type */
-neko_enum_decl(neko_render_blend_mode_type, NEKO_RENDER_BLEND_MODE_ZERO, NEKO_RENDER_BLEND_MODE_ONE, NEKO_RENDER_BLEND_MODE_SRC_COLOR, NEKO_RENDER_BLEND_MODE_ONE_MINUS_SRC_COLOR,
-               NEKO_RENDER_BLEND_MODE_DST_COLOR, NEKO_RENDER_BLEND_MODE_ONE_MINUS_DST_COLOR, NEKO_RENDER_BLEND_MODE_SRC_ALPHA, NEKO_RENDER_BLEND_MODE_ONE_MINUS_SRC_ALPHA,
-               NEKO_RENDER_BLEND_MODE_DST_ALPHA, NEKO_RENDER_BLEND_MODE_ONE_MINUS_DST_ALPHA, NEKO_RENDER_BLEND_MODE_CONSTANT_COLOR, NEKO_RENDER_BLEND_MODE_ONE_MINUS_CONSTANT_COLOR,
-               NEKO_RENDER_BLEND_MODE_CONSTANT_ALPHA, NEKO_RENDER_BLEND_MODE_ONE_MINUS_CONSTANT_ALPHA);
+neko_enum_decl(neko_render_blend_mode_type, R_BLEND_MODE_ZERO, R_BLEND_MODE_ONE, R_BLEND_MODE_SRC_COLOR, R_BLEND_MODE_ONE_MINUS_SRC_COLOR, R_BLEND_MODE_DST_COLOR, R_BLEND_MODE_ONE_MINUS_DST_COLOR,
+               R_BLEND_MODE_SRC_ALPHA, R_BLEND_MODE_ONE_MINUS_SRC_ALPHA, R_BLEND_MODE_DST_ALPHA, R_BLEND_MODE_ONE_MINUS_DST_ALPHA, R_BLEND_MODE_CONSTANT_COLOR, R_BLEND_MODE_ONE_MINUS_CONSTANT_COLOR,
+               R_BLEND_MODE_CONSTANT_ALPHA, R_BLEND_MODE_ONE_MINUS_CONSTANT_ALPHA);
 
 /* Shader Language Type */
-neko_enum_decl(neko_render_shader_language_type, NEKO_RENDER_SHADER_LANGUAGE_GLSL);
+neko_enum_decl(neko_render_shader_language_type, R_SHADER_LANGUAGE_GLSL);
 
 /* Push Constant Type */
 // Really don't want to handle "auto-merging" of data types
 
 /* Uniform Type */
-neko_enum_decl(neko_render_uniform_type, NEKO_RENDER_UNIFORM_FLOAT, NEKO_RENDER_UNIFORM_INT, NEKO_RENDER_UNIFORM_VEC2, NEKO_RENDER_UNIFORM_VEC3, NEKO_RENDER_UNIFORM_VEC4, NEKO_RENDER_UNIFORM_MAT4,
-               NEKO_RENDER_UNIFORM_SAMPLER2D, NEKO_RENDER_UNIFORM_USAMPLER2D, NEKO_RENDER_UNIFORM_SAMPLERCUBE, NEKO_RENDER_UNIFORM_IMAGE2D_RGBA32F, NEKO_RENDER_UNIFORM_BLOCK);
+neko_enum_decl(neko_render_uniform_type, R_UNIFORM_FLOAT, R_UNIFORM_INT, R_UNIFORM_VEC2, R_UNIFORM_VEC3, R_UNIFORM_VEC4, R_UNIFORM_MAT4, R_UNIFORM_SAMPLER2D, R_UNIFORM_USAMPLER2D,
+               R_UNIFORM_SAMPLERCUBE, R_UNIFORM_IMAGE2D_RGBA32F, R_UNIFORM_BLOCK);
 
 /* Uniform Block Usage Type */
 neko_enum_decl(neko_render_uniform_block_usage_type,
-               NEKO_RENDER_UNIFORM_BLOCK_USAGE_STATIC,  // Default of 0x00 is static
-               NEKO_RENDER_UNIFORM_BLOCK_USAGE_PUSH_CONSTANT);
+               R_UNIFORM_BLOCK_USAGE_STATIC,  // Default of 0x00 is static
+               R_UNIFORM_BLOCK_USAGE_PUSH_CONSTANT);
 
 /* Sampler Type */
-neko_enum_decl(neko_render_sampler_type, NEKO_RENDER_SAMPLER_2D);
+neko_enum_decl(neko_render_sampler_type, R_SAMPLER_2D);
 
 /* Primitive Type */
-neko_enum_decl(neko_render_primitive_type, NEKO_RENDER_PRIMITIVE_LINES, NEKO_RENDER_PRIMITIVE_TRIANGLES, NEKO_RENDER_PRIMITIVE_QUADS);
+neko_enum_decl(neko_render_primitive_type, R_PRIMITIVE_LINES, R_PRIMITIVE_TRIANGLES, R_PRIMITIVE_QUADS);
 
 /* Vertex Atribute Type */
-neko_enum_decl(neko_render_vertex_attribute_type, NEKO_RENDER_VERTEX_ATTRIBUTE_FLOAT4, NEKO_RENDER_VERTEX_ATTRIBUTE_FLOAT3, NEKO_RENDER_VERTEX_ATTRIBUTE_FLOAT2, NEKO_RENDER_VERTEX_ATTRIBUTE_FLOAT,
-               NEKO_RENDER_VERTEX_ATTRIBUTE_UINT4, NEKO_RENDER_VERTEX_ATTRIBUTE_UINT3, NEKO_RENDER_VERTEX_ATTRIBUTE_UINT2, NEKO_RENDER_VERTEX_ATTRIBUTE_UINT, NEKO_RENDER_VERTEX_ATTRIBUTE_BYTE4,
-               NEKO_RENDER_VERTEX_ATTRIBUTE_BYTE3, NEKO_RENDER_VERTEX_ATTRIBUTE_BYTE2, NEKO_RENDER_VERTEX_ATTRIBUTE_BYTE);
+neko_enum_decl(neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_FLOAT4, R_VERTEX_ATTRIBUTE_FLOAT3, R_VERTEX_ATTRIBUTE_FLOAT2, R_VERTEX_ATTRIBUTE_FLOAT, R_VERTEX_ATTRIBUTE_UINT4,
+               R_VERTEX_ATTRIBUTE_UINT3, R_VERTEX_ATTRIBUTE_UINT2, R_VERTEX_ATTRIBUTE_UINT, R_VERTEX_ATTRIBUTE_BYTE4, R_VERTEX_ATTRIBUTE_BYTE3, R_VERTEX_ATTRIBUTE_BYTE2, R_VERTEX_ATTRIBUTE_BYTE);
 
 /* Buffer Type */
-neko_enum_decl(neko_render_buffer_type, NEKO_RENDER_BUFFER_VERTEX, NEKO_RENDER_BUFFER_INDEX, NEKO_RENDER_BUFFER_FRAME, NEKO_RENDER_BUFFER_UNIFORM, NEKO_RENDER_BUFFER_UNIFORM_CONSTANT,
-               NEKO_RENDER_BUFFER_SHADER_STORAGE, NEKO_RENDER_BUFFER_SAMPLER);
+neko_enum_decl(neko_render_buffer_type, R_BUFFER_VERTEX, R_BUFFER_INDEX, R_BUFFER_FRAME, R_BUFFER_UNIFORM, R_BUFFER_UNIFORM_CONSTANT, R_BUFFER_SHADER_STORAGE, R_BUFFER_SAMPLER);
 
 /* Buffer Usage Type */
-neko_enum_decl(neko_render_buffer_usage_type, NEKO_RENDER_BUFFER_USAGE_STATIC, NEKO_RENDER_BUFFER_USAGE_STREAM, NEKO_RENDER_BUFFER_USAGE_DYNAMIC);
+neko_enum_decl(neko_render_buffer_usage_type, R_BUFFER_USAGE_STATIC, R_BUFFER_USAGE_STREAM, R_BUFFER_USAGE_DYNAMIC);
 
 /* Buffer Update Type */
-neko_enum_decl(neko_render_buffer_update_type, NEKO_RENDER_BUFFER_UPDATE_RECREATE, NEKO_RENDER_BUFFER_UPDATE_SUBDATA);
+neko_enum_decl(neko_render_buffer_update_type, R_BUFFER_UPDATE_RECREATE, R_BUFFER_UPDATE_SUBDATA);
 
-neko_enum_decl(neko_render_access_type, NEKO_RENDER_ACCESS_READ_ONLY, NEKO_RENDER_ACCESS_WRITE_ONLY, NEKO_RENDER_ACCESS_READ_WRITE);
+neko_enum_decl(neko_render_access_type, R_ACCESS_READ_ONLY, R_ACCESS_WRITE_ONLY, R_ACCESS_READ_WRITE);
 
 //=== Texture ===//
-typedef enum { NEKO_RENDER_TEXTURE_2D = 0x00, NEKO_RENDER_TEXTURE_CUBEMAP } neko_render_texture_type;
+typedef enum { R_TEXTURE_2D = 0x00, R_TEXTURE_CUBEMAP } neko_render_texture_type;
 
 typedef enum {
-    NEKO_RENDER_TEXTURE_CUBEMAP_POSITIVE_X = 0x00,
-    NEKO_RENDER_TEXTURE_CUBEMAP_NEGATIVE_X,
-    NEKO_RENDER_TEXTURE_CUBEMAP_POSITIVE_Y,
-    NEKO_RENDER_TEXTURE_CUBEMAP_NEGATIVE_Y,
-    NEKO_RENDER_TEXTURE_CUBEMAP_POSITIVE_Z,
-    NEKO_RENDER_TEXTURE_CUBEMAP_NEGATIVE_Z
+    R_TEXTURE_CUBEMAP_POSITIVE_X = 0x00,
+    R_TEXTURE_CUBEMAP_NEGATIVE_X,
+    R_TEXTURE_CUBEMAP_POSITIVE_Y,
+    R_TEXTURE_CUBEMAP_NEGATIVE_Y,
+    R_TEXTURE_CUBEMAP_POSITIVE_Z,
+    R_TEXTURE_CUBEMAP_NEGATIVE_Z
 } neko_render_cubemap_face_type;
 
-neko_enum_decl(neko_render_texture_format_type, NEKO_RENDER_TEXTURE_FORMAT_RGBA8, NEKO_RENDER_TEXTURE_FORMAT_RGB8, NEKO_RENDER_TEXTURE_FORMAT_RG8, NEKO_RENDER_TEXTURE_FORMAT_R32,
-               NEKO_RENDER_TEXTURE_FORMAT_R32F, NEKO_RENDER_TEXTURE_FORMAT_RGBA16F, NEKO_RENDER_TEXTURE_FORMAT_RGBA32F, NEKO_RENDER_TEXTURE_FORMAT_A8, NEKO_RENDER_TEXTURE_FORMAT_R8,
-               NEKO_RENDER_TEXTURE_FORMAT_DEPTH8, NEKO_RENDER_TEXTURE_FORMAT_DEPTH16, NEKO_RENDER_TEXTURE_FORMAT_DEPTH24, NEKO_RENDER_TEXTURE_FORMAT_DEPTH32F,
-               NEKO_RENDER_TEXTURE_FORMAT_DEPTH24_STENCIL8, NEKO_RENDER_TEXTURE_FORMAT_DEPTH32F_STENCIL8, NEKO_RENDER_TEXTURE_FORMAT_STENCIL8);
+neko_enum_decl(neko_render_texture_format_type, R_TEXTURE_FORMAT_RGBA8, R_TEXTURE_FORMAT_RGB8, R_TEXTURE_FORMAT_RG8, R_TEXTURE_FORMAT_R32, R_TEXTURE_FORMAT_R32F, R_TEXTURE_FORMAT_RGBA16F,
+               R_TEXTURE_FORMAT_RGBA32F, R_TEXTURE_FORMAT_A8, R_TEXTURE_FORMAT_R8, R_TEXTURE_FORMAT_DEPTH8, R_TEXTURE_FORMAT_DEPTH16, R_TEXTURE_FORMAT_DEPTH24, R_TEXTURE_FORMAT_DEPTH32F,
+               R_TEXTURE_FORMAT_DEPTH24_STENCIL8, R_TEXTURE_FORMAT_DEPTH32F_STENCIL8, R_TEXTURE_FORMAT_STENCIL8);
 
-neko_enum_decl(neko_render_texture_wrapping_type, NEKO_RENDER_TEXTURE_WRAP_REPEAT, NEKO_RENDER_TEXTURE_WRAP_MIRRORED_REPEAT, NEKO_RENDER_TEXTURE_WRAP_CLAMP_TO_EDGE,
-               NEKO_RENDER_TEXTURE_WRAP_CLAMP_TO_BORDER);
+neko_enum_decl(neko_render_texture_wrapping_type, R_TEXTURE_WRAP_REPEAT, R_TEXTURE_WRAP_MIRRORED_REPEAT, R_TEXTURE_WRAP_CLAMP_TO_EDGE, R_TEXTURE_WRAP_CLAMP_TO_BORDER);
 
-neko_enum_decl(neko_render_texture_filtering_type, NEKO_RENDER_TEXTURE_FILTER_NEAREST, NEKO_RENDER_TEXTURE_FILTER_LINEAR);
+neko_enum_decl(neko_render_texture_filtering_type, R_TEXTURE_FILTER_NEAREST, R_TEXTURE_FILTER_LINEAR);
 
 //=== Clear ===//
-neko_enum_decl(neko_render_clear_flag, NEKO_RENDER_CLEAR_COLOR = 0x01, NEKO_RENDER_CLEAR_DEPTH = 0x02, NEKO_RENDER_CLEAR_STENCIL = 0x04, NEKO_RENDER_CLEAR_NONE = 0x08);
+neko_enum_decl(neko_render_clear_flag, R_CLEAR_COLOR = 0x01, R_CLEAR_DEPTH = 0x02, R_CLEAR_STENCIL = 0x04, R_CLEAR_NONE = 0x08);
 
-#define NEKO_RENDER_CLEAR_ALL NEKO_RENDER_CLEAR_COLOR | NEKO_RENDER_CLEAR_DEPTH | NEKO_RENDER_CLEAR_STENCIL
+#define R_CLEAR_ALL R_CLEAR_COLOR | R_CLEAR_DEPTH | R_CLEAR_STENCIL
 
 //=== Bind Type ===//
-neko_enum_decl(neko_render_bind_type, NEKO_RENDER_BIND_VERTEX_BUFFER, NEKO_RENDER_BIND_INDEX_BUFFER, NEKO_RENDER_BIND_UNIFORM_BUFFER, NEKO_RENDER_BIND_STORAGE_BUFFER, NEKO_RENDER_BIND_IMAGE_BUFFER,
-               NEKO_RENDER_BIND_UNIFORM);
+neko_enum_decl(neko_render_bind_type, R_BIND_VERTEX_BUFFER, R_BIND_INDEX_BUFFER, R_BIND_UNIFORM_BUFFER, R_BIND_STORAGE_BUFFER, R_BIND_IMAGE_BUFFER, R_BIND_UNIFORM);
 
 /* Depth Function Type */
 neko_enum_decl(neko_render_depth_func_type,  // Default value of 0x00 means depth is disabled
-               NEKO_RENDER_DEPTH_FUNC_NEVER, NEKO_RENDER_DEPTH_FUNC_LESS, NEKO_RENDER_DEPTH_FUNC_EQUAL, NEKO_RENDER_DEPTH_FUNC_LEQUAL, NEKO_RENDER_DEPTH_FUNC_GREATER, NEKO_RENDER_DEPTH_FUNC_NOTEQUAL,
-               NEKO_RENDER_DEPTH_FUNC_GEQUAL, NEKO_RENDER_DEPTH_FUNC_ALWAYS);
+               R_DEPTH_FUNC_NEVER, R_DEPTH_FUNC_LESS, R_DEPTH_FUNC_EQUAL, R_DEPTH_FUNC_LEQUAL, R_DEPTH_FUNC_GREATER, R_DEPTH_FUNC_NOTEQUAL, R_DEPTH_FUNC_GEQUAL, R_DEPTH_FUNC_ALWAYS);
 
 neko_enum_decl(neko_render_depth_mask_type,  // Default value 0x00 means depth writing enabled
-               NEKO_RENDER_DEPTH_MASK_ENABLED, NEKO_RENDER_DEPTH_MASK_DISABLED);
+               R_DEPTH_MASK_ENABLED, R_DEPTH_MASK_DISABLED);
 
 /* Stencil Function Type */
 neko_enum_decl(neko_render_stencil_func_type,
-               NEKO_RENDER_STENCIL_FUNC_NEVER,  // Default value of 0x00 means stencil is disabled
-               NEKO_RENDER_STENCIL_FUNC_LESS, NEKO_RENDER_STENCIL_FUNC_EQUAL, NEKO_RENDER_STENCIL_FUNC_LEQUAL, NEKO_RENDER_STENCIL_FUNC_GREATER, NEKO_RENDER_STENCIL_FUNC_NOTEQUAL,
-               NEKO_RENDER_STENCIL_FUNC_GEQUAL, NEKO_RENDER_STENCIL_FUNC_ALWAYS);
+               R_STENCIL_FUNC_NEVER,  // Default value of 0x00 means stencil is disabled
+               R_STENCIL_FUNC_LESS, R_STENCIL_FUNC_EQUAL, R_STENCIL_FUNC_LEQUAL, R_STENCIL_FUNC_GREATER, R_STENCIL_FUNC_NOTEQUAL, R_STENCIL_FUNC_GEQUAL, R_STENCIL_FUNC_ALWAYS);
 
 /* Stencil Op Type */
 neko_enum_decl(neko_render_stencil_op_type,  // Default value of 0x00 means keep is used
-               NEKO_RENDER_STENCIL_OP_KEEP, NEKO_RENDER_STENCIL_OP_ZERO, NEKO_RENDER_STENCIL_OP_REPLACE, NEKO_RENDER_STENCIL_OP_INCR, NEKO_RENDER_STENCIL_OP_INCR_WRAP, NEKO_RENDER_STENCIL_OP_DECR,
-               NEKO_RENDER_STENCIL_OP_DECR_WRAP, NEKO_RENDER_STENCIL_OP_INVERT);
+               R_STENCIL_OP_KEEP, R_STENCIL_OP_ZERO, R_STENCIL_OP_REPLACE, R_STENCIL_OP_INCR, R_STENCIL_OP_INCR_WRAP, R_STENCIL_OP_DECR, R_STENCIL_OP_DECR_WRAP, R_STENCIL_OP_INVERT);
 
 /* Internal Graphics Resource Handles */
 neko_handle_decl(neko_render_shader_t);
@@ -238,7 +228,7 @@ typedef struct neko_render_shader_desc_t {
     char name[64];                              // Optional (for logging and debugging mainly)
 } neko_render_shader_desc_t;
 
-#define NEKO_RENDER_TEXTURE_DATA_MAX 6
+#define R_TEXTURE_DATA_MAX 6
 
 /* Graphics Texture Desc */
 typedef struct neko_render_texture_desc_t {
@@ -246,7 +236,7 @@ typedef struct neko_render_texture_desc_t {
     u32 width;                                      // Width of texture in texels
     u32 height;                                     // Height of texture in texels
     u32 depth;                                      // Depth of texture
-    void* data[NEKO_RENDER_TEXTURE_DATA_MAX];       // Texture data to upload (can be null)
+    void* data[R_TEXTURE_DATA_MAX];                 // Texture data to upload (can be null)
     neko_render_texture_format_type format;         // Format of texture data (rgba32, rgba8, rgba32f, r8, depth32f, etc...)
     neko_render_texture_wrapping_type wrap_s;       // Wrapping type for s axis of texture
     neko_render_texture_wrapping_type wrap_t;       // Wrapping type for t axis of texture
@@ -353,7 +343,7 @@ typedef struct neko_render_renderpass_desc_t {
     // If you want to write to a color attachment, you have to have a frame buffer attached that isn't the backbuffer
 */
 
-typedef enum neko_render_vertex_data_type { NEKO_RENDER_VERTEX_DATA_INTERLEAVED = 0x00, NEKO_RENDER_VERTEX_DATA_NONINTERLEAVED } neko_render_vertex_data_type;
+typedef enum neko_render_vertex_data_type { R_VERTEX_DATA_INTERLEAVED = 0x00, R_VERTEX_DATA_NONINTERLEAVED } neko_render_vertex_data_type;
 
 typedef struct neko_render_bind_vertex_buffer_desc_t {
     neko_handle(neko_render_vertex_buffer_t) buffer;
@@ -507,7 +497,7 @@ NEKO_INLINE neko_handle(neko_render_renderpass_t) __neko_renderpass_default_impl
 }
 
 // Convenience define for default render pass to back buffer
-#define NEKO_RENDER_RENDER_PASS_DEFAULT __neko_renderpass_default_impl()
+#define R_RENDER_PASS_DEFAULT __neko_renderpass_default_impl()
 
 typedef struct neko_render_info_t {
     const_str version;
@@ -585,14 +575,14 @@ NEKO_API_DECL void neko_render_shutdown(neko_render_t* render);
 NEKO_API_DECL neko_render_info_t* neko_render_info();
 
 // recommended to leave this on as long as possible (perhaps until release)
-#define NEKO_RENDER_BATCH_DEBUG_CHECKS 1
+#define R_BATCH_DEBUG_CHECKS 1
 
 enum {
-    NEKO_RENDER_BATCH_FLOAT,
-    NEKO_RENDER_BATCH_INT,
-    NEKO_RENDER_BATCH_BOOL,
-    NEKO_RENDER_BATCH_SAMPLER,
-    NEKO_RENDER_BATCH_UNKNOWN,
+    R_BATCH_FLOAT,
+    R_BATCH_INT,
+    R_BATCH_BOOL,
+    R_BATCH_SAMPLER,
+    R_BATCH_UNKNOWN,
 };
 
 typedef struct neko_render_batch_vertex_attribute_t {
@@ -604,7 +594,7 @@ typedef struct neko_render_batch_vertex_attribute_t {
     u32 location;
 } neko_render_batch_vertex_attribute_t;
 
-#define NEKO_RENDER_BATCH_ATTRIBUTE_MAX_COUNT 16
+#define R_BATCH_ATTRIBUTE_MAX_COUNT 16
 typedef struct neko_render_batch_vertex_data_t {
     u32 buffer_size;
     u32 vertex_stride;
@@ -612,7 +602,7 @@ typedef struct neko_render_batch_vertex_data_t {
     u32 usage;
 
     u32 attribute_count;
-    neko_render_batch_vertex_attribute_t attributes[NEKO_RENDER_BATCH_ATTRIBUTE_MAX_COUNT];
+    neko_render_batch_vertex_attribute_t attributes[R_BATCH_ATTRIBUTE_MAX_COUNT];
 } neko_render_batch_vertex_data_t;
 
 // 根据需要调整此项以创建绘制调用顺序
@@ -648,11 +638,11 @@ typedef struct neko_render_batch_renderable_t {
     GLsync fences[3];
 } neko_render_batch_renderable_t;
 
-#define NEKO_RENDER_BATCH_UNIFORM_NAME_LENGTH 64
-#define NEKO_RENDER_BATCH_UNIFORM_MAX_COUNT 16
+#define R_BATCH_UNIFORM_NAME_LENGTH 64
+#define R_BATCH_UNIFORM_MAX_COUNT 16
 
 typedef struct neko_render_batch_uniform_t {
-    char name[NEKO_RENDER_BATCH_UNIFORM_NAME_LENGTH];
+    char name[R_BATCH_UNIFORM_NAME_LENGTH];
     u32 id;
     u64 hash;
     u32 size;
@@ -663,7 +653,7 @@ typedef struct neko_render_batch_uniform_t {
 struct neko_render_batch_shader_t {
     u32 program;
     u32 uniform_count;
-    neko_render_batch_uniform_t uniforms[NEKO_RENDER_BATCH_UNIFORM_MAX_COUNT];
+    neko_render_batch_uniform_t uniforms[R_BATCH_UNIFORM_MAX_COUNT];
 };
 
 typedef struct neko_render_batch_framebuffer_t {
@@ -1300,7 +1290,7 @@ typedef struct neko_draw_raw_data_func_desc_t {
 //=== Uniforms/Uniform blocks ===//
 typedef struct neko_draw_uniform_desc_t {
     char name[64];                        // the_name of uniform (for binding to shader)
-    neko_render_uniform_type type;        // Type of uniform: NEKO_RENDER_UNIFORM_VEC2, NEKO_RENDER_UNIFORM_VEC3, etc.
+    neko_render_uniform_type type;        // Type of uniform: R_UNIFORM_VEC2, R_UNIFORM_VEC3, etc.
     uint32_t binding;                     // Binding for this uniform in shader
     neko_render_shader_stage_type stage;  // Shader stage for this uniform
     neko_render_access_type access_type;  // Access type for this uniform (compute only)

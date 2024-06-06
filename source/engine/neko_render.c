@@ -1,22 +1,22 @@
 
 
 /*=============================
-// NEKO_RENDER_IMPL
+// R_IMPL
 =============================*/
 
 #include "engine/neko_engine.h"
 #include "engine/neko_platform.h"
 
 #if (defined NEKO_PLATFORM_WIN || defined NEKO_PLATFORM_APPLE || defined NEKO_PLATFORM_LINUX)
-#define NEKO_RENDER_IMPL_OPENGL_CORE
+#define R_IMPL_OPENGL_CORE
 #else
-#define NEKO_RENDER_IMPL_OPENGL_ES
+#define R_IMPL_OPENGL_ES
 #endif
 
 // 图形信息对象查询
 neko_render_info_t* neko_render_info() { return &neko_subsystem(render)->info; }
 
-#if (defined NEKO_RENDER_IMPL_OPENGL_CORE || defined NEKO_RENDER_IMPL_OPENGL_ES)
+#if (defined R_IMPL_OPENGL_CORE || defined R_IMPL_OPENGL_ES)
 
 #define CHECK_GL_CORE(...) __VA_ARGS__
 
@@ -314,7 +314,7 @@ static u32 gl_get_gl_type_internal(u32 type) {
         case GL_INT_VEC2:
         case GL_INT_VEC3:
         case GL_INT_VEC4:
-            return NEKO_RENDER_BATCH_INT;
+            return R_BATCH_INT;
 
         case GL_FLOAT:
         case GL_FLOAT_VEC2:
@@ -323,13 +323,13 @@ static u32 gl_get_gl_type_internal(u32 type) {
         case GL_FLOAT_MAT2:
         case GL_FLOAT_MAT3:
         case GL_FLOAT_MAT4:
-            return NEKO_RENDER_BATCH_FLOAT;
+            return R_BATCH_FLOAT;
 
         case GL_BOOL:
         case GL_BOOL_VEC2:
         case GL_BOOL_VEC3:
         case GL_BOOL_VEC4:
-            return NEKO_RENDER_BATCH_BOOL;
+            return R_BATCH_BOOL;
 
 // seems undefined for GLES
 #if GL_SAMPLER_1D
@@ -337,10 +337,10 @@ static u32 gl_get_gl_type_internal(u32 type) {
 #endif
         case GL_SAMPLER_2D:
         case GL_SAMPLER_3D:
-            return NEKO_RENDER_BATCH_SAMPLER;
+            return R_BATCH_SAMPLER;
 
         default:
-            return NEKO_RENDER_BATCH_UNKNOWN;
+            return R_BATCH_UNKNOWN;
     }
 }
 
@@ -352,7 +352,7 @@ void neko_render_batch_add_attribute(neko_render_batch_vertex_data_t* vd, const 
     va.type = type;
     va.offset = offset;
 
-    NEKO_ASSERT(vd->attribute_count < NEKO_RENDER_BATCH_ATTRIBUTE_MAX_COUNT);
+    NEKO_ASSERT(vd->attribute_count < R_BATCH_ATTRIBUTE_MAX_COUNT);
     vd->attributes[vd->attribute_count++] = va;
 }
 
@@ -410,7 +410,7 @@ void* gl_map_internal(neko_render_batch_renderable_t* r, u32 count) {
     u32 stream_size = (r->index1 - r->index0) * r->data.vertex_stride;
     void* memory = glMapBufferRange(GL_ARRAY_BUFFER, r->index0 * r->data.vertex_stride, stream_size, GL_MAP_WRITE_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
 
-#if NEKO_RENDER_BATCH_DEBUG_CHECKS
+#if R_BATCH_DEBUG_CHECKS
     if (!memory) {
         neko_log_warning("\n%u\n", glGetError());
         NEKO_ASSERT(memory);
@@ -429,7 +429,7 @@ void neko_render_batch_set_shader(neko_render_batch_renderable_t* r, neko_render
     r->program = program;
     glGetProgramiv(program->program, GL_ACTIVE_ATTRIBUTES, (GLint*)&r->attribute_count);
 
-#if NEKO_RENDER_BATCH_DEBUG_CHECKS
+#if R_BATCH_DEBUG_CHECKS
     if (r->attribute_count != r->data.attribute_count) {
         neko_log_warning("Mismatch between VertexData attribute count (%d), and shader attribute count (%d).", r->attribute_count, r->data.attribute_count);
     }
@@ -446,7 +446,7 @@ void neko_render_batch_set_shader(neko_render_batch_renderable_t* r, neko_render
         hash = neko_hash_str64(buffer);
         type = gl_get_gl_type_internal(type);
 
-#if NEKO_RENDER_BATCH_DEBUG_CHECKS
+#if R_BATCH_DEBUG_CHECKS
         neko_render_batch_vertex_attribute_t* a = 0;
 
         // Make sure data.AddAttribute(name, ...) has matching named attribute
@@ -493,7 +493,7 @@ GLuint gl_compile_shader_internal(const char* Shader, u32 type) {
     u32 compiled;
     glGetShaderiv(handle, GL_COMPILE_STATUS, (GLint*)&compiled);
 
-#if NEKO_RENDER_BATCH_DEBUG_CHECKS
+#if R_BATCH_DEBUG_CHECKS
     if (!compiled) {
         neko_log_warning("Shader of type %d failed compilation.", type);
         char out[2000];
@@ -521,7 +521,7 @@ void neko_render_batch_load_shader(neko_render_batch_shader_t* s, const char* ve
     u32 linked;
     glGetProgramiv(program, GL_LINK_STATUS, (GLint*)&linked);
 
-#if NEKO_RENDER_BATCH_DEBUG_CHECKS
+#if R_BATCH_DEBUG_CHECKS
     if (!linked) {
         neko_log_warning("Shaders failed to link.");
         char out[2000];
@@ -542,9 +542,9 @@ void neko_render_batch_load_shader(neko_render_batch_shader_t* s, const char* ve
 
     // Query Uniform information and fill out the Shader Uniforms
     GLint uniform_count;
-    u32 nameSize = sizeof(char) * NEKO_RENDER_BATCH_UNIFORM_NAME_LENGTH;
+    u32 nameSize = sizeof(char) * R_BATCH_UNIFORM_NAME_LENGTH;
     glGetProgramiv(program, GL_ACTIVE_UNIFORMS, &uniform_count);
-    NEKO_ASSERT(uniform_count < NEKO_RENDER_BATCH_UNIFORM_MAX_COUNT);
+    NEKO_ASSERT(uniform_count < R_BATCH_UNIFORM_MAX_COUNT);
     s->uniform_count = uniform_count;
 
     for (u32 i = 0; i < (u32)uniform_count; ++i) {
@@ -554,7 +554,7 @@ void neko_render_batch_load_shader(neko_render_batch_shader_t* s, const char* ve
         glGetActiveUniform(program, (GLint)i, nameSize, (GLsizei*)&nameLength, (GLsizei*)&u.size, (GLenum*)&u.type, u.name);
 
         // Uniform named in a Shader is too long for the UNIFORM_NAME_LENGTH constant
-        NEKO_ASSERT(nameLength <= NEKO_RENDER_BATCH_UNIFORM_NAME_LENGTH);
+        NEKO_ASSERT(nameLength <= R_BATCH_UNIFORM_NAME_LENGTH);
 
         u.location = glGetUniformLocation(program, u.name);
         u.type = gl_get_gl_type_internal(u.type);
@@ -566,7 +566,7 @@ void neko_render_batch_load_shader(neko_render_batch_shader_t* s, const char* ve
         s->uniforms[i] = u;
     }
 
-#if NEKO_RENDER_BATCH_DEBUG_CHECKS
+#if R_BATCH_DEBUG_CHECKS
     // prevent hash collisions
     for (u32 i = 0; i < (u32)uniform_count; ++i)
         for (u32 j = i + 1; j < (u32)uniform_count; ++j) NEKO_ASSERT(s->uniforms[i].hash != s->uniforms[j].hash);
@@ -607,7 +607,7 @@ void neko_render_batch_send_f32(neko_render_batch_shader_t* s, const char* unifo
     }
 
     NEKO_ASSERT(size == u->size);
-    NEKO_ASSERT(u->type == NEKO_RENDER_BATCH_FLOAT);
+    NEKO_ASSERT(u->type == R_BATCH_FLOAT);
 
     neko_render_batch_set_active_shader(s);
     switch (count) {
@@ -643,7 +643,7 @@ void neko_render_batch_send_matrix(neko_render_batch_shader_t* s, const char* un
     }
 
     NEKO_ASSERT(u->size == 1);
-    NEKO_ASSERT(u->type == NEKO_RENDER_BATCH_FLOAT);
+    NEKO_ASSERT(u->type == R_BATCH_FLOAT);
 
     neko_render_batch_set_active_shader(s);
     glUniformMatrix4fv(u->id, 1, 0, floats);
@@ -658,7 +658,7 @@ void neko_render_batch_send_texture(neko_render_batch_shader_t* s, const char* u
         return;
     }
 
-    NEKO_ASSERT(u->type == NEKO_RENDER_BATCH_SAMPLER);
+    NEKO_ASSERT(u->type == R_BATCH_SAMPLER);
 
     neko_render_batch_set_active_shader(s);
     glUniform1i(u->location, index);
@@ -695,11 +695,11 @@ void neko_render_batch_push_draw_call(void* ctx, neko_render_batch_draw_call_t c
 
 u32 gl_get_enum(u32 type) {
     switch (type) {
-        case NEKO_RENDER_BATCH_FLOAT:
+        case R_BATCH_FLOAT:
             return GL_FLOAT;
             break;
 
-        case NEKO_RENDER_BATCH_INT:
+        case R_BATCH_INT:
             return GL_UNSIGNED_BYTE;
             break;
 
@@ -805,9 +805,9 @@ void neko_render_batch_present_internal(void* context, neko_render_batch_framebu
         glBindBuffer(GL_ARRAY_BUFFER, fb->quad_id);
         glBindTexture(GL_TEXTURE_2D, fb->tex_id);
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 2, NEKO_RENDER_BATCH_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)0);
+        glVertexAttribPointer(0, 2, R_BATCH_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)0);
         glEnableVertexAttribArray(1);
-        glVertexAttribPointer(1, 2, NEKO_RENDER_BATCH_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)(2 * sizeof(GLfloat)));
+        glVertexAttribPointer(1, 2, R_BATCH_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)(2 * sizeof(GLfloat)));
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         neko_render_batch_deactivate_shader();
@@ -949,13 +949,13 @@ s32 neko_gl_buffer_usage_to_gl_enum(neko_render_buffer_usage_type type) {
     s32 mode = GL_STATIC_DRAW;
     switch (type) {
         default:
-        case NEKO_RENDER_BUFFER_USAGE_STATIC:
+        case R_BUFFER_USAGE_STATIC:
             mode = GL_STATIC_DRAW;
             break;
-        case NEKO_RENDER_BUFFER_USAGE_STREAM:
+        case R_BUFFER_USAGE_STREAM:
             mode = GL_STREAM_DRAW;
             break;
-        case NEKO_RENDER_BUFFER_USAGE_DYNAMIC:
+        case R_BUFFER_USAGE_DYNAMIC:
             mode = GL_DYNAMIC_DRAW;
             break;
     }
@@ -964,13 +964,13 @@ s32 neko_gl_buffer_usage_to_gl_enum(neko_render_buffer_usage_type type) {
 
 u32 neko_gl_access_type_to_gl_access_type(neko_render_access_type type) {
     CHECK_GL_CORE(u32 access = GL_WRITE_ONLY; switch (type) {
-        case NEKO_RENDER_ACCESS_WRITE_ONLY:
+        case R_ACCESS_WRITE_ONLY:
             access = GL_WRITE_ONLY;
             break;
-        case NEKO_RENDER_ACCESS_READ_ONLY:
+        case R_ACCESS_READ_ONLY:
             access = GL_READ_ONLY;
             break;
-        case NEKO_RENDER_ACCESS_READ_WRITE:
+        case R_ACCESS_READ_WRITE:
             access = GL_READ_WRITE;
             break;
         default:
@@ -983,16 +983,16 @@ u32 neko_gl_texture_wrap_to_gl_texture_wrap(neko_render_texture_wrapping_type ty
     u32 wrap = GL_REPEAT;
     switch (type) {
         default:
-        case NEKO_RENDER_TEXTURE_WRAP_REPEAT:
+        case R_TEXTURE_WRAP_REPEAT:
             wrap = GL_REPEAT;
             break;
-        case NEKO_RENDER_TEXTURE_WRAP_MIRRORED_REPEAT:
+        case R_TEXTURE_WRAP_MIRRORED_REPEAT:
             wrap = GL_MIRRORED_REPEAT;
             break;
-        case NEKO_RENDER_TEXTURE_WRAP_CLAMP_TO_EDGE:
+        case R_TEXTURE_WRAP_CLAMP_TO_EDGE:
             wrap = GL_CLAMP_TO_EDGE;
             break;
-            CHECK_GL_CORE(case NEKO_RENDER_TEXTURE_WRAP_CLAMP_TO_BORDER : wrap = GL_CLAMP_TO_BORDER; break;)
+            CHECK_GL_CORE(case R_TEXTURE_WRAP_CLAMP_TO_BORDER : wrap = GL_CLAMP_TO_BORDER; break;)
     };
 
     return wrap;
@@ -1002,46 +1002,46 @@ u32 neko_gl_texture_format_to_gl_data_type(neko_render_texture_format_type type)
     u32 format = GL_UNSIGNED_BYTE;
     switch (type) {
         default:
-        case NEKO_RENDER_TEXTURE_FORMAT_A8:
+        case R_TEXTURE_FORMAT_A8:
             format = GL_UNSIGNED_BYTE;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_R8:
+        case R_TEXTURE_FORMAT_R8:
             format = GL_UNSIGNED_BYTE;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_R32:
+        case R_TEXTURE_FORMAT_R32:
             format = GL_UNSIGNED_INT;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_RGB8:
+        case R_TEXTURE_FORMAT_RGB8:
             format = GL_UNSIGNED_BYTE;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_RGBA8:
+        case R_TEXTURE_FORMAT_RGBA8:
             format = GL_UNSIGNED_BYTE;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_RGBA16F:
+        case R_TEXTURE_FORMAT_RGBA16F:
             format = GL_FLOAT;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_RGBA32F:
+        case R_TEXTURE_FORMAT_RGBA32F:
             format = GL_FLOAT;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_R32F:
+        case R_TEXTURE_FORMAT_R32F:
             format = GL_FLOAT;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_DEPTH8:
+        case R_TEXTURE_FORMAT_DEPTH8:
             format = GL_FLOAT;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_DEPTH16:
+        case R_TEXTURE_FORMAT_DEPTH16:
             format = GL_FLOAT;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_DEPTH24:
+        case R_TEXTURE_FORMAT_DEPTH24:
             format = GL_FLOAT;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_DEPTH32F:
+        case R_TEXTURE_FORMAT_DEPTH32F:
             format = GL_FLOAT;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_DEPTH24_STENCIL8:
+        case R_TEXTURE_FORMAT_DEPTH24_STENCIL8:
             format = GL_UNSIGNED_INT_24_8;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_DEPTH32F_STENCIL8:
+        case R_TEXTURE_FORMAT_DEPTH32F_STENCIL8:
             format = GL_FLOAT_32_UNSIGNED_INT_24_8_REV;
             break;
     }
@@ -1052,46 +1052,46 @@ u32 neko_gl_texture_format_to_gl_texture_format(neko_render_texture_format_type 
     u32 dt = GL_RGBA;
     switch (type) {
         default:
-        case NEKO_RENDER_TEXTURE_FORMAT_RGBA8:
+        case R_TEXTURE_FORMAT_RGBA8:
             dt = GL_RGBA;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_A8:
+        case R_TEXTURE_FORMAT_A8:
             dt = GL_ALPHA;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_R8:
+        case R_TEXTURE_FORMAT_R8:
             dt = GL_RED;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_R32:
+        case R_TEXTURE_FORMAT_R32:
             dt = GL_RED_INTEGER;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_R32F:
+        case R_TEXTURE_FORMAT_R32F:
             dt = GL_RED;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_RGB8:
+        case R_TEXTURE_FORMAT_RGB8:
             dt = GL_RGB;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_RGBA16F:
+        case R_TEXTURE_FORMAT_RGBA16F:
             dt = GL_RGBA;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_RGBA32F:
+        case R_TEXTURE_FORMAT_RGBA32F:
             dt = GL_RGBA;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_DEPTH8:
+        case R_TEXTURE_FORMAT_DEPTH8:
             dt = GL_DEPTH_COMPONENT;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_DEPTH16:
+        case R_TEXTURE_FORMAT_DEPTH16:
             dt = GL_DEPTH_COMPONENT;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_DEPTH24:
+        case R_TEXTURE_FORMAT_DEPTH24:
             dt = GL_DEPTH_COMPONENT;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_DEPTH32F:
+        case R_TEXTURE_FORMAT_DEPTH32F:
             dt = GL_DEPTH_COMPONENT;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_DEPTH24_STENCIL8:
+        case R_TEXTURE_FORMAT_DEPTH24_STENCIL8:
             dt = GL_DEPTH_STENCIL;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_DEPTH32F_STENCIL8:
+        case R_TEXTURE_FORMAT_DEPTH32F_STENCIL8:
             dt = GL_DEPTH_STENCIL;
             break;
     }
@@ -1101,46 +1101,46 @@ u32 neko_gl_texture_format_to_gl_texture_format(neko_render_texture_format_type 
 u32 neko_gl_texture_format_to_gl_texture_internal_format(neko_render_texture_format_type type) {
     u32 format = GL_UNSIGNED_BYTE;
     switch (type) {
-        case NEKO_RENDER_TEXTURE_FORMAT_A8:
+        case R_TEXTURE_FORMAT_A8:
             format = GL_ALPHA;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_R8:
+        case R_TEXTURE_FORMAT_R8:
             format = GL_RED;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_R32:
+        case R_TEXTURE_FORMAT_R32:
             format = GL_R32UI;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_R32F:
+        case R_TEXTURE_FORMAT_R32F:
             format = GL_R32F;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_RGB8:
+        case R_TEXTURE_FORMAT_RGB8:
             format = GL_RGB8;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_RGBA8:
+        case R_TEXTURE_FORMAT_RGBA8:
             format = GL_RGBA8;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_RGBA16F:
+        case R_TEXTURE_FORMAT_RGBA16F:
             format = GL_RGBA16F;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_RGBA32F:
+        case R_TEXTURE_FORMAT_RGBA32F:
             format = GL_RGBA32F;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_DEPTH8:
+        case R_TEXTURE_FORMAT_DEPTH8:
             format = GL_DEPTH_COMPONENT;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_DEPTH16:
+        case R_TEXTURE_FORMAT_DEPTH16:
             format = GL_DEPTH_COMPONENT16;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_DEPTH24:
+        case R_TEXTURE_FORMAT_DEPTH24:
             format = GL_DEPTH_COMPONENT24;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_DEPTH32F:
+        case R_TEXTURE_FORMAT_DEPTH32F:
             format = GL_DEPTH_COMPONENT32F;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_DEPTH24_STENCIL8:
+        case R_TEXTURE_FORMAT_DEPTH24_STENCIL8:
             format = GL_DEPTH24_STENCIL8;
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_DEPTH32F_STENCIL8:
+        case R_TEXTURE_FORMAT_DEPTH32F_STENCIL8:
             format = GL_DEPTH32F_STENCIL8;
             break;
     }
@@ -1151,13 +1151,13 @@ u32 neko_gl_shader_stage_to_gl_stage(neko_render_shader_stage_type type) {
     u32 stage = GL_VERTEX_SHADER;
     switch (type) {
         default:
-        case NEKO_RENDER_SHADER_STAGE_VERTEX:
+        case R_SHADER_STAGE_VERTEX:
             stage = GL_VERTEX_SHADER;
             break;
-        case NEKO_RENDER_SHADER_STAGE_FRAGMENT:
+        case R_SHADER_STAGE_FRAGMENT:
             stage = GL_FRAGMENT_SHADER;
             break;
-            CHECK_GL_CORE(case NEKO_RENDER_SHADER_STAGE_COMPUTE : stage = GL_COMPUTE_SHADER; break;)
+            CHECK_GL_CORE(case R_SHADER_STAGE_COMPUTE : stage = GL_COMPUTE_SHADER; break;)
     }
     return stage;
 }
@@ -1166,13 +1166,13 @@ u32 neko_gl_primitive_to_gl_primitive(neko_render_primitive_type type) {
     u32 prim = GL_TRIANGLES;
     switch (type) {
         default:
-        case NEKO_RENDER_PRIMITIVE_TRIANGLES:
+        case R_PRIMITIVE_TRIANGLES:
             prim = GL_TRIANGLES;
             break;
-        case NEKO_RENDER_PRIMITIVE_LINES:
+        case R_PRIMITIVE_LINES:
             prim = GL_LINES;
             break;
-            CHECK_GL_CORE(case NEKO_RENDER_PRIMITIVE_QUADS : prim = GL_QUADS; break;)
+            CHECK_GL_CORE(case R_PRIMITIVE_QUADS : prim = GL_QUADS; break;)
     }
     return prim;
 }
@@ -1181,19 +1181,19 @@ u32 neko_gl_blend_equation_to_gl_blend_eq(neko_render_blend_equation_type eq) {
     u32 beq = GL_FUNC_ADD;
     switch (eq) {
         default:
-        case NEKO_RENDER_BLEND_EQUATION_ADD:
+        case R_BLEND_EQUATION_ADD:
             beq = GL_FUNC_ADD;
             break;
-        case NEKO_RENDER_BLEND_EQUATION_SUBTRACT:
+        case R_BLEND_EQUATION_SUBTRACT:
             beq = GL_FUNC_SUBTRACT;
             break;
-        case NEKO_RENDER_BLEND_EQUATION_REVERSE_SUBTRACT:
+        case R_BLEND_EQUATION_REVERSE_SUBTRACT:
             beq = GL_FUNC_REVERSE_SUBTRACT;
             break;
-        case NEKO_RENDER_BLEND_EQUATION_MIN:
+        case R_BLEND_EQUATION_MIN:
             beq = GL_MIN;
             break;
-        case NEKO_RENDER_BLEND_EQUATION_MAX:
+        case R_BLEND_EQUATION_MAX:
             beq = GL_MAX;
             break;
     };
@@ -1204,46 +1204,46 @@ u32 neko_gl_blend_equation_to_gl_blend_eq(neko_render_blend_equation_type eq) {
 u32 neko_gl_blend_mode_to_gl_blend_mode(neko_render_blend_mode_type type, u32 def) {
     u32 mode = def;
     switch (type) {
-        case NEKO_RENDER_BLEND_MODE_ZERO:
+        case R_BLEND_MODE_ZERO:
             mode = GL_ZERO;
             break;
-        case NEKO_RENDER_BLEND_MODE_ONE:
+        case R_BLEND_MODE_ONE:
             mode = GL_ONE;
             break;
-        case NEKO_RENDER_BLEND_MODE_SRC_COLOR:
+        case R_BLEND_MODE_SRC_COLOR:
             mode = GL_SRC_COLOR;
             break;
-        case NEKO_RENDER_BLEND_MODE_ONE_MINUS_SRC_COLOR:
+        case R_BLEND_MODE_ONE_MINUS_SRC_COLOR:
             mode = GL_ONE_MINUS_SRC_COLOR;
             break;
-        case NEKO_RENDER_BLEND_MODE_DST_COLOR:
+        case R_BLEND_MODE_DST_COLOR:
             mode = GL_DST_COLOR;
             break;
-        case NEKO_RENDER_BLEND_MODE_ONE_MINUS_DST_COLOR:
+        case R_BLEND_MODE_ONE_MINUS_DST_COLOR:
             mode = GL_ONE_MINUS_DST_COLOR;
             break;
-        case NEKO_RENDER_BLEND_MODE_SRC_ALPHA:
+        case R_BLEND_MODE_SRC_ALPHA:
             mode = GL_SRC_ALPHA;
             break;
-        case NEKO_RENDER_BLEND_MODE_ONE_MINUS_SRC_ALPHA:
+        case R_BLEND_MODE_ONE_MINUS_SRC_ALPHA:
             mode = GL_ONE_MINUS_SRC_ALPHA;
             break;
-        case NEKO_RENDER_BLEND_MODE_DST_ALPHA:
+        case R_BLEND_MODE_DST_ALPHA:
             mode = GL_DST_ALPHA;
             break;
-        case NEKO_RENDER_BLEND_MODE_ONE_MINUS_DST_ALPHA:
+        case R_BLEND_MODE_ONE_MINUS_DST_ALPHA:
             mode = GL_ONE_MINUS_DST_ALPHA;
             break;
-        case NEKO_RENDER_BLEND_MODE_CONSTANT_COLOR:
+        case R_BLEND_MODE_CONSTANT_COLOR:
             mode = GL_CONSTANT_COLOR;
             break;
-        case NEKO_RENDER_BLEND_MODE_ONE_MINUS_CONSTANT_COLOR:
+        case R_BLEND_MODE_ONE_MINUS_CONSTANT_COLOR:
             mode = GL_ONE_MINUS_CONSTANT_COLOR;
             break;
-        case NEKO_RENDER_BLEND_MODE_CONSTANT_ALPHA:
+        case R_BLEND_MODE_CONSTANT_ALPHA:
             mode = GL_CONSTANT_ALPHA;
             break;
-        case NEKO_RENDER_BLEND_MODE_ONE_MINUS_CONSTANT_ALPHA:
+        case R_BLEND_MODE_ONE_MINUS_CONSTANT_ALPHA:
             mode = GL_ONE_MINUS_CONSTANT_ALPHA;
             break;
     }
@@ -1254,13 +1254,13 @@ u32 neko_gl_cull_face_to_gl_cull_face(neko_render_face_culling_type type) {
     u32 fc = GL_BACK;
     switch (type) {
         default:
-        case NEKO_RENDER_FACE_CULLING_BACK:
+        case R_FACE_CULLING_BACK:
             fc = GL_BACK;
             break;
-        case NEKO_RENDER_FACE_CULLING_FRONT:
+        case R_FACE_CULLING_FRONT:
             fc = GL_FRONT;
             break;
-        case NEKO_RENDER_FACE_CULLING_FRONT_AND_BACK:
+        case R_FACE_CULLING_FRONT_AND_BACK:
             fc = GL_FRONT_AND_BACK;
             break;
     }
@@ -1270,10 +1270,10 @@ u32 neko_gl_cull_face_to_gl_cull_face(neko_render_face_culling_type type) {
 u32 neko_gl_winding_order_to_gl_winding_order(neko_render_winding_order_type type) {
     u32 wo = GL_CCW;
     switch (type) {
-        case NEKO_RENDER_WINDING_ORDER_CCW:
+        case R_WINDING_ORDER_CCW:
             wo = GL_CCW;
             break;
-        case NEKO_RENDER_WINDING_ORDER_CW:
+        case R_WINDING_ORDER_CW:
             wo = GL_CW;
             break;
     }
@@ -1284,28 +1284,28 @@ u32 neko_gl_depth_func_to_gl_depth_func(neko_render_depth_func_type type) {
     u32 func = GL_LESS;
     switch (type) {
         default:
-        case NEKO_RENDER_DEPTH_FUNC_LESS:
+        case R_DEPTH_FUNC_LESS:
             func = GL_LESS;
             break;
-        case NEKO_RENDER_DEPTH_FUNC_NEVER:
+        case R_DEPTH_FUNC_NEVER:
             func = GL_NEVER;
             break;
-        case NEKO_RENDER_DEPTH_FUNC_EQUAL:
+        case R_DEPTH_FUNC_EQUAL:
             func = GL_EQUAL;
             break;
-        case NEKO_RENDER_DEPTH_FUNC_LEQUAL:
+        case R_DEPTH_FUNC_LEQUAL:
             func = GL_LEQUAL;
             break;
-        case NEKO_RENDER_DEPTH_FUNC_GREATER:
+        case R_DEPTH_FUNC_GREATER:
             func = GL_GREATER;
             break;
-        case NEKO_RENDER_DEPTH_FUNC_NOTEQUAL:
+        case R_DEPTH_FUNC_NOTEQUAL:
             func = GL_NOTEQUAL;
             break;
-        case NEKO_RENDER_DEPTH_FUNC_GEQUAL:
+        case R_DEPTH_FUNC_GEQUAL:
             func = GL_GEQUAL;
             break;
-        case NEKO_RENDER_DEPTH_FUNC_ALWAYS:
+        case R_DEPTH_FUNC_ALWAYS:
             func = GL_ALWAYS;
             break;
     }
@@ -1316,10 +1316,10 @@ bool neko_gl_depth_mask_to_gl_mask(neko_render_depth_mask_type type) {
     bool ret = true;
     switch (type) {
         default:
-        case NEKO_RENDER_DEPTH_MASK_ENABLED:
+        case R_DEPTH_MASK_ENABLED:
             ret = true;
             break;
-        case NEKO_RENDER_DEPTH_MASK_DISABLED:
+        case R_DEPTH_MASK_DISABLED:
             ret = false;
             break;
     }
@@ -1330,28 +1330,28 @@ u32 neko_gl_stencil_func_to_gl_stencil_func(neko_render_stencil_func_type type) 
     u32 func = GL_ALWAYS;
     switch (type) {
         default:
-        case NEKO_RENDER_STENCIL_FUNC_LESS:
+        case R_STENCIL_FUNC_LESS:
             func = GL_LESS;
             break;
-        case NEKO_RENDER_STENCIL_FUNC_NEVER:
+        case R_STENCIL_FUNC_NEVER:
             func = GL_NEVER;
             break;
-        case NEKO_RENDER_STENCIL_FUNC_EQUAL:
+        case R_STENCIL_FUNC_EQUAL:
             func = GL_EQUAL;
             break;
-        case NEKO_RENDER_STENCIL_FUNC_LEQUAL:
+        case R_STENCIL_FUNC_LEQUAL:
             func = GL_LEQUAL;
             break;
-        case NEKO_RENDER_STENCIL_FUNC_GREATER:
+        case R_STENCIL_FUNC_GREATER:
             func = GL_GREATER;
             break;
-        case NEKO_RENDER_STENCIL_FUNC_NOTEQUAL:
+        case R_STENCIL_FUNC_NOTEQUAL:
             func = GL_NOTEQUAL;
             break;
-        case NEKO_RENDER_STENCIL_FUNC_GEQUAL:
+        case R_STENCIL_FUNC_GEQUAL:
             func = GL_GEQUAL;
             break;
-        case NEKO_RENDER_STENCIL_FUNC_ALWAYS:
+        case R_STENCIL_FUNC_ALWAYS:
             func = GL_ALWAYS;
             break;
     }
@@ -1362,28 +1362,28 @@ u32 neko_gl_stencil_op_to_gl_stencil_op(neko_render_stencil_op_type type) {
     u32 op = GL_KEEP;
     switch (type) {
         default:
-        case NEKO_RENDER_STENCIL_OP_KEEP:
+        case R_STENCIL_OP_KEEP:
             op = GL_KEEP;
             break;
-        case NEKO_RENDER_STENCIL_OP_ZERO:
+        case R_STENCIL_OP_ZERO:
             op = GL_ZERO;
             break;
-        case NEKO_RENDER_STENCIL_OP_REPLACE:
+        case R_STENCIL_OP_REPLACE:
             op = GL_REPLACE;
             break;
-        case NEKO_RENDER_STENCIL_OP_INCR:
+        case R_STENCIL_OP_INCR:
             op = GL_INCR;
             break;
-        case NEKO_RENDER_STENCIL_OP_INCR_WRAP:
+        case R_STENCIL_OP_INCR_WRAP:
             op = GL_INCR_WRAP;
             break;
-        case NEKO_RENDER_STENCIL_OP_DECR:
+        case R_STENCIL_OP_DECR:
             op = GL_DECR;
             break;
-        case NEKO_RENDER_STENCIL_OP_DECR_WRAP:
+        case R_STENCIL_OP_DECR_WRAP:
             op = GL_DECR_WRAP;
             break;
-        case NEKO_RENDER_STENCIL_OP_INVERT:
+        case R_STENCIL_OP_INVERT:
             op = GL_INVERT;
             break;
     }
@@ -1394,31 +1394,31 @@ neko_gl_uniform_type neko_gl_uniform_type_to_gl_uniform_type(neko_render_uniform
     neko_gl_uniform_type type = NEKO_GL_UNIFORMTYPE_FLOAT;
     switch (gstype) {
         default:
-        case NEKO_RENDER_UNIFORM_FLOAT:
+        case R_UNIFORM_FLOAT:
             type = NEKO_GL_UNIFORMTYPE_FLOAT;
             break;
-        case NEKO_RENDER_UNIFORM_INT:
+        case R_UNIFORM_INT:
             type = NEKO_GL_UNIFORMTYPE_INT;
             break;
-        case NEKO_RENDER_UNIFORM_VEC2:
+        case R_UNIFORM_VEC2:
             type = NEKO_GL_UNIFORMTYPE_VEC2;
             break;
-        case NEKO_RENDER_UNIFORM_VEC3:
+        case R_UNIFORM_VEC3:
             type = NEKO_GL_UNIFORMTYPE_VEC3;
             break;
-        case NEKO_RENDER_UNIFORM_VEC4:
+        case R_UNIFORM_VEC4:
             type = NEKO_GL_UNIFORMTYPE_VEC4;
             break;
-        case NEKO_RENDER_UNIFORM_MAT4:
+        case R_UNIFORM_MAT4:
             type = NEKO_GL_UNIFORMTYPE_MAT4;
             break;
-        case NEKO_RENDER_UNIFORM_USAMPLER2D:
+        case R_UNIFORM_USAMPLER2D:
             type = NEKO_GL_UNIFORMTYPE_SAMPLER2D;
             break;
-        case NEKO_RENDER_UNIFORM_SAMPLER2D:
+        case R_UNIFORM_SAMPLER2D:
             type = NEKO_GL_UNIFORMTYPE_SAMPLER2D;
             break;
-        case NEKO_RENDER_UNIFORM_SAMPLERCUBE:
+        case R_UNIFORM_SAMPLERCUBE:
             type = NEKO_GL_UNIFORMTYPE_SAMPLERCUBE;
             break;
     }
@@ -1445,40 +1445,40 @@ u32 neko_gl_index_buffer_size_to_gl_index_type(size_t sz) {
 size_t neko_gl_get_byte_size_of_vertex_attribute(neko_render_vertex_attribute_type type) {
     size_t byte_size = 0;
     switch (type) {
-        case NEKO_RENDER_VERTEX_ATTRIBUTE_FLOAT4: {
+        case R_VERTEX_ATTRIBUTE_FLOAT4: {
             byte_size = sizeof(f32) * 4;
         } break;
-        case NEKO_RENDER_VERTEX_ATTRIBUTE_FLOAT3: {
+        case R_VERTEX_ATTRIBUTE_FLOAT3: {
             byte_size = sizeof(f32) * 3;
         } break;
-        case NEKO_RENDER_VERTEX_ATTRIBUTE_FLOAT2: {
+        case R_VERTEX_ATTRIBUTE_FLOAT2: {
             byte_size = sizeof(f32) * 2;
         } break;
-        case NEKO_RENDER_VERTEX_ATTRIBUTE_FLOAT: {
+        case R_VERTEX_ATTRIBUTE_FLOAT: {
             byte_size = sizeof(f32) * 1;
         } break;
-        case NEKO_RENDER_VERTEX_ATTRIBUTE_UINT4: {
+        case R_VERTEX_ATTRIBUTE_UINT4: {
             byte_size = sizeof(u32) * 4;
         } break;
-        case NEKO_RENDER_VERTEX_ATTRIBUTE_UINT3: {
+        case R_VERTEX_ATTRIBUTE_UINT3: {
             byte_size = sizeof(u32) * 3;
         } break;
-        case NEKO_RENDER_VERTEX_ATTRIBUTE_UINT2: {
+        case R_VERTEX_ATTRIBUTE_UINT2: {
             byte_size = sizeof(u32) * 2;
         } break;
-        case NEKO_RENDER_VERTEX_ATTRIBUTE_UINT: {
+        case R_VERTEX_ATTRIBUTE_UINT: {
             byte_size = sizeof(u32) * 1;
         } break;
-        case NEKO_RENDER_VERTEX_ATTRIBUTE_BYTE4: {
+        case R_VERTEX_ATTRIBUTE_BYTE4: {
             byte_size = sizeof(uint8_t) * 4;
         } break;
-        case NEKO_RENDER_VERTEX_ATTRIBUTE_BYTE3: {
+        case R_VERTEX_ATTRIBUTE_BYTE3: {
             byte_size = sizeof(uint8_t) * 3;
         } break;
-        case NEKO_RENDER_VERTEX_ATTRIBUTE_BYTE2: {
+        case R_VERTEX_ATTRIBUTE_BYTE2: {
             byte_size = sizeof(uint8_t) * 2;
         } break;
-        case NEKO_RENDER_VERTEX_ATTRIBUTE_BYTE: {
+        case R_VERTEX_ATTRIBUTE_BYTE: {
             byte_size = sizeof(uint8_t) * 1;
         } break;
     }
@@ -1517,31 +1517,31 @@ size_t neko_gl_get_vertex_attr_byte_offest(neko_dyn_array(neko_render_vertex_att
 size_t neko_gl_uniform_data_size_in_bytes(neko_render_uniform_type type) {
     size_t sz = 0;
     switch (type) {
-        case NEKO_RENDER_UNIFORM_FLOAT:
+        case R_UNIFORM_FLOAT:
             sz = sizeof(float);
             break;
-        case NEKO_RENDER_UNIFORM_INT:
+        case R_UNIFORM_INT:
             sz = sizeof(s32);
             break;
-        case NEKO_RENDER_UNIFORM_VEC2:
+        case R_UNIFORM_VEC2:
             sz = 2 * sizeof(float);
             break;
-        case NEKO_RENDER_UNIFORM_VEC3:
+        case R_UNIFORM_VEC3:
             sz = 3 * sizeof(float);
             break;
-        case NEKO_RENDER_UNIFORM_VEC4:
+        case R_UNIFORM_VEC4:
             sz = 4 * sizeof(float);
             break;
-        case NEKO_RENDER_UNIFORM_MAT4:
+        case R_UNIFORM_MAT4:
             sz = 16 * sizeof(float);
             break;
-        case NEKO_RENDER_UNIFORM_SAMPLER2D:
+        case R_UNIFORM_SAMPLER2D:
             sz = sizeof(neko_handle(neko_render_texture_t));
             break;  // handle size
-        case NEKO_RENDER_UNIFORM_USAMPLER2D:
+        case R_UNIFORM_USAMPLER2D:
             sz = sizeof(neko_handle(neko_render_texture_t));
             break;  // handle size
-        case NEKO_RENDER_UNIFORM_SAMPLERCUBE:
+        case R_UNIFORM_SAMPLERCUBE:
             sz = sizeof(neko_handle(neko_render_texture_t));
             break;  // handle size
         default: {
@@ -1639,19 +1639,19 @@ neko_gl_texture_t gl_texture_update_internal(const neko_render_texture_desc_t* d
     GLenum target = 0x00;
     switch (desc->type) {
         default:
-        case NEKO_RENDER_TEXTURE_2D: {
+        case R_TEXTURE_2D: {
             target = GL_TEXTURE_2D;
         } break;
-        case NEKO_RENDER_TEXTURE_CUBEMAP: {
+        case R_TEXTURE_CUBEMAP: {
             target = GL_TEXTURE_CUBE_MAP;
         } break;
     }
 
     glBindTexture(target, tex.id);
 
-    u32 cnt = NEKO_RENDER_TEXTURE_DATA_MAX;
+    u32 cnt = R_TEXTURE_DATA_MAX;
     switch (desc->type) {
-        case NEKO_RENDER_TEXTURE_2D:
+        case R_TEXTURE_2D:
             cnt = 1;
             break;
     }
@@ -1661,10 +1661,10 @@ neko_gl_texture_t gl_texture_update_internal(const neko_render_texture_desc_t* d
         data = desc->data[i];
         switch (desc->type) {
             default:
-            case NEKO_RENDER_TEXTURE_2D: {
+            case R_TEXTURE_2D: {
                 itarget = GL_TEXTURE_2D;
             } break;
-            case NEKO_RENDER_TEXTURE_CUBEMAP: {
+            case R_TEXTURE_CUBEMAP: {
                 itarget = GL_TEXTURE_CUBE_MAP_POSITIVE_X + i;
             } break;
         }
@@ -1672,122 +1672,122 @@ neko_gl_texture_t gl_texture_update_internal(const neko_render_texture_desc_t* d
         if (tex.desc.width * tex.desc.height < width * height) {
             // Construct texture based on appropriate format
             switch (desc->format) {
-                case NEKO_RENDER_TEXTURE_FORMAT_A8:
+                case R_TEXTURE_FORMAT_A8:
                     glTexImage2D(itarget, 0, GL_ALPHA, width, height, 0, GL_ALPHA, GL_UNSIGNED_BYTE, data);
                     break;
-                case NEKO_RENDER_TEXTURE_FORMAT_R8:
+                case R_TEXTURE_FORMAT_R8:
                     glTexImage2D(itarget, 0, GL_RED, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, data);
                     break;
-                case NEKO_RENDER_TEXTURE_FORMAT_R32:
+                case R_TEXTURE_FORMAT_R32:
                     glTexImage2D(itarget, 0, GL_R32UI, width, height, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, data);
                     break;
-                case NEKO_RENDER_TEXTURE_FORMAT_RG8:
+                case R_TEXTURE_FORMAT_RG8:
                     glTexImage2D(itarget, 0, GL_RG8, width, height, 0, GL_RG, GL_UNSIGNED_BYTE, data);
                     break;
-                case NEKO_RENDER_TEXTURE_FORMAT_RGB8:
+                case R_TEXTURE_FORMAT_RGB8:
                     glTexImage2D(itarget, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
                     break;
-                case NEKO_RENDER_TEXTURE_FORMAT_RGBA8:
+                case R_TEXTURE_FORMAT_RGBA8:
                     glTexImage2D(itarget, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
                     break;
-                case NEKO_RENDER_TEXTURE_FORMAT_R32F:
+                case R_TEXTURE_FORMAT_R32F:
                     glTexImage2D(itarget, 0, GL_R32F, width, height, 0, GL_RED, GL_FLOAT, data);
                     break;
-                case NEKO_RENDER_TEXTURE_FORMAT_RGBA16F:
+                case R_TEXTURE_FORMAT_RGBA16F:
                     glTexImage2D(itarget, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, data);
                     break;
-                case NEKO_RENDER_TEXTURE_FORMAT_RGBA32F:
+                case R_TEXTURE_FORMAT_RGBA32F:
                     glTexImage2D(itarget, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, data);
                     break;
-                case NEKO_RENDER_TEXTURE_FORMAT_DEPTH8:
+                case R_TEXTURE_FORMAT_DEPTH8:
                     glTexImage2D(itarget, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data);
                     break;
-                case NEKO_RENDER_TEXTURE_FORMAT_DEPTH16:
+                case R_TEXTURE_FORMAT_DEPTH16:
                     glTexImage2D(itarget, 0, GL_DEPTH_COMPONENT16, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data);
                     break;
-                case NEKO_RENDER_TEXTURE_FORMAT_DEPTH24:
+                case R_TEXTURE_FORMAT_DEPTH24:
                     glTexImage2D(itarget, 0, GL_DEPTH_COMPONENT24, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data);
                     break;
-                case NEKO_RENDER_TEXTURE_FORMAT_DEPTH32F:
+                case R_TEXTURE_FORMAT_DEPTH32F:
                     glTexImage2D(itarget, 0, GL_DEPTH_COMPONENT32F, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data);
                     break;
-                case NEKO_RENDER_TEXTURE_FORMAT_DEPTH24_STENCIL8:
+                case R_TEXTURE_FORMAT_DEPTH24_STENCIL8:
                     glTexImage2D(itarget, 0, GL_DEPTH24_STENCIL8, width, height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, data);
                     break;
-                case NEKO_RENDER_TEXTURE_FORMAT_DEPTH32F_STENCIL8:
+                case R_TEXTURE_FORMAT_DEPTH32F_STENCIL8:
                     glTexImage2D(itarget, 0, GL_DEPTH32F_STENCIL8, width, height, 0, GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV, data);
                     break;
 
                 // NOTE: 因为 Apple 是一家垃圾公司 所以必须将其分开并仅提供对 4.1 功能的支持。
-                // case NEKO_RENDER_TEXTURE_FORMAT_STENCIL8:            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT8, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
+                // case R_TEXTURE_FORMAT_STENCIL8:            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT8, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
                 default:
                     break;
             }
         } else {
             // Subimage
             switch (desc->format) {
-                case NEKO_RENDER_TEXTURE_FORMAT_A8:
+                case R_TEXTURE_FORMAT_A8:
                     glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_ALPHA, GL_UNSIGNED_BYTE, data);
                     break;
-                case NEKO_RENDER_TEXTURE_FORMAT_R8:
+                case R_TEXTURE_FORMAT_R8:
                     glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RED, GL_UNSIGNED_BYTE, data);
                     break;
-                case NEKO_RENDER_TEXTURE_FORMAT_R32:
+                case R_TEXTURE_FORMAT_R32:
                     glTexImage2D(itarget, 0, GL_R32UI, width, height, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, data);
                     break;
-                case NEKO_RENDER_TEXTURE_FORMAT_RG8:
+                case R_TEXTURE_FORMAT_RG8:
                     glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RG, GL_UNSIGNED_BYTE, data);
                     break;
-                case NEKO_RENDER_TEXTURE_FORMAT_RGB8:
+                case R_TEXTURE_FORMAT_RGB8:
                     glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RGB, GL_UNSIGNED_BYTE, data);
                     break;
-                case NEKO_RENDER_TEXTURE_FORMAT_RGBA8:
+                case R_TEXTURE_FORMAT_RGBA8:
                     glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, data);
                     break;
-                case NEKO_RENDER_TEXTURE_FORMAT_R32F:
+                case R_TEXTURE_FORMAT_R32F:
                     glTexImage2D(itarget, 0, GL_R32F, width, height, 0, GL_RED, GL_FLOAT, data);
                     break;
-                case NEKO_RENDER_TEXTURE_FORMAT_RGBA16F:
+                case R_TEXTURE_FORMAT_RGBA16F:
                     glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RGBA, GL_FLOAT, data);
                     break;
-                case NEKO_RENDER_TEXTURE_FORMAT_RGBA32F:
+                case R_TEXTURE_FORMAT_RGBA32F:
                     glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RGBA, GL_FLOAT, data);
                     break;
-                case NEKO_RENDER_TEXTURE_FORMAT_DEPTH8:
+                case R_TEXTURE_FORMAT_DEPTH8:
                     glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, data);
                     break;
-                case NEKO_RENDER_TEXTURE_FORMAT_DEPTH16:
+                case R_TEXTURE_FORMAT_DEPTH16:
                     glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, data);
                     break;
-                case NEKO_RENDER_TEXTURE_FORMAT_DEPTH24:
+                case R_TEXTURE_FORMAT_DEPTH24:
                     glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, data);
                     break;
-                case NEKO_RENDER_TEXTURE_FORMAT_DEPTH32F:
+                case R_TEXTURE_FORMAT_DEPTH32F:
                     glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, data);
                     break;
-                case NEKO_RENDER_TEXTURE_FORMAT_DEPTH24_STENCIL8:
+                case R_TEXTURE_FORMAT_DEPTH24_STENCIL8:
                     glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, data);
                     break;
-                case NEKO_RENDER_TEXTURE_FORMAT_DEPTH32F_STENCIL8:
+                case R_TEXTURE_FORMAT_DEPTH32F_STENCIL8:
                     glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV, data);
                     break;
 
                 // NOTE: Because Apple is a shit company, I have to section this off and provide support for 4.1 only features.
-                // case NEKO_RENDER_TEXTURE_FORMAT_STENCIL8:            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT8, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
+                // case R_TEXTURE_FORMAT_STENCIL8:            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT8, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
                 default:
                     break;
             }
         }
     }
 
-    s32 mag_filter = desc->mag_filter == NEKO_RENDER_TEXTURE_FILTER_NEAREST ? GL_NEAREST : GL_LINEAR;
-    s32 min_filter = desc->min_filter == NEKO_RENDER_TEXTURE_FILTER_NEAREST ? GL_NEAREST : GL_LINEAR;
+    s32 mag_filter = desc->mag_filter == R_TEXTURE_FILTER_NEAREST ? GL_NEAREST : GL_LINEAR;
+    s32 min_filter = desc->min_filter == R_TEXTURE_FILTER_NEAREST ? GL_NEAREST : GL_LINEAR;
 
     if (desc->num_mips) {
-        if (desc->min_filter == NEKO_RENDER_TEXTURE_FILTER_NEAREST) {
-            min_filter = desc->mip_filter == NEKO_RENDER_TEXTURE_FILTER_NEAREST ? GL_NEAREST_MIPMAP_NEAREST : GL_NEAREST_MIPMAP_LINEAR;
+        if (desc->min_filter == R_TEXTURE_FILTER_NEAREST) {
+            min_filter = desc->mip_filter == R_TEXTURE_FILTER_NEAREST ? GL_NEAREST_MIPMAP_NEAREST : GL_NEAREST_MIPMAP_LINEAR;
         } else {
-            min_filter = desc->mip_filter == NEKO_RENDER_TEXTURE_FILTER_NEAREST ? GL_LINEAR_MIPMAP_NEAREST : GL_NEAREST_MIPMAP_LINEAR;
+            min_filter = desc->mip_filter == R_TEXTURE_FILTER_NEAREST ? GL_LINEAR_MIPMAP_NEAREST : GL_NEAREST_MIPMAP_LINEAR;
         }
     }
 
@@ -1876,8 +1876,8 @@ NEKO_API_DECL neko_handle(neko_render_vertex_buffer_t) neko_render_vertex_buffer
     neko_gl_buffer_t buffer = 0;
 
     // Assert if data isn't filled for vertex data when static draw enabled
-    if (desc.usage == NEKO_RENDER_BUFFER_USAGE_STATIC && !desc.data) {
-        neko_println("Error: Vertex buffer desc must contain data when NEKO_RENDER_BUFFER_USAGE_STATIC set.");
+    if (desc.usage == R_BUFFER_USAGE_STATIC && !desc.data) {
+        neko_println("Error: Vertex buffer desc must contain data when R_BUFFER_USAGE_STATIC set.");
         NEKO_ASSERT(false);
     }
 
@@ -1896,8 +1896,8 @@ NEKO_API_DECL neko_handle(neko_render_index_buffer_t) neko_render_index_buffer_c
     neko_gl_buffer_t buffer = 0;
 
     // Assert if data isn't filled for vertex data when static draw enabled
-    if (desc.usage == NEKO_RENDER_BUFFER_USAGE_STATIC && !desc.data) {
-        neko_println("Error: Index buffer desc must contain data when NEKO_RENDER_BUFFER_USAGE_STATIC set.");
+    if (desc.usage == R_BUFFER_USAGE_STATIC && !desc.data) {
+        neko_println("Error: Index buffer desc must contain data when R_BUFFER_USAGE_STATIC set.");
         NEKO_ASSERT(false);
     }
 
@@ -1944,8 +1944,8 @@ NEKO_API_DECL neko_handle(neko_render_storage_buffer_t) neko_render_storage_buff
         neko_log_warning("Storage buffer must be named for Opengl.");
     }
 
-    if (desc.usage == NEKO_RENDER_BUFFER_USAGE_STATIC && !desc.data) {
-        neko_println("Error: Storage buffer desc must contain data when NEKO_RENDER_BUFFER_USAGE_STATIC set.");
+    if (desc.usage == R_BUFFER_USAGE_STATIC && !desc.data) {
+        neko_println("Error: Storage buffer desc must contain data when R_BUFFER_USAGE_STATIC set.");
         NEKO_ASSERT(false);
     }
 
@@ -1990,8 +1990,8 @@ NEKO_API_DECL neko_handle(neko_render_shader_t) neko_render_shader_create_impl(c
 
     u32 ct = (u32)desc.size / (u32)sizeof(neko_render_shader_source_desc_t);
     for (u32 i = 0; i < ct; ++i) {
-        if (desc.sources[i].type == NEKO_RENDER_SHADER_STAGE_VERTEX) pip |= NEKO_GL_GRAPHICS_SHADER_PIPELINE_GFX;
-        if (desc.sources[i].type == NEKO_RENDER_SHADER_STAGE_COMPUTE) pip |= NEKO_GL_GRAPHICS_SHADER_PIPELINE_COMPUTE;
+        if (desc.sources[i].type == R_SHADER_STAGE_VERTEX) pip |= NEKO_GL_GRAPHICS_SHADER_PIPELINE_GFX;
+        if (desc.sources[i].type == R_SHADER_STAGE_COMPUTE) pip |= NEKO_GL_GRAPHICS_SHADER_PIPELINE_COMPUTE;
 
         // Validity Check: Desc must have vertex source if compute not selected. All other source is optional.
         if ((pip & NEKO_GL_GRAPHICS_SHADER_PIPELINE_COMPUTE) && ((pip & NEKO_GL_GRAPHICS_SHADER_PIPELINE_GFX))) {
@@ -2325,7 +2325,7 @@ NEKO_API_DECL void neko_render_vertex_buffer_update_impl(neko_handle(neko_render
         // Write data
         neko_byte_buffer_write_bulk(&cb->commands, data, sz);
     }
-    __neko_render_update_buffer_internal(cb, hndl.id, NEKO_RENDER_BUFFER_VERTEX, desc.usage, desc.size, desc.update.offset, desc.update.type, desc.data);
+    __neko_render_update_buffer_internal(cb, hndl.id, R_BUFFER_VERTEX, desc.usage, desc.size, desc.update.offset, desc.update.type, desc.data);
     */
 
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(render)->user_data;
@@ -2333,7 +2333,7 @@ NEKO_API_DECL void neko_render_vertex_buffer_update_impl(neko_handle(neko_render
     glBindBuffer(GL_ARRAY_BUFFER, buffer);
     s32 glusage = neko_gl_buffer_usage_to_gl_enum(desc->usage);
     switch (desc->update.type) {
-        case NEKO_RENDER_BUFFER_UPDATE_SUBDATA:
+        case R_BUFFER_UPDATE_SUBDATA:
             glBufferSubData(GL_ARRAY_BUFFER, desc->update.offset, desc->size, desc->data);
             break;
         default:
@@ -2349,7 +2349,7 @@ NEKO_API_DECL void neko_render_index_buffer_update_impl(neko_handle(neko_render_
     s32 glusage = neko_gl_buffer_usage_to_gl_enum(desc->usage);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer);
     switch (desc->update.type) {
-        case NEKO_RENDER_BUFFER_UPDATE_SUBDATA:
+        case R_BUFFER_UPDATE_SUBDATA:
             glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, desc->update.offset, desc->size, desc->data);
             break;
         default:
@@ -2368,7 +2368,7 @@ NEKO_API_DECL void neko_render_storage_buffer_update_impl(neko_handle(neko_rende
     }
 
     CHECK_GL_CORE(glBindBuffer(GL_SHADER_STORAGE_BUFFER, sbo->buffer); switch (desc->update.type) {
-        case NEKO_RENDER_BUFFER_UPDATE_SUBDATA:
+        case R_BUFFER_UPDATE_SUBDATA:
             glBufferSubData(GL_SHADER_STORAGE_BUFFER, desc->update.offset, desc->size, desc->data);
             break;
         default:
@@ -2389,10 +2389,10 @@ NEKO_API_DECL void neko_render_texture_read_impl(neko_handle(neko_render_texture
     GLenum target = 0x00;
     switch (tex->desc.type) {
         default:
-        case NEKO_RENDER_TEXTURE_2D: {
+        case R_TEXTURE_2D: {
             target = GL_TEXTURE_2D;
         } break;
-        case NEKO_RENDER_TEXTURE_CUBEMAP: {
+        case R_TEXTURE_CUBEMAP: {
             target = GL_TEXTURE_CUBE_MAP;
         } break;
     }
@@ -2469,61 +2469,61 @@ NEKO_API_DECL void neko_render_texture_request_update(neko_command_buffer_t* cb,
     size_t total_size = 0;
     switch (desc->format) {
         default:
-        case NEKO_RENDER_TEXTURE_FORMAT_RGBA8:
+        case R_TEXTURE_FORMAT_RGBA8:
             num_comps = 4;
             data_type_size = sizeof(uint8_t);
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_RGB8:
+        case R_TEXTURE_FORMAT_RGB8:
             num_comps = 3;
             data_type_size = sizeof(uint8_t);
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_A8:
+        case R_TEXTURE_FORMAT_A8:
             num_comps = 1;
             data_type_size = sizeof(uint8_t);
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_R8:
+        case R_TEXTURE_FORMAT_R8:
             num_comps = 1;
             data_type_size = sizeof(uint8_t);
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_R32:
+        case R_TEXTURE_FORMAT_R32:
             num_comps = 1;
             data_type_size = sizeof(u32);
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_RGBA16F:
+        case R_TEXTURE_FORMAT_RGBA16F:
             num_comps = 4;
             data_type_size = sizeof(float);
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_RGBA32F:
+        case R_TEXTURE_FORMAT_RGBA32F:
             num_comps = 4;
             data_type_size = sizeof(float);
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_DEPTH8:
+        case R_TEXTURE_FORMAT_DEPTH8:
             num_comps = 1;
             data_type_size = sizeof(float);
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_DEPTH16:
+        case R_TEXTURE_FORMAT_DEPTH16:
             num_comps = 1;
             data_type_size = sizeof(float);
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_DEPTH24:
+        case R_TEXTURE_FORMAT_DEPTH24:
             num_comps = 1;
             data_type_size = sizeof(float);
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_DEPTH32F:
+        case R_TEXTURE_FORMAT_DEPTH32F:
             num_comps = 1;
             data_type_size = sizeof(float);
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_DEPTH24_STENCIL8:
+        case R_TEXTURE_FORMAT_DEPTH24_STENCIL8:
             num_comps = 1;
             data_type_size = sizeof(u32);
             break;
-        case NEKO_RENDER_TEXTURE_FORMAT_DEPTH32F_STENCIL8:
+        case R_TEXTURE_FORMAT_DEPTH32F_STENCIL8:
             num_comps = 1;
             data_type_size = sizeof(float) + sizeof(uint8_t);
             break;
 
             // NOTE: Because Apple is a shit company, I have to section this off and provide support for 4.1 only features.
-            // case NEKO_RENDER_TEXTURE_FORMAT_STENCIL8:            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT8, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
+            // case R_TEXTURE_FORMAT_STENCIL8:            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT8, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
     }
     total_size = desc->width * desc->height * num_comps * data_type_size;
     neko_byte_buffer_write(&cb->commands, u32, hndl.id);
@@ -2560,7 +2560,7 @@ NEKO_API_DECL void neko_render_vertex_buffer_request_update(neko_command_buffer_
     // Return if handle not valid
     if (!hndl.id) return;
 
-    __neko_render_update_buffer_internal(cb, hndl.id, NEKO_RENDER_BUFFER_VERTEX, desc->usage, desc->size, desc->update.offset, desc->update.type, desc->data);
+    __neko_render_update_buffer_internal(cb, hndl.id, R_BUFFER_VERTEX, desc->usage, desc->size, desc->update.offset, desc->update.type, desc->data);
 }
 
 NEKO_API_DECL void neko_render_index_buffer_request_update(neko_command_buffer_t* cb, neko_handle(neko_render_index_buffer_t) hndl, neko_render_index_buffer_desc_t* desc) {
@@ -2569,7 +2569,7 @@ NEKO_API_DECL void neko_render_index_buffer_request_update(neko_command_buffer_t
     // Return if handle not valid
     if (!hndl.id) return;
 
-    __neko_render_update_buffer_internal(cb, hndl.id, NEKO_RENDER_BUFFER_INDEX, desc->usage, desc->size, desc->update.offset, desc->update.type, desc->data);
+    __neko_render_update_buffer_internal(cb, hndl.id, R_BUFFER_INDEX, desc->usage, desc->size, desc->update.offset, desc->update.type, desc->data);
 }
 
 NEKO_API_DECL void neko_render_uniform_buffer_request_update(neko_command_buffer_t* cb, neko_handle(neko_render_uniform_buffer_t) hndl, neko_render_uniform_buffer_desc_t* desc) {
@@ -2578,7 +2578,7 @@ NEKO_API_DECL void neko_render_uniform_buffer_request_update(neko_command_buffer
     // Return if handle not valid
     if (!hndl.id) return;
 
-    __neko_render_update_buffer_internal(cb, hndl.id, NEKO_RENDER_BUFFER_UNIFORM, desc->usage, desc->size, desc->update.offset, desc->update.type, desc->data);
+    __neko_render_update_buffer_internal(cb, hndl.id, R_BUFFER_UNIFORM, desc->usage, desc->size, desc->update.offset, desc->update.type, desc->data);
 }
 
 NEKO_API_DECL void neko_render_storage_buffer_request_update(neko_command_buffer_t* cb, neko_handle(neko_render_storage_buffer_t) hndl, neko_render_storage_buffer_desc_t* desc) {
@@ -2587,7 +2587,7 @@ NEKO_API_DECL void neko_render_storage_buffer_request_update(neko_command_buffer
     // Return if handle not valid
     if (!hndl.id) return;
 
-    __neko_render_update_buffer_internal(cb, hndl.id, NEKO_RENDER_BUFFER_SHADER_STORAGE, desc->usage, desc->size, desc->update.offset, desc->update.type, desc->data);
+    __neko_render_update_buffer_internal(cb, hndl.id, R_BUFFER_SHADER_STORAGE, desc->usage, desc->size, desc->update.offset, desc->update.type, desc->data);
 }
 
 void neko_render_apply_bindings(neko_command_buffer_t* cb, neko_render_bind_desc_t* binds) {
@@ -2617,7 +2617,7 @@ void neko_render_apply_bindings(neko_command_buffer_t* cb, neko_render_bind_desc
         // Vertex buffers
         for (u32 i = 0; i < vct; ++i) {
             neko_render_bind_vertex_buffer_desc_t* decl = &binds->vertex_buffers.desc[i];
-            neko_byte_buffer_write(&cb->commands, neko_render_bind_type, NEKO_RENDER_BIND_VERTEX_BUFFER);
+            neko_byte_buffer_write(&cb->commands, neko_render_bind_type, R_BIND_VERTEX_BUFFER);
             neko_byte_buffer_write(&cb->commands, u32, decl->buffer.id);
             neko_byte_buffer_write(&cb->commands, size_t, decl->offset);
             neko_byte_buffer_write(&cb->commands, neko_render_vertex_data_type, decl->data_type);
@@ -2626,7 +2626,7 @@ void neko_render_apply_bindings(neko_command_buffer_t* cb, neko_render_bind_desc
         // Index buffers
         for (u32 i = 0; i < ict; ++i) {
             neko_render_bind_index_buffer_desc_t* decl = &binds->index_buffers.desc[i];
-            neko_byte_buffer_write(&cb->commands, neko_render_bind_type, NEKO_RENDER_BIND_INDEX_BUFFER);
+            neko_byte_buffer_write(&cb->commands, neko_render_bind_type, R_BIND_INDEX_BUFFER);
             neko_byte_buffer_write(&cb->commands, u32, decl->buffer.id);
         }
 
@@ -2636,7 +2636,7 @@ void neko_render_apply_bindings(neko_command_buffer_t* cb, neko_render_bind_desc
 
             u32 id = decl->buffer.id;
             size_t sz = (size_t)(neko_slot_array_getp(ogl->uniform_buffers, id))->size;
-            neko_byte_buffer_write(&cb->commands, neko_render_bind_type, NEKO_RENDER_BIND_UNIFORM_BUFFER);
+            neko_byte_buffer_write(&cb->commands, neko_render_bind_type, R_BIND_UNIFORM_BUFFER);
             neko_byte_buffer_write(&cb->commands, u32, decl->buffer.id);
             neko_byte_buffer_write(&cb->commands, u32, decl->binding);
             neko_byte_buffer_write(&cb->commands, size_t, decl->range.offset);
@@ -2646,7 +2646,7 @@ void neko_render_apply_bindings(neko_command_buffer_t* cb, neko_render_bind_desc
         // Image buffers
         for (u32 i = 0; i < ibc; ++i) {
             neko_render_bind_image_buffer_desc_t* decl = &binds->image_buffers.desc[i];
-            neko_byte_buffer_write(&cb->commands, neko_render_bind_type, NEKO_RENDER_BIND_IMAGE_BUFFER);
+            neko_byte_buffer_write(&cb->commands, neko_render_bind_type, R_BIND_IMAGE_BUFFER);
             neko_byte_buffer_write(&cb->commands, u32, decl->tex.id);
             neko_byte_buffer_write(&cb->commands, u32, decl->binding);
             neko_byte_buffer_write(&cb->commands, neko_render_access_type, decl->access);
@@ -2658,7 +2658,7 @@ void neko_render_apply_bindings(neko_command_buffer_t* cb, neko_render_bind_desc
 
             // Get size from uniform list
             size_t sz = neko_slot_array_getp(ogl->uniforms, decl->uniform.id)->size;
-            neko_byte_buffer_write(&cb->commands, neko_render_bind_type, NEKO_RENDER_BIND_UNIFORM);
+            neko_byte_buffer_write(&cb->commands, neko_render_bind_type, R_BIND_UNIFORM);
             neko_byte_buffer_write(&cb->commands, u32, decl->uniform.id);
             neko_byte_buffer_write(&cb->commands, size_t, sz);
             neko_byte_buffer_write(&cb->commands, u32, decl->binding);
@@ -2668,7 +2668,7 @@ void neko_render_apply_bindings(neko_command_buffer_t* cb, neko_render_bind_desc
         // Storage buffers
         CHECK_GL_CORE(for (u32 i = 0; i < sbc; ++i) {
             neko_render_bind_storage_buffer_desc_t* decl = &binds->storage_buffers.desc[i];
-            neko_byte_buffer_write(&cb->commands, neko_render_bind_type, NEKO_RENDER_BIND_STORAGE_BUFFER);
+            neko_byte_buffer_write(&cb->commands, neko_render_bind_type, R_BIND_STORAGE_BUFFER);
             neko_byte_buffer_write(&cb->commands, u32, decl->buffer.id);
             neko_byte_buffer_write(&cb->commands, u32, decl->binding);
         });
@@ -2783,20 +2783,20 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
                     neko_byte_buffer_readc(&cb->commands, neko_render_clear_action_t, action);
 
                     // No clear
-                    if (action.flag & NEKO_RENDER_CLEAR_NONE) {
+                    if (action.flag & R_CLEAR_NONE) {
                         continue;
                     }
 
                     u32 bit = 0x00;
 
-                    if (action.flag & NEKO_RENDER_CLEAR_COLOR || action.flag == 0x00) {
+                    if (action.flag & R_CLEAR_COLOR || action.flag == 0x00) {
                         glClearColor(action.color[0], action.color[1], action.color[2], action.color[3]);
                         bit |= GL_COLOR_BUFFER_BIT;
                     }
-                    if (action.flag & NEKO_RENDER_CLEAR_DEPTH || action.flag == 0x00) {
+                    if (action.flag & R_CLEAR_DEPTH || action.flag == 0x00) {
                         bit |= GL_DEPTH_BUFFER_BIT;
                     }
-                    if (action.flag & NEKO_RENDER_CLEAR_STENCIL || action.flag == 0x00) {
+                    if (action.flag & R_CLEAR_STENCIL || action.flag == 0x00) {
                         bit |= GL_STENCIL_BUFFER_BIT;
                         glStencilMask(~0);
                     }
@@ -2839,7 +2839,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
                 for (u32 i = 0; i < ct; ++i) {
                     neko_byte_buffer_readc(&cb->commands, neko_render_bind_type, type);
                     switch (type) {
-                        case NEKO_RENDER_BIND_VERTEX_BUFFER: {
+                        case R_BIND_VERTEX_BUFFER: {
                             neko_byte_buffer_readc(&cb->commands, u32, id);
                             neko_byte_buffer_readc(&cb->commands, size_t, offset);
                             neko_byte_buffer_readc(&cb->commands, neko_render_vertex_data_type, data_type);
@@ -2865,7 +2865,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
 
                         } break;
 
-                        case NEKO_RENDER_BIND_INDEX_BUFFER: {
+                        case R_BIND_INDEX_BUFFER: {
                             neko_byte_buffer_readc(&cb->commands, u32, id);
 
                             if (!neko_slot_array_exists(ogl->index_buffers, id)) {
@@ -2882,7 +2882,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
                             }
                         } break;
 
-                        case NEKO_RENDER_BIND_UNIFORM: {
+                        case R_BIND_UNIFORM: {
                             // Get size from uniform list
                             neko_byte_buffer_readc(&cb->commands, u32, id);
                             // Read data size for uniform list
@@ -3042,10 +3042,10 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
                                             GLenum target = 0x00;
                                             switch (tex->desc.type) {
                                                 default:
-                                                case NEKO_RENDER_TEXTURE_2D: {
+                                                case R_TEXTURE_2D: {
                                                     target = GL_TEXTURE_2D;
                                                 } break;
-                                                case NEKO_RENDER_TEXTURE_CUBEMAP: {
+                                                case R_TEXTURE_CUBEMAP: {
                                                     target = GL_TEXTURE_CUBE_MAP;
                                                 } break;
                                             }
@@ -3070,7 +3070,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
 
                         } break;
 
-                        case NEKO_RENDER_BIND_UNIFORM_BUFFER: {
+                        case R_BIND_UNIFORM_BUFFER: {
                             // Read slot id of uniform buffer
                             neko_byte_buffer_readc(&cb->commands, u32, id);
                             // Read binding
@@ -3129,7 +3129,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
 
                         } break;
 
-                        case NEKO_RENDER_BIND_STORAGE_BUFFER: {
+                        case R_BIND_STORAGE_BUFFER: {
                             neko_byte_buffer_readc(&cb->commands, u32, sb_slot_id);
                             neko_byte_buffer_readc(&cb->commands, u32, binding);
 
@@ -3198,7 +3198,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
 
                         } break;
 
-                        case NEKO_RENDER_BIND_IMAGE_BUFFER: {
+                        case R_BIND_IMAGE_BUFFER: {
                             neko_byte_buffer_readc(&cb->commands, u32, tex_slot_id);
                             neko_byte_buffer_readc(&cb->commands, u32, binding);
                             neko_byte_buffer_readc(&cb->commands, neko_render_access_type, access);
@@ -3374,7 +3374,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
                     neko_gl_buffer_t vbo = vdecl.vbo;
 
                     // Manual override. If you manually set divisor/stride/offset, then will not automatically calculate any of those.
-                    bool is_manual = pip->layout[i].stride | pip->layout[i].divisor | pip->layout[i].offset | vdecl.data_type == NEKO_RENDER_VERTEX_DATA_NONINTERLEAVED;
+                    bool is_manual = pip->layout[i].stride | pip->layout[i].divisor | pip->layout[i].offset | vdecl.data_type == R_VERTEX_DATA_NONINTERLEAVED;
 
                     // Bind buffer
                     glBindBuffer(GL_ARRAY_BUFFER, vbo);
@@ -3383,7 +3383,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
                     size_t stride = is_manual ? pip->layout[i].stride : neko_gl_calculate_vertex_size_in_bytes(pip->layout, neko_dyn_array_size(pip->layout));
 
                     // Byte offset of vertex attribute (if non-interleaved data, then grab offset from decl instead)
-                    size_t offset = vdecl.data_type == NEKO_RENDER_VERTEX_DATA_NONINTERLEAVED ? vdecl.offset : is_manual ? pip->layout[i].offset : neko_gl_get_vertex_attr_byte_offest(pip->layout, i);
+                    size_t offset = vdecl.data_type == R_VERTEX_DATA_NONINTERLEAVED ? vdecl.offset : is_manual ? pip->layout[i].offset : neko_gl_get_vertex_attr_byte_offest(pip->layout, i);
 
                     // If there is a vertex divisor for this layout, then we'll draw instanced
                     is_instanced |= (pip->layout[i].divisor != 0);
@@ -3392,40 +3392,40 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
                     glEnableVertexAttribArray(i);
 
                     switch (pip->layout[i].format) {
-                        case NEKO_RENDER_VERTEX_ATTRIBUTE_FLOAT4:
+                        case R_VERTEX_ATTRIBUTE_FLOAT4:
                             glVertexAttribPointer(i, 4, GL_FLOAT, GL_FALSE, stride, NEKO_INT2VOIDP(offset));
                             break;
-                        case NEKO_RENDER_VERTEX_ATTRIBUTE_FLOAT3:
+                        case R_VERTEX_ATTRIBUTE_FLOAT3:
                             glVertexAttribPointer(i, 3, GL_FLOAT, GL_FALSE, stride, NEKO_INT2VOIDP(offset));
                             break;
-                        case NEKO_RENDER_VERTEX_ATTRIBUTE_FLOAT2:
+                        case R_VERTEX_ATTRIBUTE_FLOAT2:
                             glVertexAttribPointer(i, 2, GL_FLOAT, GL_FALSE, stride, NEKO_INT2VOIDP(offset));
                             break;
-                        case NEKO_RENDER_VERTEX_ATTRIBUTE_FLOAT:
+                        case R_VERTEX_ATTRIBUTE_FLOAT:
                             glVertexAttribPointer(i, 1, GL_FLOAT, GL_FALSE, stride, NEKO_INT2VOIDP(offset));
                             break;
-                        case NEKO_RENDER_VERTEX_ATTRIBUTE_UINT4:
+                        case R_VERTEX_ATTRIBUTE_UINT4:
                             glVertexAttribIPointer(i, 4, GL_UNSIGNED_INT, stride, NEKO_INT2VOIDP(offset));
                             break;
-                        case NEKO_RENDER_VERTEX_ATTRIBUTE_UINT3:
+                        case R_VERTEX_ATTRIBUTE_UINT3:
                             glVertexAttribIPointer(i, 3, GL_UNSIGNED_INT, stride, NEKO_INT2VOIDP(offset));
                             break;
-                        case NEKO_RENDER_VERTEX_ATTRIBUTE_UINT2:
+                        case R_VERTEX_ATTRIBUTE_UINT2:
                             glVertexAttribIPointer(i, 2, GL_UNSIGNED_INT, stride, NEKO_INT2VOIDP(offset));
                             break;
-                        case NEKO_RENDER_VERTEX_ATTRIBUTE_UINT:
+                        case R_VERTEX_ATTRIBUTE_UINT:
                             glVertexAttribIPointer(i, 1, GL_UNSIGNED_INT, stride, NEKO_INT2VOIDP(offset));
                             break;
-                        case NEKO_RENDER_VERTEX_ATTRIBUTE_BYTE:
+                        case R_VERTEX_ATTRIBUTE_BYTE:
                             glVertexAttribPointer(i, 1, GL_UNSIGNED_BYTE, GL_TRUE, stride, NEKO_INT2VOIDP(offset));
                             break;
-                        case NEKO_RENDER_VERTEX_ATTRIBUTE_BYTE2:
+                        case R_VERTEX_ATTRIBUTE_BYTE2:
                             glVertexAttribPointer(i, 2, GL_UNSIGNED_BYTE, GL_TRUE, stride, NEKO_INT2VOIDP(offset));
                             break;
-                        case NEKO_RENDER_VERTEX_ATTRIBUTE_BYTE3:
+                        case R_VERTEX_ATTRIBUTE_BYTE3:
                             glVertexAttribPointer(i, 3, GL_UNSIGNED_BYTE, GL_TRUE, stride, NEKO_INT2VOIDP(offset));
                             break;
-                        case NEKO_RENDER_VERTEX_ATTRIBUTE_BYTE4:
+                        case R_VERTEX_ATTRIBUTE_BYTE4:
                             glVertexAttribPointer(i, 4, GL_UNSIGNED_BYTE, GL_TRUE, stride, NEKO_INT2VOIDP(offset));
                             break;
 
@@ -3467,7 +3467,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
 
                 // Draw
                 if (ogl->cache.ibo) {
-#ifdef NEKO_RENDER_IMPL_OPENGL_CORE
+#ifdef R_IMPL_OPENGL_CORE
                     if (is_instanced)
                         glDrawElementsInstancedBaseVertex(prim, count, itype, NEKO_INT2VOIDP(start), instance_count, base_vertex);
                     else
@@ -3553,11 +3553,11 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
                 switch (type) {
                     // Vertex Buffer
                     default:
-                    case NEKO_RENDER_BUFFER_VERTEX: {
+                    case R_BUFFER_VERTEX: {
                         neko_gl_buffer_t buffer = neko_slot_array_get(ogl->vertex_buffers, id);
                         glBindBuffer(GL_ARRAY_BUFFER, buffer);
                         switch (update_type) {
-                            case NEKO_RENDER_BUFFER_UPDATE_SUBDATA:
+                            case R_BUFFER_UPDATE_SUBDATA:
                                 glBufferSubData(GL_ARRAY_BUFFER, offset, sz, (cb->commands.data + cb->commands.position));
                                 break;
                             default:
@@ -3567,11 +3567,11 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
                         glBindBuffer(GL_ARRAY_BUFFER, 0);
                     } break;
 
-                    case NEKO_RENDER_BUFFER_INDEX: {
+                    case R_BUFFER_INDEX: {
                         neko_gl_buffer_t buffer = neko_slot_array_get(ogl->index_buffers, id);
                         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer);
                         switch (update_type) {
-                            case NEKO_RENDER_BUFFER_UPDATE_SUBDATA:
+                            case R_BUFFER_UPDATE_SUBDATA:
                                 glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, offset, sz, (cb->commands.data + cb->commands.position));
                                 break;
                             default:
@@ -3581,14 +3581,14 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
                         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
                     } break;
 
-                    case NEKO_RENDER_BUFFER_UNIFORM: {
+                    case R_BUFFER_UNIFORM: {
                         // Have to
                         neko_gl_uniform_buffer_t* u = neko_slot_array_getp(ogl->uniform_buffers, id);
 
                         glBindBuffer(GL_UNIFORM_BUFFER, u->ubo);
 
                         switch (update_type) {
-                            case NEKO_RENDER_BUFFER_UPDATE_SUBDATA: {
+                            case R_BUFFER_UPDATE_SUBDATA: {
                                 glBufferSubData(GL_UNIFORM_BUFFER, offset, sz, (cb->commands.data + cb->commands.position));
                             } break;
                             default: {
@@ -3602,7 +3602,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
                         glBindBuffer(GL_UNIFORM_BUFFER, 0);
                     } break;
 
-                    case NEKO_RENDER_BUFFER_SHADER_STORAGE: {
+                    case R_BUFFER_SHADER_STORAGE: {
                         neko_render_storage_buffer_desc_t desc = {
                                 .data = cb->commands.data + cb->commands.position,
                                 .size = sz,
@@ -3748,7 +3748,7 @@ NEKO_API_DECL void neko_render_init(neko_render_t* render) {
     render->api.command_buffer_submit = neko_render_command_buffer_submit_impl;
 }
 
-#endif  // NEKO_RENDER_IMPL_OPENGL
+#endif  // R_IMPL_OPENGL
 
 // 资源构造函数
 NEKO_API_DECL neko_handle(neko_render_texture_t) neko_render_texture_create(const neko_render_texture_desc_t desc) { return neko_render()->api.texture_create(desc); }

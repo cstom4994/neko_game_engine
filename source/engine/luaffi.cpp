@@ -7890,7 +7890,7 @@ c_type from_lua_type(lua_State *L, int index) {
 
 void ffi_module_open(lua_State *L);
 
-extern "C" CFFI_LUA_EXPORT int luaopen_cffi(lua_State *L) {
+extern "C" CFFI_LUA_EXPORT int open_embed_cffi(lua_State *L) {
     ffi_module_open(L);
     return 1;
 }

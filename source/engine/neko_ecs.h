@@ -156,10 +156,7 @@ void ecs_attach(neko_ecs_t *registry, ecs_entity_t entity, ecs_entity_t componen
 void ecs_set(neko_ecs_t *registry, ecs_entity_t entity, ecs_entity_t component, const void *data);
 void ecs_step(neko_ecs_t *registry);
 void *ecs_view(ecs_view_t view, u32 row, u32 column);
-
-#ifndef NDEBUG
 void ecs_inspect(neko_ecs_t *registry);
-#endif
 
 #define ECS_COMPONENT(registry, T) ecs_component_w(registry, #T, sizeof(T));
 #define ECS_SYSTEM(registry, system, n, ...) ecs_system(registry, ecs_signature_new_n(n, __VA_ARGS__), system)

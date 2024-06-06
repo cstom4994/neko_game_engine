@@ -25,8 +25,8 @@ void neko_fontbatch_init(neko_fontbatch_t *font_batch, const neko_vec2_t fbs, co
 
     neko_render_batch_vertex_data_t font_vd;
     neko_render_batch_make_vertex_data(&font_vd, 1024 * 1024, GL_TRIANGLES, sizeof(neko_font_vert_t), GL_DYNAMIC_DRAW);
-    neko_render_batch_add_attribute(&font_vd, "in_pos", 2, NEKO_RENDER_BATCH_FLOAT, NEKO_OFFSET(neko_font_vert_t, x));
-    neko_render_batch_add_attribute(&font_vd, "in_uv", 2, NEKO_RENDER_BATCH_FLOAT, NEKO_OFFSET(neko_font_vert_t, u));
+    neko_render_batch_add_attribute(&font_vd, "in_pos", 2, R_BATCH_FLOAT, NEKO_OFFSET(neko_font_vert_t, x));
+    neko_render_batch_add_attribute(&font_vd, "in_uv", 2, R_BATCH_FLOAT, NEKO_OFFSET(neko_font_vert_t, u));
 
     neko_render_batch_make_renderable(&font_batch->font_renderable, &font_vd);
     neko_render_batch_load_shader(&font_batch->font_shader, font_vs, font_ps);

@@ -128,7 +128,7 @@ local function phy_debug_draw(world)
 
             neko.idraw_defaults()
 
-            neko.idraw_rectv(v1, v2, "NEKO_RENDER_PRIMITIVE_LINES")
+            neko.idraw_rectv(v1, v2, "R_PRIMITIVE_LINES")
 
         end
     end
@@ -163,24 +163,24 @@ local function draw_blocks()
         local v1 = to_vec2(block.x, block.y)
         local v2 = to_vec2(block.w, block.h)
 
-        neko.idraw_rectvd(v1, v2, to_vec2(0.0, 0.0), to_vec2(1.0, 1.0), "NEKO_RENDER_PRIMITIVE_TRIANGLES",
+        neko.idraw_rectvd(v1, v2, to_vec2(0.0, 0.0), to_vec2(1.0, 1.0), "R_PRIMITIVE_TRIANGLES",
             to_color(0, 255, 255, 255))
     end
 end
 
 local function phy_world_tiled_load(tiled_ud)
     print("phy_world_tiled_load()")
-    local object_groups = neko_tiled_get_objects(tiled_ud)
-    -- print(dump_func(ttttt))
-    for object_group_name, v in pairs(object_groups) do
-        if object_group_name == "collisions" then
-            for ii, vv in ipairs(v) do
-                print(("%s %d"):format(object_group_name, ii))
-                dump_func(vv)
-                phy_add_block(vv[1], vv[2], vv[3], vv[4], "tiled")
-            end
-        end
-    end
+    -- local object_groups = neko_tiled_get_objects(tiled_ud)
+    -- -- print(dump_func(ttttt))
+    -- for object_group_name, v in pairs(object_groups) do
+    --     if object_group_name == "collisions" then
+    --         for ii, vv in ipairs(v) do
+    --             print(("%s %d"):format(object_group_name, ii))
+    --             dump_func(vv)
+    --             phy_add_block(vv[1], vv[2], vv[3], vv[4], "tiled")
+    --         end
+    --     end
+    -- end
 end
 
 local function phy_world_tiled_unload(tiled_ud)
@@ -464,7 +464,7 @@ function tiledRenderSystem:process(e, dt)
 
         -- neko.idraw_texture(gd.rt)
         -- neko.idraw_rectvd(v2, to_vec2(64 * 16 * 2, 32 * 16 * 2), to_vec2(0.0, 1.0), to_vec2(1.0, 0.0),
-        --     "NEKO_RENDER_PRIMITIVE_TRIANGLES")
+        --     "R_PRIMITIVE_TRIANGLES")
 
         neko.idraw_defaults()
         neko.idraw_text(v2.x, v2.y - 10, ("tiled_map x:%f y:%f"):format(v2.x, v2.y))
@@ -503,12 +503,12 @@ function npcRenderSystem:process(e, dt)
         neko.idraw_rectv(render_ase, {
             x = obj.w * p.scale,
             y = obj.h * p.scale
-        }, "NEKO_RENDER_PRIMITIVE_LINES", to_color(0, 144, 144, 255))
+        }, "R_PRIMITIVE_LINES", to_color(0, 144, 144, 255))
 
         neko.idraw_rectv(v2, {
             x = 10,
             y = 10
-        }, "NEKO_RENDER_PRIMITIVE_LINES", to_color(0, 144, 144, 255))
+        }, "R_PRIMITIVE_LINES", to_color(0, 144, 144, 255))
     end
 end
 
@@ -539,12 +539,12 @@ function playerRenderSystem:process(e, dt)
         neko.idraw_rectv(render_ase, {
             x = obj.w * p.scale,
             y = obj.h * p.scale
-        }, "NEKO_RENDER_PRIMITIVE_LINES", to_color(255, 144, 144, 255))
+        }, "R_PRIMITIVE_LINES", to_color(255, 144, 144, 255))
 
         neko.idraw_rectv(v2, {
             x = 10,
             y = 10
-        }, "NEKO_RENDER_PRIMITIVE_LINES", to_color(255, 144, 144, 255))
+        }, "R_PRIMITIVE_LINES", to_color(255, 144, 144, 255))
     end
 end
 
@@ -630,16 +630,16 @@ M.sub_init = function()
 
     win_w, win_h = neko_window_size(neko_main_window())
 
-    gd.main_fbo = neko.graphics_framebuffer_create()
-    gd.main_rt = neko.graphics_texture_create(fbs_x, fbs_y, {
-        type = "NEKO_RENDER_TEXTURE_2D",
-        format = "NEKO_RENDER_TEXTURE_FORMAT_RGBA32F",
-        wrap_s = "NEKO_RENDER_TEXTURE_WRAP_REPEAT",
-        wrap_t = "NEKO_RENDER_TEXTURE_WRAP_REPEAT",
-        min_filter = "NEKO_RENDER_TEXTURE_FILTER_NEAREST",
-        mag_filter = "NEKO_RENDER_TEXTURE_FILTER_NEAREST"
+    gd.main_fbo = neko.render_framebuffer_create()
+    gd.main_rt = neko.render_texture_create(fbs_x, fbs_y, {
+        type = "R_TEXTURE_2D",
+        format = "R_TEXTURE_FORMAT_RGBA32F",
+        wrap_s = "R_TEXTURE_WRAP_REPEAT",
+        wrap_t = "R_TEXTURE_WRAP_REPEAT",
+        min_filter = "R_TEXTURE_FILTER_NEAREST",
+        mag_filter = "R_TEXTURE_FILTER_NEAREST"
     })
-    gd.main_rp = neko.graphics_renderpass_create(gd.main_fbo, gd.main_rt)
+    gd.main_rp = neko.render_renderpass_create(gd.main_fbo, gd.main_rt)
 
     local texture_list = {"gamedir/assets/textures/dragon_zombie.png", "gamedir/assets/textures/night_spirit.png"}
     gd.test_batch = neko.sprite_batch_create(32, texture_list, batch_vs, batch_ps)
@@ -820,9 +820,9 @@ M.sub_shutdown = function()
 
     neko.sprite_batch_end(gd.test_batch)
 
-    neko.graphics_renderpass_destroy(gd.main_rp)
-    neko.graphics_texture_destroy(gd.main_rt)
-    neko.graphics_framebuffer_destroy(gd.main_fbo)
+    neko.render_renderpass_destroy(gd.main_rp)
+    neko.render_texture_destroy(gd.main_rt)
+    neko.render_framebuffer_destroy(gd.main_fbo)
 end
 
 gd.tick = 0
@@ -927,17 +927,17 @@ M.sub_render = function()
 
     local t = neko_platform_elapsed_time()
 
-    neko.graphics_renderpass_begin(gd.main_rp)
-    neko.graphics_set_viewport(0.0, 0.0, fbs_x, fbs_y)
-    neko.graphics_clear(0.0, 0.0, 0.0, 0.0)
-    neko.graphics_renderpass_end()
+    neko.render_renderpass_begin(gd.main_rp)
+    neko.render_set_viewport(0.0, 0.0, fbs_x, fbs_y)
+    neko.render_clear(0.0, 0.0, 0.0, 0.0)
+    neko.render_renderpass_end()
 
     neko.idraw_defaults()
     -- neko.idraw_camera2d(fbs_x, fbs_y)
     neko.idraw_camera2d_ex(gd.cam.x, fbs_x + gd.cam.x, gd.cam.y, fbs_y + gd.cam.y)
 
     -- neko.idraw_defaults()
-    neko.idraw_rectv(to_vec2(0, 0), to_vec2(50, 50), "NEKO_RENDER_PRIMITIVE_LINES")
+    neko.idraw_rectv(to_vec2(0, 0), to_vec2(50, 50), "R_PRIMITIVE_LINES")
 
     -- for v2, t, obj in ecs_world:match("all", "vector2", "tiled_map", "gameobj") do
     -- end
@@ -956,7 +956,7 @@ M.sub_render = function()
     }, {
         x = 48 * 3.0,
         y = 48 * 3.0
-    }, "NEKO_RENDER_PRIMITIVE_LINES", to_color(255, 255, 144, 255))
+    }, "R_PRIMITIVE_LINES", to_color(255, 255, 144, 255))
 
     local cc_x = player_pos.x - fbs_x / 2 + 24 * 3
     local cc_y = player_pos.y - fbs_y / 2 + 24 * 3
@@ -968,7 +968,7 @@ M.sub_render = function()
     -- neko.idraw_rectv(to_vec2(gd.mx + gd.cam.x, gd.my + gd.cam.y), {
     --     x = 10,
     --     y = 10
-    -- }, "NEKO_RENDER_PRIMITIVE_TRIANGLES", to_color(255, 0, 0, 255))
+    -- }, "R_PRIMITIVE_TRIANGLES", to_color(255, 0, 0, 255))
 
     -- for v2, t in ecs_world:match("all", "vector2", "fallingsand") do
     --     neko.fallingsand_update(SAFE_UD(t))
@@ -1020,21 +1020,21 @@ M.sub_render = function()
         draw_blocks()
     end
 
-    neko.graphics_renderpass_begin(gd.main_rp)
-    neko.graphics_set_viewport(0.0, 0.0, fbs_x, fbs_y)
+    neko.render_renderpass_begin(gd.main_rp)
+    neko.render_set_viewport(0.0, 0.0, fbs_x, fbs_y)
     neko.idraw_draw()
-    neko.graphics_renderpass_end()
+    neko.render_renderpass_end()
 
     neko.idraw_defaults()
     neko.idraw_camera2d(win_w, win_h)
     neko.idraw_texture(gd.main_rt)
     neko.idraw_rectvd(to_vec2(0.0, 0.0), to_vec2(win_w, win_h), to_vec2(0.0, 1.0), to_vec2(1.0, 0.0),
-        "NEKO_RENDER_PRIMITIVE_TRIANGLES", to_color(255, 255, 255, 255))
+        "R_PRIMITIVE_TRIANGLES", to_color(255, 255, 255, 255))
 
-    neko.graphics_renderpass_begin(0)
-    neko.graphics_set_viewport(0.0, 0.0, win_w, win_h)
+    neko.render_renderpass_begin(0)
+    neko.render_set_viewport(0.0, 0.0, win_w, win_h)
     neko.idraw_draw()
-    neko.graphics_renderpass_end()
+    neko.render_renderpass_end()
 
     neko.sprite_batch_render_ortho(gd.test_batch, fbs_x, fbs_y, 0, 0)
     neko.sprite_batch_render_begin(gd.test_batch)

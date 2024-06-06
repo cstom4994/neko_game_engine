@@ -3003,21 +3003,21 @@ static void neko_ui_docking(neko_ui_context_t* ctx) {
             bool is_dockspace = ctx->dockable_root->opt & NEKO_UI_OPT_DOCKSPACE;
 
             // Draw center rect
-            neko_idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w, center.h), neko_v2s(0.f), neko_v2s(1.f), hov_c ? hov_col : def_col, NEKO_RENDER_PRIMITIVE_TRIANGLES);
-            // neko_idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w + 1, center.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, NEKO_RENDER_PRIMITIVE_LINES);
+            neko_idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w, center.h), neko_v2s(0.f), neko_v2s(1.f), hov_c ? hov_col : def_col, R_PRIMITIVE_TRIANGLES);
+            // neko_idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w + 1, center.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, R_PRIMITIVE_LINES);
 
             if (!is_dockspace) {
-                neko_idraw_rectvd(dl, neko_v2(left.x, left.y), neko_v2(left.w, left.h), neko_v2s(0.f), neko_v2s(1.f), hov_l ? hov_col : def_col, NEKO_RENDER_PRIMITIVE_TRIANGLES);
-                // neko_idraw_rectvd(dl, neko_v2(left.x, left.y), neko_v2(left.w, left.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, NEKO_RENDER_PRIMITIVE_LINES);
+                neko_idraw_rectvd(dl, neko_v2(left.x, left.y), neko_v2(left.w, left.h), neko_v2s(0.f), neko_v2s(1.f), hov_l ? hov_col : def_col, R_PRIMITIVE_TRIANGLES);
+                // neko_idraw_rectvd(dl, neko_v2(left.x, left.y), neko_v2(left.w, left.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, R_PRIMITIVE_LINES);
 
-                neko_idraw_rectvd(dl, neko_v2(right.x, right.y), neko_v2(right.w, right.h), neko_v2s(0.f), neko_v2s(1.f), hov_r ? hov_col : def_col, NEKO_RENDER_PRIMITIVE_TRIANGLES);
-                // neko_idraw_rectvd(dl, neko_v2(right.x, right.y), neko_v2(right.w, right.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, NEKO_RENDER_PRIMITIVE_LINES);
+                neko_idraw_rectvd(dl, neko_v2(right.x, right.y), neko_v2(right.w, right.h), neko_v2s(0.f), neko_v2s(1.f), hov_r ? hov_col : def_col, R_PRIMITIVE_TRIANGLES);
+                // neko_idraw_rectvd(dl, neko_v2(right.x, right.y), neko_v2(right.w, right.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, R_PRIMITIVE_LINES);
 
-                neko_idraw_rectvd(dl, neko_v2(top.x, top.y), neko_v2(top.w, top.h), neko_v2s(0.f), neko_v2s(1.f), hov_t ? hov_col : def_col, NEKO_RENDER_PRIMITIVE_TRIANGLES);
-                // neko_idraw_rectvd(dl, neko_v2(top.x, top.y), neko_v2(top.w, top.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, NEKO_RENDER_PRIMITIVE_LINES);
+                neko_idraw_rectvd(dl, neko_v2(top.x, top.y), neko_v2(top.w, top.h), neko_v2s(0.f), neko_v2s(1.f), hov_t ? hov_col : def_col, R_PRIMITIVE_TRIANGLES);
+                // neko_idraw_rectvd(dl, neko_v2(top.x, top.y), neko_v2(top.w, top.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, R_PRIMITIVE_LINES);
 
-                neko_idraw_rectvd(dl, neko_v2(bottom.x, bottom.y), neko_v2(bottom.w, bottom.h), neko_v2s(0.f), neko_v2s(1.f), hov_b ? hov_col : def_col, NEKO_RENDER_PRIMITIVE_TRIANGLES);
-                // neko_idraw_rectvd(dl, neko_v2(bottom.x, bottom.y), neko_v2(bottom.w, bottom.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, NEKO_RENDER_PRIMITIVE_LINES);
+                neko_idraw_rectvd(dl, neko_v2(bottom.x, bottom.y), neko_v2(bottom.w, bottom.h), neko_v2s(0.f), neko_v2s(1.f), hov_b ? hov_col : def_col, R_PRIMITIVE_TRIANGLES);
+                // neko_idraw_rectvd(dl, neko_v2(bottom.x, bottom.y), neko_v2(bottom.w, bottom.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, R_PRIMITIVE_LINES);
             }
 
             const float d = 0.5f;
@@ -3026,30 +3026,30 @@ static void neko_ui_docking(neko_ui_context_t* ctx) {
             if (is_dockspace) {
                 if (hov_c) {
                     center = neko_ui_rect(cnt->rect.x, cnt->rect.y, cnt->rect.w, cnt->rect.h);
-                    neko_idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w, center.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, NEKO_RENDER_PRIMITIVE_LINES);
-                    neko_idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w, center.h), neko_v2s(0.f), neko_v2s(1.f), def_col, NEKO_RENDER_PRIMITIVE_TRIANGLES);
+                    neko_idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w, center.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, R_PRIMITIVE_LINES);
+                    neko_idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w, center.h), neko_v2s(0.f), neko_v2s(1.f), def_col, R_PRIMITIVE_TRIANGLES);
                 }
             } else {
                 if (hov_c && !ctx->focus_root->split) {
                     center = neko_ui_rect(cnt->rect.x, cnt->rect.y, cnt->rect.w, cnt->rect.h);
-                    neko_idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w, center.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, NEKO_RENDER_PRIMITIVE_LINES);
-                    neko_idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w, center.h), neko_v2s(0.f), neko_v2s(1.f), def_col, NEKO_RENDER_PRIMITIVE_TRIANGLES);
+                    neko_idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w, center.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, R_PRIMITIVE_LINES);
+                    neko_idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w, center.h), neko_v2s(0.f), neko_v2s(1.f), def_col, R_PRIMITIVE_TRIANGLES);
                 } else if (hov_l) {
                     left = neko_ui_rect(cnt->rect.x, cnt->rect.y, cnt->rect.w * d + hs, cnt->rect.h);
-                    neko_idraw_rectvd(dl, neko_v2(left.x, left.y), neko_v2(left.w, left.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, NEKO_RENDER_PRIMITIVE_LINES);
-                    neko_idraw_rectvd(dl, neko_v2(left.x, left.y), neko_v2(left.w, left.h), neko_v2s(0.f), neko_v2s(1.f), def_col, NEKO_RENDER_PRIMITIVE_TRIANGLES);
+                    neko_idraw_rectvd(dl, neko_v2(left.x, left.y), neko_v2(left.w, left.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, R_PRIMITIVE_LINES);
+                    neko_idraw_rectvd(dl, neko_v2(left.x, left.y), neko_v2(left.w, left.h), neko_v2s(0.f), neko_v2s(1.f), def_col, R_PRIMITIVE_TRIANGLES);
                 } else if (hov_r) {
                     right = neko_ui_rect(cnt->rect.x + cnt->rect.w * d + hs, cnt->rect.y, cnt->rect.w * (1.f - d) - hs, cnt->rect.h);
-                    neko_idraw_rectvd(dl, neko_v2(right.x, right.y), neko_v2(right.w, right.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, NEKO_RENDER_PRIMITIVE_LINES);
-                    neko_idraw_rectvd(dl, neko_v2(right.x, right.y), neko_v2(right.w, right.h), neko_v2s(0.f), neko_v2s(1.f), def_col, NEKO_RENDER_PRIMITIVE_TRIANGLES);
+                    neko_idraw_rectvd(dl, neko_v2(right.x, right.y), neko_v2(right.w, right.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, R_PRIMITIVE_LINES);
+                    neko_idraw_rectvd(dl, neko_v2(right.x, right.y), neko_v2(right.w, right.h), neko_v2s(0.f), neko_v2s(1.f), def_col, R_PRIMITIVE_TRIANGLES);
                 } else if (hov_b) {
                     bottom = neko_ui_rect(cnt->rect.x, cnt->rect.y + cnt->rect.h * d + hs, cnt->rect.w, cnt->rect.h * (1.f - d) - hs);
-                    neko_idraw_rectvd(dl, neko_v2(bottom.x, bottom.y), neko_v2(bottom.w, bottom.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, NEKO_RENDER_PRIMITIVE_LINES);
-                    neko_idraw_rectvd(dl, neko_v2(bottom.x, bottom.y), neko_v2(bottom.w, bottom.h), neko_v2s(0.f), neko_v2s(1.f), def_col, NEKO_RENDER_PRIMITIVE_TRIANGLES);
+                    neko_idraw_rectvd(dl, neko_v2(bottom.x, bottom.y), neko_v2(bottom.w, bottom.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, R_PRIMITIVE_LINES);
+                    neko_idraw_rectvd(dl, neko_v2(bottom.x, bottom.y), neko_v2(bottom.w, bottom.h), neko_v2s(0.f), neko_v2s(1.f), def_col, R_PRIMITIVE_TRIANGLES);
                 } else if (hov_t) {
                     top = neko_ui_rect(cnt->rect.x, cnt->rect.y, cnt->rect.w, cnt->rect.h * d + hs);
-                    neko_idraw_rectvd(dl, neko_v2(top.x, top.y), neko_v2(top.w, top.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, NEKO_RENDER_PRIMITIVE_LINES);
-                    neko_idraw_rectvd(dl, neko_v2(top.x, top.y), neko_v2(top.w, top.h), neko_v2s(0.f), neko_v2s(1.f), def_col, NEKO_RENDER_PRIMITIVE_TRIANGLES);
+                    neko_idraw_rectvd(dl, neko_v2(top.x, top.y), neko_v2(top.w, top.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, R_PRIMITIVE_LINES);
+                    neko_idraw_rectvd(dl, neko_v2(top.x, top.y), neko_v2(top.w, top.h), neko_v2s(0.f), neko_v2s(1.f), def_col, R_PRIMITIVE_TRIANGLES);
                 }
             }
         }
@@ -3474,20 +3474,20 @@ NEKO_API_DECL void neko_ui_render(neko_ui_context_t* ctx, neko_command_buffer_t*
                 switch (cmd->shape.type) {
                     case NEKO_UI_SHAPE_RECT: {
                         neko_ui_rect_t* r = &cmd->shape.rect;
-                        neko_idraw_rectvd(&ctx->gui_idraw, neko_v2(r->x, r->y), neko_v2(r->w, r->h), neko_v2s(0.f), neko_v2s(1.f), *c, NEKO_RENDER_PRIMITIVE_TRIANGLES);
+                        neko_idraw_rectvd(&ctx->gui_idraw, neko_v2(r->x, r->y), neko_v2(r->w, r->h), neko_v2s(0.f), neko_v2s(1.f), *c, R_PRIMITIVE_TRIANGLES);
                     } break;
 
                     case NEKO_UI_SHAPE_CIRCLE: {
                         neko_vec2* cp = &cmd->shape.circle.center;
                         float* r = &cmd->shape.circle.radius;
-                        neko_idraw_circle(&ctx->gui_idraw, cp->x, cp->y, *r, 16, c->r, c->g, c->b, c->a, NEKO_RENDER_PRIMITIVE_TRIANGLES);
+                        neko_idraw_circle(&ctx->gui_idraw, cp->x, cp->y, *r, 16, c->r, c->g, c->b, c->a, R_PRIMITIVE_TRIANGLES);
                     } break;
 
                     case NEKO_UI_SHAPE_TRIANGLE: {
                         neko_vec2* pa = &cmd->shape.triangle.points[0];
                         neko_vec2* pb = &cmd->shape.triangle.points[1];
                         neko_vec2* pc = &cmd->shape.triangle.points[2];
-                        neko_idraw_trianglev(&ctx->gui_idraw, *pa, *pb, *pc, *c, NEKO_RENDER_PRIMITIVE_TRIANGLES);
+                        neko_idraw_trianglev(&ctx->gui_idraw, *pa, *pb, *pc, *c, R_PRIMITIVE_TRIANGLES);
 
                     } break;
 
@@ -3505,7 +3505,7 @@ NEKO_API_DECL void neko_ui_render(neko_ui_context_t* ctx, neko_command_buffer_t*
                 neko_color_t* c = &cmd->image.color;
                 neko_ui_rect_t* r = &cmd->image.rect;
                 neko_vec4* uvs = &cmd->image.uvs;
-                neko_idraw_rectvd(&ctx->gui_idraw, neko_v2(r->x, r->y), neko_v2(r->w, r->h), neko_v2(uvs->x, uvs->y), neko_v2(uvs->z, uvs->w), *c, NEKO_RENDER_PRIMITIVE_TRIANGLES);
+                neko_idraw_rectvd(&ctx->gui_idraw, neko_v2(r->x, r->y), neko_v2(r->w, r->h), neko_v2(uvs->x, uvs->y), neko_v2(uvs->z, uvs->w), *c, R_PRIMITIVE_TRIANGLES);
             } break;
 
             case NEKO_UI_COMMAND_CLIP: {
@@ -3547,7 +3547,7 @@ NEKO_API_DECL void neko_ui_renderpass_submit(neko_ui_context_t* ctx, neko_comman
     action.color[1] = (float)c.g / 255.f;
     action.color[2] = (float)c.b / 255.f;
     action.color[3] = (float)c.a / 255.f;
-    neko_render_renderpass_begin(cb, NEKO_RENDER_RENDER_PASS_DEFAULT);
+    neko_render_renderpass_begin(cb, R_RENDER_PASS_DEFAULT);
     {
         neko_render_clear(cb, action);
         neko_render_set_viewport(cb, (u32)vp->x, (u32)vp->y, (u32)vp->w, (u32)vp->h);
@@ -3921,7 +3921,7 @@ NEKO_API_DECL void neko_ui_draw_triangle(neko_ui_context_t* ctx, neko_vec2 a, ne
 
 NEKO_API_DECL void neko_ui_draw_box(neko_ui_context_t* ctx, neko_ui_rect_t rect, s16* w, neko_color_t color) {
     neko_immediate_draw_t* dl = &ctx->overlay_draw_list;
-    // neko_idraw_rectvd(dl, neko_v2(rect.x, rect.y), neko_v2(rect.w, rect.h), neko_v2s(0.f), neko_v2s(1.f), NEKO_COLOR_RED, NEKO_RENDER_PRIMITIVE_LINES);
+    // neko_idraw_rectvd(dl, neko_v2(rect.x, rect.y), neko_v2(rect.w, rect.h), neko_v2s(0.f), neko_v2s(1.f), NEKO_COLOR_RED, R_PRIMITIVE_LINES);
 
     const float l = (float)w[0], r = (float)w[1], t = (float)w[2], b = (float)w[3];
     neko_ui_draw_rect(ctx, neko_ui_rect(rect.x + l, rect.y, rect.w - r - l, t), color);               // top
@@ -5881,7 +5881,7 @@ NEKO_API_DECL s32 neko_ui_window_begin_ex(neko_ui_context_t* ctx, const char* ti
 
             if (in_root && neko_ui_rect_overlaps_vec2(r, ctx->mouse_pos)) {
                 neko_immediate_draw_t* dl = &ctx->overlay_draw_list;
-                // neko_idraw_rectvd(dl, neko_v2(r.x, r.y), neko_v2(r.w, r.h), neko_v2s(0.f), neko_v2s(1.f), NEKO_COLOR_WHITE, NEKO_RENDER_PRIMITIVE_LINES);
+                // neko_idraw_rectvd(dl, neko_v2(r.x, r.y), neko_v2(r.w, r.h), neko_v2s(0.f), neko_v2s(1.f), NEKO_COLOR_WHITE, R_PRIMITIVE_LINES);
                 hovered = true;
             }
 

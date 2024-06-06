@@ -4,6 +4,8 @@ CVar = neko.cvar
 ECS = require("common/ecs")
 NODE = require("common/node")
 
+neko_ffi = require("nekoffi")
+
 -- fake game proxy
 local fake_game = {
     sub_init_thread = function()
@@ -237,6 +239,25 @@ game_render = function()
 
     end
 
+    if ImGui.Button("test_ffi") then
+
+        local holy_shit_dll
+        do
+            holy_shit_dll = neko_ffi.loadlib('hello.dll', {
+                hello_shit = neko_ffi.makecif {
+                    ret = neko_ffi.sint32,
+                    neko_ffi.sint32,
+                    neko_ffi.sint32
+                }
+            })
+        end
+
+        do
+            print(holy_shit_dll.hello_shit(100, 444))
+        end
+
+    end
+
     ImGui.Separator()
     -- if ImGui.InputText("TEST", text) then
     --     print(tostring(text))
@@ -264,10 +285,10 @@ game_render = function()
 
     -- neko.idraw_texture(neko.pixelui_tex(pixelui))
     -- neko.idraw_rectvd(to_vec2(0.0, 0.0), to_vec2(fbs_x, fbs_y), to_vec2(0.0, 0.0), to_vec2(1.0, 1.0),
-    --     "NEKO_RENDER_PRIMITIVE_TRIANGLES", to_color(255, 255, 255, 255))
+    --     "R_PRIMITIVE_TRIANGLES", to_color(255, 255, 255, 255))
 
-    -- neko.graphics_renderpass_begin(0)
-    -- neko.graphics_set_viewport(0.0, 0.0, fbs_x, fbs_y)
+    -- neko.render_renderpass_begin(0)
+    -- neko.render_set_viewport(0.0, 0.0, fbs_x, fbs_y)
     -- neko.idraw_draw()
-    -- neko.graphics_renderpass_end()
+    -- neko.render_renderpass_end()
 end

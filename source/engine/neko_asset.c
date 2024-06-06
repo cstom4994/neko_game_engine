@@ -143,11 +143,11 @@ NEKO_API_DECL bool neko_asset_texture_load_from_file(const_str path, void *out, 
     if (desc) {
         t->desc = *desc;
     } else {
-        t->desc.format = NEKO_RENDER_TEXTURE_FORMAT_RGBA8;
-        t->desc.min_filter = NEKO_RENDER_TEXTURE_FILTER_LINEAR;
-        t->desc.mag_filter = NEKO_RENDER_TEXTURE_FILTER_LINEAR;
-        t->desc.wrap_s = NEKO_RENDER_TEXTURE_WRAP_REPEAT;
-        t->desc.wrap_t = NEKO_RENDER_TEXTURE_WRAP_REPEAT;
+        t->desc.format = R_TEXTURE_FORMAT_RGBA8;
+        t->desc.min_filter = R_TEXTURE_FILTER_LINEAR;
+        t->desc.mag_filter = R_TEXTURE_FILTER_LINEAR;
+        t->desc.wrap_s = R_TEXTURE_WRAP_REPEAT;
+        t->desc.wrap_t = R_TEXTURE_WRAP_REPEAT;
     }
 
     // Load texture data
@@ -194,11 +194,11 @@ bool neko_asset_texture_load_from_memory(const void *memory, size_t sz, void *ou
     if (desc) {
         t->desc = *desc;
     } else {
-        t->desc.format = NEKO_RENDER_TEXTURE_FORMAT_RGBA8;
-        t->desc.min_filter = NEKO_RENDER_TEXTURE_FILTER_LINEAR;
-        t->desc.mag_filter = NEKO_RENDER_TEXTURE_FILTER_LINEAR;
-        t->desc.wrap_s = NEKO_RENDER_TEXTURE_WRAP_REPEAT;
-        t->desc.wrap_t = NEKO_RENDER_TEXTURE_WRAP_REPEAT;
+        t->desc.format = R_TEXTURE_FORMAT_RGBA8;
+        t->desc.min_filter = R_TEXTURE_FILTER_LINEAR;
+        t->desc.mag_filter = R_TEXTURE_FILTER_LINEAR;
+        t->desc.wrap_s = R_TEXTURE_WRAP_REPEAT;
+        t->desc.wrap_t = R_TEXTURE_WRAP_REPEAT;
     }
 
     // Load texture data
@@ -275,9 +275,9 @@ bool neko_asset_ascii_font_load_from_memory(const void *memory, size_t sz, void 
     desc.width = w;
     desc.height = h;
     *desc.data = flipmap;
-    desc.format = NEKO_RENDER_TEXTURE_FORMAT_RGBA8;
-    desc.min_filter = NEKO_RENDER_TEXTURE_FILTER_NEAREST;
-    desc.mag_filter = NEKO_RENDER_TEXTURE_FILTER_NEAREST;
+    desc.format = R_TEXTURE_FORMAT_RGBA8;
+    desc.min_filter = R_TEXTURE_FILTER_NEAREST;
+    desc.mag_filter = R_TEXTURE_FILTER_NEAREST;
 
     // 使用位图数据生成位图的图集纹理
     f->texture.hndl = neko_render_texture_create(desc);

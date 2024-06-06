@@ -4,9 +4,9 @@
 #include <filesystem>
 #include <new>
 
+#include "engine/neko_engine.h"
 #include "engine/neko_imgui.hpp"
 #include "engine/neko_lua.hpp"
-#include "engine/neko_engine.h"
 #include "sandbox/hpp/neko_struct.hpp"
 
 // deps
@@ -18,6 +18,91 @@
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
+
+#include <Windows.h>
+
+namespace neko::wtf8 {
+std::wstring u2w(std::string_view str) noexcept {
+    if (str.empty()) {
+        return L"";
+    }
+    size_t wlen = wtf8_to_utf16_length(str.data(), str.size());
+    if (wlen == (size_t)-1) {
+        return L"";
+    }
+    std::wstring wresult(wlen, L'\0');
+    wtf8_to_utf16(str.data(), str.size(), wresult.data(), wlen);
+    return wresult;
+}
+
+std::string w2u(std::wstring_view wstr) noexcept {
+    if (wstr.empty()) {
+        return "";
+    }
+    size_t len = wtf8_from_utf16_length(wstr.data(), wstr.size());
+    std::string result(len, '\0');
+    wtf8_from_utf16(wstr.data(), wstr.size(), result.data(), len);
+    return result;
+}
+}  // namespace neko::wtf8
+
+namespace neko::win {
+std::wstring u2w(std::string_view str) noexcept {
+    if (str.empty()) {
+        return L"";
+    }
+    const int wlen = ::MultiByteToWideChar(CP_UTF8, 0, str.data(), static_cast<int>(str.size()), NULL, 0);
+    if (wlen <= 0) {
+        return L"";
+    }
+    std::wstring wresult(wlen, L'\0');
+    ::MultiByteToWideChar(CP_UTF8, 0, str.data(), static_cast<int>(str.size()), wresult.data(), static_cast<int>(wresult.size()));
+    return wresult;
+}
+
+std::string w2u(std::wstring_view wstr) noexcept {
+    if (wstr.empty()) {
+        return "";
+    }
+    const int len = ::WideCharToMultiByte(CP_UTF8, 0, wstr.data(), static_cast<int>(wstr.size()), NULL, 0, 0, 0);
+    if (len <= 0) {
+        return "";
+    }
+    std::string result(len, '\0');
+    ::WideCharToMultiByte(CP_UTF8, 0, wstr.data(), static_cast<int>(wstr.size()), result.data(), static_cast<int>(result.size()), 0, 0);
+    return result;
+}
+
+std::wstring a2w(std::string_view str) noexcept {
+    if (str.empty()) {
+        return L"";
+    }
+    const int wlen = ::MultiByteToWideChar(CP_ACP, 0, str.data(), static_cast<int>(str.size()), NULL, 0);
+    if (wlen <= 0) {
+        return L"";
+    }
+    std::wstring wresult(wlen, L'\0');
+    ::MultiByteToWideChar(CP_ACP, 0, str.data(), static_cast<int>(str.size()), wresult.data(), static_cast<int>(wresult.size()));
+    return wresult;
+}
+
+std::string w2a(std::wstring_view wstr) noexcept {
+    if (wstr.empty()) {
+        return "";
+    }
+    const int len = ::WideCharToMultiByte(CP_ACP, 0, wstr.data(), static_cast<int>(wstr.size()), NULL, 0, 0, 0);
+    if (len <= 0) {
+        return "";
+    }
+    std::string result(len, '\0');
+    ::WideCharToMultiByte(CP_ACP, 0, wstr.data(), static_cast<int>(wstr.size()), result.data(), static_cast<int>(result.size()), 0, 0);
+    return result;
+}
+
+std::string a2u(std::string_view str) noexcept { return w2u(a2w(str)); }
+
+std::string u2a(std::string_view str) noexcept { return w2a(u2w(str)); }
+}  // namespace neko::win
 
 namespace neko {
 
@@ -223,6 +308,7 @@ static bool read_entire_file_raw(string *out, string filepath) {
     return true;
 }
 
+#if 0
 static bool list_all_files_help(array<string> *files, string path) {
 
     tinydir_dir dir;
@@ -252,6 +338,7 @@ static bool list_all_files_help(array<string> *files, string path) {
 
     return true;
 }
+#endif
 
 struct IFileSystem {
     virtual void make() = 0;
@@ -259,7 +346,7 @@ struct IFileSystem {
     virtual bool mount(string filepath) = 0;
     virtual bool file_exists(string filepath) = 0;
     virtual bool read_entire_file(string *out, string filepath) = 0;
-    virtual bool list_all_files(array<string> *files) = 0;
+    // virtual bool list_all_files(array<string> *files) = 0;
 };
 
 static IFileSystem *g_filesystem;
@@ -291,7 +378,7 @@ struct DirectoryFileSystem : IFileSystem {
 
     bool read_entire_file(string *out, string filepath) { return read_entire_file_raw(out, filepath); }
 
-    bool list_all_files(array<string> *files) { return list_all_files_help(files, ""); }
+    // bool list_all_files(array<string> *files) { return list_all_files_help(files, ""); }
 };
 
 struct ZipFileSystem : IFileSystem {
@@ -579,7 +666,7 @@ bool vfs_file_exists(string filepath) { return g_filesystem->file_exists(filepat
 
 bool vfs_read_entire_file(string *out, string filepath) { return g_filesystem->read_entire_file(out, filepath); }
 
-bool vfs_list_all_files(array<string> *files) { return g_filesystem->list_all_files(files); }
+// bool vfs_list_all_files(array<string> *files) { return g_filesystem->list_all_files(files); }
 
 struct AudioFile {
     u8 *buf;
