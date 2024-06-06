@@ -70,7 +70,7 @@ local M = {
             }
         })
 
-        test_vec4_data = __neko_cstruct_test.udata(CObject.s["neko_vec4_t"]:size("struct neko_vec4_t"))
+        test_vec4_data = luastruct_test.udata(CObject.s["neko_vec4_t"]:size("struct neko_vec4_t"))
         CObject.setter("neko_vec4_t", "x")(test_vec4_data, 0.0)
         CObject.setter("neko_vec4_t", "y")(test_vec4_data, 1.0)
         CObject.setter("neko_vec4_t", "z")(test_vec4_data, 1.0)
@@ -90,13 +90,13 @@ local M = {
             mag_filter = "R_TEXTURE_FILTER_NEAREST"
         })
 
-        test_custom_sprite.tex_userdata = __neko_cstruct_test.udata(CObject.s["__lua_tex_t"]:size("struct __lua_tex_t"))
+        test_custom_sprite.tex_userdata = luastruct_test.udata(CObject.s["__lua_tex_t"]:size("struct __lua_tex_t"))
         CObject.setter("__lua_tex_t", "id")(test_custom_sprite.tex_userdata, test_custom_sprite.tex)
 
         print(CObject.generate_array_type("__lua_quad_vdata_t", "float", 16))
 
         local v = {-0.5, -0.5, 0.0, 0.0, 0.5, -0.5, 1.0, 0.0, -0.5, 0.5, 0.0, 1.0, 0.5, 0.5, 1.0, 1.0}
-        test_custom_sprite.vdata = __neko_cstruct_test.udata(
+        test_custom_sprite.vdata = luastruct_test.udata(
             CObject.s["__lua_quad_vdata_t"]:size("struct __lua_quad_vdata_t"))
 
         for i, v in ipairs(v) do
@@ -104,7 +104,7 @@ local M = {
         end
 
         v = {0, 3, 2, 0, 1, 3}
-        test_custom_sprite.idata = __neko_cstruct_test.udata(
+        test_custom_sprite.idata = luastruct_test.udata(
             CObject.s["__lua_quad_idata_t"]:size("struct __lua_quad_idata_t"))
         for i, v in ipairs(v) do
             CObject.setter("__lua_quad_idata_t", "v" .. i)(test_custom_sprite.idata, v)

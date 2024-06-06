@@ -25,6 +25,7 @@ inline int preload_module(lua_State* L) {
     for (const auto& m : usermodules()) {
         lua_pushcfunction(L, m.func);
         lua_setfield(L, -2, m.name);
+        neko_log_info("[luabind] loaded %s", m.name);
     }
     lua_pop(L, 1);
     return 0;
@@ -32,9 +33,8 @@ inline int preload_module(lua_State* L) {
 }  // namespace neko::lua
 
 #define DEFINE_LUAOPEN(name)                                                        \
-    NEKO_API_DECL                                                                   \
     int luaopen_neko_##name(lua_State* L) { return neko::lua_##name ::luaopen(L); } \
-    static ::neko::lua::callfunc _init_##name(::neko::lua::register_module, "neko." #name, luaopen_neko_##name);
+    static ::neko::lua::callfunc __init_##name(::neko::lua::register_module, "neko." #name, luaopen_neko_##name);
 
 namespace neko::reflection {
 template <unsigned short N>

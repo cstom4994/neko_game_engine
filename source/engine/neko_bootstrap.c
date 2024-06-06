@@ -184,7 +184,7 @@ void neko_fini() {
     __neko_config_free();
 
     // 在 app 结束后进行内存检查
-    __neko_mem_end();
+    __neko_mem_fini();
 }
 
 NEKO_API_DECL void neko_default_main_window_close_callback(void* window) { neko_instance()->game.is_running = false; }

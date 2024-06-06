@@ -1,10 +1,10 @@
-ImGui = require("imgui")
+ImGui = require("neko.imgui")
 CObject = require("cobject")
 CVar = neko.cvar
 ECS = require("common/ecs")
 NODE = require("common/node")
 
-neko_ffi = require("nekoffi")
+neko_ffi = require("neko.ffi")
 
 -- fake game proxy
 local fake_game = {
@@ -239,15 +239,15 @@ game_render = function()
 
     end
 
-    if ImGui.Button("test_ffi") then
+    if ImGui.Button("test_cffi") then
 
         local holy_shit_dll
         do
-            holy_shit_dll = neko_ffi.loadlib('hello.dll', {
-                hello_shit = neko_ffi.makecif {
-                    ret = neko_ffi.sint32,
-                    neko_ffi.sint32,
-                    neko_ffi.sint32
+            holy_shit_dll = cffi.loadlib('hello.dll', {
+                hello_shit = cffi.makecif {
+                    ret = cffi.sint32,
+                    cffi.sint32,
+                    cffi.sint32
                 }
             })
         end

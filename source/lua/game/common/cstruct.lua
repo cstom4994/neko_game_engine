@@ -1,4 +1,4 @@
-local core = __neko_cstruct_core
+local core = require("neko.struct")
 
 local M = {}
 

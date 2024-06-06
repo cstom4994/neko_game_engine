@@ -505,10 +505,4 @@ NEKO_API_DECL void neko_lua_load(lua_State *L, const luaL_Reg *l, const char *na
 NEKO_API_DECL void neko_lua_loadover(lua_State *L, const luaL_Reg *l, const char *name);
 NEKO_API_DECL int neko_lua_get_table_pairs_count(lua_State *L, int index);
 
-NEKO_API_DECL int neko_luaopen_cstruct_core(lua_State *L);
-NEKO_API_DECL int neko_luaopen_cstruct_test(lua_State *L);
-NEKO_API_DECL int luaopen_ds_core(lua_State *L);
-NEKO_API_DECL int open_embed_node(lua_State *L);
-NEKO_API_DECL int open_embed_ffi(lua_State* L);
-
 #endif

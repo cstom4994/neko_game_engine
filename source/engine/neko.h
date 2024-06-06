@@ -371,7 +371,7 @@ typedef struct neko_allocation_metrics {
 NEKO_API_DECL neko_allocation_metrics g_allocation_metrics;
 
 NEKO_API_DECL void __neko_mem_init(int argc, char** argv);
-NEKO_API_DECL void __neko_mem_end();
+NEKO_API_DECL void __neko_mem_fini();
 
 // logging
 

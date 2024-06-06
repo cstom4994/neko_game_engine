@@ -560,7 +560,7 @@ inline int NEKO_BYTES_IN_USE() { return 0; }
 
 void __neko_mem_init(int argc, char** argv) {}
 
-void __neko_mem_end() { neko_mem_check_leaks(true); }
+void __neko_mem_fini() { neko_mem_check_leaks(true); }
 
 // typedef struct neko_memory_block_t {
 //     u8* data;

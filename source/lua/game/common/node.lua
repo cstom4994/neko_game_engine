@@ -1,8 +1,8 @@
-local nekonode = require "neko_nekonode"
+local prefab = require "neko.prefab"
 
 local M = {}
 
-M.node = nekonode
+M.node = prefab
 
 local function keys(a)
     local key = {}

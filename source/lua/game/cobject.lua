@@ -25,10 +25,10 @@ M.CGameObject_set_active = M.s["CGameObject"]:setter "struct CGameObject.active"
 M.CGameObject_set_visible = M.s["CGameObject"]:setter "struct CGameObject.visible"
 M.CGameObject_set_selected = M.s["CGameObject"]:setter "struct CGameObject.selected"
 
--- M.test_obj = __neko_cstruct_test.udata(M.sz)
+-- M.test_obj = luastruct_test.udata(M.sz)
 
 M.new_obj = function(id, active, visible)
-    local obj = __neko_cstruct_test.udata(M.s["CGameObject"]:size "struct CGameObject")
+    local obj = luastruct_test.udata(M.s["CGameObject"]:size "struct CGameObject")
     M.CGameObject_set_id(obj, id)
     M.CGameObject_set_active(obj, active)
     M.CGameObject_set_visible(obj, visible)

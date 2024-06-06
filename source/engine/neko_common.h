@@ -100,7 +100,7 @@ typedef enum neko_token_type {
 } neko_token_type;
 
 typedef struct neko_token_t {
-    const char* text;
+    char* text;
     neko_token_type type;
     u32 len;
 } neko_token_t;

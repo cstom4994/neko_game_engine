@@ -1,7 +1,10 @@
 -- Copyright(c) 2022-2023, KaoruXun All rights reserved.
 -- runs on start of the engine
 -- used to load scripts
-neko = require "neko"
+neko = require "neko.core"
+ffi = require("neko.ffi")
+cffi = require("neko.cffi")
+luastruct_test = require("neko.struct_test")
 
 dump_func = function(tbl, indent)
     if not indent then
@@ -21,7 +24,6 @@ dump_func = function(tbl, indent)
     end
 end
 
-ffi = require("cffi")
 
 unsafe_require = require
 print_ = print

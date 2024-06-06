@@ -188,8 +188,7 @@ static void hashtable_internal_expand_slots(hashtable_t* table) {
 
 static void hashtable_internal_expand_items(hashtable_t* table) {
     table->item_capacity *= 2;
-    u64* const new_items_key =
-            (u64*)HASHTABLE_MALLOC(table->memctx, table->item_capacity * (sizeof(*table->items_key) + sizeof(*table->items_slot) + table->item_size) + table->item_size);
+    u64* const new_items_key = (u64*)HASHTABLE_MALLOC(table->memctx, table->item_capacity * (sizeof(*table->items_key) + sizeof(*table->items_slot) + table->item_size) + table->item_size);
     NEKO_ASSERT(new_items_key);
 
     int* const new_items_slot = (int*)(new_items_key + table->item_capacity);
@@ -555,7 +554,7 @@ NEKO_API_DECL neko_token_t neko_lexer_c_next_token(neko_lexer_t* lex) {
     }
 
     neko_token_t t = neko_token_invalid_token();
-    t.text = lex->at;
+    t.text = (char*)lex->at;
     t.len = 1;
 
     if (lex->can_lex(lex)) {
