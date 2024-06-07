@@ -916,7 +916,7 @@ static int __neko_ecs_lua_attach(lua_State *L) {
             const ecs_entity_t c = __neko_ecs_lua_component_id_w(L, component_name);
             ecs_attach(w, e, c);
         } else {
-            neko_log_warning("argument %d is not a string", i);
+            NEKO_WARN("argument %d is not a string", i);
         }
     }
 
@@ -935,7 +935,7 @@ static int __neko_ecs_lua_get_com(lua_State *L) {
 static int __neko_ecs_lua_gc(lua_State *L) {
     struct neko_ecs_t *w = luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
     ecs_fini_i(w);
-    neko_log_info("ecs_lua_gc");
+    NEKO_INFO("ecs_lua_gc");
     return 0;
 }
 
@@ -1626,7 +1626,7 @@ neko_ecs_t *ecs_init(lua_State *L) {
     neko_ecs_t *registry = (neko_ecs_t *)lua_newuserdatauv(L, sizeof(neko_ecs_t), NEKO_ECS_UPVAL_N);  // # -1
     registry = ecs_init_i(registry);
     if (registry == NULL) {
-        neko_log_error("%s", "failed to initialize neko_ecs_t");
+        NEKO_ERROR("%s", "failed to initialize neko_ecs_t");
         return NULL;
     }
     registry->L = L;
@@ -1716,12 +1716,12 @@ ecs_entity_t ecs_component_w(neko_ecs_t *registry, const_str component_name, siz
             lua_settable(L, -3);
             lua_pop(L, 1);
         } else {
-            neko_log_error("%s", "failed to get comp_map");
+            NEKO_ERROR("%s", "failed to get comp_map");
             lua_pop(L, 1);
         }
         lua_pop(L, 1);
     } else {
-        neko_log_error("%s", "failed to get upvalue NEKO_ECS_COMPONENTS_NAME");
+        NEKO_ERROR("%s", "failed to get upvalue NEKO_ECS_COMPONENTS_NAME");
         lua_pop(L, 1);
     }
     lua_pop(L, 1);  // pop 1

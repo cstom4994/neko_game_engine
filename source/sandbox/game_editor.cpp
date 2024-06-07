@@ -413,7 +413,7 @@ static int __luainspector_gc(lua_State* L) {
         m->variable_pool_free();
         m->setL(0x0);
     }
-    neko_log_trace("luainspector __gc %p", m);
+    NEKO_TRACE("luainspector __gc %p", m);
     return 0;
 }
 
@@ -758,18 +758,18 @@ int neko::luainspector::command_line_input_callback(ImGuiInputTextCallbackData* 
         std::string complete = this->try_complete(cmd);
         if (!complete.empty()) {
             paste_buffer(complete.data(), complete.data() + complete.size(), command_beg - cmd.data());
-            neko_log_trace("%s", complete.c_str());
+            NEKO_TRACE("%s", complete.c_str());
         }
     }
     if (data->EventKey == ImGuiKey_UpArrow) {
         cmd2 = this->read_history(-1);
         paste_buffer(cmd2.data(), cmd2.data() + cmd2.size(), command_beg - cmd.data());
-        neko_log_trace("h:%s", cmd2.c_str());
+        NEKO_TRACE("h:%s", cmd2.c_str());
     }
     if (data->EventKey == ImGuiKey_DownArrow) {
         cmd2 = this->read_history(1);
         paste_buffer(cmd2.data(), cmd2.data() + cmd2.size(), command_beg - cmd.data());
-        neko_log_trace("h:%s", cmd2.c_str());
+        NEKO_TRACE("h:%s", cmd2.c_str());
     }
 
     if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
@@ -1064,7 +1064,7 @@ void neko::luainspector::inspect_table(lua_State* L, inspect_table_config& cfg) 
                     lua_pop(L, 1);                 // # -1 pop value
                     lua_pushstring(L, v.c_str());  // # -1 push new value
                     lua_setfield(L, -3, name);     // -3 table
-                    neko_log_trace("改 %s = %s", name, v.c_str());
+                    NEKO_TRACE("改 %s = %s", name, v.c_str());
                 }
 
                 ImGui::TreePop();

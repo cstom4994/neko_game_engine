@@ -62,7 +62,7 @@ NEKO_STATIC_INLINE void* Allocf(void* ud, void* ptr, size_t osize, size_t nsize)
 
 class neko_lua_tool_t {
 public:
-    static void function_call_err(const_str name, int params) { neko_log_warning("[lua] invalid parameters to function: \"%s\" as %d", name, params); }
+    static void function_call_err(const_str name, int params) { NEKO_WARN("[lua] invalid parameters to function: \"%s\" as %d", name, params); }
 
     static lua_State* mark_create(const_str mark_name) {
         lua_State* L = lua_newstate(Allocf, NULL);
@@ -332,13 +332,13 @@ struct __lua_op_t {
     }*/
 
     static bool pop(lua_State* L, T& value) {
-        neko_log_warning("[lua] cannot pop unknown type: %s", typeid(T).name());
+        NEKO_WARN("[lua] cannot pop unknown type: %s", typeid(T).name());
         lua_pop(L, 1);
         return true;
     }
 
     static void push(lua_State* L, T& value) {
-        neko_log_warning("[lua] cannot push unknown type: %s", typeid(T).name());
+        NEKO_WARN("[lua] cannot push unknown type: %s", typeid(T).name());
         lua_pushnil(L);
     }
 };
@@ -721,10 +721,10 @@ struct __lua_op_t<T*> {
                 value = dynamic_cast<T*>(refValue);
                 ok = value != NULL;
                 if (!ok) {
-                    neko_log_warning("[lua] cannot cast pointer to \"%s\"", typeid(T).name());
+                    NEKO_WARN("[lua] cannot cast pointer to \"%s\"", typeid(T).name());
                 }
             } else if (lua_isnil(L, -1)) {
-                neko_log_warning("[lua] a \"%s\" instance you are trying to use is deleted", typeid(T).name());
+                NEKO_WARN("[lua] a \"%s\" instance you are trying to use is deleted", typeid(T).name());
             }
             lua_pop(L, 1);
         }
@@ -818,7 +818,7 @@ struct __lua_op_t<std::vector<T>> {
     }
 
     static void push(lua_State* L, std::vector<T>& value) {
-        neko_log_warning("[lua] cannot push a std::vector type back to LUA at the moment");
+        NEKO_WARN("[lua] cannot push a std::vector type back to LUA at the moment");
         lua_pushnil(L);
     }
 };
@@ -1074,7 +1074,7 @@ struct lua_value<lua_table> {
     }
 
     static void push(lua_State* L, lua_table& value) {
-        neko_log_warning("[lua] cannot push a table back to LUA at the moment");
+        NEKO_WARN("[lua] cannot push a table back to LUA at the moment");
         lua_pushnil(L);
     }
 };
@@ -1103,7 +1103,7 @@ public:
 
         // Call script
         if (lua_pcall(__lua, 2, 0, NULL) != 0) {
-            neko_log_warning("[lua] err: %s", lua_tostring(__lua, -1));
+            NEKO_WARN("[lua] err: %s", lua_tostring(__lua, -1));
             lua_pop(__lua, 1);
         }
 #ifdef _DEBUG
@@ -1126,7 +1126,7 @@ public:
 
         // Call script
         if (lua_pcall(__lua, 3, 0, NULL) != 0) {
-            neko_log_warning("[lua] err: %s", lua_tostring(__lua, -1));
+            NEKO_WARN("[lua] err: %s", lua_tostring(__lua, -1));
             lua_pop(__lua, 1);
         }
 #ifdef _DEBUG
@@ -1151,7 +1151,7 @@ public:
 
         // Call script
         if (lua_pcall(__lua, 4, 0, NULL) != 0) {
-            neko_log_warning("[lua] err: %s", lua_tostring(__lua, -1));
+            NEKO_WARN("[lua] err: %s", lua_tostring(__lua, -1));
             lua_pop(__lua, 1);
         }
 
@@ -1177,7 +1177,7 @@ public:
 
         // Call script
         if (lua_pcall(__lua, 5, 0, NULL) != 0) {
-            neko_log_warning("[lua] err: %s", lua_tostring(__lua, -1));
+            NEKO_WARN("[lua] err: %s", lua_tostring(__lua, -1));
             lua_pop(__lua, 1);
         }
 
@@ -1199,7 +1199,7 @@ public:
 
         // Call script
         if (lua_pcall(__lua, 1, 1, NULL) != 0) {
-            neko_log_warning("[lua] err: %s", lua_tostring(__lua, -1));
+            NEKO_WARN("[lua] err: %s", lua_tostring(__lua, -1));
             lua_pop(__lua, 1);
             return false;
         }
@@ -1225,7 +1225,7 @@ public:
 
         // Call script
         if (lua_pcall(__lua, 2, 1, NULL) != 0) {
-            neko_log_warning("[lua] err: %s", lua_tostring(__lua, -1));
+            NEKO_WARN("[lua] err: %s", lua_tostring(__lua, -1));
             lua_pop(__lua, 1);
             return false;
         }
@@ -1252,7 +1252,7 @@ public:
 
         // Call script
         if (lua_pcall(__lua, 3, 1, NULL) != 0) {
-            neko_log_warning("[lua] err: %s", lua_tostring(__lua, -1));
+            NEKO_WARN("[lua] err: %s", lua_tostring(__lua, -1));
             lua_pop(__lua, 1);
             return false;
         }
@@ -1280,7 +1280,7 @@ public:
 
         // Call script
         if (lua_pcall(__lua, 4, 1, NULL) != 0) {
-            neko_log_warning("[lua] err: %s", lua_tostring(__lua, -1));
+            NEKO_WARN("[lua] err: %s", lua_tostring(__lua, -1));
             lua_pop(__lua, 1);
             return false;
         }
@@ -1309,7 +1309,7 @@ public:
 
         // Call script
         if (lua_pcall(__lua, 5, 1, NULL) != 0) {
-            neko_log_warning("[lua] err: %s", lua_tostring(__lua, -1));
+            NEKO_WARN("[lua] err: %s", lua_tostring(__lua, -1));
             lua_pop(__lua, 1);
             return false;
         }
@@ -1706,7 +1706,7 @@ int lua_ScriptObject_call(lua_State* L) {
     // 类本身必须继承自 ScriptObject
     C* obj = new C();
     if (!obj->registerObject()) {
-        neko_log_warning("object could not be registered");
+        NEKO_WARN("object could not be registered");
         delete obj;
         return 0;
     }
@@ -1723,7 +1723,7 @@ int lua_ScriptObject_init(lua_State* L) {
     int script_ref_ = luaL_ref(L, LUA_REGISTRYINDEX);
     C* obj = new C();
     if (!obj->registerObject(script_ref_)) {
-        neko_log_warning("object could not be registered");
+        NEKO_WARN("object could not be registered");
         delete obj;
     }
     return 0;
@@ -1764,7 +1764,7 @@ int lua_function_void_1args(lua_State* L) {
         (*func)(p1);
     } else {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        neko_log_warning("[lua] invalid parameters to function \"%s\"", name);
+        NEKO_WARN("[lua] invalid parameters to function \"%s\"", name);
     }
 
     return 0;
@@ -1793,7 +1793,7 @@ int lua_function_void_2args(lua_State* L) {
         (*func)(p1, p2);
     } else {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        neko_log_warning("[lua] invalid parameters to function \"%s\"", name);
+        NEKO_WARN("[lua] invalid parameters to function \"%s\"", name);
     }
 
     return 0;
@@ -1824,7 +1824,7 @@ int lua_function_void_3args(lua_State* L) {
         (*func)(p1, p2, p3);
     } else {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        neko_log_warning("[lua] invalid parameters to function \"%s\"", name);
+        NEKO_WARN("[lua] invalid parameters to function \"%s\"", name);
     }
 
     return 0;
@@ -1857,7 +1857,7 @@ int lua_function_void_4args(lua_State* L) {
         (*func)(p1, p2, p3, p4);
     } else {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        neko_log_warning("[lua] invalid parameters to function \"%s\"", name);
+        NEKO_WARN("[lua] invalid parameters to function \"%s\"", name);
     }
 
     return 0;
@@ -1895,7 +1895,7 @@ int lua_function_R_1args(lua_State* L) {
             lua_value<R>::push(L, ret);
         } else {
             const_str name = lua_tostring(L, lua_upvalueindex(2));
-            neko_log_warning("[lua] invalid parameters to function \"%s\"", name);
+            NEKO_WARN("[lua] invalid parameters to function \"%s\"", name);
             lua_pushnil(L);
         }
     } else {
@@ -1925,7 +1925,7 @@ int lua_function_R_2args(lua_State* L) {
             lua_value<R>::push(L, ret);
         } else {
             const_str name = lua_tostring(L, lua_upvalueindex(2));
-            neko_log_warning("[lua] invalid parameters to function \"%s\"", name);
+            NEKO_WARN("[lua] invalid parameters to function \"%s\"", name);
             lua_pushnil(L);
         }
     } else {
@@ -1958,7 +1958,7 @@ int lua_function_R_3args(lua_State* L) {
             lua_value<R>::push(L, ret);
         } else {
             const_str name = lua_tostring(L, lua_upvalueindex(2));
-            neko_log_warning("[lua] invalid parameters to function \"%s\"", name);
+            NEKO_WARN("[lua] invalid parameters to function \"%s\"", name);
             lua_pushnil(L);
         }
     } else {
@@ -1993,7 +1993,7 @@ int lua_function_R_4args(lua_State* L) {
             lua_value<R>::push(L, ret);
         } else {
             const_str name = lua_tostring(L, lua_upvalueindex(2));
-            neko_log_warning("[lua] invalid parameters to function \"%s\"", name);
+            NEKO_WARN("[lua] invalid parameters to function \"%s\"", name);
             lua_pushnil(L);
         }
     } else {
@@ -2550,7 +2550,7 @@ NEKO_INLINE void neko_lua_fini(lua_State* m_ls) {
         int top = lua_gettop(m_ls);
         if (top != 0) {
             neko_lua_tool_t::dump_stack(m_ls);
-            neko_log_warning("[;ua] luastack isn't 0 which means that we have a memory leak somewhere");
+            NEKO_WARN("[;ua] luastack isn't 0 which means that we have a memory leak somewhere");
         }
         ::lua_close(m_ls);
         m_ls = NULL;
@@ -2561,7 +2561,7 @@ NEKO_STATIC_INLINE void neko_lua_run_string(lua_State* m_ls, const char* str_) {
     if (luaL_dostring(m_ls, str_)) {
         std::string err = neko_lua_tool_t::dump_error(m_ls, "run_string ::lua_pcall_wrap failed str<%s>", str_);
         ::lua_pop(m_ls, 1);
-        neko_log_error("%s", err.c_str());
+        NEKO_ERROR("%s", err.c_str());
     }
 }
 NEKO_STATIC_INLINE void neko_lua_run_string(lua_State* m_ls, const std::string& str_) { neko_lua_run_string(m_ls, str_.c_str()); }
@@ -2584,7 +2584,7 @@ NEKO_INLINE int neko_lua_load_file(lua_State* m_ls, const std::string& file_name
     if (luaL_dofile(m_ls, file_name_.c_str())) {
         std::string err = neko_lua_tool_t::dump_error(m_ls, "cannot load file<%s>", file_name_.c_str());
         ::lua_pop(m_ls, 1);
-        neko_log_error("%s", err.c_str());
+        NEKO_ERROR("%s", err.c_str());
     }
 
     return 0;
@@ -2605,7 +2605,7 @@ NEKO_INLINE bool neko_lua_dofile(lua_State* m_ls, const std::string& file) {
 
     if (status) {
         const char* err = lua_tostring(m_ls, -1);
-        neko_log_warning("luaL_loadfile ret %d\n%s\n", status, err);
+        NEKO_WARN("luaL_loadfile ret %d\n%s\n", status, err);
         lua_pop(m_ls, 1);
         return false;
     }
@@ -2613,7 +2613,7 @@ NEKO_INLINE bool neko_lua_dofile(lua_State* m_ls, const std::string& file) {
     status = neko_lua_pcall_wrap(m_ls, 0, LUA_MULTRET, 0);
     if (status) {
         const char* err = lua_tostring(m_ls, -1);
-        neko_log_warning("lua_pcall_wrap ret %d\n%s\n", status, err);
+        NEKO_WARN("lua_pcall_wrap ret %d\n%s\n", status, err);
         lua_pop(m_ls, 1);
         return false;
     }
@@ -2646,7 +2646,7 @@ NEKO_INLINE void neko_lua_call(lua_State* m_ls, const char* func_name_) {
     if (neko_lua_pcall_wrap(m_ls, 0, 0, 0) != 0) {
         std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         ::lua_pop(m_ls, 1);
-        neko_log_error("%s", err.c_str());
+        NEKO_ERROR("%s", err.c_str());
     }
 }
 
@@ -2728,14 +2728,14 @@ ret(RET) neko_lua_call(lua_State* m_ls, const char* func_name_) {
     if (neko_lua_pcall_wrap(m_ls, tmpArg + 0, 1, 0) != 0) {
         std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
-        neko_log_error("%s", err.c_str());
+        NEKO_ERROR("%s", err.c_str());
     }
 
     if (__lua_op_t<ret(RET)>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
         SPRINTF_F(buff, sizeof(buff), "callfunc [arg0] get_ret_value failed  func_name<%s>", func_name_);
-        neko_log_error("%s", buff);
+        NEKO_ERROR("%s", buff);
     }
 
     lua_pop(m_ls, 1);
@@ -2754,14 +2754,14 @@ ret(RET) neko_lua_call(lua_State* m_ls, const char* func_name_, const ARG1& arg1
     if (neko_lua_pcall_wrap(m_ls, tmpArg + 1, 1, 0) != 0) {
         std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
-        neko_log_error("%s", err.c_str());
+        NEKO_ERROR("%s", err.c_str());
     }
 
     if (__lua_op_t<ret(RET)>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
         SPRINTF_F(buff, sizeof(buff), "callfunc [arg1] get_ret_value failed  func_name<%s>", func_name_);
-        neko_log_error("%s", buff);
+        NEKO_ERROR("%s", buff);
     }
 
     lua_pop(m_ls, 1);
@@ -2781,14 +2781,14 @@ ret(RET) neko_lua_call(lua_State* m_ls, const char* func_name_, const ARG1& arg1
     if (neko_lua_pcall_wrap(m_ls, tmpArg + 2, 1, 0) != 0) {
         std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
-        neko_log_error("%s", err.c_str());
+        NEKO_ERROR("%s", err.c_str());
     }
 
     if (__lua_op_t<ret(RET)>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
         SPRINTF_F(buff, sizeof(buff), "callfunc [arg2] get_ret_value failed  func_name<%s>", func_name_);
-        neko_log_error("%s", buff);
+        NEKO_ERROR("%s", buff);
     }
 
     lua_pop(m_ls, 1);
@@ -2809,14 +2809,14 @@ ret(RET) neko_lua_call(lua_State* m_ls, const char* func_name_, const ARG1& arg1
     if (neko_lua_pcall_wrap(m_ls, tmpArg + 3, 1, 0) != 0) {
         std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
-        neko_log_error("%s", err.c_str());
+        NEKO_ERROR("%s", err.c_str());
     }
 
     if (__lua_op_t<ret(RET)>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
         SPRINTF_F(buff, sizeof(buff), "callfunc [arg3] get_ret_value failed  func_name<%s>", func_name_);
-        neko_log_error("%s", buff);
+        NEKO_ERROR("%s", buff);
     }
 
     lua_pop(m_ls, 1);
@@ -2838,14 +2838,14 @@ ret(RET) neko_lua_call(lua_State* m_ls, const char* func_name_, const ARG1& arg1
     if (neko_lua_pcall_wrap(m_ls, tmpArg + 4, 1, 0) != 0) {
         std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
-        neko_log_error("%s", err.c_str());
+        NEKO_ERROR("%s", err.c_str());
     }
 
     if (__lua_op_t<ret(RET)>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
         SPRINTF_F(buff, sizeof(buff), "callfunc [arg4] get_ret_value failed  func_name<%s>", func_name_);
-        neko_log_error("%s", buff);
+        NEKO_ERROR("%s", buff);
     }
 
     lua_pop(m_ls, 1);
@@ -2868,14 +2868,14 @@ ret(RET) neko_lua_call(lua_State* m_ls, const char* func_name_, const ARG1& arg1
     if (neko_lua_pcall_wrap(m_ls, tmpArg + 5, 1, 0) != 0) {
         std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
-        neko_log_error("%s", err.c_str());
+        NEKO_ERROR("%s", err.c_str());
     }
 
     if (__lua_op_t<ret(RET)>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
         SPRINTF_F(buff, sizeof(buff), "callfunc [arg5] get_ret_value failed  func_name<%s>", func_name_);
-        neko_log_error("%s", buff);
+        NEKO_ERROR("%s", buff);
     }
 
     lua_pop(m_ls, 1);
@@ -2899,14 +2899,14 @@ ret(RET) neko_lua_call(lua_State* m_ls, const char* func_name_, const ARG1& arg1
     if (neko_lua_pcall_wrap(m_ls, tmpArg + 6, 1, 0) != 0) {
         std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
-        neko_log_error("%s", err.c_str());
+        NEKO_ERROR("%s", err.c_str());
     }
 
     if (__lua_op_t<ret(RET)>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
         SPRINTF_F(buff, sizeof(buff), "callfunc [arg6] get_ret_value failed  func_name<%s>", func_name_);
-        neko_log_error("%s", buff);
+        NEKO_ERROR("%s", buff);
     }
 
     lua_pop(m_ls, 1);
@@ -2931,14 +2931,14 @@ ret(RET) neko_lua_call(lua_State* m_ls, const char* func_name_, const ARG1& arg1
     if (neko_lua_pcall_wrap(m_ls, tmpArg + 7, 1, 0) != 0) {
         std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
-        neko_log_error("%s", err.c_str());
+        NEKO_ERROR("%s", err.c_str());
     }
 
     if (__lua_op_t<ret(RET)>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
         SPRINTF_F(buff, sizeof(buff), "callfunc [arg7] get_ret_value failed  func_name<%s>", func_name_);
-        neko_log_error("%s", buff);
+        NEKO_ERROR("%s", buff);
     }
 
     lua_pop(m_ls, 1);
@@ -2965,14 +2965,14 @@ ret(RET) neko_lua_call(lua_State* m_ls, const char* func_name_, const ARG1& arg1
     if (neko_lua_pcall_wrap(m_ls, tmpArg + 8, 1, 0) != 0) {
         std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
-        neko_log_error("%s", err.c_str());
+        NEKO_ERROR("%s", err.c_str());
     }
 
     if (__lua_op_t<ret(RET)>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
         SPRINTF_F(buff, sizeof(buff), "callfunc [arg8] get_ret_value failed  func_name<%s>", func_name_);
-        neko_log_error("%s", buff);
+        NEKO_ERROR("%s", buff);
     }
 
     lua_pop(m_ls, 1);
@@ -3000,14 +3000,14 @@ ret(RET) neko_lua_call(lua_State* m_ls, const char* func_name_, const ARG1& arg1
     if (neko_lua_pcall_wrap(m_ls, tmpArg + 9, 1, 0) != 0) {
         std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(m_ls, 1);
-        neko_log_error("%s", err.c_str());
+        NEKO_ERROR("%s", err.c_str());
     }
 
     if (__lua_op_t<ret(RET)>::get_ret_value(m_ls, -1, ret)) {
         lua_pop(m_ls, 1);
         char buff[512];
         SPRINTF_F(buff, sizeof(buff), "callfunc [arg9] get_ret_value failed func_name<%s>", func_name_);
-        neko_log_error("%s", buff);
+        NEKO_ERROR("%s", buff);
     }
 
     lua_pop(m_ls, 1);

@@ -12,50 +12,6 @@ typedef struct {
     lua_CFunction func;
 } neko_luaL_reg;
 
-int neko_lua_hook_init(lua_State *L);
-
-enum class neko_lua_dataType { number, string, integer, lua_bool, function };
-
-enum class neko_lua_hook_status { hook_awaiting, hook_update, hook_idle };
-
-struct neko_lua_hook_callbacks {
-    size_t data_size;
-    void *data;
-    enum neko_lua_dataType data_type;
-};
-
-struct neko_lua_hook_pool {
-    struct neko_lua_hook_t *hooks;
-    int count;
-};
-
-struct neko_lua_hook_t {
-    const char *hookName;
-    struct neko_lua_hook_stack *stack;
-    size_t pool;
-    struct neko_lua_hook_t *address;
-    void (*handle)(struct neko_lua_hook_t *, lua_State *);
-    enum neko_lua_hook_status status;
-    struct neko_lua_hook_callbacks *callback;
-};
-
-struct neko_lua_hook_stack {
-    const char *name;
-    void (*func)(lua_State *, struct neko_lua_hook_t *instance, int, struct neko_lua_hook_callbacks *callback);
-    int ref;
-};
-
-void neko_lua_hook_register(struct neko_lua_hook_t hookData);
-void neko_lua_hook_add(struct neko_lua_hook_t *instance, const char *name, void (*func)(lua_State *, struct neko_lua_hook_t *instance, int, struct neko_lua_hook_callbacks *callback), int ref);
-void neko_lua_hook_run(struct neko_lua_hook_t *instance, lua_State *L);
-void neko_lua_hook_free(struct neko_lua_hook_t *instance, lua_State *L);
-struct neko_lua_hook_t *neko_lua_hook_find(const char *hookName);
-struct neko_lua_hook_callbacks *neko_lua_hook_callback_create(size_t dataSize, enum neko_lua_dataType dataType);
-void *neko_lua_hook_callback_get(const struct neko_lua_hook_callbacks *callback);
-void neko_lua_hook_callback_set(struct neko_lua_hook_callbacks *callback, const void *data);
-
-extern struct neko_lua_hook_pool g_lua_hook_pool;
-
 void neko_register(lua_State *L);
 
 lua_Number luax_number_field(lua_State *L, s32 arg, const char *key);

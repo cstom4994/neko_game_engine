@@ -129,7 +129,7 @@ NEKO_API_DECL b32 neko_util_load_texture_data_from_memory(const void *memory, si
 
     if (!*data) {
         // neko_image_free(&img);
-        neko_log_warning("could not load image %p", memory);
+        NEKO_WARN("could not load image %p", memory);
         return false;
     }
     return true;
@@ -160,7 +160,7 @@ NEKO_API_DECL bool neko_asset_texture_load_from_file(const_str path, void *out, 
 
     if (!t->desc.data) {
         neko_image_free(img);
-        neko_log_warning("failed to load texture data %s", path);
+        NEKO_WARN("failed to load texture data %s", path);
         return false;
     }
 
@@ -223,14 +223,14 @@ bool neko_asset_ascii_font_load_from_file(const_str path, void *out, u32 point_s
     size_t len = 0;
     char *ttf = neko_platform_read_file_contents(path, "rb", &len);
     if (!point_size) {
-        neko_log_warning("font: %s: point size not declared. setting to default 16.", neko_fs_get_filename(path));
+        NEKO_WARN("font: %s: point size not declared. setting to default 16.", neko_fs_get_filename(path));
         point_size = 16;
     }
     bool ret = neko_asset_ascii_font_load_from_memory(ttf, len, out, point_size);
     if (!ret) {
-        neko_log_warning("font failed to load: %s", neko_fs_get_filename(path));
+        NEKO_WARN("font failed to load: %s", neko_fs_get_filename(path));
     } else {
-        neko_log_trace("font successfully loaded: %s", neko_fs_get_filename(path));
+        NEKO_TRACE("font successfully loaded: %s", neko_fs_get_filename(path));
     }
     neko_safe_free(ttf);
     return ret;
@@ -240,7 +240,7 @@ bool neko_asset_ascii_font_load_from_memory(const void *memory, size_t sz, void 
     neko_asset_ascii_font_t *f = (neko_asset_ascii_font_t *)out;
 
     if (!point_size) {
-        neko_log_warning("font: point size not declared. setting to default 16.");
+        NEKO_WARN("font: point size not declared. setting to default 16.");
         point_size = 16;
     }
 
@@ -286,9 +286,9 @@ bool neko_asset_ascii_font_load_from_memory(const void *memory, size_t sz, void 
 
     bool success = false;
     if (v <= 0) {
-        neko_log_warning("font failed to load, baked texture was too small: %d", v);
+        NEKO_WARN("font failed to load, baked texture was too small: %d", v);
     } else {
-        neko_log_trace("font baked size: %d", v);
+        NEKO_TRACE("font baked size: %d", v);
         success = true;
     }
 
@@ -904,7 +904,7 @@ int neko_pack_read(const_str file_path, u32 data_buffer_capacity, bool is_resour
     pack_reader->data_buffer = data_buffer;
     pack_reader->data_size = data_buffer_capacity;
 
-    neko_log_trace("load pack %s buildnum: %d (engine %d)", neko_fs_get_filename(file_path), buildnum, neko_buildnum());
+    NEKO_TRACE("load pack %s buildnum: %d (engine %d)", neko_fs_get_filename(file_path), buildnum, neko_buildnum());
 
     //*pack_reader = pack;
     return 0;
@@ -913,7 +913,7 @@ void neko_pack_destroy(neko_packreader_t *pack_reader) {
     if (!pack_reader) return;
 
     if (pack_reader->file_ref_count != 0) {
-        neko_log_warning("assets loader leaks detected %d refs", pack_reader->file_ref_count);
+        NEKO_WARN("assets loader leaks detected %d refs", pack_reader->file_ref_count);
     }
 
     neko_free(pack_reader->data_buffer);
@@ -1034,7 +1034,7 @@ int neko_pack_item_data_with_index(neko_packreader_t *pack_reader, u64 index, co
 
         result = neko_lz_decode(zip_buffer, info.zip_size, data_buffer, info.data_size);
 
-        neko_log_trace("[assets] neko_lz_decode %u %u", info.zip_size, info.data_size);
+        NEKO_TRACE("[assets] neko_lz_decode %u %u", info.zip_size, info.data_size);
 
         if (result < 0 || result != info.data_size) {
             return -1; /*FAILED_TO_DECOMPRESS_PACK_RESULT*/
@@ -1110,7 +1110,7 @@ int neko_pack_unzip(const_str file_path, b8 print_progress) {
         pack_item *item = &items[i];
 
         if (print_progress) {
-            neko_log_info("Unpacking %s", item->path);
+            NEKO_INFO("Unpacking %s", item->path);
         }
 
         const u8 *data_buffer;
@@ -3192,7 +3192,7 @@ ase_t *neko_aseprite_load_from_file(const char *path) {
     int sz;
     void *file = s_fopen(path, &sz);
     if (!file) {
-        neko_log_warning("unable to find map file %s", s_error_file ? s_error_file : "MEMORY");
+        NEKO_WARN("unable to find map file %s", s_error_file ? s_error_file : "MEMORY");
         return NULL;
     }
     ase_t *aseprite = neko_aseprite_load_from_memory(file, sz);
@@ -3294,7 +3294,7 @@ ase_t *neko_aseprite_load_from_memory(const void *memory, int size) {
                     s_skip(s, sizeof(u16));  // Default layer width in pixels (ignored).
                     s_skip(s, sizeof(u16));  // Default layer height in pixels (ignored).
                     int blend_mode = (int)s_read_uint16(s);
-                    if (blend_mode) neko_log_warning("aseprite unknown blend mode encountered.");
+                    if (blend_mode) NEKO_WARN("aseprite unknown blend mode encountered.");
                     layer->opacity = s_read_uint8(s) / 255.0f;
                     if (!valid_layer_opacity) layer->opacity = 1.0f;
                     s_skip(s, 3);  // For future use (set to zero).
@@ -3341,7 +3341,7 @@ ase_t *neko_aseprite_load_from_memory(const void *memory, int size) {
                             int pixels_sz = cel->w * cel->h * bpp;
                             void *pixels_decompressed = neko_safe_malloc(pixels_sz);
                             int ret = s_inflate(pixels, deflate_bytes, pixels_decompressed, pixels_sz);
-                            if (!ret) neko_log_warning(s_error_reason);
+                            if (!ret) NEKO_WARN(s_error_reason);
                             cel->cel_pixels = pixels_decompressed;
                             s_skip(s, deflate_bytes);
                         } break;

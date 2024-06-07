@@ -89,9 +89,9 @@ static struct {
     neko_log_callback callbacks[MAX_CALLBACKS];
 } L;
 
-static const char* level_strings[] = {"TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
+static const char* level_strings[] = {"TRACE", "DEBUG", "INFO", "WARN", "ERROR"};
 
-static const char* level_colors[] = {"\x1b[94m", "\x1b[36m", "\x1b[32m", "\x1b[33m", "\x1b[31m", "\x1b[35m"};
+static const char* level_colors[] = {"\x1b[94m", "\x1b[36m", "\x1b[32m", "\x1b[33m", "\x1b[31m"};
 
 static void log_lock(void) {
     if (L.lock) {
@@ -434,7 +434,7 @@ static neko_mem_alloc_info_t* neko_mem_alloc_head() {
 #if 1
 void* __neko_mem_safe_alloc(size_t size, const char* file, int line, size_t* statistics) {
 
-    if (NEKO_MEM_CHECK && size < 64) neko_log_warning("small size of memory blocks should use GC (%s:%d)", neko_fs_get_filename(file), line);
+    if (NEKO_MEM_CHECK && size < 64) NEKO_WARN("small size of memory blocks should use GC (%s:%d)", neko_fs_get_filename(file), line);
 
     neko_mem_alloc_info_t* mem = (neko_mem_alloc_info_t*)neko_malloc(sizeof(neko_mem_alloc_info_t) + size);
 
@@ -512,7 +512,7 @@ int neko_mem_check_leaks(bool detailed) {
     size_t leaks_size = 0;
 
     while (next != head) {
-        if (!leaks && detailed) neko_log_info("memory leaks detected (see below).");
+        if (!leaks && detailed) NEKO_INFO("memory leaks detected (see below).");
         if (detailed) {
             char info[128];
             neko_snprintf(info, 128, "LEAKED %zu bytes from file \"%s\" at line %d from address %p.", next->size, neko_fs_get_filename(next->file), next->line, (void*)(next + 1));
@@ -525,9 +525,9 @@ int neko_mem_check_leaks(bool detailed) {
 
     if (leaks) {
         f32 megabytes = (f32)leaks_size / 1048576.f;
-        neko_log_warning("memory leaks detected with %zu bytes equal to %.4f MB.", leaks_size, megabytes);
+        NEKO_WARN("memory leaks detected with %zu bytes equal to %.4f MB.", leaks_size, megabytes);
     } else {
-        neko_log_info("no memory leaks detected.");
+        NEKO_INFO("no memory leaks detected.");
     }
     return leaks;
 }
@@ -913,7 +913,7 @@ b32 neko_util_load_texture_data_from_file(const char* file_path, s32* width, s32
     NEKO_ASSERT(file_data);
     b32 ret = neko_util_load_texture_data_from_memory(file_data, len, width, height, num_comps, data, flip_vertically_on_load);
     if (!ret) {
-        neko_log_warning("Could not load texture: %s", file_path);
+        NEKO_WARN("Could not load texture: %s", file_path);
     }
     neko_safe_free(file_data);
     return ret;
@@ -1032,8 +1032,6 @@ void neko_config_print() {
 //=============================
 // Console
 //=============================
-
-
 
 NEKO_API_DECL void neko_console(neko_console_t* console, neko_ui_context_t* ctx, neko_ui_rect_t screen, const neko_ui_selector_desc_t* desc) {
     if (console->open)

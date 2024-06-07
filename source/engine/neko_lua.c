@@ -1745,16 +1745,14 @@ static int LUASTRUCT_access_ARRAY_uchar8(lua_State *L, const char *fieldName, uc
     return luaL_error(L, "Invalid field %s.%s", typeName, field); \
     }
 
-typedef neko_vec3_t VEC3;
-
-LUASTRUCT_BEGIN(VEC3)
+LUASTRUCT_BEGIN(neko_vec3)
 LUASTRUCT_FIELD(x, float)
 LUASTRUCT_FIELD(y, float)
 LUASTRUCT_FIELD(z, float)
 LUASTRUCT_END
 
 void createStructTables(lua_State *L) {
-    VEC3_create(L, "VEC3");
+    neko_vec3_create(L, "VEC3");
 
     ARRAY_uchar8_create(L);
 }

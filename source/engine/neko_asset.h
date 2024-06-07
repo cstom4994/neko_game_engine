@@ -5,7 +5,7 @@
 #include "engine/neko_engine.h"
 
 // Asset handle
-typedef struct neko_asset_s {
+typedef struct neko_asset_t {
     u64 type_id;
     u32 asset_id;
     u32 importer_id;  // 'Unique' id of importer, used for type safety
@@ -81,7 +81,7 @@ NEKO_API_DECL void neko_asset_importer_set_desc(neko_asset_importer_t* imp, neko
      (AM)->tmpi->tmpid = neko_slot_array_insert_func(&(AM)->tmpi->slot_array_indices_ptr, &(AM)->tmpi->slot_array_data_ptr, (AM)->tmpi->tmp_ptr, (AM)->tmpi->data_size, NULL), \
      neko_asset_handle_create(T, (AM)->tmpi->tmpid, (AM)->tmpi->importer_id))
 
-typedef struct neko_asset_manager_s {
+typedef struct neko_asset_manager_t {
     neko_hash_table(u64, neko_asset_importer_t) importers;  // Maps hashed types to importer
     neko_asset_importer_t* tmpi;                            // Temporary importer for caching
     u32 free_importer_id;
@@ -140,7 +140,7 @@ typedef struct pack_item {
     char* path;
 } pack_item;
 
-typedef struct neko_packreader_s {
+typedef struct neko_packreader_t {
     FILE* file;
     u64 item_count;
     pack_item* items;
@@ -299,7 +299,7 @@ NEKO_API_DECL const char* neko_font_decode_utf8(const char* text, int* cp);
 // Text draw
 ==========================*/
 
-typedef struct neko_fontbatch_s {
+typedef struct neko_fontbatch_t {
     f32 font_projection[16];
     neko_render_batch_context_t* font_render;
     neko_render_batch_shader_t font_shader;
@@ -361,12 +361,12 @@ NEKO_API_DECL void neko_aseprite_renderer_set_frame(neko_aseprite_renderer* sr, 
 // Tiled draw
 ==========================*/
 
-typedef struct tile_s {
+typedef struct tile_t {
     u32 id;
     u32 tileset_id;
 } tile_t;
 
-typedef struct tileset_s {
+typedef struct tileset_t {
     neko_handle(neko_render_texture_t) texture;
     u32 tile_count;
     u32 tile_width;
@@ -376,7 +376,7 @@ typedef struct tileset_s {
     u32 width, height;
 } tileset_t;
 
-typedef struct layer_s {
+typedef struct layer_t {
     tile_t* tiles;
     u32 width;
     u32 height;
@@ -384,7 +384,7 @@ typedef struct layer_s {
     neko_color_t tint;
 } layer_t;
 
-typedef struct object_s {
+typedef struct object_t {
     u32 id;
     s32 x, y, width, height;
     // C2_TYPE phy_type;
@@ -395,7 +395,7 @@ typedef struct object_s {
     // } phy;
 } object_t;
 
-typedef struct object_group_s {
+typedef struct object_group_t {
     neko_dyn_array(object_t) objects;
 
     neko_color_t color;
@@ -403,7 +403,7 @@ typedef struct object_group_s {
     const_str name;
 } object_group_t;
 
-typedef struct map_s {
+typedef struct map_t {
     neko_xml_document_t* doc;  // xml doc
     neko_dyn_array(tileset_t) tilesets;
     neko_dyn_array(object_group_t) object_groups;
@@ -413,7 +413,7 @@ typedef struct map_s {
 NEKO_API_DECL void neko_tiled_load(map_t* map, const_str tmx_path, const_str res_path);
 NEKO_API_DECL void neko_tiled_unload(map_t* map);
 
-typedef struct neko_tiled_quad_s {
+typedef struct neko_tiled_quad_t {
     u32 tileset_id;
     neko_handle(neko_render_texture_t) texture;
     neko_vec2 texture_size;
@@ -431,7 +431,7 @@ typedef struct neko_tiled_quad_s {
 #define VERTS_PER_QUAD 4   // 一次发送多少个verts数据
 #define FLOATS_PER_VERT 9  // 每个verts数据的大小
 
-typedef struct neko_tiled_quad_list_s {
+typedef struct neko_tiled_quad_list_t {
     neko_dyn_array(neko_tiled_quad_t) quad_list;  // quad 绘制队列
 } neko_tiled_quad_list_t;
 

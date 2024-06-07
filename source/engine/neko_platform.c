@@ -885,7 +885,7 @@ b32 __glfw_set_window_center(GLFWwindow* window);
 void neko_platform_init(neko_platform_t* pf) {
     NEKO_ASSERT(pf);
 
-    neko_log_trace("Initializing GLFW");
+    NEKO_TRACE("Initializing GLFW");
 
 #ifdef NEKO_PLATFORM_WIN
     setlocale(LC_ALL, "en_us.utf8");
@@ -943,7 +943,7 @@ void neko_platform_init(neko_platform_t* pf) {
     for (u32 i = 0; i < NEKO_PLATFORM_GAMEPAD_MAX; ++i) {
         pf->input.gamepads[i].present = glfwJoystickPresent(GLFW_JOYSTICK_1 + i);
         if (pf->input.gamepads[i].present) {
-            neko_log_trace("Controller %d connected.", i);
+            NEKO_TRACE("Controller %d connected.", i);
         }
     }
 }
@@ -986,18 +986,9 @@ neko_memory_info_t glfw_platform_meminfo() {
     return meminfo;
 }
 
-neko_vec2 glfw_gl_version() {
-    neko_vec2 ver = NEKO_DEFAULT_VAL();
-    struct neko_platform_t* platform = neko_instance()->ctx.platform;
-    GLFWwindow* win = (GLFWwindow*)(neko_slot_array_getp(platform->windows, neko_platform_main_window()))->hndl;
-    ver.x = glfwGetWindowAttrib(win, GLFW_CONTEXT_VERSION_MAJOR);
-    ver.y = glfwGetWindowAttrib(win, GLFW_CONTEXT_VERSION_MINOR);
-    return ver;
-}
-
 void* glfw_proc_handle() {
 #if defined(NEKO_PLATFORM_WIN)
-    struct neko_platform_t* platform = neko_instance()->ctx.platform;
+    struct neko_platform_t* platform = neko_subsystem(platform);
     GLFWwindow* win = (GLFWwindow*)(neko_slot_array_getp(platform->windows, neko_platform_main_window()))->hndl;
     HWND hwnd = glfwGetWin32Window(win);
     return hwnd;
@@ -1009,8 +1000,8 @@ void* glfw_proc_handle() {
 }
 
 void* neko_platform_hwnd() { return glfw_proc_handle(); }
+
 neko_memory_info_t neko_platform_memory_info() { return glfw_platform_meminfo(); }
-neko_vec2 neko_platform_gl_version() { return glfw_gl_version(); }
 
 void neko_platform_msgbox(const_str msg) {
 #if defined(NEKO_PLATFORM_WIN)
@@ -2271,7 +2262,7 @@ void __glfw_mouse_cursor_position_callback(GLFWwindow* window, f64 x, f64 y) {
 // GLFW窗口焦点回调函数
 void __glfw_window_focus_callback(GLFWwindow* window, int focused) {
 
-    neko_platform_t* platform = neko_instance()->ctx.platform;
+    neko_platform_t* platform = neko_subsystem(platform);
     neko_platform_window_t* win = (neko_slot_array_getp(platform->windows, neko_platform_main_window()));
 
     if (focused == GLFW_TRUE) {
@@ -2351,7 +2342,7 @@ NEKO_API_DECL void neko_platform_enable_vsync(s32 enabled) { glfwSwapInterval(en
 /*== OpenGL debug callback == */
 void GLAPIENTRY __neko_platform_gl_debug(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei len, const GLchar* msg, const void* user) {
     if (severity != GL_DEBUG_SEVERITY_NOTIFICATION) {
-        neko_log_warning("GL: %s", msg);
+        NEKO_WARN("GL: %s", msg);
     }
 }
 
@@ -2362,7 +2353,7 @@ NEKO_API_DECL neko_platform_window_t neko_platform_window_create_internal(const 
 
     if (!desc) {
         // Log warning
-        neko_log_warning("Window descriptor is null.");
+        NEKO_WARN("Window descriptor is null.");
         return win;
     }
 
@@ -2391,7 +2382,7 @@ NEKO_API_DECL neko_platform_window_t neko_platform_window_create_internal(const 
 
     GLFWwindow* window = glfwCreateWindow(desc->width, desc->height, desc->title, monitor, NULL);
     if (window == NULL) {
-        neko_log_error("%s", "Failed to create window.");
+        NEKO_ERROR("%s", "Failed to create window.");
         glfwTerminate();
         return win;
     }
@@ -2422,11 +2413,11 @@ NEKO_API_DECL neko_platform_window_t neko_platform_window_create_internal(const 
     // 只执行一次
     if (neko_slot_array_empty(neko_subsystem(platform)->windows)) {
         if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-            neko_log_warning("Failed to initialize GLFW.");
+            NEKO_WARN("Failed to initialize GLFW.");
             return win;
         }
 
-        neko_log_info("OpenGL Version: %s", glGetString(GL_VERSION));
+        NEKO_INFO("OpenGL Version: %s", glGetString(GL_VERSION));
         if (neko_cvar("settings.video.render.debug")->value.i) {
             glDebugMessageCallback(__neko_platform_gl_debug, NULL);
         }

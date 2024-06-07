@@ -7,7 +7,7 @@
 #include "engine/neko_engine.h"
 #include "engine/neko_imgui.hpp"
 #include "engine/neko_lua.hpp"
-#include "sandbox/hpp/neko_struct.hpp"
+#include "engine/neko_reflection.hpp"
 
 // deps
 #include <direct.h>
@@ -615,7 +615,7 @@ mount_result vfs_mount(const char *filepath) {
 #endif
 
     if (filepath != nullptr && !res.ok) {
-        neko_log_error("%s", tmp_fmt("failed to load: %s", filepath));
+        NEKO_ERROR("%s", tmp_fmt("failed to load: %s", filepath));
     }
 
     return res;
@@ -1532,7 +1532,7 @@ neko_struct(neko_client_cvar_t,                         //
 template <typename T, typename Fields = std::tuple<>>
 void __neko_cvar_gui_internal(T &&obj, int depth = 0, const char *fieldName = "", Fields &&fields = std::make_tuple()) {
     if constexpr (std::is_class_v<std::decay_t<T>>) {
-        neko_struct_foreach(obj, [depth](auto &&fieldName, auto &&value, auto &&info) { __neko_cvar_gui_internal(value, depth + 1, fieldName, info); });
+        neko::reflection::struct_foreach(obj, [depth](auto &&fieldName, auto &&value, auto &&info) { __neko_cvar_gui_internal(value, depth + 1, fieldName, info); });
     } else {
 
         auto ff = [&]<typename S>(const char *name, auto &var, S &t) {

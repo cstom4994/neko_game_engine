@@ -246,12 +246,12 @@ typedef uintptr_t uptr;
 
 #define NEKO_INT2VOIDP(I) (void*)(uintptr_t)(I)
 
-#define NEKO_EXPECT(x)                                                   \
-    do {                                                                 \
-        if (!(x)) {                                                      \
-            neko_log_error("Unexpect error: assertion '%s' failed", #x); \
-            abort();                                                     \
-        }                                                                \
+#define NEKO_EXPECT(x)                                               \
+    do {                                                             \
+        if (!(x)) {                                                  \
+            NEKO_ERROR("Unexpect error: assertion '%s' failed", #x); \
+            abort();                                                 \
+        }                                                            \
     } while (0)
 
 #define NEKO_CHOOSE(type, ...) ((type[]){__VA_ARGS__})[rand() % (sizeof((type[]){__VA_ARGS__}) / sizeof(type))]
@@ -281,32 +281,17 @@ NEKO_FORCE_INLINE void neko_printf(const char* fmt, ...) {
 #endif
 
 // Logging
-#define neko_log_info(...) log_info(__VA_ARGS__)
-#define neko_log_trace(...) log_trace(__VA_ARGS__)
-#define neko_log_warning(...) log_warn(__VA_ARGS__)
-#define neko_log_error(msg, ...)                                                                  \
+#define log_error(...) neko_log(LOG_ERROR, __FILE__, __LINE__, __VA_ARGS__)
+#define NEKO_DEBUG_LOG(...) neko_log(LOG_DEBUG, __FILE__, __LINE__, __VA_ARGS__)
+#define NEKO_INFO(...) neko_log(LOG_INFO, __FILE__, __LINE__, __VA_ARGS__)
+#define NEKO_TRACE(...) neko_log(LOG_TRACE, __FILE__, __LINE__, __VA_ARGS__)
+#define NEKO_WARN(...) neko_log(LOG_WARN, __FILE__, __LINE__, __VA_ARGS__)
+#define NEKO_ERROR(msg, ...)                                                                      \
     do {                                                                                          \
         char tmp[512];                                                                            \
         neko_snprintf(tmp, 512, msg, __VA_ARGS__);                                                \
         log_error("%s (%s:%s:%zu)", tmp, neko_fs_get_filename(__FILE__), __FUNCTION__, __LINE__); \
     } while (0)
-
-#define NEKO_ENUM_FLAG(T)                                                                                                                                                  \
-    inline T operator~(T a) { return static_cast<T>(~static_cast<std::underlying_type<T>::type>(a)); }                                                                     \
-    inline T operator|(T a, T b) { return static_cast<T>(static_cast<std::underlying_type<T>::type>(a) | static_cast<std::underlying_type<T>::type>(b)); }                 \
-    inline T operator&(T a, T b) { return static_cast<T>(static_cast<std::underlying_type<T>::type>(a) & static_cast<std::underlying_type<T>::type>(b)); }                 \
-    inline T operator^(T a, T b) { return static_cast<T>(static_cast<std::underlying_type<T>::type>(a) ^ static_cast<std::underlying_type<T>::type>(b)); }                 \
-    inline T& operator|=(T& a, T b) { return reinterpret_cast<T&>(reinterpret_cast<std::underlying_type<T>::type&>(a) |= static_cast<std::underlying_type<T>::type>(b)); } \
-    inline T& operator&=(T& a, T b) { return reinterpret_cast<T&>(reinterpret_cast<std::underlying_type<T>::type&>(a) &= static_cast<std::underlying_type<T>::type>(b)); } \
-    inline T& operator^=(T& a, T b) { return reinterpret_cast<T&>(reinterpret_cast<std::underlying_type<T>::type&>(a) ^= static_cast<std::underlying_type<T>::type>(b)); }
-
-#define NEKO_MOVEONLY(class_name)                      \
-    class_name(const class_name&) = delete;            \
-    class_name& operator=(const class_name&) = delete; \
-    class_name(class_name&&) = default;                \
-    class_name& operator=(class_name&&) = default
-
-// #define neko_aligned_buffer(name) alignas(16) static const std::u8 name[]
 
 #define NEKO_VA_UNPACK(...) __VA_ARGS__  // 用于解包括号 带逗号的宏参数需要它
 
@@ -388,14 +373,7 @@ typedef struct {
 typedef void (*neko_log_fn)(neko_log_event* ev);
 typedef void (*neko_log_lock_fn)(bool lock, void* udata);
 
-enum { LOG_TRACE, LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL };
-
-#define log_trace(...) neko_log(LOG_TRACE, __FILE__, __LINE__, __VA_ARGS__)
-#define log_debug(...) neko_log(LOG_DEBUG, __FILE__, __LINE__, __VA_ARGS__)
-#define log_info(...) neko_log(LOG_INFO, __FILE__, __LINE__, __VA_ARGS__)
-#define log_warn(...) neko_log(LOG_WARN, __FILE__, __LINE__, __VA_ARGS__)
-#define log_error(...) neko_log(LOG_ERROR, __FILE__, __LINE__, __VA_ARGS__)
-#define log_fatal(...) neko_log(LOG_FATAL, __FILE__, __LINE__, __VA_ARGS__)
+enum { LOG_TRACE, LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR };
 
 NEKO_API_DECL const char* log_level_string(int level);
 NEKO_API_DECL void log_set_lock(neko_log_lock_fn fn, void* udata);
@@ -2084,7 +2062,7 @@ typedef u32 neko_slot_map_iter;
 // Command Buffer
 ===================================*/
 
-typedef struct neko_command_buffer_s {
+typedef struct neko_command_buffer_t {
     u32 num_commands;
     neko_byte_buffer_t commands;
 } neko_command_buffer_t;
@@ -2159,13 +2137,13 @@ NEKO_API_DECL void hashtable_swap(hashtable_t* table, int index_a, int index_b);
 
 typedef void (*neko_console_func)(int argc, char** argv);
 
-typedef struct neko_console_command_s {
+typedef struct neko_console_command_t {
     neko_console_func func;
     const char* name;
     const char* desc;
 } neko_console_command_t;
 
-typedef struct neko_console_s {
+typedef struct neko_console_t {
     char tb[2048];     // text buffer
     char cb[10][256];  // "command" buffer
     int current_cb_idx;

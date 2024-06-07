@@ -12,8 +12,6 @@ NEKO_STATIC neko_t* g_neko_instance = NEKO_DEFAULT_VAL();
 
 NEKO_API_DECL neko_t* neko_instance() { return g_neko_instance; }
 
-NEKO_API_DECL neko_context_t* neko_ctx() { return &neko_instance()->ctx; }
-
 NEKO_API_DECL neko_t* neko_create(int argc, char** argv) {
     if (neko_instance() == NULL) {
 
@@ -27,7 +25,7 @@ NEKO_API_DECL neko_t* neko_create(int argc, char** argv) {
         // neko_instance()->ctx.game = *app_desc;
 
         // 设置函数指针
-        neko_instance()->ctx.fini = &neko_fini;
+        neko_instance()->fini = &neko_fini;
 
         neko_app();
 
@@ -162,7 +160,7 @@ NEKO_API_DECL void neko_frame() {
     }
 
     if (!neko_instance()->game.is_running) {
-        neko_instance()->ctx.fini();
+        neko_instance()->fini();
         return;
     }
 }

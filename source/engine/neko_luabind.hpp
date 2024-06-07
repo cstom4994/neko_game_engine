@@ -27,7 +27,7 @@ inline int preload_module(lua_State* L) {
     for (const auto& m : usermodules()) {
         lua_pushcfunction(L, m.func);
         lua_setfield(L, -2, m.name);
-        neko_log_info("[luabind] loaded %s", m.name);
+        NEKO_INFO("[luabind] loaded %s", m.name);
     }
     lua_pop(L, 1);
     return 0;

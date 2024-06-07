@@ -2554,7 +2554,7 @@ void neko_draw_material_set_uniform(neko_draw_material_t* mat, const char* name,
     // Get key for name lookup
     uint64_t key = neko_hash_str64(name);
     if (!neko_hash_table_exists(pip->ublock.lookup, key)) {
-        NEKO_TIMED_ACTION(60, { neko_log_warning("Unable to find uniform: %s", name); });
+        NEKO_TIMED_ACTION(60, { NEKO_WARN("Unable to find uniform: %s", name); });
         return;
     }
 
@@ -2832,7 +2832,7 @@ neko_draw_mesh_t neko_draw_mesh_load_from_file(const char* path, neko_draw_mesh_
     neko_draw_mesh_t mesh = NEKO_DEFAULT_VAL();
 
     if (!neko_platform_file_exists(path)) {
-        neko_log_trace("[gfxt] Warning:GFXT:MeshLoadFromFile:File does not exist: %s", path);
+        NEKO_TRACE("[gfxt] Warning:GFXT:MeshLoadFromFile:File does not exist: %s", path);
         return mesh;
     }
 
@@ -2850,7 +2850,7 @@ neko_draw_mesh_t neko_draw_mesh_load_from_file(const char* path, neko_draw_mesh_
     } else if (neko_string_compare_equal(file_ext, "glb")) {  // GLB
         NEKO_ASSERT(false);
     } else {
-        neko_log_trace("[gfxt] Warning:GFXT:MeshLoadFromFile:File extension not supported: %s, file: %s", file_ext, path);
+        NEKO_TRACE("[gfxt] Warning:GFXT:MeshLoadFromFile:File extension not supported: %s, file: %s", file_ext, path);
         return mesh;
     }
 
@@ -2989,22 +2989,22 @@ typedef struct neko_pipeline_parse_data_t {
     do {                                 \
         neko_printf("WARNING::");        \
         neko_printf(TXT, ##__VA_ARGS__); \
-        neko_log_trace("[gfxt] ");       \
+        NEKO_TRACE("[gfxt] ");       \
     } while (0)
 
 #define neko_parse_error(TXT, ASSERT, ...) \
     do {                                   \
         neko_printf("ERROR::");            \
         neko_printf(TXT, ##__VA_ARGS__);   \
-        neko_log_trace("[gfxt] ");         \
+        NEKO_TRACE("[gfxt] ");         \
         if (ASSERT) NEKO_ASSERT(false);    \
     } while (0)
 
 #define neko_parse_block(NAME, ...)                                                                               \
     do {                                                                                                          \
-        neko_log_trace("[gfxt] neko_pipeline_load_from_file::parsing::%s", #NAME);                                \
+        NEKO_TRACE("[gfxt] neko_pipeline_load_from_file::parsing::%s", #NAME);                                \
         if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_LBRACE)) {                                           \
-            neko_log_trace("[gfxt] error::neko_pipeline_load_from_file::error parsing raster from .sf resource"); \
+            NEKO_TRACE("[gfxt] error::neko_pipeline_load_from_file::error parsing raster from .sf resource"); \
             NEKO_ASSERT(false);                                                                                   \
         }                                                                                                         \
                                                                                                                   \
@@ -3203,7 +3203,7 @@ bool neko_parse_uniforms(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, nek
     uint32_t image_binding = 0;
 
     if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_LBRACE)) {
-        neko_log_warning("Unable to parsing uniforms from .sf resource");
+        NEKO_WARN("Unable to parsing uniforms from .sf resource");
         return false;
     }
 
@@ -3239,7 +3239,7 @@ bool neko_parse_uniforms(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, nek
                     }
 
                     if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_IDENTIFIER)) {
-                        neko_log_warning("Unidentified token (Expected identifier)");
+                        NEKO_WARN("Unidentified token (Expected identifier)");
                         neko_token_debug_print(&lex->current_token);
                         return false;
                     }
@@ -3259,7 +3259,7 @@ bool neko_parse_uniforms(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, nek
 
 bool neko_parse_io(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_t* ppd, neko_render_shader_stage_type type) {
     if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_LBRACE)) {
-        neko_log_warning("Expected opening left brace. Unable to parse io from .sf resource");
+        NEKO_WARN("Expected opening left brace. Unable to parse io from .sf resource");
         return false;
     }
 
@@ -3280,7 +3280,7 @@ bool neko_parse_io(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_
                 switch (type) {
                     case R_SHADER_STAGE_VERTEX: {
                         if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_IDENTIFIER)) {
-                            neko_log_warning("IO expected identifier name after type, shader stage vertex.");
+                            NEKO_WARN("IO expected identifier name after type, shader stage vertex.");
                             neko_token_debug_print(&lex->current_token);
                             return false;
                         }
@@ -3291,7 +3291,7 @@ bool neko_parse_io(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_
 
                     case R_SHADER_STAGE_FRAGMENT: {
                         if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_IDENTIFIER)) {
-                            neko_log_warning("IO expected identifier name after type, shader stage fragment.");
+                            NEKO_WARN("IO expected identifier name after type, shader stage fragment.");
                             neko_token_debug_print(&lex->current_token);
                             return false;
                         }
@@ -3302,7 +3302,7 @@ bool neko_parse_io(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_
 
                     case R_SHADER_STAGE_COMPUTE: {
                         if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_NUMBER)) {
-                            neko_log_warning("IO expected number after type, shader stage compute.");
+                            NEKO_WARN("IO expected number after type, shader stage compute.");
                             neko_token_debug_print(&lex->current_token);
                             return false;
                         }
@@ -3319,7 +3319,7 @@ bool neko_parse_io(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_
 
 bool neko_parse_code(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_t* ppd, neko_render_shader_stage_type stage) {
     if (!neko_lexer_require_token_type(lex, NEKO_TOKEN_LBRACE)) {
-        neko_log_warning("Expected opening left brace");
+        NEKO_WARN("Expected opening left brace");
         return false;
     }
 
@@ -3505,7 +3505,7 @@ bool neko_parse_vertex_mesh_attributes(neko_lexer_t* lex, neko_draw_pipeline_des
         memcpy(attr.name, token_name.text, token_name.len);            \
         attr.format = R_VERTEX_ATTRIBUTE_##VERT_ATTR;                  \
         neko_dyn_array_push(desc->pip_desc.layout.attrs, attr);        \
-        /*neko_log_trace("[gfxt] %s: %s", #MESH_ATTR, #VERT_ATTR);*/   \
+        /*NEKO_TRACE("[gfxt] %s: %s", #MESH_ATTR, #VERT_ATTR);*/   \
     } while (0)
 
                 if (neko_token_compare_text(&token, "POSITION"))
@@ -3552,7 +3552,7 @@ bool neko_parse_vertex_mesh_attributes(neko_lexer_t* lex, neko_draw_pipeline_des
                     PUSH_ATTR(UINT, UINT);
                 // else if (neko_token_compare_text(&token, "FLOAT4"))     PUSH_ATTR(TANGENT, FLOAT4);
                 else {
-                    neko_log_warning("Unidentified vertex attribute: %.*s: %.*s", token.len, token.text, token_name.len, token_name.text);
+                    NEKO_WARN("Unidentified vertex attribute: %.*s: %.*s", token.len, token.text, token_name.len, token_name.text);
                     return false;
                 }
             }
@@ -3565,7 +3565,7 @@ bool neko_parse_vertex_attributes(neko_lexer_t* lex, neko_draw_pipeline_desc_t* 
 
 bool neko_parse_shader_stage(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_t* ppd, neko_render_shader_stage_type stage) {
     if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_LBRACE)) {
-        neko_log_trace("[gfxt] error::neko_pipeline_load_from_file::error parsing raster from .sf resource");
+        NEKO_TRACE("[gfxt] error::neko_pipeline_load_from_file::error parsing raster from .sf resource");
         NEKO_ASSERT(false);
     }
 
@@ -3582,41 +3582,41 @@ bool neko_parse_shader_stage(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc,
 
             case NEKO_TOKEN_IDENTIFIER: {
                 if (stage == R_SHADER_STAGE_VERTEX && neko_token_compare_text(&token, "attributes")) {
-                    neko_log_trace("[gfxt] parsing attributes...");
+                    NEKO_TRACE("[gfxt] parsing attributes...");
                     if (!neko_parse_vertex_attributes(lex, desc, ppd)) {
-                        neko_log_warning("Unable to parse vertex attributes.");
+                        NEKO_WARN("Unable to parse vertex attributes.");
                         return false;
                     }
                 }
 
                 else if (neko_token_compare_text(&token, "uniforms")) {
-                    neko_log_trace("[gfxt] parsing uniforms...");
+                    NEKO_TRACE("[gfxt] parsing uniforms...");
                     if (!neko_parse_uniforms(lex, desc, ppd, stage)) {
-                        neko_log_warning("Unable to parse 'uniforms' for stage: %zu.", (u32)stage);
+                        NEKO_WARN("Unable to parse 'uniforms' for stage: %zu.", (u32)stage);
                         return false;
                     }
                 }
 
                 else if (neko_token_compare_text(&token, "out")) {
-                    neko_log_trace("[gfxt] parsing out...");
+                    NEKO_TRACE("[gfxt] parsing out...");
                     if (!neko_parse_io(lex, desc, ppd, stage)) {
-                        neko_log_warning("Unable to parse 'out' for stage: %zu.", (u32)stage);
+                        NEKO_WARN("Unable to parse 'out' for stage: %zu.", (u32)stage);
                         return false;
                     }
                 }
 
                 else if (neko_token_compare_text(&token, "in")) {
-                    neko_log_trace("[gfxt] parsing in...");
+                    NEKO_TRACE("[gfxt] parsing in...");
                     if (!neko_parse_io(lex, desc, ppd, stage)) {
-                        neko_log_warning("Unable to parse 'in' for stage: %zu.", (u32)stage);
+                        NEKO_WARN("Unable to parse 'in' for stage: %zu.", (u32)stage);
                         return false;
                     }
                 }
 
                 else if (neko_token_compare_text(&token, "code")) {
-                    neko_log_trace("[gfxt] parsing code...");
+                    NEKO_TRACE("[gfxt] parsing code...");
                     if (!neko_parse_code(lex, desc, ppd, stage)) {
-                        neko_log_warning("Unable to parse 'code' for stage: %zu.", (u32)stage);
+                        NEKO_WARN("Unable to parse 'code' for stage: %zu.", (u32)stage);
                         return false;
                     }
                 }
@@ -3630,21 +3630,21 @@ bool neko_parse_compute_shader_stage(neko_lexer_t* lex, neko_draw_pipeline_desc_
     neko_parse_block(PIPELINE::COMPUTE_SHADER_STAGE, {
         if (neko_token_compare_text(&token, "uniforms")) {
             if (!neko_parse_uniforms(lex, desc, ppd, R_SHADER_STAGE_COMPUTE)) {
-                neko_log_warning("Unable to parse 'uniforms' for compute shader");
+                NEKO_WARN("Unable to parse 'uniforms' for compute shader");
                 return false;
             }
         }
 
         else if (neko_token_compare_text(&token, "in")) {
             if (!neko_parse_io(lex, desc, ppd, R_SHADER_STAGE_COMPUTE)) {
-                neko_log_warning("Unable to parse 'in' for compute shader");
+                NEKO_WARN("Unable to parse 'in' for compute shader");
                 return false;
             }
         }
 
         else if (neko_token_compare_text(&token, "code")) {
             if (!neko_parse_code(lex, desc, ppd, R_SHADER_STAGE_COMPUTE)) {
-                neko_log_warning("Unable to parse 'code' for compute shader");
+                NEKO_WARN("Unable to parse 'code' for compute shader");
                 return false;
             }
         }
@@ -3654,7 +3654,7 @@ bool neko_parse_compute_shader_stage(neko_lexer_t* lex, neko_draw_pipeline_desc_
 
 bool neko_parse_shader(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_ppd_t* ppd) {
     if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_LBRACE)) {
-        neko_log_warning("Unable to parse shader from .sf resource. Expected opening left brace.");
+        NEKO_WARN("Unable to parse shader from .sf resource. Expected opening left brace.");
         return false;
     }
 
@@ -3673,27 +3673,27 @@ bool neko_parse_shader(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_
             case NEKO_TOKEN_IDENTIFIER: {
                 // Vertex shader
                 if (neko_token_compare_text(&token, "vertex")) {
-                    neko_log_trace("[gfxt] parsing vertex shader");
+                    NEKO_TRACE("[gfxt] parsing vertex shader");
                     if (!neko_parse_shader_stage(lex, desc, ppd, R_SHADER_STAGE_VERTEX)) {
-                        neko_log_warning("Unable to parse shader stage: Vertex");
+                        NEKO_WARN("Unable to parse shader stage: Vertex");
                         return false;
                     }
                 }
 
                 // Fragment shader
                 else if (neko_token_compare_text(&token, "fragment")) {
-                    neko_log_trace("[gfxt] parsing fragment shader");
+                    NEKO_TRACE("[gfxt] parsing fragment shader");
                     if (!neko_parse_shader_stage(lex, desc, ppd, R_SHADER_STAGE_FRAGMENT)) {
-                        neko_log_warning("Unable to parse shader stage: Fragment");
+                        NEKO_WARN("Unable to parse shader stage: Fragment");
                         return false;
                     }
                 }
 
                 // Compute shader
                 else if (neko_token_compare_text(&token, "compute")) {
-                    neko_log_trace("[gfxt] parsing compute shader");
+                    NEKO_TRACE("[gfxt] parsing compute shader");
                     if (!neko_parse_shader_stage(lex, desc, ppd, R_SHADER_STAGE_COMPUTE)) {
-                        neko_log_warning("Unable to parse shader stage: Compute");
+                        NEKO_WARN("Unable to parse shader stage: Compute");
                         return false;
                     }
                 }
@@ -3710,7 +3710,7 @@ bool neko_parse_depth(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, neko_
         if (neko_token_compare_text(&token, "func")) {
             if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_IDENTIFIER)) {
                 token = lex->current_token;
-                neko_log_warning("Depth func type not found after function decl: %.*s", token.len, token.text);
+                NEKO_WARN("Depth func type not found after function decl: %.*s", token.len, token.text);
                 return false;
             }
 
@@ -3734,14 +3734,14 @@ bool neko_parse_depth(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, neko_
                 pdesc->pip_desc.depth.func = R_DEPTH_FUNC_NEVER;
             else {
                 token = lex->current_token;
-                neko_log_warning("Func type %.*s not valid.", token.len, token.text);
+                NEKO_WARN("Func type %.*s not valid.", token.len, token.text);
                 return false;
             }
         }
         if (neko_token_compare_text(&token, "mask")) {
             if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_IDENTIFIER)) {
                 token = lex->current_token;
-                neko_log_warning("Depth mask type not found after function decl: %.*s", token.len, token.text);
+                NEKO_WARN("Depth mask type not found after function decl: %.*s", token.len, token.text);
                 return false;
             }
 
@@ -3761,10 +3761,10 @@ bool neko_parse_depth(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, neko_
                 pdesc->pip_desc.depth.mask = R_DEPTH_MASK_DISABLED;
             else {
                 token = lex->current_token;
-                neko_log_warning("Mask type %.*s not valid.", token.len, token.text);
+                NEKO_WARN("Mask type %.*s not valid.", token.len, token.text);
                 return false;
             }
-            neko_log_trace("[gfxt] MASK: %zu", (uint32_t)pdesc->pip_desc.depth.mask);
+            NEKO_TRACE("[gfxt] MASK: %zu", (uint32_t)pdesc->pip_desc.depth.mask);
         }
     });
     return true;
@@ -3775,7 +3775,7 @@ bool neko_parse_blend(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, neko_
         // Blend function
         if (neko_token_compare_text(&token, "func")) {
             if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_IDENTIFIER)) {
-                neko_log_warning("Blend func type not found after function decl.");
+                NEKO_WARN("Blend func type not found after function decl.");
                 return false;
             }
 
@@ -3792,7 +3792,7 @@ bool neko_parse_blend(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, neko_
             else if (neko_token_compare_text(&token, "MAX"))
                 pdesc->pip_desc.blend.func = R_BLEND_EQUATION_MAX;
             else {
-                neko_log_warning("Blend func type %.*s not valid.", token.len, token.text);
+                NEKO_WARN("Blend func type %.*s not valid.", token.len, token.text);
                 return false;
             }
         }
@@ -3800,7 +3800,7 @@ bool neko_parse_blend(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, neko_
         // Source blend
         else if (neko_token_compare_text(&token, "src")) {
             if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_IDENTIFIER)) {
-                neko_log_warning("Blend src type not found after decl.");
+                NEKO_WARN("Blend src type not found after decl.");
                 return false;
             }
 
@@ -3835,7 +3835,7 @@ bool neko_parse_blend(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, neko_
             else if (neko_token_compare_text(&token, "ONE_MINUS_CONSTANT_ALPHA"))
                 pdesc->pip_desc.blend.src = R_BLEND_MODE_ONE_MINUS_CONSTANT_ALPHA;
             else {
-                neko_log_warning("Blend src type %.*s not valid.", token.len, token.text);
+                NEKO_WARN("Blend src type %.*s not valid.", token.len, token.text);
                 return false;
             }
         }
@@ -3843,7 +3843,7 @@ bool neko_parse_blend(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, neko_
         // Dest blend
         else if (neko_token_compare_text(&token, "dst")) {
             if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_IDENTIFIER)) {
-                neko_log_warning("Blend dst type not found after decl.");
+                NEKO_WARN("Blend dst type not found after decl.");
                 return false;
             }
 
@@ -3878,7 +3878,7 @@ bool neko_parse_blend(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, neko_
             else if (neko_token_compare_text(&token, "ONE_MINUS_CONSTANT_ALPHA"))
                 pdesc->pip_desc.blend.dst = R_BLEND_MODE_ONE_MINUS_CONSTANT_ALPHA;
             else {
-                neko_log_warning("Blend dst type %.*s not valid.", token.len, token.text);
+                NEKO_WARN("Blend dst type %.*s not valid.", token.len, token.text);
                 return false;
             }
         }
@@ -3892,7 +3892,7 @@ bool neko_parse_stencil(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, nek
         // Function
         if (neko_token_compare_text(&token, "func")) {
             if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_IDENTIFIER)) {
-                neko_log_warning("Stencil func type not found after decl.");
+                NEKO_WARN("Stencil func type not found after decl.");
                 return false;
             }
 
@@ -3916,7 +3916,7 @@ bool neko_parse_stencil(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, nek
                 else if (neko_token_compare_text(&token, "NEVER"))
                     pdesc->pip_desc.stencil.func = R_STENCIL_FUNC_NEVER;
                 else {
-                    neko_log_warning("Stencil func type %.*s not valid.", token.len, token.text);
+                    NEKO_WARN("Stencil func type %.*s not valid.", token.len, token.text);
                     return false;
                 }
             }
@@ -3926,7 +3926,7 @@ bool neko_parse_stencil(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, nek
         // Reference value
         else if (neko_token_compare_text(&token, "ref")) {
             if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_NUMBER)) {
-                neko_log_warning("Stencil reference value not found after decl.");
+                NEKO_WARN("Stencil reference value not found after decl.");
                 return false;
             }
 
@@ -3940,7 +3940,7 @@ bool neko_parse_stencil(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, nek
         // Component mask
         else if (neko_token_compare_text(&token, "comp_mask")) {
             if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_NUMBER)) {
-                neko_log_warning("Stencil component mask value not found after decl.");
+                NEKO_WARN("Stencil component mask value not found after decl.");
                 return false;
             }
 
@@ -3954,7 +3954,7 @@ bool neko_parse_stencil(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, nek
         // Write mask
         else if (neko_token_compare_text(&token, "write_mask")) {
             if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_NUMBER)) {
-                neko_log_warning("Stencil write mask value not found after decl.");
+                NEKO_WARN("Stencil write mask value not found after decl.");
                 return false;
             }
 
@@ -3968,7 +3968,7 @@ bool neko_parse_stencil(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, nek
         // Stencil test failure
         else if (neko_token_compare_text(&token, "sfail")) {
             if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_IDENTIFIER)) {
-                neko_log_warning("Stencil sfail value not found after decl.");
+                NEKO_WARN("Stencil sfail value not found after decl.");
                 return false;
             }
 
@@ -3992,7 +3992,7 @@ bool neko_parse_stencil(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, nek
                 else if (neko_token_compare_text(&token, "INVERT"))
                     pdesc->pip_desc.stencil.sfail = R_STENCIL_OP_INVERT;
                 else {
-                    neko_log_warning("Stencil sfail type %.*s not valid.", token.len, token.text);
+                    NEKO_WARN("Stencil sfail type %.*s not valid.", token.len, token.text);
                     return false;
                 }
             }
@@ -4001,7 +4001,7 @@ bool neko_parse_stencil(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, nek
         // Stencil test pass, Depth fail
         else if (neko_token_compare_text(&token, "dpfail")) {
             if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_IDENTIFIER)) {
-                neko_log_warning("Stencil dpfail value not found after decl.");
+                NEKO_WARN("Stencil dpfail value not found after decl.");
                 return false;
             }
 
@@ -4025,7 +4025,7 @@ bool neko_parse_stencil(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, nek
                 else if (neko_token_compare_text(&token, "INVERT"))
                     pdesc->pip_desc.stencil.dpfail = R_STENCIL_OP_INVERT;
                 else {
-                    neko_log_warning("Stencil dpfail type %.*s not valid.", token.len, token.text);
+                    NEKO_WARN("Stencil dpfail type %.*s not valid.", token.len, token.text);
                     return false;
                 }
             }
@@ -4034,7 +4034,7 @@ bool neko_parse_stencil(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, nek
         // Stencil test pass, Depth pass
         else if (neko_token_compare_text(&token, "dppass")) {
             if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_IDENTIFIER)) {
-                neko_log_warning("Stencil dppass value not found after decl.");
+                NEKO_WARN("Stencil dppass value not found after decl.");
                 return false;
             }
 
@@ -4058,7 +4058,7 @@ bool neko_parse_stencil(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, nek
                 else if (neko_token_compare_text(&token, "INVERT"))
                     pdesc->pip_desc.stencil.dppass = R_STENCIL_OP_INVERT;
                 else {
-                    neko_log_warning("Stencil dppass type %.*s not valid.", token.len, token.text);
+                    NEKO_WARN("Stencil dppass type %.*s not valid.", token.len, token.text);
                     return false;
                 }
             }
@@ -4072,7 +4072,7 @@ bool neko_parse_raster(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, neko
         // Index Buffer Element Size
         if (neko_token_compare_text(&token, "index_buffer_element_size")) {
             if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_IDENTIFIER)) {
-                neko_log_warning("Raster index buffer element size not found.", token.len, token.text);
+                NEKO_WARN("Raster index buffer element size not found.", token.len, token.text);
             }
 
             token = lex->current_token;
@@ -4094,7 +4094,7 @@ bool neko_parse_raster(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, neko
         // Face culling
         if (neko_token_compare_text(&token, "face_culling")) {
             if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_IDENTIFIER)) {
-                neko_log_warning("Raster face culling type not found.");
+                NEKO_WARN("Raster face culling type not found.");
                 return false;
             }
 
@@ -4107,7 +4107,7 @@ bool neko_parse_raster(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, neko
             else if (neko_token_compare_text(&token, "FRONT_AND_BACK"))
                 pdesc->pip_desc.raster.face_culling = R_FACE_CULLING_FRONT_AND_BACK;
             else {
-                neko_log_warning("Raster face culling type %.*s not valid.", token.len, token.text);
+                NEKO_WARN("Raster face culling type %.*s not valid.", token.len, token.text);
                 return false;
             }
         }
@@ -4115,7 +4115,7 @@ bool neko_parse_raster(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, neko
         // Winding order
         if (neko_token_compare_text(&token, "winding_order")) {
             if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_IDENTIFIER)) {
-                neko_log_warning("Raster winding order type not found.");
+                NEKO_WARN("Raster winding order type not found.");
                 return false;
             }
 
@@ -4126,7 +4126,7 @@ bool neko_parse_raster(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, neko
             else if (neko_token_compare_text(&token, "CCW"))
                 pdesc->pip_desc.raster.winding_order = R_WINDING_ORDER_CCW;
             else {
-                neko_log_warning("Raster winding order type %.*s not valid.", token.len, token.text);
+                NEKO_WARN("Raster winding order type %.*s not valid.", token.len, token.text);
                 return false;
             }
         }
@@ -4134,7 +4134,7 @@ bool neko_parse_raster(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, neko
         // Primtive
         if (neko_token_compare_text(&token, "primitive")) {
             if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_IDENTIFIER)) {
-                neko_log_warning("Raster primitive type not found.");
+                NEKO_WARN("Raster primitive type not found.");
                 return false;
             }
 
@@ -4147,7 +4147,7 @@ bool neko_parse_raster(neko_lexer_t* lex, neko_draw_pipeline_desc_t* pdesc, neko
             else if (neko_token_compare_text(&token, "QUADS"))
                 pdesc->pip_desc.raster.primitive = R_PRIMITIVE_QUADS;
             else {
-                neko_log_warning("Raster primitive type %.*s not valid.", token.len, token.text);
+                NEKO_WARN("Raster primitive type %.*s not valid.", token.len, token.text);
                 return false;
             }
         }
@@ -4162,37 +4162,37 @@ bool neko_parse_pipeline(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, nek
         switch (token.type) {
             case NEKO_TOKEN_IDENTIFIER: {
                 if (neko_token_compare_text(&token, "shader")) {
-                    neko_log_trace("[gfxt] parsing shader");
+                    NEKO_TRACE("[gfxt] parsing shader");
                     if (!neko_parse_shader(lex, desc, ppd)) {
-                        neko_log_warning("Unable to parse shader descriptor");
+                        NEKO_WARN("Unable to parse shader descriptor");
                         return false;
                     }
                 }
 
                 else if (neko_token_compare_text(&token, "raster")) {
                     if (!neko_parse_raster(lex, desc, ppd)) {
-                        neko_log_warning("Unable to parse raster descriptor");
+                        NEKO_WARN("Unable to parse raster descriptor");
                         return false;
                     }
                 }
 
                 else if (neko_token_compare_text(&token, "depth")) {
                     if (!neko_parse_depth(lex, desc, ppd)) {
-                        neko_log_warning("Unable to parse depth descriptor");
+                        NEKO_WARN("Unable to parse depth descriptor");
                         return false;
                     }
                 }
 
                 else if (neko_token_compare_text(&token, "stencil")) {
                     if (!neko_parse_stencil(lex, desc, ppd)) {
-                        neko_log_warning("Unable to parse stencil descriptor");
+                        NEKO_WARN("Unable to parse stencil descriptor");
                         return false;
                     }
                 }
 
                 else if (neko_token_compare_text(&token, "blend")) {
                     if (!neko_parse_blend(lex, desc, ppd)) {
-                        neko_log_warning("Unable to parse blend descriptor");
+                        NEKO_WARN("Unable to parse blend descriptor");
                         return false;
                     }
                 }
@@ -4204,7 +4204,7 @@ bool neko_parse_pipeline(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, nek
 }
 
 char* neko_pipeline_generate_shader_code(neko_draw_pipeline_desc_t* pdesc, neko_ppd_t* ppd, neko_render_shader_stage_type stage) {
-    neko_log_trace("[gfxt] GENERATING CODE...");
+    NEKO_TRACE("[gfxt] GENERATING CODE...");
 
     // Get major/minor version of shader
     neko_render_info_t* ginfo = neko_render_info();
@@ -4376,7 +4376,7 @@ NEKO_API_DECL neko_draw_pipeline_t neko_draw_pipeline_load_from_file(const char*
     size_t len = 0;
     char* file_data = neko_platform_read_file_contents(path, "rb", &len);
     NEKO_ASSERT(file_data);
-    neko_log_trace("Parsing pipeline: %s", path);
+    NEKO_TRACE("Parsing pipeline: %s", path);
     neko_draw_pipeline_t pip = neko_draw_pipeline_load_from_memory_ext(file_data, len, path);
     neko_safe_free(file_data);
     return pip;
@@ -4408,9 +4408,9 @@ NEKO_API_DECL neko_draw_pipeline_t neko_draw_pipeline_load_from_memory_ext(const
             }
         }
         // Now save dir
-        neko_log_trace("[gfxt] HERE: %zu", tparen.text - file_path);
+        NEKO_TRACE("[gfxt] HERE: %zu", tparen.text - file_path);
         memcpy(ppd.dir, file_path, tparen.text - file_path);
-        neko_log_trace("[gfxt] PPD_DIR: %s", ppd.dir);
+        NEKO_TRACE("[gfxt] PPD_DIR: %s", ppd.dir);
     }
 
     neko_lexer_t lex = neko_lexer_c_ctor(file_data);
@@ -4420,7 +4420,7 @@ NEKO_API_DECL neko_draw_pipeline_t neko_draw_pipeline_load_from_memory_ext(const
             case NEKO_TOKEN_IDENTIFIER: {
                 if (neko_token_compare_text(&token, "pipeline")) {
                     if (!neko_parse_pipeline(&lex, &pdesc, &ppd)) {
-                        neko_log_warning("Unable to parse pipeline");
+                        NEKO_WARN("Unable to parse pipeline");
                         return pip;
                     }
                 }
@@ -4430,15 +4430,15 @@ NEKO_API_DECL neko_draw_pipeline_t neko_draw_pipeline_load_from_memory_ext(const
 
     // Generate vertex shader code
     char* v_src = neko_pipeline_generate_shader_code(&pdesc, &ppd, R_SHADER_STAGE_VERTEX);
-    // neko_log_trace("[gfxt] %s", v_src);
+    // NEKO_TRACE("[gfxt] %s", v_src);
 
     // Generate fragment shader code
     char* f_src = neko_pipeline_generate_shader_code(&pdesc, &ppd, R_SHADER_STAGE_FRAGMENT);
-    // neko_log_trace("[gfxt] %s", f_src);
+    // NEKO_TRACE("[gfxt] %s", f_src);
 
     // Generate compute shader code (need to check for this first)
     char* c_src = neko_pipeline_generate_shader_code(&pdesc, &ppd, R_SHADER_STAGE_COMPUTE);
-    // neko_log_trace("[gfxt] %s", c_src);
+    // NEKO_TRACE("[gfxt] %s", c_src);
 
     // Construct compute shader
     if (c_src) {
@@ -5073,7 +5073,7 @@ int neko_spritebatch_flush(neko_spritebatch_t* sb) {
 
     sb->sprite_count = 0;
     if (count > 1) {
-        neko_log_trace("[batch] Flushed %d batches.", count);
+        NEKO_TRACE("[batch] Flushed %d batches.", count);
     }
 
     return count;
@@ -5436,13 +5436,13 @@ void neko_spritebatch_internal_flush_atlas(neko_spritebatch_t* sb, neko_spriteba
     // handle loop end conditions if sentinel was removed from the chain
     if (sentinel && next) {
         if (*sentinel == atlas) {
-            neko_log_trace("[batch] sentinel was also atlas: %p", *sentinel);
+            NEKO_TRACE("[batch] sentinel was also atlas: %p", *sentinel);
             if ((*next)->next != *sentinel) {
-                neko_log_trace("[batch] *next = (*next)->next : %p = (*next)->%p", *next, (*next)->next);
+                NEKO_TRACE("[batch] *next = (*next)->next : %p = (*next)->%p", *next, (*next)->next);
                 *next = (*next)->next;
             }
 
-            neko_log_trace("[batch] *sentinel = *next : %p =  %p", *sentinel, *next);
+            NEKO_TRACE("[batch] *sentinel = *next : %p =  %p", *sentinel, *next);
             *sentinel = *next;
         }
     }
@@ -5457,10 +5457,10 @@ void neko_spritebatch_internal_flush_atlas(neko_spritebatch_t* sb, neko_spriteba
 void neko_spritebatch_internal_log_chain(neko_spritebatch_internal_atlas_t* atlas) {
     if (atlas) {
         // neko_spritebatch_internal_atlas_t* sentinel = atlas;
-        // neko_log_trace("[batch] sentinel: %p", sentinel);
+        // NEKO_TRACE("[batch] sentinel: %p", sentinel);
         // do {
         //     neko_spritebatch_internal_atlas_t* next = atlas->next;
-        //     neko_log_trace("[batch] atlas %p", atlas);
+        //     NEKO_TRACE("[batch] atlas %p", atlas);
         //     atlas = next;
         // } while (atlas != sentinel);
     }
@@ -5489,7 +5489,7 @@ int neko_spritebatch_defrag(neko_spritebatch_t* sb) {
             else
                 ratio = (float)texture_count / (float)decayed_texture_count;
             if (ratio > ratio_to_decay_atlas) {
-                neko_log_trace("[batch] flushed atlas %p", atlas);
+                NEKO_TRACE("[batch] flushed atlas %p", atlas);
                 neko_spritebatch_internal_flush_atlas(sb, atlas, &sentinel, &next);
             }
             atlas = next;
@@ -5509,7 +5509,7 @@ int neko_spritebatch_defrag(neko_spritebatch_t* sb) {
 
             NEKO_ASSERT(sp >= 0 && sp <= 2);
             if (sp == 2) {
-                neko_log_trace("[batch] merged 2 atlases");
+                NEKO_TRACE("[batch] merged 2 atlases");
                 neko_spritebatch_internal_flush_atlas(sb, merge_stack[0], &sentinel, &next);
                 neko_spritebatch_internal_flush_atlas(sb, merge_stack[1], &sentinel, &next);
                 sp = 0;
@@ -5522,7 +5522,7 @@ int neko_spritebatch_defrag(neko_spritebatch_t* sb) {
         } while (atlas != sentinel);
 
         if (sp == 2) {
-            neko_log_trace("[batch] merged 2 atlases (out of loop)");
+            NEKO_TRACE("[batch] merged 2 atlases (out of loop)");
             neko_spritebatch_internal_flush_atlas(sb, merge_stack[0], 0, 0);
             neko_spritebatch_internal_flush_atlas(sb, merge_stack[1], 0, 0);
         }
@@ -5544,7 +5544,7 @@ int neko_spritebatch_defrag(neko_spritebatch_t* sb) {
             u64 texture_id = lonely_textures[i].texture_id;
             if (texture_id != ~0) sb->delete_texture_callback(texture_id, sb->udata);
             neko_spritebatch_internal_buffer_key(sb, lonely_textures[i].image_id);
-            neko_log_trace("[batch] lonely texture decayed");
+            NEKO_TRACE("[batch] lonely texture decayed");
         }
         neko_spritebatch_internal_remove_table_entries(sb, &sb->sprites_to_lonely_textures);
         lonely_count -= lonely_count - index;
@@ -5575,7 +5575,7 @@ int neko_spritebatch_defrag(neko_spritebatch_t* sb) {
         }
 
         neko_spritebatch_make_atlas(sb, atlas, lonely_textures, lonely_count);
-        neko_log_trace("[batch] making atlas");
+        NEKO_TRACE("[batch] making atlas");
 
         int tex_count_in_atlas = hashtable_count(&atlas->sprites_to_textures);
         if (tex_count_in_atlas != lonely_count) {
@@ -5587,7 +5587,7 @@ int neko_spritebatch_defrag(neko_spritebatch_t* sb) {
                     u64 texture_id = lonely_textures[i].texture_id;
                     if (texture_id != ~0) sb->delete_texture_callback(texture_id, sb->udata);
                     hashtable_insert(&sb->sprites_to_atlases, key, &atlas);
-                    neko_log_trace("[batch] removing lonely texture for atlas%s", texture_id != ~0 ? "" : " (tex was ~0)");
+                    NEKO_TRACE("[batch] removing lonely texture for atlas%s", texture_id != ~0 ? "" : " (tex was ~0)");
                 } else {
                     hit_count++;
                     NEKO_ASSERT(lonely_textures[i].w <= sb->atlas_width_in_pixels);
@@ -5612,7 +5612,7 @@ int neko_spritebatch_defrag(neko_spritebatch_t* sb) {
                 u64 texture_id = lonely_textures[i].texture_id;
                 if (texture_id != ~0) sb->delete_texture_callback(texture_id, sb->udata);
                 hashtable_insert(&sb->sprites_to_atlases, key, &atlas);
-                neko_log_trace("[batch] (fast path) removing lonely texture for atlas%s", texture_id != ~0 ? "" : " (tex was ~0)");
+                NEKO_TRACE("[batch] (fast path) removing lonely texture for atlas%s", texture_id != ~0 ? "" : " (tex was ~0)");
             }
             hashtable_clear(&sb->sprites_to_lonely_textures);
             lonely_count = 0;
@@ -5627,7 +5627,7 @@ int neko_spritebatch_defrag(neko_spritebatch_t* sb) {
             const u64 texture_id = premade_atlases[i].texture_id;
             if (texture_id != ~0) sb->delete_texture_callback(texture_id, sb->udata);
             neko_spritebatch_internal_buffer_key(sb, premade_atlases[i].image_id);
-            neko_log_trace("[batch] premade atlas texture cleanedup");
+            NEKO_TRACE("[batch] premade atlas texture cleanedup");
         }
     }
     neko_spritebatch_internal_remove_table_entries(sb, &sb->sprites_to_premade_textures);

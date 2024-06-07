@@ -563,7 +563,7 @@ typedef struct neko_render_t {
 // Graphics API
 ==========================*/
 
-#define neko_render() neko_ctx()->render
+#define neko_render() neko_instance()->render
 
 // Graphics Interface Creation / Initialization / Shutdown / Destruction
 NEKO_API_DECL neko_render_t* neko_render_create();
@@ -1379,13 +1379,13 @@ typedef struct neko_draw_mesh_import_options_t {
 
 NEKO_API_DECL void neko_draw_mesh_import_options_free(neko_draw_mesh_import_options_t* opt);
 
-typedef struct neko_draw_mesh_desc_s {
+typedef struct neko_draw_mesh_desc_t {
     neko_draw_mesh_raw_data_t* meshes;  // Mesh data array
     size_t size;                        // Size of mesh data array in bytes
     b32 keep_data;                      // Whether or not to free data after use
 } neko_draw_mesh_desc_t;
 
-typedef struct neko_draw_vertex_stream_s {
+typedef struct neko_draw_vertex_stream_t {
     neko_handle(neko_render_vertex_buffer_t) positions;
     neko_handle(neko_render_vertex_buffer_t) normals;
     neko_handle(neko_render_vertex_buffer_t) tangents;
@@ -1396,24 +1396,24 @@ typedef struct neko_draw_vertex_stream_s {
     neko_handle(neko_render_vertex_buffer_t) custom_uint[NEKO_GFXT_CUSTOM_UINT_MAX];
 } neko_draw_vertex_stream_t;
 
-typedef struct neko_draw_mesh_primitive_s {
+typedef struct neko_draw_mesh_primitive_t {
     neko_draw_vertex_stream_t stream;                 // All vertex data streams
     neko_handle(neko_render_index_buffer_t) indices;  // Index buffer
     uint32_t count;                                   // Total number of vertices
 } neko_draw_mesh_primitive_t;
 
-typedef struct neko_draw_mesh_s {
+typedef struct neko_draw_mesh_t {
     neko_dyn_array(neko_draw_mesh_primitive_t) primitives;
     neko_draw_mesh_desc_t desc;
 } neko_draw_mesh_t;
 
 //=== Pipeline ===//
-typedef struct neko_draw_pipeline_desc_s {
+typedef struct neko_draw_pipeline_desc_t {
     neko_render_pipeline_desc_t pip_desc;        // Description for constructing pipeline object
     neko_draw_uniform_block_desc_t ublock_desc;  // Description for constructing uniform block object
 } neko_draw_pipeline_desc_t;
 
-typedef struct neko_draw_pipeline_s {
+typedef struct neko_draw_pipeline_t {
     neko_handle(neko_render_pipeline_t) hndl;  // Graphics handle resource for actual pipeline
     neko_draw_uniform_block_t ublock;          // Uniform block for holding all uniform data
     neko_dyn_array(neko_draw_mesh_layout_t) mesh_layout;
@@ -1421,29 +1421,29 @@ typedef struct neko_draw_pipeline_s {
 } neko_draw_pipeline_t;
 
 //=== Material ===//
-typedef struct neko_draw_material_desc_s {
+typedef struct neko_draw_material_desc_t {
     neko_draw_raw_data_func_desc_t pip_func;  // Description for retrieving raw pipeline pointer data from handle.
 } neko_draw_material_desc_t;
 
-typedef struct neko_draw_material_s {
+typedef struct neko_draw_material_t {
     neko_draw_material_desc_t desc;        // Material description object
     neko_byte_buffer_t uniform_data;       // Byte buffer of actual uniform data to send to GPU
     neko_byte_buffer_t image_buffer_data;  // Image buffer data
 } neko_draw_material_t;
 
 //=== Renderable ===//
-typedef struct neko_draw_renderable_desc_s {
+typedef struct neko_draw_renderable_desc_t {
     neko_draw_raw_data_func_desc_t mesh;      // Description for retrieving raw mesh pointer data from handle.
     neko_draw_raw_data_func_desc_t material;  // Description for retrieving raw material pointer data from handle.
 } neko_draw_renderable_desc_t;
 
-typedef struct neko_draw_renderable_s {
+typedef struct neko_draw_renderable_t {
     neko_draw_renderable_desc_t desc;  // Renderable description object
     neko_mat4 model_matrix;            // Model matrix for renderable
 } neko_draw_renderable_t;
 
 //=== Graphics scene ===//
-typedef struct neko_draw_scene_s {
+typedef struct neko_draw_scene_t {
     neko_slot_array(neko_draw_renderable_t) renderables;
 } neko_draw_scene_t;
 
@@ -2333,7 +2333,7 @@ typedef struct {
 
 enum { NEKO_UI_HINT_FLAG_NO_SCALE_BIAS_MOUSE = (1 << 0), NEKO_UI_HINT_FLAG_NO_INVERT_Y = (1 << 1) };
 
-typedef struct neko_ui_hints_s {
+typedef struct neko_ui_hints_t {
     neko_vec2 framebuffer_size;  // Overall framebuffer size
     neko_ui_rect_t viewport;     // Viewport within framebuffer for gui context
     s32 flags;                   // Flags for hints

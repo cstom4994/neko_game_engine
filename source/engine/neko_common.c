@@ -816,7 +816,7 @@ NEKO_API_DECL bool neko_lexer_require_token_text(neko_lexer_t* lex, const char* 
     }
 
     // Error
-    neko_log_warning("neko_lexer_require_token_text::%.*s, expected: %s", cur_t.len, cur_t.text, match);
+    NEKO_WARN("neko_lexer_require_token_text::%.*s, expected: %s", cur_t.len, cur_t.text, match);
 
     // Reset
     lex->at = at;

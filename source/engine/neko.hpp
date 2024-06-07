@@ -50,6 +50,21 @@ const char* u8Cpp20(T&& t) noexcept {
     type* cast_var_name = static_cast<type*>(input_var); \
     NEKO_ASSERT(cast_var_name)
 
+#define NEKO_ENUM_FLAG(T)                                                                                                                                                  \
+    inline T operator~(T a) { return static_cast<T>(~static_cast<std::underlying_type<T>::type>(a)); }                                                                     \
+    inline T operator|(T a, T b) { return static_cast<T>(static_cast<std::underlying_type<T>::type>(a) | static_cast<std::underlying_type<T>::type>(b)); }                 \
+    inline T operator&(T a, T b) { return static_cast<T>(static_cast<std::underlying_type<T>::type>(a) & static_cast<std::underlying_type<T>::type>(b)); }                 \
+    inline T operator^(T a, T b) { return static_cast<T>(static_cast<std::underlying_type<T>::type>(a) ^ static_cast<std::underlying_type<T>::type>(b)); }                 \
+    inline T& operator|=(T& a, T b) { return reinterpret_cast<T&>(reinterpret_cast<std::underlying_type<T>::type&>(a) |= static_cast<std::underlying_type<T>::type>(b)); } \
+    inline T& operator&=(T& a, T b) { return reinterpret_cast<T&>(reinterpret_cast<std::underlying_type<T>::type&>(a) &= static_cast<std::underlying_type<T>::type>(b)); } \
+    inline T& operator^=(T& a, T b) { return reinterpret_cast<T&>(reinterpret_cast<std::underlying_type<T>::type&>(a) ^= static_cast<std::underlying_type<T>::type>(b)); }
+
+#define NEKO_MOVEONLY(class_name)                      \
+    class_name(const class_name&) = delete;            \
+    class_name& operator=(const class_name&) = delete; \
+    class_name(class_name&&) = default;                \
+    class_name& operator=(class_name&&) = default
+
 namespace detail {
 template <typename... Args>
 constexpr std::size_t va_count(Args&&...) {
@@ -1196,7 +1211,7 @@ string lua_to_json_string(lua_State* L, s32 arg, string* contents, s32 width);
 
 #define CVAR_TYPES() bool, s32, f32, f32*
 
-typedef struct neko_engine_cvar_s {
+typedef struct neko_engine_cvar_t {
     bool show_editor;
     bool show_demo_window;
     bool show_pack_editor;

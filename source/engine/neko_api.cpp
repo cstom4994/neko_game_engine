@@ -15,7 +15,6 @@
 // game
 #include "sandbox/game_editor.h"
 #include "sandbox/game_main.h"
-#include "sandbox/game_physics.h"
 
 // #define LUAOPEN_EMBED_DATA(func, name, compressed_data, compressed_size)              \
 //     static int func(lua_State* L) {                                                   \
@@ -49,24 +48,24 @@ static void package_preload(lua_State* L, const_str name, lua_CFunction function
 
 void __neko_lua_print_error(lua_State* state, int result) {
     const_str message = lua_tostring(state, -1);
-    neko_log_error("LuaScript ERROR:\n  %s", (message ? message : "no message"));
+    NEKO_ERROR("LuaScript ERROR:\n  %s", (message ? message : "no message"));
 
     if (result != 0) {
         switch (result) {
             case LUA_ERRRUN:
-                neko_log_error("%s", "Lua Runtime error");
+                NEKO_ERROR("%s", "Lua Runtime error");
                 break;
             case LUA_ERRSYNTAX:
-                neko_log_error("%s", "Lua syntax error");
+                NEKO_ERROR("%s", "Lua syntax error");
                 break;
             case LUA_ERRMEM:
-                neko_log_error("%s", "Lua was unable to allocate the required memory");
+                NEKO_ERROR("%s", "Lua was unable to allocate the required memory");
                 break;
             case LUA_ERRFILE:
-                neko_log_error("%s", "Lua was unable to find boot file");
+                NEKO_ERROR("%s", "Lua was unable to find boot file");
                 break;
             default:
-                neko_log_error("Unknown lua error: %d", result);
+                NEKO_ERROR("Unknown lua error: %d", result);
         }
     }
 

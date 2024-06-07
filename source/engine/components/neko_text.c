@@ -40,7 +40,7 @@ void neko_fontbatch_init(neko_fontbatch_t *font_batch, const neko_vec2_t fbs, co
     font_batch->font_tex_id = generate_texture_handle(img.pix, img.w, img.h, NULL);
     font_batch->font = neko_font_load_bmfont(font_batch->font_tex_id, content, content_size, 0);
     if (font_batch->font->atlas_w != img.w || font_batch->font->atlas_h != img.h) {
-        neko_log_warning("failed to load font");
+        NEKO_WARN("failed to load font");
     }
     neko_image_free(img);
 

@@ -7,7 +7,7 @@ bool neko_aseprite_load(neko_aseprite *spr, const_str filepath) {
     ase_t *ase = neko_aseprite_load_from_file(filepath);
 
     if (NULL == ase) {
-        neko_log_error("unable to load ase %s", filepath);
+        NEKO_ERROR("unable to load ase %s", filepath);
         return false;
     }
 
@@ -148,7 +148,7 @@ bool neko_aseprite_load(neko_aseprite *spr, const_str filepath) {
     //     neko_println_debug("%s", layer->name);
     // }
 
-    // neko_log_trace(format("created sprite size({3}) with image id: {0} and {1} frames with {2} layers", tex.id, neko_dyn_array_size(s.frames), ase->layer_count,(spr->mem_used + pixels.capacity *
+    // NEKO_TRACE(format("created sprite size({3}) with image id: {0} and {1} frames with {2} layers", tex.id, neko_dyn_array_size(s.frames), ase->layer_count,(spr->mem_used + pixels.capacity *
     // sizeof(u8)) / 1e6).c_str());
 
     s.img = tex;
@@ -226,7 +226,7 @@ neko_texture_t neko_aseprite_simple(const void *memory, int size) {
     ase_t *ase = neko_aseprite_load_from_memory(memory, size);
 
     if (NULL == ase) {
-        neko_log_error("unable to load ase %p", memory);
+        NEKO_ERROR("unable to load ase %p", memory);
         return (neko_texture_t){0};
     }
 
@@ -234,7 +234,7 @@ neko_texture_t neko_aseprite_simple(const void *memory, int size) {
 
     neko_aseprite_default_blend_bind(ase);
 
-    neko_log_trace("load aseprite - frame_count %d - palette.entry_count %d - w=%d h=%d", ase->frame_count, ase->palette.entry_count, ase->w, ase->h);
+    NEKO_TRACE("load aseprite - frame_count %d - palette.entry_count %d - w=%d h=%d", ase->frame_count, ase->palette.entry_count, ase->w, ase->h);
 
     s32 bpp = 4;
 

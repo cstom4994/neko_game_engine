@@ -20,7 +20,7 @@ class sandbox_game;
 class neko_filesystem_t;
 struct game_font_render_batch;
 
-typedef struct neko_client_userdata_s {
+typedef struct neko_client_userdata_t {
 
     neko_command_buffer_t cb = NEKO_DEFAULT_VAL();
     neko_ui_context_t ui = NEKO_DEFAULT_VAL();

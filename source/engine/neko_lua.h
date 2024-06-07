@@ -518,9 +518,9 @@ NEKO_API_DECL int neko_lua_get_table_pairs_count(lua_State *L, int index);
         *CHECK_STRUCT(L, -1, type) = (value);  \
     } while (0)
 
-int LUASTRUCT_new(lua_State *L, const char *metatable, size_t size);
-int LUASTRUCT_newref(lua_State *L, const char *metatable, int parentIndex, const void *data);
-int LUASTRUCT_is(lua_State *L, const char *metatable, int index);
-void *LUASTRUCT_todata(lua_State *L, const char *metatable, int index, int required);
+NEKO_API_DECL int LUASTRUCT_new(lua_State *L, const char *metatable, size_t size);
+NEKO_API_DECL int LUASTRUCT_newref(lua_State *L, const char *metatable, int parentIndex, const void *data);
+NEKO_API_DECL int LUASTRUCT_is(lua_State *L, const char *metatable, int index);
+NEKO_API_DECL void *LUASTRUCT_todata(lua_State *L, const char *metatable, int index, int required);
 
 #endif

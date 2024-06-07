@@ -267,8 +267,17 @@ game_render = function()
         local lua_state = require("luastate_test")
     end
 
-    if ImGui.Button("test_reflect") then
-        local reflect = require("reflect_test")
+    if ImGui.Button("test_luastruct") then
+        local v3 = neko.VEC3.new()
+        v3.x = 10
+        v3.y = 10
+        v3.z = 10
+        local v3_c = neko.LUASTRUCT_test_vec3(v3)
+        dump_func({v3_c.x, v3_c.y, v3_c.z})
+    end
+
+    if ImGui.Button("test_ffi_reloadable") then
+  
     end
 
     ImGui.Separator()
@@ -286,7 +295,7 @@ game_render = function()
         play.sub_render()
     end
 
-    neko.hooks.run()
+    neko.events.run()
 
     -- local fbs_x, fbs_y = neko_framebuffer_size()
 

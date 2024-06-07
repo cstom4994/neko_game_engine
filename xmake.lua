@@ -1,5 +1,7 @@
 set_project("neko")
 
+includes("@builtin/xpack")
+
 add_rules("plugin.vsxmake.autoupdate")
 add_rules("plugin.compile_commands.autoupdate", {
     outputdir = ".vscode"
@@ -18,12 +20,13 @@ add_includedirs("source/deps/glad/include/")
 local base_libs = {"glfw", "libffi", "lua", "imgui"}
 
 if is_os("windows") then
-    add_requires("glfw", "libffi", "lua", "miniaudio")
+    add_requires("glfw", "libffi", "lua")
     add_requires("imgui v1.90.8-docking", {
         configs = {
             wchar32 = true
         }
     })
+    add_requires("miniaudio", "flecs")
 else
     -- add_requires(base_libs)
 end
@@ -71,6 +74,7 @@ do
     add_files("source/engine/**.c")
     add_files("source/engine/**.cpp")
     add_files("source/deps/impl_build.cpp")
+    add_headerfiles("source/engine/**.h", "source/engine/**.hpp")
 
     add_packages(base_libs)
 end
@@ -96,8 +100,8 @@ target("sandbox")
 do
     set_kind("binary")
 
-    add_files("source/sandbox/**.c")
-    add_files("source/sandbox/**.cpp")
+    add_files("source/sandbox/**.c", "source/sandbox/**.cpp")
+    add_headerfiles("source/sandbox/**.h", "source/sandbox/**.hpp")
 
     add_deps("neko_engine")
     add_deps(neko_module_name("sound"))
@@ -107,3 +111,10 @@ do
     set_targetdir("./")
     set_rundir("./")
 end
+
+xpack("luacode")
+do
+    set_formats("zip")
+    add_installfiles("(source/lua/**)")
+end
+

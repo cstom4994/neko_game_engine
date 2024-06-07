@@ -1363,7 +1363,7 @@ NEKO_API_DECL neko_ui_style_sheet_t neko_ui_style_sheet_create(neko_ui_context_t
 NEKO_API_DECL void neko_ui_style_sheet_destroy(neko_ui_style_sheet_t* ss) {
     // Need to free all animations
     if (!ss || !ss->animations) {
-        neko_log_warning("Trying to destroy invalid style sheet");
+        NEKO_WARN("Trying to destroy invalid style sheet");
         return;
     }
 
@@ -1847,7 +1847,7 @@ NEKO_API_DECL void neko_ui_dock_ex_cnt(neko_ui_context_t* ctx, neko_ui_container
         }
         // Otherwise, create new tab bar
         else {
-            neko_log_info("create tab bar");
+            NEKO_INFO("create tab bar");
 
             // Create tab bar
             neko_ui_tab_bar_t tb = NEKO_DEFAULT_VAL();
@@ -6689,7 +6689,7 @@ typedef struct {
         bool ret = neko_lexer_require_token_type(lex, T0); \
         ret &= neko_lexer_require_token_type(lex, T1);     \
         if (!ret) {                                        \
-            neko_log_warning("Unidentified token.");       \
+            NEKO_WARN("Unidentified token.");       \
             return false;                                  \
         }                                                  \
         token = neko_lexer_current_token(lex);             \
@@ -6715,7 +6715,7 @@ bool __neko_ui_style_sheet_parse_attribute_transition(neko_ui_context_t* ctx, ne
         bool ret = neko_lexer_require_token_type(lex, NEKO_TOKEN_COLON);                                                         \
         ret &= (neko_lexer_require_token_type(lex, NEKO_TOKEN_DOLLAR) || neko_lexer_require_token_type(lex, NEKO_TOKEN_NUMBER)); \
         if (!ret) {                                                                                                              \
-            neko_log_warning("Transition: Unidentified token.");                                                                 \
+            NEKO_WARN("Transition: Unidentified token.");                                                                 \
             return false;                                                                                                        \
         }                                                                                                                        \
         neko_token_t time = neko_lexer_current_token(lex);                                                                       \
@@ -6728,7 +6728,7 @@ bool __neko_ui_style_sheet_parse_attribute_transition(neko_ui_context_t* ctx, ne
             case NEKO_TOKEN_DOLLAR: {                                                                                            \
                 ret &= (neko_lexer_require_token_type(lex, NEKO_TOKEN_IDENTIFIER));                                              \
                 if (!ret) {                                                                                                      \
-                    neko_log_warning("Transition: Variable missing identifier token.");                                          \
+                    NEKO_WARN("Transition: Variable missing identifier token.");                                          \
                     return false;                                                                                                \
                 }                                                                                                                \
                 token = neko_lexer_current_token(lex);                                                                           \
@@ -6737,14 +6737,14 @@ bool __neko_ui_style_sheet_parse_attribute_transition(neko_ui_context_t* ctx, ne
                 if (neko_hash_table_exists(variables->variables, hash)) {                                                        \
                     time_v = (u32)(neko_hash_table_getp(variables->variables, hash))->val.number;                                \
                 } else {                                                                                                         \
-                    neko_log_warning("Transition: Variable not found: %s.", VAR);                                                \
+                    NEKO_WARN("Transition: Variable not found: %s.", VAR);                                                \
                     return false;                                                                                                \
                 }                                                                                                                \
             } break;                                                                                                             \
         }                                                                                                                        \
         ret &= (neko_lexer_require_token_type(lex, NEKO_TOKEN_DOLLAR) || neko_lexer_require_token_type(lex, NEKO_TOKEN_NUMBER)); \
         if (!ret) {                                                                                                              \
-            neko_log_warning("Transition: Unidentified token.");                                                                 \
+            NEKO_WARN("Transition: Unidentified token.");                                                                 \
             return false;                                                                                                        \
         }                                                                                                                        \
         neko_token_t delay = neko_lexer_current_token(lex);                                                                      \
@@ -6757,7 +6757,7 @@ bool __neko_ui_style_sheet_parse_attribute_transition(neko_ui_context_t* ctx, ne
             case NEKO_TOKEN_DOLLAR: {                                                                                            \
                 ret &= (neko_lexer_require_token_type(lex, NEKO_TOKEN_IDENTIFIER));                                              \
                 if (!ret) {                                                                                                      \
-                    neko_log_warning("Transition: Variable missing identifier token.");                                          \
+                    NEKO_WARN("Transition: Variable missing identifier token.");                                          \
                     return false;                                                                                                \
                 }                                                                                                                \
                 token = neko_lexer_current_token(lex);                                                                           \
@@ -6766,7 +6766,7 @@ bool __neko_ui_style_sheet_parse_attribute_transition(neko_ui_context_t* ctx, ne
                 if (neko_hash_table_exists(variables->variables, hash)) {                                                        \
                     delay_v = (u32)(neko_hash_table_getp(variables->variables, hash))->val.number;                               \
                 } else {                                                                                                         \
-                    neko_log_warning("Transition: Variable not found: %s.", VAR);                                                \
+                    NEKO_WARN("Transition: Variable not found: %s.", VAR);                                                \
                     return false;                                                                                                \
                 }                                                                                                                \
             } break;                                                                                                             \
@@ -6787,7 +6787,7 @@ bool __neko_ui_style_sheet_parse_attribute_transition(neko_ui_context_t* ctx, ne
         }                                                                                                                        \
         ret &= (neko_lexer_require_token_type(lex, NEKO_TOKEN_SEMICOLON));                                                       \
         if (!ret) {                                                                                                              \
-            neko_log_warning("Transition: Missing semicolon.");                                                                  \
+            NEKO_WARN("Transition: Missing semicolon.");                                                                  \
             return false;                                                                                                        \
         }                                                                                                                        \
     } while (0)
@@ -6854,7 +6854,7 @@ bool __neko_ui_style_sheet_parse_attribute_transition(neko_ui_context_t* ctx, ne
                 else if (neko_token_compare_text(&token, "color_content_shadow"))
                     PARSE_TRANSITION(NEKO_UI_STYLE_COLOR_CONTENT_SHADOW);
                 else {
-                    neko_log_warning("Unidentified attribute: %.*s.", token.len, token.text);
+                    NEKO_WARN("Unidentified attribute: %.*s.", token.len, token.text);
                     return false;
                 }
             } break;
@@ -6903,7 +6903,7 @@ bool __neko_ui_style_sheet_parse_attribute_font(neko_ui_context_t* ctx, neko_lex
         bool ret = neko_lexer_require_token_type(lex, NEKO_TOKEN_COLON);
         ret &= (neko_lexer_require_token_type(lex, NEKO_TOKEN_STRING) || neko_lexer_require_token_type(lex, NEKO_TOKEN_DOLLAR));
         if (!ret) {
-            neko_log_warning("Missing either string value or variable.");
+            NEKO_WARN("Missing either string value or variable.");
             return false;
         }
         neko_ui_style_element_t se = NEKO_DEFAULT_VAL();
@@ -6918,7 +6918,7 @@ bool __neko_ui_style_sheet_parse_attribute_font(neko_ui_context_t* ctx, neko_lex
             case NEKO_TOKEN_DOLLAR: {
                 bool ret = neko_lexer_require_token_type(lex, NEKO_TOKEN_IDENTIFIER);
                 if (!ret) {
-                    neko_log_warning("Unidentified token.");
+                    NEKO_WARN("Unidentified token.");
                     return false;
                 }
                 token = neko_lexer_current_token(lex);
@@ -6926,13 +6926,13 @@ bool __neko_ui_style_sheet_parse_attribute_font(neko_ui_context_t* ctx, neko_lex
                 u64 hash = neko_hash_str64(TMP);
                 neko_ui_ss_var_def_t* var = neko_hash_table_exists(variables->variables, hash) ? neko_hash_table_getp(variables->variables, hash) : NULL;
                 if (!var) {
-                    neko_log_warning("Variable not found: %s", TMP);
+                    NEKO_WARN("Variable not found: %s", TMP);
                     return false;
                 }
                 memcpy(FONT, var->val.str, sizeof(FONT));
                 ret = neko_lexer_require_token_type(lex, NEKO_TOKEN_SEMICOLON);
                 if (!ret) {
-                    neko_log_warning("Missing semicolon.");
+                    NEKO_WARN("Missing semicolon.");
                     return false;
                 }
                 token = neko_lexer_current_token(lex);
@@ -6951,10 +6951,10 @@ bool __neko_ui_style_sheet_parse_attribute_font(neko_ui_context_t* ctx, neko_lex
             }
         }
         if (!found) {
-            neko_log_warning("Font not found in gui font stash: %s", FONT);
+            NEKO_WARN("Font not found in gui font stash: %s", FONT);
         }
     } else {
-        neko_log_warning("Unidentified token.");
+        NEKO_WARN("Unidentified token.");
         return false;
     }
 
@@ -7006,7 +7006,7 @@ bool __neko_ui_style_sheet_parse_attribute_enum(neko_ui_context_t* ctx, neko_lex
         bool ret = neko_lexer_require_token_type(lex, NEKO_TOKEN_COLON);
         ret &= (neko_lexer_require_token_type(lex, NEKO_TOKEN_IDENTIFIER) || neko_lexer_require_token_type(lex, NEKO_TOKEN_DOLLAR));
         if (!ret) {
-            neko_log_warning("Missing either identifier value or variable.");
+            NEKO_WARN("Missing either identifier value or variable.");
             return false;
         }
         token = neko_lexer_current_token(lex);
@@ -7023,7 +7023,7 @@ bool __neko_ui_style_sheet_parse_attribute_enum(neko_ui_context_t* ctx, neko_lex
             case NEKO_TOKEN_DOLLAR: {
                 bool ret = neko_lexer_require_token_type(lex, NEKO_TOKEN_IDENTIFIER);
                 if (!ret) {
-                    neko_log_warning("Unidentified token.");
+                    NEKO_WARN("Unidentified token.");
                     return false;
                 }
                 token = neko_lexer_current_token(lex);
@@ -7031,13 +7031,13 @@ bool __neko_ui_style_sheet_parse_attribute_enum(neko_ui_context_t* ctx, neko_lex
                 u64 hash = neko_hash_str64(TMP);
                 neko_ui_ss_var_def_t* var = neko_hash_table_exists(variables->variables, hash) ? neko_hash_table_getp(variables->variables, hash) : NULL;
                 if (!var) {
-                    neko_log_warning("Variable not found: %s", TMP);
+                    NEKO_WARN("Variable not found: %s", TMP);
                     return false;
                 }
                 SET_ENUM(justify_content, var->val.number);
                 ret = neko_lexer_require_token_type(lex, NEKO_TOKEN_SEMICOLON);
                 if (!ret) {
-                    neko_log_warning("Missing semicolon.");
+                    NEKO_WARN("Missing semicolon.");
                     return false;
                 }
                 token = neko_lexer_current_token(lex);
@@ -7049,7 +7049,7 @@ bool __neko_ui_style_sheet_parse_attribute_enum(neko_ui_context_t* ctx, neko_lex
         bool ret = neko_lexer_require_token_type(lex, NEKO_TOKEN_COLON);
         ret &= (neko_lexer_require_token_type(lex, NEKO_TOKEN_IDENTIFIER) || neko_lexer_require_token_type(lex, NEKO_TOKEN_DOLLAR));
         if (!ret) {
-            neko_log_warning("Missing either identifier value or variable.");
+            NEKO_WARN("Missing either identifier value or variable.");
             return false;
         }
         token = neko_lexer_current_token(lex);
@@ -7066,7 +7066,7 @@ bool __neko_ui_style_sheet_parse_attribute_enum(neko_ui_context_t* ctx, neko_lex
             case NEKO_TOKEN_DOLLAR: {
                 bool ret = neko_lexer_require_token_type(lex, NEKO_TOKEN_IDENTIFIER);
                 if (!ret) {
-                    neko_log_warning("Unidentified token.");
+                    NEKO_WARN("Unidentified token.");
                     return false;
                 }
                 token = neko_lexer_current_token(lex);
@@ -7074,13 +7074,13 @@ bool __neko_ui_style_sheet_parse_attribute_enum(neko_ui_context_t* ctx, neko_lex
                 u64 hash = neko_hash_str64(TMP);
                 neko_ui_ss_var_def_t* var = neko_hash_table_exists(variables->variables, hash) ? neko_hash_table_getp(variables->variables, hash) : NULL;
                 if (!var) {
-                    neko_log_warning("Variable not found: %s", TMP);
+                    NEKO_WARN("Variable not found: %s", TMP);
                     return false;
                 }
                 SET_ENUM(align_content, var->val.number);
                 ret = neko_lexer_require_token_type(lex, NEKO_TOKEN_SEMICOLON);
                 if (!ret) {
-                    neko_log_warning("Missing semicolon.");
+                    NEKO_WARN("Missing semicolon.");
                     return false;
                 }
                 token = neko_lexer_current_token(lex);
@@ -7114,7 +7114,7 @@ bool __neko_ui_style_sheet_parse_attribute_val(neko_ui_context_t* ctx, neko_lexe
         ret &= (neko_lexer_require_token_type(lex, NEKO_TOKEN_DOLLAR) || neko_lexer_require_token_type(lex, NEKO_TOKEN_NUMBER));                          \
         token = neko_lexer_current_token(lex);                                                                                                            \
         if (!ret) {                                                                                                                                       \
-            neko_log_warning("Unidentified token.");                                                                                                      \
+            NEKO_WARN("Unidentified token.");                                                                                                      \
             neko_token_debug_print(&token);                                                                                                               \
             return false;                                                                                                                                 \
         }                                                                                                                                                 \
@@ -7151,7 +7151,7 @@ bool __neko_ui_style_sheet_parse_attribute_val(neko_ui_context_t* ctx, neko_lexe
             case NEKO_TOKEN_DOLLAR: {                                                                                                                     \
                 bool ret = neko_lexer_require_token_type(lex, NEKO_TOKEN_IDENTIFIER);                                                                     \
                 if (!ret) {                                                                                                                               \
-                    neko_log_warning("Unidentified token.");                                                                                              \
+                    NEKO_WARN("Unidentified token.");                                                                                              \
                     return false;                                                                                                                         \
                 }                                                                                                                                         \
                 token = neko_lexer_current_token(lex);                                                                                                    \
@@ -7159,7 +7159,7 @@ bool __neko_ui_style_sheet_parse_attribute_val(neko_ui_context_t* ctx, neko_lexe
                 u64 hash = neko_hash_str64(TMP);                                                                                                          \
                 neko_ui_ss_var_def_t* var = neko_hash_table_exists(variables->variables, hash) ? neko_hash_table_getp(variables->variables, hash) : NULL; \
                 if (!var) {                                                                                                                               \
-                    neko_log_warning("Variable not found: %s", TMP);                                                                                      \
+                    NEKO_WARN("Variable not found: %s", TMP);                                                                                      \
                     return false;                                                                                                                         \
                 }                                                                                                                                         \
                 T val = var->val.number;                                                                                                                  \
@@ -7190,7 +7190,7 @@ bool __neko_ui_style_sheet_parse_attribute_val(neko_ui_context_t* ctx, neko_lexe
                 }                                                                                                                                         \
                 ret = neko_lexer_require_token_type(lex, NEKO_TOKEN_SEMICOLON);                                                                           \
                 if (!ret) {                                                                                                                               \
-                    neko_log_warning("Missing semicolon.");                                                                                               \
+                    NEKO_WARN("Missing semicolon.");                                                                                               \
                     return false;                                                                                                                         \
                 }                                                                                                                                         \
                 token = neko_lexer_current_token(lex);                                                                                                    \
@@ -7207,7 +7207,7 @@ bool __neko_ui_style_sheet_parse_attribute_val(neko_ui_context_t* ctx, neko_lexe
         bool ret = neko_lexer_require_token_type(lex, NEKO_TOKEN_COLON);                                                                                  \
         ret &= (neko_lexer_require_token_type(lex, NEKO_TOKEN_DOLLAR) || neko_lexer_require_token_type(lex, NEKO_TOKEN_NUMBER));                          \
         if (!ret) {                                                                                                                                       \
-            neko_log_warning("Unidentified token.");                                                                                                      \
+            NEKO_WARN("Unidentified token.");                                                                                                      \
             return false;                                                                                                                                 \
         }                                                                                                                                                 \
         token = neko_lexer_current_token(lex);                                                                                                            \
@@ -7220,7 +7220,7 @@ bool __neko_ui_style_sheet_parse_attribute_val(neko_ui_context_t* ctx, neko_lexe
             case NEKO_TOKEN_DOLLAR: {                                                                                                                     \
                 bool ret = neko_lexer_require_token_type(lex, NEKO_TOKEN_IDENTIFIER);                                                                     \
                 if (!ret) {                                                                                                                               \
-                    neko_log_warning("Unidentified token.");                                                                                              \
+                    NEKO_WARN("Unidentified token.");                                                                                              \
                     return false;                                                                                                                         \
                 }                                                                                                                                         \
                 token = neko_lexer_current_token(lex);                                                                                                    \
@@ -7228,13 +7228,13 @@ bool __neko_ui_style_sheet_parse_attribute_val(neko_ui_context_t* ctx, neko_lexe
                 u64 hash = neko_hash_str64(TMP);                                                                                                          \
                 neko_ui_ss_var_def_t* var = neko_hash_table_exists(variables->variables, hash) ? neko_hash_table_getp(variables->variables, hash) : NULL; \
                 if (!var) {                                                                                                                               \
-                    neko_log_warning("Variable not found: %s", TMP);                                                                                      \
+                    NEKO_WARN("Variable not found: %s", TMP);                                                                                      \
                     return false;                                                                                                                         \
                 }                                                                                                                                         \
                 val = (T)var->val.number;                                                                                                                 \
                 ret = neko_lexer_require_token_type(lex, NEKO_TOKEN_SEMICOLON);                                                                           \
                 if (!ret) {                                                                                                                               \
-                    neko_log_warning("Missing semicolon.");                                                                                               \
+                    NEKO_WARN("Missing semicolon.");                                                                                               \
                     return false;                                                                                                                         \
                 }                                                                                                                                         \
                 token = neko_lexer_current_token(lex);                                                                                                    \
@@ -7281,7 +7281,7 @@ bool __neko_ui_style_sheet_parse_attribute_val(neko_ui_context_t* ctx, neko_lexe
         ret &= (neko_lexer_require_token_type(lex, NEKO_TOKEN_DOLLAR) || neko_lexer_require_token_type(lex, NEKO_TOKEN_NUMBER));                          \
         token = neko_lexer_current_token(lex);                                                                                                            \
         if (!ret) {                                                                                                                                       \
-            neko_log_warning("Unidentified token: %.*s", token.len, token.text);                                                                          \
+            NEKO_WARN("Unidentified token: %.*s", token.len, token.text);                                                                          \
             return false;                                                                                                                                 \
         }                                                                                                                                                 \
         neko_ui_style_element_t se = NEKO_DEFAULT_VAL();                                                                                                  \
@@ -7296,7 +7296,7 @@ bool __neko_ui_style_sheet_parse_attribute_val(neko_ui_context_t* ctx, neko_lexe
             case NEKO_TOKEN_DOLLAR: {                                                                                                                     \
                 bool ret = neko_lexer_require_token_type(lex, NEKO_TOKEN_IDENTIFIER);                                                                     \
                 if (!ret) {                                                                                                                               \
-                    neko_log_warning("Unidentified token.");                                                                                              \
+                    NEKO_WARN("Unidentified token.");                                                                                              \
                     return false;                                                                                                                         \
                 }                                                                                                                                         \
                 token = neko_lexer_current_token(lex);                                                                                                    \
@@ -7304,13 +7304,13 @@ bool __neko_ui_style_sheet_parse_attribute_val(neko_ui_context_t* ctx, neko_lexe
                 u64 hash = neko_hash_str64(TMP);                                                                                                          \
                 neko_ui_ss_var_def_t* var = neko_hash_table_exists(variables->variables, hash) ? neko_hash_table_getp(variables->variables, hash) : NULL; \
                 if (!var) {                                                                                                                               \
-                    neko_log_warning("Variable not found: %s", TMP);                                                                                      \
+                    NEKO_WARN("Variable not found: %s", TMP);                                                                                      \
                     return false;                                                                                                                         \
                 }                                                                                                                                         \
                 val = (T)var->val.number;                                                                                                                 \
                 ret = neko_lexer_require_token_type(lex, NEKO_TOKEN_SEMICOLON);                                                                           \
                 if (!ret) {                                                                                                                               \
-                    neko_log_warning("Missing semicolon.");                                                                                               \
+                    NEKO_WARN("Missing semicolon.");                                                                                               \
                     return false;                                                                                                                         \
                 }                                                                                                                                         \
                 token = neko_lexer_current_token(lex);                                                                                                    \
@@ -7419,13 +7419,13 @@ bool __neko_ui_style_sheet_parse_attribute_color(neko_ui_context_t* ctx, neko_le
         color = NEKO_UI_COLOR_CONTENT_SHADOW;
         type = NEKO_UI_STYLE_COLOR_CONTENT_SHADOW;
     } else {
-        neko_log_warning("Unidentified attribute: %.*s.", token.len, token.text);
+        NEKO_WARN("Unidentified attribute: %.*s.", token.len, token.text);
         return false;
     }
 
     token = neko_lexer_next_token(lex);
     if (token.type != NEKO_TOKEN_COLON) {
-        neko_log_warning("Unidentified token. (Expected colon after attribute type).");
+        NEKO_WARN("Unidentified token. (Expected colon after attribute type).");
         neko_token_debug_print(&token);
         return false;
     }
@@ -7509,7 +7509,7 @@ bool __neko_ui_style_sheet_parse_attribute_color(neko_ui_context_t* ctx, neko_le
     } else if (neko_token_compare_text(&token, "$")) {
         token = neko_lexer_next_token(lex);
         if (token.type != NEKO_TOKEN_IDENTIFIER) {
-            neko_log_warning("Unidentified symbol found: %.*s. Expecting identifier for variable name.", token.len, token.text);
+            NEKO_WARN("Unidentified symbol found: %.*s. Expecting identifier for variable name.", token.len, token.text);
             return false;
         }
 
@@ -7538,15 +7538,15 @@ bool __neko_ui_style_sheet_parse_attribute_color(neko_ui_context_t* ctx, neko_le
                 } break;
             }
         } else {
-            neko_log_warning("Variable not found: %.*s.", token.len, token.text);
+            NEKO_WARN("Variable not found: %.*s.", token.len, token.text);
         }
         token = neko_lexer_next_token(lex);
         if (token.type != NEKO_TOKEN_SEMICOLON) {
-            neko_log_warning("Syntax error. Expecting semicolon, found: %.*s.", token.len, token.text);
+            NEKO_WARN("Syntax error. Expecting semicolon, found: %.*s.", token.len, token.text);
             return false;
         }
     } else {
-        neko_log_warning("Unidentified color type found: %.*s. (Expect either 'rgba' or 'rgb').", token.len, token.text);
+        NEKO_WARN("Unidentified color type found: %.*s. (Expect either 'rgba' or 'rgb').", token.len, token.text);
         return false;
     }
 
@@ -7561,7 +7561,7 @@ bool __neko_ui_style_sheet_parse_attribute(neko_ui_context_t* ctx, neko_lexer_t*
         neko_token_compare_text(&token, "color_content") || neko_token_compare_text(&token, "color_content_background") || neko_token_compare_text(&token, "color_content_border") ||
         neko_token_compare_text(&token, "color_content_shadow")) {
         if (!__neko_ui_style_sheet_parse_attribute_color(ctx, lex, ss, id_tag, elementid, state, variables)) {
-            neko_log_warning("Failed to parse color attribute.");
+            NEKO_WARN("Failed to parse color attribute.");
             return false;
         }
     } else if (neko_token_compare_text(&token, "width") || neko_token_compare_text(&token, "height") || neko_token_compare_text(&token, "padding") || neko_token_compare_text(&token, "padding_left") ||
@@ -7571,30 +7571,30 @@ bool __neko_ui_style_sheet_parse_attribute(neko_ui_context_t* ctx, neko_lexer_t*
                neko_token_compare_text(&token, "border_left") || neko_token_compare_text(&token, "border_right") || neko_token_compare_text(&token, "border_top") ||
                neko_token_compare_text(&token, "border_bottom") || neko_token_compare_text(&token, "shadow")) {
         if (!__neko_ui_style_sheet_parse_attribute_val(ctx, lex, ss, id_tag, elementid, state, variables)) {
-            neko_log_warning("Failed to parse value attribute.");
+            NEKO_WARN("Failed to parse value attribute.");
             return false;
         }
     } else if (neko_token_compare_text(&token, "justify_content") || neko_token_compare_text(&token, "align_content")) {
         if (!__neko_ui_style_sheet_parse_attribute_enum(ctx, lex, ss, id_tag, elementid, state, variables)) {
-            neko_log_warning("Failed to parse enum attribute.");
+            NEKO_WARN("Failed to parse enum attribute.");
             return false;
         }
     }
 
     else if (neko_token_compare_text(&token, "font")) {
         if (!__neko_ui_style_sheet_parse_attribute_font(ctx, lex, ss, id_tag, elementid, state, variables)) {
-            neko_log_warning("Failed to parse font attribute.");
+            NEKO_WARN("Failed to parse font attribute.");
             return false;
         }
     }
 
     else if (neko_token_compare_text(&token, "transition")) {
         if (!__neko_ui_style_sheet_parse_attribute_transition(ctx, lex, ss, id_tag, elementid, state, variables)) {
-            neko_log_warning("Failed to parse transition attribute.");
+            NEKO_WARN("Failed to parse transition attribute.");
             return false;
         }
     } else {
-        neko_log_warning("Unidentified attribute: %.*s.", token.len, token.text);
+        NEKO_WARN("Unidentified attribute: %.*s.", token.len, token.text);
         return false;
     }
     return true;
@@ -7607,7 +7607,7 @@ bool __neko_ui_style_sheet_parse_element(neko_ui_context_t* ctx, neko_lexer_t* l
     if (token.type == NEKO_TOKEN_COLON) {
         token = neko_lexer_next_token(lex);
         if (token.type != NEKO_TOKEN_IDENTIFIER) {
-            neko_log_warning("Unidentified Token. (Expected identifier after colon).");
+            NEKO_WARN("Unidentified Token. (Expected identifier after colon).");
             neko_token_debug_print(&token);
             return false;
         }
@@ -7617,7 +7617,7 @@ bool __neko_ui_style_sheet_parse_element(neko_ui_context_t* ctx, neko_lexer_t* l
         else if (neko_token_compare_text(&token, "hover"))
             state = NEKO_UI_ELEMENT_STATE_HOVER;
         else {
-            neko_log_warning("Unidentified element state provided: %.*s", token.len, token.text);
+            NEKO_WARN("Unidentified element state provided: %.*s", token.len, token.text);
             return false;
         }
 
@@ -7626,7 +7626,7 @@ bool __neko_ui_style_sheet_parse_element(neko_ui_context_t* ctx, neko_lexer_t* l
     }
 
     if (token.type != NEKO_TOKEN_LBRACE) {
-        neko_log_warning("Unidentified token. (Expected brace after element declaration).");
+        NEKO_WARN("Unidentified token. (Expected brace after element declaration).");
         neko_token_debug_print(&token);
         return false;
     }
@@ -7644,7 +7644,7 @@ bool __neko_ui_style_sheet_parse_element(neko_ui_context_t* ctx, neko_lexer_t* l
             case NEKO_TOKEN_IDENTIFIER: {
                 // neko_println("Parsing attribute: %.*s", token.len, token.text);
                 if (!__neko_ui_style_sheet_parse_attribute(ctx, lex, ss, 0, elementid, state, variables)) {
-                    neko_log_warning("Unable to parse attribute");
+                    NEKO_WARN("Unable to parse attribute");
                     return false;
                 }
             } break;
@@ -7661,7 +7661,7 @@ bool __neko_ui_style_sheet_parse_cid_tag(neko_ui_context_t* ctx, neko_lexer_t* l
     if (token.type == NEKO_TOKEN_COLON) {
         token = neko_lexer_next_token(lex);
         if (token.type != NEKO_TOKEN_IDENTIFIER) {
-            neko_log_warning("Unidentified Token. (Expected identifier after colon).");
+            NEKO_WARN("Unidentified Token. (Expected identifier after colon).");
             neko_token_debug_print(&token);
             return false;
         }
@@ -7671,7 +7671,7 @@ bool __neko_ui_style_sheet_parse_cid_tag(neko_ui_context_t* ctx, neko_lexer_t* l
         else if (neko_token_compare_text(&token, "hover"))
             state = NEKO_UI_ELEMENT_STATE_HOVER;
         else {
-            neko_log_warning("Unidentified element state provided: %.*s", token.len, token.text);
+            NEKO_WARN("Unidentified element state provided: %.*s", token.len, token.text);
             return false;
         }
 
@@ -7680,7 +7680,7 @@ bool __neko_ui_style_sheet_parse_cid_tag(neko_ui_context_t* ctx, neko_lexer_t* l
     }
 
     if (token.type != NEKO_TOKEN_LBRACE) {
-        neko_log_warning("Unidentified token. (Expected brace after element declaration).");
+        NEKO_WARN("Unidentified token. (Expected brace after element declaration).");
         neko_token_debug_print(&token);
         return false;
     }
@@ -7698,7 +7698,7 @@ bool __neko_ui_style_sheet_parse_cid_tag(neko_ui_context_t* ctx, neko_lexer_t* l
             case NEKO_TOKEN_IDENTIFIER: {
                 // neko_println("Parsing attribute: %.*s", token.len, token.text);
                 if (!__neko_ui_style_sheet_parse_attribute(ctx, lex, ss, cid_tag, NEKO_UI_ELEMENT_COUNT, state, variables)) {
-                    neko_log_warning("Unable to parse attribute");
+                    NEKO_WARN("Unable to parse attribute");
                     return false;
                 }
             } break;
@@ -7717,16 +7717,16 @@ NEKO_API_DECL neko_ui_style_sheet_t neko_ui_style_sheet_load_from_file(neko_ui_c
     char* fd = neko_platform_read_file_contents(file_path, "rb", &sz);
 
     if (!fd) {
-        neko_log_warning("Cannot load file: %s", file_path);
+        NEKO_WARN("Cannot load file: %s", file_path);
         return ss;
     }
 
     ss = neko_ui_style_sheet_load_from_memory(ctx, fd, sz, &success);
 
     if (success) {
-        neko_log_trace("successfully loaded style sheet %s.", file_path);
+        NEKO_TRACE("successfully loaded style sheet %s.", file_path);
     } else {
-        neko_log_warning("failed to loaded style sheet %s.", file_path);
+        NEKO_WARN("failed to loaded style sheet %s.", file_path);
     }
 
     neko_safe_free(fd);
@@ -7737,7 +7737,7 @@ static bool __neko_ui_style_sheet_parse_variable(neko_ui_context_t* ctx, neko_le
     // Get next token, needs to be identifier
     neko_token_t token = neko_lexer_next_token(lex);
     if (token.type != NEKO_TOKEN_IDENTIFIER) {
-        neko_log_warning("Unidentified token. (Expected variable name after percent sign).");
+        NEKO_WARN("Unidentified token. (Expected variable name after percent sign).");
         neko_token_debug_print(&token);
         return false;
     }
@@ -7748,7 +7748,7 @@ static bool __neko_ui_style_sheet_parse_variable(neko_ui_context_t* ctx, neko_le
     // Expect colon
     token = neko_lexer_next_token(lex);
     if (token.type != NEKO_TOKEN_COLON) {
-        neko_log_warning("Syntax error. (Expected colon name after variable name).");
+        NEKO_WARN("Syntax error. (Expected colon name after variable name).");
         neko_token_debug_print(&token);
         return false;
     }
@@ -7761,7 +7761,7 @@ static bool __neko_ui_style_sheet_parse_variable(neko_ui_context_t* ctx, neko_le
                 if (neko_token_compare_text(&token, "rgb")) {
                     token = neko_lexer_next_token(lex);
                     if (token.type != NEKO_TOKEN_LPAREN) {
-                        neko_log_warning("rgb: missing paren (", token.len, token.text);
+                        NEKO_WARN("rgb: missing paren (", token.len, token.text);
                         neko_token_debug_print(&token);
                         return false;
                     }
@@ -7771,7 +7771,7 @@ static bool __neko_ui_style_sheet_parse_variable(neko_ui_context_t* ctx, neko_le
                     for (u32 i = 0; i < 3; ++i) {
                         token = neko_lexer_next_token(lex);
                         if (token.type != NEKO_TOKEN_NUMBER) {
-                            neko_log_warning("rgb expects numbers", token.len, token.text);
+                            NEKO_WARN("rgb expects numbers", token.len, token.text);
                             neko_token_debug_print(&token);
                             return false;
                         }
@@ -7783,7 +7783,7 @@ static bool __neko_ui_style_sheet_parse_variable(neko_ui_context_t* ctx, neko_le
                 } else if (neko_token_compare_text(&token, "rgba")) {
                     token = neko_lexer_next_token(lex);
                     if (token.type != NEKO_TOKEN_LPAREN) {
-                        neko_log_warning("rgb: missing paren (", token.len, token.text);
+                        NEKO_WARN("rgb: missing paren (", token.len, token.text);
                         neko_token_debug_print(&token);
                         return false;
                     }
@@ -7791,7 +7791,7 @@ static bool __neko_ui_style_sheet_parse_variable(neko_ui_context_t* ctx, neko_le
                     for (u32 i = 0; i < 4; ++i) {
                         token = neko_lexer_next_token(lex);
                         if (token.type != NEKO_TOKEN_NUMBER) {
-                            neko_log_warning("rgb expects numbers", token.len, token.text);
+                            NEKO_WARN("rgb expects numbers", token.len, token.text);
                             neko_token_debug_print(&token);
                             return false;
                         }
@@ -7809,7 +7809,7 @@ static bool __neko_ui_style_sheet_parse_variable(neko_ui_context_t* ctx, neko_le
                     out->type = NEKO_UI_SS_DEF_ENUM;
                     out->val.number = (s32)NEKO_UI_JUSTIFY_END;
                 } else {
-                    neko_log_warning("Variable value unknown: %.*s", token.len, token.text);
+                    NEKO_WARN("Variable value unknown: %.*s", token.len, token.text);
                     neko_token_debug_print(&token);
                     return false;
                 }
@@ -7856,7 +7856,7 @@ NEKO_API_DECL neko_ui_style_sheet_t neko_ui_style_sheet_load_from_memory(neko_ui
 #define PARSE_ELEMENT(TYPE, TYPESTR)                                                  \
     do {                                                                              \
         if (!__neko_ui_style_sheet_parse_element(ctx, &lex, &ss, TYPE, &variables)) { \
-            neko_log_warning("Failed to parse element: %s", TYPESTR);                 \
+            NEKO_WARN("Failed to parse element: %s", TYPESTR);                 \
             success = false;                                                          \
             break;                                                                    \
         }                                                                             \
@@ -7885,7 +7885,7 @@ NEKO_API_DECL neko_ui_style_sheet_t neko_ui_style_sheet_load_from_memory(neko_ui
                 else if (neko_token_compare_text(&token, "input"))
                     PARSE_ELEMENT(NEKO_UI_ELEMENT_INPUT, "input");
                 else {
-                    neko_log_warning("Unidentified token. (Invalid element type found).");
+                    NEKO_WARN("Unidentified token. (Invalid element type found).");
                     neko_token_debug_print(&token);
                     break;
                 }
@@ -7900,7 +7900,7 @@ NEKO_API_DECL neko_ui_style_sheet_t neko_ui_style_sheet_load_from_memory(neko_ui
                 memcpy(CLS_TAG + 1, cls_tag.text, cls_tag.len);
                 u64 cls_hash = neko_hash_str64(CLS_TAG);
                 if (!__neko_ui_style_sheet_parse_cid_tag(ctx, &lex, &ss, cls_hash, &variables)) {
-                    neko_log_warning("Failed to parse id tag: %s", CLS_TAG);
+                    NEKO_WARN("Failed to parse id tag: %s", CLS_TAG);
                     success = false;
                     break;
                 }
@@ -7914,7 +7914,7 @@ NEKO_API_DECL neko_ui_style_sheet_t neko_ui_style_sheet_load_from_memory(neko_ui
                 memcpy(ID_TAG + 1, id_tag.text, id_tag.len);
                 u64 id_hash = neko_hash_str64(ID_TAG);
                 if (!__neko_ui_style_sheet_parse_cid_tag(ctx, &lex, &ss, id_hash, &variables)) {
-                    neko_log_warning("Failed to parse id tag: %s", ID_TAG);
+                    NEKO_WARN("Failed to parse id tag: %s", ID_TAG);
                     success = false;
                     break;
                 }
@@ -7945,7 +7945,7 @@ NEKO_API_DECL neko_ui_style_sheet_t neko_ui_style_sheet_load_from_memory(neko_ui
                 neko_ui_ss_var_def_t variable = NEKO_DEFAULT_VAL();
                 char variable_name[256] = NEKO_DEFAULT_VAL();
                 if (!__neko_ui_style_sheet_parse_variable(ctx, &lex, &ss, variable_name, sizeof(variable_name), &variable)) {
-                    neko_log_warning("Failed to parse variable: %s", variable_name);
+                    NEKO_WARN("Failed to parse variable: %s", variable_name);
                     success = false;
                     break;
                 } else {
@@ -7977,9 +7977,9 @@ NEKO_API_DECL neko_ui_style_sheet_t neko_ui_style_sheet_load_from_memory(neko_ui
 
     if (!sp) {
         if (success) {
-            neko_log_trace("successfully loaded style sheet from memory.");
+            NEKO_TRACE("successfully loaded style sheet from memory.");
         } else {
-            neko_log_warning("failed to loaded style sheet from memory.");
+            NEKO_WARN("failed to loaded style sheet from memory.");
         }
     } else {
         *sp = success;

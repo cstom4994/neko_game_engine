@@ -38,7 +38,7 @@
 #include <GLFW/glfw3native.h>
 
 // Main context for necessary imgui information
-typedef struct neko_imgui_context_s {
+typedef struct neko_imgui_context_t {
     neko_command_buffer_t *cb;
     u32 win_hndl;
     double time;
@@ -96,7 +96,7 @@ NEKO_INLINE static void neko_imgui_clipboard_setter(void *user_data, const char 
 static void neko_imgui_opengl_init_platform_interface();
 
 NEKO_INLINE auto neko_imgui_glfw_window() {
-    struct neko_platform_t *platform = neko_instance()->ctx.platform;
+    struct neko_platform_t *platform = neko_subsystem(platform);
     GLFWwindow *win = (GLFWwindow *)(neko_slot_array_getp(platform->windows, neko_platform_main_window()))->hndl;
     return win;
 }

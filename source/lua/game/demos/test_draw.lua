@@ -6,8 +6,8 @@ local fnt_text = ImGui.StringBuf("中文渲染测试 日本語レンダリング
 
 local gd = {}
 
-neko.hooks.add("render", "main", function(v)
-    ImGui.Begin("render hooks")
+neko.events.add("render", "main", function(v)
+    ImGui.Begin("render events")
     if ImGui.InputText("TEST", fnt_text) then
     end
     ImGui.Text("%s", v)
@@ -16,8 +16,8 @@ neko.hooks.add("render", "main", function(v)
     neko.draw_text(50.0, 50.0, tostring(fnt_text), 3.0)
 end)
 
--- hooks.add("inputPressed","test",function(v)
---     ImGui.Begin("inputPressed hooks")
+-- events.add("inputPressed","test",function(v)
+--     ImGui.Begin("inputPressed events")
 --     ImGui.Text("%s", v)
 --     ImGui.End()
 -- end)

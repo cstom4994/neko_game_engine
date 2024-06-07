@@ -268,7 +268,7 @@ void neko_render_batch_make_frame_buffer(neko_render_batch_framebuffer_t* fb, ne
         glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rb_id);
     }
 
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) neko_log_warning("cute_gl: failed to generate framebuffer");
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) NEKO_WARN("cute_gl: failed to generate framebuffer");
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -412,7 +412,7 @@ void* gl_map_internal(neko_render_batch_renderable_t* r, u32 count) {
 
 #if R_BATCH_DEBUG_CHECKS
     if (!memory) {
-        neko_log_warning("\n%u\n", glGetError());
+        NEKO_WARN("\n%u\n", glGetError());
         NEKO_ASSERT(memory);
     }
 #endif
@@ -431,7 +431,7 @@ void neko_render_batch_set_shader(neko_render_batch_renderable_t* r, neko_render
 
 #if R_BATCH_DEBUG_CHECKS
     if (r->attribute_count != r->data.attribute_count) {
-        neko_log_warning("Mismatch between VertexData attribute count (%d), and shader attribute count (%d).", r->attribute_count, r->data.attribute_count);
+        NEKO_WARN("Mismatch between VertexData attribute count (%d), and shader attribute count (%d).", r->attribute_count, r->data.attribute_count);
     }
 #endif
 
@@ -495,11 +495,11 @@ GLuint gl_compile_shader_internal(const char* Shader, u32 type) {
 
 #if R_BATCH_DEBUG_CHECKS
     if (!compiled) {
-        neko_log_warning("Shader of type %d failed compilation.", type);
+        NEKO_WARN("Shader of type %d failed compilation.", type);
         char out[2000];
         GLsizei outLen;
         glGetShaderInfoLog(handle, 2000, &outLen, out);
-        neko_log_warning("%s", out);
+        NEKO_WARN("%s", out);
         NEKO_ASSERT(0);
     }
 #endif
@@ -523,11 +523,11 @@ void neko_render_batch_load_shader(neko_render_batch_shader_t* s, const char* ve
 
 #if R_BATCH_DEBUG_CHECKS
     if (!linked) {
-        neko_log_warning("Shaders failed to link.");
+        NEKO_WARN("Shaders failed to link.");
         char out[2000];
         GLsizei outLen;
         glGetProgramInfoLog(program, 2000, &outLen, out);
-        neko_log_warning("%s", out);
+        NEKO_WARN("%s", out);
         NEKO_ASSERT(0);
     }
 #endif
@@ -602,7 +602,7 @@ void neko_render_batch_send_f32(neko_render_batch_shader_t* s, const char* unifo
     neko_render_batch_uniform_t* u = gl_find_uniform_internal(s, uniform_name);
 
     if (!u) {
-        neko_log_warning("Unable to find uniform: %s", uniform_name);
+        NEKO_WARN("Unable to find uniform: %s", uniform_name);
         return;
     }
 
@@ -638,7 +638,7 @@ void neko_render_batch_send_matrix(neko_render_batch_shader_t* s, const char* un
     neko_render_batch_uniform_t* u = gl_find_uniform_internal(s, uniform_name);
 
     if (!u) {
-        neko_log_warning("Unable to find uniform: %s", uniform_name);
+        NEKO_WARN("Unable to find uniform: %s", uniform_name);
         return;
     }
 
@@ -654,7 +654,7 @@ void neko_render_batch_send_texture(neko_render_batch_shader_t* s, const char* u
     neko_render_batch_uniform_t* u = gl_find_uniform_internal(s, uniform_name);
 
     if (!u) {
-        neko_log_warning("Unable to find uniform: %s", uniform_name);
+        NEKO_WARN("Unable to find uniform: %s", uniform_name);
         return;
     }
 
@@ -939,7 +939,7 @@ void neko_gl_pipeline_state() {
     glDisable(GL_MULTISAMPLE);
 
     CHECK_GL_CORE(neko_render_info_t* info = neko_render_info(); if (info->compute.available) {
-        // NEKO_INVOKE_ONCE(neko_log_trace("Compute shader available: %s", NEKO_BOOL_STR(info->compute.available)););
+        // NEKO_INVOKE_ONCE(NEKO_TRACE("Compute shader available: %s", NEKO_BOOL_STR(info->compute.available)););
         glBindImageTexture(0, 0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
     });
 }
@@ -1833,13 +1833,13 @@ NEKO_API_DECL neko_handle(neko_render_uniform_t) neko_render_uniform_create_impl
 
     // Assert if data isn't named
     if (desc.name == NULL) {
-        neko_log_warning("Uniform must be named for OpenGL.");
+        NEKO_WARN("Uniform must be named for OpenGL.");
         return neko_handle_invalid(neko_render_uniform_t);
     }
 
     u32 ct = !desc.layout ? 0 : !desc.layout_size ? 1 : (u32)desc.layout_size / (u32)sizeof(neko_render_uniform_layout_desc_t);
     if (ct < 1) {
-        neko_log_warning("Uniform layout description must not be empty for: %s.", desc.name);
+        NEKO_WARN("Uniform layout description must not be empty for: %s.", desc.name);
         return neko_handle_invalid(neko_render_uniform_t);
     }
 
@@ -1916,7 +1916,7 @@ NEKO_API_DECL neko_handle(neko_render_uniform_buffer_t) neko_render_uniform_buff
 
     // Assert if data isn't named
     if (desc.name == NULL) {
-        neko_log_warning("Uniform buffer must be named for Opengl.");
+        NEKO_WARN("Uniform buffer must be named for Opengl.");
     }
 
     neko_gl_uniform_buffer_t u = NEKO_DEFAULT_VAL();
@@ -1941,7 +1941,7 @@ NEKO_API_DECL neko_handle(neko_render_storage_buffer_t) neko_render_storage_buff
     neko_gl_storage_buffer_t sbo = NEKO_DEFAULT_VAL();
 
     if (desc.name == NULL) {
-        neko_log_warning("Storage buffer must be named for Opengl.");
+        NEKO_WARN("Storage buffer must be named for Opengl.");
     }
 
     if (desc.usage == R_BUFFER_USAGE_STATIC && !desc.data) {
@@ -2062,7 +2062,7 @@ NEKO_API_DECL neko_handle(neko_render_shader_t) neko_render_shader_create_impl(c
         glGetProgramInfoLog(shader, max_len, &max_len, log);
 
         // Print error
-        neko_log_error("Fail To Link::opengl_link_shaders::shader: '%s', \n%s", desc.name, log);
+        NEKO_ERROR("Fail To Link::opengl_link_shaders::shader: '%s', \n%s", desc.name, log);
 
         // //We don't need the program anymore.
         glDeleteProgram(shader);
@@ -2077,7 +2077,7 @@ NEKO_API_DECL neko_handle(neko_render_shader_t) neko_render_shader_create_impl(c
     glValidateProgram(shader);
     glGetProgramiv(shader, GL_VALIDATE_STATUS, &is_good);
     if (!is_good) {
-        neko_log_error("Failed to validate shader: '%s'", desc.name);
+        NEKO_ERROR("Failed to validate shader: '%s'", desc.name);
     }
 
     // Free shaders after use
@@ -2289,7 +2289,7 @@ NEKO_API_DECL void neko_render_texture_update_impl(neko_handle(neko_render_textu
 
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(render)->user_data;
     if (!neko_slot_array_handle_valid(ogl->textures, hndl.id)) {
-        neko_log_warning("Texture handle invalid: %zu", hndl.id);
+        NEKO_WARN("Texture handle invalid: %zu", hndl.id);
         return;
     }
     gl_texture_update_internal(desc, hndl.id);
@@ -2363,7 +2363,7 @@ NEKO_API_DECL void neko_render_storage_buffer_update_impl(neko_handle(neko_rende
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(render)->user_data;
     neko_gl_storage_buffer_t* sbo = neko_slot_array_getp(ogl->storage_buffers, hndl.id);
     if (!sbo) {
-        neko_log_warning("Storage buffer %zu not found.", hndl.id);
+        NEKO_WARN("Storage buffer %zu not found.", hndl.id);
         return;
     }
 
@@ -2381,7 +2381,7 @@ NEKO_API_DECL void neko_render_texture_read_impl(neko_handle(neko_render_texture
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(render)->user_data;
     if (!desc) return;
     if (!neko_slot_array_handle_valid(ogl->textures, hndl.id)) {
-        neko_log_warning("Texture handle invalid: %zu", hndl.id);
+        NEKO_WARN("Texture handle invalid: %zu", hndl.id);
     }
 
     neko_gl_texture_t* tex = neko_slot_array_getp(ogl->textures, hndl.id);
@@ -2846,7 +2846,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
 
                             if (!id || !neko_slot_array_exists(ogl->vertex_buffers, id)) {
                                 NEKO_TIMED_ACTION(1000, {
-                                    neko_log_warning("Opengl:BindBindings:VertexBuffer %d does not exist.", id);
+                                    NEKO_WARN("Opengl:BindBindings:VertexBuffer %d does not exist.", id);
                                     continue;
                                 });
                             }
@@ -2892,14 +2892,14 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
 
                             // Check buffer id. If invalid, then we can't operate, and instead just need to pass over the data.
                             if (!id || !neko_slot_array_exists(ogl->uniforms, id)) {
-                                NEKO_TIMED_ACTION(1000, { neko_log_warning("Bind Uniform:Uniform %d does not exist.", id); });
+                                NEKO_TIMED_ACTION(1000, { NEKO_WARN("Bind Uniform:Uniform %d does not exist.", id); });
                                 neko_byte_buffer_advance_position(&cb->commands, sz);
                                 continue;
                             }
 
                             // Grab currently bound pipeline (TODO: assert if this isn't valid)
                             if (!ogl->cache.pipeline.id || !neko_slot_array_exists(ogl->pipelines, ogl->cache.pipeline.id)) {
-                                NEKO_TIMED_ACTION(1000, { neko_log_warning("Bind Uniform Buffer:Pipeline %d does not exist.", ogl->cache.pipeline.id); });
+                                NEKO_TIMED_ACTION(1000, { NEKO_WARN("Bind Uniform Buffer:Pipeline %d does not exist.", ogl->cache.pipeline.id); });
                                 neko_byte_buffer_advance_position(&cb->commands, sz);
                                 continue;
                             }
@@ -2920,7 +2920,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
                                 if ((u->location == UINT32_MAX && u->location != UINT32_MAX - 1) || u->sid != pip->raster.shader.id) {
                                     if (!sid || !neko_slot_array_exists(ogl->shaders, sid)) {
 
-                                        NEKO_TIMED_ACTION(1000, { neko_log_warning("Bind Uniform:Shader %d does not exist.", sid); });
+                                        NEKO_TIMED_ACTION(1000, { NEKO_WARN("Bind Uniform:Shader %d does not exist.", sid); });
 
                                         // Advance by size of uniform
                                         neko_byte_buffer_advance_position(&cb->commands, sz);
@@ -2941,7 +2941,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
                                     u->location = glGetUniformLocation(shader, name ? name : "__EMPTY_UNIFORM_NAME");
 
                                     if (u->location >= UINT32_MAX) {
-                                        neko_log_warning("Bind Uniform: Uniform not found: \"%s\"", name);
+                                        NEKO_WARN("Bind Uniform: Uniform not found: \"%s\"", name);
                                         u->location = UINT32_MAX - 1;
                                     }
 
@@ -3082,7 +3082,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
 
                             // Check buffer id. If invalid, then we can't operate, and instead just need to pass over the data.
                             if (!id || !neko_slot_array_exists(ogl->uniform_buffers, id)) {
-                                NEKO_TIMED_ACTION(1000, { neko_log_warning("Bind Uniform Buffer:Uniform %d does not exist.", id); });
+                                NEKO_TIMED_ACTION(1000, { NEKO_WARN("Bind Uniform Buffer:Uniform %d does not exist.", id); });
                                 continue;
                             }
 
@@ -3105,7 +3105,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
                             // TODO: To avoid constant lookups in this case, allow for shaders to hold uniform handles references instead.
                             if ((u->location == UINT32_MAX && u->location != UINT32_MAX - 1) || u->sid != pip->raster.shader.id) {
                                 if (!sid || !neko_slot_array_exists(ogl->shaders, sid)) {
-                                    NEKO_TIMED_ACTION(1000, { neko_log_warning("Bind Uniform Buffer:Shader %d does not exist.", sid); });
+                                    NEKO_TIMED_ACTION(1000, { NEKO_WARN("Bind Uniform Buffer:Shader %d does not exist.", sid); });
                                     continue;
                                 }
 
@@ -3118,7 +3118,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
                                 glUniformBlockBinding(shader, u->location, binding);
 
                                 if (u->location >= UINT32_MAX) {
-                                    neko_log_warning("Bind Uniform Buffer: Uniform not found: \"%s\"", u->name);
+                                    NEKO_WARN("Bind Uniform Buffer: Uniform not found: \"%s\"", u->name);
                                     u->location = UINT32_MAX - 1;
                                 }
 
@@ -3179,11 +3179,11 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
                                     GLenum props[1] = {GL_BUFFER_BINDING};
                                     glGetProgramResourceiv(shader, GL_SHADER_STORAGE_BLOCK, sbo->block_idx, 1, props, 1, NULL, params);
                                     sbo->location = (u32)params[0];
-                                    neko_log_warning("Bind Storage Buffer: Binding \"%s\" to location %u, block index: %u, binding: %u", sbo->name, sbo->location, sbo->block_idx, binding);
+                                    NEKO_WARN("Bind Storage Buffer: Binding \"%s\" to location %u, block index: %u, binding: %u", sbo->name, sbo->location, sbo->block_idx, binding);
                                 });
 
                                 if (sbo->block_idx >= UINT32_MAX) {
-                                    neko_log_warning("Bind Storage Buffer: Buffer not found: \"%s\"", sbo->name);
+                                    NEKO_WARN("Bind Storage Buffer: Buffer not found: \"%s\"", sbo->name);
                                     sbo->block_idx = UINT32_MAX - 1;
                                 }
                             }
@@ -3205,7 +3205,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
 
                             // Grab texture from sampler id
                             if (!tex_slot_id || !neko_slot_array_exists(ogl->textures, tex_slot_id)) {
-                                NEKO_TIMED_ACTION(1000, { neko_log_warning("Bind Image Buffer: Texture %d does not exist.", tex_slot_id); });
+                                NEKO_TIMED_ACTION(1000, { NEKO_WARN("Bind Image Buffer: Texture %d does not exist.", tex_slot_id); });
                                 continue;
                             }
 
@@ -3215,7 +3215,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
 
                             NEKO_TIMED_ACTION(
                                     60, neko_render_info_t* info = neko_render_info(); if (info->major_version < 4) {
-                                        neko_log_error("%s", "OpenGL4 not available, failed to call glBindImageTexture.");
+                                        NEKO_ERROR("%s", "OpenGL4 not available, failed to call glBindImageTexture.");
                                         continue;
                                     });
 
@@ -3238,7 +3238,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
                 // Make sure pipeline exists
                 if (!pipid || !neko_slot_array_exists(ogl->pipelines, pipid)) {
 
-                    NEKO_TIMED_ACTION(1000, { neko_log_warning("Pipeline %d does not exist.", pipid); });
+                    NEKO_TIMED_ACTION(1000, { NEKO_WARN("Pipeline %d does not exist.", pipid); });
 
                     continue;
                 }
@@ -3261,7 +3261,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
                     if (pip->compute.shader.id && neko_slot_array_exists(ogl->shaders, pip->compute.shader.id)) {
                         glUseProgram(neko_slot_array_get(ogl->shaders, pip->compute.shader.id));
                     } else {
-                        NEKO_TIMED_ACTION(1000, { neko_log_warning("Opengl:BindPipeline:Compute:Shader %d does not exist.", pip->compute.shader.id); });
+                        NEKO_TIMED_ACTION(1000, { NEKO_WARN("Opengl:BindPipeline:Compute:Shader %d does not exist.", pip->compute.shader.id); });
                     }
 
                     continue;
@@ -3317,7 +3317,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
                 if (pip->raster.shader.id && neko_slot_array_exists(ogl->shaders, pip->raster.shader.id)) {
                     glUseProgram(neko_slot_array_get(ogl->shaders, pip->raster.shader.id));
                 } else {
-                    NEKO_TIMED_ACTION(1000, { neko_log_warning("Opengl:BindPipeline:Shader %d does not exist.", pip->raster.shader.id); });
+                    NEKO_TIMED_ACTION(1000, { NEKO_WARN("Opengl:BindPipeline:Shader %d does not exist.", pip->raster.shader.id); });
                 }
             } break;
 
@@ -3511,7 +3511,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
 
                 // Grab texture from sampler id
                 if (!tex_slot_id || !neko_slot_array_exists(ogl->textures, tex_slot_id)) {
-                    NEKO_TIMED_ACTION(60, { neko_log_warning("Bind Image Buffer: Texture %d does not exist.", tex_slot_id); });
+                    NEKO_TIMED_ACTION(60, { NEKO_WARN("Bind Image Buffer: Texture %d does not exist.", tex_slot_id); });
                     neko_byte_buffer_advance_position(&cb->commands, data_size);
                 }
 
@@ -3695,10 +3695,10 @@ NEKO_API_DECL void neko_render_init(neko_render_t* render) {
                 glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, (s32*)&info->compute.max_work_group_size[2]);
                 // Work group invocations
                 glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, (s32*)&info->compute.max_work_group_invocations);
-            } else { neko_log_error("%s", "Compute shaders not available."); });
+            } else { NEKO_ERROR("%s", "Compute shaders not available."); });
 
     const GLubyte* glslv = glGetString(GL_SHADING_LANGUAGE_VERSION);
-    neko_log_info("GLSL Version: %s", glslv);
+    NEKO_INFO("GLSL Version: %s", glslv);
 
 #if defined(NEKO_DEBUG) && 0
     int numExtensions;

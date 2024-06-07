@@ -78,7 +78,7 @@ typedef struct neko_platform_running_desc_t {
     bool running_background;
 } neko_platform_running_desc_t;
 
-typedef struct neko_platform_window_s {
+typedef struct neko_platform_window_t {
     void *hndl;
     neko_vec2 framebuffer_size;
     neko_vec2 window_size;
@@ -86,7 +86,7 @@ typedef struct neko_platform_window_s {
     b32 focus;
 } neko_platform_window_t;
 
-typedef struct neko_memory_info_s {
+typedef struct neko_memory_info_t {
     u64 virtual_memory_used;
     u64 physical_memory_used;
     u64 peak_virtual_memory_used;
@@ -528,7 +528,7 @@ NEKO_API_DECL void neko_platform_add_event(neko_platform_event_t *evt);
 NEKO_API_DECL u32 neko_platform_window_create(const neko_platform_running_desc_t *desc);
 NEKO_API_DECL u32 neko_platform_main_window();
 
-typedef struct neko_platform_file_stats_s {
+typedef struct neko_platform_file_stats_t {
     u64 modified_time;
     u64 creation_time;
     u64 access_time;
@@ -623,7 +623,6 @@ NEKO_API_DECL void neko_platform_set_character_callback(u32 handle, neko_charact
 
 NEKO_API_DECL void *neko_platform_hwnd();
 NEKO_API_DECL neko_memory_info_t neko_platform_memory_info();
-NEKO_API_DECL neko_vec2 neko_platform_gl_version();
 NEKO_API_DECL void neko_platform_msgbox(const_str msg);
 
 // Platform Internal

@@ -5,7 +5,7 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
 
     map->doc = neko_xml_parse_file(tmx_path);
     if (!map->doc) {
-        neko_log_error("Failed to parse XML: %s", neko_xml_get_error());
+        NEKO_ERROR("Failed to parse XML: %s", neko_xml_get_error());
         return;
     }
 
@@ -28,7 +28,7 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
         neko_snprintf(tileset_path, 256, "%s/%s", tmx_root_path, neko_xml_find_attribute(it.current, "source")->value.string);
         neko_xml_document_t *tileset_doc = neko_xml_parse_file(tileset_path);
         if (!tileset_doc) {
-            neko_log_error("Failed to parse XML from %s: %s", tileset_path, neko_xml_get_error());
+            NEKO_ERROR("Failed to parse XML from %s: %s", tileset_path, neko_xml_get_error());
             return;
         }
 
@@ -45,7 +45,7 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
 
         FILE *checker = fopen(full_image_path, "rb"); /* Check that the file exists. */
         if (!checker) {
-            neko_log_error("Failed to fopen texture file: %s", full_image_path);
+            NEKO_ERROR("Failed to fopen texture file: %s", full_image_path);
             return;
         }
         fclose(checker);
@@ -96,7 +96,7 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
         const char *encoding = neko_xml_find_attribute(data_node, "encoding")->value.string;
 
         if (strcmp(encoding, "csv") != 0) {
-            neko_log_error("%s", "Only CSV data encoding is supported.");
+            NEKO_ERROR("%s", "Only CSV data encoding is supported.");
             return;
         }
 
@@ -242,7 +242,7 @@ void neko_tiled_render_init(neko_command_buffer_t *cb, neko_tiled_renderer *rend
     renderer->ib = neko_render_index_buffer_create(ib_decl);
 
     if (!vert_src || !frag_src) {
-        neko_log_error("%s", "Failed to load tiled renderer shaders.");
+        NEKO_ERROR("%s", "Failed to load tiled renderer shaders.");
     }
 
     neko_render_uniform_desc_t u_desc = (neko_render_uniform_desc_t){

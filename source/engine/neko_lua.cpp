@@ -263,7 +263,7 @@ void ScriptInvoker::invoke(const_str method) {
 
     lua_rawgeti(__lua, LUA_REGISTRYINDEX, script_ref);
     if (lua_pcall(__lua, 1, 0, NULL) != 0) {
-        neko_log_warning("[lua] err: %s", lua_tostring(__lua, -1));
+        NEKO_WARN("[lua] err: %s", lua_tostring(__lua, -1));
         lua_pop(__lua, 1);
     }
 
@@ -289,7 +289,7 @@ bool ScriptInvoker::findAndPushMethod(const_str method_name) {
     }
     lua_pop(__lua, 1);
 
-    neko_log_warning("[lua] not find method \"%s\" with script_ref_%d", method_name, script_ref);
+    NEKO_WARN("[lua] not find method \"%s\" with script_ref_%d", method_name, script_ref);
 
     return false;
 }
@@ -449,7 +449,7 @@ int lua_delete(lua_State* L) {
             self->unregisterObject();
             delete self;
         } else {
-            neko_log_warning("[lua] cannot delete an instance that isn't a ScriptObject*");
+            NEKO_WARN("[lua] cannot delete an instance that isn't a ScriptObject*");
         }
     }
 
@@ -475,7 +475,7 @@ void lua_bind::evaluatef(const_str fmt, ...) {
 
     if (luaL_loadstring(g_L, buffer) != 0) {
         std::string err = lua_tostring(g_L, -1);
-        neko_log_warning("[lua] could not evaluate string \"%s\":\n%s", buffer, err.c_str());
+        NEKO_WARN("[lua] could not evaluate string \"%s\":\n%s", buffer, err.c_str());
         lua_pop(g_L, 1);
     }
 }
@@ -484,13 +484,13 @@ void lua_bind::loadFile(const_str pathToFile) {
     int res = luaL_loadfile(g_L, pathToFile);
     if (res != 0) {
         std::string err = lua_tostring(g_L, -1);
-        neko_log_warning("[lua] could not load file: %s", err.c_str());
+        NEKO_WARN("[lua] could not load file: %s", err.c_str());
         lua_pop(g_L, 1);
     } else {
         res = lua_pcall(g_L, 0, 0, NULL);
         if (res != 0) {
             std::string err = lua_tostring(g_L, -1);
-            neko_log_warning("[lua] could not compile supplied script file: %s", err.c_str());
+            NEKO_WARN("[lua] could not compile supplied script file: %s", err.c_str());
             lua_pop(g_L, 1);
         }
     }
