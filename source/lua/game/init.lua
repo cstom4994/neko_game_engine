@@ -24,7 +24,6 @@ dump_func = function(tbl, indent)
     end
 end
 
-
 unsafe_require = require
 print_ = print
 print = neko.print

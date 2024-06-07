@@ -11,9 +11,6 @@
 #include "sandbox/game_editor.h"
 #include "sandbox/game_main.h"
 
-// hpp
-#include "sandbox/hpp/neko_static_refl.hpp"
-
 static int g_lua_callbacks_table_ref = LUA_NOREF;
 
 static int __neko_bind_callback_save(lua_State* L) {
@@ -819,187 +816,6 @@ static int neko_b2_world(lua_State* L) {
 }
 
 #endif
-
-// mt_sound
-
-static ma_sound* sound_ma(lua_State* L) {
-    Sound* sound = *(Sound**)luaL_checkudata(L, 1, "mt_sound");
-    return &sound->ma;
-}
-
-static int mt_sound_gc(lua_State* L) {
-    Sound* sound = *(Sound**)luaL_checkudata(L, 1, "mt_sound");
-
-    if (ma_sound_at_end(&sound->ma)) {
-        sound->trash();
-        neko_safe_free(sound);
-    } else {
-        sound->zombie = true;
-        // g_app->garbage_sounds.push(sound); // TODO:: 建立 garbage_sounds 每帧清理
-    }
-
-    return 0;
-}
-
-static int mt_sound_frames(lua_State* L) {
-    unsigned long long frames = 0;
-    ma_result res = ma_sound_get_length_in_pcm_frames(sound_ma(L), &frames);
-    if (res != MA_SUCCESS) {
-        return 0;
-    }
-
-    lua_pushinteger(L, (lua_Integer)frames);
-    return 1;
-}
-
-static int mt_sound_start(lua_State* L) {
-    ma_result res = ma_sound_start(sound_ma(L));
-    if (res != MA_SUCCESS) {
-        luaL_error(L, "failed to start sound");
-    }
-
-    return 0;
-}
-
-static int mt_sound_stop(lua_State* L) {
-    ma_result res = ma_sound_stop(sound_ma(L));
-    if (res != MA_SUCCESS) {
-        luaL_error(L, "failed to stop sound");
-    }
-
-    return 0;
-}
-
-static int mt_sound_seek(lua_State* L) {
-    lua_Number f = luaL_optnumber(L, 2, 0);
-
-    ma_result res = ma_sound_seek_to_pcm_frame(sound_ma(L), f);
-    if (res != MA_SUCCESS) {
-        luaL_error(L, "failed to seek to frame");
-    }
-
-    return 0;
-}
-
-static int mt_sound_secs(lua_State* L) {
-    float len = 0;
-    ma_result res = ma_sound_get_length_in_seconds(sound_ma(L), &len);
-    if (res != MA_SUCCESS) {
-        return 0;
-    }
-
-    lua_pushnumber(L, len);
-    return 1;
-}
-
-static int mt_sound_vol(lua_State* L) {
-    lua_pushnumber(L, ma_sound_get_volume(sound_ma(L)));
-    return 1;
-}
-
-static int mt_sound_set_vol(lua_State* L) {
-    ma_sound_set_volume(sound_ma(L), (float)luaL_optnumber(L, 2, 0));
-    return 0;
-}
-
-static int mt_sound_pan(lua_State* L) {
-    lua_pushnumber(L, ma_sound_get_pan(sound_ma(L)));
-    return 1;
-}
-
-static int mt_sound_set_pan(lua_State* L) {
-    ma_sound_set_pan(sound_ma(L), (float)luaL_optnumber(L, 2, 0));
-    return 0;
-}
-
-static int mt_sound_pitch(lua_State* L) {
-    lua_pushnumber(L, ma_sound_get_pitch(sound_ma(L)));
-    return 1;
-}
-
-static int mt_sound_set_pitch(lua_State* L) {
-    ma_sound_set_pitch(sound_ma(L), (float)luaL_optnumber(L, 2, 0));
-    return 0;
-}
-
-static int mt_sound_loop(lua_State* L) {
-    lua_pushboolean(L, ma_sound_is_looping(sound_ma(L)));
-    return 1;
-}
-
-static int mt_sound_set_loop(lua_State* L) {
-    ma_sound_set_looping(sound_ma(L), lua_toboolean(L, 2));
-    return 0;
-}
-
-static int mt_sound_pos(lua_State* L) {
-    ma_vec3f pos = ma_sound_get_position(sound_ma(L));
-    lua_pushnumber(L, pos.x);
-    lua_pushnumber(L, pos.y);
-    return 2;
-}
-
-static int mt_sound_set_pos(lua_State* L) {
-    lua_Number x = luaL_optnumber(L, 2, 0);
-    lua_Number y = luaL_optnumber(L, 3, 0);
-    ma_sound_set_position(sound_ma(L), (float)x, (float)y, 0.0f);
-    return 0;
-}
-
-static int mt_sound_dir(lua_State* L) {
-    ma_vec3f dir = ma_sound_get_direction(sound_ma(L));
-    lua_pushnumber(L, dir.x);
-    lua_pushnumber(L, dir.y);
-    return 2;
-}
-
-static int mt_sound_set_dir(lua_State* L) {
-    lua_Number x = luaL_optnumber(L, 2, 0);
-    lua_Number y = luaL_optnumber(L, 3, 0);
-    ma_sound_set_direction(sound_ma(L), (float)x, (float)y, 0.0f);
-    return 0;
-}
-
-static int mt_sound_vel(lua_State* L) {
-    ma_vec3f vel = ma_sound_get_velocity(sound_ma(L));
-    lua_pushnumber(L, vel.x);
-    lua_pushnumber(L, vel.y);
-    return 2;
-}
-
-static int mt_sound_set_vel(lua_State* L) {
-    lua_Number x = luaL_optnumber(L, 2, 0);
-    lua_Number y = luaL_optnumber(L, 3, 0);
-    ma_sound_set_velocity(sound_ma(L), (float)x, (float)y, 0.0f);
-    return 0;
-}
-
-static int mt_sound_set_fade(lua_State* L) {
-    lua_Number from = luaL_optnumber(L, 2, 0);
-    lua_Number to = luaL_optnumber(L, 3, 0);
-    lua_Number ms = luaL_optnumber(L, 4, 0);
-    ma_sound_set_fade_in_milliseconds(sound_ma(L), (float)from, (float)to, (u64)ms);
-    return 0;
-}
-
-static int open_mt_sound(lua_State* L) {
-    luaL_Reg reg[] = {
-            {"__gc", mt_sound_gc},           {"frames", mt_sound_frames},
-            {"secs", mt_sound_secs},         {"start", mt_sound_start},
-            {"stop", mt_sound_stop},         {"seek", mt_sound_seek},
-            {"vol", mt_sound_vol},           {"set_vol", mt_sound_set_vol},
-            {"pan", mt_sound_pan},           {"set_pan", mt_sound_set_pan},
-            {"pitch", mt_sound_pitch},       {"set_pitch", mt_sound_set_pitch},
-            {"loop", mt_sound_loop},         {"set_loop", mt_sound_set_loop},
-            {"pos", mt_sound_pos},           {"set_pos", mt_sound_set_pos},
-            {"dir", mt_sound_dir},           {"set_dir", mt_sound_set_dir},
-            {"vel", mt_sound_vel},           {"set_vel", mt_sound_set_vel},
-            {"set_fade", mt_sound_set_fade}, {nullptr, nullptr},
-    };
-
-    luax_new_class(L, "mt_sound", reg);
-    return 0;
-}
 
 struct neko_lua_handle_t {
     const_str name;
@@ -1869,19 +1685,63 @@ struct CGameObject {
     bool selected;
 };
 
+// template <>
+// struct neko::static_refl::neko_type_info<CGameObject> : neko_type_info_base<CGameObject> {
+//     static constexpr AttrList attrs = {};
+//     static constexpr FieldList fields = {
+//             rf_field{TSTR("id"), &rf_type::id},              //
+//             rf_field{TSTR("active"), &rf_type::active},      //
+//             rf_field{TSTR("visible"), &rf_type::visible},    //
+//             rf_field{TSTR("selected"), &rf_type::selected},  //
+//     };
+// };
+
+REGISTER_TYPE_DF(s8)
+REGISTER_TYPE_DF(s16)
+REGISTER_TYPE_DF(s32)
+REGISTER_TYPE_DF(s64)
+REGISTER_TYPE_DF(u8)
+REGISTER_TYPE_DF(u16)
+REGISTER_TYPE_DF(u32)
+REGISTER_TYPE_DF(u64)
+REGISTER_TYPE_DF(bool)
+// REGISTER_TYPE_DF(b32)
+REGISTER_TYPE_DF(f32)
+REGISTER_TYPE_DF(f64)
+REGISTER_TYPE_DF(const_str)
+
+namespace neko::reflection {
 template <>
-struct neko::static_refl::neko_type_info<CGameObject> : neko_type_info_base<CGameObject> {
-    static constexpr AttrList attrs = {};
-    static constexpr FieldList fields = {
-            rf_field{TSTR("id"), &rf_type::id},              //
-            rf_field{TSTR("active"), &rf_type::active},      //
-            rf_field{TSTR("visible"), &rf_type::visible},    //
-            rf_field{TSTR("selected"), &rf_type::selected},  //
-    };
+Type* type_of<CGameObject>() {
+    static Type type;
+    type.name = "CGameObject";
+    type.destroy = [](void* obj) { delete static_cast<CGameObject*>(obj); };
+    type.copy = [](const void* obj) { return (void*)(new CGameObject(*static_cast<const CGameObject*>(obj))); };
+    type.move = [](void* obj) { return (void*)(new CGameObject(std::move(*static_cast<CGameObject*>(obj)))); };
+    type.fields.insert({"id", {type_of<decltype(CGameObject::id)>(), offsetof(CGameObject, id)}});
+    type.fields.insert({"active", {type_of<decltype(CGameObject::active)>(), offsetof(CGameObject, active)}});
+    type.fields.insert({"visible", {type_of<decltype(CGameObject::visible)>(), offsetof(CGameObject, visible)}});
+    type.fields.insert({"selected", {type_of<decltype(CGameObject::selected)>(), offsetof(CGameObject, selected)}});
+    // type.methods.insert({"say", type_ensure<&Person::say>()});
+    return &type;
 };
+}  // namespace neko::reflection
 
 DEFINE_IMGUI_BEGIN(template <>, CGameObject) {
-    neko::static_refl::neko_type_info<CGameObject>::ForEachVarOf(var, [&](const auto& field, auto&& value) { neko::imgui::Auto(value, std::string(field.name)); });
+    // neko::static_refl::neko_type_info<CGameObject>::ForEachVarOf(var, [&](const auto& field, auto&& value) { neko::imgui::Auto(value, std::string(field.name)); });
+
+    auto f = [](std::string_view name, neko::reflection::Any& value) {
+        // if (value.GetType() == neko::reflection::type_of<std::string_view>()) {
+        //     std::cout << name << " = " << value.cast<std::string_view>() << std::endl;
+        // } else if (value.GetType() == neko::reflection::type_of<std::size_t>()) {
+        //     std::cout << name << " = " << value.cast<std::size_t>() << std::endl;
+        // }
+        neko::imgui::Auto(value, std::string(name));
+    };
+
+    neko::reflection::Any v = var;
+
+    v.foreach (f);
 }
 DEFINE_IMGUI_END();
 
@@ -2151,29 +2011,6 @@ static int __neko_bind_idraw_texture(lua_State* L) {
     neko_idraw_texture(&CL_GAME_USERDATA()->idraw, rt);
     return 0;
 }
-
-#if 0
-static int __neko_bind_audio_load(lua_State* L) {
-    const_str file = lua_tostring(L, 1);
-    neko_sound_audio_source_t* audio_src = neko_sound_load_wav(file, NULL);
-    lua_pushlightuserdata(L, audio_src);
-    return 1;
-}
-
-static int __neko_bind_audio_unload(lua_State* L) {
-    neko_sound_audio_source_t* audio = (neko_sound_audio_source_t*)lua_touserdata(L, 1);
-    if (audio != NULL) neko_sound_free_audio_source(audio);
-    return 0;
-}
-
-static int __neko_bind_audio_play(lua_State* L) {
-    neko_sound_audio_source_t* audio_src = (neko_sound_audio_source_t*)lua_touserdata(L, 1);
-    neko_sound_params_t params = neko_sound_params_default();
-    neko_sound_playing_sound_t pl = neko_sound_play_sound(audio_src, params);
-    neko_lua_auto_struct_push_member(L, neko_sound_playing_sound_t, id, &pl);
-    return 1;
-}
-#endif
 
 static int __neko_bind_render_framebuffer_create(lua_State* L) {
     neko_framebuffer_t fbo = NEKO_DEFAULT_VAL();
@@ -3600,7 +3437,7 @@ static int __neko_bind_ecs_f(lua_State* L) {
     return 1;
 }
 
-int open_neko(lua_State* L) {
+static int open_embed_core(lua_State* L) {
 
     luaL_checkversion(L);
 
@@ -3664,10 +3501,6 @@ int open_neko(lua_State* L) {
             {"idraw_depth_enabled", __neko_bind_idraw_depth_enabled},
             {"idraw_face_cull_enabled", __neko_bind_idraw_face_cull_enabled},
             {"idraw_texture", __neko_bind_idraw_texture},
-
-            // {"audio_load", __neko_bind_audio_load},
-            // {"audio_unload", __neko_bind_audio_unload},
-            // {"audio_play", __neko_bind_audio_play},
 
             {"render_framebuffer_create", __neko_bind_render_framebuffer_create},
             {"render_framebuffer_destroy", __neko_bind_render_framebuffer_destroy},
@@ -3743,22 +3576,22 @@ int open_neko(lua_State* L) {
         neko_lua_hook_register(render);
     }
 
-    lua_CFunction mt_funcs[] = {
-            // open_mt_b2_fixture,
-            // open_mt_b2_body,
-            // open_mt_b2_world,
-            open_mt_sound,
-    };
+    // lua_CFunction mt_funcs[] = {
+    //         // open_mt_b2_fixture,
+    //         // open_mt_b2_body,
+    //         // open_mt_b2_world,
+    //         // open_mt_sound,
+    // };
 
-    for (u32 i = 0; i < NEKO_ARR_SIZE(mt_funcs); i++) {
-        mt_funcs[i](L);
-    }
+    // for (u32 i = 0; i < NEKO_ARR_SIZE(mt_funcs); i++) {
+    //     mt_funcs[i](L);
+    // }
 
     return 1;
 }
 
 namespace neko::lua_core {
-static int luaopen(lua_State* L) { return open_neko(L); }
+static int luaopen(lua_State* L) { return open_embed_core(L); }
 }  // namespace neko::lua_core
 
 DEFINE_LUAOPEN(core)

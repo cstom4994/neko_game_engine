@@ -8,9 +8,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include "deps/lua/lauxlib.h"
-#include "deps/lua/lua.h"
-#include "deps/lua/lualib.h"
+#include <lauxlib.h>
+#include <lua.h>
+#include <lualib.h>
 #ifdef __cplusplus
 }
 #endif
@@ -504,5 +504,23 @@ NEKO_API_DECL int neko_lua_preload_auto(lua_State *L, lua_CFunction f, const cha
 NEKO_API_DECL void neko_lua_load(lua_State *L, const luaL_Reg *l, const char *name);
 NEKO_API_DECL void neko_lua_loadover(lua_State *L, const luaL_Reg *l, const char *name);
 NEKO_API_DECL int neko_lua_get_table_pairs_count(lua_State *L, int index);
+
+#define LUASTRUCT_REQUIRED 1
+#define LUASTRUCT_OPTIONAL 0
+
+#define IS_STRUCT(L, index, type) LUASTRUCT_is(L, #type, index)
+#define CHECK_STRUCT(L, index, type) ((type *)LUASTRUCT_todata(L, #type, index, LUASTRUCT_REQUIRED))
+#define OPTIONAL_STRUCT(L, index, type) ((type *)LUASTRUCT_todata(L, #type, index, LUASTRUCT_OPTIONAL))
+
+#define PUSH_STRUCT(L, type, value)            \
+    do {                                       \
+        LUASTRUCT_new(L, #type, sizeof(type)); \
+        *CHECK_STRUCT(L, -1, type) = (value);  \
+    } while (0)
+
+int LUASTRUCT_new(lua_State *L, const char *metatable, size_t size);
+int LUASTRUCT_newref(lua_State *L, const char *metatable, int parentIndex, const void *data);
+int LUASTRUCT_is(lua_State *L, const char *metatable, int index);
+void *LUASTRUCT_todata(lua_State *L, const char *metatable, int index, int required);
 
 #endif

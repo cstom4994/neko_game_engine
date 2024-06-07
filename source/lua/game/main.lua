@@ -258,6 +258,19 @@ game_render = function()
 
     end
 
+    if ImGui.Button("test_debugging") then
+        local deubgging = require("neko.debugging")
+        deubgging.breakpoint()
+    end
+
+    if ImGui.Button("test_luastate") then
+        local lua_state = require("luastate_test")
+    end
+
+    if ImGui.Button("test_reflect") then
+        local reflect = require("reflect_test")
+    end
+
     ImGui.Separator()
     -- if ImGui.InputText("TEST", text) then
     --     print(tostring(text))

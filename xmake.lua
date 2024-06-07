@@ -1,7 +1,9 @@
 set_project("neko")
 
 add_rules("plugin.vsxmake.autoupdate")
-add_rules("plugin.compile_commands.autoupdate", {outputdir = ".vscode"})
+add_rules("plugin.compile_commands.autoupdate", {
+    outputdir = ".vscode"
+})
 
 set_policy("check.auto_ignore_flags", true)
 
@@ -13,19 +15,28 @@ add_includedirs("source/")
 
 add_includedirs("source/deps/glad/include/")
 
+local base_libs = {"glfw", "libffi", "lua", "imgui"}
+
 if is_os("windows") then
-    add_requires("glfw", "libffi")
+    add_requires("glfw", "libffi", "lua", "miniaudio")
+    add_requires("imgui v1.90.8-docking", {
+        configs = {
+            wchar32 = true
+        }
+    })
 else
-    add_requires("glfw", "libffi")
+    -- add_requires(base_libs)
 end
 
 if is_mode("debug") then
-	add_defines("DEBUG", "_DEBUG")
-	set_optimize("none")
-	set_symbols("debug")
+    add_defines("DEBUG", "_DEBUG")
+    set_optimize("none")
+    set_symbols("debug")
 elseif is_mode("release") then
-	add_defines("NDEBUG")
-	set_optimize("faster")
+    add_defines("NDEBUG")
+    set_optimize("faster")
+    -- set_symbols("hidden")
+    -- set_strip("all")
 end
 
 -- set_fpmodels("strict")
@@ -61,8 +72,25 @@ do
     add_files("source/engine/**.cpp")
     add_files("source/deps/impl_build.cpp")
 
-    add_packages("glfw", "libffi")
+    add_packages(base_libs)
 end
+
+local function neko_module_name(m)
+    return "neko_module_" .. m
+end
+
+local function neko_build_register(module, package)
+    local buildname = neko_module_name(module)
+    target(buildname)
+    do
+        set_kind("static")
+        add_files("source/modules/" .. module .. "/**.c", "source/modules/" .. module .. "/**.cpp")
+        add_deps("neko_engine")
+        add_packages(base_libs, package)
+    end
+end
+
+neko_build_register("sound", {"miniaudio"})
 
 target("sandbox")
 do
@@ -72,10 +100,10 @@ do
     add_files("source/sandbox/**.cpp")
 
     add_deps("neko_engine")
+    add_deps(neko_module_name("sound"))
 
-    add_packages("glfw", "libffi")
+    add_packages(base_libs)
 
     set_targetdir("./")
     set_rundir("./")
 end
-

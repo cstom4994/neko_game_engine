@@ -1274,9 +1274,9 @@ using str_map = map<char const *, V, str_hash, str_equal>;
 #endif
 
 extern "C" {
-#include "deps/lua/lauxlib.h"
-#include "deps/lua/lua.h"
-#include "deps/lua/lualib.h"
+#include <lauxlib.h>
+#include <lua.h>
+#include <lualib.h>
 }
 
 #if defined(FFI_DIAGNOSTIC_PRAGMA_CLANG)

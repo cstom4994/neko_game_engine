@@ -17,9 +17,6 @@
 #include "sandbox/game_main.h"
 #include "sandbox/game_physics.h"
 
-// hpp
-#include "sandbox/hpp/neko_static_refl.hpp"
-
 // #define LUAOPEN_EMBED_DATA(func, name, compressed_data, compressed_size)              \
 //     static int func(lua_State* L) {                                                   \
 //         s32 top = lua_gettop(L);                                                      \
@@ -188,16 +185,6 @@ neko_color_t unpack<neko_color_t>(lua_State* L, int idx) {
     return neko_color(r, g, b, a);
 }
 }  // namespace lua2struct
-
-#if 1
-#include "engine/luabind/core.hpp"
-#include "engine/luabind/debug.hpp"
-#include "engine/luabind/ffi.hpp"
-#include "engine/luabind/filewatch.hpp"
-#include "engine/luabind/imgui.hpp"
-#include "engine/luabind/prefab.hpp"
-#include "engine/luabind/struct.hpp"
-#endif
 
 void addMethods(lua_State* L, const_str name, const luaL_Reg* methods) {
     luaL_newmetatable(L, name);
@@ -449,6 +436,16 @@ static int __neko_loader(lua_State* L) {
 
     return 1;
 }
+
+#if 1
+#include "engine/luabind/core.hpp"
+#include "engine/luabind/debug.hpp"
+#include "engine/luabind/ffi.hpp"
+#include "engine/luabind/filewatch.hpp"
+#include "engine/luabind/imgui.hpp"
+#include "engine/luabind/prefab.hpp"
+#include "engine/luabind/struct.hpp"
+#endif
 
 #define PRELOAD(name, function)     \
     lua_getglobal(L, "package");    \

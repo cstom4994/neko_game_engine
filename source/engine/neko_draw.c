@@ -1,11 +1,13 @@
 
 #include "engine/neko_common.h"
-#include "engine/neko_render.h"
 #include "engine/neko_platform.h"
+#include "engine/neko_render.h"
 
 // STB
-#include "deps/imgui/imstb_rectpack.h"
-#include "deps/imgui/imstb_truetype.h"
+#define STB_RECT_PACK_IMPLEMENTATION
+#include <imstb_rectpack.h>
+#define STB_TRUETYPE_IMPLEMENTATION
+#include <imstb_truetype.h>
 
 /*=============================
 // Camera
@@ -3494,16 +3496,16 @@ bool neko_parse_vertex_mesh_attributes(neko_lexer_t* lex, neko_draw_pipeline_des
                 neko_token_t token_name = lex->current_token;
                 // neko_token_debug_print(&token_name);
 
-#define PUSH_ATTR(MESH_ATTR, VERT_ATTR)                                  \
-    do {                                                                 \
-        neko_draw_mesh_layout_t layout = NEKO_DEFAULT_VAL();             \
-        layout.type = NEKO_ASSET_MESH_ATTRIBUTE_TYPE_##MESH_ATTR;        \
-        neko_dyn_array_push(ppd->mesh_layout, layout);                   \
+#define PUSH_ATTR(MESH_ATTR, VERT_ATTR)                                \
+    do {                                                               \
+        neko_draw_mesh_layout_t layout = NEKO_DEFAULT_VAL();           \
+        layout.type = NEKO_ASSET_MESH_ATTRIBUTE_TYPE_##MESH_ATTR;      \
+        neko_dyn_array_push(ppd->mesh_layout, layout);                 \
         neko_render_vertex_attribute_desc_t attr = NEKO_DEFAULT_VAL(); \
-        memcpy(attr.name, token_name.text, token_name.len);              \
-        attr.format = R_VERTEX_ATTRIBUTE_##VERT_ATTR;        \
-        neko_dyn_array_push(desc->pip_desc.layout.attrs, attr);          \
-        /*neko_log_trace("[gfxt] %s: %s", #MESH_ATTR, #VERT_ATTR);*/     \
+        memcpy(attr.name, token_name.text, token_name.len);            \
+        attr.format = R_VERTEX_ATTRIBUTE_##VERT_ATTR;                  \
+        neko_dyn_array_push(desc->pip_desc.layout.attrs, attr);        \
+        /*neko_log_trace("[gfxt] %s: %s", #MESH_ATTR, #VERT_ATTR);*/   \
     } while (0)
 
                 if (neko_token_compare_text(&token, "POSITION"))

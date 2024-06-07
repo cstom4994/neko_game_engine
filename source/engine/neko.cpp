@@ -13,7 +13,6 @@
 #include <direct.h>
 
 #include "deps/miniz.h"
-#include "deps/tinydir.h"
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -308,45 +307,12 @@ static bool read_entire_file_raw(string *out, string filepath) {
     return true;
 }
 
-#if 0
-static bool list_all_files_help(array<string> *files, string path) {
-
-    tinydir_dir dir;
-    if (path.len == 0) {
-        tinydir_open(&dir, ".");
-    } else {
-        tinydir_open(&dir, path.data);
-    }
-    neko_defer(tinydir_close(&dir));
-
-    while (dir.has_next) {
-        tinydir_file file;
-        tinydir_readfile(&dir, &file);
-
-        if (strcmp(file.name, ".") != 0 && strcmp(file.name, "..") != 0) {
-            if (file.is_dir) {
-                string s = str_fmt("%s%s/", path.data, file.name);
-                neko_defer(neko_safe_free(s.data));
-                list_all_files_help(files, s);
-            } else {
-                files->push(str_fmt("%s%s", path.data, file.name));
-            }
-        }
-
-        tinydir_next(&dir);
-    }
-
-    return true;
-}
-#endif
-
 struct IFileSystem {
     virtual void make() = 0;
     virtual void trash() = 0;
     virtual bool mount(string filepath) = 0;
     virtual bool file_exists(string filepath) = 0;
     virtual bool read_entire_file(string *out, string filepath) = 0;
-    // virtual bool list_all_files(array<string> *files) = 0;
 };
 
 static IFileSystem *g_filesystem;
@@ -665,8 +631,6 @@ void vfs_trash() {
 bool vfs_file_exists(string filepath) { return g_filesystem->file_exists(filepath); }
 
 bool vfs_read_entire_file(string *out, string filepath) { return g_filesystem->read_entire_file(out, filepath); }
-
-// bool vfs_list_all_files(array<string> *files) { return g_filesystem->list_all_files(files); }
 
 struct AudioFile {
     u8 *buf;

@@ -64,7 +64,7 @@ typedef struct neko_uuid_t {
 
 // Should have an internal resource cache of window handles (controlled by the platform api)
 
-typedef struct neko_platform_running_desc_s {
+typedef struct neko_platform_running_desc_t {
     const_str title;
     u32 width;
     u32 height;

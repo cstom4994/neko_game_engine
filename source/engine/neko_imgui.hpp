@@ -29,8 +29,8 @@
 
 // ImGui
 #define IMGUI_DEFINE_MATH_OPERATORS
-#include "deps/imgui/imgui.h"
-#include "deps/imgui/imgui_internal.h"
+#include <imgui.h>
+#include <imgui_internal.h>
 
 // glfw
 #include <GLFW/glfw3.h>
@@ -548,8 +548,7 @@ if ((std::is_fundamental_v<T1> || std::is_same_v<std::string, T1>) && (std::is_f
     ImGui::SameLine();
     neko::imgui::detail::AutoExpand<T2>(name + ".second", var.second);
     ImGui::PopItemWidth();
-}
-else {
+} else {
     neko::imgui::detail::AutoExpand<T1>(name + ".first", var.first);
     neko::imgui::detail::AutoExpand<T2>(name + ".second", var.second);
 }

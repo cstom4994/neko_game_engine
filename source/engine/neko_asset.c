@@ -106,8 +106,8 @@ void neko_asset_default_load_from_file(const_str path, void *out) {
 ==========================*/
 
 // STB
-#include "deps/imgui/imstb_rectpack.h"
-#include "deps/imgui/imstb_truetype.h"
+#include <imstb_rectpack.h>
+#include <imstb_truetype.h>
 
 NEKO_API_DECL neko_image_t neko_image_load(const_str path) {
     int width, height, channels;

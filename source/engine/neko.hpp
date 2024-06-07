@@ -12,6 +12,7 @@
 #include <fstream>
 #include <functional>
 #include <future>
+#include <iostream>
 #include <memory>
 #include <mutex>
 #include <queue>
@@ -223,13 +224,7 @@ struct alloc {
 #endif
 
 namespace std {
-inline void breakpoint() noexcept {
-#if defined(_MSC_VER)
-    __debugbreak();
-#elif defined(__clang__)
-    __builtin_debugtrap();
-#endif
-}
+inline void breakpoint() noexcept { NEKO_DEBUGBREAK(); }
 inline bool is_debugger_present() noexcept {
 #if defined(_WIN32)
     return IsDebuggerPresent() != 0;
@@ -254,6 +249,13 @@ inline void breakpoint_if_debugging() noexcept {
     if (is_debugger_present()) {
         breakpoint();
     }
+}
+}  // namespace std
+
+namespace std {
+template <typename E, typename = std::enable_if_t<std::is_enum_v<E>>>
+constexpr std::underlying_type_t<E> to_underlying(E e) noexcept {
+    return static_cast<std::underlying_type_t<E>>(e);
 }
 }  // namespace std
 
@@ -611,57 +613,6 @@ inline void forEachProp(T& val, F&& func) {
 }
 
 #endif
-
-namespace neko {
-
-template <auto value>
-constexpr auto enum_name() {
-    std::string_view name;
-#ifdef __clang__
-    name = __PRETTY_FUNCTION__;
-    auto start = name.find("value = ") + 8;  // 8 is length of "value = "
-    auto end = name.find_last_of(']');
-    return std::string_view{name.data() + start, end - start};
-
-#elif defined(__GNUC__)
-    name = __PRETTY_FUNCTION__;
-    auto start = name.find("value = ") + 8;  // 8 is length of "value = "
-    auto end = name.find_last_of(']');
-    return std::string_view{name.data() + start, end - start};
-
-#elif defined(_MSC_VER)
-    name = __FUNCSIG__;
-    auto start = name.find("neko::enum_name<") + 16;  // 16 is length of "neko::enum_name<"
-    auto end = name.find_last_of('>');
-    return std::string_view{name.data() + start, end - start};
-#endif
-}
-
-template <typename T>
-concept enum_check = std::is_enum_v<T>;
-
-// 获取枚举变量数量
-template <enum_check T, std::size_t N = 0>
-constexpr auto enum_max() {
-    constexpr auto value = static_cast<T>(N);
-    if constexpr (neko::enum_name<value>().find("(") == std::string_view::npos)  // 如果超出了连续有名枚举 将会是"(enum the_name)0xN"
-        return neko::enum_max<T, N + 1>();
-    else
-        return N;
-}
-
-// 打表
-template <typename T>
-    requires std::is_enum_v<T>
-constexpr auto enum_name(T value) {
-    constexpr auto num = neko::enum_max<T>();
-    constexpr std::array<std::string_view, num> names{[]<std::size_t... Is>(std::index_sequence<Is...>) {
-        return std::array<std::string_view, num>{neko::enum_name<static_cast<T>(Is)>()...};
-    }(std::make_index_sequence<num>{})};  // 打表获得枚举名称
-    return names[static_cast<std::size_t>(value)];
-}
-
-}  // namespace neko
 
 #include <string>
 
@@ -1169,7 +1120,6 @@ void vfs_trash();
 bool vfs_file_exists(string filepath);
 bool vfs_read_entire_file(string* out, string filepath);
 bool vfs_write_entire_file(string filepath, string contents);
-bool vfs_list_all_files(array<string>* files);
 
 void* vfs_for_miniaudio();
 
