@@ -8,22 +8,16 @@
 
 NEKO_API_DECL void neko_default_main_window_close_callback(void* window);
 
-NEKO_STATIC neko_t* g_neko_instance = NEKO_DEFAULT_VAL();
-
-NEKO_API_DECL neko_t* neko_instance() { return g_neko_instance; }
+NEKO_API_DECL neko_t* neko_instance() {
+    NEKO_STATIC neko_t g_neko_instance = NEKO_DEFAULT_VAL();
+    return &g_neko_instance;
+}
 
 NEKO_API_DECL neko_t* neko_create(int argc, char** argv) {
-    if (neko_instance() == NULL) {
+    if (neko_instance() != NULL) {
 
         __neko_mem_init(argc, argv);
-
-        // 构造实例并设置
-        g_neko_instance = (neko_t*)neko_malloc(sizeof(neko_t));
-        memset(g_neko_instance, 0, sizeof(neko_t));
-
-        // 设置框架的应用描述
-        // neko_instance()->ctx.game = *app_desc;
-
+        
         // 设置函数指针
         neko_instance()->fini = &neko_fini;
 
@@ -202,6 +196,5 @@ s32 main(s32 argv, char** argc) {
     while (neko_instance()->game.is_running) {
         neko_frame();
     }
-    neko_free(inst);
     return 0;
 }

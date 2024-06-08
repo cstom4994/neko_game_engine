@@ -44,4 +44,8 @@ void luax_new_userdata(lua_State *L, T data, const char *tname) {
 
 #define luax_ptr_userdata luax_new_userdata
 
+namespace neko::lua {
+void package_preload(lua_State *L);
+}
+
 #endif

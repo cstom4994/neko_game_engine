@@ -72,9 +72,9 @@ static int __neko_bind_callback_call(lua_State* L) {
 static bool __neko_bind_platform_key_pressed(const_str key) {
     neko_platform_keycode cval;
 
-    lua_pushstring(CL_GAME_USERDATA()->L, key);
-    neko_lua_auto_to(CL_GAME_USERDATA()->L, neko_platform_keycode, &cval, -1);
-    lua_pop(CL_GAME_USERDATA()->L, 1);
+    lua_pushstring(neko_instance()->L, key);
+    neko_lua_auto_to(neko_instance()->L, neko_platform_keycode, &cval, -1);
+    lua_pop(neko_instance()->L, 1);
 
     return neko_platform_key_pressed(cval);
 }
@@ -82,9 +82,9 @@ static bool __neko_bind_platform_key_pressed(const_str key) {
 static bool __neko_bind_platform_was_key_down(const_str key) {
     neko_platform_keycode cval;
 
-    lua_pushstring(CL_GAME_USERDATA()->L, key);
-    neko_lua_auto_to(CL_GAME_USERDATA()->L, neko_platform_keycode, &cval, -1);
-    lua_pop(CL_GAME_USERDATA()->L, 1);
+    lua_pushstring(neko_instance()->L, key);
+    neko_lua_auto_to(neko_instance()->L, neko_platform_keycode, &cval, -1);
+    lua_pop(neko_instance()->L, 1);
 
     return neko_platform_key_down(cval);
 }
@@ -92,9 +92,9 @@ static bool __neko_bind_platform_was_key_down(const_str key) {
 static bool __neko_bind_platform_key_down(const_str key) {
     neko_platform_keycode cval;
 
-    lua_pushstring(CL_GAME_USERDATA()->L, key);
-    neko_lua_auto_to(CL_GAME_USERDATA()->L, neko_platform_keycode, &cval, -1);
-    lua_pop(CL_GAME_USERDATA()->L, 1);
+    lua_pushstring(neko_instance()->L, key);
+    neko_lua_auto_to(neko_instance()->L, neko_platform_keycode, &cval, -1);
+    lua_pop(neko_instance()->L, 1);
 
     return neko_platform_key_down(cval);
 }
@@ -102,9 +102,9 @@ static bool __neko_bind_platform_key_down(const_str key) {
 static bool __neko_bind_platform_key_released(const_str key) {
     neko_platform_keycode cval;
 
-    lua_pushstring(CL_GAME_USERDATA()->L, key);
-    neko_lua_auto_to(CL_GAME_USERDATA()->L, neko_platform_keycode, &cval, -1);
-    lua_pop(CL_GAME_USERDATA()->L, 1);
+    lua_pushstring(neko_instance()->L, key);
+    neko_lua_auto_to(neko_instance()->L, neko_platform_keycode, &cval, -1);
+    lua_pop(neko_instance()->L, 1);
 
     return neko_platform_key_released(cval);
 }
@@ -112,9 +112,9 @@ static bool __neko_bind_platform_key_released(const_str key) {
 static bool __neko_bind_platform_was_mouse_down(const_str key) {
     neko_platform_mouse_button_code cval;
 
-    lua_pushstring(CL_GAME_USERDATA()->L, key);
-    neko_lua_auto_to(CL_GAME_USERDATA()->L, neko_platform_mouse_button_code, &cval, -1);
-    lua_pop(CL_GAME_USERDATA()->L, 1);
+    lua_pushstring(neko_instance()->L, key);
+    neko_lua_auto_to(neko_instance()->L, neko_platform_mouse_button_code, &cval, -1);
+    lua_pop(neko_instance()->L, 1);
 
     return neko_platform_was_mouse_down(cval);
 }
@@ -122,9 +122,9 @@ static bool __neko_bind_platform_was_mouse_down(const_str key) {
 static bool __neko_bind_platform_mouse_pressed(const_str key) {
     neko_platform_mouse_button_code cval;
 
-    lua_pushstring(CL_GAME_USERDATA()->L, key);
-    neko_lua_auto_to(CL_GAME_USERDATA()->L, neko_platform_mouse_button_code, &cval, -1);
-    lua_pop(CL_GAME_USERDATA()->L, 1);
+    lua_pushstring(neko_instance()->L, key);
+    neko_lua_auto_to(neko_instance()->L, neko_platform_mouse_button_code, &cval, -1);
+    lua_pop(neko_instance()->L, 1);
 
     return neko_platform_mouse_pressed(cval);
 }
@@ -132,9 +132,9 @@ static bool __neko_bind_platform_mouse_pressed(const_str key) {
 static bool __neko_bind_platform_mouse_down(const_str key) {
     neko_platform_mouse_button_code cval;
 
-    lua_pushstring(CL_GAME_USERDATA()->L, key);
-    neko_lua_auto_to(CL_GAME_USERDATA()->L, neko_platform_mouse_button_code, &cval, -1);
-    lua_pop(CL_GAME_USERDATA()->L, 1);
+    lua_pushstring(neko_instance()->L, key);
+    neko_lua_auto_to(neko_instance()->L, neko_platform_mouse_button_code, &cval, -1);
+    lua_pop(neko_instance()->L, 1);
 
     return neko_platform_mouse_down(cval);
 }
@@ -142,9 +142,9 @@ static bool __neko_bind_platform_mouse_down(const_str key) {
 static bool __neko_bind_platform_mouse_released(const_str key) {
     neko_platform_mouse_button_code cval;
 
-    lua_pushstring(CL_GAME_USERDATA()->L, key);
-    neko_lua_auto_to(CL_GAME_USERDATA()->L, neko_platform_mouse_button_code, &cval, -1);
-    lua_pop(CL_GAME_USERDATA()->L, 1);
+    lua_pushstring(neko_instance()->L, key);
+    neko_lua_auto_to(neko_instance()->L, neko_platform_mouse_button_code, &cval, -1);
+    lua_pop(neko_instance()->L, 1);
 
     return neko_platform_mouse_released(cval);
 }
@@ -1812,12 +1812,12 @@ static void watch_map_callback(neko_filewatch_update_t change, const_str virtual
 
     const_str callback_funcname = (const_str)udata;
 
-    lua_getglobal(CL_GAME_USERDATA()->L, callback_funcname);
-    bool is_callback = lua_isfunction(CL_GAME_USERDATA()->L, -1);
-    lua_pop(CL_GAME_USERDATA()->L, 1);
+    lua_getglobal(neko_instance()->L, callback_funcname);
+    bool is_callback = lua_isfunction(neko_instance()->L, -1);
+    lua_pop(neko_instance()->L, 1);
 
     if (is_callback) try {
-            neko_lua_call<void>(CL_GAME_USERDATA()->L, callback_funcname, change_string, std::string(virtual_path));
+            neko_lua_call<void>(neko_instance()->L, callback_funcname, change_string, std::string(virtual_path));
         } catch (std::exception& ex) {
             NEKO_ERROR("lua exception %s", ex.what());
         }
@@ -1918,7 +1918,7 @@ static int __neko_bind_idraw_box(lua_State* L) {
     u8 b = lua_tointeger(L, 9);
     u8 a = lua_tointeger(L, 10);
     neko_render_primitive_type type_val;
-    neko_lua_auto_to(CL_GAME_USERDATA()->L, neko_render_primitive_type, &type_val, 11);
+    neko_lua_auto_to(neko_instance()->L, neko_render_primitive_type, &type_val, 11);
     neko_idraw_box(&CL_GAME_USERDATA()->idraw, x, y, z, hx, hy, hz, r, g, b, a, type_val);
     return 0;
 }
@@ -1939,7 +1939,7 @@ static int __neko_bind_idraw_rectv(lua_State* L) {
     v2 = neko_vec2_add(v1, v2);
 
     neko_render_primitive_type type_val;
-    neko_lua_auto_to(CL_GAME_USERDATA()->L, neko_render_primitive_type, &type_val, 3);
+    neko_lua_auto_to(neko_instance()->L, neko_render_primitive_type, &type_val, 3);
 
     neko_color_t col = NEKO_COLOR_WHITE;
 
@@ -1960,7 +1960,7 @@ static int __neko_bind_idraw_rectvd(lua_State* L) {
     auto uv1 = lua2struct::unpack<neko_vec2>(L, 4);
 
     neko_render_primitive_type type_val;
-    neko_lua_auto_to(CL_GAME_USERDATA()->L, neko_render_primitive_type, &type_val, 5);
+    neko_lua_auto_to(neko_instance()->L, neko_render_primitive_type, &type_val, 5);
 
     neko_color_t col = lua2struct::unpack<neko_color_t>(L, 6);
 
@@ -2007,7 +2007,7 @@ static int __neko_bind_idraw_face_cull_enabled(lua_State* L) {
 
 static int __neko_bind_idraw_texture(lua_State* L) {
     neko_texture_t rt = NEKO_DEFAULT_VAL();
-    neko_lua_auto_struct_to_member(CL_GAME_USERDATA()->L, neko_texture_t, id, &rt, 1);
+    neko_lua_auto_struct_to_member(neko_instance()->L, neko_texture_t, id, &rt, 1);
     neko_idraw_texture(&CL_GAME_USERDATA()->idraw, rt);
     return 0;
 }
@@ -2741,10 +2741,6 @@ static int l_base64_decode(lua_State* L) {
 
 NEKO_INLINE void neko_register_test(lua_State* L) {
 
-    lua_register(L, "__neko_luainspector_init", neko::luainspector::luainspector_init);
-    lua_register(L, "__neko_luainspector_draw", neko::luainspector::luainspector_draw);
-    lua_register(L, "__neko_luainspector_get", neko::luainspector::luainspector_get);
-
     // neko::lua_bind::bind("neko_tiled_get_objects", &__neko_bind_tiled_get_objects);
 
     neko_lua_auto_enum(L, neko_projection_type);
@@ -2925,9 +2921,9 @@ static int __neko_bind_cvar(lua_State* L) {
 
             if (lua_type(L, 2) == LUA_TSTRING) {
                 const_str type = lua_tostring(L, 2);
-                lua_pushstring(CL_GAME_USERDATA()->L, type);
-                neko_lua_auto_to(CL_GAME_USERDATA()->L, neko_cvar_type, &cval, -1);
-                lua_pop(CL_GAME_USERDATA()->L, 1);
+                lua_pushstring(neko_instance()->L, type);
+                neko_lua_auto_to(neko_instance()->L, neko_cvar_type, &cval, -1);
+                lua_pop(neko_instance()->L, 1);
             } else if (lua_isinteger(L, 2)) {
                 int type = lua_tointeger(L, 2);
                 cval = (neko_cvar_type)type;
@@ -3010,7 +3006,7 @@ int __neko_ls(lua_State* L) {
     return 1;
 }
 
-bool __neko_dolua(const_str file) { return neko::neko_lua_dofile(CL_GAME_USERDATA()->L, game_assets(file)); }
+bool __neko_dolua(const_str file) { return neko::neko_lua_dofile(neko_instance()->L, game_assets(file)); }
 
 int neko_lua_events_init(lua_State* L);
 

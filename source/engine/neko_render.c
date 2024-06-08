@@ -3640,6 +3640,11 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
     cb->num_commands = 0;
 }
 
+NEKO_API_DECL neko_gl_data_t* neko_render_ogl() {
+    neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(render)->user_data;
+    return ogl;
+}
+
 NEKO_API_DECL void neko_render_init(neko_render_t* render) {
     // Push back 0 handles into slot arrays (for 0 init validation)
     neko_gl_data_t* ogl = (neko_gl_data_t*)render->user_data;
@@ -3749,6 +3754,8 @@ NEKO_API_DECL void neko_render_init(neko_render_t* render) {
 }
 
 #endif  // R_IMPL_OPENGL
+
+NEKO_API_DECL neko_gl_data_t* neko_render_userdata() { return neko_render_ogl(); }
 
 // 资源构造函数
 NEKO_API_DECL neko_handle(neko_render_texture_t) neko_render_texture_create(const neko_render_texture_desc_t desc) { return neko_render()->api.texture_create(desc); }

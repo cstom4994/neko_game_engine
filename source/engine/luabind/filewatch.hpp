@@ -290,7 +290,6 @@ std::optional<notify> watch::select() noexcept {
 
 #elif defined(NEKO_PLATFORM_LINUX)
 
-#include <bee/error.h>
 #include <poll.h>
 #include <sys/inotify.h>
 #include <unistd.h>

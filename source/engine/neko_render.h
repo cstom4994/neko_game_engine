@@ -559,6 +559,145 @@ typedef struct neko_render_t {
     } api;
 } neko_render_t;
 
+/*=============================
+// NEKO_OPENGL
+=============================*/
+
+typedef enum neko_gl_uniform_type {
+    NEKO_GL_UNIFORMTYPE_FLOAT,
+    NEKO_GL_UNIFORMTYPE_INT,
+    NEKO_GL_UNIFORMTYPE_VEC2,
+    NEKO_GL_UNIFORMTYPE_VEC3,
+    NEKO_GL_UNIFORMTYPE_VEC4,
+    NEKO_GL_UNIFORMTYPE_MAT4,
+    NEKO_GL_UNIFORMTYPE_SAMPLER2D,
+    NEKO_GL_UNIFORMTYPE_SAMPLERCUBE
+} neko_gl_uniform_type;
+
+/* Uniform (stores samplers as well as primitive uniforms) */
+typedef struct neko_gl_uniform_t {
+    char name[64];              // Name of uniform to find location
+    neko_gl_uniform_type type;  // Type of uniform data
+    u32 location;               // Location of uniform
+    size_t size;                // Total data size of uniform
+    u32 sid;                    // Shader id (should probably inverse this, but I don't want to force a map lookup)
+    u32 count;                  // Count (used for arrays)
+} neko_gl_uniform_t;
+
+// When a user passes in a uniform layout, that handle could then pass to a WHOLE list of uniforms (if describing a struct)
+typedef struct neko_gl_uniform_list_t {
+    neko_dyn_array(neko_gl_uniform_t) uniforms;  // Individual uniforms in list
+    size_t size;                                 // Total size of uniform data
+    char name[64];                               // Base name of uniform
+} neko_gl_uniform_list_t;
+
+typedef struct neko_gl_uniform_buffer_t {
+    char name[64];
+    u32 location;
+    size_t size;
+    u32 ubo;
+    u32 sid;
+} neko_gl_uniform_buffer_t;
+
+typedef struct neko_gl_storage_buffer_t {
+    char name[64];
+    u32 buffer;
+    s32 access;
+    size_t size;
+    u32 block_idx;
+    u32 location;
+} neko_gl_storage_buffer_t;
+
+/* Pipeline */
+typedef struct neko_gl_pipeline_t {
+    neko_render_blend_state_desc_t blend;
+    neko_render_depth_state_desc_t depth;
+    neko_render_raster_state_desc_t raster;
+    neko_render_stencil_state_desc_t stencil;
+    neko_render_compute_state_desc_t compute;
+    neko_dyn_array(neko_render_vertex_attribute_desc_t) layout;
+} neko_gl_pipeline_t;
+
+/* Render Pass */
+typedef struct neko_gl_renderpass_t {
+    neko_handle(neko_render_framebuffer_t) fbo;
+    neko_dyn_array(neko_handle(neko_render_texture_t)) color;
+    neko_handle(neko_render_texture_t) depth;
+    neko_handle(neko_render_texture_t) stencil;
+} neko_gl_renderpass_t;
+
+/* Shader */
+typedef u32 neko_gl_shader_t;
+
+/* Gfx Buffer */
+typedef u32 neko_gl_buffer_t;
+
+/* Texture */
+typedef struct neko_gl_texture_t {
+    u32 id;
+    neko_render_texture_desc_t desc;
+} neko_gl_texture_t;
+
+typedef struct neko_gl_vertex_buffer_decl_t {
+    neko_gl_buffer_t vbo;
+    neko_render_vertex_data_type data_type;
+    size_t offset;
+} neko_gl_vertex_buffer_decl_t;
+
+// 绘制之间的缓存数据
+typedef struct neko_gl_data_cache_t {
+    neko_gl_buffer_t vao;
+    neko_gl_buffer_t ibo;
+    size_t ibo_elem_sz;
+    neko_dyn_array(neko_gl_vertex_buffer_decl_t) vdecls;
+    neko_handle(neko_render_pipeline_t) pipeline;
+} neko_gl_data_cache_t;
+
+// 内部 OpenGL 数据
+typedef struct neko_gl_data_t {
+    neko_slot_array(neko_gl_shader_t) shaders;
+    neko_slot_array(neko_gl_texture_t) textures;
+    neko_slot_array(neko_gl_buffer_t) vertex_buffers;
+    neko_slot_array(neko_gl_uniform_buffer_t) uniform_buffers;
+    neko_slot_array(neko_gl_storage_buffer_t) storage_buffers;
+    neko_slot_array(neko_gl_buffer_t) index_buffers;
+    neko_slot_array(neko_gl_buffer_t) frame_buffers;
+    neko_slot_array(neko_gl_uniform_list_t) uniforms;
+    neko_slot_array(neko_gl_pipeline_t) pipelines;
+    neko_slot_array(neko_gl_renderpass_t) renderpasses;
+
+    // All the required uniform data for strict aliasing.
+    struct {
+        neko_dyn_array(u32) ui32;
+        neko_dyn_array(s32) i32;
+        neko_dyn_array(float) flt;
+        neko_dyn_array(neko_vec2) vec2;
+        neko_dyn_array(neko_vec3) vec3;
+        neko_dyn_array(neko_vec4) vec4;
+        neko_dyn_array(neko_mat4) mat4;
+    } uniform_data;
+
+    // Cached data between draw calls (to minimize state changes)
+    neko_gl_data_cache_t cache;
+
+} neko_gl_data_t;
+
+// 内部OpenGL命令缓冲指令
+typedef enum neko_opengl_op_code_type {
+    NEKO_OPENGL_OP_BEGIN_RENDER_PASS = 0x00,
+    NEKO_OPENGL_OP_END_RENDER_PASS,
+    NEKO_OPENGL_OP_SET_VIEWPORT,
+    NEKO_OPENGL_OP_SET_VIEW_SCISSOR,
+    NEKO_OPENGL_OP_CLEAR,
+    NEKO_OPENGL_OP_REQUEST_BUFFER_UPDATE,
+    NEKO_OPENGL_OP_REQUEST_TEXTURE_UPDATE,
+    NEKO_OPENGL_OP_BIND_PIPELINE,
+    NEKO_OPENGL_OP_APPLY_BINDINGS,
+    NEKO_OPENGL_OP_DISPATCH_COMPUTE,
+    NEKO_OPENGL_OP_DRAW,
+    NEKO_OPENGL_OP_DRAW_BATCH,
+} neko_opengl_op_code_type;
+
 /*==========================
 // Graphics API
 ==========================*/
@@ -711,6 +850,8 @@ NEKO_API_DECL void neko_render_batch_mul(float* a, float* b, float* out);  // pe
 NEKO_API_DECL void neko_render_batch_identity(float* m);
 NEKO_API_DECL void neko_render_batch_copy(float* dst, float* src);
 
+NEKO_API_DECL neko_gl_data_t* neko_render_userdata();
+
 // Resource Creation
 // Create
 NEKO_API_DECL neko_handle(neko_render_texture_t) neko_render_texture_create(const neko_render_texture_desc_t desc);
@@ -781,145 +922,6 @@ typedef neko_handle(neko_render_index_buffer_t) neko_ibo_t;
 typedef neko_handle(neko_render_uniform_buffer_t) neko_ubo_t;
 typedef neko_handle(neko_render_uniform_t) neko_uniform_t;
 typedef neko_handle(neko_render_storage_buffer_t) neko_storage_buffer_t;
-
-/*=============================
-// NEKO_OPENGL
-=============================*/
-
-typedef enum neko_gl_uniform_type {
-    NEKO_GL_UNIFORMTYPE_FLOAT,
-    NEKO_GL_UNIFORMTYPE_INT,
-    NEKO_GL_UNIFORMTYPE_VEC2,
-    NEKO_GL_UNIFORMTYPE_VEC3,
-    NEKO_GL_UNIFORMTYPE_VEC4,
-    NEKO_GL_UNIFORMTYPE_MAT4,
-    NEKO_GL_UNIFORMTYPE_SAMPLER2D,
-    NEKO_GL_UNIFORMTYPE_SAMPLERCUBE
-} neko_gl_uniform_type;
-
-/* Uniform (stores samplers as well as primitive uniforms) */
-typedef struct neko_gl_uniform_t {
-    char name[64];              // Name of uniform to find location
-    neko_gl_uniform_type type;  // Type of uniform data
-    u32 location;               // Location of uniform
-    size_t size;                // Total data size of uniform
-    u32 sid;                    // Shader id (should probably inverse this, but I don't want to force a map lookup)
-    u32 count;                  // Count (used for arrays)
-} neko_gl_uniform_t;
-
-// When a user passes in a uniform layout, that handle could then pass to a WHOLE list of uniforms (if describing a struct)
-typedef struct neko_gl_uniform_list_t {
-    neko_dyn_array(neko_gl_uniform_t) uniforms;  // Individual uniforms in list
-    size_t size;                                 // Total size of uniform data
-    char name[64];                               // Base name of uniform
-} neko_gl_uniform_list_t;
-
-typedef struct neko_gl_uniform_buffer_t {
-    char name[64];
-    u32 location;
-    size_t size;
-    u32 ubo;
-    u32 sid;
-} neko_gl_uniform_buffer_t;
-
-typedef struct neko_gl_storage_buffer_t {
-    char name[64];
-    u32 buffer;
-    s32 access;
-    size_t size;
-    u32 block_idx;
-    u32 location;
-} neko_gl_storage_buffer_t;
-
-/* Pipeline */
-typedef struct neko_gl_pipeline_t {
-    neko_render_blend_state_desc_t blend;
-    neko_render_depth_state_desc_t depth;
-    neko_render_raster_state_desc_t raster;
-    neko_render_stencil_state_desc_t stencil;
-    neko_render_compute_state_desc_t compute;
-    neko_dyn_array(neko_render_vertex_attribute_desc_t) layout;
-} neko_gl_pipeline_t;
-
-/* Render Pass */
-typedef struct neko_gl_renderpass_t {
-    neko_handle(neko_render_framebuffer_t) fbo;
-    neko_dyn_array(neko_handle(neko_render_texture_t)) color;
-    neko_handle(neko_render_texture_t) depth;
-    neko_handle(neko_render_texture_t) stencil;
-} neko_gl_renderpass_t;
-
-/* Shader */
-typedef u32 neko_gl_shader_t;
-
-/* Gfx Buffer */
-typedef u32 neko_gl_buffer_t;
-
-/* Texture */
-typedef struct neko_gl_texture_t {
-    u32 id;
-    neko_render_texture_desc_t desc;
-} neko_gl_texture_t;
-
-typedef struct neko_gl_vertex_buffer_decl_t {
-    neko_gl_buffer_t vbo;
-    neko_render_vertex_data_type data_type;
-    size_t offset;
-} neko_gl_vertex_buffer_decl_t;
-
-// 绘制之间的缓存数据
-typedef struct neko_gl_data_cache_t {
-    neko_gl_buffer_t vao;
-    neko_gl_buffer_t ibo;
-    size_t ibo_elem_sz;
-    neko_dyn_array(neko_gl_vertex_buffer_decl_t) vdecls;
-    neko_handle(neko_render_pipeline_t) pipeline;
-} neko_gl_data_cache_t;
-
-// 内部 OpenGL 数据
-typedef struct neko_gl_data_t {
-    neko_slot_array(neko_gl_shader_t) shaders;
-    neko_slot_array(neko_gl_texture_t) textures;
-    neko_slot_array(neko_gl_buffer_t) vertex_buffers;
-    neko_slot_array(neko_gl_uniform_buffer_t) uniform_buffers;
-    neko_slot_array(neko_gl_storage_buffer_t) storage_buffers;
-    neko_slot_array(neko_gl_buffer_t) index_buffers;
-    neko_slot_array(neko_gl_buffer_t) frame_buffers;
-    neko_slot_array(neko_gl_uniform_list_t) uniforms;
-    neko_slot_array(neko_gl_pipeline_t) pipelines;
-    neko_slot_array(neko_gl_renderpass_t) renderpasses;
-
-    // All the required uniform data for strict aliasing.
-    struct {
-        neko_dyn_array(u32) ui32;
-        neko_dyn_array(s32) i32;
-        neko_dyn_array(float) flt;
-        neko_dyn_array(neko_vec2) vec2;
-        neko_dyn_array(neko_vec3) vec3;
-        neko_dyn_array(neko_vec4) vec4;
-        neko_dyn_array(neko_mat4) mat4;
-    } uniform_data;
-
-    // Cached data between draw calls (to minimize state changes)
-    neko_gl_data_cache_t cache;
-
-} neko_gl_data_t;
-
-// 内部OpenGL命令缓冲指令
-typedef enum neko_opengl_op_code_type {
-    NEKO_OPENGL_OP_BEGIN_RENDER_PASS = 0x00,
-    NEKO_OPENGL_OP_END_RENDER_PASS,
-    NEKO_OPENGL_OP_SET_VIEWPORT,
-    NEKO_OPENGL_OP_SET_VIEW_SCISSOR,
-    NEKO_OPENGL_OP_CLEAR,
-    NEKO_OPENGL_OP_REQUEST_BUFFER_UPDATE,
-    NEKO_OPENGL_OP_REQUEST_TEXTURE_UPDATE,
-    NEKO_OPENGL_OP_BIND_PIPELINE,
-    NEKO_OPENGL_OP_APPLY_BINDINGS,
-    NEKO_OPENGL_OP_DISPATCH_COMPUTE,
-    NEKO_OPENGL_OP_DRAW,
-    NEKO_OPENGL_OP_DRAW_BATCH,
-} neko_opengl_op_code_type;
 
 /*=============================
 //

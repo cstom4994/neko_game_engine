@@ -3,6 +3,7 @@
 #define NEKO_ENGINE_H
 
 #include "engine/neko.h"
+#include "engine/neko_lua.h"
 #include "engine/neko_platform.h"
 #include "engine/neko_render.h"
 
@@ -28,17 +29,22 @@ typedef struct neko_t {
     neko_console_t* console;
     neko_config_t* config;
 
+    lua_State* L;
+
     int argc;
     char** argv;
 } neko_t;
 
 NEKO_API_DECL neko_t* neko_create(int argc, char** argv);
 NEKO_API_DECL void neko_fini();
-NEKO_API_DECL neko_t* neko_instance();
 NEKO_API_DECL void neko_frame();
 NEKO_API_DECL void neko_quit();
 NEKO_API_DECL s32 neko_buildnum(void);
 NEKO_API_DECL void neko_app();
+
+NEKO_API_DECL neko_t g_neko_instance;
+
+NEKO_API_DECL neko_t* neko_instance();
 
 #define neko_subsystem(__T) (neko_instance()->__T)
 

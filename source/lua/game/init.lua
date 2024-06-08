@@ -33,7 +33,7 @@ if os.getenv "LOCAL_LUA_DEBUGGER_VSCODE" == "1" then
     print("LOCAL_LUA_DEBUGGER_VSCODE=1")
 end
 
-common = require "common/common"
+common = require "common"
 
 neko_file_path = common.memoize(function(path)
     return __neko_file_path(path)

@@ -71,6 +71,11 @@ target("neko_engine")
 do
     set_kind("static")
 
+    add_rules("utils.bin2c", {
+        extensions = {".lua"}
+    })
+
+    add_files("source/engine/embed/*.lua")
     add_files("source/engine/**.c")
     add_files("source/engine/**.cpp")
     add_files("source/deps/impl_build.cpp")

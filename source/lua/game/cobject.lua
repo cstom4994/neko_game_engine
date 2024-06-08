@@ -1,6 +1,6 @@
 local M = {}
 
-local cstruct = require "common/cstruct"
+local cstruct = require "cstruct"
 
 M.s = {}
 

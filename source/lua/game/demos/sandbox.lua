@@ -2,7 +2,7 @@ local PHY = require "bump"
 -- local network = require "sock"
 local tweens = require "flux"
 
-local behavior = require "common.behavior"
+local behavior = require "behavior"
 
 local selector = behavior.func_selector
 local sequence = behavior.func_sequence

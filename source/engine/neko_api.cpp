@@ -16,36 +16,6 @@
 #include "sandbox/game_editor.h"
 #include "sandbox/game_main.h"
 
-// #define LUAOPEN_EMBED_DATA(func, name, compressed_data, compressed_size)              \
-//     static int func(lua_State* L) {                                                   \
-//         s32 top = lua_gettop(L);                                                      \
-//                                                                                       \
-//         neko_string contents = stb_decompress_data(compressed_data, compressed_size); \
-//         neko_defer({ neko_safe_free(contents.data); });                               \
-//                                                                                       \
-//         if (luaL_loadbuffer(L, contents.data, contents.len, name) != LUA_OK) {        \
-//             luaL_error(L, "%s", lua_tostring(L, -1));                                 \
-//             return 0;                                                                 \
-//         }                                                                             \
-//                                                                                       \
-//         if (lua_pcall(L, 0, LUA_MULTRET, 1) != LUA_OK) {                              \
-//             luaL_error(L, "%s", lua_tostring(L, -1));                                 \
-//             return 0;                                                                 \
-//         }                                                                             \
-//                                                                                       \
-//         return lua_gettop(L) - top;                                                   \
-//     }
-
-// LUAOPEN_EMBED_DATA(open_embed_xxx, "xxx.lua", xxx_compressed_data, xxx_compressed_size);
-
-static void package_preload(lua_State* L, const_str name, lua_CFunction function) {
-    lua_getglobal(L, "package");
-    lua_getfield(L, -1, "preload");
-    lua_pushcfunction(L, function);
-    lua_setfield(L, -2, name);
-    lua_pop(L, 2);
-}
-
 void __neko_lua_print_error(lua_State* state, int result) {
     const_str message = lua_tostring(state, -1);
     NEKO_ERROR("LuaScript ERROR:\n  %s", (message ? message : "no message"));
@@ -461,9 +431,8 @@ void neko_register(lua_State* L) {
     neko_register_platform(L);
     neko_register_test(L);
 
-    neko::lua::preload_module(L);  // 新的模块系统
-
-    // package_preload(L, "xxx", open_embed_xxx);
+    neko::lua::preload_module(L);   // 新的模块系统
+    neko::lua::package_preload(L);  // 新的模块系统
 
     // 自定义加载器
     lua_register(L, "__neko_loader", __neko_loader);

@@ -42,8 +42,6 @@ typedef struct neko_client_userdata_t {
     neko_handle(neko_render_framebuffer_t) main_fbo = {0};
     neko_handle(neko_render_texture_t) main_rt = {0};
 
-    lua_State* L;
-
     neko_fontbatch_t font_render_batch;
 
     neko_client_cvar_t cl_cvar = NEKO_DEFAULT_VAL();

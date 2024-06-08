@@ -1,8 +1,9 @@
 ImGui = require("neko.imgui")
 CObject = require("cobject")
 CVar = neko.cvar
-ECS = require("common/ecs")
+ECS = require("ecs")
 NODE = require("common/node")
+local debugging = require("neko.debugging")
 
 neko_ffi = require("neko.ffi")
 
@@ -73,7 +74,7 @@ game_init_thread = function()
 end
 
 game_init = function()
-    -- luainspector = __neko_luainspector_init()
+    luainspector = debugging.inspector_init()
 
     -- pixelui = neko.pixelui_create()
 
@@ -259,8 +260,7 @@ game_render = function()
     end
 
     if ImGui.Button("test_debugging") then
-        local deubgging = require("neko.debugging")
-        deubgging.breakpoint()
+        debugging.breakpoint()
     end
 
     if ImGui.Button("test_luastate") then
@@ -277,7 +277,7 @@ game_render = function()
     end
 
     if ImGui.Button("test_ffi_reloadable") then
-  
+
     end
 
     ImGui.Separator()
@@ -290,6 +290,8 @@ game_render = function()
     ImGui.End()
 
     -- __neko_luainspector_draw(__neko_luainspector_get())
+
+    debugging.inspector_draw(debugging.inspector_get())
 
     if running then
         play.sub_render()
