@@ -32,11 +32,6 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
-// glfw
-#include <GLFW/glfw3.h>
-#define GLFW_EXPOSE_NATIVE_WIN32
-#include <GLFW/glfw3native.h>
-
 // Main context for necessary imgui information
 typedef struct neko_imgui_context_t {
     neko_command_buffer_t *cb;

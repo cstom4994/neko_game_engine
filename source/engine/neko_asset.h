@@ -640,12 +640,12 @@ struct ase_t {
     ase_slice_t slices[__NEKO_ASEPRITE_MAX_SLICES];
 };
 
-NEKO_INLINE int s_mul_un8(int a, int b) {
+NEKO_FORCE_INLINE int s_mul_un8(int a, int b) {
     int t = (a * b) + 0x80;
     return (((t >> 8) + t) >> 8);
 }
 
-NEKO_INLINE neko_color_t s_blend(neko_color_t src, neko_color_t dst, u8 opacity) {
+NEKO_FORCE_INLINE neko_color_t s_blend(neko_color_t src, neko_color_t dst, u8 opacity) {
     src.a = (u8)s_mul_un8(src.a, opacity);
     int a = src.a + dst.a - s_mul_un8(src.a, dst.a);
     int r, g, b;
@@ -660,7 +660,7 @@ NEKO_INLINE neko_color_t s_blend(neko_color_t src, neko_color_t dst, u8 opacity)
     return ret;
 }
 
-NEKO_INLINE neko_color_t s_color(ase_t* ase, void* src, int index) {
+NEKO_FORCE_INLINE neko_color_t s_color(ase_t* ase, void* src, int index) {
     neko_color_t result;
     if (ase->mode == NEKO_ASE_MODE_RGBA) {
         result = ((neko_color_t*)src)[index];

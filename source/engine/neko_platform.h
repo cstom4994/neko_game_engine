@@ -11,6 +11,35 @@
 // NEKO_PLATFORM
 ========================*/
 
+#include <glfw/glfw3.h>
+
+#if defined(_WIN32) || defined(_WIN64) || defined(NEKO_PLATFORM_WIN)
+
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h>
+
+typedef unsigned __int64 tick_t;
+#elif defined(NEKO_PLATFORM_APPLE)
+#include <pthread.h>
+#include <stdint.h>
+#include <sys/syscall.h>
+typedef u64 tick_t;
+
+#ifdef __APPLE__
+#include <objc/message.h>
+#include <objc/objc.h>
+#endif
+
+// #define GLFW_EXPOSE_NATIVE_COCOA
+// #include <GLFW/glfw3native.h>
+
+#else
+#include <pthread.h>
+#include <stdint.h>
+#include <syscall.h>
+typedef u64 tick_t;
+#endif
+
 // 一些 winapi 调用可能会失败 但我们没有任何已知的方法来“修复”该问题
 // 其中一些调用不是致命的（例如如果无法移动窗口）因此我们只需断言 DEBUG_CHECK
 #define DEBUG_CHECK(R) \
@@ -19,15 +48,6 @@
 /*============================================================
 // Platform Time
 ============================================================*/
-
-#if defined(_WIN32) || defined(_WIN64) || defined(NEKO_PLATFORM_WIN)
-typedef unsigned __int64 tick_t;
-#else
-#include <pthread.h>
-#include <stdint.h>
-#include <syscall.h>
-typedef u64 tick_t;
-#endif
 
 typedef double deltatime_t;
 
@@ -639,7 +659,7 @@ static inline u64 neko_get_thread_id() {
 #elif defined(NEKO_PLATFORM_LINUX)
     return (u64)syscall(SYS_gettid);
 #elif defined(NEKO_PLATFORM_APPLE)
-    return (mach_port_t)::pthread_mach_thread_np(pthread_self());
+    return (mach_port_t)pthread_mach_thread_np(pthread_self());
 #else
 #error "Unsupported platform!"
 #endif

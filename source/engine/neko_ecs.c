@@ -2,7 +2,6 @@
 #include "neko_ecs.h"
 
 #include <assert.h>
-#include <malloc.h>  // alloca
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>

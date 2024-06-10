@@ -10,15 +10,16 @@
 #include "engine/neko_reflection.hpp"
 
 // deps
+#if defined(NEKO_PLATFORM_WIN)
+#include <Windows.h>
 #include <direct.h>
+#endif
 
 #include "deps/miniz.h"
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
-
-#include <Windows.h>
 
 namespace neko::wtf8 {
 std::wstring u2w(std::string_view str) noexcept {
@@ -44,6 +45,8 @@ std::string w2u(std::wstring_view wstr) noexcept {
     return result;
 }
 }  // namespace neko::wtf8
+
+#if defined(NEKO_PLATFORM_WIN)
 
 namespace neko::win {
 std::wstring u2w(std::string_view str) noexcept {
@@ -102,6 +105,8 @@ std::string a2u(std::string_view str) noexcept { return w2u(a2w(str)); }
 
 std::string u2a(std::string_view str) noexcept { return w2a(u2w(str)); }
 }  // namespace neko::win
+
+#endif
 
 namespace neko {
 

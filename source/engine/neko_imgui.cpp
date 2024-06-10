@@ -215,7 +215,8 @@ neko_imgui_context_t neko_imgui_new(neko_command_buffer_t* cb, u32 hndl, bool in
 #ifdef _WIN32
     main_viewport->PlatformHandleRaw = glfwGetWin32Window(win);
 #elif defined(__APPLE__)
-    main_viewport->PlatformHandleRaw = (void*)glfwGetCocoaWindow(win);
+    // main_viewport->PlatformHandleRaw = (void*)glfwGetCocoaWindow(win);
+    IM_UNUSED(main_viewport);
 #else
     IM_UNUSED(main_viewport);
 #endif

@@ -124,7 +124,6 @@ template class size_checker<u64, 8>;
 template class size_checker<u32, 4>;
 template class size_checker<u16, 2>;
 template class size_checker<u8, 1>;
-template class size_checker<b32, 4>;
 
 struct lua_State;
 

@@ -20,7 +20,7 @@ NEKO_INLINE u32 neko_abs(s32 v) {
 }
 
 // 将UTF-8编码字符转换为Unicode
-NEKO_INLINE u32 neko_utf8_to_unicode(const_str utf8, s32* bytes_read) {
+NEKO_FORCE_INLINE u32 neko_utf8_to_unicode(const_str utf8, s32* bytes_read) {
     u32 unicode = 0;
     s32 len = 0;
     unsigned char utf8char = utf8[0];
@@ -116,10 +116,10 @@ NEKO_API_DECL bool neko_char_is_white_space(char c);
 NEKO_API_DECL bool neko_char_is_alpha(char c);
 NEKO_API_DECL bool neko_char_is_numeric(char c);
 
-NEKO_INLINE b8 neko_token_is_end_of_line(char c) { return (c == '\n' || c == '\r'); }
-NEKO_INLINE b8 neko_token_char_is_white_space(char c) { return (c == '\t' || c == ' ' || neko_token_is_end_of_line(c)); }
-NEKO_INLINE b8 neko_token_char_is_alpha(char c) { return ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')); }
-NEKO_INLINE b8 neko_token_char_is_numeric(char c) { return (c >= '0' && c <= '9'); }
+NEKO_FORCE_INLINE b8 neko_token_is_end_of_line(char c) { return (c == '\n' || c == '\r'); }
+NEKO_FORCE_INLINE b8 neko_token_char_is_white_space(char c) { return (c == '\t' || c == ' ' || neko_token_is_end_of_line(c)); }
+NEKO_FORCE_INLINE b8 neko_token_char_is_alpha(char c) { return ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')); }
+NEKO_FORCE_INLINE b8 neko_token_char_is_numeric(char c) { return (c >= '0' && c <= '9'); }
 
 //==== [ Lexer ] ============================================================//
 
@@ -153,7 +153,7 @@ NEKO_API_DECL void neko_lexer_c_eat_white_space(neko_lexer_t* lex);
 NEKO_API_DECL neko_token_t neko_lexer_c_next_token(neko_lexer_t* lex);
 NEKO_API_DECL void neko_lexer_set_token(neko_lexer_t* lex, neko_token_t token);
 
-NEKO_INLINE u32 neko_darken_color(u32 color, f32 brightness) {
+NEKO_FORCE_INLINE u32 neko_darken_color(u32 color, f32 brightness) {
     s32 a = (color >> 24) & 0xFF;
     s32 r = (s32)(((color >> 16) & 0xFF) * brightness);
     s32 g = (s32)(((color >> 8) & 0xFF) * brightness);
@@ -161,7 +161,7 @@ NEKO_INLINE u32 neko_darken_color(u32 color, f32 brightness) {
     return (a << 24) | (r << 16) | (g << 8) | b;
 }
 
-NEKO_INLINE void neko_tex_flip_vertically(int width, int height, u8* data) {
+NEKO_FORCE_INLINE void neko_tex_flip_vertically(int width, int height, u8* data) {
     u8 rgb[4];
     for (int y = 0; y < height / 2; y++) {
         for (int x = 0; x < width; x++) {

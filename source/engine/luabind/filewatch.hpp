@@ -431,8 +431,6 @@ std::optional<notify> watch::select() noexcept {
 
 #elif defined(NEKO_PLATFORM_APPLE)
 
-#include "filewatch.h"
-
 namespace neko::filewatch {
 static void event_cb(ConstFSEventStreamRef streamRef, void* info, size_t numEvents, void* eventPaths, const FSEventStreamEventFlags eventFlags[], const FSEventStreamEventId eventIds[]) noexcept {
     (void)streamRef;

@@ -491,13 +491,7 @@ void neko_lua_auto_function_register_type(lua_State *L, void *src_func, neko_lua
         lua_setglobal(L, FUNCTIONS[i].name);                      \
     }
 
-NEKO_API_DECL NEKO_INLINE bool neko_lua_equal(lua_State *state, int index1, int index2) {
-#if LUA_VERSION_NUM <= 501
-    return lua_equal(state, index1, index2) == 1;
-#else
-    return lua_compare(state, index1, index2, LUA_OPEQ) == 1;
-#endif
-}
+NEKO_API_DECL bool neko_lua_equal(lua_State *state, int index1, int index2);
 
 NEKO_API_DECL int neko_lua_preload(lua_State *L, lua_CFunction f, const char *name);
 NEKO_API_DECL int neko_lua_preload_auto(lua_State *L, lua_CFunction f, const char *name);

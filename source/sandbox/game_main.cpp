@@ -336,7 +336,9 @@ void game_init() {
         }
 
         neko::reflection::Any v = neko_platform_running_desc_t{.title = "Neko Engine"};
-        if (lua_getfield(neko_instance()->L, -1, "app") == LUA_TNIL) throw std::exception("no app");
+        if (lua_getfield(neko_instance()->L, -1, "app") == LUA_TNIL) {
+            NEKO_ERROR("[exception] %s", "no app");
+        }
         if (lua_istable(neko_instance()->L, -1)) {
             // neko::static_refl::neko_type_info<neko_platform_running_desc_t>::ForEachVarOf(t, [](auto field, auto &&value) {
             //     static_assert(std::is_lvalue_reference_v<decltype(value)>);
@@ -371,7 +373,8 @@ void game_init() {
             v.foreach (f);
 
         } else {
-            throw std::exception("no app table");
+            // throw std::exception();
+            NEKO_ERROR("[exception] %s", "no app table");
         }
         lua_pop(neko_instance()->L, 1);
 

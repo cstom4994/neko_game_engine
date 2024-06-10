@@ -7,7 +7,6 @@
 #include <ctype.h>
 #include <float.h>
 #include <limits.h>
-#include <malloc.h>
 #include <math.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -30,6 +29,8 @@
 
 #define NEKO_PLATFORM_APPLE
 
+#include <malloc/malloc.h>
+
 #elif (defined _WIN32 || defined _WIN64)
 
 #define NEKO_PLATFORM_WIN
@@ -38,6 +39,8 @@
 #define _WINSOCKAPI_
 #include <windows.h>
 #define WIN32_LEAN_AND_MEAN
+
+#include <malloc.h>
 
 #elif (defined linux || defined _linux || defined __linux__)
 
@@ -83,7 +86,7 @@
 #ifndef NEKO_INLINE
 #if defined(NEKO_PLATFORM_LINUX)
 #define NEKO_INLINE static inline
-#else
+#elif defined(NEKO_PLATFORM_APPLE)
 #define NEKO_INLINE inline
 #endif
 #endif
@@ -339,7 +342,7 @@ NEKO_API_DECL void* __neko_mem_safe_realloc(void* ptr, size_t new_size, const ch
 #else
 
 #define neko_safe_malloc neko_malloc
-#define neko_safe_free neko_free
+#define neko_safe_free(ptr) neko_free((void*)ptr)
 #define neko_safe_realloc neko_realloc
 #define neko_safe_calloc neko_calloc
 
@@ -397,20 +400,20 @@ typedef enum neko_result { NEKO_RESULT_SUCCESS, NEKO_RESULT_IN_PROGRESS, NEKO_RE
 
 #define neko_handle(TYPE) neko_handle_##TYPE
 
-#define neko_handle_decl(TYPE)                                        \
-    typedef struct {                                                  \
-        u32 id;                                                       \
-    } neko_handle(TYPE);                                              \
-    NEKO_INLINE neko_handle(TYPE) neko_handle_invalid_##TYPE() {      \
-        neko_handle(TYPE) h;                                          \
-        h.id = UINT32_MAX;                                            \
-        return h;                                                     \
-    }                                                                 \
-                                                                      \
-    NEKO_INLINE neko_handle(TYPE) neko_handle_create_##TYPE(u32 id) { \
-        neko_handle(TYPE) h;                                          \
-        h.id = id;                                                    \
-        return h;                                                     \
+#define neko_handle_decl(TYPE)                                              \
+    typedef struct {                                                        \
+        u32 id;                                                             \
+    } neko_handle(TYPE);                                                    \
+    NEKO_FORCE_INLINE neko_handle(TYPE) neko_handle_invalid_##TYPE() {      \
+        neko_handle(TYPE) h;                                                \
+        h.id = UINT32_MAX;                                                  \
+        return h;                                                           \
+    }                                                                       \
+                                                                            \
+    NEKO_FORCE_INLINE neko_handle(TYPE) neko_handle_create_##TYPE(u32 id) { \
+        neko_handle(TYPE) h;                                                \
+        h.id = id;                                                          \
+        return h;                                                           \
     }
 
 #define neko_handle_invalid(__TYPE) neko_handle_invalid_##__TYPE()
@@ -936,6 +939,20 @@ NEKO_FORCE_INLINE void neko_util_normalize_path(const char* path, char* buffer, 
     // Normalize the path somehow...
 }
 
+NEKO_FORCE_INLINE const_str neko_fs_get_filename(const_str path) {
+    int len = strlen(path);
+    int flag = 0;
+
+    for (int i = len - 1; i > 0; i--) {
+        if (path[i] == '\\' || path[i] == '//' || path[i] == '/') {
+            flag = 1;
+            path = path + i + 1;
+            break;
+        }
+    }
+    return path;
+}
+
 #define neko_println(__FMT, ...)           \
     do {                                   \
         neko_printf(__FMT, ##__VA_ARGS__); \
@@ -1301,20 +1318,6 @@ NEKO_API_DECL void neko_paged_allocator_free(neko_paged_allocator_t* pa);
 NEKO_API_DECL void* neko_paged_allocator_allocate(neko_paged_allocator_t* pa);
 NEKO_API_DECL void neko_paged_allocator_deallocate(neko_paged_allocator_t* pa, void* data);
 NEKO_API_DECL void neko_paged_allocator_clear(neko_paged_allocator_t* pa);
-
-NEKO_INLINE const_str neko_fs_get_filename(const_str path) {
-    int len = strlen(path);
-    int flag = 0;
-
-    for (int i = len - 1; i > 0; i--) {
-        if (path[i] == '\\' || path[i] == '//' || path[i] == '/') {
-            flag = 1;
-            path = path + i + 1;
-            break;
-        }
-    }
-    return path;
-}
 
 /*================================================================================
 // Random

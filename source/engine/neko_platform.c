@@ -46,6 +46,7 @@
 #include <dlfcn.h>  // dlopen, RTLD_LAZY, dlsym
 #include <errno.h>
 #include <sys/stat.h>
+#include <unistd.h>  // for chdir
 #else
 
 // direct.h
@@ -807,7 +808,7 @@ NEKO_API_DECL int neko_platform_chdir_default_impl(const char* path) {
 
 #elif (defined NEKO_PLATFORM_LINUX || defined NEKO_PLATFORM_APPLE || defined NEKO_PLATFORM_ANDROID)
 
-    return _chdir(path);
+    return chdir(path);
 
 #endif
 
@@ -1010,6 +1011,8 @@ void neko_platform_msgbox(const_str msg) {
     char info[128];
     neko_snprintf(info, 128, "notify-send \"%s\"", msg);
     system(info);
+#elif defined(NEKO_PLATFORM_APPLE)
+
 #else  // TODO:: wasm
     Android_MessageBox("Neko Error", x);
 #endif
@@ -4090,7 +4093,7 @@ neko_thread_ptr_t thread_init(int (*thread_proc)(void*), void* user_data, char c
     if (name) pthread_setname_np(thread, name);
 #endif
 
-    return (thread_ptr_t)thread;
+    return (neko_thread_ptr_t)thread;
 
 #else
 #error Unknown platform.
@@ -4178,9 +4181,9 @@ void thread_mutex_init(neko_thread_mutex_t* mutex) {
 #elif defined(__linux__) || defined(__APPLE__) || defined(__ANDROID__) || defined(__EMSCRIPTEN__)
 
     // Compile-time size check
-    struct x {
-        char thread_mutex_type_too_small : (sizeof(thread_mutex_t) < sizeof(pthread_mutex_t) ? 0 : 1);
-    };
+    // struct x {
+    //     char thread_mutex_type_too_small : (sizeof(thread_mutex_t) < sizeof(pthread_mutex_t) ? 0 : 1);
+    // };
 
     pthread_mutex_init((pthread_mutex_t*)mutex, NULL);
 
@@ -4634,7 +4637,7 @@ neko_thread_tls_t thread_tls_create(void) {
 
     pthread_key_t tls;
     if (pthread_key_create(&tls, NULL) == 0)
-        return (thread_tls_t)(uintptr_t)tls;
+        return (neko_thread_tls_t)(uintptr_t)tls;
     else
         return NULL;
 

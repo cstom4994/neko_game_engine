@@ -19,7 +19,7 @@ add_includedirs("source/deps/glad/include/")
 
 local base_libs = {"glfw", "libffi", "lua", "imgui"}
 
-if is_os("windows") then
+if is_os("windows") or is_os("macosx") then
     add_requires("glfw", "libffi", "lua")
     add_requires("imgui v1.90.8-docking", {
         configs = {
@@ -45,8 +45,10 @@ end
 -- set_fpmodels("strict")
 set_exceptions("cxx", "objc")
 
+add_defines("FFI_LITTLE_ENDIAN", "UNICODE", "_UNICODE")
+
 if is_plat("windows") then
-    add_defines("WIN32", "_WIN32", "_WINDOWS", "NOMINMAX", "UNICODE", "_UNICODE", "FFI_LITTLE_ENDIAN")
+    add_defines("WIN32", "_WIN32", "_WINDOWS", "NOMINMAX")
     add_cxflags("/utf-8", "/Zc:__cplusplus", "/permissive", "/bigobj", "/Zc:preprocessor", "/Zc:wchar_t",
         "/Zc:forScope", "/MP")
     -- add_ldflags("/MACHINE:X64", "/SUBSYSTEM:CONSOLE", "/INCREMENTAL")
