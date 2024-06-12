@@ -2989,41 +2989,41 @@ typedef struct neko_pipeline_parse_data_t {
     do {                                 \
         neko_printf("WARNING::");        \
         neko_printf(TXT, ##__VA_ARGS__); \
-        NEKO_TRACE("[gfxt] ");       \
+        NEKO_TRACE("[gfxt] ");           \
     } while (0)
 
 #define neko_parse_error(TXT, ASSERT, ...) \
     do {                                   \
         neko_printf("ERROR::");            \
         neko_printf(TXT, ##__VA_ARGS__);   \
-        NEKO_TRACE("[gfxt] ");         \
+        NEKO_TRACE("[gfxt] ");             \
         if (ASSERT) NEKO_ASSERT(false);    \
     } while (0)
 
-#define neko_parse_block(NAME, ...)                                                                               \
-    do {                                                                                                          \
+#define neko_parse_block(NAME, ...)                                                                           \
+    do {                                                                                                      \
         NEKO_TRACE("[gfxt] neko_pipeline_load_from_file::parsing::%s", #NAME);                                \
-        if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_LBRACE)) {                                           \
+        if (!neko_lexer_find_next_token_type(lex, NEKO_TOKEN_LBRACE)) {                                       \
             NEKO_TRACE("[gfxt] error::neko_pipeline_load_from_file::error parsing raster from .sf resource"); \
-            NEKO_ASSERT(false);                                                                                   \
-        }                                                                                                         \
-                                                                                                                  \
-        uint32_t bc = 1;                                                                                          \
-        while (neko_lexer_can_lex(lex) && bc) {                                                                   \
-            neko_token_t token = neko_lexer_next_token(lex);                                                      \
-            switch (token.type) {                                                                                 \
-                case NEKO_TOKEN_LBRACE: {                                                                         \
-                    bc++;                                                                                         \
-                } break;                                                                                          \
-                case NEKO_TOKEN_RBRACE: {                                                                         \
-                    bc--;                                                                                         \
-                } break;                                                                                          \
-                                                                                                                  \
-                case NEKO_TOKEN_IDENTIFIER: {                                                                     \
-                    __VA_ARGS__                                                                                   \
-                }                                                                                                 \
-            }                                                                                                     \
-        }                                                                                                         \
+            NEKO_ASSERT(false);                                                                               \
+        }                                                                                                     \
+                                                                                                              \
+        uint32_t bc = 1;                                                                                      \
+        while (neko_lexer_can_lex(lex) && bc) {                                                               \
+            neko_token_t token = neko_lexer_next_token(lex);                                                  \
+            switch (token.type) {                                                                             \
+                case NEKO_TOKEN_LBRACE: {                                                                     \
+                    bc++;                                                                                     \
+                } break;                                                                                      \
+                case NEKO_TOKEN_RBRACE: {                                                                     \
+                    bc--;                                                                                     \
+                } break;                                                                                      \
+                                                                                                              \
+                case NEKO_TOKEN_IDENTIFIER: {                                                                 \
+                    __VA_ARGS__                                                                               \
+                }                                                                                             \
+            }                                                                                                 \
+        }                                                                                                     \
     } while (0)
 
 const char* neko_get_vertex_attribute_string(neko_render_vertex_attribute_type type) {
@@ -3069,6 +3069,8 @@ const char* neko_get_vertex_attribute_string(neko_render_vertex_attribute_type t
             break;
     }
 }
+
+#if 0
 
 neko_render_vertex_attribute_type neko_get_vertex_attribute_from_token(const neko_token_t* t) {
     if (neko_token_compare_text(t, "float"))
@@ -3505,7 +3507,7 @@ bool neko_parse_vertex_mesh_attributes(neko_lexer_t* lex, neko_draw_pipeline_des
         memcpy(attr.name, token_name.text, token_name.len);            \
         attr.format = R_VERTEX_ATTRIBUTE_##VERT_ATTR;                  \
         neko_dyn_array_push(desc->pip_desc.layout.attrs, attr);        \
-        /*NEKO_TRACE("[gfxt] %s: %s", #MESH_ATTR, #VERT_ATTR);*/   \
+        /*NEKO_TRACE("[gfxt] %s: %s", #MESH_ATTR, #VERT_ATTR);*/       \
     } while (0)
 
                 if (neko_token_compare_text(&token, "POSITION"))
@@ -4497,6 +4499,8 @@ NEKO_API_DECL neko_draw_pipeline_t neko_draw_pipeline_load_from_memory_ext(const
 
     return pip;
 }
+
+#endif
 
 NEKO_API_DECL neko_draw_texture_t neko_draw_texture_load_from_file(const char* path, neko_render_texture_desc_t* desc, bool flip, bool keep_data) {
     neko_asset_texture_t tex = NEKO_DEFAULT_VAL();

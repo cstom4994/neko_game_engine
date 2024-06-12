@@ -142,6 +142,7 @@ void render_uniform_variable(GLuint program, GLenum type, const char* name, GLin
             if (ImGui::Checkbox("", (bool*)&value)) glProgramUniform1uiv(program, location, 1, &value);
         } break;
 
+#if !defined(NEKO_PLATFORM_APPLE)
         case GL_IMAGE_2D: {
             ImGui::Text("GL_IMAGE_2D %s:", name);
             // ImGui::SameLine();
@@ -150,6 +151,7 @@ void render_uniform_variable(GLuint program, GLenum type, const char* name, GLin
             // if (ImGui::Checkbox("", (bool*)&value)) glProgramUniform1iv(program, location, 1, &value);
             ImGui::Image((void*)(intptr_t)value, ImVec2(256, 256));
         } break;
+#endif
 
         case GL_SAMPLER_CUBE: {
             ImGui::Text("GL_SAMPLER_CUBE %s:", name);
@@ -269,7 +271,7 @@ void inspect_vertex_array(const char* label, GLuint vao) {
 
         // EBO Visualization
         char buffer[128];
-        std::sprintf(buffer, "Element Array Buffer: %d", ebo);
+        std::snprintf(buffer, 128, "Element Array Buffer: %d", ebo);
         ImGui::PushID(buffer);
         if (ImGui::CollapsingHeader(buffer)) {
             ImGui::Indent();
@@ -305,7 +307,7 @@ void inspect_vertex_array(const char* label, GLuint vao) {
 
             if (!enabled) continue;
 
-            std::sprintf(buffer, "Attribute: %" PRIdPTR "", i);
+            std::snprintf(buffer, 128, "Attribute: %" PRIdPTR "", i);
             ImGui::PushID(buffer);
             if (ImGui::CollapsingHeader(buffer)) {
                 ImGui::Indent();

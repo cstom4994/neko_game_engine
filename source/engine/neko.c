@@ -72,6 +72,13 @@ NEKO_API_DECL void neko_console_printf(neko_console_t* console, const char* fmt,
 
 // logging
 
+void neko_printf(const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    vprintf(fmt, args);
+    va_end(args);
+}
+
 #define MAX_CALLBACKS 8
 #define LOG_USE_COLOR
 

@@ -1265,7 +1265,7 @@ static int __neko_bind_gfxt_create(lua_State* L) {
     memset(gfxt_render, 0, sizeof(neko_draw_renderer));
 
     // Load pipeline from resource file
-    gfxt_render->pip = neko_draw_pipeline_load_from_file(pip_path);
+    // gfxt_render->pip = neko_draw_pipeline_load_from_file(pip_path);
 
     // Create material using this pipeline
     neko_draw_material_desc_t mat_decl = {.pip_func = {.hndl = &gfxt_render->pip}};

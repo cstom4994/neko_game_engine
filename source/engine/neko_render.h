@@ -1468,9 +1468,9 @@ NEKO_API_DECL void neko_draw_uniform_block_destroy(neko_draw_uniform_block_t* ub
 NEKO_API_DECL void neko_draw_pipeline_destroy(neko_draw_pipeline_t* pipeline);
 
 //=== Resource Loading ===//
-NEKO_API_DECL neko_draw_pipeline_t neko_draw_pipeline_load_from_file(const char* path);
-NEKO_API_DECL neko_draw_pipeline_t neko_draw_pipeline_load_from_memory(const char* data, size_t sz);
-NEKO_API_DECL neko_draw_pipeline_t neko_draw_pipeline_load_from_memory_ext(const char* data, size_t sz, const char* file_dir);
+// NEKO_API_DECL neko_draw_pipeline_t neko_draw_pipeline_load_from_file(const char* path);
+// NEKO_API_DECL neko_draw_pipeline_t neko_draw_pipeline_load_from_memory(const char* data, size_t sz);
+// NEKO_API_DECL neko_draw_pipeline_t neko_draw_pipeline_load_from_memory_ext(const char* data, size_t sz, const char* file_dir);
 NEKO_API_DECL neko_draw_texture_t neko_draw_texture_load_from_file(const char* path, neko_render_texture_desc_t* desc, bool flip, bool keep_data);
 NEKO_API_DECL neko_draw_texture_t neko_draw_texture_load_from_memory(const char* data, size_t sz, neko_render_texture_desc_t* desc, bool flip, bool keep_data);
 
@@ -2409,11 +2409,6 @@ NEKO_API_DECL void neko_ui_pop_inline_style(neko_ui_context_t* ctx, neko_ui_elem
 
 NEKO_API_DECL neko_ui_style_t* neko_ui_push_style(neko_ui_context_t* ctx, neko_ui_style_t* style);
 NEKO_API_DECL void neko_ui_pop_style(neko_ui_context_t* ctx, neko_ui_style_t* style);
-
-//=== Resource Loading ===//
-
-NEKO_API_DECL neko_ui_style_sheet_t neko_ui_style_sheet_load_from_file(neko_ui_context_t* ctx, const char* file_path);
-NEKO_API_DECL neko_ui_style_sheet_t neko_ui_style_sheet_load_from_memory(neko_ui_context_t* ctx, const char* memory, size_t sz, bool* success);
 
 //=== Pools ===//
 

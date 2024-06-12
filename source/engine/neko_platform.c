@@ -9,8 +9,6 @@
 #include "engine/neko.h"
 #include "engine/neko_engine.h"
 
-// #include "engine/neko_profiler.h"
-
 #ifndef NEKO_PLATFORM_IMPL_CUSTOM
 #if (defined NEKO_PLATFORM_WIN || defined NEKO_PLATFORM_APPLE || defined NEKO_PLATFORM_LINUX)
 #define NEKO_PLATFORM_IMPL_GLFW
@@ -59,6 +57,11 @@
 #pragma comment(lib, "winmm")     // timeBeginPeriod
 #pragma comment(lib, "ws2_32")    // socket
 
+#endif
+
+#if defined(NEKO_PLATFORM_APPLE)
+#include <mach/mach.h>
+#include <mach/task_info.h>
 #endif
 
 /*== Platform Window ==*/
@@ -606,7 +609,7 @@ NEKO_API_DECL bool neko_platform_dir_exists_default_impl(const char* dir_path) {
 #if defined(NEKO_PLATFORM_WIN)
     DWORD attrib = GetFileAttributes((LPCWSTR)dir_path);  // TODO: unicode 路径修复
     return (attrib != INVALID_FILE_ATTRIBUTES && (attrib & FILE_ATTRIBUTE_DIRECTORY));
-#elif defined(NEKO_PLATFORM_LINUX)
+#elif defined(NEKO_PLATFORM_LINUX) || defined(NEKO_PLATFORM_APPLE)
     struct stat st;
     if (stat(dir_path, &st) == 0) {
         if (S_ISDIR(st.st_mode)) {
@@ -822,7 +825,7 @@ NEKO_API_DECL int neko_platform_chdir_default_impl(const char* path) {
 // GLFW Implemenation
 ======================*/
 
-// glad
+// OpenGL
 #include <glad/glad.h>
 
 // glfw
@@ -952,7 +955,7 @@ void neko_platform_init(neko_platform_t* pf) {
 neko_memory_info_t glfw_platform_meminfo() {
     neko_memory_info_t meminfo = {0};
 
-#ifdef NEKO_PLATFORM_WIN
+#if defined(NEKO_PLATFORM_WIN)
     HANDLE hProcess = GetCurrentProcess();
     PROCESS_MEMORY_COUNTERS_EX pmc;
 
@@ -964,6 +967,23 @@ neko_memory_info_t glfw_platform_meminfo() {
 
     } else {
     }
+#elif defined(NEKO_PLATFORM_APPLE)
+    task_t task;
+    task_for_pid(current_task(), getpid(), &task);
+
+    struct task_basic_info t_info;
+    mach_msg_type_number_t t_info_count = TASK_BASIC_INFO_COUNT;
+
+    if (task_info(task, TASK_BASIC_INFO, (task_info_t)&t_info, &t_info_count) != KERN_SUCCESS) {
+        // printf("failed to get task info");
+    }
+
+    meminfo.virtual_memory_used = t_info.virtual_size;
+    meminfo.physical_memory_used = t_info.resident_size;
+    meminfo.peak_virtual_memory_used = t_info.virtual_size;    // macOS 不直接提供虚拟内存使用峰值
+    meminfo.peak_physical_memory_used = t_info.resident_size;  // macOS 不直接提供峰值物理内存使用情况
+#else
+    // TODO:: linux 读取内存使用情况
 #endif
 
     // TODO:: 支持AMD显卡获取显存信息
@@ -2344,9 +2364,9 @@ NEKO_API_DECL void neko_platform_enable_vsync(s32 enabled) { glfwSwapInterval(en
 
 /*== OpenGL debug callback == */
 void GLAPIENTRY __neko_platform_gl_debug(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei len, const GLchar* msg, const void* user) {
-    if (severity != GL_DEBUG_SEVERITY_NOTIFICATION) {
-        NEKO_WARN("GL: %s", msg);
-    }
+    // if (severity != GL_DEBUG_SEVERITY_NOTIFICATION) {
+    //     NEKO_WARN("GL: %s", msg);
+    // }
 }
 
 /*== Platform Window == */
@@ -2422,7 +2442,7 @@ NEKO_API_DECL neko_platform_window_t neko_platform_window_create_internal(const 
 
         NEKO_INFO("OpenGL Version: %s", glGetString(GL_VERSION));
         if (neko_cvar("settings.video.render.debug")->value.i) {
-            glDebugMessageCallback(__neko_platform_gl_debug, NULL);
+            // glDebugMessageCallback(__neko_platform_gl_debug, NULL);
         }
     }
 

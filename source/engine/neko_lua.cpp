@@ -470,7 +470,7 @@ void lua_bind::evaluatef(const_str fmt, ...) {
     char buffer[1024];
     va_list args;
     va_start(args, fmt);
-    vsprintf(buffer, fmt, args);
+    vsnprintf(buffer, 1024, fmt, args);
     va_end(args);
 
     if (luaL_loadstring(g_L, buffer) != 0) {

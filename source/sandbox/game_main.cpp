@@ -29,7 +29,7 @@
 #include "game_physics_math.hpp"
 #include "helper.h"
 
-// opengl
+// OpenGL
 #include <glad/glad.h>
 
 #define NEKO_IMGUI_IMPL
@@ -108,11 +108,11 @@ struct Comp(Name) {
 UseComponentTypes();
 
 void app_load_style_sheet(bool destroy) {
-    if (destroy) {
-        neko_ui_style_sheet_destroy(&CL_GAME_USERDATA()->style_sheet);
-    }
-    CL_GAME_USERDATA()->style_sheet = neko_ui_style_sheet_load_from_file(&CL_GAME_USERDATA()->ui, game_assets("gamedir/style_sheets/gui.ss").c_str());
-    neko_ui_set_style_sheet(&CL_GAME_USERDATA()->ui, &CL_GAME_USERDATA()->style_sheet);
+    // if (destroy) {
+    //     neko_ui_style_sheet_destroy(&CL_GAME_USERDATA()->style_sheet);
+    // }
+    // CL_GAME_USERDATA()->style_sheet = neko_ui_style_sheet_load_from_file(&CL_GAME_USERDATA()->ui, game_assets("gamedir/style_sheets/gui.ss").c_str());
+    // neko_ui_set_style_sheet(&CL_GAME_USERDATA()->ui, &CL_GAME_USERDATA()->style_sheet);
 }
 
 void movement_system(ecs_view_t view, unsigned int row) {
@@ -919,7 +919,7 @@ void draw_gui() {
 
             const neko_vec2 ws = neko_v2(600.f, 300.f);
 
-            const neko_ui_style_sheet_t *ss = &CL_GAME_USERDATA()->style_sheet;
+            // const neko_ui_style_sheet_t *ss = &CL_GAME_USERDATA()->style_sheet;
 
             const neko_vec2 ss_ws = neko_v2(500.f, 300.f);
             neko_ui_window_begin(&CL_GAME_USERDATA()->ui, "Window", neko_ui_rect((CL_GAME_USERDATA()->fbs.x - ss_ws.x) * 0.5f, (CL_GAME_USERDATA()->fbs.y - ss_ws.y) * 0.5f, ss_ws.x, ss_ws.y));

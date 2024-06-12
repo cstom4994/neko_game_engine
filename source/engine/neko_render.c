@@ -18,7 +18,12 @@ neko_render_info_t* neko_render_info() { return &neko_subsystem(render)->info; }
 
 #if (defined R_IMPL_OPENGL_CORE || defined R_IMPL_OPENGL_ES)
 
+// macOS 不支持 OpenGL 4.1+
+#if defined(NEKO_PLATFORM_APPLE)
+#define CHECK_GL_CORE(...)
+#else
 #define CHECK_GL_CORE(...) __VA_ARGS__
+#endif
 
 const_str neko_opengl_string(GLenum e) {
 
@@ -51,8 +56,10 @@ const_str neko_opengl_string(GLenum e) {
         XX(GL_INVALID_OPERATION);
         XX(GL_INVALID_FRAMEBUFFER_OPERATION);
         XX(GL_OUT_OF_MEMORY);
+#if !defined(NEKO_PLATFORM_APPLE)
         XX(GL_STACK_UNDERFLOW);
         XX(GL_STACK_OVERFLOW);
+#endif
 
         // types:
         XX(GL_BYTE);
@@ -134,6 +141,7 @@ const_str neko_opengl_string(GLenum e) {
         XX(GL_UNSIGNED_INT_SAMPLER_BUFFER);
         XX(GL_UNSIGNED_INT_SAMPLER_2D_RECT);
 
+#if !defined(NEKO_PLATFORM_APPLE)
         XX(GL_IMAGE_1D);
         XX(GL_IMAGE_2D);
         XX(GL_IMAGE_3D);
@@ -165,6 +173,7 @@ const_str neko_opengl_string(GLenum e) {
         XX(GL_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE);
         XX(GL_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE_ARRAY);
         XX(GL_UNSIGNED_INT_ATOMIC_COUNTER);
+#endif
     }
 
 #undef XX
@@ -3688,19 +3697,23 @@ NEKO_API_DECL void neko_render_init(neko_render_t* render) {
     glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, (GLint*)&info->max_texture_units);
 
     // Compute shader info
-    CHECK_GL_CORE(
-            info->compute.available = info->major_version >= 4 && info->minor_version >= 3; if (info->compute.available) {
-                // Work group counts
-                glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, (s32*)&info->compute.max_work_group_count[0]);
-                glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 1, (s32*)&info->compute.max_work_group_count[1]);
-                glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 2, (s32*)&info->compute.max_work_group_count[2]);
-                // Work group sizes
-                glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, (s32*)&info->compute.max_work_group_size[0]);
-                glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1, (s32*)&info->compute.max_work_group_size[1]);
-                glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, (s32*)&info->compute.max_work_group_size[2]);
-                // Work group invocations
-                glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, (s32*)&info->compute.max_work_group_invocations);
-            } else { NEKO_ERROR("%s", "Compute shaders not available."); });
+    info->compute.available = info->major_version >= 4 && info->minor_version >= 3;
+    if (info->compute.available) {
+        CHECK_GL_CORE({
+            // Work group counts
+            glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, (s32*)&info->compute.max_work_group_count[0]);
+            glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 1, (s32*)&info->compute.max_work_group_count[1]);
+            glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 2, (s32*)&info->compute.max_work_group_count[2]);
+            // Work group sizes
+            glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, (s32*)&info->compute.max_work_group_size[0]);
+            glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1, (s32*)&info->compute.max_work_group_size[1]);
+            glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, (s32*)&info->compute.max_work_group_size[2]);
+            // Work group invocations
+            glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, (s32*)&info->compute.max_work_group_invocations);
+        });
+    } else {
+        NEKO_WARN("opengl compute shaders not available");
+    }
 
     const GLubyte* glslv = glGetString(GL_SHADING_LANGUAGE_VERSION);
     NEKO_INFO("GLSL Version: %s", glslv);

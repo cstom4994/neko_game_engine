@@ -54,6 +54,7 @@ if is_plat("windows") then
     -- add_ldflags("/MACHINE:X64", "/SUBSYSTEM:CONSOLE", "/INCREMENTAL")
     -- add_cxflags("/MT")
 else
+    add_cxflags("-Wtautological-compare")
     add_cxflags("-fno-strict-aliasing", "-Wno-implicit-int", "-fms-extensions", "-Wno-error", "-Wno-multichar",
         "-Wno-unsequenced", "-Wno-unqualified-std-cast-call", "-Wno-implicit-const-int-float-conversion",
         "-Wno-unused-value", "-Wno-pointer-bool-conversion", "-Wno-unknown-attributes", "-Wno-return-stack-address",

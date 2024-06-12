@@ -273,12 +273,7 @@ typedef uintptr_t uptr;
 #define neko_printf(__FMT, ...) ((void)__android_log_print(ANDROID_LOG_INFO, "native-activity", __FMT, ##__VA_ARGS__))
 
 #else
-NEKO_FORCE_INLINE void neko_printf(const char* fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    vprintf(fmt, args);
-    va_end(args);
-}
+NEKO_API_DECL void neko_printf(const char* fmt, ...);
 #endif
 
 #endif

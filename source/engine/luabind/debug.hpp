@@ -136,7 +136,7 @@ public:
 
     inline void variable_pool_free() {
         for (const auto& var : this->m_variable_pool) {
-            delete var;
+            delete (char*)var;
         }
     }
 

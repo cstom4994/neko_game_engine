@@ -118,7 +118,7 @@ __NEKO_CONFIG_TYPE_FLOAT = 1
 __NEKO_CONFIG_TYPE_STRING = 2
 
 sprite_vs = [[
-#version 430
+#version 330
 
 layout (location = 0) in vec2 position;
 layout (location = 1) in vec2 uv;
@@ -143,7 +143,7 @@ void main() {
 ]]
 
 sprite_fs = [[
-#version 430
+#version 330
 
 out vec4 color;
 

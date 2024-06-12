@@ -24,7 +24,7 @@ typedef struct neko_client_userdata_t {
 
     neko_command_buffer_t cb = NEKO_DEFAULT_VAL();
     neko_ui_context_t ui = NEKO_DEFAULT_VAL();
-    neko_ui_style_sheet_t style_sheet;
+    // neko_ui_style_sheet_t style_sheet;
     neko_immediate_draw_t idraw = NEKO_DEFAULT_VAL();
     neko_asset_ascii_font_t font;
     neko_imgui_context_t imgui = NEKO_DEFAULT_VAL();
