@@ -8,7 +8,6 @@
 #include "engine/neko_luabind.hpp"
 
 // game
-#include "sandbox/game_editor.h"
 #include "sandbox/game_main.h"
 
 static int g_lua_callbacks_table_ref = LUA_NOREF;
@@ -1027,10 +1026,10 @@ static int __neko_bind_aseprite_render(lua_State* L) {
     neko_aseprite_frame f = spr->frames[index];
 
     if (direction)
-        neko_idraw_rect_textured_ext(&CL_GAME_USERDATA()->idraw, xform.x, xform.y, xform.x + spr->width * scale, xform.y + spr->height * scale, f.u1, f.v0, f.u0, f.v1, user_handle->sprite->img.id,
+        neko_idraw_rect_textured_ext(&CL_GAME_INTERFACE()->idraw, xform.x, xform.y, xform.x + spr->width * scale, xform.y + spr->height * scale, f.u1, f.v0, f.u0, f.v1, user_handle->sprite->img.id,
                                      NEKO_COLOR_WHITE);
     else
-        neko_idraw_rect_textured_ext(&CL_GAME_USERDATA()->idraw, xform.x, xform.y, xform.x + spr->width * scale, xform.y + spr->height * scale, f.u0, f.v0, f.u1, f.v1, user_handle->sprite->img.id,
+        neko_idraw_rect_textured_ext(&CL_GAME_INTERFACE()->idraw, xform.x, xform.y, xform.x + spr->width * scale, xform.y + spr->height * scale, f.u0, f.v0, f.u1, f.v1, user_handle->sprite->img.id,
                                      NEKO_COLOR_WHITE);
 
     return 0;
@@ -1066,7 +1065,7 @@ static int __neko_bind_tiled_create(lua_State* L) {
 
     neko_tiled_load(&(user_handle->map), map_path, NULL);
 
-    neko_tiled_render_init(&CL_GAME_USERDATA()->cb, user_handle, glsl_vs_src, glsl_fs_src);
+    neko_tiled_render_init(&CL_GAME_INTERFACE()->cb, user_handle, glsl_vs_src, glsl_fs_src);
 
     return 1;
 }
@@ -1086,7 +1085,7 @@ static int __neko_bind_tiled_render(lua_State* L) {
 
     tiled_render->camera_mat = neko_mat4_ortho(l, r, b, t, -1.0f, 1.0f);
 
-    neko_command_buffer_t* cb = &CL_GAME_USERDATA()->cb;
+    neko_command_buffer_t* cb = &CL_GAME_INTERFACE()->cb;
 
     neko_render_renderpass_begin(cb, rp);
     {
@@ -1289,7 +1288,7 @@ static int __neko_bind_gfxt_update(lua_State* L) {
     neko_vec2 fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
     const f32 t = neko_platform_elapsed_time();
 
-    neko_command_buffer_t* cb = &CL_GAME_USERDATA()->cb;
+    neko_command_buffer_t* cb = &CL_GAME_INTERFACE()->cb;
 
     // Camera for scene
     neko_camera_t cam = neko_camera_perspective();
@@ -1656,7 +1655,7 @@ static int __neko_bind_sprite_batch_render_end(lua_State* L) {
         user_handle->sprite_verts_count = 0;
     }
 
-    neko_render_draw_batch(&CL_GAME_USERDATA()->cb, user_handle->sprite_batch, 0, 0, 0);
+    neko_render_draw_batch(&CL_GAME_INTERFACE()->cb, user_handle->sprite_batch, 0, 0, 0);
 
     return 0;
 }
@@ -1860,31 +1859,31 @@ static int __neko_bind_filewatch_notify(lua_State* L) {
 #endif
 
 static int __neko_bind_idraw_get(lua_State* L) {
-    lua_pushlightuserdata(L, &CL_GAME_USERDATA()->idraw);
+    lua_pushlightuserdata(L, &CL_GAME_INTERFACE()->idraw);
     return 1;
 }
 
 static int __neko_bind_idraw_draw(lua_State* L) {
-    neko_idraw_draw(&CL_GAME_USERDATA()->idraw, &CL_GAME_USERDATA()->cb);
+    neko_idraw_draw(&CL_GAME_INTERFACE()->idraw, &CL_GAME_INTERFACE()->cb);
     return 1;
 }
 
 static int __neko_bind_idraw_defaults(lua_State* L) {
-    neko_idraw_defaults(&CL_GAME_USERDATA()->idraw);
+    neko_idraw_defaults(&CL_GAME_INTERFACE()->idraw);
     return 0;
 }
 
 static int __neko_bind_idraw_camera2d(lua_State* L) {
     f32 w = lua_tonumber(L, 1);
     f32 h = lua_tonumber(L, 2);
-    neko_idraw_camera2d(&CL_GAME_USERDATA()->idraw, w, h);
+    neko_idraw_camera2d(&CL_GAME_INTERFACE()->idraw, w, h);
     return 0;
 }
 
 static int __neko_bind_idraw_camera3d(lua_State* L) {
     f32 w = lua_tonumber(L, 1);
     f32 h = lua_tonumber(L, 2);
-    neko_idraw_camera3d(&CL_GAME_USERDATA()->idraw, w, h);
+    neko_idraw_camera3d(&CL_GAME_INTERFACE()->idraw, w, h);
     return 0;
 }
 
@@ -1893,7 +1892,7 @@ static int __neko_bind_idraw_camera2d_ex(lua_State* L) {
     f32 r = lua_tonumber(L, 2);
     f32 t = lua_tonumber(L, 3);
     f32 b = lua_tonumber(L, 4);
-    neko_idraw_camera2d_ex(&CL_GAME_USERDATA()->idraw, l, r, t, b);
+    neko_idraw_camera2d_ex(&CL_GAME_INTERFACE()->idraw, l, r, t, b);
     return 0;
 }
 
@@ -1902,7 +1901,7 @@ static int __neko_bind_idraw_rotatev(lua_State* L) {
     f32 x = lua_tonumber(L, 2);
     f32 y = lua_tonumber(L, 3);
     f32 z = lua_tonumber(L, 4);
-    neko_idraw_rotatev(&CL_GAME_USERDATA()->idraw, angle, neko_v3(x, y, z));
+    neko_idraw_rotatev(&CL_GAME_INTERFACE()->idraw, angle, neko_v3(x, y, z));
     return 0;
 }
 
@@ -1919,7 +1918,7 @@ static int __neko_bind_idraw_box(lua_State* L) {
     u8 a = lua_tointeger(L, 10);
     neko_render_primitive_type type_val;
     neko_lua_auto_to(neko_instance()->L, neko_render_primitive_type, &type_val, 11);
-    neko_idraw_box(&CL_GAME_USERDATA()->idraw, x, y, z, hx, hy, hz, r, g, b, a, type_val);
+    neko_idraw_box(&CL_GAME_INTERFACE()->idraw, x, y, z, hx, hy, hz, r, g, b, a, type_val);
     return 0;
 }
 
@@ -1927,7 +1926,7 @@ static int __neko_bind_idraw_translatef(lua_State* L) {
     f32 x = lua_tonumber(L, 1);
     f32 y = lua_tonumber(L, 2);
     f32 z = lua_tonumber(L, 3);
-    neko_idraw_translatef(&CL_GAME_USERDATA()->idraw, x, y, z);
+    neko_idraw_translatef(&CL_GAME_INTERFACE()->idraw, x, y, z);
     return 0;
 }
 
@@ -1947,7 +1946,7 @@ static int __neko_bind_idraw_rectv(lua_State* L) {
         col = lua2struct::unpack<neko_color_t>(L, 4);
     }
 
-    neko_idraw_rectv(&CL_GAME_USERDATA()->idraw, v1, v2, col, type_val);
+    neko_idraw_rectv(&CL_GAME_INTERFACE()->idraw, v1, v2, col, type_val);
     return 0;
 }
 
@@ -1964,7 +1963,7 @@ static int __neko_bind_idraw_rectvd(lua_State* L) {
 
     neko_color_t col = lua2struct::unpack<neko_color_t>(L, 6);
 
-    neko_idraw_rectvd(&CL_GAME_USERDATA()->idraw, v1, v2, uv0, uv1, col, type_val);
+    neko_idraw_rectvd(&CL_GAME_INTERFACE()->idraw, v1, v2, uv0, uv1, col, type_val);
     return 0;
 }
 
@@ -1979,7 +1978,7 @@ static int __neko_bind_idraw_text(lua_State* L) {
         col = lua2struct::unpack<neko_color_t>(L, 4);
     }
 
-    neko_idraw_text(&CL_GAME_USERDATA()->idraw, x, y, text, NULL, false, col);
+    neko_idraw_text(&CL_GAME_INTERFACE()->idraw, x, y, text, NULL, false, col);
     return 0;
 }
 
@@ -1989,26 +1988,26 @@ static int __neko_bind_idraw_camera(lua_State* L) {
     neko_camera_t camera;
     camera = neko_camera_default();
     neko_vec2 fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
-    neko_idraw_camera(&CL_GAME_USERDATA()->idraw, &camera, (u32)fbs.x, (u32)fbs.y);
+    neko_idraw_camera(&CL_GAME_INTERFACE()->idraw, &camera, (u32)fbs.x, (u32)fbs.y);
     return 0;
 }
 
 static int __neko_bind_idraw_depth_enabled(lua_State* L) {
     bool enable = lua_toboolean(L, 1);
-    neko_idraw_depth_enabled(&CL_GAME_USERDATA()->idraw, enable);
+    neko_idraw_depth_enabled(&CL_GAME_INTERFACE()->idraw, enable);
     return 0;
 }
 
 static int __neko_bind_idraw_face_cull_enabled(lua_State* L) {
     bool enable = lua_toboolean(L, 1);
-    neko_idraw_face_cull_enabled(&CL_GAME_USERDATA()->idraw, enable);
+    neko_idraw_face_cull_enabled(&CL_GAME_INTERFACE()->idraw, enable);
     return 0;
 }
 
 static int __neko_bind_idraw_texture(lua_State* L) {
     neko_texture_t rt = NEKO_DEFAULT_VAL();
     neko_lua_auto_struct_to_member(neko_instance()->L, neko_texture_t, id, &rt, 1);
-    neko_idraw_texture(&CL_GAME_USERDATA()->idraw, rt);
+    neko_idraw_texture(&CL_GAME_INTERFACE()->idraw, rt);
     return 0;
 }
 
@@ -2023,6 +2022,42 @@ static int __neko_bind_render_framebuffer_destroy(lua_State* L) {
     neko_framebuffer_t fbo = NEKO_DEFAULT_VAL();
     neko_lua_auto_struct_to_member(L, neko_framebuffer_t, id, &fbo, 1);
     neko_render_framebuffer_destroy(fbo);
+    return 0;
+}
+
+static int __neko_bind_render_shader_next_shader(lua_State* L) {
+    neko_gl_data_t* ogl = (neko_gl_data_t*)lua_touserdata(L, lua_upvalueindex(1));
+    neko_slot_array_iter* it = (neko_slot_array_iter*)lua_touserdata(L, lua_upvalueindex(2));
+
+    if (!neko_slot_array_iter_valid(ogl->shaders, *it)) {
+        return 0;  // 迭代结束
+    }
+
+    neko_gl_shader_t s = neko_slot_array_iter_get(ogl->shaders, *it);
+    neko_slot_array_iter_advance(ogl->shaders, *it);
+
+    lua_pushinteger(L, s);  // 返回当前 shader
+    return 1;
+}
+
+static int __neko_bind_render_shader_iterator(lua_State* L) {
+    neko_gl_data_t* ogl = neko_render_userdata();
+
+    neko_slot_array_iter* it = (neko_slot_array_iter*)lua_newuserdata(L, sizeof(neko_slot_array_iter));
+    *it = neko_slot_array_iter_new(ogl->shaders);
+
+    lua_pushlightuserdata(L, ogl);
+    lua_pushvalue(L, -2);  // userdata (iterator)
+
+    lua_pushcclosure(L, __neko_bind_render_shader_next_shader, 2);  // 创建闭包
+    return 1;                                                       // 返回迭代器
+}
+
+void inspect_shader(const char* label, GLuint program);
+
+static int __neko_bind_render_shader_inspector(lua_State* L) {
+    u32 shader_id = lua_tonumber(L, 1);
+    inspect_shader(std::to_string(shader_id).c_str(), shader_id);
     return 0;
 }
 
@@ -2311,7 +2346,7 @@ static int __neko_bind_render_storage_buffer_create(lua_State* L) {
 static int __neko_bind_render_pipeline_bind(lua_State* L) {
     neko_pipeline_t pipeline_handle = NEKO_DEFAULT_VAL();
     neko_lua_auto_struct_to_member(L, neko_pipeline_t, id, &pipeline_handle, 1);
-    neko_render_pipeline_bind(&CL_GAME_USERDATA()->cb, pipeline_handle);
+    neko_render_pipeline_bind(&CL_GAME_INTERFACE()->cb, pipeline_handle);
     return 0;
 }
 
@@ -2501,7 +2536,7 @@ static int __neko_bind_render_apply_bindings(lua_State* L) {
         lua_pop(L, 1);  // # -1
     }
 
-    neko_render_apply_bindings(&CL_GAME_USERDATA()->cb, &binds);
+    neko_render_apply_bindings(&CL_GAME_INTERFACE()->cb, &binds);
 
     if (u_desc) free(u_desc);
     if (ib_desc) free(ib_desc);
@@ -2538,7 +2573,7 @@ static int __neko_bind_render_dispatch_compute(lua_State* L) {
     f32 x_groups = lua_tonumber(L, 1);
     f32 y_groups = lua_tonumber(L, 2);
     f32 z_groups = lua_tonumber(L, 3);
-    neko_render_dispatch_compute(&CL_GAME_USERDATA()->cb, x_groups, y_groups, z_groups);
+    neko_render_dispatch_compute(&CL_GAME_INTERFACE()->cb, x_groups, y_groups, z_groups);
     return 0;
 }
 
@@ -2650,12 +2685,12 @@ static int __neko_bind_render_renderpass_destroy(lua_State* L) {
 static int __neko_bind_render_renderpass_begin(lua_State* L) {
     neko_renderpass_t rp = NEKO_DEFAULT_VAL();
     neko_lua_auto_struct_to_member(L, neko_renderpass_t, id, &rp, 1);
-    neko_render_renderpass_begin(&CL_GAME_USERDATA()->cb, rp);
+    neko_render_renderpass_begin(&CL_GAME_INTERFACE()->cb, rp);
     return 0;
 }
 
 static int __neko_bind_render_renderpass_end(lua_State* L) {
-    neko_render_renderpass_end(&CL_GAME_USERDATA()->cb);
+    neko_render_renderpass_end(&CL_GAME_INTERFACE()->cb);
     return 0;
 }
 
@@ -2692,7 +2727,7 @@ static int __neko_bind_render_draw(lua_State* L) {
         lua_pop(L, 1);
     }
 
-    neko_render_draw(&CL_GAME_USERDATA()->cb, &draw_desc);
+    neko_render_draw(&CL_GAME_INTERFACE()->cb, &draw_desc);
     return 0;
 }
 
@@ -2701,7 +2736,7 @@ static int __neko_bind_render_set_viewport(lua_State* L) {
     f32 y = lua_tonumber(L, 2);
     f32 w = lua_tonumber(L, 3);
     f32 h = lua_tonumber(L, 4);
-    neko_render_set_viewport(&CL_GAME_USERDATA()->cb, x, y, w, h);
+    neko_render_set_viewport(&CL_GAME_INTERFACE()->cb, x, y, w, h);
     return 0;
 }
 
@@ -2711,7 +2746,7 @@ static int __neko_bind_render_clear(lua_State* L) {
     f32 b = lua_tonumber(L, 3);
     f32 a = lua_tonumber(L, 4);
     neko_render_clear_action_t clear = {.color = {r, g, b, a}};
-    neko_render_clear(&CL_GAME_USERDATA()->cb, clear);
+    neko_render_clear(&CL_GAME_INTERFACE()->cb, clear);
     return 0;
 }
 
@@ -3570,6 +3605,8 @@ static int open_embed_core(lua_State* L) {
             {"render_renderpass_end", __neko_bind_render_renderpass_end},
             {"render_set_viewport", __neko_bind_render_set_viewport},
             {"render_clear", __neko_bind_render_clear},
+            {"render_shader_inspector", __neko_bind_render_shader_inspector},
+            {"render_shader_iterator", __neko_bind_render_shader_iterator},
             {"render_shader_create", __neko_bind_render_shader_create},
             {"render_uniform_create", __neko_bind_render_uniform_create},
             {"render_pipeline_create", __neko_bind_render_pipeline_create},

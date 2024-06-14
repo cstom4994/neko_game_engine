@@ -276,9 +276,7 @@ game_render = function()
         dump_func({v3_c.x, v3_c.y, v3_c.z})
     end
 
-    if ImGui.Button("test_ffi_reloadable") then
-
-    end
+    -- ImGui.Checkbox(neko_game.cvar.shader_inspect)
 
     ImGui.Separator()
     -- if ImGui.InputText("TEST", text) then
@@ -288,6 +286,15 @@ game_render = function()
     -- ImGui.Image(test_tex, 100.0, 100.0)
     -- ImGui.Image(test_custom_sprite.tex, 100.0, 100.0)
     ImGui.End()
+
+    if neko_game.cvar.shader_inspect then
+        ImGui.Begin("Shader")
+        local iter = neko.render_shader_iterator()
+        for shader in iter do
+            neko.render_shader_inspector(shader)
+        end
+        ImGui.End()
+    end
 
     -- __neko_luainspector_draw(__neko_luainspector_get())
 

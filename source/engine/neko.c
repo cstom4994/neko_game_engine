@@ -119,8 +119,6 @@ void log_set_lock(neko_log_lock_fn fn, void* udata) {
     L.udata = udata;
 }
 
-void log_set_level(int level) { L.level = level; }
-
 void log_set_quiet(bool enable) { L.quiet = enable; }
 
 int log_add_callback(neko_log_fn fn, void* udata, int level) {

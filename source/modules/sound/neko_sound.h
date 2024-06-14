@@ -5,9 +5,12 @@
 #include <miniaudio.h>
 // #include "engine/neko_api.hpp"
 #include "engine/neko.h"
+#include "engine/neko_engine.h"
 
 // typedef ma_engine neko_audio_engine;
 // typedef ma_sound neko_sound;
+
+extern Neko_ModuleInterface* g_interface;
 
 typedef struct neko_lua_sound {
     ma_sound ma;

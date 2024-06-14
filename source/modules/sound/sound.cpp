@@ -1,5 +1,6 @@
 
 #include "engine/neko_api.hpp"
+#include "engine/neko_engine.h"
 #include "engine/neko_luabind.hpp"
 #include "neko_sound.h"
 
@@ -194,4 +195,18 @@ static int neko_sound_load(lua_State* L) {
 
     luax_ptr_userdata(L, sound, "mt_sound");
     return 1;
+}
+
+#if defined(_WIN32) || defined(_WIN64)
+#define NEKO_DLL_EXPORT extern "C" __declspec(dllexport)
+#else
+#define NEKO_DLL_EXPORT extern "C"
+#endif
+
+Neko_ModuleInterface* g_interface;
+
+NEKO_DLL_EXPORT s32 Neko_OnLibraryLoad(Neko_ModuleInterface* interface) {
+    assert(interface != NULL);
+    g_interface = interface;
+    return 666;
 }

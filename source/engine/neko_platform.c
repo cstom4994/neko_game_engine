@@ -2376,7 +2376,7 @@ NEKO_API_DECL neko_platform_window_t neko_platform_window_create_internal(const 
 
     if (!desc) {
         // Log warning
-        NEKO_WARN("Window descriptor is null.");
+        NEKO_WARN("window descriptor is null");
         return win;
     }
 
@@ -2405,7 +2405,7 @@ NEKO_API_DECL neko_platform_window_t neko_platform_window_create_internal(const 
 
     GLFWwindow* window = glfwCreateWindow(desc->width, desc->height, desc->title, monitor, NULL);
     if (window == NULL) {
-        NEKO_ERROR("%s", "Failed to create window.");
+        NEKO_ERROR("%s", "failed to create window");
         glfwTerminate();
         return win;
     }
@@ -2436,11 +2436,11 @@ NEKO_API_DECL neko_platform_window_t neko_platform_window_create_internal(const 
     // 只执行一次
     if (neko_slot_array_empty(neko_subsystem(platform)->windows)) {
         if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-            NEKO_WARN("Failed to initialize GLFW.");
+            NEKO_WARN("failed to initialize GLFW");
             return win;
         }
 
-        NEKO_INFO("OpenGL Version: %s", glGetString(GL_VERSION));
+        NEKO_INFO("opengl version: %s", glGetString(GL_VERSION));
         if (neko_cvar("settings.video.render.debug")->value.i) {
             // glDebugMessageCallback(__neko_platform_gl_debug, NULL);
         }

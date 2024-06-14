@@ -2,7 +2,8 @@
 #ifndef NEKO_ASSET_IMPL
 #define NEKO_ASSET_IMPL
 
-#include "engine/neko_engine.h"
+#include "engine/neko.h"
+#include "engine/neko_render.h"
 
 // Asset handle
 typedef struct neko_asset_t {

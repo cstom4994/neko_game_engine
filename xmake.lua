@@ -95,14 +95,17 @@ local function neko_build_register(module, package)
     local buildname = neko_module_name(module)
     target(buildname)
     do
-        set_kind("static")
+        set_kind("shared")
         add_files("source/modules/" .. module .. "/**.c", "source/modules/" .. module .. "/**.cpp")
-        add_deps("neko_engine")
+        -- add_deps("neko_engine")
         add_packages(base_libs, package)
+
+        set_targetdir("./")
     end
 end
 
 neko_build_register("sound", {"miniaudio"})
+-- neko_build_register("flecs", {"flecs"})
 
 target("sandbox")
 do
@@ -112,13 +115,18 @@ do
     add_headerfiles("source/sandbox/**.h", "source/sandbox/**.hpp")
 
     add_deps("neko_engine")
-    add_deps(neko_module_name("sound"))
+    -- add_deps(neko_module_name("sound"))
 
     add_packages(base_libs)
 
     set_targetdir("./")
     set_rundir("./")
 end
+
+-- target(neko_module_name("test"))
+-- do
+--     set_kind("shared")
+-- end
 
 xpack("luacode")
 do

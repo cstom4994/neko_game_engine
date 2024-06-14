@@ -220,6 +220,54 @@ template <typename T>
 T& checkudata(lua_State* L, int arg) {
     return *udata_align<T>(luaL_checkudata(L, arg, reflection::name_v<T>.data()));
 }
+
+template <typename T>
+void checktable_refl(lua_State* L, const_str tname, T&& v) {
+
+#define FUCK_TYPES() u32, b32, f32, bool, const_str
+
+    if (lua_getfield(L, -1, tname) == LUA_TNIL) {
+        NEKO_ERROR("[exception] no %s table", tname);
+    }
+    if (lua_istable(L, -1)) {
+        // neko::static_refl::neko_type_info<neko_platform_running_desc_t>::ForEachVarOf(t, [](auto field, auto &&value) {
+        //     static_assert(std::is_lvalue_reference_v<decltype(value)>);
+        //     if (lua_getfield(L, -1, std::string(field.name).c_str()) != LUA_TNIL) value = neko_lua_to<std::remove_reference_t<decltype(value)>>(L, -1);
+        //     lua_pop(L, 1);
+        // });
+
+        auto f = [&L](std::string_view name, neko::reflection::Any& value) {
+            static_assert(std::is_lvalue_reference_v<decltype(value)>);
+            // if (value.GetType() == neko::reflection::type_of<std::string_view>()) {
+            //     std::cout << name << " = " << value.cast<std::string_view>() << std::endl;
+            // } else if (value.GetType() == neko::reflection::type_of<std::size_t>()) {
+            //     std::cout << name << " = " << value.cast<std::size_t>() << std::endl;
+            // }
+            if (lua_getfield(L, -1, std::string(name).c_str()) != LUA_TNIL) {
+
+                auto ff = [&]<typename S>(const_str name, neko::reflection::Any& var, S& t) {
+                    if (value.GetType() == neko::reflection::type_of<S>()) {
+                        S s = neko_lua_to<std::remove_reference_t<S>>(L, -1);
+                        value.cast<S>() = s;
+                        if constexpr (std::is_same_v<S, const_str>) {
+                            NEKO_DEBUG_LOG("%s : %s", neko::reflection::name_v<std::remove_reference_t<S>>.data(), s);
+                        } else if constexpr (std::is_integral_v<S>) {
+                            NEKO_DEBUG_LOG("%s : %d", neko::reflection::name_v<std::remove_reference_t<S>>.data(), s);
+                        }
+                    }
+                };
+
+                std::apply([&](auto&&... args) { (ff(std::string(name).c_str(), value, args), ...); }, std::tuple<FUCK_TYPES()>());
+            }
+            lua_pop(L, 1);
+        };
+        v.foreach (f);
+    } else {
+        NEKO_ERROR("[exception] no %s table", tname);
+    }
+    lua_pop(L, 1);
+}
+
 }  // namespace neko::lua
 
 // lua2struct

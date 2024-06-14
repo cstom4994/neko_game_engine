@@ -45,11 +45,11 @@ local M = {
         gd.rt = neko.render_texture_create(win_w, win_h)
         gd.rp = neko.render_renderpass_create(gd.fbo, gd.rt)
 
-        test_shader = neko.render_shader_create("compute", {
-            -- VERTEX = sprite_vs,
-            -- FRAGMENT = sprite_fs
-            COMPUTE = comp_src
-        })
+        -- test_shader = neko.render_shader_create("compute", {
+        --     -- VERTEX = sprite_vs,
+        --     -- FRAGMENT = sprite_fs
+        --     COMPUTE = comp_src
+        -- })
 
         test_uniform = neko.render_uniform_create("u_roll", {{
             type = "R_UNIFORM_FLOAT"
@@ -64,11 +64,11 @@ local M = {
             mag_filter = "R_TEXTURE_FILTER_NEAREST"
         })
 
-        test_pipeline = neko.render_pipeline_create("test_pipeline", {
-            compute = {
-                shader = test_shader
-            }
-        })
+        -- test_pipeline = neko.render_pipeline_create("test_pipeline", {
+        --     compute = {
+        --         shader = test_shader
+        --     }
+        -- })
 
         test_vec4_data = luastruct_test.udata(CObject.s["neko_vec4_t"]:size("struct neko_vec4_t"))
         CObject.setter("neko_vec4_t", "x")(test_vec4_data, 0.0)
@@ -171,22 +171,22 @@ local M = {
 
         local roll = neko_platform_elapsed_time() * 0.001
 
-        neko.render_pipeline_bind(test_pipeline)
-        neko.render_apply_bindings({
-            uniforms = {{
-                uniform = test_uniform,
-                data = roll
-            }},
-            image_buffers = {{
-                tex = test_tex,
-                binding = 0
-            }},
-            storage_buffers = {{
-                buffer = test_storage_buffer,
-                binding = 1
-            }}
-        })
-        neko.render_dispatch_compute(TEX_WIDTH / 16, TEX_HEIGHT / 16, 1)
+        -- neko.render_pipeline_bind(test_pipeline)
+        -- neko.render_apply_bindings({
+        --     uniforms = {{
+        --         uniform = test_uniform,
+        --         data = roll
+        --     }},
+        --     image_buffers = {{
+        --         tex = test_tex,
+        --         binding = 0
+        --     }},
+        --     storage_buffers = {{
+        --         buffer = test_storage_buffer,
+        --         binding = 1
+        --     }}
+        -- })
+        -- neko.render_dispatch_compute(TEX_WIDTH / 16, TEX_HEIGHT / 16, 1)
 
         local v1 = to_vec2(0.0, 0.0)
         local v2 = to_vec2(TEX_WIDTH, TEX_HEIGHT)

@@ -3716,7 +3716,7 @@ NEKO_API_DECL void neko_render_init(neko_render_t* render) {
     }
 
     const GLubyte* glslv = glGetString(GL_SHADING_LANGUAGE_VERSION);
-    NEKO_INFO("GLSL Version: %s", glslv);
+    NEKO_INFO("glsl version: %s", glslv);
 
 #if defined(NEKO_DEBUG) && 0
     int numExtensions;

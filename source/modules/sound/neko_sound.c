@@ -9,6 +9,11 @@
 #define MINIAUDIO_IMPLEMENTATION
 #include <miniaudio.h>
 
+#define neko_safe_malloc(size) g_interface->common.__neko_mem_safe_alloc((size), (char *)__FILE__, __LINE__, NULL)
+#define neko_safe_free(mem) g_interface->common.__neko_mem_safe_free((void *)mem, NULL)
+#define neko_safe_realloc(ptr, size) g_interface->common.__neko_mem_safe_realloc((ptr), (size), (char *)__FILE__, __LINE__, NULL)
+#define neko_safe_calloc(count, element_size) g_interface->common.__neko_mem_safe_calloc(count, element_size, (char *)__FILE__, __LINE__, NULL)
+
 // #include "sandbox/hpp/neko_cpp_utils.hpp"
 
 static void on_sound_end(void *udata, ma_sound *ma) {

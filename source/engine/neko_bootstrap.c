@@ -17,7 +17,7 @@ NEKO_API_DECL neko_t* neko_create(int argc, char** argv) {
     if (neko_instance() != NULL) {
 
         __neko_mem_init(argc, argv);
-        
+
         // 设置函数指针
         neko_instance()->fini = &neko_fini;
 
@@ -185,6 +185,18 @@ void neko_quit() {
 #ifndef NEKO_PLATFORM_WEB
     neko_instance()->game.is_running = false;
 #endif
+}
+
+void neko_module_interface_init(Neko_ModuleInterface* interface) {
+
+    interface->common.__neko_mem_safe_alloc = &__neko_mem_safe_alloc;
+    interface->common.__neko_mem_safe_calloc = &__neko_mem_safe_calloc;
+    interface->common.__neko_mem_safe_realloc = &__neko_mem_safe_realloc;
+    interface->common.__neko_mem_safe_free = &__neko_mem_safe_free;
+
+    interface->cb = neko_command_buffer_new();
+    interface->idraw = neko_immediate_draw_new();
+    interface->am = neko_asset_manager_new();
 }
 
 //=============================

@@ -375,7 +375,6 @@ enum { LOG_TRACE, LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR };
 
 NEKO_API_DECL const char* log_level_string(int level);
 NEKO_API_DECL void log_set_lock(neko_log_lock_fn fn, void* udata);
-NEKO_API_DECL void log_set_level(int level);
 NEKO_API_DECL void log_set_quiet(bool enable);
 NEKO_API_DECL int log_add_callback(neko_log_fn fn, void* udata, int level);
 
@@ -2283,5 +2282,7 @@ NEKO_API_DECL void neko_config_print();
                 break;                                                     \
         };                                                                 \
     } while (0)
+
+NEKO_API_DECL s32 neko_buildnum(void);
 
 #endif  // NEKO_H

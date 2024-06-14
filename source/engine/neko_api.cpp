@@ -13,7 +13,6 @@
 #include "engine/neko_luabind.hpp"
 
 // game
-#include "sandbox/game_editor.h"
 #include "sandbox/game_main.h"
 
 void __neko_lua_print_error(lua_State* state, int result) {
@@ -233,129 +232,6 @@ int Angle(lua_State* L) {
     return 1;
 }
 
-int rgbToHSV(lua_State* L) {
-    lua_getfield(L, 1, "r");
-    lua_getfield(L, 1, "g");
-    lua_getfield(L, 1, "b");
-    lua_getfield(L, 1, "a");
-
-    float r = lua_tonumber(L, -4);
-    float g = lua_tonumber(L, -3);
-    float b = lua_tonumber(L, -2);
-    float a = lua_tonumber(L, -1);
-
-    float min, max, delta;
-    float h, s, v;
-
-    min = fminf(r, fminf(g, b));
-    max = fmaxf(r, fmaxf(g, b));
-    v = max;
-
-    if (max != 0)
-        s = (max - min) / max;
-    else {
-        s = 0;
-        h = -1;  // Undefined
-    }
-
-    delta = max - min;
-    if (delta == 0) {
-        h = 0;
-    } else if (r == max) {
-        h = (g - b) / delta;
-    } else if (g == max) {
-        h = 2 + (b - r) / delta;
-    } else {
-        h = 4 + (r - g) / delta;
-    }
-
-    h *= 60;
-    if (h < 0) h += 360;
-
-    lua_newtable(L);
-    setFieldInt(L, "r", h);
-    setFieldInt(L, "g", s);
-    setFieldInt(L, "b", v);
-    setFieldInt(L, "a", a);
-
-    return 1;
-}
-
-int hsvToRGB(lua_State* L) {
-    lua_getfield(L, 1, "r");
-    lua_getfield(L, 1, "g");
-    lua_getfield(L, 1, "b");
-    lua_getfield(L, 1, "a");
-
-    double h = lua_tonumber(L, -4);
-    double s = lua_tonumber(L, -3) / 100.0f;
-    double v = lua_tonumber(L, -2) / 100.0f;
-    double a = lua_tonumber(L, -1);
-
-    double r, g, b;
-
-    if (s == 0) {
-        r = v;
-        g = v;
-        b = v;
-    } else {
-        if (h >= 360)
-            h = 0;
-        else
-            h = h / 60.0f;
-
-        int i = (int)trunc(h);
-        double f = h - i;  // h 的小数部分
-
-        double p = v * (1.0f - s);
-        double q = v * (1.0f - (s * f));
-        double t = v * (1.0f - (s * (1.0f - f)));
-
-        switch (i) {
-            case 0:
-                r = v;
-                g = t;
-                b = p;
-                break;
-            case 1:
-                r = q;
-                g = v;
-                b = p;
-                break;
-            case 2:
-                r = p;
-                g = v;
-                b = t;
-                break;
-            case 3:
-                r = p;
-                g = q;
-                b = v;
-                break;
-            case 4:
-                r = t;
-                g = p;
-                b = v;
-                break;
-            default:
-                r = v;
-                g = p;
-                b = q;
-                break;
-        }
-    }
-
-    lua_newtable(L);
-    setFieldInt(L, "r", r * 255);
-    setFieldInt(L, "g", g * 255);
-    setFieldInt(L, "b", b * 255);
-    setFieldInt(L, "a", a);
-
-    return 1;
-}
-
-static const luaL_Reg colorMethods[] = {{"rgbToHSV", rgbToHSV}, {"hsvToRGB", hsvToRGB}, {NULL, NULL}};
-
 int Color(lua_State* L) {
     float r = luaL_optnumber(L, 1, 255.0f);
     float g = luaL_optnumber(L, 2, 255.0f);
@@ -368,7 +244,7 @@ int Color(lua_State* L) {
     setFieldInt(L, "b", b);
     setFieldInt(L, "a", a);
 
-    addMethods(L, "color", colorMethods);
+    // addMethods(L, "color", colorMethods);
 
     return 1;
 }
@@ -392,7 +268,7 @@ static int __neko_loader(lua_State* L) {
     u8* data;
     u32 data_size;
 
-    int result = neko_pack_item_data(&CL_GAME_USERDATA()->pack, path.c_str(), (const u8**)&data, &data_size);
+    int result = neko_pack_item_data(&CL_GAME_INTERFACE()->pack, path.c_str(), (const u8**)&data, &data_size);
     if (result == 0) {
         if (luaL_loadbuffer(L, (char*)data, data_size, name) != LUA_OK) {
             lua_pop(L, 1);
@@ -400,7 +276,7 @@ static int __neko_loader(lua_State* L) {
             neko_println("loaded:%s", path.c_str());
         }
 
-        neko_pack_item_free(&CL_GAME_USERDATA()->pack, data);
+        neko_pack_item_free(&CL_GAME_INTERFACE()->pack, data);
     }
 
     return 1;

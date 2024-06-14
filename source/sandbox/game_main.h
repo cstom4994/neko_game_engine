@@ -22,21 +22,9 @@ struct game_font_render_batch;
 
 typedef struct neko_client_userdata_t {
 
-    neko_command_buffer_t cb = NEKO_DEFAULT_VAL();
-    neko_ui_context_t ui = NEKO_DEFAULT_VAL();
-    // neko_ui_style_sheet_t style_sheet;
-    neko_immediate_draw_t idraw = NEKO_DEFAULT_VAL();
-    neko_asset_ascii_font_t font;
-    neko_imgui_context_t imgui = NEKO_DEFAULT_VAL();
-    neko_texture_t test_ase = NEKO_DEFAULT_VAL();
-    neko_asset_manager_t am = NEKO_DEFAULT_VAL();
-    neko_asset_t tex_hndl = NEKO_DEFAULT_VAL();
-    neko_packreader_t pack = NEKO_DEFAULT_VAL();
-    neko_packreader_t lua_pack = NEKO_DEFAULT_VAL();
+    Neko_ModuleInterface interface{};
 
-    // ecs_world_t* ecs_world;
-    // neko_dyn_array(ecs_entity_t) entities;
-    neko_ecs_t* ecs;
+    neko_imgui_context_t imgui = NEKO_DEFAULT_VAL();
 
     neko_handle(neko_render_renderpass_t) main_rp = {0};
     neko_handle(neko_render_framebuffer_t) main_fbo = {0};
@@ -65,6 +53,7 @@ typedef struct neko_client_userdata_t {
 extern neko_client_userdata_t g_client_userdata;
 
 NEKO_INLINE neko_client_userdata_t* CL_GAME_USERDATA() { return &g_client_userdata; }
+NEKO_INLINE Neko_ModuleInterface* CL_GAME_INTERFACE() { return &g_client_userdata.interface; }
 
 // TODO:
 std::string game_assets(const std::string& path);

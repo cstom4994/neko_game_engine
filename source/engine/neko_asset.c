@@ -8,6 +8,7 @@
 
 #include "engine/neko.h"
 #include "engine/neko_common.h"
+#include "engine/neko_platform.h"
 
 // stb_image
 #include "deps/stb_image.h"
