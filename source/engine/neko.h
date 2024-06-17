@@ -23,17 +23,17 @@
 
 #if (defined __ANDROID__)
 
-#define NEKO_PLATFORM_ANDROID
+#define NEKO_PF_ANDROID
 
 #elif (defined __APPLE__ || defined _APPLE)
 
-#define NEKO_PLATFORM_APPLE
+#define NEKO_PF_APPLE
 
 #include <malloc/malloc.h>
 
 #elif (defined _WIN32 || defined _WIN64)
 
-#define NEKO_PLATFORM_WIN
+#define NEKO_PF_WIN
 #define __USE_MINGW_ANSI_STDIO 1
 #define OEMRESOURCE
 #define _WINSOCKAPI_
@@ -44,13 +44,13 @@
 
 #elif (defined linux || defined _linux || defined __linux__)
 
-#define NEKO_PLATFORM_LINUX
+#define NEKO_PF_LINUX
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
 
 #elif (defined __EMSCRIPTEN__)
-#define NEKO_PLATFORM_WEB
+#define NEKO_PF_WEB
 #endif
 
 #if defined(DEBUG) || defined(_DEBUG)
@@ -83,12 +83,10 @@
 // Defines
 ========================*/
 
-#ifndef NEKO_INLINE
-#if defined(NEKO_PLATFORM_LINUX)
+#if defined(NEKO_PF_LINUX)
 #define NEKO_INLINE static inline
-#elif defined(NEKO_PLATFORM_APPLE)
+#elif defined(NEKO_PF_APPLE) || defined(NEKO_PF_WIN)
 #define NEKO_INLINE inline
-#endif
 #endif
 
 #ifndef NEKO_STATIC
@@ -266,7 +264,7 @@ typedef uintptr_t uptr;
 
 #define neko_printf(__FMT, ...) __mingw_printf(__FMT, ##__VA_ARGS__)
 
-#elif (defined NEKO_PLATFORM_ANDROID)
+#elif (defined NEKO_PF_ANDROID)
 
 #include <android/log.h>
 
@@ -288,7 +286,7 @@ NEKO_API_DECL void neko_printf(const char* fmt, ...);
     do {                                                                                          \
         char tmp[512];                                                                            \
         neko_snprintf(tmp, 512, msg, __VA_ARGS__);                                                \
-        log_error("%s (%s:%s:%zu)", tmp, neko_fs_get_filename(__FILE__), __FUNCTION__, __LINE__); \
+        log_error("%s (%s:%s:%zu)", tmp, neko_util_get_filename(__FILE__), __FUNCTION__, __LINE__); \
     } while (0)
 
 #define NEKO_VA_UNPACK(...) __VA_ARGS__  // 用于解包括号 带逗号的宏参数需要它
@@ -327,7 +325,7 @@ NEKO_API_DECL void* __neko_mem_safe_calloc(size_t count, size_t element_size, co
 NEKO_API_DECL void __neko_mem_safe_free(void* mem, size_t* statistics);
 NEKO_API_DECL void* __neko_mem_safe_realloc(void* ptr, size_t new_size, const char* file, int line, size_t* statistics);
 
-#if 1
+#if defined(_DEBUG) && !defined(NEKO_MODULE_BUILD)
 
 #define neko_safe_malloc(size) __neko_mem_safe_alloc((size), (char*)__FILE__, __LINE__, NULL)
 #define neko_safe_free(mem) __neko_mem_safe_free((void*)mem, NULL)
@@ -852,23 +850,14 @@ NEKO_FORCE_INLINE void neko_util_get_dir_from_file(char* buffer, u32 buffer_size
     }
 }
 
-NEKO_FORCE_INLINE void neko_util_get_file_name(char* buffer, u32 buffer_size, const char* file_path) {
-    u32 str_len = neko_string_length(file_path);
-    const char* file_start = file_path;
-    const char* file_end = (file_path + str_len);
-    for (u32 i = 0; i < str_len; ++i) {
-        if (file_path[i] == '/' || file_path[i] == '\\') {
-            file_start = &file_path[i + 1];
-        } else if (file_path[i] == '.') {
-            file_end = &file_path[i];
+NEKO_FORCE_INLINE const_str neko_util_get_filename(const_str path) {
+    int len = strlen(path);
+    for (int i = len - 1; i >= 0; i--) {
+        if (path[i] == '\\' || path[i] == '/') {
+            return path + i + 1;
         }
     }
-
-    size_t dir_len = file_end - file_start;
-    memcpy(buffer, file_start, NEKO_MIN(buffer_size, dir_len + 1));
-    if (dir_len + 1 <= buffer_size) {
-        buffer[dir_len] = '\0';
-    }
+    return path;
 }
 
 NEKO_FORCE_INLINE void neko_util_string_substring(const char* src, char* dst, size_t sz, u32 start, u32 end) {
@@ -929,23 +918,7 @@ NEKO_FORCE_INLINE void neko_util_string_replace_delim(const char* source_str, ch
     }
 }
 
-NEKO_FORCE_INLINE void neko_util_normalize_path(const char* path, char* buffer, u32 buffer_size) {
-    // Normalize the path somehow...
-}
 
-NEKO_FORCE_INLINE const_str neko_fs_get_filename(const_str path) {
-    int len = strlen(path);
-    int flag = 0;
-
-    for (int i = len - 1; i > 0; i--) {
-        if (path[i] == '\\' || path[i] == '//' || path[i] == '/') {
-            flag = 1;
-            path = path + i + 1;
-            break;
-        }
-    }
-    return path;
-}
 
 #define neko_println(__FMT, ...)           \
     do {                                   \
@@ -1193,125 +1166,7 @@ NEKO_API_DECL b32 neko_util_load_texture_data_from_file(const char* file_path, s
 NEKO_API_DECL b32 neko_util_load_texture_data_from_memory(const void* memory, size_t sz, s32* width, s32* height, u32* num_comps, void** data, b32 flip_vertically_on_load);
 
 NEKO_STATIC_INLINE u16 neko_read_LE16(const u8* data) { return (u16)((data[1] << 8) | data[0]); }
-
 NEKO_STATIC_INLINE u32 neko_read_LE32(const u8* data) { return (((u32)data[3] << 24) | ((u32)data[2] << 16) | ((u32)data[1] << 8) | (u32)data[0]); }
-
-/*========================
-// NEKO_MEMORY
-========================*/
-
-#define neko_ptr_add(P, BYTES) (((u8*)P + (BYTES)))
-
-typedef struct neko_memory_block_t {
-    u8* data;
-    size_t size;
-} neko_memory_block_t;
-
-NEKO_API_DECL neko_memory_block_t neko_memory_block_new(size_t sz);
-NEKO_API_DECL void neko_memory_block_free(neko_memory_block_t* mem);
-NEKO_API_DECL size_t neko_memory_calc_padding(size_t base_address, size_t alignment);
-NEKO_API_DECL size_t neko_memory_calc_padding_w_header(size_t base_address, size_t alignment, size_t header_sz);
-
-/*================================================================================
-// Linear Allocator
-================================================================================*/
-
-typedef struct neko_linear_allocator_t {
-    u8* memory;
-    size_t total_size;
-    size_t offset;
-} neko_linear_allocator_t;
-
-NEKO_API_DECL neko_linear_allocator_t neko_linear_allocator_new(size_t sz);
-NEKO_API_DECL void neko_linear_allocator_free(neko_linear_allocator_t* la);
-NEKO_API_DECL void* neko_linear_allocator_allocate(neko_linear_allocator_t* la, size_t sz, size_t alignment);
-NEKO_API_DECL void neko_linear_allocator_clear(neko_linear_allocator_t* la);
-
-/*================================================================================
-// Stack Allocator
-================================================================================*/
-
-typedef struct neko_stack_allocator_header_t {
-    u32 size;
-} neko_stack_allocator_header_t;
-
-typedef struct neko_stack_allocator_t {
-    neko_memory_block_t memory;
-    size_t offset;
-} neko_stack_allocator_t;
-
-NEKO_API_DECL neko_stack_allocator_t neko_stack_allocator_new(size_t sz);
-NEKO_API_DECL void neko_stack_allocator_free(neko_stack_allocator_t* sa);
-NEKO_API_DECL void* neko_stack_allocator_allocate(neko_stack_allocator_t* sa, size_t sz);
-NEKO_API_DECL void* neko_stack_allocator_peek(neko_stack_allocator_t* sa);
-NEKO_API_DECL void* neko_stack_allocator_pop(neko_stack_allocator_t* sa);
-NEKO_API_DECL void neko_stack_allocator_clear(neko_stack_allocator_t* sa);
-
-/*================================================================================
-// Heap Allocator
-================================================================================*/
-
-#ifndef NEKO_HEAP_ALLOC_DEFAULT_SIZE
-#define NEKO_HEAP_ALLOC_DEFAULT_SIZE 1024 * 1024 * 20
-#endif
-
-#ifndef NEKO_HEAP_ALLOC_DEFAULT_CAPCITY
-#define NEKO_HEAP_ALLOC_DEFAULT_CAPCITY 1024
-#endif
-
-typedef struct neko_heap_allocator_header_t {
-    struct neko_heap_allocator_header_t* next;
-    struct neko_heap_allocator_header_t* prev;
-    size_t size;
-} neko_heap_allocator_header_t;
-
-typedef struct neko_heap_allocator_free_block_t {
-    neko_heap_allocator_header_t* header;
-    size_t size;
-} neko_heap_allocator_free_block_t;
-
-typedef struct neko_heap_allocator_t {
-    neko_heap_allocator_header_t* memory;
-    neko_heap_allocator_free_block_t* free_blocks;
-    u32 free_block_count;
-    u32 free_block_capacity;
-} neko_heap_allocator_t;
-
-NEKO_API_DECL neko_heap_allocator_t neko_heap_allocate_new();
-NEKO_API_DECL void neko_heap_allocator_free(neko_heap_allocator_t* ha);
-NEKO_API_DECL void* neko_heap_allocator_allocate(neko_heap_allocator_t* ha, size_t sz);
-NEKO_API_DECL void neko_heap_allocator_deallocate(neko_heap_allocator_t* ha, void* memory);
-
-/*================================================================================
-// Pool Allocator
-================================================================================*/
-
-/*================================================================================
-// Paged Allocator
-================================================================================*/
-
-typedef struct neko_paged_allocator_block_t {
-    struct neko_paged_allocator_block_t* next;
-} neko_paged_allocator_block_t;
-
-typedef struct neko_paged_allocator_page_t {
-    struct neko_paged_allocator_page_t* next;
-    struct neko_paged_allocator_block_t* data;
-} neko_paged_allocator_page_t;
-
-typedef struct neko_paged_allocator_t {
-    u32 block_size;
-    u32 blocks_per_page;
-    neko_paged_allocator_page_t* pages;
-    u32 page_count;
-    neko_paged_allocator_block_t* free_list;
-} neko_paged_allocator_t;
-
-NEKO_API_DECL neko_paged_allocator_t neko_paged_allocator_new(size_t element_size, size_t elements_per_page);
-NEKO_API_DECL void neko_paged_allocator_free(neko_paged_allocator_t* pa);
-NEKO_API_DECL void* neko_paged_allocator_allocate(neko_paged_allocator_t* pa);
-NEKO_API_DECL void neko_paged_allocator_deallocate(neko_paged_allocator_t* pa, void* data);
-NEKO_API_DECL void neko_paged_allocator_clear(neko_paged_allocator_t* pa);
 
 /*================================================================================
 // Random

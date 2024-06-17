@@ -16,7 +16,7 @@
 #include "engine/neko.h"
 #include "engine/neko_luabind.hpp"
 
-namespace neko::lua_cffi {
+namespace neko::lua::__cffi {
 
 #define INT_TYPE_LIST_(macro)                                                                                                                                        \
     macro(FFI_TYPE_UINT8, uint8_t, uint8) macro(FFI_TYPE_UINT16, uint16_t, uint16) macro(FFI_TYPE_UINT32, uint32_t, uint32) macro(FFI_TYPE_UINT64, uint64_t, uint64) \
@@ -877,7 +877,7 @@ static void define_types(lua_State *L, int table) {
     }
 }
 
-static int luaopen(lua_State *L) {
+LUABIND_MODULE() {
     static const luaL_Reg lib_reg[] = {
             {"loadlib", loadlib}, {"makecif", makecif}, {"alloc", alloc}, {"struct", makestruct}, {"sizeof", sizeof_},      {"alignof", alignof_},
             {"typeof", typeof_},  {"field", getfield},  {"deref", deref}, {"ref", ref_offset},    {"closure", makeclosure}, {NULL, NULL},
@@ -917,17 +917,17 @@ static int luaopen(lua_State *L) {
     return 1;
 }
 
-}  // namespace neko::lua_cffi
+}  // namespace neko::lua::__cffi
 
 DEFINE_LUAOPEN(cffi)
 
 void ffi_module_open(lua_State *L);
 
-namespace neko::lua_ffi {
-static int luaopen(lua_State *L) {
+namespace neko::lua::__ffi {
+LUABIND_MODULE() {
     ffi_module_open(L);
     return 1;
 }
-}  // namespace neko::lua_ffi
+}  // namespace neko::lua::__ffi
 
 DEFINE_LUAOPEN(ffi)

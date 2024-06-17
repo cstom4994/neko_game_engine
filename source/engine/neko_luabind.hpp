@@ -7,6 +7,9 @@
 #include "neko_lua.hpp"
 #include "neko_reflection.hpp"
 
+#define LUA_FUNCTION(F) static int F(lua_State* L)
+#define LUABIND_MODULE(...) static int luaopen(lua_State* L)
+
 namespace neko::lua {
 struct callfunc {
     template <typename F, typename... Args>
@@ -34,8 +37,8 @@ inline int preload_module(lua_State* L) {
 }
 }  // namespace neko::lua
 
-#define DEFINE_LUAOPEN(name)                                                        \
-    int luaopen_neko_##name(lua_State* L) { return neko::lua_##name ::luaopen(L); } \
+#define DEFINE_LUAOPEN(name)                                                           \
+    int luaopen_neko_##name(lua_State* L) { return neko::lua::__##name ::luaopen(L); } \
     static ::neko::lua::callfunc __init_##name(::neko::lua::register_module, "neko." #name, luaopen_neko_##name);
 
 namespace neko::lua {
@@ -217,8 +220,8 @@ T& newudata(lua_State* L, Args&&... args) {
 }
 
 template <typename T>
-T& checkudata(lua_State* L, int arg) {
-    return *udata_align<T>(luaL_checkudata(L, arg, reflection::name_v<T>.data()));
+T& checkudata(lua_State* L, int arg, const_str tname = reflection::name_v<T>.data()) {
+    return *udata_align<T>(luaL_checkudata(L, arg, tname));
 }
 
 template <typename T>

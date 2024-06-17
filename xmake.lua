@@ -17,16 +17,16 @@ add_includedirs("source/")
 
 add_includedirs("source/deps/glad/include/")
 
-local base_libs = {"glfw", "libffi", "lua", "imgui"}
+local base_libs = {"glfw", "libffi", "lua", "imgui", "miniz", "stb"}
 
 if is_os("windows") or is_os("macosx") then
-    add_requires("glfw", "libffi", "lua")
+    add_requires("glfw", "libffi", "lua", "miniz", "stb")
     add_requires("imgui v1.90.8-docking", {
         configs = {
             wchar32 = true
         }
     })
-    add_requires("miniaudio", "flecs")
+    add_requires("miniaudio", "flecs", "box2d")
 else
     -- add_requires(base_libs)
 end
@@ -81,7 +81,6 @@ do
     add_files("source/engine/embed/*.lua")
     add_files("source/engine/**.c")
     add_files("source/engine/**.cpp")
-    add_files("source/deps/impl_build.cpp")
     add_headerfiles("source/engine/**.h", "source/engine/**.hpp")
 
     add_packages(base_libs)
@@ -96,7 +95,12 @@ local function neko_build_register(module, package)
     target(buildname)
     do
         set_kind("shared")
+        add_defines("NEKO_MODULE_BUILD")
+        add_rules("utils.bin2c", {
+            extensions = {".lua"}
+        })
         add_files("source/modules/" .. module .. "/**.c", "source/modules/" .. module .. "/**.cpp")
+        add_files("source/modules/" .. module .. "/*.lua")
         -- add_deps("neko_engine")
         add_packages(base_libs, package)
 
@@ -105,6 +109,7 @@ local function neko_build_register(module, package)
 end
 
 neko_build_register("sound", {"miniaudio"})
+neko_build_register("physics", {"box2d"})
 -- neko_build_register("flecs", {"flecs"})
 
 target("sandbox")
@@ -134,3 +139,8 @@ do
     add_installfiles("(source/lua/**)")
 end
 
+xpack("gamedata")
+do
+    set_formats("zip")
+    add_installfiles("(gamedir/**)")
+end

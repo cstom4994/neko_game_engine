@@ -7,7 +7,7 @@
 #include "engine/neko_engine.h"
 #include "engine/neko_platform.h"
 
-#if (defined NEKO_PLATFORM_WIN || defined NEKO_PLATFORM_APPLE || defined NEKO_PLATFORM_LINUX)
+#if (defined NEKO_PF_WIN || defined NEKO_PF_APPLE || defined NEKO_PF_LINUX)
 #define R_IMPL_OPENGL_CORE
 #else
 #define R_IMPL_OPENGL_ES
@@ -19,7 +19,7 @@ neko_render_info_t* neko_render_info() { return &neko_subsystem(render)->info; }
 #if (defined R_IMPL_OPENGL_CORE || defined R_IMPL_OPENGL_ES)
 
 // macOS 不支持 OpenGL 4.1+
-#if defined(NEKO_PLATFORM_APPLE)
+#if defined(NEKO_PF_APPLE)
 #define CHECK_GL_CORE(...)
 #else
 #define CHECK_GL_CORE(...) __VA_ARGS__
@@ -56,10 +56,11 @@ const_str neko_opengl_string(GLenum e) {
         XX(GL_INVALID_OPERATION);
         XX(GL_INVALID_FRAMEBUFFER_OPERATION);
         XX(GL_OUT_OF_MEMORY);
-#if !defined(NEKO_PLATFORM_APPLE)
-        XX(GL_STACK_UNDERFLOW);
-        XX(GL_STACK_OVERFLOW);
-#endif
+
+        // #if !defined(NEKO_PF_APPLE)
+        //         XX(GL_STACK_UNDERFLOW);
+        //         XX(GL_STACK_OVERFLOW);
+        // #endif
 
         // types:
         XX(GL_BYTE);
@@ -141,39 +142,39 @@ const_str neko_opengl_string(GLenum e) {
         XX(GL_UNSIGNED_INT_SAMPLER_BUFFER);
         XX(GL_UNSIGNED_INT_SAMPLER_2D_RECT);
 
-#if !defined(NEKO_PLATFORM_APPLE)
-        XX(GL_IMAGE_1D);
-        XX(GL_IMAGE_2D);
-        XX(GL_IMAGE_3D);
-        XX(GL_IMAGE_2D_RECT);
-        XX(GL_IMAGE_CUBE);
-        XX(GL_IMAGE_BUFFER);
-        XX(GL_IMAGE_1D_ARRAY);
-        XX(GL_IMAGE_2D_ARRAY);
-        XX(GL_IMAGE_2D_MULTISAMPLE);
-        XX(GL_IMAGE_2D_MULTISAMPLE_ARRAY);
-        XX(GL_INT_IMAGE_1D);
-        XX(GL_INT_IMAGE_2D);
-        XX(GL_INT_IMAGE_3D);
-        XX(GL_INT_IMAGE_2D_RECT);
-        XX(GL_INT_IMAGE_CUBE);
-        XX(GL_INT_IMAGE_BUFFER);
-        XX(GL_INT_IMAGE_1D_ARRAY);
-        XX(GL_INT_IMAGE_2D_ARRAY);
-        XX(GL_INT_IMAGE_2D_MULTISAMPLE);
-        XX(GL_INT_IMAGE_2D_MULTISAMPLE_ARRAY);
-        XX(GL_UNSIGNED_INT_IMAGE_1D);
-        XX(GL_UNSIGNED_INT_IMAGE_2D);
-        XX(GL_UNSIGNED_INT_IMAGE_3D);
-        XX(GL_UNSIGNED_INT_IMAGE_2D_RECT);
-        XX(GL_UNSIGNED_INT_IMAGE_CUBE);
-        XX(GL_UNSIGNED_INT_IMAGE_BUFFER);
-        XX(GL_UNSIGNED_INT_IMAGE_1D_ARRAY);
-        XX(GL_UNSIGNED_INT_IMAGE_2D_ARRAY);
-        XX(GL_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE);
-        XX(GL_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE_ARRAY);
-        XX(GL_UNSIGNED_INT_ATOMIC_COUNTER);
-#endif
+        // #if !defined(NEKO_PF_APPLE)
+        //         XX(GL_IMAGE_1D);
+        //         XX(GL_IMAGE_2D);
+        //         XX(GL_IMAGE_3D);
+        //         XX(GL_IMAGE_2D_RECT);
+        //         XX(GL_IMAGE_CUBE);
+        //         XX(GL_IMAGE_BUFFER);
+        //         XX(GL_IMAGE_1D_ARRAY);
+        //         XX(GL_IMAGE_2D_ARRAY);
+        //         XX(GL_IMAGE_2D_MULTISAMPLE);
+        //         XX(GL_IMAGE_2D_MULTISAMPLE_ARRAY);
+        //         XX(GL_INT_IMAGE_1D);
+        //         XX(GL_INT_IMAGE_2D);
+        //         XX(GL_INT_IMAGE_3D);
+        //         XX(GL_INT_IMAGE_2D_RECT);
+        //         XX(GL_INT_IMAGE_CUBE);
+        //         XX(GL_INT_IMAGE_BUFFER);
+        //         XX(GL_INT_IMAGE_1D_ARRAY);
+        //         XX(GL_INT_IMAGE_2D_ARRAY);
+        //         XX(GL_INT_IMAGE_2D_MULTISAMPLE);
+        //         XX(GL_INT_IMAGE_2D_MULTISAMPLE_ARRAY);
+        //         XX(GL_UNSIGNED_INT_IMAGE_1D);
+        //         XX(GL_UNSIGNED_INT_IMAGE_2D);
+        //         XX(GL_UNSIGNED_INT_IMAGE_3D);
+        //         XX(GL_UNSIGNED_INT_IMAGE_2D_RECT);
+        //         XX(GL_UNSIGNED_INT_IMAGE_CUBE);
+        //         XX(GL_UNSIGNED_INT_IMAGE_BUFFER);
+        //         XX(GL_UNSIGNED_INT_IMAGE_1D_ARRAY);
+        //         XX(GL_UNSIGNED_INT_IMAGE_2D_ARRAY);
+        //         XX(GL_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE);
+        //         XX(GL_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE_ARRAY);
+        //         XX(GL_UNSIGNED_INT_ATOMIC_COUNTER);
+        // #endif
     }
 
 #undef XX
@@ -940,16 +941,16 @@ void neko_gl_pipeline_state() {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
-    CHECK_GL_CORE(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);)
+    // CHECK_GL_CORE(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);)
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_STENCIL_TEST);
     glDisable(GL_BLEND);
     CHECK_GL_CORE(glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS););
     glDisable(GL_MULTISAMPLE);
 
-    CHECK_GL_CORE(neko_render_info_t* info = neko_render_info(); if (info->compute.available) {
-        // NEKO_INVOKE_ONCE(NEKO_TRACE("Compute shader available: %s", NEKO_BOOL_STR(info->compute.available)););
-        glBindImageTexture(0, 0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+    CHECK_GL_CORE(neko_render_info_t* info = neko_render_info(); if (info->compute.available){
+            // NEKO_INVOKE_ONCE(NEKO_TRACE("Compute shader available: %s", NEKO_BOOL_STR(info->compute.available)););
+            // glBindImageTexture(0, 0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
     });
 }
 
@@ -1166,7 +1167,7 @@ u32 neko_gl_shader_stage_to_gl_stage(neko_render_shader_stage_type type) {
         case R_SHADER_STAGE_FRAGMENT:
             stage = GL_FRAGMENT_SHADER;
             break;
-            CHECK_GL_CORE(case R_SHADER_STAGE_COMPUTE : stage = GL_COMPUTE_SHADER; break;)
+            // CHECK_GL_CORE(case R_SHADER_STAGE_COMPUTE : stage = GL_COMPUTE_SHADER; break;)
     }
     return stage;
 }
@@ -1810,7 +1811,7 @@ neko_gl_texture_t gl_texture_update_internal(const neko_render_texture_desc_t* d
 
     // Need to make sure this is available before being able to use
 
-    CHECK_GL_CORE(float aniso = 0.0f; glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &aniso); glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, aniso););
+    // CHECK_GL_CORE(float aniso = 0.0f; glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &aniso); glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, aniso););
 
     glTexParameteri(target, GL_TEXTURE_WRAP_S, texture_wrap_s);
     glTexParameteri(target, GL_TEXTURE_WRAP_T, texture_wrap_t);
@@ -1960,8 +1961,8 @@ NEKO_API_DECL neko_handle(neko_render_storage_buffer_t) neko_render_storage_buff
 
     glGenBuffers(1, &sbo.buffer);
 
-    CHECK_GL_CORE(glBindBuffer(GL_SHADER_STORAGE_BUFFER, sbo.buffer); glBufferData(GL_SHADER_STORAGE_BUFFER, desc.size, desc.data, neko_gl_buffer_usage_to_gl_enum(desc.usage));
-                  glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT); glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0););
+    // CHECK_GL_CORE(glBindBuffer(GL_SHADER_STORAGE_BUFFER, sbo.buffer); glBufferData(GL_SHADER_STORAGE_BUFFER, desc.size, desc.data, neko_gl_buffer_usage_to_gl_enum(desc.usage));
+    //               glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT); glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0););
 
     memcpy(sbo.name, desc.name, 64);
     sbo.access = desc.access;
@@ -2280,7 +2281,7 @@ NEKO_API_DECL void neko_render_texture_desc_query(neko_handle(neko_render_textur
     if (out->data && out->read.width && out->read.height) {
         u32 type = neko_gl_texture_format_to_gl_data_type(tex->desc.format);
         u32 format = neko_gl_texture_format_to_gl_texture_format(tex->desc.format);
-        CHECK_GL_CORE(glActiveTexture(GL_TEXTURE0); glGetTextureSubImage(tex->id, 0, out->read.x, out->read.y, 0, out->read.width, out->read.height, 1, format, type, out->read.size, out->data););
+        // CHECK_GL_CORE(glActiveTexture(GL_TEXTURE0); glGetTextureSubImage(tex->id, 0, out->read.x, out->read.y, 0, out->read.width, out->read.height, 1, format, type, out->read.size, out->data););
     }
 
     *out = tex->desc;
@@ -2376,14 +2377,14 @@ NEKO_API_DECL void neko_render_storage_buffer_update_impl(neko_handle(neko_rende
         return;
     }
 
-    CHECK_GL_CORE(glBindBuffer(GL_SHADER_STORAGE_BUFFER, sbo->buffer); switch (desc->update.type) {
-        case R_BUFFER_UPDATE_SUBDATA:
-            glBufferSubData(GL_SHADER_STORAGE_BUFFER, desc->update.offset, desc->size, desc->data);
-            break;
-        default:
-            glBufferData(GL_SHADER_STORAGE_BUFFER, desc->size, desc->data, neko_gl_buffer_usage_to_gl_enum(desc->usage));
-    } glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-                  glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0););
+    // CHECK_GL_CORE(glBindBuffer(GL_SHADER_STORAGE_BUFFER, sbo->buffer); switch (desc->update.type) {
+    //     case R_BUFFER_UPDATE_SUBDATA:
+    //         glBufferSubData(GL_SHADER_STORAGE_BUFFER, desc->update.offset, desc->size, desc->data);
+    //         break;
+    //     default:
+    //         glBufferData(GL_SHADER_STORAGE_BUFFER, desc->size, desc->data, neko_gl_buffer_usage_to_gl_enum(desc->usage));
+    // } glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    //               glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0););
 }
 
 NEKO_API_DECL void neko_render_texture_read_impl(neko_handle(neko_render_texture_t) hndl, neko_render_texture_desc_t* desc) {
@@ -2778,7 +2779,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
                 glBindFramebuffer(GL_FRAMEBUFFER, 0);
                 glBindBuffer(GL_ARRAY_BUFFER, 0);
                 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-                CHECK_GL_CORE(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0););
+                // CHECK_GL_CORE(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0););
                 glDisable(GL_SCISSOR_TEST);
                 glDisable(GL_DEPTH_TEST);
                 glDisable(GL_STENCIL_TEST);
@@ -3182,14 +3183,14 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
 
                             if ((sbo->block_idx == UINT32_MAX && sbo->block_idx != UINT32_MAX - 1)) {
                                 // Get uniform location based on name and bound shader
-                                CHECK_GL_CORE({
-                                    sbo->block_idx = glGetProgramResourceIndex(shader, GL_SHADER_STORAGE_BLOCK, sbo->name ? sbo->name : "__EMPTY_BUFFER_NAME");
-                                    s32 params[1];
-                                    GLenum props[1] = {GL_BUFFER_BINDING};
-                                    glGetProgramResourceiv(shader, GL_SHADER_STORAGE_BLOCK, sbo->block_idx, 1, props, 1, NULL, params);
-                                    sbo->location = (u32)params[0];
-                                    NEKO_WARN("Bind Storage Buffer: Binding \"%s\" to location %u, block index: %u, binding: %u", sbo->name, sbo->location, sbo->block_idx, binding);
-                                });
+                                // CHECK_GL_CORE({
+                                //     sbo->block_idx = glGetProgramResourceIndex(shader, GL_SHADER_STORAGE_BLOCK, sbo->name ? sbo->name : "__EMPTY_BUFFER_NAME");
+                                //     s32 params[1];
+                                //     GLenum props[1] = {GL_BUFFER_BINDING};
+                                //     glGetProgramResourceiv(shader, GL_SHADER_STORAGE_BLOCK, sbo->block_idx, 1, props, 1, NULL, params);
+                                //     sbo->location = (u32)params[0];
+                                //     NEKO_WARN("Bind Storage Buffer: Binding \"%s\" to location %u, block index: %u, binding: %u", sbo->name, sbo->location, sbo->block_idx, binding);
+                                // });
 
                                 if (sbo->block_idx >= UINT32_MAX) {
                                     NEKO_WARN("Bind Storage Buffer: Buffer not found: \"%s\"", sbo->name);
@@ -3199,11 +3200,11 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
 
                             if (sbo->block_idx < UINT32_MAX - 1) {
                                 // Not sure what this actually does atm...
-                                CHECK_GL_CORE(glShaderStorageBlockBinding(shader, sbo->block_idx, sbo->location););
+                                // CHECK_GL_CORE(glShaderStorageBlockBinding(shader, sbo->block_idx, sbo->location););
                             }
 
                             // This is required
-                            CHECK_GL_CORE(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, sbo->buffer););
+                            // CHECK_GL_CORE(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, sbo->buffer););
 
                         } break;
 
@@ -3229,7 +3230,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
                                     });
 
                             // Bind image texture
-                            CHECK_GL_CORE(glBindImageTexture(binding, tex->id, 0, GL_FALSE, 0, gl_access, gl_format);)
+                            // CHECK_GL_CORE(glBindImageTexture(binding, tex->id, 0, GL_FALSE, 0, gl_access, gl_format);)
                         } break;
 
                         default:
@@ -3358,9 +3359,9 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
                 }
 
                 // Dispatch shader
-                CHECK_GL_CORE(
-                        // Memory barrier (TODO: make this specifically set in the pipeline state)
-                        glDispatchCompute(num_x_groups, num_y_groups, num_z_groups); glMemoryBarrier(GL_ALL_BARRIER_BITS);)
+                // CHECK_GL_CORE(
+                //         // Memory barrier (TODO: make this specifically set in the pipeline state)
+                //         glDispatchCompute(num_x_groups, num_y_groups, num_z_groups); glMemoryBarrier(GL_ALL_BARRIER_BITS);)
             } break;
 
             case NEKO_OPENGL_OP_DRAW: {
@@ -3699,18 +3700,18 @@ NEKO_API_DECL void neko_render_init(neko_render_t* render) {
     // Compute shader info
     info->compute.available = info->major_version >= 4 && info->minor_version >= 3;
     if (info->compute.available) {
-        CHECK_GL_CORE({
-            // Work group counts
-            glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, (s32*)&info->compute.max_work_group_count[0]);
-            glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 1, (s32*)&info->compute.max_work_group_count[1]);
-            glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 2, (s32*)&info->compute.max_work_group_count[2]);
-            // Work group sizes
-            glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, (s32*)&info->compute.max_work_group_size[0]);
-            glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1, (s32*)&info->compute.max_work_group_size[1]);
-            glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, (s32*)&info->compute.max_work_group_size[2]);
-            // Work group invocations
-            glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, (s32*)&info->compute.max_work_group_invocations);
-        });
+        // CHECK_GL_CORE({
+        //     // Work group counts
+        //     glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, (s32*)&info->compute.max_work_group_count[0]);
+        //     glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 1, (s32*)&info->compute.max_work_group_count[1]);
+        //     glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 2, (s32*)&info->compute.max_work_group_count[2]);
+        //     // Work group sizes
+        //     glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, (s32*)&info->compute.max_work_group_size[0]);
+        //     glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1, (s32*)&info->compute.max_work_group_size[1]);
+        //     glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, (s32*)&info->compute.max_work_group_size[2]);
+        //     // Work group invocations
+        //     glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, (s32*)&info->compute.max_work_group_invocations);
+        // });
     } else {
         NEKO_WARN("opengl compute shaders not available");
     }

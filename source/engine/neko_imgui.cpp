@@ -236,13 +236,13 @@ void neko_imgui_update_mouse_and_keys(neko_imgui_context_t* ctx) {
     neko_platform_event_t evt = {};
     while (neko_platform_poll_events(&evt, false)) {
         switch (evt.type) {
-            case NEKO_PLATFORM_EVENT_KEY: {
+            case NEKO_PF_EVENT_KEY: {
                 switch (evt.key.action) {
-                    case NEKO_PLATFORM_KEY_PRESSED: {
+                    case NEKO_PF_KEY_PRESSED: {
                         io.KeysDown[evt.key.codepoint] = true;
                     } break;
 
-                    case NEKO_PLATFORM_KEY_RELEASED: {
+                    case NEKO_PF_KEY_RELEASED: {
                         io.KeysDown[evt.key.codepoint] = false;
                     } break;
 
@@ -252,7 +252,7 @@ void neko_imgui_update_mouse_and_keys(neko_imgui_context_t* ctx) {
 
             } break;
 
-            case NEKO_PLATFORM_EVENT_TEXT: {
+            case NEKO_PF_EVENT_TEXT: {
                 u32 cp = evt.text.codepoint;
                 if (cp <= IM_UNICODE_CODEPOINT_MAX) {
                     io.AddInputCharacter(cp);

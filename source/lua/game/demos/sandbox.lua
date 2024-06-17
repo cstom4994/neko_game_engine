@@ -560,16 +560,16 @@ M.sub_init_thread = function()
     -- gd.hot_code["player_update.lua"] = neko_load("player_update.lua")
     -- gd.hot_code["npc.lua"] = neko_load("npc.lua")
 
-    -- neko.pack_build(neko_file_path("gamedir/sc_build.pack"),
+    -- pack.build(neko_file_path("gamedir/sc_build.pack"),
     --     {"source/lua/game/web_console.lua", "source/lua/game/tweens.lua"})
 
-    local test_pack_1, test_pack_2, test_pack_3 = neko.pack_info(neko_file_path("gamedir/res2.pack"))
+    local test_pack_1, test_pack_2, test_pack_3 = pack.info(neko_file_path("gamedir/res2.pack"))
 
     print("pack_info", test_pack_1, test_pack_2, test_pack_3)
 
-    test_pack = neko.pack_construct("test_pack_handle", neko_file_path("gamedir/res2.pack"))
-    test_handle = neko.pack_assets_load(test_pack, "gamedir/assets/textures/cat.aseprite")
-    test_items = neko.pack_items(test_pack)
+    test_pack = pack.construct("test_pack_handle", neko_file_path("gamedir/res2.pack"))
+    test_handle = pack.assets_load(test_pack, "gamedir/assets/textures/cat.aseprite")
+    test_items = pack.items(test_pack)
 
     dump_func(test_items)
 
@@ -784,8 +784,8 @@ M.sub_init = function()
 end
 
 M.sub_shutdown = function()
-    neko.pack_assets_unload(test_pack, test_handle)
-    neko.pack_destroy(test_pack)
+    pack.assets_unload(test_pack, test_handle)
+    pack.destroy(test_pack)
 
     -- neko.sprite_end(gd.test_witch_spr)
 

@@ -11,9 +11,10 @@
 #include "engine/neko_platform.h"
 
 // stb_image
-#include "deps/stb_image.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 
-#if defined(NEKO_PLATFORM_LINUX)
+#if defined(NEKO_PF_LINUX)
 #include <errno.h>
 #define fopen_s fopen
 #endif
@@ -224,14 +225,14 @@ bool neko_asset_ascii_font_load_from_file(const_str path, void *out, u32 point_s
     size_t len = 0;
     char *ttf = neko_platform_read_file_contents(path, "rb", &len);
     if (!point_size) {
-        NEKO_WARN("font: %s: point size not declared. setting to default 16.", neko_fs_get_filename(path));
+        NEKO_WARN("font: %s: point size not declared. setting to default 16.", neko_util_get_filename(path));
         point_size = 16;
     }
     bool ret = neko_asset_ascii_font_load_from_memory(ttf, len, out, point_size);
     if (!ret) {
-        NEKO_WARN("font failed to load: %s", neko_fs_get_filename(path));
+        NEKO_WARN("font failed to load: %s", neko_util_get_filename(path));
     } else {
-        NEKO_TRACE("font successfully loaded: %s", neko_fs_get_filename(path));
+        NEKO_TRACE("font successfully loaded: %s", neko_util_get_filename(path));
     }
     neko_safe_free(ttf);
     return ret;
@@ -905,7 +906,7 @@ int neko_pack_read(const_str file_path, u32 data_buffer_capacity, bool is_resour
     pack_reader->data_buffer = data_buffer;
     pack_reader->data_size = data_buffer_capacity;
 
-    NEKO_TRACE("load pack %s buildnum: %d (engine %d)", neko_fs_get_filename(file_path), buildnum, neko_buildnum());
+    NEKO_TRACE("load pack %s buildnum: %d (engine %d)", neko_util_get_filename(file_path), buildnum, neko_buildnum());
 
     //*pack_reader = pack;
     return 0;

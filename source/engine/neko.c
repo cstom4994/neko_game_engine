@@ -153,9 +153,9 @@ void neko_log(int level, const char* file, int line, const char* fmt, ...) {
         init_event(&ev, stderr);
         va_start(ev.ap, fmt);
 #ifdef LOG_USE_COLOR
-        fprintf(ev.udata, "%s[%-5s]\x1b[0m \x1b[90m%s:%d:\x1b[0m ", level_colors[ev.level], level_strings[ev.level], neko_fs_get_filename(ev.file), ev.line);
+        fprintf(ev.udata, "%s[%-5s]\x1b[0m \x1b[90m%s:%d:\x1b[0m ", level_colors[ev.level], level_strings[ev.level], neko_util_get_filename(ev.file), ev.line);
 #else
-        fprintf(ev.udata, "%-5s %s:%d: ", level_strings[ev.level], neko_fs_get_filename(ev.file), ev.line);
+        fprintf(ev.udata, "%-5s %s:%d: ", level_strings[ev.level], neko_util_get_filename(ev.file), ev.line);
 #endif
         vfprintf(ev.udata, ev.fmt, ev.ap);
         fprintf(ev.udata, "\n");
@@ -164,7 +164,7 @@ void neko_log(int level, const char* file, int line, const char* fmt, ...) {
         if (NULL != neko_instance() && NULL != neko_instance()->console) {
             char buffer[512] = NEKO_DEFAULT_VAL();
             vsnprintf(buffer, 512, ev.fmt, ev.ap);
-            neko_console_printf(neko_instance()->console, "%-5s %s:%d: ", level_strings[ev.level], neko_fs_get_filename(ev.file), ev.line);
+            neko_console_printf(neko_instance()->console, "%-5s %s:%d: ", level_strings[ev.level], neko_util_get_filename(ev.file), ev.line);
             neko_console_printf(neko_instance()->console, buffer);
             neko_console_printf(neko_instance()->console, "\n");
         }
@@ -439,7 +439,7 @@ static neko_mem_alloc_info_t* neko_mem_alloc_head() {
 #if 1
 void* __neko_mem_safe_alloc(size_t size, const char* file, int line, size_t* statistics) {
 
-    if (NEKO_MEM_CHECK && size < 64) NEKO_WARN("small size of memory blocks should use GC (%s:%d)", neko_fs_get_filename(file), line);
+    if (NEKO_MEM_CHECK && size < 64) NEKO_WARN("small size of memory blocks should use GC (%s:%d)", neko_util_get_filename(file), line);
 
     neko_mem_alloc_info_t* mem = (neko_mem_alloc_info_t*)neko_malloc(sizeof(neko_mem_alloc_info_t) + size);
 
@@ -520,7 +520,7 @@ int neko_mem_check_leaks(bool detailed) {
         if (!leaks && detailed) NEKO_INFO("memory leaks detected (see below).");
         if (detailed) {
             char info[128];
-            neko_snprintf(info, 128, "LEAKED %zu bytes from file \"%s\" at line %d from address %p.", next->size, neko_fs_get_filename(next->file), next->line, (void*)(next + 1));
+            neko_snprintf(info, 128, "LEAKED %zu bytes from file \"%s\" at line %d from address %p.", next->size, neko_util_get_filename(next->file), next->line, (void*)(next + 1));
             neko_println("  | %s", info);
         }
         leaks_size += next->size;
@@ -566,328 +566,6 @@ inline int NEKO_BYTES_IN_USE() { return 0; }
 void __neko_mem_init(int argc, char** argv) {}
 
 void __neko_mem_fini() { neko_mem_check_leaks(true); }
-
-// typedef struct neko_memory_block_t {
-//     u8* data;
-//     size_t size;
-// } neko_memory_block_t;
-
-NEKO_API_DECL neko_memory_block_t neko_memory_block_new(size_t sz) {
-    neko_memory_block_t mem = NEKO_DEFAULT_VAL();
-    mem.data = (u8*)neko_malloc(sz);
-    NEKO_ASSERT(mem.data);
-    memset(mem.data, 0, sz);
-    mem.size = sz;
-    return mem;
-}
-
-NEKO_API_DECL void neko_memory_block_free(neko_memory_block_t* mem) {
-    NEKO_ASSERT(mem);
-    NEKO_ASSERT(mem->data);
-    neko_free(mem->data);
-    mem->data = NULL;
-    mem->size = 0;
-}
-
-// Modified from: https://github.com/mtrebi/memory-allocators/blob/master/includes/Utils.h
-NEKO_API_DECL size_t neko_memory_calc_padding(size_t base_address, size_t alignment) {
-    size_t mult = (base_address / alignment) + 1;
-    size_t aligned_addr = mult * alignment;
-    size_t padding = aligned_addr - base_address;
-    return padding;
-}
-
-NEKO_API_DECL size_t neko_memory_calc_padding_w_header(size_t base_address, size_t alignment, size_t header_sz) {
-    size_t padding = neko_memory_calc_padding(base_address, alignment);
-    size_t needed_space = header_sz;
-
-    if (padding < needed_space) {
-        needed_space -= padding;
-
-        if (needed_space % alignment > 0) {
-            padding += alignment * (1 + (needed_space / alignment));
-        } else {
-            padding += alignment * (needed_space / alignment);
-        }
-    }
-
-    return padding;
-}
-
-/*================================================================================
-// Linear Allocator
-================================================================================*/
-
-// typedef struct neko_linear_allocator_t {
-//     u8* memory;
-//     size_t total_size;
-//     size_t offset;
-// } neko_linear_allocator_t;
-
-NEKO_API_DECL neko_linear_allocator_t neko_linear_allocator_new(size_t sz) {
-    neko_linear_allocator_t la = NEKO_DEFAULT_VAL();
-    la.memory = (u8*)neko_malloc(sz);
-    memset(la.memory, 0, sz);
-    la.offset = 0;
-    la.total_size = sz;
-    return la;
-}
-
-NEKO_API_DECL void neko_linear_allocator_free(neko_linear_allocator_t* la) {
-    NEKO_ASSERT(la);
-    NEKO_ASSERT(la->memory);
-    neko_free(la->memory);
-    la->memory = NULL;
-}
-
-NEKO_API_DECL void* neko_linear_allocator_allocate(neko_linear_allocator_t* la, size_t sz, size_t alignment) {
-    NEKO_ASSERT(la);
-    size_t padding = 0;
-    size_t padding_address = 0;
-    size_t cur_address = (size_t)la->memory + la->offset;
-
-    // 计算所需的对齐方式
-    if (alignment != 0 && la->offset % alignment != 0) {
-        padding = neko_memory_calc_padding(cur_address, alignment);
-    }
-
-    // 无法分配 (没有足够的可用内存)
-    if (la->offset + padding + sz > la->total_size) {
-        return NULL;
-    }
-
-    // 申请内存并且返回地址
-    la->offset += padding;
-    size_t next_address = cur_address + padding;
-    la->offset += sz;
-    return (void*)next_address;
-}
-
-NEKO_API_DECL void neko_linear_allocator_clear(neko_linear_allocator_t* la) {
-    NEKO_ASSERT(la);
-    la->offset = 0;
-}
-
-/*================================================================================
-// Stack Allocator
-================================================================================*/
-
-NEKO_API_DECL neko_stack_allocator_t neko_stack_allocator_new(size_t sz) {
-    neko_stack_allocator_t alloc = NEKO_DEFAULT_VAL();
-    alloc.memory = neko_memory_block_new(sz);
-    return alloc;
-}
-
-NEKO_API_DECL void neko_stack_allocator_free(neko_stack_allocator_t* sa) {
-    neko_stack_allocator_clear(sa);
-    neko_memory_block_free(&sa->memory);
-}
-
-NEKO_API_DECL void* neko_stack_allocator_allocate(neko_stack_allocator_t* sa, size_t sz) {
-    // Not enough memory available
-    size_t total_size = sz + sizeof(neko_stack_allocator_header_t);
-    if (total_size > (size_t)sa->memory.size - sa->offset) {
-        return NULL;
-    }
-
-    // Create new entry and push
-    size_t header_addr = (size_t)(sa->memory.data + sa->offset + sz);
-    neko_stack_allocator_header_t* header = (neko_stack_allocator_header_t*)(sa->memory.data + sa->offset + sz);
-    u8* data = (u8*)(sa->memory.data + sa->offset);
-    header->size = (u32)sz;
-
-    // Add this to the memory size
-    sa->offset += total_size;
-
-    // Return data
-    return data;
-}
-
-NEKO_API_DECL void* neko_stack_allocator_pop(neko_stack_allocator_t* sa) {
-    // If no entries left, then cannot pop
-    if (sa->offset == 0) {
-        return NULL;
-    }
-
-    // Move current size back
-    neko_stack_allocator_header_t* header = (neko_stack_allocator_header_t*)(sa->memory.data + sa->offset - sizeof(neko_stack_allocator_header_t));
-    void* data = (u8*)(sa->memory.data + sa->offset - sizeof(neko_stack_allocator_header_t) - header->size);
-    size_t total_sz = (size_t)header->size + sizeof(neko_stack_allocator_header_t);
-
-    // Set offset back
-    sa->offset -= total_sz;
-
-    // Return data
-    return (void*)data;
-}
-
-NEKO_API_DECL void* neko_stack_allocator_peek(neko_stack_allocator_t* sa) {
-    if (sa->offset == 0) {
-        return NULL;
-    }
-
-    neko_stack_allocator_header_t* header = (neko_stack_allocator_header_t*)(sa->memory.data + sa->offset - sizeof(neko_stack_allocator_header_t));
-    return (void*)(sa->memory.data + sa->offset - sizeof(neko_stack_allocator_header_t) - (size_t)header->size);
-}
-
-NEKO_API_DECL void neko_stack_allocator_clear(neko_stack_allocator_t* sa) {
-    // Clear offset
-    sa->offset = 0;
-}
-
-/*================================================================================
-// Paged Allocator
-================================================================================*/
-
-NEKO_API_DECL neko_paged_allocator_t neko_paged_allocator_new(size_t block_size, size_t blocks_per_page) {
-    neko_paged_allocator_t pa = NEKO_DEFAULT_VAL();
-    pa.block_size = block_size;
-    pa.blocks_per_page = blocks_per_page;
-    pa.pages = NULL;
-    pa.page_count = 0;
-    pa.free_list = NULL;
-    return pa;
-}
-
-NEKO_API_DECL void neko_paged_allocator_free(neko_paged_allocator_t* pa) { neko_paged_allocator_clear(pa); }
-
-NEKO_API_DECL void* neko_paged_allocator_allocate(neko_paged_allocator_t* pa) {
-    if (pa->free_list) {
-        neko_paged_allocator_block_t* data = pa->free_list;
-        pa->free_list = data->next;
-        return data;
-    } else {
-        neko_paged_allocator_page_t* page = (neko_paged_allocator_page_t*)neko_malloc_init_impl(pa->block_size * pa->blocks_per_page + sizeof(neko_paged_allocator_page_t));
-        pa->page_count++;
-
-        page->next = pa->pages;
-        page->data = (neko_paged_allocator_block_t*)neko_ptr_add(page, sizeof(neko_paged_allocator_page_t));
-        pa->pages = page;
-
-        // #define neko_ptr_add(P, BYTES) \
-//     (((u8*)P + (BYTES)))
-
-        u32 bppmo = pa->blocks_per_page - 1;
-        for (u32 i = 0; i < bppmo; ++i) {
-            neko_paged_allocator_block_t* node = (neko_paged_allocator_block_t*)neko_ptr_add(page->data, pa->block_size * i);
-            neko_paged_allocator_block_t* next = (neko_paged_allocator_block_t*)neko_ptr_add(page->data, pa->block_size * (i + 1));
-            node->next = next;
-        }
-
-        neko_paged_allocator_block_t* last = (neko_paged_allocator_block_t*)neko_ptr_add(page->data, pa->block_size * bppmo);
-        last->next = NULL;
-
-        pa->free_list = page->data->next;
-        return page->data;
-    }
-}
-
-NEKO_API_DECL void neko_paged_allocator_deallocate(neko_paged_allocator_t* pa, void* data) {
-    ((neko_paged_allocator_block_t*)data)->next = pa->free_list;
-    pa->free_list = ((neko_paged_allocator_block_t*)data);
-}
-
-NEKO_API_DECL void neko_paged_allocator_clear(neko_paged_allocator_t* pa) {
-    neko_paged_allocator_page_t* page = pa->pages;
-    for (u32 i = 0; i < pa->page_count; ++i) {
-        neko_paged_allocator_page_t* next = page->next;
-        neko_free(page);
-        page = next;
-    }
-    pa->free_list = NULL;
-    pa->page_count = 0;
-}
-
-/*================================================================================
-// Heap Allocator
-================================================================================*/
-
-// #ifndef NEKO_HEAP_ALLOC_DEFAULT_SIZE
-//     #define NEKO_HEAP_ALLOC_DEFAULT_SIZE 1024 * 1024 * 20
-// #endif
-
-// #ifndef NEKO_HEAP_ALLOC_DEFAULT_CAPCITY
-//     #define NEKO_HEAP_ALLOC_DEFAULT_CAPCITY 1024
-// #endif
-
-// typedef struct neko_heap_allocator_header_t {
-//     struct neko_heap_allocator_header_t* next;
-//     struct neko_heap_allocator_header_t* prev;
-//     size_t size;
-// } neko_heap_allocator_header_t;
-
-// typedef struct neko_heap_allocator_free_block_t {
-//     neko_heap_allocator_header_t* header;
-//     size_t size;
-// } neko_heap_allocator_free_block_t;
-
-// typedef struct neko_heap_allocator_t {
-//     neko_heap_allocator_header_t* memory;
-//     neko_heap_allocator_free_block_t* free_blocks;
-//     u32 free_block_count;
-//     u32 free_block_capacity;
-// } neko_heap_allocator_t;
-
-NEKO_API_DECL neko_heap_allocator_t neko_heap_allocate_new() {
-    neko_heap_allocator_t ha = NEKO_DEFAULT_VAL();
-    ha.memory = (neko_heap_allocator_header_t*)neko_malloc_init_impl(NEKO_HEAP_ALLOC_DEFAULT_SIZE);
-    ha.memory->next = NULL;
-    ha.memory->prev = NULL;
-    ha.memory->size = NEKO_HEAP_ALLOC_DEFAULT_SIZE;
-
-    ha.free_blocks = (neko_heap_allocator_free_block_t*)neko_malloc_init_impl(sizeof(neko_heap_allocator_free_block_t) * NEKO_HEAP_ALLOC_DEFAULT_CAPCITY);
-    ha.free_block_count = 1;
-    ha.free_block_capacity = NEKO_HEAP_ALLOC_DEFAULT_CAPCITY;
-
-    ha.free_blocks->header = ha.memory;
-    ha.free_blocks->size = NEKO_HEAP_ALLOC_DEFAULT_SIZE;
-
-    return ha;
-}
-
-NEKO_API_DECL void neko_heap_allocator_free(neko_heap_allocator_t* ha) {
-    neko_free(ha->memory);
-    neko_free(ha->free_blocks);
-    ha->memory = NULL;
-    ha->free_blocks = NULL;
-}
-
-NEKO_API_DECL void* neko_heap_allocator_allocate(neko_heap_allocator_t* ha, size_t sz) {
-    size_t size_needed = sz + sizeof(neko_heap_allocator_header_t);
-    neko_heap_allocator_free_block_t* first_fit = NULL;
-
-    for (u32 i = 0; i < ha->free_block_count; ++i) {
-        neko_heap_allocator_free_block_t* block = ha->free_blocks + i;
-        if (block->size >= size_needed) {
-            first_fit = block;
-            break;
-        }
-    }
-
-    if (!first_fit) {
-        return NULL;
-    }
-
-    neko_heap_allocator_header_t* node = first_fit->header;
-    neko_heap_allocator_header_t* new_node = (neko_heap_allocator_header_t*)neko_ptr_add(node, size_needed);
-    node->size = size_needed;
-
-    first_fit->size -= size_needed;
-    first_fit->header = new_node;
-
-    new_node->next = node->next;
-    if (node->next) {
-        node->next->prev = new_node;
-    }
-    node->next = new_node;
-    new_node->prev = node;
-
-    return neko_ptr_add(node, sizeof(neko_heap_allocator_header_t));
-}
-
-NEKO_API_DECL void neko_heap_allocator_deallocate(neko_heap_allocator_t* ha, void* memory) {
-    // Fill this out...
-}
 
 /*=============================
 // NEKO_UTIL

@@ -8,7 +8,7 @@
 #define REF_UNSOLVED 4
 #define TAB_SPACE 4
 
-namespace neko::lua_prefab {
+namespace neko::lua::__prefab {
 
 typedef uintptr_t objectid;
 
@@ -1078,7 +1078,7 @@ static int lquote(lua_State *L) {
     return 1;
 }
 
-static int luaopen(lua_State *L) {
+LUABIND_MODULE() {
     luaL_checkversion(L);
     luaL_Reg l[] = {
             {"parse", lparse}, {"parse_list", lparse_list}, {"token", ltoken}, {"quote", lquote}, {NULL, NULL},
@@ -1087,6 +1087,6 @@ static int luaopen(lua_State *L) {
     return 1;
 }
 
-}  // namespace neko::lua_prefab
+}  // namespace neko::lua::__prefab
 
 DEFINE_LUAOPEN(prefab)

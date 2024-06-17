@@ -1,18 +1,85 @@
 
+#include "sound.h"
+
 #include "engine/neko_api.hpp"
 #include "engine/neko_engine.h"
 #include "engine/neko_luabind.hpp"
-#include "neko_sound.h"
+
+#define MA_ENABLE_ONLY_SPECIFIC_BACKENDS
+#define MA_ENABLE_WASAPI
+#define MA_ENABLE_ALSA
+#define MA_ENABLE_WEBAUDIO
+#define MA_NO_ENCODING
+#define MA_NO_GENERATION
+#define MINIAUDIO_IMPLEMENTATION
+#include <miniaudio.h>
+
+#undef neko_safe_malloc
+#undef neko_safe_free
+#undef neko_safe_realloc
+#undef neko_safe_calloc
+
+#define neko_safe_malloc(size) g_interface->common.__neko_mem_safe_alloc((size), (char*)__FILE__, __LINE__, NULL)
+#define neko_safe_free(mem) g_interface->common.__neko_mem_safe_free((void*)mem, NULL)
+#define neko_safe_realloc(ptr, size) g_interface->common.__neko_mem_safe_realloc((ptr), (size), (char*)__FILE__, __LINE__, NULL)
+#define neko_safe_calloc(count, element_size) g_interface->common.__neko_mem_safe_calloc(count, element_size, (char*)__FILE__, __LINE__, NULL)
+
+// #include "sandbox/hpp/neko_cpp_utils.hpp"
+
+namespace neko::sound {
+
+typedef struct neko_lua_sound {
+    ma_sound ma;
+    bool zombie;
+    bool dead_end;
+} neko_lua_sound;
+
+static void on_sound_end(void* udata, ma_sound* ma) {
+    neko_lua_sound* sound = (neko_lua_sound*)udata;
+    if (sound->zombie) {
+        sound->dead_end = true;
+    }
+}
+
+neko_lua_sound* sound_load(ma_engine* audio_engine, const_str filepath) {
+
+    ma_result res = MA_SUCCESS;
+
+    neko_lua_sound* sound = (neko_lua_sound*)neko_safe_malloc(sizeof(neko_lua_sound));
+
+    // neko::string cpath = to_cstr(filepath);
+    // neko_defer(neko_safe_free(cpath.data));
+
+    res = ma_sound_init_from_file(audio_engine, filepath, 0, NULL, NULL, &sound->ma);
+    if (res != MA_SUCCESS) {
+        neko_safe_free(sound);
+        return NULL;
+    }
+
+    res = ma_sound_set_end_callback(&sound->ma, on_sound_end, sound);
+    if (res != MA_SUCCESS) {
+        neko_safe_free(sound);
+        return NULL;
+    }
+
+    sound->zombie = false;
+    sound->dead_end = false;
+    return sound;
+}
+
+void sound_fini(neko_lua_sound* sound) { ma_sound_uninit(&sound->ma); }
+
+}  // namespace neko::sound
 
 // mt_sound
 
 static ma_sound* sound_ma(lua_State* L) {
-    neko_lua_sound* sound = *(neko_lua_sound**)luaL_checkudata(L, 1, "mt_sound");
+    neko::sound::neko_lua_sound* sound = *(neko::sound::neko_lua_sound**)luaL_checkudata(L, 1, "mt_sound");
     return &sound->ma;
 }
 
 static int mt_sound_gc(lua_State* L) {
-    neko_lua_sound* sound = *(neko_lua_sound**)luaL_checkudata(L, 1, "mt_sound");
+    neko::sound::neko_lua_sound* sound = *(neko::sound::neko_lua_sound**)luaL_checkudata(L, 1, "mt_sound");
 
     if (ma_sound_at_end(&sound->ma)) {
         sound_fini(sound);
@@ -188,7 +255,7 @@ static int open_mt_sound(lua_State* L) {
 static int neko_sound_load(lua_State* L) {
     neko::string str = neko::luax_check_string(L, 1);
 
-    neko_lua_sound* sound = sound_load(NULL, str.data);
+    neko::sound::neko_lua_sound* sound = neko::sound::sound_load(NULL, str.data);
     if (sound == nullptr) {
         return 0;
     }
@@ -197,16 +264,10 @@ static int neko_sound_load(lua_State* L) {
     return 1;
 }
 
-#if defined(_WIN32) || defined(_WIN64)
-#define NEKO_DLL_EXPORT extern "C" __declspec(dllexport)
-#else
-#define NEKO_DLL_EXPORT extern "C"
-#endif
-
 Neko_ModuleInterface* g_interface;
 
-NEKO_DLL_EXPORT s32 Neko_OnLibraryLoad(Neko_ModuleInterface* interface) {
-    assert(interface != NULL);
-    g_interface = interface;
+NEKO_DLL_EXPORT s32 Neko_OnModuleLoad(Neko_ModuleInterface* module_interface) {
+    assert(module_interface != NULL);
+    g_interface = module_interface;
     return 666;
 }

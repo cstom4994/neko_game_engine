@@ -19,6 +19,7 @@ typedef struct neko_t {
 
     void (*init)();
     void (*update)();
+    void (*post_update)();
     void (*shutdown)();
     void (*fini)();
 
@@ -80,6 +81,9 @@ typedef struct Neko_ModuleInterface {
     Neko_CommonInterface common;
 } Neko_ModuleInterface;
 
-NEKO_API_DECL void neko_module_interface_init(Neko_ModuleInterface* interface);
+NEKO_API_DECL void neko_module_interface_init(Neko_ModuleInterface* module_interface);
+
+#define Neko_OnModuleLoad(...) Neko_OnModuleLoad(__VA_ARGS__)
+#define Neko_OnModuleLoad_FuncName "Neko_OnModuleLoad"
 
 #endif

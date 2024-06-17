@@ -58,7 +58,7 @@ typedef struct neko_imgui_vertex_t {
 // extern neko_imgui_context_t g_imgui;
 // extern neko_command_buffer_t g_cb;
 
-#ifdef NEKO_PLATFORM_WEB
+#ifdef NEKO_PF_WEB
 #define NEKO_IMGUI_SHADER_VERSION "#version 300 es\n"
 #else
 #define NEKO_IMGUI_SHADER_VERSION "#version 330 core\n"

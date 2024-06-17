@@ -1,6 +1,6 @@
 
-#ifndef NEKO_PLATFORM_H
-#define NEKO_PLATFORM_H
+#ifndef NEKO_PF_H
+#define NEKO_PF_H
 
 #include <time.h>
 
@@ -13,13 +13,13 @@
 
 #include <glfw/glfw3.h>
 
-#if defined(_WIN32) || defined(_WIN64) || defined(NEKO_PLATFORM_WIN)
+#if defined(_WIN32) || defined(_WIN64) || defined(NEKO_PF_WIN)
 
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h>
 
 typedef unsigned __int64 tick_t;
-#elif defined(NEKO_PLATFORM_APPLE)
+#elif defined(NEKO_PF_APPLE)
 #include <pthread.h>
 #include <stdint.h>
 #include <sys/syscall.h>
@@ -116,16 +116,16 @@ typedef struct neko_memory_info_t {
 } neko_memory_info_t;
 
 typedef enum neko_platform_cursor {
-    NEKO_PLATFORM_CURSOR_ARROW,
-    NEKO_PLATFORM_CURSOR_IBEAM,
-    NEKO_PLATFORM_CURSOR_SIZE_NW_SE,
-    NEKO_PLATFORM_CURSOR_SIZE_NE_SW,
-    NEKO_PLATFORM_CURSOR_SIZE_NS,
-    NEKO_PLATFORM_CURSOR_SIZE_WE,
-    NEKO_PLATFORM_CURSOR_SIZE_ALL,
-    NEKO_PLATFORM_CURSOR_HAND,
-    NEKO_PLATFORM_CURSOR_NO,
-    NEKO_PLATFORM_CURSOR_COUNT
+    NEKO_PF_CURSOR_ARROW,
+    NEKO_PF_CURSOR_IBEAM,
+    NEKO_PF_CURSOR_SIZE_NW_SE,
+    NEKO_PF_CURSOR_SIZE_NE_SW,
+    NEKO_PF_CURSOR_SIZE_NS,
+    NEKO_PF_CURSOR_SIZE_WE,
+    NEKO_PF_CURSOR_SIZE_ALL,
+    NEKO_PF_CURSOR_HAND,
+    NEKO_PF_CURSOR_NO,
+    NEKO_PF_CURSOR_COUNT
 } neko_platform_cursor;
 
 typedef enum neko_platform_keycode {
@@ -273,49 +273,49 @@ typedef struct neko_platform_mouse_t {
 } neko_platform_mouse_t;
 
 enum {
-    NEKO_PLATFORM_GAMEPAD_BUTTON_A = 0x00,
-    NEKO_PLATFORM_GAMEPAD_BUTTON_B,
-    NEKO_PLATFORM_GAMEPAD_BUTTON_X,
-    NEKO_PLATFORM_GAMEPAD_BUTTON_Y,
-    NEKO_PLATFORM_GAMEPAD_BUTTON_LBUMPER,
-    NEKO_PLATFORM_GAMEPAD_BUTTON_RBUMPER,
-    NEKO_PLATFORM_GAMEPAD_BUTTON_BACK,
-    NEKO_PLATFORM_GAMEPAD_BUTTON_START,
-    NEKO_PLATFORM_GAMEPAD_BUTTON_GUIDE,
-    NEKO_PLATFORM_GAMEPAD_BUTTON_LTHUMB,
-    NEKO_PLATFORM_GAMEPAD_BUTTON_RTHUMB,
-    NEKO_PLATFORM_GAMEPAD_BUTTON_DPUP,
-    NEKO_PLATFORM_GAMEPAD_BUTTON_DPRIGHT,
-    NEKO_PLATFORM_GAMEPAD_BUTTON_DPDOWN,
-    NEKO_PLATFORM_GAMEPAD_BUTTON_DPLEFT,
-    NEKO_PLATFORM_GAMEPAD_BUTTON_COUNT
+    NEKO_PF_GAMEPAD_BUTTON_A = 0x00,
+    NEKO_PF_GAMEPAD_BUTTON_B,
+    NEKO_PF_GAMEPAD_BUTTON_X,
+    NEKO_PF_GAMEPAD_BUTTON_Y,
+    NEKO_PF_GAMEPAD_BUTTON_LBUMPER,
+    NEKO_PF_GAMEPAD_BUTTON_RBUMPER,
+    NEKO_PF_GAMEPAD_BUTTON_BACK,
+    NEKO_PF_GAMEPAD_BUTTON_START,
+    NEKO_PF_GAMEPAD_BUTTON_GUIDE,
+    NEKO_PF_GAMEPAD_BUTTON_LTHUMB,
+    NEKO_PF_GAMEPAD_BUTTON_RTHUMB,
+    NEKO_PF_GAMEPAD_BUTTON_DPUP,
+    NEKO_PF_GAMEPAD_BUTTON_DPRIGHT,
+    NEKO_PF_GAMEPAD_BUTTON_DPDOWN,
+    NEKO_PF_GAMEPAD_BUTTON_DPLEFT,
+    NEKO_PF_GAMEPAD_BUTTON_COUNT
 };
 
-#define NEKO_PLATFORM_GAMEPAD_BUTTON_LAST NEKO_PLATFORM_GAMEPAD_BUTTON_DPLEFT
-#define NEKO_PLATFORM_GAMEPAD_BUTTON_CROSS NEKO_PLATFORM_GAMEPAD_BUTTON_A
-#define NEKO_PLATFORM_GAMEPAD_BUTTON_CIRCLE NEKO_PLATFORM_GAMEPAD_BUTTON_B
-#define NEKO_PLATFORM_GAMEPAD_BUTTON_SQUARE NEKO_PLATFORM_GAMEPAD_BUTTON_X
-#define NEKO_PLATFORM_GAMEPAD_BUTTON_TRIANGLE NEKO_PLATFORM_GAMEPAD_BUTTON_Y
+#define NEKO_PF_GAMEPAD_BUTTON_LAST NEKO_PF_GAMEPAD_BUTTON_DPLEFT
+#define NEKO_PF_GAMEPAD_BUTTON_CROSS NEKO_PF_GAMEPAD_BUTTON_A
+#define NEKO_PF_GAMEPAD_BUTTON_CIRCLE NEKO_PF_GAMEPAD_BUTTON_B
+#define NEKO_PF_GAMEPAD_BUTTON_SQUARE NEKO_PF_GAMEPAD_BUTTON_X
+#define NEKO_PF_GAMEPAD_BUTTON_TRIANGLE NEKO_PF_GAMEPAD_BUTTON_Y
 
 enum {
-    NEKO_PLATFORM_JOYSTICK_AXIS_LEFT_X = 0x00,
-    NEKO_PLATFORM_JOYSTICK_AXIS_LEFT_Y,
-    NEKO_PLATFORM_JOYSTICK_AXIS_RIGHT_X,
-    NEKO_PLATFORM_JOYSTICK_AXIS_RIGHT_Y,
-    NEKO_PLATFORM_JOYSTICK_AXIS_LTRIGGER,
-    NEKO_PLATFORM_JOYSTICK_AXIS_RTRIGGER,
-    NEKO_PLATFORM_JOYSTICK_AXIS_COUNT
+    NEKO_PF_JOYSTICK_AXIS_LEFT_X = 0x00,
+    NEKO_PF_JOYSTICK_AXIS_LEFT_Y,
+    NEKO_PF_JOYSTICK_AXIS_RIGHT_X,
+    NEKO_PF_JOYSTICK_AXIS_RIGHT_Y,
+    NEKO_PF_JOYSTICK_AXIS_LTRIGGER,
+    NEKO_PF_JOYSTICK_AXIS_RTRIGGER,
+    NEKO_PF_JOYSTICK_AXIS_COUNT
 };
 
-#define NEKO_PLATFORM_GAMEPAD_MAX 16
+#define NEKO_PF_GAMEPAD_MAX 16
 
 typedef struct neko_platform_gamepad_t {
-    int16_t buttons[NEKO_PLATFORM_GAMEPAD_BUTTON_COUNT];
-    f32 axes[NEKO_PLATFORM_JOYSTICK_AXIS_COUNT];
+    int16_t buttons[NEKO_PF_GAMEPAD_BUTTON_COUNT];
+    f32 axes[NEKO_PF_JOYSTICK_AXIS_COUNT];
     int16_t present;
 } neko_platform_gamepad_t;
 
-#define NEKO_PLATFORM_MAX_TOUCH 5
+#define NEKO_PF_MAX_TOUCH 5
 
 typedef struct neko_platform_touchpoint_t {
     size_t id;
@@ -327,7 +327,7 @@ typedef struct neko_platform_touchpoint_t {
 } neko_platform_touchpoint_t;
 
 typedef struct neko_platform_touch_t {
-    neko_platform_touchpoint_t points[NEKO_PLATFORM_MAX_TOUCH];
+    neko_platform_touchpoint_t points[NEKO_PF_MAX_TOUCH];
     uint16_t size;  // Current number of touches active
 } neko_platform_touch_t;
 
@@ -336,11 +336,11 @@ typedef struct neko_platform_input_t {
     b32 prev_key_map[NEKO_KEYCODE_COUNT];
     neko_platform_mouse_t mouse;
     neko_platform_touch_t touch;
-    neko_platform_gamepad_t gamepads[NEKO_PLATFORM_GAMEPAD_MAX];
+    neko_platform_gamepad_t gamepads[NEKO_PF_GAMEPAD_MAX];
 } neko_platform_input_t;
 
 // Enumeration of all platform types
-typedef enum neko_platform_type { NEKO_PLATFORM_TYPE_UNKNOWN = 0, NEKO_PLATFORM_TYPE_WINDOWS, NEKO_PLATFORM_TYPE_LINUX, NEKO_PLATFORM_TYPE_MAC, NEKO_PLATFORM_TYPE_WEB } neko_platform_type;
+typedef enum neko_platform_type { NEKO_PF_TYPE_UNKNOWN = 0, NEKO_PF_TYPE_WINDOWS, NEKO_PF_TYPE_LINUX, NEKO_PF_TYPE_MAC, NEKO_PF_TYPE_WEB } neko_platform_type;
 
 typedef enum neko_opengl_compatibility_flags {
     NEKO_OPENGL_COMPATIBILITY_FLAGS_LEGACY = 0,
@@ -351,22 +351,22 @@ typedef enum neko_opengl_compatibility_flags {
 } neko_opengl_compatibility_flags;
 
 typedef enum neko_platform_event_type {
-    NEKO_PLATFORM_EVENT_MOUSE,
-    NEKO_PLATFORM_EVENT_KEY,
-    NEKO_PLATFORM_EVENT_TEXT,
-    NEKO_PLATFORM_EVENT_WINDOW,
-    NEKO_PLATFORM_EVENT_TOUCH,
-    NEKO_PLATFORM_EVENT_APP
+    NEKO_PF_EVENT_MOUSE,
+    NEKO_PF_EVENT_KEY,
+    NEKO_PF_EVENT_TEXT,
+    NEKO_PF_EVENT_WINDOW,
+    NEKO_PF_EVENT_TOUCH,
+    NEKO_PF_EVENT_APP
 } neko_platform_event_type;
 
 typedef enum neko_platform_key_modifier_type {
-    NEKO_PLATFORM_KEY_MODIFIER_NONE = 0x00,
-    NEKO_PLATFORM_KEY_MODIFIER_SHIFT = 0x01,
-    NEKO_PLATFORM_KEY_MODIFIER_CONTROL = 0x02,
-    NEKO_PLATFORM_KEY_MODIFIER_ALT = 0x04
+    NEKO_PF_KEY_MODIFIER_NONE = 0x00,
+    NEKO_PF_KEY_MODIFIER_SHIFT = 0x01,
+    NEKO_PF_KEY_MODIFIER_CONTROL = 0x02,
+    NEKO_PF_KEY_MODIFIER_ALT = 0x04
 } neko_platform_key_modifier_type;
 
-typedef enum neko_platform_key_action_type { NEKO_PLATFORM_KEY_PRESSED, NEKO_PLATFORM_KEY_DOWN, NEKO_PLATFORM_KEY_RELEASED } neko_platform_key_action_type;
+typedef enum neko_platform_key_action_type { NEKO_PF_KEY_PRESSED, NEKO_PF_KEY_DOWN, NEKO_PF_KEY_RELEASED } neko_platform_key_action_type;
 
 typedef struct neko_platform_key_event_t {
     s32 codepoint;
@@ -377,13 +377,13 @@ typedef struct neko_platform_key_event_t {
 } neko_platform_key_event_t;
 
 typedef enum neko_platform_mousebutton_action_type {
-    NEKO_PLATFORM_MOUSE_BUTTON_PRESSED,
-    NEKO_PLATFORM_MOUSE_BUTTON_DOWN,
-    NEKO_PLATFORM_MOUSE_BUTTON_RELEASED,
-    NEKO_PLATFORM_MOUSE_MOVE,
-    NEKO_PLATFORM_MOUSE_ENTER,
-    NEKO_PLATFORM_MOUSE_LEAVE,
-    NEKO_PLATFORM_MOUSE_WHEEL
+    NEKO_PF_MOUSE_BUTTON_PRESSED,
+    NEKO_PF_MOUSE_BUTTON_DOWN,
+    NEKO_PF_MOUSE_BUTTON_RELEASED,
+    NEKO_PF_MOUSE_MOVE,
+    NEKO_PF_MOUSE_ENTER,
+    NEKO_PF_MOUSE_LEAVE,
+    NEKO_PF_MOUSE_WHEEL
 } neko_platform_mousebutton_action_type;
 
 typedef struct neko_platform_mouse_event_t {
@@ -397,11 +397,11 @@ typedef struct neko_platform_mouse_event_t {
 } neko_platform_mouse_event_t;
 
 typedef enum neko_platform_window_action_type {
-    NEKO_PLATFORM_WINDOW_RESIZE,
-    NEKO_PLATFORM_WINDOW_LOSE_FOCUS,
-    NEKO_PLATFORM_WINDOW_GAIN_FOCUS,
-    NEKO_PLATFORM_WINDOW_CREATE,
-    NEKO_PLATFORM_WINDOW_DESTROY
+    NEKO_PF_WINDOW_RESIZE,
+    NEKO_PF_WINDOW_LOSE_FOCUS,
+    NEKO_PF_WINDOW_GAIN_FOCUS,
+    NEKO_PF_WINDOW_CREATE,
+    NEKO_PF_WINDOW_DESTROY
 } neko_platform_window_action_type;
 
 typedef struct neko_platform_window_event_t {
@@ -413,7 +413,7 @@ typedef struct neko_platform_text_event_t {
     u32 codepoint;
 } neko_platform_text_event_t;
 
-typedef enum neko_platform_touch_action_type { NEKO_PLATFORM_TOUCH_DOWN, NEKO_PLATFORM_TOUCH_UP, NEKO_PLATFORM_TOUCH_MOVE, NEKO_PLATFORM_TOUCH_CANCEL } neko_platform_touch_action_type;
+typedef enum neko_platform_touch_action_type { NEKO_PF_TOUCH_DOWN, NEKO_PF_TOUCH_UP, NEKO_PF_TOUCH_MOVE, NEKO_PF_TOUCH_CANCEL } neko_platform_touch_action_type;
 
 typedef struct neko_platform_point_event_data_t {
     uintptr_t id;
@@ -426,7 +426,7 @@ typedef struct neko_platform_touch_event_t {
     neko_platform_point_event_data_t point;
 } neko_platform_touch_event_t;
 
-typedef enum neko_platform_app_action_type { NEKO_PLATFORM_APP_START, NEKO_PLATFORM_APP_PAUSE, NEKO_PLATFORM_APP_RESUME, NEKO_PLATFORM_APP_STOP } neko_platform_app_action_type;
+typedef enum neko_platform_app_action_type { NEKO_PF_APP_START, NEKO_PF_APP_PAUSE, NEKO_PF_APP_RESUME, NEKO_PF_APP_STOP } neko_platform_app_action_type;
 
 typedef struct neko_platform_app_event_t {
     neko_platform_app_action_type action;
@@ -472,7 +472,7 @@ typedef struct neko_platform_t {
     neko_dyn_array(neko_platform_event_t) events;
 
     // Cursors
-    void *cursors[NEKO_PLATFORM_CURSOR_COUNT];
+    void *cursors[NEKO_PF_CURSOR_COUNT];
 
     // Specific user data (for custom implementations)
     void *user_data;
@@ -654,11 +654,11 @@ NEKO_API_DECL const_str neko_platform_stacktrace();
 ============================================================*/
 
 static inline u64 neko_get_thread_id() {
-#if defined(NEKO_PLATFORM_WIN)
+#if defined(NEKO_PF_WIN)
     return (u64)GetCurrentThreadId();
-#elif defined(NEKO_PLATFORM_LINUX)
+#elif defined(NEKO_PF_LINUX)
     return (u64)syscall(SYS_gettid);
-#elif defined(NEKO_PLATFORM_APPLE)
+#elif defined(NEKO_PF_APPLE)
     return (mach_port_t)pthread_mach_thread_np(pthread_self());
 #else
 #error "Unsupported platform!"
@@ -669,7 +669,7 @@ static inline u64 neko_get_thread_id() {
 // Mutex and Locker
 ============================================================*/
 
-#if defined(NEKO_PLATFORM_WIN)
+#if defined(NEKO_PF_WIN)
 
 NEKO_INLINE void __native_debug_output(const char *msg) { OutputDebugStringA(msg); }
 
@@ -761,4 +761,4 @@ NEKO_API_DECL void thread_tls_destroy(neko_thread_tls_t tls);
 NEKO_API_DECL void thread_tls_set(neko_thread_tls_t tls, void *value);
 NEKO_API_DECL void *thread_tls_get(neko_thread_tls_t tls);
 
-#endif  // !NEKO_PLATFORM_H
+#endif  // !NEKO_PF_H

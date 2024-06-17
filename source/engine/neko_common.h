@@ -5,8 +5,8 @@
 
 #include "neko.h"
 
-NEKO_API_DECL const char* neko_base64_encode(const char* str);
-NEKO_API_DECL const char* neko_base64_decode(const char* code);
+NEKO_API_DECL const_str neko_base64_encode(const_str str);
+NEKO_API_DECL const_str neko_base64_decode(const_str code);
 
 /*================================================================================
 // Utils

@@ -662,14 +662,14 @@ static int open_embed_luastruct_test(lua_State *L) {
     return 1;
 }
 
-namespace neko::lua_struct {
-static int luaopen(lua_State *L) { return open_embed_luastruct(L); }
-}  // namespace neko::lua_struct
+namespace neko::lua::__struct {
+LUABIND_MODULE() { return open_embed_luastruct(L); }
+}  // namespace neko::lua::__struct
 
 DEFINE_LUAOPEN(struct)
 
-namespace neko::lua_struct_test {
-static int luaopen(lua_State *L) { return open_embed_luastruct_test(L); }
-}  // namespace neko::lua_struct_test
+namespace neko::lua::__struct_test {
+LUABIND_MODULE() { return open_embed_luastruct_test(L); }
+}  // namespace neko::lua::__struct_test
 
 DEFINE_LUAOPEN(struct_test)

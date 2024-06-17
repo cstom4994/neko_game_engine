@@ -2,7 +2,7 @@
 #include "engine/neko_imgui.hpp"
 #include "engine/neko_luabind.hpp"
 
-namespace neko::lua_imgui::util {
+namespace neko::lua::__imgui::util {
 
 struct TableInteger {
     const char* name;
@@ -39,9 +39,9 @@ void struct_gen(lua_State* L, const char* name, std::span<luaL_Reg> funcs, std::
 void flags_gen(lua_State* L, const char* name);
 void init(lua_State* L);
 
-}  // namespace neko::lua_imgui::util
+}  // namespace neko::lua::__imgui::util
 
-namespace neko::lua_imgui {
+namespace neko::lua::__imgui {
 
 #define ENUM(prefix, name) \
     { #name, prefix##_##name }
@@ -7316,12 +7316,12 @@ static void init(lua_State* L) {
     wrap_ImGuiViewport::init(L);
 }
 
-static int luaopen(lua_State* L) {
-    neko::lua_imgui::init(L);
+LUABIND_MODULE() {
+    neko::lua::__imgui::init(L);
     return 1;
 }
 
-}  // namespace neko::lua_imgui
+}  // namespace neko::lua::__imgui
 
 DEFINE_LUAOPEN(imgui)
 
@@ -7354,11 +7354,11 @@ void IM_THROW(const char* err) {
 
 #include <stdint.h>
 
-namespace neko::lua_imgui::wrap_ImGuiInputTextCallbackData {
+namespace neko::lua::__imgui::wrap_ImGuiInputTextCallbackData {
 void pointer(lua_State* L, ImGuiInputTextCallbackData& v);
 }
 
-namespace neko::lua_imgui::util {
+namespace neko::lua::__imgui::util {
 
 static lua_CFunction str_format = NULL;
 
@@ -7385,7 +7385,7 @@ bool field_toboolean(lua_State* L, int idx, lua_Integer i) {
 
 ImTextureID get_texture_id(lua_State* L, int idx) {
     neko_texture_t texture = NEKO_DEFAULT_VAL();
-    neko_lua_auto_struct_to_member(L, neko_texture_t, id, &texture, 1);
+    neko_luabind_struct_to_member(L, neko_texture_t, id, &texture, 1);
     return reinterpret_cast<ImTextureID>(texture.id);
 }
 
@@ -7605,4 +7605,4 @@ void init(lua_State* L) {
     lua_pop(L, 2);
 }
 
-}  // namespace neko::lua_imgui::util
+}  // namespace neko::lua::__imgui::util

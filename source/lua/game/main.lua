@@ -264,7 +264,41 @@ game_render = function()
     end
 
     if ImGui.Button("test_luastate") then
-        local lua_state = require("luastate_test")
+        local s = require("neko.lowlua")
+
+        local lua_getregistry = s.lua_getregistry or function()
+            return s.lua_pushvalue(LUA_REGISTRYINDEX);
+        end
+        local lua_getglobal = s.lua_getglobal or function(s)
+            assert(isstring(s));
+            return s.lua_getfield(LUA_GLOBALSINDEX, s);
+        end
+        local lua_setglobal = s.lua_setglobal or function(s)
+            assert(isstring(s));
+            return s.lua_setfield(LUA_GLOBALSINDEX, s);
+        end
+        local lua_pop = s.lua_pop or function(n)
+            assert(isnumber(n));
+            return s.lua_settop(-(n) - 1);
+        end
+        local lua_newtable = s.lua_newtable or function()
+            return s.lua_createtable(0, 0);
+        end
+        local lua_register = s.lua_register or function(f, s)
+            assert(isfunction(f) and isstring(s));
+            s.lua_pushcclosure(f, 0);
+            s.lua_setglobal(s);
+            return nil;
+        end
+        local lua_strlen = s.lua_strlen or function(i)
+            assert(isnumber(i));
+            return s.lua_objlen(i);
+        end
+
+        s.lua_settop(0)
+        s.lua_getglobal("print")
+        s.lua_pushstring("I am a string to be printed!")
+        s.lua_call(1, 0)
     end
 
     if ImGui.Button("test_luastruct") then

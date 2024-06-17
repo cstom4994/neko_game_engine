@@ -1265,16 +1265,16 @@ void render_uniform_variable(GLuint program, GLenum type, const char* name, GLin
             if (ImGui::Checkbox("", (bool*)&value)) glProgramUniform1uiv(program, location, 1, &value);
         } break;
 
-#if !defined(NEKO_PLATFORM_APPLE)
-        case GL_IMAGE_2D: {
-            ImGui::Text("GL_IMAGE_2D %s:", name);
-            // ImGui::SameLine();
-            GLuint value;
-            glGetUniformuiv(program, location, &value);
-            // if (ImGui::Checkbox("", (bool*)&value)) glProgramUniform1iv(program, location, 1, &value);
-            ImGui::Image((void*)(intptr_t)value, ImVec2(256, 256));
-        } break;
-#endif
+            // #if !defined(NEKO_PF_APPLE)
+            //         case GL_IMAGE_2D: {
+            //             ImGui::Text("GL_IMAGE_2D %s:", name);
+            //             // ImGui::SameLine();
+            //             GLuint value;
+            //             glGetUniformuiv(program, location, &value);
+            //             // if (ImGui::Checkbox("", (bool*)&value)) glProgramUniform1iv(program, location, 1, &value);
+            //             ImGui::Image((void*)(intptr_t)value, ImVec2(256, 256));
+            //         } break;
+            // #endif
 
         case GL_SAMPLER_CUBE: {
             ImGui::Text("GL_SAMPLER_CUBE %s:", name);
@@ -1529,7 +1529,7 @@ void inspect_vertex_array(const char* label, GLuint vao) {
     ImGui::PopID();
 }
 
-namespace neko::lua_debugging {
+namespace neko::lua::__debugging {
 static int breakpoint(lua_State* L) {
     std::breakpoint();
     return 0;
@@ -1543,7 +1543,7 @@ static int breakpoint_if_debugging(lua_State* L) {
     return 0;
 }
 
-static int luaopen(lua_State* L) {
+LUABIND_MODULE() {
     luaL_Reg lib[] = {
             {"breakpoint", breakpoint},
             {"is_debugger_present", is_debugger_present},
@@ -1556,7 +1556,7 @@ static int luaopen(lua_State* L) {
     luaL_newlibtable(L, lib);
     luaL_setfuncs(L, lib, 0);
     return 1;
-}  // namespace neko::lua_debugging
-}  // namespace neko::lua_debugging
+}
+}  // namespace neko::lua::__debugging
 
 DEFINE_LUAOPEN(debugging)

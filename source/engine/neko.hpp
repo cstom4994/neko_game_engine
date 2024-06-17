@@ -24,9 +24,9 @@
 
 #include "engine/neko.h"
 
-#if defined(NEKO_PLATFORM_WIN)
+#if defined(NEKO_PF_WIN)
 #include <Windows.h>
-#elif defined(NEKO_PLATFORM_APPLE) || defined(NEKO_PLATFORM_LINUX)
+#elif defined(NEKO_PF_APPLE) || defined(NEKO_PF_LINUX)
 #include <dlfcn.h>
 #endif
 
@@ -198,7 +198,7 @@ neko_defer<F> defer_func(F f) {
     return neko_defer<F>(f);
 }
 
-#define neko_defer(code) auto NEKO_CONCAT(_defer_, __COUNTER__) = neko::defer_func([&]() { code; })
+#define neko_defer(code) auto NEKO_CONCAT(__defer_, __COUNTER__) = neko::defer_func([&]() { code; })
 
 }  // namespace neko
 

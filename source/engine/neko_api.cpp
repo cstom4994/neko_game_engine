@@ -288,6 +288,8 @@ static int __neko_loader(lua_State* L) {
 #include "engine/luabind/ffi.hpp"
 #include "engine/luabind/filewatch.hpp"
 #include "engine/luabind/imgui.hpp"
+#include "engine/luabind/lowlua.hpp"
+#include "engine/luabind/pack.hpp"
 #include "engine/luabind/prefab.hpp"
 #include "engine/luabind/struct.hpp"
 #endif

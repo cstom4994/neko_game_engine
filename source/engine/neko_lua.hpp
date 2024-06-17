@@ -2539,14 +2539,14 @@ NEKO_INLINE lua_State* neko_lua_create() {
     ::luaL_openlibs(m_ls);
 
     neko::lua_bind::initialize(m_ls);
-    __neko_lua_auto_init(m_ls);
+    __neko_luabind_init(m_ls);
 
     return m_ls;
 }
 
 NEKO_INLINE void neko_lua_fini(lua_State* m_ls) {
     if (m_ls) {
-        __neko_lua_auto_fini(m_ls);
+        __neko_luabind_fini(m_ls);
         int top = lua_gettop(m_ls);
         if (top != 0) {
             neko_lua_tool_t::dump_stack(m_ls);

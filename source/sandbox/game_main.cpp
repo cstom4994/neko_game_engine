@@ -30,7 +30,7 @@
 #include "helper.h"
 
 // OpenGL
-#include <glad/glad.h>
+#include "engine/neko_gl.h"
 
 #define NEKO_IMGUI_IMPL
 #include "engine/neko_imgui.hpp"
@@ -213,9 +213,9 @@ void game_init() {
     auto mount = neko::vfs_mount(game_assets("gamedir/../").c_str());
     neko_instance()->L = neko_scripting_init();
 
-    neko_module_interface_init(&CL_GAME_USERDATA()->interface);
+    neko_module_interface_init(&CL_GAME_USERDATA()->module_interface);
 
-    neko_pack_read(game_assets("gamedir/sc.pack").c_str(), 0, false, &CL_GAME_USERDATA()->interface.lua_pack);
+    neko_pack_read(game_assets("gamedir/sc.pack").c_str(), 0, false, &CL_GAME_USERDATA()->module_interface.lua_pack);
 
     {
         neko::lua_bind::bind("__neko_file_path", +[](const_str path) -> std::string { return game_assets(path); });
@@ -382,7 +382,7 @@ void game_init() {
 
     neko::dll_loader sound_module("./", "neko_module_sound");
 
-    auto sound_module_loader = sound_module.get_function<s32(Neko_ModuleInterface *)>("Neko_OnLibraryLoad");
+    auto sound_module_loader = sound_module.get_function<s32(Neko_ModuleInterface *)>(Neko_OnModuleLoad_FuncName);
     s32 sss = sound_module_loader(CL_GAME_INTERFACE());
     NEKO_TRACE("%d", sss);
 
@@ -583,6 +583,8 @@ void game_loop() {
         neko_check_gl_error();
     }
 }
+
+void game_post_update() {}
 
 void game_shutdown() {
 
@@ -965,6 +967,7 @@ void neko_app() {
     CL_GAME_USERDATA()->cl_cvar.bg[0] = CL_GAME_USERDATA()->cl_cvar.bg[1] = CL_GAME_USERDATA()->cl_cvar.bg[2] = 28.f;
 
     neko_instance()->update = &game_loop;
+    neko_instance()->post_update = &game_post_update;
     neko_instance()->shutdown = &game_shutdown;
     neko_instance()->init = &game_init;
 }

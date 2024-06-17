@@ -12,6 +12,10 @@ cmake-*/
 .luarc.json
 *.zip
 *.nbt
+*.dll
+*.lib
+*.exe
+*.exp
 
 gamedir/
 

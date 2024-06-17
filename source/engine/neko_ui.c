@@ -2716,32 +2716,32 @@ NEKO_API_DECL void neko_ui_begin(neko_ui_context_t* ctx, const neko_ui_hints_t* 
     neko_platform_event_t evt = NEKO_DEFAULT_VAL();
     while (neko_platform_poll_events(&evt, false)) {
         switch (evt.type) {
-            case NEKO_PLATFORM_EVENT_MOUSE: {
+            case NEKO_PF_EVENT_MOUSE: {
                 switch (evt.mouse.action) {
-                    case NEKO_PLATFORM_MOUSE_MOVE: {
+                    case NEKO_PF_MOUSE_MOVE: {
                         // ctx->mouse_pos = evt.mouse.move;
                     } break;
 
-                    case NEKO_PLATFORM_MOUSE_WHEEL: {
+                    case NEKO_PF_MOUSE_WHEEL: {
                         neko_ui_input_scroll(ctx, (s32)(-evt.mouse.wheel.x * 30.f), (s32)(-evt.mouse.wheel.y * 30.f));
                     } break;
 
-                    case NEKO_PLATFORM_MOUSE_BUTTON_DOWN:
-                    case NEKO_PLATFORM_MOUSE_BUTTON_PRESSED: {
+                    case NEKO_PF_MOUSE_BUTTON_DOWN:
+                    case NEKO_PF_MOUSE_BUTTON_PRESSED: {
                         s32 code = 1 << evt.mouse.button;
                         neko_ui_input_mousedown(ctx, (s32)mouse_pos.x, (s32)mouse_pos.y, code);
                     } break;
 
-                    case NEKO_PLATFORM_MOUSE_BUTTON_RELEASED: {
+                    case NEKO_PF_MOUSE_BUTTON_RELEASED: {
                         s32 code = 1 << evt.mouse.button;
                         neko_ui_input_mouseup(ctx, (s32)mouse_pos.x, (s32)mouse_pos.y, code);
                     } break;
 
-                    case NEKO_PLATFORM_MOUSE_ENTER: {
+                    case NEKO_PF_MOUSE_ENTER: {
                         // If there are user callbacks, could trigger them here
                     } break;
 
-                    case NEKO_PLATFORM_MOUSE_LEAVE: {
+                    case NEKO_PF_MOUSE_LEAVE: {
                         // If there are user callbacks, could trigger them here
                     } break;
 
@@ -2751,20 +2751,20 @@ NEKO_API_DECL void neko_ui_begin(neko_ui_context_t* ctx, const neko_ui_hints_t* 
 
             } break;
 
-            case NEKO_PLATFORM_EVENT_TEXT: {
+            case NEKO_PF_EVENT_TEXT: {
                 // Input text
                 char txt[2] = {(char)(evt.text.codepoint & 255), 0};
                 neko_ui_input_text(ctx, txt);
             } break;
 
-            case NEKO_PLATFORM_EVENT_KEY: {
+            case NEKO_PF_EVENT_KEY: {
                 switch (evt.key.action) {
-                    case NEKO_PLATFORM_KEY_DOWN:
-                    case NEKO_PLATFORM_KEY_PRESSED: {
+                    case NEKO_PF_KEY_DOWN:
+                    case NEKO_PF_KEY_PRESSED: {
                         neko_ui_input_keydown(ctx, key_map[evt.key.keycode & 511]);
                     } break;
 
-                    case NEKO_PLATFORM_KEY_RELEASED: {
+                    case NEKO_PF_KEY_RELEASED: {
                         neko_ui_input_keyup(ctx, key_map[evt.key.keycode & 511]);
                     } break;
 
@@ -2774,7 +2774,7 @@ NEKO_API_DECL void neko_ui_begin(neko_ui_context_t* ctx, const neko_ui_hints_t* 
 
             } break;
 
-            case NEKO_PLATFORM_EVENT_WINDOW: {
+            case NEKO_PF_EVENT_WINDOW: {
                 switch (evt.window.action) {
                     default:
                         break;
@@ -3343,7 +3343,7 @@ NEKO_API_DECL void neko_ui_end(neko_ui_context_t* ctx, b32 update) {
     ctx->undock_root = NULL;
 
     if (ctx->mouse_down != NEKO_UI_MOUSE_LEFT) {
-        neko_platform_set_cursor(ctx->window_hndl, NEKO_PLATFORM_CURSOR_ARROW);
+        neko_platform_set_cursor(ctx->window_hndl, NEKO_PF_CURSOR_ARROW);
     }
 
     // Sort root containers by zindex

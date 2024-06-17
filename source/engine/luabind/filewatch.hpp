@@ -93,7 +93,7 @@ private:
 
 #include "engine/neko.hpp"
 
-#ifdef NEKO_PLATFORM_WIN
+#ifdef NEKO_PF_WIN
 
 #include <Windows.h>
 
@@ -288,7 +288,7 @@ std::optional<notify> watch::select() noexcept {
 }
 }  // namespace neko::filewatch
 
-#elif defined(NEKO_PLATFORM_LINUX)
+#elif defined(NEKO_PF_LINUX)
 
 #include <poll.h>
 #include <sys/inotify.h>
@@ -429,7 +429,7 @@ std::optional<notify> watch::select() noexcept {
 }
 }  // namespace neko::filewatch
 
-#elif defined(NEKO_PLATFORM_APPLE)
+#elif defined(NEKO_PF_APPLE)
 
 namespace neko::filewatch {
 static void event_cb(ConstFSEventStreamRef streamRef, void* info, size_t numEvents, void* eventPaths, const FSEventStreamEventFlags eventFlags[], const FSEventStreamEventId eventIds[]) noexcept {
@@ -553,7 +553,7 @@ std::optional<notify> watch::select() noexcept {
 #include "engine/neko_lua.hpp"
 #include "engine/neko_luabind.hpp"
 
-namespace neko::lua_filewatch {
+namespace neko::lua::__filewatch {
 static filewatch::watch& to(lua_State* L, int idx) { return lua::checkudata<filewatch::watch>(L, idx); }
 
 static lua_State* get_thread(lua_State* L) {
@@ -669,13 +669,13 @@ static int create(lua_State* L) {
     return 1;
 }
 
-static int luaopen(lua_State* L) {
+LUABIND_MODULE() {
     static luaL_Reg lib[] = {{"create", create}, {NULL, NULL}};
     luaL_newlibtable(L, lib);
     luaL_setfuncs(L, lib, 0);
     return 1;
 }
-}  // namespace neko::lua_filewatch
+}  // namespace neko::lua::__filewatch
 
 DEFINE_LUAOPEN(filewatch)
 
@@ -683,6 +683,6 @@ namespace neko::lua {
 template <>
 struct udata<filewatch::watch> {
     static inline int nupvalue = 1;
-    static inline auto metatable = neko::lua_filewatch::metatable;
+    static inline auto metatable = neko::lua::__filewatch::metatable;
 };
 }  // namespace neko::lua

@@ -10,12 +10,12 @@
 #include "engine/neko_reflection.hpp"
 
 // deps
-#if defined(NEKO_PLATFORM_WIN)
+#if defined(NEKO_PF_WIN)
 #include <Windows.h>
 #include <direct.h>
 #endif
 
-#include "deps/miniz.h"
+#include <miniz.h>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -46,7 +46,7 @@ std::string w2u(std::wstring_view wstr) noexcept {
 }
 }  // namespace neko::wtf8
 
-#if defined(NEKO_PLATFORM_WIN)
+#if defined(NEKO_PF_WIN)
 
 namespace neko::win {
 std::wstring u2w(std::string_view str) noexcept {
@@ -602,7 +602,7 @@ mount_result vfs_mount(const char *filepath) {
         string path = os_program_path().c_str();
 
 #ifndef NDEBUG
-        printf("program path: %s\n", path.data);
+        NEKO_DEBUG_LOG("program path: %s", path.data);
 #endif
 
         res.ok = vfs_mount_type<DirectoryFileSystem>(path);

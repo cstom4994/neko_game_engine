@@ -22,7 +22,7 @@ struct game_font_render_batch;
 
 typedef struct neko_client_userdata_t {
 
-    Neko_ModuleInterface interface{};
+    Neko_ModuleInterface module_interface{};
 
     neko_imgui_context_t imgui = NEKO_DEFAULT_VAL();
 
@@ -53,7 +53,7 @@ typedef struct neko_client_userdata_t {
 extern neko_client_userdata_t g_client_userdata;
 
 NEKO_INLINE neko_client_userdata_t* CL_GAME_USERDATA() { return &g_client_userdata; }
-NEKO_INLINE Neko_ModuleInterface* CL_GAME_INTERFACE() { return &g_client_userdata.interface; }
+NEKO_INLINE Neko_ModuleInterface* CL_GAME_INTERFACE() { return &g_client_userdata.module_interface; }
 
 // TODO:
 std::string game_assets(const std::string& path);

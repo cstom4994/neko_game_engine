@@ -148,7 +148,7 @@ neko_immediate_draw_static_data_t* g_neko_idraw = NULL;
 const f32 neko_idraw_deg2rad = (f32)neko_pi / 180.f;
 
 // Shaders
-#if (defined NEKO_PLATFORM_WEB || defined NEKO_PLATFORM_ANDROID)
+#if (defined NEKO_PF_WEB || defined NEKO_PF_ANDROID)
 #define NEKO_IDRAW_GL_VERSION_STR "#version 300 es\n"
 #else
 #define NEKO_IDRAW_GL_VERSION_STR "#version 330 core\n"
@@ -4213,7 +4213,7 @@ char* neko_pipeline_generate_shader_code(neko_draw_pipeline_desc_t* pdesc, neko_
     neko_snprintfc(MAJMINSTR, 128, "#version %u%u0\n", ginfo->major_version, ginfo->minor_version);
 
 // Shaders
-#ifdef NEKO_PLATFORM_WEB
+#ifdef NEKO_PF_WEB
 #define _NEKO_VERSION_STR "#version 300 es\n"
 #else
 #define _NEKO_VERSION_STR MAJMINSTR  // should be "#version 430\n" or newer

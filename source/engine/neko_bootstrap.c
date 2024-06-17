@@ -104,9 +104,9 @@ NEKO_API_DECL void neko_frame() {
         neko_platform_update(platform);
 
         if (win->focus /*|| neko_instance()->game.window.running_background*/) {
-
-            // Process application context
             neko_instance()->update();
+
+            neko_instance()->post_update();
 
             {
                 // TODO:: 这里设置清理 garbage_sounds
@@ -182,21 +182,21 @@ void neko_fini() {
 NEKO_API_DECL void neko_default_main_window_close_callback(void* window) { neko_instance()->game.is_running = false; }
 
 void neko_quit() {
-#ifndef NEKO_PLATFORM_WEB
+#ifndef NEKO_PF_WEB
     neko_instance()->game.is_running = false;
 #endif
 }
 
-void neko_module_interface_init(Neko_ModuleInterface* interface) {
+void neko_module_interface_init(Neko_ModuleInterface* module_interface) {
 
-    interface->common.__neko_mem_safe_alloc = &__neko_mem_safe_alloc;
-    interface->common.__neko_mem_safe_calloc = &__neko_mem_safe_calloc;
-    interface->common.__neko_mem_safe_realloc = &__neko_mem_safe_realloc;
-    interface->common.__neko_mem_safe_free = &__neko_mem_safe_free;
+    module_interface->common.__neko_mem_safe_alloc = &__neko_mem_safe_alloc;
+    module_interface->common.__neko_mem_safe_calloc = &__neko_mem_safe_calloc;
+    module_interface->common.__neko_mem_safe_realloc = &__neko_mem_safe_realloc;
+    module_interface->common.__neko_mem_safe_free = &__neko_mem_safe_free;
 
-    interface->cb = neko_command_buffer_new();
-    interface->idraw = neko_immediate_draw_new();
-    interface->am = neko_asset_manager_new();
+    module_interface->cb = neko_command_buffer_new();
+    module_interface->idraw = neko_immediate_draw_new();
+    module_interface->am = neko_asset_manager_new();
 }
 
 //=============================
