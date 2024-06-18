@@ -2557,13 +2557,8 @@ NEKO_INLINE void neko_lua_fini(lua_State* m_ls) {
     }
 }
 
-NEKO_STATIC_INLINE void neko_lua_run_string(lua_State* m_ls, const char* str_) {
-    if (luaL_dostring(m_ls, str_)) {
-        std::string err = neko_lua_tool_t::dump_error(m_ls, "run_string ::lua_pcall_wrap failed str<%s>", str_);
-        ::lua_pop(m_ls, 1);
-        NEKO_ERROR("%s", err.c_str());
-    }
-}
+void neko_lua_run_string(lua_State* m_ls, const_str str_);
+
 NEKO_STATIC_INLINE void neko_lua_run_string(lua_State* m_ls, const std::string& str_) { neko_lua_run_string(m_ls, str_.c_str()); }
 
 NEKO_INLINE void neko_lua_dump_stack(lua_State* m_ls) { neko_lua_tool_t::dump_stack(m_ls); }
@@ -3034,6 +3029,8 @@ void set(lua_State* L, int idx, table& v);
 void get(lua_State* L, const value& v);
 void get(lua_State* L, const table& v);
 }  // namespace luavalue
+
+int vfs_lua_loader(lua_State* L);
 
 }  // namespace neko
 

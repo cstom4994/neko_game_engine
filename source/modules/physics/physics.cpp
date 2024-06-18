@@ -710,54 +710,10 @@ static int neko_b2_world(lua_State* L) {
     return 1;
 }
 
-Neko_ModuleInterface* g_interface;
+// Neko_ModuleInterface* g_interface;
 
-NEKO_DLL_EXPORT s32 Neko_OnModuleLoad(Neko_ModuleInterface* module_interface) {
-    assert(module_interface != NULL);
-    g_interface = module_interface;
-    return 666;
-}
-
-// 好好好
-
-neko::string luax_check_string(lua_State *L, s32 arg) {
-    size_t len = 0;
-    char *str = (char *)luaL_checklstring(L, arg, &len);
-    return {str, len};
-}
-
-int luax_msgh(lua_State* L) {
-    // if (g_app->error_mode.load()) {
-    //     return 0;
-    // }
-
-    neko::string err = luax_check_string(L, -1);
-
-    // traceback = debug.traceback(nil, 2)
-    lua_getglobal(L, "debug");
-    lua_getfield(L, -1, "traceback");
-    lua_remove(L, -2);
-    lua_pushnil(L);
-    lua_pushinteger(L, 2);
-    lua_call(L, 2, 1);
-    neko::string traceback = luax_check_string(L, -1);
-
-    // if (LockGuard lock{&g_app->error_mtx}) {
-    //     g_app->fatal_error = to_cstr(err);
-    //     g_app->traceback = to_cstr(traceback);
-
-    //     fprintf(stderr, "%s\n", g_app->fatal_error.data);
-    //     fprintf(stderr, "%s\n", g_app->traceback.data);
-
-    //     for (u64 i = 0; i < g_app->traceback.len; i++) {
-    //         if (g_app->traceback.data[i] == '\t') {
-    //             g_app->traceback.data[i] = ' ';
-    //         }
-    //     }
-
-    //     g_app->error_mode.store(true);
-    // }
-
-    lua_pop(L, 2);  // traceback and error
-    return 0;
-}
+// NEKO_DLL_EXPORT s32 Neko_OnModuleLoad(Neko_ModuleInterface* module_interface) {
+//     assert(module_interface != NULL);
+//     g_interface = module_interface;
+//     return 666;
+// }

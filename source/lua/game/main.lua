@@ -45,7 +45,7 @@ neko_game = {
         show_profiler_window = false,
         show_test_window = false,
         show_gui = false,
-        shader_inspect = false,
+        shader_inspect = true,
         hello_ai_shit = false,
         vsync = false,
         is_hotfix = false,
@@ -308,6 +308,22 @@ game_render = function()
         v3.z = 10
         local v3_c = neko.LUASTRUCT_test_vec3(v3)
         dump_func({v3_c.x, v3_c.y, v3_c.z})
+    end
+
+    if ImGui.Button("luadb") then
+        local db = luadb.open("data.lua")
+        print("a=", db.a)
+        print("b=", db.b)
+        print("#c=", #db.c)
+        for k, v in pairs(db.c) do
+            print("pairs c:", k, v)
+        end
+        for k, v in ipairs(db.c) do
+            print("ipairs c:", k, v)
+        end
+        for k, v in pairs(db) do
+            print("pairs", k, v)
+        end
     end
 
     -- ImGui.Checkbox(neko_game.cvar.shader_inspect)

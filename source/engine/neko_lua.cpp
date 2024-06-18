@@ -4,8 +4,18 @@
 
 #include <iostream>
 
+#include "engine/neko.hpp"
+
 namespace neko {
 lua_State* g_L = NULL;
+
+void neko_lua_run_string(lua_State* m_ls, const_str str_) {
+    if (luaL_dostring(m_ls, str_)) {
+        std::string err = neko_lua_tool_t::dump_error(m_ls, "run_string ::lua_pcall_wrap failed str<%s>", str_);
+        ::lua_pop(m_ls, 1);
+        NEKO_ERROR("%s", err.c_str());
+    }
+}
 
 namespace {
 std::string default_str("");
@@ -583,5 +593,47 @@ void get(lua_State* L, const table& t) {
     }
 }
 }  // namespace luavalue
+
+int vfs_lua_loader(lua_State* L) {
+    const_str name = luaL_checkstring(L, 1);
+    std::string path = name;
+    std::replace(path.begin(), path.end(), '.', '/');
+
+    // neko_println("fuck:%s", path.c_str());
+
+#if 0
+    u8* data;
+    u32 data_size;
+
+    int result = neko_pack_item_data(&CL_GAME_INTERFACE()->pack, path.c_str(), (const u8**)&data, &data_size);
+    if (result == 0) {
+        if (luaL_loadbuffer(L, (char*)data, data_size, name) != LUA_OK) {
+            lua_pop(L, 1);
+        } else {
+            neko_println("loaded:%s", path.c_str());
+        }
+
+        neko_pack_item_free(&CL_GAME_INTERFACE()->pack, data);
+    }
+#endif
+
+    auto load_list = {"source/lua/game/", "source/lua/libs/"};
+    for (auto p : load_list) {
+        std::string load_path = p + path + ".lua";
+        neko::string contents = {};
+        bool ok = vfs_read_entire_file("luacode", &contents, load_path.c_str());
+        if (ok) {
+            if (luaL_loadbuffer(L, contents.data, contents.len, name) != LUA_OK) {
+                lua_pop(L, 1);
+            } else {
+                neko_safe_free(contents.data);
+                NEKO_TRACE("[lua] loaded : %s", path.c_str());
+                break;
+            }
+        }
+    }
+
+    return 1;
+}
 
 }  // namespace neko

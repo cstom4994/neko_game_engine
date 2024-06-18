@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "engine/neko.h"
+#include "engine/neko_platform.h"
 
 #if defined(NEKO_PF_WIN)
 #include <Windows.h>
@@ -36,9 +37,9 @@
 #include <string>
 #if defined(__cpp_char8_t)
 template <typename T>
-const char* u8Cpp20(T&& t) noexcept {
+const_str u8Cpp20(T&& t) noexcept {
 #pragma warning(disable : 26490)
-    return reinterpret_cast<const char*>(t);
+    return reinterpret_cast<const_str>(t);
 #pragma warning(default : 26490)
 }
 #define NEKO_STR(x) u8Cpp20(u8##x)
@@ -407,7 +408,7 @@ NEKO_INLINE bool fs_exists(const std::string& filename) {
 template <typename T>
 constexpr std::string_view getTypeName() {
     constexpr auto prefixLength = 36, suffixLength = 1;
-    const char* data = __FUNCSIG__;
+    const_str data = __FUNCSIG__;
     auto end = data;
     while (*end) {
         ++end;
@@ -673,7 +674,7 @@ typedef unsigned long long hash_value;
 static_assert(sizeof(hash_value) == 8 && sizeof(hash_value) == sizeof(size_t));
 
 inline uint64_t hash_fnv(const void* data, int size) {
-    const char* s = (const char*)data;
+    const_str s = (const_str)data;
     uint64_t h = 14695981039346656037ULL;
     char c = 0;
     while (size--) {
@@ -694,7 +695,7 @@ constexpr hash_value xor64(hash_value h) {
 }
 
 // https://de.wikipedia.org/wiki/FNV_(Informatik)
-constexpr hash_value hash_fnv(const char* string) {
+constexpr hash_value hash_fnv(const_str string) {
     hash_value MagicPrime = 0x00000100000001b3ULL;
     hash_value Hash = 0xcbf29ce484222325ULL;
 
@@ -738,8 +739,8 @@ struct string {
     u64 len = 0;
 
     string() = default;
-    string(const char* cstr) : data((char*)cstr), len(strlen(cstr)) {}
-    string(const char* cstr, u64 n) : data((char*)cstr), len(n) {}
+    string(const_str cstr) : data((char*)cstr), len(strlen(cstr)) {}
+    string(const_str cstr, u64 n) : data((char*)cstr), len(n) {}
 
     inline bool is_cstr() { return data[len] == '\0'; }
 
@@ -784,7 +785,7 @@ inline string to_cstr(string str) {
     return {buf, str.len};
 }
 
-constexpr u64 fnv1a(const char* str, u64 len) {
+constexpr u64 fnv1a(const_str str, u64 len) {
     u64 hash = 14695981039346656037u;
     for (u64 i = 0; i < len; i++) {
         hash ^= (u8)str[i];
@@ -795,7 +796,7 @@ constexpr u64 fnv1a(const char* str, u64 len) {
 
 inline u64 fnv1a(string str) { return fnv1a(str.data, str.len); }
 
-constexpr u64 operator"" _hash(const char* str, size_t len) { return fnv1a(str, len); }
+constexpr u64 operator"" _hash(const_str str, size_t len) { return fnv1a(str, len); }
 
 inline bool operator==(string lhs, string rhs) {
     if (lhs.len != rhs.len) {
@@ -820,7 +821,7 @@ inline bool string::ends_with(string match) {
     return substr(len - match.len, len) == match;
 }
 
-NEKO_INLINE string str_fmt(const char* fmt, ...) {
+NEKO_INLINE string str_fmt(const_str fmt, ...) {
     va_list args;
     va_start(args, fmt);
     s32 len = vsnprintf(nullptr, 0, fmt, args);
@@ -837,7 +838,7 @@ NEKO_INLINE string str_fmt(const char* fmt, ...) {
     return {};
 }
 
-NEKO_INLINE string tmp_fmt(const char* fmt, ...) {
+NEKO_INLINE string tmp_fmt(const_str fmt, ...) {
     static char s_buf[1024] = {};
 
     va_list args;
@@ -1157,138 +1158,6 @@ void* vfs_for_miniaudio();
 
 s64 luax_len(lua_State* L, s32 arg);
 string luax_check_string(lua_State* L, s32 arg);
-
-}  // namespace neko
-
-namespace neko {
-
-#if (defined(_WIN32) || defined(_WIN64))
-#define NEKO_DLL_LOADER_WIN_MAC_OTHER(win_def, mac_def, other_def) win_def
-#define NEKO_DLL_LOADER_WIN_OTHER(win_def, other_def) win_def
-#elif defined(__APPLE__)
-#define NEKO_DLL_LOADER_WIN_MAC_OTHER(win_def, mac_def, other_def) mac_def
-#define NEKO_DLL_LOADER_WIN_OTHER(win_def, other_def) other_def
-#else
-#define NEKO_DLL_LOADER_WIN_MAC_OTHER(win_def, mac_def, other_def) other_def
-#define NEKO_DLL_LOADER_WIN_OTHER(win_def, other_def) other_def
-#endif
-
-class dll_loader {
-public:
-    struct filename {
-        static constexpr const char* prefix = NEKO_DLL_LOADER_WIN_OTHER("", "lib");
-        static constexpr const char* suffix = NEKO_DLL_LOADER_WIN_MAC_OTHER(".dll", ".dylib", ".so");
-    };
-    using native_handle_type = NEKO_DLL_LOADER_WIN_OTHER(HINSTANCE, void*);
-    using native_symbol_type = NEKO_DLL_LOADER_WIN_OTHER(FARPROC, void*);
-
-    static_assert(std::is_pointer<native_handle_type>::value, "Expecting HINSTANCE to be a pointer");
-    static_assert(std::is_pointer<native_symbol_type>::value, "Expecting FARPROC to be a pointer");
-
-    dll_loader(const dll_loader&) = delete;
-    dll_loader& operator=(const dll_loader&) = delete;
-
-    dll_loader(dll_loader&& other) noexcept : handle(other.handle) { other.handle = nullptr; }
-
-    dll_loader& operator=(dll_loader&& other) noexcept {
-        if (this != &other) std::swap(handle, other.handle);
-        return *this;
-    }
-
-    dll_loader(const char* dir_path, const char* lib_name) {
-        NEKO_ASSERT(dir_path && lib_name);
-
-        std::string final_name = lib_name;
-        std::string final_path = dir_path;
-
-        final_name = filename::prefix + final_name + filename::suffix;
-
-        if (!final_path.empty() && final_path.find_last_of('/') != final_path.size() - 1) final_path += '/';
-
-        handle = open((final_path + final_name).c_str());
-
-        if (!handle) {
-            // throw load_error("Could not load library \"" + final_path + final_name + "\"\n" + get_error_description());
-        }
-    }
-
-    ~dll_loader() {
-        if (handle) close(handle);
-    }
-
-    native_symbol_type get_symbol(const char* symbol_name) const {
-        if (!symbol_name) throw std::invalid_argument("The symbol name to lookup is null");
-        if (!handle) throw std::logic_error("The dynamic library handle is null. This object may have been moved from.");
-
-        auto symbol = locate_symbol(handle, symbol_name);
-
-        if (symbol == nullptr) {
-            // throw symbol_error("Could not get symbol \"" + std::string(symbol_name) + "\"\n" + get_error_description());
-        }
-        return symbol;
-    }
-
-    native_symbol_type get_symbol(const std::string& symbol_name) const { return get_symbol(symbol_name.c_str()); }
-
-    template <typename T>
-    T* get_function(const char* symbol_name) const {
-        return reinterpret_cast<T*>(get_symbol(symbol_name));
-    }
-
-    template <typename T>
-    T* get_function(const std::string& symbol_name) const {
-        return get_function<T>(symbol_name.c_str());
-    }
-
-    template <typename T>
-    T& get_variable(const char* symbol_name) const {
-        return *reinterpret_cast<T*>(get_symbol(symbol_name));
-    }
-
-    template <typename T>
-    T& get_variable(const std::string& symbol_name) const {
-        return get_variable<T>(symbol_name.c_str());
-    }
-
-    bool has_symbol(const char* symbol_name) const noexcept {
-        if (!handle || !symbol_name) return false;
-        return locate_symbol(handle, symbol_name) != nullptr;
-    }
-
-    bool has_symbol(const std::string& symbol) const noexcept { return has_symbol(symbol.c_str()); }
-
-    native_handle_type native_handle() noexcept { return handle; }
-
-protected:
-    native_handle_type handle{nullptr};
-
-    static native_handle_type open(const char* path) noexcept {
-#if (defined(_WIN32) || defined(_WIN64))
-        return LoadLibraryA(path);
-#else
-        return dlopen(path, RTLD_NOW | RTLD_LOCAL);
-#endif
-    }
-
-    static void close(native_handle_type lib) noexcept { NEKO_DLL_LOADER_WIN_OTHER(FreeLibrary, dlclose)(lib); }
-
-    static native_symbol_type locate_symbol(native_handle_type lib, const char* name) noexcept { return NEKO_DLL_LOADER_WIN_OTHER(GetProcAddress, dlsym)(lib, name); }
-
-    static std::string get_error_description() noexcept {
-#if (defined(_WIN32) || defined(_WIN64))
-        constexpr const size_t BUF_SIZE = 512;
-        const auto error_code = GetLastError();
-        if (!error_code) return "No error reported by GetLastError";
-        char description[BUF_SIZE];
-        const auto lang = MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US);
-        const DWORD length = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, error_code, lang, description, BUF_SIZE, nullptr);
-        return (length == 0) ? "Unknown error (FormatMessage failed)" : description;
-#else
-        const auto description = dlerror();
-        return (description == nullptr) ? "No error reported by dlerror" : description;
-#endif
-    }
-};
 
 }  // namespace neko
 

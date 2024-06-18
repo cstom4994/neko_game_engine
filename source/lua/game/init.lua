@@ -6,6 +6,7 @@ ffi = require("neko.ffi")
 cffi = require("neko.cffi")
 luastruct_test = require("neko.struct_test")
 pack = require("neko.pack")
+luadb = require "neko.luadb"
 
 dump_func = function(tbl, indent)
     if not indent then

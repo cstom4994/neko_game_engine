@@ -26,7 +26,7 @@ if is_os("windows") or is_os("macosx") then
             wchar32 = true
         }
     })
-    add_requires("miniaudio", "flecs", "box2d")
+    add_requires("miniaudio", "flecs", "box2d", "enet")
 else
     -- add_requires(base_libs)
 end
@@ -55,13 +55,14 @@ if is_plat("windows") then
     -- add_cxflags("/MT")
 else
     add_cxflags("-Wtautological-compare")
-    add_cxflags("-fno-strict-aliasing", "-Wno-implicit-int", "-fms-extensions", "-Wno-error", "-Wno-multichar",
-        "-Wno-unsequenced", "-Wno-unqualified-std-cast-call", "-Wno-implicit-const-int-float-conversion",
-        "-Wno-unused-value", "-Wno-pointer-bool-conversion", "-Wno-unknown-attributes", "-Wno-return-stack-address",
-        "-Wno-writable-strings", "-Wno-format", "-Wno-switch", "-Wno-incompatible-pointer-types",
+    add_cxflags("-fno-strict-aliasing", "-fms-extensions", "-finline-functions", "-fPIC")
+    add_cxflags("-Wno-implicit-int", "-Wno-error", "-Wno-multichar", "-Wno-unsequenced",
+        "-Wno-unqualified-std-cast-call", "-Wno-implicit-const-int-float-conversion", "-Wno-unused-value",
+        "-Wno-pointer-bool-conversion", "-Wno-unknown-attributes", "-Wno-return-stack-address", "-Wno-writable-strings",
+        "-Wno-format", "-Wno-switch", "-Wno-incompatible-pointer-types",
         "-Wno-tautological-constant-out-of-range-compare", "-Wno-tautological-pointer-compare",
         "-Wno-shift-op-parentheses", "-Wno-visibility", "-Wno-parentheses", "-Wno-pointer-sign",
-        "-Wno-ignored-attributes", "-Wno-c99-designator", "-Wno-null-conversion", "-finline-functions", "-fPIC")
+        "-Wno-ignored-attributes", "-Wno-c99-designator", "-Wno-null-conversion")
 end
 
 if is_mode("release") then
@@ -108,8 +109,8 @@ local function neko_build_register(module, package)
     end
 end
 
-neko_build_register("sound", {"miniaudio"})
-neko_build_register("physics", {"box2d"})
+-- neko_build_register("sound", {"miniaudio"})
+-- neko_build_register("physics", {"box2d"})
 -- neko_build_register("flecs", {"flecs"})
 
 target("sandbox")
@@ -117,12 +118,15 @@ do
     set_kind("binary")
 
     add_files("source/sandbox/**.c", "source/sandbox/**.cpp")
+    add_files("source/modules/**.c", "source/modules/**.cpp")
     add_headerfiles("source/sandbox/**.h", "source/sandbox/**.hpp")
+    add_headerfiles("source/modules/**.h", "source/modules/**.hpp")
 
     add_deps("neko_engine")
     -- add_deps(neko_module_name("sound"))
 
     add_packages(base_libs)
+    add_packages("miniaudio", "box2d", "enet")
 
     set_targetdir("./")
     set_rundir("./")

@@ -757,45 +757,29 @@ NEKO_API_DECL neko_platform_file_stats_t neko_platform_file_stats(const char* fi
 
 NEKO_API_DECL void* neko_platform_library_load_default_impl(const char* lib_path) {
 #if (defined NEKO_PF_WIN)
-
     return (void*)LoadLibraryA(lib_path);
-
 #elif (defined NEKO_PF_LINUX || defined NEKO_PF_APPLE || defined NEKO_PF_ANDROID)
-
-    return (void*)dlopen(lib_path, RTLD_LAZY);
-
+    return (void*)dlopen(lib_path, RTLD_NOW | RTLD_LOCAL); // RTLD_LAZY
 #endif
-
     return NULL;
 }
 
 NEKO_API_DECL void neko_platform_library_unload_default_impl(void* lib) {
     if (!lib) return;
-
 #if (defined NEKO_PF_WIN)
-
     FreeLibrary((HMODULE)lib);
-
 #elif (defined NEKO_PF_LINUX || defined NEKO_PF_APPLE || defined NEKO_PF_ANDROID)
-
     dlclose(lib);
-
 #endif
 }
 
 NEKO_API_DECL void* neko_platform_library_proc_address_default_impl(void* lib, const char* func) {
     if (!lib) return NULL;
-
 #if (defined NEKO_PF_WIN)
-
     return (void*)GetProcAddress((HMODULE)lib, func);
-
 #elif (defined NEKO_PF_LINUX || defined NEKO_PF_APPLE || defined NEKO_PF_ANDROID)
-
     return (void*)dlsym(lib, func);
-
 #endif
-
     return NULL;
 }
 
@@ -882,6 +866,8 @@ b32 __glfw_set_window_center(GLFWwindow* window);
 
 /*== Platform Init / Shutdown == */
 
+void neko_glfw_error_callback(int code, const_str description) { NEKO_WARN("glfw error %d : %s", code, description); }
+
 void neko_platform_init(neko_platform_t* pf) {
     NEKO_ASSERT(pf);
 
@@ -905,9 +891,14 @@ void neko_platform_init(neko_platform_t* pf) {
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     }
 
-    // 使用 OpenGL 4.1
+    // 设定 OpenGL 版本
+#if defined(NEKO_GL33)
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+#else
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+#endif
 
 #if defined(NEKO_PF_APPLE)
     glfwWindowHint(GLFW_COCOA_RETINA_FRAMEBUFFER, GLFW_FALSE);
@@ -918,6 +909,8 @@ void neko_platform_init(neko_platform_t* pf) {
 
     //    glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
     //    glfwWindowHint(GLFW_DECORATED, GLFW_FALSE); // 设置窗口无边框
+
+    glfwSetErrorCallback(neko_glfw_error_callback);
 
     // Construct cursors
     pf->cursors[(u32)NEKO_PF_CURSOR_ARROW] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);

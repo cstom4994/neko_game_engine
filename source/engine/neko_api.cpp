@@ -154,151 +154,6 @@ neko_color_t unpack<neko_color_t>(lua_State* L, int idx) {
 }
 }  // namespace lua2struct
 
-void addMethods(lua_State* L, const_str name, const luaL_Reg* methods) {
-    luaL_newmetatable(L, name);
-
-    lua_pushstring(L, "__index");
-    lua_newtable(L);
-
-    for (const luaL_Reg* method = methods; method->name != NULL; ++method) {
-        lua_pushcfunction(L, method->func);
-        lua_setfield(L, -2, method->name);
-    }
-
-    lua_settable(L, -3);
-
-    lua_setmetatable(L, -2);
-}
-
-void setFieldInt(lua_State* L, const_str key, float data) {
-    lua_pushstring(L, key);
-    lua_pushinteger(L, data);
-    lua_settable(L, -3);
-}
-
-void setFieldFloat(lua_State* L, const_str key, float data) {
-    lua_pushstring(L, key);
-    lua_pushnumber(L, data);
-    lua_settable(L, -3);
-}
-
-int tostring(lua_State* L) {
-    lua_getfield(L, 1, "x");
-    lua_getfield(L, 1, "y");
-    lua_getfield(L, 1, "z");
-
-    const_str x = lua_tostring(L, -3);
-    const_str y = lua_tostring(L, -2);
-    const_str z = lua_tostring(L, -1);
-
-    neko_snprintfc(temp, 64, "%f, %f, %f", x, y, z);
-
-    lua_pop(L, 3);
-
-    lua_pushstring(L, temp);
-
-    return 1;
-}
-
-static const luaL_Reg tableMethods[] = {{"tostring", tostring}, {NULL, NULL}};
-
-int Vector(lua_State* L) {
-    float x = luaL_optnumber(L, 1, 0.0f);
-    float y = luaL_optnumber(L, 2, 0.0f);
-    float z = luaL_optnumber(L, 3, 0.0f);
-
-    lua_newtable(L);
-    setFieldFloat(L, "x", x);
-    setFieldFloat(L, "y", y);
-    setFieldFloat(L, "z", z);
-
-    addMethods(L, "table", tableMethods);
-
-    return 1;
-}
-
-int Angle(lua_State* L) {
-    float roll = luaL_optnumber(L, 1, 0.0f);
-    float pitch = luaL_optnumber(L, 2, 0.0f);
-    float yaw = luaL_optnumber(L, 3, 0.0f);
-
-    lua_newtable(L);
-    setFieldFloat(L, "roll", roll);
-    setFieldFloat(L, "pitch", pitch);
-    setFieldFloat(L, "yaw", yaw);
-
-    addMethods(L, "table", tableMethods);
-
-    return 1;
-}
-
-int Color(lua_State* L) {
-    float r = luaL_optnumber(L, 1, 255.0f);
-    float g = luaL_optnumber(L, 2, 255.0f);
-    float b = luaL_optnumber(L, 3, 255.0f);
-    float a = luaL_optnumber(L, 4, 255.0f);
-
-    lua_newtable(L);
-    setFieldInt(L, "r", r);
-    setFieldInt(L, "g", g);
-    setFieldInt(L, "b", b);
-    setFieldInt(L, "a", a);
-
-    // addMethods(L, "color", colorMethods);
-
-    return 1;
-}
-
-void registerGlobals(lua_State* L, const neko_luaL_reg* funcs) {
-    for (; funcs->name != NULL; ++funcs) {
-        lua_pushstring(L, funcs->name);
-        funcs->func(L);
-        lua_setglobal(L, funcs->name);
-    }
-}
-
-static int __neko_loader(lua_State* L) {
-    const_str name = luaL_checkstring(L, 1);
-    std::string path = name;
-    std::replace(path.begin(), path.end(), '.', '/');
-
-    // neko_println("fuck:%s", path.c_str());
-
-#if 0
-    u8* data;
-    u32 data_size;
-
-    int result = neko_pack_item_data(&CL_GAME_INTERFACE()->pack, path.c_str(), (const u8**)&data, &data_size);
-    if (result == 0) {
-        if (luaL_loadbuffer(L, (char*)data, data_size, name) != LUA_OK) {
-            lua_pop(L, 1);
-        } else {
-            neko_println("loaded:%s", path.c_str());
-        }
-
-        neko_pack_item_free(&CL_GAME_INTERFACE()->pack, data);
-    }
-#endif
-
-    auto load_list = {"source/lua/game/", "source/lua/libs/"};
-    for (auto p : load_list) {
-        std::string load_path = p + path + ".lua";
-        neko::string contents = {};
-        bool ok = vfs_read_entire_file("luacode", &contents, load_path.c_str());
-        if (ok) {
-            if (luaL_loadbuffer(L, contents.data, contents.len, name) != LUA_OK) {
-                lua_pop(L, 1);
-            } else {
-                neko_safe_free(contents.data);
-                NEKO_TRACE("[lua] loaded : %s", path.c_str());
-                break;
-            }
-        }
-    }
-
-    return 1;
-}
-
 #if 1
 #include "engine/luabind/core.hpp"
 #include "engine/luabind/debug.hpp"
@@ -318,6 +173,8 @@ static int __neko_loader(lua_State* L) {
     lua_setfield(L, -2, name);      \
     lua_pop(L, 2)
 
+int luaopen_enet(lua_State* L);
+
 void neko_register(lua_State* L) {
 
     NEKO_ASSERT(L != NULL, "?");
@@ -329,8 +186,10 @@ void neko_register(lua_State* L) {
     neko::lua::preload_module(L);   // 新的模块系统
     neko::lua::package_preload(L);  // 新的模块系统
 
+    PRELOAD("enet", luaopen_enet); // test
+
     // 自定义加载器
-    lua_register(L, "__neko_loader", __neko_loader);
+    lua_register(L, "__neko_loader", neko::vfs_lua_loader);
     const_str str = "table.insert(package.searchers, 2, __neko_loader) \n";
     luaL_dostring(L, str);
 

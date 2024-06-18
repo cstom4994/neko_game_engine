@@ -63,6 +63,19 @@ typedef struct Neko_CommonInterface {
     const_str (*capi_vfs_read_file)(const_str fsname, const_str filepath, u64* size);
 } Neko_CommonInterface;
 
+typedef struct Neko_ModuleFunc {
+    int (*OnInit)(lua_State* L);
+    int (*OnFini)(lua_State* L);
+    int (*OnPostUpdate)(lua_State* L);
+    int (*OnUpdate)(lua_State* L);
+} Neko_ModuleFunc;
+
+typedef struct Neko_Module {
+    void* hndl;
+    Neko_ModuleFunc func;
+    char name[64];
+} Neko_Module;
+
 typedef struct Neko_ModuleInterface {
 
     neko_t* Neko;
@@ -83,7 +96,15 @@ typedef struct Neko_ModuleInterface {
     neko_ecs_t* ecs;
 
     Neko_CommonInterface common;
+
+    neko_dyn_array(Neko_Module) modules;
+
 } Neko_ModuleInterface;
+
+NEKO_API_DECL Neko_Module neko_module_open(const_str name);
+NEKO_API_DECL void neko_module_close(Neko_Module lib);
+NEKO_API_DECL void* neko_module_get_symbol(Neko_Module lib, const_str symbol_name);
+NEKO_API_DECL bool neko_module_has_symbol(Neko_Module lib, const_str symbol_name);
 
 NEKO_API_DECL void neko_module_interface_init(Neko_ModuleInterface* module_interface);
 

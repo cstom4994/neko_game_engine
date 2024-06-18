@@ -77,7 +77,7 @@ ma_engine audio_engine;
 
 // miniaudio vfs
 
-struct AudioFile {
+struct audio_file {
     u8* buf;
     u64 cursor;
     u64 len;
@@ -97,7 +97,7 @@ void* vfs_for_miniaudio() {
             return MA_ERROR;
         }
 
-        AudioFile* file = (AudioFile*)neko_safe_malloc(sizeof(AudioFile));
+        audio_file* file = (audio_file*)neko_safe_malloc(sizeof(audio_file));
         file->buf = (u8*)data;
         file->len = len;
         file->cursor = 0;
@@ -107,14 +107,14 @@ void* vfs_for_miniaudio() {
     };
 
     vtbl.onClose = [](ma_vfs* pVFS, ma_vfs_file file) -> ma_result {
-        AudioFile* f = (AudioFile*)file;
+        audio_file* f = (audio_file*)file;
         neko_safe_free(f->buf);
         neko_safe_free(f);
         return MA_SUCCESS;
     };
 
     vtbl.onRead = [](ma_vfs* pVFS, ma_vfs_file file, void* pDst, size_t sizeInBytes, size_t* pBytesRead) -> ma_result {
-        AudioFile* f = (AudioFile*)file;
+        audio_file* f = (audio_file*)file;
 
         u64 remaining = f->len - f->cursor;
         u64 len = remaining < sizeInBytes ? remaining : sizeInBytes;
@@ -134,7 +134,7 @@ void* vfs_for_miniaudio() {
     vtbl.onWrite = [](ma_vfs* pVFS, ma_vfs_file file, const void* pSrc, size_t sizeInBytes, size_t* pBytesWritten) -> ma_result { return MA_NOT_IMPLEMENTED; };
 
     vtbl.onSeek = [](ma_vfs* pVFS, ma_vfs_file file, ma_int64 offset, ma_seek_origin origin) -> ma_result {
-        AudioFile* f = (AudioFile*)file;
+        audio_file* f = (audio_file*)file;
 
         s64 seek = 0;
         switch (origin) {
@@ -159,13 +159,13 @@ void* vfs_for_miniaudio() {
     };
 
     vtbl.onTell = [](ma_vfs* pVFS, ma_vfs_file file, ma_int64* pCursor) -> ma_result {
-        AudioFile* f = (AudioFile*)file;
+        audio_file* f = (audio_file*)file;
         *pCursor = f->cursor;
         return MA_SUCCESS;
     };
 
     vtbl.onInfo = [](ma_vfs* pVFS, ma_vfs_file file, ma_file_info* pInfo) -> ma_result {
-        AudioFile* f = (AudioFile*)file;
+        audio_file* f = (audio_file*)file;
         pInfo->sizeInBytes = f->len;
         return MA_SUCCESS;
     };
@@ -368,7 +368,8 @@ static int neko_sound_load(lua_State* L) {
     return 1;
 }
 
-void OnInit() {
+int OnInit(lua_State* L) {
+
     miniaudio_vfs = vfs_for_miniaudio();
 
     ma_engine_config ma_config = ma_engine_config_init();
@@ -377,16 +378,22 @@ void OnInit() {
     ma_config.pResourceManagerVFS = miniaudio_vfs;
     ma_result res = ma_engine_init(&ma_config, &audio_engine);
     if (res != MA_SUCCESS) {
-        // NEKO_ERROR("%s", "failed to initialize audio engine");
+        // neko_printf("failed to initialize audio engine");
+    } else {
+        // neko_printf("initialize audio engine");
+        // neko::neko_lua_run_string(L, "print(\"initialize audio engine\")");
     }
+
+    return 0;
 }
 
-void OnFini() {
+int OnFini(lua_State* L) {
     ma_engine_uninit(&audio_engine);
     neko_safe_free(miniaudio_vfs);
+    return 0;
 }
 
-void OnPostUpdate() {
+int OnPostUpdate(lua_State* L) {
     auto& sounds = garbage_sounds;
     for (u64 i = 0; i < sounds.len;) {
         auto* sound = sounds[i];
@@ -402,12 +409,21 @@ void OnPostUpdate() {
             i++;
         }
     }
+    return 0;
 }
+
+int OnUpdate(lua_State* L) { return 0; }
 
 Neko_ModuleInterface* g_interface;
 
-NEKO_DLL_EXPORT s32 Neko_OnModuleLoad(Neko_ModuleInterface* module_interface) {
+NEKO_DLL_EXPORT s32 Neko_OnModuleLoad(Neko_Module* self, Neko_ModuleInterface* module_interface) {
     assert(module_interface != NULL);
     g_interface = module_interface;
+
+    self->func.OnInit = &OnInit;
+    self->func.OnFini = &OnFini;
+    self->func.OnPostUpdate = &OnPostUpdate;
+    self->func.OnUpdate = &OnUpdate;
+
     return 666;
 }

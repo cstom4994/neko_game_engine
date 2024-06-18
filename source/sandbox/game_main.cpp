@@ -397,11 +397,12 @@ void game_init() {
     //     ecs_attach(registry, e, test_component);
     // }
 
-    neko::dll_loader sound_module("./", "neko_module_sound");
-
-    auto sound_module_loader = sound_module.get_function<s32(Neko_ModuleInterface *)>(Neko_OnModuleLoad_FuncName);
-    s32 sss = sound_module_loader(CL_GAME_INTERFACE());
-    NEKO_TRACE("%d", sss);
+    // Neko_Module sound_module = neko_module_open("neko_module_sound");
+    // auto sound_module_loader = reinterpret_cast<s32 (*)(Neko_Module *, Neko_ModuleInterface *)>(neko_module_get_symbol(sound_module, Neko_OnModuleLoad_FuncName));
+    // s32 sss = sound_module_loader(&sound_module, CL_GAME_INTERFACE());
+    // NEKO_TRACE("%d", sss);
+    // sound_module.func.OnInit(neko_instance()->L);
+    // neko_module_close(sound_module);
 
     // 初始化工作
 
@@ -462,9 +463,6 @@ void game_loop() {
             thread_term(CL_GAME_USERDATA()->init_work_thread);
             NEKO_TRACE("init_work_thread done");
         }
-
-        //        neko_vec2 fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
-        neko_vec2 win_size = neko_platform_window_sizev(neko_platform_main_window());
 
         f32 dt = neko_platform_delta_time();
 
@@ -567,15 +565,13 @@ void game_loop() {
         neko_render_renderpass_end(&CL_GAME_INTERFACE()->cb);
 
         neko_idraw_defaults(&CL_GAME_INTERFACE()->idraw);
-        neko_idraw_camera2d(&CL_GAME_INTERFACE()->idraw, (u32)win_size.x, (u32)win_size.y);
+        neko_idraw_camera2d(&CL_GAME_INTERFACE()->idraw, (u32)CL_GAME_USERDATA()->DisplaySize.x, (u32)CL_GAME_USERDATA()->DisplaySize.y);
         neko_idraw_texture(&CL_GAME_INTERFACE()->idraw, CL_GAME_USERDATA()->main_rt);
-        neko_idraw_rectvd(&CL_GAME_INTERFACE()->idraw, neko_v2(0.0, 0.0), neko_v2((u32)win_size.x, (u32)win_size.y), neko_v2(0.0, 1.0), neko_v2(1.0, 0.0), neko_color(255, 255, 255, 255),
-                          R_PRIMITIVE_TRIANGLES);
-
-        const neko_vec2_t ws = neko_platform_window_sizev(neko_platform_main_window());
+        neko_idraw_rectvd(&CL_GAME_INTERFACE()->idraw, neko_v2(0.0, 0.0), neko_v2((u32)CL_GAME_USERDATA()->DisplaySize.x, (u32)CL_GAME_USERDATA()->DisplaySize.y), neko_v2(0.0, 1.0), neko_v2(1.0, 0.0),
+                          neko_color(255, 255, 255, 255), R_PRIMITIVE_TRIANGLES);
 
         neko_idraw_defaults(&CL_GAME_INTERFACE()->idraw);
-        neko_idraw_camera2d(&CL_GAME_INTERFACE()->idraw, ws.x, ws.y);
+        neko_idraw_camera2d(&CL_GAME_INTERFACE()->idraw, CL_GAME_USERDATA()->DisplaySize.x, CL_GAME_USERDATA()->DisplaySize.y);
 
         // ecs_progress(CL_GAME_USERDATA()->ecs_world, 0);
         // neko_ecs_run_systems(CL_GAME_INTERFACE()->ecs, ECS_SYSTEM_UPDATE);
@@ -584,12 +580,11 @@ void game_loop() {
 
         neko_render_renderpass_begin(&CL_GAME_INTERFACE()->cb, R_RENDER_PASS_DEFAULT);
         {
-            neko_render_set_viewport(&CL_GAME_INTERFACE()->cb, 0.0, 0.0, win_size.x, win_size.y);
+            neko_render_set_viewport(&CL_GAME_INTERFACE()->cb, 0.0, 0.0, CL_GAME_USERDATA()->DisplaySize.x, CL_GAME_USERDATA()->DisplaySize.y);
             neko_idraw_draw(&CL_GAME_INTERFACE()->idraw, &CL_GAME_INTERFACE()->cb);  // 立即模式绘制 idraw
             neko_ui_render(&CL_GAME_INTERFACE()->ui, &CL_GAME_INTERFACE()->cb);
         }
         neko_render_renderpass_end(&CL_GAME_INTERFACE()->cb);
-
         neko_lua_call(neko_instance()->L, "game_render");
 
         neko_imgui_render(&CL_GAME_USERDATA()->imgui);

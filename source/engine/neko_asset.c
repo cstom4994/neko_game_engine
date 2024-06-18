@@ -1157,7 +1157,7 @@ bool neko_pack_unzip(const_str file_path, b8 print_progress) {
     return true;
 }
 
-bool neko_write_pack_items(vfs_file *pack_file, u64 item_count, char **item_paths, b8 print_progress) {
+bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b8 print_progress) {
     NEKO_ASSERT(pack_file);
     NEKO_ASSERT(item_count > 0);
     NEKO_ASSERT(item_paths);

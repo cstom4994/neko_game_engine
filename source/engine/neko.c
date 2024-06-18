@@ -924,3 +924,57 @@ void help(int argc, char** argv) {
         if (commands[i].desc) neko_console_printf(&g_console, "- desc: %s\n", commands[i].desc);
     }
 }
+
+//=============================
+// Module loader
+//=============================
+
+#if (defined(_WIN32) || defined(_WIN64))
+#define NEKO_DLL_LOADER_WIN_MAC_OTHER(win_def, mac_def, other_def) win_def
+#define NEKO_DLL_LOADER_WIN_OTHER(win_def, other_def) win_def
+#elif defined(__APPLE__)
+#define NEKO_DLL_LOADER_WIN_MAC_OTHER(win_def, mac_def, other_def) mac_def
+#define NEKO_DLL_LOADER_WIN_OTHER(win_def, other_def) other_def
+#else
+#define NEKO_DLL_LOADER_WIN_MAC_OTHER(win_def, mac_def, other_def) other_def
+#define NEKO_DLL_LOADER_WIN_OTHER(win_def, other_def) other_def
+#endif
+
+Neko_Module neko_module_open(const_str name) {
+    Neko_Module module;
+    char filename[64] = {};
+    const_str prefix = NEKO_DLL_LOADER_WIN_OTHER("", "lib");
+    const_str suffix = NEKO_DLL_LOADER_WIN_MAC_OTHER(".dll", ".dylib", ".so");
+    neko_snprintf(filename, 64, "%s%s%s", prefix, name, suffix);
+    module.hndl = (void*)neko_platform_library_load(filename);
+    return module;
+}
+
+void neko_module_close(Neko_Module lib) { neko_platform_library_unload(lib.hndl); }
+
+void* neko_module_get_symbol(Neko_Module lib, const_str symbol_name) {
+    void* symbol = (void*)neko_platform_library_proc_address(lib.hndl, symbol_name);
+    return symbol;
+}
+
+bool neko_module_has_symbol(Neko_Module lib, const_str symbol_name) {
+    if (!lib.hndl || !symbol_name) return false;
+    return neko_platform_library_proc_address(lib.hndl, symbol_name) != NULL;
+}
+
+#if 0
+static std::string get_error_description() noexcept {
+#if (defined(_WIN32) || defined(_WIN64))
+    constexpr const size_t BUF_SIZE = 512;
+    const auto error_code = GetLastError();
+    if (!error_code) return "No error reported by GetLastError";
+    char description[BUF_SIZE];
+    const auto lang = MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US);
+    const DWORD length = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, error_code, lang, description, BUF_SIZE, nullptr);
+    return (length == 0) ? "Unknown error (FormatMessage failed)" : description;
+#else
+    const auto description = dlerror();
+    return (description == nullptr) ? "No error reported by dlerror" : description;
+#endif
+}
+#endif

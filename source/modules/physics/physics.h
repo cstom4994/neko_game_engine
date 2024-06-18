@@ -7,24 +7,6 @@
 #include "engine/neko_api.hpp"
 #include "engine/neko_engine.h"
 
-#if defined(_WIN32) || defined(_WIN64)
-#define NEKO_DLL_EXPORT extern "C" __declspec(dllexport)
-#else
-#define NEKO_DLL_EXPORT extern "C"
-#endif
-
-NEKO_API_EXTERN Neko_ModuleInterface *g_interface;
-
-#undef neko_safe_malloc
-#undef neko_safe_free
-#undef neko_safe_realloc
-#undef neko_safe_calloc
-
-#define neko_safe_malloc(size) g_interface->common.__neko_mem_safe_alloc((size), (char *)__FILE__, __LINE__, NULL)
-#define neko_safe_free(mem) g_interface->common.__neko_mem_safe_free((void *)mem, NULL)
-#define neko_safe_realloc(ptr, size) g_interface->common.__neko_mem_safe_realloc((ptr), (size), (char *)__FILE__, __LINE__, NULL)
-#define neko_safe_calloc(count, element_size) g_interface->common.__neko_mem_safe_calloc(count, element_size, (char *)__FILE__, __LINE__, NULL)
-
 struct neko_physics_userdata {
     s32 begin_contact_ref;
     s32 end_contact_ref;

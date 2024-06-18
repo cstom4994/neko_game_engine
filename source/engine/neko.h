@@ -2111,17 +2111,17 @@ NEKO_API_DECL s32 neko_buildnum(void);
 
 typedef struct vfs_file {
     const_str data;
-    u64 len;
+    size_t len;
     u64 offset;
 } vfs_file;
 
 NEKO_API_DECL size_t neko_capi_vfs_fread(void* dest, size_t size, size_t count, vfs_file* vf);
-NEKO_API_DECL int neko_capi_vfs_fseek(vfs_file* vf, off_t of, int whence);
-NEKO_API_DECL off_t neko_capi_vfs_ftell(vfs_file* vf);
+NEKO_API_DECL int neko_capi_vfs_fseek(vfs_file* vf, u64 of, int whence);
+NEKO_API_DECL u64 neko_capi_vfs_ftell(vfs_file* vf);
 NEKO_API_DECL vfs_file neko_capi_vfs_fopen(const_str path);
 NEKO_API_DECL int neko_capi_vfs_fclose(vfs_file* vf);
 
 NEKO_API_DECL bool neko_capi_vfs_file_exists(const_str fsname, const_str filepath);
-NEKO_API_DECL const_str neko_capi_vfs_read_file(const_str fsname, const_str filepath, u64* size);
+NEKO_API_DECL const_str neko_capi_vfs_read_file(const_str fsname, const_str filepath, size_t* size);
 
 #endif  // NEKO_H
