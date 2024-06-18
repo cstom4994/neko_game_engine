@@ -22,39 +22,29 @@
 ===================*/
 
 #if (defined __ANDROID__)
-
 #define NEKO_PF_ANDROID
-
 #elif (defined __APPLE__ || defined _APPLE)
-
 #define NEKO_PF_APPLE
-
 #include <malloc/malloc.h>
-
 #elif (defined _WIN32 || defined _WIN64)
-
 #define NEKO_PF_WIN
 #define __USE_MINGW_ANSI_STDIO 1
 #define OEMRESOURCE
 #define _WINSOCKAPI_
 #include <windows.h>
 #define WIN32_LEAN_AND_MEAN
-
 #include <malloc.h>
-
 #elif (defined linux || defined _linux || defined __linux__)
-
 #define NEKO_PF_LINUX
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-
 #elif (defined __EMSCRIPTEN__)
 #define NEKO_PF_WEB
 #endif
 
 #if defined(DEBUG) || defined(_DEBUG)
-#define NEKO_DEBUG
+#define NEKO_DEBUG_BUILD
 #endif
 
 /*===================
@@ -186,7 +176,6 @@ typedef uintptr_t uptr;
 #endif
 
 #define NEKO_FOR_RANGE_N(__COUNT, N) for (u32 N = 0; N < __COUNT; ++N)
-
 #define NEKO_FOR_RANGE(__COUNT) for (u32 NEKO_TOKEN_PASTE(__T, __LINE__) = 0; NEKO_TOKEN_PASTE(__T, __LINE__) < __COUNT; ++(NEKO_TOKEN_PASTE(__T, __LINE__)))
 
 #define NEKO_STR_CPY(des, src)          \
@@ -194,13 +183,9 @@ typedef uintptr_t uptr;
     des[sizeof(des) - 1] = '\0'
 
 #define NEKO_MAX(A, B) ((A) > (B) ? (A) : (B))
-
 #define NEKO_MIN(A, B) ((A) < (B) ? (A) : (B))
-
 #define NEKO_CLAMP(V, MIN, MAX) ((V) > (MAX) ? (MAX) : (V) < (MIN) ? (MIN) : (V))
-
 #define NEKO_IS_NAN(V) ((V) != (V))
-
 #define NEKO_BOOL_STR(V) (V ? "true" : "false")
 
 #ifdef __cplusplus
@@ -209,12 +194,8 @@ typedef uintptr_t uptr;
 #define NEKO_CTOR(TYPE, ...) ((TYPE){__VA_ARGS__})
 #endif
 
-// Helpful marco for calculating offset (in bytes) of an element from a given structure type
 #define NEKO_OFFSET(TYPE, ELEMENT) ((size_t)(&(((TYPE*)(0))->ELEMENT)))
-
-// macro for turning any given type into a const char* of itself
 #define NEKO_TO_STR(TYPE) ((const char*)#TYPE)
-
 #define NEKO_TOKEN_PASTE(X, Y) X##Y
 #define NEKO_CONCAT(X, Y) NEKO_TOKEN_PASTE(X, Y)
 
@@ -259,21 +240,19 @@ typedef uintptr_t uptr;
 
 // Custom printf defines
 #ifndef neko_printf
-
 #ifdef __MINGW32__
-
 #define neko_printf(__FMT, ...) __mingw_printf(__FMT, ##__VA_ARGS__)
-
 #elif (defined NEKO_PF_ANDROID)
-
 #include <android/log.h>
-
 #define neko_printf(__FMT, ...) ((void)__android_log_print(ANDROID_LOG_INFO, "native-activity", __FMT, ##__VA_ARGS__))
-
 #else
-NEKO_API_DECL void neko_printf(const char* fmt, ...);
+NEKO_STATIC_INLINE void neko_printf(const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    vprintf(fmt, args);
+    va_end(args);
+}
 #endif
-
 #endif
 
 // Logging
@@ -282,10 +261,10 @@ NEKO_API_DECL void neko_printf(const char* fmt, ...);
 #define NEKO_INFO(...) neko_log(LOG_INFO, __FILE__, __LINE__, __VA_ARGS__)
 #define NEKO_TRACE(...) neko_log(LOG_TRACE, __FILE__, __LINE__, __VA_ARGS__)
 #define NEKO_WARN(...) neko_log(LOG_WARN, __FILE__, __LINE__, __VA_ARGS__)
-#define NEKO_ERROR(msg, ...)                                                                      \
-    do {                                                                                          \
-        char tmp[512];                                                                            \
-        neko_snprintf(tmp, 512, msg, __VA_ARGS__);                                                \
+#define NEKO_ERROR(msg, ...)                                                                        \
+    do {                                                                                            \
+        char tmp[512];                                                                              \
+        neko_snprintf(tmp, 512, msg, __VA_ARGS__);                                                  \
         log_error("%s (%s:%s:%zu)", tmp, neko_util_get_filename(__FILE__), __FUNCTION__, __LINE__); \
     } while (0)
 
@@ -298,6 +277,12 @@ NEKO_API_DECL void neko_printf(const char* fmt, ...);
 #else
 #define NEKO_DEBUGBREAK()
 #endif
+
+/*=============================
+// Const
+=============================*/
+
+#define NEKO_DEFAULT_PACK "default_pack"
 
 /*=============================
 // Memory
@@ -809,18 +794,6 @@ NEKO_FORCE_INLINE b32 neko_util_str_is_numeric(const char* str) {
     return true;
 }
 
-// Will return a null buffer if file does not exist or allocation fails
-NEKO_API_DECL char* neko_read_file_contents(const char* file_path, const char* mode, size_t* _sz);
-
-NEKO_FORCE_INLINE b32 neko_util_file_exists(const char* file_path) {
-    FILE* fp = fopen(file_path, "r");
-    if (fp) {
-        fclose(fp);
-        return true;
-    }
-    return false;
-}
-
 NEKO_FORCE_INLINE void neko_util_get_file_extension(char* buffer, u32 buffer_size, const_str file_path) {
     NEKO_ASSERT(buffer && buffer_size);
     const_str extension = strrchr(file_path, '.');
@@ -918,19 +891,11 @@ NEKO_FORCE_INLINE void neko_util_string_replace_delim(const char* source_str, ch
     }
 }
 
-
-
 #define neko_println(__FMT, ...)           \
     do {                                   \
         neko_printf(__FMT, ##__VA_ARGS__); \
         neko_printf("\n");                 \
     } while (0)
-
-#ifdef NEKO_DEBUG
-#define neko_println_debug(...) neko_println(__VA_ARGS__)
-#else
-#define neko_println_debug(...)
-#endif
 
 #ifndef neko_fprintf
 NEKO_FORCE_INLINE void neko_fprintf(FILE* fp, const char* fmt, ...) {
@@ -1162,8 +1127,8 @@ NEKO_FORCE_INLINE size_t neko_hash_bytes(void* p, size_t len, size_t seed) {
 }
 
 /* Resource Loading Util */
-NEKO_API_DECL b32 neko_util_load_texture_data_from_file(const char* file_path, s32* width, s32* height, u32* num_comps, void** data, b32 flip_vertically_on_load);
-NEKO_API_DECL b32 neko_util_load_texture_data_from_memory(const void* memory, size_t sz, s32* width, s32* height, u32* num_comps, void** data, b32 flip_vertically_on_load);
+NEKO_API_DECL bool neko_util_load_texture_data_from_file(const char* file_path, s32* width, s32* height, u32* num_comps, void** data, b32 flip_vertically_on_load);
+NEKO_API_DECL bool neko_util_load_texture_data_from_memory(const void* memory, size_t sz, s32* width, s32* height, u32* num_comps, void** data, b32 flip_vertically_on_load);
 
 NEKO_STATIC_INLINE u16 neko_read_LE16(const u8* data) { return (u16)((data[1] << 8) | data[0]); }
 NEKO_STATIC_INLINE u32 neko_read_LE32(const u8* data) { return (((u32)data[3] << 24) | ((u32)data[2] << 16) | ((u32)data[1] << 8) | (u32)data[0]); }
@@ -2139,5 +2104,24 @@ NEKO_API_DECL void neko_config_print();
     } while (0)
 
 NEKO_API_DECL s32 neko_buildnum(void);
+
+/*=============================
+// C API
+=============================*/
+
+typedef struct vfs_file {
+    const_str data;
+    u64 len;
+    u64 offset;
+} vfs_file;
+
+NEKO_API_DECL size_t neko_capi_vfs_fread(void* dest, size_t size, size_t count, vfs_file* vf);
+NEKO_API_DECL int neko_capi_vfs_fseek(vfs_file* vf, off_t of, int whence);
+NEKO_API_DECL off_t neko_capi_vfs_ftell(vfs_file* vf);
+NEKO_API_DECL vfs_file neko_capi_vfs_fopen(const_str path);
+NEKO_API_DECL int neko_capi_vfs_fclose(vfs_file* vf);
+
+NEKO_API_DECL bool neko_capi_vfs_file_exists(const_str fsname, const_str filepath);
+NEKO_API_DECL const_str neko_capi_vfs_read_file(const_str fsname, const_str filepath, u64* size);
 
 #endif  // NEKO_H

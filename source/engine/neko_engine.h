@@ -59,9 +59,13 @@ typedef struct Neko_CommonInterface {
     void* (*__neko_mem_safe_calloc)(size_t count, size_t element_size, const char* file, int line, size_t* statistics);
     void (*__neko_mem_safe_free)(void* mem, size_t* statistics);
     void* (*__neko_mem_safe_realloc)(void* ptr, size_t new_size, const char* file, int line, size_t* statistics);
+
+    const_str (*capi_vfs_read_file)(const_str fsname, const_str filepath, u64* size);
 } Neko_CommonInterface;
 
 typedef struct Neko_ModuleInterface {
+
+    neko_t* Neko;
 
     neko_command_buffer_t cb;
     neko_ui_context_t ui;
@@ -70,8 +74,8 @@ typedef struct Neko_ModuleInterface {
     neko_texture_t test_ase;
     neko_asset_manager_t am;
     neko_asset_t tex_hndl;
-    neko_packreader_t pack;
-    neko_packreader_t lua_pack;
+    neko_pack_t pack;
+    neko_pack_t lua_pack;
 
     // neko_ui_style_sheet_t style_sheet;
     // ecs_world_t* ecs_world;

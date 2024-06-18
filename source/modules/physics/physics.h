@@ -51,7 +51,7 @@ struct neko_physics {
 };
 
 neko_physics physics_world_make(lua_State *L, b2Vec2 gravity, f32 meter);
-void physics_world_trash(lua_State *L, neko_physics *p);
+void physics_world_fini(lua_State *L, neko_physics *p);
 void physics_world_begin_contact(lua_State *L, neko_physics *p, s32 arg);
 void physics_world_end_contact(lua_State *L, neko_physics *p, s32 arg);
 neko_physics physics_weak_copy(neko_physics *p);

@@ -72,13 +72,6 @@ NEKO_API_DECL void neko_console_printf(neko_console_t* console, const char* fmt,
 
 // logging
 
-void neko_printf(const char* fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    vprintf(fmt, args);
-    va_end(args);
-}
-
 #define MAX_CALLBACKS 8
 #define LOG_USE_COLOR
 
@@ -566,41 +559,6 @@ inline int NEKO_BYTES_IN_USE() { return 0; }
 void __neko_mem_init(int argc, char** argv) {}
 
 void __neko_mem_fini() { neko_mem_check_leaks(true); }
-
-/*=============================
-// NEKO_UTIL
-=============================*/
-
-NEKO_API_DECL char* neko_read_file_contents(const char* file_path, const char* mode, size_t* _sz) {
-    char* buffer = 0;
-    FILE* fp = fopen(file_path, mode);
-    size_t sz = 0;
-    if (fp) {
-        fseek(fp, 0, SEEK_END);
-        sz = ftell(fp);
-        fseek(fp, 0, SEEK_SET);
-        buffer = (char*)neko_safe_malloc(sz + 1);
-        if (buffer) {
-            fread(buffer, 1, sz, fp);
-        }
-        fclose(fp);
-        buffer[sz] = '\0';
-        if (_sz) *_sz = sz;
-    }
-    return buffer;
-}
-
-b32 neko_util_load_texture_data_from_file(const char* file_path, s32* width, s32* height, u32* num_comps, void** data, b32 flip_vertically_on_load) {
-    size_t len = 0;
-    char* file_data = neko_platform_read_file_contents(file_path, "rb", &len);
-    NEKO_ASSERT(file_data);
-    b32 ret = neko_util_load_texture_data_from_memory(file_data, len, width, height, num_comps, data, flip_vertically_on_load);
-    if (!ret) {
-        NEKO_WARN("Could not load texture: %s", file_path);
-    }
-    neko_safe_free(file_data);
-    return ret;
-}
 
 /*========================
 // Random

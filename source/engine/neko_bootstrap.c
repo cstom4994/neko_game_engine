@@ -189,10 +189,13 @@ void neko_quit() {
 
 void neko_module_interface_init(Neko_ModuleInterface* module_interface) {
 
+    module_interface->Neko = neko_instance();
+
     module_interface->common.__neko_mem_safe_alloc = &__neko_mem_safe_alloc;
     module_interface->common.__neko_mem_safe_calloc = &__neko_mem_safe_calloc;
     module_interface->common.__neko_mem_safe_realloc = &__neko_mem_safe_realloc;
     module_interface->common.__neko_mem_safe_free = &__neko_mem_safe_free;
+    module_interface->common.capi_vfs_read_file = &neko_capi_vfs_read_file;
 
     module_interface->cb = neko_command_buffer_new();
     module_interface->idraw = neko_immediate_draw_new();

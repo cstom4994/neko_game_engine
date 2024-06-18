@@ -729,7 +729,7 @@ LUA_FUNCTION(__neko_bind_draw_text) {
 
     if (numArgs > 3) scale = lua_tonumber(L, 4);
 
-    neko_fontbatch_draw(&CL_GAME_USERDATA()->font_render_batch, CL_GAME_USERDATA()->fbs, text, x, y, 1, 1.f, 800.f, scale);
+    neko_fontbatch_draw(&CL_GAME_USERDATA()->font_render_batch, CL_GAME_USERDATA()->DisplaySize, text, x, y, 1, 1.f, 800.f, scale);
 
     return 0;
 }

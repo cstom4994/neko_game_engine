@@ -71,6 +71,110 @@ void sound_fini(neko_lua_sound* sound) { ma_sound_uninit(&sound->ma); }
 
 }  // namespace neko::sound
 
+neko::array<neko::sound::neko_lua_sound*> garbage_sounds;
+void* miniaudio_vfs;
+ma_engine audio_engine;
+
+// miniaudio vfs
+
+struct AudioFile {
+    u8* buf;
+    u64 cursor;
+    u64 len;
+};
+
+void* vfs_for_miniaudio() {
+    ma_vfs_callbacks vtbl = {};
+
+    vtbl.onOpen = [](ma_vfs* pVFS, const char* pFilePath, ma_uint32 openMode, ma_vfs_file* pFile) -> ma_result {
+        if (openMode & MA_OPEN_MODE_WRITE) {
+            return MA_ERROR;
+        }
+
+        u64 len = 0;
+        const_str data = g_interface->common.capi_vfs_read_file(NEKO_DEFAULT_PACK, pFilePath, &len);
+        if (!data || !len) {
+            return MA_ERROR;
+        }
+
+        AudioFile* file = (AudioFile*)neko_safe_malloc(sizeof(AudioFile));
+        file->buf = (u8*)data;
+        file->len = len;
+        file->cursor = 0;
+
+        *pFile = file;
+        return MA_SUCCESS;
+    };
+
+    vtbl.onClose = [](ma_vfs* pVFS, ma_vfs_file file) -> ma_result {
+        AudioFile* f = (AudioFile*)file;
+        neko_safe_free(f->buf);
+        neko_safe_free(f);
+        return MA_SUCCESS;
+    };
+
+    vtbl.onRead = [](ma_vfs* pVFS, ma_vfs_file file, void* pDst, size_t sizeInBytes, size_t* pBytesRead) -> ma_result {
+        AudioFile* f = (AudioFile*)file;
+
+        u64 remaining = f->len - f->cursor;
+        u64 len = remaining < sizeInBytes ? remaining : sizeInBytes;
+        memcpy(pDst, &f->buf[f->cursor], len);
+
+        if (pBytesRead != nullptr) {
+            *pBytesRead = len;
+        }
+
+        if (len != sizeInBytes) {
+            return MA_AT_END;
+        }
+
+        return MA_SUCCESS;
+    };
+
+    vtbl.onWrite = [](ma_vfs* pVFS, ma_vfs_file file, const void* pSrc, size_t sizeInBytes, size_t* pBytesWritten) -> ma_result { return MA_NOT_IMPLEMENTED; };
+
+    vtbl.onSeek = [](ma_vfs* pVFS, ma_vfs_file file, ma_int64 offset, ma_seek_origin origin) -> ma_result {
+        AudioFile* f = (AudioFile*)file;
+
+        s64 seek = 0;
+        switch (origin) {
+            case ma_seek_origin_start:
+                seek = offset;
+                break;
+            case ma_seek_origin_end:
+                seek = f->len + offset;
+                break;
+            case ma_seek_origin_current:
+            default:
+                seek = f->cursor + offset;
+                break;
+        }
+
+        if (seek < 0 || seek > f->len) {
+            return MA_ERROR;
+        }
+
+        f->cursor = (u64)seek;
+        return MA_SUCCESS;
+    };
+
+    vtbl.onTell = [](ma_vfs* pVFS, ma_vfs_file file, ma_int64* pCursor) -> ma_result {
+        AudioFile* f = (AudioFile*)file;
+        *pCursor = f->cursor;
+        return MA_SUCCESS;
+    };
+
+    vtbl.onInfo = [](ma_vfs* pVFS, ma_vfs_file file, ma_file_info* pInfo) -> ma_result {
+        AudioFile* f = (AudioFile*)file;
+        pInfo->sizeInBytes = f->len;
+        return MA_SUCCESS;
+    };
+
+    ma_vfs_callbacks* ptr = (ma_vfs_callbacks*)neko_safe_malloc(sizeof(ma_vfs_callbacks));
+    *ptr = vtbl;
+    return ptr;
+}
+
 // mt_sound
 
 static ma_sound* sound_ma(lua_State* L) {
@@ -86,7 +190,7 @@ static int mt_sound_gc(lua_State* L) {
         neko_safe_free(sound);
     } else {
         sound->zombie = true;
-        // g_app->garbage_sounds.push(sound); // TODO:: 建立 garbage_sounds 每帧清理
+        garbage_sounds.push(sound);  // TODO:: 建立 garbage_sounds 每帧清理
     }
 
     return 0;
@@ -262,6 +366,42 @@ static int neko_sound_load(lua_State* L) {
 
     luax_ptr_userdata(L, sound, "mt_sound");
     return 1;
+}
+
+void OnInit() {
+    miniaudio_vfs = vfs_for_miniaudio();
+
+    ma_engine_config ma_config = ma_engine_config_init();
+    ma_config.channels = 2;
+    ma_config.sampleRate = 44100;
+    ma_config.pResourceManagerVFS = miniaudio_vfs;
+    ma_result res = ma_engine_init(&ma_config, &audio_engine);
+    if (res != MA_SUCCESS) {
+        // NEKO_ERROR("%s", "failed to initialize audio engine");
+    }
+}
+
+void OnFini() {
+    ma_engine_uninit(&audio_engine);
+    neko_safe_free(miniaudio_vfs);
+}
+
+void OnPostUpdate() {
+    auto& sounds = garbage_sounds;
+    for (u64 i = 0; i < sounds.len;) {
+        auto* sound = sounds[i];
+
+        if (sound->dead_end) {
+            assert(sound->zombie);
+            sound_fini(sound);
+            neko_safe_free(sound);
+
+            sounds[i] = sounds[sounds.len - 1];
+            sounds.len--;
+        } else {
+            i++;
+        }
+    }
 }
 
 Neko_ModuleInterface* g_interface;

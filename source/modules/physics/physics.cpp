@@ -88,7 +88,7 @@ neko_physics physics_world_make(lua_State* L, b2Vec2 gravity, f32 meter) {
     return physics;
 }
 
-void physics_world_trash(lua_State* L, neko_physics* p) {
+void physics_world_fini(lua_State* L, neko_physics* p) {
     if (p == nullptr) {
         return;
     }
@@ -608,7 +608,7 @@ static int open_mt_b2_body(lua_State* L) {
 
 static int mt_b2_world_gc(lua_State* L) {
     neko_physics* physics = (neko_physics*)luaL_checkudata(L, 1, "mt_b2_world");
-    physics_world_trash(L, physics);
+    physics_world_fini(L, physics);
     return 0;
 }
 

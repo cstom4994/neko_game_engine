@@ -19,6 +19,8 @@ NEKO_API_DECL void* neko_gl_get_proc_address(char* name) {
 #include <GL/glx.h>
 NEKO_API_DECL void* neko_gl_get_proc_address(char* name) { return (void*)glXGetProcAddress((const GLubyte*)name); }
 #elif defined(NEKO_PF_APPLE)
+#include <dlfcn.h>
+static void* libGL;
 NEKO_API_DECL void* neko_gl_get_proc_address(char* name) { return (void*)dlsym(libGL, name); }
 #else
 #error neko_gl_get_proc_address() not yet implemented for this platform

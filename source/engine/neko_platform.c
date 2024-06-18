@@ -562,8 +562,7 @@ char* neko_platform_read_file_contents_default_impl(const char* file_path, const
 #endif
 
     char* buffer = 0;
-    FILE* fp;
-    fopen_s(&fp, file_path, mode);
+    FILE* fp = neko_fopen(file_path, mode);
     size_t read_sz = 0;
     if (fp) {
         read_sz = neko_platform_file_size_in_bytes(file_path);
@@ -572,7 +571,7 @@ char* neko_platform_read_file_contents_default_impl(const char* file_path, const
             size_t _r = fread(buffer, 1, read_sz, fp);
         }
         buffer[read_sz] = '\0';
-        fclose(fp);
+        neko_fclose(fp);
         if (sz) *sz = read_sz;
     }
 
@@ -590,15 +589,14 @@ neko_result neko_platform_write_file_contents_default_impl(const char* file_path
     path = tmp_path;
 #endif
 
-    FILE* fp;
-    fopen_s(&fp, path, mode);
+    FILE* fp = neko_fopen(file_path, mode);
     if (fp) {
         size_t ret = fwrite(data, sizeof(u8), sz, fp);
         if (ret == sz) {
-            fclose(fp);
+            neko_fclose(fp);
             return NEKO_RESULT_SUCCESS;
         }
-        fclose(fp);
+        neko_fclose(fp);
     }
     return NEKO_RESULT_FAILURE;
 }
@@ -635,10 +633,9 @@ NEKO_API_DECL bool neko_platform_file_exists_default_impl(const char* file_path)
     path = tmp_path;
 #endif
 
-    FILE* fp;
-    fopen_s(&fp, file_path, "r");
+    FILE* fp = neko_fopen(file_path, "r");
     if (fp) {
-        fclose(fp);
+        neko_fclose(fp);
         return true;
     }
     return false;
@@ -705,10 +702,10 @@ NEKO_API_DECL s32 neko_platform_file_copy_default_impl(const char* src_path, con
     FILE* file_r = NULL;
     char buffer[2048] = NEKO_DEFAULT_VAL();
 
-    if ((file_w = fopen(src_path, "wb")) == NULL) {
+    if ((file_w = neko_fopen(src_path, "wb")) == NULL) {
         return 0;
     }
-    if ((file_r = fopen(dst_path, "rb")) == NULL) {
+    if ((file_r = neko_fopen(dst_path, "rb")) == NULL) {
         return 0;
     }
 
@@ -719,8 +716,8 @@ NEKO_API_DECL s32 neko_platform_file_copy_default_impl(const char* src_path, con
     }
 
     // Close both files
-    fclose(file_r);
-    fclose(file_w);
+    neko_fclose(file_r);
+    neko_fclose(file_w);
 
 #endif
 
@@ -888,7 +885,7 @@ b32 __glfw_set_window_center(GLFWwindow* window);
 void neko_platform_init(neko_platform_t* pf) {
     NEKO_ASSERT(pf);
 
-    NEKO_TRACE("Initializing GLFW");
+    NEKO_TRACE("initializing glfw");
 
 #ifdef NEKO_PF_WIN
     setlocale(LC_ALL, "en_us.utf8");
@@ -912,7 +909,11 @@ void neko_platform_init(neko_platform_t* pf) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
 
-    if (neko_cvar("settings.video.render.hdpi")->value.i) glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
+#if defined(NEKO_PF_APPLE)
+    glfwWindowHint(GLFW_COCOA_RETINA_FRAMEBUFFER, GLFW_FALSE);
+#endif
+
+    if (neko_cvar("settings.video.render.hdpi")->value.i) glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_FALSE);
     // glfwSwapInterval(pf->settings.video.vsync_enabled);
 
     //    glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
@@ -2421,14 +2422,8 @@ NEKO_API_DECL neko_platform_window_t neko_platform_window_create_internal(const 
 
     // 只执行一次
     if (neko_slot_array_empty(neko_subsystem(platform)->windows)) {
-        // if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-        //     NEKO_WARN("failed to initialize GLFW");
-        //     return win;
-        // }
-        
         neko_gl_load_all();
-
-        NEKO_INFO("opengl version: %s", glGetString(GL_VERSION));
+        NEKO_INFO("opengl %s (glsl %s)", glGetString(GL_VERSION), glGetString(GL_SHADING_LANGUAGE_VERSION));
         if (neko_cvar("settings.video.render.debug")->value.i) {
             // glDebugMessageCallback(__neko_platform_gl_debug, NULL);
         }

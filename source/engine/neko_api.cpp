@@ -261,10 +261,10 @@ static int __neko_loader(lua_State* L) {
     const_str name = luaL_checkstring(L, 1);
     std::string path = name;
     std::replace(path.begin(), path.end(), '.', '/');
-    path += ".lua";
 
     // neko_println("fuck:%s", path.c_str());
 
+#if 0
     u8* data;
     u32 data_size;
 
@@ -277,6 +277,23 @@ static int __neko_loader(lua_State* L) {
         }
 
         neko_pack_item_free(&CL_GAME_INTERFACE()->pack, data);
+    }
+#endif
+
+    auto load_list = {"source/lua/game/", "source/lua/libs/"};
+    for (auto p : load_list) {
+        std::string load_path = p + path + ".lua";
+        neko::string contents = {};
+        bool ok = vfs_read_entire_file("luacode", &contents, load_path.c_str());
+        if (ok) {
+            if (luaL_loadbuffer(L, contents.data, contents.len, name) != LUA_OK) {
+                lua_pop(L, 1);
+            } else {
+                neko_safe_free(contents.data);
+                NEKO_TRACE("[lua] loaded : %s", path.c_str());
+                break;
+            }
+        }
     }
 
     return 1;

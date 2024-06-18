@@ -350,14 +350,7 @@ typedef enum neko_opengl_compatibility_flags {
     NEKO_OPENGL_COMPATIBILITY_FLAGS_ES = 1 << 4,
 } neko_opengl_compatibility_flags;
 
-typedef enum neko_platform_event_type {
-    NEKO_PF_EVENT_MOUSE,
-    NEKO_PF_EVENT_KEY,
-    NEKO_PF_EVENT_TEXT,
-    NEKO_PF_EVENT_WINDOW,
-    NEKO_PF_EVENT_TOUCH,
-    NEKO_PF_EVENT_APP
-} neko_platform_event_type;
+typedef enum neko_platform_event_type { NEKO_PF_EVENT_MOUSE, NEKO_PF_EVENT_KEY, NEKO_PF_EVENT_TEXT, NEKO_PF_EVENT_WINDOW, NEKO_PF_EVENT_TOUCH, NEKO_PF_EVENT_APP } neko_platform_event_type;
 
 typedef enum neko_platform_key_modifier_type {
     NEKO_PF_KEY_MODIFIER_NONE = 0x00,
@@ -586,7 +579,23 @@ NEKO_API_DECL int neko_platform_chdir_default_impl(const char *path);
 #define neko_platform_library_proc_address neko_platform_library_proc_address_default_impl
 #define neko_platform_chdir neko_platform_chdir_default_impl
 
-#define neko_platform_open_file fopen
+#if defined(NEKO_PF_LINUX) || defined(NEKO_PF_APPLE)
+#define neko_fopen(filePath, mode) fopen(filePath, mode)
+#define neko_fseek(file, offset, whence) fseeko(file, offset, whence)
+#define neko_ftell(file) ftello(file)
+#elif defined(NEKO_PF_WIN)
+static inline FILE *neko_fopen(const char *filePath, const char *mode) {
+    FILE *file;
+    errno_t error = fopen_s(&file, filePath, mode);
+    if (error != 0) return NULL;
+    return file;
+}
+#define neko_fseek(file, offset, whence) _fseeki64(file, offset, whence)
+#define neko_ftell(file) _ftelli64(file)
+#else
+#error Unsupported operating system
+#endif
+#define neko_fclose(file) fclose(file)
 
 /* == Platform Dependent API == */
 

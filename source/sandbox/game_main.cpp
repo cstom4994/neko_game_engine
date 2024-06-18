@@ -116,7 +116,7 @@ void movement_system(ecs_view_t view, unsigned int row) {
     neko_vec2_t min = neko_vec2_add(*p, *v);
     neko_vec2_t max = neko_vec2_add(min, *b);
 
-    auto ws = CL_GAME_USERDATA()->fbs;
+    auto ws = CL_GAME_USERDATA()->DisplaySize;
 
     // Resolve collision and change velocity direction if necessary
     if (min.x < 0 || max.x >= ws.x) {
@@ -157,15 +157,15 @@ lua_State *neko_scripting_init() {
             });
     neko_register(L);
 
-    neko_lua_run_string(L, std::format("package.path = "
-                                       "'{1}/?.lua;{0}/?.lua;{0}/../libs/?.lua;{0}/../libs/?/init.lua;{0}/../libs/"
-                                       "?/?.lua;' .. package.path",
-                                       game_assets("lua_scripts"), neko::fs_normalize_path(std::filesystem::current_path().string()).c_str()));
+    // neko_lua_run_string(L, std::format("package.path = "
+    //                                    "'{1}/?.lua;{0}/?.lua;{0}/../libs/?.lua;{0}/../libs/?/init.lua;{0}/../libs/"
+    //                                    "?/?.lua;' .. package.path",
+    //                                    game_assets("lua_scripts"), neko::fs_normalize_path(std::filesystem::current_path().string()).c_str()));
 
-    neko_lua_run_string(L, std::format("package.cpath = "
-                                       "'{1}/?.{2};{0}/?.{2};{0}/../libs/?.{2};{0}/../libs/?/init.{2};{0}/../libs/"
-                                       "?/?.{2};' .. package.cpath",
-                                       game_assets("lua_scripts"), neko::fs_normalize_path(std::filesystem::current_path().string()).c_str(), "dll"));
+    // neko_lua_run_string(L, std::format("package.cpath = "
+    //                                    "'{1}/?.{2};{0}/?.{2};{0}/../libs/?.{2};{0}/../libs/?/init.{2};{0}/../libs/"
+    //                                    "?/?.{2};' .. package.cpath",
+    //                                    game_assets("lua_scripts"), neko::fs_normalize_path(std::filesystem::current_path().string()).c_str(), "dll"));
 
     neko_lua_safe_dofile(L, "init");
 
@@ -210,7 +210,14 @@ void game_init() {
 
     neko_userdata() = CL_GAME_USERDATA();
 
-    auto mount = neko::vfs_mount(game_assets("gamedir/../").c_str());
+    auto mount = neko::vfs_mount(NEKO_DEFAULT_PACK, game_assets("gamedir/../").c_str());
+
+#if defined(NEKO_DEBUG_BUILD)
+    mount = neko::vfs_mount("luacode", game_assets("gamedir/../").c_str());
+#else
+    mount = neko::vfs_mount("luacode", game_assets("gamedir/../build/xpack/luacode/luacode.zip").c_str());
+#endif
+
     neko_instance()->L = neko_scripting_init();
 
     neko_module_interface_init(&CL_GAME_USERDATA()->module_interface);
@@ -269,11 +276,21 @@ void game_init() {
         neko_platform_set_window_title(neko_platform_main_window(), v.cast<neko_platform_running_desc_t>().title);
     }
 
-    CL_GAME_USERDATA()->fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
+    u32 w, h;
+    u32 display_w, display_h;
+
+    neko_platform_window_size(neko_platform_main_window(), &w, &h);
+    neko_platform_framebuffer_size(neko_platform_main_window(), &display_w, &display_h);
+
+    CL_GAME_USERDATA()->DisplaySize = neko_v2((float)w, (float)h);
+    CL_GAME_USERDATA()->DisplayFramebufferScale = neko_v2((float)display_w / w, (float)display_h / h);
+
+    CL_GAME_USERDATA()->DisplaySize = CL_GAME_USERDATA()->DisplaySize;
 
     neko_lua_call(neko_instance()->L, "game_init");
 
-    neko_pack_read(game_assets("gamedir/res.pack").c_str(), 0, false, &CL_GAME_INTERFACE()->pack);
+    bool ok = neko_pack_read(game_assets("gamedir/res.pack").c_str(), 0, false, &CL_GAME_INTERFACE()->pack);
+    NEKO_ASSERT(ok == true);
 
     u8 *font_data, *cat_data;
     u32 font_data_size, cat_data_size;
@@ -311,16 +328,16 @@ void game_init() {
     // Load a file
 
     neko::string contents = {};
-    bool ok = vfs_read_entire_file(&contents, "gamedir/1.fnt");
+    ok = vfs_read_entire_file(NEKO_DEFAULT_PACK, &contents, "gamedir/1.fnt");
     NEKO_ASSERT(ok);
-    neko_fontbatch_init(&CL_GAME_USERDATA()->font_render_batch, CL_GAME_USERDATA()->fbs, game_assets("gamedir/1_0.png").c_str(), contents.data, (s32)contents.len);
+    neko_fontbatch_init(&CL_GAME_USERDATA()->font_render_batch, CL_GAME_USERDATA()->DisplaySize, game_assets("gamedir/1_0.png").c_str(), contents.data, (s32)contents.len);
     neko_defer(neko_safe_free(contents.data));
 
     // Construct frame buffer
     CL_GAME_USERDATA()->main_fbo = neko_render_framebuffer_create({});
 
-    neko_render_texture_desc_t main_rt_desc = {.width = (u32)CL_GAME_USERDATA()->fbs.x,
-                                               .height = (u32)CL_GAME_USERDATA()->fbs.y,
+    neko_render_texture_desc_t main_rt_desc = {.width = (u32)CL_GAME_USERDATA()->DisplaySize.x,
+                                               .height = (u32)CL_GAME_USERDATA()->DisplaySize.y,
                                                .format = R_TEXTURE_FORMAT_RGBA8,
                                                .wrap_s = R_TEXTURE_WRAP_REPEAT,
                                                .wrap_t = R_TEXTURE_WRAP_REPEAT,
@@ -413,7 +430,7 @@ void game_loop() {
 
         // Set up 2D camera for projection matrix
         neko_idraw_defaults(&CL_GAME_INTERFACE()->idraw);
-        neko_idraw_camera2d(&CL_GAME_INTERFACE()->idraw, (u32)CL_GAME_USERDATA()->fbs.x, (u32)CL_GAME_USERDATA()->fbs.y);
+        neko_idraw_camera2d(&CL_GAME_INTERFACE()->idraw, (u32)CL_GAME_USERDATA()->DisplaySize.x, (u32)CL_GAME_USERDATA()->DisplaySize.y);
 
         // 底层图片
         char background_text[64] = "Project: unknown";
@@ -421,15 +438,15 @@ void game_loop() {
         neko_vec2 td = neko_asset_ascii_font_text_dimensions(neko_idraw_default_font(), background_text, -1);
         neko_vec2 ts = neko_v2(512 + 128, 512 + 128);
 
-        neko_idraw_text(&CL_GAME_INTERFACE()->idraw, (CL_GAME_USERDATA()->fbs.x - td.x) * 0.5f, (CL_GAME_USERDATA()->fbs.y - td.y) * 0.5f + ts.y / 2.f - 100.f, background_text, NULL, false,
-                        neko_color(255, 255, 255, 255));
+        neko_idraw_text(&CL_GAME_INTERFACE()->idraw, (CL_GAME_USERDATA()->DisplaySize.x - td.x) * 0.5f, (CL_GAME_USERDATA()->DisplaySize.y - td.y) * 0.5f + ts.y / 2.f - 100.f, background_text, NULL,
+                        false, neko_color(255, 255, 255, 255));
         neko_idraw_texture(&CL_GAME_INTERFACE()->idraw, CL_GAME_INTERFACE()->test_ase);
-        neko_idraw_rectvd(&CL_GAME_INTERFACE()->idraw, neko_v2((CL_GAME_USERDATA()->fbs.x - ts.x) * 0.5f, (CL_GAME_USERDATA()->fbs.y - ts.y) * 0.5f - td.y - 50.f), ts, neko_v2(0.f, 1.f),
-                          neko_v2(1.f, 0.f), neko_color(255, 255, 255, tranp), R_PRIMITIVE_TRIANGLES);
+        neko_idraw_rectvd(&CL_GAME_INTERFACE()->idraw, neko_v2((CL_GAME_USERDATA()->DisplaySize.x - ts.x) * 0.5f, (CL_GAME_USERDATA()->DisplaySize.y - ts.y) * 0.5f - td.y - 50.f), ts,
+                          neko_v2(0.f, 1.f), neko_v2(1.f, 0.f), neko_color(255, 255, 255, tranp), R_PRIMITIVE_TRIANGLES);
 
         neko_render_renderpass_begin(&CL_GAME_INTERFACE()->cb, R_RENDER_PASS_DEFAULT);
         {
-            neko_render_set_viewport(&CL_GAME_INTERFACE()->cb, 0, 0, (u32)CL_GAME_USERDATA()->fbs.x, (u32)CL_GAME_USERDATA()->fbs.y);
+            neko_render_set_viewport(&CL_GAME_INTERFACE()->cb, 0, 0, (u32)CL_GAME_USERDATA()->DisplaySize.x, (u32)CL_GAME_USERDATA()->DisplaySize.y);
             neko_idraw_draw(&CL_GAME_INTERFACE()->idraw, &CL_GAME_INTERFACE()->cb);  // 立即模式绘制 idraw
         }
         neko_render_renderpass_end(&CL_GAME_INTERFACE()->cb);
@@ -537,12 +554,12 @@ void game_loop() {
         //        sandbox_update(sb);
 
         neko_idraw_defaults(&CL_GAME_INTERFACE()->idraw);
-        neko_idraw_camera2d_ex(&CL_GAME_INTERFACE()->idraw, CL_GAME_USERDATA()->cam.x, CL_GAME_USERDATA()->cam.x + CL_GAME_USERDATA()->fbs.x, CL_GAME_USERDATA()->cam.y,
-                               CL_GAME_USERDATA()->cam.y + CL_GAME_USERDATA()->fbs.y);
+        neko_idraw_camera2d_ex(&CL_GAME_INTERFACE()->idraw, CL_GAME_USERDATA()->cam.x, CL_GAME_USERDATA()->cam.x + CL_GAME_USERDATA()->DisplaySize.x, CL_GAME_USERDATA()->cam.y,
+                               CL_GAME_USERDATA()->cam.y + CL_GAME_USERDATA()->DisplaySize.y);
 
         neko_render_renderpass_begin(&CL_GAME_INTERFACE()->cb, CL_GAME_USERDATA()->main_rp);
         {
-            neko_render_set_viewport(&CL_GAME_INTERFACE()->cb, 0, 0, (u32)CL_GAME_USERDATA()->fbs.x, (u32)CL_GAME_USERDATA()->fbs.y);
+            neko_render_set_viewport(&CL_GAME_INTERFACE()->cb, 0, 0, (u32)CL_GAME_USERDATA()->DisplaySize.x, (u32)CL_GAME_USERDATA()->DisplaySize.y);
             neko_render_clear(&CL_GAME_INTERFACE()->cb, clear);
             neko_idraw_draw(&CL_GAME_INTERFACE()->idraw, &CL_GAME_INTERFACE()->cb);  // 立即模式绘制 idraw
             neko_render_draw_batch(&CL_GAME_INTERFACE()->cb, CL_GAME_USERDATA()->font_render_batch.font_render, 0, 0, 0);
@@ -607,7 +624,7 @@ void game_shutdown() {
     neko_pack_destroy(&CL_GAME_INTERFACE()->pack);
     neko_pack_destroy(&CL_GAME_INTERFACE()->lua_pack);
 
-    neko::vfs_trash();
+    neko::vfs_fini({});
 
     neko_scripting_end(neko_instance()->L);
 
@@ -628,14 +645,7 @@ void editor_dockspace(neko_ui_context_t *ctx) {
 
 std::string game_assets(const std::string &path) {
     std::string get_path;
-
-    if (path.substr(0, 11) == "lua_scripts") {
-        std::string lua_path = path;
-        get_path.append("./source/lua/game").append(lua_path.replace(0, 12, ""));
-    } else {
-        get_path.append(path);
-    }
-
+    get_path.append(path);
     return get_path;
 }
 
@@ -778,7 +788,8 @@ void draw_gui() {
             // const neko_ui_style_sheet_t *ss = &CL_GAME_USERDATA()->style_sheet;
 
             const neko_vec2 ss_ws = neko_v2(500.f, 300.f);
-            neko_ui_window_begin(&CL_GAME_INTERFACE()->ui, "Window", neko_ui_rect((CL_GAME_USERDATA()->fbs.x - ss_ws.x) * 0.5f, (CL_GAME_USERDATA()->fbs.y - ss_ws.y) * 0.5f, ss_ws.x, ss_ws.y));
+            neko_ui_window_begin(&CL_GAME_INTERFACE()->ui, "Window",
+                                 neko_ui_rect((CL_GAME_USERDATA()->DisplaySize.x - ss_ws.x) * 0.5f, (CL_GAME_USERDATA()->DisplaySize.y - ss_ws.y) * 0.5f, ss_ws.x, ss_ws.y));
             {
                 // Cache the current container
                 neko_ui_container_t *cnt = neko_ui_get_current_container(&CL_GAME_INTERFACE()->ui);
@@ -813,7 +824,7 @@ void draw_gui() {
             }
             neko_ui_window_end(&CL_GAME_INTERFACE()->ui);
 
-            neko_ui_window_begin(&CL_GAME_INTERFACE()->ui, "Idraw", neko_ui_rect((CL_GAME_USERDATA()->fbs.x - ws.x) * 0.2f, (CL_GAME_USERDATA()->fbs.y - ws.y) * 0.5f, ws.x, ws.y));
+            neko_ui_window_begin(&CL_GAME_INTERFACE()->ui, "Idraw", neko_ui_rect((CL_GAME_USERDATA()->DisplaySize.x - ws.x) * 0.2f, (CL_GAME_USERDATA()->DisplaySize.y - ws.y) * 0.5f, ws.x, ws.y));
             {
                 // Cache the current container
                 neko_ui_container_t *cnt = neko_ui_get_current_container(&CL_GAME_INTERFACE()->ui);
@@ -845,7 +856,7 @@ void draw_gui() {
             bool lock = neko_platform_mouse_locked();
             bool moved = neko_platform_mouse_moved();
 
-            if (neko_ui_window_begin(&CL_GAME_INTERFACE()->ui, "App", neko_ui_rect(CL_GAME_USERDATA()->fbs.x - 210, 30, 200, 200))) {
+            if (neko_ui_window_begin(&CL_GAME_INTERFACE()->ui, "App", neko_ui_rect(CL_GAME_USERDATA()->DisplaySize.x - 210, 30, 200, 200))) {
                 l = *neko_ui_get_layout(&CL_GAME_INTERFACE()->ui);
                 neko_ui_layout_row(&CL_GAME_INTERFACE()->ui, 1, neko_ui_widths(-1), 0);
 

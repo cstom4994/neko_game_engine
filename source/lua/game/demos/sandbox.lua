@@ -393,12 +393,12 @@ function playerSystem:process(e, dt)
 
     aseprite_render:update()
 
-    local player_v
+    local player_vs
 
     if neko_was_key_down("NEKO_KEYCODE_LEFT_SHIFT") then
-        player_v = 550.1 * dt
+        player_v = 650.1 * dt
     else
-        player_v = 220.1 * dt
+        player_v = 450.1 * dt
     end
 
     if neko_was_key_down("NEKO_KEYCODE_A") then
@@ -960,7 +960,7 @@ M.sub_render = function()
 
     local cc_x = player_pos.x - fbs_x / 2 + 24 * 3
     local cc_y = player_pos.y - fbs_y / 2 + 24 * 3
-    tweens.to(gd.cam, 1.5, {
+    tweens.to(gd.cam, 0.9, {
         x = cc_x,
         y = cc_y
     }):ease("cubicout")

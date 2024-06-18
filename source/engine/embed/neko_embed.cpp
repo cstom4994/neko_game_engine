@@ -1,7 +1,7 @@
 
 #include "engine/neko_luabind.hpp"
 
-#define LUAOPEN_EMBED_DATA(func, name, compressed_data, compressed_size)             \
+#define LUAOPEN_EMBED_DATA(func, name, compressed_data)                              \
     static int func(lua_State* L) {                                                  \
         s32 top = lua_gettop(L);                                                     \
                                                                                      \
@@ -33,10 +33,10 @@ static const u8 g_lua_ecs_data[] = {
 #include "ecs.lua.h"
 };
 
-LUAOPEN_EMBED_DATA(open_embed_behavior, "behavior.lua", g_lua_behavior_data, sizeof(g_lua_behavior_data));
-LUAOPEN_EMBED_DATA(open_embed_common, "common.lua", g_lua_common_data, sizeof(g_lua_common_data));
-LUAOPEN_EMBED_DATA(open_embed_cstruct, "cstruct.lua", g_lua_cstruct_data, sizeof(g_lua_cstruct_data));
-LUAOPEN_EMBED_DATA(open_embed_ecs, "ecs.lua", g_lua_ecs_data, sizeof(g_lua_ecs_data));
+LUAOPEN_EMBED_DATA(open_embed_behavior, "behavior.lua", g_lua_behavior_data);
+LUAOPEN_EMBED_DATA(open_embed_common, "common.lua", g_lua_common_data);
+LUAOPEN_EMBED_DATA(open_embed_cstruct, "cstruct.lua", g_lua_cstruct_data);
+LUAOPEN_EMBED_DATA(open_embed_ecs, "ecs.lua", g_lua_ecs_data);
 
 static void package_preload(lua_State* L, const_str name, lua_CFunction function) {
     lua_getglobal(L, "package");

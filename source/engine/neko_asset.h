@@ -141,8 +141,8 @@ typedef struct pack_item {
     char* path;
 } pack_item;
 
-typedef struct neko_packreader_t {
-    FILE* file;
+typedef struct neko_pack_t {
+    vfs_file vf;
     u64 item_count;
     pack_item* items;
     u8* data_buffer;
@@ -151,22 +151,22 @@ typedef struct neko_packreader_t {
     u32 zip_size;
     pack_item search_item;
     u32 file_ref_count;
-} neko_packreader_t;
+} neko_pack_t;
 
-NEKO_API_DECL int neko_pack_read(const_str file_path, u32 data_buffer_capacity, bool is_resources_directory, neko_packreader_t* pack_reader);
-NEKO_API_DECL void neko_pack_destroy(neko_packreader_t* pack_reader);
+NEKO_API_DECL bool neko_pack_read(const_str file_path, u32 data_buffer_capacity, bool is_resources_directory, neko_pack_t* pack_reader);
+NEKO_API_DECL void neko_pack_destroy(neko_pack_t* pack_reader);
 
-NEKO_API_DECL u64 neko_pack_item_count(neko_packreader_t* pack_reader);
-NEKO_API_DECL b8 neko_pack_item_index(neko_packreader_t* pack_reader, const_str path, u64* index);
-NEKO_API_DECL u32 neko_pack_item_size(neko_packreader_t* pack_reader, u64 index);
-NEKO_API_DECL const_str neko_pack_item_path(neko_packreader_t* pack_reader, u64 index);
-NEKO_API_DECL int neko_pack_item_data_with_index(neko_packreader_t* pack_reader, u64 index, const u8** data, u32* size);
-NEKO_API_DECL int neko_pack_item_data(neko_packreader_t* pack_reader, const_str path, const u8** data, u32* size);
-NEKO_API_DECL void neko_pack_item_free(neko_packreader_t* pack_reader, void* data);
-NEKO_API_DECL void neko_pack_free_buffers(neko_packreader_t* pack_reader);
-NEKO_API_DECL int neko_pack_unzip(const_str file_path, b8 print_progress);
-NEKO_API_DECL int neko_pack_build(const_str pack_path, u64 file_count, const_str* file_paths, b8 print_progress);
-NEKO_API_DECL int neko_pack_info(const_str file_path, u8* pack_version, b8* isLittleEndian, u64* item_count);
+NEKO_API_DECL u64 neko_pack_item_count(neko_pack_t* pack_reader);
+NEKO_API_DECL bool neko_pack_item_index(neko_pack_t* pack_reader, const_str path, u64* index);
+NEKO_API_DECL u32 neko_pack_item_size(neko_pack_t* pack_reader, u64 index);
+NEKO_API_DECL const_str neko_pack_item_path(neko_pack_t* pack_reader, u64 index);
+NEKO_API_DECL bool neko_pack_item_data_with_index(neko_pack_t* pack_reader, u64 index, const u8** data, u32* size);
+NEKO_API_DECL bool neko_pack_item_data(neko_pack_t* pack_reader, const_str path, const u8** data, u32* size);
+NEKO_API_DECL void neko_pack_item_free(neko_pack_t* pack_reader, void* data);
+NEKO_API_DECL void neko_pack_free_buffers(neko_pack_t* pack_reader);
+NEKO_API_DECL bool neko_pack_unzip(const_str file_path, b8 print_progress);
+NEKO_API_DECL bool neko_pack_build(const_str pack_path, u64 file_count, const_str* file_paths, b8 print_progress);
+NEKO_API_DECL bool neko_pack_info(const_str file_path, u8* pack_version, b8* isLittleEndian, u64* item_count);
 
 typedef enum neko_xml_attribute_type_t {
     NEKO_XML_ATTRIBUTE_NUMBER,
@@ -462,8 +462,8 @@ NEKO_API_DECL void neko_tiled_render_draw(neko_command_buffer_t* cb, neko_tiled_
 
 typedef struct ase_t ase_t;
 
-NEKO_API_DECL ase_t* neko_aseprite_load_from_file(const char* path);
-NEKO_API_DECL ase_t* neko_aseprite_load_from_memory(const void* memory, int size);
+NEKO_API_DECL ase_t* neko_aseprite_load_from_file(const_str path);
+NEKO_API_DECL ase_t* neko_aseprite_load_from_memory(const void* memory, u64 size);
 NEKO_API_DECL void neko_aseprite_free(ase_t* aseprite);
 NEKO_API_DECL void neko_aseprite_default_blend_bind(ase_t* aseprite);  // 默认图块混合管线
 

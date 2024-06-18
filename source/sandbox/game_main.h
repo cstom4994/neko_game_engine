@@ -37,10 +37,10 @@ typedef struct neko_client_userdata_t {
     neko_thread_atomic_int_t init_thread_flag;
     neko_thread_ptr_t init_work_thread;
 
-    // neko_filesystem_t* assetsys;
-
-    neko_vec2_t fbs = {640 * 1.5, 360 * 1.5};
     neko_vec2_t cam = {512, 512};
+
+    neko_vec2_t DisplaySize;
+    neko_vec2_t DisplayFramebufferScale;
 
     u8 debug_mode;
 

@@ -137,6 +137,12 @@ xpack("luacode")
 do
     set_formats("zip")
     add_installfiles("(source/lua/**)")
+    before_package(function(package)
+        local outputfile = package:outputfile()
+        if os.exists(outputfile) then
+            os.rm(outputfile)
+        end
+    end)
 end
 
 xpack("gamedata")

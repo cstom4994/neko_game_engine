@@ -320,7 +320,8 @@ struct IFileSystem {
     virtual bool read_entire_file(string *out, string filepath) = 0;
 };
 
-static IFileSystem *g_filesystem;
+// TODO 统一管理全局变量
+static std::unordered_map<std::string, IFileSystem *> g_filesystem_list;
 
 struct DirectoryFileSystem : IFileSystem {
     void make() {}
@@ -554,7 +555,7 @@ EM_ASYNC_JS(void, web_load_files, (), {
 auto os_program_path() { return std::filesystem::current_path().string(); }
 
 template <typename T>
-static bool vfs_mount_type(string mount) {
+static bool vfs_mount_type(std::string fsname, string mount) {
     void *ptr = neko_safe_malloc(sizeof(T));
     T *vfs = new (ptr) T();
 
@@ -566,7 +567,7 @@ static bool vfs_mount_type(string mount) {
         return false;
     }
 
-    g_filesystem = vfs;
+    g_filesystem_list.insert(std::make_pair(fsname, vfs));
     return true;
 }
 
@@ -581,7 +582,7 @@ static bool vfs_mount_type(string mount) {
 //     return {s_buf, (u64)len};
 // }
 
-mount_result vfs_mount(const char *filepath) {
+mount_result vfs_mount(const_str fsname, const_str filepath) {
 
     mount_result res = {};
 
@@ -605,15 +606,15 @@ mount_result vfs_mount(const char *filepath) {
         NEKO_DEBUG_LOG("program path: %s", path.data);
 #endif
 
-        res.ok = vfs_mount_type<DirectoryFileSystem>(path);
+        res.ok = vfs_mount_type<DirectoryFileSystem>(fsname, path);
     } else {
         string mount_dir = filepath;
 
         if (mount_dir.ends_with(".zip")) {
-            res.ok = vfs_mount_type<ZipFileSystem>(mount_dir);
+            res.ok = vfs_mount_type<ZipFileSystem>(fsname, mount_dir);
             res.is_fused = true;
         } else {
-            res.ok = vfs_mount_type<DirectoryFileSystem>(mount_dir);
+            res.ok = vfs_mount_type<DirectoryFileSystem>(fsname, mount_dir);
             res.can_hot_reload = res.ok;
         }
     }
@@ -626,117 +627,88 @@ mount_result vfs_mount(const char *filepath) {
     return res;
 }
 
-void vfs_trash() {
-    if (g_filesystem != nullptr) {
-        g_filesystem->trash();
-        neko_safe_free(g_filesystem);
+void vfs_fini(std::optional<std::string> name) {
+    auto fini_fs = []<typename T>(T fs) {
+        if constexpr (!is_pair<T>::value) {
+            fs->trash();
+            neko_safe_free(fs);
+            NEKO_DEBUG_LOG("vfs_fini(%p)", fs);
+        } else {
+            fs.second->trash();
+            neko_safe_free(fs.second);
+            NEKO_DEBUG_LOG("vfs_fini(%s)", fs.first.c_str());
+        }
+    };
+    if (!name.has_value()) {
+        for (auto vfs : g_filesystem_list) fini_fs(vfs);
+    } else {
+        auto vfs = g_filesystem_list[name.value()];
+        fini_fs(vfs);
     }
 }
 
-bool vfs_file_exists(string filepath) { return g_filesystem->file_exists(filepath); }
+bool vfs_file_exists(std::string fsname, string filepath) { return g_filesystem_list[fsname]->file_exists(filepath); }
 
-bool vfs_read_entire_file(string *out, string filepath) { return g_filesystem->read_entire_file(out, filepath); }
+bool vfs_read_entire_file(std::string fsname, string *out, string filepath) { return g_filesystem_list[fsname]->read_entire_file(out, filepath); }
 
-struct AudioFile {
-    u8 *buf;
-    u64 cursor;
-    u64 len;
-};
-
-#if 0
-void *vfs_for_miniaudio() {
-    ma_vfs_callbacks vtbl = {};
-
-    vtbl.onOpen = [](ma_vfs *pVFS, const char *pFilePath, ma_uint32 openMode, ma_vfs_file *pFile) -> ma_result {
-        string contents = {};
-
-        if (openMode & MA_OPEN_MODE_WRITE) {
-            return MA_ERROR;
-        }
-
-        bool ok = vfs_read_entire_file(&contents, pFilePath);
-        if (!ok) {
-            return MA_ERROR;
-        }
-
-        AudioFile *file = (AudioFile *)neko_safe_malloc(sizeof(AudioFile));
-        file->buf = (u8 *)contents.data;
-        file->len = contents.len;
-        file->cursor = 0;
-
-        *pFile = file;
-        return MA_SUCCESS;
-    };
-
-    vtbl.onClose = [](ma_vfs *pVFS, ma_vfs_file file) -> ma_result {
-        AudioFile *f = (AudioFile *)file;
-        neko_safe_free(f->buf);
-        neko_safe_free(f);
-        return MA_SUCCESS;
-    };
-
-    vtbl.onRead = [](ma_vfs *pVFS, ma_vfs_file file, void *pDst, size_t sizeInBytes, size_t *pBytesRead) -> ma_result {
-        AudioFile *f = (AudioFile *)file;
-
-        u64 remaining = f->len - f->cursor;
-        u64 len = remaining < sizeInBytes ? remaining : sizeInBytes;
-        memcpy(pDst, &f->buf[f->cursor], len);
-
-        if (pBytesRead != nullptr) {
-            *pBytesRead = len;
-        }
-
-        if (len != sizeInBytes) {
-            return MA_AT_END;
-        }
-
-        return MA_SUCCESS;
-    };
-
-    vtbl.onWrite = [](ma_vfs *pVFS, ma_vfs_file file, const void *pSrc, size_t sizeInBytes, size_t *pBytesWritten) -> ma_result { return MA_NOT_IMPLEMENTED; };
-
-    vtbl.onSeek = [](ma_vfs *pVFS, ma_vfs_file file, ma_int64 offset, ma_seek_origin origin) -> ma_result {
-        AudioFile *f = (AudioFile *)file;
-
-        i64 seek = 0;
-        switch (origin) {
-            case ma_seek_origin_start:
-                seek = offset;
-                break;
-            case ma_seek_origin_end:
-                seek = f->len + offset;
-                break;
-            case ma_seek_origin_current:
-            default:
-                seek = f->cursor + offset;
-                break;
-        }
-
-        if (seek < 0 || seek > f->len) {
-            return MA_ERROR;
-        }
-
-        f->cursor = (u64)seek;
-        return MA_SUCCESS;
-    };
-
-    vtbl.onTell = [](ma_vfs *pVFS, ma_vfs_file file, ma_int64 *pCursor) -> ma_result {
-        AudioFile *f = (AudioFile *)file;
-        *pCursor = f->cursor;
-        return MA_SUCCESS;
-    };
-
-    vtbl.onInfo = [](ma_vfs *pVFS, ma_vfs_file file, ma_file_info *pInfo) -> ma_result {
-        AudioFile *f = (AudioFile *)file;
-        pInfo->sizeInBytes = f->len;
-        return MA_SUCCESS;
-    };
-
-    ma_vfs_callbacks *ptr = (ma_vfs_callbacks *)neko_safe_malloc(sizeof(ma_vfs_callbacks));
-    *ptr = vtbl;
-    return ptr;
+NEKO_API_DECL size_t neko_capi_vfs_fread(void *dest, size_t size, size_t count, vfs_file *vf) {
+    size_t bytes_to_read = size * count;
+    std::memcpy(dest, static_cast<const char *>(vf->data) + vf->offset, bytes_to_read);
+    vf->offset += bytes_to_read;
+    return count;
 }
-#endif
+
+// #define SEEK_SET 0
+// #define SEEK_CUR 1
+// #define SEEK_END 2
+
+NEKO_API_DECL int neko_capi_vfs_fseek(vfs_file *vf, off_t of, int whence) {
+    off_t new_offset;
+    switch (whence) {
+        case SEEK_SET:
+            new_offset = of;
+            break;
+        case SEEK_CUR:
+            new_offset = vf->offset + of;
+            break;
+        case SEEK_END:
+            new_offset = vf->len + of;
+            break;
+        default:
+            errno = EINVAL;
+            return -1;
+    }
+    if (new_offset < 0 || new_offset > vf->len) {
+        errno = EINVAL;
+        return -1;
+    }
+    vf->offset = new_offset;
+    return 0;
+}
+
+NEKO_API_DECL off_t neko_capi_vfs_ftell(vfs_file *vf) { return vf->offset; }
+
+NEKO_API_DECL vfs_file neko_capi_vfs_fopen(const_str path) {
+    vfs_file vf{};
+    vf.data = neko_capi_vfs_read_file(NEKO_DEFAULT_PACK, path, &vf.len);
+    return vf;
+}
+
+NEKO_API_DECL int neko_capi_vfs_fclose(vfs_file *vf) {
+    NEKO_ASSERT(vf);
+    neko_safe_free(vf->data);
+    return 0;
+}
+
+NEKO_API_DECL bool neko_capi_vfs_file_exists(const_str fsname, const_str filepath) { return vfs_file_exists(fsname, filepath); }
+
+NEKO_API_DECL const_str neko_capi_vfs_read_file(const_str fsname, const_str filepath, u64 *size) {
+    string out;
+    bool ok = vfs_read_entire_file(fsname, &out, filepath);
+    if (!ok) return NULL;
+    *size = out.len;
+    return out.data;
+}
 
 s64 luax_len(lua_State *L, s32 arg) {
     lua_len(L, arg);

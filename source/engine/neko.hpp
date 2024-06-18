@@ -198,7 +198,19 @@ neko_defer<F> defer_func(F f) {
     return neko_defer<F>(f);
 }
 
-#define neko_defer(code) auto NEKO_CONCAT(__defer_, __COUNTER__) = neko::defer_func([&]() { code; })
+#define neko_defer(code) auto NEKO_CONCAT(__defer_, __LINE__) = neko::defer_func([&]() { code; })
+
+template <typename T>
+concept concept_is_pair = requires(T t) {
+    t.first;
+    t.second;
+};
+
+template <class T>
+struct is_pair : public std::false_type {};
+
+template <class T1, class T2>
+struct is_pair<std::pair<T1, T2>> : public std::true_type {};
 
 }  // namespace neko
 
@@ -1136,12 +1148,10 @@ struct mount_result {
     bool is_fused;
 };
 
-mount_result vfs_mount(const char* filepath);
-void vfs_trash();
-
-bool vfs_file_exists(string filepath);
-bool vfs_read_entire_file(string* out, string filepath);
-bool vfs_write_entire_file(string filepath, string contents);
+mount_result vfs_mount(const_str fsname, const_str filepath);
+void vfs_fini(std::optional<std::string> name);
+bool vfs_file_exists(std::string fsname, string filepath);
+bool vfs_read_entire_file(std::string fsname, string* out, string filepath);
 
 void* vfs_for_miniaudio();
 

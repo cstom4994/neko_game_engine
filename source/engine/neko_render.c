@@ -3713,13 +3713,10 @@ NEKO_API_DECL void neko_render_init(neko_render_t* render) {
         //     glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, (s32*)&info->compute.max_work_group_invocations);
         // });
     } else {
-        NEKO_WARN("opengl compute shaders not available");
+        // NEKO_WARN("opengl compute shaders not available");
     }
 
-    const GLubyte* glslv = glGetString(GL_SHADING_LANGUAGE_VERSION);
-    NEKO_INFO("glsl version: %s", glslv);
-
-#if defined(NEKO_DEBUG) && 0
+#if defined(NEKO_DEBUG_BUILD) && 0
     int numExtensions;
     glGetIntegerv(GL_NUM_EXTENSIONS, &numExtensions);
     neko_printf("Supported extensions:");
