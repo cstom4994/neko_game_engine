@@ -2309,7 +2309,7 @@ NEKO_API_DECL void neko_tolua_error(lua_State *L, const char *msg, neko_tolua_Er
 }
 
 /* the equivalent of lua_is* for usertable */
-static int lua_isusertable(lua_State *L, int lo, const const char *type) {
+static int lua_isusertable(lua_State *L, int lo, const_str type) {
     int r = 0;
     if (lo < 0) lo = lua_gettop(L) + lo + 1;
     lua_pushvalue(L, lo);
@@ -2767,7 +2767,7 @@ int neko_tolua_isusertypefield
 /* Create metatable
  * Create and register new metatable
  */
-static int neko_tolua_newmetatable(lua_State *L, char *name) {
+static int neko_tolua_newmetatable(lua_State *L, const_str name) {
     int r = luaL_newmetatable(L, name);
 
 #ifdef LUA_VERSION_NUM /* only lua 5.1 */

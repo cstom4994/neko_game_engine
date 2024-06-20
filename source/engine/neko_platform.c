@@ -66,19 +66,19 @@
 
 /*== Platform Window ==*/
 
-NEKO_API_DECL neko_platform_t* neko_platform_create() {
+NEKO_API_DECL neko_pf_t* neko_pf_create() {
     // Construct new platform interface
-    neko_platform_t* platform = neko_malloc_init(neko_platform_t);
+    neko_pf_t* platform = neko_malloc_init(neko_pf_t);
 
     // Initialize windows
-    platform->windows = neko_slot_array_new(neko_platform_window_t);
+    platform->windows = neko_slot_array_new(neko_pf_window_t);
 
     // neko_job_init();
 
     return platform;
 }
 
-NEKO_API_DECL void neko_platform_destroy(neko_platform_t* platform) {
+NEKO_API_DECL void neko_pf_destroy(neko_pf_t* platform) {
     if (platform == NULL) return;
 
     // #if defined(NEKO_PF_WIN)
@@ -93,31 +93,31 @@ NEKO_API_DECL void neko_platform_destroy(neko_platform_t* platform) {
     platform = NULL;
 }
 
-NEKO_API_DECL u32 neko_platform_window_create(const neko_platform_running_desc_t* desc) {
+NEKO_API_DECL u32 neko_pf_window_create(const neko_pf_running_desc_t* desc) {
     NEKO_ASSERT(neko_instance() != NULL);
-    neko_platform_t* platform = neko_subsystem(platform);
-    neko_platform_window_t win = neko_platform_window_create_internal(desc);
+    neko_pf_t* platform = neko_subsystem(platform);
+    neko_pf_window_t win = neko_pf_window_create_internal(desc);
 
     // Insert and return handle
     return (neko_slot_array_insert(platform->windows, win));
 }
 
-NEKO_API_DECL u32 neko_platform_main_window() {
+NEKO_API_DECL u32 neko_pf_main_window() {
     // Should be the first element of the slot array...Great assumption to make.
     return 0;
 }
 
 /*== Platform Time ==*/
 
-NEKO_API_DECL const neko_platform_time_t* neko_platform_time() { return &neko_subsystem(platform)->time; }
+NEKO_API_DECL const neko_pf_time_t* neko_pf_time() { return &neko_subsystem(platform)->time; }
 
-NEKO_API_DECL f32 neko_platform_delta_time() { return neko_platform_time()->delta; }
+NEKO_API_DECL f32 neko_pf_delta_time() { return neko_pf_time()->delta; }
 
-NEKO_API_DECL f32 neko_platform_frame_time() { return neko_platform_time()->frame; }
+NEKO_API_DECL f32 neko_pf_frame_time() { return neko_pf_time()->frame; }
 
 /*== Platform UUID ==*/
 
-NEKO_API_DECL struct neko_uuid_t neko_platform_uuid_generate() {
+NEKO_API_DECL struct neko_uuid_t neko_pf_uuid_generate() {
     neko_uuid_t uuid;
 
     srand(clock());
@@ -162,14 +162,14 @@ NEKO_API_DECL struct neko_uuid_t neko_platform_uuid_generate() {
 }
 
 // Mutable temp buffer 'tmp_buffer'
-NEKO_API_DECL void neko_platform_uuid_to_string(char* tmp_buffer, const neko_uuid_t* uuid) {
+NEKO_API_DECL void neko_pf_uuid_to_string(char* tmp_buffer, const neko_uuid_t* uuid) {
     neko_snprintf(tmp_buffer, 32, "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x", uuid->bytes[0], uuid->bytes[1], uuid->bytes[2], uuid->bytes[3], uuid->bytes[4], uuid->bytes[5],
                   uuid->bytes[6], uuid->bytes[7], uuid->bytes[8], uuid->bytes[9], uuid->bytes[10], uuid->bytes[11], uuid->bytes[12], uuid->bytes[13], uuid->bytes[14], uuid->bytes[15]);
 }
 
-u32 neko_platform_uuid_hash(const neko_uuid_t* uuid) {
+u32 neko_pf_uuid_hash(const neko_uuid_t* uuid) {
     char temp_buffer[] = neko_uuid_temp_str_buffer();
-    neko_platform_uuid_to_string(temp_buffer, uuid);
+    neko_pf_uuid_to_string(temp_buffer, uuid);
     return (neko_hash_str(temp_buffer));
 }
 
@@ -177,9 +177,9 @@ u32 neko_platform_uuid_hash(const neko_uuid_t* uuid) {
 
 /*=== Platform Input ===*/
 
-NEKO_API_DECL neko_platform_input_t* neko_platform_input() { return &neko_subsystem(platform)->input; }
+NEKO_API_DECL neko_pf_input_t* neko_pf_input() { return &neko_subsystem(platform)->input; }
 
-void neko_platform_update_input(neko_platform_input_t* input) {
+void neko_pf_update_input(neko_pf_input_t* input) {
     // Update all input and mouse keys from previous frame
     // Previous key presses
     NEKO_FOR_RANGE_N(NEKO_KEYCODE_COUNT, i) { input->prev_key_map[i] = input->key_map[i]; }
@@ -198,22 +198,22 @@ void neko_platform_update_input(neko_platform_input_t* input) {
     }
 }
 
-void neko_platform_poll_all_events() {
-    neko_platform_t* platform = neko_subsystem(platform);
+void neko_pf_poll_all_events() {
+    neko_pf_t* platform = neko_subsystem(platform);
 
     platform->input.mouse.delta.x = 0;
     platform->input.mouse.delta.y = 0;
 
     // Iterate through events, don't consume
-    neko_platform_event_t evt = NEKO_DEFAULT_VAL();
-    while (neko_platform_poll_events(&evt, false)) {
+    neko_pf_event_t evt = NEKO_DEFAULT_VAL();
+    while (neko_pf_poll_events(&evt, false)) {
         switch (evt.type) {
             case NEKO_PF_EVENT_MOUSE: {
                 switch (evt.mouse.action) {
                     case NEKO_PF_MOUSE_MOVE: {
                         // If locked, then movement amount will be applied to delta,
                         // otherwise set position
-                        if (neko_platform_mouse_locked()) {
+                        if (neko_pf_mouse_locked()) {
                             platform->input.mouse.delta = neko_vec2_add(platform->input.mouse.delta, evt.mouse.move);
                         } else {
                             platform->input.mouse.delta = neko_vec2_sub(evt.mouse.move, platform->input.mouse.position);
@@ -226,15 +226,15 @@ void neko_platform_poll_all_events() {
                     } break;
 
                     case NEKO_PF_MOUSE_BUTTON_PRESSED: {
-                        neko_platform_press_mouse_button(evt.mouse.button);
+                        neko_pf_press_mouse_button(evt.mouse.button);
                     } break;
 
                     case NEKO_PF_MOUSE_BUTTON_RELEASED: {
-                        neko_platform_release_mouse_button(evt.mouse.button);
+                        neko_pf_release_mouse_button(evt.mouse.button);
                     } break;
 
                     case NEKO_PF_MOUSE_BUTTON_DOWN: {
-                        neko_platform_press_mouse_button(evt.mouse.button);
+                        neko_pf_press_mouse_button(evt.mouse.button);
                     } break;
 
                     case NEKO_PF_MOUSE_ENTER: {
@@ -251,15 +251,15 @@ void neko_platform_poll_all_events() {
             case NEKO_PF_EVENT_KEY: {
                 switch (evt.key.action) {
                     case NEKO_PF_KEY_PRESSED: {
-                        neko_platform_press_key(evt.key.keycode);
+                        neko_pf_press_key(evt.key.keycode);
                     } break;
 
                     case NEKO_PF_KEY_DOWN: {
-                        neko_platform_press_key(evt.key.keycode);
+                        neko_pf_press_key(evt.key.keycode);
                     } break;
 
                     case NEKO_PF_KEY_RELEASED: {
-                        neko_platform_release_key(evt.key.keycode);
+                        neko_pf_release_key(evt.key.keycode);
                     } break;
                 }
 
@@ -274,7 +274,7 @@ void neko_platform_poll_all_events() {
             } break;
 
             case NEKO_PF_EVENT_TOUCH: {
-                neko_platform_point_event_data_t* point = &evt.touch.point;
+                neko_pf_point_event_data_t* point = &evt.touch.point;
 
                 switch (evt.touch.action) {
                     case NEKO_PF_TOUCH_DOWN: {
@@ -282,7 +282,7 @@ void neko_platform_poll_all_events() {
                         neko_vec2* pos = &point->position;
                         neko_vec2* p = &platform->input.touch.points[id].position;
                         neko_vec2* d = &platform->input.touch.points[id].delta;
-                        neko_platform_press_touch(id);
+                        neko_pf_press_touch(id);
                         *p = *pos;
                         neko_subsystem(platform)->input.touch.size++;
                     } break;
@@ -290,7 +290,7 @@ void neko_platform_poll_all_events() {
                     case NEKO_PF_TOUCH_UP: {
                         uintptr_t id = point->id;
                         neko_println("Releasing ID: %zu", id);
-                        neko_platform_release_touch(id);
+                        neko_pf_release_touch(id);
                         neko_subsystem(platform)->input.touch.size--;
                     } break;
 
@@ -299,14 +299,14 @@ void neko_platform_poll_all_events() {
                         neko_vec2* pos = &point->position;
                         neko_vec2* p = &platform->input.touch.points[id].position;
                         neko_vec2* d = &platform->input.touch.points[id].delta;
-                        neko_platform_press_touch(id);  // Not sure if this is causing issues...
+                        neko_pf_press_touch(id);  // Not sure if this is causing issues...
                         *d = neko_vec2_sub(*pos, *p);
                         *p = *pos;
                     } break;
 
                     case NEKO_PF_TOUCH_CANCEL: {
                         uintptr_t id = point->id;
-                        neko_platform_release_touch(id);
+                        neko_pf_release_touch(id);
                         neko_subsystem(platform)->input.touch.size--;
                     } break;
                 }
@@ -318,25 +318,25 @@ void neko_platform_poll_all_events() {
     }
 }
 
-void neko_platform_update(neko_platform_t* platform) {
+void neko_pf_update(neko_pf_t* platform) {
     // neko_profiler_scope_begin(platform_update);
 
     // Update platform input from previous frame
-    neko_platform_update_input(&platform->input);
+    neko_pf_update_input(&platform->input);
 
     // Process input for this frame (user dependent update)
-    neko_platform_process_input(&platform->input);
+    neko_pf_process_input(&platform->input);
 
     // Poll all events
-    neko_platform_poll_all_events();
+    neko_pf_poll_all_events();
 
-    neko_platform_update_internal(platform);
+    neko_pf_update_internal(platform);
 
     // neko_profiler_scope_end(platform_update);
 }
 
-bool neko_platform_poll_events(neko_platform_event_t* evt, b32 consume) {
-    neko_platform_t* platform = neko_subsystem(platform);
+bool neko_pf_poll_events(neko_pf_event_t* evt, b32 consume) {
+    neko_pf_t* platform = neko_subsystem(platform);
 
     if (!evt) return false;
     if (neko_dyn_array_empty(platform->events)) return false;
@@ -356,204 +356,204 @@ bool neko_platform_poll_events(neko_platform_event_t* evt, b32 consume) {
     return true;
 }
 
-void neko_platform_add_event(neko_platform_event_t* evt) {
-    neko_platform_t* platform = neko_subsystem(platform);
+void neko_pf_add_event(neko_pf_event_t* evt) {
+    neko_pf_t* platform = neko_subsystem(platform);
     if (!evt) return;
     neko_dyn_array_push(platform->events, *evt);
 }
 
-bool neko_platform_was_key_down(neko_platform_keycode code) {
-    neko_platform_input_t* input = __neko_input();
+bool neko_pf_was_key_down(neko_pf_keycode code) {
+    neko_pf_input_t* input = __neko_input();
     return (input->prev_key_map[code]);
 }
 
-bool neko_platform_key_down(neko_platform_keycode code) {
-    neko_platform_input_t* input = __neko_input();
+bool neko_pf_key_down(neko_pf_keycode code) {
+    neko_pf_input_t* input = __neko_input();
     return (input->key_map[code]);
 }
 
-bool neko_platform_key_pressed(neko_platform_keycode code) {
-    neko_platform_input_t* input = __neko_input();
-    return (neko_platform_key_down(code) && !neko_platform_was_key_down(code));
+bool neko_pf_key_pressed(neko_pf_keycode code) {
+    neko_pf_input_t* input = __neko_input();
+    return (neko_pf_key_down(code) && !neko_pf_was_key_down(code));
 }
 
-bool neko_platform_key_released(neko_platform_keycode code) {
-    neko_platform_input_t* input = __neko_input();
-    return (neko_platform_was_key_down(code) && !neko_platform_key_down(code));
+bool neko_pf_key_released(neko_pf_keycode code) {
+    neko_pf_input_t* input = __neko_input();
+    return (neko_pf_was_key_down(code) && !neko_pf_key_down(code));
 }
 
-bool neko_platform_touch_down(u32 idx) {
-    neko_platform_input_t* input = __neko_input();
+bool neko_pf_touch_down(u32 idx) {
+    neko_pf_input_t* input = __neko_input();
     if (idx < NEKO_PF_MAX_TOUCH) {
         return input->touch.points[idx].pressed;
     }
     return false;
 }
 
-bool neko_platform_touch_pressed(u32 idx) {
-    neko_platform_input_t* input = __neko_input();
+bool neko_pf_touch_pressed(u32 idx) {
+    neko_pf_input_t* input = __neko_input();
     if (idx < NEKO_PF_MAX_TOUCH) {
-        return (neko_platform_was_touch_down(idx) && !neko_platform_touch_down(idx));
+        return (neko_pf_was_touch_down(idx) && !neko_pf_touch_down(idx));
     }
     return false;
 }
 
-bool neko_platform_touch_released(u32 idx) {
-    neko_platform_input_t* input = __neko_input();
+bool neko_pf_touch_released(u32 idx) {
+    neko_pf_input_t* input = __neko_input();
     if (idx < NEKO_PF_MAX_TOUCH) {
-        return (neko_platform_was_touch_down(idx) && !neko_platform_touch_down(idx));
+        return (neko_pf_was_touch_down(idx) && !neko_pf_touch_down(idx));
     }
     return false;
 }
 
-bool neko_platform_was_mouse_down(neko_platform_mouse_button_code code) {
-    neko_platform_input_t* input = __neko_input();
+bool neko_pf_was_mouse_down(neko_pf_mouse_button_code code) {
+    neko_pf_input_t* input = __neko_input();
     return (input->mouse.prev_button_map[code]);
 }
 
-void neko_platform_press_mouse_button(neko_platform_mouse_button_code code) {
-    neko_platform_input_t* input = __neko_input();
+void neko_pf_press_mouse_button(neko_pf_mouse_button_code code) {
+    neko_pf_input_t* input = __neko_input();
     if ((u32)code < (u32)NEKO_MOUSE_BUTTON_CODE_COUNT) {
         input->mouse.button_map[code] = true;
     }
 }
 
-void neko_platform_release_mouse_button(neko_platform_mouse_button_code code) {
-    neko_platform_input_t* input = __neko_input();
+void neko_pf_release_mouse_button(neko_pf_mouse_button_code code) {
+    neko_pf_input_t* input = __neko_input();
     if ((u32)code < (u32)NEKO_MOUSE_BUTTON_CODE_COUNT) {
         input->mouse.button_map[code] = false;
     }
 }
 
-bool neko_platform_mouse_down(neko_platform_mouse_button_code code) {
-    neko_platform_input_t* input = __neko_input();
+bool neko_pf_mouse_down(neko_pf_mouse_button_code code) {
+    neko_pf_input_t* input = __neko_input();
     return (input->mouse.button_map[code]);
 }
 
-bool neko_platform_mouse_pressed(neko_platform_mouse_button_code code) {
-    neko_platform_input_t* input = __neko_input();
-    if (neko_platform_mouse_down(code) && !neko_platform_was_mouse_down(code)) {
+bool neko_pf_mouse_pressed(neko_pf_mouse_button_code code) {
+    neko_pf_input_t* input = __neko_input();
+    if (neko_pf_mouse_down(code) && !neko_pf_was_mouse_down(code)) {
         return true;
     }
     return false;
 }
 
-bool neko_platform_mouse_released(neko_platform_mouse_button_code code) {
-    neko_platform_input_t* input = __neko_input();
-    return (neko_platform_was_mouse_down(code) && !neko_platform_mouse_down(code));
+bool neko_pf_mouse_released(neko_pf_mouse_button_code code) {
+    neko_pf_input_t* input = __neko_input();
+    return (neko_pf_was_mouse_down(code) && !neko_pf_mouse_down(code));
 }
 
-bool neko_platform_mouse_moved() {
-    neko_platform_input_t* input = __neko_input();
+bool neko_pf_mouse_moved() {
+    neko_pf_input_t* input = __neko_input();
     return (input->mouse.delta.x != 0.f || input->mouse.delta.y != 0.f);
 }
 
-void neko_platform_mouse_delta(f32* x, f32* y) {
-    neko_platform_input_t* input = __neko_input();
+void neko_pf_mouse_delta(f32* x, f32* y) {
+    neko_pf_input_t* input = __neko_input();
     *x = input->mouse.delta.x;
     *y = input->mouse.delta.y;
 }
 
-neko_vec2 neko_platform_mouse_deltav() {
-    neko_platform_input_t* input = __neko_input();
+neko_vec2 neko_pf_mouse_deltav() {
+    neko_pf_input_t* input = __neko_input();
     neko_vec2 delta = NEKO_DEFAULT_VAL();
-    neko_platform_mouse_delta(&delta.x, &delta.y);
+    neko_pf_mouse_delta(&delta.x, &delta.y);
     return delta;
 }
 
-neko_vec2 neko_platform_mouse_positionv() {
-    neko_platform_input_t* input = __neko_input();
+neko_vec2 neko_pf_mouse_positionv() {
+    neko_pf_input_t* input = __neko_input();
 
     return neko_v2(input->mouse.position.x, input->mouse.position.y);
 }
 
-void neko_platform_mouse_position(s32* x, s32* y) {
-    neko_platform_input_t* input = __neko_input();
+void neko_pf_mouse_position(s32* x, s32* y) {
+    neko_pf_input_t* input = __neko_input();
     *x = (s32)input->mouse.position.x;
     *y = (s32)input->mouse.position.y;
 }
 
-void neko_platform_mouse_wheel(f32* x, f32* y) {
-    neko_platform_input_t* input = __neko_input();
+void neko_pf_mouse_wheel(f32* x, f32* y) {
+    neko_pf_input_t* input = __neko_input();
     *x = input->mouse.wheel.x;
     *y = input->mouse.wheel.y;
 }
 
-NEKO_API_DECL neko_vec2 neko_platform_mouse_wheelv() {
+NEKO_API_DECL neko_vec2 neko_pf_mouse_wheelv() {
     neko_vec2 wheel = NEKO_DEFAULT_VAL();
-    neko_platform_mouse_wheel(&wheel.x, &wheel.y);
+    neko_pf_mouse_wheel(&wheel.x, &wheel.y);
     return wheel;
 }
 
-bool neko_platform_mouse_locked() { return (__neko_input())->mouse.locked; }
+bool neko_pf_mouse_locked() { return (__neko_input())->mouse.locked; }
 
-void neko_platform_touch_delta(u32 idx, f32* x, f32* y) {
-    neko_platform_input_t* input = __neko_input();
+void neko_pf_touch_delta(u32 idx, f32* x, f32* y) {
+    neko_pf_input_t* input = __neko_input();
     if (idx < NEKO_PF_MAX_TOUCH) {
         *x = input->touch.points[idx].delta.x;
         *y = input->touch.points[idx].delta.y;
     }
 }
 
-neko_vec2 neko_platform_touch_deltav(u32 idx) {
+neko_vec2 neko_pf_touch_deltav(u32 idx) {
     neko_vec2 delta = neko_v2s(0.f);
-    neko_platform_touch_delta(idx, &delta.x, &delta.y);
+    neko_pf_touch_delta(idx, &delta.x, &delta.y);
     return delta;
 }
 
-void neko_platform_touch_position(u32 idx, f32* x, f32* y) {
-    neko_platform_input_t* input = __neko_input();
+void neko_pf_touch_position(u32 idx, f32* x, f32* y) {
+    neko_pf_input_t* input = __neko_input();
     if (idx < NEKO_PF_MAX_TOUCH) {
         *x = input->touch.points[idx].position.x;
         *y = input->touch.points[idx].position.y;
     }
 }
 
-neko_vec2 neko_platform_touch_positionv(u32 idx) {
+neko_vec2 neko_pf_touch_positionv(u32 idx) {
     neko_vec2 p = NEKO_DEFAULT_VAL();
-    neko_platform_touch_position(idx, &p.x, &p.y);
+    neko_pf_touch_position(idx, &p.x, &p.y);
     return p;
 }
 
-void neko_platform_press_touch(u32 idx) {
-    neko_platform_input_t* input = __neko_input();
+void neko_pf_press_touch(u32 idx) {
+    neko_pf_input_t* input = __neko_input();
     if (idx < NEKO_PF_MAX_TOUCH) {
         input->touch.points[idx].pressed = true;
     }
 }
 
-void neko_platform_release_touch(u32 idx) {
-    neko_platform_input_t* input = __neko_input();
+void neko_pf_release_touch(u32 idx) {
+    neko_pf_input_t* input = __neko_input();
     if (idx < NEKO_PF_MAX_TOUCH) {
         neko_println("releasing: %zu", idx);
         input->touch.points[idx].pressed = false;
     }
 }
 
-bool neko_platform_was_touch_down(u32 idx) {
-    neko_platform_input_t* input = __neko_input();
+bool neko_pf_was_touch_down(u32 idx) {
+    neko_pf_input_t* input = __neko_input();
     if (idx < NEKO_PF_MAX_TOUCH) {
         return input->touch.points[idx].down;
     }
     return false;
 }
 
-void neko_platform_press_key(neko_platform_keycode code) {
-    neko_platform_input_t* input = __neko_input();
+void neko_pf_press_key(neko_pf_keycode code) {
+    neko_pf_input_t* input = __neko_input();
     if (code < NEKO_KEYCODE_COUNT) {
         input->key_map[code] = true;
     }
 }
 
-void neko_platform_release_key(neko_platform_keycode code) {
-    neko_platform_input_t* input = __neko_input();
+void neko_pf_release_key(neko_pf_keycode code) {
+    neko_pf_input_t* input = __neko_input();
     if (code < NEKO_KEYCODE_COUNT) {
         input->key_map[code] = false;
     }
 }
 
 // Platform File IO
-char* neko_platform_read_file_contents_default_impl(const char* file_path, const char* mode, size_t* sz) {
+char* neko_pf_read_file_contents_default_impl(const char* file_path, const char* mode, size_t* sz) {
 
 #ifdef NEKO_PF_ANDROID
     const char* internal_data_path = neko_app()->android.internal_data_path;
@@ -565,7 +565,7 @@ char* neko_platform_read_file_contents_default_impl(const char* file_path, const
     FILE* fp = neko_fopen(file_path, mode);
     size_t read_sz = 0;
     if (fp) {
-        read_sz = neko_platform_file_size_in_bytes(file_path);
+        read_sz = neko_pf_file_size_in_bytes(file_path);
         buffer = (char*)neko_safe_malloc(read_sz + 1);
         if (buffer) {
             size_t _r = fread(buffer, 1, read_sz, fp);
@@ -580,7 +580,7 @@ char* neko_platform_read_file_contents_default_impl(const char* file_path, const
     return buffer;
 }
 
-neko_result neko_platform_write_file_contents_default_impl(const char* file_path, const char* mode, void* data, size_t sz) {
+neko_result neko_pf_write_file_contents_default_impl(const char* file_path, const char* mode, void* data, size_t sz) {
     const char* path = file_path;
 
 #ifdef NEKO_PF_ANDROID
@@ -601,7 +601,7 @@ neko_result neko_platform_write_file_contents_default_impl(const char* file_path
     return NEKO_RESULT_FAILURE;
 }
 
-NEKO_API_DECL bool neko_platform_dir_exists_default_impl(const char* dir_path) {
+NEKO_API_DECL bool neko_pf_dir_exists_default_impl(const char* dir_path) {
 #if defined(NEKO_PF_WIN)
     DWORD attrib = GetFileAttributes((LPCWSTR)dir_path);  // TODO: unicode 路径修复
     return (attrib != INVALID_FILE_ATTRIBUTES && (attrib & FILE_ATTRIBUTE_DIRECTORY));
@@ -616,7 +616,7 @@ NEKO_API_DECL bool neko_platform_dir_exists_default_impl(const char* dir_path) {
 #endif
 }
 
-NEKO_API_DECL s32 neko_platform_mkdir_default_impl(const char* dir_path, s32 opt) {
+NEKO_API_DECL s32 neko_pf_mkdir_default_impl(const char* dir_path, s32 opt) {
 #ifdef NEKO_PF_WIN
     return _mkdir(dir_path);
 #else
@@ -624,7 +624,7 @@ NEKO_API_DECL s32 neko_platform_mkdir_default_impl(const char* dir_path, s32 opt
 #endif
 }
 
-NEKO_API_DECL bool neko_platform_file_exists_default_impl(const char* file_path) {
+NEKO_API_DECL bool neko_pf_file_exists_default_impl(const char* file_path) {
     const char* path = file_path;
 
 #ifdef NEKO_PF_ANDROID
@@ -641,7 +641,7 @@ NEKO_API_DECL bool neko_platform_file_exists_default_impl(const char* file_path)
     return false;
 }
 
-s32 neko_platform_file_size_in_bytes_default_impl(const char* file_path) {
+s32 neko_pf_file_size_in_bytes_default_impl(const char* file_path) {
 #ifdef NEKO_PF_WIN
 
     HANDLE hFile = CreateFileA(file_path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -673,9 +673,9 @@ s32 neko_platform_file_size_in_bytes_default_impl(const char* file_path) {
 #endif
 }
 
-void neko_platform_file_extension_default_impl(char* buffer, size_t buffer_sz, const char* file_path) { neko_util_get_file_extension(buffer, buffer_sz, file_path); }
+void neko_pf_file_extension_default_impl(char* buffer, size_t buffer_sz, const char* file_path) { neko_util_get_file_extension(buffer, buffer_sz, file_path); }
 
-NEKO_API_DECL s32 neko_platform_file_delete_default_impl(const char* file_path) {
+NEKO_API_DECL s32 neko_pf_file_delete_default_impl(const char* file_path) {
 #if (defined NEKO_PF_WIN)
 
     // Non-zero if successful
@@ -691,7 +691,7 @@ NEKO_API_DECL s32 neko_platform_file_delete_default_impl(const char* file_path) 
     return 0;
 }
 
-NEKO_API_DECL s32 neko_platform_file_copy_default_impl(const char* src_path, const char* dst_path) {
+NEKO_API_DECL s32 neko_pf_file_copy_default_impl(const char* src_path, const char* dst_path) {
 #if (defined NEKO_PF_WIN)
 
     return CopyFileA(src_path, dst_path, false);
@@ -724,10 +724,10 @@ NEKO_API_DECL s32 neko_platform_file_copy_default_impl(const char* src_path, con
     return 0;
 }
 
-NEKO_API_DECL s32 neko_platform_file_compare_time(u64 time_a, u64 time_b) { return time_a < time_b ? -1 : time_a == time_b ? 0 : 1; }
+NEKO_API_DECL s32 neko_pf_file_compare_time(u64 time_a, u64 time_b) { return time_a < time_b ? -1 : time_a == time_b ? 0 : 1; }
 
-NEKO_API_DECL neko_platform_file_stats_t neko_platform_file_stats(const char* file_path) {
-    neko_platform_file_stats_t stats = NEKO_DEFAULT_VAL();
+NEKO_API_DECL neko_pf_file_stats_t neko_pf_file_stats(const char* file_path) {
+    neko_pf_file_stats_t stats = NEKO_DEFAULT_VAL();
 
 #if (defined NEKO_PF_WIN)
 
@@ -755,16 +755,16 @@ NEKO_API_DECL neko_platform_file_stats_t neko_platform_file_stats(const char* fi
     return stats;
 }
 
-NEKO_API_DECL void* neko_platform_library_load_default_impl(const char* lib_path) {
+NEKO_API_DECL void* neko_pf_library_load_default_impl(const char* lib_path) {
 #if (defined NEKO_PF_WIN)
     return (void*)LoadLibraryA(lib_path);
 #elif (defined NEKO_PF_LINUX || defined NEKO_PF_APPLE || defined NEKO_PF_ANDROID)
-    return (void*)dlopen(lib_path, RTLD_NOW | RTLD_LOCAL); // RTLD_LAZY
+    return (void*)dlopen(lib_path, RTLD_NOW | RTLD_LOCAL);  // RTLD_LAZY
 #endif
     return NULL;
 }
 
-NEKO_API_DECL void neko_platform_library_unload_default_impl(void* lib) {
+NEKO_API_DECL void neko_pf_library_unload_default_impl(void* lib) {
     if (!lib) return;
 #if (defined NEKO_PF_WIN)
     FreeLibrary((HMODULE)lib);
@@ -773,7 +773,7 @@ NEKO_API_DECL void neko_platform_library_unload_default_impl(void* lib) {
 #endif
 }
 
-NEKO_API_DECL void* neko_platform_library_proc_address_default_impl(void* lib, const char* func) {
+NEKO_API_DECL void* neko_pf_library_proc_address_default_impl(void* lib, const char* func) {
     if (!lib) return NULL;
 #if (defined NEKO_PF_WIN)
     return (void*)GetProcAddress((HMODULE)lib, func);
@@ -783,7 +783,7 @@ NEKO_API_DECL void* neko_platform_library_proc_address_default_impl(void* lib, c
     return NULL;
 }
 
-NEKO_API_DECL int neko_platform_chdir_default_impl(const char* path) {
+NEKO_API_DECL int neko_pf_chdir_default_impl(const char* path) {
 
 #if (defined NEKO_PF_WIN)
 
@@ -868,7 +868,7 @@ b32 __glfw_set_window_center(GLFWwindow* window);
 
 void neko_glfw_error_callback(int code, const_str description) { NEKO_WARN("glfw error %d : %s", code, description); }
 
-void neko_platform_init(neko_platform_t* pf) {
+void neko_pf_init(neko_pf_t* pf) {
     NEKO_ASSERT(pf);
 
     NEKO_TRACE("initializing glfw");
@@ -877,7 +877,7 @@ void neko_platform_init(neko_platform_t* pf) {
     setlocale(LC_ALL, "en_us.utf8");
     SetConsoleOutputCP(CP_UTF8);
     SetProcessDPIAware();
-    neko_platform_symbol_handler_init();
+    neko_pf_symbol_handler_init();
 #elif NEKO_PF_LINUX
     // handle linux symbol
 #endif
@@ -989,8 +989,8 @@ neko_memory_info_t glfw_platform_meminfo() {
 
 void* glfw_proc_handle() {
 #if defined(NEKO_PF_WIN)
-    struct neko_platform_t* platform = neko_subsystem(platform);
-    GLFWwindow* win = (GLFWwindow*)(neko_slot_array_getp(platform->windows, neko_platform_main_window()))->hndl;
+    struct neko_pf_t* platform = neko_subsystem(platform);
+    GLFWwindow* win = (GLFWwindow*)(neko_slot_array_getp(platform->windows, neko_pf_main_window()))->hndl;
     HWND hwnd = glfwGetWin32Window(win);
     return hwnd;
 #elif defined(NEKO_PF_LINUX)
@@ -1000,11 +1000,11 @@ void* glfw_proc_handle() {
 #endif
 }
 
-void* neko_platform_hwnd() { return glfw_proc_handle(); }
+void* neko_pf_hwnd() { return glfw_proc_handle(); }
 
-neko_memory_info_t neko_platform_memory_info() { return glfw_platform_meminfo(); }
+neko_memory_info_t neko_pf_memory_info() { return glfw_platform_meminfo(); }
 
-void neko_platform_msgbox(const_str msg) {
+void neko_pf_msgbox(const_str msg) {
 #if defined(NEKO_PF_WIN)
     MessageBoxA((HWND)glfw_proc_handle(), msg, "Neko Error", MB_OK | MB_SETFOREGROUND | MB_ICONSTOP);
 #elif defined(NEKO_PF_LINUX)
@@ -1018,8 +1018,8 @@ void neko_platform_msgbox(const_str msg) {
 #endif
 }
 
-NEKO_API_DECL void neko_platform_update_internal(neko_platform_t* platform) {
-    neko_platform_input_t* input = &platform->input;
+NEKO_API_DECL void neko_pf_update_internal(neko_pf_t* platform) {
+    neko_pf_input_t* input = &platform->input;
 
     // Platform time
     platform->time.elapsed = (glfwGetTime() * 1000.0f);
@@ -1028,7 +1028,7 @@ NEKO_API_DECL void neko_platform_update_internal(neko_platform_t* platform) {
     for (neko_slot_array_iter it = neko_slot_array_iter_new(platform->windows); neko_slot_array_iter_valid(platform->windows, it); neko_slot_array_iter_advance(platform->windows, it)) {
         // Cache all necessary window information
         s32 wx = 0, wy = 0, fx = 0, fy = 0, wpx = 0, wpy = 0;
-        neko_platform_window_t* win = neko_slot_array_getp(platform->windows, it);
+        neko_pf_window_t* win = neko_slot_array_getp(platform->windows, it);
         glfwGetWindowSize((GLFWwindow*)win->hndl, &wx, &wy);
         glfwGetFramebufferSize((GLFWwindow*)win->hndl, &fx, &fy);
         glfwGetWindowPos((GLFWwindow*)win->hndl, &wpx, &wpy);
@@ -1040,7 +1040,7 @@ NEKO_API_DECL void neko_platform_update_internal(neko_platform_t* platform) {
     // Update all gamepad state
     for (u32 i = 0; i < NEKO_PF_GAMEPAD_MAX; ++i) {
 
-        neko_platform_gamepad_t* gp = &input->gamepads[i];
+        neko_pf_gamepad_t* gp = &input->gamepads[i];
         gp->present = glfwJoystickPresent(GLFW_JOYSTICK_1 + i);
 
         if (gp->present) {
@@ -1062,7 +1062,7 @@ NEKO_API_DECL void neko_platform_update_internal(neko_platform_t* platform) {
     }
 }
 
-void neko_platform_shutdown(neko_platform_t* pf) {
+void neko_pf_shutdown(neko_pf_t* pf) {
     // Free all windows in glfw
     // TODO: Figure out crash with glfwDestroyWindow && glfwTerminate
     for (neko_slot_array_iter it = 0; neko_slot_array_iter_valid(pf->windows, it); neko_slot_array_iter_advance(pf->windows, it)) {
@@ -1073,7 +1073,7 @@ void neko_platform_shutdown(neko_platform_t* pf) {
     glfwTerminate();
 }
 
-u32 neko_platform_key_to_codepoint(neko_platform_keycode key) {
+u32 neko_pf_key_to_codepoint(neko_pf_keycode key) {
     u32 code = 0;
     switch (key) {
         default:
@@ -1446,8 +1446,8 @@ u32 neko_platform_key_to_codepoint(neko_platform_keycode key) {
 }
 
 // This doesn't work. Have to set up keycodes for emscripten instead. FUN.
-neko_platform_keycode neko_platform_codepoint_to_key(u32 code) {
-    neko_platform_keycode key = NEKO_KEYCODE_INVALID;
+neko_pf_keycode neko_pf_codepoint_to_key(u32 code) {
+    neko_pf_keycode key = NEKO_KEYCODE_INVALID;
     switch (code) {
         default:
         case 0:
@@ -1819,7 +1819,7 @@ neko_platform_keycode neko_platform_codepoint_to_key(u32 code) {
 
 /*=== GLFW Callbacks ===*/
 
-neko_platform_keycode glfw_key_to_neko_keycode(u32 code) {
+neko_pf_keycode glfw_key_to_neko_keycode(u32 code) {
     switch (code) {
         case GLFW_KEY_A:
             return NEKO_KEYCODE_A;
@@ -2127,7 +2127,7 @@ neko_platform_keycode glfw_key_to_neko_keycode(u32 code) {
     return NEKO_KEYCODE_COUNT;
 }
 
-neko_platform_mouse_button_code __glfw_button_to_neko_mouse_button(s32 code) {
+neko_pf_mouse_button_code __glfw_button_to_neko_mouse_button(s32 code) {
     switch (code) {
         case GLFW_MOUSE_BUTTON_LEFT:
             return NEKO_MOUSE_LBUTTON;
@@ -2146,47 +2146,47 @@ neko_platform_mouse_button_code __glfw_button_to_neko_mouse_button(s32 code) {
 
 void __glfw_char_callback(GLFWwindow* window, u32 codepoint) {
     // Grab platform instance from engine
-    neko_platform_t* platform = neko_subsystem(platform);
+    neko_pf_t* platform = neko_subsystem(platform);
 
-    neko_platform_event_t evt = NEKO_DEFAULT_VAL();
+    neko_pf_event_t evt = NEKO_DEFAULT_VAL();
     evt.type = NEKO_PF_EVENT_TEXT;
     evt.text.codepoint = codepoint;
 
     // Add action
-    neko_platform_add_event(&evt);
+    neko_pf_add_event(&evt);
 }
 
 void __glfw_key_callback(GLFWwindow* window, s32 code, s32 scancode, s32 action, s32 mods) {
     // Grab platform instance from engine
-    neko_platform_t* platform = neko_subsystem(platform);
+    neko_pf_t* platform = neko_subsystem(platform);
 
     // Get keycode from key
-    neko_platform_keycode key = glfw_key_to_neko_keycode(code);
+    neko_pf_keycode key = glfw_key_to_neko_keycode(code);
 
     // Push back event into platform events
-    neko_platform_event_t evt = NEKO_DEFAULT_VAL();
+    neko_pf_event_t evt = NEKO_DEFAULT_VAL();
     evt.type = NEKO_PF_EVENT_KEY;
     evt.key.codepoint = code;
     evt.key.scancode = scancode;
     evt.key.keycode = key;
-    evt.key.modifier = (neko_platform_key_modifier_type)mods;
+    evt.key.modifier = (neko_pf_key_modifier_type)mods;
 
     switch (action) {
         // Released
         case 0: {
-            neko_platform_release_key(key);
+            neko_pf_release_key(key);
             evt.key.action = NEKO_PF_KEY_RELEASED;
         } break;
 
         // Pressed
         case 1: {
-            neko_platform_press_key(key);
+            neko_pf_press_key(key);
             evt.key.action = NEKO_PF_KEY_PRESSED;
         } break;
 
         // Down
         case 2: {
-            neko_platform_press_key(key);
+            neko_pf_press_key(key);
             evt.key.action = NEKO_PF_KEY_DOWN;
         } break;
 
@@ -2195,18 +2195,18 @@ void __glfw_key_callback(GLFWwindow* window, s32 code, s32 scancode, s32 action,
     }
 
     // Add action
-    neko_platform_add_event(&evt);
+    neko_pf_add_event(&evt);
 }
 
 void __glfw_mouse_button_callback(GLFWwindow* window, s32 code, s32 action, s32 mods) {
     // Grab platform instance from engine
-    neko_platform_t* platform = neko_subsystem(platform);
+    neko_pf_t* platform = neko_subsystem(platform);
 
     // Get mouse code from key
-    neko_platform_mouse_button_code button = __glfw_button_to_neko_mouse_button(code);
+    neko_pf_mouse_button_code button = __glfw_button_to_neko_mouse_button(code);
 
     // Push back event into platform events
-    neko_platform_event_t evt = NEKO_DEFAULT_VAL();
+    neko_pf_event_t evt = NEKO_DEFAULT_VAL();
     evt.type = NEKO_PF_EVENT_MOUSE;
     evt.mouse.codepoint = code;
     evt.mouse.button = button;
@@ -2214,33 +2214,33 @@ void __glfw_mouse_button_callback(GLFWwindow* window, s32 code, s32 action, s32 
     switch (action) {
         // Released
         case 0: {
-            neko_platform_release_mouse_button(button);
+            neko_pf_release_mouse_button(button);
             evt.mouse.action = NEKO_PF_MOUSE_BUTTON_RELEASED;
         } break;
 
         // Pressed
         case 1: {
-            neko_platform_press_mouse_button(button);
+            neko_pf_press_mouse_button(button);
             evt.mouse.action = NEKO_PF_MOUSE_BUTTON_PRESSED;
         } break;
 
         // Down
         case 2: {
-            neko_platform_press_mouse_button(button);
+            neko_pf_press_mouse_button(button);
             evt.mouse.action = NEKO_PF_MOUSE_BUTTON_DOWN;
         } break;
     }
 
     // Add action
-    neko_platform_add_event(&evt);
+    neko_pf_add_event(&evt);
 }
 
 void __glfw_mouse_cursor_position_callback(GLFWwindow* window, f64 x, f64 y) {
-    neko_platform_t* platform = neko_subsystem(platform);
+    neko_pf_t* platform = neko_subsystem(platform);
     // platform->input.mouse.position = neko_v2((f32)x, (f32)y);
     // platform->input.mouse.moved_this_frame = true;
 
-    neko_platform_event_t neko_evt = NEKO_DEFAULT_VAL();
+    neko_pf_event_t neko_evt = NEKO_DEFAULT_VAL();
     neko_evt.type = NEKO_PF_EVENT_MOUSE;
     neko_evt.mouse.action = NEKO_PF_MOUSE_MOVE;
 
@@ -2249,7 +2249,7 @@ void __glfw_mouse_cursor_position_callback(GLFWwindow* window, f64 x, f64 y) {
     // neko_evt.mouse.move = neko_v2((f32)x, (f32)y);
 
     // Calculate mouse move based on whether locked or not
-    if (neko_platform_mouse_locked()) {
+    if (neko_pf_mouse_locked()) {
         neko_evt.mouse.move.x = x - platform->input.mouse.position.x;
         neko_evt.mouse.move.y = y - platform->input.mouse.position.y;
         platform->input.mouse.position.x = x;
@@ -2259,14 +2259,14 @@ void __glfw_mouse_cursor_position_callback(GLFWwindow* window, f64 x, f64 y) {
     }
 
     // Push back event into platform events
-    neko_platform_add_event(&neko_evt);
+    neko_pf_add_event(&neko_evt);
 }
 
 // GLFW窗口焦点回调函数
 void __glfw_window_focus_callback(GLFWwindow* window, int focused) {
 
-    neko_platform_t* platform = neko_subsystem(platform);
-    neko_platform_window_t* win = (neko_slot_array_getp(platform->windows, neko_platform_main_window()));
+    neko_pf_t* platform = neko_subsystem(platform);
+    neko_pf_window_t* win = (neko_slot_array_getp(platform->windows, neko_pf_main_window()));
 
     if (focused == GLFW_TRUE) {
         win->focus = true;
@@ -2276,24 +2276,24 @@ void __glfw_window_focus_callback(GLFWwindow* window, int focused) {
 }
 
 void __glfw_mouse_scroll_wheel_callback(GLFWwindow* window, f64 x, f64 y) {
-    neko_platform_t* platform = neko_subsystem(platform);
+    neko_pf_t* platform = neko_subsystem(platform);
     platform->input.mouse.wheel = neko_v2((f32)x, (f32)y);
 
     // Push back event into platform events
-    neko_platform_event_t neko_evt = NEKO_DEFAULT_VAL();
+    neko_pf_event_t neko_evt = NEKO_DEFAULT_VAL();
     neko_evt.type = NEKO_PF_EVENT_MOUSE;
     neko_evt.mouse.action = NEKO_PF_MOUSE_WHEEL;
     neko_evt.mouse.wheel = neko_v2((f32)x, (f32)y);
-    neko_platform_add_event(&neko_evt);
+    neko_pf_add_event(&neko_evt);
 }
 
 // Gets called when mouse enters or leaves frame of window
 void __glfw_mouse_cursor_enter_callback(GLFWwindow* window, s32 entered) {
-    neko_platform_t* platform = neko_subsystem(platform);
-    neko_platform_event_t neko_evt = NEKO_DEFAULT_VAL();
+    neko_pf_t* platform = neko_subsystem(platform);
+    neko_pf_event_t neko_evt = NEKO_DEFAULT_VAL();
     neko_evt.type = NEKO_PF_EVENT_MOUSE;
     neko_evt.mouse.action = entered ? NEKO_PF_MOUSE_ENTER : NEKO_PF_MOUSE_LEAVE;
-    neko_platform_add_event(&neko_evt);
+    neko_pf_add_event(&neko_evt);
 }
 
 void __glfw_frame_buffer_size_callback(GLFWwindow* window, s32 width, s32 height) {
@@ -2302,11 +2302,11 @@ void __glfw_frame_buffer_size_callback(GLFWwindow* window, s32 width, s32 height
 
 /*== Platform Input == */
 
-void neko_platform_process_input(neko_platform_input_t* input) { glfwPollEvents(); }
+void neko_pf_process_input(neko_pf_input_t* input) { glfwPollEvents(); }
 
 /*== Platform Util == */
 
-void neko_platform_sleep(f32 ms) {
+void neko_pf_sleep(f32 ms) {
 #if (defined NEKO_PF_WIN)
 
     timeBeginPeriod(1);
@@ -2333,17 +2333,17 @@ void neko_platform_sleep(f32 ms) {
 #endif
 }
 
-NEKO_API_DECL double neko_platform_elapsed_time() {
-    neko_platform_t* platform = neko_subsystem(platform);
+NEKO_API_DECL double neko_pf_elapsed_time() {
+    neko_pf_t* platform = neko_subsystem(platform);
     return platform->time.elapsed;
 }
 
 /*== Platform Video == */
 
-NEKO_API_DECL void neko_platform_enable_vsync(s32 enabled) { glfwSwapInterval(enabled ? 1 : 0); }
+NEKO_API_DECL void neko_pf_enable_vsync(s32 enabled) { glfwSwapInterval(enabled ? 1 : 0); }
 
 /*== OpenGL debug callback == */
-void GLAPIENTRY __neko_platform_gl_debug(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei len, const GLchar* msg, const void* user) {
+void GLAPIENTRY __neko_pf_gl_debug(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei len, const GLchar* msg, const void* user) {
     // if (severity != GL_DEBUG_SEVERITY_NOTIFICATION) {
     //     NEKO_WARN("GL: %s", msg);
     // }
@@ -2351,8 +2351,8 @@ void GLAPIENTRY __neko_platform_gl_debug(GLenum source, GLenum type, GLuint id, 
 
 /*== Platform Window == */
 
-NEKO_API_DECL neko_platform_window_t neko_platform_window_create_internal(const neko_platform_running_desc_t* desc) {
-    neko_platform_window_t win = NEKO_DEFAULT_VAL();
+NEKO_API_DECL neko_pf_window_t neko_pf_window_create_internal(const neko_pf_running_desc_t* desc) {
+    neko_pf_window_t win = NEKO_DEFAULT_VAL();
 
     if (!desc) {
         // Log warning
@@ -2418,7 +2418,7 @@ NEKO_API_DECL neko_platform_window_t neko_platform_window_create_internal(const 
         neko_gl_load_all();
         NEKO_INFO("opengl %s (glsl %s)", glGetString(GL_VERSION), glGetString(GL_SHADING_LANGUAGE_VERSION));
         if (neko_cvar("settings.video.render.debug")->value.i) {
-            // glDebugMessageCallback(__neko_platform_gl_debug, NULL);
+            // glDebugMessageCallback(__neko_pf_gl_debug, NULL);
         }
     }
 
@@ -2428,108 +2428,108 @@ NEKO_API_DECL neko_platform_window_t neko_platform_window_create_internal(const 
 }
 
 // Platform callbacks
-NEKO_API_DECL void neko_platform_set_dropped_files_callback(u32 handle, neko_dropped_files_callback_t cb) {
-    neko_platform_t* platform = neko_subsystem(platform);
-    neko_platform_window_t* win = neko_slot_array_getp(platform->windows, handle);
+NEKO_API_DECL void neko_pf_set_dropped_files_callback(u32 handle, neko_dropped_files_callback_t cb) {
+    neko_pf_t* platform = neko_subsystem(platform);
+    neko_pf_window_t* win = neko_slot_array_getp(platform->windows, handle);
     glfwSetDropCallback((GLFWwindow*)win->hndl, (GLFWdropfun)cb);
 }
 
-NEKO_API_DECL void neko_platform_set_window_close_callback(u32 handle, neko_window_close_callback_t cb) {
-    neko_platform_t* platform = neko_subsystem(platform);
-    neko_platform_window_t* win = neko_slot_array_getp(platform->windows, handle);
+NEKO_API_DECL void neko_pf_set_window_close_callback(u32 handle, neko_window_close_callback_t cb) {
+    neko_pf_t* platform = neko_subsystem(platform);
+    neko_pf_window_t* win = neko_slot_array_getp(platform->windows, handle);
     glfwSetWindowCloseCallback((GLFWwindow*)win->hndl, (GLFWwindowclosefun)cb);
 }
 
-NEKO_API_DECL void neko_platform_set_character_callback(u32 handle, neko_character_callback_t cb) {
-    neko_platform_t* platform = neko_subsystem(platform);
-    neko_platform_window_t* win = neko_slot_array_getp(platform->windows, handle);
+NEKO_API_DECL void neko_pf_set_character_callback(u32 handle, neko_character_callback_t cb) {
+    neko_pf_t* platform = neko_subsystem(platform);
+    neko_pf_window_t* win = neko_slot_array_getp(platform->windows, handle);
     glfwSetCharCallback((GLFWwindow*)win->hndl, (GLFWcharfun)cb);
 }
 
-NEKO_API_DECL void neko_platform_set_framebuffer_resize_callback(u32 handle, neko_framebuffer_resize_callback_t cb) {
-    neko_platform_t* platform = neko_subsystem(platform);
-    neko_platform_window_t* win = neko_slot_array_getp(platform->windows, handle);
+NEKO_API_DECL void neko_pf_set_framebuffer_resize_callback(u32 handle, neko_framebuffer_resize_callback_t cb) {
+    neko_pf_t* platform = neko_subsystem(platform);
+    neko_pf_window_t* win = neko_slot_array_getp(platform->windows, handle);
     glfwSetFramebufferSizeCallback((GLFWwindow*)win->hndl, (GLFWframebuffersizefun)cb);
 }
 
-NEKO_API_DECL void neko_platform_mouse_set_position(u32 handle, f32 x, f32 y) {
-    neko_platform_t* platform = neko_subsystem(platform);
-    neko_platform_window_t* win = neko_slot_array_getp(platform->windows, handle);
+NEKO_API_DECL void neko_pf_mouse_set_position(u32 handle, f32 x, f32 y) {
+    neko_pf_t* platform = neko_subsystem(platform);
+    neko_pf_window_t* win = neko_slot_array_getp(platform->windows, handle);
     glfwSetCursorPos((GLFWwindow*)win->hndl, x, y);
 }
 
-NEKO_API_DECL void* neko_platform_raw_window_handle(u32 handle) {
+NEKO_API_DECL void* neko_pf_raw_window_handle(u32 handle) {
     // Grab instance of platform from engine
-    neko_platform_t* platform = neko_subsystem(platform);
+    neko_pf_t* platform = neko_subsystem(platform);
 
     // Grab window from handle
-    neko_platform_window_t* win = neko_slot_array_getp(platform->windows, handle);
+    neko_pf_window_t* win = neko_slot_array_getp(platform->windows, handle);
     return (void*)win->hndl;
 }
 
-NEKO_API_DECL void neko_platform_window_swap_buffer(u32 handle) {
+NEKO_API_DECL void neko_pf_window_swap_buffer(u32 handle) {
     // Grab instance of platform from engine
-    neko_platform_t* platform = neko_subsystem(platform);
+    neko_pf_t* platform = neko_subsystem(platform);
 
     // Grab window from handle
-    neko_platform_window_t* win = neko_slot_array_getp(platform->windows, handle);
+    neko_pf_window_t* win = neko_slot_array_getp(platform->windows, handle);
     glfwSwapBuffers((GLFWwindow*)win->hndl);
 }
 
-NEKO_API_DECL neko_vec2 neko_platform_window_sizev(u32 handle) {
-    neko_platform_window_t* window = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
+NEKO_API_DECL neko_vec2 neko_pf_window_sizev(u32 handle) {
+    neko_pf_window_t* window = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
     return window->window_size;
 }
 
-NEKO_API_DECL void neko_platform_window_size(u32 handle, u32* w, u32* h) {
-    neko_platform_window_t* window = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
+NEKO_API_DECL void neko_pf_window_size(u32 handle, u32* w, u32* h) {
+    neko_pf_window_t* window = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
     *w = (s32)window->window_size.x;
     *h = (s32)window->window_size.y;
 }
 
-u32 neko_platform_window_width(u32 handle) {
-    neko_platform_window_t* window = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
+u32 neko_pf_window_width(u32 handle) {
+    neko_pf_window_t* window = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
     return (u32)window->window_size.x;
 }
 
-u32 neko_platform_window_height(u32 handle) {
-    neko_platform_window_t* window = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
+u32 neko_pf_window_height(u32 handle) {
+    neko_pf_window_t* window = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
     return (u32)window->window_size.y;
 }
 
-b32 neko_platform_window_fullscreen(u32 handle) {
-    neko_platform_window_t* window = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
+b32 neko_pf_window_fullscreen(u32 handle) {
+    neko_pf_window_t* window = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
     return glfwGetWindowMonitor((GLFWwindow*)window->hndl) != NULL;
 }
 
-void neko_platform_window_position(u32 handle, u32* x, u32* y) {
-    neko_platform_window_t* window = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
+void neko_pf_window_position(u32 handle, u32* x, u32* y) {
+    neko_pf_window_t* window = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
     *x = (u32)window->window_position.x;
     *y = (u32)window->window_position.y;
 }
 
-neko_vec2 neko_platform_window_positionv(u32 handle) {
-    neko_platform_window_t* window = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
+neko_vec2 neko_pf_window_positionv(u32 handle) {
+    neko_pf_window_t* window = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
     return window->window_position;
 }
 
-void neko_platform_set_window_title(u32 handle, const_str title) {
-    neko_platform_window_t* win = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
+void neko_pf_set_window_title(u32 handle, const_str title) {
+    neko_pf_window_t* win = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
     glfwSetWindowTitle((GLFWwindow*)win->hndl, title);
 }
 
-void neko_platform_set_window_size(u32 handle, u32 w, u32 h) {
-    neko_platform_window_t* window = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
+void neko_pf_set_window_size(u32 handle, u32 w, u32 h) {
+    neko_pf_window_t* window = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
     glfwSetWindowSize((GLFWwindow*)window->hndl, (s32)w, (s32)h);
 }
 
-void neko_platform_set_window_sizev(u32 handle, neko_vec2 v) {
-    neko_platform_window_t* window = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
+void neko_pf_set_window_sizev(u32 handle, neko_vec2 v) {
+    neko_pf_window_t* window = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
     glfwSetWindowSize((GLFWwindow*)window->hndl, (u32)v.x, (u32)v.y);
 }
 
-void neko_platform_set_window_fullscreen(u32 handle, b32 fullscreen) {
-    neko_platform_window_t* win = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
+void neko_pf_set_window_fullscreen(u32 handle, b32 fullscreen) {
+    neko_pf_window_t* win = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
     GLFWmonitor* monitor = NULL;
 
     s32 x, y, w, h;
@@ -2548,46 +2548,46 @@ void neko_platform_set_window_fullscreen(u32 handle, b32 fullscreen) {
     glfwSetWindowMonitor((GLFWwindow*)win->hndl, monitor, x, y, w, h, GLFW_DONT_CARE);
 }
 
-void neko_platform_set_window_position(u32 handle, u32 x, u32 y) {
-    neko_platform_window_t* win = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
+void neko_pf_set_window_position(u32 handle, u32 x, u32 y) {
+    neko_pf_window_t* win = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
     glfwSetWindowPos((GLFWwindow*)win->hndl, (s32)x, (s32)y);
 }
 
-void neko_platform_set_window_positionv(u32 handle, neko_vec2 v) {
-    neko_platform_window_t* win = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
+void neko_pf_set_window_positionv(u32 handle, neko_vec2 v) {
+    neko_pf_window_t* win = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
     glfwSetWindowPos((GLFWwindow*)win->hndl, (s32)v.x, (s32)v.y);
 }
 
-void neko_platform_framebuffer_size(u32 handle, u32* w, u32* h) {
-    neko_platform_window_t* win = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
+void neko_pf_framebuffer_size(u32 handle, u32* w, u32* h) {
+    neko_pf_window_t* win = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
     *w = (u32)win->framebuffer_size.x;
     *h = (u32)win->framebuffer_size.y;
 }
 
-neko_vec2 neko_platform_framebuffer_sizev(u32 handle) {
+neko_vec2 neko_pf_framebuffer_sizev(u32 handle) {
     u32 w = 0, h = 0;
-    neko_platform_framebuffer_size(handle, &w, &h);
+    neko_pf_framebuffer_size(handle, &w, &h);
     return neko_v2((f32)w, (f32)h);
 }
 
-u32 neko_platform_framebuffer_width(u32 handle) {
+u32 neko_pf_framebuffer_width(u32 handle) {
     u32 w = 0, h = 0;
-    neko_platform_framebuffer_size(handle, &w, &h);
+    neko_pf_framebuffer_size(handle, &w, &h);
     return w;
 }
 
-u32 neko_platform_framebuffer_height(u32 handle) {
+u32 neko_pf_framebuffer_height(u32 handle) {
     u32 w = 0, h = 0;
-    neko_platform_framebuffer_size(handle, &w, &h);
+    neko_pf_framebuffer_size(handle, &w, &h);
     return h;
 }
 
-NEKO_API_DECL neko_vec2 neko_platform_monitor_sizev(u32 id) {
+NEKO_API_DECL neko_vec2 neko_pf_monitor_sizev(u32 id) {
     neko_vec2 ms = neko_v2s(0.f);
     s32 width, height, xpos, ypos;
     s32 count;
     GLFWmonitor* monitor = NULL;
-    neko_platform_t* platform = neko_subsystem(platform);
+    neko_pf_t* platform = neko_subsystem(platform);
 
     GLFWmonitor** monitors = glfwGetMonitors(&count);
     if (count && id < count) {
@@ -2601,33 +2601,33 @@ NEKO_API_DECL neko_vec2 neko_platform_monitor_sizev(u32 id) {
     return ms;
 }
 
-neko_vec2 neko_platform_get_window_dpi() {
+neko_vec2 neko_pf_get_window_dpi() {
     neko_vec2 v = NEKO_DEFAULT_VAL();
     glfwGetMonitorContentScale(glfwGetPrimaryMonitor(), &v.x, &v.y);
     return v;
 }
 
-void neko_platform_window_set_clipboard(u32 handle, const_str str) {
-    neko_platform_window_t* win = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
+void neko_pf_window_set_clipboard(u32 handle, const_str str) {
+    neko_pf_window_t* win = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
     glfwSetClipboardString((GLFWwindow*)win->hndl, str);
 }
 
-const_str neko_platform_window_get_clipboard(u32 handle) {
-    neko_platform_window_t* win = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
+const_str neko_pf_window_get_clipboard(u32 handle) {
+    neko_pf_window_t* win = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
     return glfwGetClipboardString((GLFWwindow*)win->hndl);
 }
 
-void neko_platform_set_cursor(u32 handle, neko_platform_cursor cursor) {
-    neko_platform_t* platform = neko_subsystem(platform);
-    neko_platform_window_t* win = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
+void neko_pf_set_cursor(u32 handle, neko_pf_cursor cursor) {
+    neko_pf_t* platform = neko_subsystem(platform);
+    neko_pf_window_t* win = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
     GLFWcursor* cp = ((GLFWcursor*)platform->cursors[(u32)cursor]);
     glfwSetCursor((GLFWwindow*)win->hndl, cp);
 }
 
-void neko_platform_lock_mouse(u32 handle, b32 lock) {
+void neko_pf_lock_mouse(u32 handle, b32 lock) {
     __neko_input()->mouse.locked = lock;
-    neko_platform_t* platform = neko_subsystem(platform);
-    neko_platform_window_t* win = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
+    neko_pf_t* platform = neko_subsystem(platform);
+    neko_pf_window_t* win = neko_slot_array_getp(neko_subsystem(platform)->windows, handle);
     glfwSetInputMode((GLFWwindow*)win->hndl, GLFW_CURSOR, lock ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
 
     // Not sure if I want to support this or not
@@ -2711,13 +2711,13 @@ b32 __glfw_set_window_center(GLFWwindow* window) {
 #define MAX_STACK_DEPTH 64
 
 // 初始化符号处理器
-void neko_platform_symbol_handler_init() {
+void neko_pf_symbol_handler_init() {
     SymSetOptions(SYMOPT_DEFERRED_LOADS | SYMOPT_LOAD_LINES);
     SymInitialize(GetCurrentProcess(), NULL, TRUE);
 }
 
 // 打印函数调用栈信息 包括函数名和源码文件名
-const_str neko_platform_stacktrace() {
+const_str neko_pf_stacktrace() {
 
     static char trace_info[4096];
 
@@ -2760,8 +2760,8 @@ const_str neko_platform_stacktrace() {
 
 #else
 
-void neko_platform_symbol_handler_init() {}
-const_str neko_platform_stacktrace() { return ""; }
+void neko_pf_symbol_handler_init() {}
+const_str neko_pf_stacktrace() { return ""; }
 
 #endif
 
@@ -2793,7 +2793,7 @@ typedef struct neko_ems_t {
 
 #define NEKO_EMS_DATA() ((neko_ems_t*)(neko_subsystem(platform)->user_data))
 
-u32 neko_platform_key_to_codepoint(neko_platform_keycode key) {
+u32 neko_pf_key_to_codepoint(neko_pf_keycode key) {
     u32 code = 0;
     switch (key) {
         default:
@@ -3171,8 +3171,8 @@ u32 neko_platform_key_to_codepoint(neko_platform_keycode key) {
 */
 
 // This doesn't work. Have to set up keycodes for emscripten instead. FUN.
-neko_platform_keycode neko_platform_codepoint_to_key(u32 code) {
-    neko_platform_keycode key = NEKO_KEYCODE_INVALID;
+neko_pf_keycode neko_pf_codepoint_to_key(u32 code) {
+    neko_pf_keycode key = NEKO_KEYCODE_INVALID;
     switch (code) {
         default:
         case 0:
@@ -3561,7 +3561,7 @@ neko_platform_keycode neko_platform_codepoint_to_key(u32 code) {
 
 EM_BOOL neko_ems_size_changed_cb(s32 type, const EmscriptenUiEvent* evt, void* user_data) {
     neko_println("size changed");
-    neko_platform_t* platform = neko_subsystem(platform);
+    neko_pf_t* platform = neko_subsystem(platform);
     neko_ems_t* ems = (neko_ems_t*)platform->user_data;
     (void)type;
     (void)evt;
@@ -3600,10 +3600,10 @@ EM_BOOL neko_ems_key_cb(s32 type, const EmscriptenKeyboardEvent* evt, void* user
     (void)user_data;
 
     // Push back event into platform events
-    neko_platform_event_t neko_evt = NEKO_DEFAULT_VAL();
+    neko_pf_event_t neko_evt = NEKO_DEFAULT_VAL();
     neko_evt.type = NEKO_PF_EVENT_KEY;
     neko_evt.key.codepoint = evt->which;
-    neko_evt.key.keycode = neko_platform_codepoint_to_key(evt->which);
+    neko_evt.key.keycode = neko_pf_codepoint_to_key(evt->which);
 
     switch (type) {
         case EMSCRIPTEN_EVENT_KEYPRESS: {
@@ -3624,7 +3624,7 @@ EM_BOOL neko_ems_key_cb(s32 type, const EmscriptenKeyboardEvent* evt, void* user
     }
 
     // Add action
-    neko_platform_add_event(&neko_evt);
+    neko_pf_add_event(&neko_evt);
 
     return evt->which < 32;
 }
@@ -3632,10 +3632,10 @@ EM_BOOL neko_ems_key_cb(s32 type, const EmscriptenKeyboardEvent* evt, void* user
 EM_BOOL neko_ems_mouse_cb(s32 type, const EmscriptenMouseEvent* evt, void* user_data) {
     (void)user_data;
 
-    neko_platform_t* platform = neko_subsystem(platform);
+    neko_pf_t* platform = neko_subsystem(platform);
     neko_ems_t* ems = NEKO_EMS_DATA();
 
-    neko_platform_mouse_button_code button = NEKO_MOUSE_LBUTTON;
+    neko_pf_mouse_button_code button = NEKO_MOUSE_LBUTTON;
     switch (evt->button) {
         case 0:
             button = NEKO_MOUSE_LBUTTON;
@@ -3649,7 +3649,7 @@ EM_BOOL neko_ems_mouse_cb(s32 type, const EmscriptenMouseEvent* evt, void* user_
     }
 
     // Push back event into platform events
-    neko_platform_event_t neko_evt = NEKO_DEFAULT_VAL();
+    neko_pf_event_t neko_evt = NEKO_DEFAULT_VAL();
     neko_evt.type = NEKO_PF_EVENT_MOUSE;
     neko_evt.mouse.codepoint = evt->button;
     neko_evt.mouse.button = button;
@@ -3706,7 +3706,7 @@ EM_BOOL neko_ems_mouse_cb(s32 type, const EmscriptenMouseEvent* evt, void* user_
         } break;
     }
 
-    if (add) neko_platform_add_event(&neko_evt);
+    if (add) neko_pf_add_event(&neko_evt);
 
     return true;
 }
@@ -3716,11 +3716,11 @@ EM_BOOL neko_ems_mousewheel_cb(s32 type, const EmscriptenWheelEvent* evt, void* 
     (void)user_data;
 
     // Push back event into platform events
-    neko_platform_event_t neko_evt = NEKO_DEFAULT_VAL();
+    neko_pf_event_t neko_evt = NEKO_DEFAULT_VAL();
     neko_evt.type = NEKO_PF_EVENT_MOUSE;
     neko_evt.mouse.action = NEKO_PF_MOUSE_WHEEL;
     neko_evt.mouse.wheel = neko_v2((f32)evt->deltaX, -(f32)evt->deltaY);
-    neko_platform_add_event(&neko_evt);
+    neko_pf_add_event(&neko_evt);
 
     return true;
 }
@@ -3728,12 +3728,12 @@ EM_BOOL neko_ems_mousewheel_cb(s32 type, const EmscriptenWheelEvent* evt, void* 
 EM_BOOL neko_ems_pointerlock_cb(s32 type, const EmscriptenPointerlockChangeEvent* evt, void* user_data) {
     (void)type;
     (void)user_data;
-    neko_platform_t* platform = neko_subsystem(platform);
+    neko_pf_t* platform = neko_subsystem(platform);
     platform->input.mouse.locked = evt->isActive;
     // neko_println("lock: %zu", platform->input.mouse.locked);
 }
 
-NEKO_API_DECL void neko_platform_init(neko_platform_t* platform) {
+NEKO_API_DECL void neko_pf_init(neko_pf_t* platform) {
     neko_println("Initializing Emscripten.");
 
     neko_app_desc_t* app = neko_app();
@@ -3787,8 +3787,8 @@ NEKO_API_DECL void neko_platform_init(neko_platform_t* platform) {
     }
 }
 
-NEKO_API_DECL void neko_platform_lock_mouse(u32 handle, b32 lock) {
-    neko_platform_t* platform = neko_subsystem(platform);
+NEKO_API_DECL void neko_pf_lock_mouse(u32 handle, b32 lock) {
+    neko_pf_t* platform = neko_subsystem(platform);
     neko_ems_t* ems = (neko_ems_t*)platform->user_data;
     // if (platform->input.mouse.locked == lock) return;
     platform->input.mouse.locked = lock;
@@ -3799,141 +3799,141 @@ NEKO_API_DECL void neko_platform_lock_mouse(u32 handle, b32 lock) {
     }
 }
 
-NEKO_API_DECL void neko_platform_shutdown(neko_platform_t* platform) {
+NEKO_API_DECL void neko_pf_shutdown(neko_pf_t* platform) {
     // Free memory
 }
 
-NEKO_API_DECL double neko_platform_elapsed_time() { return emscripten_performance_now(); }
+NEKO_API_DECL double neko_pf_elapsed_time() { return emscripten_performance_now(); }
 
 // Platform Video
-NEKO_API_DECL void neko_platform_enable_vsync(s32 enabled) {
+NEKO_API_DECL void neko_pf_enable_vsync(s32 enabled) {
     // Nothing for now...
 }
 
 // Platform Util
-NEKO_API_DECL void neko_platform_sleep(f32 ms) { emscripten_sleep((u32)ms); }
+NEKO_API_DECL void neko_pf_sleep(f32 ms) { emscripten_sleep((u32)ms); }
 
-NEKO_API_DECL void neko_platform_update_internal(neko_platform_t* platform) {}
+NEKO_API_DECL void neko_pf_update_internal(neko_pf_t* platform) {}
 
 // Platform Input
-NEKO_API_DECL void neko_platform_process_input(neko_platform_input_t* input) {
+NEKO_API_DECL void neko_pf_process_input(neko_pf_input_t* input) {
     neko_ems_t* ems = NEKO_EMS_DATA();
 
     // Set mouse buttons
     /*
     for (u32 i = 0; i < NEKO_MOUSE_BUTTON_CODE_COUNT; ++i) {
-        if (ems->mouse_down[i]) neko_platform_press_mouse_button((neko_platform_mouse_button_code)i);
-        else                    neko_platform_release_mouse_button((neko_platform_mouse_button_code)i);
+        if (ems->mouse_down[i]) neko_pf_press_mouse_button((neko_pf_mouse_button_code)i);
+        else                    neko_pf_release_mouse_button((neko_pf_mouse_button_code)i);
     }
     */
 
     // Check for pointerlock, because Chrome is retarded.
     EmscriptenPointerlockChangeEvent evt = NEKO_DEFAULT_VAL();
     emscripten_get_pointerlock_status(&evt);
-    if (neko_platform_mouse_locked() && !evt.isActive) {
+    if (neko_pf_mouse_locked() && !evt.isActive) {
         neko_subsystem(platform)->input.mouse.locked = false;
     }
 }
 
-NEKO_API_DECL void neko_platform_mouse_set_position(u32 handle, f32 x, f32 y) {
+NEKO_API_DECL void neko_pf_mouse_set_position(u32 handle, f32 x, f32 y) {
     // Not sure this is possible...
-    struct neko_platform_t* platform = neko_subsystem(platform);
+    struct neko_pf_t* platform = neko_subsystem(platform);
     platform->input.mouse.position = neko_v2(x, y);
 }
 
-NEKO_API_DECL neko_platform_window_t neko_platform_window_create_internal(const neko_platform_window_desc_t* desc) {
+NEKO_API_DECL neko_pf_window_t neko_pf_window_create_internal(const neko_pf_window_desc_t* desc) {
     // Nothing for now, since we just create this internally...
-    neko_platform_window_t win = NEKO_DEFAULT_VAL();
+    neko_pf_window_t win = NEKO_DEFAULT_VAL();
     return win;
 }
 
-NEKO_API_DECL void neko_platform_window_swap_buffer(u32 handle) {
+NEKO_API_DECL void neko_pf_window_swap_buffer(u32 handle) {
     // Nothing for emscripten...but could handle swapping manually if preferred.
 }
 
-NEKO_API_DECL neko_vec2 neko_platform_window_sizev(u32 handle) {
+NEKO_API_DECL neko_vec2 neko_pf_window_sizev(u32 handle) {
     neko_ems_t* ems = NEKO_EMS_DATA();
     return neko_v2((f32)ems->canvas_width, (f32)ems->canvas_height);
 }
 
-NEKO_API_DECL void neko_platform_window_size(u32 handle, u32* w, u32* h) {
+NEKO_API_DECL void neko_pf_window_size(u32 handle, u32* w, u32* h) {
     neko_ems_t* ems = NEKO_EMS_DATA();
     *w = (u32)ems->canvas_width;
     *h = (u32)ems->canvas_height;
 }
 
-NEKO_API_DECL u32 neko_platform_window_width(u32 handle) {
+NEKO_API_DECL u32 neko_pf_window_width(u32 handle) {
     neko_ems_t* ems = NEKO_EMS_DATA();
     return (u32)ems->canvas_width;
 }
 
-NEKO_API_DECL u32 neko_platform_window_height(u32 handle) {
+NEKO_API_DECL u32 neko_pf_window_height(u32 handle) {
     neko_ems_t* ems = NEKO_EMS_DATA();
     return (u32)ems->canvas_height;
 }
 
-NEKO_API_DECL b32 neko_platform_window_fullscreen(u32 handle) { return false; }
+NEKO_API_DECL b32 neko_pf_window_fullscreen(u32 handle) { return false; }
 
-NEKO_API_DECL void neko_platform_window_position(u32 handle, u32* x, u32* y) {}
+NEKO_API_DECL void neko_pf_window_position(u32 handle, u32* x, u32* y) {}
 
-NEKO_API_DECL neko_vec2 neko_platform_window_positionv(u32 handle) { return neko_v2(0, 0); }
+NEKO_API_DECL neko_vec2 neko_pf_window_positionv(u32 handle) { return neko_v2(0, 0); }
 
-NEKO_API_DECL void neko_platform_set_window_size(u32 handle, u32 width, u32 height) {
+NEKO_API_DECL void neko_pf_set_window_size(u32 handle, u32 width, u32 height) {
     neko_ems_t* ems = NEKO_EMS_DATA();
     emscripten_set_canvas_element_size(ems->canvas_name, width, height);
     ems->canvas_width = (u32)width;
     ems->canvas_height = (u32)height;
 }
 
-NEKO_API_DECL void neko_platform_set_window_sizev(u32 handle, neko_vec2 v) {
+NEKO_API_DECL void neko_pf_set_window_sizev(u32 handle, neko_vec2 v) {
     neko_ems_t* ems = NEKO_EMS_DATA();
     emscripten_set_canvas_element_size(ems->canvas_name, (u32)v.x, (u32)v.y);
     ems->canvas_width = (u32)v.x;
     ems->canvas_height = (u32)v.y;
 }
 
-NEKO_API_DECL void neko_platform_set_window_fullscreen(u32 handle, b32 fullscreen) {}
+NEKO_API_DECL void neko_pf_set_window_fullscreen(u32 handle, b32 fullscreen) {}
 
-NEKO_API_DECL void neko_platform_set_window_position(u32 handle, u32 x, u32 y) {}
+NEKO_API_DECL void neko_pf_set_window_position(u32 handle, u32 x, u32 y) {}
 
-NEKO_API_DECL void neko_platform_set_window_positionv(u32 handle, neko_vec2 v) {}
+NEKO_API_DECL void neko_pf_set_window_positionv(u32 handle, neko_vec2 v) {}
 
-NEKO_API_DECL void neko_platform_set_cursor(u32 handle, neko_platform_cursor cursor) {}
+NEKO_API_DECL void neko_pf_set_cursor(u32 handle, neko_pf_cursor cursor) {}
 
-NEKO_API_DECL void neko_platform_set_dropped_files_callback(u32 handle, neko_dropped_files_callback_t cb) {}
+NEKO_API_DECL void neko_pf_set_dropped_files_callback(u32 handle, neko_dropped_files_callback_t cb) {}
 
-NEKO_API_DECL void neko_platform_set_window_close_callback(u32 handle, neko_window_close_callback_t cb) {}
+NEKO_API_DECL void neko_pf_set_window_close_callback(u32 handle, neko_window_close_callback_t cb) {}
 
-NEKO_API_DECL void neko_platform_set_character_callback(u32 handle, neko_character_callback_t cb) {}
+NEKO_API_DECL void neko_pf_set_character_callback(u32 handle, neko_character_callback_t cb) {}
 
-NEKO_API_DECL void* neko_platform_raw_window_handle(u32 handle) { return NULL; }
+NEKO_API_DECL void* neko_pf_raw_window_handle(u32 handle) { return NULL; }
 
-NEKO_API_DECL void neko_platform_framebuffer_size(u32 handle, u32* w, u32* h) {
+NEKO_API_DECL void neko_pf_framebuffer_size(u32 handle, u32* w, u32* h) {
     neko_ems_t* ems = NEKO_EMS_DATA();
     // double dpi = emscripten_get_device_pixel_ratio();
     *w = (u32)(ems->canvas_width);
     *h = (u32)(ems->canvas_height);
 }
 
-NEKO_API_DECL neko_vec2 neko_platform_framebuffer_sizev(u32 handle) {
+NEKO_API_DECL neko_vec2 neko_pf_framebuffer_sizev(u32 handle) {
     u32 w = 0, h = 0;
-    neko_platform_framebuffer_size(handle, &w, &h);
+    neko_pf_framebuffer_size(handle, &w, &h);
     return neko_v2(w, h);
 }
 
-NEKO_API_DECL u32 neko_platform_framebuffer_width(u32 handle) {
+NEKO_API_DECL u32 neko_pf_framebuffer_width(u32 handle) {
     // Get ems width for now. Don't use handle.
     neko_ems_t* ems = NEKO_EMS_DATA();
     return (u32)ems->canvas_width;
 }
 
-NEKO_API_DECL u32 neko_platform_framebuffer_height(u32 handle) {
+NEKO_API_DECL u32 neko_pf_framebuffer_height(u32 handle) {
     neko_ems_t* ems = NEKO_EMS_DATA();
     return (u32)ems->canvas_height;
 }
 
-void neko_platform_symbol_handler_init() {}
-void neko_platform_stacktrace() {}
+void neko_pf_symbol_handler_init() {}
+void neko_pf_stacktrace() {}
 
 #ifndef NEKO_NO_HIJACK_MAIN
 s32 main(s32 argc, char** argv) {

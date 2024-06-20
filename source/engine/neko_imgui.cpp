@@ -161,28 +161,28 @@ neko_imgui_context_t neko_imgui_new(neko_command_buffer_t* cb, u32 hndl, bool in
     // io.ConfigViewportsNoTaskBarIcon = true;
 
     // Keyboard mapping. ImGui will use those indices to peek into the io.KeysDown[] array.
-    io.KeyMap[ImGuiKey_Tab] = neko_platform_key_to_codepoint(NEKO_KEYCODE_TAB);
-    io.KeyMap[ImGuiKey_LeftArrow] = neko_platform_key_to_codepoint(NEKO_KEYCODE_LEFT);
-    io.KeyMap[ImGuiKey_RightArrow] = neko_platform_key_to_codepoint(NEKO_KEYCODE_RIGHT);
-    io.KeyMap[ImGuiKey_UpArrow] = neko_platform_key_to_codepoint(NEKO_KEYCODE_UP);
-    io.KeyMap[ImGuiKey_DownArrow] = neko_platform_key_to_codepoint(NEKO_KEYCODE_DOWN);
-    io.KeyMap[ImGuiKey_PageUp] = neko_platform_key_to_codepoint(NEKO_KEYCODE_PAGE_UP);
-    io.KeyMap[ImGuiKey_PageDown] = neko_platform_key_to_codepoint(NEKO_KEYCODE_PAGE_DOWN);
-    io.KeyMap[ImGuiKey_Home] = neko_platform_key_to_codepoint(NEKO_KEYCODE_HOME);
-    io.KeyMap[ImGuiKey_End] = neko_platform_key_to_codepoint(NEKO_KEYCODE_END);
-    io.KeyMap[ImGuiKey_Insert] = neko_platform_key_to_codepoint(NEKO_KEYCODE_INSERT);
-    io.KeyMap[ImGuiKey_Delete] = neko_platform_key_to_codepoint(NEKO_KEYCODE_DELETE);
-    io.KeyMap[ImGuiKey_Backspace] = neko_platform_key_to_codepoint(NEKO_KEYCODE_BACKSPACE);
-    io.KeyMap[ImGuiKey_Space] = neko_platform_key_to_codepoint(NEKO_KEYCODE_SPACE);
-    io.KeyMap[ImGuiKey_Enter] = neko_platform_key_to_codepoint(NEKO_KEYCODE_ENTER);
-    io.KeyMap[ImGuiKey_Escape] = neko_platform_key_to_codepoint(NEKO_KEYCODE_ESC);
-    io.KeyMap[ImGuiKey_KeypadEnter] = neko_platform_key_to_codepoint(NEKO_KEYCODE_KP_ENTER);
-    io.KeyMap[ImGuiKey_A] = neko_platform_key_to_codepoint(NEKO_KEYCODE_A);
-    io.KeyMap[ImGuiKey_C] = neko_platform_key_to_codepoint(NEKO_KEYCODE_C);
-    io.KeyMap[ImGuiKey_V] = neko_platform_key_to_codepoint(NEKO_KEYCODE_V);
-    io.KeyMap[ImGuiKey_X] = neko_platform_key_to_codepoint(NEKO_KEYCODE_X);
-    io.KeyMap[ImGuiKey_Y] = neko_platform_key_to_codepoint(NEKO_KEYCODE_Y);
-    io.KeyMap[ImGuiKey_Z] = neko_platform_key_to_codepoint(NEKO_KEYCODE_Z);
+    io.KeyMap[ImGuiKey_Tab] = neko_pf_key_to_codepoint(NEKO_KEYCODE_TAB);
+    io.KeyMap[ImGuiKey_LeftArrow] = neko_pf_key_to_codepoint(NEKO_KEYCODE_LEFT);
+    io.KeyMap[ImGuiKey_RightArrow] = neko_pf_key_to_codepoint(NEKO_KEYCODE_RIGHT);
+    io.KeyMap[ImGuiKey_UpArrow] = neko_pf_key_to_codepoint(NEKO_KEYCODE_UP);
+    io.KeyMap[ImGuiKey_DownArrow] = neko_pf_key_to_codepoint(NEKO_KEYCODE_DOWN);
+    io.KeyMap[ImGuiKey_PageUp] = neko_pf_key_to_codepoint(NEKO_KEYCODE_PAGE_UP);
+    io.KeyMap[ImGuiKey_PageDown] = neko_pf_key_to_codepoint(NEKO_KEYCODE_PAGE_DOWN);
+    io.KeyMap[ImGuiKey_Home] = neko_pf_key_to_codepoint(NEKO_KEYCODE_HOME);
+    io.KeyMap[ImGuiKey_End] = neko_pf_key_to_codepoint(NEKO_KEYCODE_END);
+    io.KeyMap[ImGuiKey_Insert] = neko_pf_key_to_codepoint(NEKO_KEYCODE_INSERT);
+    io.KeyMap[ImGuiKey_Delete] = neko_pf_key_to_codepoint(NEKO_KEYCODE_DELETE);
+    io.KeyMap[ImGuiKey_Backspace] = neko_pf_key_to_codepoint(NEKO_KEYCODE_BACKSPACE);
+    io.KeyMap[ImGuiKey_Space] = neko_pf_key_to_codepoint(NEKO_KEYCODE_SPACE);
+    io.KeyMap[ImGuiKey_Enter] = neko_pf_key_to_codepoint(NEKO_KEYCODE_ENTER);
+    io.KeyMap[ImGuiKey_Escape] = neko_pf_key_to_codepoint(NEKO_KEYCODE_ESC);
+    io.KeyMap[ImGuiKey_KeypadEnter] = neko_pf_key_to_codepoint(NEKO_KEYCODE_KP_ENTER);
+    io.KeyMap[ImGuiKey_A] = neko_pf_key_to_codepoint(NEKO_KEYCODE_A);
+    io.KeyMap[ImGuiKey_C] = neko_pf_key_to_codepoint(NEKO_KEYCODE_C);
+    io.KeyMap[ImGuiKey_V] = neko_pf_key_to_codepoint(NEKO_KEYCODE_V);
+    io.KeyMap[ImGuiKey_X] = neko_pf_key_to_codepoint(NEKO_KEYCODE_X);
+    io.KeyMap[ImGuiKey_Y] = neko_pf_key_to_codepoint(NEKO_KEYCODE_Y);
+    io.KeyMap[ImGuiKey_Z] = neko_pf_key_to_codepoint(NEKO_KEYCODE_Z);
 
     neko_imgui_style();
 
@@ -205,7 +205,7 @@ neko_imgui_context_t neko_imgui_new(neko_command_buffer_t* cb, u32 hndl, bool in
     io.ClipboardUserData = nullptr;
 
     // auto viewport = ImGui::GetMainViewport();
-    // viewport->PlatformHandleRaw = (void *)neko_platform_hwnd();
+    // viewport->PlatformHandleRaw = (void *)neko_pf_hwnd();
 
     auto win = neko_imgui_glfw_window();
 
@@ -229,12 +229,12 @@ neko_imgui_context_t neko_imgui_new(neko_command_buffer_t* cb, u32 hndl, bool in
 
 void neko_imgui_update_mouse_and_keys(neko_imgui_context_t* ctx) {
 
-    // auto window = (GLFWwindow *)neko_slot_array_getp(neko_subsystem(platform)->windows, neko_platform_main_window())->hndl;
+    // auto window = (GLFWwindow *)neko_slot_array_getp(neko_subsystem(platform)->windows, neko_pf_main_window())->hndl;
 
     ImGuiIO& io = ImGui::GetIO();
 
-    neko_platform_event_t evt = {};
-    while (neko_platform_poll_events(&evt, false)) {
+    neko_pf_event_t evt = {};
+    while (neko_pf_poll_events(&evt, false)) {
         switch (evt.type) {
             case NEKO_PF_EVENT_KEY: {
                 switch (evt.key.action) {
@@ -264,32 +264,32 @@ void neko_imgui_update_mouse_and_keys(neko_imgui_context_t* ctx) {
         }
     }
 
-    io.KeysDown[neko_platform_key_to_codepoint(NEKO_KEYCODE_BACKSPACE)] = neko_platform_key_pressed(NEKO_KEYCODE_BACKSPACE);
-    io.KeysDown[neko_platform_key_to_codepoint(NEKO_KEYCODE_TAB)] = neko_platform_key_pressed(NEKO_KEYCODE_TAB);
-    io.KeysDown[neko_platform_key_to_codepoint(NEKO_KEYCODE_ENTER)] = neko_platform_key_pressed(NEKO_KEYCODE_ENTER);
-    io.KeysDown[neko_platform_key_to_codepoint(NEKO_KEYCODE_LEFT)] = neko_platform_key_pressed(NEKO_KEYCODE_LEFT);
-    io.KeysDown[neko_platform_key_to_codepoint(NEKO_KEYCODE_RIGHT)] = neko_platform_key_pressed(NEKO_KEYCODE_RIGHT);
-    io.KeysDown[neko_platform_key_to_codepoint(NEKO_KEYCODE_UP)] = neko_platform_key_pressed(NEKO_KEYCODE_UP);
-    io.KeysDown[neko_platform_key_to_codepoint(NEKO_KEYCODE_DOWN)] = neko_platform_key_pressed(NEKO_KEYCODE_DOWN);
+    io.KeysDown[neko_pf_key_to_codepoint(NEKO_KEYCODE_BACKSPACE)] = neko_pf_key_pressed(NEKO_KEYCODE_BACKSPACE);
+    io.KeysDown[neko_pf_key_to_codepoint(NEKO_KEYCODE_TAB)] = neko_pf_key_pressed(NEKO_KEYCODE_TAB);
+    io.KeysDown[neko_pf_key_to_codepoint(NEKO_KEYCODE_ENTER)] = neko_pf_key_pressed(NEKO_KEYCODE_ENTER);
+    io.KeysDown[neko_pf_key_to_codepoint(NEKO_KEYCODE_LEFT)] = neko_pf_key_pressed(NEKO_KEYCODE_LEFT);
+    io.KeysDown[neko_pf_key_to_codepoint(NEKO_KEYCODE_RIGHT)] = neko_pf_key_pressed(NEKO_KEYCODE_RIGHT);
+    io.KeysDown[neko_pf_key_to_codepoint(NEKO_KEYCODE_UP)] = neko_pf_key_pressed(NEKO_KEYCODE_UP);
+    io.KeysDown[neko_pf_key_to_codepoint(NEKO_KEYCODE_DOWN)] = neko_pf_key_pressed(NEKO_KEYCODE_DOWN);
 
     // Modifiers
-    io.KeyCtrl = neko_platform_key_down(NEKO_KEYCODE_LEFT_CONTROL) || neko_platform_key_down(NEKO_KEYCODE_RIGHT_CONTROL);
-    io.KeyShift = neko_platform_key_down(NEKO_KEYCODE_LEFT_SHIFT) || neko_platform_key_down(NEKO_KEYCODE_RIGHT_SHIFT);
-    io.KeyAlt = neko_platform_key_down(NEKO_KEYCODE_LEFT_ALT) || neko_platform_key_down(NEKO_KEYCODE_RIGHT_ALT);
+    io.KeyCtrl = neko_pf_key_down(NEKO_KEYCODE_LEFT_CONTROL) || neko_pf_key_down(NEKO_KEYCODE_RIGHT_CONTROL);
+    io.KeyShift = neko_pf_key_down(NEKO_KEYCODE_LEFT_SHIFT) || neko_pf_key_down(NEKO_KEYCODE_RIGHT_SHIFT);
+    io.KeyAlt = neko_pf_key_down(NEKO_KEYCODE_LEFT_ALT) || neko_pf_key_down(NEKO_KEYCODE_RIGHT_ALT);
     io.KeySuper = false;
 
     // Update buttons
-    io.MouseDown[0] = neko_platform_mouse_down(NEKO_MOUSE_LBUTTON);
-    io.MouseDown[1] = neko_platform_mouse_down(NEKO_MOUSE_RBUTTON);
-    io.MouseDown[2] = neko_platform_mouse_down(NEKO_MOUSE_MBUTTON);
+    io.MouseDown[0] = neko_pf_mouse_down(NEKO_MOUSE_LBUTTON);
+    io.MouseDown[1] = neko_pf_mouse_down(NEKO_MOUSE_RBUTTON);
+    io.MouseDown[2] = neko_pf_mouse_down(NEKO_MOUSE_MBUTTON);
 
     // Mouse position
     int32_t mpx = 0, mpy = 0;
-    neko_platform_mouse_position(&mpx, &mpy);
+    neko_pf_mouse_position(&mpx, &mpy);
     io.MousePos = ImVec2((float)mpx, (float)mpy);
 
     // Mouse wheel
-    neko_platform_mouse_wheel(&io.MouseWheelH, &io.MouseWheel);
+    neko_pf_mouse_wheel(&io.MouseWheelH, &io.MouseWheel);
 }
 
 void neko_imgui_shutdown(neko_imgui_context_t* neko_imgui) { ImGui::DestroyContext(neko_imgui->ctx); }
@@ -307,8 +307,8 @@ void neko_imgui_new_frame(neko_imgui_context_t* neko_imgui) {
     u32 display_w, display_h;
 
     // Get platform window size and framebuffer size from window handle
-    neko_platform_window_size(neko_imgui->win_hndl, &w, &h);
-    neko_platform_framebuffer_size(neko_imgui->win_hndl, &display_w, &display_h);
+    neko_pf_window_size(neko_imgui->win_hndl, &w, &h);
+    neko_pf_framebuffer_size(neko_imgui->win_hndl, &display_w, &display_h);
 
     io.DisplaySize = ImVec2((float)w, (float)h);
     if (w > 0 && h > 0) io.DisplayFramebufferScale = ImVec2((float)display_w / w, (float)display_h / h);

@@ -150,6 +150,11 @@ LUA_FUNCTION(__neko_bind_pack_assets_unload) {
     return 0;
 }
 
+LUA_FUNCTION(__neko_bind_vfs_read_file) {
+    const_str path = lua_tostring(L, 1);
+    return 0;
+}
+
 namespace neko::lua::__pack {
 
 LUABIND_MODULE() {

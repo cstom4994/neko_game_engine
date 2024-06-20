@@ -2831,7 +2831,7 @@ NEKO_API_DECL
 neko_draw_mesh_t neko_draw_mesh_load_from_file(const char* path, neko_draw_mesh_import_options_t* options) {
     neko_draw_mesh_t mesh = NEKO_DEFAULT_VAL();
 
-    if (!neko_platform_file_exists(path)) {
+    if (!neko_pf_file_exists(path)) {
         NEKO_TRACE("[gfxt] Warning:GFXT:MeshLoadFromFile:File does not exist: %s", path);
         return mesh;
     }
@@ -2842,7 +2842,7 @@ neko_draw_mesh_t neko_draw_mesh_load_from_file(const char* path, neko_draw_mesh_
 
     // Get file extension from path
     neko_transient_buffer(file_ext, 32);
-    neko_platform_file_extension(file_ext, 32, path);
+    neko_pf_file_extension(file_ext, 32, path);
 
     if (neko_string_compare_equal(file_ext, "gltf")) {  // GLTF
         // neko_draw_load_gltf_data_from_file(path, options, &meshes, &mesh_count);
@@ -3406,7 +3406,7 @@ bool neko_parse_code(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_pp
 
         // Load include using final path and relative path from include
         size_t len = 0;
-        char* inc_src = neko_platform_read_file_contents(FINAL_PATH, "rb", &len);
+        char* inc_src = neko_pf_read_file_contents(FINAL_PATH, "rb", &len);
         NEKO_ASSERT(inc_src);
 
         // Realloc previous code to greater size, shift contents around
@@ -4376,7 +4376,7 @@ char* neko_pipeline_generate_shader_code(neko_draw_pipeline_desc_t* pdesc, neko_
 NEKO_API_DECL neko_draw_pipeline_t neko_draw_pipeline_load_from_file(const char* path) {
     // Load file, generate lexer off of file data, parse contents for pipeline information
     size_t len = 0;
-    char* file_data = neko_platform_read_file_contents(path, "rb", &len);
+    char* file_data = neko_pf_read_file_contents(path, "rb", &len);
     NEKO_ASSERT(file_data);
     NEKO_TRACE("Parsing pipeline: %s", path);
     neko_draw_pipeline_t pip = neko_draw_pipeline_load_from_memory_ext(file_data, len, path);

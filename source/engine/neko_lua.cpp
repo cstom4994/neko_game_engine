@@ -9,6 +9,21 @@
 namespace neko {
 lua_State* g_L = NULL;
 
+static size_t lua_mem_usage;
+
+size_t neko_lua_mem_usage() { return lua_mem_usage; }
+
+void* Allocf(void* ud, void* ptr, size_t osize, size_t nsize) {
+    if (!ptr) osize = 0;
+    if (!nsize) {
+        lua_mem_usage -= osize;
+        neko_safe_free(ptr);
+        return NULL;
+    }
+    lua_mem_usage += (nsize - osize);
+    return neko_safe_realloc(ptr, nsize);
+}
+
 void neko_lua_run_string(lua_State* m_ls, const_str str_) {
     if (luaL_dostring(m_ls, str_)) {
         std::string err = neko_lua_tool_t::dump_error(m_ls, "run_string ::lua_pcall_wrap failed str<%s>", str_);
@@ -621,13 +636,13 @@ int vfs_lua_loader(lua_State* L) {
     for (auto p : load_list) {
         std::string load_path = p + path + ".lua";
         neko::string contents = {};
-        bool ok = vfs_read_entire_file("luacode", &contents, load_path.c_str());
+        bool ok = vfs_read_entire_file(NEKO_PACK_LUACODE, &contents, load_path.c_str());
         if (ok) {
             if (luaL_loadbuffer(L, contents.data, contents.len, name) != LUA_OK) {
                 lua_pop(L, 1);
             } else {
                 neko_safe_free(contents.data);
-                NEKO_TRACE("[lua] loaded : %s", path.c_str());
+                NEKO_TRACE("[lua] loaded : \"%s\"", path.c_str());
                 break;
             }
         }

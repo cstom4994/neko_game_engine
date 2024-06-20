@@ -4,11 +4,9 @@
 #include "engine/neko_common.h"
 #include "engine/neko_ecs.h"
 #include "engine/neko_engine.h"
+#include "engine/neko_imgui.hpp"
 #include "engine/neko_lua.hpp"
 #include "engine/neko_luabind.hpp"
-
-// game
-#include "sandbox/game_main.h"
 
 static int g_lua_callbacks_table_ref = LUA_NOREF;
 
@@ -69,101 +67,101 @@ LUA_FUNCTION(__neko_bind_callback_call) {
 }
 
 static bool __neko_bind_platform_key_pressed(const_str key) {
-    neko_platform_keycode cval;
+    neko_pf_keycode cval;
 
     lua_pushstring(neko_instance()->L, key);
-    neko_luabind_to(neko_instance()->L, neko_platform_keycode, &cval, -1);
+    neko_luabind_to(neko_instance()->L, neko_pf_keycode, &cval, -1);
     lua_pop(neko_instance()->L, 1);
 
-    return neko_platform_key_pressed(cval);
+    return neko_pf_key_pressed(cval);
 }
 
 static bool __neko_bind_platform_was_key_down(const_str key) {
-    neko_platform_keycode cval;
+    neko_pf_keycode cval;
 
     lua_pushstring(neko_instance()->L, key);
-    neko_luabind_to(neko_instance()->L, neko_platform_keycode, &cval, -1);
+    neko_luabind_to(neko_instance()->L, neko_pf_keycode, &cval, -1);
     lua_pop(neko_instance()->L, 1);
 
-    return neko_platform_key_down(cval);
+    return neko_pf_key_down(cval);
 }
 
 static bool __neko_bind_platform_key_down(const_str key) {
-    neko_platform_keycode cval;
+    neko_pf_keycode cval;
 
     lua_pushstring(neko_instance()->L, key);
-    neko_luabind_to(neko_instance()->L, neko_platform_keycode, &cval, -1);
+    neko_luabind_to(neko_instance()->L, neko_pf_keycode, &cval, -1);
     lua_pop(neko_instance()->L, 1);
 
-    return neko_platform_key_down(cval);
+    return neko_pf_key_down(cval);
 }
 
 static bool __neko_bind_platform_key_released(const_str key) {
-    neko_platform_keycode cval;
+    neko_pf_keycode cval;
 
     lua_pushstring(neko_instance()->L, key);
-    neko_luabind_to(neko_instance()->L, neko_platform_keycode, &cval, -1);
+    neko_luabind_to(neko_instance()->L, neko_pf_keycode, &cval, -1);
     lua_pop(neko_instance()->L, 1);
 
-    return neko_platform_key_released(cval);
+    return neko_pf_key_released(cval);
 }
 
 static bool __neko_bind_platform_was_mouse_down(const_str key) {
-    neko_platform_mouse_button_code cval;
+    neko_pf_mouse_button_code cval;
 
     lua_pushstring(neko_instance()->L, key);
-    neko_luabind_to(neko_instance()->L, neko_platform_mouse_button_code, &cval, -1);
+    neko_luabind_to(neko_instance()->L, neko_pf_mouse_button_code, &cval, -1);
     lua_pop(neko_instance()->L, 1);
 
-    return neko_platform_was_mouse_down(cval);
+    return neko_pf_was_mouse_down(cval);
 }
 
 static bool __neko_bind_platform_mouse_pressed(const_str key) {
-    neko_platform_mouse_button_code cval;
+    neko_pf_mouse_button_code cval;
 
     lua_pushstring(neko_instance()->L, key);
-    neko_luabind_to(neko_instance()->L, neko_platform_mouse_button_code, &cval, -1);
+    neko_luabind_to(neko_instance()->L, neko_pf_mouse_button_code, &cval, -1);
     lua_pop(neko_instance()->L, 1);
 
-    return neko_platform_mouse_pressed(cval);
+    return neko_pf_mouse_pressed(cval);
 }
 
 static bool __neko_bind_platform_mouse_down(const_str key) {
-    neko_platform_mouse_button_code cval;
+    neko_pf_mouse_button_code cval;
 
     lua_pushstring(neko_instance()->L, key);
-    neko_luabind_to(neko_instance()->L, neko_platform_mouse_button_code, &cval, -1);
+    neko_luabind_to(neko_instance()->L, neko_pf_mouse_button_code, &cval, -1);
     lua_pop(neko_instance()->L, 1);
 
-    return neko_platform_mouse_down(cval);
+    return neko_pf_mouse_down(cval);
 }
 
 static bool __neko_bind_platform_mouse_released(const_str key) {
-    neko_platform_mouse_button_code cval;
+    neko_pf_mouse_button_code cval;
 
     lua_pushstring(neko_instance()->L, key);
-    neko_luabind_to(neko_instance()->L, neko_platform_mouse_button_code, &cval, -1);
+    neko_luabind_to(neko_instance()->L, neko_pf_mouse_button_code, &cval, -1);
     lua_pop(neko_instance()->L, 1);
 
-    return neko_platform_mouse_released(cval);
+    return neko_pf_mouse_released(cval);
 }
 
 LUA_FUNCTION(__neko_bind_platform_mouse_delta) {
-    neko_vec2 v2 = neko_platform_mouse_deltav();
+    neko_vec2 v2 = neko_pf_mouse_deltav();
     lua_pushnumber(L, v2.x);
     lua_pushnumber(L, v2.y);
     return 2;
 }
 
 LUA_FUNCTION(__neko_bind_platform_mouse_position) {
-    neko_vec2 v2 = neko_platform_mouse_positionv();
+    neko_vec2 v2 = neko_pf_mouse_positionv();
     lua_pushnumber(L, v2.x);
     lua_pushnumber(L, v2.y);
     return 2;
 }
 
 LUA_FUNCTION(__neko_bind_platform_mouse_wheel) {
-    neko_vec2 v2 = neko_platform_mouse_wheelv();
+    neko_vec2 v2 = neko_pf_mouse_wheelv();
     lua_pushnumber(L, v2.x);
     lua_pushnumber(L, v2.y);
     return 2;
@@ -171,7 +169,7 @@ LUA_FUNCTION(__neko_bind_platform_mouse_wheel) {
 
 LUA_FUNCTION(__neko_bind_platform_window_size) {
     u32 handle = lua_tointeger(L, -1);
-    neko_vec2 v2 = neko_platform_window_sizev(handle);
+    neko_vec2 v2 = neko_pf_window_sizev(handle);
     lua_pushnumber(L, v2.x);
     lua_pushnumber(L, v2.y);
     return 2;
@@ -179,7 +177,7 @@ LUA_FUNCTION(__neko_bind_platform_window_size) {
 
 LUA_FUNCTION(__neko_bind_platform_framebuffer_size) {
     u32 handle = lua_tointeger(L, -1);
-    neko_vec2 v2 = neko_platform_framebuffer_sizev(handle);
+    neko_vec2 v2 = neko_pf_framebuffer_sizev(handle);
     lua_pushnumber(L, v2.x);
     lua_pushnumber(L, v2.y);
     return 2;
@@ -188,141 +186,141 @@ LUA_FUNCTION(__neko_bind_platform_framebuffer_size) {
 LUA_FUNCTION(__neko_bind_platform_set_window_title) {
     u32 handle = lua_tointeger(L, -1);
     const_str title = lua_tostring(L, -2);
-    neko_platform_set_window_title(handle, title);
+    neko_pf_set_window_title(handle, title);
     return 0;
 }
 
 NEKO_INLINE void neko_register_platform(lua_State* L) {
 
-    neko_luabind_enum(L, neko_platform_keycode);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_INVALID);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_SPACE);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_APOSTROPHE); /* ' */
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_COMMA);      /* , */
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_MINUS);      /* - */
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_PERIOD);     /* . */
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_SLASH);      /* / */
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_0);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_1);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_2);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_3);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_4);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_5);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_6);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_7);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_8);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_9);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_SEMICOLON); /* ; */
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_EQUAL);     /* = */
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_A);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_B);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_C);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_D);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_E);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_F);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_G);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_H);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_I);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_J);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_K);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_L);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_M);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_N);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_O);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_P);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_Q);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_R);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_S);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_T);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_U);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_V);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_W);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_X);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_Y);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_Z);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_LEFT_BRACKET);  /* [ */
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_BACKSLASH);     /* \ */
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_RIGHT_BRACKET); /* ] */
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_GRAVE_ACCENT);  /* ` */
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_WORLD_1);       /* non-US #1 */
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_WORLD_2);       /* non-US #2 */
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_ESC);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_ENTER);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_TAB);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_BACKSPACE);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_INSERT);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_DELETE);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_RIGHT);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_LEFT);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_DOWN);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_UP);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_PAGE_UP);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_PAGE_DOWN);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_HOME);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_END);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_CAPS_LOCK);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_SCROLL_LOCK);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_NUM_LOCK);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_PRINT_SCREEN);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_PAUSE);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_F1);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_F2);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_F3);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_F4);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_F5);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_F6);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_F7);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_F8);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_F9);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_F10);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_F11);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_F12);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_F13);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_F14);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_F15);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_F16);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_F17);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_F18);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_F19);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_F20);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_F21);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_F22);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_F23);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_F24);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_F25);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_KP_0);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_KP_1);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_KP_2);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_KP_3);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_KP_4);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_KP_5);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_KP_6);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_KP_7);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_KP_8);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_KP_9);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_KP_DECIMAL);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_KP_DIVIDE);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_KP_MULTIPLY);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_KP_SUBTRACT);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_KP_ADD);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_KP_ENTER);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_KP_EQUAL);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_LEFT_SHIFT);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_LEFT_CONTROL);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_LEFT_ALT);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_LEFT_SUPER);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_RIGHT_SHIFT);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_RIGHT_CONTROL);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_RIGHT_ALT);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_RIGHT_SUPER);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_MENU);
-    neko_luabind_enum_value(L, neko_platform_keycode, NEKO_KEYCODE_COUNT);
+    neko_luabind_enum(L, neko_pf_keycode);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_INVALID);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_SPACE);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_APOSTROPHE); /* ' */
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_COMMA);      /* , */
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_MINUS);      /* - */
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_PERIOD);     /* . */
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_SLASH);      /* / */
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_0);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_1);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_2);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_3);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_4);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_5);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_6);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_7);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_8);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_9);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_SEMICOLON); /* ; */
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_EQUAL);     /* = */
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_A);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_B);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_C);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_D);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_E);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_F);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_G);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_H);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_I);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_J);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_K);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_L);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_M);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_N);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_O);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_P);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_Q);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_R);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_S);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_T);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_U);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_V);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_W);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_X);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_Y);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_Z);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_LEFT_BRACKET);  /* [ */
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_BACKSLASH);     /* \ */
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_RIGHT_BRACKET); /* ] */
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_GRAVE_ACCENT);  /* ` */
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_WORLD_1);       /* non-US #1 */
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_WORLD_2);       /* non-US #2 */
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_ESC);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_ENTER);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_TAB);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_BACKSPACE);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_INSERT);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_DELETE);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_RIGHT);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_LEFT);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_DOWN);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_UP);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_PAGE_UP);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_PAGE_DOWN);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_HOME);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_END);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_CAPS_LOCK);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_SCROLL_LOCK);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_NUM_LOCK);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_PRINT_SCREEN);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_PAUSE);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_F1);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_F2);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_F3);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_F4);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_F5);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_F6);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_F7);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_F8);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_F9);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_F10);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_F11);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_F12);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_F13);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_F14);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_F15);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_F16);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_F17);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_F18);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_F19);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_F20);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_F21);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_F22);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_F23);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_F24);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_F25);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_KP_0);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_KP_1);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_KP_2);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_KP_3);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_KP_4);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_KP_5);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_KP_6);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_KP_7);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_KP_8);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_KP_9);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_KP_DECIMAL);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_KP_DIVIDE);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_KP_MULTIPLY);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_KP_SUBTRACT);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_KP_ADD);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_KP_ENTER);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_KP_EQUAL);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_LEFT_SHIFT);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_LEFT_CONTROL);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_LEFT_ALT);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_LEFT_SUPER);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_RIGHT_SHIFT);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_RIGHT_CONTROL);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_RIGHT_ALT);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_RIGHT_SUPER);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_MENU);
+    neko_luabind_enum_value(L, neko_pf_keycode, NEKO_KEYCODE_COUNT);
 
-    neko_luabind_enum(L, neko_platform_mouse_button_code);
-    neko_luabind_enum_value(L, neko_platform_mouse_button_code, NEKO_MOUSE_LBUTTON);
-    neko_luabind_enum_value(L, neko_platform_mouse_button_code, NEKO_MOUSE_RBUTTON);
-    neko_luabind_enum_value(L, neko_platform_mouse_button_code, NEKO_MOUSE_MBUTTON);
-    neko_luabind_enum_value(L, neko_platform_mouse_button_code, NEKO_MOUSE_BUTTON_CODE_COUNT);
+    neko_luabind_enum(L, neko_pf_mouse_button_code);
+    neko_luabind_enum_value(L, neko_pf_mouse_button_code, NEKO_MOUSE_LBUTTON);
+    neko_luabind_enum_value(L, neko_pf_mouse_button_code, NEKO_MOUSE_RBUTTON);
+    neko_luabind_enum_value(L, neko_pf_mouse_button_code, NEKO_MOUSE_MBUTTON);
+    neko_luabind_enum_value(L, neko_pf_mouse_button_code, NEKO_MOUSE_BUTTON_CODE_COUNT);
 
     neko::lua_bind::bind("neko_key_pressed", &__neko_bind_platform_key_pressed);
     neko::lua_bind::bind("neko_was_key_down", &__neko_bind_platform_was_key_down);
@@ -332,10 +330,10 @@ NEKO_INLINE void neko_register_platform(lua_State* L) {
     neko::lua_bind::bind("neko_mouse_down", &__neko_bind_platform_mouse_down);
     neko::lua_bind::bind("neko_mouse_pressed", &__neko_bind_platform_mouse_pressed);
     neko::lua_bind::bind("neko_mouse_released", &__neko_bind_platform_mouse_released);
-    neko::lua_bind::bind("neko_mouse_moved", +[]() -> bool { return neko_platform_mouse_moved(); });
-    neko::lua_bind::bind("neko_main_window", +[]() -> u32 { return neko_platform_main_window(); });
-    neko::lua_bind::bind("neko_set_window_size", +[](u32 handle, u32 width, u32 height) { neko_platform_set_window_size(handle, width, height); });
-    neko::lua_bind::bind("neko_set_mouse_position", +[](u32 handle, f64 x, f64 y) { neko_platform_mouse_set_position(handle, x, y); });
+    neko::lua_bind::bind("neko_mouse_moved", +[]() -> bool { return neko_pf_mouse_moved(); });
+    neko::lua_bind::bind("neko_main_window", +[]() -> u32 { return neko_pf_main_window(); });
+    neko::lua_bind::bind("neko_set_window_size", +[](u32 handle, u32 width, u32 height) { neko_pf_set_window_size(handle, width, height); });
+    neko::lua_bind::bind("neko_set_mouse_position", +[](u32 handle, f64 x, f64 y) { neko_pf_mouse_set_position(handle, x, y); });
 
     //.def(+[](const_str path) -> std::string { return neko_engine_subsystem(platform)->get_path(path); }, "neko_file_path")
     //.def(+[](const_str title, u32 width, u32 height) -> neko_resource_handle { return neko_engine_subsystem(platform)->create_window(title, width, height); }, "neko_create_window")
@@ -410,10 +408,10 @@ LUA_FUNCTION(__neko_bind_aseprite_render) {
     neko_aseprite_frame f = spr->frames[index];
 
     if (direction)
-        neko_idraw_rect_textured_ext(&CL_GAME_INTERFACE()->idraw, xform.x, xform.y, xform.x + spr->width * scale, xform.y + spr->height * scale, f.u1, f.v0, f.u0, f.v1, user_handle->sprite->img.id,
+        neko_idraw_rect_textured_ext(&ENGINE_INTERFACE()->idraw, xform.x, xform.y, xform.x + spr->width * scale, xform.y + spr->height * scale, f.u1, f.v0, f.u0, f.v1, user_handle->sprite->img.id,
                                      NEKO_COLOR_WHITE);
     else
-        neko_idraw_rect_textured_ext(&CL_GAME_INTERFACE()->idraw, xform.x, xform.y, xform.x + spr->width * scale, xform.y + spr->height * scale, f.u0, f.v0, f.u1, f.v1, user_handle->sprite->img.id,
+        neko_idraw_rect_textured_ext(&ENGINE_INTERFACE()->idraw, xform.x, xform.y, xform.x + spr->width * scale, xform.y + spr->height * scale, f.u0, f.v0, f.u1, f.v1, user_handle->sprite->img.id,
                                      NEKO_COLOR_WHITE);
 
     return 0;
@@ -449,7 +447,7 @@ LUA_FUNCTION(__neko_bind_tiled_create) {
 
     neko_tiled_load(&(user_handle->map), map_path, NULL);
 
-    neko_tiled_render_init(&CL_GAME_INTERFACE()->cb, user_handle, glsl_vs_src, glsl_fs_src);
+    neko_tiled_render_init(&ENGINE_INTERFACE()->cb, user_handle, glsl_vs_src, glsl_fs_src);
 
     return 1;
 }
@@ -469,7 +467,7 @@ LUA_FUNCTION(__neko_bind_tiled_render) {
 
     tiled_render->camera_mat = neko_mat4_ortho(l, r, b, t, -1.0f, 1.0f);
 
-    neko_command_buffer_t* cb = &CL_GAME_INTERFACE()->cb;
+    neko_command_buffer_t* cb = &ENGINE_INTERFACE()->cb;
 
     neko_render_renderpass_begin(cb, rp);
     {
@@ -669,10 +667,10 @@ LUA_FUNCTION(__neko_bind_gfxt_create) {
 LUA_FUNCTION(__neko_bind_gfxt_update) {
     neko_draw_renderer* gfxt_render = (neko_draw_renderer*)lua_touserdata(L, 1);
 
-    neko_vec2 fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
-    const f32 t = neko_platform_elapsed_time();
+    neko_vec2 fbs = neko_pf_framebuffer_sizev(neko_pf_main_window());
+    const f32 t = neko_pf_elapsed_time();
 
-    neko_command_buffer_t* cb = &CL_GAME_INTERFACE()->cb;
+    neko_command_buffer_t* cb = &ENGINE_INTERFACE()->cb;
 
     // Camera for scene
     neko_camera_t cam = neko_camera_perspective();
@@ -719,6 +717,8 @@ LUA_FUNCTION(__neko_bind_gfxt_end) {
 
 LUA_FUNCTION(__neko_bind_draw_text) {
 
+    std::breakpoint();
+
     int numArgs = lua_gettop(L);  // 获取参数数量
 
     f32 x = lua_tonumber(L, 1);
@@ -729,7 +729,7 @@ LUA_FUNCTION(__neko_bind_draw_text) {
 
     if (numArgs > 3) scale = lua_tonumber(L, 4);
 
-    neko_fontbatch_draw(&CL_GAME_USERDATA()->font_render_batch, CL_GAME_USERDATA()->DisplaySize, text, x, y, 1, 1.f, 800.f, scale);
+    // neko_fontbatch_draw(&CL_GAME_USERDATA()->font_render_batch, CL_GAME_USERDATA()->DisplaySize, text, x, y, 1, 1.f, 800.f, scale);
 
     return 0;
 }
@@ -772,7 +772,7 @@ struct neko_sprite_batch_t {
 
 static void make_sprite(neko_sprite_batch_t* user_handle, neko_sprite_t* sprite, u64 image_id, f32 x, f32 y, f32 scale, f32 angle_radians, int depth) {
 
-    neko_vec2 fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
+    neko_vec2 fbs = neko_pf_framebuffer_sizev(neko_pf_main_window());
 
     // f32 x0 = (x - fbs.x / 2.f) / scale /*+ -text_w / 2.f*/;
     // f32 y0 = (fbs.y / 2.f - y) / scale / 2.f;
@@ -940,7 +940,7 @@ LUA_FUNCTION(__neko_bind_sprite_batch_create) {
 
     user_handle->sprite_batch = neko_render_batch_make_ctx(max_draw_calls);
 
-    neko_vec2 fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
+    neko_vec2 fbs = neko_pf_framebuffer_sizev(neko_pf_main_window());
 
     neko_render_batch_vertex_data_t vd;
     neko_render_batch_make_vertex_data(&vd, 1024 * 1024, GL_TRIANGLES, sizeof(vertex_t), GL_DYNAMIC_DRAW);
@@ -958,7 +958,7 @@ LUA_FUNCTION(__neko_bind_sprite_batch_create) {
     user_handle->images_count = count;
     user_handle->images = (neko_image_t*)neko_safe_malloc(sizeof(neko_image_t) * count);
 
-    for (s32 i = 0; i < user_handle->images_count; ++i) user_handle->images[i] = neko_image_load(game_assets(texture_list[i]).c_str());
+    for (s32 i = 0; i < user_handle->images_count; ++i) user_handle->images[i] = neko_image_load(texture_list[i]);
 
     neko_spritebatch_config_t sb_config;
     neko_spritebatch_set_default_config(&sb_config);
@@ -1039,7 +1039,7 @@ LUA_FUNCTION(__neko_bind_sprite_batch_render_end) {
         user_handle->sprite_verts_count = 0;
     }
 
-    neko_render_draw_batch(&CL_GAME_INTERFACE()->cb, user_handle->sprite_batch, 0, 0, 0);
+    neko_render_draw_batch(&ENGINE_INTERFACE()->cb, user_handle->sprite_batch, 0, 0, 0);
 
     return 0;
 }
@@ -1243,31 +1243,31 @@ LUA_FUNCTION(__neko_bind_filewatch_notify){
 #endif
 
 LUA_FUNCTION(__neko_bind_idraw_get) {
-    lua_pushlightuserdata(L, &CL_GAME_INTERFACE()->idraw);
+    lua_pushlightuserdata(L, &ENGINE_INTERFACE()->idraw);
     return 1;
 }
 
 LUA_FUNCTION(__neko_bind_idraw_draw) {
-    neko_idraw_draw(&CL_GAME_INTERFACE()->idraw, &CL_GAME_INTERFACE()->cb);
+    neko_idraw_draw(&ENGINE_INTERFACE()->idraw, &ENGINE_INTERFACE()->cb);
     return 1;
 }
 
 LUA_FUNCTION(__neko_bind_idraw_defaults) {
-    neko_idraw_defaults(&CL_GAME_INTERFACE()->idraw);
+    neko_idraw_defaults(&ENGINE_INTERFACE()->idraw);
     return 0;
 }
 
 LUA_FUNCTION(__neko_bind_idraw_camera2d) {
     f32 w = lua_tonumber(L, 1);
     f32 h = lua_tonumber(L, 2);
-    neko_idraw_camera2d(&CL_GAME_INTERFACE()->idraw, w, h);
+    neko_idraw_camera2d(&ENGINE_INTERFACE()->idraw, w, h);
     return 0;
 }
 
 LUA_FUNCTION(__neko_bind_idraw_camera3d) {
     f32 w = lua_tonumber(L, 1);
     f32 h = lua_tonumber(L, 2);
-    neko_idraw_camera3d(&CL_GAME_INTERFACE()->idraw, w, h);
+    neko_idraw_camera3d(&ENGINE_INTERFACE()->idraw, w, h);
     return 0;
 }
 
@@ -1276,7 +1276,7 @@ LUA_FUNCTION(__neko_bind_idraw_camera2d_ex) {
     f32 r = lua_tonumber(L, 2);
     f32 t = lua_tonumber(L, 3);
     f32 b = lua_tonumber(L, 4);
-    neko_idraw_camera2d_ex(&CL_GAME_INTERFACE()->idraw, l, r, t, b);
+    neko_idraw_camera2d_ex(&ENGINE_INTERFACE()->idraw, l, r, t, b);
     return 0;
 }
 
@@ -1285,7 +1285,7 @@ LUA_FUNCTION(__neko_bind_idraw_rotatev) {
     f32 x = lua_tonumber(L, 2);
     f32 y = lua_tonumber(L, 3);
     f32 z = lua_tonumber(L, 4);
-    neko_idraw_rotatev(&CL_GAME_INTERFACE()->idraw, angle, neko_v3(x, y, z));
+    neko_idraw_rotatev(&ENGINE_INTERFACE()->idraw, angle, neko_v3(x, y, z));
     return 0;
 }
 
@@ -1302,7 +1302,7 @@ LUA_FUNCTION(__neko_bind_idraw_box) {
     u8 a = lua_tointeger(L, 10);
     neko_render_primitive_type type_val;
     neko_luabind_to(neko_instance()->L, neko_render_primitive_type, &type_val, 11);
-    neko_idraw_box(&CL_GAME_INTERFACE()->idraw, x, y, z, hx, hy, hz, r, g, b, a, type_val);
+    neko_idraw_box(&ENGINE_INTERFACE()->idraw, x, y, z, hx, hy, hz, r, g, b, a, type_val);
     return 0;
 }
 
@@ -1310,7 +1310,7 @@ LUA_FUNCTION(__neko_bind_idraw_translatef) {
     f32 x = lua_tonumber(L, 1);
     f32 y = lua_tonumber(L, 2);
     f32 z = lua_tonumber(L, 3);
-    neko_idraw_translatef(&CL_GAME_INTERFACE()->idraw, x, y, z);
+    neko_idraw_translatef(&ENGINE_INTERFACE()->idraw, x, y, z);
     return 0;
 }
 
@@ -1330,7 +1330,7 @@ LUA_FUNCTION(__neko_bind_idraw_rectv) {
         col = lua2struct::unpack<neko_color_t>(L, 4);
     }
 
-    neko_idraw_rectv(&CL_GAME_INTERFACE()->idraw, v1, v2, col, type_val);
+    neko_idraw_rectv(&ENGINE_INTERFACE()->idraw, v1, v2, col, type_val);
     return 0;
 }
 
@@ -1347,7 +1347,7 @@ LUA_FUNCTION(__neko_bind_idraw_rectvd) {
 
     neko_color_t col = lua2struct::unpack<neko_color_t>(L, 6);
 
-    neko_idraw_rectvd(&CL_GAME_INTERFACE()->idraw, v1, v2, uv0, uv1, col, type_val);
+    neko_idraw_rectvd(&ENGINE_INTERFACE()->idraw, v1, v2, uv0, uv1, col, type_val);
     return 0;
 }
 
@@ -1362,7 +1362,7 @@ LUA_FUNCTION(__neko_bind_idraw_text) {
         col = lua2struct::unpack<neko_color_t>(L, 4);
     }
 
-    neko_idraw_text(&CL_GAME_INTERFACE()->idraw, x, y, text, NULL, false, col);
+    neko_idraw_text(&ENGINE_INTERFACE()->idraw, x, y, text, NULL, false, col);
     return 0;
 }
 
@@ -1371,27 +1371,27 @@ LUA_FUNCTION(__neko_bind_idraw_camera) {
     f32 y = lua_tonumber(L, 2);
     neko_camera_t camera;
     camera = neko_camera_default();
-    neko_vec2 fbs = neko_platform_framebuffer_sizev(neko_platform_main_window());
-    neko_idraw_camera(&CL_GAME_INTERFACE()->idraw, &camera, (u32)fbs.x, (u32)fbs.y);
+    neko_vec2 fbs = neko_pf_framebuffer_sizev(neko_pf_main_window());
+    neko_idraw_camera(&ENGINE_INTERFACE()->idraw, &camera, (u32)fbs.x, (u32)fbs.y);
     return 0;
 }
 
 LUA_FUNCTION(__neko_bind_idraw_depth_enabled) {
     bool enable = lua_toboolean(L, 1);
-    neko_idraw_depth_enabled(&CL_GAME_INTERFACE()->idraw, enable);
+    neko_idraw_depth_enabled(&ENGINE_INTERFACE()->idraw, enable);
     return 0;
 }
 
 LUA_FUNCTION(__neko_bind_idraw_face_cull_enabled) {
     bool enable = lua_toboolean(L, 1);
-    neko_idraw_face_cull_enabled(&CL_GAME_INTERFACE()->idraw, enable);
+    neko_idraw_face_cull_enabled(&ENGINE_INTERFACE()->idraw, enable);
     return 0;
 }
 
 LUA_FUNCTION(__neko_bind_idraw_texture) {
     neko_texture_t rt = NEKO_DEFAULT_VAL();
     neko_luabind_struct_to_member(neko_instance()->L, neko_texture_t, id, &rt, 1);
-    neko_idraw_texture(&CL_GAME_INTERFACE()->idraw, rt);
+    neko_idraw_texture(&ENGINE_INTERFACE()->idraw, rt);
     return 0;
 }
 
@@ -1730,7 +1730,7 @@ LUA_FUNCTION(__neko_bind_render_storage_buffer_create) {
 LUA_FUNCTION(__neko_bind_render_pipeline_bind) {
     neko_pipeline_t pipeline_handle = NEKO_DEFAULT_VAL();
     neko_luabind_struct_to_member(L, neko_pipeline_t, id, &pipeline_handle, 1);
-    neko_render_pipeline_bind(&CL_GAME_INTERFACE()->cb, pipeline_handle);
+    neko_render_pipeline_bind(&ENGINE_INTERFACE()->cb, pipeline_handle);
     return 0;
 }
 
@@ -1920,7 +1920,7 @@ LUA_FUNCTION(__neko_bind_render_apply_bindings) {
         lua_pop(L, 1);  // # -1
     }
 
-    neko_render_apply_bindings(&CL_GAME_INTERFACE()->cb, &binds);
+    neko_render_apply_bindings(&ENGINE_INTERFACE()->cb, &binds);
 
     if (u_desc) free(u_desc);
     if (ib_desc) free(ib_desc);
@@ -1957,7 +1957,7 @@ LUA_FUNCTION(__neko_bind_render_dispatch_compute) {
     f32 x_groups = lua_tonumber(L, 1);
     f32 y_groups = lua_tonumber(L, 2);
     f32 z_groups = lua_tonumber(L, 3);
-    neko_render_dispatch_compute(&CL_GAME_INTERFACE()->cb, x_groups, y_groups, z_groups);
+    neko_render_dispatch_compute(&ENGINE_INTERFACE()->cb, x_groups, y_groups, z_groups);
     return 0;
 }
 
@@ -2069,12 +2069,12 @@ LUA_FUNCTION(__neko_bind_render_renderpass_destroy) {
 LUA_FUNCTION(__neko_bind_render_renderpass_begin) {
     neko_renderpass_t rp = NEKO_DEFAULT_VAL();
     neko_luabind_struct_to_member(L, neko_renderpass_t, id, &rp, 1);
-    neko_render_renderpass_begin(&CL_GAME_INTERFACE()->cb, rp);
+    neko_render_renderpass_begin(&ENGINE_INTERFACE()->cb, rp);
     return 0;
 }
 
 LUA_FUNCTION(__neko_bind_render_renderpass_end) {
-    neko_render_renderpass_end(&CL_GAME_INTERFACE()->cb);
+    neko_render_renderpass_end(&ENGINE_INTERFACE()->cb);
     return 0;
 }
 
@@ -2111,7 +2111,7 @@ LUA_FUNCTION(__neko_bind_render_draw) {
         lua_pop(L, 1);
     }
 
-    neko_render_draw(&CL_GAME_INTERFACE()->cb, &draw_desc);
+    neko_render_draw(&ENGINE_INTERFACE()->cb, &draw_desc);
     return 0;
 }
 
@@ -2120,7 +2120,7 @@ LUA_FUNCTION(__neko_bind_render_set_viewport) {
     f32 y = lua_tonumber(L, 2);
     f32 w = lua_tonumber(L, 3);
     f32 h = lua_tonumber(L, 4);
-    neko_render_set_viewport(&CL_GAME_INTERFACE()->cb, x, y, w, h);
+    neko_render_set_viewport(&ENGINE_INTERFACE()->cb, x, y, w, h);
     return 0;
 }
 
@@ -2130,7 +2130,7 @@ LUA_FUNCTION(__neko_bind_render_clear) {
     f32 b = lua_tonumber(L, 3);
     f32 a = lua_tonumber(L, 4);
     neko_render_clear_action_t clear = {.color = {r, g, b, a}};
-    neko_render_clear(&CL_GAME_INTERFACE()->cb, clear);
+    neko_render_clear(&ENGINE_INTERFACE()->cb, clear);
     return 0;
 }
 
@@ -2425,7 +2425,7 @@ int __neko_ls(lua_State* L) {
     return 1;
 }
 
-bool __neko_dolua(const_str file) { return neko::neko_lua_dofile(neko_instance()->L, game_assets(file)); }
+bool __neko_dolua(const_str file) { return neko::neko_lua_dofile(neko_instance()->L, file); }
 
 int neko_lua_events_init(lua_State* L);
 
@@ -2732,10 +2732,10 @@ NEKO_INLINE void neko_register_common(lua_State* L) {
     neko::lua_bind::bind("neko_hash_str", +[](const_str str) { return neko_hash_str(str); });
     neko::lua_bind::bind("neko_hash_str64", +[](const_str str) { return neko_hash_str64(str); });
     neko::lua_bind::bind("__neko_quit", +[](int op) { return neko_quit(); });
-    neko::lua_bind::bind("neko_platform_elapsed_time", +[]() { return neko_platform_elapsed_time(); });
+    neko::lua_bind::bind("neko_pf_elapsed_time", +[]() { return neko_pf_elapsed_time(); });
 
-    lua_pushstring(L, game_assets("gamedir").c_str());
-    lua_setglobal(L, "neko_game_data_path");
+    // lua_pushstring(L, game_assets("gamedir").c_str());
+    // lua_setglobal(L, "neko_game_data_path");
 
     // const neko_luaL_reg luaReg[] = {{"hooks", neko_lua_events_init}, {NULL, NULL}};
     // registerGlobals(L, luaReg);
@@ -2842,7 +2842,7 @@ static int neko_lua_profiler_start(lua_State* L) {
     neko_lua_profiler_count* p = (neko_lua_profiler_count*)lua_newuserdata(L, sizeof(neko_lua_profiler_count) + c * sizeof(neko_lua_profiler_data));
     p->total = c;
     p->index = 0;
-    // p->t = neko_platform_elapsed_time();
+    // p->t = neko_pf_elapsed_time();
     lua_pushvalue(L, -1);
     lua_rawsetp(L, LUA_REGISTRYINDEX, cL);
     lua_sethook(cL, neko_lua_profiler_hook, LUA_MASKCOUNT, ival);
@@ -2887,7 +2887,7 @@ static int neko_lua_profiler_info(lua_State* L) {
         lua_pop(L, 2);
     }
     lua_pushinteger(L, p->index);
-    // lua_pushinteger(L, neko_platform_elapsed_time() - p->t);
+    // lua_pushinteger(L, neko_pf_elapsed_time() - p->t);
     return 2;
 }
 
@@ -2897,6 +2897,7 @@ LUA_FUNCTION(__neko_bind_ecs_f) {
 }
 
 extern "C" void createStructTables(lua_State* L);
+extern "C" int __neko_boot_create_world(lua_State* L);
 
 static int LUASTRUCT_test_vec3(lua_State* L) {
     // GET_SELF;
@@ -2921,6 +2922,7 @@ static int open_embed_core(lua_State* L) {
     luaL_Reg reg[] = {
 
             {"ecs_f", __neko_bind_ecs_f},
+            {"boot_f", __neko_boot_create_world},
 
             {"tiled_create", __neko_bind_tiled_create},
             {"tiled_render", __neko_bind_tiled_render},

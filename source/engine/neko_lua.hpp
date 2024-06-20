@@ -45,20 +45,9 @@ struct userdata_for_object_t {
     T* obj;
 };
 
-NEKO_STATIC_INLINE size_t lua_mem_usage;
+size_t neko_lua_mem_usage();
 
-NEKO_INLINE size_t neko_lua_mem_usage() { return lua_mem_usage; }
-
-NEKO_STATIC_INLINE void* Allocf(void* ud, void* ptr, size_t osize, size_t nsize) {
-    if (!ptr) osize = 0;
-    if (!nsize) {
-        lua_mem_usage -= osize;
-        neko_safe_free(ptr);
-        return NULL;
-    }
-    lua_mem_usage += (nsize - osize);
-    return neko_safe_realloc(ptr, nsize);
-}
+void* Allocf(void* ud, void* ptr, size_t osize, size_t nsize);
 
 class neko_lua_tool_t {
 public:

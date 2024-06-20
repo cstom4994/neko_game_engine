@@ -2487,7 +2487,7 @@ NEKO_API_DECL neko_ui_rect_t neko_ui_layout_anchor(const neko_ui_rect_t* parent,
 #define neko_ui_labelf(STR, ...)                         \
     do {                                                 \
         neko_snprintfc(BUFFER, 256, STR, ##__VA_ARGS__); \
-        neko_ui_label(&CL_GAME_INTERFACE()->ui, BUFFER); \
+        neko_ui_label(&ENGINE_INTERFACE()->ui, BUFFER);  \
     } while (0)
 
 //=== Elements (Extended) ===//

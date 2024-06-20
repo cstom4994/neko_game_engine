@@ -214,7 +214,7 @@ LUABIND_MODULE() {
                 auto newdb = [](lua_State *L, std::string source) {
                     lua_State *Ldb = luaL_newstate();
                     neko::string contents = {};
-                    bool ok = vfs_read_entire_file("luacode", &contents, source.c_str());
+                    bool ok = vfs_read_entire_file(NEKO_PACK_LUACODE, &contents, source.c_str());
                     neko_defer(neko_safe_free(contents.data));
                     if (luaL_dostring(Ldb, contents.data)) {
                         // 引发错误

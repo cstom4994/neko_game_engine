@@ -116,7 +116,7 @@ NEKO_API_DECL void neko_image_free(neko_image_t img) { stbi_image_free(img.pix);
 
 NEKO_API_DECL bool neko_util_load_texture_data_from_file(const char *file_path, s32 *width, s32 *height, u32 *num_comps, void **data, b32 flip_vertically_on_load) {
     u64 len = 0;
-    const_str file_data = neko_capi_vfs_read_file(NEKO_DEFAULT_PACK, file_path, &len);
+    const_str file_data = neko_capi_vfs_read_file(NEKO_PACK_GAMEDATA, file_path, &len);
     NEKO_ASSERT(file_data);
     bool ret = neko_util_load_texture_data_from_memory(file_data, len, width, height, num_comps, data, flip_vertically_on_load);
     if (!ret) {
@@ -187,7 +187,7 @@ NEKO_API_DECL bool neko_asset_texture_load_from_file(const_str path, void *out, 
 bool neko_asset_texture_load_from_file(const char* path, void* out, neko_render_texture_desc_t* desc, b32 flip_on_load, b32 keep_data)
 {
     size_t len = 0;
-    char* file_data = neko_platform_read_file_contents(path, "rb", &len);
+    char* file_data = neko_pf_read_file_contents(path, "rb", &len);
     NEKO_ASSERT(file_data);
     b32 ret = neko_asset_texture_load_from_memory(file_data, len, out, desc, flip_on_load, keep_data);
     neko_free(file_data);
@@ -230,7 +230,7 @@ bool neko_asset_texture_load_from_memory(const void *memory, size_t sz, void *ou
 
 bool neko_asset_ascii_font_load_from_file(const_str path, void *out, u32 point_size) {
     size_t len = 0;
-    const_str ttf = neko_capi_vfs_read_file(NEKO_DEFAULT_PACK, path, &len);
+    const_str ttf = neko_capi_vfs_read_file(NEKO_PACK_GAMEDATA, path, &len);
     if (!point_size) {
         NEKO_WARN("font: %s: point size not declared. setting to default 16.", neko_util_get_filename(path));
         point_size = 16;
@@ -352,7 +352,7 @@ bool neko_asset_mesh_load_from_file(const_str path, void *out, neko_asset_mesh_d
     // Cast mesh data to use
     neko_asset_mesh_t *mesh = (neko_asset_mesh_t *)out;
 
-    if (!neko_platform_file_exists(path)) {
+    if (!neko_pf_file_exists(path)) {
         neko_println("Warning:MeshLoadFromFile:File does not exist: %s", path);
         return false;
     }
@@ -363,7 +363,7 @@ bool neko_asset_mesh_load_from_file(const_str path, void *out, neko_asset_mesh_d
 
     // Get file extension from path
     neko_transient_buffer(file_ext, 32);
-    neko_platform_file_extension(file_ext, 32, path);
+    neko_pf_file_extension(file_ext, 32, path);
 
     // GLTF
     if (neko_string_compare_equal(file_ext, "gltf")) {
@@ -735,7 +735,7 @@ u32 neko_lz_bounds(u32 inlen, u32 flags) { return inlen + inlen / 255 + 16; }
 
 // #include "deps/lz4/lz4.h"
 
-NEKO_PRIVATE(void) destroy_pack_items(u64 item_count, pack_item *items) {
+NEKO_STATIC void destroy_pack_items(u64 item_count, pack_item *items) {
     NEKO_ASSERT(item_count == 0 || (item_count > 0 && items));
 
     for (u64 i = 0; i < item_count; i++) neko_free(items[i].path);
@@ -910,7 +910,7 @@ u64 neko_pack_item_count(neko_pack_t *pack_reader) {
     return pack_reader->item_count;
 }
 
-NEKO_PRIVATE(int) neko_compare_pack_items(const void *_a, const void *_b) {
+NEKO_STATIC int neko_compare_pack_items(const void *_a, const void *_b) {
     const pack_item *a = (pack_item *)_a;
     const pack_item *b = (pack_item *)_b;
 
@@ -1068,7 +1068,7 @@ void neko_pack_free_buffers(neko_pack_t *pack_reader) {
     pack_reader->zip_buffer = NULL;
 }
 
-NEKO_PRIVATE(void) neko_pack_remove_item(u64 item_count, pack_item *pack_items) {
+NEKO_STATIC void neko_pack_remove_item(u64 item_count, pack_item *pack_items) {
     NEKO_ASSERT(item_count == 0 || (item_count > 0 && pack_items));
 
     for (u64 i = 0; i < item_count; i++) remove(pack_items[i].path);
@@ -1342,7 +1342,7 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
     return true;
 }
 
-NEKO_PRIVATE(int) neko_pack_compare_item_paths(const void *_a, const void *_b) {
+NEKO_STATIC int neko_pack_compare_item_paths(const void *_a, const void *_b) {
     // 要保证a与b不为NULL
     char *a = *(char **)_a;
     char *b = *(char **)_b;
@@ -1766,7 +1766,7 @@ static neko_dyn_array(neko_xml_node_t) neko_xml_parse_block(const_str start, u32
 
 neko_xml_document_t *neko_xml_parse_file(const_str path) {
     u64 size;
-    const_str source = neko_capi_vfs_read_file(NEKO_DEFAULT_PACK, path, &size);
+    const_str source = neko_capi_vfs_read_file(NEKO_PACK_GAMEDATA, path, &size);
     if (!source) {
         neko_xml_emit_error("Failed to load xml file!");
         return NULL;
@@ -3149,7 +3149,7 @@ NEKO_STATIC void s_skip(ase_state_t *ase, int num_bytes) {
 ase_t *neko_aseprite_load_from_file(const char *path) {
     s_error_file = path;
     u64 sz;
-    void *file = neko_capi_vfs_read_file(NEKO_DEFAULT_PACK, path, &sz);
+    const_str file = neko_capi_vfs_read_file(NEKO_PACK_GAMEDATA, path, &sz);
     if (!file) {
         NEKO_WARN("unable to find map file %s", s_error_file ? s_error_file : "MEMORY");
         return NULL;

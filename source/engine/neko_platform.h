@@ -51,7 +51,7 @@ typedef u64 tick_t;
 
 typedef double deltatime_t;
 
-typedef struct neko_platform_time_t {
+typedef struct neko_pf_time_t {
     f32 max_fps;
     f32 elapsed;
     f32 previous;
@@ -59,7 +59,7 @@ typedef struct neko_platform_time_t {
     f32 render;
     f32 delta;
     f32 frame;
-} neko_platform_time_t;
+} neko_pf_time_t;
 
 /*============================================================
 // Platform UUID
@@ -84,7 +84,7 @@ typedef struct neko_uuid_t {
 
 // Should have an internal resource cache of window handles (controlled by the platform api)
 
-typedef struct neko_platform_running_desc_t {
+typedef struct neko_pf_running_desc_t {
     const_str title;
     u32 width;
     u32 height;
@@ -96,15 +96,15 @@ typedef struct neko_platform_running_desc_t {
     b32 hdpi;
     bool center;
     bool running_background;
-} neko_platform_running_desc_t;
+} neko_pf_running_desc_t;
 
-typedef struct neko_platform_window_t {
+typedef struct neko_pf_window_t {
     void *hndl;
     neko_vec2 framebuffer_size;
     neko_vec2 window_size;
     neko_vec2 window_position;
     b32 focus;
-} neko_platform_window_t;
+} neko_pf_window_t;
 
 typedef struct neko_memory_info_t {
     u64 virtual_memory_used;
@@ -115,7 +115,7 @@ typedef struct neko_memory_info_t {
     u64 gpu_total_memory;  // kb
 } neko_memory_info_t;
 
-typedef enum neko_platform_cursor {
+typedef enum neko_pf_cursor {
     NEKO_PF_CURSOR_ARROW,
     NEKO_PF_CURSOR_IBEAM,
     NEKO_PF_CURSOR_SIZE_NW_SE,
@@ -126,9 +126,9 @@ typedef enum neko_platform_cursor {
     NEKO_PF_CURSOR_HAND,
     NEKO_PF_CURSOR_NO,
     NEKO_PF_CURSOR_COUNT
-} neko_platform_cursor;
+} neko_pf_cursor;
 
-typedef enum neko_platform_keycode {
+typedef enum neko_pf_keycode {
     NEKO_KEYCODE_INVALID,
     NEKO_KEYCODE_SPACE,
     NEKO_KEYCODE_APOSTROPHE, /* ' */
@@ -251,7 +251,7 @@ typedef enum neko_platform_keycode {
     NEKO_KEYCODE_RIGHT_SUPER,
     NEKO_KEYCODE_MENU,
     NEKO_KEYCODE_COUNT
-} neko_platform_keycode;
+} neko_pf_keycode;
 
 #define NEKO_KEYCODE_LCTRL NEKO_KEYCODE_LEFT_CONTROL
 #define NEKO_KEYCODE_RCTRL NEKO_KEYCODE_RIGHT_CONTROL
@@ -260,9 +260,9 @@ typedef enum neko_platform_keycode {
 #define NEKO_KEYCODE_LALT NEKO_KEYCODE_LEFT_ALT
 #define NEKO_KEYCODE_RALT NEKO_KEYCODE_RIGHT_ALT
 
-typedef enum neko_platform_mouse_button_code { NEKO_MOUSE_LBUTTON, NEKO_MOUSE_RBUTTON, NEKO_MOUSE_MBUTTON, NEKO_MOUSE_BUTTON_CODE_COUNT } neko_platform_mouse_button_code;
+typedef enum neko_pf_mouse_button_code { NEKO_MOUSE_LBUTTON, NEKO_MOUSE_RBUTTON, NEKO_MOUSE_MBUTTON, NEKO_MOUSE_BUTTON_CODE_COUNT } neko_pf_mouse_button_code;
 
-typedef struct neko_platform_mouse_t {
+typedef struct neko_pf_mouse_t {
     b32 button_map[NEKO_MOUSE_BUTTON_CODE_COUNT];
     b32 prev_button_map[NEKO_MOUSE_BUTTON_CODE_COUNT];
     neko_vec2 position;
@@ -270,7 +270,7 @@ typedef struct neko_platform_mouse_t {
     neko_vec2 wheel;
     b32 moved_this_frame;
     b32 locked;
-} neko_platform_mouse_t;
+} neko_pf_mouse_t;
 
 enum {
     NEKO_PF_GAMEPAD_BUTTON_A = 0x00,
@@ -309,38 +309,38 @@ enum {
 
 #define NEKO_PF_GAMEPAD_MAX 16
 
-typedef struct neko_platform_gamepad_t {
+typedef struct neko_pf_gamepad_t {
     int16_t buttons[NEKO_PF_GAMEPAD_BUTTON_COUNT];
     f32 axes[NEKO_PF_JOYSTICK_AXIS_COUNT];
     int16_t present;
-} neko_platform_gamepad_t;
+} neko_pf_gamepad_t;
 
 #define NEKO_PF_MAX_TOUCH 5
 
-typedef struct neko_platform_touchpoint_t {
+typedef struct neko_pf_touchpoint_t {
     size_t id;
     neko_vec2 position;
     neko_vec2 delta;
     uint16_t changed;
     uint16_t pressed;
     uint16_t down;
-} neko_platform_touchpoint_t;
+} neko_pf_touchpoint_t;
 
-typedef struct neko_platform_touch_t {
-    neko_platform_touchpoint_t points[NEKO_PF_MAX_TOUCH];
+typedef struct neko_pf_touch_t {
+    neko_pf_touchpoint_t points[NEKO_PF_MAX_TOUCH];
     uint16_t size;  // Current number of touches active
-} neko_platform_touch_t;
+} neko_pf_touch_t;
 
-typedef struct neko_platform_input_t {
+typedef struct neko_pf_input_t {
     b32 key_map[NEKO_KEYCODE_COUNT];
     b32 prev_key_map[NEKO_KEYCODE_COUNT];
-    neko_platform_mouse_t mouse;
-    neko_platform_touch_t touch;
-    neko_platform_gamepad_t gamepads[NEKO_PF_GAMEPAD_MAX];
-} neko_platform_input_t;
+    neko_pf_mouse_t mouse;
+    neko_pf_touch_t touch;
+    neko_pf_gamepad_t gamepads[NEKO_PF_GAMEPAD_MAX];
+} neko_pf_input_t;
 
 // Enumeration of all platform types
-typedef enum neko_platform_type { NEKO_PF_TYPE_UNKNOWN = 0, NEKO_PF_TYPE_WINDOWS, NEKO_PF_TYPE_LINUX, NEKO_PF_TYPE_MAC, NEKO_PF_TYPE_WEB } neko_platform_type;
+typedef enum neko_pf_type { NEKO_PF_TYPE_UNKNOWN = 0, NEKO_PF_TYPE_WINDOWS, NEKO_PF_TYPE_LINUX, NEKO_PF_TYPE_MAC, NEKO_PF_TYPE_WEB } neko_pf_type;
 
 typedef enum neko_opengl_compatibility_flags {
     NEKO_OPENGL_COMPATIBILITY_FLAGS_LEGACY = 0,
@@ -350,26 +350,26 @@ typedef enum neko_opengl_compatibility_flags {
     NEKO_OPENGL_COMPATIBILITY_FLAGS_ES = 1 << 4,
 } neko_opengl_compatibility_flags;
 
-typedef enum neko_platform_event_type { NEKO_PF_EVENT_MOUSE, NEKO_PF_EVENT_KEY, NEKO_PF_EVENT_TEXT, NEKO_PF_EVENT_WINDOW, NEKO_PF_EVENT_TOUCH, NEKO_PF_EVENT_APP } neko_platform_event_type;
+typedef enum neko_pf_event_type { NEKO_PF_EVENT_MOUSE, NEKO_PF_EVENT_KEY, NEKO_PF_EVENT_TEXT, NEKO_PF_EVENT_WINDOW, NEKO_PF_EVENT_TOUCH, NEKO_PF_EVENT_APP } neko_pf_event_type;
 
-typedef enum neko_platform_key_modifier_type {
+typedef enum neko_pf_key_modifier_type {
     NEKO_PF_KEY_MODIFIER_NONE = 0x00,
     NEKO_PF_KEY_MODIFIER_SHIFT = 0x01,
     NEKO_PF_KEY_MODIFIER_CONTROL = 0x02,
     NEKO_PF_KEY_MODIFIER_ALT = 0x04
-} neko_platform_key_modifier_type;
+} neko_pf_key_modifier_type;
 
-typedef enum neko_platform_key_action_type { NEKO_PF_KEY_PRESSED, NEKO_PF_KEY_DOWN, NEKO_PF_KEY_RELEASED } neko_platform_key_action_type;
+typedef enum neko_pf_key_action_type { NEKO_PF_KEY_PRESSED, NEKO_PF_KEY_DOWN, NEKO_PF_KEY_RELEASED } neko_pf_key_action_type;
 
-typedef struct neko_platform_key_event_t {
+typedef struct neko_pf_key_event_t {
     s32 codepoint;
     s32 scancode;
-    neko_platform_keycode keycode;
-    neko_platform_key_action_type action;
-    neko_platform_key_modifier_type modifier;
-} neko_platform_key_event_t;
+    neko_pf_keycode keycode;
+    neko_pf_key_action_type action;
+    neko_pf_key_modifier_type modifier;
+} neko_pf_key_event_t;
 
-typedef enum neko_platform_mousebutton_action_type {
+typedef enum neko_pf_mousebutton_action_type {
     NEKO_PF_MOUSE_BUTTON_PRESSED,
     NEKO_PF_MOUSE_BUTTON_DOWN,
     NEKO_PF_MOUSE_BUTTON_RELEASED,
@@ -377,67 +377,67 @@ typedef enum neko_platform_mousebutton_action_type {
     NEKO_PF_MOUSE_ENTER,
     NEKO_PF_MOUSE_LEAVE,
     NEKO_PF_MOUSE_WHEEL
-} neko_platform_mousebutton_action_type;
+} neko_pf_mousebutton_action_type;
 
-typedef struct neko_platform_mouse_event_t {
+typedef struct neko_pf_mouse_event_t {
     s32 codepoint;
     union {
-        neko_platform_mouse_button_code button;
+        neko_pf_mouse_button_code button;
         neko_vec2 wheel;
         neko_vec2 move;
     };
-    neko_platform_mousebutton_action_type action;
-} neko_platform_mouse_event_t;
+    neko_pf_mousebutton_action_type action;
+} neko_pf_mouse_event_t;
 
-typedef enum neko_platform_window_action_type {
+typedef enum neko_pf_window_action_type {
     NEKO_PF_WINDOW_RESIZE,
     NEKO_PF_WINDOW_LOSE_FOCUS,
     NEKO_PF_WINDOW_GAIN_FOCUS,
     NEKO_PF_WINDOW_CREATE,
     NEKO_PF_WINDOW_DESTROY
-} neko_platform_window_action_type;
+} neko_pf_window_action_type;
 
-typedef struct neko_platform_window_event_t {
+typedef struct neko_pf_window_event_t {
     u32 hndl;
-    neko_platform_window_action_type action;
-} neko_platform_window_event_t;
+    neko_pf_window_action_type action;
+} neko_pf_window_event_t;
 
-typedef struct neko_platform_text_event_t {
+typedef struct neko_pf_text_event_t {
     u32 codepoint;
-} neko_platform_text_event_t;
+} neko_pf_text_event_t;
 
-typedef enum neko_platform_touch_action_type { NEKO_PF_TOUCH_DOWN, NEKO_PF_TOUCH_UP, NEKO_PF_TOUCH_MOVE, NEKO_PF_TOUCH_CANCEL } neko_platform_touch_action_type;
+typedef enum neko_pf_touch_action_type { NEKO_PF_TOUCH_DOWN, NEKO_PF_TOUCH_UP, NEKO_PF_TOUCH_MOVE, NEKO_PF_TOUCH_CANCEL } neko_pf_touch_action_type;
 
-typedef struct neko_platform_point_event_data_t {
+typedef struct neko_pf_point_event_data_t {
     uintptr_t id;
     neko_vec2 position;
     uint16_t changed;
-} neko_platform_point_event_data_t;
+} neko_pf_point_event_data_t;
 
-typedef struct neko_platform_touch_event_t {
-    neko_platform_touch_action_type action;
-    neko_platform_point_event_data_t point;
-} neko_platform_touch_event_t;
+typedef struct neko_pf_touch_event_t {
+    neko_pf_touch_action_type action;
+    neko_pf_point_event_data_t point;
+} neko_pf_touch_event_t;
 
-typedef enum neko_platform_app_action_type { NEKO_PF_APP_START, NEKO_PF_APP_PAUSE, NEKO_PF_APP_RESUME, NEKO_PF_APP_STOP } neko_platform_app_action_type;
+typedef enum neko_pf_app_action_type { NEKO_PF_APP_START, NEKO_PF_APP_PAUSE, NEKO_PF_APP_RESUME, NEKO_PF_APP_STOP } neko_pf_app_action_type;
 
-typedef struct neko_platform_app_event_t {
-    neko_platform_app_action_type action;
-} neko_platform_app_event_t;
+typedef struct neko_pf_app_event_t {
+    neko_pf_app_action_type action;
+} neko_pf_app_event_t;
 
 // Platform events
-typedef struct neko_platform_event_t {
-    neko_platform_event_type type;
+typedef struct neko_pf_event_t {
+    neko_pf_event_type type;
     union {
-        neko_platform_key_event_t key;
-        neko_platform_mouse_event_t mouse;
-        neko_platform_window_event_t window;
-        neko_platform_touch_event_t touch;
-        neko_platform_app_event_t app;
-        neko_platform_text_event_t text;
+        neko_pf_key_event_t key;
+        neko_pf_mouse_event_t mouse;
+        neko_pf_window_event_t window;
+        neko_pf_touch_event_t touch;
+        neko_pf_app_event_t app;
+        neko_pf_text_event_t text;
     };
     u32 idx;
-} neko_platform_event_t;
+} neko_pf_event_t;
 
 // Necessary function pointer typedefs
 typedef void (*neko_dropped_files_callback_t)(void *, s32 count, const char **file_paths);
@@ -449,20 +449,20 @@ typedef void (*neko_framebuffer_resize_callback_t)(void *, s32 width, s32 height
 // Platform Interface
 ===============================================================================================*/
 
-struct neko_platform_interface_s;
+struct neko_pf_interface_s;
 
-typedef struct neko_platform_t {
+typedef struct neko_pf_t {
     // Time
-    neko_platform_time_t time;
+    neko_pf_time_t time;
 
     // Input
-    neko_platform_input_t input;
+    neko_pf_input_t input;
 
     // Window data and handles
-    neko_slot_array(neko_platform_window_t) windows;
+    neko_slot_array(neko_pf_window_t) windows;
 
     // Events that user can poll
-    neko_dyn_array(neko_platform_event_t) events;
+    neko_dyn_array(neko_pf_event_t) events;
 
     // Cursors
     void *cursors[NEKO_PF_CURSOR_COUNT];
@@ -471,9 +471,9 @@ typedef struct neko_platform_t {
     void *user_data;
 
     // Optional api for stable access across .dll boundaries
-    struct neko_platform_interface_s *api;
+    struct neko_pf_interface_s *api;
 
-} neko_platform_t;
+} neko_pf_t;
 
 /*===============================================================================================
 // Platform API
@@ -482,102 +482,102 @@ typedef struct neko_platform_t {
 /* == Platform Default API == */
 
 // Platform Create / Destroy
-NEKO_API_DECL neko_platform_t *neko_platform_create();
-NEKO_API_DECL void neko_platform_destroy(neko_platform_t *platform);
+NEKO_API_DECL neko_pf_t *neko_pf_create();
+NEKO_API_DECL void neko_pf_destroy(neko_pf_t *platform);
 
 // Platform Init / Update / Shutdown
-NEKO_API_DECL void neko_platform_update(neko_platform_t *platform);  // Update platform layer
+NEKO_API_DECL void neko_pf_update(neko_pf_t *platform);  // Update platform layer
 
 // Platform Util
-NEKO_API_DECL const neko_platform_time_t *neko_platform_time();
-NEKO_API_DECL f32 neko_platform_delta_time();
-NEKO_API_DECL f32 neko_platform_frame_time();
+NEKO_API_DECL const neko_pf_time_t *neko_pf_time();
+NEKO_API_DECL f32 neko_pf_delta_time();
+NEKO_API_DECL f32 neko_pf_frame_time();
 
 // Platform UUID
-NEKO_API_DECL neko_uuid_t neko_platform_uuid_generate();
-NEKO_API_DECL void neko_platform_uuid_to_string(char *temp_buffer, const neko_uuid_t *uuid);  // Expects a temp buffer with at least 32 bytes
-NEKO_API_DECL u32 neko_platform_uuid_hash(const neko_uuid_t *uuid);
+NEKO_API_DECL neko_uuid_t neko_pf_uuid_generate();
+NEKO_API_DECL void neko_pf_uuid_to_string(char *temp_buffer, const neko_uuid_t *uuid);  // Expects a temp buffer with at least 32 bytes
+NEKO_API_DECL u32 neko_pf_uuid_hash(const neko_uuid_t *uuid);
 
 // Platform Input
-NEKO_API_DECL neko_platform_input_t *neko_platform_input();
-NEKO_API_DECL void neko_platform_update_input(neko_platform_input_t *input);
-NEKO_API_DECL void neko_platform_press_key(neko_platform_keycode code);
-NEKO_API_DECL void neko_platform_release_key(neko_platform_keycode code);
-NEKO_API_DECL bool neko_platform_was_key_down(neko_platform_keycode code);
-NEKO_API_DECL void neko_platform_press_mouse_button(neko_platform_mouse_button_code code);
-NEKO_API_DECL void neko_platform_release_mouse_button(neko_platform_mouse_button_code code);
-NEKO_API_DECL bool neko_platform_was_mouse_down(neko_platform_mouse_button_code code);
-NEKO_API_DECL void neko_platform_press_touch(u32 idx);
-NEKO_API_DECL void neko_platform_release_touch(u32 idx);
-NEKO_API_DECL bool neko_platform_was_touch_down(u32 idx);
+NEKO_API_DECL neko_pf_input_t *neko_pf_input();
+NEKO_API_DECL void neko_pf_update_input(neko_pf_input_t *input);
+NEKO_API_DECL void neko_pf_press_key(neko_pf_keycode code);
+NEKO_API_DECL void neko_pf_release_key(neko_pf_keycode code);
+NEKO_API_DECL bool neko_pf_was_key_down(neko_pf_keycode code);
+NEKO_API_DECL void neko_pf_press_mouse_button(neko_pf_mouse_button_code code);
+NEKO_API_DECL void neko_pf_release_mouse_button(neko_pf_mouse_button_code code);
+NEKO_API_DECL bool neko_pf_was_mouse_down(neko_pf_mouse_button_code code);
+NEKO_API_DECL void neko_pf_press_touch(u32 idx);
+NEKO_API_DECL void neko_pf_release_touch(u32 idx);
+NEKO_API_DECL bool neko_pf_was_touch_down(u32 idx);
 
-NEKO_API_DECL bool neko_platform_key_pressed(neko_platform_keycode code);
-NEKO_API_DECL bool neko_platform_key_down(neko_platform_keycode code);
-NEKO_API_DECL bool neko_platform_key_released(neko_platform_keycode code);
-NEKO_API_DECL bool neko_platform_touch_pressed(u32 idx);
-NEKO_API_DECL bool neko_platform_touch_down(u32 idx);
-NEKO_API_DECL bool neko_platform_touch_released(u32 idx);
-NEKO_API_DECL bool neko_platform_mouse_pressed(neko_platform_mouse_button_code code);
-NEKO_API_DECL bool neko_platform_mouse_down(neko_platform_mouse_button_code code);
-NEKO_API_DECL bool neko_platform_mouse_released(neko_platform_mouse_button_code code);
-NEKO_API_DECL neko_vec2 neko_platform_mouse_deltav();
-NEKO_API_DECL void neko_platform_mouse_delta(f32 *x, f32 *y);
-NEKO_API_DECL neko_vec2 neko_platform_mouse_positionv();
-NEKO_API_DECL void neko_platform_mouse_position(s32 *x, s32 *y);
-NEKO_API_DECL void neko_platform_mouse_wheel(f32 *x, f32 *y);
-NEKO_API_DECL neko_vec2 neko_platform_mouse_wheelv();
-NEKO_API_DECL bool neko_platform_mouse_moved();
-NEKO_API_DECL bool neko_platform_mouse_locked();
-NEKO_API_DECL neko_vec2 neko_platform_touch_deltav(u32 idx);
-NEKO_API_DECL void neko_platform_touch_delta(u32 idx, f32 *x, f32 *y);
-NEKO_API_DECL neko_vec2 neko_platform_touch_positionv(u32 idx);
-NEKO_API_DECL void neko_platform_touch_position(u32 idx, f32 *x, f32 *y);
+NEKO_API_DECL bool neko_pf_key_pressed(neko_pf_keycode code);
+NEKO_API_DECL bool neko_pf_key_down(neko_pf_keycode code);
+NEKO_API_DECL bool neko_pf_key_released(neko_pf_keycode code);
+NEKO_API_DECL bool neko_pf_touch_pressed(u32 idx);
+NEKO_API_DECL bool neko_pf_touch_down(u32 idx);
+NEKO_API_DECL bool neko_pf_touch_released(u32 idx);
+NEKO_API_DECL bool neko_pf_mouse_pressed(neko_pf_mouse_button_code code);
+NEKO_API_DECL bool neko_pf_mouse_down(neko_pf_mouse_button_code code);
+NEKO_API_DECL bool neko_pf_mouse_released(neko_pf_mouse_button_code code);
+NEKO_API_DECL neko_vec2 neko_pf_mouse_deltav();
+NEKO_API_DECL void neko_pf_mouse_delta(f32 *x, f32 *y);
+NEKO_API_DECL neko_vec2 neko_pf_mouse_positionv();
+NEKO_API_DECL void neko_pf_mouse_position(s32 *x, s32 *y);
+NEKO_API_DECL void neko_pf_mouse_wheel(f32 *x, f32 *y);
+NEKO_API_DECL neko_vec2 neko_pf_mouse_wheelv();
+NEKO_API_DECL bool neko_pf_mouse_moved();
+NEKO_API_DECL bool neko_pf_mouse_locked();
+NEKO_API_DECL neko_vec2 neko_pf_touch_deltav(u32 idx);
+NEKO_API_DECL void neko_pf_touch_delta(u32 idx, f32 *x, f32 *y);
+NEKO_API_DECL neko_vec2 neko_pf_touch_positionv(u32 idx);
+NEKO_API_DECL void neko_pf_touch_position(u32 idx, f32 *x, f32 *y);
 
 // Platform Events
-NEKO_API_DECL bool neko_platform_poll_events(neko_platform_event_t *evt, b32 consume);
-NEKO_API_DECL void neko_platform_add_event(neko_platform_event_t *evt);
+NEKO_API_DECL bool neko_pf_poll_events(neko_pf_event_t *evt, b32 consume);
+NEKO_API_DECL void neko_pf_add_event(neko_pf_event_t *evt);
 
 // Platform Window
-NEKO_API_DECL u32 neko_platform_window_create(const neko_platform_running_desc_t *desc);
-NEKO_API_DECL u32 neko_platform_main_window();
+NEKO_API_DECL u32 neko_pf_window_create(const neko_pf_running_desc_t *desc);
+NEKO_API_DECL u32 neko_pf_main_window();
 
-typedef struct neko_platform_file_stats_t {
+typedef struct neko_pf_file_stats_t {
     u64 modified_time;
     u64 creation_time;
     u64 access_time;
-} neko_platform_file_stats_t;
+} neko_pf_file_stats_t;
 
 // Platform File IO (this all needs to be made available for impl rewrites)
-NEKO_API_DECL char *neko_platform_read_file_contents_default_impl(const char *file_path, const char *mode, size_t *sz);
-NEKO_API_DECL neko_result neko_platform_write_file_contents_default_impl(const char *file_path, const char *mode, void *data, size_t data_size);
-NEKO_API_DECL bool neko_platform_file_exists_default_impl(const char *file_path);
-NEKO_API_DECL bool neko_platform_dir_exists_default_impl(const char *dir_path);
-NEKO_API_DECL s32 neko_platform_mkdir_default_impl(const char *dir_path, s32 opt);
-NEKO_API_DECL s32 neko_platform_file_size_in_bytes_default_impl(const char *file_path);
-NEKO_API_DECL void neko_platform_file_extension_default_impl(char *buffer, size_t buffer_sz, const char *file_path);
-NEKO_API_DECL s32 neko_platform_file_delete_default_impl(const char *file_path);
-NEKO_API_DECL s32 neko_platform_file_copy_default_impl(const char *src_path, const char *dst_path);
-NEKO_API_DECL s32 neko_platform_file_compare_time(u64 time_a, u64 time_b);
-NEKO_API_DECL neko_platform_file_stats_t neko_platform_file_stats(const char *file_path);
-NEKO_API_DECL void *neko_platform_library_load_default_impl(const char *lib_path);
-NEKO_API_DECL void neko_platform_library_unload_default_impl(void *lib);
-NEKO_API_DECL void *neko_platform_library_proc_address_default_impl(void *lib, const char *func);
-NEKO_API_DECL int neko_platform_chdir_default_impl(const char *path);
+NEKO_API_DECL char *neko_pf_read_file_contents_default_impl(const char *file_path, const char *mode, size_t *sz);
+NEKO_API_DECL neko_result neko_pf_write_file_contents_default_impl(const char *file_path, const char *mode, void *data, size_t data_size);
+NEKO_API_DECL bool neko_pf_file_exists_default_impl(const char *file_path);
+NEKO_API_DECL bool neko_pf_dir_exists_default_impl(const char *dir_path);
+NEKO_API_DECL s32 neko_pf_mkdir_default_impl(const char *dir_path, s32 opt);
+NEKO_API_DECL s32 neko_pf_file_size_in_bytes_default_impl(const char *file_path);
+NEKO_API_DECL void neko_pf_file_extension_default_impl(char *buffer, size_t buffer_sz, const char *file_path);
+NEKO_API_DECL s32 neko_pf_file_delete_default_impl(const char *file_path);
+NEKO_API_DECL s32 neko_pf_file_copy_default_impl(const char *src_path, const char *dst_path);
+NEKO_API_DECL s32 neko_pf_file_compare_time(u64 time_a, u64 time_b);
+NEKO_API_DECL neko_pf_file_stats_t neko_pf_file_stats(const char *file_path);
+NEKO_API_DECL void *neko_pf_library_load_default_impl(const char *lib_path);
+NEKO_API_DECL void neko_pf_library_unload_default_impl(void *lib);
+NEKO_API_DECL void *neko_pf_library_proc_address_default_impl(void *lib, const char *func);
+NEKO_API_DECL int neko_pf_chdir_default_impl(const char *path);
 
 // Default file implementations
-#define neko_platform_read_file_contents neko_platform_read_file_contents_default_impl
-#define neko_platform_write_file_contents neko_platform_write_file_contents_default_impl
-#define neko_platform_file_exists neko_platform_file_exists_default_impl
-#define neko_platform_dir_exists neko_platform_dir_exists_default_impl
-#define neko_platform_mkdir neko_platform_mkdir_default_impl
-#define neko_platform_file_size_in_bytes neko_platform_file_size_in_bytes_default_impl
-#define neko_platform_file_extension neko_platform_file_extension_default_impl
-#define neko_platform_file_delete neko_platform_file_delete_default_impl
-#define neko_platform_file_copy neko_platform_file_copy_default_impl
-#define neko_platform_library_load neko_platform_library_load_default_impl
-#define neko_platform_library_unload neko_platform_library_unload_default_impl
-#define neko_platform_library_proc_address neko_platform_library_proc_address_default_impl
-#define neko_platform_chdir neko_platform_chdir_default_impl
+#define neko_pf_read_file_contents neko_pf_read_file_contents_default_impl
+#define neko_pf_write_file_contents neko_pf_write_file_contents_default_impl
+#define neko_pf_file_exists neko_pf_file_exists_default_impl
+#define neko_pf_dir_exists neko_pf_dir_exists_default_impl
+#define neko_pf_mkdir neko_pf_mkdir_default_impl
+#define neko_pf_file_size_in_bytes neko_pf_file_size_in_bytes_default_impl
+#define neko_pf_file_extension neko_pf_file_extension_default_impl
+#define neko_pf_file_delete neko_pf_file_delete_default_impl
+#define neko_pf_file_copy neko_pf_file_copy_default_impl
+#define neko_pf_library_load neko_pf_library_load_default_impl
+#define neko_pf_library_unload neko_pf_library_unload_default_impl
+#define neko_pf_library_proc_address neko_pf_library_proc_address_default_impl
+#define neko_pf_chdir neko_pf_chdir_default_impl
 
 #if defined(NEKO_PF_LINUX) || defined(NEKO_PF_APPLE)
 #define neko_fopen(filePath, mode) fopen(filePath, mode)
@@ -599,64 +599,64 @@ static inline FILE *neko_fopen(const char *filePath, const char *mode) {
 
 /* == Platform Dependent API == */
 
-NEKO_API_DECL void neko_platform_init(neko_platform_t *platform);      // Initialize platform layer
-NEKO_API_DECL void neko_platform_shutdown(neko_platform_t *platform);  // Shutdown platform layer
+NEKO_API_DECL void neko_pf_init(neko_pf_t *platform);      // Initialize platform layer
+NEKO_API_DECL void neko_pf_shutdown(neko_pf_t *platform);  // Shutdown platform layer
 
-NEKO_API_DECL void neko_platform_update_internal(neko_platform_t *platform);
+NEKO_API_DECL void neko_pf_update_internal(neko_pf_t *platform);
 
 // Platform Util
-NEKO_API_DECL double neko_platform_elapsed_time();  // Returns time in ms since initialization of platform
-NEKO_API_DECL void neko_platform_sleep(f32 ms);     // Sleeps platform for time in ms
+NEKO_API_DECL double neko_pf_elapsed_time();  // Returns time in ms since initialization of platform
+NEKO_API_DECL void neko_pf_sleep(f32 ms);     // Sleeps platform for time in ms
 
 // Platform Video
-NEKO_API_DECL void neko_platform_enable_vsync(s32 enabled);
+NEKO_API_DECL void neko_pf_enable_vsync(s32 enabled);
 
 // Platform Input
-NEKO_API_DECL void neko_platform_process_input(neko_platform_input_t *input);
-NEKO_API_DECL u32 neko_platform_key_to_codepoint(neko_platform_keycode code);
-NEKO_API_DECL neko_platform_keycode neko_platform_codepoint_to_key(u32 code);
-NEKO_API_DECL void neko_platform_mouse_set_position(u32 handle, f32 x, f32 y);
-NEKO_API_DECL void neko_platform_lock_mouse(u32 handle, b32 lock);
+NEKO_API_DECL void neko_pf_process_input(neko_pf_input_t *input);
+NEKO_API_DECL u32 neko_pf_key_to_codepoint(neko_pf_keycode code);
+NEKO_API_DECL neko_pf_keycode neko_pf_codepoint_to_key(u32 code);
+NEKO_API_DECL void neko_pf_mouse_set_position(u32 handle, f32 x, f32 y);
+NEKO_API_DECL void neko_pf_lock_mouse(u32 handle, b32 lock);
 
-NEKO_API_DECL neko_platform_window_t neko_platform_window_create_internal(const neko_platform_running_desc_t *desc);
-NEKO_API_DECL void neko_platform_window_swap_buffer(u32 handle);
-NEKO_API_DECL neko_vec2 neko_platform_window_sizev(u32 handle);
-NEKO_API_DECL void neko_platform_window_size(u32 handle, u32 *width, u32 *height);
-NEKO_API_DECL u32 neko_platform_window_width(u32 handle);
-NEKO_API_DECL u32 neko_platform_window_height(u32 handle);
-NEKO_API_DECL b32 neko_platform_window_fullscreen(u32 handle);
-NEKO_API_DECL neko_vec2 neko_platform_window_positionv(u32 handle);
-NEKO_API_DECL void neko_platform_window_position(u32 handle, u32 *x, u32 *y);
-NEKO_API_DECL void neko_platform_set_window_title(u32 handle, const_str title);
-NEKO_API_DECL void neko_platform_set_window_size(u32 handle, u32 width, u32 height);
-NEKO_API_DECL void neko_platform_set_window_sizev(u32 handle, neko_vec2 v);
-NEKO_API_DECL void neko_platform_set_window_fullscreen(u32 handle, b32 fullscreen);
-NEKO_API_DECL void neko_platform_set_window_position(u32 handle, u32 x, u32 y);
-NEKO_API_DECL void neko_platform_set_window_positionv(u32 handle, neko_vec2 v);
-NEKO_API_DECL void neko_platform_set_cursor(u32 handle, neko_platform_cursor cursor);
-NEKO_API_DECL void *neko_platform_raw_window_handle(u32 handle);
-NEKO_API_DECL neko_vec2 neko_platform_framebuffer_sizev(u32 handle);
-NEKO_API_DECL void neko_platform_framebuffer_size(u32 handle, u32 *w, u32 *h);
-NEKO_API_DECL u32 neko_platform_framebuffer_width(u32 handle);
-NEKO_API_DECL u32 neko_platform_framebuffer_height(u32 handle);
-NEKO_API_DECL neko_vec2 neko_platform_monitor_sizev(u32 id);
-NEKO_API_DECL void neko_platform_window_set_clipboard(u32 handle, const_str str);
-NEKO_API_DECL const_str neko_platform_window_get_clipboard(u32 handle);
-NEKO_API_DECL neko_vec2 neko_platform_get_window_dpi();
+NEKO_API_DECL neko_pf_window_t neko_pf_window_create_internal(const neko_pf_running_desc_t *desc);
+NEKO_API_DECL void neko_pf_window_swap_buffer(u32 handle);
+NEKO_API_DECL neko_vec2 neko_pf_window_sizev(u32 handle);
+NEKO_API_DECL void neko_pf_window_size(u32 handle, u32 *width, u32 *height);
+NEKO_API_DECL u32 neko_pf_window_width(u32 handle);
+NEKO_API_DECL u32 neko_pf_window_height(u32 handle);
+NEKO_API_DECL b32 neko_pf_window_fullscreen(u32 handle);
+NEKO_API_DECL neko_vec2 neko_pf_window_positionv(u32 handle);
+NEKO_API_DECL void neko_pf_window_position(u32 handle, u32 *x, u32 *y);
+NEKO_API_DECL void neko_pf_set_window_title(u32 handle, const_str title);
+NEKO_API_DECL void neko_pf_set_window_size(u32 handle, u32 width, u32 height);
+NEKO_API_DECL void neko_pf_set_window_sizev(u32 handle, neko_vec2 v);
+NEKO_API_DECL void neko_pf_set_window_fullscreen(u32 handle, b32 fullscreen);
+NEKO_API_DECL void neko_pf_set_window_position(u32 handle, u32 x, u32 y);
+NEKO_API_DECL void neko_pf_set_window_positionv(u32 handle, neko_vec2 v);
+NEKO_API_DECL void neko_pf_set_cursor(u32 handle, neko_pf_cursor cursor);
+NEKO_API_DECL void *neko_pf_raw_window_handle(u32 handle);
+NEKO_API_DECL neko_vec2 neko_pf_framebuffer_sizev(u32 handle);
+NEKO_API_DECL void neko_pf_framebuffer_size(u32 handle, u32 *w, u32 *h);
+NEKO_API_DECL u32 neko_pf_framebuffer_width(u32 handle);
+NEKO_API_DECL u32 neko_pf_framebuffer_height(u32 handle);
+NEKO_API_DECL neko_vec2 neko_pf_monitor_sizev(u32 id);
+NEKO_API_DECL void neko_pf_window_set_clipboard(u32 handle, const_str str);
+NEKO_API_DECL const_str neko_pf_window_get_clipboard(u32 handle);
+NEKO_API_DECL neko_vec2 neko_pf_get_window_dpi();
 
 // Platform callbacks
-NEKO_API_DECL void neko_platform_set_framebuffer_resize_callback(u32 handle, neko_framebuffer_resize_callback_t cb);
-NEKO_API_DECL void neko_platform_set_dropped_files_callback(u32 handle, neko_dropped_files_callback_t cb);
-NEKO_API_DECL void neko_platform_set_window_close_callback(u32 handle, neko_window_close_callback_t cb);
-NEKO_API_DECL void neko_platform_set_character_callback(u32 handle, neko_character_callback_t cb);
+NEKO_API_DECL void neko_pf_set_framebuffer_resize_callback(u32 handle, neko_framebuffer_resize_callback_t cb);
+NEKO_API_DECL void neko_pf_set_dropped_files_callback(u32 handle, neko_dropped_files_callback_t cb);
+NEKO_API_DECL void neko_pf_set_window_close_callback(u32 handle, neko_window_close_callback_t cb);
+NEKO_API_DECL void neko_pf_set_character_callback(u32 handle, neko_character_callback_t cb);
 
-NEKO_API_DECL void *neko_platform_hwnd();
-NEKO_API_DECL neko_memory_info_t neko_platform_memory_info();
-NEKO_API_DECL void neko_platform_msgbox(const_str msg);
+NEKO_API_DECL void *neko_pf_hwnd();
+NEKO_API_DECL neko_memory_info_t neko_pf_memory_info();
+NEKO_API_DECL void neko_pf_msgbox(const_str msg);
 
 // Platform Internal
-NEKO_API_DECL void neko_platform_symbol_handler_init();
-NEKO_API_DECL const_str neko_platform_stacktrace();
+NEKO_API_DECL void neko_pf_symbol_handler_init();
+NEKO_API_DECL const_str neko_pf_stacktrace();
 
 /*============================================================
 // Platform Native

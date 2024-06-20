@@ -15,8 +15,6 @@ add_rules("mode.debug", "mode.release")
 
 add_includedirs("source/")
 
-add_includedirs("source/deps/glad/include/")
-
 local base_libs = {"glfw", "libffi", "lua", "imgui", "miniz", "stb"}
 
 if is_os("windows") or is_os("macosx") then
@@ -26,7 +24,7 @@ if is_os("windows") or is_os("macosx") then
             wchar32 = true
         }
     })
-    add_requires("miniaudio", "flecs", "box2d", "enet")
+    add_requires("miniaudio", "box2d", "enet")
 else
     -- add_requires(base_libs)
 end
@@ -83,8 +81,6 @@ do
     add_files("source/engine/**.c")
     add_files("source/engine/**.cpp")
     add_headerfiles("source/engine/**.h", "source/engine/**.hpp")
-    add_files("source/modules/**.c", "source/modules/**.cpp")
-    add_headerfiles("source/modules/**.h", "source/modules/**.hpp")
 
     add_packages(base_libs)
     add_packages("miniaudio", "box2d", "enet")
@@ -159,4 +155,16 @@ xpack("gamedata")
 do
     set_formats("zip")
     add_installfiles("(gamedir/**)")
+    before_package(function(package)
+        local outputfile = package:outputfile()
+        -- if os.exists(outputfile) then
+        --     os.rm(outputfile)
+        -- end
+    end)
+    after_package(function(package)
+        local outputfile = package:outputfile()
+        if os.exists(outputfile) then
+            os.mv(outputfile, "./gamedata.zip")
+        end
+    end)
 end

@@ -331,7 +331,7 @@ struct DirectoryFileSystem : IFileSystem {
         string path = to_cstr(filepath);
         neko_defer(neko_safe_free(path.data));
 
-        s32 res = neko_platform_chdir(path.data);
+        s32 res = neko_pf_chdir(path.data);
         return res == 0;
     }
 
@@ -621,7 +621,7 @@ mount_result vfs_mount(const_str fsname, const_str filepath) {
 #endif
 
     if (filepath != nullptr && !res.ok) {
-        NEKO_ERROR("%s", tmp_fmt("failed to load: %s", filepath));
+        NEKO_ERROR("%s", tmp_fmt("failed to load: %s", filepath).data);
     }
 
     return res;
@@ -690,7 +690,7 @@ NEKO_API_DECL u64 neko_capi_vfs_ftell(vfs_file *vf) { return vf->offset; }
 
 NEKO_API_DECL vfs_file neko_capi_vfs_fopen(const_str path) {
     vfs_file vf{};
-    vf.data = neko_capi_vfs_read_file(NEKO_DEFAULT_PACK, path, &vf.len);
+    vf.data = neko_capi_vfs_read_file(NEKO_PACK_GAMEDATA, path, &vf.len);
     return vf;
 }
 

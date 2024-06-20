@@ -17,6 +17,8 @@ cmake-*/
 *.exe
 *.exp
 
+.*
+
 gamedir/
 
 *.dylib

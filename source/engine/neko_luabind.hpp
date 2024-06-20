@@ -164,9 +164,11 @@ template <typename T>
 constexpr T* udata_new(lua_State* L, int nupvalue) {
     if constexpr (std::alignment_of_v<T> > lua_maxalign) {
         void* storage = lua_newuserdatauv(L, sizeof(T) + std::alignment_of_v<T>, nupvalue);
+        std::memset(storage, 0, sizeof(T));
         return udata_align<T>(storage);
     } else {
         void* storage = lua_newuserdatauv(L, sizeof(T), nupvalue);
+        std::memset(storage, 0, sizeof(T));std::memset(storage, 0, sizeof(T));
         return udata_align<T>(storage);
     }
 }
@@ -180,6 +182,11 @@ T checklightud(lua_State* L, int arg) {
 template <typename T>
 T& toudata(lua_State* L, int arg) {
     return *udata_align<T>(lua_touserdata(L, arg));
+}
+
+template <typename T>
+T* toudata_ptr(lua_State* L, int arg) {
+    return udata_align<T>(lua_touserdata(L, arg));
 }
 
 template <typename T>
@@ -233,7 +240,7 @@ void checktable_refl(lua_State* L, const_str tname, T&& v) {
         NEKO_ERROR("[exception] no %s table", tname);
     }
     if (lua_istable(L, -1)) {
-        // neko::static_refl::neko_type_info<neko_platform_running_desc_t>::ForEachVarOf(t, [](auto field, auto &&value) {
+        // neko::static_refl::neko_type_info<neko_pf_running_desc_t>::ForEachVarOf(t, [](auto field, auto &&value) {
         //     static_assert(std::is_lvalue_reference_v<decltype(value)>);
         //     if (lua_getfield(L, -1, std::string(field.name).c_str()) != LUA_TNIL) value = neko_lua_to<std::remove_reference_t<decltype(value)>>(L, -1);
         //     lua_pop(L, 1);

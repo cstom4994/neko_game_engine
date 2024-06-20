@@ -709,7 +709,7 @@ NEKO_API_DECL neko_ui_animation_t* neko_ui_get_animation(neko_ui_context_t* ctx,
 NEKO_API_DECL void neko_ui_animation_update(neko_ui_context_t* ctx, neko_ui_animation_t* anim) {
     if (ctx->frame == anim->frame) return;
 
-    const s16 dt = (s16)(neko_platform_delta_time() * 1000.f);
+    const s16 dt = (s16)(neko_pf_delta_time() * 1000.f);
 
     if (anim->playing) {
         // Forward
@@ -1770,7 +1770,7 @@ static neko_vec2 neko_ui_text_dimensions(neko_asset_ascii_font_t* font, const ch
 
 NEKO_API_DECL void neko_ui_dock_ex(neko_ui_context_t* ctx, const char* dst, const char* src, s32 split_type, float ratio) {
     neko_ui_hints_t hints = NEKO_DEFAULT_VAL();
-    hints.framebuffer_size = neko_platform_framebuffer_sizev(ctx->window_hndl);
+    hints.framebuffer_size = neko_pf_framebuffer_sizev(ctx->window_hndl);
     hints.viewport = neko_ui_rect(0.f, 0.f, 0.f, 0.f);
     u32 f = ctx->frame;
     if (!f) neko_ui_begin(ctx, &hints);
@@ -2682,7 +2682,7 @@ static void neko_ui_get_split_lowest_zindex(neko_ui_context_t* ctx, neko_ui_spli
 
 NEKO_API_DECL void neko_ui_begin(neko_ui_context_t* ctx, const neko_ui_hints_t* hints) {
     neko_ui_hints_t default_hints = NEKO_DEFAULT_VAL();
-    default_hints.framebuffer_size = neko_platform_framebuffer_sizev(ctx->window_hndl);
+    default_hints.framebuffer_size = neko_pf_framebuffer_sizev(ctx->window_hndl);
     default_hints.viewport = neko_ui_rect(0.f, 0.f, default_hints.framebuffer_size.x, default_hints.framebuffer_size.y);
     neko_ui_hints_t hint = hints ? *hints : default_hints;
 
@@ -2695,7 +2695,7 @@ NEKO_API_DECL void neko_ui_begin(neko_ui_context_t* ctx, const neko_ui_hints_t* 
     }
 
     // Capture event information
-    neko_vec2 mouse_pos = neko_platform_mouse_positionv();
+    neko_vec2 mouse_pos = neko_pf_mouse_positionv();
 
     // Check for scale and bias
     if (hint.flags & NEKO_UI_HINT_FLAG_NO_SCALE_BIAS_MOUSE) {
@@ -2713,8 +2713,8 @@ NEKO_API_DECL void neko_ui_begin(neko_ui_context_t* ctx, const neko_ui_hints_t* 
         mouse_pos = neko_v2(xv, yv);
     }
 
-    neko_platform_event_t evt = NEKO_DEFAULT_VAL();
-    while (neko_platform_poll_events(&evt, false)) {
+    neko_pf_event_t evt = NEKO_DEFAULT_VAL();
+    while (neko_pf_poll_events(&evt, false)) {
         switch (evt.type) {
             case NEKO_PF_EVENT_MOUSE: {
                 switch (evt.mouse.action) {
@@ -3343,7 +3343,7 @@ NEKO_API_DECL void neko_ui_end(neko_ui_context_t* ctx, b32 update) {
     ctx->undock_root = NULL;
 
     if (ctx->mouse_down != NEKO_UI_MOUSE_LEFT) {
-        neko_platform_set_cursor(ctx->window_hndl, NEKO_PF_CURSOR_ARROW);
+        neko_pf_set_cursor(ctx->window_hndl, NEKO_PF_CURSOR_ARROW);
     }
 
     // Sort root containers by zindex
@@ -5041,8 +5041,8 @@ NEKO_API_DECL s32 neko_ui_textbox_raw(neko_ui_context_t* ctx, char* buf, s32 buf
         }
 
         // 处理粘贴
-        if (neko_platform_key_pressed(NEKO_KEYCODE_V) && ctx->key_down & NEKO_UI_KEY_CTRL) {
-            const_str clipboard = neko_platform_window_get_clipboard(ctx->window_hndl);
+        if (neko_pf_key_pressed(NEKO_KEYCODE_V) && ctx->key_down & NEKO_UI_KEY_CTRL) {
+            const_str clipboard = neko_pf_window_get_clipboard(ctx->window_hndl);
             printf("%s --\n", clipboard);
             s32 n = NEKO_MIN(bufsz - len - 1, (s32)strlen(clipboard));
             if (n > 0) {

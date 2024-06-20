@@ -282,7 +282,7 @@ void neko_byte_buffer_read_str(neko_byte_buffer_t* buffer, char* str) {
     str[i] = '\0';
 }
 
-neko_result neko_byte_buffer_write_to_file(neko_byte_buffer_t* buffer, const char* output_path) { return neko_platform_write_file_contents(output_path, "wb", buffer->data, buffer->size); }
+neko_result neko_byte_buffer_write_to_file(neko_byte_buffer_t* buffer, const char* output_path) { return neko_pf_write_file_contents(output_path, "wb", buffer->data, buffer->size); }
 
 neko_result neko_byte_buffer_read_from_file(neko_byte_buffer_t* buffer, const char* file_path) {
     if (!buffer) return NEKO_RESULT_FAILURE;
@@ -291,7 +291,7 @@ neko_result neko_byte_buffer_read_from_file(neko_byte_buffer_t* buffer, const ch
         neko_byte_buffer_free(buffer);
     }
 
-    buffer->data = (u8*)neko_platform_read_file_contents(file_path, "rb", (size_t*)&buffer->size);
+    buffer->data = (u8*)neko_pf_read_file_contents(file_path, "rb", (size_t*)&buffer->size);
     if (!buffer->data) {
         NEKO_ASSERT(false);
         return NEKO_RESULT_FAILURE;
@@ -513,7 +513,7 @@ int neko_mem_check_leaks(bool detailed) {
         if (!leaks && detailed) NEKO_INFO("memory leaks detected (see below).");
         if (detailed) {
             char info[128];
-            neko_snprintf(info, 128, "LEAKED %zu bytes from file \"%s\" at line %d from address %p.", next->size, neko_util_get_filename(next->file), next->line, (void*)(next + 1));
+            neko_snprintf(info, 128, "LEAKED %zu bytes: \"%s:%d\" address %p.", next->size, neko_util_get_filename(next->file), next->line, (void*)(next + 1));
             neko_println("  | %s", info);
         }
         leaks_size += next->size;
@@ -708,14 +708,14 @@ NEKO_API_DECL void neko_console(neko_console_t* console, neko_ui_context_t* ctx,
         // 处理文本输入
         int32_t n = NEKO_MIN(sizeof(*console->cb) - len - 1, (int32_t)strlen(ctx->input_text));
 
-        if (neko_platform_key_pressed(NEKO_KEYCODE_UP)) {
+        if (neko_pf_key_pressed(NEKO_KEYCODE_UP)) {
             console->current_cb_idx++;
             if (console->current_cb_idx >= NEKO_ARR_SIZE(console->cb)) {
                 console->current_cb_idx = NEKO_ARR_SIZE(console->cb) - 1;
             } else {
                 memcpy(&console->cb[0], &console->cb[console->current_cb_idx], sizeof(*console->cb));
             }
-        } else if (neko_platform_key_pressed(NEKO_KEYCODE_DOWN)) {
+        } else if (neko_pf_key_pressed(NEKO_KEYCODE_DOWN)) {
             console->current_cb_idx--;
             if (console->current_cb_idx <= 0) {
                 console->current_cb_idx = 0;
@@ -723,7 +723,7 @@ NEKO_API_DECL void neko_console(neko_console_t* console, neko_ui_context_t* ctx,
             } else {
                 memcpy(&console->cb[0], &console->cb[console->current_cb_idx], sizeof(*console->cb));
             }
-        } else if (neko_platform_key_pressed(NEKO_KEYCODE_ENTER)) {
+        } else if (neko_pf_key_pressed(NEKO_KEYCODE_ENTER)) {
             console->current_cb_idx = 0;
             neko_console_printf(console, "$ %s\n", console->cb[0]);
 
@@ -759,12 +759,12 @@ NEKO_API_DECL void neko_console(neko_console_t* console, neko_ui_context_t* ctx,
                 console->cb[0][0] = '\0';
                 neko_safe_free(argv);
             }
-        } else if (neko_platform_key_pressed(NEKO_KEYCODE_BACKSPACE)) {
+        } else if (neko_pf_key_pressed(NEKO_KEYCODE_BACKSPACE)) {
             console->current_cb_idx = 0;
             // 跳过 utf-8 连续字节
             while ((console->cb[0][--len] & 0xc0) == 0x80 && len > 0);
             console->cb[0][len] = '\0';
-        } else if (n > 0 && !neko_platform_key_pressed(NEKO_KEYCODE_GRAVE_ACCENT)) {
+        } else if (n > 0 && !neko_pf_key_pressed(NEKO_KEYCODE_GRAVE_ACCENT)) {
             console->current_cb_idx = 0;
             if (len + n + 1 < sizeof(*console->cb)) {
                 memcpy(console->cb[0] + len, ctx->input_text, n);
@@ -777,7 +777,7 @@ NEKO_API_DECL void neko_console(neko_console_t* console, neko_ui_context_t* ctx,
 
         // 闪烁光标
         neko_ui_get_layout(ctx)->body.x += len * 7 - 5;
-        if ((int)(neko_platform_elapsed_time() / 666.0f) & 1) neko_ui_text(ctx, "|");
+        if ((int)(neko_pf_elapsed_time() / 666.0f) & 1) neko_ui_text(ctx, "|");
 
         neko_ui_container_t* ctn = neko_ui_get_current_container(ctx);
         neko_ui_bring_to_front(ctx, ctn);
@@ -899,8 +899,8 @@ void summon(int argc, char** argv) {
 }
 
 void crash(int argc, char** argv) {
-    const_str trace_info = neko_platform_stacktrace();
-    // neko_platform_msgbox(std::format("Crash...\n{0}", trace_info).c_str());
+    const_str trace_info = neko_pf_stacktrace();
+    // neko_pf_msgbox(std::format("Crash...\n{0}", trace_info).c_str());
 }
 
 void spam(int argc, char** argv) {
@@ -952,20 +952,20 @@ Neko_Module neko_module_open(const_str name) {
     const_str prefix = NEKO_DLL_LOADER_WIN_OTHER("", "lib");
     const_str suffix = NEKO_DLL_LOADER_WIN_MAC_OTHER(".dll", ".dylib", ".so");
     neko_snprintf(filename, 64, "%s%s%s", prefix, name, suffix);
-    module.hndl = (void*)neko_platform_library_load(filename);
+    module.hndl = (void*)neko_pf_library_load(filename);
     return module;
 }
 
-void neko_module_close(Neko_Module lib) { neko_platform_library_unload(lib.hndl); }
+void neko_module_close(Neko_Module lib) { neko_pf_library_unload(lib.hndl); }
 
 void* neko_module_get_symbol(Neko_Module lib, const_str symbol_name) {
-    void* symbol = (void*)neko_platform_library_proc_address(lib.hndl, symbol_name);
+    void* symbol = (void*)neko_pf_library_proc_address(lib.hndl, symbol_name);
     return symbol;
 }
 
 bool neko_module_has_symbol(Neko_Module lib, const_str symbol_name) {
     if (!lib.hndl || !symbol_name) return false;
-    return neko_platform_library_proc_address(lib.hndl, symbol_name) != NULL;
+    return neko_pf_library_proc_address(lib.hndl, symbol_name) != NULL;
 }
 
 #if 0

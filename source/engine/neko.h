@@ -51,12 +51,14 @@
 // NEKO_API_DECL
 ===================*/
 
-#ifdef NEKO_API_DLL_EXPORT
-#ifdef __cplusplus
-#define NEKO_API_EXTERN extern "C" __declspec(dllexport)
+#if defined(_WIN32) || defined(_WIN64)
+#define NEKO_DLL_EXPORT extern "C" __declspec(dllexport)
 #else
-#define NEKO_API_EXTERN extern __declspec(dllexport)
+#define NEKO_DLL_EXPORT extern "C"
 #endif
+
+#ifdef NEKO_API_DLL_EXPORT
+#define NEKO_API_EXTERN NEKO_DLL_EXPORT
 #else
 #ifdef __cplusplus
 #define NEKO_API_EXTERN extern "C"
@@ -93,10 +95,6 @@
 #define NEKO_FORCE_INLINE static __attribute__((always_inline))
 #else
 #define NEKO_FORCE_INLINE NEKO_INLINE
-#endif
-
-#ifndef NEKO_PRIVATE
-#define NEKO_PRIVATE(_result_type) static _result_type
 #endif
 
 #ifndef neko_little_endian
@@ -282,7 +280,8 @@ NEKO_STATIC_INLINE void neko_printf(const char* fmt, ...) {
 // Const
 =============================*/
 
-#define NEKO_DEFAULT_PACK "default_pack"
+#define NEKO_PACK_GAMEDATA "default_pack"
+#define NEKO_PACK_LUACODE "luacode"
 
 /*=============================
 // Memory
