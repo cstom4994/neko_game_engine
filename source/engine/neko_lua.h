@@ -215,48 +215,48 @@ NEKO_API_DECL const char *neko_luabind_enum_next_value_name_type(lua_State *L, n
 
 #define neko_luabind_function_declare1(func, ret_t, arg0_t) \
     void __neko_luabind_##func(void *out, void *args) {     \
-        arg0_t a0 = *(arg0_t *)args;                         \
-        *(ret_t *)out = func(a0);                            \
+        arg0_t a0 = *(arg0_t *)args;                        \
+        *(ret_t *)out = func(a0);                           \
     }
 
 #define neko_luabind_function_declare1_void(func, ret_t, arg0_t) \
     void __neko_luabind_##func(void *out, void *args) {          \
-        arg0_t a0 = *(arg0_t *)args;                              \
-        func(a0);                                                 \
+        arg0_t a0 = *(arg0_t *)args;                             \
+        func(a0);                                                \
     }
 
 #define neko_luabind_function_declare2(func, ret_t, arg0_t, arg1_t) \
     void __neko_luabind_##func(void *out, void *args) {             \
-        arg0_t a0 = *(arg0_t *)args;                                 \
-        arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));              \
-        *(ret_t *)out = func(a0, a1);                                \
+        arg0_t a0 = *(arg0_t *)args;                                \
+        arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));             \
+        *(ret_t *)out = func(a0, a1);                               \
     }
 
 #define neko_luabind_function_declare2_void(func, ret_t, arg0_t, arg1_t) \
     void __neko_luabind_##func(void *out, void *args) {                  \
-        arg0_t a0 = *(arg0_t *)args;                                      \
-        arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                   \
-        func(a0, a1);                                                     \
+        arg0_t a0 = *(arg0_t *)args;                                     \
+        arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                  \
+        func(a0, a1);                                                    \
     }
 
 #define neko_luabind_function_declare3(func, ret_t, arg0_t, arg1_t, arg2_t) \
     void __neko_luabind_##func(void *out, void *args) {                     \
-        arg0_t a0 = *(arg0_t *)args;                                         \
-        arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                      \
-        arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t));     \
-        *(ret_t *)out = func(a0, a1, a2);                                    \
+        arg0_t a0 = *(arg0_t *)args;                                        \
+        arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                     \
+        arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t));    \
+        *(ret_t *)out = func(a0, a1, a2);                                   \
     }
 
 #define neko_luabind_function_declare3_void(func, ret_t, arg0_t, arg1_t, arg2_t) \
     void __neko_luabind_##func(void *out, void *args) {                          \
-        arg0_t a0 = *(arg0_t *)args;                                              \
-        arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                           \
-        arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t));          \
-        func(a0, a1, a2);                                                         \
+        arg0_t a0 = *(arg0_t *)args;                                             \
+        arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                          \
+        arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t));         \
+        func(a0, a1, a2);                                                        \
     }
 
-#define neko_luabind_function_declare4(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t)      \
-    void __neko_luabind_##func(void *out, void *args) {                                  \
+#define neko_luabind_function_declare4(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t)       \
+    void __neko_luabind_##func(void *out, void *args) {                                   \
         arg0_t a0 = *(arg0_t *)args;                                                      \
         arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                                   \
         arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t));                  \
@@ -264,8 +264,8 @@ NEKO_API_DECL const char *neko_luabind_enum_next_value_name_type(lua_State *L, n
         *(ret_t *)out = func(a0, a1, a2, a3);                                             \
     }
 
-#define neko_luabind_function_declare4_void(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t) \
-    void __neko_luabind_##func(void *out, void *args) {                                  \
+#define neko_luabind_function_declare4_void(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t)  \
+    void __neko_luabind_##func(void *out, void *args) {                                   \
         arg0_t a0 = *(arg0_t *)args;                                                      \
         arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                                   \
         arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t));                  \
@@ -273,8 +273,8 @@ NEKO_API_DECL const char *neko_luabind_enum_next_value_name_type(lua_State *L, n
         func(a0, a1, a2, a3);                                                             \
     }
 
-#define neko_luabind_function_declare5(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t)               \
-    void __neko_luabind_##func(void *out, void *args) {                                                   \
+#define neko_luabind_function_declare5(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t)                \
+    void __neko_luabind_##func(void *out, void *args) {                                                    \
         arg0_t a0 = *(arg0_t *)args;                                                                       \
         arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                                                    \
         arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t));                                   \
@@ -283,8 +283,8 @@ NEKO_API_DECL const char *neko_luabind_enum_next_value_name_type(lua_State *L, n
         *(ret_t *)out = func(a0, a1, a2, a3, a4);                                                          \
     }
 
-#define neko_luabind_function_declare5_void(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t)          \
-    void __neko_luabind_##func(void *out, void *args) {                                                   \
+#define neko_luabind_function_declare5_void(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t)           \
+    void __neko_luabind_##func(void *out, void *args) {                                                    \
         arg0_t a0 = *(arg0_t *)args;                                                                       \
         arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                                                    \
         arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t));                                   \
@@ -293,8 +293,8 @@ NEKO_API_DECL const char *neko_luabind_enum_next_value_name_type(lua_State *L, n
         func(a0, a1, a2, a3, a4);                                                                          \
     }
 
-#define neko_luabind_function_declare6(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t)                        \
-    void __neko_luabind_##func(void *out, void *args) {                                                                    \
+#define neko_luabind_function_declare6(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t)                         \
+    void __neko_luabind_##func(void *out, void *args) {                                                                     \
         arg0_t a0 = *(arg0_t *)args;                                                                                        \
         arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                                                                     \
         arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t));                                                    \
@@ -304,8 +304,8 @@ NEKO_API_DECL const char *neko_luabind_enum_next_value_name_type(lua_State *L, n
         *(ret_t *)out = func(a0, a1, a2, a3, a4, a5);                                                                       \
     }
 
-#define neko_luabind_function_declare6_void(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t)                   \
-    void __neko_luabind_##func(void *out, void *args) {                                                                    \
+#define neko_luabind_function_declare6_void(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t)                    \
+    void __neko_luabind_##func(void *out, void *args) {                                                                     \
         arg0_t a0 = *(arg0_t *)args;                                                                                        \
         arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                                                                     \
         arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t));                                                    \
@@ -315,8 +315,8 @@ NEKO_API_DECL const char *neko_luabind_enum_next_value_name_type(lua_State *L, n
         func(a0, a1, a2, a3, a4, a5);                                                                                       \
     }
 
-#define neko_luabind_function_declare7(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t)                                 \
-    void __neko_luabind_##func(void *out, void *args) {                                                                                     \
+#define neko_luabind_function_declare7(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t)                                  \
+    void __neko_luabind_##func(void *out, void *args) {                                                                                      \
         arg0_t a0 = *(arg0_t *)args;                                                                                                         \
         arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                                                                                      \
         arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t));                                                                     \
@@ -327,8 +327,8 @@ NEKO_API_DECL const char *neko_luabind_enum_next_value_name_type(lua_State *L, n
         *(ret_t *)out = func(a0, a1, a2, a3, a4, a5, a6);                                                                                    \
     }
 
-#define neko_luabind_function_declare7_void(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t)                            \
-    void __neko_luabind_##func(void *out, void *args) {                                                                                     \
+#define neko_luabind_function_declare7_void(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t)                             \
+    void __neko_luabind_##func(void *out, void *args) {                                                                                      \
         arg0_t a0 = *(arg0_t *)args;                                                                                                         \
         arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                                                                                      \
         arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t));                                                                     \
@@ -339,8 +339,8 @@ NEKO_API_DECL const char *neko_luabind_enum_next_value_name_type(lua_State *L, n
         func(a0, a1, a2, a3, a4, a5, a6);                                                                                                    \
     }
 
-#define neko_luabind_function_declare8(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t, arg7_t)                                          \
-    void __neko_luabind_##func(void *out, void *args) {                                                                                                      \
+#define neko_luabind_function_declare8(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t, arg7_t)                                           \
+    void __neko_luabind_##func(void *out, void *args) {                                                                                                       \
         arg0_t a0 = *(arg0_t *)args;                                                                                                                          \
         arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                                                                                                       \
         arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t));                                                                                      \
@@ -352,8 +352,8 @@ NEKO_API_DECL const char *neko_luabind_enum_next_value_name_type(lua_State *L, n
         *(ret_t *)out = func(a0, a1, a2, a3, a4, a5, a6, a7);                                                                                                 \
     }
 
-#define neko_luabind_function_declare8_void(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t, arg7_t)                                     \
-    void __neko_luabind_##func(void *out, void *args) {                                                                                                      \
+#define neko_luabind_function_declare8_void(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t, arg7_t)                                      \
+    void __neko_luabind_##func(void *out, void *args) {                                                                                                       \
         arg0_t a0 = *(arg0_t *)args;                                                                                                                          \
         arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                                                                                                       \
         arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t));                                                                                      \
@@ -365,8 +365,8 @@ NEKO_API_DECL const char *neko_luabind_enum_next_value_name_type(lua_State *L, n
         func(a0, a1, a2, a3, a4, a5, a6, a7);                                                                                                                 \
     }
 
-#define neko_luabind_function_declare9(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t, arg7_t, arg8_t)                                                   \
-    void __neko_luabind_##func(void *out, void *args) {                                                                                                                       \
+#define neko_luabind_function_declare9(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t, arg7_t, arg8_t)                                                    \
+    void __neko_luabind_##func(void *out, void *args) {                                                                                                                        \
         arg0_t a0 = *(arg0_t *)args;                                                                                                                                           \
         arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                                                                                                                        \
         arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t));                                                                                                       \
@@ -379,8 +379,8 @@ NEKO_API_DECL const char *neko_luabind_enum_next_value_name_type(lua_State *L, n
         *(ret_t *)out = func(a0, a1, a2, a3, a4, a5, a6, a7, a8);                                                                                                              \
     }
 
-#define neko_luabind_function_declare9_void(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t, arg7_t, arg8_t)                                              \
-    void __neko_luabind_##func(void *out, void *args) {                                                                                                                       \
+#define neko_luabind_function_declare9_void(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t, arg7_t, arg8_t)                                               \
+    void __neko_luabind_##func(void *out, void *args) {                                                                                                                        \
         arg0_t a0 = *(arg0_t *)args;                                                                                                                                           \
         arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                                                                                                                        \
         arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t));                                                                                                       \
@@ -393,8 +393,8 @@ NEKO_API_DECL const char *neko_luabind_enum_next_value_name_type(lua_State *L, n
         func(a0, a1, a2, a3, a4, a5, a6, a7, a8);                                                                                                                              \
     }
 
-#define neko_luabind_function_declare10(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t, arg7_t, arg8_t, arg9_t)                                                           \
-    void __neko_luabind_##func(void *out, void *args) {                                                                                                                                        \
+#define neko_luabind_function_declare10(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t, arg7_t, arg8_t, arg9_t)                                                            \
+    void __neko_luabind_##func(void *out, void *args) {                                                                                                                                         \
         arg0_t a0 = *(arg0_t *)args;                                                                                                                                                            \
         arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                                                                                                                                         \
         arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t));                                                                                                                        \
@@ -408,8 +408,8 @@ NEKO_API_DECL const char *neko_luabind_enum_next_value_name_type(lua_State *L, n
         *(ret_t *)out = func(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9);                                                                                                                           \
     }
 
-#define neko_luabind_function_declare10_void(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t, arg7_t, arg8_t, arg9_t)                                                      \
-    void __neko_luabind_##func(void *out, void *args) {                                                                                                                                        \
+#define neko_luabind_function_declare10_void(func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t, arg7_t, arg8_t, arg9_t)                                                       \
+    void __neko_luabind_##func(void *out, void *args) {                                                                                                                                         \
         arg0_t a0 = *(arg0_t *)args;                                                                                                                                                            \
         arg1_t a1 = *(arg1_t *)(args + sizeof(arg0_t));                                                                                                                                         \
         arg2_t a2 = *(arg2_t *)(args + sizeof(arg0_t) + sizeof(arg1_t));                                                                                                                        \
@@ -425,46 +425,44 @@ NEKO_API_DECL const char *neko_luabind_enum_next_value_name_type(lua_State *L, n
 
 #define neko_luabind_function_register0(L, func, ret_t) neko_luabind_function_register_type(L, func, __neko_luabind_##func, #func, neko_luabind_type(L, ret_t), 0)
 
-#define neko_luabind_function_register1(L, func, ret_t, arg0_t) \
-    neko_luabind_function_register_type(L, func, __neko_luabind_##func, #func, neko_luabind_type(L, ret_t), 1, neko_luabind_type(L, arg0_t))
+#define neko_luabind_function_register1(L, func, ret_t, arg0_t) neko_luabind_function_register_type(L, func, __neko_luabind_##func, #func, neko_luabind_type(L, ret_t), 1, neko_luabind_type(L, arg0_t))
 
 #define neko_luabind_function_register2(L, func, ret_t, arg0_t, arg1_t) \
     neko_luabind_function_register_type(L, func, __neko_luabind_##func, #func, neko_luabind_type(L, ret_t), 2, neko_luabind_type(L, arg0_t), neko_luabind_type(L, arg1_t))
 
-#define neko_luabind_function_register3(L, func, ret_t, arg0_t, arg1_t, arg2_t)                                                                                                \
-    neko_luabind_function_register_type(L, func, __neko_luabind_##func, #func, neko_luabind_type(L, ret_t), 3, neko_luabind_type(L, arg0_t), neko_luabind_type(L, arg1_t), \
-                                         neko_luabind_type(L, arg2_t))
+#define neko_luabind_function_register3(L, func, ret_t, arg0_t, arg1_t, arg2_t) \
+    neko_luabind_function_register_type(L, func, __neko_luabind_##func, #func, neko_luabind_type(L, ret_t), 3, neko_luabind_type(L, arg0_t), neko_luabind_type(L, arg1_t), neko_luabind_type(L, arg2_t))
 
-#define neko_luabind_function_register4(L, func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t)                                                                                        \
+#define neko_luabind_function_register4(L, func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t)                                                                                    \
     neko_luabind_function_register_type(L, func, __neko_luabind_##func, #func, neko_luabind_type(L, ret_t), 4, neko_luabind_type(L, arg0_t), neko_luabind_type(L, arg1_t), \
-                                         neko_luabind_type(L, arg2_t), neko_luabind_type(L, arg3_t))
+                                        neko_luabind_type(L, arg2_t), neko_luabind_type(L, arg3_t))
 
-#define neko_luabind_function_register5(L, func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t)                                                                                \
+#define neko_luabind_function_register5(L, func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t)                                                                            \
     neko_luabind_function_register_type(L, func, __neko_luabind_##func, #func, neko_luabind_type(L, ret_t), 5, neko_luabind_type(L, arg0_t), neko_luabind_type(L, arg1_t), \
-                                         neko_luabind_type(L, arg2_t), neko_luabind_type(L, arg3_t), neko_luabind_type(L, arg4_t))
+                                        neko_luabind_type(L, arg2_t), neko_luabind_type(L, arg3_t), neko_luabind_type(L, arg4_t))
 
-#define neko_luabind_function_register6(L, func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t)                                                                        \
+#define neko_luabind_function_register6(L, func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t)                                                                    \
     neko_luabind_function_register_type(L, func, __neko_luabind_##func, #func, neko_luabind_type(L, ret_t), 6, neko_luabind_type(L, arg0_t), neko_luabind_type(L, arg1_t), \
-                                         neko_luabind_type(L, arg2_t), neko_luabind_type(L, arg3_t), neko_luabind_type(L, arg4_t), neko_luabind_type(L, arg5_t))
+                                        neko_luabind_type(L, arg2_t), neko_luabind_type(L, arg3_t), neko_luabind_type(L, arg4_t), neko_luabind_type(L, arg5_t))
 
-#define neko_luabind_function_register7(L, func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t)                                                                \
+#define neko_luabind_function_register7(L, func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t)                                                            \
     neko_luabind_function_register_type(L, func, __neko_luabind_##func, #func, neko_luabind_type(L, ret_t), 7, neko_luabind_type(L, arg0_t), neko_luabind_type(L, arg1_t), \
-                                         neko_luabind_type(L, arg2_t), neko_luabind_type(L, arg3_t), neko_luabind_type(L, arg4_t), neko_luabind_type(L, arg5_t), neko_luabind_type(L, arg6_t))
+                                        neko_luabind_type(L, arg2_t), neko_luabind_type(L, arg3_t), neko_luabind_type(L, arg4_t), neko_luabind_type(L, arg5_t), neko_luabind_type(L, arg6_t))
 
-#define neko_luabind_function_register8(L, func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t, arg7_t)                                                                            \
-    neko_luabind_function_register_type(L, func, __neko_luabind_##func, #func, neko_luabind_type(L, ret_t), 8, neko_luabind_type(L, arg0_t), neko_luabind_type(L, arg1_t),                     \
-                                         neko_luabind_type(L, arg2_t), neko_luabind_type(L, arg3_t), neko_luabind_type(L, arg4_t), neko_luabind_type(L, arg5_t), neko_luabind_type(L, arg6_t), \
-                                         neko_luabind_type(L, arg7_t))
+#define neko_luabind_function_register8(L, func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t, arg7_t)                                                                       \
+    neko_luabind_function_register_type(L, func, __neko_luabind_##func, #func, neko_luabind_type(L, ret_t), 8, neko_luabind_type(L, arg0_t), neko_luabind_type(L, arg1_t),                    \
+                                        neko_luabind_type(L, arg2_t), neko_luabind_type(L, arg3_t), neko_luabind_type(L, arg4_t), neko_luabind_type(L, arg5_t), neko_luabind_type(L, arg6_t), \
+                                        neko_luabind_type(L, arg7_t))
 
-#define neko_luabind_function_register9(L, func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t, arg7_t, arg8_t)                                                                    \
-    neko_luabind_function_register_type(L, func, __neko_luabind_##func, #func, neko_luabind_type(L, ret_t), 9, neko_luabind_type(L, arg0_t), neko_luabind_type(L, arg1_t),                     \
-                                         neko_luabind_type(L, arg2_t), neko_luabind_type(L, arg3_t), neko_luabind_type(L, arg4_t), neko_luabind_type(L, arg5_t), neko_luabind_type(L, arg6_t), \
-                                         neko_luabind_type(L, arg7_t), neko_luabind_type(L, arg8_t))
+#define neko_luabind_function_register9(L, func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t, arg7_t, arg8_t)                                                               \
+    neko_luabind_function_register_type(L, func, __neko_luabind_##func, #func, neko_luabind_type(L, ret_t), 9, neko_luabind_type(L, arg0_t), neko_luabind_type(L, arg1_t),                    \
+                                        neko_luabind_type(L, arg2_t), neko_luabind_type(L, arg3_t), neko_luabind_type(L, arg4_t), neko_luabind_type(L, arg5_t), neko_luabind_type(L, arg6_t), \
+                                        neko_luabind_type(L, arg7_t), neko_luabind_type(L, arg8_t))
 
-#define neko_luabind_function_register10(L, func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t, arg7_t, arg8_t, arg9_t)                                                           \
-    neko_luabind_function_register_type(L, func, __neko_luabind_##func, #func, neko_luabind_type(L, ret_t), 10, neko_luabind_type(L, arg0_t), neko_luabind_type(L, arg1_t),                    \
-                                         neko_luabind_type(L, arg2_t), neko_luabind_type(L, arg3_t), neko_luabind_type(L, arg4_t), neko_luabind_type(L, arg5_t), neko_luabind_type(L, arg6_t), \
-                                         neko_luabind_type(L, arg7_t), neko_luabind_type(L, arg8_t), neko_luabind_type(L, arg9_t))
+#define neko_luabind_function_register10(L, func, ret_t, arg0_t, arg1_t, arg2_t, arg3_t, arg4_t, arg5_t, arg6_t, arg7_t, arg8_t, arg9_t)                                                      \
+    neko_luabind_function_register_type(L, func, __neko_luabind_##func, #func, neko_luabind_type(L, ret_t), 10, neko_luabind_type(L, arg0_t), neko_luabind_type(L, arg1_t),                   \
+                                        neko_luabind_type(L, arg2_t), neko_luabind_type(L, arg3_t), neko_luabind_type(L, arg4_t), neko_luabind_type(L, arg5_t), neko_luabind_type(L, arg6_t), \
+                                        neko_luabind_type(L, arg7_t), neko_luabind_type(L, arg8_t), neko_luabind_type(L, arg9_t))
 
 #define neko_luabind_function(L, func, ret_t, ...)             \
     neko_luabind_function_declare(func, ret_t, ##__VA_ARGS__); \
@@ -512,5 +510,160 @@ NEKO_API_DECL int LUASTRUCT_new(lua_State *L, const char *metatable, size_t size
 NEKO_API_DECL int LUASTRUCT_newref(lua_State *L, const char *metatable, int parentIndex, const void *data);
 NEKO_API_DECL int LUASTRUCT_is(lua_State *L, const char *metatable, int index);
 NEKO_API_DECL void *LUASTRUCT_todata(lua_State *L, const char *metatable, int index, int required);
+
+// neko_tolua based on tolua by Ariel Manzur (www.tecgraf.puc-rio.br/~celes/tolua)
+// it's licensed under the terms of the MIT license
+#define NEKO_TOLUA
+
+#ifdef NEKO_TOLUA
+
+#define NEKO_TOLUA_VERSION "neko-tolua-0.1"
+
+#define neko_tolua_pushcppstring(x, y) neko_tolua_pushstring(x, y.c_str())
+#define neko_tolua_iscppstring neko_tolua_isstring
+
+#define neko_tolua_iscppstringarray neko_tolua_isstringarray
+#define neko_tolua_pushfieldcppstring(L, lo, idx, s) neko_tolua_pushfieldstring(L, lo, idx, s.c_str())
+
+#ifndef TEMPLATE_BIND
+#define TEMPLATE_BIND(p)
+#endif
+
+#define TOLUA_TEMPLATE_BIND(p)
+
+#define TOLUA_PROTECTED_DESTRUCTOR
+#define TOLUA_PROPERTY_TYPE(p)
+
+typedef int lua_Object;
+
+struct neko_tolua_Error {
+    int index;
+    int array;
+    const char *type;
+};
+typedef struct neko_tolua_Error neko_tolua_Error;
+
+#define TOLUA_NOPEER LUA_REGISTRYINDEX /* for lua 5.1 */
+
+NEKO_API_DECL const char *neko_tolua_typename(lua_State *L, int lo);
+NEKO_API_DECL void neko_tolua_error(lua_State *L, const char *msg, neko_tolua_Error *err);
+NEKO_API_DECL int neko_tolua_isnoobj(lua_State *L, int lo, neko_tolua_Error *err);
+NEKO_API_DECL int neko_tolua_isvalue(lua_State *L, int lo, int def, neko_tolua_Error *err);
+NEKO_API_DECL int neko_tolua_isvaluenil(lua_State *L, int lo, neko_tolua_Error *err);
+NEKO_API_DECL int neko_tolua_isboolean(lua_State *L, int lo, int def, neko_tolua_Error *err);
+NEKO_API_DECL int neko_tolua_isnumber(lua_State *L, int lo, int def, neko_tolua_Error *err);
+NEKO_API_DECL int neko_tolua_isinteger(lua_State *L, int lo, int def, neko_tolua_Error *err);
+NEKO_API_DECL int neko_tolua_isstring(lua_State *L, int lo, int def, neko_tolua_Error *err);
+NEKO_API_DECL int neko_tolua_istable(lua_State *L, int lo, int def, neko_tolua_Error *err);
+NEKO_API_DECL int neko_tolua_isusertable(lua_State *L, int lo, const char *type, int def, neko_tolua_Error *err);
+NEKO_API_DECL int neko_tolua_isuserdata(lua_State *L, int lo, int def, neko_tolua_Error *err);
+NEKO_API_DECL int neko_tolua_isusertype(lua_State *L, int lo, const char *type, int def, neko_tolua_Error *err);
+NEKO_API_DECL int neko_tolua_isvaluearray(lua_State *L, int lo, int dim, int def, neko_tolua_Error *err);
+NEKO_API_DECL int neko_tolua_isbooleanarray(lua_State *L, int lo, int dim, int def, neko_tolua_Error *err);
+NEKO_API_DECL int neko_tolua_isnumberarray(lua_State *L, int lo, int dim, int def, neko_tolua_Error *err);
+NEKO_API_DECL int neko_tolua_isintegerarray(lua_State *L, int lo, int dim, int def, neko_tolua_Error *err);
+NEKO_API_DECL int neko_tolua_isstringarray(lua_State *L, int lo, int dim, int def, neko_tolua_Error *err);
+NEKO_API_DECL int neko_tolua_istablearray(lua_State *L, int lo, int dim, int def, neko_tolua_Error *err);
+NEKO_API_DECL int neko_tolua_isuserdataarray(lua_State *L, int lo, int dim, int def, neko_tolua_Error *err);
+NEKO_API_DECL int neko_tolua_isusertypearray(lua_State *L, int lo, const char *type, int dim, int def, neko_tolua_Error *err);
+
+NEKO_API_DECL void neko_tolua_open(lua_State *L);
+
+NEKO_API_DECL void *neko_tolua_copy(lua_State *L, void *value, unsigned int size);
+NEKO_API_DECL int neko_tolua_register_gc(lua_State *L, int lo);
+NEKO_API_DECL int neko_tolua_default_collect(lua_State *L);
+
+NEKO_API_DECL void neko_tolua_usertype(lua_State *L, const char *type);
+NEKO_API_DECL void neko_tolua_beginmodule(lua_State *L, const char *name);
+NEKO_API_DECL void neko_tolua_endmodule(lua_State *L);
+NEKO_API_DECL void neko_tolua_module(lua_State *L, const char *name, int hasvar);
+NEKO_API_DECL void neko_tolua_class(lua_State *L, const char *name, const char *base);
+NEKO_API_DECL void neko_tolua_cclass(lua_State *L, const char *lname, const char *name, const char *base, lua_CFunction col);
+NEKO_API_DECL void neko_tolua_function(lua_State *L, const char *name, lua_CFunction func);
+NEKO_API_DECL void neko_tolua_constant(lua_State *L, const char *name, lua_Number value);
+NEKO_API_DECL void neko_tolua_variable(lua_State *L, const char *name, lua_CFunction get, lua_CFunction set);
+NEKO_API_DECL void neko_tolua_array(lua_State *L, const char *name, lua_CFunction get, lua_CFunction set);
+
+/* NEKO_API_DECL void neko_tolua_set_call_event(lua_State* L, lua_CFunction func, char* type); */
+/* NEKO_API_DECL void neko_tolua_addbase(lua_State* L, char* name, char* base); */
+
+NEKO_API_DECL void neko_tolua_pushvalue(lua_State *L, int lo);
+NEKO_API_DECL void neko_tolua_pushboolean(lua_State *L, int value);
+NEKO_API_DECL void neko_tolua_pushnumber(lua_State *L, lua_Number value);
+NEKO_API_DECL void neko_tolua_pushinteger(lua_State *L, lua_Integer value);
+NEKO_API_DECL void neko_tolua_pushstring(lua_State *L, const char *value);
+NEKO_API_DECL void neko_tolua_pushuserdata(lua_State *L, void *value);
+NEKO_API_DECL void neko_tolua_pushusertype(lua_State *L, void *value, const char *type);
+NEKO_API_DECL void neko_tolua_pushusertype_and_takeownership(lua_State *L, void *value, const char *type);
+NEKO_API_DECL void neko_tolua_pushfieldvalue(lua_State *L, int lo, int index, int v);
+NEKO_API_DECL void neko_tolua_pushfieldboolean(lua_State *L, int lo, int index, int v);
+NEKO_API_DECL void neko_tolua_pushfieldnumber(lua_State *L, int lo, int index, lua_Number v);
+NEKO_API_DECL void neko_tolua_pushfieldinteger(lua_State *L, int lo, int index, lua_Integer v);
+NEKO_API_DECL void neko_tolua_pushfieldstring(lua_State *L, int lo, int index, const char *v);
+NEKO_API_DECL void neko_tolua_pushfielduserdata(lua_State *L, int lo, int index, void *v);
+NEKO_API_DECL void neko_tolua_pushfieldusertype(lua_State *L, int lo, int index, void *v, const char *type);
+NEKO_API_DECL void neko_tolua_pushfieldusertype_and_takeownership(lua_State *L, int lo, int index, void *v, const char *type);
+
+NEKO_API_DECL lua_Number neko_tolua_tonumber(lua_State *L, int narg, lua_Number def);
+NEKO_API_DECL lua_Integer neko_tolua_tointeger(lua_State *L, int narg, lua_Integer def);
+NEKO_API_DECL const char *neko_tolua_tostring(lua_State *L, int narg, const char *def);
+NEKO_API_DECL void *neko_tolua_touserdata(lua_State *L, int narg, void *def);
+NEKO_API_DECL void *neko_tolua_tousertype(lua_State *L, int narg, void *def);
+NEKO_API_DECL int neko_tolua_tovalue(lua_State *L, int narg, int def);
+NEKO_API_DECL int neko_tolua_toboolean(lua_State *L, int narg, int def);
+NEKO_API_DECL lua_Number neko_tolua_tofieldnumber(lua_State *L, int lo, int index, lua_Number def);
+NEKO_API_DECL lua_Integer neko_tolua_tofieldinteger(lua_State *L, int lo, int index, lua_Integer def);
+NEKO_API_DECL const char *neko_tolua_tofieldstring(lua_State *L, int lo, int index, const char *def);
+NEKO_API_DECL void *neko_tolua_tofielduserdata(lua_State *L, int lo, int index, void *def);
+NEKO_API_DECL void *neko_tolua_tofieldusertype(lua_State *L, int lo, int index, void *def);
+NEKO_API_DECL int neko_tolua_tofieldvalue(lua_State *L, int lo, int index, int def);
+NEKO_API_DECL int neko_tolua_getfieldboolean(lua_State *L, int lo, int index, int def);
+
+NEKO_API_DECL void neko_tolua_dobuffer(lua_State *L, char *B, unsigned int size, const char *name);
+
+NEKO_API_DECL int class_gc_event(lua_State *L);
+
+#ifdef __cplusplus
+static inline const char *neko_tolua_tocppstring(lua_State *L, int narg, const char *def) {
+    const char *s = neko_tolua_tostring(L, narg, def);
+    return s ? s : "";
+};
+static inline const char *neko_tolua_tofieldcppstring(lua_State *L, int lo, int index, const char *def) {
+
+    const char *s = neko_tolua_tofieldstring(L, lo, index, def);
+    return s ? s : "";
+};
+#else
+#define neko_tolua_tocppstring neko_tolua_tostring
+#define neko_tolua_tofieldcppstring neko_tolua_tofieldstring
+#endif
+
+NEKO_API_DECL int neko_tolua_fast_isa(lua_State *L, int mt_indexa, int mt_indexb, int super_index);
+
+#ifndef Mneko_tolua_new
+#define Mneko_tolua_new(EXP) new EXP
+#endif
+
+#ifndef Mneko_tolua_delete
+#define Mneko_tolua_delete(EXP) delete EXP
+#endif
+
+#ifndef Mneko_tolua_new_dim
+#define Mneko_tolua_new_dim(EXP, len) new EXP[len]
+#endif
+
+#ifndef Mneko_tolua_delete_dim
+#define Mneko_tolua_delete_dim(EXP) delete[] EXP
+#endif
+
+#ifndef neko_tolua_outside
+#define neko_tolua_outside
+#endif
+
+#ifndef neko_tolua_owned
+#define neko_tolua_owned
+#endif
+
+#endif  // NEKO_TOLUA
 
 #endif

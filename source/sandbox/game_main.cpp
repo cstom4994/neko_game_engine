@@ -215,7 +215,7 @@ void game_init() {
 #if defined(NEKO_DEBUG_BUILD)
     mount = neko::vfs_mount("luacode", game_assets("gamedir/../").c_str());
 #else
-    mount = neko::vfs_mount("luacode", game_assets("gamedir/../build/xpack/luacode/luacode.zip").c_str());
+    mount = neko::vfs_mount("luacode", game_assets("gamedir/../luacode.zip").c_str());
 #endif
 
     neko_instance()->L = neko_scripting_init();

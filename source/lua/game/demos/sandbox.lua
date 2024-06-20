@@ -14,7 +14,7 @@ local game_data = {}
 
 game_data.hot_code = {}
 
-local tiny = require "common.tiny"
+local tiny = require "tiny"
 
 -- ecs_world = ECS.fetch_world("sandbox")
 

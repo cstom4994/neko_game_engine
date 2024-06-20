@@ -83,8 +83,11 @@ do
     add_files("source/engine/**.c")
     add_files("source/engine/**.cpp")
     add_headerfiles("source/engine/**.h", "source/engine/**.hpp")
+    add_files("source/modules/**.c", "source/modules/**.cpp")
+    add_headerfiles("source/modules/**.h", "source/modules/**.hpp")
 
     add_packages(base_libs)
+    add_packages("miniaudio", "box2d", "enet")
 end
 
 local function neko_module_name(m)
@@ -118,12 +121,9 @@ do
     set_kind("binary")
 
     add_files("source/sandbox/**.c", "source/sandbox/**.cpp")
-    add_files("source/modules/**.c", "source/modules/**.cpp")
     add_headerfiles("source/sandbox/**.h", "source/sandbox/**.hpp")
-    add_headerfiles("source/modules/**.h", "source/modules/**.hpp")
 
     add_deps("neko_engine")
-    -- add_deps(neko_module_name("sound"))
 
     add_packages(base_libs)
     add_packages("miniaudio", "box2d", "enet")
@@ -143,8 +143,14 @@ do
     add_installfiles("(source/lua/**)")
     before_package(function(package)
         local outputfile = package:outputfile()
+        -- if os.exists(outputfile) then
+        --     os.rm(outputfile)
+        -- end
+    end)
+    after_package(function(package)
+        local outputfile = package:outputfile()
         if os.exists(outputfile) then
-            os.rm(outputfile)
+            os.mv(outputfile, "./luacode.zip")
         end
     end)
 end

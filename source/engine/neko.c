@@ -800,6 +800,7 @@ static void crash(int argc, char** argv);
 void summon(int argc, char** argv);
 void exec(int argc, char** argv);
 void sz(int argc, char** argv);
+NEKO_API_DECL void neko_tolua_boot(int argc, char** argv);
 
 neko_console_command_t commands[] = {{
                                              .func = echo,
@@ -845,6 +846,11 @@ neko_console_command_t commands[] = {{
                                              .func = exec,
                                              .name = "exec",
                                              .desc = "run nekoscript",
+                                     },
+                                     {
+                                             .func = neko_tolua_boot,
+                                             .name = "neko_tolua_boot",
+                                             .desc = "run neko_tolua_boot",
                                      }};
 
 neko_console_t g_console = {

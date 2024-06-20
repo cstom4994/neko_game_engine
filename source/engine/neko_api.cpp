@@ -154,6 +154,73 @@ neko_color_t unpack<neko_color_t>(lua_State* L, int idx) {
 }
 }  // namespace lua2struct
 
+static void neko_tolua_setfield(lua_State* L, int table, char* f, char* v) {
+    lua_pushstring(L, f);
+    lua_pushstring(L, v);
+    lua_settable(L, table);
+}
+
+static void neko_tolua_add_extra(lua_State* L, char* value) {
+    int len;
+    lua_getglobal(L, "_extra_parameters");
+#if LUA_VERSION_NUM > 501
+    len = lua_rawlen(L, -1);
+#else
+    len = luaL_getn(L, -1);
+#endif
+    lua_pushstring(L, value);
+    lua_rawseti(L, -2, len + 1);
+    lua_pop(L, 1);
+};
+
+NEKO_API_DECL void neko_tolua_boot(int argc, char** argv) {
+
+    lua_State* L = luaL_newstate();
+    luaL_openlibs(L);
+
+    lua_pushstring(L, NEKO_TOLUA_VERSION);
+    lua_setglobal(L, "NEKO_TOLUA_VERSION");
+    lua_pushstring(L, LUA_VERSION);
+    lua_setglobal(L, "TOLUA_LUA_VERSION");
+
+    {
+        int i, t;
+        lua_newtable(L);
+        lua_setglobal(L, "_extra_parameters");
+        lua_newtable(L);
+        lua_pushvalue(L, -1);
+        lua_setglobal(L, "neko_tolua_flags");
+        t = lua_gettop(L);
+        for (i = 1; i < argc; ++i) {
+            if (*argv[i] == '-') {
+                switch (argv[i][1]) {
+                    case 'o':
+                        neko_tolua_setfield(L, t, "o", argv[++i]);
+                        break;
+                    // disable automatic exporting of destructors for classes
+                    // that have constructors (for compatibility with tolua5)
+                    case 'D':
+                        neko_tolua_setfield(L, t, "D", "");
+                        break;
+                    // add extra values to the luastate
+                    case 'E':
+                        neko_tolua_add_extra(L, argv[++i]);
+                        break;
+                    default:
+                        break;
+                }
+            } else {
+                neko_tolua_setfield(L, t, "f", argv[i]);
+                break;
+            }
+        }
+        lua_pop(L, 1);
+    }
+
+    int neko_tolua_boot_open(lua_State * L);
+    neko_tolua_boot_open(L);
+}
+
 #if 1
 #include "engine/luabind/core.hpp"
 #include "engine/luabind/debug.hpp"
@@ -186,7 +253,7 @@ void neko_register(lua_State* L) {
     neko::lua::preload_module(L);   // 新的模块系统
     neko::lua::package_preload(L);  // 新的模块系统
 
-    PRELOAD("enet", luaopen_enet); // test
+    PRELOAD("enet", luaopen_enet);  // test
 
     // 自定义加载器
     lua_register(L, "__neko_loader", neko::vfs_lua_loader);
