@@ -43,7 +43,7 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
         char full_image_path[256];
         neko_snprintf(full_image_path, 256, "%s/%s", tmx_root_path, image_path);
 
-        bool ok = neko_capi_vfs_file_exists(NEKO_DEFAULT_PACK, full_image_path);
+        bool ok = neko_capi_vfs_file_exists(NEKO_PACK_GAMEDATA, full_image_path);
         if (!ok) {
             NEKO_ERROR("failed to load texture file: %s", full_image_path);
             return;
@@ -297,7 +297,7 @@ void neko_tiled_render_begin(neko_command_buffer_t *cb, neko_tiled_renderer *ren
 
 void neko_tiled_render_flush(neko_command_buffer_t *cb, neko_tiled_renderer *renderer) {
 
-    // const neko_vec2 ws = neko_platform_window_sizev(neko_platform_main_window());
+    // const neko_vec2 ws = neko_pf_window_sizev(neko_pf_main_window());
     // neko_render_set_viewport(cb, 0, 0, ws.x, ws.y);
 
     // renderer->camera_mat = neko_mat4_ortho(0.0f, ws.x, ws.y, 0.0f, -1.0f, 1.0f);

@@ -233,3 +233,5 @@ void main()
    frag_color = texture(u_tex, uv);
 }
 ]]
+
+print("lua startup")

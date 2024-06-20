@@ -1,5 +1,5 @@
 local PHY = require "bump"
--- local network = require "sock"
+local network = require "sock"
 local tweens = require "flux"
 
 local behavior = require "behavior"
@@ -443,7 +443,7 @@ function playerSystem:process(e, dt)
         local struct = common.cdata:set_struct("player_update", data)
         local encoded = common.cdata:encode(struct)
 
-        -- M.client:send("player_position", encoded)
+        M.client:send("player_position", encoded)
     end
 
     this_player.p = p
@@ -575,45 +575,45 @@ M.sub_init_thread = function()
 
     -- server_load()
 
-    -- M.client = network.newClient("localhost", 22122)
-    -- M.server = network.newServer("localhost", 22122)
+    M.client = network.newClient("localhost", 22122)
+    M.server = network.newServer("localhost", 22122)
 
-    -- M.server:on("connect", function(data, peer)
-    --     local msg = "Hello from server!"
-    --     peer:send("hello", msg)
-    -- end)
+    M.server:on("connect", function(data, peer)
+        local msg = "Hello from server!"
+        peer:send("hello", msg)
+    end)
 
-    -- M.server:on("player_position", function(data)
+    M.server:on("player_position", function(data)
 
-    --     local header = common.cdata:decode("packet_type", data)
-    --     local map = packets[header.type]
+        local header = common.cdata:decode("packet_type", data)
+        local map = packets[header.type]
 
-    --     if not map then
-    --         error(string.format("Invalid packet type (%s) received!", header.type))
-    --         return
-    --     end
+        if not map then
+            error(string.format("Invalid packet type (%s) received!", header.type))
+            return
+        end
 
-    --     local decoded = common.cdata:decode(map.name, data)
+        local decoded = common.cdata:decode(map.name, data)
 
-    --     s_player_pos = {
-    --         x = decoded.position_x,
-    --         y = decoded.position_y
-    --     }
-    -- end)
+        s_player_pos = {
+            x = decoded.position_x,
+            y = decoded.position_y
+        }
+    end)
 
-    -- M.client:on("connect", function(data)
-    --     print("Client connected to the server.")
-    -- end)
+    M.client:on("connect", function(data)
+        print("Client connected to the server.")
+    end)
 
-    -- M.client:on("disconnect", function(data)
-    --     print("Client disconnected from the server.")
-    -- end)
+    M.client:on("disconnect", function(data)
+        print("Client disconnected from the server.")
+    end)
 
-    -- M.client:on("hello", function(msg)
-    --     print("The server replied: " .. msg)
-    -- end)
+    M.client:on("hello", function(msg)
+        print("The server replied: " .. msg)
+    end)
 
-    -- M.client:connect()
+    M.client:connect()
 
 end
 
@@ -814,9 +814,9 @@ M.sub_shutdown = function()
 
     -- neko.audio_unload(test_audio)
 
-    -- M.client:disconnect()
+    M.client:disconnect()
 
-    -- M.server:destroy()
+    M.server:destroy()
 
     neko.sprite_batch_end(gd.test_batch)
 
@@ -854,8 +854,8 @@ gd.mx, gd.my = 0.0, 0.0
 
 M.sub_update = function(dt)
 
-    -- M.server:update()
-    -- M.client:update()
+    M.server:update()
+    M.client:update()
 
     if dt > max_dt then
         max_dt = dt
@@ -925,7 +925,7 @@ M.sub_render = function()
     -- local fbs_x, fbs_y = neko_framebuffer_size()
     win_w, win_h = neko_window_size(neko_main_window())
 
-    local t = neko_platform_elapsed_time()
+    local t = neko_pf_elapsed_time()
 
     neko.render_renderpass_begin(gd.main_rp)
     neko.render_set_viewport(0.0, 0.0, fbs_x, fbs_y)

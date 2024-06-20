@@ -1,7 +1,6 @@
 ImGui = require("neko.imgui")
 CObject = require("cobject")
 CVar = neko.cvar
-ECS = require("ecs")
 NODE = require("common/node")
 local debugging = require("neko.debugging")
 
@@ -324,6 +323,17 @@ game_render = function()
         for k, v in pairs(db) do
             print("pairs", k, v)
         end
+    end
+
+    if ImGui.Button("sound") then
+        neko_sound_load("gamedir/assets/audio/Run_It_Might_Be_Somebody.wav"):start()
+    end
+    
+    if ImGui.Button("pack") then
+        local test_pack = pack.construct("test_pack_handle", neko_file_path("gamedir/sc.pack"))
+        local test_items = pack.items(test_pack)
+        dump_func(test_items)
+        pack.destroy(test_pack)
     end
 
     -- ImGui.Checkbox(neko_game.cvar.shader_inspect)

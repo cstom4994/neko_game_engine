@@ -162,14 +162,14 @@ local M = {
 
     end,
     sub_render = function()
-        local t = neko_platform_elapsed_time()
+        local t = neko_pf_elapsed_time()
 
         local fbs_x = 640
         local fbs_y = 360
 
         local win_w, win_h = neko_window_size(neko_main_window())
 
-        local roll = neko_platform_elapsed_time() * 0.001
+        local roll = neko_pf_elapsed_time() * 0.001
 
         -- neko.render_pipeline_bind(test_pipeline)
         -- neko.render_apply_bindings({
@@ -228,9 +228,9 @@ local M = {
         neko.idraw_defaults()
         neko.idraw_camera3d(fbs_x, fbs_y)
         neko.idraw_translatef(0.0, 0.0, -2.0)
-        neko.idraw_rotatev(neko_platform_elapsed_time() * 0.0001, 1.0, 0.0, 0.0)
-        neko.idraw_rotatev(neko_platform_elapsed_time() * 0.0001, 0.0, 1.0, 0.0)
-        neko.idraw_rotatev(neko_platform_elapsed_time() * 0.0001, 0.0, 0.0, 1.0)
+        neko.idraw_rotatev(neko_pf_elapsed_time() * 0.0001, 1.0, 0.0, 0.0)
+        neko.idraw_rotatev(neko_pf_elapsed_time() * 0.0001, 0.0, 1.0, 0.0)
+        neko.idraw_rotatev(neko_pf_elapsed_time() * 0.0001, 0.0, 0.0, 1.0)
         neko.idraw_box(0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 200, 100, 50, 255, "R_PRIMITIVE_LINES")
 
         neko.render_renderpass_begin(gd.rp)
@@ -244,9 +244,9 @@ local M = {
         neko.idraw_face_cull_enabled(true)
         neko.idraw_translatef(0.0, 0.0, -1.0)
         neko.idraw_texture(gd.rt)
-        neko.idraw_rotatev(neko_platform_elapsed_time() * 0.0001, 1.0, 0.0, 0.0)
-        neko.idraw_rotatev(neko_platform_elapsed_time() * 0.0002, 0.0, 1.0, 0.0)
-        neko.idraw_rotatev(neko_platform_elapsed_time() * 0.0003, 0.0, 0.0, 1.0)
+        neko.idraw_rotatev(neko_pf_elapsed_time() * 0.0001, 1.0, 0.0, 0.0)
+        neko.idraw_rotatev(neko_pf_elapsed_time() * 0.0002, 0.0, 1.0, 0.0)
+        neko.idraw_rotatev(neko_pf_elapsed_time() * 0.0003, 0.0, 0.0, 1.0)
         neko.idraw_box(0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 255, 255, 255, 255, "R_PRIMITIVE_TRIANGLES")
 
         neko.render_renderpass_begin(0)

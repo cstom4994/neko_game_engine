@@ -34,14 +34,18 @@ static const u8 g_lua_common_data[] = {
 static const u8 g_lua_cstruct_data[] = {
 #include "cstruct.lua.h"
 };
-static const u8 g_lua_ecs_data[] = {
-#include "ecs.lua.h"
+static const u8 g_lua_boot_data[] = {
+#include "boot.lua.h"
+};
+static const u8 g_lua_startup_data[] = {
+#include "startup.lua.h"
 };
 
 LUAOPEN_EMBED_DATA(open_embed_behavior, "behavior.lua", g_lua_behavior_data);
 LUAOPEN_EMBED_DATA(open_embed_common, "common.lua", g_lua_common_data);
 LUAOPEN_EMBED_DATA(open_embed_cstruct, "cstruct.lua", g_lua_cstruct_data);
-LUAOPEN_EMBED_DATA(open_embed_ecs, "ecs.lua", g_lua_ecs_data);
+LUAOPEN_EMBED_DATA(open_embed_boot, "boot.lua", g_lua_boot_data);
+LUAOPEN_EMBED_DATA(open_embed_startup, "startup.lua", g_lua_startup_data);
 
 static void package_preload(lua_State* L, const_str name, lua_CFunction function) {
     lua_getglobal(L, "package");
@@ -57,7 +61,8 @@ void package_preload(lua_State* L) {
     package_preload(L, "behavior", open_embed_behavior);
     package_preload(L, "common", open_embed_common);
     package_preload(L, "cstruct", open_embed_cstruct);
-    package_preload(L, "ecs", open_embed_ecs);
+    package_preload(L, "boot", open_embed_boot);
+    package_preload(L, "startup", open_embed_startup);
 }
 }  // namespace neko::lua
 
