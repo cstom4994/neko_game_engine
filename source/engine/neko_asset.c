@@ -221,7 +221,7 @@ bool neko_asset_texture_load_from_memory(const void *memory, size_t sz, void *ou
     t->hndl = neko_render_texture_create(t->desc);
 
     if (!keep_data) {
-        neko_free(t->desc.data);
+        neko_free(t->desc.data[0]);
         *t->desc.data = NULL;
     }
 
@@ -550,7 +550,7 @@ NEKO_STATIC int __neko_ulz_compress_fast(const u8 *in, int inlen, u8 *out, int o
         op += run;
     }
 
-    neko_realloc(u, 0);
+    void *gc = neko_realloc(u, 0);
     return op - out;
 }
 
@@ -668,7 +668,7 @@ NEKO_STATIC int __neko_ulz_compress(const u8 *in, int inlen, u8 *out, int outlen
         op += run;
     }
 
-    neko_realloc(u, 0);
+    void *gc =neko_realloc(u, 0);
     return op - out;
 }
 

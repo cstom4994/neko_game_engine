@@ -1261,407 +1261,273 @@ typedef void(APIENTRYP PFNGLVERTEXATTRIBP4UIVPROC)(GLuint index, GLenum type, GL
 
 typedef void(APIENTRYP PFNGLMINSAMPLESHADINGPROC)(GLfloat value);
 extern PFNGLMINSAMPLESHADINGPROC glMinSampleShading;
-// MinSampleShading glMinSampleShading
 typedef void(APIENTRYP PFNGLBLENDEQUATIONIPROC)(GLuint buf, GLenum mode);
 extern PFNGLBLENDEQUATIONIPROC glBlendEquationi;
-// BlendEquationi glBlendEquationi
 typedef void(APIENTRYP PFNGLBLENDEQUATIONSEPARATEIPROC)(GLuint buf, GLenum modeRGB, GLenum modeAlpha);
 extern PFNGLBLENDEQUATIONSEPARATEIPROC glBlendEquationSeparatei;
-// BlendEquationSeparatei glBlendEquationSeparatei
 typedef void(APIENTRYP PFNGLBLENDFUNCIPROC)(GLuint buf, GLenum src, GLenum dst);
 extern PFNGLBLENDFUNCIPROC glBlendFunci;
-// BlendFunci glBlendFunci
 typedef void(APIENTRYP PFNGLBLENDFUNCSEPARATEIPROC)(GLuint buf, GLenum srcRGB, GLenum dstRGB, GLenum srcAlpha, GLenum dstAlpha);
 extern PFNGLBLENDFUNCSEPARATEIPROC glBlendFuncSeparatei;
-// BlendFuncSeparatei glBlendFuncSeparatei
 typedef void(APIENTRYP PFNGLDRAWARRAYSINDIRECTPROC)(GLenum mode, const void *indirect);
 extern PFNGLDRAWARRAYSINDIRECTPROC glDrawArraysIndirect;
-// DrawArraysIndirect glDrawArraysIndirect
 typedef void(APIENTRYP PFNGLDRAWELEMENTSINDIRECTPROC)(GLenum mode, GLenum type, const void *indirect);
 extern PFNGLDRAWELEMENTSINDIRECTPROC glDrawElementsIndirect;
-// DrawElementsIndirect glDrawElementsIndirect
 typedef void(APIENTRYP PFNGLUNIFORM1DPROC)(GLint location, GLdouble x);
 extern PFNGLUNIFORM1DPROC glUniform1d;
-// Uniform1d glUniform1d
 typedef void(APIENTRYP PFNGLUNIFORM2DPROC)(GLint location, GLdouble x, GLdouble y);
 extern PFNGLUNIFORM2DPROC glUniform2d;
-// Uniform2d glUniform2d
 typedef void(APIENTRYP PFNGLUNIFORM3DPROC)(GLint location, GLdouble x, GLdouble y, GLdouble z);
 extern PFNGLUNIFORM3DPROC glUniform3d;
-// Uniform3d glUniform3d
 typedef void(APIENTRYP PFNGLUNIFORM4DPROC)(GLint location, GLdouble x, GLdouble y, GLdouble z, GLdouble w);
 extern PFNGLUNIFORM4DPROC glUniform4d;
-// Uniform4d glUniform4d
 typedef void(APIENTRYP PFNGLUNIFORM1DVPROC)(GLint location, GLsizei count, const GLdouble *value);
 extern PFNGLUNIFORM1DVPROC glUniform1dv;
-// Uniform1dv glUniform1dv
 typedef void(APIENTRYP PFNGLUNIFORM2DVPROC)(GLint location, GLsizei count, const GLdouble *value);
 extern PFNGLUNIFORM2DVPROC glUniform2dv;
-// Uniform2dv glUniform2dv
 typedef void(APIENTRYP PFNGLUNIFORM3DVPROC)(GLint location, GLsizei count, const GLdouble *value);
 extern PFNGLUNIFORM3DVPROC glUniform3dv;
-// Uniform3dv glUniform3dv
 typedef void(APIENTRYP PFNGLUNIFORM4DVPROC)(GLint location, GLsizei count, const GLdouble *value);
 extern PFNGLUNIFORM4DVPROC glUniform4dv;
-// Uniform4dv glUniform4dv
 typedef void(APIENTRYP PFNGLUNIFORMMATRIX2DVPROC)(GLint location, GLsizei count, GLboolean transpose, const GLdouble *value);
 extern PFNGLUNIFORMMATRIX2DVPROC glUniformMatrix2dv;
-// UniformMatrix2dv glUniformMatrix2dv
 typedef void(APIENTRYP PFNGLUNIFORMMATRIX3DVPROC)(GLint location, GLsizei count, GLboolean transpose, const GLdouble *value);
 extern PFNGLUNIFORMMATRIX3DVPROC glUniformMatrix3dv;
-// UniformMatrix3dv glUniformMatrix3dv
 typedef void(APIENTRYP PFNGLUNIFORMMATRIX4DVPROC)(GLint location, GLsizei count, GLboolean transpose, const GLdouble *value);
 extern PFNGLUNIFORMMATRIX4DVPROC glUniformMatrix4dv;
-// UniformMatrix4dv glUniformMatrix4dv
 typedef void(APIENTRYP PFNGLUNIFORMMATRIX2X3DVPROC)(GLint location, GLsizei count, GLboolean transpose, const GLdouble *value);
 extern PFNGLUNIFORMMATRIX2X3DVPROC glUniformMatrix2x3dv;
-// UniformMatrix2x3dv glUniformMatrix2x3dv
 typedef void(APIENTRYP PFNGLUNIFORMMATRIX2X4DVPROC)(GLint location, GLsizei count, GLboolean transpose, const GLdouble *value);
 extern PFNGLUNIFORMMATRIX2X4DVPROC glUniformMatrix2x4dv;
-// UniformMatrix2x4dv glUniformMatrix2x4dv
 typedef void(APIENTRYP PFNGLUNIFORMMATRIX3X2DVPROC)(GLint location, GLsizei count, GLboolean transpose, const GLdouble *value);
 extern PFNGLUNIFORMMATRIX3X2DVPROC glUniformMatrix3x2dv;
-// UniformMatrix3x2dv glUniformMatrix3x2dv
 typedef void(APIENTRYP PFNGLUNIFORMMATRIX3X4DVPROC)(GLint location, GLsizei count, GLboolean transpose, const GLdouble *value);
 extern PFNGLUNIFORMMATRIX3X4DVPROC glUniformMatrix3x4dv;
-// UniformMatrix3x4dv glUniformMatrix3x4dv
 typedef void(APIENTRYP PFNGLUNIFORMMATRIX4X2DVPROC)(GLint location, GLsizei count, GLboolean transpose, const GLdouble *value);
 extern PFNGLUNIFORMMATRIX4X2DVPROC glUniformMatrix4x2dv;
-// UniformMatrix4x2dv glUniformMatrix4x2dv
 typedef void(APIENTRYP PFNGLUNIFORMMATRIX4X3DVPROC)(GLint location, GLsizei count, GLboolean transpose, const GLdouble *value);
 extern PFNGLUNIFORMMATRIX4X3DVPROC glUniformMatrix4x3dv;
-// UniformMatrix4x3dv glUniformMatrix4x3dv
 typedef void(APIENTRYP PFNGLGETUNIFORMDVPROC)(GLuint program, GLint location, GLdouble *params);
 extern PFNGLGETUNIFORMDVPROC glGetUniformdv;
-// GetUniformdv glGetUniformdv
 typedef GLint(APIENTRYP PFNGLGETSUBROUTINEUNIFORMLOCATIONPROC)(GLuint program, GLenum shadertype, const GLchar *name);
 extern PFNGLGETSUBROUTINEUNIFORMLOCATIONPROC glGetSubroutineUniformLocation;
-// GetSubroutineUniformLocation glGetSubroutineUniformLocation
 typedef GLuint(APIENTRYP PFNGLGETSUBROUTINEINDEXPROC)(GLuint program, GLenum shadertype, const GLchar *name);
 extern PFNGLGETSUBROUTINEINDEXPROC glGetSubroutineIndex;
-// GetSubroutineIndex glGetSubroutineIndex
 typedef void(APIENTRYP PFNGLGETACTIVESUBROUTINEUNIFORMIVPROC)(GLuint program, GLenum shadertype, GLuint index, GLenum pname, GLint *values);
 extern PFNGLGETACTIVESUBROUTINEUNIFORMIVPROC glGetActiveSubroutineUniformiv;
-// GetActiveSubroutineUniformiv glGetActiveSubroutineUniformiv
 typedef void(APIENTRYP PFNGLGETACTIVESUBROUTINEUNIFORMNAMEPROC)(GLuint program, GLenum shadertype, GLuint index, GLsizei bufSize, GLsizei *length, GLchar *name);
 extern PFNGLGETACTIVESUBROUTINEUNIFORMNAMEPROC glGetActiveSubroutineUniformName;
-// GetActiveSubroutineUniformName glGetActiveSubroutineUniformName
 typedef void(APIENTRYP PFNGLGETACTIVESUBROUTINENAMEPROC)(GLuint program, GLenum shadertype, GLuint index, GLsizei bufSize, GLsizei *length, GLchar *name);
 extern PFNGLGETACTIVESUBROUTINENAMEPROC glGetActiveSubroutineName;
-// GetActiveSubroutineName glGetActiveSubroutineName
 typedef void(APIENTRYP PFNGLUNIFORMSUBROUTINESUIVPROC)(GLenum shadertype, GLsizei count, const GLuint *indices);
 extern PFNGLUNIFORMSUBROUTINESUIVPROC glUniformSubroutinesuiv;
-// UniformSubroutinesuiv glUniformSubroutinesuiv
 typedef void(APIENTRYP PFNGLGETUNIFORMSUBROUTINEUIVPROC)(GLenum shadertype, GLint location, GLuint *params);
 extern PFNGLGETUNIFORMSUBROUTINEUIVPROC glGetUniformSubroutineuiv;
-// GetUniformSubroutineuiv glGetUniformSubroutineuiv
 typedef void(APIENTRYP PFNGLGETPROGRAMSTAGEIVPROC)(GLuint program, GLenum shadertype, GLenum pname, GLint *values);
 extern PFNGLGETPROGRAMSTAGEIVPROC glGetProgramStageiv;
-// GetProgramStageiv glGetProgramStageiv
 typedef void(APIENTRYP PFNGLPATCHPARAMETERIPROC)(GLenum pname, GLint value);
 extern PFNGLPATCHPARAMETERIPROC glPatchParameteri;
-// PatchParameteri glPatchParameteri
 typedef void(APIENTRYP PFNGLPATCHPARAMETERFVPROC)(GLenum pname, const GLfloat *values);
 extern PFNGLPATCHPARAMETERFVPROC glPatchParameterfv;
-// PatchParameterfv glPatchParameterfv
 typedef void(APIENTRYP PFNGLBINDTRANSFORMFEEDBACKPROC)(GLenum target, GLuint id);
 extern PFNGLBINDTRANSFORMFEEDBACKPROC glBindTransformFeedback;
-// BindTransformFeedback glBindTransformFeedback
 typedef void(APIENTRYP PFNGLDELETETRANSFORMFEEDBACKSPROC)(GLsizei n, const GLuint *ids);
 extern PFNGLDELETETRANSFORMFEEDBACKSPROC glDeleteTransformFeedbacks;
-// DeleteTransformFeedbacks glDeleteTransformFeedbacks
 typedef void(APIENTRYP PFNGLGENTRANSFORMFEEDBACKSPROC)(GLsizei n, GLuint *ids);
 extern PFNGLGENTRANSFORMFEEDBACKSPROC glGenTransformFeedbacks;
-// GenTransformFeedbacks glGenTransformFeedbacks
 typedef GLboolean(APIENTRYP PFNGLISTRANSFORMFEEDBACKPROC)(GLuint id);
 extern PFNGLISTRANSFORMFEEDBACKPROC glIsTransformFeedback;
-// IsTransformFeedback glIsTransformFeedback
 typedef void(APIENTRYP PFNGLPAUSETRANSFORMFEEDBACKPROC)(void);
 extern PFNGLPAUSETRANSFORMFEEDBACKPROC glPauseTransformFeedback;
-// PauseTransformFeedback glPauseTransformFeedback
 typedef void(APIENTRYP PFNGLRESUMETRANSFORMFEEDBACKPROC)(void);
 extern PFNGLRESUMETRANSFORMFEEDBACKPROC glResumeTransformFeedback;
-// ResumeTransformFeedback glResumeTransformFeedback
 typedef void(APIENTRYP PFNGLDRAWTRANSFORMFEEDBACKPROC)(GLenum mode, GLuint id);
 extern PFNGLDRAWTRANSFORMFEEDBACKPROC glDrawTransformFeedback;
-// DrawTransformFeedback glDrawTransformFeedback
 typedef void(APIENTRYP PFNGLDRAWTRANSFORMFEEDBACKSTREAMPROC)(GLenum mode, GLuint id, GLuint stream);
 extern PFNGLDRAWTRANSFORMFEEDBACKSTREAMPROC glDrawTransformFeedbackStream;
-// DrawTransformFeedbackStream glDrawTransformFeedbackStream
 typedef void(APIENTRYP PFNGLBEGINQUERYINDEXEDPROC)(GLenum target, GLuint index, GLuint id);
 extern PFNGLBEGINQUERYINDEXEDPROC glBeginQueryIndexed;
-// BeginQueryIndexed glBeginQueryIndexed
 typedef void(APIENTRYP PFNGLENDQUERYINDEXEDPROC)(GLenum target, GLuint index);
 extern PFNGLENDQUERYINDEXEDPROC glEndQueryIndexed;
-// EndQueryIndexed glEndQueryIndexed
 typedef void(APIENTRYP PFNGLGETQUERYINDEXEDIVPROC)(GLenum target, GLuint index, GLenum pname, GLint *params);
 extern PFNGLGETQUERYINDEXEDIVPROC glGetQueryIndexediv;
-// GetQueryIndexediv glGetQueryIndexediv
 
 typedef void(APIENTRYP PFNGLRELEASESHADERCOMPILERPROC)(void);
 extern PFNGLRELEASESHADERCOMPILERPROC glReleaseShaderCompiler;
-// ReleaseShaderCompiler glReleaseShaderCompiler
 typedef void(APIENTRYP PFNGLSHADERBINARYPROC)(GLsizei count, const GLuint *shaders, GLenum binaryFormat, const void *binary, GLsizei length);
 extern PFNGLSHADERBINARYPROC glShaderBinary;
-// ShaderBinary glShaderBinary
 typedef void(APIENTRYP PFNGLGETSHADERPRECISIONFORMATPROC)(GLenum shadertype, GLenum precisiontype, GLint *range, GLint *precision);
 extern PFNGLGETSHADERPRECISIONFORMATPROC glGetShaderPrecisionFormat;
-// GetShaderPrecisionFormat glGetShaderPrecisionFormat
 typedef void(APIENTRYP PFNGLDEPTHRANGEFPROC)(GLfloat n, GLfloat f);
 extern PFNGLDEPTHRANGEFPROC glDepthRangef;
-// DepthRangef glDepthRangef
 typedef void(APIENTRYP PFNGLCLEARDEPTHFPROC)(GLfloat d);
 extern PFNGLCLEARDEPTHFPROC glClearDepthf;
-// ClearDepthf glClearDepthf
 typedef void(APIENTRYP PFNGLGETPROGRAMBINARYPROC)(GLuint program, GLsizei bufSize, GLsizei *length, GLenum *binaryFormat, void *binary);
 extern PFNGLGETPROGRAMBINARYPROC glGetProgramBinary;
-// GetProgramBinary glGetProgramBinary
 typedef void(APIENTRYP PFNGLPROGRAMBINARYPROC)(GLuint program, GLenum binaryFormat, const void *binary, GLsizei length);
 extern PFNGLPROGRAMBINARYPROC glProgramBinary;
-// ProgramBinary glProgramBinary
 typedef void(APIENTRYP PFNGLPROGRAMPARAMETERIPROC)(GLuint program, GLenum pname, GLint value);
 extern PFNGLPROGRAMPARAMETERIPROC glProgramParameteri;
-// ProgramParameteri glProgramParameteri
 typedef void(APIENTRYP PFNGLUSEPROGRAMSTAGESPROC)(GLuint pipeline, GLbitfield stages, GLuint program);
 extern PFNGLUSEPROGRAMSTAGESPROC glUseProgramStages;
-// UseProgramStages glUseProgramStages
 typedef void(APIENTRYP PFNGLACTIVESHADERPROGRAMPROC)(GLuint pipeline, GLuint program);
 extern PFNGLACTIVESHADERPROGRAMPROC glActiveShaderProgram;
-// ActiveShaderProgram glActiveShaderProgram
 typedef GLuint(APIENTRYP PFNGLCREATESHADERPROGRAMVPROC)(GLenum type, GLsizei count, const GLchar *const *strings);
 extern PFNGLCREATESHADERPROGRAMVPROC glCreateShaderProgramv;
-// CreateShaderProgramv glCreateShaderProgramv
 typedef void(APIENTRYP PFNGLBINDPROGRAMPIPELINEPROC)(GLuint pipeline);
 extern PFNGLBINDPROGRAMPIPELINEPROC glBindProgramPipeline;
-// BindProgramPipeline glBindProgramPipeline
 typedef void(APIENTRYP PFNGLDELETEPROGRAMPIPELINESPROC)(GLsizei n, const GLuint *pipelines);
 extern PFNGLDELETEPROGRAMPIPELINESPROC glDeleteProgramPipelines;
-// DeleteProgramPipelines glDeleteProgramPipelines
 typedef void(APIENTRYP PFNGLGENPROGRAMPIPELINESPROC)(GLsizei n, GLuint *pipelines);
 extern PFNGLGENPROGRAMPIPELINESPROC glGenProgramPipelines;
-// GenProgramPipelines glGenProgramPipelines
 typedef GLboolean(APIENTRYP PFNGLISPROGRAMPIPELINEPROC)(GLuint pipeline);
 extern PFNGLISPROGRAMPIPELINEPROC glIsProgramPipeline;
-// IsProgramPipeline glIsProgramPipeline
 typedef void(APIENTRYP PFNGLGETPROGRAMPIPELINEIVPROC)(GLuint pipeline, GLenum pname, GLint *params);
 extern PFNGLGETPROGRAMPIPELINEIVPROC glGetProgramPipelineiv;
-// GetProgramPipelineiv glGetProgramPipelineiv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORM1IPROC)(GLuint program, GLint location, GLint v0);
 extern PFNGLPROGRAMUNIFORM1IPROC glProgramUniform1i;
-// ProgramUniform1i glProgramUniform1i
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORM1IVPROC)(GLuint program, GLint location, GLsizei count, const GLint *value);
 extern PFNGLPROGRAMUNIFORM1IVPROC glProgramUniform1iv;
-// ProgramUniform1iv glProgramUniform1iv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORM1FPROC)(GLuint program, GLint location, GLfloat v0);
 extern PFNGLPROGRAMUNIFORM1FPROC glProgramUniform1f;
-// ProgramUniform1f glProgramUniform1f
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORM1FVPROC)(GLuint program, GLint location, GLsizei count, const GLfloat *value);
 extern PFNGLPROGRAMUNIFORM1FVPROC glProgramUniform1fv;
-// ProgramUniform1fv glProgramUniform1fv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORM1DPROC)(GLuint program, GLint location, GLdouble v0);
 extern PFNGLPROGRAMUNIFORM1DPROC glProgramUniform1d;
-// ProgramUniform1d glProgramUniform1d
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORM1DVPROC)(GLuint program, GLint location, GLsizei count, const GLdouble *value);
 extern PFNGLPROGRAMUNIFORM1DVPROC glProgramUniform1dv;
-// ProgramUniform1dv glProgramUniform1dv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORM1UIPROC)(GLuint program, GLint location, GLuint v0);
 extern PFNGLPROGRAMUNIFORM1UIPROC glProgramUniform1ui;
-// ProgramUniform1ui glProgramUniform1ui
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORM1UIVPROC)(GLuint program, GLint location, GLsizei count, const GLuint *value);
 extern PFNGLPROGRAMUNIFORM1UIVPROC glProgramUniform1uiv;
-// ProgramUniform1uiv glProgramUniform1uiv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORM2IPROC)(GLuint program, GLint location, GLint v0, GLint v1);
 extern PFNGLPROGRAMUNIFORM2IPROC glProgramUniform2i;
-// ProgramUniform2i glProgramUniform2i
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORM2IVPROC)(GLuint program, GLint location, GLsizei count, const GLint *value);
 extern PFNGLPROGRAMUNIFORM2IVPROC glProgramUniform2iv;
-// ProgramUniform2iv glProgramUniform2iv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORM2FPROC)(GLuint program, GLint location, GLfloat v0, GLfloat v1);
 extern PFNGLPROGRAMUNIFORM2FPROC glProgramUniform2f;
-// ProgramUniform2f glProgramUniform2f
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORM2FVPROC)(GLuint program, GLint location, GLsizei count, const GLfloat *value);
 extern PFNGLPROGRAMUNIFORM2FVPROC glProgramUniform2fv;
-// ProgramUniform2fv glProgramUniform2fv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORM2DPROC)(GLuint program, GLint location, GLdouble v0, GLdouble v1);
 extern PFNGLPROGRAMUNIFORM2DPROC glProgramUniform2d;
-// ProgramUniform2d glProgramUniform2d
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORM2DVPROC)(GLuint program, GLint location, GLsizei count, const GLdouble *value);
 extern PFNGLPROGRAMUNIFORM2DVPROC glProgramUniform2dv;
-// ProgramUniform2dv glProgramUniform2dv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORM2UIPROC)(GLuint program, GLint location, GLuint v0, GLuint v1);
 extern PFNGLPROGRAMUNIFORM2UIPROC glProgramUniform2ui;
-// ProgramUniform2ui glProgramUniform2ui
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORM2UIVPROC)(GLuint program, GLint location, GLsizei count, const GLuint *value);
 extern PFNGLPROGRAMUNIFORM2UIVPROC glProgramUniform2uiv;
-// ProgramUniform2uiv glProgramUniform2uiv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORM3IPROC)(GLuint program, GLint location, GLint v0, GLint v1, GLint v2);
 extern PFNGLPROGRAMUNIFORM3IPROC glProgramUniform3i;
-// ProgramUniform3i glProgramUniform3i
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORM3IVPROC)(GLuint program, GLint location, GLsizei count, const GLint *value);
 extern PFNGLPROGRAMUNIFORM3IVPROC glProgramUniform3iv;
-// ProgramUniform3iv glProgramUniform3iv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORM3FPROC)(GLuint program, GLint location, GLfloat v0, GLfloat v1, GLfloat v2);
 extern PFNGLPROGRAMUNIFORM3FPROC glProgramUniform3f;
-// ProgramUniform3f glProgramUniform3f
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORM3FVPROC)(GLuint program, GLint location, GLsizei count, const GLfloat *value);
 extern PFNGLPROGRAMUNIFORM3FVPROC glProgramUniform3fv;
-// ProgramUniform3fv glProgramUniform3fv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORM3DPROC)(GLuint program, GLint location, GLdouble v0, GLdouble v1, GLdouble v2);
 extern PFNGLPROGRAMUNIFORM3DPROC glProgramUniform3d;
-// ProgramUniform3d glProgramUniform3d
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORM3DVPROC)(GLuint program, GLint location, GLsizei count, const GLdouble *value);
 extern PFNGLPROGRAMUNIFORM3DVPROC glProgramUniform3dv;
-// ProgramUniform3dv glProgramUniform3dv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORM3UIPROC)(GLuint program, GLint location, GLuint v0, GLuint v1, GLuint v2);
 extern PFNGLPROGRAMUNIFORM3UIPROC glProgramUniform3ui;
-// ProgramUniform3ui glProgramUniform3ui
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORM3UIVPROC)(GLuint program, GLint location, GLsizei count, const GLuint *value);
 extern PFNGLPROGRAMUNIFORM3UIVPROC glProgramUniform3uiv;
-// ProgramUniform3uiv glProgramUniform3uiv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORM4IPROC)(GLuint program, GLint location, GLint v0, GLint v1, GLint v2, GLint v3);
 extern PFNGLPROGRAMUNIFORM4IPROC glProgramUniform4i;
-// ProgramUniform4i glProgramUniform4i
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORM4IVPROC)(GLuint program, GLint location, GLsizei count, const GLint *value);
 extern PFNGLPROGRAMUNIFORM4IVPROC glProgramUniform4iv;
-// ProgramUniform4iv glProgramUniform4iv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORM4FPROC)(GLuint program, GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3);
 extern PFNGLPROGRAMUNIFORM4FPROC glProgramUniform4f;
-// ProgramUniform4f glProgramUniform4f
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORM4FVPROC)(GLuint program, GLint location, GLsizei count, const GLfloat *value);
 extern PFNGLPROGRAMUNIFORM4FVPROC glProgramUniform4fv;
-// ProgramUniform4fv glProgramUniform4fv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORM4DPROC)(GLuint program, GLint location, GLdouble v0, GLdouble v1, GLdouble v2, GLdouble v3);
 extern PFNGLPROGRAMUNIFORM4DPROC glProgramUniform4d;
-// ProgramUniform4d glProgramUniform4d
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORM4DVPROC)(GLuint program, GLint location, GLsizei count, const GLdouble *value);
 extern PFNGLPROGRAMUNIFORM4DVPROC glProgramUniform4dv;
-// ProgramUniform4dv glProgramUniform4dv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORM4UIPROC)(GLuint program, GLint location, GLuint v0, GLuint v1, GLuint v2, GLuint v3);
 extern PFNGLPROGRAMUNIFORM4UIPROC glProgramUniform4ui;
-// ProgramUniform4ui glProgramUniform4ui
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORM4UIVPROC)(GLuint program, GLint location, GLsizei count, const GLuint *value);
 extern PFNGLPROGRAMUNIFORM4UIVPROC glProgramUniform4uiv;
-// ProgramUniform4uiv glProgramUniform4uiv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORMMATRIX2FVPROC)(GLuint program, GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
 extern PFNGLPROGRAMUNIFORMMATRIX2FVPROC glProgramUniformMatrix2fv;
-// ProgramUniformMatrix2fv glProgramUniformMatrix2fv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORMMATRIX3FVPROC)(GLuint program, GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
 extern PFNGLPROGRAMUNIFORMMATRIX3FVPROC glProgramUniformMatrix3fv;
-// ProgramUniformMatrix3fv glProgramUniformMatrix3fv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORMMATRIX4FVPROC)(GLuint program, GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
 extern PFNGLPROGRAMUNIFORMMATRIX4FVPROC glProgramUniformMatrix4fv;
-// ProgramUniformMatrix4fv glProgramUniformMatrix4fv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORMMATRIX2DVPROC)(GLuint program, GLint location, GLsizei count, GLboolean transpose, const GLdouble *value);
 extern PFNGLPROGRAMUNIFORMMATRIX2DVPROC glProgramUniformMatrix2dv;
-// ProgramUniformMatrix2dv glProgramUniformMatrix2dv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORMMATRIX3DVPROC)(GLuint program, GLint location, GLsizei count, GLboolean transpose, const GLdouble *value);
 extern PFNGLPROGRAMUNIFORMMATRIX3DVPROC glProgramUniformMatrix3dv;
-// ProgramUniformMatrix3dv glProgramUniformMatrix3dv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORMMATRIX4DVPROC)(GLuint program, GLint location, GLsizei count, GLboolean transpose, const GLdouble *value);
 extern PFNGLPROGRAMUNIFORMMATRIX4DVPROC glProgramUniformMatrix4dv;
-// ProgramUniformMatrix4dv glProgramUniformMatrix4dv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORMMATRIX2X3FVPROC)(GLuint program, GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
 extern PFNGLPROGRAMUNIFORMMATRIX2X3FVPROC glProgramUniformMatrix2x3fv;
-// ProgramUniformMatrix2x3fv glProgramUniformMatrix2x3fv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORMMATRIX3X2FVPROC)(GLuint program, GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
 extern PFNGLPROGRAMUNIFORMMATRIX3X2FVPROC glProgramUniformMatrix3x2fv;
-// ProgramUniformMatrix3x2fv glProgramUniformMatrix3x2fv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORMMATRIX2X4FVPROC)(GLuint program, GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
 extern PFNGLPROGRAMUNIFORMMATRIX2X4FVPROC glProgramUniformMatrix2x4fv;
-// ProgramUniformMatrix2x4fv glProgramUniformMatrix2x4fv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORMMATRIX4X2FVPROC)(GLuint program, GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
 extern PFNGLPROGRAMUNIFORMMATRIX4X2FVPROC glProgramUniformMatrix4x2fv;
-// ProgramUniformMatrix4x2fv glProgramUniformMatrix4x2fv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORMMATRIX3X4FVPROC)(GLuint program, GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
 extern PFNGLPROGRAMUNIFORMMATRIX3X4FVPROC glProgramUniformMatrix3x4fv;
-// ProgramUniformMatrix3x4fv glProgramUniformMatrix3x4fv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORMMATRIX4X3FVPROC)(GLuint program, GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
 extern PFNGLPROGRAMUNIFORMMATRIX4X3FVPROC glProgramUniformMatrix4x3fv;
-// ProgramUniformMatrix4x3fv glProgramUniformMatrix4x3fv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORMMATRIX2X3DVPROC)(GLuint program, GLint location, GLsizei count, GLboolean transpose, const GLdouble *value);
 extern PFNGLPROGRAMUNIFORMMATRIX2X3DVPROC glProgramUniformMatrix2x3dv;
-// ProgramUniformMatrix2x3dv glProgramUniformMatrix2x3dv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORMMATRIX3X2DVPROC)(GLuint program, GLint location, GLsizei count, GLboolean transpose, const GLdouble *value);
 extern PFNGLPROGRAMUNIFORMMATRIX3X2DVPROC glProgramUniformMatrix3x2dv;
-// ProgramUniformMatrix3x2dv glProgramUniformMatrix3x2dv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORMMATRIX2X4DVPROC)(GLuint program, GLint location, GLsizei count, GLboolean transpose, const GLdouble *value);
 extern PFNGLPROGRAMUNIFORMMATRIX2X4DVPROC glProgramUniformMatrix2x4dv;
-// ProgramUniformMatrix2x4dv glProgramUniformMatrix2x4dv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORMMATRIX4X2DVPROC)(GLuint program, GLint location, GLsizei count, GLboolean transpose, const GLdouble *value);
 extern PFNGLPROGRAMUNIFORMMATRIX4X2DVPROC glProgramUniformMatrix4x2dv;
-// ProgramUniformMatrix4x2dv glProgramUniformMatrix4x2dv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORMMATRIX3X4DVPROC)(GLuint program, GLint location, GLsizei count, GLboolean transpose, const GLdouble *value);
 extern PFNGLPROGRAMUNIFORMMATRIX3X4DVPROC glProgramUniformMatrix3x4dv;
-// ProgramUniformMatrix3x4dv glProgramUniformMatrix3x4dv
 typedef void(APIENTRYP PFNGLPROGRAMUNIFORMMATRIX4X3DVPROC)(GLuint program, GLint location, GLsizei count, GLboolean transpose, const GLdouble *value);
 extern PFNGLPROGRAMUNIFORMMATRIX4X3DVPROC glProgramUniformMatrix4x3dv;
-// ProgramUniformMatrix4x3dv glProgramUniformMatrix4x3dv
 typedef void(APIENTRYP PFNGLVALIDATEPROGRAMPIPELINEPROC)(GLuint pipeline);
 extern PFNGLVALIDATEPROGRAMPIPELINEPROC glValidateProgramPipeline;
-// ValidateProgramPipeline glValidateProgramPipeline
 typedef void(APIENTRYP PFNGLGETPROGRAMPIPELINEINFOLOGPROC)(GLuint pipeline, GLsizei bufSize, GLsizei *length, GLchar *infoLog);
 extern PFNGLGETPROGRAMPIPELINEINFOLOGPROC glGetProgramPipelineInfoLog;
-// GetProgramPipelineInfoLog glGetProgramPipelineInfoLog
 typedef void(APIENTRYP PFNGLVERTEXATTRIBL1DPROC)(GLuint index, GLdouble x);
 extern PFNGLVERTEXATTRIBL1DPROC glVertexAttribL1d;
-// VertexAttribL1d glVertexAttribL1d
 typedef void(APIENTRYP PFNGLVERTEXATTRIBL2DPROC)(GLuint index, GLdouble x, GLdouble y);
 extern PFNGLVERTEXATTRIBL2DPROC glVertexAttribL2d;
-// VertexAttribL2d glVertexAttribL2d
 typedef void(APIENTRYP PFNGLVERTEXATTRIBL3DPROC)(GLuint index, GLdouble x, GLdouble y, GLdouble z);
 extern PFNGLVERTEXATTRIBL3DPROC glVertexAttribL3d;
-// VertexAttribL3d glVertexAttribL3d
 typedef void(APIENTRYP PFNGLVERTEXATTRIBL4DPROC)(GLuint index, GLdouble x, GLdouble y, GLdouble z, GLdouble w);
 extern PFNGLVERTEXATTRIBL4DPROC glVertexAttribL4d;
-// VertexAttribL4d glVertexAttribL4d
 typedef void(APIENTRYP PFNGLVERTEXATTRIBL1DVPROC)(GLuint index, const GLdouble *v);
 extern PFNGLVERTEXATTRIBL1DVPROC glVertexAttribL1dv;
-// VertexAttribL1dv glVertexAttribL1dv
 typedef void(APIENTRYP PFNGLVERTEXATTRIBL2DVPROC)(GLuint index, const GLdouble *v);
 extern PFNGLVERTEXATTRIBL2DVPROC glVertexAttribL2dv;
-// VertexAttribL2dv glVertexAttribL2dv
 typedef void(APIENTRYP PFNGLVERTEXATTRIBL3DVPROC)(GLuint index, const GLdouble *v);
 extern PFNGLVERTEXATTRIBL3DVPROC glVertexAttribL3dv;
-// VertexAttribL3dv glVertexAttribL3dv
 typedef void(APIENTRYP PFNGLVERTEXATTRIBL4DVPROC)(GLuint index, const GLdouble *v);
 extern PFNGLVERTEXATTRIBL4DVPROC glVertexAttribL4dv;
-// VertexAttribL4dv glVertexAttribL4dv
 typedef void(APIENTRYP PFNGLVERTEXATTRIBLPOINTERPROC)(GLuint index, GLint size, GLenum type, GLsizei stride, const void *pointer);
 extern PFNGLVERTEXATTRIBLPOINTERPROC glVertexAttribLPointer;
-// VertexAttribLPointer glVertexAttribLPointer
 typedef void(APIENTRYP PFNGLGETVERTEXATTRIBLDVPROC)(GLuint index, GLenum pname, GLdouble *params);
 extern PFNGLGETVERTEXATTRIBLDVPROC glGetVertexAttribLdv;
-// GetVertexAttribLdv glGetVertexAttribLdv
 typedef void(APIENTRYP PFNGLVIEWPORTARRAYVPROC)(GLuint first, GLsizei count, const GLfloat *v);
 extern PFNGLVIEWPORTARRAYVPROC glViewportArrayv;
-// ViewportArrayv glViewportArrayv
 typedef void(APIENTRYP PFNGLVIEWPORTINDEXEDFPROC)(GLuint index, GLfloat x, GLfloat y, GLfloat w, GLfloat h);
 extern PFNGLVIEWPORTINDEXEDFPROC glViewportIndexedf;
-// ViewportIndexedf glViewportIndexedf
 typedef void(APIENTRYP PFNGLVIEWPORTINDEXEDFVPROC)(GLuint index, const GLfloat *v);
 extern PFNGLVIEWPORTINDEXEDFVPROC glViewportIndexedfv;
-// ViewportIndexedfv glViewportIndexedfv
 typedef void(APIENTRYP PFNGLSCISSORARRAYVPROC)(GLuint first, GLsizei count, const GLint *v);
 extern PFNGLSCISSORARRAYVPROC glScissorArrayv;
-// ScissorArrayv glScissorArrayv
 typedef void(APIENTRYP PFNGLSCISSORINDEXEDPROC)(GLuint index, GLint left, GLint bottom, GLsizei width, GLsizei height);
 extern PFNGLSCISSORINDEXEDPROC glScissorIndexed;
-// ScissorIndexed glScissorIndexed
 typedef void(APIENTRYP PFNGLSCISSORINDEXEDVPROC)(GLuint index, const GLint *v);
 extern PFNGLSCISSORINDEXEDVPROC glScissorIndexedv;
-// ScissorIndexedv glScissorIndexedv
 typedef void(APIENTRYP PFNGLDEPTHRANGEARRAYVPROC)(GLuint first, GLsizei count, const GLdouble *v);
 extern PFNGLDEPTHRANGEARRAYVPROC glDepthRangeArrayv;
-// DepthRangeArrayv glDepthRangeArrayv
 typedef void(APIENTRYP PFNGLDEPTHRANGEINDEXEDPROC)(GLuint index, GLdouble n, GLdouble f);
 extern PFNGLDEPTHRANGEINDEXEDPROC glDepthRangeIndexed;
-// DepthRangeIndexed glDepthRangeIndexed
 typedef void(APIENTRYP PFNGLGETFLOATI_VPROC)(GLenum target, GLuint index, GLfloat *data);
 extern PFNGLGETFLOATI_VPROC glGetFloati_v;
-// GetFloati_v glGetFloati_v
 typedef void(APIENTRYP PFNGLGETDOUBLEI_VPROC)(GLenum target, GLuint index, GLdouble *data);
 extern PFNGLGETDOUBLEI_VPROC glGetDoublei_v;
-// GetDoublei_v glGetDoublei_v
 
 /////////////////////////////////////////////////////////////////////////////////////////
 //

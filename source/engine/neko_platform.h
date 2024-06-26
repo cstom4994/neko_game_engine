@@ -11,15 +11,16 @@
 // NEKO_PLATFORM
 ========================*/
 
-#include <glfw/glfw3.h>
+#include <GLFW/glfw3.h>
 
 #if defined(_WIN32) || defined(_WIN64) || defined(NEKO_PF_WIN)
 
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h>
-
 typedef unsigned __int64 tick_t;
+
 #elif defined(NEKO_PF_APPLE)
+
 #include <pthread.h>
 #include <stdint.h>
 #include <sys/syscall.h>
@@ -34,10 +35,15 @@ typedef u64 tick_t;
 // #include <GLFW/glfw3native.h>
 
 #else
+#include <unistd.h>
+#include <sys/syscall.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <syscall.h>
 typedef u64 tick_t;
+
+extern long int syscall (long int __sysno, ...);
+
 #endif
 
 // 一些 winapi 调用可能会失败 但我们没有任何已知的方法来“修复”该问题
@@ -579,10 +585,14 @@ NEKO_API_DECL int neko_pf_chdir_default_impl(const char *path);
 #define neko_pf_library_proc_address neko_pf_library_proc_address_default_impl
 #define neko_pf_chdir neko_pf_chdir_default_impl
 
-#if defined(NEKO_PF_LINUX) || defined(NEKO_PF_APPLE)
+#if defined(NEKO_PF_APPLE)
 #define neko_fopen(filePath, mode) fopen(filePath, mode)
 #define neko_fseek(file, offset, whence) fseeko(file, offset, whence)
 #define neko_ftell(file) ftello(file)
+#elif defined (NEKO_PF_LINUX)
+#define neko_fopen(filePath, mode) fopen(filePath, mode)
+#define neko_fseek(file, offset, whence) fseek(file, offset, whence)
+#define neko_ftell(file) ftell(file)
 #elif defined(NEKO_PF_WIN)
 static inline FILE *neko_fopen(const char *filePath, const char *mode) {
     FILE *file;
@@ -758,11 +768,6 @@ NEKO_API_DECL void thread_atomic_ptr_store(neko_thread_atomic_ptr_t *atomic, voi
 NEKO_API_DECL void *thread_atomic_ptr_swap(neko_thread_atomic_ptr_t *atomic, void *desired);
 NEKO_API_DECL void *thread_atomic_ptr_compare_and_swap(neko_thread_atomic_ptr_t *atomic, void *expected, void *desired);
 #endif
-
-typedef union neko_thread_timer_t neko_thread_timer_t;
-NEKO_API_DECL void thread_timer_init(neko_thread_timer_t *timer);
-NEKO_API_DECL void thread_timer_term(neko_thread_timer_t *timer);
-NEKO_API_DECL void thread_timer_wait(neko_thread_timer_t *timer, u64 nanoseconds);
 
 typedef void *neko_thread_tls_t;
 NEKO_API_DECL neko_thread_tls_t thread_tls_create(void);

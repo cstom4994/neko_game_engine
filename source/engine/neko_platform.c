@@ -44,7 +44,10 @@
 #include <dlfcn.h>  // dlopen, RTLD_LAZY, dlsym
 #include <errno.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <unistd.h>  // for chdir
+#include <utime.h>
+
 #else
 
 // direct.h
@@ -878,7 +881,7 @@ void neko_pf_init(neko_pf_t* pf) {
     SetConsoleOutputCP(CP_UTF8);
     SetProcessDPIAware();
     neko_pf_symbol_handler_init();
-#elif NEKO_PF_LINUX
+#elif defined(NEKO_PF_LINUX)
     // handle linux symbol
 #endif
 
@@ -2307,29 +2310,18 @@ void neko_pf_process_input(neko_pf_input_t* input) { glfwPollEvents(); }
 /*== Platform Util == */
 
 void neko_pf_sleep(f32 ms) {
-#if (defined NEKO_PF_WIN)
-
-    timeBeginPeriod(1);
-    Sleep((u64)ms);
-    timeEndPeriod(1);
-
-#elif (defined NEKO_PF_APPLE)
-
-    usleep(ms * 1000.f);  // unistd.h
-#else
     if (ms < 0.f) {
         return;
     }
-
-    struct timespec ts = NEKO_DEFAULT_VAL();
-    s32 res = 0;
-    ts.tv_sec = ms / 1000.f;
-    ts.tv_nsec = ((u64)ms % 1000) * 1000000;
-    do {
-        res = nanosleep(&ts, &ts);
-    } while (res && errno == EINTR);
-
-    // usleep(ms * 1000.f); // unistd.h
+#if (defined NEKO_PF_WIN)
+    timeBeginPeriod(1);
+    Sleep((u64)ms);
+    timeEndPeriod(1);
+#elif (defined NEKO_PF_APPLE)
+    usleep(ms * 1000.f);  // unistd.h
+#else
+    int usleep(__useconds_t useconds);
+    usleep(ms * 1000.f);  // unistd.h
 #endif
 }
 
@@ -4003,25 +3995,18 @@ typedef struct tagTHREADNAME_INFO {
 #endif
 #include <errno.h>
 #include <pthread.h>
+#include <sys/prctl.h>  // prctl
 #include <sys/time.h>
 
 #else
 #error Unknown platform.
 #endif
 
-#ifndef NDEBUG
-#include <assert.h>
-#endif
-
 neko_thread_id_t thread_current_thread_id(void) {
 #if defined(_WIN32)
-
     return (void*)(uintptr_t)GetCurrentThreadId();
-
 #elif defined(__linux__) || defined(__APPLE__) || defined(__ANDROID__) || defined(__EMSCRIPTEN__)
-
     return (void*)pthread_self();
-
 #else
 #error Unknown platform.
 #endif
@@ -4029,13 +4014,9 @@ neko_thread_id_t thread_current_thread_id(void) {
 
 void thread_yield(void) {
 #if defined(_WIN32)
-
     SwitchToThread();
-
 #elif defined(__linux__) || defined(__APPLE__) || defined(__ANDROID__) || defined(__EMSCRIPTEN__)
-
     sched_yield();
-
 #else
 #error Unknown platform.
 #endif
@@ -4043,13 +4024,9 @@ void thread_yield(void) {
 
 void thread_exit(int return_code) {
 #if defined(_WIN32)
-
     ExitThread((DWORD)return_code);
-
 #elif defined(__linux__) || defined(__APPLE__) || defined(__ANDROID__) || defined(__EMSCRIPTEN__)
-
     pthread_exit((void*)(uintptr_t)return_code);
-
 #else
 #error Unknown platform.
 #endif
@@ -4085,8 +4062,10 @@ neko_thread_ptr_t thread_init(int (*thread_proc)(void*), void* user_data, char c
     pthread_t thread;
     if (0 != pthread_create(&thread, NULL, (void* (*)(void*))thread_proc, user_data)) return NULL;
 
-#if !defined(__APPLE__) && !defined(__EMSCRIPTEN__)  // max doesn't support pthread_setname_np. alternatives?
+#if !defined(__APPLE__) && !defined(__EMSCRIPTEN__) && !defined(__linux__)  // max doesn't support pthread_setname_np. alternatives?
     if (name) pthread_setname_np(thread, name);
+#else
+    // if (name) prctl(PR_SET_NAME, name);
 #endif
 
     return (neko_thread_ptr_t)thread;
@@ -4559,66 +4538,6 @@ void* thread_atomic_ptr_compare_and_swap(neko_thread_atomic_ptr_t* atomic, void*
 }
 
 #endif  // THREAD_HAS_ATOMIC
-
-void thread_timer_init(neko_thread_timer_t* timer) {
-#if defined(_WIN32)
-
-    struct x {
-        char thread_timer_type_too_small : (sizeof(neko_thread_mutex_t) < sizeof(HANDLE) ? 0 : 1);
-    };
-
-    TIMECAPS tc;
-    if (timeGetDevCaps(&tc, sizeof(TIMECAPS)) == TIMERR_NOERROR) timeBeginPeriod(tc.wPeriodMin);
-
-    *(HANDLE*)timer = CreateWaitableTimer(NULL, TRUE, NULL);
-
-#elif defined(__linux__) || defined(__APPLE__) || defined(__ANDROID__) || defined(__EMSCRIPTEN__)
-
-    // Nothing
-
-#else
-#error Unknown platform.
-#endif
-}
-
-void thread_timer_term(neko_thread_timer_t* timer) {
-#if defined(_WIN32)
-
-    CloseHandle(*(HANDLE*)timer);
-
-    TIMECAPS tc;
-    if (timeGetDevCaps(&tc, sizeof(TIMECAPS)) == TIMERR_NOERROR) timeEndPeriod(tc.wPeriodMin);
-
-#elif defined(__linux__) || defined(__APPLE__) || defined(__ANDROID__) || defined(__EMSCRIPTEN__)
-
-    // Nothing
-
-#else
-#error Unknown platform.
-#endif
-}
-
-void thread_timer_wait(neko_thread_timer_t* timer, u64 nanoseconds) {
-#if defined(_WIN32)
-
-    LARGE_INTEGER due_time;
-    due_time.QuadPart = -(LONGLONG)(nanoseconds / 100);
-    BOOL b = SetWaitableTimer(*(HANDLE*)timer, &due_time, 0, 0, 0, FALSE);
-    (void)b;
-    WaitForSingleObject(*(HANDLE*)timer, INFINITE);
-
-#elif defined(__linux__) || defined(__APPLE__) || defined(__ANDROID__) || defined(__EMSCRIPTEN__)
-
-    struct timespec rem;
-    struct timespec req;
-    req.tv_sec = nanoseconds / 1000000000ULL;
-    req.tv_nsec = nanoseconds - req.tv_sec * 1000000000ULL;
-    while (nanosleep(&req, &rem)) req = rem;
-
-#else
-#error Unknown platform.
-#endif
-}
 
 neko_thread_tls_t thread_tls_create(void) {
 #if defined(_WIN32)

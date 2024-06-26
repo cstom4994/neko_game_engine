@@ -392,8 +392,9 @@ NEKO_INLINE bool fs_exists(const std::string& filename) {
 
 }  // namespace neko
 
-#if !defined(NEKO_PROP)
 #define NEKO_PROP
+
+#if !defined(NEKO_PROP)
 
 #include <string_view>
 

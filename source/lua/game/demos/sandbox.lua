@@ -16,6 +16,12 @@ game_data.hot_code = {}
 
 local tiny = require "tiny"
 
+local b2_world = neko_b2_world {
+    gx = 0,
+    gy = 9.81,
+    meter = 80
+}
+
 -- ecs_world = ECS.fetch_world("sandbox")
 
 -- ecs_world:register("gameobj", {

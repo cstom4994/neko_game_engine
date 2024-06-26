@@ -103,6 +103,9 @@ NEKO_API_DECL neko_t* neko_instance() {
     return &g_neko_instance;
 }
 
+Neko_OnModuleLoad(Sound);
+Neko_OnModuleLoad(Physics);
+
 NEKO_API_DECL neko_t* neko_create(int argc, char** argv) {
     if (neko_instance() != NULL) {
 
@@ -179,9 +182,9 @@ NEKO_API_DECL neko_t* neko_create(int argc, char** argv) {
 
         Neko_Module m = {};
         s32 sss;
-        sss = Neko_OnModuleLoad_Call(Sound, &m, ENGINE_INTERFACE());
+        sss = Neko_OnModuleLoad_Sound(&m, ENGINE_INTERFACE());
         neko_dyn_array_push(module_list, m);
-        sss = Neko_OnModuleLoad_Call(Physics, &m, ENGINE_INTERFACE());
+        sss = Neko_OnModuleLoad_Physics(&m, ENGINE_INTERFACE());
         neko_dyn_array_push(module_list, m);
 
         for (u32 i = 0; i < neko_dyn_array_size(module_list); ++i) {
@@ -270,10 +273,13 @@ local boot = require "boot"
 local w = boot.fetch_world("sandbox")
 
 function boot_init()
+
+    local game_userdata = sandbox_init()
+
     w:register("neko_client_userdata_t", {ud})
     local eid1 = w:new{
         neko_client_userdata_t = {
-            ud = sandbox_init()
+            ud = game_userdata
         }
     }
 end

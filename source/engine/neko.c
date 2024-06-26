@@ -72,6 +72,13 @@ NEKO_API_DECL void neko_console_printf(neko_console_t* console, const char* fmt,
 
 // logging
 
+NEKO_API_DECL void neko_printf(const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    vprintf(fmt, args);
+    va_end(args);
+}
+
 #define MAX_CALLBACKS 8
 #define LOG_USE_COLOR
 
@@ -153,15 +160,17 @@ void neko_log(int level, const char* file, int line, const char* fmt, ...) {
         vfprintf(ev.udata, ev.fmt, ev.ap);
         fprintf(ev.udata, "\n");
         fflush(ev.udata);
+        va_end(ev.ap);
 
         if (NULL != neko_instance() && NULL != neko_instance()->console) {
+            va_start(ev.ap, fmt);
             char buffer[512] = NEKO_DEFAULT_VAL();
             vsnprintf(buffer, 512, ev.fmt, ev.ap);
             neko_console_printf(neko_instance()->console, "%-5s %s:%d: ", level_strings[ev.level], neko_util_get_filename(ev.file), ev.line);
             neko_console_printf(neko_instance()->console, buffer);
             neko_console_printf(neko_instance()->console, "\n");
+            va_end(ev.ap);
         }
-        va_end(ev.ap);
     }
 
     for (int i = 0; i < MAX_CALLBACKS && L.callbacks[i].fn; i++) {

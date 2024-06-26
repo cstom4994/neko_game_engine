@@ -15,7 +15,6 @@
 #include "engine/neko.hpp"
 #include "engine/neko_api.hpp"
 #include "engine/neko_asset.h"
-#include "engine/neko_ecs.h"
 #include "engine/neko_engine.h"
 #include "engine/neko_gl.h"
 #include "engine/neko_imgui.hpp"
@@ -33,14 +32,13 @@ using namespace neko;
 
 class sandbox_game;
 class neko_filesystem_t;
-struct game_font_render_batch;
 
 typedef struct neko_client_userdata_t {
     neko_imgui_context_t imgui = NEKO_DEFAULT_VAL();
     neko_handle(neko_render_renderpass_t) main_rp = {0};
     neko_handle(neko_render_framebuffer_t) main_fbo = {0};
     neko_handle(neko_render_texture_t) main_rt = {0};
-    neko_fontbatch_t font_render_batch;
+    // neko_fontbatch_t font_render_batch;
     neko_client_cvar_t cl_cvar = NEKO_DEFAULT_VAL();
     neko_thread_atomic_int_t init_thread_flag;
     neko_thread_ptr_t init_work_thread;
@@ -86,7 +84,6 @@ NEKO_API_DECL void neko_console(neko_console_t *console, neko_ui_context_t *ctx,
 
 // test
 void test_xml(const std::string &file);
-void test_ut();
 void test_se();
 void test_containers();
 void test_thd();
@@ -97,7 +94,7 @@ void print(const float &val) { std::printf("%f", val); }
 
 void print(const std::string &val) { std::printf("%s", val.c_str()); }
 
-// Register component types by wrapping the struct name in `Comp(...)`
+#if 0
 
 struct Comp(Position) {
     // Register reflectable fields ('props') using the `Prop` macro. This can be used in any aggregate
@@ -121,6 +118,8 @@ struct Comp(Name) {
 // After all compnonent types are defined, this macro must be called to be able to use
 // `forEachComponentType` to iterate all component types
 UseComponentTypes();
+
+#endif
 
 void draw_gui(neko_client_userdata_t *game_userdata);
 
@@ -210,14 +209,6 @@ void game_init(neko_client_userdata_t *game_userdata) {
 
     game_userdata->imgui = neko_imgui_new(&ENGINE_INTERFACE()->cb, neko_pf_main_window(), false);
 
-    // Load a file
-
-    neko::string contents = {};
-    ok = vfs_read_entire_file(NEKO_PACK_GAMEDATA, &contents, "gamedir/1.fnt");
-    NEKO_ASSERT(ok);
-    neko_fontbatch_init(&game_userdata->font_render_batch, neko_game().DisplaySize, "gamedir/1_0.png", contents.data, (s32)contents.len);
-    neko_defer(neko_safe_free(contents.data));
-
     // Construct frame buffer
     game_userdata->main_fbo = neko_render_framebuffer_create({});
 
@@ -245,8 +236,6 @@ void game_init(neko_client_userdata_t *game_userdata) {
     static auto init_work = +[](void *user_data) {
         neko_thread_atomic_int_t *this_init_thread_flag = (neko_thread_atomic_int_t *)user_data;
         if (thread_atomic_int_load(this_init_thread_flag) == 0) {
-            neko_thread_timer_t thread_timer;
-            thread_timer_init(&thread_timer);
 
             neko::timer timer;
             timer.start();
@@ -256,8 +245,6 @@ void game_init(neko_client_userdata_t *game_userdata) {
             timer.stop();
             NEKO_INFO(std::format("game_init_thread loading done in {0:.3f} ms", timer.get()).c_str());
 
-            // thread_timer_wait(&thread_timer, 1000000000);  // sleep for a second
-            thread_timer_term(&thread_timer);
             thread_atomic_int_store(this_init_thread_flag, 1);
         }
         return 0;
@@ -359,12 +346,12 @@ void game_loop(neko_client_userdata_t *game_userdata) {
             if (ImGui::Button("test_xml")) test_xml("gamedir/tests/test.xml");
             if (ImGui::Button("test_fgd")) test_fgd();
             if (ImGui::Button("test_se")) test_se();
-            if (ImGui::Button("test_ut")) test_ut();
             if (ImGui::Button("test_containers")) test_containers();
             if (ImGui::Button("test_thread")) test_thd();
             if (ImGui::Button("test_ttf")) {
                 // neko_timer_do(t, neko_println("%llu", t), { test_ttf(); });
             }
+#if 0
             if (ImGui::Button("test_ecs_cpp")) {
                 forEachComponentType([&]<typename T>() {
                     constexpr auto typeName = getTypeName<T>();
@@ -382,6 +369,7 @@ void game_loop(neko_client_userdata_t *game_userdata) {
                     });
                 });
             }
+#endif
 
             ImGui::End();
         }
@@ -411,7 +399,6 @@ void game_loop(neko_client_userdata_t *game_userdata) {
             neko_render_set_viewport(&ENGINE_INTERFACE()->cb, 0, 0, (u32)neko_game().DisplaySize.x, (u32)neko_game().DisplaySize.y);
             neko_render_clear(&ENGINE_INTERFACE()->cb, clear);
             neko_idraw_draw(&ENGINE_INTERFACE()->idraw, &ENGINE_INTERFACE()->cb);  // 立即模式绘制 idraw
-            neko_render_draw_batch(&ENGINE_INTERFACE()->cb, game_userdata->font_render_batch.font_render, 0, 0, 0);
         }
         neko_render_renderpass_end(&ENGINE_INTERFACE()->cb);
 
@@ -449,8 +436,6 @@ void game_shutdown(neko_client_userdata_t *game_userdata) {
     neko_render_framebuffer_destroy(game_userdata->main_fbo);
 
     neko_lua_call(neko_instance()->L, "game_shutdown");
-
-    neko_fontbatch_end(&game_userdata->font_render_batch);
 
     neko_imgui_shutdown(&game_userdata->imgui);
     neko_ui_free(&ENGINE_INTERFACE()->ui);

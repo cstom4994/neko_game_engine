@@ -15,7 +15,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 
 /*===================
 // PLATFORM DEFINES
@@ -76,7 +75,7 @@
 ========================*/
 
 #if defined(NEKO_PF_LINUX)
-#define NEKO_INLINE static inline
+#define NEKO_INLINE inline
 #elif defined(NEKO_PF_APPLE) || defined(NEKO_PF_WIN)
 #define NEKO_INLINE inline
 #endif
@@ -94,7 +93,7 @@
 #elif (defined __APPLE__ || defined _APPLE)
 #define NEKO_FORCE_INLINE static __attribute__((always_inline))
 #else
-#define NEKO_FORCE_INLINE NEKO_INLINE
+#define NEKO_FORCE_INLINE static NEKO_INLINE
 #endif
 
 #ifndef neko_little_endian
@@ -244,12 +243,7 @@ typedef uintptr_t uptr;
 #include <android/log.h>
 #define neko_printf(__FMT, ...) ((void)__android_log_print(ANDROID_LOG_INFO, "native-activity", __FMT, ##__VA_ARGS__))
 #else
-NEKO_STATIC_INLINE void neko_printf(const char* fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    vprintf(fmt, args);
-    va_end(args);
-}
+NEKO_API_DECL void neko_printf(const char* fmt, ...);
 #endif
 #endif
 
@@ -270,6 +264,8 @@ NEKO_STATIC_INLINE void neko_printf(const char* fmt, ...) {
 
 #if defined(__clang__)
 #define NEKO_DEBUGBREAK() __builtin_debugtrap()
+#elif defined(__GNUC__)
+#define NEKO_DEBUGBREAK() __builtin_trap()
 #elif defined(_MSC_VER)
 #define NEKO_DEBUGBREAK() __debugbreak()
 #else

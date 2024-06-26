@@ -17,7 +17,7 @@ add_includedirs("source/")
 
 local base_libs = {"glfw", "libffi", "lua", "imgui", "miniz", "stb"}
 
-if is_os("windows") or is_os("macosx") then
+if is_os("windows") or is_os("macosx") or is_os("linux") then
     add_requires("glfw", "libffi", "lua", "miniz", "stb")
     add_requires("imgui v1.90.8-docking", {
         configs = {
@@ -54,13 +54,18 @@ if is_plat("windows") then
 else
     add_cxflags("-Wtautological-compare")
     add_cxflags("-fno-strict-aliasing", "-fms-extensions", "-finline-functions", "-fPIC")
-    add_cxflags("-Wno-implicit-int", "-Wno-error", "-Wno-multichar", "-Wno-unsequenced",
-        "-Wno-unqualified-std-cast-call", "-Wno-implicit-const-int-float-conversion", "-Wno-unused-value",
-        "-Wno-pointer-bool-conversion", "-Wno-unknown-attributes", "-Wno-return-stack-address", "-Wno-writable-strings",
-        "-Wno-format", "-Wno-switch", "-Wno-incompatible-pointer-types",
-        "-Wno-tautological-constant-out-of-range-compare", "-Wno-tautological-pointer-compare",
-        "-Wno-shift-op-parentheses", "-Wno-visibility", "-Wno-parentheses", "-Wno-pointer-sign",
-        "-Wno-ignored-attributes", "-Wno-c99-designator", "-Wno-null-conversion")
+    -- add_cxflags("-Wno-implicit-int", "-Wno-error", "-Wno-multichar", "-Wno-unsequenced",
+    --     "-Wno-unqualified-std-cast-call", "-Wno-implicit-const-int-float-conversion", "-Wno-unused-value",
+    --     "-Wno-pointer-bool-conversion", "-Wno-unknown-attributes", "-Wno-return-stack-address", "-Wno-writable-strings",
+    --     "-Wno-format", "-Wno-switch", "-Wno-incompatible-pointer-types",
+    --     "-Wno-tautological-constant-out-of-range-compare", "-Wno-tautological-pointer-compare",
+    --     "-Wno-shift-op-parentheses", "-Wno-visibility", "-Wno-parentheses", "-Wno-pointer-sign",
+    --     "-Wno-ignored-attributes", "-Wno-c99-designator", "-Wno-null-conversion")
+
+end
+
+if is_plat("linux") then
+    add_syslinks("GL")
 end
 
 if is_mode("release") then

@@ -55,10 +55,10 @@ function sleep(n)
     end
 end
 
-function to_vec2(x, y)
+function to_vec2(_x, _y)
     return {
-        x = x,
-        y = y
+        x = _x,
+        y = _y
     }
 end
 

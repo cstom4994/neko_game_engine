@@ -4,13 +4,14 @@
 
 #include "engine/neko.h"
 #include "engine/neko_asset.h"
-#include "engine/neko_ecs.h"
 #include "engine/neko_platform.h"
 #include "engine/neko_render.h"
 
 /*==========================
 // NEKO_ENGINE / NEKO_APP
 ==========================*/
+
+typedef struct lua_State lua_State;
 
 typedef struct Neko_ModuleFunc {
     int (*OnInit)(lua_State* L);
@@ -97,11 +98,6 @@ NEKO_API_DECL bool neko_module_has_symbol(Neko_Module lib, const_str symbol_name
 NEKO_API_DECL void neko_module_interface_init(Neko_ModuleInterface* module_interface);
 NEKO_API_DECL void neko_module_interface_fini(Neko_ModuleInterface* module_interface);
 
-#define Neko_OnModuleLoad(N, ...) s32 Neko_OnModuleLoad_##N(Neko_Module* self, Neko_ModuleInterface* module_interface)
-#define Neko_OnModuleLoad_Call(N, ...)             \
-    [&]() -> s32 {                                 \
-        extern Neko_OnModuleLoad(N);               \
-        return Neko_OnModuleLoad_##N(__VA_ARGS__); \
-    }()
+#define Neko_OnModuleLoad(N, ...) NEKO_API_DECL s32 Neko_OnModuleLoad_##N(Neko_Module* self, Neko_ModuleInterface* module_interface)
 
 #endif

@@ -7,7 +7,6 @@
 #include "engine/neko.h"
 #include "engine/neko_asset.h"
 #include "engine/neko_common.h"
-#include "engine/neko_ecs.h"
 #include "engine/neko_engine.h"
 #include "engine/neko_lua.hpp"
 #include "engine/neko_luabind.hpp"
@@ -22,7 +21,7 @@ void __neko_lua_print_error(lua_State* state, int result) {
     if (result != 0) {
         switch (result) {
             case LUA_ERRRUN:
-                NEKO_ERROR("%s", "Lua Runtime error");
+                NEKO_ERROR("%s", "Lua runtime error");
                 break;
             case LUA_ERRSYNTAX:
                 NEKO_ERROR("%s", "Lua syntax error");
@@ -154,13 +153,13 @@ neko_color_t unpack<neko_color_t>(lua_State* L, int idx) {
 }
 }  // namespace lua2struct
 
-static void neko_tolua_setfield(lua_State* L, int table, char* f, char* v) {
+static void neko_tolua_setfield(lua_State* L, int table, const_str f, const_str v) {
     lua_pushstring(L, f);
     lua_pushstring(L, v);
     lua_settable(L, table);
 }
 
-static void neko_tolua_add_extra(lua_State* L, char* value) {
+static void neko_tolua_add_extra(lua_State* L, const_str value) {
     int len;
     lua_getglobal(L, "_extra_parameters");
 #if LUA_VERSION_NUM > 501

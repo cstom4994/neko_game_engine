@@ -206,7 +206,7 @@ static arena_node *arena_block_make(u64 capacity) {
         capacity = page;
     }
 
-    arena_node *a = (arena_node *)neko_safe_malloc(offsetof(arena_node, buf[capacity]));
+    arena_node *a = (arena_node *)neko_safe_malloc(NEKO_OFFSET(arena_node, buf[capacity]));
     a->next = nullptr;
     a->allocd = 0;
     a->capacity = capacity;

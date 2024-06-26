@@ -13,7 +13,7 @@ neko.events.add("render", "main", function(v)
     ImGui.Text("%s", v)
     ImGui.End()
 
-    neko.draw_text(50.0, 50.0, tostring(fnt_text), 3.0)
+    neko.fontbatch_text(gd.fontbatch, to_vec2(50.0, 50.0), tostring(fnt_text), 3.0)
 end)
 
 -- events.add("inputPressed","test",function(v)
@@ -44,6 +44,8 @@ local M = {
         gd.fbo = neko.render_framebuffer_create()
         gd.rt = neko.render_texture_create(win_w, win_h)
         gd.rp = neko.render_renderpass_create(gd.fbo, gd.rt)
+
+        gd.fontbatch = neko.fontbatch_create()
 
         -- test_shader = neko.render_shader_create("compute", {
         --     -- VERTEX = sprite_vs,
@@ -167,7 +169,11 @@ local M = {
         local fbs_x = 640
         local fbs_y = 360
 
-        local win_w, win_h = neko_window_size(neko_main_window())
+        -- local win_w, win_h = neko_window_size(neko_main_window())
+
+        local win_w, win_h = neko.render_display_size()
+
+        -- print(v)
 
         local roll = neko_pf_elapsed_time() * 0.001
 
@@ -263,6 +269,7 @@ local M = {
         neko.render_renderpass_begin(0)
         neko.render_set_viewport(0.0, 0.0, win_w, win_h)
         neko.idraw_draw()
+        neko.fontbatch_draw(gd.fontbatch)
         neko.render_renderpass_end()
     end,
     test_update = function()

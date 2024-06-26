@@ -2,7 +2,6 @@
 #include "engine/neko_api.hpp"
 #include "engine/neko_asset.h"
 #include "engine/neko_common.h"
-#include "engine/neko_ecs.h"
 #include "engine/neko_engine.h"
 #include "engine/neko_imgui.hpp"
 #include "engine/neko_lua.hpp"
@@ -715,21 +714,61 @@ LUA_FUNCTION(__neko_bind_gfxt_end) {
     return 0;
 }
 
-LUA_FUNCTION(__neko_bind_draw_text) {
+static void fontbatch_metatable(lua_State* L) {
+    // static luaL_Reg lib[] = {{"add", add}, {"set_recursive", set_recursive}, {"set_follow_symlinks", set_follow_symlinks}, {"set_filter", set_filter}, {"select", select}, {NULL, NULL}};
+    // luaL_newlibtable(L, lib);
+    // luaL_setfuncs(L, lib, 0);
+    // lua_setfield(L, -2, "__index");
+    static luaL_Reg mt[] = {{"__gc",
+                             +[](lua_State* L) {
+                                 neko_fontbatch_t* fontbatch = neko::lua::toudata_ptr<neko_fontbatch_t>(L, 1);
+                                 neko_fontbatch_end(fontbatch);
+                                 NEKO_TRACE("fontbatch __gc %p", fontbatch);
+                                 return 0;
+                             }},
+                            {NULL, NULL}};
+    luaL_setfuncs(L, mt, 0);
+}
 
-    std::breakpoint();
+namespace neko::lua {
+template <>
+struct udata<neko_fontbatch_t> {
+    static inline int nupvalue = 1;
+    static inline auto metatable = fontbatch_metatable;
+};
+}  // namespace neko::lua
 
+LUA_FUNCTION(__neko_bind_fontbatch_create) {
+    neko_fontbatch_t& fontbatch = neko::lua::newudata<neko_fontbatch_t>(L);
+
+    neko::string contents = {};
+    bool ok = vfs_read_entire_file(NEKO_PACK_GAMEDATA, &contents, "gamedir/1.fnt");
+    NEKO_ASSERT(ok);
+    neko_fontbatch_init(&fontbatch, neko_game().DisplaySize, "gamedir/1_0.png", contents.data, (s32)contents.len);
+    neko_defer(neko_safe_free(contents.data));
+
+    return 1;
+}
+
+LUA_FUNCTION(__neko_bind_fontbatch_draw) {
+    neko_fontbatch_t& fontbatch = neko::lua::toudata<neko_fontbatch_t>(L, 1);
+
+    neko_render_draw_batch(&ENGINE_INTERFACE()->cb, fontbatch.font_render, 0, 0, 0);
+
+    return 0;
+}
+
+LUA_FUNCTION(__neko_bind_fontbatch_text) {
     int numArgs = lua_gettop(L);  // 获取参数数量
-
-    f32 x = lua_tonumber(L, 1);
-    f32 y = lua_tonumber(L, 2);
+    neko_fontbatch_t& fontbatch = neko::lua::toudata<neko_fontbatch_t>(L, 1);
+    auto v1 = lua2struct::unpack<neko_vec2>(L, 2);
     const_str text = lua_tostring(L, 3);
 
     f32 scale = 0.f;
 
     if (numArgs > 3) scale = lua_tonumber(L, 4);
 
-    // neko_fontbatch_draw(&CL_GAME_USERDATA()->font_render_batch, CL_GAME_USERDATA()->DisplaySize, text, x, y, 1, 1.f, 800.f, scale);
+    neko_fontbatch_draw(&fontbatch, neko_game().DisplaySize, text, v1.x, v1.y, 1, 1.f, 800.f, scale);
 
     return 0;
 }
@@ -2134,6 +2173,14 @@ LUA_FUNCTION(__neko_bind_render_clear) {
     return 0;
 }
 
+LUA_FUNCTION(__neko_bind_render_display_size) {
+    neko_vec2 v1 = neko_game().DisplaySize;
+    // lua2struct::pack_struct<neko_vec2, 2>(L, v1);
+    lua_pushnumber(L, v1.x);
+    lua_pushnumber(L, v1.y);
+    return 2;
+}
+
 static int l_base64_encode(lua_State* L) {
     const char* input = luaL_checkstring(L, 1);
     const char* encoded = neko_base64_encode(input);
@@ -2501,7 +2548,7 @@ void neko_lua_events_register(struct neko_lua_events_t hookData) {
         g_lua_events_pool.hooks[g_lua_events_pool.count] = hookData;
         g_lua_events_pool.count += 1;
     } else {
-        NEKO_WARN("[lua] Hook \"pool\" errored with: Memory allocation error");
+        NEKO_WARN("[lua] event \"pool\" errored with: Memory allocation error");
     }
 }
 
@@ -2524,7 +2571,7 @@ void neko_lua_events_add(struct neko_lua_events_t* instance, const_str name, voi
         instance->stack[instance->pool].ref = ref;
         instance->pool += 1;
     } else {
-        NEKO_WARN("[lua] Hook \"%s\" errored with: Memory allocation error", instance->hookName);
+        NEKO_WARN("[lua] event \"%s\" errored with: Memory allocation error", instance->hookName);
     }
 }
 
@@ -2546,7 +2593,7 @@ void neko_lua_events_remove(struct neko_lua_events_t* instance, const_str name) 
                 instance->stack = temp;
                 instance->pool -= 1;
             } else {
-                NEKO_WARN("[lua] Hook \"%s\" errored with: Memory allocation error", instance->hookName);
+                NEKO_WARN("[lua] event \"%s\" errored with: Memory allocation error", instance->hookName);
             }
 
             return;
@@ -2554,12 +2601,12 @@ void neko_lua_events_remove(struct neko_lua_events_t* instance, const_str name) 
     }
 
     neko_snprintfc(temp, 64, "'%s' not found", name);
-    NEKO_WARN("[lua] Hook \"%s\" errored with: %s", instance->hookName, temp);
+    NEKO_WARN("[lua] event \"%s\" errored with: %s", instance->hookName, temp);
 }
 
 void neko_lua_events_run(struct neko_lua_events_t* instance, lua_State* L) {
     if (!instance || !L) {
-        NEKO_WARN("[lua] Hook \"?\" errored with: Failed to get neko_lua_events_t instance");
+        NEKO_WARN("[lua] event \"?\" errored with: Failed to get neko_lua_events_t instance");
 
         return;
     }
@@ -2574,7 +2621,7 @@ void neko_lua_events_run(struct neko_lua_events_t* instance, lua_State* L) {
                 instance->stack[i].func(L, instance, i, instance->callback);
             }
         } else {
-            NEKO_WARN("[lua] Hook \"%s\" errored with: Could not find function reference", instance->hookName);
+            NEKO_WARN("[lua] event \"%s\" errored with: Could not find function reference", instance->hookName);
         }
     }
 
@@ -2627,7 +2674,7 @@ void neko_lua_events_luafunc(lua_State* L, struct neko_lua_events_t* instance, i
     }
 
     if (lua_pcall(L, callback ? callback->data_size : 0, LUA_MULTRET, 0) != LUA_OK) {
-        NEKO_WARN("[lua] Hook \"%s\" errored with: %s", instance->hookName, lua_tostring(L, -1));
+        NEKO_WARN("[lua] event \"%s\" errored with: %s", instance->hookName, lua_tostring(L, -1));
 
         lua_pop(L, 1);
 
@@ -2659,10 +2706,10 @@ int neko_lua_events_bind_add(lua_State* L) {
 
             neko_lua_events_add(instance->address, name, neko_lua_events_luafunc, ref);
         } else {
-            NEKO_WARN("[lua] Hook \"%s\" errored with: Third argument must be a function", instance->hookName);
+            NEKO_WARN("[lua] event \"%s\" errored with: Third argument must be a function", instance->hookName);
         }
     } else {
-        NEKO_WARN("[lua] Hook \"%s\" errored with: Not found", hookName);
+        NEKO_WARN("[lua] event \"%s\" errored with: Not found", hookName);
     }
 
     return 0;
@@ -2677,7 +2724,7 @@ int neko_lua_events_bind_remove(lua_State* L) {
     if (instance) {
         neko_lua_events_remove(instance->address, name);
     } else {
-        NEKO_WARN("[lua] Hook \"%s\" errored with: Not found", hookName);
+        NEKO_WARN("[lua] event \"%s\" errored with: Not found", hookName);
     }
 
     return 0;
@@ -2699,7 +2746,7 @@ int neko_lua_events_bind_free(lua_State* L) {
     if (instance) {
         neko_lua_events_free(instance->address, L);
     } else {
-        NEKO_WARN("[lua] Hook \"%s\" errored with: Not found", hookName);
+        NEKO_WARN("[lua] event \"%s\" errored with: Not found", hookName);
     }
 
     return 0;
@@ -2939,7 +2986,9 @@ static int open_embed_core(lua_State* L) {
             {"gfxt_update", __neko_bind_gfxt_update},
             {"gfxt_end", __neko_bind_gfxt_end},
 
-            {"draw_text", __neko_bind_draw_text},
+            {"fontbatch_create", __neko_bind_fontbatch_create},
+            {"fontbatch_draw", __neko_bind_fontbatch_draw},
+            {"fontbatch_text", __neko_bind_fontbatch_text},
 
             {"sprite_batch_create", __neko_bind_sprite_batch_create},
             {"sprite_batch_render_ortho", __neko_bind_sprite_batch_render_ortho},
@@ -3004,6 +3053,7 @@ static int open_embed_core(lua_State* L) {
             {"render_apply_bindings", __neko_bind_render_apply_bindings},
             {"render_dispatch_compute", __neko_bind_render_dispatch_compute},
             {"render_draw", __neko_bind_render_draw},
+            {"render_display_size", __neko_bind_render_display_size},
             {"gen_tex", test_tex},
 
             // {"b2_world", neko_b2_world},

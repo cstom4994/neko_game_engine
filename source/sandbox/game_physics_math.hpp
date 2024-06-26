@@ -22,13 +22,13 @@ namespace neko {
 
 NEKO_INLINE bool IsValid(f32 x) { return isfinite(x); }
 
-NEKO_INLINE auto RectToPoint(const neko_vec2 &v) {
-    neko_vec2 a1 = {v.x / 2.0f, v.y / 2.0f};
-    neko_vec2 a2 = {v.x / -2.0f, v.y / 2.0f};
-    neko_vec2 b1 = {v.x / -2.0f, v.y / -2.0f};
-    neko_vec2 b2 = {v.x / 2.0f, v.y / -2.0f};
-    return std::initializer_list<neko_vec2>{a1, a2, b1, b2};
-}
+// NEKO_INLINE auto RectToPoint(const neko_vec2 &v) {
+//     neko_vec2 a1 = {v.x / 2.0f, v.y / 2.0f};
+//     neko_vec2 a2 = {v.x / -2.0f, v.y / 2.0f};
+//     neko_vec2 b1 = {v.x / -2.0f, v.y / -2.0f};
+//     neko_vec2 b2 = {v.x / 2.0f, v.y / -2.0f};
+//     return std::initializer_list<neko_vec2>{a1, a2, b1, b2};
+// }
 
 #pragma region TPPL
 

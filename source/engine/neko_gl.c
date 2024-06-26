@@ -16,7 +16,10 @@ NEKO_API_DECL void* neko_gl_get_proc_address(char* name) {
     return proc;
 }
 #elif defined(NEKO_PF_LINUX)
-#include <GL/glx.h>
+// #include <GL/glx.h>
+#include <dlfcn.h>
+static void* libGL;
+extern void (*glXGetProcAddress(const GLubyte* procname))(void);
 NEKO_API_DECL void* neko_gl_get_proc_address(char* name) { return (void*)glXGetProcAddress((const GLubyte*)name); }
 #elif defined(NEKO_PF_APPLE)
 #include <dlfcn.h>

@@ -1,6 +1,7 @@
 #ifndef NEKO_FILEWATCH_H
 #define NEKO_FILEWATCH_H
 
+#include <filesystem>
 #include <functional>
 #include <optional>
 #include <queue>
@@ -298,8 +299,6 @@ std::optional<notify> watch::select() noexcept {
 #include <cstddef>
 #include <functional>
 
-#include "filewatch.h"
-
 namespace neko::filewatch {
 watch::watch() noexcept : m_notify(), m_fd_path(), m_inotify_fd(inotify_init1(IN_NONBLOCK | IN_CLOEXEC)) { assert(m_inotify_fd != -1); }
 
@@ -325,10 +324,10 @@ void watch::add(const string_type& str) noexcept {
     if (!m_filter(str.c_str())) {
         return;
     }
-    fs::path path = str;
+    std::filesystem::path path = str;
     if (m_follow_symlinks) {
         std::error_code ec;
-        path = fs::canonical(path, ec);
+        path = std::filesystem::canonical(path, ec);
         if (ec) {
             return;
         }
@@ -344,11 +343,11 @@ void watch::add(const string_type& str) noexcept {
         return;
     }
     std::error_code ec;
-    fs::directory_iterator iter{path, fs::directory_options::skip_permission_denied, ec};
-    fs::directory_iterator end{};
+    std::filesystem::directory_iterator iter{path, std::filesystem::directory_options::skip_permission_denied, ec};
+    std::filesystem::directory_iterator end{};
     for (; !ec && iter != end; iter.increment(ec)) {
         std::error_code file_status_ec;
-        if (fs::is_directory(m_follow_symlinks ? iter->status(file_status_ec) : iter->symlink_status(file_status_ec))) {
+        if (std::filesystem::is_directory(m_follow_symlinks ? iter->status(file_status_ec) : iter->symlink_status(file_status_ec))) {
             add(iter->path());
         }
     }

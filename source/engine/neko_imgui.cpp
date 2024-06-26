@@ -75,7 +75,7 @@ void main(){
     neko_render_shader_desc_t sdesc = {};
     sdesc.sources = sources;
     sdesc.size = sizeof(sources);
-    memcpy(sdesc.name, "imgui", 64);
+    strncpy(sdesc.name, "imgui", 64);
 
     // Create shader
     neko_imgui->shader = neko_render_shader_create(sdesc);
@@ -84,7 +84,7 @@ void main(){
     neko_render_uniform_layout_desc_t slayout = NEKO_DEFAULT_VAL();
     slayout.type = R_UNIFORM_SAMPLER2D;
     neko_render_uniform_desc_t utexdesc = {};
-    memcpy(utexdesc.name, "Texture", 64);
+    strncpy(utexdesc.name, "Texture", 64);
     utexdesc.layout = &slayout;
     neko_imgui->u_tex = neko_render_uniform_create(utexdesc);
 
@@ -92,7 +92,7 @@ void main(){
     neko_render_uniform_layout_desc_t ulayout = NEKO_DEFAULT_VAL();
     ulayout.type = R_UNIFORM_MAT4;
     neko_render_uniform_desc_t udesc = {};
-    memcpy(udesc.name, "ProjMtx", 64);
+    strncpy(udesc.name, "ProjMtx", 64);
     udesc.layout = &ulayout;
 
     // Construct project matrix uniform
