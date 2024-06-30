@@ -190,13 +190,14 @@ neko_imgui_context_t neko_imgui_new(neko_command_buffer_t* cb, u32 hndl, bool in
     io.FontAllowUserScaling = false;
 
     ImFontConfig config;
-    // config.OversampleH = 3;
-    // config.OversampleV = 3;
-    // config.PixelSnapH = 1;
+    config.PixelSnapH = 1;
 
-    // io.FontGlobalScale = 1.5f;
-
-    //    io.Fonts->AddFontFromFileTTF(game_assets("gamedir/assets/fonts/fusion-pixel-12px-monospaced-zh_hans.ttf").c_str(), 22.0f, &config, io.Fonts->GetGlyphRangesChineseFull());
+    neko::string ttf_file;
+    neko::vfs_read_entire_file(NEKO_PACK_GAMEDATA, &ttf_file, "gamedir/assets/fonts/fusion-pixel-12px-monospaced-zh_hans.ttf");
+    neko_defer(neko_safe_free(ttf_file.data));
+    void* ttf_data = __neko_imgui_malloc(ttf_file.len, NULL);
+    memcpy(ttf_data, ttf_file.data, ttf_file.len);
+    io.Fonts->AddFontFromMemoryTTF(ttf_data, ttf_file.len, 18.0f, &config, io.Fonts->GetGlyphRangesChineseFull());
 
     neko_imgui_device_create(&neko_imgui);
 

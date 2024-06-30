@@ -1,7 +1,7 @@
 ImGui = require("neko.imgui")
-CObject = require("cobject")
+CObject = require("cstruct")
 CVar = neko.cvar
-NODE = require("common/node")
+NODE = require("prefabs")
 local debugging = require("neko.debugging")
 
 neko_ffi = require("neko.ffi")
@@ -69,7 +69,7 @@ game_init_thread = function()
     -- print(dump_func(test_items))
     -- neko.pack_destroy(test_pack)
 
-    play.sub_init_thread()
+    -- play.sub_init_thread()
 end
 
 game_init = function()
@@ -80,7 +80,7 @@ game_init = function()
     play.sub_init()
 end
 
-game_shutdown = function()
+game_fini = function()
     play.sub_shutdown()
 
     -- neko.pixelui_end(pixelui)
@@ -99,13 +99,7 @@ game_loop = function(dt)
     end
 
     if neko_key_pressed("NEKO_KEYCODE_F4") then
-        neko_dolua("lua_scripts/tests/test_cstruct.lua")
-        neko_dolua("lua_scripts/tests/test_class.lua")
-        neko_dolua("lua_scripts/tests/test_ds.lua")
-        neko_dolua("lua_scripts/tests/test_events.lua")
-        neko_dolua("lua_scripts/tests/test_common.lua")
-        neko_dolua("lua_scripts/tests/nekolua_1.lua")
-        neko_dolua("lua_scripts/tests/nekolua_2.lua")
+        require("test")
 
         -- neko.audio_play(test_audio)
 
@@ -310,7 +304,7 @@ game_render = function()
     end
 
     if ImGui.Button("luadb") then
-        local db = luadb.open("data.lua")
+        local db = luadb.open("source/lua/game/data.lua")
         print("a=", db.a)
         print("b=", db.b)
         print("#c=", #db.c)
@@ -349,9 +343,14 @@ game_render = function()
 
     if neko_game.cvar.shader_inspect then
         ImGui.Begin("Shader")
-        local iter = neko.render_shader_iterator()
-        for shader in iter do
-            neko.render_shader_inspector(shader)
+        local iter_shader = neko.inspect_shaders_iter()
+        for shader in iter_shader do
+            neko.inspect_shaders(shader)
+        end
+        local iter_texture = neko.inspect_textures_iter()
+        for tex in iter_texture do
+            -- neko.inspect_shaders(shader)
+            ImGui.Image(tex, 100.0, 100.0)
         end
         ImGui.End()
     end

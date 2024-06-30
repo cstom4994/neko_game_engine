@@ -226,7 +226,7 @@ LUABIND_MODULE() {
                     return Ldb;
                 };
 
-                lua_State *Ldb = newdb(L, std::string("source/lua/game/") + source);
+                lua_State *Ldb = newdb(L, source);
 
                 lua_rawsetp(L, LUA_REGISTRYINDEX, Ldb);
 

@@ -68,7 +68,7 @@ NEKO_STATIC_INLINE std::size_t g_imgui_mem_usage = 0;
 
 NEKO_STATIC void *__neko_imgui_malloc(size_t sz, void *user_data) {
 #ifdef NEKO_IMGUI_USE_GC
-    return __neko_mem_safe_alloc((sz), (char *)__FILE__, __LINE__, &g_imgui_mem_usage);
+    return __neko_mem_safe_alloc((sz), (char *)__FILE__, 0, &g_imgui_mem_usage);
 #else
     return malloc(sz);
 #endif

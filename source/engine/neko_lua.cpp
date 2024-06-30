@@ -5,6 +5,7 @@
 #include <iostream>
 
 #include "engine/neko.hpp"
+#include "engine/neko_engine.h"
 
 namespace neko {
 lua_State* g_L = NULL;
@@ -616,11 +617,29 @@ int vfs_lua_loader(lua_State* L) {
 
     // neko_println("fuck:%s", path.c_str());
 
+    bool ok = false;
+    auto load_list = {"source/lua/game/", "source/lua/libs/"};
+    for (auto p : load_list) {
+        std::string load_path = p + path + ".lua";
+        neko::string contents = {};
+        ok = vfs_read_entire_file(NEKO_PACK_LUACODE, &contents, load_path.c_str());
+        if (ok) {
+            neko_defer(neko_safe_free(contents.data));
+            if (luaL_loadbuffer(L, contents.data, contents.len, name) != LUA_OK) {
+                lua_pushfstring(L, "[lua] error loading module \"%s\"", name);
+                lua_pop(L, 1);
+            } else {
+                NEKO_TRACE("[lua] loaded : \"%s\"", path.c_str());
+            }
+            return 1;
+        }
+    }
+
 #if 0
     u8* data;
     u32 data_size;
 
-    int result = neko_pack_item_data(&CL_GAME_INTERFACE()->pack, path.c_str(), (const u8**)&data, &data_size);
+    int result = neko_pack_item_data(&ENGINE_INTERFACE()->pack, path.c_str(), (const u8**)&data, &data_size);
     if (result == 0) {
         if (luaL_loadbuffer(L, (char*)data, data_size, name) != LUA_OK) {
             lua_pop(L, 1);
@@ -628,26 +647,11 @@ int vfs_lua_loader(lua_State* L) {
             neko_println("loaded:%s", path.c_str());
         }
 
-        neko_pack_item_free(&CL_GAME_INTERFACE()->pack, data);
+        neko_pack_item_free(&ENGINE_INTERFACE()->pack, data);
     }
 #endif
 
-    auto load_list = {"source/lua/game/", "source/lua/libs/"};
-    for (auto p : load_list) {
-        std::string load_path = p + path + ".lua";
-        neko::string contents = {};
-        bool ok = vfs_read_entire_file(NEKO_PACK_LUACODE, &contents, load_path.c_str());
-        if (ok) {
-            if (luaL_loadbuffer(L, contents.data, contents.len, name) != LUA_OK) {
-                lua_pop(L, 1);
-            } else {
-                neko_safe_free(contents.data);
-                NEKO_TRACE("[lua] loaded : \"%s\"", path.c_str());
-                break;
-            }
-        }
-    }
-
+    lua_pushfstring(L, "[lua] module \"%s\" not found", name);
     return 1;
 }
 

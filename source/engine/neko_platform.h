@@ -35,14 +35,15 @@ typedef u64 tick_t;
 // #include <GLFW/glfw3native.h>
 
 #else
-#include <unistd.h>
-#include <sys/syscall.h>
 #include <pthread.h>
 #include <stdint.h>
+#include <sys/syscall.h>
 #include <syscall.h>
+#include <unistd.h>
+
 typedef u64 tick_t;
 
-extern long int syscall (long int __sysno, ...);
+extern long int syscall(long int __sysno, ...);
 
 #endif
 
@@ -395,13 +396,7 @@ typedef struct neko_pf_mouse_event_t {
     neko_pf_mousebutton_action_type action;
 } neko_pf_mouse_event_t;
 
-typedef enum neko_pf_window_action_type {
-    NEKO_PF_WINDOW_RESIZE,
-    NEKO_PF_WINDOW_LOSE_FOCUS,
-    NEKO_PF_WINDOW_GAIN_FOCUS,
-    NEKO_PF_WINDOW_CREATE,
-    NEKO_PF_WINDOW_DESTROY
-} neko_pf_window_action_type;
+typedef enum neko_pf_window_action_type { NEKO_PF_WINDOW_RESIZE, NEKO_PF_WINDOW_LOSE_FOCUS, NEKO_PF_WINDOW_GAIN_FOCUS, NEKO_PF_WINDOW_CREATE, NEKO_PF_WINDOW_DESTROY } neko_pf_window_action_type;
 
 typedef struct neko_pf_window_event_t {
     u32 hndl;
@@ -589,7 +584,7 @@ NEKO_API_DECL int neko_pf_chdir_default_impl(const char *path);
 #define neko_fopen(filePath, mode) fopen(filePath, mode)
 #define neko_fseek(file, offset, whence) fseeko(file, offset, whence)
 #define neko_ftell(file) ftello(file)
-#elif defined (NEKO_PF_LINUX)
+#elif defined(NEKO_PF_LINUX)
 #define neko_fopen(filePath, mode) fopen(filePath, mode)
 #define neko_fseek(file, offset, whence) fseek(file, offset, whence)
 #define neko_ftell(file) ftell(file)
@@ -693,86 +688,5 @@ static inline u64 neko_get_thread_id() {
 NEKO_INLINE void __native_debug_output(const char *msg) { OutputDebugStringA(msg); }
 
 #endif
-
-/*===================================
-// Thread
-===================================*/
-
-#define THREAD_HAS_ATOMIC 1
-#define THREAD_STACK_SIZE_DEFAULT (0)
-#define THREAD_SIGNAL_WAIT_INFINITE (-1)
-#define THREAD_QUEUE_WAIT_INFINITE (-1)
-
-union neko_thread_mutex_t {
-    void *align;
-    char data[64];
-};
-
-union neko_thread_signal_t {
-    void *align;
-    char data[116];
-};
-
-union neko_thread_atomic_int_t {
-    void *align;
-    long i;
-};
-
-union neko_thread_atomic_ptr_t {
-    void *ptr;
-};
-
-union neko_thread_timer_t {
-    void *data;
-    char d[8];
-};
-
-typedef void *neko_thread_id_t;
-NEKO_API_DECL neko_thread_id_t thread_current_thread_id(void);
-NEKO_API_DECL void thread_yield(void);
-NEKO_API_DECL void thread_set_high_priority(void);
-NEKO_API_DECL void thread_exit(int return_code);
-
-typedef void *neko_thread_ptr_t;
-NEKO_API_DECL neko_thread_ptr_t thread_init(int (*thread_proc)(void *), void *user_data, char const *name, int stack_size);
-NEKO_API_DECL void thread_term(neko_thread_ptr_t thread);
-NEKO_API_DECL int thread_join(neko_thread_ptr_t thread);
-NEKO_API_DECL int thread_detach(neko_thread_ptr_t thread);
-
-typedef union neko_thread_mutex_t neko_thread_mutex_t;
-NEKO_API_DECL void thread_mutex_init(neko_thread_mutex_t *mutex);
-NEKO_API_DECL void thread_mutex_term(neko_thread_mutex_t *mutex);
-NEKO_API_DECL void thread_mutex_lock(neko_thread_mutex_t *mutex);
-NEKO_API_DECL void thread_mutex_unlock(neko_thread_mutex_t *mutex);
-
-typedef union neko_thread_signal_t neko_thread_signal_t;
-NEKO_API_DECL void thread_signal_init(neko_thread_signal_t *signal);
-NEKO_API_DECL void thread_signal_term(neko_thread_signal_t *signal);
-NEKO_API_DECL void thread_signal_raise(neko_thread_signal_t *signal);
-NEKO_API_DECL int thread_signal_wait(neko_thread_signal_t *signal, int timeout_ms);
-
-#if THREAD_HAS_ATOMIC
-typedef union neko_thread_atomic_int_t neko_thread_atomic_int_t;
-NEKO_API_DECL int thread_atomic_int_load(neko_thread_atomic_int_t *atomic);
-NEKO_API_DECL void thread_atomic_int_store(neko_thread_atomic_int_t *atomic, int desired);
-NEKO_API_DECL int thread_atomic_int_inc(neko_thread_atomic_int_t *atomic);
-NEKO_API_DECL int thread_atomic_int_dec(neko_thread_atomic_int_t *atomic);
-NEKO_API_DECL int thread_atomic_int_add(neko_thread_atomic_int_t *atomic, int value);
-NEKO_API_DECL int thread_atomic_int_sub(neko_thread_atomic_int_t *atomic, int value);
-NEKO_API_DECL int thread_atomic_int_swap(neko_thread_atomic_int_t *atomic, int desired);
-NEKO_API_DECL int thread_atomic_int_compare_and_swap(neko_thread_atomic_int_t *atomic, int expected, int desired);
-
-typedef union neko_thread_atomic_ptr_t neko_thread_atomic_ptr_t;
-NEKO_API_DECL void *thread_atomic_ptr_load(neko_thread_atomic_ptr_t *atomic);
-NEKO_API_DECL void thread_atomic_ptr_store(neko_thread_atomic_ptr_t *atomic, void *desired);
-NEKO_API_DECL void *thread_atomic_ptr_swap(neko_thread_atomic_ptr_t *atomic, void *desired);
-NEKO_API_DECL void *thread_atomic_ptr_compare_and_swap(neko_thread_atomic_ptr_t *atomic, void *expected, void *desired);
-#endif
-
-typedef void *neko_thread_tls_t;
-NEKO_API_DECL neko_thread_tls_t thread_tls_create(void);
-NEKO_API_DECL void thread_tls_destroy(neko_thread_tls_t tls);
-NEKO_API_DECL void thread_tls_set(neko_thread_tls_t tls, void *value);
-NEKO_API_DECL void *thread_tls_get(neko_thread_tls_t tls);
 
 #endif  // !NEKO_PF_H

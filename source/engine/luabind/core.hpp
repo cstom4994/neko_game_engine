@@ -365,7 +365,7 @@ LUA_FUNCTION(__neko_bind_aseprite_render_gc) {
 LUA_FUNCTION(__neko_bind_aseprite_render_update) {
     neko_aseprite_renderer* user_handle = (neko_aseprite_renderer*)luaL_checkudata(L, 1, "mt_aseprite_renderer");
 
-    neko_t* engine = neko_instance();
+    neko_instance_t* engine = neko_instance();
 
     neko_aseprite_renderer_update(user_handle, engine->platform->time.delta);
 
@@ -394,7 +394,7 @@ LUA_FUNCTION(__neko_bind_aseprite_render) {
     int direction = neko::neko_lua_to<int>(L, 3);
     f32 scale = neko::neko_lua_to<f32>(L, 4);
 
-    neko_t* engine = neko_instance();
+    neko_instance_t* engine = neko_instance();
 
     s32 index;
     if (user_handle->loop) {
@@ -1448,39 +1448,53 @@ LUA_FUNCTION(__neko_bind_render_framebuffer_destroy) {
     return 0;
 }
 
-LUA_FUNCTION(__neko_bind_render_shader_next_shader) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)lua_touserdata(L, lua_upvalueindex(1));
-    neko_slot_array_iter* it = (neko_slot_array_iter*)lua_touserdata(L, lua_upvalueindex(2));
-
-    if (!neko_slot_array_iter_valid(ogl->shaders, *it)) {
-        return 0;  // 迭代结束
+#define NEKO_LUA_INSPECT_ITER(NAME)                                                                         \
+    LUA_FUNCTION(__neko_bind_inspect_##NAME##_next) {                                                       \
+        neko_gl_data_t* ogl = (neko_gl_data_t*)lua_touserdata(L, lua_upvalueindex(1));                      \
+        neko_slot_array_iter* it = (neko_slot_array_iter*)lua_touserdata(L, lua_upvalueindex(2));           \
+        if (!neko_slot_array_iter_valid(ogl->NAME, *it)) {                                                  \
+            return 0;                                                                                       \
+        }                                                                                                   \
+        auto s = neko_slot_array_iter_get(ogl->NAME, *it);                                                  \
+        neko_slot_array_iter_advance(ogl->NAME, *it);                                                       \
+        lua_pushinteger(L, s.id);                                                                           \
+        return 1;                                                                                           \
+    }                                                                                                       \
+                                                                                                            \
+    LUA_FUNCTION(__neko_bind_inspect_##NAME##_iterator) {                                                   \
+        neko_gl_data_t* ogl = neko_render_userdata();                                                       \
+        neko_slot_array_iter* it = (neko_slot_array_iter*)lua_newuserdata(L, sizeof(neko_slot_array_iter)); \
+        *it = neko_slot_array_iter_new(ogl->NAME);                                                          \
+        lua_pushlightuserdata(L, ogl);                                                                      \
+        lua_pushvalue(L, -2);                                                                               \
+        lua_pushcclosure(L, __neko_bind_inspect_##NAME##_next, 2);                                          \
+        return 1;                                                                                           \
     }
 
-    neko_gl_shader_t s = neko_slot_array_iter_get(ogl->shaders, *it);
-    neko_slot_array_iter_advance(ogl->shaders, *it);
+#define NEKO_LUA_INSPECT_REG(NAME) \
+    { "inspect_" #NAME "_iter", __neko_bind_inspect_##NAME##_iterator }
 
-    lua_pushinteger(L, s);  // 返回当前 shader
-    return 1;
-}
-
-LUA_FUNCTION(__neko_bind_render_shader_iterator) {
-    neko_gl_data_t* ogl = neko_render_userdata();
-
-    neko_slot_array_iter* it = (neko_slot_array_iter*)lua_newuserdata(L, sizeof(neko_slot_array_iter));
-    *it = neko_slot_array_iter_new(ogl->shaders);
-
-    lua_pushlightuserdata(L, ogl);
-    lua_pushvalue(L, -2);  // userdata (iterator)
-
-    lua_pushcclosure(L, __neko_bind_render_shader_next_shader, 2);  // 创建闭包
-    return 1;                                                       // 返回迭代器
-}
+NEKO_LUA_INSPECT_ITER(shaders)
+NEKO_LUA_INSPECT_ITER(textures)
+NEKO_LUA_INSPECT_ITER(vertex_buffers)
+// NEKO_LUA_INSPECT_ITER(uniform_buffers)
+// NEKO_LUA_INSPECT_ITER(storage_buffers)
+NEKO_LUA_INSPECT_ITER(index_buffers)
+NEKO_LUA_INSPECT_ITER(frame_buffers)
+// NEKO_LUA_INSPECT_ITER(uniforms)
+// NEKO_LUA_INSPECT_ITER(pipelines)
+// NEKO_LUA_INSPECT_ITER(renderpasses)
 
 void inspect_shader(const char* label, GLuint program);
 
-LUA_FUNCTION(__neko_bind_render_shader_inspector) {
+LUA_FUNCTION(__neko_bind_inspect_shaders) {
     u32 shader_id = lua_tonumber(L, 1);
     inspect_shader(std::to_string(shader_id).c_str(), shader_id);
+    return 0;
+}
+
+LUA_FUNCTION(__neko_bind_inspect_textures) {
+    u32 textures_id = lua_tonumber(L, 1);
     return 0;
 }
 
@@ -2845,6 +2859,83 @@ int register_mt_aseprite(lua_State* L) {
     return 1;
 }
 
+// mt_thread
+
+static int mt_thread_join(lua_State* L) {
+    neko::LuaThread* lt = *(neko::LuaThread**)luaL_checkudata(L, 1, "mt_thread");
+    lt->join();
+    neko_safe_free(lt);
+    return 0;
+}
+
+static int open_mt_thread(lua_State* L) {
+    luaL_Reg reg[] = {
+            {"join", mt_thread_join},
+            {nullptr, nullptr},
+    };
+
+    luax_new_class(L, "mt_thread", reg);
+    return 0;
+}
+
+static int __neko_bind_get_channel(lua_State* L) {
+    neko::string contents = neko::luax_check_string(L, 1);
+
+    neko::LuaChannel* chan = lua_channel_get(contents);
+    if (chan == nullptr) {
+        return 0;
+    }
+
+    luax_ptr_userdata(L, chan, "mt_channel");
+    return 1;
+}
+
+static int __neko_bind_select(lua_State* L) {
+    neko::LuaVariant v = {};
+    neko::LuaChannel* chan = lua_channels_select(L, &v);
+    if (chan == nullptr) {
+        return 0;
+    }
+
+    v.push(L);
+    v.trash();
+    lua_pushstring(L, chan->name.load());
+    return 2;
+}
+
+static int __neko_bind_thread_id(lua_State* L) {
+    lua_pushinteger(L, neko::this_thread_id());
+    return 1;
+}
+
+static int __neko_bind_thread_sleep(lua_State* L) {
+    // PROFILE_FUNC();
+
+    lua_Number secs = luaL_checknumber(L, 1);
+    neko::os_sleep((u32)(secs * 1000));
+    return 0;
+}
+
+static int __neko_bind_make_thread(lua_State* L) {
+    neko::string contents = neko::luax_check_string(L, 1);
+    neko::LuaThread* lt = (neko::LuaThread*)neko_safe_malloc(sizeof(neko::LuaThread));
+    lt->make(contents, "thread");
+    luax_ptr_userdata(L, lt, "mt_thread");
+    return 1;
+}
+
+static int __neko_bind_make_channel(lua_State* L) {
+    neko::string name = neko::luax_check_string(L, 1);
+    lua_Integer len = luaL_optinteger(L, 2, 0);
+    if (len < 0) {
+        len = 0;
+    }
+
+    neko::LuaChannel* chan = lua_channel_make(name, len);
+    luax_ptr_userdata(L, chan, "mt_channel");
+    return 1;
+}
+
 typedef struct neko_lua_profiler_data {
     int linedefined;
     char source[LUA_IDSIZE];
@@ -3040,8 +3131,6 @@ static int open_embed_core(lua_State* L) {
             {"render_renderpass_end", __neko_bind_render_renderpass_end},
             {"render_set_viewport", __neko_bind_render_set_viewport},
             {"render_clear", __neko_bind_render_clear},
-            {"render_shader_inspector", __neko_bind_render_shader_inspector},
-            {"render_shader_iterator", __neko_bind_render_shader_iterator},
             {"render_shader_create", __neko_bind_render_shader_create},
             {"render_uniform_create", __neko_bind_render_uniform_create},
             {"render_pipeline_create", __neko_bind_render_pipeline_create},
@@ -3058,6 +3147,13 @@ static int open_embed_core(lua_State* L) {
 
             // {"b2_world", neko_b2_world},
 
+            {"get_channel", __neko_bind_get_channel},
+            {"select", __neko_bind_select},
+            {"thread_id", __neko_bind_thread_id},
+            {"thread_sleep", __neko_bind_thread_sleep},
+            {"make_thread", __neko_bind_make_thread},
+            {"make_channel", __neko_bind_make_channel},
+
             {"cvar", __neko_bind_cvar},
             {"print", __neko_bind_print},
 
@@ -3072,10 +3168,24 @@ static int open_embed_core(lua_State* L) {
 
             {"LUASTRUCT_test_vec3", LUASTRUCT_test_vec3},
 
-            {NULL, NULL},
-    };
+            {NULL, NULL}};
 
     luaL_newlib(L, reg);
+
+    luaL_Reg inspector_reg[] = {{"inspect_shaders", __neko_bind_inspect_shaders},
+
+                                NEKO_LUA_INSPECT_REG(shaders),
+                                NEKO_LUA_INSPECT_REG(textures),
+                                NEKO_LUA_INSPECT_REG(vertex_buffers),
+                                // NEKO_LUA_INSPECT_REG(uniform_buffers),
+                                // NEKO_LUA_INSPECT_REG(storage_buffers),
+                                NEKO_LUA_INSPECT_REG(index_buffers),
+                                NEKO_LUA_INSPECT_REG(frame_buffers),
+                                // NEKO_LUA_INSPECT_REG(uniforms),
+                                // NEKO_LUA_INSPECT_REG(pipelines),
+                                // NEKO_LUA_INSPECT_REG(renderpasses),
+                                {NULL, NULL}};
+    luaL_setfuncs(L, inspector_reg, 0);
 
     {
         register_mt_aseprite_renderer(L);
@@ -3101,16 +3211,15 @@ static int open_embed_core(lua_State* L) {
         neko_lua_events_register(render);
     }
 
-    // lua_CFunction mt_funcs[] = {
-    //         // open_mt_b2_fixture,
-    //         // open_mt_b2_body,
-    //         // open_mt_b2_world,
-    //         // open_mt_sound,
-    // };
+    lua_CFunction mt_funcs[] = {// open_mt_b2_fixture,
+                                // open_mt_b2_body,
+                                // open_mt_b2_world,
+                                // open_mt_sound,
+                                open_mt_thread};
 
-    // for (u32 i = 0; i < NEKO_ARR_SIZE(mt_funcs); i++) {
-    //     mt_funcs[i](L);
-    // }
+    for (u32 i = 0; i < NEKO_ARR_SIZE(mt_funcs); i++) {
+        mt_funcs[i](L);
+    }
 
     createStructTables(L);
 

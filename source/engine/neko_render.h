@@ -627,10 +627,14 @@ typedef struct neko_gl_renderpass_t {
 } neko_gl_renderpass_t;
 
 /* Shader */
-typedef u32 neko_gl_shader_t;
+typedef struct neko_gl_shader_t {
+    u32 id;
+} neko_gl_shader_t;
 
 /* Gfx Buffer */
-typedef u32 neko_gl_buffer_t;
+typedef struct neko_gl_buffer_t {
+    u32 id;
+} neko_gl_buffer_t;
 
 /* Texture */
 typedef struct neko_gl_texture_t {
@@ -992,14 +996,15 @@ typedef struct neko_baked_char_t {
     u32 width, height;
 } neko_baked_char_t;
 
-typedef struct neko_asset_ascii_font_t {
+typedef struct neko_asset_font_t {
     void* font_info;
+    // u32 glyphs_num;
     neko_baked_char_t glyphs[96];
     neko_asset_texture_t texture;
     float ascent;
     float descent;
     float line_gap;
-} neko_asset_ascii_font_t;
+} neko_asset_font_t;
 
 /*==========================
 // NEKO_ASSET_TYPES
@@ -1011,11 +1016,11 @@ NEKO_API_DECL bool neko_asset_texture_load_from_file(const_str path, void* out, 
 NEKO_API_DECL bool neko_asset_texture_load_from_memory(const void* memory, size_t sz, void* out, neko_render_texture_desc_t* desc, b32 flip_on_load, b32 keep_data);
 
 // Font
-NEKO_API_DECL bool neko_asset_ascii_font_load_from_file(const_str path, void* out, u32 point_size);
-NEKO_API_DECL bool neko_asset_ascii_font_load_from_memory(const void* memory, size_t sz, void* out, u32 point_size);
-NEKO_API_DECL neko_vec2 neko_asset_ascii_font_text_dimensions(const neko_asset_ascii_font_t* font, const_str text, s32 len);
-NEKO_API_DECL neko_vec2 neko_asset_ascii_font_text_dimensions_ex(const neko_asset_ascii_font_t* fp, const_str text, s32 len, b32 include_past_baseline);
-NEKO_API_DECL float neko_asset_ascii_font_max_height(const neko_asset_ascii_font_t* font);
+NEKO_API_DECL bool neko_asset_font_load_from_file(const_str path, void* out, u32 point_size);
+NEKO_API_DECL bool neko_asset_font_load_from_memory(const void* memory, size_t sz, void* out, u32 point_size);
+NEKO_API_DECL neko_vec2 neko_asset_font_text_dimensions(const neko_asset_font_t* font, const_str text, s32 len);
+NEKO_API_DECL neko_vec2 neko_asset_font_text_dimensions_ex(const neko_asset_font_t* fp, const_str text, s32 len, b32 include_past_baseline);
+NEKO_API_DECL float neko_asset_font_max_height(const neko_asset_font_t* font);
 
 NEKO_API_DECL bool neko_asset_mesh_load_from_file(const_str path, void* out, neko_asset_mesh_decl_t* decl, void* data_out, size_t data_size);
 // NEKO_API_DECL bool neko_util_load_gltf_data_from_file(const_str path, neko_asset_mesh_decl_t* decl, neko_asset_mesh_raw_data_t** out, u32* mesh_count);
@@ -1106,7 +1111,7 @@ typedef struct neko_immediate_cache_t {
 
 typedef struct neko_immediate_draw_static_data_t {
     neko_handle(neko_render_texture_t) tex_default;
-    neko_asset_ascii_font_t font_default;  // Idraw font
+    neko_asset_font_t font_default;  // Idraw font
     neko_hash_table(neko_idraw_pipeline_state_attr_t, neko_handle(neko_render_pipeline_t)) pipeline_table;
     neko_handle(neko_render_uniform_t) uniform;
     neko_handle(neko_render_uniform_t) sampler;
@@ -1139,7 +1144,7 @@ NEKO_API_DECL neko_immediate_draw_static_data_t* neko_immediate_draw_static_data
 NEKO_API_DECL neko_handle(neko_render_pipeline_t) neko_idraw_get_pipeline(neko_immediate_draw_t* neko_idraw, neko_idraw_pipeline_state_attr_t state);
 
 // Get default font asset pointer
-NEKO_API_DECL neko_asset_ascii_font_t* neko_idraw_default_font();
+NEKO_API_DECL neko_asset_font_t* neko_idraw_default_font();
 
 // Core Vertex Functions
 NEKO_API_DECL void neko_idraw_begin(neko_immediate_draw_t* neko_idraw, neko_render_primitive_type type);
@@ -1244,7 +1249,7 @@ NEKO_API_DECL void neko_idraw_cone(neko_immediate_draw_t* neko_idraw, f32 x, f32
 // Draw planes/poly groups
 
 // Text Drawing Util
-NEKO_API_DECL void neko_idraw_text(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, const char* text, const neko_asset_ascii_font_t* fp, b32 flip_vertical, neko_color_t col);
+NEKO_API_DECL void neko_idraw_text(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, const char* text, const neko_asset_font_t* fp, b32 flip_vertical, neko_color_t col);
 
 // Paths
 /*
@@ -1679,7 +1684,7 @@ typedef struct {
 
 typedef struct {
     neko_ui_basecommand_t base;
-    neko_asset_ascii_font_t* font;
+    neko_asset_font_t* font;
     neko_vec2 pos;
     neko_color_t color;
     char str[1];
@@ -1959,7 +1964,7 @@ typedef struct {
     union {
         s32 value;
         neko_color_t color;
-        neko_asset_ascii_font_t* font;
+        neko_asset_font_t* font;
     };
 } neko_ui_style_element_t;
 
@@ -1980,7 +1985,7 @@ typedef struct neko_ui_animation_t {
 
 typedef struct neko_ui_style_t {
     // font
-    neko_asset_ascii_font_t* font;
+    neko_asset_font_t* font;
 
     // dimensions
     float size[2];
@@ -2236,7 +2241,7 @@ typedef struct neko_ui_context_t {
     neko_hash_table(neko_ui_id, neko_ui_animation_t) animations;
 
     // Font stash
-    neko_hash_table(u64, neko_asset_ascii_font_t*) font_stash;
+    neko_hash_table(u64, neko_asset_font_t*) font_stash;
 
     // Callbacks
     struct {
@@ -2320,7 +2325,7 @@ typedef struct {
 
 typedef struct {
     const char* key;
-    neko_asset_ascii_font_t* font;
+    neko_asset_font_t* font;
 } neko_ui_font_desc_t;
 
 typedef struct {
@@ -2441,7 +2446,7 @@ NEKO_API_DECL void neko_ui_draw_circle(neko_ui_context_t* ctx, neko_vec2 positio
 NEKO_API_DECL void neko_ui_draw_triangle(neko_ui_context_t* ctx, neko_vec2 a, neko_vec2 b, neko_vec2 c, neko_color_t color);
 NEKO_API_DECL void neko_ui_draw_box(neko_ui_context_t* ctx, neko_ui_rect_t rect, s16* width, neko_color_t color);
 NEKO_API_DECL void neko_ui_draw_line(neko_ui_context_t* ctx, neko_vec2 start, neko_vec2 end, neko_color_t color);
-NEKO_API_DECL void neko_ui_draw_text(neko_ui_context_t* ctx, neko_asset_ascii_font_t* font, const char* str, s32 len, neko_vec2 pos, neko_color_t color, s32 shadow_x, s32 shadow_y,
+NEKO_API_DECL void neko_ui_draw_text(neko_ui_context_t* ctx, neko_asset_font_t* font, const char* str, s32 len, neko_vec2 pos, neko_color_t color, s32 shadow_x, s32 shadow_y,
                                      neko_color_t shadow_color);
 NEKO_API_DECL void neko_ui_draw_image(neko_ui_context_t* ctx, neko_handle(neko_render_texture_t) hndl, neko_ui_rect_t rect, neko_vec2 uv0, neko_vec2 uv1, neko_color_t color);
 NEKO_API_DECL void neko_ui_draw_nine_rect(neko_ui_context_t* ctx, neko_handle(neko_render_texture_t) hndl, neko_ui_rect_t rect, neko_vec2 uv0, neko_vec2 uv1, u32 left, u32 right, u32 top, u32 bottom,
@@ -2627,7 +2632,7 @@ typedef struct {
 typedef struct neko_spritebatch_internal_atlas_t {
     u64 texture_id;
     float volume_ratio;
-    hashtable_t sprites_to_textures;
+    neko_hashtable_t sprites_to_textures;
     struct neko_spritebatch_internal_atlas_t* next;
     struct neko_spritebatch_internal_atlas_t* prev;
 } neko_spritebatch_internal_atlas_t;
@@ -2663,9 +2668,9 @@ struct neko_spritebatch_t {
     int pixel_buffer_size;
     void* pixel_buffer;
 
-    hashtable_t sprites_to_premade_textures;
-    hashtable_t sprites_to_lonely_textures;
-    hashtable_t sprites_to_atlases;
+    neko_hashtable_t sprites_to_premade_textures;
+    neko_hashtable_t sprites_to_lonely_textures;
+    neko_hashtable_t sprites_to_atlases;
 
     neko_spritebatch_internal_atlas_t* atlases;
 

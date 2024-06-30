@@ -1127,6 +1127,44 @@ struct arena {
     string bump_string(string s);
 };
 
+template <typename T>
+struct slice {
+    T* data = nullptr;
+    u64 len = 0;
+
+    slice() = default;
+    explicit slice(array<T> arr) : data(arr.data), len(arr.len) {}
+
+    T& operator[](size_t i) {
+        assert(i >= 0 && i < len);
+        return data[i];
+    }
+
+    const T& operator[](size_t i) const {
+        assert(i >= 0 && i < len);
+        return data[i];
+    }
+
+    void resize(u64 n) {
+        T* buf = (T*)neko_safe_malloc(sizeof(T) * n);
+        memcpy(buf, data, sizeof(T) * len);
+        neko_safe_free(data);
+        data = buf;
+        len = n;
+    }
+
+    void resize(arena* arena, u64 n) {
+        T* buf = (T*)arena->rebump(data, sizeof(T) * len, sizeof(T) * n);
+        data = buf;
+        len = n;
+    }
+
+    T* begin() { return data; }
+    T* end() { return &data[len]; }
+    const T* begin() const { return data; }
+    const T* end() const { return &data[len]; }
+};
+
 struct string_builder {
     char* data;
     u64 len;       // 不包括空项
@@ -1230,11 +1268,303 @@ void json_print(JSON* json);
 void json_to_lua(lua_State* L, JSON* json);
 string lua_to_json_string(lua_State* L, s32 arg, string* contents, s32 width);
 
+NEKO_INLINE bool str_is_chinese_c(const char str) { return str & 0x80; }
+
+NEKO_INLINE bool str_is_chinese_str(const std::string& str) {
+    for (int i = 0; i < str.length(); i++)
+        if (str_is_chinese_c(str[i])) return true;
+    return false;
+}
+
+NEKO_INLINE bool str_equals(const char* a, const char* c) { return strcmp(a, c) == 0; }
+
+NEKO_INLINE bool str_starts_with(std::string_view s, std::string_view prefix) { return prefix.size() <= s.size() && (strncmp(prefix.data(), s.data(), prefix.size()) == 0); }
+
+NEKO_INLINE bool str_starts_with(std::string_view s, char prefix) { return !s.empty() && s[0] == prefix; }
+
+NEKO_INLINE bool str_starts_with(const char* s, const char* prefix) { return strncmp(s, prefix, strlen(prefix)) == 0; }
+
+NEKO_INLINE bool str_ends_with(std::string_view s, std::string_view suffix) { return suffix.size() <= s.size() && strncmp(suffix.data(), s.data() + s.size() - suffix.size(), suffix.size()) == 0; }
+
+NEKO_INLINE bool str_ends_with(std::string_view s, char suffix) { return !s.empty() && s[s.size() - 1] == suffix; }
+
+NEKO_INLINE bool str_ends_with(const char* s, const char* suffix) {
+    auto sizeS = strlen(s);
+    auto sizeSuf = strlen(suffix);
+
+    return sizeSuf <= sizeS && strncmp(suffix, s + sizeS - sizeSuf, sizeSuf) == 0;
+}
+
+NEKO_INLINE void str_to_lower(char* s) {
+    int l = strlen(s);
+    int ind = 0;
+    // spec of "simd"
+    for (int i = 0; i < l / 4; i++) {
+        s[ind] = std::tolower(s[ind]);
+        s[ind + 1] = std::tolower(s[ind + 1]);
+        s[ind + 2] = std::tolower(s[ind + 2]);
+        s[ind + 3] = std::tolower(s[ind + 3]);
+        ind += 4;
+    }
+    // do the rest linearly
+    for (int i = 0; i < (l & 3); ++i) {
+        s[ind++] = std::tolower(s[ind]);
+    }
+}
+
+NEKO_INLINE void str_to_lower(std::string& ss) {
+    int l = ss.size();
+    auto s = ss.data();
+    int ind = 0;
+    // spec of "simd"
+    for (int i = 0; i < l / 4; i++) {
+        s[ind] = std::tolower(s[ind]);
+        s[ind + 1] = std::tolower(s[ind + 1]);
+        s[ind + 2] = std::tolower(s[ind + 2]);
+        s[ind + 3] = std::tolower(s[ind + 3]);
+        ind += 4;
+    }
+    // do the rest linearly
+    for (int i = 0; i < (l & 3); ++i) s[ind++] = std::tolower(s[ind]);
+}
+
+NEKO_INLINE void str_to_upper(char* s) {
+    int l = strlen(s);
+    int ind = 0;
+    // spec of "simd"
+    for (int i = 0; i < l / 4; i++) {
+        s[ind] = std::toupper(s[ind]);
+        s[ind + 1] = std::toupper(s[ind + 1]);
+        s[ind + 2] = std::toupper(s[ind + 2]);
+        s[ind + 3] = std::toupper(s[ind + 3]);
+        ind += 4;
+    }
+    // do the rest linearly
+    for (int i = 0; i < (l & 3); ++i) {
+        s[ind++] = std::toupper(s[ind]);
+    }
+}
+
+NEKO_INLINE void str_to_upper(std::string& ss) {
+    int l = ss.size();
+    auto s = ss.data();
+    int ind = 0;
+    // spec of "simd"
+    for (int i = 0; i < l / 4; i++) {
+        s[ind] = std::toupper(s[ind]);
+        s[ind + 1] = std::toupper(s[ind + 1]);
+        s[ind + 2] = std::toupper(s[ind + 2]);
+        s[ind + 3] = std::toupper(s[ind + 3]);
+        ind += 4;
+    }
+    // do the rest linearly
+    for (int i = 0; i < (l & 3); ++i) s[ind++] = std::toupper(s[ind]);
+}
+
+NEKO_INLINE bool str_replace_with(char* src, char what, char with) {
+    for (int i = 0; true; ++i) {
+        auto& id = src[i];
+        if (id == '\0') return true;
+        bool isWhat = id == what;
+        id = isWhat * with + src[i] * (!isWhat);
+    }
+}
+
+NEKO_INLINE bool str_replace_with(std::string& src, char what, char with) {
+    for (int i = 0; i < src.size(); ++i) {
+        auto& id = src.data()[i];
+        bool isWhat = id == what;
+        id = isWhat * with + src[i] * (!isWhat);
+    }
+    return true;
+}
+
+NEKO_INLINE bool str_replace_with(std::string& src, const char* what, const char* with) {
+    std::string out;
+    size_t whatlen = strlen(what);
+    out.reserve(src.size());
+    size_t ind = 0;
+    size_t lastInd = 0;
+    while (true) {
+        ind = src.find(what, ind);
+        if (ind == std::string::npos) {
+            out += src.substr(lastInd);
+            break;
+        }
+        out += src.substr(lastInd, ind - lastInd) + with;
+        ind += whatlen;
+        lastInd = ind;
+    }
+    src = out;
+    return true;
+}
+
+NEKO_INLINE bool str_replace_with(std::string& src, const char* what, const char* with, int times) {
+    for (int i = 0; i < times; ++i) str_replace_with(src, what, with);
+    return true;
+}
+
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <pthread.h>
+#include <semaphore.h>
+#endif
+
+struct mutex {
+#ifdef _WIN32
+    SRWLOCK srwlock;
+#else
+    pthread_mutex_t pt;
+#endif
+
+    void make();
+    void trash();
+    void lock();
+    void unlock();
+    bool try_lock();
+};
+
+struct cond {
+#ifdef _WIN32
+    CONDITION_VARIABLE cv;
+#else
+    pthread_cond_t pt;
+#endif
+
+    void make();
+    void trash();
+    void signal();
+    void broadcast();
+    void wait(mutex* mtx);
+    bool timed_wait(mutex* mtx, uint32_t ms);
+};
+
+struct rwlock {
+#if _WIN32
+    SRWLOCK srwlock;
+#else
+    pthread_rwlock_t pt;
+#endif
+
+    void make();
+    void trash();
+    void shared_lock();
+    void shared_unlock();
+    void unique_lock();
+    void unique_unlock();
+};
+
+struct sema {
+#ifdef _WIN32
+    HANDLE handle;
+#else
+    sem_t* sem;
+#endif
+
+    void make(int n = 0);
+    void trash();
+    void post(int n = 1);
+    void wait();
+};
+
+typedef void (*thread_proc)(void*);
+
+struct thread {
+    void* ptr = nullptr;
+
+    void make(thread_proc fn, void* udata);
+    void join();
+};
+
+struct LockGuard {
+    mutex* mtx;
+
+    LockGuard(mutex* mtx) : mtx(mtx) { mtx->lock(); };
+    ~LockGuard() { mtx->unlock(); };
+    LockGuard(LockGuard&&) = delete;
+    LockGuard& operator=(LockGuard&&) = delete;
+
+    operator bool() { return true; }
+};
+
+uint64_t this_thread_id();
+
+struct LuaThread {
+    mutex mtx;
+    string contents;
+    string name;
+    thread thread;
+
+    void make(string code, string thread_name);
+    void join();
+};
+
+struct LuaTableEntry;
+struct LuaVariant {
+    s32 type;
+    union {
+        bool boolean;
+        double number;
+        string string;
+        slice<LuaTableEntry> table;
+        struct {
+            void* ptr;
+            neko::string tname;
+        } udata;
+    };
+
+    void make(lua_State* L, s32 arg);
+    void trash();
+    void push(lua_State* L);
+};
+
+struct LuaTableEntry {
+    LuaVariant key;
+    LuaVariant value;
+};
+
+struct LuaChannel {
+    std::atomic<char*> name;
+
+    mutex mtx;
+    cond received;
+    cond sent;
+
+    u64 received_total;
+    u64 sent_total;
+
+    slice<LuaVariant> items;
+    u64 front;
+    u64 back;
+    u64 len;
+
+    void make(string n, u64 buf);
+    void trash();
+    void send(LuaVariant item);
+    LuaVariant recv();
+    bool try_recv(LuaVariant* v);
+};
+
+LuaChannel* lua_channel_make(string name, u64 buf);
+LuaChannel* lua_channel_get(string name);
+LuaChannel* lua_channels_select(lua_State* L, LuaVariant* v);
+void lua_channels_setup();
+void lua_channels_shutdown();
+
+s32 os_change_dir(const char *path);
+string os_program_dir();
+string os_program_path();
+u64 os_file_modtime(const char *filename);
+void os_high_timer_resolution();
+void os_sleep(u32 ms);
+void os_yield();
+
 }  // namespace neko
 
 #define CVAR_TYPES() bool, s32, f32, f32*
 
-typedef struct neko_engine_cvar_t {
+typedef struct engine_cvar_t {
     bool show_editor;
     bool show_demo_window;
     bool show_pack_editor;

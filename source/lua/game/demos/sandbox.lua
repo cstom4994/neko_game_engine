@@ -107,6 +107,13 @@ add_struct("player_update", [[
         float orientation_x, orientation_y, orientation_z;
     ]], {"id", "position_x", "position_y", "position_z", "orientation_x", "orientation_y", "orientation_z"})
 
+add_struct("gameobj_network_update", [[
+        uint16_t id;
+        uint16_t netid;
+        float position_x, position_y, position_z;
+        float orientation_x, orientation_y, orientation_z;
+    ]], {"id", "netid", "position_x", "position_y", "position_z", "orientation_x", "orientation_y", "orientation_z"})
+
 add_struct("player_action", [[
         uint16_t id;
         uint16_t action;
@@ -233,6 +240,71 @@ local this_player = {
 local drawFilter = tiny.requireAll('isDrawSystem')
 local updateFilter = tiny.rejectAny('isDrawSystem')
 
+local networkSyncSystem = tiny.processingSystem()
+networkSyncSystem.isDrawSystem = false
+networkSyncSystem.filter = tiny.requireAll("gameobj", "vector2", "velocity2", "network_t")
+function networkSyncSystem:process(e, dt)
+
+    local net = e.network_t
+    local v = e.velocity2
+    local v2 = e.vector2
+
+    local _netid = 999
+    if net.obj_typename == "player" then
+        _netid = 1
+    end
+
+    local Filter = function(item, other)
+        -- if     other.isCoin   then return 'cross'
+        -- elseif other.isWall   then return 'slide'
+        -- elseif other.isExit   then return 'touch'
+        -- elseif other.isSpring then return 'bounce'
+        -- end
+        if net.obj_typename == "pdx" then
+            return "cross"
+        else
+            return "slide"
+        end
+        -- else return nil
+    end
+
+    if v.dx ~= 0 or v.dy ~= 0 then
+        local cols
+        v2.x, v2.y, cols, cols_len = phy_world:move(net, v2.x + v.dx, v2.y + v.dy, Filter)
+        for i = 1, cols_len do
+            local col = cols[i]
+            -- print(("col[%d]: other = %s, type = %s, normal = %d,%d"):format(i, dump_func(col.other), col.type,
+            --     col.normal.x, col.normal.y))
+        end
+    end
+
+    v.dx = v.dx / 2.0
+    v.dy = v.dy / 2.0
+
+    if (gd.tick & 1) == 0 then
+
+        local data = {
+            type = packets["gameobj_network_update"],
+            id = 999,
+            netid = _netid,
+            position_x = v2.x,
+            position_y = v2.y,
+            position_z = 0,
+            orientation_x = 0,
+            orientation_y = 0,
+            orientation_z = 0
+        }
+
+        local struct = common.cdata:set_struct("gameobj_network_update", data)
+        local encoded = common.cdata:encode(struct)
+
+        M.client:send("gameobj_network_update", encoded)
+    end
+
+    -- this_player.p = net
+    -- this_player.pos = v2
+end
+
 local npcSystem = tiny.processingSystem()
 npcSystem.isDrawSystem = false
 npcSystem.filter = tiny.requireAll("gameobj", "vector2", "velocity2", "npc")
@@ -343,34 +415,34 @@ function npcSystem:process(e, dt)
 
     brain(e, 1)
 
-    local Filter = function(item, other)
-        -- if     other.isCoin   then return 'cross'
-        -- elseif other.isWall   then return 'slide'
-        -- elseif other.isExit   then return 'touch'
-        -- elseif other.isSpring then return 'bounce'
-        -- end
+    -- local Filter = function(item, other)
+    --     -- if     other.isCoin   then return 'cross'
+    --     -- elseif other.isWall   then return 'slide'
+    --     -- elseif other.isExit   then return 'touch'
+    --     -- elseif other.isSpring then return 'bounce'
+    --     -- end
 
-        if p.npc_typename == "pdx" then
-            return "cross"
-        else
-            return "slide"
-        end
+    --     if p.npc_typename == "pdx" then
+    --         return "cross"
+    --     else
+    --         return "slide"
+    --     end
 
-        -- else return nil
-    end
+    --     -- else return nil
+    -- end
 
-    if v.dx ~= 0 or v.dy ~= 0 then
-        local cols
-        v2.x, v2.y, cols, cols_len = phy_world:move(p, v2.x + v.dx, v2.y + v.dy, Filter)
-        for i = 1, cols_len do
-            local col = cols[i]
-            -- print(("col[%d]: other = %s, type = %s, normal = %d,%d"):format(i, dump_func(col.other), col.type,
-            --     col.normal.x, col.normal.y))
-        end
-    end
+    -- if v.dx ~= 0 or v.dy ~= 0 then
+    --     local cols
+    --     v2.x, v2.y, cols, cols_len = phy_world:move(p, v2.x + v.dx, v2.y + v.dy, Filter)
+    --     for i = 1, cols_len do
+    --         local col = cols[i]
+    --         -- print(("col[%d]: other = %s, type = %s, normal = %d,%d"):format(i, dump_func(col.other), col.type,
+    --         --     col.normal.x, col.normal.y))
+    --     end
+    -- end
 
-    v.dx = v.dx / 2.0
-    v.dy = v.dy / 2.0
+    -- v.dx = v.dx / 2.0
+    -- v.dy = v.dy / 2.0
 
 end
 
@@ -420,40 +492,40 @@ function playerSystem:process(e, dt)
         v.dy = v.dy + player_v
     end
 
-    if v.dx ~= 0 or v.dy ~= 0 then
-        local cols
-        v2.x, v2.y, cols, cols_len = phy_world:move(p, v2.x + v.dx, v2.y + v.dy)
-        for i = 1, cols_len do
-            local col = cols[i]
-            -- print(("col[%d]: other = %s, type = %s, normal = %d,%d"):format(i, dump_func(col.other), col.type,
-            --     col.normal.x, col.normal.y))
-        end
-    end
+    -- if v.dx ~= 0 or v.dy ~= 0 then
+    --     local cols
+    --     v2.x, v2.y, cols, cols_len = phy_world:move(p, v2.x + v.dx, v2.y + v.dy)
+    --     for i = 1, cols_len do
+    --         local col = cols[i]
+    --         -- print(("col[%d]: other = %s, type = %s, normal = %d,%d"):format(i, dump_func(col.other), col.type,
+    --         --     col.normal.x, col.normal.y))
+    --     end
+    -- end
 
-    v.dx = v.dx / 2.0
-    v.dy = v.dy / 2.0
+    -- v.dx = v.dx / 2.0
+    -- v.dy = v.dy / 2.0
 
-    if (gd.tick & 3) == 0 then
+    -- if (gd.tick & 3) == 0 then
 
-        local data = {
-            type = packets["player_update"],
-            id = 999,
-            position_x = v2.x,
-            position_y = v2.y,
-            position_z = 0,
-            orientation_x = 0,
-            orientation_y = 0,
-            orientation_z = 0
-        }
+    --     local data = {
+    --         type = packets["player_update"],
+    --         id = 999,
+    --         position_x = v2.x,
+    --         position_y = v2.y,
+    --         position_z = 0,
+    --         orientation_x = 0,
+    --         orientation_y = 0,
+    --         orientation_z = 0
+    --     }
 
-        local struct = common.cdata:set_struct("player_update", data)
-        local encoded = common.cdata:encode(struct)
+    --     local struct = common.cdata:set_struct("player_update", data)
+    --     local encoded = common.cdata:encode(struct)
 
-        M.client:send("player_position", encoded)
-    end
+    --     M.client:send("player_position", encoded)
+    -- end
 
-    this_player.p = p
-    this_player.pos = v2
+    -- this_player.p = p
+    -- this_player.pos = v2
 end
 
 local tiledRenderSystem = tiny.processingSystem()
@@ -589,7 +661,7 @@ M.sub_init_thread = function()
         peer:send("hello", msg)
     end)
 
-    M.server:on("player_position", function(data)
+    M.server:on("gameobj_network_update", function(data)
 
         local header = common.cdata:decode("packet_type", data)
         local map = packets[header.type]
@@ -601,11 +673,32 @@ M.sub_init_thread = function()
 
         local decoded = common.cdata:decode(map.name, data)
 
-        s_player_pos = {
-            x = decoded.position_x,
-            y = decoded.position_y
-        }
+        if decoded.netid == 1 then
+            s_player_pos = {
+                x = decoded.position_x,
+                y = decoded.position_y
+            }
+        end
+
     end)
+
+    -- M.server:on("player_position", function(data)
+
+    --     local header = common.cdata:decode("packet_type", data)
+    --     local map = packets[header.type]
+
+    --     if not map then
+    --         error(string.format("Invalid packet type (%s) received!", header.type))
+    --         return
+    --     end
+
+    --     local decoded = common.cdata:decode(map.name, data)
+
+    --     s_player_pos = {
+    --         x = decoded.position_x,
+    --         y = decoded.position_y
+    --     }
+    -- end)
 
     M.client:on("connect", function(data)
         print("Client connected to the server.")
@@ -626,7 +719,8 @@ end
 local win_w, win_h
 -- local test_audio
 
-local world = tiny.world(npcSystem, playerSystem, tiledRenderSystem, npcRenderSystem, playerRenderSystem)
+local world = tiny.world(npcSystem, playerSystem, networkSyncSystem, tiledRenderSystem, npcRenderSystem,
+    playerRenderSystem)
 
 M.sub_init = function()
 
@@ -670,11 +764,14 @@ M.sub_init = function()
         player = {
             scale = 3.0,
             ud = neko.aseprite_render.create(test_ase_witch)
+        },
+        network_t = {
+            obj_typename = "player"
         }
     })
 
-    local v2, v, player, player_obj = eid1.vector2, eid1.velocity2, eid1.player, eid1.gameobj
-    phy_world:add(player, v2.x, v2.y, player_obj.w * player.scale - 100, player_obj.h * player.scale - 40)
+    local v2, v, player, player_obj, netid = eid1.vector2, eid1.velocity2, eid1.player, eid1.gameobj, eid1.network_t
+    phy_world:add(netid, v2.x, v2.y, player_obj.w * player.scale - 100, player_obj.h * player.scale - 40)
 
     -- phy_add_block(800 - 32, 120, 32, 600 - 32 * 2)
 
@@ -753,11 +850,14 @@ M.sub_init = function()
                 scale = 3.0,
                 ud = neko.aseprite_render.create(test_ase_pdx),
                 npc_typename = "pdx"
+            },
+            network_t = {
+                obj_typename = "pdx"
             }
         })
 
-        local v2, v, player, player_obj = e.vector2, e.velocity2, e.npc, e.gameobj
-        phy_world:add(player, v2.x, v2.y, player_obj.w * player.scale - 100, player_obj.h * player.scale - 40)
+        local v2, v, player, player_obj, netid = e.vector2, e.velocity2, e.npc, e.gameobj, e.network_t
+        phy_world:add(netid, v2.x, v2.y, player_obj.w * player.scale - 100, player_obj.h * player.scale - 40)
     end
 
     for i = 1, 5, 1 do
@@ -781,11 +881,14 @@ M.sub_init = function()
                 scale = 4.0,
                 ud = neko.aseprite_render.create(test_ase_harvester),
                 npc_typename = "harvester"
+            },
+            network_t = {
+                obj_typename = "harvester"
             }
         })
 
-        local v2, v, player, player_obj = e.vector2, e.velocity2, e.npc, e.gameobj
-        phy_world:add(player, v2.x, v2.y, player_obj.w * player.scale - 100, player_obj.h * player.scale - 40)
+        local v2, v, player, player_obj, netid = e.vector2, e.velocity2, e.npc, e.gameobj, e.network_t
+        phy_world:add(netid, v2.x, v2.y, player_obj.w * player.scale - 100, player_obj.h * player.scale - 40)
     end
 end
 
@@ -812,6 +915,8 @@ M.sub_shutdown = function()
     -- end
 
     tiny.clearEntities(world)
+
+    tiny.update(world) -- 最后更新
 
     -- neko.filewatch_stop(gd.filewatch, "/maps")
 
@@ -1036,6 +1141,8 @@ M.sub_render = function()
     neko.idraw_texture(gd.main_rt)
     neko.idraw_rectvd(to_vec2(0.0, 0.0), to_vec2(win_w, win_h), to_vec2(0.0, 1.0), to_vec2(1.0, 0.0),
         "R_PRIMITIVE_TRIANGLES", to_color(255, 255, 255, 255))
+
+    -- neko.idraw_text(100, 100, "Hello 你好 world!")
 
     neko.render_renderpass_begin(0)
     neko.render_set_viewport(0.0, 0.0, win_w, win_h)

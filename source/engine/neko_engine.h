@@ -31,7 +31,7 @@ typedef struct Neko_ModuleInterface {
     neko_command_buffer_t cb;
     neko_ui_context_t ui;
     neko_immediate_draw_t idraw;
-    neko_asset_ascii_font_t font;
+    neko_asset_font_t font;
     neko_texture_t test_ase;
     neko_asset_manager_t am;
     neko_asset_t tex_hndl;
@@ -49,7 +49,7 @@ typedef struct Neko_ModuleInterface {
 
 } Neko_ModuleInterface;
 
-typedef struct neko_t {
+typedef struct neko_instance_t {
     neko_pf_t* platform;
     neko_render_t* render;
 
@@ -71,17 +71,17 @@ typedef struct neko_t {
     Neko_ModuleInterface module_interface;
 
     lua_State* L;
-} neko_t;
+} neko_instance_t;
 
-NEKO_API_DECL neko_t* neko_create(int argc, char** argv);
+NEKO_API_DECL neko_instance_t* neko_create(int argc, char** argv);
 NEKO_API_DECL void neko_fini();
 NEKO_API_DECL void neko_frame();
 NEKO_API_DECL void neko_quit();
 NEKO_API_DECL void neko_app(lua_State* L);
 
-NEKO_API_DECL neko_t g_neko_instance;
+NEKO_API_DECL neko_instance_t g_neko_instance;
 
-NEKO_API_DECL neko_t* neko_instance();
+NEKO_API_DECL neko_instance_t* neko_instance();
 
 #define neko_subsystem(__T) (neko_instance()->__T)
 

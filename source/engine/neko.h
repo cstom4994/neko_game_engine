@@ -1912,7 +1912,7 @@ struct hashtable_internal_slot_t {
     int base_count;
 };
 
-struct hashtable_t {
+struct neko_hashtable_t {
     void* memctx;
     int count;
     int item_size;
@@ -1928,18 +1928,18 @@ struct hashtable_t {
     void* swap_temp;
 };
 
-typedef struct hashtable_t hashtable_t;
+typedef struct neko_hashtable_t neko_hashtable_t;
 
-NEKO_API_DECL void hashtable_init(hashtable_t* table, int item_size, int initial_capacity, void* memctx);
-NEKO_API_DECL void hashtable_term(hashtable_t* table);
-NEKO_API_DECL void* hashtable_insert(hashtable_t* table, u64 key, void const* item);
-NEKO_API_DECL void hashtable_remove(hashtable_t* table, u64 key);
-NEKO_API_DECL void hashtable_clear(hashtable_t* table);
-NEKO_API_DECL void* hashtable_find(hashtable_t const* table, u64 key);
-NEKO_API_DECL int hashtable_count(hashtable_t const* table);
-NEKO_API_DECL void* hashtable_items(hashtable_t const* table);
-NEKO_API_DECL u64 const* hashtable_keys(hashtable_t const* table);
-NEKO_API_DECL void hashtable_swap(hashtable_t* table, int index_a, int index_b);
+NEKO_API_DECL void hashtable_init(neko_hashtable_t* table, int item_size, int initial_capacity, void* memctx);
+NEKO_API_DECL void hashtable_term(neko_hashtable_t* table);
+NEKO_API_DECL void* hashtable_insert(neko_hashtable_t* table, u64 key, void const* item);
+NEKO_API_DECL void hashtable_remove(neko_hashtable_t* table, u64 key);
+NEKO_API_DECL void hashtable_clear(neko_hashtable_t* table);
+NEKO_API_DECL void* hashtable_find(neko_hashtable_t const* table, u64 key);
+NEKO_API_DECL int hashtable_count(neko_hashtable_t const* table);
+NEKO_API_DECL void* hashtable_items(neko_hashtable_t const* table);
+NEKO_API_DECL u64 const* hashtable_keys(neko_hashtable_t const* table);
+NEKO_API_DECL void hashtable_swap(neko_hashtable_t* table, int index_a, int index_b);
 
 #endif
 

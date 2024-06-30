@@ -33,13 +33,13 @@ neko_asset_manager_t neko_asset_manager_new() {
     neko_asset_importer_desc_t asset_desc = NEKO_DEFAULT_VAL();
 
     tex_desc.load_from_file = (neko_asset_load_func)&neko_asset_texture_load_from_file;
-    font_desc.load_from_file = (neko_asset_load_func)&neko_asset_ascii_font_load_from_file;
+    font_desc.load_from_file = (neko_asset_load_func)&neko_asset_font_load_from_file;
     // audio_desc.load_from_file = (neko_asset_load_func)&neko_asset_audio_load_from_file;
     mesh_desc.load_from_file = (neko_asset_load_func)&neko_asset_mesh_load_from_file;
 
     neko_assets_register_importer(&assets, neko_asset_t, &asset_desc);
     neko_assets_register_importer(&assets, neko_asset_texture_t, &tex_desc);
-    neko_assets_register_importer(&assets, neko_asset_ascii_font_t, &font_desc);
+    neko_assets_register_importer(&assets, neko_asset_font_t, &font_desc);
     // neko_assets_register_importer(&assets, neko_asset_audio_t, &audio_desc);
     neko_assets_register_importer(&assets, neko_asset_mesh_t, &mesh_desc);
 
@@ -106,10 +106,36 @@ void neko_asset_default_load_from_file(const_str path, void *out) {
 #include <imstb_rectpack.h>
 #include <imstb_truetype.h>
 
+NEKO_API_DECL neko_image_t neko_image_load_mem(const_str mem_data, size_t mem_size, const_str vpath) {
+    char temp_file_extension_buffer[16] = {0};
+    neko_util_get_file_extension(temp_file_extension_buffer, sizeof(temp_file_extension_buffer), vpath);
+    if (neko_string_compare_equal(temp_file_extension_buffer, "ase") || neko_string_compare_equal(temp_file_extension_buffer, "aseprite")) {
+        ase_t *ase = neko_aseprite_load_from_memory(mem_data, mem_size);
+        if (NULL == ase) NEKO_WARN("unable to load ase %s : %p", vpath, mem_data);
+        NEKO_ASSERT(ase->frame_count == 1);  // load_ase_texture_simple used to load simple aseprite
+        neko_aseprite_default_blend_bind(ase);
+        // NEKO_TRACE("load aseprite - frame_count %d - palette.entry_count %d - w=%d h=%d", ase->frame_count, ase->palette.entry_count, ase->w, ase->h);
+        return (neko_image_t){.w = ase->w, .h = ase->h, .ase = ase};
+    } else {
+        int width, height, channels;
+        unsigned char *image = stbi_load_from_memory((stbi_uc const *)mem_data, mem_size, &width, &height, &channels, 0);
+        return (neko_image_t){.w = width, .h = height, .pix = image};
+    }
+    NEKO_ASSERT(0, "unreachable");
+    return (neko_image_t){};  // unreachable
+}
+
 NEKO_API_DECL neko_image_t neko_image_load(const_str path) {
-    int width, height, channels;
-    unsigned char *image = stbi_load(path, &width, &height, &channels, 0);
-    return (neko_image_t){.w = width, .h = height, .pix = image};
+    bool ok = neko_capi_vfs_file_exists(NEKO_PACK_GAMEDATA, path);
+    if (!ok) {
+        NEKO_WARN("failed to load image %s", path);
+        return (neko_image_t){};
+    }
+    size_t mem_size;
+    const_str mem_data = neko_capi_vfs_read_file(NEKO_PACK_GAMEDATA, path, &mem_size);
+    neko_image_t image = neko_image_load_mem(mem_data, mem_size, path);
+    neko_safe_free(mem_data);
+    return image;
 }
 
 NEKO_API_DECL void neko_image_free(neko_image_t img) { stbi_image_free(img.pix); }
@@ -167,7 +193,7 @@ NEKO_API_DECL bool neko_asset_texture_load_from_file(const_str path, void *out, 
     t->desc.width = img.w;
     t->desc.height = img.h;
 
-    if (!t->desc.data) {
+    if (!t->desc.data[0]) {
         neko_image_free(img);
         NEKO_WARN("failed to load texture data %s", path);
         return false;
@@ -228,14 +254,14 @@ bool neko_asset_texture_load_from_memory(const void *memory, size_t sz, void *ou
     return true;
 }
 
-bool neko_asset_ascii_font_load_from_file(const_str path, void *out, u32 point_size) {
+bool neko_asset_font_load_from_file(const_str path, void *out, u32 point_size) {
     size_t len = 0;
     const_str ttf = neko_capi_vfs_read_file(NEKO_PACK_GAMEDATA, path, &len);
     if (!point_size) {
         NEKO_WARN("font: %s: point size not declared. setting to default 16.", neko_util_get_filename(path));
         point_size = 16;
     }
-    bool ret = neko_asset_ascii_font_load_from_memory(ttf, len, out, point_size);
+    bool ret = neko_asset_font_load_from_memory(ttf, len, out, point_size);
     if (!ret) {
         NEKO_WARN("font failed to load: %s", neko_util_get_filename(path));
     } else {
@@ -245,8 +271,10 @@ bool neko_asset_ascii_font_load_from_file(const_str path, void *out, u32 point_s
     return ret;
 }
 
-bool neko_asset_ascii_font_load_from_memory(const void *memory, size_t sz, void *out, u32 point_size) {
-    neko_asset_ascii_font_t *f = (neko_asset_ascii_font_t *)out;
+bool neko_asset_font_load_from_memory(const void *memory, size_t sz, void *out, u32 point_size) {
+    neko_asset_font_t *f = (neko_asset_font_t *)out;
+    // f->glyphs_num = 96;
+    // f->glyphs = neko_safe_malloc(f->glyphs_num * sizeof(neko_baked_char_t));
 
     if (!point_size) {
         NEKO_WARN("font: point size not declared. setting to default 16.");
@@ -306,7 +334,7 @@ bool neko_asset_ascii_font_load_from_memory(const void *memory, size_t sz, void 
     return success;
 }
 
-NEKO_API_DECL f32 neko_asset_ascii_font_max_height(const neko_asset_ascii_font_t *fp) {
+NEKO_API_DECL f32 neko_asset_font_max_height(const neko_asset_font_t *fp) {
     if (!fp) return 0.f;
     f32 h = 0.f, x = 0.f, y = 0.f;
     const_str txt = "1l`'f()ABCDEFGHIJKLMNOjPQqSTU!";
@@ -322,9 +350,9 @@ NEKO_API_DECL f32 neko_asset_ascii_font_max_height(const neko_asset_ascii_font_t
     return h;
 }
 
-NEKO_API_DECL neko_vec2 neko_asset_ascii_font_text_dimensions(const neko_asset_ascii_font_t *fp, const_str text, s32 len) { return neko_asset_ascii_font_text_dimensions_ex(fp, text, len, 0); }
+NEKO_API_DECL neko_vec2 neko_asset_font_text_dimensions(const neko_asset_font_t *fp, const_str text, s32 len) { return neko_asset_font_text_dimensions_ex(fp, text, len, 0); }
 
-NEKO_API_DECL neko_vec2 neko_asset_ascii_font_text_dimensions_ex(const neko_asset_ascii_font_t *fp, const_str text, s32 len, b32 include_past_baseline) {
+NEKO_API_DECL neko_vec2 neko_asset_font_text_dimensions_ex(const neko_asset_font_t *fp, const_str text, s32 len, b32 include_past_baseline) {
     neko_vec2 dimensions = neko_v2s(0.f);
 
     if (!fp || !text) return dimensions;
@@ -668,7 +696,7 @@ NEKO_STATIC int __neko_ulz_compress(const u8 *in, int inlen, u8 *out, int outlen
         op += run;
     }
 
-    void *gc =neko_realloc(u, 0);
+    void *gc = neko_realloc(u, 0);
     return op - out;
 }
 
@@ -2281,7 +2309,7 @@ neko_font_err:
     } while (0)
 
 typedef struct neko_font_kern_t {
-    hashtable_t table;
+    neko_hashtable_t table;
 } neko_font_kern_t;
 
 neko_font_t *neko_font_load_bmfont(neko_font_u64 atlas_id, const void *fnt, int size, void *mem_ctx) {

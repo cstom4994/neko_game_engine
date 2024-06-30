@@ -21,6 +21,22 @@
 #include <emscripten.h>
 #endif
 
+#if defined(NEKO_PF_WIN)
+#include <direct.h>
+#include <timeapi.h>
+#pragma comment(lib, "winmm.lib")
+
+#elif defined(NEKO_PF_WEB)
+#include <unistd.h>
+
+#elif defined(NEKO_PF_LINUX)
+#include <sched.h>
+#include <sys/stat.h>
+#include <time.h>
+#include <unistd.h>
+
+#endif
+
 namespace neko::wtf8 {
 std::wstring u2w(std::string_view str) noexcept {
     if (str.empty()) {
@@ -552,7 +568,7 @@ EM_ASYNC_JS(void, web_load_files, (), {
 });
 #endif
 
-auto os_program_path() { return std::filesystem::current_path().string(); }
+// auto os_program_path() { return std::filesystem::current_path().string(); }
 
 template <typename T>
 static bool vfs_mount_type(std::string fsname, string mount) {
@@ -600,7 +616,7 @@ mount_result vfs_mount(const_str fsname, const_str filepath) {
 
 #else
     if (filepath == nullptr) {
-        string path = os_program_path().c_str();
+        string path = os_program_path();
 
 #ifndef NDEBUG
         NEKO_DEBUG_LOG("program path: %s", path.data);
@@ -1492,6 +1508,594 @@ string lua_to_json_string(lua_State *L, s32 arg, string *contents, s32 width) {
     *contents = string(sb);
     return err;
 }
+
+#ifndef NEKO_PF_WIN
+#include <errno.h>
+#endif
+
+#ifdef NEKO_PF_LINUX
+#include <sys/syscall.h>
+#include <unistd.h>
+#endif
+
+#ifdef NEKO_PF_WIN
+
+void mutex::make() { srwlock = {}; }
+void mutex::trash() {}
+void mutex::lock() { AcquireSRWLockExclusive(&srwlock); }
+void mutex::unlock() { ReleaseSRWLockExclusive(&srwlock); }
+
+bool mutex::try_lock() {
+    BOOLEAN ok = TryAcquireSRWLockExclusive(&srwlock);
+    return ok != 0;
+}
+
+void cond::make() { InitializeConditionVariable(&cv); }
+void cond::trash() {}
+void cond::signal() { WakeConditionVariable(&cv); }
+void cond::broadcast() { WakeAllConditionVariable(&cv); }
+
+void cond::wait(mutex *mtx) { SleepConditionVariableSRW(&cv, &mtx->srwlock, INFINITE, 0); }
+
+bool cond::timed_wait(mutex *mtx, uint32_t ms) { return SleepConditionVariableSRW(&cv, &mtx->srwlock, ms, 0); }
+
+void rwlock::make() { srwlock = {}; }
+void rwlock::trash() {}
+void rwlock::shared_lock() { AcquireSRWLockShared(&srwlock); }
+void rwlock::shared_unlock() { ReleaseSRWLockShared(&srwlock); }
+void rwlock::unique_lock() { AcquireSRWLockExclusive(&srwlock); }
+void rwlock::unique_unlock() { ReleaseSRWLockExclusive(&srwlock); }
+
+void sema::make(int n) { handle = CreateSemaphoreA(nullptr, n, LONG_MAX, nullptr); }
+void sema::trash() { CloseHandle(handle); }
+void sema::post(int n) { ReleaseSemaphore(handle, n, nullptr); }
+void sema::wait() { WaitForSingleObjectEx(handle, INFINITE, false); }
+
+void thread::make(ThreadProc fn, void *udata) {
+    DWORD id = 0;
+    HANDLE handle = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)fn, udata, 0, &id);
+    ptr = (void *)handle;
+}
+
+void thread::join() {
+    WaitForSingleObject((HANDLE)ptr, INFINITE);
+    CloseHandle((HANDLE)ptr);
+}
+
+uint64_t this_thread_id() { return GetCurrentThreadId(); }
+
+#else
+
+static struct timespec ms_from_now(u32 ms) {
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+
+    unsigned long long tally = ts.tv_sec * 1000LL + ts.tv_nsec / 1000000LL;
+    tally += ms;
+
+    ts.tv_sec = tally / 1000LL;
+    ts.tv_nsec = (tally % 1000LL) * 1000000LL;
+
+    return ts;
+}
+
+void mutex::make() { pthread_mutex_init(&pt, nullptr); }
+void mutex::trash() { pthread_mutex_destroy(&pt); }
+void mutex::lock() { pthread_mutex_lock(&pt); }
+void mutex::unlock() { pthread_mutex_unlock(&pt); }
+
+bool mutex::try_lock() {
+    int res = pthread_mutex_trylock(&pt);
+    return res == 0;
+}
+
+void cond::make() { pthread_cond_init(&pt, nullptr); }
+void cond::trash() { pthread_cond_destroy(&pt); }
+void cond::signal() { pthread_cond_signal(&pt); }
+void cond::broadcast() { pthread_cond_broadcast(&pt); }
+void cond::wait(mutex *mtx) { pthread_cond_wait(&pt, &mtx->pt); }
+
+bool cond::timed_wait(mutex *mtx, uint32_t ms) {
+    struct timespec ts = ms_from_now(ms);
+    int res = pthread_cond_timedwait(&pt, &mtx->pt, &ts);
+    return res == 0;
+}
+
+void rwlock::make() { pthread_rwlock_init(&pt, nullptr); }
+void rwlock::trash() { pthread_rwlock_destroy(&pt); }
+void rwlock::shared_lock() { pthread_rwlock_rdlock(&pt); }
+void rwlock::shared_unlock() { pthread_rwlock_unlock(&pt); }
+void rwlock::unique_lock() { pthread_rwlock_wrlock(&pt); }
+void rwlock::unique_unlock() { pthread_rwlock_unlock(&pt); }
+
+void sema::make(int n) {
+    sem = (sem_t *)neko_safe_malloc(sizeof(sem_t));
+    sem_init(sem, 0, n);
+}
+
+void sema::trash() {
+    sem_destroy(sem);
+    neko_safe_free(sem);
+}
+
+void sema::post(int n) {
+    for (int i = 0; i < n; i++) {
+        sem_post(sem);
+    }
+}
+
+void sema::wait() { sem_wait(sem); }
+
+void thread::make(thread_proc fn, void *udata) {
+    pthread_t pt = {};
+    pthread_create(&pt, nullptr, (void *(*)(void *))fn, udata);
+    ptr = (void *)pt;
+}
+
+void thread::join() { pthread_join((pthread_t)ptr, nullptr); }
+
+#endif
+
+#ifdef NEKO_PF_LINUX
+
+uint64_t this_thread_id() {
+    thread_local uint64_t s_tid = syscall(SYS_gettid);
+    return s_tid;
+}
+
+#endif  // NEKO_PF_LINUX
+
+#ifdef NEKO_PF_WEB
+
+uint64_t this_thread_id() { return 0; }
+
+#endif  // NEKO_PF_WEB
+
+static void lua_thread_proc(void *udata) {
+    // PROFILE_FUNC();
+
+    LuaThread *lt = (LuaThread *)udata;
+
+    // LuaAlloc *LA = luaalloc_create(nullptr, nullptr);
+    // defer(luaalloc_delete(LA));
+
+    lua_State *L = luaL_newstate();
+    neko_defer(lua_close(L));
+
+    {
+        // PROFILE_BLOCK("open libs");
+        luaL_openlibs(L);
+    }
+
+    {
+        // PROFILE_BLOCK("open api");
+        // open_spry_api(L);
+    }
+
+    {
+        // PROFILE_BLOCK("open luasocket");
+        // open_luasocket(L);
+    }
+
+    {
+        // PROFILE_BLOCK("run bootstrap");
+        // luax_run_bootstrap(L);
+    }
+
+    string contents = lt->contents;
+
+    {
+        // PROFILE_BLOCK("load chunk");
+        if (luaL_loadbuffer(L, contents.data, contents.len, lt->name.data) != LUA_OK) {
+            string err = luax_check_string(L, -1);
+            fprintf(stderr, "%s\n", err.data);
+
+            neko_safe_free(contents.data);
+            neko_safe_free(lt->name.data);
+            return;
+        }
+    }
+
+    neko_safe_free(contents.data);
+    neko_safe_free(lt->name.data);
+
+    {
+        // PROFILE_BLOCK("run chunk");
+        if (lua_pcall(L, 0, LUA_MULTRET, 0) != LUA_OK) {
+            string err = luax_check_string(L, -1);
+            fprintf(stderr, "%s\n", err.data);
+        }
+    }
+}
+
+void LuaThread::make(string code, string thread_name) {
+    mtx.make();
+    contents = to_cstr(code);
+    name = to_cstr(thread_name);
+
+    LockGuard lock{&mtx};
+    thread.make(lua_thread_proc, this);
+}
+
+void LuaThread::join() {
+    if (LockGuard lock{&mtx}) {
+        thread.join();
+    }
+
+    mtx.trash();
+}
+
+//
+
+void LuaVariant::make(lua_State *L, s32 arg) {
+    type = lua_type(L, arg);
+
+    switch (type) {
+        case LUA_TBOOLEAN:
+            boolean = lua_toboolean(L, arg);
+            break;
+        case LUA_TNUMBER:
+            number = luaL_checknumber(L, arg);
+            break;
+        case LUA_TSTRING: {
+            neko::string s = luax_check_string(L, arg);
+            string = to_cstr(s);
+            break;
+        }
+        case LUA_TTABLE: {
+            array<LuaTableEntry> entries = {};
+            entries.resize(luax_len(L, arg));
+
+            lua_pushvalue(L, arg);
+            for (lua_pushnil(L); lua_next(L, -2); lua_pop(L, 1)) {
+                LuaVariant key = {};
+                key.make(L, -2);
+
+                LuaVariant value = {};
+                value.make(L, -1);
+
+                entries.push({key, value});
+            }
+            lua_pop(L, 1);
+
+            table = slice(entries);
+            break;
+        }
+        case LUA_TUSERDATA: {
+            s32 kind = lua_getiuservalue(L, arg, LUAX_UD_TNAME);
+            neko_defer(lua_pop(L, 1));
+            if (kind != LUA_TSTRING) {
+                return;
+            }
+
+            kind = lua_getiuservalue(L, arg, LUAX_UD_PTR_SIZE);
+            neko_defer(lua_pop(L, 1));
+            if (kind != LUA_TNUMBER) {
+                return;
+            }
+
+            neko::string tname = luax_check_string(L, -2);
+            u64 size = luaL_checkinteger(L, -1);
+
+            if (size != sizeof(void *)) {
+                return;
+            }
+
+            udata.ptr = *(void **)lua_touserdata(L, arg);
+            udata.tname = to_cstr(tname);
+
+            break;
+        }
+        default:
+            break;
+    }
+}
+
+void LuaVariant::trash() {
+    switch (type) {
+        case LUA_TSTRING: {
+            neko_safe_free(string.data);
+            break;
+        }
+        case LUA_TTABLE: {
+            for (LuaTableEntry e : table) {
+                e.key.trash();
+                e.value.trash();
+            }
+            neko_safe_free(table.data);
+        }
+        case LUA_TUSERDATA: {
+            neko_safe_free(udata.tname.data);
+        }
+        default:
+            break;
+    }
+}
+
+void LuaVariant::push(lua_State *L) {
+    switch (type) {
+        case LUA_TBOOLEAN:
+            lua_pushboolean(L, boolean);
+            break;
+        case LUA_TNUMBER:
+            lua_pushnumber(L, number);
+            break;
+        case LUA_TSTRING:
+            lua_pushlstring(L, string.data, string.len);
+            break;
+        case LUA_TTABLE: {
+            lua_newtable(L);
+            for (LuaTableEntry e : table) {
+                e.key.push(L);
+                e.value.push(L);
+                lua_rawset(L, -3);
+            }
+            break;
+        }
+        case LUA_TUSERDATA: {
+            luax_ptr_userdata(L, udata.ptr, udata.tname.data);
+            break;
+        }
+        default:
+            break;
+    }
+}
+
+//
+
+struct LuaChannels {
+    mutex mtx;
+    cond select;
+    hashmap<LuaChannel *> by_name;
+};
+
+static LuaChannels g_channels = {};
+
+void LuaChannel::make(string n, u64 buf) {
+    mtx.make();
+    sent.make();
+    received.make();
+    items.data = (LuaVariant *)neko_safe_malloc(sizeof(LuaVariant) * (buf + 1));
+    items.len = (buf + 1);
+    front = 0;
+    back = 0;
+    len = 0;
+
+    name.store(to_cstr(n).data);
+}
+
+void LuaChannel::trash() {
+    for (s32 i = 0; i < len; i++) {
+        items[front].trash();
+        front = (front + 1) % items.len;
+    }
+
+    neko_safe_free(items.data);
+    neko_safe_free(name.exchange(nullptr));
+    mtx.trash();
+    sent.trash();
+    received.trash();
+}
+
+void LuaChannel::send(LuaVariant item) {
+    LockGuard lock{&mtx};
+
+    while (len == items.len) {
+        received.wait(&mtx);
+    }
+
+    items[back] = item;
+    back = (back + 1) % items.len;
+    len++;
+
+    g_channels.select.broadcast();
+    sent.signal();
+    sent_total++;
+
+    while (sent_total >= received_total + items.len) {
+        received.wait(&mtx);
+    }
+}
+
+static LuaVariant lua_channel_dequeue(LuaChannel *ch) {
+    LuaVariant item = ch->items[ch->front];
+    ch->front = (ch->front + 1) % ch->items.len;
+    ch->len--;
+
+    ch->received.broadcast();
+    ch->received_total++;
+
+    return item;
+}
+
+LuaVariant LuaChannel::recv() {
+    LockGuard lock{&mtx};
+
+    while (len == 0) {
+        sent.wait(&mtx);
+    }
+
+    return lua_channel_dequeue(this);
+}
+
+bool LuaChannel::try_recv(LuaVariant *v) {
+    LockGuard lock{&mtx};
+
+    if (len == 0) {
+        return false;
+    }
+
+    *v = lua_channel_dequeue(this);
+    return true;
+}
+
+LuaChannel *lua_channel_make(string name, u64 buf) {
+    LuaChannel *chan = (LuaChannel *)neko_safe_malloc(sizeof(LuaChannel));
+    new (&chan->name) std::atomic<char *>();
+    chan->make(name, buf);
+
+    LockGuard lock{&g_channels.mtx};
+    g_channels.by_name[fnv1a(name)] = chan;
+
+    return chan;
+}
+
+LuaChannel *lua_channel_get(string name) {
+    LockGuard lock{&g_channels.mtx};
+
+    LuaChannel **chan = g_channels.by_name.get(fnv1a(name));
+    if (chan == nullptr) {
+        return nullptr;
+    }
+
+    return *chan;
+}
+
+LuaChannel *lua_channels_select(lua_State *L, LuaVariant *v) {
+    s32 len = lua_gettop(L);
+    if (len == 0) {
+        return nullptr;
+    }
+
+    LuaChannel *buf[16] = {};
+    for (s32 i = 0; i < len; i++) {
+        buf[i] = *(LuaChannel **)luaL_checkudata(L, i + 1, "mt_channel");
+    }
+
+    mutex mtx = {};
+    mtx.make();
+    LockGuard lock{&mtx};
+
+    while (true) {
+        for (s32 i = 0; i < len; i++) {
+            LockGuard lock{&buf[i]->mtx};
+            if (buf[i]->len > 0) {
+                *v = lua_channel_dequeue(buf[i]);
+                return buf[i];
+            }
+        }
+
+        g_channels.select.wait(&mtx);
+    }
+}
+
+void lua_channels_setup() {
+    g_channels.select.make();
+    g_channels.mtx.make();
+}
+
+void lua_channels_shutdown() {
+    for (auto [k, v] : g_channels.by_name) {
+        LuaChannel *chan = *v;
+        chan->trash();
+        neko_safe_free(chan);
+    }
+    g_channels.by_name.trash();
+    g_channels.select.trash();
+    g_channels.mtx.trash();
+}
+
+s32 os_change_dir(const char *path) { return chdir(path); }
+
+string os_program_dir() {
+    string str = os_program_path();
+    char *buf = str.data;
+
+    for (s32 i = (s32)str.len; i >= 0; i--) {
+        if (buf[i] == '/') {
+            buf[i + 1] = 0;
+            return {str.data, (u64)i + 1};
+        }
+    }
+
+    return str;
+}
+
+#ifdef NEKO_PF_WIN
+
+string os_program_path() {
+    static char s_buf[2048];
+
+    DWORD len = GetModuleFileNameA(NULL, s_buf, array_size(s_buf));
+
+    for (s32 i = 0; s_buf[i]; i++) {
+        if (s_buf[i] == '\\') {
+            s_buf[i] = '/';
+        }
+    }
+
+    return {s_buf, (u64)len};
+}
+
+u64 os_file_modtime(const char *filename) {
+    HANDLE handle = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+
+    if (handle == INVALID_HANDLE_VALUE) {
+        return 0;
+    }
+    defer(CloseHandle(handle));
+
+    FILETIME create = {};
+    FILETIME access = {};
+    FILETIME write = {};
+    bool ok = GetFileTime(handle, &create, &access, &write);
+    if (!ok) {
+        return 0;
+    }
+
+    ULARGE_INTEGER time = {};
+    time.LowPart = write.dwLowDateTime;
+    time.HighPart = write.dwHighDateTime;
+
+    return time.QuadPart;
+}
+
+void os_high_timer_resolution() { timeBeginPeriod(8); }
+void os_sleep(u32 ms) { Sleep(ms); }
+void os_yield() { YieldProcessor(); }
+
+#endif  // NEKO_PF_WIN
+
+#ifdef NEKO_PF_LINUX
+
+string os_program_path() {
+    static char s_buf[2048];
+    s32 len = (s32)readlink("/proc/self/exe", s_buf, NEKO_ARR_SIZE(s_buf));
+    return {s_buf, (u64)len};
+}
+
+u64 os_file_modtime(const char *filename) {
+    struct stat attrib = {};
+    s32 err = stat(filename, &attrib);
+    if (err == 0) {
+        return (u64)attrib.st_mtime;
+    } else {
+        return 0;
+    }
+}
+
+void os_high_timer_resolution() {}
+
+void os_sleep(u32 ms) {
+    struct timespec ts;
+    ts.tv_sec = ms / 1000;
+    ts.tv_nsec = (ms % 1000) * 1000000;
+    nanosleep(&ts, &ts);
+}
+
+void os_yield() { sched_yield(); }
+
+#endif  // NEKO_PF_LINUX
+
+#ifdef NEKO_PF_WEB
+
+string os_program_path() { return {}; }
+u64 os_file_modtime(const char *filename) { return 0; }
+void os_high_timer_resolution() {}
+void os_sleep(u32 ms) {}
+void os_yield() {}
+
+#endif  // NEKO_PF_WEB
 
 }  // namespace neko
 

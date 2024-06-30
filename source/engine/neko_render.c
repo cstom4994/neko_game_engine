@@ -930,7 +930,7 @@ void neko_render_batch_identity(float* m) {
 }
 
 void neko_gl_reset_data_cache(neko_gl_data_cache_t* cache) {
-    cache->ibo = 0;
+    cache->ibo.id = 0;
     cache->ibo_elem_sz = 0;
     cache->pipeline = neko_handle_invalid(neko_render_pipeline_t);
     neko_dyn_array_clear(cache->vdecls);
@@ -1561,7 +1561,7 @@ size_t neko_gl_uniform_data_size_in_bytes(neko_render_uniform_type type) {
     return sz;
 }
 
-neko_thread_mutex_t g_graphics_mutex;
+// neko_thread_mutex_t g_graphics_mutex;
 
 NEKO_API_DECL neko_render_t* neko_render_create() {
     // 构建新的图形界面
@@ -1570,7 +1570,7 @@ NEKO_API_DECL neko_render_t* neko_render_create() {
     // 为OpenGL构建内部数据
     gfx->user_data = neko_malloc_init(neko_gl_data_t);
 
-    thread_mutex_init(&g_graphics_mutex);
+    // thread_mutex_init(&g_graphics_mutex);
 
     return gfx;
 }
@@ -1628,7 +1628,7 @@ NEKO_API_DECL void neko_render_destroy(neko_render_t* render) {
     neko_free(render);
     render = NULL;
 
-    thread_mutex_term(&g_graphics_mutex);
+    // thread_mutex_term(&g_graphics_mutex);
 }
 
 NEKO_API_DECL void neko_render_shutdown(neko_render_t* render) {}
@@ -1883,7 +1883,7 @@ NEKO_API_DECL neko_handle(neko_render_uniform_t) neko_render_uniform_create_impl
 NEKO_API_DECL neko_handle(neko_render_vertex_buffer_t) neko_render_vertex_buffer_create_impl(const neko_render_vertex_buffer_desc_t desc) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(render)->user_data;
     neko_handle(neko_render_vertex_buffer_t) hndl = NEKO_DEFAULT_VAL();
-    neko_gl_buffer_t buffer = 0;
+    neko_gl_buffer_t buffer = {0};
 
     // Assert if data isn't filled for vertex data when static draw enabled
     if (desc.usage == R_BUFFER_USAGE_STATIC && !desc.data) {
@@ -1891,8 +1891,8 @@ NEKO_API_DECL neko_handle(neko_render_vertex_buffer_t) neko_render_vertex_buffer
         NEKO_ASSERT(false);
     }
 
-    glGenBuffers(1, &buffer);
-    glBindBuffer(GL_ARRAY_BUFFER, buffer);
+    glGenBuffers(1, &buffer.id);
+    glBindBuffer(GL_ARRAY_BUFFER, buffer.id);
     glBufferData(GL_ARRAY_BUFFER, desc.size, desc.data, neko_gl_buffer_usage_to_gl_enum(desc.usage));
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     hndl = neko_handle_create(neko_render_vertex_buffer_t, neko_slot_array_insert(ogl->vertex_buffers, buffer));
@@ -1903,7 +1903,7 @@ NEKO_API_DECL neko_handle(neko_render_vertex_buffer_t) neko_render_vertex_buffer
 NEKO_API_DECL neko_handle(neko_render_index_buffer_t) neko_render_index_buffer_create_impl(const neko_render_index_buffer_desc_t desc) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(render)->user_data;
     neko_handle(neko_render_index_buffer_t) hndl = NEKO_DEFAULT_VAL();
-    neko_gl_buffer_t buffer = 0;
+    neko_gl_buffer_t buffer = {0};
 
     // Assert if data isn't filled for vertex data when static draw enabled
     if (desc.usage == R_BUFFER_USAGE_STATIC && !desc.data) {
@@ -1911,8 +1911,8 @@ NEKO_API_DECL neko_handle(neko_render_index_buffer_t) neko_render_index_buffer_c
         NEKO_ASSERT(false);
     }
 
-    glGenBuffers(1, &buffer);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer);
+    glGenBuffers(1, &buffer.id);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer.id);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, desc.size, desc.data, neko_gl_buffer_usage_to_gl_enum(desc.usage));
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     hndl = neko_handle_create(neko_render_index_buffer_t, neko_slot_array_insert(ogl->index_buffers, buffer));
@@ -1977,8 +1977,8 @@ NEKO_API_DECL neko_handle(neko_render_storage_buffer_t) neko_render_storage_buff
 NEKO_API_DECL neko_handle(neko_render_framebuffer_t) neko_render_framebuffer_create_impl(const neko_render_framebuffer_desc_t desc) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(render)->user_data;
     neko_handle(neko_render_framebuffer_t) hndl = NEKO_DEFAULT_VAL();
-    neko_gl_buffer_t buffer = 0;
-    glGenFramebuffers(1, &buffer);
+    neko_gl_buffer_t buffer = {0};
+    glGenFramebuffers(1, &buffer.id);
     hndl = neko_handle_create(neko_render_framebuffer_t, neko_slot_array_insert(ogl->frame_buffers, buffer));
     return hndl;
 }
@@ -1989,14 +1989,14 @@ NEKO_API_DECL neko_handle(neko_render_framebuffer_t) neko_render_framebuffer_cre
 
 NEKO_API_DECL neko_handle(neko_render_shader_t) neko_render_shader_create_impl(const neko_render_shader_desc_t desc) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(render)->user_data;
-    neko_gl_shader_t shader = 0;
+    neko_gl_shader_t shader = {0};
     u32 pip = 0x00;
 
     u32 sid_ct = 0;
     u32 sids[NEKO_GL_GRAPHICS_MAX_SID] = NEKO_DEFAULT_VAL();
 
     // Create shader program
-    shader = glCreateProgram();
+    shader.id = glCreateProgram();
 
     u32 ct = (u32)desc.size / (u32)sizeof(neko_render_shader_source_desc_t);
     for (u32 i = 0; i < ct; ++i) {
@@ -2038,7 +2038,7 @@ NEKO_API_DECL neko_handle(neko_render_shader_t) neko_render_shader_create_impl(c
             glGetShaderInfoLog(sid, max_len, &max_len, log);
 
             // Delete shader.
-            glDeleteShader(shader);
+            glDeleteShader(shader.id);
 
             // Provide the infolog
             neko_println("Opengl::opengl_compile_shader::shader: '%s'\nFAILED_TO_COMPILE: %s\n %s", desc.name, log, desc.sources[i].source);
@@ -2051,31 +2051,31 @@ NEKO_API_DECL neko_handle(neko_render_shader_t) neko_render_shader_create_impl(c
         }
 
         // Attach shader to program
-        glAttachShader(shader, sid);
+        glAttachShader(shader.id, sid);
 
         // Add to shader array
         sids[sid_ct++] = sid;
     }
 
     // Link shaders into final program
-    glLinkProgram(shader);
+    glLinkProgram(shader.id);
 
     // Create info log for errors
     s32 is_good = 0;
-    glGetProgramiv(shader, GL_LINK_STATUS, (s32*)&is_good);
+    glGetProgramiv(shader.id, GL_LINK_STATUS, (s32*)&is_good);
     if (is_good == GL_FALSE) {
         GLint max_len = 0;
-        glGetProgramiv(shader, GL_INFO_LOG_LENGTH, &max_len);
+        glGetProgramiv(shader.id, GL_INFO_LOG_LENGTH, &max_len);
 
         char* log = (char*)neko_safe_malloc(max_len);
         memset(log, 0, max_len);
-        glGetProgramInfoLog(shader, max_len, &max_len, log);
+        glGetProgramInfoLog(shader.id, max_len, &max_len, log);
 
         // Print error
         NEKO_ERROR("Fail To Link::opengl_link_shaders::shader: '%s', \n%s", desc.name, log);
 
         // //We don't need the program anymore.
-        glDeleteProgram(shader);
+        glDeleteProgram(shader.id);
 
         neko_safe_free(log);
         log = NULL;
@@ -2084,8 +2084,8 @@ NEKO_API_DECL neko_handle(neko_render_shader_t) neko_render_shader_create_impl(c
         NEKO_ASSERT(false);
     }
 
-    glValidateProgram(shader);
-    glGetProgramiv(shader, GL_VALIDATE_STATUS, &is_good);
+    glValidateProgram(shader.id);
+    glGetProgramiv(shader.id, GL_VALIDATE_STATUS, &is_good);
     if (!is_good) {
         NEKO_ERROR("Failed to validate shader: '%s'", desc.name);
     }
@@ -2179,7 +2179,7 @@ NEKO_API_DECL void neko_render_uniform_destroy_impl(neko_handle(neko_render_unif
 NEKO_API_DECL void neko_render_shader_destroy_impl(neko_handle(neko_render_shader_t) hndl) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(render)->user_data;
     if (!neko_slot_array_handle_valid(ogl->shaders, hndl.id)) return;
-    glDeleteProgram(neko_slot_array_get(ogl->shaders, hndl.id));
+    glDeleteProgram(neko_slot_array_get(ogl->shaders, hndl.id).id);
     neko_slot_array_erase(ogl->shaders, hndl.id);
 }
 
@@ -2187,7 +2187,7 @@ NEKO_API_DECL void neko_render_vertex_buffer_destroy_impl(neko_handle(neko_rende
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(render)->user_data;
     if (!neko_slot_array_handle_valid(ogl->vertex_buffers, hndl.id)) return;
     neko_gl_buffer_t buffer = neko_slot_array_get(ogl->vertex_buffers, hndl.id);
-    glDeleteBuffers(1, &buffer);
+    glDeleteBuffers(1, &buffer.id);
     neko_slot_array_erase(ogl->vertex_buffers, hndl.id);
 }
 
@@ -2195,7 +2195,7 @@ NEKO_API_DECL void neko_render_index_buffer_destroy_impl(neko_handle(neko_render
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(render)->user_data;
     if (!neko_slot_array_handle_valid(ogl->index_buffers, hndl.id)) return;
     neko_gl_buffer_t buffer = neko_slot_array_get(ogl->index_buffers, hndl.id);
-    glDeleteBuffers(1, &buffer);
+    glDeleteBuffers(1, &buffer.id);
     neko_slot_array_erase(ogl->index_buffers, hndl.id);
 }
 
@@ -2227,7 +2227,7 @@ NEKO_API_DECL void neko_render_framebuffer_destroy_impl(neko_handle(neko_render_
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(render)->user_data;
     if (!neko_slot_array_handle_valid(ogl->frame_buffers, hndl.id)) return;
     neko_gl_buffer_t buffer = neko_slot_array_get(ogl->frame_buffers, hndl.id);
-    glDeleteFramebuffers(1, &buffer);
+    glDeleteFramebuffers(1, &buffer.id);
     neko_slot_array_erase(ogl->frame_buffers, hndl.id);
 }
 
@@ -2340,7 +2340,7 @@ NEKO_API_DECL void neko_render_vertex_buffer_update_impl(neko_handle(neko_render
 
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(render)->user_data;
     neko_gl_buffer_t buffer = neko_slot_array_get(ogl->vertex_buffers, hndl.id);
-    glBindBuffer(GL_ARRAY_BUFFER, buffer);
+    glBindBuffer(GL_ARRAY_BUFFER, buffer.id);
     s32 glusage = neko_gl_buffer_usage_to_gl_enum(desc->usage);
     switch (desc->update.type) {
         case R_BUFFER_UPDATE_SUBDATA:
@@ -2357,7 +2357,7 @@ NEKO_API_DECL void neko_render_index_buffer_update_impl(neko_handle(neko_render_
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(render)->user_data;
     neko_gl_buffer_t buffer = neko_slot_array_get(ogl->index_buffers, hndl.id);
     s32 glusage = neko_gl_buffer_usage_to_gl_enum(desc->usage);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer.id);
     switch (desc->update.type) {
         case R_BUFFER_UPDATE_SUBDATA:
             glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, desc->update.offset, desc->size, desc->data);
@@ -2748,7 +2748,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
                     // Bind frame buffer since it actually exists
                     if (rp->fbo.id && neko_slot_array_exists(ogl->frame_buffers, rp->fbo.id)) {
                         // Bind frame buffer
-                        glBindFramebuffer(GL_FRAMEBUFFER, neko_slot_array_get(ogl->frame_buffers, rp->fbo.id));
+                        glBindFramebuffer(GL_FRAMEBUFFER, neko_slot_array_get(ogl->frame_buffers, rp->fbo.id).id);
 
                         // Bind color attachments
                         for (u32 r = 0; r < neko_dyn_array_size(rp->color); ++r) {
@@ -2888,7 +2888,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
                                 neko_gl_buffer_t ibo = neko_slot_array_get(ogl->index_buffers, id);
 
                                 // Store in cache
-                                ogl->cache.ibo = id;
+                                ogl->cache.ibo.id = id;
                             }
                         } break;
 
@@ -2948,7 +2948,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
                                     }
 
                                     // Grab location of uniform based on name
-                                    u->location = glGetUniformLocation(shader, name ? name : "__EMPTY_UNIFORM_NAME");
+                                    u->location = glGetUniformLocation(shader.id, name ? name : "__EMPTY_UNIFORM_NAME");
 
                                     if (u->location >= UINT32_MAX) {
                                         NEKO_WARN("Bind Uniform: Uniform not found: \"%s\"", name);
@@ -3122,10 +3122,10 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
                                 neko_gl_shader_t shader = neko_slot_array_get(ogl->shaders, sid);
 
                                 // Get uniform location based on name and bound shader
-                                u->location = glGetUniformBlockIndex(shader, u->name ? u->name : "__EMPTY_UNIFORM_NAME");
+                                u->location = glGetUniformBlockIndex(shader.id, u->name ? u->name : "__EMPTY_UNIFORM_NAME");
 
                                 // Set binding for uniform block
-                                glUniformBlockBinding(shader, u->location, binding);
+                                glUniformBlockBinding(shader.id, u->location, binding);
 
                                 if (u->location >= UINT32_MAX) {
                                     NEKO_WARN("Bind Uniform Buffer: Uniform not found: \"%s\"", u->name);
@@ -3269,7 +3269,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
                 if (pip->compute.shader.id) {
                     /* Shader */
                     if (pip->compute.shader.id && neko_slot_array_exists(ogl->shaders, pip->compute.shader.id)) {
-                        glUseProgram(neko_slot_array_get(ogl->shaders, pip->compute.shader.id));
+                        glUseProgram(neko_slot_array_get(ogl->shaders, pip->compute.shader.id).id);
                     } else {
                         NEKO_TIMED_ACTION(1000, { NEKO_WARN("Opengl:BindPipeline:Compute:Shader %d does not exist.", pip->compute.shader.id); });
                     }
@@ -3325,7 +3325,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
 
                 /* Shader */
                 if (pip->raster.shader.id && neko_slot_array_exists(ogl->shaders, pip->raster.shader.id)) {
-                    glUseProgram(neko_slot_array_get(ogl->shaders, pip->raster.shader.id));
+                    glUseProgram(neko_slot_array_get(ogl->shaders, pip->raster.shader.id).id);
                 } else {
                     NEKO_TIMED_ACTION(1000, { NEKO_WARN("Opengl:BindPipeline:Shader %d does not exist.", pip->raster.shader.id); });
                 }
@@ -3387,7 +3387,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
                     bool is_manual = pip->layout[i].stride | pip->layout[i].divisor | pip->layout[i].offset | vdecl.data_type == R_VERTEX_DATA_NONINTERLEAVED;
 
                     // Bind buffer
-                    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+                    glBindBuffer(GL_ARRAY_BUFFER, vbo.id);
 
                     // Stride of vertex attribute
                     size_t stride = is_manual ? pip->layout[i].stride : neko_gl_calculate_vertex_size_in_bytes(pip->layout, neko_dyn_array_size(pip->layout));
@@ -3451,7 +3451,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
 
                 // Bind all vertex buffers after setting up data and pointers
                 for (u32 i = 0; i < neko_dyn_array_size(ogl->cache.vdecls); ++i) {
-                    glBindBuffer(GL_ARRAY_BUFFER, ogl->cache.vdecls[i].vbo);
+                    glBindBuffer(GL_ARRAY_BUFFER, ogl->cache.vdecls[i].vbo.id);
                 }
 
                 // Draw based on bound primitive type in raster
@@ -3465,8 +3465,8 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
                 range_end = (range_end && range_end < range_start) ? range_end : count;
 
                 // Bind element buffer ranged
-                if (ogl->cache.ibo) {
-                    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, neko_slot_array_get(ogl->index_buffers, ogl->cache.ibo));
+                if (ogl->cache.ibo.id) {
+                    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, neko_slot_array_get(ogl->index_buffers, ogl->cache.ibo.id).id);
                 }
 
                 // If instance count > 1, do instanced drawing
@@ -3476,7 +3476,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
                 u32 itype = neko_gl_index_buffer_size_to_gl_index_type(pip->raster.index_buffer_element_size);
 
                 // Draw
-                if (ogl->cache.ibo) {
+                if (ogl->cache.ibo.id) {
 #ifdef R_IMPL_OPENGL_CORE
                     if (is_instanced)
                         glDrawElementsInstancedBaseVertex(prim, count, itype, NEKO_INT2VOIDP(start), instance_count, base_vertex);
@@ -3565,7 +3565,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
                     default:
                     case R_BUFFER_VERTEX: {
                         neko_gl_buffer_t buffer = neko_slot_array_get(ogl->vertex_buffers, id);
-                        glBindBuffer(GL_ARRAY_BUFFER, buffer);
+                        glBindBuffer(GL_ARRAY_BUFFER, buffer.id);
                         switch (update_type) {
                             case R_BUFFER_UPDATE_SUBDATA:
                                 glBufferSubData(GL_ARRAY_BUFFER, offset, sz, (cb->commands.data + cb->commands.position));
@@ -3579,7 +3579,7 @@ void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
 
                     case R_BUFFER_INDEX: {
                         neko_gl_buffer_t buffer = neko_slot_array_get(ogl->index_buffers, id);
-                        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer);
+                        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer.id);
                         switch (update_type) {
                             case R_BUFFER_UPDATE_SUBDATA:
                                 glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, offset, sz, (cb->commands.data + cb->commands.position));
@@ -3659,10 +3659,10 @@ NEKO_API_DECL void neko_render_init(neko_render_t* render) {
     // Push back 0 handles into slot arrays (for 0 init validation)
     neko_gl_data_t* ogl = (neko_gl_data_t*)render->user_data;
 
-    neko_slot_array_insert(ogl->shaders, 0);
-    neko_slot_array_insert(ogl->vertex_buffers, 0);
-    neko_slot_array_insert(ogl->index_buffers, 0);
-    neko_slot_array_insert(ogl->frame_buffers, 0);
+    neko_slot_array_insert(ogl->shaders, (neko_gl_shader_t){0});
+    neko_slot_array_insert(ogl->vertex_buffers, (neko_gl_buffer_t){0});
+    neko_slot_array_insert(ogl->index_buffers, (neko_gl_buffer_t){0});
+    neko_slot_array_insert(ogl->frame_buffers, (neko_gl_buffer_t){0});
 
     neko_gl_uniform_list_t ul = NEKO_DEFAULT_VAL();
     neko_gl_uniform_buffer_t ub = NEKO_DEFAULT_VAL();
@@ -3679,8 +3679,8 @@ NEKO_API_DECL void neko_render_init(neko_render_t* render) {
     neko_slot_array_insert(ogl->storage_buffers, sb);
 
     // Construct vao then bind
-    glGenVertexArrays(1, &ogl->cache.vao);
-    glBindVertexArray(ogl->cache.vao);
+    glGenVertexArrays(1, &ogl->cache.vao.id);
+    glBindVertexArray(ogl->cache.vao.id);
 
     // Reset data cache for rendering ops
     neko_gl_reset_data_cache(&ogl->cache);

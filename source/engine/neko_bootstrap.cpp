@@ -98,20 +98,22 @@ void neko_scripting_end(lua_State* L) { neko_lua_fini(L); }
 
 NEKO_API_DECL void neko_default_main_window_close_callback(void* window);
 
-NEKO_API_DECL neko_t* neko_instance() {
-    NEKO_STATIC neko_t g_neko_instance = NEKO_DEFAULT_VAL();
+NEKO_API_DECL neko_instance_t* neko_instance() {
+    NEKO_STATIC neko_instance_t g_neko_instance = NEKO_DEFAULT_VAL();
     return &g_neko_instance;
 }
 
 Neko_OnModuleLoad(Sound);
 Neko_OnModuleLoad(Physics);
 
-NEKO_API_DECL neko_t* neko_create(int argc, char** argv) {
+NEKO_API_DECL neko_instance_t* neko_create(int argc, char** argv) {
     if (neko_instance() != NULL) {
 
         __neko_mem_init(argc, argv);
 
         neko_instance()->console = &g_console;
+
+        NEKO_INFO("neko engine build %d", neko_buildnum());
 
         // 初始化 cvars
         __neko_config_init();
@@ -267,8 +269,6 @@ startup = require "startup"
 -- w:attach(e, "neko_client_userdata_t")
 -- set_client_init(e)
 -- print(e)
-
-local boot = require "boot"
 
 local w = boot.fetch_world("sandbox")
 
@@ -449,7 +449,7 @@ void neko_module_interface_fini(Neko_ModuleInterface* module_interface) {
 //=============================
 
 s32 main(s32 argv, char** argc) {
-    neko_t* inst = neko_create(argv, argc);
+    neko_instance_t* inst = neko_create(argv, argc);
     while (neko_instance()->game.is_running) {
         neko_frame();
     }

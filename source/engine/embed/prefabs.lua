@@ -2,7 +2,7 @@ local prefab = require "neko.prefab"
 
 local M = {}
 
-M.node = prefab
+M.prefabs = prefab
 
 local function keys(a)
     local key = {}
@@ -27,7 +27,7 @@ local function compare_table(a, b)
 end
 
 local function load_node(src)
-    local this_map_node = M.node.parse(src)
+    local this_map_node = M.prefabs.parse(src)
     return this_map_node
     -- print(this_map_node[1]["engine_version"])
 end
@@ -49,8 +49,11 @@ local function node_type(node)
 end
 
 M.load = load_node
+M.token = M.prefabs.token
+M.quote = M.prefabs.quote
 M.check = check
 M.node_type = node_type
+M.compare_table = compare_table
 
 local test_code = [[
 

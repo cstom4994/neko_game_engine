@@ -76,7 +76,7 @@ static u32 hashtable_internal_pow2ceil(u32 v) {
     return v;
 }
 
-void hashtable_init(hashtable_t* table, int item_size, int initial_capacity, void* memctx) {
+void hashtable_init(neko_hashtable_t* table, int item_size, int initial_capacity, void* memctx) {
     initial_capacity = (int)hashtable_internal_pow2ceil(initial_capacity >= 0 ? (u32)initial_capacity : 32U);
     table->memctx = memctx;
     table->count = 0;
@@ -94,7 +94,7 @@ void hashtable_init(hashtable_t* table, int item_size, int initial_capacity, voi
     table->swap_temp = (void*)(((uintptr_t)table->items_data) + table->item_size * table->item_capacity);
 }
 
-void hashtable_term(hashtable_t* table) {
+void hashtable_term(neko_hashtable_t* table) {
     HASHTABLE_FREE(table->memctx, table->items_key);
     HASHTABLE_FREE(table->memctx, table->slots);
 }
@@ -111,7 +111,7 @@ static u32 hashtable_internal_calculate_hash(u64 key) {
     return (u32)key;
 }
 
-static int hashtable_internal_find_slot(hashtable_t const* table, u64 key) {
+static int hashtable_internal_find_slot(neko_hashtable_t const* table, u64 key) {
     int const slot_mask = table->slot_capacity - 1;
     u32 const hash = hashtable_internal_calculate_hash(key);
 
@@ -135,7 +135,7 @@ static int hashtable_internal_find_slot(hashtable_t const* table, u64 key) {
     return -1;
 }
 
-static void hashtable_internal_expand_slots(hashtable_t* table) {
+static void hashtable_internal_expand_slots(neko_hashtable_t* table) {
     int const old_capacity = table->slot_capacity;
     struct hashtable_internal_slot_t* old_slots = table->slots;
 
@@ -164,7 +164,7 @@ static void hashtable_internal_expand_slots(hashtable_t* table) {
     HASHTABLE_FREE(table->memctx, old_slots);
 }
 
-static void hashtable_internal_expand_items(hashtable_t* table) {
+static void hashtable_internal_expand_items(neko_hashtable_t* table) {
     table->item_capacity *= 2;
     u64* const new_items_key = (u64*)HASHTABLE_MALLOC(table->memctx, table->item_capacity * (sizeof(*table->items_key) + sizeof(*table->items_slot) + table->item_size) + table->item_size);
     NEKO_ASSERT(new_items_key);
@@ -185,7 +185,7 @@ static void hashtable_internal_expand_items(hashtable_t* table) {
     table->swap_temp = new_swap_temp;
 }
 
-void* hashtable_insert(hashtable_t* table, u64 key, void const* item) {
+void* hashtable_insert(neko_hashtable_t* table, u64 key, void const* item) {
     NEKO_ASSERT(hashtable_internal_find_slot(table, key) < 0);
 
     if (table->count >= (table->slot_capacity - table->slot_capacity / 3)) hashtable_internal_expand_slots(table);
@@ -225,7 +225,7 @@ void* hashtable_insert(hashtable_t* table, u64 key, void const* item) {
     return dest_item;
 }
 
-void hashtable_remove(hashtable_t* table, u64 key) {
+void hashtable_remove(neko_hashtable_t* table, u64 key) {
     int const slot = hashtable_internal_find_slot(table, key);
     NEKO_ASSERT(slot >= 0);
 
@@ -249,12 +249,12 @@ void hashtable_remove(hashtable_t* table, u64 key) {
     --table->count;
 }
 
-void hashtable_clear(hashtable_t* table) {
+void hashtable_clear(neko_hashtable_t* table) {
     table->count = 0;
     HASHTABLE_MEMSET(table->slots, 0, table->slot_capacity * sizeof(*table->slots));
 }
 
-void* hashtable_find(hashtable_t const* table, u64 key) {
+void* hashtable_find(neko_hashtable_t const* table, u64 key) {
     int const slot = hashtable_internal_find_slot(table, key);
     if (slot < 0) return 0;
 
@@ -263,13 +263,13 @@ void* hashtable_find(hashtable_t const* table, u64 key) {
     return item;
 }
 
-int hashtable_count(hashtable_t const* table) { return table->count; }
+int hashtable_count(neko_hashtable_t const* table) { return table->count; }
 
-void* hashtable_items(hashtable_t const* table) { return table->items_data; }
+void* hashtable_items(neko_hashtable_t const* table) { return table->items_data; }
 
-u64 const* hashtable_keys(hashtable_t const* table) { return table->items_key; }
+u64 const* hashtable_keys(neko_hashtable_t const* table) { return table->items_key; }
 
-void hashtable_swap(hashtable_t* table, int index_a, int index_b) {
+void hashtable_swap(neko_hashtable_t* table, int index_a, int index_b) {
     if (index_a < 0 || index_a >= table->count || index_b < 0 || index_b >= table->count) return;
 
     int slot_a = table->items_slot[index_a];
@@ -308,7 +308,7 @@ void hashtable_swap(hashtable_t* table, int index_a, int index_b) {
         key_t* key_a = (key_t*)malloc( sizeof( key_t ) );
         key_t* key_b = (key_t*)malloc( sizeof( key_t ) );
 
-        hashtable_t table;
+        neko_hashtable_t table;
         hashtable_init( &table, sizeof( value_t ), 256, 0 );
 
         {

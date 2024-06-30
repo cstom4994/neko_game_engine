@@ -323,7 +323,7 @@ void neko_immediate_draw_static_data_init() {
                     }
 
     // Create default font
-    neko_asset_ascii_font_t* f = &neko_idraw()->font_default;
+    neko_asset_font_t* f = &neko_idraw()->font_default;
     stbtt_fontinfo font = NEKO_DEFAULT_VAL();
     const char* compressed_ttf_data_base85 = __neko_internal_GetDefaultCompressedFontDataTTFBase85();
     s32 compressed_ttf_size = (((s32)strlen(compressed_ttf_data_base85) + 4) / 5) * 4;
@@ -425,7 +425,7 @@ NEKO_API_DECL void neko_immediate_draw_free(neko_immediate_draw_t* ctx) {
     neko_dyn_array_free(ctx->cache.modes);
 }
 
-NEKO_API_DECL neko_asset_ascii_font_t* neko_idraw_default_font() {
+NEKO_API_DECL neko_asset_font_t* neko_idraw_default_font() {
     if (neko_idraw()) return &neko_idraw()->font_default;
     return NULL;
 }
@@ -1636,7 +1636,7 @@ NEKO_API_DECL void neko_idraw_cone(neko_immediate_draw_t* neko_idraw, f32 x, f32
     neko_idraw_cylinder(neko_idraw, x, y, z, 0.f, radius, height, sides, r, g, b, a, type);
 }
 
-NEKO_API_DECL void neko_idraw_text(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, const char* text, const neko_asset_ascii_font_t* fp, b32 flip_vertical, neko_color_t col) {
+NEKO_API_DECL void neko_idraw_text(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, const char* text, const neko_asset_font_t* fp, b32 flip_vertical, neko_color_t col) {
     // 如果没有指定字体 则使用默认字体
     if (!fp) {
         fp = &neko_idraw()->font_default;
@@ -1647,8 +1647,8 @@ NEKO_API_DECL void neko_idraw_text(neko_immediate_draw_t* neko_idraw, f32 x, f32
     neko_mat4 rot = neko_mat4_rotatev(neko_deg2rad(-180.f), NEKO_XAXIS);
 
     // Get total dimensions of text
-    neko_vec2 td = neko_asset_ascii_font_text_dimensions(fp, text, -1);
-    f32 th = neko_asset_ascii_font_max_height(fp);
+    neko_vec2 td = neko_asset_font_text_dimensions(fp, text, -1);
+    f32 th = neko_asset_font_max_height(fp);
 
     // Move text to accomdate height
     y += NEKO_MAX(td.y, th);
@@ -5382,7 +5382,7 @@ sb_err:
 
 static int neko_spritebatch_internal_lonely_pred(neko_spritebatch_internal_lonely_texture_t* a, neko_spritebatch_internal_lonely_texture_t* b) { return a->timestamp < b->timestamp; }
 
-static void neko_spritebatch_internal_qsort_lonely(hashtable_t* lonely_table, neko_spritebatch_internal_lonely_texture_t* items, int count) {
+static void neko_spritebatch_internal_qsort_lonely(neko_hashtable_t* lonely_table, neko_spritebatch_internal_lonely_texture_t* items, int count) {
     if (count <= 1) return;
 
     neko_spritebatch_internal_lonely_texture_t pivot = items[count - 1];
@@ -5405,7 +5405,7 @@ int neko_spritebatch_internal_buffer_key(neko_spritebatch_t* sb, u64 key) {
     return 0;
 }
 
-void neko_spritebatch_internal_remove_table_entries(neko_spritebatch_t* sb, hashtable_t* table) {
+void neko_spritebatch_internal_remove_table_entries(neko_spritebatch_t* sb, neko_hashtable_t* table) {
     for (int i = 0; i < sb->key_buffer_count; ++i) hashtable_remove(table, sb->key_buffer[i]);
     sb->key_buffer_count = 0;
 }

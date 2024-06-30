@@ -40,8 +40,8 @@ typedef struct neko_client_userdata_t {
     neko_handle(neko_render_texture_t) main_rt = {0};
     // neko_fontbatch_t font_render_batch;
     neko_client_cvar_t cl_cvar = NEKO_DEFAULT_VAL();
-    neko_thread_atomic_int_t init_thread_flag;
-    neko_thread_ptr_t init_work_thread;
+    // neko_thread_atomic_int_t init_thread_flag;
+    // neko_thread_ptr_t init_work_thread;
     neko_vec2_t cam = {512, 512};
     u8 debug_mode;
     f32 player_v = 100.f;
@@ -86,9 +86,6 @@ NEKO_API_DECL void neko_console(neko_console_t *console, neko_ui_context_t *ctx,
 void test_xml(const std::string &file);
 void test_se();
 void test_containers();
-void test_thd();
-void test_fgd();
-NEKO_API_DECL void test_ttf();
 
 void print(const float &val) { std::printf("%f", val); }
 
@@ -191,8 +188,8 @@ void game_init(neko_client_userdata_t *game_userdata) {
     neko_ui_init(&ENGINE_INTERFACE()->ui, neko_pf_main_window());
 
     // 加载自定义字体文件 初始化 gui font stash
-    // neko_asset_ascii_font_load_from_memory(font_data, font_data_size, &CL_GAME_INTERFACE()->font, 24);
-    neko_asset_ascii_font_load_from_file("gamedir/assets/fonts/monocraft.ttf", &ENGINE_INTERFACE()->font, 24);
+    // neko_asset_font_load_from_memory(font_data, font_data_size, &CL_GAME_INTERFACE()->font, 24);
+    neko_asset_font_load_from_file("gamedir/assets/fonts/monocraft.ttf", &ENGINE_INTERFACE()->font, 24);
 
     neko_pack_item_free(&ENGINE_INTERFACE()->pack, font_data);
     neko_pack_item_free(&ENGINE_INTERFACE()->pack, cat_data);
@@ -233,77 +230,86 @@ void game_init(neko_client_userdata_t *game_userdata) {
 
     // 初始化工作
 
-    static auto init_work = +[](void *user_data) {
-        neko_thread_atomic_int_t *this_init_thread_flag = (neko_thread_atomic_int_t *)user_data;
-        if (thread_atomic_int_load(this_init_thread_flag) == 0) {
+    // static auto init_work = +[](void *user_data) {
+    //     neko_thread_atomic_int_t *this_init_thread_flag = (neko_thread_atomic_int_t *)user_data;
+    //     if (thread_atomic_int_load(this_init_thread_flag) == 0) {
 
-            neko::timer timer;
-            timer.start();
+    //         neko::timer timer;
+    //         timer.start();
 
-            neko_lua_call(neko_instance()->L, "game_init_thread");
+    //         neko_lua_call(neko_instance()->L, "game_init_thread");
 
-            timer.stop();
-            NEKO_INFO(std::format("game_init_thread loading done in {0:.3f} ms", timer.get()).c_str());
+    //         timer.stop();
+    //         NEKO_INFO(std::format("game_init_thread loading done in {0:.3f} ms", timer.get()).c_str());
 
-            thread_atomic_int_store(this_init_thread_flag, 1);
-        }
-        return 0;
-    };
+    //         thread_atomic_int_store(this_init_thread_flag, 1);
+    //     }
+    //     return 0;
+    // };
 
-    thread_atomic_int_store(&game_userdata->init_thread_flag, 0);
+    // thread_atomic_int_store(&game_userdata->init_thread_flag, 0);
 
-    game_userdata->init_work_thread = thread_init(init_work, &game_userdata->init_thread_flag, "init_work_thread", THREAD_STACK_SIZE_DEFAULT);
+    // game_userdata->init_work_thread = thread_init(init_work, &game_userdata->init_thread_flag, "init_work_thread", THREAD_STACK_SIZE_DEFAULT);
+
+    neko::timer timer;
+    timer.start();
+
+    neko_lua_call(neko_instance()->L, "game_init_thread");
+
+    timer.stop();
+    NEKO_INFO(std::format("game_init_thread loading done in {0:.3f} ms", timer.get()).c_str());
 }
 
 void game_loop(neko_client_userdata_t *game_userdata) {
 
-    int this_init_thread_flag = thread_atomic_int_load(&game_userdata->init_thread_flag);
+    // int this_init_thread_flag = thread_atomic_int_load(&game_userdata->init_thread_flag);
 
-    if (this_init_thread_flag == 0) {
+    // if (this_init_thread_flag == 0) {
 
-        //        neko_vec2 fbs = neko_pf_framebuffer_sizev(neko_pf_main_window());
-        const f32 t = neko_pf_elapsed_time();
+    //     //        neko_vec2 fbs = neko_pf_framebuffer_sizev(neko_pf_main_window());
+    //     const f32 t = neko_pf_elapsed_time();
 
-        u8 tranp = 255;
+    //     u8 tranp = 255;
 
-        // tranp -= ((s32)t % 255);
+    //     // tranp -= ((s32)t % 255);
 
-        neko_render_clear_action_t clear = {.color = {game_userdata->cl_cvar.bg[0] / 255, game_userdata->cl_cvar.bg[1] / 255, game_userdata->cl_cvar.bg[2] / 255, 1.f}};
-        neko_render_renderpass_begin(&ENGINE_INTERFACE()->cb, neko_renderpass_t{0});
-        { neko_render_clear(&ENGINE_INTERFACE()->cb, clear); }
-        neko_render_renderpass_end(&ENGINE_INTERFACE()->cb);
+    //     neko_render_clear_action_t clear = {.color = {game_userdata->cl_cvar.bg[0] / 255, game_userdata->cl_cvar.bg[1] / 255, game_userdata->cl_cvar.bg[2] / 255, 1.f}};
+    //     neko_render_renderpass_begin(&ENGINE_INTERFACE()->cb, neko_renderpass_t{0});
+    //     { neko_render_clear(&ENGINE_INTERFACE()->cb, clear); }
+    //     neko_render_renderpass_end(&ENGINE_INTERFACE()->cb);
 
-        // Set up 2D camera for projection matrix
-        neko_idraw_defaults(&ENGINE_INTERFACE()->idraw);
-        neko_idraw_camera2d(&ENGINE_INTERFACE()->idraw, (u32)neko_game().DisplaySize.x, (u32)neko_game().DisplaySize.y);
+    //     // Set up 2D camera for projection matrix
+    //     neko_idraw_defaults(&ENGINE_INTERFACE()->idraw);
+    //     neko_idraw_camera2d(&ENGINE_INTERFACE()->idraw, (u32)neko_game().DisplaySize.x, (u32)neko_game().DisplaySize.y);
 
-        // 底层图片
-        char background_text[64] = "Project: unknown";
+    //     // 底层图片
+    //     char background_text[64] = "Project: unknown";
 
-        neko_vec2 td = neko_asset_ascii_font_text_dimensions(neko_idraw_default_font(), background_text, -1);
-        neko_vec2 ts = neko_v2(512 + 128, 512 + 128);
+    //     neko_vec2 td = neko_asset_font_text_dimensions(neko_idraw_default_font(), background_text, -1);
+    //     neko_vec2 ts = neko_v2(512 + 128, 512 + 128);
 
-        neko_idraw_text(&ENGINE_INTERFACE()->idraw, (neko_game().DisplaySize.x - td.x) * 0.5f, (neko_game().DisplaySize.y - td.y) * 0.5f + ts.y / 2.f - 100.f, background_text, NULL, false,
-                        neko_color(255, 255, 255, 255));
-        neko_idraw_texture(&ENGINE_INTERFACE()->idraw, ENGINE_INTERFACE()->test_ase);
-        neko_idraw_rectvd(&ENGINE_INTERFACE()->idraw, neko_v2((neko_game().DisplaySize.x - ts.x) * 0.5f, (neko_game().DisplaySize.y - ts.y) * 0.5f - td.y - 50.f), ts, neko_v2(0.f, 1.f),
-                          neko_v2(1.f, 0.f), neko_color(255, 255, 255, tranp), R_PRIMITIVE_TRIANGLES);
+    //     neko_idraw_text(&ENGINE_INTERFACE()->idraw, (neko_game().DisplaySize.x - td.x) * 0.5f, (neko_game().DisplaySize.y - td.y) * 0.5f + ts.y / 2.f - 100.f, background_text, NULL, false,
+    //                     neko_color(255, 255, 255, 255));
+    //     neko_idraw_texture(&ENGINE_INTERFACE()->idraw, ENGINE_INTERFACE()->test_ase);
+    //     neko_idraw_rectvd(&ENGINE_INTERFACE()->idraw, neko_v2((neko_game().DisplaySize.x - ts.x) * 0.5f, (neko_game().DisplaySize.y - ts.y) * 0.5f - td.y - 50.f), ts, neko_v2(0.f, 1.f),
+    //                       neko_v2(1.f, 0.f), neko_color(255, 255, 255, tranp), R_PRIMITIVE_TRIANGLES);
 
-        neko_render_renderpass_begin(&ENGINE_INTERFACE()->cb, R_RENDER_PASS_DEFAULT);
-        {
-            neko_render_set_viewport(&ENGINE_INTERFACE()->cb, 0, 0, (u32)neko_game().DisplaySize.x, (u32)neko_game().DisplaySize.y);
-            neko_idraw_draw(&ENGINE_INTERFACE()->idraw, &ENGINE_INTERFACE()->cb);  // 立即模式绘制 idraw
-        }
-        neko_render_renderpass_end(&ENGINE_INTERFACE()->cb);
+    //     neko_render_renderpass_begin(&ENGINE_INTERFACE()->cb, R_RENDER_PASS_DEFAULT);
+    //     {
+    //         neko_render_set_viewport(&ENGINE_INTERFACE()->cb, 0, 0, (u32)neko_game().DisplaySize.x, (u32)neko_game().DisplaySize.y);
+    //         neko_idraw_draw(&ENGINE_INTERFACE()->idraw, &ENGINE_INTERFACE()->cb);  // 立即模式绘制 idraw
+    //     }
+    //     neko_render_renderpass_end(&ENGINE_INTERFACE()->cb);
 
-    } else {
+    // }
+    {
 
-        NEKO_STATIC int init_retval = 1;
-        if (init_retval) {
-            init_retval = thread_join(game_userdata->init_work_thread);
-            thread_term(game_userdata->init_work_thread);
-            NEKO_TRACE("init_work_thread done");
-        }
+        // NEKO_STATIC int init_retval = 1;
+        // if (init_retval) {
+        //     init_retval = thread_join(game_userdata->init_work_thread);
+        //     thread_term(game_userdata->init_work_thread);
+        //     NEKO_TRACE("init_work_thread done");
+        // }
 
         f32 dt = neko_pf_delta_time();
 
@@ -344,13 +350,8 @@ void game_loop(neko_client_userdata_t *game_userdata) {
             ImGui::Separator();
 
             if (ImGui::Button("test_xml")) test_xml("gamedir/tests/test.xml");
-            if (ImGui::Button("test_fgd")) test_fgd();
             if (ImGui::Button("test_se")) test_se();
             if (ImGui::Button("test_containers")) test_containers();
-            if (ImGui::Button("test_thread")) test_thd();
-            if (ImGui::Button("test_ttf")) {
-                // neko_timer_do(t, neko_println("%llu", t), { test_ttf(); });
-            }
 #if 0
             if (ImGui::Button("test_ecs_cpp")) {
                 forEachComponentType([&]<typename T>() {
@@ -374,18 +375,16 @@ void game_loop(neko_client_userdata_t *game_userdata) {
             ImGui::End();
         }
 
-        if (game_userdata->cl_cvar.show_editor) {
-            if (ImGui::BeginMainMenuBar()) {
-                if (ImGui::BeginMenu("engine")) {
-                    if (ImGui::Checkbox("vsync", &game_userdata->cl_cvar.vsync)) neko_pf_enable_vsync(game_userdata->cl_cvar.vsync);
-                    if (ImGui::MenuItem("quit")) {
-                        ImGui::OpenPopup("Delete?");
-                    }
-
-                    ImGui::EndMenu();
+        if (ImGui::BeginMainMenuBar()) {
+            if (ImGui::BeginMenu("engine")) {
+                if (ImGui::Checkbox("vsync", &game_userdata->cl_cvar.vsync)) neko_pf_enable_vsync(game_userdata->cl_cvar.vsync);
+                if (ImGui::MenuItem("quit")) {
+                    neko_quit();
                 }
-                ImGui::EndMainMenuBar();
+
+                ImGui::EndMenu();
             }
+            ImGui::EndMainMenuBar();
         }
 
         //        sandbox_update(sb);
@@ -429,13 +428,13 @@ void game_loop(neko_client_userdata_t *game_userdata) {
 
 void game_post_update() {}
 
-void game_shutdown(neko_client_userdata_t *game_userdata) {
+void game_fini(neko_client_userdata_t *game_userdata) {
 
     neko_render_renderpass_destroy(game_userdata->main_rp);
     neko_render_texture_destroy(game_userdata->main_rt);
     neko_render_framebuffer_destroy(game_userdata->main_fbo);
 
-    neko_lua_call(neko_instance()->L, "game_shutdown");
+    neko_lua_call(neko_instance()->L, "game_fini");
 
     neko_imgui_shutdown(&game_userdata->imgui);
     neko_ui_free(&ENGINE_INTERFACE()->ui);
@@ -789,7 +788,7 @@ void neko_app(lua_State *L) {
     lua_register(
             L, "sandbox_fini", +[](lua_State *L) {
                 auto ud = neko::lua::toudata_ptr<neko_client_userdata_t>(L, 1);
-                game_shutdown(ud);
+                game_fini(ud);
                 return 0;
             });
 

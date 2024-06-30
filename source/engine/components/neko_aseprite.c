@@ -222,22 +222,9 @@ void neko_aseprite_renderer_set_frame(neko_aseprite_renderer *sr, s32 frame) {
 }
 
 neko_texture_t neko_aseprite_simple(const void *memory, int size) {
-
-    ase_t *ase = neko_aseprite_load_from_memory(memory, size);
-
-    if (NULL == ase) {
-        NEKO_ERROR("unable to load ase %p", memory);
-        return (neko_texture_t){0};
-    }
-
-    NEKO_ASSERT(ase->frame_count == 1);  // load_ase_texture_simple used to load simple aseprite
-
-    neko_aseprite_default_blend_bind(ase);
-
-    NEKO_TRACE("load aseprite - frame_count %d - palette.entry_count %d - w=%d h=%d", ase->frame_count, ase->palette.entry_count, ase->w, ase->h);
-
-    s32 bpp = 4;
-
+    neko_image_t image = neko_image_load_mem(memory, size, "simple.ase");
+    NEKO_ASSERT(image.w != 0 && image.h != 0, "good image");
+    ase_t *ase = image.ase;
     neko_render_texture_desc_t t_desc = {};
 
     t_desc.format = R_TEXTURE_FORMAT_RGBA8;
@@ -250,10 +237,7 @@ neko_texture_t neko_aseprite_simple(const void *memory, int size) {
     t_desc.data[0] = ase->frames->pixels[0];
 
     neko_tex_flip_vertically(ase->w, ase->h, (u8 *)(t_desc.data[0]));
-
     neko_texture_t tex = neko_render_texture_create(t_desc);
-
     neko_aseprite_free(ase);
-
     return tex;
 }
