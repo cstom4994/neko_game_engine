@@ -739,12 +739,16 @@ struct udata<neko_fontbatch_t> {
 }  // namespace neko::lua
 
 LUA_FUNCTION(__neko_bind_fontbatch_create) {
+
+    neko::string font_vs = neko::luax_check_string(L, 1);
+    neko::string font_ps = neko::luax_check_string(L, 2);
+
     neko_fontbatch_t& fontbatch = neko::lua::newudata<neko_fontbatch_t>(L);
 
     neko::string contents = {};
     bool ok = vfs_read_entire_file(NEKO_PACK_GAMEDATA, &contents, "gamedir/1.fnt");
     NEKO_ASSERT(ok);
-    neko_fontbatch_init(&fontbatch, neko_game().DisplaySize, "gamedir/1_0.png", contents.data, (s32)contents.len);
+    neko_fontbatch_init(&fontbatch, font_vs.data, font_ps.data, neko_game().DisplaySize, "gamedir/1_0.png", contents.data, (s32)contents.len);
     neko_defer(neko_safe_free(contents.data));
 
     return 1;
@@ -2859,6 +2863,60 @@ int register_mt_aseprite(lua_State* L) {
     return 1;
 }
 
+// mt_channel
+
+static neko::lua_channel* check_channel_udata(lua_State* L, s32 arg) {
+    neko::lua_channel* chan = *(neko::lua_channel**)luaL_checkudata(L, arg, "mt_channel");
+    return chan;
+}
+
+static int mt_channel_send(lua_State* L) {
+    neko::lua_channel* chan = check_channel_udata(L, 1);
+
+    neko::lua_variant v = {};
+    v.make(L, 2);
+    chan->send(v);
+
+    return 0;
+}
+
+static int mt_channel_recv(lua_State* L) {
+    neko::lua_channel* chan = check_channel_udata(L, 1);
+    neko::lua_variant v = chan->recv();
+
+    v.push(L);
+    v.trash();
+    return 1;
+}
+
+static int mt_channel_try_recv(lua_State* L) {
+    neko::lua_channel* chan = check_channel_udata(L, 1);
+    neko::lua_variant v = {};
+    bool ok = chan->try_recv(&v);
+    if (!ok) {
+        lua_pushnil(L);
+        lua_pushboolean(L, false);
+        return 2;
+    }
+
+    v.push(L);
+    v.trash();
+    lua_pushboolean(L, true);
+    return 2;
+}
+
+static int open_mt_channel(lua_State* L) {
+    luaL_Reg reg[] = {
+            {"send", mt_channel_send},
+            {"recv", mt_channel_recv},
+            {"try_recv", mt_channel_try_recv},
+            {nullptr, nullptr},
+    };
+
+    luax_new_class(L, "mt_channel", reg);
+    return 0;
+}
+
 // mt_thread
 
 static int mt_thread_join(lua_State* L) {
@@ -2881,7 +2939,7 @@ static int open_mt_thread(lua_State* L) {
 static int __neko_bind_get_channel(lua_State* L) {
     neko::string contents = neko::luax_check_string(L, 1);
 
-    neko::LuaChannel* chan = lua_channel_get(contents);
+    neko::lua_channel* chan = lua_channel_get(contents);
     if (chan == nullptr) {
         return 0;
     }
@@ -2891,8 +2949,8 @@ static int __neko_bind_get_channel(lua_State* L) {
 }
 
 static int __neko_bind_select(lua_State* L) {
-    neko::LuaVariant v = {};
-    neko::LuaChannel* chan = lua_channels_select(L, &v);
+    neko::lua_variant v = {};
+    neko::lua_channel* chan = lua_channels_select(L, &v);
     if (chan == nullptr) {
         return 0;
     }
@@ -2909,7 +2967,7 @@ static int __neko_bind_thread_id(lua_State* L) {
 }
 
 static int __neko_bind_thread_sleep(lua_State* L) {
-    // PROFILE_FUNC();
+    PROFILE_FUNC();
 
     lua_Number secs = luaL_checknumber(L, 1);
     neko::os_sleep((u32)(secs * 1000));
@@ -2931,7 +2989,7 @@ static int __neko_bind_make_channel(lua_State* L) {
         len = 0;
     }
 
-    neko::LuaChannel* chan = lua_channel_make(name, len);
+    neko::lua_channel* chan = lua_channel_make(name, len);
     luax_ptr_userdata(L, chan, "mt_channel");
     return 1;
 }
@@ -3215,7 +3273,7 @@ static int open_embed_core(lua_State* L) {
                                 // open_mt_b2_body,
                                 // open_mt_b2_world,
                                 // open_mt_sound,
-                                open_mt_thread};
+                                open_mt_channel, open_mt_thread};
 
     for (u32 i = 0; i < NEKO_ARR_SIZE(mt_funcs); i++) {
         mt_funcs[i](L);

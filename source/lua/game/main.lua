@@ -322,12 +322,34 @@ game_render = function()
     if ImGui.Button("sound") then
         neko_sound_load("gamedir/assets/audio/Run_It_Might_Be_Somebody.wav"):start()
     end
-    
+
     if ImGui.Button("pack") then
         local test_pack = pack.construct("test_pack_handle", neko_file_path("gamedir/sc.pack"))
         local test_items = pack.items(test_pack)
         dump_func(test_items)
         pack.destroy(test_pack)
+    end
+
+    if ImGui.Button("thread") then
+        local c1 = neko.make_channel 'c1'
+        local c2 = neko.make_channel 'c2'
+
+        local t1 = neko.make_thread [[
+          local c1 = neko.get_channel 'c1'
+          neko.thread_sleep(1)
+          c1:send 'one'
+        ]]
+
+        local t2 = neko.make_thread [[
+          local c2 = neko.get_channel 'c2'
+          neko.thread_sleep(2)
+          c2:send 'two'
+        ]]
+
+        for i = 1, 2 do
+            local msg, ch = neko.select(c1, c2)
+            print(msg, ch)
+        end
     end
 
     -- ImGui.Checkbox(neko_game.cvar.shader_inspect)

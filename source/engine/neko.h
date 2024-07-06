@@ -819,6 +819,7 @@ NEKO_FORCE_INLINE void neko_util_get_dir_from_file(char* buffer, u32 buffer_size
 }
 
 NEKO_FORCE_INLINE const_str neko_util_get_filename(const_str path) {
+    NEKO_ASSERT(path);
     int len = strlen(path);
     for (int i = len - 1; i >= 0; i--) {
         if (path[i] == '\\' || path[i] == '/') {

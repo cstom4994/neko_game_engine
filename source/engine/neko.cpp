@@ -1652,19 +1652,22 @@ uint64_t this_thread_id() { return 0; }
 #endif  // NEKO_PF_WEB
 
 static void lua_thread_proc(void *udata) {
-    // PROFILE_FUNC();
+    PROFILE_FUNC();
 
     LuaThread *lt = (LuaThread *)udata;
 
     // LuaAlloc *LA = luaalloc_create(nullptr, nullptr);
     // defer(luaalloc_delete(LA));
 
-    lua_State *L = luaL_newstate();
-    neko_defer(lua_close(L));
+    // lua_State *L = luaL_newstate();
+    // neko_defer(lua_close(L));
+
+    lua_State *L = neko_lua_bootstrap(0, NULL);
+    neko_defer(neko_lua_fini(L));
 
     {
         // PROFILE_BLOCK("open libs");
-        luaL_openlibs(L);
+        // luaL_openlibs(L);
     }
 
     {
@@ -1713,12 +1716,12 @@ void LuaThread::make(string code, string thread_name) {
     contents = to_cstr(code);
     name = to_cstr(thread_name);
 
-    LockGuard lock{&mtx};
+    lock_guard lock{&mtx};
     thread.make(lua_thread_proc, this);
 }
 
 void LuaThread::join() {
-    if (LockGuard lock{&mtx}) {
+    if (lock_guard lock{&mtx}) {
         thread.join();
     }
 
@@ -1727,7 +1730,7 @@ void LuaThread::join() {
 
 //
 
-void LuaVariant::make(lua_State *L, s32 arg) {
+void lua_variant::make(lua_State *L, s32 arg) {
     type = lua_type(L, arg);
 
     switch (type) {
@@ -1743,15 +1746,15 @@ void LuaVariant::make(lua_State *L, s32 arg) {
             break;
         }
         case LUA_TTABLE: {
-            array<LuaTableEntry> entries = {};
+            array<lua_table_entry> entries = {};
             entries.resize(luax_len(L, arg));
 
             lua_pushvalue(L, arg);
             for (lua_pushnil(L); lua_next(L, -2); lua_pop(L, 1)) {
-                LuaVariant key = {};
+                lua_variant key = {};
                 key.make(L, -2);
 
-                LuaVariant value = {};
+                lua_variant value = {};
                 value.make(L, -1);
 
                 entries.push({key, value});
@@ -1791,14 +1794,14 @@ void LuaVariant::make(lua_State *L, s32 arg) {
     }
 }
 
-void LuaVariant::trash() {
+void lua_variant::trash() {
     switch (type) {
         case LUA_TSTRING: {
             neko_safe_free(string.data);
             break;
         }
         case LUA_TTABLE: {
-            for (LuaTableEntry e : table) {
+            for (lua_table_entry e : table) {
                 e.key.trash();
                 e.value.trash();
             }
@@ -1812,7 +1815,7 @@ void LuaVariant::trash() {
     }
 }
 
-void LuaVariant::push(lua_State *L) {
+void lua_variant::push(lua_State *L) {
     switch (type) {
         case LUA_TBOOLEAN:
             lua_pushboolean(L, boolean);
@@ -1825,7 +1828,7 @@ void LuaVariant::push(lua_State *L) {
             break;
         case LUA_TTABLE: {
             lua_newtable(L);
-            for (LuaTableEntry e : table) {
+            for (lua_table_entry e : table) {
                 e.key.push(L);
                 e.value.push(L);
                 lua_rawset(L, -3);
@@ -1844,18 +1847,18 @@ void LuaVariant::push(lua_State *L) {
 //
 
 struct LuaChannels {
-    mutex mtx;
-    cond select;
-    hashmap<LuaChannel *> by_name;
+    neko::mutex mtx;
+    neko::cond select;
+    neko::hashmap<lua_channel *> by_name;
 };
 
 static LuaChannels g_channels = {};
 
-void LuaChannel::make(string n, u64 buf) {
+void lua_channel::make(string n, u64 buf) {
     mtx.make();
     sent.make();
     received.make();
-    items.data = (LuaVariant *)neko_safe_malloc(sizeof(LuaVariant) * (buf + 1));
+    items.data = (lua_variant *)neko_safe_malloc(sizeof(lua_variant) * (buf + 1));
     items.len = (buf + 1);
     front = 0;
     back = 0;
@@ -1864,7 +1867,7 @@ void LuaChannel::make(string n, u64 buf) {
     name.store(to_cstr(n).data);
 }
 
-void LuaChannel::trash() {
+void lua_channel::trash() {
     for (s32 i = 0; i < len; i++) {
         items[front].trash();
         front = (front + 1) % items.len;
@@ -1877,8 +1880,8 @@ void LuaChannel::trash() {
     received.trash();
 }
 
-void LuaChannel::send(LuaVariant item) {
-    LockGuard lock{&mtx};
+void lua_channel::send(lua_variant item) {
+    lock_guard lock{&mtx};
 
     while (len == items.len) {
         received.wait(&mtx);
@@ -1897,8 +1900,8 @@ void LuaChannel::send(LuaVariant item) {
     }
 }
 
-static LuaVariant lua_channel_dequeue(LuaChannel *ch) {
-    LuaVariant item = ch->items[ch->front];
+static lua_variant lua_channel_dequeue(lua_channel *ch) {
+    lua_variant item = ch->items[ch->front];
     ch->front = (ch->front + 1) % ch->items.len;
     ch->len--;
 
@@ -1908,8 +1911,8 @@ static LuaVariant lua_channel_dequeue(LuaChannel *ch) {
     return item;
 }
 
-LuaVariant LuaChannel::recv() {
-    LockGuard lock{&mtx};
+lua_variant lua_channel::recv() {
+    lock_guard lock{&mtx};
 
     while (len == 0) {
         sent.wait(&mtx);
@@ -1918,8 +1921,8 @@ LuaVariant LuaChannel::recv() {
     return lua_channel_dequeue(this);
 }
 
-bool LuaChannel::try_recv(LuaVariant *v) {
-    LockGuard lock{&mtx};
+bool lua_channel::try_recv(lua_variant *v) {
+    lock_guard lock{&mtx};
 
     if (len == 0) {
         return false;
@@ -1929,21 +1932,21 @@ bool LuaChannel::try_recv(LuaVariant *v) {
     return true;
 }
 
-LuaChannel *lua_channel_make(string name, u64 buf) {
-    LuaChannel *chan = (LuaChannel *)neko_safe_malloc(sizeof(LuaChannel));
+lua_channel *lua_channel_make(string name, u64 buf) {
+    lua_channel *chan = (lua_channel *)neko_safe_malloc(sizeof(lua_channel));
     new (&chan->name) std::atomic<char *>();
     chan->make(name, buf);
 
-    LockGuard lock{&g_channels.mtx};
+    lock_guard lock{&g_channels.mtx};
     g_channels.by_name[fnv1a(name)] = chan;
 
     return chan;
 }
 
-LuaChannel *lua_channel_get(string name) {
-    LockGuard lock{&g_channels.mtx};
+lua_channel *lua_channel_get(string name) {
+    lock_guard lock{&g_channels.mtx};
 
-    LuaChannel **chan = g_channels.by_name.get(fnv1a(name));
+    lua_channel **chan = g_channels.by_name.get(fnv1a(name));
     if (chan == nullptr) {
         return nullptr;
     }
@@ -1951,24 +1954,24 @@ LuaChannel *lua_channel_get(string name) {
     return *chan;
 }
 
-LuaChannel *lua_channels_select(lua_State *L, LuaVariant *v) {
+lua_channel *lua_channels_select(lua_State *L, lua_variant *v) {
     s32 len = lua_gettop(L);
     if (len == 0) {
         return nullptr;
     }
 
-    LuaChannel *buf[16] = {};
+    lua_channel *buf[16] = {};
     for (s32 i = 0; i < len; i++) {
-        buf[i] = *(LuaChannel **)luaL_checkudata(L, i + 1, "mt_channel");
+        buf[i] = *(lua_channel **)luaL_checkudata(L, i + 1, "mt_channel");
     }
 
     mutex mtx = {};
     mtx.make();
-    LockGuard lock{&mtx};
+    lock_guard lock{&mtx};
 
     while (true) {
         for (s32 i = 0; i < len; i++) {
-            LockGuard lock{&buf[i]->mtx};
+            lock_guard lock{&buf[i]->mtx};
             if (buf[i]->len > 0) {
                 *v = lua_channel_dequeue(buf[i]);
                 return buf[i];
@@ -1986,7 +1989,7 @@ void lua_channels_setup() {
 
 void lua_channels_shutdown() {
     for (auto [k, v] : g_channels.by_name) {
-        LuaChannel *chan = *v;
+        lua_channel *chan = *v;
         chan->trash();
         neko_safe_free(chan);
     }
@@ -2096,6 +2099,142 @@ void os_sleep(u32 ms) {}
 void os_yield() {}
 
 #endif  // NEKO_PF_WEB
+
+struct Profile {
+    queue<TraceEvent> events;
+    thread recv_thread;
+};
+
+static Profile g_profile = {};
+
+static void profile_recv_thread(void *) {
+    string_builder sb = {};
+    sb.swap_filename(os_program_path(), "profile.json");
+
+    FILE *f = fopen(sb.data, "w");
+    sb.trash();
+
+    neko_defer(fclose(f));
+
+    fputs("[", f);
+    while (true) {
+        TraceEvent e = g_profile.events.demand();
+        if (e.name == nullptr) {
+            fputs("]", f);
+            return;
+        }
+
+        fprintf(f,
+                R"({"name":"%s","cat":"%s","ph":"%c","ts":%.3f,"pid":0,"tid":%hu},)"
+                "\n",
+                e.name, e.cat, e.ph, e.ts / 1000.f, e.tid);
+    }
+}
+
+void profile_setup() {
+    g_profile.events.make();
+    g_profile.events.reserve(256);
+    g_profile.recv_thread.make(profile_recv_thread, nullptr);
+}
+
+void profile_shutdown() {
+    g_profile.events.enqueue({});
+    g_profile.recv_thread.join();
+    g_profile.events.trash();
+}
+
+#if defined(_WIN32)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+typedef struct {
+    uint32_t initialized;
+    LARGE_INTEGER freq;
+    LARGE_INTEGER start;
+} neko_tm_state_t;
+#elif defined(__APPLE__) && defined(__MACH__)
+#include <mach/mach_time.h>
+typedef struct {
+    uint32_t initialized;
+    mach_timebase_info_data_t timebase;
+    uint64_t start;
+} neko_tm_state_t;
+#elif defined(__EMSCRIPTEN__)
+#include <emscripten/emscripten.h>
+typedef struct {
+    uint32_t initialized;
+    double start;
+} neko_tm_state_t;
+#else  // linux
+#include <time.h>
+typedef struct {
+    uint32_t initialized;
+    uint64_t start;
+} neko_tm_state_t;
+#endif
+static neko_tm_state_t g_tm;
+
+NEKO_API_DECL void neko_tm_init(void) {
+    memset(&g_tm, 0, sizeof(g_tm));
+    g_tm.initialized = 0xABCDEF01;
+#if defined(_WIN32)
+    QueryPerformanceFrequency(&_stm.freq);
+    QueryPerformanceCounter(&_stm.start);
+#elif defined(__APPLE__) && defined(__MACH__)
+    mach_timebase_info(&_stm.timebase);
+    _stm.start = mach_absolute_time();
+#elif defined(__EMSCRIPTEN__)
+    _stm.start = emscripten_get_now();
+#else
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    g_tm.start = (uint64_t)ts.tv_sec * 1000000000 + (uint64_t)ts.tv_nsec;
+#endif
+}
+
+NEKO_API_DECL uint64_t neko_tm_now(void) {
+    NEKO_ASSERT(g_tm.initialized == 0xABCDEF01);
+    uint64_t now;
+#if defined(_WIN32)
+    LARGE_INTEGER qpc_t;
+    QueryPerformanceCounter(&qpc_t);
+    now = (uint64_t)_stm_int64_muldiv(qpc_t.QuadPart - _stm.start.QuadPart, 1000000000, _stm.freq.QuadPart);
+#elif defined(__APPLE__) && defined(__MACH__)
+    const uint64_t mach_now = mach_absolute_time() - _stm.start;
+    now = (uint64_t)_stm_int64_muldiv((int64_t)mach_now, (int64_t)_stm.timebase.numer, (int64_t)_stm.timebase.denom);
+#elif defined(__EMSCRIPTEN__)
+    double js_now = emscripten_get_now() - _stm.start;
+    now = (uint64_t)(js_now * 1000000.0);
+#else
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    now = ((uint64_t)ts.tv_sec * 1000000000 + (uint64_t)ts.tv_nsec) - g_tm.start;
+#endif
+    return now;
+}
+
+Instrument::Instrument(const char *cat, const char *name) : cat(cat), name(name), tid(this_thread_id()) {
+    TraceEvent e = {};
+    e.cat = cat;
+    e.name = name;
+    e.ph = 'B';
+    e.ts = neko_tm_now();
+    e.tid = tid;
+
+    g_profile.events.enqueue(e);
+}
+
+Instrument::~Instrument() {
+    TraceEvent e = {};
+    e.cat = cat;
+    e.name = name;
+    e.ph = 'E';
+    e.ts = neko_tm_now();
+    e.tid = tid;
+
+    g_profile.events.enqueue(e);
+}
 
 }  // namespace neko
 

@@ -312,7 +312,7 @@ typedef struct neko_fontbatch_t {
     neko_font_t* font;
 } neko_fontbatch_t;
 
-NEKO_API_DECL void neko_fontbatch_init(neko_fontbatch_t* font_batch, const neko_vec2_t fbs, const_str img_path, char* content, int content_size);
+NEKO_API_DECL void neko_fontbatch_init(neko_fontbatch_t* font_batch, const_str font_vs, const_str font_ps, const neko_vec2_t fbs, const_str img_path, char* content, int content_size);
 NEKO_API_DECL void neko_fontbatch_end(neko_fontbatch_t* font_batch);
 NEKO_API_DECL void neko_fontbatch_draw(neko_fontbatch_t* font_batch, const neko_vec2_t fbs, const char* text, float x, float y, float line_height, float clip_region, float wrap_x, f32 scale);
 

@@ -1,5 +1,318 @@
 
 #include "engine/neko_asset.h"
+#include "engine/neko_common.h"
+
+bool neko_aseprite_load(neko_aseprite *spr, const_str filepath) {
+
+    ase_t *ase = neko_aseprite_load_from_file(filepath);
+
+    if (NULL == ase) {
+        NEKO_ERROR("unable to load ase %s", filepath);
+        return false;
+    }
+
+    // 为了方便起见，将所有单元像素混合到各自的帧中
+    for (int i = 0; i < ase->frame_count; ++i) {
+        ase_frame_t *frame = ase->frames + i;
+
+        frame->pixels[0] = (neko_color_t *)neko_safe_malloc((int)(sizeof(neko_color_t)) * ase->w * ase->h);
+
+        spr->mem_used += (sizeof(neko_color_t)) * ase->w * ase->h;
+
+        memset(frame->pixels[0], 0, sizeof(neko_color_t) * (size_t)ase->w * (size_t)ase->h);
+        neko_color_t *dst = frame->pixels[0];
+
+        // neko_println_debug("frame: %d cel_count: %d", i, frame->cel_count);
+
+        for (int j = 0; j < frame->cel_count; ++j) {  //
+
+            ase_cel_t *cel = frame->cels + j;
+
+            // neko_println_debug(" - %s", cel->layer->name);
+
+            // 确定图块所在层与父层可视
+            if (!(cel->layer->flags & NEKO_ASE_LAYER_FLAGS_VISIBLE) || (cel->layer->parent && !(cel->layer->parent->flags & NEKO_ASE_LAYER_FLAGS_VISIBLE))) {
+                continue;
+            }
+
+            while (cel->is_linked) {
+                ase_frame_t *frame = ase->frames + cel->linked_frame_index;
+                int found = 0;
+                for (int k = 0; k < frame->cel_count; ++k) {
+                    if (frame->cels[k].layer == cel->layer) {
+                        cel = frame->cels + k;
+                        found = 1;
+                        break;
+                    }
+                }
+                NEKO_ASSERT(found);
+            }
+
+            void *src = cel->cel_pixels;
+            u8 opacity = (u8)(cel->opacity * cel->layer->opacity * 255.0f);
+            int cx = cel->x;
+            int cy = cel->y;
+            int cw = cel->w;
+            int ch = cel->h;
+            int cl = -NEKO_MIN(cx, 0);
+            int ct = -NEKO_MIN(cy, 0);
+            int dl = NEKO_MAX(cx, 0);
+            int dt = NEKO_MAX(cy, 0);
+            int dr = NEKO_MIN(ase->w, cw + cx);
+            int db = NEKO_MIN(ase->h, ch + cy);
+            int aw = ase->w;
+            for (int dx = dl, sx = cl; dx < dr; dx++, sx++) {
+                for (int dy = dt, sy = ct; dy < db; dy++, sy++) {
+                    int dst_index = aw * dy + dx;
+                    neko_color_t src_color = s_color(ase, src, cw * sy + sx);
+                    neko_color_t dst_color = dst[dst_index];
+                    neko_color_t result = s_blend(src_color, dst_color, opacity);
+                    dst[dst_index] = result;
+                }
+            }
+        }
+    }
+
+    s32 rect = ase->w * ase->h * 4;
+
+    neko_aseprite s = NEKO_DEFAULT_VAL();
+
+    // neko_array<neko_sprite_frame> frames = {};
+    // neko_array_reserve(&frames, ase->frame_count);
+
+    // neko_array<u8> pixels = {};
+    // neko_array_reserve(&pixels, ase->frame_count * rect);
+    //  neko_defer([&] { neko_array_dctor(&pixels); });
+
+    u8 *pixels = neko_safe_malloc(ase->frame_count * rect);
+
+    for (s32 i = 0; i < ase->frame_count; i++) {
+        ase_frame_t *frame = &ase->frames[i];
+
+        neko_aseprite_frame sf = NEKO_DEFAULT_VAL();
+        sf.duration = frame->duration_milliseconds;
+
+        sf.u0 = 0;
+        sf.v0 = (f32)(i + 1) / ase->frame_count;
+        sf.u1 = 1;
+        sf.v1 = (f32)i / ase->frame_count;
+
+        neko_dyn_array_push(s.frames, sf);
+
+        neko_color_t *data = frame->pixels[0];
+
+        // 不知道是直接读取aseprite解析的数据还是像这样拷贝为一个贴图 在渲染时改UV来得快
+        memcpy(pixels + (i * rect), &data[0].r, rect);
+    }
+
+    neko_render_texture_desc_t t_desc = NEKO_DEFAULT_VAL();
+
+    t_desc.format = R_TEXTURE_FORMAT_RGBA8;
+    t_desc.mag_filter = R_TEXTURE_FILTER_NEAREST;
+    t_desc.min_filter = R_TEXTURE_FILTER_NEAREST;
+    t_desc.num_mips = 0;
+    t_desc.width = ase->w;
+    t_desc.height = ase->h * ase->frame_count;
+    // t_desc.num_comps = 4;
+
+    // 大小为 ase->frame_count * rect
+    // neko_tex_flip_vertically(ase->w, ase->h * ase->frame_count, (u8 *)pixels.data);
+    t_desc.data[0] = pixels;
+
+    neko_texture_t tex = neko_render_texture_create(t_desc);
+
+    neko_safe_free(pixels);
+
+    // img.width = desc.width;
+    // img.height = desc.height;
+
+    // neko_hashmap<neko_sprite_loop> by_tag;
+    // neko_hash_table(u64, neko_sprite_loop) by_tag;
+    // neko_hashmap_reserve(&by_tag, neko_hashmap_reserve_size((u64)ase->tag_count));
+
+    for (s32 i = 0; i < ase->tag_count; i++) {
+        ase_tag_t *tag = &ase->tags[i];
+
+        neko_aseprite_loop loop = NEKO_DEFAULT_VAL();
+
+        for (s32 j = tag->from_frame; j <= tag->to_frame; j++) {
+            neko_dyn_array_push(loop.indices, j);
+        }
+
+        u64 key = neko_hash_str64(tag->name /*, strlen(tag.name)*/);
+        neko_hash_table_insert(s.by_tag, key, loop);
+    }
+
+    // for (s32 i = 0; i < ase->layer_count; i++) {
+    //     ase_layer_t* layer = &ase->layers[i];
+    //     neko_println_debug("%s", layer->name);
+    // }
+
+    // NEKO_TRACE(format("created sprite size({3}) with image id: {0} and {1} frames with {2} layers", tex.id, neko_dyn_array_size(s.frames), ase->layer_count,(spr->mem_used + pixels.capacity *
+    // sizeof(u8)) / 1e6).c_str());
+
+    s.img = tex;
+    // s.frames = frames;
+    //  s.by_tag = by_tag;
+    s.width = ase->w;
+    s.height = ase->h;
+    *spr = s;
+
+    neko_aseprite_free(ase);
+
+    return true;
+}
+
+void neko_aseprite_end(neko_aseprite *spr) {
+    neko_dyn_array_free(spr->frames);
+
+    for (neko_hash_table_iter it = neko_hash_table_iter_new(spr->by_tag); neko_hash_table_iter_valid(spr->by_tag, it); neko_hash_table_iter_advance(spr->by_tag, it)) {
+        u64 key = neko_hash_table_iter_getk(spr->by_tag, it);
+        neko_aseprite_loop *v = neko_hash_table_getp(spr->by_tag, key);
+        neko_dyn_array_free(v->indices);
+    }
+
+    neko_hash_table_free(spr->by_tag);
+}
+
+void neko_aseprite_renderer_play(neko_aseprite_renderer *sr, const_str tag) {
+    neko_aseprite_loop *loop = neko_hash_table_getp(sr->sprite->by_tag, neko_hash_str64(tag));
+    if (loop != NULL) sr->loop = loop;
+    sr->current_frame = 0;
+    sr->elapsed = 0;
+}
+
+void neko_aseprite_renderer_update(neko_aseprite_renderer *sr, f32 dt) {
+    s32 index;
+    u64 len;
+    if (sr->loop) {
+        index = sr->loop->indices[sr->current_frame];
+        len = neko_dyn_array_size(sr->loop->indices);
+    } else {
+        index = sr->current_frame;
+        len = neko_dyn_array_size(sr->sprite->frames);
+    }
+
+    neko_aseprite_frame frame = sr->sprite->frames[index];
+
+    sr->elapsed += dt * 1000;
+    if (sr->elapsed > frame.duration) {
+        if (sr->current_frame == len - 1) {
+            sr->current_frame = 0;
+        } else {
+            sr->current_frame++;
+        }
+
+        sr->elapsed -= frame.duration;
+    }
+}
+
+void neko_aseprite_renderer_set_frame(neko_aseprite_renderer *sr, s32 frame) {
+    s32 len;
+    if (sr->loop) {
+        len = neko_dyn_array_size(sr->loop->indices);
+    } else {
+        len = neko_dyn_array_size(sr->sprite->frames);
+    }
+
+    if (0 <= frame && frame < len) {
+        sr->current_frame = frame;
+        sr->elapsed = 0;
+    }
+}
+
+neko_texture_t neko_aseprite_simple(const void *memory, int size) {
+    neko_image_t image = neko_image_load_mem(memory, size, "simple.ase");
+    NEKO_ASSERT(image.w != 0 && image.h != 0, "good image");
+    ase_t *ase = image.ase;
+    neko_render_texture_desc_t t_desc = {};
+
+    t_desc.format = R_TEXTURE_FORMAT_RGBA8;
+    t_desc.mag_filter = R_TEXTURE_FILTER_NEAREST;
+    t_desc.min_filter = R_TEXTURE_FILTER_NEAREST;
+    t_desc.num_mips = 0;
+    t_desc.width = ase->w;
+    t_desc.height = ase->h;
+    // t_desc.num_comps = 4;
+    t_desc.data[0] = ase->frames->pixels[0];
+
+    neko_tex_flip_vertically(ase->w, ase->h, (u8 *)(t_desc.data[0]));
+    neko_texture_t tex = neko_render_texture_create(t_desc);
+    neko_aseprite_free(ase);
+    return tex;
+}
+
+void neko_fontbatch_init(neko_fontbatch_t *font_batch, const_str font_vs, const_str font_ps, const neko_vec2_t fbs, const_str img_path, char *content, int content_size) {
+
+    font_batch->font_scale = 3.0f;
+
+    font_batch->font_render = neko_render_batch_make_ctx(32);
+
+    neko_render_batch_vertex_data_t font_vd;
+    neko_render_batch_make_vertex_data(&font_vd, 1024 * 1024, GL_TRIANGLES, sizeof(neko_font_vert_t), GL_DYNAMIC_DRAW);
+    neko_render_batch_add_attribute(&font_vd, "in_pos", 2, R_BATCH_FLOAT, NEKO_OFFSET(neko_font_vert_t, x));
+    neko_render_batch_add_attribute(&font_vd, "in_uv", 2, R_BATCH_FLOAT, NEKO_OFFSET(neko_font_vert_t, u));
+
+    neko_render_batch_make_renderable(&font_batch->font_renderable, &font_vd);
+    neko_render_batch_load_shader(&font_batch->font_shader, font_vs, font_ps);
+    neko_render_batch_set_shader(&font_batch->font_renderable, &font_batch->font_shader);
+
+    neko_render_batch_ortho_2d(fbs.x / font_batch->font_scale, fbs.y / font_batch->font_scale, 0, 0, font_batch->font_projection);
+
+    neko_render_batch_send_matrix(&font_batch->font_shader, "u_mvp", font_batch->font_projection);
+
+    neko_image_t img = neko_image_load(img_path);
+    font_batch->font_tex_id = generate_texture_handle(img.pix, img.w, img.h, NULL);
+    font_batch->font = neko_font_load_bmfont(font_batch->font_tex_id, content, content_size, 0);
+    if (font_batch->font->atlas_w != img.w || font_batch->font->atlas_h != img.h) {
+        NEKO_WARN("failed to load font");
+    }
+    neko_image_free(img);
+
+    font_batch->font_verts = (neko_font_vert_t *)neko_safe_malloc(sizeof(neko_font_vert_t) * 1024 * 2);
+}
+
+void neko_fontbatch_end(neko_fontbatch_t *font_batch) {
+    neko_safe_free(font_batch->font_verts);
+    neko_font_free(font_batch->font);
+    neko_render_batch_free(font_batch->font_render);
+    destroy_texture_handle(font_batch->font_tex_id, NULL);
+}
+
+void neko_fontbatch_draw(neko_fontbatch_t *font_batch, const neko_vec2_t fbs, const char *text, float x, float y, float line_height, float clip_region, float wrap_x, f32 scale) {
+    f32 text_w = (f32)neko_font_text_width(font_batch->font, text);
+    f32 text_h = (f32)neko_font_text_height(font_batch->font, text);
+
+    if (scale == 0.f) scale = font_batch->font_scale;
+
+    neko_font_rect_t clip_rect;
+    clip_rect.left = -fbs.x / scale * clip_region;
+    clip_rect.right = fbs.x / scale * clip_region + 0.5f;
+    clip_rect.top = fbs.y / scale * clip_region + 0.5f;
+    clip_rect.bottom = -fbs.y / scale * clip_region;
+
+    f32 x0 = (x - fbs.x / 2.f) / scale /*+ -text_w / 2.f*/;
+    f32 y0 = (fbs.y / 2.f - y) / scale + text_h / 2.f;
+    f32 wrap_width = wrap_x - x0;
+
+    neko_font_fill_vertex_buffer(font_batch->font, text, x0, y0, wrap_width, line_height, &clip_rect, font_batch->font_verts, 1024 * 2, &font_batch->font_vert_count);
+
+    if (font_batch->font_vert_count) {
+        neko_render_batch_draw_call_t call;
+        call.textures[0] = (u32)font_batch->font->atlas_id;
+        call.texture_count = 1;
+        call.r = &font_batch->font_renderable;
+        call.verts = font_batch->font_verts;
+        call.vert_count = font_batch->font_vert_count;
+
+        neko_render_batch_push_draw_call(font_batch->font_render, call);
+    }
+}
+
+typedef struct ct_text {
+    neko_fontbatch_t *fontbatch;
+    const_str text;
+} ct_text;
 
 void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
 
@@ -167,13 +480,13 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
             object.y = (s32)neko_xml_find_attribute(object_node, "y")->value.number;
 
             neko_xml_attribute_t *attrib;
-            if (attrib = neko_xml_find_attribute(object_node, "width")) {
+            if ((attrib = neko_xml_find_attribute(object_node, "width"))) {
                 object.width = attrib->value.number;
             } else {
                 object.width = 1;
             }
 
-            if (attrib = neko_xml_find_attribute(object_node, "height")) {
+            if ((attrib = neko_xml_find_attribute(object_node, "height"))) {
                 object.height = attrib->value.number;
             } else {
                 object.height = 1;

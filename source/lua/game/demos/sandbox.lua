@@ -240,19 +240,20 @@ local this_player = {
 local drawFilter = tiny.requireAll('isDrawSystem')
 local updateFilter = tiny.rejectAny('isDrawSystem')
 
-local networkSyncSystem = tiny.processingSystem()
-networkSyncSystem.isDrawSystem = false
-networkSyncSystem.filter = tiny.requireAll("gameobj", "vector2", "velocity2", "network_t")
-function networkSyncSystem:process(e, dt)
+local moveableSyncSystem = tiny.processingSystem()
+moveableSyncSystem.isDrawSystem = false
+moveableSyncSystem.filter = tiny.requireAll("gameobj", "vector2", "velocity2", "network_t")
+function moveableSyncSystem:process(e, dt)
 
     local net = e.network_t
     local v = e.velocity2
     local v2 = e.vector2
 
     local _netid = 999
-    if net.obj_typename == "player" then
-        _netid = 1
-    end
+    -- if net.obj_typename == "player" then
+    --     _netid = 1
+    -- end
+    _netid = net.net_id
 
     local Filter = function(item, other)
         -- if     other.isCoin   then return 'cross'
@@ -719,7 +720,7 @@ end
 local win_w, win_h
 -- local test_audio
 
-local world = tiny.world(npcSystem, playerSystem, networkSyncSystem, tiledRenderSystem, npcRenderSystem,
+local world = tiny.world(npcSystem, playerSystem, moveableSyncSystem, tiledRenderSystem, npcRenderSystem,
     playerRenderSystem)
 
 M.sub_init = function()
@@ -766,6 +767,7 @@ M.sub_init = function()
             ud = neko.aseprite_render.create(test_ase_witch)
         },
         network_t = {
+            net_id = 1,
             obj_typename = "player"
         }
     })
@@ -852,6 +854,7 @@ M.sub_init = function()
                 npc_typename = "pdx"
             },
             network_t = {
+                net_id = 2,
                 obj_typename = "pdx"
             }
         })
@@ -883,6 +886,7 @@ M.sub_init = function()
                 npc_typename = "harvester"
             },
             network_t = {
+                net_id = 3,
                 obj_typename = "harvester"
             }
         })

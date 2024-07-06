@@ -63,6 +63,7 @@ typedef struct neko_instance_t {
         b32 debug_gfx;
         neko_vec2_t DisplaySize;
         neko_vec2_t DisplayFramebufferScale;
+        b32 profiler_enable;
     } game;
 
     neko_console_t* console;
@@ -73,6 +74,7 @@ typedef struct neko_instance_t {
     lua_State* L;
 } neko_instance_t;
 
+NEKO_API_DECL lua_State* neko_lua_bootstrap(int argc, char** argv);
 NEKO_API_DECL neko_instance_t* neko_create(int argc, char** argv);
 NEKO_API_DECL void neko_fini();
 NEKO_API_DECL void neko_frame();

@@ -8,7 +8,6 @@
 #include "engine/neko_engine.h"
 
 namespace neko {
-lua_State* g_L = NULL;
 
 static size_t lua_mem_usage;
 
@@ -37,7 +36,7 @@ namespace {
 std::string default_str("");
 }
 
-ScriptReference::ScriptReference() : script_ref(0), __lua(g_L) {}
+ScriptReference::ScriptReference() : script_ref(0) {}
 
 ScriptReference::~ScriptReference() { NEKO_ASSERT(script_ref == 0, "Warning, you have deleted an instance without unregistering it"); }
 
@@ -277,43 +276,55 @@ lua_table lua_table_iter::get_table() {
     return dict;
 }
 
+lua_State* ScriptReference::__lua() const {
+    lua_State* L = neko_instance()->L;
+    NEKO_ASSERT(L);
+    return L;
+}
+
 ScriptInvoker::ScriptInvoker() : ScriptReference() {}
 
 ScriptInvoker::~ScriptInvoker() {}
 
 void ScriptInvoker::invoke(const_str method) {
+    lua_State* L = neko_instance()->L;
+    NEKO_ASSERT(L);
+
 #ifdef _DEBUG
-    int top1 = lua_gettop(__lua);
+    int top1 = lua_gettop(L);
 #endif
     if (!findAndPushMethod(method)) return;
 
-    lua_rawgeti(__lua, LUA_REGISTRYINDEX, script_ref);
-    if (lua_pcall(__lua, 1, 0, NULL) != 0) {
-        NEKO_WARN("[lua] err: %s", lua_tostring(__lua, -1));
-        lua_pop(__lua, 1);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, script_ref);
+    if (lua_pcall(L, 1, 0, NULL) != 0) {
+        NEKO_WARN("[lua] err: %s", lua_tostring(L, -1));
+        lua_pop(L, 1);
     }
 
 #ifdef _DEBUG
-    int currentStack = lua_gettop(__lua);
+    int currentStack = lua_gettop(L);
     NEKO_ASSERT(top1 == currentStack, "The stack after the method call is corrupt");
 #endif
 }
 
 bool ScriptInvoker::findAndPushMethod(const_str method_name) {
+    lua_State* L = neko_instance()->L;
+    NEKO_ASSERT(L);
+
     if (method_name == NULL) return false;
 
     NEKO_ASSERT(script_ref != 0, "You must register this instance using 'registerObject' before you can invoke any script methods on it");
 
-    lua_rawgeti(__lua, LUA_REGISTRYINDEX, script_ref);
-    if (lua_istable(__lua, -1)) {
-        lua_getfield(__lua, -1, method_name);
-        if (lua_isfunction(__lua, -1)) {
-            lua_remove(__lua, -2);  // Only the reference to the method exists on the stack after this
+    lua_rawgeti(L, LUA_REGISTRYINDEX, script_ref);
+    if (lua_istable(L, -1)) {
+        lua_getfield(L, -1, method_name);
+        if (lua_isfunction(L, -1)) {
+            lua_remove(L, -2);  // Only the reference to the method exists on the stack after this
             return true;
         }
-        lua_pop(__lua, 1);
+        lua_pop(L, 1);
     }
-    lua_pop(__lua, 1);
+    lua_pop(L, 1);
 
     NEKO_WARN("[lua] not find method \"%s\" with script_ref_%d", method_name, script_ref);
 
@@ -321,20 +332,23 @@ bool ScriptInvoker::findAndPushMethod(const_str method_name) {
 }
 
 bool ScriptInvoker::isMethodDefined(const_str method_name) const {
+    lua_State* L = neko_instance()->L;
+    NEKO_ASSERT(L);
+
     if (method_name == NULL) return false;
 
     NEKO_ASSERT(script_ref != 0, "You must register this instance before you can invoke any script methods on it");
 
-    lua_rawgeti(__lua, LUA_REGISTRYINDEX, script_ref);
-    if (lua_istable(__lua, -1)) {
-        lua_getfield(__lua, -1, method_name);
-        if (lua_isfunction(__lua, -1)) {
-            lua_pop(__lua, 2);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, script_ref);
+    if (lua_istable(L, -1)) {
+        lua_getfield(L, -1, method_name);
+        if (lua_isfunction(L, -1)) {
+            lua_pop(L, 2);
             return true;
         }
-        lua_pop(__lua, 1);
+        lua_pop(L, 1);
     }
-    lua_pop(__lua, 1);
+    lua_pop(L, 1);
     return false;
 }
 
@@ -353,10 +367,13 @@ ScriptObject::ScriptObject() : ScriptInvoker(), obj_last_entry(NULL) {}
 ScriptObject::~ScriptObject() {}
 
 bool ScriptObject::registerObject() {
+    lua_State* L = neko_instance()->L;
+    NEKO_ASSERT(L);
+
     NEKO_ASSERT(script_ref == 0, "You are trying to register the same object twice");
 
     // Get the global lua state
-    script_ref = getClassDef()->instantiate(__lua, this);
+    script_ref = getClassDef()->instantiate(L, this);
 
     if (!onAdd()) {
         unregisterObject();
@@ -367,16 +384,19 @@ bool ScriptObject::registerObject() {
 }
 
 bool ScriptObject::registerObject(int refId) {
+    lua_State* L = neko_instance()->L;
+    NEKO_ASSERT(L);
+
     NEKO_ASSERT(script_ref == 0, "You are trying to register the same object twice");
 
     script_ref = refId;
 
-    lua_rawgeti(__lua, LUA_REGISTRYINDEX, script_ref);
-    lua_pushstring(__lua, "_instance");
-    lua_pushlightuserdata(__lua, this);
-    lua_settable(__lua, -3);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, script_ref);
+    lua_pushstring(L, "_instance");
+    lua_pushlightuserdata(L, this);
+    lua_settable(L, -3);
 
-    lua_pop(__lua, 1);
+    lua_pop(L, 1);
 
     if (!onAdd()) {
         unregisterObject();
@@ -387,18 +407,21 @@ bool ScriptObject::registerObject(int refId) {
 }
 
 void ScriptObject::unregisterObject() {
+    lua_State* L = neko_instance()->L;
+    NEKO_ASSERT(L);
+
     NEKO_ASSERT(script_ref != 0, "You are trying to unregister the same object twice");
 
     onRemove();
 
     // Set _instance to nil
-    lua_rawgeti(__lua, LUA_REGISTRYINDEX, script_ref);
-    lua_pushstring(__lua, "_instance");
-    lua_pushnil(__lua);
-    lua_rawset(__lua, -3);
-    lua_pop(__lua, 1);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, script_ref);
+    lua_pushstring(L, "_instance");
+    lua_pushnil(L);
+    lua_rawset(L, -3);
+    lua_pop(L, 1);
 
-    luaL_unref(__lua, LUA_REGISTRYINDEX, script_ref);
+    luaL_unref(L, LUA_REGISTRYINDEX, script_ref);
 
     script_ref = 0;
 
@@ -482,15 +505,23 @@ int lua_delete(lua_State* L) {
     return 0;
 }
 
-void lua_bind::initialize(lua_State* L) {
-    g_L = L;
+lua_State* lua_bind::L;
+
+void lua_bind::initialize(lua_State* _L) {
+
+    if (L != NULL) {
+        NEKO_WARN("[lua] lua_bind already initialized");
+        return;
+    }
+
+    L = _L;
     // 确保lua中有delete功能
     bind("delete", lua_delete);
     // 注册脚本对象
     bind<ScriptObject>();
 }
 
-lua_State* lua_bind::getLuaState() { return g_L; }
+lua_State* lua_bind::getLuaState() { return L; }
 
 void lua_bind::evaluatef(const_str fmt, ...) {
     char buffer[1024];
@@ -499,25 +530,25 @@ void lua_bind::evaluatef(const_str fmt, ...) {
     vsnprintf(buffer, 1024, fmt, args);
     va_end(args);
 
-    if (luaL_loadstring(g_L, buffer) != 0) {
-        std::string err = lua_tostring(g_L, -1);
+    if (luaL_loadstring(L, buffer) != 0) {
+        std::string err = lua_tostring(L, -1);
         NEKO_WARN("[lua] could not evaluate string \"%s\":\n%s", buffer, err.c_str());
-        lua_pop(g_L, 1);
+        lua_pop(L, 1);
     }
 }
 
 void lua_bind::loadFile(const_str pathToFile) {
-    int res = luaL_loadfile(g_L, pathToFile);
+    int res = luaL_loadfile(L, pathToFile);
     if (res != 0) {
-        std::string err = lua_tostring(g_L, -1);
+        std::string err = lua_tostring(L, -1);
         NEKO_WARN("[lua] could not load file: %s", err.c_str());
-        lua_pop(g_L, 1);
+        lua_pop(L, 1);
     } else {
-        res = lua_pcall(g_L, 0, 0, NULL);
+        res = lua_pcall(L, 0, 0, NULL);
         if (res != 0) {
-            std::string err = lua_tostring(g_L, -1);
+            std::string err = lua_tostring(L, -1);
             NEKO_WARN("[lua] could not compile supplied script file: %s", err.c_str());
-            lua_pop(g_L, 1);
+            lua_pop(L, 1);
         }
     }
 }

@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <chrono>
 #include <fstream>
 #include <functional>
@@ -19,6 +20,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -665,6 +667,199 @@ std::string w2a(std::wstring_view wstr) noexcept;
 std::string a2u(std::string_view str) noexcept;
 std::string u2a(std::string_view str) noexcept;
 }  // namespace neko::win
+
+template <typename F>
+struct function_traits : public function_traits<decltype(&F::operator())> {};
+
+template <typename ClassType, typename ReturnType, typename... Args>
+struct function_traits<ReturnType (ClassType::*)(Args...) const> {
+    using return_type = ReturnType;
+    using pointer = ReturnType (*)(Args...);
+    using std_function = std::function<ReturnType(Args...)>;
+};
+
+template <typename F>
+typename function_traits<F>::std_function to_function(F& lambda) {
+    return typename function_traits<F>::std_function(lambda);
+}
+
+namespace neko {
+
+template <typename T>
+class moveonly {
+public:
+    static_assert(std::is_default_constructible_v<T>);
+    static_assert(std::is_trivially_copy_constructible_v<T>);
+    static_assert(std::is_trivially_copy_assignable_v<T>);
+    static_assert(std::is_trivially_move_constructible_v<T>);
+    static_assert(std::is_trivially_move_assignable_v<T>);
+    static_assert(std::is_swappable_v<T>);
+
+    moveonly() = default;
+
+    ~moveonly() = default;
+
+    explicit moveonly(const T& val) noexcept { m_value = val; }
+
+    moveonly(const moveonly&) = delete;
+
+    moveonly& operator=(const moveonly&) = delete;
+
+    moveonly(moveonly&& other) noexcept { m_value = std::exchange(other.m_value, T{}); }
+
+    moveonly& operator=(moveonly&& other) noexcept {
+        std::swap(m_value, other.m_value);
+        return *this;
+    }
+
+    operator const T&() const { return m_value; }
+
+    moveonly& operator=(const T& val) {
+        m_value = val;
+        return *this;
+    }
+
+    // MoveOnly<T> has the same memory layout as T
+    // So it's perfectly safe to overload operator&
+    T* operator&() { return &m_value; }
+
+    const T* operator&() const { return &m_value; }
+
+    T* operator->() { return &m_value; }
+
+    const T* operator->() const { return &m_value; }
+
+    bool operator==(const T& val) const { return m_value == val; }
+
+    bool operator!=(const T& val) const { return m_value != val; }
+
+private:
+    T m_value{};
+};
+
+static_assert(sizeof(int) == sizeof(moveonly<int>));
+
+class noncopyable {
+public:
+    noncopyable(const noncopyable&) = delete;
+    noncopyable& operator=(const noncopyable&) = delete;
+
+protected:
+    noncopyable() = default;
+    ~noncopyable() = default;
+};
+
+struct format_str {
+    constexpr format_str(const char* str) noexcept : str(str) {}
+    const char* str;
+};
+
+template <format_str F>
+constexpr auto operator""_f() {
+    return [=]<typename... T>(T... args) { return std::format(F.str, args...); };
+}
+
+// 成员函数返回值类型确定
+// https://stackoverflow.com/questions/26107041/how-can-i-determine-the-return-type-of-a-c11-member-function
+
+template <typename T>
+struct return_type;
+template <typename R, typename... Args>
+struct return_type<R (*)(Args...)> {
+    using type = R;
+};
+template <typename R, typename C, typename... Args>
+struct return_type<R (C::*)(Args...)> {
+    using type = R;
+};
+template <typename R, typename C, typename... Args>
+struct return_type<R (C::*)(Args...) const> {
+    using type = R;
+};
+template <typename R, typename C, typename... Args>
+struct return_type<R (C::*)(Args...) volatile> {
+    using type = R;
+};
+template <typename R, typename C, typename... Args>
+struct return_type<R (C::*)(Args...) const volatile> {
+    using type = R;
+};
+template <typename T>
+using return_type_t = typename return_type<T>::type;
+
+// std::function 合并方法
+
+template <typename, typename...>
+struct lastFnType;
+
+template <typename F0, typename F1, typename... Fn>
+struct lastFnType<F0, F1, Fn...> {
+    using type = typename lastFnType<F1, Fn...>::type;
+};
+
+template <typename T1, typename T2>
+struct lastFnType<neko_function<T2(T1)>> {
+    using type = T1;
+};
+
+template <typename T1, typename T2>
+neko_function<T1(T2)> func_combine(neko_function<T1(T2)> conv) {
+    return conv;
+}
+
+template <typename T1, typename T2, typename T3, typename... Fn>
+auto func_combine(neko_function<T1(T2)> conv1, neko_function<T2(T3)> conv2, Fn... fn) -> neko_function<T1(typename lastFnType<neko_function<T2(T3)>, Fn...>::type)> {
+    using In = typename lastFnType<neko_function<T2(T3)>, Fn...>::type;
+
+    return [=](In const& in) { return conv1(func_combine(conv2, fn...)(in)); };
+}
+
+template <typename T>
+struct tuple_size;
+
+template <typename... Args>
+struct tuple_size<std::tuple<Args...>> {
+    static constexpr std::size_t value = sizeof...(Args);
+};
+
+template <typename T>
+constexpr std::size_t tuple_size_v = tuple_size<T>::value;
+
+}  // namespace neko
+
+template <typename T>
+struct neko_is_vector : std::false_type {};
+
+template <typename T, typename Alloc>
+struct neko_is_vector<std::vector<T, Alloc>> : std::true_type {};
+
+namespace detail {
+// 某些旧版本的 GCC 需要
+template <typename...>
+struct voider {
+    using type = void;
+};
+
+// std::void_t 将成为 C++17 的一部分 但在这里我还是自己实现吧
+template <typename... T>
+using void_t = typename voider<T...>::type;
+
+template <typename T, typename U = void>
+struct is_mappish_impl : std::false_type {};
+
+template <typename T>
+struct is_mappish_impl<T, void_t<typename T::key_type, typename T::mapped_type, decltype(std::declval<T&>()[std::declval<const typename T::key_type&>()])>> : std::true_type {};
+}  // namespace detail
+
+template <typename T>
+struct neko_is_mappish : detail::is_mappish_impl<T>::type {};
+
+template <class... Ts>
+struct neko_overloaded : Ts... {
+    using Ts::operator()...;
+};
+template <class... Ts>
+neko_overloaded(Ts...) -> neko_overloaded<Ts...>;
 
 namespace neko {
 
@@ -1477,13 +1672,13 @@ struct thread {
     void join();
 };
 
-struct LockGuard {
+struct lock_guard {
     mutex* mtx;
 
-    LockGuard(mutex* mtx) : mtx(mtx) { mtx->lock(); };
-    ~LockGuard() { mtx->unlock(); };
-    LockGuard(LockGuard&&) = delete;
-    LockGuard& operator=(LockGuard&&) = delete;
+    lock_guard(mutex* mtx) : mtx(mtx) { mtx->lock(); };
+    ~lock_guard() { mtx->unlock(); };
+    lock_guard(lock_guard&&) = delete;
+    lock_guard& operator=(lock_guard&&) = delete;
 
     operator bool() { return true; }
 };
@@ -1500,14 +1695,14 @@ struct LuaThread {
     void join();
 };
 
-struct LuaTableEntry;
-struct LuaVariant {
+struct lua_table_entry;
+struct lua_variant {
     s32 type;
     union {
         bool boolean;
         double number;
         string string;
-        slice<LuaTableEntry> table;
+        slice<lua_table_entry> table;
         struct {
             void* ptr;
             neko::string tname;
@@ -1519,12 +1714,12 @@ struct LuaVariant {
     void push(lua_State* L);
 };
 
-struct LuaTableEntry {
-    LuaVariant key;
-    LuaVariant value;
+struct lua_table_entry {
+    lua_variant key;
+    lua_variant value;
 };
 
-struct LuaChannel {
+struct lua_channel {
     std::atomic<char*> name;
 
     mutex mtx;
@@ -1534,31 +1729,137 @@ struct LuaChannel {
     u64 received_total;
     u64 sent_total;
 
-    slice<LuaVariant> items;
+    slice<lua_variant> items;
     u64 front;
     u64 back;
     u64 len;
 
     void make(string n, u64 buf);
     void trash();
-    void send(LuaVariant item);
-    LuaVariant recv();
-    bool try_recv(LuaVariant* v);
+    void send(lua_variant item);
+    lua_variant recv();
+    bool try_recv(lua_variant* v);
 };
 
-LuaChannel* lua_channel_make(string name, u64 buf);
-LuaChannel* lua_channel_get(string name);
-LuaChannel* lua_channels_select(lua_State* L, LuaVariant* v);
+lua_channel* lua_channel_make(string name, u64 buf);
+lua_channel* lua_channel_get(string name);
+lua_channel* lua_channels_select(lua_State* L, lua_variant* v);
 void lua_channels_setup();
 void lua_channels_shutdown();
 
-s32 os_change_dir(const char *path);
+template <typename T>
+struct queue {
+    mutex mtx = {};
+    cond cv = {};
+
+    T* data = nullptr;
+    u64 front = 0;
+    u64 back = 0;
+    u64 len = 0;
+    u64 capacity = 0;
+
+    void make() {
+        mtx.make();
+        cv.make();
+    }
+
+    void trash() {
+        mtx.trash();
+        cv.trash();
+        neko_safe_free(data);
+    }
+
+    void reserve(u64 cap) {
+        if (cap <= capacity) {
+            return;
+        }
+
+        T* buf = (T*)neko_safe_malloc(sizeof(T) * cap);
+
+        if (front < back) {
+            memcpy(buf, &data[front], sizeof(T) * len);
+        } else {
+            u64 lhs = back;
+            u64 rhs = (capacity - front);
+
+            memcpy(buf, &data[front], sizeof(T) * rhs);
+            memcpy(&buf[rhs], &data[0], sizeof(T) * lhs);
+        }
+
+        neko_safe_free(data);
+
+        data = buf;
+        front = 0;
+        back = len;
+        capacity = cap;
+    }
+
+    void enqueue(T item) {
+        lock_guard lock{&mtx};
+
+        if (len == capacity) {
+            reserve(len > 0 ? len * 2 : 8);
+        }
+
+        data[back] = item;
+        back = (back + 1) % capacity;
+        len++;
+
+        cv.signal();
+    }
+
+    T demand() {
+        lock_guard lock{&mtx};
+
+        while (len == 0) {
+            cv.wait(&mtx);
+        }
+
+        T item = data[front];
+        front = (front + 1) % capacity;
+        len--;
+
+        return item;
+    }
+};
+
+s32 os_change_dir(const char* path);
 string os_program_dir();
 string os_program_path();
-u64 os_file_modtime(const char *filename);
+u64 os_file_modtime(const char* filename);
 void os_high_timer_resolution();
 void os_sleep(u32 ms);
 void os_yield();
+
+NEKO_API_DECL void neko_tm_init(void);
+
+void profile_setup();
+void profile_shutdown();
+
+struct TraceEvent {
+    const char* cat;
+    const char* name;
+    u64 ts;
+    u16 tid;
+    char ph;
+};
+
+struct Instrument {
+    const char* cat;
+    const char* name;
+    s32 tid;
+
+    Instrument(const char* cat, const char* name);
+    ~Instrument();
+};
+
+#if NEKO_PROFILE_ENABLE
+#define PROFILE_FUNC() auto NEKO_CONCAT(__gen_profile_, __COUNTER__) = ::neko::Instrument("function", __func__);
+#define PROFILE_BLOCK(name) auto NEKO_CONCAT(__gen_profile_, __COUNTER__) = ::neko::Instrument("block", name);
+#else
+#define PROFILE_FUNC()
+#define PROFILE_BLOCK(name)
+#endif
 
 }  // namespace neko
 

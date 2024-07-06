@@ -42,6 +42,11 @@ typedef struct neko_client_userdata_t {
     neko_client_cvar_t cl_cvar = NEKO_DEFAULT_VAL();
     // neko_thread_atomic_int_t init_thread_flag;
     // neko_thread_ptr_t init_work_thread;
+
+    neko::thread init_work_thread;
+    neko::sema init_work_sema;
+    std::atomic_int init_work_flag;
+
     neko_vec2_t cam = {512, 512};
     u8 debug_mode;
     f32 player_v = 100.f;
@@ -231,21 +236,25 @@ void game_init(neko_client_userdata_t *game_userdata) {
     // 初始化工作
 
     // static auto init_work = +[](void *user_data) {
-    //     neko_thread_atomic_int_t *this_init_thread_flag = (neko_thread_atomic_int_t *)user_data;
-    //     if (thread_atomic_int_load(this_init_thread_flag) == 0) {
+    //     neko_client_userdata_t *cl = (neko_client_userdata_t *)user_data;
 
-    //         neko::timer timer;
-    //         timer.start();
+    //     neko::timer timer;
+    //     timer.start();
 
-    //         neko_lua_call(neko_instance()->L, "game_init_thread");
+    //     neko_lua_call(neko_instance()->L, "game_init_thread");
 
-    //         timer.stop();
-    //         NEKO_INFO(std::format("game_init_thread loading done in {0:.3f} ms", timer.get()).c_str());
+    //     timer.stop();
+    //     NEKO_INFO(std::format("game_init_thread loading done in {0:.3f} ms", timer.get()).c_str());
 
-    //         thread_atomic_int_store(this_init_thread_flag, 1);
-    //     }
-    //     return 0;
+    //     cl->init_work_sema.post();
+    //     cl->init_work_flag.store(1);
     // };
+
+    // game_userdata->init_work_sema.make();
+
+    // game_userdata->init_work_flag.store(0);
+
+    // game_userdata->init_work_thread.make(init_work, game_userdata);
 
     // thread_atomic_int_store(&game_userdata->init_thread_flag, 0);
 
@@ -253,16 +262,16 @@ void game_init(neko_client_userdata_t *game_userdata) {
 
     neko::timer timer;
     timer.start();
-
     neko_lua_call(neko_instance()->L, "game_init_thread");
-
     timer.stop();
     NEKO_INFO(std::format("game_init_thread loading done in {0:.3f} ms", timer.get()).c_str());
 }
 
 void game_loop(neko_client_userdata_t *game_userdata) {
 
-    // int this_init_thread_flag = thread_atomic_int_load(&game_userdata->init_thread_flag);
+    PROFILE_FUNC();
+
+    // int this_init_thread_flag = game_userdata->init_work_flag;
 
     // if (this_init_thread_flag == 0) {
 
@@ -301,23 +310,32 @@ void game_loop(neko_client_userdata_t *game_userdata) {
     //     }
     //     neko_render_renderpass_end(&ENGINE_INTERFACE()->cb);
 
-    // }
+    // } else 
     {
 
         // NEKO_STATIC int init_retval = 1;
         // if (init_retval) {
-        //     init_retval = thread_join(game_userdata->init_work_thread);
-        //     thread_term(game_userdata->init_work_thread);
+        //     // init_retval = thread_join(game_userdata->init_work_thread);
+        //     // thread_term(game_userdata->init_work_thread);
+        //     game_userdata->init_work_thread.join();
+        //     // game_userdata->init_work_sema.wait();
+        //     game_userdata->init_work_sema.trash();
         //     NEKO_TRACE("init_work_thread done");
         // }
 
         f32 dt = neko_pf_delta_time();
 
-        neko_lua_call(neko_instance()->L, "game_pre_update");
+        {
+            PROFILE_BLOCK("lua_pre_update");
+            neko_lua_call(neko_instance()->L, "game_pre_update");
+        }
 
         if (neko_pf_key_pressed(NEKO_KEYCODE_ESC)) game_userdata->cl_cvar.show_editor ^= true;
 
-        neko_lua_call<void, f32>(neko_instance()->L, "game_loop", dt);
+        {
+            PROFILE_BLOCK("lua_loop");
+            neko_lua_call<void, f32>(neko_instance()->L, "game_loop", dt);
+        }
 
         // Do rendering
         neko_render_clear_action_t clear = {.color = {game_userdata->cl_cvar.bg[0] / 255, game_userdata->cl_cvar.bg[1] / 255, game_userdata->cl_cvar.bg[2] / 255, 1.f}};
@@ -414,7 +432,10 @@ void game_loop(neko_client_userdata_t *game_userdata) {
             neko_ui_render(&ENGINE_INTERFACE()->ui, &ENGINE_INTERFACE()->cb);
         }
         neko_render_renderpass_end(&ENGINE_INTERFACE()->cb);
-        neko_lua_call(neko_instance()->L, "game_render");
+        {
+            PROFILE_BLOCK("lua_render");
+            neko_lua_call(neko_instance()->L, "game_render");
+        }
 
         auto &module_list = ENGINE_INTERFACE()->modules;
         for (u32 i = 0; i < neko_dyn_array_size(module_list); ++i) {
@@ -422,7 +443,10 @@ void game_loop(neko_client_userdata_t *game_userdata) {
             module.func.OnUpdate(neko_instance()->L);
         }
 
-        neko_imgui_render(&game_userdata->imgui);
+        {
+            PROFILE_BLOCK("imgui_submit");
+            neko_imgui_render(&game_userdata->imgui);
+        }
     }
 }
 
@@ -476,6 +500,8 @@ s32 button_custom(neko_ui_context_t *ctx, const char *label) {
 }
 
 void draw_gui(neko_client_userdata_t *game_userdata) {
+
+    PROFILE_FUNC();
 
     const f64 t = neko_pf_elapsed_time();
 
@@ -774,6 +800,7 @@ void neko_app(lua_State *L) {
     lua_register(
             L, "sandbox_init", +[](lua_State *L) {
                 auto ud = neko::lua::udata_new<neko_client_userdata_t>(L, 1);
+                PROFILE_FUNC();
                 game_init(ud);
                 return 1;
             });
@@ -781,6 +808,7 @@ void neko_app(lua_State *L) {
     lua_register(
             L, "sandbox_update", +[](lua_State *L) {
                 auto ud = neko::lua::toudata_ptr<neko_client_userdata_t>(L, 1);
+                PROFILE_FUNC();
                 game_loop(ud);
                 return 0;
             });
@@ -788,6 +816,7 @@ void neko_app(lua_State *L) {
     lua_register(
             L, "sandbox_fini", +[](lua_State *L) {
                 auto ud = neko::lua::toudata_ptr<neko_client_userdata_t>(L, 1);
+                PROFILE_FUNC();
                 game_fini(ud);
                 return 0;
             });

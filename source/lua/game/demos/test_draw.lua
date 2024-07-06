@@ -45,7 +45,7 @@ local M = {
         gd.rt = neko.render_texture_create(win_w, win_h)
         gd.rp = neko.render_renderpass_create(gd.fbo, gd.rt)
 
-        gd.fontbatch = neko.fontbatch_create()
+        gd.fontbatch = neko.fontbatch_create(font_vs, font_ps)
 
         -- test_shader = neko.render_shader_create("compute", {
         --     -- VERTEX = sprite_vs,

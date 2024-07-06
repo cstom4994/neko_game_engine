@@ -5,7 +5,6 @@
 #include "engine/neko_api.hpp"
 #include "engine/neko_engine.h"
 #include "engine/neko_luabind.hpp"
-#include "sandbox/hpp/neko_cpp_utils.hpp"
 
 struct neko_physics_userdata {
     s32 begin_contact_ref;

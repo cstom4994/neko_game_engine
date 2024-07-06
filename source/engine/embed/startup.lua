@@ -234,6 +234,25 @@ void main()
 }
 ]]
 
+font_vs = [[
+#version 330
+uniform mat4 u_mvp;
+in vec2 in_pos; in vec2 in_uv;
+out vec2 v_uv;
+void main() {
+    v_uv = in_uv;
+    gl_Position = u_mvp * vec4(in_pos, 0, 1);
+}
+]]
+
+font_ps = [[
+#version 330
+precision mediump float;
+uniform sampler2D u_sprite_texture;
+in vec2 v_uv; out vec4 out_col;
+void main() { out_col = texture(u_sprite_texture, v_uv); }
+]]
+
 boot = {}
 local worlds = {}
 

@@ -24,7 +24,7 @@ if is_os("windows") or is_os("macosx") or is_os("linux") then
             wchar32 = true
         }
     })
-    add_requires("miniaudio", "box2d", "enet")
+    add_requires("miniaudio", "box2d", "enet", "flecs")
 else
     -- add_requires(base_libs)
 end
@@ -88,7 +88,7 @@ do
     add_headerfiles("source/engine/**.h", "source/engine/**.hpp")
 
     add_packages(base_libs)
-    add_packages("miniaudio", "box2d", "enet")
+    add_packages("miniaudio", "box2d", "enet", "flecs")
 end
 
 local function neko_module_name(m)
@@ -127,7 +127,7 @@ do
     add_deps("neko_engine")
 
     add_packages(base_libs)
-    add_packages("miniaudio", "box2d", "enet")
+    add_packages("miniaudio", "box2d", "enet", "flecs")
 
     set_targetdir("./")
     set_rundir("./")

@@ -101,7 +101,7 @@ int luax_msgh(lua_State* L) {
     lua_call(L, 2, 1);
     neko::string traceback = luax_check_string(L, -1);
 
-    // if (LockGuard lock{&g_app->error_mtx}) {
+    // if (lock_guard lock{&g_app->error_mtx}) {
     //     g_app->fatal_error = to_cstr(err);
     //     g_app->traceback = to_cstr(traceback);
 
@@ -221,6 +221,7 @@ NEKO_API_DECL void neko_tolua_boot(int argc, char** argv) {
 }
 
 #if 1
+#include "engine/luabind/asset.hpp"
 #include "engine/luabind/core.hpp"
 #include "engine/luabind/debug.hpp"
 #include "engine/luabind/ffi.hpp"
@@ -239,7 +240,7 @@ NEKO_API_DECL void neko_tolua_boot(int argc, char** argv) {
     lua_setfield(L, -2, name);      \
     lua_pop(L, 2)
 
-int luaopen_enet(lua_State* L);
+NEKO_API_DECL int luaopen_enet(lua_State* L);
 
 void neko_register(lua_State* L) {
 

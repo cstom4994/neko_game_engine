@@ -287,8 +287,6 @@ struct init_value_traits_t<const std::string&> {
     static inline const_str value() { return ""; }
 };
 
-extern lua_State* g_L;
-
 // 包含能够连接到脚本表的必要信息的类
 class ScriptReference {
 public:
@@ -300,13 +298,15 @@ public:
     //		0 if it isn't connected (i.e. it isn't registered).
     inline int getId() const { return script_ref; }
 
+    lua_State* __lua() const;
+
     //
     // @return The state associated with this script reference object.
-    inline lua_State* getCurrentState() const { return __lua; }
+    // inline lua_State* getCurrentState() const { return __lua; }
 
 protected:
     int script_ref;
-    lua_State* __lua;
+    // lua_State* __lua;
 };
 
 template <typename T>
@@ -1078,8 +1078,11 @@ public:
 
     bool isMethodDefined(const_str method_name) const;
 
+#define __lua __lua()
+
     template <typename P1>
     void invoke(const_str method_name, P1 p1) {
+
 #ifdef _DEBUG
         int top1 = lua_gettop(__lua);
 #endif
@@ -1310,6 +1313,8 @@ public:
 #endif
         return ok;
     }
+
+#undef __lua
 
 private:
     bool findAndPushMethod(const_str method_name);
@@ -2351,10 +2356,12 @@ private:
 //
 //
 struct lua_bind {
-    static void initialize(lua_State* L);
+    static void initialize(lua_State* _L);
 
     static void loadFile(const_str pathToFile);
     static void evaluatef(const_str fmt, ...);
+
+    static lua_State* L;
 
     static lua_State* getLuaState();
 
@@ -2364,20 +2371,20 @@ struct lua_bind {
         return *C::getStaticClassDef();
     }
 
-    static inline void bind(const_str funcName, lua_CFunction function) { lua_register(g_L, funcName, function); }
+    static inline void bind(const_str funcName, lua_CFunction function) { lua_register(L, funcName, function); }
 
     static inline void bind(const_str funcName, void (*funcPtr)(void)) {
-        lua_pushlightuserdata(g_L, reinterpret_cast<void*>(funcPtr));
-        lua_pushstring(g_L, funcName);
-        lua_pushcclosure(g_L, &lua_function_void_0args, 2);
-        lua_setglobal(g_L, funcName);
+        lua_pushlightuserdata(L, reinterpret_cast<void*>(funcPtr));
+        lua_pushstring(L, funcName);
+        lua_pushcclosure(L, &lua_function_void_0args, 2);
+        lua_setglobal(L, funcName);
     }
 
     template <typename P1>
     static void bind(const_str funcName, void (*funcPtr)(P1)) {
         lua_State* L = getLuaState();
 
-        lua_pushlightuserdata(g_L, reinterpret_cast<void*>(funcPtr));
+        lua_pushlightuserdata(L, reinterpret_cast<void*>(funcPtr));
         lua_pushstring(L, funcName);
         lua_pushcclosure(L, &lua_function_void_1args<P1>, 2);
         lua_setglobal(L, funcName);
@@ -2387,7 +2394,7 @@ struct lua_bind {
     static void bind(const_str funcName, void (*funcPtr)(P1, P2)) {
         lua_State* L = getLuaState();
 
-        lua_pushlightuserdata(g_L, reinterpret_cast<void*>(funcPtr));
+        lua_pushlightuserdata(L, reinterpret_cast<void*>(funcPtr));
         lua_pushstring(L, funcName);
         lua_pushcclosure(L, &lua_function_void_2args<P1, P2>, 2);
         lua_setglobal(L, funcName);
@@ -2397,7 +2404,7 @@ struct lua_bind {
     static void bind(const_str funcName, void (*funcPtr)(P1, P2, P3)) {
         lua_State* L = getLuaState();
 
-        lua_pushlightuserdata(g_L, reinterpret_cast<void*>(funcPtr));
+        lua_pushlightuserdata(L, reinterpret_cast<void*>(funcPtr));
         lua_pushstring(L, funcName);
         lua_pushcclosure(L, &lua_function_void_3args<P1, P2, P3>, 2);
         lua_setglobal(L, funcName);
@@ -2407,7 +2414,7 @@ struct lua_bind {
     static void bind(const_str funcName, void (*funcPtr)(P1, P2, P3, P4)) {
         lua_State* L = getLuaState();
 
-        lua_pushlightuserdata(g_L, reinterpret_cast<void*>(funcPtr));
+        lua_pushlightuserdata(L, reinterpret_cast<void*>(funcPtr));
         lua_pushstring(L, funcName);
         lua_pushcclosure(L, &lua_function_void_4args<P1, P2, P3, P4>, 2);
         lua_setglobal(L, funcName);
@@ -2417,7 +2424,7 @@ struct lua_bind {
     static void bind(const_str funcName, R (*funcPtr)(void)) {
         lua_State* L = getLuaState();
 
-        lua_pushlightuserdata(g_L, reinterpret_cast<void*>(funcPtr));
+        lua_pushlightuserdata(L, reinterpret_cast<void*>(funcPtr));
         lua_pushstring(L, funcName);
         lua_pushcclosure(L, &lua_function_R_0args<R>, 2);
         lua_setglobal(L, funcName);
@@ -2427,7 +2434,7 @@ struct lua_bind {
     static void bind(const_str funcName, R (*funcPtr)(P1)) {
         lua_State* L = getLuaState();
 
-        lua_pushlightuserdata(g_L, reinterpret_cast<void*>(funcPtr));
+        lua_pushlightuserdata(L, reinterpret_cast<void*>(funcPtr));
         lua_pushstring(L, funcName);
         lua_pushcclosure(L, &lua_function_R_1args<R, P1>, 2);
         lua_setglobal(L, funcName);
@@ -2437,7 +2444,7 @@ struct lua_bind {
     static void bind(const_str funcName, R (*funcPtr)(P1, P2)) {
         lua_State* L = getLuaState();
 
-        lua_pushlightuserdata(g_L, reinterpret_cast<void*>(funcPtr));
+        lua_pushlightuserdata(L, reinterpret_cast<void*>(funcPtr));
         lua_pushstring(L, funcName);
         lua_pushcclosure(L, &lua_function_R_2args<R, P1, P2>, 2);
         lua_setglobal(L, funcName);
@@ -2447,7 +2454,7 @@ struct lua_bind {
     static void bind(const_str funcName, R (*funcPtr)(P1, P2, P3)) {
         lua_State* L = getLuaState();
 
-        lua_pushlightuserdata(g_L, reinterpret_cast<void*>(funcPtr));
+        lua_pushlightuserdata(L, reinterpret_cast<void*>(funcPtr));
         lua_pushstring(L, funcName);
         lua_pushcclosure(L, &lua_function_R_3args<R, P1, P2, P3>, 2);
         lua_setglobal(L, funcName);
@@ -2457,7 +2464,7 @@ struct lua_bind {
     static void bind(const_str funcName, R (*funcPtr)(P1, P2, P3, P4)) {
         lua_State* L = getLuaState();
 
-        lua_pushlightuserdata(g_L, reinterpret_cast<void*>(funcPtr));
+        lua_pushlightuserdata(L, reinterpret_cast<void*>(funcPtr));
         lua_pushstring(L, funcName);
         lua_pushcclosure(L, &lua_function_R_4args<R, P1, P2, P3, P4>, 2);
         lua_setglobal(L, funcName);
@@ -2539,7 +2546,7 @@ NEKO_INLINE void neko_lua_fini(lua_State* m_ls) {
         int top = lua_gettop(m_ls);
         if (top != 0) {
             neko_lua_tool_t::dump_stack(m_ls);
-            NEKO_WARN("[;ua] luastack isn't 0 which means that we have a memory leak somewhere");
+            NEKO_WARN("[lua] luastack isn't 0 which means that we have a memory leak somewhere");
         }
         ::lua_close(m_ls);
         m_ls = NULL;
