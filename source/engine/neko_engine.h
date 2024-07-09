@@ -2,6 +2,8 @@
 #ifndef NEKO_ENGINE_H
 #define NEKO_ENGINE_H
 
+#include <flecs.h>
+
 #include "engine/neko.h"
 #include "engine/neko_asset.h"
 #include "engine/neko_platform.h"

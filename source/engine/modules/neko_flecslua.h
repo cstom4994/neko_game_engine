@@ -272,21 +272,21 @@ ECS_STRUCT(EcsLuaWorldStats, {
     EcsLuaGauge entity_count;
     EcsLuaGauge entity_not_alive_count;
 
-    EcsLuaGauge id_count;
+    // EcsLuaGauge id_count;
     EcsLuaGauge tag_id_count;
     EcsLuaGauge component_id_count;
     EcsLuaGauge pair_id_count;
-    EcsLuaGauge wildcard_id_count;
+    // EcsLuaGauge wildcard_id_count;
     EcsLuaGauge type_count;
     EcsLuaCounter id_create_count;
     EcsLuaCounter id_delete_count;
 
     EcsLuaGauge table_count;
     EcsLuaGauge empty_table_count;
-    EcsLuaGauge tag_table_count;
-    EcsLuaGauge trivial_table_count;
-    EcsLuaGauge table_record_count;
-    EcsLuaGauge table_storage_count;
+    // EcsLuaGauge tag_table_count;
+    // EcsLuaGauge trivial_table_count;
+    // EcsLuaGauge table_record_count;
+    // EcsLuaGauge table_storage_count;
     EcsLuaCounter table_create_count;
     EcsLuaCounter table_delete_count;
 
@@ -336,19 +336,19 @@ ECS_STRUCT(EcsLuaWorldStats, {
     EcsLuaCounter stack_free_count;
     EcsLuaCounter stack_outstanding_alloc_count;
 
-    EcsLuaCounter rest_request_count;
-    EcsLuaCounter rest_entity_count;
-    EcsLuaCounter rest_entity_error_count;
-    EcsLuaCounter rest_query_count;
-    EcsLuaCounter rest_query_error_count;
-    EcsLuaCounter rest_query_name_count;
-    EcsLuaCounter rest_query_name_error_count;
-    EcsLuaCounter rest_query_name_from_cache_count;
-    EcsLuaCounter rest_enable_count;
-    EcsLuaCounter rest_enable_error_count;
-    EcsLuaCounter rest_world_stats_count;
-    EcsLuaCounter rest_pipeline_stats_count;
-    EcsLuaCounter rest_stats_error_count;
+    // EcsLuaCounter rest_request_count;
+    // EcsLuaCounter rest_entity_count;
+    // EcsLuaCounter rest_entity_error_count;
+    // EcsLuaCounter rest_query_count;
+    // EcsLuaCounter rest_query_error_count;
+    // EcsLuaCounter rest_query_name_count;
+    // EcsLuaCounter rest_query_name_error_count;
+    // EcsLuaCounter rest_query_name_from_cache_count;
+    // EcsLuaCounter rest_enable_count;
+    // EcsLuaCounter rest_enable_error_count;
+    // EcsLuaCounter rest_world_stats_count;
+    // EcsLuaCounter rest_pipeline_stats_count;
+    // EcsLuaCounter rest_stats_error_count;
 
     EcsLuaCounter http_request_received_count;
     EcsLuaCounter http_request_invalid_count;

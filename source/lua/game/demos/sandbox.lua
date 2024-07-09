@@ -16,7 +16,7 @@ game_data.hot_code = {}
 
 local tiny = require "tiny"
 
-local b2_world = neko_b2_world {
+b2_world = neko_b2_world {
     gx = 0,
     gy = 9.81,
     meter = 80
@@ -302,6 +302,8 @@ function moveableSyncSystem:process(e, dt)
         M.client:send("gameobj_network_update", encoded)
     end
 
+    b2_world:step(dt)
+
     -- this_player.p = net
     -- this_player.pos = v2
 end
@@ -557,6 +559,21 @@ function tiledRenderSystem:onRemove(e)
     print("tiledRenderSystem:onRemove")
 end
 
+local phyRenderSystem = tiny.processingSystem()
+phyRenderSystem.isDrawSystem = true
+phyRenderSystem.filter = tiny.requireAll("vector2", "gameobj", "phy")
+function phyRenderSystem:process(e, dt)
+
+    local v2 = e.vector2
+    local obj = e.gameobj
+    local phy = e.phy
+
+    local phy_body = phy.body
+
+    phy_body:draw_fixtures()
+
+end
+
 local npcRenderSystem = tiny.processingSystem()
 npcRenderSystem.isDrawSystem = true
 npcRenderSystem.filter = tiny.requireAll("vector2", "velocity2", "npc", "gameobj")
@@ -721,7 +738,7 @@ local win_w, win_h
 -- local test_audio
 
 local world = tiny.world(npcSystem, playerSystem, moveableSyncSystem, tiledRenderSystem, npcRenderSystem,
-    playerRenderSystem)
+    playerRenderSystem, phyRenderSystem)
 
 M.sub_init = function()
 
@@ -769,11 +786,30 @@ M.sub_init = function()
         network_t = {
             net_id = 1,
             obj_typename = "player"
+        },
+        phy = {
+            body = b2_world:make_dynamic_body{
+                x = 360,
+                y = 420,
+                linear_damping = 25,
+                fixed_rotation = true
+            },
+            test = 1
         }
     })
 
-    local v2, v, player, player_obj, netid = eid1.vector2, eid1.velocity2, eid1.player, eid1.gameobj, eid1.network_t
+    local v2, v, player, player_obj, netid, player_phy = eid1.vector2, eid1.velocity2, eid1.player, eid1.gameobj,
+        eid1.network_t, eid1.phy
     phy_world:add(netid, v2.x, v2.y, player_obj.w * player.scale - 100, player_obj.h * player.scale - 40)
+
+    player_phy.body:make_circle_fixture{
+        y = -9,
+        radius = 10
+    }
+    player_phy.body:make_circle_fixture{
+        y = -6,
+        radius = 10
+    }
 
     -- phy_add_block(800 - 32, 120, 32, 600 - 32 * 2)
 
@@ -832,6 +868,9 @@ M.sub_init = function()
     -- safefunc()
 
     for i = 1, 10, 1 do
+        local w_x = common.random(1, 1000)
+        local w_y = common.random(1, 1000)
+
         local e = tiny.addEntity(world, {
             gameobj = {
                 name = "npc_pdx_" .. i,
@@ -840,8 +879,8 @@ M.sub_init = function()
                 sd = CObject.new_obj(1010 + i, true, true)
             },
             vector2 = {
-                x = common.random(1, 1000),
-                y = common.random(1, 1000)
+                x = w_x,
+                y = w_y
             },
             velocity2 = {
                 dx = 0,
@@ -856,14 +895,37 @@ M.sub_init = function()
             network_t = {
                 net_id = 2,
                 obj_typename = "pdx"
+            },
+            phy = {
+                body = b2_world:make_dynamic_body{
+                    x = w_x,
+                    y = w_y,
+                    linear_damping = 25,
+                    fixed_rotation = true
+                },
+                test = 1
             }
         })
 
-        local v2, v, player, player_obj, netid = e.vector2, e.velocity2, e.npc, e.gameobj, e.network_t
+        local v2, v, player, player_obj, netid, player_phy = e.vector2, e.velocity2, e.npc, e.gameobj, e.network_t,
+            e.phy
         phy_world:add(netid, v2.x, v2.y, player_obj.w * player.scale - 100, player_obj.h * player.scale - 40)
+
+        player_phy.body:make_circle_fixture{
+            y = -9,
+            radius = 10
+        }
+        player_phy.body:make_circle_fixture{
+            y = -6,
+            radius = 10
+        }
     end
 
     for i = 1, 5, 1 do
+
+        local w_x = common.random(1, 1000)
+        local w_y = common.random(1, 1000)
+
         local e = tiny.addEntity(world, {
             gameobj = {
                 name = "npc" .. i,
@@ -872,8 +934,8 @@ M.sub_init = function()
                 sd = CObject.new_obj(1010 + i, true, true)
             },
             vector2 = {
-                x = common.random(1, 1800),
-                y = common.random(1, 1800)
+                x = w_x,
+                y = w_y
             },
             velocity2 = {
                 dx = 0,
@@ -888,11 +950,30 @@ M.sub_init = function()
             network_t = {
                 net_id = 3,
                 obj_typename = "harvester"
+            },
+            phy = {
+                body = b2_world:make_dynamic_body{
+                    x = w_x,
+                    y = w_y,
+                    linear_damping = 25,
+                    fixed_rotation = true
+                },
+                test = 1
             }
         })
 
-        local v2, v, player, player_obj, netid = e.vector2, e.velocity2, e.npc, e.gameobj, e.network_t
+        local v2, v, player, player_obj, netid, player_phy = e.vector2, e.velocity2, e.npc, e.gameobj, e.network_t,
+            e.phy
         phy_world:add(netid, v2.x, v2.y, player_obj.w * player.scale - 100, player_obj.h * player.scale - 40)
+
+        player_phy.body:make_circle_fixture{
+            y = -9,
+            radius = 10
+        }
+        player_phy.body:make_circle_fixture{
+            y = -6,
+            radius = 10
+        }
     end
 end
 

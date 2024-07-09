@@ -828,10 +828,7 @@ void FlecsLuaImport(ecs_world_t *w) {
 
     ecs_set_scope(w, old_scope);
 
-    /*printf("gauge size %zu\n", sizeof(EcsLuaGauge));
-    printf("counter size %zu\n", sizeof(EcsLuaCounter));
-    printf("metric size %zu\n", sizeof(ecs_metric_t));
-    printf("worldstats: %zu, world_stats: %zu\n", sizeof(EcsWorldStats), sizeof(ecs_world_stats_t));*/
+    NEKO_TRACE("gauge size %zu;counter size %zu;metric size %zu;worldstats: %zu, world_stats: %zu",sizeof(EcsLuaGauge), sizeof(EcsLuaCounter), sizeof(ecs_metric_t), sizeof(EcsWorldStats), sizeof(ecs_world_stats_t));
 
     ecs_assert(sizeof(EcsLuaGauge) == sizeof(ecs_metric_t), ECS_INTERNAL_ERROR, NULL);
     ecs_assert(sizeof(EcsLuaCounter) == sizeof(ecs_metric_t), ECS_INTERNAL_ERROR, NULL);

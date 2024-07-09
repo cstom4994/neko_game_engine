@@ -221,7 +221,6 @@ NEKO_API_DECL void neko_tolua_boot(int argc, char** argv) {
 }
 
 #if 1
-#include "engine/luabind/asset.hpp"
 #include "engine/luabind/core.hpp"
 #include "engine/luabind/debug.hpp"
 #include "engine/luabind/ffi.hpp"

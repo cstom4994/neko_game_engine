@@ -894,11 +894,11 @@ NEKO_API_DECL void neko_render_texture_desc_query(neko_handle(neko_render_textur
 NEKO_API_DECL size_t neko_render_uniform_size_query(neko_handle(neko_render_uniform_t) hndl);
 
 // Resource In-Flight Update
-NEKO_API_DECL void neko_render_texture_request_update(neko_command_buffer_t* cb, neko_handle(neko_render_texture_t) hndl, neko_render_texture_desc_t* desc);
-NEKO_API_DECL void neko_render_vertex_buffer_request_update(neko_command_buffer_t* cb, neko_handle(neko_render_vertex_buffer_t) hndl, neko_render_vertex_buffer_desc_t* desc);
-NEKO_API_DECL void neko_render_index_buffer_request_update(neko_command_buffer_t* cb, neko_handle(neko_render_index_buffer_t) hndl, neko_render_index_buffer_desc_t* desc);
-NEKO_API_DECL void neko_render_uniform_buffer_request_update(neko_command_buffer_t* cb, neko_handle(neko_render_uniform_buffer_t) hndl, neko_render_uniform_buffer_desc_t* desc);
-NEKO_API_DECL void neko_render_storage_buffer_request_update(neko_command_buffer_t* cb, neko_handle(neko_render_storage_buffer_t) hndl, neko_render_storage_buffer_desc_t* desc);
+NEKO_API_DECL void neko_render_texture_request_update(neko_command_buffer_t* cb, neko_handle(neko_render_texture_t) hndl, neko_render_texture_desc_t desc);
+NEKO_API_DECL void neko_render_vertex_buffer_request_update(neko_command_buffer_t* cb, neko_handle(neko_render_vertex_buffer_t) hndl, neko_render_vertex_buffer_desc_t desc);
+NEKO_API_DECL void neko_render_index_buffer_request_update(neko_command_buffer_t* cb, neko_handle(neko_render_index_buffer_t) hndl, neko_render_index_buffer_desc_t desc);
+NEKO_API_DECL void neko_render_uniform_buffer_request_update(neko_command_buffer_t* cb, neko_handle(neko_render_uniform_buffer_t) hndl, neko_render_uniform_buffer_desc_t desc);
+NEKO_API_DECL void neko_render_storage_buffer_request_update(neko_command_buffer_t* cb, neko_handle(neko_render_storage_buffer_t) hndl, neko_render_storage_buffer_desc_t desc);
 
 // Pipeline / Pass / Bind / Draw
 NEKO_API_DECL void neko_render_renderpass_begin(neko_command_buffer_t* cb, neko_handle(neko_render_renderpass_t) hndl);
@@ -909,7 +909,7 @@ NEKO_API_DECL void neko_render_clear(neko_command_buffer_t* cb, neko_render_clea
 NEKO_API_DECL void neko_render_clear_ex(neko_command_buffer_t* cb, neko_render_clear_desc_t* desc);
 NEKO_API_DECL void neko_render_pipeline_bind(neko_command_buffer_t* cb, neko_handle(neko_render_pipeline_t) hndl);
 NEKO_API_DECL void neko_render_apply_bindings(neko_command_buffer_t* cb, neko_render_bind_desc_t* binds);
-NEKO_API_DECL void neko_render_draw(neko_command_buffer_t* cb, neko_render_draw_desc_t* desc);
+NEKO_API_DECL void neko_render_draw(neko_command_buffer_t* cb, neko_render_draw_desc_t desc);
 NEKO_API_DECL void neko_render_draw_batch(neko_command_buffer_t* cb, neko_render_batch_context_t* ctx, neko_render_batch_framebuffer_t* fb, s32 w, s32 h);
 NEKO_API_DECL void neko_render_dispatch_compute(neko_command_buffer_t* cb, u32 num_x_groups, u32 num_y_groups, u32 num_z_groups);
 

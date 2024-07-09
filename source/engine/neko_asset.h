@@ -692,7 +692,7 @@ typedef struct neko_image_t {
 } neko_image_t;
 
 NEKO_API_DECL neko_image_t neko_image_load(const_str path);
-NEKO_API_DECL neko_image_t neko_image_load_mem(const_str mem_data, size_t mem_size, const_str vpath);
+NEKO_API_DECL neko_image_t neko_image_load_mem(const void* mem_data, size_t mem_size, const_str vpath);
 NEKO_API_DECL void neko_image_free(neko_image_t img);
 
 #endif  // NEKO_ASSET_H

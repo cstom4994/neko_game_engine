@@ -2120,7 +2120,6 @@ static void profile_recv_thread(void *) {
     while (true) {
         TraceEvent e = g_profile.events.demand();
         if (e.name == nullptr) {
-            fputs("]", f);
             return;
         }
 

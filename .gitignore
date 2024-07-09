@@ -40,6 +40,8 @@ build.bat
 compile_commands.json
 imgui.ini
 CMakeSettings.json
+/profile.json
+/sandbox
 
 # clangd
 .clangd/

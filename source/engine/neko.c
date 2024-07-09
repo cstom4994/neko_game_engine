@@ -6,15 +6,6 @@
 #include "engine/neko_engine.h"
 #include "engine/neko_platform.h"
 
-#if defined(NEKO_DISCRETE_GPU)
-// Use discrete GPU by default.
-// http://developer.download.nvidia.com/devzone/devcenter/gamegraphics/files/OptimusRenderingPolicies.pdf
-__declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
-
-// https://gpuopen.com/learn/amdpowerxpressrequesthighperformance/
-__declspec(dllexport) unsigned long AmdPowerXpressRequestHighPerformance = 0x00000001;
-#endif
-
 NEKO_STATIC const char* __build_date = __DATE__;
 NEKO_STATIC const char* mon[12] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 NEKO_STATIC const char mond[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
@@ -79,24 +70,16 @@ NEKO_API_DECL void neko_printf(const char* fmt, ...) {
     va_end(args);
 }
 
-#define MAX_CALLBACKS 8
 #define LOG_USE_COLOR
-
-typedef struct {
-    neko_log_fn fn;
-    void* udata;
-    int level;
-} neko_log_callback;
 
 static struct {
     void* udata;
     neko_log_lock_fn lock;
     int level;
     bool quiet;
-    neko_log_callback callbacks[MAX_CALLBACKS];
 } L;
 
-static const char* level_strings[] = {"TRACE", "DEBUG", "INFO", "WARN", "ERROR"};
+static const char* level_strings[] = {"T", "D", "I", "W", "E"};
 
 static const char* level_colors[] = {"\x1b[94m", "\x1b[36m", "\x1b[32m", "\x1b[33m", "\x1b[31m"};
 
@@ -121,16 +104,6 @@ void log_set_lock(neko_log_lock_fn fn, void* udata) {
 
 void log_set_quiet(bool enable) { L.quiet = enable; }
 
-int log_add_callback(neko_log_fn fn, void* udata, int level) {
-    for (int i = 0; i < MAX_CALLBACKS; i++) {
-        if (!L.callbacks[i].fn) {
-            L.callbacks[i] = (neko_log_callback){fn, udata, level};
-            return 0;
-        }
-    }
-    return -1;
-}
-
 static void init_event(neko_log_event* ev, void* udata) {
     static u32 t = 0;
     if (!ev->time) {
@@ -153,32 +126,23 @@ void neko_log(int level, const char* file, int line, const char* fmt, ...) {
         init_event(&ev, stderr);
         va_start(ev.ap, fmt);
 #ifdef LOG_USE_COLOR
-        fprintf(ev.udata, "%s[%-5s]\x1b[0m \x1b[90m%s:%d:\x1b[0m ", level_colors[ev.level], level_strings[ev.level], neko_util_get_filename(ev.file), ev.line);
+        fprintf(ev.udata, "%s[%-1s]\x1b[0m \x1b[90m%s:%d:\x1b[0m ", level_colors[ev.level], level_strings[ev.level], neko_util_get_filename(ev.file), ev.line);
 #else
-        fprintf(ev.udata, "%-5s %s:%d: ", level_strings[ev.level], neko_util_get_filename(ev.file), ev.line);
+        fprintf(ev.udata, "%-1s %s:%d: ", level_strings[ev.level], neko_util_get_filename(ev.file), ev.line);
 #endif
         vfprintf(ev.udata, ev.fmt, ev.ap);
         fprintf(ev.udata, "\n");
         fflush(ev.udata);
         va_end(ev.ap);
 
+        // console callback
         if (NULL != neko_instance() && NULL != neko_instance()->console) {
             va_start(ev.ap, fmt);
             char buffer[512] = NEKO_DEFAULT_VAL();
             vsnprintf(buffer, 512, ev.fmt, ev.ap);
-            neko_console_printf(neko_instance()->console, "%-5s %s:%d: ", level_strings[ev.level], neko_util_get_filename(ev.file), ev.line);
+            neko_console_printf(neko_instance()->console, "%-1s %s:%d: ", level_strings[ev.level], neko_util_get_filename(ev.file), ev.line);
             neko_console_printf(neko_instance()->console, buffer);
             neko_console_printf(neko_instance()->console, "\n");
-            va_end(ev.ap);
-        }
-    }
-
-    for (int i = 0; i < MAX_CALLBACKS && L.callbacks[i].fn; i++) {
-        neko_log_callback* cb = &L.callbacks[i];
-        if (level >= cb->level) {
-            init_event(&ev, cb->udata);
-            va_start(ev.ap, fmt);
-            cb->fn(&ev);
             va_end(ev.ap);
         }
     }

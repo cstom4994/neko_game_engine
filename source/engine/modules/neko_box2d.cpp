@@ -259,34 +259,47 @@ void physics_push_userdata(lua_State* L, u64 ptr) {
 }
 
 void draw_fixtures_for_body(b2Body* body, f32 meter) {
-    // for (b2Fixture *f = body->GetFixtureList(); f != nullptr; f = f->GetNext()) {
-    //     switch (f->GetType()) {
-    //         case b2Shape::e_circle: {
-    //             b2CircleShape *circle = (b2CircleShape *)f->GetShape();
-    //             b2Vec2 pos = body->GetWorldPoint(circle->m_p);
-    //             draw_line_circle(pos.x * meter, pos.y * meter, circle->m_radius * meter);
-    //             break;
-    //         }
-    //         case b2Shape::e_polygon: {
-    //             b2PolygonShape *poly = (b2PolygonShape *)f->GetShape();
-    //             if (poly->m_count > 0) {
-    //                 sgl_disable_texture();
-    //                 sgl_begin_line_strip();
-    //                 renderer_apply_color();
-    //                 for (s32 i = 0; i < poly->m_count; i++) {
-    //                     b2Vec2 pos = body->GetWorldPoint(poly->m_vertices[i]);
-    //                     renderer_push_xy(pos.x * meter, pos.y * meter);
-    //                 }
-    //                 b2Vec2 pos = body->GetWorldPoint(poly->m_vertices[0]);
-    //                 renderer_push_xy(pos.x * meter, pos.y * meter);
-    //                 sgl_end();
-    //             }
-    //             break;
-    //         }
-    //         default:
-    //             break;
-    //     }
-    // }
+    for (b2Fixture* f = body->GetFixtureList(); f != nullptr; f = f->GetNext()) {
+        switch (f->GetType()) {
+            case b2Shape::e_circle: {
+                b2CircleShape* circle = (b2CircleShape*)f->GetShape();
+                b2Vec2 pos = body->GetWorldPoint(circle->m_p);
+                // draw_line_circle(pos.x * meter, pos.y * meter, circle->m_radius * meter);
+                neko_idraw_circle(&ENGINE_INTERFACE()->idraw, pos.x, pos.y, circle->m_radius, 20, 100, 150, 220, 255, R_PRIMITIVE_LINES);
+                break;
+            }
+            case b2Shape::e_polygon: {
+                b2PolygonShape* poly = (b2PolygonShape*)f->GetShape();
+                if (poly->m_count > 0) {
+                    auto idraw = &ENGINE_INTERFACE()->idraw;
+
+                    neko_idraw_begin(idraw, R_PRIMITIVE_LINES);
+                    neko_idraw_tc2f(idraw, 0.f, 0.f);
+                    neko_idraw_c4ub(idraw, 0, 255, 0, 255);
+
+                    // sgl_disable_texture();
+                    // sgl_begin_line_strip();
+                    // renderer_apply_color();
+                    for (s32 i = 0; i < poly->m_count; i++) {
+                        b2Vec2 pos = body->GetWorldPoint(poly->m_vertices[i]);
+                        // renderer_push_xy(pos.x * meter, pos.y * meter);
+                        neko_vec2_t pos_s = neko_vec2_scale(neko_v2(pos.x, pos.y), meter);
+                        neko_idraw_v3f(idraw, pos_s.x, pos_s.y, 0.f);
+                    }
+                    b2Vec2 pos = body->GetWorldPoint(poly->m_vertices[0]);
+                    // renderer_push_xy(pos.x * meter, pos.y * meter);
+                    neko_vec2_t pos_s = neko_vec2_scale(neko_v2(pos.x, pos.y), meter);
+                    neko_idraw_v3f(idraw, pos_s.x, pos_s.y, 0.f);
+                    // sgl_end();
+
+                    neko_idraw_end(idraw);
+                }
+                break;
+            }
+            default:
+                break;
+        }
+    }
 }
 
 // box2d fixture
@@ -753,7 +766,12 @@ static int neko_b2_world(lua_State* L) {
 }
 
 NEKO_STATIC int OnInit(lua_State* L) {
-    open_mt_b2_world(L);
+
+    lua_CFunction mt_funcs[] = {open_mt_b2_fixture, open_mt_b2_body, open_mt_b2_world};
+
+    for (u32 i = 0; i < NEKO_ARR_SIZE(mt_funcs); i++) {
+        mt_funcs[i](L);
+    }
 
     neko::lua_bind::bind("neko_b2_world", neko_b2_world);
 

@@ -11,7 +11,7 @@
 #include "engine/neko_platform.h"
 
 // stb_image
-// #define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
 neko_asset_t __neko_asset_handle_create_impl(u64 type_id, u32 asset_id, u32 importer_id) {
@@ -106,7 +106,7 @@ void neko_asset_default_load_from_file(const_str path, void *out) {
 #include <imstb_rectpack.h>
 #include <imstb_truetype.h>
 
-NEKO_API_DECL neko_image_t neko_image_load_mem(const_str mem_data, size_t mem_size, const_str vpath) {
+NEKO_API_DECL neko_image_t neko_image_load_mem(const void* mem_data, size_t mem_size, const_str vpath) {
     char temp_file_extension_buffer[16] = {0};
     neko_util_get_file_extension(temp_file_extension_buffer, sizeof(temp_file_extension_buffer), vpath);
     if (neko_string_compare_equal(temp_file_extension_buffer, "ase") || neko_string_compare_equal(temp_file_extension_buffer, "aseprite")) {

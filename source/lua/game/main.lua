@@ -6,6 +6,8 @@ local debugging = require("neko.debugging")
 
 neko_ffi = require("neko.ffi")
 
+ecs = require "ecs"
+
 -- fake game proxy
 local fake_game = {
     sub_init_thread = function()
@@ -78,6 +80,18 @@ game_init = function()
     -- pixelui = neko.pixelui_create()
 
     play.sub_init()
+
+    local m = require "module"
+
+    local ents = ecs.bulk_new(m.Position, 10)
+
+    for i in 1, #ents do
+        ecs.set(ents[i], m.Position, {
+            x = i * 2,
+            y = i * 3
+        })
+    end
+
 end
 
 game_fini = function()
@@ -97,6 +111,8 @@ game_loop = function(dt)
         play.sub_update(dt)
         play.test_update()
     end
+
+    ecs.progress(dt)
 
     if neko_key_pressed("NEKO_KEYCODE_F4") then
         require("test")

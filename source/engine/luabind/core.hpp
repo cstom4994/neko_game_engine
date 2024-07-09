@@ -452,6 +452,9 @@ LUA_FUNCTION(__neko_bind_tiled_create) {
 }
 
 LUA_FUNCTION(__neko_bind_tiled_render) {
+
+    PROFILE_FUNC();
+
     neko_tiled_renderer* tiled_render = (neko_tiled_renderer*)lua_touserdata(L, 1);
 
     neko_renderpass_t rp = R_RENDER_PASS_DEFAULT;
@@ -471,6 +474,8 @@ LUA_FUNCTION(__neko_bind_tiled_render) {
     neko_render_renderpass_begin(cb, rp);
     {
         neko_tiled_render_begin(cb, tiled_render);
+
+        PROFILE_BLOCK("tiled_render");
 
         for (u32 i = 0; i < neko_dyn_array_size(tiled_render->map.layers); i++) {
             layer_t* layer = tiled_render->map.layers + i;
@@ -1155,19 +1160,15 @@ Type* type_of<CGameObject>() {
 
 DEFINE_IMGUI_BEGIN(template <>, CGameObject) {
     // neko::static_refl::neko_type_info<CGameObject>::ForEachVarOf(var, [&](const auto& field, auto&& value) { neko::imgui::Auto(value, std::string(field.name)); });
-
-    auto f = [](std::string_view name, neko::reflection::Any& value) {
+    neko::reflection::Any v = var;
+    v.foreach ([](std::string_view name, neko::reflection::Any& value) {
         // if (value.GetType() == neko::reflection::type_of<std::string_view>()) {
         //     std::cout << name << " = " << value.cast<std::string_view>() << std::endl;
         // } else if (value.GetType() == neko::reflection::type_of<std::size_t>()) {
         //     std::cout << name << " = " << value.cast<std::size_t>() << std::endl;
         // }
         neko::imgui::Auto(value, std::string(name));
-    };
-
-    neko::reflection::Any v = var;
-
-    v.foreach (f);
+    });
 }
 DEFINE_IMGUI_END();
 
@@ -2168,7 +2169,7 @@ LUA_FUNCTION(__neko_bind_render_draw) {
         lua_pop(L, 1);
     }
 
-    neko_render_draw(&ENGINE_INTERFACE()->cb, &draw_desc);
+    neko_render_draw(&ENGINE_INTERFACE()->cb, draw_desc);
     return 0;
 }
 
@@ -2453,6 +2454,30 @@ LUA_FUNCTION(__neko_bind_print) {
     }
     NEKO_INFO("[lua] %s", str.c_str());
     return 0;
+}
+
+LUA_FUNCTION(__neko_bind_vfs_read_file) {
+    const_str path = lua_tostring(L, 1);
+
+    neko::string str;
+
+    const_str vpks[] = {NEKO_PACK_GAMEDATA, NEKO_PACK_LUACODE};
+    bool ok = false;
+    for (auto vpk : vpks) {
+        ok = neko::vfs_read_entire_file(vpk, &str, path);
+        if (ok) break;
+    }
+
+    if (ok) {
+        const_str data = str.data;
+        lua_pushstring(L, data);
+        neko_defer(neko_safe_free(str.data));
+        return 1;
+    } else {
+        const char* error_message = "todo";
+        lua_pushstring(L, error_message);
+        return lua_error(L);
+    }
 }
 
 void __neko_lua_bug(const_str message) { NEKO_INFO("[lua] %s", message); }
@@ -3203,14 +3228,14 @@ static int open_embed_core(lua_State* L) {
             {"render_display_size", __neko_bind_render_display_size},
             {"gen_tex", test_tex},
 
-            // {"b2_world", neko_b2_world},
-
             {"get_channel", __neko_bind_get_channel},
             {"select", __neko_bind_select},
             {"thread_id", __neko_bind_thread_id},
             {"thread_sleep", __neko_bind_thread_sleep},
             {"make_thread", __neko_bind_make_thread},
             {"make_channel", __neko_bind_make_channel},
+
+            {"vfs_read_file", __neko_bind_vfs_read_file},
 
             {"cvar", __neko_bind_cvar},
             {"print", __neko_bind_print},

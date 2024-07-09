@@ -11,6 +11,7 @@
 #include <vector>
 
 // engine
+#include "engine/modules/neko_flecslua.h"
 #include "engine/neko.h"
 #include "engine/neko.hpp"
 #include "engine/neko_api.hpp"
@@ -34,6 +35,9 @@ class sandbox_game;
 class neko_filesystem_t;
 
 typedef struct neko_client_userdata_t {
+
+    ecs_world_t *w;
+
     neko_imgui_context_t imgui = NEKO_DEFAULT_VAL();
     neko_handle(neko_render_renderpass_t) main_rp = {0};
     neko_handle(neko_render_framebuffer_t) main_fbo = {0};
@@ -173,8 +177,6 @@ void game_init(neko_client_userdata_t *game_userdata) {
         neko_pf_set_window_title(neko_pf_main_window(), v.cast<neko_pf_running_desc_t>().title);
     }
 
-    neko_lua_call(neko_instance()->L, "game_init");
-
     bool ok = neko_pack_read("gamedir/res.pack", 0, false, &ENGINE_INTERFACE()->pack);
     NEKO_ASSERT(ok == true);
 
@@ -260,6 +262,14 @@ void game_init(neko_client_userdata_t *game_userdata) {
 
     // game_userdata->init_work_thread = thread_init(init_work, &game_userdata->init_thread_flag, "init_work_thread", THREAD_STACK_SIZE_DEFAULT);
 
+    game_userdata->w = ecs_init();
+
+    ECS_IMPORT(game_userdata->w, FlecsLua);
+
+    ecs_lua_set_state(game_userdata->w, neko_instance()->L);
+
+    neko_lua_call(neko_instance()->L, "game_init");
+
     neko::timer timer;
     timer.start();
     neko_lua_call(neko_instance()->L, "game_init_thread");
@@ -310,7 +320,7 @@ void game_loop(neko_client_userdata_t *game_userdata) {
     //     }
     //     neko_render_renderpass_end(&ENGINE_INTERFACE()->cb);
 
-    // } else 
+    // } else
     {
 
         // NEKO_STATIC int init_retval = 1;
@@ -402,6 +412,16 @@ void game_loop(neko_client_userdata_t *game_userdata) {
 
                 ImGui::EndMenu();
             }
+
+            ImGui::TextColored(ImVec4(0.19f, 1.f, 0.196f, 1.f), "nEKO");
+
+            if (ImGui::BeginMenu("File")) {
+                ImGui::EndMenu();
+            }
+
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - 210 - ImGui::GetScrollX());
+            ImGui::Text("%.1f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+
             ImGui::EndMainMenuBar();
         }
 
@@ -463,6 +483,8 @@ void game_fini(neko_client_userdata_t *game_userdata) {
     neko_imgui_shutdown(&game_userdata->imgui);
     neko_ui_free(&ENGINE_INTERFACE()->ui);
     neko_pack_destroy(&ENGINE_INTERFACE()->pack);
+
+    // ecs_fini(game_userdata->w);
 
 #ifdef USE_PROFILER
     neko::profile_shutdown();
@@ -820,9 +842,4 @@ void neko_app(lua_State *L) {
                 game_fini(ud);
                 return 0;
             });
-
-    neko_instance()->update = +[]() { neko_lua_call(neko_instance()->L, "boot_update"); };
-    neko_instance()->post_update = +[]() {};
-    neko_instance()->shutdown = +[]() { neko_lua_call(neko_instance()->L, "boot_fini"); };
-    neko_instance()->init = +[]() { neko_lua_call(neko_instance()->L, "boot_init"); };
 }

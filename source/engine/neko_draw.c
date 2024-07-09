@@ -610,7 +610,7 @@ void neko_idraw_flush(neko_immediate_draw_t* neko_idraw) {
     vdesc.size = neko_byte_buffer_size(&neko_idraw->vertices);
     vdesc.usage = R_BUFFER_USAGE_STREAM;
 
-    neko_render_vertex_buffer_request_update(&neko_idraw->commands, neko_idraw()->vbo, &vdesc);
+    neko_render_vertex_buffer_request_update(&neko_idraw->commands, neko_idraw()->vbo, vdesc);
 
     // 计算绘制数量
     size_t vsz = sizeof(neko_immediate_vert_t);
@@ -666,7 +666,7 @@ void neko_idraw_flush(neko_immediate_draw_t* neko_idraw) {
     neko_render_draw_desc_t draw = NEKO_DEFAULT_VAL();
     draw.start = 0;
     draw.count = ct;
-    neko_render_draw(&neko_idraw->commands, &draw);
+    neko_render_draw(&neko_idraw->commands, draw);
 
     // 绘制后清理缓冲区
     neko_byte_buffer_clear(&neko_idraw->vertices);
@@ -2753,7 +2753,7 @@ NEKO_API_DECL void neko_draw_mesh_primitive_draw_layout(neko_command_buffer_t* c
     ddesc.instances = instance_count;
 
     neko_render_apply_bindings(cb, &binds);
-    neko_render_draw(cb, &ddesc);
+    neko_render_draw(cb, ddesc);
 }
 
 NEKO_API_DECL void neko_draw_mesh_draw_layout(neko_command_buffer_t* cb, neko_draw_mesh_t* mesh, neko_draw_mesh_layout_t* layout, size_t layout_size) {

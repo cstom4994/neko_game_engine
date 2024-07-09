@@ -2469,7 +2469,7 @@ NEKO_API_DECL void neko_render_set_view_scissor(neko_command_buffer_t* cb, u32 x
     });
 }
 
-NEKO_API_DECL void neko_render_texture_request_update(neko_command_buffer_t* cb, neko_handle(neko_render_texture_t) hndl, neko_render_texture_desc_t* desc) {
+NEKO_API_DECL void neko_render_texture_request_update(neko_command_buffer_t* cb, neko_handle(neko_render_texture_t) hndl, neko_render_texture_desc_t desc) {
     // Write command
     neko_byte_buffer_write(&cb->commands, u32, (u32)NEKO_OPENGL_OP_REQUEST_TEXTURE_UPDATE);
     cb->num_commands++;
@@ -2477,7 +2477,7 @@ NEKO_API_DECL void neko_render_texture_request_update(neko_command_buffer_t* cb,
     u32 num_comps = 0;
     size_t data_type_size = 0;
     size_t total_size = 0;
-    switch (desc->format) {
+    switch (desc.format) {
         default:
         case R_TEXTURE_FORMAT_RGBA8:
             num_comps = 4;
@@ -2535,11 +2535,11 @@ NEKO_API_DECL void neko_render_texture_request_update(neko_command_buffer_t* cb,
             // NOTE: Because Apple is a shit company, I have to section this off and provide support for 4.1 only features.
             // case R_TEXTURE_FORMAT_STENCIL8:            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT8, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
     }
-    total_size = desc->width * desc->height * num_comps * data_type_size;
+    total_size = desc.width * desc.height * num_comps * data_type_size;
     neko_byte_buffer_write(&cb->commands, u32, hndl.id);
-    neko_byte_buffer_write(&cb->commands, neko_render_texture_desc_t, *desc);
+    neko_byte_buffer_write(&cb->commands, neko_render_texture_desc_t, desc);
     neko_byte_buffer_write(&cb->commands, size_t, total_size);
-    neko_byte_buffer_write_bulk(&cb->commands, *desc->data, total_size);
+    neko_byte_buffer_write_bulk(&cb->commands, *desc.data, total_size);
 }
 
 void __neko_render_update_buffer_internal(neko_command_buffer_t* cb, u32 id, neko_render_buffer_type type, neko_render_buffer_usage_type usage, size_t sz, size_t offset,
@@ -2564,40 +2564,40 @@ void __neko_render_update_buffer_internal(neko_command_buffer_t* cb, u32 id, nek
     neko_byte_buffer_write_bulk(&cb->commands, data, sz);
 }
 
-NEKO_API_DECL void neko_render_vertex_buffer_request_update(neko_command_buffer_t* cb, neko_handle(neko_render_vertex_buffer_t) hndl, neko_render_vertex_buffer_desc_t* desc) {
+NEKO_API_DECL void neko_render_vertex_buffer_request_update(neko_command_buffer_t* cb, neko_handle(neko_render_vertex_buffer_t) hndl, neko_render_vertex_buffer_desc_t desc) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(render)->user_data;
 
     // Return if handle not valid
     if (!hndl.id) return;
 
-    __neko_render_update_buffer_internal(cb, hndl.id, R_BUFFER_VERTEX, desc->usage, desc->size, desc->update.offset, desc->update.type, desc->data);
+    __neko_render_update_buffer_internal(cb, hndl.id, R_BUFFER_VERTEX, desc.usage, desc.size, desc.update.offset, desc.update.type, desc.data);
 }
 
-NEKO_API_DECL void neko_render_index_buffer_request_update(neko_command_buffer_t* cb, neko_handle(neko_render_index_buffer_t) hndl, neko_render_index_buffer_desc_t* desc) {
+NEKO_API_DECL void neko_render_index_buffer_request_update(neko_command_buffer_t* cb, neko_handle(neko_render_index_buffer_t) hndl, neko_render_index_buffer_desc_t desc) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(render)->user_data;
 
     // Return if handle not valid
     if (!hndl.id) return;
 
-    __neko_render_update_buffer_internal(cb, hndl.id, R_BUFFER_INDEX, desc->usage, desc->size, desc->update.offset, desc->update.type, desc->data);
+    __neko_render_update_buffer_internal(cb, hndl.id, R_BUFFER_INDEX, desc.usage, desc.size, desc.update.offset, desc.update.type, desc.data);
 }
 
-NEKO_API_DECL void neko_render_uniform_buffer_request_update(neko_command_buffer_t* cb, neko_handle(neko_render_uniform_buffer_t) hndl, neko_render_uniform_buffer_desc_t* desc) {
+NEKO_API_DECL void neko_render_uniform_buffer_request_update(neko_command_buffer_t* cb, neko_handle(neko_render_uniform_buffer_t) hndl, neko_render_uniform_buffer_desc_t desc) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(render)->user_data;
 
     // Return if handle not valid
     if (!hndl.id) return;
 
-    __neko_render_update_buffer_internal(cb, hndl.id, R_BUFFER_UNIFORM, desc->usage, desc->size, desc->update.offset, desc->update.type, desc->data);
+    __neko_render_update_buffer_internal(cb, hndl.id, R_BUFFER_UNIFORM, desc.usage, desc.size, desc.update.offset, desc.update.type, desc.data);
 }
 
-NEKO_API_DECL void neko_render_storage_buffer_request_update(neko_command_buffer_t* cb, neko_handle(neko_render_storage_buffer_t) hndl, neko_render_storage_buffer_desc_t* desc) {
+NEKO_API_DECL void neko_render_storage_buffer_request_update(neko_command_buffer_t* cb, neko_handle(neko_render_storage_buffer_t) hndl, neko_render_storage_buffer_desc_t desc) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(render)->user_data;
 
     // Return if handle not valid
     if (!hndl.id) return;
 
-    __neko_render_update_buffer_internal(cb, hndl.id, R_BUFFER_SHADER_STORAGE, desc->usage, desc->size, desc->update.offset, desc->update.type, desc->data);
+    __neko_render_update_buffer_internal(cb, hndl.id, R_BUFFER_SHADER_STORAGE, desc.usage, desc.size, desc.update.offset, desc.update.type, desc.data);
 }
 
 void neko_render_apply_bindings(neko_command_buffer_t* cb, neko_render_bind_desc_t* binds) {
@@ -2690,14 +2690,14 @@ void neko_render_pipeline_bind(neko_command_buffer_t* cb, neko_handle(neko_rende
     __ogl_push_command(cb, NEKO_OPENGL_OP_BIND_PIPELINE, { neko_byte_buffer_write(&cb->commands, u32, hndl.id); });
 }
 
-void neko_render_draw(neko_command_buffer_t* cb, neko_render_draw_desc_t* desc) {
+void neko_render_draw(neko_command_buffer_t* cb, neko_render_draw_desc_t desc) {
     __ogl_push_command(cb, NEKO_OPENGL_OP_DRAW, {
-        neko_byte_buffer_write(&cb->commands, u32, desc->start);
-        neko_byte_buffer_write(&cb->commands, u32, desc->count);
-        neko_byte_buffer_write(&cb->commands, u32, desc->instances);
-        neko_byte_buffer_write(&cb->commands, u32, desc->base_vertex);
-        neko_byte_buffer_write(&cb->commands, u32, desc->range.start);
-        neko_byte_buffer_write(&cb->commands, u32, desc->range.end);
+        neko_byte_buffer_write(&cb->commands, u32, desc.start);
+        neko_byte_buffer_write(&cb->commands, u32, desc.count);
+        neko_byte_buffer_write(&cb->commands, u32, desc.instances);
+        neko_byte_buffer_write(&cb->commands, u32, desc.base_vertex);
+        neko_byte_buffer_write(&cb->commands, u32, desc.range.start);
+        neko_byte_buffer_write(&cb->commands, u32, desc.range.end);
     });
 }
 

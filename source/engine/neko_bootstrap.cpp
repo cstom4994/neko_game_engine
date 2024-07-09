@@ -1063,6 +1063,7 @@ NEKO_API_DECL neko_instance_t *neko_instance() {
 
 Neko_OnModuleLoad(Sound);
 Neko_OnModuleLoad(Physics);
+Neko_OnModuleLoad(Network);
 
 NEKO_API_DECL lua_State *neko_lua_bootstrap(int argc, char **argv) {
 
@@ -1088,6 +1089,8 @@ NEKO_API_DECL lua_State *neko_lua_bootstrap(int argc, char **argv) {
         sss = Neko_OnModuleLoad_Sound(&m, ENGINE_INTERFACE());
         neko_dyn_array_push(module_list, m);
         sss = Neko_OnModuleLoad_Physics(&m, ENGINE_INTERFACE());
+        neko_dyn_array_push(module_list, m);
+        sss = Neko_OnModuleLoad_Network(&m, ENGINE_INTERFACE());
         neko_dyn_array_push(module_list, m);
 
         for (u32 i = 0; i < neko_dyn_array_size(module_list); ++i) {
@@ -1235,6 +1238,11 @@ NEKO_API_DECL neko_instance_t *neko_create(int argc, char **argv) {
 
         neko_app(neko_instance()->L);
 
+        neko_instance()->update = +[]() { neko_lua_call(neko_instance()->L, "boot_update"); };
+        neko_instance()->post_update = +[]() {};
+        neko_instance()->shutdown = +[]() { neko_lua_call(neko_instance()->L, "boot_fini"); };
+        neko_instance()->init = +[]() { neko_lua_call(neko_instance()->L, "boot_init"); };
+
         // neko_lua_safe_dofile(neko_instance()->L, "boot");
 
         std::string boot_code = R"lua(
@@ -1292,6 +1300,8 @@ NEKO_API_DECL void neko_frame() {
     PROFILE_FUNC();
 
     {
+        PROFILE_BLOCK("main_loop");
+
         //        uintptr_t profile_id_engine;
         //        profile_id_engine = neko_profiler_begin_scope(__FILE__, __LINE__, "engine");
 
@@ -1309,7 +1319,7 @@ NEKO_API_DECL void neko_frame() {
 
         if (win->focus /*|| neko_instance()->game.window.running_background*/) {
 
-            PROFILE_BLOCK("main_loop");
+            PROFILE_BLOCK("main_update");
 
             neko_instance()->update();
 

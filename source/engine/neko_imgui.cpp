@@ -394,14 +394,14 @@ void neko_imgui_render_window(neko_imgui_context_t* neko_imgui, ImDrawData* draw
             vdesc.usage = R_BUFFER_USAGE_STREAM;
             vdesc.data = cmd_list->VtxBuffer.Data;
             vdesc.size = cmd_list->VtxBuffer.Size * sizeof(ImDrawVert);
-            neko_render_vertex_buffer_request_update(neko_imgui->cb, neko_imgui->vbo, &vdesc);
+            neko_render_vertex_buffer_request_update(neko_imgui->cb, neko_imgui->vbo, vdesc);
 
             // Update index buffer
             neko_render_index_buffer_desc_t idesc = {};
             idesc.usage = R_BUFFER_USAGE_STREAM;
             idesc.data = cmd_list->IdxBuffer.Data;
             idesc.size = cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx);
-            neko_render_index_buffer_request_update(neko_imgui->cb, neko_imgui->ibo, &idesc);
+            neko_render_index_buffer_request_update(neko_imgui->cb, neko_imgui->ibo, idesc);
 
             // Iterate through command buffer
             for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++) {
@@ -446,7 +446,7 @@ void neko_imgui_render_window(neko_imgui_context_t* neko_imgui, ImDrawData* draw
                         neko_render_draw_desc_t draw = {};
                         draw.start = (size_t)(intptr_t)(pcmd->IdxOffset * sizeof(ImDrawIdx));
                         draw.count = (size_t)pcmd->ElemCount;
-                        neko_render_draw(neko_imgui->cb, &draw);
+                        neko_render_draw(neko_imgui->cb, draw);
                     }
                 }
             }
