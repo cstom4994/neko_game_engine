@@ -8,9 +8,7 @@
 #include <string.h>
 
 #include "engine/neko.h"
-#include "engine/neko.hpp"
 #include "engine/neko_lua.h"
-#include "engine/neko_lua.hpp"
 #include "neko.h"
 #include "neko_engine.h"
 #include "neko_lua.h"
@@ -1172,6 +1170,12 @@ NEKO_API_DECL neko_instance_t *neko_create(int argc, char **argv) {
         neko_instance()->L = neko_lua_bootstrap(argc, argv);
 
         lua_channels_setup();
+
+        neko_instance()->W = ecs_init();
+
+        ECS_IMPORT(neko_instance()->W, FlecsLua);
+
+        ecs_lua_set_state(neko_instance()->W, neko_instance()->L);
 
         {
             u32 w, h;

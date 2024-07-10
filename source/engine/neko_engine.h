@@ -4,6 +4,7 @@
 
 #include <flecs.h>
 
+#include "engine/modules/neko_flecslua.h"
 #include "engine/neko.h"
 #include "engine/neko_asset.h"
 #include "engine/neko_platform.h"
@@ -73,6 +74,7 @@ typedef struct neko_instance_t {
 
     Neko_ModuleInterface module_interface;
 
+    ecs_world_t* W;
     lua_State* L;
 } neko_instance_t;
 

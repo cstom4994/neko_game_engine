@@ -7,6 +7,1069 @@
 #include "engine/neko_engine.h"
 #include "engine/neko_platform.h"
 
+#ifdef NEKO_GL
+
+#if defined(NEKO_PF_WIN)
+static HMODULE libGL;
+NEKO_API_DECL void* neko_gl_get_proc_address(const char* name) {
+    void* proc = wglGetProcAddress(name);
+    if (!proc) {
+        proc = GetProcAddress(libGL, name);
+    }
+    return proc;
+}
+#elif defined(NEKO_PF_LINUX)
+// #include <GL/glx.h>
+#include <dlfcn.h>
+static void* libGL;
+extern "C" void (*glXGetProcAddress(const GLubyte* procname))(void);
+NEKO_API_DECL void* neko_gl_get_proc_address(const char* name) { return (void*)glXGetProcAddress((const GLubyte*)name); }
+#elif defined(NEKO_PF_APPLE)
+#include <dlfcn.h>
+static void* libGL;
+NEKO_API_DECL void* neko_gl_get_proc_address(const char* name) { return (void*)dlsym(libGL, name); }
+#else
+#error neko_gl_get_proc_address() not yet implemented for this platform
+#endif
+
+PFNGLACTIVESHADERPROGRAMPROC glActiveShaderProgram = NULL;
+PFNGLACTIVETEXTUREPROC glActiveTexture = NULL;
+PFNGLATTACHSHADERPROC glAttachShader = NULL;
+PFNGLBEGINCONDITIONALRENDERPROC glBeginConditionalRender = NULL;
+PFNGLBEGINQUERYPROC glBeginQuery = NULL;
+PFNGLBEGINQUERYINDEXEDPROC glBeginQueryIndexed = NULL;
+PFNGLBEGINTRANSFORMFEEDBACKPROC glBeginTransformFeedback = NULL;
+PFNGLBINDATTRIBLOCATIONPROC glBindAttribLocation = NULL;
+PFNGLBINDBUFFERPROC glBindBuffer = NULL;
+PFNGLBINDBUFFERBASEPROC glBindBufferBase = NULL;
+PFNGLBINDBUFFERRANGEPROC glBindBufferRange = NULL;
+PFNGLBINDFRAGDATALOCATIONPROC glBindFragDataLocation = NULL;
+PFNGLBINDFRAGDATALOCATIONINDEXEDPROC glBindFragDataLocationIndexed = NULL;
+PFNGLBINDFRAMEBUFFERPROC glBindFramebuffer = NULL;
+PFNGLBINDPROGRAMPIPELINEPROC glBindProgramPipeline = NULL;
+PFNGLBINDRENDERBUFFERPROC glBindRenderbuffer = NULL;
+PFNGLBINDSAMPLERPROC glBindSampler = NULL;
+PFNGLBINDTEXTUREPROC glBindTexture = NULL;
+PFNGLBINDTRANSFORMFEEDBACKPROC glBindTransformFeedback = NULL;
+PFNGLBINDVERTEXARRAYPROC glBindVertexArray = NULL;
+PFNGLBLENDCOLORPROC glBlendColor = NULL;
+PFNGLBLENDEQUATIONPROC glBlendEquation = NULL;
+PFNGLBLENDEQUATIONSEPARATEPROC glBlendEquationSeparate = NULL;
+PFNGLBLENDEQUATIONSEPARATEIPROC glBlendEquationSeparatei = NULL;
+PFNGLBLENDEQUATIONIPROC glBlendEquationi = NULL;
+PFNGLBLENDFUNCPROC glBlendFunc = NULL;
+PFNGLBLENDFUNCSEPARATEPROC glBlendFuncSeparate = NULL;
+PFNGLBLENDFUNCSEPARATEIPROC glBlendFuncSeparatei = NULL;
+PFNGLBLENDFUNCIPROC glBlendFunci = NULL;
+PFNGLBLITFRAMEBUFFERPROC glBlitFramebuffer = NULL;
+PFNGLBUFFERDATAPROC glBufferData = NULL;
+PFNGLBUFFERSUBDATAPROC glBufferSubData = NULL;
+PFNGLCHECKFRAMEBUFFERSTATUSPROC glCheckFramebufferStatus = NULL;
+PFNGLCLAMPCOLORPROC glClampColor = NULL;
+PFNGLCLEARPROC glClear = NULL;
+PFNGLCLEARBUFFERFIPROC glClearBufferfi = NULL;
+PFNGLCLEARBUFFERFVPROC glClearBufferfv = NULL;
+PFNGLCLEARBUFFERIVPROC glClearBufferiv = NULL;
+PFNGLCLEARBUFFERUIVPROC glClearBufferuiv = NULL;
+PFNGLCLEARCOLORPROC glClearColor = NULL;
+PFNGLCLEARDEPTHPROC glClearDepth = NULL;
+PFNGLCLEARDEPTHFPROC glClearDepthf = NULL;
+PFNGLCLEARSTENCILPROC glClearStencil = NULL;
+PFNGLCLIENTWAITSYNCPROC glClientWaitSync = NULL;
+PFNGLCOLORMASKPROC glColorMask = NULL;
+PFNGLCOLORMASKIPROC glColorMaski = NULL;
+// PFNGLCOLORP3UIPROC glColorP3ui = NULL;
+// PFNGLCOLORP3UIVPROC glColorP3uiv = NULL;
+// PFNGLCOLORP4UIPROC glColorP4ui = NULL;
+// PFNGLCOLORP4UIVPROC glColorP4uiv = NULL;
+PFNGLCOMPILESHADERPROC glCompileShader = NULL;
+PFNGLCOMPRESSEDTEXIMAGE1DPROC glCompressedTexImage1D = NULL;
+PFNGLCOMPRESSEDTEXIMAGE2DPROC glCompressedTexImage2D = NULL;
+PFNGLCOMPRESSEDTEXIMAGE3DPROC glCompressedTexImage3D = NULL;
+PFNGLCOMPRESSEDTEXSUBIMAGE1DPROC glCompressedTexSubImage1D = NULL;
+PFNGLCOMPRESSEDTEXSUBIMAGE2DPROC glCompressedTexSubImage2D = NULL;
+PFNGLCOMPRESSEDTEXSUBIMAGE3DPROC glCompressedTexSubImage3D = NULL;
+PFNGLCOPYBUFFERSUBDATAPROC glCopyBufferSubData = NULL;
+PFNGLCOPYTEXIMAGE1DPROC glCopyTexImage1D = NULL;
+PFNGLCOPYTEXIMAGE2DPROC glCopyTexImage2D = NULL;
+PFNGLCOPYTEXSUBIMAGE1DPROC glCopyTexSubImage1D = NULL;
+PFNGLCOPYTEXSUBIMAGE2DPROC glCopyTexSubImage2D = NULL;
+PFNGLCOPYTEXSUBIMAGE3DPROC glCopyTexSubImage3D = NULL;
+PFNGLCREATEPROGRAMPROC glCreateProgram = NULL;
+PFNGLCREATESHADERPROC glCreateShader = NULL;
+PFNGLCREATESHADERPROGRAMVPROC glCreateShaderProgramv = NULL;
+PFNGLCULLFACEPROC glCullFace = NULL;
+PFNGLDELETEBUFFERSPROC glDeleteBuffers = NULL;
+PFNGLDELETEFRAMEBUFFERSPROC glDeleteFramebuffers = NULL;
+PFNGLDELETEPROGRAMPROC glDeleteProgram = NULL;
+PFNGLDELETEPROGRAMPIPELINESPROC glDeleteProgramPipelines = NULL;
+PFNGLDELETEQUERIESPROC glDeleteQueries = NULL;
+PFNGLDELETERENDERBUFFERSPROC glDeleteRenderbuffers = NULL;
+PFNGLDELETESAMPLERSPROC glDeleteSamplers = NULL;
+PFNGLDELETESHADERPROC glDeleteShader = NULL;
+PFNGLDELETESYNCPROC glDeleteSync = NULL;
+PFNGLDELETETEXTURESPROC glDeleteTextures = NULL;
+PFNGLDELETETRANSFORMFEEDBACKSPROC glDeleteTransformFeedbacks = NULL;
+PFNGLDELETEVERTEXARRAYSPROC glDeleteVertexArrays = NULL;
+PFNGLDEPTHFUNCPROC glDepthFunc = NULL;
+PFNGLDEPTHMASKPROC glDepthMask = NULL;
+PFNGLDEPTHRANGEPROC glDepthRange = NULL;
+PFNGLDEPTHRANGEARRAYVPROC glDepthRangeArrayv = NULL;
+PFNGLDEPTHRANGEINDEXEDPROC glDepthRangeIndexed = NULL;
+PFNGLDEPTHRANGEFPROC glDepthRangef = NULL;
+PFNGLDETACHSHADERPROC glDetachShader = NULL;
+PFNGLDISABLEPROC glDisable = NULL;
+PFNGLDISABLEVERTEXATTRIBARRAYPROC glDisableVertexAttribArray = NULL;
+PFNGLDISABLEIPROC glDisablei = NULL;
+PFNGLDRAWARRAYSPROC glDrawArrays = NULL;
+PFNGLDRAWARRAYSINDIRECTPROC glDrawArraysIndirect = NULL;
+PFNGLDRAWARRAYSINSTANCEDPROC glDrawArraysInstanced = NULL;
+PFNGLDRAWBUFFERPROC glDrawBuffer = NULL;
+PFNGLDRAWBUFFERSPROC glDrawBuffers = NULL;
+PFNGLDRAWELEMENTSPROC glDrawElements = NULL;
+PFNGLDRAWELEMENTSBASEVERTEXPROC glDrawElementsBaseVertex = NULL;
+PFNGLDRAWELEMENTSINDIRECTPROC glDrawElementsIndirect = NULL;
+PFNGLDRAWELEMENTSINSTANCEDPROC glDrawElementsInstanced = NULL;
+PFNGLDRAWELEMENTSINSTANCEDBASEVERTEXPROC glDrawElementsInstancedBaseVertex = NULL;
+PFNGLDRAWRANGEELEMENTSPROC glDrawRangeElements = NULL;
+PFNGLDRAWRANGEELEMENTSBASEVERTEXPROC glDrawRangeElementsBaseVertex = NULL;
+PFNGLDRAWTRANSFORMFEEDBACKPROC glDrawTransformFeedback = NULL;
+PFNGLDRAWTRANSFORMFEEDBACKSTREAMPROC glDrawTransformFeedbackStream = NULL;
+PFNGLENABLEPROC glEnable = NULL;
+PFNGLENABLEVERTEXATTRIBARRAYPROC glEnableVertexAttribArray = NULL;
+PFNGLENABLEIPROC glEnablei = NULL;
+PFNGLENDCONDITIONALRENDERPROC glEndConditionalRender = NULL;
+PFNGLENDQUERYPROC glEndQuery = NULL;
+PFNGLENDQUERYINDEXEDPROC glEndQueryIndexed = NULL;
+PFNGLENDTRANSFORMFEEDBACKPROC glEndTransformFeedback = NULL;
+PFNGLFENCESYNCPROC glFenceSync = NULL;
+PFNGLFINISHPROC glFinish = NULL;
+PFNGLFLUSHPROC glFlush = NULL;
+PFNGLFLUSHMAPPEDBUFFERRANGEPROC glFlushMappedBufferRange = NULL;
+PFNGLFRAMEBUFFERRENDERBUFFERPROC glFramebufferRenderbuffer = NULL;
+PFNGLFRAMEBUFFERTEXTUREPROC glFramebufferTexture = NULL;
+PFNGLFRAMEBUFFERTEXTURE1DPROC glFramebufferTexture1D = NULL;
+PFNGLFRAMEBUFFERTEXTURE2DPROC glFramebufferTexture2D = NULL;
+PFNGLFRAMEBUFFERTEXTURE3DPROC glFramebufferTexture3D = NULL;
+PFNGLFRAMEBUFFERTEXTURELAYERPROC glFramebufferTextureLayer = NULL;
+PFNGLFRONTFACEPROC glFrontFace = NULL;
+PFNGLGENBUFFERSPROC glGenBuffers = NULL;
+PFNGLGENFRAMEBUFFERSPROC glGenFramebuffers = NULL;
+PFNGLGENPROGRAMPIPELINESPROC glGenProgramPipelines = NULL;
+PFNGLGENQUERIESPROC glGenQueries = NULL;
+PFNGLGENRENDERBUFFERSPROC glGenRenderbuffers = NULL;
+PFNGLGENSAMPLERSPROC glGenSamplers = NULL;
+PFNGLGENTEXTURESPROC glGenTextures = NULL;
+PFNGLGENTRANSFORMFEEDBACKSPROC glGenTransformFeedbacks = NULL;
+PFNGLGENVERTEXARRAYSPROC glGenVertexArrays = NULL;
+PFNGLGENERATEMIPMAPPROC glGenerateMipmap = NULL;
+PFNGLGETACTIVEATTRIBPROC glGetActiveAttrib = NULL;
+PFNGLGETACTIVESUBROUTINENAMEPROC glGetActiveSubroutineName = NULL;
+PFNGLGETACTIVESUBROUTINEUNIFORMNAMEPROC glGetActiveSubroutineUniformName = NULL;
+PFNGLGETACTIVESUBROUTINEUNIFORMIVPROC glGetActiveSubroutineUniformiv = NULL;
+PFNGLGETACTIVEUNIFORMPROC glGetActiveUniform = NULL;
+PFNGLGETACTIVEUNIFORMBLOCKNAMEPROC glGetActiveUniformBlockName = NULL;
+PFNGLGETACTIVEUNIFORMBLOCKIVPROC glGetActiveUniformBlockiv = NULL;
+PFNGLGETACTIVEUNIFORMNAMEPROC glGetActiveUniformName = NULL;
+PFNGLGETACTIVEUNIFORMSIVPROC glGetActiveUniformsiv = NULL;
+PFNGLGETATTACHEDSHADERSPROC glGetAttachedShaders = NULL;
+PFNGLGETATTRIBLOCATIONPROC glGetAttribLocation = NULL;
+PFNGLGETBOOLEANI_VPROC glGetBooleani_v = NULL;
+PFNGLGETBOOLEANVPROC glGetBooleanv = NULL;
+PFNGLGETBUFFERPARAMETERI64VPROC glGetBufferParameteri64v = NULL;
+PFNGLGETBUFFERPARAMETERIVPROC glGetBufferParameteriv = NULL;
+PFNGLGETBUFFERPOINTERVPROC glGetBufferPointerv = NULL;
+PFNGLGETBUFFERSUBDATAPROC glGetBufferSubData = NULL;
+PFNGLGETCOMPRESSEDTEXIMAGEPROC glGetCompressedTexImage = NULL;
+PFNGLGETDOUBLEI_VPROC glGetDoublei_v = NULL;
+PFNGLGETDOUBLEVPROC glGetDoublev = NULL;
+PFNGLGETERRORPROC glGetError = NULL;
+PFNGLGETFLOATI_VPROC glGetFloati_v = NULL;
+PFNGLGETFLOATVPROC glGetFloatv = NULL;
+PFNGLGETFRAGDATAINDEXPROC glGetFragDataIndex = NULL;
+PFNGLGETFRAGDATALOCATIONPROC glGetFragDataLocation = NULL;
+PFNGLGETFRAMEBUFFERATTACHMENTPARAMETERIVPROC glGetFramebufferAttachmentParameteriv = NULL;
+PFNGLGETINTEGER64I_VPROC glGetInteger64i_v = NULL;
+PFNGLGETINTEGER64VPROC glGetInteger64v = NULL;
+PFNGLGETINTEGERI_VPROC glGetIntegeri_v = NULL;
+PFNGLGETINTEGERVPROC glGetIntegerv = NULL;
+PFNGLGETMULTISAMPLEFVPROC glGetMultisamplefv = NULL;
+PFNGLGETPROGRAMBINARYPROC glGetProgramBinary = NULL;
+PFNGLGETPROGRAMINFOLOGPROC glGetProgramInfoLog = NULL;
+PFNGLGETPROGRAMPIPELINEINFOLOGPROC glGetProgramPipelineInfoLog = NULL;
+PFNGLGETPROGRAMPIPELINEIVPROC glGetProgramPipelineiv = NULL;
+PFNGLGETPROGRAMSTAGEIVPROC glGetProgramStageiv = NULL;
+PFNGLGETPROGRAMIVPROC glGetProgramiv = NULL;
+PFNGLGETQUERYINDEXEDIVPROC glGetQueryIndexediv = NULL;
+PFNGLGETQUERYOBJECTI64VPROC glGetQueryObjecti64v = NULL;
+PFNGLGETQUERYOBJECTIVPROC glGetQueryObjectiv = NULL;
+PFNGLGETQUERYOBJECTUI64VPROC glGetQueryObjectui64v = NULL;
+PFNGLGETQUERYOBJECTUIVPROC glGetQueryObjectuiv = NULL;
+PFNGLGETQUERYIVPROC glGetQueryiv = NULL;
+PFNGLGETRENDERBUFFERPARAMETERIVPROC glGetRenderbufferParameteriv = NULL;
+PFNGLGETSAMPLERPARAMETERIIVPROC glGetSamplerParameterIiv = NULL;
+PFNGLGETSAMPLERPARAMETERIUIVPROC glGetSamplerParameterIuiv = NULL;
+PFNGLGETSAMPLERPARAMETERFVPROC glGetSamplerParameterfv = NULL;
+PFNGLGETSAMPLERPARAMETERIVPROC glGetSamplerParameteriv = NULL;
+PFNGLGETSHADERINFOLOGPROC glGetShaderInfoLog = NULL;
+PFNGLGETSHADERPRECISIONFORMATPROC glGetShaderPrecisionFormat = NULL;
+PFNGLGETSHADERSOURCEPROC glGetShaderSource = NULL;
+PFNGLGETSHADERIVPROC glGetShaderiv = NULL;
+PFNGLGETSTRINGPROC glGetString = NULL;
+PFNGLGETSTRINGIPROC glGetStringi = NULL;
+PFNGLGETSUBROUTINEINDEXPROC glGetSubroutineIndex = NULL;
+PFNGLGETSUBROUTINEUNIFORMLOCATIONPROC glGetSubroutineUniformLocation = NULL;
+PFNGLGETSYNCIVPROC glGetSynciv = NULL;
+PFNGLGETTEXIMAGEPROC glGetTexImage = NULL;
+PFNGLGETTEXLEVELPARAMETERFVPROC glGetTexLevelParameterfv = NULL;
+PFNGLGETTEXLEVELPARAMETERIVPROC glGetTexLevelParameteriv = NULL;
+PFNGLGETTEXPARAMETERIIVPROC glGetTexParameterIiv = NULL;
+PFNGLGETTEXPARAMETERIUIVPROC glGetTexParameterIuiv = NULL;
+PFNGLGETTEXPARAMETERFVPROC glGetTexParameterfv = NULL;
+PFNGLGETTEXPARAMETERIVPROC glGetTexParameteriv = NULL;
+PFNGLGETTRANSFORMFEEDBACKVARYINGPROC glGetTransformFeedbackVarying = NULL;
+PFNGLGETUNIFORMBLOCKINDEXPROC glGetUniformBlockIndex = NULL;
+PFNGLGETUNIFORMINDICESPROC glGetUniformIndices = NULL;
+PFNGLGETUNIFORMLOCATIONPROC glGetUniformLocation = NULL;
+PFNGLGETUNIFORMSUBROUTINEUIVPROC glGetUniformSubroutineuiv = NULL;
+PFNGLGETUNIFORMDVPROC glGetUniformdv = NULL;
+PFNGLGETUNIFORMFVPROC glGetUniformfv = NULL;
+PFNGLGETUNIFORMIVPROC glGetUniformiv = NULL;
+PFNGLGETUNIFORMUIVPROC glGetUniformuiv = NULL;
+PFNGLGETVERTEXATTRIBIIVPROC glGetVertexAttribIiv = NULL;
+PFNGLGETVERTEXATTRIBIUIVPROC glGetVertexAttribIuiv = NULL;
+PFNGLGETVERTEXATTRIBLDVPROC glGetVertexAttribLdv = NULL;
+PFNGLGETVERTEXATTRIBPOINTERVPROC glGetVertexAttribPointerv = NULL;
+PFNGLGETVERTEXATTRIBDVPROC glGetVertexAttribdv = NULL;
+PFNGLGETVERTEXATTRIBFVPROC glGetVertexAttribfv = NULL;
+PFNGLGETVERTEXATTRIBIVPROC glGetVertexAttribiv = NULL;
+PFNGLHINTPROC glHint = NULL;
+PFNGLISBUFFERPROC glIsBuffer = NULL;
+PFNGLISENABLEDPROC glIsEnabled = NULL;
+PFNGLISENABLEDIPROC glIsEnabledi = NULL;
+PFNGLISFRAMEBUFFERPROC glIsFramebuffer = NULL;
+PFNGLISPROGRAMPROC glIsProgram = NULL;
+PFNGLISPROGRAMPIPELINEPROC glIsProgramPipeline = NULL;
+PFNGLISQUERYPROC glIsQuery = NULL;
+PFNGLISRENDERBUFFERPROC glIsRenderbuffer = NULL;
+PFNGLISSAMPLERPROC glIsSampler = NULL;
+PFNGLISSHADERPROC glIsShader = NULL;
+PFNGLISSYNCPROC glIsSync = NULL;
+PFNGLISTEXTUREPROC glIsTexture = NULL;
+PFNGLISTRANSFORMFEEDBACKPROC glIsTransformFeedback = NULL;
+PFNGLISVERTEXARRAYPROC glIsVertexArray = NULL;
+PFNGLLINEWIDTHPROC glLineWidth = NULL;
+PFNGLLINKPROGRAMPROC glLinkProgram = NULL;
+PFNGLLOGICOPPROC glLogicOp = NULL;
+PFNGLMAPBUFFERPROC glMapBuffer = NULL;
+PFNGLMAPBUFFERRANGEPROC glMapBufferRange = NULL;
+PFNGLMINSAMPLESHADINGPROC glMinSampleShading = NULL;
+PFNGLMULTIDRAWARRAYSPROC glMultiDrawArrays = NULL;
+PFNGLMULTIDRAWELEMENTSPROC glMultiDrawElements = NULL;
+PFNGLMULTIDRAWELEMENTSBASEVERTEXPROC glMultiDrawElementsBaseVertex = NULL;
+// PFNGLMULTITEXCOORDP1UIPROC glMultiTexCoordP1ui = NULL;
+// PFNGLMULTITEXCOORDP1UIVPROC glMultiTexCoordP1uiv = NULL;
+// PFNGLMULTITEXCOORDP2UIPROC glMultiTexCoordP2ui = NULL;
+// PFNGLMULTITEXCOORDP2UIVPROC glMultiTexCoordP2uiv = NULL;
+// PFNGLMULTITEXCOORDP3UIPROC glMultiTexCoordP3ui = NULL;
+// PFNGLMULTITEXCOORDP3UIVPROC glMultiTexCoordP3uiv = NULL;
+// PFNGLMULTITEXCOORDP4UIPROC glMultiTexCoordP4ui = NULL;
+// PFNGLMULTITEXCOORDP4UIVPROC glMultiTexCoordP4uiv = NULL;
+// PFNGLNORMALP3UIPROC glNormalP3ui = NULL;
+// PFNGLNORMALP3UIVPROC glNormalP3uiv = NULL;
+PFNGLPATCHPARAMETERFVPROC glPatchParameterfv = NULL;
+PFNGLPATCHPARAMETERIPROC glPatchParameteri = NULL;
+PFNGLPAUSETRANSFORMFEEDBACKPROC glPauseTransformFeedback = NULL;
+PFNGLPIXELSTOREFPROC glPixelStoref = NULL;
+PFNGLPIXELSTOREIPROC glPixelStorei = NULL;
+PFNGLPOINTPARAMETERFPROC glPointParameterf = NULL;
+PFNGLPOINTPARAMETERFVPROC glPointParameterfv = NULL;
+PFNGLPOINTPARAMETERIPROC glPointParameteri = NULL;
+PFNGLPOINTPARAMETERIVPROC glPointParameteriv = NULL;
+PFNGLPOINTSIZEPROC glPointSize = NULL;
+PFNGLPOLYGONMODEPROC glPolygonMode = NULL;
+PFNGLPOLYGONOFFSETPROC glPolygonOffset = NULL;
+PFNGLPRIMITIVERESTARTINDEXPROC glPrimitiveRestartIndex = NULL;
+PFNGLPROGRAMBINARYPROC glProgramBinary = NULL;
+PFNGLPROGRAMPARAMETERIPROC glProgramParameteri = NULL;
+PFNGLPROGRAMUNIFORM1DPROC glProgramUniform1d = NULL;
+PFNGLPROGRAMUNIFORM1DVPROC glProgramUniform1dv = NULL;
+PFNGLPROGRAMUNIFORM1FPROC glProgramUniform1f = NULL;
+PFNGLPROGRAMUNIFORM1FVPROC glProgramUniform1fv = NULL;
+PFNGLPROGRAMUNIFORM1IPROC glProgramUniform1i = NULL;
+PFNGLPROGRAMUNIFORM1IVPROC glProgramUniform1iv = NULL;
+PFNGLPROGRAMUNIFORM1UIPROC glProgramUniform1ui = NULL;
+PFNGLPROGRAMUNIFORM1UIVPROC glProgramUniform1uiv = NULL;
+PFNGLPROGRAMUNIFORM2DPROC glProgramUniform2d = NULL;
+PFNGLPROGRAMUNIFORM2DVPROC glProgramUniform2dv = NULL;
+PFNGLPROGRAMUNIFORM2FPROC glProgramUniform2f = NULL;
+PFNGLPROGRAMUNIFORM2FVPROC glProgramUniform2fv = NULL;
+PFNGLPROGRAMUNIFORM2IPROC glProgramUniform2i = NULL;
+PFNGLPROGRAMUNIFORM2IVPROC glProgramUniform2iv = NULL;
+PFNGLPROGRAMUNIFORM2UIPROC glProgramUniform2ui = NULL;
+PFNGLPROGRAMUNIFORM2UIVPROC glProgramUniform2uiv = NULL;
+PFNGLPROGRAMUNIFORM3DPROC glProgramUniform3d = NULL;
+PFNGLPROGRAMUNIFORM3DVPROC glProgramUniform3dv = NULL;
+PFNGLPROGRAMUNIFORM3FPROC glProgramUniform3f = NULL;
+PFNGLPROGRAMUNIFORM3FVPROC glProgramUniform3fv = NULL;
+PFNGLPROGRAMUNIFORM3IPROC glProgramUniform3i = NULL;
+PFNGLPROGRAMUNIFORM3IVPROC glProgramUniform3iv = NULL;
+PFNGLPROGRAMUNIFORM3UIPROC glProgramUniform3ui = NULL;
+PFNGLPROGRAMUNIFORM3UIVPROC glProgramUniform3uiv = NULL;
+PFNGLPROGRAMUNIFORM4DPROC glProgramUniform4d = NULL;
+PFNGLPROGRAMUNIFORM4DVPROC glProgramUniform4dv = NULL;
+PFNGLPROGRAMUNIFORM4FPROC glProgramUniform4f = NULL;
+PFNGLPROGRAMUNIFORM4FVPROC glProgramUniform4fv = NULL;
+PFNGLPROGRAMUNIFORM4IPROC glProgramUniform4i = NULL;
+PFNGLPROGRAMUNIFORM4IVPROC glProgramUniform4iv = NULL;
+PFNGLPROGRAMUNIFORM4UIPROC glProgramUniform4ui = NULL;
+PFNGLPROGRAMUNIFORM4UIVPROC glProgramUniform4uiv = NULL;
+PFNGLPROGRAMUNIFORMMATRIX2DVPROC glProgramUniformMatrix2dv = NULL;
+PFNGLPROGRAMUNIFORMMATRIX2FVPROC glProgramUniformMatrix2fv = NULL;
+PFNGLPROGRAMUNIFORMMATRIX2X3DVPROC glProgramUniformMatrix2x3dv = NULL;
+PFNGLPROGRAMUNIFORMMATRIX2X3FVPROC glProgramUniformMatrix2x3fv = NULL;
+PFNGLPROGRAMUNIFORMMATRIX2X4DVPROC glProgramUniformMatrix2x4dv = NULL;
+PFNGLPROGRAMUNIFORMMATRIX2X4FVPROC glProgramUniformMatrix2x4fv = NULL;
+PFNGLPROGRAMUNIFORMMATRIX3DVPROC glProgramUniformMatrix3dv = NULL;
+PFNGLPROGRAMUNIFORMMATRIX3FVPROC glProgramUniformMatrix3fv = NULL;
+PFNGLPROGRAMUNIFORMMATRIX3X2DVPROC glProgramUniformMatrix3x2dv = NULL;
+PFNGLPROGRAMUNIFORMMATRIX3X2FVPROC glProgramUniformMatrix3x2fv = NULL;
+PFNGLPROGRAMUNIFORMMATRIX3X4DVPROC glProgramUniformMatrix3x4dv = NULL;
+PFNGLPROGRAMUNIFORMMATRIX3X4FVPROC glProgramUniformMatrix3x4fv = NULL;
+PFNGLPROGRAMUNIFORMMATRIX4DVPROC glProgramUniformMatrix4dv = NULL;
+PFNGLPROGRAMUNIFORMMATRIX4FVPROC glProgramUniformMatrix4fv = NULL;
+PFNGLPROGRAMUNIFORMMATRIX4X2DVPROC glProgramUniformMatrix4x2dv = NULL;
+PFNGLPROGRAMUNIFORMMATRIX4X2FVPROC glProgramUniformMatrix4x2fv = NULL;
+PFNGLPROGRAMUNIFORMMATRIX4X3DVPROC glProgramUniformMatrix4x3dv = NULL;
+PFNGLPROGRAMUNIFORMMATRIX4X3FVPROC glProgramUniformMatrix4x3fv = NULL;
+PFNGLPROVOKINGVERTEXPROC glProvokingVertex = NULL;
+PFNGLQUERYCOUNTERPROC glQueryCounter = NULL;
+PFNGLREADBUFFERPROC glReadBuffer = NULL;
+PFNGLREADPIXELSPROC glReadPixels = NULL;
+PFNGLRELEASESHADERCOMPILERPROC glReleaseShaderCompiler = NULL;
+PFNGLRENDERBUFFERSTORAGEPROC glRenderbufferStorage = NULL;
+PFNGLRENDERBUFFERSTORAGEMULTISAMPLEPROC glRenderbufferStorageMultisample = NULL;
+PFNGLRESUMETRANSFORMFEEDBACKPROC glResumeTransformFeedback = NULL;
+PFNGLSAMPLECOVERAGEPROC glSampleCoverage = NULL;
+PFNGLSAMPLEMASKIPROC glSampleMaski = NULL;
+PFNGLSAMPLERPARAMETERIIVPROC glSamplerParameterIiv = NULL;
+PFNGLSAMPLERPARAMETERIUIVPROC glSamplerParameterIuiv = NULL;
+PFNGLSAMPLERPARAMETERFPROC glSamplerParameterf = NULL;
+PFNGLSAMPLERPARAMETERFVPROC glSamplerParameterfv = NULL;
+PFNGLSAMPLERPARAMETERIPROC glSamplerParameteri = NULL;
+PFNGLSAMPLERPARAMETERIVPROC glSamplerParameteriv = NULL;
+PFNGLSCISSORPROC glScissor = NULL;
+PFNGLSCISSORARRAYVPROC glScissorArrayv = NULL;
+PFNGLSCISSORINDEXEDPROC glScissorIndexed = NULL;
+PFNGLSCISSORINDEXEDVPROC glScissorIndexedv = NULL;
+// PFNGLSECONDARYCOLORP3UIPROC glSecondaryColorP3ui = NULL;
+// PFNGLSECONDARYCOLORP3UIVPROC glSecondaryColorP3uiv = NULL;
+PFNGLSHADERBINARYPROC glShaderBinary = NULL;
+PFNGLSHADERSOURCEPROC glShaderSource = NULL;
+PFNGLSTENCILFUNCPROC glStencilFunc = NULL;
+PFNGLSTENCILFUNCSEPARATEPROC glStencilFuncSeparate = NULL;
+PFNGLSTENCILMASKPROC glStencilMask = NULL;
+PFNGLSTENCILMASKSEPARATEPROC glStencilMaskSeparate = NULL;
+PFNGLSTENCILOPPROC glStencilOp = NULL;
+PFNGLSTENCILOPSEPARATEPROC glStencilOpSeparate = NULL;
+PFNGLTEXBUFFERPROC glTexBuffer = NULL;
+// PFNGLTEXCOORDP1UIPROC glTexCoordP1ui = NULL;
+// PFNGLTEXCOORDP1UIVPROC glTexCoordP1uiv = NULL;
+// PFNGLTEXCOORDP2UIPROC glTexCoordP2ui = NULL;
+// PFNGLTEXCOORDP2UIVPROC glTexCoordP2uiv = NULL;
+// PFNGLTEXCOORDP3UIPROC glTexCoordP3ui = NULL;
+// PFNGLTEXCOORDP3UIVPROC glTexCoordP3uiv = NULL;
+// PFNGLTEXCOORDP4UIPROC glTexCoordP4ui = NULL;
+// PFNGLTEXCOORDP4UIVPROC glTexCoordP4uiv = NULL;
+PFNGLTEXIMAGE1DPROC glTexImage1D = NULL;
+PFNGLTEXIMAGE2DPROC glTexImage2D = NULL;
+PFNGLTEXIMAGE2DMULTISAMPLEPROC glTexImage2DMultisample = NULL;
+PFNGLTEXIMAGE3DPROC glTexImage3D = NULL;
+PFNGLTEXIMAGE3DMULTISAMPLEPROC glTexImage3DMultisample = NULL;
+PFNGLTEXPARAMETERIIVPROC glTexParameterIiv = NULL;
+PFNGLTEXPARAMETERIUIVPROC glTexParameterIuiv = NULL;
+PFNGLTEXPARAMETERFPROC glTexParameterf = NULL;
+PFNGLTEXPARAMETERFVPROC glTexParameterfv = NULL;
+PFNGLTEXPARAMETERIPROC glTexParameteri = NULL;
+PFNGLTEXPARAMETERIVPROC glTexParameteriv = NULL;
+PFNGLTEXSUBIMAGE1DPROC glTexSubImage1D = NULL;
+PFNGLTEXSUBIMAGE2DPROC glTexSubImage2D = NULL;
+PFNGLTEXSUBIMAGE3DPROC glTexSubImage3D = NULL;
+PFNGLTRANSFORMFEEDBACKVARYINGSPROC glTransformFeedbackVaryings = NULL;
+PFNGLUNIFORM1DPROC glUniform1d = NULL;
+PFNGLUNIFORM1DVPROC glUniform1dv = NULL;
+PFNGLUNIFORM1FPROC glUniform1f = NULL;
+PFNGLUNIFORM1FVPROC glUniform1fv = NULL;
+PFNGLUNIFORM1IPROC glUniform1i = NULL;
+PFNGLUNIFORM1IVPROC glUniform1iv = NULL;
+PFNGLUNIFORM1UIPROC glUniform1ui = NULL;
+PFNGLUNIFORM1UIVPROC glUniform1uiv = NULL;
+PFNGLUNIFORM2DPROC glUniform2d = NULL;
+PFNGLUNIFORM2DVPROC glUniform2dv = NULL;
+PFNGLUNIFORM2FPROC glUniform2f = NULL;
+PFNGLUNIFORM2FVPROC glUniform2fv = NULL;
+PFNGLUNIFORM2IPROC glUniform2i = NULL;
+PFNGLUNIFORM2IVPROC glUniform2iv = NULL;
+PFNGLUNIFORM2UIPROC glUniform2ui = NULL;
+PFNGLUNIFORM2UIVPROC glUniform2uiv = NULL;
+PFNGLUNIFORM3DPROC glUniform3d = NULL;
+PFNGLUNIFORM3DVPROC glUniform3dv = NULL;
+PFNGLUNIFORM3FPROC glUniform3f = NULL;
+PFNGLUNIFORM3FVPROC glUniform3fv = NULL;
+PFNGLUNIFORM3IPROC glUniform3i = NULL;
+PFNGLUNIFORM3IVPROC glUniform3iv = NULL;
+PFNGLUNIFORM3UIPROC glUniform3ui = NULL;
+PFNGLUNIFORM3UIVPROC glUniform3uiv = NULL;
+PFNGLUNIFORM4DPROC glUniform4d = NULL;
+PFNGLUNIFORM4DVPROC glUniform4dv = NULL;
+PFNGLUNIFORM4FPROC glUniform4f = NULL;
+PFNGLUNIFORM4FVPROC glUniform4fv = NULL;
+PFNGLUNIFORM4IPROC glUniform4i = NULL;
+PFNGLUNIFORM4IVPROC glUniform4iv = NULL;
+PFNGLUNIFORM4UIPROC glUniform4ui = NULL;
+PFNGLUNIFORM4UIVPROC glUniform4uiv = NULL;
+PFNGLUNIFORMBLOCKBINDINGPROC glUniformBlockBinding = NULL;
+PFNGLUNIFORMMATRIX2DVPROC glUniformMatrix2dv = NULL;
+PFNGLUNIFORMMATRIX2FVPROC glUniformMatrix2fv = NULL;
+PFNGLUNIFORMMATRIX2X3DVPROC glUniformMatrix2x3dv = NULL;
+PFNGLUNIFORMMATRIX2X3FVPROC glUniformMatrix2x3fv = NULL;
+PFNGLUNIFORMMATRIX2X4DVPROC glUniformMatrix2x4dv = NULL;
+PFNGLUNIFORMMATRIX2X4FVPROC glUniformMatrix2x4fv = NULL;
+PFNGLUNIFORMMATRIX3DVPROC glUniformMatrix3dv = NULL;
+PFNGLUNIFORMMATRIX3FVPROC glUniformMatrix3fv = NULL;
+PFNGLUNIFORMMATRIX3X2DVPROC glUniformMatrix3x2dv = NULL;
+PFNGLUNIFORMMATRIX3X2FVPROC glUniformMatrix3x2fv = NULL;
+PFNGLUNIFORMMATRIX3X4DVPROC glUniformMatrix3x4dv = NULL;
+PFNGLUNIFORMMATRIX3X4FVPROC glUniformMatrix3x4fv = NULL;
+PFNGLUNIFORMMATRIX4DVPROC glUniformMatrix4dv = NULL;
+PFNGLUNIFORMMATRIX4FVPROC glUniformMatrix4fv = NULL;
+PFNGLUNIFORMMATRIX4X2DVPROC glUniformMatrix4x2dv = NULL;
+PFNGLUNIFORMMATRIX4X2FVPROC glUniformMatrix4x2fv = NULL;
+PFNGLUNIFORMMATRIX4X3DVPROC glUniformMatrix4x3dv = NULL;
+PFNGLUNIFORMMATRIX4X3FVPROC glUniformMatrix4x3fv = NULL;
+PFNGLUNIFORMSUBROUTINESUIVPROC glUniformSubroutinesuiv = NULL;
+PFNGLUNMAPBUFFERPROC glUnmapBuffer = NULL;
+PFNGLUSEPROGRAMPROC glUseProgram = NULL;
+PFNGLUSEPROGRAMSTAGESPROC glUseProgramStages = NULL;
+PFNGLVALIDATEPROGRAMPROC glValidateProgram = NULL;
+PFNGLVALIDATEPROGRAMPIPELINEPROC glValidateProgramPipeline = NULL;
+PFNGLVERTEXATTRIB1DPROC glVertexAttrib1d = NULL;
+PFNGLVERTEXATTRIB1DVPROC glVertexAttrib1dv = NULL;
+PFNGLVERTEXATTRIB1FPROC glVertexAttrib1f = NULL;
+PFNGLVERTEXATTRIB1FVPROC glVertexAttrib1fv = NULL;
+PFNGLVERTEXATTRIB1SPROC glVertexAttrib1s = NULL;
+PFNGLVERTEXATTRIB1SVPROC glVertexAttrib1sv = NULL;
+PFNGLVERTEXATTRIB2DPROC glVertexAttrib2d = NULL;
+PFNGLVERTEXATTRIB2DVPROC glVertexAttrib2dv = NULL;
+PFNGLVERTEXATTRIB2FPROC glVertexAttrib2f = NULL;
+PFNGLVERTEXATTRIB2FVPROC glVertexAttrib2fv = NULL;
+PFNGLVERTEXATTRIB2SPROC glVertexAttrib2s = NULL;
+PFNGLVERTEXATTRIB2SVPROC glVertexAttrib2sv = NULL;
+PFNGLVERTEXATTRIB3DPROC glVertexAttrib3d = NULL;
+PFNGLVERTEXATTRIB3DVPROC glVertexAttrib3dv = NULL;
+PFNGLVERTEXATTRIB3FPROC glVertexAttrib3f = NULL;
+PFNGLVERTEXATTRIB3FVPROC glVertexAttrib3fv = NULL;
+PFNGLVERTEXATTRIB3SPROC glVertexAttrib3s = NULL;
+PFNGLVERTEXATTRIB3SVPROC glVertexAttrib3sv = NULL;
+PFNGLVERTEXATTRIB4NBVPROC glVertexAttrib4Nbv = NULL;
+PFNGLVERTEXATTRIB4NIVPROC glVertexAttrib4Niv = NULL;
+PFNGLVERTEXATTRIB4NSVPROC glVertexAttrib4Nsv = NULL;
+PFNGLVERTEXATTRIB4NUBPROC glVertexAttrib4Nub = NULL;
+PFNGLVERTEXATTRIB4NUBVPROC glVertexAttrib4Nubv = NULL;
+PFNGLVERTEXATTRIB4NUIVPROC glVertexAttrib4Nuiv = NULL;
+PFNGLVERTEXATTRIB4NUSVPROC glVertexAttrib4Nusv = NULL;
+PFNGLVERTEXATTRIB4BVPROC glVertexAttrib4bv = NULL;
+PFNGLVERTEXATTRIB4DPROC glVertexAttrib4d = NULL;
+PFNGLVERTEXATTRIB4DVPROC glVertexAttrib4dv = NULL;
+PFNGLVERTEXATTRIB4FPROC glVertexAttrib4f = NULL;
+PFNGLVERTEXATTRIB4FVPROC glVertexAttrib4fv = NULL;
+PFNGLVERTEXATTRIB4IVPROC glVertexAttrib4iv = NULL;
+PFNGLVERTEXATTRIB4SPROC glVertexAttrib4s = NULL;
+PFNGLVERTEXATTRIB4SVPROC glVertexAttrib4sv = NULL;
+PFNGLVERTEXATTRIB4UBVPROC glVertexAttrib4ubv = NULL;
+PFNGLVERTEXATTRIB4UIVPROC glVertexAttrib4uiv = NULL;
+PFNGLVERTEXATTRIB4USVPROC glVertexAttrib4usv = NULL;
+PFNGLVERTEXATTRIBDIVISORPROC glVertexAttribDivisor = NULL;
+PFNGLVERTEXATTRIBI1IPROC glVertexAttribI1i = NULL;
+PFNGLVERTEXATTRIBI1IVPROC glVertexAttribI1iv = NULL;
+PFNGLVERTEXATTRIBI1UIPROC glVertexAttribI1ui = NULL;
+PFNGLVERTEXATTRIBI1UIVPROC glVertexAttribI1uiv = NULL;
+PFNGLVERTEXATTRIBI2IPROC glVertexAttribI2i = NULL;
+PFNGLVERTEXATTRIBI2IVPROC glVertexAttribI2iv = NULL;
+PFNGLVERTEXATTRIBI2UIPROC glVertexAttribI2ui = NULL;
+PFNGLVERTEXATTRIBI2UIVPROC glVertexAttribI2uiv = NULL;
+PFNGLVERTEXATTRIBI3IPROC glVertexAttribI3i = NULL;
+PFNGLVERTEXATTRIBI3IVPROC glVertexAttribI3iv = NULL;
+PFNGLVERTEXATTRIBI3UIPROC glVertexAttribI3ui = NULL;
+PFNGLVERTEXATTRIBI3UIVPROC glVertexAttribI3uiv = NULL;
+PFNGLVERTEXATTRIBI4BVPROC glVertexAttribI4bv = NULL;
+PFNGLVERTEXATTRIBI4IPROC glVertexAttribI4i = NULL;
+PFNGLVERTEXATTRIBI4IVPROC glVertexAttribI4iv = NULL;
+PFNGLVERTEXATTRIBI4SVPROC glVertexAttribI4sv = NULL;
+PFNGLVERTEXATTRIBI4UBVPROC glVertexAttribI4ubv = NULL;
+PFNGLVERTEXATTRIBI4UIPROC glVertexAttribI4ui = NULL;
+PFNGLVERTEXATTRIBI4UIVPROC glVertexAttribI4uiv = NULL;
+PFNGLVERTEXATTRIBI4USVPROC glVertexAttribI4usv = NULL;
+PFNGLVERTEXATTRIBIPOINTERPROC glVertexAttribIPointer = NULL;
+PFNGLVERTEXATTRIBL1DPROC glVertexAttribL1d = NULL;
+PFNGLVERTEXATTRIBL1DVPROC glVertexAttribL1dv = NULL;
+PFNGLVERTEXATTRIBL2DPROC glVertexAttribL2d = NULL;
+PFNGLVERTEXATTRIBL2DVPROC glVertexAttribL2dv = NULL;
+PFNGLVERTEXATTRIBL3DPROC glVertexAttribL3d = NULL;
+PFNGLVERTEXATTRIBL3DVPROC glVertexAttribL3dv = NULL;
+PFNGLVERTEXATTRIBL4DPROC glVertexAttribL4d = NULL;
+PFNGLVERTEXATTRIBL4DVPROC glVertexAttribL4dv = NULL;
+PFNGLVERTEXATTRIBLPOINTERPROC glVertexAttribLPointer = NULL;
+PFNGLVERTEXATTRIBP1UIPROC glVertexAttribP1ui = NULL;
+PFNGLVERTEXATTRIBP1UIVPROC glVertexAttribP1uiv = NULL;
+PFNGLVERTEXATTRIBP2UIPROC glVertexAttribP2ui = NULL;
+PFNGLVERTEXATTRIBP2UIVPROC glVertexAttribP2uiv = NULL;
+PFNGLVERTEXATTRIBP3UIPROC glVertexAttribP3ui = NULL;
+PFNGLVERTEXATTRIBP3UIVPROC glVertexAttribP3uiv = NULL;
+PFNGLVERTEXATTRIBP4UIPROC glVertexAttribP4ui = NULL;
+PFNGLVERTEXATTRIBP4UIVPROC glVertexAttribP4uiv = NULL;
+PFNGLVERTEXATTRIBPOINTERPROC glVertexAttribPointer = NULL;
+// PFNGLVERTEXP2UIPROC glVertexP2ui = NULL;
+// PFNGLVERTEXP2UIVPROC glVertexP2uiv = NULL;
+// PFNGLVERTEXP3UIPROC glVertexP3ui = NULL;
+// PFNGLVERTEXP3UIVPROC glVertexP3uiv = NULL;
+// PFNGLVERTEXP4UIPROC glVertexP4ui = NULL;
+// PFNGLVERTEXP4UIVPROC glVertexP4uiv = NULL;
+PFNGLVIEWPORTPROC glViewport = NULL;
+PFNGLVIEWPORTARRAYVPROC glViewportArrayv = NULL;
+PFNGLVIEWPORTINDEXEDFPROC glViewportIndexedf = NULL;
+PFNGLVIEWPORTINDEXEDFVPROC glViewportIndexedfv = NULL;
+PFNGLWAITSYNCPROC glWaitSync = NULL;
+PFNGLBUFFERSTORAGEPROC glBufferStorage = NULL;
+PFNGLMEMORYBARRIERPROC glMemoryBarrier = NULL;
+
+NEKO_API_DECL void neko_gl_load_all(void) {
+
+#if defined(NEKO_PF_WIN)
+    libGL = LoadLibrary(L"opengl32.dll");
+#else
+#ifdef __APPLE__
+    // clang-format off
+    static const char *NAMES[] = {
+        "../Frameworks/OpenGL.framework/OpenGL",
+        "/Library/Frameworks/OpenGL.framework/OpenGL",
+        "/System/Library/Frameworks/OpenGL.framework/OpenGL",
+        "/System/Library/Frameworks/OpenGL.framework/Versions/Current/OpenGL"
+    };
+    // clang-format on
+#else
+    static const char* NAMES[] = {"libGL.so.1", "libGL.so"};
+#endif
+
+    unsigned int index = 0;
+    for (index = 0; index < (sizeof(NAMES) / sizeof(NAMES[0])); index++) {
+        libGL = dlopen(NAMES[index], RTLD_NOW | RTLD_GLOBAL);
+        if (libGL != NULL) {
+            break;
+        }
+    }
+#endif
+
+    glCullFace = (PFNGLCULLFACEPROC)neko_gl_get_proc_address("glCullFace");
+    glFrontFace = (PFNGLFRONTFACEPROC)neko_gl_get_proc_address("glFrontFace");
+    glHint = (PFNGLHINTPROC)neko_gl_get_proc_address("glHint");
+    glLineWidth = (PFNGLLINEWIDTHPROC)neko_gl_get_proc_address("glLineWidth");
+    glPointSize = (PFNGLPOINTSIZEPROC)neko_gl_get_proc_address("glPointSize");
+    glPolygonMode = (PFNGLPOLYGONMODEPROC)neko_gl_get_proc_address("glPolygonMode");
+    glScissor = (PFNGLSCISSORPROC)neko_gl_get_proc_address("glScissor");
+    glTexParameterf = (PFNGLTEXPARAMETERFPROC)neko_gl_get_proc_address("glTexParameterf");
+    glTexParameterfv = (PFNGLTEXPARAMETERFVPROC)neko_gl_get_proc_address("glTexParameterfv");
+    glTexParameteri = (PFNGLTEXPARAMETERIPROC)neko_gl_get_proc_address("glTexParameteri");
+    glTexParameteriv = (PFNGLTEXPARAMETERIVPROC)neko_gl_get_proc_address("glTexParameteriv");
+    glTexImage1D = (PFNGLTEXIMAGE1DPROC)neko_gl_get_proc_address("glTexImage1D");
+    glTexImage2D = (PFNGLTEXIMAGE2DPROC)neko_gl_get_proc_address("glTexImage2D");
+    glDrawBuffer = (PFNGLDRAWBUFFERPROC)neko_gl_get_proc_address("glDrawBuffer");
+    glClear = (PFNGLCLEARPROC)neko_gl_get_proc_address("glClear");
+    glClearColor = (PFNGLCLEARCOLORPROC)neko_gl_get_proc_address("glClearColor");
+    glClearStencil = (PFNGLCLEARSTENCILPROC)neko_gl_get_proc_address("glClearStencil");
+    glClearDepth = (PFNGLCLEARDEPTHPROC)neko_gl_get_proc_address("glClearDepth");
+    glStencilMask = (PFNGLSTENCILMASKPROC)neko_gl_get_proc_address("glStencilMask");
+    glColorMask = (PFNGLCOLORMASKPROC)neko_gl_get_proc_address("glColorMask");
+    glDepthMask = (PFNGLDEPTHMASKPROC)neko_gl_get_proc_address("glDepthMask");
+    glDisable = (PFNGLDISABLEPROC)neko_gl_get_proc_address("glDisable");
+    glEnable = (PFNGLENABLEPROC)neko_gl_get_proc_address("glEnable");
+    glFinish = (PFNGLFINISHPROC)neko_gl_get_proc_address("glFinish");
+    glFlush = (PFNGLFLUSHPROC)neko_gl_get_proc_address("glFlush");
+    glBlendFunc = (PFNGLBLENDFUNCPROC)neko_gl_get_proc_address("glBlendFunc");
+    glLogicOp = (PFNGLLOGICOPPROC)neko_gl_get_proc_address("glLogicOp");
+    glStencilFunc = (PFNGLSTENCILFUNCPROC)neko_gl_get_proc_address("glStencilFunc");
+    glStencilOp = (PFNGLSTENCILOPPROC)neko_gl_get_proc_address("glStencilOp");
+    glDepthFunc = (PFNGLDEPTHFUNCPROC)neko_gl_get_proc_address("glDepthFunc");
+    glPixelStoref = (PFNGLPIXELSTOREFPROC)neko_gl_get_proc_address("glPixelStoref");
+    glPixelStorei = (PFNGLPIXELSTOREIPROC)neko_gl_get_proc_address("glPixelStorei");
+    glReadBuffer = (PFNGLREADBUFFERPROC)neko_gl_get_proc_address("glReadBuffer");
+    glReadPixels = (PFNGLREADPIXELSPROC)neko_gl_get_proc_address("glReadPixels");
+    glGetBooleanv = (PFNGLGETBOOLEANVPROC)neko_gl_get_proc_address("glGetBooleanv");
+    glGetDoublev = (PFNGLGETDOUBLEVPROC)neko_gl_get_proc_address("glGetDoublev");
+    glGetError = (PFNGLGETERRORPROC)neko_gl_get_proc_address("glGetError");
+    glGetFloatv = (PFNGLGETFLOATVPROC)neko_gl_get_proc_address("glGetFloatv");
+    glGetIntegerv = (PFNGLGETINTEGERVPROC)neko_gl_get_proc_address("glGetIntegerv");
+    glGetString = (PFNGLGETSTRINGPROC)neko_gl_get_proc_address("glGetString");
+    glGetTexImage = (PFNGLGETTEXIMAGEPROC)neko_gl_get_proc_address("glGetTexImage");
+    glGetTexParameterfv = (PFNGLGETTEXPARAMETERFVPROC)neko_gl_get_proc_address("glGetTexParameterfv");
+    glGetTexParameteriv = (PFNGLGETTEXPARAMETERIVPROC)neko_gl_get_proc_address("glGetTexParameteriv");
+    glGetTexLevelParameterfv = (PFNGLGETTEXLEVELPARAMETERFVPROC)neko_gl_get_proc_address("glGetTexLevelParameterfv");
+    glGetTexLevelParameteriv = (PFNGLGETTEXLEVELPARAMETERIVPROC)neko_gl_get_proc_address("glGetTexLevelParameteriv");
+    glIsEnabled = (PFNGLISENABLEDPROC)neko_gl_get_proc_address("glIsEnabled");
+    glDepthRange = (PFNGLDEPTHRANGEPROC)neko_gl_get_proc_address("glDepthRange");
+    glViewport = (PFNGLVIEWPORTPROC)neko_gl_get_proc_address("glViewport");
+    glDrawArrays = (PFNGLDRAWARRAYSPROC)neko_gl_get_proc_address("glDrawArrays");
+    glDrawElements = (PFNGLDRAWELEMENTSPROC)neko_gl_get_proc_address("glDrawElements");
+    // glGetPointerv = (PFNGLGETPOINTERVPROC)neko_gl_get_proc_address("glGetPointerv");
+    glPolygonOffset = (PFNGLPOLYGONOFFSETPROC)neko_gl_get_proc_address("glPolygonOffset");
+    glCopyTexImage1D = (PFNGLCOPYTEXIMAGE1DPROC)neko_gl_get_proc_address("glCopyTexImage1D");
+    glCopyTexImage2D = (PFNGLCOPYTEXIMAGE2DPROC)neko_gl_get_proc_address("glCopyTexImage2D");
+    glCopyTexSubImage1D = (PFNGLCOPYTEXSUBIMAGE1DPROC)neko_gl_get_proc_address("glCopyTexSubImage1D");
+    glCopyTexSubImage2D = (PFNGLCOPYTEXSUBIMAGE2DPROC)neko_gl_get_proc_address("glCopyTexSubImage2D");
+    glTexSubImage1D = (PFNGLTEXSUBIMAGE1DPROC)neko_gl_get_proc_address("glTexSubImage1D");
+    glTexSubImage2D = (PFNGLTEXSUBIMAGE2DPROC)neko_gl_get_proc_address("glTexSubImage2D");
+    glBindTexture = (PFNGLBINDTEXTUREPROC)neko_gl_get_proc_address("glBindTexture");
+    glDeleteTextures = (PFNGLDELETETEXTURESPROC)neko_gl_get_proc_address("glDeleteTextures");
+    glGenTextures = (PFNGLGENTEXTURESPROC)neko_gl_get_proc_address("glGenTextures");
+    glIsTexture = (PFNGLISTEXTUREPROC)neko_gl_get_proc_address("glIsTexture");
+    glDrawRangeElements = (PFNGLDRAWRANGEELEMENTSPROC)neko_gl_get_proc_address("glDrawRangeElements");
+    glTexImage3D = (PFNGLTEXIMAGE3DPROC)neko_gl_get_proc_address("glTexImage3D");
+    glTexSubImage3D = (PFNGLTEXSUBIMAGE3DPROC)neko_gl_get_proc_address("glTexSubImage3D");
+    glCopyTexSubImage3D = (PFNGLCOPYTEXSUBIMAGE3DPROC)neko_gl_get_proc_address("glCopyTexSubImage3D");
+    glActiveTexture = (PFNGLACTIVETEXTUREPROC)neko_gl_get_proc_address("glActiveTexture");
+    glSampleCoverage = (PFNGLSAMPLECOVERAGEPROC)neko_gl_get_proc_address("glSampleCoverage");
+    glCompressedTexImage3D = (PFNGLCOMPRESSEDTEXIMAGE3DPROC)neko_gl_get_proc_address("glCompressedTexImage3D");
+    glCompressedTexImage2D = (PFNGLCOMPRESSEDTEXIMAGE2DPROC)neko_gl_get_proc_address("glCompressedTexImage2D");
+    glCompressedTexImage1D = (PFNGLCOMPRESSEDTEXIMAGE1DPROC)neko_gl_get_proc_address("glCompressedTexImage1D");
+    glCompressedTexSubImage3D = (PFNGLCOMPRESSEDTEXSUBIMAGE3DPROC)neko_gl_get_proc_address("glCompressedTexSubImage3D");
+    glCompressedTexSubImage2D = (PFNGLCOMPRESSEDTEXSUBIMAGE2DPROC)neko_gl_get_proc_address("glCompressedTexSubImage2D");
+    glCompressedTexSubImage1D = (PFNGLCOMPRESSEDTEXSUBIMAGE1DPROC)neko_gl_get_proc_address("glCompressedTexSubImage1D");
+    glGetCompressedTexImage = (PFNGLGETCOMPRESSEDTEXIMAGEPROC)neko_gl_get_proc_address("glGetCompressedTexImage");
+    glBlendFuncSeparate = (PFNGLBLENDFUNCSEPARATEPROC)neko_gl_get_proc_address("glBlendFuncSeparate");
+    glMultiDrawArrays = (PFNGLMULTIDRAWARRAYSPROC)neko_gl_get_proc_address("glMultiDrawArrays");
+    glMultiDrawElements = (PFNGLMULTIDRAWELEMENTSPROC)neko_gl_get_proc_address("glMultiDrawElements");
+    glPointParameterf = (PFNGLPOINTPARAMETERFPROC)neko_gl_get_proc_address("glPointParameterf");
+    glPointParameterfv = (PFNGLPOINTPARAMETERFVPROC)neko_gl_get_proc_address("glPointParameterfv");
+    glPointParameteri = (PFNGLPOINTPARAMETERIPROC)neko_gl_get_proc_address("glPointParameteri");
+    glPointParameteriv = (PFNGLPOINTPARAMETERIVPROC)neko_gl_get_proc_address("glPointParameteriv");
+    glBlendColor = (PFNGLBLENDCOLORPROC)neko_gl_get_proc_address("glBlendColor");
+    glBlendEquation = (PFNGLBLENDEQUATIONPROC)neko_gl_get_proc_address("glBlendEquation");
+    glGenQueries = (PFNGLGENQUERIESPROC)neko_gl_get_proc_address("glGenQueries");
+    glDeleteQueries = (PFNGLDELETEQUERIESPROC)neko_gl_get_proc_address("glDeleteQueries");
+    glIsQuery = (PFNGLISQUERYPROC)neko_gl_get_proc_address("glIsQuery");
+    glBeginQuery = (PFNGLBEGINQUERYPROC)neko_gl_get_proc_address("glBeginQuery");
+    glEndQuery = (PFNGLENDQUERYPROC)neko_gl_get_proc_address("glEndQuery");
+    glGetQueryiv = (PFNGLGETQUERYIVPROC)neko_gl_get_proc_address("glGetQueryiv");
+    glGetQueryObjectiv = (PFNGLGETQUERYOBJECTIVPROC)neko_gl_get_proc_address("glGetQueryObjectiv");
+    glGetQueryObjectuiv = (PFNGLGETQUERYOBJECTUIVPROC)neko_gl_get_proc_address("glGetQueryObjectuiv");
+    glBindBuffer = (PFNGLBINDBUFFERPROC)neko_gl_get_proc_address("glBindBuffer");
+    glDeleteBuffers = (PFNGLDELETEBUFFERSPROC)neko_gl_get_proc_address("glDeleteBuffers");
+    glGenBuffers = (PFNGLGENBUFFERSPROC)neko_gl_get_proc_address("glGenBuffers");
+    glIsBuffer = (PFNGLISBUFFERPROC)neko_gl_get_proc_address("glIsBuffer");
+    glBufferData = (PFNGLBUFFERDATAPROC)neko_gl_get_proc_address("glBufferData");
+    glBufferSubData = (PFNGLBUFFERSUBDATAPROC)neko_gl_get_proc_address("glBufferSubData");
+    glGetBufferSubData = (PFNGLGETBUFFERSUBDATAPROC)neko_gl_get_proc_address("glGetBufferSubData");
+    glMapBuffer = (PFNGLMAPBUFFERPROC)neko_gl_get_proc_address("glMapBuffer");
+    glUnmapBuffer = (PFNGLUNMAPBUFFERPROC)neko_gl_get_proc_address("glUnmapBuffer");
+    glGetBufferParameteriv = (PFNGLGETBUFFERPARAMETERIVPROC)neko_gl_get_proc_address("glGetBufferParameteriv");
+    glGetBufferPointerv = (PFNGLGETBUFFERPOINTERVPROC)neko_gl_get_proc_address("glGetBufferPointerv");
+    glBlendEquationSeparate = (PFNGLBLENDEQUATIONSEPARATEPROC)neko_gl_get_proc_address("glBlendEquationSeparate");
+    glDrawBuffers = (PFNGLDRAWBUFFERSPROC)neko_gl_get_proc_address("glDrawBuffers");
+    glStencilOpSeparate = (PFNGLSTENCILOPSEPARATEPROC)neko_gl_get_proc_address("glStencilOpSeparate");
+    glStencilFuncSeparate = (PFNGLSTENCILFUNCSEPARATEPROC)neko_gl_get_proc_address("glStencilFuncSeparate");
+    glStencilMaskSeparate = (PFNGLSTENCILMASKSEPARATEPROC)neko_gl_get_proc_address("glStencilMaskSeparate");
+    glAttachShader = (PFNGLATTACHSHADERPROC)neko_gl_get_proc_address("glAttachShader");
+    glBindAttribLocation = (PFNGLBINDATTRIBLOCATIONPROC)neko_gl_get_proc_address("glBindAttribLocation");
+    glCompileShader = (PFNGLCOMPILESHADERPROC)neko_gl_get_proc_address("glCompileShader");
+    glCreateProgram = (PFNGLCREATEPROGRAMPROC)neko_gl_get_proc_address("glCreateProgram");
+    glCreateShader = (PFNGLCREATESHADERPROC)neko_gl_get_proc_address("glCreateShader");
+    glDeleteProgram = (PFNGLDELETEPROGRAMPROC)neko_gl_get_proc_address("glDeleteProgram");
+    glDeleteShader = (PFNGLDELETESHADERPROC)neko_gl_get_proc_address("glDeleteShader");
+    glDetachShader = (PFNGLDETACHSHADERPROC)neko_gl_get_proc_address("glDetachShader");
+    glDisableVertexAttribArray = (PFNGLDISABLEVERTEXATTRIBARRAYPROC)neko_gl_get_proc_address("glDisableVertexAttribArray");
+    glEnableVertexAttribArray = (PFNGLENABLEVERTEXATTRIBARRAYPROC)neko_gl_get_proc_address("glEnableVertexAttribArray");
+    glGetActiveAttrib = (PFNGLGETACTIVEATTRIBPROC)neko_gl_get_proc_address("glGetActiveAttrib");
+    glGetActiveUniform = (PFNGLGETACTIVEUNIFORMPROC)neko_gl_get_proc_address("glGetActiveUniform");
+    glGetAttachedShaders = (PFNGLGETATTACHEDSHADERSPROC)neko_gl_get_proc_address("glGetAttachedShaders");
+    glGetAttribLocation = (PFNGLGETATTRIBLOCATIONPROC)neko_gl_get_proc_address("glGetAttribLocation");
+    glGetProgramiv = (PFNGLGETPROGRAMIVPROC)neko_gl_get_proc_address("glGetProgramiv");
+    glGetProgramInfoLog = (PFNGLGETPROGRAMINFOLOGPROC)neko_gl_get_proc_address("glGetProgramInfoLog");
+    glGetShaderiv = (PFNGLGETSHADERIVPROC)neko_gl_get_proc_address("glGetShaderiv");
+    glGetShaderInfoLog = (PFNGLGETSHADERINFOLOGPROC)neko_gl_get_proc_address("glGetShaderInfoLog");
+    glGetShaderSource = (PFNGLGETSHADERSOURCEPROC)neko_gl_get_proc_address("glGetShaderSource");
+    glGetUniformLocation = (PFNGLGETUNIFORMLOCATIONPROC)neko_gl_get_proc_address("glGetUniformLocation");
+    glGetUniformfv = (PFNGLGETUNIFORMFVPROC)neko_gl_get_proc_address("glGetUniformfv");
+    glGetUniformiv = (PFNGLGETUNIFORMIVPROC)neko_gl_get_proc_address("glGetUniformiv");
+    glGetVertexAttribdv = (PFNGLGETVERTEXATTRIBDVPROC)neko_gl_get_proc_address("glGetVertexAttribdv");
+    glGetVertexAttribfv = (PFNGLGETVERTEXATTRIBFVPROC)neko_gl_get_proc_address("glGetVertexAttribfv");
+    glGetVertexAttribiv = (PFNGLGETVERTEXATTRIBIVPROC)neko_gl_get_proc_address("glGetVertexAttribiv");
+    glGetVertexAttribPointerv = (PFNGLGETVERTEXATTRIBPOINTERVPROC)neko_gl_get_proc_address("glGetVertexAttribPointerv");
+    glIsProgram = (PFNGLISPROGRAMPROC)neko_gl_get_proc_address("glIsProgram");
+    glIsShader = (PFNGLISSHADERPROC)neko_gl_get_proc_address("glIsShader");
+    glLinkProgram = (PFNGLLINKPROGRAMPROC)neko_gl_get_proc_address("glLinkProgram");
+    glShaderSource = (PFNGLSHADERSOURCEPROC)neko_gl_get_proc_address("glShaderSource");
+    glUseProgram = (PFNGLUSEPROGRAMPROC)neko_gl_get_proc_address("glUseProgram");
+    glUniform1f = (PFNGLUNIFORM1FPROC)neko_gl_get_proc_address("glUniform1f");
+    glUniform2f = (PFNGLUNIFORM2FPROC)neko_gl_get_proc_address("glUniform2f");
+    glUniform3f = (PFNGLUNIFORM3FPROC)neko_gl_get_proc_address("glUniform3f");
+    glUniform4f = (PFNGLUNIFORM4FPROC)neko_gl_get_proc_address("glUniform4f");
+    glUniform1i = (PFNGLUNIFORM1IPROC)neko_gl_get_proc_address("glUniform1i");
+    glUniform2i = (PFNGLUNIFORM2IPROC)neko_gl_get_proc_address("glUniform2i");
+    glUniform3i = (PFNGLUNIFORM3IPROC)neko_gl_get_proc_address("glUniform3i");
+    glUniform4i = (PFNGLUNIFORM4IPROC)neko_gl_get_proc_address("glUniform4i");
+    glUniform1fv = (PFNGLUNIFORM1FVPROC)neko_gl_get_proc_address("glUniform1fv");
+    glUniform2fv = (PFNGLUNIFORM2FVPROC)neko_gl_get_proc_address("glUniform2fv");
+    glUniform3fv = (PFNGLUNIFORM3FVPROC)neko_gl_get_proc_address("glUniform3fv");
+    glUniform4fv = (PFNGLUNIFORM4FVPROC)neko_gl_get_proc_address("glUniform4fv");
+    glUniform1iv = (PFNGLUNIFORM1IVPROC)neko_gl_get_proc_address("glUniform1iv");
+    glUniform2iv = (PFNGLUNIFORM2IVPROC)neko_gl_get_proc_address("glUniform2iv");
+    glUniform3iv = (PFNGLUNIFORM3IVPROC)neko_gl_get_proc_address("glUniform3iv");
+    glUniform4iv = (PFNGLUNIFORM4IVPROC)neko_gl_get_proc_address("glUniform4iv");
+    glUniformMatrix2fv = (PFNGLUNIFORMMATRIX2FVPROC)neko_gl_get_proc_address("glUniformMatrix2fv");
+    glUniformMatrix3fv = (PFNGLUNIFORMMATRIX3FVPROC)neko_gl_get_proc_address("glUniformMatrix3fv");
+    glUniformMatrix4fv = (PFNGLUNIFORMMATRIX4FVPROC)neko_gl_get_proc_address("glUniformMatrix4fv");
+    glValidateProgram = (PFNGLVALIDATEPROGRAMPROC)neko_gl_get_proc_address("glValidateProgram");
+    glVertexAttrib1d = (PFNGLVERTEXATTRIB1DPROC)neko_gl_get_proc_address("glVertexAttrib1d");
+    glVertexAttrib1dv = (PFNGLVERTEXATTRIB1DVPROC)neko_gl_get_proc_address("glVertexAttrib1dv");
+    glVertexAttrib1f = (PFNGLVERTEXATTRIB1FPROC)neko_gl_get_proc_address("glVertexAttrib1f");
+    glVertexAttrib1fv = (PFNGLVERTEXATTRIB1FVPROC)neko_gl_get_proc_address("glVertexAttrib1fv");
+    glVertexAttrib1s = (PFNGLVERTEXATTRIB1SPROC)neko_gl_get_proc_address("glVertexAttrib1s");
+    glVertexAttrib1sv = (PFNGLVERTEXATTRIB1SVPROC)neko_gl_get_proc_address("glVertexAttrib1sv");
+    glVertexAttrib2d = (PFNGLVERTEXATTRIB2DPROC)neko_gl_get_proc_address("glVertexAttrib2d");
+    glVertexAttrib2dv = (PFNGLVERTEXATTRIB2DVPROC)neko_gl_get_proc_address("glVertexAttrib2dv");
+    glVertexAttrib2f = (PFNGLVERTEXATTRIB2FPROC)neko_gl_get_proc_address("glVertexAttrib2f");
+    glVertexAttrib2fv = (PFNGLVERTEXATTRIB2FVPROC)neko_gl_get_proc_address("glVertexAttrib2fv");
+    glVertexAttrib2s = (PFNGLVERTEXATTRIB2SPROC)neko_gl_get_proc_address("glVertexAttrib2s");
+    glVertexAttrib2sv = (PFNGLVERTEXATTRIB2SVPROC)neko_gl_get_proc_address("glVertexAttrib2sv");
+    glVertexAttrib3d = (PFNGLVERTEXATTRIB3DPROC)neko_gl_get_proc_address("glVertexAttrib3d");
+    glVertexAttrib3dv = (PFNGLVERTEXATTRIB3DVPROC)neko_gl_get_proc_address("glVertexAttrib3dv");
+    glVertexAttrib3f = (PFNGLVERTEXATTRIB3FPROC)neko_gl_get_proc_address("glVertexAttrib3f");
+    glVertexAttrib3fv = (PFNGLVERTEXATTRIB3FVPROC)neko_gl_get_proc_address("glVertexAttrib3fv");
+    glVertexAttrib3s = (PFNGLVERTEXATTRIB3SPROC)neko_gl_get_proc_address("glVertexAttrib3s");
+    glVertexAttrib3sv = (PFNGLVERTEXATTRIB3SVPROC)neko_gl_get_proc_address("glVertexAttrib3sv");
+    glVertexAttrib4Nbv = (PFNGLVERTEXATTRIB4NBVPROC)neko_gl_get_proc_address("glVertexAttrib4Nbv");
+    glVertexAttrib4Niv = (PFNGLVERTEXATTRIB4NIVPROC)neko_gl_get_proc_address("glVertexAttrib4Niv");
+    glVertexAttrib4Nsv = (PFNGLVERTEXATTRIB4NSVPROC)neko_gl_get_proc_address("glVertexAttrib4Nsv");
+    glVertexAttrib4Nub = (PFNGLVERTEXATTRIB4NUBPROC)neko_gl_get_proc_address("glVertexAttrib4Nub");
+    glVertexAttrib4Nubv = (PFNGLVERTEXATTRIB4NUBVPROC)neko_gl_get_proc_address("glVertexAttrib4Nubv");
+    glVertexAttrib4Nuiv = (PFNGLVERTEXATTRIB4NUIVPROC)neko_gl_get_proc_address("glVertexAttrib4Nuiv");
+    glVertexAttrib4Nusv = (PFNGLVERTEXATTRIB4NUSVPROC)neko_gl_get_proc_address("glVertexAttrib4Nusv");
+    glVertexAttrib4bv = (PFNGLVERTEXATTRIB4BVPROC)neko_gl_get_proc_address("glVertexAttrib4bv");
+    glVertexAttrib4d = (PFNGLVERTEXATTRIB4DPROC)neko_gl_get_proc_address("glVertexAttrib4d");
+    glVertexAttrib4dv = (PFNGLVERTEXATTRIB4DVPROC)neko_gl_get_proc_address("glVertexAttrib4dv");
+    glVertexAttrib4f = (PFNGLVERTEXATTRIB4FPROC)neko_gl_get_proc_address("glVertexAttrib4f");
+    glVertexAttrib4fv = (PFNGLVERTEXATTRIB4FVPROC)neko_gl_get_proc_address("glVertexAttrib4fv");
+    glVertexAttrib4iv = (PFNGLVERTEXATTRIB4IVPROC)neko_gl_get_proc_address("glVertexAttrib4iv");
+    glVertexAttrib4s = (PFNGLVERTEXATTRIB4SPROC)neko_gl_get_proc_address("glVertexAttrib4s");
+    glVertexAttrib4sv = (PFNGLVERTEXATTRIB4SVPROC)neko_gl_get_proc_address("glVertexAttrib4sv");
+    glVertexAttrib4ubv = (PFNGLVERTEXATTRIB4UBVPROC)neko_gl_get_proc_address("glVertexAttrib4ubv");
+    glVertexAttrib4uiv = (PFNGLVERTEXATTRIB4UIVPROC)neko_gl_get_proc_address("glVertexAttrib4uiv");
+    glVertexAttrib4usv = (PFNGLVERTEXATTRIB4USVPROC)neko_gl_get_proc_address("glVertexAttrib4usv");
+    glVertexAttribPointer = (PFNGLVERTEXATTRIBPOINTERPROC)neko_gl_get_proc_address("glVertexAttribPointer");
+    glUniformMatrix2x3fv = (PFNGLUNIFORMMATRIX2X3FVPROC)neko_gl_get_proc_address("glUniformMatrix2x3fv");
+    glUniformMatrix3x2fv = (PFNGLUNIFORMMATRIX3X2FVPROC)neko_gl_get_proc_address("glUniformMatrix3x2fv");
+    glUniformMatrix2x4fv = (PFNGLUNIFORMMATRIX2X4FVPROC)neko_gl_get_proc_address("glUniformMatrix2x4fv");
+    glUniformMatrix4x2fv = (PFNGLUNIFORMMATRIX4X2FVPROC)neko_gl_get_proc_address("glUniformMatrix4x2fv");
+    glUniformMatrix3x4fv = (PFNGLUNIFORMMATRIX3X4FVPROC)neko_gl_get_proc_address("glUniformMatrix3x4fv");
+    glUniformMatrix4x3fv = (PFNGLUNIFORMMATRIX4X3FVPROC)neko_gl_get_proc_address("glUniformMatrix4x3fv");
+    glColorMaski = (PFNGLCOLORMASKIPROC)neko_gl_get_proc_address("glColorMaski");
+    glGetBooleani_v = (PFNGLGETBOOLEANI_VPROC)neko_gl_get_proc_address("glGetBooleani_v");
+    glGetIntegeri_v = (PFNGLGETINTEGERI_VPROC)neko_gl_get_proc_address("glGetIntegeri_v");
+    glEnablei = (PFNGLENABLEIPROC)neko_gl_get_proc_address("glEnablei");
+    glDisablei = (PFNGLDISABLEIPROC)neko_gl_get_proc_address("glDisablei");
+    glIsEnabledi = (PFNGLISENABLEDIPROC)neko_gl_get_proc_address("glIsEnabledi");
+    glBeginTransformFeedback = (PFNGLBEGINTRANSFORMFEEDBACKPROC)neko_gl_get_proc_address("glBeginTransformFeedback");
+    glEndTransformFeedback = (PFNGLENDTRANSFORMFEEDBACKPROC)neko_gl_get_proc_address("glEndTransformFeedback");
+    glBindBufferRange = (PFNGLBINDBUFFERRANGEPROC)neko_gl_get_proc_address("glBindBufferRange");
+    glBindBufferBase = (PFNGLBINDBUFFERBASEPROC)neko_gl_get_proc_address("glBindBufferBase");
+    glTransformFeedbackVaryings = (PFNGLTRANSFORMFEEDBACKVARYINGSPROC)neko_gl_get_proc_address("glTransformFeedbackVaryings");
+    glGetTransformFeedbackVarying = (PFNGLGETTRANSFORMFEEDBACKVARYINGPROC)neko_gl_get_proc_address("glGetTransformFeedbackVarying");
+    glClampColor = (PFNGLCLAMPCOLORPROC)neko_gl_get_proc_address("glClampColor");
+    glBeginConditionalRender = (PFNGLBEGINCONDITIONALRENDERPROC)neko_gl_get_proc_address("glBeginConditionalRender");
+    glEndConditionalRender = (PFNGLENDCONDITIONALRENDERPROC)neko_gl_get_proc_address("glEndConditionalRender");
+    glVertexAttribIPointer = (PFNGLVERTEXATTRIBIPOINTERPROC)neko_gl_get_proc_address("glVertexAttribIPointer");
+    glGetVertexAttribIiv = (PFNGLGETVERTEXATTRIBIIVPROC)neko_gl_get_proc_address("glGetVertexAttribIiv");
+    glGetVertexAttribIuiv = (PFNGLGETVERTEXATTRIBIUIVPROC)neko_gl_get_proc_address("glGetVertexAttribIuiv");
+    glVertexAttribI1i = (PFNGLVERTEXATTRIBI1IPROC)neko_gl_get_proc_address("glVertexAttribI1i");
+    glVertexAttribI2i = (PFNGLVERTEXATTRIBI2IPROC)neko_gl_get_proc_address("glVertexAttribI2i");
+    glVertexAttribI3i = (PFNGLVERTEXATTRIBI3IPROC)neko_gl_get_proc_address("glVertexAttribI3i");
+    glVertexAttribI4i = (PFNGLVERTEXATTRIBI4IPROC)neko_gl_get_proc_address("glVertexAttribI4i");
+    glVertexAttribI1ui = (PFNGLVERTEXATTRIBI1UIPROC)neko_gl_get_proc_address("glVertexAttribI1ui");
+    glVertexAttribI2ui = (PFNGLVERTEXATTRIBI2UIPROC)neko_gl_get_proc_address("glVertexAttribI2ui");
+    glVertexAttribI3ui = (PFNGLVERTEXATTRIBI3UIPROC)neko_gl_get_proc_address("glVertexAttribI3ui");
+    glVertexAttribI4ui = (PFNGLVERTEXATTRIBI4UIPROC)neko_gl_get_proc_address("glVertexAttribI4ui");
+    glVertexAttribI1iv = (PFNGLVERTEXATTRIBI1IVPROC)neko_gl_get_proc_address("glVertexAttribI1iv");
+    glVertexAttribI2iv = (PFNGLVERTEXATTRIBI2IVPROC)neko_gl_get_proc_address("glVertexAttribI2iv");
+    glVertexAttribI3iv = (PFNGLVERTEXATTRIBI3IVPROC)neko_gl_get_proc_address("glVertexAttribI3iv");
+    glVertexAttribI4iv = (PFNGLVERTEXATTRIBI4IVPROC)neko_gl_get_proc_address("glVertexAttribI4iv");
+    glVertexAttribI1uiv = (PFNGLVERTEXATTRIBI1UIVPROC)neko_gl_get_proc_address("glVertexAttribI1uiv");
+    glVertexAttribI2uiv = (PFNGLVERTEXATTRIBI2UIVPROC)neko_gl_get_proc_address("glVertexAttribI2uiv");
+    glVertexAttribI3uiv = (PFNGLVERTEXATTRIBI3UIVPROC)neko_gl_get_proc_address("glVertexAttribI3uiv");
+    glVertexAttribI4uiv = (PFNGLVERTEXATTRIBI4UIVPROC)neko_gl_get_proc_address("glVertexAttribI4uiv");
+    glVertexAttribI4bv = (PFNGLVERTEXATTRIBI4BVPROC)neko_gl_get_proc_address("glVertexAttribI4bv");
+    glVertexAttribI4sv = (PFNGLVERTEXATTRIBI4SVPROC)neko_gl_get_proc_address("glVertexAttribI4sv");
+    glVertexAttribI4ubv = (PFNGLVERTEXATTRIBI4UBVPROC)neko_gl_get_proc_address("glVertexAttribI4ubv");
+    glVertexAttribI4usv = (PFNGLVERTEXATTRIBI4USVPROC)neko_gl_get_proc_address("glVertexAttribI4usv");
+    glGetUniformuiv = (PFNGLGETUNIFORMUIVPROC)neko_gl_get_proc_address("glGetUniformuiv");
+    glBindFragDataLocation = (PFNGLBINDFRAGDATALOCATIONPROC)neko_gl_get_proc_address("glBindFragDataLocation");
+    glGetFragDataLocation = (PFNGLGETFRAGDATALOCATIONPROC)neko_gl_get_proc_address("glGetFragDataLocation");
+    glUniform1ui = (PFNGLUNIFORM1UIPROC)neko_gl_get_proc_address("glUniform1ui");
+    glUniform2ui = (PFNGLUNIFORM2UIPROC)neko_gl_get_proc_address("glUniform2ui");
+    glUniform3ui = (PFNGLUNIFORM3UIPROC)neko_gl_get_proc_address("glUniform3ui");
+    glUniform4ui = (PFNGLUNIFORM4UIPROC)neko_gl_get_proc_address("glUniform4ui");
+    glUniform1uiv = (PFNGLUNIFORM1UIVPROC)neko_gl_get_proc_address("glUniform1uiv");
+    glUniform2uiv = (PFNGLUNIFORM2UIVPROC)neko_gl_get_proc_address("glUniform2uiv");
+    glUniform3uiv = (PFNGLUNIFORM3UIVPROC)neko_gl_get_proc_address("glUniform3uiv");
+    glUniform4uiv = (PFNGLUNIFORM4UIVPROC)neko_gl_get_proc_address("glUniform4uiv");
+    glTexParameterIiv = (PFNGLTEXPARAMETERIIVPROC)neko_gl_get_proc_address("glTexParameterIiv");
+    glTexParameterIuiv = (PFNGLTEXPARAMETERIUIVPROC)neko_gl_get_proc_address("glTexParameterIuiv");
+    glGetTexParameterIiv = (PFNGLGETTEXPARAMETERIIVPROC)neko_gl_get_proc_address("glGetTexParameterIiv");
+    glGetTexParameterIuiv = (PFNGLGETTEXPARAMETERIUIVPROC)neko_gl_get_proc_address("glGetTexParameterIuiv");
+    glClearBufferiv = (PFNGLCLEARBUFFERIVPROC)neko_gl_get_proc_address("glClearBufferiv");
+    glClearBufferuiv = (PFNGLCLEARBUFFERUIVPROC)neko_gl_get_proc_address("glClearBufferuiv");
+    glClearBufferfv = (PFNGLCLEARBUFFERFVPROC)neko_gl_get_proc_address("glClearBufferfv");
+    glClearBufferfi = (PFNGLCLEARBUFFERFIPROC)neko_gl_get_proc_address("glClearBufferfi");
+    glGetStringi = (PFNGLGETSTRINGIPROC)neko_gl_get_proc_address("glGetStringi");
+    glIsRenderbuffer = (PFNGLISRENDERBUFFERPROC)neko_gl_get_proc_address("glIsRenderbuffer");
+    glBindRenderbuffer = (PFNGLBINDRENDERBUFFERPROC)neko_gl_get_proc_address("glBindRenderbuffer");
+    glDeleteRenderbuffers = (PFNGLDELETERENDERBUFFERSPROC)neko_gl_get_proc_address("glDeleteRenderbuffers");
+    glGenRenderbuffers = (PFNGLGENRENDERBUFFERSPROC)neko_gl_get_proc_address("glGenRenderbuffers");
+    glRenderbufferStorage = (PFNGLRENDERBUFFERSTORAGEPROC)neko_gl_get_proc_address("glRenderbufferStorage");
+    glGetRenderbufferParameteriv = (PFNGLGETRENDERBUFFERPARAMETERIVPROC)neko_gl_get_proc_address("glGetRenderbufferParameteriv");
+    glIsFramebuffer = (PFNGLISFRAMEBUFFERPROC)neko_gl_get_proc_address("glIsFramebuffer");
+    glBindFramebuffer = (PFNGLBINDFRAMEBUFFERPROC)neko_gl_get_proc_address("glBindFramebuffer");
+    glDeleteFramebuffers = (PFNGLDELETEFRAMEBUFFERSPROC)neko_gl_get_proc_address("glDeleteFramebuffers");
+    glGenFramebuffers = (PFNGLGENFRAMEBUFFERSPROC)neko_gl_get_proc_address("glGenFramebuffers");
+    glCheckFramebufferStatus = (PFNGLCHECKFRAMEBUFFERSTATUSPROC)neko_gl_get_proc_address("glCheckFramebufferStatus");
+    glFramebufferTexture1D = (PFNGLFRAMEBUFFERTEXTURE1DPROC)neko_gl_get_proc_address("glFramebufferTexture1D");
+    glFramebufferTexture2D = (PFNGLFRAMEBUFFERTEXTURE2DPROC)neko_gl_get_proc_address("glFramebufferTexture2D");
+    glFramebufferTexture3D = (PFNGLFRAMEBUFFERTEXTURE3DPROC)neko_gl_get_proc_address("glFramebufferTexture3D");
+    glFramebufferRenderbuffer = (PFNGLFRAMEBUFFERRENDERBUFFERPROC)neko_gl_get_proc_address("glFramebufferRenderbuffer");
+    glGetFramebufferAttachmentParameteriv = (PFNGLGETFRAMEBUFFERATTACHMENTPARAMETERIVPROC)neko_gl_get_proc_address("glGetFramebufferAttachmentParameteriv");
+    glGenerateMipmap = (PFNGLGENERATEMIPMAPPROC)neko_gl_get_proc_address("glGenerateMipmap");
+    glBlitFramebuffer = (PFNGLBLITFRAMEBUFFERPROC)neko_gl_get_proc_address("glBlitFramebuffer");
+    glRenderbufferStorageMultisample = (PFNGLRENDERBUFFERSTORAGEMULTISAMPLEPROC)neko_gl_get_proc_address("glRenderbufferStorageMultisample");
+    glFramebufferTextureLayer = (PFNGLFRAMEBUFFERTEXTURELAYERPROC)neko_gl_get_proc_address("glFramebufferTextureLayer");
+    glMapBufferRange = (PFNGLMAPBUFFERRANGEPROC)neko_gl_get_proc_address("glMapBufferRange");
+    glFlushMappedBufferRange = (PFNGLFLUSHMAPPEDBUFFERRANGEPROC)neko_gl_get_proc_address("glFlushMappedBufferRange");
+    glBindVertexArray = (PFNGLBINDVERTEXARRAYPROC)neko_gl_get_proc_address("glBindVertexArray");
+    glDeleteVertexArrays = (PFNGLDELETEVERTEXARRAYSPROC)neko_gl_get_proc_address("glDeleteVertexArrays");
+    glGenVertexArrays = (PFNGLGENVERTEXARRAYSPROC)neko_gl_get_proc_address("glGenVertexArrays");
+    glIsVertexArray = (PFNGLISVERTEXARRAYPROC)neko_gl_get_proc_address("glIsVertexArray");
+    glDrawArraysInstanced = (PFNGLDRAWARRAYSINSTANCEDPROC)neko_gl_get_proc_address("glDrawArraysInstanced");
+    glDrawElementsInstanced = (PFNGLDRAWELEMENTSINSTANCEDPROC)neko_gl_get_proc_address("glDrawElementsInstanced");
+    glTexBuffer = (PFNGLTEXBUFFERPROC)neko_gl_get_proc_address("glTexBuffer");
+    glPrimitiveRestartIndex = (PFNGLPRIMITIVERESTARTINDEXPROC)neko_gl_get_proc_address("glPrimitiveRestartIndex");
+    glCopyBufferSubData = (PFNGLCOPYBUFFERSUBDATAPROC)neko_gl_get_proc_address("glCopyBufferSubData");
+    glGetUniformIndices = (PFNGLGETUNIFORMINDICESPROC)neko_gl_get_proc_address("glGetUniformIndices");
+    glGetActiveUniformsiv = (PFNGLGETACTIVEUNIFORMSIVPROC)neko_gl_get_proc_address("glGetActiveUniformsiv");
+    glGetActiveUniformName = (PFNGLGETACTIVEUNIFORMNAMEPROC)neko_gl_get_proc_address("glGetActiveUniformName");
+    glGetUniformBlockIndex = (PFNGLGETUNIFORMBLOCKINDEXPROC)neko_gl_get_proc_address("glGetUniformBlockIndex");
+    glGetActiveUniformBlockiv = (PFNGLGETACTIVEUNIFORMBLOCKIVPROC)neko_gl_get_proc_address("glGetActiveUniformBlockiv");
+    glGetActiveUniformBlockName = (PFNGLGETACTIVEUNIFORMBLOCKNAMEPROC)neko_gl_get_proc_address("glGetActiveUniformBlockName");
+    glUniformBlockBinding = (PFNGLUNIFORMBLOCKBINDINGPROC)neko_gl_get_proc_address("glUniformBlockBinding");
+    glDrawElementsBaseVertex = (PFNGLDRAWELEMENTSBASEVERTEXPROC)neko_gl_get_proc_address("glDrawElementsBaseVertex");
+    glDrawRangeElementsBaseVertex = (PFNGLDRAWRANGEELEMENTSBASEVERTEXPROC)neko_gl_get_proc_address("glDrawRangeElementsBaseVertex");
+    glDrawElementsInstancedBaseVertex = (PFNGLDRAWELEMENTSINSTANCEDBASEVERTEXPROC)neko_gl_get_proc_address("glDrawElementsInstancedBaseVertex");
+    glMultiDrawElementsBaseVertex = (PFNGLMULTIDRAWELEMENTSBASEVERTEXPROC)neko_gl_get_proc_address("glMultiDrawElementsBaseVertex");
+    glProvokingVertex = (PFNGLPROVOKINGVERTEXPROC)neko_gl_get_proc_address("glProvokingVertex");
+    glFenceSync = (PFNGLFENCESYNCPROC)neko_gl_get_proc_address("glFenceSync");
+    glIsSync = (PFNGLISSYNCPROC)neko_gl_get_proc_address("glIsSync");
+    glDeleteSync = (PFNGLDELETESYNCPROC)neko_gl_get_proc_address("glDeleteSync");
+    glClientWaitSync = (PFNGLCLIENTWAITSYNCPROC)neko_gl_get_proc_address("glClientWaitSync");
+    glWaitSync = (PFNGLWAITSYNCPROC)neko_gl_get_proc_address("glWaitSync");
+    glGetInteger64v = (PFNGLGETINTEGER64VPROC)neko_gl_get_proc_address("glGetInteger64v");
+    glGetSynciv = (PFNGLGETSYNCIVPROC)neko_gl_get_proc_address("glGetSynciv");
+    glGetInteger64i_v = (PFNGLGETINTEGER64I_VPROC)neko_gl_get_proc_address("glGetInteger64i_v");
+    glGetBufferParameteri64v = (PFNGLGETBUFFERPARAMETERI64VPROC)neko_gl_get_proc_address("glGetBufferParameteri64v");
+    glFramebufferTexture = (PFNGLFRAMEBUFFERTEXTUREPROC)neko_gl_get_proc_address("glFramebufferTexture");
+    glTexImage2DMultisample = (PFNGLTEXIMAGE2DMULTISAMPLEPROC)neko_gl_get_proc_address("glTexImage2DMultisample");
+    glTexImage3DMultisample = (PFNGLTEXIMAGE3DMULTISAMPLEPROC)neko_gl_get_proc_address("glTexImage3DMultisample");
+    glGetMultisamplefv = (PFNGLGETMULTISAMPLEFVPROC)neko_gl_get_proc_address("glGetMultisamplefv");
+    glSampleMaski = (PFNGLSAMPLEMASKIPROC)neko_gl_get_proc_address("glSampleMaski");
+    glBindFragDataLocationIndexed = (PFNGLBINDFRAGDATALOCATIONINDEXEDPROC)neko_gl_get_proc_address("glBindFragDataLocationIndexed");
+    glGetFragDataIndex = (PFNGLGETFRAGDATAINDEXPROC)neko_gl_get_proc_address("glGetFragDataIndex");
+    glGenSamplers = (PFNGLGENSAMPLERSPROC)neko_gl_get_proc_address("glGenSamplers");
+    glDeleteSamplers = (PFNGLDELETESAMPLERSPROC)neko_gl_get_proc_address("glDeleteSamplers");
+    glIsSampler = (PFNGLISSAMPLERPROC)neko_gl_get_proc_address("glIsSampler");
+    glBindSampler = (PFNGLBINDSAMPLERPROC)neko_gl_get_proc_address("glBindSampler");
+    glSamplerParameteri = (PFNGLSAMPLERPARAMETERIPROC)neko_gl_get_proc_address("glSamplerParameteri");
+    glSamplerParameteriv = (PFNGLSAMPLERPARAMETERIVPROC)neko_gl_get_proc_address("glSamplerParameteriv");
+    glSamplerParameterf = (PFNGLSAMPLERPARAMETERFPROC)neko_gl_get_proc_address("glSamplerParameterf");
+    glSamplerParameterfv = (PFNGLSAMPLERPARAMETERFVPROC)neko_gl_get_proc_address("glSamplerParameterfv");
+    glSamplerParameterIiv = (PFNGLSAMPLERPARAMETERIIVPROC)neko_gl_get_proc_address("glSamplerParameterIiv");
+    glSamplerParameterIuiv = (PFNGLSAMPLERPARAMETERIUIVPROC)neko_gl_get_proc_address("glSamplerParameterIuiv");
+    glGetSamplerParameteriv = (PFNGLGETSAMPLERPARAMETERIVPROC)neko_gl_get_proc_address("glGetSamplerParameteriv");
+    glGetSamplerParameterIiv = (PFNGLGETSAMPLERPARAMETERIIVPROC)neko_gl_get_proc_address("glGetSamplerParameterIiv");
+    glGetSamplerParameterfv = (PFNGLGETSAMPLERPARAMETERFVPROC)neko_gl_get_proc_address("glGetSamplerParameterfv");
+    glGetSamplerParameterIuiv = (PFNGLGETSAMPLERPARAMETERIUIVPROC)neko_gl_get_proc_address("glGetSamplerParameterIuiv");
+    glQueryCounter = (PFNGLQUERYCOUNTERPROC)neko_gl_get_proc_address("glQueryCounter");
+    glGetQueryObjecti64v = (PFNGLGETQUERYOBJECTI64VPROC)neko_gl_get_proc_address("glGetQueryObjecti64v");
+    glGetQueryObjectui64v = (PFNGLGETQUERYOBJECTUI64VPROC)neko_gl_get_proc_address("glGetQueryObjectui64v");
+    glVertexAttribDivisor = (PFNGLVERTEXATTRIBDIVISORPROC)neko_gl_get_proc_address("glVertexAttribDivisor");
+    glVertexAttribP1ui = (PFNGLVERTEXATTRIBP1UIPROC)neko_gl_get_proc_address("glVertexAttribP1ui");
+    glVertexAttribP1uiv = (PFNGLVERTEXATTRIBP1UIVPROC)neko_gl_get_proc_address("glVertexAttribP1uiv");
+    glVertexAttribP2ui = (PFNGLVERTEXATTRIBP2UIPROC)neko_gl_get_proc_address("glVertexAttribP2ui");
+    glVertexAttribP2uiv = (PFNGLVERTEXATTRIBP2UIVPROC)neko_gl_get_proc_address("glVertexAttribP2uiv");
+    glVertexAttribP3ui = (PFNGLVERTEXATTRIBP3UIPROC)neko_gl_get_proc_address("glVertexAttribP3ui");
+    glVertexAttribP3uiv = (PFNGLVERTEXATTRIBP3UIVPROC)neko_gl_get_proc_address("glVertexAttribP3uiv");
+    glVertexAttribP4ui = (PFNGLVERTEXATTRIBP4UIPROC)neko_gl_get_proc_address("glVertexAttribP4ui");
+    glVertexAttribP4uiv = (PFNGLVERTEXATTRIBP4UIVPROC)neko_gl_get_proc_address("glVertexAttribP4uiv");
+
+    glMinSampleShading = (PFNGLMINSAMPLESHADINGPROC)neko_gl_get_proc_address("glMinSampleShading");
+    glBlendEquationi = (PFNGLBLENDEQUATIONIPROC)neko_gl_get_proc_address("glBlendEquationi");
+    glBlendEquationSeparatei = (PFNGLBLENDEQUATIONSEPARATEIPROC)neko_gl_get_proc_address("glBlendEquationSeparatei");
+    glBlendFunci = (PFNGLBLENDFUNCIPROC)neko_gl_get_proc_address("glBlendFunci");
+    glBlendFuncSeparatei = (PFNGLBLENDFUNCSEPARATEIPROC)neko_gl_get_proc_address("glBlendFuncSeparatei");
+    glDrawArraysIndirect = (PFNGLDRAWARRAYSINDIRECTPROC)neko_gl_get_proc_address("glDrawArraysIndirect");
+    glDrawElementsIndirect = (PFNGLDRAWELEMENTSINDIRECTPROC)neko_gl_get_proc_address("glDrawElementsIndirect");
+    glUniform1d = (PFNGLUNIFORM1DPROC)neko_gl_get_proc_address("glUniform1d");
+    glUniform2d = (PFNGLUNIFORM2DPROC)neko_gl_get_proc_address("glUniform2d");
+    glUniform3d = (PFNGLUNIFORM3DPROC)neko_gl_get_proc_address("glUniform3d");
+    glUniform4d = (PFNGLUNIFORM4DPROC)neko_gl_get_proc_address("glUniform4d");
+    glUniform1dv = (PFNGLUNIFORM1DVPROC)neko_gl_get_proc_address("glUniform1dv");
+    glUniform2dv = (PFNGLUNIFORM2DVPROC)neko_gl_get_proc_address("glUniform2dv");
+    glUniform3dv = (PFNGLUNIFORM3DVPROC)neko_gl_get_proc_address("glUniform3dv");
+    glUniform4dv = (PFNGLUNIFORM4DVPROC)neko_gl_get_proc_address("glUniform4dv");
+    glUniformMatrix2dv = (PFNGLUNIFORMMATRIX2DVPROC)neko_gl_get_proc_address("glUniformMatrix2dv");
+    glUniformMatrix3dv = (PFNGLUNIFORMMATRIX3DVPROC)neko_gl_get_proc_address("glUniformMatrix3dv");
+    glUniformMatrix4dv = (PFNGLUNIFORMMATRIX4DVPROC)neko_gl_get_proc_address("glUniformMatrix4dv");
+    glUniformMatrix2x3dv = (PFNGLUNIFORMMATRIX2X3DVPROC)neko_gl_get_proc_address("glUniformMatrix2x3dv");
+    glUniformMatrix2x4dv = (PFNGLUNIFORMMATRIX2X4DVPROC)neko_gl_get_proc_address("glUniformMatrix2x4dv");
+    glUniformMatrix3x2dv = (PFNGLUNIFORMMATRIX3X2DVPROC)neko_gl_get_proc_address("glUniformMatrix3x2dv");
+    glUniformMatrix3x4dv = (PFNGLUNIFORMMATRIX3X4DVPROC)neko_gl_get_proc_address("glUniformMatrix3x4dv");
+    glUniformMatrix4x2dv = (PFNGLUNIFORMMATRIX4X2DVPROC)neko_gl_get_proc_address("glUniformMatrix4x2dv");
+    glUniformMatrix4x3dv = (PFNGLUNIFORMMATRIX4X3DVPROC)neko_gl_get_proc_address("glUniformMatrix4x3dv");
+    glGetUniformdv = (PFNGLGETUNIFORMDVPROC)neko_gl_get_proc_address("glGetUniformdv");
+    glGetSubroutineUniformLocation = (PFNGLGETSUBROUTINEUNIFORMLOCATIONPROC)neko_gl_get_proc_address("glGetSubroutineUniformLocation");
+    glGetSubroutineIndex = (PFNGLGETSUBROUTINEINDEXPROC)neko_gl_get_proc_address("glGetSubroutineIndex");
+    glGetActiveSubroutineUniformiv = (PFNGLGETACTIVESUBROUTINEUNIFORMIVPROC)neko_gl_get_proc_address("glGetActiveSubroutineUniformiv");
+    glGetActiveSubroutineUniformName = (PFNGLGETACTIVESUBROUTINEUNIFORMNAMEPROC)neko_gl_get_proc_address("glGetActiveSubroutineUniformName");
+    glGetActiveSubroutineName = (PFNGLGETACTIVESUBROUTINENAMEPROC)neko_gl_get_proc_address("glGetActiveSubroutineName");
+    glUniformSubroutinesuiv = (PFNGLUNIFORMSUBROUTINESUIVPROC)neko_gl_get_proc_address("glUniformSubroutinesuiv");
+    glGetUniformSubroutineuiv = (PFNGLGETUNIFORMSUBROUTINEUIVPROC)neko_gl_get_proc_address("glGetUniformSubroutineuiv");
+    glGetProgramStageiv = (PFNGLGETPROGRAMSTAGEIVPROC)neko_gl_get_proc_address("glGetProgramStageiv");
+    glPatchParameteri = (PFNGLPATCHPARAMETERIPROC)neko_gl_get_proc_address("glPatchParameteri");
+    glPatchParameterfv = (PFNGLPATCHPARAMETERFVPROC)neko_gl_get_proc_address("glPatchParameterfv");
+    glBindTransformFeedback = (PFNGLBINDTRANSFORMFEEDBACKPROC)neko_gl_get_proc_address("glBindTransformFeedback");
+    glDeleteTransformFeedbacks = (PFNGLDELETETRANSFORMFEEDBACKSPROC)neko_gl_get_proc_address("glDeleteTransformFeedbacks");
+    glGenTransformFeedbacks = (PFNGLGENTRANSFORMFEEDBACKSPROC)neko_gl_get_proc_address("glGenTransformFeedbacks");
+    glIsTransformFeedback = (PFNGLISTRANSFORMFEEDBACKPROC)neko_gl_get_proc_address("glIsTransformFeedback");
+    glPauseTransformFeedback = (PFNGLPAUSETRANSFORMFEEDBACKPROC)neko_gl_get_proc_address("glPauseTransformFeedback");
+    glResumeTransformFeedback = (PFNGLRESUMETRANSFORMFEEDBACKPROC)neko_gl_get_proc_address("glResumeTransformFeedback");
+    glDrawTransformFeedback = (PFNGLDRAWTRANSFORMFEEDBACKPROC)neko_gl_get_proc_address("glDrawTransformFeedback");
+    glDrawTransformFeedbackStream = (PFNGLDRAWTRANSFORMFEEDBACKSTREAMPROC)neko_gl_get_proc_address("glDrawTransformFeedbackStream");
+    glBeginQueryIndexed = (PFNGLBEGINQUERYINDEXEDPROC)neko_gl_get_proc_address("glBeginQueryIndexed");
+    glEndQueryIndexed = (PFNGLENDQUERYINDEXEDPROC)neko_gl_get_proc_address("glEndQueryIndexed");
+    glGetQueryIndexediv = (PFNGLGETQUERYINDEXEDIVPROC)neko_gl_get_proc_address("glGetQueryIndexediv");
+
+    glReleaseShaderCompiler = (PFNGLRELEASESHADERCOMPILERPROC)neko_gl_get_proc_address("glReleaseShaderCompiler");
+    glShaderBinary = (PFNGLSHADERBINARYPROC)neko_gl_get_proc_address("glShaderBinary");
+    glGetShaderPrecisionFormat = (PFNGLGETSHADERPRECISIONFORMATPROC)neko_gl_get_proc_address("glGetShaderPrecisionFormat");
+    glDepthRangef = (PFNGLDEPTHRANGEFPROC)neko_gl_get_proc_address("glDepthRangef");
+    glClearDepthf = (PFNGLCLEARDEPTHFPROC)neko_gl_get_proc_address("glClearDepthf");
+    glGetProgramBinary = (PFNGLGETPROGRAMBINARYPROC)neko_gl_get_proc_address("glGetProgramBinary");
+    glProgramBinary = (PFNGLPROGRAMBINARYPROC)neko_gl_get_proc_address("glProgramBinary");
+    glProgramParameteri = (PFNGLPROGRAMPARAMETERIPROC)neko_gl_get_proc_address("glProgramParameteri");
+    glUseProgramStages = (PFNGLUSEPROGRAMSTAGESPROC)neko_gl_get_proc_address("glUseProgramStages");
+    glActiveShaderProgram = (PFNGLACTIVESHADERPROGRAMPROC)neko_gl_get_proc_address("glActiveShaderProgram");
+    glCreateShaderProgramv = (PFNGLCREATESHADERPROGRAMVPROC)neko_gl_get_proc_address("glCreateShaderProgramv");
+    glBindProgramPipeline = (PFNGLBINDPROGRAMPIPELINEPROC)neko_gl_get_proc_address("glBindProgramPipeline");
+    glDeleteProgramPipelines = (PFNGLDELETEPROGRAMPIPELINESPROC)neko_gl_get_proc_address("glDeleteProgramPipelines");
+    glGenProgramPipelines = (PFNGLGENPROGRAMPIPELINESPROC)neko_gl_get_proc_address("glGenProgramPipelines");
+    glIsProgramPipeline = (PFNGLISPROGRAMPIPELINEPROC)neko_gl_get_proc_address("glIsProgramPipeline");
+    glGetProgramPipelineiv = (PFNGLGETPROGRAMPIPELINEIVPROC)neko_gl_get_proc_address("glGetProgramPipelineiv");
+    glProgramParameteri = (PFNGLPROGRAMPARAMETERIPROC)neko_gl_get_proc_address("glProgramParameteri");
+    glProgramUniform1i = (PFNGLPROGRAMUNIFORM1IPROC)neko_gl_get_proc_address("glProgramUniform1i");
+    glProgramUniform1iv = (PFNGLPROGRAMUNIFORM1IVPROC)neko_gl_get_proc_address("glProgramUniform1iv");
+    glProgramUniform1f = (PFNGLPROGRAMUNIFORM1FPROC)neko_gl_get_proc_address("glProgramUniform1f");
+    glProgramUniform1fv = (PFNGLPROGRAMUNIFORM1FVPROC)neko_gl_get_proc_address("glProgramUniform1fv");
+    glProgramUniform1d = (PFNGLPROGRAMUNIFORM1DPROC)neko_gl_get_proc_address("glProgramUniform1d");
+    glProgramUniform1dv = (PFNGLPROGRAMUNIFORM1DVPROC)neko_gl_get_proc_address("glProgramUniform1dv");
+    glProgramUniform1ui = (PFNGLPROGRAMUNIFORM1UIPROC)neko_gl_get_proc_address("glProgramUniform1ui");
+    glProgramUniform1uiv = (PFNGLPROGRAMUNIFORM1UIVPROC)neko_gl_get_proc_address("glProgramUniform1uiv");
+    glProgramUniform2i = (PFNGLPROGRAMUNIFORM2IPROC)neko_gl_get_proc_address("glProgramUniform2i");
+    glProgramUniform2iv = (PFNGLPROGRAMUNIFORM2IVPROC)neko_gl_get_proc_address("glProgramUniform2iv");
+    glProgramUniform2f = (PFNGLPROGRAMUNIFORM2FPROC)neko_gl_get_proc_address("glProgramUniform2f");
+    glProgramUniform2fv = (PFNGLPROGRAMUNIFORM2FVPROC)neko_gl_get_proc_address("glProgramUniform2fv");
+    glProgramUniform2d = (PFNGLPROGRAMUNIFORM2DPROC)neko_gl_get_proc_address("glProgramUniform2d");
+    glProgramUniform2dv = (PFNGLPROGRAMUNIFORM2DVPROC)neko_gl_get_proc_address("glProgramUniform2dv");
+    glProgramUniform2ui = (PFNGLPROGRAMUNIFORM2UIPROC)neko_gl_get_proc_address("glProgramUniform2ui");
+    glProgramUniform2uiv = (PFNGLPROGRAMUNIFORM2UIVPROC)neko_gl_get_proc_address("glProgramUniform2uiv");
+    glProgramUniform3i = (PFNGLPROGRAMUNIFORM3IPROC)neko_gl_get_proc_address("glProgramUniform3i");
+    glProgramUniform3iv = (PFNGLPROGRAMUNIFORM3IVPROC)neko_gl_get_proc_address("glProgramUniform3iv");
+    glProgramUniform3f = (PFNGLPROGRAMUNIFORM3FPROC)neko_gl_get_proc_address("glProgramUniform3f");
+    glProgramUniform3fv = (PFNGLPROGRAMUNIFORM3FVPROC)neko_gl_get_proc_address("glProgramUniform3fv");
+    glProgramUniform3d = (PFNGLPROGRAMUNIFORM3DPROC)neko_gl_get_proc_address("glProgramUniform3d");
+    glProgramUniform3dv = (PFNGLPROGRAMUNIFORM3DVPROC)neko_gl_get_proc_address("glProgramUniform3dv");
+    glProgramUniform3ui = (PFNGLPROGRAMUNIFORM3UIPROC)neko_gl_get_proc_address("glProgramUniform3ui");
+    glProgramUniform3uiv = (PFNGLPROGRAMUNIFORM3UIVPROC)neko_gl_get_proc_address("glProgramUniform3uiv");
+    glProgramUniform4i = (PFNGLPROGRAMUNIFORM4IPROC)neko_gl_get_proc_address("glProgramUniform4i");
+    glProgramUniform4iv = (PFNGLPROGRAMUNIFORM4IVPROC)neko_gl_get_proc_address("glProgramUniform4iv");
+    glProgramUniform4f = (PFNGLPROGRAMUNIFORM4FPROC)neko_gl_get_proc_address("glProgramUniform4f");
+    glProgramUniform4fv = (PFNGLPROGRAMUNIFORM4FVPROC)neko_gl_get_proc_address("glProgramUniform4fv");
+    glProgramUniform4d = (PFNGLPROGRAMUNIFORM4DPROC)neko_gl_get_proc_address("glProgramUniform4d");
+    glProgramUniform4dv = (PFNGLPROGRAMUNIFORM4DVPROC)neko_gl_get_proc_address("glProgramUniform4dv");
+    glProgramUniform4ui = (PFNGLPROGRAMUNIFORM4UIPROC)neko_gl_get_proc_address("glProgramUniform4ui");
+    glProgramUniform4uiv = (PFNGLPROGRAMUNIFORM4UIVPROC)neko_gl_get_proc_address("glProgramUniform4uiv");
+    glProgramUniformMatrix2fv = (PFNGLPROGRAMUNIFORMMATRIX2FVPROC)neko_gl_get_proc_address("glProgramUniformMatrix2fv");
+    glProgramUniformMatrix3fv = (PFNGLPROGRAMUNIFORMMATRIX3FVPROC)neko_gl_get_proc_address("glProgramUniformMatrix3fv");
+    glProgramUniformMatrix4fv = (PFNGLPROGRAMUNIFORMMATRIX4FVPROC)neko_gl_get_proc_address("glProgramUniformMatrix4fv");
+    glProgramUniformMatrix2dv = (PFNGLPROGRAMUNIFORMMATRIX2DVPROC)neko_gl_get_proc_address("glProgramUniformMatrix2dv");
+    glProgramUniformMatrix3dv = (PFNGLPROGRAMUNIFORMMATRIX3DVPROC)neko_gl_get_proc_address("glProgramUniformMatrix3dv");
+    glProgramUniformMatrix4dv = (PFNGLPROGRAMUNIFORMMATRIX4DVPROC)neko_gl_get_proc_address("glProgramUniformMatrix4dv");
+    glProgramUniformMatrix2x3fv = (PFNGLPROGRAMUNIFORMMATRIX2X3FVPROC)neko_gl_get_proc_address("glProgramUniformMatrix2x3fv");
+    glProgramUniformMatrix3x2fv = (PFNGLPROGRAMUNIFORMMATRIX3X2FVPROC)neko_gl_get_proc_address("glProgramUniformMatrix3x2fv");
+    glProgramUniformMatrix2x4fv = (PFNGLPROGRAMUNIFORMMATRIX2X4FVPROC)neko_gl_get_proc_address("glProgramUniformMatrix2x4fv");
+    glProgramUniformMatrix4x2fv = (PFNGLPROGRAMUNIFORMMATRIX4X2FVPROC)neko_gl_get_proc_address("glProgramUniformMatrix4x2fv");
+    glProgramUniformMatrix3x4fv = (PFNGLPROGRAMUNIFORMMATRIX3X4FVPROC)neko_gl_get_proc_address("glProgramUniformMatrix3x4fv");
+    glProgramUniformMatrix4x3fv = (PFNGLPROGRAMUNIFORMMATRIX4X3FVPROC)neko_gl_get_proc_address("glProgramUniformMatrix4x3fv");
+    glProgramUniformMatrix2x3dv = (PFNGLPROGRAMUNIFORMMATRIX2X3DVPROC)neko_gl_get_proc_address("glProgramUniformMatrix2x3dv");
+    glProgramUniformMatrix3x2dv = (PFNGLPROGRAMUNIFORMMATRIX3X2DVPROC)neko_gl_get_proc_address("glProgramUniformMatrix3x2dv");
+    glProgramUniformMatrix2x4dv = (PFNGLPROGRAMUNIFORMMATRIX2X4DVPROC)neko_gl_get_proc_address("glProgramUniformMatrix2x4dv");
+    glProgramUniformMatrix4x2dv = (PFNGLPROGRAMUNIFORMMATRIX4X2DVPROC)neko_gl_get_proc_address("glProgramUniformMatrix4x2dv");
+    glProgramUniformMatrix3x4dv = (PFNGLPROGRAMUNIFORMMATRIX3X4DVPROC)neko_gl_get_proc_address("glProgramUniformMatrix3x4dv");
+    glProgramUniformMatrix4x3dv = (PFNGLPROGRAMUNIFORMMATRIX4X3DVPROC)neko_gl_get_proc_address("glProgramUniformMatrix4x3dv");
+    glValidateProgramPipeline = (PFNGLVALIDATEPROGRAMPIPELINEPROC)neko_gl_get_proc_address("glValidateProgramPipeline");
+    glGetProgramPipelineInfoLog = (PFNGLGETPROGRAMPIPELINEINFOLOGPROC)neko_gl_get_proc_address("glGetProgramPipelineInfoLog");
+    glVertexAttribL1d = (PFNGLVERTEXATTRIBL1DPROC)neko_gl_get_proc_address("glVertexAttribL1d");
+    glVertexAttribL2d = (PFNGLVERTEXATTRIBL2DPROC)neko_gl_get_proc_address("glVertexAttribL2d");
+    glVertexAttribL3d = (PFNGLVERTEXATTRIBL3DPROC)neko_gl_get_proc_address("glVertexAttribL3d");
+    glVertexAttribL4d = (PFNGLVERTEXATTRIBL4DPROC)neko_gl_get_proc_address("glVertexAttribL4d");
+    glVertexAttribL1dv = (PFNGLVERTEXATTRIBL1DVPROC)neko_gl_get_proc_address("glVertexAttribL1dv");
+    glVertexAttribL2dv = (PFNGLVERTEXATTRIBL2DVPROC)neko_gl_get_proc_address("glVertexAttribL2dv");
+    glVertexAttribL3dv = (PFNGLVERTEXATTRIBL3DVPROC)neko_gl_get_proc_address("glVertexAttribL3dv");
+    glVertexAttribL4dv = (PFNGLVERTEXATTRIBL4DVPROC)neko_gl_get_proc_address("glVertexAttribL4dv");
+    glVertexAttribLPointer = (PFNGLVERTEXATTRIBLPOINTERPROC)neko_gl_get_proc_address("glVertexAttribLPointer");
+    glGetVertexAttribLdv = (PFNGLGETVERTEXATTRIBLDVPROC)neko_gl_get_proc_address("glGetVertexAttribLdv");
+    glViewportArrayv = (PFNGLVIEWPORTARRAYVPROC)neko_gl_get_proc_address("glViewportArrayv");
+    glViewportIndexedf = (PFNGLVIEWPORTINDEXEDFPROC)neko_gl_get_proc_address("glViewportIndexedf");
+    glViewportIndexedfv = (PFNGLVIEWPORTINDEXEDFVPROC)neko_gl_get_proc_address("glViewportIndexedfv");
+    glScissorArrayv = (PFNGLSCISSORARRAYVPROC)neko_gl_get_proc_address("glScissorArrayv");
+    glScissorIndexed = (PFNGLSCISSORINDEXEDPROC)neko_gl_get_proc_address("glScissorIndexed");
+    glScissorIndexedv = (PFNGLSCISSORINDEXEDVPROC)neko_gl_get_proc_address("glScissorIndexedv");
+    glDepthRangeArrayv = (PFNGLDEPTHRANGEARRAYVPROC)neko_gl_get_proc_address("glDepthRangeArrayv");
+    glDepthRangeIndexed = (PFNGLDEPTHRANGEINDEXEDPROC)neko_gl_get_proc_address("glDepthRangeIndexed");
+    glGetFloati_v = (PFNGLGETFLOATI_VPROC)neko_gl_get_proc_address("glGetFloati_v");
+    glGetDoublei_v = (PFNGLGETDOUBLEI_VPROC)neko_gl_get_proc_address("glGetDoublei_v");
+    glBufferStorage = (PFNGLBUFFERSTORAGEPROC)neko_gl_get_proc_address("glBufferStorage");
+    glMemoryBarrier = (PFNGLMEMORYBARRIERPROC)neko_gl_get_proc_address("glMemoryBarrier");
+
+#if defined(NEKO_PF_WIN)
+    if (libGL != NULL) {
+        FreeLibrary((HMODULE)libGL);
+        libGL = NULL;
+    }
+#else
+    if (libGL != NULL) {
+        dlclose(libGL);
+        libGL = NULL;
+    }
+#endif
+}
+
+#endif
+
 #if (defined NEKO_PF_WIN || defined NEKO_PF_APPLE || defined NEKO_PF_LINUX)
 #define R_IMPL_OPENGL_CORE
 #else
@@ -1964,6 +3027,50 @@ NEKO_API_DECL neko_handle(neko_render_storage_buffer_t) neko_render_storage_buff
     // CHECK_GL_CORE(glBindBuffer(GL_SHADER_STORAGE_BUFFER, sbo.buffer); glBufferData(GL_SHADER_STORAGE_BUFFER, desc.size, desc.data, neko_gl_buffer_usage_to_gl_enum(desc.usage));
     //               glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT); glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0););
 
+    // CHECK_GL_CORE(
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, sbo.buffer);
+
+    // 检查 desc 标志以映射缓冲区
+    GLbitfield flags = 0x00;
+    if (desc.flags & R_BUFFER_FLAG_MAP_PERSISTENT) {
+        flags |= GL_MAP_PERSISTENT_BIT;
+    }
+    if (desc.flags & R_BUFFER_FLAG_MAP_COHERENT) {
+        flags |= GL_MAP_PERSISTENT_BIT;
+        flags |= GL_MAP_COHERENT_BIT;
+    }
+    if (desc.access & R_ACCESS_READ_ONLY) {
+        flags |= GL_MAP_READ_BIT;
+    } else if (desc.access & R_ACCESS_WRITE_ONLY) {
+        flags |= GL_MAP_WRITE_BIT;
+    } else if (desc.access & R_ACCESS_READ_WRITE) {
+        flags |= (GL_MAP_READ_BIT | GL_MAP_WRITE_BIT);
+    }
+
+    GLbitfield store_flags = flags;
+    if (desc.usage == R_BUFFER_USAGE_DYNAMIC) {
+        store_flags |= GL_DYNAMIC_STORAGE_BIT;
+    }
+
+    // 现在只进行读/写访问
+    // flags |= GL_MAP_READ_BIT; flags |= GL_MAP_WRITE_BIT;
+    glBufferStorage(GL_SHADER_STORAGE_BUFFER, desc.size, desc.data, store_flags);
+    // glBufferData(GL_SHADER_STORAGE_BUFFER, desc.size, desc.data, neko_gl_buffer_usage_to_gl_enum(desc.usage));
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+    // 存储映射
+    if (flags & GL_MAP_PERSISTENT_BIT) {
+        sbo.map = glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, desc.size, flags);
+    }
+
+    GLenum err = glGetError();
+    while ((err = glGetError()) != GL_NO_ERROR) {
+        neko_println("GL ERROR: 0x%x: %s", err, glGetString(err));
+    }
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    // );
+
     memcpy(sbo.name, desc.name, 64);
     sbo.access = desc.access;
     sbo.size = desc.size;
@@ -2411,6 +3518,61 @@ NEKO_API_DECL void neko_render_texture_read_impl(neko_handle(neko_render_texture
     glBindTexture(target, tex->id);
     glReadPixels(desc->read.x, desc->read.y, desc->read.width, desc->read.height, gl_format, gl_type, *desc->data);
     glBindTexture(target, 0x00);
+}
+
+NEKO_API_DECL void* neko_render_storage_buffer_map_get_impl(neko_handle(neko_render_storage_buffer_t) hndl) {
+    neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(render)->user_data;
+    if (!neko_slot_array_handle_valid(ogl->storage_buffers, hndl.id)) {
+        NEKO_WARN("Storage buffer handle invalid: %zu", hndl.id);
+        return NULL;
+    }
+    neko_gl_storage_buffer_t* sbo = neko_slot_array_getp(ogl->storage_buffers, hndl.id);
+    return sbo->map;
+}
+
+NEKO_API_DECL void neko_render_storage_buffer_unlock_impl(neko_handle(neko_render_storage_buffer_t) hndl) {
+    // 解锁并返回映射指针
+    neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(render)->user_data;
+    if (!neko_slot_array_handle_valid(ogl->storage_buffers, hndl.id)) {
+        NEKO_WARN("Storage buffer handle invalid: %zu", hndl.id);
+        return;
+    }
+    neko_gl_storage_buffer_t* sbo = neko_slot_array_getp(ogl->storage_buffers, hndl.id);
+
+    // 已经解锁
+    if (sbo->sync) {
+        while (1) {
+            GLenum wait = glClientWaitSync(sbo->sync, GL_SYNC_FLUSH_COMMANDS_BIT, 1);
+            if (wait == GL_ALREADY_SIGNALED || wait == GL_CONDITION_SATISFIED) {
+                break;
+            }
+        }
+    }
+}
+
+NEKO_API_DECL void* neko_render_storage_buffer_lock_impl(neko_handle(neko_render_storage_buffer_t) hndl) {
+    // 锁
+    neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(render)->user_data;
+    if (!neko_slot_array_handle_valid(ogl->storage_buffers, hndl.id)) {
+        NEKO_WARN("Storage buffer handle invalid: %zu", hndl.id);
+        return NULL;
+    }
+    neko_gl_storage_buffer_t* sbo = neko_slot_array_getp(ogl->storage_buffers, hndl.id);
+
+    // 已经锁定
+    if (sbo->sync) {
+        glDeleteSync(sbo->sync);
+    }
+    sbo->sync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+    if (sbo->sync) {
+        while (1) {
+            GLenum wait = glClientWaitSync(sbo->sync, GL_SYNC_FLUSH_COMMANDS_BIT, 1);
+            if (wait == GL_ALREADY_SIGNALED || wait == GL_CONDITION_SATISFIED) {
+                break;
+            }
+        }
+    }
+    return sbo->map;
 }
 
 #define __ogl_push_command(CB, OP_CODE, ...)                                       \
@@ -3760,6 +4922,11 @@ NEKO_API_DECL void neko_render_init(neko_render_t* render) {
     render->api.texture_update = neko_render_texture_update_impl;
     render->api.texture_read = neko_render_texture_read_impl;
 
+    // Util
+    render->api.storage_buffer_map_get = neko_render_storage_buffer_map_get_impl;
+    render->api.storage_buffer_lock = neko_render_storage_buffer_lock_impl;
+    render->api.storage_buffer_unlock = neko_render_storage_buffer_unlock_impl;
+
     // Submission (Main Thread)
     render->api.command_buffer_submit = neko_render_command_buffer_submit_impl;
 }
@@ -3820,3 +4987,9 @@ NEKO_API_DECL void neko_render_storage_buffer_update(neko_handle(neko_render_sto
 NEKO_API_DECL void neko_render_texture_update(neko_handle(neko_render_texture_t) hndl, neko_render_texture_desc_t* desc) { neko_render()->api.texture_update(hndl, desc); }
 
 NEKO_API_DECL void neko_render_texture_read(neko_handle(neko_render_texture_t) hndl, neko_render_texture_desc_t* desc) { neko_render()->api.texture_read(hndl, desc); }
+
+NEKO_API_DECL void* neko_render_storage_buffer_map_get(neko_handle(neko_render_storage_buffer_t) hndl) { return neko_render()->api.storage_buffer_map_get(hndl); }
+
+NEKO_API_DECL void neko_render_storage_buffer_unlock(neko_handle(neko_render_storage_buffer_t) hndl) { return neko_render()->api.storage_buffer_unlock(hndl); }
+
+NEKO_API_DECL void* neko_render_storage_buffer_lock(neko_handle(neko_render_storage_buffer_t) hndl) { return neko_render()->api.storage_buffer_lock(hndl); }

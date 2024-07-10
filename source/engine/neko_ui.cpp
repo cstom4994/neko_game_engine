@@ -1,7 +1,8 @@
 
 #include "engine/neko_common.h"
-#include "engine/neko_render.h"
 #include "engine/neko_platform.h"
+#include "engine/neko_render.h"
+
 
 #define neko_ui_unused(x) ((void)(x))
 
@@ -6413,7 +6414,7 @@ NEKO_API_DECL s32 neko_ui_style_editor(neko_ui_context_t* ctx, neko_ui_style_she
                     {"input", NEKO_UI_ELEMENT_INPUT},         {"label", NEKO_UI_ELEMENT_LABEL},   {"text", NEKO_UI_ELEMENT_TEXT},
                     {"scroll", NEKO_UI_ELEMENT_SCROLL},       {"image", NEKO_UI_ELEMENT_IMAGE},   {NULL}};
 
-    static char* states[] = {"default", "hover", "focus"};
+    static const char* states[] = {"default", "hover", "focus"};
 
     static struct {
         const char* label;

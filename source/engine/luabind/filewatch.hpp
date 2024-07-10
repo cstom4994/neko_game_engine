@@ -92,7 +92,7 @@ private:
 
 #endif
 
-#include "engine/neko.hpp"
+#include "engine/neko.h"
 
 #ifdef NEKO_PF_WIN
 
@@ -549,7 +549,7 @@ std::optional<notify> watch::select() noexcept {
 #include <format>
 #include <string_view>
 
-#include "engine/neko_lua.hpp"
+#include "engine/neko_lua.h"
 #include "engine/neko_luabind.hpp"
 
 namespace neko::lua::__filewatch {

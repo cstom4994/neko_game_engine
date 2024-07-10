@@ -106,7 +106,7 @@ void neko_asset_default_load_from_file(const_str path, void *out) {
 #include <imstb_rectpack.h>
 #include <imstb_truetype.h>
 
-NEKO_API_DECL neko_image_t neko_image_load_mem(const void* mem_data, size_t mem_size, const_str vpath) {
+NEKO_API_DECL neko_image_t neko_image_load_mem(const void *mem_data, size_t mem_size, const_str vpath) {
     char temp_file_extension_buffer[16] = {0};
     neko_util_get_file_extension(temp_file_extension_buffer, sizeof(temp_file_extension_buffer), vpath);
     if (neko_string_compare_equal(temp_file_extension_buffer, "ase") || neko_string_compare_equal(temp_file_extension_buffer, "aseprite")) {
@@ -156,7 +156,7 @@ NEKO_API_DECL bool neko_util_load_texture_data_from_memory(const void *memory, s
     // Load texture data
 
     int channels;
-    unsigned char *image = stbi_load_from_memory(memory, sz, width, height, &channels, 0);
+    u8 *image = (u8 *)stbi_load_from_memory((unsigned char *)memory, sz, width, height, &channels, 0);
 
     // if (flip_vertically_on_load) neko_png_flip_image_horizontal(&img);
 
@@ -1058,7 +1058,7 @@ bool neko_pack_item_data_with_index(neko_pack_t *pack_reader, u64 index, const u
     //(*data) = data_buffer;
     (*size) = info.data_size;
 
-    (*data) = neko_malloc(info.data_size);
+    (*data) = (u8 *)neko_malloc(info.data_size);
 
     memcpy((void *)(*data), data_buffer, info.data_size);
 

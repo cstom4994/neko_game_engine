@@ -808,8 +808,7 @@ NEKO_API_DECL int neko_pf_chdir_default_impl(const char* path) {
 // GLFW Implemenation
 ======================*/
 
-// OpenGL
-#include "engine/neko_gl.h"
+#include "engine/neko_render.h"
 
 // glfw
 #include <GLFW/glfw3.h>

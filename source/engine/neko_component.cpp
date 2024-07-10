@@ -1,7 +1,7 @@
 
 #include "neko_component.hpp"
 
-#include "engine/neko.hpp"
+#include "engine/neko.h"
 #include "engine/neko_asset.h"
 #include "engine/neko_common.h"
 

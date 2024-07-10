@@ -11,9 +11,8 @@
 
 // ImGui
 #include "engine/neko.h"
-#include "engine/neko.hpp"
 #include "engine/neko_imgui.hpp"
-#include "engine/neko_lua.hpp"
+#include "engine/neko_lua.h"
 #include "engine/neko_luabind.hpp"
 
 void render_uniform_variable(GLuint program, GLenum type, const char* name, GLint location);

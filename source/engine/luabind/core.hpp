@@ -4,7 +4,7 @@
 #include "engine/neko_common.h"
 #include "engine/neko_engine.h"
 #include "engine/neko_imgui.hpp"
-#include "engine/neko_lua.hpp"
+#include "engine/neko_lua.h"
 #include "engine/neko_luabind.hpp"
 
 static int g_lua_callbacks_table_ref = LUA_NOREF;

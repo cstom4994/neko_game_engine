@@ -16,7 +16,7 @@ const_str neko_base64_encode(const_str str) {
         len = str_len / 3 * 4;
     else
         len = (str_len / 3 + 1) * 4;
-    res = neko_safe_malloc(sizeof(char) * len + 1);
+    res = (char*)neko_safe_malloc(sizeof(char) * len + 1);
     res[len] = '\0';
     for (i = 0, j = 0; i < len - 2; j += 3, i += 4) {
         res[i] = base64_table[str[j] >> 2];
@@ -49,7 +49,7 @@ const_str neko_base64_decode(const_str code) {
         str_len = len / 4 * 3 - 1;
     else
         str_len = len / 4 * 3;
-    res = neko_safe_malloc(sizeof(char) * str_len + 1);
+    res = (char*)neko_safe_malloc(sizeof(char) * str_len + 1);
     res[str_len] = '\0';
     for (i = 0, j = 0; i < len - 2; j += 3, i += 4) {
         res[j] = ((unsigned char)table[code[i]]) << 2 | (((unsigned char)table[code[i + 1]]) >> 4);

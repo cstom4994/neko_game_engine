@@ -13,13 +13,11 @@
 // engine
 #include "engine/modules/neko_flecslua.h"
 #include "engine/neko.h"
-#include "engine/neko.hpp"
 #include "engine/neko_api.hpp"
 #include "engine/neko_asset.h"
 #include "engine/neko_engine.h"
-#include "engine/neko_gl.h"
 #include "engine/neko_imgui.hpp"
-#include "engine/neko_lua.hpp"
+#include "engine/neko_lua.h"
 #include "engine/neko_luabind.hpp"
 #include "engine/neko_math.h"
 #include "engine/neko_platform.h"
@@ -35,9 +33,6 @@ class sandbox_game;
 class neko_filesystem_t;
 
 typedef struct neko_client_userdata_t {
-
-    ecs_world_t *w;
-
     neko_imgui_context_t imgui = NEKO_DEFAULT_VAL();
     neko_handle(neko_render_renderpass_t) main_rp = {0};
     neko_handle(neko_render_framebuffer_t) main_fbo = {0};
@@ -261,12 +256,6 @@ void game_init(neko_client_userdata_t *game_userdata) {
     // thread_atomic_int_store(&game_userdata->init_thread_flag, 0);
 
     // game_userdata->init_work_thread = thread_init(init_work, &game_userdata->init_thread_flag, "init_work_thread", THREAD_STACK_SIZE_DEFAULT);
-
-    game_userdata->w = ecs_init();
-
-    ECS_IMPORT(game_userdata->w, FlecsLua);
-
-    ecs_lua_set_state(game_userdata->w, neko_instance()->L);
 
     neko_lua_call(neko_instance()->L, "game_init");
 

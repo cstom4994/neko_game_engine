@@ -1465,8 +1465,8 @@ void neko_idraw_box(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, f32 z, f32 
 
 void neko_idraw_sphere(neko_immediate_draw_t* neko_idraw, f32 cx, f32 cy, f32 cz, f32 radius, u8 r, u8 g, u8 b, u8 a, neko_render_primitive_type type) {
     // Modified from: http://www.songho.ca/opengl/gl_sphere.html
-    const u32 stacks = 16;
-    const u32 sectors = 32;
+    const u32 stacks = 32;
+    const u32 sectors = 64;
     f32 sector_step = 2.f * (f32)neko_pi / (f32)sectors;
     f32 stack_step = (f32)neko_pi / (f32)stacks;
     struct {
@@ -2006,7 +2006,7 @@ NEKO_API_DECL neko_draw_pipeline_t neko_draw_pipeline_create(const neko_draw_pip
     pip.hndl = neko_render_pipeline_create(desc->pip_desc);
     pip.ublock = neko_draw_uniform_block_create(&desc->ublock_desc);
     pip.desc = desc->pip_desc;
-    pip.desc.layout.attrs = neko_malloc(desc->pip_desc.layout.size);
+    pip.desc.layout.attrs = (neko_render_vertex_attribute_desc_t*)neko_malloc(desc->pip_desc.layout.size);
     memcpy(pip.desc.layout.attrs, desc->pip_desc.layout.attrs, desc->pip_desc.layout.size);
     return pip;
 }

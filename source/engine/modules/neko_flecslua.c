@@ -11,8 +11,8 @@
 
 ECS_COMPONENT_DECLARE(EcsLuaHost);
 
-static const int ecs_lua__ctx;
-static const int ecs_lua__world;
+static int ecs_lua__ctx;
+static int ecs_lua__world;
 
 #define ECS_LUA_DEFAULT_CTX (&ecs_lua__ctx)
 #define ECS_LUA_DEFAULT_WORLD (&ecs_lua__world)
@@ -40,14 +40,14 @@ ecs_lua_ctx *ecs_lua_get_context(lua_State *L, const ecs_world_t *world) {
         type = lua_rawgeti(L, -1, ECS_LUA_CONTEXT);
         ecs_assert(type == LUA_TUSERDATA, ECS_INTERNAL_ERROR, NULL);
 
-        ctx = lua_touserdata(L, -1);
+        ctx = (ecs_lua_ctx *)lua_touserdata(L, -1);
         lua_pop(L, 2);
 
         return ctx;
     }
 
     lua_rawgetp(L, LUA_REGISTRYINDEX, ECS_LUA_DEFAULT_CTX);
-    ctx = lua_touserdata(L, -1);
+    ctx = (ecs_lua_ctx *)lua_touserdata(L, -1);
     lua_pop(L, 1);
 
     return ctx;
@@ -582,10 +582,13 @@ int luaopen_ecs(lua_State *L) {
 
             ecs_lua_ctx *ctx = ctx_init(param);
 
-            ecs_singleton_set(w, EcsLuaHost, {L, ctx});
+            // ecs_singleton_set(w, EcsLuaHost, {L, ctx});
+
+            EcsLuaHost p = {L, ctx};
+            ecs_singleton_set_ptr(w, EcsLuaHost, &p);
         }
 
-        ecs_world_t **ptr = lua_newuserdata(L, sizeof(ecs_world_t *));
+        ecs_world_t **ptr = (ecs_world_t **)lua_newuserdata(L, sizeof(ecs_world_t *));
         *ptr = w;
 
         luaL_setmetatable(L, "ecs_world_t");
@@ -680,7 +683,7 @@ static ecs_lua_ctx *ctx_init(ecs_lua_ctx ctx) {
 
     if (default_ctx) return default_ctx;
 
-    ecs_lua_ctx *lctx = lua_newuserdata(L, sizeof(ecs_lua_ctx));
+    ecs_lua_ctx *lctx = (ecs_lua_ctx *)lua_newuserdata(L, sizeof(ecs_lua_ctx));
 
     lua_rawsetp(L, LUA_REGISTRYINDEX, ECS_LUA_DEFAULT_CTX);
 
@@ -727,7 +730,8 @@ lua_State *ecs_lua_get_state(ecs_world_t *world) {
 
         ecs_lua_ctx *ctx = ctx_init(param);
 
-        ecs_singleton_set(world, EcsLuaHost, {L, ctx});
+        EcsLuaHost p = {L, ctx};
+        ecs_singleton_set_ptr(world, EcsLuaHost, &p);
 
         host = ecs_singleton_get(world, EcsLuaHost);
     }
@@ -794,8 +798,11 @@ void FlecsLuaImport(ecs_world_t *w) {
     ecs_entity_t old_scope = ecs_set_scope(w, 0);
 
     /* flecs only defines ecs_uptr_t */
-    ecs_entity_t e = ecs_entity_init(w, &(ecs_entity_desc_t){.name = "uintptr_t", .symbol = "uintptr_t"});
-    ecs_set(w, e, EcsPrimitive, {.kind = EcsUPtr});
+
+    ecs_entity_desc_t ent_des_e = {.name = "uintptr_t", .symbol = "uintptr_t"};
+    ecs_entity_t e = ecs_entity_init(w, &ent_des_e);
+    EcsPrimitive pri = {.kind = EcsUPtr};
+    ecs_set_ptr(w, e, EcsPrimitive, &pri);
 
     ecs_set_scope(w, old_scope);
 
@@ -803,7 +810,8 @@ void FlecsLuaImport(ecs_world_t *w) {
 
     // ECS_META_COMPONENT(w, ecs_meta_type_op_t);
 
-    ecs_entity_init(w, &(ecs_entity_desc_t){.id = ecs_id(ecs_meta_type_op_t), .use_low_id = true, .name = "ecs_meta_type_op_t"});
+    ecs_entity_desc_t ent_des_i = {.id = ecs_id(ecs_meta_type_op_t), .use_low_id = true, .name = "ecs_meta_type_op_t"};
+    ecs_entity_init(w, &ent_des_i);
 
     ecs_id(ecs_meta_type_op_t) =
             ecs_component_init(w, &(ecs_component_desc_t){.entity = ecs_id(ecs_meta_type_op_t),
@@ -821,24 +829,26 @@ void FlecsLuaImport(ecs_world_t *w) {
                                                     {.name = (char *)"unit", .type = ecs_id(ecs_entity_t)},
                                             }});
 
-    ecs_struct_init(w, &(ecs_struct_desc_t){.entity = ecs_id(EcsMetaTypeSerialized),
-                                            .members = {
-                                                    {.name = (char *)"*ops", .type = ecs_id(EcsVector)},
-                                            }});
+    ecs_struct_desc_t struct_des = {.entity = ecs_id(EcsMetaTypeSerialized),
+                                    .members = {
+                                            {.name = (char *)"*ops", .type = ecs_id(EcsVector)},
+                                    }};
+    ecs_struct_init(w, &struct_des);
 
     ecs_set_scope(w, old_scope);
 
-    NEKO_TRACE("gauge size %zu;counter size %zu;metric size %zu;worldstats: %zu, world_stats: %zu",sizeof(EcsLuaGauge), sizeof(EcsLuaCounter), sizeof(ecs_metric_t), sizeof(EcsWorldStats), sizeof(ecs_world_stats_t));
+    NEKO_TRACE("gauge size %zu;counter size %zu;metric size %zu;worldstats: %zu, world_stats: %zu", sizeof(EcsLuaGauge), sizeof(EcsLuaCounter), sizeof(ecs_metric_t), sizeof(EcsWorldStats),
+               sizeof(ecs_world_stats_t));
 
     ecs_assert(sizeof(EcsLuaGauge) == sizeof(ecs_metric_t), ECS_INTERNAL_ERROR, NULL);
     ecs_assert(sizeof(EcsLuaCounter) == sizeof(ecs_metric_t), ECS_INTERNAL_ERROR, NULL);
     ecs_assert(sizeof(EcsLuaWorldStats) == sizeof(ecs_world_stats_t), ECS_INTERNAL_ERROR, NULL);
 
-    ecs_set_hooks(w, EcsLuaHost,
-                  {
-                          .ctor = ecs_default_ctor,
-                          .on_remove = EcsLuaHost__OnRemove  // atfini's are called too early (e.g. before OnRemove observers) since at least v3.2.0
-                  });
+    ecs_type_hooks_t th = {
+            .ctor = ecs_default_ctor,
+            .on_remove = EcsLuaHost__OnRemove  // atfini's are called too early (e.g. before OnRemove observers) since at least v3.2.0
+    };
+    ecs_set_hooks_id(w, ecs_id(EcsLuaHost), &th);
 }
 
 int bulk_new(lua_State *L) {
@@ -920,7 +930,7 @@ static const char *array_type_name(const ecs_world_t *world, ecs_meta_type_op_t 
     const EcsMetaTypeSerialized *ser = ecs_get(world, type, EcsMetaTypeSerialized);
     ecs_assert(ser != NULL, ECS_INTERNAL_ERROR, NULL);
 
-    ecs_meta_type_op_t *ops = ecs_vec_first(&ser->ops);
+    ecs_meta_type_op_t *ops = (ecs_meta_type_op_t *)ecs_vec_first(&ser->ops);
 
 #ifndef NDEBUG
     int32_t count = ecs_vec_count(&ser->ops);
@@ -1105,7 +1115,7 @@ static char *str_type_ops(ecs_world_t *w, ecs_entity_t type, int recursive) {
 
     ecs_strbuf_t buf = ECS_STRBUF_INIT;
 
-    ecs_meta_type_op_t *ops = ecs_vec_first(&ser->ops);
+    ecs_meta_type_op_t *ops = (ecs_meta_type_op_t *)ecs_vec_first(&ser->ops);
     int count = ecs_vec_count(&ser->ops);
 
     int i, depth = 0;
@@ -1653,9 +1663,9 @@ int get_typeid(lua_State *L) {
 
     ecs_entity_t e = luaL_checkinteger(L, 1);
 
-    ecs_entity_t typeid = ecs_get_typeid(w, e);
+    ecs_entity_t type_id = ecs_get_typeid(w, e);
 
-    lua_pushinteger(L, typeid);
+    lua_pushinteger(L, type_id);
 
     return 1;
 }
@@ -2173,7 +2183,7 @@ int new_ref(lua_State *L) {
     ecs_entity_t e = luaL_checkinteger(L, 1);
     ecs_entity_t c = luaL_checkinteger(L, 2);
 
-    ecs_ref_t *ref = lua_newuserdata(L, sizeof(ecs_ref_t));
+    ecs_ref_t *ref = (ecs_ref_t *)lua_newuserdata(L, sizeof(ecs_ref_t));
     luaL_setmetatable(L, "ecs_ref_t");
 
     *ref = ecs_ref_init_id(w, e, c);
@@ -2184,7 +2194,7 @@ int new_ref(lua_State *L) {
 int get_ref(lua_State *L) {
     ecs_world_t *w = ecs_lua_world(L);
 
-    ecs_ref_t *ref = luaL_checkudata(L, 1, "ecs_ref_t");
+    ecs_ref_t *ref = (ecs_ref_t *)luaL_checkudata(L, 1, "ecs_ref_t");
     ecs_entity_t id = ref->id;
 
     if (lua_gettop(L) > 1) id = luaL_checkinteger(L, 2);
@@ -2286,11 +2296,11 @@ static inline void copy_term_id(ecs_term_id_t *dst, EcsLuaTermID *src) {
 static inline void copy_term(ecs_term_t *dst, EcsLuaTerm *src) {
     dst->id = src->id;
 
-    dst->inout = src->inout;
+    dst->inout = (ecs_inout_kind_t)src->inout;
     copy_term_id(&dst->src, &src->src);
     copy_term_id(&dst->first, &src->first);
     copy_term_id(&dst->second, &src->second);
-    dst->oper = src->oper;
+    dst->oper = (ecs_oper_kind_t)src->oper;
 }
 
 ecs_term_t checkterm(lua_State *L, const ecs_world_t *world, int arg) {
@@ -2649,7 +2659,7 @@ static void serialize_type_elements(const ecs_world_t *world, ecs_entity_t type,
     const EcsComponent *comp = ecs_get(world, type, EcsComponent);
     ecs_assert(comp != NULL, ECS_INTERNAL_ERROR, NULL);
 
-    ecs_meta_type_op_t *ops = ecs_vec_first(&ser->ops);
+    ecs_meta_type_op_t *ops = (ecs_meta_type_op_t *)ecs_vec_first(&ser->ops);
     int32_t op_count = ecs_vec_count(&ser->ops);
 
     serialize_elements(world, ops, op_count, base, elem_count, comp->size, L);
@@ -2788,17 +2798,17 @@ static void serialize_constants(ecs_world_t *world, ecs_meta_type_op_t *op, lua_
         ptr = ecs_map_ptr(&it);
 
         if (enum_type != NULL) {
-            ecs_enum_constant_t *constant = ptr;
+            ecs_enum_constant_t *constant = (ecs_enum_constant_t *)ptr;
             name = constant->name;
             value = constant->value;
         } else {
-            ecs_bitmask_constant_t *constant = ptr;
+            ecs_bitmask_constant_t *constant = (ecs_bitmask_constant_t *)ptr;
             name = constant->name;
             value = constant->value;
         }
 
         if (prefix) {
-            char *ptr = strstr(name, prefix);
+            const char *ptr = strstr(name, prefix);
             size_t len = strlen(prefix);
 
             if (ptr == name && ptr[len] != '\0') {
@@ -2829,7 +2839,7 @@ static void serialize_constants(ecs_world_t *world, ecs_meta_type_op_t *op, lua_
 static void serialize_type(const ecs_world_t *world, const ecs_vec_t *v_ops, const void *base, lua_State *L) {
     ecs_assert(base != NULL, ECS_INVALID_PARAMETER, NULL);
 
-    ecs_meta_type_op_t *ops = ecs_vec_first(v_ops);
+    ecs_meta_type_op_t *ops = (ecs_meta_type_op_t *)ecs_vec_first(v_ops);
     int32_t count = ecs_vec_count(v_ops);
 
     serialize_type_ops(world, ops, count, base, 0, L);
@@ -3019,7 +3029,7 @@ static void deserialize_type(lua_State *L, int idx, ecs_meta_cursor_t *c, int de
 
 static void serialize_column(ecs_world_t *world, lua_State *L, const EcsMetaTypeSerialized *ser, const void *base, int32_t count) {
     int32_t op_count = ecs_vec_count(&ser->ops);
-    ecs_meta_type_op_t *ops = ecs_vec_first(&ser->ops);
+    ecs_meta_type_op_t *ops = (ecs_meta_type_op_t *)ecs_vec_first(&ser->ops);
 
     serialize_elements(world, ops, op_count, base, count, ops->size, L);  // XXX: not sure about ops->size
 }
@@ -3042,12 +3052,12 @@ static const EcsMetaTypeSerialized *get_serializer(lua_State *L, const ecs_world
     if (ret != LUA_TNIL) {
         ecs_assert(ret == LUA_TUSERDATA, ECS_INTERNAL_ERROR, NULL);
 
-        ref = lua_touserdata(L, -1);
+        ref = (ecs_ref_t *)lua_touserdata(L, -1);
 
         lua_pop(L, 3);
     } else {
         lua_pop(L, 1); /* -nil */
-        ref = lua_newuserdata(L, sizeof(ecs_ref_t));
+        ref = (ecs_ref_t *)lua_newuserdata(L, sizeof(ecs_ref_t));
         lua_rawseti(L, -2, type);
 
         *ref = ecs_ref_init_id(world, type, ecs_id(EcsMetaTypeSerialized));
@@ -3055,14 +3065,14 @@ static const EcsMetaTypeSerialized *get_serializer(lua_State *L, const ecs_world
         lua_pop(L, 2); /* -types, -world */
     }
 
-    const EcsMetaTypeSerialized *ser = ecs_ref_get_id(world, ref, 0);
+    const EcsMetaTypeSerialized *ser = (EcsMetaTypeSerialized *)ecs_ref_get_id(world, ref, 0);
     ecs_assert(ser != NULL, ECS_INTERNAL_ERROR, NULL);
 
     return ser;
 }
 
 static int columns__len(lua_State *L) {
-    ecs_iter_t *it = lua_touserdata(L, lua_upvalueindex(1));
+    ecs_iter_t *it = (ecs_iter_t *)lua_touserdata(L, lua_upvalueindex(1));
 
     lua_pushinteger(L, it->field_count);
 
@@ -3070,7 +3080,7 @@ static int columns__len(lua_State *L) {
 }
 
 static int columns__index(lua_State *L) {
-    ecs_iter_t *it = lua_touserdata(L, lua_upvalueindex(1));
+    ecs_iter_t *it = (ecs_iter_t *)lua_touserdata(L, lua_upvalueindex(1));
     ecs_world_t *world = it->world;
 
     lua_Integer i = luaL_checkinteger(L, 2);
@@ -3174,7 +3184,7 @@ static void push_iter_metadata(lua_State *L, ecs_iter_t *it) {
     lua_setfield(L, -2, "term_index");
 
     if (it->system) {
-        ecs_lua_callback *sys = it->binding_ctx;
+        ecs_lua_callback *sys = (ecs_lua_callback *)it->binding_ctx;
 
         if (sys->param_ref >= 0) {
             int type = ecs_lua_rawgeti(L, it->world, sys->param_ref);
@@ -3211,7 +3221,7 @@ static ecs_iter_t *push_iter_metafield(lua_State *L, ecs_iter_t *it, bool copy) 
 
     /* metatable.__ecs_iter = it */
     if (copy) {
-        ecs_iter_t *ptr = lua_newuserdata(L, sizeof(ecs_iter_t));
+        ecs_iter_t *ptr = (ecs_iter_t *)lua_newuserdata(L, sizeof(ecs_iter_t));
         memcpy(ptr, it, sizeof(ecs_iter_t));
         it = ptr;
     } else
@@ -3249,13 +3259,13 @@ static ecs_meta_cursor_t *ecs_lua_cursor(lua_State *L, const ecs_world_t *world,
     ecs_meta_cursor_t *cursor;
 
     if (ret == LUA_TUSERDATA) {
-        cursor = lua_touserdata(L, -1);
+        cursor = (ecs_meta_cursor_t *)lua_touserdata(L, -1);
         lua_pop(L, 3);
 
         meta_reset(cursor, base);
     } else {
         lua_pop(L, 1);
-        cursor = lua_newuserdata(L, sizeof(ecs_meta_cursor_t));
+        cursor = (ecs_meta_cursor_t *)lua_newuserdata(L, sizeof(ecs_meta_cursor_t));
         lua_rawseti(L, -2, type);
         lua_pop(L, 2);
 
@@ -3402,7 +3412,7 @@ int meta_constants(lua_State *L) {
     if (meta->kind != EcsEnumType && meta->kind != EcsBitmaskType) luaL_argerror(L, 1, "not an enum/bitmask");
 
     const EcsMetaTypeSerialized *ser = get_serializer(L, w, type);
-    ecs_meta_type_op_t *op = ecs_vec_first(&ser->ops);
+    ecs_meta_type_op_t *op = (ecs_meta_type_op_t *)ecs_vec_first(&ser->ops);
 
     if (lua_type(L, 2) == LUA_TTABLE)
         lua_pushvalue(L, 2);
@@ -3446,7 +3456,7 @@ static void each_reset_columns(lua_State *L, ecs_lua_each_t *each) {
 static int empty_next_func(lua_State *L) { return 0; }
 
 static int next_func(lua_State *L) {
-    ecs_lua_each_t *each = lua_touserdata(L, lua_upvalueindex(1));
+    ecs_lua_each_t *each = (ecs_lua_each_t *)lua_touserdata(L, lua_upvalueindex(1));
     ecs_lua_col_t *col = each->cols;
     ecs_iter_t *it = each->it;
     int idx, j, i = each->i;
@@ -3543,7 +3553,7 @@ int each_func(lua_State *L) {
         it = ecs_lua__checkiter(L, 1);
 
     size_t size = sizeof(ecs_lua_each_t) + it->field_count * sizeof(ecs_lua_col_t);
-    ecs_lua_each_t *each = lua_newuserdata(L, size);
+    ecs_lua_each_t *each = (ecs_lua_each_t *)lua_newuserdata(L, size);
 
     each->it = it;
     each->from_query = q ? true : false;
@@ -3666,7 +3676,7 @@ static ecs_world_t **world_buf(lua_State *L, const ecs_world_t *world) {
     ret = lua_rawgeti(L, -1, ECS_LUA_APIWORLD);
     ecs_assert(ret == LUA_TUSERDATA, ECS_INTERNAL_ERROR, NULL);
 
-    ecs_world_t **wbuf = lua_touserdata(L, -1);
+    ecs_world_t **wbuf = (ecs_world_t **)lua_touserdata(L, -1);
     ecs_world_t *prev_world = *wbuf;
 
     lua_pop(L, 2);
@@ -3679,7 +3689,7 @@ static void ecs_lua__callback(ecs_iter_t *it) {
     ecs_assert(it->binding_ctx != NULL, ECS_INTERNAL_ERROR, NULL);
 
     ecs_world_t *w = it->world;
-    ecs_lua_callback *cb = it->binding_ctx;
+    ecs_lua_callback *cb = (ecs_lua_callback *)it->binding_ctx;
     const ecs_world_t *real_world = ecs_get_world(it->world);
 
     int stage_id = ecs_get_stage_id(w);
@@ -3798,7 +3808,7 @@ static int new_callback(lua_State *L, ecs_world_t *w, enum EcsLuaCallbackType ty
     /* phase, event or event[] expected for arg 3 */
     const char *signature = lua_type(L, 4) == LUA_TSTRING ? luaL_checkstring(L, 4) : NULL;
 
-    ecs_lua_callback *cb = lua_newuserdata(L, sizeof(ecs_lua_callback));
+    ecs_lua_callback *cb = (ecs_lua_callback *)lua_newuserdata(L, sizeof(ecs_lua_callback));
 
     ecs_lua_ref(L, w);
 
@@ -3868,7 +3878,7 @@ int run_system(lua_State *L) {
     ecs_entity_t system = luaL_checkinteger(L, 1);
     lua_Number delta_time = luaL_checknumber(L, 2);
 
-    ecs_lua_callback *sys = ecs_system_get_binding_ctx(w, system);
+    ecs_lua_callback *sys = (ecs_lua_callback *)ecs_system_get_binding_ctx(w, system);
 
     if (sys == NULL) return luaL_argerror(L, 1, "not a Lua system");
 
@@ -3894,7 +3904,7 @@ int set_system_context(lua_State *L) {
     ecs_entity_t system = luaL_checkinteger(L, 1);
     if (lua_gettop(L) < 2) lua_pushnil(L);
 
-    ecs_lua_callback *sys = ecs_system_get_binding_ctx(w, system);
+    ecs_lua_callback *sys = (ecs_lua_callback *)ecs_system_get_binding_ctx(w, system);
 
     ecs_lua_unref(L, w, sys->param_ref);
 
@@ -4070,7 +4080,7 @@ int world_new(lua_State *L) {
     ecs_lua_set_state(w2, L);
 
     lua_pushcfunction(L, luaopen_ecs);
-    ecs_world_t **ptr = lua_newuserdata(L, sizeof(ecs_world_t *));
+    ecs_world_t **ptr = (ecs_world_t **)lua_newuserdata(L, sizeof(ecs_world_t *));
     *ptr = w2;
 
     luaL_setmetatable(L, "ecs_world_t");
@@ -4085,7 +4095,7 @@ int world_new(lua_State *L) {
 
 int world_gc(lua_State *L) {
     ecs_world_t *wdefault = ecs_lua_get_world(L);
-    ecs_world_t **ptr = lua_touserdata(L, 1);
+    ecs_world_t **ptr = (ecs_world_t **)lua_touserdata(L, 1);
     ecs_world_t *w = *ptr;
 
     if (!w) return 0;
@@ -4187,7 +4197,7 @@ int dim(lua_State *L) {
 }
 
 static ecs_snapshot_t *checksnapshot(lua_State *L, int arg) {
-    ecs_snapshot_t **snapshot = luaL_checkudata(L, arg, "ecs_snapshot_t");
+    ecs_snapshot_t **snapshot = (ecs_snapshot_t **)luaL_checkudata(L, arg, "ecs_snapshot_t");
 
     if (!*snapshot) luaL_argerror(L, arg, "snapshot was collected");
 
@@ -4195,7 +4205,7 @@ static ecs_snapshot_t *checksnapshot(lua_State *L, int arg) {
 }
 
 int snapshot_gc(lua_State *L) {
-    ecs_snapshot_t **ptr = luaL_checkudata(L, 1, "ecs_snapshot_t");
+    ecs_snapshot_t **ptr = (ecs_snapshot_t **)luaL_checkudata(L, 1, "ecs_snapshot_t");
     ecs_snapshot_t *snapshot = *ptr;
 
     if (snapshot) ecs_snapshot_free(snapshot);
@@ -4217,7 +4227,7 @@ int snapshot_take(lua_State *L) {
     } else
         snapshot = ecs_snapshot_take(w);
 
-    ecs_snapshot_t **ptr = lua_newuserdata(L, sizeof(ecs_snapshot_t *));
+    ecs_snapshot_t **ptr = (ecs_snapshot_t **)lua_newuserdata(L, sizeof(ecs_snapshot_t *));
     *ptr = snapshot;
 
     /* Associate world with the object for sanity checks */
@@ -4239,7 +4249,7 @@ int snapshot_restore(lua_State *L) {
     ecs_snapshot_restore(w, snapshot);
 
     /* Snapshot data is moved into world and is considered freed */
-    ecs_snapshot_t **ptr = lua_touserdata(L, 1);
+    ecs_snapshot_t **ptr = (ecs_snapshot_t **)lua_touserdata(L, 1);
     *ptr = NULL;
 
     return 0;
@@ -4269,7 +4279,7 @@ int snapshot_next(lua_State *L) {
 }
 
 ecs_query_t *checkquery(lua_State *L, int arg) {
-    ecs_query_t **query = luaL_checkudata(L, arg, "ecs_query_t");
+    ecs_query_t **query = (ecs_query_t **)luaL_checkudata(L, arg, "ecs_query_t");
 
     if (!*query) luaL_argerror(L, arg, "query was collected");
 
@@ -4279,7 +4289,7 @@ ecs_query_t *checkquery(lua_State *L, int arg) {
 }
 
 int query_gc(lua_State *L) {
-    ecs_query_t **ptr = luaL_checkudata(L, 1, "ecs_query_t");
+    ecs_query_t **ptr = (ecs_query_t **)luaL_checkudata(L, 1, "ecs_query_t");
     ecs_query_t *query = *ptr;
 
     if (query) ecs_query_fini(query);
@@ -4305,7 +4315,7 @@ int query_new(lua_State *L) {
         return 1;
     }
 
-    ecs_query_t **ptr = lua_newuserdata(L, sizeof(ecs_query_t *));
+    ecs_query_t **ptr = (ecs_query_t **)lua_newuserdata(L, sizeof(ecs_query_t *));
     *ptr = query;
 
     /* Associate world with the object for sanity checks */
@@ -4330,7 +4340,7 @@ int subquery_new(lua_State *L) {
 
     ecs_query_t *query = ecs_query_init(w, &desc);
 
-    ecs_query_t **ptr = lua_newuserdata(L, sizeof(ecs_query_t *));
+    ecs_query_t **ptr = (ecs_query_t **)lua_newuserdata(L, sizeof(ecs_query_t *));
     *ptr = query;
 
     return 1;
@@ -4528,7 +4538,7 @@ typedef struct ecs_lua_module {
 } ecs_lua_module;
 
 static void import_entry_point(ecs_world_t *w) {
-    ecs_lua_module *m = ecs_get_ctx(w);
+    ecs_lua_module *m = (ecs_lua_module *)ecs_get_ctx(w);
     ecs_lua_ctx *ctx = m->ctx;
     lua_State *L = ctx->L;
 
@@ -4626,7 +4636,7 @@ int import_handles(lua_State *L) {
 }
 
 ecs_type_t checktype(lua_State *L, int arg) {
-    ecs_type_t *type = luaL_checkudata(L, arg, "ecs_type_t");
+    ecs_type_t *type = (ecs_type_t *)luaL_checkudata(L, arg, "ecs_type_t");
 
     return *type;
 }

@@ -1,7 +1,7 @@
 #ifndef NEKO_BINDING_ENGINE_H
 #define NEKO_BINDING_ENGINE_H
 
-#include "engine/neko.hpp"
+#include "engine/neko.h"
 #include "engine/neko_asset.h"
 #include "engine/neko_engine.h"
 #include "engine/neko_lua.h"

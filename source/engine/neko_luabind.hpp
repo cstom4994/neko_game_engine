@@ -3,8 +3,8 @@
 
 #include <vector>
 
-#include "neko.hpp"
-#include "neko_lua.hpp"
+#include "neko.h"
+#include "neko_lua.h"
 #include "neko_reflection.hpp"
 
 #define LUA_FUNCTION(F) static int F(lua_State* L)
@@ -168,7 +168,8 @@ constexpr T* udata_new(lua_State* L, int nupvalue) {
         return udata_align<T>(storage);
     } else {
         void* storage = lua_newuserdatauv(L, sizeof(T), nupvalue);
-        std::memset(storage, 0, sizeof(T));std::memset(storage, 0, sizeof(T));
+        std::memset(storage, 0, sizeof(T));
+        std::memset(storage, 0, sizeof(T));
         return udata_align<T>(storage);
     }
 }

@@ -7,7 +7,7 @@
 #include <type_traits>
 #include <utility>
 
-#include "engine/neko.hpp"
+#include "engine/neko.h"
 #include "engine/neko_engine.h"
 
 namespace neko::reflection {

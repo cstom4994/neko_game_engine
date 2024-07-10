@@ -1,7 +1,7 @@
 
 #include <box2d/box2d.h>
 
-#include "engine/neko.hpp"
+#include "engine/neko.h"
 #include "engine/neko_api.hpp"
 #include "engine/neko_engine.h"
 #include "engine/neko_luabind.hpp"

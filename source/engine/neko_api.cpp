@@ -8,7 +8,7 @@
 #include "engine/neko_asset.h"
 #include "engine/neko_common.h"
 #include "engine/neko_engine.h"
-#include "engine/neko_lua.hpp"
+#include "engine/neko_lua.h"
 #include "engine/neko_luabind.hpp"
 
 // game
@@ -232,15 +232,6 @@ NEKO_API_DECL void neko_tolua_boot(int argc, char** argv) {
 #include "engine/luabind/struct.hpp"
 #endif
 
-#define PRELOAD(name, function)     \
-    lua_getglobal(L, "package");    \
-    lua_getfield(L, -1, "preload"); \
-    lua_pushcfunction(L, function); \
-    lua_setfield(L, -2, name);      \
-    lua_pop(L, 2)
-
-NEKO_API_DECL int luaopen_enet(lua_State* L);
-
 void neko_register(lua_State* L) {
 
     NEKO_ASSERT(L != NULL, "?");
@@ -251,8 +242,6 @@ void neko_register(lua_State* L) {
 
     neko::lua::preload_module(L);   // 新的模块系统
     neko::lua::package_preload(L);  // 新的模块系统
-
-    PRELOAD("enet", luaopen_enet);  // test
 
     // 自定义加载器
     lua_register(L, "__neko_loader", neko::vfs_lua_loader);
