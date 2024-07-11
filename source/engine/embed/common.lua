@@ -254,5 +254,160 @@ end
 
 M.deepcopy = deepcopy
 
+local b64chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+local b64 = {}
+for i = 1, #b64chars do
+    b64[i - 1] = b64chars:sub(i, i)
+end
+
+local function to_base64(d)
+    local data = d
+    local result = {}
+    local padding = 3 - (#data % 3)
+    if padding == 3 then
+        padding = 0
+    end
+    data = data .. string.rep("\0", padding)
+    for i = 1, #data, 3 do
+        local n = data:byte(i) * 65536 + data:byte(i + 1) * 256 + data:byte(i + 2)
+        table.insert(result, b64[(n >> 18) & 63])
+        table.insert(result, b64[(n >> 12) & 63])
+        table.insert(result, b64[(n >> 6) & 63])
+        table.insert(result, b64[n & 63])
+    end
+    return table.concat(result):sub(1, #result - padding) .. string.rep("=", padding)
+end
+
+local b64dec = {}
+for i = 1, #b64chars do
+    b64dec[b64chars:sub(i, i)] = i - 1
+end
+
+local function from_base64(d)
+    local data = d
+    local result = {}
+    data = data:gsub("[^" .. b64chars .. "=]", "")
+    local padding = #data % 4
+    if padding == 2 then
+        data = data .. "=="
+    elseif padding == 3 then
+        data = data .. "="
+    end
+    for i = 1, #data, 4 do
+        local n = b64dec[data:sub(i, i)] * 262144 + b64dec[data:sub(i + 1, i + 1)] * 4096 +
+                      (b64dec[data:sub(i + 2, i + 2)] or 0) * 64 + (b64dec[data:sub(i + 3, i + 3)] or 0)
+        table.insert(result, string.char((n >> 16) & 255))
+        if data:sub(i + 2, i + 2) ~= "=" then
+            table.insert(result, string.char((n >> 8) & 255))
+        end
+        if data:sub(i + 3, i + 3) ~= "=" then
+            table.insert(result, string.char(n & 255))
+        end
+    end
+    return table.concat(result)
+end
+
+M.to_base64 = to_base64
+M.from_base64 = from_base64
+
+local behavior = {}
+
+behavior.fail = "fail"
+behavior.success = "success"
+behavior.running = "running"
+
+-- 反转结果
+behavior.func_invert = function(child)
+    return function(entity, dt)
+        local result = child(entity, dt)
+        if result == behavior.success then
+            return behavior.fail
+        elseif result == behavior.fail then
+            return behavior.success
+        else
+            return result
+        end
+    end
+end
+
+-- 平行执行
+behavior.func_parallel = function(children)
+    return function(...)
+        local last_result = behavior.success
+        for i = 1, #children do
+            local child = children[i]
+            local result = child(...)
+            if result ~= behavior.success then
+                last_result = result
+            end
+        end
+        return last_result
+    end
+end
+
+-- 重复执行
+behavior.func_repeat = function(times, child)
+    local count = 1
+    return function(...)
+        local result = child(...)
+        if result == behavior.fail then
+            count = 1
+            return behavior.fail
+        elseif result == behavior.success then
+            count = count + 1
+        end
+        if count > times then
+            count = 1
+            return behavior.success
+        else
+            return behavior.running
+        end
+    end
+end
+
+-- 选择器
+behavior.func_selector = function(children)
+    local index = 1
+    return function(...)
+        while index <= #children do
+            local current = children[index]
+            local result = current(...)
+            if result == behavior.success then
+                index = 1
+                return behavior.success
+            end
+            if result == behavior.running then
+                return behavior.running
+            end
+            index = index + 1
+        end
+        index = 1
+        return behavior.fail
+    end
+end
+
+-- 线性执行
+behavior.func_sequence = function(children)
+    local index = 1
+    return function(...)
+        while index <= #children do
+            local current = children[index]
+            local result = current(...)
+            if result == behavior.fail then
+                index = 1
+                return behavior.fail
+            end
+            if result == behavior.running then
+                return behavior.running
+            end
+            index = index + 1
+        end
+        index = 1
+        return behavior.success
+    end
+end
+
+M.behavior = behavior
+
 return M
 

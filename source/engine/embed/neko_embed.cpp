@@ -25,9 +25,6 @@ int load_embed_lua(lua_State* L, const u8 B[], const_str name) {
         return lua_gettop(L) - top;                     \
     }
 
-static const u8 g_lua_behavior_data[] = {
-#include "behavior.lua.h"
-};
 static const u8 g_lua_common_data[] = {
 #include "common.lua.h"
 };
@@ -41,7 +38,6 @@ static const u8 g_lua_startup_data[] = {
 #include "startup.lua.h"
 };
 
-LUAOPEN_EMBED_DATA(open_embed_behavior, "behavior.lua", g_lua_behavior_data);
 LUAOPEN_EMBED_DATA(open_embed_common, "common.lua", g_lua_common_data);
 LUAOPEN_EMBED_DATA(open_embed_cstruct, "cstruct.lua", g_lua_cstruct_data);
 LUAOPEN_EMBED_DATA(open_embed_prefabs, "prefabs.lua", g_lua_prefabs_data);
@@ -58,7 +54,6 @@ static void package_preload(lua_State* L, const_str name, lua_CFunction function
 
 namespace neko::lua {
 void package_preload(lua_State* L) {
-    package_preload(L, "behavior", open_embed_behavior);
     package_preload(L, "common", open_embed_common);
     package_preload(L, "cstruct", open_embed_cstruct);
     package_preload(L, "prefabs", open_embed_prefabs);
@@ -94,7 +89,7 @@ else
     print("good")
 end
         )lua";
-        load_embed_lua(L, B, "tolua: embedded Lua code 4");
+        load_embed_lua(L, B, "tolua: embedded boot code");
         lua_settop(L, top);
     }
 

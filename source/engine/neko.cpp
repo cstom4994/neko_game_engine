@@ -3,9 +3,9 @@
 #include <setjmp.h>
 
 #include <cstdio>
-#include <filesystem>
-#include <new>
+#include <mutex>
 
+#include "engine/neko.hpp"
 #include "engine/neko_engine.h"
 #include "engine/neko_imgui.hpp"
 #include "engine/neko_lua.h"
@@ -104,8 +104,6 @@ NEKO_API_DECL void neko_printf(const char *fmt, ...) {
     va_end(args);
 }
 
-#define LOG_USE_COLOR
-
 static struct {
     void *udata;
     neko_log_lock_fn lock;
@@ -114,8 +112,6 @@ static struct {
 } L;
 
 static const char *level_strings[] = {"T", "D", "I", "W", "E"};
-
-static const char *level_colors[] = {"\x1b[94m", "\x1b[36m", "\x1b[32m", "\x1b[33m", "\x1b[31m"};
 
 static void log_lock(void) {
     if (L.lock) {
@@ -159,11 +155,7 @@ void neko_log(int level, const char *file, int line, const char *fmt, ...) {
     if (!L.quiet && level >= L.level) {
         init_event(&ev, stderr);
         va_start(ev.ap, fmt);
-#ifdef LOG_USE_COLOR
-        fprintf(ev.udata, "%s[%-1s]\x1b[0m \x1b[90m%s:%d:\x1b[0m ", level_colors[ev.level], level_strings[ev.level], neko_util_get_filename(ev.file), ev.line);
-#else
         fprintf(ev.udata, "%-1s %s:%d: ", level_strings[ev.level], neko_util_get_filename(ev.file), ev.line);
-#endif
         vfprintf(ev.udata, ev.fmt, ev.ap);
         fprintf(ev.udata, "\n");
         fflush(ev.udata);
@@ -405,167 +397,135 @@ NEKO_API_DECL void **neko_slot_map_init(void **sm) {
 // NEKO_MEMORY
 ========================*/
 
-neko_allocation_metrics g_allocation_metrics = {.total_allocated = 0, .total_free = 0};
+Allocator *g_allocator;
 
-typedef struct neko_mem_heap_header_t {
-    struct neko_mem_heap_header_t *next;
-    struct neko_mem_heap_header_t *prev;
-    size_t size;
-} neko_mem_heap_header_t;
-
-typedef struct neko_mem_alloc_info_t neko_mem_alloc_info_t;
-struct neko_mem_alloc_info_t {
-    const char *file;
-    size_t size;
-    int line;
-
-    struct neko_mem_alloc_info_t *next;
-    struct neko_mem_alloc_info_t *prev;
-};
-
-static neko_mem_alloc_info_t *neko_mem_alloc_head() {
-    static neko_mem_alloc_info_t info;
-    static int init;
-
-    if (!init) {
-        info.next = &info;
-        info.prev = &info;
-        init = 1;
-    }
-
-    return &info;
-}
-
-#if 1
-void *__neko_mem_safe_alloc(size_t size, const char *file, int line, size_t *statistics) {
-
-    if (NEKO_MEM_CHECK && size < 64) NEKO_WARN("small size of memory blocks should use GC (%s:%d)", neko_util_get_filename(file), line);
-
-    neko_mem_alloc_info_t *mem = (neko_mem_alloc_info_t *)neko_malloc(sizeof(neko_mem_alloc_info_t) + size);
-
-    if (!mem) return 0;
-
-    mem->file = file;
-    mem->line = line;
-    mem->size = size;
-    neko_mem_alloc_info_t *head = neko_mem_alloc_head();
-    mem->prev = head;
-    mem->next = head->next;
-    head->next->prev = mem;
-    head->next = mem;
-
-    g_allocation_metrics.total_allocated += size;
-    if (NULL != statistics) *statistics += size;
-
-    return mem + 1;
-}
-
-void *__neko_mem_safe_calloc(size_t count, size_t element_size, const char *file, int line, size_t *statistics) {
+void *__neko_mem_safe_calloc(size_t count, size_t element_size, const char *file, int line) {
     size_t size = count * element_size;
-    void *mem = __neko_mem_safe_alloc(size, file, line, statistics);
+    void *mem = g_allocator->alloc(size, file, line);
     memset(mem, 0, size);
     return mem;
 }
 
-void __neko_mem_safe_free(void *mem, size_t *statistics) {
-    if (!mem) return;
+void *__neko_mem_safe_realloc(void *ptr, size_t new_size, const char *file, int line) {
 
-    neko_mem_alloc_info_t *info = (neko_mem_alloc_info_t *)mem - 1;
-    info->prev->next = info->next;
-    info->next->prev = info->prev;
+    NEKO_ASSERT(0);
 
-    g_allocation_metrics.total_free += info->size;
-    if (NULL != statistics) *statistics -= info->size;
+    return NULL;
 
-    neko_free(info);
+    // if (new_size == 0) {
+    //     g_allocator->free(ptr);  // 如果新大小为 0 则直接释放原内存块并返回 NULL
+    //     return NULL;
+    // }
+    // if (ptr == NULL) {
+    //     return g_allocator->alloc(new_size, file, line);  // 如果原指针为空 则等同于 alloc
+    // }
+    // void *new_ptr = g_allocator->alloc(new_size, file, line);  // 分配新大小的内存块
+    // if (new_ptr != NULL) {
+    //     // 复制旧内存块中的数据到新内存块
+    //     neko_mem_alloc_info_t *info = (neko_mem_alloc_info_t *)ptr - 1;
+    //     size_t old_size = info->size;
+    //     size_t copy_size = (old_size < new_size) ? old_size : new_size;
+    //     memcpy(new_ptr, ptr, copy_size);
+    //     g_allocator->free(ptr);  // 释放旧内存块
+    // }
+    // return new_ptr;
 }
 
-#if 1
-void *__neko_mem_safe_realloc(void *ptr, size_t new_size, const char *file, int line, size_t *statistics) {
-    if (new_size == 0) {
-        __neko_mem_safe_free(ptr, statistics);  // 如果新大小为 0 则直接释放原内存块并返回 NULL
-        return NULL;
+void *DebugAllocator::alloc(size_t bytes, const char *file, s32 line) {
+    neko::lock_guard lock{&mtx};
+
+    DebugAllocInfo *info = (DebugAllocInfo *)malloc(NEKO_OFFSET(DebugAllocInfo, buf[bytes]));
+    info->file = file;
+    info->line = line;
+    info->size = bytes;
+    info->prev = nullptr;
+    info->next = head;
+    if (head != nullptr) {
+        head->prev = info;
     }
-
-    if (ptr == NULL) {
-        return __neko_mem_safe_alloc(new_size, file, line, statistics);  // 如果原指针为空 则等同于 alloc
-    }
-
-    void *new_ptr = __neko_mem_safe_alloc(new_size, file, line, statistics);  // 分配新大小的内存块
-
-    if (new_ptr != NULL) {
-        // 复制旧内存块中的数据到新内存块
-
-        neko_mem_alloc_info_t *info = (neko_mem_alloc_info_t *)ptr - 1;
-
-        size_t old_size = info->size;
-        size_t copy_size = (old_size < new_size) ? old_size : new_size;
-        memcpy(new_ptr, ptr, copy_size);
-
-        __neko_mem_safe_free(ptr, statistics);  // 释放旧内存块
-    }
-
-    return new_ptr;
+    head = info;
+    return info->buf;
 }
-#endif
 
-int neko_mem_check_leaks(bool detailed) {
-    neko_mem_alloc_info_t *head = neko_mem_alloc_head();
-    neko_mem_alloc_info_t *next = head->next;
-    int leaks = 0;
-
-    size_t leaks_size = 0;
-
-    while (next != head) {
-        if (!leaks && detailed) NEKO_INFO("memory leaks detected (see below).");
-        if (detailed) {
-            char info[128];
-            neko_snprintf(info, 128, "LEAKED %zu bytes: \"%s:%d\" address %p.", next->size, neko_util_get_filename(next->file), next->line, (void *)(next + 1));
-            neko_println("  | %s", info);
-        }
-        leaks_size += next->size;
-        next = next->next;
-        leaks = 1;
+void DebugAllocator::free(void *ptr) {
+    if (ptr == nullptr) {
+        return;
     }
 
-    if (leaks) {
-        f32 megabytes = (f32)leaks_size / 1048576.f;
-        NEKO_WARN("memory leaks detected with %zu bytes equal to %.4f MB.", leaks_size, megabytes);
+    neko::lock_guard lock{&mtx};
+
+    DebugAllocInfo *info = (DebugAllocInfo *)((u8 *)ptr - NEKO_OFFSET(DebugAllocInfo, buf));
+
+    if (info->prev == nullptr) {
+        head = info->next;
     } else {
-        NEKO_INFO("no memory leaks detected.");
-    }
-    return leaks;
-}
-
-int neko_mem_bytes_inuse() {
-    neko_mem_alloc_info_t *head = neko_mem_alloc_head();
-    neko_mem_alloc_info_t *next = head->next;
-    int bytes = 0;
-
-    while (next != head) {
-        bytes += (int)next->size;
-        next = next->next;
+        info->prev->next = info->next;
     }
 
-    return bytes;
+    if (info->next) {
+        info->next->prev = info->prev;
+    }
+
+    ::free(info);
 }
 
-#else
+void *DebugAllocator::realloc(void *ptr, size_t new_size, const char *file, s32 line) {
+    if (ptr == nullptr) {
+        // If the pointer is null, just allocate new memory
+        return alloc(new_size, file, line);
+    }
 
-inline void *__neko_mem_safe_alloc(size_t new_size, char *file, int line) { return NEKO_MALLOC_FUNC(new_size); }
+    if (new_size == 0) {
+        // If the new size is zero, free the memory and return null
+        free(ptr);
+        return nullptr;
+    }
 
-void *__neko_mem_safe_calloc(size_t count, size_t element_size, char *file, int line) { return NEKO_CALLOC_FUNC(count, new_size); }
+    neko::lock_guard lock{&mtx};
 
-inline void __neko_mem_safe_free(void *mem) { return NEKO_FREE_FUNC(mem); }
+    DebugAllocInfo *old_info = (DebugAllocInfo *)((u8 *)ptr - offsetof(DebugAllocInfo, buf));
 
-inline int NEKO_CHECK_FOR_LEAKS() { return 0; }
-inline int NEKO_BYTES_IN_USE() { return 0; }
+    // Allocate new memory block with the new size
+    DebugAllocInfo *new_info = (DebugAllocInfo *)malloc(NEKO_OFFSET(DebugAllocInfo, buf[new_size]));
+    if (new_info == nullptr) {
+        return nullptr;  // Allocation failed
+    }
 
-#endif
+    // Copy data from old memory block to new memory block
+    size_t copy_size = old_info->size < new_size ? old_info->size : new_size;
+    memcpy(new_info->buf, old_info->buf, copy_size);
 
-void __neko_mem_init(int argc, char **argv) {}
+    // Update new memory block information
+    new_info->file = file;
+    new_info->line = line;
+    new_info->size = new_size;
+    new_info->prev = old_info->prev;
+    new_info->next = old_info->next;
+    if (new_info->prev != nullptr) {
+        new_info->prev->next = new_info;
+    } else {
+        head = new_info;
+    }
+    if (new_info->next != nullptr) {
+        new_info->next->prev = new_info;
+    }
 
-void __neko_mem_fini() { neko_mem_check_leaks(true); }
+    // Free the old memory block
+    ::free(old_info);
+
+    return new_info->buf;
+}
+
+void DebugAllocator::dump_allocs() {
+    s32 allocs = 0;
+    for (DebugAllocInfo *info = head; info != nullptr; info = info->next) {
+        neko_printf("  %10llu bytes: %s:%d\n", (unsigned long long)info->size, info->file, info->line);
+        allocs++;
+    }
+    neko_printf("  --- %d allocation(s) ---\n", allocs);
+}
+
+void *neko_capi_safe_malloc(size_t size) { return mem_alloc(size); }
 
 /*========================
 // Random
@@ -631,50 +591,6 @@ NEKO_API_DECL neko_color_t neko_rand_gen_color(neko_mt_rand_t *rand) {
     c.b = (u8)neko_rand_gen_range_long(rand, 0, 255);
     c.a = (u8)neko_rand_gen_range_long(rand, 0, 255);
     return c;
-}
-
-//=============================
-// CVar
-//=============================
-
-void __neko_config_init() {
-    neko_cv() = (neko_config_t *)neko_malloc(sizeof(neko_config_t));
-    neko_cv()->cvars = neko_dyn_array_new(neko_cvar_t);
-
-    neko_cvar_new("test_cvar", __NEKO_CONFIG_TYPE_INT, 1001);
-
-    neko_cvar_new_str("test_cvar_str", __NEKO_CONFIG_TYPE_STRING, "啊!能不能有中文?");
-
-    // TODO: 23/8/10 控制台以及相关cvar注册
-}
-
-void __neko_config_free() {
-
-    for (size_t i = 0; i < neko_dyn_array_size(neko_cv()->cvars); i++) {
-        if (neko_cv()->cvars->type == __NEKO_CONFIG_TYPE_STRING) {
-            neko_free(neko_cv()->cvars[i].value.s);
-            neko_cv()->cvars[i].value.s = NULL;
-        }
-    }
-    neko_dyn_array_free(neko_cv()->cvars);
-
-    neko_free(neko_cv());
-    neko_cv() = NULL;
-}
-
-neko_cvar_t *__neko_config_get(const_str name) {
-    for (size_t i = 0; i < neko_dyn_array_size(neko_cv()->cvars); i++) {
-        if (strcmp(neko_cv()->cvars[i].name, name) == 0) {
-            return &neko_cv()->cvars[i];
-        }
-    }
-    return NULL;
-}
-
-void neko_config_print() {
-    for (size_t i = 0; i < neko_dyn_array_size(neko_cv()->cvars); i++) {
-        neko_cvar_print(&neko_cv()->cvars[i]);
-    }
 }
 
 //=============================
@@ -809,7 +725,6 @@ static void crash(int argc, char **argv);
 void summon(int argc, char **argv);
 void exec(int argc, char **argv);
 void sz(int argc, char **argv);
-NEKO_API_DECL void neko_tolua_boot(int argc, char **argv);
 
 neko_console_command_t commands[] = {{
                                              .func = echo,
@@ -855,11 +770,6 @@ neko_console_command_t commands[] = {{
                                              .func = exec,
                                              .name = "exec",
                                              .desc = "run nekoscript",
-                                     },
-                                     {
-                                             .func = neko_tolua_boot,
-                                             .name = "neko_tolua_boot",
-                                             .desc = "run neko_tolua_boot",
                                      }};
 
 neko_console_t g_console = {
@@ -955,8 +865,8 @@ void help(int argc, char **argv) {
 #define NEKO_DLL_LOADER_WIN_OTHER(win_def, other_def) other_def
 #endif
 
-Neko_Module neko_module_open(const_str name) {
-    Neko_Module module;
+neko_dynlib neko_module_open(const_str name) {
+    neko_dynlib module;
     char filename[64] = {};
     const_str prefix = NEKO_DLL_LOADER_WIN_OTHER("", "lib");
     const_str suffix = NEKO_DLL_LOADER_WIN_MAC_OTHER(".dll", ".dylib", ".so");
@@ -965,14 +875,14 @@ Neko_Module neko_module_open(const_str name) {
     return module;
 }
 
-void neko_module_close(Neko_Module lib) { neko_pf_library_unload(lib.hndl); }
+void neko_module_close(neko_dynlib lib) { neko_pf_library_unload(lib.hndl); }
 
-void *neko_module_get_symbol(Neko_Module lib, const_str symbol_name) {
+void *neko_module_get_symbol(neko_dynlib lib, const_str symbol_name) {
     void *symbol = (void *)neko_pf_library_proc_address(lib.hndl, symbol_name);
     return symbol;
 }
 
-bool neko_module_has_symbol(Neko_Module lib, const_str symbol_name) {
+bool neko_module_has_symbol(neko_dynlib lib, const_str symbol_name) {
     if (!lib.hndl || !symbol_name) return false;
     return neko_pf_library_proc_address(lib.hndl, symbol_name) != NULL;
 }
@@ -1663,7 +1573,7 @@ NEKO_API_DECL u64 neko_capi_vfs_ftell(vfs_file *vf) { return vf->offset; }
 
 NEKO_API_DECL vfs_file neko_capi_vfs_fopen(const_str path) {
     vfs_file vf{};
-    vf.data = neko_capi_vfs_read_file(NEKO_PACK_GAMEDATA, path, &vf.len);
+    vf.data = neko_capi_vfs_read_file(NEKO_PACKS::GAMEDATA, path, &vf.len);
     return vf;
 }
 
@@ -2687,19 +2597,19 @@ void LuaThread::join() {
 
 //
 
-void lua_variant::make(lua_State *L, s32 arg) {
-    type = lua_type(L, arg);
+void lua_variant_wrap::make(lua_State *L, s32 arg) {
+    data.type = lua_type(L, arg);
 
-    switch (type) {
+    switch (data.type) {
         case LUA_TBOOLEAN:
-            boolean = lua_toboolean(L, arg);
+            data.boolean = lua_toboolean(L, arg);
             break;
         case LUA_TNUMBER:
-            number = luaL_checknumber(L, arg);
+            data.number = luaL_checknumber(L, arg);
             break;
         case LUA_TSTRING: {
             neko::string s = luax_check_string(L, arg);
-            string = to_cstr(s);
+            data.string = to_cstr(s);
             break;
         }
         case LUA_TTABLE: {
@@ -2708,17 +2618,17 @@ void lua_variant::make(lua_State *L, s32 arg) {
 
             lua_pushvalue(L, arg);
             for (lua_pushnil(L); lua_next(L, -2); lua_pop(L, 1)) {
-                lua_variant key = {};
+                lua_variant_wrap key = {};
                 key.make(L, -2);
 
-                lua_variant value = {};
+                lua_variant_wrap value = {};
                 value.make(L, -1);
 
                 entries.push({key, value});
             }
             lua_pop(L, 1);
 
-            table = slice(entries);
+            data.table = slice(entries);
             break;
         }
         case LUA_TUSERDATA: {
@@ -2741,8 +2651,8 @@ void lua_variant::make(lua_State *L, s32 arg) {
                 return;
             }
 
-            udata.ptr = *(void **)lua_touserdata(L, arg);
-            udata.tname = to_cstr(tname);
+            data.udata.ptr = *(void **)lua_touserdata(L, arg);
+            data.udata.tname = to_cstr(tname);
 
             break;
         }
@@ -2751,41 +2661,41 @@ void lua_variant::make(lua_State *L, s32 arg) {
     }
 }
 
-void lua_variant::trash() {
-    switch (type) {
+void lua_variant_wrap::trash() {
+    switch (data.type) {
         case LUA_TSTRING: {
-            neko_safe_free(string.data);
+            neko_safe_free(data.string.data);
             break;
         }
         case LUA_TTABLE: {
-            for (lua_table_entry e : table) {
+            for (lua_table_entry e : data.table) {
                 e.key.trash();
                 e.value.trash();
             }
-            neko_safe_free(table.data);
+            neko_safe_free(data.table.data);
         }
         case LUA_TUSERDATA: {
-            neko_safe_free(udata.tname.data);
+            neko_safe_free(data.udata.tname.data);
         }
         default:
             break;
     }
 }
 
-void lua_variant::push(lua_State *L) {
-    switch (type) {
+void lua_variant_wrap::push(lua_State *L) {
+    switch (data.type) {
         case LUA_TBOOLEAN:
-            lua_pushboolean(L, boolean);
+            lua_pushboolean(L, data.boolean);
             break;
         case LUA_TNUMBER:
-            lua_pushnumber(L, number);
+            lua_pushnumber(L, data.number);
             break;
         case LUA_TSTRING:
-            lua_pushlstring(L, string.data, string.len);
+            lua_pushlstring(L, data.string.data, data.string.len);
             break;
         case LUA_TTABLE: {
             lua_newtable(L);
-            for (lua_table_entry e : table) {
+            for (lua_table_entry e : data.table) {
                 e.key.push(L);
                 e.value.push(L);
                 lua_rawset(L, -3);
@@ -2793,7 +2703,7 @@ void lua_variant::push(lua_State *L) {
             break;
         }
         case LUA_TUSERDATA: {
-            luax_ptr_userdata(L, udata.ptr, udata.tname.data);
+            luax_ptr_userdata(L, data.udata.ptr, data.udata.tname.data);
             break;
         }
         default:
@@ -2815,7 +2725,7 @@ void lua_channel::make(string n, u64 buf) {
     mtx.make();
     sent.make();
     received.make();
-    items.data = (lua_variant *)neko_safe_malloc(sizeof(lua_variant) * (buf + 1));
+    items.data = (lua_variant_wrap *)neko_safe_malloc(sizeof(lua_variant_wrap) * (buf + 1));
     items.len = (buf + 1);
     front = 0;
     back = 0;
@@ -2837,7 +2747,7 @@ void lua_channel::trash() {
     received.trash();
 }
 
-void lua_channel::send(lua_variant item) {
+void lua_channel::send(lua_variant_wrap item) {
     lock_guard lock{&mtx};
 
     while (len == items.len) {
@@ -2857,8 +2767,8 @@ void lua_channel::send(lua_variant item) {
     }
 }
 
-static lua_variant lua_channel_dequeue(lua_channel *ch) {
-    lua_variant item = ch->items[ch->front];
+static lua_variant_wrap lua_channel_dequeue(lua_channel *ch) {
+    lua_variant_wrap item = ch->items[ch->front];
     ch->front = (ch->front + 1) % ch->items.len;
     ch->len--;
 
@@ -2868,7 +2778,7 @@ static lua_variant lua_channel_dequeue(lua_channel *ch) {
     return item;
 }
 
-lua_variant lua_channel::recv() {
+lua_variant_wrap lua_channel::recv() {
     lock_guard lock{&mtx};
 
     while (len == 0) {
@@ -2878,7 +2788,7 @@ lua_variant lua_channel::recv() {
     return lua_channel_dequeue(this);
 }
 
-bool lua_channel::try_recv(lua_variant *v) {
+bool lua_channel::try_recv(lua_variant_wrap *v) {
     lock_guard lock{&mtx};
 
     if (len == 0) {
@@ -2911,7 +2821,7 @@ lua_channel *lua_channel_get(string name) {
     return *chan;
 }
 
-lua_channel *lua_channels_select(lua_State *L, lua_variant *v) {
+lua_channel *lua_channels_select(lua_State *L, lua_variant_wrap *v) {
     s32 len = lua_gettop(L);
     if (len == 0) {
         return nullptr;
@@ -3093,7 +3003,7 @@ void profile_setup() {
     g_profile.recv_thread.make(profile_recv_thread, nullptr);
 }
 
-void profile_shutdown() {
+void profile_fini() {
     g_profile.events.enqueue({});
     g_profile.recv_thread.join();
     g_profile.events.trash();
@@ -3194,7 +3104,7 @@ Instrument::~Instrument() {
 
 }  // namespace neko
 
-neko_struct(neko_client_cvar_t,                         //
+NEKO_STRUCT(neko_client_cvar_t,                         //
             _Fs(show_editor, "Is show editor"),         //
             _Fs(show_demo_window, "Is show nui demo"),  //
             _Fs(show_pack_editor, "pack editor"),       //
@@ -3225,20 +3135,20 @@ void __neko_cvar_gui_internal(T &&obj, int depth = 0, const char *fieldName = ""
 void neko_cvar_gui(neko_client_cvar_t &cvar) {
     __neko_cvar_gui_internal(cvar);
 
-    for (size_t i = 0; i < neko_dyn_array_size(neko_cv()->cvars); i++) {
-        {
-            switch ((&neko_cv()->cvars[i])->type) {
-                default:
-                case __NEKO_CONFIG_TYPE_STRING:
-                    neko::imgui::Auto((&neko_cv()->cvars[i])->value.s, (&neko_cv()->cvars[i])->name);
-                    break;
-                case __NEKO_CONFIG_TYPE_FLOAT:
-                    neko::imgui::Auto((&neko_cv()->cvars[i])->value.f, (&neko_cv()->cvars[i])->name);
-                    break;
-                case __NEKO_CONFIG_TYPE_INT:
-                    neko::imgui::Auto((&neko_cv()->cvars[i])->value.i, (&neko_cv()->cvars[i])->name);
-                    break;
-            };
-        };
-    }
+    // for (size_t i = 0; i < neko_dyn_array_size(neko_cv()->cvars); i++) {
+    //     {
+    //         switch ((&neko_cv()->cvars[i])->type) {
+    //             default:
+    //             case __NEKO_CONFIG_TYPE_STRING:
+    //                 neko::imgui::Auto((&neko_cv()->cvars[i])->value.s, (&neko_cv()->cvars[i])->name);
+    //                 break;
+    //             case __NEKO_CONFIG_TYPE_FLOAT:
+    //                 neko::imgui::Auto((&neko_cv()->cvars[i])->value.f, (&neko_cv()->cvars[i])->name);
+    //                 break;
+    //             case __NEKO_CONFIG_TYPE_INT:
+    //                 neko::imgui::Auto((&neko_cv()->cvars[i])->value.i, (&neko_cv()->cvars[i])->name);
+    //                 break;
+    //         };
+    //     };
+    // }
 }

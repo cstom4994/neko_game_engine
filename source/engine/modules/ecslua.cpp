@@ -7,7 +7,7 @@
 #include <ctype.h> /* tolower() */
 
 #define FLECS_LUA_IMPL
-#include "neko_flecslua.h"
+#include "ecslua.h"
 
 ECS_COMPONENT_DECLARE(EcsLuaHost);
 
@@ -810,24 +810,27 @@ void FlecsLuaImport(ecs_world_t *w) {
 
     // ECS_META_COMPONENT(w, ecs_meta_type_op_t);
 
-    ecs_entity_desc_t ent_des_i = {.id = ecs_id(ecs_meta_type_op_t), .use_low_id = true, .name = "ecs_meta_type_op_t"};
+    ecs_entity_desc_t ent_des_i = {.id = ecs_id(ecs_meta_type_op_t), .name = "ecs_meta_type_op_t", .use_low_id = true};
     ecs_entity_init(w, &ent_des_i);
 
-    ecs_id(ecs_meta_type_op_t) =
-            ecs_component_init(w, &(ecs_component_desc_t){.entity = ecs_id(ecs_meta_type_op_t),
-                                                          .type = {.component = ecs_id(ecs_meta_type_op_t), .size = sizeof(ecs_meta_type_op_t), .alignment = ECS_ALIGNOF(ecs_meta_type_op_t)}});
+    ecs_component_desc_t m_com_des = {.entity = ecs_id(ecs_meta_type_op_t),
+                                      .type = {.size = sizeof(ecs_meta_type_op_t), .alignment = ECS_ALIGNOF(ecs_meta_type_op_t), .component = ecs_id(ecs_meta_type_op_t)}};
 
-    ecs_struct_init(w, &(ecs_struct_desc_t){.entity = ecs_id(ecs_meta_type_op_t),
-                                            .members = {
-                                                    {.name = (char *)"kind", .type = ecs_id(ecs_i32_t)},
-                                                    {.name = (char *)"offset", .type = ecs_id(ecs_i32_t)},
-                                                    {.name = (char *)"count", .type = ecs_id(ecs_i32_t)},
-                                                    {.name = (char *)"name", .type = ecs_id(ecs_string_t)},
-                                                    {.name = (char *)"op_count", .type = ecs_id(ecs_i32_t)},
-                                                    {.name = (char *)"size", .type = ecs_id(ecs_i32_t)},
-                                                    {.name = (char *)"type", .type = ecs_id(ecs_entity_t)},
-                                                    {.name = (char *)"unit", .type = ecs_id(ecs_entity_t)},
-                                            }});
+    ecs_id(ecs_meta_type_op_t) = ecs_component_init(w, &m_com_des);
+
+    ecs_struct_desc_t i_struct_des = {.entity = ecs_id(ecs_meta_type_op_t),
+                                      .members = {
+                                              {.name = (char *)"kind", .type = ecs_id(ecs_i32_t)},
+                                              {.name = (char *)"offset", .type = ecs_id(ecs_i32_t)},
+                                              {.name = (char *)"count", .type = ecs_id(ecs_i32_t)},
+                                              {.name = (char *)"name", .type = ecs_id(ecs_string_t)},
+                                              {.name = (char *)"op_count", .type = ecs_id(ecs_i32_t)},
+                                              {.name = (char *)"size", .type = ecs_id(ecs_i32_t)},
+                                              {.name = (char *)"type", .type = ecs_id(ecs_entity_t)},
+                                              {.name = (char *)"unit", .type = ecs_id(ecs_entity_t)},
+                                      }};
+
+    ecs_struct_init(w, &i_struct_des);
 
     ecs_struct_desc_t struct_des = {.entity = ecs_id(EcsMetaTypeSerialized),
                                     .members = {
@@ -1987,7 +1990,8 @@ int new_enum(lua_State *L) {
 
     if (ecs_lookup_fullpath(w, name) || ecs_lookup(w, name)) luaL_argerror(L, 1, "component already exists");
 
-    ecs_entity_t component = ecs_entity_init(w, &(ecs_entity_desc_t){.use_low_id = true});
+    ecs_entity_desc_t com_ent_des{.use_low_id = true};
+    ecs_entity_t component = ecs_entity_init(w, &com_ent_des);
 
     ecs_set_name(w, component, name);
 
@@ -2010,7 +2014,8 @@ int new_bitmask(lua_State *L) {
 
     if (ecs_lookup_fullpath(w, name) || ecs_lookup(w, name)) luaL_argerror(L, 1, "component already exists");
 
-    ecs_entity_t component = ecs_entity_init(w, &(ecs_entity_desc_t){.use_low_id = true});
+    ecs_entity_desc_t com_ent_des{.use_low_id = true};
+    ecs_entity_t component = ecs_entity_init(w, &com_ent_des);
 
     ecs_set_name(w, component, name);
 
@@ -2029,8 +2034,8 @@ int new_array(lua_State *L) {
     ecs_world_t *w = ecs_lua_world(L);
 
     const char *name = luaL_checkstring(L, 1);
-    lua_Integer element = luaL_checkinteger(L, 2);
-    lua_Integer count = luaL_checkinteger(L, 3);
+    ecs_entity_t element = luaL_checkinteger(L, 2);
+    s32 count = luaL_checkinteger(L, 3);
 
     if (count < 0 || count > INT32_MAX) luaL_error(L, "element count out of range (%I)", count);
 
@@ -2057,7 +2062,8 @@ int new_struct(lua_State *L) {
 
     if (ecs_lookup_fullpath(w, name) || ecs_lookup(w, name)) luaL_argerror(L, 1, "component already exists");
 
-    ecs_entity_t component = ecs_entity_init(w, &(ecs_entity_desc_t){.use_low_id = true});
+    ecs_entity_desc_t com_ent_des{.use_low_id = true};
+    ecs_entity_t component = ecs_entity_init(w, &com_ent_des);
 
     ecs_set_name(w, component, name);
 
@@ -2065,7 +2071,8 @@ int new_struct(lua_State *L) {
 
     if (err) return luaL_argerror(L, 2, "invalid descriptor");
 
-    ecs_set(w, component, EcsMetaType, {.kind = EcsStructType});
+    EcsMetaType mt_des{.kind = EcsStructType};
+    ecs_set_ptr(w, component, EcsMetaType, &mt_des);
 
     init_scope(w, component);
 
@@ -2092,7 +2099,8 @@ int new_alias(lua_State *L) {
 
     if (ecs_lookup_fullpath(w, alias) || ecs_lookup(w, alias)) return luaL_argerror(L, 2, "alias already exists");
 
-    ecs_entity_t component = ecs_entity_init(w, &(ecs_entity_desc_t){.use_low_id = true});
+    ecs_entity_desc_t com_ent_des{.use_low_id = true};
+    ecs_entity_t component = ecs_entity_init(w, &com_ent_des);
 
     ecs_set_name(w, component, alias);
 
@@ -2269,7 +2277,8 @@ int new_prefab(lua_State *L) {
         const char *id = luaL_checkstring(L, 1);
         const char *sig = luaL_optstring(L, 2, NULL);
 
-        e = ecs_entity_init(w, &(ecs_entity_desc_t){.name = id, .add_expr = sig, .add = {EcsPrefab}});
+        ecs_entity_desc_t ent_des{.name = id, .add = {EcsPrefab}, .add_expr = sig};
+        e = ecs_entity_init(w, &ent_des);
     } else
         return luaL_argerror(L, args, "too many arguments");
 
@@ -2281,7 +2290,7 @@ int new_prefab(lua_State *L) {
 ecs_iter_t *ecs_lua__checkiter(lua_State *L, int arg) {
     if (luaL_getmetafield(L, arg, "__ecs_iter") == LUA_TNIL) luaL_argerror(L, arg, "table is not an iterator");
 
-    ecs_iter_t *it = lua_touserdata(L, -1);
+    ecs_iter_t *it = (ecs_iter_t *)lua_touserdata(L, -1);
     lua_pop(L, 1);
 
     return it;
@@ -2447,7 +2456,8 @@ int get_child_count(lua_State *L) {
 
     ecs_entity_t e = luaL_checkinteger(L, 1);
 
-    ecs_iter_t it = ecs_term_iter(w, &(ecs_term_t){ecs_pair(EcsChildOf, e)});
+    ecs_term_t it_term{ecs_pair(EcsChildOf, e)};
+    ecs_iter_t it = ecs_term_iter(w, &it_term);
 
     int32_t count = 0;
 
@@ -3816,7 +3826,7 @@ static int new_callback(lua_State *L, ecs_world_t *w, enum EcsLuaCallbackType ty
         ecs_entity_desc_t edesc = {.name = name};
         e = ecs_entity_init(w, &edesc);
 
-        ecs_observer_desc_t desc = {.entity = e, .callback = ecs_lua__callback, .filter.expr = signature, .binding_ctx = cb};
+        ecs_observer_desc_t desc = {.entity = e, .filter = {.expr = signature}, .callback = ecs_lua__callback, .binding_ctx = cb};
 
         if (signature == NULL) check_filter_desc(L, w, &desc.filter, 4);
 
@@ -4304,7 +4314,7 @@ int query_new(lua_State *L) {
 
     const char *sig = luaL_optstring(L, 1, NULL);
 
-    ecs_query_desc_t desc = {.filter.expr = sig};
+    ecs_query_desc_t desc = {.filter = {.expr = sig}};
 
     if (sig == NULL) check_filter_desc(L, w, &desc.filter, 1);
 
@@ -4334,7 +4344,7 @@ int subquery_new(lua_State *L) {
     ecs_query_t *parent = checkquery(L, 1);
     const char *sig = luaL_optstring(L, 2, NULL);
 
-    ecs_query_desc_t desc = {.filter.expr = sig, .parent = parent};
+    ecs_query_desc_t desc = {.filter = {.expr = sig}, .parent = parent};
 
     if (sig == NULL) check_filter_desc(L, w, &desc.filter, 2);
 
@@ -4557,7 +4567,8 @@ static void export_handles(lua_State *L, int idx, ecs_world_t *w, ecs_entity_t e
 
     luaL_checktype(L, idx, LUA_TTABLE);
 
-    ecs_iter_t it = ecs_term_iter(w, &(ecs_term_t){.id = ecs_pair(EcsChildOf, e)});
+    ecs_term_t it_term{.id = ecs_pair(EcsChildOf, e)};
+    ecs_iter_t it = ecs_term_iter(w, &it_term);
 
     while (ecs_term_next(&it)) {
         int i, type;

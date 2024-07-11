@@ -1,5 +1,6 @@
 
 
+#include "engine/neko.hpp"
 #include "engine/neko_api.hpp"
 #include "engine/neko_engine.h"
 #include "engine/neko_luabind.hpp"
@@ -14,18 +15,6 @@
 #include <miniaudio.h>
 
 NEKO_STATIC Neko_ModuleInterface* s_interface;
-
-// #undef neko_safe_malloc
-// #undef neko_safe_free
-// #undef neko_safe_realloc
-// #undef neko_safe_calloc
-
-// #define neko_safe_malloc(size) g_interface->common.__neko_mem_safe_alloc((size), (char*)__FILE__, __LINE__, NULL)
-// #define neko_safe_free(mem) g_interface->common.__neko_mem_safe_free((void*)mem, NULL)
-// #define neko_safe_realloc(ptr, size) g_interface->common.__neko_mem_safe_realloc((ptr), (size), (char*)__FILE__, __LINE__, NULL)
-// #define neko_safe_calloc(count, element_size) g_interface->common.__neko_mem_safe_calloc(count, element_size, (char*)__FILE__, __LINE__, NULL)
-
-// #include "sandbox/hpp/neko_cpp_utils.hpp"
 
 namespace neko::sound {
 
@@ -93,7 +82,7 @@ void* vfs_for_miniaudio() {
         }
 
         u64 len = 0;
-        const_str data = s_interface->common.capi_vfs_read_file(NEKO_PACK_GAMEDATA, pFilePath, &len);
+        const_str data = neko_capi_vfs_read_file(NEKO_PACKS::GAMEDATA, pFilePath, &len);
         if (!data || !len) {
             return MA_ERROR;
         }

@@ -3,6 +3,7 @@
 
 #include <flecs.h>
 
+#include "engine/neko.h"
 #include "engine/neko_lua.h"
 
 #ifdef __cplusplus
@@ -143,8 +144,10 @@ static inline lua_Integer checkentity(lua_State *L, ecs_world_t *world, int arg)
 #define ecs_lua__epilog(L)
 #define ecs_lua_world(L) ecs_lua_world_internal(L)
 #else
-#define ecs_lua_dbg(fmt, ...) printf(fmt "\n", ##__VA_ARGS__)
-#define ecs_lua_dbg_pad(depth) printf("%*s", depth * 2, "")
+// #define ecs_lua_dbg(fmt, ...) NEKO_TRACE(fmt, ##__VA_ARGS__)
+#define ecs_lua_dbg(fmt, ...)
+// #define ecs_lua_dbg_pad(depth) NEKO_TRACE("%*s", depth * 2, "")
+#define ecs_lua_dbg_pad(depth)
 
 #define ecs_lua__prolog(L) int ecs_lua__stackguard = lua_gettop(L)
 #define ecs_lua__epilog(L) ecs_assert(ecs_lua__stackguard == lua_gettop(L), ECS_INTERNAL_ERROR, NULL)
@@ -237,10 +240,10 @@ ECS_STRUCT(EcsLuaWorldInfo, {
     float world_time_total;      // float_t
     float world_time_total_raw;  // float_t
 
-    int32_t frame_count_total;
-    int32_t merge_count_total;
-    int32_t pipeline_build_count_total;
-    int32_t systems_ran_frame;
+    int64_t frame_count_total;
+    int64_t merge_count_total;
+    int64_t pipeline_build_count_total;
+    int64_t systems_ran_frame;
 });
 
 #define ECS_LUA_STAT_WINDOW 60

@@ -7,12 +7,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "engine/neko.h"
+#include "engine/neko.hpp"
+#include "engine/neko_api.hpp"
+#include "engine/neko_engine.h"
 #include "engine/neko_lua.h"
-#include "neko.h"
-#include "neko_engine.h"
-#include "neko_lua.h"
-#include "neko_math.h"
+#include "engine/neko_math.h"
 
 extern "C" {
 
@@ -1034,16 +1033,6 @@ lua_State *neko_scripting_init() {
             });
     neko_register(L);
 
-    // neko_lua_run_string(L, std::format("package.path = "
-    //                                    "'{1}/?.lua;{0}/?.lua;{0}/../libs/?.lua;{0}/../libs/?/init.lua;{0}/../libs/"
-    //                                    "?/?.lua;' .. package.path",
-    //                                    game_assets("lua_scripts"), neko::fs_normalize_path(std::filesystem::current_path().string()).c_str()));
-
-    // neko_lua_run_string(L, std::format("package.cpath = "
-    //                                    "'{1}/?.{2};{0}/?.{2};{0}/../libs/?.{2};{0}/../libs/?/init.{2};{0}/../libs/"
-    //                                    "?/?.{2};' .. package.cpath",
-    //                                    game_assets("lua_scripts"), neko::fs_normalize_path(std::filesystem::current_path().string()).c_str(), "dll"));
-
     timer.stop();
     NEKO_INFO(std::format("lua init done in {0:.3f} ms", timer.get()).c_str());
 
@@ -1082,7 +1071,7 @@ NEKO_API_DECL lua_State *neko_lua_bootstrap(int argc, char **argv) {
     if (argc != 0) {
         auto &module_list = ENGINE_INTERFACE()->modules;
 
-        Neko_Module m = {};
+        neko_dynlib m = {};
         s32 sss;
         sss = Neko_OnModuleLoad_Sound(&m, ENGINE_INTERFACE());
         neko_dyn_array_push(module_list, m);
@@ -1092,7 +1081,7 @@ NEKO_API_DECL lua_State *neko_lua_bootstrap(int argc, char **argv) {
         neko_dyn_array_push(module_list, m);
 
         for (u32 i = 0; i < neko_dyn_array_size(module_list); ++i) {
-            Neko_Module &module = module_list[i];
+            neko_dynlib &module = module_list[i];
             module.func.OnInit(L);
         }
     } else {
@@ -1102,10 +1091,87 @@ NEKO_API_DECL lua_State *neko_lua_bootstrap(int argc, char **argv) {
     return L;
 }
 
+LUA_FUNCTION(__neko_bind_w_f) {
+    lua_getfield(L, LUA_REGISTRYINDEX, W_LUA_REGISTRY_NAME::W_CORE);
+    return 1;
+}
+
+static int __neko_w_lua_get_com(lua_State *L) {
+    struct neko_instance_t *w = (neko_instance_t *)luaL_checkudata(L, ECS_WORLD, W_LUA_REGISTRY_NAME::ENG_UDATA_NAME);
+    lua_getiuservalue(L, 1, NEKO_ECS_COMPONENTS_NAME);
+    lua_getiuservalue(L, 1, NEKO_ECS_UPVAL_N);
+    return 2;
+}
+
+static int __neko_w_lua_gc(lua_State *L) {
+    struct neko_instance_t *w = (neko_instance_t *)luaL_checkudata(L, ECS_WORLD, W_LUA_REGISTRY_NAME::ENG_UDATA_NAME);
+    // ecs_fini_i(w);
+    NEKO_INFO("neko_instance_t _gc");
+    return 0;
+}
+
+void neko_w_init() {
+
+    lua_State *L = ENGINE_LUA();
+
+    neko_instance_t *ins = (neko_instance_t *)lua_newuserdatauv(L, sizeof(neko_instance_t), NEKO_W_UPVAL_N);  // # -1
+    // ins = neko_instance();
+
+    if (luaL_getmetatable(L, W_LUA_REGISTRY_NAME::ENG_UDATA_NAME) == LUA_TNIL) {  // # -2
+
+        // clang-format off
+        luaL_Reg world_mt[] = {
+            {"__gc", __neko_w_lua_gc}, 
+            {"get_com", __neko_w_lua_get_com}, 
+            {NULL, NULL}
+        };
+        // clang-format on
+
+        lua_pop(L, 1);                  // # pop -2
+        luaL_newlibtable(L, world_mt);  // # -2
+        luaL_setfuncs(L, world_mt, 0);
+        lua_pushvalue(L, -1);                                                     // # -3
+        lua_setfield(L, -2, "__index");                                           // pop -3
+        lua_pushstring(L, W_LUA_REGISTRY_NAME::ENG_UDATA_NAME);                   // # -3
+        lua_setfield(L, -2, "__name");                                            // pop -3
+        lua_pushvalue(L, -1);                                                     // # -3
+        lua_setfield(L, LUA_REGISTRYINDEX, W_LUA_REGISTRY_NAME::ENG_UDATA_NAME);  // pop -3
+    }
+    lua_setmetatable(L, -2);  // pop -2
+
+    lua_newtable(L);                                   // # 2
+    lua_pushstring(L, W_LUA_REGISTRY_NAME::CVAR_MAP);  // # 3
+    lua_createtable(L, 0, ENTITY_MAX_COMPONENTS);      // # 4
+    lua_settable(L, -3);
+    lua_setiuservalue(L, -2, NEKO_W_COMPONENTS_NAME);
+
+    const_str s = "Is man one of God's blunders? Or is God one of man's blunders?";
+    lua_pushstring(L, s);
+    lua_setiuservalue(L, -2, NEKO_W_UPVAL_N);
+
+    // lua_pushvalue(L, -1);
+    lua_setfield(L, LUA_REGISTRYINDEX, W_LUA_REGISTRY_NAME::W_CORE);
+
+    NEKO_ASSERT(lua_gettop(L) == 0);
+
+    lua_register(L, "neko_w_f", __neko_bind_w_f);
+
+    neko_w_lua_variant aaa("hahah641", 103.f);
+    neko_w_lua_variant bbb("hah3211", "hashi");
+
+    NEKO_ASSERT(lua_gettop(L) == 0);
+}
+
 NEKO_API_DECL neko_instance_t *neko_create(int argc, char **argv) {
     if (neko_instance() != NULL) {
 
-        __neko_mem_init(argc, argv);
+#ifndef NDEBUG
+        g_allocator = new DebugAllocator();
+#else
+        g_allocator = new HeapAllocator();
+#endif
+
+        g_allocator->make();
 
         neko_tm_init();
 
@@ -1116,19 +1182,43 @@ NEKO_API_DECL neko_instance_t *neko_create(int argc, char **argv) {
 
         NEKO_INFO("neko engine build %d", neko_buildnum());
 
-        // 初始化 cvars
-        __neko_config_init();
+        {
 
-        neko_cvar_lnew("settings.window.width", __NEKO_CONFIG_TYPE_INT, 1280);
-        neko_cvar_lnew("settings.window.height", __NEKO_CONFIG_TYPE_INT, 720);
-        neko_cvar_lnew("settings.window.vsync", __NEKO_CONFIG_TYPE_INT, 0);
-        neko_cvar_lnew("settings.window.frame_rate", __NEKO_CONFIG_TYPE_FLOAT, 60.f);
-        neko_cvar_lnew("settings.window.hdpi", __NEKO_CONFIG_TYPE_INT, 0);
-        neko_cvar_lnew("settings.window.center", __NEKO_CONFIG_TYPE_INT, 1);
-        neko_cvar_lnew("settings.window.running_background", __NEKO_CONFIG_TYPE_INT, 1);
-        neko_cvar_lnew("settings.window.monitor_index", __NEKO_CONFIG_TYPE_INT, 0);
-        neko_cvar_lnew("settings.video.render.debug", __NEKO_CONFIG_TYPE_INT, 0);
-        neko_cvar_lnew("settings.video.render.hdpi", __NEKO_CONFIG_TYPE_INT, 0);
+            // 初始化应用程序并设置为运行
+            mount_result mount;
+
+#if defined(NEKO_DEBUG_BUILD)
+            mount = neko::vfs_mount(NEKO_PACKS::GAMEDATA, "gamedir/../");
+            mount = neko::vfs_mount(NEKO_PACKS::LUACODE, "gamedir/../");
+#else
+            mount = neko::vfs_mount(NEKO_PACKS::GAMEDATA, "gamedir/../gamedata.zip");
+            mount = neko::vfs_mount(neko_pack_list::luacode, "gamedir/../luacode.zip");
+#endif
+
+            ENGINE_LUA() = neko_lua_bootstrap(argc, argv);
+
+            neko_w_init();
+
+            lua_channels_setup();
+
+            ENGINE_ECS() = ecs_init();
+
+            ECS_IMPORT(ENGINE_ECS(), FlecsLua);
+
+            ecs_lua_set_state(ENGINE_ECS(), ENGINE_LUA());
+        }
+
+        // 初始化 cvars
+        neko_w_lua_variant settings_window_width("settings.window.width", 1280.f);
+        neko_w_lua_variant settings_window_height("settings.window.height", 720.f);
+        neko_w_lua_variant settings_window_vsync("settings.window.vsync", false);
+        neko_w_lua_variant settings_window_frame_rate("settings.window.frame_rate", 60.f);
+        neko_w_lua_variant settings_window_hdpi("settings.window.hdpi", false);
+        neko_w_lua_variant settings_window_center("settings.window.center", true);
+        neko_w_lua_variant settings_window_running_background("settings.window.running_background", true);
+        neko_w_lua_variant settings_window_monitor_index("settings.window.monitor_index", 0.f);
+        neko_w_lua_variant settings_video_render_debug("settings.video.render.debug", 0.f);
+        neko_w_lua_variant settings_video_render_hdpi("settings.video.render.hdpi", false);
 
         // 需要从用户那里传递视频设置
         neko_subsystem(platform) = neko_pf_create();
@@ -1137,7 +1227,7 @@ NEKO_API_DECL neko_instance_t *neko_create(int argc, char **argv) {
         neko_pf_init(neko_subsystem(platform));
 
         // 设置应用程序的帧速率
-        neko_subsystem(platform)->time.max_fps = neko_cvar("settings.window.frame_rate")->value.f;
+        neko_subsystem(platform)->time.max_fps = settings_window_frame_rate.get<f32>();
 
         neko_pf_running_desc_t window = {.title = "Neko Engine", .width = 1280, .height = 720, .vsync = false, .frame_rate = 60.f, .hdpi = false, .center = true, .running_background = true};
 
@@ -1145,7 +1235,7 @@ NEKO_API_DECL neko_instance_t *neko_create(int argc, char **argv) {
         neko_pf_window_create(&window);
 
         // 设置视频垂直同步
-        neko_pf_enable_vsync(neko_cvar("settings.window.vsync")->value.i);
+        neko_pf_enable_vsync(settings_window_vsync.get<bool>());
 
         // 构建图形API
         neko_subsystem(render) = neko_render_create();
@@ -1153,29 +1243,7 @@ NEKO_API_DECL neko_instance_t *neko_create(int argc, char **argv) {
         // 初始化图形
         neko_render_init(neko_subsystem(render));
 
-        // 初始化应用程序并设置为运行
-
-        mount_result mount;
-
-#if defined(NEKO_DEBUG_BUILD)
-        mount = neko::vfs_mount(NEKO_PACK_GAMEDATA, "gamedir/../");
-        mount = neko::vfs_mount(NEKO_PACK_LUACODE, "gamedir/../");
-#else
-        mount = neko::vfs_mount(NEKO_PACK_GAMEDATA, "gamedir/../gamedata.zip");
-        mount = neko::vfs_mount(NEKO_PACK_LUACODE, "gamedir/../luacode.zip");
-#endif
-
         neko_module_interface_init(ENGINE_INTERFACE());
-
-        neko_instance()->L = neko_lua_bootstrap(argc, argv);
-
-        lua_channels_setup();
-
-        neko_instance()->W = ecs_init();
-
-        ECS_IMPORT(neko_instance()->W, FlecsLua);
-
-        ecs_lua_set_state(neko_instance()->W, neko_instance()->L);
 
         {
             u32 w, h;
@@ -1191,7 +1259,7 @@ NEKO_API_DECL neko_instance_t *neko_create(int argc, char **argv) {
 #if 0
         {
 
-            ENGINE_INTERFACE()->ecs = ecs_init(neko_instance()->L);
+            ENGINE_INTERFACE()->ecs = ecs_init(ENGINE_L());
 
             auto registry = ENGINE_INTERFACE()->ecs;
             const ecs_entity_t pos_component = ECS_COMPONENT(registry, position_t);
@@ -1240,14 +1308,9 @@ NEKO_API_DECL neko_instance_t *neko_create(int argc, char **argv) {
         }
 #endif
 
-        neko_app(neko_instance()->L);
+        neko_app(ENGINE_LUA());
 
-        neko_instance()->update = +[]() { neko_lua_call(neko_instance()->L, "boot_update"); };
-        neko_instance()->post_update = +[]() {};
-        neko_instance()->shutdown = +[]() { neko_lua_call(neko_instance()->L, "boot_fini"); };
-        neko_instance()->init = +[]() { neko_lua_call(neko_instance()->L, "boot_init"); };
-
-        // neko_lua_safe_dofile(neko_instance()->L, "boot");
+        // neko_lua_safe_dofile(ENGINE_L(), "boot");
 
         std::string boot_code = R"lua(
 startup = require "startup"
@@ -1261,9 +1324,7 @@ startup = require "startup"
 local w = boot.fetch_world("sandbox")
 
 function boot_init()
-
     local game_userdata = sandbox_init()
-
     w:register("neko_client_userdata_t", {ud})
     local eid1 = w:new{
         neko_client_userdata_t = {
@@ -1286,9 +1347,9 @@ function boot_fini()
 end
 )lua";
 
-        neko_lua_run_string(neko_instance()->L, boot_code.c_str());
+        neko_lua_run_string(ENGINE_LUA(), boot_code.c_str());
 
-        neko_instance()->init();
+        neko_lua_call(ENGINE_LUA(), "boot_init");
         neko_instance()->game.is_running = true;
 
         // 设置按下主窗口关闭按钮时的默认回调
@@ -1325,13 +1386,13 @@ NEKO_API_DECL void neko_frame() {
 
             PROFILE_BLOCK("main_update");
 
-            neko_instance()->update();
+            neko_lua_call(ENGINE_LUA(), "boot_update");
 
             // neko_idraw_defaults(&ENGINE_INTERFACE()->idraw);
             // neko_idraw_camera2d(&ENGINE_INTERFACE()->idraw, neko_game().DisplaySize.x, neko_game().DisplaySize.y);
             // ecs_step(ENGINE_INTERFACE()->ecs);
 
-            neko_instance()->post_update();
+            // neko_instance()->post_update();
             {
                 PROFILE_BLOCK("cmd_submit");
                 neko_render_command_buffer_submit(&ENGINE_INTERFACE()->cb);
@@ -1340,8 +1401,8 @@ NEKO_API_DECL void neko_frame() {
 
             auto &module_list = ENGINE_INTERFACE()->modules;
             for (u32 i = 0; i < neko_dyn_array_size(module_list); ++i) {
-                Neko_Module &module = module_list[i];
-                module.func.OnPostUpdate(neko_instance()->L);
+                neko_dynlib &module = module_list[i];
+                module.func.OnPostUpdate(ENGINE_LUA());
             }
         }
 
@@ -1388,20 +1449,20 @@ void neko_fini() {
     PROFILE_FUNC();
 
     // Shutdown application
-    neko_instance()->shutdown();
+    neko_lua_call(ENGINE_LUA(), "boot_fini");
     neko_instance()->game.is_running = false;
 
     lua_channels_shutdown();
 
     auto &module_list = ENGINE_INTERFACE()->modules;
     for (u32 i = 0; i < neko_dyn_array_size(module_list); ++i) {
-        Neko_Module &module = module_list[i];
-        module.func.OnFini(neko_instance()->L);
+        neko_dynlib &module = module_list[i];
+        module.func.OnFini(ENGINE_LUA());
     }
 
     neko_module_interface_fini(ENGINE_INTERFACE());
 
-    neko_scripting_end(neko_instance()->L);
+    neko_scripting_end(ENGINE_LUA());
 
     neko::vfs_fini({});
 
@@ -1411,12 +1472,20 @@ void neko_fini() {
     neko_pf_shutdown(neko_subsystem(platform));
     neko_pf_destroy(neko_subsystem(platform));
 
-    __neko_config_free();
+    // __neko_config_free();
 
-    profile_shutdown();
+    profile_fini();
 
     // 在 app 结束后进行内存检查
-    __neko_mem_fini();
+#ifndef NDEBUG
+    DebugAllocator *allocator = dynamic_cast<DebugAllocator *>(g_allocator);
+    if (allocator != nullptr) {
+        allocator->dump_allocs();
+    }
+#endif
+
+    allocator->trash();
+    operator delete(g_allocator);
 }
 
 NEKO_API_DECL void neko_default_main_window_close_callback(void *window) { neko_instance()->game.is_running = false; }
@@ -1429,11 +1498,11 @@ void neko_quit() {
 
 void neko_module_interface_init(Neko_ModuleInterface *module_interface) {
 
-    module_interface->common.__neko_mem_safe_alloc = &__neko_mem_safe_alloc;
-    module_interface->common.__neko_mem_safe_calloc = &__neko_mem_safe_calloc;
-    module_interface->common.__neko_mem_safe_realloc = &__neko_mem_safe_realloc;
-    module_interface->common.__neko_mem_safe_free = &__neko_mem_safe_free;
-    module_interface->common.capi_vfs_read_file = &neko_capi_vfs_read_file;
+    // module_interface->common.__neko_mem_safe_alloc = +[](size_t size, const char *file, int line) { return g_allocator->alloc(size, file, line); };
+    // module_interface->common.__neko_mem_safe_free = +[](void *ptr) { g_allocator->free(ptr); };
+    // module_interface->common.__neko_mem_safe_calloc = &__neko_mem_safe_calloc;
+    // module_interface->common.__neko_mem_safe_realloc = &__neko_mem_safe_realloc;
+    // module_interface->common.capi_vfs_read_file = &neko_capi_vfs_read_file;
 
     module_interface->cb = neko_command_buffer_new();
     module_interface->idraw = neko_immediate_draw_new();

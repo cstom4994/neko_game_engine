@@ -1,4 +1,4 @@
-#include "engine/neko.h"
+#include "engine/neko.hpp"
 #include "engine/neko_api.hpp"
 #include "engine/neko_asset.h"
 #include "engine/neko_common.h"
@@ -68,9 +68,9 @@ LUA_FUNCTION(__neko_bind_callback_call) {
 static bool __neko_bind_platform_key_pressed(const_str key) {
     neko_pf_keycode cval;
 
-    lua_pushstring(neko_instance()->L, key);
-    neko_luabind_to(neko_instance()->L, neko_pf_keycode, &cval, -1);
-    lua_pop(neko_instance()->L, 1);
+    lua_pushstring(ENGINE_LUA(), key);
+    neko_luabind_to(ENGINE_LUA(), neko_pf_keycode, &cval, -1);
+    lua_pop(ENGINE_LUA(), 1);
 
     return neko_pf_key_pressed(cval);
 }
@@ -78,9 +78,9 @@ static bool __neko_bind_platform_key_pressed(const_str key) {
 static bool __neko_bind_platform_was_key_down(const_str key) {
     neko_pf_keycode cval;
 
-    lua_pushstring(neko_instance()->L, key);
-    neko_luabind_to(neko_instance()->L, neko_pf_keycode, &cval, -1);
-    lua_pop(neko_instance()->L, 1);
+    lua_pushstring(ENGINE_LUA(), key);
+    neko_luabind_to(ENGINE_LUA(), neko_pf_keycode, &cval, -1);
+    lua_pop(ENGINE_LUA(), 1);
 
     return neko_pf_key_down(cval);
 }
@@ -88,9 +88,9 @@ static bool __neko_bind_platform_was_key_down(const_str key) {
 static bool __neko_bind_platform_key_down(const_str key) {
     neko_pf_keycode cval;
 
-    lua_pushstring(neko_instance()->L, key);
-    neko_luabind_to(neko_instance()->L, neko_pf_keycode, &cval, -1);
-    lua_pop(neko_instance()->L, 1);
+    lua_pushstring(ENGINE_LUA(), key);
+    neko_luabind_to(ENGINE_LUA(), neko_pf_keycode, &cval, -1);
+    lua_pop(ENGINE_LUA(), 1);
 
     return neko_pf_key_down(cval);
 }
@@ -98,9 +98,9 @@ static bool __neko_bind_platform_key_down(const_str key) {
 static bool __neko_bind_platform_key_released(const_str key) {
     neko_pf_keycode cval;
 
-    lua_pushstring(neko_instance()->L, key);
-    neko_luabind_to(neko_instance()->L, neko_pf_keycode, &cval, -1);
-    lua_pop(neko_instance()->L, 1);
+    lua_pushstring(ENGINE_LUA(), key);
+    neko_luabind_to(ENGINE_LUA(), neko_pf_keycode, &cval, -1);
+    lua_pop(ENGINE_LUA(), 1);
 
     return neko_pf_key_released(cval);
 }
@@ -108,9 +108,9 @@ static bool __neko_bind_platform_key_released(const_str key) {
 static bool __neko_bind_platform_was_mouse_down(const_str key) {
     neko_pf_mouse_button_code cval;
 
-    lua_pushstring(neko_instance()->L, key);
-    neko_luabind_to(neko_instance()->L, neko_pf_mouse_button_code, &cval, -1);
-    lua_pop(neko_instance()->L, 1);
+    lua_pushstring(ENGINE_LUA(), key);
+    neko_luabind_to(ENGINE_LUA(), neko_pf_mouse_button_code, &cval, -1);
+    lua_pop(ENGINE_LUA(), 1);
 
     return neko_pf_was_mouse_down(cval);
 }
@@ -118,9 +118,9 @@ static bool __neko_bind_platform_was_mouse_down(const_str key) {
 static bool __neko_bind_platform_mouse_pressed(const_str key) {
     neko_pf_mouse_button_code cval;
 
-    lua_pushstring(neko_instance()->L, key);
-    neko_luabind_to(neko_instance()->L, neko_pf_mouse_button_code, &cval, -1);
-    lua_pop(neko_instance()->L, 1);
+    lua_pushstring(ENGINE_LUA(), key);
+    neko_luabind_to(ENGINE_LUA(), neko_pf_mouse_button_code, &cval, -1);
+    lua_pop(ENGINE_LUA(), 1);
 
     return neko_pf_mouse_pressed(cval);
 }
@@ -128,9 +128,9 @@ static bool __neko_bind_platform_mouse_pressed(const_str key) {
 static bool __neko_bind_platform_mouse_down(const_str key) {
     neko_pf_mouse_button_code cval;
 
-    lua_pushstring(neko_instance()->L, key);
-    neko_luabind_to(neko_instance()->L, neko_pf_mouse_button_code, &cval, -1);
-    lua_pop(neko_instance()->L, 1);
+    lua_pushstring(ENGINE_LUA(), key);
+    neko_luabind_to(ENGINE_LUA(), neko_pf_mouse_button_code, &cval, -1);
+    lua_pop(ENGINE_LUA(), 1);
 
     return neko_pf_mouse_down(cval);
 }
@@ -138,9 +138,9 @@ static bool __neko_bind_platform_mouse_down(const_str key) {
 static bool __neko_bind_platform_mouse_released(const_str key) {
     neko_pf_mouse_button_code cval;
 
-    lua_pushstring(neko_instance()->L, key);
-    neko_luabind_to(neko_instance()->L, neko_pf_mouse_button_code, &cval, -1);
-    lua_pop(neko_instance()->L, 1);
+    lua_pushstring(ENGINE_LUA(), key);
+    neko_luabind_to(ENGINE_LUA(), neko_pf_mouse_button_code, &cval, -1);
+    lua_pop(ENGINE_LUA(), 1);
 
     return neko_pf_mouse_released(cval);
 }
@@ -751,7 +751,7 @@ LUA_FUNCTION(__neko_bind_fontbatch_create) {
     neko_fontbatch_t& fontbatch = neko::lua::newudata<neko_fontbatch_t>(L);
 
     neko::string contents = {};
-    bool ok = vfs_read_entire_file(NEKO_PACK_GAMEDATA, &contents, "gamedir/1.fnt");
+    bool ok = vfs_read_entire_file(NEKO_PACKS::GAMEDATA, &contents, "gamedir/1.fnt");
     NEKO_ASSERT(ok);
     neko_fontbatch_init(&fontbatch, font_vs.data, font_ps.data, neko_game().DisplaySize, "gamedir/1_0.png", contents.data, (s32)contents.len);
     neko_defer(neko_safe_free(contents.data));
@@ -1239,12 +1239,12 @@ static void watch_map_callback(neko_filewatch_update_t change, const_str virtual
 
     const_str callback_funcname = (const_str)udata;
 
-    lua_getglobal(neko_instance()->L, callback_funcname);
-    bool is_callback = lua_isfunction(neko_instance()->L, -1);
-    lua_pop(neko_instance()->L, 1);
+    lua_getglobal(ENGINE_L(), callback_funcname);
+    bool is_callback = lua_isfunction(ENGINE_L(), -1);
+    lua_pop(ENGINE_L(), 1);
 
     if (is_callback) try {
-            neko_lua_call<void>(neko_instance()->L, callback_funcname, change_string, std::string(virtual_path));
+            neko_lua_call<void>(ENGINE_L(), callback_funcname, change_string, std::string(virtual_path));
         } catch (std::exception& ex) {
             NEKO_ERROR("lua exception %s", ex.what());
         }
@@ -1345,7 +1345,7 @@ LUA_FUNCTION(__neko_bind_idraw_box) {
     u8 b = lua_tointeger(L, 9);
     u8 a = lua_tointeger(L, 10);
     neko_render_primitive_type type_val;
-    neko_luabind_to(neko_instance()->L, neko_render_primitive_type, &type_val, 11);
+    neko_luabind_to(ENGINE_LUA(), neko_render_primitive_type, &type_val, 11);
     neko_idraw_box(&ENGINE_INTERFACE()->idraw, x, y, z, hx, hy, hz, r, g, b, a, type_val);
     return 0;
 }
@@ -1366,7 +1366,7 @@ LUA_FUNCTION(__neko_bind_idraw_rectv) {
     v2 = neko_vec2_add(v1, v2);
 
     neko_render_primitive_type type_val;
-    neko_luabind_to(neko_instance()->L, neko_render_primitive_type, &type_val, 3);
+    neko_luabind_to(ENGINE_LUA(), neko_render_primitive_type, &type_val, 3);
 
     neko_color_t col = NEKO_COLOR_WHITE;
 
@@ -1387,7 +1387,7 @@ LUA_FUNCTION(__neko_bind_idraw_rectvd) {
     auto uv1 = lua2struct::unpack<neko_vec2>(L, 4);
 
     neko_render_primitive_type type_val;
-    neko_luabind_to(neko_instance()->L, neko_render_primitive_type, &type_val, 5);
+    neko_luabind_to(ENGINE_LUA(), neko_render_primitive_type, &type_val, 5);
 
     neko_color_t col = lua2struct::unpack<neko_color_t>(L, 6);
 
@@ -1434,7 +1434,7 @@ LUA_FUNCTION(__neko_bind_idraw_face_cull_enabled) {
 
 LUA_FUNCTION(__neko_bind_idraw_texture) {
     neko_texture_t rt = NEKO_DEFAULT_VAL();
-    neko_luabind_struct_to_member(neko_instance()->L, neko_texture_t, id, &rt, 1);
+    neko_luabind_struct_to_member(ENGINE_LUA(), neko_texture_t, id, &rt, 1);
     neko_idraw_texture(&ENGINE_INTERFACE()->idraw, rt);
     return 0;
 }
@@ -1490,7 +1490,7 @@ NEKO_LUA_INSPECT_ITER(frame_buffers)
 // NEKO_LUA_INSPECT_ITER(pipelines)
 // NEKO_LUA_INSPECT_ITER(renderpasses)
 
-void inspect_shader(const char* label, GLuint program);
+void inspect_shader(const_str label, GLuint program);
 
 LUA_FUNCTION(__neko_bind_inspect_shaders) {
     u32 shader_id = lua_tonumber(L, 1);
@@ -2200,30 +2200,6 @@ LUA_FUNCTION(__neko_bind_render_display_size) {
     return 2;
 }
 
-static int l_base64_encode(lua_State* L) {
-    const char* input = luaL_checkstring(L, 1);
-    const char* encoded = neko_base64_encode(input);
-    if (encoded) {
-        lua_pushstring(L, (const char*)encoded);
-        neko_safe_free(encoded);
-    } else {
-        lua_pushnil(L);
-    }
-    return 1;
-}
-
-static int l_base64_decode(lua_State* L) {
-    const char* input = luaL_checkstring(L, 1);
-    const char* decoded = neko_base64_decode(input);
-    if (decoded) {
-        lua_pushstring(L, (const char*)decoded);
-        neko_safe_free(decoded);
-    } else {
-        lua_pushnil(L);
-    }
-    return 1;
-}
-
 NEKO_INLINE void neko_register_test(lua_State* L) {
 
     // neko::lua_bind::bind("neko_tiled_get_objects", &__neko_bind_tiled_get_objects);
@@ -2364,6 +2340,7 @@ NEKO_INLINE void neko_register_test(lua_State* L) {
     neko_luabind_enum_value(L, neko_render_uniform_type, R_UNIFORM_BLOCK);
 }
 
+#if 0
 LUA_FUNCTION(__neko_bind_cvar) {
     const_str name = lua_tostring(L, 1);
 
@@ -2406,9 +2383,9 @@ LUA_FUNCTION(__neko_bind_cvar) {
 
             if (lua_type(L, 2) == LUA_TSTRING) {
                 const_str type = lua_tostring(L, 2);
-                lua_pushstring(neko_instance()->L, type);
-                neko_luabind_to(neko_instance()->L, neko_cvar_type, &cval, -1);
-                lua_pop(neko_instance()->L, 1);
+                lua_pushstring(ENGINE_LUA(), type);
+                neko_luabind_to(ENGINE_LUA(), neko_cvar_type, &cval, -1);
+                lua_pop(ENGINE_LUA(), 1);
             } else if (lua_isinteger(L, 2)) {
                 int type = lua_tointeger(L, 2);
                 cval = (neko_cvar_type)type;
@@ -2440,6 +2417,7 @@ LUA_FUNCTION(__neko_bind_cvar) {
 
     return 0;  // unreachable
 }
+#endif
 
 LUA_FUNCTION(__neko_bind_print) {
     std::string str;
@@ -2461,7 +2439,7 @@ LUA_FUNCTION(__neko_bind_vfs_read_file) {
 
     neko::string str;
 
-    const_str vpks[] = {NEKO_PACK_GAMEDATA, NEKO_PACK_LUACODE};
+    const_str vpks[] = {NEKO_PACKS::GAMEDATA, NEKO_PACKS::LUACODE};
     bool ok = false;
     for (auto vpk : vpks) {
         ok = neko::vfs_read_entire_file(vpk, &str, path);
@@ -2474,7 +2452,7 @@ LUA_FUNCTION(__neko_bind_vfs_read_file) {
         neko_defer(neko_safe_free(str.data));
         return 1;
     } else {
-        const char* error_message = "todo";
+        const_str error_message = "todo";
         lua_pushstring(L, error_message);
         return lua_error(L);
     }
@@ -2515,7 +2493,7 @@ int __neko_ls(lua_State* L) {
     return 1;
 }
 
-bool __neko_dolua(const_str file) { return neko::neko_lua_dofile(neko_instance()->L, file); }
+bool __neko_dolua(const_str file) { return neko::neko_lua_dofile(ENGINE_LUA(), file); }
 
 int neko_lua_events_init(lua_State* L);
 
@@ -2535,7 +2513,7 @@ struct neko_lua_events_pool {
 };
 
 struct neko_lua_events_t {
-    const char* hookName;
+    const_str hookName;
     struct neko_lua_events_stack* stack;
     size_t pool;
     struct neko_lua_events_t* address;
@@ -2545,16 +2523,16 @@ struct neko_lua_events_t {
 };
 
 struct neko_lua_events_stack {
-    const char* name;
+    const_str name;
     void (*func)(lua_State*, struct neko_lua_events_t* instance, int, struct neko_lua_events_callbacks* callback);
     int ref;
 };
 
 void neko_lua_events_register(struct neko_lua_events_t hookData);
-void neko_lua_events_add(struct neko_lua_events_t* instance, const char* name, void (*func)(lua_State*, struct neko_lua_events_t* instance, int, struct neko_lua_events_callbacks* callback), int ref);
+void neko_lua_events_add(struct neko_lua_events_t* instance, const_str name, void (*func)(lua_State*, struct neko_lua_events_t* instance, int, struct neko_lua_events_callbacks* callback), int ref);
 void neko_lua_events_run(struct neko_lua_events_t* instance, lua_State* L);
 void neko_lua_events_free(struct neko_lua_events_t* instance, lua_State* L);
-struct neko_lua_events_t* neko_lua_events_find(const char* hookName);
+struct neko_lua_events_t* neko_lua_events_find(const_str hookName);
 struct neko_lua_events_callbacks* neko_lua_events_callback_create(size_t dataSize, enum neko_lua_dataType dataType);
 void* neko_lua_events_callback_get(const struct neko_lua_events_callbacks* callback);
 void neko_lua_events_callback_set(struct neko_lua_events_callbacks* callback, const void* data);
@@ -2819,6 +2797,12 @@ NEKO_INLINE void neko_register_common(lua_State* L) {
     neko::lua_bind::bind("neko_rand", &neko_rand_xorshf32);
     neko::lua_bind::bind("neko_dolua", &__neko_dolua);
 
+    neko::lua_bind::bind(
+            "neko_tolua_gen", +[](const_str f, const_str o) {
+                neko_tolua_boot_opt opt{.f = f, .output = o};
+                neko_tolua_boot(opt);
+            });
+
     neko::lua_bind::bind("neko_hash_str", +[](const_str str) { return neko_hash_str(str); });
     neko::lua_bind::bind("neko_hash_str64", +[](const_str str) { return neko_hash_str64(str); });
     neko::lua_bind::bind("__neko_quit", +[](int op) { return neko_quit(); });
@@ -2841,11 +2825,11 @@ NEKO_INLINE void neko_register_common(lua_State* L) {
     //     lua_setglobal(L, reg->name);
     // }
 
-    neko_luabind_enum(L, neko_cvar_type);
-    neko_luabind_enum_value(L, neko_cvar_type, __NEKO_CONFIG_TYPE_INT);
-    neko_luabind_enum_value(L, neko_cvar_type, __NEKO_CONFIG_TYPE_FLOAT);
-    neko_luabind_enum_value(L, neko_cvar_type, __NEKO_CONFIG_TYPE_STRING);
-    neko_luabind_enum_value(L, neko_cvar_type, __NEKO_CONFIG_TYPE_COUNT);
+    // neko_luabind_enum(L, neko_cvar_type);
+    // neko_luabind_enum_value(L, neko_cvar_type, __NEKO_CONFIG_TYPE_INT);
+    // neko_luabind_enum_value(L, neko_cvar_type, __NEKO_CONFIG_TYPE_FLOAT);
+    // neko_luabind_enum_value(L, neko_cvar_type, __NEKO_CONFIG_TYPE_STRING);
+    // neko_luabind_enum_value(L, neko_cvar_type, __NEKO_CONFIG_TYPE_COUNT);
 
     lua_register(L, "__neko_ls", __neko_ls);
 }
@@ -2898,7 +2882,7 @@ static neko::lua_channel* check_channel_udata(lua_State* L, s32 arg) {
 static int mt_channel_send(lua_State* L) {
     neko::lua_channel* chan = check_channel_udata(L, 1);
 
-    neko::lua_variant v = {};
+    neko::lua_variant_wrap v = {};
     v.make(L, 2);
     chan->send(v);
 
@@ -2907,7 +2891,7 @@ static int mt_channel_send(lua_State* L) {
 
 static int mt_channel_recv(lua_State* L) {
     neko::lua_channel* chan = check_channel_udata(L, 1);
-    neko::lua_variant v = chan->recv();
+    neko::lua_variant_wrap v = chan->recv();
 
     v.push(L);
     v.trash();
@@ -2916,7 +2900,7 @@ static int mt_channel_recv(lua_State* L) {
 
 static int mt_channel_try_recv(lua_State* L) {
     neko::lua_channel* chan = check_channel_udata(L, 1);
-    neko::lua_variant v = {};
+    neko::lua_variant_wrap v = {};
     bool ok = chan->try_recv(&v);
     if (!ok) {
         lua_pushnil(L);
@@ -2974,7 +2958,7 @@ static int __neko_bind_get_channel(lua_State* L) {
 }
 
 static int __neko_bind_select(lua_State* L) {
-    neko::lua_variant v = {};
+    neko::lua_variant_wrap v = {};
     neko::lua_channel* chan = lua_channels_select(L, &v);
     if (chan == nullptr) {
         return 0;
@@ -3237,11 +3221,8 @@ static int open_embed_core(lua_State* L) {
 
             {"vfs_read_file", __neko_bind_vfs_read_file},
 
-            {"cvar", __neko_bind_cvar},
             {"print", __neko_bind_print},
 
-            {"base64_encode", l_base64_encode},
-            {"base64_decode", l_base64_decode},
             {"json_read", __neko_bind_json_read},
             {"json_write", __neko_bind_json_write},
 

@@ -4,15 +4,12 @@
 #include <filesystem>
 #include <string>
 
-#include "engine/neko.h"
+#include "engine/neko.hpp"
 #include "engine/neko_asset.h"
 #include "engine/neko_common.h"
 #include "engine/neko_engine.h"
 #include "engine/neko_lua.h"
 #include "engine/neko_luabind.hpp"
-
-// game
-#include "sandbox/game_main.h"
 
 void __neko_lua_print_error(lua_State* state, int result) {
     const_str message = lua_tostring(state, -1);
@@ -172,7 +169,7 @@ static void neko_tolua_add_extra(lua_State* L, const_str value) {
     lua_pop(L, 1);
 };
 
-NEKO_API_DECL void neko_tolua_boot(int argc, char** argv) {
+NEKO_API_DECL void neko_tolua_boot(neko_tolua_boot_opt opt) {
 
     lua_State* L = luaL_newstate();
     luaL_openlibs(L);
@@ -190,29 +187,19 @@ NEKO_API_DECL void neko_tolua_boot(int argc, char** argv) {
         lua_pushvalue(L, -1);
         lua_setglobal(L, "neko_tolua_flags");
         t = lua_gettop(L);
-        for (i = 1; i < argc; ++i) {
-            if (*argv[i] == '-') {
-                switch (argv[i][1]) {
-                    case 'o':
-                        neko_tolua_setfield(L, t, "o", argv[++i]);
-                        break;
-                    // disable automatic exporting of destructors for classes
-                    // that have constructors (for compatibility with tolua5)
-                    case 'D':
-                        neko_tolua_setfield(L, t, "D", "");
-                        break;
-                    // add extra values to the luastate
-                    case 'E':
-                        neko_tolua_add_extra(L, argv[++i]);
-                        break;
-                    default:
-                        break;
-                }
-            } else {
-                neko_tolua_setfield(L, t, "f", argv[i]);
-                break;
-            }
-        }
+
+        neko_tolua_setfield(L, t, "f", opt.f.c_str());
+        neko_tolua_setfield(L, t, "o", opt.output.c_str());
+
+        // disable automatic exporting of destructors for classes
+        // that have constructors (for compatibility with tolua5)
+        // case 'D':
+        //     neko_tolua_setfield(L, t, "D", "");
+        //     break;
+        // // add extra values to the luastate
+        // case 'E':
+        //     neko_tolua_add_extra(L, argv[++i]);
+
         lua_pop(L, 1);
     }
 

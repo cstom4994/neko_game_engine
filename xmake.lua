@@ -83,7 +83,6 @@ do
     })
 
     add_files("source/engine/embed/*.lua")
-    add_files("source/engine/**.c")
     add_files("source/engine/**.cpp")
     add_headerfiles("source/engine/**.h", "source/engine/**.hpp")
 
@@ -121,7 +120,7 @@ target("sandbox")
 do
     set_kind("binary")
 
-    add_files("source/sandbox/**.c", "source/sandbox/**.cpp")
+    add_files("source/sandbox/**.cpp")
     add_headerfiles("source/sandbox/**.h", "source/sandbox/**.hpp")
 
     add_deps("neko_engine")

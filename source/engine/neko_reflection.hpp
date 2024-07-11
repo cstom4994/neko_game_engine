@@ -2,6 +2,7 @@
 #define NEKO_REFL_HPP
 
 #include <cstddef>
+#include <functional>
 #include <span>
 #include <tuple>
 #include <type_traits>
@@ -315,7 +316,7 @@ inline constexpr auto __gen_struct_meta() {
     return std::make_tuple();
 }
 
-#define neko_struct(__struct, ...)                                          \
+#define NEKO_STRUCT(__struct, ...)                                          \
     template <>                                                             \
     inline constexpr auto neko::reflection::__gen_struct_meta<__struct>() { \
         using T = __struct;                                                 \

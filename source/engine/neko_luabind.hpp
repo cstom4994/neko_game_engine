@@ -7,8 +7,12 @@
 #include "neko_lua.h"
 #include "neko_reflection.hpp"
 
-#define LUA_FUNCTION(F) static int F(lua_State* L)
-#define LUABIND_MODULE(...) static int luaopen(lua_State* L)
+namespace std {
+template <typename E, typename = std::enable_if_t<std::is_enum_v<E>>>
+constexpr std::underlying_type_t<E> to_underlying(E e) noexcept {
+    return static_cast<std::underlying_type_t<E>>(e);
+}
+}  // namespace std
 
 namespace neko::lua {
 struct callfunc {

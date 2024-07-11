@@ -4,6 +4,7 @@
 #define NEKO_RENDER_H
 
 #include "engine/neko.h"
+#include "engine/neko_common.h"
 #include "engine/neko_math.h"
 
 #ifndef NEKO_GL

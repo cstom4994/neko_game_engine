@@ -2,7 +2,7 @@ local PHY = require "bump"
 local network = require "sock"
 local tweens = require "flux"
 
-local behavior = require "behavior"
+local behavior = common.behavior
 
 local selector = behavior.func_selector
 local sequence = behavior.func_sequence
@@ -527,8 +527,8 @@ function playerSystem:process(e, dt)
     --     M.client:send("player_position", encoded)
     -- end
 
-    -- this_player.p = p
-    -- this_player.pos = v2
+    this_player.p = p
+    this_player.pos = v2
 end
 
 local tiledRenderSystem = tiny.processingSystem()
@@ -1261,26 +1261,6 @@ M.sub_render = function()
 end
 
 M.test_update = function()
-
-    if neko_key_pressed("NEKO_KEYCODE_F3") then
-
-        print(CVar("test_cvar"))
-        print(CVar("test_cvar_str"))
-
-        if CVar("test_lua_newnew_f") == nil then
-            CVar("test_lua_newnew_f", __NEKO_CONFIG_TYPE_FLOAT, 5.44)
-            print("创建 test_lua_newnew_f")
-        end
-
-        print(CVar("test_lua_newnew_f"))
-
-        if CVar("test_lua_newnew_f") ~= nil then
-            CVar("test_lua_newnew_f", 999.9)
-            print("修改 test_lua_newnew_f")
-        end
-
-        print(CVar("test_lua_newnew_f"))
-    end
 
     if neko_key_pressed("NEKO_KEYCODE_T") then
         -- collectgarbage("collect")

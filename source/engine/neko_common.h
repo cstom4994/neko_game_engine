@@ -5,8 +5,40 @@
 
 #include "neko.h"
 
-NEKO_API_DECL const_str neko_base64_encode(const_str str);
-NEKO_API_DECL const_str neko_base64_decode(const_str code);
+struct hashtable_internal_slot_t {
+    u32 key_hash;
+    int item_index;
+    int base_count;
+};
+
+struct neko_hashtable_t {
+    void* memctx;
+    int count;
+    int item_size;
+
+    struct hashtable_internal_slot_t* slots;
+    int slot_capacity;
+
+    u64* items_key;
+    int* items_slot;
+    void* items_data;
+    int item_capacity;
+
+    void* swap_temp;
+};
+
+typedef struct neko_hashtable_t neko_hashtable_t;
+
+NEKO_API_DECL void hashtable_init(neko_hashtable_t* table, int item_size, int initial_capacity, void* memctx);
+NEKO_API_DECL void hashtable_term(neko_hashtable_t* table);
+NEKO_API_DECL void* hashtable_insert(neko_hashtable_t* table, u64 key, void const* item);
+NEKO_API_DECL void hashtable_remove(neko_hashtable_t* table, u64 key);
+NEKO_API_DECL void hashtable_clear(neko_hashtable_t* table);
+NEKO_API_DECL void* hashtable_find(neko_hashtable_t const* table, u64 key);
+NEKO_API_DECL int hashtable_count(neko_hashtable_t const* table);
+NEKO_API_DECL void* hashtable_items(neko_hashtable_t const* table);
+NEKO_API_DECL u64 const* hashtable_keys(neko_hashtable_t const* table);
+NEKO_API_DECL void hashtable_swap(neko_hashtable_t* table, int index_a, int index_b);
 
 /*================================================================================
 // Utils

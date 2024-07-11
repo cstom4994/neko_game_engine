@@ -2,6 +2,7 @@
 #include "neko_component.hpp"
 
 #include "engine/neko.h"
+#include "engine/neko.hpp"
 #include "engine/neko_asset.h"
 #include "engine/neko_common.h"
 
@@ -361,7 +362,7 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
         char full_image_path[256];
         neko_snprintf(full_image_path, 256, "%s/%s", tmx_root_path, image_path);
 
-        bool ok = neko_capi_vfs_file_exists(NEKO_PACK_GAMEDATA, full_image_path);
+        bool ok = neko_capi_vfs_file_exists(NEKO_PACKS::GAMEDATA, full_image_path);
         if (!ok) {
             NEKO_ERROR("failed to load texture file: %s", full_image_path);
             return;
@@ -941,7 +942,7 @@ bool ldtk_map::load(string filepath) {
     PROFILE_FUNC();
 
     string contents = {};
-    bool success = vfs_read_entire_file(NEKO_PACK_GAMEDATA, &contents, filepath);
+    bool success = vfs_read_entire_file(NEKO_PACKS::GAMEDATA, &contents, filepath);
     if (!success) {
         return false;
     }

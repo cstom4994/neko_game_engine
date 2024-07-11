@@ -2,8 +2,6 @@
 #ifndef NEKO_PF_H
 #define NEKO_PF_H
 
-#include <time.h>
-
 #include "engine/neko.h"
 #include "engine/neko_math.h"
 

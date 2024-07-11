@@ -11,17 +11,17 @@ luadb = require "neko.luadb"
 dump_func = function(tbl, indent)
     if not indent then
         indent = 0
-        print("inspect: \"" .. tostring(tbl) .. "\"")
+        print("|inspect: \"" .. tostring(tbl) .. "\"")
     end
     for k, v in pairs(tbl) do
         formatting = string.rep("  ", indent) .. k .. ": "
         if type(v) == "table" then
-            print(formatting)
+            print("|" .. formatting)
             dump_func(v, indent + 1)
         elseif type(v) == 'boolean' then
-            print(formatting .. tostring(v))
+            print("|" .. formatting .. tostring(v))
         else
-            print(formatting .. v)
+            print("|" .. formatting .. v)
         end
     end
 end

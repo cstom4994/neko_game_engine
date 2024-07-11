@@ -15,6 +15,9 @@ extern "C" {
 }
 #endif
 
+#define LUA_FUNCTION(F) static int F(lua_State *L)
+#define LUABIND_MODULE(...) static int luaopen(lua_State *L)
+
 #define NEKO_LUA_AUTO_REGISTER_PREFIX "neko_luabind_"
 
 NEKO_API_DECL void __neko_luabind_init(lua_State *L);
@@ -675,7 +678,7 @@ NEKO_API_DECL int neko_tolua_fast_isa(lua_State *L, int mt_indexa, int mt_indexb
 
 #endif
 
-#if !defined(NEKO_LUA_HPP) && defined(__cplusplus)
+#if !defined(NEKO_LUA_HPP)
 #define NEKO_LUA_HPP
 
 #include <array>
@@ -3151,8 +3154,8 @@ struct lua_bind {
 struct strtoll_tool_t {
     static long do_strtoll(const char *s, const char *, int) { return atol(s); }
 };
-#define strtoll strtoll_tool_t::do_strtoll
-#define strtoull (unsigned long)strtoll_tool_t::do_strtoll
+#define neko_lua_strtoll strtoll_tool_t::do_strtoll
+#define neko_lua_strtoull (unsigned long)strtoll_tool_t::do_strtoll
 
 template <typename T>
 T neko_lua_to(lua_State *L, int index) {

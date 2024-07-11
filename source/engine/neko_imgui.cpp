@@ -1,6 +1,8 @@
 
 #include "neko_imgui.hpp"
 
+#include "engine/neko.hpp"
+
 void neko_imgui_style() {
     ImGuiStyle& style = ImGui::GetStyle();
     // style.WindowRounding = 5.3f;
@@ -193,7 +195,7 @@ neko_imgui_context_t neko_imgui_new(neko_command_buffer_t* cb, u32 hndl, bool in
     config.PixelSnapH = 1;
 
     neko::string ttf_file;
-    neko::vfs_read_entire_file(NEKO_PACK_GAMEDATA, &ttf_file, "gamedir/assets/fonts/fusion-pixel-12px-monospaced-zh_hans.ttf");
+    neko::vfs_read_entire_file(NEKO_PACKS::GAMEDATA, &ttf_file, "gamedir/assets/fonts/fusion-pixel-12px-monospaced-zh_hans.ttf");
     neko_defer(neko_safe_free(ttf_file.data));
     void* ttf_data = __neko_imgui_malloc(ttf_file.len, NULL);
     memcpy(ttf_data, ttf_file.data, ttf_file.len);

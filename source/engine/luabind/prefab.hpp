@@ -214,7 +214,7 @@ LUABIND_MODULE() {
                 auto newdb = [](lua_State *L, std::string source) {
                     lua_State *Ldb = luaL_newstate();
                     neko::string contents = {};
-                    bool ok = vfs_read_entire_file(NEKO_PACK_LUACODE, &contents, source.c_str());
+                    bool ok = vfs_read_entire_file(NEKO_PACKS::LUACODE, &contents, source.c_str());
                     neko_defer(neko_safe_free(contents.data));
                     if (luaL_dostring(Ldb, contents.data)) {
                         // 引发错误
@@ -695,7 +695,7 @@ static void push_token(lua_State *L, struct lex_state *LS, struct token *t) {
         // may be a number
         // lua string always has \0 at the end, so strto* is safe
         char *endptr = NULL;
-        lua_Integer v = strtoull(ptr, (const char *)(&endptr), 10);
+        lua_Integer v = neko_lua_strtoull(ptr, (const char *)(&endptr), 10);
         if (endptr - ptr == sz) {
             lua_pushinteger(L, v);
             return;

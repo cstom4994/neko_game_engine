@@ -2,65 +2,8 @@
 
 #include "neko_common.h"
 
-#include "engine/neko.h"
+#include "engine/neko.hpp"
 
-// Base64
-// https://blog.csdn.net/qq_26093511/article/details/78836087
-
-const_str neko_base64_encode(const_str str) {
-    s64 len, str_len, i, j;
-    char* res;
-    const_str base64_table = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    str_len = neko_strlen(str);
-    if (str_len % 3 == 0)
-        len = str_len / 3 * 4;
-    else
-        len = (str_len / 3 + 1) * 4;
-    res = (char*)neko_safe_malloc(sizeof(char) * len + 1);
-    res[len] = '\0';
-    for (i = 0, j = 0; i < len - 2; j += 3, i += 4) {
-        res[i] = base64_table[str[j] >> 2];
-        res[i + 1] = base64_table[(str[j] & 0x3) << 4 | (str[j + 1] >> 4)];
-        res[i + 2] = base64_table[(str[j + 1] & 0xf) << 2 | (str[j + 2] >> 6)];
-        res[i + 3] = base64_table[str[j + 2] & 0x3f];
-    }
-    switch (str_len % 3) {
-        case 1:
-            res[i - 2] = '=';
-            res[i - 1] = '=';
-            break;
-        case 2:
-            res[i - 1] = '=';
-            break;
-    }
-    return res;
-}
-
-const_str neko_base64_decode(const_str code) {
-    int table[] = {0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-                   0,  0,  62, 0,  0,  0,  63, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 0,  0,  0,  0,  0,  0,  0,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16,
-                   17, 18, 19, 20, 21, 22, 23, 24, 25, 0,  0,  0,  0,  0,  0,  26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51};
-    s64 len, str_len, i, j;
-    char* res;
-    len = neko_strlen(code);
-    if (strstr(code, "=="))
-        str_len = len / 4 * 3 - 2;
-    else if (strstr(code, "="))
-        str_len = len / 4 * 3 - 1;
-    else
-        str_len = len / 4 * 3;
-    res = (char*)neko_safe_malloc(sizeof(char) * str_len + 1);
-    res[str_len] = '\0';
-    for (i = 0, j = 0; i < len - 2; j += 3, i += 4) {
-        res[j] = ((unsigned char)table[code[i]]) << 2 | (((unsigned char)table[code[i + 1]]) >> 4);
-        res[j + 1] = (((unsigned char)table[code[i + 1]]) << 4) | (((unsigned char)table[code[i + 2]]) >> 2);
-        res[j + 2] = (((unsigned char)table[code[i + 2]]) << 6) | ((unsigned char)table[code[i + 3]]);
-    }
-    return res;
-}
-
-#define HASHTABLE_MEMSET(ptr, val, cnt) (memset(ptr, val, cnt))
-#define HASHTABLE_MEMCPY(dst, src, cnt) (memcpy(dst, src, cnt))
 #define HASHTABLE_MALLOC(ctx, size) (neko_safe_malloc(size))
 #define HASHTABLE_FREE(ctx, ptr) (neko_safe_free(ptr))
 
@@ -85,7 +28,7 @@ void hashtable_init(neko_hashtable_t* table, int item_size, int initial_capacity
     int slots_size = (int)(table->slot_capacity * sizeof(*table->slots));
     table->slots = (struct hashtable_internal_slot_t*)HASHTABLE_MALLOC(table->memctx, (size_t)slots_size);
     NEKO_ASSERT(table->slots);
-    HASHTABLE_MEMSET(table->slots, 0, (size_t)slots_size);
+    memset(table->slots, 0, (size_t)slots_size);
     table->item_capacity = (int)hashtable_internal_pow2ceil((u32)initial_capacity);
     table->items_key = (u64*)HASHTABLE_MALLOC(table->memctx, table->item_capacity * (sizeof(*table->items_key) + sizeof(*table->items_slot) + table->item_size) + table->item_size);
     NEKO_ASSERT(table->items_key);
@@ -145,7 +88,7 @@ static void hashtable_internal_expand_slots(neko_hashtable_t* table) {
     int const size = (int)(table->slot_capacity * sizeof(*table->slots));
     table->slots = (struct hashtable_internal_slot_t*)HASHTABLE_MALLOC(table->memctx, (size_t)size);
     NEKO_ASSERT(table->slots);
-    HASHTABLE_MEMSET(table->slots, 0, (size_t)size);
+    memset(table->slots, 0, (size_t)size);
 
     for (int i = 0; i < old_capacity; ++i) {
         u32 const hash = old_slots[i].key_hash;
@@ -173,9 +116,9 @@ static void hashtable_internal_expand_items(neko_hashtable_t* table) {
     void* const new_items_data = (void*)(new_items_slot + table->item_capacity);
     void* const new_swap_temp = (void*)(((uintptr_t)new_items_data) + table->item_size * table->item_capacity);
 
-    HASHTABLE_MEMCPY(new_items_key, table->items_key, table->count * sizeof(*table->items_key));
-    HASHTABLE_MEMCPY(new_items_slot, table->items_slot, table->count * sizeof(*table->items_key));
-    HASHTABLE_MEMCPY(new_items_data, table->items_data, (size_t)table->count * table->item_size);
+    memcpy(new_items_key, table->items_key, table->count * sizeof(*table->items_key));
+    memcpy(new_items_slot, table->items_slot, table->count * sizeof(*table->items_key));
+    memcpy(new_items_data, table->items_data, (size_t)table->count * table->item_size);
 
     HASHTABLE_FREE(table->memctx, table->items_key);
 
@@ -243,7 +186,7 @@ void hashtable_remove(neko_hashtable_t* table, u64 key) {
         table->items_slot[index] = table->items_slot[last_index];
         void* dst_item = (void*)(((uintptr_t)table->items_data) + index * table->item_size);
         void* src_item = (void*)(((uintptr_t)table->items_data) + last_index * table->item_size);
-        HASHTABLE_MEMCPY(dst_item, src_item, (size_t)table->item_size);
+        memcpy(dst_item, src_item, (size_t)table->item_size);
         table->slots[table->items_slot[last_index]].item_index = index;
     }
     --table->count;
@@ -251,7 +194,7 @@ void hashtable_remove(neko_hashtable_t* table, u64 key) {
 
 void hashtable_clear(neko_hashtable_t* table) {
     table->count = 0;
-    HASHTABLE_MEMSET(table->slots, 0, table->slot_capacity * sizeof(*table->slots));
+    memset(table->slots, 0, table->slot_capacity * sizeof(*table->slots));
 }
 
 void* hashtable_find(neko_hashtable_t const* table, u64 key) {
@@ -284,9 +227,9 @@ void hashtable_swap(neko_hashtable_t* table, int index_a, int index_b) {
 
     void* item_a = (void*)(((uintptr_t)table->items_data) + index_a * table->item_size);
     void* item_b = (void*)(((uintptr_t)table->items_data) + index_b * table->item_size);
-    HASHTABLE_MEMCPY(table->swap_temp, item_a, table->item_size);
-    HASHTABLE_MEMCPY(item_a, item_b, table->item_size);
-    HASHTABLE_MEMCPY(item_b, table->swap_temp, table->item_size);
+    memcpy(table->swap_temp, item_a, table->item_size);
+    memcpy(item_a, item_b, table->item_size);
+    memcpy(item_b, table->swap_temp, table->item_size);
 
     table->slots[slot_a].item_index = index_b;
     table->slots[slot_b].item_index = index_a;

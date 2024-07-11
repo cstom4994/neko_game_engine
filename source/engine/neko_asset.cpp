@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "engine/neko.h"
+#include "engine/neko.hpp"
 #include "engine/neko_common.h"
 #include "engine/neko_platform.h"
 
@@ -126,13 +127,13 @@ NEKO_API_DECL neko_image_t neko_image_load_mem(const void *mem_data, size_t mem_
 }
 
 NEKO_API_DECL neko_image_t neko_image_load(const_str path) {
-    bool ok = neko_capi_vfs_file_exists(NEKO_PACK_GAMEDATA, path);
+    bool ok = neko_capi_vfs_file_exists(NEKO_PACKS::GAMEDATA, path);
     if (!ok) {
         NEKO_WARN("failed to load image %s", path);
         return (neko_image_t){};
     }
     size_t mem_size;
-    const_str mem_data = neko_capi_vfs_read_file(NEKO_PACK_GAMEDATA, path, &mem_size);
+    const_str mem_data = neko_capi_vfs_read_file(NEKO_PACKS::GAMEDATA, path, &mem_size);
     neko_image_t image = neko_image_load_mem(mem_data, mem_size, path);
     neko_safe_free(mem_data);
     return image;
@@ -142,7 +143,7 @@ NEKO_API_DECL void neko_image_free(neko_image_t img) { stbi_image_free(img.pix);
 
 NEKO_API_DECL bool neko_util_load_texture_data_from_file(const char *file_path, s32 *width, s32 *height, u32 *num_comps, void **data, b32 flip_vertically_on_load) {
     u64 len = 0;
-    const_str file_data = neko_capi_vfs_read_file(NEKO_PACK_GAMEDATA, file_path, &len);
+    const_str file_data = neko_capi_vfs_read_file(NEKO_PACKS::GAMEDATA, file_path, &len);
     NEKO_ASSERT(file_data);
     bool ret = neko_util_load_texture_data_from_memory(file_data, len, width, height, num_comps, data, flip_vertically_on_load);
     if (!ret) {
@@ -256,7 +257,7 @@ bool neko_asset_texture_load_from_memory(const void *memory, size_t sz, void *ou
 
 bool neko_asset_font_load_from_file(const_str path, void *out, u32 point_size) {
     size_t len = 0;
-    const_str ttf = neko_capi_vfs_read_file(NEKO_PACK_GAMEDATA, path, &len);
+    const_str ttf = neko_capi_vfs_read_file(NEKO_PACKS::GAMEDATA, path, &len);
     if (!point_size) {
         NEKO_WARN("font: %s: point size not declared. setting to default 16.", neko_util_get_filename(path));
         point_size = 16;
@@ -1794,7 +1795,7 @@ static neko_dyn_array(neko_xml_node_t) neko_xml_parse_block(const_str start, u32
 
 neko_xml_document_t *neko_xml_parse_file(const_str path) {
     u64 size;
-    const_str source = neko_capi_vfs_read_file(NEKO_PACK_GAMEDATA, path, &size);
+    const_str source = neko_capi_vfs_read_file(NEKO_PACKS::GAMEDATA, path, &size);
     if (!source) {
         neko_xml_emit_error("Failed to load xml file!");
         return NULL;
@@ -3177,7 +3178,7 @@ NEKO_STATIC void s_skip(ase_state_t *ase, int num_bytes) {
 ase_t *neko_aseprite_load_from_file(const char *path) {
     s_error_file = path;
     u64 sz;
-    const_str file = neko_capi_vfs_read_file(NEKO_PACK_GAMEDATA, path, &sz);
+    const_str file = neko_capi_vfs_read_file(NEKO_PACKS::GAMEDATA, path, &sz);
     if (!file) {
         NEKO_WARN("unable to find map file %s", s_error_file ? s_error_file : "MEMORY");
         return NULL;

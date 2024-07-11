@@ -11,7 +11,6 @@
 #include <vector>
 
 // engine
-#include "engine/modules/neko_flecslua.h"
 #include "engine/neko.h"
 #include "engine/neko_api.hpp"
 #include "engine/neko_asset.h"
@@ -130,29 +129,29 @@ void game_init(neko_client_userdata_t *game_userdata) {
 
     {
 
-        neko_lua_safe_dofile(neko_instance()->L, "main");
+        neko_lua_safe_dofile(ENGINE_LUA(), "main");
 
         // 获取 neko_game.table
-        lua_getglobal(neko_instance()->L, "neko_game");
-        if (!lua_istable(neko_instance()->L, -1)) {
+        lua_getglobal(ENGINE_LUA(), "neko_game");
+        if (!lua_istable(ENGINE_LUA(), -1)) {
             NEKO_ERROR("%s", "neko_game is not a table");
         }
 
         neko::reflection::Any v = neko_pf_running_desc_t{.title = "Neko Engine"};
-        neko::lua::checktable_refl(neko_instance()->L, "app", v);
+        neko::lua::checktable_refl(ENGINE_LUA(), "app", v);
 
         neko_client_cvar_t &cvar = game_userdata->cl_cvar;
-        // if (lua_getfield(neko_instance()->L, -1, "cvar") == LUA_TNIL) throw std::exception("no cvar");
-        // if (lua_istable(neko_instance()->L, -1)) {
+        // if (lua_getfield(ENGINE_L(), -1, "cvar") == LUA_TNIL) throw std::exception("no cvar");
+        // if (lua_istable(ENGINE_L(), -1)) {
         //     neko::static_refl::neko_type_info<neko_client_cvar_t>::ForEachVarOf(cvar, [](auto field, auto &&value) {
         //         static_assert(std::is_lvalue_reference_v<decltype(value)>);
-        //         if (lua_getfield(neko_instance()->L, -1, std::string(field.name).c_str()) != LUA_TNIL) value = neko_lua_to<std::remove_reference_t<decltype(value)>>(neko_instance()->L, -1);
-        //         lua_pop(neko_instance()->L, 1);
+        //         if (lua_getfield(ENGINE_L(), -1, std::string(field.name).c_str()) != LUA_TNIL) value = neko_lua_to<std::remove_reference_t<decltype(value)>>(ENGINE_L(), -1);
+        //         lua_pop(ENGINE_L(), 1);
         //     });
         // } else {
         //     throw std::exception("no cvar table");
         // }
-        // lua_pop(neko_instance()->L, 1);
+        // lua_pop(ENGINE_L(), 1);
 
         cvar.show_editor = false;
         cvar.show_demo_window = false;
@@ -165,7 +164,7 @@ void game_init(neko_client_userdata_t *game_userdata) {
         cvar.vsync = false;
         cvar.is_hotfix = false;
 
-        lua_pop(neko_instance()->L, 1);  // 弹出 neko_game.table
+        lua_pop(ENGINE_LUA(), 1);  // 弹出 neko_game.table
 
         NEKO_INFO("load game: %s %d %d", v.cast<neko_pf_running_desc_t>().title, v.cast<neko_pf_running_desc_t>().width, v.cast<neko_pf_running_desc_t>().height);
 
@@ -223,11 +222,11 @@ void game_init(neko_client_userdata_t *game_userdata) {
     neko_render_renderpass_desc_t main_rp_desc = {.fbo = game_userdata->main_fbo, .color = &game_userdata->main_rt, .color_size = sizeof(game_userdata->main_rt)};
     game_userdata->main_rp = neko_render_renderpass_create(main_rp_desc);
 
-    // Neko_Module sound_module = neko_module_open("neko_module_sound");
-    // auto sound_module_loader = reinterpret_cast<s32 (*)(Neko_Module *, Neko_ModuleInterface *)>(neko_module_get_symbol(sound_module, Neko_OnModuleLoad_FuncName));
+    // neko_dynlib sound_module = neko_module_open("neko_module_sound");
+    // auto sound_module_loader = reinterpret_cast<s32 (*)(neko_dynlib *, Neko_ModuleInterface *)>(neko_module_get_symbol(sound_module, Neko_OnModuleLoad_FuncName));
     // s32 sss = sound_module_loader(&sound_module, CL_GAME_INTERFACE());
     // NEKO_TRACE("%d", sss);
-    // sound_module.func.OnInit(neko_instance()->L);
+    // sound_module.func.OnInit(ENGINE_L());
     // neko_module_close(sound_module);
 
     // 初始化工作
@@ -238,7 +237,7 @@ void game_init(neko_client_userdata_t *game_userdata) {
     //     neko::timer timer;
     //     timer.start();
 
-    //     neko_lua_call(neko_instance()->L, "game_init_thread");
+    //     neko_lua_call(ENGINE_L(), "game_init_thread");
 
     //     timer.stop();
     //     NEKO_INFO(std::format("game_init_thread loading done in {0:.3f} ms", timer.get()).c_str());
@@ -257,11 +256,11 @@ void game_init(neko_client_userdata_t *game_userdata) {
 
     // game_userdata->init_work_thread = thread_init(init_work, &game_userdata->init_thread_flag, "init_work_thread", THREAD_STACK_SIZE_DEFAULT);
 
-    neko_lua_call(neko_instance()->L, "game_init");
+    neko_lua_call(ENGINE_LUA(), "game_init");
 
     neko::timer timer;
     timer.start();
-    neko_lua_call(neko_instance()->L, "game_init_thread");
+    neko_lua_call(ENGINE_LUA(), "game_init_thread");
     timer.stop();
     NEKO_INFO(std::format("game_init_thread loading done in {0:.3f} ms", timer.get()).c_str());
 }
@@ -326,14 +325,14 @@ void game_loop(neko_client_userdata_t *game_userdata) {
 
         {
             PROFILE_BLOCK("lua_pre_update");
-            neko_lua_call(neko_instance()->L, "game_pre_update");
+            neko_lua_call(ENGINE_LUA(), "game_pre_update");
         }
 
         if (neko_pf_key_pressed(NEKO_KEYCODE_ESC)) game_userdata->cl_cvar.show_editor ^= true;
 
         {
             PROFILE_BLOCK("lua_loop");
-            neko_lua_call<void, f32>(neko_instance()->L, "game_loop", dt);
+            neko_lua_call<void, f32>(ENGINE_LUA(), "game_loop", dt);
         }
 
         // Do rendering
@@ -443,13 +442,13 @@ void game_loop(neko_client_userdata_t *game_userdata) {
         neko_render_renderpass_end(&ENGINE_INTERFACE()->cb);
         {
             PROFILE_BLOCK("lua_render");
-            neko_lua_call(neko_instance()->L, "game_render");
+            neko_lua_call(ENGINE_LUA(), "game_render");
         }
 
         auto &module_list = ENGINE_INTERFACE()->modules;
         for (u32 i = 0; i < neko_dyn_array_size(module_list); ++i) {
-            Neko_Module &module = module_list[i];
-            module.func.OnUpdate(neko_instance()->L);
+            neko_dynlib &module = module_list[i];
+            module.func.OnUpdate(ENGINE_LUA());
         }
 
         {
@@ -467,7 +466,7 @@ void game_fini(neko_client_userdata_t *game_userdata) {
     neko_render_texture_destroy(game_userdata->main_rt);
     neko_render_framebuffer_destroy(game_userdata->main_fbo);
 
-    neko_lua_call(neko_instance()->L, "game_fini");
+    neko_lua_call(ENGINE_LUA(), "game_fini");
 
     neko_imgui_shutdown(&game_userdata->imgui);
     neko_ui_free(&ENGINE_INTERFACE()->ui);
@@ -764,12 +763,12 @@ void draw_gui(neko_client_userdata_t *game_userdata) {
 
                     NEKO_TIMED_ACTION(60, { meminfo = neko_pf_memory_info(); });
 
-                    neko_ui_labelf("GC MemAllocInUsed: %.2lf mb", (f64)(neko_mem_bytes_inuse() / 1048576.0));
-                    neko_ui_labelf("GC MemTotalAllocated: %.2lf mb", (f64)(g_allocation_metrics.total_allocated / 1048576.0));
-                    neko_ui_labelf("GC MemTotalFree: %.2lf mb", (f64)(g_allocation_metrics.total_free / 1048576.0));
+                    // neko_ui_labelf("GC MemAllocInUsed: %.2lf mb", (f64)(neko_mem_bytes_inuse() / 1048576.0));
+                    // neko_ui_labelf("GC MemTotalAllocated: %.2lf mb", (f64)(g_allocation_metrics.total_allocated / 1048576.0));
+                    // neko_ui_labelf("GC MemTotalFree: %.2lf mb", (f64)(g_allocation_metrics.total_free / 1048576.0));
 
-                    lua_Integer kb = lua_gc(neko_instance()->L, LUA_GCCOUNT, 0);
-                    lua_Integer bytes = lua_gc(neko_instance()->L, LUA_GCCOUNTB, 0);
+                    lua_Integer kb = lua_gc(ENGINE_LUA(), LUA_GCCOUNT, 0);
+                    lua_Integer bytes = lua_gc(ENGINE_LUA(), LUA_GCCOUNTB, 0);
 
                     neko_ui_labelf("Lua MemoryUsage: %.2lf mb", ((f64)kb / 1024.0f));
                     neko_ui_labelf("Lua Remaining: %.2lf mb", ((f64)bytes / 1024.0f));
@@ -807,7 +806,6 @@ void draw_gui(neko_client_userdata_t *game_userdata) {
 }
 
 void neko_app(lua_State *L) {
-
     lua_register(
             L, "sandbox_init", +[](lua_State *L) {
                 auto ud = neko::lua::udata_new<neko_client_userdata_t>(L, 1);

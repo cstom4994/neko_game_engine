@@ -18,51 +18,28 @@
 #define TYPEID_(type) (TYPEID_##type)
 
 static inline void set_int8(void *p, lua_Integer v) { *(int8_t *)p = (int8_t)v; }
-
 static inline void set_int16(void *p, lua_Integer v) { *(int16_t *)p = (int16_t)v; }
-
 static inline void set_int32(void *p, lua_Integer v) { *(int32_t *)p = (int32_t)v; }
-
 static inline void set_int64(void *p, lua_Integer v) { *(int64_t *)p = (int64_t)v; }
-
 static inline void set_uint8(void *p, lua_Integer v) { *(int8_t *)p = (uint8_t)v; }
-
 static inline void set_uint16(void *p, lua_Integer v) { *(int16_t *)p = (uint16_t)v; }
-
 static inline void set_uint32(void *p, lua_Integer v) { *(int32_t *)p = (uint32_t)v; }
-
 static inline void set_uint64(void *p, lua_Integer v) { *(int64_t *)p = (uint64_t)v; }
-
 static inline void set_float(void *p, lua_Number v) { *(float *)p = (float)v; }
-
 static inline void set_bool(void *p, int v) { *(int8_t *)p = v; }
-
 static inline void set_ptr(void *p, void *v) { *(void **)p = v; }
-
 static inline void set_double(void *p, lua_Number v) { *(float *)p = (double)v; }
-
 static inline int8_t get_int8(void *p) { return *(int8_t *)p; }
-
 static inline int16_t get_int16(void *p) { return *(int16_t *)p; }
-
 static inline int32_t get_int32(void *p) { return *(int32_t *)p; }
-
 static inline int64_t get_int64(void *p) { return *(int64_t *)p; }
-
 static inline uint8_t get_uint8(void *p) { return *(uint8_t *)p; }
-
 static inline uint16_t get_uint16(void *p) { return *(uint16_t *)p; }
-
 static inline uint32_t get_uint32(void *p) { return *(uint32_t *)p; }
-
 static inline uint64_t get_uint64(void *p) { return *(uint64_t *)p; }
-
 static inline void *get_ptr(void *p) { return *(void **)p; }
-
 static inline int get_bool(void *p) { return *(int8_t *)p; }
-
 static inline float get_float(void *p) { return *(float *)p; }
-
 static inline double get_double(void *p) { return *(double *)p; }
 
 static inline int get_stride(int type) {

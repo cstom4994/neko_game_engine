@@ -4,6 +4,7 @@
 // R_IMPL
 =============================*/
 
+#include "engine/neko.hpp"
 #include "engine/neko_engine.h"
 #include "engine/neko_platform.h"
 
@@ -2726,6 +2727,9 @@ neko_gl_texture_t gl_texture_update_internal(const neko_render_texture_desc_t* d
     switch (desc->type) {
         case R_TEXTURE_2D:
             cnt = 1;
+            break;
+        case R_TEXTURE_CUBEMAP:
+            cnt = R_TEXTURE_DATA_MAX;
             break;
     }
 

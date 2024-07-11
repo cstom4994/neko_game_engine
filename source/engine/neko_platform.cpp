@@ -7,6 +7,7 @@
 #include "engine/neko_platform.h"
 
 #include "engine/neko.h"
+#include "engine/neko_api.hpp"
 #include "engine/neko_engine.h"
 
 #ifndef NEKO_PF_IMPL_CUSTOM
@@ -569,7 +570,7 @@ char* neko_pf_read_file_contents_default_impl(const char* file_path, const char*
     size_t read_sz = 0;
     if (fp) {
         read_sz = neko_pf_file_size_in_bytes(file_path);
-        buffer = (char*)neko_safe_malloc(read_sz + 1);
+        buffer = (char*)neko_capi_safe_malloc(read_sz + 1);
         if (buffer) {
             size_t _r = fread(buffer, 1, read_sz, fp);
         }
@@ -886,7 +887,12 @@ void neko_pf_init(neko_pf_t* pf) {
 
     glfwInit();
 
-    if (neko_cvar("settings.video.render.debug")->value.i) {
+    neko_w_lua_variant settings_video_render_debug("settings.video.render.debug");
+    neko_w_lua_variant settings_video_render_hdpi("settings.video.render.hdpi");
+    settings_video_render_debug.sync();
+    settings_video_render_hdpi.sync();
+
+    if (settings_video_render_debug.get<s32>()) {
         glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
     } else {
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
@@ -906,7 +912,7 @@ void neko_pf_init(neko_pf_t* pf) {
     glfwWindowHint(GLFW_COCOA_RETINA_FRAMEBUFFER, GLFW_FALSE);
 #endif
 
-    if (neko_cvar("settings.video.render.hdpi")->value.i) glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_FALSE);
+    if (settings_video_render_hdpi.get<bool>()) glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_FALSE);
     // glfwSwapInterval(pf->settings.video.vsync_enabled);
 
     //    glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
@@ -2404,11 +2410,14 @@ NEKO_API_DECL neko_pf_window_t neko_pf_window_create_internal(const neko_pf_runn
     win.framebuffer_size = neko_v2((f32)fx, (f32)fy);
     win.focus = true;
 
+    neko_w_lua_variant settings_video_render_debug("settings.video.render.debug");
+    settings_video_render_debug.sync();
+
     // 只执行一次
     if (neko_slot_array_empty(neko_subsystem(platform)->windows)) {
         neko_gl_load_all();
         NEKO_INFO("opengl %s (glsl %s)", glGetString(GL_VERSION), glGetString(GL_SHADING_LANGUAGE_VERSION));
-        if (neko_cvar("settings.video.render.debug")->value.i) {
+        if (settings_video_render_debug.get<s32>()) {
             // glDebugMessageCallback(__neko_pf_gl_debug, NULL);
         }
     }
@@ -2528,7 +2537,9 @@ void neko_pf_set_window_fullscreen(u32 handle, b32 fullscreen) {
     glfwGetWindowSize((GLFWwindow*)win->hndl, &w, &h);
 
     if (fullscreen) {
-        u32 monitor_index = neko_cvar("settings.window.monitor_index")->value.i;
+        neko_w_lua_variant settings_window_monitor_index("settings.window.monitor_index");
+        settings_window_monitor_index.sync();
+        u32 monitor_index = settings_window_monitor_index.get<s32>();
         int monitor_count;
         GLFWmonitor** monitors = glfwGetMonitors(&monitor_count);
         if (monitor_index < monitor_count) {

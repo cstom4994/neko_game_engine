@@ -11,6 +11,7 @@
 #include <iostream>
 
 #include "engine/neko.h"
+#include "engine/neko.hpp"
 #include "engine/neko_engine.h"
 #include "engine/neko_math.h"
 
@@ -3930,7 +3931,7 @@ lua_table lua_table_iter::get_table() {
 }
 
 lua_State *ScriptReference::__lua() const {
-    lua_State *L = neko_instance()->L;
+    lua_State *L = ENGINE_LUA();
     NEKO_ASSERT(L);
     return L;
 }
@@ -3940,7 +3941,7 @@ ScriptInvoker::ScriptInvoker() : ScriptReference() {}
 ScriptInvoker::~ScriptInvoker() {}
 
 void ScriptInvoker::invoke(const_str method) {
-    lua_State *L = neko_instance()->L;
+    lua_State *L = ENGINE_LUA();
     NEKO_ASSERT(L);
 
 #ifdef _DEBUG
@@ -3961,7 +3962,7 @@ void ScriptInvoker::invoke(const_str method) {
 }
 
 bool ScriptInvoker::findAndPushMethod(const_str method_name) {
-    lua_State *L = neko_instance()->L;
+    lua_State *L = ENGINE_LUA();
     NEKO_ASSERT(L);
 
     if (method_name == NULL) return false;
@@ -3985,7 +3986,7 @@ bool ScriptInvoker::findAndPushMethod(const_str method_name) {
 }
 
 bool ScriptInvoker::isMethodDefined(const_str method_name) const {
-    lua_State *L = neko_instance()->L;
+    lua_State *L = ENGINE_LUA();
     NEKO_ASSERT(L);
 
     if (method_name == NULL) return false;
@@ -4020,7 +4021,7 @@ ScriptObject::ScriptObject() : ScriptInvoker(), obj_last_entry(NULL) {}
 ScriptObject::~ScriptObject() {}
 
 bool ScriptObject::registerObject() {
-    lua_State *L = neko_instance()->L;
+    lua_State *L = ENGINE_LUA();
     NEKO_ASSERT(L);
 
     NEKO_ASSERT(script_ref == 0, "You are trying to register the same object twice");
@@ -4037,7 +4038,7 @@ bool ScriptObject::registerObject() {
 }
 
 bool ScriptObject::registerObject(int refId) {
-    lua_State *L = neko_instance()->L;
+    lua_State *L = ENGINE_LUA();
     NEKO_ASSERT(L);
 
     NEKO_ASSERT(script_ref == 0, "You are trying to register the same object twice");
@@ -4060,7 +4061,7 @@ bool ScriptObject::registerObject(int refId) {
 }
 
 void ScriptObject::unregisterObject() {
-    lua_State *L = neko_instance()->L;
+    lua_State *L = ENGINE_LUA();
     NEKO_ASSERT(L);
 
     NEKO_ASSERT(script_ref != 0, "You are trying to unregister the same object twice");
@@ -4306,7 +4307,7 @@ int vfs_lua_loader(lua_State *L) {
     for (auto p : load_list) {
         std::string load_path = p + path + ".lua";
         neko::string contents = {};
-        ok = vfs_read_entire_file(NEKO_PACK_LUACODE, &contents, load_path.c_str());
+        ok = vfs_read_entire_file(NEKO_PACKS::LUACODE, &contents, load_path.c_str());
         if (ok) {
             neko_defer(neko_safe_free(contents.data));
             if (luaL_loadbuffer(L, contents.data, contents.len, name) != LUA_OK) {

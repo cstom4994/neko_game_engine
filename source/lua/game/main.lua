@@ -1,6 +1,5 @@
 ImGui = require("neko.imgui")
 CObject = require("cstruct")
-CVar = neko.cvar
 NODE = require("prefabs")
 local debugging = require("neko.debugging")
 
@@ -85,7 +84,10 @@ game_init = function()
 
     local ents = ecs.bulk_new(m.Position, 10)
 
-    for i in 1, #ents do
+    local l = #ents
+    print("#ents : ", l)
+
+    for i = 1, l do
         ecs.set(ents[i], m.Position, {
             x = i * 2,
             y = i * 3
@@ -195,6 +197,23 @@ game_render = function()
         -- print(jsondata)
     end
 
+    if ImGui.Button("test_w") then
+
+        local w = neko_w_f()
+
+        local tb, ss = w:get_com()
+        print(ss)
+        dump_func(tb)
+
+        -- local hash = neko_hash_str("bounds_t")
+        -- if tb["comp_map"][hash] then
+        --     print(tb["comp_map"][hash].id)
+        -- else
+        --     print("component not found")
+        -- end
+
+    end
+
     if ImGui.Button("test_prefab") then
         local file_content = read_file("source/lua/game/test_prefab.neko")
         if file_content then
@@ -206,10 +225,10 @@ game_render = function()
             print("无法打开文件或文件不存在")
         end
 
-        local encoded = neko.base64_encode(file_content)
+        local encoded = common.to_base64(file_content)
         print("Encoded:", encoded)
 
-        local decoded = neko.base64_decode(encoded)
+        local decoded = common.from_base64(encoded)
         print("Decoded:", decoded)
     end
 
@@ -366,6 +385,10 @@ game_render = function()
             local msg, ch = neko.select(c1, c2)
             print(msg, ch)
         end
+    end
+
+    if ImGui.Button("tolua_gen") then
+        neko_tolua_gen("source/sandbox/tarray.pkg", "source/sandbox/tarray.cpp")
     end
 
     -- ImGui.Checkbox(neko_game.cvar.shader_inspect)

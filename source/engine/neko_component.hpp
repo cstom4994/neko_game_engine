@@ -2,7 +2,7 @@
 #ifndef NEKO_COMPONENT_HPP
 #define NEKO_COMPONENT_HPP
 
-#include "engine/neko.h"
+#include "engine/neko.hpp"
 #include "engine/neko_asset.h"
 
 struct ldtk_map_tile {
