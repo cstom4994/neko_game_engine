@@ -93,14 +93,6 @@ constexpr std::size_t va_count(Args&&...) {
 
 #define neko_check_is_trivial(type, ...) static_assert(std::is_trivial<type>::value, __VA_ARGS__)
 
-//#define neko_malloc_init(type)                   \
-//    (type*)_neko_malloc_init_impl(sizeof(type)); \
-//    neko_check_is_trivial(type, "try to init a non-trivial object")
-
-#define neko_malloc_init_ex(name, type)                              \
-    neko_check_is_trivial(type, "try to init a non-trivial object"); \
-    struct type* name = neko_malloc_init(type)
-
 // 一种向任何指针添加字节偏移量的可移植且安全的方法
 // https://stackoverflow.com/questions/15934111/portable-and-safe-way-to-add-byte-offset-to-any-pointer
 template <typename T>
@@ -210,34 +202,6 @@ struct is_pair<std::pair<T1, T2>> : public std::true_type {};
 
 }  // namespace neko
 
-// 单纯用来测试的 new 和 delete
-// 不用于开发目的
-
-#ifndef TEST_NEW
-#define TEST_NEW(_name, _class, ...)    \
-    (_class*)ME_MALLOC(sizeof(_class)); \
-    new ((void*)_name) _class(__VA_ARGS__)
-#endif
-
-// template <typename T>
-// struct alloc {
-//     template <typename... Args>
-//     static T* safe_malloc(Args&&... args) {
-//         void* mem = neko_safe_malloc(sizeof(T));
-//         if (!mem) {
-//         }
-//         return new (mem) T(std::forward<Args>(args)...);
-//     }
-// };
-
-#ifndef TEST_DELETE
-#define TEST_DELETE(_name, _class) \
-    {                              \
-        _name->~_class();          \
-        neko_safe_free(_name);     \
-    }
-#endif
-
 #if __has_include(<version>)
 #include <version>
 #endif
@@ -306,21 +270,6 @@ private:
 NEKO_FORCE_INLINE auto time() -> s64 {
     s64 ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     return ms;
-}
-
-NEKO_FORCE_INLINE f64 time_d() {
-    f64 t;
-    // #ifdef _WIN32
-    //     FILETIME ft;
-    //     GetSystemTimeAsFileTime(&ft);
-    //     t = (ft.dwHighDateTime * 4294967296.0 / 1e7) + ft.dwLowDateTime / 1e7;
-    //     t -= 11644473600.0;
-    // #else
-    //     struct timeval tv;
-    //     gettimeofday(&tv, NULL);
-    //     t = tv.tv_sec + tv.tv_usec / 1e6;
-    // #endif
-    return t;
 }
 
 NEKO_STATIC_INLINE time_t time_mkgmtime(struct tm* unixdate) {
@@ -811,13 +760,23 @@ struct tuple_size<std::tuple<Args...>> {
 template <typename T>
 constexpr std::size_t tuple_size_v = tuple_size<T>::value;
 
-}  // namespace neko
+template <typename T, std::size_t N>
+constexpr bool is_pointer_to_const_char(T (&)[N]) {
+    return std::is_same_v<const char, T>;
+}
 
 template <typename T>
-struct neko_is_vector : std::false_type {};
+constexpr bool is_pointer_to_const_char(T&&) {
+    return std::is_same_v<const char*, T>;
+}
+
+template <typename T>
+struct is_vector : std::false_type {};
 
 template <typename T, typename Alloc>
-struct neko_is_vector<std::vector<T, Alloc>> : std::true_type {};
+struct is_vector<std::vector<T, Alloc>> : std::true_type {};
+
+}  // namespace neko
 
 namespace detail {
 // 某些旧版本的 GCC 需要
@@ -1038,6 +997,17 @@ struct DebugAllocator : Allocator {
     void free(void* ptr);
     void dump_allocs();
 };
+
+// template <typename T>
+// struct alloc {
+//     template <typename... Args>
+//     static T* safe_malloc(Args&&... args) {
+//         void* mem = neko_safe_malloc(sizeof(T));
+//         if (!mem) {
+//         }
+//         return new (mem) T(std::forward<Args>(args)...);
+//     }
+// };
 
 extern Allocator* g_allocator;
 
@@ -1977,6 +1947,15 @@ void os_high_timer_resolution();
 void os_sleep(u32 ms);
 void os_yield();
 
+typedef struct neko_dynlib {
+    void* hndl;
+} neko_dynlib;
+
+NEKO_API_DECL neko_dynlib neko_module_open(const_str name);
+NEKO_API_DECL void neko_module_close(neko_dynlib lib);
+NEKO_API_DECL void* neko_module_get_symbol(neko_dynlib lib, const_str symbol_name);
+NEKO_API_DECL bool neko_module_has_symbol(neko_dynlib lib, const_str symbol_name);
+
 NEKO_API_DECL void neko_tm_init(void);
 
 void profile_setup();
@@ -2008,8 +1987,6 @@ struct Instrument {
 #endif
 
 }  // namespace neko
-
-#define CVAR_TYPES() bool, s32, f32, f32*
 
 typedef struct engine_cvar_t {
     bool show_editor;

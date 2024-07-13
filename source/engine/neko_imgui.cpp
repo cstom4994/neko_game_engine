@@ -2,6 +2,13 @@
 #include "neko_imgui.hpp"
 
 #include "engine/neko.hpp"
+#include "engine/neko_engine.h"
+
+NEKO_INLINE auto neko_imgui_glfw_window() {
+    struct neko_pf_t* platform = neko_subsystem(platform);
+    GLFWwindow* win = (GLFWwindow*)(neko_slot_array_getp(platform->windows, neko_pf_main_window()))->hndl;
+    return win;
+}
 
 void neko_imgui_style() {
     ImGuiStyle& style = ImGui::GetStyle();

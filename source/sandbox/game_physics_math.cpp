@@ -2356,11 +2356,11 @@ void genwang(std::string filename, unsigned char* data, s32 xs, s32 ys, s32 w, s
     stbhw_build_tileset_from_image(&ts, data, w * 3, w, h);
     // allocate a buffer to create the final image to
     s32 yimg = ys + 4;
-    auto buff = static_cast<unsigned char*>(malloc(3 * xs * yimg));
+    auto buff = static_cast<unsigned char*>(neko_safe_malloc(3 * xs * yimg));
     stbhw_generate_image(&ts, NULL, buff, xs * 3, xs, yimg);
     stbi_write_png(filename.c_str(), xs, yimg, 3, buff, xs * 3);
     stbhw_free_tileset(&ts);
-    free(buff);
+    neko_safe_free(buff);
 }
 
 void test_wang() {

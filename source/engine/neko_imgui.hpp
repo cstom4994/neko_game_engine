@@ -21,11 +21,9 @@
 #include <vector>
 
 #include "engine/neko.h"
-#include "engine/neko_engine.h"
 #include "engine/neko_lua.h"
-
-// game
-#include "engine/neko_api.hpp"
+#include "engine/neko_platform.h"
+#include "engine/neko_render.h"
 
 // ImGui
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -64,37 +62,15 @@ typedef struct neko_imgui_vertex_t {
 #define NEKO_IMGUI_SHADER_VERSION "#version 330 core\n"
 #endif
 
-NEKO_STATIC_INLINE std::size_t g_imgui_mem_usage = 0;
+NEKO_STATIC void *__neko_imgui_malloc(size_t sz, void *user_data) { return malloc(sz); }
 
-NEKO_STATIC void *__neko_imgui_malloc(size_t sz, void *user_data) {
-#ifdef NEKO_IMGUI_USE_GC
-    return __neko_mem_safe_alloc((sz), (char *)__FILE__, 0, &g_imgui_mem_usage);
-#else
-    return malloc(sz);
-#endif
-}
-
-NEKO_STATIC void __neko_imgui_free(void *ptr, void *user_data) {
-#ifdef NEKO_IMGUI_USE_GC
-    __neko_mem_safe_free(ptr, &g_imgui_mem_usage);
-#else
-    return free(ptr);
-#endif
-}
-
-NEKO_INLINE std::size_t __neko_imgui_meminuse() { return g_imgui_mem_usage; }
+NEKO_STATIC void __neko_imgui_free(void *ptr, void *user_data) { return free(ptr); }
 
 NEKO_INLINE static const char *neko_imgui_clipboard_getter(void *user_data) { return neko_pf_window_get_clipboard(neko_pf_main_window()); }
 
 NEKO_INLINE static void neko_imgui_clipboard_setter(void *user_data, const char *text) { neko_pf_window_set_clipboard(neko_pf_main_window(), text); }
 
 static void neko_imgui_opengl_init_platform_interface();
-
-NEKO_INLINE auto neko_imgui_glfw_window() {
-    struct neko_pf_t *platform = neko_subsystem(platform);
-    GLFWwindow *win = (GLFWwindow *)(neko_slot_array_getp(platform->windows, neko_pf_main_window()))->hndl;
-    return win;
-}
 
 void neko_imgui_style();
 bool neko_imgui_create_fonts_texture(neko_imgui_context_t *neko_imgui);

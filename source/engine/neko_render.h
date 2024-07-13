@@ -2391,13 +2391,13 @@ typedef struct neko_render_draw_desc_t {
     } range;
 } neko_render_draw_desc_t;
 
-NEKO_FORCE_INLINE neko_handle(neko_render_renderpass_t) __neko_renderpass_default_impl() {
+NEKO_FORCE_INLINE neko_handle(neko_render_renderpass_t) __neko_renderpass() {
     neko_handle(neko_render_renderpass_t) hndl = NEKO_DEFAULT_VAL();
     return hndl;
 }
 
 // Convenience define for default render pass to back buffer
-#define R_RENDER_PASS_DEFAULT __neko_renderpass_default_impl()
+#define R_RENDER_PASS_DEFAULT __neko_renderpass()
 
 typedef struct neko_render_info_t {
     const_str version;
@@ -2435,16 +2435,16 @@ typedef struct neko_render_t {
         neko_handle(neko_render_pipeline_t) (*pipeline_create)(const neko_render_pipeline_desc_t desc);
 
         // Destroy
-        void (*texture_destroy)(neko_handle(neko_render_texture_t) hndl);
-        void (*uniform_destroy)(neko_handle(neko_render_uniform_t) hndl);
-        void (*shader_destroy)(neko_handle(neko_render_shader_t) hndl);
-        void (*vertex_buffer_destroy)(neko_handle(neko_render_vertex_buffer_t) hndl);
-        void (*index_buffer_destroy)(neko_handle(neko_render_index_buffer_t) hndl);
-        void (*uniform_buffer_destroy)(neko_handle(neko_render_uniform_buffer_t) hndl);
-        void (*storage_buffer_destroy)(neko_handle(neko_render_storage_buffer_t) hndl);
-        void (*framebuffer_destroy)(neko_handle(neko_render_framebuffer_t) hndl);
-        void (*renderpass_destroy)(neko_handle(neko_render_renderpass_t) hndl);
-        void (*pipeline_destroy)(neko_handle(neko_render_pipeline_t) hndl);
+        void (*texture_fini)(neko_handle(neko_render_texture_t) hndl);
+        void (*uniform_fini)(neko_handle(neko_render_uniform_t) hndl);
+        void (*shader_fini)(neko_handle(neko_render_shader_t) hndl);
+        void (*vertex_buffer_fini)(neko_handle(neko_render_vertex_buffer_t) hndl);
+        void (*index_buffer_fini)(neko_handle(neko_render_index_buffer_t) hndl);
+        void (*uniform_buffer_fini)(neko_handle(neko_render_uniform_buffer_t) hndl);
+        void (*storage_buffer_fini)(neko_handle(neko_render_storage_buffer_t) hndl);
+        void (*framebuffer_fini)(neko_handle(neko_render_framebuffer_t) hndl);
+        void (*renderpass_fini)(neko_handle(neko_render_renderpass_t) hndl);
+        void (*pipeline_fini)(neko_handle(neko_render_pipeline_t) hndl);
 
         // Resource Updates (main thread only)
         void (*vertex_buffer_update)(neko_handle(neko_render_vertex_buffer_t) hndl, neko_render_vertex_buffer_desc_t* desc);
@@ -2617,7 +2617,7 @@ typedef enum neko_opengl_op_code_type {
 
 // Graphics Interface Creation / Initialization / Shutdown / Destruction
 NEKO_API_DECL neko_render_t* neko_render_create();
-NEKO_API_DECL void neko_render_destroy(neko_render_t* render);
+NEKO_API_DECL void neko_render_fini(neko_render_t* render);
 NEKO_API_DECL void neko_render_init(neko_render_t* render);
 NEKO_API_DECL void neko_render_shutdown(neko_render_t* render);
 
@@ -2777,16 +2777,16 @@ NEKO_API_DECL neko_handle(neko_render_renderpass_t) neko_render_renderpass_creat
 NEKO_API_DECL neko_handle(neko_render_pipeline_t) neko_render_pipeline_create(const neko_render_pipeline_desc_t desc);
 
 // Destroy
-NEKO_API_DECL void neko_render_texture_destroy(neko_handle(neko_render_texture_t) hndl);
-NEKO_API_DECL void neko_render_uniform_destroy(neko_handle(neko_render_uniform_t) hndl);
-NEKO_API_DECL void neko_render_shader_destroy(neko_handle(neko_render_shader_t) hndl);
-NEKO_API_DECL void neko_render_vertex_buffer_destroy(neko_handle(neko_render_vertex_buffer_t) hndl);
-NEKO_API_DECL void neko_render_index_buffer_destroy(neko_handle(neko_render_index_buffer_t) hndl);
-NEKO_API_DECL void neko_render_uniform_buffer_destroy(neko_handle(neko_render_uniform_buffer_t) hndl);
-NEKO_API_DECL void neko_render_storage_buffer_destroy(neko_handle(neko_render_storage_buffer_t) hndl);
-NEKO_API_DECL void neko_render_framebuffer_destroy(neko_handle(neko_render_framebuffer_t) hndl);
-NEKO_API_DECL void neko_render_renderpass_destroy(neko_handle(neko_render_renderpass_t) hndl);
-NEKO_API_DECL void neko_render_pipeline_destroy(neko_handle(neko_render_pipeline_t) hndl);
+NEKO_API_DECL void neko_render_texture_fini(neko_handle(neko_render_texture_t) hndl);
+NEKO_API_DECL void neko_render_uniform_fini(neko_handle(neko_render_uniform_t) hndl);
+NEKO_API_DECL void neko_render_shader_fini(neko_handle(neko_render_shader_t) hndl);
+NEKO_API_DECL void neko_render_vertex_buffer_fini(neko_handle(neko_render_vertex_buffer_t) hndl);
+NEKO_API_DECL void neko_render_index_buffer_fini(neko_handle(neko_render_index_buffer_t) hndl);
+NEKO_API_DECL void neko_render_uniform_buffer_fini(neko_handle(neko_render_uniform_buffer_t) hndl);
+NEKO_API_DECL void neko_render_storage_buffer_fini(neko_handle(neko_render_storage_buffer_t) hndl);
+NEKO_API_DECL void neko_render_framebuffer_fini(neko_handle(neko_render_framebuffer_t) hndl);
+NEKO_API_DECL void neko_render_renderpass_fini(neko_handle(neko_render_renderpass_t) hndl);
+NEKO_API_DECL void neko_render_pipeline_fini(neko_handle(neko_render_pipeline_t) hndl);
 
 // Resource Updates (main thread only)
 NEKO_API_DECL void neko_render_vertex_buffer_update(neko_handle(neko_render_vertex_buffer_t) hndl, neko_render_vertex_buffer_desc_t* desc);
@@ -2825,7 +2825,7 @@ NEKO_API_DECL void neko_render_draw_batch(neko_command_buffer_t* cb, neko_render
 NEKO_API_DECL void neko_render_dispatch_compute(neko_command_buffer_t* cb, u32 num_x_groups, u32 num_y_groups, u32 num_z_groups);
 
 // Macros
-#define neko_render_command_buffer_submit(CB) neko_render()->api.command_buffer_submit((CB))
+#define neko_render_cmd_submit(CB) neko_render()->api.command_buffer_submit((CB))
 
 typedef neko_handle(neko_render_shader_t) neko_shader_t;
 typedef neko_handle(neko_render_texture_t) neko_texture_t;
@@ -3377,11 +3377,11 @@ NEKO_API_DECL neko_draw_uniform_block_t neko_draw_uniform_block_create(const nek
 NEKO_API_DECL neko_draw_texture_t neko_draw_texture_create(neko_render_texture_desc_t desc);
 
 //=== Destruction ===//
-NEKO_API_DECL void neko_draw_texture_destroy(neko_draw_texture_t* texture);
-NEKO_API_DECL void neko_draw_material_destroy(neko_draw_material_t* material);
-NEKO_API_DECL void neko_draw_mesh_destroy(neko_draw_mesh_t* mesh);
-NEKO_API_DECL void neko_draw_uniform_block_destroy(neko_draw_uniform_block_t* ub);
-NEKO_API_DECL void neko_draw_pipeline_destroy(neko_draw_pipeline_t* pipeline);
+NEKO_API_DECL void neko_draw_texture_fini(neko_draw_texture_t* texture);
+NEKO_API_DECL void neko_draw_material_fini(neko_draw_material_t* material);
+NEKO_API_DECL void neko_draw_mesh_fini(neko_draw_mesh_t* mesh);
+NEKO_API_DECL void neko_draw_uniform_block_fini(neko_draw_uniform_block_t* ub);
+NEKO_API_DECL void neko_draw_pipeline_fini(neko_draw_pipeline_t* pipeline);
 
 //=== Resource Loading ===//
 // NEKO_API_DECL neko_draw_pipeline_t neko_draw_pipeline_load_from_file(const char* path);
@@ -3412,7 +3412,7 @@ NEKO_API_DECL neko_draw_mesh_t neko_draw_mesh_load_from_file(const char* file, n
 // NEKO_API_DECL bool neko_draw_load_gltf_data_from_file(const char* path, neko_draw_mesh_import_options_t* options, neko_draw_mesh_raw_data_t** out, uint32_t* mesh_count);
 
 // Util API
-NEKO_API_DECL void* neko_draw_raw_data_default_impl(NEKO_GFXT_HNDL hndl, void* user_data);
+NEKO_API_DECL void* neko_draw_raw_data(NEKO_GFXT_HNDL hndl, void* user_data);
 
 // Mesh Generation API
 NEKO_API_DECL neko_draw_mesh_t neko_draw_mesh_unit_quad_generate(neko_draw_mesh_import_options_t* options);
@@ -4315,7 +4315,7 @@ NEKO_API_DECL neko_ui_style_t neko_ui_animation_get_blend_style(neko_ui_context_
 //=== Style Sheet ===//
 
 NEKO_API_DECL neko_ui_style_sheet_t neko_ui_style_sheet_create(neko_ui_context_t* ctx, neko_ui_style_sheet_desc_t* desc);
-NEKO_API_DECL void neko_ui_style_sheet_destroy(neko_ui_style_sheet_t* ss);
+NEKO_API_DECL void neko_ui_style_sheet_fini(neko_ui_style_sheet_t* ss);
 NEKO_API_DECL void neko_ui_set_element_style(neko_ui_context_t* ctx, neko_ui_element_type element, neko_ui_element_state state, neko_ui_style_element_t* style, size_t size);
 NEKO_API_DECL void neko_ui_style_sheet_set_element_styles(neko_ui_style_sheet_t* style_sheet, neko_ui_element_type element, neko_ui_element_state state, neko_ui_style_element_t* styles, size_t size);
 NEKO_API_DECL void neko_ui_set_style_sheet(neko_ui_context_t* ctx, neko_ui_style_sheet_t* style_sheet);
@@ -4452,11 +4452,11 @@ NEKO_API_DECL s32 neko_ui_gizmo(neko_ui_context_t* ctx, neko_camera_t* camera, n
 #ifndef NEKO_BATCH
 #define NEKO_BATCH
 
-typedef struct neko_spritebatch_t neko_spritebatch_t;
-typedef struct neko_spritebatch_config_t neko_spritebatch_config_t;
-typedef struct neko_spritebatch_sprite_t neko_spritebatch_sprite_t;
+typedef struct neko_batch_t neko_batch_t;
+typedef struct neko_batch_config_t neko_batch_config_t;
+typedef struct neko_batch_sprite_t neko_batch_sprite_t;
 
-struct neko_spritebatch_sprite_t {
+struct neko_batch_sprite_t {
 
     u64 image_id;
 
@@ -4476,29 +4476,29 @@ struct neko_spritebatch_sprite_t {
 #endif
 };
 
-NEKO_API_DECL int neko_spritebatch_push(neko_spritebatch_t* sb, neko_spritebatch_sprite_t sprite);
-NEKO_API_DECL void neko_spritebatch_prefetch(neko_spritebatch_t* sb, u64 image_id, int w, int h);
-NEKO_API_DECL struct neko_spritebatch_sprite_t neko_spritebatch_fetch(neko_spritebatch_t* sb, u64 image_id, int w, int h);
-NEKO_API_DECL void neko_spritebatch_tick(neko_spritebatch_t* sb);
-NEKO_API_DECL int neko_spritebatch_flush(neko_spritebatch_t* sb);
-NEKO_API_DECL int neko_spritebatch_defrag(neko_spritebatch_t* sb);
-NEKO_API_DECL int neko_spritebatch_init(neko_spritebatch_t* sb, neko_spritebatch_config_t* config, void* udata);
-NEKO_API_DECL void neko_spritebatch_term(neko_spritebatch_t* sb);
-NEKO_API_DECL void neko_spritebatch_register_premade_atlas(neko_spritebatch_t* sb, u64 image_id, int w, int h);
-NEKO_API_DECL void neko_spritebatch_cleanup_premade_atlas(neko_spritebatch_t* sb, u64 image_id);
+NEKO_API_DECL int neko_batch_push(neko_batch_t* sb, neko_batch_sprite_t sprite);
+NEKO_API_DECL void neko_batch_prefetch(neko_batch_t* sb, u64 image_id, int w, int h);
+NEKO_API_DECL struct neko_batch_sprite_t neko_batch_fetch(neko_batch_t* sb, u64 image_id, int w, int h);
+NEKO_API_DECL void neko_batch_tick(neko_batch_t* sb);
+NEKO_API_DECL int neko_batch_flush(neko_batch_t* sb);
+NEKO_API_DECL int neko_batch_defrag(neko_batch_t* sb);
+NEKO_API_DECL int neko_batch_init(neko_batch_t* sb, neko_batch_config_t* config, void* udata);
+NEKO_API_DECL void neko_batch_term(neko_batch_t* sb);
+NEKO_API_DECL void neko_batch_register_premade_atlas(neko_batch_t* sb, u64 image_id, int w, int h);
+NEKO_API_DECL void neko_batch_cleanup_premade_atlas(neko_batch_t* sb, u64 image_id);
 
-typedef void(submit_batch_fn)(neko_spritebatch_sprite_t* sprites, int count, int texture_w, int texture_h, void* udata);
+typedef void(submit_batch_fn)(neko_batch_sprite_t* sprites, int count, int texture_w, int texture_h, void* udata);
 typedef void(get_pixels_fn)(u64 image_id, void* buffer, int bytes_to_fill, void* udata);
 typedef u64(generate_texture_handle_fn)(void* pixels, int w, int h, void* udata);
 typedef void(destroy_texture_handle_fn)(u64 texture_id, void* udata);
-typedef void(sprites_sorter_fn)(neko_spritebatch_sprite_t* sprites, int count);
+typedef void(sprites_sorter_fn)(neko_batch_sprite_t* sprites, int count);
 
-NEKO_API_DECL void neko_spritebatch_reset_function_ptrs(neko_spritebatch_t* sb, submit_batch_fn* batch_callback, get_pixels_fn* get_pixels_callback,
+NEKO_API_DECL void neko_batch_reset_function_ptrs(neko_batch_t* sb, submit_batch_fn* batch_callback, get_pixels_fn* get_pixels_callback,
                                                         generate_texture_handle_fn* generate_texture_callback, destroy_texture_handle_fn* delete_texture_callback,
                                                         sprites_sorter_fn* sprites_sorter_callback);
-NEKO_API_DECL void neko_spritebatch_set_default_config(neko_spritebatch_config_t* config);
+NEKO_API_DECL void neko_batch_set_default_config(neko_batch_config_t* config);
 
-struct neko_spritebatch_config_t {
+struct neko_batch_config_t {
     int pixel_stride;
     int atlas_width_in_pixels;
     int atlas_height_in_pixels;
@@ -4530,7 +4530,7 @@ typedef struct {
 #ifdef SPRITEBATCH_SPRITE_USERDATA
     SPRITEBATCH_SPRITE_USERDATA udata;
 #endif
-} neko_spritebatch_internal_sprite_t;
+} neko_batch_i_sprite_t;
 
 typedef struct {
     int timestamp;
@@ -4538,39 +4538,39 @@ typedef struct {
     float minx, miny;
     float maxx, maxy;
     u64 image_id;
-} neko_spritebatch_internal_texture_t;
+} neko_batch_i_texture_t;
 
-typedef struct neko_spritebatch_internal_atlas_t {
+typedef struct neko_batch_i_atlas_t {
     u64 texture_id;
     float volume_ratio;
     neko_hashtable_t sprites_to_textures;
-    struct neko_spritebatch_internal_atlas_t* next;
-    struct neko_spritebatch_internal_atlas_t* prev;
-} neko_spritebatch_internal_atlas_t;
+    struct neko_batch_i_atlas_t* next;
+    struct neko_batch_i_atlas_t* prev;
+} neko_batch_i_atlas_t;
 
 typedef struct {
     int timestamp;
     int w, h;
     u64 image_id;
     u64 texture_id;
-} neko_spritebatch_internal_lonely_texture_t;
+} neko_batch_i_lonely_texture_t;
 
 typedef struct {
     int w, h;
     int mark_for_cleanup;
     u64 image_id;
     u64 texture_id;
-} neko_spritebatch_internal_premade_atlas;
+} neko_batch_i_premade_atlas;
 
-struct neko_spritebatch_t {
+struct neko_batch_t {
     int input_count;
     int input_capacity;
-    neko_spritebatch_internal_sprite_t* input_buffer;
+    neko_batch_i_sprite_t* input_buffer;
 
     int sprite_count;
     int sprite_capacity;
-    neko_spritebatch_sprite_t* sprites;
-    neko_spritebatch_sprite_t* sprites_scratch;
+    neko_batch_sprite_t* sprites;
+    neko_batch_sprite_t* sprites_scratch;
 
     int key_buffer_count;
     int key_buffer_capacity;
@@ -4583,7 +4583,7 @@ struct neko_spritebatch_t {
     neko_hashtable_t sprites_to_lonely_textures;
     neko_hashtable_t sprites_to_atlases;
 
-    neko_spritebatch_internal_atlas_t* atlases;
+    neko_batch_i_atlas_t* atlases;
 
     int pixel_stride;
     int atlas_width_in_pixels;

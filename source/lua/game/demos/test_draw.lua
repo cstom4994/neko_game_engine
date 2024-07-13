@@ -6,15 +6,15 @@ local fnt_text = ImGui.StringBuf("中文渲染测试 日本語レンダリング
 
 local gd = {}
 
-neko.events.add("render", "main", function(v)
-    ImGui.Begin("render events")
-    if ImGui.InputText("TEST", fnt_text) then
-    end
-    ImGui.Text("%s", v)
-    ImGui.End()
+-- neko.events.add("render", "main", function(v)
+--     ImGui.Begin("render events")
+--     if ImGui.InputText("TEST", fnt_text) then
+--     end
+--     ImGui.Text("%s", v)
+--     ImGui.End()
 
-    neko.fontbatch_text(gd.fontbatch, to_vec2(50.0, 50.0), tostring(fnt_text), 3.0)
-end)
+--     neko.fontbatch_text(gd.fontbatch, to_vec2(50.0, 50.0), tostring(fnt_text), 3.0)
+-- end)
 
 -- events.add("inputPressed","test",function(v)
 --     ImGui.Begin("inputPressed events")
@@ -148,13 +148,13 @@ local M = {
     end,
 
     sub_shutdown = function()
-        neko.render_renderpass_destroy(gd.rp)
-        neko.render_texture_destroy(gd.rt)
-        neko.render_framebuffer_destroy(gd.fbo)
+        neko.render_renderpass_fini(gd.rp)
+        neko.render_texture_fini(gd.rt)
+        neko.render_framebuffer_fini(gd.fbo)
 
-        neko.render_renderpass_destroy(gd.main_rp)
-        neko.render_texture_destroy(gd.main_rt)
-        neko.render_framebuffer_destroy(gd.main_fbo)
+        neko.render_renderpass_fini(gd.main_rp)
+        neko.render_texture_fini(gd.main_rt)
+        neko.render_framebuffer_fini(gd.main_fbo)
     end,
 
     sub_pre_update = function()

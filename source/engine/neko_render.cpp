@@ -2639,7 +2639,7 @@ NEKO_API_DECL neko_render_t* neko_render_create() {
     return gfx;
 }
 
-NEKO_API_DECL void neko_render_destroy(neko_render_t* render) {
+NEKO_API_DECL void neko_render_fini(neko_render_t* render) {
     // 释放所有资源 (假设它们已从GPU中释放)
     if (render == NULL) return;
 
@@ -2655,16 +2655,16 @@ NEKO_API_DECL void neko_render_destroy(neko_render_t* render) {
     } while (0)
 
     // Free all gl data
-    if (ogl->pipelines) OGL_FREE_DATA(ogl->pipelines, neko_render_pipeline_t, neko_render_pipeline_destroy);
-    if (ogl->shaders) OGL_FREE_DATA(ogl->shaders, neko_render_shader_t, neko_render_shader_destroy);
-    if (ogl->vertex_buffers) OGL_FREE_DATA(ogl->vertex_buffers, neko_render_vertex_buffer_t, neko_render_vertex_buffer_destroy);
-    if (ogl->index_buffers) OGL_FREE_DATA(ogl->index_buffers, neko_render_index_buffer_t, neko_render_index_buffer_destroy);
-    if (ogl->renderpasses) OGL_FREE_DATA(ogl->renderpasses, neko_render_renderpass_t, neko_render_renderpass_destroy);
-    if (ogl->frame_buffers) OGL_FREE_DATA(ogl->frame_buffers, neko_render_framebuffer_t, neko_render_framebuffer_destroy);
-    if (ogl->textures) OGL_FREE_DATA(ogl->textures, neko_render_texture_t, neko_render_texture_destroy);
-    if (ogl->uniforms) OGL_FREE_DATA(ogl->uniforms, neko_render_uniform_t, neko_render_uniform_destroy);
-    if (ogl->uniform_buffers) OGL_FREE_DATA(ogl->uniform_buffers, neko_render_uniform_buffer_t, neko_render_uniform_buffer_destroy);
-    // if (ogl->storage_buffers)   OGL_FREE_DATA(ogl->storage_buffers, neko_render_storage_buffer_t, neko_render_storage_buffer_destroy);
+    if (ogl->pipelines) OGL_FREE_DATA(ogl->pipelines, neko_render_pipeline_t, neko_render_pipeline_fini);
+    if (ogl->shaders) OGL_FREE_DATA(ogl->shaders, neko_render_shader_t, neko_render_shader_fini);
+    if (ogl->vertex_buffers) OGL_FREE_DATA(ogl->vertex_buffers, neko_render_vertex_buffer_t, neko_render_vertex_buffer_fini);
+    if (ogl->index_buffers) OGL_FREE_DATA(ogl->index_buffers, neko_render_index_buffer_t, neko_render_index_buffer_fini);
+    if (ogl->renderpasses) OGL_FREE_DATA(ogl->renderpasses, neko_render_renderpass_t, neko_render_renderpass_fini);
+    if (ogl->frame_buffers) OGL_FREE_DATA(ogl->frame_buffers, neko_render_framebuffer_t, neko_render_framebuffer_fini);
+    if (ogl->textures) OGL_FREE_DATA(ogl->textures, neko_render_texture_t, neko_render_texture_fini);
+    if (ogl->uniforms) OGL_FREE_DATA(ogl->uniforms, neko_render_uniform_t, neko_render_uniform_fini);
+    if (ogl->uniform_buffers) OGL_FREE_DATA(ogl->uniform_buffers, neko_render_uniform_buffer_t, neko_render_uniform_buffer_fini);
+    // if (ogl->storage_buffers)   OGL_FREE_DATA(ogl->storage_buffers, neko_render_storage_buffer_t, neko_render_storage_buffer_fini);
 
     neko_slot_array_free(ogl->shaders);
     neko_slot_array_free(ogl->vertex_buffers);
@@ -3271,7 +3271,7 @@ NEKO_API_DECL neko_handle(neko_render_pipeline_t) neko_render_pipeline_create_im
 }
 
 // Resource Destruction
-NEKO_API_DECL void neko_render_texture_destroy_impl(neko_handle(neko_render_texture_t) hndl) {
+NEKO_API_DECL void neko_render_texture_fini_impl(neko_handle(neko_render_texture_t) hndl) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(render)->user_data;
     if (!neko_slot_array_handle_valid(ogl->textures, hndl.id)) return;
     neko_gl_texture_t* tex = neko_slot_array_getp(ogl->textures, hndl.id);
@@ -3279,7 +3279,7 @@ NEKO_API_DECL void neko_render_texture_destroy_impl(neko_handle(neko_render_text
     neko_slot_array_erase(ogl->textures, hndl.id);
 }
 
-NEKO_API_DECL void neko_render_uniform_destroy_impl(neko_handle(neko_render_uniform_t) hndl) {
+NEKO_API_DECL void neko_render_uniform_fini_impl(neko_handle(neko_render_uniform_t) hndl) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(render)->user_data;
     if (!neko_slot_array_handle_valid(ogl->uniforms, hndl.id)) return;
     neko_gl_uniform_list_t* ul = neko_slot_array_getp(ogl->uniforms, hndl.id);
@@ -3287,14 +3287,14 @@ NEKO_API_DECL void neko_render_uniform_destroy_impl(neko_handle(neko_render_unif
     neko_slot_array_erase(ogl->uniforms, hndl.id);
 }
 
-NEKO_API_DECL void neko_render_shader_destroy_impl(neko_handle(neko_render_shader_t) hndl) {
+NEKO_API_DECL void neko_render_shader_fini_impl(neko_handle(neko_render_shader_t) hndl) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(render)->user_data;
     if (!neko_slot_array_handle_valid(ogl->shaders, hndl.id)) return;
     glDeleteProgram(neko_slot_array_get(ogl->shaders, hndl.id).id);
     neko_slot_array_erase(ogl->shaders, hndl.id);
 }
 
-NEKO_API_DECL void neko_render_vertex_buffer_destroy_impl(neko_handle(neko_render_vertex_buffer_t) hndl) {
+NEKO_API_DECL void neko_render_vertex_buffer_fini_impl(neko_handle(neko_render_vertex_buffer_t) hndl) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(render)->user_data;
     if (!neko_slot_array_handle_valid(ogl->vertex_buffers, hndl.id)) return;
     neko_gl_buffer_t buffer = neko_slot_array_get(ogl->vertex_buffers, hndl.id);
@@ -3302,7 +3302,7 @@ NEKO_API_DECL void neko_render_vertex_buffer_destroy_impl(neko_handle(neko_rende
     neko_slot_array_erase(ogl->vertex_buffers, hndl.id);
 }
 
-NEKO_API_DECL void neko_render_index_buffer_destroy_impl(neko_handle(neko_render_index_buffer_t) hndl) {
+NEKO_API_DECL void neko_render_index_buffer_fini_impl(neko_handle(neko_render_index_buffer_t) hndl) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(render)->user_data;
     if (!neko_slot_array_handle_valid(ogl->index_buffers, hndl.id)) return;
     neko_gl_buffer_t buffer = neko_slot_array_get(ogl->index_buffers, hndl.id);
@@ -3310,7 +3310,7 @@ NEKO_API_DECL void neko_render_index_buffer_destroy_impl(neko_handle(neko_render
     neko_slot_array_erase(ogl->index_buffers, hndl.id);
 }
 
-NEKO_API_DECL void neko_render_uniform_buffer_destroy_impl(neko_handle(neko_render_uniform_buffer_t) hndl) {
+NEKO_API_DECL void neko_render_uniform_buffer_fini_impl(neko_handle(neko_render_uniform_buffer_t) hndl) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(render)->user_data;
     if (!neko_slot_array_handle_valid(ogl->uniform_buffers, hndl.id)) return;
     neko_gl_uniform_buffer_t* u = neko_slot_array_getp(ogl->uniform_buffers, hndl.id);
@@ -3322,7 +3322,7 @@ NEKO_API_DECL void neko_render_uniform_buffer_destroy_impl(neko_handle(neko_rend
     neko_slot_array_erase(ogl->uniform_buffers, hndl.id);
 }
 
-NEKO_API_DECL void neko_render_storage_buffer_destroy_impl(neko_handle(neko_render_storage_buffer_t) hndl) {
+NEKO_API_DECL void neko_render_storage_buffer_fini_impl(neko_handle(neko_render_storage_buffer_t) hndl) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(render)->user_data;
     if (!neko_slot_array_handle_valid(ogl->storage_buffers, hndl.id)) return;
     neko_gl_storage_buffer_t* sb = neko_slot_array_getp(ogl->storage_buffers, hndl.id);
@@ -3334,7 +3334,7 @@ NEKO_API_DECL void neko_render_storage_buffer_destroy_impl(neko_handle(neko_rend
     neko_slot_array_erase(ogl->storage_buffers, hndl.id);
 }
 
-NEKO_API_DECL void neko_render_framebuffer_destroy_impl(neko_handle(neko_render_framebuffer_t) hndl) {
+NEKO_API_DECL void neko_render_framebuffer_fini_impl(neko_handle(neko_render_framebuffer_t) hndl) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(render)->user_data;
     if (!neko_slot_array_handle_valid(ogl->frame_buffers, hndl.id)) return;
     neko_gl_buffer_t buffer = neko_slot_array_get(ogl->frame_buffers, hndl.id);
@@ -3342,14 +3342,14 @@ NEKO_API_DECL void neko_render_framebuffer_destroy_impl(neko_handle(neko_render_
     neko_slot_array_erase(ogl->frame_buffers, hndl.id);
 }
 
-NEKO_API_DECL void neko_render_renderpass_destroy_impl(neko_handle(neko_render_renderpass_t) hndl) {
+NEKO_API_DECL void neko_render_renderpass_fini_impl(neko_handle(neko_render_renderpass_t) hndl) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(render)->user_data;
     if (!neko_slot_array_handle_valid(ogl->renderpasses, hndl.id)) return;
     // TODO: erase all color attachments from renderpasss
     neko_slot_array_erase(ogl->renderpasses, hndl.id);
 }
 
-NEKO_API_DECL void neko_render_pipeline_destroy_impl(neko_handle(neko_render_pipeline_t) hndl) {
+NEKO_API_DECL void neko_render_pipeline_fini_impl(neko_handle(neko_render_pipeline_t) hndl) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)neko_subsystem(render)->user_data;
     if (!neko_slot_array_handle_valid(ogl->pipelines, hndl.id)) return;
     neko_gl_pipeline_t* pip = neko_slot_array_getp(ogl->pipelines, hndl.id);
@@ -3885,7 +3885,7 @@ void neko_render_dispatch_compute(neko_command_buffer_t* cb, u32 num_x_groups, u
 }
 
 /* Submission (Main Thread) */
-void neko_render_command_buffer_submit_impl(neko_command_buffer_t* cb) {
+void neko_render_cmd_submit_impl(neko_command_buffer_t* cb) {
     /*
         // Structure of command:
             - Op code
@@ -4825,10 +4825,10 @@ NEKO_API_DECL void neko_render_init(neko_render_t* render) {
     // Push back 0 handles into slot arrays (for 0 init validation)
     neko_gl_data_t* ogl = (neko_gl_data_t*)render->user_data;
 
-    neko_slot_array_insert(ogl->shaders, (neko_gl_shader_t){0});
-    neko_slot_array_insert(ogl->vertex_buffers, (neko_gl_buffer_t){0});
-    neko_slot_array_insert(ogl->index_buffers, (neko_gl_buffer_t){0});
-    neko_slot_array_insert(ogl->frame_buffers, (neko_gl_buffer_t){0});
+    neko_slot_array_insert(ogl->shaders, neko_gl_shader_t{0});
+    neko_slot_array_insert(ogl->vertex_buffers, neko_gl_buffer_t{0});
+    neko_slot_array_insert(ogl->index_buffers, neko_gl_buffer_t{0});
+    neko_slot_array_insert(ogl->frame_buffers, neko_gl_buffer_t{0});
 
     neko_gl_uniform_list_t ul = NEKO_DEFAULT_VAL();
     neko_gl_uniform_buffer_t ub = NEKO_DEFAULT_VAL();
@@ -4908,16 +4908,16 @@ NEKO_API_DECL void neko_render_init(neko_render_t* render) {
     render->api.pipeline_create = neko_render_pipeline_create_impl;
 
     // Destroy
-    render->api.texture_destroy = neko_render_texture_destroy_impl;
-    render->api.uniform_destroy = neko_render_uniform_destroy_impl;
-    render->api.shader_destroy = neko_render_shader_destroy_impl;
-    render->api.vertex_buffer_destroy = neko_render_vertex_buffer_destroy_impl;
-    render->api.index_buffer_destroy = neko_render_index_buffer_destroy_impl;
-    render->api.uniform_buffer_destroy = neko_render_uniform_buffer_destroy_impl;
-    render->api.storage_buffer_destroy = neko_render_storage_buffer_destroy_impl;
-    render->api.framebuffer_destroy = neko_render_framebuffer_destroy_impl;
-    render->api.renderpass_destroy = neko_render_renderpass_destroy_impl;
-    render->api.pipeline_destroy = neko_render_pipeline_destroy_impl;
+    render->api.texture_fini = neko_render_texture_fini_impl;
+    render->api.uniform_fini = neko_render_uniform_fini_impl;
+    render->api.shader_fini = neko_render_shader_fini_impl;
+    render->api.vertex_buffer_fini = neko_render_vertex_buffer_fini_impl;
+    render->api.index_buffer_fini = neko_render_index_buffer_fini_impl;
+    render->api.uniform_buffer_fini = neko_render_uniform_buffer_fini_impl;
+    render->api.storage_buffer_fini = neko_render_storage_buffer_fini_impl;
+    render->api.framebuffer_fini = neko_render_framebuffer_fini_impl;
+    render->api.renderpass_fini = neko_render_renderpass_fini_impl;
+    render->api.pipeline_fini = neko_render_pipeline_fini_impl;
 
     // Resource Updates (main thread only)
     render->api.vertex_buffer_update = neko_render_vertex_buffer_update_impl;
@@ -4932,7 +4932,7 @@ NEKO_API_DECL void neko_render_init(neko_render_t* render) {
     render->api.storage_buffer_unlock = neko_render_storage_buffer_unlock_impl;
 
     // Submission (Main Thread)
-    render->api.command_buffer_submit = neko_render_command_buffer_submit_impl;
+    render->api.command_buffer_submit = neko_render_cmd_submit_impl;
 }
 
 #endif  // R_IMPL_OPENGL
@@ -4961,25 +4961,25 @@ NEKO_API_DECL neko_handle(neko_render_renderpass_t) neko_render_renderpass_creat
 NEKO_API_DECL neko_handle(neko_render_pipeline_t) neko_render_pipeline_create(const neko_render_pipeline_desc_t desc) { return neko_render()->api.pipeline_create(desc); }
 
 // Destroy
-NEKO_API_DECL void neko_render_texture_destroy(neko_handle(neko_render_texture_t) hndl) { neko_render()->api.texture_destroy(hndl); }
+NEKO_API_DECL void neko_render_texture_fini(neko_handle(neko_render_texture_t) hndl) { neko_render()->api.texture_fini(hndl); }
 
-NEKO_API_DECL void neko_render_uniform_destroy(neko_handle(neko_render_uniform_t) hndl) { neko_render()->api.uniform_destroy(hndl); }
+NEKO_API_DECL void neko_render_uniform_fini(neko_handle(neko_render_uniform_t) hndl) { neko_render()->api.uniform_fini(hndl); }
 
-NEKO_API_DECL void neko_render_shader_destroy(neko_handle(neko_render_shader_t) hndl) { neko_render()->api.shader_destroy(hndl); }
+NEKO_API_DECL void neko_render_shader_fini(neko_handle(neko_render_shader_t) hndl) { neko_render()->api.shader_fini(hndl); }
 
-NEKO_API_DECL void neko_render_vertex_buffer_destroy(neko_handle(neko_render_vertex_buffer_t) hndl) { neko_render()->api.vertex_buffer_destroy(hndl); }
+NEKO_API_DECL void neko_render_vertex_buffer_fini(neko_handle(neko_render_vertex_buffer_t) hndl) { neko_render()->api.vertex_buffer_fini(hndl); }
 
-NEKO_API_DECL void neko_render_index_buffer_destroy(neko_handle(neko_render_index_buffer_t) hndl) { neko_render()->api.index_buffer_destroy(hndl); }
+NEKO_API_DECL void neko_render_index_buffer_fini(neko_handle(neko_render_index_buffer_t) hndl) { neko_render()->api.index_buffer_fini(hndl); }
 
-NEKO_API_DECL void neko_render_uniform_buffer_destroy(neko_handle(neko_render_uniform_buffer_t) hndl) { neko_render()->api.uniform_buffer_destroy(hndl); }
+NEKO_API_DECL void neko_render_uniform_buffer_fini(neko_handle(neko_render_uniform_buffer_t) hndl) { neko_render()->api.uniform_buffer_fini(hndl); }
 
-NEKO_API_DECL void neko_render_storage_buffer_destroy(neko_handle(neko_render_storage_buffer_t) hndl) { neko_render()->api.storage_buffer_destroy(hndl); }
+NEKO_API_DECL void neko_render_storage_buffer_fini(neko_handle(neko_render_storage_buffer_t) hndl) { neko_render()->api.storage_buffer_fini(hndl); }
 
-NEKO_API_DECL void neko_render_framebuffer_destroy(neko_handle(neko_render_framebuffer_t) hndl) { neko_render()->api.framebuffer_destroy(hndl); }
+NEKO_API_DECL void neko_render_framebuffer_fini(neko_handle(neko_render_framebuffer_t) hndl) { neko_render()->api.framebuffer_fini(hndl); }
 
-NEKO_API_DECL void neko_render_renderpass_destroy(neko_handle(neko_render_renderpass_t) hndl) { neko_render()->api.renderpass_destroy(hndl); }
+NEKO_API_DECL void neko_render_renderpass_fini(neko_handle(neko_render_renderpass_t) hndl) { neko_render()->api.renderpass_fini(hndl); }
 
-NEKO_API_DECL void neko_render_pipeline_destroy(neko_handle(neko_render_pipeline_t) hndl) { neko_render()->api.pipeline_destroy(hndl); }
+NEKO_API_DECL void neko_render_pipeline_fini(neko_handle(neko_render_pipeline_t) hndl) { neko_render()->api.pipeline_fini(hndl); }
 
 // 资源更新 (仅限主线程)
 NEKO_API_DECL void neko_render_vertex_buffer_update(neko_handle(neko_render_vertex_buffer_t) hndl, neko_render_vertex_buffer_desc_t* desc) { neko_render()->api.vertex_buffer_update(hndl, desc); }

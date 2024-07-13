@@ -16,12 +16,12 @@ LUA_FUNCTION(__neko_bind_pack_construct) {
     userdata_ptr->name = name;
     userdata_ptr->size = 0;
 
-    userdata_ptr->data = neko_safe_malloc(sizeof(neko_pack_t));
+    userdata_ptr->data = neko_safe_malloc(sizeof(neko_pak));
 
-    bool ok = neko_pack_read(path, 0, false, (neko_pack_t*)userdata_ptr->data);
+    bool ok = (static_cast<neko_pak*>(userdata_ptr->data))->load(path, 0, false);
 
     if (!ok) {
-        const_str error_message = "neko_pack_check failed";
+        const_str error_message = "neko_pak_check failed";
         lua_pushstring(L, error_message);  // 将错误信息压入堆栈
         return lua_error(L);               // 抛出lua错误
     }
@@ -37,8 +37,8 @@ LUA_FUNCTION(__neko_bind_pack_construct) {
 LUA_FUNCTION(__neko_bind_pack_destroy) {
     neko_lua_handle_t* userdata_ptr = (neko_lua_handle_t*)lua_touserdata(L, 1);
 
-    neko_pack_t* pack = (neko_pack_t*)(userdata_ptr->data);
-    neko_pack_destroy(pack);
+    neko_pak* pack = (neko_pak*)(userdata_ptr->data);
+    pack->fini();
 
     neko_safe_free(userdata_ptr->data);
 
@@ -66,7 +66,7 @@ LUA_FUNCTION(__neko_bind_pack_build) {
         lua_pop(L, 1);  // # -1
     }
 
-    bool ok = neko_pack_build(path, n, item_paths, true);
+    bool ok = neko_pak_build(path, n, item_paths, true);
 
     neko_safe_free(item_paths);
 
@@ -87,7 +87,7 @@ LUA_FUNCTION(__neko_bind_pack_info) {
     bool is_little_endian;
     u64 item_count;
 
-    bool ok = neko_pack_info(path, &pack_version, &is_little_endian, &item_count);
+    bool ok = neko_pak_info(path, &pack_version, &is_little_endian, &item_count);
 
     lua_pushinteger(L, pack_version);
     lua_pushboolean(L, is_little_endian);
@@ -100,13 +100,13 @@ LUA_FUNCTION(__neko_bind_pack_items) {
 
     neko_lua_handle_t* userdata_ptr = (neko_lua_handle_t*)lua_touserdata(L, 1);
 
-    neko_pack_t* pack = (neko_pack_t*)(userdata_ptr->data);
+    neko_pak* pack = (neko_pak*)(userdata_ptr->data);
 
-    u64 item_count = neko_pack_item_count(pack);
+    u64 item_count = pack->get_item_count();
 
     lua_newtable(L);  // # -2
     for (int i = 0; i < item_count; ++i) {
-        lua_pushstring(L, neko_pack_item_path(pack, i));  // # -1
+        lua_pushstring(L, pack->get_item_path(i));  // # -1
         lua_rawseti(L, -2, i + 1);
     }
 
@@ -116,13 +116,13 @@ LUA_FUNCTION(__neko_bind_pack_items) {
 LUA_FUNCTION(__neko_bind_pack_assets_load) {
     neko_lua_handle_t* userdata_ptr = (neko_lua_handle_t*)lua_touserdata(L, 1);
     const_str path = lua_tostring(L, 2);
-    neko_pack_t* pack = (neko_pack_t*)(userdata_ptr->data);
+    neko_pak* pack = (neko_pak*)(userdata_ptr->data);
 
     neko_lua_handle_t* assets_user_handle = (neko_lua_handle_t*)lua_newuserdata(L, sizeof(neko_lua_handle_t));
     assets_user_handle->name = path;
     assets_user_handle->size = 0;
 
-    bool ok = neko_pack_item_data(pack, path, (const u8**)&assets_user_handle->data, (u32*)&assets_user_handle->size);
+    bool ok = pack->get_data(path, (const u8**)&assets_user_handle->data, (u32*)&assets_user_handle->size);
 
     if (!ok) {
         const_str error_message = "__neko_bind_pack_assets_load failed";
@@ -141,10 +141,10 @@ LUA_FUNCTION(__neko_bind_pack_assets_load) {
 
 LUA_FUNCTION(__neko_bind_pack_assets_unload) {
     neko_lua_handle_t* userdata_ptr = (neko_lua_handle_t*)lua_touserdata(L, 1);
-    neko_pack_t* pack = (neko_pack_t*)(userdata_ptr->data);
+    neko_pak* pack = (neko_pak*)(userdata_ptr->data);
     neko_lua_handle_t* assets_user_handle = (neko_lua_handle_t*)lua_touserdata(L, 2);
     if (assets_user_handle && assets_user_handle->data)
-        neko_pack_item_free(pack, assets_user_handle->data);
+        pack->free_item(assets_user_handle->data);
     else
         NEKO_WARN("unknown assets unload %p", assets_user_handle);
     return 0;

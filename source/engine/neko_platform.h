@@ -482,7 +482,7 @@ typedef struct neko_pf_t {
 
 // Platform Create / Destroy
 NEKO_API_DECL neko_pf_t *neko_pf_create();
-NEKO_API_DECL void neko_pf_destroy(neko_pf_t *platform);
+NEKO_API_DECL void neko_pf_fini(neko_pf_t *platform);
 
 // Platform Init / Update / Shutdown
 NEKO_API_DECL void neko_pf_update(neko_pf_t *platform);  // Update platform layer
@@ -547,36 +547,21 @@ typedef struct neko_pf_file_stats_t {
 } neko_pf_file_stats_t;
 
 // Platform File IO (this all needs to be made available for impl rewrites)
-NEKO_API_DECL char *neko_pf_read_file_contents_default_impl(const char *file_path, const char *mode, size_t *sz);
-NEKO_API_DECL neko_result neko_pf_write_file_contents_default_impl(const char *file_path, const char *mode, void *data, size_t data_size);
-NEKO_API_DECL bool neko_pf_file_exists_default_impl(const char *file_path);
-NEKO_API_DECL bool neko_pf_dir_exists_default_impl(const char *dir_path);
-NEKO_API_DECL s32 neko_pf_mkdir_default_impl(const char *dir_path, s32 opt);
-NEKO_API_DECL s32 neko_pf_file_size_in_bytes_default_impl(const char *file_path);
-NEKO_API_DECL void neko_pf_file_extension_default_impl(char *buffer, size_t buffer_sz, const char *file_path);
-NEKO_API_DECL s32 neko_pf_file_delete_default_impl(const char *file_path);
-NEKO_API_DECL s32 neko_pf_file_copy_default_impl(const char *src_path, const char *dst_path);
+NEKO_API_DECL char *neko_pf_read_file_contents(const char *file_path, const char *mode, size_t *sz);
+NEKO_API_DECL neko_result neko_pf_write_file_contents(const char *file_path, const char *mode, void *data, size_t data_size);
+NEKO_API_DECL bool neko_pf_file_exists(const char *file_path);
+NEKO_API_DECL bool neko_pf_dir_exists(const char *dir_path);
+NEKO_API_DECL s32 neko_pf_mkdir(const char *dir_path, s32 opt);
+NEKO_API_DECL s32 neko_pf_file_size_in_bytes(const char *file_path);
+NEKO_API_DECL void neko_pf_file_extension(char *buffer, size_t buffer_sz, const char *file_path);
+NEKO_API_DECL s32 neko_pf_file_delete(const char *file_path);
+NEKO_API_DECL s32 neko_pf_file_copy(const char *src_path, const char *dst_path);
 NEKO_API_DECL s32 neko_pf_file_compare_time(u64 time_a, u64 time_b);
 NEKO_API_DECL neko_pf_file_stats_t neko_pf_file_stats(const char *file_path);
-NEKO_API_DECL void *neko_pf_library_load_default_impl(const char *lib_path);
-NEKO_API_DECL void neko_pf_library_unload_default_impl(void *lib);
-NEKO_API_DECL void *neko_pf_library_proc_address_default_impl(void *lib, const char *func);
-NEKO_API_DECL int neko_pf_chdir_default_impl(const char *path);
-
-// Default file implementations
-#define neko_pf_read_file_contents neko_pf_read_file_contents_default_impl
-#define neko_pf_write_file_contents neko_pf_write_file_contents_default_impl
-#define neko_pf_file_exists neko_pf_file_exists_default_impl
-#define neko_pf_dir_exists neko_pf_dir_exists_default_impl
-#define neko_pf_mkdir neko_pf_mkdir_default_impl
-#define neko_pf_file_size_in_bytes neko_pf_file_size_in_bytes_default_impl
-#define neko_pf_file_extension neko_pf_file_extension_default_impl
-#define neko_pf_file_delete neko_pf_file_delete_default_impl
-#define neko_pf_file_copy neko_pf_file_copy_default_impl
-#define neko_pf_library_load neko_pf_library_load_default_impl
-#define neko_pf_library_unload neko_pf_library_unload_default_impl
-#define neko_pf_library_proc_address neko_pf_library_proc_address_default_impl
-#define neko_pf_chdir neko_pf_chdir_default_impl
+NEKO_API_DECL void *neko_pf_library_load(const char *lib_path);
+NEKO_API_DECL void neko_pf_library_unload(void *lib);
+NEKO_API_DECL void *neko_pf_library_proc_address(void *lib, const char *func);
+NEKO_API_DECL int neko_pf_chdir(const char *path);
 
 #if defined(NEKO_PF_APPLE)
 #define neko_fopen(filePath, mode) fopen(filePath, mode)

@@ -26,7 +26,7 @@ void hashtable_init(neko_hashtable_t* table, int item_size, int initial_capacity
     table->item_size = item_size;
     table->slot_capacity = (int)hashtable_internal_pow2ceil((u32)(initial_capacity + initial_capacity / 2));
     int slots_size = (int)(table->slot_capacity * sizeof(*table->slots));
-    table->slots = (struct hashtable_internal_slot_t*)HASHTABLE_MALLOC(table->memctx, (size_t)slots_size);
+    table->slots = (neko_hashtable_t::slot_t*)HASHTABLE_MALLOC(table->memctx, (size_t)slots_size);
     NEKO_ASSERT(table->slots);
     memset(table->slots, 0, (size_t)slots_size);
     table->item_capacity = (int)hashtable_internal_pow2ceil((u32)initial_capacity);
@@ -80,13 +80,13 @@ static int hashtable_internal_find_slot(neko_hashtable_t const* table, u64 key) 
 
 static void hashtable_internal_expand_slots(neko_hashtable_t* table) {
     int const old_capacity = table->slot_capacity;
-    struct hashtable_internal_slot_t* old_slots = table->slots;
+    neko_hashtable_t::slot_t* old_slots = table->slots;
 
     table->slot_capacity *= 2;
     int const slot_mask = table->slot_capacity - 1;
 
     int const size = (int)(table->slot_capacity * sizeof(*table->slots));
-    table->slots = (struct hashtable_internal_slot_t*)HASHTABLE_MALLOC(table->memctx, (size_t)size);
+    table->slots = (neko_hashtable_t::slot_t*)HASHTABLE_MALLOC(table->memctx, (size_t)size);
     NEKO_ASSERT(table->slots);
     memset(table->slots, 0, (size_t)size);
 

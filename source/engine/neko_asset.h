@@ -108,7 +108,7 @@ NEKO_API_DECL u32 neko_lz_bounds(u32 inlen, u32 flags);
 // NEKO_PACK
 ==========================*/
 
-#define neko_pack_head_size 8
+#define neko_pak_head_size 8
 
 // typedef enum neko_packresult_t {
 //     SUCCESS_PACK_RESULT = 0,
@@ -129,44 +129,58 @@ NEKO_API_DECL u32 neko_lz_bounds(u32 inlen, u32 flags);
 //     PACK_RESULT_COUNT = 15,
 // } neko_packresult_t;
 
-typedef struct pack_iteminfo {
-    u32 zip_size;
-    u32 data_size;
-    u64 file_offset;
-    u8 path_size;
-} pack_iteminfo;
+typedef struct neko_pak {
 
-typedef struct pack_item {
-    pack_iteminfo info;
-    char* path;
-} pack_item;
+    typedef struct {
+        u32 zip_size;
+        u32 data_size;
+        u64 file_offset;
+        u8 path_size;
+    } iteminfo;
 
-typedef struct neko_pack_t {
+    typedef struct {
+        iteminfo info;
+        const_str path;
+    } item;
+
     vfs_file vf;
     u64 item_count;
-    pack_item* items;
+    item* items;
     u8* data_buffer;
     u8* zip_buffer;
     u32 data_size;
     u32 zip_size;
-    pack_item search_item;
+    item search_item;
     u32 file_ref_count;
-} neko_pack_t;
 
-NEKO_API_DECL bool neko_pack_read(const_str file_path, u32 data_buffer_capacity, bool is_resources_directory, neko_pack_t* pack_reader);
-NEKO_API_DECL void neko_pack_destroy(neko_pack_t* pack_reader);
+    bool load(const_str file_path, u32 data_buffer_capacity, bool is_resources_directory);
+    void fini();
 
-NEKO_API_DECL u64 neko_pack_item_count(neko_pack_t* pack_reader);
-NEKO_API_DECL bool neko_pack_item_index(neko_pack_t* pack_reader, const_str path, u64* index);
-NEKO_API_DECL u32 neko_pack_item_size(neko_pack_t* pack_reader, u64 index);
-NEKO_API_DECL const_str neko_pack_item_path(neko_pack_t* pack_reader, u64 index);
-NEKO_API_DECL bool neko_pack_item_data_with_index(neko_pack_t* pack_reader, u64 index, const u8** data, u32* size);
-NEKO_API_DECL bool neko_pack_item_data(neko_pack_t* pack_reader, const_str path, const u8** data, u32* size);
-NEKO_API_DECL void neko_pack_item_free(neko_pack_t* pack_reader, void* data);
-NEKO_API_DECL void neko_pack_free_buffers(neko_pack_t* pack_reader);
-NEKO_API_DECL bool neko_pack_unzip(const_str file_path, b8 print_progress);
-NEKO_API_DECL bool neko_pack_build(const_str pack_path, u64 file_count, const_str* file_paths, b8 print_progress);
-NEKO_API_DECL bool neko_pack_info(const_str file_path, u8* pack_version, b8* isLittleEndian, u64* item_count);
+    NEKO_INLINE u64 get_item_count() const { return this->item_count; }
+
+    NEKO_INLINE u32 get_item_size(u64 index) {
+        NEKO_ASSERT(index < this->item_count);
+        return this->items[index].info.data_size;
+    }
+
+    NEKO_INLINE const_str get_item_path(u64 index) {
+        NEKO_ASSERT(index < this->item_count);
+        return this->items[index].path;
+    }
+
+    u64 get_item_index(const_str path);
+
+    bool get_data(u64 index, const u8** data, u32* size);
+    bool get_data(const_str path, const u8** data, u32* size);
+    void free_item(void* data);
+
+    void free_buffer();
+
+} neko_pak;
+
+bool neko_pak_unzip(const_str file_path, bool print_progress);
+bool neko_pak_build(const_str pack_path, u64 file_count, const_str* file_paths, bool print_progress);
+bool neko_pak_info(const_str file_path, u8* pack_version, bool* isLittleEndian, u64* item_count);
 
 typedef enum neko_xml_attribute_type_t {
     NEKO_XML_ATTRIBUTE_NUMBER,
@@ -175,21 +189,21 @@ typedef enum neko_xml_attribute_type_t {
 } neko_xml_attribute_type_t;
 
 typedef struct neko_xml_attribute_t {
-    char* name;
+    const_str name;
     neko_xml_attribute_type_t type;
 
     union {
         double number;
         bool boolean;
-        char* string;
+        const_str string;
     } value;
 } neko_xml_attribute_t;
 
 // neko_hash_table_decl(u64, neko_xml_attribute_t, neko_hash_u64, neko_hash_key_comp_std_type);
 
 typedef struct neko_xml_node_t {
-    char* name;
-    char* text;
+    const_str name;
+    const_str text;
 
     neko_hash_table(u64, neko_xml_attribute_t) attributes;
     neko_dyn_array(struct neko_xml_node_t) children;
@@ -337,9 +351,7 @@ typedef struct neko_aseprite {
     s32 width;
     s32 height;
 
-    // #ifdef NEKO_DEBUG
     u64 mem_used;
-    // #endif
 } neko_aseprite;
 
 typedef struct neko_aseprite_renderer {
@@ -682,17 +694,19 @@ NEKO_FORCE_INLINE neko_color_t s_color(ase_t* ase, void* src, int index) {
     return result;
 }
 
-typedef struct neko_image_t {
+struct neko_image {
     int w;
     int h;
     union {
         unsigned char* pix;
         ase_t* ase;
     };
-} neko_image_t;
 
-NEKO_API_DECL neko_image_t neko_image_load(const_str path);
-NEKO_API_DECL neko_image_t neko_image_load_mem(const void* mem_data, size_t mem_size, const_str vpath);
-NEKO_API_DECL void neko_image_free(neko_image_t img);
+    void load(const_str path);
+    void load_mem(const void* mem_data, size_t mem_size, const_str vpath);
+    void free();
+};
+
+typedef struct neko_image neko_image;
 
 #endif  // NEKO_ASSET_H

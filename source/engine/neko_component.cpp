@@ -226,7 +226,8 @@ void neko_aseprite_renderer_set_frame(neko_aseprite_renderer *sr, s32 frame) {
 }
 
 neko_texture_t neko_aseprite_simple(const void *memory, int size) {
-    neko_image_t image = neko_image_load_mem(memory, size, "simple.ase");
+    neko_image image{};
+    image.load_mem(memory, size, "simple.ase");
     NEKO_ASSERT(image.w != 0 && image.h != 0, "good image");
     ase_t *ase = image.ase;
     neko_render_texture_desc_t t_desc = {};
@@ -265,13 +266,14 @@ void neko_fontbatch_init(neko_fontbatch_t *font_batch, const_str font_vs, const_
 
     neko_render_batch_send_matrix(&font_batch->font_shader, "u_mvp", font_batch->font_projection);
 
-    neko_image_t img = neko_image_load(img_path);
+    neko_image img{};
+    img.load(img_path);
     font_batch->font_tex_id = generate_texture_handle(img.pix, img.w, img.h, NULL);
     font_batch->font = neko_font_load_bmfont(font_batch->font_tex_id, content, content_size, 0);
     if (font_batch->font->atlas_w != img.w || font_batch->font->atlas_h != img.h) {
         NEKO_WARN("failed to load font");
     }
-    neko_image_free(img);
+    img.free();
 
     font_batch->font_verts = (neko_font_vert_t *)neko_safe_malloc(sizeof(neko_font_vert_t) * 1024 * 2);
 }
@@ -383,16 +385,18 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
         tileset.width = w;
         tileset.height = h;
 
-        neko_free(tex_data);
+        neko_safe_free(tex_data);
 
         neko_dyn_array_push(map->tilesets, tileset);
+
+        neko_xml_free(tileset_doc);
     }
 
     for (neko_xml_node_iter_t it = neko_xml_new_node_child_iter(map_node, "layer"); neko_xml_node_iter_next(&it);) {
         neko_xml_node_t *layer_node = it.current;
 
         layer_t layer = {0};
-        layer.tint = (neko_color_t){255, 255, 255, 255};
+        layer.tint = neko_color_t{255, 255, 255, 255};
 
         layer.width = (u32)neko_xml_find_attribute(layer_node, "width")->value.number;
         layer.height = (u32)neko_xml_find_attribute(layer_node, "height")->value.number;
@@ -453,7 +457,7 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
         neko_xml_node_t *object_group_node = it.current;
 
         object_group_t object_group = {0};
-        object_group.color = (neko_color_t){255, 255, 255, 255};
+        object_group.color = neko_color_t{255, 255, 255, 255};
 
         // 对象组名字
         neko_xml_attribute_t *name_attrib = neko_xml_find_attribute(object_group_node, "name");
@@ -464,7 +468,7 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
             // u32 *cols = (u32 *)object_group.color.rgba;
             //*cols = (u32)strtol(hexstring + 1, NULL, 16);
             // object_group.color.a = 128;
-            neko_println("objectgroup: %s", namestring);
+            NEKO_TRACE("objectgroup: %s", namestring);
         } else {
         }
 
@@ -525,7 +529,7 @@ void neko_tiled_unload(map_t *map) {
     PROFILE_FUNC();
 
     for (u32 i = 0; i < neko_dyn_array_size(map->tilesets); i++) {
-        neko_render_texture_destroy(map->tilesets[i].texture);
+        neko_render_texture_fini(map->tilesets[i].texture);
     }
 
     for (u32 i = 0; i < neko_dyn_array_size(map->layers); i++) {
@@ -566,7 +570,7 @@ void neko_tiled_render_init(neko_command_buffer_t *cb, neko_tiled_renderer *rend
 
     neko_render_uniform_layout_desc_t u_desc_layout = {.type = R_UNIFORM_SAMPLER2D};
 
-    neko_render_uniform_desc_t u_desc = (neko_render_uniform_desc_t){
+    neko_render_uniform_desc_t u_desc = neko_render_uniform_desc_t{
             .stage = R_SHADER_STAGE_FRAGMENT,
             .name = "batch_texture",
             .layout = &u_desc_layout,
@@ -574,30 +578,29 @@ void neko_tiled_render_init(neko_command_buffer_t *cb, neko_tiled_renderer *rend
 
     renderer->u_batch_tex = neko_render_uniform_create(u_desc);
 
-    renderer->shader = neko_render_shader_create((neko_render_shader_desc_t){.sources =
-                                                                                     (neko_render_shader_source_desc_t[]){
-                                                                                             {.type = R_SHADER_STAGE_VERTEX, .source = vert_src},
-                                                                                             {.type = R_SHADER_STAGE_FRAGMENT, .source = frag_src},
-                                                                                     },
-                                                                             .size = 2 * sizeof(neko_render_shader_source_desc_t),
-                                                                             .name = "tiled_sprite_shader"});
+    neko_render_shader_source_desc_t shader_src_des[] = {
+            {.type = R_SHADER_STAGE_VERTEX, .source = vert_src},
+            {.type = R_SHADER_STAGE_FRAGMENT, .source = frag_src},
+    };
+
+    renderer->shader = neko_render_shader_create(neko_render_shader_desc_t{.sources = shader_src_des, .size = 2 * sizeof(neko_render_shader_source_desc_t), .name = "tiled_sprite_shader"});
 
     neko_render_uniform_layout_desc_t u_cam_des = {.type = R_UNIFORM_MAT4};
-    renderer->u_camera = neko_render_uniform_create((neko_render_uniform_desc_t){.name = "tiled_sprite_camera", .layout = &u_cam_des});
+    renderer->u_camera = neko_render_uniform_create(neko_render_uniform_desc_t{.name = "tiled_sprite_camera", .layout = &u_cam_des});
 
-    renderer->pip = neko_render_pipeline_create((neko_render_pipeline_desc_t){.blend = {.func = R_BLEND_EQUATION_ADD, .src = R_BLEND_MODE_SRC_ALPHA, .dst = R_BLEND_MODE_ONE_MINUS_SRC_ALPHA},
-                                                                              .raster = {.shader = renderer->shader, .index_buffer_element_size = sizeof(uint32_t)},
-                                                                              .layout = {.attrs =
-                                                                                                 (neko_render_vertex_attribute_desc_t[]){
-                                                                                                         {.name = "position", .format = R_VERTEX_ATTRIBUTE_FLOAT2},
-                                                                                                         {.name = "uv", .format = R_VERTEX_ATTRIBUTE_FLOAT2},
-                                                                                                         {
-                                                                                                                 .name = "color",
-                                                                                                                 .format = R_VERTEX_ATTRIBUTE_FLOAT4,
-                                                                                                         },
-                                                                                                         {.name = "use_texture", .format = R_VERTEX_ATTRIBUTE_FLOAT},
-                                                                                                 },
-                                                                                         .size = 4 * sizeof(neko_render_vertex_attribute_desc_t)}});
+    neko_render_vertex_attribute_desc_t vertex_attr_des[] = {
+            {.name = "position", .format = R_VERTEX_ATTRIBUTE_FLOAT2},
+            {.name = "uv", .format = R_VERTEX_ATTRIBUTE_FLOAT2},
+            {
+                    .name = "color",
+                    .format = R_VERTEX_ATTRIBUTE_FLOAT4,
+            },
+            {.name = "use_texture", .format = R_VERTEX_ATTRIBUTE_FLOAT},
+    };
+
+    renderer->pip = neko_render_pipeline_create(neko_render_pipeline_desc_t{.blend = {.func = R_BLEND_EQUATION_ADD, .src = R_BLEND_MODE_SRC_ALPHA, .dst = R_BLEND_MODE_ONE_MINUS_SRC_ALPHA},
+                                                                            .raster = {.shader = renderer->shader, .index_buffer_element_size = sizeof(uint32_t)},
+                                                                            .layout = {.attrs = vertex_attr_des, .size = 4 * sizeof(neko_render_vertex_attribute_desc_t)}});
 }
 
 void neko_tiled_render_deinit(neko_tiled_renderer *renderer) {
@@ -615,7 +618,7 @@ void neko_tiled_render_deinit(neko_tiled_renderer *renderer) {
 
     neko_hash_table_free(renderer->quad_table);
 
-    neko_render_shader_destroy(renderer->shader);
+    neko_render_shader_fini(renderer->shader);
     // neko_command_buffer_free(cb);
 }
 
@@ -642,14 +645,17 @@ void neko_tiled_render_flush(neko_command_buffer_t *cb, neko_tiled_renderer *ren
     neko_render_bind_image_buffer_desc_t imgb_des = {renderer->batch_texture, 0, R_ACCESS_READ_ONLY};
 
     // clang-format off
+
+    neko_render_bind_uniform_desc_t uniform_des[2] = {
+        {.uniform = renderer->u_camera, .data = &renderer->camera_mat},
+        {.uniform = renderer->u_batch_tex, .data = &renderer->batch_texture}
+    };
+
     neko_render_bind_desc_t binds = {
     .vertex_buffers = {.desc =&vb_des},
     .index_buffers = {.desc = &ib_des},
     .uniforms = {
-        .desc = (neko_render_bind_uniform_desc_t[2]){
-            {.uniform = renderer->u_camera, .data = &renderer->camera_mat},
-            {.uniform = renderer->u_batch_tex, .data = &renderer->batch_texture}
-        },
+        .desc = uniform_des,
         .size = 2 * sizeof(neko_render_bind_uniform_desc_t)
     },
     .image_buffers = {
@@ -661,7 +667,7 @@ void neko_tiled_render_flush(neko_command_buffer_t *cb, neko_tiled_renderer *ren
     neko_render_pipeline_bind(cb, renderer->pip);
     neko_render_apply_bindings(cb, &binds);
 
-    neko_render_draw(cb, (neko_render_draw_desc_t){.start = 0, .count = renderer->quad_count * IND_PER_QUAD});
+    neko_render_draw(cb, neko_render_draw_desc_t{.start = 0, .count = renderer->quad_count * IND_PER_QUAD});
 
     // neko_check_gl_error();
 
@@ -674,8 +680,8 @@ void neko_tiled_render_push(neko_command_buffer_t *cb, neko_tiled_renderer *rend
 
     // 如果这个quad的tileset还不存在于quad_table中则插入一个
     // tileset_id为quad_table的键值
-    if (!neko_hash_table_exists(renderer->quad_table, quad.tileset_id))                              //
-        neko_hash_table_insert(renderer->quad_table, quad.tileset_id, (neko_tiled_quad_list_t){0});  //
+    if (!neko_hash_table_exists(renderer->quad_table, quad.tileset_id))                            //
+        neko_hash_table_insert(renderer->quad_table, quad.tileset_id, neko_tiled_quad_list_t{0});  //
 
     //
     neko_tiled_quad_list_t *quad_list = neko_hash_table_getp(renderer->quad_table, quad.tileset_id);
@@ -754,16 +760,16 @@ void neko_tiled_render_draw(neko_command_buffer_t *cb, neko_tiled_renderer *rend
 
             neko_render_vertex_buffer_request_update(
                     cb, renderer->vb,
-                    (neko_render_vertex_buffer_desc_t){.data = verts,
-                                                       .size = VERTS_PER_QUAD * FLOATS_PER_VERT * sizeof(f32),
-                                                       .usage = R_BUFFER_USAGE_DYNAMIC,
-                                                       .update = {.type = R_BUFFER_UPDATE_SUBDATA, .offset = renderer->quad_count * VERTS_PER_QUAD * FLOATS_PER_VERT * sizeof(f32)}});
+                    neko_render_vertex_buffer_desc_t{.data = verts,
+                                                     .size = VERTS_PER_QUAD * FLOATS_PER_VERT * sizeof(f32),
+                                                     .usage = R_BUFFER_USAGE_DYNAMIC,
+                                                     .update = {.type = R_BUFFER_UPDATE_SUBDATA, .offset = renderer->quad_count * VERTS_PER_QUAD * FLOATS_PER_VERT * sizeof(f32)}});
 
             neko_render_index_buffer_request_update(cb, renderer->ib,
-                                                    (neko_render_index_buffer_desc_t){.data = indices,
-                                                                                      .size = IND_PER_QUAD * sizeof(u32),
-                                                                                      .usage = R_BUFFER_USAGE_DYNAMIC,
-                                                                                      .update = {.type = R_BUFFER_UPDATE_SUBDATA, .offset = renderer->quad_count * IND_PER_QUAD * sizeof(u32)}});
+                                                    neko_render_index_buffer_desc_t{.data = indices,
+                                                                                    .size = IND_PER_QUAD * sizeof(u32),
+                                                                                    .usage = R_BUFFER_USAGE_DYNAMIC,
+                                                                                    .update = {.type = R_BUFFER_UPDATE_SUBDATA, .offset = renderer->quad_count * IND_PER_QUAD * sizeof(u32)}});
 
             renderer->quad_count++;
 
@@ -785,7 +791,7 @@ void neko_tiled_render_draw(neko_command_buffer_t *cb, neko_tiled_renderer *rend
 
 using namespace neko;
 
-static bool layer_from_json(ldtk_map_layer *layer, JSON *json, bool *ok, arena *arena, string filepath, hashmap<neko_image_t> *images) {
+static bool layer_from_json(ldtk_map_layer *layer, JSON *json, bool *ok, arena *arena, string filepath, hashmap<neko_image> *images) {
     PROFILE_FUNC();
 
     layer->identifier = arena->bump_string(json->lookup_string("__identifier", ok));
@@ -811,14 +817,14 @@ static bool layer_from_json(ldtk_map_layer *layer, JSON *json, bool *ok, arena *
 
         u64 key = fnv1a(string(sb));
 
-        neko_image_t *img = images->get(key);
+        neko_image *img = images->get(key);
         if (img != nullptr) {
             layer->image = *img;
         } else {
-            neko_image_t create_img = {};
+            neko_image create_img = {};
             // bool success = create_img.load(string(sb), false);
 
-            create_img = neko_image_load(string(sb).data);
+            create_img.load(string(sb).data);
 
             if (!create_img.w) {
                 return false;
@@ -908,7 +914,7 @@ static bool layer_from_json(ldtk_map_layer *layer, JSON *json, bool *ok, arena *
     return true;
 }
 
-static bool level_from_json(ldtk_map_level *level, JSON *json, bool *ok, arena *arena, string filepath, hashmap<neko_image_t> *images) {
+static bool level_from_json(ldtk_map_level *level, JSON *json, bool *ok, arena *arena, string filepath, hashmap<neko_image> *images) {
     PROFILE_FUNC();
 
     level->identifier = arena->bump_string(json->lookup_string("identifier", ok));
@@ -958,13 +964,13 @@ bool ldtk_map::load(string filepath) {
     }
 
     neko::arena arena = {};
-    hashmap<neko_image_t> images = {};
+    hashmap<neko_image> images = {};
     bool created = false;
     neko_defer({
         if (!created) {
             for (auto [k, v] : images) {
                 // v->trash();
-                neko_image_free(*v);
+                (*v).free();
             }
             images.trash();
             arena.trash();
@@ -1005,7 +1011,7 @@ bool ldtk_map::load(string filepath) {
 void ldtk_map::trash() {
     for (auto [k, v] : images) {
         // v->trash();
-        neko_image_free(*v);
+        (*v).free();
     }
     images.trash();
 

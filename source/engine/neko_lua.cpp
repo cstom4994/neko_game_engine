@@ -1150,7 +1150,7 @@ static int neko_luabind_call_entry(lua_State *L) {
 
     if (ret_ptr + ret_size > LUAA_RETURN_STACK_SIZE) {
         ret_heap = true;
-        ret_data = malloc(ret_size);
+        ret_data = neko_safe_malloc(ret_size);
         if (ret_data == NULL) {
             lua_pushfstring(L, "neko_luabind_call: Out of memory!");
             lua_error(L);
@@ -1160,10 +1160,10 @@ static int neko_luabind_call_entry(lua_State *L) {
 
     if (arg_ptr + arg_size > LUAA_ARGUMENT_STACK_SIZE) {
         arg_heap = true;
-        arg_data = malloc(arg_size);
+        arg_data = neko_safe_malloc(arg_size);
         if (arg_data == NULL) {
             if (ret_heap) {
-                free(ret_data);
+                neko_safe_free(ret_data);
             }
             lua_pushfstring(L, "neko_luabind_call: Out of memory!");
             lua_error(L);
@@ -1221,14 +1221,14 @@ static int neko_luabind_call_entry(lua_State *L) {
         lua_pushinteger(L, ret_ptr);
         lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "call_ret_ptr");
     } else {
-        free(ret_data);
+        neko_safe_free(ret_data);
     }
 
     if (!arg_heap) {
         lua_pushinteger(L, arg_ptr);
         lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "argument_ptr");
     } else {
-        free(arg_data);
+        neko_safe_free(arg_data);
     }
 
     return count;
@@ -4108,15 +4108,15 @@ void ScriptObject::detach_pointer(ScriptObjectEntry *entry) {
         }
     }
 
-    free(entry);
+    neko_safe_free(entry);
 }
 
 ScriptObjectEntry *ScriptObject::attach_pointer(ScriptObject **ptr) {
     if (obj_last_entry == NULL) {
-        obj_last_entry = reinterpret_cast<ScriptObjectEntry *>(malloc(sizeof(ScriptObjectEntry)));
+        obj_last_entry = reinterpret_cast<ScriptObjectEntry *>(neko_safe_malloc(sizeof(ScriptObjectEntry)));
         memset(obj_last_entry, 0, sizeof(ScriptObjectEntry));
     } else {
-        ScriptObjectEntry *next = reinterpret_cast<ScriptObjectEntry *>(malloc(sizeof(ScriptObjectEntry)));
+        ScriptObjectEntry *next = reinterpret_cast<ScriptObjectEntry *>(neko_safe_malloc(sizeof(ScriptObjectEntry)));
         memset(next, 0, sizeof(ScriptObjectEntry));
         obj_last_entry->next = next;
         next->prev = obj_last_entry;
@@ -4136,7 +4136,7 @@ void ScriptObject::release_pointers() {
 
         ScriptObject **ptr = entry->ptr;
         *ptr = NULL;
-        free(entry);
+        neko_safe_free(entry);
 
         entry = prev;
     }
@@ -4324,7 +4324,7 @@ int vfs_lua_loader(lua_State *L) {
     u8* data;
     u32 data_size;
 
-    int result = neko_pack_item_data(&ENGINE_INTERFACE()->pack, path.c_str(), (const u8**)&data, &data_size);
+    int result = neko_pak_item_data(&ENGINE_INTERFACE()->pack, path.c_str(), (const u8**)&data, &data_size);
     if (result == 0) {
         if (luaL_loadbuffer(L, (char*)data, data_size, name) != LUA_OK) {
             lua_pop(L, 1);
@@ -4332,7 +4332,7 @@ int vfs_lua_loader(lua_State *L) {
             neko_println("loaded:%s", path.c_str());
         }
 
-        neko_pack_item_free(&ENGINE_INTERFACE()->pack, data);
+        neko_pak_item_free(&ENGINE_INTERFACE()->pack, data);
     }
 #endif
 

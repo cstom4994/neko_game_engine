@@ -6,6 +6,7 @@
 #include <mutex>
 
 #include "engine/neko.hpp"
+#include "engine/neko_api.hpp"
 #include "engine/neko_engine.h"
 #include "engine/neko_imgui.hpp"
 #include "engine/neko_lua.h"
@@ -850,60 +851,6 @@ void help(int argc, char **argv) {
     }
 }
 
-//=============================
-// Module loader
-//=============================
-
-#if (defined(_WIN32) || defined(_WIN64))
-#define NEKO_DLL_LOADER_WIN_MAC_OTHER(win_def, mac_def, other_def) win_def
-#define NEKO_DLL_LOADER_WIN_OTHER(win_def, other_def) win_def
-#elif defined(__APPLE__)
-#define NEKO_DLL_LOADER_WIN_MAC_OTHER(win_def, mac_def, other_def) mac_def
-#define NEKO_DLL_LOADER_WIN_OTHER(win_def, other_def) other_def
-#else
-#define NEKO_DLL_LOADER_WIN_MAC_OTHER(win_def, mac_def, other_def) other_def
-#define NEKO_DLL_LOADER_WIN_OTHER(win_def, other_def) other_def
-#endif
-
-neko_dynlib neko_module_open(const_str name) {
-    neko_dynlib module;
-    char filename[64] = {};
-    const_str prefix = NEKO_DLL_LOADER_WIN_OTHER("", "lib");
-    const_str suffix = NEKO_DLL_LOADER_WIN_MAC_OTHER(".dll", ".dylib", ".so");
-    neko_snprintf(filename, 64, "%s%s%s", prefix, name, suffix);
-    module.hndl = (void *)neko_pf_library_load(filename);
-    return module;
-}
-
-void neko_module_close(neko_dynlib lib) { neko_pf_library_unload(lib.hndl); }
-
-void *neko_module_get_symbol(neko_dynlib lib, const_str symbol_name) {
-    void *symbol = (void *)neko_pf_library_proc_address(lib.hndl, symbol_name);
-    return symbol;
-}
-
-bool neko_module_has_symbol(neko_dynlib lib, const_str symbol_name) {
-    if (!lib.hndl || !symbol_name) return false;
-    return neko_pf_library_proc_address(lib.hndl, symbol_name) != NULL;
-}
-
-#if 0
-static std::string get_error_description() noexcept {
-#if (defined(_WIN32) || defined(_WIN64))
-    constexpr const size_t BUF_SIZE = 512;
-    const auto error_code = GetLastError();
-    if (!error_code) return "No error reported by GetLastError";
-    char description[BUF_SIZE];
-    const auto lang = MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US);
-    const DWORD length = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, error_code, lang, description, BUF_SIZE, nullptr);
-    return (length == 0) ? "Unknown error (FormatMessage failed)" : description;
-#else
-    const auto description = dlerror();
-    return (description == nullptr) ? "No error reported by dlerror" : description;
-#endif
-}
-#endif
-
 namespace neko::wtf8 {
 std::wstring u2w(std::string_view str) noexcept {
     if (str.empty()) {
@@ -1454,24 +1401,13 @@ static bool vfs_mount_type(std::string fsname, string mount) {
     return true;
 }
 
-// string os_program_path2() {
-//     static char s_buf[2048];
-//     DWORD len = GetModuleFileNameA(NULL, s_buf, NEKO_ARR_SIZE(s_buf));
-//     for (s32 i = 0; s_buf[i]; i++) {
-//         if (s_buf[i] == '\\') {
-//             s_buf[i] = '/';
-//         }
-//     }
-//     return {s_buf, (u64)len};
-// }
-
 mount_result vfs_mount(const_str fsname, const_str filepath) {
 
     mount_result res = {};
 
 #ifdef __EMSCRIPTEN__
     string mount_dir = web_mount_dir();
-    neko_defer(free(mount_dir.data));
+    neko_defer(neko_safe_free(mount_dir.data));
 
     if (mount_dir.ends_with(".zip")) {
         web_load_zip();
@@ -2418,7 +2354,7 @@ void sema::trash() { CloseHandle(handle); }
 void sema::post(int n) { ReleaseSemaphore(handle, n, nullptr); }
 void sema::wait() { WaitForSingleObjectEx(handle, INFINITE, false); }
 
-void thread::make(ThreadProc fn, void *udata) {
+void thread::make(thread_proc fn, void *udata) {
     DWORD id = 0;
     HANDLE handle = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)fn, udata, 0, &id);
     ptr = (void *)handle;
@@ -2886,7 +2822,7 @@ string os_program_dir() {
 string os_program_path() {
     static char s_buf[2048];
 
-    DWORD len = GetModuleFileNameA(NULL, s_buf, array_size(s_buf));
+    DWORD len = GetModuleFileNameA(NULL, s_buf, NEKO_ARR_SIZE(s_buf));
 
     for (s32 i = 0; s_buf[i]; i++) {
         if (s_buf[i] == '\\') {
@@ -2898,12 +2834,12 @@ string os_program_path() {
 }
 
 u64 os_file_modtime(const char *filename) {
-    HANDLE handle = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    HANDLE handle = CreateFileA(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
 
     if (handle == INVALID_HANDLE_VALUE) {
         return 0;
     }
-    defer(CloseHandle(handle));
+    neko_defer(CloseHandle(handle));
 
     FILETIME create = {};
     FILETIME access = {};
@@ -2966,6 +2902,60 @@ void os_sleep(u32 ms) {}
 void os_yield() {}
 
 #endif  // NEKO_PF_WEB
+
+//=============================
+// dylib loader
+//=============================
+
+#if (defined(_WIN32) || defined(_WIN64))
+#define NEKO_DLL_LOADER_WIN_MAC_OTHER(win_def, mac_def, other_def) win_def
+#define NEKO_DLL_LOADER_WIN_OTHER(win_def, other_def) win_def
+#elif defined(__APPLE__)
+#define NEKO_DLL_LOADER_WIN_MAC_OTHER(win_def, mac_def, other_def) mac_def
+#define NEKO_DLL_LOADER_WIN_OTHER(win_def, other_def) other_def
+#else
+#define NEKO_DLL_LOADER_WIN_MAC_OTHER(win_def, mac_def, other_def) other_def
+#define NEKO_DLL_LOADER_WIN_OTHER(win_def, other_def) other_def
+#endif
+
+neko_dynlib neko_module_open(const_str name) {
+    neko_dynlib module;
+    char filename[64] = {};
+    const_str prefix = NEKO_DLL_LOADER_WIN_OTHER("", "lib");
+    const_str suffix = NEKO_DLL_LOADER_WIN_MAC_OTHER(".dll", ".dylib", ".so");
+    neko_snprintf(filename, 64, "%s%s%s", prefix, name, suffix);
+    module.hndl = (void *)neko_pf_library_load(filename);
+    return module;
+}
+
+void neko_module_close(neko_dynlib lib) { neko_pf_library_unload(lib.hndl); }
+
+void *neko_module_get_symbol(neko_dynlib lib, const_str symbol_name) {
+    void *symbol = (void *)neko_pf_library_proc_address(lib.hndl, symbol_name);
+    return symbol;
+}
+
+bool neko_module_has_symbol(neko_dynlib lib, const_str symbol_name) {
+    if (!lib.hndl || !symbol_name) return false;
+    return neko_pf_library_proc_address(lib.hndl, symbol_name) != NULL;
+}
+
+#if 0
+static std::string get_error_description() noexcept {
+#if (defined(_WIN32) || defined(_WIN64))
+    constexpr const size_t BUF_SIZE = 512;
+    const auto error_code = GetLastError();
+    if (!error_code) return "No error reported by GetLastError";
+    char description[BUF_SIZE];
+    const auto lang = MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US);
+    const DWORD length = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, error_code, lang, description, BUF_SIZE, nullptr);
+    return (length == 0) ? "Unknown error (FormatMessage failed)" : description;
+#else
+    const auto description = dlerror();
+    return (description == nullptr) ? "No error reported by dlerror" : description;
+#endif
+}
+#endif
 
 struct Profile {
     queue<TraceEvent> events;
@@ -3045,13 +3035,13 @@ NEKO_API_DECL void neko_tm_init(void) {
     memset(&g_tm, 0, sizeof(g_tm));
     g_tm.initialized = 0xABCDEF01;
 #if defined(_WIN32)
-    QueryPerformanceFrequency(&_stm.freq);
-    QueryPerformanceCounter(&_stm.start);
+    QueryPerformanceFrequency(&g_tm.freq);
+    QueryPerformanceCounter(&g_tm.start);
 #elif defined(__APPLE__) && defined(__MACH__)
-    mach_timebase_info(&_stm.timebase);
-    _stm.start = mach_absolute_time();
+    mach_timebase_info(&g_tm.timebase);
+    g_tm.start = mach_absolute_time();
 #elif defined(__EMSCRIPTEN__)
-    _stm.start = emscripten_get_now();
+    g_tm.start = emscripten_get_now();
 #else
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -3059,18 +3049,26 @@ NEKO_API_DECL void neko_tm_init(void) {
 #endif
 }
 
+#if defined(_WIN32) || (defined(__APPLE__) && defined(__MACH__))
+int64_t __int64_muldiv(int64_t value, int64_t numer, int64_t denom) {
+    int64_t q = value / denom;
+    int64_t r = value % denom;
+    return q * numer + r * numer / denom;
+}
+#endif
+
 NEKO_API_DECL uint64_t neko_tm_now(void) {
     NEKO_ASSERT(g_tm.initialized == 0xABCDEF01);
     uint64_t now;
 #if defined(_WIN32)
     LARGE_INTEGER qpc_t;
     QueryPerformanceCounter(&qpc_t);
-    now = (uint64_t)_stm_int64_muldiv(qpc_t.QuadPart - _stm.start.QuadPart, 1000000000, _stm.freq.QuadPart);
+    now = (uint64_t)__int64_muldiv(qpc_t.QuadPart - g_tm.start.QuadPart, 1000000000, g_tm.freq.QuadPart);
 #elif defined(__APPLE__) && defined(__MACH__)
-    const uint64_t mach_now = mach_absolute_time() - _stm.start;
-    now = (uint64_t)_stm_int64_muldiv((int64_t)mach_now, (int64_t)_stm.timebase.numer, (int64_t)_stm.timebase.denom);
+    const uint64_t mach_now = mach_absolute_time() - g_tm.start;
+    now = (uint64_t)_stm_int64_muldiv((int64_t)mach_now, (int64_t)g_tm.timebase.numer, (int64_t)g_tm.timebase.denom);
 #elif defined(__EMSCRIPTEN__)
-    double js_now = emscripten_get_now() - _stm.start;
+    double js_now = emscripten_get_now() - g_tm.start;
     now = (uint64_t)(js_now * 1000000.0);
 #else
     struct timespec ts;
@@ -3128,6 +3126,7 @@ void __neko_cvar_gui_internal(T &&obj, int depth = 0, const char *fieldName = ""
             }
         };
 
+#define CVAR_TYPES() bool, s32, f32, f32 *
         std::apply([&](auto &&...args) { (ff(fieldName, obj, args), ...); }, std::tuple<CVAR_TYPES()>());
     }
 }

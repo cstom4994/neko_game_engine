@@ -118,6 +118,18 @@ int luax_msgh(lua_State* L) {
     return 0;
 }
 
+void luax_get(lua_State* L, const_str tb, const_str field) {
+    lua_getglobal(L, tb);
+    lua_getfield(L, -1, field);
+    lua_remove(L, -2);
+}
+
+void luax_pcall(lua_State* L, s32 args, s32 results) {
+    if (lua_pcall(L, args, results, 1) != LUA_OK) {
+        lua_pop(L, 1);
+    }
+}
+
 namespace lua2struct {
 template <>
 neko_vec2 unpack<neko_vec2>(lua_State* L, int idx) {
@@ -169,7 +181,7 @@ static void neko_tolua_add_extra(lua_State* L, const_str value) {
     lua_pop(L, 1);
 };
 
-NEKO_API_DECL void neko_tolua_boot(neko_tolua_boot_opt opt) {
+NEKO_API_DECL void neko_tolua_boot(const_str f, const_str output) {
 
     lua_State* L = luaL_newstate();
     luaL_openlibs(L);
@@ -188,8 +200,8 @@ NEKO_API_DECL void neko_tolua_boot(neko_tolua_boot_opt opt) {
         lua_setglobal(L, "neko_tolua_flags");
         t = lua_gettop(L);
 
-        neko_tolua_setfield(L, t, "f", opt.f.c_str());
-        neko_tolua_setfield(L, t, "o", opt.output.c_str());
+        neko_tolua_setfield(L, t, "f", f);
+        neko_tolua_setfield(L, t, "o", output);
 
         // disable automatic exporting of destructors for classes
         // that have constructors (for compatibility with tolua5)

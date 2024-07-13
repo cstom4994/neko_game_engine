@@ -595,7 +595,7 @@ function npcRenderSystem:process(e, dt)
 
     SAFE_UD(p):render(render_ase, direction, p.scale)
 
-    if neko_game.cvar.show_physics_debug then
+    if neko.conf.cvar.show_physics_debug then
         neko.idraw_rectv(render_ase, {
             x = obj.w * p.scale,
             y = obj.h * p.scale
@@ -631,7 +631,7 @@ function playerRenderSystem:process(e, dt)
 
     SAFE_UD(p):render(render_ase, direction, p.scale)
 
-    if neko_game.cvar.show_physics_debug then
+    if neko.conf.cvar.show_physics_debug then
         neko.idraw_rectv(render_ase, {
             x = obj.w * p.scale,
             y = obj.h * p.scale
@@ -1005,8 +1005,8 @@ M.sub_shutdown = function()
 
     -- neko.filewatch_stop(gd.filewatch, "/maps")
 
-    -- neko.filewatch_destory(gd.filewatch)
-    -- neko.filesystem_destory(gd.assetsys)
+    -- neko.filewatch_fini(gd.filewatch)
+    -- neko.filesystem_fini(gd.assetsys)
 
     -- neko.audio_unload(test_audio)
 
@@ -1016,9 +1016,9 @@ M.sub_shutdown = function()
 
     neko.sprite_batch_end(gd.test_batch)
 
-    neko.render_renderpass_destroy(gd.main_rp)
-    neko.render_texture_destroy(gd.main_rt)
-    neko.render_framebuffer_destroy(gd.main_fbo)
+    neko.render_renderpass_fini(gd.main_rp)
+    neko.render_texture_fini(gd.main_rt)
+    neko.render_framebuffer_fini(gd.main_fbo)
 end
 
 gd.tick = 0
@@ -1026,7 +1026,7 @@ gd.tick = 0
 M.sub_pre_update = function()
     gd.tick = gd.tick + 1
 
-    if neko_game.cvar.enable_hotload then
+    if neko.conf.cvar.enable_hotload then
         if (gd.tick & 255) == 0 then
             -- neko.filewatch_update(gd.filewatch)
             -- neko.filewatch_notify(gd.filewatch)
@@ -1211,7 +1211,7 @@ M.sub_render = function()
 
     -- neko.draw_text(50.0, 50.0, "中文渲染测试 日本語レンダリングテスト Hello World! ", 3.0)
 
-    if neko_game.cvar.show_physics_debug then
+    if neko.conf.cvar.show_physics_debug then
         phy_debug_draw()
         draw_blocks()
     end
@@ -1269,7 +1269,7 @@ M.test_update = function()
     end
 
     if neko_key_pressed("NEKO_KEYCODE_F2") then
-        neko_game.cvar.show_physics_debug = not neko_game.cvar.show_physics_debug
+        neko.conf.cvar.show_physics_debug = not neko.conf.cvar.show_physics_debug
     end
 
     -- neko_text("NekoEngine 内部测试版本", default_font, 20, win_h - 20)

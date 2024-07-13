@@ -20,7 +20,7 @@ using ldtk_map_int = unsigned char;
 
 struct ldtk_map_layer {
     neko::string identifier;
-    neko_image_t image;
+    neko_image image;
     neko::slice<ldtk_map_tile> tiles;
     neko::slice<ldtk_map_ent> entities;
     s32 c_width;
@@ -69,7 +69,7 @@ class b2World;
 struct ldtk_map {
     neko::arena arena;
     neko::slice<ldtk_map_level> levels;
-    neko::hashmap<neko_image_t> images;  // key: filepath
+    neko::hashmap<neko_image> images;  // key: filepath
     neko::hashmap<b2Body *> bodies;      // key: layer name
     neko::hashmap<ldtk_map_node> graph;  // key: x, y
     neko::priority_queue<ldtk_map_node *> frontier;

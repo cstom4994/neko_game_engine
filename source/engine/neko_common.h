@@ -5,18 +5,16 @@
 
 #include "neko.h"
 
-struct hashtable_internal_slot_t {
-    u32 key_hash;
-    int item_index;
-    int base_count;
-};
-
 struct neko_hashtable_t {
     void* memctx;
     int count;
     int item_size;
 
-    struct hashtable_internal_slot_t* slots;
+    struct slot_t {
+        u32 key_hash;
+        int item_index;
+        int base_count;
+    }* slots;
     int slot_capacity;
 
     u64* items_key;
@@ -85,10 +83,10 @@ NEKO_FORCE_INLINE u32 neko_utf8_to_unicode(const_str utf8, s32* bytes_read) {
     return unicode;
 }
 
-NEKO_FORCE_INLINE b8 neko_token_is_end_of_line(char c) { return (c == '\n' || c == '\r'); }
-NEKO_FORCE_INLINE b8 neko_token_char_is_white_space(char c) { return (c == '\t' || c == ' ' || neko_token_is_end_of_line(c)); }
-NEKO_FORCE_INLINE b8 neko_token_char_is_alpha(char c) { return ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')); }
-NEKO_FORCE_INLINE b8 neko_token_char_is_numeric(char c) { return (c >= '0' && c <= '9'); }
+NEKO_FORCE_INLINE bool neko_token_is_end_of_line(char c) { return (c == '\n' || c == '\r'); }
+NEKO_FORCE_INLINE bool neko_token_char_is_white_space(char c) { return (c == '\t' || c == ' ' || neko_token_is_end_of_line(c)); }
+NEKO_FORCE_INLINE bool neko_token_char_is_alpha(char c) { return ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')); }
+NEKO_FORCE_INLINE bool neko_token_char_is_numeric(char c) { return (c >= '0' && c <= '9'); }
 
 NEKO_FORCE_INLINE u32 neko_darken_color(u32 color, f32 brightness) {
     s32 a = (color >> 24) & 0xFF;

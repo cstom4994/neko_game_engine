@@ -40,6 +40,7 @@ build.bat
 compile_commands.json
 imgui.ini
 CMakeSettings.json
+sandbox.raddbg
 /profile.json
 /sandbox
 

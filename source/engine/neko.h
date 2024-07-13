@@ -62,7 +62,6 @@
 #else
 #ifdef __cplusplus
 #define NEKO_API_EXTERN extern "C"
-#define NEKO_CPP_SRC
 #else
 #define NEKO_API_EXTERN extern
 #endif
@@ -75,19 +74,9 @@
 // Defines
 ========================*/
 
-#if defined(NEKO_PF_LINUX)
 #define NEKO_INLINE inline
-#elif defined(NEKO_PF_APPLE) || defined(NEKO_PF_WIN)
-#define NEKO_INLINE inline
-#endif
-
-#ifndef NEKO_STATIC
 #define NEKO_STATIC static
-#endif
-
-#ifndef NEKO_STATIC_INLINE
 #define NEKO_STATIC_INLINE static inline
-#endif
 
 #if (defined _WIN32 || defined _WIN64)
 #define NEKO_FORCE_INLINE NEKO_INLINE
@@ -109,20 +98,6 @@
 // C primitive types
 ============================================================*/
 
-#ifndef NEKO_CPP_SRC
-#define false 0
-#define true 1
-#endif
-
-#ifdef NEKO_CPP_SRC
-typedef bool b8;
-#else
-#ifndef __bool_true_false_are_defined
-typedef _Bool bool;
-#endif
-typedef bool b8;
-#endif
-
 typedef size_t usize;
 
 typedef uint8_t u8;
@@ -142,30 +117,21 @@ typedef uintptr_t uptr;
 
 #define u16_max UINT16_MAX
 #define u32_max UINT32_MAX
+#define u64_max UINT64_MAX
 #define s32_max INT32_MAX
 #define f32_max FLT_MAX
 #define f32_min FLT_MIN
 
 #define NEKO_ARR_SIZE(__ARR) sizeof(__ARR) / sizeof(__ARR[0])
 
-#ifdef NEKO_DEBUG
-#define NEKO_ASSERT(x, ...)                                                                                            \
-    do {                                                                                                               \
-        if (!(x)) {                                                                                                    \
-            neko_printf("assertion failed: (%s), function %s, file %s, line %d.\n", #x, __func__, __FILE__, __LINE__); \
-            NEKO_DEBUGBREAK();                                                                                         \
-        }                                                                                                              \
-    } while (0)
-#else
 #define NEKO_ASSERT(x, ...)                                                                                            \
     do {                                                                                                               \
         if (!(x)) {                                                                                                    \
             neko_printf("assertion failed: (%s), function %s, file %s, line %d.\n", #x, __func__, __FILE__, __LINE__); \
         }                                                                                                              \
     } while (0)
-#endif
 
-#if defined(NEKO_CPP_SRC)
+#if defined(__cplusplus)
 #define NEKO_DEFAULT_VAL() \
     {}
 #else

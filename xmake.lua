@@ -24,7 +24,7 @@ if is_os("windows") or is_os("macosx") or is_os("linux") then
             wchar32 = true
         }
     })
-    add_requires("miniaudio", "box2d", "enet", "flecs")
+    add_requires("miniaudio", "box2d", "enet", "flecs 3.2.11")
 else
     -- add_requires(base_libs)
 end

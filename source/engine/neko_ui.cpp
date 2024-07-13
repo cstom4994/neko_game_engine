@@ -1361,7 +1361,7 @@ NEKO_API_DECL neko_ui_style_sheet_t neko_ui_style_sheet_create(neko_ui_context_t
     return style_sheet;
 }
 
-NEKO_API_DECL void neko_ui_style_sheet_destroy(neko_ui_style_sheet_t* ss) {
+NEKO_API_DECL void neko_ui_style_sheet_fini(neko_ui_style_sheet_t* ss) {
     // Need to free all animations
     if (!ss || !ss->animations) {
         NEKO_WARN("Trying to destroy invalid style sheet");

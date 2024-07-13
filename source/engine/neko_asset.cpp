@@ -13,6 +13,9 @@
 
 // stb_image
 #define STB_IMAGE_IMPLEMENTATION
+#define STBI_MALLOC(sz) neko_safe_malloc(sz)
+#define STBI_REALLOC(p, newsz) neko_safe_realloc(p, newsz)
+#define STBI_FREE(p) neko_safe_free(p)
 #include <stb_image.h>
 
 neko_asset_t __neko_asset_handle_create_impl(u64 type_id, u32 asset_id, u32 importer_id) {
@@ -53,14 +56,14 @@ void neko_asset_manager_free(neko_asset_manager_t *am) {
 
 void *__neko_assets_getp_impl(neko_asset_manager_t *am, u64 type_id, neko_asset_t hndl) {
     if (type_id != hndl.type_id) {
-        neko_println("Warning: Type id: %zu doesn't match handle type id: %zu.", type_id, hndl.type_id);
+        NEKO_WARN("type id: %zu doesn't match handle type id: %zu.", type_id, hndl.type_id);
         NEKO_ASSERT(false);
         return NULL;
     }
 
     // Need to grab the appropriate importer based on type
     if (!neko_hash_table_key_exists(am->importers, type_id)) {
-        neko_println("Warning: Importer type %zu does not exist.", type_id);
+        NEKO_WARN("importer type %zu does not exist.", type_id);
         NEKO_ASSERT(false);
         return NULL;
     }
@@ -69,7 +72,7 @@ void *__neko_assets_getp_impl(neko_asset_manager_t *am, u64 type_id, neko_asset_
 
     // Vertify that importer id and handle importer id align
     if (imp->importer_id != hndl.importer_id) {
-        neko_println("Warning: Importer id: %zu does not match handle importer id: %zu.", imp->importer_id, hndl.importer_id);
+        NEKO_WARN("importer id: %zu does not match handle importer id: %zu.", imp->importer_id, hndl.importer_id);
         NEKO_ASSERT(false);
         return NULL;
     }
@@ -107,7 +110,20 @@ void neko_asset_default_load_from_file(const_str path, void *out) {
 #include <imstb_rectpack.h>
 #include <imstb_truetype.h>
 
-NEKO_API_DECL neko_image_t neko_image_load_mem(const void *mem_data, size_t mem_size, const_str vpath) {
+void neko_image::load(const_str path) {
+    bool ok = neko_capi_vfs_file_exists(NEKO_PACKS::GAMEDATA, path);
+    if (!ok) {
+        NEKO_WARN("failed to load image %s", path);
+        return;
+    }
+    size_t mem_size;
+    const_str mem_data = neko_capi_vfs_read_file(NEKO_PACKS::GAMEDATA, path, &mem_size);
+    this->load_mem(mem_data, mem_size, path);
+    neko_safe_free(mem_data);
+    return;
+}
+
+void neko_image::load_mem(const void *mem_data, size_t mem_size, const_str vpath) {
     char temp_file_extension_buffer[16] = {0};
     neko_util_get_file_extension(temp_file_extension_buffer, sizeof(temp_file_extension_buffer), vpath);
     if (neko_string_compare_equal(temp_file_extension_buffer, "ase") || neko_string_compare_equal(temp_file_extension_buffer, "aseprite")) {
@@ -116,30 +132,23 @@ NEKO_API_DECL neko_image_t neko_image_load_mem(const void *mem_data, size_t mem_
         NEKO_ASSERT(ase->frame_count == 1);  // load_ase_texture_simple used to load simple aseprite
         neko_aseprite_default_blend_bind(ase);
         // NEKO_TRACE("load aseprite - frame_count %d - palette.entry_count %d - w=%d h=%d", ase->frame_count, ase->palette.entry_count, ase->w, ase->h);
-        return (neko_image_t){.w = ase->w, .h = ase->h, .ase = ase};
+        this->w = ase->w;
+        this->h = ase->h;
+        this->ase = ase;
+        return;
     } else {
         int width, height, channels;
         unsigned char *image = stbi_load_from_memory((stbi_uc const *)mem_data, mem_size, &width, &height, &channels, 0);
-        return (neko_image_t){.w = width, .h = height, .pix = image};
+        this->w = width;
+        this->h = height;
+        this->pix = image;
+        return;
     }
     NEKO_ASSERT(0, "unreachable");
-    return (neko_image_t){};  // unreachable
+    return;  // unreachable
 }
 
-NEKO_API_DECL neko_image_t neko_image_load(const_str path) {
-    bool ok = neko_capi_vfs_file_exists(NEKO_PACKS::GAMEDATA, path);
-    if (!ok) {
-        NEKO_WARN("failed to load image %s", path);
-        return (neko_image_t){};
-    }
-    size_t mem_size;
-    const_str mem_data = neko_capi_vfs_read_file(NEKO_PACKS::GAMEDATA, path, &mem_size);
-    neko_image_t image = neko_image_load_mem(mem_data, mem_size, path);
-    neko_safe_free(mem_data);
-    return image;
-}
-
-NEKO_API_DECL void neko_image_free(neko_image_t img) { stbi_image_free(img.pix); }
+void neko_image::free() { stbi_image_free(this->pix); }
 
 NEKO_API_DECL bool neko_util_load_texture_data_from_file(const char *file_path, s32 *width, s32 *height, u32 *num_comps, void **data, b32 flip_vertically_on_load) {
     u64 len = 0;
@@ -187,7 +196,8 @@ NEKO_API_DECL bool neko_asset_texture_load_from_file(const_str path, void *out, 
     }
 
     // Load texture data
-    neko_image_t img = neko_image_load(path);
+    neko_image img;
+    img.load(path);
     // if (t->desc.flip_y) neko_png_flip_image_horizontal(&img);
 
     t->desc.data[0] = img.pix;
@@ -195,7 +205,7 @@ NEKO_API_DECL bool neko_asset_texture_load_from_file(const_str path, void *out, 
     t->desc.height = img.h;
 
     if (!t->desc.data[0]) {
-        neko_image_free(img);
+        img.free();
         NEKO_WARN("failed to load texture data %s", path);
         return false;
     }
@@ -217,7 +227,7 @@ bool neko_asset_texture_load_from_file(const char* path, void* out, neko_render_
     char* file_data = neko_pf_read_file_contents(path, "rb", &len);
     NEKO_ASSERT(file_data);
     b32 ret = neko_asset_texture_load_from_memory(file_data, len, out, desc, flip_on_load, keep_data);
-    neko_free(file_data);
+    neko_safe_free(file_data);
     return ret;
 }
  */
@@ -382,7 +392,7 @@ bool neko_asset_mesh_load_from_file(const_str path, void *out, neko_asset_mesh_d
     neko_asset_mesh_t *mesh = (neko_asset_mesh_t *)out;
 
     if (!neko_pf_file_exists(path)) {
-        neko_println("Warning:MeshLoadFromFile:File does not exist: %s", path);
+        NEKO_WARN("mesh loader:file does not exist: %s", path);
         return false;
     }
 
@@ -399,7 +409,7 @@ bool neko_asset_mesh_load_from_file(const_str path, void *out, neko_asset_mesh_d
         // neko_util_load_gltf_data_from_file(path, decl, &meshes, &mesh_count);
         NEKO_ASSERT(false);
     } else {
-        neko_println("Warning:MeshLoadFromFile:File extension not supported: %s, file: %s", file_ext, path);
+        NEKO_WARN("mesh loader:file extension not supported: %s, file: %s", file_ext, path);
         return false;
     }
 
@@ -504,7 +514,7 @@ NEKO_STATIC_INLINE u32 __neko_ulz_decode_mod(const u8 **p) {
 // LZ77
 
 NEKO_STATIC int __neko_ulz_compress_fast(const u8 *in, int inlen, u8 *out, int outlen) {
-    NEKO_LZ_WORKMEM *u = (NEKO_LZ_WORKMEM *)neko_realloc(0, sizeof(NEKO_LZ_WORKMEM));
+    NEKO_LZ_WORKMEM *u = (NEKO_LZ_WORKMEM *)neko_safe_realloc(0, sizeof(NEKO_LZ_WORKMEM));
 
     for (int i = 0; i < NEKO_LZ_HASH_SIZE; ++i) u->HashTable[i] = NEKO_LZ_NIL;
 
@@ -579,7 +589,7 @@ NEKO_STATIC int __neko_ulz_compress_fast(const u8 *in, int inlen, u8 *out, int o
         op += run;
     }
 
-    void *gc = neko_realloc(u, 0);
+    void *gc = neko_safe_realloc(u, 0);
     return op - out;
 }
 
@@ -587,7 +597,7 @@ NEKO_STATIC int __neko_ulz_compress(const u8 *in, int inlen, u8 *out, int outlen
     if (level < 1 || level > 9) return 0;
     const int max_chain = (level < 9) ? 1 << level : 1 << 13;
 
-    NEKO_LZ_WORKMEM *u = (NEKO_LZ_WORKMEM *)neko_realloc(0, sizeof(NEKO_LZ_WORKMEM));
+    NEKO_LZ_WORKMEM *u = (NEKO_LZ_WORKMEM *)neko_safe_realloc(0, sizeof(NEKO_LZ_WORKMEM));
     for (int i = 0; i < NEKO_LZ_HASH_SIZE; ++i) u->HashTable[i] = NEKO_LZ_NIL;
 
     u8 *op = out;
@@ -697,7 +707,7 @@ NEKO_STATIC int __neko_ulz_compress(const u8 *in, int inlen, u8 *out, int outlen
         op += run;
     }
 
-    void *gc = neko_realloc(u, 0);
+    void *gc = neko_safe_realloc(u, 0);
     return op - out;
 }
 
@@ -764,26 +774,26 @@ u32 neko_lz_bounds(u32 inlen, u32 flags) { return inlen + inlen / 255 + 16; }
 
 // #include "deps/lz4/lz4.h"
 
-NEKO_STATIC void destroy_pack_items(u64 item_count, pack_item *items) {
+NEKO_STATIC void destroy_pack_items(u64 item_count, neko_pak::item *items) {
     NEKO_ASSERT(item_count == 0 || (item_count > 0 && items));
 
-    for (u64 i = 0; i < item_count; i++) neko_free(items[i].path);
-    neko_free(items);
+    for (u64 i = 0; i < item_count; i++) neko_safe_free(items[i].path);
+    neko_safe_free(items);
 }
 
-bool create_pack_items(vfs_file *packFile, u64 item_count, pack_item **_items) {
+bool create_pack_items(vfs_file *packFile, u64 item_count, neko_pak::item **_items) {
     NEKO_ASSERT(packFile);
     NEKO_ASSERT(item_count > 0);
     NEKO_ASSERT(_items);
 
-    pack_item *items = (pack_item *)neko_malloc(item_count * sizeof(pack_item));
+    neko_pak::item *items = (neko_pak::item *)neko_safe_malloc(item_count * sizeof(neko_pak::item));
 
     if (!items) return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
 
     for (u64 i = 0; i < item_count; i++) {
-        pack_iteminfo info;
+        neko_pak::iteminfo info;
 
-        size_t result = neko_capi_vfs_fread(&info, sizeof(pack_iteminfo), 1, packFile);
+        size_t result = neko_capi_vfs_fread(&info, sizeof(neko_pak::iteminfo), 1, packFile);
 
         if (result != 1) {
             destroy_pack_items(i, items);
@@ -795,7 +805,7 @@ bool create_pack_items(vfs_file *packFile, u64 item_count, pack_item **_items) {
             return false; /*BAD_DATA_SIZE_PACK_RESULT*/
         }
 
-        char *path = (char *)neko_malloc((info.path_size + 1) * sizeof(char));
+        char *path = (char *)neko_safe_malloc((info.path_size + 1) * sizeof(char));
 
         if (!path) {
             destroy_pack_items(i, items);
@@ -820,7 +830,7 @@ bool create_pack_items(vfs_file *packFile, u64 item_count, pack_item **_items) {
             return false; /*FAILED_TO_SEEK_FILE_PACK_RESULT*/
         }
 
-        pack_item *item = &items[i];
+        neko_pak::item *item = &items[i];
         item->info = info;
         item->path = path;
     }
@@ -829,119 +839,105 @@ bool create_pack_items(vfs_file *packFile, u64 item_count, pack_item **_items) {
     return true;
 }
 
-bool neko_pack_read(const_str file_path, u32 data_buffer_capacity, bool is_resources_directory, neko_pack_t *pack_reader) {
+bool neko_pak::load(const_str file_path, u32 data_buffer_capacity, bool is_resources_directory) {
     NEKO_ASSERT(file_path);
-    NEKO_ASSERT(pack_reader);
 
-    // neko_pack_t *pack = (neko_pack_t *)neko_calloc(1, sizeof(neko_pack_t));
+    memset(this, 0, sizeof(neko_pak));
 
-    if (!pack_reader) return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
+    this->zip_buffer = NULL;
+    this->zip_size = 0;
 
-    memset(pack_reader, 0, sizeof(neko_pack_t));
+    this->vf = neko_capi_vfs_fopen(file_path);
 
-    pack_reader->zip_buffer = NULL;
-    pack_reader->zip_size = 0;
-
-    pack_reader->vf = neko_capi_vfs_fopen(file_path);
-
-    if (!pack_reader->vf.data) {
-        neko_pack_destroy(pack_reader);
+    if (!this->vf.data) {
+        this->fini();
         return false; /*FAILED_TO_OPEN_FILE_PACK_RESULT*/
     }
 
-    char header[neko_pack_head_size];
+    char header[neko_pak_head_size];
     s32 buildnum;
 
-    size_t result = neko_capi_vfs_fread(header, sizeof(u8), neko_pack_head_size, &pack_reader->vf);
-    result += neko_capi_vfs_fread(&buildnum, sizeof(s32), 1, &pack_reader->vf);
+    size_t result = neko_capi_vfs_fread(header, sizeof(u8), neko_pak_head_size, &this->vf);
+    result += neko_capi_vfs_fread(&buildnum, sizeof(s32), 1, &this->vf);
 
     // 检查文件头大小
-    if (result != neko_pack_head_size + 1) {
-        neko_pack_destroy(pack_reader);
+    if (result != neko_pak_head_size + 1) {
+        this->fini();
         return false; /*FAILED_TO_READ_FILE_PACK_RESULT*/
     }
 
     // 检查文件头
     if (header[0] != 'P' || header[1] != 'A' || header[2] != 'C' || header[3] != 'K' || header[4] != 0 || header[5] != 0) {
-        neko_pack_destroy(pack_reader);
+        this->fini();
         return false;
     }
 
     // Skipping PATCH version check
     if (header[7] != !neko_little_endian) {
-        neko_pack_destroy(pack_reader);
+        this->fini();
         return false; /*BAD_FILE_ENDIANNESS_PACK_RESULT*/
     }
 
     u64 item_count;
 
-    result = neko_capi_vfs_fread(&item_count, sizeof(u64), 1, &pack_reader->vf);
+    result = neko_capi_vfs_fread(&item_count, sizeof(u64), 1, &this->vf);
 
     if (result != 1) {
-        neko_pack_destroy(pack_reader);
+        this->fini();
         return false; /*FAILED_TO_READ_FILE_PACK_RESULT*/
     }
 
     if (item_count == 0) {
-        neko_pack_destroy(pack_reader);
+        this->fini();
         return false; /*BAD_DATA_SIZE_PACK_RESULT*/
     }
 
-    pack_item *items;
+    neko_pak::item *items;
 
-    bool ok = create_pack_items(&pack_reader->vf, item_count, &items);
+    bool ok = create_pack_items(&this->vf, item_count, &items);
 
     if (!ok) {
-        neko_pack_destroy(pack_reader);
+        this->fini();
         return false;
     }
 
-    pack_reader->item_count = item_count;
-    pack_reader->items = items;
+    this->item_count = item_count;
+    this->items = items;
 
     u8 *data_buffer;
 
     if (data_buffer_capacity > 0) {
-        data_buffer = (u8 *)neko_malloc(data_buffer_capacity * sizeof(u8));
+        data_buffer = (u8 *)neko_safe_malloc(data_buffer_capacity * sizeof(u8));
 
         if (!data_buffer) {
-            neko_pack_destroy(pack_reader);
+            this->fini();
             return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
         }
     } else {
         data_buffer = NULL;
     }
 
-    pack_reader->data_buffer = data_buffer;
-    pack_reader->data_size = data_buffer_capacity;
+    this->data_buffer = data_buffer;
+    this->data_size = data_buffer_capacity;
 
     NEKO_TRACE("load pack %s buildnum: %d (engine %d)", neko_util_get_filename(file_path), buildnum, neko_buildnum());
 
-    //*pack_reader = pack;
     return true;
 }
-void neko_pack_destroy(neko_pack_t *pack_reader) {
-    if (!pack_reader) return;
-
-    if (pack_reader->file_ref_count != 0) {
-        NEKO_WARN("assets loader leaks detected %d refs", pack_reader->file_ref_count);
+void neko_pak::fini() {
+    if (this->file_ref_count != 0) {
+        NEKO_WARN("assets loader leaks detected %d refs", this->file_ref_count);
     }
 
-    neko_free(pack_reader->data_buffer);
-    neko_free(pack_reader->zip_buffer);
-    destroy_pack_items(pack_reader->item_count, pack_reader->items);
-    if (pack_reader->vf.data) neko_capi_vfs_fclose(&pack_reader->vf);
-    // neko_free(pack_reader);
-}
+    free_buffer();
 
-u64 neko_pack_item_count(neko_pack_t *pack_reader) {
-    NEKO_ASSERT(pack_reader);
-    return pack_reader->item_count;
+    destroy_pack_items(this->item_count, this->items);
+    if (this->vf.data) neko_capi_vfs_fclose(&this->vf);
 }
 
 NEKO_STATIC int neko_compare_pack_items(const void *_a, const void *_b) {
-    const pack_item *a = (pack_item *)_a;
-    const pack_item *b = (pack_item *)_b;
+    const neko_pak::item *a = (neko_pak::item *)_a;
+    const neko_pak::item *b = (neko_pak::item *)_b;
 
     int difference = (int)a->info.path_size - (int)b->info.path_size;
 
@@ -950,89 +946,74 @@ NEKO_STATIC int neko_compare_pack_items(const void *_a, const void *_b) {
     return memcmp(a->path, b->path, a->info.path_size * sizeof(char));
 }
 
-bool neko_pack_item_index(neko_pack_t *pack_reader, const_str path, u64 *index) {
-    NEKO_ASSERT(pack_reader);
+u64 neko_pak::get_item_index(const_str path) {
     NEKO_ASSERT(path);
-    NEKO_ASSERT(index);
     NEKO_ASSERT(strlen(path) <= UINT8_MAX);
 
-    pack_item *search_item = &pack_reader->search_item;
+    neko_pak::item *search_item = &this->search_item;
 
     search_item->info.path_size = (u8)strlen(path);
     search_item->path = (char *)path;
 
-    pack_item *item = (pack_item *)bsearch(search_item, pack_reader->items, pack_reader->item_count, sizeof(pack_item), neko_compare_pack_items);
+    neko_pak::item *items = (neko_pak::item *)bsearch(search_item, this->items, this->item_count, sizeof(neko_pak::item), neko_compare_pack_items);
 
-    if (!item) return false;
+    if (!items) return u64_max;
 
-    *index = item - pack_reader->items;
-    return true;
+    u64 index = items - this->items;
+    return index;
 }
 
-u32 neko_pack_item_size(neko_pack_t *pack_reader, u64 index) {
-    NEKO_ASSERT(pack_reader);
-    NEKO_ASSERT(index < pack_reader->item_count);
-    return pack_reader->items[index].info.data_size;
-}
-
-const_str neko_pack_item_path(neko_pack_t *pack_reader, u64 index) {
-    NEKO_ASSERT(pack_reader);
-    NEKO_ASSERT(index < pack_reader->item_count);
-    return pack_reader->items[index].path;
-}
-
-bool neko_pack_item_data_with_index(neko_pack_t *pack_reader, u64 index, const u8 **data, u32 *size) {
-    NEKO_ASSERT(pack_reader);
-    NEKO_ASSERT(index < pack_reader->item_count);
+bool neko_pak::get_data(u64 index, const u8 **data, u32 *size) {
+    NEKO_ASSERT(index < this->item_count);
     NEKO_ASSERT(data);
     NEKO_ASSERT(size);
 
-    pack_iteminfo info = pack_reader->items[index].info;
-    u8 *data_buffer = pack_reader->data_buffer;
+    neko_pak::iteminfo info = this->items[index].info;
+    u8 *_data_buffer = this->data_buffer;
 
-    if (data_buffer) {
-        if (info.data_size > pack_reader->data_size) {
-            data_buffer = (u8 *)neko_realloc(data_buffer, info.data_size * sizeof(u8));
+    if (_data_buffer) {
+        if (info.data_size > this->data_size) {
+            _data_buffer = (u8 *)neko_safe_realloc(_data_buffer, info.data_size * sizeof(u8));
 
-            if (!data_buffer) return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
+            if (!_data_buffer) return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
 
-            pack_reader->data_buffer = data_buffer;
-            pack_reader->data_size = info.data_size;
+            this->data_buffer = _data_buffer;
+            this->data_size = info.data_size;
         }
     } else {
-        data_buffer = (u8 *)neko_malloc(info.data_size * sizeof(u8));
+        _data_buffer = (u8 *)neko_safe_malloc(info.data_size * sizeof(u8));
 
-        if (!data_buffer) return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
+        if (!_data_buffer) return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
 
-        pack_reader->data_buffer = data_buffer;
-        pack_reader->data_size = info.data_size;
+        this->data_buffer = _data_buffer;
+        this->data_size = info.data_size;
     }
 
-    u8 *zip_buffer = pack_reader->zip_buffer;
+    u8 *zip_buffer = this->zip_buffer;
 
     if (zip_buffer) {
-        if (info.zip_size > pack_reader->zip_size) {
-            zip_buffer = (u8 *)neko_realloc(zip_buffer, info.zip_size * sizeof(u8));
+        if (info.zip_size > this->zip_size) {
+            zip_buffer = (u8 *)neko_safe_realloc(zip_buffer, info.zip_size * sizeof(u8));
 
             if (!zip_buffer) return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
 
-            pack_reader->zip_buffer = zip_buffer;
-            pack_reader->zip_size = info.zip_size;
+            this->zip_buffer = zip_buffer;
+            this->zip_size = info.zip_size;
         }
     } else {
         if (info.zip_size > 0) {
-            zip_buffer = (u8 *)neko_malloc(info.zip_size * sizeof(u8));
+            zip_buffer = (u8 *)neko_safe_malloc(info.zip_size * sizeof(u8));
 
             if (!zip_buffer) return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
 
-            pack_reader->zip_buffer = zip_buffer;
-            pack_reader->zip_size = info.zip_size;
+            this->zip_buffer = zip_buffer;
+            this->zip_size = info.zip_size;
         }
     }
 
-    vfs_file *vf = &pack_reader->vf;
+    vfs_file *vf = &this->vf;
 
-    s64 file_offset = (s64)(info.file_offset + sizeof(pack_iteminfo) + info.path_size);
+    s64 file_offset = (s64)(info.file_offset + sizeof(neko_pak::iteminfo) + info.path_size);
 
     int seek_result = neko_capi_vfs_fseek(vf, file_offset, SEEK_SET);
 
@@ -1043,7 +1024,7 @@ bool neko_pack_item_data_with_index(neko_pack_t *pack_reader, u64 index, const u
 
         if (result != info.zip_size) return false; /*FAILED_TO_READ_FILE_PACK_RESULT*/
 
-        result = neko_lz_decode(zip_buffer, info.zip_size, data_buffer, info.data_size);
+        result = neko_lz_decode(zip_buffer, info.zip_size, _data_buffer, info.data_size);
 
         NEKO_TRACE("[assets] neko_lz_decode %u %u", info.zip_size, info.data_size);
 
@@ -1051,74 +1032,61 @@ bool neko_pack_item_data_with_index(neko_pack_t *pack_reader, u64 index, const u
             return false; /*FAILED_TO_DECOMPRESS_PACK_RESULT*/
         }
     } else {
-        size_t result = neko_capi_vfs_fread(data_buffer, sizeof(u8), info.data_size, vf);
+        size_t result = neko_capi_vfs_fread(_data_buffer, sizeof(u8), info.data_size, vf);
 
         if (result != info.data_size) return false; /*FAILED_TO_READ_FILE_PACK_RESULT*/
     }
 
-    //(*data) = data_buffer;
     (*size) = info.data_size;
-
-    (*data) = (u8 *)neko_malloc(info.data_size);
-
-    memcpy((void *)(*data), data_buffer, info.data_size);
-
-    pack_reader->file_ref_count++;
-
+    (*data) = (u8 *)neko_safe_malloc(info.data_size);
+    memcpy((void *)(*data), _data_buffer, info.data_size);
+    this->file_ref_count++;
     return true;
 }
 
-bool neko_pack_item_data(neko_pack_t *pack_reader, const_str path, const u8 **data, u32 *size) {
-    NEKO_ASSERT(pack_reader);
+bool neko_pak::get_data(const_str path, const u8 **data, u32 *size) {
     NEKO_ASSERT(path);
     NEKO_ASSERT(data);
     NEKO_ASSERT(size);
     NEKO_ASSERT(strlen(path) <= UINT8_MAX);
-
-    u64 index;
-
-    if (!neko_pack_item_index(pack_reader, path, &index)) {
-        return false; /*FAILED_TO_GET_ITEM_PACK_RESULT*/
-    }
-
-    return neko_pack_item_data_with_index(pack_reader, index, data, size);
+    u64 index = this->get_item_index(path);
+    if (index == u64_max) return false; /*FAILED_TO_GET_ITEM_PACK_RESULT*/
+    return this->get_data(index, data, size);
 }
 
-void neko_pack_item_free(neko_pack_t *pack_reader, void *data) {
-    neko_free(data);
-    pack_reader->file_ref_count--;
+void neko_pak::free_item(void *data) {
+    neko_safe_free(data);
+    this->file_ref_count--;
 }
 
-void neko_pack_free_buffers(neko_pack_t *pack_reader) {
-    NEKO_ASSERT(pack_reader);
-    neko_free(pack_reader->data_buffer);
-    neko_free(pack_reader->zip_buffer);
-    pack_reader->data_buffer = NULL;
-    pack_reader->zip_buffer = NULL;
+void neko_pak::free_buffer() {
+    neko_safe_free(this->data_buffer);
+    neko_safe_free(this->zip_buffer);
+    this->data_buffer = NULL;
+    this->zip_buffer = NULL;
 }
 
-NEKO_STATIC void neko_pack_remove_item(u64 item_count, pack_item *pack_items) {
+NEKO_STATIC void neko_pak_remove_item(u64 item_count, neko_pak::item *pack_items) {
     NEKO_ASSERT(item_count == 0 || (item_count > 0 && pack_items));
-
     for (u64 i = 0; i < item_count; i++) remove(pack_items[i].path);
 }
 
-bool neko_pack_unzip(const_str file_path, b8 print_progress) {
+bool neko_pak_unzip(const_str file_path, bool print_progress) {
     NEKO_ASSERT(file_path);
 
-    neko_pack_t pack_reader;
+    neko_pak pak;
 
-    int pack_result = neko_pack_read(file_path, 128, false, &pack_reader);
+    int pack_result = pak.load(file_path, 128, false);
 
     if (pack_result != 0) return pack_result;
 
     u64 total_raw_size = 0, total_zip_size = 0;
 
-    u64 item_count = pack_reader.item_count;
-    pack_item *items = pack_reader.items;
+    u64 item_count = pak.item_count;
+    neko_pak::item *items = pak.items;
 
     for (u64 i = 0; i < item_count; i++) {
-        pack_item *item = &items[i];
+        neko_pak::item *item = &items[i];
 
         if (print_progress) {
             NEKO_INFO("Unpacking %s", item->path);
@@ -1127,11 +1095,11 @@ bool neko_pack_unzip(const_str file_path, b8 print_progress) {
         const u8 *data_buffer;
         u32 data_size;
 
-        pack_result = neko_pack_item_data_with_index(&pack_reader, i, &data_buffer, &data_size);
+        pack_result = pak.get_data(i, &data_buffer, &data_size);
 
         if (pack_result != 0) {
-            neko_pack_remove_item(i, items);
-            neko_pack_destroy(&pack_reader);
+            neko_pak_remove_item(i, items);
+            pak.fini();
             return pack_result;
         }
 
@@ -1149,8 +1117,8 @@ bool neko_pack_unzip(const_str file_path, b8 print_progress) {
         FILE *item_file = neko_fopen(item_path, "wb");
 
         if (!item_file) {
-            neko_pack_remove_item(i, items);
-            neko_pack_destroy(&pack_reader);
+            neko_pak_remove_item(i, items);
+            pak.fini();
             return false; /*FAILED_TO_OPEN_FILE_PACK_RESULT*/
         }
 
@@ -1159,8 +1127,8 @@ bool neko_pack_unzip(const_str file_path, b8 print_progress) {
         neko_fclose(item_file);
 
         if (result != data_size) {
-            neko_pack_remove_item(i, items);
-            neko_pack_destroy(&pack_reader);
+            neko_pak_remove_item(i, items);
+            pak.fini();
             return false; /*FAILED_TO_OPEN_FILE_PACK_RESULT*/
         }
 
@@ -1177,7 +1145,7 @@ bool neko_pack_unzip(const_str file_path, b8 print_progress) {
         }
     }
 
-    neko_pack_destroy(&pack_reader);
+    pak.fini();
 
     if (print_progress) {
         printf("Unpacked %llu files. (%llu/%llu bytes)\n", (long long unsigned int)item_count, (long long unsigned int)total_raw_size, (long long unsigned int)total_zip_size);
@@ -1186,19 +1154,19 @@ bool neko_pack_unzip(const_str file_path, b8 print_progress) {
     return true;
 }
 
-bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b8 print_progress) {
+bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, bool print_progress) {
     NEKO_ASSERT(pack_file);
     NEKO_ASSERT(item_count > 0);
     NEKO_ASSERT(item_paths);
 
-    u32 buffer_size = 128;  // 提高初始缓冲大小 修复 neko_realloc 异常释放
+    u32 buffer_size = 128;  // 提高初始缓冲大小
 
-    u8 *item_data = (u8 *)neko_malloc(sizeof(u8) * buffer_size);
+    u8 *item_data = (u8 *)neko_safe_malloc(sizeof(u8) * buffer_size);
     if (!item_data) return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
 
-    u8 *zip_data = (u8 *)neko_malloc(sizeof(u8) * buffer_size);
+    u8 *zip_data = (u8 *)neko_safe_malloc(sizeof(u8) * buffer_size);
     if (!zip_data) {
-        neko_free(item_data);
+        neko_safe_free(item_data);
         return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
     }
 
@@ -1215,16 +1183,16 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
         size_t path_size = strlen(item_path);
 
         if (path_size > UINT8_MAX) {
-            neko_free(zip_data);
-            neko_free(item_data);
+            neko_safe_free(zip_data);
+            neko_safe_free(item_data);
             return false; /*BAD_DATA_SIZE_PACK_RESULT*/
         }
 
         FILE *item_file = neko_fopen(item_path, "rb");
 
         if (!item_file) {
-            neko_free(zip_data);
-            neko_free(item_data);
+            neko_safe_free(zip_data);
+            neko_safe_free(item_data);
             return false; /*FAILED_TO_OPEN_FILE_PACK_RESULT*/
         }
 
@@ -1232,8 +1200,8 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
 
         if (seek_result != 0) {
             neko_fclose(item_file);
-            neko_free(zip_data);
-            neko_free(item_data);
+            neko_safe_free(zip_data);
+            neko_safe_free(item_data);
             return false; /*FAILED_TO_SEEK_FILE_PACK_RESULT*/
         }
 
@@ -1241,8 +1209,8 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
 
         if (item_size == 0 || item_size > UINT32_MAX) {
             neko_fclose(item_file);
-            neko_free(zip_data);
-            neko_free(item_data);
+            neko_safe_free(zip_data);
+            neko_safe_free(item_data);
             return false; /*BAD_DATA_SIZE_PACK_RESULT*/
         }
 
@@ -1250,29 +1218,29 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
 
         if (seek_result != 0) {
             neko_fclose(item_file);
-            neko_free(zip_data);
-            neko_free(item_data);
+            neko_safe_free(zip_data);
+            neko_safe_free(item_data);
             return false; /*FAILED_TO_SEEK_FILE_PACK_RESULT*/
         }
 
         if (item_size > buffer_size) {
-            u8 *new_buffer = (u8 *)neko_realloc(item_data, item_size * sizeof(u8));
+            u8 *new_buffer = (u8 *)neko_safe_realloc(item_data, item_size * sizeof(u8));
 
             if (!new_buffer) {
                 neko_fclose(item_file);
-                neko_free(zip_data);
-                neko_free(item_data);
+                neko_safe_free(zip_data);
+                neko_safe_free(item_data);
                 return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
             }
 
             item_data = new_buffer;
 
-            new_buffer = (u8 *)neko_realloc(zip_data, item_size * sizeof(u8));
+            new_buffer = (u8 *)neko_safe_realloc(zip_data, item_size * sizeof(u8));
 
             if (!new_buffer) {
                 neko_fclose(item_file);
-                neko_free(zip_data);
-                neko_free(item_data);
+                neko_safe_free(zip_data);
+                neko_safe_free(item_data);
                 return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
             }
 
@@ -1284,8 +1252,8 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
         neko_fclose(item_file);
 
         if (result != item_size) {
-            neko_free(zip_data);
-            neko_free(item_data);
+            neko_safe_free(zip_data);
+            neko_safe_free(item_data);
             return false; /*FAILED_TO_READ_FILE_PACK_RESULT*/
         }
 
@@ -1305,26 +1273,26 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
 
         s64 file_offset = neko_ftell(pack_file);
 
-        pack_iteminfo info = {
+        neko_pak::iteminfo info = {
                 (u32)zip_size,
                 (u32)item_size,
                 (u64)file_offset,
                 (u8)path_size,
         };
 
-        result = fwrite(&info, sizeof(pack_iteminfo), 1, pack_file);
+        result = fwrite(&info, sizeof(neko_pak::iteminfo), 1, pack_file);
 
         if (result != 1) {
-            neko_free(zip_data);
-            neko_free(item_data);
+            neko_safe_free(zip_data);
+            neko_safe_free(item_data);
             return false; /*FAILED_TO_WRITE_FILE_PACK_RESULT*/
         }
 
         result = fwrite(item_path, sizeof(char), info.path_size, pack_file);
 
         if (result != info.path_size) {
-            neko_free(zip_data);
-            neko_free(item_data);
+            neko_safe_free(zip_data);
+            neko_safe_free(item_data);
             return false; /*FAILED_TO_WRITE_FILE_PACK_RESULT*/
         }
 
@@ -1332,16 +1300,16 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
             result = fwrite(zip_data, sizeof(u8), zip_size, pack_file);
 
             if (result != zip_size) {
-                neko_free(zip_data);
-                neko_free(item_data);
+                neko_safe_free(zip_data);
+                neko_safe_free(item_data);
                 return false; /*FAILED_TO_WRITE_FILE_PACK_RESULT*/
             }
         } else {
             result = fwrite(item_data, sizeof(u8), item_size, pack_file);
 
             if (result != item_size) {
-                neko_free(zip_data);
-                neko_free(item_data);
+                neko_safe_free(zip_data);
+                neko_safe_free(item_data);
                 return false; /*FAILED_TO_WRITE_FILE_PACK_RESULT*/
             }
         }
@@ -1360,8 +1328,8 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
         }
     }
 
-    neko_free(zip_data);
-    neko_free(item_data);
+    neko_safe_free(zip_data);
+    neko_safe_free(item_data);
 
     if (print_progress) {
         int compression = (int)((1.0 - (f64)(total_zip_size) / (f64)total_raw_size) * 100.0);
@@ -1371,7 +1339,7 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
     return true;
 }
 
-NEKO_STATIC int neko_pack_compare_item_paths(const void *_a, const void *_b) {
+NEKO_STATIC int neko_pak_compare_item_paths(const void *_a, const void *_b) {
     // 要保证a与b不为NULL
     char *a = *(char **)_a;
     char *b = *(char **)_b;
@@ -1382,19 +1350,19 @@ NEKO_STATIC int neko_pack_compare_item_paths(const void *_a, const void *_b) {
     return memcmp(a, b, al * sizeof(u8));
 }
 
-bool neko_pack_build(const_str file_path, u64 file_count, const_str *file_paths, b8 print_progress) {
+bool neko_pak_build(const_str file_path, u64 file_count, const_str *file_paths, bool print_progress) {
     NEKO_ASSERT(file_path);
     NEKO_ASSERT(file_count > 0);
     NEKO_ASSERT(file_paths);
 
-    char **item_paths = (char **)neko_malloc(file_count * sizeof(char *));
+    char **item_paths = (char **)neko_safe_malloc(file_count * sizeof(char *));
 
     if (!item_paths) return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
 
     u64 item_count = 0;
 
     for (u64 i = 0; i < file_count; i++) {
-        b8 already_added = false;
+        bool already_added = false;
 
         for (u64 j = 0; j < item_count; j++) {
             if (i != j && strcmp(file_paths[i], item_paths[j]) == 0) already_added = true;
@@ -1403,26 +1371,26 @@ bool neko_pack_build(const_str file_path, u64 file_count, const_str *file_paths,
         if (!already_added) item_paths[item_count++] = (char *)file_paths[i];
     }
 
-    qsort(item_paths, item_count, sizeof(char *), neko_pack_compare_item_paths);
+    qsort(item_paths, item_count, sizeof(char *), neko_pak_compare_item_paths);
 
     FILE *pack_file = neko_fopen(file_path, "wb");
 
     if (!pack_file) {
-        neko_free(item_paths);
+        neko_safe_free(item_paths);
         return false; /*FAILED_TO_CREATE_FILE_PACK_RESULT*/
     }
 
-    char header[neko_pack_head_size] = {
+    char header[neko_pak_head_size] = {
             'P', 'A', 'C', 'K', 0, 0, 0, !neko_little_endian,
     };
 
     s32 buildnum = neko_buildnum();
 
-    size_t write_result = fwrite(header, sizeof(u8), neko_pack_head_size, pack_file);
+    size_t write_result = fwrite(header, sizeof(u8), neko_pak_head_size, pack_file);
     write_result += fwrite(&buildnum, sizeof(s32), 1, pack_file);
 
-    if (write_result != neko_pack_head_size + 1) {
-        neko_free(item_paths);
+    if (write_result != neko_pak_head_size + 1) {
+        neko_safe_free(item_paths);
         neko_fclose(pack_file);
         remove(file_path);
         return false; /*FAILED_TO_WRITE_FILE_PACK_RESULT*/
@@ -1431,7 +1399,7 @@ bool neko_pack_build(const_str file_path, u64 file_count, const_str *file_paths,
     write_result = fwrite(&item_count, sizeof(u64), 1, pack_file);
 
     if (write_result != 1) {
-        neko_free(item_paths);
+        neko_safe_free(item_paths);
         neko_fclose(pack_file);
         remove(file_path);
         return false; /*FAILED_TO_WRITE_FILE_PACK_RESULT*/
@@ -1439,7 +1407,7 @@ bool neko_pack_build(const_str file_path, u64 file_count, const_str *file_paths,
 
     int pack_result = neko_write_pack_items(pack_file, item_count, item_paths, print_progress);
 
-    neko_free(item_paths);
+    neko_safe_free(item_paths);
     neko_fclose(pack_file);
 
     if (pack_result != 0) {
@@ -1450,7 +1418,7 @@ bool neko_pack_build(const_str file_path, u64 file_count, const_str *file_paths,
     return true;
 }
 
-bool neko_pack_info(const_str file_path, u8 *pack_version, b8 *isLittleEndian, u64 *_item_count) {
+bool neko_pak_info(const_str file_path, u8 *pack_version, bool *isLittleEndian, u64 *_item_count) {
     NEKO_ASSERT(file_path);
     NEKO_ASSERT(pack_version);
     NEKO_ASSERT(isLittleEndian);
@@ -1460,13 +1428,13 @@ bool neko_pack_info(const_str file_path, u8 *pack_version, b8 *isLittleEndian, u
 
     if (!vf.data) return false; /*FAILED_TO_OPEN_FILE_PACK_RESULT*/
 
-    char header[neko_pack_head_size];
+    char header[neko_pak_head_size];
     s32 buildnum;
 
-    size_t result = neko_capi_vfs_fread(header, sizeof(u8), neko_pack_head_size, &vf);
+    size_t result = neko_capi_vfs_fread(header, sizeof(u8), neko_pak_head_size, &vf);
     result += neko_capi_vfs_fread(&buildnum, sizeof(s32), 1, &vf);
 
-    if (result != neko_pack_head_size + 1) {
+    if (result != neko_pak_head_size + 1) {
         neko_capi_vfs_fclose(&vf);
         return false; /*FAILED_TO_READ_FILE_PACK_RESULT*/
     }
@@ -1513,7 +1481,7 @@ static const_str g_neko_xml_error = NULL;
 static void neko_xml_emit_error(const_str error) { g_neko_xml_error = error; }
 
 static char *neko_xml_copy_string(const_str str, u32 len) {
-    char *r = (char *)neko_malloc(len + 1);
+    char *r = (char *)neko_safe_malloc(len + 1);
     if (!r) {
         neko_xml_emit_error("Out of memory!");
         return NULL;
@@ -1574,22 +1542,24 @@ static void neko_xml_node_free(neko_xml_node_t *node) {
         neko_xml_attribute_t attrib = neko_hash_table_iter_get(node->attributes, it);
 
         if (attrib.type == NEKO_XML_ATTRIBUTE_STRING) {
-            neko_free(attrib.value.string);
+            neko_safe_free(attrib.value.string);
         }
+
+        neko_safe_free(attrib.name);
     }
 
     for (u32 i = 0; i < neko_dyn_array_size(node->children); i++) {
         neko_xml_node_free(node->children + i);
     }
 
-    neko_free(node->name);
-    neko_free(node->text);
+    neko_safe_free(node->name);
+    neko_safe_free(node->text);
     neko_hash_table_free(node->attributes);
     neko_dyn_array_free(node->children);
 }
 
 static char *neko_xml_process_text(const_str start, u32 length) {
-    char *r = (char *)neko_malloc(length + 1);
+    char *r = (char *)neko_safe_malloc(length + 1);
 
     u32 len_sub = 0;
 
@@ -1809,7 +1779,7 @@ neko_xml_document_t *neko_xml_parse(const_str source) {
     if (!source) return NULL;
 
     g_neko_xml_error = NULL;
-    neko_xml_document_t *doc = (neko_xml_document_t *)neko_calloc(1, sizeof(neko_xml_document_t));
+    neko_xml_document_t *doc = (neko_xml_document_t *)neko_safe_calloc(1, sizeof(neko_xml_document_t));
     if (!doc) {
         neko_xml_emit_error("Out of memory!");
         return NULL;
@@ -1831,7 +1801,7 @@ void neko_xml_free(neko_xml_document_t *document) {
     }
 
     neko_dyn_array_free(document->nodes);
-    neko_free(document);
+    neko_safe_free(document);
 }
 
 neko_xml_attribute_t *neko_xml_find_attribute(neko_xml_node_t *node, const_str name) {
@@ -3261,6 +3231,30 @@ ase_t *neko_aseprite_load_from_memory(const void *memory, u64 size) {
             u8 *chunk_start = s->in;
 
             switch (chunk_type) {
+                case 0x0004:  // 旧调色板块 (当调色板中没有带 alpha 的颜色时使用)
+                {
+                    u16 nbPackets = s_read_uint16(s);
+                    for (u16 k = 0; k < nbPackets; k++) {
+                        u16 maxColor = 0;
+                        u16 skip = (u16)s_read_uint8(s);
+                        u16 nbColors = (u16)s_read_uint8(s);
+                        if (nbColors == 0) nbColors = 256;
+
+                        for (u16 l = 0; l < nbColors; l++) {
+                            ase_palette_entry_t entry;
+                            entry.color.r = s_read_uint8(s);
+                            entry.color.g = s_read_uint8(s);
+                            entry.color.b = s_read_uint8(s);
+                            entry.color.a = 255;
+                            entry.color_name = NULL;
+                            ase->palette.entries[skip + l] = entry;
+                            if (skip + l > maxColor) maxColor = skip + l;
+                        }
+
+                        ase->palette.entry_count = maxColor + 1;
+                    }
+
+                } break;
                 case 0x2004:  // Layer chunk.
                 {
                     NEKO_ASSERT(ase->layer_count < __NEKO_ASEPRITE_MAX_LAYERS);

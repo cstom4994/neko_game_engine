@@ -3226,7 +3226,7 @@ NEKO_INLINE void neko_lua_fini(lua_State *m_ls) {
         int top = lua_gettop(m_ls);
         if (top != 0) {
             neko_lua_tool_t::dump_stack(m_ls);
-            NEKO_WARN("[lua] luastack isn't 0 which means that we have a memory leak somewhere");
+            NEKO_WARN("[lua] luastack memory leak");
         }
         ::lua_close(m_ls);
         m_ls = NULL;

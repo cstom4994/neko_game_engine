@@ -956,7 +956,7 @@ char *ecs_type_to_emmylua(const ecs_world_t *world, ecs_entity_t type, bool stru
     const EcsMetaTypeSerialized *ser = ecs_get(world, type, EcsMetaTypeSerialized);
     ecs_assert(ser != NULL, ECS_INVALID_PARAMETER, NULL);
 
-    ecs_strbuf_t buf = ECS_STRBUF_INIT;
+    ecs_strbuf_t buf = {};
 
     const char *class_name = ecs_get_symbol(world, type);
     const char *field_name;
@@ -1116,7 +1116,7 @@ static const char *kind_str(enum ecs_meta_type_op_kind_t kind) {
 static char *str_type_ops(ecs_world_t *w, ecs_entity_t type, int recursive) {
     const EcsMetaTypeSerialized *ser = ecs_get(w, type, EcsMetaTypeSerialized);
 
-    ecs_strbuf_t buf = ECS_STRBUF_INIT;
+    ecs_strbuf_t buf = {};
 
     ecs_meta_type_op_t *ops = (ecs_meta_type_op_t *)ecs_vec_first(&ser->ops);
     int count = ecs_vec_count(&ser->ops);
@@ -3620,7 +3620,7 @@ static int print_type(lua_State *L, int type) {
 
     int n = lua_gettop(L);
 
-    ecs_strbuf_t buf = ECS_STRBUF_INIT;
+    ecs_strbuf_t buf = {};
 
     vararg2str(L, n, &buf);
 

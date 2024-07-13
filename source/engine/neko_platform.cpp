@@ -82,11 +82,11 @@ NEKO_API_DECL neko_pf_t* neko_pf_create() {
     return platform;
 }
 
-NEKO_API_DECL void neko_pf_destroy(neko_pf_t* platform) {
+NEKO_API_DECL void neko_pf_fini(neko_pf_t* platform) {
     if (platform == NULL) return;
 
     // #if defined(NEKO_PF_WIN)
-    //     neko_thread_win32_destroy();
+    //     neko_thread_win32_fini();
     // #endif
 
     // Free all resources
@@ -557,7 +557,7 @@ void neko_pf_release_key(neko_pf_keycode code) {
 }
 
 // Platform File IO
-char* neko_pf_read_file_contents_default_impl(const char* file_path, const char* mode, size_t* sz) {
+char* neko_pf_read_file_contents(const char* file_path, const char* mode, size_t* sz) {
 
 #ifdef NEKO_PF_ANDROID
     const char* internal_data_path = neko_app()->android.internal_data_path;
@@ -584,7 +584,7 @@ char* neko_pf_read_file_contents_default_impl(const char* file_path, const char*
     return buffer;
 }
 
-neko_result neko_pf_write_file_contents_default_impl(const char* file_path, const char* mode, void* data, size_t sz) {
+neko_result neko_pf_write_file_contents(const char* file_path, const char* mode, void* data, size_t sz) {
     const char* path = file_path;
 
 #ifdef NEKO_PF_ANDROID
@@ -605,7 +605,7 @@ neko_result neko_pf_write_file_contents_default_impl(const char* file_path, cons
     return NEKO_RESULT_FAILURE;
 }
 
-NEKO_API_DECL bool neko_pf_dir_exists_default_impl(const char* dir_path) {
+NEKO_API_DECL bool neko_pf_dir_exists(const char* dir_path) {
 #if defined(NEKO_PF_WIN)
     DWORD attrib = GetFileAttributes((LPCWSTR)dir_path);  // TODO: unicode 路径修复
     return (attrib != INVALID_FILE_ATTRIBUTES && (attrib & FILE_ATTRIBUTE_DIRECTORY));
@@ -620,7 +620,7 @@ NEKO_API_DECL bool neko_pf_dir_exists_default_impl(const char* dir_path) {
 #endif
 }
 
-NEKO_API_DECL s32 neko_pf_mkdir_default_impl(const char* dir_path, s32 opt) {
+NEKO_API_DECL s32 neko_pf_mkdir(const char* dir_path, s32 opt) {
 #ifdef NEKO_PF_WIN
     return _mkdir(dir_path);
 #else
@@ -628,7 +628,7 @@ NEKO_API_DECL s32 neko_pf_mkdir_default_impl(const char* dir_path, s32 opt) {
 #endif
 }
 
-NEKO_API_DECL bool neko_pf_file_exists_default_impl(const char* file_path) {
+NEKO_API_DECL bool neko_pf_file_exists(const char* file_path) {
     const char* path = file_path;
 
 #ifdef NEKO_PF_ANDROID
@@ -645,7 +645,7 @@ NEKO_API_DECL bool neko_pf_file_exists_default_impl(const char* file_path) {
     return false;
 }
 
-s32 neko_pf_file_size_in_bytes_default_impl(const char* file_path) {
+s32 neko_pf_file_size_in_bytes(const char* file_path) {
 #ifdef NEKO_PF_WIN
 
     HANDLE hFile = CreateFileA(file_path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -677,9 +677,9 @@ s32 neko_pf_file_size_in_bytes_default_impl(const char* file_path) {
 #endif
 }
 
-void neko_pf_file_extension_default_impl(char* buffer, size_t buffer_sz, const char* file_path) { neko_util_get_file_extension(buffer, buffer_sz, file_path); }
+void neko_pf_file_extension(char* buffer, size_t buffer_sz, const char* file_path) { neko_util_get_file_extension(buffer, buffer_sz, file_path); }
 
-NEKO_API_DECL s32 neko_pf_file_delete_default_impl(const char* file_path) {
+NEKO_API_DECL s32 neko_pf_file_delete(const char* file_path) {
 #if (defined NEKO_PF_WIN)
 
     // Non-zero if successful
@@ -695,7 +695,7 @@ NEKO_API_DECL s32 neko_pf_file_delete_default_impl(const char* file_path) {
     return 0;
 }
 
-NEKO_API_DECL s32 neko_pf_file_copy_default_impl(const char* src_path, const char* dst_path) {
+NEKO_API_DECL s32 neko_pf_file_copy(const char* src_path, const char* dst_path) {
 #if (defined NEKO_PF_WIN)
 
     return CopyFileA(src_path, dst_path, false);
@@ -759,7 +759,7 @@ NEKO_API_DECL neko_pf_file_stats_t neko_pf_file_stats(const char* file_path) {
     return stats;
 }
 
-NEKO_API_DECL void* neko_pf_library_load_default_impl(const char* lib_path) {
+NEKO_API_DECL void* neko_pf_library_load(const char* lib_path) {
 #if (defined NEKO_PF_WIN)
     return (void*)LoadLibraryA(lib_path);
 #elif (defined NEKO_PF_LINUX || defined NEKO_PF_APPLE || defined NEKO_PF_ANDROID)
@@ -768,7 +768,7 @@ NEKO_API_DECL void* neko_pf_library_load_default_impl(const char* lib_path) {
     return NULL;
 }
 
-NEKO_API_DECL void neko_pf_library_unload_default_impl(void* lib) {
+NEKO_API_DECL void neko_pf_library_unload(void* lib) {
     if (!lib) return;
 #if (defined NEKO_PF_WIN)
     FreeLibrary((HMODULE)lib);
@@ -777,7 +777,7 @@ NEKO_API_DECL void neko_pf_library_unload_default_impl(void* lib) {
 #endif
 }
 
-NEKO_API_DECL void* neko_pf_library_proc_address_default_impl(void* lib, const char* func) {
+NEKO_API_DECL void* neko_pf_library_proc_address(void* lib, const char* func) {
     if (!lib) return NULL;
 #if (defined NEKO_PF_WIN)
     return (void*)GetProcAddress((HMODULE)lib, func);
@@ -787,7 +787,7 @@ NEKO_API_DECL void* neko_pf_library_proc_address_default_impl(void* lib, const c
     return NULL;
 }
 
-NEKO_API_DECL int neko_pf_chdir_default_impl(const char* path) {
+NEKO_API_DECL int neko_pf_chdir(const char* path) {
 
 #if (defined NEKO_PF_WIN)
 
@@ -887,10 +887,8 @@ void neko_pf_init(neko_pf_t* pf) {
 
     glfwInit();
 
-    neko_w_lua_variant settings_video_render_debug("settings.video.render.debug");
-    neko_w_lua_variant settings_video_render_hdpi("settings.video.render.hdpi");
-    settings_video_render_debug.sync();
-    settings_video_render_hdpi.sync();
+    CVAR_REF(settings_video_render_debug, s32);
+    CVAR_REF(settings_video_render_hdpi, bool);
 
     if (settings_video_render_debug.get<s32>()) {
         glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
@@ -2410,8 +2408,7 @@ NEKO_API_DECL neko_pf_window_t neko_pf_window_create_internal(const neko_pf_runn
     win.framebuffer_size = neko_v2((f32)fx, (f32)fy);
     win.focus = true;
 
-    neko_w_lua_variant settings_video_render_debug("settings.video.render.debug");
-    settings_video_render_debug.sync();
+    CVAR_REF(settings_video_render_debug, s32);
 
     // 只执行一次
     if (neko_slot_array_empty(neko_subsystem(platform)->windows)) {
@@ -2537,8 +2534,7 @@ void neko_pf_set_window_fullscreen(u32 handle, b32 fullscreen) {
     glfwGetWindowSize((GLFWwindow*)win->hndl, &w, &h);
 
     if (fullscreen) {
-        neko_w_lua_variant settings_window_monitor_index("settings.window.monitor_index");
-        settings_window_monitor_index.sync();
+        CVAR_REF(settings_window_monitor_index, s32);
         u32 monitor_index = settings_window_monitor_index.get<s32>();
         int monitor_count;
         GLFWmonitor** monitors = glfwGetMonitors(&monitor_count);
@@ -2730,7 +2726,7 @@ const_str neko_pf_stacktrace() {
         DWORD64 address = (DWORD64)(stack[i]);
 
         // 获取函数名
-        SYMBOL_INFO* symbol = (SYMBOL_INFO*)calloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char), 1);
+        SYMBOL_INFO* symbol = (SYMBOL_INFO*)neko_calloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char), 1);
         symbol->MaxNameLen = 255;
         symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
         SymFromAddr(GetCurrentProcess(), address, 0, symbol);
@@ -2752,7 +2748,7 @@ const_str neko_pf_stacktrace() {
         strcat(trace_info, trace_tmp);
         neko_printf("%s", trace_tmp);
 
-        free(symbol);
+        neko_free(symbol);
 
         if (is_main) break;
     }
