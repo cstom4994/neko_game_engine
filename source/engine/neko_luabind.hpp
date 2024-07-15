@@ -1,10 +1,12 @@
 #ifndef NEKO_LUA_BINDING_HPP
 #define NEKO_LUA_BINDING_HPP
 
+#include <string>
 #include <vector>
 
-#include "neko.h"
+#include "neko_base.h"
 #include "neko_lua.h"
+#include "neko_prelude.h"
 #include "neko_reflection.hpp"
 
 namespace std {
@@ -38,7 +40,7 @@ inline int preload_module(lua_State* L) {
         li << String(m.name) << "|";
     }
     NEKO_INFO("[luabind] loaded [%s]", li.data);
-    mem_free(li.data);
+    if (li.data && li.len) mem_free(li.data);
     lua_pop(L, 1);
     return 0;
 }

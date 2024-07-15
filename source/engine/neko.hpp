@@ -18,14 +18,7 @@
 #include <utility>
 #include <vector>
 
-#include "neko.h"
-#include "neko_base.h"
-
-#if defined(NEKO_IS_WIN32)
-#include <Windows.h>
-#elif defined(NEKO_IS_APPLE) || defined(NEKO_IS_LINUX)
-#include <dlfcn.h>
-#endif
+#include "neko_prelude.h"
 
 #define NEKO_VA_COUNT(...) detail::va_count(__VA_ARGS__)
 
@@ -113,10 +106,10 @@ class size_checker {
     static_assert(sizeof(T) == size, "check the size of integral types");
 };
 
-template class size_checker<s64, 8>;
-template class size_checker<s32, 4>;
-template class size_checker<s16, 2>;
-template class size_checker<s8, 1>;
+template class size_checker<i64, 8>;
+template class size_checker<i32, 4>;
+template class size_checker<i16, 2>;
+template class size_checker<i8, 1>;
 template class size_checker<u64, 8>;
 template class size_checker<u32, 4>;
 template class size_checker<u16, 2>;
@@ -153,7 +146,7 @@ template <typename T>
 using initializer_list = std::initializer_list<T>;
 
 template <typename T>
-using neko_function = std::function<T>;
+using function = std::function<T>;
 
 template <typename T>
 using scope = std::unique_ptr<T>;
@@ -168,26 +161,6 @@ template <typename T, typename... Args>
 constexpr ref<T> create_ref(Args&&... args) {
     return std::make_shared<T>(std::forward<Args>(args)...);
 }
-
-template <typename T>
-struct neko_named_func {
-    std::string name;
-    neko_function<T> func;
-};
-
-template <typename F>
-struct neko_defer {
-    F f;
-    neko_defer(F f) : f(f) {}
-    ~neko_defer() { f(); }
-};
-
-template <typename F>
-neko_defer<F> defer_func(F f) {
-    return neko_defer<F>(f);
-}
-
-#define neko_defer(code) auto NEKO_CONCAT(__defer_, __LINE__) = neko::defer_func([&]() { code; })
 
 template <typename T>
 concept concept_is_pair = requires(T t) {
@@ -216,6 +189,18 @@ struct is_pair<std::pair<T1, T2>> : public std::true_type {};
 #elif defined(__APPLE__)
 #include <sys/sysctl.h>
 #include <unistd.h>
+#endif
+
+#define NEKO_VA_UNPACK(...) __VA_ARGS__  // 用于解包括号 带逗号的宏参数需要它
+
+#if defined(__clang__)
+#define NEKO_DEBUGBREAK() __builtin_debugtrap()
+#elif defined(__GNUC__)
+#define NEKO_DEBUGBREAK() __builtin_trap()
+#elif defined(_MSC_VER)
+#define NEKO_DEBUGBREAK() __debugbreak()
+#else
+#define NEKO_DEBUGBREAK()
 #endif
 
 namespace std {
@@ -268,21 +253,9 @@ private:
     std::chrono::time_point<std::chrono::high_resolution_clock> startPos;
 };
 
-NEKO_FORCE_INLINE auto time() -> s64 {
-    s64 ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+NEKO_FORCE_INLINE auto time() -> i64 {
+    i64 ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     return ms;
-}
-
-NEKO_STATIC_INLINE time_t time_mkgmtime(struct tm* unixdate) {
-    NEKO_ASSERT(unixdate != nullptr);
-    time_t fakeUnixtime = mktime(unixdate);
-    struct tm* fakeDate = gmtime(&fakeUnixtime);
-
-    s32 nOffSet = fakeDate->tm_hour - unixdate->tm_hour;
-    if (nOffSet > 12) {
-        nOffSet = 24 - nOffSet;
-    }
-    return fakeUnixtime - nOffSet * 3600;
 }
 
 NEKO_STATIC_INLINE auto time_to_string(std::time_t now = std::time(nullptr)) -> std::string {
@@ -323,14 +296,102 @@ NEKO_STATIC_INLINE std::string fs_normalize_path(const std::string& path, char d
     return norm;
 }
 
-NEKO_INLINE bool fs_exists(const std::string& filename) {
-    std::ifstream file(filename);
-    return file.good();
-}
-
 }  // namespace neko
 
+namespace neko::wtf8 {
+std::wstring u2w(std::string_view str) noexcept;
+std::string w2u(std::wstring_view wstr) noexcept;
+}  // namespace neko::wtf8
+
+namespace neko::win {
+std::wstring u2w(std::string_view str) noexcept;
+std::string w2u(std::wstring_view wstr) noexcept;
+std::wstring a2w(std::string_view str) noexcept;
+std::string w2a(std::wstring_view wstr) noexcept;
+std::string a2u(std::string_view str) noexcept;
+std::string u2a(std::string_view str) noexcept;
+}  // namespace neko::win
+
+template <typename F>
+struct function_traits : public function_traits<decltype(&F::operator())> {};
+
+template <typename ClassType, typename ReturnType, typename... Args>
+struct function_traits<ReturnType (ClassType::*)(Args...) const> {
+    using return_type = ReturnType;
+    using pointer = ReturnType (*)(Args...);
+    using std_function = std::function<ReturnType(Args...)>;
+};
+
+template <typename F>
+typename function_traits<F>::std_function to_function(F& lambda) {
+    return typename function_traits<F>::std_function(lambda);
+}
+
 namespace neko {
+
+template <typename T>
+class moveonly {
+public:
+    static_assert(std::is_default_constructible_v<T>);
+    static_assert(std::is_trivially_copy_constructible_v<T>);
+    static_assert(std::is_trivially_copy_assignable_v<T>);
+    static_assert(std::is_trivially_move_constructible_v<T>);
+    static_assert(std::is_trivially_move_assignable_v<T>);
+    static_assert(std::is_swappable_v<T>);
+
+    moveonly() = default;
+
+    ~moveonly() = default;
+
+    explicit moveonly(const T& val) noexcept { m_value = val; }
+
+    moveonly(const moveonly&) = delete;
+
+    moveonly& operator=(const moveonly&) = delete;
+
+    moveonly(moveonly&& other) noexcept { m_value = std::exchange(other.m_value, T{}); }
+
+    moveonly& operator=(moveonly&& other) noexcept {
+        std::swap(m_value, other.m_value);
+        return *this;
+    }
+
+    operator const T&() const { return m_value; }
+
+    moveonly& operator=(const T& val) {
+        m_value = val;
+        return *this;
+    }
+
+    // MoveOnly<T> has the same memory layout as T
+    // So it's perfectly safe to overload operator&
+    T* operator&() { return &m_value; }
+
+    const T* operator&() const { return &m_value; }
+
+    T* operator->() { return &m_value; }
+
+    const T* operator->() const { return &m_value; }
+
+    bool operator==(const T& val) const { return m_value == val; }
+
+    bool operator!=(const T& val) const { return m_value != val; }
+
+private:
+    T m_value{};
+};
+
+static_assert(sizeof(int) == sizeof(moveonly<int>));
+
+class noncopyable {
+public:
+    noncopyable(const noncopyable&) = delete;
+    noncopyable& operator=(const noncopyable&) = delete;
+
+protected:
+    noncopyable() = default;
+    ~noncopyable() = default;
+};
 
 struct format_str {
     constexpr format_str(const char* str) noexcept : str(str) {}
@@ -381,18 +442,18 @@ struct lastFnType<F0, F1, Fn...> {
 };
 
 template <typename T1, typename T2>
-struct lastFnType<neko_function<T2(T1)>> {
+struct lastFnType<function<T2(T1)>> {
     using type = T1;
 };
 
 template <typename T1, typename T2>
-neko_function<T1(T2)> func_combine(neko_function<T1(T2)> conv) {
+function<T1(T2)> func_combine(function<T1(T2)> conv) {
     return conv;
 }
 
 template <typename T1, typename T2, typename T3, typename... Fn>
-auto func_combine(neko_function<T1(T2)> conv1, neko_function<T2(T3)> conv2, Fn... fn) -> neko_function<T1(typename lastFnType<neko_function<T2(T3)>, Fn...>::type)> {
-    using In = typename lastFnType<neko_function<T2(T3)>, Fn...>::type;
+auto func_combine(function<T1(T2)> conv1, function<T2(T3)> conv2, Fn... fn) -> function<T1(typename lastFnType<function<T2(T3)>, Fn...>::type)> {
+    using In = typename lastFnType<function<T2(T3)>, Fn...>::type;
 
     return [=](In const& in) { return conv1(func_combine(conv2, fn...)(in)); };
 }
@@ -523,90 +584,16 @@ constexpr void copy(ForwardIt src_beg, ForwardIt src_end, OutputIt dest_beg, Out
     }
 }
 
-struct mount_result {
-    bool ok;
-    bool can_hot_reload;
-    bool is_fused;
-};
-
-mount_result vfs_mount(const_str fsname, const_str filepath);
-void vfs_fini(std::optional<std::string> name);
-bool vfs_file_exists(std::string fsname, String filepath);
-bool vfs_read_entire_file(std::string fsname, String* out, String filepath);
-
-void* vfs_for_miniaudio();
-
-s64 luax_len(lua_State* L, s32 arg);
-String luax_check_string(lua_State* L, s32 arg);
-
-}  // namespace neko
-
-namespace neko {
-
-enum JSONKind : s32 {
-    JSONKind_Null,
-    JSONKind_Object,
-    JSONKind_Array,
-    JSONKind_String,
-    JSONKind_Number,
-    JSONKind_Boolean,
-};
-
-struct JSONObject;
-struct JSONArray;
-struct JSON {
-    union {
-        JSONObject* object;
-        JSONArray* array;
-        String str;
-        double number;
-        bool boolean;
-    };
-    JSONKind kind;
-
-    JSON lookup(String key, bool* ok);
-    JSON index(s32 i, bool* ok);
-
-    JSONObject* as_object(bool* ok);
-    JSONArray* as_array(bool* ok);
-    String as_string(bool* ok);
-    double as_number(bool* ok);
-
-    JSONObject* lookup_object(String key, bool* ok);
-    JSONArray* lookup_array(String key, bool* ok);
-    String lookup_string(String key, bool* ok);
-    double lookup_number(String key, bool* ok);
-
-    double index_number(s32 i, bool* ok);
-};
-
-struct JSONObject {
-    JSON value;
-    String key;
-    JSONObject* next;
-    u64 hash;
-};
-
-struct JSONArray {
-    JSON value;
-    JSONArray* next;
-    u64 index;
-};
-
-struct JSONDocument {
-    JSON root;
-    String error;
-    Arena arena;
-
-    void parse(String contents);
-    void trash();
-};
-
-void json_write_string(StringBuilder* sb, JSON* json);
-void json_print(JSON* json);
-
-void json_to_lua(lua_State* L, JSON* json);
-String lua_to_json_string(lua_State* L, s32 arg, String* contents, s32 width);
+// template <typename T>
+// struct alloc {
+//     template <typename... Args>
+//     static T* safe_malloc(Args&&... args) {
+//         void* mem = neko_safe_malloc(sizeof(T));
+//         if (!mem) {
+//         }
+//         return new (mem) T(std::forward<Args>(args)...);
+//     }
+// };
 
 NEKO_INLINE bool str_is_chinese_c(const char str) { return str & 0x80; }
 
@@ -744,85 +731,6 @@ NEKO_INLINE bool str_replace_with(std::string& src, const char* what, const char
     return true;
 }
 
-struct LuaThread {
-    Mutex mtx;
-    String contents;
-    String name;
-    Thread thread;
-
-    void make(String code, String thread_name);
-    void join();
-};
-
-struct lua_table_entry;
-
-struct lua_variant {
-    s32 type;
-    union {
-        bool boolean;
-        double number;
-        String string;
-        Slice<lua_table_entry> table;
-        struct {
-            void* ptr;
-            String tname;
-        } udata;
-    };
-};
-
-static_assert(std::is_trivially_copyable_v<lua_variant>);
-
-struct lua_variant_wrap {
-    lua_variant data;
-    void make(lua_State* L, s32 arg);
-    void trash();
-    void push(lua_State* L);
-};
-
-struct lua_table_entry {
-    lua_variant_wrap key;
-    lua_variant_wrap value;
-};
-
-struct lua_channel {
-    std::atomic<char*> name;
-
-    Mutex mtx;
-    Cond received;
-    Cond sent;
-
-    u64 received_total;
-    u64 sent_total;
-
-    Slice<lua_variant_wrap> items;
-    u64 front;
-    u64 back;
-    u64 len;
-
-    void make(String n, u64 buf);
-    void trash();
-    void send(lua_variant_wrap item);
-    lua_variant_wrap recv();
-    bool try_recv(lua_variant_wrap* v);
-};
-
-lua_channel* lua_channel_make(String name, u64 buf);
-lua_channel* lua_channel_get(String name);
-lua_channel* lua_channels_select(lua_State* L, lua_variant_wrap* v);
-void lua_channels_setup();
-void lua_channels_shutdown();
-
-typedef struct neko_dynlib {
-    void* hndl;
-} neko_dynlib;
-
-NEKO_API_DECL neko_dynlib neko_module_open(const_str name);
-NEKO_API_DECL void neko_module_close(neko_dynlib lib);
-NEKO_API_DECL void* neko_module_get_symbol(neko_dynlib lib, const_str symbol_name);
-NEKO_API_DECL bool neko_module_has_symbol(neko_dynlib lib, const_str symbol_name);
-
-NEKO_API_DECL void neko_tm_init(void);
-
 }  // namespace neko
 
 typedef struct engine_cvar_t {
@@ -844,9 +752,6 @@ typedef struct engine_cvar_t {
 } neko_client_cvar_t;
 
 void neko_cvar_gui(neko_client_cvar_t& cvar);
-
-extern neko_console_command_t commands[];
-extern neko_console_t g_console;
 
 namespace neko {}  // namespace neko
 

@@ -2,7 +2,9 @@
 #ifndef NEKO_MATH_H
 #define NEKO_MATH_H
 
-#include "neko.h"
+#include <cmath>
+
+#include "neko_prelude.h"
 
 /*========================
 // NEKO_MATH
@@ -1215,7 +1217,7 @@ neko_vec4 neko_aabb_window_coords(neko_aabb_t* aabb, neko_camera_t* camera, neko
     neko_vec4 br = neko_v4(aabb->max.x, aabb->max.y, 0.f, 1.f);
 
     neko_mat4 view_mtx = neko_camera_get_view(camera);
-    neko_mat4 proj_mtx = neko_camera_get_proj(camera, (s32)window_size.x, (s32)window_size.y);
+    neko_mat4 proj_mtx = neko_camera_get_proj(camera, (i32)window_size.x, (i32)window_size.y);
     neko_mat4 vp = neko_mat4_mul(proj_mtx, view_mtx);
 
     // Transform verts

@@ -1,4 +1,5 @@
 
+#include "engine/neko_asset.h"
 #include "engine/neko_luabind.hpp"
 
 struct neko_lua_handle_t {
@@ -37,7 +38,7 @@ LUA_FUNCTION(__neko_bind_pack_construct) {
 LUA_FUNCTION(__neko_bind_pack_destroy) {
     neko_lua_handle_t* userdata_ptr = (neko_lua_handle_t*)lua_touserdata(L, 1);
 
-    neko_pak* pack = (neko_pak*)(userdata_ptr->data);
+    neko_pak* pack = (neko_pak*)userdata_ptr->data;
     pack->fini();
 
     mem_free(userdata_ptr->data);

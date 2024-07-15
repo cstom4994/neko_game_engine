@@ -1,457 +1,2369 @@
-
 #include "neko_asset.h"
 
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdio>
+#include <filesystem>
+#include <new>
+#include <unordered_map>
 
-#include "engine/neko.h"
-#include "engine/neko.hpp"
-#include "engine/neko_common.h"
-#include "engine/neko_os.h"
+#include "neko.hpp"
+#include "neko_app.h"
+#include "neko_base.h"
+#include "neko_common.h"
+#include "neko_lua.h"
+#include "neko_os.h"
+#include "neko_prelude.h"
 
-// stb_image
-#define STB_IMAGE_IMPLEMENTATION
-#define STBI_MALLOC(sz) mem_alloc(sz)
-#define STBI_REALLOC(p, newsz) mem_realloc(p, newsz)
-#define STBI_FREE(p) mem_free(p)
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
+// miniz
+#include <miniz.h>
+
+// deps
+#include <box2d/b2_body.h>
+#include <box2d/b2_fixture.h>
+#include <box2d/b2_polygon_shape.h>
+#include <box2d/b2_world.h>
+#include <sokol_gfx.h>
 #include <stb_image.h>
+#include <stb_image_resize2.h>
 
-neko_asset_t __neko_asset_handle_create_impl(u64 type_id, u32 asset_id, u32 importer_id) {
-    neko_asset_t asset = NEKO_DEFAULT_VAL();
-    asset.type_id = type_id;
-    asset.asset_id = asset_id;
-    asset.importer_id = importer_id;
-    return asset;
-}
+#define neko_little_endian 1
 
-neko_asset_manager_t neko_asset_manager_new() {
-    neko_asset_manager_t assets = NEKO_DEFAULT_VAL();
+// embed
+static const u8 g_font_monocrafte_data[] = {
+#include "Monocraft.ttf.h"
+};
 
-    // Register default asset importers
-    neko_asset_importer_desc_t tex_desc = NEKO_DEFAULT_VAL();
-    neko_asset_importer_desc_t font_desc = NEKO_DEFAULT_VAL();
-    // neko_asset_importer_desc_t audio_desc = NEKO_DEFAULT_VAL();
-    neko_asset_importer_desc_t mesh_desc = NEKO_DEFAULT_VAL();
-    neko_asset_importer_desc_t asset_desc = NEKO_DEFAULT_VAL();
+bool Image::load(String filepath, bool generate_mips) {
+    PROFILE_FUNC();
 
-    tex_desc.load_from_file = (neko_asset_load_func)&neko_asset_texture_load_from_file;
-    font_desc.load_from_file = (neko_asset_load_func)&neko_asset_font_load_from_file;
-    // audio_desc.load_from_file = (neko_asset_load_func)&neko_asset_audio_load_from_file;
-    mesh_desc.load_from_file = (neko_asset_load_func)&neko_asset_mesh_load_from_file;
-
-    neko_assets_register_importer(&assets, neko_asset_t, &asset_desc);
-    neko_assets_register_importer(&assets, neko_asset_texture_t, &tex_desc);
-    neko_assets_register_importer(&assets, neko_asset_font_t, &font_desc);
-    // neko_assets_register_importer(&assets, neko_asset_audio_t, &audio_desc);
-    neko_assets_register_importer(&assets, neko_asset_mesh_t, &mesh_desc);
-
-    return assets;
-}
-
-void neko_asset_manager_free(neko_asset_manager_t *am) {
-    // Free all data
-}
-
-void *__neko_assets_getp_impl(neko_asset_manager_t *am, u64 type_id, neko_asset_t hndl) {
-    if (type_id != hndl.type_id) {
-        NEKO_WARN("type id: %zu doesn't match handle type id: %zu.", type_id, hndl.type_id);
-        NEKO_ASSERT(false);
-        return NULL;
-    }
-
-    // Need to grab the appropriate importer based on type
-    if (!neko_hash_table_key_exists(am->importers, type_id)) {
-        NEKO_WARN("importer type %zu does not exist.", type_id);
-        NEKO_ASSERT(false);
-        return NULL;
-    }
-
-    neko_asset_importer_t *imp = neko_hash_table_getp(am->importers, type_id);
-
-    // Vertify that importer id and handle importer id align
-    if (imp->importer_id != hndl.importer_id) {
-        NEKO_WARN("importer id: %zu does not match handle importer id: %zu.", imp->importer_id, hndl.importer_id);
-        NEKO_ASSERT(false);
-        return NULL;
-    }
-
-    // Need to get data index from slot array using hndl asset id
-    size_t offset = (((sizeof(u32) * hndl.asset_id) + 3) & (~3));
-    u32 idx = *(u32 *)((char *)(imp->slot_array_indices_ptr) + offset);
-    // Then need to return pointer to data at index
-    size_t data_sz = imp->data_size;
-    size_t s = data_sz == 8 ? 7 : 3;
-    offset = (((data_sz * idx) + s) & (~s));
-    return ((char *)(imp->slot_array_data_ptr) + offset);
-}
-
-void neko_asset_importer_set_desc(neko_asset_importer_t *imp, neko_asset_importer_desc_t *desc) {
-    imp->desc = desc ? *desc : imp->desc;
-    imp->desc.load_from_file = imp->desc.load_from_file ? (neko_asset_load_func)imp->desc.load_from_file : (neko_asset_load_func)&neko_asset_default_load_from_file;
-    imp->desc.default_asset = imp->desc.default_asset ? (neko_asset_default_func)imp->desc.default_asset : (neko_asset_default_func)&neko_asset_default_asset;
-}
-
-neko_asset_t neko_asset_default_asset() {
-    neko_asset_t a = NEKO_DEFAULT_VAL();
-    return a;
-}
-
-void neko_asset_default_load_from_file(const_str path, void *out) {
-    // Nothing...
-}
-
-/*==========================
-// NEKO_ASSET_TYPES
-==========================*/
-
-// STB
-#include <imstb_rectpack.h>
-#include <imstb_truetype.h>
-
-void neko_image::load(const_str path) {
-    bool ok = neko_capi_vfs_file_exists(NEKO_PACKS::GAMEDATA, path);
+    String contents = {};
+    bool ok = vfs_read_entire_file(NEKO_PACKS::GAMEDATA, &contents, filepath);
     if (!ok) {
-        NEKO_WARN("failed to load image %s", path);
-        return;
-    }
-    size_t mem_size;
-    const_str mem_data = neko_capi_vfs_read_file(NEKO_PACKS::GAMEDATA, path, &mem_size);
-    this->load_mem(mem_data, mem_size, path);
-    mem_free(mem_data);
-    return;
-}
-
-void neko_image::load_mem(const void *mem_data, size_t mem_size, const_str vpath) {
-    char temp_file_extension_buffer[16] = {0};
-    neko_util_get_file_extension(temp_file_extension_buffer, sizeof(temp_file_extension_buffer), vpath);
-    if (neko_string_compare_equal(temp_file_extension_buffer, "ase") || neko_string_compare_equal(temp_file_extension_buffer, "aseprite")) {
-        ase_t *ase = neko_aseprite_load_from_memory(mem_data, mem_size);
-        if (NULL == ase) NEKO_WARN("unable to load ase %s : %p", vpath, mem_data);
-        NEKO_ASSERT(ase->frame_count == 1);  // load_ase_texture_simple used to load simple aseprite
-        neko_aseprite_default_blend_bind(ase);
-        // NEKO_TRACE("load aseprite - frame_count %d - palette.entry_count %d - w=%d h=%d", ase->frame_count, ase->palette.entry_count, ase->w, ase->h);
-        this->w = ase->w;
-        this->h = ase->h;
-        this->ase = ase;
-        return;
-    } else {
-        int width, height, channels;
-        unsigned char *image = stbi_load_from_memory((stbi_uc const *)mem_data, mem_size, &width, &height, &channels, 0);
-        this->w = width;
-        this->h = height;
-        this->pix = image;
-        return;
-    }
-    NEKO_ASSERT(0, "unreachable");
-    return;  // unreachable
-}
-
-void neko_image::free() { stbi_image_free(this->pix); }
-
-NEKO_API_DECL bool neko_util_load_texture_data_from_file(const char *file_path, s32 *width, s32 *height, u32 *num_comps, void **data, bool flip_vertically_on_load) {
-    u64 len = 0;
-    const_str file_data = neko_capi_vfs_read_file(NEKO_PACKS::GAMEDATA, file_path, &len);
-    NEKO_ASSERT(file_data);
-    bool ret = neko_util_load_texture_data_from_memory(file_data, len, width, height, num_comps, data, flip_vertically_on_load);
-    if (!ret) {
-        NEKO_WARN("could not load texture: %s", file_path);
-    }
-    mem_free(file_data);
-    return ret;
-}
-
-NEKO_API_DECL bool neko_util_load_texture_data_from_memory(const void *memory, size_t sz, s32 *width, s32 *height, u32 *num_comps, void **data, bool flip_vertically_on_load) {
-    // Load texture data
-
-    int channels;
-    u8 *image = (u8 *)stbi_load_from_memory((unsigned char *)memory, sz, width, height, &channels, 0);
-
-    // if (flip_vertically_on_load) neko_png_flip_image_horizontal(&img);
-
-    *data = image;
-
-    if (!*data) {
-        // neko_image_free(&img);
-        NEKO_WARN("could not load image %p", memory);
         return false;
     }
-    return true;
-}
+    neko_defer(mem_free(contents.data));
 
-NEKO_API_DECL bool neko_asset_texture_load_from_file(const_str path, void *out, neko_render_texture_desc_t *desc, bool flip_on_load, bool keep_data) {
-    neko_asset_texture_t *t = (neko_asset_texture_t *)out;
-
-    memset(&t->desc, 0, sizeof(neko_render_texture_desc_t));
-
-    if (desc) {
-        t->desc = *desc;
-    } else {
-        t->desc.format = R_TEXTURE_FORMAT_RGBA8;
-        t->desc.min_filter = R_TEXTURE_FILTER_LINEAR;
-        t->desc.mag_filter = R_TEXTURE_FILTER_LINEAR;
-        t->desc.wrap_s = R_TEXTURE_WRAP_REPEAT;
-        t->desc.wrap_t = R_TEXTURE_WRAP_REPEAT;
+    i32 width = 0, height = 0, channels = 0;
+    stbi_uc *data = nullptr;
+    {
+        PROFILE_BLOCK("stb_image load");
+        data = stbi_load_from_memory((u8 *)contents.data, (i32)contents.len, &width, &height, &channels, 4);
     }
-
-    // Load texture data
-    neko_image img;
-    img.load(path);
-    // if (t->desc.flip_y) neko_png_flip_image_horizontal(&img);
-
-    t->desc.data[0] = img.pix;
-    t->desc.width = img.w;
-    t->desc.height = img.h;
-
-    if (!t->desc.data[0]) {
-        img.free();
-        NEKO_WARN("failed to load texture data %s", path);
+    if (!data) {
         return false;
     }
+    neko_defer(stbi_image_free(data));
 
-    t->hndl = neko_render_texture_create(t->desc);
+    sg_image_desc desc = {};
+    desc.pixel_format = SG_PIXELFORMAT_RGBA8;
+    desc.width = width;
+    desc.height = height;
+    desc.data.subimage[0][0].ptr = data;
+    desc.data.subimage[0][0].size = width * height * 4;
 
-    if (!keep_data) {
-        // neko_image_free(&img);
-        *t->desc.data = NULL;
-    }
-
-    return true;
-}
-
-/*
-bool neko_asset_texture_load_from_file(const char* path, void* out, neko_render_texture_desc_t* desc, bool flip_on_load, bool keep_data)
-{
-    size_t len = 0;
-    char* file_data = neko_os_read_file_contents(path, "rb", &len);
-    NEKO_ASSERT(file_data);
-    bool ret = neko_asset_texture_load_from_memory(file_data, len, out, desc, flip_on_load, keep_data);
-    mem_free(file_data);
-    return ret;
-}
- */
-
-bool neko_asset_texture_load_from_memory(const void *memory, size_t sz, void *out, neko_render_texture_desc_t *desc, bool flip_on_load, bool keep_data) {
-    neko_asset_texture_t *t = (neko_asset_texture_t *)out;
-
-    memset(&t->desc, 0, sizeof(neko_render_texture_desc_t));
-
-    if (desc) {
-        t->desc = *desc;
-    } else {
-        t->desc.format = R_TEXTURE_FORMAT_RGBA8;
-        t->desc.min_filter = R_TEXTURE_FILTER_LINEAR;
-        t->desc.mag_filter = R_TEXTURE_FILTER_LINEAR;
-        t->desc.wrap_s = R_TEXTURE_WRAP_REPEAT;
-        t->desc.wrap_t = R_TEXTURE_WRAP_REPEAT;
-    }
-
-    // Load texture data
-    s32 num_comps = 0;
-    bool loaded = neko_util_load_texture_data_from_memory(memory, sz, (s32 *)&t->desc.width, (s32 *)&t->desc.height, (u32 *)&num_comps, (void **)&t->desc.data, t->desc.flip_y);
-
-    if (!loaded) {
-        return false;
-    }
-
-    t->hndl = neko_render_texture_create(t->desc);
-
-    if (!keep_data) {
-        neko_free(t->desc.data[0]);
-        *t->desc.data = NULL;
-    }
-
-    return true;
-}
-
-bool neko_asset_font_load_from_file(const_str path, void *out, u32 point_size) {
-    size_t len = 0;
-    const_str ttf = neko_capi_vfs_read_file(NEKO_PACKS::GAMEDATA, path, &len);
-    if (!point_size) {
-        NEKO_WARN("font: %s: point size not declared. setting to default 16.", neko_util_get_filename(path));
-        point_size = 16;
-    }
-    bool ret = neko_asset_font_load_from_memory(ttf, len, out, point_size);
-    if (!ret) {
-        NEKO_WARN("font failed to load: %s", neko_util_get_filename(path));
-    } else {
-        NEKO_TRACE("font successfully loaded: %s", neko_util_get_filename(path));
-    }
-    mem_free(ttf);
-    return ret;
-}
-
-bool neko_asset_font_load_from_memory(const void *memory, size_t sz, void *out, u32 point_size) {
-    neko_asset_font_t *f = (neko_asset_font_t *)out;
-    // f->glyphs_num = 96;
-    // f->glyphs = mem_alloc(f->glyphs_num * sizeof(neko_baked_char_t));
-
-    if (!point_size) {
-        NEKO_WARN("font: point size not declared. setting to default 16.");
-        point_size = 16;
-    }
-
-    // Poor attempt at an auto resized texture
-    const u32 point_wh = NEKO_MAX(point_size, 32);
-    const u32 w = (point_wh / 32 * 512) + (point_wh / 32 * 512) % 512;
-    const u32 h = (point_wh / 32 * 512) + (point_wh / 32 * 512) % 512;
-
-    const u32 num_comps = 4;
-    u8 *alpha_bitmap = (u8 *)mem_alloc(w * h);
-    u8 *flipmap = (u8 *)mem_alloc(w * h * num_comps);
-    memset(alpha_bitmap, 0, w * h);
-    memset(flipmap, 0, w * h * num_comps);
-    s32 v = stbtt_BakeFontBitmap((u8 *)memory, 0, (f32)point_size, alpha_bitmap, w, h, 32, 96, (stbtt_bakedchar *)f->glyphs);
-
-    // 翻转纹理
-    u32 r = h - 1;
-    for (u32 i = 0; i < h; ++i) {
-        for (u32 j = 0; j < w; ++j) {
-            u32 i0 = i * w + j;
-            u32 i1 = i * w * num_comps + j * num_comps;
-            u8 a = alpha_bitmap[i0];
-            flipmap[i1 + 0] = 255;
-            flipmap[i1 + 1] = 255;
-            flipmap[i1 + 2] = 255;
-            flipmap[i1 + 3] = a;
+    Array<u8 *> mips = {};
+    neko_defer({
+        for (u8 *mip : mips) {
+            mem_free(mip);
         }
-        r--;
+        mips.trash();
+    });
+
+    if (generate_mips) {
+        mips.reserve(SG_MAX_MIPMAPS);
+
+        u8 *prev = data;
+        i32 w0 = width;
+        i32 h0 = height;
+        i32 w1 = w0 / 2;
+        i32 h1 = h0 / 2;
+
+        while (w1 > 1 && h1 > 1) {
+            PROFILE_BLOCK("generate mip");
+
+            u8 *mip = (u8 *)mem_alloc(w1 * h1 * 4);
+            stbir_resize_uint8_linear(prev, w0, h0, 0, mip, w1, h1, 0, STBIR_RGBA);
+            mips.push(mip);
+
+            desc.data.subimage[0][mips.len].ptr = mip;
+            desc.data.subimage[0][mips.len].size = w1 * h1 * 4;
+
+            prev = mip;
+            w0 = w1;
+            h0 = h1;
+            w1 /= 2;
+            h1 /= 2;
+        }
     }
 
-    neko_render_texture_desc_t desc = NEKO_DEFAULT_VAL();
-    desc.width = w;
-    desc.height = h;
-    *desc.data = flipmap;
-    desc.format = R_TEXTURE_FORMAT_RGBA8;
-    desc.min_filter = R_TEXTURE_FILTER_NEAREST;
-    desc.mag_filter = R_TEXTURE_FILTER_NEAREST;
+    desc.num_mipmaps = mips.len + 1;
 
-    // 使用位图数据生成位图的图集纹理
-    f->texture.hndl = neko_render_texture_create(desc);
-    f->texture.desc = desc;
-    *f->texture.desc.data = NULL;
+    u32 id = 0;
+    {
+        PROFILE_BLOCK("make image");
+        LockGuard lock{&g_app->gpu_mtx};
+        id = sg_make_image(desc).id;
+    }
 
-    bool success = false;
-    if (v <= 0) {
-        NEKO_WARN("font failed to load, baked texture was too small: %d", v);
+    Image img = {};
+    img.id = id;
+    img.width = width;
+    img.height = height;
+    img.has_mips = generate_mips;
+    *this = img;
+
+    NEKO_TRACE("created image (%dx%d, %d channels, mipmaps: %s) with id %d", width, height, channels, generate_mips ? "true" : "false", id);
+    return true;
+}
+
+void Image::trash() {
+    LockGuard lock{&g_app->gpu_mtx};
+    sg_destroy_image({id});
+}
+
+bool SpriteData::load(String filepath) {
+    PROFILE_FUNC();
+
+    String contents = {};
+    bool ok = vfs_read_entire_file(NEKO_PACKS::GAMEDATA, &contents, filepath);
+    if (!ok) {
+        return false;
+    }
+    neko_defer(mem_free(contents.data));
+
+    ase_t *ase = nullptr;
+    {
+        PROFILE_BLOCK("aseprite load");
+        ase = neko_aseprite_load_from_memory(contents.data, (i32)contents.len);
+    }
+    neko_defer(neko_aseprite_free(ase));
+
+    Arena arena = {};
+
+    i32 rect = ase->w * ase->h * 4;
+
+    Slice<SpriteFrame> frames = {};
+    frames.resize(&arena, ase->frame_count);
+
+    Array<char> pixels = {};
+    pixels.reserve(ase->frame_count * rect);
+    neko_defer(pixels.trash());
+
+    for (i32 i = 0; i < ase->frame_count; i++) {
+        ase_frame_t &frame = ase->frames[i];
+
+        SpriteFrame sf = {};
+        sf.duration = frame.duration_milliseconds;
+
+        sf.u0 = 0;
+        sf.v0 = (float)i / ase->frame_count;
+        sf.u1 = 1;
+        sf.v1 = (float)(i + 1) / ase->frame_count;
+
+        frames[i] = sf;
+        memcpy(pixels.data + (i * rect), &frame.pixels[0].r, rect);
+    }
+
+    sg_image_desc desc = {};
+    desc.width = ase->w;
+    desc.height = ase->h * ase->frame_count;
+    desc.data.subimage[0][0].ptr = pixels.data;
+    desc.data.subimage[0][0].size = ase->frame_count * rect;
+
+    u32 id = 0;
+    {
+        PROFILE_BLOCK("make image");
+        LockGuard lock{&g_app->gpu_mtx};
+        id = sg_make_image(desc).id;
+    }
+
+    Image img = {};
+    img.id = id;
+    img.width = desc.width;
+    img.height = desc.height;
+
+    HashMap<SpriteLoop> by_tag = {};
+    by_tag.reserve(ase->tag_count);
+
+    for (i32 i = 0; i < ase->tag_count; i++) {
+        ase_tag_t &tag = ase->tags[i];
+
+        u64 len = (u64)((tag.to_frame + 1) - tag.from_frame);
+
+        SpriteLoop loop = {};
+
+        loop.indices.resize(&arena, len);
+        for (i32 j = 0; j < len; j++) {
+            loop.indices[j] = j + tag.from_frame;
+        }
+
+        by_tag[fnv1a(tag.name)] = loop;
+    }
+
+    NEKO_TRACE("created sprite with image id: %d and %llu frames", img.id, (unsigned long long)frames.len);
+
+    SpriteData s = {};
+    s.arena = arena;
+    s.img = img;
+    s.frames = frames;
+    s.by_tag = by_tag;
+    s.width = ase->w;
+    s.height = ase->h;
+    *this = s;
+    return true;
+}
+
+void SpriteData::trash() {
+    by_tag.trash();
+    arena.trash();
+}
+
+bool Sprite::play(String tag) {
+    u64 key = fnv1a(tag);
+    bool same = loop == key;
+    loop = key;
+    return same;
+}
+
+void Sprite::update(float dt) {
+    SpriteView view = {};
+    bool ok = view.make(this);
+    if (!ok) {
+        return;
+    }
+
+    i32 index = view.frame();
+    SpriteFrame frame = view.data.frames[index];
+
+    elapsed += dt * 1000;
+    if (elapsed > frame.duration) {
+        if (current_frame == view.len() - 1) {
+            current_frame = 0;
+        } else {
+            current_frame++;
+        }
+
+        elapsed -= frame.duration;
+    }
+}
+
+void Sprite::set_frame(i32 frame) {
+    SpriteView view = {};
+    bool ok = view.make(this);
+    if (!ok) {
+        return;
+    }
+
+    if (0 <= frame && frame < view.len()) {
+        current_frame = frame;
+        elapsed = 0;
+    }
+}
+
+bool SpriteView::make(Sprite *spr) {
+    Asset a = {};
+    bool ok = asset_read(spr->sprite, &a);
+    if (!ok) {
+        return false;
+    }
+
+    SpriteData data = a.sprite;
+    const SpriteLoop *res = data.by_tag.get(spr->loop);
+
+    SpriteView view = {};
+    view.sprite = spr;
+    view.data = data;
+
+    if (res != nullptr) {
+        view.loop = *res;
+    }
+
+    *this = view;
+    return true;
+}
+
+i32 SpriteView::frame() {
+    if (loop.indices.data != nullptr) {
+        return loop.indices[sprite->current_frame];
     } else {
-        NEKO_TRACE("font baked size: %d", v);
+        return sprite->current_frame;
+    }
+}
+
+u64 SpriteView::len() {
+    if (loop.indices.data != nullptr) {
+        return loop.indices.len;
+    } else {
+        return data.frames.len;
+    }
+}
+
+static bool layer_from_json(TilemapLayer *layer, JSON *json, bool *ok, Arena *arena, String filepath, HashMap<Image> *images) {
+    PROFILE_FUNC();
+
+    layer->identifier = arena->bump_string(json->lookup_string("__identifier", ok));
+    layer->c_width = (i32)json->lookup_number("__cWid", ok);
+    layer->c_height = (i32)json->lookup_number("__cHei", ok);
+    layer->grid_size = json->lookup_number("__gridSize", ok);
+
+    JSON tileset_rel_path = json->lookup("__tilesetRelPath", ok);
+
+    JSONArray *int_grid_csv = json->lookup_array("intGridCsv", ok);
+
+    JSONArray *grid_tiles = json->lookup_array("gridTiles", ok);
+    JSONArray *auto_layer_tiles = json->lookup_array("autoLayerTiles", ok);
+
+    JSONArray *arr_tiles = (grid_tiles != nullptr && grid_tiles->index != 0) ? grid_tiles : auto_layer_tiles;
+
+    JSONArray *entity_instances = json->lookup_array("entityInstances", ok);
+
+    if (tileset_rel_path.kind == JSONKind_String) {
+        StringBuilder sb = {};
+        neko_defer(sb.trash());
+        sb.swap_filename(filepath, tileset_rel_path.as_string(ok));
+
+        u64 key = fnv1a(String(sb));
+
+        Image *img = images->get(key);
+        if (img != nullptr) {
+            layer->image = *img;
+        } else {
+            Image create_img = {};
+            bool success = create_img.load(String(sb), false);
+            if (!success) {
+                return false;
+            }
+
+            layer->image = create_img;
+            (*images)[key] = create_img;
+        }
+    }
+
+    Slice<TilemapInt> grid = {};
+    if (int_grid_csv != nullptr) {
+        PROFILE_BLOCK("int grid");
+
+        i32 len = int_grid_csv->index + 1;
+        grid.resize(arena, len);
+        for (JSONArray *a = int_grid_csv; a != nullptr; a = a->next) {
+            grid[--len] = (TilemapInt)a->value.as_number(ok);
+        }
+    }
+    layer->int_grid = grid;
+
+    Slice<Tile> tiles = {};
+    if (arr_tiles != nullptr) {
+        PROFILE_BLOCK("tiles");
+
+        i32 len = arr_tiles->index + 1;
+        tiles.resize(arena, len);
+        for (JSONArray *a = arr_tiles; a != nullptr; a = a->next) {
+            JSON px = a->value.lookup("px", ok);
+            JSON src = a->value.lookup("src", ok);
+
+            Tile tile = {};
+            tile.x = px.index_number(0, ok);
+            tile.y = px.index_number(1, ok);
+
+            tile.u = src.index_number(0, ok);
+            tile.v = src.index_number(1, ok);
+
+            tile.flip_bits = (i32)a->value.lookup_number("f", ok);
+            tiles[--len] = tile;
+        }
+    }
+    layer->tiles = tiles;
+
+    for (Tile &tile : layer->tiles) {
+        tile.u0 = tile.u / layer->image.width;
+        tile.v0 = tile.v / layer->image.height;
+        tile.u1 = (tile.u + layer->grid_size) / layer->image.width;
+        tile.v1 = (tile.v + layer->grid_size) / layer->image.height;
+
+        i32 FLIP_X = 1 << 0;
+        i32 FLIP_Y = 1 << 1;
+
+        if (tile.flip_bits & FLIP_X) {
+            float tmp = tile.u0;
+            tile.u0 = tile.u1;
+            tile.u1 = tmp;
+        }
+
+        if (tile.flip_bits & FLIP_Y) {
+            float tmp = tile.v0;
+            tile.v0 = tile.v1;
+            tile.v1 = tmp;
+        }
+    }
+
+    Slice<TilemapEntity> entities = {};
+    if (entity_instances != nullptr) {
+        PROFILE_BLOCK("entities");
+
+        i32 len = entity_instances->index + 1;
+        entities.resize(arena, len);
+        for (JSONArray *a = entity_instances; a != nullptr; a = a->next) {
+            JSON px = a->value.lookup("px", ok);
+
+            TilemapEntity entity = {};
+            entity.x = px.index_number(0, ok);
+            entity.y = px.index_number(1, ok);
+            entity.identifier = arena->bump_string(a->value.lookup_string("__identifier", ok));
+
+            entities[--len] = entity;
+        }
+    }
+    layer->entities = entities;
+
+    return true;
+}
+
+static bool level_from_json(TilemapLevel *level, JSON *json, bool *ok, Arena *arena, String filepath, HashMap<Image> *images) {
+    PROFILE_FUNC();
+
+    level->identifier = arena->bump_string(json->lookup_string("identifier", ok));
+    level->iid = arena->bump_string(json->lookup_string("iid", ok));
+    level->world_x = json->lookup_number("worldX", ok);
+    level->world_y = json->lookup_number("worldY", ok);
+    level->px_width = json->lookup_number("pxWid", ok);
+    level->px_height = json->lookup_number("pxHei", ok);
+
+    JSONArray *layer_instances = json->lookup_array("layerInstances", ok);
+
+    Slice<TilemapLayer> layers = {};
+    if (layer_instances != nullptr) {
+        i32 len = layer_instances->index + 1;
+        layers.resize(arena, len);
+        for (JSONArray *a = layer_instances; a != nullptr; a = a->next) {
+            TilemapLayer layer = {};
+            bool success = layer_from_json(&layer, &a->value, ok, arena, filepath, images);
+            if (!success) {
+                return false;
+            }
+            layers[--len] = layer;
+        }
+    }
+    level->layers = layers;
+
+    return true;
+}
+
+bool map_ldtk::load(String filepath) {
+    PROFILE_FUNC();
+
+    String contents = {};
+    bool success = vfs_read_entire_file(NEKO_PACKS::GAMEDATA, &contents, filepath);
+    if (!success) {
+        return false;
+    }
+    neko_defer(mem_free(contents.data));
+
+    bool ok = true;
+    JSONDocument doc = {};
+    doc.parse(contents);
+    neko_defer(doc.trash());
+
+    if (doc.error.len != 0) {
+        return false;
+    }
+
+    Arena arena = {};
+    HashMap<Image> images = {};
+    bool created = false;
+    neko_defer({
+        if (!created) {
+            for (auto [k, v] : images) {
+                v->trash();
+            }
+            images.trash();
+            arena.trash();
+        }
+    });
+
+    JSONArray *arr_levels = doc.root.lookup_array("levels", &ok);
+
+    Slice<TilemapLevel> levels = {};
+    if (arr_levels != nullptr) {
+        i32 len = arr_levels->index + 1;
+        levels.resize(&arena, len);
+        for (JSONArray *a = arr_levels; a != nullptr; a = a->next) {
+            TilemapLevel level = {};
+            bool success = level_from_json(&level, &a->value, &ok, &arena, filepath, &images);
+            if (!success) {
+                return false;
+            }
+            levels[--len] = level;
+        }
+    }
+
+    if (!ok) {
+        return false;
+    }
+
+    map_ldtk tilemap = {};
+    tilemap.arena = arena;
+    tilemap.levels = levels;
+    tilemap.images = images;
+
+    NEKO_TRACE("loaded tilemap with %llu levels", (unsigned long long)tilemap.levels.len);
+    *this = tilemap;
+    created = true;
+    return true;
+}
+
+void map_ldtk::trash() {
+    for (auto [k, v] : images) {
+        v->trash();
+    }
+    images.trash();
+
+    bodies.trash();
+    graph.trash();
+    frontier.trash();
+
+    arena.trash();
+}
+
+void map_ldtk::destroy_bodies(b2World *world) {
+    for (auto [k, v] : bodies) {
+        world->DestroyBody(*v);
+    }
+}
+
+static void make_collision_for_layer(b2Body *body, TilemapLayer *layer, float world_x, float world_y, float meter, Slice<TilemapInt> walls) {
+    PROFILE_FUNC();
+
+    auto is_wall = [layer, walls](i32 y, i32 x) {
+        if (x >= layer->c_width || y >= layer->c_height) {
+            return false;
+        }
+
+        for (TilemapInt n : walls) {
+            if (layer->int_grid[y * layer->c_width + x] == n) {
+                return true;
+            }
+        }
+
+        return false;
+    };
+
+    Array<bool> filled = {};
+    neko_defer(filled.trash());
+    filled.resize(layer->c_width * layer->c_height);
+    memset(filled.data, 0, layer->c_width * layer->c_height);
+    for (i32 y = 0; y < layer->c_height; y++) {
+        for (i32 x = 0; x < layer->c_width; x++) {
+            i32 x0 = x;
+            i32 y0 = y;
+            i32 x1 = x;
+            i32 y1 = y;
+
+            if (!is_wall(y1, x1)) {
+                continue;
+            }
+
+            if (filled[y1 * layer->c_width + x1]) {
+                continue;
+            }
+
+            while (is_wall(y1, x1 + 1)) {
+                x1++;
+            }
+
+            while (true) {
+                bool walkable = false;
+                for (i32 x = x0; x <= x1; x++) {
+                    if (!is_wall(y1 + 1, x)) {
+                        walkable = true;
+                    }
+                }
+
+                if (walkable) {
+                    break;
+                }
+
+                y1++;
+            }
+
+            for (i32 y = y0; y <= y1; y++) {
+                for (i32 x = x0; x <= x1; x++) {
+                    filled[y * layer->c_width + x] = true;
+                }
+            }
+
+            float dx = (float)(x1 + 1 - x0) * layer->grid_size / 2.0f;
+            float dy = (float)(y1 + 1 - y0) * layer->grid_size / 2.0f;
+
+            b2Vec2 pos = {
+                    (x0 * layer->grid_size + dx + world_x) / meter,
+                    (y0 * layer->grid_size + dy + world_y) / meter,
+            };
+
+            b2PolygonShape box = {};
+            box.SetAsBox(dx / meter, dy / meter, pos, 0.0f);
+
+            b2FixtureDef def = {};
+            def.friction = 0;
+            def.shape = &box;
+
+            body->CreateFixture(&def);
+        }
+    }
+}
+
+void map_ldtk::make_collision(b2World *world, float meter, String layer_name, Slice<TilemapInt> walls) {
+    PROFILE_FUNC();
+
+    b2Body *body = nullptr;
+    {
+        b2BodyDef def = {};
+        def.position.x = 0;
+        def.position.y = 0;
+        def.fixedRotation = true;
+        def.allowSleep = true;
+        def.awake = false;
+        def.type = b2_staticBody;
+        def.gravityScale = 0;
+
+        body = world->CreateBody(&def);
+    }
+
+    for (TilemapLevel &level : levels) {
+        for (TilemapLayer &l : level.layers) {
+            if (l.identifier == layer_name) {
+                make_collision_for_layer(body, &l, level.world_x, level.world_y, meter, walls);
+            }
+        }
+    }
+
+    bodies[fnv1a(layer_name)] = body;
+}
+
+static float get_tile_cost(TilemapInt n, Slice<TileCost> costs) {
+    for (TileCost cost : costs) {
+        if (cost.cell == n) {
+            return cost.value;
+        }
+    }
+    return -1;
+}
+
+static void make_graph_for_layer(HashMap<TileNode> *graph, TilemapLayer *layer, float world_x, float world_y, Slice<TileCost> costs) {
+    PROFILE_FUNC();
+
+    for (i32 y = 0; y < layer->c_height; y++) {
+        for (i32 x = 0; x < layer->c_width; x++) {
+            float cost = get_tile_cost(layer->int_grid[y * layer->c_width + x], costs);
+            if (cost > 0) {
+                TileNode node = {};
+                node.x = (i32)(x + world_x);
+                node.y = (i32)(y + world_x);
+                node.cost = cost;
+
+                (*graph)[tile_key(node.x, node.y)] = node;
+            }
+        }
+    }
+}
+
+static bool tilemap_rect_overlaps_graph(HashMap<TileNode> *graph, i32 x0, i32 y0, i32 x1, i32 y1) {
+    i32 lhs = x0 <= x1 ? x0 : x1;
+    i32 rhs = x0 <= x1 ? x1 : x0;
+    i32 top = y0 <= y1 ? y0 : y1;
+    i32 bot = y0 <= y1 ? y1 : y0;
+
+    for (i32 y = top; y <= bot; y++) {
+        for (i32 x = lhs; x <= rhs; x++) {
+            if ((x == x0 && y == y0) || (x == x1 && y == y1)) {
+                continue;
+            }
+
+            TileNode *node = graph->get(tile_key(x, y));
+            if (node == nullptr) {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+static void create_neighbor_nodes(HashMap<TileNode> *graph, Arena *arena, i32 bloom) {
+    PROFILE_FUNC();
+
+    for (auto [k, v] : *graph) {
+        i32 len = 0;
+        Slice<TileNode *> neighbors = {};
+
+        for (i32 y = -bloom; y <= bloom; y++) {
+            for (i32 x = -bloom; x <= bloom; x++) {
+                if (x == 0 && y == 0) {
+                    continue;
+                }
+
+                i32 dx = v->x + x;
+                i32 dy = v->y + y;
+                TileNode *node = graph->get(tile_key(dx, dy));
+                if (node != nullptr) {
+                    bool ok = tilemap_rect_overlaps_graph(graph, v->x, v->y, dx, dy);
+                    if (!ok) {
+                        continue;
+                    }
+
+                    if (len == neighbors.len) {
+                        i32 grow = len > 0 ? len * 2 : 8;
+                        neighbors.resize(arena, grow);
+                    }
+
+                    neighbors[len] = node;
+                    len++;
+                }
+            }
+        }
+
+        neighbors.resize(arena, len);
+        v->neighbors = neighbors;
+    }
+}
+
+void map_ldtk::make_graph(i32 bloom, String layer_name, Slice<TileCost> costs) {
+    for (TilemapLevel &level : levels) {
+        for (TilemapLayer &l : level.layers) {
+            if (l.identifier == layer_name) {
+                if (graph_grid_size == 0) {
+                    graph_grid_size = l.grid_size;
+                }
+                make_graph_for_layer(&graph, &l, level.world_x, level.world_y, costs);
+            }
+        }
+    }
+
+    create_neighbor_nodes(&graph, &arena, bloom);
+}
+
+static float tile_distance(TileNode *lhs, TileNode *rhs) {
+    float dx = lhs->x - rhs->x;
+    float dy = lhs->y - rhs->y;
+    return sqrtf(dx * dx + dy * dy);
+}
+
+static float tile_heuristic(TileNode *lhs, TileNode *rhs) {
+    float D = 1;
+    float D2 = 1.4142135f;
+
+    float dx = (float)abs(lhs->x - rhs->x);
+    float dy = (float)abs(lhs->y - rhs->y);
+    return D * (dx + dy) + (D2 - 2 * D) * fminf(dx, dy);
+}
+
+static void astar_reset(map_ldtk *tm) {
+    PROFILE_FUNC();
+
+    tm->frontier.len = 0;
+
+    for (auto [k, v] : tm->graph) {
+        v->prev = nullptr;
+        v->g = 0;
+        v->flags = 0;
+    }
+}
+
+TileNode *map_ldtk::astar(TilePoint start, TilePoint goal) {
+    PROFILE_FUNC();
+
+    astar_reset(this);
+
+    i32 sx = (i32)(start.x / graph_grid_size);
+    i32 sy = (i32)(start.y / graph_grid_size);
+    i32 ex = (i32)(goal.x / graph_grid_size);
+    i32 ey = (i32)(goal.y / graph_grid_size);
+
+    TileNode *end = graph.get(tile_key(ex, ey));
+    if (end == nullptr) {
+        return nullptr;
+    }
+
+    TileNode *begin = graph.get(tile_key(sx, sy));
+    if (begin == nullptr) {
+        return nullptr;
+    }
+
+    float g = 0;
+    float h = tile_heuristic(begin, end);
+    float f = g + h;
+    begin->g = 0;
+    begin->flags |= TileNodeFlags_Open;
+    frontier.push(begin, f);
+
+    while (frontier.len != 0) {
+        TileNode *top = nullptr;
+        frontier.pop(&top);
+        top->flags |= TileNodeFlags_Closed;
+
+        if (top == end) {
+            return top;
+        }
+
+        for (TileNode *next : top->neighbors) {
+            if (next->flags & TileNodeFlags_Closed) {
+                continue;
+            }
+
+            float g = top->g + next->cost * tile_distance(top, next);
+
+            bool open = next->flags & TileNodeFlags_Open;
+            if (!open || g < next->g) {
+                float h = tile_heuristic(next, end);
+                float f = g + h;
+
+                next->g = g;
+                next->prev = top;
+                next->flags |= TileNodeFlags_Open;
+
+                frontier.push(next, f);
+            }
+        }
+    }
+
+    return nullptr;
+}
+
+bool FontFamily::load(String filepath) {
+    PROFILE_FUNC();
+
+    String contents = {};
+    bool ok = vfs_read_entire_file(NEKO_PACKS::GAMEDATA, &contents, filepath);
+    if (!ok) {
+        return false;
+    }
+
+    FontFamily f = {};
+    f.ttf = contents;
+    f.sb = {};
+    *this = f;
+    return true;
+}
+
+void FontFamily::load_default() {
+    PROFILE_FUNC();
+
+    FontFamily f = {};
+    f.ttf = {(const char *)g_font_monocrafte_data, sizeof(g_font_monocrafte_data)};
+    f.sb = {};
+    *this = f;
+}
+
+void FontFamily::trash() {
+    for (auto [k, v] : ranges) {
+        v->image.trash();
+    }
+    sb.trash();
+    ranges.trash();
+    if (ttf.data != (const char *)g_font_monocrafte_data) {
+        mem_free(ttf.data);
+    }
+}
+
+struct FontKey {
+    float size;
+    i32 ch;
+};
+
+static FontKey font_key(float size, i32 charcode) {
+    FontKey fk = {};
+    fk.size = size;
+    fk.ch = (charcode / array_size(FontRange::chars)) * array_size(FontRange::chars);
+    return fk;
+}
+
+static void make_font_range(FontRange *out, FontFamily *font, FontKey key) {
+    PROFILE_FUNC();
+
+    i32 width = 256;
+    i32 height = 256;
+
+    u8 *bitmap = nullptr;
+    while (bitmap == nullptr) {
+        PROFILE_BLOCK("try bake");
+
+        bitmap = (u8 *)mem_alloc(width * height);
+        i32 res = stbtt_BakeFontBitmap((u8 *)font->ttf.data, 0, key.size, bitmap, width, height, key.ch, array_size(out->chars), out->chars);
+        if (res < 0) {
+            mem_free(bitmap);
+            bitmap = nullptr;
+            width *= 2;
+            height *= 2;
+        }
+    }
+    neko_defer(mem_free(bitmap));
+
+    u8 *image = (u8 *)mem_alloc(width * height * 4);
+    neko_defer(mem_free(image));
+
+    {
+        PROFILE_BLOCK("convert rgba");
+
+        for (i32 i = 0; i < width * height * 4; i += 4) {
+            image[i + 0] = 255;
+            image[i + 1] = 255;
+            image[i + 2] = 255;
+            image[i + 3] = bitmap[i / 4];
+        }
+    }
+
+    u32 id = 0;
+    {
+        PROFILE_BLOCK("make image");
+
+        sg_image_desc sg_image = {};
+        sg_image.width = width;
+        sg_image.height = height;
+        sg_image.data.subimage[0][0].ptr = image;
+        sg_image.data.subimage[0][0].size = width * height * 4;
+
+        {
+            LockGuard lock{&g_app->gpu_mtx};
+            id = sg_make_image(sg_image).id;
+        }
+    }
+
+    out->image.id = id;
+    out->image.width = width;
+    out->image.height = height;
+
+    NEKO_TRACE("created font range with id %d", id);
+}
+
+static FontRange *get_range(FontFamily *font, FontKey key) {
+    u64 hash = *(u64 *)&key;
+    FontRange *range = font->ranges.get(hash);
+    if (range == nullptr) {
+        range = &font->ranges[hash];
+        make_font_range(range, font, key);
+    }
+
+    return range;
+}
+
+stbtt_aligned_quad FontFamily::quad(u32 *img, float *x, float *y, float size, i32 ch) {
+    FontRange *range = get_range(this, font_key(size, ch));
+    assert(range != nullptr);
+
+    ch = ch % array_size(FontRange::chars);
+
+    float xpos = 0;
+    float ypos = 0;
+    stbtt_aligned_quad q = {};
+    stbtt_GetBakedQuad(range->chars, (i32)range->image.width, (i32)range->image.height, ch, &xpos, &ypos, &q, 1);
+
+    stbtt_bakedchar *baked = range->chars + ch;
+    *img = range->image.id;
+    *x = *x + baked->xadvance;
+    return q;
+}
+
+float FontFamily::width(float size, String text) {
+    float width = 0;
+    for (Rune r : UTF8(text)) {
+        u32 code = r.charcode();
+        FontRange *range = get_range(this, font_key(size, code));
+        assert(range != nullptr);
+
+        const stbtt_bakedchar *baked = range->chars + (code % array_size(FontRange::chars));
+        width += baked->xadvance;
+    }
+    return width;
+}
+
+bool Atlas::load(String filepath, bool generate_mips) {
+    PROFILE_FUNC();
+
+    String contents = {};
+    bool ok = vfs_read_entire_file(NEKO_PACKS::GAMEDATA, &contents, filepath);
+    if (!ok) {
+        return false;
+    }
+    neko_defer(mem_free(contents.data));
+
+    Image img = {};
+    HashMap<AtlasImage> by_name = {};
+
+    for (String line : SplitLines(contents)) {
+        switch (line.data[0]) {
+            case 'a': {
+                Scanner scan = line;
+                scan.next_string();  // discard 'a'
+                String filename = scan.next_string();
+
+                StringBuilder sb = {};
+                neko_defer(sb.trash());
+                sb.swap_filename(filepath, filename);
+                bool ok = img.load(String(sb), generate_mips);
+                if (!ok) {
+                    return false;
+                }
+                break;
+            }
+            case 's': {
+                if (img.id == 0) {
+                    return false;
+                }
+
+                Scanner scan = line;
+                scan.next_string();  // discard 's'
+                String name = scan.next_string();
+                scan.next_string();  // discard origin x
+                scan.next_string();  // discard origin y
+                i32 x = scan.next_int();
+                i32 y = scan.next_int();
+                i32 width = scan.next_int();
+                i32 height = scan.next_int();
+                i32 padding = scan.next_int();
+                i32 trimmed = scan.next_int();
+                scan.next_int();  // discard trim x
+                scan.next_int();  // discard trim y
+                i32 trim_width = scan.next_int();
+                i32 trim_height = scan.next_int();
+
+                AtlasImage atlas_img = {};
+                atlas_img.img = img;
+                atlas_img.u0 = (x + padding) / (float)img.width;
+                atlas_img.v0 = (y + padding) / (float)img.height;
+
+                if (trimmed != 0) {
+                    atlas_img.width = (float)trim_width;
+                    atlas_img.height = (float)trim_height;
+                    atlas_img.u1 = (x + padding + trim_width) / (float)img.width;
+                    atlas_img.v1 = (y + padding + trim_height) / (float)img.height;
+                } else {
+                    atlas_img.width = (float)width;
+                    atlas_img.height = (float)height;
+                    atlas_img.u1 = (x + padding + width) / (float)img.width;
+                    atlas_img.v1 = (y + padding + height) / (float)img.height;
+                }
+
+                by_name[fnv1a(name)] = atlas_img;
+
+                break;
+            }
+            default:
+                break;
+        }
+    }
+
+    NEKO_TRACE("created atlas with image id: %d and %llu entries", img.id, (unsigned long long)by_name.load);
+
+    Atlas a;
+    a.by_name = by_name;
+    a.img = img;
+    *this = a;
+
+    return true;
+}
+
+void Atlas::trash() {
+    by_name.trash();
+    img.trash();
+}
+
+AtlasImage *Atlas::get(String name) {
+    u64 key = fnv1a(name);
+    return by_name.get(key);
+}
+
+static u32 read4(char *bytes) {
+    u32 n;
+    memcpy(&n, bytes, 4);
+    return n;
+}
+
+static bool read_entire_file_raw(String *out, String filepath) {
+    PROFILE_FUNC();
+
+    String path = to_cstr(filepath);
+    neko_defer(mem_free(path.data));
+
+    FILE *file = fopen(path.data, "rb");
+    if (file == nullptr) {
+        NEKO_WARN("failed to load file %s", path.data);
+        return false;
+    }
+
+    fseek(file, 0L, SEEK_END);
+    size_t size = ftell(file);
+    rewind(file);
+
+    char *buf = (char *)mem_alloc(size + 1);
+    size_t read = fread(buf, sizeof(char), size, file);
+    fclose(file);
+
+    if (read != size) {
+        mem_free(buf);
+        return false;
+    }
+
+    buf[size] = 0;
+    *out = {buf, size};
+    return true;
+}
+
+static bool list_all_files_help(Array<String> *files, String path) {
+    PROFILE_FUNC();
+
+    const char *p = path.len ? path.data : ".";
+
+    for (const auto &entry : std::filesystem::recursive_directory_iterator(p)) {
+        if (entry.is_regular_file()) {
+            // files.push_back(entry.path().string());
+            files->push(str_fmt("%s", entry.path().string().data()));
+        }
+    }
+    return true;
+
+    // tinydir_dir dir;
+    // if (path.len == 0) {
+    //     tinydir_open(&dir, ".");
+    // } else {
+    //     tinydir_open(&dir, path.data);
+    // }
+    // neko_defer(tinydir_close(&dir));
+
+    // while (dir.has_next) {
+    //     tinydir_file file;
+    //     tinydir_readfile(&dir, &file);
+
+    //     if (strcmp(file.name, ".") != 0 && strcmp(file.name, "..") != 0) {
+    //         if (file.is_dir) {
+    //             String s = str_fmt("%s%s/", path.data, file.name);
+    //             neko_defer(mem_free(s.data));
+    //             list_all_files_help(files, s);
+    //         } else {
+    //             files->push(str_fmt("%s%s", path.data, file.name));
+    //         }
+    //     }
+
+    //     tinydir_next(&dir);
+    // }
+
+    return true;
+}
+
+struct FileSystem {
+    virtual void make() = 0;
+    virtual void trash() = 0;
+    virtual bool mount(String filepath) = 0;
+    virtual bool file_exists(String filepath) = 0;
+    virtual bool read_entire_file(String *out, String filepath) = 0;
+    virtual bool list_all_files(Array<String> *files) = 0;
+};
+
+struct MyKeyHash {
+    std::size_t operator()(const String &key) const { return std::hash<void *>()(key.data); }
+};
+
+static std::unordered_map<String, FileSystem *, MyKeyHash> g_filesystem_list;
+
+struct DirectoryFileSystem : FileSystem {
+    void make() {}
+    void trash() {}
+
+    bool mount(String filepath) {
+        String path = to_cstr(filepath);
+        neko_defer(mem_free(path.data));
+
+        i32 res = os_change_dir(path.data);
+        return res == 0;
+    }
+
+    bool file_exists(String filepath) {
+        String path = to_cstr(filepath);
+        neko_defer(mem_free(path.data));
+
+        FILE *fp = fopen(path.data, "r");
+        if (fp != nullptr) {
+            fclose(fp);
+            return true;
+        }
+
+        return false;
+    }
+
+    bool read_entire_file(String *out, String filepath) { return read_entire_file_raw(out, filepath); }
+
+    bool list_all_files(Array<String> *files) { return list_all_files_help(files, ""); }
+};
+
+struct ZipFileSystem : FileSystem {
+    Mutex mtx = {};
+    mz_zip_archive zip = {};
+    String zip_contents = {};
+
+    void make() { mtx.make(); }
+
+    void trash() {
+        if (zip_contents.data != nullptr) {
+            mz_zip_reader_end(&zip);
+            mem_free(zip_contents.data);
+        }
+
+        mtx.trash();
+    }
+
+    bool mount(String filepath) {
+        PROFILE_FUNC();
+
+        String contents = {};
+        bool contents_ok = read_entire_file_raw(&contents, filepath);
+        if (!contents_ok) {
+            return false;
+        }
+
+        bool success = false;
+        neko_defer({
+            if (!success) {
+                mem_free(contents.data);
+            }
+        });
+
+        char *data = contents.data;
+        char *end = &data[contents.len];
+
+        constexpr i32 eocd_size = 22;
+        char *eocd = end - eocd_size;
+        if (read4(eocd) != 0x06054b50) {
+            fprintf(stderr, "can't find EOCD record\n");
+            return false;
+        }
+
+        u32 central_size = read4(&eocd[12]);
+        if (read4(eocd - central_size) != 0x02014b50) {
+            fprintf(stderr, "can't find central directory\n");
+            return false;
+        }
+
+        u32 central_offset = read4(&eocd[16]);
+        char *begin = eocd - central_size - central_offset;
+        u64 zip_len = end - begin;
+        if (read4(begin) != 0x04034b50) {
+            fprintf(stderr, "can't read local file header\n");
+            return false;
+        }
+
+        mz_bool zip_ok = mz_zip_reader_init_mem(&zip, begin, zip_len, 0);
+        if (!zip_ok) {
+            mz_zip_error err = mz_zip_get_last_error(&zip);
+            fprintf(stderr, "failed to read zip: %s\n", mz_zip_get_error_string(err));
+            return false;
+        }
+
+        zip_contents = contents;
+
         success = true;
+        return true;
     }
 
-    mem_free(alpha_bitmap);
-    mem_free(flipmap);
-    return success;
-}
+    bool file_exists(String filepath) {
+        PROFILE_FUNC();
 
-NEKO_API_DECL f32 neko_asset_font_max_height(const neko_asset_font_t *fp) {
-    if (!fp) return 0.f;
-    f32 h = 0.f, x = 0.f, y = 0.f;
-    const_str txt = "1l`'f()ABCDEFGHIJKLMNOjPQqSTU!";
-    while (txt[0] != '\0') {
-        char c = txt[0];
-        if (c >= 32 && c <= 127) {
-            stbtt_aligned_quad q = NEKO_DEFAULT_VAL();
-            stbtt_GetBakedQuad((stbtt_bakedchar *)fp->glyphs, fp->texture.desc.width, fp->texture.desc.height, c - 32, &x, &y, &q, 1);
-            h = NEKO_MAX(NEKO_MAX(h, fabsf(q.y0)), fabsf(q.y1));
+        String path = to_cstr(filepath);
+        neko_defer(mem_free(path.data));
+
+        LockGuard lock{&mtx};
+
+        i32 i = mz_zip_reader_locate_file(&zip, path.data, nullptr, 0);
+        if (i == -1) {
+            return false;
         }
-        txt++;
-    };
-    return h;
-}
 
-NEKO_API_DECL neko_vec2 neko_asset_font_text_dimensions(const neko_asset_font_t *fp, const_str text, s32 len) { return neko_asset_font_text_dimensions_ex(fp, text, len, 0); }
-
-NEKO_API_DECL neko_vec2 neko_asset_font_text_dimensions_ex(const neko_asset_font_t *fp, const_str text, s32 len, bool include_past_baseline) {
-    neko_vec2 dimensions = neko_v2s(0.f);
-
-    if (!fp || !text) return dimensions;
-    f32 x = 0.f;
-    f32 y = 0.f;
-    f32 y_under = 0;
-
-    while (text[0] != '\0' && len--) {
-        char c = text[0];
-        if (c >= 32 && c <= 127) {
-            stbtt_aligned_quad q = NEKO_DEFAULT_VAL();
-            stbtt_GetBakedQuad((stbtt_bakedchar *)fp->glyphs, fp->texture.desc.width, fp->texture.desc.height, c - 32, &x, &y, &q, 1);
-            dimensions.x = NEKO_MAX(dimensions.x, x);
-            dimensions.y = NEKO_MAX(dimensions.y, fabsf(q.y0));
-            if (include_past_baseline) y_under = NEKO_MAX(y_under, fabsf(q.y1));
+        mz_zip_archive_file_stat stat;
+        mz_bool ok = mz_zip_reader_file_stat(&zip, i, &stat);
+        if (!ok) {
+            return false;
         }
-        text++;
-    };
 
-    if (include_past_baseline) dimensions.y += y_under;
-    return dimensions;
-}
+        return true;
+    }
 
-bool neko_asset_mesh_load_from_file(const_str path, void *out, neko_asset_mesh_decl_t *decl, void *data_out, size_t data_size) {
-    // Cast mesh data to use
-    neko_asset_mesh_t *mesh = (neko_asset_mesh_t *)out;
+    bool read_entire_file(String *out, String filepath) {
+        PROFILE_FUNC();
 
-    if (!neko_os_file_exists(path)) {
-        NEKO_WARN("mesh loader:file does not exist: %s", path);
+        String path = to_cstr(filepath);
+        neko_defer(mem_free(path.data));
+
+        LockGuard lock{&mtx};
+
+        i32 file_index = mz_zip_reader_locate_file(&zip, path.data, nullptr, 0);
+        if (file_index == -1) {
+            return false;
+        }
+
+        mz_zip_archive_file_stat stat;
+        mz_bool ok = mz_zip_reader_file_stat(&zip, file_index, &stat);
+        if (!ok) {
+            return false;
+        }
+
+        size_t size = stat.m_uncomp_size;
+        char *buf = (char *)mem_alloc(size + 1);
+
+        ok = mz_zip_reader_extract_to_mem(&zip, file_index, buf, size, 0);
+        if (!ok) {
+            mz_zip_error err = mz_zip_get_last_error(&zip);
+            fprintf(stderr, "failed to read file '%s': %s\n", path.data, mz_zip_get_error_string(err));
+            mem_free(buf);
+            return false;
+        }
+
+        buf[size] = 0;
+        *out = {buf, size};
+        return true;
+    }
+
+    bool list_all_files(Array<String> *files) {
+        PROFILE_FUNC();
+
+        LockGuard lock{&mtx};
+
+        for (u32 i = 0; i < mz_zip_reader_get_num_files(&zip); i++) {
+            mz_zip_archive_file_stat file_stat;
+            mz_bool ok = mz_zip_reader_file_stat(&zip, i, &file_stat);
+            if (!ok) {
+                return false;
+            }
+
+            String name = {file_stat.m_filename, strlen(file_stat.m_filename)};
+            files->push(to_cstr(name));
+        }
+
+        return true;
+    }
+};
+
+#if defined(NEKO_IS_WEB)
+EM_JS(char *, web_mount_dir, (), { return stringToNewUTF8(nekoMount); });
+
+EM_ASYNC_JS(void, web_load_zip, (), {
+    var dirs = nekoMount.split("/");
+    dirs.pop();
+
+    var path = [];
+    for (var dir of dirs) {
+        path.push(dir);
+        FS.mkdir(path.join("/"));
+    }
+
+    await fetch(nekoMount).then(async function(res) {
+        if (!res.ok) {
+            throw new Error("failed to fetch " + nekoMount);
+        }
+
+        var data = await res.arrayBuffer();
+        FS.writeFile(nekoMount, new Uint8Array(data));
+    });
+});
+
+EM_ASYNC_JS(void, web_load_files, (), {
+    var jobs = [];
+
+    function nekoWalkFiles(files, leading) {
+        var path = leading.join("/");
+        if (path != "") {
+            FS.mkdir(path);
+        }
+
+        for (var entry of Object.entries(files)) {
+            var key = entry[0];
+            var value = entry[1];
+            var filepath = [... leading, key ];
+            if (typeof value == "object") {
+                nekoWalkFiles(value, filepath);
+            } else if (value == 1) {
+                var file = filepath.join("/");
+
+                var job = fetch(file).then(async function(res) {
+                    if (!res.ok) {
+                        throw new Error("failed to fetch " + file);
+                    }
+                    var data = await res.arrayBuffer();
+                    FS.writeFile(file, new Uint8Array(data));
+                });
+
+                jobs.push(job);
+            }
+        }
+    }
+    nekoWalkFiles(nekoFiles, []);
+
+    await Promise.all(jobs);
+});
+#endif
+
+template <typename T>
+static bool vfs_mount_type(String fsname, String mount) {
+    void *ptr = mem_alloc(sizeof(T));
+    T *vfs = new (ptr) T();
+
+    vfs->make();
+    bool ok = vfs->mount(mount);
+    if (!ok) {
+        vfs->trash();
+        mem_free(vfs);
         return false;
     }
 
-    // Mesh data to fill out
-    u32 mesh_count = 0;
-    neko_asset_mesh_raw_data_t *meshes = NULL;
-
-    // Get file extension from path
-    neko_transient_buffer(file_ext, 32);
-    neko_os_file_extension(file_ext, 32, path);
-
-    // GLTF
-    if (neko_string_compare_equal(file_ext, "gltf")) {
-        // neko_util_load_gltf_data_from_file(path, decl, &meshes, &mesh_count);
-        NEKO_ASSERT(false);
-    } else {
-        NEKO_WARN("mesh loader:file extension not supported: %s, file: %s", file_ext, path);
-        return false;
-    }
-
-    // For now, handle meshes with only single mesh count
-    if (mesh_count != 1) {
-        // Error
-        // Free all the memory
-        return false;
-    }
-
-    // Process all mesh data, add meshes
-    for (u32 i = 0; i < mesh_count; ++i) {
-        neko_asset_mesh_raw_data_t *m = &meshes[i];
-
-        for (u32 p = 0; p < m->prim_count; ++p) {
-            // Construct primitive
-            neko_asset_mesh_primitive_t prim = NEKO_DEFAULT_VAL();
-            prim.count = m->index_sizes[p] / sizeof(u16);
-
-            // Vertex buffer decl
-            neko_render_vertex_buffer_desc_t vdesc = NEKO_DEFAULT_VAL();
-            vdesc.data = m->vertices[p];
-            vdesc.size = m->vertex_sizes[p];
-
-            // Construct vertex buffer for primitive
-            prim.vbo = neko_render_vertex_buffer_create(vdesc);
-
-            // Index buffer decl
-            neko_render_index_buffer_desc_t idesc = NEKO_DEFAULT_VAL();
-            idesc.data = m->indices[p];
-            idesc.size = m->index_sizes[p];
-
-            // Construct index buffer for primitive
-            prim.ibo = neko_render_index_buffer_create(idesc);
-
-            // Add primitive to mesh
-            neko_dyn_array_push(mesh->primitives, prim);
-        }
-    }
-
-    // Free all mesh data
+    g_filesystem_list.insert(std::make_pair(fsname, vfs));
     return true;
+}
+
+MountResult vfs_mount(const_str fsname, const char *filepath) {
+    PROFILE_FUNC();
+
+    MountResult res = {};
+
+#if defined(NEKO_IS_WEB)
+    String mount_dir = web_mount_dir();
+    neko_defer(free(mount_dir.data));
+
+    if (mount_dir.ends_with(".zip")) {
+        web_load_zip();
+        res.ok = vfs_mount_type<ZipFileSystem>(mount_dir);
+    } else {
+        web_load_files();
+        res.ok = vfs_mount_type<DirectoryFileSystem>(mount_dir);
+    }
+#else
+    if (filepath == nullptr) {
+        String path = os_program_path();
+
+        NEKO_DEBUG_LOG("program path: %s", path.data);
+
+        res.ok = vfs_mount_type<DirectoryFileSystem>(fsname, path);
+    } else {
+        String mount_dir = filepath;
+
+        if (mount_dir.ends_with(".zip")) {
+            res.ok = vfs_mount_type<ZipFileSystem>(fsname, mount_dir);
+            res.is_fused = true;
+        } else {
+            res.ok = vfs_mount_type<DirectoryFileSystem>(fsname, mount_dir);
+            res.can_hot_reload = res.ok;
+        }
+    }
+#endif
+
+    if (filepath != nullptr && !res.ok) {
+        fatal_error(tmp_fmt("failed to load: %s", filepath));
+    }
+
+    return res;
+}
+
+void vfs_fini(std::optional<String> name) {
+    auto fini_fs = []<typename T>(T fs) {
+        if constexpr (!neko::is_pair<T>::value) {
+            fs->trash();
+            mem_free(fs);
+            NEKO_DEBUG_LOG("vfs_fini(%p)", fs);
+        } else {
+            fs.second->trash();
+            mem_free(fs.second);
+            NEKO_DEBUG_LOG("vfs_fini(%s)", fs.first.data);
+        }
+    };
+    if (!name.has_value()) {
+        for (auto vfs : g_filesystem_list) fini_fs(vfs);
+    } else {
+        auto vfs = g_filesystem_list[name.value()];
+        fini_fs(vfs);
+    }
+}
+
+bool vfs_file_exists(String fsname, String filepath) { return g_filesystem_list[fsname]->file_exists(filepath); }
+
+bool vfs_read_entire_file(String fsname, String *out, String filepath) { return g_filesystem_list[fsname]->read_entire_file(out, filepath); }
+
+bool vfs_list_all_files(String fsname, Array<String> *files) { return g_filesystem_list[fsname]->list_all_files(files); }
+
+struct AudioFile {
+    u8 *buf;
+    u64 cursor;
+    u64 len;
+};
+
+void *vfs_for_miniaudio() {
+    ma_vfs_callbacks vtbl = {};
+
+    vtbl.onOpen = [](ma_vfs *pVFS, const char *pFilePath, ma_uint32 openMode, ma_vfs_file *pFile) -> ma_result {
+        String contents = {};
+
+        if (openMode & MA_OPEN_MODE_WRITE) {
+            return MA_ERROR;
+        }
+
+        bool ok = vfs_read_entire_file(NEKO_PACKS::GAMEDATA, &contents, pFilePath);
+        if (!ok) {
+            return MA_ERROR;
+        }
+
+        AudioFile *file = (AudioFile *)mem_alloc(sizeof(AudioFile));
+        file->buf = (u8 *)contents.data;
+        file->len = contents.len;
+        file->cursor = 0;
+
+        *pFile = file;
+        return MA_SUCCESS;
+    };
+
+    vtbl.onClose = [](ma_vfs *pVFS, ma_vfs_file file) -> ma_result {
+        AudioFile *f = (AudioFile *)file;
+        mem_free(f->buf);
+        mem_free(f);
+        return MA_SUCCESS;
+    };
+
+    vtbl.onRead = [](ma_vfs *pVFS, ma_vfs_file file, void *pDst, size_t sizeInBytes, size_t *pBytesRead) -> ma_result {
+        AudioFile *f = (AudioFile *)file;
+
+        u64 remaining = f->len - f->cursor;
+        u64 len = remaining < sizeInBytes ? remaining : sizeInBytes;
+        memcpy(pDst, &f->buf[f->cursor], len);
+
+        if (pBytesRead != nullptr) {
+            *pBytesRead = len;
+        }
+
+        if (len != sizeInBytes) {
+            return MA_AT_END;
+        }
+
+        return MA_SUCCESS;
+    };
+
+    vtbl.onWrite = [](ma_vfs *pVFS, ma_vfs_file file, const void *pSrc, size_t sizeInBytes, size_t *pBytesWritten) -> ma_result { return MA_NOT_IMPLEMENTED; };
+
+    vtbl.onSeek = [](ma_vfs *pVFS, ma_vfs_file file, ma_int64 offset, ma_seek_origin origin) -> ma_result {
+        AudioFile *f = (AudioFile *)file;
+
+        i64 seek = 0;
+        switch (origin) {
+            case ma_seek_origin_start:
+                seek = offset;
+                break;
+            case ma_seek_origin_end:
+                seek = f->len + offset;
+                break;
+            case ma_seek_origin_current:
+            default:
+                seek = f->cursor + offset;
+                break;
+        }
+
+        if (seek < 0 || seek > f->len) {
+            return MA_ERROR;
+        }
+
+        f->cursor = (u64)seek;
+        return MA_SUCCESS;
+    };
+
+    vtbl.onTell = [](ma_vfs *pVFS, ma_vfs_file file, ma_int64 *pCursor) -> ma_result {
+        AudioFile *f = (AudioFile *)file;
+        *pCursor = f->cursor;
+        return MA_SUCCESS;
+    };
+
+    vtbl.onInfo = [](ma_vfs *pVFS, ma_vfs_file file, ma_file_info *pInfo) -> ma_result {
+        AudioFile *f = (AudioFile *)file;
+        pInfo->sizeInBytes = f->len;
+        return MA_SUCCESS;
+    };
+
+    ma_vfs_callbacks *ptr = (ma_vfs_callbacks *)mem_alloc(sizeof(ma_vfs_callbacks));
+    *ptr = vtbl;
+    return ptr;
+}
+
+size_t neko_capi_vfs_fread(void *dest, size_t size, size_t count, vfs_file *vf) {
+    size_t bytes_to_read = size * count;
+    std::memcpy(dest, static_cast<const char *>(vf->data) + vf->offset, bytes_to_read);
+    vf->offset += bytes_to_read;
+    return count;
+}
+
+// #define SEEK_SET 0
+// #define SEEK_CUR 1
+// #define SEEK_END 2
+
+int neko_capi_vfs_fseek(vfs_file *vf, u64 of, int whence) {
+    u64 new_offset;
+    switch (whence) {
+        case SEEK_SET:
+            new_offset = of;
+            break;
+        case SEEK_CUR:
+            new_offset = vf->offset + of;
+            break;
+        case SEEK_END:
+            new_offset = vf->len + of;
+            break;
+        default:
+            errno = EINVAL;
+            return -1;
+    }
+    if (new_offset < 0 || new_offset > vf->len) {
+        errno = EINVAL;
+        return -1;
+    }
+    vf->offset = new_offset;
+    return 0;
+}
+
+u64 neko_capi_vfs_ftell(vfs_file *vf) { return vf->offset; }
+
+vfs_file neko_capi_vfs_fopen(const_str path) {
+    vfs_file vf{};
+    vf.data = neko_capi_vfs_read_file(NEKO_PACKS::GAMEDATA, path, &vf.len);
+    return vf;
+}
+
+int neko_capi_vfs_fclose(vfs_file *vf) {
+    NEKO_ASSERT(vf);
+    mem_free(vf->data);
+    return 0;
+}
+
+bool neko_capi_vfs_file_exists(const_str fsname, const_str filepath) { return vfs_file_exists(fsname, filepath); }
+
+const_str neko_capi_vfs_read_file(const_str fsname, const_str filepath, size_t *size) {
+    String out;
+    bool ok = vfs_read_entire_file(fsname, &out, filepath);
+    if (!ok) return NULL;
+    *size = out.len;
+    return out.data;
+}
+
+enum JSONTok : i32 {
+    JSONTok_Invalid,
+    JSONTok_LBrace,    // {
+    JSONTok_RBrace,    // }
+    JSONTok_LBracket,  // [
+    JSONTok_RBracket,  // ]
+    JSONTok_Colon,     // :
+    JSONTok_Comma,     // ,
+    JSONTok_True,      // true
+    JSONTok_False,     // false
+    JSONTok_Null,      // null
+    JSONTok_String,    // "[^"]*"
+    JSONTok_Number,    // [0-9]+\.?[0-9]*
+    JSONTok_Error,
+    JSONTok_EOF,
+};
+
+const char *json_tok_string(JSONTok tok) {
+    switch (tok) {
+        case JSONTok_Invalid:
+            return "Invalid";
+        case JSONTok_LBrace:
+            return "LBrace";
+        case JSONTok_RBrace:
+            return "RBrace";
+        case JSONTok_LBracket:
+            return "LBracket";
+        case JSONTok_RBracket:
+            return "RBracket";
+        case JSONTok_Colon:
+            return "Colon";
+        case JSONTok_Comma:
+            return "Comma";
+        case JSONTok_True:
+            return "True";
+        case JSONTok_False:
+            return "False";
+        case JSONTok_Null:
+            return "Null";
+        case JSONTok_String:
+            return "String";
+        case JSONTok_Number:
+            return "Number";
+        case JSONTok_Error:
+            return "Error";
+        case JSONTok_EOF:
+            return "EOF";
+        default:
+            return "?";
+    }
+}
+
+const char *json_kind_string(JSONKind kind) {
+    switch (kind) {
+        case JSONKind_Null:
+            return "Null";
+        case JSONKind_Object:
+            return "Object";
+        case JSONKind_Array:
+            return "Array";
+        case JSONKind_String:
+            return "String";
+        case JSONKind_Number:
+            return "Number";
+        case JSONKind_Boolean:
+            return "Boolean";
+        default:
+            return "?";
+    }
+};
+
+struct JSONToken {
+    JSONTok kind;
+    String str;
+    u32 line;
+    u32 column;
+};
+
+struct JSONScanner {
+    String contents;
+    JSONToken token;
+    u64 begin;
+    u64 end;
+    u32 line;
+    u32 column;
+};
+
+static char json_peek(JSONScanner *scan, u64 offset) { return scan->contents.data[scan->end + offset]; }
+
+static bool json_at_end(JSONScanner *scan) { return scan->end == scan->contents.len; }
+
+static void json_next_char(JSONScanner *scan) {
+    if (!json_at_end(scan)) {
+        scan->end++;
+        scan->column++;
+    }
+}
+
+static void json_skip_whitespace(JSONScanner *scan) {
+    while (true) {
+        switch (json_peek(scan, 0)) {
+            case '\n':
+                scan->column = 0;
+                scan->line++;
+            case ' ':
+            case '\t':
+            case '\r':
+                json_next_char(scan);
+                break;
+            default:
+                return;
+        }
+    }
+}
+
+static String json_lexeme(JSONScanner *scan) { return scan->contents.substr(scan->begin, scan->end); }
+
+static JSONToken json_make_tok(JSONScanner *scan, JSONTok kind) {
+    JSONToken t = {};
+    t.kind = kind;
+    t.str = json_lexeme(scan);
+    t.line = scan->line;
+    t.column = scan->column;
+
+    scan->token = t;
+    return t;
+}
+
+static JSONToken json_err_tok(JSONScanner *scan, String msg) {
+    JSONToken t = {};
+    t.kind = JSONTok_Error;
+    t.str = msg;
+    t.line = scan->line;
+    t.column = scan->column;
+
+    scan->token = t;
+    return t;
+}
+
+static JSONToken json_scan_ident(Arena *a, JSONScanner *scan) {
+    while (is_alpha(json_peek(scan, 0))) {
+        json_next_char(scan);
+    }
+
+    JSONToken t = {};
+    t.str = json_lexeme(scan);
+
+    if (t.str == "true") {
+        t.kind = JSONTok_True;
+    } else if (t.str == "false") {
+        t.kind = JSONTok_False;
+    } else if (t.str == "null") {
+        t.kind = JSONTok_Null;
+    } else {
+        StringBuilder sb = {};
+        neko_defer(sb.trash());
+
+        String s = String(sb << "unknown identifier: '" << t.str << "'");
+        return json_err_tok(scan, a->bump_string(s));
+    }
+
+    scan->token = t;
+    return t;
+}
+
+static JSONToken json_scan_number(JSONScanner *scan) {
+    if (json_peek(scan, 0) == '-' && is_digit(json_peek(scan, 1))) {
+        json_next_char(scan);  // eat '-'
+    }
+
+    while (is_digit(json_peek(scan, 0))) {
+        json_next_char(scan);
+    }
+
+    if (json_peek(scan, 0) == '.' && is_digit(json_peek(scan, 1))) {
+        json_next_char(scan);  // eat '.'
+
+        while (is_digit(json_peek(scan, 0))) {
+            json_next_char(scan);
+        }
+    }
+
+    return json_make_tok(scan, JSONTok_Number);
+}
+
+static JSONToken json_scan_string(JSONScanner *scan) {
+    while (json_peek(scan, 0) != '"' && !json_at_end(scan)) {
+        json_next_char(scan);
+    }
+
+    if (json_at_end(scan)) {
+        return json_err_tok(scan, "unterminated string");
+    }
+
+    json_next_char(scan);
+    return json_make_tok(scan, JSONTok_String);
+}
+
+static JSONToken json_scan_next(Arena *a, JSONScanner *scan) {
+    json_skip_whitespace(scan);
+
+    scan->begin = scan->end;
+
+    if (json_at_end(scan)) {
+        return json_make_tok(scan, JSONTok_EOF);
+    }
+
+    char c = json_peek(scan, 0);
+    json_next_char(scan);
+
+    if (is_alpha(c)) {
+        return json_scan_ident(a, scan);
+    }
+
+    if (is_digit(c) || (c == '-' && is_digit(json_peek(scan, 0)))) {
+        return json_scan_number(scan);
+    }
+
+    if (c == '"') {
+        return json_scan_string(scan);
+    }
+
+    switch (c) {
+        case '{':
+            return json_make_tok(scan, JSONTok_LBrace);
+        case '}':
+            return json_make_tok(scan, JSONTok_RBrace);
+        case '[':
+            return json_make_tok(scan, JSONTok_LBracket);
+        case ']':
+            return json_make_tok(scan, JSONTok_RBracket);
+        case ':':
+            return json_make_tok(scan, JSONTok_Colon);
+        case ',':
+            return json_make_tok(scan, JSONTok_Comma);
+    }
+
+    String msg = tmp_fmt("unexpected character: '%c' (%d)", c, (int)c);
+    String s = a->bump_string(msg);
+    return json_err_tok(scan, s);
+}
+
+static String json_parse_next(Arena *a, JSONScanner *scan, JSON *out);
+
+static String json_parse_object(Arena *a, JSONScanner *scan, JSONObject **out) {
+    PROFILE_FUNC();
+
+    JSONObject *obj = nullptr;
+
+    json_scan_next(a, scan);  // eat brace
+
+    while (true) {
+        if (scan->token.kind == JSONTok_RBrace) {
+            *out = obj;
+            json_scan_next(a, scan);
+            return {};
+        }
+
+        String err = {};
+
+        JSON key = {};
+        err = json_parse_next(a, scan, &key);
+        if (err.data != nullptr) {
+            return err;
+        }
+
+        if (key.kind != JSONKind_String) {
+            String msg = tmp_fmt("expected string as object key on line: %d. got: %s", (i32)scan->token.line, json_kind_string(key.kind));
+            return a->bump_string(msg);
+        }
+
+        if (scan->token.kind != JSONTok_Colon) {
+            String msg = tmp_fmt("expected colon on line: %d. got %s", (i32)scan->token.line, json_tok_string(scan->token.kind));
+            return a->bump_string(msg);
+        }
+
+        json_scan_next(a, scan);
+
+        JSON value = {};
+        err = json_parse_next(a, scan, &value);
+        if (err.data != nullptr) {
+            return err;
+        }
+
+        JSONObject *entry = (JSONObject *)a->bump(sizeof(JSONObject));
+        entry->next = obj;
+        entry->hash = fnv1a(key.string);
+        entry->key = key.string;
+        entry->value = value;
+
+        obj = entry;
+
+        if (scan->token.kind == JSONTok_Comma) {
+            json_scan_next(a, scan);
+        }
+    }
+}
+
+static String json_parse_array(Arena *a, JSONScanner *scan, JSONArray **out) {
+    PROFILE_FUNC();
+
+    JSONArray *arr = nullptr;
+
+    json_scan_next(a, scan);  // eat bracket
+
+    while (true) {
+        if (scan->token.kind == JSONTok_RBracket) {
+            *out = arr;
+            json_scan_next(a, scan);
+            return {};
+        }
+
+        JSON value = {};
+        String err = json_parse_next(a, scan, &value);
+        if (err.data != nullptr) {
+            return err;
+        }
+
+        JSONArray *el = (JSONArray *)a->bump(sizeof(JSONArray));
+        el->next = arr;
+        el->value = value;
+        el->index = 0;
+
+        if (arr != nullptr) {
+            el->index = arr->index + 1;
+        }
+
+        arr = el;
+
+        if (scan->token.kind == JSONTok_Comma) {
+            json_scan_next(a, scan);
+        }
+    }
+}
+
+static String json_parse_next(Arena *a, JSONScanner *scan, JSON *out) {
+    switch (scan->token.kind) {
+        case JSONTok_LBrace: {
+            out->kind = JSONKind_Object;
+            return json_parse_object(a, scan, &out->object);
+        }
+        case JSONTok_LBracket: {
+            out->kind = JSONKind_Array;
+            return json_parse_array(a, scan, &out->array);
+        }
+        case JSONTok_String: {
+            out->kind = JSONKind_String;
+            out->string = scan->token.str.substr(1, scan->token.str.len - 1);
+            json_scan_next(a, scan);
+            return {};
+        }
+        case JSONTok_Number: {
+            out->kind = JSONKind_Number;
+            out->number = string_to_double(scan->token.str);
+            json_scan_next(a, scan);
+            return {};
+        }
+        case JSONTok_True: {
+            out->kind = JSONKind_Boolean;
+            out->boolean = true;
+            json_scan_next(a, scan);
+            return {};
+        }
+        case JSONTok_False: {
+            out->kind = JSONKind_Boolean;
+            out->boolean = false;
+            json_scan_next(a, scan);
+            return {};
+        }
+        case JSONTok_Null: {
+            out->kind = JSONKind_Null;
+            json_scan_next(a, scan);
+            return {};
+        }
+        case JSONTok_Error: {
+            StringBuilder sb = {};
+            neko_defer(sb.trash());
+
+            sb << scan->token.str << tmp_fmt(" on line %d:%d", (i32)scan->token.line, (i32)scan->token.column);
+
+            return a->bump_string(String(sb));
+        }
+        default: {
+            String msg = tmp_fmt("unknown json token: %s on line %d:%d", json_tok_string(scan->token.kind), (i32)scan->token.line, (i32)scan->token.column);
+            return a->bump_string(msg);
+        }
+    }
+}
+
+void JSONDocument::parse(String contents) {
+    PROFILE_FUNC();
+
+    arena = {};
+
+    JSONScanner scan = {};
+    scan.contents = contents;
+    scan.line = 1;
+
+    json_scan_next(&arena, &scan);
+
+    String err = json_parse_next(&arena, &scan, &root);
+    if (err.data != nullptr) {
+        error = err;
+        return;
+    }
+
+    if (scan.token.kind != JSONTok_EOF) {
+        error = "expected EOF";
+        return;
+    }
+}
+
+void JSONDocument::trash() {
+    PROFILE_FUNC();
+    arena.trash();
+}
+
+JSON JSON::lookup(String key, bool *ok) {
+    if (*ok && kind == JSONKind_Object) {
+        for (JSONObject *o = object; o != nullptr; o = o->next) {
+            if (o->hash == fnv1a(key)) {
+                return o->value;
+            }
+        }
+    }
+
+    *ok = false;
+    return {};
+}
+
+JSON JSON::index(i32 i, bool *ok) {
+    if (*ok && kind == JSONKind_Array) {
+        for (JSONArray *a = array; a != nullptr; a = a->next) {
+            if (a->index == i) {
+                return a->value;
+            }
+        }
+    }
+
+    *ok = false;
+    return {};
+}
+
+JSONObject *JSON::as_object(bool *ok) {
+    if (*ok && kind == JSONKind_Object) {
+        return object;
+    }
+
+    *ok = false;
+    return {};
+}
+
+JSONArray *JSON::as_array(bool *ok) {
+    if (*ok && kind == JSONKind_Array) {
+        return array;
+    }
+
+    *ok = false;
+    return {};
+}
+
+String JSON::as_string(bool *ok) {
+    if (*ok && kind == JSONKind_String) {
+        return string;
+    }
+
+    *ok = false;
+    return {};
+}
+
+double JSON::as_number(bool *ok) {
+    if (*ok && kind == JSONKind_Number) {
+        return number;
+    }
+
+    *ok = false;
+    return {};
+}
+
+JSONObject *JSON::lookup_object(String key, bool *ok) { return lookup(key, ok).as_object(ok); }
+
+JSONArray *JSON::lookup_array(String key, bool *ok) { return lookup(key, ok).as_array(ok); }
+
+String JSON::lookup_string(String key, bool *ok) { return lookup(key, ok).as_string(ok); }
+
+double JSON::lookup_number(String key, bool *ok) { return lookup(key, ok).as_number(ok); }
+
+double JSON::index_number(i32 i, bool *ok) { return index(i, ok).as_number(ok); }
+
+static void json_write_string(StringBuilder &sb, JSON *json, i32 level) {
+    switch (json->kind) {
+        case JSONKind_Object: {
+            sb << "{\n";
+            for (JSONObject *o = json->object; o != nullptr; o = o->next) {
+                sb.concat("  ", level);
+                sb << o->key;
+                json_write_string(sb, &o->value, level + 1);
+                sb << ",\n";
+            }
+            sb.concat("  ", level - 1);
+            sb << "}";
+            break;
+        }
+        case JSONKind_Array: {
+            sb << "[\n";
+            for (JSONArray *a = json->array; a != nullptr; a = a->next) {
+                sb.concat("  ", level);
+                json_write_string(sb, &a->value, level + 1);
+                sb << ",\n";
+            }
+            sb.concat("  ", level - 1);
+            sb << "]";
+            break;
+        }
+        case JSONKind_String:
+            sb << "\"" << json->string << "\"";
+            break;
+        case JSONKind_Number:
+            sb << tmp_fmt("%g", json->number);
+            break;
+        case JSONKind_Boolean:
+            sb << (json->boolean ? "true" : "false");
+            break;
+        case JSONKind_Null:
+            sb << "null";
+            break;
+        default:
+            break;
+    }
+}
+
+void json_write_string(StringBuilder *sb, JSON *json) { json_write_string(*sb, json, 1); }
+
+void json_print(JSON *json) {
+    StringBuilder sb = {};
+    neko_defer(sb.trash());
+    json_write_string(&sb, json);
+    neko_println("%s", sb.data);
+}
+
+void json_to_lua(lua_State *L, JSON *json) {
+    switch (json->kind) {
+        case JSONKind_Object: {
+            lua_newtable(L);
+            for (JSONObject *o = json->object; o != nullptr; o = o->next) {
+                lua_pushlstring(L, o->key.data, o->key.len);
+                json_to_lua(L, &o->value);
+                lua_rawset(L, -3);
+            }
+            break;
+        }
+        case JSONKind_Array: {
+            lua_newtable(L);
+            for (JSONArray *a = json->array; a != nullptr; a = a->next) {
+                json_to_lua(L, &a->value);
+                lua_rawseti(L, -2, a->index + 1);
+            }
+            break;
+        }
+        case JSONKind_String: {
+            lua_pushlstring(L, json->string.data, json->string.len);
+            break;
+        }
+        case JSONKind_Number: {
+            lua_pushnumber(L, json->number);
+            break;
+        }
+        case JSONKind_Boolean: {
+            lua_pushboolean(L, json->boolean);
+            break;
+        }
+        case JSONKind_Null: {
+            lua_pushnil(L);
+            break;
+        }
+        default:
+            break;
+    }
+}
+
+static void lua_to_json_string(StringBuilder &sb, lua_State *L, HashMap<bool> *visited, String *err, i32 width, i32 level) {
+    auto indent = [&](i32 offset) {
+        if (width > 0) {
+            sb << "\n";
+            sb.concat(" ", width * (level + offset));
+        }
+    };
+
+    if (err->len != 0) {
+        return;
+    }
+
+    i32 top = lua_gettop(L);
+    switch (lua_type(L, top)) {
+        case LUA_TTABLE: {
+            uintptr_t ptr = (uintptr_t)lua_topointer(L, top);
+
+            bool *visit = nullptr;
+            bool exist = visited->find_or_insert(ptr, &visit);
+            if (exist && *visit) {
+                *err = "table has cycles";
+                return;
+            }
+
+            *visit = true;
+
+            lua_pushnil(L);
+            if (lua_next(L, -2) == 0) {
+                sb << "[]";
+                return;
+            }
+
+            i32 key_type = lua_type(L, -2);
+
+            if (key_type == LUA_TNUMBER) {
+                sb << "[";
+
+                indent(0);
+                lua_to_json_string(sb, L, visited, err, width, level + 1);
+
+                i32 len = luax_len(L, top);
+                assert(len > 0);
+                i32 i = 1;
+                for (lua_pop(L, 1); lua_next(L, -2); lua_pop(L, 1)) {
+                    if (lua_type(L, -2) != LUA_TNUMBER) {
+                        lua_pop(L, -2);
+                        *err = "expected all keys to be numbers";
+                        return;
+                    }
+
+                    sb << ",";
+                    indent(0);
+                    lua_to_json_string(sb, L, visited, err, width, level + 1);
+                    i++;
+                }
+                indent(-1);
+                sb << "]";
+
+                if (i != len) {
+                    *err = "array is not continuous";
+                    return;
+                }
+            } else if (key_type == LUA_TSTRING) {
+                sb << "{";
+                indent(0);
+
+                lua_pushvalue(L, -2);
+                lua_to_json_string(sb, L, visited, err, width, level + 1);
+                lua_pop(L, 1);
+                sb << ":";
+                if (width > 0) {
+                    sb << " ";
+                }
+                lua_to_json_string(sb, L, visited, err, width, level + 1);
+
+                for (lua_pop(L, 1); lua_next(L, -2); lua_pop(L, 1)) {
+                    if (lua_type(L, -2) != LUA_TSTRING) {
+                        lua_pop(L, -2);
+                        *err = "expected all keys to be strings";
+                        return;
+                    }
+
+                    sb << ",";
+                    indent(0);
+
+                    lua_pushvalue(L, -2);
+                    lua_to_json_string(sb, L, visited, err, width, level + 1);
+                    lua_pop(L, 1);
+                    sb << ":";
+                    if (width > 0) {
+                        sb << " ";
+                    }
+                    lua_to_json_string(sb, L, visited, err, width, level + 1);
+                }
+                indent(-1);
+                sb << "}";
+            } else {
+                lua_pop(L, 2);  // key, value
+                *err = "expected table keys to be strings or numbers";
+                return;
+            }
+
+            visited->unset(ptr);
+            break;
+        }
+        case LUA_TNIL:
+            sb << "null";
+            break;
+        case LUA_TNUMBER:
+            sb << tmp_fmt("%g", lua_tonumber(L, top));
+            break;
+        case LUA_TSTRING:
+            sb << "\"" << luax_check_string(L, top) << "\"";
+            break;
+        case LUA_TBOOLEAN:
+            sb << (lua_toboolean(L, top) ? "true" : "false");
+            break;
+        default:
+            *err = "type is not serializable";
+    }
+}
+
+String lua_to_json_string(lua_State *L, i32 arg, String *contents, i32 width) {
+    StringBuilder sb = {};
+
+    HashMap<bool> visited = {};
+    neko_defer(visited.trash());
+
+    String err = {};
+    lua_pushvalue(L, arg);
+    lua_to_json_string(sb, L, &visited, &err, width, 1);
+    lua_pop(L, 1);
+
+    if (err.len != 0) {
+        sb.trash();
+    }
+
+    *contents = String(sb);
+    return err;
 }
 
 /*==========================
@@ -821,7 +2733,7 @@ bool create_pack_items(vfs_file *packFile, u64 item_count, neko_pak::item **_ite
             return false; /*FAILED_TO_READ_FILE_PACK_RESULT*/
         }
 
-        s64 fileOffset = info.zip_size > 0 ? info.zip_size : info.data_size;
+        i64 fileOffset = info.zip_size > 0 ? info.zip_size : info.data_size;
 
         int seekResult = neko_capi_vfs_fseek(packFile, fileOffset, SEEK_CUR);
 
@@ -855,10 +2767,10 @@ bool neko_pak::load(const_str file_path, u32 data_buffer_capacity, bool is_resou
     }
 
     char header[neko_pak_head_size];
-    s32 buildnum;
+    i32 buildnum;
 
     size_t result = neko_capi_vfs_fread(header, sizeof(u8), neko_pak_head_size, &this->vf);
-    result += neko_capi_vfs_fread(&buildnum, sizeof(s32), 1, &this->vf);
+    result += neko_capi_vfs_fread(&buildnum, sizeof(i32), 1, &this->vf);
 
     // 检查文件头大小
     if (result != neko_pak_head_size + 1) {
@@ -1013,7 +2925,7 @@ bool neko_pak::get_data(u64 index, const u8 **data, u32 *size) {
 
     vfs_file *vf = &this->vf;
 
-    s64 file_offset = (s64)(info.file_offset + sizeof(neko_pak::iteminfo) + info.path_size);
+    i64 file_offset = (i64)(info.file_offset + sizeof(neko_pak::iteminfo) + info.path_size);
 
     int seek_result = neko_capi_vfs_fseek(vf, file_offset, SEEK_SET);
 
@@ -1141,14 +3053,14 @@ bool neko_pak_unzip(const_str file_path, bool print_progress) {
 
             int progress = (int)(((f32)(i + 1) / (f32)item_count) * 100.0f);
 
-            printf("(%u/%u bytes) [%d%%]\n", raw_file_size, zip_file_size, progress);
+            neko_printf("(%u/%u bytes) [%d%%]\n", raw_file_size, zip_file_size, progress);
         }
     }
 
     pak.fini();
 
     if (print_progress) {
-        printf("Unpacked %llu files. (%llu/%llu bytes)\n", (long long unsigned int)item_count, (long long unsigned int)total_raw_size, (long long unsigned int)total_zip_size);
+        neko_printf("Unpacked %llu files. (%llu/%llu bytes)\n", (long long unsigned int)item_count, (long long unsigned int)total_raw_size, (long long unsigned int)total_zip_size);
     }
 
     return true;
@@ -1176,7 +3088,7 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
         char *item_path = item_paths[i];
 
         if (print_progress) {
-            printf("Packing \"%s\" file. ", item_path);
+            neko_printf("Packing \"%s\" file. ", item_path);
             fflush(stdout);
         }
 
@@ -1271,7 +3183,7 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
             zip_size = 0;
         }
 
-        s64 file_offset = neko_ftell(pack_file);
+        i64 file_offset = neko_ftell(pack_file);
 
         neko_pak::iteminfo info = {
                 (u32)zip_size,
@@ -1323,7 +3235,7 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
 
             int progress = (int)(((f32)(i + 1) / (f32)item_count) * 100.0f);
 
-            printf("(%u/%u bytes) [%d%%]\n", zip_file_size, raw_file_size, progress);
+            neko_printf("(%u/%u bytes) [%d%%]\n", zip_file_size, raw_file_size, progress);
             fflush(stdout);
         }
     }
@@ -1333,7 +3245,8 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
 
     if (print_progress) {
         int compression = (int)((1.0 - (f64)(total_zip_size) / (f64)total_raw_size) * 100.0);
-        printf("Packed %llu files. (%llu/%llu bytes, %d%% saved)\n", (long long unsigned int)item_count, (long long unsigned int)total_zip_size, (long long unsigned int)total_raw_size, compression);
+        neko_printf("Packed %llu files. (%llu/%llu bytes, %d%% saved)\n", (long long unsigned int)item_count, (long long unsigned int)total_zip_size, (long long unsigned int)total_raw_size,
+                    compression);
     }
 
     return true;
@@ -1384,10 +3297,10 @@ bool neko_pak_build(const_str file_path, u64 file_count, const_str *file_paths, 
             'P', 'A', 'C', 'K', 0, 0, 0, !neko_little_endian,
     };
 
-    s32 buildnum = neko_buildnum();
+    i32 buildnum = neko_buildnum();
 
     size_t write_result = fwrite(header, sizeof(u8), neko_pak_head_size, pack_file);
-    write_result += fwrite(&buildnum, sizeof(s32), 1, pack_file);
+    write_result += fwrite(&buildnum, sizeof(i32), 1, pack_file);
 
     if (write_result != neko_pak_head_size + 1) {
         mem_free(item_paths);
@@ -1429,10 +3342,10 @@ bool neko_pak_info(const_str file_path, u8 *pack_version, bool *isLittleEndian, 
     if (!vf.data) return false; /*FAILED_TO_OPEN_FILE_PACK_RESULT*/
 
     char header[neko_pak_head_size];
-    s32 buildnum;
+    i32 buildnum;
 
     size_t result = neko_capi_vfs_fread(header, sizeof(u8), neko_pak_head_size, &vf);
-    result += neko_capi_vfs_fread(&buildnum, sizeof(s32), 1, &vf);
+    result += neko_capi_vfs_fread(&buildnum, sizeof(i32), 1, &vf);
 
     if (result != neko_pak_head_size + 1) {
         neko_capi_vfs_fclose(&vf);
@@ -1871,970 +3784,62 @@ bool neko_xml_node_iter_next(neko_xml_node_iter_t *iter) {
 
 #pragma endregion
 
-#pragma region font
-
-const char *neko_font_error_reason;
-
-// cp1252 table and decode utf8 functions by Mitton a la TIGR
-// https://bitbucket.org/rmitton/tigr/src/default/
-
-// Converts 8-bit codepage entries into unicode code points for indices of 128-256
-static int neko_font_cp1252[] = {
-        0x20ac, 0xfffd, 0x201a, 0x0192, 0x201e, 0x2026, 0x2020, 0x2021, 0x02c6, 0x2030, 0x0160, 0x2039, 0x0152, 0xfffd, 0x017d, 0xfffd, 0xfffd, 0x2018, 0x2019, 0x201c, 0x201d, 0x2022,
-        0x2013, 0x2014, 0x02dc, 0x2122, 0x0161, 0x203a, 0x0153, 0xfffd, 0x017e, 0x0178, 0x00a0, 0x00a1, 0x00a2, 0x00a3, 0x00a4, 0x00a5, 0x00a6, 0x00a7, 0x00a8, 0x00a9, 0x00aa, 0x00ab,
-        0x00ac, 0x00ad, 0x00ae, 0x00af, 0x00b0, 0x00b1, 0x00b2, 0x00b3, 0x00b4, 0x00b5, 0x00b6, 0x00b7, 0x00b8, 0x00b9, 0x00ba, 0x00bb, 0x00bc, 0x00bd, 0x00be, 0x00bf, 0x00c0, 0x00c1,
-        0x00c2, 0x00c3, 0x00c4, 0x00c5, 0x00c6, 0x00c7, 0x00c8, 0x00c9, 0x00ca, 0x00cb, 0x00cc, 0x00cd, 0x00ce, 0x00cf, 0x00d0, 0x00d1, 0x00d2, 0x00d3, 0x00d4, 0x00d5, 0x00d6, 0x00d7,
-        0x00d8, 0x00d9, 0x00da, 0x00db, 0x00dc, 0x00dd, 0x00de, 0x00df, 0x00e0, 0x00e1, 0x00e2, 0x00e3, 0x00e4, 0x00e5, 0x00e6, 0x00e7, 0x00e8, 0x00e9, 0x00ea, 0x00eb, 0x00ec, 0x00ed,
-        0x00ee, 0x00ef, 0x00f0, 0x00f1, 0x00f2, 0x00f3, 0x00f4, 0x00f5, 0x00f6, 0x00f7, 0x00f8, 0x00f9, 0x00fa, 0x00fb, 0x00fc, 0x00fd, 0x00fe, 0x00ff,
-};
-
-const char *neko_font_decode_utf8(const char *text, int *cp) {
-    unsigned char c = *text++;
-    int extra = 0, min = 0;
-    *cp = 0;
-    if (c >= 0xF0) {
-        *cp = c & 0x07;
-        extra = 3;
-        min = 0x10000;
-    } else if (c >= 0xE0) {
-        *cp = c & 0x0F;
-        extra = 2;
-        min = 0x800;
-    } else if (c >= 0xC0) {
-        *cp = c & 0x1F;
-        extra = 1;
-        min = 0x80;
-    } else if (c >= 0x80) {
-        *cp = 0xFFFD;
-    } else
-        *cp = c;
-    while (extra--) {
-        c = *text++;
-        if ((c & 0xC0) != 0x80) {
-            *cp = 0xFFFD;
-            break;
-        }
-        (*cp) = ((*cp) << 6) | (c & 0x3F);
-    }
-    if (*cp < min) *cp = 0xFFFD;
-    return text;
-}
-
-typedef struct neko_font_img_t {
-    void *pix;
-    int w, h;
-    int stride;
-} neko_font_img_t;
-
-static const char *neko_font_get_pixel(neko_font_img_t *img, int x, int y) { return ((const char *)img->pix) + y * img->w * img->stride + x * img->stride; }
-
-static int neko_font_is_border(neko_font_img_t *img, int x, int y) {
-    const char *border_color = (const char *)img->pix;
-    const char *pixel = neko_font_get_pixel(img, x, y);
-    for (int i = 0; i < img->stride; ++i)
-        if (pixel[i] != border_color[i]) return 0;
-    return 1;
-}
-
-static void neko_font_scan(neko_font_img_t *img, int *x, int *y, int *row_height) {
-    while (*y < img->h) {
-        if (*x >= img->w) {
-            *x = 0;
-            (*y) += *row_height;
-            *row_height = 1;
-        }
-        if (!neko_font_is_border(img, *x, *y)) return;
-        (*x)++;
-    }
-}
-
-#define NEKO_FONT_CHECK(X, Y)           \
-    do {                                \
-        if (!(X)) {                     \
-            neko_font_error_reason = Y; \
-            goto neko_font_err;         \
-        }                               \
-    } while (0)
-#define NEKO_FONT_FAIL_IF(X)    \
-    do {                        \
-        if (X) {                \
-            goto neko_font_err; \
-        }                       \
-    } while (0)
-
-neko_font_t *neko_font_load(neko_font_u64 atlas_id, const void *pixels, int w, int h, int stride, void *mem_ctx, int codepage) {
-    int font_height = 1;
-    int x = 0, y = 0;
-
-    // Used to squeeze UVs inward by 128th of a pixel.
-    float w0 = 1.0f / (float)w;
-    float h0 = 1.0f / (float)h;
-    float div = 1.0f / 128.0f;
-    float wTol = w0 * div;
-    float hTol = h0 * div;
-
-    // algorithm by Mitton a la TIGR
-    // https://bitbucket.org/rmitton/tigr/src/default/
-    neko_font_t *font = (neko_font_t *)mem_alloc(sizeof(neko_font_t));
-    font->codes = 0;
-    font->glyphs = 0;
-    font->mem_ctx = mem_ctx;
-    font->atlas_w = w;
-    font->atlas_h = h;
-    neko_font_img_t img;
-    img.pix = (void *)pixels;
-    img.w = w;
-    img.h = h;
-    img.stride = stride;
-
-    switch (codepage) {
-        case 0:
-            font->glyph_count = 128 - 32;
-            break;
-        case 1252:
-            font->glyph_count = 256 - 32;
-            break;
-        default:
-            NEKO_FONT_CHECK(0, "Unknown codepage encountered.");
-    }
-    font->codes = (int *)mem_alloc(sizeof(int) * font->glyph_count);
-    font->glyphs = (neko_font_glyph_t *)mem_alloc(sizeof(neko_font_glyph_t) * font->glyph_count);
-    font->atlas_id = atlas_id;
-    font->kern = 0;
-
-    for (int i = 32; i < font->glyph_count + 32; ++i) {
-        neko_font_glyph_t *glyph = NULL;
-        int w = 0, h = 0;
-        neko_font_scan(&img, &x, &y, &font_height);
-        NEKO_FONT_CHECK(y < img.w, "Unable to properly scan glyph width. Are the text borders drawn properly?");
-
-        while (!neko_font_is_border(&img, x + w, y)) ++w;
-        while (!neko_font_is_border(&img, x, y + h)) ++h;
-
-        glyph = font->glyphs + i - 32;
-        if (i < 128)
-            font->codes[i - 32] = i;
-        else if (codepage == 1252)
-            font->codes[i - 32] = neko_font_cp1252[i - 128];
-        else
-            NEKO_FONT_CHECK(0, "Unknown glyph index found.");
-
-        glyph->xadvance = w + 1;
-        glyph->w = (float)w;
-        glyph->h = (float)h;
-        glyph->minx = x * w0 + wTol;
-        glyph->maxx = (x + w) * w0 - wTol;
-        glyph->miny = y * h0 + wTol;
-        glyph->maxy = (y + h) * h0 - wTol;
-        glyph->xoffset = 0;
-        glyph->yoffset = 0;
-
-        if (h > font_height) font_height = h;
-        x += w;
-    }
-
-    font->font_height = font_height;
-
-    // sort by codepoint for non-ascii code pages
-    if (codepage) {
-        for (int i = 1; i < font->glyph_count; ++i) {
-            neko_font_glyph_t glyph = font->glyphs[i];
-            int code = font->codes[i];
-            int j = i;
-            while (j > 0 && font->codes[j - 1] > code) {
-                font->glyphs[j] = font->glyphs[j - 1];
-                font->codes[j] = font->codes[j - 1];
-                --j;
-            }
-            font->glyphs[j] = glyph;
-            font->codes[j] = code;
-        }
-    }
-
-    return font;
-
-neko_font_err:
-    mem_free(font->glyphs);
-    mem_free(font->codes);
-    mem_free(font);
-    return 0;
-}
-
-neko_font_t *neko_font_load_ascii(neko_font_u64 atlas_id, const void *pixels, int w, int h, int stride, void *mem_ctx) { return neko_font_load(atlas_id, pixels, w, h, stride, mem_ctx, 0); }
-
-neko_font_t *neko_font_load_1252(neko_font_u64 atlas_id, const void *pixels, int w, int h, int stride, void *mem_ctx) { return neko_font_load(atlas_id, pixels, w, h, stride, mem_ctx, 1252); }
-
-#define NEKO_FONT_INTERNAL_BUFFER_MAX 1024
-
-typedef struct neko_font_parse_t {
-    const char *in;
-    const char *end;
-    int scratch_len;
-    char scratch[NEKO_FONT_INTERNAL_BUFFER_MAX];
-} neko_font_parse_t;
-
-static int neko_font_isspace(char c) { return (c == ' ') | (c == '\t') | (c == '\n') | (c == '\v') | (c == '\f') | (c == '\r'); }
-
-static int neko_font_next_internal(neko_font_parse_t *p, char *c) {
-    NEKO_FONT_CHECK(p->in < p->end, "Attempted to read past input buffer.");
-    while (neko_font_isspace(*c = *p->in++)) NEKO_FONT_CHECK(p->in < p->end, "Attempted to read past input buffer.");
-    return 1;
-
-neko_font_err:
-    return 0;
-}
-
-#define neko_font_next(p, c)                               \
-    do {                                                   \
-        NEKO_FONT_FAIL_IF(!neko_font_next_internal(p, c)); \
-    } while (0)
-
-static char neko_font_parse_char(char c) {
-    switch (c) {
-        case '\\':
-            return '\\';
-        case '\'':
-            return '\'';
-        case '"':
-            return '"';
-        case 't':
-            return '\t';
-        case 'f':
-            return '\f';
-        case 'n':
-            return '\n';
-        case 'r':
-            return '\r';
-        case '0':
-            return '\0';
-        default:
-            return c;
-    }
-}
-
-#define neko_font_expect(p, expect)                                           \
-    do {                                                                      \
-        char neko_font_char;                                                  \
-        neko_font_next(p, &neko_font_char);                                   \
-        NEKO_FONT_CHECK(neko_font_char == expect, "Found unexpected token."); \
-    } while (0)
-
-static int neko_font_read_string_internal(neko_font_parse_t *p) {
-    int count = 0;
-    int done = 0;
-    neko_font_expect(p, '"');
-
-    while (!done) {
-        char c = 0;
-        NEKO_FONT_CHECK(count < NEKO_FONT_INTERNAL_BUFFER_MAX, "String too large to parse.");
-        neko_font_next(p, &c);
-
-        switch (c) {
-            case '"':
-                p->scratch[count] = 0;
-                done = 1;
-                break;
-
-            case '\\': {
-                char the_char;
-                neko_font_next(p, &the_char);
-                the_char = neko_font_parse_char(the_char);
-                p->scratch[count++] = the_char;
-            } break;
-
-            default:
-                p->scratch[count++] = c;
-                break;
-        }
-    }
-
-    p->scratch_len = count;
-    return 1;
-
-neko_font_err:
-    return 0;
-}
-
-#define neko_font_read_string(p)                               \
-    do {                                                       \
-        NEKO_FONT_FAIL_IF(!neko_font_read_string_internal(p)); \
-    } while (0)
-
-static int neko_font_read_identifier_internal(neko_font_parse_t *p) {
-    int count = 0;
-    int done = 0;
-
-    while (1) {
-        char c = 0;
-        NEKO_FONT_CHECK(p->in < p->end, "Attempted to read past input buffer.");
-        NEKO_FONT_CHECK(count < NEKO_FONT_INTERNAL_BUFFER_MAX, "String too large to parse.");
-        c = *p->in;
-        if (!neko_font_isspace(c)) break;
-        p->in++;
-    }
-
-    while (!done) {
-        char c = 0;
-        NEKO_FONT_CHECK(p->in < p->end, "Attempted to read past input buffer.");
-        NEKO_FONT_CHECK(count < NEKO_FONT_INTERNAL_BUFFER_MAX, "String too large to parse.");
-        c = *p->in++;
-
-        if (neko_font_isspace(c)) {
-            p->scratch[count] = 0;
-            break;
-        }
-
-        switch (c) {
-            case '=':
-                p->scratch[count] = 0;
-                done = 1;
-                break;
-
-            case '\\': {
-                char the_char;
-                neko_font_next(p, &the_char);
-                the_char = neko_font_parse_char(the_char);
-                p->scratch[count++] = the_char;
-            } break;
-
-            default:
-                p->scratch[count++] = c;
-                break;
-        }
-    }
-
-    p->scratch_len = count;
-    return 1;
-
-neko_font_err:
-    return 0;
-}
-
-#define neko_font_read_identifier(p)                               \
-    do {                                                           \
-        NEKO_FONT_FAIL_IF(!neko_font_read_identifier_internal(p)); \
-    } while (0)
-
-static int neko_font_read_int_internal(neko_font_parse_t *p, int *out) {
-    char *end;
-    int val = (int)strtoll(p->in, &end, 10);
-    NEKO_FONT_CHECK(p->in != end, "Invalid integer found during parse.");
-    p->in = end;
-    *out = val;
-    return 1;
-
-neko_font_err:
-    return 0;
-}
-
-#define neko_font_read_int(p, num)                               \
-    do {                                                         \
-        NEKO_FONT_FAIL_IF(!neko_font_read_int_internal(p, num)); \
-    } while (0)
-
-static int neko_font_read_float_internal(neko_font_parse_t *p, float *out) {
-    char *end;
-    float val = (float)strtod(p->in, &end);
-    NEKO_FONT_CHECK(p->in != end, "Error reading float.");
-    p->in = end;
-    *out = val;
-    return 1;
-
-neko_font_err:
-    return 0;
-}
-
-#define neko_font_read_float(p, num)                                                   \
-    do {                                                                               \
-        NEKO_FONT_FAIL_IF(neko_font_read_float_internal(p, num) != NEKO_FONT_SUCCESS); \
-    } while (0)
-
-int neko_font_expect_string_internal(neko_font_parse_t *p, const char *str) {
-    neko_font_read_string(p);
-    if (strncmp(p->scratch, str, p->scratch_len))
-        return 0;
-    else
-        return 1;
-neko_font_err:
-    return 0;
-}
-
-#define neko_font_expect_string(p, str)                               \
-    do {                                                              \
-        NEKO_FONT_FAIL_IF(!neko_font_expect_string_internal(p, str)); \
-    } while (0)
-
-int neko_font_expect_identifier_internal(neko_font_parse_t *p, const char *str) {
-    neko_font_read_identifier(p);
-    if (strncmp(p->scratch, str, p->scratch_len))
-        return 0;
-    else
-        return 1;
-neko_font_err:
-    return 0;
-}
-
-#define neko_font_expect_identifier(p, str)                               \
-    do {                                                                  \
-        NEKO_FONT_FAIL_IF(!neko_font_expect_identifier_internal(p, str)); \
-    } while (0)
-
-typedef struct neko_font_kern_t {
-    neko_hashtable_t table;
-} neko_font_kern_t;
-
-neko_font_t *neko_font_load_bmfont(neko_font_u64 atlas_id, const void *fnt, int size, void *mem_ctx) {
-    float w0 = 0, h0 = 0, div = 0, wTol = 0, hTol = 0;
-    neko_font_parse_t parse;
-    neko_font_parse_t *p = &parse;
-    p->in = (const char *)fnt;
-    p->end = p->in + size;
-
-    neko_font_t *font = (neko_font_t *)mem_alloc(sizeof(neko_font_t));
-    font->atlas_id = atlas_id;
-    font->kern = 0;
-    font->mem_ctx = mem_ctx;
-
-    // Read in font information.
-    neko_font_expect_identifier(p, "info");
-    neko_font_expect_identifier(p, "face");
-    neko_font_read_string(p);
-    neko_font_expect_identifier(p, "size");
-    neko_font_read_identifier(p);
-    neko_font_expect_identifier(p, "bold");
-    neko_font_read_identifier(p);
-    neko_font_expect_identifier(p, "italic");
-    neko_font_read_identifier(p);
-    neko_font_expect_identifier(p, "charset");
-    neko_font_read_string(p);
-    neko_font_expect_identifier(p, "unicode");
-    neko_font_read_identifier(p);
-    neko_font_expect_identifier(p, "stretchH");
-    neko_font_read_identifier(p);
-    neko_font_expect_identifier(p, "smooth");
-    neko_font_read_identifier(p);
-    neko_font_expect_identifier(p, "aa");
-    neko_font_read_identifier(p);
-    neko_font_expect_identifier(p, "padding");
-    neko_font_read_identifier(p);
-    neko_font_expect_identifier(p, "spacing");
-    neko_font_read_identifier(p);
-    neko_font_expect_identifier(p, "outline");
-    neko_font_read_identifier(p);
-
-    neko_font_expect_identifier(p, "common");
-    neko_font_expect_identifier(p, "lineHeight");
-    neko_font_read_identifier(p);
-    neko_font_expect_identifier(p, "base");
-    neko_font_read_int(p, &font->font_height);
-    neko_font_expect_identifier(p, "scaleW");
-    neko_font_read_int(p, &font->atlas_w);
-    neko_font_expect_identifier(p, "scaleH");
-    neko_font_read_int(p, &font->atlas_h);
-    neko_font_expect_identifier(p, "pages");
-    neko_font_expect_identifier(p, "1");
-    neko_font_expect_identifier(p, "packed");
-    neko_font_expect_identifier(p, "0");
-    neko_font_expect_identifier(p, "alphaChnl");
-    neko_font_read_identifier(p);
-    neko_font_expect_identifier(p, "redChnl");
-    neko_font_read_identifier(p);
-    neko_font_expect_identifier(p, "greenChnl");
-    neko_font_read_identifier(p);
-    neko_font_expect_identifier(p, "blueChnl");
-    neko_font_read_identifier(p);
-
-    neko_font_expect_identifier(p, "page");
-    neko_font_expect_identifier(p, "id");
-    neko_font_read_identifier(p);
-    neko_font_expect_identifier(p, "file");
-    neko_font_read_string(p);
-
-    // Start parsing individual glyphs.
-    neko_font_expect_identifier(p, "chars");
-    neko_font_expect_identifier(p, "count");
-    neko_font_read_int(p, &font->glyph_count);
-    font->glyphs = (neko_font_glyph_t *)mem_alloc(sizeof(neko_font_glyph_t) * font->glyph_count);
-    font->codes = (int *)mem_alloc(sizeof(int) * font->glyph_count);
-
-    // Used to squeeze UVs inward by 128th of a pixel.
-    w0 = 1.0f / (float)(font->atlas_w);
-    h0 = 1.0f / (float)(font->atlas_h);
-    div = 1.0f / 128.0f;
-    wTol = w0 * div;
-    hTol = h0 * div;
-
-    // Read in each glyph.
-    for (int i = 0; i < font->glyph_count; ++i) {
-        int x = 0, y = 0;
-        int width = 0, height = 0;
-
-        neko_font_glyph_t *glyph = font->glyphs + i;
-        neko_font_expect_identifier(p, "char");
-        neko_font_expect_identifier(p, "id");
-        neko_font_read_int(p, font->codes + i);
-
-        neko_font_expect_identifier(p, "x");
-        neko_font_read_int(p, &x);
-        neko_font_expect_identifier(p, "y");
-        neko_font_read_int(p, &y);
-        neko_font_expect_identifier(p, "width");
-        neko_font_read_int(p, &width);
-        neko_font_expect_identifier(p, "height");
-        neko_font_read_int(p, &height);
-
-        glyph->w = (float)width;
-        glyph->h = (float)height;
-        glyph->minx = (float)x * w0 + wTol;
-        glyph->miny = (float)y * h0 + hTol;
-        glyph->maxx = (float)(x + width) * w0 - wTol;
-        glyph->maxy = (float)(y + height) * h0 - hTol;
-
-        neko_font_expect_identifier(p, "xoffset");
-        neko_font_read_int(p, &glyph->xoffset);
-        neko_font_expect_identifier(p, "yoffset");
-        neko_font_read_int(p, &glyph->yoffset);
-        neko_font_expect_identifier(p, "xadvance");
-        neko_font_read_int(p, &glyph->xadvance);
-        neko_font_expect_identifier(p, "page");
-        neko_font_read_identifier(p);
-        neko_font_expect_identifier(p, "chnl");
-        neko_font_read_identifier(p);
-    }
-
-    if (p->end - p->in > 8) {
-        int kern_count = 0;
-        neko_font_kern_t *kern = NULL;
-        neko_font_expect_identifier(p, "kernings");
-        neko_font_expect_identifier(p, "count");
-        neko_font_read_int(p, &kern_count);
-        kern = (neko_font_kern_t *)mem_alloc(sizeof(neko_font_kern_t));
-        font->kern = kern;
-        hashtable_init(&kern->table, sizeof(int), kern_count, mem_ctx);
-
-        for (int i = 0; i < kern_count; ++i) {
-            int first, second, amount;
-            neko_font_expect_identifier(p, "kerning");
-            neko_font_expect_identifier(p, "first");
-            neko_font_read_int(p, &first);
-            neko_font_expect_identifier(p, "second");
-            neko_font_read_int(p, &second);
-            neko_font_expect_identifier(p, "amount");
-            neko_font_read_int(p, &amount);
-
-            neko_font_u64 key = (neko_font_u64)first << 32 | (neko_font_u64)second;
-            hashtable_insert(&kern->table, key, (void *)(size_t)amount);
-        }
-    }
-
-    return font;
-
-neko_font_err:
-    neko_font_free(font);
-    return 0;
-}
-
-void neko_font_free(neko_font_t *font) {
-    void *mem_ctx = font->mem_ctx;
-    mem_free(font->glyphs);
-    mem_free(font->codes);
-    if (font->kern) hashtable_term(&font->kern->table);
-    mem_free(font->kern);
-    mem_free(font);
-}
-
-int neko_font_text_width(neko_font_t *font, const char *text) {
-    int x = 0;
-    int w = 0;
-
-    while (*text) {
-        int c;
-        text = neko_font_decode_utf8(text, &c);
-        if (c == '\n' || c == '\r')
-            x = 0;
-        else {
-            x += neko_font_get_glyph(font, neko_font_get_glyph_index(font, c))->xadvance;
-            w = (x > w) ? x : w;
-        }
-    }
-
-    return w;
-}
-
-int neko_font_text_height(neko_font_t *font, const char *text) {
-    int font_height, h;
-    h = font_height = font->font_height;
-
-    while (*text) {
-        int c;
-        text = neko_font_decode_utf8(text, &c);
-        if (c == '\n' && *text) h += font_height;
-    }
-
-    return h;
-}
-
-int neko_font_max_glyph_height(neko_font_t *font, const char *text) {
-    int max_height = 0;
-
-    while (*text) {
-        int c;
-        text = neko_font_decode_utf8(text, &c);
-        int h = (int)neko_font_get_glyph(font, neko_font_get_glyph_index(font, c))->h;
-        if (h > max_height) max_height = h;
-    }
-
-    return max_height;
-}
-
-int neko_font_get_glyph_index(neko_font_t *font, int code) {
-    int lo = 0;
-    int hi = font->glyph_count;
-
-    while (lo < hi) {
-        int guess = (lo + hi) / 2;
-        if (code < font->codes[guess])
-            hi = guess;
-        else
-            lo = guess + 1;
-    }
-
-    if (lo == 0 || font->codes[lo - 1] != code)
-        return '?' - 32;
-    else
-        return lo - 1;
-}
-
-neko_font_glyph_t *neko_font_get_glyph(neko_font_t *font, int index) { return font->glyphs + index; }
-
-int neko_font_kerning(neko_font_t *font, int code0, int code1) { return (int)(size_t)hashtable_find(&font->kern->table, (neko_font_u64)code0 << 32 | (neko_font_u64)code1); }
-
-neko_font_t *neko_font_create_blank(int font_height, int glyph_count) {
-    neko_font_t *font = (neko_font_t *)mem_alloc(sizeof(neko_font_t));
-    font->glyph_count = glyph_count;
-    font->font_height = font_height;
-    font->kern = 0;
-    font->glyphs = (neko_font_glyph_t *)mem_alloc(sizeof(neko_font_glyph_t) * font->glyph_count);
-    font->codes = (int *)mem_alloc(sizeof(int) * font->glyph_count);
-    return font;
-}
-
-void neko_font_add_kerning_pair(neko_font_t *font, int code0, int code1, int kerning) {
-    if (!font->kern) {
-        neko_font_kern_t *kern = (neko_font_kern_t *)mem_alloc(sizeof(neko_font_kern_t));
-        font->kern = kern;
-        hashtable_init(&kern->table, sizeof(int), 256, font->mem_ctx);
-    }
-
-    neko_font_u64 key = (neko_font_u64)code0 << 32 | (neko_font_u64)code1;
-    hashtable_insert(&font->kern->table, key, (void *)(size_t)kerning);
-}
-
-static int s_is_space(int c) {
-    switch (c) {
-        case ' ':
-        case '\n':
-        case '\t':
-        case '\v':
-        case '\f':
-        case '\r':
-            return 1;
-    }
-    return 0;
-}
-
-static const char *s_find_end_of_line(neko_font_t *font, const char *text, float wrap_width) {
-    float x = 0;
-    const char *start_of_word = 0;
-    float word_w = 0;
-
-    while (*text) {
-        int cp;
-        const char *text_prev = text;
-        text = neko_font_decode_utf8(text, &cp);
-        neko_font_glyph_t *glyph = neko_font_get_glyph(font, neko_font_get_glyph_index(font, cp));
-
-        if (cp == '\n') {
-            x = 0;
-            word_w = 0;
-            start_of_word = 0;
-            continue;
-        } else if (cp == '\r')
-            continue;
-        else {
-            if (s_is_space(cp)) {
-                x += word_w + glyph->xadvance;
-                word_w = 0;
-                start_of_word = 0;
-            } else {
-                if (!start_of_word) start_of_word = text_prev;
-
-                if (x + word_w + glyph->xadvance < wrap_width) {
-                    word_w += glyph->xadvance;
-                } else {
-                    // Put entire word on the next line.
-                    if (word_w + glyph->xadvance < wrap_width) {
-                        return start_of_word;
-                    }
-
-                    // Word itself does not fit on one line, so just cut it here.
-                    else {
-                        return text;
-                    }
-                }
-            }
-        }
-    }
-
-    return text;
-}
-
-static inline float s_dist_to_plane(float v, float d) { return v - d; }
-
-static inline float s_intersect(float a, float b, float u0, float u1, float plane_d) {
-    float da = s_dist_to_plane(a, plane_d);
-    float db = s_dist_to_plane(b, plane_d);
-    return u0 + (u1 - u0) * (da / (da - db));
-}
-
-int neko_font_fill_vertex_buffer(neko_font_t *font, const char *text, float x0, float y0, float wrap_w, float line_height, neko_font_rect_t *clip_rect, neko_font_vert_t *buffer, int buffer_max,
-                                 int *count_written) {
-    float x = x0;
-    float y = y0;
-    float font_height = (float)font->font_height;
-    int i = 0;
-    const char *end_of_line = 0;
-    int wrap_enabled = wrap_w > 0;
-    neko_font_rect_t rect;
-    if (clip_rect) rect = *clip_rect;
-
-    while (*text) {
-        int cp;
-        const char *prev_text = text;
-        text = neko_font_decode_utf8(text, &cp);
-
-        // Word wrapping logic.
-        if (wrap_enabled) {
-            if (!end_of_line) {
-                end_of_line = s_find_end_of_line(font, prev_text, wrap_w);
-            }
-
-            int finished_rendering_line = !(text < end_of_line);
-            if (finished_rendering_line) {
-                end_of_line = 0;
-                x = x0;
-                y -= font_height + line_height;
-
-                // Skip whitespace at the beginning of new lines.
-                while (cp) {
-                    cp = *text;
-                    if (s_is_space(cp))
-                        ++text;
-                    else if (cp == '\n') {
-                        text++;
-                        break;
-                    } else
-                        break;
-                }
-
-                continue;
-            }
-        }
-
-        if (cp == '\n') {
-            x = x0;
-            y -= font_height + line_height;
-            continue;
-        } else if (cp == '\r')
-            continue;
-
-        neko_font_glyph_t *glyph = neko_font_get_glyph(font, neko_font_get_glyph_index(font, cp));
-        float x0 = (float)glyph->xoffset;
-        float y0 = -(float)glyph->yoffset;
-
-        // Bottom left (min).
-        float ax = x + x0;
-        float ay = y - glyph->h + y0;
-        float au = glyph->minx;
-        float av = glyph->maxy;
-
-        // Top right (max).
-        float bx = x + glyph->w + x0;
-        float by = y + y0;
-        float bu = glyph->maxx;
-        float bv = glyph->miny;
-
-        int clipped_away = 0;
-
-        if (clip_rect) {
-            int inside_clip_x_axis = ((x + x0) < rect.right) | (x + glyph->w + x0 > rect.left);
-            clipped_away = !inside_clip_x_axis;
-
-            if (inside_clip_x_axis) {
-                if (ax < rect.left) {
-                    au = s_intersect(ax, bx, au, bu, rect.left);
-                    ax = rect.left;
-                }
-
-                if (bx > rect.right) {
-                    bu = s_intersect(ax, bx, au, bu, rect.right);
-                    bx = rect.right;
-                }
-
-                if (ay < rect.bottom) {
-                    av = s_intersect(ay, by, av, bv, rect.bottom);
-                    ay = rect.bottom;
-                }
-
-                if (by > rect.top) {
-                    bv = s_intersect(ay, by, av, bv, rect.top);
-                    by = rect.top;
-                }
-
-                clipped_away = (ax >= bx) | (ay >= by);
-            }
-        }
-
-        if (!clipped_away) {
-            // Quad is set up as:
-            //
-            // a----d
-            // |   /|
-            // |  / |
-            // | /  |
-            // |/   |
-            // b----c
-
-            neko_font_vert_t a;
-            a.x = ax;
-            a.y = by;
-            a.u = au;
-            a.v = bv;
-
-            neko_font_vert_t b;
-            b.x = ax;
-            b.y = ay;
-            b.u = au;
-            b.v = av;
-
-            neko_font_vert_t c;
-            c.x = bx;
-            c.y = ay;
-            c.u = bu;
-            c.v = av;
-
-            neko_font_vert_t d;
-            d.x = bx;
-            d.y = by;
-            d.u = bu;
-            d.v = bv;
-
-            NEKO_FONT_CHECK(i < buffer_max, "`buffer_max` is too small.");
-            buffer[i++] = a;
-
-            NEKO_FONT_CHECK(i < buffer_max, "`buffer_max` is too small.");
-            buffer[i++] = b;
-
-            NEKO_FONT_CHECK(i < buffer_max, "`buffer_max` is too small.");
-            buffer[i++] = d;
-
-            NEKO_FONT_CHECK(i < buffer_max, "`buffer_max` is too small.");
-            buffer[i++] = d;
-
-            NEKO_FONT_CHECK(i < buffer_max, "`buffer_max` is too small.");
-            buffer[i++] = b;
-
-            NEKO_FONT_CHECK(i < buffer_max, "`buffer_max` is too small.");
-            buffer[i++] = c;
-        }
-
-        x += glyph->xadvance;
-    }
-
-    *count_written = i;
-    return 1;
-
-neko_font_err:
-    *count_written = i;
-    return 0;
-}
-
-#pragma endregion font
-
-NEKO_STATIC const_str s_error_file = NULL;  // 正在解析的文件的文件路径 如果来自内存则为 NULL
-NEKO_STATIC const_str s_error_reason;       // 用于捕获 DEFLATE 解析期间的错误
-
-#define __NEKO_ASEPRITE_CHECK(X, Y) \
-    do {                            \
-        if (!(X)) {                 \
-            s_error_reason = Y;     \
-            goto ase_err;           \
-        }                           \
-    } while (0)
-
-#define __NEKO_ASEPRITE_CALL(X) \
-    do {                        \
-        if (!(X)) goto ase_err; \
-    } while (0)
-
-#define __NEKO_ASEPRITE_DEFLATE_MAX_BITLEN 15
-
 // DEFLATE tables from RFC 1951
-NEKO_STATIC u8 s_fixed_table[288 + 32] = {
+static uint8_t s_fixed_table[288 + 32] = {
         8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
         8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
         8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
         9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
         7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
 };  // 3.2.6
-NEKO_STATIC u8 s_permutation_order[19] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};                                                                                 // 3.2.7
-NEKO_STATIC u8 s_len_extra_bits[29 + 2] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0, 0, 0};                                                     // 3.2.5
-NEKO_STATIC u32 s_len_base[29 + 2] = {3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258, 0, 0};                              // 3.2.5
-NEKO_STATIC u8 s_dist_extra_bits[30 + 2] = {0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 0, 0};                                         // 3.2.5
-NEKO_STATIC u32 s_dist_base[30 + 2] = {1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577, 0, 0};  // 3.2.5
+static uint8_t s_permutation_order[19] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};                                                                                 // 3.2.7
+static uint8_t s_len_extra_bits[29 + 2] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0, 0, 0};                                                     // 3.2.5
+static uint32_t s_len_base[29 + 2] = {3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258, 0, 0};                              // 3.2.5
+static uint8_t s_dist_extra_bits[30 + 2] = {0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 0, 0};                                         // 3.2.5
+static uint32_t s_dist_base[30 + 2] = {1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577, 0, 0};  // 3.2.5
 
 typedef struct deflate_t {
-    u64 bits;
+    uint64_t bits;
     int count;
-    u32 *words;
+    uint32_t *words;
     int word_count;
     int word_index;
     int bits_left;
 
     int final_word_available;
-    u32 final_word;
+    uint32_t final_word;
 
     char *out;
     char *out_end;
     char *begin;
 
-    u32 lit[288];
-    u32 dst[32];
-    u32 len[19];
-    u32 nlit;
-    u32 ndst;
-    u32 nlen;
+    uint32_t lit[288];
+    uint32_t dst[32];
+    uint32_t len[19];
+    uint32_t nlit;
+    uint32_t ndst;
+    uint32_t nlen;
 } deflate_t;
 
-NEKO_STATIC int s_would_overflow(deflate_t *s, int num_bits) { return (s->bits_left + s->count) - num_bits < 0; }
+static int s_would_overflow(deflate_t *s, int num_bits) { return (s->bits_left + s->count) - num_bits < 0; }
 
-NEKO_STATIC char *s_ptr(deflate_t *s) {
+static char *s_ptr(deflate_t *s) {
     NEKO_ASSERT(!(s->bits_left & 7));
     return (char *)(s->words + s->word_index) - (s->count / 8);
 }
 
-NEKO_STATIC u64 s_peak_bits(deflate_t *s, int num_bits_to_read) {
+static uint64_t s_peak_bits(deflate_t *s, int num_bits_to_read) {
     if (s->count < num_bits_to_read) {
         if (s->word_index < s->word_count) {
-            u32 word = s->words[s->word_index++];
-            s->bits |= (u64)word << s->count;
+            uint32_t word = s->words[s->word_index++];
+            s->bits |= (uint64_t)word << s->count;
             s->count += 32;
             NEKO_ASSERT(s->word_index <= s->word_count);
         }
 
         else if (s->final_word_available) {
-            u32 word = s->final_word;
-            s->bits |= (u64)word << s->count;
+            uint32_t word = s->final_word;
+            s->bits |= (uint64_t)word << s->count;
             s->count += s->bits_left;
             s->final_word_available = 0;
         }
@@ -2843,27 +3848,27 @@ NEKO_STATIC u64 s_peak_bits(deflate_t *s, int num_bits_to_read) {
     return s->bits;
 }
 
-NEKO_STATIC u32 s_consume_bits(deflate_t *s, int num_bits_to_read) {
+static uint32_t s_consume_bits(deflate_t *s, int num_bits_to_read) {
     NEKO_ASSERT(s->count >= num_bits_to_read);
-    u32 bits = (u32)(s->bits & (((u64)1 << num_bits_to_read) - 1));
+    uint32_t bits = (uint32_t)(s->bits & (((uint64_t)1 << num_bits_to_read) - 1));
     s->bits >>= num_bits_to_read;
     s->count -= num_bits_to_read;
     s->bits_left -= num_bits_to_read;
     return bits;
 }
 
-NEKO_STATIC u32 s_read_bits(deflate_t *s, int num_bits_to_read) {
+static uint32_t s_read_bits(deflate_t *s, int num_bits_to_read) {
     NEKO_ASSERT(num_bits_to_read <= 32);
     NEKO_ASSERT(num_bits_to_read >= 0);
     NEKO_ASSERT(s->bits_left > 0);
     NEKO_ASSERT(s->count <= 64);
     NEKO_ASSERT(!s_would_overflow(s, num_bits_to_read));
     s_peak_bits(s, num_bits_to_read);
-    u32 bits = s_consume_bits(s, num_bits_to_read);
+    uint32_t bits = s_consume_bits(s, num_bits_to_read);
     return bits;
 }
 
-NEKO_STATIC u32 s_rev16(u32 a) {
+static uint32_t s_rev16(uint32_t a) {
     a = ((a & 0xAAAA) >> 1) | ((a & 0x5555) << 1);
     a = ((a & 0xCCCC) >> 2) | ((a & 0x3333) << 2);
     a = ((a & 0xF0F0) >> 4) | ((a & 0x0F0F) << 4);
@@ -2872,8 +3877,9 @@ NEKO_STATIC u32 s_rev16(u32 a) {
 }
 
 // RFC 1951 section 3.2.2
-NEKO_STATIC u32 s_build(deflate_t *s, u32 *tree, u8 *lens, int sym_count) {
+static uint32_t s_build(deflate_t *s, uint32_t *tree, uint8_t *lens, int sym_count) {
     int n, codes[16], first[16], counts[16] = {0};
+    NEKO_UNUSED(s);
 
     // Frequency count
     for (n = 0; n < sym_count; n++) counts[lens[n]]++;
@@ -2885,21 +3891,21 @@ NEKO_STATIC u32 s_build(deflate_t *s, u32 *tree, u8 *lens, int sym_count) {
         first[n] = first[n - 1] + counts[n - 1];
     }
 
-    for (int i = 0; i < sym_count; ++i) {
-        u8 len = lens[i];
+    for (uint32_t i = 0; i < (uint32_t)sym_count; ++i) {
+        uint8_t len = lens[i];
 
         if (len != 0) {
             NEKO_ASSERT(len < 16);
-            u32 code = (u32)codes[len]++;
-            u32 slot = (u32)first[len]++;
-            tree[slot] = (code << (32 - (u32)len)) | (i << 4) | len;
+            uint32_t code = (uint32_t)codes[len]++;
+            uint32_t slot = (uint32_t)first[len]++;
+            tree[slot] = (code << (32 - (uint32_t)len)) | (i << 4) | len;
         }
     }
 
-    return (u32)first[15];
+    return (uint32_t)first[15];
 }
 
-NEKO_STATIC int s_stored(deflate_t *s) {
+static int s_stored(deflate_t *s) {
     char *p;
 
     // 3.2.3
@@ -2908,10 +3914,11 @@ NEKO_STATIC int s_stored(deflate_t *s) {
 
     // 3.2.4
     // read LEN and NLEN, should complement each other
-    u16 LEN = (u16)s_read_bits(s, 16);
-    u16 NLEN = (u16)s_read_bits(s, 16);
-    __NEKO_ASEPRITE_CHECK(LEN == (u16)(~NLEN), "Failed to find LEN and NLEN as complements within stored (uncompressed) stream.");
-    __NEKO_ASEPRITE_CHECK(s->bits_left / 8 <= (int)LEN, "Stored block extends beyond end of input stream.");
+    uint16_t LEN = (uint16_t)s_read_bits(s, 16);
+    uint16_t NLEN = (uint16_t)s_read_bits(s, 16);
+    uint16_t TILDE_NLEN = ~NLEN;
+    NEKO_ASSERT(LEN == TILDE_NLEN, "Failed to find LEN and NLEN as complements within stored (uncompressed) stream.");
+    NEKO_ASSERT(s->bits_left / 8 <= (int)LEN, "Stored block extends beyond end of input stream.");
     p = s_ptr(s);
     memcpy(s->out, p, LEN);
     s->out += LEN;
@@ -2922,15 +3929,15 @@ ase_err:
 }
 
 // 3.2.6
-NEKO_STATIC int s_fixed(deflate_t *s) {
+static int s_fixed(deflate_t *s) {
     s->nlit = s_build(s, s->lit, s_fixed_table, 288);
     s->ndst = s_build(0, s->dst, s_fixed_table + 288, 32);
     return 1;
 }
 
-NEKO_STATIC int s_decode(deflate_t *s, u32 *tree, int hi) {
-    u64 bits = s_peak_bits(s, 16);
-    u32 search = (s_rev16((u32)bits) << 16) | 0xFFFF;
+static int s_decode(deflate_t *s, uint32_t *tree, int hi) {
+    uint64_t bits = s_peak_bits(s, 16);
+    uint32_t search = (s_rev16((uint32_t)bits) << 16) | 0xFFFF;
     int lo = 0;
     while (lo < hi) {
         int guess = (lo + hi) >> 1;
@@ -2940,8 +3947,8 @@ NEKO_STATIC int s_decode(deflate_t *s, u32 *tree, int hi) {
             lo = guess + 1;
     }
 
-    u32 key = tree[lo - 1];
-    u32 len = (32 - (key & 0xF));
+    uint32_t key = tree[lo - 1];
+    uint32_t len = (32 - (key & 0xF));
     NEKO_ASSERT((search >> len) == (key >> len));
 
     s_consume_bits(s, key & 0xF);
@@ -2949,33 +3956,33 @@ NEKO_STATIC int s_decode(deflate_t *s, u32 *tree, int hi) {
 }
 
 // 3.2.7
-NEKO_STATIC int s_dynamic(deflate_t *s) {
-    u8 lenlens[19] = {0};
+static int s_dynamic(deflate_t *s) {
+    uint8_t lenlens[19] = {0};
 
-    u32 nlit = 257 + s_read_bits(s, 5);
-    u32 ndst = 1 + s_read_bits(s, 5);
-    u32 nlen = 4 + s_read_bits(s, 4);
+    uint32_t nlit = 257 + s_read_bits(s, 5);
+    uint32_t ndst = 1 + s_read_bits(s, 5);
+    uint32_t nlen = 4 + s_read_bits(s, 4);
 
-    for (u32 i = 0; i < nlen; ++i) lenlens[s_permutation_order[i]] = (u8)s_read_bits(s, 3);
+    for (uint32_t i = 0; i < nlen; ++i) lenlens[s_permutation_order[i]] = (uint8_t)s_read_bits(s, 3);
 
     // Build the tree for decoding code lengths
     s->nlen = s_build(0, s->len, lenlens, 19);
-    u8 lens[288 + 32];
+    uint8_t lens[288 + 32];
 
-    for (u32 n = 0; n < nlit + ndst;) {
+    for (uint32_t n = 0; n < nlit + ndst;) {
         int sym = s_decode(s, s->len, (int)s->nlen);
         switch (sym) {
             case 16:
-                for (u32 i = 3 + s_read_bits(s, 2); i; --i, ++n) lens[n] = lens[n - 1];
+                for (uint32_t i = 3 + s_read_bits(s, 2); i; --i, ++n) lens[n] = lens[n - 1];
                 break;
             case 17:
-                for (u32 i = 3 + s_read_bits(s, 3); i; --i, ++n) lens[n] = 0;
+                for (uint32_t i = 3 + s_read_bits(s, 3); i; --i, ++n) lens[n] = 0;
                 break;
             case 18:
-                for (u32 i = 11 + s_read_bits(s, 7); i; --i, ++n) lens[n] = 0;
+                for (uint32_t i = 11 + s_read_bits(s, 7); i; --i, ++n) lens[n] = 0;
                 break;
             default:
-                lens[n++] = (u8)sym;
+                lens[n++] = (uint8_t)sym;
                 break;
         }
     }
@@ -2986,23 +3993,23 @@ NEKO_STATIC int s_dynamic(deflate_t *s) {
 }
 
 // 3.2.3
-NEKO_STATIC int s_block(deflate_t *s) {
+static int s_block(deflate_t *s) {
     while (1) {
         int symbol = s_decode(s, s->lit, (int)s->nlit);
 
         if (symbol < 256) {
-            __NEKO_ASEPRITE_CHECK(s->out + 1 <= s->out_end, "Attempted to overwrite out buffer while outputting a symbol.");
+            NEKO_ASSERT(s->out + 1 <= s->out_end, "Attempted to overwrite out buffer while outputting a symbol.");
             *s->out = (char)symbol;
             s->out += 1;
         }
 
         else if (symbol > 256) {
             symbol -= 257;
-            u32 length = s_read_bits(s, (int)(s_len_extra_bits[symbol])) + s_len_base[symbol];
+            uint32_t length = s_read_bits(s, (int)(s_len_extra_bits[symbol])) + s_len_base[symbol];
             int distance_symbol = s_decode(s, s->dst, (int)s->ndst);
-            u32 backwards_distance = s_read_bits(s, s_dist_extra_bits[distance_symbol]) + s_dist_base[distance_symbol];
-            __NEKO_ASEPRITE_CHECK(s->out - backwards_distance >= s->begin, "Attempted to write before out buffer (invalid backwards distance).");
-            __NEKO_ASEPRITE_CHECK(s->out + length <= s->out_end, "Attempted to overwrite out buffer while outputting a string.");
+            uint32_t backwards_distance = s_read_bits(s, s_dist_extra_bits[distance_symbol]) + s_dist_base[distance_symbol];
+            NEKO_ASSERT(s->out - backwards_distance >= s->begin, "Attempted to write before out buffer (invalid backwards distance).");
+            NEKO_ASSERT(s->out + length <= s->out_end, "Attempted to overwrite out buffer while outputting a string.");
             char *src = s->out - backwards_distance;
             char *dst = s->out;
             s->out += length;
@@ -3027,7 +4034,8 @@ ase_err:
 }
 
 // 3.2.3
-NEKO_STATIC int s_inflate(const void *in, int in_bytes, void *out, int out_bytes) {
+static int s_inflate(const void *in, int in_bytes, void *out, int out_bytes) {
+
     deflate_t *s = (deflate_t *)mem_alloc(sizeof(deflate_t));
     s->bits = 0;
     s->count = 0;
@@ -3035,16 +4043,16 @@ NEKO_STATIC int s_inflate(const void *in, int in_bytes, void *out, int out_bytes
     s->bits_left = in_bytes * 8;
 
     // s->words is the in-pointer rounded up to a multiple of 4
-    int first_bytes = (int)((((size_t)in + 3) & ~3) - (size_t)in);
-    s->words = (u32 *)((char *)in + first_bytes);
+    int first_bytes = (int)((((size_t)in + 3) & (size_t)(~3)) - (size_t)in);
+    s->words = (uint32_t *)((char *)in + first_bytes);
     s->word_count = (in_bytes - first_bytes) / 4;
     int last_bytes = ((in_bytes - first_bytes) & 3);
 
-    for (int i = 0; i < first_bytes; ++i) s->bits |= (u64)(((u8 *)in)[i]) << (i * 8);
+    for (int i = 0; i < first_bytes; ++i) s->bits |= (uint64_t)(((uint8_t *)in)[i]) << (i * 8);
 
     s->final_word_available = last_bytes ? 1 : 0;
     s->final_word = 0;
-    for (int i = 0; i < last_bytes; i++) s->final_word |= ((u8 *)in)[in_bytes - last_bytes + i] << (i * 8);
+    for (int i = 0; i < last_bytes; i++) s->final_word |= ((uint8_t *)in)[in_bytes - last_bytes + i] << (i * 8);
 
     s->count = first_bytes * 8;
 
@@ -3053,25 +4061,25 @@ NEKO_STATIC int s_inflate(const void *in, int in_bytes, void *out, int out_bytes
     s->begin = (char *)out;
 
     int count = 0;
-    u32 bfinal;
+    uint32_t bfinal;
     do {
         bfinal = s_read_bits(s, 1);
-        u32 btype = s_read_bits(s, 2);
+        uint32_t btype = s_read_bits(s, 2);
 
         switch (btype) {
             case 0:
-                __NEKO_ASEPRITE_CALL(s_stored(s));
+                if (!(s_stored(s))) goto ase_err;
                 break;
             case 1:
                 s_fixed(s);
-                __NEKO_ASEPRITE_CALL(s_block(s));
+                if (!(s_block(s))) goto ase_err;
                 break;
             case 2:
                 s_dynamic(s);
-                __NEKO_ASEPRITE_CALL(s_block(s));
+                if (!(s_block(s))) goto ase_err;
                 break;
             case 3:
-                __NEKO_ASEPRITE_CHECK(0, "Detected unknown block type within input stream.");
+                NEKO_ASSERT(0, "Detected unknown block type within input stream.");
         }
 
         ++count;
@@ -3086,51 +4094,79 @@ ase_err:
 }
 
 typedef struct ase_state_t {
-    u8 *in;
-    u8 *end;
+    uint8_t *in;
+    uint8_t *end;
 } ase_state_t;
 
-NEKO_STATIC u8 s_read_uint8(ase_state_t *s) {
-    NEKO_ASSERT(s->in <= s->end + sizeof(u8));
-    u8 **p = &s->in;
-    u8 value = **p;
+static uint8_t s_read_uint8(ase_state_t *s) {
+    NEKO_ASSERT(s->in <= s->end + sizeof(uint8_t));
+    uint8_t **p = &s->in;
+    uint8_t value = **p;
     ++(*p);
     return value;
 }
 
-NEKO_STATIC u16 s_read_uint16(ase_state_t *s) {
-    NEKO_ASSERT(s->in <= s->end + sizeof(u16));
-    u8 **p = &s->in;
-    u16 value;
+static uint16_t s_read_uint16(ase_state_t *s) {
+    NEKO_ASSERT(s->in <= s->end + sizeof(uint16_t));
+    uint8_t **p = &s->in;
+    uint16_t value;
     value = (*p)[0];
-    value |= (((u16)((*p)[1])) << 8);
+    value |= (((uint16_t)((*p)[1])) << 8);
     *p += 2;
     return value;
 }
 
-NEKO_STATIC ase_fixed_t s_read_fixed(ase_state_t *s) {
+static ase_fixed_t s_read_fixed(ase_state_t *s) {
     ase_fixed_t value;
     value.a = s_read_uint16(s);
     value.b = s_read_uint16(s);
     return value;
 }
 
-NEKO_STATIC u32 s_read_uint32(ase_state_t *s) {
-    NEKO_ASSERT(s->in <= s->end + sizeof(u32));
-    u8 **p = &s->in;
-    u32 value;
+static uint32_t s_read_uint32(ase_state_t *s) {
+    NEKO_ASSERT(s->in <= s->end + sizeof(uint32_t));
+    uint8_t **p = &s->in;
+    uint32_t value;
     value = (*p)[0];
-    value |= (((u32)((*p)[1])) << 8);
-    value |= (((u32)((*p)[2])) << 16);
-    value |= (((u32)((*p)[3])) << 24);
+    value |= (((uint32_t)((*p)[1])) << 8);
+    value |= (((uint32_t)((*p)[2])) << 16);
+    value |= (((uint32_t)((*p)[3])) << 24);
     *p += 4;
     return value;
 }
 
-NEKO_STATIC s16 s_read_int16(ase_state_t *s) { return (s16)s_read_uint16(s); }
-NEKO_STATIC s16 s_read_int32(ase_state_t *s) { return (s32)s_read_uint32(s); }
+#ifdef CUTE_ASPRITE_S_READ_UINT64
+// s_read_uint64() is not currently used.
+static uint64_t s_read_uint64(ase_state_t *s) {
+    NEKO_ASSERT(s->in <= s->end + sizeof(uint64_t));
+    uint8_t **p = &s->in;
+    uint64_t value;
+    value = (*p)[0];
+    value |= (((uint64_t)((*p)[1])) << 8);
+    value |= (((uint64_t)((*p)[2])) << 16);
+    value |= (((uint64_t)((*p)[3])) << 24);
+    value |= (((uint64_t)((*p)[4])) << 32);
+    value |= (((uint64_t)((*p)[5])) << 40);
+    value |= (((uint64_t)((*p)[6])) << 48);
+    value |= (((uint64_t)((*p)[7])) << 56);
+    *p += 8;
+    return value;
+}
+#endif
 
-NEKO_STATIC const char *s_read_string(ase_state_t *s) {
+#define s_read_int16(s) (int16_t) s_read_uint16(s)
+#define s_read_int32(s) (int32_t) s_read_uint32(s)
+
+#ifdef CUTE_ASPRITE_S_READ_BYTES
+// s_read_bytes() is not currently used.
+static void s_read_bytes(ase_state_t *s, uint8_t *bytes, int num_bytes) {
+    for (int i = 0; i < num_bytes; ++i) {
+        bytes[i] = s_read_uint8(s);
+    }
+}
+#endif
+
+static const char *s_read_string(ase_state_t *s) {
     int len = (int)s_read_uint16(s);
     char *bytes = (char *)mem_alloc(len + 1);
     for (int i = 0; i < len; ++i) {
@@ -3140,53 +4176,87 @@ NEKO_STATIC const char *s_read_string(ase_state_t *s) {
     return bytes;
 }
 
-NEKO_STATIC void s_skip(ase_state_t *ase, int num_bytes) {
+static void s_skip(ase_state_t *ase, int num_bytes) {
     NEKO_ASSERT(ase->in <= ase->end + num_bytes);
     ase->in += num_bytes;
 }
 
-ase_t *neko_aseprite_load_from_file(const char *path) {
-    s_error_file = path;
-    u64 sz;
-    const_str file = neko_capi_vfs_read_file(NEKO_PACKS::GAMEDATA, path, &sz);
-    if (!file) {
-        NEKO_WARN("unable to find map file %s", s_error_file ? s_error_file : "MEMORY");
-        return NULL;
-    }
-    ase_t *aseprite = neko_aseprite_load_from_memory(file, sz);
-    mem_free(file);
-    s_error_file = NULL;
-    return aseprite;
+static int s_mul_un8(int a, int b) {
+    int t = (a * b) + 0x80;
+    return (((t >> 8) + t) >> 8);
 }
 
-ase_t *neko_aseprite_load_from_memory(const void *memory, u64 size) {
+static ase_color_t s_blend(ase_color_t src, ase_color_t dst, uint8_t opacity) {
+    src.a = (uint8_t)s_mul_un8(src.a, opacity);
+    int a = src.a + dst.a - s_mul_un8(src.a, dst.a);
+    int r, g, b;
+    if (a == 0) {
+        r = g = b = 0;
+    } else {
+        r = dst.r + (src.r - dst.r) * src.a / a;
+        g = dst.g + (src.g - dst.g) * src.a / a;
+        b = dst.b + (src.b - dst.b) * src.a / a;
+    }
+    ase_color_t ret = {(uint8_t)r, (uint8_t)g, (uint8_t)b, (uint8_t)a};
+    return ret;
+}
+
+static int s_min(int a, int b) { return a < b ? a : b; }
+
+static int s_max(int a, int b) { return a < b ? b : a; }
+
+static ase_color_t s_color(ase_t *ase, void *src, int index) {
+    ase_color_t result;
+    if (ase->mode == ASE_MODE_RGBA) {
+        result = ((ase_color_t *)src)[index];
+    } else if (ase->mode == ASE_MODE_GRAYSCALE) {
+        uint8_t saturation = ((uint8_t *)src)[index * 2];
+        uint8_t a = ((uint8_t *)src)[index * 2 + 1];
+        result.r = result.g = result.b = saturation;
+        result.a = a;
+    } else {
+        NEKO_ASSERT(ase->mode == ASE_MODE_INDEXED);
+        uint8_t palette_index = ((uint8_t *)src)[index];
+        if (palette_index == ase->transparent_palette_entry_index) {
+            result.r = 0;
+            result.g = 0;
+            result.b = 0;
+            result.a = 0;
+        } else {
+            result = ase->palette.entries[palette_index].color;
+        }
+    }
+    return result;
+}
+
+ase_t *neko_aseprite_load_from_memory(const void *memory, int size) {
     ase_t *ase = (ase_t *)mem_alloc(sizeof(ase_t));
     memset(ase, 0, sizeof(*ase));
 
     ase_state_t state = {0};
     ase_state_t *s = &state;
-    s->in = (u8 *)memory;
+    s->in = (uint8_t *)memory;
     s->end = s->in + size;
 
-    s_skip(s, sizeof(u32));  // File size.
+    s_skip(s, sizeof(uint32_t));  // File size.
     int magic = (int)s_read_uint16(s);
     NEKO_ASSERT(magic == 0xA5E0);
 
     ase->frame_count = (int)s_read_uint16(s);
     ase->w = s_read_uint16(s);
     ase->h = s_read_uint16(s);
-    u16 bpp = s_read_uint16(s) / 8;
+    uint16_t bpp = s_read_uint16(s) / 8;
     if (bpp == 4)
-        ase->mode = NEKO_ASE_MODE_RGBA;
+        ase->mode = ASE_MODE_RGBA;
     else if (bpp == 2)
-        ase->mode = NEKO_ASE_MODE_GRAYSCALE;
+        ase->mode = ASE_MODE_GRAYSCALE;
     else {
         NEKO_ASSERT(bpp == 1);
-        ase->mode = NEKO_ASE_MODE_INDEXED;
+        ase->mode = ASE_MODE_INDEXED;
     }
-    u32 valid_layer_opacity = s_read_uint32(s) & 1;
+    uint32_t valid_layer_opacity = s_read_uint32(s) & 1;
     int speed = s_read_uint16(s);
-    s_skip(s, sizeof(u32) * 2);  // Spec says skip these bytes, as they're zero'd.
+    s_skip(s, sizeof(uint32_t) * 2);  // Spec says skip these bytes, as they're zero'd.
     ase->transparent_palette_entry_index = s_read_uint8(s);
     s_skip(s, 3);  // Spec says skip these bytes.
     ase->number_of_colors = (int)s_read_uint16(s);
@@ -3205,42 +4275,39 @@ ase_t *neko_aseprite_load_from_memory(const void *memory, u64 size) {
     int was_on_tags = 0;
     int tag_index = 0;
 
-    ase_layer_t *layer_stack[__NEKO_ASEPRITE_MAX_LAYERS];
-
-    // 查看 aseprite 文件标准
-    // https://github.com/aseprite/aseprite/blob/main/docs/ase-file-specs.md
+    ase_layer_t *layer_stack[NEKO_ASEPRITE_MAX_LAYERS];
 
     // Parse all chunks in the .aseprite file.
     for (int i = 0; i < ase->frame_count; ++i) {
         ase_frame_t *frame = ase->frames + i;
         frame->ase = ase;
-        s_skip(s, sizeof(u32));  // Frame size.
+        s_skip(s, sizeof(uint32_t));  // Frame size.
         magic = (int)s_read_uint16(s);
         NEKO_ASSERT(magic == 0xF1FA);
         int chunk_count = (int)s_read_uint16(s);
         frame->duration_milliseconds = s_read_uint16(s);
         if (frame->duration_milliseconds == 0) frame->duration_milliseconds = speed;
         s_skip(s, 2);  // For future use (set to zero).
-        u32 new_chunk_count = s_read_uint32(s);
+        uint32_t new_chunk_count = s_read_uint32(s);
         if (new_chunk_count) chunk_count = (int)new_chunk_count;
 
         for (int j = 0; j < chunk_count; ++j) {
-            u32 chunk_size = s_read_uint32(s);
-            u16 chunk_type = s_read_uint16(s);
-            chunk_size -= (u32)(sizeof(u32) + sizeof(u16));
-            u8 *chunk_start = s->in;
+            uint32_t chunk_size = s_read_uint32(s);
+            uint16_t chunk_type = s_read_uint16(s);
+            chunk_size -= (uint32_t)(sizeof(uint32_t) + sizeof(uint16_t));
+            uint8_t *chunk_start = s->in;
 
             switch (chunk_type) {
-                case 0x0004:  // 旧调色板块 (当调色板中没有带 alpha 的颜色时使用)
+                case 0x0004:  // 旧调色板块(当调色板中没有带有 alpha 的颜色时使用)
                 {
-                    u16 nbPackets = s_read_uint16(s);
-                    for (u16 k = 0; k < nbPackets; k++) {
-                        u16 maxColor = 0;
-                        u16 skip = (u16)s_read_uint8(s);
-                        u16 nbColors = (u16)s_read_uint8(s);
+                    uint16_t nbPackets = s_read_uint16(s);
+                    for (uint16_t k = 0; k < nbPackets; k++) {
+                        uint16_t maxColor = 0;
+                        uint16_t skip = (uint16_t)s_read_uint8(s);
+                        uint16_t nbColors = (uint16_t)s_read_uint8(s);
                         if (nbColors == 0) nbColors = 256;
 
-                        for (u16 l = 0; l < nbColors; l++) {
+                        for (uint16_t l = 0; l < nbColors; l++) {
                             ase_palette_entry_t entry;
                             entry.color.r = s_read_uint8(s);
                             entry.color.g = s_read_uint8(s);
@@ -3257,26 +4324,20 @@ ase_t *neko_aseprite_load_from_memory(const void *memory, u64 size) {
                 } break;
                 case 0x2004:  // Layer chunk.
                 {
-                    NEKO_ASSERT(ase->layer_count < __NEKO_ASEPRITE_MAX_LAYERS);
+                    NEKO_ASSERT(ase->layer_count < NEKO_ASEPRITE_MAX_LAYERS);
                     ase_layer_t *layer = ase->layers + ase->layer_count++;
                     layer->flags = (ase_layer_flags_t)s_read_uint16(s);
-
-                    // WORD Layer type
-                    //  0 = Normal(image) layer
-                    //  1 = Group
-                    //  2 = Tilemap
                     layer->type = (ase_layer_type_t)s_read_uint16(s);
-
                     layer->parent = NULL;
                     int child_level = (int)s_read_uint16(s);
                     layer_stack[child_level] = layer;
                     if (child_level) {
                         layer->parent = layer_stack[child_level - 1];
                     }
-                    s_skip(s, sizeof(u16));  // Default layer width in pixels (ignored).
-                    s_skip(s, sizeof(u16));  // Default layer height in pixels (ignored).
+                    s_skip(s, sizeof(uint16_t));  // Default layer width in pixels (ignored).
+                    s_skip(s, sizeof(uint16_t));  // Default layer height in pixels (ignored).
                     int blend_mode = (int)s_read_uint16(s);
-                    if (blend_mode) NEKO_WARN("aseprite unknown blend mode encountered.");
+                    if (blend_mode) NEKO_WARN("unknown blend mode encountered.");
                     layer->opacity = s_read_uint8(s) / 255.0f;
                     if (!valid_layer_opacity) layer->opacity = 1.0f;
                     s_skip(s, 3);  // For future use (set to zero).
@@ -3286,7 +4347,7 @@ ase_t *neko_aseprite_load_from_memory(const void *memory, u64 size) {
 
                 case 0x2005:  // Cel chunk.
                 {
-                    NEKO_ASSERT(frame->cel_count < __NEKO_ASEPRITE_MAX_LAYERS);
+                    NEKO_ASSERT(frame->cel_count < NEKO_ASEPRITE_MAX_LAYERS);
                     ase_cel_t *cel = frame->cels + frame->cel_count++;
                     int layer_index = (int)s_read_uint16(s);
                     cel->layer = ase->layers + layer_index;
@@ -3299,8 +4360,8 @@ ase_t *neko_aseprite_load_from_memory(const void *memory, u64 size) {
                         case 0:  // Raw cel.
                             cel->w = s_read_uint16(s);
                             cel->h = s_read_uint16(s);
-                            cel->cel_pixels = mem_alloc(cel->w * cel->h * bpp);
-                            memcpy(cel->cel_pixels, s->in, (size_t)(cel->w * cel->h * bpp));
+                            cel->pixels = mem_alloc(cel->w * cel->h * bpp);
+                            memcpy(cel->pixels, s->in, (size_t)(cel->w * cel->h * bpp));
                             s_skip(s, cel->w * cel->h * bpp);
                             break;
 
@@ -3323,8 +4384,8 @@ ase_t *neko_aseprite_load_from_memory(const void *memory, u64 size) {
                             int pixels_sz = cel->w * cel->h * bpp;
                             void *pixels_decompressed = mem_alloc(pixels_sz);
                             int ret = s_inflate(pixels, deflate_bytes, pixels_decompressed, pixels_sz);
-                            if (!ret) NEKO_WARN(s_error_reason);
-                            cel->cel_pixels = pixels_decompressed;
+                            if (!ret) NEKO_WARN("?");
+                            cel->pixels = pixels_decompressed;
                             s_skip(s, deflate_bytes);
                         } break;
                     }
@@ -3350,7 +4411,7 @@ ase_t *neko_aseprite_load_from_memory(const void *memory, u64 size) {
                     ase->color_profile.use_fixed_gamma = (int)s_read_uint16(s) & 1;
                     ase->color_profile.gamma = s_read_fixed(s);
                     s_skip(s, 8);  // For future use (set to zero).
-                    if (ase->color_profile.type == NEKO_ASE_COLOR_PROFILE_TYPE_EMBEDDED_ICC) {
+                    if (ase->color_profile.type == ASE_COLOR_PROFILE_TYPE_EMBEDDED_ICC) {
                         // Use the embedded ICC profile.
                         ase->color_profile.icc_profile_data_length = s_read_uint32(s);
                         ase->color_profile.icc_profile_data = mem_alloc(ase->color_profile.icc_profile_data_length);
@@ -3363,20 +4424,18 @@ ase_t *neko_aseprite_load_from_memory(const void *memory, u64 size) {
                 {
                     ase->tag_count = (int)s_read_uint16(s);
                     s_skip(s, 8);  // For future (set to zero).
-                    NEKO_ASSERT(ase->tag_count < __NEKO_ASEPRITE_MAX_TAGS);
+                    NEKO_ASSERT(ase->tag_count < NEKO_ASEPRITE_MAX_TAGS);
                     for (int k = 0; k < ase->tag_count; ++k) {
-                        ase_tag_t tag;
-                        tag.from_frame = (int)s_read_uint16(s);
-                        tag.to_frame = (int)s_read_uint16(s);
-                        tag.loop_animation_direction = (ase_animation_direction_t)s_read_uint8(s);
-                        tag.repeat = s_read_uint16(s);
+                        ase->tags[k].from_frame = (int)s_read_uint16(s);
+                        ase->tags[k].to_frame = (int)s_read_uint16(s);
+                        ase->tags[k].loop_animation_direction = (ase_animation_direction_t)s_read_uint8(s);
+                        ase->tags[k].repeat = s_read_uint16(s);
                         s_skip(s, 6);  // For future (set to zero).
-                        tag.r = s_read_uint8(s);
-                        tag.g = s_read_uint8(s);
-                        tag.b = s_read_uint8(s);
+                        ase->tags[k].r = s_read_uint8(s);
+                        ase->tags[k].g = s_read_uint8(s);
+                        ase->tags[k].b = s_read_uint8(s);
                         s_skip(s, 1);  // Extra byte (zero).
-                        tag.name = s_read_string(s);
-                        ase->tags[k] = tag;
+                        ase->tags[k].name = s_read_string(s);
                     }
                     was_on_tags = 1;
                 } break;
@@ -3384,7 +4443,7 @@ ase_t *neko_aseprite_load_from_memory(const void *memory, u64 size) {
                 case 0x2019:  // Palette chunk.
                 {
                     ase->palette.entry_count = (int)s_read_uint32(s);
-                    NEKO_ASSERT(ase->palette.entry_count <= __NEKO_ASEPRITE_MAX_PALETTE_ENTRIES);
+                    NEKO_ASSERT(ase->palette.entry_count <= NEKO_ASEPRITE_MAX_PALETTE_ENTRIES);
                     int first_index = (int)s_read_uint32(s);
                     int last_index = (int)s_read_uint32(s);
                     s_skip(s, 8);  // For future (set to zero).
@@ -3400,6 +4459,7 @@ ase_t *neko_aseprite_load_from_memory(const void *memory, u64 size) {
                         } else {
                             entry.color_name = NULL;
                         }
+                        NEKO_ASSERT(k < NEKO_ASEPRITE_MAX_PALETTE_ENTRIES);
                         ase->palette.entries[k] = entry;
                     }
                 } break;
@@ -3429,7 +4489,7 @@ ase_t *neko_aseprite_load_from_memory(const void *memory, u64 size) {
                 {
                     int slice_count = (int)s_read_uint32(s);
                     int flags = (int)s_read_uint32(s);
-                    s_skip(s, sizeof(u32));  // Reserved.
+                    s_skip(s, sizeof(uint32_t));  // Reserved.
                     const char *name = s_read_string(s);
                     for (int k = 0; k < (int)slice_count; ++k) {
                         ase_slice_t slice = {0};
@@ -3453,7 +4513,7 @@ ase_t *neko_aseprite_load_from_memory(const void *memory, u64 size) {
                             slice.pivot_x = (int)s_read_int32(s);
                             slice.pivot_y = (int)s_read_int32(s);
                         }
-                        NEKO_ASSERT(ase->slice_count < __NEKO_ASEPRITE_MAX_SLICES);
+                        NEKO_ASSERT(ase->slice_count < NEKO_ASEPRITE_MAX_SLICES);
                         ase->slices[ase->slice_count++] = slice;
                         last_udata = &ase->slices[ase->slice_count - 1].udata;
                     }
@@ -3464,36 +4524,25 @@ ase_t *neko_aseprite_load_from_memory(const void *memory, u64 size) {
                     break;
             }
 
-            u32 size_read = (u32)(s->in - chunk_start);
+            uint32_t size_read = (uint32_t)(s->in - chunk_start);
             NEKO_ASSERT(size_read == chunk_size);
         }
     }
 
-    return ase;
-}
-
-void neko_aseprite_default_blend_bind(ase_t *ase) {
-
-    NEKO_ASSERT(ase);
-    NEKO_ASSERT(ase->frame_count);
-
-    // 为了方便起见，将所有单元像素混合到各自的帧中
+    // Blend all cel pixels into each of their respective frames, for convenience.
     for (int i = 0; i < ase->frame_count; ++i) {
         ase_frame_t *frame = ase->frames + i;
-        frame->pixels[0] = (neko_color_t *)mem_alloc((size_t)(sizeof(neko_color_t)) * ase->w * ase->h);
-        memset(frame->pixels[0], 0, sizeof(neko_color_t) * (size_t)ase->w * (size_t)ase->h);
-        neko_color_t *dst = frame->pixels[0];
-
-        // neko_println_debug("frame: %d cel_count: %d", i, frame->cel_count);
-
-        for (int j = 0; j < frame->cel_count; ++j) {  //
-
+        frame->pixels = (ase_color_t *)mem_alloc((int)(sizeof(ase_color_t)) * ase->w * ase->h);
+        memset(frame->pixels, 0, sizeof(ase_color_t) * (size_t)ase->w * (size_t)ase->h);
+        ase_color_t *dst = frame->pixels;
+        for (int j = 0; j < frame->cel_count; ++j) {
             ase_cel_t *cel = frame->cels + j;
-
-            if (!(cel->layer->flags & NEKO_ASE_LAYER_FLAGS_VISIBLE) || (cel->layer->parent && !(cel->layer->parent->flags & NEKO_ASE_LAYER_FLAGS_VISIBLE))) {
+            if (!(cel->layer->flags & ASE_LAYER_FLAGS_VISIBLE)) {
                 continue;
             }
-
+            if (cel->layer->parent && !(cel->layer->parent->flags & ASE_LAYER_FLAGS_VISIBLE)) {
+                continue;
+            }
             while (cel->is_linked) {
                 ase_frame_t *frame = ase->frames + cel->linked_frame_index;
                 int found = 0;
@@ -3506,39 +4555,41 @@ void neko_aseprite_default_blend_bind(ase_t *ase) {
                 }
                 NEKO_ASSERT(found);
             }
-            void *src = cel->cel_pixels;
-            u8 opacity = (u8)(cel->opacity * cel->layer->opacity * 255.0f);
+            void *src = cel->pixels;
+            uint8_t opacity = (uint8_t)(cel->opacity * cel->layer->opacity * 255.0f);
             int cx = cel->x;
             int cy = cel->y;
             int cw = cel->w;
             int ch = cel->h;
-            int cl = -NEKO_MIN(cx, 0);
-            int ct = -NEKO_MIN(cy, 0);
-            int dl = NEKO_MAX(cx, 0);
-            int dt = NEKO_MAX(cy, 0);
-            int dr = NEKO_MIN(ase->w, cw + cx);
-            int db = NEKO_MIN(ase->h, ch + cy);
+            int cl = -s_min(cx, 0);
+            int ct = -s_min(cy, 0);
+            int dl = s_max(cx, 0);
+            int dt = s_max(cy, 0);
+            int dr = s_min(ase->w, cw + cx);
+            int db = s_min(ase->h, ch + cy);
             int aw = ase->w;
             for (int dx = dl, sx = cl; dx < dr; dx++, sx++) {
                 for (int dy = dt, sy = ct; dy < db; dy++, sy++) {
                     int dst_index = aw * dy + dx;
-                    neko_color_t src_color = s_color(ase, src, cw * sy + sx);
-                    neko_color_t dst_color = dst[dst_index];
-                    neko_color_t result = s_blend(src_color, dst_color, opacity);
+                    ase_color_t src_color = s_color(ase, src, cw * sy + sx);
+                    ase_color_t dst_color = dst[dst_index];
+                    ase_color_t result = s_blend(src_color, dst_color, opacity);
                     dst[dst_index] = result;
                 }
             }
         }
     }
+
+    return ase;
 }
 
 void neko_aseprite_free(ase_t *ase) {
     for (int i = 0; i < ase->frame_count; ++i) {
         ase_frame_t *frame = ase->frames + i;
-        mem_free(frame->pixels[0]);
+        mem_free(frame->pixels);
         for (int j = 0; j < frame->cel_count; ++j) {
             ase_cel_t *cel = frame->cels + j;
-            mem_free(cel->cel_pixels);
+            mem_free(cel->pixels);
             mem_free((void *)cel->udata.text);
         }
     }
@@ -3564,4 +4615,292 @@ void neko_aseprite_free(ase_t *ase) {
     mem_free(ase->color_profile.icc_profile_data);
     mem_free(ase->frames);
     mem_free(ase);
+}
+
+struct FileChange {
+    u64 key;
+    u64 modtime;
+};
+
+struct Assets {
+    HashMap<Asset> table;
+    RWLock rw_lock;
+
+    Mutex shutdown_mtx;
+    Cond shutdown_notify;
+    bool shutdown;
+
+    Thread reload_thread;
+
+    Mutex changes_mtx;
+    Array<FileChange> changes;
+    Array<FileChange> tmp_changes;
+};
+
+static Assets g_assets = {};
+
+static void hot_reload_thread(void *) {
+    u32 reload_interval = g_app->reload_interval.load();
+
+    while (true) {
+        PROFILE_BLOCK("hot reload");
+
+        {
+            LockGuard lock{&g_assets.shutdown_mtx};
+            if (g_assets.shutdown) {
+                return;
+            }
+
+            bool signaled = g_assets.shutdown_notify.timed_wait(&g_assets.shutdown_mtx, reload_interval);
+            if (signaled) {
+                return;
+            }
+        }
+
+        {
+            PROFILE_BLOCK("check for updates");
+
+            g_assets.rw_lock.shared_lock();
+            neko_defer(g_assets.rw_lock.shared_unlock());
+
+            g_assets.tmp_changes.len = 0;
+
+            for (auto [k, v] : g_assets.table) {
+                PROFILE_BLOCK("read modtime");
+
+                u64 modtime = os_file_modtime(v->name.data);
+                if (modtime > v->modtime) {
+                    FileChange change = {};
+                    change.key = v->hash;
+                    change.modtime = modtime;
+
+                    g_assets.tmp_changes.push(change);
+                }
+            }
+        }
+
+        if (g_assets.tmp_changes.len > 0) {
+            LockGuard lock{&g_assets.changes_mtx};
+            for (FileChange change : g_assets.tmp_changes) {
+                g_assets.changes.push(change);
+            }
+        }
+    }
+}
+
+void assets_perform_hot_reload_changes() {
+    LockGuard lock{&g_assets.changes_mtx};
+
+    if (g_assets.changes.len == 0) {
+        return;
+    }
+
+    PROFILE_BLOCK("perform hot reload");
+
+    for (FileChange change : g_assets.changes) {
+        Asset a = {};
+        bool exists = asset_read(change.key, &a);
+        assert(exists);
+
+        a.modtime = change.modtime;
+
+        bool ok = false;
+        switch (a.kind) {
+            case AssetKind_LuaRef: {
+                luaL_unref(g_app->L, LUA_REGISTRYINDEX, a.lua_ref);
+                a.lua_ref = luax_require_script(g_app->L, a.name);
+                ok = true;
+                break;
+            }
+            case AssetKind_Image: {
+                bool generate_mips = a.image.has_mips;
+                a.image.trash();
+                ok = a.image.load(a.name, generate_mips);
+                break;
+            }
+            case AssetKind_Sprite: {
+                a.sprite.trash();
+                ok = a.sprite.load(a.name);
+                break;
+            }
+            case AssetKind_Tilemap: {
+                a.tilemap.trash();
+                ok = a.tilemap.load(a.name);
+                break;
+            }
+            default:
+                continue;
+                break;
+        }
+
+        if (!ok) {
+            fatal_error(tmp_fmt("failed to hot reload: %s", a.name.data));
+            return;
+        }
+
+        asset_write(a);
+        NEKO_INFO("reloaded: %s", a.name.data);
+    }
+
+    g_assets.changes.len = 0;
+}
+
+void assets_shutdown() {
+    if (g_app->hot_reload_enabled.load()) {
+        {
+            LockGuard lock{&g_assets.shutdown_mtx};
+            g_assets.shutdown = true;
+        }
+
+        g_assets.shutdown_notify.signal();
+        g_assets.reload_thread.join();
+        g_assets.changes.trash();
+        g_assets.tmp_changes.trash();
+    }
+
+    for (auto [k, v] : g_assets.table) {
+        mem_free(v->name.data);
+
+        switch (v->kind) {
+            case AssetKind_Image:
+                v->image.trash();
+                break;
+            case AssetKind_Sprite:
+                v->sprite.trash();
+                break;
+            case AssetKind_Tilemap:
+                v->tilemap.trash();
+                break;
+            default:
+                break;
+        }
+    }
+    g_assets.table.trash();
+
+    g_assets.shutdown_notify.trash();
+    g_assets.changes_mtx.trash();
+    g_assets.shutdown_mtx.trash();
+    g_assets.rw_lock.trash();
+}
+
+void assets_start_hot_reload() {
+    g_assets.shutdown_notify.make();
+    g_assets.changes_mtx.make();
+    g_assets.shutdown_mtx.make();
+    g_assets.rw_lock.make();
+
+    if (g_app->hot_reload_enabled.load()) {
+        g_assets.reload_thread.make(hot_reload_thread, nullptr);
+    }
+}
+
+bool asset_load_kind(AssetKind kind, String filepath, Asset *out) {
+    AssetLoadData data = {};
+    data.kind = kind;
+
+    return asset_load(data, filepath, out);
+}
+
+bool asset_load(AssetLoadData desc, String filepath, Asset *out) {
+    PROFILE_FUNC();
+
+    u64 key = fnv1a(filepath);
+
+    {
+        Asset asset = {};
+        if (asset_read(key, &asset)) {
+            if (out != nullptr) {
+                *out = asset;
+            }
+            return true;
+        }
+    }
+
+    {
+        PROFILE_BLOCK("load new asset");
+
+        Asset asset = {};
+        asset.name = to_cstr(filepath);
+        asset.hash = key;
+        {
+            PROFILE_BLOCK("asset modtime")
+            asset.modtime = os_file_modtime(asset.name.data);
+        }
+        asset.kind = desc.kind;
+
+        bool ok = false;
+        switch (desc.kind) {
+            case AssetKind_LuaRef: {
+                asset.lua_ref = LUA_REFNIL;
+                asset_write(asset);
+                asset.lua_ref = luax_require_script(g_app->L, filepath);
+                ok = true;
+                break;
+            }
+            case AssetKind_Image:
+                ok = asset.image.load(filepath, desc.generate_mips);
+                break;
+            case AssetKind_Sprite:
+                ok = asset.sprite.load(filepath);
+                break;
+            case AssetKind_Tilemap:
+                ok = asset.tilemap.load(filepath);
+                break;
+            default:
+                break;
+        }
+
+        if (!ok) {
+            mem_free(asset.name.data);
+            return false;
+        }
+
+        asset_write(asset);
+
+        if (out != nullptr) {
+            *out = asset;
+        }
+        return true;
+    }
+}
+
+bool asset_read(u64 key, Asset *out) {
+    g_assets.rw_lock.shared_lock();
+    neko_defer(g_assets.rw_lock.shared_unlock());
+
+    const Asset *asset = g_assets.table.get(key);
+    if (asset == nullptr) {
+        return false;
+    }
+
+    *out = *asset;
+    return true;
+}
+
+void asset_write(Asset asset) {
+    g_assets.rw_lock.unique_lock();
+    neko_defer(g_assets.rw_lock.unique_unlock());
+
+    g_assets.table[asset.hash] = asset;
+}
+
+Asset check_asset(lua_State *L, u64 key) {
+    Asset asset = {};
+    if (!asset_read(key, &asset)) {
+        luaL_error(L, "cannot read asset");
+    }
+
+    return asset;
+}
+
+Asset check_asset_mt(lua_State *L, i32 arg, const char *mt) {
+    u64 *udata = (u64 *)luaL_checkudata(L, arg, mt);
+
+    Asset asset = {};
+    bool ok = asset_read(*udata, &asset);
+    if (!ok) {
+        luaL_error(L, "cannot read asset");
+    }
+
+    return asset;
 }

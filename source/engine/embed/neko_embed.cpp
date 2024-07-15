@@ -3,7 +3,6 @@
 
 #include "engine/neko_lua.h"
 #include "engine/neko_luabind.hpp"
-#include "string.h"
 
 int load_embed_lua(lua_State* L, const u8 B[], const_str name) {
     std::string contents = (const_str)B;
@@ -20,7 +19,7 @@ int load_embed_lua(lua_State* L, const u8 B[], const_str name) {
 
 #define LUAOPEN_EMBED_DATA(func, name, compressed_data) \
     static int func(lua_State* L) {                     \
-        s32 top = lua_gettop(L);                        \
+        i32 top = lua_gettop(L);                        \
         load_embed_lua(L, compressed_data, name);       \
         return lua_gettop(L) - top;                     \
     }
@@ -37,11 +36,15 @@ static const u8 g_lua_prefabs_data[] = {
 static const u8 g_lua_startup_data[] = {
 #include "startup.lua.h"
 };
+static const u8 g_lua_bootstrap_data[] = {
+#include "bootstrap.lua.h"
+};
 
 LUAOPEN_EMBED_DATA(open_embed_common, "common.lua", g_lua_common_data);
 LUAOPEN_EMBED_DATA(open_embed_cstruct, "cstruct.lua", g_lua_cstruct_data);
 LUAOPEN_EMBED_DATA(open_embed_prefabs, "prefabs.lua", g_lua_prefabs_data);
 LUAOPEN_EMBED_DATA(open_embed_startup, "startup.lua", g_lua_startup_data);
+LUAOPEN_EMBED_DATA(open_embed_bootstrap, "bootstrap.lua", g_lua_bootstrap_data);
 
 static void package_preload(lua_State* L, const_str name, lua_CFunction function) {
     lua_getglobal(L, "package");
@@ -59,11 +62,22 @@ void package_preload(lua_State* L) {
     package_preload(L, "prefabs", open_embed_prefabs);
     package_preload(L, "startup", open_embed_startup);
 }
+void luax_run_bootstrap(lua_State* L) {
+    std::string contents = (const_str)g_lua_bootstrap_data;
+    if (luaL_loadbuffer(L, contents.c_str(), contents.size(), "bootstrap.lua") != LUA_OK) {
+        fprintf(stderr, "%s\n", lua_tostring(L, -1));
+        panic("failed to load bootstrap");
+    }
+
+    if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
+        panic("failed to run bootstrap");
+    }
+}
 }  // namespace neko::lua
 
-NEKO_API_DECL int neko_tolua_boot_open(lua_State* L);
+int neko_tolua_boot_open(lua_State* L);
 
-NEKO_API_DECL int neko_tolua_boot_open(lua_State* L) {
+int neko_tolua_boot_open(lua_State* L) {
     neko_tolua_open(L);
     neko_tolua_module(L, NULL, 0);
     neko_tolua_beginmodule(L, NULL);

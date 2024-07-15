@@ -117,50 +117,6 @@ function neko_ls(path)
     return result
 end
 
--- object oriented
-
-Object = {}
-Object.__index = Object
-
-function Object:__call(...)
-    local obj = setmetatable({}, self)
-    if obj.new ~= nil then
-        obj:new(...)
-    end
-    return obj
-end
-
-function Object:is(T)
-    local mt = getmetatable(self)
-    while mt ~= nil do
-        if mt == T then
-            return true
-        end
-        mt = getmetatable(mt)
-    end
-    return false
-end
-
-function class(name, parent)
-    parent = parent or Object
-
-    local cls = {}
-
-    for k, v in pairs(parent) do
-        if k:sub(1, 2) == '__' then
-            cls[k] = v
-        end
-    end
-
-    cls.super = parent
-
-    function cls:__index(key)
-        return rawget(_G, name)[key]
-    end
-
-    rawset(_G, name, setmetatable(cls, parent))
-end
-
 __NEKO_CONFIG_TYPE_INT = 0
 __NEKO_CONFIG_TYPE_FLOAT = 1
 __NEKO_CONFIG_TYPE_STRING = 2

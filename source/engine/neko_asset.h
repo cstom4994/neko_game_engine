@@ -1,108 +1,284 @@
+#pragma once
 
-#ifndef NEKO_ASSET_IMPL
-#define NEKO_ASSET_IMPL
+#include <stb_truetype.h>
 
-#include "engine/neko.h"
-#include "engine/neko_render.h"
+#include <optional>
 
-// Asset handle
-typedef struct neko_asset_t {
-    u64 type_id;
-    u32 asset_id;
-    u32 importer_id;  // 'Unique' id of importer, used for type safety
-} neko_asset_t;
+#include "neko_base.h"
 
-NEKO_API_DECL neko_asset_t __neko_asset_handle_create_impl(u64 type_id, u32 asset_id, u32 importer_id);
+struct Image {
+    u32 id;
+    i32 width;
+    i32 height;
+    bool has_mips;
 
-#define neko_asset_handle_create(T, ID, IMPID) __neko_asset_handle_create_impl(neko_hash_str64(NEKO_TO_STR(T)), ID, IMPID)
+    bool load(String filepath, bool generate_mips);
+    void trash();
+};
 
-typedef void (*neko_asset_load_func)(const_str, void*, ...);
-typedef neko_asset_t (*neko_asset_default_func)(void*);
+struct SpriteFrame {
+    i32 duration;
+    float u0, v0, u1, v1;
+};
 
-typedef struct neko_asset_importer_desc_t {
-    void (*load_from_file)(const_str path, void* out, ...);
-    neko_asset_t (*default_asset)(void* out);
-} neko_asset_importer_desc_t;
+struct SpriteLoop {
+    Slice<i32> indices;
+};
 
-typedef struct neko_asset_importer_t {
-    void* slot_array;
-    void* slot_array_data_ptr;
-    void* slot_array_indices_ptr;
-    void* tmp_ptr;
-    u32 tmpid;
-    size_t data_size;
-    neko_asset_importer_desc_t desc;
-    u32 importer_id;
-    neko_asset_t default_asset;
-} neko_asset_importer_t;
+struct SpriteData {
+    Arena arena;
+    Slice<SpriteFrame> frames;
+    HashMap<SpriteLoop> by_tag;
+    Image img;
+    i32 width;
+    i32 height;
 
-NEKO_API_DECL void neko_asset_default_load_from_file(const_str path, void* out);
-NEKO_API_DECL neko_asset_t neko_asset_default_asset();
-NEKO_API_DECL void neko_asset_importer_set_desc(neko_asset_importer_t* imp, neko_asset_importer_desc_t* desc);
+    bool load(String filepath);
+    void trash();
+};
 
-#define neko_assets_get_importerp(AM, T) (neko_hash_table_getp((AM)->importers, neko_hash_str64(NEKO_TO_STR(T))))
+struct Sprite {
+    u64 sprite;  // index into assets
+    u64 loop;    // index into SpriteData::by_tag
+    float elapsed;
+    i32 current_frame;
 
-#ifdef __cplusplus
-#define gsa_imsa(IMPORTER, T) (decltype(neko_slot_array(T))(IMPORTER)->slot_array)
-#else
-#define gsa_imsa(IMPORTER, T) ((neko_slot_array(T))(IMPORTER)->slot_array)
-#endif
+    bool play(String tag);
+    void update(float dt);
+    void set_frame(i32 frame);
+};
 
-#define neko_assets_register_importer(AM, T, DESC)                                               \
-    do {                                                                                         \
-        neko_asset_importer_t ai = NEKO_DEFAULT_VAL();                                           \
-        ai.data_size = sizeof(T);                                                                \
-        ai.importer_id = (AM)->free_importer_id++;                                               \
-        neko_asset_importer_set_desc(&ai, (neko_asset_importer_desc_t*)DESC);                    \
-        size_t sz = 2 * sizeof(void*) + sizeof(T);                                               \
-        neko_slot_array(T) sa = NULL;                                                            \
-        neko_slot_array_init((void**)&sa, sizeof(*sa));                                          \
-        neko_dyn_array_init((void**)&sa->indices, sizeof(u32));                                  \
-        neko_dyn_array_init((void**)&sa->data, sizeof(T));                                       \
-        ai.slot_array = (void*)sa;                                                               \
-        ai.tmp_ptr = (void*)&sa->tmp;                                                            \
-        ai.slot_array_indices_ptr = (void*)sa->indices;                                          \
-        ai.slot_array_data_ptr = (void*)sa->data;                                                \
-        if (!ai.desc.load_from_file) {                                                           \
-            ai.desc.load_from_file = (neko_asset_load_func) & neko_asset_default_load_from_file; \
-        }                                                                                        \
-        neko_hash_table_insert((AM)->importers, neko_hash_str64(NEKO_TO_STR(T)), ai);            \
-    } while (0)
+struct SpriteView {
+    Sprite *sprite;
+    SpriteData data;
+    SpriteLoop loop;
 
-// Need a way to be able to print upon assert
-#define neko_assets_load_from_file(AM, T, PATH, ...)                                                                                                                           \
-    (/*NEKO_ASSERT(neko_hash_table_key_exists((AM)->importers, neko_hash_str64(NEKO_TO_STR(T)))),*/                                                                            \
-     (AM)->tmpi = neko_hash_table_getp((AM)->importers, neko_hash_str64(NEKO_TO_STR(T))), (AM)->tmpi->desc.load_from_file(PATH, (AM)->tmpi->tmp_ptr, ##__VA_ARGS__),           \
-     (AM)->tmpi->tmpid = neko_slot_array_insert_func(&(AM)->tmpi->slot_array_indices_ptr, &(AM)->tmpi->slot_array_data_ptr, (AM)->tmpi->tmp_ptr, (AM)->tmpi->data_size, NULL), \
-     neko_asset_handle_create(T, (AM)->tmpi->tmpid, (AM)->tmpi->importer_id))
+    bool make(Sprite *spr);
+    i32 frame();
+    u64 len();
+};
 
-#define neko_assets_create_asset(AM, T, DATA)                                                                                                                                  \
-    (/*NEKO_ASSERT(neko_hash_table_key_exists((AM)->importers, neko_hash_str64(NEKO_TO_STR(T)))),*/                                                                            \
-     (AM)->tmpi = neko_hash_table_getp((AM)->importers, neko_hash_str64(NEKO_TO_STR(T))), (AM)->tmpi->tmp_ptr = (DATA),                                                        \
-     (AM)->tmpi->tmpid = neko_slot_array_insert_func(&(AM)->tmpi->slot_array_indices_ptr, &(AM)->tmpi->slot_array_data_ptr, (AM)->tmpi->tmp_ptr, (AM)->tmpi->data_size, NULL), \
-     neko_asset_handle_create(T, (AM)->tmpi->tmpid, (AM)->tmpi->importer_id))
+struct Tile {
+    float x, y, u, v;
+    float u0, v0, u1, v1;
+    i32 flip_bits;
+};
 
-typedef struct neko_asset_manager_t {
-    neko_hash_table(u64, neko_asset_importer_t) importers;  // Maps hashed types to importer
-    neko_asset_importer_t* tmpi;                            // Temporary importer for caching
-    u32 free_importer_id;
-} neko_asset_manager_t;
+struct TilemapEntity {
+    String identifier;
+    float x, y;
+};
 
-NEKO_API_DECL neko_asset_manager_t neko_asset_manager_new();
-NEKO_API_DECL void neko_asset_manager_free(neko_asset_manager_t* am);
-NEKO_API_DECL void* __neko_assets_getp_impl(neko_asset_manager_t* am, u64 type_id, neko_asset_t hndl);
+using TilemapInt = unsigned char;
 
-#define neko_assets_getp(AM, T, HNDL) (T*)(__neko_assets_getp_impl(AM, neko_hash_str64(NEKO_TO_STR(T)), HNDL))
+struct TilemapLayer {
+    String identifier;
+    Image image;
+    Slice<Tile> tiles;
+    Slice<TilemapEntity> entities;
+    i32 c_width;
+    i32 c_height;
+    Slice<TilemapInt> int_grid;
+    float grid_size;
+};
 
-#define neko_assets_get(AM, T, HNDL) *(neko_assets_getp(AM, T, HNDL));
+struct TilemapLevel {
+    String identifier;
+    String iid;
+    float world_x, world_y;
+    float px_width, px_height;
+    Slice<TilemapLayer> layers;
+};
+
+enum TileNodeFlags {
+    TileNodeFlags_Open = 1 << 0,
+    TileNodeFlags_Closed = 1 << 1,
+};
+
+struct TileNode {
+    TileNode *prev;
+    float g;  // cost so far
+    u32 flags;
+
+    i32 x, y;
+    float cost;
+    Slice<TileNode *> neighbors;
+};
+
+struct TileCost {
+    TilemapInt cell;
+    float value;
+};
+
+struct TilePoint {
+    float x, y;
+};
+
+inline u64 tile_key(i32 x, i32 y) { return ((u64)x << 32) | (u64)y; }
+
+class b2Body;
+class b2World;
+
+struct map_ldtk {
+    Arena arena;
+    Slice<TilemapLevel> levels;
+    HashMap<Image> images;     // key: filepath
+    HashMap<b2Body *> bodies;  // key: layer name
+    HashMap<TileNode> graph;   // key: x, y
+    PriorityQueue<TileNode *> frontier;
+    float graph_grid_size;
+
+    bool load(String filepath);
+    void trash();
+    void destroy_bodies(b2World *world);
+    void make_collision(b2World *world, float meter, String layer_name, Slice<TilemapInt> walls);
+    void make_graph(i32 bloom, String layer_name, Slice<TileCost> costs);
+    TileNode *astar(TilePoint start, TilePoint goal);
+};
+
+struct FontRange {
+    stbtt_bakedchar chars[256];
+    Image image;
+};
+
+struct FontQuad {
+    stbtt_aligned_quad quad;
+};
+
+struct FontFamily {
+    String ttf;
+    HashMap<FontRange> ranges;
+    StringBuilder sb;
+
+    bool load(String filepath);
+    void load_default();
+    void trash();
+
+    stbtt_aligned_quad quad(u32 *img, float *x, float *y, float size, i32 ch);
+    float width(float size, String text);
+};
+
+struct AtlasImage {
+    float u0, v0, u1, v1;
+    float width;
+    float height;
+    Image img;
+};
+
+struct Atlas {
+    HashMap<AtlasImage> by_name;
+    Image img;
+
+    bool load(String filepath, bool generate_mips);
+    void trash();
+    AtlasImage *get(String name);
+};
+
+struct MountResult {
+    bool ok;
+    bool can_hot_reload;
+    bool is_fused;
+};
+
+MountResult vfs_mount(const_str fsname, const char *filepath);
+void vfs_fini(std::optional<String> name);
+
+bool vfs_file_exists(String fsname, String filepath);
+bool vfs_read_entire_file(String fsname, String *out, String filepath);
+bool vfs_write_entire_file(String fsname, String filepath, String contents);
+bool vfs_list_all_files(String fsname, Array<String> *files);
+
+void *vfs_for_miniaudio();
+
+typedef struct vfs_file {
+    const_str data;
+    size_t len;
+    u64 offset;
+} vfs_file;
+
+size_t neko_capi_vfs_fread(void *dest, size_t size, size_t count, vfs_file *vf);
+int neko_capi_vfs_fseek(vfs_file *vf, u64 of, int whence);
+u64 neko_capi_vfs_ftell(vfs_file *vf);
+vfs_file neko_capi_vfs_fopen(const_str path);
+int neko_capi_vfs_fclose(vfs_file *vf);
+
+bool neko_capi_vfs_file_exists(const_str fsname, const_str filepath);
+const_str neko_capi_vfs_read_file(const_str fsname, const_str filepath, size_t *size);
+
+enum JSONKind : i32 {
+    JSONKind_Null,
+    JSONKind_Object,
+    JSONKind_Array,
+    JSONKind_String,
+    JSONKind_Number,
+    JSONKind_Boolean,
+};
+
+struct JSONObject;
+struct JSONArray;
+struct JSON {
+    union {
+        JSONObject *object;
+        JSONArray *array;
+        String string;
+        double number;
+        bool boolean;
+    };
+    JSONKind kind;
+
+    JSON lookup(String key, bool *ok);
+    JSON index(i32 i, bool *ok);
+
+    JSONObject *as_object(bool *ok);
+    JSONArray *as_array(bool *ok);
+    String as_string(bool *ok);
+    double as_number(bool *ok);
+
+    JSONObject *lookup_object(String key, bool *ok);
+    JSONArray *lookup_array(String key, bool *ok);
+    String lookup_string(String key, bool *ok);
+    double lookup_number(String key, bool *ok);
+
+    double index_number(i32 i, bool *ok);
+};
+
+struct JSONObject {
+    JSON value;
+    String key;
+    JSONObject *next;
+    u64 hash;
+};
+
+struct JSONArray {
+    JSON value;
+    JSONArray *next;
+    u64 index;
+};
+
+struct JSONDocument {
+    JSON root;
+    String error;
+    Arena arena;
+
+    void parse(String contents);
+    void trash();
+};
+
+struct StringBuilder;
+void json_write_string(StringBuilder *sb, JSON *json);
+void json_print(JSON *json);
+
+struct lua_State;
+void json_to_lua(lua_State *L, JSON *json);
+String lua_to_json_string(lua_State *L, i32 arg, String *contents, i32 width);
 
 /*==========================
 // LZ77
 ==========================*/
 
-NEKO_API_DECL u32 neko_lz_encode(const void* in, u32 inlen, void* out, u32 outlen, u32 flags);  // [0..(6)..9]
-NEKO_API_DECL u32 neko_lz_decode(const void* in, u32 inlen, void* out, u32 outlen);
-NEKO_API_DECL u32 neko_lz_bounds(u32 inlen, u32 flags);
+u32 neko_lz_encode(const void *in, u32 inlen, void *out, u32 outlen, u32 flags);  // [0..(6)..9]
+u32 neko_lz_decode(const void *in, u32 inlen, void *out, u32 outlen);
+u32 neko_lz_bounds(u32 inlen, u32 flags);
 
 /*==========================
 // NEKO_PACK
@@ -145,9 +321,9 @@ typedef struct neko_pak {
 
     vfs_file vf;
     u64 item_count;
-    item* items;
-    u8* data_buffer;
-    u8* zip_buffer;
+    item *items;
+    u8 *data_buffer;
+    u8 *zip_buffer;
     u32 data_size;
     u32 zip_size;
     item search_item;
@@ -170,17 +346,17 @@ typedef struct neko_pak {
 
     u64 get_item_index(const_str path);
 
-    bool get_data(u64 index, const u8** data, u32* size);
-    bool get_data(const_str path, const u8** data, u32* size);
-    void free_item(void* data);
+    bool get_data(u64 index, const u8 **data, u32 *size);
+    bool get_data(const_str path, const u8 **data, u32 *size);
+    void free_item(void *data);
 
     void free_buffer();
 
 } neko_pak;
 
 bool neko_pak_unzip(const_str file_path, bool print_progress);
-bool neko_pak_build(const_str pack_path, u64 file_count, const_str* file_paths, bool print_progress);
-bool neko_pak_info(const_str file_path, u8* pack_version, bool* isLittleEndian, u64* item_count);
+bool neko_pak_build(const_str pack_path, u64 file_count, const_str *file_paths, bool print_progress);
+bool neko_pak_info(const_str file_path, u8 *pack_version, bool *isLittleEndian, u64 *item_count);
 
 typedef enum neko_xml_attribute_type_t {
     NEKO_XML_ATTRIBUTE_NUMBER,
@@ -215,275 +391,39 @@ typedef struct neko_xml_document_t {
 } neko_xml_document_t;
 
 typedef struct neko_xml_node_iter_t {
-    neko_xml_document_t* doc;
-    neko_xml_node_t* node;
+    neko_xml_document_t *doc;
+    neko_xml_node_t *node;
     const_str name;
     u32 idx;
 
-    neko_xml_node_t* current;
+    neko_xml_node_t *current;
 } neko_xml_node_iter_t;
 
-NEKO_API_DECL neko_xml_document_t* neko_xml_parse(const_str source);
-NEKO_API_DECL neko_xml_document_t* neko_xml_parse_file(const_str path);
-NEKO_API_DECL void neko_xml_free(neko_xml_document_t* document);
+neko_xml_document_t *neko_xml_parse(const_str source);
+neko_xml_document_t *neko_xml_parse_file(const_str path);
+void neko_xml_free(neko_xml_document_t *document);
 
-NEKO_API_DECL neko_xml_attribute_t* neko_xml_find_attribute(neko_xml_node_t* node, const_str name);
-NEKO_API_DECL neko_xml_node_t* neko_xml_find_node(neko_xml_document_t* doc, const_str name);
-NEKO_API_DECL neko_xml_node_t* neko_xml_find_node_child(neko_xml_node_t* node, const_str name);
+neko_xml_attribute_t *neko_xml_find_attribute(neko_xml_node_t *node, const_str name);
+neko_xml_node_t *neko_xml_find_node(neko_xml_document_t *doc, const_str name);
+neko_xml_node_t *neko_xml_find_node_child(neko_xml_node_t *node, const_str name);
 
-NEKO_API_DECL const_str neko_xml_get_error();
+const_str neko_xml_get_error();
 
-NEKO_API_DECL neko_xml_node_iter_t neko_xml_new_node_iter(neko_xml_document_t* doc, const_str name);
-NEKO_API_DECL neko_xml_node_iter_t neko_xml_new_node_child_iter(neko_xml_node_t* node, const_str name);
-NEKO_API_DECL bool neko_xml_node_iter_next(neko_xml_node_iter_t* iter);
-
-/*==========================
-// NEKO_FONT
-==========================*/
-
-typedef u64 neko_font_u64;
-
-extern const char* neko_font_error_reason;
-
-typedef struct neko_font_glyph_t {
-    float minx, miny;
-    float maxx, maxy;
-    float w, h;
-    int xoffset, yoffset;
-    int xadvance;
-} neko_font_glyph_t;
-
-typedef struct neko_font_t {
-    int font_height;
-    int glyph_count;
-    neko_font_glyph_t* glyphs;
-    int* codes;
-    int atlas_w;
-    int atlas_h;
-    neko_font_u64 atlas_id;
-    struct neko_font_kern_t* kern;
-    void* mem_ctx;
-} neko_font_t;
-
-NEKO_API_DECL neko_font_t* neko_font_load_ascii(neko_font_u64 atlas_id, const void* pixels, int w, int h, int stride, void* mem_ctx);
-NEKO_API_DECL neko_font_t* neko_font_load_1252(neko_font_u64 atlas_id, const void* pixels, int w, int h, int stride, void* mem_ctx);
-NEKO_API_DECL neko_font_t* neko_font_load_bmfont(neko_font_u64 atlas_id, const void* fnt, int size, void* mem_ctx);
-NEKO_API_DECL void neko_font_free(neko_font_t* font);
-
-NEKO_API_DECL int neko_font_text_width(neko_font_t* font, const char* text);
-NEKO_API_DECL int neko_font_text_height(neko_font_t* font, const char* text);
-NEKO_API_DECL int neko_font_max_glyph_height(neko_font_t* font, const char* text);
-
-NEKO_API_DECL int neko_font_get_glyph_index(neko_font_t* font, int code);            // returns run-time glyph index associated with a utf32 codepoint (unicode)
-NEKO_API_DECL neko_font_glyph_t* neko_font_get_glyph(neko_font_t* font, int index);  // returns a glyph, given run-time glyph index
-NEKO_API_DECL int neko_font_kerning(neko_font_t* font, int code0, int code1);
-
-// Here just in case someone wants to load up a custom file format.
-NEKO_API_DECL neko_font_t* neko_font_create_blank(int font_height, int glyph_count);
-NEKO_API_DECL void neko_font_add_kerning_pair(neko_font_t* font, int code0, int code1, int kerning);
-
-typedef struct neko_font_vert_t {
-    float x, y;
-    float u, v;
-} neko_font_vert_t;
-
-typedef struct neko_font_rect_t {
-    float left;
-    float right;
-    float top;
-    float bottom;
-} neko_font_rect_t;
-
-// Fills in an array of triangles, two triangles for each quad, one quad for each text glyph.
-// Will return 0 if the function tries to overrun the vertex buffer. Quads are setup in 2D where
-// the y axis points up, x axis points left. The top left of the first glyph is placed at the
-// coordinate {`x`, `y`}. Newlines move quads downward by the text height added with `line_height`.
-// `count_written` contains the number of outputted vertices. `wrap_w` is used for word wrapping if
-// positive, and ignored if negative. `clip_rect`, if not NULL, will be used to perform CPU-side
-// clipping to make sure quads are only output within the `clip_rect` bounding box. Clipping is
-// useful to implement scrollable text, and keep multiple different text instances within a single
-// vertex buffer (to reduce draw calls), as opposed to using a GPU-side scissor box, which would
-// require a different draw call for each scissor.
-NEKO_API_DECL int neko_font_fill_vertex_buffer(neko_font_t* font, const char* text, float x, float y, float wrap_w, float line_height, neko_font_rect_t* clip_rect, neko_font_vert_t* buffer,
-                                               int buffer_max, int* count_written);
-
-// 解码 utf-8 代码点并返回字符串指针
-NEKO_API_DECL const char* neko_font_decode_utf8(const char* text, int* cp);
-
-/*==========================
-// Text draw
-==========================*/
-
-typedef struct neko_fontbatch_t {
-    f32 font_projection[16];
-    neko_render_batch_context_t* font_render;
-    neko_render_batch_shader_t font_shader;
-    neko_render_batch_renderable_t font_renderable;
-    f32 font_scale;
-    s32 font_vert_count;
-    neko_font_vert_t* font_verts;
-    neko_font_u64 font_tex_id;
-    neko_font_t* font;
-} neko_fontbatch_t;
-
-NEKO_API_DECL void neko_fontbatch_init(neko_fontbatch_t* font_batch, const_str font_vs, const_str font_ps, const neko_vec2_t fbs, const_str img_path, char* content, int content_size);
-NEKO_API_DECL void neko_fontbatch_end(neko_fontbatch_t* font_batch);
-NEKO_API_DECL void neko_fontbatch_draw(neko_fontbatch_t* font_batch, const neko_vec2_t fbs, const char* text, float x, float y, float line_height, float clip_region, float wrap_x, f32 scale);
-
-/*==========================
-// Aseprite draw
-==========================*/
-
-typedef struct neko_aseprite_frame {
-    s32 duration;
-    f32 u0, v0, u1, v1;
-} neko_aseprite_frame;
-
-typedef struct neko_aseprite_loop {
-    neko_dyn_array(s32) indices;
-} neko_aseprite_loop;
-
-typedef struct neko_aseprite {
-    // neko_array<neko_sprite_frame> frames;
-    neko_dyn_array(neko_aseprite_frame) frames;
-    neko_hash_table(u64, neko_aseprite_loop) by_tag;
-    neko_texture_t img;
-    s32 width;
-    s32 height;
-
-    u64 mem_used;
-} neko_aseprite;
-
-typedef struct neko_aseprite_renderer {
-    neko_aseprite* sprite;
-    neko_aseprite_loop* loop;
-    f32 elapsed;
-    s32 current_frame;
-} neko_aseprite_renderer;
-
-NEKO_API_DECL neko_texture_t neko_aseprite_simple(const void* memory, int size);
-NEKO_API_DECL bool neko_aseprite_load(neko_aseprite* spr, const_str filepath);
-NEKO_API_DECL void neko_aseprite_end(neko_aseprite* spr);
-NEKO_API_DECL void neko_aseprite_renderer_play(neko_aseprite_renderer* sr, const_str tag);
-NEKO_API_DECL void neko_aseprite_renderer_update(neko_aseprite_renderer* sr, f32 dt);
-NEKO_API_DECL void neko_aseprite_renderer_set_frame(neko_aseprite_renderer* sr, s32 frame);
-
-#define SPRITE_SCALE 3
-
-/*==========================
-// Tiled draw
-==========================*/
-
-typedef struct tile_t {
-    u32 id;
-    u32 tileset_id;
-} tile_t;
-
-typedef struct tileset_t {
-    neko_handle(neko_render_texture_t) texture;
-    u32 tile_count;
-    u32 tile_width;
-    u32 tile_height;
-    u32 first_gid;
-
-    u32 width, height;
-} tileset_t;
-
-typedef struct layer_t {
-    tile_t* tiles;
-    u32 width;
-    u32 height;
-
-    neko_color_t tint;
-} layer_t;
-
-typedef struct object_t {
-    u32 id;
-    s32 x, y, width, height;
-    // C2_TYPE phy_type;
-    // c2AABB aabb;
-    // union {
-    //     c2AABB box;
-    //     c2Poly poly;
-    // } phy;
-} object_t;
-
-typedef struct object_group_t {
-    neko_dyn_array(object_t) objects;
-
-    neko_color_t color;
-
-    const_str name;
-} object_group_t;
-
-typedef struct map_t {
-    neko_xml_document_t* doc;  // xml doc
-    neko_dyn_array(tileset_t) tilesets;
-    neko_dyn_array(object_group_t) object_groups;
-    neko_dyn_array(layer_t) layers;
-} map_t;
-
-NEKO_API_DECL void neko_tiled_load(map_t* map, const_str tmx_path, const_str res_path);
-NEKO_API_DECL void neko_tiled_unload(map_t* map);
-
-typedef struct neko_tiled_quad_t {
-    u32 tileset_id;
-    neko_handle(neko_render_texture_t) texture;
-    neko_vec2 texture_size;
-    neko_vec2 position;
-    neko_vec2 dimentions;
-    neko_vec4 rectangle;
-    neko_color_t color;
-    bool use_texture;
-} neko_tiled_quad_t;
-
-#define BATCH_SIZE 2048
-
-#define IND_PER_QUAD 6
-
-#define VERTS_PER_QUAD 4   // 一次发送多少个verts数据
-#define FLOATS_PER_VERT 9  // 每个verts数据的大小
-
-typedef struct neko_tiled_quad_list_t {
-    neko_dyn_array(neko_tiled_quad_t) quad_list;  // quad 绘制队列
-} neko_tiled_quad_list_t;
-
-typedef struct neko_tiled_renderer {
-    neko_handle(neko_render_vertex_buffer_t) vb;
-    neko_handle(neko_render_index_buffer_t) ib;
-    neko_handle(neko_render_pipeline_t) pip;
-    neko_handle(neko_render_shader_t) shader;
-    neko_handle(neko_render_uniform_t) u_camera;
-    neko_handle(neko_render_uniform_t) u_batch_tex;
-    neko_handle(neko_render_texture_t) batch_texture;         // 当前绘制所用贴图
-    neko_hash_table(u32, neko_tiled_quad_list_t) quad_table;  // 分层绘制哈希表
-
-    u32 quad_count;
-
-    map_t map;  // tiled data
-
-    neko_mat4 camera_mat;
-} neko_tiled_renderer;
-
-NEKO_API_DECL void neko_tiled_render_init(neko_command_buffer_t* cb, neko_tiled_renderer* renderer, const_str vert_src, const_str frag_src);
-NEKO_API_DECL void neko_tiled_render_deinit(neko_tiled_renderer* renderer);
-NEKO_API_DECL void neko_tiled_render_begin(neko_command_buffer_t* cb, neko_tiled_renderer* renderer);
-NEKO_API_DECL void neko_tiled_render_flush(neko_command_buffer_t* cb, neko_tiled_renderer* renderer);
-NEKO_API_DECL void neko_tiled_render_push(neko_command_buffer_t* cb, neko_tiled_renderer* renderer, neko_tiled_quad_t quad);
-NEKO_API_DECL void neko_tiled_render_draw(neko_command_buffer_t* cb, neko_tiled_renderer* renderer);
+neko_xml_node_iter_t neko_xml_new_node_iter(neko_xml_document_t *doc, const_str name);
+neko_xml_node_iter_t neko_xml_new_node_child_iter(neko_xml_node_t *node, const_str name);
+bool neko_xml_node_iter_next(neko_xml_node_iter_t *iter);
 
 typedef struct ase_t ase_t;
 
-NEKO_API_DECL ase_t* neko_aseprite_load_from_file(const_str path);
-NEKO_API_DECL ase_t* neko_aseprite_load_from_memory(const void* memory, u64 size);
-NEKO_API_DECL void neko_aseprite_free(ase_t* aseprite);
-NEKO_API_DECL void neko_aseprite_default_blend_bind(ase_t* aseprite);  // 默认图块混合管线
+ase_t *neko_aseprite_load_from_memory(const void *memory, int size);
+void neko_aseprite_free(ase_t *aseprite);
 
-#define __NEKO_ASEPRITE_MAX_LAYERS (64)
-#define __NEKO_ASEPRITE_MAX_SLICES (128)
-#define __NEKO_ASEPRITE_MAX_PALETTE_ENTRIES (1024)
-#define __NEKO_ASEPRITE_MAX_TAGS (256)
+#define NEKO_ASEPRITE_MAX_LAYERS (64)
+#define NEKO_ASEPRITE_MAX_SLICES (128)
+#define NEKO_ASEPRITE_MAX_PALETTE_ENTRIES (1024)
+#define NEKO_ASEPRITE_MAX_TAGS (256)
 
+typedef struct ase_color_t ase_color_t;
 typedef struct ase_frame_t ase_frame_t;
 typedef struct ase_layer_t ase_layer_t;
 typedef struct ase_cel_t ase_cel_t;
@@ -497,39 +437,42 @@ typedef struct ase_color_profile_t ase_color_profile_t;
 typedef struct ase_fixed_t ase_fixed_t;
 typedef struct ase_cel_extra_chunk_t ase_cel_extra_chunk_t;
 
+struct ase_color_t {
+    uint8_t r, g, b, a;
+};
+
 struct ase_fixed_t {
-    u16 a;
-    u16 b;
+    uint16_t a;
+    uint16_t b;
 };
 
 struct ase_udata_t {
     int has_color;
-    neko_color_t color;
+    ase_color_t color;
     int has_text;
-    const char* text;
+    const char *text;
 };
 
 typedef enum ase_layer_flags_t {
-    NEKO_ASE_LAYER_FLAGS_VISIBLE = 0x01,
-    NEKO_ASE_LAYER_FLAGS_EDITABLE = 0x02,
-    NEKO_ASE_LAYER_FLAGS_LOCK_MOVEMENT = 0x04,
-    NEKO_ASE_LAYER_FLAGS_BACKGROUND = 0x08,
-    NEKO_ASE_LAYER_FLAGS_PREFER_LINKED_CELS = 0x10,
-    NEKO_ASE_LAYER_FLAGS_COLLAPSED = 0x20,
-    NEKO_ASE_LAYER_FLAGS_REFERENCE = 0x40,
+    ASE_LAYER_FLAGS_VISIBLE = 0x01,
+    ASE_LAYER_FLAGS_EDITABLE = 0x02,
+    ASE_LAYER_FLAGS_LOCK_MOVEMENT = 0x04,
+    ASE_LAYER_FLAGS_BACKGROUND = 0x08,
+    ASE_LAYER_FLAGS_PREFER_LINKED_CELS = 0x10,
+    ASE_LAYER_FLAGS_COLLAPSED = 0x20,
+    ASE_LAYER_FLAGS_REFERENCE = 0x40,
 } ase_layer_flags_t;
 
 typedef enum ase_layer_type_t {
-    NEKO_ASE_LAYER_TYPE_NORMAL,
-    NEKO_ASE_LAYER_TYPE_GROUP,
-    NEKO_ASE_LAYER_TYPE_TILEMAP,
+    ASE_LAYER_TYPE_NORMAL,
+    ASE_LAYER_TYPE_GROUP,
 } ase_layer_type_t;
 
 struct ase_layer_t {
     ase_layer_flags_t flags;
     ase_layer_type_t type;
-    const char* name;
-    ase_layer_t* parent;
+    const char *name;
+    ase_layer_t *parent;
     float opacity;
     ase_udata_t udata;
 };
@@ -542,31 +485,30 @@ struct ase_cel_extra_chunk_t {
 };
 
 struct ase_cel_t {
-    ase_layer_t* layer;
-    void* cel_pixels;  // 图块的pixels数据是唯一的
+    ase_layer_t *layer;
+    void *pixels;
     int w, h;
     int x, y;
     float opacity;
     int is_linked;
-    u16 linked_frame_index;
+    uint16_t linked_frame_index;
     int has_extra;
     ase_cel_extra_chunk_t extra;
     ase_udata_t udata;
 };
 
 struct ase_frame_t {
-    ase_t* ase;
+    ase_t *ase;
     int duration_milliseconds;
-    int pixel_count;
-    neko_color_t* pixels[__NEKO_ASEPRITE_MAX_LAYERS];  // 支持每层一个pixels数据
+    ase_color_t *pixels;
     int cel_count;
-    ase_cel_t cels[__NEKO_ASEPRITE_MAX_LAYERS];
+    ase_cel_t cels[NEKO_ASEPRITE_MAX_LAYERS];
 };
 
 typedef enum ase_animation_direction_t {
-    NEKO_ASE_ANIMATION_DIRECTION_FORWARDS,
-    NEKO_ASE_ANIMATION_DIRECTION_BACKWORDS,
-    NEKO_ASE_ANIMATION_DIRECTION_PINGPONG,
+    ASE_ANIMATION_DIRECTION_FORWARDS,
+    ASE_ANIMATION_DIRECTION_BACKWORDS,
+    ASE_ANIMATION_DIRECTION_PINGPONG,
 } ase_animation_direction_t;
 
 struct ase_tag_t {
@@ -574,13 +516,13 @@ struct ase_tag_t {
     int to_frame;
     ase_animation_direction_t loop_animation_direction;
     int repeat;
-    u8 r, g, b;
-    const char* name;
+    uint8_t r, g, b;
+    const char *name;
     ase_udata_t udata;
 };
 
 struct ase_slice_t {
-    const char* name;
+    const char *name;
     int frame_number;
     int origin_x;
     int origin_y;
@@ -600,30 +542,30 @@ struct ase_slice_t {
 };
 
 struct ase_palette_entry_t {
-    neko_color_t color;
-    const char* color_name;
+    ase_color_t color;
+    const char *color_name;
 };
 
 struct ase_palette_t {
     int entry_count;
-    ase_palette_entry_t entries[__NEKO_ASEPRITE_MAX_PALETTE_ENTRIES];
+    ase_palette_entry_t entries[NEKO_ASEPRITE_MAX_PALETTE_ENTRIES];
 };
 
 typedef enum ase_color_profile_type_t {
-    NEKO_ASE_COLOR_PROFILE_TYPE_NONE,
-    NEKO_ASE_COLOR_PROFILE_TYPE_SRGB,
-    NEKO_ASE_COLOR_PROFILE_TYPE_EMBEDDED_ICC,
+    ASE_COLOR_PROFILE_TYPE_NONE,
+    ASE_COLOR_PROFILE_TYPE_SRGB,
+    ASE_COLOR_PROFILE_TYPE_EMBEDDED_ICC,
 } ase_color_profile_type_t;
 
 struct ase_color_profile_t {
     ase_color_profile_type_t type;
     int use_fixed_gamma;
     ase_fixed_t gamma;
-    u32 icc_profile_data_length;
-    void* icc_profile_data;
+    uint32_t icc_profile_data_length;
+    void *icc_profile_data;
 };
 
-typedef enum ase_mode_t { NEKO_ASE_MODE_RGBA, NEKO_ASE_MODE_GRAYSCALE, NEKO_ASE_MODE_INDEXED } ase_mode_t;
+typedef enum ase_mode_t { ASE_MODE_RGBA, ASE_MODE_GRAYSCALE, ASE_MODE_INDEXED } ase_mode_t;
 
 struct ase_t {
     ase_mode_t mode;
@@ -641,75 +583,54 @@ struct ase_t {
     ase_palette_t palette;
 
     int layer_count;
-    ase_layer_t layers[__NEKO_ASEPRITE_MAX_LAYERS];
+    ase_layer_t layers[NEKO_ASEPRITE_MAX_LAYERS];
 
     int frame_count;
-    ase_frame_t* frames;
+    ase_frame_t *frames;
 
     int tag_count;
-    ase_tag_t tags[__NEKO_ASEPRITE_MAX_TAGS];
+    ase_tag_t tags[NEKO_ASEPRITE_MAX_TAGS];
 
     int slice_count;
-    ase_slice_t slices[__NEKO_ASEPRITE_MAX_SLICES];
+    ase_slice_t slices[NEKO_ASEPRITE_MAX_SLICES];
 };
 
-NEKO_FORCE_INLINE int s_mul_un8(int a, int b) {
-    int t = (a * b) + 0x80;
-    return (((t >> 8) + t) >> 8);
-}
+enum AssetKind : i32 {
+    AssetKind_None,
+    AssetKind_LuaRef,
+    AssetKind_Image,
+    AssetKind_Sprite,
+    AssetKind_Tilemap,
+};
 
-NEKO_FORCE_INLINE neko_color_t s_blend(neko_color_t src, neko_color_t dst, u8 opacity) {
-    src.a = (u8)s_mul_un8(src.a, opacity);
-    int a = src.a + dst.a - s_mul_un8(src.a, dst.a);
-    int r, g, b;
-    if (a == 0) {
-        r = g = b = 0;
-    } else {
-        r = dst.r + (src.r - dst.r) * src.a / a;
-        g = dst.g + (src.g - dst.g) * src.a / a;
-        b = dst.b + (src.b - dst.b) * src.a / a;
-    }
-    neko_color_t ret = {(u8)r, (u8)g, (u8)b, (u8)a};
-    return ret;
-}
+struct AssetLoadData {
+    AssetKind kind;
+    bool generate_mips;
+};
 
-NEKO_FORCE_INLINE neko_color_t s_color(ase_t* ase, void* src, int index) {
-    neko_color_t result;
-    if (ase->mode == NEKO_ASE_MODE_RGBA) {
-        result = ((neko_color_t*)src)[index];
-    } else if (ase->mode == NEKO_ASE_MODE_GRAYSCALE) {
-        u8 saturation = ((u8*)src)[index * 2];
-        u8 a = ((u8*)src)[index * 2 + 1];
-        result.r = result.g = result.b = saturation;
-        result.a = a;
-    } else {
-        NEKO_ASSERT(ase->mode == NEKO_ASE_MODE_INDEXED);
-        u8 palette_index = ((u8*)src)[index];
-        if (palette_index == ase->transparent_palette_entry_index) {
-            result = neko_color_ctor(0, 0, 0, 0);
-        } else {
-            result = ase->palette.entries[palette_index].color;
-        }
-    }
-    return result;
-}
-
-struct neko_image {
-    int w;
-    int h;
+struct Asset {
+    String name;
+    u64 hash;
+    u64 modtime;
+    AssetKind kind;
     union {
-        unsigned char* pix;
-        ase_t* ase;
+        i32 lua_ref;
+        Image image;
+        SpriteData sprite;
+        map_ldtk tilemap;
     };
-
-    void load(const_str path);
-    void load_mem(const void* mem_data, size_t mem_size, const_str vpath);
-    void free();
 };
 
-typedef struct neko_image neko_image;
+void assets_shutdown();
+void assets_start_hot_reload();
+void assets_perform_hot_reload_changes();
 
-NEKO_API_DECL bool neko_util_load_texture_data_from_file(const char* file_path, s32* width, s32* height, u32* num_comps, void** data, bool flip_vertically_on_load);
-NEKO_API_DECL bool neko_util_load_texture_data_from_memory(const void* memory, size_t sz, s32* width, s32* height, u32* num_comps, void** data, bool flip_vertically_on_load);
+bool asset_load_kind(AssetKind kind, String filepath, Asset *out);
+bool asset_load(AssetLoadData desc, String filepath, Asset *out);
 
-#endif  // NEKO_ASSET_H
+bool asset_read(u64 key, Asset *out);
+void asset_write(Asset asset);
+
+struct lua_State;
+Asset check_asset(lua_State *L, u64 key);
+Asset check_asset_mt(lua_State *L, i32 arg, const char *mt);

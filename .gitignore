@@ -32,9 +32,12 @@ dependencies/
 Resources/
 old/
 source/generated
-source/deps
+source/engine/deps
 source/lua/libs
 source/sandbox/tests
+examples/
+website/
+html5/
 
 build.bat
 compile_commands.json
@@ -43,6 +46,30 @@ CMakeSettings.json
 sandbox.raddbg
 /profile.json
 /sandbox
+
+*.exe
+*.exp
+*.lib
+*.pdb
+*.ilk
+*.obj
+*.o
+*.out
+neko
+.vs
+ignore
+dist
+*.data
+
+/neko.wasm
+/neko.js
+/*.zip
+/*.json
+/build
+/debug
+/release
+/emdebug
+/emrelease
 
 # clangd
 .clangd/

@@ -13,7 +13,7 @@
 #define alloca _alloca
 #endif
 
-#include "engine/neko.h"
+#include "engine/neko.hpp"
 #include "engine/neko_luabind.hpp"
 
 namespace neko::lua::__cffi {
@@ -921,13 +921,14 @@ LUABIND_MODULE() {
 
 DEFINE_LUAOPEN(cffi)
 
+// 外部加载 https://github.com/q66/cffi-lua
+#if 0
 void ffi_module_open(lua_State *L);
-
 namespace neko::lua::__ffi {
 LUABIND_MODULE() {
     ffi_module_open(L);
     return 1;
 }
 }  // namespace neko::lua::__ffi
-
 DEFINE_LUAOPEN(ffi)
+#endif

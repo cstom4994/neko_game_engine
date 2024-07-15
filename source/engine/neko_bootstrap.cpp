@@ -1,21 +1,37 @@
 
 #include <assert.h>
+#include <sokol_app.h>
+#include <sokol_gfx.h>
+#include <sokol_glue.h>
+#include <sokol_log.h>
+#include <sokol_time.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <util/sokol_gl.h>
 
-#include "engine/neko.hpp"
-#include "engine/neko_api.hpp"
-#include "engine/neko_engine.h"
-#include "engine/neko_lua.h"
-#include "engine/neko_luabind.hpp"
-#include "engine/neko_math.h"
-#include "engine/neko_reflection.hpp"
+#include "deps/sokol_gp.h"
+#include "neko_api.hpp"
+#include "neko_app.h"
+#include "neko_asset.h"
+#include "neko_base.h"
+#include "neko_draw.h"
+#include "neko_lua.h"
+#include "neko_luabind.hpp"
+#include "neko_math.h"
+#include "neko_os.h"
+#include "neko_prelude.h"
+#include "neko_ui.h"
 
 extern "C" {
+#include <lua.h>
+#include <lualib.h>
+}
+
+#include <util/sokol_gfx_imgui.h>
 
 #define __neko_boot_ent_id(index, ver) (((u64)ver << 32) | index)
 #define __neko_boot_ent_index(id) ((u32)id)
@@ -44,11 +60,6 @@ enum ComponentType {
 #define ECS_WORLD_UDATA_NAME "__NEKO_ECS_WORLD"
 #define ECS_WORLD (1)
 
-typedef neko_vec2_t position_t;  // Position component
-typedef neko_vec2_t velocity_t;  // Velocity component
-typedef neko_vec2_t bounds_t;    // Bounds component
-typedef neko_color_t color_t;    // Color component
-
 #if 0
 NEKO_API_DECL ECS_COMPONENT_DECLARE(position_t);
 NEKO_API_DECL ECS_COMPONENT_DECLARE(velocity_t);
@@ -65,8 +76,6 @@ NEKO_API_DECL void neko_boot_com_init(ecs_world_t* world);
 #define MY_TABLE_KEY "my_integer_keyed_table"
 
 enum ECS_LUA_UPVALUES { NEKO_ECS_COMPONENTS_NAME = 1, NEKO_ECS_UPVAL_N };
-
-#if 1
 
 #define TYPE_MIN_ID 1
 #define TYPE_MAX_ID 255
@@ -806,9 +815,8 @@ int __neko_boot_create_world(lua_State *L) {
     return 1;
 }
 
-#endif
-
 #if 0
+
 
 static int __neko_boot_lua_create_ent(lua_State *L) {
     struct neko_boot_t *w = (struct neko_boot_t *)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
@@ -958,8 +966,7 @@ ecs_entity_t ecs_component_w(neko_boot_t *registry, const_str component_name, si
     return id;
 }
 
-#endif
-}
+
 
 //=============================
 // NEKO_ENGINE
@@ -967,9 +974,9 @@ ecs_entity_t ecs_component_w(neko_boot_t *registry, const_str component_name, si
 
 using namespace neko;
 
-s32 random_val(s32 lower, s32 upper) {
+i32 random_val(i32 lower, i32 upper) {
     if (upper < lower) {
-        s32 tmp = lower;
+        i32 tmp = lower;
         lower = upper;
         upper = tmp;
     }
@@ -1061,7 +1068,7 @@ NEKO_API_DECL lua_State *neko_lua_bootstrap(int argc, char **argv) {
     // neko_lua_safe_dofile(L, "startup");
 
     {
-        neko::lua_bind::bind("__neko_file_path", +[](const_str path) -> std::string { return path; });
+        
         lua_newtable(L);
         for (int n = 0; n < argc; ++n) {
             lua_pushstring(L, argv[n]);
@@ -1074,7 +1081,7 @@ NEKO_API_DECL lua_State *neko_lua_bootstrap(int argc, char **argv) {
         auto &module_list = ENGINE_INTERFACE()->modules;
 
         neko_module m = {};
-        s32 sss;
+        i32 sss;
         sss = Neko_OnModuleLoad_Sound(&m, ENGINE_INTERFACE());
         neko_dyn_array_push(module_list, m);
         sss = Neko_OnModuleLoad_Physics(&m, ENGINE_INTERFACE());
@@ -1094,75 +1101,6 @@ NEKO_API_DECL lua_State *neko_lua_bootstrap(int argc, char **argv) {
     return L;
 }
 
-LUA_FUNCTION(__neko_bind_w_f) {
-    lua_getfield(L, LUA_REGISTRYINDEX, W_LUA_REGISTRY_NAME::W_CORE);
-    return 1;
-}
-
-static int __neko_w_lua_get_com(lua_State *L) {
-    struct neko_instance_t *w = (neko_instance_t *)luaL_checkudata(L, ECS_WORLD, W_LUA_REGISTRY_NAME::ENG_UDATA_NAME);
-    lua_getiuservalue(L, 1, W_LUA_UPVALUES::NEKO_W_COMPONENTS_NAME);
-    lua_getiuservalue(L, 1, W_LUA_UPVALUES::NEKO_W_UPVAL_N);
-    return 2;
-}
-
-static int __neko_w_lua_gc(lua_State *L) {
-    neko_instance_t *w = (neko_instance_t *)luaL_checkudata(L, ECS_WORLD, W_LUA_REGISTRY_NAME::ENG_UDATA_NAME);
-    // ecs_fini_i(w);
-    NEKO_INFO("neko_instance_t __gc %p", w);
-    return 0;
-}
-
-void neko_w_init() {
-
-    lua_State *L = ENGINE_LUA();
-
-    neko_instance_t *ins = (neko_instance_t *)lua_newuserdatauv(L, sizeof(neko_instance_t), NEKO_W_UPVAL_N);  // # -1
-    // ins = neko_instance();
-
-    if (luaL_getmetatable(L, W_LUA_REGISTRY_NAME::ENG_UDATA_NAME) == LUA_TNIL) {  // # -2
-
-        // clang-format off
-        luaL_Reg ins_mt[] = {
-            {"__gc", __neko_w_lua_gc}, 
-            {"get_com", __neko_w_lua_get_com}, 
-            {NULL, NULL}
-        };
-        // clang-format on
-
-        lua_pop(L, 1);                // # pop -2
-        luaL_newlibtable(L, ins_mt);  // # -2
-        luaL_setfuncs(L, ins_mt, 0);
-        lua_pushvalue(L, -1);                                                     // # -3
-        lua_setfield(L, -2, "__index");                                           // pop -3
-        lua_pushstring(L, W_LUA_REGISTRY_NAME::ENG_UDATA_NAME);                   // # -3
-        lua_setfield(L, -2, "__name");                                            // pop -3
-        lua_pushvalue(L, -1);                                                     // # -3
-        lua_setfield(L, LUA_REGISTRYINDEX, W_LUA_REGISTRY_NAME::ENG_UDATA_NAME);  // pop -3
-    }
-    lua_setmetatable(L, -2);  // pop -2
-
-    lua_newtable(L);                                   // # 2
-    lua_pushstring(L, W_LUA_REGISTRY_NAME::CVAR_MAP);  // # 3
-    lua_createtable(L, 0, ENTITY_MAX_COMPONENTS);      // # 4
-    lua_settable(L, -3);
-    lua_setiuservalue(L, -2, NEKO_W_COMPONENTS_NAME);
-
-    const_str s = "Is man one of God's blunders? Or is God one of man's blunders?";
-    lua_pushstring(L, s);
-    lua_setiuservalue(L, -2, NEKO_W_UPVAL_N);
-
-    // lua_pushvalue(L, -1);
-    lua_setfield(L, LUA_REGISTRYINDEX, W_LUA_REGISTRY_NAME::W_CORE);
-
-    NEKO_ASSERT(lua_gettop(L) == 0);
-
-    lua_register(L, "neko_w_f", __neko_bind_w_f);
-
-    neko_w_lua_variant<s64> version("neko_engine_version", neko_buildnum());
-
-    NEKO_ASSERT(lua_gettop(L) == 0);
-}
 
 using namespace neko;
 
@@ -1327,7 +1265,7 @@ void game_loop() {
 
     //     u8 tranp = 255;
 
-    //     // tranp -= ((s32)t % 255);
+    //     // tranp -= ((i32)t % 255);
 
     //     neko_render_clear_action_t clear = {.color = {neko_game()->cvar.bg[0] / 255, neko_game()->cvar.bg[1] / 255, neko_game()->cvar.bg[2] / 255, 1.f}};
     //     neko_render_renderpass_begin(&ENGINE_INTERFACE()->cb, neko_renderpass_t{0});
@@ -1552,7 +1490,7 @@ NEKO_API_DECL neko_instance_t *neko_create(int argc, char **argv) {
             // 初始化应用程序并设置为运行
             mount_result mount;
 
-#if defined(_DEBUG)
+#if defined(NEKO_DEBUG_BUILD)
             mount = neko::vfs_mount(NEKO_PACKS::GAMEDATA, "./");
             mount = neko::vfs_mount(NEKO_PACKS::LUACODE, "./");
 #else
@@ -1566,11 +1504,6 @@ NEKO_API_DECL neko_instance_t *neko_create(int argc, char **argv) {
 
             lua_channels_setup();
 
-            ENGINE_ECS() = ecs_init();
-
-            ECS_IMPORT(ENGINE_ECS(), FlecsLua);
-
-            ecs_lua_set_state(ENGINE_ECS(), ENGINE_LUA());
         }
 
         auto L = ENGINE_LUA();
@@ -1603,7 +1536,7 @@ NEKO_API_DECL neko_instance_t *neko_create(int argc, char **argv) {
         neko_os_running_desc_t window = {.title = "Neko Engine", .width = 1280, .height = 720, .vsync = false, .frame_rate = 60.f, .hdpi = false, .center = true, .running_background = true};
 
         // 构建主窗口
-        neko_pf_window_create(&window);
+        neko_os_window_create(&window);
 
         // 设置视频垂直同步
         neko_os_enable_vsync(settings_window_vsync.get<bool>());
@@ -1620,7 +1553,7 @@ NEKO_API_DECL neko_instance_t *neko_create(int argc, char **argv) {
             u32 w, h;
             u32 display_w, display_h;
 
-            neko_pf_window_size(neko_os_main_window(), &w, &h);
+            neko_os_window_size(neko_os_main_window(), &w, &h);
             neko_os_framebuffer_size(neko_os_main_window(), &display_w, &display_h);
 
             neko_game()->DisplaySize = neko_v2((float)w, (float)h);
@@ -1689,7 +1622,7 @@ NEKO_API_DECL void neko_frame() {
 
         neko_os_t *platform = neko_subsystem(platform);
 
-        neko_pf_window_t *win = (neko_slot_array_getp(platform->windows, neko_os_main_window()));
+        neko_os_window_t *win = (neko_slot_array_getp(platform->windows, neko_os_main_window()));
 
         // 帧开始时的缓存时间
         platform->time.elapsed = (f32)neko_os_elapsed_time();
@@ -1729,9 +1662,9 @@ NEKO_API_DECL void neko_frame() {
         {
             PROFILE_BLOCK("swap_buffer");
             for (neko_slot_array_iter it = 0; neko_slot_array_iter_valid(platform->windows, it); neko_slot_array_iter_advance(platform->windows, it)) {
-                neko_pf_window_swap_buffer(it);
+                neko_os_window_swap_buffer(it);
             }
-            // neko_pf_window_swap_buffer(neko_os_main_window());
+            // neko_os_window_swap_buffer(neko_os_main_window());
         }
 
         // 帧锁定
@@ -1828,4 +1761,717 @@ int main(int argv, char **argc) {
     while (neko_instance()->game.is_running) neko_frame();
     neko_fini();
     return 0;
+}
+
+#endif
+
+i32 neko_buildnum(void) {
+    static const char *__build_date = __DATE__;
+    static const char *mon[12] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+    static const char mond[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    i32 m = 0, d = 0, y = 0;
+    static i32 b = 0;
+    if (b != 0) return b;  // 优化
+    for (m = 0; m < 11; m++) {
+        if (!strncmp(&__build_date[0], mon[m], 3)) break;
+        d += mond[m];
+    }
+    d += atoi(&__build_date[4]) - 1;
+    y = atoi(&__build_date[7]) - 2022;
+    b = d + (i32)((y - 1) * 365.25f);
+    if (((y % 4) == 0) && m > 1) b += 1;
+    b -= 151;
+    return b;
+}
+
+static Mutex g_init_mtx;
+static sgl_pipeline g_pipeline;
+
+static sgimgui_t sgimgui;
+
+NEKO_STATIC void *__neko_imgui_malloc(size_t sz, void *user_data) { return malloc(sz); }
+
+NEKO_STATIC void __neko_imgui_free(void *ptr, void *user_data) { return free(ptr); }
+
+static void init() {
+    PROFILE_FUNC();
+    LockGuard lock(&g_init_mtx);
+
+    neko::timer tm_init;
+    tm_init.start();
+
+    {
+        PROFILE_BLOCK("sokol");
+
+        sg_desc sg = {};
+        sg.logger.func = slog_func;
+        // sg.context = sapp_sgcontext();
+        sg.environment = sglue_environment();
+        sg_setup(sg);
+
+        sgl_desc_t sgl = {};
+        sgl.logger.func = slog_func;
+        sgl_setup(sgl);
+
+        // Initialize Sokol GP, adjust the size of command buffers for your own use.
+        sgp_desc sgpdesc = {0};
+        sgp_setup(&sgpdesc);
+        if (!sgp_is_valid()) {
+            fprintf(stderr, "Failed to create Sokol GP context: %s\n", sgp_get_error_message(sgp_get_last_error()));
+            exit(-1);
+        }
+
+        const sgimgui_desc_t desc = {};
+        sgimgui_init(&sgimgui, &desc);
+
+        simgui_desc_t simgui_desc = {};
+        simgui_desc.ini_filename = "imgui.ini";
+        simgui_desc.logger.func = slog_func;
+        simgui_desc.no_default_font = true;
+        simgui_desc.allocator = {
+                .alloc_fn = +[](size_t size, void *user_data) { return mem_alloc(size); },
+                .free_fn = +[](void *ptr, void *user_data) { return mem_free(ptr); },
+        };
+        simgui_setup(&simgui_desc);
+
+        ImGui::SetAllocatorFunctions(__neko_imgui_malloc, __neko_imgui_free);
+
+        {
+            auto &io = ImGui::GetIO();
+
+            ImFontConfig config;
+            config.PixelSnapH = 1;
+
+            String ttf_file;
+            vfs_read_entire_file(NEKO_PACKS::LUACODE, &ttf_file, "D:/Projects/Neko/DevNew/gamedir/assets/fonts/fusion-pixel-12px-monospaced-zh_hans.ttf");
+            neko_defer(mem_free(ttf_file.data));
+            void *ttf_data = ::malloc(ttf_file.len);  // TODO:: imgui 内存方法接管
+            memcpy(ttf_data, ttf_file.data, ttf_file.len);
+            io.Fonts->AddFontFromMemoryTTF(ttf_data, ttf_file.len, 12.0f, &config, io.Fonts->GetGlyphRangesChineseFull());
+
+            // 为字体创建字体纹理和线性过滤采样器
+            simgui_font_tex_desc_t font_texture_desc = {};
+            font_texture_desc.min_filter = SG_FILTER_LINEAR;
+            font_texture_desc.mag_filter = SG_FILTER_LINEAR;
+            simgui_create_fonts_texture(&font_texture_desc);
+        }
+
+        sg_pipeline_desc sg_pipline = {};
+        sg_pipline.depth.write_enabled = true;
+        sg_pipline.colors[0].blend.enabled = true;
+        sg_pipline.colors[0].blend.src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA;
+        sg_pipline.colors[0].blend.dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+        g_pipeline = sgl_make_pipeline(sg_pipline);
+    }
+
+    {
+        PROFILE_BLOCK("miniaudio");
+
+        g_app->miniaudio_vfs = vfs_for_miniaudio();
+
+        ma_engine_config ma_config = ma_engine_config_init();
+        ma_config.channels = 2;
+        ma_config.sampleRate = 44100;
+        ma_config.pResourceManagerVFS = g_app->miniaudio_vfs;
+        ma_result res = ma_engine_init(&ma_config, &g_app->audio_engine);
+        if (res != MA_SUCCESS) {
+            fatal_error("failed to initialize audio engine");
+        }
+    }
+
+    microui_init();
+
+    renderer_reset();
+
+    g_app->time.startup = stm_now();
+    g_app->time.last = stm_now();
+
+    {
+        PROFILE_BLOCK("neko.start");
+
+        lua_State *L = g_app->L;
+
+        if (!g_app->error_mode.load()) {
+            luax_neko_get(L, "start");
+
+            Slice<String> args = g_app->args;
+            lua_createtable(L, args.len - 1, 0);
+            for (u64 i = 1; i < args.len; i++) {
+                lua_pushlstring(L, args[i].data, args[i].len);
+                lua_rawseti(L, -2, i);
+            }
+
+            luax_pcall(L, 1, 0);
+        }
+    }
+
+    g_app->gpu_mtx.lock();
+
+    lua_channels_setup();
+    assets_start_hot_reload();
+
+    tm_init.stop();
+
+    NEKO_INFO("end of init in %.3f ms", tm_init.get());
+}
+
+static void event(const sapp_event *e) {
+    if (simgui_handle_event(e)) return;
+
+    microui_sokol_event(e);
+
+    switch (e->type) {
+        case SAPP_EVENTTYPE_KEY_DOWN:
+            g_app->key_state[e->key_code] = true;
+            break;
+        case SAPP_EVENTTYPE_KEY_UP:
+            g_app->key_state[e->key_code] = false;
+            break;
+        case SAPP_EVENTTYPE_MOUSE_DOWN:
+            g_app->mouse_state[e->mouse_button] = true;
+            break;
+        case SAPP_EVENTTYPE_MOUSE_UP:
+            g_app->mouse_state[e->mouse_button] = false;
+            break;
+        case SAPP_EVENTTYPE_MOUSE_MOVE:
+            g_app->mouse_x = e->mouse_x;
+            g_app->mouse_y = e->mouse_y;
+            break;
+        case SAPP_EVENTTYPE_MOUSE_SCROLL:
+            g_app->scroll_x = e->scroll_x;
+            g_app->scroll_y = e->scroll_y;
+            break;
+        default:
+            break;
+    }
+}
+
+static void render() {
+    PROFILE_FUNC();
+
+    {
+        PROFILE_BLOCK("begin render pass");
+
+        sg_pass_action pass = {};
+        pass.colors[0].load_action = SG_LOADACTION_CLEAR;
+        pass.colors[0].store_action = SG_STOREACTION_STORE;
+        if (g_app->error_mode.load()) {
+            pass.colors[0].clear_value = {0.0f, 0.0f, 0.0f, 1.0f};
+        } else {
+            float rgba[4];
+            renderer_get_clear_color(rgba);
+            pass.colors[0].clear_value.r = rgba[0];
+            pass.colors[0].clear_value.g = rgba[1];
+            pass.colors[0].clear_value.b = rgba[2];
+            pass.colors[0].clear_value.a = rgba[3];
+        }
+
+        {
+            LockGuard lock{&g_app->gpu_mtx};
+            // sg_begin_default_pass(pass, sapp_width(), sapp_height());
+            sg_pass ps = {.action = {.colors = {{.load_action = SG_LOADACTION_CLEAR, .clear_value = {0.f, 0.f, 0.f, 1.f}}}}, .swapchain = sglue_swapchain()};
+            sg_begin_pass(&ps);
+        }
+
+        sgl_defaults();
+        sgl_load_pipeline(g_pipeline);
+
+        sgl_viewport(0, 0, sapp_width(), sapp_height(), true);
+        sgl_ortho(0, sapp_widthf(), sapp_heightf(), 0, -1, 1);
+    }
+
+    if (g_app->error_mode.load()) {
+        if (g_app->default_font == nullptr) {
+            g_app->default_font = (FontFamily *)mem_alloc(sizeof(FontFamily));
+            g_app->default_font->load_default();
+        }
+
+        renderer_reset();
+
+        float x = 10;
+        float y = 25;
+        u64 font_size = 16;
+
+        if (LockGuard lock{&g_app->error_mtx}) {
+            y = draw_font(g_app->default_font, font_size, x, y, "-- ! Neko Error ! --");
+            y += font_size;
+
+            y = draw_font_wrapped(g_app->default_font, font_size, x, y, g_app->fatal_error, sapp_widthf() - x);
+            y += font_size;
+
+            if (g_app->traceback.data) {
+                draw_font(g_app->default_font, font_size, x, y, g_app->traceback);
+            }
+        }
+    } else {
+        const int width = sapp_width();
+        const int height = sapp_height();
+        simgui_new_frame({width, height, sapp_frame_duration(), sapp_dpi_scale()});
+
+        microui_begin();
+
+        lua_State *L = g_app->L;
+
+        luax_neko_get(L, "_timer_update");
+        lua_pushnumber(L, g_app->time.delta);
+        luax_pcall(L, 1, 0);
+
+        {
+            PROFILE_BLOCK("neko.frame");
+
+            luax_neko_get(L, "frame");
+            lua_pushnumber(L, g_app->time.delta);
+            luax_pcall(L, 1, 0);
+        }
+
+        assert(lua_gettop(L) == 1);
+
+        microui_end_and_present();
+    }
+
+    {
+        if (ImGui::BeginMainMenuBar()) {
+            sgimgui_draw_menu(&sgimgui, "sokol-gfx");
+            ImGui::EndMainMenuBar();
+        }
+        sgimgui_draw(&sgimgui);
+    }
+
+    {
+        int width = sapp_width(), height = sapp_height();
+        float ratio = width / (float)height;
+
+        // Begin recording draw commands for a frame buffer of size (width, height).
+        sgp_begin(width, height);
+        // Set frame buffer drawing region to (0,0,width,height).
+        sgp_viewport(0, 0, width, height);
+        // Set drawing coordinate space to (left=-ratio, right=ratio, top=1, bottom=-1).
+        sgp_project(-ratio, ratio, 1.0f, -1.0f);
+
+        // Clear the frame buffer.
+        sgp_set_color(0.1f, 0.1f, 0.1f, 1.0f);
+        sgp_clear();
+
+        // Draw an animated rectangle that rotates and changes its colors.
+        float time = sapp_frame_count() * sapp_frame_duration();
+        float r = sinf(time) * 0.5 + 0.5, g = cosf(time) * 0.5 + 0.5;
+        sgp_set_color(r, g, 0.3f, 1.0f);
+        sgp_rotate_at(time, 0.0f, 0.0f);
+        sgp_draw_filled_rect(-0.5f, -0.5f, 1.0f, 1.0f);
+    }
+
+    {
+        PROFILE_BLOCK("end render pass");
+        LockGuard lock{&g_app->gpu_mtx};
+
+        // Dispatch all draw commands to Sokol GFX.
+        sgp_flush();
+        // Finish a draw command queue, clearing it.
+        sgp_end();
+
+        sgl_draw();
+
+        sgl_error_t sgl_err = sgl_error();
+        if (sgl_err != SGL_NO_ERROR) {
+            panic("a draw error occurred: %d", sgl_err);
+        }
+
+        simgui_render();
+
+        sg_end_pass();
+        sg_commit();
+    }
+}
+
+static void frame() {
+    PROFILE_FUNC();
+
+    {
+        AppTime *time = &g_app->time;
+        u64 lap = stm_laptime(&time->last);
+        time->delta = stm_sec(lap);
+        time->accumulator += lap;
+
+#ifndef __EMSCRIPTEN__
+        if (time->target_ticks > 0) {
+            u64 TICK_MS = 1000000;
+            u64 TICK_US = 1000;
+
+            u64 target = time->target_ticks;
+
+            if (time->accumulator < target) {
+                u64 ms = (target - time->accumulator) / TICK_MS;
+                if (ms > 0) {
+                    PROFILE_BLOCK("sleep");
+                    os_sleep(ms - 1);
+                }
+
+                {
+                    PROFILE_BLOCK("spin loop");
+
+                    u64 lap = stm_laptime(&time->last);
+                    time->delta += stm_sec(lap);
+                    time->accumulator += lap;
+
+                    while (time->accumulator < target) {
+                        os_yield();
+
+                        u64 lap = stm_laptime(&time->last);
+                        time->delta += stm_sec(lap);
+                        time->accumulator += lap;
+                    }
+                }
+            }
+
+            u64 fuzz = TICK_US * 100;
+            while (time->accumulator >= target - fuzz) {
+                if (time->accumulator < target + fuzz) {
+                    time->accumulator = 0;
+                } else {
+                    time->accumulator -= target + fuzz;
+                }
+            }
+        }
+#endif
+    }
+
+    g_app->gpu_mtx.unlock();
+    render();
+    assets_perform_hot_reload_changes();
+    g_app->gpu_mtx.lock();
+
+    memcpy(g_app->prev_key_state, g_app->key_state, sizeof(g_app->key_state));
+    memcpy(g_app->prev_mouse_state, g_app->mouse_state, sizeof(g_app->mouse_state));
+    g_app->prev_mouse_x = g_app->mouse_x;
+    g_app->prev_mouse_y = g_app->mouse_y;
+    g_app->scroll_x = 0;
+    g_app->scroll_y = 0;
+
+    Array<Sound *> &sounds = g_app->garbage_sounds;
+    for (u64 i = 0; i < sounds.len;) {
+        Sound *sound = sounds[i];
+
+        if (sound->dead_end) {
+            assert(sound->zombie);
+            sound->trash();
+            mem_free(sound);
+
+            sounds[i] = sounds[sounds.len - 1];
+            sounds.len--;
+        } else {
+            i++;
+        }
+    }
+}
+
+static void actually_cleanup() {
+    PROFILE_FUNC();
+
+    g_app->gpu_mtx.unlock();
+
+    lua_State *L = g_app->L;
+
+    {
+        PROFILE_BLOCK("before quit");
+
+        luax_neko_get(L, "before_quit");
+        if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
+            String err = luax_check_string(L, -1);
+            panic("%s", err.data);
+        }
+    }
+
+    microui_trash();
+
+    {
+        PROFILE_BLOCK("lua close");
+        neko::neko_lua_fini(L);
+        // lua_close(L);
+        // luaalloc_delete(g_app->LA);
+    }
+
+    {
+        PROFILE_BLOCK("destroy assets");
+
+        lua_channels_shutdown();
+
+        if (g_app->default_font != nullptr) {
+            g_app->default_font->trash();
+            mem_free(g_app->default_font);
+        }
+
+        for (Sound *sound : g_app->garbage_sounds) {
+            sound->trash();
+        }
+        g_app->garbage_sounds.trash();
+
+        assets_shutdown();
+    }
+
+    {
+        PROFILE_BLOCK("audio uninit");
+        ma_engine_uninit(&g_app->audio_engine);
+        mem_free(g_app->miniaudio_vfs);
+    }
+
+    {
+        PROFILE_BLOCK("destory sokol");
+        sgimgui_discard(&sgimgui);
+        simgui_shutdown();
+
+        // Cleanup Sokol GP and Sokol GFX resources.
+        sgp_shutdown();
+
+        sgl_destroy_pipeline(g_pipeline);
+        sgl_shutdown();
+        sg_shutdown();
+    }
+
+    vfs_fini({});
+
+    mem_free(g_app->fatal_error.data);
+    mem_free(g_app->traceback.data);
+
+    for (String arg : g_app->args) {
+        mem_free(arg.data);
+    }
+    mem_free(g_app->args.data);
+
+    mem_free(g_app);
+
+    g_init_mtx.trash();
+}
+
+static void cleanup() {
+    actually_cleanup();
+
+#ifdef USE_PROFILER
+    profile_shutdown();
+#endif
+
+#ifndef NDEBUG
+    DebugAllocator *allocator = dynamic_cast<DebugAllocator *>(g_allocator);
+    if (allocator != nullptr) {
+        allocator->dump_allocs();
+    }
+#endif
+
+    g_allocator->trash();
+    operator delete(g_allocator);
+
+    neko_println("see ya");
+}
+
+#if 1
+#include "engine/luabind/core.hpp"
+#include "engine/luabind/debug.hpp"
+#include "engine/luabind/ffi.hpp"
+#include "engine/luabind/filewatch.hpp"
+#include "engine/luabind/imgui.hpp"
+#include "engine/luabind/pack.hpp"
+#include "engine/luabind/prefab.hpp"
+#include "engine/luabind/struct.hpp"
+#endif
+
+static void neko_setup_w() {
+    PROFILE_FUNC();
+
+    lua_State *L = neko::neko_lua_create();
+
+    // g_app->LA = LA;
+    g_app->L = L;
+
+    luaL_openlibs(L);
+
+    neko::lua::preload_module(L);   // 新的模块系统
+    neko::lua::package_preload(L);  // 新的模块系统
+
+    open_neko_api(L);
+    open_luasocket(L);
+
+    ENGINE_ECS() = ecs_init();
+
+    ECS_IMPORT(ENGINE_ECS(), FlecsLua);
+
+    ecs_lua_set_state(ENGINE_ECS(), ENGINE_LUA());
+
+    neko_register_common(L);
+
+    neko_w_init();
+
+    neko::lua::luax_run_bootstrap(L);
+
+    // add error message handler. always at the bottom of stack.
+    lua_pushcfunction(L, luax_msgh);
+
+    luax_neko_get(L, "_define_default_callbacks");
+    luax_pcall(L, 0, 0);
+}
+
+static void load_all_lua_scripts(lua_State *L) {
+    PROFILE_FUNC();
+
+    Array<String> files = {};
+    neko_defer({
+        for (String str : files) {
+            mem_free(str.data);
+        }
+        files.trash();
+    });
+
+    bool ok = vfs_list_all_files(NEKO_PACKS::GAMEDATA, &files);
+    if (!ok) {
+        panic("failed to list all files");
+    }
+    qsort(files.data, files.len, sizeof(String), [](const void *a, const void *b) -> int {
+        String *lhs = (String *)a;
+        String *rhs = (String *)b;
+        return strcmp(lhs->data, rhs->data);
+    });
+
+    for (String file : files) {
+        if (file != "main.lua" && file.ends_with(".lua")) {
+            NEKO_DEBUG_LOG("load_all_lua_scripts : %s", file.data);
+            asset_load_kind(AssetKind_LuaRef, file, nullptr);
+        }
+    }
+}
+
+App *g_app;
+Allocator *g_allocator;
+
+void do_test() {
+    extern void test_containers();
+    // test_containers();
+}
+
+sapp_desc sokol_main(int argc, char **argv) {
+    g_init_mtx.make();
+    LockGuard lock(&g_init_mtx);
+
+#ifndef NDEBUG
+    g_allocator = new DebugAllocator();
+#else
+    g_allocator = new HeapAllocator();
+#endif
+
+    g_allocator->make();
+
+    os_high_timer_resolution();
+    stm_setup();
+
+    profile_setup();
+    PROFILE_FUNC();
+
+    do_test();
+
+    const char *mount_path = nullptr;
+
+    for (i32 i = 1; i < argc; i++) {
+        if (argv[i][0] != '-') {
+            mount_path = argv[i];
+            break;
+        }
+    }
+
+    g_app = (App *)mem_alloc(sizeof(App));
+    memset(g_app, 0, sizeof(App));
+
+    g_app->args.resize(argc);
+    for (i32 i = 0; i < argc; i++) {
+        g_app->args[i] = to_cstr(argv[i]);
+    }
+
+    neko_setup_w();
+    lua_State *L = g_app->L;
+
+#if defined(_DEBUG)
+    MountResult mount = vfs_mount(NEKO_PACKS::GAMEDATA, mount_path);
+    MountResult mount_lua = vfs_mount(NEKO_PACKS::LUACODE, "./");
+#else
+    MountResult mount = vfs_mount(NEKO_PACKS::GAMEDATA, "./gamedata.zip");
+    MountResult mount_lua = vfs_mount(NEKO_PACKS::LUACODE, "./luacode.zip");
+#endif
+
+    g_app->is_fused.store(mount.is_fused);
+
+    if (!g_app->error_mode.load() && mount.ok) {
+        asset_load_kind(AssetKind_LuaRef, "main.lua", nullptr);
+    }
+
+    if (!g_app->error_mode.load()) {
+        luax_neko_get(L, "arg");
+
+        lua_createtable(L, argc - 1, 0);
+        for (i32 i = 1; i < argc; i++) {
+            lua_pushstring(L, argv[i]);
+            lua_rawseti(L, -2, i);
+        }
+
+        if (lua_pcall(L, 1, 0, 1) != LUA_OK) {
+            lua_pop(L, 1);
+        }
+    }
+
+    lua_newtable(L);
+    i32 conf_table = lua_gettop(L);
+
+    if (!g_app->error_mode.load()) {
+        luax_neko_get(L, "conf");
+        lua_pushvalue(L, conf_table);
+        luax_pcall(L, 1, 0);
+    }
+
+    g_app->win_console = g_app->win_console || luax_boolean_field(L, -1, "win_console", true);
+
+    bool hot_reload = luax_boolean_field(L, -1, "hot_reload", true);
+    bool startup_load_scripts = luax_boolean_field(L, -1, "startup_load_scripts", true);
+    bool fullscreen = luax_boolean_field(L, -1, "fullscreen", false);
+    lua_Number reload_interval = luax_opt_number_field(L, -1, "reload_interval", 0.1);
+    lua_Number swap_interval = luax_opt_number_field(L, -1, "swap_interval", 1);
+    lua_Number target_fps = luax_opt_number_field(L, -1, "target_fps", 0);
+    lua_Number width = luax_opt_number_field(L, -1, "window_width", 800);
+    lua_Number height = luax_opt_number_field(L, -1, "window_height", 600);
+    String title = luax_opt_string_field(L, -1, "window_title", "NekoEngine");
+
+    lua_pop(L, 1);  // conf table
+
+    if (!g_app->error_mode.load() && startup_load_scripts && mount.ok) {
+        load_all_lua_scripts(L);
+    }
+
+    g_app->hot_reload_enabled.store(mount.can_hot_reload && hot_reload);
+    g_app->reload_interval.store((u32)(reload_interval * 1000));
+
+    if (target_fps != 0) {
+        g_app->time.target_ticks = 1000000000 / target_fps;
+    }
+
+#ifdef NEKO_IS_WIN32
+    if (!g_app->win_console) {
+        FreeConsole();
+    }
+#endif
+
+    sapp_desc sapp = {};
+    sapp.init_cb = init;
+    sapp.frame_cb = frame;
+    sapp.cleanup_cb = cleanup;
+    sapp.event_cb = event;
+    sapp.width = (i32)width;
+    sapp.height = (i32)height;
+    sapp.window_title = title.data;
+    sapp.logger.func = slog_func;
+    sapp.swap_interval = (i32)swap_interval;
+    sapp.fullscreen = fullscreen;
+    sapp.allocator = sapp_allocator{
+            .alloc_fn = +[](size_t size, void *user_data) { return mem_alloc(size); },
+            .free_fn = +[](void *ptr, void *user_data) { return mem_free(ptr); },
+    };
+    sapp.win32_console_utf8 = true;
+
+#ifndef NDEBUG
+    NEKO_INFO("debug build");
+#endif
+    return sapp;
 }

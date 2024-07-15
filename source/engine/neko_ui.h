@@ -1,6 +1,4 @@
-
-#ifndef NEKO_IMGUI_HPP
-#define NEKO_IMGUI_HPP
+#pragma once
 
 #include <array>
 #include <cassert>
@@ -20,166 +18,353 @@
 #include <utility>
 #include <vector>
 
-#include "engine/neko.h"
-#include "engine/neko_lua.h"
-#include "engine/neko_os.h"
-#include "engine/neko_render.h"
+#include "engine/neko.hpp"
+#include "engine/neko_base.h"
+#include "engine/neko_prelude.h"
 
 // ImGui
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>
 #include <imgui_internal.h>
 
-// Main context for necessary imgui information
-typedef struct neko_imgui_context_t {
-    neko_command_buffer_t *cb;
-    u32 win_hndl;
-    double time;
-    bool mouse_just_pressed[ImGuiMouseButton_COUNT];
-    bool mouse_cursors[ImGuiMouseCursor_COUNT];
-    neko_handle(neko_render_pipeline_t) pip;
-    neko_handle(neko_render_vertex_buffer_t) vbo;
-    neko_handle(neko_render_index_buffer_t) ibo;
-    neko_handle(neko_render_shader_t) shader;
-    neko_handle(neko_render_texture_t) font_tex;
-    neko_handle(neko_render_uniform_t) u_tex;
-    neko_handle(neko_render_uniform_t) u_proj;
-    ImGuiContext *ctx;
-} neko_imgui_context_t;
+// sokol-imgui
+#include <sokol_app.h>
+#include <sokol_gfx.h>
+#include <util/sokol_imgui.h>
 
-typedef struct neko_imgui_vertex_t {
-    float position[2];
-    float uv[2];
-    uint8_t col[4];
-} neko_imgui_vertex_t;
+#define LUI_COMMANDLIST_SIZE (256 * 1024)
+#define LUI_ROOTLIST_SIZE 32
+#define LUI_CONTAINERSTACK_SIZE 32
+#define LUI_CLIPSTACK_SIZE 32
+#define LUI_IDSTACK_SIZE 32
+#define LUI_LAYOUTSTACK_SIZE 16
+#define LUI_CONTAINERPOOL_SIZE 48
+#define LUI_TREENODEPOOL_SIZE 48
+#define LUI_MAX_WIDTHS 16
+#define LUI_REAL float
+#define LUI_REAL_FMT "%.3g"
+#define LUI_SLIDER_FMT "%.2f"
+#define LUI_MAX_FMT 127
 
-// extern neko_imgui_context_t g_imgui;
-// extern neko_command_buffer_t g_cb;
-
-#ifdef NEKO_IS_WEB
-#define NEKO_IMGUI_SHADER_VERSION "#version 300 es\n"
-#else
-#define NEKO_IMGUI_SHADER_VERSION "#version 330 core\n"
-#endif
-
-NEKO_STATIC void *__neko_imgui_malloc(size_t sz, void *user_data) { return malloc(sz); }
-
-NEKO_STATIC void __neko_imgui_free(void *ptr, void *user_data) { return free(ptr); }
-
-NEKO_INLINE static const char *neko_imgui_clipboard_getter(void *user_data) { return neko_pf_window_get_clipboard(neko_os_main_window()); }
-
-NEKO_INLINE static void neko_imgui_clipboard_setter(void *user_data, const char *text) { neko_pf_window_set_clipboard(neko_os_main_window(), text); }
-
-static void neko_imgui_opengl_init_platform_interface();
-
-void neko_imgui_style();
-bool neko_imgui_create_fonts_texture(neko_imgui_context_t *neko_imgui);
-void neko_imgui_device_create(neko_imgui_context_t *neko_imgui);
-neko_imgui_context_t neko_imgui_new(neko_command_buffer_t *cb, u32 hndl, bool install_callbacks);
-void neko_imgui_update_mouse_and_keys(neko_imgui_context_t *ctx);
-void neko_imgui_shutdown(neko_imgui_context_t *neko_imgui);
-void neko_imgui_new_frame(neko_imgui_context_t *neko_imgui);
-void neko_imgui_render_window(neko_imgui_context_t *neko_imgui, ImDrawData *draw_data);
-void neko_imgui_render(neko_imgui_context_t *neko_imgui);
-void neko_imgui_draw_text(std::string text, neko_color_t col, int x, int y, bool outline, neko_color_t outline_col);
-
-#if 0
-
-
-struct neko_gui_rect neko_gui_layout_get_bounds_ex(neko_gui_ctx_t* neko_nui, const char* name, struct neko_gui_rect default_bounds) {
-
-    if (neko_nui->gui_layout_nbt_tags == NULL || strncmp(neko_nui->gui_layout_nbt_tags->name, "gui_layout", neko_nui->gui_layout_nbt_tags->name_size)) goto default_layout;
-
-    NEKO_ASSERT(neko_nui->gui_layout_nbt_tags->type == NBT_TYPE_COMPOUND);
-
-    for (size_t i = 0; i < neko_nui->gui_layout_nbt_tags->tag_compound.size; i++) {
-        neko_nbt_tag_t* win_tag_level = neko_nui->gui_layout_nbt_tags->tag_compound.value[i];
-        if (!strcmp(win_tag_level->name, name)) {
-            NEKO_ASSERT(win_tag_level->type == NBT_TYPE_COMPOUND);
-            // for (size_t i = 0; i < win_tag_level->tag_compound.size; i++) {
-            //     neko_nbt_tag_t* windows_prop = win_tag_level->tag_compound.value[i];
-            // }
-            f32 bx = neko_nbt_tag_compound_get(win_tag_level, "bx")->tag_float.value;
-            f32 by = neko_nbt_tag_compound_get(win_tag_level, "by")->tag_float.value;
-            f32 bw = neko_nbt_tag_compound_get(win_tag_level, "bw")->tag_float.value;
-            f32 bh = neko_nbt_tag_compound_get(win_tag_level, "bh")->tag_float.value;
-
-            return neko_gui_rect(bx, by, bw, bh);
-        }
+#define lui_stack(T, n) \
+    struct {            \
+        int idx;        \
+        T items[n];     \
     }
+#define lui_min(a, b) ((a) < (b) ? (a) : (b))
+#define lui_max(a, b) ((a) > (b) ? (a) : (b))
+#define lui_clamp(x, a, b) lui_min(b, lui_max(a, x))
 
-default_layout:
-    return default_bounds;  // 默认
-}
+enum { LUI_CLIP_PART = 1, LUI_CLIP_ALL };
 
-void neko_gui_layout_save(neko_gui_ctx_t* neko_nui) {
+enum { LUI_COMMAND_JUMP = 1, LUI_COMMAND_CLIP, LUI_COMMAND_RECT, LUI_COMMAND_TEXT, LUI_COMMAND_ICON, LUI_COMMAND_MAX };
 
-    // 释放先前加载的 gui layout
-    // if (neko_nui->gui_layout_nbt_tags) neko_nbt_free_tag(neko_nui->gui_layout_nbt_tags);
+enum {
+    LUI_COLOR_TEXT,
+    LUI_COLOR_BORDER,
+    LUI_COLOR_WINDOWBG,
+    LUI_COLOR_TITLEBG,
+    LUI_COLOR_TITLETEXT,
+    LUI_COLOR_PANELBG,
+    LUI_COLOR_BUTTON,
+    LUI_COLOR_BUTTONHOVER,
+    LUI_COLOR_BUTTONFOCUS,
+    LUI_COLOR_BASE,
+    LUI_COLOR_BASEHOVER,
+    LUI_COLOR_BASEFOCUS,
+    LUI_COLOR_SCROLLBASE,
+    LUI_COLOR_SCROLLTHUMB,
+    LUI_COLOR_MAX
+};
 
-    struct neko_gui_window* iter;
-    if (!&neko_nui->neko_gui_ctx) return;
-    iter = neko_nui->neko_gui_ctx.begin;
+enum { LUI_ICON_CLOSE = 1, LUI_ICON_CHECK, LUI_ICON_COLLAPSED, LUI_ICON_EXPANDED, LUI_ICON_MAX };
 
-    neko_nbt_tag_t* tag_level;
-    if (!neko_nui->gui_layout_nbt_tags) {
-        tag_level = neko_nbt_new_tag_compound();
-        neko_nbt_set_tag_name(tag_level, "gui_layout", strlen("gui_layout"));
-    } else {
-        tag_level = neko_nui->gui_layout_nbt_tags;
-    }
+enum { LUI_RES_ACTIVE = (1 << 0), LUI_RES_SUBMIT = (1 << 1), LUI_RES_CHANGE = (1 << 2) };
 
-    while (iter) {
-        if (!(iter->flags & NEKO_GUI_WINDOW_HIDDEN) && !(iter->flags & NEKO_GUI_WINDOW_NO_SAVE)) {
-            // neko_println("%f,%f,%f,%f %s", iter->bounds.x, iter->bounds.y, iter->bounds.w, iter->bounds.h, iter->name_string);
+enum {
+    LUI_OPT_ALIGNCENTER = (1 << 0),
+    LUI_OPT_ALIGNRIGHT = (1 << 1),
+    LUI_OPT_NOINTERACT = (1 << 2),
+    LUI_OPT_NOFRAME = (1 << 3),
+    LUI_OPT_NORESIZE = (1 << 4),
+    LUI_OPT_NOSCROLL = (1 << 5),
+    LUI_OPT_NOCLOSE = (1 << 6),
+    LUI_OPT_NOTITLE = (1 << 7),
+    LUI_OPT_HOLDFOCUS = (1 << 8),
+    LUI_OPT_AUTOSIZE = (1 << 9),
+    LUI_OPT_POPUP = (1 << 10),
+    LUI_OPT_CLOSED = (1 << 11),
+    LUI_OPT_EXPANDED = (1 << 12)
+};
 
-            neko_nbt_tag_t* win_tag_level = neko_nbt_tag_compound_get(tag_level, iter->name_string);
-            if (win_tag_level == NULL) {
-                win_tag_level = neko_nbt_new_tag_compound();
-                neko_nbt_set_tag_name(win_tag_level, iter->name_string, strlen(iter->name_string));
-                neko_nbt_tag_compound_append(tag_level, win_tag_level);
-            }
+enum { LUI_MOUSE_LEFT = (1 << 0), LUI_MOUSE_RIGHT = (1 << 1), LUI_MOUSE_MIDDLE = (1 << 2) };
 
-#define overwrite_nbt(_tag, _name, _value)                                 \
-    neko_nbt_tag_t *tag_##_name = neko_nbt_tag_compound_get(_tag, #_name); \
-    if (tag_##_name == NULL) {                                             \
-        tag_##_name = neko_nbt_new_tag_float(_value);                      \
-        neko_nbt_set_tag_name(tag_##_name, #_name, strlen(#_name));        \
-        neko_nbt_tag_compound_append(_tag, tag_##_name);                   \
-    } else {                                                               \
-        tag_##_name->tag_float.value = _value;                             \
-    }
+enum { LUI_KEY_SHIFT = (1 << 0), LUI_KEY_CTRL = (1 << 1), LUI_KEY_ALT = (1 << 2), LUI_KEY_BACKSPACE = (1 << 3), LUI_KEY_RETURN = (1 << 4) };
 
-            overwrite_nbt(win_tag_level, bx, iter->bounds.x);
-            overwrite_nbt(win_tag_level, by, iter->bounds.y);
-            overwrite_nbt(win_tag_level, bw, iter->bounds.w);
-            overwrite_nbt(win_tag_level, bh, iter->bounds.h);
-        }
-        iter = iter->next;
-    }
+typedef struct lui_Context lui_Context;
+typedef unsigned lui_Id;
+typedef LUI_REAL lui_Real;
+typedef void *lui_Font;
 
-    // neko_nbt_print_tree(tag_level, 2);
+typedef struct {
+    int x, y;
+} lui_Vec2;
+typedef struct {
+    int x, y, w, h;
+} lui_Rect;
+typedef struct {
+    unsigned char r, g, b, a;
+} lui_Color;
+typedef struct {
+    lui_Id id;
+    int last_update;
+} lui_PoolItem;
 
-    neko_nbt_writefile("gui_layout.nbt", tag_level, NBT_WRITE_FLAG_USE_RAW);
+typedef struct {
+    int type, size;
+} lui_BaseCommand;
+typedef struct {
+    lui_BaseCommand base;
+    void *dst;
+} lui_JumpCommand;
+typedef struct {
+    lui_BaseCommand base;
+    lui_Rect rect;
+} lui_ClipCommand;
+typedef struct {
+    lui_BaseCommand base;
+    lui_Rect rect;
+    lui_Color color;
+} lui_RectCommand;
+typedef struct {
+    lui_BaseCommand base;
+    lui_Font font;
+    lui_Vec2 pos;
+    lui_Color color;
+    char str[1];
+} lui_TextCommand;
+typedef struct {
+    lui_BaseCommand base;
+    lui_Rect rect;
+    int id;
+    lui_Color color;
+} lui_IconCommand;
 
-    neko_nbt_free_tag(tag_level);
-}
+typedef union {
+    int type;
+    lui_BaseCommand base;
+    lui_JumpCommand jump;
+    lui_ClipCommand clip;
+    lui_RectCommand rect;
+    lui_TextCommand text;
+    lui_IconCommand icon;
+} lui_Command;
 
-#endif
+typedef struct {
+    lui_Rect body;
+    lui_Rect next;
+    lui_Vec2 position;
+    lui_Vec2 size;
+    lui_Vec2 max;
+    int widths[LUI_MAX_WIDTHS];
+    int items;
+    int item_index;
+    int next_row;
+    int next_type;
+    int indent;
+} lui_Layout;
+
+typedef struct {
+    lui_Command *head, *tail;
+    lui_Rect rect;
+    lui_Rect body;
+    lui_Vec2 content_size;
+    lui_Vec2 scroll;
+    int zindex;
+    int open;
+} lui_Container;
+
+typedef struct {
+    lui_Font font;
+    lui_Vec2 size;
+    int padding;
+    int spacing;
+    int indent;
+    int title_height;
+    int scrollbar_size;
+    int thumb_size;
+    lui_Color colors[LUI_COLOR_MAX];
+} lui_Style;
+
+struct lui_Context {
+    /* callbacks */
+    int (*text_width)(lui_Font font, const char *str, int len);
+    int (*text_height)(lui_Font font);
+    void (*draw_frame)(lui_Context *ctx, lui_Rect rect, int colorid);
+    /* core state */
+    lui_Style _style;
+    lui_Style *style;
+    lui_Id hover;
+    lui_Id focus;
+    lui_Id last_id;
+    lui_Rect last_rect;
+    int last_zindex;
+    int updated_focus;
+    int frame;
+    lui_Container *hover_root;
+    lui_Container *next_hover_root;
+    lui_Container *scroll_target;
+    char number_edit_buf[LUI_MAX_FMT];
+    lui_Id number_edit;
+    /* stacks */
+    lui_stack(char, LUI_COMMANDLIST_SIZE) command_list;
+    lui_stack(lui_Container *, LUI_ROOTLIST_SIZE) root_list;
+    lui_stack(lui_Container *, LUI_CONTAINERSTACK_SIZE) container_stack;
+    lui_stack(lui_Rect, LUI_CLIPSTACK_SIZE) clip_stack;
+    lui_stack(lui_Id, LUI_IDSTACK_SIZE) id_stack;
+    lui_stack(lui_Layout, LUI_LAYOUTSTACK_SIZE) layout_stack;
+    /* retained state pools */
+    lui_PoolItem container_pool[LUI_CONTAINERPOOL_SIZE];
+    lui_Container containers[LUI_CONTAINERPOOL_SIZE];
+    lui_PoolItem treenode_pool[LUI_TREENODEPOOL_SIZE];
+    /* input state */
+    lui_Vec2 mouse_pos;
+    lui_Vec2 last_mouse_pos;
+    lui_Vec2 mouse_delta;
+    lui_Vec2 scroll_delta;
+    int mouse_down;
+    int mouse_pressed;
+    int key_down;
+    int key_pressed;
+    char input_text[32];
+};
+
+lui_Vec2 lui_vec2(int x, int y);
+lui_Rect lui_rect(int x, int y, int w, int h);
+lui_Color lui_color(int r, int g, int b, int a);
+
+void lui_init(lui_Context *ctx);
+void lui_begin(lui_Context *ctx);
+void lui_end(lui_Context *ctx);
+void lui_set_focus(lui_Context *ctx, lui_Id id);
+lui_Id lui_get_id(lui_Context *ctx, const void *data, int size);
+void lui_push_id(lui_Context *ctx, const void *data, int size);
+void lui_pop_id(lui_Context *ctx);
+void lui_push_clip_rect(lui_Context *ctx, lui_Rect rect);
+void lui_pop_clip_rect(lui_Context *ctx);
+lui_Rect lui_get_clip_rect(lui_Context *ctx);
+int lui_check_clip(lui_Context *ctx, lui_Rect r);
+lui_Container *lui_get_current_container(lui_Context *ctx);
+lui_Container *lui_get_container(lui_Context *ctx, const char *name);
+void lui_bring_to_front(lui_Context *ctx, lui_Container *cnt);
+
+int lui_pool_init(lui_Context *ctx, lui_PoolItem *items, int len, lui_Id id);
+int lui_pool_get(lui_Context *ctx, lui_PoolItem *items, int len, lui_Id id);
+void lui_pool_update(lui_Context *ctx, lui_PoolItem *items, int idx);
+
+void lui_input_mousemove(lui_Context *ctx, int x, int y);
+void lui_input_mousedown(lui_Context *ctx, int x, int y, int btn);
+void lui_input_mouseup(lui_Context *ctx, int x, int y, int btn);
+void lui_input_scroll(lui_Context *ctx, int x, int y);
+void lui_input_keydown(lui_Context *ctx, int key);
+void lui_input_keyup(lui_Context *ctx, int key);
+void lui_input_text(lui_Context *ctx, const char *text);
+
+lui_Command *lui_push_command(lui_Context *ctx, int type, int size);
+int lui_next_command(lui_Context *ctx, lui_Command **cmd);
+void lui_set_clip(lui_Context *ctx, lui_Rect rect);
+void lui_draw_rect(lui_Context *ctx, lui_Rect rect, lui_Color color);
+void lui_draw_box(lui_Context *ctx, lui_Rect rect, lui_Color color);
+void lui_draw_text(lui_Context *ctx, lui_Font font, const char *str, int len, lui_Vec2 pos, lui_Color color);
+void lui_draw_icon(lui_Context *ctx, int id, lui_Rect rect, lui_Color color);
+
+void lui_layout_row(lui_Context *ctx, int items, const int *widths, int height);
+void lui_layout_width(lui_Context *ctx, int width);
+void lui_layout_height(lui_Context *ctx, int height);
+void lui_layout_begin_column(lui_Context *ctx);
+void lui_layout_end_column(lui_Context *ctx);
+void lui_layout_set_next(lui_Context *ctx, lui_Rect r, int relative);
+lui_Rect lui_layout_next(lui_Context *ctx);
+
+void lui_draw_control_frame(lui_Context *ctx, lui_Id id, lui_Rect rect, int colorid, int opt);
+void lui_draw_control_text(lui_Context *ctx, const char *str, lui_Rect rect, int colorid, int opt);
+int lui_mouse_over(lui_Context *ctx, lui_Rect rect);
+void lui_update_control(lui_Context *ctx, lui_Id id, lui_Rect rect, int opt);
+
+#define lui_button(ctx, label) lui_button_ex(ctx, label, 0, LUI_OPT_ALIGNCENTER)
+#define lui_textbox(ctx, buf, bufsz) lui_textbox_ex(ctx, buf, bufsz, 0)
+#define lui_slider(ctx, value, lo, hi) lui_slider_ex(ctx, value, lo, hi, 0, LUI_SLIDER_FMT, LUI_OPT_ALIGNCENTER)
+#define lui_number(ctx, value, step) lui_number_ex(ctx, value, step, LUI_SLIDER_FMT, LUI_OPT_ALIGNCENTER)
+#define lui_header(ctx, label) lui_header_ex(ctx, label, 0)
+#define lui_begin_treenode(ctx, label) lui_begin_treenode_ex(ctx, label, 0)
+#define lui_begin_window(ctx, title, rect) lui_begin_window_ex(ctx, title, rect, 0)
+#define lui_begin_panel(ctx, name) lui_begin_panel_ex(ctx, name, 0)
+
+void lui_text(lui_Context *ctx, const char *text);
+void lui_label(lui_Context *ctx, const char *text);
+int lui_button_ex(lui_Context *ctx, const char *label, int icon, int opt);
+int lui_checkbox(lui_Context *ctx, const char *label, int *state);
+int lui_textbox_raw(lui_Context *ctx, char *buf, int bufsz, lui_Id id, lui_Rect r, int opt);
+int lui_textbox_ex(lui_Context *ctx, char *buf, int bufsz, int opt);
+int lui_slider_ex(lui_Context *ctx, lui_Real *value, lui_Real low, lui_Real high, lui_Real step, const char *fmt, int opt);
+int lui_number_ex(lui_Context *ctx, lui_Real *value, lui_Real step, const char *fmt, int opt);
+int lui_header_ex(lui_Context *ctx, const char *label, int opt);
+int lui_begin_treenode_ex(lui_Context *ctx, const char *label, int opt);
+void lui_end_treenode(lui_Context *ctx);
+int lui_begin_window_ex(lui_Context *ctx, const char *title, lui_Rect rect, int opt);
+void lui_end_window(lui_Context *ctx);
+void lui_open_popup(lui_Context *ctx, const char *name);
+int lui_begin_popup(lui_Context *ctx, const char *name);
+void lui_end_popup(lui_Context *ctx);
+void lui_begin_panel_ex(lui_Context *ctx, const char *name, int opt);
+void lui_end_panel(lui_Context *ctx);
+
+struct sapp_event;
+
+lui_Context *microui_ctx();
+void microui_init();
+void microui_trash();
+void microui_sokol_event(const sapp_event *e);
+void microui_begin();
+void microui_end_and_present();
+
+struct lua_State;
+lui_Rect lua_lui_check_rect(lua_State *L, i32 arg);
+void lua_lui_rect_push(lua_State *L, lui_Rect rect);
+lui_Color lua_lui_check_color(lua_State *L, i32 arg);
+
+enum MUIRefKind : i32 {
+    MUIRefKind_Nil,
+    MUIRefKind_Boolean,
+    MUIRefKind_Real,
+    MUIRefKind_String,
+};
+
+struct MUIRef {
+    MUIRefKind kind;
+    union {
+        int boolean;
+        lui_Real real;
+        char string[512];
+    };
+};
+
+void lua_lui_set_ref(lua_State *L, MUIRef *ref, i32 arg);
+MUIRef *lua_lui_check_ref(lua_State *L, i32 arg, MUIRefKind kind);
 
 #define neko_imgui_tree_max_elementsize sizeof(std::string)
 #define neko_imgui_tree_max_tuple 3
 
-NEKO_STATIC_INLINE ImVec4 vec4_to_imvec4(const neko_vec4 &v4) { return {v4.x, v4.y, v4.z, v4.w}; }
-NEKO_STATIC_INLINE ImColor vec4_to_imcolor(const neko_vec4 &v4) { return {v4.x * 255.0f, v4.y * 255.0f, v4.z * 255.0f, v4.w * 255.0f}; }
+// NEKO_STATIC_INLINE ImVec4 vec4_to_imvec4(const neko_vec4 &v4) { return {v4.x, v4.y, v4.z, v4.w}; }
+// NEKO_STATIC_INLINE ImColor vec4_to_imcolor(const neko_vec4 &v4) { return {v4.x * 255.0f, v4.y * 255.0f, v4.z * 255.0f, v4.w * 255.0f}; }
 
-NEKO_INLINE neko_color_t imvec_to_rgba(ImVec4 iv) {
-    u8 newr = iv.x * 255;
-    u8 newg = iv.y * 255;
-    u8 newb = iv.z * 255;
-    u8 newa = iv.w * 255;
-    return neko_color_t{newr, newg, newb, newa};
-}
+// NEKO_INLINE neko_color_t imvec_to_rgba(ImVec4 iv) {
+//     u8 newr = iv.x * 255;
+//     u8 newg = iv.y * 255;
+//     u8 newb = iv.z * 255;
+//     u8 newa = iv.w * 255;
+//     return neko_color_t{newr, newg, newb, newa};
+// }
 
 NEKO_INLINE ImVec4 rgba_to_imvec(int r, int g, int b, int a = 255) {
     float newr = r / 255.f;
@@ -476,9 +661,9 @@ neko_imgui_def_inline(template <>, const ImVec4, ImGui::Text("%s(%f,%f,%f,%f)", 
 INTERNAL_NUM(u8, U8);
 INTERNAL_NUM(u16, U16);
 INTERNAL_NUM(u64, U64);
-INTERNAL_NUM(s8, S8);
-INTERNAL_NUM(s16, S16);
-INTERNAL_NUM(s64, S64);
+INTERNAL_NUM(i8, S8);
+INTERNAL_NUM(i16, S16);
+INTERNAL_NUM(i64, S64);
 
 neko_imgui_def_inline_p((template <>), (detail::c_array_t<float, 1>), ImGui::DragFloat(name.c_str(), &var[0]););
 neko_imgui_def_inline_p((template <>), (const detail::c_array_t<float, 1>), ImGui::Text("%s%f", (name.empty() ? "" : name + "=").c_str(), var[0]););
@@ -651,11 +836,11 @@ DEFINE_IMGUI_END();
 neko_imgui_def_inline(template <>, std::add_pointer_t<void()>, if (ImGui::Button(name.c_str())) var(););
 neko_imgui_def_inline(template <>, const std::add_pointer_t<void()>, if (ImGui::Button(name.c_str())) var(););
 
-DEFINE_IMGUI_BEGIN(template <>, neko_vec2_t) {
-    //    neko::static_refl::neko_type_info<CGameObject>::ForEachVarOf(var, [&](const auto& field, auto&& value) { neko::imgui::Auto(value, std::string(field.name)); });
-    ImGui::Text("%f %f", var.x, var.y);
-}
-DEFINE_IMGUI_END();
+// DEFINE_IMGUI_BEGIN(template <>, neko_vec2_t) {
+//     //    neko::static_refl::neko_type_info<CGameObject>::ForEachVarOf(var, [&](const auto& field, auto&& value) { neko::imgui::Auto(value, std::string(field.name)); });
+//     ImGui::Text("%f %f", var.x, var.y);
+// }
+// DEFINE_IMGUI_END();
 
 namespace neko::imgui {
 
@@ -855,5 +1040,3 @@ NEKO_INLINE void TextFmt(T &&fmt, const Args &...args) {
 }
 
 }  // namespace neko::imgui
-
-#endif

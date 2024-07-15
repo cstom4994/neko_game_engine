@@ -851,7 +851,7 @@ NEKO_FORCE_INLINE bool neko_string_compare_equal_n(const char* txt, const char* 
 //     const size_t a = strlen(s1);
 //     const size_t b = strlen(s2);
 //     const size_t ab = a + b + 1;
-//     s1 = (char*)mem_realloc((void*)s1, ab);
+//     s1 = (char*)neko_safe_realloc((void*)s1, ab);
 //     memcpy(s1 + a, s2, b + 1);
 //     return s1;
 // }
@@ -976,6 +976,31 @@ NEKO_FORCE_INLINE void neko_util_string_replace_delim(const char* source_str, ch
         buffer[(at - source_str)] = c;
         at++;
     }
+}
+
+#ifdef __MINGW32__
+#define neko_snprintf(__NAME, __SZ, __FMT, ...) __mingw_snprintf(__NAME, __SZ, __FMT, ##__VA_ARGS__)
+#else
+NEKO_FORCE_INLINE void neko_snprintf(char* buffer, size_t buffer_size, const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(buffer, buffer_size, fmt, args);
+    va_end(args);
+}
+#endif
+
+#define neko_transient_buffer(__N, __SZ) \
+    char __N[__SZ] = NEKO_DEFAULT_VAL(); \
+    memset(__N, 0, __SZ);
+
+#define neko_snprintfc(__NAME, __SZ, __FMT, ...) \
+    char __NAME[__SZ] = NEKO_DEFAULT_VAL();      \
+    neko_snprintf(__NAME, __SZ, __FMT, ##__VA_ARGS__);
+
+NEKO_FORCE_INLINE u32 neko_util_safe_truncate_u64(u64 value) {
+    NEKO_ASSERT(value <= 0xFFFFFFFF);
+    u32 result = (u32)value;
+    return result;
 }
 
 NEKO_FORCE_INLINE u32 neko_hash_u32(u32 x) {
@@ -1232,6 +1257,96 @@ bool neko_byte_buffer_read_from_file(neko_byte_buffer_t* buffer, const char* fil
 void neko_byte_buffer_memset(neko_byte_buffer_t* buffer, u8 val);
 
 /*===================================
+// Dynamic Array
+===================================*/
+
+/** @defgroup neko_dyn_array Dynamic Array
+ *  @ingroup neko_containers
+ *  Dynamic Array
+ */
+
+/** @addtogroup neko_dyn_array
+ */
+typedef struct neko_dyn_array {
+    int32_t size;
+    int32_t capacity;
+} neko_dyn_array;
+
+#define neko_dyn_array_head(__ARR) ((neko_dyn_array*)((u8*)(__ARR) - sizeof(neko_dyn_array)))
+
+#define neko_dyn_array_size(__ARR) (__ARR == NULL ? 0 : neko_dyn_array_head((__ARR))->size)
+
+#define neko_dyn_array_capacity(__ARR) (__ARR == NULL ? 0 : neko_dyn_array_head((__ARR))->capacity)
+
+#define neko_dyn_array_full(__ARR) ((neko_dyn_array_size((__ARR)) == neko_dyn_array_capacity((__ARR))))
+
+#define neko_dyn_array_byte_size(__ARR) (neko_dyn_array_size((__ARR)) * sizeof(*__ARR))
+
+void* neko_dyn_array_resize_impl(void* arr, size_t sz, size_t amount);
+
+#define neko_dyn_array_need_grow(__ARR, __N) ((__ARR) == 0 || neko_dyn_array_size(__ARR) + (__N) >= neko_dyn_array_capacity(__ARR))
+
+#define neko_dyn_array_grow(__ARR) neko_dyn_array_resize_impl((__ARR), sizeof(*(__ARR)), neko_dyn_array_capacity(__ARR) ? neko_dyn_array_capacity(__ARR) * 2 : 1)
+
+#define neko_dyn_array_grow_size(__ARR, __SZ) neko_dyn_array_resize_impl((__ARR), (__SZ), neko_dyn_array_capacity(__ARR) ? neko_dyn_array_capacity(__ARR) * 2 : 1)
+
+void** neko_dyn_array_init(void** arr, size_t val_len);
+
+void neko_dyn_array_push_data(void** arr, void* val, size_t val_len);
+
+NEKO_FORCE_INLINE void neko_dyn_array_set_data_i(void** arr, void* val, size_t val_len, u32 offset) { memcpy(((char*)(*arr)) + offset * val_len, val, val_len); }
+
+#define neko_dyn_array_push(__ARR, __ARRVAL)                               \
+    do {                                                                   \
+        neko_dyn_array_init((void**)&(__ARR), sizeof(*(__ARR)));           \
+        if (!(__ARR) || ((__ARR) && neko_dyn_array_need_grow(__ARR, 1))) { \
+            *((void**)&(__ARR)) = neko_dyn_array_grow(__ARR);              \
+        }                                                                  \
+        (__ARR)[neko_dyn_array_size(__ARR)] = (__ARRVAL);                  \
+        neko_dyn_array_head(__ARR)->size++;                                \
+    } while (0)
+
+#define neko_dyn_array_reserve(__ARR, __AMOUNT)                                                \
+    do {                                                                                       \
+        if ((!__ARR)) neko_dyn_array_init((void**)&(__ARR), sizeof(*(__ARR)));                 \
+        if ((!__ARR) || (size_t)__AMOUNT > neko_dyn_array_capacity(__ARR)) {                   \
+            *((void**)&(__ARR)) = neko_dyn_array_resize_impl(__ARR, sizeof(*__ARR), __AMOUNT); \
+        }                                                                                      \
+    } while (0)
+
+#define neko_dyn_array_empty(__ARR) (neko_dyn_array_init((void**)&(__ARR), sizeof(*(__ARR))), (neko_dyn_array_size(__ARR) == 0))
+
+#define neko_dyn_array_pop(__ARR)                    \
+    do {                                             \
+        if (__ARR && !neko_dyn_array_empty(__ARR)) { \
+            neko_dyn_array_head(__ARR)->size -= 1;   \
+        }                                            \
+    } while (0)
+
+#define neko_dyn_array_back(__ARR) *(__ARR + (neko_dyn_array_size(__ARR) ? neko_dyn_array_size(__ARR) - 1 : 0))
+
+#define neko_dyn_array_for(__ARR, __T, __IT_NAME) for (__T* __IT_NAME = __ARR; __IT_NAME != neko_dyn_array_back(__ARR); ++__IT_NAME)
+
+#define neko_dyn_array_new(__T) ((__T*)neko_dyn_array_resize_impl(NULL, sizeof(__T), 0))
+
+#define neko_dyn_array_clear(__ARR)               \
+    do {                                          \
+        if (__ARR) {                              \
+            neko_dyn_array_head(__ARR)->size = 0; \
+        }                                         \
+    } while (0)
+
+#define neko_dyn_array(__T) __T*
+
+#define neko_dyn_array_free(__ARR)                \
+    do {                                          \
+        if (__ARR) {                              \
+            mem_free(neko_dyn_array_head(__ARR)); \
+            (__ARR) = NULL;                       \
+        }                                         \
+    } while (0)
+
+/*===================================
 // Hash Table
 ===================================*/
 
@@ -1482,6 +1597,187 @@ NEKO_FORCE_INLINE void __neko_hash_table_iter_advance_func(void** data, size_t k
 #define neko_hash_table_iter_getk(__HT, __IT) (neko_hash_table_getk(__HT, __IT))
 
 #define neko_hash_table_iter_getkp(__HT, __IT) (&(neko_hash_table_getk(__HT, __IT)))
+
+/*===================================
+// Slot Array
+===================================*/
+
+#define NEKO_SLOT_ARRAY_INVALID_HANDLE UINT32_MAX
+
+#define neko_slot_array_handle_valid(__SA, __ID) ((__SA) && __ID < neko_dyn_array_size((__SA)->indices) && (__SA)->indices[__ID] != NEKO_SLOT_ARRAY_INVALID_HANDLE)
+
+typedef struct __neko_slot_array_dummy_header {
+    neko_dyn_array(u32) indices;
+    neko_dyn_array(u32) data;
+} __neko_slot_array_dummy_header;
+
+#define neko_slot_array(__T)         \
+    struct {                         \
+        neko_dyn_array(u32) indices; \
+        neko_dyn_array(__T) data;    \
+        __T tmp;                     \
+    }*
+
+#define neko_slot_array_new(__T) NULL
+
+NEKO_FORCE_INLINE u32 __neko_slot_array_find_next_available_index(neko_dyn_array(u32) indices) {
+    u32 idx = NEKO_SLOT_ARRAY_INVALID_HANDLE;
+    for (u32 i = 0; i < (u32)neko_dyn_array_size(indices); ++i) {
+        u32 handle = indices[i];
+        if (handle == NEKO_SLOT_ARRAY_INVALID_HANDLE) {
+            idx = i;
+            break;
+        }
+    }
+    if (idx == NEKO_SLOT_ARRAY_INVALID_HANDLE) {
+        idx = neko_dyn_array_size(indices);
+    }
+
+    return idx;
+}
+
+void** neko_slot_array_init(void** sa, size_t sz);
+
+#define neko_slot_array_init_all(__SA) \
+    (neko_slot_array_init((void**)&(__SA), sizeof(*(__SA))), neko_dyn_array_init((void**)&((__SA)->indices), sizeof(u32)), neko_dyn_array_init((void**)&((__SA)->data), sizeof((__SA)->tmp)))
+
+NEKO_FORCE_INLINE u32 neko_slot_array_insert_func(void** indices, void** data, void* val, size_t val_len, u32* ip) {
+    // Find next available index
+    u32 idx = __neko_slot_array_find_next_available_index((u32*)*indices);
+
+    if (idx == neko_dyn_array_size(*indices)) {
+        u32 v = 0;
+        neko_dyn_array_push_data(indices, &v, sizeof(u32));
+        idx = neko_dyn_array_size(*indices) - 1;
+    }
+
+    // Push data to array
+    neko_dyn_array_push_data(data, val, val_len);
+
+    // Set data in indices
+    u32 bi = neko_dyn_array_size(*data) - 1;
+    neko_dyn_array_set_data_i(indices, &bi, sizeof(u32), idx);
+
+    if (ip) {
+        *ip = idx;
+    }
+
+    return idx;
+}
+
+#define neko_slot_array_reserve(__SA, __NUM)            \
+    do {                                                \
+        neko_slot_array_init_all(__SA);                 \
+        neko_dyn_array_reserve((__SA)->data, __NUM);    \
+        neko_dyn_array_reserve((__SA)->indices, __NUM); \
+    } while (0)
+
+#define neko_slot_array_insert(__SA, __VAL) \
+    (neko_slot_array_init_all(__SA), (__SA)->tmp = (__VAL), neko_slot_array_insert_func((void**)&((__SA)->indices), (void**)&((__SA)->data), (void*)&((__SA)->tmp), sizeof(((__SA)->tmp)), NULL))
+
+#define neko_slot_array_insert_hp(__SA, __VAL, __hp) \
+    (neko_slot_array_init_all(__SA), (__SA)->tmp = (__VAL), neko_slot_array_insert_func((void**)&((__SA)->indices), (void**)&((__SA)->data), &((__SA)->tmp), sizeof(((__SA)->tmp)), (__hp)))
+
+#define neko_slot_array_insert_no_init(__SA, __VAL) \
+    ((__SA)->tmp = (__VAL), neko_slot_array_insert_func((void**)&((__SA)->indices), (void**)&((__SA)->data), &((__SA)->tmp), sizeof(((__SA)->tmp)), NULL))
+
+#define neko_slot_array_size(__SA) ((__SA) == NULL ? 0 : neko_dyn_array_size((__SA)->data))
+
+#define neko_slot_array_empty(__SA) (neko_slot_array_size(__SA) == 0)
+
+#define neko_slot_array_clear(__SA)                \
+    do {                                           \
+        if ((__SA) != NULL) {                      \
+            neko_dyn_array_clear((__SA)->data);    \
+            neko_dyn_array_clear((__SA)->indices); \
+        }                                          \
+    } while (0)
+
+#define neko_slot_array_exists(__SA, __SID) ((__SA) && (__SID) < (u32)neko_dyn_array_size((__SA)->indices) && (__SA)->indices[__SID] != NEKO_SLOT_ARRAY_INVALID_HANDLE)
+
+#define neko_slot_array_get(__SA, __SID) ((__SA)->data[(__SA)->indices[(__SID) % neko_dyn_array_size(((__SA)->indices))]])
+
+#define neko_slot_array_getp(__SA, __SID) (&(neko_slot_array_get(__SA, (__SID))))
+
+#define neko_slot_array_free(__SA)                \
+    do {                                          \
+        if ((__SA) != NULL) {                     \
+            neko_dyn_array_free((__SA)->data);    \
+            neko_dyn_array_free((__SA)->indices); \
+            (__SA)->indices = NULL;               \
+            (__SA)->data = NULL;                  \
+            mem_free((__SA));                     \
+            (__SA) = NULL;                        \
+        }                                         \
+    } while (0)
+
+#define neko_slot_array_erase(__SA, __id)                                                       \
+    do {                                                                                        \
+        u32 __H0 = (__id) /*% neko_dyn_array_size((__SA)->indices)*/;                           \
+        if (neko_slot_array_size(__SA) == 1) {                                                  \
+            neko_slot_array_clear(__SA);                                                        \
+        } else if (!neko_slot_array_handle_valid(__SA, __H0)) {                                 \
+            neko_println("Warning: Attempting to erase invalid slot array handle (%zu)", __H0); \
+        } else {                                                                                \
+            u32 __OG_DATA_IDX = (__SA)->indices[__H0];                                          \
+            /* Iterate through handles until last index of data found */                        \
+            u32 __H = 0;                                                                        \
+            for (u32 __I = 0; __I < neko_dyn_array_size((__SA)->indices); ++__I) {              \
+                if ((__SA)->indices[__I] == neko_dyn_array_size((__SA)->data) - 1) {            \
+                    __H = __I;                                                                  \
+                    break;                                                                      \
+                }                                                                               \
+            }                                                                                   \
+                                                                                                \
+            /* Swap and pop data */                                                             \
+            (__SA)->data[__OG_DATA_IDX] = neko_dyn_array_back((__SA)->data);                    \
+            neko_dyn_array_pop((__SA)->data);                                                   \
+                                                                                                \
+            /* Point new handle, Set og handle to invalid */                                    \
+            (__SA)->indices[__H] = __OG_DATA_IDX;                                               \
+            (__SA)->indices[__H0] = NEKO_SLOT_ARRAY_INVALID_HANDLE;                             \
+        }                                                                                       \
+    } while (0)
+
+/*=== Slot Array Iterator ===*/
+
+// Slot array iterator new
+typedef u32 neko_slot_array_iter;
+
+#define neko_slot_array_iter_valid(__SA, __IT) (__SA && neko_slot_array_exists(__SA, __IT))
+
+NEKO_FORCE_INLINE void _neko_slot_array_iter_advance_func(neko_dyn_array(u32) indices, u32* it) {
+    if (!indices) {
+        *it = NEKO_SLOT_ARRAY_INVALID_HANDLE;
+        return;
+    }
+
+    (*it)++;
+    for (; *it < (u32)neko_dyn_array_size(indices); ++*it) {
+        if (indices[*it] != NEKO_SLOT_ARRAY_INVALID_HANDLE) {
+            break;
+        }
+    }
+}
+
+NEKO_FORCE_INLINE u32 _neko_slot_array_iter_find_first_valid_index(neko_dyn_array(u32) indices) {
+    if (!indices) return NEKO_SLOT_ARRAY_INVALID_HANDLE;
+
+    for (u32 i = 0; i < (u32)neko_dyn_array_size(indices); ++i) {
+        if (indices[i] != NEKO_SLOT_ARRAY_INVALID_HANDLE) {
+            return i;
+        }
+    }
+    return NEKO_SLOT_ARRAY_INVALID_HANDLE;
+}
+
+#define neko_slot_array_iter_new(__SA) (_neko_slot_array_iter_find_first_valid_index((__SA) ? (__SA)->indices : 0))
+
+#define neko_slot_array_iter_advance(__SA, __IT) _neko_slot_array_iter_advance_func((__SA) ? (__SA)->indices : NULL, &(__IT))
+
+#define neko_slot_array_iter_get(__SA, __IT) neko_slot_array_get(__SA, __IT)
+
+#define neko_slot_array_iter_getp(__SA, __IT) neko_slot_array_getp(__SA, __IT)
 
 /*===================================
 // Slot Map

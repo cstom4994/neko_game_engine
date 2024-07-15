@@ -10,14 +10,14 @@
 #include <vector>
 
 // ImGui
-#include "engine/neko.h"
-#include "engine/neko_imgui.hpp"
+#include "engine/neko.hpp"
 #include "engine/neko_lua.h"
 #include "engine/neko_luabind.hpp"
+#include "engine/neko_ui.h"
 
-void render_uniform_variable(GLuint program, GLenum type, const char* name, GLint location);
-void inspect_shader(const char* label, GLuint program);
-void inspect_vertex_array(const char* label, GLuint vao);
+// void render_uniform_variable(GLuint program, GLenum type, const char* name, GLint location);
+// void inspect_shader(const char* label, GLuint program);
+// void inspect_vertex_array(const char* label, GLuint vao);
 
 namespace neko {
 
@@ -1134,6 +1134,8 @@ int neko::luainspector::luainspector_draw(lua_State* L) {
     return 0;
 }
 
+#if 0
+
 // 生成宏 以避免始终重复代码
 #define INSPECTOR_GENERATE_VARIABLE(cputype, count, gltype, glread, glwrite, imguifunc) \
     {                                                                                   \
@@ -1527,6 +1529,8 @@ void inspect_vertex_array(const char* label, GLuint vao) {
     }
     ImGui::PopID();
 }
+
+#endif
 
 namespace neko::lua::__debugging {
 static int breakpoint(lua_State* L) {

@@ -4,12 +4,14 @@
 #include <cstddef>
 #include <functional>
 #include <span>
+#include <stdexcept>
+#include <string>
 #include <tuple>
 #include <type_traits>
 #include <utility>
 
-#include "engine/neko.h"
-#include "engine/neko_engine.h"
+// #include "engine/neko.h"
+// #include "engine/neko_engine.h"
 
 namespace neko::reflection {
 template <unsigned short N>
@@ -199,13 +201,13 @@ auto* type_ensure() {
 //     return &type;
 // }
 
-NEKO_INLINE Any::Any(const Any& other) {
+inline Any::Any(const Any& other) {
     type = other.type;
     data = type->copy(other.data);
     flag = 0;
 }
 
-NEKO_INLINE Any::Any(Any&& other) {
+inline Any::Any(Any&& other) {
     type = other.type;
     data = type->move(other.data);
     flag = 0;
@@ -218,20 +220,20 @@ Any::Any(T&& value) {
     flag = 0;
 }
 
-NEKO_INLINE Any::~Any() {
+inline Any::~Any() {
     if (!(flag & 0B00000001) && data && type) {
         type->destroy(data);
     }
 }
 
-NEKO_INLINE void Any::foreach (const std::function<void(std::string_view, Any&)>& fn) {
+inline void Any::foreach (const std::function<void(std::string_view, Any&)>& fn) {
     for (auto& [name, field] : type->fields) {
         Any any = Any{field.first, static_cast<char*>(data) + field.second};
         fn(name, any);
     }
 }
 
-NEKO_INLINE Any Any::invoke(std::string_view name, std::span<Any> args) {
+inline Any Any::invoke(std::string_view name, std::span<Any> args) {
     auto it = type->methods.find(name);
     if (it == type->methods.end()) {
         throw std::runtime_error{"method not found"};

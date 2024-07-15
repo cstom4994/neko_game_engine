@@ -7,7 +7,7 @@
 #include <queue>
 #include <string>
 
-#include "engine/neko.h"
+#include "engine/neko.hpp"
 
 #if defined(_WIN32)
 #include <list>
@@ -91,8 +91,6 @@ private:
 }  // namespace neko::filewatch
 
 #endif
-
-#include "engine/neko.h"
 
 #ifdef NEKO_IS_WIN32
 

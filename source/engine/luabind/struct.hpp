@@ -1,21 +1,23 @@
 
 #include "engine/neko_luabind.hpp"
 
-#define TYPEID_int8 0
-#define TYPEID_int16 1
-#define TYPEID_int32 2
-#define TYPEID_int64 3
-#define TYPEID_uint8 4
-#define TYPEID_uint16 5
-#define TYPEID_uint32 6
-#define TYPEID_uint64 7
-#define TYPEID_bool 8
-#define TYPEID_ptr 9
-#define TYPEID_float 10
-#define TYPEID_double 11
-#define TYPEID_COUNT 12
+enum class TYPEID { f_int8, f_int16, f_int32, f_int64, f_uint8, f_uint16, f_uint32, f_uint64, f_bool, f_ptr, f_float, f_double, f_COUNT };
 
-#define TYPEID_(type) (TYPEID_##type)
+// #define (int)TYPEID::f_int8 0
+// #define (int)TYPEID::f_int16 1
+// #define (int)TYPEID::f_int32 2
+// #define (int)TYPEID::f_int64 3
+// #define (int)TYPEID::f_uint8 4
+// #define (int)TYPEID::f_uint16 5
+// #define (int)TYPEID::f_uint32 6
+// #define (int)TYPEID::f_uint64 7
+// #define (int)TYPEID::f_bool 8
+// #define (int)TYPEID::f_ptr 9
+// #define (int)TYPEID::f_float 10
+// #define (int)TYPEID::f_double 11
+// #define (int)TYPEID::f_COUNT 12
+
+#define TYPE_ID_(type) ((int)TYPEID::f_##type)
 
 static inline void set_int8(void *p, lua_Integer v) { *(int8_t *)p = (int8_t)v; }
 static inline void set_int16(void *p, lua_Integer v) { *(int16_t *)p = (int16_t)v; }
@@ -43,30 +45,30 @@ static inline float get_float(void *p) { return *(float *)p; }
 static inline double get_double(void *p) { return *(double *)p; }
 
 static inline int get_stride(int type) {
-    switch (type) {
-        case TYPEID_int8:
+    switch ((TYPEID)type) {
+        case TYPEID::f_int8:
             return sizeof(int8_t);
-        case TYPEID_int16:
+        case TYPEID::f_int16:
             return sizeof(int16_t);
-        case TYPEID_int32:
+        case TYPEID::f_int32:
             return sizeof(int32_t);
-        case TYPEID_int64:
+        case TYPEID::f_int64:
             return sizeof(int64_t);
-        case TYPEID_uint8:
+        case TYPEID::f_uint8:
             return sizeof(uint8_t);
-        case TYPEID_uint16:
+        case TYPEID::f_uint16:
             return sizeof(uint16_t);
-        case TYPEID_uint32:
+        case TYPEID::f_uint32:
             return sizeof(uint32_t);
-        case TYPEID_uint64:
+        case TYPEID::f_uint64:
             return sizeof(uint64_t);
-        case TYPEID_ptr:
+        case TYPEID::f_ptr:
             return sizeof(void *);
-        case TYPEID_bool:
+        case TYPEID::f_bool:
             return 1;
-        case TYPEID_float:
+        case TYPEID::f_float:
             return sizeof(float);
-        case TYPEID_double:
+        case TYPEID::f_double:
             return sizeof(double);
         default:
             return 0;
@@ -76,40 +78,40 @@ static inline int get_stride(int type) {
 static int setter(lua_State *L, void *p, int type, int offset) {
     p = (char *)p + offset * get_stride(type);
     switch (type) {
-        case TYPEID_(int8):
+        case TYPE_ID_(int8):
             set_int8(p, luaL_checkinteger(L, 2));
             break;
-        case TYPEID_(int16):
+        case TYPE_ID_(int16):
             set_int16(p, luaL_checkinteger(L, 2));
             break;
-        case TYPEID_(int32):
+        case TYPE_ID_(int32):
             set_int32(p, luaL_checkinteger(L, 2));
             break;
-        case TYPEID_(int64):
+        case TYPE_ID_(int64):
             set_int64(p, luaL_checkinteger(L, 2));
             break;
-        case TYPEID_(uint8):
+        case TYPE_ID_(uint8):
             set_uint8(p, luaL_checkinteger(L, 2));
             break;
-        case TYPEID_(uint16):
+        case TYPE_ID_(uint16):
             set_uint16(p, luaL_checkinteger(L, 2));
             break;
-        case TYPEID_(uint32):
+        case TYPE_ID_(uint32):
             set_uint32(p, luaL_checkinteger(L, 2));
             break;
-        case TYPEID_(uint64):
+        case TYPE_ID_(uint64):
             set_uint64(p, luaL_checkinteger(L, 2));
             break;
-        case TYPEID_(bool):
+        case TYPE_ID_(bool):
             set_bool(p, lua_toboolean(L, 2));
             break;
-        case TYPEID_(ptr):
+        case TYPE_ID_(ptr):
             set_ptr(p, lua_touserdata(L, 2));
             break;
-        case TYPEID_(float):
+        case TYPE_ID_(float):
             set_float(p, luaL_checknumber(L, 2));
             break;
-        case TYPEID_(double):
+        case TYPE_ID_(double):
             set_double(p, luaL_checknumber(L, 2));
             break;
     }
@@ -119,53 +121,53 @@ static int setter(lua_State *L, void *p, int type, int offset) {
 static inline int getter(lua_State *L, void *p, int type, int offset) {
     p = (char *)p + offset * get_stride(type);
     switch (type) {
-        case TYPEID_(int8):
+        case TYPE_ID_(int8):
             lua_pushinteger(L, get_int8(p));
             break;
-        case TYPEID_(int16):
+        case TYPE_ID_(int16):
             lua_pushinteger(L, get_int16(p));
             break;
-        case TYPEID_(int32):
+        case TYPE_ID_(int32):
             lua_pushinteger(L, get_int32(p));
             break;
-        case TYPEID_(int64):
+        case TYPE_ID_(int64):
             lua_pushinteger(L, (lua_Integer)get_int64(p));
             break;
-        case TYPEID_(uint8):
+        case TYPE_ID_(uint8):
             lua_pushinteger(L, get_int8(p));
             break;
-        case TYPEID_(uint16):
+        case TYPE_ID_(uint16):
             lua_pushinteger(L, get_int16(p));
             break;
-        case TYPEID_(uint32):
+        case TYPE_ID_(uint32):
             lua_pushinteger(L, get_int32(p));
             break;
-        case TYPEID_(uint64):
+        case TYPE_ID_(uint64):
             lua_pushinteger(L, (lua_Integer)get_int64(p));
             break;
-        case TYPEID_(bool):
+        case TYPE_ID_(bool):
             lua_pushboolean(L, get_bool(p));
             break;
-        case TYPEID_(ptr):
+        case TYPE_ID_(ptr):
             lua_pushlightuserdata(L, get_ptr(p));
             break;
-        case TYPEID_(float):
+        case TYPE_ID_(float):
             lua_pushnumber(L, get_float(p));
             break;
-        case TYPEID_(double):
+        case TYPE_ID_(double):
             lua_pushnumber(L, get_double(p));
             break;
     }
     return 1;
 }
 
-#define ACCESSOR_FUNC(TYPE, OFF)                                                                                \
-    static int get_##TYPE##_##OFF(lua_State *L) { return getter(L, lua_touserdata(L, 1), TYPEID_##TYPE, OFF); } \
-    static int set_##TYPE##_##OFF(lua_State *L) { return setter(L, lua_touserdata(L, 1), TYPEID_##TYPE, OFF); }
+#define ACCESSOR_FUNC(TYPE, OFF)                                                                                 \
+    static int get_##TYPE##_##OFF(lua_State *L) { return getter(L, lua_touserdata(L, 1), TYPE_ID_(TYPE), OFF); } \
+    static int set_##TYPE##_##OFF(lua_State *L) { return setter(L, lua_touserdata(L, 1), TYPE_ID_(TYPE), OFF); }
 
-#define ACCESSOR_OFFSET(TYPE)                                                                                                                      \
-    static int get_##TYPE##_offset(lua_State *L) { return getter(L, lua_touserdata(L, 1), TYPEID_##TYPE, lua_tointeger(L, lua_upvalueindex(1))); } \
-    static int set_##TYPE##_offset(lua_State *L) { return setter(L, lua_touserdata(L, 1), TYPEID_##TYPE, lua_tointeger(L, lua_upvalueindex(1))); }
+#define ACCESSOR_OFFSET(TYPE)                                                                                                                       \
+    static int get_##TYPE##_offset(lua_State *L) { return getter(L, lua_touserdata(L, 1), TYPE_ID_(TYPE), lua_tointeger(L, lua_upvalueindex(1))); } \
+    static int set_##TYPE##_offset(lua_State *L) { return setter(L, lua_touserdata(L, 1), TYPE_ID_(TYPE), lua_tointeger(L, lua_upvalueindex(1))); }
 
 #define ACCESSOR(GS, TYPE)                                     \
     static int GS##ter_func_##TYPE(lua_State *L, int offset) { \
@@ -347,41 +349,41 @@ ACCESSOR(get, ptr)
 ACCESSOR(set, ptr)
 
 static inline int get_value(lua_State *L, int type, int offset) {
-    switch (type) {
-        case TYPEID_int8:
+    switch ((TYPEID)type) {
+        case TYPEID::f_int8:
             getter_func_int8(L, offset);
             break;
-        case TYPEID_int16:
+        case TYPEID::f_int16:
             getter_func_int16(L, offset);
             break;
-        case TYPEID_int32:
+        case TYPEID::f_int32:
             getter_func_int32(L, offset);
             break;
-        case TYPEID_int64:
+        case TYPEID::f_int64:
             getter_func_int64(L, offset);
             break;
-        case TYPEID_uint8:
+        case TYPEID::f_uint8:
             getter_func_uint8(L, offset);
             break;
-        case TYPEID_uint16:
+        case TYPEID::f_uint16:
             getter_func_uint16(L, offset);
             break;
-        case TYPEID_uint32:
+        case TYPEID::f_uint32:
             getter_func_uint32(L, offset);
             break;
-        case TYPEID_uint64:
+        case TYPEID::f_uint64:
             getter_func_uint64(L, offset);
             break;
-        case TYPEID_bool:
+        case TYPEID::f_bool:
             getter_func_bool(L, offset);
             break;
-        case TYPEID_ptr:
+        case TYPEID::f_ptr:
             getter_func_ptr(L, offset);
             break;
-        case TYPEID_float:
+        case TYPEID::f_float:
             getter_func_float(L, offset);
             break;
-        case TYPEID_double:
+        case TYPEID::f_double:
             getter_func_double(L, offset);
             break;
         default:
@@ -392,7 +394,7 @@ static inline int get_value(lua_State *L, int type, int offset) {
 
 static int getter_direct(lua_State *L) {
     int type = luaL_checkinteger(L, 1);
-    if (type < 0 || type >= TYPEID_COUNT) return luaL_error(L, "Invalid type %d", type);
+    if (type < 0 || type >= (int)TYPEID::f_COUNT) return luaL_error(L, "Invalid type %d", type);
     int offset = luaL_checkinteger(L, 2);
     int stride = get_stride(type);
     if (offset % stride != 0) {
@@ -403,41 +405,41 @@ static int getter_direct(lua_State *L) {
 }
 
 static inline int set_value(lua_State *L, int type, int offset) {
-    switch (type) {
-        case TYPEID_int8:
+    switch ((TYPEID)type) {
+        case TYPEID::f_int8:
             setter_func_int8(L, offset);
             break;
-        case TYPEID_int16:
+        case TYPEID::f_int16:
             setter_func_int16(L, offset);
             break;
-        case TYPEID_int32:
+        case TYPEID::f_int32:
             setter_func_int32(L, offset);
             break;
-        case TYPEID_int64:
+        case TYPEID::f_int64:
             setter_func_int64(L, offset);
             break;
-        case TYPEID_uint8:
+        case TYPEID::f_uint8:
             setter_func_uint8(L, offset);
             break;
-        case TYPEID_uint16:
+        case TYPEID::f_uint16:
             setter_func_uint16(L, offset);
             break;
-        case TYPEID_uint32:
+        case TYPEID::f_uint32:
             setter_func_uint32(L, offset);
             break;
-        case TYPEID_uint64:
+        case TYPEID::f_uint64:
             setter_func_uint64(L, offset);
             break;
-        case TYPEID_bool:
+        case TYPEID::f_bool:
             setter_func_bool(L, offset);
             break;
-        case TYPEID_ptr:
+        case TYPEID::f_ptr:
             setter_func_ptr(L, offset);
             break;
-        case TYPEID_float:
+        case TYPEID::f_float:
             setter_func_float(L, offset);
             break;
-        case TYPEID_double:
+        case TYPEID::f_double:
             setter_func_double(L, offset);
             break;
         default:
@@ -448,7 +450,7 @@ static inline int set_value(lua_State *L, int type, int offset) {
 
 static int setter_direct(lua_State *L) {
     int type = luaL_checkinteger(L, 1);
-    if (type < 0 || type >= TYPEID_COUNT) return luaL_error(L, "Invalid type %d", type);
+    if (type < 0 || type >= (int)TYPEID::f_COUNT) return luaL_error(L, "Invalid type %d", type);
     int offset = luaL_checkinteger(L, 2);
     int stride = get_stride(type);
     if (offset % stride != 0) {
@@ -458,8 +460,8 @@ static int setter_direct(lua_State *L) {
     return set_value(L, type, offset);
 }
 
-#define LUATYPEID(type, typen)         \
-    lua_pushinteger(L, TYPEID_##type); \
+#define LUATYPEID(type, typen)                 \
+    lua_pushinteger(L, (int)TYPEID::f_##type); \
     lua_setfield(L, -2, #typen);
 
 static int ltypeid(lua_State *L) {
@@ -517,7 +519,7 @@ static const uint8_t *get_offset(const uint8_t *offset, size_t sz, int *output) 
 static void *address_ptr(lua_State *L, int *type, int *offset) {
     size_t sz;
     const uint8_t *buf = (const uint8_t *)lua_tolstring(L, lua_upvalueindex(1), &sz);
-    if (sz == 0 || buf[0] >= TYPEID_COUNT) luaL_error(L, "Invalid type");
+    if (sz == 0 || buf[0] >= (int)TYPEID::f_COUNT) luaL_error(L, "Invalid type");
     void **p = (void **)lua_touserdata(L, 1);
     const uint8_t *endptr = buf + sz;
     sz--;
@@ -557,7 +559,7 @@ static int lset_indirect(lua_State *L) {
 
 static void address(lua_State *L) {
     int type = luaL_checkinteger(L, 1);
-    if (type < 0 || type >= TYPEID_COUNT) luaL_error(L, "Invalid type %d", type);
+    if (type < 0 || type >= (int)TYPEID::f_COUNT) luaL_error(L, "Invalid type %d", type);
     int top = lua_gettop(L);
     if (top <= 2) {
         luaL_error(L, "Need two or more offsets");

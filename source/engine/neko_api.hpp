@@ -1,53 +1,11 @@
-#ifndef NEKO_BINDING_ENGINE_H
-#define NEKO_BINDING_ENGINE_H
+#pragma once
 
-#include "engine/neko.hpp"
-#include "engine/neko_asset.h"
-#include "engine/neko_engine.h"
 #include "engine/neko_lua.h"
-#include "engine/neko_math.h"
+#include "neko.hpp"
 
-typedef struct {
-    const char *name;
-    lua_CFunction func;
-} neko_luaL_reg;
-
-NEKO_API_DECL void neko_tolua_boot(const_str f, const_str output);
-
-void neko_register(lua_State *L);
-
-lua_Number luax_number_field(lua_State *L, s32 arg, const char *key);
-lua_Number luax_opt_number_field(lua_State *L, s32 arg, const char *key, lua_Number fallback);
-
-bool luax_boolean_field(lua_State *L, s32 arg, const char *key, bool fallback = false);
-
-void luax_new_class(lua_State *L, const char *mt_name, const luaL_Reg *l);
-
-int luax_msgh(lua_State *L);
-
-enum {
-    LUAX_UD_TNAME = 1,
-    LUAX_UD_PTR_SIZE = 2,
-};
-
-template <typename T>
-void luax_new_userdata(lua_State *L, T data, const char *tname) {
-    void *new_udata = lua_newuserdatauv(L, sizeof(T), 2);
-
-    lua_pushstring(L, tname);
-    lua_setiuservalue(L, -2, LUAX_UD_TNAME);
-
-    lua_pushnumber(L, sizeof(T));
-    lua_setiuservalue(L, -2, LUAX_UD_PTR_SIZE);
-
-    memcpy(new_udata, &data, sizeof(T));
-    luaL_setmetatable(L, tname);
-}
-
-void luax_get(lua_State *L, const_str tb, const_str field);
-void luax_pcall(lua_State *L, s32 args, s32 results);
-
-#define luax_ptr_userdata luax_new_userdata
+struct lua_State;
+void open_neko_api(lua_State *L);
+void open_luasocket(lua_State *L);
 
 namespace neko::lua {
 void package_preload(lua_State *L);
@@ -55,16 +13,19 @@ void package_preload(lua_State *L);
 
 enum W_LUA_UPVALUES { NEKO_W_COMPONENTS_NAME = 1, NEKO_W_UPVAL_N };
 
-struct W_LUA_REGISTRY_NAME {
+struct W_LUA_REGISTRY_CONST {
+    static constexpr i32 W_CORE_IDX = 1;                             // neko_instance_t* index
     static constexpr const_str W_CORE = "__NEKO_W_CORE";             // neko_instance_t* reg
     static constexpr const_str ENG_UDATA_NAME = "__NEKO_ENGINE_UD";  // neko_instance_t* udata
     static constexpr const_str CVAR_MAP = "cvar_map";
+
+    static constexpr i32 CVAR_MAP_MAX = 64;
 };
 
 template <typename T>
 struct neko_w_lua_variant {
     enum { NATIVE, LUA } stype;
-    s32 type = LUA_TNONE;
+    i32 type = LUA_TNONE;
     String cname;
     union {
         bool boolean;
@@ -100,7 +61,7 @@ struct neko_w_lua_variant {
     template <typename C>
     neko_w_lua_variant &operator=(const C &value) {
         using TT = std::decay_t<C>;
-        if constexpr (std::is_same_v<TT, s32> || std::is_same_v<TT, u32> || std::is_same_v<TT, f32> || std::is_same_v<TT, f64>) {
+        if constexpr (std::is_same_v<TT, i32> || std::is_same_v<TT, u32> || std::is_same_v<TT, f32> || std::is_same_v<TT, f64>) {
             type = LUA_TNUMBER;
             data.number = static_cast<double>(value);
         } else if constexpr (std::is_same_v<TT, const_str>) {
@@ -132,7 +93,7 @@ struct neko_w_lua_variant {
                 lua_pushnumber(L, data.number);
                 break;
             case LUA_TSTRING: {
-                // String s = luax_check_string(L, arg);
+                // neko::string s = luax_check_string(L, arg);
                 // data.string = to_cstr(s);
                 lua_pushstring(L, data.str);
                 break;
@@ -145,10 +106,10 @@ struct neko_w_lua_variant {
 
         lua_State *L = ENGINE_LUA();
 
-        lua_getfield(L, LUA_REGISTRYINDEX, W_LUA_REGISTRY_NAME::W_CORE);   // # 1
+        lua_getfield(L, LUA_REGISTRYINDEX, W_LUA_REGISTRY_CONST::W_CORE);  // # 1
         lua_getiuservalue(L, -1, W_LUA_UPVALUES::NEKO_W_COMPONENTS_NAME);  // # 2
-        lua_getfield(L, -1, W_LUA_REGISTRY_NAME::CVAR_MAP);                // # 3
-        lua_pushinteger(L, neko_hash_str(cname.data));                     // 使用 32 位哈希以适应 Lua 数字范围
+        lua_getfield(L, -1, W_LUA_REGISTRY_CONST::CVAR_MAP);               // # 3
+        lua_pushinteger(L, neko_hash_str(cname.data));                          // 使用 32 位哈希以适应 Lua 数字范围
         lua_gettable(L, -2);                                               // # 4
 
         if (lua_istable(L, -1)) {
@@ -168,7 +129,7 @@ struct neko_w_lua_variant {
                     data.number = lua_tonumber(L, -1);
                     break;
                 case LUA_TSTRING: {
-                    // String s = luax_check_string(L, arg);
+                    // neko::string s = luax_check_string(L, arg);
                     // data.string = to_cstr(s);
                     data.str = lua_tostring(L, -1);
                     break;
@@ -194,7 +155,7 @@ struct neko_w_lua_variant {
         if (type == LUA_TNONE) {
             NEKO_WARN("trying to neko_w_lua_variant::get(%s) with LUA_TNONE", cname.data);
         }
-        if constexpr (std::is_same_v<TT, s32> || std::is_same_v<TT, u32> || std::is_same_v<TT, f32> || std::is_same_v<TT, f64>) {
+        if constexpr (std::is_same_v<TT, i32> || std::is_same_v<TT, u32> || std::is_same_v<TT, f32> || std::is_same_v<TT, f64>) {
             NEKO_ASSERT(type == LUA_TNUMBER);
             return data.number;
         } else if constexpr (std::is_same_v<TT, const_str>) {
@@ -213,11 +174,11 @@ struct neko_w_lua_variant {
 
         lua_State *L = ENGINE_LUA();
 
-        lua_getfield(L, LUA_REGISTRYINDEX, W_LUA_REGISTRY_NAME::W_CORE);  // # 1
+        lua_getfield(L, LUA_REGISTRYINDEX, W_LUA_REGISTRY_CONST::W_CORE);  // # 1
 
         lua_getiuservalue(L, -1, NEKO_W_COMPONENTS_NAME);  // # 2
         if (lua_istable(L, -1)) {
-            lua_getfield(L, -1, W_LUA_REGISTRY_NAME::CVAR_MAP);  // # 3
+            lua_getfield(L, -1, W_LUA_REGISTRY_CONST::CVAR_MAP);  // # 3
             if (lua_istable(L, -1)) {
                 lua_pushinteger(L, neko_hash_str(cname.data));  // 使用 32 位哈希以适应 Lua 数字范围
 
@@ -241,8 +202,8 @@ struct neko_w_lua_variant {
                     lua_setfield(L, -2, "data");
 
                     lua_pushinteger(L, neko_hash_str(cname.data));  // 重新推入键
-                    lua_pushvalue(L, -2);                           // 将新表复制到栈顶
-                    lua_settable(L, -4);                            // 将新表设置到 CVAR_MAP 中
+                    lua_pushvalue(L, -2);                      // 将新表复制到栈顶
+                    lua_settable(L, -4);                       // 将新表设置到 CVAR_MAP 中
                 }
 
                 lua_pop(L, 1);  // # pop 4
@@ -270,5 +231,3 @@ static_assert(std::is_trivially_copyable_v<neko_w_lua_variant<f64>>);
 #define CVAR_REF(name, T)              \
     neko_w_lua_variant<T> name(#name); \
     name.sync()
-
-#endif

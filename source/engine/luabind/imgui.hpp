@@ -1,6 +1,6 @@
 
-#include "engine/neko_imgui.hpp"
 #include "engine/neko_luabind.hpp"
+#include "engine/neko_ui.h"
 
 namespace neko::lua::__imgui::util {
 
@@ -7384,9 +7384,10 @@ bool field_toboolean(lua_State* L, int idx, lua_Integer i) {
 }
 
 ImTextureID get_texture_id(lua_State* L, int idx) {
-    neko_texture_t texture = NEKO_DEFAULT_VAL();
-    neko_luabind_struct_to_member(L, neko_texture_t, id, &texture, 1);
-    return reinterpret_cast<ImTextureID>(texture.id);
+    // neko_texture_t texture = NEKO_DEFAULT_VAL();
+    // neko_luabind_struct_to_member(L, neko_texture_t, id, &texture, 1);
+    // return reinterpret_cast<ImTextureID>(texture.id);
+    return 0;
 }
 
 const char* format(lua_State* L, int idx) {

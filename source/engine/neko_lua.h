@@ -2,7 +2,13 @@
 #ifndef NEKO_LUA_H
 #define NEKO_LUA_H
 
-#include "engine/neko.h"
+#include <atomic>
+#include <initializer_list>
+
+#include "engine/deps/luaalloc.h"
+#include "neko_base.h"
+#include "neko_os.h"
+#include "neko_prelude.h"
 
 // lua
 #ifdef __cplusplus
@@ -20,8 +26,8 @@ extern "C" {
 
 #define NEKO_LUA_AUTO_REGISTER_PREFIX "neko_luabind_"
 
-NEKO_API_DECL void __neko_luabind_init(lua_State *L);
-NEKO_API_DECL void __neko_luabind_fini(lua_State *L);
+void __neko_luabind_init(lua_State *L);
+void __neko_luabind_fini(lua_State *L);
 
 #define neko_luabind_type(L, type) neko_luabind_type_add(L, #type, sizeof(type))
 
@@ -31,11 +37,11 @@ typedef lua_Integer neko_luabind_Type;
 typedef int (*neko_luabind_Pushfunc)(lua_State *, neko_luabind_Type, const void *);
 typedef void (*neko_luabind_Tofunc)(lua_State *, neko_luabind_Type, void *, int);
 
-NEKO_API_DECL neko_luabind_Type neko_luabind_type_add(lua_State *L, const char *type, size_t size);
-NEKO_API_DECL neko_luabind_Type neko_luabind_type_find(lua_State *L, const char *type);
+neko_luabind_Type neko_luabind_type_add(lua_State *L, const char *type, size_t size);
+neko_luabind_Type neko_luabind_type_find(lua_State *L, const char *type);
 
-NEKO_API_DECL const char *neko_luabind_typename(lua_State *L, neko_luabind_Type id);
-NEKO_API_DECL size_t neko_luabind_typesize(lua_State *L, neko_luabind_Type id);
+const char *neko_luabind_typename(lua_State *L, neko_luabind_Type id);
+size_t neko_luabind_typesize(lua_State *L, neko_luabind_Type id);
 
 #define neko_luabind_push(L, type, c_in) neko_luabind_push_type(L, neko_luabind_type(L, type), c_in)
 #define neko_luabind_to(L, type, c_out, index) neko_luabind_to_type(L, neko_luabind_type(L, type), c_out, index)
@@ -48,55 +54,55 @@ NEKO_API_DECL size_t neko_luabind_typesize(lua_State *L, neko_luabind_Type id);
 #define neko_luabind_conversion_push_registered(L, type) neko_luabind_conversion_push_registered_typ(L, neko_luabind_type(L, type));
 #define neko_luabind_conversion_to_registered(L, type) neko_luabind_conversion_to_registered_type(L, neko_luabind_type(L, type));
 
-NEKO_API_DECL int neko_luabind_push_type(lua_State *L, neko_luabind_Type type, const void *c_in);
-NEKO_API_DECL void neko_luabind_to_type(lua_State *L, neko_luabind_Type type, void *c_out, int index);
+int neko_luabind_push_type(lua_State *L, neko_luabind_Type type, const void *c_in);
+void neko_luabind_to_type(lua_State *L, neko_luabind_Type type, void *c_out, int index);
 
-NEKO_API_DECL void neko_luabind_conversion_type(lua_State *L, neko_luabind_Type type_id, neko_luabind_Pushfunc push_func, neko_luabind_Tofunc to_func);
-NEKO_API_DECL void neko_luabind_conversion_push_type(lua_State *L, neko_luabind_Type type_id, neko_luabind_Pushfunc func);
-NEKO_API_DECL void neko_luabind_conversion_to_type(lua_State *L, neko_luabind_Type type_id, neko_luabind_Tofunc func);
+void neko_luabind_conversion_type(lua_State *L, neko_luabind_Type type_id, neko_luabind_Pushfunc push_func, neko_luabind_Tofunc to_func);
+void neko_luabind_conversion_push_type(lua_State *L, neko_luabind_Type type_id, neko_luabind_Pushfunc func);
+void neko_luabind_conversion_to_type(lua_State *L, neko_luabind_Type type_id, neko_luabind_Tofunc func);
 
-NEKO_API_DECL bool neko_luabind_conversion_registered_type(lua_State *L, neko_luabind_Type type);
-NEKO_API_DECL bool neko_luabind_conversion_push_registered_type(lua_State *L, neko_luabind_Type type);
-NEKO_API_DECL bool neko_luabind_conversion_to_registered_type(lua_State *L, neko_luabind_Type type);
+bool neko_luabind_conversion_registered_type(lua_State *L, neko_luabind_Type type);
+bool neko_luabind_conversion_push_registered_type(lua_State *L, neko_luabind_Type type);
+bool neko_luabind_conversion_to_registered_type(lua_State *L, neko_luabind_Type type);
 
-NEKO_API_DECL int neko_luabind_push_bool(lua_State *L, neko_luabind_Type, const void *c_in);
-NEKO_API_DECL int neko_luabind_push_char(lua_State *L, neko_luabind_Type, const void *c_in);
-NEKO_API_DECL int neko_luabind_push_signed_char(lua_State *L, neko_luabind_Type, const void *c_in);
-NEKO_API_DECL int neko_luabind_push_unsigned_char(lua_State *L, neko_luabind_Type, const void *c_in);
-NEKO_API_DECL int neko_luabind_push_short(lua_State *L, neko_luabind_Type, const void *c_in);
-NEKO_API_DECL int neko_luabind_push_unsigned_short(lua_State *L, neko_luabind_Type, const void *c_in);
-NEKO_API_DECL int neko_luabind_push_int(lua_State *L, neko_luabind_Type, const void *c_in);
-NEKO_API_DECL int neko_luabind_push_unsigned_int(lua_State *L, neko_luabind_Type, const void *c_in);
-NEKO_API_DECL int neko_luabind_push_long(lua_State *L, neko_luabind_Type, const void *c_in);
-NEKO_API_DECL int neko_luabind_push_unsigned_long(lua_State *L, neko_luabind_Type, const void *c_in);
-NEKO_API_DECL int neko_luabind_push_long_long(lua_State *L, neko_luabind_Type, const void *c_in);
-NEKO_API_DECL int neko_luabind_push_unsigned_long_long(lua_State *L, neko_luabind_Type, const void *c_in);
-NEKO_API_DECL int neko_luabind_push_float(lua_State *L, neko_luabind_Type, const void *c_in);
-NEKO_API_DECL int neko_luabind_push_double(lua_State *L, neko_luabind_Type, const void *c_in);
-NEKO_API_DECL int neko_luabind_push_long_double(lua_State *L, neko_luabind_Type, const void *c_in);
-NEKO_API_DECL int neko_luabind_push_char_ptr(lua_State *L, neko_luabind_Type, const void *c_in);
-NEKO_API_DECL int neko_luabind_push_const_char_ptr(lua_State *L, neko_luabind_Type, const void *c_in);
-NEKO_API_DECL int neko_luabind_push_void_ptr(lua_State *L, neko_luabind_Type, const void *c_in);
-NEKO_API_DECL int neko_luabind_push_void(lua_State *L, neko_luabind_Type, const void *c_in);
+int neko_luabind_push_bool(lua_State *L, neko_luabind_Type, const void *c_in);
+int neko_luabind_push_char(lua_State *L, neko_luabind_Type, const void *c_in);
+int neko_luabind_push_signed_char(lua_State *L, neko_luabind_Type, const void *c_in);
+int neko_luabind_push_unsigned_char(lua_State *L, neko_luabind_Type, const void *c_in);
+int neko_luabind_push_short(lua_State *L, neko_luabind_Type, const void *c_in);
+int neko_luabind_push_unsigned_short(lua_State *L, neko_luabind_Type, const void *c_in);
+int neko_luabind_push_int(lua_State *L, neko_luabind_Type, const void *c_in);
+int neko_luabind_push_unsigned_int(lua_State *L, neko_luabind_Type, const void *c_in);
+int neko_luabind_push_long(lua_State *L, neko_luabind_Type, const void *c_in);
+int neko_luabind_push_unsigned_long(lua_State *L, neko_luabind_Type, const void *c_in);
+int neko_luabind_push_long_long(lua_State *L, neko_luabind_Type, const void *c_in);
+int neko_luabind_push_unsigned_long_long(lua_State *L, neko_luabind_Type, const void *c_in);
+int neko_luabind_push_float(lua_State *L, neko_luabind_Type, const void *c_in);
+int neko_luabind_push_double(lua_State *L, neko_luabind_Type, const void *c_in);
+int neko_luabind_push_long_double(lua_State *L, neko_luabind_Type, const void *c_in);
+int neko_luabind_push_char_ptr(lua_State *L, neko_luabind_Type, const void *c_in);
+int neko_luabind_push_const_char_ptr(lua_State *L, neko_luabind_Type, const void *c_in);
+int neko_luabind_push_void_ptr(lua_State *L, neko_luabind_Type, const void *c_in);
+int neko_luabind_push_void(lua_State *L, neko_luabind_Type, const void *c_in);
 
-NEKO_API_DECL void neko_luabind_to_bool(lua_State *L, neko_luabind_Type, void *c_out, int index);
-NEKO_API_DECL void neko_luabind_to_char(lua_State *L, neko_luabind_Type, void *c_out, int index);
-NEKO_API_DECL void neko_luabind_to_signed_char(lua_State *L, neko_luabind_Type, void *c_out, int index);
-NEKO_API_DECL void neko_luabind_to_unsigned_char(lua_State *L, neko_luabind_Type, void *c_out, int index);
-NEKO_API_DECL void neko_luabind_to_short(lua_State *L, neko_luabind_Type, void *c_out, int index);
-NEKO_API_DECL void neko_luabind_to_unsigned_short(lua_State *L, neko_luabind_Type, void *c_out, int index);
-NEKO_API_DECL void neko_luabind_to_int(lua_State *L, neko_luabind_Type, void *c_out, int index);
-NEKO_API_DECL void neko_luabind_to_unsigned_int(lua_State *L, neko_luabind_Type, void *c_out, int index);
-NEKO_API_DECL void neko_luabind_to_long(lua_State *L, neko_luabind_Type, void *c_out, int index);
-NEKO_API_DECL void neko_luabind_to_unsigned_long(lua_State *L, neko_luabind_Type, void *c_out, int index);
-NEKO_API_DECL void neko_luabind_to_long_long(lua_State *L, neko_luabind_Type, void *c_out, int index);
-NEKO_API_DECL void neko_luabind_to_unsigned_long_long(lua_State *L, neko_luabind_Type, void *c_out, int index);
-NEKO_API_DECL void neko_luabind_to_float(lua_State *L, neko_luabind_Type, void *c_out, int index);
-NEKO_API_DECL void neko_luabind_to_double(lua_State *L, neko_luabind_Type, void *c_out, int index);
-NEKO_API_DECL void neko_luabind_to_long_double(lua_State *L, neko_luabind_Type, void *c_out, int index);
-NEKO_API_DECL void neko_luabind_to_char_ptr(lua_State *L, neko_luabind_Type, void *c_out, int index);
-NEKO_API_DECL void neko_luabind_to_const_char_ptr(lua_State *L, neko_luabind_Type, void *c_out, int index);
-NEKO_API_DECL void neko_luabind_to_void_ptr(lua_State *L, neko_luabind_Type, void *c_out, int index);
+void neko_luabind_to_bool(lua_State *L, neko_luabind_Type, void *c_out, int index);
+void neko_luabind_to_char(lua_State *L, neko_luabind_Type, void *c_out, int index);
+void neko_luabind_to_signed_char(lua_State *L, neko_luabind_Type, void *c_out, int index);
+void neko_luabind_to_unsigned_char(lua_State *L, neko_luabind_Type, void *c_out, int index);
+void neko_luabind_to_short(lua_State *L, neko_luabind_Type, void *c_out, int index);
+void neko_luabind_to_unsigned_short(lua_State *L, neko_luabind_Type, void *c_out, int index);
+void neko_luabind_to_int(lua_State *L, neko_luabind_Type, void *c_out, int index);
+void neko_luabind_to_unsigned_int(lua_State *L, neko_luabind_Type, void *c_out, int index);
+void neko_luabind_to_long(lua_State *L, neko_luabind_Type, void *c_out, int index);
+void neko_luabind_to_unsigned_long(lua_State *L, neko_luabind_Type, void *c_out, int index);
+void neko_luabind_to_long_long(lua_State *L, neko_luabind_Type, void *c_out, int index);
+void neko_luabind_to_unsigned_long_long(lua_State *L, neko_luabind_Type, void *c_out, int index);
+void neko_luabind_to_float(lua_State *L, neko_luabind_Type, void *c_out, int index);
+void neko_luabind_to_double(lua_State *L, neko_luabind_Type, void *c_out, int index);
+void neko_luabind_to_long_double(lua_State *L, neko_luabind_Type, void *c_out, int index);
+void neko_luabind_to_char_ptr(lua_State *L, neko_luabind_Type, void *c_out, int index);
+void neko_luabind_to_const_char_ptr(lua_State *L, neko_luabind_Type, void *c_out, int index);
+void neko_luabind_to_void_ptr(lua_State *L, neko_luabind_Type, void *c_out, int index);
 
 /*
 ** Structs
@@ -123,26 +129,26 @@ NEKO_API_DECL void neko_luabind_to_void_ptr(lua_State *L, neko_luabind_Type, voi
 #define neko_luabind_struct_registered(L, type) neko_luabind_struct_registered_type(L, neko_luabind_type(L, type))
 #define neko_luabind_struct_next_member_name(L, type, member) neko_luabind_struct_next_member_name_type(L, neko_luabind_type(L, type), member)
 
-NEKO_API_DECL void neko_luabind_struct_type(lua_State *L, neko_luabind_Type type);
-NEKO_API_DECL void neko_luabind_struct_member_type(lua_State *L, neko_luabind_Type type, const char *member, neko_luabind_Type member_type, size_t offset);
+void neko_luabind_struct_type(lua_State *L, neko_luabind_Type type);
+void neko_luabind_struct_member_type(lua_State *L, neko_luabind_Type type, const char *member, neko_luabind_Type member_type, size_t offset);
 
-NEKO_API_DECL int neko_luabind_struct_push_type(lua_State *L, neko_luabind_Type type, const void *c_in);
-NEKO_API_DECL int neko_luabind_struct_push_member_offset_type(lua_State *L, neko_luabind_Type type, size_t offset, const void *c_in);
-NEKO_API_DECL int neko_luabind_struct_push_member_name_type(lua_State *L, neko_luabind_Type type, const char *member, const void *c_in);
+int neko_luabind_struct_push_type(lua_State *L, neko_luabind_Type type, const void *c_in);
+int neko_luabind_struct_push_member_offset_type(lua_State *L, neko_luabind_Type type, size_t offset, const void *c_in);
+int neko_luabind_struct_push_member_name_type(lua_State *L, neko_luabind_Type type, const char *member, const void *c_in);
 
-NEKO_API_DECL void neko_luabind_struct_to_type(lua_State *L, neko_luabind_Type type, void *c_out, int index);
-NEKO_API_DECL void neko_luabind_struct_to_member_offset_type(lua_State *L, neko_luabind_Type type, size_t offset, void *c_out, int index);
-NEKO_API_DECL void neko_luabind_struct_to_member_name_type(lua_State *L, neko_luabind_Type type, const char *member, void *c_out, int index);
+void neko_luabind_struct_to_type(lua_State *L, neko_luabind_Type type, void *c_out, int index);
+void neko_luabind_struct_to_member_offset_type(lua_State *L, neko_luabind_Type type, size_t offset, void *c_out, int index);
+void neko_luabind_struct_to_member_name_type(lua_State *L, neko_luabind_Type type, const char *member, void *c_out, int index);
 
-NEKO_API_DECL bool neko_luabind_struct_has_member_offset_type(lua_State *L, neko_luabind_Type type, size_t offset);
-NEKO_API_DECL bool neko_luabind_struct_has_member_name_type(lua_State *L, neko_luabind_Type type, const char *member);
+bool neko_luabind_struct_has_member_offset_type(lua_State *L, neko_luabind_Type type, size_t offset);
+bool neko_luabind_struct_has_member_name_type(lua_State *L, neko_luabind_Type type, const char *member);
 
-NEKO_API_DECL neko_luabind_Type neko_luabind_struct_typeof_member_offset_type(lua_State *L, neko_luabind_Type type, size_t offset);
-NEKO_API_DECL neko_luabind_Type neko_luabind_struct_typeof_member_name_type(lua_State *L, neko_luabind_Type type, const char *member);
+neko_luabind_Type neko_luabind_struct_typeof_member_offset_type(lua_State *L, neko_luabind_Type type, size_t offset);
+neko_luabind_Type neko_luabind_struct_typeof_member_name_type(lua_State *L, neko_luabind_Type type, const char *member);
 
-NEKO_API_DECL bool neko_luabind_struct_registered_type(lua_State *L, neko_luabind_Type type);
+bool neko_luabind_struct_registered_type(lua_State *L, neko_luabind_Type type);
 
-NEKO_API_DECL const char *neko_luabind_struct_next_member_name_type(lua_State *L, neko_luabind_Type type, const char *member);
+const char *neko_luabind_struct_next_member_name_type(lua_State *L, neko_luabind_Type type, const char *member);
 
 #define neko_luabind_enum(L, type) neko_luabind_enum_type(L, neko_luabind_type(L, type), sizeof(type))
 
@@ -166,17 +172,17 @@ NEKO_API_DECL const char *neko_luabind_struct_next_member_name_type(lua_State *L
 #define neko_luabind_enum_registered(L, type) neko_luabind_enum_registered_type(L, neko_luabind_type(L, type))
 #define neko_luabind_enum_next_value_name(L, type, member) neko_luabind_enum_next_value_name_type(L, neko_luabind_type(L, type), member)
 
-NEKO_API_DECL void neko_luabind_enum_type(lua_State *L, neko_luabind_Type type, size_t size);
-NEKO_API_DECL void neko_luabind_enum_value_type(lua_State *L, neko_luabind_Type type, const void *value, const char *name);
+void neko_luabind_enum_type(lua_State *L, neko_luabind_Type type, size_t size);
+void neko_luabind_enum_value_type(lua_State *L, neko_luabind_Type type, const void *value, const char *name);
 
-NEKO_API_DECL int neko_luabind_enum_push_type(lua_State *L, neko_luabind_Type type, const void *c_in);
-NEKO_API_DECL void neko_luabind_enum_to_type(lua_State *L, neko_luabind_Type type, void *c_out, int index);
+int neko_luabind_enum_push_type(lua_State *L, neko_luabind_Type type, const void *c_in);
+void neko_luabind_enum_to_type(lua_State *L, neko_luabind_Type type, void *c_out, int index);
 
-NEKO_API_DECL bool neko_luabind_enum_has_value_type(lua_State *L, neko_luabind_Type type, const void *value);
-NEKO_API_DECL bool neko_luabind_enum_has_name_type(lua_State *L, neko_luabind_Type type, const char *name);
+bool neko_luabind_enum_has_value_type(lua_State *L, neko_luabind_Type type, const void *value);
+bool neko_luabind_enum_has_name_type(lua_State *L, neko_luabind_Type type, const char *name);
 
-NEKO_API_DECL bool neko_luabind_enum_registered_type(lua_State *L, neko_luabind_Type type);
-NEKO_API_DECL const char *neko_luabind_enum_next_value_name_type(lua_State *L, neko_luabind_Type type, const char *member);
+bool neko_luabind_enum_registered_type(lua_State *L, neko_luabind_Type type);
+const char *neko_luabind_enum_next_value_name_type(lua_State *L, neko_luabind_Type type, const char *member);
 
 /*
 ** Functions
@@ -488,13 +494,13 @@ void neko_luabind_function_register_type(lua_State *L, void *src_func, neko_luab
         lua_setglobal(L, FUNCTIONS[i].name);                      \
     }
 
-NEKO_API_DECL bool neko_lua_equal(lua_State *state, int index1, int index2);
+bool neko_lua_equal(lua_State *state, int index1, int index2);
 
-NEKO_API_DECL int neko_lua_preload(lua_State *L, lua_CFunction f, const char *name);
-NEKO_API_DECL int neko_lua_preload_auto(lua_State *L, lua_CFunction f, const char *name);
-NEKO_API_DECL void neko_lua_load(lua_State *L, const luaL_Reg *l, const char *name);
-NEKO_API_DECL void neko_lua_loadover(lua_State *L, const luaL_Reg *l, const char *name);
-NEKO_API_DECL int neko_lua_get_table_pairs_count(lua_State *L, int index);
+int neko_lua_preload(lua_State *L, lua_CFunction f, const char *name);
+int neko_lua_preload_auto(lua_State *L, lua_CFunction f, const char *name);
+void neko_lua_load(lua_State *L, const luaL_Reg *l, const char *name);
+void neko_lua_loadover(lua_State *L, const luaL_Reg *l, const char *name);
+int neko_lua_get_table_pairs_count(lua_State *L, int index);
 
 #define LUASTRUCT_REQUIRED 1
 #define LUASTRUCT_OPTIONAL 0
@@ -509,10 +515,10 @@ NEKO_API_DECL int neko_lua_get_table_pairs_count(lua_State *L, int index);
         *CHECK_STRUCT(L, -1, type) = (value);  \
     } while (0)
 
-NEKO_API_DECL int LUASTRUCT_new(lua_State *L, const char *metatable, size_t size);
-NEKO_API_DECL int LUASTRUCT_newref(lua_State *L, const char *metatable, int parentIndex, const void *data);
-NEKO_API_DECL int LUASTRUCT_is(lua_State *L, const char *metatable, int index);
-NEKO_API_DECL void *LUASTRUCT_todata(lua_State *L, const char *metatable, int index, int required);
+int LUASTRUCT_new(lua_State *L, const char *metatable, size_t size);
+int LUASTRUCT_newref(lua_State *L, const char *metatable, int parentIndex, const void *data);
+int LUASTRUCT_is(lua_State *L, const char *metatable, int index);
+void *LUASTRUCT_todata(lua_State *L, const char *metatable, int index, int required);
 
 #define PRELOAD(name, function)     \
     lua_getglobal(L, "package");    \
@@ -555,83 +561,83 @@ typedef struct neko_tolua_Error neko_tolua_Error;
 
 #define TOLUA_NOPEER LUA_REGISTRYINDEX /* for lua 5.1 */
 
-NEKO_API_DECL const char *neko_tolua_typename(lua_State *L, int lo);
-NEKO_API_DECL void neko_tolua_error(lua_State *L, const char *msg, neko_tolua_Error *err);
-NEKO_API_DECL int neko_tolua_isnoobj(lua_State *L, int lo, neko_tolua_Error *err);
-NEKO_API_DECL int neko_tolua_isvalue(lua_State *L, int lo, int def, neko_tolua_Error *err);
-NEKO_API_DECL int neko_tolua_isvaluenil(lua_State *L, int lo, neko_tolua_Error *err);
-NEKO_API_DECL int neko_tolua_isboolean(lua_State *L, int lo, int def, neko_tolua_Error *err);
-NEKO_API_DECL int neko_tolua_isnumber(lua_State *L, int lo, int def, neko_tolua_Error *err);
-NEKO_API_DECL int neko_tolua_isinteger(lua_State *L, int lo, int def, neko_tolua_Error *err);
-NEKO_API_DECL int neko_tolua_isstring(lua_State *L, int lo, int def, neko_tolua_Error *err);
-NEKO_API_DECL int neko_tolua_istable(lua_State *L, int lo, int def, neko_tolua_Error *err);
-NEKO_API_DECL int neko_tolua_isusertable(lua_State *L, int lo, const char *type, int def, neko_tolua_Error *err);
-NEKO_API_DECL int neko_tolua_isuserdata(lua_State *L, int lo, int def, neko_tolua_Error *err);
-NEKO_API_DECL int neko_tolua_isusertype(lua_State *L, int lo, const char *type, int def, neko_tolua_Error *err);
-NEKO_API_DECL int neko_tolua_isvaluearray(lua_State *L, int lo, int dim, int def, neko_tolua_Error *err);
-NEKO_API_DECL int neko_tolua_isbooleanarray(lua_State *L, int lo, int dim, int def, neko_tolua_Error *err);
-NEKO_API_DECL int neko_tolua_isnumberarray(lua_State *L, int lo, int dim, int def, neko_tolua_Error *err);
-NEKO_API_DECL int neko_tolua_isintegerarray(lua_State *L, int lo, int dim, int def, neko_tolua_Error *err);
-NEKO_API_DECL int neko_tolua_isstringarray(lua_State *L, int lo, int dim, int def, neko_tolua_Error *err);
-NEKO_API_DECL int neko_tolua_istablearray(lua_State *L, int lo, int dim, int def, neko_tolua_Error *err);
-NEKO_API_DECL int neko_tolua_isuserdataarray(lua_State *L, int lo, int dim, int def, neko_tolua_Error *err);
-NEKO_API_DECL int neko_tolua_isusertypearray(lua_State *L, int lo, const char *type, int dim, int def, neko_tolua_Error *err);
+const char *neko_tolua_typename(lua_State *L, int lo);
+void neko_tolua_error(lua_State *L, const char *msg, neko_tolua_Error *err);
+int neko_tolua_isnoobj(lua_State *L, int lo, neko_tolua_Error *err);
+int neko_tolua_isvalue(lua_State *L, int lo, int def, neko_tolua_Error *err);
+int neko_tolua_isvaluenil(lua_State *L, int lo, neko_tolua_Error *err);
+int neko_tolua_isboolean(lua_State *L, int lo, int def, neko_tolua_Error *err);
+int neko_tolua_isnumber(lua_State *L, int lo, int def, neko_tolua_Error *err);
+int neko_tolua_isinteger(lua_State *L, int lo, int def, neko_tolua_Error *err);
+int neko_tolua_isstring(lua_State *L, int lo, int def, neko_tolua_Error *err);
+int neko_tolua_istable(lua_State *L, int lo, int def, neko_tolua_Error *err);
+int neko_tolua_isusertable(lua_State *L, int lo, const char *type, int def, neko_tolua_Error *err);
+int neko_tolua_isuserdata(lua_State *L, int lo, int def, neko_tolua_Error *err);
+int neko_tolua_isusertype(lua_State *L, int lo, const char *type, int def, neko_tolua_Error *err);
+int neko_tolua_isvaluearray(lua_State *L, int lo, int dim, int def, neko_tolua_Error *err);
+int neko_tolua_isbooleanarray(lua_State *L, int lo, int dim, int def, neko_tolua_Error *err);
+int neko_tolua_isnumberarray(lua_State *L, int lo, int dim, int def, neko_tolua_Error *err);
+int neko_tolua_isintegerarray(lua_State *L, int lo, int dim, int def, neko_tolua_Error *err);
+int neko_tolua_isstringarray(lua_State *L, int lo, int dim, int def, neko_tolua_Error *err);
+int neko_tolua_istablearray(lua_State *L, int lo, int dim, int def, neko_tolua_Error *err);
+int neko_tolua_isuserdataarray(lua_State *L, int lo, int dim, int def, neko_tolua_Error *err);
+int neko_tolua_isusertypearray(lua_State *L, int lo, const char *type, int dim, int def, neko_tolua_Error *err);
 
-NEKO_API_DECL void neko_tolua_open(lua_State *L);
+void neko_tolua_open(lua_State *L);
 
-NEKO_API_DECL void *neko_tolua_copy(lua_State *L, void *value, unsigned int size);
-NEKO_API_DECL int neko_tolua_register_gc(lua_State *L, int lo);
-NEKO_API_DECL int neko_tolua_default_collect(lua_State *L);
+void *neko_tolua_copy(lua_State *L, void *value, unsigned int size);
+int neko_tolua_register_gc(lua_State *L, int lo);
+int neko_tolua_default_collect(lua_State *L);
 
-NEKO_API_DECL void neko_tolua_usertype(lua_State *L, const char *type);
-NEKO_API_DECL void neko_tolua_beginmodule(lua_State *L, const char *name);
-NEKO_API_DECL void neko_tolua_endmodule(lua_State *L);
-NEKO_API_DECL void neko_tolua_module(lua_State *L, const char *name, int hasvar);
-NEKO_API_DECL void neko_tolua_class(lua_State *L, const char *name, const char *base);
-NEKO_API_DECL void neko_tolua_cclass(lua_State *L, const char *lname, const char *name, const char *base, lua_CFunction col);
-NEKO_API_DECL void neko_tolua_function(lua_State *L, const char *name, lua_CFunction func);
-NEKO_API_DECL void neko_tolua_constant(lua_State *L, const char *name, lua_Number value);
-NEKO_API_DECL void neko_tolua_variable(lua_State *L, const char *name, lua_CFunction get, lua_CFunction set);
-NEKO_API_DECL void neko_tolua_array(lua_State *L, const char *name, lua_CFunction get, lua_CFunction set);
+void neko_tolua_usertype(lua_State *L, const char *type);
+void neko_tolua_beginmodule(lua_State *L, const char *name);
+void neko_tolua_endmodule(lua_State *L);
+void neko_tolua_module(lua_State *L, const char *name, int hasvar);
+void neko_tolua_class(lua_State *L, const char *name, const char *base);
+void neko_tolua_cclass(lua_State *L, const char *lname, const char *name, const char *base, lua_CFunction col);
+void neko_tolua_function(lua_State *L, const char *name, lua_CFunction func);
+void neko_tolua_constant(lua_State *L, const char *name, lua_Number value);
+void neko_tolua_variable(lua_State *L, const char *name, lua_CFunction get, lua_CFunction set);
+void neko_tolua_array(lua_State *L, const char *name, lua_CFunction get, lua_CFunction set);
 
-/* NEKO_API_DECL void neko_tolua_set_call_event(lua_State* L, lua_CFunction func, char* type); */
-/* NEKO_API_DECL void neko_tolua_addbase(lua_State* L, char* name, char* base); */
+/*  void neko_tolua_set_call_event(lua_State* L, lua_CFunction func, char* type); */
+/*  void neko_tolua_addbase(lua_State* L, char* name, char* base); */
 
-NEKO_API_DECL void neko_tolua_pushvalue(lua_State *L, int lo);
-NEKO_API_DECL void neko_tolua_pushboolean(lua_State *L, int value);
-NEKO_API_DECL void neko_tolua_pushnumber(lua_State *L, lua_Number value);
-NEKO_API_DECL void neko_tolua_pushinteger(lua_State *L, lua_Integer value);
-NEKO_API_DECL void neko_tolua_pushstring(lua_State *L, const char *value);
-NEKO_API_DECL void neko_tolua_pushuserdata(lua_State *L, void *value);
-NEKO_API_DECL void neko_tolua_pushusertype(lua_State *L, void *value, const char *type);
-NEKO_API_DECL void neko_tolua_pushusertype_and_takeownership(lua_State *L, void *value, const char *type);
-NEKO_API_DECL void neko_tolua_pushfieldvalue(lua_State *L, int lo, int index, int v);
-NEKO_API_DECL void neko_tolua_pushfieldboolean(lua_State *L, int lo, int index, int v);
-NEKO_API_DECL void neko_tolua_pushfieldnumber(lua_State *L, int lo, int index, lua_Number v);
-NEKO_API_DECL void neko_tolua_pushfieldinteger(lua_State *L, int lo, int index, lua_Integer v);
-NEKO_API_DECL void neko_tolua_pushfieldstring(lua_State *L, int lo, int index, const char *v);
-NEKO_API_DECL void neko_tolua_pushfielduserdata(lua_State *L, int lo, int index, void *v);
-NEKO_API_DECL void neko_tolua_pushfieldusertype(lua_State *L, int lo, int index, void *v, const char *type);
-NEKO_API_DECL void neko_tolua_pushfieldusertype_and_takeownership(lua_State *L, int lo, int index, void *v, const char *type);
+void neko_tolua_pushvalue(lua_State *L, int lo);
+void neko_tolua_pushboolean(lua_State *L, int value);
+void neko_tolua_pushnumber(lua_State *L, lua_Number value);
+void neko_tolua_pushinteger(lua_State *L, lua_Integer value);
+void neko_tolua_pushstring(lua_State *L, const char *value);
+void neko_tolua_pushuserdata(lua_State *L, void *value);
+void neko_tolua_pushusertype(lua_State *L, void *value, const char *type);
+void neko_tolua_pushusertype_and_takeownership(lua_State *L, void *value, const char *type);
+void neko_tolua_pushfieldvalue(lua_State *L, int lo, int index, int v);
+void neko_tolua_pushfieldboolean(lua_State *L, int lo, int index, int v);
+void neko_tolua_pushfieldnumber(lua_State *L, int lo, int index, lua_Number v);
+void neko_tolua_pushfieldinteger(lua_State *L, int lo, int index, lua_Integer v);
+void neko_tolua_pushfieldstring(lua_State *L, int lo, int index, const char *v);
+void neko_tolua_pushfielduserdata(lua_State *L, int lo, int index, void *v);
+void neko_tolua_pushfieldusertype(lua_State *L, int lo, int index, void *v, const char *type);
+void neko_tolua_pushfieldusertype_and_takeownership(lua_State *L, int lo, int index, void *v, const char *type);
 
-NEKO_API_DECL lua_Number neko_tolua_tonumber(lua_State *L, int narg, lua_Number def);
-NEKO_API_DECL lua_Integer neko_tolua_tointeger(lua_State *L, int narg, lua_Integer def);
-NEKO_API_DECL const char *neko_tolua_tostring(lua_State *L, int narg, const char *def);
-NEKO_API_DECL void *neko_tolua_touserdata(lua_State *L, int narg, void *def);
-NEKO_API_DECL void *neko_tolua_tousertype(lua_State *L, int narg, void *def);
-NEKO_API_DECL int neko_tolua_tovalue(lua_State *L, int narg, int def);
-NEKO_API_DECL int neko_tolua_toboolean(lua_State *L, int narg, int def);
-NEKO_API_DECL lua_Number neko_tolua_tofieldnumber(lua_State *L, int lo, int index, lua_Number def);
-NEKO_API_DECL lua_Integer neko_tolua_tofieldinteger(lua_State *L, int lo, int index, lua_Integer def);
-NEKO_API_DECL const char *neko_tolua_tofieldstring(lua_State *L, int lo, int index, const char *def);
-NEKO_API_DECL void *neko_tolua_tofielduserdata(lua_State *L, int lo, int index, void *def);
-NEKO_API_DECL void *neko_tolua_tofieldusertype(lua_State *L, int lo, int index, void *def);
-NEKO_API_DECL int neko_tolua_tofieldvalue(lua_State *L, int lo, int index, int def);
-NEKO_API_DECL int neko_tolua_getfieldboolean(lua_State *L, int lo, int index, int def);
+lua_Number neko_tolua_tonumber(lua_State *L, int narg, lua_Number def);
+lua_Integer neko_tolua_tointeger(lua_State *L, int narg, lua_Integer def);
+const char *neko_tolua_tostring(lua_State *L, int narg, const char *def);
+void *neko_tolua_touserdata(lua_State *L, int narg, void *def);
+void *neko_tolua_tousertype(lua_State *L, int narg, void *def);
+int neko_tolua_tovalue(lua_State *L, int narg, int def);
+int neko_tolua_toboolean(lua_State *L, int narg, int def);
+lua_Number neko_tolua_tofieldnumber(lua_State *L, int lo, int index, lua_Number def);
+lua_Integer neko_tolua_tofieldinteger(lua_State *L, int lo, int index, lua_Integer def);
+const char *neko_tolua_tofieldstring(lua_State *L, int lo, int index, const char *def);
+void *neko_tolua_tofielduserdata(lua_State *L, int lo, int index, void *def);
+void *neko_tolua_tofieldusertype(lua_State *L, int lo, int index, void *def);
+int neko_tolua_tofieldvalue(lua_State *L, int lo, int index, int def);
+int neko_tolua_getfieldboolean(lua_State *L, int lo, int index, int def);
 
-NEKO_API_DECL void neko_tolua_dobuffer(lua_State *L, char *B, unsigned int size, const char *name);
+void neko_tolua_dobuffer(lua_State *L, char *B, unsigned int size, const char *name);
 
-NEKO_API_DECL int class_gc_event(lua_State *L);
+int class_gc_event(lua_State *L);
 
 #ifdef __cplusplus
 static inline const char *neko_tolua_tocppstring(lua_State *L, int narg, const char *def) {
@@ -648,7 +654,7 @@ static inline const char *neko_tolua_tofieldcppstring(lua_State *L, int lo, int 
 #define neko_tolua_tofieldcppstring neko_tolua_tofieldstring
 #endif
 
-NEKO_API_DECL int neko_tolua_fast_isa(lua_State *L, int mt_indexa, int mt_indexb, int super_index);
+int neko_tolua_fast_isa(lua_State *L, int mt_indexa, int mt_indexb, int super_index);
 
 #ifndef Mneko_tolua_new
 #define Mneko_tolua_new(EXP) new EXP
@@ -1076,10 +1082,10 @@ struct __lua_op_t<cpp_void_t> {
         }                                                                       \
     }
 
-XX_TYPE(s8, lua_isnumber, luaL_checkinteger, lua_tointeger, lua_pushinteger);
-XX_TYPE(s16, lua_isnumber, luaL_checkinteger, lua_tointeger, lua_pushinteger);
-XX_TYPE(s32, lua_isnumber, luaL_checkinteger, lua_tointeger, lua_pushinteger);
-XX_TYPE(s64, lua_isnumber, luaL_checkinteger, lua_tointeger, lua_pushinteger);
+XX_TYPE(i8, lua_isnumber, luaL_checkinteger, lua_tointeger, lua_pushinteger);
+XX_TYPE(i16, lua_isnumber, luaL_checkinteger, lua_tointeger, lua_pushinteger);
+XX_TYPE(i32, lua_isnumber, luaL_checkinteger, lua_tointeger, lua_pushinteger);
+XX_TYPE(i64, lua_isnumber, luaL_checkinteger, lua_tointeger, lua_pushinteger);
 XX_TYPE(u8, lua_isnumber, luaL_checkinteger, lua_tointeger, lua_pushinteger);
 XX_TYPE(u16, lua_isnumber, luaL_checkinteger, lua_tointeger, lua_pushinteger);
 XX_TYPE(u32, lua_isnumber, luaL_checkinteger, lua_tointeger, lua_pushinteger);
@@ -2403,7 +2409,7 @@ int lua_ScriptObject_init(lua_State *L) {
     return 0;
 }
 
-NEKO_STATIC_INLINE int lua_function_void_0args(lua_State *L) {
+static inline int lua_function_void_0args(lua_State *L) {
     int params = lua_gettop(L);
     if (params != 0) {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
@@ -3159,7 +3165,7 @@ struct strtoll_tool_t {
 
 template <typename T>
 T neko_lua_to(lua_State *L, int index) {
-    if constexpr (std::same_as<T, s32> || std::same_as<T, u32>) {
+    if constexpr (std::same_as<T, i32> || std::same_as<T, u32>) {
         luaL_argcheck(L, lua_isnumber(L, index), index, "number expected");
         return static_cast<T>(lua_tointeger(L, index));
     } else if constexpr (std::same_as<T, f32> || std::same_as<T, f64>) {
@@ -3179,7 +3185,7 @@ T neko_lua_to(lua_State *L, int index) {
 }
 
 template <typename Iterable>
-NEKO_INLINE bool neko_lua_equal(lua_State *state, const Iterable &indices) {
+inline bool neko_lua_equal(lua_State *state, const Iterable &indices) {
     auto it = indices.begin();
     auto end = indices.end();
     if (it == end) return true;
@@ -3210,7 +3216,20 @@ struct void_ignore_t<void> {
 
 enum STACK_MIN_NUM_e { STACK_MIN_NUM = 20 };
 
-NEKO_INLINE lua_State *neko_lua_create() {
+inline lua_State *neko_lua_create() {
+
+    // LuaAlloc *LA = luaalloc_create(
+    //         +[](void *user, void *ptr, size_t osize, size_t nsize) -> void * {
+    //             (void)user;
+    //             (void)osize;
+    //             if (nsize) return realloc(ptr, nsize);
+    //             free(ptr);
+    //             return nullptr;
+    //         },
+    //         nullptr);
+
+    // neko_defer(luaalloc_delete(LA));
+
     lua_State *m_ls = ::lua_newstate(Allocf, NULL);
     ::luaL_openlibs(m_ls);
 
@@ -3220,7 +3239,7 @@ NEKO_INLINE lua_State *neko_lua_create() {
     return m_ls;
 }
 
-NEKO_INLINE void neko_lua_fini(lua_State *m_ls) {
+inline void neko_lua_fini(lua_State *m_ls) {
     if (m_ls) {
         __neko_luabind_fini(m_ls);
         int top = lua_gettop(m_ls);
@@ -3235,11 +3254,11 @@ NEKO_INLINE void neko_lua_fini(lua_State *m_ls) {
 
 void neko_lua_run_string(lua_State *m_ls, const_str str_);
 
-NEKO_STATIC_INLINE void neko_lua_run_string(lua_State *m_ls, const std::string &str_) { neko_lua_run_string(m_ls, str_.c_str()); }
+inline void neko_lua_run_string(lua_State *m_ls, const std::string &str_) { neko_lua_run_string(m_ls, str_.c_str()); }
 
-NEKO_INLINE void neko_lua_dump_stack(lua_State *m_ls) { neko_lua_tool_t::dump_stack(m_ls); }
+inline void neko_lua_dump_stack(lua_State *m_ls) { neko_lua_tool_t::dump_stack(m_ls); }
 
-NEKO_INLINE int neko_lua_add_package_path(lua_State *L, const std::string &str_) {
+inline int neko_lua_add_package_path(lua_State *L, const std::string &str_) {
     std::string new_path = "package.path = package.path .. \"";
     if (str_.empty()) return -1;
     if (str_[0] != ';') new_path += ";";
@@ -3250,28 +3269,28 @@ NEKO_INLINE int neko_lua_add_package_path(lua_State *L, const std::string &str_)
     return 0;
 }
 
-NEKO_INLINE int neko_lua_load_file(lua_State *m_ls, const std::string &file_name_)  //
+inline int neko_lua_load_file(lua_State *m_ls, const std::string &file_name_)  //
 {
     if (luaL_dofile(m_ls, file_name_.c_str())) {
         std::string err = neko_lua_tool_t::dump_error(m_ls, "cannot load file<%s>", file_name_.c_str());
         ::lua_pop(m_ls, 1);
-        NEKO_ERROR("%s", err.c_str());
+        // NEKO_ERROR("%s", err.c_str());
     }
 
     return 0;
 }
 
-NEKO_INLINE int neko_lua_pcall_wrap(lua_State *state, int argnum, int retnum, int msgh) {
+inline int neko_lua_pcall_wrap(lua_State *state, int argnum, int retnum, int msgh) {
     int result = lua_pcall(state, argnum, retnum, msgh);
     return result;
 }
 
-NEKO_INLINE int neko_lua_safe_dofile(lua_State *state, const std::string &file) {
+inline int neko_lua_safe_dofile(lua_State *state, const std::string &file) {
     neko_lua_run_string(state, std::format("xpcall(function ()\nrequire '{0}'\nend, function(err)\nprint(tostring(err))\nprint(debug.traceback(nil, 2))\n__neko_quit(1)\nend)\n", file));
     return 0;
 }
 
-NEKO_INLINE bool neko_lua_dofile(lua_State *m_ls, const std::string &file) {
+inline bool neko_lua_dofile(lua_State *m_ls, const std::string &file) {
     int status = luaL_loadfile(m_ls, file.c_str());
 
     if (status) {
@@ -3301,7 +3320,7 @@ int neko_lua_set_global_variable(lua_State *m_ls, const std::string &field_name_
 template <typename T>
 int neko_lua_set_global_variable(lua_State *m_ls, const char *field_name_, const T &value_);
 
-NEKO_INLINE void neko_lua_register_raw_function(lua_State *m_ls, const char *func_name_, lua_function_t func_) {
+inline void neko_lua_register_raw_function(lua_State *m_ls, const char *func_name_, lua_function_t func_) {
     lua_checkstack(m_ls, STACK_MIN_NUM);
 
     lua_pushcfunction(m_ls, func_);
@@ -3311,17 +3330,17 @@ NEKO_INLINE void neko_lua_register_raw_function(lua_State *m_ls, const char *fun
 template <typename T>
 void neko_lua_reg(lua_State *m_ls, T a);
 
-NEKO_INLINE void neko_lua_call(lua_State *m_ls, const char *func_name_) {
+inline void neko_lua_call(lua_State *m_ls, const char *func_name_) {
     ::lua_getglobal(m_ls, func_name_);
 
     if (neko_lua_pcall_wrap(m_ls, 0, 0, 0) != 0) {
         std::string err = neko_lua_tool_t::dump_error(m_ls, "lua_pcall_wrap failed func_name<%s>", func_name_);
         ::lua_pop(m_ls, 1);
-        NEKO_ERROR("%s", err.c_str());
+        // NEKO_ERROR("%s", err.c_str());
     }
 }
 
-NEKO_INLINE int __neko_lua_getFuncByName(lua_State *m_ls, const char *func_name_) {
+inline int __neko_lua_getFuncByName(lua_State *m_ls, const char *func_name_) {
     // lua_getglobal(m_ls, func_name_);
     // return 0;
 
@@ -3724,5 +3743,131 @@ int vfs_lua_loader(lua_State *L);
     virtual neko::lua_class_define *getClassDef() const;        \
     static neko::lua_class_define_impl<C> *getStaticClassDef(); \
     static neko::lua_class_define_impl<C> lua_class_defs;
+
+namespace neko::lua {
+void luax_run_bootstrap(lua_State *L);
+}
+
+i32 luax_require_script(lua_State *L, String filepath);
+
+void luax_stack_dump(lua_State *L);
+
+void luax_pcall(lua_State *L, i32 args, i32 results);
+
+// get field in neko namespace
+void luax_neko_get(lua_State *L, const char *field);
+
+// message handler. prints error and traceback
+int luax_msgh(lua_State *L);
+
+lua_Integer luax_len(lua_State *L, i32 arg);
+void luax_geti(lua_State *L, i32 arg, lua_Integer n);
+
+// set table value at top of stack
+void luax_set_number_field(lua_State *L, const char *key, lua_Number n);
+void luax_set_int_field(lua_State *L, const char *key, lua_Integer n);
+void luax_set_string_field(lua_State *L, const char *key, const char *str);
+
+// get value from table
+lua_Number luax_number_field(lua_State *L, i32 arg, const char *key);
+lua_Number luax_opt_number_field(lua_State *L, i32 arg, const char *key, lua_Number fallback);
+
+lua_Integer luax_int_field(lua_State *L, i32 arg, const char *key);
+lua_Integer luax_opt_int_field(lua_State *L, i32 arg, const char *key, lua_Integer fallback);
+
+String luax_string_field(lua_State *L, i32 arg, const char *key);
+String luax_opt_string_field(lua_State *L, i32 arg, const char *key, const char *fallback);
+
+bool luax_boolean_field(lua_State *L, i32 arg, const char *key, bool fallback = false);
+
+String luax_check_string(lua_State *L, i32 arg);
+String luax_opt_string(lua_State *L, i32 arg, String def);
+
+int luax_string_oneof(lua_State *L, std::initializer_list<String> haystack, String needle);
+void luax_new_class(lua_State *L, const char *mt_name, const luaL_Reg *l);
+
+enum {
+    LUAX_UD_TNAME = 1,
+    LUAX_UD_PTR_SIZE = 2,
+};
+
+template <typename T>
+void luax_new_userdata(lua_State *L, T data, const char *tname) {
+    void *new_udata = lua_newuserdatauv(L, sizeof(T), 2);
+
+    lua_pushstring(L, tname);
+    lua_setiuservalue(L, -2, LUAX_UD_TNAME);
+
+    lua_pushnumber(L, sizeof(T));
+    lua_setiuservalue(L, -2, LUAX_UD_PTR_SIZE);
+
+    memcpy(new_udata, &data, sizeof(T));
+    luaL_setmetatable(L, tname);
+}
+
+#define luax_ptr_userdata luax_new_userdata
+
+struct LuaThread {
+    Mutex mtx;
+    String contents;
+    String name;
+    Thread thread;
+
+    void make(String code, String thread_name);
+    void join();
+};
+
+struct lua_State;
+struct LuaTableEntry;
+struct LuaVariant {
+    i32 type;
+    union {
+        bool boolean;
+        double number;
+        String string;
+        Slice<LuaTableEntry> table;
+        struct {
+            void *ptr;
+            String tname;
+        } udata;
+    };
+
+    void make(lua_State *L, i32 arg);
+    void trash();
+    void push(lua_State *L);
+};
+
+struct LuaTableEntry {
+    LuaVariant key;
+    LuaVariant value;
+};
+
+struct LuaChannel {
+    std::atomic<char *> name;
+
+    Mutex mtx;
+    Cond received;
+    Cond sent;
+
+    u64 received_total;
+    u64 sent_total;
+
+    Slice<LuaVariant> items;
+    u64 front;
+    u64 back;
+    u64 len;
+
+    void make(String n, u64 buf);
+    void trash();
+    void send(LuaVariant item);
+    LuaVariant recv();
+    bool try_recv(LuaVariant *v);
+};
+
+LuaChannel *lua_channel_make(String name, u64 buf);
+LuaChannel *lua_channel_get(String name);
+LuaChannel *lua_channels_select(lua_State *L, LuaVariant *v);
+void lua_channels_setup();
+void lua_channels_shutdown();
 
 #endif

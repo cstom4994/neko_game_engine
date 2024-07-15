@@ -15,11 +15,11 @@ add_rules("mode.debug", "mode.release")
 
 add_includedirs("source/")
 
-local base_libs = {"glfw", "glew", "libffi", "lua", "imgui", "miniz", "stb"}
+local base_libs = {"libffi", "lua", "sokol", "imgui", "miniz", "stb"}
 
 if is_os("windows") or is_os("macosx") or is_os("linux") then
-    add_requires("glfw", "glew", "libffi", "lua", "miniz", "stb")
-    add_requires("imgui v1.90.8-docking", {
+    add_requires("libffi", "lua", "sokol", "miniz", "stb")
+    add_requires("imgui v1.90.9-docking", {
         configs = {
             wchar32 = true
         }
@@ -74,56 +74,18 @@ else
     set_runtimes("MTd")
 end
 
-target("neko_engine")
-do
-    set_kind("static")
-
-    add_rules("utils.bin2c", {
-        extensions = {".lua"}
-    })
-
-    add_files("source/engine/embed/*.lua")
-    add_files("source/engine/**.cpp")
-    add_headerfiles("source/engine/**.h", "source/engine/**.hpp")
-
-    add_packages(base_libs)
-    add_packages("miniaudio", "box2d", "enet", "flecs")
-end
-
-local function neko_module_name(m)
-    return "neko_module_" .. m
-end
-
-local function neko_build_register(module, package)
-    local buildname = neko_module_name(module)
-    target(buildname)
-    do
-        set_kind("shared")
-        add_defines("NEKO_MODULE_BUILD")
-        add_rules("utils.bin2c", {
-            extensions = {".lua"}
-        })
-        add_files("source/modules/" .. module .. "/**.c", "source/modules/" .. module .. "/**.cpp")
-        add_files("source/modules/" .. module .. "/*.lua")
-        -- add_deps("neko_engine")
-        add_packages(base_libs, package)
-
-        set_targetdir("./")
-    end
-end
-
--- neko_build_register("sound", {"miniaudio"})
--- neko_build_register("physics", {"box2d"})
--- neko_build_register("flecs", {"flecs"})
-
-target("sandbox")
+target("neko")
 do
     set_kind("binary")
 
-    add_files("source/sandbox/**.cpp")
-    add_headerfiles("source/sandbox/**.h", "source/sandbox/**.hpp")
+    add_rules("utils.bin2c", {
+        extensions = {".lua", ".ttf"}
+    })
 
-    add_deps("neko_engine")
+    add_files("source/engine/embed/*.ttf", "source/engine/embed/*.lua")
+
+    add_files("source/engine/**.cpp")
+    add_headerfiles("source/engine/**.h", "source/engine/**.hpp")
 
     add_packages(base_libs)
     add_packages("miniaudio", "box2d", "enet", "flecs")
@@ -131,11 +93,6 @@ do
     set_targetdir("./")
     set_rundir("./")
 end
-
--- target(neko_module_name("test"))
--- do
---     set_kind("shared")
--- end
 
 xpack("luacode")
 do
