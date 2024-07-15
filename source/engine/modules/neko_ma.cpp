@@ -35,20 +35,20 @@ neko_lua_sound* sound_load(ma_engine* audio_engine, const_str filepath) {
 
     ma_result res = MA_SUCCESS;
 
-    neko_lua_sound* sound = (neko_lua_sound*)neko_safe_malloc(sizeof(neko_lua_sound));
+    neko_lua_sound* sound = (neko_lua_sound*)mem_alloc(sizeof(neko_lua_sound));
 
-    // neko::string cpath = to_cstr(filepath);
-    // neko_defer(neko_safe_free(cpath.data));
+    // String cpath = to_cstr(filepath);
+    // neko_defer(mem_free(cpath.data));
 
     res = ma_sound_init_from_file(audio_engine, filepath, 0, NULL, NULL, &sound->ma);
     if (res != MA_SUCCESS) {
-        neko_safe_free(sound);
+        mem_free(sound);
         return NULL;
     }
 
     res = ma_sound_set_end_callback(&sound->ma, on_sound_end, sound);
     if (res != MA_SUCCESS) {
-        neko_safe_free(sound);
+        mem_free(sound);
         return NULL;
     }
 
@@ -61,7 +61,7 @@ void sound_fini(neko_lua_sound* sound) { ma_sound_uninit(&sound->ma); }
 
 }  // namespace neko::sound
 
-neko::array<neko::sound::neko_lua_sound*> garbage_sounds;
+Array<neko::sound::neko_lua_sound*> garbage_sounds;
 void* miniaudio_vfs;
 ma_engine audio_engine;
 
@@ -87,7 +87,7 @@ void* vfs_for_miniaudio() {
             return MA_ERROR;
         }
 
-        audio_file* file = (audio_file*)neko_safe_malloc(sizeof(audio_file));
+        audio_file* file = (audio_file*)mem_alloc(sizeof(audio_file));
         file->buf = (u8*)data;
         file->len = len;
         file->cursor = 0;
@@ -98,8 +98,8 @@ void* vfs_for_miniaudio() {
 
     vtbl.onClose = [](ma_vfs* pVFS, ma_vfs_file file) -> ma_result {
         audio_file* f = (audio_file*)file;
-        neko_safe_free(f->buf);
-        neko_safe_free(f);
+        mem_free(f->buf);
+        mem_free(f);
         return MA_SUCCESS;
     };
 
@@ -160,7 +160,7 @@ void* vfs_for_miniaudio() {
         return MA_SUCCESS;
     };
 
-    ma_vfs_callbacks* ptr = (ma_vfs_callbacks*)neko_safe_malloc(sizeof(ma_vfs_callbacks));
+    ma_vfs_callbacks* ptr = (ma_vfs_callbacks*)mem_alloc(sizeof(ma_vfs_callbacks));
     *ptr = vtbl;
     return ptr;
 }
@@ -177,7 +177,7 @@ static int mt_sound_gc(lua_State* L) {
 
     if (ma_sound_at_end(&sound->ma)) {
         sound_fini(sound);
-        neko_safe_free(sound);
+        mem_free(sound);
     } else {
         sound->zombie = true;
         garbage_sounds.push(sound);  // TODO:: 建立 garbage_sounds 每帧清理
@@ -347,7 +347,7 @@ static int open_mt_sound(lua_State* L) {
 }
 
 static int neko_sound_load(lua_State* L) {
-    neko::string str = neko::luax_check_string(L, 1);
+    String str = neko::luax_check_string(L, 1);
 
     neko::sound::neko_lua_sound* sound = neko::sound::sound_load(&audio_engine, str.data);
     if (sound == nullptr) {
@@ -389,7 +389,7 @@ NEKO_STATIC int OnInit(lua_State* L) {
 
 NEKO_STATIC int OnFini(lua_State* L) {
     ma_engine_uninit(&audio_engine);
-    neko_safe_free(miniaudio_vfs);
+    mem_free(miniaudio_vfs);
     return 0;
 }
 
@@ -401,7 +401,7 @@ NEKO_STATIC int OnPostUpdate(lua_State* L) {
         if (sound->dead_end) {
             assert(sound->zombie);
             sound_fini(sound);
-            neko_safe_free(sound);
+            mem_free(sound);
 
             sounds[i] = sounds[sounds.len - 1];
             sounds.len--;

@@ -1264,7 +1264,7 @@ void render_uniform_variable(GLuint program, GLenum type, const char* name, GLin
             if (ImGui::Checkbox("", (bool*)&value)) glProgramUniform1uiv(program, location, 1, &value);
         } break;
 
-            // #if !defined(NEKO_PF_APPLE)
+            // #if !defined(NEKO_IS_APPLE)
             //         case GL_IMAGE_2D: {
             //             ImGui::Text("GL_IMAGE_2D %s:", name);
             //             // ImGui::SameLine();

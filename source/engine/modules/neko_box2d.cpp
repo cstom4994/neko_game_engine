@@ -178,7 +178,7 @@ neko_physics physics_weak_copy(neko_physics* p) {
 
 static void drop_physics_udata(lua_State* L, neko_physics_userdata* pud) {
     if (pud->type == LUA_TSTRING) {
-        neko_safe_free(pud->str);
+        mem_free(pud->str);
     }
 
     if (pud->begin_contact_ref != LUA_REFNIL) {
@@ -193,7 +193,7 @@ static void drop_physics_udata(lua_State* L, neko_physics_userdata* pud) {
 }
 
 void physics_destroy_body(lua_State* L, neko_physics* physics) {
-    neko::array<neko_physics_userdata*> puds = {};
+    Array<neko_physics_userdata*> puds = {};
     neko_defer(puds.trash());
 
     for (b2Fixture* f = physics->body->GetFixtureList(); f != nullptr; f = f->GetNext()) {
@@ -207,12 +207,12 @@ void physics_destroy_body(lua_State* L, neko_physics* physics) {
 
     for (neko_physics_userdata* pud : puds) {
         drop_physics_udata(L, pud);
-        neko_safe_free(pud);
+        mem_free(pud);
     }
 }
 
 neko_physics_userdata* physics_userdata(lua_State* L) {
-    neko_physics_userdata* pud = (neko_physics_userdata*)neko_safe_malloc(sizeof(neko_physics_userdata));
+    neko_physics_userdata* pud = (neko_physics_userdata*)mem_alloc(sizeof(neko_physics_userdata));
 
     pud->type = lua_getfield(L, -1, "udata");
     switch (pud->type) {
@@ -220,7 +220,7 @@ neko_physics_userdata* physics_userdata(lua_State* L) {
             pud->num = luaL_checknumber(L, -1);
             break;
         case LUA_TSTRING:
-            pud->str = neko::to_cstr(luaL_checkstring(L, -1)).data;
+            pud->str = to_cstr(luaL_checkstring(L, -1)).data;
             break;
         default:
             break;
@@ -615,6 +615,7 @@ static int mt_b2_body_set_transform(lua_State* L) {
 }
 
 static int mt_b2_body_draw_fixtures(lua_State* L) {
+    PROFILE_FUNC();
     neko_physics* physics = (neko_physics*)luaL_checkudata(L, 1, "mt_b2_body");
     b2Body* body = physics->body;
 

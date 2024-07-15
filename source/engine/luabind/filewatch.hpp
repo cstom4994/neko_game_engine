@@ -94,7 +94,7 @@ private:
 
 #include "engine/neko.h"
 
-#ifdef NEKO_PF_WIN
+#ifdef NEKO_IS_WIN32
 
 #include <Windows.h>
 
@@ -289,7 +289,7 @@ std::optional<notify> watch::select() noexcept {
 }
 }  // namespace neko::filewatch
 
-#elif defined(NEKO_PF_LINUX)
+#elif defined(NEKO_IS_LINUX)
 
 #include <poll.h>
 #include <sys/inotify.h>
@@ -428,7 +428,7 @@ std::optional<notify> watch::select() noexcept {
 }
 }  // namespace neko::filewatch
 
-#elif defined(NEKO_PF_APPLE)
+#elif defined(NEKO_IS_APPLE)
 
 namespace neko::filewatch {
 static void event_cb(ConstFSEventStreamRef streamRef, void* info, size_t numEvents, void* eventPaths, const FSEventStreamEventFlags eventFlags[], const FSEventStreamEventId eventIds[]) noexcept {

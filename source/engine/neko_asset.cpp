@@ -9,13 +9,13 @@
 #include "engine/neko.h"
 #include "engine/neko.hpp"
 #include "engine/neko_common.h"
-#include "engine/neko_platform.h"
+#include "engine/neko_os.h"
 
 // stb_image
 #define STB_IMAGE_IMPLEMENTATION
-#define STBI_MALLOC(sz) neko_safe_malloc(sz)
-#define STBI_REALLOC(p, newsz) neko_safe_realloc(p, newsz)
-#define STBI_FREE(p) neko_safe_free(p)
+#define STBI_MALLOC(sz) mem_alloc(sz)
+#define STBI_REALLOC(p, newsz) mem_realloc(p, newsz)
+#define STBI_FREE(p) mem_free(p)
 #include <stb_image.h>
 
 neko_asset_t __neko_asset_handle_create_impl(u64 type_id, u32 asset_id, u32 importer_id) {
@@ -119,7 +119,7 @@ void neko_image::load(const_str path) {
     size_t mem_size;
     const_str mem_data = neko_capi_vfs_read_file(NEKO_PACKS::GAMEDATA, path, &mem_size);
     this->load_mem(mem_data, mem_size, path);
-    neko_safe_free(mem_data);
+    mem_free(mem_data);
     return;
 }
 
@@ -150,7 +150,7 @@ void neko_image::load_mem(const void *mem_data, size_t mem_size, const_str vpath
 
 void neko_image::free() { stbi_image_free(this->pix); }
 
-NEKO_API_DECL bool neko_util_load_texture_data_from_file(const char *file_path, s32 *width, s32 *height, u32 *num_comps, void **data, b32 flip_vertically_on_load) {
+NEKO_API_DECL bool neko_util_load_texture_data_from_file(const char *file_path, s32 *width, s32 *height, u32 *num_comps, void **data, bool flip_vertically_on_load) {
     u64 len = 0;
     const_str file_data = neko_capi_vfs_read_file(NEKO_PACKS::GAMEDATA, file_path, &len);
     NEKO_ASSERT(file_data);
@@ -158,11 +158,11 @@ NEKO_API_DECL bool neko_util_load_texture_data_from_file(const char *file_path, 
     if (!ret) {
         NEKO_WARN("could not load texture: %s", file_path);
     }
-    neko_safe_free(file_data);
+    mem_free(file_data);
     return ret;
 }
 
-NEKO_API_DECL bool neko_util_load_texture_data_from_memory(const void *memory, size_t sz, s32 *width, s32 *height, u32 *num_comps, void **data, b32 flip_vertically_on_load) {
+NEKO_API_DECL bool neko_util_load_texture_data_from_memory(const void *memory, size_t sz, s32 *width, s32 *height, u32 *num_comps, void **data, bool flip_vertically_on_load) {
     // Load texture data
 
     int channels;
@@ -180,7 +180,7 @@ NEKO_API_DECL bool neko_util_load_texture_data_from_memory(const void *memory, s
     return true;
 }
 
-NEKO_API_DECL bool neko_asset_texture_load_from_file(const_str path, void *out, neko_render_texture_desc_t *desc, b32 flip_on_load, b32 keep_data) {
+NEKO_API_DECL bool neko_asset_texture_load_from_file(const_str path, void *out, neko_render_texture_desc_t *desc, bool flip_on_load, bool keep_data) {
     neko_asset_texture_t *t = (neko_asset_texture_t *)out;
 
     memset(&t->desc, 0, sizeof(neko_render_texture_desc_t));
@@ -221,18 +221,18 @@ NEKO_API_DECL bool neko_asset_texture_load_from_file(const_str path, void *out, 
 }
 
 /*
-bool neko_asset_texture_load_from_file(const char* path, void* out, neko_render_texture_desc_t* desc, b32 flip_on_load, b32 keep_data)
+bool neko_asset_texture_load_from_file(const char* path, void* out, neko_render_texture_desc_t* desc, bool flip_on_load, bool keep_data)
 {
     size_t len = 0;
-    char* file_data = neko_pf_read_file_contents(path, "rb", &len);
+    char* file_data = neko_os_read_file_contents(path, "rb", &len);
     NEKO_ASSERT(file_data);
-    b32 ret = neko_asset_texture_load_from_memory(file_data, len, out, desc, flip_on_load, keep_data);
-    neko_safe_free(file_data);
+    bool ret = neko_asset_texture_load_from_memory(file_data, len, out, desc, flip_on_load, keep_data);
+    mem_free(file_data);
     return ret;
 }
  */
 
-bool neko_asset_texture_load_from_memory(const void *memory, size_t sz, void *out, neko_render_texture_desc_t *desc, b32 flip_on_load, b32 keep_data) {
+bool neko_asset_texture_load_from_memory(const void *memory, size_t sz, void *out, neko_render_texture_desc_t *desc, bool flip_on_load, bool keep_data) {
     neko_asset_texture_t *t = (neko_asset_texture_t *)out;
 
     memset(&t->desc, 0, sizeof(neko_render_texture_desc_t));
@@ -249,7 +249,7 @@ bool neko_asset_texture_load_from_memory(const void *memory, size_t sz, void *ou
 
     // Load texture data
     s32 num_comps = 0;
-    b32 loaded = neko_util_load_texture_data_from_memory(memory, sz, (s32 *)&t->desc.width, (s32 *)&t->desc.height, (u32 *)&num_comps, (void **)&t->desc.data, t->desc.flip_y);
+    bool loaded = neko_util_load_texture_data_from_memory(memory, sz, (s32 *)&t->desc.width, (s32 *)&t->desc.height, (u32 *)&num_comps, (void **)&t->desc.data, t->desc.flip_y);
 
     if (!loaded) {
         return false;
@@ -278,14 +278,14 @@ bool neko_asset_font_load_from_file(const_str path, void *out, u32 point_size) {
     } else {
         NEKO_TRACE("font successfully loaded: %s", neko_util_get_filename(path));
     }
-    neko_safe_free(ttf);
+    mem_free(ttf);
     return ret;
 }
 
 bool neko_asset_font_load_from_memory(const void *memory, size_t sz, void *out, u32 point_size) {
     neko_asset_font_t *f = (neko_asset_font_t *)out;
     // f->glyphs_num = 96;
-    // f->glyphs = neko_safe_malloc(f->glyphs_num * sizeof(neko_baked_char_t));
+    // f->glyphs = mem_alloc(f->glyphs_num * sizeof(neko_baked_char_t));
 
     if (!point_size) {
         NEKO_WARN("font: point size not declared. setting to default 16.");
@@ -298,8 +298,8 @@ bool neko_asset_font_load_from_memory(const void *memory, size_t sz, void *out, 
     const u32 h = (point_wh / 32 * 512) + (point_wh / 32 * 512) % 512;
 
     const u32 num_comps = 4;
-    u8 *alpha_bitmap = (u8 *)neko_safe_malloc(w * h);
-    u8 *flipmap = (u8 *)neko_safe_malloc(w * h * num_comps);
+    u8 *alpha_bitmap = (u8 *)mem_alloc(w * h);
+    u8 *flipmap = (u8 *)mem_alloc(w * h * num_comps);
     memset(alpha_bitmap, 0, w * h);
     memset(flipmap, 0, w * h * num_comps);
     s32 v = stbtt_BakeFontBitmap((u8 *)memory, 0, (f32)point_size, alpha_bitmap, w, h, 32, 96, (stbtt_bakedchar *)f->glyphs);
@@ -340,8 +340,8 @@ bool neko_asset_font_load_from_memory(const void *memory, size_t sz, void *out, 
         success = true;
     }
 
-    neko_safe_free(alpha_bitmap);
-    neko_safe_free(flipmap);
+    mem_free(alpha_bitmap);
+    mem_free(flipmap);
     return success;
 }
 
@@ -363,7 +363,7 @@ NEKO_API_DECL f32 neko_asset_font_max_height(const neko_asset_font_t *fp) {
 
 NEKO_API_DECL neko_vec2 neko_asset_font_text_dimensions(const neko_asset_font_t *fp, const_str text, s32 len) { return neko_asset_font_text_dimensions_ex(fp, text, len, 0); }
 
-NEKO_API_DECL neko_vec2 neko_asset_font_text_dimensions_ex(const neko_asset_font_t *fp, const_str text, s32 len, b32 include_past_baseline) {
+NEKO_API_DECL neko_vec2 neko_asset_font_text_dimensions_ex(const neko_asset_font_t *fp, const_str text, s32 len, bool include_past_baseline) {
     neko_vec2 dimensions = neko_v2s(0.f);
 
     if (!fp || !text) return dimensions;
@@ -391,7 +391,7 @@ bool neko_asset_mesh_load_from_file(const_str path, void *out, neko_asset_mesh_d
     // Cast mesh data to use
     neko_asset_mesh_t *mesh = (neko_asset_mesh_t *)out;
 
-    if (!neko_pf_file_exists(path)) {
+    if (!neko_os_file_exists(path)) {
         NEKO_WARN("mesh loader:file does not exist: %s", path);
         return false;
     }
@@ -402,7 +402,7 @@ bool neko_asset_mesh_load_from_file(const_str path, void *out, neko_asset_mesh_d
 
     // Get file extension from path
     neko_transient_buffer(file_ext, 32);
-    neko_pf_file_extension(file_ext, 32, path);
+    neko_os_file_extension(file_ext, 32, path);
 
     // GLTF
     if (neko_string_compare_equal(file_ext, "gltf")) {
@@ -514,7 +514,7 @@ NEKO_STATIC_INLINE u32 __neko_ulz_decode_mod(const u8 **p) {
 // LZ77
 
 NEKO_STATIC int __neko_ulz_compress_fast(const u8 *in, int inlen, u8 *out, int outlen) {
-    NEKO_LZ_WORKMEM *u = (NEKO_LZ_WORKMEM *)neko_safe_realloc(0, sizeof(NEKO_LZ_WORKMEM));
+    NEKO_LZ_WORKMEM *u = (NEKO_LZ_WORKMEM *)mem_realloc(0, sizeof(NEKO_LZ_WORKMEM));
 
     for (int i = 0; i < NEKO_LZ_HASH_SIZE; ++i) u->HashTable[i] = NEKO_LZ_NIL;
 
@@ -589,7 +589,7 @@ NEKO_STATIC int __neko_ulz_compress_fast(const u8 *in, int inlen, u8 *out, int o
         op += run;
     }
 
-    void *gc = neko_safe_realloc(u, 0);
+    void *gc = mem_realloc(u, 0);
     return op - out;
 }
 
@@ -597,7 +597,7 @@ NEKO_STATIC int __neko_ulz_compress(const u8 *in, int inlen, u8 *out, int outlen
     if (level < 1 || level > 9) return 0;
     const int max_chain = (level < 9) ? 1 << level : 1 << 13;
 
-    NEKO_LZ_WORKMEM *u = (NEKO_LZ_WORKMEM *)neko_safe_realloc(0, sizeof(NEKO_LZ_WORKMEM));
+    NEKO_LZ_WORKMEM *u = (NEKO_LZ_WORKMEM *)mem_realloc(0, sizeof(NEKO_LZ_WORKMEM));
     for (int i = 0; i < NEKO_LZ_HASH_SIZE; ++i) u->HashTable[i] = NEKO_LZ_NIL;
 
     u8 *op = out;
@@ -707,7 +707,7 @@ NEKO_STATIC int __neko_ulz_compress(const u8 *in, int inlen, u8 *out, int outlen
         op += run;
     }
 
-    void *gc = neko_safe_realloc(u, 0);
+    void *gc = mem_realloc(u, 0);
     return op - out;
 }
 
@@ -777,8 +777,8 @@ u32 neko_lz_bounds(u32 inlen, u32 flags) { return inlen + inlen / 255 + 16; }
 NEKO_STATIC void destroy_pack_items(u64 item_count, neko_pak::item *items) {
     NEKO_ASSERT(item_count == 0 || (item_count > 0 && items));
 
-    for (u64 i = 0; i < item_count; i++) neko_safe_free(items[i].path);
-    neko_safe_free(items);
+    for (u64 i = 0; i < item_count; i++) mem_free(items[i].path);
+    mem_free(items);
 }
 
 bool create_pack_items(vfs_file *packFile, u64 item_count, neko_pak::item **_items) {
@@ -786,7 +786,7 @@ bool create_pack_items(vfs_file *packFile, u64 item_count, neko_pak::item **_ite
     NEKO_ASSERT(item_count > 0);
     NEKO_ASSERT(_items);
 
-    neko_pak::item *items = (neko_pak::item *)neko_safe_malloc(item_count * sizeof(neko_pak::item));
+    neko_pak::item *items = (neko_pak::item *)mem_alloc(item_count * sizeof(neko_pak::item));
 
     if (!items) return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
 
@@ -805,7 +805,7 @@ bool create_pack_items(vfs_file *packFile, u64 item_count, neko_pak::item **_ite
             return false; /*BAD_DATA_SIZE_PACK_RESULT*/
         }
 
-        char *path = (char *)neko_safe_malloc((info.path_size + 1) * sizeof(char));
+        char *path = (char *)mem_alloc((info.path_size + 1) * sizeof(char));
 
         if (!path) {
             destroy_pack_items(i, items);
@@ -907,7 +907,7 @@ bool neko_pak::load(const_str file_path, u32 data_buffer_capacity, bool is_resou
     u8 *data_buffer;
 
     if (data_buffer_capacity > 0) {
-        data_buffer = (u8 *)neko_safe_malloc(data_buffer_capacity * sizeof(u8));
+        data_buffer = (u8 *)mem_alloc(data_buffer_capacity * sizeof(u8));
 
         if (!data_buffer) {
             this->fini();
@@ -973,7 +973,7 @@ bool neko_pak::get_data(u64 index, const u8 **data, u32 *size) {
 
     if (_data_buffer) {
         if (info.data_size > this->data_size) {
-            _data_buffer = (u8 *)neko_safe_realloc(_data_buffer, info.data_size * sizeof(u8));
+            _data_buffer = (u8 *)mem_realloc(_data_buffer, info.data_size * sizeof(u8));
 
             if (!_data_buffer) return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
 
@@ -981,7 +981,7 @@ bool neko_pak::get_data(u64 index, const u8 **data, u32 *size) {
             this->data_size = info.data_size;
         }
     } else {
-        _data_buffer = (u8 *)neko_safe_malloc(info.data_size * sizeof(u8));
+        _data_buffer = (u8 *)mem_alloc(info.data_size * sizeof(u8));
 
         if (!_data_buffer) return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
 
@@ -993,7 +993,7 @@ bool neko_pak::get_data(u64 index, const u8 **data, u32 *size) {
 
     if (zip_buffer) {
         if (info.zip_size > this->zip_size) {
-            zip_buffer = (u8 *)neko_safe_realloc(zip_buffer, info.zip_size * sizeof(u8));
+            zip_buffer = (u8 *)mem_realloc(zip_buffer, info.zip_size * sizeof(u8));
 
             if (!zip_buffer) return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
 
@@ -1002,7 +1002,7 @@ bool neko_pak::get_data(u64 index, const u8 **data, u32 *size) {
         }
     } else {
         if (info.zip_size > 0) {
-            zip_buffer = (u8 *)neko_safe_malloc(info.zip_size * sizeof(u8));
+            zip_buffer = (u8 *)mem_alloc(info.zip_size * sizeof(u8));
 
             if (!zip_buffer) return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
 
@@ -1038,7 +1038,7 @@ bool neko_pak::get_data(u64 index, const u8 **data, u32 *size) {
     }
 
     (*size) = info.data_size;
-    (*data) = (u8 *)neko_safe_malloc(info.data_size);
+    (*data) = (u8 *)mem_alloc(info.data_size);
     memcpy((void *)(*data), _data_buffer, info.data_size);
     this->file_ref_count++;
     return true;
@@ -1055,13 +1055,13 @@ bool neko_pak::get_data(const_str path, const u8 **data, u32 *size) {
 }
 
 void neko_pak::free_item(void *data) {
-    neko_safe_free(data);
+    mem_free(data);
     this->file_ref_count--;
 }
 
 void neko_pak::free_buffer() {
-    neko_safe_free(this->data_buffer);
-    neko_safe_free(this->zip_buffer);
+    mem_free(this->data_buffer);
+    mem_free(this->zip_buffer);
     this->data_buffer = NULL;
     this->zip_buffer = NULL;
 }
@@ -1161,12 +1161,12 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
 
     u32 buffer_size = 128;  // 提高初始缓冲大小
 
-    u8 *item_data = (u8 *)neko_safe_malloc(sizeof(u8) * buffer_size);
+    u8 *item_data = (u8 *)mem_alloc(sizeof(u8) * buffer_size);
     if (!item_data) return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
 
-    u8 *zip_data = (u8 *)neko_safe_malloc(sizeof(u8) * buffer_size);
+    u8 *zip_data = (u8 *)mem_alloc(sizeof(u8) * buffer_size);
     if (!zip_data) {
-        neko_safe_free(item_data);
+        mem_free(item_data);
         return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
     }
 
@@ -1183,16 +1183,16 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
         size_t path_size = strlen(item_path);
 
         if (path_size > UINT8_MAX) {
-            neko_safe_free(zip_data);
-            neko_safe_free(item_data);
+            mem_free(zip_data);
+            mem_free(item_data);
             return false; /*BAD_DATA_SIZE_PACK_RESULT*/
         }
 
         FILE *item_file = neko_fopen(item_path, "rb");
 
         if (!item_file) {
-            neko_safe_free(zip_data);
-            neko_safe_free(item_data);
+            mem_free(zip_data);
+            mem_free(item_data);
             return false; /*FAILED_TO_OPEN_FILE_PACK_RESULT*/
         }
 
@@ -1200,8 +1200,8 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
 
         if (seek_result != 0) {
             neko_fclose(item_file);
-            neko_safe_free(zip_data);
-            neko_safe_free(item_data);
+            mem_free(zip_data);
+            mem_free(item_data);
             return false; /*FAILED_TO_SEEK_FILE_PACK_RESULT*/
         }
 
@@ -1209,8 +1209,8 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
 
         if (item_size == 0 || item_size > UINT32_MAX) {
             neko_fclose(item_file);
-            neko_safe_free(zip_data);
-            neko_safe_free(item_data);
+            mem_free(zip_data);
+            mem_free(item_data);
             return false; /*BAD_DATA_SIZE_PACK_RESULT*/
         }
 
@@ -1218,29 +1218,29 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
 
         if (seek_result != 0) {
             neko_fclose(item_file);
-            neko_safe_free(zip_data);
-            neko_safe_free(item_data);
+            mem_free(zip_data);
+            mem_free(item_data);
             return false; /*FAILED_TO_SEEK_FILE_PACK_RESULT*/
         }
 
         if (item_size > buffer_size) {
-            u8 *new_buffer = (u8 *)neko_safe_realloc(item_data, item_size * sizeof(u8));
+            u8 *new_buffer = (u8 *)mem_realloc(item_data, item_size * sizeof(u8));
 
             if (!new_buffer) {
                 neko_fclose(item_file);
-                neko_safe_free(zip_data);
-                neko_safe_free(item_data);
+                mem_free(zip_data);
+                mem_free(item_data);
                 return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
             }
 
             item_data = new_buffer;
 
-            new_buffer = (u8 *)neko_safe_realloc(zip_data, item_size * sizeof(u8));
+            new_buffer = (u8 *)mem_realloc(zip_data, item_size * sizeof(u8));
 
             if (!new_buffer) {
                 neko_fclose(item_file);
-                neko_safe_free(zip_data);
-                neko_safe_free(item_data);
+                mem_free(zip_data);
+                mem_free(item_data);
                 return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
             }
 
@@ -1252,8 +1252,8 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
         neko_fclose(item_file);
 
         if (result != item_size) {
-            neko_safe_free(zip_data);
-            neko_safe_free(item_data);
+            mem_free(zip_data);
+            mem_free(item_data);
             return false; /*FAILED_TO_READ_FILE_PACK_RESULT*/
         }
 
@@ -1283,16 +1283,16 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
         result = fwrite(&info, sizeof(neko_pak::iteminfo), 1, pack_file);
 
         if (result != 1) {
-            neko_safe_free(zip_data);
-            neko_safe_free(item_data);
+            mem_free(zip_data);
+            mem_free(item_data);
             return false; /*FAILED_TO_WRITE_FILE_PACK_RESULT*/
         }
 
         result = fwrite(item_path, sizeof(char), info.path_size, pack_file);
 
         if (result != info.path_size) {
-            neko_safe_free(zip_data);
-            neko_safe_free(item_data);
+            mem_free(zip_data);
+            mem_free(item_data);
             return false; /*FAILED_TO_WRITE_FILE_PACK_RESULT*/
         }
 
@@ -1300,16 +1300,16 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
             result = fwrite(zip_data, sizeof(u8), zip_size, pack_file);
 
             if (result != zip_size) {
-                neko_safe_free(zip_data);
-                neko_safe_free(item_data);
+                mem_free(zip_data);
+                mem_free(item_data);
                 return false; /*FAILED_TO_WRITE_FILE_PACK_RESULT*/
             }
         } else {
             result = fwrite(item_data, sizeof(u8), item_size, pack_file);
 
             if (result != item_size) {
-                neko_safe_free(zip_data);
-                neko_safe_free(item_data);
+                mem_free(zip_data);
+                mem_free(item_data);
                 return false; /*FAILED_TO_WRITE_FILE_PACK_RESULT*/
             }
         }
@@ -1328,8 +1328,8 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
         }
     }
 
-    neko_safe_free(zip_data);
-    neko_safe_free(item_data);
+    mem_free(zip_data);
+    mem_free(item_data);
 
     if (print_progress) {
         int compression = (int)((1.0 - (f64)(total_zip_size) / (f64)total_raw_size) * 100.0);
@@ -1355,7 +1355,7 @@ bool neko_pak_build(const_str file_path, u64 file_count, const_str *file_paths, 
     NEKO_ASSERT(file_count > 0);
     NEKO_ASSERT(file_paths);
 
-    char **item_paths = (char **)neko_safe_malloc(file_count * sizeof(char *));
+    char **item_paths = (char **)mem_alloc(file_count * sizeof(char *));
 
     if (!item_paths) return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
 
@@ -1376,7 +1376,7 @@ bool neko_pak_build(const_str file_path, u64 file_count, const_str *file_paths, 
     FILE *pack_file = neko_fopen(file_path, "wb");
 
     if (!pack_file) {
-        neko_safe_free(item_paths);
+        mem_free(item_paths);
         return false; /*FAILED_TO_CREATE_FILE_PACK_RESULT*/
     }
 
@@ -1390,7 +1390,7 @@ bool neko_pak_build(const_str file_path, u64 file_count, const_str *file_paths, 
     write_result += fwrite(&buildnum, sizeof(s32), 1, pack_file);
 
     if (write_result != neko_pak_head_size + 1) {
-        neko_safe_free(item_paths);
+        mem_free(item_paths);
         neko_fclose(pack_file);
         remove(file_path);
         return false; /*FAILED_TO_WRITE_FILE_PACK_RESULT*/
@@ -1399,7 +1399,7 @@ bool neko_pak_build(const_str file_path, u64 file_count, const_str *file_paths, 
     write_result = fwrite(&item_count, sizeof(u64), 1, pack_file);
 
     if (write_result != 1) {
-        neko_safe_free(item_paths);
+        mem_free(item_paths);
         neko_fclose(pack_file);
         remove(file_path);
         return false; /*FAILED_TO_WRITE_FILE_PACK_RESULT*/
@@ -1407,7 +1407,7 @@ bool neko_pak_build(const_str file_path, u64 file_count, const_str *file_paths, 
 
     int pack_result = neko_write_pack_items(pack_file, item_count, item_paths, print_progress);
 
-    neko_safe_free(item_paths);
+    mem_free(item_paths);
     neko_fclose(pack_file);
 
     if (pack_result != 0) {
@@ -1481,7 +1481,7 @@ static const_str g_neko_xml_error = NULL;
 static void neko_xml_emit_error(const_str error) { g_neko_xml_error = error; }
 
 static char *neko_xml_copy_string(const_str str, u32 len) {
-    char *r = (char *)neko_safe_malloc(len + 1);
+    char *r = (char *)mem_alloc(len + 1);
     if (!r) {
         neko_xml_emit_error("Out of memory!");
         return NULL;
@@ -1542,24 +1542,24 @@ static void neko_xml_node_free(neko_xml_node_t *node) {
         neko_xml_attribute_t attrib = neko_hash_table_iter_get(node->attributes, it);
 
         if (attrib.type == NEKO_XML_ATTRIBUTE_STRING) {
-            neko_safe_free(attrib.value.string);
+            mem_free(attrib.value.string);
         }
 
-        neko_safe_free(attrib.name);
+        mem_free(attrib.name);
     }
 
     for (u32 i = 0; i < neko_dyn_array_size(node->children); i++) {
         neko_xml_node_free(node->children + i);
     }
 
-    neko_safe_free(node->name);
-    neko_safe_free(node->text);
+    mem_free(node->name);
+    mem_free(node->text);
     neko_hash_table_free(node->attributes);
     neko_dyn_array_free(node->children);
 }
 
 static char *neko_xml_process_text(const_str start, u32 length) {
-    char *r = (char *)neko_safe_malloc(length + 1);
+    char *r = (char *)mem_alloc(length + 1);
 
     u32 len_sub = 0;
 
@@ -1771,7 +1771,7 @@ neko_xml_document_t *neko_xml_parse_file(const_str path) {
         return NULL;
     }
     neko_xml_document_t *doc = neko_xml_parse(source);
-    neko_safe_free(source);
+    mem_free(source);
     return doc;
 }
 
@@ -1779,7 +1779,7 @@ neko_xml_document_t *neko_xml_parse(const_str source) {
     if (!source) return NULL;
 
     g_neko_xml_error = NULL;
-    neko_xml_document_t *doc = (neko_xml_document_t *)neko_safe_calloc(1, sizeof(neko_xml_document_t));
+    neko_xml_document_t *doc = (neko_xml_document_t *)mem_calloc(1, sizeof(neko_xml_document_t));
     if (!doc) {
         neko_xml_emit_error("Out of memory!");
         return NULL;
@@ -1801,7 +1801,7 @@ void neko_xml_free(neko_xml_document_t *document) {
     }
 
     neko_dyn_array_free(document->nodes);
-    neko_safe_free(document);
+    mem_free(document);
 }
 
 neko_xml_attribute_t *neko_xml_find_attribute(neko_xml_node_t *node, const_str name) {
@@ -1975,7 +1975,7 @@ neko_font_t *neko_font_load(neko_font_u64 atlas_id, const void *pixels, int w, i
 
     // algorithm by Mitton a la TIGR
     // https://bitbucket.org/rmitton/tigr/src/default/
-    neko_font_t *font = (neko_font_t *)neko_safe_malloc(sizeof(neko_font_t));
+    neko_font_t *font = (neko_font_t *)mem_alloc(sizeof(neko_font_t));
     font->codes = 0;
     font->glyphs = 0;
     font->mem_ctx = mem_ctx;
@@ -1997,8 +1997,8 @@ neko_font_t *neko_font_load(neko_font_u64 atlas_id, const void *pixels, int w, i
         default:
             NEKO_FONT_CHECK(0, "Unknown codepage encountered.");
     }
-    font->codes = (int *)neko_safe_malloc(sizeof(int) * font->glyph_count);
-    font->glyphs = (neko_font_glyph_t *)neko_safe_malloc(sizeof(neko_font_glyph_t) * font->glyph_count);
+    font->codes = (int *)mem_alloc(sizeof(int) * font->glyph_count);
+    font->glyphs = (neko_font_glyph_t *)mem_alloc(sizeof(neko_font_glyph_t) * font->glyph_count);
     font->atlas_id = atlas_id;
     font->kern = 0;
 
@@ -2054,9 +2054,9 @@ neko_font_t *neko_font_load(neko_font_u64 atlas_id, const void *pixels, int w, i
     return font;
 
 neko_font_err:
-    neko_safe_free(font->glyphs);
-    neko_safe_free(font->codes);
-    neko_safe_free(font);
+    mem_free(font->glyphs);
+    mem_free(font->codes);
+    mem_free(font);
     return 0;
 }
 
@@ -2290,7 +2290,7 @@ neko_font_t *neko_font_load_bmfont(neko_font_u64 atlas_id, const void *fnt, int 
     p->in = (const char *)fnt;
     p->end = p->in + size;
 
-    neko_font_t *font = (neko_font_t *)neko_safe_malloc(sizeof(neko_font_t));
+    neko_font_t *font = (neko_font_t *)mem_alloc(sizeof(neko_font_t));
     font->atlas_id = atlas_id;
     font->kern = 0;
     font->mem_ctx = mem_ctx;
@@ -2354,8 +2354,8 @@ neko_font_t *neko_font_load_bmfont(neko_font_u64 atlas_id, const void *fnt, int 
     neko_font_expect_identifier(p, "chars");
     neko_font_expect_identifier(p, "count");
     neko_font_read_int(p, &font->glyph_count);
-    font->glyphs = (neko_font_glyph_t *)neko_safe_malloc(sizeof(neko_font_glyph_t) * font->glyph_count);
-    font->codes = (int *)neko_safe_malloc(sizeof(int) * font->glyph_count);
+    font->glyphs = (neko_font_glyph_t *)mem_alloc(sizeof(neko_font_glyph_t) * font->glyph_count);
+    font->codes = (int *)mem_alloc(sizeof(int) * font->glyph_count);
 
     // Used to squeeze UVs inward by 128th of a pixel.
     w0 = 1.0f / (float)(font->atlas_w);
@@ -2408,7 +2408,7 @@ neko_font_t *neko_font_load_bmfont(neko_font_u64 atlas_id, const void *fnt, int 
         neko_font_expect_identifier(p, "kernings");
         neko_font_expect_identifier(p, "count");
         neko_font_read_int(p, &kern_count);
-        kern = (neko_font_kern_t *)neko_safe_malloc(sizeof(neko_font_kern_t));
+        kern = (neko_font_kern_t *)mem_alloc(sizeof(neko_font_kern_t));
         font->kern = kern;
         hashtable_init(&kern->table, sizeof(int), kern_count, mem_ctx);
 
@@ -2436,11 +2436,11 @@ neko_font_err:
 
 void neko_font_free(neko_font_t *font) {
     void *mem_ctx = font->mem_ctx;
-    neko_safe_free(font->glyphs);
-    neko_safe_free(font->codes);
+    mem_free(font->glyphs);
+    mem_free(font->codes);
     if (font->kern) hashtable_term(&font->kern->table);
-    neko_safe_free(font->kern);
-    neko_safe_free(font);
+    mem_free(font->kern);
+    mem_free(font);
 }
 
 int neko_font_text_width(neko_font_t *font, const char *text) {
@@ -2510,18 +2510,18 @@ neko_font_glyph_t *neko_font_get_glyph(neko_font_t *font, int index) { return fo
 int neko_font_kerning(neko_font_t *font, int code0, int code1) { return (int)(size_t)hashtable_find(&font->kern->table, (neko_font_u64)code0 << 32 | (neko_font_u64)code1); }
 
 neko_font_t *neko_font_create_blank(int font_height, int glyph_count) {
-    neko_font_t *font = (neko_font_t *)neko_safe_malloc(sizeof(neko_font_t));
+    neko_font_t *font = (neko_font_t *)mem_alloc(sizeof(neko_font_t));
     font->glyph_count = glyph_count;
     font->font_height = font_height;
     font->kern = 0;
-    font->glyphs = (neko_font_glyph_t *)neko_safe_malloc(sizeof(neko_font_glyph_t) * font->glyph_count);
-    font->codes = (int *)neko_safe_malloc(sizeof(int) * font->glyph_count);
+    font->glyphs = (neko_font_glyph_t *)mem_alloc(sizeof(neko_font_glyph_t) * font->glyph_count);
+    font->codes = (int *)mem_alloc(sizeof(int) * font->glyph_count);
     return font;
 }
 
 void neko_font_add_kerning_pair(neko_font_t *font, int code0, int code1, int kerning) {
     if (!font->kern) {
-        neko_font_kern_t *kern = (neko_font_kern_t *)neko_safe_malloc(sizeof(neko_font_kern_t));
+        neko_font_kern_t *kern = (neko_font_kern_t *)mem_alloc(sizeof(neko_font_kern_t));
         font->kern = kern;
         hashtable_init(&kern->table, sizeof(int), 256, font->mem_ctx);
     }
@@ -3028,7 +3028,7 @@ ase_err:
 
 // 3.2.3
 NEKO_STATIC int s_inflate(const void *in, int in_bytes, void *out, int out_bytes) {
-    deflate_t *s = (deflate_t *)neko_safe_malloc(sizeof(deflate_t));
+    deflate_t *s = (deflate_t *)mem_alloc(sizeof(deflate_t));
     s->bits = 0;
     s->count = 0;
     s->word_index = 0;
@@ -3077,11 +3077,11 @@ NEKO_STATIC int s_inflate(const void *in, int in_bytes, void *out, int out_bytes
         ++count;
     } while (!bfinal);
 
-    neko_safe_free(s);
+    mem_free(s);
     return 1;
 
 ase_err:
-    neko_safe_free(s);
+    mem_free(s);
     return 0;
 }
 
@@ -3132,7 +3132,7 @@ NEKO_STATIC s16 s_read_int32(ase_state_t *s) { return (s32)s_read_uint32(s); }
 
 NEKO_STATIC const char *s_read_string(ase_state_t *s) {
     int len = (int)s_read_uint16(s);
-    char *bytes = (char *)neko_safe_malloc(len + 1);
+    char *bytes = (char *)mem_alloc(len + 1);
     for (int i = 0; i < len; ++i) {
         bytes[i] = (char)s_read_uint8(s);
     }
@@ -3154,13 +3154,13 @@ ase_t *neko_aseprite_load_from_file(const char *path) {
         return NULL;
     }
     ase_t *aseprite = neko_aseprite_load_from_memory(file, sz);
-    neko_safe_free(file);
+    mem_free(file);
     s_error_file = NULL;
     return aseprite;
 }
 
 ase_t *neko_aseprite_load_from_memory(const void *memory, u64 size) {
-    ase_t *ase = (ase_t *)neko_safe_malloc(sizeof(ase_t));
+    ase_t *ase = (ase_t *)mem_alloc(sizeof(ase_t));
     memset(ase, 0, sizeof(*ase));
 
     ase_state_t state = {0};
@@ -3198,7 +3198,7 @@ ase_t *neko_aseprite_load_from_memory(const void *memory, u64 size) {
     ase->grid_h = (int)s_read_uint16(s);
     s_skip(s, 84);  // For future use (set to zero).
 
-    ase->frames = (ase_frame_t *)neko_safe_malloc((int)(sizeof(ase_frame_t)) * ase->frame_count);
+    ase->frames = (ase_frame_t *)mem_alloc((int)(sizeof(ase_frame_t)) * ase->frame_count);
     memset(ase->frames, 0, sizeof(ase_frame_t) * (size_t)ase->frame_count);
 
     ase_udata_t *last_udata = NULL;
@@ -3299,7 +3299,7 @@ ase_t *neko_aseprite_load_from_memory(const void *memory, u64 size) {
                         case 0:  // Raw cel.
                             cel->w = s_read_uint16(s);
                             cel->h = s_read_uint16(s);
-                            cel->cel_pixels = neko_safe_malloc(cel->w * cel->h * bpp);
+                            cel->cel_pixels = mem_alloc(cel->w * cel->h * bpp);
                             memcpy(cel->cel_pixels, s->in, (size_t)(cel->w * cel->h * bpp));
                             s_skip(s, cel->w * cel->h * bpp);
                             break;
@@ -3321,7 +3321,7 @@ ase_t *neko_aseprite_load_from_memory(const void *memory, u64 size) {
                             NEKO_ASSERT((zlib_byte0 & 0xF0) <= 0x70);  // Innapropriate window size detected.
                             NEKO_ASSERT(!(zlib_byte1 & 0x20));         // Preset dictionary is present and not supported.
                             int pixels_sz = cel->w * cel->h * bpp;
-                            void *pixels_decompressed = neko_safe_malloc(pixels_sz);
+                            void *pixels_decompressed = mem_alloc(pixels_sz);
                             int ret = s_inflate(pixels, deflate_bytes, pixels_decompressed, pixels_sz);
                             if (!ret) NEKO_WARN(s_error_reason);
                             cel->cel_pixels = pixels_decompressed;
@@ -3353,7 +3353,7 @@ ase_t *neko_aseprite_load_from_memory(const void *memory, u64 size) {
                     if (ase->color_profile.type == NEKO_ASE_COLOR_PROFILE_TYPE_EMBEDDED_ICC) {
                         // Use the embedded ICC profile.
                         ase->color_profile.icc_profile_data_length = s_read_uint32(s);
-                        ase->color_profile.icc_profile_data = neko_safe_malloc(ase->color_profile.icc_profile_data_length);
+                        ase->color_profile.icc_profile_data = mem_alloc(ase->color_profile.icc_profile_data_length);
                         memcpy(ase->color_profile.icc_profile_data, s->in, ase->color_profile.icc_profile_data_length);
                         s->in += ase->color_profile.icc_profile_data_length;
                     }
@@ -3480,7 +3480,7 @@ void neko_aseprite_default_blend_bind(ase_t *ase) {
     // 为了方便起见，将所有单元像素混合到各自的帧中
     for (int i = 0; i < ase->frame_count; ++i) {
         ase_frame_t *frame = ase->frames + i;
-        frame->pixels[0] = (neko_color_t *)neko_safe_malloc((size_t)(sizeof(neko_color_t)) * ase->w * ase->h);
+        frame->pixels[0] = (neko_color_t *)mem_alloc((size_t)(sizeof(neko_color_t)) * ase->w * ase->h);
         memset(frame->pixels[0], 0, sizeof(neko_color_t) * (size_t)ase->w * (size_t)ase->h);
         neko_color_t *dst = frame->pixels[0];
 
@@ -3535,33 +3535,33 @@ void neko_aseprite_default_blend_bind(ase_t *ase) {
 void neko_aseprite_free(ase_t *ase) {
     for (int i = 0; i < ase->frame_count; ++i) {
         ase_frame_t *frame = ase->frames + i;
-        neko_safe_free(frame->pixels[0]);
+        mem_free(frame->pixels[0]);
         for (int j = 0; j < frame->cel_count; ++j) {
             ase_cel_t *cel = frame->cels + j;
-            neko_safe_free(cel->cel_pixels);
-            neko_safe_free((void *)cel->udata.text);
+            mem_free(cel->cel_pixels);
+            mem_free((void *)cel->udata.text);
         }
     }
     for (int i = 0; i < ase->layer_count; ++i) {
         ase_layer_t *layer = ase->layers + i;
-        neko_safe_free((void *)layer->name);
-        neko_safe_free((void *)layer->udata.text);
+        mem_free((void *)layer->name);
+        mem_free((void *)layer->udata.text);
     }
     for (int i = 0; i < ase->tag_count; ++i) {
         ase_tag_t *tag = ase->tags + i;
-        neko_safe_free((void *)tag->name);
+        mem_free((void *)tag->name);
     }
     for (int i = 0; i < ase->slice_count; ++i) {
         ase_slice_t *slice = ase->slices + i;
-        neko_safe_free((void *)slice->udata.text);
+        mem_free((void *)slice->udata.text);
     }
     if (ase->slice_count) {
-        neko_safe_free((void *)ase->slices[0].name);
+        mem_free((void *)ase->slices[0].name);
     }
     for (int i = 0; i < ase->palette.entry_count; ++i) {
-        neko_safe_free((void *)ase->palette.entries[i].color_name);
+        mem_free((void *)ase->palette.entries[i].color_name);
     }
-    neko_safe_free(ase->color_profile.icc_profile_data);
-    neko_safe_free(ase->frames);
-    neko_safe_free(ase);
+    mem_free(ase->color_profile.icc_profile_data);
+    mem_free(ase->frames);
+    mem_free(ase);
 }

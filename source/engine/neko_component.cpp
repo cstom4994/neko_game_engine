@@ -19,7 +19,7 @@ bool neko_aseprite_load(neko_aseprite *spr, const_str filepath) {
     for (int i = 0; i < ase->frame_count; ++i) {
         ase_frame_t *frame = ase->frames + i;
 
-        frame->pixels[0] = (neko_color_t *)neko_safe_malloc((int)(sizeof(neko_color_t)) * ase->w * ase->h);
+        frame->pixels[0] = (neko_color_t *)mem_alloc((int)(sizeof(neko_color_t)) * ase->w * ase->h);
 
         spr->mem_used += (sizeof(neko_color_t)) * ase->w * ase->h;
 
@@ -88,7 +88,7 @@ bool neko_aseprite_load(neko_aseprite *spr, const_str filepath) {
     // neko_array_reserve(&pixels, ase->frame_count * rect);
     //  neko_defer([&] { neko_array_dctor(&pixels); });
 
-    u8 *pixels = (u8 *)neko_safe_malloc(ase->frame_count * rect);
+    u8 *pixels = (u8 *)mem_alloc(ase->frame_count * rect);
 
     for (s32 i = 0; i < ase->frame_count; i++) {
         ase_frame_t *frame = &ase->frames[i];
@@ -125,7 +125,7 @@ bool neko_aseprite_load(neko_aseprite *spr, const_str filepath) {
 
     neko_texture_t tex = neko_render_texture_create(t_desc);
 
-    neko_safe_free(pixels);
+    mem_free(pixels);
 
     // img.width = desc.width;
     // img.height = desc.height;
@@ -275,11 +275,11 @@ void neko_fontbatch_init(neko_fontbatch_t *font_batch, const_str font_vs, const_
     }
     img.free();
 
-    font_batch->font_verts = (neko_font_vert_t *)neko_safe_malloc(sizeof(neko_font_vert_t) * 1024 * 2);
+    font_batch->font_verts = (neko_font_vert_t *)mem_alloc(sizeof(neko_font_vert_t) * 1024 * 2);
 }
 
 void neko_fontbatch_end(neko_fontbatch_t *font_batch) {
-    neko_safe_free(font_batch->font_verts);
+    mem_free(font_batch->font_verts);
     neko_font_free(font_batch->font);
     neko_render_batch_free(font_batch->font_render);
     destroy_texture_handle(font_batch->font_tex_id, NULL);
@@ -385,7 +385,7 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
         tileset.width = w;
         tileset.height = h;
 
-        neko_safe_free(tex_data);
+        mem_free(tex_data);
 
         neko_dyn_array_push(map->tilesets, tileset);
 
@@ -422,7 +422,7 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
 
         const char *cd_ptr = data_text;
 
-        layer.tiles = (tile_t *)neko_safe_malloc(layer.width * layer.height * sizeof(tile_t));
+        layer.tiles = (tile_t *)mem_alloc(layer.width * layer.height * sizeof(tile_t));
 
         for (u32 y = 0; y < layer.height; y++) {
             for (u32 x = 0; x < layer.width; x++) {
@@ -533,7 +533,7 @@ void neko_tiled_unload(map_t *map) {
     }
 
     for (u32 i = 0; i < neko_dyn_array_size(map->layers); i++) {
-        neko_safe_free(map->layers[i].tiles);
+        mem_free(map->layers[i].tiles);
     }
 
     neko_dyn_array_free(map->layers);
@@ -634,7 +634,7 @@ void neko_tiled_render_flush(neko_command_buffer_t *cb, neko_tiled_renderer *ren
 
     PROFILE_FUNC();
 
-    // const neko_vec2 ws = neko_pf_window_sizev(neko_pf_main_window());
+    // const neko_vec2 ws = neko_pf_window_sizev(neko_os_main_window());
     // neko_render_set_viewport(cb, 0, 0, ws.x, ws.y);
 
     // renderer->camera_mat = neko_mat4_ortho(0.0f, ws.x, ws.y, 0.0f, -1.0f, 1.0f);
@@ -791,7 +791,7 @@ void neko_tiled_render_draw(neko_command_buffer_t *cb, neko_tiled_renderer *rend
 
 using namespace neko;
 
-static bool layer_from_json(ldtk_map_layer *layer, JSON *json, bool *ok, arena *arena, string filepath, hashmap<neko_image> *images) {
+static bool layer_from_json(ldtk_map_layer *layer, JSON *json, bool *ok, Arena *arena, String filepath, HashMap<neko_image> *images) {
     PROFILE_FUNC();
 
     layer->identifier = arena->bump_string(json->lookup_string("__identifier", ok));
@@ -811,11 +811,11 @@ static bool layer_from_json(ldtk_map_layer *layer, JSON *json, bool *ok, arena *
     JSONArray *entity_instances = json->lookup_array("entityInstances", ok);
 
     if (tileset_rel_path.kind == JSONKind_String) {
-        string_builder sb = {};
+        StringBuilder sb = {};
         neko_defer(sb.trash());
         sb.swap_filename(filepath, tileset_rel_path.as_string(ok));
 
-        u64 key = fnv1a(string(sb));
+        u64 key = fnv1a(String(sb));
 
         neko_image *img = images->get(key);
         if (img != nullptr) {
@@ -824,7 +824,7 @@ static bool layer_from_json(ldtk_map_layer *layer, JSON *json, bool *ok, arena *
             neko_image create_img = {};
             // bool success = create_img.load(string(sb), false);
 
-            create_img.load(string(sb).data);
+            create_img.load(String(sb).data);
 
             if (!create_img.w) {
                 return false;
@@ -835,7 +835,7 @@ static bool layer_from_json(ldtk_map_layer *layer, JSON *json, bool *ok, arena *
         }
     }
 
-    slice<ldtk_map_int> grid = {};
+    Slice<ldtk_map_int> grid = {};
     if (int_grid_csv != nullptr) {
         PROFILE_BLOCK("int grid");
 
@@ -847,7 +847,7 @@ static bool layer_from_json(ldtk_map_layer *layer, JSON *json, bool *ok, arena *
     }
     layer->int_grid = grid;
 
-    slice<ldtk_map_tile> tiles = {};
+    Slice<ldtk_map_tile> tiles = {};
     if (arr_tiles != nullptr) {
         PROFILE_BLOCK("tiles");
 
@@ -892,7 +892,7 @@ static bool layer_from_json(ldtk_map_layer *layer, JSON *json, bool *ok, arena *
         }
     }
 
-    slice<ldtk_map_ent> entities = {};
+    Slice<ldtk_map_ent> entities = {};
     if (entity_instances != nullptr) {
         PROFILE_BLOCK("entities");
 
@@ -914,7 +914,7 @@ static bool layer_from_json(ldtk_map_layer *layer, JSON *json, bool *ok, arena *
     return true;
 }
 
-static bool level_from_json(ldtk_map_level *level, JSON *json, bool *ok, arena *arena, string filepath, hashmap<neko_image> *images) {
+static bool level_from_json(ldtk_map_level *level, JSON *json, bool *ok, Arena *arena, String filepath, HashMap<neko_image> *images) {
     PROFILE_FUNC();
 
     level->identifier = arena->bump_string(json->lookup_string("identifier", ok));
@@ -926,7 +926,7 @@ static bool level_from_json(ldtk_map_level *level, JSON *json, bool *ok, arena *
 
     JSONArray *layer_instances = json->lookup_array("layerInstances", ok);
 
-    slice<ldtk_map_layer> layers = {};
+    Slice<ldtk_map_layer> layers = {};
     if (layer_instances != nullptr) {
         s32 len = layer_instances->index + 1;
         layers.resize(arena, len);
@@ -944,15 +944,15 @@ static bool level_from_json(ldtk_map_level *level, JSON *json, bool *ok, arena *
     return true;
 }
 
-bool ldtk_map::load(string filepath) {
+bool ldtk_map::load(String filepath) {
     PROFILE_FUNC();
 
-    string contents = {};
+    String contents = {};
     bool success = vfs_read_entire_file(NEKO_PACKS::GAMEDATA, &contents, filepath);
     if (!success) {
         return false;
     }
-    neko_defer(neko_safe_free(contents.data));
+    neko_defer(mem_free(contents.data));
 
     bool ok = true;
     JSONDocument doc = {};
@@ -963,8 +963,8 @@ bool ldtk_map::load(string filepath) {
         return false;
     }
 
-    neko::arena arena = {};
-    hashmap<neko_image> images = {};
+    Arena arena = {};
+    HashMap<neko_image> images = {};
     bool created = false;
     neko_defer({
         if (!created) {
@@ -979,7 +979,7 @@ bool ldtk_map::load(string filepath) {
 
     JSONArray *arr_levels = doc.root.lookup_array("levels", &ok);
 
-    slice<ldtk_map_level> levels = {};
+    Slice<ldtk_map_level> levels = {};
     if (arr_levels != nullptr) {
         s32 len = arr_levels->index + 1;
         levels.resize(&arena, len);
@@ -1028,7 +1028,7 @@ void ldtk_map::destroy_bodies(b2World *world) {
     }
 }
 
-static void make_collision_for_layer(b2Body *body, ldtk_map_layer *layer, float world_x, float world_y, float meter, slice<ldtk_map_int> walls) {
+static void make_collision_for_layer(b2Body *body, ldtk_map_layer *layer, float world_x, float world_y, float meter, Slice<ldtk_map_int> walls) {
     PROFILE_FUNC();
 
     auto is_wall = [layer, walls](s32 y, s32 x) {
@@ -1045,7 +1045,7 @@ static void make_collision_for_layer(b2Body *body, ldtk_map_layer *layer, float 
         return false;
     };
 
-    array<bool> filled = {};
+    Array<bool> filled = {};
     neko_defer(filled.trash());
     filled.resize(layer->c_width * layer->c_height);
     memset(filled.data, 0, layer->c_width * layer->c_height);
@@ -1109,7 +1109,7 @@ static void make_collision_for_layer(b2Body *body, ldtk_map_layer *layer, float 
     }
 }
 
-void ldtk_map::make_collision(b2World *world, float meter, string layer_name, slice<ldtk_map_int> walls) {
+void ldtk_map::make_collision(b2World *world, float meter, String layer_name, Slice<ldtk_map_int> walls) {
     PROFILE_FUNC();
 
     b2Body *body = nullptr;
@@ -1137,7 +1137,7 @@ void ldtk_map::make_collision(b2World *world, float meter, string layer_name, sl
     bodies[fnv1a(layer_name)] = body;
 }
 
-static float get_tile_cost(ldtk_map_int n, slice<ldtk_tile_cost> costs) {
+static float get_tile_cost(ldtk_map_int n, Slice<ldtk_tile_cost> costs) {
     for (ldtk_tile_cost cost : costs) {
         if (cost.cell == n) {
             return cost.value;
@@ -1146,7 +1146,7 @@ static float get_tile_cost(ldtk_map_int n, slice<ldtk_tile_cost> costs) {
     return -1;
 }
 
-static void make_graph_for_layer(hashmap<ldtk_map_node> *graph, ldtk_map_layer *layer, float world_x, float world_y, slice<ldtk_tile_cost> costs) {
+static void make_graph_for_layer(HashMap<ldtk_map_node> *graph, ldtk_map_layer *layer, float world_x, float world_y, Slice<ldtk_tile_cost> costs) {
     PROFILE_FUNC();
 
     for (s32 y = 0; y < layer->c_height; y++) {
@@ -1164,7 +1164,7 @@ static void make_graph_for_layer(hashmap<ldtk_map_node> *graph, ldtk_map_layer *
     }
 }
 
-static bool tilemap_rect_overlaps_graph(hashmap<ldtk_map_node> *graph, s32 x0, s32 y0, s32 x1, s32 y1) {
+static bool tilemap_rect_overlaps_graph(HashMap<ldtk_map_node> *graph, s32 x0, s32 y0, s32 x1, s32 y1) {
     s32 lhs = x0 <= x1 ? x0 : x1;
     s32 rhs = x0 <= x1 ? x1 : x0;
     s32 top = y0 <= y1 ? y0 : y1;
@@ -1186,12 +1186,12 @@ static bool tilemap_rect_overlaps_graph(hashmap<ldtk_map_node> *graph, s32 x0, s
     return true;
 }
 
-static void create_neighbor_nodes(hashmap<ldtk_map_node> *graph, arena *arena, s32 bloom) {
+static void create_neighbor_nodes(HashMap<ldtk_map_node> *graph, Arena *arena, s32 bloom) {
     PROFILE_FUNC();
 
     for (auto [k, v] : *graph) {
         s32 len = 0;
-        slice<ldtk_map_node *> neighbors = {};
+        Slice<ldtk_map_node *> neighbors = {};
 
         for (s32 y = -bloom; y <= bloom; y++) {
             for (s32 x = -bloom; x <= bloom; x++) {
@@ -1224,7 +1224,7 @@ static void create_neighbor_nodes(hashmap<ldtk_map_node> *graph, arena *arena, s
     }
 }
 
-void ldtk_map::make_graph(s32 bloom, string layer_name, slice<ldtk_tile_cost> costs) {
+void ldtk_map::make_graph(s32 bloom, String layer_name, Slice<ldtk_tile_cost> costs) {
     for (ldtk_map_level &level : levels) {
         for (ldtk_map_layer &l : level.layers) {
             if (l.identifier == layer_name) {

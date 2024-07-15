@@ -65,7 +65,7 @@ template <typename T>
 struct neko_w_lua_variant {
     enum { NATIVE, LUA } stype;
     s32 type = LUA_TNONE;
-    neko::string cname;
+    String cname;
     union {
         bool boolean;
         double number;
@@ -132,7 +132,7 @@ struct neko_w_lua_variant {
                 lua_pushnumber(L, data.number);
                 break;
             case LUA_TSTRING: {
-                // neko::string s = luax_check_string(L, arg);
+                // String s = luax_check_string(L, arg);
                 // data.string = to_cstr(s);
                 lua_pushstring(L, data.str);
                 break;
@@ -148,7 +148,7 @@ struct neko_w_lua_variant {
         lua_getfield(L, LUA_REGISTRYINDEX, W_LUA_REGISTRY_NAME::W_CORE);   // # 1
         lua_getiuservalue(L, -1, W_LUA_UPVALUES::NEKO_W_COMPONENTS_NAME);  // # 2
         lua_getfield(L, -1, W_LUA_REGISTRY_NAME::CVAR_MAP);                // # 3
-        lua_pushinteger(L, cname.hash());                                  // 使用 32 位哈希以适应 Lua 数字范围
+        lua_pushinteger(L, neko_hash_str(cname.data));                     // 使用 32 位哈希以适应 Lua 数字范围
         lua_gettable(L, -2);                                               // # 4
 
         if (lua_istable(L, -1)) {
@@ -168,7 +168,7 @@ struct neko_w_lua_variant {
                     data.number = lua_tonumber(L, -1);
                     break;
                 case LUA_TSTRING: {
-                    // neko::string s = luax_check_string(L, arg);
+                    // String s = luax_check_string(L, arg);
                     // data.string = to_cstr(s);
                     data.str = lua_tostring(L, -1);
                     break;
@@ -219,7 +219,7 @@ struct neko_w_lua_variant {
         if (lua_istable(L, -1)) {
             lua_getfield(L, -1, W_LUA_REGISTRY_NAME::CVAR_MAP);  // # 3
             if (lua_istable(L, -1)) {
-                lua_pushinteger(L, cname.hash());  // 使用 32 位哈希以适应 Lua 数字范围
+                lua_pushinteger(L, neko_hash_str(cname.data));  // 使用 32 位哈希以适应 Lua 数字范围
 
                 lua_gettable(L, -2);       // # 4
                 if (lua_istable(L, -1)) {  // 如果表存在 修改字段
@@ -240,9 +240,9 @@ struct neko_w_lua_variant {
                     push();
                     lua_setfield(L, -2, "data");
 
-                    lua_pushinteger(L, cname.hash());  // 重新推入键
-                    lua_pushvalue(L, -2);              // 将新表复制到栈顶
-                    lua_settable(L, -4);               // 将新表设置到 CVAR_MAP 中
+                    lua_pushinteger(L, neko_hash_str(cname.data));  // 重新推入键
+                    lua_pushvalue(L, -2);                           // 将新表复制到栈顶
+                    lua_settable(L, -4);                            // 将新表设置到 CVAR_MAP 中
                 }
 
                 lua_pop(L, 1);  // # pop 4

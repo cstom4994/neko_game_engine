@@ -157,7 +157,7 @@ NEKO_FORCE_INLINE f32 neko_vec2_cross(neko_vec2 a, neko_vec2 b) { return a.x * b
 
 NEKO_FORCE_INLINE f32 neko_vec2_angle(neko_vec2 a, neko_vec2 b) { return (float)acos(neko_vec2_dot(a, b) / (neko_vec2_len(a) * neko_vec2_len(b))); }
 
-NEKO_FORCE_INLINE b32 neko_vec2_equal(neko_vec2 a, neko_vec2 b) { return (a.x == b.x && a.y == b.y); }
+NEKO_FORCE_INLINE bool neko_vec2_equal(neko_vec2 a, neko_vec2 b) { return (a.x == b.x && a.y == b.y); }
 
 /*================================================================================
 // Vec3
@@ -1198,7 +1198,7 @@ neko_vec2 neko_aabb_aabb_mtv(neko_aabb_t* a0, neko_aabb_t* a1) {
 
 // 2D AABB collision detection (rect. vs. rect.)
 NEKO_FORCE_INLINE
-b32 neko_aabb_vs_aabb(neko_aabb_t* a, neko_aabb_t* b) {
+bool neko_aabb_vs_aabb(neko_aabb_t* a, neko_aabb_t* b) {
     if (a->max.x > b->min.x && a->max.y > b->min.y && a->min.x < b->max.x && a->min.y < b->max.y) {
         return true;
     }

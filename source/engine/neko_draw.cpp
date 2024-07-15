@@ -1,7 +1,7 @@
 
 #include "engine/neko.hpp"
 #include "engine/neko_common.h"
-#include "engine/neko_platform.h"
+#include "engine/neko_os.h"
 #include "engine/neko_render.h"
 
 // STB
@@ -149,7 +149,7 @@ neko_immediate_draw_static_data_t* g_neko_idraw = NULL;
 const f32 neko_idraw_deg2rad = (f32)neko_pi / 180.f;
 
 // Shaders
-#if (defined NEKO_PF_WEB || defined NEKO_PF_ANDROID)
+#if (defined NEKO_IS_WEB || defined NEKO_IS_ANDROID)
 #define NEKO_IDRAW_GL_VERSION_STR "#version 300 es\n"
 #else
 #define NEKO_IDRAW_GL_VERSION_STR "#version 330 core\n"
@@ -328,17 +328,17 @@ void neko_immediate_draw_static_data_init() {
     stbtt_fontinfo font = NEKO_DEFAULT_VAL();
     const char* compressed_ttf_data_base85 = __neko_internal_GetDefaultCompressedFontDataTTFBase85();
     s32 compressed_ttf_size = (((s32)strlen(compressed_ttf_data_base85) + 4) / 5) * 4;
-    void* compressed_ttf_data = neko_safe_malloc((usize)compressed_ttf_size);
+    void* compressed_ttf_data = mem_alloc((usize)compressed_ttf_size);
     __neko_internal_Decode85((const unsigned char*)compressed_ttf_data_base85, (unsigned char*)compressed_ttf_data);
     const u32 buf_decompressed_size = neko_decompress_length((unsigned char*)compressed_ttf_data);
-    unsigned char* buf_decompressed_data = (unsigned char*)neko_safe_malloc(buf_decompressed_size);
+    unsigned char* buf_decompressed_data = (unsigned char*)mem_alloc(buf_decompressed_size);
     neko_decompress(buf_decompressed_data, (unsigned char*)compressed_ttf_data, (u32)compressed_ttf_size);
 
     const u32 w = 512;
     const u32 h = 512;
     const u32 num_comps = 4;
-    u8* alpha_bitmap = (u8*)neko_safe_malloc(w * h);
-    u8* flipmap = (u8*)neko_safe_malloc(w * h * num_comps);
+    u8* alpha_bitmap = (u8*)mem_alloc(w * h);
+    u8* flipmap = (u8*)mem_alloc(w * h * num_comps);
     memset(alpha_bitmap, 0, w * h);
     memset(flipmap, 0, w * h * num_comps);
     s32 v = stbtt_BakeFontBitmap((u8*)buf_decompressed_data, 0, 13.f, alpha_bitmap, w, h, 32, 96, (stbtt_bakedchar*)f->glyphs);  // no guarantee this fits!
@@ -378,10 +378,10 @@ void neko_immediate_draw_static_data_init() {
     vdesc.usage = R_BUFFER_USAGE_STREAM;
     neko_idraw()->vbo = neko_render_vertex_buffer_create(vdesc);
 
-    neko_safe_free(compressed_ttf_data);
-    neko_safe_free(buf_decompressed_data);
-    neko_safe_free(alpha_bitmap);
-    neko_safe_free(flipmap);
+    mem_free(compressed_ttf_data);
+    mem_free(buf_decompressed_data);
+    mem_free(alpha_bitmap);
+    mem_free(flipmap);
 }
 
 NEKO_API_DECL void neko_immediate_draw_static_data_set(neko_immediate_draw_static_data_t* data) { g_neko_idraw = data; }
@@ -1637,7 +1637,7 @@ NEKO_API_DECL void neko_idraw_cone(neko_immediate_draw_t* neko_idraw, f32 x, f32
     neko_idraw_cylinder(neko_idraw, x, y, z, 0.f, radius, height, sides, r, g, b, a, type);
 }
 
-NEKO_API_DECL void neko_idraw_text(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, const char* text, const neko_asset_font_t* fp, b32 flip_vertical, neko_color_t col) {
+NEKO_API_DECL void neko_idraw_text(neko_immediate_draw_t* neko_idraw, f32 x, f32 y, const char* text, const neko_asset_font_t* fp, bool flip_vertical, neko_color_t col) {
     // 如果没有指定字体 则使用默认字体
     if (!fp) {
         fp = &neko_idraw()->font_default;
@@ -2832,7 +2832,7 @@ NEKO_API_DECL
 neko_draw_mesh_t neko_draw_mesh_load_from_file(const char* path, neko_draw_mesh_import_options_t* options) {
     neko_draw_mesh_t mesh = NEKO_DEFAULT_VAL();
 
-    if (!neko_pf_file_exists(path)) {
+    if (!neko_os_file_exists(path)) {
         NEKO_TRACE("[gfxt] Warning:GFXT:MeshLoadFromFile:File does not exist: %s", path);
         return mesh;
     }
@@ -2843,7 +2843,7 @@ neko_draw_mesh_t neko_draw_mesh_load_from_file(const char* path, neko_draw_mesh_
 
     // Get file extension from path
     neko_transient_buffer(file_ext, 32);
-    neko_pf_file_extension(file_ext, 32, path);
+    neko_os_file_extension(file_ext, 32, path);
 
     if (neko_string_compare_equal(file_ext, "gltf")) {  // GLTF
         // neko_draw_load_gltf_data_from_file(path, options, &meshes, &mesh_count);
@@ -3407,12 +3407,12 @@ bool neko_parse_code(neko_lexer_t* lex, neko_draw_pipeline_desc_t* desc, neko_pp
 
         // Load include using final path and relative path from include
         size_t len = 0;
-        char* inc_src = neko_pf_read_file_contents(FINAL_PATH, "rb", &len);
+        char* inc_src = neko_os_read_file_contents(FINAL_PATH, "rb", &len);
         NEKO_ASSERT(inc_src);
 
         // Realloc previous code to greater size, shift contents around
         char* cat = neko_util_string_concat(inc_src, code);
-        neko_safe_free(code);
+        mem_free(code);
         code = cat;
     }
 
@@ -4214,7 +4214,7 @@ char* neko_pipeline_generate_shader_code(neko_draw_pipeline_desc_t* pdesc, neko_
     neko_snprintfc(MAJMINSTR, 128, "#version %u%u0\n", ginfo->major_version, ginfo->minor_version);
 
 // Shaders
-#ifdef NEKO_PF_WEB
+#ifdef NEKO_IS_WEB
 #define _NEKO_VERSION_STR "#version 300 es\n"
 #else
 #define _NEKO_VERSION_STR MAJMINSTR  // should be "#version 430\n" or newer
@@ -4377,11 +4377,11 @@ char* neko_pipeline_generate_shader_code(neko_draw_pipeline_desc_t* pdesc, neko_
 NEKO_API_DECL neko_draw_pipeline_t neko_draw_pipeline_load_from_file(const char* path) {
     // Load file, generate lexer off of file data, parse contents for pipeline information
     size_t len = 0;
-    char* file_data = neko_pf_read_file_contents(path, "rb", &len);
+    char* file_data = neko_os_read_file_contents(path, "rb", &len);
     NEKO_ASSERT(file_data);
     NEKO_TRACE("Parsing pipeline: %s", path);
     neko_draw_pipeline_t pip = neko_draw_pipeline_load_from_memory_ext(file_data, len, path);
-    neko_safe_free(file_data);
+    mem_free(file_data);
     return pip;
 }
 

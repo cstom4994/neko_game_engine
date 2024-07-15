@@ -4,8 +4,8 @@
 
 #include "engine/neko.hpp"
 
-#define HASHTABLE_MALLOC(ctx, size) (neko_safe_malloc(size))
-#define HASHTABLE_FREE(ctx, ptr) (neko_safe_free(ptr))
+#define HASHTABLE_MALLOC(ctx, size) (mem_alloc(size))
+#define HASHTABLE_FREE(ctx, ptr) (mem_free(ptr))
 
 static u32 hashtable_internal_pow2ceil(u32 v) {
     --v;
@@ -289,3 +289,69 @@ void hashtable_swap(neko_hashtable_t* table, int index_a, int index_b) {
     }
 
 */
+
+/*========================
+// Random
+========================*/
+
+#define NEKO_RAND_UPPER_MASK 0x80000000
+#define NEKO_RAND_LOWER_MASK 0x7fffffff
+#define NEKO_RAND_TEMPERING_MASK_B 0x9d2c5680
+#define NEKO_RAND_TEMPERING_MASK_C 0xefc60000
+
+NEKO_API_DECL void _neko_rand_seed_impl(neko_mt_rand_t* rand, uint64_t seed) {
+    rand->mt[0] = seed & 0xffffffff;
+    for (rand->index = 1; rand->index < NEKO_STATE_VECTOR_LENGTH; rand->index++) {
+        rand->mt[rand->index] = (6069 * rand->mt[rand->index - 1]) & 0xffffffff;
+    }
+}
+
+NEKO_API_DECL neko_mt_rand_t neko_rand_seed(uint64_t seed) {
+    neko_mt_rand_t rand;
+    _neko_rand_seed_impl(&rand, seed);
+    return rand;
+}
+
+NEKO_API_DECL int64_t neko_rand_gen_long(neko_mt_rand_t* rand) {
+    uint64_t y;
+    static uint64_t mag[2] = {0x0, 0x9908b0df}; /* mag[x] = x * 0x9908b0df for x = 0,1 */
+    if (rand->index >= NEKO_STATE_VECTOR_LENGTH || rand->index < 0) {
+        // generate NEKO_STATE_VECTOR_LENGTH words at a time
+        int kk;
+        if (rand->index >= NEKO_STATE_VECTOR_LENGTH + 1 || rand->index < 0) {
+            _neko_rand_seed_impl(rand, 4357);
+        }
+        for (kk = 0; kk < NEKO_STATE_VECTOR_LENGTH - NEKO_STATE_VECTOR_M; kk++) {
+            y = (rand->mt[kk] & NEKO_RAND_UPPER_MASK) | (rand->mt[kk + 1] & NEKO_RAND_LOWER_MASK);
+            rand->mt[kk] = rand->mt[kk + NEKO_STATE_VECTOR_M] ^ (y >> 1) ^ mag[y & 0x1];
+        }
+        for (; kk < NEKO_STATE_VECTOR_LENGTH - 1; kk++) {
+            y = (rand->mt[kk] & NEKO_RAND_UPPER_MASK) | (rand->mt[kk + 1] & NEKO_RAND_LOWER_MASK);
+            rand->mt[kk] = rand->mt[kk + (NEKO_STATE_VECTOR_M - NEKO_STATE_VECTOR_LENGTH)] ^ (y >> 1) ^ mag[y & 0x1];
+        }
+        y = (rand->mt[NEKO_STATE_VECTOR_LENGTH - 1] & NEKO_RAND_UPPER_MASK) | (rand->mt[0] & NEKO_RAND_LOWER_MASK);
+        rand->mt[NEKO_STATE_VECTOR_LENGTH - 1] = rand->mt[NEKO_STATE_VECTOR_M - 1] ^ (y >> 1) ^ mag[y & 0x1];
+        rand->index = 0;
+    }
+    y = rand->mt[rand->index++];
+    y ^= (y >> 11);
+    y ^= (y << 7) & NEKO_RAND_TEMPERING_MASK_B;
+    y ^= (y << 15) & NEKO_RAND_TEMPERING_MASK_C;
+    y ^= (y >> 18);
+    return y;
+}
+
+NEKO_API_DECL double neko_rand_gen(neko_mt_rand_t* rand) { return ((double)neko_rand_gen_long(rand) / (uint64_t)0xffffffff); }
+
+NEKO_API_DECL int64_t neko_rand_gen_range_long(neko_mt_rand_t* rand, int32_t min, int32_t max) { return (int64_t)(floorf(neko_rand_gen_range(rand, (double)min, (double)max))); }
+
+NEKO_API_DECL double neko_rand_gen_range(neko_mt_rand_t* rand, double min, double max) { return neko_map_range(0.0, 1.0, min, max, neko_rand_gen(rand)); }
+
+NEKO_API_DECL neko_color_t neko_rand_gen_color(neko_mt_rand_t* rand) {
+    neko_color_t c = NEKO_DEFAULT_VAL();
+    c.r = (u8)neko_rand_gen_range_long(rand, 0, 255);
+    c.g = (u8)neko_rand_gen_range_long(rand, 0, 255);
+    c.b = (u8)neko_rand_gen_range_long(rand, 0, 255);
+    c.a = (u8)neko_rand_gen_range_long(rand, 0, 255);
+    return c;
+}

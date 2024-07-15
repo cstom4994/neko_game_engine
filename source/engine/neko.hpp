@@ -19,10 +19,11 @@
 #include <vector>
 
 #include "neko.h"
+#include "neko_base.h"
 
-#if defined(NEKO_PF_WIN)
+#if defined(NEKO_IS_WIN32)
 #include <Windows.h>
-#elif defined(NEKO_PF_APPLE) || defined(NEKO_PF_LINUX)
+#elif defined(NEKO_IS_APPLE) || defined(NEKO_IS_LINUX)
 #include <dlfcn.h>
 #endif
 
@@ -329,360 +330,7 @@ NEKO_INLINE bool fs_exists(const std::string& filename) {
 
 }  // namespace neko
 
-#define NEKO_PROP
-
-#if !defined(NEKO_PROP)
-
-#include <string_view>
-
-//
-// Type names
-//
-
-#ifndef __FUNCSIG__
-#define __FUNCSIG__ __PRETTY_FUNCTION__
-#endif
-
-template <typename T>
-constexpr std::string_view getTypeName() {
-    constexpr auto prefixLength = 36, suffixLength = 1;
-    const_str data = __FUNCSIG__;
-    auto end = data;
-    while (*end) {
-        ++end;
-    }
-    return {data + prefixLength, size_t(end - data - prefixLength - suffixLength)};
-}
-
-//
-// Component types list
-//
-
-template <int N>
-struct neko_prop_component_type_counter : neko_prop_component_type_counter<N - 1> {
-    static constexpr auto num = N;
-};
-template <>
-struct neko_prop_component_type_counter<0> {
-    static constexpr auto num = 0;
-};
-neko_prop_component_type_counter<0> numComponentTypes(neko_prop_component_type_counter<0>);
-
-template <int I>
-struct neko_prop_component_typelist;
-template <>
-struct neko_prop_component_typelist<0> {
-    static void each(auto&& f) {}
-};
-
-inline constexpr auto maxNumComponentTypes = 32;
-
-template <typename T>
-inline constexpr auto isComponentType = false;
-
-#define ComponentTypeListAdd(T)                                                                                                                       \
-    template <>                                                                                                                                       \
-    inline constexpr auto isComponentType<T> = true;                                                                                                  \
-    constexpr auto ComponentTypeList_##T##_Size = decltype(numComponentTypes(neko_prop_component_type_counter<maxNumComponentTypes>()))::num + 1;     \
-    static_assert(ComponentTypeList_##T##_Size < maxNumComponentTypes);                                                                               \
-    neko_prop_component_type_counter<ComponentTypeList_##T##_Size> numComponentTypes(neko_prop_component_type_counter<ComponentTypeList_##T##_Size>); \
-    template <>                                                                                                                                       \
-    struct neko_prop_component_typelist<ComponentTypeList_##T##_Size> {                                                                               \
-        static void each(auto&& f) {                                                                                                                  \
-            neko_prop_component_typelist<ComponentTypeList_##T##_Size - 1>::each(f);                                                                  \
-            f.template operator()<T>();                                                                                                               \
-        }                                                                                                                                             \
-    }
-
-#define Comp(T)              \
-    T;                       \
-    ComponentTypeListAdd(T); \
-    struct T
-
-#define UseComponentTypes()                                                                                                                                           \
-    static void forEachComponentType(auto&& f) {                                                                                                                      \
-        neko_prop_component_typelist<decltype(numComponentTypes(neko_prop_component_type_counter<maxNumComponentTypes>()))::num>::each(std::forward<decltype(f)>(f)); \
-    }
-
-//
-// Props
-//
-
-constexpr u32 props_hash(std::string_view str) {
-    constexpr u32 offset = 2166136261;
-    constexpr u32 prime = 16777619;
-    auto result = offset;
-    for (auto c : str) {
-        result = (result ^ c) * prime;
-    }
-    return result;
-}
-
-struct neko_prop_attribs {
-    std::string_view name;
-    u32 nameHash = props_hash(name);
-
-    bool exampleFlag = false;
-};
-
-inline constexpr auto maxNumProps = 24;
-
-template <int N>
-struct neko_prop_counter : neko_prop_counter<N - 1> {
-    static constexpr auto num = N;
-};
-template <>
-struct neko_prop_counter<0> {
-    static constexpr auto num = 0;
-};
-[[maybe_unused]] static inline neko_prop_counter<0> numProps(neko_prop_counter<0>);
-
-template <int N>
-struct neko_prop_index {
-    static constexpr auto index = N;
-};
-
-template <typename T, int N>
-struct neko_prop_tag_wrapper {
-    struct tag {
-        static inline neko_prop_attribs attribs = T::getPropAttribs(neko_prop_index<N>{});
-    };
-};
-template <typename T, int N>
-struct neko_prop_tag_wrapper<const T, N> {
-    using tag = typename neko_prop_tag_wrapper<T, N>::tag;
-};
-template <typename T, int N>
-using neko_prop_tag = typename neko_prop_tag_wrapper<T, N>::tag;
-
-#define neko_prop(type, name_, ...) neko_prop_named(#name_, type, name_, __VA_ARGS__)
-#define neko_prop_named(nameStr, type, name_, ...)                                                                                                                                             \
-    using name_##_Index = neko_prop_index<decltype(numProps(neko_prop_counter<maxNumProps>()))::num>;                                                                                          \
-    static inline neko_prop_counter<decltype(numProps(neko_prop_counter<maxNumProps>()))::num + 1> numProps(neko_prop_counter<decltype(numProps(neko_prop_counter<maxNumProps>()))::num + 1>); \
-    static std::type_identity<PROP_PARENS_1(PROP_PARENS_3 type)> propType(name_##_Index);                                                                                                      \
-    static constexpr neko_prop_attribs getPropAttribs(name_##_Index) { return {.name = #name_, __VA_ARGS__}; };                                                                                \
-    std::type_identity_t<PROP_PARENS_1(PROP_PARENS_3 type)> name_
-
-#define PROP_PARENS_1(...) PROP_PARENS_2(__VA_ARGS__)
-#define PROP_PARENS_2(...) NO##__VA_ARGS__
-#define PROP_PARENS_3(...) PROP_PARENS_3 __VA_ARGS__
-#define NOPROP_PARENS_3
-
-template <auto memPtr>
-struct neko_prop_containing_type {};
-template <typename C, typename R, R C::*memPtr>
-struct neko_prop_containing_type<memPtr> {
-    using Type = C;
-};
-#define neko_prop_tag(field) neko_prop_tag<neko_prop_containing_type<&field>::Type, field##_Index::index>
-
-struct __neko_prop_any {
-    template <typename T>
-    operator T() const;  // NOLINT(google-explicit-constructor)
-};
-
-template <typename Aggregate, typename Base = std::index_sequence<>, typename = void>
-struct __neko_prop_count_fields : Base {};
-template <typename Aggregate, int... Indices>
-struct __neko_prop_count_fields<Aggregate, std::index_sequence<Indices...>,
-                                std::void_t<decltype(Aggregate{{(static_cast<void>(Indices), std::declval<__neko_prop_any>())}..., {std::declval<__neko_prop_any>()}})>>
-    : __neko_prop_count_fields<Aggregate, std::index_sequence<Indices..., sizeof...(Indices)>> {};
-template <typename T>
-constexpr int countFields() {
-    return __neko_prop_count_fields<std::remove_cvref_t<T>>().size();
-}
-
-template <typename T>
-concept neko_props = std::is_aggregate_v<T>;
-
-template <neko_props T, typename F>
-inline void forEachProp(T& val, F&& func) {
-    if constexpr (requires { forEachField(const_cast<std::remove_cvref_t<T>&>(val), func); }) {
-        forEachField(const_cast<std::remove_cvref_t<T>&>(val), func);
-    } else if constexpr (requires { T::propType(neko_prop_index<0>{}); }) {
-        constexpr auto n = countFields<T>();
-        const auto call = [&]<typename Index>(Index index, auto& val) {
-            if constexpr (requires { T::propType(index); }) {
-                static_assert(std::is_same_v<typename decltype(T::propType(index))::type, std::remove_cvref_t<decltype(val)>>);
-                func(neko_prop_tag<T, Index::index>{}, val);
-            }
-        };
-#define C(i) call(neko_prop_index<i>{}, f##i)
-        if constexpr (n == 1) {
-            auto& [f0] = val;
-            (C(0));
-        } else if constexpr (n == 2) {
-            auto& [f0, f1] = val;
-            (C(0), C(1));
-        } else if constexpr (n == 3) {
-            auto& [f0, f1, f2] = val;
-            (C(0), C(1), C(2));
-        } else if constexpr (n == 4) {
-            auto& [f0, f1, f2, f3] = val;
-            (C(0), C(1), C(2), C(3));
-        } else if constexpr (n == 5) {
-            auto& [f0, f1, f2, f3, f4] = val;
-            (C(0), C(1), C(2), C(3), C(4));
-        } else if constexpr (n == 6) {
-            auto& [f0, f1, f2, f3, f4, f5] = val;
-            (C(0), C(1), C(2), C(3), C(4), C(5));
-        } else if constexpr (n == 7) {
-            auto& [f0, f1, f2, f3, f4, f5, f6] = val;
-            (C(0), C(1), C(2), C(3), C(4), C(5), C(6));
-        } else if constexpr (n == 8) {
-            auto& [f0, f1, f2, f3, f4, f5, f6, f7] = val;
-            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7));
-        } else if constexpr (n == 9) {
-            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8] = val;
-            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8));
-        } else if constexpr (n == 10) {
-            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9] = val;
-            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9));
-        } else if constexpr (n == 11) {
-            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10] = val;
-            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10));
-        } else if constexpr (n == 12) {
-            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11] = val;
-            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11));
-        } else if constexpr (n == 13) {
-            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12] = val;
-            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12));
-        } else if constexpr (n == 14) {
-            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13] = val;
-            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12), C(13));
-        } else if constexpr (n == 15) {
-            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14] = val;
-            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12), C(13), C(14));
-        } else if constexpr (n == 16) {
-            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15] = val;
-            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12), C(13), C(14), C(15));
-        } else if constexpr (n == 17) {
-            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16] = val;
-            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12), C(13), C(14), C(15), C(16));
-        } else if constexpr (n == 18) {
-            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17] = val;
-            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12), C(13), C(14), C(15), C(16), C(17));
-        } else if constexpr (n == 19) {
-            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18] = val;
-            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12), C(13), C(14), C(15), C(16), C(17), C(18));
-        } else if constexpr (n == 20) {
-            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19] = val;
-            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12), C(13), C(14), C(15), C(16), C(17), C(18), C(19));
-        } else if constexpr (n == 21) {
-            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20] = val;
-            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12), C(13), C(14), C(15), C(16), C(17), C(18), C(19), C(20));
-        } else if constexpr (n == 22) {
-            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21] = val;
-            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12), C(13), C(14), C(15), C(16), C(17), C(18), C(19), C(20), C(21));
-        } else if constexpr (n == 23) {
-            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21, f22] = val;
-            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12), C(13), C(14), C(15), C(16), C(17), C(18), C(19), C(20), C(21), C(22));
-        } else if constexpr (n == 24) {
-            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21, f22, f23] = val;
-            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12), C(13), C(14), C(15), C(16), C(17), C(18), C(19), C(20), C(21), C(22), C(23));
-        }
-#undef C
-    }
-}
-
-#endif
-
-#include <string>
-
-namespace neko::wtf8 {
-std::wstring u2w(std::string_view str) noexcept;
-std::string w2u(std::wstring_view wstr) noexcept;
-}  // namespace neko::wtf8
-
-namespace neko::win {
-std::wstring u2w(std::string_view str) noexcept;
-std::string w2u(std::wstring_view wstr) noexcept;
-std::wstring a2w(std::string_view str) noexcept;
-std::string w2a(std::wstring_view wstr) noexcept;
-std::string a2u(std::string_view str) noexcept;
-std::string u2a(std::string_view str) noexcept;
-}  // namespace neko::win
-
-template <typename F>
-struct function_traits : public function_traits<decltype(&F::operator())> {};
-
-template <typename ClassType, typename ReturnType, typename... Args>
-struct function_traits<ReturnType (ClassType::*)(Args...) const> {
-    using return_type = ReturnType;
-    using pointer = ReturnType (*)(Args...);
-    using std_function = std::function<ReturnType(Args...)>;
-};
-
-template <typename F>
-typename function_traits<F>::std_function to_function(F& lambda) {
-    return typename function_traits<F>::std_function(lambda);
-}
-
 namespace neko {
-
-template <typename T>
-class moveonly {
-public:
-    static_assert(std::is_default_constructible_v<T>);
-    static_assert(std::is_trivially_copy_constructible_v<T>);
-    static_assert(std::is_trivially_copy_assignable_v<T>);
-    static_assert(std::is_trivially_move_constructible_v<T>);
-    static_assert(std::is_trivially_move_assignable_v<T>);
-    static_assert(std::is_swappable_v<T>);
-
-    moveonly() = default;
-
-    ~moveonly() = default;
-
-    explicit moveonly(const T& val) noexcept { m_value = val; }
-
-    moveonly(const moveonly&) = delete;
-
-    moveonly& operator=(const moveonly&) = delete;
-
-    moveonly(moveonly&& other) noexcept { m_value = std::exchange(other.m_value, T{}); }
-
-    moveonly& operator=(moveonly&& other) noexcept {
-        std::swap(m_value, other.m_value);
-        return *this;
-    }
-
-    operator const T&() const { return m_value; }
-
-    moveonly& operator=(const T& val) {
-        m_value = val;
-        return *this;
-    }
-
-    // MoveOnly<T> has the same memory layout as T
-    // So it's perfectly safe to overload operator&
-    T* operator&() { return &m_value; }
-
-    const T* operator&() const { return &m_value; }
-
-    T* operator->() { return &m_value; }
-
-    const T* operator->() const { return &m_value; }
-
-    bool operator==(const T& val) const { return m_value == val; }
-
-    bool operator!=(const T& val) const { return m_value != val; }
-
-private:
-    T m_value{};
-};
-
-static_assert(sizeof(int) == sizeof(moveonly<int>));
-
-class noncopyable {
-public:
-    noncopyable(const noncopyable&) = delete;
-    noncopyable& operator=(const noncopyable&) = delete;
-
-protected:
-    noncopyable() = default;
-    ~noncopyable() = default;
-};
 
 struct format_str {
     constexpr format_str(const char* str) noexcept : str(str) {}
@@ -875,702 +523,6 @@ constexpr void copy(ForwardIt src_beg, ForwardIt src_end, OutputIt dest_beg, Out
     }
 }
 
-#ifdef _WIN32
-#include <windows.h>
-#else
-#include <pthread.h>
-#include <semaphore.h>
-#endif
-
-struct mutex {
-#ifdef _WIN32
-    SRWLOCK srwlock;
-#else
-    pthread_mutex_t pt;
-#endif
-
-    void make();
-    void trash();
-    void lock();
-    void unlock();
-    bool try_lock();
-};
-
-struct cond {
-#ifdef _WIN32
-    CONDITION_VARIABLE cv;
-#else
-    pthread_cond_t pt;
-#endif
-
-    void make();
-    void trash();
-    void signal();
-    void broadcast();
-    void wait(mutex* mtx);
-    bool timed_wait(mutex* mtx, uint32_t ms);
-};
-
-struct rwlock {
-#if _WIN32
-    SRWLOCK srwlock;
-#else
-    pthread_rwlock_t pt;
-#endif
-
-    void make();
-    void trash();
-    void shared_lock();
-    void shared_unlock();
-    void unique_lock();
-    void unique_unlock();
-};
-
-struct sema {
-#ifdef _WIN32
-    HANDLE handle;
-#else
-    sem_t* sem;
-#endif
-
-    void make(int n = 0);
-    void trash();
-    void post(int n = 1);
-    void wait();
-};
-
-typedef void (*thread_proc)(void*);
-
-struct thread {
-    void* ptr = nullptr;
-
-    void make(thread_proc fn, void* udata);
-    void join();
-};
-
-struct lock_guard {
-    mutex* mtx;
-
-    lock_guard(mutex* mtx) : mtx(mtx) { mtx->lock(); };
-    ~lock_guard() { mtx->unlock(); };
-    lock_guard(lock_guard&&) = delete;
-    lock_guard& operator=(lock_guard&&) = delete;
-
-    operator bool() { return true; }
-};
-
-}  // namespace neko
-
-struct Allocator {
-    virtual void make() = 0;
-    virtual void trash() = 0;
-    virtual void* alloc(size_t bytes, const char* file, s32 line) = 0;
-    virtual void* realloc(void* ptr, size_t new_size, const char* file, s32 line) = 0;
-    virtual void free(void* ptr) = 0;
-};
-
-struct HeapAllocator : Allocator {
-    void make() {}
-    void trash() {}
-    void* alloc(size_t bytes, const char*, s32) { return malloc(bytes); }
-    void* realloc(void* ptr, size_t new_size, const char*, s32) { return ::realloc(ptr, new_size); }
-    void free(void* ptr) { ::free(ptr); }
-};
-
-struct DebugAllocInfo {
-    const char* file;
-    s32 line;
-    size_t size;
-    DebugAllocInfo* prev;
-    DebugAllocInfo* next;
-    alignas(16) u8 buf[1];
-};
-
-struct DebugAllocator : Allocator {
-    DebugAllocInfo* head = nullptr;
-    neko::mutex mtx = {};
-
-    void make() { mtx.make(); }
-    void trash() { mtx.trash(); }
-    void* alloc(size_t bytes, const char* file, s32 line);
-    void* realloc(void* ptr, size_t new_size, const char* file, s32 line);
-    void free(void* ptr);
-    void dump_allocs();
-};
-
-// template <typename T>
-// struct alloc {
-//     template <typename... Args>
-//     static T* safe_malloc(Args&&... args) {
-//         void* mem = neko_safe_malloc(sizeof(T));
-//         if (!mem) {
-//         }
-//         return new (mem) T(std::forward<Args>(args)...);
-//     }
-// };
-
-extern Allocator* g_allocator;
-
-#define mem_alloc(bytes) g_allocator->alloc(bytes, __FILE__, __LINE__)
-#define mem_free(ptr) g_allocator->free(ptr)
-
-#define neko_safe_malloc(size) mem_alloc(size)
-#define neko_safe_free(mem) mem_free((void*)mem)
-#define neko_safe_realloc(ptr, size) g_allocator->realloc(ptr, size, __FILE__, __LINE__)
-#define neko_safe_calloc(count, element_size) __neko_mem_safe_calloc(count, element_size, (char*)__FILE__, __LINE__)
-
-namespace neko {
-
-struct string {
-    char* data = nullptr;
-    u64 len = 0;
-
-    string() = default;
-    string(const_str cstr) : data((char*)cstr), len(strlen(cstr)) {}
-    string(const_str cstr, u64 n) : data((char*)cstr), len(n) {}
-
-    inline bool is_cstr() { return data[len] == '\0'; }
-
-    inline string substr(u64 i, u64 j) {
-        assert(i <= j);
-        assert(j <= (s64)len);
-        return {&data[i], j - i};
-    }
-
-    bool starts_with(string match);
-
-    bool ends_with(string match);
-
-    inline u64 first_of(char c) {
-        for (u64 i = 0; i < len; i++) {
-            if (data[i] == c) {
-                return i;
-            }
-        }
-
-        return (u64)-1;
-    }
-
-    inline u64 last_of(char c) {
-        for (u64 i = len; i > 0; i--) {
-            if (data[i - 1] == c) {
-                return i - 1;
-            }
-        }
-
-        return (u64)-1;
-    }
-
-    inline u32 hash() { return neko_hash_str(data); }
-
-    char* begin() { return data; }
-    char* end() { return &data[len]; }
-};
-
-inline string to_cstr(string str) {
-    char* buf = (char*)neko_safe_malloc(str.len + 1);
-    memcpy(buf, str.data, str.len);
-    buf[str.len] = 0;
-    return {buf, str.len};
-}
-
-constexpr u64 fnv1a(const_str str, u64 len) {
-    u64 hash = 14695981039346656037u;
-    for (u64 i = 0; i < len; i++) {
-        hash ^= (u8)str[i];
-        hash *= 1099511628211;
-    }
-    return hash;
-}
-
-inline u64 fnv1a(string str) { return fnv1a(str.data, str.len); }
-
-constexpr u64 operator"" _hash(const_str str, size_t len) { return fnv1a(str, len); }
-
-inline bool operator==(string lhs, string rhs) {
-    if (lhs.len != rhs.len) {
-        return false;
-    }
-    return memcmp(lhs.data, rhs.data, lhs.len) == 0;
-}
-
-inline bool operator!=(string lhs, string rhs) { return !(lhs == rhs); }
-
-inline bool string::starts_with(string match) {
-    if (len < match.len) {
-        return false;
-    }
-    return substr(0, match.len) == match;
-}
-
-inline bool string::ends_with(string match) {
-    if (len < match.len) {
-        return false;
-    }
-    return substr(len - match.len, len) == match;
-}
-
-NEKO_INLINE string str_fmt(const_str fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    s32 len = vsnprintf(nullptr, 0, fmt, args);
-    va_end(args);
-
-    if (len > 0) {
-        char* data = (char*)neko_safe_malloc(len + 1);
-        va_start(args, fmt);
-        vsnprintf(data, len + 1, fmt, args);
-        va_end(args);
-        return {data, (u64)len};
-    }
-
-    return {};
-}
-
-NEKO_INLINE string tmp_fmt(const_str fmt, ...) {
-    static char s_buf[1024] = {};
-
-    va_list args;
-    va_start(args, fmt);
-    s32 len = vsnprintf(s_buf, sizeof(s_buf), fmt, args);
-    va_end(args);
-    return {s_buf, (u64)len};
-}
-
-}  // namespace neko
-
-namespace neko {
-
-// 哈希映射容器
-
-enum hashmap_kind : u8 {
-    HashMapKind_None,
-    HashMapKind_Some,
-    HashMapKind_Tombstone,
-};
-
-#define HASH_MAP_LOAD_FACTOR 0.75f
-
-template <typename T>
-struct hashmap {
-    u64* keys = nullptr;
-    T* values = nullptr;
-    hashmap_kind* kinds = nullptr;
-    u64 load = 0;
-    u64 capacity = 0;
-
-    void trash() {
-        neko_safe_free(keys);
-        neko_safe_free(values);
-        neko_safe_free(kinds);
-    }
-
-    u64 find_entry(u64 key) const {
-        u64 index = key & (capacity - 1);
-        u64 tombstone = (u64)-1;
-        while (true) {
-            hashmap_kind kind = kinds[index];
-            if (kind == HashMapKind_None) {
-                return tombstone != (u64)-1 ? tombstone : index;
-            } else if (kind == HashMapKind_Tombstone) {
-                tombstone = index;
-            } else if (keys[index] == key) {
-                return index;
-            }
-
-            index = (index + 1) & (capacity - 1);
-        }
-    }
-
-    void real_reserve(u64 cap) {
-        if (cap <= capacity) {
-            return;
-        }
-
-        hashmap<T> map = {};
-        map.capacity = cap;
-
-        size_t bytes = sizeof(u64) * cap;
-        map.keys = (u64*)neko_safe_malloc(bytes);
-        memset(map.keys, 0, bytes);
-
-        map.values = (T*)neko_safe_malloc(sizeof(T) * cap);
-        memset(map.values, 0, sizeof(T) * cap);
-
-        map.kinds = (hashmap_kind*)neko_safe_malloc(sizeof(hashmap_kind) * cap);
-        memset(map.kinds, 0, sizeof(hashmap_kind) * cap);
-
-        for (u64 i = 0; i < capacity; i++) {
-            hashmap_kind kind = kinds[i];
-            if (kind != HashMapKind_Some) {
-                continue;
-            }
-
-            u64 index = map.find_entry(keys[i]);
-            map.keys[index] = keys[i];
-            map.values[index] = values[i];
-            map.kinds[index] = HashMapKind_Some;
-            map.load++;
-        }
-
-        neko_safe_free(keys);
-        neko_safe_free(values);
-        neko_safe_free(kinds);
-        *this = map;
-    }
-
-    void reserve(u64 capacity) {
-        u64 n = (u64)(capacity / HASH_MAP_LOAD_FACTOR) + 1;
-
-        // next pow of 2
-        n--;
-        n |= n >> 1;
-        n |= n >> 2;
-        n |= n >> 4;
-        n |= n >> 8;
-        n |= n >> 16;
-        n |= n >> 32;
-        n++;
-
-        real_reserve(n);
-    }
-
-    T* get(u64 key) {
-        if (load == 0) {
-            return nullptr;
-        }
-        u64 index = find_entry(key);
-        return kinds[index] == HashMapKind_Some ? &values[index] : nullptr;
-    }
-
-    const T* get(u64 key) const {
-        if (load == 0) {
-            return nullptr;
-        }
-        u64 index = find_entry(key);
-        return kinds[index] == HashMapKind_Some ? &values[index] : nullptr;
-    }
-
-    bool find_or_insert(u64 key, T** value) {
-        if (load >= capacity * HASH_MAP_LOAD_FACTOR) {
-            real_reserve(capacity > 0 ? capacity * 2 : 16);
-        }
-
-        u64 index = find_entry(key);
-        bool exists = kinds[index] == HashMapKind_Some;
-        if (!exists) {
-            values[index] = {};
-        }
-
-        if (kinds[index] == HashMapKind_None) {
-            load++;
-            keys[index] = key;
-            kinds[index] = HashMapKind_Some;
-        }
-
-        *value = &values[index];
-        return exists;
-    }
-
-    T& operator[](u64 key) {
-        T* value;
-        find_or_insert(key, &value);
-        return *value;
-    }
-
-    void unset(u64 key) {
-        if (load == 0) {
-            return;
-        }
-
-        u64 index = find_entry(key);
-        if (kinds[index] != HashMapKind_None) {
-            kinds[index] = HashMapKind_Tombstone;
-        }
-    }
-
-    void clear() {
-        memset(keys, 0, sizeof(u64) * capacity);
-        memset(values, 0, sizeof(T) * capacity);
-        memset(kinds, 0, sizeof(hashmap_kind) * capacity);
-        load = 0;
-    }
-};
-
-template <typename T>
-struct hashmap_kv {
-    u64 key;
-    T* value;
-};
-
-template <typename T>
-struct hashmap_iter {
-    hashmap<T>* map;
-    u64 cursor;
-
-    hashmap_kv<T> operator*() const {
-        hashmap_kv<T> kv;
-        kv.key = map->keys[cursor];
-        kv.value = &map->values[cursor];
-        return kv;
-    }
-
-    hashmap_iter& operator++() {
-        cursor++;
-        while (cursor != map->capacity) {
-            if (map->kinds[cursor] == HashMapKind_Some) {
-                return *this;
-            }
-            cursor++;
-        }
-
-        return *this;
-    }
-};
-
-template <typename T>
-bool operator!=(hashmap_iter<T> lhs, hashmap_iter<T> rhs) {
-    return lhs.map != rhs.map || lhs.cursor != rhs.cursor;
-}
-
-template <typename T>
-hashmap_iter<T> begin(hashmap<T>& map) {
-    hashmap_iter<T> it = {};
-    it.map = &map;
-    it.cursor = map.capacity;
-
-    for (u64 i = 0; i < map.capacity; i++) {
-        if (map.kinds[i] == HashMapKind_Some) {
-            it.cursor = i;
-            break;
-        }
-    }
-
-    return it;
-}
-
-template <typename T>
-hashmap_iter<T> end(hashmap<T>& map) {
-    hashmap_iter<T> it = {};
-    it.map = &map;
-    it.cursor = map.capacity;
-    return it;
-}
-
-// 基本泛型容器
-
-template <typename T>
-struct array {
-    T* data = nullptr;
-    u64 len = 0;
-    u64 capacity = 0;
-
-    T& operator[](size_t i) {
-        NEKO_ASSERT(i >= 0 && i < len);
-        return data[i];
-    }
-
-    void trash() { neko_safe_free(data); }
-
-    void reserve(u64 cap) {
-        if (cap > capacity) {
-            T* buf = (T*)neko_safe_malloc(sizeof(T) * cap);
-            memcpy(buf, data, sizeof(T) * len);
-            neko_safe_free(data);
-            data = buf;
-            capacity = cap;
-        }
-    }
-
-    void resize(u64 n) {
-        reserve(n);
-        len = n;
-    }
-
-    void push(T item) {
-        if (len == capacity) {
-            reserve(len > 0 ? len * 2 : 8);
-        }
-        data[len] = item;
-        len++;
-    }
-
-    void pop() {
-        NEKO_ASSERT(data->len != 0);
-        // 直接标记长度简短 优化方法
-        data->len--;
-    }
-
-    T* begin() { return data; }
-    T* end() { return &data[len]; }
-};
-
-struct arena_node;
-struct arena {
-    arena_node* head;
-
-    void trash();
-    void* bump(u64 size);
-    void* rebump(void* ptr, u64 old, u64 size);
-    string bump_string(string s);
-};
-
-template <typename T>
-struct slice {
-    T* data = nullptr;
-    u64 len = 0;
-
-    slice() = default;
-    explicit slice(array<T> arr) : data(arr.data), len(arr.len) {}
-
-    T& operator[](size_t i) {
-        assert(i >= 0 && i < len);
-        return data[i];
-    }
-
-    const T& operator[](size_t i) const {
-        assert(i >= 0 && i < len);
-        return data[i];
-    }
-
-    void resize(u64 n) {
-        T* buf = (T*)neko_safe_malloc(sizeof(T) * n);
-        memcpy(buf, data, sizeof(T) * len);
-        neko_safe_free(data);
-        data = buf;
-        len = n;
-    }
-
-    void resize(arena* arena, u64 n) {
-        T* buf = (T*)arena->rebump(data, sizeof(T) * len, sizeof(T) * n);
-        data = buf;
-        len = n;
-    }
-
-    T* begin() { return data; }
-    T* end() { return &data[len]; }
-    const T* begin() const { return data; }
-    const T* end() const { return &data[len]; }
-};
-
-template <typename T>
-struct priority_queue {
-    T* data = nullptr;
-    float* costs = nullptr;
-    u64 len = 0;
-    u64 capacity = 0;
-
-    void trash() {
-        neko_safe_free(data);
-        neko_safe_free(costs);
-    }
-
-    void reserve(u64 cap) {
-        if (cap <= capacity) {
-            return;
-        }
-
-        T* buf = (T*)neko_safe_malloc(sizeof(T) * cap);
-        memcpy(buf, data, sizeof(T) * len);
-        neko_safe_free(data);
-        data = buf;
-
-        float* cbuf = (float*)neko_safe_malloc(sizeof(float) * cap);
-        memcpy(cbuf, costs, sizeof(float) * len);
-        neko_safe_free(costs);
-        costs = cbuf;
-
-        capacity = cap;
-    }
-
-    void swap(s32 i, s32 j) {
-        T t = data[i];
-        data[i] = data[j];
-        data[j] = t;
-
-        float f = costs[i];
-        costs[i] = costs[j];
-        costs[j] = f;
-    }
-
-    void shift_up(s32 j) {
-        while (j > 0) {
-            s32 i = (j - 1) / 2;
-            if (i == j || costs[i] < costs[j]) {
-                break;
-            }
-
-            swap(i, j);
-            j = i;
-        }
-    }
-
-    void shift_down(s32 i, s32 n) {
-        if (i < 0 || i > n) {
-            return;
-        }
-
-        s32 j = 2 * i + 1;
-        while (j >= 0 && j < n) {
-            if (j + 1 < n && costs[j + 1] < costs[j]) {
-                j = j + 1;
-            }
-
-            if (costs[i] < costs[j]) {
-                break;
-            }
-
-            swap(i, j);
-            i = j;
-            j = 2 * i + 1;
-        }
-    }
-
-    void push(T item, float cost) {
-        if (len == capacity) {
-            reserve(len > 0 ? len * 2 : 8);
-        }
-
-        data[len] = item;
-        costs[len] = cost;
-        len++;
-
-        shift_up(len - 1);
-    }
-
-    bool pop(T* item) {
-        if (len == 0) {
-            return false;
-        }
-
-        *item = data[0];
-
-        data[0] = data[len - 1];
-        costs[0] = costs[len - 1];
-        len--;
-
-        shift_down(0, len);
-        return true;
-    }
-};
-
-struct string_builder {
-    char* data;
-    u64 len;       // 不包括空项
-    u64 capacity;  // 包括空项
-
-    string_builder();
-
-    void trash();
-    void reserve(u64 capacity);
-    void clear();
-    void swap_filename(string filepath, string file);
-    void concat(string str, s32 times);
-
-    string_builder& operator<<(string str);
-    explicit operator string();
-};
-
 struct mount_result {
     bool ok;
     bool can_hot_reload;
@@ -1579,13 +531,13 @@ struct mount_result {
 
 mount_result vfs_mount(const_str fsname, const_str filepath);
 void vfs_fini(std::optional<std::string> name);
-bool vfs_file_exists(std::string fsname, string filepath);
-bool vfs_read_entire_file(std::string fsname, string* out, string filepath);
+bool vfs_file_exists(std::string fsname, String filepath);
+bool vfs_read_entire_file(std::string fsname, String* out, String filepath);
 
 void* vfs_for_miniaudio();
 
 s64 luax_len(lua_State* L, s32 arg);
-string luax_check_string(lua_State* L, s32 arg);
+String luax_check_string(lua_State* L, s32 arg);
 
 }  // namespace neko
 
@@ -1606,31 +558,31 @@ struct JSON {
     union {
         JSONObject* object;
         JSONArray* array;
-        string str;
+        String str;
         double number;
         bool boolean;
     };
     JSONKind kind;
 
-    JSON lookup(string key, bool* ok);
+    JSON lookup(String key, bool* ok);
     JSON index(s32 i, bool* ok);
 
     JSONObject* as_object(bool* ok);
     JSONArray* as_array(bool* ok);
-    string as_string(bool* ok);
+    String as_string(bool* ok);
     double as_number(bool* ok);
 
-    JSONObject* lookup_object(string key, bool* ok);
-    JSONArray* lookup_array(string key, bool* ok);
-    string lookup_string(string key, bool* ok);
-    double lookup_number(string key, bool* ok);
+    JSONObject* lookup_object(String key, bool* ok);
+    JSONArray* lookup_array(String key, bool* ok);
+    String lookup_string(String key, bool* ok);
+    double lookup_number(String key, bool* ok);
 
     double index_number(s32 i, bool* ok);
 };
 
 struct JSONObject {
     JSON value;
-    string key;
+    String key;
     JSONObject* next;
     u64 hash;
 };
@@ -1643,19 +595,18 @@ struct JSONArray {
 
 struct JSONDocument {
     JSON root;
-    string error;
-    arena arena;
+    String error;
+    Arena arena;
 
-    void parse(string contents);
+    void parse(String contents);
     void trash();
 };
 
-struct StringBuilder;
 void json_write_string(StringBuilder* sb, JSON* json);
 void json_print(JSON* json);
 
 void json_to_lua(lua_State* L, JSON* json);
-string lua_to_json_string(lua_State* L, s32 arg, string* contents, s32 width);
+String lua_to_json_string(lua_State* L, s32 arg, String* contents, s32 width);
 
 NEKO_INLINE bool str_is_chinese_c(const char str) { return str & 0x80; }
 
@@ -1793,15 +744,13 @@ NEKO_INLINE bool str_replace_with(std::string& src, const char* what, const char
     return true;
 }
 
-uint64_t this_thread_id();
-
 struct LuaThread {
-    mutex mtx;
-    string contents;
-    string name;
-    thread thread;
+    Mutex mtx;
+    String contents;
+    String name;
+    Thread thread;
 
-    void make(string code, string thread_name);
+    void make(String code, String thread_name);
     void join();
 };
 
@@ -1812,11 +761,11 @@ struct lua_variant {
     union {
         bool boolean;
         double number;
-        string string;
-        slice<lua_table_entry> table;
+        String string;
+        Slice<lua_table_entry> table;
         struct {
             void* ptr;
-            neko::string tname;
+            String tname;
         } udata;
     };
 };
@@ -1838,114 +787,30 @@ struct lua_table_entry {
 struct lua_channel {
     std::atomic<char*> name;
 
-    mutex mtx;
-    cond received;
-    cond sent;
+    Mutex mtx;
+    Cond received;
+    Cond sent;
 
     u64 received_total;
     u64 sent_total;
 
-    slice<lua_variant_wrap> items;
+    Slice<lua_variant_wrap> items;
     u64 front;
     u64 back;
     u64 len;
 
-    void make(string n, u64 buf);
+    void make(String n, u64 buf);
     void trash();
     void send(lua_variant_wrap item);
     lua_variant_wrap recv();
     bool try_recv(lua_variant_wrap* v);
 };
 
-lua_channel* lua_channel_make(string name, u64 buf);
-lua_channel* lua_channel_get(string name);
+lua_channel* lua_channel_make(String name, u64 buf);
+lua_channel* lua_channel_get(String name);
 lua_channel* lua_channels_select(lua_State* L, lua_variant_wrap* v);
 void lua_channels_setup();
 void lua_channels_shutdown();
-
-template <typename T>
-struct queue {
-    mutex mtx = {};
-    cond cv = {};
-
-    T* data = nullptr;
-    u64 front = 0;
-    u64 back = 0;
-    u64 len = 0;
-    u64 capacity = 0;
-
-    void make() {
-        mtx.make();
-        cv.make();
-    }
-
-    void trash() {
-        mtx.trash();
-        cv.trash();
-        neko_safe_free(data);
-    }
-
-    void reserve(u64 cap) {
-        if (cap <= capacity) {
-            return;
-        }
-
-        T* buf = (T*)neko_safe_malloc(sizeof(T) * cap);
-
-        if (front < back) {
-            memcpy(buf, &data[front], sizeof(T) * len);
-        } else {
-            u64 lhs = back;
-            u64 rhs = (capacity - front);
-
-            memcpy(buf, &data[front], sizeof(T) * rhs);
-            memcpy(&buf[rhs], &data[0], sizeof(T) * lhs);
-        }
-
-        neko_safe_free(data);
-
-        data = buf;
-        front = 0;
-        back = len;
-        capacity = cap;
-    }
-
-    void enqueue(T item) {
-        lock_guard lock{&mtx};
-
-        if (len == capacity) {
-            reserve(len > 0 ? len * 2 : 8);
-        }
-
-        data[back] = item;
-        back = (back + 1) % capacity;
-        len++;
-
-        cv.signal();
-    }
-
-    T demand() {
-        lock_guard lock{&mtx};
-
-        while (len == 0) {
-            cv.wait(&mtx);
-        }
-
-        T item = data[front];
-        front = (front + 1) % capacity;
-        len--;
-
-        return item;
-    }
-};
-
-s32 os_change_dir(const char* path);
-string os_program_dir();
-string os_program_path();
-u64 os_file_modtime(const char* filename);
-void os_high_timer_resolution();
-void os_sleep(u32 ms);
-void os_yield();
 
 typedef struct neko_dynlib {
     void* hndl;
@@ -1957,34 +822,6 @@ NEKO_API_DECL void* neko_module_get_symbol(neko_dynlib lib, const_str symbol_nam
 NEKO_API_DECL bool neko_module_has_symbol(neko_dynlib lib, const_str symbol_name);
 
 NEKO_API_DECL void neko_tm_init(void);
-
-void profile_setup();
-void profile_fini();
-
-struct TraceEvent {
-    const char* cat;
-    const char* name;
-    u64 ts;
-    u16 tid;
-    char ph;
-};
-
-struct Instrument {
-    const char* cat;
-    const char* name;
-    s32 tid;
-
-    Instrument(const char* cat, const char* name);
-    ~Instrument();
-};
-
-#if NEKO_PROFILE_ENABLE
-#define PROFILE_FUNC() auto NEKO_CONCAT(__gen_profile_, __COUNTER__) = ::neko::Instrument("function", __func__);
-#define PROFILE_BLOCK(name) auto NEKO_CONCAT(__gen_profile_, __COUNTER__) = ::neko::Instrument("block", name);
-#else
-#define PROFILE_FUNC()
-#define PROFILE_BLOCK(name)
-#endif
 
 }  // namespace neko
 

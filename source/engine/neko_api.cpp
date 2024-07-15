@@ -68,7 +68,7 @@ bool luax_boolean_field(lua_State* L, s32 arg, const char* key, bool fallback) {
     return b;
 }
 
-neko::string luax_check_string(lua_State* L, s32 arg) {
+String luax_check_string(lua_State* L, s32 arg) {
     size_t len = 0;
     char* str = (char*)luaL_checklstring(L, arg, &len);
     return {str, len};
@@ -87,7 +87,7 @@ int luax_msgh(lua_State* L) {
     //     return 0;
     // }
 
-    neko::string err = luax_check_string(L, -1);
+    String err = luax_check_string(L, -1);
 
     // traceback = debug.traceback(nil, 2)
     lua_getglobal(L, "debug");
@@ -96,7 +96,7 @@ int luax_msgh(lua_State* L) {
     lua_pushnil(L);
     lua_pushinteger(L, 2);
     lua_call(L, 2, 1);
-    neko::string traceback = luax_check_string(L, -1);
+    String traceback = luax_check_string(L, -1);
 
     // if (lock_guard lock{&g_app->error_mtx}) {
     //     g_app->fatal_error = to_cstr(err);

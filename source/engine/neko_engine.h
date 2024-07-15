@@ -6,7 +6,7 @@
 #include "engine/neko.hpp"
 #include "engine/neko_asset.h"
 #include "engine/neko_imgui.hpp"
-#include "engine/neko_platform.h"
+#include "engine/neko_os.h"
 #include "engine/neko_render.h"
 
 /*==========================
@@ -42,7 +42,7 @@ typedef struct Neko_ModuleInterface {
 } Neko_ModuleInterface;
 
 typedef struct neko_instance_t {
-    neko_pf_t* platform;
+    neko_os_t* platform;
     neko_render_t* render;
 
     struct {
@@ -50,7 +50,7 @@ typedef struct neko_instance_t {
         u8 debug_level;
         neko_vec2_t DisplaySize;
         neko_vec2_t DisplayFramebufferScale;
-        b32 profiler_enable;
+        bool profiler_enable;
         neko_imgui_context_t imgui;
         neko_client_cvar_t cvar = NEKO_DEFAULT_VAL();
 

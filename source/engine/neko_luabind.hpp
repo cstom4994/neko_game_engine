@@ -31,14 +31,14 @@ inline void register_module(const char* name, lua_CFunction func) { usermodules(
 
 inline int preload_module(lua_State* L) {
     luaL_getsubtable(L, LUA_REGISTRYINDEX, "_PRELOAD");
-    string_builder li;
+    StringBuilder li;
     for (const auto& m : usermodules()) {
         lua_pushcfunction(L, m.func);
         lua_setfield(L, -2, m.name);
-        li << string(m.name) << "|";
+        li << String(m.name) << "|";
     }
     NEKO_INFO("[luabind] loaded [%s]", li.data);
-    neko_safe_free(li.data);
+    mem_free(li.data);
     lua_pop(L, 1);
     return 0;
 }
@@ -242,13 +242,13 @@ T& checkudata(lua_State* L, int arg, const_str tname = reflection::name_v<T>.dat
 template <typename T>
 void checktable_refl(lua_State* L, const_str tname, T&& v) {
 
-#define FUCK_TYPES() u32, b32, f32, bool, const_str
+#define FUCK_TYPES() u32, bool, f32, bool, const_str
 
     if (lua_getfield(L, -1, tname) == LUA_TNIL) {
         NEKO_ERROR("[exception] no %s table", tname);
     }
     if (lua_istable(L, -1)) {
-        // neko::static_refl::neko_type_info<neko_pf_running_desc_t>::ForEachVarOf(t, [](auto field, auto &&value) {
+        // neko::static_refl::neko_type_info<neko_os_running_desc_t>::ForEachVarOf(t, [](auto field, auto &&value) {
         //     static_assert(std::is_lvalue_reference_v<decltype(value)>);
         //     if (lua_getfield(L, -1, std::string(field.name).c_str()) != LUA_TNIL) value = neko_lua_to<std::remove_reference_t<decltype(value)>>(L, -1);
         //     lua_pop(L, 1);

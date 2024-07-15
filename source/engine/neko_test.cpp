@@ -19,10 +19,10 @@
 #include "engine/neko_lua.h"
 #include "engine/neko_luabind.hpp"
 #include "engine/neko_math.h"
-#include "engine/neko_platform.h"
+#include "engine/neko_os.h"
 #include "engine/neko_reflection.hpp"
 
-void editor_dockspace(neko_ui_context_t *ctx) {
+void editor_dockspace(neko_ui_context_t* ctx) {
     u64 opt = NEKO_UI_OPT_NOCLIP | NEKO_UI_OPT_NOFRAME | NEKO_UI_OPT_FORCESETRECT | NEKO_UI_OPT_NOTITLE | NEKO_UI_OPT_DOCKSPACE | NEKO_UI_OPT_FULLSCREEN | NEKO_UI_OPT_NOMOVE |
               NEKO_UI_OPT_NOBRINGTOFRONT | NEKO_UI_OPT_NOFOCUS | NEKO_UI_OPT_NORESIZE;
     neko_ui_window_begin_ex(ctx, "Dockspace", neko_ui_rect(350, 40, 600, 500), NULL, NULL, opt);
@@ -36,7 +36,7 @@ void editor_dockspace(neko_ui_context_t *ctx) {
 //
 //  测试UI
 
-s32 button_custom(neko_ui_context_t *ctx, const char *label) {
+s32 button_custom(neko_ui_context_t* ctx, const char* label) {
     // Do original button call
     s32 res = neko_ui_button(ctx, label);
 
@@ -52,21 +52,21 @@ s32 button_custom(neko_ui_context_t *ctx, const char *label) {
     return res;
 }
 
-NEKO_API_DECL void neko_console(neko_console_t *console, neko_ui_context_t *ctx, neko_ui_rect_t screen, const neko_ui_selector_desc_t *desc);
+NEKO_API_DECL void neko_console(neko_console_t* console, neko_ui_context_t* ctx, neko_ui_rect_t screen, const neko_ui_selector_desc_t* desc);
 
 void draw_gui() {
 
     PROFILE_FUNC();
 
-    const f64 t = neko_pf_elapsed_time();
+    const f64 t = neko_os_elapsed_time();
 
     // Custom callback for immediate drawing directly into the gui window
-    auto gui_cb = [](neko_ui_context_t *ctx, struct neko_ui_customcommand_t *cmd) {
-        neko_immediate_draw_t *gui_idraw = &ctx->gui_idraw;  // Immediate draw list in gui context
+    auto gui_cb = [](neko_ui_context_t* ctx, struct neko_ui_customcommand_t* cmd) {
+        neko_immediate_draw_t* gui_idraw = &ctx->gui_idraw;  // Immediate draw list in gui context
         neko_vec2 fbs = ctx->framebuffer_size;               // Framebuffer size bound for gui context
-        neko_color_t *color = (neko_color_t *)cmd->data;     // Grab custom data
-        neko_asset_texture_t *tp = neko_assets_getp(&ENGINE_INTERFACE()->am, neko_asset_texture_t, ENGINE_INTERFACE()->tex_hndl);
-        const f32 t = neko_pf_elapsed_time();
+        neko_color_t* color = (neko_color_t*)cmd->data;      // Grab custom data
+        neko_asset_texture_t* tp = neko_assets_getp(&ENGINE_INTERFACE()->am, neko_asset_texture_t, ENGINE_INTERFACE()->tex_hndl);
+        const f32 t = neko_os_elapsed_time();
 
         // Set up an immedaite camera using our passed in cmd viewport (this is the clipped viewport of the gui window being drawn)
         neko_idraw_camera3d(gui_idraw, (u32)cmd->viewport.w, (u32)cmd->viewport.h);
@@ -109,8 +109,8 @@ void draw_gui() {
         neko_idraw_push_matrix(gui_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);
         {
             neko_idraw_translatef(gui_idraw, -2.f, -1.f, -5.f);
-            neko_idraw_rotatev(gui_idraw, neko_pf_elapsed_time() * 0.001f, NEKO_YAXIS);
-            neko_idraw_rotatev(gui_idraw, neko_pf_elapsed_time() * 0.0005f, NEKO_ZAXIS);
+            neko_idraw_rotatev(gui_idraw, neko_os_elapsed_time() * 0.001f, NEKO_YAXIS);
+            neko_idraw_rotatev(gui_idraw, neko_os_elapsed_time() * 0.0005f, NEKO_ZAXIS);
             neko_idraw_texture(gui_idraw, tp->hndl);
             neko_idraw_scalef(gui_idraw, 1.5f, 1.5f, 1.5f);
             neko_idraw_box(gui_idraw, 0.f, 0.f, 0.f, 0.5f, 0.5f, 0.5f, 255, 255, 255, 255, R_PRIMITIVE_TRIANGLES);
@@ -122,9 +122,9 @@ void draw_gui() {
         neko_idraw_push_matrix(gui_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);
         {
             neko_idraw_translatef(gui_idraw, 2.f, -1.f, -5.f);
-            neko_idraw_rotatev(gui_idraw, neko_pf_elapsed_time() * 0.001f, NEKO_YAXIS);
-            neko_idraw_rotatev(gui_idraw, neko_pf_elapsed_time() * 0.0008f, NEKO_ZAXIS);
-            neko_idraw_rotatev(gui_idraw, neko_pf_elapsed_time() * 0.0009f, NEKO_XAXIS);
+            neko_idraw_rotatev(gui_idraw, neko_os_elapsed_time() * 0.001f, NEKO_YAXIS);
+            neko_idraw_rotatev(gui_idraw, neko_os_elapsed_time() * 0.0008f, NEKO_ZAXIS);
+            neko_idraw_rotatev(gui_idraw, neko_os_elapsed_time() * 0.0009f, NEKO_XAXIS);
             neko_idraw_scalef(gui_idraw, 1.5f, 1.5f, 1.5f);
             neko_idraw_box(gui_idraw, 0.f, 0.f, 0.f, 0.5f, 0.5f, 0.5f, 255, 200, 100, 255, R_PRIMITIVE_LINES);
         }
@@ -135,8 +135,8 @@ void draw_gui() {
         neko_idraw_push_matrix(gui_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);
         {
             neko_idraw_translatef(gui_idraw, -2.f, -1.f, -5.f);
-            neko_idraw_rotatev(gui_idraw, neko_pf_elapsed_time() * 0.001f, NEKO_YAXIS);
-            neko_idraw_rotatev(gui_idraw, neko_pf_elapsed_time() * 0.0005f, NEKO_ZAXIS);
+            neko_idraw_rotatev(gui_idraw, neko_os_elapsed_time() * 0.001f, NEKO_YAXIS);
+            neko_idraw_rotatev(gui_idraw, neko_os_elapsed_time() * 0.0005f, NEKO_ZAXIS);
             neko_idraw_scalef(gui_idraw, 1.5f, 1.5f, 1.5f);
             neko_idraw_sphere(gui_idraw, 0.f, 0.f, 0.f, 1.0f, 255, 255, 255, 50, R_PRIMITIVE_TRIANGLES);
         }
@@ -146,9 +146,9 @@ void draw_gui() {
         neko_idraw_push_matrix(gui_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);
         {
             neko_idraw_translatef(gui_idraw, 2.f, -1.f, -5.f);
-            neko_idraw_rotatev(gui_idraw, neko_pf_elapsed_time() * 0.001f, NEKO_YAXIS);
-            neko_idraw_rotatev(gui_idraw, neko_pf_elapsed_time() * 0.0008f, NEKO_ZAXIS);
-            neko_idraw_rotatev(gui_idraw, neko_pf_elapsed_time() * 0.0009f, NEKO_XAXIS);
+            neko_idraw_rotatev(gui_idraw, neko_os_elapsed_time() * 0.001f, NEKO_YAXIS);
+            neko_idraw_rotatev(gui_idraw, neko_os_elapsed_time() * 0.0008f, NEKO_ZAXIS);
+            neko_idraw_rotatev(gui_idraw, neko_os_elapsed_time() * 0.0009f, NEKO_XAXIS);
             neko_idraw_scalef(gui_idraw, 1.5f, 1.5f, 1.5f);
             neko_idraw_sphere(gui_idraw, 0.f, 0.f, 0.f, 1.0f, 255, 255, 255, 50, R_PRIMITIVE_LINES);
         }
@@ -178,7 +178,7 @@ void draw_gui() {
             neko_ui_window_begin(&ENGINE_INTERFACE()->ui, "Window", neko_ui_rect((neko_game()->DisplaySize.x - ss_ws.x) * 0.5f, (neko_game()->DisplaySize.y - ss_ws.y) * 0.5f, ss_ws.x, ss_ws.y));
             {
                 // Cache the current container
-                neko_ui_container_t *cnt = neko_ui_get_current_container(&ENGINE_INTERFACE()->ui);
+                neko_ui_container_t* cnt = neko_ui_get_current_container(&ENGINE_INTERFACE()->ui);
 
                 neko_ui_layout_row(&ENGINE_INTERFACE()->ui, 2, neko_ui_widths(200, 0), 0);
 
@@ -213,7 +213,7 @@ void draw_gui() {
             neko_ui_window_begin(&ENGINE_INTERFACE()->ui, "Idraw", neko_ui_rect((neko_game()->DisplaySize.x - ws.x) * 0.2f, (neko_game()->DisplaySize.y - ws.y) * 0.5f, ws.x, ws.y));
             {
                 // Cache the current container
-                neko_ui_container_t *cnt = neko_ui_get_current_container(&ENGINE_INTERFACE()->ui);
+                neko_ui_container_t* cnt = neko_ui_get_current_container(&ENGINE_INTERFACE()->ui);
 
                 // 绘制到当前窗口中的转换对象的自定义回调
                 // 在这里，我们将容器的主体作为视口传递，但这可以是您想要的任何内容，
@@ -226,9 +226,9 @@ void draw_gui() {
             neko_ui_window_end(&ENGINE_INTERFACE()->ui);
         }
 
-        if (neko_pf_key_pressed(NEKO_KEYCODE_GRAVE_ACCENT)) {
+        if (neko_os_key_pressed(NEKO_KEYCODE_GRAVE_ACCENT)) {
             g_console.open = !g_console.open;
-        } else if (neko_pf_key_pressed(NEKO_KEYCODE_TAB) && g_console.open) {
+        } else if (neko_os_key_pressed(NEKO_KEYCODE_TAB) && g_console.open) {
             g_console.autoscroll = !g_console.autoscroll;
         }
 
@@ -236,11 +236,11 @@ void draw_gui() {
 
         if (neko_game()->cvar.show_gui) {
 
-            neko_vec2 mp = neko_pf_mouse_positionv();
-            neko_vec2 mw = neko_pf_mouse_wheelv();
-            neko_vec2 md = neko_pf_mouse_deltav();
-            bool lock = neko_pf_mouse_locked();
-            bool moved = neko_pf_mouse_moved();
+            neko_vec2 mp = neko_os_mouse_positionv();
+            neko_vec2 mw = neko_os_mouse_wheelv();
+            neko_vec2 md = neko_os_mouse_deltav();
+            bool lock = neko_os_mouse_locked();
+            bool moved = neko_os_mouse_moved();
 
             if (neko_ui_window_begin(&ENGINE_INTERFACE()->ui, "App", neko_ui_rect(neko_game()->DisplaySize.x - 210, 30, 200, 200))) {
                 l = *neko_ui_get_layout(&ENGINE_INTERFACE()->ui);
@@ -249,7 +249,7 @@ void draw_gui() {
                 static f32 delta, fps = NEKO_DEFAULT_VAL();
 
                 NEKO_TIMED_ACTION(5, {
-                    delta = neko_pf_delta_time();
+                    delta = neko_os_delta_time();
                     fps = 1.f / delta;
                 });
 
@@ -268,7 +268,7 @@ void draw_gui() {
                 neko_ui_labelf("Time: %f", t);
 
                 struct {
-                    const char *str;
+                    const char* str;
                     s32 val;
                 } btns[] = {{"Left", NEKO_MOUSE_LBUTTON}, {"Right", NEKO_MOUSE_RBUTTON}, {"Middle", NEKO_MOUSE_MBUTTON}, {NULL}};
 
@@ -277,19 +277,19 @@ void draw_gui() {
                 bool mouse_released[3] = {0};
 
                 // Query mouse held down states.
-                mouse_down[NEKO_MOUSE_LBUTTON] = neko_pf_mouse_down(NEKO_MOUSE_LBUTTON);
-                mouse_down[NEKO_MOUSE_RBUTTON] = neko_pf_mouse_down(NEKO_MOUSE_RBUTTON);
-                mouse_down[NEKO_MOUSE_MBUTTON] = neko_pf_mouse_down(NEKO_MOUSE_MBUTTON);
+                mouse_down[NEKO_MOUSE_LBUTTON] = neko_os_mouse_down(NEKO_MOUSE_LBUTTON);
+                mouse_down[NEKO_MOUSE_RBUTTON] = neko_os_mouse_down(NEKO_MOUSE_RBUTTON);
+                mouse_down[NEKO_MOUSE_MBUTTON] = neko_os_mouse_down(NEKO_MOUSE_MBUTTON);
 
                 // Query mouse release states.
-                mouse_released[NEKO_MOUSE_LBUTTON] = neko_pf_mouse_released(NEKO_MOUSE_LBUTTON);
-                mouse_released[NEKO_MOUSE_RBUTTON] = neko_pf_mouse_released(NEKO_MOUSE_RBUTTON);
-                mouse_released[NEKO_MOUSE_MBUTTON] = neko_pf_mouse_released(NEKO_MOUSE_MBUTTON);
+                mouse_released[NEKO_MOUSE_LBUTTON] = neko_os_mouse_released(NEKO_MOUSE_LBUTTON);
+                mouse_released[NEKO_MOUSE_RBUTTON] = neko_os_mouse_released(NEKO_MOUSE_RBUTTON);
+                mouse_released[NEKO_MOUSE_MBUTTON] = neko_os_mouse_released(NEKO_MOUSE_MBUTTON);
 
                 // Query mouse pressed states. Press is a single frame click.
-                mouse_pressed[NEKO_MOUSE_LBUTTON] = neko_pf_mouse_pressed(NEKO_MOUSE_LBUTTON);
-                mouse_pressed[NEKO_MOUSE_RBUTTON] = neko_pf_mouse_pressed(NEKO_MOUSE_RBUTTON);
-                mouse_pressed[NEKO_MOUSE_MBUTTON] = neko_pf_mouse_pressed(NEKO_MOUSE_MBUTTON);
+                mouse_pressed[NEKO_MOUSE_LBUTTON] = neko_os_mouse_pressed(NEKO_MOUSE_LBUTTON);
+                mouse_pressed[NEKO_MOUSE_RBUTTON] = neko_os_mouse_pressed(NEKO_MOUSE_RBUTTON);
+                mouse_pressed[NEKO_MOUSE_MBUTTON] = neko_os_mouse_pressed(NEKO_MOUSE_MBUTTON);
 
                 neko_ui_layout_row(&ENGINE_INTERFACE()->ui, 7, neko_ui_widths(100, 100, 32, 100, 32, 100, 32), 0);
                 for (u32 i = 0; btns[i].str; ++i) {
@@ -306,7 +306,7 @@ void draw_gui() {
                 {
                     static neko_memory_info_t meminfo = NEKO_DEFAULT_VAL();
 
-                    NEKO_TIMED_ACTION(60, { meminfo = neko_pf_memory_info(); });
+                    NEKO_TIMED_ACTION(60, { meminfo = neko_os_memory_info(); });
 
                     // neko_ui_labelf("GC MemAllocInUsed: %.2lf mb", (f64)(neko_mem_bytes_inuse() / 1048576.0));
                     // neko_ui_labelf("GC MemTotalAllocated: %.2lf mb", (f64)(g_allocation_metrics.total_allocated / 1048576.0));
@@ -328,7 +328,7 @@ void draw_gui() {
                     neko_ui_labelf("GPU MemTotalAvailable: %.2lf mb", (f64)(meminfo.gpu_total_memory / 1024.0f));
                     neko_ui_labelf("GPU MemCurrentUsage: %.2lf mb", (f64)(meminfo.gpu_memory_used / 1024.0f));
 
-                    neko_render_info_t *info = &neko_subsystem(render)->info;
+                    neko_render_info_t* info = &neko_subsystem(render)->info;
 
                     neko_ui_labelf("OpenGL vendor: %s", info->vendor);
                     neko_ui_labelf("OpenGL version supported: %s", info->version);
@@ -375,7 +375,7 @@ struct Rect {
 NEKO_STRUCT(Rect, _F(p1), _F(p2), _F(color));
 
 template <typename T, typename Fields = std::tuple<>>
-void dumpObj(T &&obj, int depth = 0, const char *fieldName = "", Fields &&fields = std::make_tuple()) {
+void dumpObj(T&& obj, int depth = 0, const char* fieldName = "", Fields&& fields = std::make_tuple()) {
     auto indent = [depth] {
         for (int i = 0; i < depth; ++i) {
             std::cout << "    ";
@@ -385,7 +385,7 @@ void dumpObj(T &&obj, int depth = 0, const char *fieldName = "", Fields &&fields
     if constexpr (std::is_class_v<std::decay_t<T>>) {
         indent();
         std::cout << fieldName << (*fieldName ? ": {" : "{") << std::endl;
-        neko::reflection::struct_foreach(obj, [depth](auto &&fieldName, auto &&value, auto &&info) { dumpObj(value, depth + 1, fieldName, info); });
+        neko::reflection::struct_foreach(obj, [depth](auto&& fieldName, auto&& value, auto&& info) { dumpObj(value, depth + 1, fieldName, info); });
         indent();
         std::cout << "}" << (depth == 0 ? "" : ",") << std::endl;
     } else {
@@ -407,7 +407,7 @@ void As(T arg) {
 static void test_struct() {
 
     MyStruct myStruct{1001, 2.f};
-    neko::reflection::struct_apply(myStruct, [](auto &...args) { (..., As(args)); });
+    neko::reflection::struct_apply(myStruct, [](auto&... args) { (..., As(args)); });
 
     Rect rect{
             {0, 0},
@@ -431,7 +431,7 @@ void print_indent(int indent) {
     }
 }
 
-void print_xml_node(neko_xml_node_t *node, int indent) {
+void print_xml_node(neko_xml_node_t* node, int indent) {
     print_indent(indent);
     printf("XML Node: %s\n", node->name);
     print_indent(indent);
@@ -467,14 +467,14 @@ void print_xml_node(neko_xml_node_t *node, int indent) {
     }
 }
 
-void test_xml(const std::string &file) {
+void test_xml(const std::string& file) {
 
-    neko_xml_document_t *doc = neko_xml_parse_file(file.c_str());
+    neko_xml_document_t* doc = neko_xml_parse_file(file.c_str());
     if (!doc) {
         printf("XML Parse Error: %s\n", neko_xml_get_error());
     } else {
         for (uint32_t i = 0; i < neko_dyn_array_size(doc->nodes); i++) {
-            neko_xml_node_t *node = doc->nodes + i;
+            neko_xml_node_t* node = doc->nodes + i;
             print_xml_node(node, 0);
         }
         neko_xml_free(doc);
@@ -496,7 +496,7 @@ neko_byte_buffer_t bb = {0};
 #define ITER_CT 5
 
 // Keys for slot map
-const char *smkeys[ITER_CT] = {"John", "Dick", "Harry", "Donald", "Wayne"};
+const char* smkeys[ITER_CT] = {"John", "Dick", "Harry", "Donald", "Wayne"};
 
 void test_containers() {
 
@@ -539,7 +539,7 @@ void test_containers() {
 
     neko_println("neko_hash_table: [");
     for (neko_hash_table_iter it = neko_hash_table_iter_new(htc); neko_hash_table_iter_valid(htc, it); neko_hash_table_iter_advance(htc, it)) {
-        custom_key_t *kp = neko_hash_table_iter_getkp(htc, it);
+        custom_key_t* kp = neko_hash_table_iter_getkp(htc, it);
         uint32_t v = neko_hash_table_iter_get(htc, it);
         neko_println("  {k: {%zu, %.2f}, v: %zu},", kp->uval, kp->fval, v);
     }
@@ -581,6 +581,264 @@ void test_containers() {
 }
 
 #pragma endregion test
+
+#define NEKO_PROP
+
+#if !defined(NEKO_PROP)
+
+#include <string_view>
+
+//
+// Type names
+//
+
+#ifndef __FUNCSIG__
+#define __FUNCSIG__ __PRETTY_FUNCTION__
+#endif
+
+template <typename T>
+constexpr std::string_view getTypeName() {
+    constexpr auto prefixLength = 36, suffixLength = 1;
+    const_str data = __FUNCSIG__;
+    auto end = data;
+    while (*end) {
+        ++end;
+    }
+    return {data + prefixLength, size_t(end - data - prefixLength - suffixLength)};
+}
+
+//
+// Component types list
+//
+
+template <int N>
+struct neko_prop_component_type_counter : neko_prop_component_type_counter<N - 1> {
+    static constexpr auto num = N;
+};
+template <>
+struct neko_prop_component_type_counter<0> {
+    static constexpr auto num = 0;
+};
+neko_prop_component_type_counter<0> numComponentTypes(neko_prop_component_type_counter<0>);
+
+template <int I>
+struct neko_prop_component_typelist;
+template <>
+struct neko_prop_component_typelist<0> {
+    static void each(auto&& f) {}
+};
+
+inline constexpr auto maxNumComponentTypes = 32;
+
+template <typename T>
+inline constexpr auto isComponentType = false;
+
+#define ComponentTypeListAdd(T)                                                                                                                       \
+    template <>                                                                                                                                       \
+    inline constexpr auto isComponentType<T> = true;                                                                                                  \
+    constexpr auto ComponentTypeList_##T##_Size = decltype(numComponentTypes(neko_prop_component_type_counter<maxNumComponentTypes>()))::num + 1;     \
+    static_assert(ComponentTypeList_##T##_Size < maxNumComponentTypes);                                                                               \
+    neko_prop_component_type_counter<ComponentTypeList_##T##_Size> numComponentTypes(neko_prop_component_type_counter<ComponentTypeList_##T##_Size>); \
+    template <>                                                                                                                                       \
+    struct neko_prop_component_typelist<ComponentTypeList_##T##_Size> {                                                                               \
+        static void each(auto&& f) {                                                                                                                  \
+            neko_prop_component_typelist<ComponentTypeList_##T##_Size - 1>::each(f);                                                                  \
+            f.template operator()<T>();                                                                                                               \
+        }                                                                                                                                             \
+    }
+
+#define Comp(T)              \
+    T;                       \
+    ComponentTypeListAdd(T); \
+    struct T
+
+#define UseComponentTypes()                                                                                                                                           \
+    static void forEachComponentType(auto&& f) {                                                                                                                      \
+        neko_prop_component_typelist<decltype(numComponentTypes(neko_prop_component_type_counter<maxNumComponentTypes>()))::num>::each(std::forward<decltype(f)>(f)); \
+    }
+
+//
+// Props
+//
+
+constexpr u32 props_hash(std::string_view str) {
+    constexpr u32 offset = 2166136261;
+    constexpr u32 prime = 16777619;
+    auto result = offset;
+    for (auto c : str) {
+        result = (result ^ c) * prime;
+    }
+    return result;
+}
+
+struct neko_prop_attribs {
+    std::string_view name;
+    u32 nameHash = props_hash(name);
+
+    bool exampleFlag = false;
+};
+
+inline constexpr auto maxNumProps = 24;
+
+template <int N>
+struct neko_prop_counter : neko_prop_counter<N - 1> {
+    static constexpr auto num = N;
+};
+template <>
+struct neko_prop_counter<0> {
+    static constexpr auto num = 0;
+};
+[[maybe_unused]] static inline neko_prop_counter<0> numProps(neko_prop_counter<0>);
+
+template <int N>
+struct neko_prop_index {
+    static constexpr auto index = N;
+};
+
+template <typename T, int N>
+struct neko_prop_tag_wrapper {
+    struct tag {
+        static inline neko_prop_attribs attribs = T::getPropAttribs(neko_prop_index<N>{});
+    };
+};
+template <typename T, int N>
+struct neko_prop_tag_wrapper<const T, N> {
+    using tag = typename neko_prop_tag_wrapper<T, N>::tag;
+};
+template <typename T, int N>
+using neko_prop_tag = typename neko_prop_tag_wrapper<T, N>::tag;
+
+#define neko_prop(type, name_, ...) neko_prop_named(#name_, type, name_, __VA_ARGS__)
+#define neko_prop_named(nameStr, type, name_, ...)                                                                                                                                             \
+    using name_##_Index = neko_prop_index<decltype(numProps(neko_prop_counter<maxNumProps>()))::num>;                                                                                          \
+    static inline neko_prop_counter<decltype(numProps(neko_prop_counter<maxNumProps>()))::num + 1> numProps(neko_prop_counter<decltype(numProps(neko_prop_counter<maxNumProps>()))::num + 1>); \
+    static std::type_identity<PROP_PARENS_1(PROP_PARENS_3 type)> propType(name_##_Index);                                                                                                      \
+    static constexpr neko_prop_attribs getPropAttribs(name_##_Index) { return {.name = #name_, __VA_ARGS__}; };                                                                                \
+    std::type_identity_t<PROP_PARENS_1(PROP_PARENS_3 type)> name_
+
+#define PROP_PARENS_1(...) PROP_PARENS_2(__VA_ARGS__)
+#define PROP_PARENS_2(...) NO##__VA_ARGS__
+#define PROP_PARENS_3(...) PROP_PARENS_3 __VA_ARGS__
+#define NOPROP_PARENS_3
+
+template <auto memPtr>
+struct neko_prop_containing_type {};
+template <typename C, typename R, R C::*memPtr>
+struct neko_prop_containing_type<memPtr> {
+    using Type = C;
+};
+#define neko_prop_tag(field) neko_prop_tag<neko_prop_containing_type<&field>::Type, field##_Index::index>
+
+struct __neko_prop_any {
+    template <typename T>
+    operator T() const;  // NOLINT(google-explicit-constructor)
+};
+
+template <typename Aggregate, typename Base = std::index_sequence<>, typename = void>
+struct __neko_prop_count_fields : Base {};
+template <typename Aggregate, int... Indices>
+struct __neko_prop_count_fields<Aggregate, std::index_sequence<Indices...>,
+                                std::void_t<decltype(Aggregate{{(static_cast<void>(Indices), std::declval<__neko_prop_any>())}..., {std::declval<__neko_prop_any>()}})>>
+    : __neko_prop_count_fields<Aggregate, std::index_sequence<Indices..., sizeof...(Indices)>> {};
+template <typename T>
+constexpr int countFields() {
+    return __neko_prop_count_fields<std::remove_cvref_t<T>>().size();
+}
+
+template <typename T>
+concept neko_props = std::is_aggregate_v<T>;
+
+template <neko_props T, typename F>
+inline void forEachProp(T& val, F&& func) {
+    if constexpr (requires { forEachField(const_cast<std::remove_cvref_t<T>&>(val), func); }) {
+        forEachField(const_cast<std::remove_cvref_t<T>&>(val), func);
+    } else if constexpr (requires { T::propType(neko_prop_index<0>{}); }) {
+        constexpr auto n = countFields<T>();
+        const auto call = [&]<typename Index>(Index index, auto& val) {
+            if constexpr (requires { T::propType(index); }) {
+                static_assert(std::is_same_v<typename decltype(T::propType(index))::type, std::remove_cvref_t<decltype(val)>>);
+                func(neko_prop_tag<T, Index::index>{}, val);
+            }
+        };
+#define C(i) call(neko_prop_index<i>{}, f##i)
+        if constexpr (n == 1) {
+            auto& [f0] = val;
+            (C(0));
+        } else if constexpr (n == 2) {
+            auto& [f0, f1] = val;
+            (C(0), C(1));
+        } else if constexpr (n == 3) {
+            auto& [f0, f1, f2] = val;
+            (C(0), C(1), C(2));
+        } else if constexpr (n == 4) {
+            auto& [f0, f1, f2, f3] = val;
+            (C(0), C(1), C(2), C(3));
+        } else if constexpr (n == 5) {
+            auto& [f0, f1, f2, f3, f4] = val;
+            (C(0), C(1), C(2), C(3), C(4));
+        } else if constexpr (n == 6) {
+            auto& [f0, f1, f2, f3, f4, f5] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5));
+        } else if constexpr (n == 7) {
+            auto& [f0, f1, f2, f3, f4, f5, f6] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6));
+        } else if constexpr (n == 8) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7));
+        } else if constexpr (n == 9) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8));
+        } else if constexpr (n == 10) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9));
+        } else if constexpr (n == 11) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10));
+        } else if constexpr (n == 12) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11));
+        } else if constexpr (n == 13) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12));
+        } else if constexpr (n == 14) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12), C(13));
+        } else if constexpr (n == 15) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12), C(13), C(14));
+        } else if constexpr (n == 16) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12), C(13), C(14), C(15));
+        } else if constexpr (n == 17) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12), C(13), C(14), C(15), C(16));
+        } else if constexpr (n == 18) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12), C(13), C(14), C(15), C(16), C(17));
+        } else if constexpr (n == 19) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12), C(13), C(14), C(15), C(16), C(17), C(18));
+        } else if constexpr (n == 20) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12), C(13), C(14), C(15), C(16), C(17), C(18), C(19));
+        } else if constexpr (n == 21) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12), C(13), C(14), C(15), C(16), C(17), C(18), C(19), C(20));
+        } else if constexpr (n == 22) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12), C(13), C(14), C(15), C(16), C(17), C(18), C(19), C(20), C(21));
+        } else if constexpr (n == 23) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21, f22] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12), C(13), C(14), C(15), C(16), C(17), C(18), C(19), C(20), C(21), C(22));
+        } else if constexpr (n == 24) {
+            auto& [f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15, f16, f17, f18, f19, f20, f21, f22, f23] = val;
+            (C(0), C(1), C(2), C(3), C(4), C(5), C(6), C(7), C(8), C(9), C(10), C(11), C(12), C(13), C(14), C(15), C(16), C(17), C(18), C(19), C(20), C(21), C(22), C(23));
+        }
+#undef C
+    }
+}
+
+#endif
 
 #if 0
 

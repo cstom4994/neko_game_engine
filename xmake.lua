@@ -15,10 +15,10 @@ add_rules("mode.debug", "mode.release")
 
 add_includedirs("source/")
 
-local base_libs = {"glfw", "libffi", "lua", "imgui", "miniz", "stb"}
+local base_libs = {"glfw", "glew", "libffi", "lua", "imgui", "miniz", "stb"}
 
 if is_os("windows") or is_os("macosx") or is_os("linux") then
-    add_requires("glfw", "libffi", "lua", "miniz", "stb")
+    add_requires("glfw", "glew", "libffi", "lua", "miniz", "stb")
     add_requires("imgui v1.90.8-docking", {
         configs = {
             wchar32 = true

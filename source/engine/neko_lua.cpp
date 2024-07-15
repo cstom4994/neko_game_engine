@@ -1150,7 +1150,7 @@ static int neko_luabind_call_entry(lua_State *L) {
 
     if (ret_ptr + ret_size > LUAA_RETURN_STACK_SIZE) {
         ret_heap = true;
-        ret_data = neko_safe_malloc(ret_size);
+        ret_data = mem_alloc(ret_size);
         if (ret_data == NULL) {
             lua_pushfstring(L, "neko_luabind_call: Out of memory!");
             lua_error(L);
@@ -1160,10 +1160,10 @@ static int neko_luabind_call_entry(lua_State *L) {
 
     if (arg_ptr + arg_size > LUAA_ARGUMENT_STACK_SIZE) {
         arg_heap = true;
-        arg_data = neko_safe_malloc(arg_size);
+        arg_data = mem_alloc(arg_size);
         if (arg_data == NULL) {
             if (ret_heap) {
-                neko_safe_free(ret_data);
+                mem_free(ret_data);
             }
             lua_pushfstring(L, "neko_luabind_call: Out of memory!");
             lua_error(L);
@@ -1221,14 +1221,14 @@ static int neko_luabind_call_entry(lua_State *L) {
         lua_pushinteger(L, ret_ptr);
         lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "call_ret_ptr");
     } else {
-        neko_safe_free(ret_data);
+        mem_free(ret_data);
     }
 
     if (!arg_heap) {
         lua_pushinteger(L, arg_ptr);
         lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "argument_ptr");
     } else {
-        neko_safe_free(arg_data);
+        mem_free(arg_data);
     }
 
     return count;
@@ -1571,7 +1571,7 @@ static int LUASTRUCT_access_uchar(lua_State *L, const char *fieldName, unsigned 
     }
 }
 
-static int LUASTRUCT_access_boolean(lua_State *L, const char *fieldName, b32 *data, int parentIndex, int set, int valueIndex) {
+static int LUASTRUCT_access_boolean(lua_State *L, const char *fieldName, bool *data, int parentIndex, int set, int valueIndex) {
     if (set) {
         *data = lua_toboolean(L, valueIndex);
         return 0;
@@ -3671,11 +3671,11 @@ void *Allocf(void *ud, void *ptr, size_t osize, size_t nsize) {
     if (!ptr) osize = 0;
     if (!nsize) {
         lua_mem_usage -= osize;
-        neko_safe_free(ptr);
+        mem_free(ptr);
         return NULL;
     }
     lua_mem_usage += (nsize - osize);
-    return neko_safe_realloc(ptr, nsize);
+    return mem_realloc(ptr, nsize);
 }
 
 void neko_lua_run_string(lua_State *m_ls, const_str str_) {
@@ -4108,15 +4108,15 @@ void ScriptObject::detach_pointer(ScriptObjectEntry *entry) {
         }
     }
 
-    neko_safe_free(entry);
+    mem_free(entry);
 }
 
 ScriptObjectEntry *ScriptObject::attach_pointer(ScriptObject **ptr) {
     if (obj_last_entry == NULL) {
-        obj_last_entry = reinterpret_cast<ScriptObjectEntry *>(neko_safe_malloc(sizeof(ScriptObjectEntry)));
+        obj_last_entry = reinterpret_cast<ScriptObjectEntry *>(mem_alloc(sizeof(ScriptObjectEntry)));
         memset(obj_last_entry, 0, sizeof(ScriptObjectEntry));
     } else {
-        ScriptObjectEntry *next = reinterpret_cast<ScriptObjectEntry *>(neko_safe_malloc(sizeof(ScriptObjectEntry)));
+        ScriptObjectEntry *next = reinterpret_cast<ScriptObjectEntry *>(mem_alloc(sizeof(ScriptObjectEntry)));
         memset(next, 0, sizeof(ScriptObjectEntry));
         obj_last_entry->next = next;
         next->prev = obj_last_entry;
@@ -4136,7 +4136,7 @@ void ScriptObject::release_pointers() {
 
         ScriptObject **ptr = entry->ptr;
         *ptr = NULL;
-        neko_safe_free(entry);
+        mem_free(entry);
 
         entry = prev;
     }
@@ -4306,10 +4306,10 @@ int vfs_lua_loader(lua_State *L) {
     auto load_list = {"source/lua/game/", "source/lua/libs/"};
     for (auto p : load_list) {
         std::string load_path = p + path + ".lua";
-        neko::string contents = {};
+        String contents = {};
         ok = vfs_read_entire_file(NEKO_PACKS::LUACODE, &contents, load_path.c_str());
         if (ok) {
-            neko_defer(neko_safe_free(contents.data));
+            neko_defer(mem_free(contents.data));
             if (luaL_loadbuffer(L, contents.data, contents.len, name) != LUA_OK) {
                 lua_pushfstring(L, "[lua] error loading module \"%s\"", name);
                 lua_pop(L, 1);

@@ -709,4 +709,7 @@ struct neko_image {
 
 typedef struct neko_image neko_image;
 
+NEKO_API_DECL bool neko_util_load_texture_data_from_file(const char* file_path, s32* width, s32* height, u32* num_comps, void** data, bool flip_vertically_on_load);
+NEKO_API_DECL bool neko_util_load_texture_data_from_memory(const void* memory, size_t sz, s32* width, s32* height, u32* num_comps, void** data, bool flip_vertically_on_load);
+
 #endif  // NEKO_ASSET_H

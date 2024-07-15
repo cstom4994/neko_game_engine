@@ -12,29 +12,29 @@ struct ldtk_map_tile {
 };
 
 struct ldtk_map_ent {
-    neko::string identifier;
+    String identifier;
     float x, y;
 };
 
 using ldtk_map_int = unsigned char;
 
 struct ldtk_map_layer {
-    neko::string identifier;
+    String identifier;
     neko_image image;
-    neko::slice<ldtk_map_tile> tiles;
-    neko::slice<ldtk_map_ent> entities;
+    Slice<ldtk_map_tile> tiles;
+    Slice<ldtk_map_ent> entities;
     s32 c_width;
     s32 c_height;
-    neko::slice<ldtk_map_int> int_grid;
+    Slice<ldtk_map_int> int_grid;
     float grid_size;
 };
 
 struct ldtk_map_level {
-    neko::string identifier;
-    neko::string iid;
+    String identifier;
+    String iid;
     float world_x, world_y;
     float px_width, px_height;
-    neko::slice<ldtk_map_layer> layers;
+    Slice<ldtk_map_layer> layers;
 };
 
 enum ldtk_map_node_flags {
@@ -49,7 +49,7 @@ struct ldtk_map_node {
 
     s32 x, y;
     float cost;
-    neko::slice<ldtk_map_node *> neighbors;
+    Slice<ldtk_map_node *> neighbors;
 };
 
 struct ldtk_tile_cost {
@@ -67,19 +67,19 @@ class b2Body;
 class b2World;
 
 struct ldtk_map {
-    neko::arena arena;
-    neko::slice<ldtk_map_level> levels;
-    neko::hashmap<neko_image> images;  // key: filepath
-    neko::hashmap<b2Body *> bodies;      // key: layer name
-    neko::hashmap<ldtk_map_node> graph;  // key: x, y
-    neko::priority_queue<ldtk_map_node *> frontier;
+    Arena arena;
+    Slice<ldtk_map_level> levels;
+    HashMap<neko_image> images;  // key: filepath
+    HashMap<b2Body *> bodies;      // key: layer name
+    HashMap<ldtk_map_node> graph;  // key: x, y
+    PriorityQueue<ldtk_map_node *> frontier;
     float graph_grid_size;
 
-    bool load(neko::string filepath);
+    bool load(String filepath);
     void trash();
     void destroy_bodies(b2World *world);
-    void make_collision(b2World *world, float meter, neko::string layer_name, neko::slice<ldtk_map_int> walls);
-    void make_graph(s32 bloom, neko::string layer_name, neko::slice<ldtk_tile_cost> costs);
+    void make_collision(b2World *world, float meter, String layer_name, Slice<ldtk_map_int> walls);
+    void make_graph(s32 bloom, String layer_name, Slice<ldtk_tile_cost> costs);
     ldtk_map_node *astar(ldtk_map_point start, ldtk_map_point goal);
 };
 

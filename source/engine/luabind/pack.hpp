@@ -16,7 +16,7 @@ LUA_FUNCTION(__neko_bind_pack_construct) {
     userdata_ptr->name = name;
     userdata_ptr->size = 0;
 
-    userdata_ptr->data = neko_safe_malloc(sizeof(neko_pak));
+    userdata_ptr->data = mem_alloc(sizeof(neko_pak));
 
     bool ok = (static_cast<neko_pak*>(userdata_ptr->data))->load(path, 0, false);
 
@@ -40,7 +40,7 @@ LUA_FUNCTION(__neko_bind_pack_destroy) {
     neko_pak* pack = (neko_pak*)(userdata_ptr->data);
     pack->fini();
 
-    neko_safe_free(userdata_ptr->data);
+    mem_free(userdata_ptr->data);
 
     NEKO_INFO("__neko_bind_pack_destroy %s", userdata_ptr->name);
     return 0;
@@ -55,7 +55,7 @@ LUA_FUNCTION(__neko_bind_pack_build) {
     int n = lua_tointeger(L, -1);      //
     lua_pop(L, 1);                     // 弹出长度值
 
-    const_str* item_paths = (const_str*)neko_safe_malloc(n * sizeof(const_str));
+    const_str* item_paths = (const_str*)mem_alloc(n * sizeof(const_str));
 
     for (int i = 1; i <= n; i++) {
         lua_rawgeti(L, 2, i);                 // 将index=i的元素压入堆栈顶部
@@ -68,7 +68,7 @@ LUA_FUNCTION(__neko_bind_pack_build) {
 
     bool ok = neko_pak_build(path, n, item_paths, true);
 
-    neko_safe_free(item_paths);
+    mem_free(item_paths);
 
     if (!ok) {
         const_str error_message = "__neko_bind_pack_build failed";

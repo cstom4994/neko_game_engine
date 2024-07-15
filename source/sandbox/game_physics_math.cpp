@@ -2021,8 +2021,8 @@ void render_test() {
     u8* alpha = neko_tex_rgba_to_alpha((u8*)g_texture_buffer, ch->chunk_w, ch->chunk_h);
     u8* thresholded = neko_tex_alpha_to_thresholded(alpha, ch->chunk_w, ch->chunk_h, 90);
     u8* outlined = neko_tex_thresholded_to_outlined(thresholded, ch->chunk_w, ch->chunk_h);
-    neko_safe_free(alpha);
-    neko_safe_free(thresholded);
+    mem_free(alpha);
+    mem_free(thresholded);
 
     neko_tex_point* outline = neko_tex_extract_outline_path(outlined, ch->chunk_w, ch->chunk_h, &l, 0);
     while (l) {
@@ -2041,15 +2041,15 @@ void render_test() {
         outline = neko_tex_extract_outline_path(outlined, ch->chunk_w, ch->chunk_h, &l, outline);
     };
 
-    neko_safe_free(outline);
-    neko_safe_free(outlined);
+    mem_free(outline);
+    mem_free(outlined);
 }
 
 #endif
 
 // image manipulation functions
 u8 *neko_tex_rgba_to_alpha(const u8 *data, s32 w, s32 h) {
-    u8 *result = (u8 *)neko_safe_malloc(w * h);
+    u8 *result = (u8 *)mem_alloc(w * h);
     s32 x, y;
     for (y = 0; y < h; y++)
         for (x = 0; x < w; x++) result[y * w + x] = data[(y * w + x) * 4 + 3];
@@ -2057,7 +2057,7 @@ u8 *neko_tex_rgba_to_alpha(const u8 *data, s32 w, s32 h) {
 }
 
 u8 *neko_tex_alpha_to_thresholded(const u8 *data, s32 w, s32 h, u8 threshold) {
-    u8 *result = (u8 *)neko_safe_malloc(w * h);
+    u8 *result = (u8 *)mem_alloc(w * h);
     s32 x, y;
     for (y = 0; y < h; y++)
         for (x = 0; x < w; x++) result[y * w + x] = data[y * w + x] >= threshold ? 255 : 0;
@@ -2066,7 +2066,7 @@ u8 *neko_tex_alpha_to_thresholded(const u8 *data, s32 w, s32 h, u8 threshold) {
 
 u8 *neko_tex_dilate_thresholded(const u8 *data, s32 w, s32 h) {
     s32 x, y, dx, dy, cx, cy;
-    u8 *result = (u8 *)neko_safe_malloc(w * h);
+    u8 *result = (u8 *)mem_alloc(w * h);
     for (y = 0; y < h; y++) {
         for (x = 0; x < w; x++) {
             result[y * w + x] = 0;
@@ -2089,7 +2089,7 @@ u8 *neko_tex_dilate_thresholded(const u8 *data, s32 w, s32 h) {
 }
 
 u8 *neko_tex_thresholded_to_outlined(const u8 *data, s32 w, s32 h) {
-    u8 *result = (u8 *)neko_safe_malloc(w * h);
+    u8 *result = (u8 *)mem_alloc(w * h);
     s32 x, y;
     for (x = 0; x < w; x++) {
         result[x] = data[x];
@@ -2142,7 +2142,7 @@ static neko_tex_bool neko_tex_find_next_filled_pixel(const u8 *data, s32 w, s32 
 
 neko_tex_point *neko_tex_extract_outline_path(u8 *data, s32 w, s32 h, s32 *point_count, neko_tex_point *reusable_outline) {
     neko_tex_point *outline = reusable_outline;
-    if (!outline) outline = (neko_tex_point *)neko_safe_malloc(w * h * sizeof(neko_tex_point));
+    if (!outline) outline = (neko_tex_point *)mem_alloc(w * h * sizeof(neko_tex_point));
 
     neko_tex_point current, next;
 
@@ -2356,11 +2356,11 @@ void genwang(std::string filename, unsigned char* data, s32 xs, s32 ys, s32 w, s
     stbhw_build_tileset_from_image(&ts, data, w * 3, w, h);
     // allocate a buffer to create the final image to
     s32 yimg = ys + 4;
-    auto buff = static_cast<unsigned char*>(neko_safe_malloc(3 * xs * yimg));
+    auto buff = static_cast<unsigned char*>(mem_alloc(3 * xs * yimg));
     stbhw_generate_image(&ts, NULL, buff, xs * 3, xs, yimg);
     stbi_write_png(filename.c_str(), xs, yimg, 3, buff, xs * 3);
     stbhw_free_tileset(&ts);
-    neko_safe_free(buff);
+    mem_free(buff);
 }
 
 void test_wang() {

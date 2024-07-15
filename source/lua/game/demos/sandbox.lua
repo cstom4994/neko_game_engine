@@ -569,7 +569,6 @@ function phyRenderSystem:process(e, dt)
     local phy = e.phy
 
     local phy_body = phy.body
-
     phy_body:draw_fixtures()
 
 end
@@ -1121,7 +1120,7 @@ M.sub_render = function()
     -- local fbs_x, fbs_y = neko_framebuffer_size()
     win_w, win_h = neko_window_size(neko_main_window())
 
-    local t = neko_pf_elapsed_time()
+    local t = neko_os_elapsed_time()
 
     neko.render_renderpass_begin(gd.main_rp)
     neko.render_set_viewport(0.0, 0.0, fbs_x, fbs_y)

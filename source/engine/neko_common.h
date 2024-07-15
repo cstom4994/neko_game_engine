@@ -109,4 +109,58 @@ NEKO_FORCE_INLINE void neko_tex_flip_vertically(int width, int height, u8* data)
     }
 }
 
+/*================================================================================
+// Random
+================================================================================*/
+
+#define NEKO_STATE_VECTOR_LENGTH 624
+#define NEKO_STATE_VECTOR_M 397 /* changes to STATE_VECTOR_LENGTH also require changes to this */
+
+typedef struct neko_mt_rand_t {
+    u64 mt[NEKO_STATE_VECTOR_LENGTH];
+    int32_t index;
+} neko_mt_rand_t;
+
+NEKO_API_DECL neko_mt_rand_t neko_rand_seed(uint64_t seed);
+NEKO_API_DECL int64_t neko_rand_gen_long(neko_mt_rand_t* rand);
+NEKO_API_DECL double neko_rand_gen(neko_mt_rand_t* rand);
+NEKO_API_DECL double neko_rand_gen_range(neko_mt_rand_t* rand, double min, double max);
+NEKO_API_DECL int64_t neko_rand_gen_range_long(neko_mt_rand_t* rand, int32_t min, int32_t max);
+NEKO_API_DECL neko_color_t neko_rand_gen_color(neko_mt_rand_t* rand);
+
+// xorshf32随机数算法
+// http://www.iro.umontreal.ca/~lecuyer/myftp/papers/xorshift.pdf
+// xyzw -> [0, 2^32 - 1]
+
+NEKO_INLINE u32 neko_rand_xorshf32(void) {
+
+    u32 __neko_rand_xorshf32_x = time(NULL), __neko_rand_xorshf32_y = time(NULL), __neko_rand_xorshf32_z = time(NULL), __neko_rand_xorshf32_w = time(NULL);
+
+    // period 2^128 - 1
+    u32 tmp = (__neko_rand_xorshf32_x ^ (__neko_rand_xorshf32_x << 15));
+    __neko_rand_xorshf32_x = __neko_rand_xorshf32_y;
+    __neko_rand_xorshf32_y = __neko_rand_xorshf32_z;
+    __neko_rand_xorshf32_z = __neko_rand_xorshf32_w;
+
+    __neko_rand_xorshf32_w = (__neko_rand_xorshf32_w ^ (__neko_rand_xorshf32_w >> 21) ^ (tmp ^ (tmp >> 4)));
+    return __neko_rand_xorshf32_w;
+}
+
+#define neko_rand_xorshf32_max 0xFFFFFFFF
+
+// Random number in range [-1,1]
+NEKO_INLINE f32 neko_rand_xor() {
+    f32 r = (f32)neko_rand_xorshf32();
+    r /= neko_rand_xorshf32_max;
+    r = 2.0f * r - 1.0f;
+    return r;
+}
+
+NEKO_INLINE f32 neko_rand_range_xor(f32 lo, f32 hi) {
+    f32 r = (f32)neko_rand_xorshf32();
+    r /= neko_rand_xorshf32_max;
+    r = (hi - lo) * r + lo;
+    return r;
+}
+
 #endif

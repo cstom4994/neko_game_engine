@@ -22,7 +22,7 @@
 
 #include "engine/neko.h"
 #include "engine/neko_lua.h"
-#include "engine/neko_platform.h"
+#include "engine/neko_os.h"
 #include "engine/neko_render.h"
 
 // ImGui
@@ -56,7 +56,7 @@ typedef struct neko_imgui_vertex_t {
 // extern neko_imgui_context_t g_imgui;
 // extern neko_command_buffer_t g_cb;
 
-#ifdef NEKO_PF_WEB
+#ifdef NEKO_IS_WEB
 #define NEKO_IMGUI_SHADER_VERSION "#version 300 es\n"
 #else
 #define NEKO_IMGUI_SHADER_VERSION "#version 330 core\n"
@@ -66,9 +66,9 @@ NEKO_STATIC void *__neko_imgui_malloc(size_t sz, void *user_data) { return mallo
 
 NEKO_STATIC void __neko_imgui_free(void *ptr, void *user_data) { return free(ptr); }
 
-NEKO_INLINE static const char *neko_imgui_clipboard_getter(void *user_data) { return neko_pf_window_get_clipboard(neko_pf_main_window()); }
+NEKO_INLINE static const char *neko_imgui_clipboard_getter(void *user_data) { return neko_pf_window_get_clipboard(neko_os_main_window()); }
 
-NEKO_INLINE static void neko_imgui_clipboard_setter(void *user_data, const char *text) { neko_pf_window_set_clipboard(neko_pf_main_window(), text); }
+NEKO_INLINE static void neko_imgui_clipboard_setter(void *user_data, const char *text) { neko_pf_window_set_clipboard(neko_os_main_window(), text); }
 
 static void neko_imgui_opengl_init_platform_interface();
 

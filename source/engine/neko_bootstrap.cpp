@@ -164,7 +164,7 @@ static inline int component_add(lua_State *L, struct neko_boot_world_t *w, struc
     cp = &w->component_pool[tid];
     if (cp->free >= cp->cap) {
         cp->cap *= 2;
-        cp->buf = (struct component *)neko_safe_realloc(cp->buf, cp->cap * sizeof(cp->buf[0]));
+        cp->buf = (struct component *)mem_realloc(cp->buf, cp->cap * sizeof(cp->buf[0]));
     }
     c = &cp->buf[cp->free++];
     c->eid = e - w->entity_buf;
@@ -225,7 +225,7 @@ static inline struct entity *entity_alloc(struct neko_boot_world_t *w) {
         int oldcap = w->entity_cap;
         int newcap = oldcap * 2;
         w->entity_cap = newcap;
-        w->entity_buf = (struct entity *)neko_safe_realloc(w->entity_buf, newcap * sizeof(w->entity_buf[0]));
+        w->entity_buf = (struct entity *)mem_realloc(w->entity_buf, newcap * sizeof(w->entity_buf[0]));
         w->entity_free = oldcap + 1;
         e = &w->entity_buf[oldcap];
         for (i = w->entity_free; i < newcap - 1; i++) {
@@ -306,9 +306,9 @@ static int __neko_boot_world_end(lua_State *L) {
     tid = w->type_idx;  // 总数-1(索引)
     for (int i = 0; i <= tid; i++) {
         cp = &w->component_pool[i];
-        neko_safe_free(cp->buf);
+        mem_free(cp->buf);
     }
-    neko_safe_free(w->entity_buf);
+    mem_free(w->entity_buf);
     return 0;
 }
 
@@ -337,7 +337,7 @@ static int __neko_boot_world_register(lua_State *L) {
     cp->dirty_tail = LINK_NIL;
     cp->dead_head = LINK_NIL;
     cp->dead_tail = LINK_NIL;
-    cp->buf = (struct component *)neko_safe_malloc(cp->cap * sizeof(cp->buf[0]));
+    cp->buf = (struct component *)mem_alloc(cp->cap * sizeof(cp->buf[0]));
     // set proto id
     lua_pushvalue(L, 2);
     lua_pushinteger(L, tid);
@@ -747,7 +747,7 @@ int __neko_boot_create_world(lua_State *L) {
     w->entity_free = 0;
     w->entity_dead = LINK_NIL;
     w->type_idx = 0;
-    w->entity_buf = (struct entity *)neko_safe_malloc(w->entity_cap * sizeof(w->entity_buf[0]));
+    w->entity_buf = (struct entity *)mem_alloc(w->entity_cap * sizeof(w->entity_buf[0]));
     for (i = 0; i < w->entity_cap - 1; i++) {
         w->entity_buf[i].cn = -1;
         w->entity_buf[i].next = i + 1;
@@ -1168,23 +1168,23 @@ using namespace neko;
 
 namespace neko::reflection {
 template <>
-Type *type_of<neko_pf_running_desc_t>() {
+Type *type_of<neko_os_running_desc_t>() {
     static Type type;
-    type.name = "neko_pf_running_desc_t";
-    type.destroy = [](void *obj) { delete static_cast<neko_pf_running_desc_t *>(obj); };
-    type.copy = [](const void *obj) { return (void *)(new neko_pf_running_desc_t(*static_cast<const neko_pf_running_desc_t *>(obj))); };
-    type.move = [](void *obj) { return (void *)(new neko_pf_running_desc_t(std::move(*static_cast<neko_pf_running_desc_t *>(obj)))); };
+    type.name = "neko_os_running_desc_t";
+    type.destroy = [](void *obj) { delete static_cast<neko_os_running_desc_t *>(obj); };
+    type.copy = [](const void *obj) { return (void *)(new neko_os_running_desc_t(*static_cast<const neko_os_running_desc_t *>(obj))); };
+    type.move = [](void *obj) { return (void *)(new neko_os_running_desc_t(std::move(*static_cast<neko_os_running_desc_t *>(obj)))); };
 
 #define REFL_FIELDS(C, field) type.fields.insert({#field, {type_of<decltype(C::field)>(), offsetof(C, field)}})
 
-    REFL_FIELDS(neko_pf_running_desc_t, title);
-    REFL_FIELDS(neko_pf_running_desc_t, width);
-    REFL_FIELDS(neko_pf_running_desc_t, height);
-    REFL_FIELDS(neko_pf_running_desc_t, flags);
-    REFL_FIELDS(neko_pf_running_desc_t, num_samples);
-    REFL_FIELDS(neko_pf_running_desc_t, monitor_index);
-    REFL_FIELDS(neko_pf_running_desc_t, vsync);
-    REFL_FIELDS(neko_pf_running_desc_t, frame_rate);
+    REFL_FIELDS(neko_os_running_desc_t, title);
+    REFL_FIELDS(neko_os_running_desc_t, width);
+    REFL_FIELDS(neko_os_running_desc_t, height);
+    REFL_FIELDS(neko_os_running_desc_t, flags);
+    REFL_FIELDS(neko_os_running_desc_t, num_samples);
+    REFL_FIELDS(neko_os_running_desc_t, monitor_index);
+    REFL_FIELDS(neko_os_running_desc_t, vsync);
+    REFL_FIELDS(neko_os_running_desc_t, frame_rate);
 
     return &type;
 };
@@ -1218,7 +1218,7 @@ void game_init() {
             NEKO_ERROR("%s", "neko_game is not a table");
         }
 
-        neko::reflection::Any v = neko_pf_running_desc_t{.title = "Neko Engine"};
+        neko::reflection::Any v = neko_os_running_desc_t{.title = "Neko Engine"};
         neko::lua::checktable_refl(ENGINE_LUA(), "app", v);
 
         neko_client_cvar_t &cvar = neko_game()->cvar;
@@ -1247,9 +1247,9 @@ void game_init() {
 
         lua_pop(ENGINE_LUA(), 1);  // 弹出 neko.conf.table
 
-        NEKO_INFO("load game: %s %d %d", v.cast<neko_pf_running_desc_t>().title, v.cast<neko_pf_running_desc_t>().width, v.cast<neko_pf_running_desc_t>().height);
+        NEKO_INFO("load game: %s %d %d", v.cast<neko_os_running_desc_t>().title, v.cast<neko_os_running_desc_t>().width, v.cast<neko_os_running_desc_t>().height);
 
-        neko_pf_set_window_title(neko_pf_main_window(), v.cast<neko_pf_running_desc_t>().title);
+        neko_os_set_window_title(neko_os_main_window(), v.cast<neko_os_running_desc_t>().title);
     }
 
     bool ok = ENGINE_INTERFACE()->pack.load("gamedir/res.pack", 0, false);
@@ -1267,7 +1267,7 @@ void game_init() {
     neko_asset_texture_load_from_file("gamedir/assets/textures/yzh.png", &tex0, NULL, false, false);
     ENGINE_INTERFACE()->tex_hndl = neko_assets_create_asset(&ENGINE_INTERFACE()->am, neko_asset_texture_t, &tex0);
 
-    neko_ui_init(&ENGINE_INTERFACE()->ui, neko_pf_main_window());
+    neko_ui_init(&ENGINE_INTERFACE()->ui, neko_os_main_window());
 
     // 加载自定义字体文件 初始化 gui font stash
     // neko_asset_font_load_from_memory(font_data, font_data_size, &CL_GAME_INTERFACE()->font, 24);
@@ -1286,7 +1286,7 @@ void game_init() {
 
     neko_ui_dock_ex(&ENGINE_INTERFACE()->ui, "Style_Editor", "Demo_Window", NEKO_UI_SPLIT_TAB, 0.5f);
 
-    neko_game()->imgui = neko_imgui_new(&ENGINE_INTERFACE()->cb, neko_pf_main_window(), false);
+    neko_game()->imgui = neko_imgui_new(&ENGINE_INTERFACE()->cb, neko_os_main_window(), false);
 
     // Construct frame buffer
     neko_game()->r_main_fbo = neko_render_framebuffer_create({});
@@ -1322,8 +1322,8 @@ void game_loop() {
 
     // if (this_init_thread_flag == 0) {
 
-    //     //        neko_vec2 fbs = neko_pf_framebuffer_sizev(neko_pf_main_window());
-    //     const f32 t = neko_pf_elapsed_time();
+    //     //        neko_vec2 fbs = neko_os_framebuffer_sizev(neko_os_main_window());
+    //     const f32 t = neko_os_elapsed_time();
 
     //     u8 tranp = 255;
 
@@ -1370,7 +1370,7 @@ void game_loop() {
         //     NEKO_TRACE("init_work_thread done");
         // }
 
-        f32 dt = neko_pf_delta_time();
+        f32 dt = neko_os_delta_time();
 
         {
             PROFILE_BLOCK("lua_pre_update");
@@ -1378,7 +1378,7 @@ void game_loop() {
             luax_pcall(ENGINE_LUA(), 0, 0);
         }
 
-        if (neko_pf_key_pressed(NEKO_KEYCODE_ESC)) neko_game()->cvar.show_editor ^= true;
+        if (neko_os_key_pressed(NEKO_KEYCODE_ESC)) neko_game()->cvar.show_editor ^= true;
 
         {
             PROFILE_BLOCK("lua_loop");
@@ -1439,7 +1439,7 @@ void game_loop() {
 
         if (ImGui::BeginMainMenuBar()) {
             if (ImGui::BeginMenu("engine")) {
-                if (ImGui::Checkbox("vsync", &neko_game()->cvar.vsync)) neko_pf_enable_vsync(neko_game()->cvar.vsync);
+                if (ImGui::Checkbox("vsync", &neko_game()->cvar.vsync)) neko_os_enable_vsync(neko_game()->cvar.vsync);
                 if (ImGui::MenuItem("quit")) {
                     neko_quit();
                 }
@@ -1552,7 +1552,7 @@ NEKO_API_DECL neko_instance_t *neko_create(int argc, char **argv) {
             // 初始化应用程序并设置为运行
             mount_result mount;
 
-#if defined(NEKO_DEBUG_BUILD)
+#if defined(_DEBUG)
             mount = neko::vfs_mount(NEKO_PACKS::GAMEDATA, "./");
             mount = neko::vfs_mount(NEKO_PACKS::LUACODE, "./");
 #else
@@ -1592,21 +1592,21 @@ NEKO_API_DECL neko_instance_t *neko_create(int argc, char **argv) {
         CVAR(pack_buffer_size, 128);
 
         // 需要从用户那里传递视频设置
-        neko_subsystem(platform) = neko_pf_create();
+        neko_subsystem(platform) = neko_os_create();
 
         // 此处平台的默认初始化
-        neko_pf_init(neko_subsystem(platform));
+        neko_os_init(neko_subsystem(platform));
 
         // 设置应用程序的帧速率
         neko_subsystem(platform)->time.max_fps = settings_window_frame_rate.get<f32>();
 
-        neko_pf_running_desc_t window = {.title = "Neko Engine", .width = 1280, .height = 720, .vsync = false, .frame_rate = 60.f, .hdpi = false, .center = true, .running_background = true};
+        neko_os_running_desc_t window = {.title = "Neko Engine", .width = 1280, .height = 720, .vsync = false, .frame_rate = 60.f, .hdpi = false, .center = true, .running_background = true};
 
         // 构建主窗口
         neko_pf_window_create(&window);
 
         // 设置视频垂直同步
-        neko_pf_enable_vsync(settings_window_vsync.get<bool>());
+        neko_os_enable_vsync(settings_window_vsync.get<bool>());
 
         // 构建图形API
         neko_subsystem(render) = neko_render_create();
@@ -1620,8 +1620,8 @@ NEKO_API_DECL neko_instance_t *neko_create(int argc, char **argv) {
             u32 w, h;
             u32 display_w, display_h;
 
-            neko_pf_window_size(neko_pf_main_window(), &w, &h);
-            neko_pf_framebuffer_size(neko_pf_main_window(), &display_w, &display_h);
+            neko_pf_window_size(neko_os_main_window(), &w, &h);
+            neko_os_framebuffer_size(neko_os_main_window(), &display_w, &display_h);
 
             neko_game()->DisplaySize = neko_v2((float)w, (float)h);
             neko_game()->DisplayFramebufferScale = neko_v2((float)display_w / w, (float)display_h / h);
@@ -1673,7 +1673,7 @@ end
         neko_instance()->game.is_running = true;
 
         // 设置按下主窗口关闭按钮时的默认回调
-        neko_pf_set_window_close_callback(neko_pf_main_window(), &neko_default_main_window_close_callback);
+        neko_os_set_window_close_callback(neko_os_main_window(), &neko_default_main_window_close_callback);
     }
 
     return neko_instance();
@@ -1687,17 +1687,17 @@ NEKO_API_DECL void neko_frame() {
     {
         PROFILE_BLOCK("main_loop");
 
-        neko_pf_t *platform = neko_subsystem(platform);
+        neko_os_t *platform = neko_subsystem(platform);
 
-        neko_pf_window_t *win = (neko_slot_array_getp(platform->windows, neko_pf_main_window()));
+        neko_pf_window_t *win = (neko_slot_array_getp(platform->windows, neko_os_main_window()));
 
         // 帧开始时的缓存时间
-        platform->time.elapsed = (f32)neko_pf_elapsed_time();
+        platform->time.elapsed = (f32)neko_os_elapsed_time();
         platform->time.update = platform->time.elapsed - platform->time.previous;
         platform->time.previous = platform->time.elapsed;
 
         // 更新平台和流程输入
-        neko_pf_update(platform);
+        neko_os_update(platform);
 
         if (win->focus /*|| neko_instance()->game.window.running_background*/) {
 
@@ -1731,11 +1731,11 @@ NEKO_API_DECL void neko_frame() {
             for (neko_slot_array_iter it = 0; neko_slot_array_iter_valid(platform->windows, it); neko_slot_array_iter_advance(platform->windows, it)) {
                 neko_pf_window_swap_buffer(it);
             }
-            // neko_pf_window_swap_buffer(neko_pf_main_window());
+            // neko_pf_window_swap_buffer(neko_os_main_window());
         }
 
         // 帧锁定
-        platform->time.elapsed = (f32)neko_pf_elapsed_time();
+        platform->time.elapsed = (f32)neko_os_elapsed_time();
         platform->time.render = platform->time.elapsed - platform->time.previous;
         platform->time.previous = platform->time.elapsed;
         platform->time.frame = platform->time.update + platform->time.render;  // 总帧时间
@@ -1745,8 +1745,8 @@ NEKO_API_DECL void neko_frame() {
 
         if (platform->time.frame < target) {
             PROFILE_BLOCK("wait");
-            neko_pf_sleep((f32)(target - platform->time.frame));
-            platform->time.elapsed = (f32)neko_pf_elapsed_time();
+            neko_os_sleep((f32)(target - platform->time.frame));
+            platform->time.elapsed = (f32)neko_os_elapsed_time();
             double wait_time = platform->time.elapsed - platform->time.previous;
             platform->time.previous = platform->time.elapsed;
             platform->time.frame += wait_time;
@@ -1778,11 +1778,9 @@ void neko_fini() {
 
     neko::vfs_fini({});
 
-    neko_render_shutdown(neko_subsystem(render));
     neko_render_fini(neko_subsystem(render));
 
-    neko_pf_shutdown(neko_subsystem(platform));
-    neko_pf_fini(neko_subsystem(platform));
+    neko_os_fini(neko_subsystem(platform));
 
     // __neko_config_free();
 
@@ -1803,7 +1801,7 @@ void neko_fini() {
 NEKO_API_DECL void neko_default_main_window_close_callback(void *window) { neko_instance()->game.is_running = false; }
 
 void neko_quit() {
-#ifndef NEKO_PF_WEB
+#ifndef NEKO_IS_WEB
     neko_instance()->game.is_running = false;
 #endif
 }

@@ -10,11 +10,11 @@
 #include "engine/neko_engine.h"
 #include "engine/neko_imgui.hpp"
 #include "engine/neko_lua.h"
-#include "engine/neko_platform.h"
+#include "engine/neko_os.h"
 #include "engine/neko_reflection.hpp"
 
 // deps
-#if defined(NEKO_PF_WIN)
+#if defined(NEKO_IS_WIN32)
 #include <Windows.h>
 #include <direct.h>
 #endif
@@ -25,15 +25,15 @@
 #include <emscripten.h>
 #endif
 
-#if defined(NEKO_PF_WIN)
+#if defined(NEKO_IS_WIN32)
 #include <direct.h>
 #include <timeapi.h>
 #pragma comment(lib, "winmm.lib")
 
-#elif defined(NEKO_PF_WEB)
+#elif defined(NEKO_IS_WEB)
 #include <unistd.h>
 
-#elif defined(NEKO_PF_LINUX)
+#elif defined(NEKO_IS_LINUX)
 #include <sched.h>
 #include <sys/stat.h>
 #include <time.h>
@@ -74,7 +74,7 @@ s32 neko_buildnum(void) {
 
 NEKO_API_DECL
 void *neko_malloc_init_impl(size_t sz) {
-    void *data = neko_malloc(sz);
+    void *data = mem_alloc(sz);
     memset(data, 0, sz);
     return data;
 }
@@ -177,423 +177,6 @@ void neko_log(int level, const char *file, int line, const char *fmt, ...) {
     log_unlock();
 }
 
-/*========================
-// neko_byte_buffer
-========================*/
-
-void neko_byte_buffer_init(neko_byte_buffer_t *buffer) {
-    buffer->data = (u8 *)neko_safe_malloc(NEKO_BYTE_BUFFER_DEFAULT_CAPCITY);
-    buffer->capacity = NEKO_BYTE_BUFFER_DEFAULT_CAPCITY;
-    buffer->size = 0;
-    buffer->position = 0;
-}
-
-neko_byte_buffer_t neko_byte_buffer_new() {
-    neko_byte_buffer_t buffer;
-    neko_byte_buffer_init(&buffer);
-    return buffer;
-}
-
-void neko_byte_buffer_free(neko_byte_buffer_t *buffer) {
-    if (buffer && buffer->data) {
-        neko_safe_free(buffer->data);
-    }
-}
-
-void neko_byte_buffer_clear(neko_byte_buffer_t *buffer) {
-    buffer->size = 0;
-    buffer->position = 0;
-}
-
-bool neko_byte_buffer_empty(neko_byte_buffer_t *buffer) { return (buffer->size == 0); }
-
-size_t neko_byte_buffer_size(neko_byte_buffer_t *buffer) { return buffer->size; }
-
-void neko_byte_buffer_resize(neko_byte_buffer_t *buffer, size_t sz) {
-
-    // if (sz == 4096) NEKO_ASSERT(0);
-
-    u8 *data = (u8 *)neko_safe_realloc(buffer->data, sz);
-
-    if (data == NULL) {
-        return;
-    }
-
-    buffer->data = data;
-    buffer->capacity = (u32)sz;
-}
-
-void neko_byte_buffer_copy_contents(neko_byte_buffer_t *dst, neko_byte_buffer_t *src) {
-    neko_byte_buffer_seek_to_beg(dst);
-    neko_byte_buffer_seek_to_beg(src);
-    neko_byte_buffer_write_bulk(dst, src->data, src->size);
-}
-
-void neko_byte_buffer_seek_to_beg(neko_byte_buffer_t *buffer) { buffer->position = 0; }
-
-void neko_byte_buffer_seek_to_end(neko_byte_buffer_t *buffer) { buffer->position = buffer->size; }
-
-void neko_byte_buffer_advance_position(neko_byte_buffer_t *buffer, size_t sz) { buffer->position += (u32)sz; }
-
-void neko_byte_buffer_write_bulk(neko_byte_buffer_t *buffer, void *src, size_t size) {
-    // 检查是否需要调整大小
-    size_t total_write_size = buffer->position + size;
-    if (total_write_size >= (size_t)buffer->capacity) {
-        size_t capacity = buffer->capacity * 2;
-        while (capacity <= total_write_size) {
-            capacity *= 2;
-        }
-
-        neko_byte_buffer_resize(buffer, capacity);
-    }
-
-    // memcpy data
-    memcpy((buffer->data + buffer->position), src, size);
-
-    buffer->size += (u32)size;
-    buffer->position += (u32)size;
-}
-
-void neko_byte_buffer_read_bulk(neko_byte_buffer_t *buffer, void **dst, size_t size) {
-    memcpy(*dst, (buffer->data + buffer->position), size);
-    buffer->position += (u32)size;
-}
-
-void neko_byte_buffer_write_str(neko_byte_buffer_t *buffer, const char *str) {
-    // 写入字符串的大小
-    u32 str_len = neko_string_length(str);
-    neko_byte_buffer_write(buffer, uint16_t, str_len);
-
-    size_t i;
-    for (i = 0; i < str_len; ++i) {
-        neko_byte_buffer_write(buffer, u8, str[i]);
-    }
-}
-
-void neko_byte_buffer_read_str(neko_byte_buffer_t *buffer, char *str) {
-    // 从缓冲区读取字符串的大小
-    uint16_t sz;
-    neko_byte_buffer_read(buffer, uint16_t, &sz);
-
-    u32 i;
-    for (i = 0; i < sz; ++i) {
-        neko_byte_buffer_read(buffer, u8, &str[i]);
-    }
-    str[i] = '\0';
-}
-
-neko_result neko_byte_buffer_write_to_file(neko_byte_buffer_t *buffer, const char *output_path) { return neko_pf_write_file_contents(output_path, "wb", buffer->data, buffer->size); }
-
-neko_result neko_byte_buffer_read_from_file(neko_byte_buffer_t *buffer, const char *file_path) {
-    if (!buffer) return NEKO_RESULT_FAILURE;
-
-    if (buffer->data) {
-        neko_byte_buffer_free(buffer);
-    }
-
-    buffer->data = (u8 *)neko_pf_read_file_contents(file_path, "rb", (size_t *)&buffer->size);
-    if (!buffer->data) {
-        NEKO_ASSERT(false);
-        return NEKO_RESULT_FAILURE;
-    }
-
-    buffer->position = 0;
-    buffer->capacity = buffer->size;
-    return NEKO_RESULT_SUCCESS;
-}
-
-NEKO_API_DECL void neko_byte_buffer_memset(neko_byte_buffer_t *buffer, u8 val) { memset(buffer->data, val, buffer->capacity); }
-
-/*========================
-// Dynamic Array
-========================*/
-
-NEKO_API_DECL void *neko_dyn_array_resize_impl(void *arr, size_t sz, size_t amount) {
-    size_t capacity;
-
-    if (arr) {
-        capacity = amount;
-    } else {
-        capacity = 0;
-    }
-
-    // 仅使用标头信息创建新的 neko_dyn_array
-    neko_dyn_array *data = (neko_dyn_array *)neko_realloc(arr ? neko_dyn_array_head(arr) : 0, capacity * sz + sizeof(neko_dyn_array));
-
-    if (data) {
-        if (!arr) {
-            data->size = 0;
-        }
-        data->capacity = (s32)capacity;
-        return ((s32 *)data + 2);
-    }
-
-    return NULL;
-}
-
-NEKO_API_DECL void **neko_dyn_array_init(void **arr, size_t val_len) {
-    if (*arr == NULL) {
-        neko_dyn_array *data = (neko_dyn_array *)neko_malloc(val_len + sizeof(neko_dyn_array));  // Allocate capacity of one
-        data->size = 0;
-        data->capacity = 1;
-        *arr = ((s32 *)data + 2);
-    }
-    return arr;
-}
-
-NEKO_API_DECL void neko_dyn_array_push_data(void **arr, void *val, size_t val_len) {
-    if (*arr == NULL) {
-        neko_dyn_array_init(arr, val_len);
-    }
-    if (neko_dyn_array_need_grow(*arr, 1)) {
-        s32 capacity = neko_dyn_array_capacity(*arr) * 2;
-
-        // Create new neko_dyn_array with just the header information
-        neko_dyn_array *data = (neko_dyn_array *)neko_realloc(neko_dyn_array_head(*arr), capacity * val_len + sizeof(neko_dyn_array));
-
-        if (data) {
-            data->capacity = capacity;
-            *arr = ((s32 *)data + 2);
-        }
-    }
-    size_t offset = neko_dyn_array_size(*arr);
-    memcpy(((u8 *)(*arr)) + offset * val_len, val, val_len);
-    neko_dyn_array_head(*arr)->size++;
-}
-
-/*========================
-// Hash Table
-========================*/
-
-NEKO_API_DECL void __neko_hash_table_init_impl(void **ht, size_t sz) { *ht = neko_malloc(sz); }
-
-/*========================
-// Slot Array
-========================*/
-
-NEKO_API_DECL void **neko_slot_array_init(void **sa, size_t sz) {
-    if (*sa == NULL) {
-        *sa = neko_malloc(sz);
-        memset(*sa, 0, sz);
-        return sa;
-    } else {
-        return NULL;
-    }
-}
-
-/*========================
-// Slot Map
-========================*/
-
-NEKO_API_DECL void **neko_slot_map_init(void **sm) {
-    if (*sm == NULL) {
-        (*sm) = neko_malloc(sizeof(size_t) * 2);
-        memset((*sm), 0, sizeof(size_t) * 2);
-        return sm;
-    }
-    return NULL;
-}
-
-/*========================
-// NEKO_MEMORY
-========================*/
-
-Allocator *g_allocator;
-
-void *__neko_mem_safe_calloc(size_t count, size_t element_size, const char *file, int line) {
-    size_t size = count * element_size;
-    void *mem = g_allocator->alloc(size, file, line);
-    memset(mem, 0, size);
-    return mem;
-}
-
-void *__neko_mem_safe_realloc(void *ptr, size_t new_size, const char *file, int line) {
-
-    NEKO_ASSERT(0);
-
-    return NULL;
-
-    // if (new_size == 0) {
-    //     g_allocator->free(ptr);  // 如果新大小为 0 则直接释放原内存块并返回 NULL
-    //     return NULL;
-    // }
-    // if (ptr == NULL) {
-    //     return g_allocator->alloc(new_size, file, line);  // 如果原指针为空 则等同于 alloc
-    // }
-    // void *new_ptr = g_allocator->alloc(new_size, file, line);  // 分配新大小的内存块
-    // if (new_ptr != NULL) {
-    //     // 复制旧内存块中的数据到新内存块
-    //     neko_mem_alloc_info_t *info = (neko_mem_alloc_info_t *)ptr - 1;
-    //     size_t old_size = info->size;
-    //     size_t copy_size = (old_size < new_size) ? old_size : new_size;
-    //     memcpy(new_ptr, ptr, copy_size);
-    //     g_allocator->free(ptr);  // 释放旧内存块
-    // }
-    // return new_ptr;
-}
-
-void *DebugAllocator::alloc(size_t bytes, const char *file, s32 line) {
-    neko::lock_guard lock{&mtx};
-
-    DebugAllocInfo *info = (DebugAllocInfo *)malloc(NEKO_OFFSET(DebugAllocInfo, buf[bytes]));
-    info->file = file;
-    info->line = line;
-    info->size = bytes;
-    info->prev = nullptr;
-    info->next = head;
-    if (head != nullptr) {
-        head->prev = info;
-    }
-    head = info;
-    return info->buf;
-}
-
-void DebugAllocator::free(void *ptr) {
-    if (ptr == nullptr) {
-        return;
-    }
-
-    neko::lock_guard lock{&mtx};
-
-    DebugAllocInfo *info = (DebugAllocInfo *)((u8 *)ptr - NEKO_OFFSET(DebugAllocInfo, buf));
-
-    if (info->prev == nullptr) {
-        head = info->next;
-    } else {
-        info->prev->next = info->next;
-    }
-
-    if (info->next) {
-        info->next->prev = info->prev;
-    }
-
-    ::free(info);
-}
-
-void *DebugAllocator::realloc(void *ptr, size_t new_size, const char *file, s32 line) {
-    if (ptr == nullptr) {
-        // If the pointer is null, just allocate new memory
-        return alloc(new_size, file, line);
-    }
-
-    if (new_size == 0) {
-        // If the new size is zero, free the memory and return null
-        free(ptr);
-        return nullptr;
-    }
-
-    neko::lock_guard lock{&mtx};
-
-    DebugAllocInfo *old_info = (DebugAllocInfo *)((u8 *)ptr - offsetof(DebugAllocInfo, buf));
-
-    // Allocate new memory block with the new size
-    DebugAllocInfo *new_info = (DebugAllocInfo *)malloc(NEKO_OFFSET(DebugAllocInfo, buf[new_size]));
-    if (new_info == nullptr) {
-        return nullptr;  // Allocation failed
-    }
-
-    // Copy data from old memory block to new memory block
-    size_t copy_size = old_info->size < new_size ? old_info->size : new_size;
-    memcpy(new_info->buf, old_info->buf, copy_size);
-
-    // Update new memory block information
-    new_info->file = file;
-    new_info->line = line;
-    new_info->size = new_size;
-    new_info->prev = old_info->prev;
-    new_info->next = old_info->next;
-    if (new_info->prev != nullptr) {
-        new_info->prev->next = new_info;
-    } else {
-        head = new_info;
-    }
-    if (new_info->next != nullptr) {
-        new_info->next->prev = new_info;
-    }
-
-    // Free the old memory block
-    ::free(old_info);
-
-    return new_info->buf;
-}
-
-void DebugAllocator::dump_allocs() {
-    s32 allocs = 0;
-    for (DebugAllocInfo *info = head; info != nullptr; info = info->next) {
-        neko_printf("  %10llu bytes: %s:%d\n", (unsigned long long)info->size, info->file, info->line);
-        allocs++;
-    }
-    neko_printf("  --- %d allocation(s) ---\n", allocs);
-}
-
-void *neko_capi_safe_malloc(size_t size) { return mem_alloc(size); }
-
-/*========================
-// Random
-========================*/
-
-#define NEKO_RAND_UPPER_MASK 0x80000000
-#define NEKO_RAND_LOWER_MASK 0x7fffffff
-#define NEKO_RAND_TEMPERING_MASK_B 0x9d2c5680
-#define NEKO_RAND_TEMPERING_MASK_C 0xefc60000
-
-NEKO_API_DECL void _neko_rand_seed_impl(neko_mt_rand_t *rand, uint64_t seed) {
-    rand->mt[0] = seed & 0xffffffff;
-    for (rand->index = 1; rand->index < NEKO_STATE_VECTOR_LENGTH; rand->index++) {
-        rand->mt[rand->index] = (6069 * rand->mt[rand->index - 1]) & 0xffffffff;
-    }
-}
-
-NEKO_API_DECL neko_mt_rand_t neko_rand_seed(uint64_t seed) {
-    neko_mt_rand_t rand;
-    _neko_rand_seed_impl(&rand, seed);
-    return rand;
-}
-
-NEKO_API_DECL int64_t neko_rand_gen_long(neko_mt_rand_t *rand) {
-    uint64_t y;
-    static uint64_t mag[2] = {0x0, 0x9908b0df}; /* mag[x] = x * 0x9908b0df for x = 0,1 */
-    if (rand->index >= NEKO_STATE_VECTOR_LENGTH || rand->index < 0) {
-        // generate NEKO_STATE_VECTOR_LENGTH words at a time
-        int kk;
-        if (rand->index >= NEKO_STATE_VECTOR_LENGTH + 1 || rand->index < 0) {
-            _neko_rand_seed_impl(rand, 4357);
-        }
-        for (kk = 0; kk < NEKO_STATE_VECTOR_LENGTH - NEKO_STATE_VECTOR_M; kk++) {
-            y = (rand->mt[kk] & NEKO_RAND_UPPER_MASK) | (rand->mt[kk + 1] & NEKO_RAND_LOWER_MASK);
-            rand->mt[kk] = rand->mt[kk + NEKO_STATE_VECTOR_M] ^ (y >> 1) ^ mag[y & 0x1];
-        }
-        for (; kk < NEKO_STATE_VECTOR_LENGTH - 1; kk++) {
-            y = (rand->mt[kk] & NEKO_RAND_UPPER_MASK) | (rand->mt[kk + 1] & NEKO_RAND_LOWER_MASK);
-            rand->mt[kk] = rand->mt[kk + (NEKO_STATE_VECTOR_M - NEKO_STATE_VECTOR_LENGTH)] ^ (y >> 1) ^ mag[y & 0x1];
-        }
-        y = (rand->mt[NEKO_STATE_VECTOR_LENGTH - 1] & NEKO_RAND_UPPER_MASK) | (rand->mt[0] & NEKO_RAND_LOWER_MASK);
-        rand->mt[NEKO_STATE_VECTOR_LENGTH - 1] = rand->mt[NEKO_STATE_VECTOR_M - 1] ^ (y >> 1) ^ mag[y & 0x1];
-        rand->index = 0;
-    }
-    y = rand->mt[rand->index++];
-    y ^= (y >> 11);
-    y ^= (y << 7) & NEKO_RAND_TEMPERING_MASK_B;
-    y ^= (y << 15) & NEKO_RAND_TEMPERING_MASK_C;
-    y ^= (y >> 18);
-    return y;
-}
-
-NEKO_API_DECL double neko_rand_gen(neko_mt_rand_t *rand) { return ((double)neko_rand_gen_long(rand) / (uint64_t)0xffffffff); }
-
-NEKO_API_DECL int64_t neko_rand_gen_range_long(neko_mt_rand_t *rand, int32_t min, int32_t max) { return (int64_t)(floorf(neko_rand_gen_range(rand, (double)min, (double)max))); }
-
-NEKO_API_DECL double neko_rand_gen_range(neko_mt_rand_t *rand, double min, double max) { return neko_map_range(0.0, 1.0, min, max, neko_rand_gen(rand)); }
-
-NEKO_API_DECL neko_color_t neko_rand_gen_color(neko_mt_rand_t *rand) {
-    neko_color_t c = NEKO_DEFAULT_VAL();
-    c.r = (u8)neko_rand_gen_range_long(rand, 0, 255);
-    c.g = (u8)neko_rand_gen_range_long(rand, 0, 255);
-    c.b = (u8)neko_rand_gen_range_long(rand, 0, 255);
-    c.a = (u8)neko_rand_gen_range_long(rand, 0, 255);
-    return c;
-}
-
 //=============================
 // Console
 //=============================
@@ -634,14 +217,14 @@ NEKO_API_DECL void neko_console(neko_console_t *console, neko_ui_context_t *ctx,
         // 处理文本输入
         n = NEKO_MIN(sizeof(*console->cb) - len - 1, (int32_t)strlen(ctx->input_text));
 
-        if (neko_pf_key_pressed(NEKO_KEYCODE_UP)) {
+        if (neko_os_key_pressed(NEKO_KEYCODE_UP)) {
             console->current_cb_idx++;
             if (console->current_cb_idx >= NEKO_ARR_SIZE(console->cb)) {
                 console->current_cb_idx = NEKO_ARR_SIZE(console->cb) - 1;
             } else {
                 memcpy(&console->cb[0], &console->cb[console->current_cb_idx], sizeof(*console->cb));
             }
-        } else if (neko_pf_key_pressed(NEKO_KEYCODE_DOWN)) {
+        } else if (neko_os_key_pressed(NEKO_KEYCODE_DOWN)) {
             console->current_cb_idx--;
             if (console->current_cb_idx <= 0) {
                 console->current_cb_idx = 0;
@@ -649,7 +232,7 @@ NEKO_API_DECL void neko_console(neko_console_t *console, neko_ui_context_t *ctx,
             } else {
                 memcpy(&console->cb[0], &console->cb[console->current_cb_idx], sizeof(*console->cb));
             }
-        } else if (neko_pf_key_pressed(NEKO_KEYCODE_ENTER)) {
+        } else if (neko_os_key_pressed(NEKO_KEYCODE_ENTER)) {
             console->current_cb_idx = 0;
             neko_console_printf(console, "$ %s\n", console->cb[0]);
 
@@ -665,7 +248,7 @@ NEKO_API_DECL void neko_console(neko_console_t *console, neko_ui_context_t *ctx,
 
                 tmp = console->cb[0];
                 char *last_pos = console->cb[0];
-                char **argv = (char **)neko_safe_malloc(argc * sizeof(char *));
+                char **argv = (char **)mem_alloc(argc * sizeof(char *));
                 int i = 0;
                 while ((tmp = strchr(tmp, ' '))) {
                     *tmp = 0;
@@ -683,14 +266,14 @@ NEKO_API_DECL void neko_console(neko_console_t *console, neko_ui_context_t *ctx,
                 neko_console_printf(console, "[neko_console]: unrecognized command '%s'\n", argv[0]);
             console_command_found:
                 console->cb[0][0] = '\0';
-                neko_safe_free(argv);
+                mem_free(argv);
             }
-        } else if (neko_pf_key_pressed(NEKO_KEYCODE_BACKSPACE)) {
+        } else if (neko_os_key_pressed(NEKO_KEYCODE_BACKSPACE)) {
             console->current_cb_idx = 0;
             // 跳过 utf-8 连续字节
             while ((console->cb[0][--len] & 0xc0) == 0x80 && len > 0);
             console->cb[0][len] = '\0';
-        } else if (n > 0 && !neko_pf_key_pressed(NEKO_KEYCODE_GRAVE_ACCENT)) {
+        } else if (n > 0 && !neko_os_key_pressed(NEKO_KEYCODE_GRAVE_ACCENT)) {
             console->current_cb_idx = 0;
             if (len + n + 1 < sizeof(*console->cb)) {
                 memcpy(console->cb[0] + len, ctx->input_text, n);
@@ -703,7 +286,7 @@ NEKO_API_DECL void neko_console(neko_console_t *console, neko_ui_context_t *ctx,
 
         // 闪烁光标
         neko_ui_get_layout(ctx)->body.x += len * 7 - 5;
-        if ((int)(neko_pf_elapsed_time() / 666.0f) & 1) neko_ui_text(ctx, "|");
+        if ((int)(neko_os_elapsed_time() / 666.0f) & 1) neko_ui_text(ctx, "|");
 
         neko_ui_container_t *ctn = neko_ui_get_current_container(ctx);
         neko_ui_bring_to_front(ctx, ctn);
@@ -819,8 +402,8 @@ void summon(int argc, char **argv) {
 }
 
 void crash(int argc, char **argv) {
-    const_str trace_info = neko_pf_stacktrace();
-    // neko_pf_msgbox(std::format("Crash...\n{0}", trace_info).c_str());
+    const_str trace_info = neko_os_stacktrace();
+    // neko_os_msgbox(std::format("Crash...\n{0}", trace_info).c_str());
 }
 
 void spam(int argc, char **argv) {
@@ -876,7 +459,7 @@ std::string w2u(std::wstring_view wstr) noexcept {
 }
 }  // namespace neko::wtf8
 
-#if defined(NEKO_PF_WIN)
+#if defined(NEKO_IS_WIN32)
 
 namespace neko::win {
 std::wstring u2w(std::string_view str) noexcept {
@@ -940,184 +523,16 @@ std::string u2a(std::string_view str) noexcept { return w2a(u2w(str)); }
 
 namespace neko {
 
-static char s_empty[1] = {0};
-
-string_builder::string_builder() {
-    data = s_empty;
-    len = 0;
-    capacity = 0;
-}
-
-void string_builder::trash() {
-    if (data != s_empty) {
-        neko_safe_free(data);
-    }
-}
-
-void string_builder::reserve(u64 cap) {
-    if (cap > capacity) {
-        char *buf = (char *)neko_safe_malloc(cap);
-        memset(buf, 0, cap);
-        memcpy(buf, data, len);
-
-        if (data != s_empty) {
-            neko_safe_free(data);
-        }
-
-        data = buf;
-        capacity = cap;
-    }
-}
-
-void string_builder::clear() {
-    len = 0;
-    if (data != s_empty) {
-        data[0] = 0;
-    }
-}
-
-void string_builder::swap_filename(string filepath, string file) {
-    clear();
-
-    u64 slash = filepath.last_of('/');
-    if (slash != (u64)-1) {
-        string path = filepath.substr(0, slash + 1);
-        *this << path;
-    }
-
-    *this << file;
-}
-
-void string_builder::concat(string str, s32 times) {
-    for (s32 i = 0; i < times; i++) {
-        *this << str;
-    }
-}
-
-string_builder &string_builder::operator<<(string str) {
-    u64 desired = len + str.len + 1;
-    u64 cap = capacity;
-
-    if (desired >= cap) {
-        u64 growth = cap > 0 ? cap * 2 : 8;
-        if (growth <= desired) {
-            growth = desired;
-        }
-
-        reserve(growth);
-    }
-
-    memcpy(&data[len], str.data, str.len);
-    len += str.len;
-    data[len] = 0;
-    return *this;
-}
-
-string_builder::operator string() { return {data, len}; }
-
-struct arena_node {
-    arena_node *next;
-    u64 capacity;
-    u64 allocd;
-    u64 prev;
-    u8 buf[1];
-};
-
-static u64 align_forward(u64 p, u32 align) {
-    if ((p & (align - 1)) != 0) {
-        p += align - (p & (align - 1));
-    }
-    return p;
-}
-
-static arena_node *arena_block_make(u64 capacity) {
-    u64 page = 4096 - offsetof(arena_node, buf);
-    if (capacity < page) {
-        capacity = page;
-    }
-
-    arena_node *a = (arena_node *)neko_safe_malloc(NEKO_OFFSET(arena_node, buf[capacity]));
-    a->next = nullptr;
-    a->allocd = 0;
-    a->capacity = capacity;
-    return a;
-}
-
-void arena::trash() {
-    arena_node *a = head;
-    while (a != nullptr) {
-        arena_node *rm = a;
-        a = a->next;
-        neko_safe_free(rm);
-    }
-}
-
-void *arena::bump(u64 size) {
-    if (head == nullptr) {
-        head = arena_block_make(size);
-    }
-
-    u64 next = 0;
-    do {
-        next = align_forward(head->allocd, 16);
-        if (next + size <= head->capacity) {
-            break;
-        }
-
-        arena_node *block = arena_block_make(size);
-        block->next = head;
-
-        head = block;
-    } while (true);
-
-    void *ptr = &head->buf[next];
-    head->allocd = next + size;
-    head->prev = next;
-    return ptr;
-}
-
-void *arena::rebump(void *ptr, u64 old, u64 size) {
-    if (head == nullptr || ptr == nullptr || old == 0) {
-        return bump(size);
-    }
-
-    if (&head->buf[head->prev] == ptr) {
-        u64 resize = head->prev + size;
-        if (resize <= head->capacity) {
-            head->allocd = resize;
-            return ptr;
-        }
-    }
-
-    void *new_ptr = bump(size);
-
-    u64 copy = old < size ? old : size;
-    memmove(new_ptr, ptr, copy);
-
-    return new_ptr;
-}
-
-string arena::bump_string(string s) {
-    if (s.len > 0) {
-        char *cstr = (char *)bump(s.len + 1);
-        memcpy(cstr, s.data, s.len);
-        cstr[s.len] = '\0';
-        return {cstr, s.len};
-    } else {
-        return {};
-    }
-}
-
 static u32 read4(char *bytes) {
     u32 n;
     memcpy(&n, bytes, 4);
     return n;
 }
 
-static bool read_entire_file_raw(string *out, string filepath) {
+static bool read_entire_file_raw(String *out, String filepath) {
 
-    string path = to_cstr(filepath);
-    neko_defer(neko_safe_free(path.data));
+    String path = to_cstr(filepath);
+    neko_defer(mem_free(path.data));
 
     FILE *file = fopen(path.data, "rb");
     if (file == nullptr) {
@@ -1128,12 +543,12 @@ static bool read_entire_file_raw(string *out, string filepath) {
     size_t size = ftell(file);
     rewind(file);
 
-    char *buf = (char *)neko_safe_malloc(size + 1);
+    char *buf = (char *)mem_alloc(size + 1);
     size_t read = fread(buf, sizeof(char), size, file);
     fclose(file);
 
     if (read != size) {
-        neko_safe_free(buf);
+        mem_free(buf);
         return false;
     }
 
@@ -1145,9 +560,9 @@ static bool read_entire_file_raw(string *out, string filepath) {
 struct IFileSystem {
     virtual void make() = 0;
     virtual void trash() = 0;
-    virtual bool mount(string filepath) = 0;
-    virtual bool file_exists(string filepath) = 0;
-    virtual bool read_entire_file(string *out, string filepath) = 0;
+    virtual bool mount(String filepath) = 0;
+    virtual bool file_exists(String filepath) = 0;
+    virtual bool read_entire_file(String *out, String filepath) = 0;
 };
 
 // TODO 统一管理全局变量
@@ -1157,17 +572,17 @@ struct DirectoryFileSystem : IFileSystem {
     void make() {}
     void trash() {}
 
-    bool mount(string filepath) {
-        string path = to_cstr(filepath);
-        neko_defer(neko_safe_free(path.data));
+    bool mount(String filepath) {
+        String path = to_cstr(filepath);
+        neko_defer(mem_free(path.data));
 
-        s32 res = neko_pf_chdir(path.data);
+        s32 res = neko_os_chdir(path.data);
         return res == 0;
     }
 
-    bool file_exists(string filepath) {
-        string path = to_cstr(filepath);
-        neko_defer(neko_safe_free(path.data));
+    bool file_exists(String filepath) {
+        String path = to_cstr(filepath);
+        neko_defer(mem_free(path.data));
 
         FILE *fp = fopen(path.data, "r");
         if (fp != nullptr) {
@@ -1178,28 +593,28 @@ struct DirectoryFileSystem : IFileSystem {
         return false;
     }
 
-    bool read_entire_file(string *out, string filepath) { return read_entire_file_raw(out, filepath); }
+    bool read_entire_file(String *out, String filepath) { return read_entire_file_raw(out, filepath); }
 
-    // bool list_all_files(array<string> *files) { return list_all_files_help(files, ""); }
+    // bool list_all_files(array<String> *files) { return list_all_files_help(files, ""); }
 };
 
 struct ZipFileSystem : IFileSystem {
     std::mutex mtx;
     mz_zip_archive zip = {};
-    string zip_contents = {};
+    String zip_contents = {};
 
     void make() {}
 
     void trash() {
         if (zip_contents.data != nullptr) {
             mz_zip_reader_end(&zip);
-            neko_safe_free(zip_contents.data);
+            mem_free(zip_contents.data);
         }
     }
 
-    bool mount(string filepath) {
+    bool mount(String filepath) {
 
-        string contents = {};
+        String contents = {};
         bool contents_ok = read_entire_file_raw(&contents, filepath);
         if (!contents_ok) {
             return false;
@@ -1208,7 +623,7 @@ struct ZipFileSystem : IFileSystem {
         bool success = false;
         neko_defer({
             if (!success) {
-                neko_safe_free(contents.data);
+                mem_free(contents.data);
             }
         });
 
@@ -1249,10 +664,10 @@ struct ZipFileSystem : IFileSystem {
         return true;
     }
 
-    bool file_exists(string filepath) {
+    bool file_exists(String filepath) {
 
-        string path = to_cstr(filepath);
-        neko_defer(neko_safe_free(path.data));
+        String path = to_cstr(filepath);
+        neko_defer(mem_free(path.data));
 
         std::unique_lock<std::mutex> lock(mtx);
 
@@ -1270,10 +685,10 @@ struct ZipFileSystem : IFileSystem {
         return true;
     }
 
-    bool read_entire_file(string *out, string filepath) {
+    bool read_entire_file(String *out, String filepath) {
 
-        string path = to_cstr(filepath);
-        neko_defer(neko_safe_free(path.data));
+        String path = to_cstr(filepath);
+        neko_defer(mem_free(path.data));
 
         std::unique_lock<std::mutex> lock(mtx);
 
@@ -1289,13 +704,13 @@ struct ZipFileSystem : IFileSystem {
         }
 
         size_t size = stat.m_uncomp_size;
-        char *buf = (char *)neko_safe_malloc(size + 1);
+        char *buf = (char *)mem_alloc(size + 1);
 
         ok = mz_zip_reader_extract_to_mem(&zip, file_index, buf, size, 0);
         if (!ok) {
             mz_zip_error err = mz_zip_get_last_error(&zip);
             fprintf(stderr, "failed to read file '%s': %s\n", path.data, mz_zip_get_error_string(err));
-            neko_safe_free(buf);
+            mem_free(buf);
             return false;
         }
 
@@ -1304,7 +719,7 @@ struct ZipFileSystem : IFileSystem {
         return true;
     }
 
-    bool list_all_files(array<string> *files) {
+    bool list_all_files(Array<String> *files) {
 
         std::unique_lock<std::mutex> lock(mtx);
 
@@ -1315,7 +730,7 @@ struct ZipFileSystem : IFileSystem {
                 return false;
             }
 
-            string name = {file_stat.m_filename, strlen(file_stat.m_filename)};
+            String name = {file_stat.m_filename, strlen(file_stat.m_filename)};
             files->push(to_cstr(name));
         }
 
@@ -1385,15 +800,15 @@ EM_ASYNC_JS(void, web_load_files, (), {
 // auto os_program_path() { return std::filesystem::current_path().string(); }
 
 template <typename T>
-static bool vfs_mount_type(std::string fsname, string mount) {
-    void *ptr = neko_safe_malloc(sizeof(T));
+static bool vfs_mount_type(std::string fsname, String mount) {
+    void *ptr = mem_alloc(sizeof(T));
     T *vfs = new (ptr) T();
 
     vfs->make();
     bool ok = vfs->mount(mount);
     if (!ok) {
         vfs->trash();
-        neko_safe_free(vfs);
+        mem_free(vfs);
         return false;
     }
 
@@ -1406,8 +821,8 @@ mount_result vfs_mount(const_str fsname, const_str filepath) {
     mount_result res = {};
 
 #ifdef __EMSCRIPTEN__
-    string mount_dir = web_mount_dir();
-    neko_defer(neko_safe_free(mount_dir.data));
+    String mount_dir = web_mount_dir();
+    neko_defer(mem_free(mount_dir.data));
 
     if (mount_dir.ends_with(".zip")) {
         web_load_zip();
@@ -1419,7 +834,7 @@ mount_result vfs_mount(const_str fsname, const_str filepath) {
 
 #else
     if (filepath == nullptr) {
-        string path = os_program_path();
+        String path = os_program_path();
 
 #ifndef NDEBUG
         NEKO_DEBUG_LOG("program path: %s", path.data);
@@ -1427,7 +842,7 @@ mount_result vfs_mount(const_str fsname, const_str filepath) {
 
         res.ok = vfs_mount_type<DirectoryFileSystem>(fsname, path);
     } else {
-        string mount_dir = filepath;
+        String mount_dir = filepath;
 
         if (mount_dir.ends_with(".zip")) {
             res.ok = vfs_mount_type<ZipFileSystem>(fsname, mount_dir);
@@ -1450,11 +865,11 @@ void vfs_fini(std::optional<std::string> name) {
     auto fini_fs = []<typename T>(T fs) {
         if constexpr (!is_pair<T>::value) {
             fs->trash();
-            neko_safe_free(fs);
+            mem_free(fs);
             NEKO_DEBUG_LOG("vfs_fini(%p)", fs);
         } else {
             fs.second->trash();
-            neko_safe_free(fs.second);
+            mem_free(fs.second);
             NEKO_DEBUG_LOG("vfs_fini(%s)", fs.first.c_str());
         }
     };
@@ -1466,9 +881,9 @@ void vfs_fini(std::optional<std::string> name) {
     }
 }
 
-bool vfs_file_exists(std::string fsname, string filepath) { return g_filesystem_list[fsname]->file_exists(filepath); }
+bool vfs_file_exists(std::string fsname, String filepath) { return g_filesystem_list[fsname]->file_exists(filepath); }
 
-bool vfs_read_entire_file(std::string fsname, string *out, string filepath) { return g_filesystem_list[fsname]->read_entire_file(out, filepath); }
+bool vfs_read_entire_file(std::string fsname, String *out, String filepath) { return g_filesystem_list[fsname]->read_entire_file(out, filepath); }
 
 NEKO_API_DECL size_t neko_capi_vfs_fread(void *dest, size_t size, size_t count, vfs_file *vf) {
     size_t bytes_to_read = size * count;
@@ -1515,14 +930,14 @@ NEKO_API_DECL vfs_file neko_capi_vfs_fopen(const_str path) {
 
 NEKO_API_DECL int neko_capi_vfs_fclose(vfs_file *vf) {
     NEKO_ASSERT(vf);
-    neko_safe_free(vf->data);
+    mem_free(vf->data);
     return 0;
 }
 
 NEKO_API_DECL bool neko_capi_vfs_file_exists(const_str fsname, const_str filepath) { return vfs_file_exists(fsname, filepath); }
 
 NEKO_API_DECL const_str neko_capi_vfs_read_file(const_str fsname, const_str filepath, size_t *size) {
-    string out;
+    String out;
     bool ok = vfs_read_entire_file(fsname, &out, filepath);
     if (!ok) return NULL;
     *size = out.len;
@@ -1536,65 +951,10 @@ s64 luax_len(lua_State *L, s32 arg) {
     return len;
 }
 
-string luax_check_string(lua_State *L, s32 arg) {
+String luax_check_string(lua_State *L, s32 arg) {
     size_t len = 0;
     char *str = (char *)luaL_checklstring(L, arg, &len);
     return {str, len};
-}
-
-inline bool is_whitespace(char c) {
-    switch (c) {
-        case '\n':
-        case '\r':
-        case '\t':
-        case ' ':
-            return true;
-    }
-    return false;
-}
-
-inline bool is_alpha(char c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'); }
-
-inline bool is_digit(char c) { return c >= '0' && c <= '9'; }
-
-double string_to_double(string str) {
-    double n = 0;
-    double sign = 1;
-
-    if (str.len == 0) {
-        return n;
-    }
-
-    u64 i = 0;
-    if (str.data[0] == '-' && str.len > 1 && is_digit(str.data[1])) {
-        i++;
-        sign = -1;
-    }
-
-    while (i < str.len) {
-        if (!is_digit(str.data[i])) {
-            break;
-        }
-
-        n = n * 10 + (str.data[i] - '0');
-        i++;
-    }
-
-    if (i < str.len && str.data[i] == '.') {
-        i++;
-        double place = 10;
-        while (i < str.len) {
-            if (!is_digit(str.data[i])) {
-                break;
-            }
-
-            n += (str.data[i] - '0') / place;
-            place *= 10;
-            i++;
-        }
-    }
-
-    return n * sign;
 }
 
 enum JSONTok : s32 {
@@ -1670,13 +1030,13 @@ const char *json_kind_string(JSONKind kind) {
 
 struct JSONToken {
     JSONTok kind;
-    string str;
+    String str;
     u32 line;
     u32 column;
 };
 
 struct JSONScanner {
-    string contents;
+    String contents;
     JSONToken token;
     u64 begin;
     u64 end;
@@ -1712,7 +1072,7 @@ static void json_skip_whitespace(JSONScanner *scan) {
     }
 }
 
-static string json_lexeme(JSONScanner *scan) { return scan->contents.substr(scan->begin, scan->end); }
+static String json_lexeme(JSONScanner *scan) { return scan->contents.substr(scan->begin, scan->end); }
 
 static JSONToken json_make_tok(JSONScanner *scan, JSONTok kind) {
     JSONToken t = {};
@@ -1725,7 +1085,7 @@ static JSONToken json_make_tok(JSONScanner *scan, JSONTok kind) {
     return t;
 }
 
-static JSONToken json_err_tok(JSONScanner *scan, string msg) {
+static JSONToken json_err_tok(JSONScanner *scan, String msg) {
     JSONToken t = {};
     t.kind = JSONTok_Error;
     t.str = msg;
@@ -1736,7 +1096,7 @@ static JSONToken json_err_tok(JSONScanner *scan, string msg) {
     return t;
 }
 
-static JSONToken json_scan_ident(arena *a, JSONScanner *scan) {
+static JSONToken json_scan_ident(Arena *a, JSONScanner *scan) {
     while (is_alpha(json_peek(scan, 0))) {
         json_next_char(scan);
     }
@@ -1751,10 +1111,10 @@ static JSONToken json_scan_ident(arena *a, JSONScanner *scan) {
     } else if (t.str == "null") {
         t.kind = JSONTok_Null;
     } else {
-        string_builder sb = {};
+        StringBuilder sb = {};
         neko_defer(sb.trash());
 
-        string s = string(sb << "unknown identifier: '" << t.str << "'");
+        String s = String(sb << "unknown identifier: '" << t.str << "'");
         return json_err_tok(scan, a->bump_string(s));
     }
 
@@ -1795,7 +1155,7 @@ static JSONToken json_scan_string(JSONScanner *scan) {
     return json_make_tok(scan, JSONTok_String);
 }
 
-static JSONToken json_scan_next(arena *a, JSONScanner *scan) {
+static JSONToken json_scan_next(Arena *a, JSONScanner *scan) {
     json_skip_whitespace(scan);
 
     scan->begin = scan->end;
@@ -1834,14 +1194,14 @@ static JSONToken json_scan_next(arena *a, JSONScanner *scan) {
             return json_make_tok(scan, JSONTok_Comma);
     }
 
-    string msg = tmp_fmt("unexpected character: '%c' (%d)", c, (int)c);
-    string s = a->bump_string(msg);
+    String msg = tmp_fmt("unexpected character: '%c' (%d)", c, (int)c);
+    String s = a->bump_string(msg);
     return json_err_tok(scan, s);
 }
 
-static string json_parse_next(arena *a, JSONScanner *scan, JSON *out);
+static String json_parse_next(Arena *a, JSONScanner *scan, JSON *out);
 
-static string json_parse_object(arena *a, JSONScanner *scan, JSONObject **out) {
+static String json_parse_object(Arena *a, JSONScanner *scan, JSONObject **out) {
 
     JSONObject *obj = nullptr;
 
@@ -1854,7 +1214,7 @@ static string json_parse_object(arena *a, JSONScanner *scan, JSONObject **out) {
             return {};
         }
 
-        string err = {};
+        String err = {};
 
         JSON key = {};
         err = json_parse_next(a, scan, &key);
@@ -1863,12 +1223,12 @@ static string json_parse_object(arena *a, JSONScanner *scan, JSONObject **out) {
         }
 
         if (key.kind != JSONKind_String) {
-            string msg = tmp_fmt("expected string as object key on line: %d. got: %s", (s32)scan->token.line, json_kind_string(key.kind));
+            String msg = tmp_fmt("expected string as object key on line: %d. got: %s", (s32)scan->token.line, json_kind_string(key.kind));
             return a->bump_string(msg);
         }
 
         if (scan->token.kind != JSONTok_Colon) {
-            string msg = tmp_fmt("expected colon on line: %d. got %s", (s32)scan->token.line, json_tok_string(scan->token.kind));
+            String msg = tmp_fmt("expected colon on line: %d. got %s", (s32)scan->token.line, json_tok_string(scan->token.kind));
             return a->bump_string(msg);
         }
 
@@ -1894,7 +1254,7 @@ static string json_parse_object(arena *a, JSONScanner *scan, JSONObject **out) {
     }
 }
 
-static string json_parse_array(arena *a, JSONScanner *scan, JSONArray **out) {
+static String json_parse_array(Arena *a, JSONScanner *scan, JSONArray **out) {
 
     JSONArray *arr = nullptr;
 
@@ -1908,7 +1268,7 @@ static string json_parse_array(arena *a, JSONScanner *scan, JSONArray **out) {
         }
 
         JSON value = {};
-        string err = json_parse_next(a, scan, &value);
+        String err = json_parse_next(a, scan, &value);
         if (err.data != nullptr) {
             return err;
         }
@@ -1930,7 +1290,7 @@ static string json_parse_array(arena *a, JSONScanner *scan, JSONArray **out) {
     }
 }
 
-static string json_parse_next(arena *a, JSONScanner *scan, JSON *out) {
+static String json_parse_next(Arena *a, JSONScanner *scan, JSON *out) {
     switch (scan->token.kind) {
         case JSONTok_LBrace: {
             out->kind = JSONKind_Object;
@@ -1970,21 +1330,21 @@ static string json_parse_next(arena *a, JSONScanner *scan, JSON *out) {
             return {};
         }
         case JSONTok_Error: {
-            string_builder sb = {};
+            StringBuilder sb = {};
             neko_defer(sb.trash());
 
             sb << scan->token.str << tmp_fmt(" on line %d:%d", (s32)scan->token.line, (s32)scan->token.column);
 
-            return a->bump_string(string(sb));
+            return a->bump_string(String(sb));
         }
         default: {
-            string msg = tmp_fmt("unknown json token: %s on line %d:%d", json_tok_string(scan->token.kind), (s32)scan->token.line, (s32)scan->token.column);
+            String msg = tmp_fmt("unknown json token: %s on line %d:%d", json_tok_string(scan->token.kind), (s32)scan->token.line, (s32)scan->token.column);
             return a->bump_string(msg);
         }
     }
 }
 
-void JSONDocument::parse(string contents) {
+void JSONDocument::parse(String contents) {
 
     arena = {};
 
@@ -1994,7 +1354,7 @@ void JSONDocument::parse(string contents) {
 
     json_scan_next(&arena, &scan);
 
-    string err = json_parse_next(&arena, &scan, &root);
+    String err = json_parse_next(&arena, &scan, &root);
     if (err.data != nullptr) {
         error = err;
         return;
@@ -2008,7 +1368,7 @@ void JSONDocument::parse(string contents) {
 
 void JSONDocument::trash() { arena.trash(); }
 
-JSON JSON::lookup(string key, bool *ok) {
+JSON JSON::lookup(String key, bool *ok) {
     if (*ok && kind == JSONKind_Object) {
         for (JSONObject *o = object; o != nullptr; o = o->next) {
             if (o->hash == fnv1a(key)) {
@@ -2052,7 +1412,7 @@ JSONArray *JSON::as_array(bool *ok) {
     return {};
 }
 
-string JSON::as_string(bool *ok) {
+String JSON::as_string(bool *ok) {
     if (*ok && kind == JSONKind_String) {
         return str;
     }
@@ -2070,17 +1430,17 @@ double JSON::as_number(bool *ok) {
     return {};
 }
 
-JSONObject *JSON::lookup_object(string key, bool *ok) { return lookup(key, ok).as_object(ok); }
+JSONObject *JSON::lookup_object(String key, bool *ok) { return lookup(key, ok).as_object(ok); }
 
-JSONArray *JSON::lookup_array(string key, bool *ok) { return lookup(key, ok).as_array(ok); }
+JSONArray *JSON::lookup_array(String key, bool *ok) { return lookup(key, ok).as_array(ok); }
 
-string JSON::lookup_string(string key, bool *ok) { return lookup(key, ok).as_string(ok); }
+String JSON::lookup_string(String key, bool *ok) { return lookup(key, ok).as_string(ok); }
 
-double JSON::lookup_number(string key, bool *ok) { return lookup(key, ok).as_number(ok); }
+double JSON::lookup_number(String key, bool *ok) { return lookup(key, ok).as_number(ok); }
 
 double JSON::index_number(s32 i, bool *ok) { return index(i, ok).as_number(ok); }
 
-static void json_write_string(string_builder &sb, JSON *json, s32 level) {
+static void json_write_string(StringBuilder &sb, JSON *json, s32 level) {
     switch (json->kind) {
         case JSONKind_Object: {
             sb << "{\n";
@@ -2122,10 +1482,10 @@ static void json_write_string(string_builder &sb, JSON *json, s32 level) {
     }
 }
 
-void json_write_string(string_builder *sb, JSON *json) { json_write_string(*sb, json, 1); }
+void json_write_string(StringBuilder *sb, JSON *json) { json_write_string(*sb, json, 1); }
 
 void json_print(JSON *json) {
-    string_builder sb = {};
+    StringBuilder sb = {};
     neko_defer(sb.trash());
     json_write_string(&sb, json);
     printf("%s\n", sb.data);
@@ -2171,7 +1531,7 @@ void json_to_lua(lua_State *L, JSON *json) {
     }
 }
 
-static void lua_to_json_string(string_builder &sb, lua_State *L, hashmap<bool> *visited, string *err, s32 width, s32 level) {
+static void lua_to_json_string(StringBuilder &sb, lua_State *L, HashMap<bool> *visited, String *err, s32 width, s32 level) {
     auto indent = [&](s32 offset) {
         if (width > 0) {
             sb << "\n";
@@ -2293,13 +1653,13 @@ static void lua_to_json_string(string_builder &sb, lua_State *L, hashmap<bool> *
     }
 }
 
-string lua_to_json_string(lua_State *L, s32 arg, string *contents, s32 width) {
-    string_builder sb = {};
+String lua_to_json_string(lua_State *L, s32 arg, String *contents, s32 width) {
+    StringBuilder sb = {};
 
-    hashmap<bool> visited = {};
+    HashMap<bool> visited = {};
     neko_defer(visited.trash());
 
-    string err = {};
+    String err = {};
     lua_pushvalue(L, arg);
     lua_to_json_string(sb, L, &visited, &err, width, 1);
     lua_pop(L, 1);
@@ -2308,151 +1668,9 @@ string lua_to_json_string(lua_State *L, s32 arg, string *contents, s32 width) {
         sb.trash();
     }
 
-    *contents = string(sb);
+    *contents = String(sb);
     return err;
 }
-
-#ifndef NEKO_PF_WIN
-#include <errno.h>
-#endif
-
-#ifdef NEKO_PF_LINUX
-#include <sys/syscall.h>
-#include <unistd.h>
-#endif
-
-#ifdef NEKO_PF_WIN
-
-void mutex::make() { srwlock = {}; }
-void mutex::trash() {}
-void mutex::lock() { AcquireSRWLockExclusive(&srwlock); }
-void mutex::unlock() { ReleaseSRWLockExclusive(&srwlock); }
-
-bool mutex::try_lock() {
-    BOOLEAN ok = TryAcquireSRWLockExclusive(&srwlock);
-    return ok != 0;
-}
-
-void cond::make() { InitializeConditionVariable(&cv); }
-void cond::trash() {}
-void cond::signal() { WakeConditionVariable(&cv); }
-void cond::broadcast() { WakeAllConditionVariable(&cv); }
-
-void cond::wait(mutex *mtx) { SleepConditionVariableSRW(&cv, &mtx->srwlock, INFINITE, 0); }
-
-bool cond::timed_wait(mutex *mtx, uint32_t ms) { return SleepConditionVariableSRW(&cv, &mtx->srwlock, ms, 0); }
-
-void rwlock::make() { srwlock = {}; }
-void rwlock::trash() {}
-void rwlock::shared_lock() { AcquireSRWLockShared(&srwlock); }
-void rwlock::shared_unlock() { ReleaseSRWLockShared(&srwlock); }
-void rwlock::unique_lock() { AcquireSRWLockExclusive(&srwlock); }
-void rwlock::unique_unlock() { ReleaseSRWLockExclusive(&srwlock); }
-
-void sema::make(int n) { handle = CreateSemaphoreA(nullptr, n, LONG_MAX, nullptr); }
-void sema::trash() { CloseHandle(handle); }
-void sema::post(int n) { ReleaseSemaphore(handle, n, nullptr); }
-void sema::wait() { WaitForSingleObjectEx(handle, INFINITE, false); }
-
-void thread::make(thread_proc fn, void *udata) {
-    DWORD id = 0;
-    HANDLE handle = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)fn, udata, 0, &id);
-    ptr = (void *)handle;
-}
-
-void thread::join() {
-    WaitForSingleObject((HANDLE)ptr, INFINITE);
-    CloseHandle((HANDLE)ptr);
-}
-
-uint64_t this_thread_id() { return GetCurrentThreadId(); }
-
-#else
-
-static struct timespec ms_from_now(u32 ms) {
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-
-    unsigned long long tally = ts.tv_sec * 1000LL + ts.tv_nsec / 1000000LL;
-    tally += ms;
-
-    ts.tv_sec = tally / 1000LL;
-    ts.tv_nsec = (tally % 1000LL) * 1000000LL;
-
-    return ts;
-}
-
-void mutex::make() { pthread_mutex_init(&pt, nullptr); }
-void mutex::trash() { pthread_mutex_destroy(&pt); }
-void mutex::lock() { pthread_mutex_lock(&pt); }
-void mutex::unlock() { pthread_mutex_unlock(&pt); }
-
-bool mutex::try_lock() {
-    int res = pthread_mutex_trylock(&pt);
-    return res == 0;
-}
-
-void cond::make() { pthread_cond_init(&pt, nullptr); }
-void cond::trash() { pthread_cond_destroy(&pt); }
-void cond::signal() { pthread_cond_signal(&pt); }
-void cond::broadcast() { pthread_cond_broadcast(&pt); }
-void cond::wait(mutex *mtx) { pthread_cond_wait(&pt, &mtx->pt); }
-
-bool cond::timed_wait(mutex *mtx, uint32_t ms) {
-    struct timespec ts = ms_from_now(ms);
-    int res = pthread_cond_timedwait(&pt, &mtx->pt, &ts);
-    return res == 0;
-}
-
-void rwlock::make() { pthread_rwlock_init(&pt, nullptr); }
-void rwlock::trash() { pthread_rwlock_destroy(&pt); }
-void rwlock::shared_lock() { pthread_rwlock_rdlock(&pt); }
-void rwlock::shared_unlock() { pthread_rwlock_unlock(&pt); }
-void rwlock::unique_lock() { pthread_rwlock_wrlock(&pt); }
-void rwlock::unique_unlock() { pthread_rwlock_unlock(&pt); }
-
-void sema::make(int n) {
-    sem = (sem_t *)neko_safe_malloc(sizeof(sem_t));
-    sem_init(sem, 0, n);
-}
-
-void sema::trash() {
-    sem_destroy(sem);
-    neko_safe_free(sem);
-}
-
-void sema::post(int n) {
-    for (int i = 0; i < n; i++) {
-        sem_post(sem);
-    }
-}
-
-void sema::wait() { sem_wait(sem); }
-
-void thread::make(thread_proc fn, void *udata) {
-    pthread_t pt = {};
-    pthread_create(&pt, nullptr, (void *(*)(void *))fn, udata);
-    ptr = (void *)pt;
-}
-
-void thread::join() { pthread_join((pthread_t)ptr, nullptr); }
-
-#endif
-
-#ifdef NEKO_PF_LINUX
-
-uint64_t this_thread_id() {
-    thread_local uint64_t s_tid = syscall(SYS_gettid);
-    return s_tid;
-}
-
-#endif  // NEKO_PF_LINUX
-
-#ifdef NEKO_PF_WEB
-
-uint64_t this_thread_id() { return 0; }
-
-#endif  // NEKO_PF_WEB
 
 static void lua_thread_proc(void *udata) {
     PROFILE_FUNC();
@@ -2488,43 +1706,43 @@ static void lua_thread_proc(void *udata) {
         // luax_run_bootstrap(L);
     }
 
-    string contents = lt->contents;
+    String contents = lt->contents;
 
     {
         // PROFILE_BLOCK("load chunk");
         if (luaL_loadbuffer(L, contents.data, contents.len, lt->name.data) != LUA_OK) {
-            string err = luax_check_string(L, -1);
+            String err = luax_check_string(L, -1);
             fprintf(stderr, "%s\n", err.data);
 
-            neko_safe_free(contents.data);
-            neko_safe_free(lt->name.data);
+            mem_free(contents.data);
+            mem_free(lt->name.data);
             return;
         }
     }
 
-    neko_safe_free(contents.data);
-    neko_safe_free(lt->name.data);
+    mem_free(contents.data);
+    mem_free(lt->name.data);
 
     {
         // PROFILE_BLOCK("run chunk");
         if (lua_pcall(L, 0, LUA_MULTRET, 0) != LUA_OK) {
-            string err = luax_check_string(L, -1);
+            String err = luax_check_string(L, -1);
             fprintf(stderr, "%s\n", err.data);
         }
     }
 }
 
-void LuaThread::make(string code, string thread_name) {
+void LuaThread::make(String code, String thread_name) {
     mtx.make();
     contents = to_cstr(code);
     name = to_cstr(thread_name);
 
-    lock_guard lock{&mtx};
+    LockGuard lock{&mtx};
     thread.make(lua_thread_proc, this);
 }
 
 void LuaThread::join() {
-    if (lock_guard lock{&mtx}) {
+    if (LockGuard lock{&mtx}) {
         thread.join();
     }
 
@@ -2544,12 +1762,12 @@ void lua_variant_wrap::make(lua_State *L, s32 arg) {
             data.number = luaL_checknumber(L, arg);
             break;
         case LUA_TSTRING: {
-            neko::string s = luax_check_string(L, arg);
+            String s = luax_check_string(L, arg);
             data.string = to_cstr(s);
             break;
         }
         case LUA_TTABLE: {
-            array<lua_table_entry> entries = {};
+            Array<lua_table_entry> entries = {};
             entries.resize(luax_len(L, arg));
 
             lua_pushvalue(L, arg);
@@ -2564,7 +1782,7 @@ void lua_variant_wrap::make(lua_State *L, s32 arg) {
             }
             lua_pop(L, 1);
 
-            data.table = slice(entries);
+            data.table = Slice(entries);
             break;
         }
         case LUA_TUSERDATA: {
@@ -2580,7 +1798,7 @@ void lua_variant_wrap::make(lua_State *L, s32 arg) {
                 return;
             }
 
-            neko::string tname = luax_check_string(L, -2);
+            String tname = luax_check_string(L, -2);
             u64 size = luaL_checkinteger(L, -1);
 
             if (size != sizeof(void *)) {
@@ -2600,7 +1818,7 @@ void lua_variant_wrap::make(lua_State *L, s32 arg) {
 void lua_variant_wrap::trash() {
     switch (data.type) {
         case LUA_TSTRING: {
-            neko_safe_free(data.string.data);
+            mem_free(data.string.data);
             break;
         }
         case LUA_TTABLE: {
@@ -2608,10 +1826,10 @@ void lua_variant_wrap::trash() {
                 e.key.trash();
                 e.value.trash();
             }
-            neko_safe_free(data.table.data);
+            mem_free(data.table.data);
         }
         case LUA_TUSERDATA: {
-            neko_safe_free(data.udata.tname.data);
+            mem_free(data.udata.tname.data);
         }
         default:
             break;
@@ -2650,18 +1868,18 @@ void lua_variant_wrap::push(lua_State *L) {
 //
 
 struct LuaChannels {
-    neko::mutex mtx;
-    neko::cond select;
-    neko::hashmap<lua_channel *> by_name;
+    Mutex mtx;
+    Cond select;
+    HashMap<lua_channel *> by_name;
 };
 
 static LuaChannels g_channels = {};
 
-void lua_channel::make(string n, u64 buf) {
+void lua_channel::make(String n, u64 buf) {
     mtx.make();
     sent.make();
     received.make();
-    items.data = (lua_variant_wrap *)neko_safe_malloc(sizeof(lua_variant_wrap) * (buf + 1));
+    items.data = (lua_variant_wrap *)mem_alloc(sizeof(lua_variant_wrap) * (buf + 1));
     items.len = (buf + 1);
     front = 0;
     back = 0;
@@ -2676,15 +1894,15 @@ void lua_channel::trash() {
         front = (front + 1) % items.len;
     }
 
-    neko_safe_free(items.data);
-    neko_safe_free(name.exchange(nullptr));
+    mem_free(items.data);
+    mem_free(name.exchange(nullptr));
     mtx.trash();
     sent.trash();
     received.trash();
 }
 
 void lua_channel::send(lua_variant_wrap item) {
-    lock_guard lock{&mtx};
+    LockGuard lock{&mtx};
 
     while (len == items.len) {
         received.wait(&mtx);
@@ -2715,7 +1933,7 @@ static lua_variant_wrap lua_channel_dequeue(lua_channel *ch) {
 }
 
 lua_variant_wrap lua_channel::recv() {
-    lock_guard lock{&mtx};
+    LockGuard lock{&mtx};
 
     while (len == 0) {
         sent.wait(&mtx);
@@ -2725,7 +1943,7 @@ lua_variant_wrap lua_channel::recv() {
 }
 
 bool lua_channel::try_recv(lua_variant_wrap *v) {
-    lock_guard lock{&mtx};
+    LockGuard lock{&mtx};
 
     if (len == 0) {
         return false;
@@ -2735,19 +1953,19 @@ bool lua_channel::try_recv(lua_variant_wrap *v) {
     return true;
 }
 
-lua_channel *lua_channel_make(string name, u64 buf) {
-    lua_channel *chan = (lua_channel *)neko_safe_malloc(sizeof(lua_channel));
+lua_channel *lua_channel_make(String name, u64 buf) {
+    lua_channel *chan = (lua_channel *)mem_alloc(sizeof(lua_channel));
     new (&chan->name) std::atomic<char *>();
     chan->make(name, buf);
 
-    lock_guard lock{&g_channels.mtx};
+    LockGuard lock{&g_channels.mtx};
     g_channels.by_name[fnv1a(name)] = chan;
 
     return chan;
 }
 
-lua_channel *lua_channel_get(string name) {
-    lock_guard lock{&g_channels.mtx};
+lua_channel *lua_channel_get(String name) {
+    LockGuard lock{&g_channels.mtx};
 
     lua_channel **chan = g_channels.by_name.get(fnv1a(name));
     if (chan == nullptr) {
@@ -2768,13 +1986,13 @@ lua_channel *lua_channels_select(lua_State *L, lua_variant_wrap *v) {
         buf[i] = *(lua_channel **)luaL_checkudata(L, i + 1, "mt_channel");
     }
 
-    mutex mtx = {};
+    Mutex mtx = {};
     mtx.make();
-    lock_guard lock{&mtx};
+    LockGuard lock{&mtx};
 
     while (true) {
         for (s32 i = 0; i < len; i++) {
-            lock_guard lock{&buf[i]->mtx};
+            LockGuard lock{&buf[i]->mtx};
             if (buf[i]->len > 0) {
                 *v = lua_channel_dequeue(buf[i]);
                 return buf[i];
@@ -2794,114 +2012,12 @@ void lua_channels_shutdown() {
     for (auto [k, v] : g_channels.by_name) {
         lua_channel *chan = *v;
         chan->trash();
-        neko_safe_free(chan);
+        mem_free(chan);
     }
     g_channels.by_name.trash();
     g_channels.select.trash();
     g_channels.mtx.trash();
 }
-
-s32 os_change_dir(const char *path) { return chdir(path); }
-
-string os_program_dir() {
-    string str = os_program_path();
-    char *buf = str.data;
-
-    for (s32 i = (s32)str.len; i >= 0; i--) {
-        if (buf[i] == '/') {
-            buf[i + 1] = 0;
-            return {str.data, (u64)i + 1};
-        }
-    }
-
-    return str;
-}
-
-#ifdef NEKO_PF_WIN
-
-string os_program_path() {
-    static char s_buf[2048];
-
-    DWORD len = GetModuleFileNameA(NULL, s_buf, NEKO_ARR_SIZE(s_buf));
-
-    for (s32 i = 0; s_buf[i]; i++) {
-        if (s_buf[i] == '\\') {
-            s_buf[i] = '/';
-        }
-    }
-
-    return {s_buf, (u64)len};
-}
-
-u64 os_file_modtime(const char *filename) {
-    HANDLE handle = CreateFileA(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
-
-    if (handle == INVALID_HANDLE_VALUE) {
-        return 0;
-    }
-    neko_defer(CloseHandle(handle));
-
-    FILETIME create = {};
-    FILETIME access = {};
-    FILETIME write = {};
-    bool ok = GetFileTime(handle, &create, &access, &write);
-    if (!ok) {
-        return 0;
-    }
-
-    ULARGE_INTEGER time = {};
-    time.LowPart = write.dwLowDateTime;
-    time.HighPart = write.dwHighDateTime;
-
-    return time.QuadPart;
-}
-
-void os_high_timer_resolution() { timeBeginPeriod(8); }
-void os_sleep(u32 ms) { Sleep(ms); }
-void os_yield() { YieldProcessor(); }
-
-#endif  // NEKO_PF_WIN
-
-#ifdef NEKO_PF_LINUX
-
-string os_program_path() {
-    static char s_buf[2048];
-    s32 len = (s32)readlink("/proc/self/exe", s_buf, NEKO_ARR_SIZE(s_buf));
-    return {s_buf, (u64)len};
-}
-
-u64 os_file_modtime(const char *filename) {
-    struct stat attrib = {};
-    s32 err = stat(filename, &attrib);
-    if (err == 0) {
-        return (u64)attrib.st_mtime;
-    } else {
-        return 0;
-    }
-}
-
-void os_high_timer_resolution() {}
-
-void os_sleep(u32 ms) {
-    struct timespec ts;
-    ts.tv_sec = ms / 1000;
-    ts.tv_nsec = (ms % 1000) * 1000000;
-    nanosleep(&ts, &ts);
-}
-
-void os_yield() { sched_yield(); }
-
-#endif  // NEKO_PF_LINUX
-
-#ifdef NEKO_PF_WEB
-
-string os_program_path() { return {}; }
-u64 os_file_modtime(const char *filename) { return 0; }
-void os_high_timer_resolution() {}
-void os_sleep(u32 ms) {}
-void os_yield() {}
-
-#endif  // NEKO_PF_WEB
 
 //=============================
 // dylib loader
@@ -2924,20 +2040,20 @@ neko_dynlib neko_module_open(const_str name) {
     const_str prefix = NEKO_DLL_LOADER_WIN_OTHER("", "lib");
     const_str suffix = NEKO_DLL_LOADER_WIN_MAC_OTHER(".dll", ".dylib", ".so");
     neko_snprintf(filename, 64, "%s%s%s", prefix, name, suffix);
-    module.hndl = (void *)neko_pf_library_load(filename);
+    module.hndl = (void *)neko_os_library_load(filename);
     return module;
 }
 
-void neko_module_close(neko_dynlib lib) { neko_pf_library_unload(lib.hndl); }
+void neko_module_close(neko_dynlib lib) { neko_os_library_unload(lib.hndl); }
 
 void *neko_module_get_symbol(neko_dynlib lib, const_str symbol_name) {
-    void *symbol = (void *)neko_pf_library_proc_address(lib.hndl, symbol_name);
+    void *symbol = (void *)neko_os_library_proc_address(lib.hndl, symbol_name);
     return symbol;
 }
 
 bool neko_module_has_symbol(neko_dynlib lib, const_str symbol_name) {
     if (!lib.hndl || !symbol_name) return false;
-    return neko_pf_library_proc_address(lib.hndl, symbol_name) != NULL;
+    return neko_os_library_proc_address(lib.hndl, symbol_name) != NULL;
 }
 
 #if 0
@@ -2956,149 +2072,6 @@ static std::string get_error_description() noexcept {
 #endif
 }
 #endif
-
-struct Profile {
-    queue<TraceEvent> events;
-    thread recv_thread;
-};
-
-static Profile g_profile = {};
-
-static void profile_recv_thread(void *) {
-    string_builder sb = {};
-    sb.swap_filename(os_program_path(), "profile.json");
-
-    FILE *f = fopen(sb.data, "w");
-    sb.trash();
-
-    neko_defer(fclose(f));
-
-    fputs("[", f);
-    while (true) {
-        TraceEvent e = g_profile.events.demand();
-        if (e.name == nullptr) {
-            return;
-        }
-
-        fprintf(f,
-                R"({"name":"%s","cat":"%s","ph":"%c","ts":%.3f,"pid":0,"tid":%hu},)"
-                "\n",
-                e.name, e.cat, e.ph, e.ts / 1000.f, e.tid);
-    }
-}
-
-void profile_setup() {
-    g_profile.events.make();
-    g_profile.events.reserve(256);
-    g_profile.recv_thread.make(profile_recv_thread, nullptr);
-}
-
-void profile_fini() {
-    g_profile.events.enqueue({});
-    g_profile.recv_thread.join();
-    g_profile.events.trash();
-}
-
-#if defined(_WIN32)
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <windows.h>
-typedef struct {
-    uint32_t initialized;
-    LARGE_INTEGER freq;
-    LARGE_INTEGER start;
-} neko_tm_state_t;
-#elif defined(__APPLE__) && defined(__MACH__)
-#include <mach/mach_time.h>
-typedef struct {
-    uint32_t initialized;
-    mach_timebase_info_data_t timebase;
-    uint64_t start;
-} neko_tm_state_t;
-#elif defined(__EMSCRIPTEN__)
-#include <emscripten/emscripten.h>
-typedef struct {
-    uint32_t initialized;
-    double start;
-} neko_tm_state_t;
-#else  // linux
-#include <time.h>
-typedef struct {
-    uint32_t initialized;
-    uint64_t start;
-} neko_tm_state_t;
-#endif
-static neko_tm_state_t g_tm;
-
-NEKO_API_DECL void neko_tm_init(void) {
-    memset(&g_tm, 0, sizeof(g_tm));
-    g_tm.initialized = 0xABCDEF01;
-#if defined(_WIN32)
-    QueryPerformanceFrequency(&g_tm.freq);
-    QueryPerformanceCounter(&g_tm.start);
-#elif defined(__APPLE__) && defined(__MACH__)
-    mach_timebase_info(&g_tm.timebase);
-    g_tm.start = mach_absolute_time();
-#elif defined(__EMSCRIPTEN__)
-    g_tm.start = emscripten_get_now();
-#else
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    g_tm.start = (uint64_t)ts.tv_sec * 1000000000 + (uint64_t)ts.tv_nsec;
-#endif
-}
-
-#if defined(_WIN32) || (defined(__APPLE__) && defined(__MACH__))
-int64_t __int64_muldiv(int64_t value, int64_t numer, int64_t denom) {
-    int64_t q = value / denom;
-    int64_t r = value % denom;
-    return q * numer + r * numer / denom;
-}
-#endif
-
-NEKO_API_DECL uint64_t neko_tm_now(void) {
-    NEKO_ASSERT(g_tm.initialized == 0xABCDEF01);
-    uint64_t now;
-#if defined(_WIN32)
-    LARGE_INTEGER qpc_t;
-    QueryPerformanceCounter(&qpc_t);
-    now = (uint64_t)__int64_muldiv(qpc_t.QuadPart - g_tm.start.QuadPart, 1000000000, g_tm.freq.QuadPart);
-#elif defined(__APPLE__) && defined(__MACH__)
-    const uint64_t mach_now = mach_absolute_time() - g_tm.start;
-    now = (uint64_t)_stm_int64_muldiv((int64_t)mach_now, (int64_t)g_tm.timebase.numer, (int64_t)g_tm.timebase.denom);
-#elif defined(__EMSCRIPTEN__)
-    double js_now = emscripten_get_now() - g_tm.start;
-    now = (uint64_t)(js_now * 1000000.0);
-#else
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    now = ((uint64_t)ts.tv_sec * 1000000000 + (uint64_t)ts.tv_nsec) - g_tm.start;
-#endif
-    return now;
-}
-
-Instrument::Instrument(const char *cat, const char *name) : cat(cat), name(name), tid(this_thread_id()) {
-    TraceEvent e = {};
-    e.cat = cat;
-    e.name = name;
-    e.ph = 'B';
-    e.ts = neko_tm_now();
-    e.tid = tid;
-
-    g_profile.events.enqueue(e);
-}
-
-Instrument::~Instrument() {
-    TraceEvent e = {};
-    e.cat = cat;
-    e.name = name;
-    e.ph = 'E';
-    e.ts = neko_tm_now();
-    e.tid = tid;
-
-    g_profile.events.enqueue(e);
-}
 
 }  // namespace neko
 
