@@ -694,7 +694,7 @@ static ecs_lua_ctx *ctx_init(ecs_lua_ctx ctx) {
     lctx->prefix_ref = LUA_NOREF;
 
     if (!(ctx.flags & ECS_LUA__DYNAMIC)) {
-        luaL_requiref(L, "ecs", luaopen_ecs, 1);
+        luaL_requiref(L, NEKO_FLECS_NAME, luaopen_ecs, 1);
         lua_pop(L, 1);
     }
 
@@ -2035,7 +2035,7 @@ int new_array(lua_State *L) {
 
     const char *name = luaL_checkstring(L, 1);
     ecs_entity_t element = luaL_checkinteger(L, 2);
-    s32 count = luaL_checkinteger(L, 3);
+    i32 count = luaL_checkinteger(L, 3);
 
     if (count < 0 || count > INT32_MAX) luaL_error(L, "element count out of range (%I)", count);
 

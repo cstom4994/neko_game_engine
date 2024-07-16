@@ -90,13 +90,13 @@ constexpr std::size_t va_count(Args&&...) {
 // 一种向任何指针添加字节偏移量的可移植且安全的方法
 // https://stackoverflow.com/questions/15934111/portable-and-safe-way-to-add-byte-offset-to-any-pointer
 template <typename T>
-NEKO_INLINE void neko_addoffset(std::ptrdiff_t offset, T*& ptr) {
+inline void neko_addoffset(std::ptrdiff_t offset, T*& ptr) {
     if (!ptr) return;
     ptr = (T*)((unsigned char*)ptr + offset);
 }
 
 template <typename T>
-NEKO_INLINE T* neko_addoffset_r(std::ptrdiff_t offset, T* ptr) {
+inline T* neko_addoffset_r(std::ptrdiff_t offset, T* ptr) {
     if (!ptr) return nullptr;
     return (T*)((unsigned char*)ptr + offset);
 }
@@ -258,13 +258,13 @@ NEKO_FORCE_INLINE auto time() -> i64 {
     return ms;
 }
 
-NEKO_STATIC_INLINE auto time_to_string(std::time_t now = std::time(nullptr)) -> std::string {
+static inline auto time_to_string(std::time_t now = std::time(nullptr)) -> std::string {
     const auto tp = std::localtime(&now);
     char buffer[32];
     return std::strftime(buffer, sizeof(buffer), "%Y-%m-%d_%H-%M-%S", tp) ? buffer : "1970-01-01_00:00:00";
 }
 
-NEKO_STATIC_INLINE std::string fs_normalize_path(const std::string& path, char delimiter = '/') {
+static inline std::string fs_normalize_path(const std::string& path, char delimiter = '/') {
     static constexpr char delims[] = "/\\";
 
     std::string norm;
@@ -595,34 +595,34 @@ constexpr void copy(ForwardIt src_beg, ForwardIt src_end, OutputIt dest_beg, Out
 //     }
 // };
 
-NEKO_INLINE bool str_is_chinese_c(const char str) { return str & 0x80; }
+inline bool str_is_chinese_c(const char str) { return str & 0x80; }
 
-NEKO_INLINE bool str_is_chinese_str(const std::string& str) {
+inline bool str_is_chinese_str(const std::string& str) {
     for (int i = 0; i < str.length(); i++)
         if (str_is_chinese_c(str[i])) return true;
     return false;
 }
 
-NEKO_INLINE bool str_equals(const char* a, const char* c) { return strcmp(a, c) == 0; }
+inline bool str_equals(const char* a, const char* c) { return strcmp(a, c) == 0; }
 
-NEKO_INLINE bool str_starts_with(std::string_view s, std::string_view prefix) { return prefix.size() <= s.size() && (strncmp(prefix.data(), s.data(), prefix.size()) == 0); }
+inline bool str_starts_with(std::string_view s, std::string_view prefix) { return prefix.size() <= s.size() && (strncmp(prefix.data(), s.data(), prefix.size()) == 0); }
 
-NEKO_INLINE bool str_starts_with(std::string_view s, char prefix) { return !s.empty() && s[0] == prefix; }
+inline bool str_starts_with(std::string_view s, char prefix) { return !s.empty() && s[0] == prefix; }
 
-NEKO_INLINE bool str_starts_with(const char* s, const char* prefix) { return strncmp(s, prefix, strlen(prefix)) == 0; }
+inline bool str_starts_with(const char* s, const char* prefix) { return strncmp(s, prefix, strlen(prefix)) == 0; }
 
-NEKO_INLINE bool str_ends_with(std::string_view s, std::string_view suffix) { return suffix.size() <= s.size() && strncmp(suffix.data(), s.data() + s.size() - suffix.size(), suffix.size()) == 0; }
+inline bool str_ends_with(std::string_view s, std::string_view suffix) { return suffix.size() <= s.size() && strncmp(suffix.data(), s.data() + s.size() - suffix.size(), suffix.size()) == 0; }
 
-NEKO_INLINE bool str_ends_with(std::string_view s, char suffix) { return !s.empty() && s[s.size() - 1] == suffix; }
+inline bool str_ends_with(std::string_view s, char suffix) { return !s.empty() && s[s.size() - 1] == suffix; }
 
-NEKO_INLINE bool str_ends_with(const char* s, const char* suffix) {
+inline bool str_ends_with(const char* s, const char* suffix) {
     auto sizeS = strlen(s);
     auto sizeSuf = strlen(suffix);
 
     return sizeSuf <= sizeS && strncmp(suffix, s + sizeS - sizeSuf, sizeSuf) == 0;
 }
 
-NEKO_INLINE void str_to_lower(char* s) {
+inline void str_to_lower(char* s) {
     int l = strlen(s);
     int ind = 0;
     // spec of "simd"
@@ -639,7 +639,7 @@ NEKO_INLINE void str_to_lower(char* s) {
     }
 }
 
-NEKO_INLINE void str_to_lower(std::string& ss) {
+inline void str_to_lower(std::string& ss) {
     int l = ss.size();
     auto s = ss.data();
     int ind = 0;
@@ -655,7 +655,7 @@ NEKO_INLINE void str_to_lower(std::string& ss) {
     for (int i = 0; i < (l & 3); ++i) s[ind++] = std::tolower(s[ind]);
 }
 
-NEKO_INLINE void str_to_upper(char* s) {
+inline void str_to_upper(char* s) {
     int l = strlen(s);
     int ind = 0;
     // spec of "simd"
@@ -672,7 +672,7 @@ NEKO_INLINE void str_to_upper(char* s) {
     }
 }
 
-NEKO_INLINE void str_to_upper(std::string& ss) {
+inline void str_to_upper(std::string& ss) {
     int l = ss.size();
     auto s = ss.data();
     int ind = 0;
@@ -688,7 +688,7 @@ NEKO_INLINE void str_to_upper(std::string& ss) {
     for (int i = 0; i < (l & 3); ++i) s[ind++] = std::toupper(s[ind]);
 }
 
-NEKO_INLINE bool str_replace_with(char* src, char what, char with) {
+inline bool str_replace_with(char* src, char what, char with) {
     for (int i = 0; true; ++i) {
         auto& id = src[i];
         if (id == '\0') return true;
@@ -697,7 +697,7 @@ NEKO_INLINE bool str_replace_with(char* src, char what, char with) {
     }
 }
 
-NEKO_INLINE bool str_replace_with(std::string& src, char what, char with) {
+inline bool str_replace_with(std::string& src, char what, char with) {
     for (int i = 0; i < src.size(); ++i) {
         auto& id = src.data()[i];
         bool isWhat = id == what;
@@ -706,7 +706,7 @@ NEKO_INLINE bool str_replace_with(std::string& src, char what, char with) {
     return true;
 }
 
-NEKO_INLINE bool str_replace_with(std::string& src, const char* what, const char* with) {
+inline bool str_replace_with(std::string& src, const char* what, const char* with) {
     std::string out;
     size_t whatlen = strlen(what);
     out.reserve(src.size());
@@ -726,7 +726,7 @@ NEKO_INLINE bool str_replace_with(std::string& src, const char* what, const char
     return true;
 }
 
-NEKO_INLINE bool str_replace_with(std::string& src, const char* what, const char* with, int times) {
+inline bool str_replace_with(std::string& src, const char* what, const char* with, int times) {
     for (int i = 0; i < times; ++i) str_replace_with(src, what, with);
     return true;
 }

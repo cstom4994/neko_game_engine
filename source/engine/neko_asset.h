@@ -332,14 +332,14 @@ typedef struct neko_pak {
     bool load(const_str file_path, u32 data_buffer_capacity, bool is_resources_directory);
     void fini();
 
-    NEKO_INLINE u64 get_item_count() const { return this->item_count; }
+    inline u64 get_item_count() const { return this->item_count; }
 
-    NEKO_INLINE u32 get_item_size(u64 index) {
+    inline u32 get_item_size(u64 index) {
         NEKO_ASSERT(index < this->item_count);
         return this->items[index].info.data_size;
     }
 
-    NEKO_INLINE const_str get_item_path(u64 index) {
+    inline const_str get_item_path(u64 index) {
         NEKO_ASSERT(index < this->item_count);
         return this->items[index].path;
     }

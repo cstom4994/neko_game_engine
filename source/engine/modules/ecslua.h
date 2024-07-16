@@ -3,8 +3,8 @@
 
 #include <flecs.h>
 
-#include "engine/neko.h"
 #include "engine/neko_lua.h"
+#include "engine/neko_prelude.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -17,40 +17,40 @@ typedef struct EcsLuaHost {
     ecs_lua_ctx *ctx;
 } EcsLuaHost;
 
-NEKO_API_DECL void FlecsLuaImport(ecs_world_t *w);
+void FlecsLuaImport(ecs_world_t *w);
 
 /* Get the default lua_State */
-NEKO_API_DECL lua_State *ecs_lua_get_state(ecs_world_t *world);
+lua_State *ecs_lua_get_state(ecs_world_t *world);
 
 /* Reinitialize with a custom lua_State */
-NEKO_API_DECL int ecs_lua_set_state(ecs_world_t *w, lua_State *L);
+int ecs_lua_set_state(ecs_world_t *w, lua_State *L);
 
 /* Call progress function callback (if set),
    this is meant to be called between iterations. */
-NEKO_API_DECL bool ecs_lua_progress(lua_State *L, lua_Number delta_time);
+bool ecs_lua_progress(lua_State *L, lua_Number delta_time);
 
 /* Pushes the component at ptr onto the stack */
-NEKO_API_DECL void ecs_ptr_to_lua(const ecs_world_t *world, lua_State *L, ecs_entity_t type, const void *ptr);
+void ecs_ptr_to_lua(const ecs_world_t *world, lua_State *L, ecs_entity_t type, const void *ptr);
 
 /* Converts the Lua value at the given index to the component type */
-NEKO_API_DECL void ecs_lua_to_ptr(const ecs_world_t *world, lua_State *L, int idx, ecs_entity_t type, void *ptr);
+void ecs_lua_to_ptr(const ecs_world_t *world, lua_State *L, int idx, ecs_entity_t type, void *ptr);
 
 /* Update the value at the given index */
-NEKO_API_DECL void ecs_lua_type_update(const ecs_world_t *world, lua_State *L, int idx, ecs_entity_t type, void *ptr);
+void ecs_lua_type_update(const ecs_world_t *world, lua_State *L, int idx, ecs_entity_t type, void *ptr);
 
 /* Pushes the iterator onto the stack */
-NEKO_API_DECL ecs_iter_t *ecs_iter_to_lua(ecs_iter_t *it, lua_State *L, bool copy);
+ecs_iter_t *ecs_iter_to_lua(ecs_iter_t *it, lua_State *L, bool copy);
 
 /* Converts the columns of the iterator at the given index */
-NEKO_API_DECL ecs_iter_t *ecs_lua_to_iter(lua_State *L, int idx);
+ecs_iter_t *ecs_lua_to_iter(lua_State *L, int idx);
 
 /* Create an EmmyLua class annotation */
-NEKO_API_DECL char *ecs_type_to_emmylua(const ecs_world_t *world, ecs_entity_t type, bool struct_as_table);
+char *ecs_type_to_emmylua(const ecs_world_t *world, ecs_entity_t type, bool struct_as_table);
 
 /* Get world pointer from registry */
-NEKO_API_DECL ecs_world_t *ecs_lua_get_world(lua_State *L);
+ecs_world_t *ecs_lua_get_world(lua_State *L);
 
-NEKO_API_DECL int luaopen_ecs(lua_State *L);
+int luaopen_ecs(lua_State *L);
 
 #ifdef __cplusplus
 }
@@ -89,6 +89,8 @@ struct FlecsLua {
 // Compat stuff end
 
 extern ECS_COMPONENT_DECLARE(EcsLuaHost);
+
+#define NEKO_FLECS_NAME "flecs"
 
 #define ECS_LUA_CONTEXT (1)
 #define ECS_LUA_CURSORS (2)

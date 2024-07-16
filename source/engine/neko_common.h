@@ -42,7 +42,7 @@ void hashtable_swap(neko_hashtable_t* table, int index_a, int index_b);
 // Utils
 ================================================================================*/
 
-NEKO_INLINE u32 neko_abs(i32 v) {
+inline u32 neko_abs(i32 v) {
     unsigned int r;
     int const mask = v >> sizeof(int) * CHAR_BIT - 1;
     r = (v + mask) ^ mask;

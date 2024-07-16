@@ -3,6 +3,7 @@
 #include "engine/neko_app.h"
 #include "engine/neko_base.h"
 #include "engine/neko_lua.h"
+#include "engine/neko_lua_wrap.h"
 #include "engine/neko_luabind.hpp"
 #include "engine/neko_reflection.hpp"
 #include "engine/neko_ui.h"
@@ -191,7 +192,7 @@ LUA_FUNCTION(__neko_bind_platform_set_window_title) {
     return 0;
 }
 
-NEKO_INLINE void neko_register_platform(lua_State* L) {
+inline void neko_register_platform(lua_State* L) {
 
     neko_luabind_enum(L, neko_os_keycode);
     neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_INVALID);
@@ -2115,7 +2116,7 @@ LUA_FUNCTION(__neko_bind_render_display_size) {
 
 
 
-NEKO_INLINE void neko_register_test(lua_State* L) {
+inline void neko_register_test(lua_State* L) {
 
     // neko::lua_bind::bind("neko_tiled_get_objects", &__neko_bind_tiled_get_objects);
 
@@ -2418,7 +2419,7 @@ bool __neko_dolua(const_str file) { return neko::neko_lua_dofile(ENGINE_LUA(), f
 
 void neko_tolua_boot(const_str f, const_str output);
 
-NEKO_INLINE void neko_register_common(lua_State* L) {
+inline void neko_register_common(lua_State* L) {
 
     neko::lua_bind::bind("log_trace", &__neko_lua_trace);
     neko::lua_bind::bind("log_debug", &__neko_lua_bug);
@@ -2593,8 +2594,77 @@ LUA_FUNCTION(__neko_bind_ecs_f) {
 }
 
 void createStructTables(lua_State* L);
-int __neko_boot_create_world(lua_State* L);
 
+int __neko_sandbox_create_world(lua_State* L);
+
+static neko_luaref getLr(lua_State* L) {
+    luaL_checktype(L, 1, LUA_TLIGHTUSERDATA);
+    neko_luaref ref;
+    ref.refL = (luaref)lua_touserdata(L, 1);
+    return ref;
+}
+
+static int ref_init(lua_State* L) {
+    neko_luaref ref;
+    ref.make(L);
+    lua_pushlightuserdata(L, (void*)ref.refL);
+    return 1;
+}
+
+static int ref_close(lua_State* L) {
+    neko_luaref ref = getLr(L);
+    ref.fini();
+    return 0;
+}
+
+static int ref_isvalid(lua_State* L) {
+    neko_luaref ref = getLr(L);
+    int r = (int)luaL_checkinteger(L, 2);
+    lua_pushboolean(L, ref.isvalid(r));
+    return 1;
+}
+
+static int ref_ref(lua_State* L) {
+    neko_luaref ref = getLr(L);
+    lua_settop(L, 2);
+    int r = ref.ref(L);
+    if (r == LUA_NOREF) {
+        return luaL_error(L, "Too many refs.");
+    }
+    if (r <= 1) {
+        return luaL_error(L, "Unexpected error.");
+    }
+    lua_pushinteger(L, r);
+    return 1;
+}
+
+static int ref_unref(lua_State* L) {
+    neko_luaref ref = getLr(L);
+    int r = (int)luaL_checkinteger(L, 2);
+    ref.unref(r);
+    return 0;
+}
+
+static int ref_get(lua_State* L) {
+    neko_luaref ref = getLr(L);
+    int r = (int)luaL_checkinteger(L, 2);
+    if (!ref.isvalid(r)) {
+        return luaL_error(L, "invalid ref: %d", r);
+    }
+    ref.get(L, r);
+    return 1;
+}
+
+static int ref_set(lua_State* L) {
+    neko_luaref ref = getLr(L);
+    int r = (int)luaL_checkinteger(L, 2);
+    lua_settop(L, 3);
+    if (!ref.isvalid(r)) {
+        return luaL_error(L, "invalid ref: %d", r);
+    }
+    ref.set(L, r);
+    return 1;
+}
 
 static int LUASTRUCT_test_vec4(lua_State* L) {
     // GET_SELF;
@@ -2612,7 +2682,6 @@ static int LUASTRUCT_test_vec4(lua_State* L) {
 
     return 1;
 }
-
 
 LUA_FUNCTION(__neko_bind_w_f) {
     lua_getfield(L, LUA_REGISTRYINDEX, W_LUA_REGISTRY_CONST::W_CORE);
@@ -2691,7 +2760,7 @@ static int open_embed_core(lua_State* L) {
     luaL_Reg reg[] = {
 
             {"ecs_f", __neko_bind_ecs_f},
-            {"boot_f", __neko_boot_create_world},
+            {"sandbox_f", __neko_sandbox_create_world},
 
             // {"tiled_create", __neko_bind_tiled_create},
             // {"tiled_render", __neko_bind_tiled_render},
@@ -2795,6 +2864,15 @@ static int open_embed_core(lua_State* L) {
             {"profiler_info", neko_lua_profiler_info},
 
             {"LUASTRUCT_test_vec4", LUASTRUCT_test_vec4},
+
+            // luaref
+            {"ref_init", ref_init},
+            {"ref_close", ref_close},
+            {"ref_isvalid", ref_isvalid},
+            {"ref_ref", ref_ref},
+            {"ref_unref", ref_unref},
+            {"ref_get", ref_get},
+            {"ref_set", ref_set},
 
             {NULL, NULL}};
 

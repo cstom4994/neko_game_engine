@@ -184,9 +184,13 @@ static inline FILE *neko_fopen(const char *filePath, const char *mode) {
 }
 #define neko_fseek(file, offset, whence) _fseeki64(file, offset, whence)
 #define neko_ftell(file) _ftelli64(file)
+#elif defined(NEKO_IS_WEB)
+
 #else
 #error Unsupported operating system
 #endif
+#define neko_fwrite(buffer, size, count, file) fwrite(buffer, size, count, file)
+#define neko_fread(buffer, size, count, file) fread(buffer, size, count, file)
 #define neko_fclose(file) fclose(file)
 
 static inline u64 neko_get_thread_id() {
@@ -196,6 +200,8 @@ static inline u64 neko_get_thread_id() {
     return (u64)syscall(SYS_gettid);
 #elif defined(NEKO_IS_APPLE)
     return (mach_port_t)pthread_mach_thread_np(pthread_self());
+#elif defined(NEKO_IS_WEB)
+    return 0;
 #else
 #error "Unsupported platform!"
 #endif

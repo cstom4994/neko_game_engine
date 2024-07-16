@@ -393,7 +393,7 @@ char* neko_os_read_file_contents(const char* file_path, const char* mode, size_t
         read_sz = neko_os_file_size_in_bytes(file_path);
         buffer = (char*)mem_alloc(read_sz + 1);
         if (buffer) {
-            size_t _r = fread(buffer, 1, read_sz, fp);
+            size_t _r = neko_fread(buffer, 1, read_sz, fp);
         }
         buffer[read_sz] = '\0';
         neko_fclose(fp);
@@ -536,7 +536,7 @@ i32 neko_os_file_copy(const char* src_path, const char* dst_path) {
 
     // Read file in 2kb chunks to write to location
     i32 len = 0;
-    while ((len = fread(buffer, sizeof(buffer), 1, file_r)) > 0) {
+    while ((len = neko_fread(buffer, sizeof(buffer), 1, file_r)) > 0) {
         fwrite(buffer, len, 1, file_w);
     }
 
@@ -617,27 +617,27 @@ int neko_os_chdir(const char* path) {
     return 1;
 }
 
-typedef struct {
-    va_list ap;
-    const char* fmt;
-    const char* file;
-    u32 time;
-    FILE* udata;
-    int line;
-    int level;
-} neko_log_event;
-
-static void init_event(neko_log_event* ev, void* udata) {
-    static u32 t = 0;
-    if (!ev->time) {
-        ev->time = ++t;
-    }
-    ev->udata = (FILE*)udata;
-}
-
 void neko_log(int level, const char* file, int line, const char* fmt, ...) {
 
     LockGuard lock{&g_app->log_mtx};
+
+    typedef struct {
+        va_list ap;
+        const char* fmt;
+        const char* file;
+        u32 time;
+        FILE* udata;
+        int line;
+        int level;
+    } neko_log_event;
+
+    static auto init_event = [](neko_log_event* ev, void* udata) {
+        static u32 t = 0;
+        if (!ev->time) {
+            ev->time = ++t;
+        }
+        ev->udata = (FILE*)udata;
+    };
 
     static const char* level_strings[] = {"T", "D", "I", "W", "E"};
 

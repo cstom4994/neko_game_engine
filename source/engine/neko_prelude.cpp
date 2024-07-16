@@ -74,10 +74,10 @@ static void profile_recv_thread(void *) {
     StringBuilder sb = {};
     sb.swap_filename(os_program_path(), "profile.json");
 
-    FILE *f = fopen(sb.data, "w");
+    FILE *f = neko_fopen(sb.data, "w");
     sb.trash();
 
-    neko_defer(fclose(f));
+    neko_defer(neko_fclose(f));
 
     fputs("[", f);
     while (true) {

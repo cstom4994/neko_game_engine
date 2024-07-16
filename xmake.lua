@@ -15,10 +15,10 @@ add_rules("mode.debug", "mode.release")
 
 add_includedirs("source/")
 
-local base_libs = {"libffi", "lua", "sokol", "imgui", "miniz", "stb"}
+local base_libs = {"lua", "sokol", "imgui", "miniz", "stb", "libffi"}
 
 if is_os("windows") or is_os("macosx") or is_os("linux") then
-    add_requires("libffi", "lua", "sokol", "miniz", "stb")
+    add_requires("lua", "sokol", "miniz", "stb", "libffi")
     add_requires("imgui v1.90.9-docking", {
         configs = {
             wchar32 = true
@@ -26,7 +26,8 @@ if is_os("windows") or is_os("macosx") or is_os("linux") then
     })
     add_requires("miniaudio", "box2d", "enet", "flecs 3.2.11")
 else
-    -- add_requires(base_libs)
+    add_requires("lua", "sokol", "miniz", "stb")
+    add_requires("miniaudio", "enet", "flecs 3.2.11")
 end
 
 if is_mode("debug") then

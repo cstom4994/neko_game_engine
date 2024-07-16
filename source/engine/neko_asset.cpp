@@ -1086,19 +1086,19 @@ static bool read_entire_file_raw(String *out, String filepath) {
     String path = to_cstr(filepath);
     neko_defer(mem_free(path.data));
 
-    FILE *file = fopen(path.data, "rb");
+    FILE *file = neko_fopen(path.data, "rb");
     if (file == nullptr) {
         NEKO_WARN("failed to load file %s", path.data);
         return false;
     }
 
-    fseek(file, 0L, SEEK_END);
-    size_t size = ftell(file);
+    neko_fseek(file, 0L, SEEK_END);
+    size_t size = neko_ftell(file);
     rewind(file);
 
     char *buf = (char *)mem_alloc(size + 1);
-    size_t read = fread(buf, sizeof(char), size, file);
-    fclose(file);
+    size_t read = neko_fread(buf, sizeof(char), size, file);
+    neko_fclose(file);
 
     if (read != size) {
         mem_free(buf);
@@ -1113,15 +1113,11 @@ static bool read_entire_file_raw(String *out, String filepath) {
 static bool list_all_files_help(Array<String> *files, String path) {
     PROFILE_FUNC();
 
-    const char *p = path.len ? path.data : ".";
+    const_str p = path.len ? path.data : ".";
 
     for (const auto &entry : std::filesystem::recursive_directory_iterator(p)) {
-        if (entry.is_regular_file()) {
-            // files.push_back(entry.path().string());
-            files->push(str_fmt("%s", entry.path().string().data()));
-        }
+        if (entry.is_regular_file()) files->push(str_fmt("%s", entry.path().string().data()));
     }
-    return true;
 
     // tinydir_dir dir;
     // if (path.len == 0) {
@@ -1182,9 +1178,9 @@ struct DirectoryFileSystem : FileSystem {
         String path = to_cstr(filepath);
         neko_defer(mem_free(path.data));
 
-        FILE *fp = fopen(path.data, "r");
+        FILE *fp = neko_fopen(path.data, "r");
         if (fp != nullptr) {
-            fclose(fp);
+            neko_fclose(fp);
             return true;
         }
 
@@ -1436,7 +1432,7 @@ MountResult vfs_mount(const_str fsname, const char *filepath) {
     }
 #else
     if (filepath == nullptr) {
-        String path = os_program_path();
+        String path = os_program_dir();
 
         NEKO_DEBUG_LOG("program path: %s", path.data);
 
@@ -1483,7 +1479,13 @@ void vfs_fini(std::optional<String> name) {
 
 bool vfs_file_exists(String fsname, String filepath) { return g_filesystem_list[fsname]->file_exists(filepath); }
 
-bool vfs_read_entire_file(String fsname, String *out, String filepath) { return g_filesystem_list[fsname]->read_entire_file(out, filepath); }
+bool vfs_read_entire_file(String fsname, String *out, String filepath) {
+    if (g_filesystem_list.find(fsname) == g_filesystem_list.end()) {
+        NEKO_ERROR("failed to load vfs (%s):%s", fsname.data, filepath.data);
+        return false;
+    }
+    return g_filesystem_list[fsname]->read_entire_file(out, filepath);
+}
 
 bool vfs_list_all_files(String fsname, Array<String> *files) { return g_filesystem_list[fsname]->list_all_files(files); }
 
@@ -2391,20 +2393,20 @@ typedef struct NEKO_LZ_WORKMEM {
 
 // Utils
 
-NEKO_STATIC_INLINE u16 UnalignedLoad16(const void *p) { return *(const u16 *)(p); }
-NEKO_STATIC_INLINE u32 UnalignedLoad32(const void *p) { return *(const u32 *)(p); }
-NEKO_STATIC_INLINE void UnalignedStore16(void *p, u16 x) { *(u16 *)(p) = x; }
-NEKO_STATIC_INLINE void UnalignedCopy64(void *d, const void *s) { *(u64 *)(d) = *(const u64 *)(s); }
+static inline u16 UnalignedLoad16(const void *p) { return *(const u16 *)(p); }
+static inline u32 UnalignedLoad32(const void *p) { return *(const u32 *)(p); }
+static inline void UnalignedStore16(void *p, u16 x) { *(u16 *)(p) = x; }
+static inline void UnalignedCopy64(void *d, const void *s) { *(u64 *)(d) = *(const u64 *)(s); }
 
-NEKO_STATIC_INLINE void __neko_ulz_wild_copy(u8 *d, const u8 *s, int n) {
+static inline void __neko_ulz_wild_copy(u8 *d, const u8 *s, int n) {
     UnalignedCopy64(d, s);
 
     for (int i = 8; i < n; i += 8) UnalignedCopy64(d + i, s + i);
 }
 
-NEKO_STATIC_INLINE u32 __neko_ulz_hash32(const void *p) { return (UnalignedLoad32(p) * 0x9E3779B9) >> (32 - NEKO_LZ_HASH_BITS); }
+static inline u32 __neko_ulz_hash32(const void *p) { return (UnalignedLoad32(p) * 0x9E3779B9) >> (32 - NEKO_LZ_HASH_BITS); }
 
-NEKO_STATIC_INLINE void __neko_ulz_encode_mod(u8 **p, u32 x) {
+static inline void __neko_ulz_encode_mod(u8 **p, u32 x) {
     while (x >= 128) {
         x -= 128;
         *(*p)++ = 128 + (x & 127);
@@ -2413,7 +2415,7 @@ NEKO_STATIC_INLINE void __neko_ulz_encode_mod(u8 **p, u32 x) {
     *(*p)++ = x;
 }
 
-NEKO_STATIC_INLINE u32 __neko_ulz_decode_mod(const u8 **p) {
+static inline u32 __neko_ulz_decode_mod(const u8 **p) {
     u32 x = 0;
     for (int i = 0; i <= 21; i += 7) {
         const u32 c = *(*p)++;
@@ -2425,7 +2427,7 @@ NEKO_STATIC_INLINE u32 __neko_ulz_decode_mod(const u8 **p) {
 
 // LZ77
 
-NEKO_STATIC int __neko_ulz_compress_fast(const u8 *in, int inlen, u8 *out, int outlen) {
+static int __neko_ulz_compress_fast(const u8 *in, int inlen, u8 *out, int outlen) {
     NEKO_LZ_WORKMEM *u = (NEKO_LZ_WORKMEM *)mem_realloc(0, sizeof(NEKO_LZ_WORKMEM));
 
     for (int i = 0; i < NEKO_LZ_HASH_SIZE; ++i) u->HashTable[i] = NEKO_LZ_NIL;
@@ -2505,7 +2507,7 @@ NEKO_STATIC int __neko_ulz_compress_fast(const u8 *in, int inlen, u8 *out, int o
     return op - out;
 }
 
-NEKO_STATIC int __neko_ulz_compress(const u8 *in, int inlen, u8 *out, int outlen, int level) {
+static int __neko_ulz_compress(const u8 *in, int inlen, u8 *out, int outlen, int level) {
     if (level < 1 || level > 9) return 0;
     const int max_chain = (level < 9) ? 1 << level : 1 << 13;
 
@@ -2623,7 +2625,7 @@ NEKO_STATIC int __neko_ulz_compress(const u8 *in, int inlen, u8 *out, int outlen
     return op - out;
 }
 
-NEKO_STATIC int __neko_ulz_decompress(const u8 *in, int inlen, u8 *out, int outlen) {
+static int __neko_ulz_decompress(const u8 *in, int inlen, u8 *out, int outlen) {
     u8 *op = out;
     const u8 *ip = in;
     const u8 *ip_end = ip + inlen;
@@ -2686,7 +2688,7 @@ u32 neko_lz_bounds(u32 inlen, u32 flags) { return inlen + inlen / 255 + 16; }
 
 // #include "deps/lz4/lz4.h"
 
-NEKO_STATIC void destroy_pack_items(u64 item_count, neko_pak::item *items) {
+static void destroy_pack_items(u64 item_count, neko_pak::item *items) {
     NEKO_ASSERT(item_count == 0 || (item_count > 0 && items));
 
     for (u64 i = 0; i < item_count; i++) mem_free(items[i].path);
@@ -2847,7 +2849,7 @@ void neko_pak::fini() {
     if (this->vf.data) neko_capi_vfs_fclose(&this->vf);
 }
 
-NEKO_STATIC int neko_compare_pack_items(const void *_a, const void *_b) {
+static int neko_compare_pack_items(const void *_a, const void *_b) {
     const neko_pak::item *a = (neko_pak::item *)_a;
     const neko_pak::item *b = (neko_pak::item *)_b;
 
@@ -2978,7 +2980,7 @@ void neko_pak::free_buffer() {
     this->zip_buffer = NULL;
 }
 
-NEKO_STATIC void neko_pak_remove_item(u64 item_count, neko_pak::item *pack_items) {
+static void neko_pak_remove_item(u64 item_count, neko_pak::item *pack_items) {
     NEKO_ASSERT(item_count == 0 || (item_count > 0 && pack_items));
     for (u64 i = 0; i < item_count; i++) remove(pack_items[i].path);
 }
@@ -3159,7 +3161,7 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
             zip_data = new_buffer;
         }
 
-        size_t result = fread(item_data, sizeof(u8), item_size, item_file);
+        size_t result = neko_fread(item_data, sizeof(u8), item_size, item_file);
 
         neko_fclose(item_file);
 
@@ -3252,7 +3254,7 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
     return true;
 }
 
-NEKO_STATIC int neko_pak_compare_item_paths(const void *_a, const void *_b) {
+static int neko_pak_compare_item_paths(const void *_a, const void *_b) {
     // 要保证a与b不为NULL
     char *a = *(char **)_a;
     char *b = *(char **)_b;

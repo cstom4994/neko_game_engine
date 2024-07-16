@@ -3,20 +3,6 @@
 
 enum class TYPEID { f_int8, f_int16, f_int32, f_int64, f_uint8, f_uint16, f_uint32, f_uint64, f_bool, f_ptr, f_float, f_double, f_COUNT };
 
-// #define (int)TYPEID::f_int8 0
-// #define (int)TYPEID::f_int16 1
-// #define (int)TYPEID::f_int32 2
-// #define (int)TYPEID::f_int64 3
-// #define (int)TYPEID::f_uint8 4
-// #define (int)TYPEID::f_uint16 5
-// #define (int)TYPEID::f_uint32 6
-// #define (int)TYPEID::f_uint64 7
-// #define (int)TYPEID::f_bool 8
-// #define (int)TYPEID::f_ptr 9
-// #define (int)TYPEID::f_float 10
-// #define (int)TYPEID::f_double 11
-// #define (int)TYPEID::f_COUNT 12
-
 #define TYPE_ID_(type) ((int)TYPEID::f_##type)
 
 static inline void set_int8(void *p, lua_Integer v) { *(int8_t *)p = (int8_t)v; }

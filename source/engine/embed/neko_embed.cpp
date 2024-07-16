@@ -2,7 +2,9 @@
 #include <string>
 
 #include "engine/neko_lua.h"
+#include "engine/neko_lua_wrap.h"
 #include "engine/neko_luabind.hpp"
+#include "engine/neko_tolua.h"
 
 int load_embed_lua(lua_State* L, const u8 B[], const_str name) {
     std::string contents = (const_str)B;
@@ -33,9 +35,6 @@ static const u8 g_lua_cstruct_data[] = {
 static const u8 g_lua_prefabs_data[] = {
 #include "prefabs.lua.h"
 };
-static const u8 g_lua_startup_data[] = {
-#include "startup.lua.h"
-};
 static const u8 g_lua_bootstrap_data[] = {
 #include "bootstrap.lua.h"
 };
@@ -43,7 +42,6 @@ static const u8 g_lua_bootstrap_data[] = {
 LUAOPEN_EMBED_DATA(open_embed_common, "common.lua", g_lua_common_data);
 LUAOPEN_EMBED_DATA(open_embed_cstruct, "cstruct.lua", g_lua_cstruct_data);
 LUAOPEN_EMBED_DATA(open_embed_prefabs, "prefabs.lua", g_lua_prefabs_data);
-LUAOPEN_EMBED_DATA(open_embed_startup, "startup.lua", g_lua_startup_data);
 LUAOPEN_EMBED_DATA(open_embed_bootstrap, "bootstrap.lua", g_lua_bootstrap_data);
 
 static void package_preload(lua_State* L, const_str name, lua_CFunction function) {
@@ -60,7 +58,6 @@ void package_preload(lua_State* L) {
     package_preload(L, "common", open_embed_common);
     package_preload(L, "cstruct", open_embed_cstruct);
     package_preload(L, "prefabs", open_embed_prefabs);
-    package_preload(L, "startup", open_embed_startup);
 }
 void luax_run_bootstrap(lua_State* L) {
     std::string contents = (const_str)g_lua_bootstrap_data;
@@ -68,10 +65,10 @@ void luax_run_bootstrap(lua_State* L) {
         fprintf(stderr, "%s\n", lua_tostring(L, -1));
         panic("failed to load bootstrap");
     }
-
     if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
         panic("failed to run bootstrap");
     }
+    NEKO_INFO("loaded bootstrap");
 }
 }  // namespace neko::lua
 
@@ -100,7 +97,7 @@ if not err then
     local _,_,label,msg = strfind(msg,"(.-:.-:%s*)(.*)")
     neko_tolua_error(msg,label)
 else
-    print("good")
+    print("neko tolua generate ok")
 end
         )lua";
         load_embed_lua(L, B, "tolua: embedded boot code");

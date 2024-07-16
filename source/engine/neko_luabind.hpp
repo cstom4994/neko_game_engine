@@ -1,6 +1,8 @@
 #ifndef NEKO_LUA_BINDING_HPP
 #define NEKO_LUA_BINDING_HPP
 
+#include <bit>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -48,7 +50,7 @@ inline int preload_module(lua_State* L) {
 
 #define DEFINE_LUAOPEN(name)                                                           \
     int luaopen_neko_##name(lua_State* L) { return neko::lua::__##name ::luaopen(L); } \
-    static ::neko::lua::callfunc __init_##name(::neko::lua::register_module, "neko." #name, luaopen_neko_##name);
+    static ::neko::lua::callfunc __init_##name(::neko::lua::register_module, "__neko." #name, luaopen_neko_##name);
 
 namespace neko::lua {
 inline std::string_view checkstrview(lua_State* L, int idx) {

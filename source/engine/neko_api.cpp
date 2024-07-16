@@ -13,8 +13,10 @@
 #include "neko_base.h"
 #include "neko_draw.h"
 #include "neko_lua.h"
+#include "neko_lua_wrap.h"
 #include "neko_os.h"
 #include "neko_prelude.h"
+#include "neko_tolua.h"
 #include "neko_ui.h"
 
 extern "C" {
@@ -1948,7 +1950,7 @@ static int neko_fatal_error(lua_State *L) {
 
 static int neko_platform(lua_State *L) {
 #if defined(NEKO_IS_WEB)
-    lua_pushliteral(L, "html5");
+    lua_pushliteral(L, "web");
 #elif defined(NEKO_IS_WIN32)
     lua_pushliteral(L, "windows");
 #elif defined(NEKO_IS_LINUX)
@@ -2580,14 +2582,14 @@ static int neko_file_write(lua_State *L) {
     String path = luax_check_string(L, 1);
     String contents = luax_check_string(L, 2);
 
-    FILE *f = fopen(path.data, "w");
+    FILE *f = neko_fopen(path.data, "w");
     if (f == nullptr) {
         lua_pushboolean(L, false);
         return 1;
     }
-    neko_defer(fclose(f));
+    neko_defer(neko_fclose(f));
 
-    size_t written = fwrite(contents.data, 1, contents.len, f);
+    size_t written = neko_fwrite(contents.data, 1, contents.len, f);
     bool ok = written < contents.len;
 
     lua_pushboolean(L, ok);
@@ -2830,11 +2832,22 @@ void neko_tolua_boot(const_str f, const_str output) {
     neko_tolua_boot_open(L);
 }
 
+#if 1
+#include "engine/luabind/core.hpp"
+#include "engine/luabind/debug.hpp"
+#include "engine/luabind/ffi.hpp"
+#include "engine/luabind/filewatch.hpp"
+#include "engine/luabind/imgui.hpp"
+#include "engine/luabind/pack.hpp"
+#include "engine/luabind/prefab.hpp"
+#include "engine/luabind/struct.hpp"
+#endif
+
 static int open_neko(lua_State *L) {
     luaL_Reg reg[] = {
             // internal
-            {"_registry_load", neko_registry_load},
-            {"_require_lua_script", neko_require_lua_script},
+            {"__registry_load", neko_registry_load},
+            {"__registry_lua_script", neko_require_lua_script},
 
             // core
             {"version", neko_version},
@@ -2934,6 +2947,12 @@ void open_neko_api(lua_State *L) {
     lua_pop(L, 1);
 
     neko::lua_bind::bind("__neko_file_path", +[](const_str path) -> std::string { return std::string(os_program_dir().data).append(path); });
+
+    neko::lua::preload_module(L);   // 新的模块系统
+    neko::lua::package_preload(L);  // 新的模块系统
+
+    neko_register_common(L);
+    neko_w_init();
 }
 
 #if defined(NEKO_IS_WEB) || 1

@@ -20,6 +20,7 @@
 #include "neko_base.h"
 #include "neko_draw.h"
 #include "neko_lua.h"
+#include "neko_lua_wrap.h"
 #include "neko_luabind.hpp"
 #include "neko_math.h"
 #include "neko_os.h"
@@ -746,7 +747,7 @@ static int __neko_boot_world_dump(lua_State *L) {
     return 0;
 }
 
-int __neko_boot_create_world(lua_State *L) {
+int __neko_sandbox_create_world(lua_State *L) {
     int i;
     struct neko_boot_world_t *w;
     struct match_ctx *mctx;
@@ -1053,7 +1054,7 @@ void neko_scripting_end(lua_State *L) { neko_lua_fini(L); }
 NEKO_API_DECL void neko_default_main_window_close_callback(void *window);
 
 NEKO_API_DECL neko_instance_t *neko_instance() {
-    NEKO_STATIC neko_instance_t g_neko_instance = NEKO_DEFAULT_VAL();
+    static neko_instance_t g_neko_instance = NEKO_DEFAULT_VAL();
     return &g_neko_instance;
 }
 
@@ -1096,7 +1097,6 @@ NEKO_API_DECL lua_State *neko_lua_bootstrap(int argc, char **argv) {
     } else {
     }
 
-    neko_lua_run_string(L, R"lua(startup = require "startup")lua");
 
     return L;
 }
@@ -1298,7 +1298,7 @@ void game_loop() {
     // } else
     {
 
-        // NEKO_STATIC int init_retval = 1;
+        // static int init_retval = 1;
         // if (init_retval) {
         //     // init_retval = thread_join(game_userdata->init_work_thread);
         //     // thread_term(game_userdata->init_work_thread);
@@ -1789,9 +1789,9 @@ static sgl_pipeline g_pipeline;
 
 static sgimgui_t sgimgui;
 
-NEKO_STATIC void *__neko_imgui_malloc(size_t sz, void *user_data) { return malloc(sz); }
+static void *__neko_imgui_malloc(size_t sz, void *user_data) { return malloc(sz); }
 
-NEKO_STATIC void __neko_imgui_free(void *ptr, void *user_data) { return free(ptr); }
+static void __neko_imgui_free(void *ptr, void *user_data) { return free(ptr); }
 
 static void init() {
     PROFILE_FUNC();
@@ -1840,14 +1840,14 @@ static void init() {
             auto &io = ImGui::GetIO();
 
             ImFontConfig config;
-            config.PixelSnapH = 1;
+            // config.PixelSnapH = 1;
 
             String ttf_file;
-            vfs_read_entire_file(NEKO_PACKS::LUACODE, &ttf_file, "D:/Projects/Neko/DevNew/gamedir/assets/fonts/fusion-pixel-12px-monospaced-zh_hans.ttf");
+            vfs_read_entire_file(NEKO_PACKS::GAMEDATA, &ttf_file, "gamedir/assets/fonts/fusion-pixel-12px-monospaced-zh_hans.ttf");
             neko_defer(mem_free(ttf_file.data));
             void *ttf_data = ::malloc(ttf_file.len);  // TODO:: imgui 内存方法接管
             memcpy(ttf_data, ttf_file.data, ttf_file.len);
-            io.Fonts->AddFontFromMemoryTTF(ttf_data, ttf_file.len, 12.0f, &config, io.Fonts->GetGlyphRangesChineseFull());
+            io.Fonts->AddFontFromMemoryTTF(ttf_data, ttf_file.len, 12.0f, &config, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
 
             // 为字体创建字体纹理和线性过滤采样器
             simgui_font_tex_desc_t font_texture_desc = {};
@@ -2031,42 +2031,44 @@ static void render() {
 
     {
         if (ImGui::BeginMainMenuBar()) {
-            sgimgui_draw_menu(&sgimgui, "sokol-gfx");
+            sgimgui_draw_menu(&sgimgui, "gfx");
             ImGui::EndMainMenuBar();
         }
         sgimgui_draw(&sgimgui);
     }
 
     {
+        PROFILE_BLOCK("gp render pass");
         int width = sapp_width(), height = sapp_height();
         float ratio = width / (float)height;
 
-        // Begin recording draw commands for a frame buffer of size (width, height).
         sgp_begin(width, height);
-        // Set frame buffer drawing region to (0,0,width,height).
         sgp_viewport(0, 0, width, height);
-        // Set drawing coordinate space to (left=-ratio, right=ratio, top=1, bottom=-1).
+
+        // 绘图坐标空间
         sgp_project(-ratio, ratio, 1.0f, -1.0f);
 
-        // Clear the frame buffer.
+        // 清除帧缓冲区
         sgp_set_color(0.1f, 0.1f, 0.1f, 1.0f);
         sgp_clear();
 
-        // Draw an animated rectangle that rotates and changes its colors.
+#if 0
+        // 绘制一个可以旋转并改变颜色的动画矩形
         float time = sapp_frame_count() * sapp_frame_duration();
         float r = sinf(time) * 0.5 + 0.5, g = cosf(time) * 0.5 + 0.5;
         sgp_set_color(r, g, 0.3f, 1.0f);
         sgp_rotate_at(time, 0.0f, 0.0f);
         sgp_draw_filled_rect(-0.5f, -0.5f, 1.0f, 1.0f);
+#endif
     }
 
     {
         PROFILE_BLOCK("end render pass");
         LockGuard lock{&g_app->gpu_mtx};
 
-        // Dispatch all draw commands to Sokol GFX.
+        // 将所有绘制命令分派至 Sokol GFX
         sgp_flush();
-        // Finish a draw command queue, clearing it.
+        // 完成绘制命令队列
         sgp_end();
 
         sgl_draw();
@@ -2262,17 +2264,6 @@ static void cleanup() {
     neko_println("see ya");
 }
 
-#if 1
-#include "engine/luabind/core.hpp"
-#include "engine/luabind/debug.hpp"
-#include "engine/luabind/ffi.hpp"
-#include "engine/luabind/filewatch.hpp"
-#include "engine/luabind/imgui.hpp"
-#include "engine/luabind/pack.hpp"
-#include "engine/luabind/prefab.hpp"
-#include "engine/luabind/struct.hpp"
-#endif
-
 static void neko_setup_w() {
     PROFILE_FUNC();
 
@@ -2281,12 +2272,8 @@ static void neko_setup_w() {
     // g_app->LA = LA;
     g_app->L = L;
 
-    luaL_openlibs(L);
-
-    neko::lua::preload_module(L);   // 新的模块系统
-    neko::lua::package_preload(L);  // 新的模块系统
-
     open_neko_api(L);
+
     open_luasocket(L);
 
     ENGINE_ECS() = ecs_init();
@@ -2295,16 +2282,12 @@ static void neko_setup_w() {
 
     ecs_lua_set_state(ENGINE_ECS(), ENGINE_LUA());
 
-    neko_register_common(L);
-
-    neko_w_init();
-
     neko::lua::luax_run_bootstrap(L);
 
     // add error message handler. always at the bottom of stack.
     lua_pushcfunction(L, luax_msgh);
 
-    luax_neko_get(L, "_define_default_callbacks");
+    luax_neko_get(L, "__define_default_callbacks");
     luax_pcall(L, 0, 0);
 }
 
@@ -2330,8 +2313,8 @@ static void load_all_lua_scripts(lua_State *L) {
     });
 
     for (String file : files) {
-        if (file != "main.lua" && file.ends_with(".lua")) {
-            NEKO_DEBUG_LOG("load_all_lua_scripts : %s", file.data);
+        if (file != "main.lua" && file.ends_with(".lua") && (file.starts_with(".\\gamedir") || file.starts_with("gamedir"))) {
+            NEKO_DEBUG_LOG("load_all_lua_scripts(\"%s\")", file.data);
             asset_load_kind(AssetKind_LuaRef, file, nullptr);
         }
     }
@@ -2363,16 +2346,14 @@ sapp_desc sokol_main(int argc, char **argv) {
     profile_setup();
     PROFILE_FUNC();
 
-    do_test();
+    // const char *mount_path = nullptr;
 
-    const char *mount_path = nullptr;
-
-    for (i32 i = 1; i < argc; i++) {
-        if (argv[i][0] != '-') {
-            mount_path = argv[i];
-            break;
-        }
-    }
+    // for (i32 i = 1; i < argc; i++) {
+    //     if (argv[i][0] != '-') {
+    //         mount_path = argv[i];
+    //         break;
+    //     }
+    // }
 
     g_app = (App *)mem_alloc(sizeof(App));
     memset(g_app, 0, sizeof(App));
@@ -2386,17 +2367,17 @@ sapp_desc sokol_main(int argc, char **argv) {
     lua_State *L = g_app->L;
 
 #if defined(_DEBUG)
-    MountResult mount = vfs_mount(NEKO_PACKS::GAMEDATA, mount_path);
-    MountResult mount_lua = vfs_mount(NEKO_PACKS::LUACODE, "./");
+    MountResult mount = vfs_mount(NEKO_PACKS::GAMEDATA, nullptr);
+    // MountResult mount_lua = vfs_mount(NEKO_PACKS::LUACODE, "./");
 #else
     MountResult mount = vfs_mount(NEKO_PACKS::GAMEDATA, "./gamedata.zip");
-    MountResult mount_lua = vfs_mount(NEKO_PACKS::LUACODE, "./luacode.zip");
+    // MountResult mount_lua = vfs_mount(NEKO_PACKS::LUACODE, "./luacode.zip");
 #endif
 
     g_app->is_fused.store(mount.is_fused);
 
     if (!g_app->error_mode.load() && mount.ok) {
-        asset_load_kind(AssetKind_LuaRef, "main.lua", nullptr);
+        asset_load_kind(AssetKind_LuaRef, "gamedir/main.lua", nullptr);
     }
 
     if (!g_app->error_mode.load()) {

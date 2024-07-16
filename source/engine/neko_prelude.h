@@ -45,16 +45,12 @@ using const_str = const char *;
 #define f32_max FLT_MAX
 #define f32_min FLT_MIN
 
-#define NEKO_INLINE inline
-#define NEKO_STATIC static
-#define NEKO_STATIC_INLINE static inline
-
 #if (defined _WIN32 || defined _WIN64)
-#define NEKO_FORCE_INLINE NEKO_INLINE
+#define NEKO_FORCE_INLINE inline
 #elif (defined __APPLE__ || defined _APPLE)
 #define NEKO_FORCE_INLINE static __attribute__((always_inline))
 #else
-#define NEKO_FORCE_INLINE static NEKO_INLINE
+#define NEKO_FORCE_INLINE static inline
 #endif
 
 #define NEKO_ARR_SIZE(__ARR) sizeof(__ARR) / sizeof(__ARR[0])
@@ -277,7 +273,7 @@ void profile_shutdown();
 
 #ifndef NDEBUG
 #if !defined(USE_PROFILER) && !defined(__EMSCRIPTEN__)
-#define USE_PROFILER
+// #define USE_PROFILER
 #endif
 #endif
 
