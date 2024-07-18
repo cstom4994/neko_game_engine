@@ -2,13 +2,12 @@
 
 #include <cstdio>
 #include <filesystem>
-#include <new>
-#include <unordered_map>
 
 #include "neko.hpp"
 #include "neko_app.h"
 #include "neko_base.h"
 #include "neko_common.h"
+#include "neko_draw.h"
 #include "neko_lua.h"
 #include "neko_os.h"
 #include "neko_prelude.h"
@@ -29,12 +28,19 @@
 #include <stb_image.h>
 #include <stb_image_resize2.h>
 
-#define neko_little_endian 1
-
 // embed
 static const u8 g_font_monocrafte_data[] = {
 #include "Monocraft.ttf.h"
 };
+
+template <typename T>
+inline auto sg_make(const T &d) {
+    if constexpr (std::is_same_v<T, sg_image_desc>) {
+        return sg_make_image(d);
+    } else {
+        static_assert(neko::always_false<T>, "unsupported type passed to sg_make");
+    }
+}
 
 bool Image::load(String filepath, bool generate_mips) {
     PROFILE_FUNC();
@@ -105,7 +111,7 @@ bool Image::load(String filepath, bool generate_mips) {
     {
         PROFILE_BLOCK("make image");
         LockGuard lock{&g_app->gpu_mtx};
-        id = sg_make_image(desc).id;
+        id = sg_make(desc).id;
     }
 
     Image img = {};
@@ -177,7 +183,7 @@ bool SpriteData::load(String filepath) {
     {
         PROFILE_BLOCK("make image");
         LockGuard lock{&g_app->gpu_mtx};
-        id = sg_make_image(desc).id;
+        id = sg_make(desc).id;
     }
 
     Image img = {};
@@ -926,7 +932,7 @@ static void make_font_range(FontRange *out, FontFamily *font, FontKey key) {
 
         {
             LockGuard lock{&g_app->gpu_mtx};
-            id = sg_make_image(sg_image).id;
+            id = sg_make(sg_image).id;
         }
     }
 
@@ -1080,7 +1086,7 @@ static u32 read4(char *bytes) {
     return n;
 }
 
-static bool read_entire_file_raw(String *out, String filepath) {
+bool read_entire_file_raw(String *out, String filepath) {
     PROFILE_FUNC();
 
     String path = to_cstr(filepath);
@@ -1110,40 +1116,14 @@ static bool read_entire_file_raw(String *out, String filepath) {
     return true;
 }
 
-static bool list_all_files_help(Array<String> *files, String path) {
+static bool list_all_files_help(Array<String> *files, const_str path) {
     PROFILE_FUNC();
-
-    const_str p = path.len ? path.data : ".";
-
-    for (const auto &entry : std::filesystem::recursive_directory_iterator(p)) {
-        if (entry.is_regular_file()) files->push(str_fmt("%s", entry.path().string().data()));
+    std::filesystem::path search_path = (path != nullptr) ? path : std::filesystem::current_path();
+    for (const auto &entry : std::filesystem::recursive_directory_iterator(search_path)) {
+        if (!entry.is_regular_file()) continue;
+        std::filesystem::path relative_path = std::filesystem::relative(entry.path(), search_path);
+        files->push(str_fmt("%s", relative_path.generic_string().c_str()));
     }
-
-    // tinydir_dir dir;
-    // if (path.len == 0) {
-    //     tinydir_open(&dir, ".");
-    // } else {
-    //     tinydir_open(&dir, path.data);
-    // }
-    // neko_defer(tinydir_close(&dir));
-
-    // while (dir.has_next) {
-    //     tinydir_file file;
-    //     tinydir_readfile(&dir, &file);
-
-    //     if (strcmp(file.name, ".") != 0 && strcmp(file.name, "..") != 0) {
-    //         if (file.is_dir) {
-    //             String s = str_fmt("%s%s/", path.data, file.name);
-    //             neko_defer(mem_free(s.data));
-    //             list_all_files_help(files, s);
-    //         } else {
-    //             files->push(str_fmt("%s%s", path.data, file.name));
-    //         }
-    //     }
-
-    //     tinydir_next(&dir);
-    // }
-
     return true;
 }
 
@@ -1156,22 +1136,21 @@ struct FileSystem {
     virtual bool list_all_files(Array<String> *files) = 0;
 };
 
-struct MyKeyHash {
-    std::size_t operator()(const String &key) const { return std::hash<void *>()(key.data); }
-};
-
-static std::unordered_map<String, FileSystem *, MyKeyHash> g_filesystem_list;
+static HashMap<FileSystem *> g_vfs;
 
 struct DirectoryFileSystem : FileSystem {
+    String basepath;
+
     void make() {}
-    void trash() {}
+    void trash() { mem_free(basepath.data); }
 
     bool mount(String filepath) {
-        String path = to_cstr(filepath);
-        neko_defer(mem_free(path.data));
-
-        i32 res = os_change_dir(path.data);
-        return res == 0;
+        // String path = to_cstr(filepath);
+        // neko_defer(mem_free(path.data));
+        // i32 res = os_change_dir(path.data);
+        // return res == 0;
+        basepath = to_cstr(filepath);
+        return true;
     }
 
     bool file_exists(String filepath) {
@@ -1187,9 +1166,14 @@ struct DirectoryFileSystem : FileSystem {
         return false;
     }
 
-    bool read_entire_file(String *out, String filepath) { return read_entire_file_raw(out, filepath); }
+    bool read_entire_file(String *out, String filepath) {
+        String path = str_fmt("%s/%s", basepath.cstr(), filepath.data);
+        neko_defer(mem_free(path.data));
+        if (!file_exists(path)) return false;
+        return read_entire_file_raw(out, path);
+    }
 
-    bool list_all_files(Array<String> *files) { return list_all_files_help(files, ""); }
+    bool list_all_files(Array<String> *files) { return list_all_files_help(files, basepath.cstr()); }
 };
 
 struct ZipFileSystem : FileSystem {
@@ -1410,7 +1394,8 @@ static bool vfs_mount_type(String fsname, String mount) {
         return false;
     }
 
-    g_filesystem_list.insert(std::make_pair(fsname, vfs));
+    g_vfs[fnv1a(fsname)] = vfs;
+
     return true;
 }
 
@@ -1432,11 +1417,11 @@ MountResult vfs_mount(const_str fsname, const char *filepath) {
     }
 #else
     if (filepath == nullptr) {
-        String path = os_program_dir();
+        String path = os_program_path();
 
         NEKO_DEBUG_LOG("program path: %s", path.data);
 
-        res.ok = vfs_mount_type<DirectoryFileSystem>(fsname, path);
+        res.ok = vfs_mount_type<ZipFileSystem>(fsname, path);
     } else {
         String mount_dir = filepath;
 
@@ -1457,37 +1442,24 @@ MountResult vfs_mount(const_str fsname, const char *filepath) {
     return res;
 }
 
-void vfs_fini(std::optional<String> name) {
-    auto fini_fs = []<typename T>(T fs) {
-        if constexpr (!neko::is_pair<T>::value) {
-            fs->trash();
-            mem_free(fs);
-            NEKO_DEBUG_LOG("vfs_fini(%p)", fs);
-        } else {
-            fs.second->trash();
-            mem_free(fs.second);
-            NEKO_DEBUG_LOG("vfs_fini(%s)", fs.first.data);
-        }
-    };
-    if (!name.has_value()) {
-        for (auto vfs : g_filesystem_list) fini_fs(vfs);
-    } else {
-        auto vfs = g_filesystem_list[name.value()];
-        fini_fs(vfs);
+void vfs_fini() {
+    for (auto vfs : g_vfs) {
+        NEKO_DEBUG_LOG("vfs_fini(%p)", (*vfs.value));
+        (*vfs.value)->trash();
+        mem_free((*vfs.value));
     }
+
+    g_vfs.trash();
 }
 
-bool vfs_file_exists(String fsname, String filepath) { return g_filesystem_list[fsname]->file_exists(filepath); }
+bool vfs_file_exists(String fsname, String filepath) { return g_vfs[fnv1a(fsname)]->file_exists(filepath); }
 
 bool vfs_read_entire_file(String fsname, String *out, String filepath) {
-    if (g_filesystem_list.find(fsname) == g_filesystem_list.end()) {
-        NEKO_ERROR("failed to load vfs (%s):%s", fsname.data, filepath.data);
-        return false;
-    }
-    return g_filesystem_list[fsname]->read_entire_file(out, filepath);
+    NEKO_ASSERT(g_vfs.get(fnv1a(fsname)));
+    return g_vfs[fnv1a(fsname)]->read_entire_file(out, filepath);
 }
 
-bool vfs_list_all_files(String fsname, Array<String> *files) { return g_filesystem_list[fsname]->list_all_files(files); }
+bool vfs_list_all_files(String fsname, Array<String> *files) { return g_vfs[fnv1a(fsname)]->list_all_files(files); }
 
 struct AudioFile {
     u8 *buf;
@@ -1588,16 +1560,16 @@ void *vfs_for_miniaudio() {
     return ptr;
 }
 
+// #define SEEK_SET 0
+// #define SEEK_CUR 1
+// #define SEEK_END 2
+
 size_t neko_capi_vfs_fread(void *dest, size_t size, size_t count, vfs_file *vf) {
     size_t bytes_to_read = size * count;
     std::memcpy(dest, static_cast<const char *>(vf->data) + vf->offset, bytes_to_read);
     vf->offset += bytes_to_read;
     return count;
 }
-
-// #define SEEK_SET 0
-// #define SEEK_CUR 1
-// #define SEEK_END 2
 
 int neko_capi_vfs_fseek(vfs_file *vf, u64 of, int whence) {
     u64 new_offset;
@@ -2684,10 +2656,6 @@ u32 neko_lz_bounds(u32 inlen, u32 flags) { return inlen + inlen / 255 + 16; }
 // NEKO_PACK
 ==========================*/
 
-#pragma region packer
-
-// #include "deps/lz4/lz4.h"
-
 static void destroy_pack_items(u64 item_count, neko_pak::item *items) {
     NEKO_ASSERT(item_count == 0 || (item_count > 0 && items));
 
@@ -2702,7 +2670,7 @@ bool create_pack_items(vfs_file *packFile, u64 item_count, neko_pak::item **_ite
 
     neko_pak::item *items = (neko_pak::item *)mem_alloc(item_count * sizeof(neko_pak::item));
 
-    if (!items) return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
+    if (!items) return false;  // FAILED_TO_ALLOCATE_PACK_RESULT
 
     for (u64 i = 0; i < item_count; i++) {
         neko_pak::iteminfo info;
@@ -2711,19 +2679,19 @@ bool create_pack_items(vfs_file *packFile, u64 item_count, neko_pak::item **_ite
 
         if (result != 1) {
             destroy_pack_items(i, items);
-            return false; /*FAILED_TO_READ_FILE_PACK_RESULT*/
+            return false;  // FAILED_TO_READ_FILE_PACK_RESULT
         }
 
         if (info.data_size == 0 || info.path_size == 0) {
             destroy_pack_items(i, items);
-            return false; /*BAD_DATA_SIZE_PACK_RESULT*/
+            return false;  // BAD_DATA_SIZE_PACK_RESULT
         }
 
         char *path = (char *)mem_alloc((info.path_size + 1) * sizeof(char));
 
         if (!path) {
             destroy_pack_items(i, items);
-            return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
+            return false;  // FAILED_TO_ALLOCATE_PACK_RESULT
         }
 
         result = neko_capi_vfs_fread(path, sizeof(char), info.path_size, packFile);
@@ -2732,7 +2700,7 @@ bool create_pack_items(vfs_file *packFile, u64 item_count, neko_pak::item **_ite
 
         if (result != info.path_size) {
             destroy_pack_items(i, items);
-            return false; /*FAILED_TO_READ_FILE_PACK_RESULT*/
+            return false;  // FAILED_TO_READ_FILE_PACK_RESULT
         }
 
         i64 fileOffset = info.zip_size > 0 ? info.zip_size : info.data_size;
@@ -2741,7 +2709,7 @@ bool create_pack_items(vfs_file *packFile, u64 item_count, neko_pak::item **_ite
 
         if (seekResult != 0) {
             destroy_pack_items(i, items);
-            return false; /*FAILED_TO_SEEK_FILE_PACK_RESULT*/
+            return false;  // FAILED_TO_SEEK_FILE_PACK_RESULT
         }
 
         neko_pak::item *item = &items[i];
@@ -2756,17 +2724,14 @@ bool create_pack_items(vfs_file *packFile, u64 item_count, neko_pak::item **_ite
 bool neko_pak::load(const_str file_path, u32 data_buffer_capacity, bool is_resources_directory) {
     NEKO_ASSERT(file_path);
 
-    memset(this, 0, sizeof(neko_pak));
+    // memset(this, 0, sizeof(neko_pak));
 
     this->zip_buffer = NULL;
     this->zip_size = 0;
 
     this->vf = neko_capi_vfs_fopen(file_path);
 
-    if (!this->vf.data) {
-        this->fini();
-        return false; /*FAILED_TO_OPEN_FILE_PACK_RESULT*/
-    }
+    if (!this->vf.data) return false;  // FAILED_TO_OPEN_FILE_PACK_RESULT
 
     char header[neko_pak_head_size];
     i32 buildnum;
@@ -2774,36 +2739,28 @@ bool neko_pak::load(const_str file_path, u32 data_buffer_capacity, bool is_resou
     size_t result = neko_capi_vfs_fread(header, sizeof(u8), neko_pak_head_size, &this->vf);
     result += neko_capi_vfs_fread(&buildnum, sizeof(i32), 1, &this->vf);
 
-    // 检查文件头大小
-    if (result != neko_pak_head_size + 1) {
-        this->fini();
-        return false; /*FAILED_TO_READ_FILE_PACK_RESULT*/
-    }
-
     // 检查文件头
-    if (header[0] != 'P' || header[1] != 'A' || header[2] != 'C' || header[3] != 'K' || header[4] != 0 || header[5] != 0) {
+    if (result != neko_pak_head_size + 1 ||  //
+        header[0] != 'N' ||                  //
+        header[1] != 'E' ||                  //
+        header[2] != 'K' ||                  //
+        header[3] != 'O' ||                  //
+        header[4] != 'P' ||                  //
+        header[5] != 'A' ||                  //
+        header[6] != 'C' ||                  //
+        header[7] != 'K') {
         this->fini();
         return false;
-    }
-
-    // Skipping PATCH version check
-    if (header[7] != !neko_little_endian) {
-        this->fini();
-        return false; /*BAD_FILE_ENDIANNESS_PACK_RESULT*/
     }
 
     u64 item_count;
 
     result = neko_capi_vfs_fread(&item_count, sizeof(u64), 1, &this->vf);
 
-    if (result != 1) {
+    if (result != 1 ||  //
+        item_count == 0) {
         this->fini();
-        return false; /*FAILED_TO_READ_FILE_PACK_RESULT*/
-    }
-
-    if (item_count == 0) {
-        this->fini();
-        return false; /*BAD_DATA_SIZE_PACK_RESULT*/
+        return false;
     }
 
     neko_pak::item *items;
@@ -2818,20 +2775,15 @@ bool neko_pak::load(const_str file_path, u32 data_buffer_capacity, bool is_resou
     this->item_count = item_count;
     this->items = items;
 
-    u8 *data_buffer;
+    u8 *_data_buffer = NULL;
 
     if (data_buffer_capacity > 0) {
-        data_buffer = (u8 *)mem_alloc(data_buffer_capacity * sizeof(u8));
-
-        if (!data_buffer) {
-            this->fini();
-            return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
-        }
+        _data_buffer = (u8 *)mem_alloc(data_buffer_capacity * sizeof(u8));
     } else {
-        data_buffer = NULL;
+        _data_buffer = NULL;
     }
 
-    this->data_buffer = data_buffer;
+    this->data_buffer = _data_buffer;
     this->data_size = data_buffer_capacity;
 
     NEKO_TRACE("load pack %s buildnum: %d (engine %d)", neko_util_get_filename(file_path), buildnum, neko_buildnum());
@@ -2862,7 +2814,7 @@ static int neko_compare_pack_items(const void *_a, const void *_b) {
 
 u64 neko_pak::get_item_index(const_str path) {
     NEKO_ASSERT(path);
-    NEKO_ASSERT(strlen(path) <= UINT8_MAX);
+    NEKO_ASSERT(strlen(path) <= u8_max);
 
     neko_pak::item *search_item = &this->search_item;
 
@@ -2877,50 +2829,35 @@ u64 neko_pak::get_item_index(const_str path) {
     return index;
 }
 
-bool neko_pak::get_data(u64 index, const u8 **data, u32 *size) {
-    NEKO_ASSERT(index < this->item_count);
-    NEKO_ASSERT(data);
-    NEKO_ASSERT(size);
+bool neko_pak::get_data(u64 index, String *out, u32 *size) {
+    NEKO_ASSERT((index < this->item_count) && out && size);
 
     neko_pak::iteminfo info = this->items[index].info;
-    u8 *_data_buffer = this->data_buffer;
 
+    u8 *_data_buffer = this->data_buffer;
     if (_data_buffer) {
         if (info.data_size > this->data_size) {
             _data_buffer = (u8 *)mem_realloc(_data_buffer, info.data_size * sizeof(u8));
-
-            if (!_data_buffer) return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
-
             this->data_buffer = _data_buffer;
             this->data_size = info.data_size;
         }
     } else {
         _data_buffer = (u8 *)mem_alloc(info.data_size * sizeof(u8));
-
-        if (!_data_buffer) return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
-
         this->data_buffer = _data_buffer;
         this->data_size = info.data_size;
     }
 
-    u8 *zip_buffer = this->zip_buffer;
-
-    if (zip_buffer) {
+    u8 *_zip_buffer = this->zip_buffer;
+    if (this->zip_buffer) {
         if (info.zip_size > this->zip_size) {
-            zip_buffer = (u8 *)mem_realloc(zip_buffer, info.zip_size * sizeof(u8));
-
-            if (!zip_buffer) return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
-
-            this->zip_buffer = zip_buffer;
+            _zip_buffer = (u8 *)mem_realloc(this->zip_buffer, info.zip_size * sizeof(u8));
+            this->zip_buffer = _zip_buffer;
             this->zip_size = info.zip_size;
         }
     } else {
         if (info.zip_size > 0) {
-            zip_buffer = (u8 *)mem_alloc(info.zip_size * sizeof(u8));
-
-            if (!zip_buffer) return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
-
-            this->zip_buffer = zip_buffer;
+            _zip_buffer = (u8 *)mem_alloc(info.zip_size * sizeof(u8));
+            this->zip_buffer = _zip_buffer;
             this->zip_size = info.zip_size;
         }
     }
@@ -2931,49 +2868,52 @@ bool neko_pak::get_data(u64 index, const u8 **data, u32 *size) {
 
     int seek_result = neko_capi_vfs_fseek(vf, file_offset, SEEK_SET);
 
-    if (seek_result != 0) return false; /*FAILED_TO_SEEK_FILE_PACK_RESULT*/
+    if (seek_result != 0) return false;  // FAILED_TO_SEEK_FILE_PACK_RESULT
 
     if (info.zip_size > 0) {
-        size_t result = neko_capi_vfs_fread(zip_buffer, sizeof(u8), info.zip_size, vf);
+        size_t result = neko_capi_vfs_fread(_zip_buffer, sizeof(u8), info.zip_size, vf);
 
-        if (result != info.zip_size) return false; /*FAILED_TO_READ_FILE_PACK_RESULT*/
+        if (result != info.zip_size) return false;  // FAILED_TO_READ_FILE_PACK_RESULT
 
-        result = neko_lz_decode(zip_buffer, info.zip_size, _data_buffer, info.data_size);
+        result = neko_lz_decode(_zip_buffer, info.zip_size, _data_buffer, info.data_size);
 
         NEKO_TRACE("[assets] neko_lz_decode %u %u", info.zip_size, info.data_size);
 
         if (result < 0 || result != info.data_size) {
-            return false; /*FAILED_TO_DECOMPRESS_PACK_RESULT*/
+            return false;  // FAILED_TO_DECOMPRESS_PACK_RESULT
         }
     } else {
         size_t result = neko_capi_vfs_fread(_data_buffer, sizeof(u8), info.data_size, vf);
 
-        if (result != info.data_size) return false; /*FAILED_TO_READ_FILE_PACK_RESULT*/
+        if (result != info.data_size) return false;  // FAILED_TO_READ_FILE_PACK_RESULT
     }
 
     (*size) = info.data_size;
-    (*data) = (u8 *)mem_alloc(info.data_size);
-    memcpy((void *)(*data), _data_buffer, info.data_size);
+
+    char *data = (char *)mem_alloc(info.data_size + 1);
+    memcpy((void *)(data), _data_buffer, info.data_size);
+    data[info.data_size] = 0;
+    *out = {data, info.data_size};
+
     this->file_ref_count++;
     return true;
 }
 
-bool neko_pak::get_data(const_str path, const u8 **data, u32 *size) {
-    NEKO_ASSERT(path);
-    NEKO_ASSERT(data);
-    NEKO_ASSERT(size);
-    NEKO_ASSERT(strlen(path) <= UINT8_MAX);
+bool neko_pak::get_data(const_str path, String *out, u32 *size) {
+    NEKO_ASSERT(path && out && size);
+    NEKO_ASSERT(strlen(path) <= u8_max);
     u64 index = this->get_item_index(path);
-    if (index == u64_max) return false; /*FAILED_TO_GET_ITEM_PACK_RESULT*/
-    return this->get_data(index, data, size);
+    if (index == u64_max) return false;  // FAILED_TO_GET_ITEM_PACK_RESULT
+    return this->get_data(index, out, size);
 }
 
-void neko_pak::free_item(void *data) {
-    mem_free(data);
+void neko_pak::free_item(String data) {
+    mem_free(data.data);
     this->file_ref_count--;
 }
 
 void neko_pak::free_buffer() {
+
     mem_free(this->data_buffer);
     mem_free(this->zip_buffer);
     this->data_buffer = NULL;
@@ -3006,10 +2946,10 @@ bool neko_pak_unzip(const_str file_path, bool print_progress) {
             NEKO_INFO("Unpacking %s", item->path);
         }
 
-        const u8 *data_buffer;
+        String data;
         u32 data_size;
 
-        pack_result = pak.get_data(i, &data_buffer, &data_size);
+        pack_result = pak.get_data(i, &data, &data_size);
 
         if (pack_result != 0) {
             neko_pak_remove_item(i, items);
@@ -3019,7 +2959,7 @@ bool neko_pak_unzip(const_str file_path, bool print_progress) {
 
         u8 path_size = item->info.path_size;
 
-        char item_path[UINT8_MAX + 1];
+        char item_path[u8_max + 1];
 
         memcpy(item_path, item->path, path_size * sizeof(char));
         item_path[path_size] = 0;
@@ -3033,17 +2973,17 @@ bool neko_pak_unzip(const_str file_path, bool print_progress) {
         if (!item_file) {
             neko_pak_remove_item(i, items);
             pak.fini();
-            return false; /*FAILED_TO_OPEN_FILE_PACK_RESULT*/
+            return false;  // FAILED_TO_OPEN_FILE_PACK_RESULT
         }
 
-        size_t result = fwrite(data_buffer, sizeof(u8), data_size, item_file);
+        size_t result = fwrite(data.data, sizeof(u8), data_size, item_file);
 
         neko_fclose(item_file);
 
         if (result != data_size) {
             neko_pak_remove_item(i, items);
             pak.fini();
-            return false; /*FAILED_TO_OPEN_FILE_PACK_RESULT*/
+            return false;  // FAILED_TO_OPEN_FILE_PACK_RESULT
         }
 
         if (print_progress) {
@@ -3076,12 +3016,10 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
     u32 buffer_size = 128;  // 提高初始缓冲大小
 
     u8 *item_data = (u8 *)mem_alloc(sizeof(u8) * buffer_size);
-    if (!item_data) return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
-
     u8 *zip_data = (u8 *)mem_alloc(sizeof(u8) * buffer_size);
     if (!zip_data) {
         mem_free(item_data);
-        return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
+        return false;  // FAILED_TO_ALLOCATE_PACK_RESULT
     }
 
     u64 total_zip_size = 0, total_raw_size = 0;
@@ -3096,10 +3034,10 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
 
         size_t path_size = strlen(item_path);
 
-        if (path_size > UINT8_MAX) {
+        if (path_size > u8_max) {
             mem_free(zip_data);
             mem_free(item_data);
-            return false; /*BAD_DATA_SIZE_PACK_RESULT*/
+            return false;  // BAD_DATA_SIZE_PACK_RESULT
         }
 
         FILE *item_file = neko_fopen(item_path, "rb");
@@ -3107,7 +3045,7 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
         if (!item_file) {
             mem_free(zip_data);
             mem_free(item_data);
-            return false; /*FAILED_TO_OPEN_FILE_PACK_RESULT*/
+            return false;  // FAILED_TO_OPEN_FILE_PACK_RESULT
         }
 
         int seek_result = neko_fseek(item_file, 0, SEEK_END);
@@ -3116,7 +3054,7 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
             neko_fclose(item_file);
             mem_free(zip_data);
             mem_free(item_data);
-            return false; /*FAILED_TO_SEEK_FILE_PACK_RESULT*/
+            return false;  // FAILED_TO_SEEK_FILE_PACK_RESULT
         }
 
         u64 item_size = (u64)neko_ftell(item_file);
@@ -3125,7 +3063,7 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
             neko_fclose(item_file);
             mem_free(zip_data);
             mem_free(item_data);
-            return false; /*BAD_DATA_SIZE_PACK_RESULT*/
+            return false;  // BAD_DATA_SIZE_PACK_RESULT
         }
 
         seek_result = neko_fseek(item_file, 0, SEEK_SET);
@@ -3134,7 +3072,7 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
             neko_fclose(item_file);
             mem_free(zip_data);
             mem_free(item_data);
-            return false; /*FAILED_TO_SEEK_FILE_PACK_RESULT*/
+            return false;  // FAILED_TO_SEEK_FILE_PACK_RESULT
         }
 
         if (item_size > buffer_size) {
@@ -3144,7 +3082,7 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
                 neko_fclose(item_file);
                 mem_free(zip_data);
                 mem_free(item_data);
-                return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
+                return false;  // FAILED_TO_ALLOCATE_PACK_RESULT
             }
 
             item_data = new_buffer;
@@ -3155,7 +3093,7 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
                 neko_fclose(item_file);
                 mem_free(zip_data);
                 mem_free(item_data);
-                return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
+                return false;  // FAILED_TO_ALLOCATE_PACK_RESULT
             }
 
             zip_data = new_buffer;
@@ -3168,7 +3106,7 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
         if (result != item_size) {
             mem_free(zip_data);
             mem_free(item_data);
-            return false; /*FAILED_TO_READ_FILE_PACK_RESULT*/
+            return false;  // FAILED_TO_READ_FILE_PACK_RESULT
         }
 
         size_t zip_size;
@@ -3199,7 +3137,7 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
         if (result != 1) {
             mem_free(zip_data);
             mem_free(item_data);
-            return false; /*FAILED_TO_WRITE_FILE_PACK_RESULT*/
+            return false;  // FAILED_TO_WRITE_FILE_PACK_RESULT
         }
 
         result = fwrite(item_path, sizeof(char), info.path_size, pack_file);
@@ -3207,7 +3145,7 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
         if (result != info.path_size) {
             mem_free(zip_data);
             mem_free(item_data);
-            return false; /*FAILED_TO_WRITE_FILE_PACK_RESULT*/
+            return false;  // FAILED_TO_WRITE_FILE_PACK_RESULT
         }
 
         if (zip_size > 0) {
@@ -3216,7 +3154,7 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
             if (result != zip_size) {
                 mem_free(zip_data);
                 mem_free(item_data);
-                return false; /*FAILED_TO_WRITE_FILE_PACK_RESULT*/
+                return false;  // FAILED_TO_WRITE_FILE_PACK_RESULT
             }
         } else {
             result = fwrite(item_data, sizeof(u8), item_size, pack_file);
@@ -3224,7 +3162,7 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
             if (result != item_size) {
                 mem_free(zip_data);
                 mem_free(item_data);
-                return false; /*FAILED_TO_WRITE_FILE_PACK_RESULT*/
+                return false;  // FAILED_TO_WRITE_FILE_PACK_RESULT
             }
         }
 
@@ -3272,7 +3210,7 @@ bool neko_pak_build(const_str file_path, u64 file_count, const_str *file_paths, 
 
     char **item_paths = (char **)mem_alloc(file_count * sizeof(char *));
 
-    if (!item_paths) return false; /*FAILED_TO_ALLOCATE_PACK_RESULT*/
+    if (!item_paths) return false;  // FAILED_TO_ALLOCATE_PACK_RESULT
 
     u64 item_count = 0;
 
@@ -3292,11 +3230,11 @@ bool neko_pak_build(const_str file_path, u64 file_count, const_str *file_paths, 
 
     if (!pack_file) {
         mem_free(item_paths);
-        return false; /*FAILED_TO_CREATE_FILE_PACK_RESULT*/
+        return false;  // FAILED_TO_CREATE_FILE_PACK_RESULT
     }
 
     char header[neko_pak_head_size] = {
-            'P', 'A', 'C', 'K', 0, 0, 0, !neko_little_endian,
+            'N', 'E', 'K', 'O', 'P', 'A', 'C', 'K',
     };
 
     i32 buildnum = neko_buildnum();
@@ -3308,7 +3246,7 @@ bool neko_pak_build(const_str file_path, u64 file_count, const_str *file_paths, 
         mem_free(item_paths);
         neko_fclose(pack_file);
         remove(file_path);
-        return false; /*FAILED_TO_WRITE_FILE_PACK_RESULT*/
+        return false;  // FAILED_TO_WRITE_FILE_PACK_RESULT
     }
 
     write_result = fwrite(&item_count, sizeof(u64), 1, pack_file);
@@ -3317,67 +3255,62 @@ bool neko_pak_build(const_str file_path, u64 file_count, const_str *file_paths, 
         mem_free(item_paths);
         neko_fclose(pack_file);
         remove(file_path);
-        return false; /*FAILED_TO_WRITE_FILE_PACK_RESULT*/
+        return false;  // FAILED_TO_WRITE_FILE_PACK_RESULT
     }
 
-    int pack_result = neko_write_pack_items(pack_file, item_count, item_paths, print_progress);
+    bool ok = neko_write_pack_items(pack_file, item_count, item_paths, print_progress);
 
     mem_free(item_paths);
     neko_fclose(pack_file);
 
-    if (pack_result != 0) {
+    if (!ok) {
         remove(file_path);
-        return pack_result;
+        return ok;
     }
+
+    neko_printf("Packed %s\n", file_path);
 
     return true;
 }
 
-bool neko_pak_info(const_str file_path, u8 *pack_version, bool *isLittleEndian, u64 *_item_count) {
+bool neko_pak_info(const_str file_path, i32 *buildnum, u64 *item_count) {
     NEKO_ASSERT(file_path);
-    NEKO_ASSERT(pack_version);
-    NEKO_ASSERT(isLittleEndian);
-    NEKO_ASSERT(_item_count);
+    NEKO_ASSERT(buildnum);
+    NEKO_ASSERT(item_count);
 
     vfs_file vf = neko_capi_vfs_fopen(file_path);
 
-    if (!vf.data) return false; /*FAILED_TO_OPEN_FILE_PACK_RESULT*/
+    if (!vf.data) return false;  // FAILED_TO_OPEN_FILE_PACK_RESULT
 
     char header[neko_pak_head_size];
-    i32 buildnum;
 
     size_t result = neko_capi_vfs_fread(header, sizeof(u8), neko_pak_head_size, &vf);
-    result += neko_capi_vfs_fread(&buildnum, sizeof(i32), 1, &vf);
+    result += neko_capi_vfs_fread(buildnum, sizeof(i32), 1, &vf);
 
     if (result != neko_pak_head_size + 1) {
         neko_capi_vfs_fclose(&vf);
-        return false; /*FAILED_TO_READ_FILE_PACK_RESULT*/
+        return false;  // FAILED_TO_READ_FILE_PACK_RESULT
     }
 
-    if (header[0] != 'P' || header[1] != 'A' || header[2] != 'C' || header[3] != 'K') {
+    if (header[0] != 'N' ||  //
+        header[1] != 'E' ||  //
+        header[2] != 'K' ||  //
+        header[3] != 'O' ||  //
+        header[4] != 'P' ||  //
+        header[5] != 'A' ||  //
+        header[6] != 'C' ||  //
+        header[7] != 'K') {
         neko_capi_vfs_fclose(&vf);
-        return false; /*BAD_FILE_TYPE_PACK_RESULT*/
+        return false;  // BAD_FILE_TYPE_PACK_RESULT
     }
 
-    u64 item_count;
-
-    result = neko_capi_vfs_fread(&item_count, sizeof(u64), 1, &vf);
+    result = neko_capi_vfs_fread(item_count, sizeof(u64), 1, &vf);
 
     neko_capi_vfs_fclose(&vf);
 
-    if (result != 1) return false; /*FAILED_TO_READ_FILE_PACK_RESULT*/
-
-    *pack_version = header[4];
-    /*    *pack_version = header[5];
-     *pack_version = header[6];*/
-    *isLittleEndian = !header[7];
-    *_item_count = item_count;
+    if (result != 1) return false;  // FAILED_TO_READ_FILE_PACK_RESULT
     return true;
 }
-
-#pragma endregion
-
-#pragma region xml
 
 #define __neko_xml_expect_not_end(c_)           \
     if (!*(c_)) {                               \
@@ -3784,7 +3717,478 @@ bool neko_xml_node_iter_next(neko_xml_node_iter_t *iter) {
     }
 }
 
-#pragma endregion
+void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
+
+    PROFILE_FUNC();
+
+    map->doc = neko_xml_parse_file(tmx_path);
+    if (!map->doc) {
+        NEKO_ERROR("Failed to parse XML: %s", neko_xml_get_error());
+        return;
+    }
+
+    char tmx_root_path[256];
+    if (NULL == res_path) {
+        neko_util_get_dir_from_file(tmx_root_path, 256, tmx_path);
+    } else {
+        strcpy(tmx_root_path, res_path);
+    }
+
+    neko_xml_node_t *map_node = neko_xml_find_node(map->doc, "map");
+    NEKO_ASSERT(map_node);  // Must have a map node!
+
+    for (neko_xml_node_iter_t it = neko_xml_new_node_child_iter(map_node, "tileset"); neko_xml_node_iter_next(&it);) {
+        tileset_t tileset = {0};
+
+        tileset.first_gid = (u32)neko_xml_find_attribute(it.current, "firstgid")->value.number;
+
+        char tileset_path[256];
+        neko_snprintf(tileset_path, 256, "%s/%s", tmx_root_path, neko_xml_find_attribute(it.current, "source")->value.string);
+        neko_xml_document_t *tileset_doc = neko_xml_parse_file(tileset_path);
+        if (!tileset_doc) {
+            NEKO_ERROR("Failed to parse XML from %s: %s", tileset_path, neko_xml_get_error());
+            return;
+        }
+
+        neko_xml_node_t *tileset_node = neko_xml_find_node(tileset_doc, "tileset");
+        tileset.tile_width = (u32)neko_xml_find_attribute(tileset_node, "tilewidth")->value.number;
+        tileset.tile_height = (u32)neko_xml_find_attribute(tileset_node, "tileheight")->value.number;
+        tileset.tile_count = (u32)neko_xml_find_attribute(tileset_node, "tilecount")->value.number;
+
+        neko_xml_node_t *image_node = neko_xml_find_node_child(tileset_node, "image");
+        const_str image_path = neko_xml_find_attribute(image_node, "source")->value.string;
+
+        char full_image_path[256];
+        neko_snprintf(full_image_path, 256, "%s/%s", tmx_root_path, image_path);
+
+        // bool ok = vfs_file_exists(NEKO_PACKS::GAMEDATA, full_image_path);
+        // if (!ok) {
+        //     NEKO_ERROR("failed to load texture file: %s", full_image_path);
+        //     return;
+        // }
+
+        // void *tex_data = NULL;
+        // i32 w, h;
+        // u32 cc;
+
+        // neko_util_load_texture_data_from_file(full_image_path, &w, &h, &cc, &tex_data, false);
+        // neko_render_texture_desc_t tileset_tex_decl = {
+        //         .width = (u32)w, .height = (u32)h, .format = R_TEXTURE_FORMAT_RGBA8, .min_filter = R_TEXTURE_FILTER_NEAREST, .mag_filter = R_TEXTURE_FILTER_NEAREST, .num_mips = 0};
+        // tileset_tex_decl.data[0] = tex_data;
+        // tileset.texture = neko_render_texture_create(tileset_tex_decl);
+
+        tileset.texture = {};
+        bool success = tileset.texture.load(String(full_image_path), false);
+        if (!success) {
+            return;
+        }
+
+        tileset.width = tileset.texture.width;
+        tileset.height = tileset.texture.height;
+
+        neko_dyn_array_push(map->tilesets, tileset);
+
+        neko_xml_free(tileset_doc);
+    }
+
+    for (neko_xml_node_iter_t it = neko_xml_new_node_child_iter(map_node, "layer"); neko_xml_node_iter_next(&it);) {
+        neko_xml_node_t *layer_node = it.current;
+
+        layer_t layer = {0};
+        layer.tint = Color{255, 255, 255, 255};
+
+        layer.width = (u32)neko_xml_find_attribute(layer_node, "width")->value.number;
+        layer.height = (u32)neko_xml_find_attribute(layer_node, "height")->value.number;
+
+        neko_xml_attribute_t *tint_attrib = neko_xml_find_attribute(layer_node, "tintcolor");
+        if (tint_attrib) {
+            const_str hexstring = tint_attrib->value.string;
+            u32 *cols = (u32 *)layer.tint.rgba;
+            *cols = (u32)strtol(hexstring + 1, NULL, 16);
+            layer.tint.a = 255;
+        }
+
+        neko_xml_node_t *data_node = neko_xml_find_node_child(layer_node, "data");
+
+        const_str encoding = neko_xml_find_attribute(data_node, "encoding")->value.string;
+
+        if (strcmp(encoding, "csv") != 0) {
+            NEKO_ERROR("%s", "Only CSV data encoding is supported.");
+            return;
+        }
+
+        const_str data_text = data_node->text;
+
+        const_str cd_ptr = data_text;
+
+        layer.tiles = (tile_t *)mem_alloc(layer.width * layer.height * sizeof(tile_t));
+
+        for (u32 y = 0; y < layer.height; y++) {
+            for (u32 x = 0; x < layer.width; x++) {
+                u32 gid = (u32)strtod(cd_ptr, NULL);
+                u32 tls_id = 0;
+
+                u32 closest = 0;
+                for (u32 i = 0; i < neko_dyn_array_size(map->tilesets); i++) {
+                    if (map->tilesets[i].first_gid <= gid) {
+                        if (map->tilesets[i].first_gid > closest) {
+                            closest = map->tilesets[i].first_gid;
+                            tls_id = i;
+                        }
+                    }
+                }
+
+                layer.tiles[x + y * layer.width].id = gid;
+                layer.tiles[x + y * layer.width].tileset_id = tls_id;
+
+                while (*cd_ptr && *cd_ptr != ',') {
+                    cd_ptr++;
+                }
+
+                cd_ptr++;  //  Skip the comma.
+            }
+        }
+
+        neko_dyn_array_push(map->layers, layer);
+    }
+
+    for (neko_xml_node_iter_t it = neko_xml_new_node_child_iter(map_node, "objectgroup"); neko_xml_node_iter_next(&it);) {
+        neko_xml_node_t *object_group_node = it.current;
+
+        object_group_t object_group = {0};
+        object_group.color = Color{255, 255, 255, 255};
+
+        // 对象组名字
+        neko_xml_attribute_t *name_attrib = neko_xml_find_attribute(object_group_node, "name");
+        if (name_attrib) {
+            const_str namestring = name_attrib->value.string;
+
+            object_group.name = name_attrib->value.string;
+            // u32 *cols = (u32 *)object_group.color.rgba;
+            //*cols = (u32)strtol(hexstring + 1, NULL, 16);
+            // object_group.color.a = 128;
+            NEKO_TRACE("objectgroup: %s", namestring);
+        } else {
+        }
+
+        // 对象组默认颜色
+        neko_xml_attribute_t *color_attrib = neko_xml_find_attribute(object_group_node, "color");
+        if (color_attrib) {
+            const_str hexstring = color_attrib->value.string;
+            u32 *cols = (u32 *)object_group.color.rgba;
+            *cols = (u32)strtol(hexstring + 1, NULL, 16);
+            object_group.color.a = 128;
+        }
+
+        for (neko_xml_node_iter_t iit = neko_xml_new_node_child_iter(object_group_node, "object"); neko_xml_node_iter_next(&iit);) {
+            neko_xml_node_t *object_node = iit.current;
+
+            object_t object = {0};
+            object.id = (i32)neko_xml_find_attribute(object_node, "id")->value.number;
+            object.x = (i32)neko_xml_find_attribute(object_node, "x")->value.number;
+            object.y = (i32)neko_xml_find_attribute(object_node, "y")->value.number;
+
+            neko_xml_attribute_t *attrib;
+            if ((attrib = neko_xml_find_attribute(object_node, "width"))) {
+                object.width = attrib->value.number;
+            } else {
+                object.width = 1;
+            }
+
+            if ((attrib = neko_xml_find_attribute(object_node, "height"))) {
+                object.height = attrib->value.number;
+            } else {
+                object.height = 1;
+            }
+
+#if 0
+            object.phy_type = C2_TYPE_POLY;
+
+            object.aabb = (c2AABB){c2V(object.x, object.y), c2V(object.width, object.height)};
+
+            if (object.phy_type == C2_TYPE_POLY) {
+                object.phy.poly.verts[0] = (top_left(object.aabb));
+                object.phy.poly.verts[1] = (bottom_left(object.aabb));
+                object.phy.poly.verts[2] = (bottom_right(object.aabb));
+                object.phy.poly.verts[3] = c2Add(top_right(object.aabb), c2Mulvs(bottom_right(object.aabb), 0.5f));
+                object.phy.poly.count = 4;
+                c2Norms(object.phy.poly.verts, object.phy.poly.norms, object.phy.poly.count);
+            }
+#endif
+
+            neko_dyn_array_push(object_group.objects, object);
+        }
+
+        neko_dyn_array_push(map->object_groups, object_group);
+    }
+}
+
+void neko_tiled_unload(map_t *map) {
+
+    PROFILE_FUNC();
+
+    for (u32 i = 0; i < neko_dyn_array_size(map->tilesets); i++) {
+        map->tilesets[i].texture.trash();
+    }
+
+    for (u32 i = 0; i < neko_dyn_array_size(map->layers); i++) {
+        mem_free(map->layers[i].tiles);
+    }
+
+    neko_dyn_array_free(map->layers);
+    neko_dyn_array_free(map->tilesets);
+
+    neko_dyn_array_free(map->object_groups);
+
+    neko_xml_free(map->doc);
+}
+
+void neko_tiled_render_init(neko_command_buffer_t *cb, neko_tiled_renderer *renderer, const_str vert_src, const_str frag_src) {
+
+    PROFILE_FUNC();
+
+#if 0
+    neko_render_vertex_buffer_desc_t vb_decl = {
+            .data = NULL,
+            .size = BATCH_SIZE * VERTS_PER_QUAD * FLOATS_PER_VERT * sizeof(f32),
+            .usage = R_BUFFER_USAGE_DYNAMIC,
+    };
+
+    renderer->vb = neko_render_vertex_buffer_create(vb_decl);
+
+    neko_render_index_buffer_desc_t ib_decl = {
+            .data = NULL,
+            .size = BATCH_SIZE * IND_PER_QUAD * sizeof(u32),
+            .usage = R_BUFFER_USAGE_DYNAMIC,
+    };
+
+    renderer->ib = neko_render_index_buffer_create(ib_decl);
+
+    if (!vert_src || !frag_src) {
+        NEKO_ERROR("%s", "Failed to load tiled renderer shaders.");
+    }
+
+    neko_render_uniform_layout_desc_t u_desc_layout = {.type = R_UNIFORM_SAMPLER2D};
+
+    neko_render_uniform_desc_t u_desc = neko_render_uniform_desc_t{
+            .stage = R_SHADER_STAGE_FRAGMENT,
+            .name = "batch_texture",
+            .layout = &u_desc_layout,
+    };
+
+    renderer->u_batch_tex = neko_render_uniform_create(u_desc);
+
+    neko_render_shader_source_desc_t shader_src_des[] = {
+            {.type = R_SHADER_STAGE_VERTEX, .source = vert_src},
+            {.type = R_SHADER_STAGE_FRAGMENT, .source = frag_src},
+    };
+
+    renderer->shader = neko_render_shader_create(neko_render_shader_desc_t{.sources = shader_src_des, .size = 2 * sizeof(neko_render_shader_source_desc_t), .name = "tiled_sprite_shader"});
+
+    neko_render_uniform_layout_desc_t u_cam_des = {.type = R_UNIFORM_MAT4};
+    renderer->u_camera = neko_render_uniform_create(neko_render_uniform_desc_t{.name = "tiled_sprite_camera", .layout = &u_cam_des});
+
+    neko_render_vertex_attribute_desc_t vertex_attr_des[] = {
+            {.name = "position", .format = R_VERTEX_ATTRIBUTE_FLOAT2},
+            {.name = "uv", .format = R_VERTEX_ATTRIBUTE_FLOAT2},
+            {
+                    .name = "color",
+                    .format = R_VERTEX_ATTRIBUTE_FLOAT4,
+            },
+            {.name = "use_texture", .format = R_VERTEX_ATTRIBUTE_FLOAT},
+    };
+
+    renderer->pip = neko_render_pipeline_create(neko_render_pipeline_desc_t{.blend = {.func = R_BLEND_EQUATION_ADD, .src = R_BLEND_MODE_SRC_ALPHA, .dst = R_BLEND_MODE_ONE_MINUS_SRC_ALPHA},
+                                                                            .raster = {.shader = renderer->shader, .index_buffer_element_size = sizeof(uint32_t)},
+                                                                            .layout = {.attrs = vertex_attr_des, .size = 4 * sizeof(neko_render_vertex_attribute_desc_t)}});
+#endif
+}
+
+void neko_tiled_render_deinit(neko_tiled_renderer *renderer) {
+
+    PROFILE_FUNC();
+
+    for (neko_hash_table_iter it = neko_hash_table_iter_new(renderer->quad_table); neko_hash_table_iter_valid(renderer->quad_table, it); neko_hash_table_iter_advance(renderer->quad_table, it)) {
+        u32 k = neko_hash_table_iter_getk(renderer->quad_table, it);
+        neko_tiled_quad_list_t quad_list = neko_hash_table_iter_get(renderer->quad_table, it);
+
+        neko_dyn_array(neko_tiled_quad_t) v = quad_list.quad_list;
+
+        neko_dyn_array_free(v);
+    }
+
+    neko_hash_table_free(renderer->quad_table);
+
+    // neko_render_shader_fini(renderer->shader);
+}
+
+void neko_tiled_render_begin(neko_command_buffer_t *cb, neko_tiled_renderer *renderer) {
+
+    // neko_render_clear_desc_t clear = {.actions = &(neko_render_clear_action_t){.color = {0.1f, 0.1f, 0.1f, 1.0f}}};
+    // neko_render_clear(cb, &clear);
+
+    renderer->quad_count = 0;
+}
+
+void neko_tiled_render_flush(neko_command_buffer_t *cb, neko_tiled_renderer *renderer) {
+
+    PROFILE_FUNC();
+
+    // const neko_vec2 ws = neko_pf_window_sizev(neko_os_main_window());
+    // neko_render_set_viewport(cb, 0, 0, ws.x, ws.y);
+
+    // renderer->camera_mat = neko_mat4_ortho(0.0f, ws.x, ws.y, 0.0f, -1.0f, 1.0f);
+
+#if 0
+
+    neko_render_bind_vertex_buffer_desc_t vb_des = {.buffer = renderer->vb};
+    neko_render_bind_index_buffer_desc_t ib_des = {.buffer = renderer->ib};
+
+    neko_render_bind_image_buffer_desc_t imgb_des = {renderer->batch_texture, 0, R_ACCESS_READ_ONLY};
+
+    // clang-format off
+
+    neko_render_bind_uniform_desc_t uniform_des[2] = {
+        {.uniform = renderer->u_camera, .data = &renderer->camera_mat},
+        {.uniform = renderer->u_batch_tex, .data = &renderer->batch_texture}
+    };
+
+    neko_render_bind_desc_t binds = {
+    .vertex_buffers = {.desc =&vb_des},
+    .index_buffers = {.desc = &ib_des},
+    .uniforms = {
+        .desc = uniform_des,
+        .size = 2 * sizeof(neko_render_bind_uniform_desc_t)
+    },
+    .image_buffers = {
+        .desc = &imgb_des,  
+        .size = sizeof(neko_render_bind_image_buffer_desc_t)
+    }};
+    // clang-format on
+
+    neko_render_pipeline_bind(cb, renderer->pip);
+    neko_render_apply_bindings(cb, &binds);
+
+    neko_render_draw(cb, neko_render_draw_desc_t{.start = 0, .count = renderer->quad_count * IND_PER_QUAD});
+
+    // neko_check_gl_error();
+
+#endif
+
+    renderer->quad_count = 0;
+}
+
+void neko_tiled_render_push(neko_command_buffer_t *cb, neko_tiled_renderer *renderer, neko_tiled_quad_t quad) {
+
+    // PROFILE_FUNC();
+
+    // 如果这个quad的tileset还不存在于quad_table中则插入一个
+    // tileset_id为quad_table的键值
+    if (!neko_hash_table_exists(renderer->quad_table, quad.tileset_id))                            //
+        neko_hash_table_insert(renderer->quad_table, quad.tileset_id, neko_tiled_quad_list_t{0});  //
+
+    //
+    neko_tiled_quad_list_t *quad_list = neko_hash_table_getp(renderer->quad_table, quad.tileset_id);
+    neko_dyn_array_push(quad_list->quad_list, quad);
+}
+
+void neko_tiled_render_draw(neko_command_buffer_t *cb, neko_tiled_renderer *renderer) {
+
+    PROFILE_FUNC();
+
+    // TODO: 23/10/16 检测quad是否在屏幕视角范围外 进行剔除性优化
+
+    // iterate quads hash table
+    for (neko_hash_table_iter it = neko_hash_table_iter_new(renderer->quad_table); neko_hash_table_iter_valid(renderer->quad_table, it); neko_hash_table_iter_advance(renderer->quad_table, it)) {
+        u32 k = neko_hash_table_iter_getk(renderer->quad_table, it);
+        neko_tiled_quad_list_t quad_list = neko_hash_table_iter_get(renderer->quad_table, it);
+
+        neko_dyn_array(neko_tiled_quad_t) v = quad_list.quad_list;
+
+        u32 quad_size = neko_dyn_array_size(v);
+
+        for (u32 i = 0; i < quad_size; i++) {
+
+            neko_tiled_quad_t *quad = &v[i];
+
+            f32 tx = 0.f, ty = 0.f, tw = 0.f, th = 0.f;
+
+            if (quad->use_texture) {
+                tx = (f32)quad->rectangle.x / quad->texture_size.x;
+                ty = (f32)quad->rectangle.y / quad->texture_size.y;
+                tw = (f32)quad->rectangle.z / quad->texture_size.x;
+                th = (f32)quad->rectangle.w / quad->texture_size.y;
+
+                // for (u32 i = 0; i < renderer->texture_count; i++) {
+                //     if (renderer->textures[i].id == quad->texture.id) {
+                //         tex_id = i;
+                //         break;
+                //     }
+                // }
+
+                //// 添加新Tiled贴图
+                // if (tex_id == -1) {
+                //     renderer->textures[renderer->texture_count] = quad->texture;
+                //     tex_id = renderer->texture_count++;
+                //     if (renderer->texture_count >= MAX_TEXTURES) {
+                //         neko_tiled_render_flush(cb);
+                //         tex_id = 0;
+                //         renderer->textures[0] = quad->texture;
+                //     }
+                // }
+
+                // renderer->batch_texture = quad->texture;
+            }
+
+            const f32 x = quad->position.x;
+            const f32 y = quad->position.y;
+            const f32 w = quad->dimentions.x;
+            const f32 h = quad->dimentions.y;
+
+            const f32 r = (f32)quad->color.r / 255.0f;
+            const f32 g = (f32)quad->color.g / 255.0f;
+            const f32 b = (f32)quad->color.b / 255.0f;
+            const f32 a = (f32)quad->color.a / 255.0f;
+
+            f32 verts[] = {
+                    x,     y,     tx,      ty,      r, g, b, a, (f32)quad->use_texture,  //
+                    x + w, y,     tx + tw, ty,      r, g, b, a, (f32)quad->use_texture,  //
+                    x + w, y + h, tx + tw, ty + th, r, g, b, a, (f32)quad->use_texture,  //
+                    x,     y + h, tx,      ty + th, r, g, b, a, (f32)quad->use_texture   //
+            };
+
+            const u32 idx_off = renderer->quad_count * VERTS_PER_QUAD;
+
+            u32 indices[] = {idx_off + 3, idx_off + 2, idx_off + 1,   //
+                             idx_off + 3, idx_off + 1, idx_off + 0};  //
+
+#if 0
+            neko_render_vertex_buffer_request_update(
+                    cb, renderer->vb,
+                    neko_render_vertex_buffer_desc_t{.data = verts,
+                                                     .size = VERTS_PER_QUAD * FLOATS_PER_VERT * sizeof(f32),
+                                                     .usage = R_BUFFER_USAGE_DYNAMIC,
+                                                     .update = {.type = R_BUFFER_UPDATE_SUBDATA, .offset = renderer->quad_count * VERTS_PER_QUAD * FLOATS_PER_VERT * sizeof(f32)}});
+
+            neko_render_index_buffer_request_update(cb, renderer->ib,
+                                                    neko_render_index_buffer_desc_t{.data = indices,
+                                                                                    .size = IND_PER_QUAD * sizeof(u32),
+                                                                                    .usage = R_BUFFER_USAGE_DYNAMIC,
+                                                                                    .update = {.type = R_BUFFER_UPDATE_SUBDATA, .offset = renderer->quad_count * IND_PER_QUAD * sizeof(u32)}});
+#endif
+
+            renderer->quad_count++;
+
+            if (renderer->quad_count >= BATCH_SIZE) {
+                neko_tiled_render_flush(cb, renderer);
+            }
+        }
+
+        neko_dyn_array_clear(v);
+
+        neko_tiled_render_flush(cb, renderer);
+    }
+}
 
 // DEFLATE tables from RFC 1951
 static uint8_t s_fixed_table[288 + 32] = {
@@ -4168,7 +4572,7 @@ static void s_read_bytes(ase_state_t *s, uint8_t *bytes, int num_bytes) {
 }
 #endif
 
-static const char *s_read_string(ase_state_t *s) {
+static const_str s_read_string(ase_state_t *s) {
     int len = (int)s_read_uint16(s);
     char *bytes = (char *)mem_alloc(len + 1);
     for (int i = 0; i < len; ++i) {
@@ -4492,7 +4896,7 @@ ase_t *neko_aseprite_load_from_memory(const void *memory, int size) {
                     int slice_count = (int)s_read_uint32(s);
                     int flags = (int)s_read_uint32(s);
                     s_skip(s, sizeof(uint32_t));  // Reserved.
-                    const char *name = s_read_string(s);
+                    const_str name = s_read_string(s);
                     for (int k = 0; k < (int)slice_count; ++k) {
                         ase_slice_t slice = {0};
                         slice.name = name;
@@ -4847,6 +5251,9 @@ bool asset_load(AssetLoadData desc, String filepath, Asset *out) {
                 break;
             case AssetKind_Tilemap:
                 ok = asset.tilemap.load(filepath);
+                break;
+            case AssetKind_Pak:
+                ok = asset.pak.load(filepath.data, 0, false);
                 break;
             default:
                 break;

@@ -1886,6 +1886,111 @@ static int open_microui(lua_State *L) {
     return 1;
 }
 
+
+// mt_pak
+
+struct pak_assets_t {
+    const_str name;
+    size_t size;
+    String data;
+};
+
+static Asset check_pak_udata(lua_State* L, i32 arg) {
+    u64* udata = (u64*)luaL_checkudata(L, arg, "mt_pak");
+
+    Asset asset = {};
+    bool ok = asset_read(*udata, &asset);
+    if (!ok) {
+        luaL_error(L, "cannot read asset");
+    }
+
+    return asset;
+}
+
+static int mt_pak_gc(lua_State* L) {
+    Asset asset = check_pak_udata(L, 1);
+    neko_pak* pak = &asset.pak;
+
+    pak->fini();
+
+    NEKO_DEBUG_LOG("pak(%s) __gc %p", asset.name.cstr(), pak);
+
+    // if (font != g_app->default_font) {
+    //     font->trash();
+    //     mem_free(font);
+    // }
+    return 0;
+}
+
+static int mt_pak_items(lua_State* L) {
+    Asset asset = check_pak_udata(L, 1);
+    neko_pak* pak = &asset.pak;
+
+    u64 item_count = pak->get_item_count();
+
+    lua_newtable(L);  // # -2
+    for (int i = 0; i < item_count; ++i) {
+        lua_pushstring(L, pak->get_item_path(i));  // # -1
+        lua_rawseti(L, -2, i + 1);
+    }
+
+    return 1;
+}
+
+static int mt_pak_assets_load(lua_State* L) {
+    Asset asset = check_pak_udata(L, 1);
+    neko_pak* pak = &asset.pak;
+
+    const_str path = lua_tostring(L, 2);
+
+    pak_assets_t* assets_user_handle = (pak_assets_t*)lua_newuserdata(L, sizeof(pak_assets_t));
+    assets_user_handle->name = path;
+    assets_user_handle->size = 0;
+
+    bool ok = pak->get_data(path, &assets_user_handle->data, (u32*)&assets_user_handle->size);
+
+    if (!ok) {
+        const_str error_message = "mt_pak_assets_load failed";
+        lua_pushstring(L, error_message);  // 将错误信息压入堆栈
+        return lua_error(L);               // 抛出lua错误
+    }
+
+    asset_write(asset);
+
+    return 1;
+}
+
+static int mt_pak_assets_unload(lua_State* L) {
+    Asset asset = check_pak_udata(L, 1);
+    neko_pak* pak = &asset.pak;
+
+    pak_assets_t* assets_user_handle = (pak_assets_t*)lua_touserdata(L, 2);
+
+    if (assets_user_handle && assets_user_handle->data.len)
+        pak->free_item(assets_user_handle->data);
+    else
+        NEKO_WARN("unknown assets unload %p", assets_user_handle);
+
+    asset_write(asset);
+
+    return 0;
+}
+
+static int open_mt_pak(lua_State* L) {
+    // clang-format off
+    luaL_Reg reg[] = {
+            {"__gc", mt_pak_gc},
+            {"items", mt_pak_items},
+            {"assets_load", mt_pak_assets_load},
+            {"assets_unload", mt_pak_assets_unload},
+            {nullptr, nullptr},
+    };
+    // clang-format on
+
+    luax_new_class(L, "mt_pak", reg);
+    return 0;
+}
+
 // neko api
 
 static int neko_registry_load(lua_State *L) {
@@ -2548,6 +2653,12 @@ static int neko_program_path(lua_State *L) {
     return 1;
 }
 
+static int neko_program_dir(lua_State *L) {
+    String path = os_program_dir();
+    lua_pushlstring(L, path.data, path.len);
+    return 1;
+}
+
 static int neko_is_fused(lua_State *L) {
     lua_pushboolean(L, g_app->is_fused.load());
     return 1;
@@ -2763,6 +2874,24 @@ static int neko_tilemap_load(lua_State *L) {
     return 1;
 }
 
+
+static int neko_pak_load(lua_State* L) {
+    String name = luax_check_string(L, 1);
+    String path = luax_check_string(L, 2);
+
+    AssetLoadData desc = {};
+    desc.kind = AssetKind_Pak;
+
+    Asset asset = {};
+    bool ok = asset_load(desc, path, &asset);
+    if (!ok) {
+        return 0;
+    }
+
+    luax_new_userdata(L, asset.hash, "mt_pak");
+    return 1;
+}
+
 static int neko_b2_world(lua_State *L) {
     lua_Number gx = luax_opt_number_field(L, 1, "gx", 0);
     lua_Number gy = luax_opt_number_field(L, 1, "gy", 9.81);
@@ -2838,7 +2967,6 @@ void neko_tolua_boot(const_str f, const_str output) {
 #include "engine/luabind/ffi.hpp"
 #include "engine/luabind/filewatch.hpp"
 #include "engine/luabind/imgui.hpp"
-#include "engine/luabind/pack.hpp"
 #include "engine/luabind/prefab.hpp"
 #include "engine/luabind/struct.hpp"
 #endif
@@ -2906,6 +3034,7 @@ static int open_neko(lua_State *L) {
 
             // filesystem
             {"program_path", neko_program_path},
+            {"program_dir", neko_program_dir},
             {"is_fused", neko_is_fused},
             {"file_exists", neko_file_exists},
             {"file_read", neko_file_read},
@@ -2921,6 +3050,7 @@ static int open_neko(lua_State *L) {
             {"sprite_load", neko_sprite_load},
             {"atlas_load", neko_atlas_load},
             {"tilemap_load", neko_tilemap_load},
+            {"pak_load", neko_pak_load},
             {"b2_world", neko_b2_world},
             {nullptr, nullptr},
     };
@@ -2930,10 +3060,27 @@ static int open_neko(lua_State *L) {
 }
 
 void open_neko_api(lua_State *L) {
+    // clang-format off
     lua_CFunction mt_funcs[] = {
-            open_mt_sampler, open_mt_thread,  open_mt_channel,    open_mt_image,   open_mt_font,     open_mt_sound,         open_mt_sprite,    open_mt_atlas_image,
-            open_mt_atlas,   open_mt_tilemap, open_mt_b2_fixture, open_mt_b2_body, open_mt_b2_world, open_mt_lui_container, open_mt_lui_style, open_mt_lui_ref,
+        open_mt_sampler,
+        open_mt_thread,
+        open_mt_channel,
+        open_mt_image,
+        open_mt_font,
+        open_mt_sound,
+        open_mt_sprite,
+        open_mt_atlas_image,
+        open_mt_atlas,
+        open_mt_tilemap,
+        open_mt_pak,
+        open_mt_b2_fixture,
+        open_mt_b2_body,
+        open_mt_b2_world,
+        open_mt_lui_container,
+        open_mt_lui_style,
+        open_mt_lui_ref
     };
+    // clang-format on
 
     for (u32 i = 0; i < array_size(mt_funcs); i++) {
         mt_funcs[i](L);
@@ -2945,8 +3092,6 @@ void open_neko_api(lua_State *L) {
     lua_setfield(L, -2, "microui");
 
     lua_pop(L, 1);
-
-    neko::lua_bind::bind("__neko_file_path", +[](const_str path) -> std::string { return std::string(os_program_dir().data).append(path); });
 
     neko::lua::preload_module(L);   // 新的模块系统
     neko::lua::package_preload(L);  // 新的模块系统

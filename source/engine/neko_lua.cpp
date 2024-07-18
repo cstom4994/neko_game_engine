@@ -2465,10 +2465,14 @@ i32 luax_require_script(lua_State *L, String filepath) {
 
     String contents;
     bool ok = vfs_read_entire_file(NEKO_PACKS::GAMEDATA, &contents, filepath);
+
+    // 如果是读取绝对路径
+    if (!ok) ok = read_entire_file_raw(&contents, filepath);
+
     if (!ok) {
         StringBuilder sb = {};
         neko_defer(sb.trash());
-        fatal_error(String(sb << "failed to read file: " << filepath));
+        fatal_error(String(sb << "failed to read script: " << filepath));
         return LUA_REFNIL;
     }
     neko_defer(mem_free(contents.data));

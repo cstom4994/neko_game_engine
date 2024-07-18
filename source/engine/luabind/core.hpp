@@ -337,9 +337,6 @@ inline void neko_register_platform(lua_State* L) {
     neko::lua_bind::bind("neko_set_window_size", +[](u32 handle, u32 width, u32 height) { neko_os_set_window_size(handle, width, height); });
     neko::lua_bind::bind("neko_set_mouse_position", +[](u32 handle, f64 x, f64 y) { neko_os_mouse_set_position(handle, x, y); });
 
-    //.def(+[](const_str path) -> std::string { return neko_engine_subsystem(platform)->get_path(path); }, "neko_file_path")
-    //.def(+[](const_str title, u32 width, u32 height) -> neko_resource_handle { return neko_engine_subsystem(platform)->create_window(title, width, height); }, "neko_create_window")
-
     lua_register(L, "neko_mouse_delta", __neko_bind_platform_mouse_delta);
     lua_register(L, "neko_mouse_position", __neko_bind_platform_mouse_position);
     lua_register(L, "neko_mouse_wheel", __neko_bind_platform_mouse_wheel);
@@ -2352,24 +2349,68 @@ LUA_FUNCTION(__neko_bind_print) {
     return 0;
 }
 
-#if 0
+LUA_FUNCTION(__neko_bind_pack_build) {
+
+    const_str path = lua_tostring(L, 1);
+
+    luaL_checktype(L, 2, LUA_TTABLE);  // 检查是否为table
+    lua_len(L, 2);                     // 获取table的长度
+    int n = lua_tointeger(L, -1);      //
+    lua_pop(L, 1);                     // 弹出长度值
+
+    const_str* item_paths = (const_str*)mem_alloc(n * sizeof(const_str));
+
+    for (int i = 1; i <= n; i++) {
+        lua_rawgeti(L, 2, i);                 // 将index=i的元素压入堆栈顶部
+        const_str str = lua_tostring(L, -1);  // # -1
+        if (str != NULL) {
+            item_paths[i - 1] = str;
+        }
+        lua_pop(L, 1);  // # -1
+    }
+
+    bool ok = neko_pak_build(path, n, item_paths, true);
+
+    mem_free(item_paths);
+
+    if (!ok) {
+        const_str error_message = "__neko_bind_pack_build failed";
+        lua_pushstring(L, error_message);  // 将错误信息压入堆栈
+        return lua_error(L);               // 抛出lua错误
+    }
+
+    return 0;
+}
+
+LUA_FUNCTION(__neko_bind_pack_info) {
+    const_str path = lua_tostring(L, 1);
+    i32 buildnum;
+    u64 item_count;
+    bool ok = neko_pak_info(path, &buildnum, &item_count);
+    if (ok) {
+        lua_pushinteger(L, buildnum);
+        lua_pushinteger(L, item_count);
+        return 2;
+    } else
+        return 0;
+}
 
 LUA_FUNCTION(__neko_bind_vfs_read_file) {
     const_str path = lua_tostring(L, 1);
 
-    neko::string str;
+    String str;
 
     const_str vpks[] = {NEKO_PACKS::GAMEDATA, NEKO_PACKS::LUACODE};
     bool ok = false;
     for (auto vpk : vpks) {
-        ok = neko::vfs_read_entire_file(vpk, &str, path);
+        ok = vfs_read_entire_file(vpk, &str, path);
         if (ok) break;
     }
 
     if (ok) {
         const_str data = str.data;
         lua_pushstring(L, data);
-        neko_defer(neko_safe_free(str.data));
+        neko_defer(mem_free(str.data));
         return 1;
     } else {
         const_str error_message = "todo";
@@ -2377,8 +2418,6 @@ LUA_FUNCTION(__neko_bind_vfs_read_file) {
         return lua_error(L);
     }
 }
-
-#endif
 
 void __neko_lua_bug(const_str message) { NEKO_INFO("[lua] %s", message); }
 void __neko_lua_info(const_str message) { NEKO_INFO("[lua] %s", message); }
@@ -2698,7 +2737,7 @@ static int __neko_w_lua_get_com(lua_State* L) {
 static int __neko_w_lua_gc(lua_State* L) {
     App* w = (App*)luaL_checkudata(L, W_LUA_REGISTRY_CONST::W_CORE_IDX, W_LUA_REGISTRY_CONST::ENG_UDATA_NAME);
     // ecs_fini_i(w);
-    NEKO_INFO("App __gc %p", w);
+    NEKO_DEBUG_LOG("App __gc %p", w);
     return 0;
 }
 
@@ -2852,7 +2891,7 @@ static int open_embed_core(lua_State* L) {
             // {"make_thread", __neko_bind_make_thread},
             // {"make_channel", __neko_bind_make_channel},
 
-            // {"vfs_read_file", __neko_bind_vfs_read_file},
+            {"vfs_read_file", __neko_bind_vfs_read_file},
 
             {"print", __neko_bind_print},
 
@@ -2873,6 +2912,10 @@ static int open_embed_core(lua_State* L) {
             {"ref_unref", ref_unref},
             {"ref_get", ref_get},
             {"ref_set", ref_set},
+
+            // pak
+            {"pak_build", __neko_bind_pack_build},
+            {"pak_info", __neko_bind_pack_info},
 
             {NULL, NULL}};
 

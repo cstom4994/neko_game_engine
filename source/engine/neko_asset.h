@@ -5,6 +5,7 @@
 #include <optional>
 
 #include "neko_base.h"
+#include "neko_math.h"
 
 struct Image {
     u32 id;
@@ -180,8 +181,10 @@ struct MountResult {
     bool is_fused;
 };
 
+bool read_entire_file_raw(String *out, String filepath);
+
 MountResult vfs_mount(const_str fsname, const char *filepath);
-void vfs_fini(std::optional<String> name);
+void vfs_fini();
 
 bool vfs_file_exists(String fsname, String filepath);
 bool vfs_read_entire_file(String fsname, String *out, String filepath);
@@ -346,17 +349,19 @@ typedef struct neko_pak {
 
     u64 get_item_index(const_str path);
 
-    bool get_data(u64 index, const u8 **data, u32 *size);
-    bool get_data(const_str path, const u8 **data, u32 *size);
-    void free_item(void *data);
+    bool get_data(u64 index, String *out, u32 *size);
+    bool get_data(const_str path, String *out, u32 *size);
+    void free_item(String data);
 
     void free_buffer();
 
 } neko_pak;
 
+using neko_pak_ptr = neko_pak *;
+
 bool neko_pak_unzip(const_str file_path, bool print_progress);
 bool neko_pak_build(const_str pack_path, u64 file_count, const_str *file_paths, bool print_progress);
-bool neko_pak_info(const_str file_path, u8 *pack_version, bool *isLittleEndian, u64 *item_count);
+bool neko_pak_info(const_str file_path, i32 *buildnum, u64 *item_count);
 
 typedef enum neko_xml_attribute_type_t {
     NEKO_XML_ATTRIBUTE_NUMBER,
@@ -412,6 +417,109 @@ const_str neko_xml_get_error();
 neko_xml_node_iter_t neko_xml_new_node_iter(neko_xml_document_t *doc, const_str name);
 neko_xml_node_iter_t neko_xml_new_node_child_iter(neko_xml_node_t *node, const_str name);
 bool neko_xml_node_iter_next(neko_xml_node_iter_t *iter);
+
+/*==========================
+// Tiled draw
+==========================*/
+
+typedef struct tile_t {
+    u32 id;
+    u32 tileset_id;
+} tile_t;
+
+typedef struct tileset_t {
+    Image texture;
+
+    u32 tile_count;
+    u32 tile_width;
+    u32 tile_height;
+    u32 first_gid;
+
+    u32 width, height;
+} tileset_t;
+
+typedef struct layer_t {
+    tile_t *tiles;
+    u32 width;
+    u32 height;
+
+    Color tint;
+} layer_t;
+
+typedef struct object_t {
+    u32 id;
+    i32 x, y, width, height;
+    // C2_TYPE phy_type;
+    // c2AABB aabb;
+    // union {
+    //     c2AABB box;
+    //     c2Poly poly;
+    // } phy;
+} object_t;
+
+typedef struct object_group_t {
+    neko_dyn_array(object_t) objects;
+
+    Color color;
+
+    const_str name;
+} object_group_t;
+
+typedef struct map_t {
+    neko_xml_document_t *doc;  // xml doc
+    neko_dyn_array(tileset_t) tilesets;
+    neko_dyn_array(object_group_t) object_groups;
+    neko_dyn_array(layer_t) layers;
+} map_t;
+
+void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path);
+void neko_tiled_unload(map_t *map);
+
+typedef struct neko_tiled_quad_t {
+    u32 tileset_id;
+    Image texture;
+    neko_vec2 texture_size;
+    neko_vec2 position;
+    neko_vec2 dimentions;
+    neko_vec4 rectangle;
+    Color color;
+    bool use_texture;
+} neko_tiled_quad_t;
+
+#define BATCH_SIZE 2048
+
+#define IND_PER_QUAD 6
+
+#define VERTS_PER_QUAD 4   // 一次发送多少个verts数据
+#define FLOATS_PER_VERT 9  // 每个verts数据的大小
+
+typedef struct neko_tiled_quad_list_t {
+    neko_dyn_array(neko_tiled_quad_t) quad_list;  // quad 绘制队列
+} neko_tiled_quad_list_t;
+
+typedef struct neko_tiled_renderer {
+    // neko_handle(neko_render_vertex_buffer_t) vb;
+    // neko_handle(neko_render_index_buffer_t) ib;
+    // neko_handle(neko_render_pipeline_t) pip;
+    // neko_handle(neko_render_shader_t) shader;
+    // neko_handle(neko_render_uniform_t) u_camera;
+    // neko_handle(neko_render_uniform_t) u_batch_tex;
+    // neko_handle(neko_render_texture_t) batch_texture;         // 当前绘制所用贴图
+    neko_hash_table(u32, neko_tiled_quad_list_t) quad_table;  // 分层绘制哈希表
+
+    u32 quad_count;
+
+    map_t map;  // tiled data
+
+    Matrix4 camera_mat;
+} neko_tiled_renderer;
+
+void neko_tiled_render_init(neko_command_buffer_t *cb, neko_tiled_renderer *renderer, const_str vert_src, const_str frag_src);
+void neko_tiled_render_deinit(neko_tiled_renderer *renderer);
+void neko_tiled_render_begin(neko_command_buffer_t *cb, neko_tiled_renderer *renderer);
+void neko_tiled_render_flush(neko_command_buffer_t *cb, neko_tiled_renderer *renderer);
+void neko_tiled_render_push(neko_command_buffer_t *cb, neko_tiled_renderer *renderer, neko_tiled_quad_t quad);
+void neko_tiled_render_draw(neko_command_buffer_t *cb, neko_tiled_renderer *renderer);
 
 typedef struct ase_t ase_t;
 
@@ -601,6 +709,7 @@ enum AssetKind : i32 {
     AssetKind_Image,
     AssetKind_Sprite,
     AssetKind_Tilemap,
+    AssetKind_Pak,
 };
 
 struct AssetLoadData {
@@ -618,6 +727,7 @@ struct Asset {
         Image image;
         SpriteData sprite;
         map_ldtk tilemap;
+        neko_pak pak;
     };
 };
 

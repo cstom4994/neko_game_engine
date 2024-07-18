@@ -1,4 +1,4 @@
-local prefab = require "neko.prefab"
+local prefab = require "__neko.prefab"
 
 local M = {}
 
@@ -26,14 +26,14 @@ local function compare_table(a, b)
     end
 end
 
-local function load_node(src)
-    local this_map_node = M.prefabs.parse(src)
-    return this_map_node
+local function load_prefabs(src)
+    local pf = M.prefabs.parse(src)
+    return pf
     -- print(this_map_node[1]["engine_version"])
 end
 
 local function check(node)
-    if node[1]["this_is_neko_node_file"] ~= nil then
+    if node[1]["this_is_neko_prefab_file"] ~= nil then
         return true
     end
     return false
@@ -44,11 +44,11 @@ local function node_type(node)
         local file_tb = node[1]["file"]
         return file_tb["type"]
     end
-    assert(false, "not a neko node")
+    assert(false, "not a neko prefab")
     return nil
 end
 
-M.load = load_node
+M.load = load_prefabs
 M.token = M.prefabs.token
 M.quote = M.prefabs.quote
 M.check = check

@@ -1793,6 +1793,9 @@ static void *__neko_imgui_malloc(size_t sz, void *user_data) { return malloc(sz)
 
 static void __neko_imgui_free(void *ptr, void *user_data) { return free(ptr); }
 
+// just for test
+// static map_t map;
+
 static void init() {
     PROFILE_FUNC();
     LockGuard lock(&g_init_mtx);
@@ -1811,13 +1814,13 @@ static void init() {
 
         sgl_desc_t sgl = {};
         sgl.logger.func = slog_func;
+        sgl.max_vertices = 128 * 1024;
         sgl_setup(sgl);
 
-        // Initialize Sokol GP, adjust the size of command buffers for your own use.
         sgp_desc sgpdesc = {0};
         sgp_setup(&sgpdesc);
         if (!sgp_is_valid()) {
-            fprintf(stderr, "Failed to create Sokol GP context: %s\n", sgp_get_error_message(sgp_get_last_error()));
+            fprintf(stderr, "failed to create sokol_gp context: %s\n", sgp_get_error_message(sgp_get_last_error()));
             exit(-1);
         }
 
@@ -1843,7 +1846,7 @@ static void init() {
             // config.PixelSnapH = 1;
 
             String ttf_file;
-            vfs_read_entire_file(NEKO_PACKS::GAMEDATA, &ttf_file, "gamedir/assets/fonts/fusion-pixel-12px-monospaced-zh_hans.ttf");
+            vfs_read_entire_file(NEKO_PACKS::GAMEDATA, &ttf_file, "assets/fonts/fusion-pixel-12px-monospaced-zh_hans.ttf");
             neko_defer(mem_free(ttf_file.data));
             void *ttf_data = ::malloc(ttf_file.len);  // TODO:: imgui 内存方法接管
             memcpy(ttf_data, ttf_file.data, ttf_file.len);
@@ -1885,6 +1888,9 @@ static void init() {
 
     g_app->time.startup = stm_now();
     g_app->time.last = stm_now();
+
+    // just for test
+    // neko_tiled_load(&map, "assets/maps/map.tmx", NULL);
 
     {
         PROFILE_BLOCK("neko.start");
@@ -1990,7 +1996,7 @@ static void render() {
 
         float x = 10;
         float y = 25;
-        u64 font_size = 16;
+        u64 font_size = 28;
 
         if (LockGuard lock{&g_app->error_mtx}) {
             y = draw_font(g_app->default_font, font_size, x, y, "-- ! Neko Error ! --");
@@ -2012,7 +2018,7 @@ static void render() {
 
         lua_State *L = g_app->L;
 
-        luax_neko_get(L, "_timer_update");
+        luax_neko_get(L, "__timer_update");
         lua_pushnumber(L, g_app->time.delta);
         luax_pcall(L, 1, 0);
 
@@ -2027,9 +2033,7 @@ static void render() {
         assert(lua_gettop(L) == 1);
 
         microui_end_and_present();
-    }
 
-    {
         if (ImGui::BeginMainMenuBar()) {
             sgimgui_draw_menu(&sgimgui, "gfx");
             ImGui::EndMainMenuBar();
@@ -2094,7 +2098,7 @@ static void frame() {
         time->delta = stm_sec(lap);
         time->accumulator += lap;
 
-#ifndef __EMSCRIPTEN__
+#if !defined(NEKO_IS_WEB)
         if (time->target_ticks > 0) {
             u64 TICK_MS = 1000000;
             u64 TICK_US = 1000;
@@ -2171,6 +2175,9 @@ static void actually_cleanup() {
 
     g_app->gpu_mtx.unlock();
 
+    // just for test
+    // neko_tiled_unload(&map);
+
     lua_State *L = g_app->L;
 
     {
@@ -2187,6 +2194,9 @@ static void actually_cleanup() {
 
     {
         PROFILE_BLOCK("lua close");
+
+        lua_pop(L, 1);  // luax_msgh
+
         neko::neko_lua_fini(L);
         // lua_close(L);
         // luaalloc_delete(g_app->LA);
@@ -2221,7 +2231,6 @@ static void actually_cleanup() {
         sgimgui_discard(&sgimgui);
         simgui_shutdown();
 
-        // Cleanup Sokol GP and Sokol GFX resources.
         sgp_shutdown();
 
         sgl_destroy_pipeline(g_pipeline);
@@ -2229,7 +2238,7 @@ static void actually_cleanup() {
         sg_shutdown();
     }
 
-    vfs_fini({});
+    vfs_fini();
 
     mem_free(g_app->fatal_error.data);
     mem_free(g_app->traceback.data);
@@ -2274,18 +2283,19 @@ static void neko_setup_w() {
 
     open_neko_api(L);
 
+#if 0
+    ENGINE_ECS() = ecs_init();
+    ECS_IMPORT(ENGINE_ECS(), FlecsLua);
+    ecs_lua_set_state(ENGINE_ECS(), ENGINE_LUA());
+#endif
+
     open_luasocket(L);
 
-    ENGINE_ECS() = ecs_init();
-
-    ECS_IMPORT(ENGINE_ECS(), FlecsLua);
-
-    ecs_lua_set_state(ENGINE_ECS(), ENGINE_LUA());
+    PRELOAD("enet", luaopen_enet);  // test
 
     neko::lua::luax_run_bootstrap(L);
 
-    // add error message handler. always at the bottom of stack.
-    lua_pushcfunction(L, luax_msgh);
+    lua_pushcfunction(L, luax_msgh);  // 添加错误消息处理程序 始终位于堆栈底部
 
     luax_neko_get(L, "__define_default_callbacks");
     luax_pcall(L, 0, 0);
@@ -2306,16 +2316,17 @@ static void load_all_lua_scripts(lua_State *L) {
     if (!ok) {
         panic("failed to list all files");
     }
-    qsort(files.data, files.len, sizeof(String), [](const void *a, const void *b) -> int {
+    std::qsort(files.data, files.len, sizeof(String), [](const void *a, const void *b) -> int {
         String *lhs = (String *)a;
         String *rhs = (String *)b;
-        return strcmp(lhs->data, rhs->data);
+        return std::strcmp(lhs->data, rhs->data);
     });
 
     for (String file : files) {
-        if (file != "main.lua" && file.ends_with(".lua") && (file.starts_with(".\\gamedir") || file.starts_with("gamedir"))) {
+        if (file != "main.lua" && file.ends_with(".lua")) {
             NEKO_DEBUG_LOG("load_all_lua_scripts(\"%s\")", file.data);
             asset_load_kind(AssetKind_LuaRef, file, nullptr);
+        } else {
         }
     }
 }
@@ -2363,13 +2374,20 @@ sapp_desc sokol_main(int argc, char **argv) {
         g_app->args[i] = to_cstr(argv[i]);
     }
 
+#if defined(NDEBUG)
+    NEKO_INFO("neko %d", neko_buildnum());
+#else
+    NEKO_INFO("neko %d (debug build)", neko_buildnum());
+#endif
+
     neko_setup_w();
     lua_State *L = g_app->L;
 
 #if defined(_DEBUG)
-    MountResult mount = vfs_mount(NEKO_PACKS::GAMEDATA, nullptr);
+    MountResult mount = vfs_mount(NEKO_PACKS::GAMEDATA, "./gamedir");
     // MountResult mount_lua = vfs_mount(NEKO_PACKS::LUACODE, "./");
 #else
+    // MountResult mount = vfs_mount(NEKO_PACKS::GAMEDATA, nullptr);
     MountResult mount = vfs_mount(NEKO_PACKS::GAMEDATA, "./gamedata.zip");
     // MountResult mount_lua = vfs_mount(NEKO_PACKS::LUACODE, "./luacode.zip");
 #endif
@@ -2377,7 +2395,7 @@ sapp_desc sokol_main(int argc, char **argv) {
     g_app->is_fused.store(mount.is_fused);
 
     if (!g_app->error_mode.load() && mount.ok) {
-        asset_load_kind(AssetKind_LuaRef, "gamedir/main.lua", nullptr);
+        asset_load_kind(AssetKind_LuaRef, "main.lua", nullptr);
     }
 
     if (!g_app->error_mode.load()) {
@@ -2410,7 +2428,7 @@ sapp_desc sokol_main(int argc, char **argv) {
     bool fullscreen = luax_boolean_field(L, -1, "fullscreen", false);
     lua_Number reload_interval = luax_opt_number_field(L, -1, "reload_interval", 0.1);
     lua_Number swap_interval = luax_opt_number_field(L, -1, "swap_interval", 1);
-    lua_Number target_fps = luax_opt_number_field(L, -1, "target_fps", 0);
+    lua_Number target_fps = luax_opt_number_field(L, -1, "target_fps", 120);
     lua_Number width = luax_opt_number_field(L, -1, "window_width", 800);
     lua_Number height = luax_opt_number_field(L, -1, "window_height", 600);
     String title = luax_opt_string_field(L, -1, "window_title", "NekoEngine");
@@ -2451,8 +2469,5 @@ sapp_desc sokol_main(int argc, char **argv) {
     };
     sapp.win32_console_utf8 = true;
 
-#ifndef NDEBUG
-    NEKO_INFO("debug build");
-#endif
     return sapp;
 }

@@ -243,7 +243,7 @@ static int __luainspector_gc(lua_State* L) {
         m->variable_pool_free();
         m->setL(0x0);
     }
-    NEKO_TRACE("luainspector __gc %p", m);
+    NEKO_DEBUG_LOG("luainspector __gc %p", m);
     return 0;
 }
 

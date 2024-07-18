@@ -38,6 +38,7 @@ using f32 = float;
 using f64 = double;
 using const_str = const char *;
 
+#define u8_max UINT8_MAX
 #define u16_max UINT16_MAX
 #define u32_max UINT32_MAX
 #define u64_max UINT64_MAX
@@ -239,6 +240,8 @@ struct String {
     bool ends_with(String match);
     u64 first_of(char c);
     u64 last_of(char c);
+
+    inline const_str cstr() const { return data; }
 
     char *begin() { return data; }
     char *end() { return &data[len]; }

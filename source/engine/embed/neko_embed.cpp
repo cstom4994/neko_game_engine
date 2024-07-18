@@ -66,6 +66,9 @@ void luax_run_bootstrap(lua_State* L) {
         panic("failed to load bootstrap");
     }
     if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
+        const char* errorMsg = lua_tostring(L, -1);
+        fprintf(stderr, "bootstrap error: %s\n", errorMsg);
+        lua_pop(L, 1);
         panic("failed to run bootstrap");
     }
     NEKO_INFO("loaded bootstrap");

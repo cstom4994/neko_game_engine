@@ -29,6 +29,7 @@ docs/
 assets/
 dependencies/
 
+neko_cache/
 Resources/
 old/
 source/generated

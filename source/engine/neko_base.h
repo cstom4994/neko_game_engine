@@ -3,6 +3,15 @@
 #include "neko_os.h"
 #include "neko_prelude.h"
 
+struct Color {
+    union {
+        u8 rgba[4];
+        struct {
+            u8 r, g, b, a;
+        };
+    };
+};
+
 struct SplitLinesIterator {
     String data;
     String view;

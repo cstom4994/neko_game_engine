@@ -6,7 +6,6 @@
 #include <atomic>
 
 #include "deps/luaalloc.h"
-#include "engine/modules/ecslua.h"
 #include "modules/sound.h"
 #include "neko_asset.h"
 #include "neko_base.h"
@@ -33,7 +32,7 @@ struct App {
 
     // LuaAlloc *LA;
     lua_State *L;
-    ecs_world_t *ECS;
+    // ecs_world_t *ECS;
 
     AppTime time;
 
@@ -84,7 +83,7 @@ inline void fatal_error(String str) {
     }
 }
 
-inline ecs_world_t *&ENGINE_ECS() { return g_app->ECS; }
+// inline ecs_world_t *&ENGINE_ECS() { return g_app->ECS; }
 inline lua_State *&ENGINE_LUA() { return g_app->L; }
 
 i32 neko_buildnum(void);

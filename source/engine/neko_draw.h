@@ -35,10 +35,6 @@ struct RectDescription {
     float oy;
 };
 
-struct Color {
-    u8 r, g, b, a;
-};
-
 void renderer_reset();
 void renderer_use_sampler(u32 sampler);
 void renderer_get_clear_color(float *rgba);

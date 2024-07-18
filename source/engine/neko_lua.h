@@ -668,4 +668,7 @@ struct neko_luaref {
     void set(lua_State *L, int ref);
 };
 
+// extern impl
+extern int luaopen_enet(lua_State *l);
+
 #endif

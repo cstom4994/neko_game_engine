@@ -174,6 +174,9 @@ struct is_pair : public std::false_type {};
 template <class T1, class T2>
 struct is_pair<std::pair<T1, T2>> : public std::true_type {};
 
+template <class>
+inline constexpr bool always_false = false;
+
 }  // namespace neko
 
 #if __has_include(<version>)

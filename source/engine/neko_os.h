@@ -214,4 +214,4 @@ typedef struct neko_dynlib {
 neko_dynlib neko_dylib_open(const_str name);
 void neko_dylib_close(neko_dynlib lib);
 void *neko_dylib_get_symbol(neko_dynlib lib, const_str symbol_name);
-bool nneko_dylib_has_symbol(neko_dynlib lib, const_str symbol_name);
+bool neko_dylib_has_symbol(neko_dynlib lib, const_str symbol_name);

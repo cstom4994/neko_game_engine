@@ -280,6 +280,7 @@ void* DebugAllocator::alloc(size_t bytes, const char* file, i32 line) {
     LockGuard lock{&mtx};
 
     DebugAllocInfo* info = (DebugAllocInfo*)malloc(offsetof(DebugAllocInfo, buf[bytes]));
+    NEKO_ASSERT(info, "FAILED_TO_ALLOCATE");
     info->file = file;
     info->line = line;
     info->size = bytes;
@@ -295,7 +296,7 @@ void* DebugAllocator::alloc(size_t bytes, const char* file, i32 line) {
 void* DebugAllocator::realloc(void* ptr, size_t new_size, const char* file, i32 line) {
     if (ptr == nullptr) {
         // If the pointer is null, just allocate new memory
-        return alloc(new_size, file, line);
+        return this->alloc(new_size, file, line);
     }
 
     if (new_size == 0) {
@@ -310,6 +311,7 @@ void* DebugAllocator::realloc(void* ptr, size_t new_size, const char* file, i32 
 
     // Allocate new memory block with the new size
     DebugAllocInfo* new_info = (DebugAllocInfo*)malloc(NEKO_OFFSET(DebugAllocInfo, buf[new_size]));
+    NEKO_ASSERT(new_info, "FAILED_TO_ALLOCATE");
     if (new_info == nullptr) {
         return nullptr;  // Allocation failed
     }
@@ -668,10 +670,6 @@ void neko_log(int level, const char* file, int line, const char* fmt, ...) {
     // }
 }
 
-//=============================
-// dylib loader
-//=============================
-
 #if (defined(_WIN32) || defined(_WIN64))
 #define NEKO_DLL_LOADER_WIN_MAC_OTHER(win_def, mac_def, other_def) win_def
 #define NEKO_DLL_LOADER_WIN_OTHER(win_def, other_def) win_def
@@ -700,7 +698,7 @@ void* neko_dylib_get_symbol(neko_dynlib lib, const_str symbol_name) {
     return symbol;
 }
 
-bool nneko_dylib_has_symbol(neko_dynlib lib, const_str symbol_name) {
+bool neko_dylib_has_symbol(neko_dynlib lib, const_str symbol_name) {
     if (!lib.hndl || !symbol_name) return false;
     return neko_os_library_proc_address(lib.hndl, symbol_name) != NULL;
 }

@@ -7,20 +7,16 @@ luadb = require("__neko.luadb")
 ImGui = require("__neko.imgui")
 Core = require("__neko.core")
 debugging = require("__neko.debugging")
-pack = require("__neko.pack")
+Prefabs = require("prefabs")
 
 common = require "common"
 
-FLECS = require "flecs"
+-- FLECS = require "flecs"
 
-print_ = print
+-- ffi = unsafe_require("ffi")
+
+__print = print
 print = Core.print
-
--- lldebugger
-if os.getenv "LOCAL_LUA_DEBUGGER_VSCODE" == "1" then
-    unsafe_require("lldebugger").start()
-    print("LOCAL_LUA_DEBUGGER_VSCODE=1")
-end
 
 -- require
 function require(name)
@@ -39,13 +35,25 @@ function require(name)
         path = path .. ".lua"
     end
 
-    local ret = neko.__registry_lua_script(path)
-    if ret ~= nil then
-        return table.unpack(ret)
+    local ret_tb = neko.__registry_lua_script(path)
+    if ret_tb ~= nil then
+        return table.unpack(ret_tb)
     end
 end
 
+default_require = require
+
 -- default callbacks
+
+function neko.__start(arg)
+    if arg[#arg] == "-mobdebug" then
+        unsafe_require"mobdebug".start()
+    end
+    if os.getenv "LOCAL_LUA_DEBUGGER_VSCODE" == "1" then
+        unsafe_require"lldebugger".start()
+        print("LOCAL_LUA_DEBUGGER_VSCODE=1")
+    end
+end
 
 function neko.__define_default_callbacks()
     function neko.arg(arg)
@@ -128,8 +136,8 @@ dump_func = function(tbl, indent)
     end
 end
 
-neko_file_path = common.memoize(function(path)
-    return __neko_file_path(path)
+neko.file_path = common.memoize(function(path)
+    return neko.program_dir() .. path
 end)
 
 function starts_with(str, start)
@@ -167,17 +175,19 @@ function easeOutCubic(x)
 end
 
 function read_file(filename)
-    local file = io.open(filename, "r") -- 打开文件只读模式
+    local file = io.open(filename, "r")
+    local content
     if not file then
-        file = Core.vfs_read_file(filename)
-        if not file then
-            return file
+        content = Core.vfs_read_file(filename)
+        if content ~= nil then
+            return content
         end
         return nil
-    end -- 文件不存在或者无法打开时返回nil
-    local content = file:read("*all") -- 读取文件内容
-    file:close() -- 关闭文件
-    return content -- 返回文件内容
+    else
+        content = file:read("*all")
+        file:close()
+        return content
+    end
 end
 
 function table_merge(t1, t2)
@@ -724,7 +734,7 @@ timer.next_id = 0
 timer.intervals = {}
 timer.timeouts = {}
 
-function neko._timer_update(dt)
+function neko.__timer_update(dt)
     for id, t in pairs(timer.intervals) do
         t.elapsed = t.elapsed + dt
         if t.elapsed >= t.seconds then

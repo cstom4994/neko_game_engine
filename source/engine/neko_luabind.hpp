@@ -35,14 +35,11 @@ inline void register_module(const char* name, lua_CFunction func) { usermodules(
 
 inline int preload_module(lua_State* L) {
     luaL_getsubtable(L, LUA_REGISTRYINDEX, "_PRELOAD");
-    StringBuilder li;
     for (const auto& m : usermodules()) {
         lua_pushcfunction(L, m.func);
         lua_setfield(L, -2, m.name);
-        li << String(m.name) << "|";
+        NEKO_INFO("[luabind] loaded [%s]", m.name);
     }
-    NEKO_INFO("[luabind] loaded [%s]", li.data);
-    if (li.data && li.len) mem_free(li.data);
     lua_pop(L, 1);
     return 0;
 }
