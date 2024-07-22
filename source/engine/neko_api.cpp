@@ -12,6 +12,7 @@
 #include "neko_asset.h"
 #include "neko_base.h"
 #include "neko_draw.h"
+#include "neko_ecs.h"
 #include "neko_lua.h"
 #include "neko_lua_wrap.h"
 #include "neko_os.h"
@@ -1886,7 +1887,6 @@ static int open_microui(lua_State *L) {
     return 1;
 }
 
-
 // mt_pak
 
 struct pak_assets_t {
@@ -1895,8 +1895,8 @@ struct pak_assets_t {
     String data;
 };
 
-static Asset check_pak_udata(lua_State* L, i32 arg) {
-    u64* udata = (u64*)luaL_checkudata(L, arg, "mt_pak");
+static Asset check_pak_udata(lua_State *L, i32 arg) {
+    u64 *udata = (u64 *)luaL_checkudata(L, arg, "mt_pak");
 
     Asset asset = {};
     bool ok = asset_read(*udata, &asset);
@@ -1907,9 +1907,9 @@ static Asset check_pak_udata(lua_State* L, i32 arg) {
     return asset;
 }
 
-static int mt_pak_gc(lua_State* L) {
+static int mt_pak_gc(lua_State *L) {
     Asset asset = check_pak_udata(L, 1);
-    neko_pak* pak = &asset.pak;
+    neko_pak *pak = &asset.pak;
 
     pak->fini();
 
@@ -1922,9 +1922,9 @@ static int mt_pak_gc(lua_State* L) {
     return 0;
 }
 
-static int mt_pak_items(lua_State* L) {
+static int mt_pak_items(lua_State *L) {
     Asset asset = check_pak_udata(L, 1);
-    neko_pak* pak = &asset.pak;
+    neko_pak *pak = &asset.pak;
 
     u64 item_count = pak->get_item_count();
 
@@ -1937,17 +1937,17 @@ static int mt_pak_items(lua_State* L) {
     return 1;
 }
 
-static int mt_pak_assets_load(lua_State* L) {
+static int mt_pak_assets_load(lua_State *L) {
     Asset asset = check_pak_udata(L, 1);
-    neko_pak* pak = &asset.pak;
+    neko_pak *pak = &asset.pak;
 
     const_str path = lua_tostring(L, 2);
 
-    pak_assets_t* assets_user_handle = (pak_assets_t*)lua_newuserdata(L, sizeof(pak_assets_t));
+    pak_assets_t *assets_user_handle = (pak_assets_t *)lua_newuserdata(L, sizeof(pak_assets_t));
     assets_user_handle->name = path;
     assets_user_handle->size = 0;
 
-    bool ok = pak->get_data(path, &assets_user_handle->data, (u32*)&assets_user_handle->size);
+    bool ok = pak->get_data(path, &assets_user_handle->data, (u32 *)&assets_user_handle->size);
 
     if (!ok) {
         const_str error_message = "mt_pak_assets_load failed";
@@ -1960,11 +1960,11 @@ static int mt_pak_assets_load(lua_State* L) {
     return 1;
 }
 
-static int mt_pak_assets_unload(lua_State* L) {
+static int mt_pak_assets_unload(lua_State *L) {
     Asset asset = check_pak_udata(L, 1);
-    neko_pak* pak = &asset.pak;
+    neko_pak *pak = &asset.pak;
 
-    pak_assets_t* assets_user_handle = (pak_assets_t*)lua_touserdata(L, 2);
+    pak_assets_t *assets_user_handle = (pak_assets_t *)lua_touserdata(L, 2);
 
     if (assets_user_handle && assets_user_handle->data.len)
         pak->free_item(assets_user_handle->data);
@@ -1976,7 +1976,7 @@ static int mt_pak_assets_unload(lua_State* L) {
     return 0;
 }
 
-static int open_mt_pak(lua_State* L) {
+static int open_mt_pak(lua_State *L) {
     // clang-format off
     luaL_Reg reg[] = {
             {"__gc", mt_pak_gc},
@@ -2032,7 +2032,7 @@ static int neko_require_lua_script(lua_State *L) {
 }
 
 static int neko_version(lua_State *L) {
-    lua_pushstring(L, NEKO_VERSION);
+    lua_pushinteger(L, neko_buildnum());
     return 1;
 }
 
@@ -2874,8 +2874,7 @@ static int neko_tilemap_load(lua_State *L) {
     return 1;
 }
 
-
-static int neko_pak_load(lua_State* L) {
+static int neko_pak_load(lua_State *L) {
     String name = luax_check_string(L, 1);
     String path = luax_check_string(L, 2);
 
@@ -2965,11 +2964,144 @@ void neko_tolua_boot(const_str f, const_str output) {
 #include "engine/luabind/core.hpp"
 #include "engine/luabind/debug.hpp"
 #include "engine/luabind/ffi.hpp"
-#include "engine/luabind/filewatch.hpp"
 #include "engine/luabind/imgui.hpp"
 #include "engine/luabind/prefab.hpp"
 #include "engine/luabind/struct.hpp"
 #endif
+
+namespace neko::lua::__filewatch {
+static filewatch::watch &to(lua_State *L, int idx) { return lua::checkudata<filewatch::watch>(L, idx); }
+
+static lua_State *get_thread(lua_State *L) {
+    lua_getiuservalue(L, 1, 1);
+    lua_State *thread = lua_tothread(L, -1);
+    lua_pop(L, 1);
+    return thread;
+}
+
+static int add(lua_State *L) {
+    auto &self = to(L, 1);
+    auto pathstr = lua::checkstrview(L, 2);
+#if defined(_WIN32)
+    std::filesystem::path path{wtf8::u2w(pathstr)};
+#else
+    std::filesystem::path path{std::string{pathstr.data(), pathstr.size()}};
+#endif
+    std::error_code ec;
+    std::filesystem::path abspath = std::filesystem::absolute(path, ec);
+    if (ec) {
+        lua_pushstring(L, std::format("error fs::absolute {0}", ec.value()).c_str());
+        lua_error(L);
+        return 0;
+    }
+    self.add(abspath.lexically_normal().generic_string<filewatch::watch::string_type::value_type>());
+    return 0;
+}
+
+static int set_recursive(lua_State *L) {
+    auto &self = to(L, 1);
+    bool enable = lua_toboolean(L, 2);
+    self.set_recursive(enable);
+    lua_pushboolean(L, 1);
+    return 1;
+}
+
+static int set_follow_symlinks(lua_State *L) {
+    auto &self = to(L, 1);
+    bool enable = lua_toboolean(L, 2);
+    bool ok = self.set_follow_symlinks(enable);
+    lua_pushboolean(L, ok);
+    return 1;
+}
+
+static int set_filter(lua_State *L) {
+    auto &self = to(L, 1);
+    if (lua_isnoneornil(L, 2)) {
+        bool ok = self.set_filter();
+        lua_pushboolean(L, ok);
+        return 1;
+    }
+    lua_State *thread = get_thread(L);
+    lua_settop(L, 2);
+    lua_xmove(L, thread, 1);
+    if (lua_gettop(thread) > 1) {
+        lua_replace(thread, 1);
+    }
+    bool ok = self.set_filter([=](const char *path) {
+        lua_pushvalue(thread, 1);
+        lua_pushstring(thread, path);
+        if (LUA_OK != lua_pcall(thread, 1, 1, 0)) {
+            lua_pop(thread, 1);
+            return true;
+        }
+        bool r = lua_toboolean(thread, -1);
+        lua_pop(thread, 1);
+        return r;
+    });
+    lua_pushboolean(L, ok);
+    return 1;
+}
+
+static int select(lua_State *L) {
+    auto &self = to(L, 1);
+    auto notify = self.select();
+    if (!notify) {
+        return 0;
+    }
+    switch (notify->flags) {
+        case filewatch::notify::flag::modify:
+            lua_pushstring(L, "modify");
+            break;
+        case filewatch::notify::flag::rename:
+            lua_pushstring(L, "rename");
+            break;
+        default:
+            // std::unreachable();
+            NEKO_ASSERT(0, "unreachable");
+    }
+    lua_pushlstring(L, notify->path.data(), notify->path.size());
+    return 2;
+}
+
+static int mt_close(lua_State *L) {
+    auto &self = to(L, 1);
+    self.stop();
+    return 0;
+}
+
+static void metatable(lua_State *L) {
+    static luaL_Reg lib[] = {{"add", add}, {"set_recursive", set_recursive}, {"set_follow_symlinks", set_follow_symlinks}, {"set_filter", set_filter}, {"select", select}, {NULL, NULL}};
+    luaL_newlibtable(L, lib);
+    luaL_setfuncs(L, lib, 0);
+    lua_setfield(L, -2, "__index");
+    static luaL_Reg mt[] = {{"__close", mt_close}, {NULL, NULL}};
+    luaL_setfuncs(L, mt, 0);
+}
+
+static int create(lua_State *L) {
+    lua::newudata<filewatch::watch>(L);
+    lua_newthread(L);
+    lua_setiuservalue(L, -2, 1);
+    return 1;
+}
+
+LUABIND_MODULE() {
+    static luaL_Reg lib[] = {{"create", create}, {NULL, NULL}};
+    luaL_newlibtable(L, lib);
+    luaL_setfuncs(L, lib, 0);
+    return 1;
+}
+}  // namespace neko::lua::__filewatch
+
+DEFINE_LUAOPEN(filewatch)
+
+namespace neko::lua {
+template <>
+struct udata<filewatch::watch> {
+    static inline int nupvalue = 1;
+    static inline auto metatable = neko::lua::__filewatch::metatable;
+};
+}  // namespace neko::lua
 
 static int open_neko(lua_State *L) {
     luaL_Reg reg[] = {
@@ -3052,6 +3184,8 @@ static int open_neko(lua_State *L) {
             {"tilemap_load", neko_tilemap_load},
             {"pak_load", neko_pak_load},
             {"b2_world", neko_b2_world},
+            {"ecs_create", neko_ecs_create_world},
+
             {nullptr, nullptr},
     };
 

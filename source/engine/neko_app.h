@@ -9,9 +9,8 @@
 #include "modules/sound.h"
 #include "neko_asset.h"
 #include "neko_base.h"
+#include "neko_engine.h"
 #include "neko_os.h"
-
-#define NEKO_VERSION "0.8"
 
 struct NEKO_PACKS {
     static constexpr const_str GAMEDATA = "default_pack";
@@ -65,6 +64,12 @@ struct App {
     float scroll_y;
 
     FontFamily *default_font;
+
+    lyte_BlendMode blendmode;
+
+    float current_color[4];
+
+    ShaderItem *shader;  // ShaderItem (internal)
 
     void *miniaudio_vfs;
     ma_engine audio_engine;

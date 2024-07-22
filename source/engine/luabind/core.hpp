@@ -3,6 +3,7 @@
 #include "engine/neko_app.h"
 #include "engine/neko_base.h"
 #include "engine/neko_lua.h"
+#include "engine/neko_lua_struct.h"
 #include "engine/neko_lua_wrap.h"
 #include "engine/neko_luabind.hpp"
 #include "engine/neko_reflection.hpp"
@@ -2634,8 +2635,6 @@ LUA_FUNCTION(__neko_bind_ecs_f) {
 
 void createStructTables(lua_State* L);
 
-int __neko_sandbox_create_world(lua_State* L);
-
 static neko_luaref getLr(lua_State* L) {
     luaL_checktype(L, 1, LUA_TLIGHTUSERDATA);
     neko_luaref ref;
@@ -2799,7 +2798,6 @@ static int open_embed_core(lua_State* L) {
     luaL_Reg reg[] = {
 
             {"ecs_f", __neko_bind_ecs_f},
-            {"sandbox_f", __neko_sandbox_create_world},
 
             // {"tiled_create", __neko_bind_tiled_create},
             // {"tiled_render", __neko_bind_tiled_render},

@@ -28,6 +28,8 @@
 #include <stb_image.h>
 #include <stb_image_resize2.h>
 
+#include "deps/cute_aseprite.h"
+
 // embed
 static const u8 g_font_monocrafte_data[] = {
 #include "Monocraft.ttf.h"
@@ -143,9 +145,9 @@ bool SpriteData::load(String filepath) {
     ase_t *ase = nullptr;
     {
         PROFILE_BLOCK("aseprite load");
-        ase = neko_aseprite_load_from_memory(contents.data, (i32)contents.len);
+        ase = cute_aseprite_load_from_memory(contents.data, (i32)contents.len, nullptr);
     }
-    neko_defer(neko_aseprite_free(ase));
+    neko_defer(cute_aseprite_free(ase));
 
     Arena arena = {};
 
@@ -1134,6 +1136,7 @@ struct FileSystem {
     virtual bool file_exists(String filepath) = 0;
     virtual bool read_entire_file(String *out, String filepath) = 0;
     virtual bool list_all_files(Array<String> *files) = 0;
+    virtual u64 file_modtime(String filepath) = 0;
 };
 
 static HashMap<FileSystem *> g_vfs;
@@ -1157,7 +1160,7 @@ struct DirectoryFileSystem : FileSystem {
         String path = to_cstr(filepath);
         neko_defer(mem_free(path.data));
 
-        FILE *fp = neko_fopen(path.data, "r");
+        FILE *fp = neko_fopen(path.cstr(), "r");
         if (fp != nullptr) {
             neko_fclose(fp);
             return true;
@@ -1167,13 +1170,20 @@ struct DirectoryFileSystem : FileSystem {
     }
 
     bool read_entire_file(String *out, String filepath) {
-        String path = str_fmt("%s/%s", basepath.cstr(), filepath.data);
+        String path = str_fmt("%s/%s", basepath.cstr(), filepath.cstr());
         neko_defer(mem_free(path.data));
         if (!file_exists(path)) return false;
         return read_entire_file_raw(out, path);
     }
 
     bool list_all_files(Array<String> *files) { return list_all_files_help(files, basepath.cstr()); }
+
+    u64 file_modtime(String filepath) {
+        String path = tmp_fmt("%s/%s", basepath.cstr(), filepath.cstr());
+        if (!file_exists(path)) return 0;
+        u64 modtime = os_file_modtime(path.cstr());
+        return modtime;
+    }
 };
 
 struct ZipFileSystem : FileSystem {
@@ -1214,13 +1224,13 @@ struct ZipFileSystem : FileSystem {
         constexpr i32 eocd_size = 22;
         char *eocd = end - eocd_size;
         if (read4(eocd) != 0x06054b50) {
-            fprintf(stderr, "can't find EOCD record\n");
+            NEKO_WARN("ZipFileSystem: can't find EOCD record");
             return false;
         }
 
         u32 central_size = read4(&eocd[12]);
         if (read4(eocd - central_size) != 0x02014b50) {
-            fprintf(stderr, "can't find central directory\n");
+            NEKO_WARN("ZipFileSystem: can't find central directory");
             return false;
         }
 
@@ -1228,14 +1238,14 @@ struct ZipFileSystem : FileSystem {
         char *begin = eocd - central_size - central_offset;
         u64 zip_len = end - begin;
         if (read4(begin) != 0x04034b50) {
-            fprintf(stderr, "can't read local file header\n");
+            NEKO_WARN("ZipFileSystem: can't read local file header");
             return false;
         }
 
         mz_bool zip_ok = mz_zip_reader_init_mem(&zip, begin, zip_len, 0);
         if (!zip_ok) {
             mz_zip_error err = mz_zip_get_last_error(&zip);
-            fprintf(stderr, "failed to read zip: %s\n", mz_zip_get_error_string(err));
+            NEKO_WARN("ZipFileSystem: failed to read zip: %s", mz_zip_get_error_string(err));
             return false;
         }
 
@@ -1320,6 +1330,8 @@ struct ZipFileSystem : FileSystem {
 
         return true;
     }
+
+    u64 file_modtime(String filepath) { return 0; }
 };
 
 #if defined(NEKO_IS_WEB)
@@ -1422,6 +1434,11 @@ MountResult vfs_mount(const_str fsname, const char *filepath) {
         NEKO_DEBUG_LOG("program path: %s", path.data);
 
         res.ok = vfs_mount_type<ZipFileSystem>(fsname, path);
+        if (!res.ok) {
+            res.ok = vfs_mount_type<ZipFileSystem>(fsname, "./gamedata.zip");
+            res.is_fused = true;
+            NEKO_TRACE("ZipFileSystem: load with gamedata.zip");
+        }
     } else {
         String mount_dir = filepath;
 
@@ -1451,6 +1468,8 @@ void vfs_fini() {
 
     g_vfs.trash();
 }
+
+u64 vfs_file_modtime(String fsname, String filepath) { return g_vfs[fnv1a(fsname)]->file_modtime(filepath); }
 
 bool vfs_file_exists(String fsname, String filepath) { return g_vfs[fnv1a(fsname)]->file_exists(filepath); }
 
@@ -2341,318 +2360,6 @@ String lua_to_json_string(lua_State *L, i32 arg, String *contents, i32 width) {
 }
 
 /*==========================
-// LZ77
-==========================*/
-
-enum {
-    NEKO_LZ_EXCESS = 16,
-
-    NEKO_LZ_WINDOW_BITS = 17,  // Hard-coded
-    NEKO_LZ_WINDOW_SIZE = 1 << NEKO_LZ_WINDOW_BITS,
-    NEKO_LZ_WINDOW_MASK = NEKO_LZ_WINDOW_SIZE - 1,
-
-    NEKO_LZ_MIN_MATCH = 4,
-
-    NEKO_LZ_HASH_BITS = 19,
-    NEKO_LZ_HASH_SIZE = 1 << NEKO_LZ_HASH_BITS,
-    NEKO_LZ_NIL = -1,
-};
-
-typedef struct NEKO_LZ_WORKMEM {
-    int HashTable[NEKO_LZ_HASH_SIZE];
-    int Prev[NEKO_LZ_WINDOW_SIZE];
-} NEKO_LZ_WORKMEM;
-
-// Utils
-
-static inline u16 UnalignedLoad16(const void *p) { return *(const u16 *)(p); }
-static inline u32 UnalignedLoad32(const void *p) { return *(const u32 *)(p); }
-static inline void UnalignedStore16(void *p, u16 x) { *(u16 *)(p) = x; }
-static inline void UnalignedCopy64(void *d, const void *s) { *(u64 *)(d) = *(const u64 *)(s); }
-
-static inline void __neko_ulz_wild_copy(u8 *d, const u8 *s, int n) {
-    UnalignedCopy64(d, s);
-
-    for (int i = 8; i < n; i += 8) UnalignedCopy64(d + i, s + i);
-}
-
-static inline u32 __neko_ulz_hash32(const void *p) { return (UnalignedLoad32(p) * 0x9E3779B9) >> (32 - NEKO_LZ_HASH_BITS); }
-
-static inline void __neko_ulz_encode_mod(u8 **p, u32 x) {
-    while (x >= 128) {
-        x -= 128;
-        *(*p)++ = 128 + (x & 127);
-        x >>= 7;
-    }
-    *(*p)++ = x;
-}
-
-static inline u32 __neko_ulz_decode_mod(const u8 **p) {
-    u32 x = 0;
-    for (int i = 0; i <= 21; i += 7) {
-        const u32 c = *(*p)++;
-        x += c << i;
-        if (c < 128) break;
-    }
-    return x;
-}
-
-// LZ77
-
-static int __neko_ulz_compress_fast(const u8 *in, int inlen, u8 *out, int outlen) {
-    NEKO_LZ_WORKMEM *u = (NEKO_LZ_WORKMEM *)mem_realloc(0, sizeof(NEKO_LZ_WORKMEM));
-
-    for (int i = 0; i < NEKO_LZ_HASH_SIZE; ++i) u->HashTable[i] = NEKO_LZ_NIL;
-
-    u8 *op = out;
-    int anchor = 0;
-
-    int p = 0;
-    while (p < inlen) {
-        int best_len = 0;
-        int dist = 0;
-
-        const int max_match = inlen - p;
-        if (max_match >= NEKO_LZ_MIN_MATCH) {
-            const int limit = (p - NEKO_LZ_WINDOW_SIZE) > NEKO_LZ_NIL ? (p - NEKO_LZ_WINDOW_SIZE) : NEKO_LZ_NIL;
-
-            const u32 h = __neko_ulz_hash32(&in[p]);
-            int s = u->HashTable[h];
-            u->HashTable[h] = p;
-
-            if (s > limit && UnalignedLoad32(&in[s]) == UnalignedLoad32(&in[p])) {
-                int len = NEKO_LZ_MIN_MATCH;
-                while (len < max_match && in[s + len] == in[p + len]) ++len;
-
-                best_len = len;
-                dist = p - s;
-            }
-        }
-
-        if (best_len == NEKO_LZ_MIN_MATCH && (p - anchor) >= (7 + 128)) best_len = 0;
-
-        if (best_len >= NEKO_LZ_MIN_MATCH) {
-            const int len = best_len - NEKO_LZ_MIN_MATCH;
-            const int token = ((dist >> 12) & 16) + (len < 15 ? len : 15);
-
-            if (anchor != p) {
-                const int run = p - anchor;
-                if (run >= 7) {
-                    *op++ = (7 << 5) + token;
-                    __neko_ulz_encode_mod(&op, run - 7);
-                } else
-                    *op++ = (run << 5) + token;
-
-                __neko_ulz_wild_copy(op, &in[anchor], run);
-                op += run;
-            } else
-                *op++ = token;
-
-            if (len >= 15) __neko_ulz_encode_mod(&op, len - 15);
-
-            UnalignedStore16(op, dist);
-            op += 2;
-
-            anchor = p + best_len;
-            ++p;
-            u->HashTable[__neko_ulz_hash32(&in[p])] = p++;
-            u->HashTable[__neko_ulz_hash32(&in[p])] = p++;
-            u->HashTable[__neko_ulz_hash32(&in[p])] = p++;
-            p = anchor;
-        } else
-            ++p;
-    }
-
-    if (anchor != p) {
-        const int run = p - anchor;
-        if (run >= 7) {
-            *op++ = 7 << 5;
-            __neko_ulz_encode_mod(&op, run - 7);
-        } else
-            *op++ = run << 5;
-
-        __neko_ulz_wild_copy(op, &in[anchor], run);
-        op += run;
-    }
-
-    void *gc = mem_realloc(u, 0);
-    return op - out;
-}
-
-static int __neko_ulz_compress(const u8 *in, int inlen, u8 *out, int outlen, int level) {
-    if (level < 1 || level > 9) return 0;
-    const int max_chain = (level < 9) ? 1 << level : 1 << 13;
-
-    NEKO_LZ_WORKMEM *u = (NEKO_LZ_WORKMEM *)mem_realloc(0, sizeof(NEKO_LZ_WORKMEM));
-    for (int i = 0; i < NEKO_LZ_HASH_SIZE; ++i) u->HashTable[i] = NEKO_LZ_NIL;
-
-    u8 *op = out;
-    int anchor = 0;
-
-    int p = 0;
-    while (p < inlen) {
-        int best_len = 0;
-        int dist = 0;
-
-        const int max_match = inlen - p;
-        if (max_match >= NEKO_LZ_MIN_MATCH) {
-            const int limit = (p - NEKO_LZ_WINDOW_SIZE) > NEKO_LZ_NIL ? (p - NEKO_LZ_WINDOW_SIZE) : NEKO_LZ_NIL;
-            int chainlen = max_chain;
-
-            int s = u->HashTable[__neko_ulz_hash32(&in[p])];
-            while (s > limit) {
-                if (in[s + best_len] == in[p + best_len] && UnalignedLoad32(&in[s]) == UnalignedLoad32(&in[p])) {
-                    int len = NEKO_LZ_MIN_MATCH;
-                    while (len < max_match && in[s + len] == in[p + len]) ++len;
-
-                    if (len > best_len) {
-                        best_len = len;
-                        dist = p - s;
-
-                        if (len == max_match) break;
-                    }
-                }
-
-                if (--chainlen == 0) break;
-
-                s = u->Prev[s & NEKO_LZ_WINDOW_MASK];
-            }
-        }
-
-        if (best_len == NEKO_LZ_MIN_MATCH && (p - anchor) >= (7 + 128)) best_len = 0;
-
-        if (level >= 5 && best_len >= NEKO_LZ_MIN_MATCH && best_len < max_match && (p - anchor) != 6) {
-            const int x = p + 1;
-            const int target_len = best_len + 1;
-
-            const int limit = (x - NEKO_LZ_WINDOW_SIZE) > NEKO_LZ_NIL ? (x - NEKO_LZ_WINDOW_SIZE) : NEKO_LZ_NIL;
-            int chainlen = max_chain;
-
-            int s = u->HashTable[__neko_ulz_hash32(&in[x])];
-            while (s > limit) {
-                if (in[s + best_len] == in[x + best_len] && UnalignedLoad32(&in[s]) == UnalignedLoad32(&in[x])) {
-                    int len = NEKO_LZ_MIN_MATCH;
-                    while (len < target_len && in[s + len] == in[x + len]) ++len;
-
-                    if (len == target_len) {
-                        best_len = 0;
-                        break;
-                    }
-                }
-
-                if (--chainlen == 0) break;
-
-                s = u->Prev[s & NEKO_LZ_WINDOW_MASK];
-            }
-        }
-
-        if (best_len >= NEKO_LZ_MIN_MATCH) {
-            const int len = best_len - NEKO_LZ_MIN_MATCH;
-            const int token = ((dist >> 12) & 16) + (len < 15 ? len : 15);
-
-            if (anchor != p) {
-                const int run = p - anchor;
-                if (run >= 7) {
-                    *op++ = (7 << 5) + token;
-                    __neko_ulz_encode_mod(&op, run - 7);
-                } else
-                    *op++ = (run << 5) + token;
-
-                __neko_ulz_wild_copy(op, &in[anchor], run);
-                op += run;
-            } else
-                *op++ = token;
-
-            if (len >= 15) __neko_ulz_encode_mod(&op, len - 15);
-
-            UnalignedStore16(op, dist);
-            op += 2;
-
-            while (best_len-- != 0) {
-                const u32 h = __neko_ulz_hash32(&in[p]);
-                u->Prev[p & NEKO_LZ_WINDOW_MASK] = u->HashTable[h];
-                u->HashTable[h] = p++;
-            }
-            anchor = p;
-        } else {
-            const u32 h = __neko_ulz_hash32(&in[p]);
-            u->Prev[p & NEKO_LZ_WINDOW_MASK] = u->HashTable[h];
-            u->HashTable[h] = p++;
-        }
-    }
-
-    if (anchor != p) {
-        const int run = p - anchor;
-        if (run >= 7) {
-            *op++ = 7 << 5;
-            __neko_ulz_encode_mod(&op, run - 7);
-        } else
-            *op++ = run << 5;
-
-        __neko_ulz_wild_copy(op, &in[anchor], run);
-        op += run;
-    }
-
-    void *gc = mem_realloc(u, 0);
-    return op - out;
-}
-
-static int __neko_ulz_decompress(const u8 *in, int inlen, u8 *out, int outlen) {
-    u8 *op = out;
-    const u8 *ip = in;
-    const u8 *ip_end = ip + inlen;
-    const u8 *op_end = op + outlen;
-
-    while (ip < ip_end) {
-        const int token = *ip++;
-
-        if (token >= 32) {
-            int run = token >> 5;
-            if (run == 7) run += __neko_ulz_decode_mod(&ip);
-            if ((op_end - op) < run || (ip_end - ip) < run)  // Overrun check
-                return 0;
-
-            __neko_ulz_wild_copy(op, ip, run);
-            op += run;
-            ip += run;
-            if (ip >= ip_end) break;
-        }
-
-        int len = (token & 15) + NEKO_LZ_MIN_MATCH;
-        if (len == (15 + NEKO_LZ_MIN_MATCH)) len += __neko_ulz_decode_mod(&ip);
-        if ((op_end - op) < len)  // Overrun check
-            return 0;
-
-        const int dist = ((token & 16) << 12) + UnalignedLoad16(ip);
-        ip += 2;
-        u8 *cp = op - dist;
-        if ((op - out) < dist)  // Range check
-            return 0;
-
-        if (dist >= 8) {
-            __neko_ulz_wild_copy(op, cp, len);
-            op += len;
-        } else {
-            *op++ = *cp++;
-            *op++ = *cp++;
-            *op++ = *cp++;
-            *op++ = *cp++;
-            while (len-- != 4) *op++ = *cp++;
-        }
-    }
-
-    return (ip == ip_end) ? op - out : 0;
-}
-
-u32 neko_lz_encode(const void *in, u32 inlen, void *out, u32 outlen, u32 flags) {
-    int level = flags > 9 ? 9 : flags < 0 ? 0 : flags;  // [0..(6)..9]
-    int rc = level ? __neko_ulz_compress((u8 *)in, (int)inlen, (u8 *)out, (int)outlen, level) : __neko_ulz_compress_fast((u8 *)in, (int)inlen, (u8 *)out, (int)outlen);
-    return (u32)rc;
-}
-u32 neko_lz_decode(const void *in, u32 inlen, void *out, u32 outlen) { return (u32)__neko_ulz_decompress((u8 *)in, (int)inlen, (u8 *)out, (int)outlen); }
-u32 neko_lz_bounds(u32 inlen, u32 flags) { return inlen + inlen / 255 + 16; }
-
-/*==========================
 // NEKO_PACK
 ==========================*/
 
@@ -2733,14 +2440,14 @@ bool neko_pak::load(const_str file_path, u32 data_buffer_capacity, bool is_resou
 
     if (!this->vf.data) return false;  // FAILED_TO_OPEN_FILE_PACK_RESULT
 
-    char header[neko_pak_head_size];
+    char header[NEKO_PAK_HEAD_SIZE];
     i32 buildnum;
 
-    size_t result = neko_capi_vfs_fread(header, sizeof(u8), neko_pak_head_size, &this->vf);
+    size_t result = neko_capi_vfs_fread(header, sizeof(u8), NEKO_PAK_HEAD_SIZE, &this->vf);
     result += neko_capi_vfs_fread(&buildnum, sizeof(i32), 1, &this->vf);
 
     // 检查文件头
-    if (result != neko_pak_head_size + 1 ||  //
+    if (result != NEKO_PAK_HEAD_SIZE + 1 ||  //
         header[0] != 'N' ||                  //
         header[1] != 'E' ||                  //
         header[2] != 'K' ||                  //
@@ -2875,11 +2582,16 @@ bool neko_pak::get_data(u64 index, String *out, u32 *size) {
 
         if (result != info.zip_size) return false;  // FAILED_TO_READ_FILE_PACK_RESULT
 
-        result = neko_lz_decode(_zip_buffer, info.zip_size, _data_buffer, info.data_size);
+        // result = neko_lz_decode(_zip_buffer, info.zip_size, _data_buffer, info.data_size);
+
+        unsigned long decompress_buf_len = info.data_size;
+        int decompress_status = uncompress(_data_buffer, &decompress_buf_len, _zip_buffer, info.zip_size);
+
+        result = decompress_buf_len;
 
         NEKO_TRACE("[assets] neko_lz_decode %u %u", info.zip_size, info.data_size);
 
-        if (result < 0 || result != info.data_size) {
+        if (result < 0 || result != info.data_size || decompress_status != MZ_OK) {
             return false;  // FAILED_TO_DECOMPRESS_PACK_RESULT
         }
     } else {
@@ -3113,10 +2825,15 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
 
         if (item_size > 1) {
 
-            const int max_dst_size = neko_lz_bounds(item_size, 0);
-            zip_size = neko_lz_encode(item_data, item_size, zip_data, max_dst_size, 9);
+            unsigned long compress_buf_len = compressBound(item_size);
+            int compress_status = compress(zip_data, &compress_buf_len, (const unsigned char *)item_data, item_size);
 
-            if (zip_size <= 0 || zip_size >= item_size) {
+            zip_size = compress_buf_len;
+
+            // const int max_dst_size = neko_lz_bounds(item_size, 0);
+            // zip_size = neko_lz_encode(item_data, item_size, zip_data, max_dst_size, 9);
+
+            if (zip_size <= 0 || zip_size >= item_size || compress_status != MZ_OK) {
                 zip_size = 0;
             }
         } else {
@@ -3233,16 +2950,16 @@ bool neko_pak_build(const_str file_path, u64 file_count, const_str *file_paths, 
         return false;  // FAILED_TO_CREATE_FILE_PACK_RESULT
     }
 
-    char header[neko_pak_head_size] = {
+    char header[NEKO_PAK_HEAD_SIZE] = {
             'N', 'E', 'K', 'O', 'P', 'A', 'C', 'K',
     };
 
     i32 buildnum = neko_buildnum();
 
-    size_t write_result = fwrite(header, sizeof(u8), neko_pak_head_size, pack_file);
+    size_t write_result = fwrite(header, sizeof(u8), NEKO_PAK_HEAD_SIZE, pack_file);
     write_result += fwrite(&buildnum, sizeof(i32), 1, pack_file);
 
-    if (write_result != neko_pak_head_size + 1) {
+    if (write_result != NEKO_PAK_HEAD_SIZE + 1) {
         mem_free(item_paths);
         neko_fclose(pack_file);
         remove(file_path);
@@ -3268,7 +2985,7 @@ bool neko_pak_build(const_str file_path, u64 file_count, const_str *file_paths, 
         return ok;
     }
 
-    neko_printf("Packed %s\n", file_path);
+    neko_printf("Packed %s ok\n", file_path);
 
     return true;
 }
@@ -3282,12 +2999,12 @@ bool neko_pak_info(const_str file_path, i32 *buildnum, u64 *item_count) {
 
     if (!vf.data) return false;  // FAILED_TO_OPEN_FILE_PACK_RESULT
 
-    char header[neko_pak_head_size];
+    char header[NEKO_PAK_HEAD_SIZE];
 
-    size_t result = neko_capi_vfs_fread(header, sizeof(u8), neko_pak_head_size, &vf);
+    size_t result = neko_capi_vfs_fread(header, sizeof(u8), NEKO_PAK_HEAD_SIZE, &vf);
     result += neko_capi_vfs_fread(buildnum, sizeof(i32), 1, &vf);
 
-    if (result != neko_pak_head_size + 1) {
+    if (result != NEKO_PAK_HEAD_SIZE + 1) {
         neko_capi_vfs_fclose(&vf);
         return false;  // FAILED_TO_READ_FILE_PACK_RESULT
     }
@@ -4190,839 +3907,6 @@ void neko_tiled_render_draw(neko_command_buffer_t *cb, neko_tiled_renderer *rend
     }
 }
 
-// DEFLATE tables from RFC 1951
-static uint8_t s_fixed_table[288 + 32] = {
-        8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-        8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-        8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
-        9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
-        7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
-};  // 3.2.6
-static uint8_t s_permutation_order[19] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};                                                                                 // 3.2.7
-static uint8_t s_len_extra_bits[29 + 2] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0, 0, 0};                                                     // 3.2.5
-static uint32_t s_len_base[29 + 2] = {3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258, 0, 0};                              // 3.2.5
-static uint8_t s_dist_extra_bits[30 + 2] = {0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 0, 0};                                         // 3.2.5
-static uint32_t s_dist_base[30 + 2] = {1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577, 0, 0};  // 3.2.5
-
-typedef struct deflate_t {
-    uint64_t bits;
-    int count;
-    uint32_t *words;
-    int word_count;
-    int word_index;
-    int bits_left;
-
-    int final_word_available;
-    uint32_t final_word;
-
-    char *out;
-    char *out_end;
-    char *begin;
-
-    uint32_t lit[288];
-    uint32_t dst[32];
-    uint32_t len[19];
-    uint32_t nlit;
-    uint32_t ndst;
-    uint32_t nlen;
-} deflate_t;
-
-static int s_would_overflow(deflate_t *s, int num_bits) { return (s->bits_left + s->count) - num_bits < 0; }
-
-static char *s_ptr(deflate_t *s) {
-    NEKO_ASSERT(!(s->bits_left & 7));
-    return (char *)(s->words + s->word_index) - (s->count / 8);
-}
-
-static uint64_t s_peak_bits(deflate_t *s, int num_bits_to_read) {
-    if (s->count < num_bits_to_read) {
-        if (s->word_index < s->word_count) {
-            uint32_t word = s->words[s->word_index++];
-            s->bits |= (uint64_t)word << s->count;
-            s->count += 32;
-            NEKO_ASSERT(s->word_index <= s->word_count);
-        }
-
-        else if (s->final_word_available) {
-            uint32_t word = s->final_word;
-            s->bits |= (uint64_t)word << s->count;
-            s->count += s->bits_left;
-            s->final_word_available = 0;
-        }
-    }
-
-    return s->bits;
-}
-
-static uint32_t s_consume_bits(deflate_t *s, int num_bits_to_read) {
-    NEKO_ASSERT(s->count >= num_bits_to_read);
-    uint32_t bits = (uint32_t)(s->bits & (((uint64_t)1 << num_bits_to_read) - 1));
-    s->bits >>= num_bits_to_read;
-    s->count -= num_bits_to_read;
-    s->bits_left -= num_bits_to_read;
-    return bits;
-}
-
-static uint32_t s_read_bits(deflate_t *s, int num_bits_to_read) {
-    NEKO_ASSERT(num_bits_to_read <= 32);
-    NEKO_ASSERT(num_bits_to_read >= 0);
-    NEKO_ASSERT(s->bits_left > 0);
-    NEKO_ASSERT(s->count <= 64);
-    NEKO_ASSERT(!s_would_overflow(s, num_bits_to_read));
-    s_peak_bits(s, num_bits_to_read);
-    uint32_t bits = s_consume_bits(s, num_bits_to_read);
-    return bits;
-}
-
-static uint32_t s_rev16(uint32_t a) {
-    a = ((a & 0xAAAA) >> 1) | ((a & 0x5555) << 1);
-    a = ((a & 0xCCCC) >> 2) | ((a & 0x3333) << 2);
-    a = ((a & 0xF0F0) >> 4) | ((a & 0x0F0F) << 4);
-    a = ((a & 0xFF00) >> 8) | ((a & 0x00FF) << 8);
-    return a;
-}
-
-// RFC 1951 section 3.2.2
-static uint32_t s_build(deflate_t *s, uint32_t *tree, uint8_t *lens, int sym_count) {
-    int n, codes[16], first[16], counts[16] = {0};
-    NEKO_UNUSED(s);
-
-    // Frequency count
-    for (n = 0; n < sym_count; n++) counts[lens[n]]++;
-
-    // Distribute codes
-    counts[0] = codes[0] = first[0] = 0;
-    for (n = 1; n <= 15; ++n) {
-        codes[n] = (codes[n - 1] + counts[n - 1]) << 1;
-        first[n] = first[n - 1] + counts[n - 1];
-    }
-
-    for (uint32_t i = 0; i < (uint32_t)sym_count; ++i) {
-        uint8_t len = lens[i];
-
-        if (len != 0) {
-            NEKO_ASSERT(len < 16);
-            uint32_t code = (uint32_t)codes[len]++;
-            uint32_t slot = (uint32_t)first[len]++;
-            tree[slot] = (code << (32 - (uint32_t)len)) | (i << 4) | len;
-        }
-    }
-
-    return (uint32_t)first[15];
-}
-
-static int s_stored(deflate_t *s) {
-    char *p;
-
-    // 3.2.3
-    // skip any remaining bits in current partially processed byte
-    s_read_bits(s, s->count & 7);
-
-    // 3.2.4
-    // read LEN and NLEN, should complement each other
-    uint16_t LEN = (uint16_t)s_read_bits(s, 16);
-    uint16_t NLEN = (uint16_t)s_read_bits(s, 16);
-    uint16_t TILDE_NLEN = ~NLEN;
-    NEKO_ASSERT(LEN == TILDE_NLEN, "Failed to find LEN and NLEN as complements within stored (uncompressed) stream.");
-    NEKO_ASSERT(s->bits_left / 8 <= (int)LEN, "Stored block extends beyond end of input stream.");
-    p = s_ptr(s);
-    memcpy(s->out, p, LEN);
-    s->out += LEN;
-    return 1;
-
-ase_err:
-    return 0;
-}
-
-// 3.2.6
-static int s_fixed(deflate_t *s) {
-    s->nlit = s_build(s, s->lit, s_fixed_table, 288);
-    s->ndst = s_build(0, s->dst, s_fixed_table + 288, 32);
-    return 1;
-}
-
-static int s_decode(deflate_t *s, uint32_t *tree, int hi) {
-    uint64_t bits = s_peak_bits(s, 16);
-    uint32_t search = (s_rev16((uint32_t)bits) << 16) | 0xFFFF;
-    int lo = 0;
-    while (lo < hi) {
-        int guess = (lo + hi) >> 1;
-        if (search < tree[guess])
-            hi = guess;
-        else
-            lo = guess + 1;
-    }
-
-    uint32_t key = tree[lo - 1];
-    uint32_t len = (32 - (key & 0xF));
-    NEKO_ASSERT((search >> len) == (key >> len));
-
-    s_consume_bits(s, key & 0xF);
-    return (key >> 4) & 0xFFF;
-}
-
-// 3.2.7
-static int s_dynamic(deflate_t *s) {
-    uint8_t lenlens[19] = {0};
-
-    uint32_t nlit = 257 + s_read_bits(s, 5);
-    uint32_t ndst = 1 + s_read_bits(s, 5);
-    uint32_t nlen = 4 + s_read_bits(s, 4);
-
-    for (uint32_t i = 0; i < nlen; ++i) lenlens[s_permutation_order[i]] = (uint8_t)s_read_bits(s, 3);
-
-    // Build the tree for decoding code lengths
-    s->nlen = s_build(0, s->len, lenlens, 19);
-    uint8_t lens[288 + 32];
-
-    for (uint32_t n = 0; n < nlit + ndst;) {
-        int sym = s_decode(s, s->len, (int)s->nlen);
-        switch (sym) {
-            case 16:
-                for (uint32_t i = 3 + s_read_bits(s, 2); i; --i, ++n) lens[n] = lens[n - 1];
-                break;
-            case 17:
-                for (uint32_t i = 3 + s_read_bits(s, 3); i; --i, ++n) lens[n] = 0;
-                break;
-            case 18:
-                for (uint32_t i = 11 + s_read_bits(s, 7); i; --i, ++n) lens[n] = 0;
-                break;
-            default:
-                lens[n++] = (uint8_t)sym;
-                break;
-        }
-    }
-
-    s->nlit = s_build(s, s->lit, lens, (int)nlit);
-    s->ndst = s_build(0, s->dst, lens + nlit, (int)ndst);
-    return 1;
-}
-
-// 3.2.3
-static int s_block(deflate_t *s) {
-    while (1) {
-        int symbol = s_decode(s, s->lit, (int)s->nlit);
-
-        if (symbol < 256) {
-            NEKO_ASSERT(s->out + 1 <= s->out_end, "Attempted to overwrite out buffer while outputting a symbol.");
-            *s->out = (char)symbol;
-            s->out += 1;
-        }
-
-        else if (symbol > 256) {
-            symbol -= 257;
-            uint32_t length = s_read_bits(s, (int)(s_len_extra_bits[symbol])) + s_len_base[symbol];
-            int distance_symbol = s_decode(s, s->dst, (int)s->ndst);
-            uint32_t backwards_distance = s_read_bits(s, s_dist_extra_bits[distance_symbol]) + s_dist_base[distance_symbol];
-            NEKO_ASSERT(s->out - backwards_distance >= s->begin, "Attempted to write before out buffer (invalid backwards distance).");
-            NEKO_ASSERT(s->out + length <= s->out_end, "Attempted to overwrite out buffer while outputting a string.");
-            char *src = s->out - backwards_distance;
-            char *dst = s->out;
-            s->out += length;
-
-            switch (backwards_distance) {
-                case 1:  // very common in images
-                    memset(dst, *src, (size_t)length);
-                    break;
-                default:
-                    while (length--) *dst++ = *src++;
-            }
-        }
-
-        else
-            break;
-    }
-
-    return 1;
-
-ase_err:
-    return 0;
-}
-
-// 3.2.3
-static int s_inflate(const void *in, int in_bytes, void *out, int out_bytes) {
-
-    deflate_t *s = (deflate_t *)mem_alloc(sizeof(deflate_t));
-    s->bits = 0;
-    s->count = 0;
-    s->word_index = 0;
-    s->bits_left = in_bytes * 8;
-
-    // s->words is the in-pointer rounded up to a multiple of 4
-    int first_bytes = (int)((((size_t)in + 3) & (size_t)(~3)) - (size_t)in);
-    s->words = (uint32_t *)((char *)in + first_bytes);
-    s->word_count = (in_bytes - first_bytes) / 4;
-    int last_bytes = ((in_bytes - first_bytes) & 3);
-
-    for (int i = 0; i < first_bytes; ++i) s->bits |= (uint64_t)(((uint8_t *)in)[i]) << (i * 8);
-
-    s->final_word_available = last_bytes ? 1 : 0;
-    s->final_word = 0;
-    for (int i = 0; i < last_bytes; i++) s->final_word |= ((uint8_t *)in)[in_bytes - last_bytes + i] << (i * 8);
-
-    s->count = first_bytes * 8;
-
-    s->out = (char *)out;
-    s->out_end = s->out + out_bytes;
-    s->begin = (char *)out;
-
-    int count = 0;
-    uint32_t bfinal;
-    do {
-        bfinal = s_read_bits(s, 1);
-        uint32_t btype = s_read_bits(s, 2);
-
-        switch (btype) {
-            case 0:
-                if (!(s_stored(s))) goto ase_err;
-                break;
-            case 1:
-                s_fixed(s);
-                if (!(s_block(s))) goto ase_err;
-                break;
-            case 2:
-                s_dynamic(s);
-                if (!(s_block(s))) goto ase_err;
-                break;
-            case 3:
-                NEKO_ASSERT(0, "Detected unknown block type within input stream.");
-        }
-
-        ++count;
-    } while (!bfinal);
-
-    mem_free(s);
-    return 1;
-
-ase_err:
-    mem_free(s);
-    return 0;
-}
-
-typedef struct ase_state_t {
-    uint8_t *in;
-    uint8_t *end;
-} ase_state_t;
-
-static uint8_t s_read_uint8(ase_state_t *s) {
-    NEKO_ASSERT(s->in <= s->end + sizeof(uint8_t));
-    uint8_t **p = &s->in;
-    uint8_t value = **p;
-    ++(*p);
-    return value;
-}
-
-static uint16_t s_read_uint16(ase_state_t *s) {
-    NEKO_ASSERT(s->in <= s->end + sizeof(uint16_t));
-    uint8_t **p = &s->in;
-    uint16_t value;
-    value = (*p)[0];
-    value |= (((uint16_t)((*p)[1])) << 8);
-    *p += 2;
-    return value;
-}
-
-static ase_fixed_t s_read_fixed(ase_state_t *s) {
-    ase_fixed_t value;
-    value.a = s_read_uint16(s);
-    value.b = s_read_uint16(s);
-    return value;
-}
-
-static uint32_t s_read_uint32(ase_state_t *s) {
-    NEKO_ASSERT(s->in <= s->end + sizeof(uint32_t));
-    uint8_t **p = &s->in;
-    uint32_t value;
-    value = (*p)[0];
-    value |= (((uint32_t)((*p)[1])) << 8);
-    value |= (((uint32_t)((*p)[2])) << 16);
-    value |= (((uint32_t)((*p)[3])) << 24);
-    *p += 4;
-    return value;
-}
-
-#ifdef CUTE_ASPRITE_S_READ_UINT64
-// s_read_uint64() is not currently used.
-static uint64_t s_read_uint64(ase_state_t *s) {
-    NEKO_ASSERT(s->in <= s->end + sizeof(uint64_t));
-    uint8_t **p = &s->in;
-    uint64_t value;
-    value = (*p)[0];
-    value |= (((uint64_t)((*p)[1])) << 8);
-    value |= (((uint64_t)((*p)[2])) << 16);
-    value |= (((uint64_t)((*p)[3])) << 24);
-    value |= (((uint64_t)((*p)[4])) << 32);
-    value |= (((uint64_t)((*p)[5])) << 40);
-    value |= (((uint64_t)((*p)[6])) << 48);
-    value |= (((uint64_t)((*p)[7])) << 56);
-    *p += 8;
-    return value;
-}
-#endif
-
-#define s_read_int16(s) (int16_t) s_read_uint16(s)
-#define s_read_int32(s) (int32_t) s_read_uint32(s)
-
-#ifdef CUTE_ASPRITE_S_READ_BYTES
-// s_read_bytes() is not currently used.
-static void s_read_bytes(ase_state_t *s, uint8_t *bytes, int num_bytes) {
-    for (int i = 0; i < num_bytes; ++i) {
-        bytes[i] = s_read_uint8(s);
-    }
-}
-#endif
-
-static const_str s_read_string(ase_state_t *s) {
-    int len = (int)s_read_uint16(s);
-    char *bytes = (char *)mem_alloc(len + 1);
-    for (int i = 0; i < len; ++i) {
-        bytes[i] = (char)s_read_uint8(s);
-    }
-    bytes[len] = 0;
-    return bytes;
-}
-
-static void s_skip(ase_state_t *ase, int num_bytes) {
-    NEKO_ASSERT(ase->in <= ase->end + num_bytes);
-    ase->in += num_bytes;
-}
-
-static int s_mul_un8(int a, int b) {
-    int t = (a * b) + 0x80;
-    return (((t >> 8) + t) >> 8);
-}
-
-static ase_color_t s_blend(ase_color_t src, ase_color_t dst, uint8_t opacity) {
-    src.a = (uint8_t)s_mul_un8(src.a, opacity);
-    int a = src.a + dst.a - s_mul_un8(src.a, dst.a);
-    int r, g, b;
-    if (a == 0) {
-        r = g = b = 0;
-    } else {
-        r = dst.r + (src.r - dst.r) * src.a / a;
-        g = dst.g + (src.g - dst.g) * src.a / a;
-        b = dst.b + (src.b - dst.b) * src.a / a;
-    }
-    ase_color_t ret = {(uint8_t)r, (uint8_t)g, (uint8_t)b, (uint8_t)a};
-    return ret;
-}
-
-static int s_min(int a, int b) { return a < b ? a : b; }
-
-static int s_max(int a, int b) { return a < b ? b : a; }
-
-static ase_color_t s_color(ase_t *ase, void *src, int index) {
-    ase_color_t result;
-    if (ase->mode == ASE_MODE_RGBA) {
-        result = ((ase_color_t *)src)[index];
-    } else if (ase->mode == ASE_MODE_GRAYSCALE) {
-        uint8_t saturation = ((uint8_t *)src)[index * 2];
-        uint8_t a = ((uint8_t *)src)[index * 2 + 1];
-        result.r = result.g = result.b = saturation;
-        result.a = a;
-    } else {
-        NEKO_ASSERT(ase->mode == ASE_MODE_INDEXED);
-        uint8_t palette_index = ((uint8_t *)src)[index];
-        if (palette_index == ase->transparent_palette_entry_index) {
-            result.r = 0;
-            result.g = 0;
-            result.b = 0;
-            result.a = 0;
-        } else {
-            result = ase->palette.entries[palette_index].color;
-        }
-    }
-    return result;
-}
-
-ase_t *neko_aseprite_load_from_memory(const void *memory, int size) {
-    ase_t *ase = (ase_t *)mem_alloc(sizeof(ase_t));
-    memset(ase, 0, sizeof(*ase));
-
-    ase_state_t state = {0};
-    ase_state_t *s = &state;
-    s->in = (uint8_t *)memory;
-    s->end = s->in + size;
-
-    s_skip(s, sizeof(uint32_t));  // File size.
-    int magic = (int)s_read_uint16(s);
-    NEKO_ASSERT(magic == 0xA5E0);
-
-    ase->frame_count = (int)s_read_uint16(s);
-    ase->w = s_read_uint16(s);
-    ase->h = s_read_uint16(s);
-    uint16_t bpp = s_read_uint16(s) / 8;
-    if (bpp == 4)
-        ase->mode = ASE_MODE_RGBA;
-    else if (bpp == 2)
-        ase->mode = ASE_MODE_GRAYSCALE;
-    else {
-        NEKO_ASSERT(bpp == 1);
-        ase->mode = ASE_MODE_INDEXED;
-    }
-    uint32_t valid_layer_opacity = s_read_uint32(s) & 1;
-    int speed = s_read_uint16(s);
-    s_skip(s, sizeof(uint32_t) * 2);  // Spec says skip these bytes, as they're zero'd.
-    ase->transparent_palette_entry_index = s_read_uint8(s);
-    s_skip(s, 3);  // Spec says skip these bytes.
-    ase->number_of_colors = (int)s_read_uint16(s);
-    ase->pixel_w = (int)s_read_uint8(s);
-    ase->pixel_h = (int)s_read_uint8(s);
-    ase->grid_x = (int)s_read_int16(s);
-    ase->grid_y = (int)s_read_int16(s);
-    ase->grid_w = (int)s_read_uint16(s);
-    ase->grid_h = (int)s_read_uint16(s);
-    s_skip(s, 84);  // For future use (set to zero).
-
-    ase->frames = (ase_frame_t *)mem_alloc((int)(sizeof(ase_frame_t)) * ase->frame_count);
-    memset(ase->frames, 0, sizeof(ase_frame_t) * (size_t)ase->frame_count);
-
-    ase_udata_t *last_udata = NULL;
-    int was_on_tags = 0;
-    int tag_index = 0;
-
-    ase_layer_t *layer_stack[NEKO_ASEPRITE_MAX_LAYERS];
-
-    // Parse all chunks in the .aseprite file.
-    for (int i = 0; i < ase->frame_count; ++i) {
-        ase_frame_t *frame = ase->frames + i;
-        frame->ase = ase;
-        s_skip(s, sizeof(uint32_t));  // Frame size.
-        magic = (int)s_read_uint16(s);
-        NEKO_ASSERT(magic == 0xF1FA);
-        int chunk_count = (int)s_read_uint16(s);
-        frame->duration_milliseconds = s_read_uint16(s);
-        if (frame->duration_milliseconds == 0) frame->duration_milliseconds = speed;
-        s_skip(s, 2);  // For future use (set to zero).
-        uint32_t new_chunk_count = s_read_uint32(s);
-        if (new_chunk_count) chunk_count = (int)new_chunk_count;
-
-        for (int j = 0; j < chunk_count; ++j) {
-            uint32_t chunk_size = s_read_uint32(s);
-            uint16_t chunk_type = s_read_uint16(s);
-            chunk_size -= (uint32_t)(sizeof(uint32_t) + sizeof(uint16_t));
-            uint8_t *chunk_start = s->in;
-
-            switch (chunk_type) {
-                case 0x0004:  // 旧调色板块(当调色板中没有带有 alpha 的颜色时使用)
-                {
-                    uint16_t nbPackets = s_read_uint16(s);
-                    for (uint16_t k = 0; k < nbPackets; k++) {
-                        uint16_t maxColor = 0;
-                        uint16_t skip = (uint16_t)s_read_uint8(s);
-                        uint16_t nbColors = (uint16_t)s_read_uint8(s);
-                        if (nbColors == 0) nbColors = 256;
-
-                        for (uint16_t l = 0; l < nbColors; l++) {
-                            ase_palette_entry_t entry;
-                            entry.color.r = s_read_uint8(s);
-                            entry.color.g = s_read_uint8(s);
-                            entry.color.b = s_read_uint8(s);
-                            entry.color.a = 255;
-                            entry.color_name = NULL;
-                            ase->palette.entries[skip + l] = entry;
-                            if (skip + l > maxColor) maxColor = skip + l;
-                        }
-
-                        ase->palette.entry_count = maxColor + 1;
-                    }
-
-                } break;
-                case 0x2004:  // Layer chunk.
-                {
-                    NEKO_ASSERT(ase->layer_count < NEKO_ASEPRITE_MAX_LAYERS);
-                    ase_layer_t *layer = ase->layers + ase->layer_count++;
-                    layer->flags = (ase_layer_flags_t)s_read_uint16(s);
-                    layer->type = (ase_layer_type_t)s_read_uint16(s);
-                    layer->parent = NULL;
-                    int child_level = (int)s_read_uint16(s);
-                    layer_stack[child_level] = layer;
-                    if (child_level) {
-                        layer->parent = layer_stack[child_level - 1];
-                    }
-                    s_skip(s, sizeof(uint16_t));  // Default layer width in pixels (ignored).
-                    s_skip(s, sizeof(uint16_t));  // Default layer height in pixels (ignored).
-                    int blend_mode = (int)s_read_uint16(s);
-                    if (blend_mode) NEKO_WARN("unknown blend mode encountered.");
-                    layer->opacity = s_read_uint8(s) / 255.0f;
-                    if (!valid_layer_opacity) layer->opacity = 1.0f;
-                    s_skip(s, 3);  // For future use (set to zero).
-                    layer->name = s_read_string(s);
-                    last_udata = &layer->udata;
-                } break;
-
-                case 0x2005:  // Cel chunk.
-                {
-                    NEKO_ASSERT(frame->cel_count < NEKO_ASEPRITE_MAX_LAYERS);
-                    ase_cel_t *cel = frame->cels + frame->cel_count++;
-                    int layer_index = (int)s_read_uint16(s);
-                    cel->layer = ase->layers + layer_index;
-                    cel->x = s_read_int16(s);
-                    cel->y = s_read_int16(s);
-                    cel->opacity = s_read_uint8(s) / 255.0f;
-                    int cel_type = (int)s_read_uint16(s);
-                    s_skip(s, 7);  // For future (set to zero).
-                    switch (cel_type) {
-                        case 0:  // Raw cel.
-                            cel->w = s_read_uint16(s);
-                            cel->h = s_read_uint16(s);
-                            cel->pixels = mem_alloc(cel->w * cel->h * bpp);
-                            memcpy(cel->pixels, s->in, (size_t)(cel->w * cel->h * bpp));
-                            s_skip(s, cel->w * cel->h * bpp);
-                            break;
-
-                        case 1:  // Linked cel.
-                            cel->is_linked = 1;
-                            cel->linked_frame_index = s_read_uint16(s);
-                            break;
-
-                        case 2:  // Compressed image cel.
-                        {
-                            cel->w = s_read_uint16(s);
-                            cel->h = s_read_uint16(s);
-                            int zlib_byte0 = s_read_uint8(s);
-                            int zlib_byte1 = s_read_uint8(s);
-                            int deflate_bytes = (int)chunk_size - (int)(s->in - chunk_start);
-                            void *pixels = s->in;
-                            NEKO_ASSERT((zlib_byte0 & 0x0F) == 0x08);  // Only zlib compression method (RFC 1950) is supported.
-                            NEKO_ASSERT((zlib_byte0 & 0xF0) <= 0x70);  // Innapropriate window size detected.
-                            NEKO_ASSERT(!(zlib_byte1 & 0x20));         // Preset dictionary is present and not supported.
-                            int pixels_sz = cel->w * cel->h * bpp;
-                            void *pixels_decompressed = mem_alloc(pixels_sz);
-                            int ret = s_inflate(pixels, deflate_bytes, pixels_decompressed, pixels_sz);
-                            if (!ret) NEKO_WARN("?");
-                            cel->pixels = pixels_decompressed;
-                            s_skip(s, deflate_bytes);
-                        } break;
-                    }
-                    last_udata = &cel->udata;
-                } break;
-
-                case 0x2006:  // Cel extra chunk.
-                {
-                    ase_cel_t *cel = frame->cels + frame->cel_count;
-                    cel->has_extra = 1;
-                    cel->extra.precise_bounds_are_set = (int)s_read_uint32(s);
-                    cel->extra.precise_x = s_read_fixed(s);
-                    cel->extra.precise_y = s_read_fixed(s);
-                    cel->extra.w = s_read_fixed(s);
-                    cel->extra.h = s_read_fixed(s);
-                    s_skip(s, 16);  // For future use (set to zero).
-                } break;
-
-                case 0x2007:  // Color profile chunk.
-                {
-                    ase->has_color_profile = 1;
-                    ase->color_profile.type = (ase_color_profile_type_t)s_read_uint16(s);
-                    ase->color_profile.use_fixed_gamma = (int)s_read_uint16(s) & 1;
-                    ase->color_profile.gamma = s_read_fixed(s);
-                    s_skip(s, 8);  // For future use (set to zero).
-                    if (ase->color_profile.type == ASE_COLOR_PROFILE_TYPE_EMBEDDED_ICC) {
-                        // Use the embedded ICC profile.
-                        ase->color_profile.icc_profile_data_length = s_read_uint32(s);
-                        ase->color_profile.icc_profile_data = mem_alloc(ase->color_profile.icc_profile_data_length);
-                        memcpy(ase->color_profile.icc_profile_data, s->in, ase->color_profile.icc_profile_data_length);
-                        s->in += ase->color_profile.icc_profile_data_length;
-                    }
-                } break;
-
-                case 0x2018:  // Tags chunk.
-                {
-                    ase->tag_count = (int)s_read_uint16(s);
-                    s_skip(s, 8);  // For future (set to zero).
-                    NEKO_ASSERT(ase->tag_count < NEKO_ASEPRITE_MAX_TAGS);
-                    for (int k = 0; k < ase->tag_count; ++k) {
-                        ase->tags[k].from_frame = (int)s_read_uint16(s);
-                        ase->tags[k].to_frame = (int)s_read_uint16(s);
-                        ase->tags[k].loop_animation_direction = (ase_animation_direction_t)s_read_uint8(s);
-                        ase->tags[k].repeat = s_read_uint16(s);
-                        s_skip(s, 6);  // For future (set to zero).
-                        ase->tags[k].r = s_read_uint8(s);
-                        ase->tags[k].g = s_read_uint8(s);
-                        ase->tags[k].b = s_read_uint8(s);
-                        s_skip(s, 1);  // Extra byte (zero).
-                        ase->tags[k].name = s_read_string(s);
-                    }
-                    was_on_tags = 1;
-                } break;
-
-                case 0x2019:  // Palette chunk.
-                {
-                    ase->palette.entry_count = (int)s_read_uint32(s);
-                    NEKO_ASSERT(ase->palette.entry_count <= NEKO_ASEPRITE_MAX_PALETTE_ENTRIES);
-                    int first_index = (int)s_read_uint32(s);
-                    int last_index = (int)s_read_uint32(s);
-                    s_skip(s, 8);  // For future (set to zero).
-                    for (int k = first_index; k <= last_index; ++k) {
-                        int has_name = s_read_uint16(s);
-                        ase_palette_entry_t entry;
-                        entry.color.r = s_read_uint8(s);
-                        entry.color.g = s_read_uint8(s);
-                        entry.color.b = s_read_uint8(s);
-                        entry.color.a = s_read_uint8(s);
-                        if (has_name) {
-                            entry.color_name = s_read_string(s);
-                        } else {
-                            entry.color_name = NULL;
-                        }
-                        NEKO_ASSERT(k < NEKO_ASEPRITE_MAX_PALETTE_ENTRIES);
-                        ase->palette.entries[k] = entry;
-                    }
-                } break;
-
-                case 0x2020:  // Udata chunk.
-                {
-                    NEKO_ASSERT(last_udata || was_on_tags);
-                    if (was_on_tags && !last_udata) {
-                        NEKO_ASSERT(tag_index < ase->tag_count);
-                        last_udata = &ase->tags[tag_index++].udata;
-                    }
-                    int flags = (int)s_read_uint32(s);
-                    if (flags & 1) {
-                        last_udata->has_text = 1;
-                        last_udata->text = s_read_string(s);
-                    }
-                    if (flags & 2) {
-                        last_udata->color.r = s_read_uint8(s);
-                        last_udata->color.g = s_read_uint8(s);
-                        last_udata->color.b = s_read_uint8(s);
-                        last_udata->color.a = s_read_uint8(s);
-                    }
-                    last_udata = NULL;
-                } break;
-
-                case 0x2022:  // Slice chunk.
-                {
-                    int slice_count = (int)s_read_uint32(s);
-                    int flags = (int)s_read_uint32(s);
-                    s_skip(s, sizeof(uint32_t));  // Reserved.
-                    const_str name = s_read_string(s);
-                    for (int k = 0; k < (int)slice_count; ++k) {
-                        ase_slice_t slice = {0};
-                        slice.name = name;
-                        slice.frame_number = (int)s_read_uint32(s);
-                        slice.origin_x = (int)s_read_int32(s);
-                        slice.origin_y = (int)s_read_int32(s);
-                        slice.w = (int)s_read_uint32(s);
-                        slice.h = (int)s_read_uint32(s);
-                        if (flags & 1) {
-                            // It's a 9-patches slice.
-                            slice.has_center_as_9_slice = 1;
-                            slice.center_x = (int)s_read_int32(s);
-                            slice.center_y = (int)s_read_int32(s);
-                            slice.center_w = (int)s_read_uint32(s);
-                            slice.center_h = (int)s_read_uint32(s);
-                        }
-                        if (flags & 2) {
-                            // Has pivot information.
-                            slice.has_pivot = 1;
-                            slice.pivot_x = (int)s_read_int32(s);
-                            slice.pivot_y = (int)s_read_int32(s);
-                        }
-                        NEKO_ASSERT(ase->slice_count < NEKO_ASEPRITE_MAX_SLICES);
-                        ase->slices[ase->slice_count++] = slice;
-                        last_udata = &ase->slices[ase->slice_count - 1].udata;
-                    }
-                } break;
-
-                default:
-                    s_skip(s, (int)chunk_size);
-                    break;
-            }
-
-            uint32_t size_read = (uint32_t)(s->in - chunk_start);
-            NEKO_ASSERT(size_read == chunk_size);
-        }
-    }
-
-    // Blend all cel pixels into each of their respective frames, for convenience.
-    for (int i = 0; i < ase->frame_count; ++i) {
-        ase_frame_t *frame = ase->frames + i;
-        frame->pixels = (ase_color_t *)mem_alloc((int)(sizeof(ase_color_t)) * ase->w * ase->h);
-        memset(frame->pixels, 0, sizeof(ase_color_t) * (size_t)ase->w * (size_t)ase->h);
-        ase_color_t *dst = frame->pixels;
-        for (int j = 0; j < frame->cel_count; ++j) {
-            ase_cel_t *cel = frame->cels + j;
-            if (!(cel->layer->flags & ASE_LAYER_FLAGS_VISIBLE)) {
-                continue;
-            }
-            if (cel->layer->parent && !(cel->layer->parent->flags & ASE_LAYER_FLAGS_VISIBLE)) {
-                continue;
-            }
-            while (cel->is_linked) {
-                ase_frame_t *frame = ase->frames + cel->linked_frame_index;
-                int found = 0;
-                for (int k = 0; k < frame->cel_count; ++k) {
-                    if (frame->cels[k].layer == cel->layer) {
-                        cel = frame->cels + k;
-                        found = 1;
-                        break;
-                    }
-                }
-                NEKO_ASSERT(found);
-            }
-            void *src = cel->pixels;
-            uint8_t opacity = (uint8_t)(cel->opacity * cel->layer->opacity * 255.0f);
-            int cx = cel->x;
-            int cy = cel->y;
-            int cw = cel->w;
-            int ch = cel->h;
-            int cl = -s_min(cx, 0);
-            int ct = -s_min(cy, 0);
-            int dl = s_max(cx, 0);
-            int dt = s_max(cy, 0);
-            int dr = s_min(ase->w, cw + cx);
-            int db = s_min(ase->h, ch + cy);
-            int aw = ase->w;
-            for (int dx = dl, sx = cl; dx < dr; dx++, sx++) {
-                for (int dy = dt, sy = ct; dy < db; dy++, sy++) {
-                    int dst_index = aw * dy + dx;
-                    ase_color_t src_color = s_color(ase, src, cw * sy + sx);
-                    ase_color_t dst_color = dst[dst_index];
-                    ase_color_t result = s_blend(src_color, dst_color, opacity);
-                    dst[dst_index] = result;
-                }
-            }
-        }
-    }
-
-    return ase;
-}
-
-void neko_aseprite_free(ase_t *ase) {
-    for (int i = 0; i < ase->frame_count; ++i) {
-        ase_frame_t *frame = ase->frames + i;
-        mem_free(frame->pixels);
-        for (int j = 0; j < frame->cel_count; ++j) {
-            ase_cel_t *cel = frame->cels + j;
-            mem_free(cel->pixels);
-            mem_free((void *)cel->udata.text);
-        }
-    }
-    for (int i = 0; i < ase->layer_count; ++i) {
-        ase_layer_t *layer = ase->layers + i;
-        mem_free((void *)layer->name);
-        mem_free((void *)layer->udata.text);
-    }
-    for (int i = 0; i < ase->tag_count; ++i) {
-        ase_tag_t *tag = ase->tags + i;
-        mem_free((void *)tag->name);
-    }
-    for (int i = 0; i < ase->slice_count; ++i) {
-        ase_slice_t *slice = ase->slices + i;
-        mem_free((void *)slice->udata.text);
-    }
-    if (ase->slice_count) {
-        mem_free((void *)ase->slices[0].name);
-    }
-    for (int i = 0; i < ase->palette.entry_count; ++i) {
-        mem_free((void *)ase->palette.entries[i].color_name);
-    }
-    mem_free(ase->color_profile.icc_profile_data);
-    mem_free(ase->frames);
-    mem_free(ase);
-}
-
 struct FileChange {
     u64 key;
     u64 modtime;
@@ -5074,7 +3958,7 @@ static void hot_reload_thread(void *) {
             for (auto [k, v] : g_assets.table) {
                 PROFILE_BLOCK("read modtime");
 
-                u64 modtime = os_file_modtime(v->name.data);
+                u64 modtime = vfs_file_modtime(NEKO_PACKS::GAMEDATA, v->name);
                 if (modtime > v->modtime) {
                     FileChange change = {};
                     change.key = v->hash;
@@ -5230,7 +4114,7 @@ bool asset_load(AssetLoadData desc, String filepath, Asset *out) {
         asset.hash = key;
         {
             PROFILE_BLOCK("asset modtime")
-            asset.modtime = os_file_modtime(asset.name.data);
+            asset.modtime = vfs_file_modtime(NEKO_PACKS::GAMEDATA, asset.name);
         }
         asset.kind = desc.kind;
 

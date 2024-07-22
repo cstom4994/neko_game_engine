@@ -186,6 +186,7 @@ bool read_entire_file_raw(String *out, String filepath);
 MountResult vfs_mount(const_str fsname, const char *filepath);
 void vfs_fini();
 
+u64 vfs_file_modtime(String fsname, String filepath);
 bool vfs_file_exists(String fsname, String filepath);
 bool vfs_read_entire_file(String fsname, String *out, String filepath);
 bool vfs_write_entire_file(String fsname, String filepath, String contents);
@@ -276,37 +277,10 @@ void json_to_lua(lua_State *L, JSON *json);
 String lua_to_json_string(lua_State *L, i32 arg, String *contents, i32 width);
 
 /*==========================
-// LZ77
-==========================*/
-
-u32 neko_lz_encode(const void *in, u32 inlen, void *out, u32 outlen, u32 flags);  // [0..(6)..9]
-u32 neko_lz_decode(const void *in, u32 inlen, void *out, u32 outlen);
-u32 neko_lz_bounds(u32 inlen, u32 flags);
-
-/*==========================
 // NEKO_PACK
 ==========================*/
 
-#define neko_pak_head_size 8
-
-// typedef enum neko_packresult_t {
-//     SUCCESS_PACK_RESULT = 0,
-//     FAILED_TO_ALLOCATE_PACK_RESULT = 1,
-//     FAILED_TO_CREATE_LZ4_PACK_RESULT = 2,
-//     FAILED_TO_CREATE_FILE_PACK_RESULT = 3,
-//     FAILED_TO_OPEN_FILE_PACK_RESULT = 4,
-//     FAILED_TO_WRITE_FILE_PACK_RESULT = 5,
-//     FAILED_TO_READ_FILE_PACK_RESULT = 6,
-//     FAILED_TO_SEEK_FILE_PACK_RESULT = 7,
-//     FAILED_TO_GET_DIRECTORY_PACK_RESULT = 8,
-//     FAILED_TO_DECOMPRESS_PACK_RESULT = 9,
-//     FAILED_TO_GET_ITEM_PACK_RESULT = 10,
-//     BAD_DATA_SIZE_PACK_RESULT = 11,
-//     BAD_FILE_TYPE_PACK_RESULT = 12,
-//     BAD_FILE_VERSION_PACK_RESULT = 13,
-//     BAD_FILE_ENDIANNESS_PACK_RESULT = 14,
-//     PACK_RESULT_COUNT = 15,
-// } neko_packresult_t;
+#define NEKO_PAK_HEAD_SIZE 8
 
 typedef struct neko_pak {
 
@@ -356,8 +330,6 @@ typedef struct neko_pak {
     void free_buffer();
 
 } neko_pak;
-
-using neko_pak_ptr = neko_pak *;
 
 bool neko_pak_unzip(const_str file_path, bool print_progress);
 bool neko_pak_build(const_str pack_path, u64 file_count, const_str *file_paths, bool print_progress);
@@ -520,188 +492,6 @@ void neko_tiled_render_begin(neko_command_buffer_t *cb, neko_tiled_renderer *ren
 void neko_tiled_render_flush(neko_command_buffer_t *cb, neko_tiled_renderer *renderer);
 void neko_tiled_render_push(neko_command_buffer_t *cb, neko_tiled_renderer *renderer, neko_tiled_quad_t quad);
 void neko_tiled_render_draw(neko_command_buffer_t *cb, neko_tiled_renderer *renderer);
-
-typedef struct ase_t ase_t;
-
-ase_t *neko_aseprite_load_from_memory(const void *memory, int size);
-void neko_aseprite_free(ase_t *aseprite);
-
-#define NEKO_ASEPRITE_MAX_LAYERS (64)
-#define NEKO_ASEPRITE_MAX_SLICES (128)
-#define NEKO_ASEPRITE_MAX_PALETTE_ENTRIES (1024)
-#define NEKO_ASEPRITE_MAX_TAGS (256)
-
-typedef struct ase_color_t ase_color_t;
-typedef struct ase_frame_t ase_frame_t;
-typedef struct ase_layer_t ase_layer_t;
-typedef struct ase_cel_t ase_cel_t;
-typedef struct ase_tag_t ase_tag_t;
-typedef struct ase_slice_t ase_slice_t;
-typedef struct ase_palette_entry_t ase_palette_entry_t;
-typedef struct ase_palette_t ase_palette_t;
-typedef struct ase_udata_t ase_udata_t;
-typedef struct ase_cel_extra_chunk_t ase_cel_extra_chunk_t;
-typedef struct ase_color_profile_t ase_color_profile_t;
-typedef struct ase_fixed_t ase_fixed_t;
-typedef struct ase_cel_extra_chunk_t ase_cel_extra_chunk_t;
-
-struct ase_color_t {
-    uint8_t r, g, b, a;
-};
-
-struct ase_fixed_t {
-    uint16_t a;
-    uint16_t b;
-};
-
-struct ase_udata_t {
-    int has_color;
-    ase_color_t color;
-    int has_text;
-    const char *text;
-};
-
-typedef enum ase_layer_flags_t {
-    ASE_LAYER_FLAGS_VISIBLE = 0x01,
-    ASE_LAYER_FLAGS_EDITABLE = 0x02,
-    ASE_LAYER_FLAGS_LOCK_MOVEMENT = 0x04,
-    ASE_LAYER_FLAGS_BACKGROUND = 0x08,
-    ASE_LAYER_FLAGS_PREFER_LINKED_CELS = 0x10,
-    ASE_LAYER_FLAGS_COLLAPSED = 0x20,
-    ASE_LAYER_FLAGS_REFERENCE = 0x40,
-} ase_layer_flags_t;
-
-typedef enum ase_layer_type_t {
-    ASE_LAYER_TYPE_NORMAL,
-    ASE_LAYER_TYPE_GROUP,
-} ase_layer_type_t;
-
-struct ase_layer_t {
-    ase_layer_flags_t flags;
-    ase_layer_type_t type;
-    const char *name;
-    ase_layer_t *parent;
-    float opacity;
-    ase_udata_t udata;
-};
-
-struct ase_cel_extra_chunk_t {
-    int precise_bounds_are_set;
-    ase_fixed_t precise_x;
-    ase_fixed_t precise_y;
-    ase_fixed_t w, h;
-};
-
-struct ase_cel_t {
-    ase_layer_t *layer;
-    void *pixels;
-    int w, h;
-    int x, y;
-    float opacity;
-    int is_linked;
-    uint16_t linked_frame_index;
-    int has_extra;
-    ase_cel_extra_chunk_t extra;
-    ase_udata_t udata;
-};
-
-struct ase_frame_t {
-    ase_t *ase;
-    int duration_milliseconds;
-    ase_color_t *pixels;
-    int cel_count;
-    ase_cel_t cels[NEKO_ASEPRITE_MAX_LAYERS];
-};
-
-typedef enum ase_animation_direction_t {
-    ASE_ANIMATION_DIRECTION_FORWARDS,
-    ASE_ANIMATION_DIRECTION_BACKWORDS,
-    ASE_ANIMATION_DIRECTION_PINGPONG,
-} ase_animation_direction_t;
-
-struct ase_tag_t {
-    int from_frame;
-    int to_frame;
-    ase_animation_direction_t loop_animation_direction;
-    int repeat;
-    uint8_t r, g, b;
-    const char *name;
-    ase_udata_t udata;
-};
-
-struct ase_slice_t {
-    const char *name;
-    int frame_number;
-    int origin_x;
-    int origin_y;
-    int w, h;
-
-    int has_center_as_9_slice;
-    int center_x;
-    int center_y;
-    int center_w;
-    int center_h;
-
-    int has_pivot;
-    int pivot_x;
-    int pivot_y;
-
-    ase_udata_t udata;
-};
-
-struct ase_palette_entry_t {
-    ase_color_t color;
-    const char *color_name;
-};
-
-struct ase_palette_t {
-    int entry_count;
-    ase_palette_entry_t entries[NEKO_ASEPRITE_MAX_PALETTE_ENTRIES];
-};
-
-typedef enum ase_color_profile_type_t {
-    ASE_COLOR_PROFILE_TYPE_NONE,
-    ASE_COLOR_PROFILE_TYPE_SRGB,
-    ASE_COLOR_PROFILE_TYPE_EMBEDDED_ICC,
-} ase_color_profile_type_t;
-
-struct ase_color_profile_t {
-    ase_color_profile_type_t type;
-    int use_fixed_gamma;
-    ase_fixed_t gamma;
-    uint32_t icc_profile_data_length;
-    void *icc_profile_data;
-};
-
-typedef enum ase_mode_t { ASE_MODE_RGBA, ASE_MODE_GRAYSCALE, ASE_MODE_INDEXED } ase_mode_t;
-
-struct ase_t {
-    ase_mode_t mode;
-    int w, h;
-    int transparent_palette_entry_index;
-    int number_of_colors;
-    int pixel_w;
-    int pixel_h;
-    int grid_x;
-    int grid_y;
-    int grid_w;
-    int grid_h;
-    int has_color_profile;
-    ase_color_profile_t color_profile;
-    ase_palette_t palette;
-
-    int layer_count;
-    ase_layer_t layers[NEKO_ASEPRITE_MAX_LAYERS];
-
-    int frame_count;
-    ase_frame_t *frames;
-
-    int tag_count;
-    ase_tag_t tags[NEKO_ASEPRITE_MAX_TAGS];
-
-    int slice_count;
-    ase_slice_t slices[NEKO_ASEPRITE_MAX_SLICES];
-};
 
 enum AssetKind : i32 {
     AssetKind_None,

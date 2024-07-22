@@ -1,13 +1,12 @@
 #pragma once
 
-#include <assert.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
+#include <cassert>
 #include <cstdarg>
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #if defined(_WIN32)
 #define NEKO_IS_WIN32
@@ -37,6 +36,8 @@ using u64 = uint64_t;
 using f32 = float;
 using f64 = double;
 using const_str = const char *;
+
+struct lua_State;
 
 #define u8_max UINT8_MAX
 #define u16_max UINT16_MAX

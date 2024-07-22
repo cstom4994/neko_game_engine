@@ -48,6 +48,9 @@ struct neko_w_lua_variant {
         } else if constexpr (std::is_floating_point_v<TT>) {
             type = LUA_TNUMBER;
             data.number = _v;
+        } else if constexpr (std::is_same_v<TT, String>) {
+            type = LUA_TSTRING;
+            data.str = _v.data;
         } else if constexpr (neko::is_pointer_to_const_char<TT>) {
             type = LUA_TSTRING;
             data.str = _v;
@@ -106,10 +109,12 @@ struct neko_w_lua_variant {
 
         lua_State *L = ENGINE_LUA();
 
+        int n = lua_gettop(L);
+
         lua_getfield(L, LUA_REGISTRYINDEX, W_LUA_REGISTRY_CONST::W_CORE);  // # 1
         lua_getiuservalue(L, -1, W_LUA_UPVALUES::NEKO_W_COMPONENTS_NAME);  // # 2
         lua_getfield(L, -1, W_LUA_REGISTRY_CONST::CVAR_MAP);               // # 3
-        lua_pushinteger(L, neko_hash_str(cname.data));                          // 使用 32 位哈希以适应 Lua 数字范围
+        lua_pushinteger(L, neko_hash_str(cname.data));                     // 使用 32 位哈希以适应 Lua 数字范围
         lua_gettable(L, -2);                                               // # 4
 
         if (lua_istable(L, -1)) {
@@ -146,7 +151,7 @@ struct neko_w_lua_variant {
             NEKO_WARN("cvar sync with no type : %s", cname.data);
         }
 
-        NEKO_ASSERT(lua_gettop(L) == 0);
+        NEKO_ASSERT(lua_gettop(L) == n);
     }
 
     template <typename C>
@@ -173,6 +178,8 @@ struct neko_w_lua_variant {
         NEKO_ASSERT(type != LUA_TNONE);
 
         lua_State *L = ENGINE_LUA();
+
+        int n = lua_gettop(L);
 
         lua_getfield(L, LUA_REGISTRYINDEX, W_LUA_REGISTRY_CONST::W_CORE);  // # 1
 
@@ -202,8 +209,8 @@ struct neko_w_lua_variant {
                     lua_setfield(L, -2, "data");
 
                     lua_pushinteger(L, neko_hash_str(cname.data));  // 重新推入键
-                    lua_pushvalue(L, -2);                      // 将新表复制到栈顶
-                    lua_settable(L, -4);                       // 将新表设置到 CVAR_MAP 中
+                    lua_pushvalue(L, -2);                           // 将新表复制到栈顶
+                    lua_settable(L, -4);                            // 将新表设置到 CVAR_MAP 中
                 }
 
                 lua_pop(L, 1);  // # pop 4
@@ -221,7 +228,7 @@ struct neko_w_lua_variant {
 
         lua_pop(L, 1);  // # pop 1
 
-        NEKO_ASSERT(lua_gettop(L) == 0);
+        NEKO_ASSERT(lua_gettop(L) == n);
     }
 };
 

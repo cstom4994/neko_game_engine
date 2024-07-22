@@ -810,9 +810,7 @@ inline void wtf8_from_utf16(const wchar_t* input, size_t length, char* output, s
 
 NEKO_FORCE_INLINE u32 neko_string_length(const char* txt) {
     u32 sz = 0;
-    while (txt != NULL && txt[sz] != '\0') {
-        sz++;
-    }
+    while (txt != NULL && txt[sz] != '\0') sz++;
     return sz;
 }
 

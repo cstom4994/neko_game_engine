@@ -34,9 +34,9 @@ end
 
 local function check(node)
     if node[1]["this_is_neko_prefab_file"] ~= nil then
-        return true
+        return node[1]["engine_version"]
     end
-    return false
+    return 0
 end
 
 local function node_type(node)

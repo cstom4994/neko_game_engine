@@ -362,7 +362,7 @@ local worlds = {}
 function sandbox.fetch_world(name)
     local w = worlds[name]
     if not w then
-        w = Core.boot_f()
+        w = neko.ecs_create()
         worlds[name] = w
     end
     return w

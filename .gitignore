@@ -17,13 +17,10 @@ cmake-*/
 *.exe
 *.exp
 
-.*
-
-gamedir/
-
 *.dylib
 
 gamedir/assets/
+gamedir/code/libs
 gamedir/*.pack
 docs/
 assets/
