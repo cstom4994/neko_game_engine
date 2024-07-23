@@ -201,7 +201,7 @@ Defer<F> defer_func(F f) {
 #define neko_defer(code) auto JOIN_2(_defer_, __COUNTER__) = defer_func([&]() { code; })
 
 FORMAT_ARGS(1)
-inline void panic(const char *fmt, ...) {
+inline void neko_panic(const char *fmt, ...) {
     va_list args = {};
     va_start(args, fmt);
     vfprintf(stderr, fmt, args);

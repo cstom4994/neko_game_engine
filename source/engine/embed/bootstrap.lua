@@ -424,6 +424,57 @@ function class(name, parent)
     rawset(_G, name, setmetatable(cls, parent))
 end
 
+function newproxy(new_meta)
+    local proxy = {}
+
+    if (new_meta == true) then
+        local mt = {}
+        setmetatable(proxy, mt)
+    elseif (new_meta == false) then
+        -- new_meta must have a metatable.
+        local mt = getmetatable(new_meta)
+        setmetatable(proxy, mt)
+    end
+
+    return proxy
+end
+
+function classnew_ctor(ctor_method_name)
+    ctor_method_name = ctor_method_name or "__new"
+    assert(type(ctor_method_name == "string"))
+
+    local classnew = function(tbl, ...)
+        tbl.__index = tbl.__index or tbl
+        local inst = {}
+        -- dtor (with the name __gc)
+        -- this works with types defined in lua tables in 5.1 via "newproxy(true)" hack
+        if tbl["__gc"] then
+            local proxy_for_gc = newproxy(true)
+            getmetatable(proxy_for_gc).__gc = function()
+                local ok, err = pcall(tbl.__gc, inst)
+                if not ok then
+                    print(err)
+                end
+            end
+            inst[proxy_for_gc] = true
+        end
+        inst = setmetatable(inst, tbl)
+        -- ctor (with the given name. __new if nothing given)
+        if tbl[ctor_method_name] then
+            local ok, err = pcall(tbl[ctor_method_name], inst, ...)
+            if not ok then
+                print(err)
+                error(err)
+            end
+        end
+        return inst
+    end
+
+    return classnew
+end
+
+classnew = classnew_ctor("__new")
+
 -- 2d vector
 
 class "vec2"

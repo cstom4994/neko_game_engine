@@ -38,11 +38,15 @@ static const u8 g_lua_prefabs_data[] = {
 static const u8 g_lua_bootstrap_data[] = {
 #include "bootstrap.lua.h"
 };
+static const u8 g_lua_api_neko_gen_data[] = {
+#include "api_neko_gen.lua.h"
+};
 
 LUAOPEN_EMBED_DATA(open_embed_common, "common.lua", g_lua_common_data);
 LUAOPEN_EMBED_DATA(open_embed_cstruct, "cstruct.lua", g_lua_cstruct_data);
 LUAOPEN_EMBED_DATA(open_embed_prefabs, "prefabs.lua", g_lua_prefabs_data);
 LUAOPEN_EMBED_DATA(open_embed_bootstrap, "bootstrap.lua", g_lua_bootstrap_data);
+LUAOPEN_EMBED_DATA(open_embed_api_neko_gen, "api_neko_gen.lua", g_lua_api_neko_gen_data);
 
 static void package_preload(lua_State* L, const_str name, lua_CFunction function) {
     lua_getglobal(L, "package");
@@ -58,18 +62,19 @@ void package_preload(lua_State* L) {
     package_preload(L, "common", open_embed_common);
     package_preload(L, "cstruct", open_embed_cstruct);
     package_preload(L, "prefabs", open_embed_prefabs);
+    package_preload(L, "api_neko_gen", open_embed_api_neko_gen);
 }
 void luax_run_bootstrap(lua_State* L) {
     std::string contents = (const_str)g_lua_bootstrap_data;
     if (luaL_loadbuffer(L, contents.c_str(), contents.size(), "bootstrap.lua") != LUA_OK) {
         fprintf(stderr, "%s\n", lua_tostring(L, -1));
-        panic("failed to load bootstrap");
+        neko_panic("failed to load bootstrap");
     }
     if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
         const char* errorMsg = lua_tostring(L, -1);
         fprintf(stderr, "bootstrap error: %s\n", errorMsg);
         lua_pop(L, 1);
-        panic("failed to run bootstrap");
+        neko_panic("failed to run bootstrap");
     }
     NEKO_INFO("loaded bootstrap");
 }

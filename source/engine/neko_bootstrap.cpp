@@ -258,7 +258,7 @@ lua_State *neko_scripting_init() {
     lua_atpanic(
             L, +[](lua_State *L) {
                 auto msg = neko_lua_to<const_str>(L, -1);
-                NEKO_ERROR("[lua] panic error: %s", msg);
+                NEKO_ERROR("[lua] neko_panic error: %s", msg);
                 return 0;
             });
     neko_register(L);
@@ -1308,7 +1308,7 @@ static void render() {
 
         sgl_error_t sgl_err = sgl_error();
         if (sgl_err != SGL_NO_ERROR) {
-            panic("a draw error occurred: %d", sgl_err);
+            neko_panic("a draw error occurred: %d", sgl_err);
         }
 
         simgui_render();
@@ -1415,7 +1415,7 @@ static void actually_cleanup() {
         luax_neko_get(L, "before_quit");
         if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
             String err = luax_check_string(L, -1);
-            panic("%s", err.data);
+            neko_panic("%s", err.data);
         }
     }
 
@@ -1521,6 +1521,7 @@ static void neko_setup_w() {
     open_luasocket(L);
 
     PRELOAD("enet", luaopen_enet);  // test
+    PRELOAD("__neko.imgui", luaopen_imgui);  // test
 
     neko::lua::luax_run_bootstrap(L);
 
@@ -1543,7 +1544,7 @@ static void load_all_lua_scripts(lua_State *L) {
 
     bool ok = vfs_list_all_files(NEKO_PACKS::GAMEDATA, &files);
     if (!ok) {
-        panic("failed to list all files");
+        neko_panic("failed to list all files");
     }
     std::qsort(files.data, files.len, sizeof(String), [](const void *a, const void *b) -> int {
         String *lhs = (String *)a;
@@ -1659,6 +1660,7 @@ sapp_desc sokol_main(int argc, char **argv) {
     lua_Number height = luax_opt_number_field(L, -1, "window_height", 600);
     String title = luax_opt_string_field(L, -1, "window_title", "NekoEngine");
     String imgui_font = luax_opt_string_field(L, -1, "imgui_font", "");
+    bool debug_on = luax_boolean_field(L, -1, "debug_on", true);
 
     lua_pop(L, 1);  // conf table
 
@@ -1676,6 +1678,7 @@ sapp_desc sokol_main(int argc, char **argv) {
     CVAR(conf_height, height);
     CVAR(conf_title, title);
     CVAR(conf_imgui_font, imgui_font);
+    CVAR(conf_debug_on, debug_on);
 
     g_app->hot_reload_enabled.store(mount.can_hot_reload && hot_reload);
     g_app->reload_interval.store((u32)(reload_interval * 1000));

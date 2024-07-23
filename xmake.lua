@@ -6,7 +6,7 @@ includes("@builtin/xpack")
 
 add_rules("plugin.vsxmake.autoupdate")
 add_rules("plugin.compile_commands.autoupdate", {
-    outputdir = ".vscode"
+    outputdir = "build"
 })
 
 set_policy("check.auto_ignore_flags", true)
@@ -19,20 +19,15 @@ add_includedirs("source/")
 
 local base_libs = {"lua", "sokol", "imgui", "miniz", "stb", "libffi"}
 
-if is_os("windows") or is_os("macosx") or is_os("linux") then
-    add_requires("lua", "sokol", "sokol-shdc", "miniz", "stb", "libffi")
-    add_requires("imgui v1.90.9-docking", {
-        configs = {
-            wchar32 = true,
-            backend = "none",
-            freetype = true
-        }
-    })
-    add_requires("miniaudio", "box2d", "enet", "flecs 3.2.11")
-else
-    -- add_requires("lua", "sokol", "miniz", "stb")
-    -- add_requires("miniaudio", "enet", "flecs 3.2.11")
-end
+add_requires("lua", "sokol", "sokol-shdc", "miniz", "stb", "libffi")
+add_requires("miniaudio", "box2d", "enet", "flecs 3.2.11")
+add_requires("imgui v1.90.9-docking", {
+    configs = {
+        wchar32 = true,
+        backend = "none",
+        freetype = true
+    }
+})
 
 if is_mode("debug") then
     add_defines("DEBUG", "_DEBUG")
@@ -110,10 +105,12 @@ do
     set_kind("binary")
 
     add_rules("utils.bin2c", {
-        extensions = {".lua", ".ttf"}
+        extensions = {".lua"}
     })
 
-    add_files("source/engine/embed/*.ttf", "source/engine/embed/*.lua")
+    add_files("source/engine/embed/*.lua")
+
+    add_files("source/api/gen/**.cpp", "source/api/gen/**.lua")
 
     add_files("source/engine/**.cpp")
     add_headerfiles("source/engine/**.h", "source/engine/**.hpp")

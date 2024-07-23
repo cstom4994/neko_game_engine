@@ -1,5 +1,11 @@
 
+#pragma once
+
+#include "engine/neko_app.h"
+#include "engine/neko_lua_wrap.h"
 #include "engine/neko_luabind.hpp"
+
+namespace neko::lua::__luadb {
 
 #define MAX_DEPTH 256
 #define SHORT_STRING 1024
@@ -118,7 +124,6 @@ static int luadb_copyvalue(lua_State *fromL, lua_State *toL, int index) {
     return 0;
 }
 
-namespace neko::lua::__luadb {
 LUABIND_MODULE() {
     luaL_checkversion(L);
     lua_newtable(L);

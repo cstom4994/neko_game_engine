@@ -32,6 +32,7 @@ old/
 source/generated
 source/engine/deps
 source/lua/libs
+source/api/gen
 source/sandbox/tests
 examples/
 website/

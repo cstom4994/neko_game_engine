@@ -167,6 +167,7 @@ u64 os_file_modtime(const char *filename);
 void os_high_timer_resolution();
 void os_sleep(u32 ms);
 void os_yield();
+String neko_os_homedir();
 
 typedef struct neko_os_file_stats_t {
     u64 modified_time;

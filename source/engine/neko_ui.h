@@ -20,6 +20,7 @@
 
 #include "engine/neko.hpp"
 #include "engine/neko_base.h"
+#include "engine/neko_lua.h"
 #include "engine/neko_prelude.h"
 
 // ImGui
@@ -1011,7 +1012,7 @@ inline bool InputText(const char *label, std::string *str, ImGuiInputTextFlags f
 }
 
 inline bool InputTextMultiline(const char *label, std::string *str, const ImVec2 &size = ImVec2(0, 0), ImGuiInputTextFlags flags = 0, ImGuiInputTextCallback callback = nullptr,
-                                    void *user_data = nullptr) {
+                               void *user_data = nullptr) {
     IM_ASSERT((flags & ImGuiInputTextFlags_CallbackResize) == 0);
     flags |= ImGuiInputTextFlags_CallbackResize;
 
@@ -1040,3 +1041,42 @@ inline void TextFmt(T &&fmt, const Args &...args) {
 }
 
 }  // namespace neko::imgui
+
+namespace neko::imgui_lua::util {
+
+struct TableInteger {
+    const char *name;
+    lua_Integer value;
+};
+
+using GenerateAny = void (*)(lua_State *L);
+struct TableAny {
+    const char *name;
+    GenerateAny value;
+};
+
+struct strbuf {
+    char *data;
+    size_t size;
+};
+
+struct input_context {
+    lua_State *L;
+    int callback;
+};
+
+lua_Integer field_tointeger(lua_State *L, int idx, lua_Integer i);
+lua_Number field_tonumber(lua_State *L, int idx, lua_Integer i);
+bool field_toboolean(lua_State *L, int idx, lua_Integer i);
+ImTextureID get_texture_id(lua_State *L, int idx);
+const char *format(lua_State *L, int idx);
+strbuf *strbuf_create(lua_State *L, int idx);
+strbuf *strbuf_get(lua_State *L, int idx);
+int input_callback(ImGuiInputTextCallbackData *data);
+void create_table(lua_State *L, std::span<TableInteger> l);
+void set_table(lua_State *L, std::span<TableAny> l);
+void struct_gen(lua_State *L, const char *name, std::span<luaL_Reg> funcs, std::span<luaL_Reg> setters, std::span<luaL_Reg> getters);
+void flags_gen(lua_State *L, const char *name);
+void init(lua_State *L);
+
+}  // namespace neko::imgui_lua::util

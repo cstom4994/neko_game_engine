@@ -5,16 +5,19 @@
 
 #include <atomic>
 
-#include "deps/luaalloc.h"
-#include "modules/sound.h"
+#include "neko_api_core.h"
 #include "neko_asset.h"
 #include "neko_base.h"
-#include "neko_engine.h"
 #include "neko_os.h"
+#include "neko_sound.h"
+
+// deps
+#include "deps/luaalloc.h"
 
 struct NEKO_PACKS {
     static constexpr const_str GAMEDATA = "default_pack";
     static constexpr const_str LUACODE = "luacode";
+    static constexpr const_str DEFAULT_FONT = "assets/fonts/Monocraft.ttf";
 };
 
 struct AppTime {
@@ -65,7 +68,7 @@ struct App {
 
     FontFamily *default_font;
 
-    lyte_BlendMode blendmode;
+    neko_api_BlendMode blendmode;
 
     float current_color[4];
 

@@ -2799,6 +2799,34 @@ static int open_embed_core(lua_State* L) {
 
             {"ecs_f", __neko_bind_ecs_f},
 
+            {"gameobject_inspect", __neko_bind_gameobject_inspect},
+
+            {"callback_save", __neko_bind_callback_save},
+            {"callback_call", __neko_bind_callback_call},
+
+            {"vfs_read_file", __neko_bind_vfs_read_file},
+
+            {"print", __neko_bind_print},
+
+            {"profiler_start", neko_lua_profiler_start},
+            {"profiler_stop", neko_lua_profiler_stop},
+            {"profiler_info", neko_lua_profiler_info},
+
+            {"LUASTRUCT_test_vec4", LUASTRUCT_test_vec4},
+
+            // luaref
+            {"ref_init", ref_init},
+            {"ref_close", ref_close},
+            {"ref_isvalid", ref_isvalid},
+            {"ref_ref", ref_ref},
+            {"ref_unref", ref_unref},
+            {"ref_get", ref_get},
+            {"ref_set", ref_set},
+
+            // pak
+            {"pak_build", __neko_bind_pack_build},
+            {"pak_info", __neko_bind_pack_info},
+
             // {"tiled_create", __neko_bind_tiled_create},
             // {"tiled_render", __neko_bind_tiled_render},
             // {"tiled_end", __neko_bind_tiled_end},
@@ -2826,8 +2854,6 @@ static int open_embed_core(lua_State* L) {
             // {"sprite_batch_push_sprite", __neko_bind_sprite_batch_push_sprite},
             // {"sprite_batch_end", __neko_bind_sprite_batch_end},
 
-            {"gameobject_inspect", __neko_bind_gameobject_inspect},
-
             // {"filesystem_create", __neko_bind_filesystem_create},
             // {"filesystem_fini", __neko_bind_filesystem_fini},
             // {"filewatch_create", __neko_bind_filewatch_create},
@@ -2837,9 +2863,6 @@ static int open_embed_core(lua_State* L) {
             // {"filewatch_stop", __neko_bind_filewatch_stop_watching},
             // {"filewatch_update", __neko_bind_filewatch_update},
             // {"filewatch_notify", __neko_bind_filewatch_notify},
-
-            {"callback_save", __neko_bind_callback_save},
-            {"callback_call", __neko_bind_callback_call},
 
             // {"idraw_get", __neko_bind_idraw_get},
             // {"idraw_draw", __neko_bind_idraw_draw},
@@ -2889,31 +2912,8 @@ static int open_embed_core(lua_State* L) {
             // {"make_thread", __neko_bind_make_thread},
             // {"make_channel", __neko_bind_make_channel},
 
-            {"vfs_read_file", __neko_bind_vfs_read_file},
-
-            {"print", __neko_bind_print},
-
             // {"json_read", __neko_bind_json_read},
             // {"json_write", __neko_bind_json_write},
-
-            {"profiler_start", neko_lua_profiler_start},
-            {"profiler_stop", neko_lua_profiler_stop},
-            {"profiler_info", neko_lua_profiler_info},
-
-            {"LUASTRUCT_test_vec4", LUASTRUCT_test_vec4},
-
-            // luaref
-            {"ref_init", ref_init},
-            {"ref_close", ref_close},
-            {"ref_isvalid", ref_isvalid},
-            {"ref_ref", ref_ref},
-            {"ref_unref", ref_unref},
-            {"ref_get", ref_get},
-            {"ref_set", ref_set},
-
-            // pak
-            {"pak_build", __neko_bind_pack_build},
-            {"pak_info", __neko_bind_pack_info},
 
             {NULL, NULL}};
 

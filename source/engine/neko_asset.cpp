@@ -30,11 +30,6 @@
 
 #include "deps/cute_aseprite.h"
 
-// embed
-static const u8 g_font_monocrafte_data[] = {
-#include "Monocraft.ttf.h"
-};
-
 template <typename T>
 inline auto sg_make(const T &d) {
     if constexpr (std::is_same_v<T, sg_image_desc>) {
@@ -858,8 +853,13 @@ bool FontFamily::load(String filepath) {
 void FontFamily::load_default() {
     PROFILE_FUNC();
 
+    String contents = {};
+    bool ok = vfs_read_entire_file(NEKO_PACKS::GAMEDATA, &contents, NEKO_PACKS::DEFAULT_FONT);
+
+    NEKO_ASSERT(ok, "load default font failed");
+
     FontFamily f = {};
-    f.ttf = {(const char *)g_font_monocrafte_data, sizeof(g_font_monocrafte_data)};
+    f.ttf = contents;
     f.sb = {};
     *this = f;
 }
@@ -870,9 +870,8 @@ void FontFamily::trash() {
     }
     sb.trash();
     ranges.trash();
-    if (ttf.data != (const char *)g_font_monocrafte_data) {
-        mem_free(ttf.data);
-    }
+
+    mem_free(ttf.data);
 }
 
 struct FontKey {
@@ -1428,10 +1427,9 @@ MountResult vfs_mount(const_str fsname, const char *filepath) {
         res.ok = vfs_mount_type<DirectoryFileSystem>(mount_dir);
     }
 #else
+    String path = os_program_path();
+    NEKO_DEBUG_LOG("program path: %s", path.data);
     if (filepath == nullptr) {
-        String path = os_program_path();
-
-        NEKO_DEBUG_LOG("program path: %s", path.data);
 
         res.ok = vfs_mount_type<ZipFileSystem>(fsname, path);
         if (!res.ok) {

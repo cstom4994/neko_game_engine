@@ -4,6 +4,7 @@ function neko.conf(t)
     t.reload_interval = 0.001
     t.window_width = 1280
     t.window_height = 720
+    t.debug_on = true
     -- t.imgui_font = "assets/fonts/fusion-pixel-12px-monospaced-zh_hans.ttf"
 end
 

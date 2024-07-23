@@ -1132,289 +1132,180 @@ end
 
 -- xml parser
 
-local sbyte, schar = string.byte, string.char
-local sfind, ssub, gsub = string.find, string.sub, string.gsub
-local tinsert, tremove = table.insert, table.remove
+local function newParser()
 
-local EXCLAIM, QUOT, APOS, MINUS, SLASH, LT, EQ, GT, QUESTION, LSQUARE, RSQUARE = sbyte("!\"'-/<=>?[]", 1, 11)
+    XmlParser = {};
 
-local function sub_hex_ent(s)
-    return schar(tonumber(s, 16))
+    function XmlParser:ToXmlString(value)
+        value = string.gsub(value, "&", "&amp;"); -- '&' -> "&amp;"
+        value = string.gsub(value, "<", "&lt;"); -- '<' -> "&lt;"
+        value = string.gsub(value, ">", "&gt;"); -- '>' -> "&gt;"
+        value = string.gsub(value, "\"", "&quot;"); -- '"' -> "&quot;"
+        value = string.gsub(value, "([^%w%&%;%p%\t% ])", function(c)
+            return string.format("&#x%X;", string.byte(c))
+        end);
+        return value;
+    end
+
+    function XmlParser:FromXmlString(value)
+        value = string.gsub(value, "&#x([%x]+)%;", function(h)
+            return string.char(tonumber(h, 16))
+        end);
+        value = string.gsub(value, "&#([0-9]+)%;", function(h)
+            return string.char(tonumber(h, 10))
+        end);
+        value = string.gsub(value, "&quot;", "\"");
+        value = string.gsub(value, "&apos;", "'");
+        value = string.gsub(value, "&gt;", ">");
+        value = string.gsub(value, "&lt;", "<");
+        value = string.gsub(value, "&amp;", "&");
+        return value;
+    end
+
+    function XmlParser:ParseArgs(node, s)
+        string.gsub(s, "(%w+)=([\"'])(.-)%2", function(w, _, a)
+            node:addProperty(w, self:FromXmlString(a))
+        end)
+    end
+
+    function XmlParser:ParseXmlText(xmlText)
+
+        local newNode = M.xml_node
+
+        local stack = {}
+        local top = newNode()
+        table.insert(stack, top)
+        local ni, c, label, xarg, empty
+        local i, j = 1, 1
+        while true do
+            ni, j, c, label, xarg, empty = string.find(xmlText, "<(%/?)([%w_:]+)(.-)(%/?)>", i)
+            if not ni then
+                break
+            end
+            local text = string.sub(xmlText, i, ni - 1);
+            if not string.find(text, "^%s*$") then
+                local lVal = (top:value() or "") .. self:FromXmlString(text)
+                stack[#stack]:setValue(lVal)
+            end
+            if empty == "/" then -- empty element tag
+                local lNode = newNode(label)
+                self:ParseArgs(lNode, xarg)
+                top:addChild(lNode)
+            elseif c == "" then -- start tag
+                local lNode = newNode(label)
+                self:ParseArgs(lNode, xarg)
+                table.insert(stack, lNode)
+                top = lNode
+            else -- end tag
+                local toclose = table.remove(stack) -- remove top
+
+                top = stack[#stack]
+                if #stack < 1 then
+                    error("XmlParser: nothing to close with " .. label)
+                end
+                if toclose:name() ~= label then
+                    error("XmlParser: trying to close " .. toclose.name .. " with " .. label)
+                end
+                top:addChild(toclose)
+            end
+            i = j + 1
+        end
+        local text = string.sub(xmlText, i);
+        if #stack > 1 then
+            error("XmlParser: unclosed " .. stack[#stack]:name())
+        end
+        return top
+    end
+
+    function XmlParser:loadFile(xmlFilename, base)
+        if not base then
+            base = system.ResourceDirectory
+        end
+
+        local path = system.pathForFile(xmlFilename, base)
+        local hFile, err = io.open(path, "r");
+
+        if hFile and not err then
+            local xmlText = hFile:read("*a"); -- read file content
+            io.close(hFile);
+            return self:ParseXmlText(xmlText), nil;
+        else
+            print(err)
+            return nil
+        end
+    end
+
+    return XmlParser
 end
-local function sub_dec_ent(s)
-    return schar(tonumber(s))
-end
 
-local function unescape(s)
-    s = gsub(s, "&lt;", "<")
-    s = gsub(s, "&gt;", ">")
-    s = gsub(s, "&apos;", "'")
-    s = gsub(s, "&quot;", '"')
-    s = gsub(s, "&#x(%x+);", sub_hex_ent)
-    s = gsub(s, "&#(%d+);", sub_dec_ent)
-    s = gsub(s, "&amp;", "&")
-    return s
-end
+local function newNode(name)
+    local node = {}
+    node.___value = nil
+    node.___name = name
+    node.___children = {}
+    node.___props = {}
 
-local function escape(s)
-    s = gsub(s, "&", "&amp;")
-    s = gsub(s, "<", "&lt;")
-    s = gsub(s, ">", "&gt;")
-    s = gsub(s, "'", "&apos;")
-    s = gsub(s, '"', "&quot;")
-    return s
-end
+    function node:value()
+        return self.___value
+    end
+    function node:setValue(val)
+        self.___value = val
+    end
+    function node:name()
+        return self.___name
+    end
+    function node:setName(name)
+        self.___name = name
+    end
+    function node:children()
+        return self.___children
+    end
+    function node:numChildren()
+        return #self.___children
+    end
+    function node:addChild(child)
+        if self[child:name()] ~= nil then
+            if type(self[child:name()].name) == "function" then
+                local tempTable = {}
+                table.insert(tempTable, self[child:name()])
+                self[child:name()] = tempTable
+            end
+            table.insert(self[child:name()], child)
+        else
+            self[child:name()] = child
+        end
+        table.insert(self.___children, child)
+    end
 
-local function isname(c)
-    -- true if c is one of: - . : _ or 0-9 A-Z a-z
-    return c == 45 or c == 46 or c == 58 or c == 95 or (c >= 48 and c <= 57) or (c >= 65 and c <= 90) or
-               (c >= 97 and c <= 122)
-end
-
-local function iswhite(c)
-    -- true if c is one of: space, \r, \n or \t
-    return c == 32 or c == 13 or c == 10 or c == 9
-end
-
-local function parse_xml(s, preserve_white)
-    local mark, quote, att
-    local p, n = 1, #s
-    local stack = {{}}
-
-    local function emit_open_tag(s)
-        tinsert(stack, {
-            tag = s,
-            attr = {}
+    function node:properties()
+        return self.___props
+    end
+    function node:numProperties()
+        return #self.___props
+    end
+    function node:addProperty(name, value)
+        local lName = "@" .. name
+        if self[lName] ~= nil then
+            if type(self[lName]) == "string" then
+                local tempTable = {}
+                table.insert(tempTable, self[lName])
+                self[lName] = tempTable
+            end
+            table.insert(self[lName], value)
+        else
+            self[lName] = value
+        end
+        table.insert(self.___props, {
+            name = name,
+            value = self[name]
         })
     end
 
-    local function emit_att(k, v)
-        stack[#stack].attr[k] = unescape(v)
-    end
-
-    local function emit_close_tag()
-        local item = tremove(stack)
-        tinsert(stack[#stack], item)
-    end
-
-    local function emit_text(s)
-        if #stack > 1 then
-            if preserve_white or not sfind(s, "^[ \r\n\t]*$") then
-                tinsert(stack[#stack], unescape(s))
-            end
-        end
-    end
-
-    do
-        mark = p
-        while p <= n and sbyte(s, p) ~= LT do
-            p = p + 1
-        end
-        if p > mark then
-            emit_text(ssub(s, mark, p - 1))
-        end
-        if sbyte(s, p) == LT then
-            p = p + 1
-            goto parse_element
-        end
-        return stack[1][1]
-    end
-
-    do
-        if sbyte(s, p) == SLASH then
-            p = p + 1
-            goto parse_closing_element
-        end
-        if sbyte(s, p) == EXCLAIM then
-            p = p + 1
-            goto parse_comment
-        end
-        if sbyte(s, p) == QUESTION then
-            p = p + 1
-            goto parse_processing_instruction
-        end
-        while iswhite(sbyte(s, p)) do
-            p = p + 1
-        end
-        if isname(sbyte(s, p)) then
-            goto parse_element_name
-        end
-        return nil, "syntax error in element"
-    end
-
-    do
-        if sbyte(s, p) == LSQUARE then
-            goto parse_cdata
-        end
-        if sbyte(s, p) ~= MINUS then
-            return nil, "syntax error in comment"
-        end
-        p = p + 1
-        if sbyte(s, p) ~= MINUS then
-            return nil, "syntax error in comment"
-        end
-        p = p + 1
-        mark = p
-        while p <= n do
-            if sbyte(s, p) == MINUS and sbyte(s, p + 1) == MINUS and sbyte(s, p + 2) == GT then
-                p = p + 3
-                goto parse_text
-            end
-            p = p + 1
-        end
-        return nil, "end of data in comment"
-    end
-
-    do
-        if ssub(s, p + 1, p + 6) ~= "CDATA[" then
-            return nil, "syntax error in CDATA section"
-        end
-        p = p + 7
-        mark = p
-        while p <= n do
-            if sbyte(s, p) == RSQUARE and sbyte(s, p + 1) == RSQUARE and sbyte(s, p + 2) == GT then
-                if p > mark then
-                    emit_text(ssub(s, mark, p - 1))
-                end
-                p = p + 3
-                goto parse_text
-            end
-            p = p + 1
-        end
-        return nil, "end of data in CDATA section";
-    end
-
-    do
-        while p <= n do
-            if sbyte(s, p) == QUESTION and sbyte(s, p + 1) == GT then
-                p = p + 2
-                goto parse_text
-            end
-            p = p + 1
-        end
-        return nil, "end of data in processing instruction"
-    end
-
-    do
-        while iswhite(sbyte(s, p)) do
-            p = p + 1
-        end
-        mark = p
-        while isname(sbyte(s, p)) do
-            p = p + 1
-        end
-        while iswhite(sbyte(s, p)) do
-            p = p + 1
-        end
-        if sbyte(s, p) ~= GT then
-            return nil, "syntax error in closing element"
-        end
-        emit_close_tag()
-        p = p + 1
-        goto parse_text
-    end
-
-    do
-        mark = p
-        while isname(sbyte(s, p)) do
-            p = p + 1
-        end
-        emit_open_tag(ssub(s, mark, p - 1))
-        if sbyte(s, p) == GT then
-            p = p + 1
-            goto parse_text
-        end
-        if sbyte(s, p) == SLASH and sbyte(s, p + 1) == GT then
-            emit_close_tag()
-            p = p + 2
-            goto parse_text
-        end
-        if iswhite(sbyte(s, p)) then
-            goto parse_attributes
-        end
-        return nil, "syntax error after element name"
-    end
-
-    do
-        while iswhite(sbyte(s, p)) do
-            p = p + 1
-        end
-        if isname(sbyte(s, p)) then
-            goto parse_attribute_name
-        end
-        if sbyte(s, p) == GT then
-            p = p + 1
-            goto parse_text
-        end
-        if sbyte(s, p) == SLASH and sbyte(s, p + 1) == GT then
-            emit_close_tag()
-            p = p + 2
-            goto parse_text
-        end
-        return nil, "syntax error in attributes"
-    end
-
-    do
-        mark = p
-        while isname(sbyte(s, p)) do
-            p = p + 1
-        end
-        att = ssub(s, mark, p - 1)
-        while iswhite(sbyte(s, p)) do
-            p = p + 1
-        end
-        if sbyte(s, p) == EQ then
-            p = p + 1
-            goto parse_attribute_value
-        end
-        return nil, "syntax error after attribute name"
-    end
-
-    do
-        while iswhite(sbyte(s, p)) do
-            p = p + 1
-        end
-        quote = sbyte(s, p)
-        p = p + 1
-        if quote ~= QUOT and quote ~= APOS then
-            return nil, "missing quote character"
-        end
-        mark = p
-        while p <= n and sbyte(s, p) ~= quote do
-            p = p + 1
-        end
-        if sbyte(s, p) == quote then
-            emit_att(att, ssub(s, mark, p - 1))
-            p = p + 1
-            goto parse_attributes
-        end
-        return nil, "end of data in attribute value"
-    end
-
-    return nil, "the impossible happened"
+    return node
 end
 
-local function print_xml(item)
-    if type(item) == 'table' then
-        io.write("<", item.tag)
-        for k, v in pairs(item.attr) do
-            io.write(" ", k, '="', escape(v), '"')
-        end
-        if #item > 0 then
-            io.write(">")
-            for i, v in ipairs(item) do
-                print_xml(v)
-            end
-            io.write("</", item.tag, ">")
-        else
-            io.write("/>")
-        end
-    else
-        io.write(escape(item))
-    end
-end
-
-M.parse_xml = parse_xml
+M.xml_parser = newParser
+M.xml_node = newNode
 
 return M
 

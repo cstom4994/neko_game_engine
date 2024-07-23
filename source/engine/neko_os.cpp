@@ -622,6 +622,16 @@ int neko_os_chdir(const char* path) {
     return 1;
 }
 
+String neko_os_homedir() {
+#ifdef _WIN32
+#define HOMEDIR "USERPROFILE"
+#else
+#define HOMEDIR (char*)"HOME"
+#endif
+    const_str path = std::getenv(HOMEDIR);
+    return {path};
+}
+
 void neko_log(int level, const char* file, int line, const char* fmt, ...) {
 
     LockGuard lock{&g_app->log_mtx};
