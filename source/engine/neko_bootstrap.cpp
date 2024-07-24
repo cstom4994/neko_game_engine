@@ -1518,9 +1518,7 @@ static void neko_setup_w() {
     ecs_lua_set_state(ENGINE_ECS(), ENGINE_LUA());
 #endif
 
-    open_luasocket(L);
-
-    PRELOAD("enet", luaopen_enet);  // test
+    // PRELOAD("enet", luaopen_enet);  // test
     PRELOAD("__neko.imgui", luaopen_imgui);  // test
 
     neko::lua::luax_run_bootstrap(L);

@@ -287,8 +287,6 @@ LUABIND_MODULE() {
 }
 }  // namespace neko::lua::__luadb
 
-DEFINE_LUAOPEN(luadb)
-
 namespace neko::lua::__prefab {
 
 typedef uintptr_t objectid;
@@ -1281,7 +1279,7 @@ static void parse_all(lua_State *L, struct lex_state *LS) {
     }
 }
 
-LUABIND_MODULE() {
+int prefab_init(lua_State *L) {
     luaL_checkversion(L);
     luaL_Reg l[] = {
             {"parse",
@@ -1368,6 +1366,5 @@ LUABIND_MODULE() {
     return 1;
 }
 
+LUABIND_MODULE() { return prefab_init(L); }
 }  // namespace neko::lua::__prefab
-
-DEFINE_LUAOPEN(prefab)

@@ -17,9 +17,9 @@ add_rules("mode.debug", "mode.release")
 
 add_includedirs("source/")
 
-local base_libs = {"lua", "sokol", "imgui", "miniz", "stb", "libffi"}
+local base_libs = {"lua", "sokol", "imgui", "miniz", "stb"}
 
-add_requires("lua", "sokol", "sokol-shdc", "miniz", "stb", "libffi")
+add_requires("lua", "sokol", "sokol-shdc", "miniz", "stb")
 add_requires("miniaudio", "box2d", "enet", "flecs 3.2.11")
 add_requires("imgui v1.90.9-docking", {
     configs = {
@@ -107,6 +107,22 @@ do
     add_rules("utils.bin2c", {
         extensions = {".lua"}
     })
+
+    add_files("source/engine/deps/luasocket/auxiliar.c", "source/engine/deps/luasocket/buffer.c",
+        "source/engine/deps/luasocket/compat.c", "source/engine/deps/luasocket/except.c",
+        "source/engine/deps/luasocket/inet.c", "source/engine/deps/luasocket/io.c",
+        "source/engine/deps/luasocket/luasocket.c", "source/engine/deps/luasocket/mime.c",
+        "source/engine/deps/luasocket/options.c", "source/engine/deps/luasocket/select.c",
+        "source/engine/deps/luasocket/tcp.c", "source/engine/deps/luasocket/timeout.c",
+        "source/engine/deps/luasocket/udp.c", "source/engine/deps/luasocket/*.lua")
+
+    if is_plat("windows") then
+        add_files("source/engine/deps/luasocket/wsocket.c")
+    else
+        add_files("source/engine/deps/luasocket/serial.c", "source/engine/deps/luasocket/unix.c",
+            "source/engine/deps/luasocket/unixdgram.c", "source/engine/deps/luasocket/unixstream.c",
+            "source/engine/deps/luasocket/usocket.c")
+    end
 
     add_files("source/engine/embed/*.lua")
 

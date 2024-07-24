@@ -4134,9 +4134,9 @@ bool asset_load(AssetLoadData desc, String filepath, Asset *out) {
             case AssetKind_Tilemap:
                 ok = asset.tilemap.load(filepath);
                 break;
-            case AssetKind_Pak:
-                ok = asset.pak.load(filepath.data, 0, false);
-                break;
+            // case AssetKind_Pak:
+            //     ok = asset.pak.load(filepath.data, 0, false);
+            //     break;
             default:
                 break;
         }

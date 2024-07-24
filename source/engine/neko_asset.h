@@ -499,7 +499,7 @@ enum AssetKind : i32 {
     AssetKind_Image,
     AssetKind_Sprite,
     AssetKind_Tilemap,
-    AssetKind_Pak,
+    // AssetKind_Pak,
 };
 
 struct AssetLoadData {
@@ -517,7 +517,7 @@ struct Asset {
         Image image;
         SpriteData sprite;
         map_ldtk tilemap;
-        neko_pak pak;
+        // neko_pak pak;
     };
 };
 

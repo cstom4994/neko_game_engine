@@ -33,7 +33,8 @@ source/generated
 source/engine/deps
 source/lua/libs
 source/api/gen
-source/sandbox/tests
+source/api/cimgui.json
+source/tests
 examples/
 website/
 html5/

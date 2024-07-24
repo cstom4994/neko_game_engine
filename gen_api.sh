@@ -1,7 +1,7 @@
 
 cd source/api
 
-if [ ! -d output ]; then
+if [ ! -d gen ]; then
     mkdir gen
 fi
 
@@ -30,7 +30,7 @@ fi
 # # lua -e "print(require('lib.defs_to_teal')(require'defs_neko_core'.tree))" >> output/typings/neko.d.tl
 
 echo "API: Lua (boot) (source: defs_neko)"
-lua -e "print(require('lib.gen_api_luaboot')(require'defs_neko'.tree))" > gen/api_neko_gen.lua
+lua -e "print(require('lib.gen_api_luaboot')(require'defs_neko'.tree))" > gen/gen_neko_api.lua
 
 echo "API: Native C (source: defs_neko_core)"
 lua -e "print(require('lib.gen_api_native')(require'defs_neko_core'.tree, 'gen'))"

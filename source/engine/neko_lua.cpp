@@ -1153,11 +1153,6 @@ static void lua_thread_proc(void *udata) {
     }
 
     {
-        PROFILE_BLOCK("open luasocket");
-        open_luasocket(L);
-    }
-
-    {
         PROFILE_BLOCK("run bootstrap");
         neko::lua::luax_run_bootstrap(L);
     }

@@ -38,7 +38,7 @@ inline int preload_module(lua_State* L) {
     for (const auto& m : usermodules()) {
         lua_pushcfunction(L, m.func);
         lua_setfield(L, -2, m.name);
-        NEKO_INFO("[luabind] loaded [%s]", m.name);
+        NEKO_DEBUG_LOG("[luabind] loaded [%s]", m.name);
     }
     lua_pop(L, 1);
     return 0;
@@ -48,6 +48,12 @@ inline int preload_module(lua_State* L) {
 #define DEFINE_LUAOPEN(name)                                                           \
     int luaopen_neko_##name(lua_State* L) { return neko::lua::__##name ::luaopen(L); } \
     static ::neko::lua::callfunc __init_##name(::neko::lua::register_module, "__neko." #name, luaopen_neko_##name);
+
+#define DEFINE_LUAOPEN_EXTERN(name) \
+    namespace neko::lua::__##name { \
+        LUABIND_MODULE();           \
+    }                               \
+    DEFINE_LUAOPEN(name)
 
 namespace neko::lua {
 inline std::string_view checkstrview(lua_State* L, int idx) {

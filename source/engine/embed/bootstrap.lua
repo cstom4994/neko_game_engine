@@ -1,12 +1,11 @@
 unsafe_require = require
 
 -- runs on start of the engine
--- cffi = require("__neko.cffi")
 luastruct_test = require("__neko.struct_test")
 luadb = require("__neko.luadb")
 ImGui = require("__neko.imgui")
 Core = require("__neko.core")
-debugging = require("__neko.debugging")
+Inspector = require("__neko.inspector")
 Prefabs = require("prefabs")
 
 common = require "common"
@@ -78,7 +77,6 @@ function neko.__define_default_callbacks()
     --help, -h                  show this usage
     --version, -v               show neko version
     --console                   windows only. use console output
-    [directory or zip archive]  run the game using the given directory
   ]]):format(neko.program_path())
 
             print(str)
@@ -633,13 +631,18 @@ local function _sort_z_index(lhs, rhs)
     return lhs.z_index < rhs.z_index
 end
 
+local function _sort_y(lhs, rhs)
+    return lhs.y < rhs.y
+end
+
 function World:draw()
     local sorted = {}
     for id, obj in pairs(self.by_id) do
         sorted[#sorted + 1] = obj
     end
 
-    table.sort(sorted, _sort_z_index)
+    -- table.sort(sorted, _sort_z_index)
+    table.sort(sorted, _sort_y)
 
     for k, obj in ipairs(sorted) do
         obj:draw()

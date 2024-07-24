@@ -38,15 +38,56 @@ static const u8 g_lua_prefabs_data[] = {
 static const u8 g_lua_bootstrap_data[] = {
 #include "bootstrap.lua.h"
 };
-static const u8 g_lua_api_neko_gen_data[] = {
-#include "api_neko_gen.lua.h"
+static const u8 g_lua_gen_neko_api_data[] = {
+#include "gen_neko_api.lua.h"
+};
+static const u8 ltn12_compressed_data[] = {
+#include "ltn12.lua.h"
+};
+static const u8 mbox_compressed_data[] = {
+#include "mbox.lua.h"
+};
+static const u8 mime_compressed_data[] = {
+#include "mime.lua.h"
+};
+static const u8 socket_compressed_data[] = {
+#include "socket.lua.h"
+};
+static const u8 socket_ftp_compressed_data[] = {
+#include "socket.ftp.lua.h"
+};
+static const u8 socket_headers_compressed_data[] = {
+#include "socket.headers.lua.h"
+};
+static const u8 socket_http_compressed_data[] = {
+#include "socket.http.lua.h"
+};
+static const u8 socket_smtp_compressed_data[] = {
+#include "socket.smtp.lua.h"
+};
+static const u8 socket_tp_compressed_data[] = {
+#include "socket.tp.lua.h"
+};
+static const u8 socket_url_compressed_data[] = {
+#include "socket.url.lua.h"
 };
 
 LUAOPEN_EMBED_DATA(open_embed_common, "common.lua", g_lua_common_data);
 LUAOPEN_EMBED_DATA(open_embed_cstruct, "cstruct.lua", g_lua_cstruct_data);
 LUAOPEN_EMBED_DATA(open_embed_prefabs, "prefabs.lua", g_lua_prefabs_data);
 LUAOPEN_EMBED_DATA(open_embed_bootstrap, "bootstrap.lua", g_lua_bootstrap_data);
-LUAOPEN_EMBED_DATA(open_embed_api_neko_gen, "api_neko_gen.lua", g_lua_api_neko_gen_data);
+LUAOPEN_EMBED_DATA(open_embed_gen_neko_api, "gen_neko_api.lua", g_lua_gen_neko_api_data);
+
+LUAOPEN_EMBED_DATA(open_embed_ltn12, "ltn12.lua", ltn12_compressed_data);
+LUAOPEN_EMBED_DATA(open_embed_mbox, "mbox.lua", mbox_compressed_data);
+LUAOPEN_EMBED_DATA(open_embed_mime, "mime.lua", mime_compressed_data);
+LUAOPEN_EMBED_DATA(open_embed_socket, "socket.lua", socket_compressed_data);
+LUAOPEN_EMBED_DATA(open_embed_socket_ftp, "socket.ftp.lua", socket_ftp_compressed_data);
+LUAOPEN_EMBED_DATA(open_embed_socket_headers, "socket.headers.lua", socket_headers_compressed_data);
+LUAOPEN_EMBED_DATA(open_embed_socket_http, "socket.http.lua", socket_http_compressed_data);
+LUAOPEN_EMBED_DATA(open_embed_socket_smtp, "socket.smtp.lua", socket_smtp_compressed_data);
+LUAOPEN_EMBED_DATA(open_embed_socket_tp, "socket.tp.lua", socket_tp_compressed_data);
+LUAOPEN_EMBED_DATA(open_embed_socket_url, "socket.url.lua", socket_url_compressed_data);
 
 static void package_preload(lua_State* L, const_str name, lua_CFunction function) {
     lua_getglobal(L, "package");
@@ -54,15 +95,34 @@ static void package_preload(lua_State* L, const_str name, lua_CFunction function
     lua_pushcfunction(L, function);
     lua_setfield(L, -2, name);
     lua_pop(L, 2);
-    NEKO_INFO("[luabind] loaded embed %s", name);
+    NEKO_DEBUG_LOG("[luabind] loaded embed %s", name);
 }
+
+extern "C" int luaopen_socket_core(lua_State *L);
+extern "C" int luaopen_mime_core(lua_State *L);
 
 namespace neko::lua {
 void package_preload(lua_State* L) {
     package_preload(L, "common", open_embed_common);
     package_preload(L, "cstruct", open_embed_cstruct);
     package_preload(L, "prefabs", open_embed_prefabs);
-    package_preload(L, "api_neko_gen", open_embed_api_neko_gen);
+    package_preload(L, "gen_neko_api", open_embed_gen_neko_api);
+
+    package_preload(L, "enet", luaopen_enet);
+
+    package_preload(L, "socket.core", luaopen_socket_core);
+    package_preload(L, "mime.core", luaopen_mime_core);
+
+    package_preload(L, "ltn12", open_embed_ltn12);
+    package_preload(L, "mbox", open_embed_mbox);
+    package_preload(L, "mime", open_embed_mime);
+    package_preload(L, "socket", open_embed_socket);
+    package_preload(L, "socket.ftp", open_embed_socket_ftp);
+    package_preload(L, "socket.headers", open_embed_socket_headers);
+    package_preload(L, "socket.http", open_embed_socket_http);
+    package_preload(L, "socket.smtp", open_embed_socket_smtp);
+    package_preload(L, "socket.tp", open_embed_socket_tp);
+    package_preload(L, "socket.url", open_embed_socket_url);
 }
 void luax_run_bootstrap(lua_State* L) {
     std::string contents = (const_str)g_lua_bootstrap_data;

@@ -22,7 +22,7 @@ extern "C" {
 #endif
 
 #define LUA_FUNCTION(F) static int F(lua_State *L)
-#define LUABIND_MODULE(...) static int luaopen(lua_State *L)
+#define LUABIND_MODULE(...) int luaopen(lua_State *L)
 
 #define NEKO_LUA_AUTO_REGISTER_PREFIX "neko_luabind_"
 

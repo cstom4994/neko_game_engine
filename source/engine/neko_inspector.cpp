@@ -12,6 +12,7 @@
 // ImGui
 #include "engine/neko.hpp"
 #include "engine/neko_lua.h"
+#include "engine/neko_lua_wrap.h"
 #include "engine/neko_luabind.hpp"
 #include "engine/neko_ui.h"
 
@@ -1068,7 +1069,7 @@ int neko::luainspector::luainspector_draw(lua_State* L) {
                     if (ImGui::BeginTable("lua_inspector_reg", 3, flags)) {
                         ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_NoHide);
                         ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, TEXT_BASE_WIDTH * 8.0f);
-                        ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed, TEXT_BASE_WIDTH * 28.0f);
+                        ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed, TEXT_BASE_WIDTH * 32.0f);
                         ImGui::TableHeadersRow();
 
                         inspect_table(L, config);
@@ -1532,7 +1533,7 @@ void inspect_vertex_array(const char* label, GLuint vao) {
 
 #endif
 
-namespace neko::lua::__debugging {
+namespace neko::lua::__inspector {
 static int breakpoint(lua_State* L) {
     std::breakpoint();
     return 0;
@@ -1560,6 +1561,4 @@ LUABIND_MODULE() {
     luaL_setfuncs(L, lib, 0);
     return 1;
 }
-}  // namespace neko::lua::__debugging
-
-DEFINE_LUAOPEN(debugging)
+}  // namespace neko::lua::__inspector
