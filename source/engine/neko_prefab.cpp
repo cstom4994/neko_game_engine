@@ -219,7 +219,7 @@ LUABIND_MODULE() {
                 auto newdb = [](lua_State *L, std::string source) {
                     lua_State *Ldb = luaL_newstate();
                     String contents = {};
-                    bool ok = vfs_read_entire_file(NEKO_PACKS::GAMEDATA, &contents, source.c_str());
+                    bool ok = vfs_read_entire_file(&contents, source.c_str());
                     if (ok) {
                         neko_defer(mem_free(contents.data));
                         if (luaL_dostring(Ldb, contents.data)) {

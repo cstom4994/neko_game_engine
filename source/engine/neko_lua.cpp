@@ -37,74 +37,11 @@ void __neko_luabind_init(lua_State *L) {
     lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "stack_to");
 
     lua_newtable(L);
-    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "structs");
-    lua_newtable(L);
-    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "structs_offset");
-    lua_newtable(L);
     lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "enums");
     lua_newtable(L);
     lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "enums_sizes");
     lua_newtable(L);
     lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "enums_values");
-
-    // lua_newtable(L);
-    // lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "functions");
-
-    // lua_newuserdata(L, LUAA_RETURN_STACK_SIZE);
-    // lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "call_ret_stk");
-    // lua_newuserdata(L, LUAA_ARGUMENT_STACK_SIZE);
-    // lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "call_arg_stk");
-    // lua_pushinteger(L, 0);
-    // lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "call_ret_ptr");
-    // lua_pushinteger(L, 0);
-    // lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "call_arg_ptr");
-
-    // compiler does weird macro expansion with "bool" so no magic macro for you
-    neko_luabind_conversion_type(L, neko_luabind_type_add(L, "bool", sizeof(bool)), neko_luabind_push_bool, neko_luabind_to_bool);
-    neko_luabind_conversion_type(L, neko_luabind_type_add(L, "_Bool", sizeof(bool)), neko_luabind_push_bool, neko_luabind_to_bool);
-    neko_luabind_conversion(L, char, neko_luabind_push_char, neko_luabind_to_char);
-    neko_luabind_conversion(L, signed char, neko_luabind_push_signed_char, neko_luabind_to_signed_char);
-    neko_luabind_conversion(L, unsigned char, neko_luabind_push_unsigned_char, neko_luabind_to_unsigned_char);
-    neko_luabind_conversion(L, short, neko_luabind_push_short, neko_luabind_to_short);
-    neko_luabind_conversion(L, unsigned short, neko_luabind_push_unsigned_short, neko_luabind_to_unsigned_short);
-    neko_luabind_conversion(L, int, neko_luabind_push_int, neko_luabind_to_int);
-    neko_luabind_conversion(L, unsigned int, neko_luabind_push_unsigned_int, neko_luabind_to_unsigned_int);
-    neko_luabind_conversion(L, long, neko_luabind_push_long, neko_luabind_to_long);
-    neko_luabind_conversion(L, i32, neko_luabind_push_long, neko_luabind_to_long);
-    neko_luabind_conversion(L, unsigned long, neko_luabind_push_unsigned_long, neko_luabind_to_unsigned_long);
-    neko_luabind_conversion(L, u32, neko_luabind_push_unsigned_long, neko_luabind_to_unsigned_long);
-    neko_luabind_conversion(L, long long, neko_luabind_push_long_long, neko_luabind_to_long_long);
-    neko_luabind_conversion(L, i64, neko_luabind_push_long_long, neko_luabind_to_long_long);
-    neko_luabind_conversion(L, unsigned long long, neko_luabind_push_unsigned_long_long, neko_luabind_to_unsigned_long_long);
-    neko_luabind_conversion(L, u64, neko_luabind_push_unsigned_long_long, neko_luabind_to_unsigned_long_long);
-    neko_luabind_conversion(L, float, neko_luabind_push_float, neko_luabind_to_float);
-    neko_luabind_conversion(L, f32, neko_luabind_push_float, neko_luabind_to_float);
-    neko_luabind_conversion(L, double, neko_luabind_push_double, neko_luabind_to_double);
-    neko_luabind_conversion(L, f64, neko_luabind_push_double, neko_luabind_to_double);
-    neko_luabind_conversion(L, long double, neko_luabind_push_long_double, neko_luabind_to_long_double);
-
-    neko_luabind_conversion_push_type(L, neko_luabind_type_add(L, "const bool", sizeof(bool)), neko_luabind_push_bool);
-    neko_luabind_conversion_push_type(L, neko_luabind_type_add(L, "const _Bool", sizeof(bool)), neko_luabind_push_bool);
-    neko_luabind_conversion_push(L, const char, neko_luabind_push_char);
-    neko_luabind_conversion_push(L, const signed char, neko_luabind_push_signed_char);
-    neko_luabind_conversion_push(L, const unsigned char, neko_luabind_push_unsigned_char);
-    neko_luabind_conversion_push(L, const short, neko_luabind_push_short);
-    neko_luabind_conversion_push(L, const unsigned short, neko_luabind_push_unsigned_short);
-    neko_luabind_conversion_push(L, const int, neko_luabind_push_int);
-    neko_luabind_conversion_push(L, const unsigned int, neko_luabind_push_unsigned_int);
-    neko_luabind_conversion_push(L, const long, neko_luabind_push_long);
-    neko_luabind_conversion_push(L, const unsigned long, neko_luabind_push_unsigned_long);
-    neko_luabind_conversion_push(L, const long long, neko_luabind_push_long_long);
-    neko_luabind_conversion_push(L, const unsigned long long, neko_luabind_push_unsigned_long_long);
-    neko_luabind_conversion_push(L, const float, neko_luabind_push_float);
-    neko_luabind_conversion_push(L, const double, neko_luabind_push_double);
-    neko_luabind_conversion_push(L, const long double, neko_luabind_push_long_double);
-
-    neko_luabind_conversion(L, char *, neko_luabind_push_char_ptr, neko_luabind_to_char_ptr);
-    neko_luabind_conversion(L, const char *, neko_luabind_push_const_char_ptr, neko_luabind_to_const_char_ptr);
-    neko_luabind_conversion(L, void *, neko_luabind_push_void_ptr, neko_luabind_to_void_ptr);
-
-    neko_luabind_conversion_push_type(L, neko_luabind_type_add(L, "void", 1), neko_luabind_push_void);  // sizeof(void) is 1 on gcc
 }
 
 void __neko_luabind_fini(lua_State *L) {
@@ -124,27 +61,11 @@ void __neko_luabind_fini(lua_State *L) {
     lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "stack_to");
 
     lua_pushnil(L);
-    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "structs");
-    lua_pushnil(L);
-    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "structs_offset");
-    lua_pushnil(L);
     lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "enums");
     lua_pushnil(L);
     lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "enums_sizes");
     lua_pushnil(L);
     lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "enums_values");
-
-    // lua_pushnil(L);
-    // lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "functions");
-
-    // lua_pushnil(L);
-    // lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "call_ret_stk");
-    // lua_pushnil(L);
-    // lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "call_arg_stk");
-    // lua_pushnil(L);
-    // lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "call_ret_ptr");
-    // lua_pushnil(L);
-    // lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "call_arg_ptr");
 }
 
 bool neko_lua_equal(lua_State *state, int index1, int index2) {
@@ -837,16 +758,16 @@ void get(lua_State *L, const table &t) {
 int vfs_lua_loader(lua_State *L) {
     const_str name = luaL_checkstring(L, 1);
     std::string path = name;
-    std::replace(path.begin(), path.end(), '.', '/');
+    std::replace(path.begin(), path.end(), '.', '\\');
 
-    // neko_println("fuck:%s", path.c_str());
+    neko_println("fuck:%s", path.c_str());
 
     bool ok = false;
-    auto load_list = {"source/lua/game/", "source/lua/libs/"};
+    auto load_list = {"code\\libs\\"};
     for (auto p : load_list) {
         std::string load_path = p + path + ".lua";
         String contents = {};
-        ok = vfs_read_entire_file(NEKO_PACKS::LUACODE, &contents, load_path.c_str());
+        ok = vfs_read_entire_file(&contents, load_path.c_str());
         if (ok) {
             neko_defer(mem_free(contents.data));
             if (luaL_loadbuffer(L, contents.data, contents.len, name) != LUA_OK) {
@@ -892,7 +813,7 @@ i32 luax_require_script(lua_State *L, String filepath) {
     neko_defer(mem_free(path.data));
 
     String contents;
-    bool ok = vfs_read_entire_file(NEKO_PACKS::GAMEDATA, &contents, filepath);
+    bool ok = vfs_read_entire_file(&contents, filepath);
 
     // 如果是读取绝对路径
     if (!ok) ok = read_entire_file_raw(&contents, filepath);

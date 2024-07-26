@@ -17,9 +17,9 @@ add_rules("mode.debug", "mode.release")
 
 add_includedirs("source/")
 
-local base_libs = {"lua", "sokol", "imgui", "miniz", "stb"}
+local base_libs = {"lua", "sokol", "imgui", "miniz", "stb", "libffi"}
 
-add_requires("lua", "sokol", "sokol-shdc", "miniz", "stb")
+add_requires("lua", "sokol", "sokol-shdc", "miniz", "stb", "libffi")
 add_requires("miniaudio", "box2d", "enet", "flecs 3.2.11")
 add_requires("imgui v1.90.9-docking", {
     configs = {
@@ -51,6 +51,7 @@ if is_plat("windows") then
         "/Zc:forScope", "/MP")
     -- add_ldflags("/MACHINE:X64", "/SUBSYSTEM:CONSOLE", "/INCREMENTAL")
     -- add_cxflags("/MT")
+    add_syslinks("ws2_32", "wininet")
 elseif is_plat("linux") then
     add_cxflags("-Wtautological-compare")
     add_cxflags("-fno-strict-aliasing", "-fms-extensions", "-finline-functions", "-fPIC")
@@ -108,23 +109,25 @@ do
         extensions = {".lua"}
     })
 
-    add_files("source/engine/deps/luasocket/auxiliar.c", "source/engine/deps/luasocket/buffer.c",
-        "source/engine/deps/luasocket/compat.c", "source/engine/deps/luasocket/except.c",
-        "source/engine/deps/luasocket/inet.c", "source/engine/deps/luasocket/io.c",
-        "source/engine/deps/luasocket/luasocket.c", "source/engine/deps/luasocket/mime.c",
-        "source/engine/deps/luasocket/options.c", "source/engine/deps/luasocket/select.c",
-        "source/engine/deps/luasocket/tcp.c", "source/engine/deps/luasocket/timeout.c",
-        "source/engine/deps/luasocket/udp.c", "source/engine/deps/luasocket/*.lua")
+    add_files("source/vendor/luasocket/auxiliar.c", "source/vendor/luasocket/buffer.c",
+        "source/vendor/luasocket/compat.c", "source/vendor/luasocket/except.c", "source/vendor/luasocket/inet.c",
+        "source/vendor/luasocket/io.c", "source/vendor/luasocket/luasocket.c", "source/vendor/luasocket/mime.c",
+        "source/vendor/luasocket/options.c", "source/vendor/luasocket/select.c", "source/vendor/luasocket/tcp.c",
+        "source/vendor/luasocket/timeout.c", "source/vendor/luasocket/udp.c", "source/vendor/luasocket/*.lua")
 
     if is_plat("windows") then
-        add_files("source/engine/deps/luasocket/wsocket.c")
+        add_files("source/vendor/luasocket/wsocket.c")
     else
-        add_files("source/engine/deps/luasocket/serial.c", "source/engine/deps/luasocket/unix.c",
-            "source/engine/deps/luasocket/unixdgram.c", "source/engine/deps/luasocket/unixstream.c",
-            "source/engine/deps/luasocket/usocket.c")
+        add_files("source/vendor/luasocket/serial.c", "source/vendor/luasocket/unix.c",
+            "source/vendor/luasocket/unixdgram.c", "source/vendor/luasocket/unixstream.c",
+            "source/vendor/luasocket/usocket.c")
     end
 
+    add_files("source/vendor/cffi/**.cc")
+
     add_files("source/engine/embed/*.lua")
+
+    add_files("source/engine/deps/http.c")
 
     add_files("source/api/gen/**.cpp", "source/api/gen/**.lua")
 
@@ -141,6 +144,24 @@ do
     set_basename("neko_$(mode)_$(arch)")
     set_targetdir("./")
     set_rundir("./")
+end
+
+xpack("luacode")
+do
+    set_formats("zip")
+    add_installfiles("source/game/(**)")
+    before_package(function(package)
+        local outputfile = package:outputfile()
+        -- if os.exists(outputfile) then
+        --     os.rm(outputfile)
+        -- end
+    end)
+    after_package(function(package)
+        local outputfile = package:outputfile()
+        if os.exists(outputfile) then
+            os.mv(outputfile, "./gamedir/code.zip")
+        end
+    end)
 end
 
 xpack("gamedata")

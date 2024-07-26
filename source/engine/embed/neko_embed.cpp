@@ -95,11 +95,15 @@ static void package_preload(lua_State* L, const_str name, lua_CFunction function
     lua_pushcfunction(L, function);
     lua_setfield(L, -2, name);
     lua_pop(L, 2);
-    NEKO_DEBUG_LOG("[luabind] loaded embed %s", name);
 }
 
-extern "C" int luaopen_socket_core(lua_State *L);
-extern "C" int luaopen_mime_core(lua_State *L);
+extern "C" {
+int luaopen_socket_core(lua_State* L);
+int luaopen_mime_core(lua_State* L);
+int luaopen_cffi(lua_State* L);
+int luaopen_bit(lua_State* L);
+int luaopen_http(lua_State* L);
+}
 
 namespace neko::lua {
 void package_preload(lua_State* L) {
@@ -123,6 +127,12 @@ void package_preload(lua_State* L) {
     package_preload(L, "socket.smtp", open_embed_socket_smtp);
     package_preload(L, "socket.tp", open_embed_socket_tp);
     package_preload(L, "socket.url", open_embed_socket_url);
+
+    package_preload(L, "ffi", luaopen_cffi);
+
+    package_preload(L, "bit", luaopen_bit);
+
+    package_preload(L, "http", luaopen_http);
 }
 void luax_run_bootstrap(lua_State* L) {
     std::string contents = (const_str)g_lua_bootstrap_data;

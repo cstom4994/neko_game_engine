@@ -186,9 +186,9 @@ bool read_entire_file_raw(String *out, String filepath);
 MountResult vfs_mount(const_str fsname, const char *filepath);
 void vfs_fini();
 
-u64 vfs_file_modtime(String fsname, String filepath);
-bool vfs_file_exists(String fsname, String filepath);
-bool vfs_read_entire_file(String fsname, String *out, String filepath);
+u64 vfs_file_modtime(String filepath);
+bool vfs_file_exists(String filepath);
+bool vfs_read_entire_file(String *out, String filepath);
 bool vfs_write_entire_file(String fsname, String filepath, String contents);
 bool vfs_list_all_files(String fsname, Array<String> *files);
 

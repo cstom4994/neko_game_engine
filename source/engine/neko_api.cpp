@@ -2024,7 +2024,7 @@ static int neko_is_fused(lua_State *L) {
 
 static int neko_file_exists(lua_State *L) {
     String path = luax_check_string(L, 1);
-    lua_pushboolean(L, vfs_file_exists(NEKO_PACKS::GAMEDATA, path));
+    lua_pushboolean(L, vfs_file_exists(path));
     return 1;
 }
 
@@ -2034,7 +2034,7 @@ static int neko_file_read(lua_State *L) {
     String path = luax_check_string(L, 1);
 
     String contents = {};
-    bool ok = vfs_read_entire_file(NEKO_PACKS::GAMEDATA, &contents, path);
+    bool ok = vfs_read_entire_file(&contents, path);
     if (!ok) {
         lua_pushnil(L);
         lua_pushboolean(L, false);
@@ -2933,7 +2933,7 @@ LUA_FUNCTION(__neko_bind_fontbatch_create) {
     neko_fontbatch_t& fontbatch = neko::lua::newudata<neko_fontbatch_t>(L);
 
     neko::string contents = {};
-    bool ok = vfs_read_entire_file(NEKO_PACKS::GAMEDATA, &contents, "gamedir/1.fnt");
+    bool ok = vfs_read_entire_file( &contents, "gamedir/1.fnt");
     NEKO_ASSERT(ok);
     neko_fontbatch_init(&fontbatch, font_vs.data, font_ps.data, neko_game()->DisplaySize, "gamedir/1_0.png", contents.data, (i32)contents.len);
     neko_defer(neko_safe_free(contents.data));
@@ -4687,12 +4687,7 @@ LUA_FUNCTION(__neko_bind_vfs_read_file) {
 
     String str;
 
-    const_str vpks[] = {NEKO_PACKS::GAMEDATA, NEKO_PACKS::LUACODE};
-    bool ok = false;
-    for (auto vpk : vpks) {
-        ok = vfs_read_entire_file(vpk, &str, path);
-        if (ok) break;
-    }
+    bool ok = vfs_read_entire_file(&str, path);
 
     if (ok) {
         const_str data = str.data;
@@ -4990,22 +4985,6 @@ static int ref_set(lua_State *L) {
     return 1;
 }
 
-static int LUASTRUCT_test_vec4(lua_State *L) {
-    // GET_SELF;
-
-    Vector4 *v4 = CHECK_STRUCT(L, 1, Vector4);
-
-    v4->x += 10.f;
-    v4->y += 10.f;
-    v4->z += 10.f;
-    v4->w += 10.f;
-
-    PUSH_STRUCT(L, Vector4, *v4);
-
-    // RETURN_STATUS(FMOD_Studio_EventInstance_Set3DAttributes(self, attributes));
-
-    return 1;
-}
 
 LUA_FUNCTION(__neko_bind_w_f) {
     lua_getfield(L, LUA_REGISTRYINDEX, W_LUA_REGISTRY_CONST::W_CORE);
@@ -5077,6 +5056,20 @@ void neko_w_init() {
     NEKO_ASSERT(lua_gettop(L) == 0);
 }
 
+LUA_FUNCTION(from_registry) {
+    int n = lua_gettop(L);
+    if (n == 1) {
+        const char *key = luaL_checkstring(L, 1);
+        lua_getfield(L, LUA_REGISTRYINDEX, key);
+    } else {
+        int idx = luaL_checkinteger(L, 1);
+        const char *key = luaL_checkstring(L, 2);
+        lua_rawgeti(L, LUA_REGISTRYINDEX, idx);
+        lua_getfield(L, -1, key);
+    }
+    return 1;
+}
+
 static int open_embed_core(lua_State *L) {
 
     luaL_checkversion(L);
@@ -5098,8 +5091,6 @@ static int open_embed_core(lua_State *L) {
             {"profiler_stop", neko_lua_profiler_stop},
             {"profiler_info", neko_lua_profiler_info},
 
-            {"LUASTRUCT_test_vec4", LUASTRUCT_test_vec4},
-
             // luaref
             {"ref_init", ref_init},
             {"ref_close", ref_close},
@@ -5112,6 +5103,9 @@ static int open_embed_core(lua_State *L) {
             // pak
             {"pak_build", __neko_bind_pack_build},
             {"pak_info", __neko_bind_pack_info},
+
+            // reg
+            {"from_registry", from_registry},
 
             // {"tiled_create", __neko_bind_tiled_create},
             // {"tiled_render", __neko_bind_tiled_render},
@@ -5240,6 +5234,7 @@ DEFINE_LUAOPEN_EXTERN(luadb)
 DEFINE_LUAOPEN_EXTERN(prefab)
 DEFINE_LUAOPEN_EXTERN(struct)
 DEFINE_LUAOPEN_EXTERN(struct_test)
+DEFINE_LUAOPEN_EXTERN(unittest)
 
 namespace neko::lua::__filewatch {
 static filewatch::watch &to(lua_State *L, int idx) { return lua::checkudata<filewatch::watch>(L, idx); }
@@ -5506,4 +5501,8 @@ void open_neko_api(lua_State *L) {
 
     neko_register_common(L);
     neko_w_init();
+
+    lua_register(L, "__neko_loader", neko::vfs_lua_loader);
+    const_str str = "table.insert(package.searchers, 2, __neko_loader) \n";
+    luaL_dostring(L, str);
 }

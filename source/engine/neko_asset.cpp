@@ -43,7 +43,7 @@ bool Image::load(String filepath, bool generate_mips) {
     PROFILE_FUNC();
 
     String contents = {};
-    bool ok = vfs_read_entire_file(NEKO_PACKS::GAMEDATA, &contents, filepath);
+    bool ok = vfs_read_entire_file(&contents, filepath);
     if (!ok) {
         return false;
     }
@@ -131,7 +131,7 @@ bool SpriteData::load(String filepath) {
     PROFILE_FUNC();
 
     String contents = {};
-    bool ok = vfs_read_entire_file(NEKO_PACKS::GAMEDATA, &contents, filepath);
+    bool ok = vfs_read_entire_file(&contents, filepath);
     if (!ok) {
         return false;
     }
@@ -458,7 +458,7 @@ bool map_ldtk::load(String filepath) {
     PROFILE_FUNC();
 
     String contents = {};
-    bool success = vfs_read_entire_file(NEKO_PACKS::GAMEDATA, &contents, filepath);
+    bool success = vfs_read_entire_file(&contents, filepath);
     if (!success) {
         return false;
     }
@@ -838,7 +838,7 @@ bool FontFamily::load(String filepath) {
     PROFILE_FUNC();
 
     String contents = {};
-    bool ok = vfs_read_entire_file(NEKO_PACKS::GAMEDATA, &contents, filepath);
+    bool ok = vfs_read_entire_file(&contents, filepath);
     if (!ok) {
         return false;
     }
@@ -854,7 +854,7 @@ void FontFamily::load_default() {
     PROFILE_FUNC();
 
     String contents = {};
-    bool ok = vfs_read_entire_file(NEKO_PACKS::GAMEDATA, &contents, NEKO_PACKS::DEFAULT_FONT);
+    bool ok = vfs_read_entire_file(&contents, NEKO_PACKS::DEFAULT_FONT);
 
     NEKO_ASSERT(ok, "load default font failed");
 
@@ -989,7 +989,7 @@ bool Atlas::load(String filepath, bool generate_mips) {
     PROFILE_FUNC();
 
     String contents = {};
-    bool ok = vfs_read_entire_file(NEKO_PACKS::GAMEDATA, &contents, filepath);
+    bool ok = vfs_read_entire_file(&contents, filepath);
     if (!ok) {
         return false;
     }
@@ -1156,7 +1156,7 @@ struct DirectoryFileSystem : FileSystem {
     }
 
     bool file_exists(String filepath) {
-        String path = to_cstr(filepath);
+        String path = str_fmt("%s/%s", basepath.cstr(), filepath.cstr());
         neko_defer(mem_free(path.data));
 
         FILE *fp = neko_fopen(path.cstr(), "r");
@@ -1169,17 +1169,17 @@ struct DirectoryFileSystem : FileSystem {
     }
 
     bool read_entire_file(String *out, String filepath) {
+        if (!file_exists(filepath)) return false;
         String path = str_fmt("%s/%s", basepath.cstr(), filepath.cstr());
         neko_defer(mem_free(path.data));
-        if (!file_exists(path)) return false;
         return read_entire_file_raw(out, path);
     }
 
     bool list_all_files(Array<String> *files) { return list_all_files_help(files, basepath.cstr()); }
 
     u64 file_modtime(String filepath) {
+        if (!file_exists(filepath)) return 0;
         String path = tmp_fmt("%s/%s", basepath.cstr(), filepath.cstr());
-        if (!file_exists(path)) return 0;
         u64 modtime = os_file_modtime(path.cstr());
         return modtime;
     }
@@ -1205,7 +1205,16 @@ struct ZipFileSystem : FileSystem {
         PROFILE_FUNC();
 
         String contents = {};
-        bool contents_ok = read_entire_file_raw(&contents, filepath);
+        bool contents_ok = false;
+
+        // 判断是否已经挂载gamedata
+        // 如果已经挂载gamedata则其余所有ZipFileSystem均加载自gamedata
+        if (g_vfs.get(fnv1a(NEKO_PACKS::GAMEDATA))) {
+            contents_ok = vfs_read_entire_file(&contents, filepath);
+        } else {
+            contents_ok = read_entire_file_raw(&contents, filepath);
+        }
+
         if (!contents_ok) {
             return false;
         }
@@ -1223,13 +1232,13 @@ struct ZipFileSystem : FileSystem {
         constexpr i32 eocd_size = 22;
         char *eocd = end - eocd_size;
         if (read4(eocd) != 0x06054b50) {
-            NEKO_WARN("ZipFileSystem: can't find EOCD record");
+            NEKO_WARN("zip_fs failed to find EOCD record");
             return false;
         }
 
         u32 central_size = read4(&eocd[12]);
         if (read4(eocd - central_size) != 0x02014b50) {
-            NEKO_WARN("ZipFileSystem: can't find central directory");
+            NEKO_WARN("zip_fs failed to find central directory");
             return false;
         }
 
@@ -1237,14 +1246,14 @@ struct ZipFileSystem : FileSystem {
         char *begin = eocd - central_size - central_offset;
         u64 zip_len = end - begin;
         if (read4(begin) != 0x04034b50) {
-            NEKO_WARN("ZipFileSystem: can't read local file header");
+            NEKO_WARN("zip_fs failed to read local file header");
             return false;
         }
 
         mz_bool zip_ok = mz_zip_reader_init_mem(&zip, begin, zip_len, 0);
         if (!zip_ok) {
             mz_zip_error err = mz_zip_get_last_error(&zip);
-            NEKO_WARN("ZipFileSystem: failed to read zip: %s", mz_zip_get_error_string(err));
+            NEKO_WARN("zip_fs failed to read zip: %s", mz_zip_get_error_string(err));
             return false;
         }
 
@@ -1427,15 +1436,16 @@ MountResult vfs_mount(const_str fsname, const char *filepath) {
         res.ok = vfs_mount_type<DirectoryFileSystem>(mount_dir);
     }
 #else
-    String path = os_program_path();
-    NEKO_DEBUG_LOG("program path: %s", path.data);
     if (filepath == nullptr) {
+
+        String path = os_program_path();
+        NEKO_DEBUG_LOG("program path: %s", path.data);
 
         res.ok = vfs_mount_type<ZipFileSystem>(fsname, path);
         if (!res.ok) {
             res.ok = vfs_mount_type<ZipFileSystem>(fsname, "./gamedata.zip");
             res.is_fused = true;
-            NEKO_TRACE("ZipFileSystem: load with gamedata.zip");
+            NEKO_WARN("zip_fs load with gamedata.zip");
         }
     } else {
         String mount_dir = filepath;
@@ -1467,13 +1477,30 @@ void vfs_fini() {
     g_vfs.trash();
 }
 
-u64 vfs_file_modtime(String fsname, String filepath) { return g_vfs[fnv1a(fsname)]->file_modtime(filepath); }
+u64 vfs_file_modtime(String filepath) {
+    for (auto v : g_vfs) {
+        FileSystem *vfs = static_cast<FileSystem *>(*v.value);
+        if (vfs->file_exists(filepath)) {
+            return vfs->file_modtime(filepath);
+        }
+    }
+    return 0;
+}
 
-bool vfs_file_exists(String fsname, String filepath) { return g_vfs[fnv1a(fsname)]->file_exists(filepath); }
+bool vfs_file_exists(String filepath) {
+    for (auto v : g_vfs) {
+        FileSystem *vfs = static_cast<FileSystem *>(*v.value);
+        if (vfs->file_exists(filepath)) return true;
+    }
+    return false;
+}
 
-bool vfs_read_entire_file(String fsname, String *out, String filepath) {
-    NEKO_ASSERT(g_vfs.get(fnv1a(fsname)));
-    return g_vfs[fnv1a(fsname)]->read_entire_file(out, filepath);
+bool vfs_read_entire_file(String *out, String filepath) {
+    for (auto v : g_vfs) {
+        FileSystem *vfs = static_cast<FileSystem *>(*v.value);
+        if (vfs->file_exists(filepath)) return vfs->read_entire_file(out, filepath);
+    }
+    return false;
 }
 
 bool vfs_list_all_files(String fsname, Array<String> *files) { return g_vfs[fnv1a(fsname)]->list_all_files(files); }
@@ -1494,7 +1521,7 @@ void *vfs_for_miniaudio() {
             return MA_ERROR;
         }
 
-        bool ok = vfs_read_entire_file(NEKO_PACKS::GAMEDATA, &contents, pFilePath);
+        bool ok = vfs_read_entire_file(&contents, pFilePath);
         if (!ok) {
             return MA_ERROR;
         }
@@ -1626,11 +1653,11 @@ int neko_capi_vfs_fclose(vfs_file *vf) {
     return 0;
 }
 
-bool neko_capi_vfs_file_exists(const_str fsname, const_str filepath) { return vfs_file_exists(fsname, filepath); }
+bool neko_capi_vfs_file_exists(const_str fsname, const_str filepath) { return vfs_file_exists(filepath); }
 
 const_str neko_capi_vfs_read_file(const_str fsname, const_str filepath, size_t *size) {
     String out;
-    bool ok = vfs_read_entire_file(fsname, &out, filepath);
+    bool ok = vfs_read_entire_file(&out, filepath);
     if (!ok) return NULL;
     *size = out.len;
     return out.data;
@@ -3956,7 +3983,7 @@ static void hot_reload_thread(void *) {
             for (auto [k, v] : g_assets.table) {
                 PROFILE_BLOCK("read modtime");
 
-                u64 modtime = vfs_file_modtime(NEKO_PACKS::GAMEDATA, v->name);
+                u64 modtime = vfs_file_modtime(v->name);
                 if (modtime > v->modtime) {
                     FileChange change = {};
                     change.key = v->hash;
@@ -4112,7 +4139,7 @@ bool asset_load(AssetLoadData desc, String filepath, Asset *out) {
         asset.hash = key;
         {
             PROFILE_BLOCK("asset modtime")
-            asset.modtime = vfs_file_modtime(NEKO_PACKS::GAMEDATA, asset.name);
+            asset.modtime = vfs_file_modtime(asset.name);
         }
         asset.kind = desc.kind;
 

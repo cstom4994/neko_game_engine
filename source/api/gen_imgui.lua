@@ -6,7 +6,7 @@ local status = {
     GenDir = GenDir
 }
 local meta = require "imgui_meta"
-meta.init(status, "cimgui.json")
+meta.init(status, "../vendor/cimgui.json")
 
 local apis_file<close> = assert(io.open(GenDir .. "/gen/imgui_lua_funcs.cpp", "wb"))
 local docs_file<close> = assert(io.open(GenDir .. "/gen/imgui.lua", "wb"))

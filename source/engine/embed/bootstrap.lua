@@ -354,6 +354,9 @@ in vec2 v_uv; out vec4 out_col;
 void main() { out_col = texture(u_sprite_texture, v_uv); }
 ]]
 
+LUA_RIDX_MAINTHREAD = 1
+LUA_RIDX_GLOBALS = 2
+
 sandbox = {}
 local worlds = {}
 

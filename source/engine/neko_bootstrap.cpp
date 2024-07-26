@@ -1068,7 +1068,7 @@ static void init() {
             // config.PixelSnapH = 1;
 
             String ttf_file;
-            vfs_read_entire_file(NEKO_PACKS::GAMEDATA, &ttf_file, conf_imgui_font.data.str);
+            vfs_read_entire_file(&ttf_file, conf_imgui_font.data.str);
             neko_defer(mem_free(ttf_file.data));
             void *ttf_data = ::mem_alloc(ttf_file.len);  // TODO:: imgui 内存方法接管
             memcpy(ttf_data, ttf_file.data, ttf_file.len);
@@ -1540,7 +1540,7 @@ static void load_all_lua_scripts(lua_State *L) {
         files.trash();
     });
 
-    bool ok = vfs_list_all_files(NEKO_PACKS::GAMEDATA, &files);
+    bool ok = vfs_list_all_files(NEKO_PACKS::LUACODE, &files);
     if (!ok) {
         neko_panic("failed to list all files");
     }
@@ -1552,7 +1552,6 @@ static void load_all_lua_scripts(lua_State *L) {
 
     for (String file : files) {
         if (file != "main.lua" && file.ends_with(".lua")) {
-            NEKO_DEBUG_LOG("load_all_lua_scripts(\"%s\")", file.data);
             asset_load_kind(AssetKind_LuaRef, file, nullptr);
         } else {
         }
@@ -1613,13 +1612,15 @@ sapp_desc sokol_main(int argc, char **argv) {
 
 #if defined(_DEBUG)
     MountResult mount = vfs_mount(NEKO_PACKS::GAMEDATA, "./gamedir");
+    MountResult mount_luacode = vfs_mount(NEKO_PACKS::LUACODE, "./source/game");
 #else
     MountResult mount = vfs_mount(NEKO_PACKS::GAMEDATA, nullptr);
+    MountResult mount_luacode = vfs_mount(NEKO_PACKS::LUACODE, "code.zip");
 #endif
 
     g_app->is_fused.store(mount.is_fused);
 
-    if (!g_app->error_mode.load() && mount.ok) {
+    if (!g_app->error_mode.load() && mount.ok && mount_luacode.ok) {
         asset_load_kind(AssetKind_LuaRef, "main.lua", nullptr);
     }
 
@@ -1662,7 +1663,7 @@ sapp_desc sokol_main(int argc, char **argv) {
 
     lua_pop(L, 1);  // conf table
 
-    if (!g_app->error_mode.load() && startup_load_scripts && mount.ok) {
+    if (!g_app->error_mode.load() && startup_load_scripts && mount.ok && mount_luacode.ok) {
         load_all_lua_scripts(L);
     }
 

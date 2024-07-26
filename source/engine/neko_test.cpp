@@ -15,14 +15,65 @@
 #include "engine/neko_asset.h"
 #include "engine/neko_base.h"
 #include "engine/neko_lua.h"
+#include "engine/neko_lua_struct.h"
 #include "engine/neko_luabind.hpp"
 #include "engine/neko_prelude.h"
 #include "engine/neko_reflection.hpp"
 
-
 #pragma region test
 
-using namespace neko;
+namespace neko::lua::__unittest {
+
+static int LUASTRUCT_test_vec4(lua_State* L) {
+    // GET_SELF;
+
+    Vector4* v4 = CHECK_STRUCT(L, 1, Vector4);
+
+    v4->x += 10.f;
+    v4->y += 10.f;
+    v4->z += 10.f;
+    v4->w += 10.f;
+
+    PUSH_STRUCT(L, Vector4, *v4);
+
+    // RETURN_STATUS(FMOD_Studio_EventInstance_Set3DAttributes(self, attributes));
+
+    return 1;
+}
+
+LUABIND_MODULE() {
+
+    neko_luabind_enum(L, AssetKind);
+    neko_luabind_enum_value(L, AssetKind, AssetKind_None);
+    neko_luabind_enum_value(L, AssetKind, AssetKind_LuaRef);
+    neko_luabind_enum_value(L, AssetKind, AssetKind_Image);
+    neko_luabind_enum_value(L, AssetKind, AssetKind_Sprite);
+    neko_luabind_enum_value(L, AssetKind, AssetKind_Tilemap);
+
+    luaL_Reg lib[] = {
+            {"LUASTRUCT_test_vec4", LUASTRUCT_test_vec4},
+            {"TestAssetKind_1",
+             +[](lua_State* L) {
+                 AssetKind type_val;
+                 neko_luabind_to(L, AssetKind, &type_val, 1);
+                 neko_printf("%d", type_val);
+                 lua_pushinteger(L, type_val);
+                 return 1;
+             }},
+
+            {"TestAssetKind_2",
+             +[](lua_State* L) {
+                 AssetKind type_val = (AssetKind)lua_tointeger(L, 1);
+                 neko_luabind_push(L, AssetKind, &type_val);
+                 return 1;
+             }},
+            {NULL, NULL},
+    };
+    luaL_newlibtable(L, lib);
+    luaL_setfuncs(L, lib, 0);
+    return 1;
+}
+}  // namespace neko::lua::__unittest
 
 struct PointInner {
     int xx, yy;

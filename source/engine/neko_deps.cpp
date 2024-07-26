@@ -2,7 +2,10 @@
 #pragma comment(lib, "ws2_32")
 #endif
 
+extern "C" {
+#include "deps/bit.c"
 #include "deps/luaalloc.c"
+}
 
 #define SOKOL_IMPL
 #define SOKOL_TRACE_HOOKS
