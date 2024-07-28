@@ -28,7 +28,7 @@
 #include <stb_image.h>
 #include <stb_image_resize2.h>
 
-#include "deps/cute_aseprite.h"
+#include "vendor/cute_aseprite.h"
 
 template <typename T>
 inline auto sg_make(const T &d) {
@@ -2359,6 +2359,9 @@ static void lua_to_json_string(StringBuilder &sb, lua_State *L, HashMap<bool> *v
             break;
         case LUA_TBOOLEAN:
             sb << (lua_toboolean(L, top) ? "true" : "false");
+            break;
+        case LUA_TFUNCTION:
+            sb << tmp_fmt("\"func %p\"", lua_topointer(L, top));
             break;
         default:
             *err = "type is not serializable";

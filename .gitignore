@@ -16,7 +16,6 @@ gamedir/*.zip
 docs/
 
 neko_cache/
-source/engine/deps
 source/api/gen
 source/game/lua/libs
 source/tests

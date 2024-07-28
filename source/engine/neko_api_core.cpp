@@ -17,7 +17,7 @@
 
 #include <sokol_gfx.h>
 
-#include "deps/sokol_gp.h"
+#include "vendor/sokol_gp.h"
 
 int neko_api_set_blendmode(neko_api_BlendMode blendmode) {
     sgp_set_blend_mode((sgp_blend_mode)blendmode);

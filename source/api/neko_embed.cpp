@@ -29,9 +29,6 @@ int load_embed_lua(lua_State* L, const u8 B[], const_str name) {
 static const u8 g_lua_common_data[] = {
 #include "common.lua.h"
 };
-static const u8 g_lua_cstruct_data[] = {
-#include "cstruct.lua.h"
-};
 static const u8 g_lua_prefabs_data[] = {
 #include "prefabs.lua.h"
 };
@@ -73,7 +70,6 @@ static const u8 socket_url_compressed_data[] = {
 };
 
 LUAOPEN_EMBED_DATA(open_embed_common, "common.lua", g_lua_common_data);
-LUAOPEN_EMBED_DATA(open_embed_cstruct, "cstruct.lua", g_lua_cstruct_data);
 LUAOPEN_EMBED_DATA(open_embed_prefabs, "prefabs.lua", g_lua_prefabs_data);
 LUAOPEN_EMBED_DATA(open_embed_bootstrap, "bootstrap.lua", g_lua_bootstrap_data);
 LUAOPEN_EMBED_DATA(open_embed_gen_neko_api, "gen_neko_api.lua", g_lua_gen_neko_api_data);
@@ -103,36 +99,45 @@ int luaopen_mime_core(lua_State* L);
 int luaopen_cffi(lua_State* L);
 int luaopen_bit(lua_State* L);
 int luaopen_http(lua_State* L);
+int open_tools_spritepack(lua_State* L);
+int luaopen_colibc_filesys(lua_State* L);
 }
 
 namespace neko::lua {
 void package_preload(lua_State* L) {
-    package_preload(L, "common", open_embed_common);
-    package_preload(L, "cstruct", open_embed_cstruct);
-    package_preload(L, "prefabs", open_embed_prefabs);
-    package_preload(L, "gen_neko_api", open_embed_gen_neko_api);
 
-    package_preload(L, "enet", luaopen_enet);
+    luaL_Reg preloads[] = {
+            {"common", open_embed_common},
+            {"prefabs", open_embed_prefabs},
+            {"gen_neko_api", open_embed_gen_neko_api},
 
-    package_preload(L, "socket.core", luaopen_socket_core);
-    package_preload(L, "mime.core", luaopen_mime_core);
+            {"__neko.spritepack", open_tools_spritepack},
+            {"__neko.filesys", luaopen_colibc_filesys},
 
-    package_preload(L, "ltn12", open_embed_ltn12);
-    package_preload(L, "mbox", open_embed_mbox);
-    package_preload(L, "mime", open_embed_mime);
-    package_preload(L, "socket", open_embed_socket);
-    package_preload(L, "socket.ftp", open_embed_socket_ftp);
-    package_preload(L, "socket.headers", open_embed_socket_headers);
-    package_preload(L, "socket.http", open_embed_socket_http);
-    package_preload(L, "socket.smtp", open_embed_socket_smtp);
-    package_preload(L, "socket.tp", open_embed_socket_tp);
-    package_preload(L, "socket.url", open_embed_socket_url);
+            {"ffi", luaopen_cffi},
 
-    package_preload(L, "ffi", luaopen_cffi);
+            {"http", luaopen_http},
 
-    package_preload(L, "bit", luaopen_bit);
+            {"enet", luaopen_enet},
 
-    package_preload(L, "http", luaopen_http);
+            {"socket.core", luaopen_socket_core},
+            {"mime.core", luaopen_mime_core},
+
+            {"ltn12", open_embed_ltn12},
+            {"mbox", open_embed_mbox},
+            {"mime", open_embed_mime},
+            {"socket", open_embed_socket},
+            {"socket.ftp", open_embed_socket_ftp},
+            {"socket.headers", open_embed_socket_headers},
+            {"socket.http", open_embed_socket_http},
+            {"socket.smtp", open_embed_socket_smtp},
+            {"socket.tp", open_embed_socket_tp},
+            {"socket.url", open_embed_socket_url},
+    };
+
+    for (auto m : preloads) {
+        package_preload(L, m.name, m.func);
+    }
 }
 void luax_run_bootstrap(lua_State* L) {
     std::string contents = (const_str)g_lua_bootstrap_data;

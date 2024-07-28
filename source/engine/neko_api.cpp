@@ -2481,135 +2481,135 @@ LUA_FUNCTION(__neko_bind_platform_set_window_title) {
 
 inline void neko_register_platform(lua_State* L) {
 
-    neko_luabind_enum(L, neko_os_keycode);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_INVALID);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_SPACE);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_APOSTROPHE); /* ' */
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_COMMA);      /* , */
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_MINUS);      /* - */
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_PERIOD);     /* . */
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_SLASH);      /* / */
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_0);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_1);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_2);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_3);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_4);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_5);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_6);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_7);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_8);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_9);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_SEMICOLON); /* ; */
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_EQUAL);     /* = */
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_A);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_B);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_C);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_D);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_E);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_G);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_H);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_I);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_J);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_K);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_L);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_M);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_N);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_O);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_P);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_Q);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_R);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_S);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_T);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_U);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_V);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_W);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_X);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_Y);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_Z);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_LEFT_BRACKET);  /* [ */
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_BACKSLASH);     /* \ */
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_RIGHT_BRACKET); /* ] */
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_GRAVE_ACCENT);  /* ` */
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_WORLD_1);       /* non-US #1 */
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_WORLD_2);       /* non-US #2 */
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_ESC);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_ENTER);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_TAB);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_BACKSPACE);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_INSERT);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_DELETE);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_RIGHT);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_LEFT);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_DOWN);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_UP);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_PAGE_UP);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_PAGE_DOWN);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_HOME);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_END);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_CAPS_LOCK);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_SCROLL_LOCK);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_NUM_LOCK);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_PRINT_SCREEN);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_PAUSE);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F1);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F2);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F3);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F4);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F5);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F6);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F7);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F8);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F9);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F10);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F11);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F12);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F13);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F14);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F15);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F16);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F17);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F18);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F19);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F20);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F21);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F22);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F23);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F24);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F25);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_0);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_1);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_2);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_3);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_4);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_5);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_6);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_7);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_8);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_9);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_DECIMAL);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_DIVIDE);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_MULTIPLY);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_SUBTRACT);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_ADD);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_ENTER);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_EQUAL);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_LEFT_SHIFT);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_LEFT_CONTROL);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_LEFT_ALT);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_LEFT_SUPER);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_RIGHT_SHIFT);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_RIGHT_CONTROL);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_RIGHT_ALT);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_RIGHT_SUPER);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_MENU);
-    neko_luabind_enum_value(L, neko_os_keycode, NEKO_KEYCODE_COUNT);
+    neko_lua_enum(L, neko_os_keycode);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_INVALID);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_SPACE);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_APOSTROPHE); /* ' */
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_COMMA);      /* , */
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_MINUS);      /* - */
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_PERIOD);     /* . */
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_SLASH);      /* / */
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_0);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_1);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_2);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_3);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_4);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_5);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_6);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_7);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_8);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_9);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_SEMICOLON); /* ; */
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_EQUAL);     /* = */
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_A);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_B);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_C);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_D);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_E);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_G);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_H);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_I);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_J);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_K);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_L);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_M);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_N);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_O);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_P);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_Q);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_R);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_S);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_T);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_U);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_V);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_W);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_X);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_Y);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_Z);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_LEFT_BRACKET);  /* [ */
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_BACKSLASH);     /* \ */
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_RIGHT_BRACKET); /* ] */
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_GRAVE_ACCENT);  /* ` */
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_WORLD_1);       /* non-US #1 */
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_WORLD_2);       /* non-US #2 */
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_ESC);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_ENTER);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_TAB);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_BACKSPACE);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_INSERT);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_DELETE);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_RIGHT);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_LEFT);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_DOWN);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_UP);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_PAGE_UP);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_PAGE_DOWN);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_HOME);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_END);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_CAPS_LOCK);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_SCROLL_LOCK);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_NUM_LOCK);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_PRINT_SCREEN);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_PAUSE);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F1);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F2);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F3);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F4);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F5);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F6);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F7);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F8);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F9);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F10);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F11);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F12);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F13);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F14);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F15);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F16);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F17);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F18);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F19);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F20);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F21);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F22);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F23);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F24);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_F25);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_0);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_1);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_2);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_3);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_4);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_5);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_6);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_7);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_8);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_9);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_DECIMAL);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_DIVIDE);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_MULTIPLY);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_SUBTRACT);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_ADD);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_ENTER);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_KP_EQUAL);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_LEFT_SHIFT);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_LEFT_CONTROL);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_LEFT_ALT);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_LEFT_SUPER);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_RIGHT_SHIFT);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_RIGHT_CONTROL);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_RIGHT_ALT);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_RIGHT_SUPER);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_MENU);
+    neko_lua_enum_value(L, neko_os_keycode, NEKO_KEYCODE_COUNT);
 
-    neko_luabind_enum(L, neko_os_mouse_button_code);
-    neko_luabind_enum_value(L, neko_os_mouse_button_code, NEKO_MOUSE_LBUTTON);
-    neko_luabind_enum_value(L, neko_os_mouse_button_code, NEKO_MOUSE_RBUTTON);
-    neko_luabind_enum_value(L, neko_os_mouse_button_code, NEKO_MOUSE_MBUTTON);
-    neko_luabind_enum_value(L, neko_os_mouse_button_code, NEKO_MOUSE_BUTTON_CODE_COUNT);
+    neko_lua_enum(L, neko_os_mouse_button_code);
+    neko_lua_enum_value(L, neko_os_mouse_button_code, NEKO_MOUSE_LBUTTON);
+    neko_lua_enum_value(L, neko_os_mouse_button_code, NEKO_MOUSE_RBUTTON);
+    neko_lua_enum_value(L, neko_os_mouse_button_code, NEKO_MOUSE_MBUTTON);
+    neko_lua_enum_value(L, neko_os_mouse_button_code, NEKO_MOUSE_BUTTON_CODE_COUNT);
 
     neko::lua_bind::bind("neko_key_pressed", &__neko_bind_platform_key_pressed);
     neko::lua_bind::bind("neko_was_key_down", &__neko_bind_platform_was_key_down);
@@ -4404,14 +4404,14 @@ inline void neko_register_test(lua_State* L) {
 
     // neko::lua_bind::bind("neko_tiled_get_objects", &__neko_bind_tiled_get_objects);
 
-    neko_luabind_enum(L, neko_projection_type);
-    neko_luabind_enum_value(L, neko_projection_type, NEKO_PROJECTION_TYPE_ORTHOGRAPHIC);
-    neko_luabind_enum_value(L, neko_projection_type, NEKO_PROJECTION_TYPE_PERSPECTIVE);
+    neko_lua_enum(L, neko_projection_type);
+    neko_lua_enum_value(L, neko_projection_type, NEKO_PROJECTION_TYPE_ORTHOGRAPHIC);
+    neko_lua_enum_value(L, neko_projection_type, NEKO_PROJECTION_TYPE_PERSPECTIVE);
 
-    neko_luabind_enum(L, neko_render_primitive_type);
-    neko_luabind_enum_value(L, neko_render_primitive_type, R_PRIMITIVE_LINES);
-    neko_luabind_enum_value(L, neko_render_primitive_type, R_PRIMITIVE_TRIANGLES);
-    neko_luabind_enum_value(L, neko_render_primitive_type, R_PRIMITIVE_QUADS);
+    neko_lua_enum(L, neko_render_primitive_type);
+    neko_lua_enum_value(L, neko_render_primitive_type, R_PRIMITIVE_LINES);
+    neko_lua_enum_value(L, neko_render_primitive_type, R_PRIMITIVE_TRIANGLES);
+    neko_lua_enum_value(L, neko_render_primitive_type, R_PRIMITIVE_QUADS);
 
     neko_luabind_struct(L, neko_vec2);
     neko_luabind_struct_member(L, neko_vec2, x, f32);
@@ -4475,69 +4475,69 @@ inline void neko_register_test(lua_State* L) {
     // neko_luabind_struct(L, neko_sound_playing_sound_t);
     // neko_luabind_struct_member(L, neko_sound_playing_sound_t, id, unsigned long long);
 
-    neko_luabind_enum(L, neko_render_vertex_attribute_type);
-    neko_luabind_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_FLOAT4);
-    neko_luabind_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_FLOAT3);
-    neko_luabind_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_FLOAT2);
-    neko_luabind_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_FLOAT);
-    neko_luabind_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_UINT4);
-    neko_luabind_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_UINT3);
-    neko_luabind_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_UINT2);
-    neko_luabind_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_UINT);
-    neko_luabind_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_BYTE4);
-    neko_luabind_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_BYTE3);
-    neko_luabind_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_BYTE2);
-    neko_luabind_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_BYTE);
+    neko_lua_enum(L, neko_render_vertex_attribute_type);
+    neko_lua_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_FLOAT4);
+    neko_lua_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_FLOAT3);
+    neko_lua_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_FLOAT2);
+    neko_lua_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_FLOAT);
+    neko_lua_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_UINT4);
+    neko_lua_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_UINT3);
+    neko_lua_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_UINT2);
+    neko_lua_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_UINT);
+    neko_lua_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_BYTE4);
+    neko_lua_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_BYTE3);
+    neko_lua_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_BYTE2);
+    neko_lua_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_BYTE);
 
-    neko_luabind_enum(L, neko_render_texture_type);
-    neko_luabind_enum_value(L, neko_render_texture_type, R_TEXTURE_2D);
-    neko_luabind_enum_value(L, neko_render_texture_type, R_TEXTURE_CUBEMAP);
+    neko_lua_enum(L, neko_render_texture_type);
+    neko_lua_enum_value(L, neko_render_texture_type, R_TEXTURE_2D);
+    neko_lua_enum_value(L, neko_render_texture_type, R_TEXTURE_CUBEMAP);
 
-    neko_luabind_enum(L, neko_render_shader_stage_type);
-    neko_luabind_enum_value(L, neko_render_shader_stage_type, R_SHADER_STAGE_VERTEX);
-    neko_luabind_enum_value(L, neko_render_shader_stage_type, R_SHADER_STAGE_FRAGMENT);
-    neko_luabind_enum_value(L, neko_render_shader_stage_type, R_SHADER_STAGE_COMPUTE);
+    neko_lua_enum(L, neko_render_shader_stage_type);
+    neko_lua_enum_value(L, neko_render_shader_stage_type, R_SHADER_STAGE_VERTEX);
+    neko_lua_enum_value(L, neko_render_shader_stage_type, R_SHADER_STAGE_FRAGMENT);
+    neko_lua_enum_value(L, neko_render_shader_stage_type, R_SHADER_STAGE_COMPUTE);
 
-    neko_luabind_enum(L, neko_render_texture_wrapping_type);
-    neko_luabind_enum_value(L, neko_render_texture_wrapping_type, R_TEXTURE_WRAP_REPEAT);
-    neko_luabind_enum_value(L, neko_render_texture_wrapping_type, R_TEXTURE_WRAP_MIRRORED_REPEAT);
-    neko_luabind_enum_value(L, neko_render_texture_wrapping_type, R_TEXTURE_WRAP_CLAMP_TO_EDGE);
-    neko_luabind_enum_value(L, neko_render_texture_wrapping_type, R_TEXTURE_WRAP_CLAMP_TO_BORDER);
+    neko_lua_enum(L, neko_render_texture_wrapping_type);
+    neko_lua_enum_value(L, neko_render_texture_wrapping_type, R_TEXTURE_WRAP_REPEAT);
+    neko_lua_enum_value(L, neko_render_texture_wrapping_type, R_TEXTURE_WRAP_MIRRORED_REPEAT);
+    neko_lua_enum_value(L, neko_render_texture_wrapping_type, R_TEXTURE_WRAP_CLAMP_TO_EDGE);
+    neko_lua_enum_value(L, neko_render_texture_wrapping_type, R_TEXTURE_WRAP_CLAMP_TO_BORDER);
 
-    neko_luabind_enum(L, neko_render_texture_filtering_type);
-    neko_luabind_enum_value(L, neko_render_texture_filtering_type, R_TEXTURE_FILTER_NEAREST);
-    neko_luabind_enum_value(L, neko_render_texture_filtering_type, R_TEXTURE_FILTER_LINEAR);
+    neko_lua_enum(L, neko_render_texture_filtering_type);
+    neko_lua_enum_value(L, neko_render_texture_filtering_type, R_TEXTURE_FILTER_NEAREST);
+    neko_lua_enum_value(L, neko_render_texture_filtering_type, R_TEXTURE_FILTER_LINEAR);
 
-    neko_luabind_enum(L, neko_render_texture_format_type);
-    neko_luabind_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_RGBA8);
-    neko_luabind_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_RGB8);
-    neko_luabind_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_RG8);
-    neko_luabind_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_R32);
-    neko_luabind_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_R32F);
-    neko_luabind_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_RGBA16F);
-    neko_luabind_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_RGBA32F);
-    neko_luabind_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_A8);
-    neko_luabind_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_R8);
-    neko_luabind_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_DEPTH8);
-    neko_luabind_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_DEPTH16);
-    neko_luabind_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_DEPTH24);
-    neko_luabind_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_DEPTH32F);
-    neko_luabind_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_DEPTH24_STENCIL8);
-    neko_luabind_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_DEPTH32F_STENCIL8);
-    neko_luabind_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_STENCIL8);
+    neko_lua_enum(L, neko_render_texture_format_type);
+    neko_lua_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_RGBA8);
+    neko_lua_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_RGB8);
+    neko_lua_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_RG8);
+    neko_lua_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_R32);
+    neko_lua_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_R32F);
+    neko_lua_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_RGBA16F);
+    neko_lua_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_RGBA32F);
+    neko_lua_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_A8);
+    neko_lua_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_R8);
+    neko_lua_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_DEPTH8);
+    neko_lua_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_DEPTH16);
+    neko_lua_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_DEPTH24);
+    neko_lua_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_DEPTH32F);
+    neko_lua_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_DEPTH24_STENCIL8);
+    neko_lua_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_DEPTH32F_STENCIL8);
+    neko_lua_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_STENCIL8);
 
-    neko_luabind_enum(L, neko_render_uniform_type);
-    neko_luabind_enum_value(L, neko_render_uniform_type, R_UNIFORM_FLOAT);
-    neko_luabind_enum_value(L, neko_render_uniform_type, R_UNIFORM_INT);
-    neko_luabind_enum_value(L, neko_render_uniform_type, R_UNIFORM_VEC2);
-    neko_luabind_enum_value(L, neko_render_uniform_type, R_UNIFORM_VEC3);
-    neko_luabind_enum_value(L, neko_render_uniform_type, R_UNIFORM_VEC4);
-    neko_luabind_enum_value(L, neko_render_uniform_type, R_UNIFORM_MAT4);
-    neko_luabind_enum_value(L, neko_render_uniform_type, R_UNIFORM_SAMPLER2D);
-    neko_luabind_enum_value(L, neko_render_uniform_type, R_UNIFORM_USAMPLER2D);
-    neko_luabind_enum_value(L, neko_render_uniform_type, R_UNIFORM_SAMPLERCUBE);
-    neko_luabind_enum_value(L, neko_render_uniform_type, R_UNIFORM_IMAGE2D_RGBA32F);
-    neko_luabind_enum_value(L, neko_render_uniform_type, R_UNIFORM_BLOCK);
+    neko_lua_enum(L, neko_render_uniform_type);
+    neko_lua_enum_value(L, neko_render_uniform_type, R_UNIFORM_FLOAT);
+    neko_lua_enum_value(L, neko_render_uniform_type, R_UNIFORM_INT);
+    neko_lua_enum_value(L, neko_render_uniform_type, R_UNIFORM_VEC2);
+    neko_lua_enum_value(L, neko_render_uniform_type, R_UNIFORM_VEC3);
+    neko_lua_enum_value(L, neko_render_uniform_type, R_UNIFORM_VEC4);
+    neko_lua_enum_value(L, neko_render_uniform_type, R_UNIFORM_MAT4);
+    neko_lua_enum_value(L, neko_render_uniform_type, R_UNIFORM_SAMPLER2D);
+    neko_lua_enum_value(L, neko_render_uniform_type, R_UNIFORM_USAMPLER2D);
+    neko_lua_enum_value(L, neko_render_uniform_type, R_UNIFORM_SAMPLERCUBE);
+    neko_lua_enum_value(L, neko_render_uniform_type, R_UNIFORM_IMAGE2D_RGBA32F);
+    neko_lua_enum_value(L, neko_render_uniform_type, R_UNIFORM_BLOCK);
 }
 
 #endif
@@ -4774,11 +4774,11 @@ inline void neko_register_common(lua_State *L) {
     //     lua_setglobal(L, reg->name);
     // }
 
-    // neko_luabind_enum(L, neko_cvar_type);
-    // neko_luabind_enum_value(L, neko_cvar_type, __NEKO_CONFIG_TYPE_INT);
-    // neko_luabind_enum_value(L, neko_cvar_type, __NEKO_CONFIG_TYPE_FLOAT);
-    // neko_luabind_enum_value(L, neko_cvar_type, __NEKO_CONFIG_TYPE_STRING);
-    // neko_luabind_enum_value(L, neko_cvar_type, __NEKO_CONFIG_TYPE_COUNT);
+    // neko_lua_enum(L, neko_cvar_type);
+    // neko_lua_enum_value(L, neko_cvar_type, __NEKO_CONFIG_TYPE_INT);
+    // neko_lua_enum_value(L, neko_cvar_type, __NEKO_CONFIG_TYPE_FLOAT);
+    // neko_lua_enum_value(L, neko_cvar_type, __NEKO_CONFIG_TYPE_STRING);
+    // neko_lua_enum_value(L, neko_cvar_type, __NEKO_CONFIG_TYPE_COUNT);
 
     lua_register(L, "__neko_ls", __neko_ls);
 }

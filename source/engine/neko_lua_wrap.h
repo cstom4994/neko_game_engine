@@ -46,6 +46,15 @@ void *Allocf(void *ud, void *ptr, size_t osize, size_t nsize);
 
 class neko_lua_tool_t {
 public:
+    static void check_arg_count(lua_State *L, int expected) {
+        int n = lua_gettop(L);
+        if (n != expected) {
+            luaL_error(L, "Got %d arguments, expected %d", n, expected);
+            return;
+        }
+        return;
+    };
+
     static void function_call_err(const_str name, int params) { NEKO_WARN("[lua] invalid parameters to function: \"%s\" as %d", name, params); }
 
     static lua_State *mark_create(const_str mark_name) {
@@ -344,7 +353,7 @@ struct __lua_op_t<const_str> {
         return ok;
     }
 
-    static void push(lua_State *L, const_str &value) { lua_pushstring(L, value); }
+    static void push(lua_State *L, const_str value) { lua_pushstring(L, value); }
 };
 
 template <>
@@ -367,28 +376,29 @@ struct __lua_op_t<cpp_void_t> {
     static int get_ret_value(lua_State *ls_, int pos_, cpp_void_t &param_) { return 0; }
 };
 
-#define XX_TYPE(T, isfunc, checkfunc, tofunc, pushfunc)                         \
-    template <>                                                                 \
-    struct __lua_op_t<T> {                                                      \
-        static bool pop(lua_State *L, T &value) {                               \
-            bool ok = isfunc(L, -1) == 1;                                       \
-            if (ok) value = (T)tofunc(L, -1);                                   \
-            lua_pop(L, 1);                                                      \
-            return ok;                                                          \
-        }                                                                       \
-        static void push(lua_State *L, T &value) { pushfunc(L, value); }        \
-        static void push_stack(lua_State *ls_, T arg_) { pushfunc(ls_, arg_); } \
-        static int get_ret_value(lua_State *ls_, int pos_, T &param_) {         \
-            if (!isfunc(ls_, pos_)) {                                           \
-                return -1;                                                      \
-            }                                                                   \
-            param_ = (T)tofunc(ls_, pos_);                                      \
-            return 0;                                                           \
-        }                                                                       \
-        static int lua_to_value(lua_State *ls_, int pos_, T &param_) {          \
-            param_ = (T)checkfunc(ls_, pos_);                                   \
-            return 0;                                                           \
-        }                                                                       \
+#define XX_TYPE(T, isfunc, checkfunc, tofunc, pushfunc)                            \
+    template <>                                                                    \
+    struct __lua_op_t<T> {                                                         \
+        static bool pop(lua_State *L, T &value) {                                  \
+            bool ok = isfunc(L, -1) == 1;                                          \
+            if (ok) value = (T)tofunc(L, -1);                                      \
+            lua_pop(L, 1);                                                         \
+            return ok;                                                             \
+        }                                                                          \
+        static void push(lua_State *L, T value) { pushfunc(L, value); }            \
+        static void push_stack(lua_State *ls_, T arg_) { pushfunc(ls_, arg_); }    \
+        static int get_ret_value(lua_State *ls_, int pos_, T &param_) {            \
+            if (!isfunc(ls_, pos_)) {                                              \
+                return -1;                                                         \
+            }                                                                      \
+            param_ = (T)tofunc(ls_, pos_);                                         \
+            return 0;                                                              \
+        }                                                                          \
+        static int lua_to_value(lua_State *ls_, int pos_, T &param_) {             \
+            param_ = (T)checkfunc(ls_, pos_);                                      \
+            return 0;                                                              \
+        }                                                                          \
+        static T get(lua_State *ls_, int pos_) { return (T)checkfunc(ls_, pos_); } \
     }
 
 XX_TYPE(i8, lua_isnumber, luaL_checkinteger, lua_tointeger, lua_pushinteger);
@@ -540,7 +550,13 @@ struct __lua_op_t<std::string> {
         return ok;
     }
 
-    static void push(lua_State *L, std::string &value) { lua_pushstring(L, value.c_str()); }
+    static void push(lua_State *L, std::string &value) { lua_pushlstring(L, value.c_str(), value.size()); }
+
+    static inline std::string get(lua_State *L, int index) {
+        size_t len;
+        const char *str = luaL_checklstring(L, index, &len);
+        return std::string(str, len);
+    }
 };
 
 template <>

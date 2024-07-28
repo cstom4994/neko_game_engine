@@ -12,7 +12,7 @@
 #include "neko_sound.h"
 
 // deps
-#include "deps/luaalloc.h"
+#include "vendor/luaalloc.h"
 
 struct NEKO_PACKS {
     static constexpr const_str GAMEDATA = "default_pack";

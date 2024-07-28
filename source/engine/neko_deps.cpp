@@ -2,11 +2,6 @@
 #pragma comment(lib, "ws2_32")
 #endif
 
-extern "C" {
-#include "deps/bit.c"
-#include "deps/luaalloc.c"
-}
-
 #define SOKOL_IMPL
 #define SOKOL_TRACE_HOOKS
 #if defined(_WIN32)
@@ -28,7 +23,7 @@ extern "C" {
 #include <util/sokol_gl.h>
 
 #define SOKOL_GP_IMPL
-#include "deps/sokol_gp.h"
+#include "vendor/sokol_gp.h"
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>
@@ -46,11 +41,17 @@ extern "C" {
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include <stb_image_resize2.h>
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb/stb_image_write.h>
+
+#define STB_RECT_PACK_IMPLEMENTATION
+#include <stb/stb_rect_pack.h>
+
 #define STB_TRUETYPE_IMPLEMENTATION
 #include <stb_truetype.h>
 
 #define CUTE_ASEPRITE_IMPLEMENTATION
-#include "deps/cute_aseprite.h"
+#include "vendor/cute_aseprite.h"
 
 #ifdef __clang__
 #pragma clang diagnostic push

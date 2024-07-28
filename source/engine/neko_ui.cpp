@@ -7,7 +7,7 @@
 #include <string.h>
 #include <util/sokol_gl.h>
 
-#include "deps/microui_atlas.inl"
+#include "vendor/microui_atlas.inl"
 #include "neko_app.h"
 #include "neko_lua.h"
 #include "neko_prelude.h"

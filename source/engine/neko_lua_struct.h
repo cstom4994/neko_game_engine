@@ -46,38 +46,38 @@ void neko_luabind_to_type(lua_State *L, neko_luabind_Type type, void *c_out, int
 
 #define LUAA_INVALID_MEMBER_NAME NULL
 
-#define neko_luabind_enum(L, type) neko_luabind_enum_type(L, neko_luabind_type(L, type), sizeof(type))
+#define neko_lua_enum(L, type) neko_lua_enum_type(L, neko_luabind_type(L, type), sizeof(type))
 
-#define neko_luabind_enum_value(L, type, value)                    \
-    const type __neko_luabind_enum_value_temp_##value[] = {value}; \
-    neko_luabind_enum_value_type(L, neko_luabind_type(L, type), __neko_luabind_enum_value_temp_##value, #value)
+#define neko_lua_enum_value(L, type, value)                    \
+    const type __neko_lua_enum_value_temp_##value[] = {value}; \
+    neko_lua_enum_value_type(L, neko_luabind_type(L, type), __neko_lua_enum_value_temp_##value, #value)
 
-#define neko_luabind_enum_value_name(L, type, value, name)         \
-    const type __neko_luabind_enum_value_temp_##value[] = {value}; \
-    neko_luabind_enum_value_type(L, neko_luabind_type(L, type), __neko_luabind_enum_value_temp_##value, name)
+#define neko_lua_enum_value_name(L, type, value, name)         \
+    const type __neko_lua_enum_value_temp_##value[] = {value}; \
+    neko_lua_enum_value_type(L, neko_luabind_type(L, type), __neko_lua_enum_value_temp_##value, name)
 
-#define neko_luabind_enum_push(L, type, c_in) neko_luabind_enum_push_type(L, neko_luabind_type(L, type), c_in)
-#define neko_luabind_enum_to(L, type, c_out, index) neko_luabind_enum_to_type(L, neko_luabind_type(L, type), c_out, index)
+#define neko_lua_enum_push(L, type, c_in) neko_lua_enum_push_type(L, neko_luabind_type(L, type), c_in)
+#define neko_lua_enum_to(L, type, c_out, index) neko_lua_enum_to_type(L, neko_luabind_type(L, type), c_out, index)
 
-#define neko_luabind_enum_has_value(L, type, value)                \
-    const type __neko_luabind_enum_value_temp_##value[] = {value}; \
-    neko_luabind_enum_has_value_type(L, neko_luabind_type(L, type), __neko_luabind_enum_value_temp_##value)
+#define neko_lua_enum_has_value(L, type, value)                \
+    const type __neko_lua_enum_value_temp_##value[] = {value}; \
+    neko_lua_enum_has_value_type(L, neko_luabind_type(L, type), __neko_lua_enum_value_temp_##value)
 
-#define neko_luabind_enum_has_name(L, type, name) neko_luabind_enum_has_name_type(L, neko_luabind_type(L, type), name)
+#define neko_lua_enum_has_name(L, type, name) neko_lua_enum_has_name_type(L, neko_luabind_type(L, type), name)
 
-#define neko_luabind_enum_registered(L, type) neko_luabind_enum_registered_type(L, neko_luabind_type(L, type))
-#define neko_luabind_enum_next_value_name(L, type, member) neko_luabind_enum_next_value_name_type(L, neko_luabind_type(L, type), member)
+#define neko_lua_enum_registered(L, type) neko_lua_enum_registered_type(L, neko_luabind_type(L, type))
+#define neko_lua_enum_next_value_name(L, type, member) neko_lua_enum_next_value_name_type(L, neko_luabind_type(L, type), member)
 
-void neko_luabind_enum_type(lua_State *L, neko_luabind_Type type, size_t size);
-void neko_luabind_enum_value_type(lua_State *L, neko_luabind_Type type, const void *value, const char *name);
+void neko_lua_enum_type(lua_State *L, neko_luabind_Type type, size_t size);
+void neko_lua_enum_value_type(lua_State *L, neko_luabind_Type type, const void *value, const char *name);
 
-int neko_luabind_enum_push_type(lua_State *L, neko_luabind_Type type, const void *c_in);
-void neko_luabind_enum_to_type(lua_State *L, neko_luabind_Type type, void *c_out, int index);
+int neko_lua_enum_push_type(lua_State *L, neko_luabind_Type type, const void *c_in);
+void neko_lua_enum_to_type(lua_State *L, neko_luabind_Type type, void *c_out, int index);
 
-bool neko_luabind_enum_has_value_type(lua_State *L, neko_luabind_Type type, const void *value);
-bool neko_luabind_enum_has_name_type(lua_State *L, neko_luabind_Type type, const char *name);
+bool neko_lua_enum_has_value_type(lua_State *L, neko_luabind_Type type, const void *value);
+bool neko_lua_enum_has_name_type(lua_State *L, neko_luabind_Type type, const char *name);
 
-bool neko_luabind_enum_registered_type(lua_State *L, neko_luabind_Type type);
-const char *neko_luabind_enum_next_value_name_type(lua_State *L, neko_luabind_Type type, const char *member);
+bool neko_lua_enum_registered_type(lua_State *L, neko_luabind_Type type);
+const char *neko_lua_enum_next_value_name_type(lua_State *L, neko_luabind_Type type, const char *member);
 
 #endif

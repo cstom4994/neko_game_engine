@@ -14,8 +14,10 @@
 #include "engine/neko_api.hpp"
 #include "engine/neko_asset.h"
 #include "engine/neko_base.h"
+#include "engine/neko_ecs.h"
 #include "engine/neko_lua.h"
 #include "engine/neko_lua_struct.h"
+#include "engine/neko_lua_table.hpp"
 #include "engine/neko_luabind.hpp"
 #include "engine/neko_prelude.h"
 #include "engine/neko_reflection.hpp"
@@ -24,31 +26,254 @@
 
 namespace neko::lua::__unittest {
 
+void run(lua_State* L, const char* code) {
+    std::cout << "code: " << code << std::endl;
+    if (luaL_dostring(L, code)) {
+        std::cout << lua_tostring(L, -1) << std::endl;
+        lua_pop(L, 1);
+    }
+}
+
+LuaRef getTesting(lua_State* L) {
+    lua_getglobal(L, "testing");
+    return LuaRef::fromStack(L);
+}
+
+void printString(const std::string& str) { std::cout << str << std::endl; }
+
+int TestBinding_1(lua_State* L) {
+
+    run(L, "function testing( ... ) print( '> ', ... ) end");
+
+    {
+        LuaRef testing(L, "testing");
+        LuaRef table = LuaRef::newTable(L);
+        table["testing"] = testing;
+
+        table.push();
+        lua_setglobal(L, "a");
+
+        run(L, "print( a.testing )");
+        run(L, "a.b = {}");
+        run(L, "a.b.c = {}");
+
+        std::cout << "Is table a table? " << (table.isTable() ? "true" : "false") << std::endl;
+        std::cout << "Is table[\"b\"] a table? " << (table["b"].isTable() ? "true" : "false") << std::endl;
+
+        table["b"]["c"]["hello"] = "World!";
+
+        run(L, "print( a.b.c.hello )");
+
+        auto b = table["b"];  // returns a LuaTableElement
+        b[3] = "Index 3";
+
+        LuaRef faster_b = b;  // Convert LuaTableElement to LuaRef for faster pushing
+
+        for (int i = 1; i < 5; i++) {
+            faster_b.append(i);
+        }
+        b[1] = LuaNil();
+        b.append("Add more.");
+
+        run(L, "for k,v in pairs( a.b ) do print( k,v ) end");
+
+        table["b"] = LuaNil();
+
+        run(L, "print( a.b )");
+
+        testing();
+        testing(1, 2, 3);
+        testing("Hello", "World");
+
+        testing("Hello", "World", 1, 2, 3, testing);
+
+        testing("Nigel", "Alara", "Aldora", "Ayna", "Sarah", "Gavin", "Joe", "Linda", "Tom", "Sonja", "Greg", "Trish");
+
+        // No return value
+        testing.call(0, "No return value.");
+
+        table["testing"](testing, 3, 2, 1, "Calling array element");
+        table["testing"]();
+
+        LuaRef newfuncref(L);
+
+        newfuncref = testing;
+
+        newfuncref("Did it copy correctly?");
+
+        newfuncref(getTesting(L));  // Check move semantics
+
+        newfuncref = getTesting(L);  // Check move semantics
+
+        run(L, "text = 'This has been implicitly cast to std::string'");
+
+        LuaRef luaStr1(L, "text");
+
+        std::string str1 = luaStr1;
+
+        printString(str1);
+
+        run(L, "a.text = text");
+
+        printString(table["text"]);
+    }
+
+    lua_pushboolean(L, 1);
+
+    return 1;
+}
+
+// Steps to create an ECS:
+// 1. Create an ECS instance (using ecs_new)
+// 2. Define concrete components types (structs)
+// 3. Assign each a unique, zero-based ID (using an enum is recommended)
+// 4. Write system update callbacks
+// 5. Define zero-based system IDs (using an enum is recommended)
+// 6. Register components
+// 7. Register systems
+// 8. Associate components with systems (using ecs_require_component)
+
+// Concrete component structs
+typedef struct {
+    float x, y;
+} pos_t;
+
+typedef struct {
+    float vx, vy;
+} vel_t;
+
+typedef struct {
+    int x, y, w, h;
+} rect_t;
+
+// Corresponding component IDs
+ecs_id_t PosComp;
+ecs_id_t VelComp;
+ecs_id_t RectComp;
+
+// System IDs
+ecs_id_t System1;
+ecs_id_t System2;
+ecs_id_t System3;
+
+// Register components
+void register_components(ecs_t* ecs) {
+    PosComp = ecs_register_component(ecs, sizeof(pos_t), NULL, NULL);
+    VelComp = ecs_register_component(ecs, sizeof(vel_t), NULL, NULL);
+    RectComp = ecs_register_component(ecs, sizeof(rect_t), NULL, NULL);
+}
+
+// System that prints the entity IDs of entities associated with this system
+ecs_ret_t system_update(ecs_t* ecs, ecs_id_t* entities, int entity_count, ecs_dt_t dt, void* udata) {
+    (void)ecs;
+    (void)dt;
+    (void)udata;
+
+    for (int id = 0; id < entity_count; id++) {
+        printf("%u ", entities[id]);
+    }
+
+    printf("\n");
+
+    return 0;
+}
+
+// Register all systems and required relationships
+void register_systems(ecs_t* ecs) {
+    // Register systems
+    System1 = ecs_register_system(ecs, system_update, NULL, NULL, NULL);
+    System2 = ecs_register_system(ecs, system_update, NULL, NULL, NULL);
+    System3 = ecs_register_system(ecs, system_update, NULL, NULL, NULL);
+
+    // System1 requires PosComp compnents
+    ecs_require_component(ecs, System1, PosComp);
+
+    // System2 requires both PosComp and VelComp components
+    ecs_require_component(ecs, System2, PosComp);
+    ecs_require_component(ecs, System2, VelComp);
+
+    // System3 requires the PosComp, VelComp, and RectComp components
+    ecs_require_component(ecs, System3, PosComp);
+    ecs_require_component(ecs, System3, VelComp);
+    ecs_require_component(ecs, System3, RectComp);
+}
+
+int TestEcs(lua_State* L) {
+    // Creates concrete ECS instance
+    ecs_t* ecs = ecs_new(1024, NULL);
+
+    // Register components and systems
+    register_components(ecs);
+    register_systems(ecs);
+
+    // Create three entities
+    ecs_id_t e1 = ecs_create(ecs);
+    ecs_id_t e2 = ecs_create(ecs);
+    ecs_id_t e3 = ecs_create(ecs);
+
+    // Add components to entities
+    printf("---------------------------------------------------------------\n");
+    printf("Created entities: %u, %u, %u\n", e1, e2, e3);
+    printf("---------------------------------------------------------------\n");
+
+    printf("PosComp added to: %u\n", e1);
+    ecs_add(ecs, e1, PosComp, NULL);
+
+    printf("---------------------------------------------------------------\n");
+    printf("PosComp added to: %u\n", e2);
+    printf("VeloComp added to: %u\n", e2);
+
+    ecs_add(ecs, e2, PosComp, NULL);
+    ecs_add(ecs, e2, VelComp, NULL);
+
+    printf("---------------------------------------------------------------\n");
+    printf("PosComp added to: %u\n", e3);
+    printf("VeloComp added to: %u\n", e3);
+    printf("RectComp added to: %u\n", e3);
+
+    ecs_add(ecs, e3, PosComp, NULL);
+    ecs_add(ecs, e3, VelComp, NULL);
+    ecs_add(ecs, e3, RectComp, NULL);
+
+    printf("---------------------------------------------------------------\n");
+
+    // Manually execute the systems
+    printf("Executing system 1\n");
+    ecs_update_system(ecs, System1, 0.0f);  // Output: e1 e2 e3
+
+    printf("Executing system 2\n");
+    ecs_update_system(ecs, System2, 0.0f);  // Output: e2 e3
+
+    printf("Executing system 3\n");
+    ecs_update_system(ecs, System3, 0.0f);  // Output: e3
+
+    printf("---------------------------------------------------------------\n");
+
+    ecs_free(ecs);
+
+    lua_pushboolean(L, 1);
+
+    return 1;
+}
+
 static int LUASTRUCT_test_vec4(lua_State* L) {
-    // GET_SELF;
-
     Vector4* v4 = CHECK_STRUCT(L, 1, Vector4);
-
     v4->x += 10.f;
     v4->y += 10.f;
     v4->z += 10.f;
     v4->w += 10.f;
-
     PUSH_STRUCT(L, Vector4, *v4);
-
-    // RETURN_STATUS(FMOD_Studio_EventInstance_Set3DAttributes(self, attributes));
-
     return 1;
 }
 
 LUABIND_MODULE() {
 
-    neko_luabind_enum(L, AssetKind);
-    neko_luabind_enum_value(L, AssetKind, AssetKind_None);
-    neko_luabind_enum_value(L, AssetKind, AssetKind_LuaRef);
-    neko_luabind_enum_value(L, AssetKind, AssetKind_Image);
-    neko_luabind_enum_value(L, AssetKind, AssetKind_Sprite);
-    neko_luabind_enum_value(L, AssetKind, AssetKind_Tilemap);
+    neko_lua_enum(L, AssetKind);
+    neko_lua_enum_value(L, AssetKind, AssetKind_None);
+    neko_lua_enum_value(L, AssetKind, AssetKind_LuaRef);
+    neko_lua_enum_value(L, AssetKind, AssetKind_Image);
+    neko_lua_enum_value(L, AssetKind, AssetKind_Sprite);
+    neko_lua_enum_value(L, AssetKind, AssetKind_Tilemap);
 
     luaL_Reg lib[] = {
             {"LUASTRUCT_test_vec4", LUASTRUCT_test_vec4},
@@ -67,6 +292,8 @@ LUABIND_MODULE() {
                  neko_luabind_push(L, AssetKind, &type_val);
                  return 1;
              }},
+            {"TestBinding_1", TestBinding_1},
+            {"TestEcs", TestEcs},
             {NULL, NULL},
     };
     luaL_newlibtable(L, lib);

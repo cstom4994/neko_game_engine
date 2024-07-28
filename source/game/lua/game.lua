@@ -200,9 +200,8 @@ function GameClient:setupConnectionToServer(hostAddress)
 end
 
 function GameClient:searchForServer()
-    print('searching for server')
     local data, ip, _ = self.adClient:receivefrom()
-    -- print(adClient:receivefrom())
+    print('searching for server', data, ip)
     if data == "game" then
         -- fresh start
         -- self:resetGame()

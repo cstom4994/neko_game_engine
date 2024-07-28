@@ -34,7 +34,7 @@ extern "C" {
 #include <util/sokol_gl.h>
 
 // gp
-#include "deps/sokol_gp.h"
+#include "vendor/sokol_gp.h"
 
 #if 0
 
@@ -1311,7 +1311,9 @@ static void render() {
             neko_panic("a draw error occurred: %d", sgl_err);
         }
 
-        simgui_render();
+        if (!g_app->error_mode.load()) {
+            simgui_render();
+        }
 
         sg_end_pass();
         sg_commit();

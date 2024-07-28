@@ -5,10 +5,10 @@
 #include <atomic>
 #include <initializer_list>
 
-#include "engine/deps/luaalloc.h"
 #include "neko_base.h"
 #include "neko_os.h"
 #include "neko_prelude.h"
+#include "vendor/luaalloc.h"
 
 // lua
 #ifdef __cplusplus

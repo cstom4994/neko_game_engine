@@ -2,7 +2,9 @@ set_project("neko")
 
 includes("@builtin/xpack")
 
--- includes("xmake_box2d.lua")
+-- add_repositories("my-repo myrepo", {
+--     rootdir = os.scriptdir()
+-- })
 
 add_rules("plugin.vsxmake.autoupdate")
 add_rules("plugin.compile_commands.autoupdate", {
@@ -17,10 +19,9 @@ add_rules("mode.debug", "mode.release")
 
 add_includedirs("source/")
 
-local base_libs = {"lua", "sokol", "imgui", "miniz", "stb", "libffi"}
+local base_libs = {"lua", "sokol", "imgui", "miniz", "stb", "cffi-lua"}
 
-add_requires("lua", "sokol", "sokol-shdc", "miniz", "stb", "libffi")
-add_requires("miniaudio", "box2d", "enet", "flecs 3.2.11")
+add_requires("lua", "sokol", "miniz", "stb", "cffi-lua", "miniaudio", "box2d", "enet", "sokol-shdc")
 add_requires("imgui v1.90.9-docking", {
     configs = {
         wchar32 = true,
@@ -43,7 +44,7 @@ end
 -- set_fpmodels("strict")
 set_exceptions("cxx", "objc")
 
-add_defines("FFI_LITTLE_ENDIAN", "UNICODE", "_UNICODE")
+add_defines("UNICODE", "_UNICODE")
 
 if is_plat("windows") then
     add_defines("WIN32", "_WIN32", "_WINDOWS", "NOMINMAX")
@@ -123,21 +124,18 @@ do
             "source/vendor/luasocket/usocket.c")
     end
 
-    add_files("source/vendor/cffi/**.cc")
+    add_files("source/vendor/*.c")
 
-    add_files("source/engine/embed/*.lua")
+    add_files("source/api/gen/**.lua", "source/api/*.lua")
 
-    add_files("source/engine/deps/http.c")
+    add_files("source/api/**.cpp", "source/engine/**.cpp")
 
-    add_files("source/api/gen/**.cpp", "source/api/gen/**.lua")
-
-    add_files("source/engine/**.cpp")
     add_headerfiles("source/engine/**.h", "source/engine/**.hpp")
 
     add_includedirs("$(buildir)/sokol_shader")
 
     add_packages(base_libs)
-    add_packages("miniaudio", "box2d", "enet", "flecs")
+    add_packages("miniaudio", "box2d", "enet")
 
     add_deps("shader")
 
@@ -262,5 +260,44 @@ do
     end)
     on_test(function(package)
         os.vrun("sokol-shdc --help")
+    end)
+end
+
+package("cffi-lua")
+do
+    set_homepage("https://github.com/q66/cffi-lua")
+    set_description("A portable C FFI for Lua 5.1+")
+    set_license("MIT")
+
+    add_urls("https://github.com/q66/cffi-lua.git")
+
+    add_versions("v0.2.3", "b1b2d772f87581dde91e224de875164cc182c162")
+
+    add_deps("libffi", "lua")
+
+    on_install("windows", "macosx", "linux", function(package)
+        local configs = {}
+        io.writefile("xmake.lua", [[
+            add_rules("mode.debug", "mode.release")
+            add_requires("libffi", "lua")
+
+            target("cffi-lua")
+                set_kind("$(kind)")
+                add_files("src/*.cc")
+                add_headerfiles("src/*.hh")
+                add_includedirs("src")
+
+                if is_kind("shared") then
+                    add_defines("CFFI_LUA_DLL")
+                end
+
+                add_defines("FFI_LITTLE_ENDIAN")
+
+                add_packages("libffi", "lua")
+        ]])
+        if package:config("shared") then
+            configs.kind = "shared"
+        end
+        import("package.tools.xmake").install(package, configs)
     end)
 end

@@ -129,7 +129,6 @@ draw_imgui = function(dt)
             "inspect.lua")
 
         print(inspect(test_xml))
-
     end
 
     if ImGui.Button("test_http") then
@@ -140,6 +139,12 @@ draw_imgui = function(dt)
         print('welcome')
         print(status)
         print(data)
+
+        local json_data = neko.json_read(common.decode_unicode_escape(data))
+
+        print(inspect(json_data))
+
+        print(neko.json_write(json_data))
     end
 
     if ImGui.Button("test_reg") then
@@ -398,9 +403,66 @@ function UnitTest()
                 expect(inspect({v4_c.x, v4_c.y, v4_c.z, v4_c.w})).to.equal(inspect({20.0, 20.0, 20.0, 20.0}))
             end)
 
-            -- it('feature2', function()
-            --     expect(nil).to.exist() -- Fail
-            -- end)
+            it('feature_spritepack', function()
+                local tools = require("__neko.spritepack")
+                local function image(filename)
+                    return {
+                        filename = filename,
+                        tools.imgcrop(filename)
+                    }
+                end
+                local function dump(rect)
+                    print(string.format("[%s] %dx%d+%d+%d -> (%d, %d)", rect.filename, rect[1], rect[2], rect[3],
+                        rect[4], rect.x, rect.y))
+                end
+                local rects = {image "gamedir/assets/arrow.png", image "gamedir/assets/bow.png",
+                               image "gamedir/assets/cursor.png", image "gamedir/assets/player_a.png" -- image "gamedir/assets/tiles.png",
+                }
+                tools.rectpack(2048, 2048, rects)
+                tools.imgpack("gamedir/assets/pack_output.png", 256, 256, rects)
+            end)
+
+            it('feature_c_struct_bridge', function()
+                local csb = common.CStructBridge()
+
+                local test_custom_sprite = {}
+
+                expect(csb.generate_array_type("__lua_quad_vdata_t", "float", 16)).to.be.a('table')
+
+                local v = {-0.5, -0.5, 0.0, 0.0, 0.5, -0.5, 1.0, 0.0, -0.5, 0.5, 0.0, 1.0, 0.5, 0.5, 1.0, 1.0}
+                test_custom_sprite.vdata = luastruct_test.udata(
+                    csb.s["__lua_quad_vdata_t"]:size("struct __lua_quad_vdata_t"))
+
+                for i, v in ipairs(v) do
+                    csb.setter("__lua_quad_vdata_t", "v" .. i)(test_custom_sprite.vdata, v)
+                end
+            end)
+
+            it('feature_lua_filesys', function()
+                local filesys = require("__neko.filesys")
+
+                print("scandir-----------------------")
+                for name, err in filesys.scandir(".") do
+                    print(name, err)
+                end
+
+                print("exists", filesys.exists("xmake.lua"))
+                print("getsize", filesys.getsize("xmake.lua"))
+                print("getmtime", filesys.getmtime("xmake.lua"))
+                print(os.date("%c", math.floor(filesys.getmtime("xmake.lua"))))
+                print("getatime", filesys.getatime("xmake.lua"))
+                print("getctime", filesys.getctime("xmake.lua"))
+
+            end)
+
+            it('feature_test_binding_1', function()
+                expect(Test.TestBinding_1()).to.be.truthy()
+            end)
+
+            it('feature_test_ecs_1', function()
+                expect(Test.TestEcs()).to.be.truthy()
+            end)
+
         end)
     end)
 

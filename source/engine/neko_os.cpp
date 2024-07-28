@@ -3,7 +3,7 @@
 #include <array>
 #include <new>
 
-#include "deps/luaalloc.h"
+#include "vendor/luaalloc.h"
 #include "neko_api.hpp"
 #include "neko_app.h"
 #include "neko_base.h"

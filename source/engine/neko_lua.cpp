@@ -898,6 +898,8 @@ int luax_msgh(lua_State *L) {
 
     String err = luax_check_string(L, -1);
 
+    NEKO_DEBUG_LOG("luax_msgh");
+
     // traceback = debug.traceback(nil, 2)
     lua_getglobal(L, "debug");
     lua_getfield(L, -1, "traceback");
