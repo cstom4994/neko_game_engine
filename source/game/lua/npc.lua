@@ -5,9 +5,9 @@ local function Npc_load_prefab(self)
     -- local file_content = read_file("data/" .. self.name .. ".neko")
     local file_content = game_db.all[self.name]
     if file_content then
-        prefab_tb = Prefabs.load(file_content)
-        assert(Prefabs.check(prefab_tb))
-        assert(Prefabs.node_type(prefab_tb) == "npc")
+        prefab_tb = common.prefabs.load(file_content)
+        assert(common.prefabs.check(prefab_tb))
+        assert(common.prefabs.node_type(prefab_tb) == "npc")
     else
         print("无法打开文件或文件不存在", self.name)
     end

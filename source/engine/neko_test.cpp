@@ -21,6 +21,7 @@
 #include "engine/neko_luabind.hpp"
 #include "engine/neko_prelude.h"
 #include "engine/neko_reflection.hpp"
+#include "engine/neko_seri.h"
 
 #pragma region test
 

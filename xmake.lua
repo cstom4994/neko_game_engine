@@ -19,9 +19,19 @@ add_rules("mode.debug", "mode.release")
 
 add_includedirs("source/")
 
-local base_libs = {"lua", "sokol", "imgui", "miniz", "stb", "cffi-lua"}
+local base_libs = {"lua", "sokol", "imgui", "miniz", "stb", "cffi-lua", "cute_headers"}
 
-add_requires("lua", "sokol", "miniz", "stb", "cffi-lua", "miniaudio", "box2d", "enet", "sokol-shdc")
+add_requires("sokol-shdc")
+add_requires("cffi-lua")
+
+add_requires("lua")
+add_requires("sokol")
+add_requires("miniz")
+add_requires("stb")
+add_requires("miniaudio")
+add_requires("box2d")
+add_requires("enet")
+add_requires("cute_headers")
 add_requires("imgui v1.90.9-docking", {
     configs = {
         wchar32 = true,
@@ -128,9 +138,9 @@ do
 
     add_files("source/api/gen/**.lua", "source/api/*.lua")
 
-    add_files("source/api/**.cpp", "source/engine/**.cpp")
+    add_files("source/api/**.cpp", "source/engine/**.cpp", "source/game/**.cpp")
 
-    add_headerfiles("source/engine/**.h", "source/engine/**.hpp")
+    add_headerfiles("source/engine/**.h", "source/engine/**.hpp", "source/game/**.h")
 
     add_includedirs("$(buildir)/sokol_shader")
 

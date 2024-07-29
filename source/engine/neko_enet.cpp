@@ -844,7 +844,7 @@ void luax_register(lua_State *L, const char *name, const luaL_Reg *l) {
     }
 }
 
-int luaopen_enet(lua_State *l) {
+extern "C" int luaopen_enet(lua_State *l) {
     enet_initialize();
 
     atexit(enet_deinitialize);

@@ -416,7 +416,8 @@ function UnitTest()
                         rect[4], rect.x, rect.y))
                 end
                 local rects = {image "gamedir/assets/arrow.png", image "gamedir/assets/bow.png",
-                               image "gamedir/assets/cursor.png", image "gamedir/assets/player_a.png" -- image "gamedir/assets/tiles.png",
+                --    image "gamedir/assets/cursor.ase",
+                               image "gamedir/assets/player_a.png" -- image "gamedir/assets/tiles.png",
                 }
                 tools.rectpack(2048, 2048, rects)
                 tools.imgpack("gamedir/assets/pack_output.png", 256, 256, rects)
@@ -440,19 +441,16 @@ function UnitTest()
 
             it('feature_lua_filesys', function()
                 local filesys = require("__neko.filesys")
-
-                print("scandir-----------------------")
                 for name, err in filesys.scandir(".") do
-                    print(name, err)
+                    -- print(name, err)
+                    expect(err).to.equal(nil)
                 end
-
-                print("exists", filesys.exists("xmake.lua"))
-                print("getsize", filesys.getsize("xmake.lua"))
-                print("getmtime", filesys.getmtime("xmake.lua"))
-                print(os.date("%c", math.floor(filesys.getmtime("xmake.lua"))))
-                print("getatime", filesys.getatime("xmake.lua"))
-                print("getctime", filesys.getctime("xmake.lua"))
-
+                -- print("exists", filesys.exists("xmake.lua"))
+                -- print("getsize", filesys.getsize("xmake.lua"))
+                -- print("getmtime", filesys.getmtime("xmake.lua"))
+                -- print(os.date("%c", math.floor(filesys.getmtime("xmake.lua"))))
+                -- print("getatime", filesys.getatime("xmake.lua"))
+                -- print("getctime", filesys.getctime("xmake.lua"))
             end)
 
             it('feature_test_binding_1', function()
@@ -461,6 +459,10 @@ function UnitTest()
 
             it('feature_test_ecs_1', function()
                 expect(Test.TestEcs()).to.be.truthy()
+            end)
+
+            it('feature_test_game_attr_parser', function()
+
             end)
 
         end)

@@ -63,7 +63,7 @@ function client_init()
         --     ]]
         -- })
 
-        cursor = Cursor(neko.image_load "assets/cursor.png")
+        cursor = Cursor(neko.image_load "assets/cursor.ase")
         neko.show_mouse(true)
 
         bow_img = neko.image_load "assets/bow.png"
@@ -139,21 +139,21 @@ function client_frame(dt)
     end
 
     if neko.key_down "l" then
-        -- local v = {
-        --     id = "Npc",
-        --     x = 424,
-        --     y = 160
-        -- }
-        -- local mt = _G[v.id]
-        -- if mt ~= nil then
-        --     local obj = world:add(mt(v.x, v.y))
-        --     if v.id == "Player" then
-        --         player = obj
-        --     end
-        --     -- print(v.id, v.x, v.y)
-        -- else
-        --     print("no " .. v.id .. " class exists")
-        -- end
+        local v = {
+            id = "Npc",
+            x = 424,
+            y = 160
+        }
+        local mt = _G[v.id]
+        if mt ~= nil then
+            local obj = LocalGame.world:add(mt(v.x, v.y))
+            if v.id == "Player" then
+                player = obj
+            end
+            -- print(v.id, v.x, v.y)
+        else
+            print("no " .. v.id .. " class exists")
+        end
     end
 
     if game_tick % 2000 == 1 then
@@ -183,7 +183,7 @@ function client_frame(dt)
         cursor:draw()
 
         if draw_fixtures then
-            LocalGame.tilemap:draw_fixtures(b2, "Collision")
+            LocalGame.tilemap:draw_fixtures(LocalGame.b2, "Collision")
         end
         camera:end_draw()
 

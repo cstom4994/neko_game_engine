@@ -47,7 +47,7 @@ struct component_pool {
     int dirty_tail;
     int dead_head;
     int dead_tail;
-    struct component *buf;
+    struct component* buf;
 };
 
 // 每个Component类型都有一个数字id称为tid
@@ -66,7 +66,7 @@ struct entity {
 };
 
 struct match_ctx {
-    struct neko_ecs_world_t *w;
+    struct neko_ecs_world_t* w;
     int i;
     int kn;
     int keys[ENTITY_MAX_COMPONENTS];
@@ -77,13 +77,13 @@ struct neko_ecs_world_t {
     int entity_free;  // TODO:将ENTITY_FREE设置为FIFO 这可以在以后回收EID以避免某些错误
     int entity_dead;
     int type_idx;
-    struct entity *entity_buf;
+    struct entity* entity_buf;
     struct component_pool component_pool[TYPE_COUNT];
 };
 
-static inline int component_has(struct entity *e, int tid) { return e->components[tid] < ENTITY_MAX_COMPONENTS; }
+static inline int component_has(struct entity* e, int tid) { return e->components[tid] < ENTITY_MAX_COMPONENTS; }
 
-static inline void component_clr(struct entity *e, int tid) {
+static inline void component_clr(struct entity* e, int tid) {
     unsigned char idx = e->components[tid];
     if (idx < ENTITY_MAX_COMPONENTS) {
         e->index[idx] = -1;
@@ -92,11 +92,11 @@ static inline void component_clr(struct entity *e, int tid) {
     }
 }
 
-static inline int component_add(lua_State *L, struct neko_ecs_world_t *w, struct entity *e, int tid) {
+static inline int component_add(lua_State* L, struct neko_ecs_world_t* w, struct entity* e, int tid) {
     int cid, i;
-    struct component *c;
-    struct component_pool *cp;
-    struct component_ptr *ptr;
+    struct component* c;
+    struct component_pool* cp;
+    struct component_ptr* ptr;
     if (e->components[tid] < ENTITY_MAX_COMPONENTS) {
         return luaL_error(L, "Entity(%d) already exist component(%d)", e - w->entity_buf, tid);
     }
@@ -107,7 +107,7 @@ static inline int component_add(lua_State *L, struct neko_ecs_world_t *w, struct
     cp = &w->component_pool[tid];
     if (cp->free >= cp->cap) {
         cp->cap *= 2;
-        cp->buf = (struct component *)mem_realloc(cp->buf, cp->cap * sizeof(cp->buf[0]));
+        cp->buf = (struct component*)mem_realloc(cp->buf, cp->cap * sizeof(cp->buf[0]));
     }
     c = &cp->buf[cp->free++];
     c->eid = e - w->entity_buf;
@@ -124,9 +124,9 @@ static inline int component_add(lua_State *L, struct neko_ecs_world_t *w, struct
     return cid;
 }
 
-static inline void component_dead(struct neko_ecs_world_t *w, int tid, int cid) {
-    struct component *c;
-    struct component_pool *cp;
+static inline void component_dead(struct neko_ecs_world_t* w, int tid, int cid) {
+    struct component* c;
+    struct component_pool* cp;
     cp = &w->component_pool[tid];
     c = &cp->buf[cid];
     if (c->dead_next != LINK_NONE)  // already dead?
@@ -142,9 +142,9 @@ static inline void component_dead(struct neko_ecs_world_t *w, int tid, int cid) 
     return;
 }
 
-static inline void component_dirty(struct neko_ecs_world_t *w, int tid, int cid) {
-    struct component *c;
-    struct component_pool *cp;
+static inline void component_dirty(struct neko_ecs_world_t* w, int tid, int cid) {
+    struct component* c;
+    struct component_pool* cp;
     cp = &w->component_pool[tid];
     c = &cp->buf[cid];
     if (c->dirty_next != LINK_NONE)  // already diryt
@@ -160,15 +160,15 @@ static inline void component_dirty(struct neko_ecs_world_t *w, int tid, int cid)
     return;
 }
 
-static inline struct entity *entity_alloc(struct neko_ecs_world_t *w) {
-    struct entity *e;
+static inline struct entity* entity_alloc(struct neko_ecs_world_t* w) {
+    struct entity* e;
     int eid = w->entity_free;
     if (eid < 0) {
         int i = 0;
         int oldcap = w->entity_cap;
         int newcap = oldcap * 2;
         w->entity_cap = newcap;
-        w->entity_buf = (struct entity *)mem_realloc(w->entity_buf, newcap * sizeof(w->entity_buf[0]));
+        w->entity_buf = (struct entity*)mem_realloc(w->entity_buf, newcap * sizeof(w->entity_buf[0]));
         w->entity_free = oldcap + 1;
         e = &w->entity_buf[oldcap];
         for (i = w->entity_free; i < newcap - 1; i++) {
@@ -188,7 +188,7 @@ static inline struct entity *entity_alloc(struct neko_ecs_world_t *w) {
     return e;
 }
 
-static inline void entity_dead(struct neko_ecs_world_t *w, struct entity *e) {
+static inline void entity_dead(struct neko_ecs_world_t* w, struct entity* e) {
     int t;
     if (e->cn < 0) {
         assert(e->next != LINK_NONE);
@@ -203,13 +203,13 @@ static inline void entity_dead(struct neko_ecs_world_t *w, struct entity *e) {
     w->entity_dead = e - w->entity_buf;
 }
 
-static inline void entity_free(struct neko_ecs_world_t *w, struct entity *e) {
+static inline void entity_free(struct neko_ecs_world_t* w, struct entity* e) {
     assert(e->cn == -1);
     e->next = w->entity_free;
     w->entity_free = e - w->entity_buf;
 }
 
-static inline int get_typeid(lua_State *L, int stk, int proto_id) {
+static inline int get_typeid(lua_State* L, int stk, int proto_id) {
     int id;
     stk = lua_absindex(L, stk);
     lua_pushvalue(L, stk);
@@ -220,8 +220,8 @@ static inline int get_typeid(lua_State *L, int stk, int proto_id) {
     return id;
 }
 
-static inline struct entity *get_entity(lua_State *L, struct neko_ecs_world_t *w, int stk) {
-    struct entity *e;
+static inline struct entity* get_entity(lua_State* L, struct neko_ecs_world_t* w, int stk) {
+    struct entity* e;
     int eid = luaL_checkinteger(L, stk);
     luaL_argcheck(L, eid < w->entity_cap, 2, "eid is invalid");
     e = &w->entity_buf[eid];
@@ -229,23 +229,23 @@ static inline struct entity *get_entity(lua_State *L, struct neko_ecs_world_t *w
     return e;
 }
 
-static inline int get_cid_in_entity(struct entity *e, int tid) {
+static inline int get_cid_in_entity(struct entity* e, int tid) {
     int i = e->components[tid];
     if (i >= ENTITY_MAX_COMPONENTS) return -1;
     return e->index[i];
 }
 
-static inline void update_cid_in_entity(struct entity *e, int tid, int cid) {
+static inline void update_cid_in_entity(struct entity* e, int tid, int cid) {
     int i = e->components[tid];
     assert(i < ENTITY_MAX_COMPONENTS);
     e->index[i] = cid;
 }
 
-static int __neko_ecs_world_end(lua_State *L) {
-    struct neko_ecs_world_t *w;
+static int __neko_ecs_world_end(lua_State* L) {
+    struct neko_ecs_world_t* w;
     int type, tid;
-    struct component_pool *cp;
-    w = (struct neko_ecs_world_t *)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+    struct component_pool* cp;
+    w = (struct neko_ecs_world_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
     tid = w->type_idx;  // 总数-1(索引)
     for (int i = 0; i <= tid; i++) {
         cp = &w->component_pool[i];
@@ -255,11 +255,11 @@ static int __neko_ecs_world_end(lua_State *L) {
     return 0;
 }
 
-static int __neko_ecs_world_register(lua_State *L) {
-    struct neko_ecs_world_t *w;
+static int __neko_ecs_world_register(lua_State* L) {
+    struct neko_ecs_world_t* w;
     int type, tid;
-    struct component_pool *cp;
-    w = (struct neko_ecs_world_t *)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+    struct component_pool* cp;
+    w = (struct neko_ecs_world_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
     lua_getiuservalue(L, ECS_WORLD, WORLD_PROTO_ID);
     // check if 'componentA' has been declared
     lua_pushvalue(L, 2);
@@ -280,7 +280,7 @@ static int __neko_ecs_world_register(lua_State *L) {
     cp->dirty_tail = LINK_NIL;
     cp->dead_head = LINK_NIL;
     cp->dead_tail = LINK_NIL;
-    cp->buf = (struct component *)mem_alloc(cp->cap * sizeof(cp->buf[0]));
+    cp->buf = (struct component*)mem_alloc(cp->cap * sizeof(cp->buf[0]));
     // set proto id
     lua_pushvalue(L, 2);
     lua_pushinteger(L, tid);
@@ -295,16 +295,16 @@ static int __neko_ecs_world_register(lua_State *L) {
     return 0;
 }
 
-static int __neko_ecs_world_new_entity(lua_State *L) {
+static int __neko_ecs_world_new_entity(lua_State* L) {
     int i, components, proto_id;
-    struct neko_ecs_world_t *w = (struct neko_ecs_world_t *)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
-    struct entity *e = entity_alloc(w);
+    struct neko_ecs_world_t* w = (struct neko_ecs_world_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+    struct entity* e = entity_alloc(w);
     int eid = e - w->entity_buf;
     lua_getiuservalue(L, ECS_WORLD, WORLD_COMPONENTS);
     components = lua_gettop(L);
     lua_getiuservalue(L, ECS_WORLD, WORLD_PROTO_ID);
     proto_id = components + 1;
-    lua_pushnil(L); /* first key */
+    lua_pushnil(L);  //  first key
     while (lua_next(L, 2) != 0) {
         int cid;
         int tid = get_typeid(L, -2, proto_id);
@@ -326,18 +326,18 @@ static int __neko_ecs_world_new_entity(lua_State *L) {
     return 1;
 }
 
-static int __neko_ecs_world_del_entity(lua_State *L) {
+static int __neko_ecs_world_del_entity(lua_State* L) {
     int i;
-    struct neko_ecs_world_t *w = (struct neko_ecs_world_t *)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
-    struct entity *e = get_entity(L, w, 2);
+    struct neko_ecs_world_t* w = (struct neko_ecs_world_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+    struct entity* e = get_entity(L, w, 2);
     entity_dead(w, e);
     return 0;
 }
 
-static int __neko_ecs_world_get_component(lua_State *L) {
+static int __neko_ecs_world_get_component(lua_State* L) {
     int i, top, proto_id, components;
-    struct neko_ecs_world_t *w = (struct neko_ecs_world_t *)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
-    struct entity *e = get_entity(L, w, 2);
+    struct neko_ecs_world_t* w = (struct neko_ecs_world_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+    struct entity* e = get_entity(L, w, 2);
     top = lua_gettop(L);
     lua_getiuservalue(L, ECS_WORLD, WORLD_PROTO_ID);
     proto_id = top + 1;
@@ -357,10 +357,10 @@ static int __neko_ecs_world_get_component(lua_State *L) {
     return (top - 3 + 1);
 }
 
-static int __neko_ecs_world_add_component(lua_State *L) {
+static int __neko_ecs_world_add_component(lua_State* L) {
     int tid, cid;
-    struct neko_ecs_world_t *w = (struct neko_ecs_world_t *)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
-    struct entity *e = get_entity(L, w, 2);
+    struct neko_ecs_world_t* w = (struct neko_ecs_world_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+    struct entity* e = get_entity(L, w, 2);
     lua_getiuservalue(L, ECS_WORLD, WORLD_PROTO_ID);
     tid = get_typeid(L, 3, lua_gettop(L));
     cid = component_add(L, w, e, tid);
@@ -372,11 +372,11 @@ static int __neko_ecs_world_add_component(lua_State *L) {
     return 0;
 }
 
-static int __neko_ecs_world_remove_component(lua_State *L) {
+static int __neko_ecs_world_remove_component(lua_State* L) {
     int i, proto_id;
     int tid, cid;
-    struct neko_ecs_world_t *w = (struct neko_ecs_world_t *)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
-    struct entity *e = get_entity(L, w, 2);
+    struct neko_ecs_world_t* w = (struct neko_ecs_world_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+    struct entity* e = get_entity(L, w, 2);
     lua_getiuservalue(L, ECS_WORLD, WORLD_PROTO_ID);
     proto_id = lua_gettop(L);
     for (i = 3; i <= (proto_id - 1); i++) {
@@ -388,10 +388,10 @@ static int __neko_ecs_world_remove_component(lua_State *L) {
     return 0;
 }
 
-static int __neko_ecs_world_touch_component(lua_State *L) {
+static int __neko_ecs_world_touch_component(lua_State* L) {
     int eid, tid, cid;
-    struct entity *e;
-    struct neko_ecs_world_t *w = (struct neko_ecs_world_t *)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+    struct entity* e;
+    struct neko_ecs_world_t* w = (struct neko_ecs_world_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
     lua_getiuservalue(L, ECS_WORLD, WORLD_KEY_EID);
     lua_gettable(L, 2);
     eid = luaL_checkinteger(L, -1);
@@ -406,7 +406,7 @@ static int __neko_ecs_world_touch_component(lua_State *L) {
     return 0;
 }
 
-static void push_result(lua_State *L, int *keys, int kn, struct entity *e) {
+static void push_result(lua_State* L, int* keys, int kn, struct entity* e) {
     int i;
     if (e != NULL) {  // match one
         int components;
@@ -426,9 +426,9 @@ static void push_result(lua_State *L, int *keys, int kn, struct entity *e) {
     }
 }
 
-static inline struct entity *restrict_component(struct entity *ebuf, struct component *c, int *keys, int kn) {
+static inline struct entity* restrict_component(struct entity* ebuf, struct component* c, int* keys, int kn) {
     int i;
-    struct entity *e;
+    struct entity* e;
     e = &ebuf[c->eid];
     for (i = 1; i < kn; i++) {
         if (!component_has(e, keys[i])) return NULL;
@@ -437,22 +437,22 @@ static inline struct entity *restrict_component(struct entity *ebuf, struct comp
 }
 
 // match_all(match_ctx *mctx, nil)
-static int match_all(lua_State *L) {
+static int match_all(lua_State* L) {
     int i;
     int mi, free;
     int kn, *keys;
-    struct entity *e = NULL;
-    struct component_pool *cp;
-    struct match_ctx *mctx = (struct match_ctx *)lua_touserdata(L, 1);
-    struct neko_ecs_world_t *w = mctx->w;
-    struct entity *entity_buf = w->entity_buf;
+    struct entity* e = NULL;
+    struct component_pool* cp;
+    struct match_ctx* mctx = (struct match_ctx*)lua_touserdata(L, 1);
+    struct neko_ecs_world_t* w = mctx->w;
+    struct entity* entity_buf = w->entity_buf;
     kn = mctx->kn;
     keys = mctx->keys;
     cp = &w->component_pool[mctx->keys[0]];
     mi = mctx->i;
     free = cp->free;
     while (mi < free) {
-        struct component *c = &cp->buf[mi++];
+        struct component* c = &cp->buf[mi++];
         if (c->dead_next == LINK_NONE) {
             e = restrict_component(entity_buf, c, keys, kn);
             if (e != NULL) break;
@@ -463,20 +463,20 @@ static int match_all(lua_State *L) {
     return kn;
 }
 
-static int match_dirty(lua_State *L) {
+static int match_dirty(lua_State* L) {
     int next;
     int kn, *keys;
-    struct entity *e = NULL;
-    struct component_pool *cp;
-    struct match_ctx *mctx = (struct match_ctx *)lua_touserdata(L, 1);
-    struct neko_ecs_world_t *w = mctx->w;
-    struct entity *entity_buf = w->entity_buf;
+    struct entity* e = NULL;
+    struct component_pool* cp;
+    struct match_ctx* mctx = (struct match_ctx*)lua_touserdata(L, 1);
+    struct neko_ecs_world_t* w = mctx->w;
+    struct entity* entity_buf = w->entity_buf;
     keys = mctx->keys;
     kn = mctx->kn;
     next = mctx->i;
     cp = &w->component_pool[keys[0]];
     while (next != LINK_NIL) {
-        struct component *c = &cp->buf[next];
+        struct component* c = &cp->buf[next];
         next = c->dirty_next;
         if (c->dead_next == LINK_NONE) {
             e = restrict_component(entity_buf, c, keys, kn);
@@ -488,20 +488,20 @@ static int match_dirty(lua_State *L) {
     return kn;
 }
 
-static int match_dead(lua_State *L) {
+static int match_dead(lua_State* L) {
     int next;
     int kn, *keys;
-    struct entity *e = NULL;
-    struct component_pool *cp;
-    struct match_ctx *mctx = (struct match_ctx *)lua_touserdata(L, 1);
-    struct neko_ecs_world_t *w = mctx->w;
-    struct entity *entity_buf = w->entity_buf;
+    struct entity* e = NULL;
+    struct component_pool* cp;
+    struct match_ctx* mctx = (struct match_ctx*)lua_touserdata(L, 1);
+    struct neko_ecs_world_t* w = mctx->w;
+    struct entity* entity_buf = w->entity_buf;
     keys = mctx->keys;
     kn = mctx->kn;
     next = mctx->i;
     cp = &w->component_pool[keys[0]];
     while (next != LINK_NIL) {
-        struct component *c = &cp->buf[next];
+        struct component* c = &cp->buf[next];
         next = c->dead_next;
         e = restrict_component(entity_buf, c, keys, kn);
         if (e != NULL) break;
@@ -511,16 +511,16 @@ static int match_dead(lua_State *L) {
     return kn;
 }
 
-static int __neko_ecs_world_match_component(lua_State *L) {
+static int __neko_ecs_world_match_component(lua_State* L) {
     int i;
     size_t sz;
-    struct neko_ecs_world_t *w;
+    struct neko_ecs_world_t* w;
     enum match_mode mode;
-    int (*iter)(lua_State *L) = NULL;
-    struct match_ctx *mctx = NULL;
-    const char *m = luaL_checklstring(L, 2, &sz);
+    int (*iter)(lua_State* L) = NULL;
+    struct match_ctx* mctx = NULL;
+    const char* m = luaL_checklstring(L, 2, &sz);
     int top = lua_gettop(L);
-    w = (struct neko_ecs_world_t *)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+    w = (struct neko_ecs_world_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
     switch (sz) {
         case 3:
             if (m[0] == 'a' && m[1] == 'l' && m[2] == 'l') {
@@ -547,7 +547,7 @@ static int __neko_ecs_world_match_component(lua_State *L) {
     lua_getiuservalue(L, ECS_WORLD, WORLD_PROTO_ID);
     lua_pushcfunction(L, iter);
     lua_getiuservalue(L, ECS_WORLD, WORLD_MATCH_CTX);
-    mctx = (struct match_ctx *)lua_touserdata(L, -1);
+    mctx = (struct match_ctx*)lua_touserdata(L, -1);
     mctx->w = w;
     mctx->kn = 0;
     for (i = 3; i <= top; i++) mctx->keys[mctx->kn++] = get_typeid(L, i, top + 1);
@@ -566,16 +566,16 @@ static int __neko_ecs_world_match_component(lua_State *L) {
     return 3;
 }
 
-static int __neko_ecs_world_update(lua_State *L) {
+static int __neko_ecs_world_update(lua_State* L) {
     int next;
     int t, components;
-    struct component_pool *pool;
-    struct neko_ecs_world_t *w = (struct neko_ecs_world_t *)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
-    struct entity *entity_buf = w->entity_buf;
+    struct component_pool* pool;
+    struct neko_ecs_world_t* w = (struct neko_ecs_world_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+    struct entity* entity_buf = w->entity_buf;
     // clear dead entity
     next = w->entity_dead;
     while (next != LINK_NIL) {
-        struct entity *e;
+        struct entity* e;
         e = &entity_buf[next];
         e->cn = -1;
         next = e->next;
@@ -586,8 +586,8 @@ static int __neko_ecs_world_update(lua_State *L) {
     lua_getiuservalue(L, ECS_WORLD, WORLD_COMPONENTS);
     for (t = 0; t <= w->type_idx; t++) {
         int w = 0, r = 0, free;
-        struct component *buf;
-        struct component_pool *cp;
+        struct component* buf;
+        struct component_pool* cp;
         cp = &pool[t];
         cp->dirty_head = LINK_NIL;
         cp->dirty_tail = LINK_NIL;
@@ -597,12 +597,12 @@ static int __neko_ecs_world_update(lua_State *L) {
         buf = cp->buf;
         free = cp->free;
         for (r = 0; r < free; r++) {
-            struct component *c;
+            struct component* c;
             c = &buf[r];
             c->dirty_next = LINK_NONE;
             if (c->dead_next == LINK_NONE) {  // alive
                 if (w != r) {
-                    struct entity *e;
+                    struct entity* e;
                     e = &entity_buf[c->eid];
                     buf[w] = *c;
                     lua_geti(L, -1, r);
@@ -611,7 +611,7 @@ static int __neko_ecs_world_update(lua_State *L) {
                 }
                 w++;
             } else {  // dead component
-                struct entity *e;
+                struct entity* e;
                 e = &entity_buf[c->eid];
                 if (e->next == LINK_NONE) component_clr(e, t);
             }
@@ -627,7 +627,7 @@ static int __neko_ecs_world_update(lua_State *L) {
     return 0;
 }
 
-static void print_value(lua_State *L, int stk, int tab) {
+static void print_value(lua_State* L, int stk, int tab) {
     switch (lua_type(L, stk)) {
         case LUA_TTABLE:
             printf("%*p=>", tab * 4, lua_topointer(L, stk));
@@ -641,8 +641,8 @@ static void print_value(lua_State *L, int stk, int tab) {
     }
 }
 
-static void dump_table(lua_State *L, int stk, int tab) {
-    lua_pushnil(L); /* first key */
+static void dump_table(lua_State* L, int stk, int tab) {
+    lua_pushnil(L);  //  first key
     while (lua_next(L, stk) != 0) {
         // print key
         print_value(L, -2, tab);
@@ -663,8 +663,8 @@ static void dump_table(lua_State *L, int stk, int tab) {
     }
 }
 
-static void dump_upval(lua_State *L, int upval) {
-    const char *name[] = {
+static void dump_upval(lua_State* L, int upval) {
+    const char* name[] = {
             "PROTO_ID",
             "PROTO_DEFINE",
             "COMPONENTS",
@@ -674,23 +674,23 @@ static void dump_upval(lua_State *L, int upval) {
     lua_pop(L, 1);
 }
 
-static int __neko_ecs_world_dump(lua_State *L) {
+static int __neko_ecs_world_dump(lua_State* L) {
     int i;
     for (i = 1; i <= WORLD_COMPONENTS; i++) dump_upval(L, i);
     return 0;
 }
 
-int neko_ecs_create_world(lua_State *L) {
+int neko_ecs_create_world(lua_State* L) {
     int i;
-    struct neko_ecs_world_t *w;
-    struct match_ctx *mctx;
-    w = (struct neko_ecs_world_t *)lua_newuserdatauv(L, sizeof(*w), WORLD_UPVAL_N);
+    struct neko_ecs_world_t* w;
+    struct match_ctx* mctx;
+    w = (struct neko_ecs_world_t*)lua_newuserdatauv(L, sizeof(*w), WORLD_UPVAL_N);
     memset(w, 0, sizeof(*w));
     w->entity_cap = 128;
     w->entity_free = 0;
     w->entity_dead = LINK_NIL;
     w->type_idx = 0;
-    w->entity_buf = (struct entity *)mem_alloc(w->entity_cap * sizeof(w->entity_buf[0]));
+    w->entity_buf = (struct entity*)mem_alloc(w->entity_cap * sizeof(w->entity_buf[0]));
     for (i = 0; i < w->entity_cap - 1; i++) {
         w->entity_buf[i].cn = -1;
         w->entity_buf[i].next = i + 1;
@@ -735,7 +735,7 @@ int neko_ecs_create_world(lua_State *L) {
     lua_createtable(L, TYPE_MAX_ID, 0);
     lua_setiuservalue(L, 1, WORLD_COMPONENTS);
 
-    mctx = (struct match_ctx *)lua_newuserdatauv(L, sizeof(*mctx), 1);
+    mctx = (struct match_ctx*)lua_newuserdatauv(L, sizeof(*mctx), 1);
     lua_pushvalue(L, 1);
     lua_setiuservalue(L, -2, 1);
     lua_setiuservalue(L, 1, WORLD_MATCH_CTX);
@@ -747,4 +747,1005 @@ int neko_ecs_create_world(lua_State *L) {
     lua_setiuservalue(L, 1, WORLD_KEY_TID);
 
     return 1;
+}
+
+#define NEKO_ECS_IMPLEMENTATION
+
+#ifdef NEKO_ECS_IMPLEMENTATION
+
+#include <stdint.h>  // uint32_t
+#include <stdlib.h>  // malloc, realloc, free
+#include <string.h>  // memcpy, memset
+
+#define ECS_MAX_COMPONENTS 32
+#define ECS_MAX_SYSTEMS 16
+
+#define ECS_MALLOC(size, ctx) (mem_alloc(size))
+#define ECS_REALLOC(ptr, size, ctx) (mem_realloc(ptr, size))
+#define ECS_FREE(ptr, ctx) (mem_free(ptr))
+
+#if ECS_MAX_COMPONENTS <= 32
+typedef uint32_t ecs_bitset_t;
+#elif ECS_MAX_COMPONENTS <= 64
+typedef uint64_t ecs_bitset_t;
+#else
+#define ECS_BITSET_WIDTH 64
+#define ECS_BITSET_SIZE (((ECS_MAX_COMPONENTS - 1) / ECS_BITSET_WIDTH) + 1)
+
+typedef struct {
+    uint64_t array[ECS_BITSET_SIZE];
+} ecs_bitset_t;
+#endif  // ECS_MAX_COMPONENTS
+
+// 打包数组实现的数据结构 提供用于添加删除和访问实体 ID 的 O(1) 函数
+typedef struct {
+    size_t capacity;
+    size_t size;
+    size_t* sparse;
+    ecs_id_t* dense;
+} ecs_sparse_set_t;
+
+// 为池 ID 提供 O(1) 操作的 ID 池的数据结构
+typedef struct {
+    size_t capacity;
+    size_t size;
+    ecs_id_t* array;
+} ecs_stack_t;
+
+typedef struct {
+    size_t capacity;
+    size_t count;
+    size_t size;
+    void* data;
+} ecs_array_t;
+
+typedef struct {
+    ecs_bitset_t comp_bits;
+    bool ready;
+} ecs_entity_t;
+
+typedef struct {
+    ecs_constructor_fn constructor;
+    ecs_destructor_fn destructor;
+} ecs_comp_t;
+
+typedef struct {
+    bool active;
+    ecs_sparse_set_t entity_ids;
+    ecs_system_fn system_cb;
+    ecs_added_fn add_cb;
+    ecs_removed_fn remove_cb;
+    ecs_bitset_t require_bits;
+    ecs_bitset_t exclude_bits;
+    void* udata;
+} ecs_sys_t;
+
+struct ecs_s {
+    lua_State* L;
+    ecs_stack_t entity_pool;
+    ecs_stack_t destroy_queue;
+    ecs_stack_t remove_queue;
+    ecs_entity_t* entities;
+    size_t entity_count;
+    ecs_comp_t comps[ECS_MAX_COMPONENTS];
+    ecs_array_t comp_arrays[ECS_MAX_COMPONENTS];
+    size_t comp_count;
+    ecs_sys_t systems[ECS_MAX_SYSTEMS];
+    size_t system_count;
+    void* mem_ctx;
+};
+
+void* ecs_realloc_zero(ecs_t* ecs, void* ptr, size_t old_size, size_t new_size);
+
+// 用于刷新已损坏实体和已删除组件的内部函数
+static void ecs_flush_destroyed(ecs_t* ecs);
+static void ecs_flush_removed(ecs_t* ecs);
+
+// 内部位设置功能
+static inline void ecs_bitset_flip(ecs_bitset_t* set, int bit, bool on);
+static inline bool ecs_bitset_is_zero(ecs_bitset_t* set);
+static inline bool ecs_bitset_test(ecs_bitset_t* set, int bit);
+static inline ecs_bitset_t ecs_bitset_and(ecs_bitset_t* set1, ecs_bitset_t* set2);
+static inline ecs_bitset_t ecs_bitset_or(ecs_bitset_t* set1, ecs_bitset_t* set2);
+static inline ecs_bitset_t ecs_bitset_not(ecs_bitset_t* set);
+static inline bool ecs_bitset_equal(ecs_bitset_t* set1, ecs_bitset_t* set2);
+static inline bool ecs_bitset_true(ecs_bitset_t* set);
+
+// 内部稀疏集函数
+static void ecs_sparse_set_init(ecs_t* ecs, ecs_sparse_set_t* set, size_t capacity);
+static void ecs_sparse_set_free(ecs_t* ecs, ecs_sparse_set_t* set);
+static bool ecs_sparse_set_add(ecs_t* ecs, ecs_sparse_set_t* set, ecs_id_t id);
+static size_t ecs_sparse_set_find(ecs_sparse_set_t* set, ecs_id_t id);
+static bool ecs_sparse_set_remove(ecs_sparse_set_t* set, ecs_id_t id);
+
+// 内部系统实体添加/删除功能
+static bool ecs_entity_system_test(ecs_bitset_t* require_bits, ecs_bitset_t* exclude_bits, ecs_bitset_t* entity_bits);
+
+// 内部ID池功能
+static void ecs_stack_init(ecs_t* ecs, ecs_stack_t* pool, int capacity);
+static void ecs_stack_free(ecs_t* ecs, ecs_stack_t* pool);
+static void ecs_stack_push(ecs_t* ecs, ecs_stack_t* pool, ecs_id_t id);
+static ecs_id_t ecs_stack_pop(ecs_stack_t* pool);
+static int ecs_stack_size(ecs_stack_t* pool);
+
+// 内部数组函数
+static void ecs_array_init(ecs_t* ecs, ecs_array_t* array, size_t size, size_t capacity);
+static void ecs_array_free(ecs_t* ecs, ecs_array_t* array);
+static void ecs_array_resize(ecs_t* ecs, ecs_array_t* array, size_t capacity);
+
+// 测试用函数 发布版应当屏蔽
+static bool ecs_is_not_null(void* ptr) { return NULL != ptr; }
+static bool ecs_is_valid_component_id(ecs_id_t id) { return id < ECS_MAX_COMPONENTS; }
+static bool ecs_is_valid_system_id(ecs_id_t id) { return id < ECS_MAX_SYSTEMS; }
+static bool ecs_is_entity_ready(ecs_t* ecs, ecs_id_t entity_id) { return ecs->entities[entity_id].ready; }
+static bool ecs_is_component_ready(ecs_t* ecs, ecs_id_t comp_id) { return comp_id < ecs->comp_count; }
+static bool ecs_is_system_ready(ecs_t* ecs, ecs_id_t sys_id) { return sys_id < ecs->system_count; }
+
+ecs_t* ecs_new_i(ecs_t* ecs, size_t entity_count, void* mem_ctx) {
+    NEKO_ASSERT(entity_count > 0);
+
+    // Out of memory
+    if (NULL == ecs) return NULL;
+
+    memset(ecs, 0, sizeof(ecs_t));
+
+    ecs->entity_count = entity_count;
+    ecs->mem_ctx = mem_ctx;
+
+    // Initialize entity pool and queues
+    ecs_stack_init(ecs, &ecs->entity_pool, entity_count);
+    ecs_stack_init(ecs, &ecs->destroy_queue, entity_count);
+    ecs_stack_init(ecs, &ecs->remove_queue, entity_count * 2);
+
+    // Allocate entity array
+    ecs->entities = (ecs_entity_t*)ECS_MALLOC(ecs->entity_count * sizeof(ecs_entity_t), ecs->mem_ctx);
+
+    // Zero entity array
+    memset(ecs->entities, 0, ecs->entity_count * sizeof(ecs_entity_t));
+
+    // Pre-populate the the ID pool
+    for (ecs_id_t id = 0; id < entity_count; id++) {
+        ecs_stack_push(ecs, &ecs->entity_pool, id);
+    }
+
+    return ecs;
+}
+
+ecs_t* ecs_new(size_t entity_count, void* mem_ctx) {
+    ecs_t* ecs = (ecs_t*)ECS_MALLOC(sizeof(ecs_t), mem_ctx);
+    ecs = ecs_new_i(ecs, entity_count, mem_ctx);
+    return ecs;
+}
+
+void ecs_free_i(ecs_t* ecs) {
+    NEKO_ASSERT(ecs_is_not_null(ecs));
+
+    for (ecs_id_t entity_id = 0; entity_id < ecs->entity_count; entity_id++) {
+        if (ecs->entities[entity_id].ready) ecs_destroy(ecs, entity_id);
+    }
+
+    ecs_stack_free(ecs, &ecs->entity_pool);
+    ecs_stack_free(ecs, &ecs->destroy_queue);
+    ecs_stack_free(ecs, &ecs->remove_queue);
+
+    for (ecs_id_t comp_id = 0; comp_id < ecs->comp_count; comp_id++) {
+        ecs_array_t* comp_array = &ecs->comp_arrays[comp_id];
+        ecs_array_free(ecs, comp_array);
+    }
+
+    for (ecs_id_t sys_id = 0; sys_id < ecs->system_count; sys_id++) {
+        ecs_sys_t* sys = &ecs->systems[sys_id];
+        ecs_sparse_set_free(ecs, &sys->entity_ids);
+    }
+
+    ECS_FREE(ecs->entities, ecs->mem_ctx);
+}
+
+void ecs_free(ecs_t* ecs) {
+    ecs_free_i(ecs);
+    ECS_FREE(ecs, ecs->mem_ctx);
+}
+
+void ecs_reset(ecs_t* ecs) {
+    NEKO_ASSERT(ecs_is_not_null(ecs));
+
+    for (ecs_id_t entity_id = 0; entity_id < ecs->entity_count; entity_id++) {
+        if (ecs->entities[entity_id].ready) ecs_destroy(ecs, entity_id);
+    }
+
+    ecs->entity_pool.size = 0;
+    ecs->destroy_queue.size = 0;
+    ecs->remove_queue.size = 0;
+
+    memset(ecs->entities, 0, ecs->entity_count * sizeof(ecs_entity_t));
+
+    for (ecs_id_t entity_id = 0; entity_id < ecs->entity_count; entity_id++) {
+        ecs_stack_push(ecs, &ecs->entity_pool, entity_id);
+    }
+
+    for (ecs_id_t sys_id = 0; sys_id < ecs->system_count; sys_id++) {
+        ecs->systems[sys_id].entity_ids.size = 0;
+    }
+}
+
+ecs_id_t ecs_register_component(ecs_t* ecs, size_t size, ecs_constructor_fn constructor, ecs_destructor_fn destructor) {
+    NEKO_ASSERT(ecs_is_not_null(ecs));
+    NEKO_ASSERT(ecs->comp_count < ECS_MAX_COMPONENTS);
+    NEKO_ASSERT(size > 0);
+
+    ecs_id_t comp_id = ecs->comp_count;
+
+    ecs_array_t* comp_array = &ecs->comp_arrays[comp_id];
+    ecs_array_init(ecs, comp_array, size, ecs->entity_count);
+
+    ecs->comps[comp_id].constructor = constructor;
+    ecs->comps[comp_id].destructor = destructor;
+
+    ecs->comp_count++;
+
+    return comp_id;
+}
+
+ecs_id_t ecs_register_system(ecs_t* ecs, ecs_system_fn system_cb, ecs_added_fn add_cb, ecs_removed_fn remove_cb, void* udata) {
+    NEKO_ASSERT(ecs_is_not_null(ecs));
+    NEKO_ASSERT(ecs->system_count < ECS_MAX_SYSTEMS);
+    NEKO_ASSERT(NULL != system_cb);
+
+    ecs_id_t sys_id = ecs->system_count;
+    ecs_sys_t* sys = &ecs->systems[sys_id];
+
+    ecs_sparse_set_init(ecs, &sys->entity_ids, ecs->entity_count);
+
+    sys->active = true;
+    sys->system_cb = system_cb;
+    sys->add_cb = add_cb;
+    sys->remove_cb = remove_cb;
+    sys->udata = udata;
+
+    ecs->system_count++;
+
+    return sys_id;
+}
+
+void ecs_require_component(ecs_t* ecs, ecs_id_t sys_id, ecs_id_t comp_id) {
+    NEKO_ASSERT(ecs_is_not_null(ecs));
+    NEKO_ASSERT(ecs_is_valid_system_id(sys_id));
+    NEKO_ASSERT(ecs_is_valid_component_id(comp_id));
+    NEKO_ASSERT(ecs_is_system_ready(ecs, sys_id));
+    NEKO_ASSERT(ecs_is_component_ready(ecs, comp_id));
+
+    // Set system component bit for the specified component
+    ecs_sys_t* sys = &ecs->systems[sys_id];
+    ecs_bitset_flip(&sys->require_bits, comp_id, true);
+}
+
+void ecs_exclude_component(ecs_t* ecs, ecs_id_t sys_id, ecs_id_t comp_id) {
+    NEKO_ASSERT(ecs_is_not_null(ecs));
+    NEKO_ASSERT(ecs_is_valid_system_id(sys_id));
+    NEKO_ASSERT(ecs_is_valid_component_id(comp_id));
+    NEKO_ASSERT(ecs_is_system_ready(ecs, sys_id));
+    NEKO_ASSERT(ecs_is_component_ready(ecs, comp_id));
+
+    // Set system component bit for the specified component
+    ecs_sys_t* sys = &ecs->systems[sys_id];
+    ecs_bitset_flip(&sys->exclude_bits, comp_id, true);
+}
+
+void ecs_enable_system(ecs_t* ecs, ecs_id_t sys_id) {
+    NEKO_ASSERT(ecs_is_not_null(ecs));
+    NEKO_ASSERT(ecs_is_valid_system_id(sys_id));
+    NEKO_ASSERT(ecs_is_system_ready(ecs, sys_id));
+
+    ecs_sys_t* sys = &ecs->systems[sys_id];
+    sys->active = true;
+}
+
+void ecs_disable_system(ecs_t* ecs, ecs_id_t sys_id) {
+    NEKO_ASSERT(ecs_is_not_null(ecs));
+    NEKO_ASSERT(ecs_is_valid_system_id(sys_id));
+    NEKO_ASSERT(ecs_is_system_ready(ecs, sys_id));
+
+    ecs_sys_t* sys = &ecs->systems[sys_id];
+    sys->active = false;
+}
+
+ecs_id_t ecs_create(ecs_t* ecs) {
+    NEKO_ASSERT(ecs_is_not_null(ecs));
+
+    ecs_stack_t* pool = &ecs->entity_pool;
+
+    // If pool is empty, increase the number of entity IDs
+    if (0 == ecs_stack_size(pool)) {
+        size_t old_count = ecs->entity_count;
+        size_t new_count = old_count + (old_count / 2) + 2;
+
+        // Reallocates entities and zeros new ones
+        ecs->entities = (ecs_entity_t*)ecs_realloc_zero(ecs, ecs->entities, old_count * sizeof(ecs_entity_t), new_count * sizeof(ecs_entity_t));
+
+        // Push new entity IDs into the pool
+        for (ecs_id_t id = old_count; id < new_count; id++) {
+            ecs_stack_push(ecs, pool, id);
+        }
+
+        // Update entity count
+        ecs->entity_count = new_count;
+    }
+
+    ecs_id_t entity_id = ecs_stack_pop(pool);
+    ecs->entities[entity_id].ready = true;
+
+    return entity_id;
+}
+
+bool ecs_is_ready(ecs_t* ecs, ecs_id_t entity_id) {
+    NEKO_ASSERT(ecs_is_not_null(ecs));
+
+    return ecs->entities[entity_id].ready;
+}
+
+void ecs_destroy(ecs_t* ecs, ecs_id_t entity_id) {
+    NEKO_ASSERT(ecs_is_not_null(ecs));
+    NEKO_ASSERT(ecs_is_entity_ready(ecs, entity_id));
+
+    // Load entity
+    ecs_entity_t* entity = &ecs->entities[entity_id];
+
+    // Remove entity from systems
+    for (ecs_id_t sys_id = 0; sys_id < ecs->system_count; sys_id++) {
+        ecs_sys_t* sys = &ecs->systems[sys_id];
+
+        // Just attempting to remove the entity from the sparse set is faster
+        // than calling ecs_entity_system_test
+        if (ecs_sparse_set_remove(&sys->entity_ids, entity_id)) {
+            if (sys->remove_cb) sys->remove_cb(ecs, entity_id, sys->udata);
+        }
+    }
+
+    // Push entity ID back into pool
+    ecs_stack_t* pool = &ecs->entity_pool;
+    ecs_stack_push(ecs, pool, entity_id);
+
+    // Loop through components and call the destructors
+    for (ecs_id_t comp_id = 0; comp_id < ecs->comp_count; comp_id++) {
+        if (ecs_bitset_test(&entity->comp_bits, comp_id)) {
+            ecs_comp_t* comp = &ecs->comps[comp_id];
+
+            if (comp->destructor) {
+                void* ptr = ecs_get(ecs, entity_id, comp_id);
+                comp->destructor(ecs, entity_id, ptr);
+            }
+        }
+    }
+
+    // Reset entity (sets bitset to 0 and ready to false)
+    memset(entity, 0, sizeof(ecs_entity_t));
+}
+
+bool ecs_has(ecs_t* ecs, ecs_id_t entity_id, ecs_id_t comp_id) {
+    NEKO_ASSERT(ecs_is_not_null(ecs));
+    NEKO_ASSERT(ecs_is_valid_component_id(comp_id));
+    NEKO_ASSERT(ecs_is_entity_ready(ecs, entity_id));
+
+    // Load  entity
+    ecs_entity_t* entity = &ecs->entities[entity_id];
+
+    // Return true if the component belongs to the entity
+    return ecs_bitset_test(&entity->comp_bits, comp_id);
+}
+
+void* ecs_get(ecs_t* ecs, ecs_id_t entity_id, ecs_id_t comp_id) {
+    NEKO_ASSERT(ecs_is_not_null(ecs));
+    NEKO_ASSERT(ecs_is_valid_component_id(comp_id));
+    NEKO_ASSERT(ecs_is_component_ready(ecs, comp_id));
+    NEKO_ASSERT(ecs_is_entity_ready(ecs, entity_id));
+
+    // Return pointer to component
+    //  eid0,  eid1   eid2, ...
+    // [comp0, comp1, comp2, ...]
+    ecs_array_t* comp_array = &ecs->comp_arrays[comp_id];
+    return (char*)comp_array->data + (comp_array->size * entity_id);
+}
+
+void* ecs_add(ecs_t* ecs, ecs_id_t entity_id, ecs_id_t comp_id, void* args) {
+    NEKO_ASSERT(ecs_is_not_null(ecs));
+    NEKO_ASSERT(ecs_is_valid_component_id(comp_id));
+    NEKO_ASSERT(ecs_is_entity_ready(ecs, entity_id));
+    NEKO_ASSERT(ecs_is_component_ready(ecs, comp_id));
+
+    // Load entity
+    ecs_entity_t* entity = &ecs->entities[entity_id];
+
+    // Load component
+    ecs_array_t* comp_array = &ecs->comp_arrays[comp_id];
+    ecs_comp_t* comp = &ecs->comps[comp_id];
+
+    // Grow the component array
+    ecs_array_resize(ecs, comp_array, entity_id);
+
+    // Get pointer to component
+    void* ptr = ecs_get(ecs, entity_id, comp_id);
+
+    // Zero component
+    memset(ptr, 0, comp_array->size);
+
+    // Call constructor
+    if (comp->constructor) comp->constructor(ecs, entity_id, ptr, args);
+
+    // Set entity component bit that determines which systems this entity
+    // belongs to
+    ecs_bitset_flip(&entity->comp_bits, comp_id, true);
+
+    // Add entity to systems
+    for (ecs_id_t sys_id = 0; sys_id < ecs->system_count; sys_id++) {
+        ecs_sys_t* sys = &ecs->systems[sys_id];
+
+        if (ecs_entity_system_test(&sys->require_bits, &sys->exclude_bits, &entity->comp_bits)) {
+            if (ecs_sparse_set_add(ecs, &sys->entity_ids, entity_id)) {
+                if (sys->add_cb) sys->add_cb(ecs, entity_id, sys->udata);
+            }
+        }
+    }
+
+    // Return component
+    return ptr;
+}
+
+void ecs_remove(ecs_t* ecs, ecs_id_t entity_id, ecs_id_t comp_id) {
+    NEKO_ASSERT(ecs_is_not_null(ecs));
+    NEKO_ASSERT(ecs_is_valid_component_id(comp_id));
+    NEKO_ASSERT(ecs_is_component_ready(ecs, comp_id));
+    NEKO_ASSERT(ecs_is_entity_ready(ecs, entity_id));
+
+    // Load entity
+    ecs_entity_t* entity = &ecs->entities[entity_id];
+
+    // Remove entity from systems
+    for (ecs_id_t sys_id = 0; sys_id < ecs->system_count; sys_id++) {
+        ecs_sys_t* sys = &ecs->systems[sys_id];
+
+        if (ecs_entity_system_test(&sys->require_bits, &sys->exclude_bits, &entity->comp_bits)) {
+            if (ecs_sparse_set_remove(&sys->entity_ids, entity_id)) {
+                if (sys->remove_cb) sys->remove_cb(ecs, entity_id, sys->udata);
+            }
+        }
+    }
+
+    ecs_comp_t* comp = &ecs->comps[comp_id];
+
+    if (comp->destructor) {
+        void* ptr = ecs_get(ecs, entity_id, comp_id);
+        comp->destructor(ecs, entity_id, ptr);
+    }
+
+    // 重置相关组件掩码位
+    ecs_bitset_flip(&entity->comp_bits, comp_id, false);
+}
+
+void ecs_queue_destroy(ecs_t* ecs, ecs_id_t entity_id) {
+    NEKO_ASSERT(ecs_is_not_null(ecs));
+    NEKO_ASSERT(ecs_is_entity_ready(ecs, entity_id));
+
+    ecs_stack_push(ecs, &ecs->destroy_queue, entity_id);
+}
+
+void ecs_queue_remove(ecs_t* ecs, ecs_id_t entity_id, ecs_id_t comp_id) {
+    NEKO_ASSERT(ecs_is_not_null(ecs));
+    NEKO_ASSERT(ecs_is_entity_ready(ecs, entity_id));
+    NEKO_ASSERT(ecs_has(ecs, entity_id, comp_id));
+
+    ecs_stack_push(ecs, &ecs->remove_queue, entity_id);
+    ecs_stack_push(ecs, &ecs->remove_queue, comp_id);
+}
+
+ecs_ret_t ecs_update_system(ecs_t* ecs, ecs_id_t sys_id, ecs_dt_t dt) {
+    NEKO_ASSERT(ecs_is_not_null(ecs));
+    NEKO_ASSERT(ecs_is_valid_system_id(sys_id));
+    NEKO_ASSERT(ecs_is_system_ready(ecs, sys_id));
+    NEKO_ASSERT(dt >= 0.0f);
+
+    ecs_sys_t* sys = &ecs->systems[sys_id];
+
+    if (!sys->active) return 0;
+
+    ecs_ret_t code = sys->system_cb(ecs, sys->entity_ids.dense, sys->entity_ids.size, dt, sys->udata);
+
+    ecs_flush_destroyed(ecs);
+    ecs_flush_removed(ecs);
+
+    return code;
+}
+
+ecs_ret_t ecs_update_systems(ecs_t* ecs, ecs_dt_t dt) {
+    NEKO_ASSERT(ecs_is_not_null(ecs));
+    NEKO_ASSERT(dt >= 0.0f);
+
+    for (ecs_id_t sys_id = 0; sys_id < ecs->system_count; sys_id++) {
+        ecs_ret_t code = ecs_update_system(ecs, sys_id, dt);
+
+        if (0 != code) return code;
+    }
+
+    return 0;
+}
+
+void* ecs_realloc_zero(ecs_t* ecs, void* ptr, size_t old_size, size_t new_size) {
+    (void)ecs;
+
+    ptr = ECS_REALLOC(ptr, new_size, ecs->mem_ctx);
+
+    if (new_size > old_size && ptr) {
+        size_t diff = new_size - old_size;
+        void* start = ((char*)ptr) + old_size;
+        memset(start, 0, diff);
+    }
+
+    return ptr;
+}
+
+// 用于刷新被破坏的实体和删除的组件的内部函数
+
+static void ecs_flush_destroyed(ecs_t* ecs) {
+    ecs_stack_t* destroy_queue = &ecs->destroy_queue;
+
+    for (size_t i = 0; i < destroy_queue->size; i++) {
+        ecs_id_t entity_id = destroy_queue->array[i];
+
+        if (ecs_is_ready(ecs, entity_id)) ecs_destroy(ecs, entity_id);
+    }
+
+    destroy_queue->size = 0;
+}
+
+static void ecs_flush_removed(ecs_t* ecs) {
+    ecs_stack_t* remove_queue = &ecs->remove_queue;
+
+    for (size_t i = 0; i < remove_queue->size; i += 2) {
+        ecs_id_t entity_id = remove_queue->array[i];
+
+        if (ecs_is_ready(ecs, entity_id)) {
+            ecs_id_t comp_id = remove_queue->array[i + 1];
+            ecs_remove(ecs, entity_id, comp_id);
+        }
+    }
+
+    remove_queue->size = 0;
+}
+
+// 内部位集函数
+
+#if ECS_MAX_COMPONENTS <= 64
+
+static inline bool ecs_bitset_is_zero(ecs_bitset_t* set) { return *set == 0; }
+
+static inline void ecs_bitset_flip(ecs_bitset_t* set, int bit, bool on) {
+    if (on)
+        *set |= ((uint64_t)1 << bit);
+    else
+        *set &= ~((uint64_t)1 << bit);
+}
+
+static inline bool ecs_bitset_test(ecs_bitset_t* set, int bit) { return *set & ((uint64_t)1 << bit); }
+
+static inline ecs_bitset_t ecs_bitset_and(ecs_bitset_t* set1, ecs_bitset_t* set2) { return *set1 & *set2; }
+
+static inline ecs_bitset_t ecs_bitset_or(ecs_bitset_t* set1, ecs_bitset_t* set2) { return *set1 | *set2; }
+
+static inline ecs_bitset_t ecs_bitset_not(ecs_bitset_t* set) { return ~(*set); }
+
+static inline bool ecs_bitset_equal(ecs_bitset_t* set1, ecs_bitset_t* set2) { return *set1 == *set2; }
+
+static inline bool ecs_bitset_true(ecs_bitset_t* set) { return *set; }
+
+#else  // ECS_MAX_COMPONENTS
+
+static inline bool ecs_bitset_is_zero(ecs_bitset_t* set) {
+    for (int i = 0; i < ECS_BITSET_SIZE; i++) {
+        if (set->array[i] != 0) return false;
+    }
+
+    return true;
+}
+
+static inline void ecs_bitset_flip(ecs_bitset_t* set, int bit, bool on) {
+    int index = bit / ECS_BITSET_WIDTH;
+
+    if (on)
+        set->array[index] |= ((uint64_t)1 << bit % ECS_BITSET_WIDTH);
+    else
+        set->array[index] &= ~((uint64_t)1 << bit % ECS_BITSET_WIDTH);
+}
+
+static inline bool ecs_bitset_test(ecs_bitset_t* set, int bit) {
+    int index = bit / ECS_BITSET_WIDTH;
+    return set->array[index] & ((uint64_t)1 << bit % ECS_BITSET_WIDTH);
+}
+
+static inline ecs_bitset_t ecs_bitset_and(ecs_bitset_t* set1, ecs_bitset_t* set2) {
+    ecs_bitset_t set;
+
+    for (int i = 0; i < ECS_BITSET_SIZE; i++) {
+        set.array[i] = set1->array[i] & set2->array[i];
+    }
+
+    return set;
+}
+
+static inline ecs_bitset_t ecs_bitset_or(ecs_bitset_t* set1, ecs_bitset_t* set2) {
+    ecs_bitset_t set;
+
+    for (int i = 0; i < ECS_BITSET_SIZE; i++) {
+        set.array[i] = set1->array[i] | set2->array[i];
+    }
+
+    return set;
+}
+
+static inline ecs_bitset_t ecs_bitset_not(ecs_bitset_t* set) {
+    ecs_bitset_t out;
+
+    for (int i = 0; i < ECS_BITSET_SIZE; i++) {
+        out.array[i] = ~set->array[i];
+    }
+
+    return out;
+}
+
+static inline bool ecs_bitset_equal(ecs_bitset_t* set1, ecs_bitset_t* set2) {
+    for (int i = 0; i < ECS_BITSET_SIZE; i++) {
+        if (set1->array[i] != set2->array[i]) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static inline bool ecs_bitset_true(ecs_bitset_t* set) {
+    for (int i = 0; i < ECS_BITSET_SIZE; i++) {
+        if (set->array[i]) return true;
+    }
+
+    return false;
+}
+
+#endif  // ECS_MAX_COMPONENTS
+
+// 内部稀疏集函数
+static void ecs_sparse_set_init(ecs_t* ecs, ecs_sparse_set_t* set, size_t capacity) {
+    NEKO_ASSERT(ecs_is_not_null(ecs));
+    NEKO_ASSERT(ecs_is_not_null(set));
+    NEKO_ASSERT(capacity > 0);
+
+    (void)ecs;
+
+    set->capacity = capacity;
+    set->size = 0;
+
+    set->dense = (ecs_id_t*)ECS_MALLOC(capacity * sizeof(ecs_id_t), ecs->mem_ctx);
+    set->sparse = (size_t*)ECS_MALLOC(capacity * sizeof(size_t), ecs->mem_ctx);
+
+    memset(set->sparse, 0, capacity * sizeof(size_t));
+}
+
+static void ecs_sparse_set_free(ecs_t* ecs, ecs_sparse_set_t* set) {
+    NEKO_ASSERT(ecs_is_not_null(ecs));
+    NEKO_ASSERT(ecs_is_not_null(set));
+
+    (void)ecs;
+
+    ECS_FREE(set->dense, ecs->mem_ctx);
+    ECS_FREE(set->sparse, ecs->mem_ctx);
+}
+
+static bool ecs_sparse_set_add(ecs_t* ecs, ecs_sparse_set_t* set, ecs_id_t id) {
+    NEKO_ASSERT(ecs_is_not_null(ecs));
+    NEKO_ASSERT(ecs_is_not_null(set));
+
+    (void)ecs;
+
+    // Grow sparse set if necessary
+    if (id >= set->capacity) {
+        size_t old_capacity = set->capacity;
+        size_t new_capacity = old_capacity;
+
+        // Calculate new capacity
+        while (new_capacity <= id) {
+            new_capacity += (new_capacity / 2) + 2;
+        }
+
+        // Grow dense array
+        set->dense = (ecs_id_t*)ECS_REALLOC(set->dense, new_capacity * sizeof(ecs_id_t), ecs->mem_ctx);
+
+        // Grow sparse array and zero it
+        set->sparse = (size_t*)ecs_realloc_zero(ecs, set->sparse, old_capacity * sizeof(size_t), new_capacity * sizeof(size_t));
+
+        // Set the new capacity
+        set->capacity = new_capacity;
+    }
+
+    // Check if ID exists within the set
+    if (ECS_NULL != ecs_sparse_set_find(set, id)) return false;
+
+    // Add ID to set
+    set->dense[set->size] = id;
+    set->sparse[id] = set->size;
+
+    set->size++;
+
+    return true;
+}
+
+static size_t ecs_sparse_set_find(ecs_sparse_set_t* set, ecs_id_t id) {
+    NEKO_ASSERT(ecs_is_not_null(set));
+
+    if (set->sparse[id] < set->size && set->dense[set->sparse[id]] == id)
+        return set->sparse[id];
+    else
+        return ECS_NULL;
+}
+
+static bool ecs_sparse_set_remove(ecs_sparse_set_t* set, ecs_id_t id) {
+    NEKO_ASSERT(ecs_is_not_null(set));
+
+    if (ECS_NULL == ecs_sparse_set_find(set, id)) return false;
+
+    // Swap and remove (changes order of array)
+    ecs_id_t tmp = set->dense[set->size - 1];
+    set->dense[set->sparse[id]] = tmp;
+    set->sparse[tmp] = set->sparse[id];
+
+    set->size--;
+
+    return true;
+}
+
+// 内部系统实体添加/删除功能
+inline static bool ecs_entity_system_test(ecs_bitset_t* require_bits, ecs_bitset_t* exclude_bits, ecs_bitset_t* entity_bits) {
+    if (!ecs_bitset_is_zero(exclude_bits)) {
+        ecs_bitset_t overlap = ecs_bitset_and(entity_bits, exclude_bits);
+
+        if (ecs_bitset_true(&overlap)) {
+            return false;
+        }
+    }
+
+    ecs_bitset_t entity_and_require = ecs_bitset_and(entity_bits, require_bits);
+    return ecs_bitset_equal(&entity_and_require, require_bits);
+}
+
+// 内部ID池功能
+inline static void ecs_stack_init(ecs_t* ecs, ecs_stack_t* stack, int capacity) {
+    NEKO_ASSERT(ecs_is_not_null(ecs));
+    NEKO_ASSERT(ecs_is_not_null(stack));
+    NEKO_ASSERT(capacity > 0);
+
+    (void)ecs;
+
+    stack->size = 0;
+    stack->capacity = capacity;
+    stack->array = (ecs_id_t*)ECS_MALLOC(capacity * sizeof(ecs_id_t), ecs->mem_ctx);
+}
+
+inline static void ecs_stack_free(ecs_t* ecs, ecs_stack_t* stack) {
+    NEKO_ASSERT(ecs_is_not_null(ecs));
+    NEKO_ASSERT(ecs_is_not_null(stack));
+
+    (void)ecs;
+
+    ECS_FREE(stack->array, ecs->mem_ctx);
+}
+
+inline static void ecs_stack_push(ecs_t* ecs, ecs_stack_t* stack, ecs_id_t id) {
+    NEKO_ASSERT(ecs_is_not_null(ecs));
+    NEKO_ASSERT(ecs_is_not_null(stack));
+    NEKO_ASSERT(stack->capacity > 0);
+
+    (void)ecs;
+
+    if (stack->size == stack->capacity) {
+        stack->capacity += (stack->capacity / 2) + 2;
+
+        stack->array = (ecs_id_t*)ECS_REALLOC(stack->array, stack->capacity * sizeof(ecs_id_t), ecs->mem_ctx);
+    }
+
+    stack->array[stack->size++] = id;
+}
+
+inline static ecs_id_t ecs_stack_pop(ecs_stack_t* stack) {
+    NEKO_ASSERT(ecs_is_not_null(stack));
+    return stack->array[--stack->size];
+}
+
+inline static int ecs_stack_size(ecs_stack_t* stack) { return stack->size; }
+
+static void ecs_array_init(ecs_t* ecs, ecs_array_t* array, size_t size, size_t capacity) {
+    NEKO_ASSERT(ecs_is_not_null(ecs));
+    NEKO_ASSERT(ecs_is_not_null(array));
+
+    (void)ecs;
+
+    memset(array, 0, sizeof(ecs_array_t));
+
+    array->capacity = capacity;
+    array->count = 0;
+    array->size = size;
+    array->data = ECS_MALLOC(size * capacity, ecs->mem_ctx);
+}
+
+static void ecs_array_free(ecs_t* ecs, ecs_array_t* array) {
+    NEKO_ASSERT(ecs_is_not_null(ecs));
+    NEKO_ASSERT(ecs_is_not_null(array));
+
+    (void)ecs;
+
+    ECS_FREE(array->data, ecs->mem_ctx);
+}
+
+static void ecs_array_resize(ecs_t* ecs, ecs_array_t* array, size_t capacity) {
+    NEKO_ASSERT(ecs_is_not_null(ecs));
+    NEKO_ASSERT(ecs_is_not_null(array));
+
+    (void)ecs;
+
+    if (capacity >= array->capacity) {
+        while (array->capacity <= capacity) {
+            array->capacity += (array->capacity / 2) + 2;
+        }
+
+        array->data = ECS_REALLOC(array->data, array->capacity * array->size, ecs->mem_ctx);
+    }
+}
+
+#endif  // NEKO_ECS_IMPLEMENTATION
+
+static int __neko_boot_lua_create_ent(lua_State* L) {
+    ecs_t* w = (ecs_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+    ecs_id_t e = ecs_create(w);
+    lua_pushinteger(L, e);
+    return 1;
+}
+
+const ecs_id_t __neko_boot_lua_component_id_w(lua_State* L, const_str component_name) {
+    lua_getfield(L, LUA_REGISTRYINDEX, "__NEKO_ECS_CORE");  // # -5
+    lua_getiuservalue(L, -1, NEKO_ECS_COMPONENTS_NAME);     // # -4
+    lua_getfield(L, -1, "comp_map");                        // # -3
+    lua_pushinteger(L, neko_hash_str(component_name));      // 使用 32 位哈希以适应 Lua 数字范围
+    lua_gettable(L, -2);                                    // # -2
+    lua_getfield(L, -1, "id");                              // # -1
+    const ecs_id_t c = lua_tointeger(L, -1);
+    lua_pop(L, 5);
+    return c;
+}
+
+static int __neko_boot_lua_attach(lua_State* L) {
+    int n = lua_gettop(L);
+    luaL_argcheck(L, n >= 3, 1, "lost the component name");
+
+    ecs_t* w = (ecs_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+    ecs_id_t e = luaL_checkinteger(L, 2);
+
+    for (int i = 3; i <= n; i++) {
+        if (lua_isstring(L, i)) {
+            const_str component_name = lua_tostring(L, i);
+            const ecs_id_t c = __neko_boot_lua_component_id_w(L, component_name);
+            // ecs_attach(w, e, c);
+            ecs_add(w, e, c, NULL);
+        } else {
+            NEKO_WARN("argument %d is not a string", i);
+        }
+    }
+
+    return 0;
+}
+
+static int __neko_boot_lua_get_com(lua_State* L) {
+    ecs_t* w = (ecs_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+    lua_getiuservalue(L, 1, NEKO_ECS_COMPONENTS_NAME);
+    lua_getiuservalue(L, 1, NEKO_ECS_UPVAL_N);
+    return 2;
+}
+
+static int __neko_boot_lua_gc(lua_State* L) {
+    ecs_t* w = (ecs_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+    // ecs_fini_i(w);
+    ecs_free_i(w);
+    NEKO_INFO("ecs_lua_gc");
+    return 0;
+}
+
+ecs_t* ecs_init(lua_State* L) {
+    NEKO_ASSERT(L);
+    ecs_t* registry = (ecs_t*)lua_newuserdatauv(L, sizeof(ecs_t), NEKO_ECS_UPVAL_N);  // # -1
+    registry = ecs_new_i(registry, 1024, NULL);
+    if (registry == NULL) {
+        NEKO_ERROR("%s", "failed to initialize ecs_t");
+        return NULL;
+    }
+    // registry->L = L;
+
+    if (luaL_getmetatable(L, ECS_WORLD_UDATA_NAME) == LUA_TNIL) {  // # -2
+
+        // clang-format off
+        luaL_Reg world_mt[] = {
+            {"__gc", __neko_boot_lua_gc}, 
+            {"create_ent", __neko_boot_lua_create_ent}, 
+            {"attach", __neko_boot_lua_attach}, 
+            {"get_com", __neko_boot_lua_get_com}, 
+            {NULL, NULL}
+        };
+        // clang-format on
+
+        lua_pop(L, 1);                  // # pop -2
+        luaL_newlibtable(L, world_mt);  // # -2
+        luaL_setfuncs(L, world_mt, 0);
+        lua_pushvalue(L, -1);                                      // # -3
+        lua_setfield(L, -2, "__index");                            // pop -3
+        lua_pushliteral(L, ECS_WORLD_UDATA_NAME);                  // # -3
+        lua_setfield(L, -2, "__name");                             // pop -3
+        lua_pushvalue(L, -1);                                      // # -3
+        lua_setfield(L, LUA_REGISTRYINDEX, ECS_WORLD_UDATA_NAME);  // pop -3
+    }
+    lua_setmetatable(L, -2);  // pop -2
+
+    // lua_newtable(L);  // components name 表
+    // lua_setfield(L, LUA_REGISTRYINDEX, MY_TABLE_KEY);
+    //
+    // lua_setiuservalue(L, -2, NEKO_ECS_COMPONENTS_NAME);
+
+    lua_newtable(L);
+    lua_pushstring(L, "comp_map");
+    lua_createtable(L, 0, ENTITY_MAX_COMPONENTS);
+    lua_settable(L, -3);
+    lua_setiuservalue(L, -2, NEKO_ECS_COMPONENTS_NAME);
+
+    const_str s = "Is man one of God's blunders? Or is God one of man's blunders?";
+    lua_pushstring(L, s);
+    lua_setiuservalue(L, -2, NEKO_ECS_UPVAL_N);
+
+    // lua_pushvalue(L, -1);
+    lua_setfield(L, LUA_REGISTRYINDEX, "__NEKO_ECS_CORE");
+
+    // lua_setglobal(L, "__NEKO_ECS_CORE");
+
+    return registry;
+}
+
+ecs_id_t ecs_component_w(ecs_t* registry, const_str component_name, size_t component_size) {
+
+    // ecs_map_set(registry->component_index, (void*)registry->next_entity_id, &(size_t){component_size});
+    // ecs_id_t id = registry->next_entity_id++;
+
+    ecs_id_t id = 0; // TODO
+
+    lua_State* L = registry->L;
+
+    // lua_getglobal(L, "__NEKO_ECS_CORE");  // # 1
+    lua_getfield(L, LUA_REGISTRYINDEX, "__NEKO_ECS_CORE");
+
+    lua_getiuservalue(L, -1, NEKO_ECS_COMPONENTS_NAME);
+    if (lua_istable(L, -1)) {
+        lua_getfield(L, -1, "comp_map");
+        if (lua_istable(L, -1)) {
+            lua_pushinteger(L, neko_hash_str(component_name));  // 使用 32 位哈希以适应 Lua 数字范围
+
+            lua_createtable(L, 0, 2);
+            lua_pushinteger(L, id);
+            lua_setfield(L, -2, "id");
+            lua_pushstring(L, component_name);
+            lua_setfield(L, -2, "name");
+
+            lua_settable(L, -3);
+            lua_pop(L, 1);
+        } else {
+            NEKO_ERROR("%s", "failed to get comp_map");
+            lua_pop(L, 1);
+        }
+        lua_pop(L, 1);
+    } else {
+        NEKO_ERROR("%s", "failed to get upvalue NEKO_ECS_COMPONENTS_NAME");
+        lua_pop(L, 1);
+    }
+    lua_pop(L, 1);  // pop 1
+
+    return id;
 }

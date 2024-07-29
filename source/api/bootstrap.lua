@@ -6,7 +6,6 @@ luadb = require("__neko.luadb")
 ImGui = require("__neko.imgui")
 Core = require("__neko.core")
 Inspector = require("__neko.inspector")
-Prefabs = require("prefabs")
 
 common = require "common"
 
@@ -357,6 +356,8 @@ void main() { out_col = texture(u_sprite_texture, v_uv); }
 LUA_RIDX_MAINTHREAD = 1
 LUA_RIDX_GLOBALS = 2
 
+--[[
+
 sandbox = {}
 local worlds = {}
 
@@ -380,6 +381,8 @@ function sandbox.select(ecs_world, func, ...)
         func(c)
     end
 end
+
+]]
 
 -- object oriented
 

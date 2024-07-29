@@ -56,7 +56,7 @@ void draw_image(const Image *img, DrawDescription *desc);
 void draw_sprite(Sprite *spr, DrawDescription *desc);
 float draw_font(FontFamily *font, float size, float x, float y, String text);
 float draw_font_wrapped(FontFamily *font, float size, float x, float y, String text, float limit);
-void draw_tilemap(const map_ldtk *tm);
+void draw_tilemap(const MapLdtk *tm);
 void draw_filled_rect(RectDescription *desc);
 void draw_line_rect(RectDescription *desc);
 void draw_line_circle(float x, float y, float radius);

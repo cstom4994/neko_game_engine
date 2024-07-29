@@ -29,9 +29,6 @@ int load_embed_lua(lua_State* L, const u8 B[], const_str name) {
 static const u8 g_lua_common_data[] = {
 #include "common.lua.h"
 };
-static const u8 g_lua_prefabs_data[] = {
-#include "prefabs.lua.h"
-};
 static const u8 g_lua_bootstrap_data[] = {
 #include "bootstrap.lua.h"
 };
@@ -70,7 +67,6 @@ static const u8 socket_url_compressed_data[] = {
 };
 
 LUAOPEN_EMBED_DATA(open_embed_common, "common.lua", g_lua_common_data);
-LUAOPEN_EMBED_DATA(open_embed_prefabs, "prefabs.lua", g_lua_prefabs_data);
 LUAOPEN_EMBED_DATA(open_embed_bootstrap, "bootstrap.lua", g_lua_bootstrap_data);
 LUAOPEN_EMBED_DATA(open_embed_gen_neko_api, "gen_neko_api.lua", g_lua_gen_neko_api_data);
 
@@ -85,34 +81,20 @@ LUAOPEN_EMBED_DATA(open_embed_socket_smtp, "socket.smtp.lua", socket_smtp_compre
 LUAOPEN_EMBED_DATA(open_embed_socket_tp, "socket.tp.lua", socket_tp_compressed_data);
 LUAOPEN_EMBED_DATA(open_embed_socket_url, "socket.url.lua", socket_url_compressed_data);
 
-static void package_preload(lua_State* L, const_str name, lua_CFunction function) {
-    lua_getglobal(L, "package");
-    lua_getfield(L, -1, "preload");
-    lua_pushcfunction(L, function);
-    lua_setfield(L, -2, name);
-    lua_pop(L, 2);
-}
-
 extern "C" {
 int luaopen_socket_core(lua_State* L);
 int luaopen_mime_core(lua_State* L);
 int luaopen_cffi(lua_State* L);
-int luaopen_bit(lua_State* L);
 int luaopen_http(lua_State* L);
-int open_tools_spritepack(lua_State* L);
-int luaopen_colibc_filesys(lua_State* L);
+int luaopen_enet(lua_State* l);
 }
 
 namespace neko::lua {
-void package_preload(lua_State* L) {
+void package_preload_embed(lua_State* L) {
 
     luaL_Reg preloads[] = {
             {"common", open_embed_common},
-            {"prefabs", open_embed_prefabs},
             {"gen_neko_api", open_embed_gen_neko_api},
-
-            {"__neko.spritepack", open_tools_spritepack},
-            {"__neko.filesys", luaopen_colibc_filesys},
 
             {"ffi", luaopen_cffi},
 
@@ -136,7 +118,7 @@ void package_preload(lua_State* L) {
     };
 
     for (auto m : preloads) {
-        package_preload(L, m.name, m.func);
+        luax_package_preload(L, m.name, m.func);
     }
 }
 void luax_run_bootstrap(lua_State* L) {

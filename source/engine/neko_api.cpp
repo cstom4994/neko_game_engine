@@ -20,14 +20,10 @@
 #include "engine/neko_physics.h"
 #include "engine/neko_prelude.h"
 #include "engine/neko_reflection.hpp"
+#include "engine/neko_seri.h"
 #include "engine/neko_sound.h"
 #include "engine/neko_tolua.h"
 #include "engine/neko_ui.h"
-
-extern "C" {
-#include <lauxlib.h>
-#include <lua.h>
-}
 
 // mt_sampler
 
@@ -391,13 +387,13 @@ static int open_mt_atlas(lua_State *L) {
 // mt_tilemap
 
 static int mt_tilemap_draw(lua_State *L) {
-    map_ldtk tm = check_asset_mt(L, 1, "mt_tilemap").tilemap;
+    MapLdtk tm = check_asset_mt(L, 1, "mt_tilemap").tilemap;
     draw_tilemap(&tm);
     return 0;
 }
 
 static int mt_tilemap_entities(lua_State *L) {
-    map_ldtk tm = check_asset_mt(L, 1, "mt_tilemap").tilemap;
+    MapLdtk tm = check_asset_mt(L, 1, "mt_tilemap").tilemap;
 
     u64 entities = 0;
     for (TilemapLevel &level : tm.levels) {
@@ -448,7 +444,7 @@ static int mt_tilemap_make_collision(lua_State *L) {
 }
 
 static int mt_tilemap_draw_fixtures(lua_State *L) {
-    map_ldtk tm = check_asset_mt(L, 1, "mt_tilemap").tilemap;
+    MapLdtk tm = check_asset_mt(L, 1, "mt_tilemap").tilemap;
     Physics *physics = (Physics *)luaL_checkudata(L, 2, "mt_b2_world");
     String name = luax_check_string(L, 3);
 
@@ -4701,12 +4697,6 @@ LUA_FUNCTION(__neko_bind_vfs_read_file) {
     }
 }
 
-void __neko_lua_bug(const_str message) { NEKO_INFO("[lua] %s", message); }
-void __neko_lua_info(const_str message) { NEKO_INFO("[lua] %s", message); }
-void __neko_lua_trace(const_str message) { NEKO_INFO("[lua] %s", message); }
-void __neko_lua_error(const_str message) { NEKO_ERROR("[lua] %s", message); }
-void __neko_lua_warn(const_str message) { NEKO_WARN("[lua] %s", message); }
-
 // 返回包含路径和 isDirectory 对的表
 int __neko_ls(lua_State *L) {
     if (!lua_isstring(L, 1)) {
@@ -4742,12 +4732,6 @@ void neko_tolua_boot(const_str f, const_str output);
 
 inline void neko_register_common(lua_State *L) {
 
-    neko::lua_bind::bind("log_trace", &__neko_lua_trace);
-    neko::lua_bind::bind("log_debug", &__neko_lua_bug);
-    neko::lua_bind::bind("log_error", &__neko_lua_error);
-    neko::lua_bind::bind("log_warn", &__neko_lua_warn);
-    neko::lua_bind::bind("log_info", &__neko_lua_info);
-    // neko::lua_bind::bind("neko_rand", &neko_rand_xorshf32);
     neko::lua_bind::bind("neko_dolua", &__neko_dolua);
 
     neko::lua_bind::bind("neko_tolua_gen", +[](const_str f, const_str o) { neko_tolua_boot(f, o); });
@@ -4984,7 +4968,6 @@ static int ref_set(lua_State *L) {
     ref.set(L, r);
     return 1;
 }
-
 
 LUA_FUNCTION(__neko_bind_w_f) {
     lua_getfield(L, LUA_REGISTRYINDEX, W_LUA_REGISTRY_CONST::W_CORE);
@@ -5231,7 +5214,7 @@ DEFINE_LUAOPEN(core)
 
 DEFINE_LUAOPEN_EXTERN(inspector)
 DEFINE_LUAOPEN_EXTERN(luadb)
-DEFINE_LUAOPEN_EXTERN(prefab)
+// DEFINE_LUAOPEN_EXTERN(prefab)
 DEFINE_LUAOPEN_EXTERN(struct)
 DEFINE_LUAOPEN_EXTERN(struct_test)
 DEFINE_LUAOPEN_EXTERN(unittest)
@@ -5451,7 +5434,7 @@ static int open_neko(lua_State *L) {
             {"tilemap_load", neko_tilemap_load},
             {"pak_load", neko_pak_load},
             {"b2_world", neko_b2_world},
-            {"ecs_create", neko_ecs_create_world},
+            // {"ecs_create", neko_ecs_create_world},
 
             {nullptr, nullptr},
     };
@@ -5496,8 +5479,9 @@ void open_neko_api(lua_State *L) {
 
     register_neko_api_core_open(L);
 
-    neko::lua::preload_module(L);   // 新的模块系统
-    neko::lua::package_preload(L);  // 新的模块系统
+    neko::lua::preload_module(L);
+    neko::lua::package_preload(L);
+    neko::lua::package_preload_embed(L);
 
     neko_register_common(L);
     neko_w_init();
@@ -5506,3 +5490,15 @@ void open_neko_api(lua_State *L) {
     const_str str = "table.insert(package.searchers, 2, __neko_loader) \n";
     luaL_dostring(L, str);
 }
+
+namespace neko::lua {
+void package_preload(lua_State *L) {
+    luaL_Reg preloads[] = {
+            {"__neko.spritepack", open_tools_spritepack},
+            {"__neko.filesys", open_filesys},
+    };
+    for (auto m : preloads) {
+        luax_package_preload(L, m.name, m.func);
+    }
+}
+}  // namespace neko::lua

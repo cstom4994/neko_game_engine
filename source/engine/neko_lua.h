@@ -92,6 +92,14 @@ String luax_opt_string(lua_State *L, i32 arg, String def);
 int luax_string_oneof(lua_State *L, std::initializer_list<String> haystack, String needle);
 void luax_new_class(lua_State *L, const char *mt_name, const luaL_Reg *l);
 
+inline void luax_package_preload(lua_State *L, const_str name, lua_CFunction function) {
+    lua_getglobal(L, "package");
+    lua_getfield(L, -1, "preload");
+    lua_pushcfunction(L, function);
+    lua_setfield(L, -2, name);
+    lua_pop(L, 2);
+}
+
 enum {
     LUAX_UD_TNAME = 1,
     LUAX_UD_PTR_SIZE = 2,
@@ -190,12 +198,5 @@ struct neko_luaref {
     void get(lua_State *L, int ref);
     void set(lua_State *L, int ref);
 };
-
-// extern impl
-extern int luaopen_enet(lua_State *l);
-
-extern int register_neko_api_core_open(lua_State *L);
-
-extern int luaopen_imgui(lua_State *L);
 
 #endif

@@ -3,19 +3,13 @@
 #include <array>
 #include <new>
 
-#include "vendor/luaalloc.h"
 #include "neko_api.hpp"
 #include "neko_app.h"
 #include "neko_base.h"
 #include "neko_lua.h"
 #include "neko_os.h"
 #include "neko_prelude.h"
-
-extern "C" {
-#include <lauxlib.h>
-#include <lua.h>
-#include <lualib.h>
-}
+#include "vendor/luaalloc.h"
 
 #if defined(NEKO_IS_WIN32)
 #include <direct.h>

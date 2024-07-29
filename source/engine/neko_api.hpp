@@ -9,7 +9,8 @@ void open_luasocket(lua_State *L);
 
 namespace neko::lua {
 void package_preload(lua_State *L);
-}
+void package_preload_embed(lua_State *L);
+}  // namespace neko::lua
 
 enum W_LUA_UPVALUES { NEKO_W_COMPONENTS_NAME = 1, NEKO_W_UPVAL_N };
 
@@ -238,3 +239,9 @@ static_assert(std::is_trivially_copyable_v<neko_w_lua_variant<f64>>);
 #define CVAR_REF(name, T)              \
     neko_w_lua_variant<T> name(#name); \
     name.sync()
+
+// extern impl
+extern int register_neko_api_core_open(lua_State *L);
+extern int luaopen_imgui(lua_State *L);
+int open_tools_spritepack(lua_State *L);
+int open_filesys(lua_State *L);

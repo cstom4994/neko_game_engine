@@ -6,11 +6,8 @@
 
 #include "neko_asset.h"
 #include "neko_base.h"
+#include "neko_lua.h"
 #include "neko_prelude.h"
-
-extern "C" {
-#include <lauxlib.h>
-}
 
 struct Renderer2D {
     Matrix4 matrices[32];
@@ -309,7 +306,7 @@ float draw_font_wrapped(FontFamily *font, float size, float x, float y, String t
     return y - size;
 }
 
-void draw_tilemap(const map_ldtk *tm) {
+void draw_tilemap(const MapLdtk *tm) {
     PROFILE_FUNC();
 
     sgl_enable_texture();

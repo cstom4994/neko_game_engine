@@ -1,6 +1,23 @@
 -- game db
 all = {
-    Skeleton = [[
+    Skeleton = {{
+        this_is_neko_prefab_file = 1,
+        engine_version = 101,
+        file = {
+            type = "npc",
+            fgd = {
+                typename = "@GameBase"
+            }
+        }
+    }, {
+        npc_name = "Skeleton",
+        sprite = "assets/enemy.ase",
+        facing_left = false,
+        was_hit = false,
+        hp = 1,
+        spring = true
+    }},
+    SkeletonPrefab = [[
 ---
 this_is_neko_prefab_file : 1
 engine_version : 101
