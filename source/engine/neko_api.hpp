@@ -242,6 +242,6 @@ static_assert(std::is_trivially_copyable_v<neko_w_lua_variant<f64>>);
 
 // extern impl
 extern int register_neko_api_core_open(lua_State *L);
-extern int luaopen_imgui(lua_State *L);
-int open_tools_spritepack(lua_State *L);
-int open_filesys(lua_State *L);
+extern int open_imgui(lua_State *L);
+extern int open_tools_spritepack(lua_State *L);
+extern int open_filesys(lua_State *L);

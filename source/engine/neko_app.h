@@ -8,6 +8,8 @@
 #include "neko_api_core.h"
 #include "neko_asset.h"
 #include "neko_base.h"
+#include "neko_component.h"
+#include "neko_ecs.h"
 #include "neko_os.h"
 #include "neko_sound.h"
 
@@ -34,7 +36,7 @@ struct App {
 
     // LuaAlloc *LA;
     lua_State *L;
-    // ecs_world_t *ECS;
+    ecs_t *ECS;
 
     AppTime time;
 
@@ -70,6 +72,8 @@ struct App {
 
     neko_api_BlendMode blendmode;
 
+    int g_lua_callbacks_table_ref;  // LUA_NOREF
+
     float current_color[4];
 
     ShaderItem *shader;  // ShaderItem (internal)
@@ -91,7 +95,11 @@ inline void fatal_error(String str) {
     }
 }
 
-// inline ecs_world_t *&ENGINE_ECS() { return g_app->ECS; }
 inline lua_State *&ENGINE_LUA() { return g_app->L; }
+inline ecs_t *&ENGINE_ECS() { return g_app->ECS; }
 
 i32 neko_buildnum(void);
+
+ECS_COMPONENT_EXTERN(pos_t);
+ECS_COMPONENT_EXTERN(vel_t);
+ECS_COMPONENT_EXTERN(rect_t);

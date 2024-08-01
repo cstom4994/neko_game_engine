@@ -162,8 +162,6 @@ uint64_t this_thread_id() { return 0; }
 
 #endif  // NEKO_IS_WEB
 
-i32 os_change_dir(const char* path) { return chdir(path); }
-
 String os_program_dir() {
     String str = os_program_path();
     char* buf = str.data;
@@ -367,13 +365,6 @@ void DebugAllocator::dump_allocs() {
         allocs++;
     }
     neko_println("  --- %d allocation(s) with %lld bytes ---", allocs, alloc_size);
-}
-
-void* __neko_mem_safe_calloc(size_t count, size_t element_size, const char* file, int line) {
-    size_t size = count * element_size;
-    void* mem = g_allocator->alloc(size, file, line);
-    memset(mem, 0, size);
-    return mem;
 }
 
 // Platform File IO

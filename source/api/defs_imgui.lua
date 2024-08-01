@@ -8,8 +8,8 @@ local status = {
 local meta = require "imgui_meta"
 meta.init(status, "../vendor/cimgui.json")
 
-local apis_file<close> = assert(io.open(GenDir .. "/gen/imgui_lua_funcs.cpp", "wb"))
-local docs_file<close> = assert(io.open(GenDir .. "/gen/imgui.lua", "wb"))
+local apis_file<close> = assert(io.open(GenDir .. "/gen/gen_imgui_lua_binding.cpp", "wb"))
+local docs_file<close> = assert(io.open(GenDir .. "/gen/gen_imgui.lua", "wb"))
 status.apis_file = apis_file
 status.docs_file = docs_file
 

@@ -83,7 +83,7 @@ struct PhysicsContactListener : public b2ContactListener {
     }
 };
 
-Physics physics_world_make(lua_State *L, b2Vec2 gravity, float meter) {
+Physics physics_world_make(lua_State *L, b2Vec2 gravity, f32 meter) {
     Physics physics = {};
     physics.world = new b2World(gravity);
     physics.meter = meter;
@@ -224,7 +224,7 @@ void physics_push_userdata(lua_State *L, u64 ptr) {
     }
 }
 
-void draw_fixtures_for_body(b2Body *body, float meter) {
+void draw_fixtures_for_body(b2Body *body, f32 meter) {
     for (b2Fixture *f = body->GetFixtureList(); f != nullptr; f = f->GetNext()) {
         switch (f->GetType()) {
             case b2Shape::e_circle: {
@@ -268,7 +268,7 @@ static int mt_b2_fixture_friction(lua_State *L) {
     Physics *physics = (Physics *)luaL_checkudata(L, 1, "mt_b2_fixture");
     b2Fixture *fixture = physics->fixture;
 
-    float friction = fixture->GetFriction();
+    f32 friction = fixture->GetFriction();
     lua_pushnumber(L, friction);
     return 1;
 }
@@ -277,7 +277,7 @@ static int mt_b2_fixture_restitution(lua_State *L) {
     Physics *physics = (Physics *)luaL_checkudata(L, 1, "mt_b2_fixture");
     b2Fixture *fixture = physics->fixture;
 
-    float restitution = fixture->GetRestitution();
+    f32 restitution = fixture->GetRestitution();
     lua_pushnumber(L, restitution);
     return 1;
 }
@@ -286,7 +286,7 @@ static int mt_b2_fixture_is_sensor(lua_State *L) {
     Physics *physics = (Physics *)luaL_checkudata(L, 1, "mt_b2_fixture");
     b2Fixture *fixture = physics->fixture;
 
-    float sensor = fixture->IsSensor();
+    f32 sensor = fixture->IsSensor();
     lua_pushnumber(L, sensor);
     return 1;
 }
@@ -295,7 +295,7 @@ static int mt_b2_fixture_set_friction(lua_State *L) {
     Physics *physics = (Physics *)luaL_checkudata(L, 1, "mt_b2_fixture");
     b2Fixture *fixture = physics->fixture;
 
-    float friction = luaL_checknumber(L, 2);
+    f32 friction = luaL_checknumber(L, 2);
     fixture->SetFriction(friction);
     return 0;
 }
@@ -304,7 +304,7 @@ static int mt_b2_fixture_set_restitution(lua_State *L) {
     Physics *physics = (Physics *)luaL_checkudata(L, 1, "mt_b2_fixture");
     b2Fixture *fixture = physics->fixture;
 
-    float restitution = luaL_checknumber(L, 2);
+    f32 restitution = luaL_checknumber(L, 2);
     fixture->SetRestitution(restitution);
     return 0;
 }
@@ -390,9 +390,9 @@ static b2FixtureDef b2_fixture_def(lua_State *L, i32 arg) {
 
     b2FixtureDef def = {};
     def.isSensor = sensor;
-    def.density = (float)density;
-    def.friction = (float)friction;
-    def.restitution = (float)restitution;
+    def.density = (f32)density;
+    def.friction = (f32)friction;
+    def.restitution = (f32)restitution;
     def.userData.pointer = (u64)pud;
     return def;
 }
@@ -408,10 +408,10 @@ static int mt_b2_body_make_box_fixture(lua_State *L) {
     lua_Number h = luax_number_field(L, 2, "h");
     lua_Number angle = luax_opt_number_field(L, 2, "angle", 0);
 
-    b2Vec2 pos = {(float)x / physics->meter, (float)y / physics->meter};
+    b2Vec2 pos = {(f32)x / physics->meter, (f32)y / physics->meter};
 
     b2PolygonShape box = {};
-    box.SetAsBox((float)w / physics->meter, (float)h / physics->meter, pos, angle);
+    box.SetAsBox((f32)w / physics->meter, (f32)h / physics->meter, pos, angle);
     fixture_def.shape = &box;
 
     Physics p = physics_weak_copy(physics);
@@ -432,7 +432,7 @@ static int mt_b2_body_make_circle_fixture(lua_State *L) {
 
     b2CircleShape circle = {};
     circle.m_radius = radius / physics->meter;
-    circle.m_p = {(float)x / physics->meter, (float)y / physics->meter};
+    circle.m_p = {(f32)x / physics->meter, (f32)y / physics->meter};
     fixture_def.shape = &circle;
 
     Physics p = physics_weak_copy(physics);
@@ -492,8 +492,8 @@ static int mt_b2_body_apply_force(lua_State *L) {
     Physics *physics = (Physics *)luaL_checkudata(L, 1, "mt_b2_body");
     b2Body *body = physics->body;
 
-    float x = luaL_checknumber(L, 2);
-    float y = luaL_checknumber(L, 3);
+    f32 x = luaL_checknumber(L, 2);
+    f32 y = luaL_checknumber(L, 3);
 
     body->ApplyForceToCenter({x / physics->meter, y / physics->meter}, false);
     return 0;
@@ -503,8 +503,8 @@ static int mt_b2_body_apply_impulse(lua_State *L) {
     Physics *physics = (Physics *)luaL_checkudata(L, 1, "mt_b2_body");
     b2Body *body = physics->body;
 
-    float x = luaL_checknumber(L, 2);
-    float y = luaL_checknumber(L, 3);
+    f32 x = luaL_checknumber(L, 2);
+    f32 y = luaL_checknumber(L, 3);
 
     body->ApplyLinearImpulseToCenter({x / physics->meter, y / physics->meter}, false);
     return 0;
@@ -514,8 +514,8 @@ static int mt_b2_body_set_position(lua_State *L) {
     Physics *physics = (Physics *)luaL_checkudata(L, 1, "mt_b2_body");
     b2Body *body = physics->body;
 
-    float x = luaL_checknumber(L, 2);
-    float y = luaL_checknumber(L, 3);
+    f32 x = luaL_checknumber(L, 2);
+    f32 y = luaL_checknumber(L, 3);
 
     body->SetTransform({x / physics->meter, y / physics->meter}, body->GetAngle());
     return 0;
@@ -525,8 +525,8 @@ static int mt_b2_body_set_velocity(lua_State *L) {
     Physics *physics = (Physics *)luaL_checkudata(L, 1, "mt_b2_body");
     b2Body *body = physics->body;
 
-    float x = luaL_checknumber(L, 2);
-    float y = luaL_checknumber(L, 3);
+    f32 x = luaL_checknumber(L, 2);
+    f32 y = luaL_checknumber(L, 3);
 
     body->SetLinearVelocity({x / physics->meter, y / physics->meter});
     return 0;
@@ -536,7 +536,7 @@ static int mt_b2_body_set_angle(lua_State *L) {
     Physics *physics = (Physics *)luaL_checkudata(L, 1, "mt_b2_body");
     b2Body *body = physics->body;
 
-    float angle = luaL_checknumber(L, 2);
+    f32 angle = luaL_checknumber(L, 2);
 
     body->SetTransform(body->GetPosition(), angle);
     return 0;
@@ -546,7 +546,7 @@ static int mt_b2_body_set_linear_damping(lua_State *L) {
     Physics *physics = (Physics *)luaL_checkudata(L, 1, "mt_b2_body");
     b2Body *body = physics->body;
 
-    float damping = luaL_checknumber(L, 2);
+    f32 damping = luaL_checknumber(L, 2);
 
     body->SetLinearDamping(damping);
     return 0;
@@ -566,9 +566,9 @@ static int mt_b2_body_set_transform(lua_State *L) {
     Physics *physics = (Physics *)luaL_checkudata(L, 1, "mt_b2_body");
     b2Body *body = physics->body;
 
-    float x = luaL_checknumber(L, 2);
-    float y = luaL_checknumber(L, 3);
-    float angle = luaL_checknumber(L, 4);
+    f32 x = luaL_checknumber(L, 2);
+    f32 y = luaL_checknumber(L, 3);
+    f32 angle = luaL_checknumber(L, 4);
 
     body->SetTransform({x / physics->meter, y / physics->meter}, angle);
     return 0;
@@ -633,7 +633,7 @@ static int mt_b2_world_step(lua_State *L) {
     lua_Integer vel_iters = luaL_optinteger(L, 3, 6);
     lua_Integer pos_iters = luaL_optinteger(L, 4, 2);
 
-    physics->world->Step((float)dt, (i32)vel_iters, (i32)pos_iters);
+    physics->world->Step((f32)dt, (i32)vel_iters, (i32)pos_iters);
     return 0;
 }
 
@@ -648,8 +648,8 @@ static b2BodyDef b2_body_def(lua_State *L, i32 arg, Physics *physics) {
     PhysicsUserData *pud = physics_userdata(L);
 
     b2BodyDef def = {};
-    def.position.Set((float)x / physics->meter, (float)y / physics->meter);
-    def.linearVelocity.Set((float)vx / physics->meter, (float)vy / physics->meter);
+    def.position.Set((f32)x / physics->meter, (f32)y / physics->meter);
+    def.linearVelocity.Set((f32)vx / physics->meter, (f32)vy / physics->meter);
     def.angle = angle;
     def.linearDamping = linear_damping;
     def.fixedRotation = fixed_rotation;

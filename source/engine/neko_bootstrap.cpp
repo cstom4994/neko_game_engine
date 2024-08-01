@@ -1353,6 +1353,10 @@ static void cleanup() {
     neko_println("see ya");
 }
 
+ECS_COMPONENT_DECL(pos_t);
+ECS_COMPONENT_DECL(vel_t);
+ECS_COMPONENT_DECL(rect_t);
+
 static void neko_setup_w() {
     PROFILE_FUNC();
 
@@ -1363,14 +1367,13 @@ static void neko_setup_w() {
 
     open_neko_api(L);
 
-#if 0
-    ENGINE_ECS() = ecs_init();
-    ECS_IMPORT(ENGINE_ECS(), FlecsLua);
-    ecs_lua_set_state(ENGINE_ECS(), ENGINE_LUA());
-#endif
+    ENGINE_ECS() = ecs_init(ENGINE_LUA());
 
-    // PRELOAD("enet", luaopen_enet);  // test
-    PRELOAD("__neko.imgui", luaopen_imgui);  // test
+    ECS_COMPONENT_DEFINE(pos_t, NULL, NULL);
+    ECS_COMPONENT_DEFINE(vel_t, NULL, NULL);
+    ECS_COMPONENT_DEFINE(rect_t, NULL, NULL);
+
+    g_app->g_lua_callbacks_table_ref = LUA_NOREF;
 
     neko::lua::luax_run_bootstrap(L);
 
@@ -1411,11 +1414,6 @@ static void load_all_lua_scripts(lua_State *L) {
 
 App *g_app;
 Allocator *g_allocator;
-
-void do_test() {
-    extern void test_containers();
-    // test_containers();
-}
 
 sapp_desc sokol_main(int argc, char **argv) {
     g_init_mtx.make();
@@ -1459,7 +1457,7 @@ sapp_desc sokol_main(int argc, char **argv) {
 #endif
 
     neko_setup_w();
-    lua_State *L = g_app->L;
+    lua_State *L = ENGINE_LUA();
 
 #if defined(_DEBUG)
     MountResult mount = vfs_mount(NEKO_PACKS::GAMEDATA, "./gamedir");

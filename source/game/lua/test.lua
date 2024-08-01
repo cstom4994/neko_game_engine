@@ -78,32 +78,6 @@ draw_imgui = function(dt)
         Inspector.breakpoint()
     end
 
-    if ImGui.Button("luaref") then
-        local ref = Core.ref_init()
-        assert(Core.ref_ref(ref) == 2)
-        local lst = {1, 2, 3, 4, 5, 1.2345, {}, "ok"}
-        local r = {}
-        for i, v in ipairs(lst) do
-            r[i] = Core.ref_ref(ref, v)
-        end
-        for i, v in ipairs(lst) do
-            assert(v == Core.ref_get(ref, r[i]))
-            print(v, Core.ref_get(ref, r[i]))
-        end
-        r = {}
-        for i = 1, 10 do
-            r[i] = Core.ref_ref(ref, i)
-        end
-        for i = 1, 10 do
-            Core.ref_set(ref, r[i], i * 2)
-        end
-        for i = 1, 10 do
-            assert(i * 2 == Core.ref_get(ref, r[i]))
-            print(i * 2, Core.ref_get(ref, r[i]))
-        end
-        Core.ref_close(ref)
-    end
-
     if ImGui.Button("sound") then
 
         local music = neko.sound_load(neko.file_path("Run_It_Might_Be_Somebody.wav"))
@@ -169,35 +143,6 @@ draw_imgui = function(dt)
     -- ImGui.Checkbox(neko.conf.cvar.shader_inspect)
 
     ImGui.Separator()
-
-    if ImGui.Button("test_ecs") then
-
-        for i = 1, 10, 1 do
-            local w = Core.ecs_f()
-            local e = w:create_ent()
-            w:attach(e, "position_t", "velocity_t")
-            print(e)
-            local tb, ss = w:get_com()
-            print(ss)
-            dump_func(tb)
-
-            local hash = neko_hash_str("bounds_t")
-            if tb["comp_map"][hash] then
-                print(tb["comp_map"][hash].id)
-            else
-                print("component not found")
-            end
-        end
-
-        -- for i = 1, 1024 * 256, 1 do
-        --     local w = Core.ecs_f()
-        --     local e = w:create_ent()
-        --     w:attach(e, "position_t", "velocity_t")
-        --     -- print(e)
-        -- end
-
-        collectgarbage()
-    end
 
     if ImGui.Button("thread") then
         local c1 = neko.make_channel 'c1'
@@ -304,8 +249,8 @@ function random_spawn_npc(n)
     end
 end
 
-function hit_player(dehp)
-    player_hp = player_hp - dehp
+function hit_player(demage)
+    player.hp = player.hp - demage
 end
 
 -- Test
@@ -423,21 +368,17 @@ function UnitTest()
                 tools.imgpack("gamedir/assets/pack_output.png", 256, 256, rects)
             end)
 
-            it('feature_c_struct_bridge', function()
-                local csb = common.CStructBridge()
-
-                local test_custom_sprite = {}
-
-                expect(csb.generate_array_type("__lua_quad_vdata_t", "float", 16)).to.be.a('table')
-
-                local v = {-0.5, -0.5, 0.0, 0.0, 0.5, -0.5, 1.0, 0.0, -0.5, 0.5, 0.0, 1.0, 0.5, 0.5, 1.0, 1.0}
-                test_custom_sprite.vdata = luastruct_test.udata(
-                    csb.s["__lua_quad_vdata_t"]:size("struct __lua_quad_vdata_t"))
-
-                for i, v in ipairs(v) do
-                    csb.setter("__lua_quad_vdata_t", "v" .. i)(test_custom_sprite.vdata, v)
-                end
-            end)
+            -- it('feature_c_struct_bridge', function()
+            --     local csb = common.CStructBridge()
+            --     local test_custom_sprite = {}
+            --     expect(csb.generate_array_type("__lua_quad_vdata_t", "float", 16)).to.be.a('table')
+            --     local v = {-0.5, -0.5, 0.0, 0.0, 0.5, -0.5, 1.0, 0.0, -0.5, 0.5, 0.0, 1.0, 0.5, 0.5, 1.0, 1.0}
+            --     test_custom_sprite.vdata = luastruct_test.udata(
+            --         csb.s["__lua_quad_vdata_t"]:size("struct __lua_quad_vdata_t"))
+            --     for i, v in ipairs(v) do
+            --         csb.setter("__lua_quad_vdata_t", "v" .. i)(test_custom_sprite.vdata, v)
+            --     end
+            -- end)
 
             it('feature_lua_filesys', function()
                 local filesys = require("__neko.filesys")
@@ -457,11 +398,97 @@ function UnitTest()
                 expect(Test.TestBinding_1()).to.be.truthy()
             end)
 
-            it('feature_test_ecs_1', function()
-                expect(Test.TestEcs()).to.be.truthy()
+            it('feature_luaref', function()
+                local ref = Core.ref_init()
+                assert(Core.ref_ref(ref) == 2)
+                local lst = {1, 2, 3, 4, 5, 1.2345, {}, "ok"}
+                local r = {}
+                for i, v in ipairs(lst) do
+                    r[i] = Core.ref_ref(ref, v)
+                end
+                for i, v in ipairs(lst) do
+                    assert(v == Core.ref_get(ref, r[i]))
+                    print(v, Core.ref_get(ref, r[i]))
+                end
+                r = {}
+                for i = 1, 10 do
+                    r[i] = Core.ref_ref(ref, i)
+                end
+                for i = 1, 10 do
+                    Core.ref_set(ref, r[i], i * 2)
+                end
+                for i = 1, 10 do
+                    assert(i * 2 == Core.ref_get(ref, r[i]))
+                    print(i * 2, Core.ref_get(ref, r[i]))
+                end
+                Core.ref_close(ref)
             end)
 
-            it('feature_test_game_attr_parser', function()
+            it('feature_pak', function()
+                local test_pack, test_handle, test_items
+
+                local test_pack_buildnum, test_pack_item_count = Core.pak_info("fgd.pack")
+                print("pack_info", test_pack_buildnum, test_pack_item_count)
+                test_pack = neko.pak_load("test_pack_handle", "fgd.pack")
+                test_handle = test_pack:assets_load("gamedir/assets/test_1.fgd")
+                test_items = test_pack:items()
+                print(inspect(test_items), type(test_handle))
+            end)
+
+            it('feature_ecs', function()
+
+                expect(Test.TestEcs()).to.be.truthy()
+
+                local w = Core.ecs_f()
+
+                local csb = w:csb()
+
+                csb.s["haha_t"] = csb.struct([[
+                    struct haha_t {
+                        int sss;
+                        int i2;
+                    };
+                ]])
+
+                local haha_t_size = csb.size("haha_t")
+                print("haha_t_size", haha_t_size)
+
+                local comp1 = w:component("haha_t", haha_t_size)
+
+                assert(w:component_id("haha_t") == comp1)
+
+                local tb, ss = w:get_com()
+                print(ss, inspect(tb))
+
+                local sys1 = w:system("haha_system_1", function(ent_ct, name)
+                    print("update 1", ent_ct, comp1, name)
+                    local ptr_haha = w:get(ent_ct, comp1)
+                    print(ptr_haha, csb.getter("haha_t", "sss")(ptr_haha))
+                end, function(ent, name)
+                    print("add 1", ent, name)
+                end, function(ent, name)
+                    print("remove 1", ent, name)
+                end)
+
+                print("haha_system_1", inspect(sys1))
+
+                w:system_require_component(sys1, "pos_t", "vel_t", "haha_t")
+
+                for i = 1, 10, 1 do
+                    local e = w:create_ent()
+                    local ptr_pos, ptr_vel, ptr_haha = w:attach(e, "pos_t", "vel_t", "haha_t")
+                    print(inspect({ptr_pos, ptr_vel, ptr_haha}))
+                    csb.setter("haha_t", "sss")(ptr_haha, i * 100)
+                end
+
+                -- local e_iter = w:iter(true)
+                -- for e in e_iter do
+                --     print("ent", e)
+                -- end
+
+                local sys1_ret = w:system_run(sys1, 0.0)
+
+                print("sys1_ret", inspect(sys1_ret))
 
             end)
 

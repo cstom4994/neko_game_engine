@@ -63,11 +63,11 @@ struct lua_State;
 #define NEKO_UNUSED(x) (void)(sizeof(x))
 #endif
 
-#define NEKO_ASSERT(x, ...)                                                                                            \
-    do {                                                                                                               \
-        if (!(x)) {                                                                                                    \
-            neko_printf("assertion failed: (%s), function %s, file %s, line %d.\n", #x, __func__, __FILE__, __LINE__); \
-        }                                                                                                              \
+#define NEKO_ASSERT(x, ...)                                                                                                \
+    do {                                                                                                                   \
+        if (!(x)) {                                                                                                        \
+            neko_printf("    assertion failed: (%s), function %s, file %s, line %d.\n", #x, __func__, __FILE__, __LINE__); \
+        }                                                                                                                  \
     } while (0)
 
 #if defined(__cplusplus)

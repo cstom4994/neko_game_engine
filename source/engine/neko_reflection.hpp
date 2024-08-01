@@ -342,6 +342,7 @@ inline constexpr void struct_foreach_impl(T&& obj, Fields&& fields, F&& f, std::
     };
     // 逗号双层表达式 因为ff没有返回值则Is作为里层逗号表达式的结果
     auto _ = ((ff(std::integral_constant<size_t, Is>{}), Is), ...);
+    std::ignore = _;
 }
 
 template <typename T, typename F>

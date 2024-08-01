@@ -1,6 +1,4 @@
--- local test_pack, test_handle, test_items
 score = 0
-player_hp = 100
 game_tick = 0
 
 local debug_on = false
@@ -8,13 +6,6 @@ local debug_on = false
 function client_init()
 
     luainspector = Inspector.inspector_init()
-
-    -- local test_pack_buildnum, test_pack_item_count = Core.pak_info("fgd.pack")
-    -- print("pack_info", test_pack_buildnum, test_pack_item_count)
-    -- test_pack = neko.pak_load("test_pack_handle", "fgd.pack")
-    -- test_handle = test_pack:assets_load("gamedir/assets/test_1.fgd")
-    -- test_items = test_pack:items()
-    -- print(inspect(test_items), type(test_handle))
 
     -- music = neko.sound_load "assets/audio/placeDungeonGlassland_Field.wav"
     -- music:set_loop(true)
@@ -30,7 +21,7 @@ function client_init()
         sound_hitbow_1 = neko.sound_load "assets/audio/hitBow01.wav"
         sound_hitbow_2 = neko.sound_load "assets/audio/hitBow02.wav"
         sound_hitbow_3 = neko.sound_load "assets/audio/hitBow03.wav"
-        sound_hitbow_4 = neko.sound_load "assets/audio/hitBow04.wav"
+        -- sound_hitbow_4 = neko.sound_load "assets/audio/hitBow04.wav"
 
         -- shader_1 = neko_api.new_shader({
         --     uniforms = {
@@ -139,24 +130,26 @@ function client_frame(dt)
     end
 
     if neko.key_down "l" then
-        local v = {
-            id = "Npc",
-            x = 424,
-            y = 160
-        }
-        local mt = _G[v.id]
-        if mt ~= nil then
-            local obj = LocalGame.world:add(mt(v.x, v.y))
-            if v.id == "Player" then
-                player = obj
+        for i = 1, 2, 1 do
+            local v = {
+                id = "Npc",
+                x = 424,
+                y = 160
+            }
+            local mt = _G[v.id]
+            if mt ~= nil then
+                local obj = LocalGame.world:add(mt(v.x, v.y))
+                if v.id == "Player" then
+                    player = obj
+                end
+                -- print(v.id, v.x, v.y)
+            else
+                print("no " .. v.id .. " class exists")
             end
-            -- print(v.id, v.x, v.y)
-        else
-            print("no " .. v.id .. " class exists")
         end
     end
 
-    if game_tick % 2000 == 1 then
+    if game_tick % 400 == 1 then
         random_spawn_npc()
         print("生成怪物")
     end
@@ -204,7 +197,11 @@ function client_frame(dt)
     pixel_font:draw(("Hello, 世界23331!\nfps: %.2f (%.4f) tick: %d\nent: %d"):format(1 / dt, dt * 1000, game_tick,
         #LocalGame.world.by_id), 40, 80, 12)
 
-    pixel_font:draw(("分数: %d\n血量: %d"):format(score, player_hp), 40, 150, 28)
+    pixel_font:draw(("分数: %d\n血量: %d"):format(score, player.hp), 40, 150, 28)
+
+    if player.hp <= 0 then
+        pixel_font:draw("你死啦", neko.window_width() / 2 - 100, neko.window_height() / 2 - 40, 80)
+    end
 
     -- test_lui()
 

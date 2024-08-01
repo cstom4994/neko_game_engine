@@ -1042,7 +1042,7 @@ inline void TextFmt(T &&fmt, const Args &...args) {
 
 }  // namespace neko::imgui
 
-namespace neko::imgui_lua::util {
+namespace neko::imgui::util {
 
 struct TableInteger {
     const char *name;
@@ -1079,4 +1079,4 @@ void struct_gen(lua_State *L, const char *name, std::span<luaL_Reg> funcs, std::
 void flags_gen(lua_State *L, const char *name);
 void init(lua_State *L);
 
-}  // namespace neko::imgui_lua::util
+}  // namespace neko::imgui::util

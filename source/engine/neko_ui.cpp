@@ -7,10 +7,11 @@
 #include <string.h>
 #include <util/sokol_gl.h>
 
-#include "vendor/microui_atlas.inl"
 #include "neko_app.h"
 #include "neko_lua.h"
 #include "neko_prelude.h"
+#include "vendor/microui_atlas.inl"
+
 
 #define lui_push(stk, val)                                                          \
     do {                                                                            \
@@ -1385,11 +1386,11 @@ MUIRef *lua_lui_check_ref(lua_State *L, i32 arg, MUIRefKind kind) {
     return ref;
 }
 
-namespace neko::imgui_lua::wrap_ImGuiInputTextCallbackData {
+namespace neko::imgui::wrap_ImGuiInputTextCallbackData {
 void pointer(lua_State *L, ImGuiInputTextCallbackData &v);
 }
 
-namespace neko::imgui_lua::util {
+namespace neko::imgui::util {
 
 static lua_CFunction str_format = NULL;
 
@@ -1641,4 +1642,4 @@ void init(lua_State *L) {
     lua_pop(L, 2);
 }
 
-}  // namespace neko::imgui_lua::util
+}  // namespace neko::imgui::util

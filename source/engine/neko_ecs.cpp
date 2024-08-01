@@ -1,13 +1,13 @@
 
 #include "neko_ecs.h"
 
-#include "neko_lua.h"
+#include "engine/neko_app.h"
+#include "engine/neko_lua.h"
+#include "engine/neko_lua_wrap.h"
 
 /*=============================
 // ECS
 =============================*/
-
-#define MY_TABLE_KEY "my_integer_keyed_table"
 
 enum ECS_LUA_UPVALUES { NEKO_ECS_COMPONENTS_NAME = 1, NEKO_ECS_UPVAL_N };
 
@@ -749,16 +749,994 @@ int neko_ecs_create_world(lua_State* L) {
     return 1;
 }
 
+enum class TYPEID { f_int8, f_int16, f_int32, f_int64, f_uint8, f_uint16, f_uint32, f_uint64, f_bool, f_ptr, f_float, f_double, f_COUNT };
+
+#define TYPE_ID_(type) ((int)TYPEID::f_##type)
+
+static inline void set_int8(void* p, lua_Integer v) { *(int8_t*)p = (int8_t)v; }
+static inline void set_int16(void* p, lua_Integer v) { *(int16_t*)p = (int16_t)v; }
+static inline void set_int32(void* p, lua_Integer v) { *(int32_t*)p = (int32_t)v; }
+static inline void set_int64(void* p, lua_Integer v) { *(int64_t*)p = (int64_t)v; }
+static inline void set_uint8(void* p, lua_Integer v) { *(int8_t*)p = (uint8_t)v; }
+static inline void set_uint16(void* p, lua_Integer v) { *(int16_t*)p = (uint16_t)v; }
+static inline void set_uint32(void* p, lua_Integer v) { *(int32_t*)p = (uint32_t)v; }
+static inline void set_uint64(void* p, lua_Integer v) { *(int64_t*)p = (uint64_t)v; }
+static inline void set_float(void* p, lua_Number v) { *(float*)p = (float)v; }
+static inline void set_bool(void* p, int v) { *(int8_t*)p = v; }
+static inline void set_ptr(void* p, void* v) { *(void**)p = v; }
+static inline void set_double(void* p, lua_Number v) { *(float*)p = (double)v; }
+static inline int8_t get_int8(void* p) { return *(int8_t*)p; }
+static inline int16_t get_int16(void* p) { return *(int16_t*)p; }
+static inline int32_t get_int32(void* p) { return *(int32_t*)p; }
+static inline int64_t get_int64(void* p) { return *(int64_t*)p; }
+static inline uint8_t get_uint8(void* p) { return *(uint8_t*)p; }
+static inline uint16_t get_uint16(void* p) { return *(uint16_t*)p; }
+static inline uint32_t get_uint32(void* p) { return *(uint32_t*)p; }
+static inline uint64_t get_uint64(void* p) { return *(uint64_t*)p; }
+static inline void* get_ptr(void* p) { return *(void**)p; }
+static inline int get_bool(void* p) { return *(int8_t*)p; }
+static inline float get_float(void* p) { return *(float*)p; }
+static inline double get_double(void* p) { return *(double*)p; }
+
+static inline int get_stride(int type) {
+    switch ((TYPEID)type) {
+        case TYPEID::f_int8:
+            return sizeof(int8_t);
+        case TYPEID::f_int16:
+            return sizeof(int16_t);
+        case TYPEID::f_int32:
+            return sizeof(int32_t);
+        case TYPEID::f_int64:
+            return sizeof(int64_t);
+        case TYPEID::f_uint8:
+            return sizeof(uint8_t);
+        case TYPEID::f_uint16:
+            return sizeof(uint16_t);
+        case TYPEID::f_uint32:
+            return sizeof(uint32_t);
+        case TYPEID::f_uint64:
+            return sizeof(uint64_t);
+        case TYPEID::f_ptr:
+            return sizeof(void*);
+        case TYPEID::f_bool:
+            return sizeof(bool);
+        case TYPEID::f_float:
+            return sizeof(float);
+        case TYPEID::f_double:
+            return sizeof(double);
+        default:
+            return 0;
+    }
+}
+
+static int setter(lua_State* L, void* p, int type, int offset) {
+    p = (char*)p + offset * get_stride(type);
+    switch (type) {
+        case TYPE_ID_(int8):
+            set_int8(p, luaL_checkinteger(L, 2));
+            break;
+        case TYPE_ID_(int16):
+            set_int16(p, luaL_checkinteger(L, 2));
+            break;
+        case TYPE_ID_(int32):
+            set_int32(p, luaL_checkinteger(L, 2));
+            break;
+        case TYPE_ID_(int64):
+            set_int64(p, luaL_checkinteger(L, 2));
+            break;
+        case TYPE_ID_(uint8):
+            set_uint8(p, luaL_checkinteger(L, 2));
+            break;
+        case TYPE_ID_(uint16):
+            set_uint16(p, luaL_checkinteger(L, 2));
+            break;
+        case TYPE_ID_(uint32):
+            set_uint32(p, luaL_checkinteger(L, 2));
+            break;
+        case TYPE_ID_(uint64):
+            set_uint64(p, luaL_checkinteger(L, 2));
+            break;
+        case TYPE_ID_(bool):
+            set_bool(p, lua_toboolean(L, 2));
+            break;
+        case TYPE_ID_(ptr):
+            set_ptr(p, lua_touserdata(L, 2));
+            break;
+        case TYPE_ID_(float):
+            set_float(p, luaL_checknumber(L, 2));
+            break;
+        case TYPE_ID_(double):
+            set_double(p, luaL_checknumber(L, 2));
+            break;
+    }
+    return 0;
+}
+
+static inline int getter(lua_State* L, void* p, int type, int offset) {
+    p = (char*)p + offset * get_stride(type);
+    switch (type) {
+        case TYPE_ID_(int8):
+            lua_pushinteger(L, get_int8(p));
+            break;
+        case TYPE_ID_(int16):
+            lua_pushinteger(L, get_int16(p));
+            break;
+        case TYPE_ID_(int32):
+            lua_pushinteger(L, get_int32(p));
+            break;
+        case TYPE_ID_(int64):
+            lua_pushinteger(L, (lua_Integer)get_int64(p));
+            break;
+        case TYPE_ID_(uint8):
+            lua_pushinteger(L, get_int8(p));
+            break;
+        case TYPE_ID_(uint16):
+            lua_pushinteger(L, get_int16(p));
+            break;
+        case TYPE_ID_(uint32):
+            lua_pushinteger(L, get_int32(p));
+            break;
+        case TYPE_ID_(uint64):
+            lua_pushinteger(L, (lua_Integer)get_int64(p));
+            break;
+        case TYPE_ID_(bool):
+            lua_pushboolean(L, get_bool(p));
+            break;
+        case TYPE_ID_(ptr):
+            lua_pushlightuserdata(L, get_ptr(p));
+            break;
+        case TYPE_ID_(float):
+            lua_pushnumber(L, get_float(p));
+            break;
+        case TYPE_ID_(double):
+            lua_pushnumber(L, get_double(p));
+            break;
+    }
+    return 1;
+}
+
+#define CSB_FUNC(TYPE, OFF)                                                                                      \
+    static int get_##TYPE##_##OFF(lua_State* L) { return getter(L, lua_touserdata(L, 1), TYPE_ID_(TYPE), OFF); } \
+    static int set_##TYPE##_##OFF(lua_State* L) { return setter(L, lua_touserdata(L, 1), TYPE_ID_(TYPE), OFF); }
+
+#define CSB_OFFSET(TYPE)                                                                                                                            \
+    static int get_##TYPE##_offset(lua_State* L) { return getter(L, lua_touserdata(L, 1), TYPE_ID_(TYPE), lua_tointeger(L, lua_upvalueindex(1))); } \
+    static int set_##TYPE##_offset(lua_State* L) { return setter(L, lua_touserdata(L, 1), TYPE_ID_(TYPE), lua_tointeger(L, lua_upvalueindex(1))); }
+
+#define CSB(opt, TYPE)                                          \
+    static int opt##ter_func_##TYPE(lua_State* L, int offset) { \
+        switch (offset) {                                       \
+            case 0:                                             \
+                lua_pushcfunction(L, opt##_##TYPE##_0);         \
+                break;                                          \
+            case 1:                                             \
+                lua_pushcfunction(L, opt##_##TYPE##_1);         \
+                break;                                          \
+            case 2:                                             \
+                lua_pushcfunction(L, opt##_##TYPE##_2);         \
+                break;                                          \
+            case 3:                                             \
+                lua_pushcfunction(L, opt##_##TYPE##_3);         \
+                break;                                          \
+            case 4:                                             \
+                lua_pushcfunction(L, opt##_##TYPE##_4);         \
+                break;                                          \
+            case 5:                                             \
+                lua_pushcfunction(L, opt##_##TYPE##_5);         \
+                break;                                          \
+            case 6:                                             \
+                lua_pushcfunction(L, opt##_##TYPE##_6);         \
+                break;                                          \
+            case 7:                                             \
+                lua_pushcfunction(L, opt##_##TYPE##_7);         \
+                break;                                          \
+            default:                                            \
+                lua_pushinteger(L, offset);                     \
+                lua_pushcclosure(L, opt##_##TYPE##_offset, 1);  \
+                break;                                          \
+        }                                                       \
+        return 1;                                               \
+    }
+
+#define XX(TYPE)      \
+    CSB_FUNC(TYPE, 0) \
+    CSB_FUNC(TYPE, 1) \
+    CSB_FUNC(TYPE, 2) \
+    CSB_FUNC(TYPE, 3) \
+    CSB_FUNC(TYPE, 4) \
+    CSB_FUNC(TYPE, 5) \
+    CSB_FUNC(TYPE, 6) \
+    CSB_FUNC(TYPE, 7) \
+    CSB_OFFSET(TYPE)  \
+    CSB(get, TYPE)    \
+    CSB(set, TYPE)
+
+XX(float)
+XX(double)
+XX(int8)
+XX(int16)
+XX(int32)
+XX(int64)
+XX(uint8)
+XX(uint16)
+XX(uint32)
+XX(uint64)
+XX(bool)
+XX(ptr)
+
+#undef XX
+
+static inline int get_value(lua_State* L, int type, int offset) {
+    switch ((TYPEID)type) {
+        case TYPEID::f_int8:
+            getter_func_int8(L, offset);
+            break;
+        case TYPEID::f_int16:
+            getter_func_int16(L, offset);
+            break;
+        case TYPEID::f_int32:
+            getter_func_int32(L, offset);
+            break;
+        case TYPEID::f_int64:
+            getter_func_int64(L, offset);
+            break;
+        case TYPEID::f_uint8:
+            getter_func_uint8(L, offset);
+            break;
+        case TYPEID::f_uint16:
+            getter_func_uint16(L, offset);
+            break;
+        case TYPEID::f_uint32:
+            getter_func_uint32(L, offset);
+            break;
+        case TYPEID::f_uint64:
+            getter_func_uint64(L, offset);
+            break;
+        case TYPEID::f_bool:
+            getter_func_bool(L, offset);
+            break;
+        case TYPEID::f_ptr:
+            getter_func_ptr(L, offset);
+            break;
+        case TYPEID::f_float:
+            getter_func_float(L, offset);
+            break;
+        case TYPEID::f_double:
+            getter_func_double(L, offset);
+            break;
+        default:
+            return luaL_error(L, "Invalid type %d\n", type);
+    }
+    return 1;
+}
+
+static int getter_direct(lua_State* L) {
+    int type = luaL_checkinteger(L, 1);
+    if (type < 0 || type >= (int)TYPEID::f_COUNT) return luaL_error(L, "Invalid type %d", type);
+    int offset = luaL_checkinteger(L, 2);
+    int stride = get_stride(type);
+    if (offset % stride != 0) {
+        return luaL_error(L, "Invalid offset %d for type %d", offset, type);
+    }
+    offset /= stride;
+    return get_value(L, type, offset);
+}
+
+static inline int set_value(lua_State* L, int type, int offset) {
+    switch ((TYPEID)type) {
+        case TYPEID::f_int8:
+            setter_func_int8(L, offset);
+            break;
+        case TYPEID::f_int16:
+            setter_func_int16(L, offset);
+            break;
+        case TYPEID::f_int32:
+            setter_func_int32(L, offset);
+            break;
+        case TYPEID::f_int64:
+            setter_func_int64(L, offset);
+            break;
+        case TYPEID::f_uint8:
+            setter_func_uint8(L, offset);
+            break;
+        case TYPEID::f_uint16:
+            setter_func_uint16(L, offset);
+            break;
+        case TYPEID::f_uint32:
+            setter_func_uint32(L, offset);
+            break;
+        case TYPEID::f_uint64:
+            setter_func_uint64(L, offset);
+            break;
+        case TYPEID::f_bool:
+            setter_func_bool(L, offset);
+            break;
+        case TYPEID::f_ptr:
+            setter_func_ptr(L, offset);
+            break;
+        case TYPEID::f_float:
+            setter_func_float(L, offset);
+            break;
+        case TYPEID::f_double:
+            setter_func_double(L, offset);
+            break;
+        default:
+            return luaL_error(L, "Invalid type %d\n", type);
+    }
+    return 1;
+}
+
+static int setter_direct(lua_State* L) {
+    int type = luaL_checkinteger(L, 1);
+    if (type < 0 || type >= (int)TYPEID::f_COUNT) return luaL_error(L, "Invalid type %d", type);
+    int offset = luaL_checkinteger(L, 2);
+    int stride = get_stride(type);
+    if (offset % stride != 0) {
+        return luaL_error(L, "Invalid offset %d for type %d", offset, type);
+    }
+    offset /= stride;
+    return set_value(L, type, offset);
+}
+
+#define LUATYPEID(type, typen)                 \
+    lua_pushinteger(L, (int)TYPEID::f_##type); \
+    lua_setfield(L, -2, #typen);
+
+struct address_path {
+    uint8_t type;
+    uint8_t offset[1];
+};
+
+static const uint8_t* get_offset(const uint8_t* offset, size_t sz, int* output) {
+    if (sz == 0) return NULL;
+    if (offset[0] < 128) {
+        *output = offset[0];
+        return offset + 1;
+    }
+    int t = offset[0] & 0x7f;
+    size_t i;
+    int shift = 7;
+    for (i = 1; i < sz; i++) {
+        if (offset[i] < 128) {
+            t |= offset[i] << shift;
+            *output = t;
+            return offset + i + 1;
+        } else {
+            t |= (offset[i] & 0x7f) << shift;
+            shift += 7;
+        }
+    }
+    return NULL;
+}
+
+static void* address_ptr(lua_State* L, int* type, int* offset) {
+    size_t sz;
+    const uint8_t* buf = (const uint8_t*)lua_tolstring(L, lua_upvalueindex(1), &sz);
+    if (sz == 0 || buf[0] >= (int)TYPEID::f_COUNT) luaL_error(L, "Invalid type");
+    void** p = (void**)lua_touserdata(L, 1);
+    const uint8_t* endptr = buf + sz;
+    sz--;
+    const uint8_t* ptr = &buf[1];
+    for (;;) {
+        int off = 0;
+        ptr = get_offset(ptr, sz, &off);
+        if (ptr == NULL) luaL_error(L, "Invalid offset");
+        sz = endptr - ptr;
+        if (sz == 0) {
+            *type = buf[0];
+            *offset = off;
+            return p;
+        } else {
+            p += off;
+            if (*p == NULL) return NULL;
+            p = (void**)*p;
+        }
+    }
+}
+
+static int get_indirect(lua_State* L) {
+    int type;
+    int offset;
+    void* p = address_ptr(L, &type, &offset);
+    if (p == NULL) return 0;
+    return getter(L, p, type, offset);
+}
+
+static int set_indirect(lua_State* L) {
+    int type;
+    int offset;
+    void* p = address_ptr(L, &type, &offset);
+    if (p == NULL) return 0;
+    return setter(L, p, type, offset);
+}
+
+static void address(lua_State* L) {
+    int type = luaL_checkinteger(L, 1);
+    if (type < 0 || type >= (int)TYPEID::f_COUNT) luaL_error(L, "Invalid type %d", type);
+    int top = lua_gettop(L);
+    if (top <= 2) {
+        luaL_error(L, "Need two or more offsets");
+    }
+    luaL_Buffer b;
+    luaL_buffinit(L, &b);
+    luaL_addchar(&b, type);
+    int i;
+    for (i = 2; i <= top; i++) {
+        unsigned int offset = (unsigned int)luaL_checkinteger(L, i);
+        if (i != top) {
+            if (offset % sizeof(void*) != 0) luaL_error(L, "%d is not align to pointer", offset);
+            offset /= sizeof(void*);
+        } else {
+            int stride = get_stride(type);
+            if (offset % stride != 0) luaL_error(L, "%d is not align to %d", offset, stride);
+            offset /= stride;
+        }
+
+        if (offset < 128) {
+            luaL_addchar(&b, offset);
+        } else {
+            while (offset >= 128) {
+                luaL_addchar(&b, (char)(0x80 | (offset & 0x7f)));
+                offset >>= 7;
+            }
+            luaL_addchar(&b, offset);
+        }
+    }
+    luaL_pushresult(&b);
+}
+
+static int open_csb(lua_State* L) {
+
+    lua_newtable(L);
+    lua_pushcclosure(
+            L,
+            [](lua_State* L) {
+                int top = lua_gettop(L);
+                if (top <= 2) {
+                    getter_direct(L);
+                    setter_direct(L);
+                    return 2;
+                } else {
+                    address(L);
+                    int cmd = lua_gettop(L);
+                    lua_pushvalue(L, cmd);
+                    lua_pushcclosure(L, get_indirect, 1);
+                    lua_pushvalue(L, cmd);
+                    lua_pushcclosure(L, set_indirect, 1);
+                    return 2;
+                }
+            },
+            0);
+    lua_setfield(L, -2, "cstruct");
+
+    lua_pushcclosure(
+            L,
+            [](lua_State* L) {
+                if (!lua_isuserdata(L, 1)) return luaL_error(L, "Need userdata at 1");
+                char* p = (char*)lua_touserdata(L, 1);
+                size_t off = luaL_checkinteger(L, 2);
+                lua_pushlightuserdata(L, (void*)(p + off));
+                return 1;
+            },
+            0);
+    lua_setfield(L, -2, "offset");
+
+    lua_pushcclosure(
+            L,
+            [](lua_State* L) {
+                lua_newtable(L);
+                LUATYPEID(int8, int8_t);
+                LUATYPEID(int16, int16_t);
+                LUATYPEID(int32, int32_t);
+                LUATYPEID(int64, int64_t);
+                LUATYPEID(uint8, uint8_t);
+                LUATYPEID(uint16, uint16_t);
+                LUATYPEID(uint32, uint32_t);
+                LUATYPEID(uint64, uint64_t);
+                LUATYPEID(bool, bool);
+                LUATYPEID(ptr, ptr);
+                LUATYPEID(float, float);
+                LUATYPEID(double, double);
+                return 1;
+            },
+            0);
+    lua_setfield(L, -2, "typeid");
+
+    return 1;
+}
+
+static int luastruct_newudata(lua_State* L) {
+    size_t sz = luaL_checkinteger(L, 1);
+    lua_newuserdatauv(L, sz, 0);
+    return 1;
+}
+
+static int open_embed_luastruct_test(lua_State* L) {
+    luaL_checkversion(L);
+    luaL_Reg l[] = {
+            {"udata", luastruct_newudata},
+            {"NULL", NULL},
+            {NULL, NULL},
+    };
+    luaL_newlib(L, l);
+    lua_pushlightuserdata(L, NULL);
+    lua_setfield(L, -2, "NULL");
+    return 1;
+}
+
+static const_str csb_lua = R"lua(
+local CStructBridge = function()
+    local w = Core.ecs_f()
+    local core = w:csb_core()
+    local M = {}
+    local function parse_struct(code)
+        local nest = {}
+        local nest_n = 0
+        code = code:gsub("(%b{})", function(v)
+            nest_n = nest_n + 1
+            nest[nest_n] = v
+            return "{" .. nest_n .. "} "
+        end)
+        local names = {}
+        local lines = {}
+        local line_n = 0
+        for line in code:gmatch "%s*(.-)%s*;" do
+            line_n = line_n + 1
+            line = line:gsub("%s+", " ")
+            line = line:gsub(" ?%*%s*", " *")
+            local prefix, array = line:match "^(.-)%s*(%b[])$"
+            if array then
+                array = math.tointeger(array:match "%[(%d+)%]") or 0
+                line = prefix
+            end
+            local typestr, pointer, name = line:match "^(.-) (%**)([_%w]+)$"
+            assert(typestr, line)
+            local type_prefix, subtype = typestr:match "^([%w_]+)%s+(.+)"
+            if type_prefix == "struct" or type_prefix == "union" then
+                typestr = type_prefix
+                local nesttypeid = subtype:match "^{(%d+)}$"
+                if nesttypeid then
+                    local nestcontent = assert(nest[tonumber(nesttypeid)]):match "^{(.*)}$"
+                    subtype = parse_struct(nestcontent)
+                    subtype.type = type_prefix
+                end
+            end
+            if pointer == "" then
+                pointer = nil
+            end
+            local t = {
+                array = array,
+                type = typestr,
+                subtype = subtype,
+                pointer = pointer,
+                name = name
+            }
+            assert(names[name] == nil, name)
+            names[name] = true
+            lines[line_n] = t
+        end
+
+        return lines
+    end
+
+    local function parse(what, code, types)
+        for typename, content in code:gmatch(what .. "%s+([_%w]+)%s*(%b{})%s*;") do
+            assert(types[typename] == nil)
+            local s = parse_struct(content:match "^{%s*(.-)%s*}$")
+            s.type = what
+            s.name = what .. " " .. typename
+            types[s.name] = s
+        end
+    end
+
+    local buildin_types = (function(map)
+        local r = {}
+        for k, v in pairs(map) do
+            if type(k) == "number" then
+                r[v] = true
+            else
+                r[k] = v
+            end
+        end
+        return r
+    end) {
+        int = "int32_t",
+        short = "int16_t",
+        char = "int8_t",
+        ["unsigned char"] = "uint8_t",
+        ["unsigned short"] = "uint16_t",
+        ["unsigned int"] = "uint32_t",
+        "float",
+        "double",
+        "void",
+        "bool",
+        -- ["b"]= "bool",
+        "int8_t",
+        "int16_t",
+        "int32_t",
+        "int64_t",
+        "uint8_t",
+        "uint16_t",
+        "uint32_t",
+        "uint64_t",
+        ["i8"] = "int8_t",
+        ["i16"] = "int16_t",
+        ["i32"] = "int32_t",
+        ["i64"] = "int64_t",
+        ["u8"] = "uint8_t",
+        ["u16"] = "uint16_t",
+        ["u32"] = "uint32_t",
+        ["u64"] = "uint64_t"
+    }
+
+    local buildin_size = {
+        int8_t = 1,
+        int16_t = 2,
+        int32_t = 4,
+        int64_t = 8,
+        uint8_t = 1,
+        uint16_t = 2,
+        uint32_t = 4,
+        uint64_t = 8,
+        float = 4,
+        double = 8,
+        ptr = 8,
+        bool = 1
+    }
+
+    local buildin_id = core.typeid()
+
+    for k, v in pairs(buildin_types) do
+        if v ~= true then
+            buildin_size[k] = buildin_size[v]
+            buildin_id[k] = buildin_id[v]
+        end
+    end
+
+    local function check_types(types)
+        for k, t in pairs(types) do
+            for idx, f in ipairs(t) do
+                local typename = f.type
+                if typename == "struct" or typename == "union" then
+                    if type(f.subtype) == "string" then
+                        local fullname = typename .. " " .. f.subtype
+                        local subtype = types[fullname]
+                        if not subtype then
+                            error("Unknown " .. fullname)
+                        end
+                        assert(subtype.type == typename)
+                        f.subtype = subtype
+                    end
+                else
+                    if not buildin_types[typename] then
+                        error("Unknown " .. typename)
+                    end
+                end
+                if f.array == 0 and t[idx + 1] then
+                    error("Array " .. f.name .. "[] must be the last field")
+                end
+            end
+        end
+    end
+
+    local function calc_offset(types)
+        local solve
+
+        local function calc_align(t)
+            local align = 0
+            for _, f in ipairs(t) do
+                if f.pointer then
+                    f.size = buildin_size.ptr
+                    f.align = f.size
+                elseif f.subtype then
+                    local subtype = solve(f.subtype)
+                    f.size = subtype.size
+                    f.align = subtype.align
+                    if subtype.align > align then
+                        align = subtype.align
+                    end
+                else
+                    f.size = assert(buildin_size[f.type])
+                    f.align = f.size
+                    if f.align > align then
+                        align = f.align
+                    end
+                end
+                if f.array then
+                    f.size = f.size * f.array
+                end
+            end
+            return align
+        end
+
+        local function solve_struct(t)
+            t.align = calc_align(t)
+            local size = 0
+            for _, f in ipairs(t) do
+                if size % f.align ~= 0 then
+                    size = (size // f.align + 1) * f.align
+                end
+                f.offset = size
+                size = size + f.size
+            end
+            if size % t.align ~= 0 then
+                size = (size // t.align + 1) * t.align
+            end
+            t.size = size
+        end
+        local function solve_union(t)
+            t.align = align(t)
+            local size = 0
+            for _, f in ipairs(t) do
+                f.offset = 0
+                if f.size > size then
+                    size = f.size
+                end
+            end
+            t.size = size
+        end
+        do -- 解决局部函数
+            local unsolved = {}
+            local solved = {}
+            function solve(t)
+                local fullname = t.name
+                if fullname then
+                    if solved[fullname] then
+                        return solved[fullname]
+                    end
+                    assert(not unsolved[fullname])
+                    unsolved[fullname] = true
+                end
+
+                if t.type == "struct" then
+                    solve_struct(t)
+                else
+                    solve_union(t)
+                end
+
+                if fullname then
+                    solved[fullname] = t
+                    unsolved[fullname] = nil
+                end
+                return t
+            end
+        end
+
+        for k, t in pairs(types) do
+            solve(t)
+        end
+
+        local function solve_pointer_size(t)
+            for _, f in ipairs(t) do
+                if f.pointer then
+                    assert(f.pointer == "*")
+                    if f.subtype then
+                        f.pointer_size = f.subtype.size
+                    else
+                        f.pointer_size = buildin_size[f.type]
+                    end
+                end
+            end
+        end
+
+        for k, t in pairs(types) do
+            solve_pointer_size(t)
+        end
+    end
+
+    local function keys_lookup(t)
+        local keys = {}
+        for _, f in ipairs(t) do
+            keys[f.name] = f
+        end
+        t.keys = keys
+        return keys
+    end
+
+    local function find_key(t, key)
+        local keys = t.keys or keys_lookup(t)
+        return assert(keys[key], key)
+    end
+
+    local function gen_check(types, k)
+        local keys = {}
+        local n = 0
+        for name in k:gmatch "[^.]*" do
+            n = n + 1
+            keys[n] = name
+        end
+        local t = types[keys[1]]
+        if t == nil then
+            error(keys[1] .. " undefined")
+        end
+        local offset = {}
+        local last_offset = 0
+        local offset_n = 1
+        local i = 2
+        local typename
+        while i <= n do
+            local name = keys[i]
+            local array_name, array_index = name:match "(.+)%[(%d+)]$"
+            name = array_name or name
+
+            local f = find_key(t, name)
+            offset[offset_n] = last_offset + f.offset
+            if f.pointer then
+                assert(f.pointer == "*") -- todo: support "**"
+                offset_n = offset_n + 1
+                last_offset = 0
+                typename = "ptr"
+            elseif f.subtype then
+                last_offset = last_offset + f.offset
+                t = f.subtype
+                assert(i ~= n)
+            else
+                assert(i == n)
+                typename = f.type
+            end
+
+            if array_index then
+                local index = tonumber(array_index)
+                if f.pointer then
+                    offset[offset_n] = index * f.pointer_size
+                    offset_n = offset_n + 1
+                else
+                    last_offset = last_offset + index * f.size
+                    offset[offset_n] = last_offset
+                end
+            end
+
+            i = i + 1
+        end
+        local getter, setter = core.cstruct(buildin_id[typename], table.unpack(offset))
+        return {getter, setter}
+    end
+
+    local function check(types)
+        local function cache_check(self, k)
+            local v = gen_check(types, k)
+            self[k] = v
+            return v
+        end
+        return setmetatable({}, {
+            __index = cache_check
+        })
+    end
+
+    local methods = {};
+    methods.__index = methods
+
+    function methods:dump()
+        for _, s in pairs(self._types) do
+            print(s.name, "size", s.size, "align", s.align)
+            for _, f in ipairs(s) do
+                local array = ""
+                if f.array then
+                    array = "[" .. f.array .. "]"
+                end
+                local typename = f.type
+                if f.subtype then
+                    typename = f.subtype.name or ("nest " .. f.subtype.type)
+                end
+                print(string.format("\t%3d : %s %s%s%s", f.offset, typename, (f.pointer or ""), f.name, array))
+            end
+        end
+    end
+
+    function methods:size(name)
+        local t = assert(self._types[name])
+        return t.size
+    end
+
+    function methods:getter(name)
+        return self._check[name][1]
+    end
+
+    function methods:setter(name)
+        return self._check[name][2]
+    end
+
+    function M.struct(code)
+        local types = {}
+        parse("struct", code, types)
+        parse("union", code, types)
+        check_types(types)
+        calc_offset(types)
+
+        local obj = {
+            _types = types,
+            _check = check(types)
+        }
+
+        return setmetatable(obj, methods)
+    end
+
+    M.s = {}
+
+    M.s["CGameObject"] = M.struct([[
+    struct CGameObject {
+        int id;
+        bool active;
+        bool visible;
+        bool selected;
+    };
+    ]])
+
+    -- M.sz = M.s:size "struct CGameObject"
+
+    M.CGameObject_get_id = M.s["CGameObject"]:getter "struct CGameObject.id"
+    M.CGameObject_get_active = M.s["CGameObject"]:getter "struct CGameObject.active"
+    M.CGameObject_get_visible = M.s["CGameObject"]:getter "struct CGameObject.visible"
+    M.CGameObject_get_selected = M.s["CGameObject"]:getter "struct CGameObject.selected"
+
+    M.CGameObject_set_id = M.s["CGameObject"]:setter "struct CGameObject.id"
+    M.CGameObject_set_active = M.s["CGameObject"]:setter "struct CGameObject.active"
+    M.CGameObject_set_visible = M.s["CGameObject"]:setter "struct CGameObject.visible"
+    M.CGameObject_set_selected = M.s["CGameObject"]:setter "struct CGameObject.selected"
+
+    -- M.test_obj = luastruct_test.udata(M.sz)
+
+    M.new_obj = function(id, active, visible)
+        local obj = luastruct_test.udata(M.s["CGameObject"]:size "struct CGameObject")
+        M.CGameObject_set_id(obj, id)
+        M.CGameObject_set_active(obj, active)
+        M.CGameObject_set_visible(obj, visible)
+        M.CGameObject_set_selected(obj, false)
+        return obj
+    end
+
+    -- M.CGameObject_set_visible(M.test_obj, false)
+    -- print(M.CGameObject_get_visible(M.test_obj))
+    -- M.s:dump()
+
+    M.generate_array_type = function(name, base_type, n)
+        local code = "struct " .. name .. "{\n"
+        for i = 1, n do
+            code = code .. base_type .. " v" .. i .. ";\n"
+        end
+        code = code .. "};"
+        M.s[name] = M.struct(code)
+        return M.s[name]
+    end
+    M.getter = function(struct_name, field)
+        return M.s[struct_name]:getter("struct " .. struct_name .. "." .. field)
+    end
+    M.setter = function(struct_name, field)
+        return M.s[struct_name]:setter("struct " .. struct_name .. "." .. field)
+    end
+    M.size = function(struct_name)
+        return M.s[struct_name]:size("struct " .. struct_name)
+    end
+    return M
+end
+return CStructBridge()
+)lua";
+
+int neko_ecs_lua_csb(lua_State* L) {
+    ecs_t* w = (ecs_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+    std::string contents = csb_lua;
+    if (luaL_loadbuffer(L, contents.c_str(), contents.size(), "csb.lua") != LUA_OK) {
+        fprintf(stderr, "%s\n", lua_tostring(L, -1));
+        neko_panic("failed to load csb");
+    }
+    // lua_getglobal(L, "CStructBridge");
+    // lua_pushvalue(L, 1);
+    if (lua_pcall(L, 0, 1, 0) != LUA_OK) {
+        const char* errorMsg = lua_tostring(L, -1);
+        fprintf(stderr, "csb error: %s\n", errorMsg);
+        // lua_pop(L, 1);
+        neko_panic("failed to run csb");
+    }
+    NEKO_INFO("loaded csb");
+    return 1;
+}
+
 #define NEKO_ECS_IMPLEMENTATION
 
 #ifdef NEKO_ECS_IMPLEMENTATION
 
-#include <stdint.h>  // uint32_t
-#include <stdlib.h>  // malloc, realloc, free
-#include <string.h>  // memcpy, memset
-
 #define ECS_MAX_COMPONENTS 32
-#define ECS_MAX_SYSTEMS 16
+#define ECS_MAX_SYSTEMS 32
 
 #define ECS_MALLOC(size, ctx) (mem_alloc(size))
 #define ECS_REALLOC(ptr, size, ctx) (mem_realloc(ptr, size))
@@ -822,6 +1800,7 @@ typedef struct {
 
 struct ecs_s {
     lua_State* L;
+    int system_table_ref;
     ecs_stack_t entity_pool;
     ecs_stack_t destroy_queue;
     ecs_stack_t remove_queue;
@@ -881,16 +1860,19 @@ static bool ecs_is_entity_ready(ecs_t* ecs, ecs_id_t entity_id) { return ecs->en
 static bool ecs_is_component_ready(ecs_t* ecs, ecs_id_t comp_id) { return comp_id < ecs->comp_count; }
 static bool ecs_is_system_ready(ecs_t* ecs, ecs_id_t sys_id) { return sys_id < ecs->system_count; }
 
-ecs_t* ecs_new_i(ecs_t* ecs, size_t entity_count, void* mem_ctx) {
-    NEKO_ASSERT(entity_count > 0);
-
-    // Out of memory
-    if (NULL == ecs) return NULL;
+ecs_t* ecs_new_i(lua_State* L, ecs_t* ecs, size_t entity_count, void* mem_ctx) {
+    NEKO_ASSERT(entity_count > 0 && L && ecs);
 
     memset(ecs, 0, sizeof(ecs_t));
 
     ecs->entity_count = entity_count;
     ecs->mem_ctx = mem_ctx;
+    ecs->L = L;
+
+    {
+        lua_newtable(L);
+        ecs->system_table_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    }
 
     // Initialize entity pool and queues
     ecs_stack_init(ecs, &ecs->entity_pool, entity_count);
@@ -913,7 +1895,7 @@ ecs_t* ecs_new_i(ecs_t* ecs, size_t entity_count, void* mem_ctx) {
 
 ecs_t* ecs_new(size_t entity_count, void* mem_ctx) {
     ecs_t* ecs = (ecs_t*)ECS_MALLOC(sizeof(ecs_t), mem_ctx);
-    ecs = ecs_new_i(ecs, entity_count, mem_ctx);
+    ecs = ecs_new_i(ENGINE_LUA(), ecs, entity_count, mem_ctx);
     return ecs;
 }
 
@@ -1014,7 +1996,7 @@ void ecs_require_component(ecs_t* ecs, ecs_id_t sys_id, ecs_id_t comp_id) {
     NEKO_ASSERT(ecs_is_system_ready(ecs, sys_id));
     NEKO_ASSERT(ecs_is_component_ready(ecs, comp_id));
 
-    // Set system component bit for the specified component
+    // 设置指定组件的系统组件位
     ecs_sys_t* sys = &ecs->systems[sys_id];
     ecs_bitset_flip(&sys->require_bits, comp_id, true);
 }
@@ -1026,7 +2008,7 @@ void ecs_exclude_component(ecs_t* ecs, ecs_id_t sys_id, ecs_id_t comp_id) {
     NEKO_ASSERT(ecs_is_system_ready(ecs, sys_id));
     NEKO_ASSERT(ecs_is_component_ready(ecs, comp_id));
 
-    // Set system component bit for the specified component
+    // 设置指定组件的系统组件位
     ecs_sys_t* sys = &ecs->systems[sys_id];
     ecs_bitset_flip(&sys->exclude_bits, comp_id, true);
 }
@@ -1598,14 +2580,56 @@ static void ecs_array_resize(ecs_t* ecs, ecs_array_t* array, size_t capacity) {
 
 #endif  // NEKO_ECS_IMPLEMENTATION
 
-static int __neko_boot_lua_create_ent(lua_State* L) {
+static int __neko_ecs_lua_create_ent(lua_State* L) {
     ecs_t* w = (ecs_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
     ecs_id_t e = ecs_create(w);
-    lua_pushinteger(L, e);
+    neko::__lua_op_t<ecs_id_t>::push(L, e);
     return 1;
 }
 
-const ecs_id_t __neko_boot_lua_component_id_w(lua_State* L, const_str component_name) {
+struct ecs_ent_iter_t {
+    ecs_stack_t* pool;
+    ecs_id_t index;
+    bool check_ready;
+};
+
+LUA_FUNCTION(__neko_ecs_lua_ent_next) {
+    ecs_t* w = (ecs_t*)lua_touserdata(L, lua_upvalueindex(1));
+    ecs_ent_iter_t* it = (ecs_ent_iter_t*)lua_touserdata(L, lua_upvalueindex(2));
+    if (it->index >= it->pool->capacity) {
+        return 0;
+    }
+    ecs_id_t e = 0;
+    for (; it->index < it->pool->capacity;) {
+        e = it->pool->array[it->index];
+        it->index++;
+        if (w->entities[e].ready == it->check_ready) {
+            break;
+        }
+    }
+    neko::__lua_op_t<ecs_id_t>::push(L, e);
+    return 1;
+}
+
+LUA_FUNCTION(__neko_ecs_lua_ent_iterator) {
+    ecs_t* w = (ecs_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+    bool check_ready = neko::__lua_op_t<bool>::get(L, 2);
+
+    NEKO_ASSERT(ecs_is_not_null(w));
+
+    ecs_ent_iter_t* it = (ecs_ent_iter_t*)lua_newuserdata(L, sizeof(ecs_ent_iter_t));
+
+    it->pool = &w->entity_pool;
+    it->index = 0;
+    it->check_ready = check_ready;
+
+    lua_pushlightuserdata(L, w);
+    lua_pushvalue(L, -2);
+    lua_pushcclosure(L, __neko_ecs_lua_ent_next, 2);
+    return 1;
+}
+
+const ecs_id_t __neko_ecs_lua_component_id_w(lua_State* L, const_str component_name) {
     lua_getfield(L, LUA_REGISTRYINDEX, "__NEKO_ECS_CORE");  // # -5
     lua_getiuservalue(L, -1, NEKO_ECS_COMPONENTS_NAME);     // # -4
     lua_getfield(L, -1, "comp_map");                        // # -3
@@ -1617,67 +2641,352 @@ const ecs_id_t __neko_boot_lua_component_id_w(lua_State* L, const_str component_
     return c;
 }
 
-static int __neko_boot_lua_attach(lua_State* L) {
+static int __neko_ecs_lua_attach(lua_State* L) {
     int n = lua_gettop(L);
     luaL_argcheck(L, n >= 3, 1, "lost the component name");
 
     ecs_t* w = (ecs_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
     ecs_id_t e = luaL_checkinteger(L, 2);
 
+    Array<void*> ptrs;
+    neko_defer(ptrs.trash());
+
     for (int i = 3; i <= n; i++) {
         if (lua_isstring(L, i)) {
             const_str component_name = lua_tostring(L, i);
-            const ecs_id_t c = __neko_boot_lua_component_id_w(L, component_name);
-            // ecs_attach(w, e, c);
-            ecs_add(w, e, c, NULL);
+            const ecs_id_t c = __neko_ecs_lua_component_id_w(L, component_name);
+            void* ptr = ecs_add(w, e, c, NULL);
+            ptrs.push(ptr);
         } else {
             NEKO_WARN("argument %d is not a string", i);
         }
     }
-
-    return 0;
+    for (auto ptr : ptrs) {
+        lua_pushlightuserdata(L, ptr);
+    }
+    return n - 2;
 }
 
-static int __neko_boot_lua_get_com(lua_State* L) {
+static int __neko_ecs_lua_get_com(lua_State* L) {
     ecs_t* w = (ecs_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
     lua_getiuservalue(L, 1, NEKO_ECS_COMPONENTS_NAME);
     lua_getiuservalue(L, 1, NEKO_ECS_UPVAL_N);
     return 2;
 }
 
-static int __neko_boot_lua_gc(lua_State* L) {
+static int __neko_ecs_lua_gc(lua_State* L) {
     ecs_t* w = (ecs_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
-    // ecs_fini_i(w);
     ecs_free_i(w);
-    NEKO_INFO("ecs_lua_gc");
+    NEKO_DEBUG_LOG("ecs_lua_gc");
     return 0;
 }
 
+struct lua_system_userdata {
+    String system_name;
+};
+
+static ecs_ret_t l_system_update(ecs_t* ecs, ecs_id_t* entities, int entity_count, ecs_dt_t dt, void* udata) {
+    lua_system_userdata* ud = (lua_system_userdata*)udata;
+    lua_State* L = ecs->L;
+
+    int systb = ecs->system_table_ref;
+
+    NEKO_ASSERT(systb != LUA_NOREF && L);
+
+    lua_rawgeti(L, LUA_REGISTRYINDEX, systb);
+    lua_getfield(L, -1, ud->system_name.cstr());
+    if (lua_istable(L, -1)) {
+
+        for (int id = 0; id < entity_count; id++) {
+            lua_getfield(L, -1, "func_update");
+            NEKO_ASSERT(lua_isfunction(L, -1));
+            lua_pushinteger(L, entities[id]);
+            lua_pushlstring(L, ud->system_name.cstr(), ud->system_name.len);
+            lua_call(L, 2, 0);  // 调用
+        }
+
+    } else {
+        NEKO_WARN("callback with identifier '%s' not found or is not a function", ud->system_name.cstr());
+    }
+    lua_pop(L, 1);
+
+    return 0;
+}
+
+static void l_system_add(ecs_t* ecs, ecs_id_t entity_id, void* udata) {
+    lua_system_userdata* ud = (lua_system_userdata*)udata;
+    // NEKO_DEBUG_LOG("l_system_add %s ent_id %d", ud->system_name.cstr(), entity_id);
+
+    lua_State* L = ecs->L;
+    int systb = ecs->system_table_ref;
+
+    NEKO_ASSERT(systb != LUA_NOREF);
+
+    lua_rawgeti(L, LUA_REGISTRYINDEX, systb);
+    lua_getfield(L, -1, ud->system_name.cstr());
+    if (lua_istable(L, -1)) {
+        lua_getfield(L, -1, "func_add");
+        NEKO_ASSERT(lua_isfunction(L, -1));
+        neko::__lua_op_t<int>::push(L, entity_id);
+        lua_pushlstring(L, ud->system_name.cstr(), ud->system_name.len);
+        lua_call(L, 2, 0);  // 调用
+    } else {
+        NEKO_WARN("callback with identifier '%s' not found or is not a function", ud->system_name.cstr());
+    }
+    lua_pop(L, 1);
+}
+
+static void l_system_remove(ecs_t* ecs, ecs_id_t entity_id, void* udata) {
+    lua_system_userdata* ud = (lua_system_userdata*)udata;
+    // NEKO_DEBUG_LOG("l_system_remove %s ent_id %d", ud->system_name.cstr(), entity_id);
+
+    lua_State* L = ecs->L;
+    int systb = ecs->system_table_ref;
+
+    NEKO_ASSERT(systb != LUA_NOREF);
+
+    lua_rawgeti(L, LUA_REGISTRYINDEX, systb);
+    lua_getfield(L, -1, ud->system_name.cstr());
+    if (lua_istable(L, -1)) {
+        lua_getfield(L, -1, "func_remove");
+        NEKO_ASSERT(lua_isfunction(L, -1));
+        neko::__lua_op_t<int>::push(L, entity_id);
+        lua_pushlstring(L, ud->system_name.cstr(), ud->system_name.len);
+        lua_call(L, 2, 0);  // 调用
+    } else {
+        NEKO_WARN("callback with identifier '%s' not found or is not a function", ud->system_name.cstr());
+    }
+    lua_pop(L, 1);
+}
+
+static int __neko_ecs_lua_system(lua_State* L) {
+    ecs_t* w = (ecs_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+    NEKO_ASSERT(w->L == L);
+
+    ecs_id_t sys = u32_max;
+    String system_name = luax_check_string(L, ECS_WORLD + 1);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, w->system_table_ref);
+    if (lua_istable(L, -1)) {
+
+        lua_createtable(L, 0, 2);
+
+        lua_pushvalue(L, ECS_WORLD + 2);
+        NEKO_ASSERT(lua_isfunction(L, -1));
+        lua_setfield(L, -2, "func_update");
+
+        lua_pushvalue(L, ECS_WORLD + 3);
+        NEKO_ASSERT(lua_isfunction(L, -1));
+        lua_setfield(L, -2, "func_add");
+
+        lua_pushvalue(L, ECS_WORLD + 4);
+        NEKO_ASSERT(lua_isfunction(L, -1));
+        lua_setfield(L, -2, "func_remove");
+
+        lua_pushstring(L, system_name.cstr());
+        lua_setfield(L, -2, "name");
+
+        lua_setfield(L, -2, system_name.cstr());
+
+        lua_system_userdata* ud = (lua_system_userdata*)mem_alloc(sizeof(lua_system_userdata));  // gc here
+        ud->system_name = system_name;
+        sys = ecs_register_system(w, l_system_update, l_system_add, l_system_remove, (void*)ud);
+    }
+
+    NEKO_ASSERT(sys != u32_max);
+    lua_pushinteger(L, sys);
+    return 1;
+}
+
+static int __neko_ecs_lua_system_require_component(lua_State* L) {
+    int n = lua_gettop(L);
+    luaL_argcheck(L, n >= 3, 1, "lost the component name");
+
+    ecs_t* w = (ecs_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+    NEKO_ASSERT(w->L == L);
+
+    ecs_id_t sys = luaL_checkinteger(L, ECS_WORLD + 1);
+
+    for (int i = 3; i <= n; i++) {
+        if (lua_isstring(L, i)) {
+            const_str comp_name = luaL_checkstring(L, i);
+            ecs_id_t comp_id = __neko_ecs_lua_component_id_w(L, comp_name);
+            ecs_require_component(w, sys, comp_id);
+        } else {
+            NEKO_WARN("argument %d is not a ecs_component", i);
+        }
+    }
+
+    // lua_pushinteger(L, ret);
+    return 0;
+}
+
+static int __neko_ecs_lua_get(lua_State* L) {
+    ecs_t* w = (ecs_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+    NEKO_ASSERT(w->L == L);
+    ecs_id_t ent_id = lua_tointeger(L, ECS_WORLD + 1);
+    ecs_id_t comp_id = lua_tointeger(L, ECS_WORLD + 2);
+    void* ptr = ecs_get(w, ent_id, comp_id);
+    lua_pushlightuserdata(L, ptr);
+    return 1;
+}
+
+static int __neko_ecs_lua_system_run(lua_State* L) {
+    ecs_t* w = (ecs_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+    NEKO_ASSERT(w->L == L);
+    ecs_id_t sys = lua_tointeger(L, ECS_WORLD + 1);
+    f64 dt = lua_tonumber(L, ECS_WORLD + 2);
+    ecs_ret_t ret = ecs_update_system(w, sys, dt);
+    lua_pushinteger(L, ret);
+    return 1;
+}
+
+ecs_id_t ecs_component_w(ecs_t* w, const_str component_name, size_t component_size, ecs_constructor_fn constructor, ecs_destructor_fn destructor) {
+    PROFILE_FUNC();
+
+    ecs_id_t comp_id = ecs_register_component(w, component_size, constructor, destructor);
+
+    lua_State* L = w->L;
+
+    // lua_getglobal(L, "__NEKO_ECS_CORE");  // # 1
+    lua_getfield(L, LUA_REGISTRYINDEX, "__NEKO_ECS_CORE");
+
+    lua_getiuservalue(L, -1, NEKO_ECS_COMPONENTS_NAME);
+    if (lua_istable(L, -1)) {
+
+        lua_getfield(L, -1, "comp_map");
+        if (lua_istable(L, -1)) {
+            lua_pushinteger(L, neko_hash_str(component_name));  // 使用 32 位哈希以适应 Lua 数字范围
+
+            lua_createtable(L, 0, 2);
+
+            lua_pushinteger(L, comp_id);
+            lua_setfield(L, -2, "id");
+
+            lua_pushstring(L, component_name);
+            lua_setfield(L, -2, "name");
+
+            // if (NULL == constructor && NULL == destructor) {
+            //     lua_pushvalue(L, ECS_WORLD + 3);
+            //     NEKO_ASSERT(lua_isfunction(L, -1));
+            //     lua_setfield(L, -2, "func_ctor");
+            // }
+
+            lua_settable(L, -3);
+            lua_pop(L, 1);
+        } else {
+            NEKO_ERROR("%s", "failed to get comp_map");
+            lua_pop(L, 1);
+        }
+
+        lua_getfield(L, -1, "comps");
+        if (lua_istable(L, -1)) {
+            // lua_pushinteger(L, neko_hash_str(component_name));  // 使用 32 位哈希以适应 Lua 数字范围
+
+            // lua_createtable(L, 0, 2);
+
+            // lua_pushinteger(L, comp_id);
+            // lua_setfield(L, -2, "id");
+
+            // lua_pushstring(L, component_name);
+            // lua_setfield(L, -2, "name");
+
+            // // if (NULL == constructor && NULL == destructor) {
+            // //     lua_pushvalue(L, ECS_WORLD + 3);
+            // //     NEKO_ASSERT(lua_isfunction(L, -1));
+            // //     lua_setfield(L, -2, "func_ctor");
+            // // }
+
+            // lua_settable(L, -3);
+            lua_pop(L, 1);
+        } else {
+            NEKO_ERROR("%s", "failed to get comps");
+            lua_pop(L, 1);
+        }
+
+        lua_pop(L, 1);
+    } else {
+        NEKO_ERROR("%s", "failed to get upvalue NEKO_ECS_COMPONENTS_NAME");
+        lua_pop(L, 1);
+    }
+    lua_pop(L, 1);  // pop 1
+
+    return comp_id;
+}
+
+static void l_component_ctor(ecs_t* ecs, ecs_id_t entity_id, void* ptr, void* args) {
+    // lua_system_userdata* ud = (lua_system_userdata*)udata;
+    // NEKO_DEBUG_LOG("l_system_remove %s ent_id %d", ud->system_name.cstr(), entity_id);
+
+    lua_State* L = ecs->L;
+    int systb = ecs->system_table_ref;
+
+    NEKO_ASSERT(systb != LUA_NOREF);
+}
+
+static int __neko_ecs_lua_component(lua_State* L) {
+    ecs_t* w = (ecs_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+    NEKO_ASSERT(w->L == L);
+
+    ecs_id_t id = u32_max;
+    String comp_name = luax_check_string(L, ECS_WORLD + 1);
+    size_t size = luaL_checkinteger(L, ECS_WORLD + 2);
+
+    id = ecs_component_w(w, comp_name.cstr(), size, NULL, NULL);
+
+    NEKO_ASSERT(id != u32_max);
+    lua_pushinteger(L, id);
+    return 1;
+}
+
+static int __neko_ecs_lua_component_id(lua_State* L) {
+    ecs_t* w = (ecs_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
+    NEKO_ASSERT(w->L == L);
+
+    ecs_id_t id = u32_max;
+    String comp_name = luax_check_string(L, ECS_WORLD + 1);
+
+    id = __neko_ecs_lua_component_id_w(L, comp_name.cstr());
+
+    NEKO_ASSERT(id != u32_max);
+    lua_pushinteger(L, id);
+    return 1;
+}
+
 ecs_t* ecs_init(lua_State* L) {
+    PROFILE_FUNC();
+
     NEKO_ASSERT(L);
-    ecs_t* registry = (ecs_t*)lua_newuserdatauv(L, sizeof(ecs_t), NEKO_ECS_UPVAL_N);  // # -1
-    registry = ecs_new_i(registry, 1024, NULL);
-    if (registry == NULL) {
-        NEKO_ERROR("%s", "failed to initialize ecs_t");
+    ecs_t* w = (ecs_t*)lua_newuserdatauv(L, sizeof(ecs_t), NEKO_ECS_UPVAL_N);  // # -1
+    w = ecs_new_i(L, w, 1024, NULL);
+    if (w == NULL || w->entities == NULL) {
+        NEKO_ERROR("failed to initialize ecs_t");
         return NULL;
     }
-    // registry->L = L;
 
     if (luaL_getmetatable(L, ECS_WORLD_UDATA_NAME) == LUA_TNIL) {  // # -2
 
         // clang-format off
-        luaL_Reg world_mt[] = {
-            {"__gc", __neko_boot_lua_gc}, 
-            {"create_ent", __neko_boot_lua_create_ent}, 
-            {"attach", __neko_boot_lua_attach}, 
-            {"get_com", __neko_boot_lua_get_com}, 
+        luaL_Reg ecs_mt[] = {
+            {"__gc", __neko_ecs_lua_gc}, 
+            {"create_ent", __neko_ecs_lua_create_ent}, 
+            {"attach", __neko_ecs_lua_attach}, 
+            {"get_com", __neko_ecs_lua_get_com}, 
+            {"iter", __neko_ecs_lua_ent_iterator},
+            {"system", __neko_ecs_lua_system},
+            {"system_run", __neko_ecs_lua_system_run},
+            {"system_require_component", __neko_ecs_lua_system_require_component},
+            {"component", __neko_ecs_lua_component},
+            {"get",__neko_ecs_lua_get},
+            {"component_id",__neko_ecs_lua_component_id},
+            {"csb_core", open_csb},
+            {"csb", neko_ecs_lua_csb},
             {NULL, NULL}
         };
         // clang-format on
 
-        lua_pop(L, 1);                  // # pop -2
-        luaL_newlibtable(L, world_mt);  // # -2
-        luaL_setfuncs(L, world_mt, 0);
+        lua_pop(L, 1);                // # pop -2
+        luaL_newlibtable(L, ecs_mt);  // # -2
+        luaL_setfuncs(L, ecs_mt, 0);
         lua_pushvalue(L, -1);                                      // # -3
         lua_setfield(L, -2, "__index");                            // pop -3
         lua_pushliteral(L, ECS_WORLD_UDATA_NAME);                  // # -3
@@ -1687,15 +2996,16 @@ ecs_t* ecs_init(lua_State* L) {
     }
     lua_setmetatable(L, -2);  // pop -2
 
-    // lua_newtable(L);  // components name 表
-    // lua_setfield(L, LUA_REGISTRYINDEX, MY_TABLE_KEY);
-    //
-    // lua_setiuservalue(L, -2, NEKO_ECS_COMPONENTS_NAME);
-
     lua_newtable(L);
+
     lua_pushstring(L, "comp_map");
     lua_createtable(L, 0, ENTITY_MAX_COMPONENTS);
     lua_settable(L, -3);
+
+    lua_pushstring(L, "comps");
+    lua_createtable(L, 0, ENTITY_MAX_COMPONENTS);
+    lua_settable(L, -3);
+
     lua_setiuservalue(L, -2, NEKO_ECS_COMPONENTS_NAME);
 
     const_str s = "Is man one of God's blunders? Or is God one of man's blunders?";
@@ -1707,45 +3017,5 @@ ecs_t* ecs_init(lua_State* L) {
 
     // lua_setglobal(L, "__NEKO_ECS_CORE");
 
-    return registry;
-}
-
-ecs_id_t ecs_component_w(ecs_t* registry, const_str component_name, size_t component_size) {
-
-    // ecs_map_set(registry->component_index, (void*)registry->next_entity_id, &(size_t){component_size});
-    // ecs_id_t id = registry->next_entity_id++;
-
-    ecs_id_t id = 0; // TODO
-
-    lua_State* L = registry->L;
-
-    // lua_getglobal(L, "__NEKO_ECS_CORE");  // # 1
-    lua_getfield(L, LUA_REGISTRYINDEX, "__NEKO_ECS_CORE");
-
-    lua_getiuservalue(L, -1, NEKO_ECS_COMPONENTS_NAME);
-    if (lua_istable(L, -1)) {
-        lua_getfield(L, -1, "comp_map");
-        if (lua_istable(L, -1)) {
-            lua_pushinteger(L, neko_hash_str(component_name));  // 使用 32 位哈希以适应 Lua 数字范围
-
-            lua_createtable(L, 0, 2);
-            lua_pushinteger(L, id);
-            lua_setfield(L, -2, "id");
-            lua_pushstring(L, component_name);
-            lua_setfield(L, -2, "name");
-
-            lua_settable(L, -3);
-            lua_pop(L, 1);
-        } else {
-            NEKO_ERROR("%s", "failed to get comp_map");
-            lua_pop(L, 1);
-        }
-        lua_pop(L, 1);
-    } else {
-        NEKO_ERROR("%s", "failed to get upvalue NEKO_ECS_COMPONENTS_NAME");
-        lua_pop(L, 1);
-    }
-    lua_pop(L, 1);  // pop 1
-
-    return id;
+    return w;
 }

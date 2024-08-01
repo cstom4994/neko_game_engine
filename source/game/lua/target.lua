@@ -1,10 +1,12 @@
 class "Target"
 
-function Target:new(x, y, name, img)
+function Target:new(x, y, name, sprite)
     self.x, self.y = x, y
-    self.img = img or neko.sprite_load "assets/textures/target.ase"
+    self.sprite = sprite or neko.sprite_load "assets/textures/target.ase"
     self.angle = 0
     -- self.z_index = -1
+
+    self.update_thread = coroutine.create(self.co_update)
 end
 
 function Target:on_create()
@@ -27,6 +29,19 @@ function Target:on_create()
         udata = self.id,
         begin_contact = Target.begin_contact
     }
+
+    self.sprite:play "Base"
+end
+
+function Target:co_update(dt)
+    while true do
+        -- local dist = distance(self.x, self.y, player.x, player.y)
+        -- if dist < 128 or self.hit_cooldown > 0 then
+        --     break
+        -- end
+
+        self, dt = coroutine.yield()
+    end
 end
 
 function Target:on_death()
@@ -37,6 +52,8 @@ end
 function Target:update(dt)
     self.x, self.y = self.body:position()
     -- self.angle = self.angle + 2 * dt
+
+    resume(self.update_thread, self, dt)
 end
 
 function Target:hit(what)
@@ -50,13 +67,35 @@ function Target:draw()
 
     -- x, y = camera:to_world_space(x, y)
 
-    local ox = self.img:width() / 2
-    local oy = self.img:height()
-    self.img:draw(self.x, self.y, self.angle, 1, 1, ox, oy)
+    local ox = self.sprite:width() / 2
+    local oy = self.sprite:height()
+    self.sprite:draw(self.x, self.y, self.angle, 1, 1, ox, oy)
 
     if draw_fixtures then
         self.body:draw_fixtures()
     end
+
+    -- local enemy_mt = _G["Npc"]
+    -- local enemy_tb = LocalGame.world.by_mt[enemy_mt]
+    local enemy_tb = LocalGame.world.by_id
+    if enemy_tb ~= nil then
+        for k, v in pairs(enemy_tb) do
+            if v.type ~= nil and v.type == "enemy" then
+                local local_pos = vec2(self.x, self.y)
+                local enemy_pos = vec2(v.x, v.y)
+                local enemy_mt = getmetatable(v)
+                if local_pos:distance(enemy_pos) <= 100 then
+                    neko.draw_line(self.x, self.y - 40, v.x, v.y)
+                    if enemy_mt == Chort then
+                        v:hit(self, 30)
+                    else
+                        v:hit(self)
+                    end
+                end
+            end
+        end
+    end
+
 end
 
 function Target.begin_contact(a, b)

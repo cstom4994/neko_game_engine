@@ -199,4 +199,7 @@ struct neko_luaref {
     void set(lua_State *L, int ref);
 };
 
+int __neko_bind_callback_save(lua_State *L);
+int __neko_bind_callback_call(lua_State *L);
+
 #endif

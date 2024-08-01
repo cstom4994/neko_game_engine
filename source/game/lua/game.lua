@@ -292,7 +292,7 @@ game.newClient = function(port)
         -- updateTime = 1 / 30,
         updateTime = 4,
 
-        searchTime = 1,
+        searchTime = 10,
         adClient = adClient,
 
         states = gameStates

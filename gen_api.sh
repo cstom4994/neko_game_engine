@@ -28,4 +28,4 @@ lua -e "print(require('lib.gen_api_native')(require'defs_neko_core'.tree, 'gen')
 # cd ../imgui
 
 echo "API: ImGui (source: cimgui.json)"
-lua gen_imgui.lua
+lua defs_imgui.lua

@@ -515,6 +515,7 @@ struct __lua_op_t<bool> {
     }
 
     static void push(lua_State *L, bool &value) { lua_pushboolean(L, value ? 1 : 0); }
+    static bool get(lua_State *L, int pos_) { return lua_toboolean(L, pos_); }
 };
 
 template <>

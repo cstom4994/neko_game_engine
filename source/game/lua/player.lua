@@ -11,6 +11,11 @@ function Player:new(x, y)
 
     self.shoot_cooldown = 0
     self.shoot_angle = 0
+
+    self.hpbar = Hpbar(self)
+
+    self.hp = 100
+    self.hp_max = 100
 end
 
 function Player:on_create()
@@ -97,6 +102,7 @@ end
 
 function Player:update(dt)
     self.sprite:update(dt)
+    self.hpbar:update(dt)
     self.x, self.y = self.body:position()
     resume(self.update_thread, self, dt)
 
@@ -157,6 +163,8 @@ function Player:draw()
         local oy = bow:height() / 2
         bow:draw(self.x, self.y - 18, self.shoot_angle, 1, 1, ox, oy)
     end
+
+    self.hpbar:draw(self.x, self.y - 40)
 
     if draw_fixtures then
         self.body:draw_fixtures()

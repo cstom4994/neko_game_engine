@@ -5,9 +5,12 @@ function Chort:new(x, y)
     self.sprite = neko.sprite_load "assets/enemy.ase"
     self.facing_left = false
     self.hit_cooldown = 0
-    self.hp = 3
+    self.hp = 100
+    self.hp_max = 100
     self.spring = Spring()
     self.update_thread = coroutine.create(self.co_update)
+    self.hpbar = Hpbar(self)
+    self.type = "enemy"
 end
 
 function Chort:on_create()
@@ -20,13 +23,13 @@ function Chort:on_create()
 
     self.body:make_circle_fixture{
         y = -9,
-        radius = 10,
+        radius = 6,
         udata = self.id,
         begin_contact = Chort.begin_contact
     }
     self.body:make_circle_fixture{
         y = -6,
-        radius = 10,
+        radius = 6,
         udata = self.id,
         begin_contact = Chort.begin_contact
     }
@@ -42,20 +45,24 @@ function Chort:on_death()
     end
 end
 
-function Chort:hit(other)
+function Chort:hit(other, damage)
+    damage = damage or 1
     if self.hit_cooldown > 0 then
         return
     end
 
-    self.hp = self.hp - 1
-    if self.hp == 0 then
+    self.hp = self.hp - damage
+    if self.hp <= 0 then
         LocalGame.world:kill(self)
     end
 
     self.hit_cooldown = 0.2
 
-    self.body:set_velocity(heading(other.angle, 200))
-    self.spring:pull(0.3)
+    if getmetatable(other) == Arrow then
+        self.body:set_velocity(heading(other.angle, 200))
+        self.spring:pull(0.3)
+    end
+
 end
 
 function Chort:co_update(dt)
@@ -90,6 +97,7 @@ function Chort:update(dt)
     self.x, self.y = self.body:position()
     self.sprite:update(dt)
     self.spring:update(dt)
+    self.hpbar:update(dt)
     resume(self.update_thread, self, dt)
 end
 
@@ -102,6 +110,8 @@ function Chort:draw()
     local ox = self.sprite:width() / 2
     local oy = self.sprite:height()
     self.sprite:draw(self.x, self.y, 0, sx, sy, ox, oy)
+
+    self.hpbar:draw()
 
     if draw_fixtures then
         self.body:draw_fixtures()
@@ -123,6 +133,6 @@ function Chort.begin_contact(a, b)
         hit_player(20)
 
     elseif mt == Arrow then
-        self:hit(other)
+        self:hit(other, 50)
     end
 end

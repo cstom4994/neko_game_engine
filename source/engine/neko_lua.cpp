@@ -1477,3 +1477,39 @@ void neko_luaref::set(lua_State *L, int ref) {
     lua_xmove(L, refL, 1);
     lua_replace(refL, ref);
 }
+
+int __neko_bind_callback_save(lua_State *L) {
+    const_str identifier = luaL_checkstring(L, 1);
+    luaL_checktype(L, 2, LUA_TFUNCTION);
+    if (g_app->g_lua_callbacks_table_ref == LUA_NOREF) {
+        lua_newtable(L);
+        g_app->g_lua_callbacks_table_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    }
+    lua_rawgeti(L, LUA_REGISTRYINDEX, g_app->g_lua_callbacks_table_ref);
+    lua_pushvalue(L, 2);
+    lua_setfield(L, -2, identifier);
+    lua_pop(L, 1);
+    lua_pop(L, 2);
+    return 0;
+}
+
+int __neko_bind_callback_call(lua_State *L) {
+    if (g_app->g_lua_callbacks_table_ref != LUA_NOREF) {
+        const_str identifier = luaL_checkstring(L, 1);
+        lua_rawgeti(L, LUA_REGISTRYINDEX, g_app->g_lua_callbacks_table_ref);
+        lua_getfield(L, -1, identifier);
+        if (lua_isfunction(L, -1)) {
+            int nargs = lua_gettop(L) - 1;  // 获取参数数量 减去标识符参数
+            for (int i = 2; i <= nargs + 1; ++i) {
+                lua_pushvalue(L, i);
+            }
+            lua_call(L, nargs, 0);  // 调用
+        } else {
+            NEKO_WARN("callback with identifier '%s' not found or is not a function", identifier);
+        }
+        lua_pop(L, 1);
+    } else {
+        NEKO_WARN("callback table is noref");
+    }
+    return 0;
+}

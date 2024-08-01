@@ -56,6 +56,7 @@ typedef int8_t ecs_ret_t;
 
 typedef ECS_DT_TYPE ecs_dt_t;
 
+ecs_t* ecs_init(lua_State* L);
 ecs_t* ecs_new(size_t entity_count, void* mem_ctx);
 void ecs_free(ecs_t* ecs);
 void ecs_reset(ecs_t* ecs);  // 从 ECS 中删除所有实体 保留系统和组件
@@ -85,5 +86,14 @@ void ecs_queue_remove(ecs_t* ecs, ecs_id_t entity_id, ecs_id_t comp_id);
 
 ecs_ret_t ecs_update_system(ecs_t* ecs, ecs_id_t sys_id, ecs_dt_t dt);
 ecs_ret_t ecs_update_systems(ecs_t* ecs, ecs_dt_t dt);
+
+ecs_id_t ecs_component_w(ecs_t* registry, const_str component_name, size_t component_size, ecs_constructor_fn constructor, ecs_destructor_fn destructor);
+
+#define ECS_COMPONENT(type, ctor, dtor) ecs_component_w(ENGINE_ECS(), #type, sizeof(type), ctor, dtor)
+#define ECS_COMPONENT_DEFINE(type, ctor, dtor) ECS_COMPONENT_ID(type) = ECS_COMPONENT(type, ctor, dtor)
+
+#define ECS_COMPONENT_ID(type) __NEKO_GEN_COMPONENT_##type
+#define ECS_COMPONENT_DECL(type) ecs_id_t ECS_COMPONENT_ID(type)
+#define ECS_COMPONENT_EXTERN(type) extern ecs_id_t ECS_COMPONENT_ID(type)
 
 #endif

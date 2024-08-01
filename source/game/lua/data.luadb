@@ -14,7 +14,8 @@ all = {
         sprite = "assets/enemy.ase",
         facing_left = false,
         was_hit = false,
-        hp = 1,
+        hp = 30,
+        hp_max = 30,
         spring = true
     }},
     SkeletonPrefab = [[

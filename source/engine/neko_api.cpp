@@ -2291,64 +2291,6 @@ void neko_tolua_boot(const_str f, const_str output) {
 
 #if 1
 
-static int g_lua_callbacks_table_ref = LUA_NOREF;
-
-LUA_FUNCTION(__neko_bind_callback_save) {
-    // 检查传递给函数的参数是否是一个字符串和一个函数
-    const_str identifier = luaL_checkstring(L, 1);
-    luaL_checktype(L, 2, LUA_TFUNCTION);
-
-    // 如果之前没有保存的Lua函数引用，则创建一个新的table
-    if (g_lua_callbacks_table_ref == LUA_NOREF) {
-        lua_newtable(L);
-        g_lua_callbacks_table_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-    }
-
-    // 获取保存的table
-    lua_rawgeti(L, LUA_REGISTRYINDEX, g_lua_callbacks_table_ref);
-
-    // 将传递给函数的Lua函数压入栈顶
-    lua_pushvalue(L, 2);
-
-    // 将函数放入table中，使用标识符作为键
-    lua_setfield(L, -2, identifier);
-
-    // 弹出保存的table
-    lua_pop(L, 1);
-
-    return 0;
-}
-
-LUA_FUNCTION(__neko_bind_callback_call) {
-    // 检查之前是否有保存的Lua函数引用
-    if (g_lua_callbacks_table_ref != LUA_NOREF) {
-        // 获取标识符参数
-        const_str identifier = luaL_checkstring(L, 1);
-
-        // 获取保存的table
-        lua_rawgeti(L, LUA_REGISTRYINDEX, g_lua_callbacks_table_ref);
-
-        // 获取table中对应标识符的Lua函数
-        lua_getfield(L, -1, identifier);
-
-        if (lua_isfunction(L, -1)) {
-            // 将额外的参数依次压入栈顶
-            int nargs = lua_gettop(L) - 1;  // 获取参数数量 减去标识符参数
-            for (int i = 2; i <= nargs + 1; ++i) {
-                lua_pushvalue(L, i);
-            }
-            lua_call(L, nargs, 0);  // 调用
-        } else {
-            // throw lua_exception_t(std::format("callback with identifier '{}' not found or is not a function.", identifier));
-        }
-
-        // 弹出保存的table
-        lua_pop(L, 1);
-    }
-
-    return 0;
-}
-
 #if 0
 
 static bool __neko_bind_platform_key_pressed(const_str key) {
@@ -3645,42 +3587,7 @@ LUA_FUNCTION(__neko_bind_render_framebuffer_fini) {
     return 0;
 }
 
-#define NEKO_LUA_INSPECT_ITER(NAME)                                                                          \
-    LUA_FUNCTION(__neko_bind_inspect_##NAME##_next) {                                                        \
-        neko_gl_data_t *ogl = (neko_gl_data_t *)lua_touserdata(L, lua_upvalueindex(1));                      \
-        neko_slot_array_iter *it = (neko_slot_array_iter *)lua_touserdata(L, lua_upvalueindex(2));           \
-        if (!neko_slot_array_iter_valid(ogl->NAME, *it)) {                                                   \
-            return 0;                                                                                        \
-        }                                                                                                    \
-        auto s = neko_slot_array_iter_get(ogl->NAME, *it);                                                   \
-        neko_slot_array_iter_advance(ogl->NAME, *it);                                                        \
-        lua_pushinteger(L, s.id);                                                                            \
-        return 1;                                                                                            \
-    }                                                                                                        \
-                                                                                                             \
-    LUA_FUNCTION(__neko_bind_inspect_##NAME##_iterator) {                                                    \
-        neko_gl_data_t *ogl = neko_render_userdata();                                                        \
-        neko_slot_array_iter *it = (neko_slot_array_iter *)lua_newuserdata(L, sizeof(neko_slot_array_iter)); \
-        *it = neko_slot_array_iter_new(ogl->NAME);                                                           \
-        lua_pushlightuserdata(L, ogl);                                                                       \
-        lua_pushvalue(L, -2);                                                                                \
-        lua_pushcclosure(L, __neko_bind_inspect_##NAME##_next, 2);                                           \
-        return 1;                                                                                            \
-    }
 
-#define NEKO_LUA_INSPECT_REG(NAME) \
-    { "inspect_" #NAME "_iter", __neko_bind_inspect_##NAME##_iterator }
-
-NEKO_LUA_INSPECT_ITER(shaders)
-NEKO_LUA_INSPECT_ITER(textures)
-NEKO_LUA_INSPECT_ITER(vertex_buffers)
-// NEKO_LUA_INSPECT_ITER(uniform_buffers)
-// NEKO_LUA_INSPECT_ITER(storage_buffers)
-NEKO_LUA_INSPECT_ITER(index_buffers)
-NEKO_LUA_INSPECT_ITER(frame_buffers)
-// NEKO_LUA_INSPECT_ITER(uniforms)
-// NEKO_LUA_INSPECT_ITER(pipelines)
-// NEKO_LUA_INSPECT_ITER(renderpasses)
 
 void inspect_shader(const_str label, GLuint program);
 
@@ -4538,6 +4445,43 @@ inline void neko_register_test(lua_State* L) {
 
 #endif
 
+#define NEKO_LUA_INSPECT_ITER(NAME)                                                                          \
+    LUA_FUNCTION(__neko_bind_inspect_##NAME##_next) {                                                        \
+        neko_gl_data_t *ogl = (neko_gl_data_t *)lua_touserdata(L, lua_upvalueindex(1));                      \
+        neko_slot_array_iter *it = (neko_slot_array_iter *)lua_touserdata(L, lua_upvalueindex(2));           \
+        if (!neko_slot_array_iter_valid(ogl->NAME, *it)) {                                                   \
+            return 0;                                                                                        \
+        }                                                                                                    \
+        auto s = neko_slot_array_iter_get(ogl->NAME, *it);                                                   \
+        neko_slot_array_iter_advance(ogl->NAME, *it);                                                        \
+        lua_pushinteger(L, s.id);                                                                            \
+        return 1;                                                                                            \
+    }                                                                                                        \
+                                                                                                             \
+    LUA_FUNCTION(__neko_bind_inspect_##NAME##_iterator) {                                                    \
+        neko_gl_data_t *ogl = neko_render_userdata();                                                        \
+        neko_slot_array_iter *it = (neko_slot_array_iter *)lua_newuserdata(L, sizeof(neko_slot_array_iter)); \
+        *it = neko_slot_array_iter_new(ogl->NAME);                                                           \
+        lua_pushlightuserdata(L, ogl);                                                                       \
+        lua_pushvalue(L, -2);                                                                                \
+        lua_pushcclosure(L, __neko_bind_inspect_##NAME##_next, 2);                                           \
+        return 1;                                                                                            \
+    }
+
+#define NEKO_LUA_INSPECT_REG(NAME) \
+    { "inspect_" #NAME "_iter", __neko_bind_inspect_##NAME##_iterator }
+
+// NEKO_LUA_INSPECT_ITER(shaders)
+// NEKO_LUA_INSPECT_ITER(textures)
+// NEKO_LUA_INSPECT_ITER(vertex_buffers)
+// NEKO_LUA_INSPECT_ITER(uniform_buffers)
+// NEKO_LUA_INSPECT_ITER(storage_buffers)
+// NEKO_LUA_INSPECT_ITER(index_buffers)
+// NEKO_LUA_INSPECT_ITER(frame_buffers)
+// NEKO_LUA_INSPECT_ITER(uniforms)
+// NEKO_LUA_INSPECT_ITER(pipelines)
+// NEKO_LUA_INSPECT_ITER(renderpasses)
+
 #if 0
 LUA_FUNCTION(__neko_bind_cvar) {
     const_str name = lua_tostring(L, 1);
@@ -4738,31 +4682,13 @@ inline void neko_register_common(lua_State *L) {
 
     neko::lua_bind::bind("neko_hash_str", +[](const_str str) { return neko_hash_str(str); });
     neko::lua_bind::bind("neko_hash_str64", +[](const_str str) { return neko_hash_str64(str); });
-    // neko::lua_bind::bind("__neko_quit", +[](int op) { return neko_quit(); });
-    // neko::lua_bind::bind("neko_os_elapsed_time", +[]() { return neko_os_elapsed_time(); });
 
-    // lua_pushstring(L, game_assets("gamedir").c_str());
-    // lua_setglobal(L, "neko_game_data_path");
-
-    // const neko_luaL_reg luaReg[] = {{"hooks", neko_lua_events_init}, {NULL, NULL}};
-    // registerGlobals(L, luaReg);
-
-    // const luaL_Reg luaCommon[] = {
-    //         {"Vector", Vector},  //
-    //         {"Color", Color},    //
-    //         {NULL, NULL}         //
-    // };
-
-    // for (const luaL_Reg* reg = luaCommon; reg->name != NULL && reg->func != NULL; ++reg) {
-    //     lua_pushcfunction(L, reg->func);
-    //     lua_setglobal(L, reg->name);
-    // }
-
-    // neko_lua_enum(L, neko_cvar_type);
-    // neko_lua_enum_value(L, neko_cvar_type, __NEKO_CONFIG_TYPE_INT);
-    // neko_lua_enum_value(L, neko_cvar_type, __NEKO_CONFIG_TYPE_FLOAT);
-    // neko_lua_enum_value(L, neko_cvar_type, __NEKO_CONFIG_TYPE_STRING);
-    // neko_lua_enum_value(L, neko_cvar_type, __NEKO_CONFIG_TYPE_COUNT);
+    neko_lua_enum(L, AssetKind);
+    neko_lua_enum_value(L, AssetKind, AssetKind_None);
+    neko_lua_enum_value(L, AssetKind, AssetKind_LuaRef);
+    neko_lua_enum_value(L, AssetKind, AssetKind_Image);
+    neko_lua_enum_value(L, AssetKind, AssetKind_Sprite);
+    neko_lua_enum_value(L, AssetKind, AssetKind_Tilemap);
 
     lua_register(L, "__neko_ls", __neko_ls);
 }
@@ -5215,8 +5141,8 @@ DEFINE_LUAOPEN(core)
 DEFINE_LUAOPEN_EXTERN(inspector)
 DEFINE_LUAOPEN_EXTERN(luadb)
 // DEFINE_LUAOPEN_EXTERN(prefab)
-DEFINE_LUAOPEN_EXTERN(struct)
-DEFINE_LUAOPEN_EXTERN(struct_test)
+// DEFINE_LUAOPEN_EXTERN(struct)
+// DEFINE_LUAOPEN_EXTERN(struct_test)
 DEFINE_LUAOPEN_EXTERN(unittest)
 
 namespace neko::lua::__filewatch {
@@ -5496,6 +5422,7 @@ void package_preload(lua_State *L) {
     luaL_Reg preloads[] = {
             {"__neko.spritepack", open_tools_spritepack},
             {"__neko.filesys", open_filesys},
+            {"__neko.imgui", open_imgui},
     };
     for (auto m : preloads) {
         luax_package_preload(L, m.name, m.func);
