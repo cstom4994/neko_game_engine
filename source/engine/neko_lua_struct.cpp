@@ -403,16 +403,16 @@ LUASTRUCT_FIELD(z, float)
 LUASTRUCT_FIELD(w, float)
 LUASTRUCT_END
 
-LUASTRUCT_BEGIN(Color)
-LUASTRUCT_FIELD(r, u8)
-LUASTRUCT_FIELD(g, u8)
-LUASTRUCT_FIELD(b, u8)
-LUASTRUCT_FIELD(a, u8)
-LUASTRUCT_END
+// LUASTRUCT_BEGIN(Color)
+// LUASTRUCT_FIELD(r, u8)
+// LUASTRUCT_FIELD(g, u8)
+// LUASTRUCT_FIELD(b, u8)
+// LUASTRUCT_FIELD(a, u8)
+// LUASTRUCT_END
 
 void createStructTables(lua_State *L) {
     Vector4_create(L, "Vector4");
-    Color_create(L, "Color");
+    // Color_create(L, "Color");
 
     ARRAY_uchar8_create(L);
 }

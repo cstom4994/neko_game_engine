@@ -15,12 +15,12 @@
 
 // sokol
 
-#include <sokol_gfx.h>
+// #include <sokol_gfx.h>
 
-#include "vendor/sokol_gp.h"
+// #include "vendor/sokol_gp.h"
 
 int neko_api_set_blendmode(neko_api_BlendMode blendmode) {
-    sgp_set_blend_mode((sgp_blend_mode)blendmode);
+    // sgp_set_blend_mode((sgp_blend_mode)blendmode);
     g_app->blendmode = blendmode;
     return 0;
 }
@@ -30,46 +30,46 @@ int neko_api_set_blendmode(neko_api_BlendMode blendmode) {
 #endif
 
 int neko_api_draw_point(f64 x, f64 y) {
-    sgp_draw_filled_rect(x, y, 1, 1);
+    // sgp_draw_filled_rect(x, y, 1, 1);
     return 0;
 }
 
 int neko_api_draw_line(f64 x1, f64 y1, f64 x2, f64 y2) {
-    sgp_draw_line(x1, y1, x2, y2);
+    // sgp_draw_line(x1, y1, x2, y2);
     return 0;
 }
 
 int neko_api_draw_triangle(f64 ax, f64 ay, f64 bx, f64 by, f64 cx, f64 cy) {
-    sgp_draw_filled_triangle(ax, ay, bx, by, cx, cy);
+    // sgp_draw_filled_triangle(ax, ay, bx, by, cx, cy);
     return 0;
 }
 
 int neko_api_draw_triangle_line(f64 _ax, f64 _ay, f64 _bx, f64 _by, f64 _cx, f64 _cy) {
     f32 ax = _ax, bx = _bx, cx = _cx;
     f32 ay = _ay, by = _by, cy = _cy;
-    sgp_line lines[4] = {
-            sgp_line{{ax, ay}, {bx, by}},
-            sgp_line{{bx, by}, {cx, cy}},
-            sgp_line{{cx, cy}, {ax, ay}},
-    };
-    sgp_draw_lines(lines, 4);
+    // sgp_line lines[4] = {
+    //         sgp_line{{ax, ay}, {bx, by}},
+    //         sgp_line{{bx, by}, {cx, cy}},
+    //         sgp_line{{cx, cy}, {ax, ay}},
+    // };
+    // sgp_draw_lines(lines, 4);
     return 0;
 }
 
 int neko_api_draw_rect(f64 x, f64 y, f64 w, f64 h) {
-    sgp_draw_filled_rect(x, y, w, h);
+    // sgp_draw_filled_rect(x, y, w, h);
     return 0;
 }
 
 int neko_api_draw_rect_line(f64 _x, f64 _y, f64 _w, f64 _h) {
     f32 x = _x, y = _y, w = _w, h = _h;
-    sgp_line lines[4] = {
-            sgp_line{{x, y}, {x, y + h}},
-            sgp_line{{x, y + h}, {x + w, y + h}},
-            sgp_line{{x + w, y + h}, {x + w, y}},
-            sgp_line{{x + w, y}, {x, y + 1}},
-    };
-    sgp_draw_lines(lines, 4);
+    // sgp_line lines[4] = {
+    //         sgp_line{{x, y}, {x, y + h}},
+    //         sgp_line{{x, y + h}, {x + w, y + h}},
+    //         sgp_line{{x + w, y + h}, {x + w, y}},
+    //         sgp_line{{x + w, y}, {x, y + 1}},
+    // };
+    // sgp_draw_lines(lines, 4);
     return 0;
 }
 
@@ -78,51 +78,51 @@ int neko_api_draw_circle(f64 dest_x, f64 dest_y, f64 radius) { return neko_api_d
 int neko_api_draw_circle_line(f64 dest_x, f64 dest_y, f64 radius) { return neko_api_draw_ellipse_line(dest_x, dest_y, radius, radius); }
 
 int neko_api_draw_ellipse(f64 dest_x, f64 dest_y, f64 radius_x, f64 radius_y) {
-    f32 x = (f32)dest_x;
-    f32 y = (f32)dest_y;
-    f32 r = (f32)((radius_x + radius_y) / 2.0);
+    // f32 x = (f32)dest_x;
+    // f32 y = (f32)dest_y;
+    // f32 r = (f32)((radius_x + radius_y) / 2.0);
 
-    f32 xr = (f32)radius_x / r;
-    f32 yr = (f32)radius_y / r;
+    // f32 xr = (f32)radius_x / r;
+    // f32 yr = (f32)radius_y / r;
 
-    static sgp_triangle tris[MAX_CIRCLE_TRIS];
-    int count = NEKO_MIN(NEKO_MAX(7.0f, 2.0f * r / (f32)neko_pi), MAX_CIRCLE_TRIS);
-    f32 delta_angle = 2.0 * (f32)neko_pi / (f32)count;
+    // static sgp_triangle tris[MAX_CIRCLE_TRIS];
+    // int count = NEKO_MIN(NEKO_MAX(7.0f, 2.0f * r / (f32)neko_pi), MAX_CIRCLE_TRIS);
+    // f32 delta_angle = 2.0 * (f32)neko_pi / (f32)count;
 
-    for (int i = 0; i < count; i++) {
-        tris[i].a.x = x;
-        tris[i].a.y = y;
+    // for (int i = 0; i < count; i++) {
+    //     tris[i].a.x = x;
+    //     tris[i].a.y = y;
 
-        tris[i].b.x = x + r * xr * sinf(i * delta_angle);
-        tris[i].b.y = y - r * yr * cosf(i * delta_angle);
+    //     tris[i].b.x = x + r * xr * sinf(i * delta_angle);
+    //     tris[i].b.y = y - r * yr * cosf(i * delta_angle);
 
-        tris[i].c.x = x + r * xr * sinf((i + 1) * delta_angle);
-        tris[i].c.y = y - r * yr * cosf((i + 1) * delta_angle);
-    }
-    sgp_draw_filled_triangles(tris, count);
+    //     tris[i].c.x = x + r * xr * sinf((i + 1) * delta_angle);
+    //     tris[i].c.y = y - r * yr * cosf((i + 1) * delta_angle);
+    // }
+    // sgp_draw_filled_triangles(tris, count);
     return 0;
 }
 
 int neko_api_draw_ellipse_line(f64 dest_x, f64 dest_y, f64 radius_x, f64 radius_y) {
-    f32 x = (f32)dest_x;
-    f32 y = (f32)dest_y;
-    f32 r = (f32)((radius_x + radius_y) / 2.0);
+    // f32 x = (f32)dest_x;
+    // f32 y = (f32)dest_y;
+    // f32 r = (f32)((radius_x + radius_y) / 2.0);
 
-    f32 xr = (f32)radius_x / r;
-    f32 yr = (f32)radius_y / r;
+    // f32 xr = (f32)radius_x / r;
+    // f32 yr = (f32)radius_y / r;
 
-    static sgp_line lines[MAX_CIRCLE_TRIS];
-    int count = NEKO_MIN(NEKO_MAX(7.0f, 2.0f * r / (f32)neko_pi), MAX_CIRCLE_TRIS);
-    f32 delta_angle = 2.0 * (f32)neko_pi / (f32)count;
+    // static sgp_line lines[MAX_CIRCLE_TRIS];
+    // int count = NEKO_MIN(NEKO_MAX(7.0f, 2.0f * r / (f32)neko_pi), MAX_CIRCLE_TRIS);
+    // f32 delta_angle = 2.0 * (f32)neko_pi / (f32)count;
 
-    for (int i = 0; i < count; i++) {
-        lines[i].a.x = x + r * xr * sinf(i * delta_angle);
-        lines[i].a.y = y - r * yr * cosf(i * delta_angle);
+    // for (int i = 0; i < count; i++) {
+    //     lines[i].a.x = x + r * xr * sinf(i * delta_angle);
+    //     lines[i].a.y = y - r * yr * cosf(i * delta_angle);
 
-        lines[i].b.x = x + r * xr * sinf((i + 1) * delta_angle);
-        lines[i].b.y = y - r * yr * cosf((i + 1) * delta_angle);
-    }
-    sgp_draw_lines(lines, count);
+    //     lines[i].b.x = x + r * xr * sinf((i + 1) * delta_angle);
+    //     lines[i].b.y = y - r * yr * cosf((i + 1) * delta_angle);
+    // }
+    // sgp_draw_lines(lines, count);
     return 0;
 }
 
@@ -334,102 +334,102 @@ int neko_api_shaderbuilder_build(neko_api_ShaderBuilder shaderbuilder, neko_api_
 
     ShaderItem *shd = (ShaderItem *)mem_alloc(sizeof(ShaderItem));
 
-    shd->uniform_floats = (float *)mem_alloc(SGP_UNIFORM_CONTENT_SLOTS * sizeof(float));  // TODO: mem_free in neko_api_cleanup_shader
-    memset(shd->uniform_floats, 0, SGP_UNIFORM_CONTENT_SLOTS * sizeof(float));
-    shd->images = (neko_api_Image *)mem_alloc(SGP_TEXTURE_SLOTS * sizeof(neko_api_Image));  // TODO: mem_free in neko_api_cleanup_shader
-    memset(shd->images, 0, SGP_TEXTURE_SLOTS * sizeof(neko_api_Image));
+    // shd->uniform_floats = (float *)mem_alloc(SGP_UNIFORM_CONTENT_SLOTS * sizeof(float));  // TODO: mem_free in neko_api_cleanup_shader
+    // memset(shd->uniform_floats, 0, SGP_UNIFORM_CONTENT_SLOTS * sizeof(float));
+    // shd->images = (neko_api_Image *)mem_alloc(SGP_TEXTURE_SLOTS * sizeof(neko_api_Image));  // TODO: mem_free in neko_api_cleanup_shader
+    // memset(shd->images, 0, SGP_TEXTURE_SLOTS * sizeof(neko_api_Image));
 
-    shd->num_uniform_definitions = sbi->num_uniform_definitions;
-    shd->uniform_definitions = (ShaderUniformDefinition *)mem_alloc(shd->num_uniform_definitions * sizeof(ShaderBuilderItem));
-    memcpy(shd->uniform_definitions, sbi->uniform_definitions, shd->num_uniform_definitions * sizeof(ShaderBuilderItem));  // TODO: mem_free in neko_api_cleanup_shader
+    // shd->num_uniform_definitions = sbi->num_uniform_definitions;
+    // shd->uniform_definitions = (ShaderUniformDefinition *)mem_alloc(shd->num_uniform_definitions * sizeof(ShaderBuilderItem));
+    // memcpy(shd->uniform_definitions, sbi->uniform_definitions, shd->num_uniform_definitions * sizeof(ShaderBuilderItem));  // TODO: mem_free in neko_api_cleanup_shader
 
-    // sg shader description
+    // // sg shader description
 
-    // init
-    sg_shader_desc shader_desc = {0};
-    shader_desc.label = "lyteshaderprogram";
-    shd->num_uniform_floats = 0;
-    shd->num_images = 0;
+    // // init
+    // sg_shader_desc shader_desc = {0};
+    // shader_desc.label = "lyteshaderprogram";
+    // shd->num_uniform_floats = 0;
+    // shd->num_images = 0;
 
-    // shader code
-    shader_desc.vs.source = full_code_vertex;
-    shader_desc.fs.source = full_code_fragment;
-    shader_desc.vs.entry = "main";
-    shader_desc.fs.entry = "main";
-    // MAGIC uniform: vec4 current_color 和 sampler2D current_image
-    shader_desc.fs.uniform_blocks->uniforms[0].name = "current_color";
-    shader_desc.fs.uniform_blocks->uniforms[0].type = (sg_uniform_type)NEKO_UNIFORMTYPE_VEC4;
-    shader_desc.fs.uniform_blocks->uniforms[0].array_count = 1;
-    shader_desc.vs.uniform_blocks->uniforms[0].name = "current_color";
-    shader_desc.vs.uniform_blocks->uniforms[0].type = (sg_uniform_type)NEKO_UNIFORMTYPE_VEC4;
-    shader_desc.vs.uniform_blocks->uniforms[0].array_count = 1;
+    // // shader code
+    // shader_desc.vs.source = full_code_vertex;
+    // shader_desc.fs.source = full_code_fragment;
+    // shader_desc.vs.entry = "main";
+    // shader_desc.fs.entry = "main";
+    // // MAGIC uniform: vec4 current_color 和 sampler2D current_image
+    // shader_desc.fs.uniform_blocks->uniforms[0].name = "current_color";
+    // shader_desc.fs.uniform_blocks->uniforms[0].type = (sg_uniform_type)NEKO_UNIFORMTYPE_VEC4;
+    // shader_desc.fs.uniform_blocks->uniforms[0].array_count = 1;
+    // shader_desc.vs.uniform_blocks->uniforms[0].name = "current_color";
+    // shader_desc.vs.uniform_blocks->uniforms[0].type = (sg_uniform_type)NEKO_UNIFORMTYPE_VEC4;
+    // shader_desc.vs.uniform_blocks->uniforms[0].array_count = 1;
 
-    shd->num_uniform_floats += 4;  // r,g,b,a for current_color
+    // shd->num_uniform_floats += 4;  // r,g,b,a for current_color
 
-    // 如果用户调用 draw_image 这是对应的MAGIC图像名称
-    shader_desc.fs.image_sampler_pairs[0].glsl_name = "current_image";
-    shader_desc.fs.image_sampler_pairs[0].used = true;
-    shader_desc.fs.image_sampler_pairs[0].image_slot = 0;
-    shader_desc.fs.image_sampler_pairs[0].sampler_slot = 0;
-    shader_desc.fs.samplers[0].used = true;
-    shader_desc.fs.images[0].used = true;
-    shader_desc.fs.images[0].image_type = SG_IMAGETYPE_2D;
-    shader_desc.fs.images[0].sample_type = SG_IMAGESAMPLETYPE_FLOAT;
+    // // 如果用户调用 draw_image 这是对应的MAGIC图像名称
+    // shader_desc.fs.image_sampler_pairs[0].glsl_name = "current_image";
+    // shader_desc.fs.image_sampler_pairs[0].used = true;
+    // shader_desc.fs.image_sampler_pairs[0].image_slot = 0;
+    // shader_desc.fs.image_sampler_pairs[0].sampler_slot = 0;
+    // shader_desc.fs.samplers[0].used = true;
+    // shader_desc.fs.images[0].used = true;
+    // shader_desc.fs.images[0].image_type = SG_IMAGETYPE_2D;
+    // shader_desc.fs.images[0].sample_type = SG_IMAGESAMPLETYPE_FLOAT;
 
-    shd->num_images += 1;  // current_image
+    // shd->num_images += 1;  // current_image
 
-    size_t num_uniforms = sbi->num_uniform_definitions;
+    // size_t num_uniforms = sbi->num_uniform_definitions;
 
-    int flt_idx = 1;
-    int img_idx = 1;
+    // int flt_idx = 1;
+    // int img_idx = 1;
 
-    for (int i = 0; i < num_uniforms; i++) {
-        ShaderUniformDefinition *sud = &shd->uniform_definitions[i];
-        if (sud->type == NEKO_UNIFORMTYPE_SAMPLER2D) {
-            // image
-            shader_desc.fs.image_sampler_pairs[img_idx].glsl_name = sud->name;
-            shader_desc.fs.image_sampler_pairs[img_idx].used = true;
-            shader_desc.fs.image_sampler_pairs[img_idx].image_slot = img_idx;
-            shader_desc.fs.image_sampler_pairs[img_idx].sampler_slot = img_idx;
-            shader_desc.fs.samplers[img_idx].used = true;
-            shader_desc.fs.images[img_idx].used = true;
-            shader_desc.fs.images[img_idx].image_type = SG_IMAGETYPE_2D;
-            shader_desc.fs.images[img_idx].sample_type = SG_IMAGESAMPLETYPE_FLOAT;
-            sud->location = img_idx;
-            img_idx++;
-            shd->num_images += 1;
-        } else {
-            shader_desc.fs.uniform_blocks[0].uniforms[flt_idx].name = sud->name;
-            shader_desc.fs.uniform_blocks[0].uniforms[flt_idx].type = (sg_uniform_type)sud->type;
-            shader_desc.fs.uniform_blocks[0].uniforms[flt_idx].array_count = 1;
-            shader_desc.vs.uniform_blocks[0].uniforms[flt_idx].name = sud->name;
-            shader_desc.vs.uniform_blocks[0].uniforms[flt_idx].type = (sg_uniform_type)sud->type;
-            shader_desc.vs.uniform_blocks[0].uniforms[flt_idx].array_count = 1;
-            flt_idx++;
-            sud->location = shd->num_uniform_floats;
-            shd->num_uniform_floats += sud->float_count;
-        }
-    }
+    // for (int i = 0; i < num_uniforms; i++) {
+    //     ShaderUniformDefinition *sud = &shd->uniform_definitions[i];
+    //     if (sud->type == NEKO_UNIFORMTYPE_SAMPLER2D) {
+    //         // image
+    //         shader_desc.fs.image_sampler_pairs[img_idx].glsl_name = sud->name;
+    //         shader_desc.fs.image_sampler_pairs[img_idx].used = true;
+    //         shader_desc.fs.image_sampler_pairs[img_idx].image_slot = img_idx;
+    //         shader_desc.fs.image_sampler_pairs[img_idx].sampler_slot = img_idx;
+    //         shader_desc.fs.samplers[img_idx].used = true;
+    //         shader_desc.fs.images[img_idx].used = true;
+    //         shader_desc.fs.images[img_idx].image_type = SG_IMAGETYPE_2D;
+    //         shader_desc.fs.images[img_idx].sample_type = SG_IMAGESAMPLETYPE_FLOAT;
+    //         sud->location = img_idx;
+    //         img_idx++;
+    //         shd->num_images += 1;
+    //     } else {
+    //         shader_desc.fs.uniform_blocks[0].uniforms[flt_idx].name = sud->name;
+    //         shader_desc.fs.uniform_blocks[0].uniforms[flt_idx].type = (sg_uniform_type)sud->type;
+    //         shader_desc.fs.uniform_blocks[0].uniforms[flt_idx].array_count = 1;
+    //         shader_desc.vs.uniform_blocks[0].uniforms[flt_idx].name = sud->name;
+    //         shader_desc.vs.uniform_blocks[0].uniforms[flt_idx].type = (sg_uniform_type)sud->type;
+    //         shader_desc.vs.uniform_blocks[0].uniforms[flt_idx].array_count = 1;
+    //         flt_idx++;
+    //         sud->location = shd->num_uniform_floats;
+    //         shd->num_uniform_floats += sud->float_count;
+    //     }
+    // }
 
-    shader_desc.fs.uniform_blocks[0].size = shd->num_uniform_floats * 4;
+    // shader_desc.fs.uniform_blocks[0].size = shd->num_uniform_floats * 4;
 
-    // sg_shader
-    sg_shader sgshd = sg_make_shader(&shader_desc);
-    // sgp pipeline
-    sgp_pipeline_desc pip_desc = {0};
-    pip_desc.blend_mode = (sgp_blend_mode)g_app->blendmode;  // TODO: neko
-    pip_desc.shader = sgshd;
-    // pip_desc.primitive_type = SG_PRIMITIVETYPE_ ;
-    sg_pipeline pip = sgp_make_pipeline(&pip_desc);
-    sg_resource_state state = sg_query_pipeline_state(pip);
-    if (state != SG_RESOURCESTATE_VALID) {
-        fprintf(stderr, "Failed to make custom pipeline: %d\n ", state);
-        return 5;
-    }
+    // // sg_shader
+    // sg_shader sgshd = sg_make_shader(&shader_desc);
+    // // sgp pipeline
+    // sgp_pipeline_desc pip_desc = {0};
+    // pip_desc.blend_mode = (sgp_blend_mode)g_app->blendmode;  // TODO: neko
+    // pip_desc.shader = sgshd;
+    // // pip_desc.primitive_type = SG_PRIMITIVETYPE_ ;
+    // sg_pipeline pip = sgp_make_pipeline(&pip_desc);
+    // sg_resource_state state = sg_query_pipeline_state(pip);
+    // if (state != SG_RESOURCESTATE_VALID) {
+    //     fprintf(stderr, "Failed to make custom pipeline: %d\n ", state);
+    //     return 5;
+    // }
 
-    // 将 sgp 管道与 Shaderitem 关联
-    shd->pip_id = pip.id;
-    shd->shd_id = sgshd.id;
+    // // 将 sgp 管道与 Shaderitem 关联
+    // shd->pip_id = pip.id;
+    // shd->shd_id = sgshd.id;
 
     *shader = shd;
 
@@ -447,8 +447,8 @@ int neko_api_shader_cleanup(neko_api_Shader shader) {
         mem_free(shd->uniform_definitions);
         mem_free(shd->uniform_floats);
         mem_free(shd->images);
-        sg_destroy_pipeline(sg_pipeline{.id = shd->pip_id});
-        sg_destroy_shader(sg_shader{.id = shd->shd_id});
+        // sg_destroy_pipeline(sg_pipeline{.id = shd->pip_id});
+        // sg_destroy_shader(sg_shader{.id = shd->shd_id});
         mem_free(shd);
     }
     return 0;
@@ -460,9 +460,9 @@ int neko_api_shader_set(neko_api_Shader shader) {
         fprintf(stderr, "Shader not found.");
         return 1;
     }
-    sgp_set_pipeline(sg_pipeline{.id = shd->pip_id});
+    // sgp_set_pipeline(sg_pipeline{.id = shd->pip_id});
     memcpy(shd->uniform_floats, g_app->current_color, 16);
-    sgp_set_uniform(shd->uniform_floats, shd->num_uniform_floats * 4);
+    // sgp_set_uniform(shd->uniform_floats, shd->num_uniform_floats * 4);
     neko_api_set_blendmode(g_app->blendmode);
     g_app->shader = shd;
 
@@ -471,7 +471,7 @@ int neko_api_shader_set(neko_api_Shader shader) {
 
 int neko_api_reset_shader(void) {
     g_app->shader = NULL;
-    sgp_reset_pipeline();
+    // sgp_reset_pipeline();
 
     return 0;
 }
@@ -480,7 +480,7 @@ int neko_api_core_shader_set_color() {
     if (g_app->shader) {
         ShaderItem *shd = g_app->shader;
         memcpy(shd->uniform_floats, g_app->current_color, 16);
-        sgp_set_uniform(shd->uniform_floats, shd->num_uniform_floats * 4);
+        // sgp_set_uniform(shd->uniform_floats, shd->num_uniform_floats * 4);
     }
     return 0;
 }
@@ -506,7 +506,7 @@ int neko_api_shader_set_uniform(neko_api_Shader shader, const char *uniform_name
         case 0: {  // float/int
             shd->uniform_floats[sud->location] = uniform_value.options.float_val;
             memcpy(shd->uniform_floats, g_app->current_color, 16);
-            sgp_set_uniform(shd->uniform_floats, shd->num_uniform_floats * 4);
+            // sgp_set_uniform(shd->uniform_floats, shd->num_uniform_floats * 4);
         } break;
         case 1: {  // vecX/ivecX. X = 2 or 3 or 4
             if (uniform_value.options.vec_val.count > sud->float_count) {
@@ -519,13 +519,13 @@ int neko_api_shader_set_uniform(neko_api_Shader shader, const char *uniform_name
                 shd->uniform_floats[sud->location + i] = uniform_value.options.vec_val.data[i];
             }
             memcpy(shd->uniform_floats, g_app->current_color, 16);
-            sgp_set_uniform(shd->uniform_floats, shd->num_uniform_floats * 4);
+            // sgp_set_uniform(shd->uniform_floats, shd->num_uniform_floats * 4);
         } break;
         case 2: {  // sampler2D
             shd->images[sud->location] = uniform_value.options.sampler2D_val;
             uint32_t img_id = *(uint32_t *)uniform_value.options.sampler2D_val;  // **MAGIC_1** NOTE: uint32_t 句柄是 ImageItem 结构中的第一项
-            sg_image sgimg = sg_image{.id = img_id};
-            sgp_set_image(sud->location, sgimg);
+            // sg_image sgimg = sg_image{.id = img_id};
+            // sgp_set_image(sud->location, sgimg);
         } break;
         default: {
             fprintf(stderr, "Unknown shader uniform value, shouldn't happen.\n");

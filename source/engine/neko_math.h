@@ -10,6 +10,8 @@
 
 #define neko_pi 3.14159265358979323846264f
 
+#if 0
+
 struct vec2 {
     vec2() {}
     vec2(f32 x, f32 y) {
@@ -604,5 +606,7 @@ inline sutherland_hodgman_output sutherland_hodgman(halfspace split, polygon in,
 
     return out;
 }
+
+#endif
 
 #endif

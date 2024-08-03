@@ -15,14 +15,14 @@
 #define CUTE_ASEPRITE_IMPLEMENTATION
 #include <cute_aseprite.h>
 
-template <typename T>
-inline auto sg_make(const T &d) {
-    if constexpr (std::is_same_v<T, sg_image_desc>) {
-        return sg_make_image(d);
-    } else {
-        static_assert(neko::always_false<T>, "unsupported type passed to sg_make");
-    }
-}
+// template <typename T>
+// inline auto sg_make(const T &d) {
+//     if constexpr (std::is_same_v<T, sg_image_desc>) {
+//         return sg_make_image(d);
+//     } else {
+//         static_assert(neko::always_false<T>, "unsupported type passed to sg_make");
+//     }
+// }
 
 static std::tuple<u32, i32, i32> image_load_stbi(String contents, bool generate_mips) {
     i32 width = 0, height = 0, channels = 0;
@@ -37,12 +37,12 @@ static std::tuple<u32, i32, i32> image_load_stbi(String contents, bool generate_
     }
     neko_defer(stbi_image_free(data));
 
-    sg_image_desc desc = {};
-    desc.pixel_format = SG_PIXELFORMAT_RGBA8;
-    desc.width = width;
-    desc.height = height;
-    desc.data.subimage[0][0].ptr = data;
-    desc.data.subimage[0][0].size = width * height * 4;
+    // sg_image_desc desc = {};
+    // desc.pixel_format = SG_PIXELFORMAT_RGBA8;
+    // desc.width = width;
+    // desc.height = height;
+    // desc.data.subimage[0][0].ptr = data;
+    // desc.data.subimage[0][0].size = width * height * 4;
 
     Array<u8 *> mips = {};
     neko_defer({
@@ -53,7 +53,7 @@ static std::tuple<u32, i32, i32> image_load_stbi(String contents, bool generate_
     });
 
     if (generate_mips) {
-        mips.reserve(SG_MAX_MIPMAPS);
+        // mips.reserve(SG_MAX_MIPMAPS);
 
         u8 *prev = data;
         i32 w0 = width;
@@ -68,8 +68,8 @@ static std::tuple<u32, i32, i32> image_load_stbi(String contents, bool generate_
             stbir_resize_uint8_linear(prev, w0, h0, 0, mip, w1, h1, 0, STBIR_RGBA);
             mips.push(mip);
 
-            desc.data.subimage[0][mips.len].ptr = mip;
-            desc.data.subimage[0][mips.len].size = w1 * h1 * 4;
+            // desc.data.subimage[0][mips.len].ptr = mip;
+            // desc.data.subimage[0][mips.len].size = w1 * h1 * 4;
 
             prev = mip;
             w0 = w1;
@@ -79,12 +79,12 @@ static std::tuple<u32, i32, i32> image_load_stbi(String contents, bool generate_
         }
     }
 
-    desc.num_mipmaps = mips.len + 1;
+    // desc.num_mipmaps = mips.len + 1;
 
     {
         PROFILE_BLOCK("make image");
         LockGuard lock{&g_app->gpu_mtx};
-        id = sg_make(desc).id;
+        // id = sg_make(desc).id;
     }
 
     NEKO_TRACE("created image(stbi) (%dx%d, %d channels, mipmaps: %s) with id %d", width, height, channels, generate_mips ? "true" : "false", id);
@@ -176,12 +176,12 @@ static std::tuple<u32, i32, i32> image_load_ase(String contents, bool generate_m
 
     u8 *data = reinterpret_cast<u8 *>(ase->frames->pixels);
 
-    sg_image_desc desc = {};
-    desc.pixel_format = SG_PIXELFORMAT_RGBA8;
-    desc.width = width;
-    desc.height = height;
-    desc.data.subimage[0][0].ptr = data;
-    desc.data.subimage[0][0].size = width * height * 4;
+    // sg_image_desc desc = {};
+    // desc.pixel_format = SG_PIXELFORMAT_RGBA8;
+    // desc.width = width;
+    // desc.height = height;
+    // desc.data.subimage[0][0].ptr = data;
+    // desc.data.subimage[0][0].size = width * height * 4;
 
     Array<u8 *> mips = {};
     neko_defer({
@@ -192,7 +192,7 @@ static std::tuple<u32, i32, i32> image_load_ase(String contents, bool generate_m
     });
 
     if (generate_mips) {
-        mips.reserve(SG_MAX_MIPMAPS);
+        // mips.reserve(SG_MAX_MIPMAPS);
 
         u8 *prev = data;
         i32 w0 = width;
@@ -207,8 +207,8 @@ static std::tuple<u32, i32, i32> image_load_ase(String contents, bool generate_m
             stbir_resize_uint8_linear(prev, w0, h0, 0, mip, w1, h1, 0, STBIR_RGBA);
             mips.push(mip);
 
-            desc.data.subimage[0][mips.len].ptr = mip;
-            desc.data.subimage[0][mips.len].size = w1 * h1 * 4;
+            // desc.data.subimage[0][mips.len].ptr = mip;
+            // desc.data.subimage[0][mips.len].size = w1 * h1 * 4;
 
             prev = mip;
             w0 = w1;
@@ -218,12 +218,12 @@ static std::tuple<u32, i32, i32> image_load_ase(String contents, bool generate_m
         }
     }
 
-    desc.num_mipmaps = mips.len + 1;
+    // desc.num_mipmaps = mips.len + 1;
 
     {
         PROFILE_BLOCK("make image");
         LockGuard lock{&g_app->gpu_mtx};
-        id = sg_make(desc).id;
+        // id = sg_make(desc).id;
     }
 
     NEKO_TRACE("created image(ase) (%dx%d, %d channels, mipmaps: %s) with id %d", width, height, channels, generate_mips ? "true" : "false", id);
@@ -266,7 +266,7 @@ bool Image::load(String filepath, bool generate_mips) {
 
 void Image::trash() {
     LockGuard lock{&g_app->gpu_mtx};
-    sg_destroy_image({id});
+    // sg_destroy_image({id});
 }
 
 bool SpriteData::load(String filepath) {
@@ -312,23 +312,23 @@ bool SpriteData::load(String filepath) {
         memcpy(pixels.data + (i * rect), &frame.pixels[0].r, rect);
     }
 
-    sg_image_desc desc = {};
-    desc.width = ase->w;
-    desc.height = ase->h * ase->frame_count;
-    desc.data.subimage[0][0].ptr = pixels.data;
-    desc.data.subimage[0][0].size = ase->frame_count * rect;
+    // sg_image_desc desc = {};
+    // desc.width = ase->w;
+    // desc.height = ase->h * ase->frame_count;
+    // desc.data.subimage[0][0].ptr = pixels.data;
+    // desc.data.subimage[0][0].size = ase->frame_count * rect;
 
     u32 id = 0;
     {
         PROFILE_BLOCK("make image");
         LockGuard lock{&g_app->gpu_mtx};
-        id = sg_make(desc).id;
+        // id = sg_make(desc).id;
     }
 
     Image img = {};
     img.id = id;
-    img.width = desc.width;
-    img.height = desc.height;
+    // img.width = desc.width;
+    // img.height = desc.height;
 
     HashMap<SpriteLoop> by_tag = {};
     by_tag.reserve(ase->tag_count);
@@ -537,15 +537,15 @@ static void make_font_range(FontRange *out, FontFamily *font, FontKey key) {
     {
         PROFILE_BLOCK("make image");
 
-        sg_image_desc sg_image = {};
-        sg_image.width = width;
-        sg_image.height = height;
-        sg_image.data.subimage[0][0].ptr = image;
-        sg_image.data.subimage[0][0].size = width * height * 4;
+        // sg_image_desc sg_image = {};
+        // sg_image.width = width;
+        // sg_image.height = height;
+        // sg_image.data.subimage[0][0].ptr = image;
+        // sg_image.data.subimage[0][0].size = width * height * 4;
 
         {
             LockGuard lock{&g_app->gpu_mtx};
-            id = sg_make(sg_image).id;
+            // id = sg_make(sg_image).id;
         }
     }
 

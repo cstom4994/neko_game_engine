@@ -3,6 +3,7 @@
 #include <array>
 #include <new>
 
+#include "engine/glew_glfw.h"
 #include "neko_api.hpp"
 #include "neko_app.h"
 #include "neko_base.h"
@@ -615,6 +616,43 @@ String neko_os_homedir() {
 #endif
     const_str path = std::getenv(HOMEDIR);
     return {path};
+}
+
+f32 timing_dt;
+f32 timing_true_dt;
+static f32 scale = 1.0f;
+static bool paused = false;
+
+void timing_set_scale(f32 s) { scale = s; }
+f32 timing_get_scale() { return scale; }
+
+void timing_set_paused(bool p) { paused = p; }
+bool timing_get_paused() { return paused; }
+
+static void _dt_update() {
+    static double last_time = -1;
+    double curr_time;
+
+    // first update?
+    if (last_time < 0) last_time = glfwGetTime();
+
+    curr_time = glfwGetTime();
+    timing_true_dt = curr_time - last_time;
+    timing_dt = paused ? 0.0f : scale * timing_true_dt;
+    last_time = curr_time;
+}
+
+void timing_update() { _dt_update(); }
+
+void timing_save_all(Store* s) {
+    Store* t;
+
+    if (store_child_save(&t, "timing", s)) scalar_save(&scale, "scale", t);
+}
+void timing_load_all(Store* s) {
+    Store* t;
+
+    if (store_child_load(&t, "timing", s)) scalar_load(&scale, "scale", 1, t);
 }
 
 void neko_log(int level, const char* file, int line, const char* fmt, ...) {

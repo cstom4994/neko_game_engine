@@ -4,38 +4,8 @@
 
 #include "neko_os.h"
 
-#define SOKOL_IMPL
-#define SOKOL_TRACE_HOOKS
-#if defined(_WIN32)
-// #define SOKOL_D3D11
-#define SOKOL_GLCORE
-#define SOKOL_WIN32_FORCE_MAIN
-#elif defined(__linux__)
-#define SOKOL_GLCORE
-#elif defined(__EMSCRIPTEN__)
-#define SOKOL_GLES3
-#endif
-#include <sokol_app.h>
-#include <sokol_gfx.h>
-#include <sokol_glue.h>
-#include <sokol_log.h>
-#include <sokol_time.h>
-
-#define SOKOL_GL_IMPL
-#include <util/sokol_gl.h>
-
-#define SOKOL_GP_IMPL
-#include "vendor/sokol_gp.h"
-
-#define IMGUI_DEFINE_MATH_OPERATORS
-#include <imgui.h>
-#include <imgui_internal.h>
-
-#define SOKOL_IMGUI_IMPL
-#include <util/sokol_imgui.h>
-
-#define SOKOL_GFX_IMGUI_IMPL
-#include <util/sokol_gfx_imgui.h>
+#define SOKOL_TIME_IMPL
+#include "vendor/sokol_time.h"
 
 #define STBI_MALLOC(sz) mem_alloc(sz)
 #define STBI_REALLOC(p, newsz) mem_realloc(p, newsz)

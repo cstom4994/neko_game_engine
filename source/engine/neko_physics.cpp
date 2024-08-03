@@ -1,8 +1,8 @@
 #include "neko_physics.h"
 
 #include <box2d/box2d.h>
-#include <sokol_gfx.h>
-#include <util/sokol_gl.h>
+// #include <sokol_gfx.h>
+// #include <util/sokol_gl.h>
 
 #include "engine/neko_app.h"
 #include "engine/neko_draw.h"
@@ -236,22 +236,22 @@ void draw_fixtures_for_body(b2Body *body, f32 meter) {
             case b2Shape::e_polygon: {
                 b2PolygonShape *poly = (b2PolygonShape *)f->GetShape();
 
-                if (poly->m_count > 0) {
-                    sgl_disable_texture();
-                    sgl_begin_line_strip();
+                // if (poly->m_count > 0) {
+                //     sgl_disable_texture();
+                //     sgl_begin_line_strip();
 
-                    renderer_apply_color();
+                //     renderer_apply_color();
 
-                    for (i32 i = 0; i < poly->m_count; i++) {
-                        b2Vec2 pos = body->GetWorldPoint(poly->m_vertices[i]);
-                        renderer_push_xy(pos.x * meter, pos.y * meter);
-                    }
+                //     for (i32 i = 0; i < poly->m_count; i++) {
+                //         b2Vec2 pos = body->GetWorldPoint(poly->m_vertices[i]);
+                //         renderer_push_xy(pos.x * meter, pos.y * meter);
+                //     }
 
-                    b2Vec2 pos = body->GetWorldPoint(poly->m_vertices[0]);
-                    renderer_push_xy(pos.x * meter, pos.y * meter);
+                //     b2Vec2 pos = body->GetWorldPoint(poly->m_vertices[0]);
+                //     renderer_push_xy(pos.x * meter, pos.y * meter);
 
-                    sgl_end();
-                }
+                //     sgl_end();
+                // }
                 break;
             }
             default:

@@ -1,7 +1,11 @@
 
 #include "neko_ecs.h"
 
+#include <stdlib.h>
+
+#include "engine/error.h"
 #include "engine/neko_app.h"
+#include "engine/neko_base.h"
 #include "engine/neko_lua.h"
 #include "engine/neko_lua_wrap.h"
 
@@ -2574,4 +2578,402 @@ ecs_t* ecs_init(lua_State* L) {
     // lua_setglobal(L, "__NEKO_ECS_CORE");
 
     return w;
+}
+
+typedef struct DestroyEntry DestroyEntry;
+struct DestroyEntry {
+    Entity ent;
+    unsigned int pass;
+};
+
+Entity entity_nil = {0};
+static unsigned int counter = 1;
+
+typedef struct ExistsPoolElem ExistsPoolElem;
+struct ExistsPoolElem {
+    EntityPoolElem pool_elem;
+};
+
+static EntityPool* exists_pool;  // 所有现有实体
+
+static EntityMap* destroyed_map;  // 实体是否被销毁
+static CArray* destroyed;         // 被销毁对象的 DestroyEntry 数组
+
+static EntityMap* unused_map;  // 未使用的数组中是否有条目
+static CArray* unused;         // id 放在这里 _remove() 之后 可以复用
+
+static EntityMap* load_map;  // 保存的 ID 映射 --> 真实 ID
+
+typedef enum SaveFilter SaveFilter;
+enum SaveFilter {
+    SF_SAVE,     // 保存此实体
+    SF_NO_SAVE,  // 不要保存此实体
+    SF_UNSET,    // 未设置过滤器 -- 使用默认值
+};
+static EntityMap* save_filter_map;
+static SaveFilter save_filter_default = SF_SAVE;
+
+static Entity _generate_id() {
+    Entity ent;
+
+    if (array_length(unused) > 0) {
+
+        ent = array_top_val(Entity, unused);
+        entitymap_set(unused_map, ent, false);
+        array_pop(unused);
+    } else
+        ent.id = counter++;
+    error_assert(!entity_eq(ent, entity_nil));
+
+    entitypool_add(exists_pool, ent);
+    return ent;
+}
+
+Entity entity_create() {
+    Entity ent;
+
+    ent = _generate_id();
+
+    return ent;
+}
+
+static void _remove(Entity ent) {
+
+    entitymap_set(destroyed_map, ent, false);
+    array_add_val(Entity, unused) = ent;
+    entitymap_set(unused_map, ent, true);
+}
+
+void entity_destroy(Entity ent) {
+    if (!entitypool_get(exists_pool, ent)) return;
+    if (entitymap_get(unused_map, ent)) return;
+    if (entitymap_get(destroyed_map, ent)) return;
+
+    entitypool_remove(exists_pool, ent);
+
+    entitymap_set(destroyed_map, ent, true);
+    array_add_val(DestroyEntry, destroyed) = DestroyEntry{{ent.id}, 0};
+}
+
+void entity_destroy_all() {
+    ExistsPoolElem* exists;
+    entitypool_foreach(exists, exists_pool) entity_destroy(exists->pool_elem.ent);
+}
+
+bool entity_destroyed(Entity ent) { return entitymap_get(destroyed_map, ent); }
+
+void entity_set_save_filter(Entity ent, bool filter) {
+    if (filter) {
+        entitymap_set(save_filter_map, ent, SF_SAVE);
+        save_filter_default = SF_NO_SAVE;
+    } else
+        entitymap_set(save_filter_map, ent, SF_NO_SAVE);
+}
+bool entity_get_save_filter(Entity ent) {
+    SaveFilter filter = (SaveFilter)entitymap_get(save_filter_map, ent);
+    if (filter == SF_UNSET) filter = save_filter_default;
+    return filter == SF_SAVE;
+}
+void entity_clear_save_filters() {
+    entitymap_clear(save_filter_map);
+    save_filter_default = SF_SAVE;
+}
+
+void entity_init() {
+    exists_pool = entitypool_new(ExistsPoolElem);
+    destroyed_map = entitymap_new(false);
+    destroyed = array_new(DestroyEntry);
+    unused_map = entitymap_new(false);
+    unused = array_new(Entity);
+    save_filter_map = entitymap_new(SF_UNSET);
+}
+void entity_deinit() {
+    entitymap_free(save_filter_map);
+    array_free(unused);
+    entitymap_free(unused_map);
+    array_free(destroyed);
+    entitymap_free(destroyed_map);
+    entitypool_free(exists_pool);
+}
+
+void entity_update_all() {
+    unsigned int i;
+    DestroyEntry* entry;
+
+    for (i = 0; i < array_length(destroyed);) {
+        entry = (DestroyEntry*)array_get(destroyed, i);
+        if (entry->pass == 0) {
+            ++entry->pass;
+            ++i;
+        } else {
+            _remove(entry->ent);
+            array_quick_remove(destroyed, i);
+        }
+    }
+}
+
+void entity_save(Entity* ent, const char* n, Store* s) {
+    Store* t;
+
+    if (!entity_eq(*ent, entity_nil) && !entity_get_save_filter(*ent)) error("filtered-out entity referenced in save!");
+
+    if (store_child_save(&t, n, s)) uint_save(&ent->id, "id", t);
+}
+Entity _entity_resolve_saved_id(unsigned int id) {
+    Entity ent, sav = {id};
+
+    if (entity_eq(sav, entity_nil)) return entity_nil;
+
+    ent.id = entitymap_get(load_map, sav);
+    if (entity_eq(ent, entity_nil)) {
+        ent = _generate_id();
+        entitymap_set(load_map, sav, ent.id);
+    }
+    return ent;
+}
+bool entity_load(Entity* ent, const char* n, Entity d, Store* s) {
+    Store* t;
+    unsigned int id;
+
+    if (!store_child_load(&t, n, s)) {
+        *ent = d;
+        return false;
+    }
+
+    uint_load(&id, "id", entity_nil.id, t);
+    *ent = _entity_resolve_saved_id(id);
+    return true;
+}
+
+void entity_load_all_begin() { load_map = entitymap_new(entity_nil.id); }
+void entity_load_all_end() {
+    entitymap_free(load_map);
+    entity_clear_save_filters();
+}
+
+#undef entity_eq
+bool entity_eq(Entity e, Entity f) { return e.id == f.id; }
+
+void entity_save_all(Store* s) {
+    DestroyEntry* entry;
+    ExistsPoolElem* exists;
+    Store *entity_s, *exists_s, *destroyed_s, *entry_s;
+
+    if (store_child_save(&entity_s, "entity", s)) {
+        entitypool_save_foreach(exists, exists_s, exists_pool, "exists_pool", entity_s);
+
+        if (store_child_save(&destroyed_s, "destroyed", entity_s)) array_foreach(entry, destroyed) if (entity_get_save_filter(entry->ent)) if (store_child_save(&entry_s, NULL, destroyed_s)) {
+                entity_save(&entry->ent, "ent", entry_s);
+                uint_save(&entry->pass, "pass", entry_s);
+            }
+    }
+}
+
+void entity_load_all(Store* s) {
+    DestroyEntry* entry;
+    ExistsPoolElem* exists;
+    Store *entity_s, *exists_s, *destroyed_s, *entry_s;
+
+    if (store_child_load(&entity_s, "entity", s)) {
+        entitypool_load_foreach(exists, exists_s, exists_pool, "exists_pool", entity_s);
+
+        if (store_child_load(&destroyed_s, "destroyed", entity_s))
+            while (store_child_load(&entry_s, NULL, destroyed_s)) {
+                entry = (DestroyEntry*)array_add(destroyed);
+                error_assert(entity_load(&entry->ent, "ent", entity_nil, entry_s));
+                uint_load(&entry->pass, "pass", 0, entry_s);
+            }
+    }
+}
+
+struct EntityPool {
+    // just a map of indices into an array, -1 if doesn't exist
+    EntityMap* emap;
+    CArray* array;
+};
+
+EntityPool* entitypool_new_(size_t object_size) {
+    EntityPool* pool = (EntityPool*)mem_alloc(sizeof(EntityPool));
+
+    pool->emap = entitymap_new(-1);
+    pool->array = array_new_(object_size);
+
+    return pool;
+}
+void entitypool_free(EntityPool* pool) {
+    array_free(pool->array);
+    entitymap_free(pool->emap);
+    mem_free(pool);
+}
+
+void* entitypool_add(EntityPool* pool, Entity ent) {
+    EntityPoolElem* elem;
+
+    if ((elem = (EntityPoolElem*)entitypool_get(pool, ent))) return elem;
+
+    // add element to array and set id in map
+    elem = (EntityPoolElem*)array_add(pool->array);
+    elem->ent = ent;
+    entitymap_set(pool->emap, ent, array_length(pool->array) - 1);
+    return elem;
+}
+void entitypool_remove(EntityPool* pool, Entity ent) {
+    int i;
+    EntityPoolElem* elem;
+
+    i = entitymap_get(pool->emap, ent);
+    if (i >= 0) {
+        // remove may swap with last element, so fix that mapping
+        if (array_quick_remove(pool->array, i)) {
+            elem = (EntityPoolElem*)array_get(pool->array, i);
+            entitymap_set(pool->emap, elem->ent, i);
+        }
+
+        // remove mapping
+        entitymap_set(pool->emap, ent, -1);
+    }
+}
+void* entitypool_get(EntityPool* pool, Entity ent) {
+    int i;
+
+    i = entitymap_get(pool->emap, ent);
+    if (i >= 0) return array_get(pool->array, i);
+    return NULL;
+}
+
+void* entitypool_begin(EntityPool* pool) { return array_begin(pool->array); }
+void* entitypool_end(EntityPool* pool) { return array_end(pool->array); }
+void* entitypool_nth(EntityPool* pool, unsigned int n) { return array_get(pool->array, n); }
+
+unsigned int entitypool_size(EntityPool* pool) { return array_length(pool->array); }
+
+void entitypool_clear(EntityPool* pool) {
+    entitymap_clear(pool->emap);
+    array_clear(pool->array);
+}
+
+void entitypool_sort(EntityPool* pool, int (*compar)(const void*, const void*)) {
+    unsigned int i, n;
+    EntityPoolElem* elem;
+
+    array_sort(pool->array, compar);
+
+    // remap Entity -> index
+    n = array_length(pool->array);
+    for (i = 0; i < n; ++i) {
+        elem = (EntityPoolElem*)array_get(pool->array, i);
+        entitymap_set(pool->emap, elem->ent, i);
+    }
+}
+
+void entitypool_elem_save(EntityPool* pool, void* elem, Store* s) {
+    EntityPoolElem** p;
+
+    // save Entity id
+    p = (EntityPoolElem**)elem;
+    entity_save(&(*p)->ent, "pool_elem", s);
+}
+void entitypool_elem_load(EntityPool* pool, void* elem, Store* s) {
+    Entity ent;
+    EntityPoolElem** p;
+
+    // load Entity id, add element with that key
+    error_assert(entity_load(&ent, "pool_elem", entity_nil, s), "saved EntityPoolElem entry must exist");
+    p = (EntityPoolElem**)elem;
+    *p = (EntityPoolElem*)entitypool_add(pool, ent);
+    (*p)->ent = ent;
+}
+
+#define MIN_CAPACITY 2
+
+struct EntityMap {
+    int* arr;
+    unsigned int bound;     // 1 + maximum key
+    unsigned int capacity;  // number of elements we have heap space for
+    int def;                // value for unset keys
+
+    /*
+     * invariants:
+     *    bound <= capacity (so that maximum key < capacity)
+     *    MIN_CAPACITY <= capacity
+     */
+};
+
+static void _init(EntityMap* emap) {
+    unsigned int i;
+
+    emap->bound = 0;
+    emap->capacity = MIN_CAPACITY;
+    emap->arr = (int*)mem_alloc(emap->capacity * sizeof(*emap->arr));
+
+    for (i = 0; i < emap->capacity; ++i) emap->arr[i] = emap->def;
+}
+
+EntityMap* entitymap_new(int def) {
+    EntityMap* emap;
+
+    emap = (EntityMap*)mem_alloc(sizeof(EntityMap));
+    emap->def = def;
+    _init(emap);
+    return emap;
+}
+void entitymap_clear(EntityMap* emap) {
+    mem_free(emap->arr);
+    _init(emap);
+}
+void entitymap_free(EntityMap* emap) {
+    mem_free(emap->arr);
+    mem_free(emap);
+}
+
+static void _grow(EntityMap* emap) {
+    unsigned int new_capacity, i, bound;
+
+    // find next power of 2 (TODO: use log?)
+    bound = emap->bound;
+    for (new_capacity = emap->capacity; new_capacity < bound; new_capacity <<= 1);
+
+    // grow, clear new
+    emap->arr = (int*)mem_realloc(emap->arr, new_capacity * sizeof(*emap->arr));
+    for (i = emap->capacity; i < new_capacity; ++i) emap->arr[i] = emap->def;
+    emap->capacity = new_capacity;
+}
+static void _shrink(EntityMap* emap) {
+    unsigned int new_capacity, bound_times_4;
+
+    if (emap->capacity <= MIN_CAPACITY) return;
+
+    // halve capacity while bound is less than a fourth
+    bound_times_4 = emap->bound << 2;
+    if (bound_times_4 >= emap->capacity) return;
+    for (new_capacity = emap->capacity; new_capacity > MIN_CAPACITY && bound_times_4 < new_capacity; new_capacity >>= 1);
+    if (new_capacity < MIN_CAPACITY) new_capacity = MIN_CAPACITY;
+
+    emap->arr = (int*)mem_realloc(emap->arr, new_capacity * sizeof(*emap->arr));
+    emap->capacity = new_capacity;
+}
+
+void entitymap_set(EntityMap* emap, Entity ent, int val) {
+    if (val == emap->def)  // deleting?
+    {
+        emap->arr[ent.id] = val;
+
+        // possibly move bound down and shrink
+        if (emap->bound == ent.id + 1) {
+            while (emap->bound > 0 && emap->arr[emap->bound - 1] == emap->def) --emap->bound;
+            _shrink(emap);
+        }
+    } else {
+        // possibly move bound up and grow
+        if (ent.id + 1 > emap->bound) {
+            emap->bound = ent.id + 1;
+            if (ent.id >= emap->capacity) _grow(emap);
+        }
+
+        emap->arr[ent.id] = val;
+    }
+}
+int entitymap_get(EntityMap* emap, Entity ent) {
+    if (ent.id >= emap->capacity) return emap->def;
+    return emap->arr[ent.id];
 }

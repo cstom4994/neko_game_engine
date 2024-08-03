@@ -14,6 +14,7 @@
 #include "neko_draw.h"
 #include "neko_lua.h"
 #include "neko_lua_wrap.h"
+#include "neko_game.h"
 #include "neko_luabind.hpp"
 #include "neko_math.h"
 #include "neko_os.h"
@@ -21,16 +22,18 @@
 #include "neko_ui.h"
 
 // deps
-#include <sokol_app.h>
-#include <sokol_gfx.h>
-#include <sokol_glue.h>
-#include <sokol_log.h>
-#include <sokol_time.h>
-#include <util/sokol_gfx_imgui.h>
-#include <util/sokol_gl.h>
+// #include <sokol_app.h>
+// #include <sokol_gfx.h>
+// #include <sokol_glue.h>
+// #include <sokol_log.h>
+// #include <sokol_time.h>
+// #include <util/sokol_gfx_imgui.h>
+// #include <util/sokol_gl.h>
 
 // gp
-#include "vendor/sokol_gp.h"
+// #include "vendor/sokol_gp.h"
+
+#include "vendor/sokol_time.h"
 
 #if 0
 
@@ -849,10 +852,10 @@ i32 neko_buildnum(void) {
     return b;
 }
 
-static Mutex g_init_mtx;
-static sgl_pipeline g_pipeline;
 
-static sgimgui_t sgimgui;
+// static sgl_pipeline g_pipeline;
+
+// static sgimgui_t sgimgui;
 
 static void *__neko_imgui_malloc(size_t sz, void *user_data) { return mem_alloc(sz); }
 
@@ -863,7 +866,7 @@ static void __neko_imgui_free(void *ptr, void *user_data) { return mem_free(ptr)
 
 static void init() {
     PROFILE_FUNC();
-    LockGuard lock(&g_init_mtx);
+    // LockGuard lock(&g_init_mtx);
 
     neko::timer tm_init;
     tm_init.start();
@@ -871,67 +874,67 @@ static void init() {
     {
         PROFILE_BLOCK("sokol");
 
-        sg_desc sg = {};
-        sg.logger.func = slog_func;
-        // sg.context = sapp_sgcontext();
-        sg.environment = sglue_environment();
-        sg_setup(sg);
+        // sg_desc sg = {};
+        // sg.logger.func = slog_func;
+        // // sg.context = sapp_sgcontext();
+        // sg.environment = sglue_environment();
+        // sg_setup(sg);
 
-        sgl_desc_t sgl = {};
-        sgl.logger.func = slog_func;
-        sgl.max_vertices = 128 * 1024;
-        sgl_setup(sgl);
+        // sgl_desc_t sgl = {};
+        // sgl.logger.func = slog_func;
+        // sgl.max_vertices = 128 * 1024;
+        // sgl_setup(sgl);
 
-        sgp_desc sgpdesc = {0};
-        sgp_setup(&sgpdesc);
-        if (!sgp_is_valid()) {
-            fprintf(stderr, "failed to create sokol_gp context: %s\n", sgp_get_error_message(sgp_get_last_error()));
-            exit(-1);
-        }
+        // sgp_desc sgpdesc = {0};
+        // sgp_setup(&sgpdesc);
+        // if (!sgp_is_valid()) {
+        //     fprintf(stderr, "failed to create sokol_gp context: %s\n", sgp_get_error_message(sgp_get_last_error()));
+        //     exit(-1);
+        // }
 
         ImGui::SetAllocatorFunctions(__neko_imgui_malloc, __neko_imgui_free);
 
-        const sgimgui_desc_t desc = {};
-        sgimgui_init(&sgimgui, &desc);
+        // const sgimgui_desc_t desc = {};
+        // sgimgui_init(&sgimgui, &desc);
 
-        simgui_desc_t simgui_desc = {};
-        simgui_desc.ini_filename = "imgui.ini";
-        simgui_desc.logger.func = slog_func;
-        simgui_desc.no_default_font = true;
-        simgui_desc.allocator = {
-                .alloc_fn = +[](size_t size, void *user_data) { return mem_alloc(size); },
-                .free_fn = +[](void *ptr, void *user_data) { return mem_free(ptr); },
-        };
-        simgui_setup(&simgui_desc);
+        // simgui_desc_t simgui_desc = {};
+        // simgui_desc.ini_filename = "imgui.ini";
+        // simgui_desc.logger.func = slog_func;
+        // simgui_desc.no_default_font = true;
+        // simgui_desc.allocator = {
+        //         .alloc_fn = +[](size_t size, void *user_data) { return mem_alloc(size); },
+        //         .free_fn = +[](void *ptr, void *user_data) { return mem_free(ptr); },
+        // };
+        // simgui_setup(&simgui_desc);
 
         CVAR_REF(conf_imgui_font, String);
 
-        if (neko_strlen(conf_imgui_font.data.str) > 0) {
-            auto &io = ImGui::GetIO();
+        // if (neko_strlen(conf_imgui_font.data.str) > 0) {
+        //     auto &io = ImGui::GetIO();
 
-            ImFontConfig config;
-            // config.PixelSnapH = 1;
+        //     ImFontConfig config;
+        //     // config.PixelSnapH = 1;
 
-            String ttf_file;
-            vfs_read_entire_file(&ttf_file, conf_imgui_font.data.str);
-            neko_defer(mem_free(ttf_file.data));
-            void *ttf_data = ::mem_alloc(ttf_file.len);  // TODO:: imgui 内存方法接管
-            memcpy(ttf_data, ttf_file.data, ttf_file.len);
-            io.Fonts->AddFontFromMemoryTTF(ttf_data, ttf_file.len, 12.0f, &config, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
+        //     String ttf_file;
+        //     vfs_read_entire_file(&ttf_file, conf_imgui_font.data.str);
+        //     neko_defer(mem_free(ttf_file.data));
+        //     void *ttf_data = ::mem_alloc(ttf_file.len);  // TODO:: imgui 内存方法接管
+        //     memcpy(ttf_data, ttf_file.data, ttf_file.len);
+        //     io.Fonts->AddFontFromMemoryTTF(ttf_data, ttf_file.len, 12.0f, &config, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
 
-            // 为字体创建字体纹理和线性过滤采样器
-            simgui_font_tex_desc_t font_texture_desc = {};
-            font_texture_desc.min_filter = SG_FILTER_LINEAR;
-            font_texture_desc.mag_filter = SG_FILTER_LINEAR;
-            simgui_create_fonts_texture(&font_texture_desc);
-        }
+        //     // 为字体创建字体纹理和线性过滤采样器
+        //     simgui_font_tex_desc_t font_texture_desc = {};
+        //     font_texture_desc.min_filter = SG_FILTER_LINEAR;
+        //     font_texture_desc.mag_filter = SG_FILTER_LINEAR;
+        //     simgui_create_fonts_texture(&font_texture_desc);
+        // }
 
-        sg_pipeline_desc sg_pipline = {};
-        sg_pipline.depth.write_enabled = true;
-        sg_pipline.colors[0].blend.enabled = true;
-        sg_pipline.colors[0].blend.src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA;
-        sg_pipline.colors[0].blend.dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
-        g_pipeline = sgl_make_pipeline(sg_pipline);
+        // sg_pipeline_desc sg_pipline = {};
+        // sg_pipline.depth.write_enabled = true;
+        // sg_pipline.colors[0].blend.enabled = true;
+        // sg_pipline.colors[0].blend.src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA;
+        // sg_pipline.colors[0].blend.dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+        // g_pipeline = sgl_make_pipeline(sg_pipline);
     }
 
     {
@@ -949,7 +952,7 @@ static void init() {
         }
     }
 
-    microui_init();
+    // microui_init();
 
     renderer_reset();
 
@@ -987,6 +990,8 @@ static void init() {
 
     NEKO_INFO("end of init in %.3f ms", tm_init.get());
 }
+
+#if 0
 
 static void event(const sapp_event *e) {
     if (simgui_handle_event(e)) return;
@@ -1334,22 +1339,10 @@ static void actually_cleanup() {
 static void cleanup() {
     actually_cleanup();
 
-#ifdef USE_PROFILER
-    profile_shutdown();
-#endif
 
-#ifndef NDEBUG
-    DebugAllocator *allocator = dynamic_cast<DebugAllocator *>(g_allocator);
-    if (allocator != nullptr) {
-        allocator->dump_allocs();
-    }
-#endif
-
-    g_allocator->trash();
-    operator delete(g_allocator);
-
-    neko_println("see ya");
 }
+
+#endif
 
 ECS_COMPONENT_DECL(pos_t);
 ECS_COMPONENT_DECL(vel_t);
@@ -1411,25 +1404,11 @@ static void load_all_lua_scripts(lua_State *L) {
 }
 
 App *g_app;
-Allocator *g_allocator;
+
+#if 0
 
 sapp_desc sokol_main(int argc, char **argv) {
-    g_init_mtx.make();
-    LockGuard lock(&g_init_mtx);
 
-#ifndef NDEBUG
-    g_allocator = new DebugAllocator();
-#else
-    g_allocator = new HeapAllocator();
-#endif
-
-    g_allocator->make();
-
-    os_high_timer_resolution();
-    stm_setup();
-
-    profile_setup();
-    PROFILE_FUNC();
 
     // const char *mount_path = nullptr;
 
@@ -1568,4 +1547,13 @@ sapp_desc sokol_main(int argc, char **argv) {
     sapp.win32_console_utf8 = true;
 
     return sapp;
+}
+
+#endif
+
+Allocator *g_allocator;
+
+int main(int argc, char **argv) {
+    game_run(argc, argv);
+    return 0;
 }

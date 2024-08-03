@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include <functional>
@@ -7,7 +8,8 @@
 #include <queue>
 #include <string>
 
-#include "neko_prelude.h"
+#include "engine/neko_prelude.h"
+#include "script_export.h"
 
 #if defined(_WIN32)
 #include <windows.h>
@@ -195,6 +197,28 @@ void *neko_os_library_load(const char *lib_path);
 void neko_os_library_unload(void *lib);
 void *neko_os_library_proc_address(void *lib, const char *func);
 int neko_os_chdir(const char *path);
+
+typedef struct Store Store;
+
+SCRIPT(timing,
+
+       NEKO_EXPORT f32 timing_dt;
+
+       NEKO_EXPORT f32 timing_true_dt;  // 实际增量时间 不受 scale/pause 影响
+
+       NEKO_EXPORT void timing_set_scale(f32 s);
+
+       NEKO_EXPORT f32 timing_get_scale();
+
+       NEKO_EXPORT void timing_set_paused(bool p);  // 暂停将刻度设置为 0 并在恢复时恢复它
+
+       NEKO_EXPORT bool timing_get_paused();
+
+)
+
+void timing_update();
+void timing_save_all(Store *s);
+void timing_load_all(Store *s);
 
 #if defined(NEKO_IS_APPLE)
 #define neko_fopen(filePath, mode) fopen(filePath, mode)

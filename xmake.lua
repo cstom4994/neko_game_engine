@@ -21,7 +21,7 @@ add_includedirs("source/")
 
 local NEKO_CFFI = false
 
-local base_libs = {"sokol", "imgui", "miniz", "stb", "cute_headers"}
+local base_libs = {"imgui", "miniz", "stb", "cute_headers"}
 
 add_requires("sokol-shdc")
 add_requires("cffi-lua")
@@ -149,11 +149,11 @@ do
             "source/vendor/luasocket/usocket.c")
     end
 
-    add_files("source/vendor/*.c")
-
     add_files("source/api/gen/**.lua", "source/api/*.lua")
 
     add_files("source/api/**.cpp", "source/engine/**.cpp")
+
+    add_files("source/vendor/http.c")
 
     add_headerfiles("source/engine/**.h", "source/engine/**.hpp")
 
@@ -161,6 +161,8 @@ do
 
     add_packages(base_libs)
     add_packages("miniaudio", "box2d", "enet")
+
+    add_packages("glfw", "stb", "glew", "dirent", "imgui")
 
     if NEKO_CFFI == true then
         add_packages("lua", "libffi")
@@ -175,8 +177,6 @@ do
     else
         add_packages("openrestry-luajit")
     end
-
-    remove_files("source/vendor/bit.c")
 
     add_deps("shader")
 

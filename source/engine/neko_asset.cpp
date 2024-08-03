@@ -20,9 +20,6 @@
 // miniz
 #include <miniz.h>
 
-// deps
-#include <sokol_gfx.h>
-
 static u32 read4(char *bytes) {
     u32 n;
     memcpy(&n, bytes, 4);

@@ -87,6 +87,8 @@ struct MapLdtk {
 // Tiled draw
 ==========================*/
 
+#if 0
+
 typedef struct tile_t {
     u32 id;
     u32 tileset_id;
@@ -188,3 +190,5 @@ void neko_tiled_render_begin(neko_command_buffer_t *cb, neko_tiled_renderer *ren
 void neko_tiled_render_flush(neko_command_buffer_t *cb, neko_tiled_renderer *renderer);
 void neko_tiled_render_push(neko_command_buffer_t *cb, neko_tiled_renderer *renderer, neko_tiled_quad_t quad);
 void neko_tiled_render_draw(neko_command_buffer_t *cb, neko_tiled_renderer *renderer);
+
+#endif

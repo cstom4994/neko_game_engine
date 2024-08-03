@@ -540,6 +540,8 @@ TileNode *MapLdtk::astar(TilePoint start, TilePoint goal) {
     return nullptr;
 }
 
+#if 0
+
 void neko_tiled_load(MapTiled *map, const_str tmx_path, const_str res_path) {
 
     PROFILE_FUNC();
@@ -1012,3 +1014,5 @@ void neko_tiled_render_draw(neko_command_buffer_t *cb, neko_tiled_renderer *rend
         neko_tiled_render_flush(cb, renderer);
     }
 }
+
+#endif

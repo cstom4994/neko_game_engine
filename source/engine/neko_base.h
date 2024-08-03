@@ -1,16 +1,22 @@
 #pragma once
 
-#include "neko_os.h"
-#include "neko_prelude.h"
+#include <float.h>
+#include <math.h>
+#include <stdbool.h>
+#include <stddef.h>
 
-struct Color {
-    union {
-        u8 rgba[4];
-        struct {
-            u8 r, g, b, a;
-        };
-    };
-};
+#include "engine/neko_prelude.h"
+#include "neko_os.h"
+#include "script_export.h"
+
+// struct Color {
+//     union {
+//         u8 rgba[4];
+//         struct {
+//             u8 r, g, b, a;
+//         };
+//     };
+// };
 
 struct SplitLinesIterator {
     String data;
@@ -1902,3 +1908,235 @@ NEKO_FORCE_INLINE void neko_command_buffer_free(neko_command_buffer_t* cb) { nek
     neko_byte_buffer_read(&(__CB)->commands, __T, &__NAME);
 
 typedef neko_command_buffer_t neko_cmdbuf;
+
+// 在内存中存储连续的对象
+// 对象可能会在内存中移动 因此不要依赖指向 CArray 中对象的指针
+typedef struct CArray CArray;
+
+CArray* array_new_(size_t object_size);  // object_size 是每个元素的大小
+void array_free(CArray* arr);
+void* array_get(CArray* arr, unsigned int i);
+void* array_top(CArray* arr);
+unsigned int array_length(CArray* arr);  // 数组中的对象数
+
+// 添加/删除可能会更改开始/结束 因此在迭代时要小心
+void* array_begin(CArray* arr);                                         // 指向第一个元素的指针
+void* array_end(CArray* arr);                                           // 指向one past last元素的指针
+void* array_add(CArray* arr);                                           // 添加新对象, index is length - 1
+void array_reset(CArray* arr, unsigned int num);                        // 将数据未定义的对象调整为 num 对象
+void array_pop(CArray* arr);                                            // 删除具有最高索引的对象
+bool array_quick_remove(CArray* arr, unsigned int i);                   // 快速删除, 可以将其他一些元素交换成 arr[i] 如果是这样 则返回 true
+void array_sort(CArray* arr, int (*compar)(const void*, const void*));  // compare 是一个比较器函数
+
+#define array_clear(arr) array_reset(arr, 0)  //
+#define array_add_val(type, arr) (*((type*)array_add(arr)))
+#define array_top_val(type, arr) (*((type*)array_top(arr)))
+#define array_get_val(type, arr, i) (*((type*)array_get(arr, i)))
+#define array_new(type) array_new_(sizeof(type))
+
+#define array_foreach(var, arr) for (void* __end = (var = (decltype(var))array_begin(arr), array_end(arr)); var != __end; ++var)
+
+SCRIPT(scalar,
+
+       typedef float Scalar;
+
+       typedef float f32; typedef double f64;
+
+)
+
+#ifdef M_PI
+#define SCALAR_PI M_PI
+#else
+#define SCALAR_PI 3.14159265358979323846264338327950288
+#endif
+
+#define SCALAR_INFINITY INFINITY
+
+#define SCALAR_EPSILON FLT_EPSILON
+
+#define scalar_cos cosf
+#define scalar_sin sinf
+#define scalar_atan2 atan2f
+
+#define scalar_sqrt sqrtf
+
+#define scalar_min fminf
+#define scalar_max fmaxf
+
+#define scalar_floor floor
+
+SCRIPT(saveload,
+
+       // 请记住 *_close(...) 当完成以释放资源时
+
+       typedef struct Store Store;
+
+       NEKO_EXPORT Store * store_open();
+
+       NEKO_EXPORT Store * store_open_str(const char* str);
+
+       NEKO_EXPORT const char* store_write_str(Store* s);
+
+       NEKO_EXPORT Store * store_open_file(const char* filename);
+
+       NEKO_EXPORT void store_write_file(Store* s, const char* filename);
+
+       NEKO_EXPORT void store_close(Store* s);
+
+)
+
+// 存储树有助于向后兼容 save/load
+bool store_child_save(Store** sp, const char* name, Store* parent);
+bool store_child_save_compressed(Store** sp, const char* name, Store* parent);
+bool store_child_load(Store** sp, const char* name, Store* parent);
+void scalar_save(const Scalar* f, const char* name, Store* s);
+bool scalar_load(Scalar* f, const char* name, Scalar d, Store* s);
+void uint_save(const unsigned int* u, const char* name, Store* s);
+bool uint_load(unsigned int* u, const char* name, unsigned int d, Store* s);
+void int_save(const int* i, const char* name, Store* s);
+bool int_load(int* i, const char* name, int d, Store* s);
+
+#define enum_save(val, n, s)    \
+    do {                        \
+        int e__;                \
+        e__ = *(val);           \
+        int_save(&e__, n, (s)); \
+    } while (0)
+#define enum_load(val, n, d, s)         \
+    do {                                \
+        int e__;                        \
+        int_load(&e__, n, (int)d, (s)); \
+        *((int*)val) = e__;             \
+    } while (0)
+
+void bool_save(const bool* b, const char* name, Store* s);
+bool bool_load(bool* b, const char* name, bool d, Store* s);
+
+void string_save(const char** c, const char* name, Store* s);
+bool string_load(char** c, const char* name, const char* d, Store* s);
+
+SCRIPT(
+        vec2,
+
+        typedef struct CVec2 CVec2;
+        struct CVec2 {
+            Scalar x;
+            Scalar y;
+        };
+
+        NEKO_EXPORT CVec2 vec2(Scalar x, Scalar y); NEKO_EXPORT CVec2 vec2_zero;
+
+        NEKO_EXPORT CVec2 vec2_add(CVec2 u, CVec2 v); NEKO_EXPORT CVec2 vec2_sub(CVec2 u, CVec2 v); NEKO_EXPORT CVec2 vec2_mul(CVec2 u, CVec2 v);  // u * v componentwise
+        NEKO_EXPORT CVec2 vec2_div(CVec2 u, CVec2 v);                                                                                              // u / v componentwise
+        NEKO_EXPORT CVec2 vec2_scalar_mul(CVec2 v, Scalar f); NEKO_EXPORT CVec2 vec2_scalar_div(CVec2 v, Scalar f);                                // (v.x / f, v.y / f)
+        NEKO_EXPORT CVec2 scalar_vec2_div(Scalar f, CVec2 v);                                                                                      // (f / v.x, f / v.y)
+        NEKO_EXPORT CVec2 vec2_neg(CVec2 v);
+
+        NEKO_EXPORT Scalar vec2_len(CVec2 v); NEKO_EXPORT CVec2 vec2_normalize(CVec2 v); NEKO_EXPORT Scalar vec2_dot(CVec2 u, CVec2 v); NEKO_EXPORT Scalar vec2_dist(CVec2 u, CVec2 v);
+
+        NEKO_EXPORT CVec2 vec2_rot(CVec2 v, Scalar rot); NEKO_EXPORT Scalar vec2_atan2(CVec2 v);
+
+        NEKO_EXPORT void vec2_save(CVec2* v, const char* name, Store* s); NEKO_EXPORT bool vec2_load(CVec2* v, const char* name, CVec2 d, Store* s);
+
+)
+
+#define vec2(x, y) (CVec2{(Scalar)(x), (Scalar)(y)})
+
+SCRIPT(
+        mat3,
+
+        /*
+         * 按列优先顺序存储
+         *
+         *     m = /                                 \
+         *         | m.m[0][0]  m.m[1][0]  m.m[2][0] |
+         *         | m.m[0][1]  m.m[1][1]  m.m[2][1] |
+         *         | m.m[0][2]  m.m[1][2]  m.m[2][2] |
+         *         \                                 /
+         */
+        typedef struct CMat3 CMat3;
+        struct CMat3 { Scalar m[3][3]; };
+
+        NEKO_EXPORT CMat3 mat3(Scalar m00, Scalar m01, Scalar m02, Scalar m10, Scalar m11, Scalar m12, Scalar m20, Scalar m21, Scalar m22);
+
+        NEKO_EXPORT CMat3 mat3_identity();  // 返回单位矩阵
+
+        NEKO_EXPORT CMat3 mat3_mul(CMat3 m, CMat3 n);
+
+        // 按顺序应用 scale rot 和 trans 的矩阵
+        NEKO_EXPORT CMat3 mat3_scaling_rotation_translation(CVec2 scale, Scalar rot, CVec2 trans);
+
+        NEKO_EXPORT CVec2 mat3_get_translation(CMat3 m);
+
+        NEKO_EXPORT Scalar mat3_get_rotation(CMat3 m);
+
+        NEKO_EXPORT CVec2 mat3_get_scale(CMat3 m);
+
+        NEKO_EXPORT CMat3 mat3_inverse(CMat3 m);
+
+        NEKO_EXPORT CVec2 mat3_transform(CMat3 m, CVec2 v);
+
+        NEKO_EXPORT void mat3_save(CMat3* m, const char* name, Store* s);
+
+        NEKO_EXPORT bool mat3_load(CMat3* m, const char* name, CMat3 d, Store* s);
+
+)
+
+#define mat3(m00, m01, m02, m10, m11, m12, m20, m21, m22) (CMat3{{{(m00), (m01), (m02)}, {(m10), (m11), (m12)}, {(m20), (m21), (m22)}}})
+
+#define mat3_identity() mat3(1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f)
+
+SCRIPT(
+        bbox,
+
+        typedef struct BBox BBox;
+        struct BBox {
+            CVec2 min;
+            CVec2 max;
+        };
+
+        NEKO_EXPORT BBox bbox(CVec2 min, CVec2 max);
+
+        NEKO_EXPORT BBox bbox_bound(CVec2 a, CVec2 b);
+
+        NEKO_EXPORT BBox bbox_merge(BBox a, BBox b);
+
+        NEKO_EXPORT bool bbox_contains(BBox b, CVec2 p);
+
+        // 返回 bbox 围绕改造后的盒子
+        NEKO_EXPORT BBox bbox_transform(CMat3 m, BBox b);
+
+)
+
+SCRIPT(
+        color,
+
+        typedef struct Color Color;
+        struct Color { Scalar r, g, b, a; };
+
+        NEKO_EXPORT Color color(Scalar r, Scalar g, Scalar b, Scalar a);
+
+        NEKO_EXPORT Color color_opaque(Scalar r, Scalar g, Scalar b);
+
+        NEKO_EXPORT Color color_black;
+
+        NEKO_EXPORT Color color_white;
+
+        NEKO_EXPORT Color color_gray;
+
+        NEKO_EXPORT Color color_red;
+
+        NEKO_EXPORT Color color_green;
+
+        NEKO_EXPORT Color color_blue;
+
+        NEKO_EXPORT Color color_clear;  // zero alpha
+
+        NEKO_EXPORT void color_save(Color* c, const char* name, Store* s);
+
+        NEKO_EXPORT bool color_load(Color* c, const char* name, Color d, Store* s);
+
+)
+
+#define color(r, g, b, a) (Color{(r), (g), (b), (a)})
+#define color_opaque(r, g, b, a) color(r, g, b, 1)

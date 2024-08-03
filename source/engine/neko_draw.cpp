@@ -1,8 +1,8 @@
 #include "neko_draw.h"
 
 #include <math.h>
-#include <sokol_gfx.h>
-#include <util/sokol_gl.h>
+// #include <sokol_gfx.h>
+// #include <util/sokol_gl.h>
 
 #include "neko_asset.h"
 #include "neko_base.h"
@@ -41,7 +41,7 @@ void renderer_reset() {
     g_renderer.matrices[0].cols[3][3] = 1.0f;
     g_renderer.matrices_len = 1;
 
-    g_renderer.sampler = SG_INVALID_ID;
+    // g_renderer.sampler = SG_INVALID_ID;
 }
 
 void renderer_use_sampler(u32 sampler) { g_renderer.sampler = sampler; }
@@ -52,7 +52,7 @@ void renderer_set_clear_color(float *rgba) { memcpy(g_renderer.clear_color, rgba
 
 void renderer_apply_color() {
     Color c = g_renderer.draw_colors[g_renderer.draw_colors_len - 1];
-    sgl_c4b(c.r, c.g, c.b, c.a);
+    // sgl_c4b(c.r, c.g, c.b, c.a);
 }
 
 bool renderer_push_color(Color c) {
@@ -161,16 +161,16 @@ void renderer_push_quad(Vector4 pos, Vector4 tex) {
     Vector4 c = vec4_mul_mat4(vec4_xy(pos.z, pos.w), top);
     Vector4 d = vec4_mul_mat4(vec4_xy(pos.z, pos.y), top);
 
-    sgl_v2f_t2f(a.x, a.y, tex.x, tex.y);
-    sgl_v2f_t2f(b.x, b.y, tex.x, tex.w);
-    sgl_v2f_t2f(c.x, c.y, tex.z, tex.w);
-    sgl_v2f_t2f(d.x, d.y, tex.z, tex.y);
+    // sgl_v2f_t2f(a.x, a.y, tex.x, tex.y);
+    // sgl_v2f_t2f(b.x, b.y, tex.x, tex.w);
+    // sgl_v2f_t2f(c.x, c.y, tex.z, tex.w);
+    // sgl_v2f_t2f(d.x, d.y, tex.z, tex.y);
 }
 
 void renderer_push_xy(float x, float y) {
     Matrix4 top = renderer_peek_matrix();
     Vector4 v = vec4_mul_mat4(vec4_xy(x, y), top);
-    sgl_v2f(v.x, v.y);
+    // sgl_v2f(v.x, v.y);
 }
 
 void draw_image(const Image *img, DrawDescription *desc) {
@@ -183,9 +183,9 @@ void draw_image(const Image *img, DrawDescription *desc) {
     renderer_rotate(desc->rotation);
     renderer_scale(desc->sx, desc->sy);
 
-    sgl_enable_texture();
-    sgl_texture({img->id}, {g_renderer.sampler});
-    sgl_begin_quads();
+    // sgl_enable_texture();
+    // sgl_texture({img->id}, {g_renderer.sampler});
+    // sgl_begin_quads();
 
     float x0 = -desc->ox;
     float y0 = -desc->oy;
@@ -195,7 +195,7 @@ void draw_image(const Image *img, DrawDescription *desc) {
     renderer_apply_color();
     renderer_push_quad(vec4(x0, y0, x1, y1), vec4(desc->u0, desc->v0, desc->u1, desc->v1));
 
-    sgl_end();
+    // sgl_end();
     renderer_pop_matrix();
 }
 
@@ -217,9 +217,9 @@ void draw_sprite(Sprite *spr, DrawDescription *desc) {
         renderer_rotate(desc->rotation);
         renderer_scale(desc->sx, desc->sy);
 
-        sgl_enable_texture();
-        sgl_texture({view.data.img.id}, {g_renderer.sampler});
-        sgl_begin_quads();
+        // sgl_enable_texture();
+        // sgl_texture({view.data.img.id}, {g_renderer.sampler});
+        // sgl_begin_quads();
 
         float x0 = -desc->ox;
         float y0 = -desc->oy;
@@ -231,7 +231,7 @@ void draw_sprite(Sprite *spr, DrawDescription *desc) {
         renderer_apply_color();
         renderer_push_quad(vec4(x0, y0, x1, y1), vec4(f.u0, f.v0, f.u1, f.v1));
 
-        sgl_end();
+        // sgl_end();
     }
 }
 
@@ -244,10 +244,10 @@ static void draw_font_line(FontFamily *font, float size, float *start_x, float *
         float yy = y;
         stbtt_aligned_quad q = font->quad(&atlas, &xx, &yy, size, r.charcode());
 
-        sgl_texture({atlas}, {g_renderer.sampler});
-        sgl_begin_quads();
+        // sgl_texture({atlas}, {g_renderer.sampler});
+        // sgl_begin_quads();
         renderer_push_quad(vec4(x + q.x0, y + q.y0, x + q.x1, y + q.y1), vec4(q.s0, q.t0, q.s1, q.t1));
-        sgl_end();
+        // sgl_end();
 
         x = xx;
         y = yy;
@@ -260,7 +260,7 @@ float draw_font(FontFamily *font, float size, float x, float y, String text) {
     PROFILE_FUNC();
 
     y += size;
-    sgl_enable_texture();
+    // sgl_enable_texture();
     renderer_apply_color();
 
     for (String line : SplitLines(text)) {
@@ -274,7 +274,7 @@ float draw_font_wrapped(FontFamily *font, float size, float x, float y, String t
     PROFILE_FUNC();
 
     y += size;
-    sgl_enable_texture();
+    // sgl_enable_texture();
     renderer_apply_color();
 
     for (String line : SplitLines(text)) {
@@ -309,7 +309,7 @@ float draw_font_wrapped(FontFamily *font, float size, float x, float y, String t
 void draw_tilemap(const MapLdtk *tm) {
     PROFILE_FUNC();
 
-    sgl_enable_texture();
+    // sgl_enable_texture();
     renderer_apply_color();
     for (const TilemapLevel &level : tm->levels) {
         bool ok = false;
@@ -321,8 +321,8 @@ void draw_tilemap(const MapLdtk *tm) {
             renderer_translate(level.world_x, level.world_y);
             for (i32 i = level.layers.len - 1; i >= 0; i--) {
                 const TilemapLayer &layer = level.layers[i];
-                sgl_texture({layer.image.id}, {g_renderer.sampler});
-                sgl_begin_quads();
+                // sgl_texture({layer.image.id}, {g_renderer.sampler});
+                // sgl_begin_quads();
                 for (Tile tile : layer.tiles) {
                     float x0 = tile.x;
                     float y0 = tile.y;
@@ -331,7 +331,7 @@ void draw_tilemap(const MapLdtk *tm) {
 
                     renderer_push_quad(vec4(x0, y0, x1, y1), vec4(tile.u0, tile.v0, tile.u1, tile.v1));
                 }
-                sgl_end();
+                // sgl_end();
             }
         }
     }
@@ -350,8 +350,8 @@ void draw_filled_rect(RectDescription *desc) {
         renderer_rotate(desc->rotation);
         renderer_scale(desc->sx, desc->sy);
 
-        sgl_disable_texture();
-        sgl_begin_quads();
+        // sgl_disable_texture();
+        // sgl_begin_quads();
 
         float x0 = -desc->ox;
         float y0 = -desc->oy;
@@ -361,7 +361,7 @@ void draw_filled_rect(RectDescription *desc) {
         renderer_apply_color();
         renderer_push_quad(vec4(x0, y0, x1, y1), vec4(0, 0, 0, 0));
 
-        sgl_end();
+        // sgl_end();
     }
 }
 
@@ -378,8 +378,8 @@ void draw_line_rect(RectDescription *desc) {
         renderer_rotate(desc->rotation);
         renderer_scale(desc->sx, desc->sy);
 
-        sgl_disable_texture();
-        sgl_begin_line_strip();
+        // sgl_disable_texture();
+        // sgl_begin_line_strip();
 
         float x0 = -desc->ox;
         float y0 = -desc->oy;
@@ -393,21 +393,21 @@ void draw_line_rect(RectDescription *desc) {
         Vector4 d = vec4_mul_mat4(vec4_xy(x1, y0), top);
 
         renderer_apply_color();
-        sgl_v2f(a.x, a.y);
-        sgl_v2f(b.x, b.y);
-        sgl_v2f(c.x, c.y);
-        sgl_v2f(d.x, d.y);
-        sgl_v2f(a.x, a.y);
+        // sgl_v2f(a.x, a.y);
+        // sgl_v2f(b.x, b.y);
+        // sgl_v2f(c.x, c.y);
+        // sgl_v2f(d.x, d.y);
+        // sgl_v2f(a.x, a.y);
 
-        sgl_end();
+        // sgl_end();
     }
 }
 
 void draw_line_circle(float x, float y, float radius) {
     PROFILE_FUNC();
 
-    sgl_disable_texture();
-    sgl_begin_line_strip();
+    // sgl_disable_texture();
+    // sgl_begin_line_strip();
 
     renderer_apply_color();
     constexpr float tau = MATH_PI * 2.0f;
@@ -417,21 +417,21 @@ void draw_line_circle(float x, float y, float radius) {
         renderer_push_xy(x + c, y + s);
     }
 
-    sgl_end();
+    // sgl_end();
 }
 
 void draw_line(float x0, float y0, float x1, float y1) {
     PROFILE_FUNC();
 
-    sgl_disable_texture();
-    sgl_begin_lines();
+    // sgl_disable_texture();
+    // sgl_begin_lines();
 
     renderer_apply_color();
 
     renderer_push_xy(x0, y0);
     renderer_push_xy(x1, y1);
 
-    sgl_end();
+    // sgl_end();
 }
 
 DrawDescription draw_description_args(lua_State *L, i32 arg_start) {
