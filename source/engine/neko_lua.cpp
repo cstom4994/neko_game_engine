@@ -20,6 +20,59 @@
 #include "neko_os.h"
 #include "neko_prelude.h"
 
+#if LUA_VERSION_NUM < 504
+
+void *lua_newuserdatauv(lua_State *L_, size_t sz_, [[maybe_unused]] int nuvalue_) {
+    NEKO_ASSERT(L_, nuvalue_ <= 1);
+    return lua_newuserdata(L_, sz_);
+}
+
+int lua_getiuservalue(lua_State *const L_, int const idx_, int const n_) {
+    if (n_ > 1) {
+        lua_pushnil(L_);
+        return LUA_TNONE;
+    }
+
+#if LUA_VERSION_NUM == 501
+    lua_getfenv(L_, idx_);
+    lua_getglobal(L_, LUA_LOADLIBNAME);
+    if (lua_rawequal(L_, -2, -1) || lua_rawequal(L_, -2, LUA_GLOBALSINDEX)) {
+        lua_pop(L_, 2);
+        lua_pushnil(L_);
+
+        return LUA_TNONE;
+    } else {
+        lua_pop(L_, 1);
+    }
+#else
+    lua_getuservalue(L_, idx_);
+#endif
+
+    int const _uvType{lua_type(L_, -1)};
+
+    return (LUA_VERSION_NUM == 502 && _uvType == LUA_TNIL) ? LUA_TNONE : _uvType;
+}
+
+int lua_setiuservalue(lua_State *L_, int idx_, int n_) {
+    if (n_ > 1
+#if LUA_VERSION_NUM == 501
+        || lua_type(L_, -1) != LUA_TTABLE
+#endif
+    ) {
+        lua_pop(L_, 1);
+        return 0;
+    }
+
+#if LUA_VERSION_NUM == 501
+    lua_setfenv(L_, idx_);
+#else
+    lua_setuservalue(L_, idx_);
+#endif
+    return 1;
+}
+
+#endif
+
 void __neko_luabind_init(lua_State *L) {
 
     lua_pushinteger(L, 0);
@@ -140,7 +193,7 @@ void *Allocf(void *ud, void *ptr, size_t osize, size_t nsize) {
 
 void neko_lua_run_string(lua_State *m_ls, const_str str_) {
     if (luaL_dostring(m_ls, str_)) {
-        std::string err = neko_lua_tool_t::dump_error(m_ls, "run_string ::lua_pcall_wrap failed str<%s>", str_);
+        std::string err = lua_tool::dump_error(m_ls, "run_string ::lua_pcall_wrap failed str<%s>", str_);
         ::lua_pop(m_ls, 1);
         // NEKO_ERROR("%s", err.c_str());
     }
@@ -1512,4 +1565,155 @@ int __neko_bind_callback_call(lua_State *L) {
         NEKO_WARN("callback table is noref");
     }
     return 0;
+}
+
+// 返回一些有助于识别对象的名称
+[[nodiscard]] static int DiscoverObjectNameRecur(lua_State *L, int shortest_, int depth_) {
+    static constexpr int kWhat{1};
+    static constexpr int kResult{2};
+    static constexpr int kCache{3};
+    static constexpr int kFQN{4};
+
+    if (shortest_ <= depth_ + 1) {
+        return shortest_;
+    }
+    NEKO_ASSERT(lua_checkstack(L, 3));
+
+    lua_pushvalue(L, -1);
+    lua_rawget(L, kCache);
+
+    if (!lua_isnil(L, -1)) {
+        lua_pop(L, 1);
+        return shortest_;
+    }
+
+    lua_pop(L, 1);
+    lua_pushvalue(L, -1);
+    lua_pushinteger(L, 1);
+    lua_rawset(L, kCache);
+
+    lua_pushnil(L);
+    while (lua_next(L, -2)) {
+
+        ++depth_;
+        lua_pushvalue(L, -2);
+        lua_rawseti(L, kFQN, depth_);
+        if (lua_rawequal(L, -1, kWhat)) {
+
+            if (depth_ < shortest_) {
+                shortest_ = depth_;
+                std::ignore = neko::lua_tool::PushFQN(L, kFQN, depth_);
+                lua_replace(L, kResult);
+            }
+
+            lua_pop(L, 2);
+            break;
+        }
+        switch (lua_type(L, -1)) {
+            default:
+                break;
+
+            case LUA_TTABLE:
+                shortest_ = DiscoverObjectNameRecur(L, shortest_, depth_);
+
+                if (lua_getmetatable(L, -1)) {
+                    if (lua_istable(L, -1)) {
+                        ++depth_;
+                        lua_pushstring(L, "__metatable");
+                        lua_rawseti(L, kFQN, depth_);
+                        shortest_ = DiscoverObjectNameRecur(L, shortest_, depth_);
+                        lua_pushnil(L);
+                        lua_rawseti(L, kFQN, depth_);
+                        --depth_;
+                    }
+                    lua_pop(L, 1);
+                }
+                break;
+
+            case LUA_TTHREAD:
+
+                break;
+
+            case LUA_TUSERDATA:
+
+                if (lua_getmetatable(L, -1)) {
+                    if (lua_istable(L, -1)) {
+                        ++depth_;
+                        lua_pushstring(L, "__metatable");
+                        lua_rawseti(L, kFQN, depth_);
+                        shortest_ = DiscoverObjectNameRecur(L, shortest_, depth_);
+                        lua_pushnil(L);
+                        lua_rawseti(L, kFQN, depth_);
+                        --depth_;
+                    }
+                    lua_pop(L, 1);
+                }
+
+                {
+                    int _uvi{1};
+                    while (lua_getiuservalue(L, -1, _uvi) != LUA_TNONE) {
+                        if (lua_istable(L, -1)) {
+                            ++depth_;
+                            lua_pushstring(L, "uservalue");
+                            lua_rawseti(L, kFQN, depth_);
+                            shortest_ = DiscoverObjectNameRecur(L, shortest_, depth_);
+                            lua_pushnil(L);
+                            lua_rawseti(L, kFQN, depth_);
+                            --depth_;
+                        }
+                        lua_pop(L, 1);
+                        ++_uvi;
+                    }
+
+                    lua_pop(L, 1);
+                }
+                break;
+        }
+
+        lua_pop(L, 1);
+
+        lua_pushnil(L);
+        lua_rawseti(L, kFQN, depth_);
+        --depth_;
+    }
+
+    lua_pushvalue(L, -1);
+    lua_pushnil(L);
+    lua_rawset(L, kCache);
+    return shortest_;
+}
+
+int __neko_bind_nameof(lua_State *L) {
+    int const _what{lua_gettop(L)};
+    if (_what > 1) {
+        luaL_argerror(L, _what, "too many arguments.");
+    }
+
+    if (lua_type(L, 1) < LUA_TTABLE) {
+        lua_pushstring(L, luaL_typename(L, 1));
+        lua_insert(L, -2);
+        return 2;
+    }
+
+    lua_pushnil(L);
+
+    lua_newtable(L);  // 所有已访问表的缓存
+
+    lua_newtable(L);  // 其内容是字符串 连接时会产生唯一的名称
+    lua_pushstring(L, LUA_GNAME);
+    lua_rawseti(L, -2, 1);
+
+    lua_pushglobaltable(L);  // 开始搜索
+    std::ignore = DiscoverObjectNameRecur(L, std::numeric_limits<int>::max(), 1);
+    if (lua_isnil(L, 2)) {
+        lua_pop(L, 1);
+        lua_pushstring(L, "_R");
+        lua_rawseti(L, -2, 1);
+        lua_pushvalue(L, LUA_REGISTRYINDEX);
+        std::ignore = DiscoverObjectNameRecur(L, std::numeric_limits<int>::max(), 1);
+    }
+    lua_pop(L, 3);
+    lua_pushstring(L, luaL_typename(L, 1));
+    lua_replace(L, -3);
+    return 2;
 }

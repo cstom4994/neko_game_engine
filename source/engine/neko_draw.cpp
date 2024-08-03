@@ -202,37 +202,37 @@ void draw_image(const Image *img, DrawDescription *desc) {
 void draw_sprite(Sprite *spr, DrawDescription *desc) {
     bool ok = false;
 
-    ok = renderer_push_matrix();
-    if (!ok) {
-        return;
+    DeferLoop(ok = renderer_push_matrix(), renderer_pop_matrix()) {
+        if (!ok) {
+            return;
+        }
+
+        SpriteView view = {};
+        ok = view.make(spr);
+        if (!ok) {
+            return;
+        }
+
+        renderer_translate(desc->x, desc->y);
+        renderer_rotate(desc->rotation);
+        renderer_scale(desc->sx, desc->sy);
+
+        sgl_enable_texture();
+        sgl_texture({view.data.img.id}, {g_renderer.sampler});
+        sgl_begin_quads();
+
+        float x0 = -desc->ox;
+        float y0 = -desc->oy;
+        float x1 = (float)view.data.width - desc->ox;
+        float y1 = (float)view.data.height - desc->oy;
+
+        SpriteFrame f = view.data.frames[view.frame()];
+
+        renderer_apply_color();
+        renderer_push_quad(vec4(x0, y0, x1, y1), vec4(f.u0, f.v0, f.u1, f.v1));
+
+        sgl_end();
     }
-
-    SpriteView view = {};
-    ok = view.make(spr);
-    if (!ok) {
-        return;
-    }
-
-    renderer_translate(desc->x, desc->y);
-    renderer_rotate(desc->rotation);
-    renderer_scale(desc->sx, desc->sy);
-
-    sgl_enable_texture();
-    sgl_texture({view.data.img.id}, {g_renderer.sampler});
-    sgl_begin_quads();
-
-    float x0 = -desc->ox;
-    float y0 = -desc->oy;
-    float x1 = (float)view.data.width - desc->ox;
-    float y1 = (float)view.data.height - desc->oy;
-
-    SpriteFrame f = view.data.frames[view.frame()];
-
-    renderer_apply_color();
-    renderer_push_quad(vec4(x0, y0, x1, y1), vec4(f.u0, f.v0, f.u1, f.v1));
-
-    sgl_end();
-    renderer_pop_matrix();
 }
 
 static void draw_font_line(FontFamily *font, float size, float *start_x, float *start_y, String line) {
@@ -312,92 +312,95 @@ void draw_tilemap(const MapLdtk *tm) {
     sgl_enable_texture();
     renderer_apply_color();
     for (const TilemapLevel &level : tm->levels) {
-        bool ok = renderer_push_matrix();
-        if (!ok) {
-            return;
-        }
-
-        renderer_translate(level.world_x, level.world_y);
-        for (i32 i = level.layers.len - 1; i >= 0; i--) {
-            const TilemapLayer &layer = level.layers[i];
-            sgl_texture({layer.image.id}, {g_renderer.sampler});
-            sgl_begin_quads();
-            for (Tile tile : layer.tiles) {
-                float x0 = tile.x;
-                float y0 = tile.y;
-                float x1 = tile.x + layer.grid_size;
-                float y1 = tile.y + layer.grid_size;
-
-                renderer_push_quad(vec4(x0, y0, x1, y1), vec4(tile.u0, tile.v0, tile.u1, tile.v1));
+        bool ok = false;
+        DeferLoop(ok = renderer_push_matrix(), renderer_pop_matrix()) {
+            if (!ok) {
+                return;
             }
-            sgl_end();
+
+            renderer_translate(level.world_x, level.world_y);
+            for (i32 i = level.layers.len - 1; i >= 0; i--) {
+                const TilemapLayer &layer = level.layers[i];
+                sgl_texture({layer.image.id}, {g_renderer.sampler});
+                sgl_begin_quads();
+                for (Tile tile : layer.tiles) {
+                    float x0 = tile.x;
+                    float y0 = tile.y;
+                    float x1 = tile.x + layer.grid_size;
+                    float y1 = tile.y + layer.grid_size;
+
+                    renderer_push_quad(vec4(x0, y0, x1, y1), vec4(tile.u0, tile.v0, tile.u1, tile.v1));
+                }
+                sgl_end();
+            }
         }
-        renderer_pop_matrix();
     }
 }
 
 void draw_filled_rect(RectDescription *desc) {
     PROFILE_FUNC();
 
-    bool ok = renderer_push_matrix();
-    if (!ok) {
-        return;
+    bool ok = false;
+    DeferLoop(ok = renderer_push_matrix(), renderer_pop_matrix()) {
+        if (!ok) {
+            return;
+        }
+
+        renderer_translate(desc->x, desc->y);
+        renderer_rotate(desc->rotation);
+        renderer_scale(desc->sx, desc->sy);
+
+        sgl_disable_texture();
+        sgl_begin_quads();
+
+        float x0 = -desc->ox;
+        float y0 = -desc->oy;
+        float x1 = desc->w - desc->ox;
+        float y1 = desc->h - desc->oy;
+
+        renderer_apply_color();
+        renderer_push_quad(vec4(x0, y0, x1, y1), vec4(0, 0, 0, 0));
+
+        sgl_end();
     }
-
-    renderer_translate(desc->x, desc->y);
-    renderer_rotate(desc->rotation);
-    renderer_scale(desc->sx, desc->sy);
-
-    sgl_disable_texture();
-    sgl_begin_quads();
-
-    float x0 = -desc->ox;
-    float y0 = -desc->oy;
-    float x1 = desc->w - desc->ox;
-    float y1 = desc->h - desc->oy;
-
-    renderer_apply_color();
-    renderer_push_quad(vec4(x0, y0, x1, y1), vec4(0, 0, 0, 0));
-
-    sgl_end();
-    renderer_pop_matrix();
 }
 
 void draw_line_rect(RectDescription *desc) {
     PROFILE_FUNC();
 
-    bool ok = renderer_push_matrix();
-    if (!ok) {
-        return;
+    bool ok = false;
+    DeferLoop(ok = renderer_push_matrix(), renderer_pop_matrix()) {
+        if (!ok) {
+            return;
+        }
+
+        renderer_translate(desc->x, desc->y);
+        renderer_rotate(desc->rotation);
+        renderer_scale(desc->sx, desc->sy);
+
+        sgl_disable_texture();
+        sgl_begin_line_strip();
+
+        float x0 = -desc->ox;
+        float y0 = -desc->oy;
+        float x1 = desc->w - desc->ox;
+        float y1 = desc->h - desc->oy;
+
+        Matrix4 top = renderer_peek_matrix();
+        Vector4 a = vec4_mul_mat4(vec4_xy(x0, y0), top);
+        Vector4 b = vec4_mul_mat4(vec4_xy(x0, y1), top);
+        Vector4 c = vec4_mul_mat4(vec4_xy(x1, y1), top);
+        Vector4 d = vec4_mul_mat4(vec4_xy(x1, y0), top);
+
+        renderer_apply_color();
+        sgl_v2f(a.x, a.y);
+        sgl_v2f(b.x, b.y);
+        sgl_v2f(c.x, c.y);
+        sgl_v2f(d.x, d.y);
+        sgl_v2f(a.x, a.y);
+
+        sgl_end();
     }
-
-    renderer_translate(desc->x, desc->y);
-    renderer_rotate(desc->rotation);
-    renderer_scale(desc->sx, desc->sy);
-
-    sgl_disable_texture();
-    sgl_begin_line_strip();
-
-    float x0 = -desc->ox;
-    float y0 = -desc->oy;
-    float x1 = desc->w - desc->ox;
-    float y1 = desc->h - desc->oy;
-
-    Matrix4 top = renderer_peek_matrix();
-    Vector4 a = vec4_mul_mat4(vec4_xy(x0, y0), top);
-    Vector4 b = vec4_mul_mat4(vec4_xy(x0, y1), top);
-    Vector4 c = vec4_mul_mat4(vec4_xy(x1, y1), top);
-    Vector4 d = vec4_mul_mat4(vec4_xy(x1, y0), top);
-
-    renderer_apply_color();
-    sgl_v2f(a.x, a.y);
-    sgl_v2f(b.x, b.y);
-    sgl_v2f(c.x, c.y);
-    sgl_v2f(d.x, d.y);
-    sgl_v2f(a.x, a.y);
-
-    sgl_end();
-    renderer_pop_matrix();
 }
 
 void draw_line_circle(float x, float y, float radius) {

@@ -157,6 +157,13 @@ T tolightud(lua_State* L, int arg) {
     }
 }
 
+#define LUAI_MAXALIGN \
+    lua_Number n;     \
+    double u;         \
+    void* s;          \
+    lua_Integer i;    \
+    long l
+
 union lua_maxalign_t {
     LUAI_MAXALIGN;
 };

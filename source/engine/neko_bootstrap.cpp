@@ -20,11 +20,7 @@
 #include "neko_prelude.h"
 #include "neko_ui.h"
 
-extern "C" {
-#include <lua.h>
-#include <lualib.h>
-}
-
+// deps
 #include <sokol_app.h>
 #include <sokol_gfx.h>
 #include <sokol_glue.h>
@@ -1108,7 +1104,9 @@ static void render() {
         if (ImGui::BeginMainMenuBar()) {
             ImGui::TextColored(ImVec4(0.19f, 1.f, 0.196f, 1.f), "Neko %d", neko_buildnum());
 
-            sgimgui_draw_menu(&sgimgui, "gfx");
+            if (g_app->debug_on) {
+                sgimgui_draw_menu(&sgimgui, "gfx");
+            }
 
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - 275 - ImGui::GetScrollX());
             ImGui::Text("%.2f Mb %.2f Mb %.1lf ms/frame (%.1lf FPS)", lua_gc(L, LUA_GCCOUNT, 0) / 1024.f, (f32)g_allocator->alloc_size / (1024 * 1024), g_app->time.delta * 1000.f,
@@ -1508,12 +1506,22 @@ sapp_desc sokol_main(int argc, char **argv) {
     lua_Number height = luax_opt_number_field(L, -1, "window_height", 600);
     String title = luax_opt_string_field(L, -1, "window_title", "NekoEngine");
     String imgui_font = luax_opt_string_field(L, -1, "imgui_font", "");
-    bool debug_on = luax_boolean_field(L, -1, "debug_on", true);
+    g_app->debug_on = luax_boolean_field(L, -1, "debug_on", true);
+    String game_proxy = luax_opt_string_field(L, -1, "game_proxy", "default");
 
     lua_pop(L, 1);  // conf table
 
     if (!g_app->error_mode.load() && startup_load_scripts && mount.ok && mount_luacode.ok) {
         load_all_lua_scripts(L);
+    }
+
+    if (fnv1a(game_proxy) == "default"_hash) {
+        neko::neko_lua_run_string(L, R"lua(
+            function neko.before_quit() game_proxy_before_quit() end
+            function neko.start(arg) game_proxy_start(arg) end
+            function neko.frame(dt) game_proxy_frame(dt) end
+        )lua");
+        NEKO_INFO("using default game proxy");
     }
 
     CVAR(conf_hot_reload, hot_reload);
@@ -1526,7 +1534,8 @@ sapp_desc sokol_main(int argc, char **argv) {
     CVAR(conf_height, height);
     CVAR(conf_title, title);
     CVAR(conf_imgui_font, imgui_font);
-    CVAR(conf_debug_on, debug_on);
+    CVAR(conf_debug_on, g_app->debug_on);
+    CVAR(conf_game_proxy, game_proxy);
 
     g_app->hot_reload_enabled.store(mount.can_hot_reload && hot_reload);
     g_app->reload_interval.store((u32)(reload_interval * 1000));

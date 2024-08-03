@@ -937,10 +937,10 @@ void neko_tiled_render_draw(neko_command_buffer_t *cb, neko_tiled_renderer *rend
             f32 tx = 0.f, ty = 0.f, tw = 0.f, th = 0.f;
 
             if (quad->use_texture) {
-                tx = (f32)quad->rectangle.x / quad->texture_size.x;
-                ty = (f32)quad->rectangle.y / quad->texture_size.y;
-                tw = (f32)quad->rectangle.z / quad->texture_size.x;
-                th = (f32)quad->rectangle.w / quad->texture_size.y;
+                tx = (f32)quad->rectangle_a.x / quad->texture_size.x;
+                ty = (f32)quad->rectangle_a.y / quad->texture_size.y;
+                tw = (f32)quad->rectangle_b.x / quad->texture_size.x;
+                th = (f32)quad->rectangle_b.y / quad->texture_size.y;
 
                 // for (u32 i = 0; i < renderer->texture_count; i++) {
                 //     if (renderer->textures[i].id == quad->texture.id) {

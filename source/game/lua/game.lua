@@ -148,7 +148,8 @@ function GameServer:setupCallbacks()
     end)
 
     self.enetServer:on(gameChannels.DISCONNECT, function(data, client)
-        print('client disconnected! : ', inspect(client))
+        print('client disconnected! : ')
+        dump_func(client)
     end)
 end
 
@@ -355,5 +356,7 @@ game.newServer = function(ip, port)
     gs:setupCallbacks()
     return gs
 end
+
+
 
 return game

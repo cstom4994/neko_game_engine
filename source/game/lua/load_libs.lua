@@ -80,8 +80,8 @@ function test_load_libs()
     load_libs_from_url("http://raw.gitmirror.com/rxi/flux/master/flux.lua", "flux.lua")
     load_libs_from_url("http://raw.gitmirror.com/rxi/json.lua/master/json.lua", "json.lua")
 
-    local inspect = load_libs_from_url("https://raw.gitmirror.com/kikito/inspect.lua/master/inspect.lua", "inspect.lua")
+    -- local inspect = load_libs_from_url("https://raw.gitmirror.com/kikito/inspect.lua/master/inspect.lua", "inspect.lua")
 
-    print(inspect({1, 2, 3, {1, 22}}))
+    -- print(inspect({1, 2, 3, {1, 22}}))
 end
 

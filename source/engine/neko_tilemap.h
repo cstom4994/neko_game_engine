@@ -145,10 +145,11 @@ void neko_tiled_unload(MapTiled *map);
 typedef struct neko_tiled_quad_t {
     u32 tileset_id;
     Image texture;
-    neko_vec2 texture_size;
-    neko_vec2 position;
-    neko_vec2 dimentions;
-    neko_vec4 rectangle;
+    vec2 texture_size;
+    vec2 position;
+    vec2 dimentions;
+    vec2 rectangle_a;
+    vec2 rectangle_b;
     Color color;
     bool use_texture;
 } neko_tiled_quad_t;

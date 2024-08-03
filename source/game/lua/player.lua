@@ -46,9 +46,11 @@ function Player:idle(dt)
     self.sprite:play "Idle"
 
     while true do
-        if neko.key_down "w" or neko.key_down "s" or neko.key_down "a" or neko.key_down "d" then
-            self:run(dt)
-            self.sprite:play "Idle"
+        if player.hp > 0 then
+            if neko.key_down "w" or neko.key_down "s" or neko.key_down "a" or neko.key_down "d" then
+                self:run(dt)
+                self.sprite:play "Idle"
+            end
         end
 
         self, dt = coroutine.yield()
@@ -63,17 +65,19 @@ function Player:run(dt)
 
         local mag = 100
 
-        if neko.key_down "w" then
-            vy = vy - 1
-        end
-        if neko.key_down "s" then
-            vy = vy + 1
-        end
-        if neko.key_down "a" then
-            vx = vx - 1
-        end
-        if neko.key_down "d" then
-            vx = vx + 1
+        if player.hp > 0 then
+            if neko.key_down "w" then
+                vy = vy - 1
+            end
+            if neko.key_down "s" then
+                vy = vy + 1
+            end
+            if neko.key_down "a" then
+                vx = vx - 1
+            end
+            if neko.key_down "d" then
+                vx = vx + 1
+            end
         end
 
         if vx == 0 and vy == 0 then

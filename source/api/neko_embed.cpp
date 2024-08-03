@@ -96,7 +96,9 @@ void package_preload_embed(lua_State* L) {
             {"common", open_embed_common},
             {"gen_neko_api", open_embed_gen_neko_api},
 
+#ifdef NEKO_CFFI
             {"ffi", luaopen_cffi},
+#endif
 
             {"http", luaopen_http},
 

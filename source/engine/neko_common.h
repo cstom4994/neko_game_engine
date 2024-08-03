@@ -5,39 +5,6 @@
 
 #include "neko_prelude.h"
 
-struct neko_hashtable_t {
-    void* memctx;
-    int count;
-    int item_size;
-
-    struct slot_t {
-        u32 key_hash;
-        int item_index;
-        int base_count;
-    }* slots;
-    int slot_capacity;
-
-    u64* items_key;
-    int* items_slot;
-    void* items_data;
-    int item_capacity;
-
-    void* swap_temp;
-};
-
-typedef struct neko_hashtable_t neko_hashtable_t;
-
-void hashtable_init(neko_hashtable_t* table, int item_size, int initial_capacity, void* memctx);
-void hashtable_term(neko_hashtable_t* table);
-void* hashtable_insert(neko_hashtable_t* table, u64 key, void const* item);
-void hashtable_remove(neko_hashtable_t* table, u64 key);
-void hashtable_clear(neko_hashtable_t* table);
-void* hashtable_find(neko_hashtable_t const* table, u64 key);
-int hashtable_count(neko_hashtable_t const* table);
-void* hashtable_items(neko_hashtable_t const* table);
-u64 const* hashtable_keys(neko_hashtable_t const* table);
-void hashtable_swap(neko_hashtable_t* table, int index_a, int index_b);
-
 /*================================================================================
 // Utils
 ================================================================================*/

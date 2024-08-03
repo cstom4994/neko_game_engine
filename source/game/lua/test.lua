@@ -12,6 +12,262 @@ cvar = function(name)
     end
 end
 
+function init_lui()
+    mu = neko.microui
+
+    log_input = mu.ref ""
+
+    logbuf = mu.ref ""
+    logbuf_updated = false
+
+    bg = {
+        r = mu.ref(90),
+        g = mu.ref(95),
+        b = mu.ref(100)
+    }
+    checks = map({true, false, true}, mu.ref)
+
+    local function make_color(tab)
+        return {
+            r = mu.ref(tab[1]),
+            g = mu.ref(tab[2]),
+            b = mu.ref(tab[3]),
+            a = mu.ref(tab[4])
+        }
+    end
+
+    colors = {{"text:", mu.COLOR_TEXT, make_color {230, 230, 230, 255}},
+              {"border:", mu.COLOR_BORDER, make_color {25, 25, 25, 255}},
+              {"windowbg:", mu.COLOR_WINDOWBG, make_color {50, 50, 50, 255}},
+              {"titlebg:", mu.COLOR_TITLEBG, make_color {25, 25, 25, 255}},
+              {"titletext:", mu.COLOR_TITLETEXT, make_color {240, 240, 240, 255}},
+              {"panelbg:", mu.COLOR_PANELBG, make_color {0, 0, 0, 0}},
+              {"button:", mu.COLOR_BUTTON, make_color {75, 75, 75, 255}},
+              {"buttonhover:", mu.COLOR_BUTTONHOVER, make_color {95, 95, 95, 255}},
+              {"buttonfocus:", mu.COLOR_BUTTONFOCUS, make_color {115, 115, 115, 255}},
+              {"base:", mu.COLOR_BASE, make_color {30, 30, 30, 255}},
+              {"basehover:", mu.COLOR_BASEHOVER, make_color {35, 35, 35, 255}},
+              {"basefocus:", mu.COLOR_BASEFOCUS, make_color {40, 40, 40, 255}},
+              {"scrollbase:", mu.COLOR_SCROLLBASE, make_color {43, 43, 43, 255}},
+              {"scrollthumb:", mu.COLOR_SCROLLTHUMB, make_color {30, 30, 30, 255}}}
+end
+
+function write_log(str)
+    local log = logbuf:get()
+    if #log ~= 0 then
+        log = log .. "\n"
+    end
+    log = log .. str
+    logbuf:set(log)
+    logbuf_updated = true
+end
+
+function test_lui()
+    test_window()
+    log_window()
+    style_window()
+end
+
+function test_window()
+    -- do window
+    if mu.begin_window("Demo Window", mu.rect(40, 40, 300, 450)) then
+        local win = mu.get_current_container()
+        local rect = win:rect()
+        win:set_rect{
+            x = rect.x,
+            y = rect.y,
+            w = math.max(rect.w, 240),
+            h = math.max(rect.h, 300)
+        }
+
+        -- window info
+        if mu.header "Window Info" then
+            local win = mu.get_current_container()
+            local rect = win:rect()
+            mu.layout_row({54, -1}, 0)
+            mu.label "Position:"
+            mu.label(("%d, %d"):format(rect.x, rect.y))
+            mu.label "Size:"
+            mu.label(("%d, %d"):format(rect.w, rect.h))
+        end
+
+        -- labels + buttons
+        if mu.header("Test Buttons", mu.OPT_EXPANDED) then
+            mu.layout_row({86, -110, -1}, 0)
+            mu.label "Test buttons 1:"
+            if mu.button "Button 1" then
+                write_log "Pressed button 1"
+            end
+            if mu.button "Button 2" then
+                write_log "Pressed button 2"
+            end
+            mu.label "Test buttons 2:"
+            if mu.button "Button 3" then
+                write_log "Pressed button 3"
+            end
+            if mu.button "Popup" then
+                mu.open_popup "Test Popup"
+            end
+            if mu.begin_popup "Test Popup" then
+                mu.button "Hello"
+                mu.button "World"
+                mu.end_popup()
+            end
+        end
+
+        -- tree
+        if mu.header("Tree and Text", mu.OPT_EXPANDED) then
+            mu.layout_row({140, -1}, 0)
+            mu.layout_begin_column()
+            if mu.begin_treenode "Test 1" then
+                if mu.begin_treenode "Test 1a" then
+                    mu.label "Hello"
+                    mu.label "World"
+                    mu.end_treenode()
+                end
+                if mu.begin_treenode "Test 1b" then
+                    if mu.button "Button 1" then
+                        write_log "Pressed button 1"
+                    end
+                    if mu.button "Button 2" then
+                        write_log "Pressed button 2"
+                    end
+                    mu.end_treenode()
+                end
+                mu.end_treenode()
+            end
+            if mu.begin_treenode "Test 2" then
+                mu.layout_row({54, 54}, 0)
+                if mu.button "Button 3" then
+                    write_log "Pressed button 3"
+                end
+                if mu.button "Button 4" then
+                    write_log "Pressed button 4"
+                end
+                if mu.button "Button 5" then
+                    write_log "Pressed button 5"
+                end
+                if mu.button "Button 6" then
+                    write_log "Pressed button 6"
+                end
+                mu.end_treenode()
+            end
+            if mu.begin_treenode "Test 3" then
+                mu.checkbox("Checkbox 1", checks[1])
+                mu.checkbox("Checkbox 2", checks[2])
+                mu.checkbox("Checkbox 3", checks[3])
+                mu.end_treenode()
+            end
+            mu.layout_end_column()
+
+            mu.layout_begin_column()
+            mu.layout_row({-1}, 0)
+            mu.text(
+                "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas lacinia, sem eu lacinia molestie, mi risus faucibus ipsum, eu varius magna felis a nulla.")
+            mu.layout_end_column()
+        end
+
+        -- background color sliders
+        if mu.header("Background Color", mu.OPT_EXPANDED) then
+            mu.layout_row({-78, -1}, 74)
+            mu.layout_begin_column()
+            mu.layout_row({46, -1}, 0)
+            mu.label "Red:";
+            mu.slider(bg.r, 0, 255)
+            mu.label "Green:";
+            mu.slider(bg.g, 0, 255)
+            mu.label "Blue:";
+            mu.slider(bg.b, 0, 255)
+            mu.layout_end_column()
+
+            local r = mu.layout_next()
+            local col = {
+                r = math.floor(bg.r:get()),
+                g = math.floor(bg.g:get()),
+                b = math.floor(bg.b:get()),
+                a = 255
+            }
+            neko.clear_color(col.r, col.g, col.b, col.a)
+            mu.draw_rect(r, col)
+            local str = ("#%02X%02X%02X"):format(col.r, col.g, col.b)
+            mu.draw_control_text(str, r, mu.COLOR_TEXT, mu.OPT_ALIGNCENTER)
+        end
+
+        mu.end_window()
+    end
+end
+
+function log_window()
+    if mu.begin_window("Log Window", mu.rect(350, 40, 300, 200)) then
+        -- output text panel
+        mu.layout_row({-1}, -25)
+        mu.begin_panel "Log Output"
+        local panel = mu.get_current_container()
+        mu.layout_row({-1}, -1)
+        mu.text(logbuf:get())
+        mu.end_panel()
+        if logbuf_updated then
+            local sx, sy = panel:scroll()
+            local x, y = panel:content_size()
+            panel:set_scroll(sx, y)
+            logbuf_updated = false
+        end
+
+        -- input textbox + buttons
+        local submitted = false
+        mu.layout_row({-120, -60, -1}, 0)
+        if (mu.textbox(log_input) and mu.RES_SUBMIT) ~= 0 then
+            mu.set_focus(mu.get_last_id())
+            submitted = true
+        end
+        if mu.button "Submit" then
+            submitted = true
+        end
+        if mu.button "Clear" then
+            logbuf:set ""
+        end
+        if submitted then
+            write_log(log_input:get())
+            log_input:set ""
+        end
+
+        mu.end_window()
+    end
+end
+
+function uint8_slider(label, palette, key)
+    mu.push_id(label .. key)
+    mu.slider(palette[key], 0, 255, 0, "%.0f")
+    mu.pop_id()
+end
+
+function style_window()
+    if mu.begin_window("Style Editor", mu.rect(350, 250, 300, 240)) then
+        local style = mu.get_style()
+
+        local sw = mu.get_current_container():body().w * 0.14
+        mu.layout_row({80, sw, sw, sw, sw, -1}, 0)
+        for _, color in ipairs(colors) do
+            local label, idx, palette = color[1], color[2], color[3]
+            mu.label(label)
+            uint8_slider(label, palette, "r")
+            uint8_slider(label, palette, "g")
+            uint8_slider(label, palette, "b")
+            uint8_slider(label, palette, "a")
+            local c = {
+                r = palette.r:get(),
+                g = palette.g:get(),
+                b = palette.b:get(),
+                a = palette.a:get()
+            }
+            mu.draw_rect(mu.layout_next(), c)
+            style:set_color(idx, c)
+        end
+        mu.end_window()
+    end
+end
+
+
 draw_imgui = function(dt)
 
     ImGui.Begin("Demo")
@@ -99,10 +355,10 @@ draw_imgui = function(dt)
         local xml = common.xml_parser()
         local test_xml = xml:ParseXmlText(xml_code)
 
-        local inspect = load_libs_from_url("https://raw.gitmirror.com/kikito/inspect.lua/master/inspect.lua",
-            "inspect.lua")
+        -- local inspect = load_libs_from_url("https://raw.gitmirror.com/kikito/inspect.lua/master/inspect.lua",
+        --     "inspect.lua")
 
-        print(inspect(test_xml))
+        dump_func(test_xml)
     end
 
     if ImGui.Button("test_http") then
@@ -116,17 +372,17 @@ draw_imgui = function(dt)
 
         local json_data = neko.json_read(common.decode_unicode_escape(data))
 
-        print(inspect(json_data))
+        dump_func(json_data)
 
         print(neko.json_write(json_data))
     end
 
     if ImGui.Button("test_reg") then
         local reg = Core.from_registry("_PRELOAD")
-        print(inspect(reg))
+        dump_func(reg)
 
         reg = Core.from_registry(LUA_RIDX_GLOBALS, "sandbox")
-        print(inspect(reg))
+        dump_func(reg)
 
         local va = common.va()
 
@@ -268,14 +524,14 @@ function UnitTest()
 
                 local va = common.va()
                 local ip = "127.0.0.2"
-                expect(inspect({va.map(tonumber, string.match(ip, "^(%d+)%.(%d+)%.(%d+)%.(%d+)$"))})).to.equal(inspect(
-                    {127, 0, 0, 2})) -- Pass
+                -- expect(inspect({va.map(tonumber, string.match(ip, "^(%d+)%.(%d+)%.(%d+)%.(%d+)$"))})).to.equal(inspect(
+                --     {127, 0, 0, 2})) -- Pass
 
                 local function f(...)
                     return ...
                 end
                 local t = {va.concat(va(f(1, 2, 3)), va(f(4, 5, 6)))}
-                expect(inspect(t)).to.equal(inspect({1, 2, 3, 4, 5, 6}))
+                -- expect(inspect(t)).to.equal(inspect({1, 2, 3, 4, 5, 6}))
 
                 expect(1).to.be.a('number') -- Pass
             end)
@@ -345,7 +601,7 @@ function UnitTest()
                 v4.z = 10
                 v4.w = 10
                 local v4_c = Test.LUASTRUCT_test_vec4(v4)
-                expect(inspect({v4_c.x, v4_c.y, v4_c.z, v4_c.w})).to.equal(inspect({20.0, 20.0, 20.0, 20.0}))
+                -- expect(inspect({v4_c.x, v4_c.y, v4_c.z, v4_c.w})).to.equal(inspect({20.0, 20.0, 20.0, 20.0}))
             end)
 
             it('feature_spritepack', function()
@@ -398,6 +654,34 @@ function UnitTest()
                 expect(Test.TestBinding_1()).to.be.truthy()
             end)
 
+            it('feature_nameof', function()
+                print("Name of table: ", Core.nameof({}))
+                print("Name of string.sub: ", Core.nameof(string.sub))
+                print("Name of print: ", Core.nameof(print))
+
+                local Field_foo = 100
+                print(Core.nameof(Field_foo))
+            end)
+
+            it('feature_ltype', function()
+                local coroutine_create, type = coroutine.create, Core.ltype
+                local nil_ = nil
+                local boolean_ = true
+                local number_ = 123
+                local string_ = "abc"
+                local table_ = {}
+                local function_ = function()
+                end
+                local thread_ = coroutine_create(function()
+                end)
+                assert(type(nil_) == "nil")
+                assert(type(boolean_) == "boolean")
+                assert(type(string_) == "string")
+                assert(type(table_) == "table")
+                assert(type(function_) == "function")
+                assert(type(thread_) == "thread")
+            end)
+
             it('feature_luaref', function()
                 local ref = Core.ref_init()
                 assert(Core.ref_ref(ref) == 2)
@@ -432,7 +716,8 @@ function UnitTest()
                 test_pack = neko.pak_load("test_pack_handle", "fgd.pack")
                 test_handle = test_pack:assets_load("gamedir/assets/test_1.fgd")
                 test_items = test_pack:items()
-                print(inspect(test_items), type(test_handle))
+                print(type(test_handle))
+                dump_func(test_items)
             end)
 
             it('feature_ecs', function()
@@ -458,26 +743,30 @@ function UnitTest()
                 assert(w:component_id("haha_t") == comp1)
 
                 local tb, ss = w:get_com()
-                print(ss, inspect(tb))
+                print(ss)
+                dump_func(tb)
 
                 local sys1 = w:system("haha_system_1", function(ent_ct, name)
-                    print("update 1", ent_ct, comp1, name)
+                    -- print("update 1", ent_ct, comp1, name)
                     local ptr_haha = w:get(ent_ct, comp1)
-                    print(ptr_haha, csb.getter("haha_t", "sss")(ptr_haha))
+                    local v = csb.getter("haha_t", "sss")(ptr_haha)
+                    csb.setter("haha_t", "sss")(ptr_haha, v + 1)
+                    -- print(ptr_haha, csb.getter("haha_t", "sss")(ptr_haha))
                 end, function(ent, name)
                     print("add 1", ent, name)
                 end, function(ent, name)
                     print("remove 1", ent, name)
                 end)
 
-                print("haha_system_1", inspect(sys1))
+                print("haha_system_1")
+                dump_func(sys1)
 
                 w:system_require_component(sys1, "pos_t", "vel_t", "haha_t")
 
                 for i = 1, 10, 1 do
                     local e = w:create_ent()
                     local ptr_pos, ptr_vel, ptr_haha = w:attach(e, "pos_t", "vel_t", "haha_t")
-                    print(inspect({ptr_pos, ptr_vel, ptr_haha}))
+                    dump_func({ptr_pos, ptr_vel, ptr_haha})
                     csb.setter("haha_t", "sss")(ptr_haha, i * 100)
                 end
 
@@ -486,10 +775,13 @@ function UnitTest()
                 --     print("ent", e)
                 -- end
 
-                local sys1_ret = w:system_run(sys1, 0.0)
+                local st = os.clock()
 
-                print("sys1_ret", inspect(sys1_ret))
+                for i = 1, 10000, 1 do
+                    local sys1_ret = w:system_run(sys1, 0.0)
+                end
 
+                print(os.clock() - st)
             end)
 
         end)

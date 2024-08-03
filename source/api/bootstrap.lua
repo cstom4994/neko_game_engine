@@ -1,7 +1,6 @@
 unsafe_require = require
 
 -- runs on start of the engine
-luastruct_test = require("__neko.struct_test")
 luadb = require("__neko.luadb")
 ImGui = require("__neko.imgui")
 Core = require("__neko.core")

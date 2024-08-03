@@ -237,7 +237,11 @@ LUABIND_MODULE() {
 
                 lua_rawsetp(L, LUA_REGISTRYINDEX, Ldb);
 
+#if LUA_VERSION_NUM >= 502
                 lua_rawgeti(Ldb, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS);
+#else
+                lua_pushvalue(L, LUA_GLOBALSINDEX);
+#endif
                 luadb_get(L, Ldb, -1);
                 lua_pop(Ldb, 1);
 

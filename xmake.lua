@@ -19,10 +19,24 @@ add_rules("mode.debug", "mode.release")
 
 add_includedirs("source/")
 
-local base_libs = {"lua", "sokol", "imgui", "miniz", "stb", "cffi-lua", "cute_headers"}
+local NEKO_CFFI = false
+
+local base_libs = {"sokol", "imgui", "miniz", "stb", "cute_headers"}
 
 add_requires("sokol-shdc")
 add_requires("cffi-lua")
+
+add_requires("glew")
+add_requires("glfw")
+add_requires("dirent")
+
+add_requires("openrestry-luajit", {
+    configs = {
+        gc64 = true
+    }
+})
+
+add_requires("libffi")
 
 add_requires("lua")
 add_requires("sokol")
@@ -35,8 +49,9 @@ add_requires("cute_headers")
 add_requires("imgui v1.90.9-docking", {
     configs = {
         wchar32 = true,
-        backend = "none",
-        freetype = true
+        freetype = true,
+        glfw = true,
+        opengl3 = true
     }
 })
 
@@ -138,14 +153,30 @@ do
 
     add_files("source/api/gen/**.lua", "source/api/*.lua")
 
-    add_files("source/api/**.cpp", "source/engine/**.cpp", "source/game/**.cpp")
+    add_files("source/api/**.cpp", "source/engine/**.cpp")
 
-    add_headerfiles("source/engine/**.h", "source/engine/**.hpp", "source/game/**.h")
+    add_headerfiles("source/engine/**.h", "source/engine/**.hpp")
 
     add_includedirs("$(buildir)/sokol_shader")
 
     add_packages(base_libs)
     add_packages("miniaudio", "box2d", "enet")
+
+    if NEKO_CFFI == true then
+        add_packages("lua", "libffi")
+        add_defines("NEKO_CFFI", "FFI_LITTLE_ENDIAN")
+
+        add_files("source/vendor/cffi/*.cc")
+        add_headerfiles("source/vendor/cffi/*.hh")
+        add_includedirs("source/vendor/cffi")
+
+        add_files("source/vendor/bit.c")
+
+    else
+        add_packages("openrestry-luajit")
+    end
+
+    remove_files("source/vendor/bit.c")
 
     add_deps("shader")
 

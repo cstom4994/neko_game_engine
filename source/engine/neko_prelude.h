@@ -1,12 +1,12 @@
 #pragma once
 
-#include <cassert>
-#include <cstdarg>
-#include <cstddef>
-#include <cstdint>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
+#include <assert.h>
+#include <stdarg.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #if defined(_WIN32)
 #define NEKO_IS_WIN32
@@ -73,9 +73,11 @@ struct lua_State;
 #if defined(__cplusplus)
 #define NEKO_DEFAULT_VAL() \
     {}
+#define NEKO_C_EXTERN extern "C"
 #else
 #define NEKO_DEFAULT_VAL() \
     { 0 }
+#define NEKO_C_EXTERN extern
 #endif
 
 #define NEKO_FOR_RANGE_N(__COUNT, N) for (u32 N = 0; N < __COUNT; ++N)
@@ -199,6 +201,8 @@ Defer<F> defer_func(F f) {
 }
 
 #define neko_defer(code) auto JOIN_2(_defer_, __COUNTER__) = defer_func([&]() { code; })
+
+#define DeferLoop(start, end) for (int _i_ = ((start), 0); _i_ == 0; _i_ += 1, (end))
 
 FORMAT_ARGS(1)
 inline void neko_panic(const char *fmt, ...) {

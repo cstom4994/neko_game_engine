@@ -1,6 +1,7 @@
 
+#include "engine/neko_pak.h"
+
 #include "engine/neko_app.h"
-#include "engine/neko_asset.h"
 
 // miniz
 #include <miniz.h>
@@ -16,8 +17,8 @@ static void destroy_pack_items(u64 item_count, neko_pak::item *items) {
     mem_free(items);
 }
 
-bool create_pack_items(vfs_file *packFile, u64 item_count, neko_pak::item **_items) {
-    NEKO_ASSERT(packFile);
+bool create_pack_items(vfs_file *pak, u64 item_count, neko_pak::item **_items) {
+    NEKO_ASSERT(pak);
     NEKO_ASSERT(item_count > 0);
     NEKO_ASSERT(_items);
 
@@ -28,7 +29,7 @@ bool create_pack_items(vfs_file *packFile, u64 item_count, neko_pak::item **_ite
     for (u64 i = 0; i < item_count; i++) {
         neko_pak::iteminfo info;
 
-        size_t result = neko_capi_vfs_fread(&info, sizeof(neko_pak::iteminfo), 1, packFile);
+        size_t result = neko_capi_vfs_fread(&info, sizeof(neko_pak::iteminfo), 1, pak);
 
         if (result != 1) {
             destroy_pack_items(i, items);
@@ -47,7 +48,7 @@ bool create_pack_items(vfs_file *packFile, u64 item_count, neko_pak::item **_ite
             return false;  // FAILED_TO_ALLOCATE_PACK_RESULT
         }
 
-        result = neko_capi_vfs_fread(path, sizeof(char), info.path_size, packFile);
+        result = neko_capi_vfs_fread(path, sizeof(char), info.path_size, pak);
 
         path[info.path_size] = 0;
 
@@ -58,7 +59,7 @@ bool create_pack_items(vfs_file *packFile, u64 item_count, neko_pak::item **_ite
 
         i64 fileOffset = info.zip_size > 0 ? info.zip_size : info.data_size;
 
-        int seekResult = neko_capi_vfs_fseek(packFile, fileOffset, SEEK_CUR);
+        int seekResult = neko_capi_vfs_fseek(pak, fileOffset, SEEK_CUR);
 
         if (seekResult != 0) {
             destroy_pack_items(i, items);

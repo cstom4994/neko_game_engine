@@ -68,6 +68,8 @@ struct App {
     float scroll_x;
     float scroll_y;
 
+    bool debug_on;
+
     FontFamily *default_font;
 
     neko_api_BlendMode blendmode;

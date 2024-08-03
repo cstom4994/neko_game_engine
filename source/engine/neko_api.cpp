@@ -17,6 +17,7 @@
 #include "engine/neko_lua_wrap.h"
 #include "engine/neko_luabind.hpp"
 #include "engine/neko_os.h"
+#include "engine/neko_pak.h"
 #include "engine/neko_physics.h"
 #include "engine/neko_prelude.h"
 #include "engine/neko_reflection.hpp"
@@ -1355,8 +1356,7 @@ static int neko_registry_load(lua_State *L) {
     String name = luax_check_string(L, 1);
 
     // registry._LOADED
-    lua_pushliteral(L, LUA_LOADED_TABLE);
-    lua_gettable(L, LUA_REGISTRYINDEX);
+    luax_pushloadedtable(L);
 
     if (lua_type(L, 2) == LUA_TNIL) {
         lua_pushboolean(L, true);
@@ -2241,11 +2241,7 @@ static void neko_tolua_setfield(lua_State *L, int table, const_str f, const_str 
 static void neko_tolua_add_extra(lua_State *L, const_str value) {
     int len;
     lua_getglobal(L, "_extra_parameters");
-#if LUA_VERSION_NUM > 501
     len = lua_rawlen(L, -1);
-#else
-    len = luaL_getn(L, -1);
-#endif
     lua_pushstring(L, value);
     lua_rawseti(L, -2, len + 1);
     lua_pop(L, 1);
@@ -4979,6 +4975,32 @@ LUA_FUNCTION(from_registry) {
     return 1;
 }
 
+LUA_FUNCTION(ltype) {
+    lua_pushvalue(L, lua_upvalueindex(lua_type(L, 1) + 1));
+    return 1;
+}
+
+static void typeclosure(lua_State *L) {
+    static const char *typenames[] = {
+            "nil",       // 0
+            "boolean",   // 1
+            "userdata",  // 2
+            "number",    // 3
+            "string",    // 4
+            "table",     // 5
+            "function",  // 6
+            "userdata",  // 7
+            "thread",    // 8
+            "proto",     // 9
+    };
+    size_t i;
+    const size_t n = array_size(typenames);
+    for (i = 0; i < n; i++) {
+        lua_pushstring(L, typenames[i]);
+    }
+    lua_pushcclosure(L, ltype, n);
+}
+
 static int open_embed_core(lua_State *L) {
 
     luaL_checkversion(L);
@@ -5015,6 +5037,8 @@ static int open_embed_core(lua_State *L) {
 
             // reg
             {"from_registry", from_registry},
+
+            {"nameof", __neko_bind_nameof},
 
             // {"tiled_create", __neko_bind_tiled_create},
             // {"tiled_render", __neko_bind_tiled_render},
@@ -5124,6 +5148,9 @@ static int open_embed_core(lua_State *L) {
                                 {NULL, NULL}};
     luaL_setfuncs(L, inspector_reg, 0);
 #endif
+
+    typeclosure(L);
+    lua_setfield(L, -2, "ltype");
 
     createStructTables(L);
 

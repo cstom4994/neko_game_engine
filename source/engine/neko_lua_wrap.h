@@ -44,8 +44,25 @@ size_t neko_lua_mem_usage();
 
 void *Allocf(void *ud, void *ptr, size_t osize, size_t nsize);
 
-class neko_lua_tool_t {
-public:
+struct lua_tool {
+
+    static std::string_view PushFQN(lua_State *const L, int const t, int const last) {
+        luaL_Buffer _b;
+        luaL_buffinit(L, &_b);
+        int i{1};
+        for (; i < last; ++i) {
+            lua_rawgeti(L, t, i);
+            luaL_addvalue(&_b);
+            luaL_addlstring(&_b, "/", 1);
+        }
+        if (i == last) {  // 添加最后一个值(如果间隔不为空)
+            lua_rawgeti(L, t, i);
+            luaL_addvalue(&_b);
+        }
+        luaL_pushresult(&_b);  // &b 此时会弹出 (替换为result)
+        return lua_tostring(L, -1);
+    }
+
     static void check_arg_count(lua_State *L, int expected) {
         int n = lua_gettop(L);
         if (n != expected) {
@@ -1404,7 +1421,7 @@ int lua_method_void_0args(lua_State *L) {
     int params = lua_gettop(L);
     if (params <= 0) {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        neko_lua_tool_t::function_call_err(name, params);
+        lua_tool::function_call_err(name, params);
         return 0;
     }
 
@@ -1417,7 +1434,7 @@ int lua_method_void_0args(lua_State *L) {
         (self->*wrapper->methodPtr)();
     } else {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        neko_lua_tool_t::function_call_err(name, params);
+        lua_tool::function_call_err(name, params);
     }
 
     return 0;
@@ -1428,7 +1445,7 @@ int lua_method_void_1args(lua_State *L) {
     int params = lua_gettop(L);
     if (params < 2) {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        neko_lua_tool_t::function_call_err(name, params);
+        lua_tool::function_call_err(name, params);
         lua_pop(L, params);
         return 0;
     }
@@ -1445,7 +1462,7 @@ int lua_method_void_1args(lua_State *L) {
         (self->*wrapper->methodPtr)(p1);
     } else {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        neko_lua_tool_t::function_call_err(name, params);
+        lua_tool::function_call_err(name, params);
     }
 
     return 0;
@@ -1456,7 +1473,7 @@ int lua_method_void_2args(lua_State *L) {
     int params = lua_gettop(L);
     if (params < 3) {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        neko_lua_tool_t::function_call_err(name, params);
+        lua_tool::function_call_err(name, params);
         lua_pop(L, params);
         return 0;
     }
@@ -1475,7 +1492,7 @@ int lua_method_void_2args(lua_State *L) {
         (self->*wrapper->methodPtr)(p1, p2);
     } else {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        neko_lua_tool_t::function_call_err(name, params);
+        lua_tool::function_call_err(name, params);
     }
 
     return 0;
@@ -1486,7 +1503,7 @@ int lua_method_void_3args(lua_State *L) {
     int params = lua_gettop(L);
     if (params < 4) {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        neko_lua_tool_t::function_call_err(name, params);
+        lua_tool::function_call_err(name, params);
         lua_pop(L, params);
         return 0;
     }
@@ -1507,7 +1524,7 @@ int lua_method_void_3args(lua_State *L) {
         (self->*wrapper->methodPtr)(p1, p2, p3);
     } else {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        neko_lua_tool_t::function_call_err(name, params);
+        lua_tool::function_call_err(name, params);
     }
 
     return 0;
@@ -1518,7 +1535,7 @@ int lua_method_void_3args(lua_State *L) {
     int params = lua_gettop(L);
     if (params < 5) {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        neko_lua_tool_t::function_call_err(name, params);
+        lua_tool::function_call_err(name, params);
         lua_pop(L, params);
         return 0;
     }
@@ -1541,7 +1558,7 @@ int lua_method_void_3args(lua_State *L) {
         (self->*wrapper->methodPtr)(p1, p2, p3, p4);
     } else {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        neko_lua_tool_t::function_call_err(name, params);
+        lua_tool::function_call_err(name, params);
     }
 
     lua_pop(L, params);
@@ -1562,12 +1579,12 @@ int lua_method_R_0args(lua_State *L) {
             lua_value<R>::push(L, ret);
         } else {
             const_str name = lua_tostring(L, lua_upvalueindex(2));
-            neko_lua_tool_t::function_call_err(name, params);
+            lua_tool::function_call_err(name, params);
             lua_pushnil(L);
         }
     } else {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        neko_lua_tool_t::function_call_err(name, params);
+        lua_tool::function_call_err(name, params);
         lua_pop(L, params);
         lua_pushnil(L);
     }
@@ -1592,12 +1609,12 @@ int lua_method_R_1args(lua_State *L) {
             lua_value<R>::push(L, ret);
         } else {
             const_str name = lua_tostring(L, lua_upvalueindex(2));
-            neko_lua_tool_t::function_call_err(name, params);
+            lua_tool::function_call_err(name, params);
             lua_pushnil(L);
         }
     } else {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        neko_lua_tool_t::function_call_err(name, params);
+        lua_tool::function_call_err(name, params);
         lua_pop(L, params);
         lua_pushnil(L);
     }
@@ -1624,12 +1641,12 @@ int lua_method_R_2args(lua_State *L) {
             lua_value<R>::push(L, ret);
         } else {
             const_str name = lua_tostring(L, lua_upvalueindex(2));
-            neko_lua_tool_t::function_call_err(name, params);
+            lua_tool::function_call_err(name, params);
             lua_pushnil(L);
         }
     } else {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        neko_lua_tool_t::function_call_err(name, params);
+        lua_tool::function_call_err(name, params);
         lua_pop(L, params);
         lua_pushnil(L);
     }
@@ -1658,12 +1675,12 @@ int lua_method_R_3args(lua_State *L) {
             lua_value<R>::push(L, ret);
         } else {
             const_str name = lua_tostring(L, lua_upvalueindex(2));
-            neko_lua_tool_t::function_call_err(name, params);
+            lua_tool::function_call_err(name, params);
             lua_pushnil(L);
         }
     } else {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        neko_lua_tool_t::function_call_err(name, params);
+        lua_tool::function_call_err(name, params);
         lua_pop(L, params);
         lua_pushnil(L);
     }
@@ -1694,12 +1711,12 @@ int lua_method_R_3args(lua_State *L) {
             lua_value<R>::push(L, ret);
         } else {
             const_str name = lua_tostring(L, lua_upvalueindex(2));
-            neko_lua_tool_t::function_call_err(name, params);
+            lua_tool::function_call_err(name, params);
             lua_pushnil(L);
         }
     } else {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        neko_lua_tool_t::function_call_err(name, params);
+        lua_tool::function_call_err(name, params);
         lua_pop(L, params);
         lua_pushnil(L);
     }
@@ -1739,7 +1756,7 @@ static inline int lua_function_void_0args(lua_State *L) {
     int params = lua_gettop(L);
     if (params != 0) {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        neko_lua_tool_t::function_call_err(name, params);
+        lua_tool::function_call_err(name, params);
         lua_pop(L, params);
         return 0;
     }
@@ -1755,7 +1772,7 @@ int lua_function_void_1args(lua_State *L) {
     int params = lua_gettop(L);
     if (params == 0) {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        neko_lua_tool_t::function_call_err(name, params);
+        lua_tool::function_call_err(name, params);
         return 0;
     }
 
@@ -1781,7 +1798,7 @@ int lua_function_void_2args(lua_State *L) {
     int params = lua_gettop(L);
     if (params < 2) {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        neko_lua_tool_t::function_call_err(name, params);
+        lua_tool::function_call_err(name, params);
         lua_pop(L, params);
         return 0;
     }
@@ -1810,7 +1827,7 @@ int lua_function_void_3args(lua_State *L) {
     int params = lua_gettop(L);
     if (params < 3) {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        neko_lua_tool_t::function_call_err(name, params);
+        lua_tool::function_call_err(name, params);
         lua_pop(L, params);
         return 0;
     }
@@ -1841,7 +1858,7 @@ int lua_function_void_4args(lua_State *L) {
     int params = lua_gettop(L);
     if (params < 4) {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        neko_lua_tool_t::function_call_err(name, params);
+        lua_tool::function_call_err(name, params);
         lua_pop(L, params);
         return 0;
     }
@@ -1874,7 +1891,7 @@ int lua_function_R_0args(lua_State *L) {
     int params = lua_gettop(L);
     if (params != 0) {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        neko_lua_tool_t::function_call_err(name, params);
+        lua_tool::function_call_err(name, params);
         lua_pushnil(L);
         return 1;
     }
@@ -1906,7 +1923,7 @@ int lua_function_R_1args(lua_State *L) {
         }
     } else {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        neko_lua_tool_t::function_call_err(name, params);
+        lua_tool::function_call_err(name, params);
         lua_pushnil(L);
     }
 
@@ -1936,7 +1953,7 @@ int lua_function_R_2args(lua_State *L) {
         }
     } else {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        neko_lua_tool_t::function_call_err(name, params);
+        lua_tool::function_call_err(name, params);
         lua_pop(L, params);
         lua_pushnil(L);
     }
@@ -1969,7 +1986,7 @@ int lua_function_R_3args(lua_State *L) {
         }
     } else {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        neko_lua_tool_t::function_call_err(name, params);
+        lua_tool::function_call_err(name, params);
         lua_pop(L, params);
         lua_pushnil(L);
     }
@@ -2004,7 +2021,7 @@ int lua_function_R_4args(lua_State *L) {
         }
     } else {
         const_str name = lua_tostring(L, lua_upvalueindex(2));
-        neko_lua_tool_t::function_call_err(name, params);
+        lua_tool::function_call_err(name, params);
         lua_pop(L, params);
         lua_pushnil(L);
     }
@@ -2570,7 +2587,7 @@ inline void neko_lua_fini(lua_State *_L) {
         __neko_luabind_fini(_L);
         int top = lua_gettop(_L);
         if (top != 0) {
-            neko_lua_tool_t::dump_stack(_L);
+            lua_tool::dump_stack(_L);
             NEKO_WARN("[lua] luastack memory leak");
         }
         ::lua_close(_L);
@@ -2582,7 +2599,7 @@ void neko_lua_run_string(lua_State *_L, const_str str_);
 
 inline void neko_lua_run_string(lua_State *_L, const std::string &str_) { neko_lua_run_string(_L, str_.c_str()); }
 
-inline void neko_lua_dump_stack(lua_State *_L) { neko_lua_tool_t::dump_stack(_L); }
+inline void neko_lua_dump_stack(lua_State *_L) { lua_tool::dump_stack(_L); }
 
 inline int neko_lua_add_package_path(lua_State *L, const std::string &str_) {
     std::string new_path = "package.path = package.path .. \"";
@@ -2598,7 +2615,7 @@ inline int neko_lua_add_package_path(lua_State *L, const std::string &str_) {
 inline int neko_lua_load_file(lua_State *_L, const std::string &file_name_)  //
 {
     if (luaL_dofile(_L, file_name_.c_str())) {
-        std::string err = neko_lua_tool_t::dump_error(_L, "cannot load file<%s>", file_name_.c_str());
+        std::string err = lua_tool::dump_error(_L, "cannot load file<%s>", file_name_.c_str());
         ::lua_pop(_L, 1);
         // NEKO_ERROR("%s", err.c_str());
     }
@@ -2657,10 +2674,10 @@ template <typename T>
 void neko_lua_reg(lua_State *_L, T a);
 
 inline void neko_lua_call(lua_State *_L, const char *func_name_) {
-    ::lua_getglobal(_L, func_name_);
+    lua_getglobal(_L, func_name_);
 
     if (neko_lua_pcall_wrap(_L, 0, 0, 0) != 0) {
-        std::string err = neko_lua_tool_t::dump_error(_L, "lua_pcall_wrap failed func_name<%s>", func_name_);
+        std::string err = lua_tool::dump_error(_L, "lua_pcall_wrap failed func_name<%s>", func_name_);
         ::lua_pop(_L, 1);
         // NEKO_ERROR("%s", err.c_str());
     }
@@ -2742,7 +2759,7 @@ ret(RET) neko_lua_call(lua_State *_L, const char *func_name_) {
     int tmpArg = __neko_lua_getFuncByName(_L, func_name_);
 
     if (neko_lua_pcall_wrap(_L, tmpArg + 0, 1, 0) != 0) {
-        std::string err = neko_lua_tool_t::dump_error(_L, "lua_pcall_wrap failed func_name<%s>", func_name_);
+        std::string err = lua_tool::dump_error(_L, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(_L, 1);
         NEKO_ERROR("%s", err.c_str());
     }
@@ -2768,7 +2785,7 @@ ret(RET) neko_lua_call(lua_State *_L, const char *func_name_, const ARG1 &arg1_)
     __lua_op_t<ARG1>::push_stack(_L, arg1_);
 
     if (neko_lua_pcall_wrap(_L, tmpArg + 1, 1, 0) != 0) {
-        std::string err = neko_lua_tool_t::dump_error(_L, "lua_pcall_wrap failed func_name<%s>", func_name_);
+        std::string err = lua_tool::dump_error(_L, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(_L, 1);
         NEKO_ERROR("%s", err.c_str());
     }
@@ -2795,7 +2812,7 @@ ret(RET) neko_lua_call(lua_State *_L, const char *func_name_, const ARG1 &arg1_,
     __lua_op_t<ARG2>::push_stack(_L, arg2_);
 
     if (neko_lua_pcall_wrap(_L, tmpArg + 2, 1, 0) != 0) {
-        std::string err = neko_lua_tool_t::dump_error(_L, "lua_pcall_wrap failed func_name<%s>", func_name_);
+        std::string err = lua_tool::dump_error(_L, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(_L, 1);
         NEKO_ERROR("%s", err.c_str());
     }
@@ -2823,7 +2840,7 @@ ret(RET) neko_lua_call(lua_State *_L, const char *func_name_, const ARG1 &arg1_,
     __lua_op_t<ARG3>::push_stack(_L, arg3_);
 
     if (neko_lua_pcall_wrap(_L, tmpArg + 3, 1, 0) != 0) {
-        std::string err = neko_lua_tool_t::dump_error(_L, "lua_pcall_wrap failed func_name<%s>", func_name_);
+        std::string err = lua_tool::dump_error(_L, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(_L, 1);
         NEKO_ERROR("%s", err.c_str());
     }
@@ -2852,7 +2869,7 @@ ret(RET) neko_lua_call(lua_State *_L, const char *func_name_, const ARG1 &arg1_,
     __lua_op_t<ARG4>::push_stack(_L, arg4_);
 
     if (neko_lua_pcall_wrap(_L, tmpArg + 4, 1, 0) != 0) {
-        std::string err = neko_lua_tool_t::dump_error(_L, "lua_pcall_wrap failed func_name<%s>", func_name_);
+        std::string err = lua_tool::dump_error(_L, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(_L, 1);
         NEKO_ERROR("%s", err.c_str());
     }
@@ -2882,7 +2899,7 @@ ret(RET) neko_lua_call(lua_State *_L, const char *func_name_, const ARG1 &arg1_,
     __lua_op_t<ARG5>::push_stack(_L, arg5_);
 
     if (neko_lua_pcall_wrap(_L, tmpArg + 5, 1, 0) != 0) {
-        std::string err = neko_lua_tool_t::dump_error(_L, "lua_pcall_wrap failed func_name<%s>", func_name_);
+        std::string err = lua_tool::dump_error(_L, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(_L, 1);
         NEKO_ERROR("%s", err.c_str());
     }
@@ -2913,7 +2930,7 @@ ret(RET) neko_lua_call(lua_State *_L, const char *func_name_, const ARG1 &arg1_,
     __lua_op_t<ARG6>::push_stack(_L, arg6_);
 
     if (neko_lua_pcall_wrap(_L, tmpArg + 6, 1, 0) != 0) {
-        std::string err = neko_lua_tool_t::dump_error(_L, "lua_pcall_wrap failed func_name<%s>", func_name_);
+        std::string err = lua_tool::dump_error(_L, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(_L, 1);
         NEKO_ERROR("%s", err.c_str());
     }
@@ -2945,7 +2962,7 @@ ret(RET) neko_lua_call(lua_State *_L, const char *func_name_, const ARG1 &arg1_,
     __lua_op_t<ARG7>::push_stack(_L, arg7_);
 
     if (neko_lua_pcall_wrap(_L, tmpArg + 7, 1, 0) != 0) {
-        std::string err = neko_lua_tool_t::dump_error(_L, "lua_pcall_wrap failed func_name<%s>", func_name_);
+        std::string err = lua_tool::dump_error(_L, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(_L, 1);
         NEKO_ERROR("%s", err.c_str());
     }
@@ -2979,7 +2996,7 @@ ret(RET) neko_lua_call(lua_State *_L, const char *func_name_, const ARG1 &arg1_,
     __lua_op_t<ARG8>::push_stack(_L, arg8_);
 
     if (neko_lua_pcall_wrap(_L, tmpArg + 8, 1, 0) != 0) {
-        std::string err = neko_lua_tool_t::dump_error(_L, "lua_pcall_wrap failed func_name<%s>", func_name_);
+        std::string err = lua_tool::dump_error(_L, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(_L, 1);
         NEKO_ERROR("%s", err.c_str());
     }
@@ -3014,7 +3031,7 @@ ret(RET) neko_lua_call(lua_State *_L, const char *func_name_, const ARG1 &arg1_,
     __lua_op_t<ARG9>::push_stack(_L, arg9_);
 
     if (neko_lua_pcall_wrap(_L, tmpArg + 9, 1, 0) != 0) {
-        std::string err = neko_lua_tool_t::dump_error(_L, "lua_pcall_wrap failed func_name<%s>", func_name_);
+        std::string err = lua_tool::dump_error(_L, "lua_pcall_wrap failed func_name<%s>", func_name_);
         lua_pop(_L, 1);
         NEKO_ERROR("%s", err.c_str());
     }
