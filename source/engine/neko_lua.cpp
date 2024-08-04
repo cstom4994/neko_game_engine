@@ -1,4 +1,4 @@
-#include "neko_lua.h"
+#include "engine/neko_lua.h"
 
 #include <assert.h>
 #include <inttypes.h>
@@ -11,14 +11,14 @@
 #include <algorithm>
 #include <iostream>
 
-#include "neko_api.hpp"
-#include "neko_app.h"
-#include "neko_asset.h"
-#include "neko_base.h"
-#include "neko_lua_struct.h"
-#include "neko_lua_wrap.h"
-#include "neko_os.h"
-#include "neko_prelude.h"
+#include "engine/neko_api.hpp"
+#include "engine/neko_game.h"
+#include "engine/neko_asset.h"
+#include "engine/neko_base.h"
+#include "engine/neko_lua_struct.h"
+#include "engine/neko_lua_wrap.h"
+#include "engine/neko_os.h"
+#include "engine/neko_prelude.h"
 
 #if LUA_VERSION_NUM < 504
 
@@ -849,8 +849,8 @@ int vfs_lua_loader(lua_State *L) {
     }
 #endif
 
-    lua_pushfstring(L, "[lua] module \"%s\" not found", name);
-    return 1;
+    // lua_pushfstring(L, "[lua] module \"%s\" not found", name);
+    return 0;
 }
 
 }  // namespace neko

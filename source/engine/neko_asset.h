@@ -1,9 +1,10 @@
 #pragma once
 
-#include "neko_base.h"
-#include "neko_image.h"
-#include "neko_math.h"
-#include "neko_tilemap.h"
+#include "engine/neko_base.h"
+#include "engine/neko_image.h"
+#include "engine/neko_math.h"
+#include "engine/neko_tilemap.h"
+#include "engine/neko_prelude.h"
 
 struct MountResult {
     bool ok;
@@ -61,7 +62,7 @@ struct Asset {
     union {
         i32 lua_ref;
         Image image;
-        SpriteData sprite;
+        // SpriteData sprite;
         MapLdtk tilemap;
         // neko_pak pak;
     };
@@ -80,3 +81,17 @@ void asset_write(Asset asset);
 struct lua_State;
 Asset check_asset(lua_State *L, u64 key);
 Asset check_asset_mt(lua_State *L, i32 arg, const char *mt);
+
+SCRIPT(fs,
+
+       // remember to *_close(...) when done to free resources!
+
+       typedef struct Dir Dir;
+
+       NEKO_EXPORT Dir * fs_dir_open(const char *path);
+
+       NEKO_EXPORT const char *fs_dir_next_file(Dir *dir);  // NULL after last file
+
+       NEKO_EXPORT void fs_dir_close(Dir *dir);
+
+)

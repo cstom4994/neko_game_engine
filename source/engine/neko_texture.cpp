@@ -1,4 +1,4 @@
-#include "neko_texture.h"
+#include "engine/neko_texture.h"
 
 #include <GL/glew.h>
 #include <stdlib.h>
@@ -7,8 +7,8 @@
 #include <time.h>
 
 #include "console.h"
-#include "error.h"
-#include "neko_base.h"
+#include "engine/neko_prelude.h"
+#include "engine/neko_base.h"
 
 // deps
 #include <stb_image.h>

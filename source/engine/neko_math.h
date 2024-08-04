@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "neko_prelude.h"
+#include "engine/neko_prelude.h"
 
 #define neko_pi 3.14159265358979323846264f
 

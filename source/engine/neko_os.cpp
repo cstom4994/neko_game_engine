@@ -1,15 +1,16 @@
-#include "neko_os.h"
+#include "engine/neko_os.h"
 
 #include <array>
 #include <new>
 
 #include "engine/glew_glfw.h"
-#include "neko_api.hpp"
-#include "neko_app.h"
-#include "neko_base.h"
-#include "neko_lua.h"
-#include "neko_os.h"
-#include "neko_prelude.h"
+#include "engine/neko_api.hpp"
+#include "engine/neko_game.h"
+#include "engine/neko_base.h"
+#include "engine/neko_lua.h"
+#include "engine/neko_os.h"
+#include "engine/neko_prelude.h"
+#include "engine/neko_script.h"
 #include "vendor/luaalloc.h"
 
 #if defined(NEKO_IS_WIN32)
@@ -704,6 +705,28 @@ void neko_log(int level, const char* file, int line, const char* fmt, ...) {
     //     neko_console_printf(neko_instance()->console, "\n");
     //     va_end(ev.ap);
     // }
+}
+
+static void _error(const char* s) { script_error(s); }
+
+void errorf(const char* fmt, ...) {
+    va_list ap1, ap2;
+    unsigned int n;
+    char* s;
+
+    va_start(ap1, fmt);
+    va_copy(ap2, ap1);
+
+    // how much space do we need?
+    n = vsnprintf(NULL, 0, fmt, ap2);
+    va_end(ap2);
+
+    // allocate, sprintf, print
+    s = (char*)mem_alloc(n + 1);
+    vsprintf(s, fmt, ap1);
+    va_end(ap1);
+    _error(s);
+    mem_free(s);
 }
 
 #if (defined(_WIN32) || defined(_WIN64))

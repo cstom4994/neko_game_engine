@@ -12,7 +12,7 @@
 // engine
 #include "engine/neko.hpp"
 #include "engine/neko_api.hpp"
-#include "engine/neko_app.h"
+#include "engine/neko_game.h"
 #include "engine/neko_asset.h"
 #include "engine/neko_base.h"
 #include "engine/neko_ecs.h"

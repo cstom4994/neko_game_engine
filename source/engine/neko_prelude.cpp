@@ -1,6 +1,6 @@
-#include "neko_prelude.h"
+#include "engine/neko_prelude.h"
 
-#include "neko_os.h"
+#include "engine/neko_os.h"
 
 bool String::is_cstr() { return data[len] == '\0'; }
 
@@ -60,8 +60,8 @@ void profile_shutdown() {}
 
 #include <sokol_time.h>
 
-#include "neko_base.h"
-#include "neko_os.h"
+#include "engine/neko_base.h"
+#include "engine/neko_os.h"
 
 struct Profile {
     Queue<TraceEvent> events;

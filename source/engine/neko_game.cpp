@@ -1,14 +1,16 @@
-#include "neko_game.h"
+#include "engine/neko_game.h"
 
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <time.h>
 
 #include "console.h"
 #include "glew_glfw.h"
-#include "system.h"
+#include "engine/neko_script.h"
+#include "engine/neko_system.h"
 
 #ifdef CGAME_DEBUG_WINDOW
 #include "debugwin.h"
@@ -32,6 +34,39 @@ static Mutex g_init_mtx;
 
 // -------------------------------------------------------------------------
 
+static const char *filename = usr_path("scratch.lua");
+
+bool _exists() {
+    struct stat st;
+    return stat(filename, &st) == 0;
+}
+
+// 自上次调用 _modified() 后是否已修改 一开始为 false
+bool _modified() {
+    struct stat st;
+    static time_t prev_time = 0;
+    bool modified;
+    static bool first = true;
+
+    if (stat(filename, &st) != 0) {
+        first = false;
+        return false;  // 不存在或错误
+    }
+
+    modified = !first && st.st_mtime != prev_time;
+    prev_time = st.st_mtime;
+    first = false;
+    return modified;
+}
+
+void scratch_run() { script_run_file(filename); }
+
+void scratch_update() {
+    if (_modified()) scratch_run();
+}
+
+// -------------------------------------------------------------------------
+
 static void _glfw_error_callback(int error, const char *desc) { fprintf(stderr, "glfw: %s\n", desc); }
 
 static void _game_init() {
@@ -46,6 +81,9 @@ static void _game_init() {
 #endif
 
     g_allocator->make();
+
+    g_app = (App *)mem_alloc(sizeof(App));
+    memset(g_app, 0, sizeof(App));
 
     os_high_timer_resolution();
     stm_setup();
@@ -117,6 +155,8 @@ static void _game_deinit() {
 #ifdef USE_PROFILER
     profile_shutdown();
 #endif
+
+    mem_free(g_app);
 
 #ifndef NDEBUG
     DebugAllocator *allocator = dynamic_cast<DebugAllocator *>(g_allocator);

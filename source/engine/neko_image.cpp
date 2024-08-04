@@ -1,8 +1,9 @@
 
 
 #include "engine/neko.hpp"
-#include "engine/neko_app.h"
 #include "engine/neko_asset.h"
+#include "engine/neko_game.h"
+
 
 // deps
 #include <stb_image.h>
@@ -268,6 +269,8 @@ void Image::trash() {
     LockGuard lock{&g_app->gpu_mtx};
     // sg_destroy_image({id});
 }
+
+#if 0
 
 bool SpriteData::load(String filepath) {
     PROFILE_FUNC();
@@ -692,3 +695,5 @@ AtlasImage *Atlas::get(String name) {
     u64 key = fnv1a(name);
     return by_name.get(key);
 }
+
+#endif

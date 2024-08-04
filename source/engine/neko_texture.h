@@ -1,7 +1,7 @@
 #ifndef TEXTURE_H
 #define TEXTURE_H
 
-#include "neko_base.h"
+#include "engine/neko_base.h"
 
 bool texture_load(const char *filename);
 void texture_bind(const char *filename);

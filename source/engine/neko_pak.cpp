@@ -1,7 +1,7 @@
 
 #include "engine/neko_pak.h"
 
-#include "engine/neko_app.h"
+#include "engine/neko_game.h"
 
 // miniz
 #include <miniz.h>

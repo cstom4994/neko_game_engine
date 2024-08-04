@@ -4,7 +4,7 @@
 
 #include "engine/neko_base.h"
 #include "engine/neko_prelude.h"
-#include "engine/script_export.h"
+#include "engine/neko_prelude.h"
 
 #define __neko_ecs_ent_id(index, ver) (((u64)ver << 32) | index)
 #define __neko_ecs_ent_index(id) ((u32)id)

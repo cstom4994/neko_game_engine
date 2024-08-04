@@ -1,4 +1,4 @@
-#include "neko_api.hpp"
+#include "engine/neko_api.hpp"
 
 #include <box2d/box2d.h>
 // #include <sokol_app.h>
@@ -7,11 +7,11 @@
 // #include <util/sokol_gl.h>
 
 #include "engine/neko_api.hpp"
-#include "engine/neko_app.h"
 #include "engine/neko_asset.h"
 #include "engine/neko_base.h"
 #include "engine/neko_draw.h"
 #include "engine/neko_ecs.h"
+#include "engine/neko_game.h"
 #include "engine/neko_lua.h"
 #include "engine/neko_lua_struct.h"
 #include "engine/neko_lua_wrap.h"
@@ -128,6 +128,8 @@ static int open_mt_channel(lua_State *L) {
     luax_new_class(L, "mt_channel", reg);
     return 0;
 }
+
+#if 0
 
 // mt_image
 
@@ -540,6 +542,8 @@ static int open_mt_tilemap(lua_State *L) {
     luax_new_class(L, "mt_tilemap", reg);
     return 0;
 }
+
+#endif
 
 // mt_pak
 
@@ -1200,6 +1204,8 @@ static int neko_pop_color(lua_State *L) {
     return ok ? 0 : luaL_error(L, "color stack can't be less than 1");
 }
 
+#if 0
+
 static int neko_default_font(lua_State *L) {
     if (g_app->default_font == nullptr) {
         g_app->default_font = (FontFamily *)mem_alloc(sizeof(FontFamily));
@@ -1240,6 +1246,8 @@ static int neko_draw_line(lua_State *L) {
     draw_line(x0, y0, x1, y1);
     return 0;
 }
+
+#endif
 
 static int neko_set_master_volume(lua_State *L) {
     lua_Number vol = luaL_checknumber(L, 1);
@@ -1447,6 +1455,8 @@ static int neko_image_load(lua_State *L) {
     return 1;
 }
 
+#if 0
+
 static int neko_font_load(lua_State *L) {
     String str = luax_check_string(L, 1);
 
@@ -1503,6 +1513,8 @@ static int neko_tilemap_load(lua_State *L) {
     luax_new_userdata(L, asset.hash, "mt_tilemap");
     return 1;
 }
+
+#endif
 
 static int neko_pak_load(lua_State *L) {
     String name = luax_check_string(L, 1);
@@ -4639,12 +4651,12 @@ static int open_neko(lua_State *L) {
             {"clear_color", neko_clear_color},
             {"push_color", neko_push_color},
             {"pop_color", neko_pop_color},
-            {"default_font", neko_default_font},
+            // {"default_font", neko_default_font},
             // {"default_sampler", neko_default_sampler},
-            {"draw_filled_rect", neko_draw_filled_rect},
-            {"draw_line_rect", neko_draw_line_rect},
-            {"draw_line_circle", neko_draw_line_circle},
-            {"draw_line", neko_draw_line},
+            // {"draw_filled_rect", neko_draw_filled_rect},
+            // {"draw_line_rect", neko_draw_line_rect},
+            // {"draw_line_circle", neko_draw_line_circle},
+            // {"draw_line", neko_draw_line},
 
             // audio
             {"set_master_volume", neko_set_master_volume},
@@ -4668,11 +4680,11 @@ static int open_neko(lua_State *L) {
             {"make_thread", neko_make_thread},
             {"make_channel", neko_make_channel},
             {"image_load", neko_image_load},
-            {"font_load", neko_font_load},
+            // {"font_load", neko_font_load},
             {"sound_load", neko_sound_load},
-            {"sprite_load", neko_sprite_load},
-            {"atlas_load", neko_atlas_load},
-            {"tilemap_load", neko_tilemap_load},
+            // {"sprite_load", neko_sprite_load},
+            // {"atlas_load", neko_atlas_load},
+            // {"tilemap_load", neko_tilemap_load},
             {"pak_load", neko_pak_load},
             {"b2_world", neko_b2_world},
             // {"ecs_create", neko_ecs_create_world},
@@ -4690,13 +4702,13 @@ void open_neko_api(lua_State *L) {
         open_mt_sampler,
         open_mt_thread,
         open_mt_channel,
-        open_mt_image,
-        open_mt_font,
+        // open_mt_image,
+        // open_mt_font,
         open_mt_sound,
-        open_mt_sprite,
-        open_mt_atlas_image,
-        open_mt_atlas,
-        open_mt_tilemap,
+        // open_mt_sprite,
+        // open_mt_atlas_image,
+        // open_mt_atlas,
+        // open_mt_tilemap,
         open_mt_pak,
         open_mt_b2_fixture,
         open_mt_b2_body,

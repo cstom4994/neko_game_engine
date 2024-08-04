@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "neko_lua.h"
+#include "engine/neko_lua.h"
 
 #define NEKO_TOLUA
 

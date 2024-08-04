@@ -1,7 +1,7 @@
 #pragma once
 
-#include "neko_asset.h"
-#include "neko_base.h"
+#include "engine/neko_asset.h"
+#include "engine/neko_base.h"
 
 struct DrawDescription {
     float x;
@@ -52,6 +52,7 @@ void renderer_scale(float x, float y);
 void renderer_push_quad(Vector4 pos, Vector4 tex);
 void renderer_push_xy(float x, float y);
 
+#if 0
 void draw_image(const Image *img, DrawDescription *desc);
 void draw_sprite(Sprite *spr, DrawDescription *desc);
 float draw_font(FontFamily *font, float size, float x, float y, String text);
@@ -61,6 +62,7 @@ void draw_filled_rect(RectDescription *desc);
 void draw_line_rect(RectDescription *desc);
 void draw_line_circle(float x, float y, float radius);
 void draw_line(float x0, float y0, float x1, float y1);
+#endif
 
 struct lua_State;
 DrawDescription draw_description_args(lua_State *L, i32 arg_start);

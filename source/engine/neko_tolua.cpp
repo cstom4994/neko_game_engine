@@ -2,7 +2,7 @@
 // neko_tolua based on tolua by Waldemar Celes (www.tecgraf.puc-rio.br/~celes/tolua)
 // it's licensed under the terms of the MIT license
 
-#include "neko_tolua.h"
+#include "engine/neko_tolua.h"
 
 #if defined(NEKO_TOLUA)
 

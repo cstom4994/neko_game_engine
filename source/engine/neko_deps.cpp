@@ -2,7 +2,7 @@
 #pragma comment(lib, "ws2_32")
 #endif
 
-#include "neko_os.h"
+#include "engine/neko_os.h"
 
 #define SOKOL_TIME_IMPL
 #include "vendor/sokol_time.h"

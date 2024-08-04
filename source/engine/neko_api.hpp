@@ -1,7 +1,7 @@
 #pragma once
 
 #include "engine/neko_lua.h"
-#include "neko.hpp"
+#include "engine/neko.hpp"
 
 struct lua_State;
 void open_neko_api(lua_State *L);

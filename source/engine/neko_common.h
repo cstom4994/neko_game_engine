@@ -3,7 +3,7 @@
 #ifndef NEKO_COMMON_H
 #define NEKO_COMMON_H
 
-#include "neko_prelude.h"
+#include "engine/neko_prelude.h"
 
 /*================================================================================
 // Utils

@@ -1,12 +1,12 @@
-#include "neko_transform.h"
+#include "engine/neko_transform.h"
 
 #include <stdbool.h>
 #include <stdio.h>
 
 #include "edit.h"
 #include "engine/neko_ecs.h"
-#include "error.h"
-#include "neko_base.h"
+#include "engine/neko_prelude.h"
+#include "engine/neko_base.h"
 
 typedef struct Transform Transform;
 struct Transform {
@@ -16,10 +16,12 @@ struct Transform {
     Scalar rotation;
     CVec2 scale;
 
-    Entity parent;     // 如果entity_nil 则为 root
+    Entity parent;  // 如果entity_nil 则为 root
+
     CArray *children;  // 如果为 NULL 则为空
 
-    CMat3 mat_cache;       // 更新此内容
+    CMat3 mat_cache;  // 更新此内容
+
     CMat3 worldmat_cache;  // 在父子更新时缓存
 
     unsigned int dirty_count;

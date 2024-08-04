@@ -5,9 +5,9 @@
 #include <atomic>
 #include <initializer_list>
 
-#include "neko_base.h"
-#include "neko_os.h"
-#include "neko_prelude.h"
+#include "engine/neko_base.h"
+#include "engine/neko_os.h"
+#include "engine/neko_prelude.h"
 #include "vendor/luaalloc.h"
 
 // lua

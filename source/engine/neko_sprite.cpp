@@ -1,18 +1,18 @@
-#include "neko_sprite.h"
+#include "engine/neko_sprite.h"
 
 #include <GL/glew.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "neko_camera.h"
-#include "dirs.h"
 #include "edit.h"
+#include "engine/neko_base.h"
+#include "engine/neko_camera.h"
 #include "engine/neko_ecs.h"
-#include "error.h"
+#include "engine/neko_game.h"
+#include "engine/neko_prelude.h"
+#include "engine/neko_texture.h"
+#include "engine/neko_transform.h"
 #include "gfx.h"
-#include "neko_base.h"
-#include "neko_texture.h"
-#include "neko_transform.h"
 
 typedef struct Sprite Sprite;
 struct Sprite {

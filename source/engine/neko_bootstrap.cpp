@@ -7,19 +7,19 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "neko_api.hpp"
-#include "neko_app.h"
-#include "neko_asset.h"
-#include "neko_base.h"
-#include "neko_draw.h"
-#include "neko_lua.h"
-#include "neko_lua_wrap.h"
-#include "neko_game.h"
-#include "neko_luabind.hpp"
-#include "neko_math.h"
-#include "neko_os.h"
-#include "neko_prelude.h"
-#include "neko_ui.h"
+#include "engine/neko_api.hpp"
+#include "engine/neko_game.h"
+#include "engine/neko_asset.h"
+#include "engine/neko_base.h"
+#include "engine/neko_draw.h"
+#include "engine/neko_game.h"
+#include "engine/neko_lua.h"
+#include "engine/neko_lua_wrap.h"
+#include "engine/neko_luabind.hpp"
+#include "engine/neko_math.h"
+#include "engine/neko_os.h"
+#include "engine/neko_prelude.h"
+#include "engine/neko_ui.h"
 
 // deps
 // #include <sokol_app.h>
@@ -852,7 +852,6 @@ i32 neko_buildnum(void) {
     return b;
 }
 
-
 // static sgl_pipeline g_pipeline;
 
 // static sgimgui_t sgimgui;
@@ -1419,8 +1418,7 @@ sapp_desc sokol_main(int argc, char **argv) {
     //     }
     // }
 
-    g_app = (App *)mem_alloc(sizeof(App));
-    memset(g_app, 0, sizeof(App));
+
 
     g_app->args.resize(argc);
     for (i32 i = 0; i < argc; i++) {

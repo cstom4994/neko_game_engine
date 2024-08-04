@@ -9,7 +9,7 @@
 #include <string>
 
 #include "engine/neko_prelude.h"
-#include "script_export.h"
+#include "engine/neko_prelude.h"
 
 #if defined(_WIN32)
 #include <windows.h>

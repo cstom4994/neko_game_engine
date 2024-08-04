@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "engine/neko_app.h"
+#include "engine/neko_game.h"
 #include "engine/neko_math.h"
 #include "engine/neko_os.h"
 #include "engine/neko_prelude.h"

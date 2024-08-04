@@ -1,17 +1,21 @@
-#include "neko_asset.h"
+#include "engine/neko_asset.h"
+
+#include <stdlib.h>
+#include <sys/types.h>
 
 #include <cstdio>
 #include <filesystem>
 
-#include "neko.hpp"
-#include "neko_app.h"
-#include "neko_base.h"
-#include "neko_common.h"
-#include "neko_draw.h"
-#include "neko_lua.h"
-#include "neko_os.h"
-#include "neko_prelude.h"
-#include "neko_seri.h"
+#include "engine/neko_os.h"
+#include "engine/neko.hpp"
+#include "engine/neko_game.h"
+#include "engine/neko_base.h"
+#include "engine/neko_common.h"
+#include "engine/neko_draw.h"
+#include "engine/neko_lua.h"
+#include "engine/neko_os.h"
+#include "engine/neko_prelude.h"
+#include "engine/neko_seri.h"
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -19,6 +23,9 @@
 
 // miniz
 #include <miniz.h>
+
+// deps
+#include <dirent.h>
 
 static u32 read4(char *bytes) {
     u32 n;
@@ -703,11 +710,11 @@ void assets_perform_hot_reload_changes() {
                 ok = a.image.load(a.name, generate_mips);
                 break;
             }
-            case AssetKind_Sprite: {
-                a.sprite.trash();
-                ok = a.sprite.load(a.name);
-                break;
-            }
+            // case AssetKind_Sprite: {
+            //     a.sprite.trash();
+            //     ok = a.sprite.load(a.name);
+            //     break;
+            // }
             case AssetKind_Tilemap: {
                 a.tilemap.trash();
                 ok = a.tilemap.load(a.name);
@@ -750,9 +757,9 @@ void assets_shutdown() {
             case AssetKind_Image:
                 v->image.trash();
                 break;
-            case AssetKind_Sprite:
-                v->sprite.trash();
-                break;
+            // case AssetKind_Sprite:
+            //     v->sprite.trash();
+            //     break;
             case AssetKind_Tilemap:
                 v->tilemap.trash();
                 break;
@@ -825,9 +832,9 @@ bool asset_load(AssetLoadData desc, String filepath, Asset *out) {
             case AssetKind_Image:
                 ok = asset.image.load(filepath, desc.generate_mips);
                 break;
-            case AssetKind_Sprite:
-                ok = asset.sprite.load(filepath);
-                break;
+            // case AssetKind_Sprite:
+            //     ok = asset.sprite.load(filepath);
+            //     break;
             case AssetKind_Tilemap:
                 ok = asset.tilemap.load(filepath);
                 break;
@@ -891,4 +898,35 @@ Asset check_asset_mt(lua_State *L, i32 arg, const char *mt) {
     }
 
     return asset;
+}
+
+struct Dir {
+    DIR *d;
+};
+
+Dir *fs_dir_open(const char *path) {
+    Dir *dir;
+
+    dir = (Dir *)mem_alloc(sizeof(Dir));
+
+    dir->d = opendir(path);
+    if (!dir->d) {
+        mem_free(dir);
+        return NULL;
+    }
+
+    return dir;
+}
+
+const char *fs_dir_next_file(Dir *dir) {
+    struct dirent *de;
+
+    de = readdir(dir->d);
+    if (de) return de->d_name;
+    return NULL;
+}
+
+void fs_dir_close(Dir *dir) {
+    closedir(dir->d);
+    mem_free(dir);
 }

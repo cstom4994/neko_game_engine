@@ -6,8 +6,8 @@
 #include <stddef.h>
 
 #include "engine/neko_prelude.h"
-#include "neko_os.h"
-#include "script_export.h"
+#include "engine/neko_os.h"
+#include "engine/neko_prelude.h"
 
 // struct Color {
 //     union {

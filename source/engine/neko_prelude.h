@@ -188,6 +188,16 @@ void neko_log(int level, const char *file, int line, const char *fmt, ...);
 #define NEKO_TRACE(...) neko_log(LOG_TRACE, __FILE__, __LINE__, __VA_ARGS__)
 #define NEKO_WARN(...) neko_log(LOG_WARN, __FILE__, __LINE__, __VA_ARGS__)
 
+void errorf(const char *fmt, ...);
+
+#define line_str__(line) __FILE__ ":" #line ": "
+#define line_str_(line) line_str__(line)
+#define line_str() line_str_(__LINE__)
+
+#define error(...) errorf(line_str() __VA_ARGS__)
+
+#define error_assert(cond, ...) ((cond) ? 0 : (error("assertion '" #cond "' failed ... " __VA_ARGS__), 0))
+
 template <typename F>
 struct Defer {
     F f;
@@ -313,4 +323,14 @@ struct Instrument {
 #ifndef USE_PROFILER
 #define PROFILE_FUNC()
 #define PROFILE_BLOCK(name)
+#endif
+
+#define SCRIPT(name, ...)                                  \
+    static const char *nekogame_ffi_##name = #__VA_ARGS__; \
+    __VA_ARGS__
+
+#ifdef _MSC_VER
+#define NEKO_EXPORT extern "C" __declspec(dllexport)
+#else
+#define NEKO_EXPORT extern "C"
 #endif

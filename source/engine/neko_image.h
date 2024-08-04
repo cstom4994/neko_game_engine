@@ -2,8 +2,8 @@
 #ifndef NEKO_IMAGE_H
 #define NEKO_IMAGE_H
 
-#include "neko_base.h"
-#include "neko_prelude.h"
+#include "engine/neko_base.h"
+#include "engine/neko_prelude.h"
 
 // deps
 #include <stb_truetype.h>
@@ -17,6 +17,8 @@ struct Image {
     bool load(String filepath, bool generate_mips);
     void trash();
 };
+
+#if 0
 
 struct SpriteFrame {
     i32 duration;
@@ -97,5 +99,7 @@ struct Atlas {
     void trash();
     AtlasImage *get(String name);
 };
+
+#endif
 
 #endif

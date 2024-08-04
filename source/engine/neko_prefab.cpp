@@ -1,6 +1,6 @@
-#include "neko_prefab.h"
+#include "engine/neko_prefab.h"
 
-#include "system.h"
+#include "engine/neko_system.h"
 
 
 static Entity saved_root;

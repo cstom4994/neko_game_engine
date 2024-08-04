@@ -1,11 +1,11 @@
-#include "neko_camera.h"
+#include "engine/neko_camera.h"
 
 #include "edit.h"
 #include "engine/neko_ecs.h"
-#include "error.h"
-#include "neko_base.h"
-#include "neko_game.h"
-#include "neko_transform.h"
+#include "engine/neko_prelude.h"
+#include "engine/neko_base.h"
+#include "engine/neko_game.h"
+#include "engine/neko_transform.h"
 
 typedef struct Camera Camera;
 struct Camera {

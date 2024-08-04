@@ -2,8 +2,8 @@
 #define TRANSFORM_H
 
 #include "engine/neko_ecs.h"
-#include "neko_base.h"
-#include "script_export.h"
+#include "engine/neko_base.h"
+#include "engine/neko_prelude.h"
 
 // can set scale, rotation, position -- 按该顺序应用的转换
 

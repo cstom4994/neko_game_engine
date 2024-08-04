@@ -1,10 +1,10 @@
 
-#include "neko_ecs.h"
+#include "engine/neko_ecs.h"
 
 #include <stdlib.h>
 
-#include "engine/error.h"
-#include "engine/neko_app.h"
+#include "engine/neko_prelude.h"
+#include "engine/neko_game.h"
 #include "engine/neko_base.h"
 #include "engine/neko_lua.h"
 #include "engine/neko_lua_wrap.h"

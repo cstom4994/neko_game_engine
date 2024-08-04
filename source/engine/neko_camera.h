@@ -2,8 +2,8 @@
 #define CAMERA_H
 
 #include "engine/neko_ecs.h"
-#include "neko_base.h"
-#include "script_export.h"
+#include "engine/neko_base.h"
+#include "engine/neko_prelude.h"
 
 /*
  * if no current camera, the (inverse) view matrix is identity, which means

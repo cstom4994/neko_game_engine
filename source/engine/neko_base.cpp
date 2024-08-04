@@ -1,4 +1,4 @@
-#include "neko_base.h"
+#include "engine/neko_base.h"
 
 #include <ctype.h>
 #include <stdarg.h>
@@ -8,8 +8,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "error.h"
-#include "neko_os.h"
+#include "engine/neko_prelude.h"
+#include "engine/neko_os.h"
 
 SplitLinesIterator &SplitLinesIterator::operator++() {
     if (&view.data[view.len] == &data.data[data.len]) {

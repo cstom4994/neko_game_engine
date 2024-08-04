@@ -1,7 +1,7 @@
 
-#include "neko_seri.h"
+#include "engine/neko_seri.h"
 
-#include "engine/neko_app.h"
+#include "engine/neko_game.h"
 #include "engine/neko_common.h"
 #include "engine/neko_lua.h"
 

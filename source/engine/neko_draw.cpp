@@ -1,13 +1,13 @@
-#include "neko_draw.h"
+#include "engine/neko_draw.h"
 
 #include <math.h>
 // #include <sokol_gfx.h>
 // #include <util/sokol_gl.h>
 
-#include "neko_asset.h"
-#include "neko_base.h"
-#include "neko_lua.h"
-#include "neko_prelude.h"
+#include "engine/neko_asset.h"
+#include "engine/neko_base.h"
+#include "engine/neko_lua.h"
+#include "engine/neko_prelude.h"
 
 struct Renderer2D {
     Matrix4 matrices[32];
@@ -172,6 +172,8 @@ void renderer_push_xy(float x, float y) {
     Vector4 v = vec4_mul_mat4(vec4_xy(x, y), top);
     // sgl_v2f(v.x, v.y);
 }
+
+#if 0
 
 void draw_image(const Image *img, DrawDescription *desc) {
     bool ok = renderer_push_matrix();
@@ -433,6 +435,8 @@ void draw_line(float x0, float y0, float x1, float y1) {
 
     // sgl_end();
 }
+
+#endif
 
 DrawDescription draw_description_args(lua_State *L, i32 arg_start) {
     DrawDescription dd;
