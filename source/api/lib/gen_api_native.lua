@@ -74,7 +74,7 @@ local impl_c_top = [[
 // Rename the file and remove __EDIT__ from the filename
 
 // #include NATIVELIBRARY_H_FILE
-#include "engine/neko_api_core.h"
+#include "engine/api_core.h"
 
 ]]
 
@@ -467,7 +467,7 @@ local function gen_api_base(NS, filename, header_file_name, impl_file_name)
     local out = "// generated -- do not edit\n"
     out = out .. "// ==== begin: " .. filename .. " ====\n\n"
     ---------------------------------------------------------------------------------------------------
-    out = out .. "#include \"engine/neko_lua.h\"\n"
+    out = out .. "#include \"engine/luax.h\"\n"
     out = out .. "#include <stdbool.h>\n"
     -- out = out .. "#include <alloca.h>\n"
     out = out .. '#include "' .. header_file_name .. '"\n'
@@ -576,7 +576,7 @@ local function gen_header(NS, filename)
     out = out .. "#define " .. include_guard .. "\n\n"
     out = out .. "// ==== begin: " .. filename .. " ====\n\n"
     ---------------------------------------------------------------------------------------------------
-    out = out .. "#include \"engine/neko_lua.h\"\n"
+    out = out .. "#include \"engine/luax.h\"\n"
     out = out .. "\n"
     out = out .. "int " .. get_register_fn_name(NS) .. "(lua_State *L);\n"
     ---------------------------------------------------------------------------------------------------

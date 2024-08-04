@@ -1884,7 +1884,7 @@ function classPackage:preamble()
     output('#endif\n')
     output('#include "string.h"\n\n')
 
-    output('#include "engine/neko_lua.h"\n\n')
+    output('#include "engine/luax.h"\n\n')
 
     if not neko_tolua_flags.h then
         output('// Exported function\n')

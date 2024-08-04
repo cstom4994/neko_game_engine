@@ -18,7 +18,7 @@
 #include <utility>
 #include <vector>
 
-#include "engine/neko_prelude.h"
+#include "engine/prelude.h"
 
 #define NEKO_VA_COUNT(...) detail::va_count(__VA_ARGS__)
 

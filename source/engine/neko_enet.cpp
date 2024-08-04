@@ -14,7 +14,7 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "engine/neko_lua.h"
+#include "engine/luax.h"
 
 // static Neko_ModuleInterface *s_interface;
 
