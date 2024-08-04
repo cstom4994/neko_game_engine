@@ -8,9 +8,9 @@
 #include <time.h>
 
 #include "console.h"
-#include "glew_glfw.h"
 #include "engine/neko_script.h"
 #include "engine/neko_system.h"
+#include "glew_glfw.h"
 
 #ifdef CGAME_DEBUG_WINDOW
 #include "debugwin.h"
@@ -24,8 +24,6 @@
 
 // deps
 #include "vendor/sokol_time.h"
-
-GLFWwindow *game_window;
 
 static bool quit = false;  // 如果为 true 则退出主循环
 static int sargc = 0;
@@ -88,6 +86,17 @@ static void _game_init() {
     os_high_timer_resolution();
     stm_setup();
 
+    g_app->args.resize(sargc);
+    for (i32 i = 0; i < sargc; i++) {
+        g_app->args[i] = to_cstr(sargv[i]);
+    }
+
+#if defined(NDEBUG)
+    NEKO_INFO("neko %d", neko_buildnum());
+#else
+    NEKO_INFO("neko %d (debug build) (%s, %s)", neko_buildnum(), LUA_VERSION, LUAJIT_VERSION);
+#endif
+
     profile_setup();
     PROFILE_FUNC();
 
@@ -100,13 +109,13 @@ static void _game_init() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    game_window = glfwCreateWindow(800, 600, "neko_game", NULL, NULL);
+    g_app->game_window = glfwCreateWindow(800, 600, "neko_game", NULL, NULL);
 #ifdef CGAME_DEBUG_WINDOW
     debugwin_init();
 #endif
 
     // activate OpenGL context
-    glfwMakeContextCurrent(game_window);
+    glfwMakeContextCurrent(g_app->game_window);
 
     // initialize GLEW
     glewExperimental = GL_TRUE;
@@ -133,23 +142,23 @@ static void _game_init() {
 
     ImGui::StyleColorsDark();
 
-    ImGui_ImplGlfw_InitForOpenGL(game_window, true);
+    ImGui_ImplGlfw_InitForOpenGL(g_app->game_window, true);
     ImGui_ImplOpenGL3_Init();
 
     // init test
     test_init();
 }
 
-static void _game_deinit() {
+static void _game_fini() {
 
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 
-    // deinit systems
-    system_deinit();
+    // fini systems
+    system_fini();
 
-    // deinit glfw
+    // fini glfw
     glfwTerminate();
 
 #ifdef USE_PROFILER
@@ -174,7 +183,7 @@ static void _game_deinit() {
 static void _game_events() {
     glfwPollEvents();
 
-    if (glfwWindowShouldClose(game_window)) game_quit();
+    if (glfwWindowShouldClose(g_app->game_window)) game_quit();
 }
 
 static void _game_update() { system_update_all(); }
@@ -206,7 +215,7 @@ static void _game_draw() {
     // glClear(GL_COLOR_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-    glfwSwapBuffers(game_window);
+    glfwSwapBuffers(g_app->game_window);
 }
 
 // -------------------------------------------------------------------------
@@ -223,15 +232,15 @@ void game_run(int argc, char **argv) {
         _game_draw();
     }
 
-    _game_deinit();
+    _game_fini();
 }
 
 void game_set_bg_color(Color c) { glClearColor(c.r, c.g, c.b, 1.0); }
 
-void game_set_window_size(CVec2 s) { glfwSetWindowSize(game_window, s.x, s.y); }
+void game_set_window_size(CVec2 s) { glfwSetWindowSize(g_app->game_window, s.x, s.y); }
 CVec2 game_get_window_size() {
     int w, h;
-    glfwGetWindowSize(game_window, &w, &h);
+    glfwGetWindowSize(g_app->game_window, &w, &h);
     return vec2(w, h);
 }
 CVec2 game_unit_to_pixels(CVec2 p) {

@@ -184,6 +184,6 @@ typedef void (*ScrollCallback)(CVec2 scroll);
 void input_add_scroll_callback(ScrollCallback f);
 
 void input_init();
-void input_deinit();
+void input_fini();
 
 #endif

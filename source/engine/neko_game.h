@@ -3,23 +3,23 @@
 
 #include <atomic>
 
-#include "glew_glfw.h"
 #include "engine/neko_api_core.h"
 #include "engine/neko_asset.h"
 #include "engine/neko_base.h"
 #include "engine/neko_component.h"
 #include "engine/neko_ecs.h"
 #include "engine/neko_os.h"
-#include "engine/neko_sound.h"
 #include "engine/neko_prelude.h"
+#include "engine/neko_sound.h"
+#include "glew_glfw.h"
 
 // deps
 #include "vendor/luaalloc.h"
 
 #define NEKO_C_EXTERN extern "C"
 
-#define DATA_DIR "./gamedir/data/"
-#define USR_DIR "./usr/"
+#define DATA_DIR "./gamedir/assets/data/"
+#define USR_DIR "./gamedir/usr/"
 
 #define data_path(path) (DATA_DIR path)
 #define usr_path(path) (USR_DIR path)
@@ -80,17 +80,13 @@ struct App {
 
     // FontFamily *default_font;
 
-    neko_api_BlendMode blendmode;
-
     int g_lua_callbacks_table_ref;  // LUA_NOREF
-
-    float current_color[4];
-
-    ShaderItem *shader;  // ShaderItem (internal)
 
     void *miniaudio_vfs;
     ma_engine audio_engine;
     Array<Sound *> garbage_sounds;
+
+    GLFWwindow *game_window;
 };
 
 extern App *g_app;
@@ -113,8 +109,6 @@ i32 neko_buildnum(void);
 ECS_COMPONENT_EXTERN(pos_t);
 ECS_COMPONENT_EXTERN(vel_t);
 ECS_COMPONENT_EXTERN(rect_t);
-
-extern GLFWwindow *game_window;
 
 void scratch_run();
 void scratch_update();

@@ -10,7 +10,7 @@ void script_run_file(const char *filename);
 void script_error(const char *s);
 
 void script_init();
-void script_deinit();
+void script_fini();
 void script_update_all();
 void script_post_update_all();
 void script_draw_all();

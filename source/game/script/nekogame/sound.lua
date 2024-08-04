@@ -1,0 +1,1 @@
+-- ng.wrap_string('sound', 'path')

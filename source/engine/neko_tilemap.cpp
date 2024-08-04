@@ -829,7 +829,7 @@ void neko_tiled_render_init(neko_command_buffer_t *cb, neko_tiled_renderer *rend
 #endif
 }
 
-void neko_tiled_render_deinit(neko_tiled_renderer *renderer) {
+void neko_tiled_render_fini(neko_tiled_renderer *renderer) {
 
     PROFILE_FUNC();
 

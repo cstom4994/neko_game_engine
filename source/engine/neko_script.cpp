@@ -3,18 +3,54 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "cgame_ffi.h"
 #include "console.h"
-#include "engine/neko_game.h"
+#include "edit.h"
 #include "engine/neko_api.hpp"
-#include "engine/neko_game.h"
-#include "engine/neko_lua.h"
-#include "engine/neko_lua_wrap.h"
+#include "engine/neko_asset.h"
 #include "engine/neko_base.h"
+#include "engine/neko_camera.h"
 #include "engine/neko_game.h"
 #include "engine/neko_input.h"
+#include "engine/neko_lua.h"
+#include "engine/neko_lua_util.h"
+#include "engine/neko_physics.h"
+#include "engine/neko_prefab.h"
+#include "engine/neko_sound.h"
+#include "engine/neko_sprite.h"
+#include "engine/neko_system.h"
+#include "engine/neko_transform.h"
+#include "engine/neko_ui.h"
+#include "test/keyboard_controlled.h"
 
 static lua_State *L;
+
+static const char **nekogame_ffi[] = {
+        &nekogame_ffi_scalar,
+        &nekogame_ffi_saveload,
+        &nekogame_ffi_vec2,
+        &nekogame_ffi_mat3,
+        &nekogame_ffi_bbox,
+        &nekogame_ffi_color,
+        &nekogame_ffi_fs,
+        &nekogame_ffi_game,
+        &nekogame_ffi_system,
+        &nekogame_ffi_input,
+        &nekogame_ffi_entity,
+        &nekogame_ffi_prefab,
+        &nekogame_ffi_timing,
+        &nekogame_ffi_transform,
+        &nekogame_ffi_camera,
+        &nekogame_ffi_sprite,
+        &nekogame_ffi_gui,
+        &nekogame_ffi_console,
+        // &nekogame_ffi_sound,
+        // &nekogame_ffi_physics,
+        &nekogame_ffi_edit,
+
+        &nekogame_ffi_keyboard_controlled,
+};
+
+static const unsigned int n_nekogame_ffi = sizeof(nekogame_ffi) / sizeof(nekogame_ffi[0]);
 
 #define errcheck(...)                                         \
     do                                                        \
@@ -174,13 +210,14 @@ void script_init() {
     luax_package_preload(L, "ffi", luaopen_cffi);
     luax_package_preload(L, "bit", luaopen_bit);
 
+#endif
+
     lua_atpanic(
             L, +[](lua_State *L) {
                 auto msg = lua_tostring(L, -1);
                 printf("[lua] neko_panic error: %s", msg);
                 return 0;
             });
-#endif
 
     _load_nekogame_ffi();
     _forward_args();
@@ -195,8 +232,8 @@ void script_init() {
     errcheck(_pcall(L, 1, 0));
 }
 
-void script_deinit() {
-    _push_event("deinit");
+void script_fini() {
+    _push_event("fini");
     errcheck(_pcall(L, 1, 0));
 
     lua_close(L);

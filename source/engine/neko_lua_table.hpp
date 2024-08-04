@@ -6,14 +6,14 @@
 #include <tuple>  // std::ignore
 
 #include "engine/neko_lua.h"
-#include "engine/neko_lua_wrap.h"
+#include "engine/neko_lua_util.h"
 
 namespace neko {
 
 struct LuaNil {};
 
 template <>
-struct __lua_op_t<LuaNil> {
+struct luabind::LuaStack<LuaNil> {
     static inline void push(lua_State* L, LuaNil const& nil) { lua_pushnil(L); }
 };
 
@@ -77,7 +77,7 @@ public:
     void append(T v) const {
         push();
         size_t len = lua_rawlen(L, -1);
-        neko::__lua_op_t<T>::push(L, v);
+        neko::luabind::LuaStack<T>::push(L, v);
         lua_rawseti(L, -2, ++len);
         lua_pop(L, 1);
     }
@@ -86,7 +86,7 @@ public:
     T cast() {
         lua_stack_auto_popper p(L);
         push();
-        return neko::__lua_op_t<T>::get(L, -1);
+        return neko::luabind::LuaStack<T>::get(L, -1);
     }
 
     template <typename T>
@@ -107,7 +107,7 @@ public:
 
     void push() const override {
         lua_rawgeti(L, LUA_REGISTRYINDEX, m_ref);
-        neko::__lua_op_t<K>::push(L, (K)m_key);
+        neko::luabind::LuaStack<K>::push(L, (K)m_key);
         lua_gettable(L, -2);
         lua_remove(L, -2);
     }
@@ -117,8 +117,8 @@ public:
     LuaTableElement& operator=(T v) {
         lua_stack_auto_popper p(L);
         lua_rawgeti(L, LUA_REGISTRYINDEX, m_ref);
-        neko::__lua_op_t<K>::push(L, m_key);
-        neko::__lua_op_t<T>::push(L, v);
+        neko::luabind::LuaStack<K>::push(L, m_key);
+        neko::luabind::LuaStack<T>::push(L, v);
         lua_settable(L, -3);
         return *this;
     }
@@ -131,7 +131,7 @@ public:
 };
 
 template <typename K>
-struct __lua_op_t<LuaTableElement<K> > {
+struct neko::luabind::LuaStack<LuaTableElement<K> > {
     static inline void push(lua_State* L, LuaTableElement<K> const& e) { e.push(); }
 };
 
@@ -215,7 +215,7 @@ public:
 };
 
 template <>
-struct __lua_op_t<LuaRef> {
+struct luabind::LuaStack<LuaRef> {
     static inline void push(lua_State* L, LuaRef const& r) { r.push(); }
 };
 
@@ -230,7 +230,7 @@ template <typename... Args>
 inline LuaRef const LuaRefBase::operator()(Args... args) const {
     const int n = sizeof...(Args);
     push();
-    int dummy[] = {0, ((void)__lua_op_t<Args>::push(L, std::forward<Args>(args)), 0)...};
+    int dummy[] = {0, ((void)neko::luabind::LuaStack<Args>::push(L, std::forward<Args>(args)), 0)...};
     std::ignore = dummy;
     luax_pcall(L, n, 1);
     return LuaRef(L, FromStackIndex());
@@ -247,7 +247,7 @@ template <typename... Args>
 inline void LuaRefBase::call(int ret, Args... args) const {
     const int n = sizeof...(Args);
     push();
-    int dummy[] = {0, ((void)__lua_op_t<Args>::push(L, std::forward<Args>(args)), 0)...};
+    int dummy[] = {0, ((void)neko::luabind::LuaStack<Args>::push(L, std::forward<Args>(args)), 0)...};
     std::ignore = dummy;
     luax_pcall(L, n, ret);
     return;  // 如果有返回值保留在 Lua 堆栈中

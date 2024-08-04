@@ -200,7 +200,7 @@ SCRIPT(physics,
 #endif
 
 void physics_init();
-void physics_deinit();
+void physics_fini();
 void physics_update_all();
 void physics_post_update_all();
 void physics_draw_all();

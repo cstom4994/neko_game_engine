@@ -134,7 +134,7 @@ void sprite_init() {
     gfx_bind_vertex_attrib(program, GL_FLOAT, 2, "texsize", Sprite, texsize);
 }
 
-void sprite_deinit() {
+void sprite_fini() {
 
     glDeleteProgram(program);
     glDeleteBuffers(1, &vbo);

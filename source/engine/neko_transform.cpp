@@ -303,7 +303,7 @@ static void _free_children_arrays() {
 }
 
 void transform_init() { pool = entitypool_new(Transform); }
-void transform_deinit() {
+void transform_fini() {
     _free_children_arrays();
     entitypool_free(pool);
 }

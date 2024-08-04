@@ -87,19 +87,19 @@ KeyCode input_char_to_keycode(char c) { return (KeyCode)toupper(c); }
 
 bool input_key_down(KeyCode key) {
     int glfwkey = _keycode_to_glfw(key);
-    return glfwGetKey(game_window, glfwkey) == GLFW_PRESS;
+    return glfwGetKey(g_app->game_window, glfwkey) == GLFW_PRESS;
 }
 
 CVec2 input_get_mouse_pos_pixels() {
     double x, y;
-    glfwGetCursorPos(game_window, &x, &y);
+    glfwGetCursorPos(g_app->game_window, &x, &y);
     return vec2(x, -y);
 }
 CVec2 input_get_mouse_pos_unit() { return game_pixels_to_unit(input_get_mouse_pos_pixels()); }
 
 bool input_mouse_down(MouseCode mouse) {
     int glfwmouse = _mousecode_to_glfw(mouse);
-    return glfwGetMouseButton(game_window, glfwmouse) == GLFW_PRESS;
+    return glfwGetMouseButton(g_app->game_window, glfwmouse) == GLFW_PRESS;
 }
 
 void input_add_key_down_callback(KeyCallback f) { array_add_val(KeyCallback, key_down_cbs) = f; }
@@ -162,23 +162,23 @@ static void _scroll_callback(GLFWwindow *window, double x, double y) {
 void input_init() {
     key_down_cbs = array_new(KeyCallback);
     key_up_cbs = array_new(KeyCallback);
-    glfwSetKeyCallback(game_window, _key_callback);
+    glfwSetKeyCallback(g_app->game_window, _key_callback);
 
     char_down_cbs = array_new(CharCallback);
-    glfwSetCharCallback(game_window, _char_callback);
+    glfwSetCharCallback(g_app->game_window, _char_callback);
 
     mouse_down_cbs = array_new(MouseCallback);
     mouse_up_cbs = array_new(MouseCallback);
-    glfwSetMouseButtonCallback(game_window, _mouse_callback);
+    glfwSetMouseButtonCallback(g_app->game_window, _mouse_callback);
 
     mouse_move_cbs = array_new(MouseMoveCallback);
-    glfwSetCursorPosCallback(game_window, _cursor_pos_callback);
+    glfwSetCursorPosCallback(g_app->game_window, _cursor_pos_callback);
 
     scroll_cbs = array_new(ScrollCallback);
-    glfwSetScrollCallback(game_window, _scroll_callback);
+    glfwSetScrollCallback(g_app->game_window, _scroll_callback);
 }
 
-void input_deinit() {
+void input_fini() {
     array_free(scroll_cbs);
 
     array_free(mouse_move_cbs);

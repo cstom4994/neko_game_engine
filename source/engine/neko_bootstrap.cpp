@@ -14,7 +14,7 @@
 #include "engine/neko_draw.h"
 #include "engine/neko_game.h"
 #include "engine/neko_lua.h"
-#include "engine/neko_lua_wrap.h"
+#include "engine/neko_lua_util.h"
 #include "engine/neko_luabind.hpp"
 #include "engine/neko_math.h"
 #include "engine/neko_os.h"
@@ -845,10 +845,10 @@ i32 neko_buildnum(void) {
         d += mond[m];
     }
     d += atoi(&__build_date[4]) - 1;
-    y = atoi(&__build_date[7]) - 2022;
+    y = atoi(&__build_date[7]) - 2023;
     b = d + (i32)((y - 1) * 365.25f);
     if (((y % 4) == 0) && m > 1) b += 1;
-    b -= 151;
+    b -= 211;
     return b;
 }
 
@@ -1420,16 +1420,7 @@ sapp_desc sokol_main(int argc, char **argv) {
 
 
 
-    g_app->args.resize(argc);
-    for (i32 i = 0; i < argc; i++) {
-        g_app->args[i] = to_cstr(argv[i]);
-    }
 
-#if defined(NDEBUG)
-    NEKO_INFO("neko %d", neko_buildnum());
-#else
-    NEKO_INFO("neko %d (debug build)", neko_buildnum());
-#endif
 
     neko_setup_w();
     lua_State *L = ENGINE_LUA();

@@ -185,7 +185,7 @@ typedef struct neko_tiled_renderer {
 } neko_tiled_renderer;
 
 void neko_tiled_render_init(neko_command_buffer_t *cb, neko_tiled_renderer *renderer, const_str vert_src, const_str frag_src);
-void neko_tiled_render_deinit(neko_tiled_renderer *renderer);
+void neko_tiled_render_fini(neko_tiled_renderer *renderer);
 void neko_tiled_render_begin(neko_command_buffer_t *cb, neko_tiled_renderer *renderer);
 void neko_tiled_render_flush(neko_command_buffer_t *cb, neko_tiled_renderer *renderer);
 void neko_tiled_render_push(neko_command_buffer_t *cb, neko_tiled_renderer *renderer, neko_tiled_quad_t quad);

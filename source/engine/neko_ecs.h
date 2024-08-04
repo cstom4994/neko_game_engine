@@ -137,7 +137,7 @@ SCRIPT(
 )
 
 void entity_init();
-void entity_deinit();
+void entity_fini();
 void entity_update_all();
 
 void entity_save_all(Store* s);

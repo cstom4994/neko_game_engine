@@ -14,7 +14,7 @@
 #include "engine/neko_game.h"
 #include "engine/neko_lua.h"
 #include "engine/neko_lua_struct.h"
-#include "engine/neko_lua_wrap.h"
+#include "engine/neko_lua_util.h"
 #include "engine/neko_luabind.hpp"
 #include "engine/neko_os.h"
 #include "engine/neko_pak.h"
@@ -2078,7 +2078,7 @@ LUA_FUNCTION(__neko_bind_tiled_load) {
 LUA_FUNCTION(__neko_bind_tiled_end) {
     neko_tiled_renderer* user_handle = (neko_tiled_renderer*)lua_touserdata(L, 1);
     neko_tiled_unload(&user_handle->map);
-    neko_tiled_render_deinit(user_handle);
+    neko_tiled_render_fini(user_handle);
     return 0;
 }
 
@@ -3972,12 +3972,12 @@ void neko_tolua_boot(const_str f, const_str output);
 
 inline void neko_register_common(lua_State *L) {
 
-    neko::lua_bind::bind("neko_dolua", &__neko_dolua);
+    // neko::lua_bind::bind("neko_dolua", &__neko_dolua);
 
-    neko::lua_bind::bind("neko_tolua_gen", +[](const_str f, const_str o) { neko_tolua_boot(f, o); });
+    // neko::lua_bind::bind("neko_tolua_gen", +[](const_str f, const_str o) { neko_tolua_boot(f, o); });
 
-    neko::lua_bind::bind("neko_hash_str", +[](const_str str) { return neko_hash_str(str); });
-    neko::lua_bind::bind("neko_hash_str64", +[](const_str str) { return neko_hash_str64(str); });
+    // neko::lua_bind::bind("neko_hash_str", +[](const_str str) { return neko_hash_str(str); });
+    // neko::lua_bind::bind("neko_hash_str64", +[](const_str str) { return neko_hash_str64(str); });
 
     neko_lua_enum(L, AssetKind);
     neko_lua_enum_value(L, AssetKind, AssetKind_None);

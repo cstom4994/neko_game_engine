@@ -1016,7 +1016,7 @@ static void _stream_init(Stream *sm) {
     sm->cap = 0;
 }
 
-static void _stream_deinit(Stream *sm) { mem_free(sm->buf); }
+static void _stream_fini(Stream *sm) { mem_free(sm->buf); }
 
 static void _stream_grow(Stream *sm, size_t pos) {
     if (pos >= sm->cap) {
@@ -1151,7 +1151,7 @@ static void _store_free(Store *s) {
     }
 
     mem_free(s->name);
-    _stream_deinit(s->sm);
+    _stream_fini(s->sm);
     mem_free(s->str);
 
     mem_free(s);

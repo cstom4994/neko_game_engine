@@ -62,19 +62,19 @@ void system_init() {
     input_add_scroll_callback(_scroll);
 }
 
-void system_deinit() {
-    edit_deinit();
-    script_deinit();
-    physics_deinit();
-    sound_deinit();
-    console_deinit();
-    sprite_deinit();
-    gui_deinit();
-    texture_deinit();
-    camera_deinit();
-    transform_deinit();
-    entity_deinit();
-    input_deinit();
+void system_fini() {
+    edit_fini();
+    script_fini();
+    physics_fini();
+    sound_fini();
+    console_fini();
+    sprite_fini();
+    gui_fini();
+    texture_fini();
+    camera_fini();
+    transform_fini();
+    entity_fini();
+    input_fini();
 }
 
 void system_update_all() {

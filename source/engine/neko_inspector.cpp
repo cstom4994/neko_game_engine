@@ -12,7 +12,7 @@
 // ImGui
 #include "engine/neko.hpp"
 #include "engine/neko_lua.h"
-#include "engine/neko_lua_wrap.h"
+#include "engine/neko_lua_util.h"
 #include "engine/neko_luabind.hpp"
 #include "engine/neko_ui.h"
 

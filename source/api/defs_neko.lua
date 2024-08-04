@@ -26,25 +26,25 @@ return process_def_tree(Namespace("neko_api",
 
     -- Function("reset_color", MapTo("neko_api_core.reset_color")),
 
-    Function("draw_point", MapTo("neko_api_core.draw_point")),
+    -- Function("draw_point", MapTo("neko_api_core.draw_point")),
 
-    Function("draw_line", MapTo("neko_api_core.draw_line")),
+    -- Function("draw_line", MapTo("neko_api_core.draw_line")),
 
-    Function("draw_triangle", MapTo("neko_api_core.draw_triangle")),
+    -- Function("draw_triangle", MapTo("neko_api_core.draw_triangle")),
 
-    Function("draw_triangle_line", MapTo("neko_api_core.draw_triangle_line")),
+    -- Function("draw_triangle_line", MapTo("neko_api_core.draw_triangle_line")),
 
-    Function("draw_rect", MapTo("neko_api_core.draw_rect")),
+    -- Function("draw_rect", MapTo("neko_api_core.draw_rect")),
 
-    Function("draw_rect_line", MapTo("neko_api_core.draw_rect_line")),
+    -- Function("draw_rect_line", MapTo("neko_api_core.draw_rect_line")),
 
-    Function("draw_circle", MapTo("neko_api_core.draw_circle")),
+    -- Function("draw_circle", MapTo("neko_api_core.draw_circle")),
 
-    Function("draw_circle_line", MapTo("neko_api_core.draw_circle_line")),
+    -- Function("draw_circle_line", MapTo("neko_api_core.draw_circle_line")),
 
-    Function("draw_ellipse", MapTo("neko_api_core.draw_ellipse")),
+    -- Function("draw_ellipse", MapTo("neko_api_core.draw_ellipse")),
 
-    Function("draw_ellipse_line", MapTo("neko_api_core.draw_ellipse_line")),
+    -- Function("draw_ellipse_line", MapTo("neko_api_core.draw_ellipse_line")),
 
 --     Function("cleanup_image",
 --         Arg("image", Wrap("Image")),
@@ -280,43 +280,43 @@ return process_def_tree(Namespace("neko_api",
 
 --     Function("get_text_height", MapTo("neko_api_core.get_text_height")),
 
---     Function("get_monitor_count", MapTo("neko_api_core.get_monitor_count")),
+    Function("get_monitor_count", MapTo("neko_api_core.get_monitor_count")),
 
---     Function("get_monitor_name", MapTo("neko_api_core.get_monitor_name")),
+    Function("get_monitor_name", MapTo("neko_api_core.get_monitor_name")),
 
---     Function("get_monitor_width", MapTo("neko_api_core.get_monitor_width")),
+    Function("get_monitor_width", MapTo("neko_api_core.get_monitor_width")),
 
---     Function("get_monitor_height", MapTo("neko_api_core.get_monitor_height")),
+    Function("get_monitor_height", MapTo("neko_api_core.get_monitor_height")),
 
---     Function("set_window_monitor", MapTo("neko_api_core.set_window_monitor")),
+    Function("set_window_monitor", MapTo("neko_api_core.set_window_monitor")),
 
---     Function("set_window_resizable", MapTo("neko_api_core.set_window_resizable")),
+    Function("set_window_resizable", MapTo("neko_api_core.set_window_resizable")),
 
---     Function("set_window_minsize", MapTo("neko_api_core.set_window_minsize")),
+    Function("set_window_minsize", MapTo("neko_api_core.set_window_minsize")),
 
---     Function("set_window_size", MapTo("neko_api_core.set_window_size")),
+    Function("set_window_size", MapTo("neko_api_core.set_window_size")),
 
---     Function("get_window_width", MapTo("neko_api_core.get_window_width")),
+    Function("get_window_width", MapTo("neko_api_core.get_window_width")),
 
---     Function("get_window_height", MapTo("neko_api_core.get_window_height")),
+    Function("get_window_height", MapTo("neko_api_core.get_window_height")),
 
---     Function("set_window_position", MapTo("neko_api_core.set_window_position")),
+    Function("set_window_position", MapTo("neko_api_core.set_window_position")),
 
---     Function("set_fullscreen", MapTo("neko_api_core.set_fullscreen")),
+    Function("set_fullscreen", MapTo("neko_api_core.set_fullscreen")),
 
---     Function("is_fullscreen", MapTo("neko_api_core.is_fullscreen")),
+    Function("is_fullscreen", MapTo("neko_api_core.is_fullscreen")),
 
---     Function("set_window_title", MapTo("neko_api_core.set_window_title")),
+    Function("set_window_title", MapTo("neko_api_core.set_window_title")),
 
---     Function("set_window_vsync", MapTo("neko_api_core.set_window_vsync")),
+    Function("set_window_vsync", MapTo("neko_api_core.set_window_vsync")),
 
---     Function("is_window_vsync", MapTo("neko_api_core.is_window_vsync")),
+    Function("is_window_vsync", MapTo("neko_api_core.is_window_vsync")),
 
---     Function("set_window_icon_file", MapTo("neko_api_core.set_window_icon_file")),
+    Function("set_window_icon_file", MapTo("neko_api_core.set_window_icon_file")),
 
---     Function("set_window_margins", MapTo("neko_api_core.set_window_margins")),
+    Function("set_window_margins", MapTo("neko_api_core.set_window_margins")),
 
---     Function("set_window_paddings", MapTo("neko_api_core.set_window_paddings")),
+    Function("set_window_paddings", MapTo("neko_api_core.set_window_paddings")),
 
 --     Function("is_key_down", MapTo("neko_api_core.is_key_down")),
 
@@ -632,155 +632,155 @@ return process_def_tree(Namespace("neko_api",
 --     Function("reset_filtermode", MapTo("neko_api_core.reset_filtermode")),
 
 
-    Dict("UniformNamesToTypes",
-        String,
-        T("UniformType")
-        -- c_api_skip=true
-    ),
+--     Dict("UniformNamesToTypes",
+--         String,
+--         T("UniformType")
+--         -- c_api_skip=true
+--     ),
 
-    Function("cleanup_shaderbuilder",
-        Arg("shaderbuilder", Wrap("ShaderBuilder")),
-        Doc("Free ShaderBuilder resources"),
-        -- dtor=true
-        MapWrapTo("neko_api_core.shaderbuilder_cleanup"),
-        LuaImpl
-    ),
+--     Function("cleanup_shaderbuilder",
+--         Arg("shaderbuilder", Wrap("ShaderBuilder")),
+--         Doc("Free ShaderBuilder resources"),
+--         -- dtor=true
+--         MapWrapTo("neko_api_core.shaderbuilder_cleanup"),
+--         LuaImpl
+--     ),
 
-    Function("new_shaderbuilder",
-        Ret("val", Wrap("ShaderBuilder")),
-        Doc"Create a ShaderBuilder object.",
-        -- ctor=true,
-        MapWrapTo("neko_api_core.shaderbuilder_new"),
-        LuaImpl
-    ),
+--     Function("new_shaderbuilder",
+--         Ret("val", Wrap("ShaderBuilder")),
+--         Doc"Create a ShaderBuilder object.",
+--         -- ctor=true,
+--         MapWrapTo("neko_api_core.shaderbuilder_new"),
+--         LuaImpl
+--     ),
 
-    -- wrapping a "enum" UniformType" is possibly an issue
-    Function("shaderbuilder_uniform",
-        Arg("shaderbuilder", Wrap("ShaderBuilder")),
-        Arg("uniform_name", String),
-        Arg("uniform_type", T("UniformType")),
-        Doc"Add uniform definition to the shaderbuilder",
-        MapWrapTo("neko_api_core.shaderbuilder_uniform"),
-        LuaImpl
-    ),
+--     -- wrapping a "enum" UniformType" is possibly an issue
+--     Function("shaderbuilder_uniform",
+--         Arg("shaderbuilder", Wrap("ShaderBuilder")),
+--         Arg("uniform_name", String),
+--         Arg("uniform_type", T("UniformType")),
+--         Doc"Add uniform definition to the shaderbuilder",
+--         MapWrapTo("neko_api_core.shaderbuilder_uniform"),
+--         LuaImpl
+--     ),
 
-    Function("shaderbuilder_vertex",
-        Arg("shaderbuilder", Wrap("ShaderBuilder")),
-        Arg("vertex_code", String),
-        Doc"Add vertex code to the shaderbuilder",
-        MapWrapTo("neko_api_core.shaderbuilder_vertex"),
-        LuaImpl
-    ),
+--     Function("shaderbuilder_vertex",
+--         Arg("shaderbuilder", Wrap("ShaderBuilder")),
+--         Arg("vertex_code", String),
+--         Doc"Add vertex code to the shaderbuilder",
+--         MapWrapTo("neko_api_core.shaderbuilder_vertex"),
+--         LuaImpl
+--     ),
 
-    Function("shaderbuilder_fragment",
-        Arg("shaderbuilder", Wrap("ShaderBuilder")),
-        Arg("fragment_code", String),
-        Doc"Add fragment to the shaderbuilder",
-        MapWrapTo("neko_api_core.shaderbuilder_fragment"),
-        LuaImpl
-    ),
+--     Function("shaderbuilder_fragment",
+--         Arg("shaderbuilder", Wrap("ShaderBuilder")),
+--         Arg("fragment_code", String),
+--         Doc"Add fragment to the shaderbuilder",
+--         MapWrapTo("neko_api_core.shaderbuilder_fragment"),
+--         LuaImpl
+--     ),
 
-    Function("shaderbuilder_build",
-        Arg("shaderbuilder", Wrap("ShaderBuilder")),
-        Ret("shader", Wrap("Shader")),
-        Doc"Add fragment to the shaderbuilder",
-        -- ctor="true"
-        MapWrapTo("neko_api_core.shaderbuilder_build"),
-        LuaImpl
-    ),
+--     Function("shaderbuilder_build",
+--         Arg("shaderbuilder", Wrap("ShaderBuilder")),
+--         Ret("shader", Wrap("Shader")),
+--         Doc"Add fragment to the shaderbuilder",
+--         -- ctor="true"
+--         MapWrapTo("neko_api_core.shaderbuilder_build"),
+--         LuaImpl
+--     ),
 
-    Function("cleanup_shader",
-        Arg("shader", Wrap("Shader")),
-        Doc("Free Shader resources"),
-        -- dtor=true
-        MapWrapTo("neko_api_core.shader_cleanup"),
-        LuaImpl
-    ),
+--     Function("cleanup_shader",
+--         Arg("shader", Wrap("Shader")),
+--         Doc("Free Shader resources"),
+--         -- dtor=true
+--         MapWrapTo("neko_api_core.shader_cleanup"),
+--         LuaImpl
+--     ),
 
-    Record("ShaderDef",
-        Field("frag", String),
-        Field("vert", String),
-        Field("uniforms", T("UniformNamesToTypes")),
-        Doc"Shader definition: uniforms declaration, vertex and fragment shader code."
-    ),
+--     Record("ShaderDef",
+--         Field("frag", String),
+--         Field("vert", String),
+--         Field("uniforms", T("UniformNamesToTypes")),
+--         Doc"Shader definition: uniforms declaration, vertex and fragment shader code."
+--     ),
 
-    Function("new_shader",
-        Arg("shaderdef", Wrap("ShaderDef")),
-        Ret("val", Wrap("Shader")),
-        Doc"Create a shader with given specification.",
-        -- ctor=true,
-        LuaImpl,
-        Code[[function(def)
-    assert(def.uniforms)
-    assert(def.vert)
-    assert(def.frag)
-    local sb = neko_api.new_shaderbuilder()
-    for k,v in pairs(def.uniforms) do
-        sb:uniform(k, v)
-    end
-    sb:vertex(def.vert)
-    sb:fragment(def.frag)
-    local shader = sb:build()
-    return shader;
-end
-]]
-    ),
+--     Function("new_shader",
+--         Arg("shaderdef", Wrap("ShaderDef")),
+--         Ret("val", Wrap("Shader")),
+--         Doc"Create a shader with given specification.",
+--         -- ctor=true,
+--         LuaImpl,
+--         Code[[function(def)
+--     assert(def.uniforms)
+--     assert(def.vert)
+--     assert(def.frag)
+--     local sb = neko_api.new_shaderbuilder()
+--     for k,v in pairs(def.uniforms) do
+--         sb:uniform(k, v)
+--     end
+--     sb:vertex(def.vert)
+--     sb:fragment(def.frag)
+--     local shader = sb:build()
+--     return shader;
+-- end
+-- ]]
+--     ),
 
-    Function("set_shader",
-        Arg("shader", Wrap("Shader")),
-        Doc"Set the custom shader and use it for consequent calls.",
-        -- MapWrapTo("neko_api_core.shader_set"),
-        LuaImpl,
-        Code[[function(shader_wrapped)
-    local shader = shader_wrapped.id
-    neko_api_core.shader_set(shader)
-    neko_api._current_shader_save = shader_wrapped
-end
-]]
-    ),
+--     Function("set_shader",
+--         Arg("shader", Wrap("Shader")),
+--         Doc"Set the custom shader and use it for consequent calls.",
+--         -- MapWrapTo("neko_api_core.shader_set"),
+--         LuaImpl,
+--         Code[[function(shader_wrapped)
+--     local shader = shader_wrapped.id
+--     neko_api_core.shader_set(shader)
+--     neko_api._current_shader_save = shader_wrapped
+-- end
+-- ]]
+--     ),
 
-    Function("reset_shader", MapTo("neko_api_core.reset_shader")),
+--     Function("reset_shader", MapTo("neko_api_core.reset_shader")),
 
-    Function("set_shader_uniform",
-        Arg("shader", Wrap("Shader")),
-        Arg("uniform_name", String),
-        Arg("uniform_value", T("ShaderUniformValue")),
-        Doc"Set the specified uniform.",
-        -- MapWrapTo("neko_api_core.shader_set_uniform"),
-        LuaImpl,
-        Code[[function (shader, uniform_name, uniform_value)
-    -- check the value type for one of the following, and call the "right" func
-      -- shader_set_uniform_float
-      -- shader_set_uniform_floatvec4
-      -- shader_set_uniform_image
-    local vt = type(uniform_value)
-    if vt == "number" then
-        -- send float
-        neko_api_core.shader_set_uniform_float(shader.id, uniform_name, uniform_value)
-    elseif vt == "table" then
-        -- number table? or "data" table? check metatable for "Image" and also check count "#"
-        if #uniform_value > 0 then
-            neko_api_core.shader_set_uniform_floatvec4(shader.id, uniform_name, uniform_value)
-        elseif getmetatable(uniform_value) == neko_api.Image then
-            local img_id = uniform_value.id
-            neko_api_core.shader_set_uniform_image(shader.id, uniform_name, img_id)
-        else
-            error("Unknown type for uniform_value in set_shader_uniform. Expected: float, float list or neko_api.Image")
-        end
-    else
-        error("Unknown value type for uniform_value in set_shader_uniform")
-    end
-end
-]]
-    ),
+--     Function("set_shader_uniform",
+--         Arg("shader", Wrap("Shader")),
+--         Arg("uniform_name", String),
+--         Arg("uniform_value", T("ShaderUniformValue")),
+--         Doc"Set the specified uniform.",
+--         -- MapWrapTo("neko_api_core.shader_set_uniform"),
+--         LuaImpl,
+--         Code[[function (shader, uniform_name, uniform_value)
+--     -- check the value type for one of the following, and call the "right" func
+--       -- shader_set_uniform_float
+--       -- shader_set_uniform_floatvec4
+--       -- shader_set_uniform_image
+--     local vt = type(uniform_value)
+--     if vt == "number" then
+--         -- send float
+--         neko_api_core.shader_set_uniform_float(shader.id, uniform_name, uniform_value)
+--     elseif vt == "table" then
+--         -- number table? or "data" table? check metatable for "Image" and also check count "#"
+--         if #uniform_value > 0 then
+--             neko_api_core.shader_set_uniform_floatvec4(shader.id, uniform_name, uniform_value)
+--         elseif getmetatable(uniform_value) == neko_api.Image then
+--             local img_id = uniform_value.id
+--             neko_api_core.shader_set_uniform_image(shader.id, uniform_name, img_id)
+--         else
+--             error("Unknown type for uniform_value in set_shader_uniform. Expected: float, float list or neko_api.Image")
+--         end
+--     else
+--         error("Unknown value type for uniform_value in set_shader_uniform")
+--     end
+-- end
+-- ]]
+--     ),
 
-    Function("reset_shader_uniform",
-        Arg("shader", Wrap("Shader")),
-        Arg("uniform_name", String),
-        Doc"Reset the specified uniform.",
-        MapWrapTo("neko_api_core.shader_reset_uniform"),
-        LuaImpl
-    ),
+--     Function("reset_shader_uniform",
+--         Arg("shader", Wrap("Shader")),
+--         Arg("uniform_name", String),
+--         Doc"Reset the specified uniform.",
+--         MapWrapTo("neko_api_core.shader_reset_uniform"),
+--         LuaImpl
+--     ),
 
     -- Record("Image",
     --     Field("width", Int, MapRead("get_image_width")),
@@ -833,34 +833,34 @@ end
     --     Doc"Sound type."
     -- ),
 
-    List("FloatVec4",
-        Float,
-        MaxCount(4),
-        Doc"Float values"
-    ),
+    -- List("FloatVec4",
+    --     Float,
+    --     MaxCount(4),
+    --     Doc"Float values"
+    -- ),
 
-    Variant("ShaderUniformValue",
-        Option("float_val", Float, Doc"Note: Used for single numbers, int or float"),
-        Option("vec_val", T("FloatVec4")),
-        Option("sampler2D_val", T("Image")),
-        Doc"Shader uniform value"
-    ),
+    -- Variant("ShaderUniformValue",
+    --     Option("float_val", Float, Doc"Note: Used for single numbers, int or float"),
+    --     Option("vec_val", T("FloatVec4")),
+    --     Option("sampler2D_val", T("Image")),
+    --     Doc"Shader uniform value"
+    -- ),
 
-    Record("Shader",
-        Method("set", MapTo("set_shader_uniform")),
-        Method("reset", MapTo("reset_shader_uniform")),
-        Method("__gc", MapTo("cleanup_shader")),
-        Doc"Shader type"
-    ),
+    -- Record("Shader",
+    --     Method("set", MapTo("set_shader_uniform")),
+    --     Method("reset", MapTo("reset_shader_uniform")),
+    --     Method("__gc", MapTo("cleanup_shader")),
+    --     Doc"Shader type"
+    -- ),
 
-    Record("ShaderBuilder",
-        Method("uniform", MapTo("shaderbuilder_uniform")),
-        Method("vertex", MapTo("shaderbuilder_vertex")),
-        Method("fragment", MapTo("shaderbuilder_fragment")),
-        Method("build", MapTo("shaderbuilder_build")),
-        Method("__gc", MapTo("cleanup_shaderbuilder")),
-        Doc"ShaderBuilder type"
-    ),
+    -- Record("ShaderBuilder",
+    --     Method("uniform", MapTo("shaderbuilder_uniform")),
+    --     Method("vertex", MapTo("shaderbuilder_vertex")),
+    --     Method("fragment", MapTo("shaderbuilder_fragment")),
+    --     Method("build", MapTo("shaderbuilder_build")),
+    --     Method("__gc", MapTo("cleanup_shaderbuilder")),
+    --     Doc"ShaderBuilder type"
+    -- ),
 
 
 --     Function("cleanup_world",

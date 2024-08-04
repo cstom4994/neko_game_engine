@@ -17,6 +17,7 @@ extern "C" {
 #include <lauxlib.h>
 #include <lua.h>
 #include <lualib.h>
+#include <luajit.h>
 #ifdef __cplusplus
 }
 #endif
@@ -28,6 +29,8 @@ extern "C" {
 
 #if LUA_VERSION_NUM < 502
 
+typedef size_t lua_Unsigned;
+
 #define luaL_tolstring lua_tolstring
 #define lua_getfield(L, i, k) (lua_getfield((L), (i), (k)), lua_type((L), -1))
 #define lua_gettable(L, i) (lua_gettable((L), (i)), lua_type((L), -1))
@@ -36,6 +39,12 @@ extern "C" {
 #define lua_rawgeti(L, i, n) (lua_rawgeti((L), (i), (n)), lua_type((L), -1))
 #define luaL_getmetafield(L, o, e) (luaL_getmetafield((L), (o), (e)) ? lua_type((L), -1) : LUA_TNIL)
 #define luaL_newmetatable(L, tn) (luaL_newmetatable((L), (tn)) ? (lua_pushstring((L), (tn)), lua_setfield((L), -2, "__name"), 1) : 0)
+
+#define lua_pushunsigned(L, n) lua_pushinteger((L), (lua_Integer)(n))
+#define lua_tounsignedx(L, i, is) ((lua_Unsigned)lua_tointegerx((L), (i), (is)))
+#define lua_tounsigned(L, i) lua_tounsignedx((L), (i), NULL)
+#define luaL_checkunsigned(L, a) ((lua_Unsigned)luaL_checkinteger((L), (a)))
+#define luaL_optunsigned(L, a, d) ((lua_Unsigned)luaL_optinteger((L), (a), (lua_Integer)(d)))
 
 inline int lua_absindex(lua_State *L, int idx) {
     if (idx > 0 || idx <= LUA_REGISTRYINDEX) {

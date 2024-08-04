@@ -59,85 +59,85 @@ return process_def_tree(Namespace("neko_api_core", {
     --     Doc"Reset the foreground color to its default value."
     -- ),
 
-    Function("draw_point",
-        Arg("x", Double),
-        Arg("y", Double),
-        Doc"Draw a point."
-    ),
+    -- Function("draw_point",
+    --     Arg("x", Double),
+    --     Arg("y", Double),
+    --     Doc"Draw a point."
+    -- ),
 
-    Function("draw_line",
-        Arg("x1", Double),
-        Arg("y1", Double),
-        Arg("x2", Double),
-        Arg("y2", Double),
-        Doc"Draw a line"
-    ),
+    -- Function("draw_line",
+    --     Arg("x1", Double),
+    --     Arg("y1", Double),
+    --     Arg("x2", Double),
+    --     Arg("y2", Double),
+    --     Doc"Draw a line"
+    -- ),
 
-    Function("draw_triangle",
-        Arg("ax", Double),
-        Arg("ay", Double),
-        Arg("bx", Double),
-        Arg("by", Double),
-        Arg("cx", Double),
-        Arg("cy", Double),
-        Doc"Draw a filled triangle"
-    ),
+    -- Function("draw_triangle",
+    --     Arg("ax", Double),
+    --     Arg("ay", Double),
+    --     Arg("bx", Double),
+    --     Arg("by", Double),
+    --     Arg("cx", Double),
+    --     Arg("cy", Double),
+    --     Doc"Draw a filled triangle"
+    -- ),
 
-    Function("draw_triangle_line",
-        Arg("ax", Double),
-        Arg("ay", Double),
-        Arg("bx", Double),
-        Arg("by", Double),
-        Arg("cx", Double),
-        Arg("cy", Double),
-        Doc"Draw a triangle border"
-    ),
+    -- Function("draw_triangle_line",
+    --     Arg("ax", Double),
+    --     Arg("ay", Double),
+    --     Arg("bx", Double),
+    --     Arg("by", Double),
+    --     Arg("cx", Double),
+    --     Arg("cy", Double),
+    --     Doc"Draw a triangle border"
+    -- ),
 
-    Function("draw_rect",
-        Arg("dest_x", Double),
-        Arg("dest_y", Double),
-        Arg("rect_width", Double),
-        Arg("rect_height", Double),
-        Doc"Draw a filled rectangle."
-    ),
+    -- Function("draw_rect",
+    --     Arg("dest_x", Double),
+    --     Arg("dest_y", Double),
+    --     Arg("rect_width", Double),
+    --     Arg("rect_height", Double),
+    --     Doc"Draw a filled rectangle."
+    -- ),
 
-    Function("draw_rect_line",
-        Arg("dest_x", Double),
-        Arg("dest_y", Double),
-        Arg("rect_width", Double),
-        Arg("rect_height", Double),
-        Doc"Draw a rectangle border."
-    ),
+    -- Function("draw_rect_line",
+    --     Arg("dest_x", Double),
+    --     Arg("dest_y", Double),
+    --     Arg("rect_width", Double),
+    --     Arg("rect_height", Double),
+    --     Doc"Draw a rectangle border."
+    -- ),
 
-    Function("draw_circle",
-        Arg("dest_x", Double),
-        Arg("dest_y", Double),
-        Arg("radius", Double),
-        Doc"Draw a filled circle."
-    ),
+    -- Function("draw_circle",
+    --     Arg("dest_x", Double),
+    --     Arg("dest_y", Double),
+    --     Arg("radius", Double),
+    --     Doc"Draw a filled circle."
+    -- ),
 
-    Function("draw_circle_line",
-        Arg("dest_x", Double),
-        Arg("dest_y", Double),
-        Arg("radius", Double),
-        Doc"Draw a circle border."
-    ),
+    -- Function("draw_circle_line",
+    --     Arg("dest_x", Double),
+    --     Arg("dest_y", Double),
+    --     Arg("radius", Double),
+    --     Doc"Draw a circle border."
+    -- ),
 
-    Function("draw_ellipse",
-        Arg("dest_x", Double),
-        Arg("dest_y", Double),
-        Arg("radius_x", Double),
-        Arg("radius_y", Double),
-        Doc"Draw a filled ellipse."
-    ),
+    -- Function("draw_ellipse",
+    --     Arg("dest_x", Double),
+    --     Arg("dest_y", Double),
+    --     Arg("radius_x", Double),
+    --     Arg("radius_y", Double),
+    --     Doc"Draw a filled ellipse."
+    -- ),
 
-    Function("draw_ellipse_line",
-        Arg("dest_x", Double),
-        Arg("dest_y", Double),
-        Arg("radius_x", Double),
-        Arg("radius_y", Double),
-        Doc"Draw an ellipse border."
-    ),
+    -- Function("draw_ellipse_line",
+    --     Arg("dest_x", Double),
+    --     Arg("dest_y", Double),
+    --     Arg("radius_x", Double),
+    --     Arg("radius_y", Double),
+    --     Doc"Draw an ellipse border."
+    -- ),
 
     -- -- RENAMED
     -- Function("image_cleanup",
@@ -368,112 +368,112 @@ return process_def_tree(Namespace("neko_api_core", {
     --     Doc"Get the height of the given text line."
     -- ),
 
-    -- Function("get_monitor_count",
-    --     Ret("val", Int),
-    --     Doc"Get the number of currently connected monitors."
-    -- ),
+    Function("get_monitor_count",
+        Ret("val", Int),
+        Doc"Get the number of currently connected monitors."
+    ),
 
-    -- Function("get_monitor_name",
-    --     Arg("index", Int),
-    --     Ret("val", String),
-    --     Doc"Get the name of the monitor at the index"
-    -- ),
+    Function("get_monitor_name",
+        Arg("index", Int),
+        Ret("val", String),
+        Doc"Get the name of the monitor at the index"
+    ),
 
-    -- Function("get_monitor_width",
-    --     Arg("index", Int),
-    --     Ret("val", Int),
-    --     Doc"Get the width of the monitor at the index"
-    -- ),
+    Function("get_monitor_width",
+        Arg("index", Int),
+        Ret("val", Int),
+        Doc"Get the width of the monitor at the index"
+    ),
 
-    -- Function("get_monitor_height",
-    --     Arg("index", Int),
-    --     Ret("val", Int),
-    --     Doc"Get the height of the monitor at the index"
-    -- ),
+    Function("get_monitor_height",
+        Arg("index", Int),
+        Ret("val", Int),
+        Doc"Get the height of the monitor at the index"
+    ),
 
-    -- Function("set_window_monitor",
-    --     Arg("index", Int),
-    --     Doc[[ Set the window's initial monitor to the indexed value. Must be set before the window is opened.]]
-    -- ),
+    Function("set_window_monitor",
+        Arg("index", Int),
+        Doc[[ Set the window's initial monitor to the indexed value. Must be set before the window is opened.]]
+    ),
 
-    -- Function("set_window_resizable",
-    --     Arg("resizable", Bool),
-    --     Doc[[ Set the window resizable flag to the given value. Must be set before the window is opened.]]
-    -- ),
+    Function("set_window_resizable",
+        Arg("resizable", Bool),
+        Doc[[ Set the window resizable flag to the given value. Must be set before the window is opened.]]
+    ),
 
-    -- Function("set_window_minsize",
-    --     Arg("width", Int),
-    --     Arg("height", Int),
-    --     Doc"Set the window's minimum possible size."
-    -- ),
+    Function("set_window_minsize",
+        Arg("width", Int),
+        Arg("height", Int),
+        Doc"Set the window's minimum possible size."
+    ),
 
-    -- Function("set_window_size",
-    --     Arg("width", Int),
-    --     Arg("height", Int),
-    --     Doc"Set the window's size."
-    -- ),
+    Function("set_window_size",
+        Arg("width", Int),
+        Arg("height", Int),
+        Doc"Set the window's size."
+    ),
 
-    -- Function("get_window_width",
-    --     Ret("val", Int, Doc"Width of the window in pixels"),
-    --     Doc"Get the width of the window."
-    -- ),
+    Function("get_window_width",
+        Ret("val", Int, Doc"Width of the window in pixels"),
+        Doc"Get the width of the window."
+    ),
 
-    -- Function("get_window_height",
-    --     Ret("val", Int, Doc"Height of the window in pixels"),
-    --     Doc"Get the height of the window."
-    -- ),
+    Function("get_window_height",
+        Ret("val", Int, Doc"Height of the window in pixels"),
+        Doc"Get the height of the window."
+    ),
 
-    -- Function("set_window_position",
-    --     Arg("x", Int),
-    --     Arg("y", Int),
-    --     Doc"Set the window's position."
-    -- ),
+    Function("set_window_position",
+        Arg("x", Int),
+        Arg("y", Int),
+        Doc"Set the window's position."
+    ),
 
-    -- Function("set_fullscreen",
-    --     Arg("fullscreen", Bool),
-    --     Doc"Set the window to fullscreen, or windowed mode."
-    -- ),
+    Function("set_fullscreen",
+        Arg("fullscreen", Bool),
+        Doc"Set the window to fullscreen, or windowed mode."
+    ),
 
-    -- Function("is_fullscreen",
-    --     Ret("val", Bool),
-    --     Doc"Check if the window is set to fullscreen."
-    -- ),
+    Function("is_fullscreen",
+        Ret("val", Bool),
+        Doc"Check if the window is set to fullscreen."
+    ),
 
-    -- Function("set_window_title",
-    --     Arg("title", String),
-    --     Doc"Set the window's title."
-    -- ),
+    Function("set_window_title",
+        Arg("title", String),
+        Doc"Set the window's title."
+    ),
 
-    -- Function("set_window_vsync",
-    --     Arg("vsync", Bool),
-    --     Doc"Set the window vsync flag to the given value."
-    -- ),
+    Function("set_window_vsync",
+        Arg("vsync", Bool),
+        Doc"Set the window vsync flag to the given value."
+    ),
 
-    -- Function("is_window_vsync",
-    --     Ret("val", Bool),
-    --     Doc"Check if the window vsync flag is set."
-    -- ),
+    Function("is_window_vsync",
+        Ret("val", Bool),
+        Doc"Check if the window vsync flag is set."
+    ),
 
-    -- Function("set_window_icon_file",
-    --     Arg("icon_path", String),
-    --     Doc"Set the window icon."
-    -- ),
+    Function("set_window_icon_file",
+        Arg("icon_path", String),
+        Doc"Set the window icon."
+    ),
 
-    -- Function("set_window_margins",
-    --     Arg("left", Int),
-    --     Arg("right", Int),
-    --     Arg("top", Int),
-    --     Arg("bottom", Int),
-    --     Doc"Set the window margins. Margins are ignored and no drawing can be made there.."
-    -- ),
+    Function("set_window_margins",
+        Arg("left", Int),
+        Arg("right", Int),
+        Arg("top", Int),
+        Arg("bottom", Int),
+        Doc"Set the window margins. Margins are ignored and no drawing can be made there.."
+    ),
 
-    -- Function("set_window_paddings",
-    --     Arg("left", Int),
-    --     Arg("right", Int),
-    --     Arg("top", Int),
-    --     Arg("bottom", Int),
-    --     Doc"Set the window paddings. Paddings are can be drawn on."
-    -- ),
+    Function("set_window_paddings",
+        Arg("left", Int),
+        Arg("right", Int),
+        Arg("top", Int),
+        Arg("bottom", Int),
+        Doc"Set the window paddings. Paddings are can be drawn on."
+    ),
 
     -- Function("is_key_down",
     --     Arg("key", KeyboardKey),
@@ -910,59 +910,59 @@ return process_def_tree(Namespace("neko_api_core", {
     --     Doc"Reset the filtermode value to its default value."
     -- ),
 
-    -- RENAMED
-    Function("shaderbuilder_cleanup",
-        Arg("shaderbuilder", ShaderBuilder_Ptr),
-        Doc("Free ShaderBuilder resources"),
-        -- dtor=true
-        LuaImpl
-    ),
+    -- -- RENAMED
+    -- Function("shaderbuilder_cleanup",
+    --     Arg("shaderbuilder", ShaderBuilder_Ptr),
+    --     Doc("Free ShaderBuilder resources"),
+    --     -- dtor=true
+    --     LuaImpl
+    -- ),
 
-    -- RENAMED
-    Function("shaderbuilder_new",
-        Ret("val", ShaderBuilder_Ptr),
-        Doc"Create a ShaderBuilder object.",
-        -- ctor=true,
-        LuaImpl
-    ),
+    -- -- RENAMED
+    -- Function("shaderbuilder_new",
+    --     Ret("val", ShaderBuilder_Ptr),
+    --     Doc"Create a ShaderBuilder object.",
+    --     -- ctor=true,
+    --     LuaImpl
+    -- ),
 
-    Function("shaderbuilder_uniform",
-        Arg("shaderbuilder", ShaderBuilder_Ptr),
-        Arg("uniform_name", String),
-        Arg("uniform_type", UniformType),
-        Doc"Add uniform definition to the shaderbuilder",
-        LuaImpl
-    ),
+    -- Function("shaderbuilder_uniform",
+    --     Arg("shaderbuilder", ShaderBuilder_Ptr),
+    --     Arg("uniform_name", String),
+    --     Arg("uniform_type", UniformType),
+    --     Doc"Add uniform definition to the shaderbuilder",
+    --     LuaImpl
+    -- ),
 
-    Function("shaderbuilder_vertex",
-        Arg("shaderbuilder", ShaderBuilder_Ptr),
-        Arg("vertex_code", String),
-        Doc"Add vertex code to the shaderbuilder",
-        LuaImpl
-    ),
+    -- Function("shaderbuilder_vertex",
+    --     Arg("shaderbuilder", ShaderBuilder_Ptr),
+    --     Arg("vertex_code", String),
+    --     Doc"Add vertex code to the shaderbuilder",
+    --     LuaImpl
+    -- ),
 
-    Function("shaderbuilder_fragment",
-        Arg("shaderbuilder", ShaderBuilder_Ptr),
-        Arg("fragment_code", String),
-        Doc"Add fragment to the shaderbuilder",
-        LuaImpl
-    ),
+    -- Function("shaderbuilder_fragment",
+    --     Arg("shaderbuilder", ShaderBuilder_Ptr),
+    --     Arg("fragment_code", String),
+    --     Doc"Add fragment to the shaderbuilder",
+    --     LuaImpl
+    -- ),
 
-    Function("shaderbuilder_build",
-        Arg("shaderbuilder", ShaderBuilder_Ptr),
-        Ret("shader", Shader_Ptr),
-        Doc"Add fragment to the shaderbuilder",
-        -- ctor="true"
-        LuaImpl
-    ),
+    -- Function("shaderbuilder_build",
+    --     Arg("shaderbuilder", ShaderBuilder_Ptr),
+    --     Ret("shader", Shader_Ptr),
+    --     Doc"Add fragment to the shaderbuilder",
+    --     -- ctor="true"
+    --     LuaImpl
+    -- ),
 
-    -- RENAMED
-    Function("shader_cleanup",
-        Arg("shader", Shader_Ptr),
-        Doc("Free Shader resources"),
-        -- dtor=true
-        LuaImpl
-    ),
+    -- -- RENAMED
+    -- Function("shader_cleanup",
+    --     Arg("shader", Shader_Ptr),
+    --     Doc("Free Shader resources"),
+    --     -- dtor=true
+    --     LuaImpl
+    -- ),
 
     -- -- this is lua only API
     -- Function("shader_new",
@@ -973,16 +973,16 @@ return process_def_tree(Namespace("neko_api_core", {
     --     LuaImpl
     -- ),
 
-    -- RENAMED
-    Function("shader_set",
-        Arg("shader", Shader_Ptr),
-        Doc"Set the custom shader and use it for consequent calls.",
-        LuaImpl
-    ),
+    -- -- RENAMED
+    -- Function("shader_set",
+    --     Arg("shader", Shader_Ptr),
+    --     Doc"Set the custom shader and use it for consequent calls.",
+    --     LuaImpl
+    -- ),
 
-    Function("reset_shader",
-        Doc"Reset the shader, back to framework defaults."
-    ),
+    -- Function("reset_shader",
+    --     Doc"Reset the shader, back to framework defaults."
+    -- ),
 
     -- -- TODO: this will go away. three new ones will come
     -- -- RENAMED
@@ -994,38 +994,38 @@ return process_def_tree(Namespace("neko_api_core", {
     --     LuaImpl
     -- ),
 
-    -- RENAMED (NEW)
-    Function("shader_set_uniform_float",
-        Arg("shader", Shader_Ptr),
-        Arg("uniform_name", String),
-        Arg("uniform_value", Float),
-        Doc"Set the specified uniform.",
-        LuaImpl
-    ),
-    -- RENAMED (NEW)
-    Function("shader_set_uniform_floatvec4",
-        Arg("shader", Shader_Ptr),
-        Arg("uniform_name", String),
-        Arg("uniform_value", T("FloatVec4")),
-        Doc"Set the specified uniform.",
-        LuaImpl
-    ),
-    -- RENAMED (NEW)
-    Function("shader_set_uniform_image",
-        Arg("shader", Shader_Ptr),
-        Arg("uniform_name", String),
-        Arg("uniform_value", Image_Ptr),
-        Doc"Set the specified uniform.",
-        LuaImpl
-    ),
+    -- -- RENAMED (NEW)
+    -- Function("shader_set_uniform_float",
+    --     Arg("shader", Shader_Ptr),
+    --     Arg("uniform_name", String),
+    --     Arg("uniform_value", Float),
+    --     Doc"Set the specified uniform.",
+    --     LuaImpl
+    -- ),
+    -- -- RENAMED (NEW)
+    -- Function("shader_set_uniform_floatvec4",
+    --     Arg("shader", Shader_Ptr),
+    --     Arg("uniform_name", String),
+    --     Arg("uniform_value", T("FloatVec4")),
+    --     Doc"Set the specified uniform.",
+    --     LuaImpl
+    -- ),
+    -- -- RENAMED (NEW)
+    -- Function("shader_set_uniform_image",
+    --     Arg("shader", Shader_Ptr),
+    --     Arg("uniform_name", String),
+    --     Arg("uniform_value", Image_Ptr),
+    --     Doc"Set the specified uniform.",
+    --     LuaImpl
+    -- ),
 
-    -- RENAMED
-    Function("shader_reset_uniform",
-        Arg("shader", Shader_Ptr),
-        Arg("uniform_name", String),
-        Doc"Reset the specified uniform.",
-        LuaImpl
-    ),
+    -- -- RENAMED
+    -- Function("shader_reset_uniform",
+    --     Arg("shader", Shader_Ptr),
+    --     Arg("uniform_name", String),
+    --     Doc"Reset the specified uniform.",
+    --     LuaImpl
+    -- ),
 
     -- Function("world_new",
     --     Ret("val", World_Ptr),
@@ -1508,21 +1508,21 @@ return process_def_tree(Namespace("neko_api_core", {
     --     Doc"List of keys"
     -- ),
 
-    Enum("UniformType",
-        '_invalid', 'float', 'vec2', 'vec3', 'vec4', 'int', 'ivec2',
-        'ivec3', 'ivec4', 'mat4', 'sampler2D',
-        Doc"Acceptable uniformtype values."
-    ),
+    -- Enum("UniformType",
+    --     '_invalid', 'float', 'vec2', 'vec3', 'vec4', 'int', 'ivec2',
+    --     'ivec3', 'ivec4', 'mat4', 'sampler2D',
+    --     Doc"Acceptable uniformtype values."
+    -- ),
 
-    Enum("BlendMode",
-        'none' , 'blend' , 'add' , 'mod' , 'mul',
-        Doc"Acceptable blendmode values."
-    ),
+    -- Enum("BlendMode",
+    --     'none' , 'blend' , 'add' , 'mod' , 'mul',
+    --     Doc"Acceptable blendmode values."
+    -- ),
 
-    Enum("FilterMode",
-        '_invalid', 'nearest', 'linear',
-        Doc"Acceptable filtermode values."
-    ),
+    -- Enum("FilterMode",
+    --     '_invalid', 'nearest', 'linear',
+    --     Doc"Acceptable filtermode values."
+    -- ),
 
     -- Enum("GamepadAxis",
     --     'left_x', 'left_y', 'right_x', 'right_y', 'left_trigger', 'right_trigger',

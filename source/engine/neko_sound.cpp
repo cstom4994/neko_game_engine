@@ -467,7 +467,7 @@ void sound_init()
 
     pool = entitypool_new(Sound);
 }
-void sound_deinit()
+void sound_fini()
 {
     Sound *sound;
 
@@ -554,7 +554,7 @@ void sound_load_all(Store *s)
 #endif
 
 void sound_init() {}
-void sound_deinit() {}
+void sound_fini() {}
 void sound_update_all() {}
 void sound_save_all(Store *s) {}
 void sound_load_all(Store *s) {}

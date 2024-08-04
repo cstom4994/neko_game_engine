@@ -7,7 +7,7 @@
 #include "engine/neko_draw.h"
 #include "engine/neko_game.h"
 #include "engine/neko_lua.h"
-#include "engine/neko_lua_wrap.h"
+#include "engine/neko_lua_util.h"
 #include "engine/neko_os.h"
 
 static void contact_run_cb(lua_State *L, i32 ref, i32 a, i32 b, i32 msgh) {
@@ -1307,7 +1307,7 @@ NearestResult physics_nearest(CVec2 point, Scalar max_dist)
     return res;
 }
 
-// --- init/deinit ---------------------------------------------------------
+// --- init/fini ---------------------------------------------------------
 
 static GLuint program;
 static GLuint vao;
@@ -1334,7 +1334,7 @@ void physics_init()
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     gfx_bind_vertex_attrib(program, GL_FLOAT, 2, "position", CVec2, x);
 }
-void physics_deinit()
+void physics_fini()
 {
     PhysicsInfo *info;
 
@@ -1347,10 +1347,10 @@ void physics_deinit()
     entitypool_foreach(info, pool)
         _remove(info);
 
-    // deinit cpSpace
+    // fini cpSpace
     cpSpaceFree(space);
 
-    // deinit pools, maps
+    // fini pools, maps
     entitymap_free(debug_draw_map);
     entitypool_free(pool);
 }
@@ -1847,7 +1847,7 @@ void physics_load_all(Store *s)
 #endif
 
 void physics_init() {}
-void physics_deinit() {}
+void physics_fini() {}
 void physics_update_all() {}
 void physics_post_update_all() {}
 void physics_draw_all() {}

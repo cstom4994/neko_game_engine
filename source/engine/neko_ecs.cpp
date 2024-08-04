@@ -3,11 +3,12 @@
 
 #include <stdlib.h>
 
-#include "engine/neko_prelude.h"
-#include "engine/neko_game.h"
 #include "engine/neko_base.h"
+#include "engine/neko_game.h"
 #include "engine/neko_lua.h"
-#include "engine/neko_lua_wrap.h"
+#include "engine/neko_lua_util.h"
+#include "engine/neko_prelude.h"
+
 
 /*=============================
 // ECS
@@ -2173,7 +2174,7 @@ LUA_FUNCTION(__neko_ecs_lua_ent_next) {
 
 LUA_FUNCTION(__neko_ecs_lua_ent_iterator) {
     ecs_t* w = (ecs_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
-    bool check_ready = neko::__lua_op_t<bool>::get(L, 2);
+    bool check_ready = lua_toboolean(L, 2);
 
     NEKO_ASSERT(ecs_is_not_null(w));
 
@@ -2687,7 +2688,7 @@ void entity_init() {
     unused = array_new(Entity);
     save_filter_map = entitymap_new(SF_UNSET);
 }
-void entity_deinit() {
+void entity_fini() {
     entitymap_free(save_filter_map);
     array_free(unused);
     entitymap_free(unused_map);

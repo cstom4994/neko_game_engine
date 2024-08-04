@@ -8,7 +8,7 @@ void texture_bind(const char *filename);
 CVec2 texture_get_size(const char *filename);  // (width, height)
 
 void texture_init();
-void texture_deinit();
+void texture_fini();
 void texture_update();
 
 #endif

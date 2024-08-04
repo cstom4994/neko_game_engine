@@ -128,7 +128,7 @@ CVec2 texture_get_size(const char *filename) {
 // -------------------------------------------------------------------------
 
 void texture_init() { textures = array_new(Texture); }
-void texture_deinit() {
+void texture_fini() {
     Texture *tex;
     array_foreach(tex, textures) mem_free(tex->filename);
     array_free(textures);

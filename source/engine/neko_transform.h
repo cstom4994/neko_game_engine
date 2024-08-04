@@ -65,7 +65,7 @@ SCRIPT(transform,
 )
 
 void transform_init();
-void transform_deinit();
+void transform_fini();
 void transform_update_all();
 void transform_save_all(Store *s);
 void transform_load_all(Store *s);

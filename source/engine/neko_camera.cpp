@@ -92,7 +92,7 @@ void camera_init() {
     edit_camera = entity_nil;
     inverse_view_matrix = mat3_identity();
 }
-void camera_deinit() { entitypool_free(pool); }
+void camera_fini() { entitypool_free(pool); }
 
 void camera_update_all() {
     CVec2 win_size;

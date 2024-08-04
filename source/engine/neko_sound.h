@@ -57,7 +57,7 @@ inline int neko_sound_load(lua_State *L) {
 //     )
 
 void sound_init();
-void sound_deinit();
+void sound_fini();
 void sound_update_all();
 void sound_save_all(Store *s);
 void sound_load_all(Store *s);

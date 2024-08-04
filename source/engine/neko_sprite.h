@@ -27,7 +27,7 @@ SCRIPT(sprite,
 )
 
 void sprite_init();
-void sprite_deinit();
+void sprite_fini();
 void sprite_update_all();
 void sprite_draw_all();
 void sprite_save_all(Store *s);

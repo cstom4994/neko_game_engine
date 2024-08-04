@@ -108,7 +108,7 @@ SCRIPT(
 void gui_event_clear();
 
 void gui_init();
-void gui_deinit();
+void gui_fini();
 void gui_update_all();
 void gui_draw_all();
 void gui_key_down(KeyCode key);

@@ -204,7 +204,7 @@ static void _common_init() {
     key_down_map = entitymap_new(KC_NONE);
     key_up_map = entitymap_new(KC_NONE);
 }
-static void _common_deinit() {
+static void _common_fini() {
     entitymap_free(key_up_map);
     entitymap_free(key_down_map);
     entitymap_free(mouse_up_map);
@@ -535,13 +535,13 @@ static void _rect_init() {
     gfx_bind_vertex_attrib(rect_program, GL_INT, 1, "visible", Rect, visible);
     gfx_bind_vertex_attrib(rect_program, GL_FLOAT, 4, "color", Rect, color);
 }
-static void _rect_deinit() {
-    // deinit gl stuff
+static void _rect_fini() {
+    // fini gl stuff
     glDeleteProgram(rect_program);
     glDeleteBuffers(1, &rect_vbo);
     glDeleteVertexArrays(1, &rect_vao);
 
-    // deinit pool
+    // fini pool
     entitypool_free(rect_pool);
 }
 
@@ -918,15 +918,15 @@ static void _text_init() {
     gfx_bind_vertex_attrib(text_program, GL_FLOAT, 2, "cell", TextChar, cell);
     gfx_bind_vertex_attrib(text_program, GL_FLOAT, 1, "is_cursor", TextChar, is_cursor);
 }
-static void _text_deinit() {
+static void _text_fini() {
     Text *text;
 
-    // deinit gl stuff
+    // fini gl stuff
     glDeleteProgram(text_program);
     glDeleteBuffers(1, &text_vbo);
     glDeleteVertexArrays(1, &text_vao);
 
-    // deinit pool
+    // fini pool
     entitypool_foreach(text, text_pool) {
         mem_free(text->str);
         array_free(text->chars);
@@ -1069,7 +1069,7 @@ unsigned int gui_textedit_get_cursor(Entity ent) {
 }
 
 static void _textedit_init() { textedit_pool = entitypool_new(TextEdit); }
-static void _textedit_deinit() { entitypool_free(textedit_pool); }
+static void _textedit_fini() { entitypool_free(textedit_pool); }
 
 static bool _textedit_set_str(TextEdit *textedit, const char *str) {
     gui_text_set_str(textedit->pool_elem.ent, str);
@@ -1193,11 +1193,11 @@ void gui_init() {
     _textedit_init();
     _create_root();
 }
-void gui_deinit() {
-    _textedit_deinit();
-    _text_deinit();
-    _rect_deinit();
-    _common_deinit();
+void gui_fini() {
+    _textedit_fini();
+    _text_fini();
+    _rect_fini();
+    _common_fini();
 }
 
 static void _update_root() {
