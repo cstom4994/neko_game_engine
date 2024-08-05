@@ -1,11 +1,12 @@
 #pragma once
 
-#include <miniaudio.h>
-
+#include "engine/base.h"
 #include "engine/luax.h"
 #include "engine/prelude.h"
-#include "engine/base.h"
-#include "engine/prelude.h"
+
+#if NEKO_AUDIO == 1
+
+#include <miniaudio.h>
 
 struct Sound {
     ma_sound ma;
@@ -30,6 +31,8 @@ inline int neko_sound_load(lua_State *L) {
     luax_ptr_userdata(L, sound, "mt_sound");
     return 1;
 }
+
+#endif
 
 // NEKO_SCRIPT(sound,
 //

@@ -11,7 +11,7 @@
 #include "engine/camera.h"
 #include "engine/game.h"
 #include "engine/input.h"
-#include "engine/lua_custom_types.hpp"
+#include "engine/lua_custom_types.h"
 #include "engine/lua_util.h"
 #include "engine/luax.h"
 #include "engine/physics.h"
@@ -140,7 +140,7 @@ static void _set_paths() {
     lua_setglobal(L, "nekogame_usr_path");
 }
 
-// LuaJIT FFI parser doesn't like 'NEKO_EXPORT' -- make it whitespace
+// LuaJIT FFI 解析器无法解析 'NEKO_EXPORT' -- 使其成为空白
 static void _fix_exports(char *s) {
     static const char keyword[] = "NEKO_EXPORT";
     unsigned int i;
@@ -189,17 +189,12 @@ int luaopen_cffi(lua_State *L);
 int luaopen_bit(lua_State *L);
 }
 
-inline void luax_package_preload(lua_State *L, const char *name, lua_CFunction function) {
-    lua_getglobal(L, "package");
-    lua_getfield(L, -1, "preload");
-    lua_pushcfunction(L, function);
-    lua_setfield(L, -2, name);
-    lua_pop(L, 2);
-}
-
 #endif
 
 void script_init() {
+    neko::timer timer;
+    timer.start();
+
     lua_State *L = neko::neko_lua_create();
 
     ENGINE_LUA() = L;
@@ -235,6 +230,9 @@ void script_init() {
     neko::lua::luax_run_bootstrap(L);
 
     // lua_pushcfunction(L, luax_msgh);  // 添加错误消息处理程序 始终位于堆栈底部
+
+    timer.stop();
+    console_log(std::format("lua init done in {0:.3f} ms", timer.get()).c_str());
 }
 
 void script_fini() {

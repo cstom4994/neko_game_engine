@@ -13,9 +13,8 @@ struct Image {
     i32 width;
     i32 height;
     bool has_mips;
-
-    bool load(String filepath, bool generate_mips);
-    void trash();
+    inline bool load(String filepath, bool generate_mips) { return false; };
+    inline void trash() {};
 };
 
 #if 0

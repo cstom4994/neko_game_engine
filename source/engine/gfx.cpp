@@ -4,7 +4,9 @@
 #include <stdlib.h>
 
 #include "engine/asset.h"
+#include "engine/base.h"
 #include "engine/console.h"
+#include "engine/game.h"
 
 static GLint gfx_compile_shader(GLuint shader, const char *filename) {
     char log[512];
@@ -15,7 +17,7 @@ static GLint gfx_compile_shader(GLuint shader, const char *filename) {
     bool ok = vfs_read_entire_file(&contents, filename);
     neko_defer(mem_free(contents.data));
 
-    NEKO_ASSERT(ok);
+    neko_assert(ok);
 
     console_printf("gfx: compiling shader '%s' ...", filename);
 
@@ -31,7 +33,7 @@ static GLint gfx_compile_shader(GLuint shader, const char *filename) {
     return status;
 }
 
-GLuint gfx_create_program(const char *vert_path, const char *geom_path, const char *frag_path) {
+GLuint gfx_create_program(const_str name, const char *vert_path, const char *geom_path, const char *frag_path) {
     GLuint vert, geom, frag, program;
 
 #define compile(shader, type)                                     \
@@ -56,6 +58,9 @@ GLuint gfx_create_program(const char *vert_path, const char *geom_path, const ch
     if (vert_path) glDeleteShader(vert);
     if (geom_path) glDeleteShader(geom);
     if (frag_path) glDeleteShader(frag);
+
+    shader_pair pair = {program, name};
+    neko_dyn_array_push(g_app->shader_array, pair);
 
     return program;
 }

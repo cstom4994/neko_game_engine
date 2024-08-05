@@ -3,6 +3,8 @@
 #include "engine/game.h"
 #include "engine/luax.h"
 
+#if NEKO_AUDIO == 1
+
 static void on_sound_end(void *udata, ma_sound *ma) {
     Sound *sound = (Sound *)udata;
     if (sound->zombie) {
@@ -219,6 +221,8 @@ int open_mt_sound(lua_State *L) {
     luax_new_class(L, "mt_sound", reg);
     return 0;
 }
+
+#endif
 
 #if 0
 

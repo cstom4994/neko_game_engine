@@ -41,12 +41,12 @@ typedef struct neko_pak {
     inline u64 get_item_count() const { return this->item_count; }
 
     inline u32 get_item_size(u64 index) {
-        NEKO_ASSERT(index < this->item_count);
+        neko_assert(index < this->item_count);
         return this->items[index].info.data_size;
     }
 
     inline const_str get_item_path(u64 index) {
-        NEKO_ASSERT(index < this->item_count);
+        neko_assert(index < this->item_count);
         return this->items[index].path;
     }
 

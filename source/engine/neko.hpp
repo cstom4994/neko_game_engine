@@ -40,13 +40,13 @@ const_str u8Cpp20(T&& t) noexcept {
 #endif
 
 #define NEKO_DYNAMIC_CAST(type, input_var, cast_var_name) \
-    NEKO_ASSERT(value);                                   \
+    neko_assert(value);                                   \
     type* cast_var_name = dynamic_cast<type*>(input_var); \
-    NEKO_ASSERT(cast_var_name)
+    neko_assert(cast_var_name)
 #define NEKO_STATIC_CAST(type, input_var, cast_var_name) \
-    NEKO_ASSERT(value);                                  \
+    neko_assert(value);                                  \
     type* cast_var_name = static_cast<type*>(input_var); \
-    NEKO_ASSERT(cast_var_name)
+    neko_assert(cast_var_name)
 
 #define NEKO_ENUM_FLAG(T)                                                                                                                                                  \
     inline T operator~(T a) { return static_cast<T>(~static_cast<std::underlying_type<T>::type>(a)); }                                                                     \

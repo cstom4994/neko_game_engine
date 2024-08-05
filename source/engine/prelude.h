@@ -63,7 +63,7 @@ struct lua_State;
 #define NEKO_UNUSED(x) (void)(sizeof(x))
 #endif
 
-#define NEKO_ASSERT(x, ...)                                                                                                \
+#define neko_assert(x, ...)                                                                                                \
     do {                                                                                                                   \
         if (!(x)) {                                                                                                        \
             neko_printf("    assertion failed: (%s), function %s, file %s, line %d.\n", #x, __func__, __FILE__, __LINE__); \
@@ -136,7 +136,7 @@ struct lua_State;
 #define NEKO_EXPECT(x)                                               \
     do {                                                             \
         if (!(x)) {                                                  \
-            NEKO_ERROR("Unexpect error: assertion '%s' failed", #x); \
+            console_log("Unexpect error: assertion '%s' failed", #x); \
             abort();                                                 \
         }                                                            \
     } while (0)
@@ -178,15 +178,9 @@ inline void neko_printf(const char *fmt, ...) {
 #define JOIN_1(x, y) x##y
 #define JOIN_2(x, y) JOIN_1(x, y)
 
-enum { LOG_TRACE, LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR };
+void neko_log(const char *file, int line, const char *fmt, ...);
 
-void neko_log(int level, const char *file, int line, const char *fmt, ...);
-
-#define NEKO_ERROR(...) neko_log(LOG_ERROR, __FILE__, __LINE__, __VA_ARGS__)
-#define NEKO_DEBUG_LOG(...) neko_log(LOG_DEBUG, __FILE__, __LINE__, __VA_ARGS__)
-#define NEKO_INFO(...) neko_log(LOG_INFO, __FILE__, __LINE__, __VA_ARGS__)
-#define NEKO_TRACE(...) neko_log(LOG_TRACE, __FILE__, __LINE__, __VA_ARGS__)
-#define NEKO_WARN(...) neko_log(LOG_WARN, __FILE__, __LINE__, __VA_ARGS__)
+#define console_log(...) neko_log( __FILE__, __LINE__, __VA_ARGS__)
 
 void errorf(const char *fmt, ...);
 
@@ -325,7 +319,7 @@ struct Instrument {
 #define PROFILE_BLOCK(name)
 #endif
 
-#define NEKO_SCRIPT(name, ...)                                  \
+#define NEKO_SCRIPT(name, ...)                             \
     static const char *nekogame_ffi_##name = #__VA_ARGS__; \
     __VA_ARGS__
 

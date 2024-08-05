@@ -342,10 +342,6 @@ draw_imgui = function(dt)
         music:start()
     end
 
-    if ImGui.Button("tolua_gen") then
-        neko_tolua_gen("source/tests/test.pkg", "source/tests/test_gen.cpp")
-    end
-
     if ImGui.Button("build_pack") then
         Core.pak_build(("fgd.pack"), {"gamedir/assets/test_1.fgd", "gamedir/assets/primext.fgd"})
     end

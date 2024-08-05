@@ -11,16 +11,16 @@
 ==========================*/
 
 static void destroy_pack_items(u64 item_count, neko_pak::item *items) {
-    NEKO_ASSERT(item_count == 0 || (item_count > 0 && items));
+    neko_assert(item_count == 0 || (item_count > 0 && items));
 
     for (u64 i = 0; i < item_count; i++) mem_free(items[i].path);
     mem_free(items);
 }
 
 bool create_pack_items(vfs_file *pak, u64 item_count, neko_pak::item **_items) {
-    NEKO_ASSERT(pak);
-    NEKO_ASSERT(item_count > 0);
-    NEKO_ASSERT(_items);
+    neko_assert(pak);
+    neko_assert(item_count > 0);
+    neko_assert(_items);
 
     neko_pak::item *items = (neko_pak::item *)mem_alloc(item_count * sizeof(neko_pak::item));
 
@@ -76,7 +76,7 @@ bool create_pack_items(vfs_file *pak, u64 item_count, neko_pak::item **_items) {
 }
 
 bool neko_pak::load(const_str file_path, u32 data_buffer_capacity, bool is_resources_directory) {
-    NEKO_ASSERT(file_path);
+    neko_assert(file_path);
 
     // memset(this, 0, sizeof(neko_pak));
 
@@ -140,13 +140,13 @@ bool neko_pak::load(const_str file_path, u32 data_buffer_capacity, bool is_resou
     this->data_buffer = _data_buffer;
     this->data_size = data_buffer_capacity;
 
-    NEKO_TRACE("load pack %s buildnum: %d (engine %d)", neko_util_get_filename(file_path), buildnum, neko_buildnum());
+    console_log("load pack %s buildnum: %d (engine %d)", neko_util_get_filename(file_path), buildnum, neko_buildnum());
 
     return true;
 }
 void neko_pak::fini() {
     if (this->file_ref_count != 0) {
-        NEKO_WARN("assets loader leaks detected %d refs", this->file_ref_count);
+        console_log("assets loader leaks detected %d refs", this->file_ref_count);
     }
 
     free_buffer();
@@ -167,8 +167,8 @@ static int neko_compare_pack_items(const void *_a, const void *_b) {
 }
 
 u64 neko_pak::get_item_index(const_str path) {
-    NEKO_ASSERT(path);
-    NEKO_ASSERT(strlen(path) <= u8_max);
+    neko_assert(path);
+    neko_assert(strlen(path) <= u8_max);
 
     neko_pak::item *search_item = &this->search_item;
 
@@ -184,7 +184,7 @@ u64 neko_pak::get_item_index(const_str path) {
 }
 
 bool neko_pak::get_data(u64 index, String *out, u32 *size) {
-    NEKO_ASSERT((index < this->item_count) && out && size);
+    neko_assert((index < this->item_count) && out && size);
 
     neko_pak::iteminfo info = this->items[index].info;
 
@@ -236,7 +236,7 @@ bool neko_pak::get_data(u64 index, String *out, u32 *size) {
 
         result = decompress_buf_len;
 
-        NEKO_TRACE("[assets] neko_lz_decode %u %u", info.zip_size, info.data_size);
+        console_log("[assets] neko_lz_decode %u %u", info.zip_size, info.data_size);
 
         if (result < 0 || result != info.data_size || decompress_status != MZ_OK) {
             return false;  // FAILED_TO_DECOMPRESS_PACK_RESULT
@@ -259,8 +259,8 @@ bool neko_pak::get_data(u64 index, String *out, u32 *size) {
 }
 
 bool neko_pak::get_data(const_str path, String *out, u32 *size) {
-    NEKO_ASSERT(path && out && size);
-    NEKO_ASSERT(strlen(path) <= u8_max);
+    neko_assert(path && out && size);
+    neko_assert(strlen(path) <= u8_max);
     u64 index = this->get_item_index(path);
     if (index == u64_max) return false;  // FAILED_TO_GET_ITEM_PACK_RESULT
     return this->get_data(index, out, size);
@@ -280,12 +280,12 @@ void neko_pak::free_buffer() {
 }
 
 static void neko_pak_remove_item(u64 item_count, neko_pak::item *pack_items) {
-    NEKO_ASSERT(item_count == 0 || (item_count > 0 && pack_items));
+    neko_assert(item_count == 0 || (item_count > 0 && pack_items));
     for (u64 i = 0; i < item_count; i++) remove(pack_items[i].path);
 }
 
 bool neko_pak_unzip(const_str file_path, bool print_progress) {
-    NEKO_ASSERT(file_path);
+    neko_assert(file_path);
 
     neko_pak pak;
 
@@ -302,7 +302,7 @@ bool neko_pak_unzip(const_str file_path, bool print_progress) {
         neko_pak::item *item = &items[i];
 
         if (print_progress) {
-            NEKO_INFO("Unpacking %s", item->path);
+            console_log("Unpacking %s", item->path);
         }
 
         String data;
@@ -368,9 +368,9 @@ bool neko_pak_unzip(const_str file_path, bool print_progress) {
 }
 
 bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, bool print_progress) {
-    NEKO_ASSERT(pack_file);
-    NEKO_ASSERT(item_count > 0);
-    NEKO_ASSERT(item_paths);
+    neko_assert(pack_file);
+    neko_assert(item_count > 0);
+    neko_assert(item_paths);
 
     u32 buffer_size = 128;  // 提高初始缓冲大小
 
@@ -568,9 +568,9 @@ static int neko_pak_compare_item_paths(const void *_a, const void *_b) {
 }
 
 bool neko_pak_build(const_str file_path, u64 file_count, const_str *file_paths, bool print_progress) {
-    NEKO_ASSERT(file_path);
-    NEKO_ASSERT(file_count > 0);
-    NEKO_ASSERT(file_paths);
+    neko_assert(file_path);
+    neko_assert(file_count > 0);
+    neko_assert(file_paths);
 
     char **item_paths = (char **)mem_alloc(file_count * sizeof(char *));
 
@@ -638,9 +638,9 @@ bool neko_pak_build(const_str file_path, u64 file_count, const_str *file_paths, 
 }
 
 bool neko_pak_info(const_str file_path, i32 *buildnum, u64 *item_count) {
-    NEKO_ASSERT(file_path);
-    NEKO_ASSERT(buildnum);
-    NEKO_ASSERT(item_count);
+    neko_assert(file_path);
+    neko_assert(buildnum);
+    neko_assert(item_count);
 
     vfs_file vf = neko_capi_vfs_fopen(file_path);
 

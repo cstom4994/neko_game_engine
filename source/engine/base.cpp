@@ -8,9 +8,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "engine/asset.h"
 #include "engine/os.h"
 #include "engine/prelude.h"
-
 
 SplitLinesIterator &SplitLinesIterator::operator++() {
     if (&view.data[view.len] == &data.data[data.len]) {
@@ -485,7 +485,7 @@ size_t neko_byte_buffer_size(neko_byte_buffer_t *buffer) { return buffer->size; 
 
 void neko_byte_buffer_resize(neko_byte_buffer_t *buffer, size_t sz) {
 
-    // if (sz == 4096) NEKO_ASSERT(0);
+    // if (sz == 4096) neko_assert(0);
 
     u8 *data = (u8 *)mem_realloc(buffer->data, sz);
 
@@ -567,7 +567,7 @@ bool neko_byte_buffer_read_from_file(neko_byte_buffer_t *buffer, const char *fil
 
     buffer->data = (u8 *)neko_os_read_file_contents(file_path, "rb", (size_t *)&buffer->size);
     if (!buffer->data) {
-        NEKO_ASSERT(false);
+        neko_assert(false);
         return false;
     }
 
@@ -1201,7 +1201,7 @@ static Store *_store_read(Store *parent, Stream *sm) {
     if (sm->buf[sm->pos] == '[') {
         s->compressed = true;
         close_brace = ']';
-    } else if (sm->buf[sm->pos] != '{')
+    } else if (sm->buf[sm->pos] != '{' && sm->buf[sm->pos] != '\n')
         error("corrupt save");
     while (isspace(sm->buf[++sm->pos]));
 
@@ -1275,22 +1275,22 @@ const char *store_write_str(Store *s) {
 
 Store *store_open_file(const char *filename) {
     Store *s;
-    FILE *f;
     unsigned int n;
     char *str;
 
-    f = fopen(filename, "r");
-    error_assert(f, "file '%s' must be open for reading", filename);
+    vfs_file f = neko_capi_vfs_fopen(filename);
+    error_assert(f.data, "file '%s' must be open for reading", filename);
 
-    fscanf(f, "%u\n", &n);
+    neko_capi_vfs_fscanf(&f, "%u\n", &n);
     str = (char *)mem_alloc(n + 1);
-    fread(str, 1, n, f);
-    fclose(f);
+    neko_capi_vfs_fread(str, 1, n, &f);
+    neko_capi_vfs_fclose(&f);
     str[n] = '\0';
     s = store_open_str(str);
     mem_free(str);
     return s;
 }
+
 void store_write_file(Store *s, const char *filename) {
     FILE *f;
     const char *str;

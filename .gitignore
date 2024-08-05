@@ -14,6 +14,7 @@ gamedir/code/libs
 gamedir/*.pack
 gamedir/*.zip
 docs/
+test/
 
 neko_cache/
 source/api/gen

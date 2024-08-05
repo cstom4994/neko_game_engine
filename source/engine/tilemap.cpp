@@ -217,7 +217,7 @@ bool MapLdtk::load(String filepath) {
     tilemap.levels = levels;
     tilemap.images = images;
 
-    NEKO_TRACE("loaded tilemap with %llu levels", (unsigned long long)tilemap.levels.len);
+    console_log("loaded tilemap with %llu levels", (unsigned long long)tilemap.levels.len);
     *this = tilemap;
     created = true;
     return true;
@@ -548,7 +548,7 @@ void neko_tiled_load(MapTiled *map, const_str tmx_path, const_str res_path) {
 
     map->doc = neko_xml_parse_file(tmx_path);
     if (!map->doc) {
-        NEKO_ERROR("Failed to parse XML: %s", neko_xml_get_error());
+        console_log("Failed to parse XML: %s", neko_xml_get_error());
         return;
     }
 
@@ -560,7 +560,7 @@ void neko_tiled_load(MapTiled *map, const_str tmx_path, const_str res_path) {
     }
 
     neko_xml_node_t *map_node = neko_xml_find_node(map->doc, "map");
-    NEKO_ASSERT(map_node);  // Must have a map node!
+    neko_assert(map_node);  // Must have a map node!
 
     for (neko_xml_node_iter_t it = neko_xml_new_node_child_iter(map_node, "tileset"); neko_xml_node_iter_next(&it);) {
         tileset_t tileset = {0};
@@ -571,7 +571,7 @@ void neko_tiled_load(MapTiled *map, const_str tmx_path, const_str res_path) {
         neko_snprintf(tileset_path, 256, "%s/%s", tmx_root_path, neko_xml_find_attribute(it.current, "source")->value.string);
         neko_xml_document_t *tileset_doc = neko_xml_parse_file(tileset_path);
         if (!tileset_doc) {
-            NEKO_ERROR("Failed to parse XML from %s: %s", tileset_path, neko_xml_get_error());
+            console_log("Failed to parse XML from %s: %s", tileset_path, neko_xml_get_error());
             return;
         }
 
@@ -588,7 +588,7 @@ void neko_tiled_load(MapTiled *map, const_str tmx_path, const_str res_path) {
 
         // bool ok = vfs_file_exists(NEKO_PACKS::GAMEDATA, full_image_path);
         // if (!ok) {
-        //     NEKO_ERROR("failed to load texture file: %s", full_image_path);
+        //     console_log("failed to load texture file: %s", full_image_path);
         //     return;
         // }
 
@@ -638,7 +638,7 @@ void neko_tiled_load(MapTiled *map, const_str tmx_path, const_str res_path) {
         const_str encoding = neko_xml_find_attribute(data_node, "encoding")->value.string;
 
         if (strcmp(encoding, "csv") != 0) {
-            NEKO_ERROR("%s", "Only CSV data encoding is supported.");
+            console_log("%s", "Only CSV data encoding is supported.");
             return;
         }
 
@@ -692,7 +692,7 @@ void neko_tiled_load(MapTiled *map, const_str tmx_path, const_str res_path) {
             // u32 *cols = (u32 *)object_group.color.rgba;
             //*cols = (u32)strtol(hexstring + 1, NULL, 16);
             // object_group.color.a = 128;
-            NEKO_TRACE("objectgroup: %s", namestring);
+            console_log("objectgroup: %s", namestring);
         } else {
         }
 
@@ -790,7 +790,7 @@ void neko_tiled_render_init(neko_command_buffer_t *cb, neko_tiled_renderer *rend
     renderer->ib = neko_render_index_buffer_create(ib_decl);
 
     if (!vert_src || !frag_src) {
-        NEKO_ERROR("%s", "Failed to load tiled renderer shaders.");
+        console_log("%s", "Failed to load tiled renderer shaders.");
     }
 
     neko_render_uniform_layout_desc_t u_desc_layout = {.type = R_UNIFORM_SAMPLER2D};

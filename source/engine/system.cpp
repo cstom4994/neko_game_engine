@@ -109,7 +109,7 @@ void system_init() {
     lua_pop(L, 1);  // conf table
 
     // 刷新状态
-    neko_api_set_window_size(g_app->width, g_app->height);
+    game_set_window_size(vec2(g_app->width, g_app->height));
 
     // run main.lua
     errcheck(luaL_loadfile(L, "./source/game/script/main.lua"));
@@ -152,10 +152,12 @@ void system_fini() {
         //     mem_free(g_app->default_font);
         // }
 
+#if NEKO_AUDIO == 1
         for (Sound *sound : g_app->garbage_sounds) {
             sound->trash();
         }
         g_app->garbage_sounds.trash();
+#endif
 
         assets_shutdown();
     }

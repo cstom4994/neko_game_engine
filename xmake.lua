@@ -22,27 +22,31 @@ add_includedirs("source/")
 local NEKO_CFFI = false
 local NEKO_LUASOCKET = false
 
-if NEKO_CFFI == true then
-    -- add_requires("cffi-lua")
-    add_requires("libffi")
-    add_requires("lua")
-end
+-- local NEKO_AUDIO = "miniaudio"
+local NEKO_AUDIO = "none"
 
 add_requires("glew")
 add_requires("glfw")
-add_requires("dirent")
 add_requires("miniz")
 add_requires("stb")
-add_requires("miniaudio")
 add_requires("box2d")
-add_requires("enet")
 add_requires("cute_headers")
 
-add_requires("openrestry-luajit", {
-    configs = {
-        gc64 = true
-    }
-})
+if NEKO_CFFI == true then
+    add_requires("cffi-lua")
+    add_requires("libffi")
+    add_requires("lua")
+else
+    add_requires("openrestry-luajit", {
+        configs = {
+            gc64 = true
+        }
+    })
+end
+
+if NEKO_AUDIO == "miniaudio" then
+    add_requires("miniaudio")
+end
 
 add_requires("imgui v1.91.0-docking", {
     configs = {
@@ -118,18 +122,16 @@ do
         add_defines("NEKO_LUASOCKET")
     end
 
-    add_files("source/api/gen/**.lua", "source/api/*.lua")
-
-    add_files("source/api/**.cpp", "source/engine/**.cpp")
-
+    add_files("source/engine/**.lua")
+    add_files("source/engine/**.cpp")
     add_files("source/vendor/http.c")
     add_files("source/vendor/cimgui.cpp")
 
     add_headerfiles("source/engine/**.h", "source/engine/**.hpp", "source/vendor/**.h")
 
-    add_packages("imgui", "miniz", "stb", "cute_headers")
-    add_packages("miniaudio", "box2d", "enet")
-    add_packages("glfw", "stb", "glew", "dirent")
+    add_packages("imgui", "miniz", "cute_headers")
+    add_packages("box2d")
+    add_packages("glfw", "stb", "glew")
 
     if NEKO_CFFI == true then
         add_packages("lua")
@@ -138,9 +140,14 @@ do
         add_defines("NEKO_CFFI")
 
         add_files("source/vendor/bit.c")
-
     else
         add_packages("openrestry-luajit")
+    end
+
+    if NEKO_AUDIO == "miniaudio" then
+        add_packages("miniaudio")
+
+        add_defines("NEKO_AUDIO=1")
     end
 
     set_basename("neko_$(mode)_$(arch)")

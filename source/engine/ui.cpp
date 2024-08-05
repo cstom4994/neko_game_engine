@@ -510,7 +510,7 @@ static void _rect_init() {
     rect_pool = entitypool_new(Rect);
 
     // create shader program, load texture, bind parameters
-    rect_program = gfx_create_program("assets/data/rect.vert", "assets/data/rect.geom", "assets/data/rect.frag");
+    rect_program = gfx_create_program("rect_program", "assets/data/rect.vert", "assets/data/rect.geom", "assets/data/rect.frag");
     glUseProgram(rect_program);
 
     // make vao, vbo, bind attributes
@@ -892,7 +892,7 @@ static void _text_init() {
     text_pool = entitypool_new(Text);
 
     // create shader program, load texture, bind parameters
-    text_program = gfx_create_program("assets/data/text.vert", "assets/data/text.geom", "assets/data/text.frag");
+    text_program = gfx_create_program("text_program", "assets/data/text.vert", "assets/data/text.geom", "assets/data/text.frag");
     glUseProgram(text_program);
     texture_load("assets/data/font1.png");
     glUniform1i(glGetUniformLocation(text_program, "tex0"), 0);
@@ -1248,9 +1248,9 @@ void gui_load_all(Store *s) {
     _textedit_load_all(s);
 }
 
-namespace neko::imgui::wrap_ImGuiInputTextCallbackData {
-void pointer(lua_State *L, ImGuiInputTextCallbackData &v);
-}
+// namespace neko::imgui::wrap_ImGuiInputTextCallbackData {
+// void pointer(lua_State *L, ImGuiInputTextCallbackData &v);
+// }
 
 namespace neko::imgui::util {
 
@@ -1284,7 +1284,7 @@ ImTextureID get_texture_id(lua_State *L, int idx) {
     // }
     // luaL_error(L, "Invalid handle type TEXTURE");
     // std::unreachable();
-    NEKO_ASSERT(0);
+    neko_assert(0);
     return 0;
 }
 
@@ -1390,7 +1390,7 @@ int input_callback(ImGuiInputTextCallbackData *data) {
     auto ctx = (input_context *)data->UserData;
     lua_State *L = ctx->L;
     lua_pushvalue(L, ctx->callback);
-    wrap_ImGuiInputTextCallbackData::pointer(L, *data);
+    // wrap_ImGuiInputTextCallbackData::pointer(L, *data);
     if (lua_pcall(L, 1, 1, 0) != LUA_OK) {
         return 1;
     }

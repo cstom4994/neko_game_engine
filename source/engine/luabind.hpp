@@ -95,7 +95,7 @@ T checkinteger(lua_State* L, int arg) {
             }
             luaL_error(L, "bad argument '#%d' limit exceeded", arg);
             // std::unreachable();
-            NEKO_ASSERT(0, "unreachable");
+            neko_assert(0, "unreachable");
         }
     } else {
         return std::bit_cast<T>(checkinteger<lua_Integer>(L, arg));
@@ -120,7 +120,7 @@ T optinteger(lua_State* L, int arg) {
             }
             luaL_error(L, "bad argument '#%d' limit exceeded", arg);
             // std::unreachable();
-            NEKO_ASSERT(0, "unreachable");
+            neko_assert(0, "unreachable");
         } else {
             static_assert(checklimit<lua_Integer>(def));
             lua_Integer r = optinteger<lua_Integer, static_cast<lua_Integer>(def)>(L, arg);
@@ -146,7 +146,7 @@ T tolightud(lua_State* L, int arg) {
             }
             luaL_error(L, "bad argument #%d limit exceeded", arg);
             // std::unreachable();
-            NEKO_ASSERT(0, "unreachable");
+            neko_assert(0, "unreachable");
         }
     } else if constexpr (std::is_same_v<T, void*>) {
         return lua_touserdata(L, arg);
@@ -156,13 +156,6 @@ T tolightud(lua_State* L, int arg) {
         return std::bit_cast<T>(tolightud<void*>(L, arg));
     }
 }
-
-#define LUAI_MAXALIGN \
-    lua_Number n;     \
-    double u;         \
-    void* s;          \
-    lua_Integer i;    \
-    long l
 
 union lua_maxalign_t {
     LUAI_MAXALIGN;
@@ -258,7 +251,7 @@ void checktable_refl(lua_State* L, const_str tname, T&& v) {
 #define FUCK_TYPES() u32, bool, f32, bool, const_str
 
     if (lua_getfield(L, -1, tname) == LUA_TNIL) {
-        NEKO_ERROR("[exception] no %s table", tname);
+        console_log("[exception] no %s table", tname);
     }
     if (lua_istable(L, -1)) {
         // neko::static_refl::neko_type_info<neko_os_running_desc_t>::ForEachVarOf(t, [](auto field, auto &&value) {
@@ -281,9 +274,9 @@ void checktable_refl(lua_State* L, const_str tname, T&& v) {
                         S s = neko_lua_to<std::remove_reference_t<S>>(L, -1);
                         value.cast<S>() = s;
                         if constexpr (std::is_same_v<S, const_str>) {
-                            NEKO_DEBUG_LOG("%s : %s", neko::reflection::name_v<std::remove_reference_t<S>>.data(), s);
+                            console_log("%s : %s", neko::reflection::name_v<std::remove_reference_t<S>>.data(), s);
                         } else if constexpr (std::is_integral_v<S>) {
-                            NEKO_DEBUG_LOG("%s : %d", neko::reflection::name_v<std::remove_reference_t<S>>.data(), s);
+                            console_log("%s : %d", neko::reflection::name_v<std::remove_reference_t<S>>.data(), s);
                         }
                     }
                 };
@@ -294,7 +287,7 @@ void checktable_refl(lua_State* L, const_str tname, T&& v) {
         };
         v.foreach (f);
     } else {
-        NEKO_ERROR("[exception] no %s table", tname);
+        console_log("[exception] no %s table", tname);
     }
     lua_pop(L, 1);
 }
@@ -577,7 +570,7 @@ T unpack(lua_State* L, int arg) {
         }
         luaL_error(L, "unpack integer limit exceeded", arg);
     }
-    NEKO_ASSERT(false);
+    neko_assert(false);
     return T{};
 }
 
@@ -691,7 +684,7 @@ void pack(lua_State* L, const T& v) {
             lua_pushinteger(L, static_cast<lua_Integer>(v));
         }
         luaL_error(L, "pack integer limit exceeded");
-        NEKO_ASSERT(false);
+        neko_assert(false);
     }
 }
 

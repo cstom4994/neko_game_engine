@@ -9,7 +9,6 @@
 #include <string>
 
 #include "engine/prelude.h"
-#include "engine/prelude.h"
 
 #if defined(_WIN32)
 #include <windows.h>
@@ -202,17 +201,17 @@ typedef struct Store Store;
 
 NEKO_SCRIPT(timing,
 
-       NEKO_EXPORT f32 timing_dt;
+            NEKO_EXPORT f32 timing_dt;
 
-       NEKO_EXPORT f32 timing_true_dt;  // 实际增量时间 不受 scale/pause 影响
+            NEKO_EXPORT f32 timing_true_dt;  // 实际增量时间 不受 scale/pause 影响
 
-       NEKO_EXPORT void timing_set_scale(f32 s);
+            NEKO_EXPORT void timing_set_scale(f32 s);
 
-       NEKO_EXPORT f32 timing_get_scale();
+            NEKO_EXPORT f32 timing_get_scale();
 
-       NEKO_EXPORT void timing_set_paused(bool p);  // 暂停将刻度设置为 0 并在恢复时恢复它
+            NEKO_EXPORT void timing_set_paused(bool p);  // 暂停将刻度设置为 0 并在恢复时恢复它
 
-       NEKO_EXPORT bool timing_get_paused();
+            NEKO_EXPORT bool timing_get_paused();
 
 )
 

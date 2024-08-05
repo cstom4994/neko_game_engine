@@ -17,7 +17,13 @@ extern "C" {
 #include <lauxlib.h>
 #include <lua.h>
 #include <lualib.h>
+
+#ifndef NEKO_CFFI
 #include <luajit.h>
+#else
+#define LUAJIT_VERSION "No Luajit"
+#endif
+
 #ifdef __cplusplus
 }
 #endif
@@ -45,6 +51,13 @@ typedef size_t lua_Unsigned;
 #define lua_tounsigned(L, i) lua_tounsignedx((L), (i), NULL)
 #define luaL_checkunsigned(L, a) ((lua_Unsigned)luaL_checkinteger((L), (a)))
 #define luaL_optunsigned(L, a, d) ((lua_Unsigned)luaL_optinteger((L), (a), (lua_Integer)(d)))
+
+#define LUAI_MAXALIGN \
+    lua_Number n;     \
+    double u;         \
+    void *s;          \
+    lua_Integer i;    \
+    long l
 
 inline int lua_absindex(lua_State *L, int idx) {
     if (idx > 0 || idx <= LUA_REGISTRYINDEX) {
@@ -139,6 +152,10 @@ inline void luaL_requiref(lua_State *L, const char *modname, lua_CFunction openf
     lua_replace(L, -2);
 }
 
+#else
+
+#define lua_objlen lua_rawlen
+
 #endif
 
 #if LUA_VERSION_NUM < 504
@@ -152,6 +169,10 @@ int lua_setiuservalue(lua_State *L_, int idx_, int n_);
 #define luaL_typeerror luaL_typerror
 
 #endif  // LUA_VERSION_NUM < 504
+
+#ifndef LUA_TCDATA
+#define LUA_TCDATA 10
+#endif
 
 inline void luax_pushloadedtable(lua_State *L) {
 #if LUA_VERSION_NUM < 502

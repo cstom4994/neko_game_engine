@@ -18,13 +18,11 @@
 #include <utility>
 #include <vector>
 
-#include "engine/neko.hpp"
 #include "engine/base.h"
 #include "engine/ecs.h"
-#include "engine/luax.h"
-#include "engine/prelude.h"
-#include "engine/base.h"
 #include "engine/input.h"
+#include "engine/luax.h"
+#include "engine/neko.hpp"
 #include "engine/prelude.h"
 
 // ImGui
@@ -45,11 +43,27 @@ NEKO_SCRIPT(
 
         // gui
 
-        NEKO_EXPORT void gui_add(Entity ent); NEKO_EXPORT void gui_remove(Entity ent); NEKO_EXPORT bool gui_has(Entity ent);
+        NEKO_EXPORT void gui_add(Entity ent);
 
-        NEKO_EXPORT void gui_set_color(Entity ent, Color color); NEKO_EXPORT Color gui_get_color(Entity ent); NEKO_EXPORT void gui_set_visible(Entity ent, bool visible);
-        NEKO_EXPORT bool gui_get_visible(Entity ent); NEKO_EXPORT void gui_set_focusable(Entity ent, bool focusable); NEKO_EXPORT bool gui_get_focusable(Entity ent);
-        NEKO_EXPORT void gui_set_captures_events(Entity ent, bool captures_events); NEKO_EXPORT bool gui_get_captures_events(Entity ent);
+        NEKO_EXPORT void gui_remove(Entity ent);
+
+        NEKO_EXPORT bool gui_has(Entity ent);
+
+        NEKO_EXPORT void gui_set_color(Entity ent, Color color);
+
+        NEKO_EXPORT Color gui_get_color(Entity ent);
+
+        NEKO_EXPORT void gui_set_visible(Entity ent, bool visible);
+
+        NEKO_EXPORT bool gui_get_visible(Entity ent);
+
+        NEKO_EXPORT void gui_set_focusable(Entity ent, bool focusable);
+
+        NEKO_EXPORT bool gui_get_focusable(Entity ent);
+
+        NEKO_EXPORT void gui_set_captures_events(Entity ent, bool captures_events);
+
+        NEKO_EXPORT bool gui_get_captures_events(Entity ent);
 
         typedef enum GuiAlign GuiAlign; enum GuiAlign{
                 GA_MIN = 0,    // h: left, v: bottom
@@ -59,9 +73,17 @@ NEKO_SCRIPT(
                 GA_NONE = 4,   // manual position
         };
 
-        NEKO_EXPORT void gui_set_halign(Entity ent, GuiAlign align); NEKO_EXPORT GuiAlign gui_get_halign(Entity ent); NEKO_EXPORT void gui_set_valign(Entity ent, GuiAlign align);
-        NEKO_EXPORT GuiAlign gui_get_valign(Entity ent); NEKO_EXPORT void gui_set_padding(Entity ent, CVec2 padding);  // h, v
-        NEKO_EXPORT CVec2 gui_get_padding(Entity ent);                                                                 // h, v
+        NEKO_EXPORT void gui_set_halign(Entity ent, GuiAlign align);
+
+        NEKO_EXPORT GuiAlign gui_get_halign(Entity ent);
+
+        NEKO_EXPORT void gui_set_valign(Entity ent, GuiAlign align);
+
+        NEKO_EXPORT GuiAlign gui_get_valign(Entity ent);
+
+        NEKO_EXPORT void gui_set_padding(Entity ent, CVec2 padding);  // h, v
+
+        NEKO_EXPORT CVec2 gui_get_padding(Entity ent);  // h, v
 
         // entity_nil for no focus
         NEKO_EXPORT void gui_set_focused_entity(Entity ent); NEKO_EXPORT Entity gui_get_focused_entity(); NEKO_EXPORT void gui_set_focus(Entity ent, bool focus);
@@ -745,7 +767,7 @@ static int InputTextCallback(ImGuiInputTextCallbackData *data) {
     InputTextCallback_UserData *user_data = (InputTextCallback_UserData *)data->UserData;
     if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
         std::string *str = user_data->Str;
-        NEKO_ASSERT(data->Buf == str->c_str());
+        neko_assert(data->Buf == str->c_str());
         str->resize(data->BufTextLen);
         data->Buf = (char *)str->c_str();
     } else if (user_data->ChainCallback) {

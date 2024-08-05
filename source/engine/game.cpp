@@ -8,7 +8,9 @@
 #include <time.h>
 
 #include "console.h"
+#include "engine/inspector.h"
 #include "engine/script.h"
+#include "engine/sprite.h"
 #include "engine/system.h"
 #include "glew_glfw.h"
 #include "test/test.h"
@@ -85,6 +87,10 @@ static void _game_init() {
     g_app = (App *)mem_alloc(sizeof(App));
     memset(g_app, 0, sizeof(App));
 
+    g_app->gpu_mtx.make();
+
+    g_app->error_mtx.make();
+
     os_high_timer_resolution();
     stm_setup();
 
@@ -94,9 +100,9 @@ static void _game_init() {
     }
 
 #if defined(NDEBUG)
-    NEKO_INFO("neko %d", neko_buildnum());
+    console_log("neko %d", neko_buildnum());
 #else
-    NEKO_INFO("neko %d (debug build) (%s, %s)", neko_buildnum(), LUA_VERSION, LUAJIT_VERSION);
+    console_log("neko %d (debug build) (%s, %s)", neko_buildnum(), LUA_VERSION, LUAJIT_VERSION);
 #endif
 
     profile_setup();
@@ -168,6 +174,10 @@ static void _game_fini() {
     // fini glfw
     glfwTerminate();
 
+    g_app->gpu_mtx.trash();
+
+    g_app->error_mtx.trash();
+
 #ifdef USE_PROFILER
     profile_shutdown();
 #endif
@@ -226,6 +236,11 @@ static void _game_draw() {
 
     system_draw_all();
 
+    for (uint32_t i = 0; i < neko_dyn_array_size(g_app->shader_array); ++i) {
+        auto sp = g_app->shader_array[i];
+        inspect_shader(sp.name, sp.id);
+    }
+
     ImGui::Render();
     // int displayX, displayY;
     // glfwGetFramebufferSize(window, &displayX, &displayY);
@@ -280,3 +295,85 @@ void game_quit() { quit = true; }
 
 int game_get_argc() { return sargc; }
 char **game_get_argv() { return sargv; }
+
+int game_set_window_minsize(int width, int height) {
+    glfwSetWindowSizeLimits(g_app->game_window, width, height, GLFW_DONT_CARE, GLFW_DONT_CARE);
+    return 0;
+}
+
+int game_get_window_width(int *val) {
+    int w = 0;
+    int h = 0;
+#if defined(__EMSCRIPTEN__)
+    w = emsc_width();
+    h = emsc_height();
+#else
+    if (g_app->game_window) {
+        glfwGetWindowSize(g_app->game_window, &w, &h);
+    }
+#endif
+    *val = w;
+    return 0;
+}
+
+int game_get_window_height(int *val) {
+    int w = 0;
+    int h = 0;
+#if defined(__EMSCRIPTEN__)
+    w = emsc_width();
+    h = emsc_height();
+#else
+    if (g_app->game_window) {
+        glfwGetWindowSize(g_app->game_window, &w, &h);
+    }
+#endif
+    *val = h;
+    return 0;
+}
+
+int game_set_window_position(int x, int y) {
+#if !defined(__EMSCRIPTEN__)
+    if (g_app->game_window) {
+        glfwSetWindowPos(g_app->game_window, x, y);
+    }
+#endif
+    return 0;
+}
+
+static int get_current_monitor(GLFWmonitor **monitor, GLFWwindow *window) {
+    int winpos[2] = {0};
+    glfwGetWindowPos(window, &winpos[0], &winpos[1]);
+
+    int monitors_size = 0;
+    GLFWmonitor **monitors = glfwGetMonitors(&monitors_size);
+
+    for (int i = 0; i < monitors_size; ++i) {
+        int monitorpos[2] = {0};
+        glfwGetMonitorPos(monitors[i], &monitorpos[0], &monitorpos[1]);
+        const GLFWvidmode *vidmode = glfwGetVideoMode(monitors[i]);
+        if (winpos[0] >= monitorpos[0] && winpos[0] < (monitorpos[0] + vidmode->width) && winpos[1] >= monitorpos[1] && winpos[1] < (monitorpos[1] + vidmode->height)) {
+            *monitor = monitors[i];
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+int game_set_window_title(const char *title) {
+#if defined(__EMSCRIPTEN__)
+    emscripten_set_window_title(title);
+#else
+    glfwSetWindowTitle(g_app->game_window, title);
+#endif
+    return 0;
+}
+
+int game_set_window_vsync(bool vsync) {
+    if (vsync) {
+        glfwSwapInterval(1);
+    } else {
+        glfwSwapInterval(0);
+    }
+    return 0;
+}

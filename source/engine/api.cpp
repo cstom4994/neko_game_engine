@@ -1,11 +1,6 @@
 #include "engine/api.hpp"
 
 #include <box2d/box2d.h>
-// #include <sokol_app.h>
-// #include <sokol_gfx.h>
-#include "engine/lua_custom_types.hpp"
-#include "vendor/sokol_time.h"
-// #include <util/sokol_gl.h>
 
 #include "engine/api.hpp"
 #include "engine/asset.h"
@@ -13,10 +8,11 @@
 #include "engine/draw.h"
 #include "engine/ecs.h"
 #include "engine/game.h"
-#include "engine/luax.h"
+#include "engine/lua_custom_types.h"
 #include "engine/lua_struct.h"
 #include "engine/lua_util.h"
 #include "engine/luabind.hpp"
+#include "engine/luax.h"
 #include "engine/os.h"
 #include "engine/pak.h"
 #include "engine/physics.h"
@@ -24,8 +20,8 @@
 #include "engine/reflection.hpp"
 #include "engine/seri.h"
 #include "engine/sound.h"
-#include "engine/tolua.h"
 #include "engine/ui.h"
+#include "vendor/sokol_time.h"
 
 // mt_sampler
 
@@ -565,7 +561,7 @@ static neko_pak *check_pak_udata(lua_State *L, i32 arg) {
 static int mt_pak_gc(lua_State *L) {
     neko_pak *pak = check_pak_udata(L, 1);
     pak->fini();
-    NEKO_DEBUG_LOG("pak __gc %p", pak);
+    console_log("pak __gc %p", pak);
     return 0;
 }
 
@@ -613,7 +609,7 @@ static int mt_pak_assets_unload(lua_State *L) {
     if (assets_user_handle && assets_user_handle->data.len)
         pak->free_item(assets_user_handle->data);
     else
-        NEKO_WARN("unknown assets unload %p", assets_user_handle);
+        console_log("unknown assets unload %p", assets_user_handle);
 
     // asset_write(asset);
 
@@ -1252,7 +1248,9 @@ static int neko_draw_line(lua_State *L) {
 
 static int neko_set_master_volume(lua_State *L) {
     lua_Number vol = luaL_checknumber(L, 1);
+#if NEKO_AUDIO == 1
     ma_engine_set_volume(&g_app->audio_engine, (float)vol);
+#endif
     return 0;
 }
 
@@ -1531,59 +1529,6 @@ static int neko_pak_load(lua_State *L) {
 
     luax_new_userdata(L, pak, "mt_pak");
     return 1;
-}
-
-static void neko_tolua_setfield(lua_State *L, int table, const_str f, const_str v) {
-    lua_pushstring(L, f);
-    lua_pushstring(L, v);
-    lua_settable(L, table);
-}
-
-static void neko_tolua_add_extra(lua_State *L, const_str value) {
-    int len;
-    lua_getglobal(L, "_extra_parameters");
-    len = lua_rawlen(L, -1);
-    lua_pushstring(L, value);
-    lua_rawseti(L, -2, len + 1);
-    lua_pop(L, 1);
-};
-
-void neko_tolua_boot(const_str f, const_str output) {
-
-    lua_State *L = luaL_newstate();
-    luaL_openlibs(L);
-
-    lua_pushstring(L, NEKO_TOLUA_VERSION);
-    lua_setglobal(L, "NEKO_TOLUA_VERSION");
-    lua_pushstring(L, LUA_VERSION);
-    lua_setglobal(L, "TOLUA_LUA_VERSION");
-
-    {
-        int i, t;
-        lua_newtable(L);
-        lua_setglobal(L, "_extra_parameters");
-        lua_newtable(L);
-        lua_pushvalue(L, -1);
-        lua_setglobal(L, "neko_tolua_flags");
-        t = lua_gettop(L);
-
-        neko_tolua_setfield(L, t, "f", f);
-        neko_tolua_setfield(L, t, "o", output);
-
-        // disable automatic exporting of destructors for classes
-        // that have constructors (for compatibility with tolua5)
-        // case 'D':
-        //     neko_tolua_setfield(L, t, "D", "");
-        //     break;
-        // // add extra values to the luastate
-        // case 'E':
-        //     neko_tolua_add_extra(L, argv[++i]);
-
-        lua_pop(L, 1);
-    }
-
-    int neko_tolua_boot_open(lua_State * L);
-    neko_tolua_boot_open(L);
 }
 
 #if 1
@@ -1880,7 +1825,7 @@ LUA_FUNCTION(__neko_bind_aseprite_render_create) {
 
 LUA_FUNCTION(__neko_bind_aseprite_render_gc) {
     neko_aseprite_renderer* user_handle = (neko_aseprite_renderer*)luaL_checkudata(L, 1, "mt_aseprite_renderer");
-    // NEKO_TRACE("aseprite_render __gc %p", user_handle);
+    // console_log("aseprite_render __gc %p", user_handle);
     return 0;
 }
 
@@ -1955,7 +1900,7 @@ LUA_FUNCTION(__neko_bind_aseprite_create) {
 LUA_FUNCTION(__neko_bind_aseprite_gc) {
     neko_aseprite* user_handle = (neko_aseprite*)luaL_checkudata(L, 1, "mt_aseprite");
     if (user_handle->frames != NULL) neko_aseprite_end(user_handle);
-    // NEKO_TRACE("aseprite __gc %p", user_handle);
+    // console_log("aseprite __gc %p", user_handle);
     return 0;
 }
 
@@ -2145,7 +2090,7 @@ static void fontbatch_metatable(lua_State* L) {
                              +[](lua_State* L) {
                                  neko_fontbatch_t* fontbatch = neko::lua::toudata_ptr<neko_fontbatch_t>(L, 1);
                                  neko_fontbatch_end(fontbatch);
-                                 NEKO_TRACE("fontbatch __gc %p", fontbatch);
+                                 console_log("fontbatch __gc %p", fontbatch);
                                  return 0;
                              }},
                             {NULL, NULL}};
@@ -2169,7 +2114,7 @@ LUA_FUNCTION(__neko_bind_fontbatch_create) {
 
     neko::string contents = {};
     bool ok = vfs_read_entire_file( &contents, "gamedir/1.fnt");
-    NEKO_ASSERT(ok);
+    neko_assert(ok);
     neko_fontbatch_init(&fontbatch, font_vs.data, font_ps.data, neko_game()->DisplaySize, "gamedir/1_0.png", contents.data, (i32)contents.len);
     neko_defer(neko_safe_free(contents.data));
 
@@ -2672,7 +2617,7 @@ static void watch_map_callback(neko_filewatch_update_t change, const_str virtual
     if (is_callback) try {
             neko_lua_call<void>(ENGINE_L(), callback_funcname, change_string, std::string(virtual_path));
         } catch (std::exception& ex) {
-            NEKO_ERROR("lua exception %s", ex.what());
+            console_log("lua exception %s", ex.what());
         }
 }
 
@@ -2926,7 +2871,7 @@ LUA_FUNCTION(__neko_bind_render_shader_create) {
         lua_pop(L, 1);  // # -1
     }
 
-    NEKO_ASSERT(j == n);
+    neko_assert(j == n);
 
     neko_shader_t shader_handle = NEKO_DEFAULT_VAL();
 
@@ -3057,7 +3002,7 @@ LUA_FUNCTION(__neko_bind_render_pipeline_create) {
                     if (lua_isinteger(L, -1)) {
                         pipeline_desc.layout.size = (size_t)lua_tointeger(L, -1);
                     } else
-                        NEKO_ASSERT(false);
+                        neko_assert(false);
                     lua_pop(L, 1);  // # -1
                 } break;
                 case neko::hash("raster"): {
@@ -3078,12 +3023,12 @@ LUA_FUNCTION(__neko_bind_render_pipeline_create) {
                     if (lua_isinteger(L, -1)) {
                         pipeline_desc.raster.index_buffer_element_size = lua_tointeger(L, -1);
                     } else
-                        NEKO_ASSERT(false);
+                        neko_assert(false);
                     lua_pop(L, 1);  // # -1
 
                 } break;
                 default:
-                    NEKO_ASSERT(false);
+                    neko_assert(false);
                     break;
             }
         }
@@ -3137,7 +3082,7 @@ LUA_FUNCTION(__neko_bind_render_vertex_attribute_create) {
             if (src != NULL) {
                 NEKO_STR_CPY(sources[i].name, src);
             } else
-                NEKO_ASSERT(false);
+                neko_assert(false);
         }
         lua_pop(L, 1);  // # -1
 
@@ -3232,7 +3177,7 @@ LUA_FUNCTION(__neko_bind_render_apply_bindings) {
                         if (!lua_isnil(L, -1))
                             neko_luabind_struct_to_member(L, neko_uniform_t, id, &u_desc[i - 1].uniform, -1);
                         else
-                            NEKO_ASSERT(false);
+                            neko_assert(false);
                         lua_pop(L, 1);  // # -1
 
                         lua_pushstring(L, "data");  // # -1
@@ -3248,11 +3193,11 @@ LUA_FUNCTION(__neko_bind_render_apply_bindings) {
                                     u_desc[i - 1].data = &data;
                                     break;
                                 default:
-                                    NEKO_ASSERT(false);  // TODO
+                                    neko_assert(false);  // TODO
                                     break;
                             }
                         } else
-                            NEKO_ASSERT(false);
+                            neko_assert(false);
                         lua_pop(L, 1);  // # -1
 
                         lua_pushstring(L, "binding");  // # -1
@@ -3281,7 +3226,7 @@ LUA_FUNCTION(__neko_bind_render_apply_bindings) {
                         if (!lua_isnil(L, -1))
                             neko_luabind_struct_to_member(L, neko_texture_t, id, &ib_desc[i - 1].tex, -1);
                         else
-                            NEKO_ASSERT(false);
+                            neko_assert(false);
                         lua_pop(L, 1);  // # -1
 
                         ib_desc[i - 1].access = R_ACCESS_WRITE_ONLY;
@@ -3312,7 +3257,7 @@ LUA_FUNCTION(__neko_bind_render_apply_bindings) {
                         if (!lua_isnil(L, -1)) {
                             neko_luabind_struct_to_member(L, neko_storage_buffer_t, id, &sb_desc[i - 1].buffer, -1);
                         } else
-                            NEKO_ASSERT(false);
+                            neko_assert(false);
                         lua_pop(L, 1);  // # -1
 
                         lua_pushstring(L, "binding");  // # -1
@@ -3341,7 +3286,7 @@ LUA_FUNCTION(__neko_bind_render_apply_bindings) {
                         if (!lua_isnil(L, -1)) {
                             neko_luabind_struct_to_member(L, neko_vbo_t, id, &vbo_desc[i - 1].buffer, -1);
                         } else
-                            NEKO_ASSERT(false);
+                            neko_assert(false);
                         lua_pop(L, 1);  // # -1
 
                         lua_pop(L, 1);  // # -1
@@ -3363,7 +3308,7 @@ LUA_FUNCTION(__neko_bind_render_apply_bindings) {
                         if (!lua_isnil(L, -1)) {
                             neko_luabind_struct_to_member(L, neko_ibo_t, id, &ibo_desc[i - 1].buffer, -1);
                         } else
-                            NEKO_ASSERT(false);
+                            neko_assert(false);
                         lua_pop(L, 1);  // # -1
 
                         lua_pop(L, 1);  // # -1
@@ -3545,7 +3490,7 @@ LUA_FUNCTION(__neko_bind_render_draw) {
         if (lua_isinteger(L, -1))
             draw_desc.start = lua_tointeger(L, -1);
         else
-            NEKO_ASSERT(false);
+            neko_assert(false);
         lua_pop(L, 1);
 
         lua_pushstring(L, "count");
@@ -3553,7 +3498,7 @@ LUA_FUNCTION(__neko_bind_render_draw) {
         if (lua_isinteger(L, -1))
             draw_desc.count = lua_tointeger(L, -1);
         else
-            NEKO_ASSERT(false);
+            neko_assert(false);
         lua_pop(L, 1);
 
         lua_pushstring(L, "instances");
@@ -3842,7 +3787,7 @@ LUA_FUNCTION(__neko_bind_cvar) {
                     break;
                 case __NEKO_CONFIG_TYPE_COUNT:
                 default:
-                    NEKO_WARN(std::format("__neko_bind_cvar_new with a unknown type {0} {1}", name, (u8)cval).c_str());
+                    console_log(std::format("__neko_bind_cvar_new with a unknown type {0} {1}", name, (u8)cval).c_str());
                     break;
             }
 
@@ -3869,7 +3814,7 @@ LUA_FUNCTION(__neko_bind_print) {
         str.append(std::string(s, l));
         lua_pop(L, 1);
     }
-    NEKO_INFO("[lua] %s", str.c_str());
+    console_log("[lua] %s", str.c_str());
     return 0;
 }
 
@@ -3941,12 +3886,12 @@ LUA_FUNCTION(__neko_bind_vfs_read_file) {
 // 返回包含路径和 isDirectory 对的表
 int __neko_ls(lua_State *L) {
     if (!lua_isstring(L, 1)) {
-        NEKO_WARN("invalid lua argument");
+        console_log("invalid lua argument");
         return 0;
     }
     auto string = lua_tostring(L, 1);
     if (!std::filesystem::is_directory(string)) {
-        NEKO_WARN(std::format("{0} is not directory", string).c_str());
+        console_log(std::format("{0} is not directory", string).c_str());
         return 0;
     }
 
@@ -3969,13 +3914,9 @@ int __neko_ls(lua_State *L) {
 
 bool __neko_dolua(const_str file) { return neko::neko_lua_dofile(ENGINE_LUA(), file); }
 
-void neko_tolua_boot(const_str f, const_str output);
-
 inline void neko_register_common(lua_State *L) {
 
     // neko::lua_bind::bind("neko_dolua", &__neko_dolua);
-
-    // neko::lua_bind::bind("neko_tolua_gen", +[](const_str f, const_str o) { neko_tolua_boot(f, o); });
 
     // neko::lua_bind::bind("neko_hash_str", +[](const_str str) { return neko_hash_str(str); });
     // neko::lua_bind::bind("neko_hash_str64", +[](const_str str) { return neko_hash_str64(str); });
@@ -4207,7 +4148,7 @@ static int __neko_w_lua_get_com(lua_State *L) {
 static int __neko_w_lua_gc(lua_State *L) {
     App *w = (App *)luaL_checkudata(L, W_LUA_REGISTRY_CONST::W_CORE_IDX, W_LUA_REGISTRY_CONST::ENG_UDATA_NAME);
     // ecs_fini_i(w);
-    NEKO_DEBUG_LOG("App __gc %p", w);
+    console_log("App __gc %p", w);
     return 0;
 }
 
@@ -4253,13 +4194,13 @@ void neko_w_init() {
     // lua_pushvalue(L, -1);
     lua_setfield(L, LUA_REGISTRYINDEX, W_LUA_REGISTRY_CONST::W_CORE);
 
-    NEKO_ASSERT(lua_gettop(L) == 0);
+    neko_assert(lua_gettop(L) == 0);
 
     lua_register(L, "neko_w_f", __neko_bind_w_f);
 
     neko_w_lua_variant<i64> version("neko_engine_version", neko_buildnum());
 
-    NEKO_ASSERT(lua_gettop(L) == 0);
+    neko_assert(lua_gettop(L) == 0);
 }
 
 LUA_FUNCTION(from_registry) {
@@ -4561,7 +4502,7 @@ static int select(lua_State *L) {
             break;
         default:
             // std::unreachable();
-            NEKO_ASSERT(0, "unreachable");
+            neko_assert(0, "unreachable");
     }
     lua_pushlstring(L, notify->path.data(), notify->path.size());
     return 2;
@@ -4682,7 +4623,7 @@ static int open_neko(lua_State *L) {
             {"make_channel", neko_make_channel},
             {"image_load", neko_image_load},
             // {"font_load", neko_font_load},
-            {"sound_load", neko_sound_load},
+            // {"sound_load", neko_sound_load},
             // {"sprite_load", neko_sprite_load},
             // {"atlas_load", neko_atlas_load},
             // {"tilemap_load", neko_tilemap_load},
@@ -4705,7 +4646,7 @@ void open_neko_api(lua_State *L) {
         open_mt_channel,
         // open_mt_image,
         // open_mt_font,
-        open_mt_sound,
+        // open_mt_sound,
         // open_mt_sprite,
         // open_mt_atlas_image,
         // open_mt_atlas,
@@ -4731,8 +4672,6 @@ void open_neko_api(lua_State *L) {
 
     lua_pop(L, 1);
 
-    register_neko_api_core_open(L);
-
     newusertype<Bytearray, Bytearray::createMetatable>(L, "bytearray");
 
     neko::lua::preload_module(L);
@@ -4752,7 +4691,6 @@ void package_preload(lua_State *L) {
     luaL_Reg preloads[] = {
             {"__neko.spritepack", open_tools_spritepack},
             {"__neko.filesys", open_filesys},
-            {"__neko.imgui", open_imgui},
     };
     for (auto m : preloads) {
         luax_package_preload(L, m.name, m.func);

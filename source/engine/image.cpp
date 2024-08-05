@@ -8,121 +8,6 @@
 #include <stb_image.h>
 #include <stb_image_resize2.h>
 
-// template <typename T>
-// inline auto sg_make(const T &d) {
-//     if constexpr (std::is_same_v<T, sg_image_desc>) {
-//         return sg_make_image(d);
-//     } else {
-//         static_assert(neko::always_false<T>, "unsupported type passed to sg_make");
-//     }
-// }
-
-static std::tuple<u32, i32, i32> image_load_stbi(String contents, bool generate_mips) {
-    i32 width = 0, height = 0, channels = 0;
-    u32 id = 0;
-    stbi_uc *data = nullptr;
-    {
-        PROFILE_BLOCK("stb_image load");
-        data = stbi_load_from_memory((u8 *)contents.data, (i32)contents.len, &width, &height, &channels, 4);
-    }
-    if (!data) {
-        return std::make_tuple(id, width, height);
-    }
-    neko_defer(stbi_image_free(data));
-
-    // sg_image_desc desc = {};
-    // desc.pixel_format = SG_PIXELFORMAT_RGBA8;
-    // desc.width = width;
-    // desc.height = height;
-    // desc.data.subimage[0][0].ptr = data;
-    // desc.data.subimage[0][0].size = width * height * 4;
-
-    Array<u8 *> mips = {};
-    neko_defer({
-        for (u8 *mip : mips) {
-            mem_free(mip);
-        }
-        mips.trash();
-    });
-
-    if (generate_mips) {
-        // mips.reserve(SG_MAX_MIPMAPS);
-
-        u8 *prev = data;
-        i32 w0 = width;
-        i32 h0 = height;
-        i32 w1 = w0 / 2;
-        i32 h1 = h0 / 2;
-
-        while (w1 > 1 && h1 > 1) {
-            PROFILE_BLOCK("generate mip");
-
-            u8 *mip = (u8 *)mem_alloc(w1 * h1 * 4);
-            stbir_resize_uint8_linear(prev, w0, h0, 0, mip, w1, h1, 0, STBIR_RGBA);
-            mips.push(mip);
-
-            // desc.data.subimage[0][mips.len].ptr = mip;
-            // desc.data.subimage[0][mips.len].size = w1 * h1 * 4;
-
-            prev = mip;
-            w0 = w1;
-            h0 = h1;
-            w1 /= 2;
-            h1 /= 2;
-        }
-    }
-
-    // desc.num_mipmaps = mips.len + 1;
-
-    {
-        PROFILE_BLOCK("make image");
-        LockGuard lock{&g_app->gpu_mtx};
-        // id = sg_make(desc).id;
-    }
-
-    NEKO_TRACE("created image(stbi) (%dx%d, %d channels, mipmaps: %s) with id %d", width, height, channels, generate_mips ? "true" : "false", id);
-
-    return std::make_tuple(id, width, height);
-}
-
-bool Image::load(String filepath, bool generate_mips) {
-    PROFILE_FUNC();
-
-    String contents = {};
-    bool ok = vfs_read_entire_file(&contents, filepath);
-    if (!ok) {
-        return false;
-    }
-    neko_defer(mem_free(contents.data));
-
-    u32 id = 0;
-    i32 width = 0, height = 0;
-    if (filepath.ends_with(".ase")) {
-        // std::tie(id, width, height) = image_load_ase(contents, generate_mips);
-    } else {
-        std::tie(id, width, height) = image_load_stbi(contents, generate_mips);
-    }
-
-    if (id == 0) {
-        NEKO_WARN("unsupported image type: %s", filepath.cstr());
-        return false;
-    }
-
-    Image img = {};
-    img.id = id;
-    img.width = width;
-    img.height = height;
-    img.has_mips = generate_mips;
-    *this = img;
-
-    return true;
-}
-
-void Image::trash() {
-    LockGuard lock{&g_app->gpu_mtx};
-    // sg_destroy_image({id});
-}
-
 #if 0
 
 bool SpriteData::load(String filepath) {
@@ -204,7 +89,7 @@ bool SpriteData::load(String filepath) {
         by_tag[fnv1a(tag.name)] = loop;
     }
 
-    NEKO_TRACE("created sprite with image id: %d and %llu frames", img.id, (unsigned long long)frames.len);
+    console_log("created sprite with image id: %d and %llu frames", img.id, (unsigned long long)frames.len);
 
     SpriteData s = {};
     s.arena = arena;
@@ -324,7 +209,7 @@ void FontFamily::load_default() {
     String contents = {};
     bool ok = vfs_read_entire_file(&contents, NEKO_PACKS::DEFAULT_FONT);
 
-    NEKO_ASSERT(ok, "load default font failed");
+    neko_assert(ok, "load default font failed");
 
     FontFamily f = {};
     f.ttf = contents;
@@ -409,7 +294,7 @@ static void make_font_range(FontRange *out, FontFamily *font, FontKey key) {
     out->image.width = width;
     out->image.height = height;
 
-    NEKO_TRACE("created font range with id %d", id);
+    console_log("created font range with id %d", id);
 }
 
 static FontRange *get_range(FontFamily *font, FontKey key) {
@@ -529,7 +414,7 @@ bool Atlas::load(String filepath, bool generate_mips) {
         }
     }
 
-    NEKO_TRACE("created atlas with image id: %d and %llu entries", img.id, (unsigned long long)by_name.load);
+    console_log("created atlas with image id: %d and %llu entries", img.id, (unsigned long long)by_name.load);
 
     Atlas a;
     a.by_name = by_name;

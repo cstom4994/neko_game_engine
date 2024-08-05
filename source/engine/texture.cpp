@@ -9,28 +9,18 @@
 #include "console.h"
 #include "engine/asset.h"
 #include "engine/base.h"
+#include "engine/game.h"
 #include "engine/prelude.h"
 
 // deps
 #include <stb_image.h>
 
-#define CUTE_ASEPRITE_ASSERT NEKO_ASSERT
+#define CUTE_ASEPRITE_ASSERT neko_assert
 #define CUTE_ASEPRITE_ALLOC(size, ctx) mem_alloc(size)
 #define CUTE_ASEPRITE_FREE(mem, ctx) mem_free(mem)
 
 #define CUTE_ASEPRITE_IMPLEMENTATION
 #include <cute_aseprite.h>
-
-typedef struct Texture Texture;
-struct Texture {
-    char *filename;
-    GLuint gl_name;  // 如果未初始化或纹理错误 则为 0
-    int width;
-    int height;
-    int components;
-
-    u64 last_modified;
-};
 
 static CArray *textures;
 
@@ -55,8 +45,8 @@ static void _flip_image_vertical(unsigned char *data, unsigned int width, unsign
 
 static void ase_default_blend_bind(ase_t *ase) {
 
-    NEKO_ASSERT(ase);
-    NEKO_ASSERT(ase->frame_count);
+    neko_assert(ase);
+    neko_assert(ase->frame_count);
 
     // 为了方便起见，将所有单元像素混合到各自的帧中
     for (int i = 0; i < ase->frame_count; ++i) {
@@ -66,7 +56,7 @@ static void ase_default_blend_bind(ase_t *ase) {
         memset(frame->pixels, 0, sizeof(ase_color_t) * (size_t)ase->w * (size_t)ase->h);
         ase_color_t *dst = frame->pixels;
 
-        NEKO_DEBUG_LOG("neko_aseprite_default_blend_bind: frame: %d cel_count: %d", i, frame->cel_count);
+        console_log("neko_aseprite_default_blend_bind: frame: %d cel_count: %d", i, frame->cel_count);
 
         for (int j = 0; j < frame->cel_count; ++j) {  //
 
@@ -86,7 +76,7 @@ static void ase_default_blend_bind(ase_t *ase) {
                         break;
                     }
                 }
-                NEKO_ASSERT(found);
+                neko_assert(found);
             }
             void *src = cel->pixels;
             u8 opacity = (u8)(cel->opacity * cel->layer->opacity * 255.0f);
@@ -150,7 +140,7 @@ static bool texture_load(Texture *tex) {
             PROFILE_BLOCK("ase_image load");
             ase = cute_aseprite_load_from_memory(contents.data, contents.len, nullptr);
 
-            NEKO_ASSERT(ase->frame_count == 1);  // image_load_ase 用于加载简单的单帧 aseprite
+            neko_assert(ase->frame_count == 1);  // image_load_ase 用于加载简单的单帧 aseprite
             // neko_aseprite_default_blend_bind(ase);
 
             tex->width = ase->w;
@@ -174,19 +164,23 @@ static bool texture_load(Texture *tex) {
         return false;  // 保持旧的GL纹理
     }
 
-    // 如果存在 则释放旧的 GL 纹理
-    if (tex->gl_name != 0) glDeleteTextures(1, &tex->gl_name);
+    {
+        LockGuard lock{&g_app->gpu_mtx};
 
-    // 生成 GL 纹理
-    glGenTextures(1, &tex->gl_name);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, tex->gl_name);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        // 如果存在 则释放旧的 GL 纹理
+        if (tex->gl_name != 0) glDeleteTextures(1, &tex->gl_name);
 
-    // 将纹理数据复制到 GL
-    _flip_image_vertical(data, tex->width, tex->height);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex->width, tex->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+        // 生成 GL 纹理
+        glGenTextures(1, &tex->gl_name);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, tex->gl_name);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+        // 将纹理数据复制到 GL
+        _flip_image_vertical(data, tex->width, tex->height);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex->width, tex->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    }
 
     if (filename.ends_with(".ase")) {
         cute_aseprite_free(ase);
@@ -221,6 +215,8 @@ bool texture_load(const char *filename) {
 }
 
 void texture_bind(const char *filename) {
+    LockGuard lock{&g_app->gpu_mtx};
+
     Texture *tex;
 
     tex = _find(filename);

@@ -3,8 +3,8 @@
 #include "engine/base.h"
 #include "engine/image.h"
 #include "engine/math.h"
-#include "engine/tilemap.h"
 #include "engine/prelude.h"
+#include "engine/tilemap.h"
 
 struct MountResult {
     bool ok;
@@ -24,21 +24,6 @@ bool vfs_write_entire_file(String fsname, String filepath, String contents);
 bool vfs_list_all_files(String fsname, Array<String> *files);
 
 void *vfs_for_miniaudio();
-
-typedef struct vfs_file {
-    const_str data;
-    size_t len;
-    u64 offset;
-} vfs_file;
-
-size_t neko_capi_vfs_fread(void *dest, size_t size, size_t count, vfs_file *vf);
-int neko_capi_vfs_fseek(vfs_file *vf, u64 of, int whence);
-u64 neko_capi_vfs_ftell(vfs_file *vf);
-vfs_file neko_capi_vfs_fopen(const_str path);
-int neko_capi_vfs_fclose(vfs_file *vf);
-
-bool neko_capi_vfs_file_exists(const_str fsname, const_str filepath);
-const_str neko_capi_vfs_read_file(const_str fsname, const_str filepath, size_t *size);
 
 enum AssetKind : i32 {
     AssetKind_None,
@@ -82,16 +67,37 @@ struct lua_State;
 Asset check_asset(lua_State *L, u64 key);
 Asset check_asset_mt(lua_State *L, i32 arg, const char *mt);
 
-NEKO_SCRIPT(fs,
+NEKO_SCRIPT(
+        fs,
 
-       // remember to *_close(...) when done to free resources!
+        // remember to *_close(...) when done to free resources!
 
-       typedef struct Dir Dir;
+        // NEKO_EXPORT Dir * fs_dir_open(const char *path);
 
-       NEKO_EXPORT Dir * fs_dir_open(const char *path);
+        // NEKO_EXPORT const char *fs_dir_next_file(Dir *dir);  // NULL after last file
 
-       NEKO_EXPORT const char *fs_dir_next_file(Dir *dir);  // NULL after last file
+        // NEKO_EXPORT void fs_dir_close(Dir *dir);
 
-       NEKO_EXPORT void fs_dir_close(Dir *dir);
+        typedef struct vfs_file {
+            const_str data;
+            size_t len;
+            u64 offset;
+        } vfs_file;
+
+        NEKO_EXPORT size_t neko_capi_vfs_fread(void *dest, size_t size, size_t count, vfs_file *vf);
+
+        NEKO_EXPORT int neko_capi_vfs_fseek(vfs_file *vf, u64 of, int whence);
+
+        NEKO_EXPORT u64 neko_capi_vfs_ftell(vfs_file * vf);
+
+        NEKO_EXPORT vfs_file neko_capi_vfs_fopen(const_str path);
+
+        NEKO_EXPORT int neko_capi_vfs_fclose(vfs_file *vf);
+
+        NEKO_EXPORT int neko_capi_vfs_fscanf(vfs_file *vf, const char *format, ...);
+
+        NEKO_EXPORT bool neko_capi_vfs_file_exists(const_str fsname, const_str filepath);
+
+        NEKO_EXPORT const_str neko_capi_vfs_read_file(const_str fsname, const_str filepath, size_t *size);
 
 )

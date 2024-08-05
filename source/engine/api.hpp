@@ -88,7 +88,7 @@ struct neko_w_lua_variant {
         lua_State *L = ENGINE_LUA();
         switch (type) {
             case LUA_TNONE:
-                NEKO_ASSERT(type == LUA_TNONE);
+                neko_assert(type == LUA_TNONE);
                 break;
             case LUA_TBOOLEAN:
                 lua_pushboolean(L, data.boolean);
@@ -106,7 +106,7 @@ struct neko_w_lua_variant {
     }
 
     void sync() {
-        NEKO_ASSERT(cname.data != NULL);
+        neko_assert(cname.data != NULL);
 
         lua_State *L = ENGINE_LUA();
 
@@ -126,7 +126,7 @@ struct neko_w_lua_variant {
             lua_getfield(L, -1, "data");  // # 5
             switch (type) {
                 case LUA_TNONE:
-                    NEKO_ASSERT(type == LUA_TNONE);
+                    neko_assert(type == LUA_TNONE);
                     break;
                 case LUA_TBOOLEAN:
                     data.boolean = lua_toboolean(L, -1);
@@ -143,32 +143,32 @@ struct neko_w_lua_variant {
             }
             lua_pop(L, 1);  // # pop 5
         } else {
-            NEKO_WARN("cvar sync with no value : %s", cname.data);
+            console_log("cvar sync with no value : %s", cname.data);
         }
 
         lua_pop(L, 4);
 
         if (type == LUA_TNONE) {
-            NEKO_WARN("cvar sync with no type : %s", cname.data);
+            console_log("cvar sync with no type : %s", cname.data);
         }
 
-        NEKO_ASSERT(lua_gettop(L) == n);
+        neko_assert(lua_gettop(L) == n);
     }
 
     template <typename C>
     auto get() -> C {
         using TT = std::decay_t<C>;
         if (type == LUA_TNONE) {
-            NEKO_WARN("trying to neko_w_lua_variant::get(%s) with LUA_TNONE", cname.data);
+            console_log("trying to neko_w_lua_variant::get(%s) with LUA_TNONE", cname.data);
         }
         if constexpr (std::is_same_v<TT, i32> || std::is_same_v<TT, u32> || std::is_same_v<TT, f32> || std::is_same_v<TT, f64>) {
-            NEKO_ASSERT(type == LUA_TNUMBER);
+            neko_assert(type == LUA_TNUMBER);
             return data.number;
         } else if constexpr (std::is_same_v<TT, const_str>) {
-            NEKO_ASSERT(type == LUA_TSTRING);
+            neko_assert(type == LUA_TSTRING);
             return data.str;
         } else if constexpr (std::is_same_v<TT, bool>) {
-            NEKO_ASSERT(type == LUA_TBOOLEAN);
+            neko_assert(type == LUA_TBOOLEAN);
             return data.boolean;
         } else {
             static_assert("unsupported type for neko_w_lua_variant::get");
@@ -176,7 +176,7 @@ struct neko_w_lua_variant {
     }
 
     void make() {
-        NEKO_ASSERT(type != LUA_TNONE);
+        neko_assert(type != LUA_TNONE);
 
         lua_State *L = ENGINE_LUA();
 
@@ -218,18 +218,18 @@ struct neko_w_lua_variant {
 
                 lua_pop(L, 1);  // # pop 3
             } else {
-                NEKO_ERROR("%s", "failed to get W_LUA_REGISTRY_NAME::CVAR_MAP");
+                console_log("%s", "failed to get W_LUA_REGISTRY_NAME::CVAR_MAP");
                 lua_pop(L, 1);  // # pop 3
             }
             lua_pop(L, 1);  // # pop 2
         } else {
-            NEKO_ERROR("%s", "failed to get upvalue NEKO_W_COMPONENTS_NAME");
+            console_log("%s", "failed to get upvalue NEKO_W_COMPONENTS_NAME");
             lua_pop(L, 1);  // # pop 2
         }
 
         lua_pop(L, 1);  // # pop 1
 
-        NEKO_ASSERT(lua_gettop(L) == n);
+        neko_assert(lua_gettop(L) == n);
     }
 };
 
@@ -241,7 +241,5 @@ static_assert(std::is_trivially_copyable_v<neko_w_lua_variant<f64>>);
     name.sync()
 
 // extern impl
-extern int register_neko_api_core_open(lua_State *L);
-extern int open_imgui(lua_State *L);
 extern int open_tools_spritepack(lua_State *L);
 extern int open_filesys(lua_State *L);

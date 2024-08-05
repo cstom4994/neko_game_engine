@@ -5,7 +5,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#include "engine/prelude.h"
 #include "engine/os.h"
 #include "engine/prelude.h"
 
@@ -735,9 +734,9 @@ inline void wtf8_to_utf16(const char* input, size_t length, wchar_t* output, siz
     uint32_t code_point;
     for (size_t i = 0; i < length;) {
         uint8_t n = wtf8_decode(&input[i], &code_point);
-        NEKO_ASSERT(n > 0);
+        neko_assert(n > 0);
         if (code_point > 0x10000) {
-            NEKO_ASSERT(code_point < 0x10FFFF);
+            neko_assert(code_point < 0x10FFFF);
             *output++ = (((code_point - 0x10000) >> 10) + 0xD800);
             *output++ = ((code_point - 0x10000) & 0x3FF) + 0xDC00;
             output_len -= 2;
@@ -748,7 +747,7 @@ inline void wtf8_to_utf16(const char* input, size_t length, wchar_t* output, siz
         i += n;
     }
     (void)output_len;
-    NEKO_ASSERT(output_len == 0);
+    neko_assert(output_len == 0);
 }
 
 inline uint32_t wtf8_surrogate(const wchar_t* input, bool eof) {
@@ -811,7 +810,7 @@ inline void wtf8_from_utf16(const wchar_t* input, size_t length, char* output, s
         }
     }
     (void)output_len;
-    NEKO_ASSERT(output_len == 0);
+    neko_assert(output_len == 0);
 }
 
 NEKO_FORCE_INLINE u32 neko_string_length(const char* txt) {
@@ -894,7 +893,7 @@ NEKO_FORCE_INLINE bool neko_util_str_is_numeric(const char* str) {
 }
 
 NEKO_FORCE_INLINE void neko_util_get_file_extension(char* buffer, u32 buffer_size, const_str file_path) {
-    NEKO_ASSERT(buffer && buffer_size);
+    neko_assert(buffer && buffer_size);
     const_str extension = strrchr(file_path, '.');
     if (extension) {
         uint32_t extension_len = strlen(extension + 1);
@@ -923,7 +922,7 @@ NEKO_FORCE_INLINE void neko_util_get_dir_from_file(char* buffer, u32 buffer_size
 }
 
 NEKO_FORCE_INLINE const_str neko_util_get_filename(const_str path) {
-    NEKO_ASSERT(path);
+    neko_assert(path);
     int len = strlen(path);
     for (int i = len - 1; i >= 0; i--) {
         if (path[i] == '\\' || path[i] == '/') {
@@ -1011,7 +1010,7 @@ NEKO_FORCE_INLINE void neko_snprintf(char* buffer, size_t buffer_size, const cha
     neko_snprintf(__NAME, __SZ, __FMT, ##__VA_ARGS__);
 
 NEKO_FORCE_INLINE u32 neko_util_safe_truncate_u64(u64 value) {
-    NEKO_ASSERT(value <= 0xFFFFFFFF);
+    neko_assert(value <= 0xFFFFFFFF);
     u32 result = (u32)value;
     return result;
 }
@@ -1938,9 +1937,19 @@ void array_sort(CArray* arr, int (*compar)(const void*, const void*));  // compa
 
 NEKO_SCRIPT(scalar,
 
-       typedef float Scalar;
+            typedef float Scalar;
 
-       typedef float f32; typedef double f64;
+            typedef float f32;
+
+            typedef double f64;
+
+            typedef uint16_t u16;
+
+            typedef uint32_t u32;
+
+            typedef uint64_t u64;
+
+            typedef const char* const_str;
 
 )
 
@@ -1967,21 +1976,21 @@ NEKO_SCRIPT(scalar,
 
 NEKO_SCRIPT(saveload,
 
-       // 请记住 *_close(...) 当完成以释放资源时
+            // 请记住 *_close(...) 当完成以释放资源时
 
-       typedef struct Store Store;
+            typedef struct Store Store;
 
-       NEKO_EXPORT Store * store_open();
+            NEKO_EXPORT Store * store_open();
 
-       NEKO_EXPORT Store * store_open_str(const char* str);
+            NEKO_EXPORT Store * store_open_str(const char* str);
 
-       NEKO_EXPORT const char* store_write_str(Store* s);
+            NEKO_EXPORT const char* store_write_str(Store* s);
 
-       NEKO_EXPORT Store * store_open_file(const char* filename);
+            NEKO_EXPORT Store * store_open_file(const char* filename);
 
-       NEKO_EXPORT void store_write_file(Store* s, const char* filename);
+            NEKO_EXPORT void store_write_file(Store* s, const char* filename);
 
-       NEKO_EXPORT void store_close(Store* s);
+            NEKO_EXPORT void store_close(Store* s);
 
 )
 

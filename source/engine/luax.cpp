@@ -23,7 +23,7 @@
 #if LUA_VERSION_NUM < 504
 
 void *lua_newuserdatauv(lua_State *L_, size_t sz_, [[maybe_unused]] int nuvalue_) {
-    NEKO_ASSERT(L_ && nuvalue_ <= 1);
+    neko_assert(L_ && nuvalue_ <= 1);
     return lua_newuserdata(L_, sz_);
 }
 
@@ -195,7 +195,7 @@ void neko_lua_run_string(lua_State *m_ls, const_str str_) {
     if (luaL_dostring(m_ls, str_)) {
         std::string err = lua_tool::dump_error(m_ls, "run_string ::lua_pcall_wrap failed str<%s>", str_);
         ::lua_pop(m_ls, 1);
-        // NEKO_ERROR("%s", err.c_str());
+        // console_log("%s", err.c_str());
     }
 }
 
@@ -306,7 +306,7 @@ int vfs_lua_loader(lua_State *L) {
                 lua_pushfstring(L, "[lua] error loading module \"%s\"", name);
                 lua_pop(L, 1);
             } else {
-                NEKO_TRACE("[lua] loaded : \"%s\"", path.c_str());
+                console_log("[lua] loaded : \"%s\"", path.c_str());
             }
             return 1;
         }
@@ -430,7 +430,7 @@ int luax_msgh(lua_State *L) {
 
     String err = luax_check_string(L, -1);
 
-    NEKO_DEBUG_LOG("luax_msgh");
+    console_log("luax_msgh");
 
     // traceback = debug.traceback(nil, 2)
     lua_getglobal(L, "debug");
@@ -1037,11 +1037,11 @@ int __neko_bind_callback_call(lua_State *L) {
             }
             lua_call(L, nargs, 0);  // 调用
         } else {
-            NEKO_WARN("callback with identifier '%s' not found or is not a function", identifier);
+            console_log("callback with identifier '%s' not found or is not a function", identifier);
         }
         lua_pop(L, 1);
     } else {
-        NEKO_WARN("callback table is noref");
+        console_log("callback table is noref");
     }
     return 0;
 }
@@ -1056,7 +1056,7 @@ int __neko_bind_callback_call(lua_State *L) {
     if (shortest_ <= depth_ + 1) {
         return shortest_;
     }
-    NEKO_ASSERT(lua_checkstack(L, 3));
+    neko_assert(lua_checkstack(L, 3));
 
     lua_pushvalue(L, -1);
     lua_rawget(L, kCache);

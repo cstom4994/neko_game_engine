@@ -543,7 +543,7 @@ inline void neko_lua_fini(lua_State *_L) {
         int top = lua_gettop(_L);
         if (top != 0) {
             lua_tool::dump_stack(_L);
-            NEKO_WARN("[lua] luastack memory leak");
+            console_log("[lua] luastack memory leak");
         }
         ::lua_close(_L);
         _L = NULL;
@@ -572,7 +572,7 @@ inline int neko_lua_load_file(lua_State *_L, const std::string &file_name_)  //
     if (luaL_dofile(_L, file_name_.c_str())) {
         std::string err = lua_tool::dump_error(_L, "cannot load file<%s>", file_name_.c_str());
         ::lua_pop(_L, 1);
-        // NEKO_ERROR("%s", err.c_str());
+        // console_log("%s", err.c_str());
     }
 
     return 0;
@@ -593,7 +593,7 @@ inline bool neko_lua_dofile(lua_State *_L, const std::string &file) {
 
     if (status) {
         const char *err = lua_tostring(_L, -1);
-        NEKO_WARN("luaL_loadfile ret %d\n%s\n", status, err);
+        console_log("luaL_loadfile ret %d\n%s\n", status, err);
         lua_pop(_L, 1);
         return false;
     }
@@ -601,7 +601,7 @@ inline bool neko_lua_dofile(lua_State *_L, const std::string &file) {
     status = neko_lua_pcall_wrap(_L, 0, LUA_MULTRET, 0);
     if (status) {
         const char *err = lua_tostring(_L, -1);
-        NEKO_WARN("lua_pcall_wrap ret %d\n%s\n", status, err);
+        console_log("lua_pcall_wrap ret %d\n%s\n", status, err);
         lua_pop(_L, 1);
         return false;
     }
@@ -614,7 +614,7 @@ inline void neko_lua_call(lua_State *_L, const char *func_name_) {
     if (neko_lua_pcall_wrap(_L, 0, 0, 0) != 0) {
         std::string err = lua_tool::dump_error(_L, "lua_pcall_wrap failed func_name<%s>", func_name_);
         ::lua_pop(_L, 1);
-        // NEKO_ERROR("%s", err.c_str());
+        // console_log("%s", err.c_str());
     }
 }
 

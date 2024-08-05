@@ -3,8 +3,13 @@
 
 #include "engine/glew_glfw.h"
 
+struct shader_pair {
+    GLuint id;
+    const_str name;
+};
+
 // compile link program given paths to shader files possibly NULL doesn't glUseProgram(...)
-GLuint gfx_create_program(const char *vert_path, const char *geom_path, const char *frag_path);
+GLuint gfx_create_program(const_str name, const char *vert_path, const char *geom_path, const char *frag_path);
 void gfx_free_program(GLuint program);
 
 // get pointer offset of 'field' in struct 'type'

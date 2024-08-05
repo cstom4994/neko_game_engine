@@ -268,7 +268,7 @@ void* DebugAllocator::alloc(size_t bytes, const char* file, i32 line) {
     LockGuard lock{&mtx};
 
     DebugAllocInfo* info = (DebugAllocInfo*)::malloc(offsetof(DebugAllocInfo, buf[bytes]));
-    NEKO_ASSERT(info, "FAILED_TO_ALLOCATE");
+    neko_assert(info, "FAILED_TO_ALLOCATE");
     info->file = file;
     info->line = line;
     info->size = bytes;
@@ -304,7 +304,7 @@ void* DebugAllocator::realloc(void* ptr, size_t new_size, const char* file, i32 
 
     // 分配新大小的新内存块
     DebugAllocInfo* new_info = (DebugAllocInfo*)::malloc(NEKO_OFFSET(DebugAllocInfo, buf[new_size]));
-    NEKO_ASSERT(new_info, "FAILED_TO_ALLOCATE");
+    neko_assert(new_info, "FAILED_TO_ALLOCATE");
     if (new_info == nullptr) {
         return nullptr;  // 分配失败
     }
@@ -656,7 +656,7 @@ void timing_load_all(Store* s) {
     if (store_child_load(&t, "timing", s)) scalar_load(&scale, "scale", 1, t);
 }
 
-void neko_log(int level, const char* file, int line, const char* fmt, ...) {
+void neko_log(const char* file, int line, const char* fmt, ...) {
 
     LockGuard lock{&g_app->log_mtx};
 
@@ -667,7 +667,6 @@ void neko_log(int level, const char* file, int line, const char* fmt, ...) {
         u32 time;
         FILE* udata;
         int line;
-        int level;
     } neko_log_event;
 
     static auto init_event = [](neko_log_event* ev, void* udata) {
@@ -678,18 +677,15 @@ void neko_log(int level, const char* file, int line, const char* fmt, ...) {
         ev->udata = (FILE*)udata;
     };
 
-    static const char* level_strings[] = {"T", "D", "I", "W", "E"};
-
     neko_log_event ev = {
             .fmt = fmt,
             .file = file,
             .line = line,
-            .level = level,
     };
 
     init_event(&ev, stderr);
     va_start(ev.ap, fmt);
-    fprintf(ev.udata, "%-1s %s:%d: ", level_strings[ev.level], neko_util_get_filename(ev.file), ev.line);
+    fprintf(ev.udata, "%s:%d: ", neko_util_get_filename(ev.file), ev.line);
     vfprintf(ev.udata, ev.fmt, ev.ap);
     fprintf(ev.udata, "\n");
     fflush(ev.udata);
@@ -1034,7 +1030,7 @@ bool watch::event_update(task& task) noexcept {
                 m_notify.emplace(notify::flag::rename, wtf8::w2u(path));
                 break;
             default:
-                NEKO_ASSERT(0, "unreachable");
+                neko_assert(0, "unreachable");
                 break;
         }
         if (!fni.NextEntryOffset) {
@@ -1317,6 +1313,9 @@ std::optional<notify> watch::select() noexcept {
 #else
 
 #endif
+
+void* c_mem_alloc(size_t bytes) { return g_allocator->alloc(bytes, __FILE__, __LINE__); }
+void c_mem_free(void* ptr) { g_allocator->free((void*)ptr); }
 
 #if NEKO_NEW
 

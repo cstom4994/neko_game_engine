@@ -1268,13 +1268,13 @@ static int open_embed_luastruct_test(lua_State* L) {
     return 1;
 }
 
-static const u8 neko_ecs_lua_data[] = {
-#include "neko_ecs.lua.h"
+static const u8 csb_lua_data[] = {
+#include "csb.lua.h"
 };
 
 int neko_ecs_lua_csb(lua_State* L) {
     ecs_t* w = (ecs_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
-    std::string contents = (const_str)neko_ecs_lua_data;
+    std::string contents = (const_str)csb_lua_data;
     if (luaL_loadbuffer(L, contents.c_str(), contents.size(), "csb.lua") != LUA_OK) {
         fprintf(stderr, "%s\n", lua_tostring(L, -1));
         neko_panic("failed to load csb");
@@ -1287,7 +1287,7 @@ int neko_ecs_lua_csb(lua_State* L) {
         // lua_pop(L, 1);
         neko_panic("failed to run csb");
     }
-    NEKO_INFO("loaded csb");
+    console_log("loaded csb");
     return 1;
 }
 
@@ -1339,7 +1339,7 @@ LUA_FUNCTION(__neko_ecs_lua_ent_iterator) {
     ecs_t* w = (ecs_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
     bool check_ready = lua_toboolean(L, 2);
 
-    // NEKO_ASSERT(ecs_is_not_null(w));
+    // neko_assert(ecs_is_not_null(w));
 
     ecs_ent_iter_t* it = (ecs_ent_iter_t*)lua_newuserdata(L, sizeof(ecs_ent_iter_t));
 
@@ -1383,7 +1383,7 @@ static int __neko_ecs_lua_attach(lua_State* L) {
             void* ptr = 0;
             ptrs.push(ptr);
         } else {
-            NEKO_WARN("argument %d is not a string", i);
+            console_log("argument %d is not a string", i);
         }
     }
     for (auto ptr : ptrs) {
@@ -1402,7 +1402,7 @@ static int __neko_ecs_lua_get_com(lua_State* L) {
 static int __neko_ecs_lua_gc(lua_State* L) {
     ecs_t* w = (ecs_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
     // ecs_free_i(w);
-    NEKO_DEBUG_LOG("ecs_lua_gc");
+    console_log("ecs_lua_gc");
     return 0;
 }
 
@@ -1416,7 +1416,7 @@ static ecs_ret_t l_system_update(ecs_t* ecs, ecs_id_t* entities, int entity_coun
 
     int systb = ecs->system_table_ref;
 
-    NEKO_ASSERT(systb != LUA_NOREF && L);
+    neko_assert(systb != LUA_NOREF && L);
 
     lua_rawgeti(L, LUA_REGISTRYINDEX, systb);
     lua_getfield(L, -1, ud->system_name.cstr());
@@ -1424,14 +1424,14 @@ static ecs_ret_t l_system_update(ecs_t* ecs, ecs_id_t* entities, int entity_coun
 
         for (int id = 0; id < entity_count; id++) {
             lua_getfield(L, -1, "func_update");
-            NEKO_ASSERT(lua_isfunction(L, -1));
+            neko_assert(lua_isfunction(L, -1));
             lua_pushinteger(L, entities[id]);
             lua_pushlstring(L, ud->system_name.cstr(), ud->system_name.len);
             lua_call(L, 2, 0);  // 调用
         }
 
     } else {
-        NEKO_WARN("callback with identifier '%s' not found or is not a function", ud->system_name.cstr());
+        console_log("callback with identifier '%s' not found or is not a function", ud->system_name.cstr());
     }
     lua_pop(L, 1);
 
@@ -1440,53 +1440,53 @@ static ecs_ret_t l_system_update(ecs_t* ecs, ecs_id_t* entities, int entity_coun
 
 static void l_system_add(ecs_t* ecs, ecs_id_t entity_id, void* udata) {
     lua_system_userdata* ud = (lua_system_userdata*)udata;
-    // NEKO_DEBUG_LOG("l_system_add %s ent_id %d", ud->system_name.cstr(), entity_id);
+    // console_log("l_system_add %s ent_id %d", ud->system_name.cstr(), entity_id);
 
     lua_State* L = ecs->L;
     int systb = ecs->system_table_ref;
 
-    NEKO_ASSERT(systb != LUA_NOREF);
+    neko_assert(systb != LUA_NOREF);
 
     lua_rawgeti(L, LUA_REGISTRYINDEX, systb);
     lua_getfield(L, -1, ud->system_name.cstr());
     if (lua_istable(L, -1)) {
         lua_getfield(L, -1, "func_add");
-        NEKO_ASSERT(lua_isfunction(L, -1));
+        neko_assert(lua_isfunction(L, -1));
         lua_pushinteger(L, entity_id);
         lua_pushlstring(L, ud->system_name.cstr(), ud->system_name.len);
         lua_call(L, 2, 0);  // 调用
     } else {
-        NEKO_WARN("callback with identifier '%s' not found or is not a function", ud->system_name.cstr());
+        console_log("callback with identifier '%s' not found or is not a function", ud->system_name.cstr());
     }
     lua_pop(L, 1);
 }
 
 static void l_system_remove(ecs_t* ecs, ecs_id_t entity_id, void* udata) {
     lua_system_userdata* ud = (lua_system_userdata*)udata;
-    // NEKO_DEBUG_LOG("l_system_remove %s ent_id %d", ud->system_name.cstr(), entity_id);
+    // console_log("l_system_remove %s ent_id %d", ud->system_name.cstr(), entity_id);
 
     lua_State* L = ecs->L;
     int systb = ecs->system_table_ref;
 
-    NEKO_ASSERT(systb != LUA_NOREF);
+    neko_assert(systb != LUA_NOREF);
 
     lua_rawgeti(L, LUA_REGISTRYINDEX, systb);
     lua_getfield(L, -1, ud->system_name.cstr());
     if (lua_istable(L, -1)) {
         lua_getfield(L, -1, "func_remove");
-        NEKO_ASSERT(lua_isfunction(L, -1));
+        neko_assert(lua_isfunction(L, -1));
         lua_pushinteger(L, entity_id);
         lua_pushlstring(L, ud->system_name.cstr(), ud->system_name.len);
         lua_call(L, 2, 0);  // 调用
     } else {
-        NEKO_WARN("callback with identifier '%s' not found or is not a function", ud->system_name.cstr());
+        console_log("callback with identifier '%s' not found or is not a function", ud->system_name.cstr());
     }
     lua_pop(L, 1);
 }
 
 static int __neko_ecs_lua_system(lua_State* L) {
     ecs_t* w = (ecs_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
-    NEKO_ASSERT(w->L == L);
+    neko_assert(w->L == L);
 
     ecs_id_t sys = u32_max;
     String system_name = luax_check_string(L, ECS_WORLD + 1);
@@ -1496,15 +1496,15 @@ static int __neko_ecs_lua_system(lua_State* L) {
         lua_createtable(L, 0, 2);
 
         lua_pushvalue(L, ECS_WORLD + 2);
-        NEKO_ASSERT(lua_isfunction(L, -1));
+        neko_assert(lua_isfunction(L, -1));
         lua_setfield(L, -2, "func_update");
 
         lua_pushvalue(L, ECS_WORLD + 3);
-        NEKO_ASSERT(lua_isfunction(L, -1));
+        neko_assert(lua_isfunction(L, -1));
         lua_setfield(L, -2, "func_add");
 
         lua_pushvalue(L, ECS_WORLD + 4);
-        NEKO_ASSERT(lua_isfunction(L, -1));
+        neko_assert(lua_isfunction(L, -1));
         lua_setfield(L, -2, "func_remove");
 
         lua_pushstring(L, system_name.cstr());
@@ -1517,7 +1517,7 @@ static int __neko_ecs_lua_system(lua_State* L) {
         // sys = ecs_register_system(w, l_system_update, l_system_add, l_system_remove, (void*)ud);
     }
 
-    NEKO_ASSERT(sys != u32_max);
+    neko_assert(sys != u32_max);
     lua_pushinteger(L, sys);
     return 1;
 }
@@ -1527,7 +1527,7 @@ static int __neko_ecs_lua_system_require_component(lua_State* L) {
     luaL_argcheck(L, n >= 3, 1, "lost the component name");
 
     ecs_t* w = (ecs_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
-    NEKO_ASSERT(w->L == L);
+    neko_assert(w->L == L);
 
     ecs_id_t sys = luaL_checkinteger(L, ECS_WORLD + 1);
 
@@ -1537,7 +1537,7 @@ static int __neko_ecs_lua_system_require_component(lua_State* L) {
             ecs_id_t comp_id = __neko_ecs_lua_component_id_w(L, comp_name);
             // ecs_require_component(w, sys, comp_id);
         } else {
-            NEKO_WARN("argument %d is not a ecs_component", i);
+            console_log("argument %d is not a ecs_component", i);
         }
     }
 
@@ -1547,7 +1547,7 @@ static int __neko_ecs_lua_system_require_component(lua_State* L) {
 
 static int __neko_ecs_lua_get(lua_State* L) {
     ecs_t* w = (ecs_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
-    NEKO_ASSERT(w->L == L);
+    neko_assert(w->L == L);
     ecs_id_t ent_id = lua_tointeger(L, ECS_WORLD + 1);
     ecs_id_t comp_id = lua_tointeger(L, ECS_WORLD + 2);
     // void* ptr = ecs_get(w, ent_id, comp_id);
@@ -1558,7 +1558,7 @@ static int __neko_ecs_lua_get(lua_State* L) {
 
 static int __neko_ecs_lua_system_run(lua_State* L) {
     ecs_t* w = (ecs_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
-    NEKO_ASSERT(w->L == L);
+    neko_assert(w->L == L);
     ecs_id_t sys = lua_tointeger(L, ECS_WORLD + 1);
     f64 dt = lua_tonumber(L, ECS_WORLD + 2);
     // ecs_ret_t ret = ecs_update_system(w, sys, dt);
@@ -1595,14 +1595,14 @@ ecs_id_t ecs_component_w(ecs_t* w, const_str component_name, size_t component_si
 
             // if (NULL == constructor && NULL == destructor) {
             //     lua_pushvalue(L, ECS_WORLD + 3);
-            //     NEKO_ASSERT(lua_isfunction(L, -1));
+            //     neko_assert(lua_isfunction(L, -1));
             //     lua_setfield(L, -2, "func_ctor");
             // }
 
             lua_settable(L, -3);
             lua_pop(L, 1);
         } else {
-            NEKO_ERROR("%s", "failed to get comp_map");
+            console_log("%s", "failed to get comp_map");
             lua_pop(L, 1);
         }
 
@@ -1620,20 +1620,20 @@ ecs_id_t ecs_component_w(ecs_t* w, const_str component_name, size_t component_si
 
             // // if (NULL == constructor && NULL == destructor) {
             // //     lua_pushvalue(L, ECS_WORLD + 3);
-            // //     NEKO_ASSERT(lua_isfunction(L, -1));
+            // //     neko_assert(lua_isfunction(L, -1));
             // //     lua_setfield(L, -2, "func_ctor");
             // // }
 
             // lua_settable(L, -3);
             lua_pop(L, 1);
         } else {
-            NEKO_ERROR("%s", "failed to get comps");
+            console_log("%s", "failed to get comps");
             lua_pop(L, 1);
         }
 
         lua_pop(L, 1);
     } else {
-        NEKO_ERROR("%s", "failed to get upvalue NEKO_ECS_COMPONENTS_NAME");
+        console_log("%s", "failed to get upvalue NEKO_ECS_COMPONENTS_NAME");
         lua_pop(L, 1);
     }
     lua_pop(L, 1);  // pop 1
@@ -1643,17 +1643,17 @@ ecs_id_t ecs_component_w(ecs_t* w, const_str component_name, size_t component_si
 
 static void l_component_ctor(ecs_t* ecs, ecs_id_t entity_id, void* ptr, void* args) {
     // lua_system_userdata* ud = (lua_system_userdata*)udata;
-    // NEKO_DEBUG_LOG("l_system_remove %s ent_id %d", ud->system_name.cstr(), entity_id);
+    // console_log("l_system_remove %s ent_id %d", ud->system_name.cstr(), entity_id);
 
     lua_State* L = ecs->L;
     int systb = ecs->system_table_ref;
 
-    NEKO_ASSERT(systb != LUA_NOREF);
+    neko_assert(systb != LUA_NOREF);
 }
 
 static int __neko_ecs_lua_component(lua_State* L) {
     ecs_t* w = (ecs_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
-    NEKO_ASSERT(w->L == L);
+    neko_assert(w->L == L);
 
     ecs_id_t id = u32_max;
     String comp_name = luax_check_string(L, ECS_WORLD + 1);
@@ -1661,21 +1661,21 @@ static int __neko_ecs_lua_component(lua_State* L) {
 
     // id = ecs_component_w(w, comp_name.cstr(), size, NULL, NULL);
 
-    NEKO_ASSERT(id != u32_max);
+    neko_assert(id != u32_max);
     lua_pushinteger(L, id);
     return 1;
 }
 
 static int __neko_ecs_lua_component_id(lua_State* L) {
     ecs_t* w = (ecs_t*)luaL_checkudata(L, ECS_WORLD, ECS_WORLD_UDATA_NAME);
-    NEKO_ASSERT(w->L == L);
+    neko_assert(w->L == L);
 
     ecs_id_t id = u32_max;
     String comp_name = luax_check_string(L, ECS_WORLD + 1);
 
     id = __neko_ecs_lua_component_id_w(L, comp_name.cstr());
 
-    NEKO_ASSERT(id != u32_max);
+    neko_assert(id != u32_max);
     lua_pushinteger(L, id);
     return 1;
 }
@@ -1683,11 +1683,11 @@ static int __neko_ecs_lua_component_id(lua_State* L) {
 ecs_t* ecs_init(lua_State* L) {
     PROFILE_FUNC();
 
-    NEKO_ASSERT(L);
+    neko_assert(L);
     ecs_t* w = (ecs_t*)lua_newuserdatauv(L, sizeof(ecs_t), NEKO_ECS_UPVAL_N);  // # -1
     // w = ecs_new_i(L, w, 1024, NULL);
     // if (w == NULL || w->entities == NULL) {
-    //     NEKO_ERROR("failed to initialize ecs_t");
+    //     console_log("failed to initialize ecs_t");
     //     return NULL;
     // }
 

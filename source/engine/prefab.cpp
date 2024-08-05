@@ -2,7 +2,6 @@
 
 #include "engine/system.h"
 
-
 static Entity saved_root;
 
 void prefab_save(const char *filename, Entity root) {

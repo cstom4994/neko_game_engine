@@ -1,28 +1,29 @@
 #ifndef SPRITE_H
 #define SPRITE_H
 
-#include "engine/ecs.h"
 #include "engine/base.h"
+#include "engine/ecs.h"
+#include "engine/glew_glfw.h"
 #include "engine/prelude.h"
 
 NEKO_SCRIPT(sprite,
 
-       NEKO_EXPORT void sprite_set_atlas(const char *filename);
-       NEKO_EXPORT const char *sprite_get_atlas();
+            NEKO_EXPORT void sprite_set_atlas(const char *filename);
+            NEKO_EXPORT const char *sprite_get_atlas();
 
-       NEKO_EXPORT void sprite_add(Entity ent); NEKO_EXPORT void sprite_remove(Entity ent); NEKO_EXPORT bool sprite_has(Entity ent);
+            NEKO_EXPORT void sprite_add(Entity ent); NEKO_EXPORT void sprite_remove(Entity ent); NEKO_EXPORT bool sprite_has(Entity ent);
 
-       // size to draw in world units, centered at transform position
-       NEKO_EXPORT void sprite_set_size(Entity ent, CVec2 size); NEKO_EXPORT CVec2 sprite_get_size(Entity ent);
+            // size to draw in world units, centered at transform position
+            NEKO_EXPORT void sprite_set_size(Entity ent, CVec2 size); NEKO_EXPORT CVec2 sprite_get_size(Entity ent);
 
-       // bottom left corner of atlas region in pixels
-       NEKO_EXPORT void sprite_set_texcell(Entity ent, CVec2 texcell); NEKO_EXPORT CVec2 sprite_get_texcell(Entity ent);
+            // bottom left corner of atlas region in pixels
+            NEKO_EXPORT void sprite_set_texcell(Entity ent, CVec2 texcell); NEKO_EXPORT CVec2 sprite_get_texcell(Entity ent);
 
-       // size of atlas region in pixels
-       NEKO_EXPORT void sprite_set_texsize(Entity ent, CVec2 texsize); NEKO_EXPORT CVec2 sprite_get_texsize(Entity ent);
+            // size of atlas region in pixels
+            NEKO_EXPORT void sprite_set_texsize(Entity ent, CVec2 texsize); NEKO_EXPORT CVec2 sprite_get_texsize(Entity ent);
 
-       // lower depth drawn on top
-       NEKO_EXPORT void sprite_set_depth(Entity ent, int depth); NEKO_EXPORT int sprite_get_depth(Entity ent);
+            // lower depth drawn on top
+            NEKO_EXPORT void sprite_set_depth(Entity ent, int depth); NEKO_EXPORT int sprite_get_depth(Entity ent);
 
 )
 

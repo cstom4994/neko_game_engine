@@ -21,17 +21,6 @@
 #include "engine/ui.h"
 
 // deps
-// #include <sokol_app.h>
-// #include <sokol_gfx.h>
-// #include <sokol_glue.h>
-// #include <sokol_log.h>
-// #include <sokol_time.h>
-// #include <util/sokol_gfx_imgui.h>
-// #include <util/sokol_gl.h>
-
-// gp
-// #include "vendor/sokol_gp.h"
-
 #include "vendor/sokol_time.h"
 
 #if 0
@@ -105,13 +94,13 @@ lua_State *neko_scripting_init() {
     lua_atpanic(
             L, +[](lua_State *L) {
                 auto msg = neko_lua_to<const_str>(L, -1);
-                NEKO_ERROR("[lua] neko_panic error: %s", msg);
+                console_log("[lua] neko_panic error: %s", msg);
                 return 0;
             });
     neko_register(L);
 
     timer.stop();
-    NEKO_INFO(std::format("lua init done in {0:.3f} ms", timer.get()).c_str());
+    console_log(std::format("lua init done in {0:.3f} ms", timer.get()).c_str());
 
     return L;
 }
@@ -220,7 +209,7 @@ void game_init() {
         // 获取 neko.conf.table
         luax_get(ENGINE_LUA(), "neko", "conf");
         if (!lua_istable(ENGINE_LUA(), -1)) {
-            NEKO_ERROR("%s", "neko_game is not a table");
+            console_log("%s", "neko_game is not a table");
         }
 
         neko::reflection::Any v = neko_os_running_desc_t{.title = "Neko Engine"};
@@ -252,13 +241,13 @@ void game_init() {
 
         lua_pop(ENGINE_LUA(), 1);  // 弹出 neko.conf.table
 
-        NEKO_INFO("load game: %s %d %d", v.cast<neko_os_running_desc_t>().title, v.cast<neko_os_running_desc_t>().width, v.cast<neko_os_running_desc_t>().height);
+        console_log("load game: %s %d %d", v.cast<neko_os_running_desc_t>().title, v.cast<neko_os_running_desc_t>().width, v.cast<neko_os_running_desc_t>().height);
 
         neko_os_set_window_title(neko_os_main_window(), v.cast<neko_os_running_desc_t>().title);
     }
 
     bool ok = ENGINE_INTERFACE()->pack.load("gamedir/res.pack", 0, false);
-    NEKO_ASSERT(ok == true);
+    neko_assert(ok == true);
 
     u8 *font_data, *cat_data;
     u32 font_data_size, cat_data_size;
@@ -316,7 +305,7 @@ void game_init() {
     luax_get(ENGINE_LUA(), "neko", "game_init_thread");
     luax_pcall(ENGINE_LUA(), 0, 0);
     timer.stop();
-    NEKO_INFO(std::format("game_init_thread loading done in {0:.3f} ms", timer.get()).c_str());
+    console_log(std::format("game_init_thread loading done in {0:.3f} ms", timer.get()).c_str());
 }
 
 void game_loop() {
@@ -372,7 +361,7 @@ void game_loop() {
         //     game_userdata->init_work_thread.join();
         //     // game_userdata->init_work_sema.wait();
         //     game_userdata->init_work_sema.trash();
-        //     NEKO_TRACE("init_work_thread done");
+        //     console_log("init_work_thread done");
         // }
 
         f32 dt = neko_os_delta_time();
@@ -550,7 +539,7 @@ NEKO_API_DECL neko_instance_t *neko_create(int argc, char **argv) {
 
         neko_instance()->console = &g_console;
 
-        NEKO_INFO("neko engine build %d", neko_buildnum());
+        console_log("neko engine build %d", neko_buildnum());
 
         {
 
@@ -930,6 +919,8 @@ static void init() {
     }
 
     {
+
+#if NEKO_AUDIO == 1
         PROFILE_BLOCK("miniaudio");
 
         g_app->miniaudio_vfs = vfs_for_miniaudio();
@@ -942,6 +933,7 @@ static void init() {
         if (res != MA_SUCCESS) {
             fatal_error("failed to initialize audio engine");
         }
+#endif
     }
 
     // microui_init();
@@ -977,7 +969,7 @@ static void init() {
 
     tm_init.stop();
 
-    NEKO_INFO("end of init in %.3f ms", tm_init.get());
+    console_log("end of init in %.3f ms", tm_init.get());
 }
 
 #if 0
@@ -1382,7 +1374,7 @@ sapp_desc sokol_main(int argc, char **argv) {
             function neko.start(arg) game_proxy_start(arg) end
             function neko.frame(dt) game_proxy_frame(dt) end
         )lua");
-        NEKO_INFO("using default game proxy");
+        console_log("using default game proxy");
     }
 
     CVAR(conf_hot_reload, hot_reload);

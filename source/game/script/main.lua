@@ -64,8 +64,6 @@ end
 
 luainspector = Inspector.inspector_init()
 
--- lovebird = require("libs/lovebird")
-
 game_imgui = require("cimgui")
 
 ns.edit.undo_save()

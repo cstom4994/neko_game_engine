@@ -4,8 +4,6 @@
 #include "engine/lua_util.h"
 #include "engine/luabind.hpp"
 #include "engine/luax.h"
-#include "engine/tolua.h"
-
 
 int load_embed_lua(lua_State* L, const u8 B[], const_str name) {
     std::string contents = (const_str)B;
@@ -33,13 +31,9 @@ static const u8 g_lua_common_data[] = {
 static const u8 g_lua_bootstrap_data[] = {
 #include "bootstrap.lua.h"
 };
-static const u8 g_lua_gen_neko_api_data[] = {
-#include "gen_neko_api.lua.h"
-};
 
 LUAOPEN_EMBED_DATA(open_embed_common, "common.lua", g_lua_common_data);
 LUAOPEN_EMBED_DATA(open_embed_bootstrap, "bootstrap.lua", g_lua_bootstrap_data);
-LUAOPEN_EMBED_DATA(open_embed_gen_neko_api, "gen_neko_api.lua", g_lua_gen_neko_api_data);
 
 #ifdef NEKO_LUASOCKET
 static const u8 ltn12_compressed_data[] = {
@@ -89,7 +83,6 @@ extern "C" {
 int luaopen_socket_core(lua_State* L);
 int luaopen_mime_core(lua_State* L);
 int luaopen_http(lua_State* L);
-int luaopen_enet(lua_State* l);
 }
 
 namespace neko::lua {
@@ -97,11 +90,8 @@ void package_preload_embed(lua_State* L) {
 
     luaL_Reg preloads[] = {
             {"common", open_embed_common},
-            {"gen_neko_api", open_embed_gen_neko_api},
 
             {"http", luaopen_http},
-
-            {"enet", luaopen_enet},
 
 #ifdef NEKO_LUASOCKET
             {"socket.core", luaopen_socket_core},
@@ -139,39 +129,3 @@ void luax_run_bootstrap(lua_State* L) {
     console_log("loaded bootstrap");
 }
 }  // namespace neko::lua
-
-int neko_tolua_boot_open(lua_State* L);
-
-int neko_tolua_boot_open(lua_State* L) {
-    neko_tolua_open(L);
-    neko_tolua_module(L, NULL, 0);
-    neko_tolua_beginmodule(L, NULL);
-
-    {
-        int top = lua_gettop(L);
-        static const u8 B[] = {
-#include "tolua.lua.h"
-        };
-        load_embed_lua(L, B, "tolua embedded: lua/tolua.lua");
-        lua_settop(L, top);
-    }
-
-    {
-        int top = lua_gettop(L);
-        static const unsigned char B[] = R"lua(
-local err, msg = xpcall(doit, debug.traceback)
-if not err then
-    print(msg)
-    local _,_,label,msg = strfind(msg,"(.-:.-:%s*)(.*)")
-    neko_tolua_error(msg,label)
-else
-    print("neko tolua generate ok")
-end
-        )lua";
-        load_embed_lua(L, B, "tolua: embedded boot code");
-        lua_settop(L, top);
-    }
-
-    neko_tolua_endmodule(L);
-    return 1;
-}

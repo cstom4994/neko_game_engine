@@ -41,6 +41,7 @@
 #pragma clang diagnostic ignored "-Wunused-function"
 #endif
 
+#if NEKO_AUDIO == 1
 #define MA_ENABLE_ONLY_SPECIFIC_BACKENDS
 #define MA_ENABLE_WASAPI
 #define MA_ENABLE_ALSA
@@ -49,6 +50,7 @@
 #define MA_NO_GENERATION
 #define MINIAUDIO_IMPLEMENTATION
 #include <miniaudio.h>
+#endif
 
 #ifdef __clang__
 #pragma clang diagnostic pop

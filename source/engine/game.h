@@ -3,11 +3,11 @@
 
 #include <atomic>
 
-#include "engine/api_core.h"
 #include "engine/asset.h"
 #include "engine/base.h"
 #include "engine/component.h"
 #include "engine/ecs.h"
+#include "engine/gfx.h"
 #include "engine/os.h"
 #include "engine/prelude.h"
 #include "engine/sound.h"
@@ -85,11 +85,15 @@ struct App {
 
     int g_lua_callbacks_table_ref;  // LUA_NOREF
 
+#if NEKO_AUDIO == 1
     void *miniaudio_vfs;
     ma_engine audio_engine;
     Array<Sound *> garbage_sounds;
+#endif
 
     GLFWwindow *game_window;
+
+    neko_dyn_array(shader_pair) shader_array;
 };
 
 extern App *g_app;
@@ -125,15 +129,15 @@ char **game_get_argv();
 
 NEKO_SCRIPT(game,
 
-       NEKO_EXPORT void game_set_bg_color(Color c);
+            NEKO_EXPORT void game_set_bg_color(Color c);
 
-       // 屏幕空间坐标系:
-       // unit: (0, 0) 中间, (1, 1) 右上
-       // pixels: (0, 0) 左上方, game_get_window_size() 右下角
-       NEKO_EXPORT void game_set_window_size(CVec2 s);  // width, height in pixels
-       NEKO_EXPORT CVec2 game_get_window_size(); NEKO_EXPORT CVec2 game_unit_to_pixels(CVec2 p); NEKO_EXPORT CVec2 game_pixels_to_unit(CVec2 p);
+            // 屏幕空间坐标系:
+            // unit: (0, 0) 中间, (1, 1) 右上
+            // pixels: (0, 0) 左上方, game_get_window_size() 右下角
+            NEKO_EXPORT void game_set_window_size(CVec2 s);  // width, height in pixels
+            NEKO_EXPORT CVec2 game_get_window_size(); NEKO_EXPORT CVec2 game_unit_to_pixels(CVec2 p); NEKO_EXPORT CVec2 game_pixels_to_unit(CVec2 p);
 
-       NEKO_EXPORT void game_quit();
+            NEKO_EXPORT void game_quit();
 
 )
 

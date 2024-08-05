@@ -17,10 +17,6 @@
 #include "engine/neko.hpp"
 #include "engine/ui.h"
 
-void render_uniform_variable(GLuint program, GLenum type, const char* name, GLint location);
-void inspect_shader(const char* label, GLuint program);
-void inspect_vertex_array(const char* label, GLuint vao);
-
 namespace neko {
 
 class CCharacter {
@@ -245,7 +241,7 @@ static int __luainspector_gc(lua_State* L) {
         m->variable_pool_free();
         m->setL(0x0);
     }
-    NEKO_DEBUG_LOG("luainspector __gc %p", m);
+    console_log("luainspector __gc %p", m);
     return 0;
 }
 
@@ -590,23 +586,23 @@ int neko::luainspector::command_line_input_callback(ImGuiInputTextCallbackData* 
         std::string complete = this->try_complete(cmd);
         if (!complete.empty()) {
             paste_buffer(complete.data(), complete.data() + complete.size(), command_beg - cmd.data());
-            NEKO_TRACE("%s", complete.c_str());
+            console_log("%s", complete.c_str());
         }
     }
     if (data->EventKey == ImGuiKey_UpArrow) {
         cmd2 = this->read_history(-1);
         paste_buffer(cmd2.data(), cmd2.data() + cmd2.size(), command_beg - cmd.data());
-        NEKO_TRACE("h:%s", cmd2.c_str());
+        console_log("h:%s", cmd2.c_str());
     }
     if (data->EventKey == ImGuiKey_DownArrow) {
         cmd2 = this->read_history(1);
         paste_buffer(cmd2.data(), cmd2.data() + cmd2.size(), command_beg - cmd.data());
-        NEKO_TRACE("h:%s", cmd2.c_str());
+        console_log("h:%s", cmd2.c_str());
     }
 
     if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
         std::string* str = user_data->Str;
-        NEKO_ASSERT(data->Buf == str->c_str());
+        neko_assert(data->Buf == str->c_str());
         str->resize(data->BufTextLen);
         data->Buf = (char*)str->c_str();
     } else if (user_data->ChainCallback) {
@@ -744,6 +740,8 @@ void neko::luainspector::console_draw(bool& textbox_react) noexcept {
     ImVec2 size = ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetWindowSize().y - 80 - TEXT_BASE_HIGHT * 2);
     if (ImGui::BeginChild("##console_log", size)) {
         ImGui::PushTextWrapPos(ImGui::GetContentRegionAvail().x);
+
+        neko_assert(&messageLog);
 
         for (auto& a : messageLog) {
             ImVec4 colour;
@@ -896,7 +894,7 @@ void neko::luainspector::inspect_table(lua_State* L, inspect_table_config& cfg) 
                     lua_pop(L, 1);                 // # -1 pop value
                     lua_pushstring(L, v.c_str());  // # -1 push new value
                     lua_setfield(L, -3, name);     // -3 table
-                    NEKO_TRACE("改 %s = %s", name, v.c_str());
+                    console_log("改 %s = %s", name, v.c_str());
                 }
 
                 ImGui::TreePop();
@@ -989,10 +987,16 @@ void neko::luainspector::inspect_table(lua_State* L, inspect_table_config& cfg) 
             ImGui::TextDisabled("%s", lua_typename(L, lua_type(L, -1)));
             ImGui::TableNextColumn();
             ImGui::TextColored(rgba_to_imvec(220, 160, 40, 255), "%s", NEKO_BOOL_STR(lua_toboolean(L, -1)));
+        } else if (type == LUA_TCDATA) {
+            ImGui::TreeNodeEx(name, tree_node_flags | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_Bullet | ImGuiTreeNodeFlags_NoTreePushOnOpen);
+            ImGui::TableNextColumn();
+            ImGui::TextDisabled("%s", lua_typename(L, lua_type(L, -1)));
+            ImGui::TableNextColumn();
+            ImGui::TextColored(rgba_to_imvec(220, 160, 40, 255), "%p", lua_topointer(L, -1));
         } else {
             ImGui::TreeNodeEx(name, tree_node_flags | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_Bullet | ImGuiTreeNodeFlags_NoTreePushOnOpen);
             ImGui::TableNextColumn();
-            ImGui::TextColored(rgba_to_imvec(240, 0, 0, 255), "Unknown");
+            ImGui::TextColored(rgba_to_imvec(240, 0, 0, 255), "Unknown %d", type);
             ImGui::TableNextColumn();
             ImGui::Text("Unknown");
         }
@@ -1097,7 +1101,7 @@ int neko::luainspector::luainspector_draw(lua_State* L) {
                 for (auto& property_it : properties) {
 
                     auto prop_render_func_it = model->m_type_render_functions.find(property_it.param_type);
-                    NEKO_ASSERT(prop_render_func_it != model->m_type_render_functions.end());  // unsupported type, render function not found
+                    neko_assert(prop_render_func_it != model->m_type_render_functions.end());  // unsupported type, render function not found
                     const_str label = property_it.label.c_str();
                     void* value = property_it.param;
                     if (ImGui::CollapsingHeader(std::format("{0} | {1}", label, property_it.param_type.name()).c_str())) {
@@ -1296,7 +1300,7 @@ void render_uniform_variable(GLuint program, GLenum type, const char* name, GLin
 float get_scrollable_height() { return ImGui::GetTextLineHeight() * 16; }
 
 void inspect_shader(const char* label, GLuint program) {
-    NEKO_ASSERT(label != nullptr);
+    neko_assert(label != nullptr);
 
     ImGui::PushID(label);
     if (ImGui::CollapsingHeader(label)) {
@@ -1371,8 +1375,8 @@ void inspect_shader(const char* label, GLuint program) {
 }
 
 void inspect_vertex_array(const char* label, GLuint vao) {
-    NEKO_ASSERT(label != nullptr);
-    NEKO_ASSERT(glIsVertexArray(vao));
+    neko_assert(label != nullptr);
+    neko_assert(glIsVertexArray(vao));
 
     ImGui::PushID(label);
     if (ImGui::CollapsingHeader(label)) {
