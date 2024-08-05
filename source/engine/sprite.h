@@ -5,7 +5,7 @@
 #include "engine/base.h"
 #include "engine/prelude.h"
 
-SCRIPT(sprite,
+NEKO_SCRIPT(sprite,
 
        NEKO_EXPORT void sprite_set_atlas(const char *filename);
        NEKO_EXPORT const char *sprite_get_atlas();

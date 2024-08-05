@@ -7,7 +7,7 @@
 #include "engine/ecs.h"
 #include "engine/prelude.h"
 
-SCRIPT(
+NEKO_SCRIPT(
         edit,
 
         NEKO_EXPORT void edit_set_enabled(bool e);

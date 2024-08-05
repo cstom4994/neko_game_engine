@@ -1936,7 +1936,7 @@ void array_sort(CArray* arr, int (*compar)(const void*, const void*));  // compa
 
 #define array_foreach(var, arr) for (void* __end = (var = (decltype(var))array_begin(arr), array_end(arr)); var != __end; ++var)
 
-SCRIPT(scalar,
+NEKO_SCRIPT(scalar,
 
        typedef float Scalar;
 
@@ -1965,7 +1965,7 @@ SCRIPT(scalar,
 
 #define scalar_floor floor
 
-SCRIPT(saveload,
+NEKO_SCRIPT(saveload,
 
        // 请记住 *_close(...) 当完成以释放资源时
 
@@ -2015,7 +2015,7 @@ bool bool_load(bool* b, const char* name, bool d, Store* s);
 void string_save(const char** c, const char* name, Store* s);
 bool string_load(char** c, const char* name, const char* d, Store* s);
 
-SCRIPT(
+NEKO_SCRIPT(
         vec2,
 
         typedef struct CVec2 CVec2;
@@ -2042,7 +2042,7 @@ SCRIPT(
 
 #define vec2(x, y) (CVec2{(Scalar)(x), (Scalar)(y)})
 
-SCRIPT(
+NEKO_SCRIPT(
         mat3,
 
         /*
@@ -2086,7 +2086,7 @@ SCRIPT(
 
 #define mat3_identity() mat3(1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f)
 
-SCRIPT(
+NEKO_SCRIPT(
         bbox,
 
         typedef struct BBox BBox;
@@ -2108,7 +2108,7 @@ SCRIPT(
 
 )
 
-SCRIPT(
+NEKO_SCRIPT(
         color,
 
         typedef struct Color Color;

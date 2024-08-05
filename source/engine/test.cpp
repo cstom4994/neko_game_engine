@@ -10,19 +10,20 @@
 #include <vector>
 
 // engine
-#include "engine/neko.hpp"
 #include "engine/api.hpp"
-#include "engine/game.h"
 #include "engine/asset.h"
 #include "engine/base.h"
 #include "engine/ecs.h"
-#include "engine/luax.h"
+#include "engine/game.h"
 #include "engine/lua_struct.h"
 #include "engine/lua_table.hpp"
 #include "engine/luabind.hpp"
+#include "engine/luax.h"
+#include "engine/neko.hpp"
 #include "engine/prelude.h"
 #include "engine/reflection.hpp"
 #include "engine/seri.h"
+
 
 #pragma region test
 
@@ -125,6 +126,8 @@ int TestBinding_1(lua_State* L) {
     return 1;
 }
 
+#if 0
+
 // System IDs
 ecs_id_t System1;
 ecs_id_t System2;
@@ -226,6 +229,8 @@ int TestEcs(lua_State* L) {
     return 1;
 }
 
+#endif
+
 static int LUASTRUCT_test_vec4(lua_State* L) {
     Vector4* v4 = CHECK_STRUCT(L, 1, Vector4);
     v4->x += 10.f;
@@ -256,7 +261,7 @@ LUABIND_MODULE() {
                  return 1;
              }},
             {"TestBinding_1", TestBinding_1},
-            {"TestEcs", TestEcs},
+            // {"TestEcs", TestEcs},
             {NULL, NULL},
     };
     luaL_newlibtable(L, lib);

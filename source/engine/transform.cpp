@@ -4,9 +4,9 @@
 #include <stdio.h>
 
 #include "edit.h"
+#include "engine/base.h"
 #include "engine/ecs.h"
 #include "engine/prelude.h"
-#include "engine/base.h"
 
 typedef struct Transform Transform;
 struct Transform {
@@ -24,7 +24,7 @@ struct Transform {
 
     CMat3 worldmat_cache;  // 在父子更新时缓存
 
-    unsigned int dirty_count;
+    ecs_id_t dirty_count;
 };
 
 static EntityPool *pool;
@@ -158,7 +158,7 @@ Entity transform_get_parent(Entity ent) {
     error_assert(transform);
     return transform->parent;
 }
-unsigned int transform_get_num_children(Entity ent) {
+ecs_id_t transform_get_num_children(Entity ent) {
     Transform *transform = (Transform *)entitypool_get(pool, ent);
     error_assert(transform);
     return transform->children ? array_length(transform->children) : 0;
@@ -277,7 +277,7 @@ CVec2 transform_world_to_local(Entity ent, CVec2 v) {
     return mat3_transform(mat3_inverse(transform->worldmat_cache), v);
 }
 
-unsigned int transform_get_dirty_count(Entity ent) {
+ecs_id_t transform_get_dirty_count(Entity ent) {
     Transform *transform = (Transform *)entitypool_get(pool, ent);
     error_assert(transform);
     return transform->dirty_count;

@@ -5,7 +5,7 @@
 #include "engine/base.h"
 #include "engine/prelude.h"
 
-SCRIPT(prefab,
+NEKO_SCRIPT(prefab,
 
        // 将所有过滤的实体保存为预制件 并将root作为根
        NEKO_EXPORT void prefab_save(const char *filename, Entity root);

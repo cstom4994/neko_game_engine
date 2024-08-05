@@ -17,7 +17,7 @@ docs/
 
 neko_cache/
 source/api/gen
-source/game/lua/libs
+source/game/*/libs
 source/tests
 source/vendor
 examples/

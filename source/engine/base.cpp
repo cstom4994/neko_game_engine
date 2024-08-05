@@ -8,8 +8,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "engine/prelude.h"
 #include "engine/os.h"
+#include "engine/prelude.h"
+
 
 SplitLinesIterator &SplitLinesIterator::operator++() {
     if (&view.data[view.len] == &data.data[data.len]) {

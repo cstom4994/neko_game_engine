@@ -1,20 +1,12 @@
 
 
-#include "engine/neko.hpp"
 #include "engine/asset.h"
 #include "engine/game.h"
-
+#include "engine/neko.hpp"
 
 // deps
 #include <stb_image.h>
 #include <stb_image_resize2.h>
-
-#define CUTE_ASEPRITE_ASSERT NEKO_ASSERT
-#define CUTE_ASEPRITE_ALLOC(size, ctx) mem_alloc(size)
-#define CUTE_ASEPRITE_FREE(mem, ctx) mem_free(mem)
-
-#define CUTE_ASEPRITE_IMPLEMENTATION
-#include <cute_aseprite.h>
 
 // template <typename T>
 // inline auto sg_make(const T &d) {
@@ -93,145 +85,6 @@ static std::tuple<u32, i32, i32> image_load_stbi(String contents, bool generate_
     return std::make_tuple(id, width, height);
 }
 
-void neko_aseprite_default_blend_bind(ase_t *ase) {
-
-    NEKO_ASSERT(ase);
-    NEKO_ASSERT(ase->frame_count);
-
-    // 为了方便起见，将所有单元像素混合到各自的帧中
-    for (int i = 0; i < ase->frame_count; ++i) {
-        ase_frame_t *frame = ase->frames + i;
-        if (frame->pixels != NULL) mem_free(frame->pixels);
-        frame->pixels = (ase_color_t *)mem_alloc((size_t)(sizeof(ase_color_t)) * ase->w * ase->h);
-        memset(frame->pixels, 0, sizeof(ase_color_t) * (size_t)ase->w * (size_t)ase->h);
-        ase_color_t *dst = frame->pixels;
-
-        NEKO_DEBUG_LOG("neko_aseprite_default_blend_bind: frame: %d cel_count: %d", i, frame->cel_count);
-
-        for (int j = 0; j < frame->cel_count; ++j) {  //
-
-            ase_cel_t *cel = frame->cels + j;
-
-            if (!(cel->layer->flags & ASE_LAYER_FLAGS_VISIBLE) || (cel->layer->parent && !(cel->layer->parent->flags & ASE_LAYER_FLAGS_VISIBLE))) {
-                continue;
-            }
-
-            while (cel->is_linked) {
-                ase_frame_t *frame = ase->frames + cel->linked_frame_index;
-                int found = 0;
-                for (int k = 0; k < frame->cel_count; ++k) {
-                    if (frame->cels[k].layer == cel->layer) {
-                        cel = frame->cels + k;
-                        found = 1;
-                        break;
-                    }
-                }
-                NEKO_ASSERT(found);
-            }
-            void *src = cel->pixels;
-            u8 opacity = (u8)(cel->opacity * cel->layer->opacity * 255.0f);
-            int cx = cel->x;
-            int cy = cel->y;
-            int cw = cel->w;
-            int ch = cel->h;
-            int cl = -NEKO_MIN(cx, 0);
-            int ct = -NEKO_MIN(cy, 0);
-            int dl = NEKO_MAX(cx, 0);
-            int dt = NEKO_MAX(cy, 0);
-            int dr = NEKO_MIN(ase->w, cw + cx);
-            int db = NEKO_MIN(ase->h, ch + cy);
-            int aw = ase->w;
-            for (int dx = dl, sx = cl; dx < dr; dx++, sx++) {
-                for (int dy = dt, sy = ct; dy < db; dy++, sy++) {
-                    int dst_index = aw * dy + dx;
-                    ase_color_t src_color = s_color(ase, src, cw * sy + sx);
-                    ase_color_t dst_color = dst[dst_index];
-                    ase_color_t result = s_blend(src_color, dst_color, opacity);
-                    dst[dst_index] = result;
-                }
-            }
-        }
-    }
-}
-
-static std::tuple<u32, i32, i32> image_load_ase(String contents, bool generate_mips) {
-    i32 width = 0, height = 0, channels = 0;
-    u32 id = 0;
-
-    ase_t *ase;
-    {
-        PROFILE_BLOCK("ase_image load");
-        ase = cute_aseprite_load_from_memory(contents.data, contents.len, nullptr);
-
-        NEKO_ASSERT(ase->frame_count == 1);  // image_load_ase 用于加载简单的单帧 aseprite
-        // neko_aseprite_default_blend_bind(ase);
-
-        width = ase->w;
-        height = ase->h;
-    }
-
-    if (width == 0 || height == 0) {
-        return std::make_tuple(id, width, height);
-    }
-    neko_defer(cute_aseprite_free(ase));
-
-    u8 *data = reinterpret_cast<u8 *>(ase->frames->pixels);
-
-    // sg_image_desc desc = {};
-    // desc.pixel_format = SG_PIXELFORMAT_RGBA8;
-    // desc.width = width;
-    // desc.height = height;
-    // desc.data.subimage[0][0].ptr = data;
-    // desc.data.subimage[0][0].size = width * height * 4;
-
-    Array<u8 *> mips = {};
-    neko_defer({
-        for (u8 *mip : mips) {
-            mem_free(mip);
-        }
-        mips.trash();
-    });
-
-    if (generate_mips) {
-        // mips.reserve(SG_MAX_MIPMAPS);
-
-        u8 *prev = data;
-        i32 w0 = width;
-        i32 h0 = height;
-        i32 w1 = w0 / 2;
-        i32 h1 = h0 / 2;
-
-        while (w1 > 1 && h1 > 1) {
-            PROFILE_BLOCK("generate mip");
-
-            u8 *mip = (u8 *)mem_alloc(w1 * h1 * 4);
-            stbir_resize_uint8_linear(prev, w0, h0, 0, mip, w1, h1, 0, STBIR_RGBA);
-            mips.push(mip);
-
-            // desc.data.subimage[0][mips.len].ptr = mip;
-            // desc.data.subimage[0][mips.len].size = w1 * h1 * 4;
-
-            prev = mip;
-            w0 = w1;
-            h0 = h1;
-            w1 /= 2;
-            h1 /= 2;
-        }
-    }
-
-    // desc.num_mipmaps = mips.len + 1;
-
-    {
-        PROFILE_BLOCK("make image");
-        LockGuard lock{&g_app->gpu_mtx};
-        // id = sg_make(desc).id;
-    }
-
-    NEKO_TRACE("created image(ase) (%dx%d, %d channels, mipmaps: %s) with id %d", width, height, channels, generate_mips ? "true" : "false", id);
-
-    return std::make_tuple(id, width, height);
-}
-
 bool Image::load(String filepath, bool generate_mips) {
     PROFILE_FUNC();
 
@@ -245,7 +98,7 @@ bool Image::load(String filepath, bool generate_mips) {
     u32 id = 0;
     i32 width = 0, height = 0;
     if (filepath.ends_with(".ase")) {
-        std::tie(id, width, height) = image_load_ase(contents, generate_mips);
+        // std::tie(id, width, height) = image_load_ase(contents, generate_mips);
     } else {
         std::tie(id, width, height) = image_load_stbi(contents, generate_mips);
     }

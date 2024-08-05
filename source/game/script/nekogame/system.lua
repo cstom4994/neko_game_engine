@@ -5,27 +5,33 @@ local serpent = require("libs/serpent")
 -- transform_rotate(...)
 local system_binds = {}
 local systems_mt = {
-    __index = function (t, k)
+    __index = function(t, k)
         local v = rawget(t, k)
 
-        if v ~= nil then return v end
+        if v ~= nil then
+            return v
+        end
 
         local v = system_binds[k]
-        if v ~= nil then return v end
+        if v ~= nil then
+            return v
+        end
 
         local names = {}
         v = setmetatable({}, {
-            __index = function (_, k2)
+            __index = function(_, k2)
                 local name = names[k2]
-                if name ~= nil then return ng[name] end
+                if name ~= nil then
+                    return ng[name]
+                end
                 name = k .. '_' .. k2
                 names[k2] = name
                 return ng[name]
-            end,
+            end
         })
         system_binds[k] = v
         return v
-    end,
+    end
 }
 ng.systems = setmetatable({}, systems_mt)
 ns = ng.systems
@@ -42,7 +48,12 @@ function ng.__fire_event(event, args)
         local system = ns[name]
         if system.enabled == nil or system.enabled then
             local func = system[event]
-            if func then func(args) end
+            if func then
+                func(args)
+                -- print("__fire_event", event, name)
+                -- collectgarbage("collect")
+                -- Inspector.breakpoint()
+            end
         end
     end
 end
@@ -59,12 +70,17 @@ function ng.__save_all()
         end
     end
 
-    return serpent.dump(data, { indent = '  ', nocode = true })
+    return serpent.dump(data, {
+        indent = '  ',
+        nocode = true
+    })
 end
 
 function ng.__load_all(str)
     local f, err = loadstring(str)
-    if err then error(err) end
+    if err then
+        error(err)
+    end
     local data = f()
 
     for name, dump in pairs(data) do
@@ -77,7 +93,7 @@ function ng.__load_all(str)
                         ng.entity_table_merge(system[k], v)
                     elseif --[[ system.auto_saveload_functions
                         or --]] type(v) ~= 'function' then
-                            system[k] = v
+                        system[k] = v
                     end
                 end
             elseif system.load_all then
@@ -90,21 +106,34 @@ function ng.__load_all(str)
     end
 end
 
-
 -- generic add/remove, get/set for any system, property -- needs corresponding
 -- C functions of the form sys_add()/sys_remove(),
 -- sys_get_prop(ent)/sys_set_prop(ent, val)
 
 unpack = table.unpack
 
-function ng.getter(sys, prop) return ns[sys]['get_' .. prop] end
-function ng.setter(sys, prop)return ns[sys]['set_' .. prop] end
-function ng.get(sys, prop, ...) return ng.getter(sys, prop)(unpack({...})) end
-function ng.set(sys, prop, ...) ng.setter(sys, prop)(unpack({...})) end
+function ng.getter(sys, prop)
+    return ns[sys]['get_' .. prop]
+end
+function ng.setter(sys, prop)
+    return ns[sys]['set_' .. prop]
+end
+function ng.get(sys, prop, ...)
+    return ng.getter(sys, prop)(unpack({...}))
+end
+function ng.set(sys, prop, ...)
+    ng.setter(sys, prop)(unpack({...}))
+end
 
-function ng.adder(sys) return ns[sys]['add'] end
-function ng.remover(sys) return ns[sys]['remove'] end
-function ng.remove(sys, ...) ng.remover(sys)(unpack({...})) end
+function ng.adder(sys)
+    return ns[sys]['add']
+end
+function ng.remover(sys)
+    return ns[sys]['remove']
+end
+function ng.remove(sys, ...)
+    ng.remover(sys)(unpack({...}))
+end
 
 -- multi-purpose system adder/setter, used as follows:
 --
@@ -126,12 +155,12 @@ function ng.remove(sys, ...) ng.remover(sys)(unpack({...})) end
 function ng.add(sys, ent, props)
     -- multi-add?
     if type(sys) == 'table' then
-        ent = ent or sys.ent
-            or (sys.prefab and ns.prefab.load(sys.prefab))
-            or ng.entity_create()
+        ent = ent or sys.ent or (sys.prefab and ns.prefab.load(sys.prefab)) or ng.entity_create()
         sys.ent = nil
         sys.prefab = nil
-        for k, v in pairs(sys) do ng.add(k, ent, v) end
+        for k, v in pairs(sys) do
+            ng.add(k, ent, v)
+        end
         return ent
     end
 
@@ -146,26 +175,36 @@ function ng.add(sys, ent, props)
     end
 end
 
-ns.meta = { receive_events = false }
+ns.meta = {
+    receive_events = false
+}
 ns.meta.props = {}
 
 function ng.simple_sys()
-    local sys = { auto_saveload = true }
+    local sys = {
+        auto_saveload = true
+    }
     sys.tbl = ng.entity_table()
 
     -- add/remove
     function sys.simple_add(ent)
         if not sys.tbl[ent] then
-            local entry = { ent = ent }
+            local entry = {
+                ent = ent
+            }
             sys.tbl[ent] = entry
-            if sys.create then sys.create(entry) end
+            if sys.create then
+                sys.create(entry)
+            end
         end
     end
     sys.add = sys.simple_add
     function sys.simple_remove(ent)
         local entry = sys.tbl[ent]
         if entry then
-            if sys.destroy then sys.destroy(entry) end
+            if sys.destroy then
+                sys.destroy(entry)
+            end
             sys.tbl[ent] = nil
         end
     end
@@ -180,11 +219,17 @@ function ng.simple_sys()
         ng.entity_table_remove_destroyed(sys.tbl, sys.remove)
         for _, entry in pairs(sys.tbl) do
             if ns.timing.get_paused() then
-                if sys.paused_update then sys.paused_update(entry) end
+                if sys.paused_update then
+                    sys.paused_update(entry)
+                end
             else
-                if sys.unpaused_update then sys.unpaused_update(entry) end
+                if sys.unpaused_update then
+                    sys.unpaused_update(entry)
+                end
             end
-            if sys.update then sys.update(entry) end
+            if sys.update then
+                sys.update(entry)
+            end
         end
     end
     sys.update_all = sys.simple_update_all
@@ -194,7 +239,7 @@ end
 
 function ng.wrap_string(sys, prop)
     local old = ng.getter(sys, prop)
-    ng[sys .. '_get_' .. prop] = function (ent)
+    ng[sys .. '_get_' .. prop] = function(ent)
         return ng.string(old(ent))
     end
 end

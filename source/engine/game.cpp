@@ -11,11 +11,6 @@
 #include "engine/script.h"
 #include "engine/system.h"
 #include "glew_glfw.h"
-
-#ifdef CGAME_DEBUG_WINDOW
-#include "debugwin.h"
-#endif
-
 #include "test/test.h"
 
 // imgui
@@ -67,7 +62,14 @@ void scratch_update() {
 
 static void _glfw_error_callback(int error, const char *desc) { fprintf(stderr, "glfw: %s\n", desc); }
 
+// 窗口大小改变的回调函数
+void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
+    // 更新视口
+    glViewport(0, 0, width, height);
+}
+
 static void _game_init() {
+    PROFILE_FUNC();
 
     g_init_mtx.make();
     LockGuard lock(&g_init_mtx);
@@ -110,12 +112,12 @@ static void _game_init() {
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     g_app->game_window = glfwCreateWindow(800, 600, "neko_game", NULL, NULL);
-#ifdef CGAME_DEBUG_WINDOW
-    debugwin_init();
-#endif
 
     // activate OpenGL context
     glfwMakeContextCurrent(g_app->game_window);
+
+    // 注册窗口大小改变的回调函数
+    glfwSetFramebufferSizeCallback(g_app->game_window, framebuffer_size_callback);
 
     // initialize GLEW
     glewExperimental = GL_TRUE;
@@ -136,6 +138,8 @@ static void _game_init() {
     console_puts("welcome to neko!");
     system_init();
 
+    ImGui::SetAllocatorFunctions(+[](size_t sz, void *user_data) { return mem_alloc(sz); }, +[](void *ptr, void *user_data) { return mem_free(ptr); });
+
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
@@ -147,9 +151,12 @@ static void _game_init() {
 
     // init test
     test_init();
+
+    assets_start_hot_reload();
 }
 
 static void _game_fini() {
+    PROFILE_FUNC();
 
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
@@ -165,7 +172,19 @@ static void _game_fini() {
     profile_shutdown();
 #endif
 
+    vfs_fini();
+
+    mem_free(g_app->fatal_error.data);
+    mem_free(g_app->traceback.data);
+
+    for (String arg : g_app->args) {
+        mem_free(arg.data);
+    }
+    mem_free(g_app->args.data);
+
     mem_free(g_app);
+
+    g_init_mtx.trash();
 
 #ifndef NDEBUG
     DebugAllocator *allocator = dynamic_cast<DebugAllocator *>(g_allocator);
@@ -238,6 +257,7 @@ void game_run(int argc, char **argv) {
 void game_set_bg_color(Color c) { glClearColor(c.r, c.g, c.b, 1.0); }
 
 void game_set_window_size(CVec2 s) { glfwSetWindowSize(g_app->game_window, s.x, s.y); }
+
 CVec2 game_get_window_size() {
     int w, h;
     glfwGetWindowSize(g_app->game_window, &w, &h);

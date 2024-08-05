@@ -6,7 +6,7 @@
 #include "engine/base.h"
 #include "engine/prelude.h"
 
-SCRIPT(
+NEKO_SCRIPT(
         input,
 
         typedef enum KeyCode KeyCode;

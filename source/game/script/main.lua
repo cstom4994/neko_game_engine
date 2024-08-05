@@ -1,5 +1,9 @@
 -- 添加nekogame需要路径并加载nekogame
-package.path = package.path .. ';' .. nekogame_script_path .. '/script/?.lua'
+package.path = package.path .. ';' .. nekogame_script_path .. 'script/?.lua'
+package.path = package.path .. ';' .. nekogame_script_path .. 'script/?/init.lua'
+package.path = package.path .. ';' .. nekogame_script_path .. 'script/libs/?.lua'
+package.cpath = package.cpath .. ";" .. nekogame_script_path .. "script/libs/?.dll"
+
 require 'nekogame'
 
 -- misc
@@ -49,15 +53,20 @@ else
         }
     }
 
-    ng.api.set_window_title("Sandbox")
+    -- ng.api.set_window_title("Sandbox")
 
-    require 'test'
-    UnitTest()
+    require('test').UnitTest()
 
     -- 进入编辑模式
     ns.timing.set_paused(true)
     ns.edit.set_enabled(true)
 end
+
+luainspector = Inspector.inspector_init()
+
+-- lovebird = require("libs/lovebird")
+
+game_imgui = require("cimgui")
 
 ns.edit.undo_save()
 

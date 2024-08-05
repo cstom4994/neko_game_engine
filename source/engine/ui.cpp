@@ -1,31 +1,21 @@
 #include "engine/ui.h"
 
-// #include <sokol_app.h>
-// #include <sokol_gfx.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-// #include <util/sokol_gl.h>
 
-#include <GL/glew.h>
-#include <ctype.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include "engine/game.h"
 #include "edit.h"
-#include "engine/ecs.h"
-#include "engine/prelude.h"
-#include "gfx.h"
-#include "engine/game.h"
 #include "engine/base.h"
 #include "engine/camera.h"
+#include "engine/ecs.h"
 #include "engine/game.h"
 #include "engine/luax.h"
 #include "engine/os.h"
 #include "engine/prelude.h"
 #include "engine/texture.h"
 #include "engine/transform.h"
+#include "gfx.h"
 
 static Entity gui_root;  // 所有 gui 都应该是它的子节点 以便随屏幕移动
 
@@ -520,7 +510,7 @@ static void _rect_init() {
     rect_pool = entitypool_new(Rect);
 
     // create shader program, load texture, bind parameters
-    rect_program = gfx_create_program(data_path("rect.vert"), data_path("rect.geom"), data_path("rect.frag"));
+    rect_program = gfx_create_program("assets/data/rect.vert", "assets/data/rect.geom", "assets/data/rect.frag");
     glUseProgram(rect_program);
 
     // make vao, vbo, bind attributes
@@ -902,9 +892,9 @@ static void _text_init() {
     text_pool = entitypool_new(Text);
 
     // create shader program, load texture, bind parameters
-    text_program = gfx_create_program(data_path("text.vert"), data_path("text.geom"), data_path("text.frag"));
+    text_program = gfx_create_program("assets/data/text.vert", "assets/data/text.geom", "assets/data/text.frag");
     glUseProgram(text_program);
-    texture_load(data_path("font1.png"));
+    texture_load("assets/data/font1.png");
     glUniform1i(glGetUniformLocation(text_program, "tex0"), 0);
     glUniform2f(glGetUniformLocation(text_program, "inv_grid_size"), 1.0 / TEXT_GRID_W, 1.0 / TEXT_GRID_H);
     glUniform2f(glGetUniformLocation(text_program, "size"), TEXT_FONT_W, TEXT_FONT_H);
@@ -970,7 +960,7 @@ static void _text_draw_all() {
 
     // bind texture
     glActiveTexture(GL_TEXTURE0);
-    texture_bind(data_path("font1.png"));
+    texture_bind("assets/data/font1.png");
 
     // draw!
     entitypool_foreach(text, text_pool) {

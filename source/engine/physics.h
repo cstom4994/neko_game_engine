@@ -60,7 +60,7 @@ inline int neko_b2_world(lua_State *L) {
 
 #if 0
 
-SCRIPT(physics,
+NEKO_SCRIPT(physics,
 
        // global
 

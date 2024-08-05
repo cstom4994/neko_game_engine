@@ -1,10 +1,9 @@
 -- can set unique string names per object, can find by name
 -- name property is empty string or nil for no name
-
 ns.name = {}
 
 local entity_name = ng.entity_table() -- entity -> name map
-local name_entity = {}                -- name -> entity map
+local name_entity = {} -- name -> entity map
 
 function ns.name.add(ent)
 end
@@ -12,7 +11,7 @@ function ns.name.has(ent)
     return true
 end
 function ns.name.remove(ent)
-    name = entity_name[ent] 
+    name = entity_name[ent]
     if name then
         name_entity[name] = nil
         entity_name[ent] = nil
@@ -21,8 +20,12 @@ end
 
 function ns.name.set_name(ent, name)
     ns.name.remove(ent) -- remove old name
-    if name == '' or name == nil then return end -- no name
-    if entity_name[ent] == name then return end -- already same
+    if name == '' or name == nil then
+        return
+    end -- no name
+    if entity_name[ent] == name then
+        return
+    end -- already same
 
     -- someone else has name?
     if name_entity[name] ~= nil then
@@ -58,7 +61,9 @@ function ns.name.load_all(d)
         -- make up new name if clashes
         while name_entity[name] ~= nil do
             name, r = string.gsub(rname, '-%d+$', '-' .. counter)
-            if r == 0 then name = string.format('%s-%d', rname, counter) end
+            if r == 0 then
+                name = string.format('%s-%d', rname, counter)
+            end
             counter = counter + 1
         end
 

@@ -82,7 +82,7 @@ struct lua_State;
 Asset check_asset(lua_State *L, u64 key);
 Asset check_asset_mt(lua_State *L, i32 arg, const char *mt);
 
-SCRIPT(fs,
+NEKO_SCRIPT(fs,
 
        // remember to *_close(...) when done to free resources!
 

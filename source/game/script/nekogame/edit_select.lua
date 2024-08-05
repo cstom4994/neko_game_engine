@@ -20,7 +20,6 @@ function ns.edit.select_clear()
     ns.edit.select = ng.entity_table()
 end
 
-
 --- click select ---------------------------------------------------------------
 
 local function _get_entities_under_mouse()
@@ -39,7 +38,7 @@ local function _get_entities_under_mouse()
     end
 
     -- sort by distance to mouse
-    local distcomp = function (e1, e2)
+    local distcomp = function(e1, e2)
         local p1 = ns.transform.get_world_position(e1)
         local p2 = ns.transform.get_world_position(e2)
         return ng.vec2_dist(p1, m) < ng.vec2_dist(p2, m)
@@ -50,8 +49,9 @@ local function _get_entities_under_mouse()
 end
 
 function ns.edit.select_click_single()
-    -- anything under mouse?
+    -- 判断鼠标下有东西
     local ents = _get_entities_under_mouse()
+
     if #ents == 0 then
         ns.edit.select = ng.entity_table()
         ns.edit.undo_save()
@@ -59,7 +59,7 @@ function ns.edit.select_click_single()
     end
 
     -- if something's already selected, select the next thing
-    ents[#ents + 1] = ents[1]    -- duplicate first at end to wrap-around
+    ents[#ents + 1] = ents[1] -- duplicate first at end to wrap-around
     local sel = 0
     for i = 1, #ents - 1 do
         sel = i
@@ -95,7 +95,6 @@ function ns.edit.select_click_multi()
 
     ns.edit.undo_save()
 end
-
 
 --- boxsel ---------------------------------------------------------------------
 
@@ -134,11 +133,24 @@ function ns.edit.boxsel_end_add()
 end
 
 ns.edit.boxsel_box = ng.add {
-    group = { groups = 'builtin' },
-    edit = { editable = false },
-    transform = { position = ng.vec2(-20, -20) },
-    gui_rect = { size = ng.vec2(10, 10), hfit = false, vfit = false },
-    gui = { captures_events = false, color = ng.color(0.8, 0.5, 0.1, 0.3) },
+    group = {
+        groups = 'builtin'
+    },
+    edit = {
+        editable = false
+    },
+    transform = {
+        position = ng.vec2(-20, -20)
+    },
+    gui_rect = {
+        size = ng.vec2(10, 10),
+        hfit = false,
+        vfit = false
+    },
+    gui = {
+        captures_events = false,
+        color = ng.color(0.8, 0.5, 0.1, 0.3)
+    }
 }
 
 ns.edit.modes.boxsel = {}
@@ -155,7 +167,9 @@ function ns.edit.modes.boxsel.exit()
 end
 
 function ns.edit.modes.boxsel.update_all()
-    if not boxsel_has_begun then return end
+    if not boxsel_has_begun then
+        return
+    end
 
     m = ns.input.get_mouse_pos_pixels()
     b = ng.BBox(ng.bbox_bound(m, boxsel_init_mouse_pos))

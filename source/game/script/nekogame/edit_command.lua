@@ -1,13 +1,11 @@
 --- command mode ---------------------------------------------------------------
-
 ns.edit.modes.command = {}
 
 local command_end_callback, command_completion_func, command_completions
 local command_completions_index, command_always_complete
 
 local function command_update_completions_text()
-    ns.gui_text.set_str(ns.edit.command_completions_text,
-                        table.concat(command_completions, ' | '))
+    ns.gui_text.set_str(ns.edit.command_completions_text, table.concat(command_completions, ' | '))
 end
 local function command_update_completions()
     local s = ns.gui_text.get_str(ns.edit.command_text)
@@ -19,11 +17,15 @@ end
 local function subseq(seq, sub)
     local j = 1
     local lsub = #sub + 1
-    if lsub == 1 then return true end
+    if lsub == 1 then
+        return true
+    end
     for i = 1, #seq do
         if string.byte(seq, i) == string.byte(sub, j) then
             j = j + 1
-            if j == lsub then return true end
+            if j == lsub then
+                return true
+            end
         end
     end
     return false
@@ -53,13 +55,16 @@ function ns.edit.command_completion_fs(s)
     local dir_path = string.match(s, '(.*/)') or './'
     local suffix = string.match(s, '.*/(.*)') or s
     local dir = ns.fs.dir_open(dir_path)
-    if dir == nil then return {} end
+    if dir == nil then
+        return {}
+    end
     while true do
         local f = ns.fs.dir_next_file(dir)
-        if f == nil then break end
+        if f == nil then
+            break
+        end
         f = ng.string(f)
-        if f ~= '.' and f ~= '..'
-        and subseq(string.lower(dir_path .. f), s) then
+        if f ~= '.' and f ~= '..' and subseq(string.lower(dir_path .. f), s) then
             table.insert(comps, dir_path .. f)
         end
     end
@@ -70,17 +75,22 @@ end
 
 local function run_string(s)
     local r, e = loadstring(s)
-    if r then r() else error(e) end
+    if r then
+        r()
+    else
+        error(e)
+    end
 end
 
-function ns.edit.command_start(prompt, callback, completion_func,
-                               always_complete, initial)
+function ns.edit.command_start(prompt, callback, completion_func, always_complete, initial)
     ns.edit.set_mode('command')
 
     -- default is eval script
     prompt = prompt or 'lua: '
     command_end_callback = callback or run_string
-    command_completion_func = completion_func or function () return {} end
+    command_completion_func = completion_func or function()
+        return {}
+    end
     command_always_complete = always_complete and true or false
 
     initial = initial or ''
@@ -92,15 +102,20 @@ function ns.edit.command_start(prompt, callback, completion_func,
 end
 function ns.edit.command_end()
     if command_always_complete then
-        if #command_completions == 0 then return end -- no completions
+        if #command_completions == 0 then
+            return
+        end -- no completions
         ns.edit.command_complete()
     end
 
     ns.edit.set_mode('normal')
 
     local s = ns.gui_text.get_str(ns.edit.command_text)
-    if command_end_callback then command_end_callback(s)
-    else print('no command callback for \'' .. s .. '\'') end
+    if command_end_callback then
+        command_end_callback(s)
+    else
+        print('no command callback for \'' .. s .. '\'')
+    end
 end
 function ns.edit.command_cancel()
     ns.edit.set_mode('normal')
@@ -159,7 +174,6 @@ function ns.edit.modes.command.update_all()
     ns.gui.set_focus(ns.edit.command_text, true)
 end
 
-
 --- built-in prompts -----------------------------------------------------------
 
 -- asks for grid size -- first x then y
@@ -194,15 +208,13 @@ function ns.edit.command_inspect()
     local syss = ns.edit_inspector.get_systems()
     local comp = ns.edit.command_completion_substr(syss)
 
-    ns.edit.command_start(add and 'new entity: ' or 'edit system: ',
-                          system, comp, true)
+    ns.edit.command_start(add and 'new entity: ' or 'edit system: ', system, comp, true)
 end
 
 local last_save = nekogame_usr_path .. 'levels/'
 function ns.edit.command_save()
     local function save(f)
-        ns.console.printf("edit: saving group 'default' to file '"
-                              .. f .. "' ... ")
+        ns.console.printf("edit: saving group 'default' to file '" .. f .. "' ... ")
         ns.group.set_save_filter('default', true)
         local s = ng.store_open()
         ns.system.save_all(s)
@@ -215,8 +227,7 @@ function ns.edit.command_save()
         last_save = f
     end
 
-    ns.edit.command_start('save to file: ', save, ns.edit.command_completion_fs,
-                          false, last_save)
+    ns.edit.command_start('save to file: ', save, ns.edit.command_completion_fs, false, last_save)
 end
 
 local last_load = nekogame_usr_path .. 'levels/'
@@ -237,8 +248,7 @@ function ns.edit.command_load()
         last_load = f
     end
 
-    ns.edit.command_start('load from file: ', load,
-                          ns.edit.command_completion_fs, true, last_load)
+    ns.edit.command_start('load from file: ', load, ns.edit.command_completion_fs, true, last_load)
 end
 
 function ns.edit.set_default_file(s)
@@ -248,7 +258,9 @@ end
 
 local last_save_prefab = nekogame_usr_path .. 'prefabs/'
 function ns.edit.command_save_prefab()
-    if ng.entity_table_empty(ns.edit.select) then return end
+    if ng.entity_table_empty(ns.edit.select) then
+        return
+    end
 
     local function save(f)
         for ent in pairs(ns.edit.select) do
@@ -264,8 +276,7 @@ function ns.edit.command_save_prefab()
         last_save_prefab = f
     end
 
-    ns.edit.command_start('save prefab: ', save, ns.edit.command_completion_fs,
-                          false, last_save_prefab)
+    ns.edit.command_start('save prefab: ', save, ns.edit.command_completion_fs, false, last_save_prefab)
 end
 
 local last_load_prefab = nekogame_usr_path .. 'prefabs/'
@@ -286,8 +297,7 @@ function ns.edit.command_load_prefab()
         last_load_prefab = f
     end
 
-    ns.edit.command_start('load prefab: ', load, ns.edit.command_completion_fs,
-                          true, last_load_prefab)
+    ns.edit.command_start('load prefab: ', load, ns.edit.command_completion_fs, true, last_load_prefab)
 end
 
 function ns.edit.set_default_prefab_file(s)

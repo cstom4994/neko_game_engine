@@ -52,6 +52,7 @@ static void _set_atlas(const char *filename, bool err) {
     glUniform2fv(glGetUniformLocation(program, "atlas_size"), 1, (const GLfloat *)&atlas_size);
 }
 void sprite_set_atlas(const char *filename) { _set_atlas(filename, true); }
+
 const char *sprite_get_atlas() { return atlas; }
 
 void sprite_add(Entity ent) {
@@ -117,10 +118,10 @@ void sprite_init() {
 
     pool = entitypool_new(Sprite);
 
-    program = gfx_create_program(data_path("sprite.vert"), data_path("sprite.geom"), data_path("sprite.frag"));
+    program = gfx_create_program("assets/data/sprite.vert", "assets/data/sprite.geom", "assets/data/sprite.frag");
     glUseProgram(program);
     glUniform1i(glGetUniformLocation(program, "tex0"), 0);
-    sprite_set_atlas(data_path("default.png"));
+    sprite_set_atlas("assets/data/default.png");
 
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);

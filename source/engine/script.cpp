@@ -11,8 +11,9 @@
 #include "engine/camera.h"
 #include "engine/game.h"
 #include "engine/input.h"
-#include "engine/luax.h"
+#include "engine/lua_custom_types.hpp"
 #include "engine/lua_util.h"
+#include "engine/luax.h"
 #include "engine/physics.h"
 #include "engine/prefab.h"
 #include "engine/sound.h"
@@ -21,8 +22,6 @@
 #include "engine/transform.h"
 #include "engine/ui.h"
 #include "test/keyboard_controlled.h"
-
-static lua_State *L;
 
 static const char **nekogame_ffi[] = {
         &nekogame_ffi_scalar,
@@ -52,14 +51,6 @@ static const char **nekogame_ffi[] = {
 
 static const unsigned int n_nekogame_ffi = sizeof(nekogame_ffi) / sizeof(nekogame_ffi[0]);
 
-#define errcheck(...)                                         \
-    do                                                        \
-        if (__VA_ARGS__) {                                    \
-            console_printf("lua: %s\n", lua_tostring(L, -1)); \
-            lua_pop(L, 1);                                    \
-        }                                                     \
-    while (0)
-
 static int _traceback(lua_State *L) {
     if (!lua_isstring(L, 1)) {
         if (lua_isnoneornil(L, 1) || !luaL_callmeta(L, 1, "__tostring") || !lua_isstring(L, -1)) return 1;
@@ -69,7 +60,7 @@ static int _traceback(lua_State *L) {
     return 1;
 }
 
-static int _pcall(lua_State *L, int nargs, int nresults) {
+int luax_pcall_nothrow(lua_State *L, int nargs, int nresults) {
     int r, errfunc;
 
     // 将 _traceback 放在 function 和 args 下
@@ -84,30 +75,37 @@ static int _pcall(lua_State *L, int nargs, int nresults) {
 }
 
 void script_run_string(const char *s) {
+    lua_State *L = ENGINE_LUA();
     luaL_loadstring(L, s);
-    errcheck(_pcall(L, 0, LUA_MULTRET));
+    errcheck(luax_pcall_nothrow(L, 0, LUA_MULTRET));
 }
 void script_run_file(const char *filename) {
+    lua_State *L = ENGINE_LUA();
     luaL_loadfile(L, filename);
-    errcheck(_pcall(L, 0, LUA_MULTRET));
+    errcheck(luax_pcall_nothrow(L, 0, LUA_MULTRET));
 }
-void script_error(const char *s) { luaL_error(L, s); }
+void script_error(const char *s) {
+    lua_State *L = ENGINE_LUA();
+    luaL_error(L, s);
+}
 
 // 将对象推送为 cdata, t 必须是字符串形式的 FFI 类型说明符
 // 如推入一个 CVec2 应该为 _push_cdata("CVec2 *", &v)
 // 结果是堆栈上的 CVec2 cdata (不是指针)
 static void _push_cdata(const char *t, void *p) {
     // just call __deref_cdata(t, p)
+    lua_State *L = ENGINE_LUA();
     lua_getglobal(L, "ng");
     lua_getfield(L, -1, "__deref_cdata");
     lua_remove(L, -2);
     lua_pushstring(L, t);
     lua_pushlightuserdata(L, p);
-    errcheck(_pcall(L, 2, 1));
+    errcheck(luax_pcall_nothrow(L, 2, 1));
 }
 
-static void _push_event(const char *event) {
+void script_push_event(const char *event) {
     // call nekogame.__fire_event(event, ...)
+    lua_State *L = ENGINE_LUA();
     lua_getglobal(L, "ng");
     lua_getfield(L, -1, "__fire_event");
     lua_remove(L, -2);
@@ -116,6 +114,8 @@ static void _push_event(const char *event) {
 
 // 将命令行参数转发为 nekogame_args[0], nekogame_args[1], ...
 static void _forward_args() {
+    lua_State *L = ENGINE_LUA();
+
     int i, argc;
     char **argv;
 
@@ -131,6 +131,7 @@ static void _forward_args() {
 }
 
 static void _set_paths() {
+    lua_State *L = ENGINE_LUA();
     lua_pushstring(L, "./source/game/");
     lua_setglobal(L, "nekogame_script_path");
     lua_pushstring(L, data_path(""));
@@ -153,6 +154,8 @@ static void _fix_exports(char *s) {
 // ffi.cdef(nekogame_ffi[0] .. nekogame_ffi[1] .. ...)
 // with 'NEKO_EXPORT's fixed -- after this nekogame.lua can bind the FFI
 static void _load_nekogame_ffi() {
+    lua_State *L = ENGINE_LUA();
+
     unsigned int i;
     char *fixed;
     luaL_Buffer buf;  // 将累积 nekogame_ffi cdefs 到这里
@@ -160,7 +163,7 @@ static void _load_nekogame_ffi() {
     // get ffi.cdef
     lua_getglobal(L, "require");
     lua_pushstring(L, "ffi");
-    errcheck(_pcall(L, 1, 1));
+    errcheck(luax_pcall_nothrow(L, 1, 1));
     lua_getfield(L, lua_gettop(L), "cdef");
 
     // accumulate nekogame_ffi cdefs
@@ -174,7 +177,7 @@ static void _load_nekogame_ffi() {
     }
     luaL_pushresult(&buf);
 
-    errcheck(_pcall(L, 1, 0));
+    errcheck(luax_pcall_nothrow(L, 1, 0));
 }
 
 // #define NEKO_CFFI
@@ -197,10 +200,7 @@ inline void luax_package_preload(lua_State *L, const char *name, lua_CFunction f
 #endif
 
 void script_init() {
-    // L = luaL_newstate();
-    // luaL_openlibs(L);
-
-    L = neko::neko_lua_create();
+    lua_State *L = neko::neko_lua_create();
 
     ENGINE_LUA() = L;
 
@@ -209,7 +209,6 @@ void script_init() {
 #ifdef NEKO_CFFI
     luax_package_preload(L, "ffi", luaopen_cffi);
     luax_package_preload(L, "bit", luaopen_bit);
-
 #endif
 
     lua_atpanic(
@@ -223,72 +222,100 @@ void script_init() {
     _forward_args();
     _set_paths();
 
-    // run main.lua
-    errcheck(luaL_loadfile(L, "./source/game/script/main.lua"));
-    errcheck(_pcall(L, 0, 0));
+    // ENGINE_ECS() = ecs_init(ENGINE_LUA());
 
-    // fire init event
-    _push_event("init");
-    errcheck(_pcall(L, 1, 0));
+    // ECS_COMPONENT_DEFINE(pos_t, NULL, NULL);
+    // ECS_COMPONENT_DEFINE(vel_t, NULL, NULL);
+    // ECS_COMPONENT_DEFINE(rect_t, NULL, NULL);
+
+    g_app->g_lua_callbacks_table_ref = LUA_NOREF;
+
+    lua_channels_setup();
+
+    neko::lua::luax_run_bootstrap(L);
+
+    // lua_pushcfunction(L, luax_msgh);  // 添加错误消息处理程序 始终位于堆栈底部
 }
 
 void script_fini() {
-    _push_event("fini");
-    errcheck(_pcall(L, 1, 0));
+    lua_State *L = ENGINE_LUA();
 
-    lua_close(L);
+    script_push_event("fini");
+    errcheck(luax_pcall_nothrow(L, 1, 0));
+
+    neko::neko_lua_fini(L);
 }
 
 void script_update_all() {
-    _push_event("update_all");
-    errcheck(_pcall(L, 1, 0));
+    lua_State *L = ENGINE_LUA();
+
+    script_push_event("update_all");
+    errcheck(luax_pcall_nothrow(L, 1, 0));
 }
 
 void script_post_update_all() {
-    _push_event("post_update_all");
-    errcheck(_pcall(L, 1, 0));
+    lua_State *L = ENGINE_LUA();
+
+    script_push_event("post_update_all");
+    errcheck(luax_pcall_nothrow(L, 1, 0));
 }
 
 void script_draw_all() {
-    _push_event("draw_all");
-    errcheck(_pcall(L, 1, 0));
+    lua_State *L = ENGINE_LUA();
+
+    script_push_event("draw_all");
+    errcheck(luax_pcall_nothrow(L, 1, 0));
 }
 
 void script_key_down(KeyCode key) {
-    _push_event("key_down");
+    lua_State *L = ENGINE_LUA();
+
+    script_push_event("key_down");
     _push_cdata("KeyCode *", &key);
-    errcheck(_pcall(L, 2, 0));
+    errcheck(luax_pcall_nothrow(L, 2, 0));
 }
 void script_key_up(KeyCode key) {
-    _push_event("key_up");
+    lua_State *L = ENGINE_LUA();
+
+    script_push_event("key_up");
     _push_cdata("KeyCode *", &key);
-    errcheck(_pcall(L, 2, 0));
+    errcheck(luax_pcall_nothrow(L, 2, 0));
 }
 
 void script_mouse_down(MouseCode mouse) {
-    _push_event("mouse_down");
+    lua_State *L = ENGINE_LUA();
+
+    script_push_event("mouse_down");
     _push_cdata("MouseCode *", &mouse);
-    errcheck(_pcall(L, 2, 0));
+    errcheck(luax_pcall_nothrow(L, 2, 0));
 }
 void script_mouse_up(MouseCode mouse) {
-    _push_event("mouse_up");
+    lua_State *L = ENGINE_LUA();
+
+    script_push_event("mouse_up");
     _push_cdata("MouseCode *", &mouse);
-    errcheck(_pcall(L, 2, 0));
+    errcheck(luax_pcall_nothrow(L, 2, 0));
 }
 
 void script_mouse_move(CVec2 pos) {
-    _push_event("mouse_move");
+    lua_State *L = ENGINE_LUA();
+
+    script_push_event("mouse_move");
     _push_cdata("CVec2 *", &pos);
-    errcheck(_pcall(L, 2, 0));
+    errcheck(luax_pcall_nothrow(L, 2, 0));
 }
 
 void script_scroll(CVec2 scroll) {
-    _push_event("scroll");
+    lua_State *L = ENGINE_LUA();
+
+    script_push_event("scroll");
     _push_cdata("CVec2 *", &scroll);
-    errcheck(_pcall(L, 2, 0));
+    errcheck(luax_pcall_nothrow(L, 2, 0));
 }
 
 void script_save_all(Store *s) {
+    lua_State *L = ENGINE_LUA();
+
     Store *t;
     const char *str;
 
@@ -297,7 +324,7 @@ void script_save_all(Store *s) {
         lua_getglobal(L, "ng");
         lua_getfield(L, -1, "__save_all");
         lua_remove(L, -2);
-        errcheck(_pcall(L, 0, 1));
+        errcheck(luax_pcall_nothrow(L, 0, 1));
         str = lua_tostring(L, -1);
 
         // save it
@@ -309,6 +336,8 @@ void script_save_all(Store *s) {
 }
 
 void script_load_all(Store *s) {
+    lua_State *L = ENGINE_LUA();
+
     Store *t;
     char *str;
 
@@ -319,7 +348,7 @@ void script_load_all(Store *s) {
             lua_getfield(L, -1, "__load_all");
             lua_remove(L, -2);
             lua_pushstring(L, str);
-            errcheck(_pcall(L, 1, 0));
+            errcheck(luax_pcall_nothrow(L, 1, 0));
 
             // release
             mem_free(str);

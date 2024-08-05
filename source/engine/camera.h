@@ -10,7 +10,7 @@
  * the view is a 2x2 unit box at the center of the world
  */
 
-SCRIPT(camera,
+NEKO_SCRIPT(camera,
 
        NEKO_EXPORT void camera_add(Entity ent);
 

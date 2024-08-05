@@ -1,7 +1,7 @@
 ns.group = {}
 
-local group_entities = {}                 -- group name --> entity_table
-local entity_groups = ng.entity_table()   -- entity --> set of group names
+local group_entities = {} -- group name --> entity_table
+local entity_groups = ng.entity_table() -- entity --> set of group names
 
 -- iterate over a group collection, which can be a string of
 -- space-separated group names or a table with group names as keys
@@ -14,7 +14,9 @@ end
 
 function ns.group.add(ent, groups)
     -- if no groups parameter, nothing to do
-    if not groups then return end
+    if not groups then
+        return
+    end
 
     for group in _groups(groups) do
         -- connect both ways
@@ -104,7 +106,9 @@ end
 
 function ns.group.update_all()
     for ent in pairs(entity_groups) do
-        if ns.entity.destroyed(ent) then ns.group.remove(ent) end
+        if ns.entity.destroyed(ent) then
+            ns.group.remove(ent)
+        end
     end
 end
 

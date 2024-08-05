@@ -23,7 +23,7 @@ local NEKO_CFFI = false
 local NEKO_LUASOCKET = false
 
 if NEKO_CFFI == true then
-    add_requires("cffi-lua")
+    -- add_requires("cffi-lua")
     add_requires("libffi")
     add_requires("lua")
 end
@@ -44,7 +44,7 @@ add_requires("openrestry-luajit", {
     }
 })
 
-add_requires("imgui v1.90.9-docking", {
+add_requires("imgui v1.91.0-docking", {
     configs = {
         wchar32 = true,
         freetype = true,
@@ -123,20 +123,19 @@ do
     add_files("source/api/**.cpp", "source/engine/**.cpp")
 
     add_files("source/vendor/http.c")
+    add_files("source/vendor/cimgui.cpp")
 
-    add_headerfiles("source/engine/**.h", "source/engine/**.hpp")
+    add_headerfiles("source/engine/**.h", "source/engine/**.hpp", "source/vendor/**.h")
 
     add_packages("imgui", "miniz", "stb", "cute_headers")
     add_packages("miniaudio", "box2d", "enet")
     add_packages("glfw", "stb", "glew", "dirent")
 
     if NEKO_CFFI == true then
-        add_packages("lua", "libffi")
-        add_defines("NEKO_CFFI", "FFI_LITTLE_ENDIAN")
-
-        add_files("source/vendor/cffi/*.cc")
-        add_headerfiles("source/vendor/cffi/*.hh")
-        add_includedirs("source/vendor/cffi")
+        add_packages("lua")
+        add_packages("libffi")
+        add_packages("cffi-lua")
+        add_defines("NEKO_CFFI")
 
         add_files("source/vendor/bit.c")
 

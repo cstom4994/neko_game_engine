@@ -68,11 +68,10 @@ local keycode_to_string_tbl = {
     [ng.KC_RIGHT_CONTROL] = '<control>',
     [ng.KC_RIGHT_ALT] = '<alt>',
     [ng.KC_RIGHT_SUPER] = '<super>',
-    [ng.KC_MENU] = '<menu>',
+    [ng.KC_MENU] = '<menu>'
 }
 function ng.input_keycode_to_string(key)
-    return keycode_to_string_tbl[tonumber(key)]
-        or string.char(ns.input.keycode_to_char(key))
+    return keycode_to_string_tbl[tonumber(key)] or string.char(ns.input.keycode_to_char(key))
 end
 
 local mousecode_to_string_tbl = {
@@ -83,7 +82,7 @@ local mousecode_to_string_tbl = {
     [ng.MC_5] = '<mouse_5>',
     [ng.MC_6] = '<mouse_6>',
     [ng.MC_7] = '<mouse_7>',
-    [ng.MC_8] = '<mouse_8>',
+    [ng.MC_8] = '<mouse_8>'
 }
 function ng.input_mousecode_to_string(mouse)
     return mousecode_to_string_tbl[tonumber(mouse)]

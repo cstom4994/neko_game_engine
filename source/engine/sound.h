@@ -31,7 +31,7 @@ inline int neko_sound_load(lua_State *L) {
     return 1;
 }
 
-// SCRIPT(sound,
+// NEKO_SCRIPT(sound,
 //
 //        NEKO_EXPORT void sound_add(Entity ent);
 //        NEKO_EXPORT void sound_remove(Entity ent);

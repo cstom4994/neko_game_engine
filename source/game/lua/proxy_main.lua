@@ -11,7 +11,7 @@ local debug_on = false
 
 function client_init()
 
-    luainspector = Inspector.inspector_init()
+    
 
     -- music = neko.sound_load "assets/audio/placeDungeonGlassland_Field.wav"
     -- music:set_loop(true)
@@ -188,11 +188,7 @@ function client_frame(dt)
 
     end
 
-    if debug_on then
-        Inspector.inspector_draw(Inspector.inspector_get())
 
-        draw_imgui(dt)
-    end
 
     if LocalGame.currentGameState == LocalGame.states.CLIENT_WAIT then
         pixel_font:draw(("搜索服务器中"), 40, 210, 28)

@@ -4,12 +4,10 @@ local world = bump.newWorld()
 
 ns.bump = ng.simple_sys()
 
-ng.simple_prop(ns.bump, 'bbox', ng.bbox(ng.vec2(-0.5, -0.5),
-                                        ng.vec2(0.5, 0.5)))
+ng.simple_prop(ns.bump, 'bbox', ng.bbox(ng.vec2(-0.5, -0.5), ng.vec2(0.5, 0.5)))
 
 local function _update_rect(obj, add)
-    if world:hasItem(obj.ent.id)
-    and obj.last_dirty == ns.transform.get_dirty_count(obj.ent) then
+    if world:hasItem(obj.ent.id) and obj.last_dirty == ns.transform.get_dirty_count(obj.ent) then
         return
     end
 
@@ -42,8 +40,10 @@ function ns.bump.set_position(ent, pos)
 end
 
 local function _filter_wrap(filter)
-    return filter and function (id)
-        return filter(ng.Entity { id = id })
+    return filter and function(id)
+        return filter(ng.Entity {
+            id = id
+        })
     end
 end
 
@@ -62,10 +62,12 @@ function ns.bump.sweep(ent, p, filter)
         local col = cols[i]
         local tl, tt, nx, ny, sl, st = col:getSlide()
         table.insert(ecols, {
-            other = ng.Entity { id = col.other },
+            other = ng.Entity {
+                id = col.other
+            },
             touch = ng.vec2(tl, tt) - min,
             normal = ng.vec2(nx, ny),
-            slide = ng.vec2(sl, st) - min,
+            slide = ng.vec2(sl, st) - min
         })
     end
     return ecols
@@ -82,11 +84,15 @@ function ns.bump.slide(ent, p, filter)
     local wfilter = _filter_wrap(filter)
 
     local function rslide(ax, ay, bx, by, depth)
-        if depth > 3 then return ax, ay, {} end
+        if depth > 3 then
+            return ax, ay, {}
+        end
 
         world:move(obj.ent.id, ax, ay)
         local cols, len = world:check(obj.ent.id, bx, by, wfilter)
-        if len == 0 then return bx, by, {} end
+        if len == 0 then
+            return bx, by, {}
+        end
 
         -- find best next collision recursively
         local m = -1
@@ -107,10 +113,12 @@ function ns.bump.slide(ent, p, filter)
 
         -- add next collision and return
         table.insert(mcols, {
-            other = ng.Entity { id = mcol.other },
+            other = ng.Entity {
+                id = mcol.other
+            },
             touch = ng.vec2(mtx, mty) - min,
             normal = ng.vec2(mnx, mny),
-            slide = ng.vec2(msx, msy) - min,
+            slide = ng.vec2(msx, msy) - min
         })
         return bx, by, mcols
     end

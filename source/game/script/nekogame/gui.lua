@@ -3,7 +3,6 @@ ns.group.set_groups(root, 'builtin')
 
 ng.wrap_string('gui_text', 'str')
 
-
 --- event ----------------------------------------------------------------------
 
 ns.gui_event = {}
@@ -17,7 +16,7 @@ end
 local function add_event(event, default)
     event_defaults[event] = default
 
-    ns.gui_event['set_' .. event] = function (ent, f)
+    ns.gui_event['set_' .. event] = function(ent, f)
         if not event_handlers[ent] then
             event_handlers[ent] = {}
         end
@@ -34,7 +33,9 @@ add_event('key_up', ng.KC_NONE)
 
 function ns.gui_event.update_all()
     for ent in pairs(event_handlers) do
-        if ns.entity.destroyed(ent) then event_handlers[ent] = nil end
+        if ns.entity.destroyed(ent) then
+            event_handlers[ent] = nil
+        end
     end
 
     for ent, handlers in pairs(event_handlers) do
@@ -47,15 +48,18 @@ function ns.gui_event.update_all()
     end
 end
 
-
 --- window ---------------------------------------------------------------------
 
-ns.gui_window = { auto_saveload = true }
+ns.gui_window = {
+    auto_saveload = true
+}
 
 ns.gui_window.tbl = ng.entity_table()
 
 function ns.gui_window.add(ent)
-    if ns.gui_window.tbl[ent] then return end
+    if ns.gui_window.tbl[ent] then
+        return
+    end
     ns.gui_window.tbl[ent] = {}
     local window = ns.gui_window.tbl[ent]
 
@@ -63,84 +67,112 @@ function ns.gui_window.add(ent)
     ng.add {
         ent = ent,
         gui_rect = {},
-        gui = { color = ng.color(0.3, 0.3, 0.5, 0.95) },
+        gui = {
+            color = ng.color(0.3, 0.3, 0.5, 0.95)
+        }
     }
 
     -- titlebar containing text, minimize button
     window.titlebar = ng.add {
-        transform = { parent = ent },
-        gui_rect = { hfill = true },
+        transform = {
+            parent = ent
+        },
+        gui_rect = {
+            hfill = true
+        },
         gui = {
             padding = ng.vec2_zero,
             color = ng.color(0.15, 0.15, 0.35, 0.95),
             valign = ng.GA_TABLE,
-            halign = ng.GA_MIN,
-        },
+            halign = ng.GA_MIN
+        }
     }
     window.title_buttons_area = ng.add {
-        transform = { parent = window.titlebar },
+        transform = {
+            parent = window.titlebar
+        },
         gui_rect = {},
         gui = {
             padding = ng.vec2_zero,
             color = ng.color(0.0, 0.0, 0.0, 0.0),
             valign = ng.GA_MAX,
-            halign = ng.GA_TABLE,
-        },
+            halign = ng.GA_TABLE
+        }
     }
     window.close_text = ng.add {
-        transform = { parent = window.title_buttons_area },
+        transform = {
+            parent = window.title_buttons_area
+        },
         gui = {
             color = ng.color_white,
             valign = ng.GA_MAX,
-            halign = ng.GA_TABLE,
+            halign = ng.GA_TABLE
         },
-        gui_text = { str = 'x' },
+        gui_text = {
+            str = 'x'
+        }
     }
     window.minmax_text = ng.add {
-        transform = { parent = window.title_buttons_area },
+        transform = {
+            parent = window.title_buttons_area
+        },
         gui = {
             color = ng.color_white,
             valign = ng.GA_MAX,
-            halign = ng.GA_TABLE,
+            halign = ng.GA_TABLE
         },
-        gui_text = { str = '-' },
+        gui_text = {
+            str = '-'
+        }
     }
     window.title_text_area = ng.add {
-        transform = { parent = window.titlebar },
-        gui_rect = { hfill = true },
+        transform = {
+            parent = window.titlebar
+        },
+        gui_rect = {
+            hfill = true
+        },
         gui = {
             padding = ng.vec2_zero,
             color = ng.color(0.0, 0.0, 0.0, 0.0),
             valign = ng.GA_MAX,
-            halign = ng.GA_TABLE,
-        },
+            halign = ng.GA_TABLE
+        }
     }
     window.title_text = ng.add {
-        transform = { parent = window.title_text_area },
+        transform = {
+            parent = window.title_text_area
+        },
         gui = {
             color = ng.color_white,
             valign = ng.GA_MAX,
-            halign = ng.GA_MID,
+            halign = ng.GA_MID
         },
-        gui_text = { str = 'new window' },
+        gui_text = {
+            str = 'new window'
+        }
     }
 
     -- body containing contents
     window.body = ng.add {
-        transform = { parent = ent },
+        transform = {
+            parent = ent
+        },
         gui_rect = {},
         gui = {
             padding = ng.vec2_zero,
             color = ng.color(0.0, 0.0, 0.0, 0.0),
             valign = ng.GA_TABLE,
             halign = ng.GA_MIN
-        },
+        }
     }
 end
 
 function ns.gui_window.remove(ent)
     local window = ns.gui_window.tbl[ent]
-    if window then ns.transform.destroy_rec(ent) end
+    if window then
+        ns.transform.destroy_rec(ent)
+    end
     ns.gui_window.tbl[ent] = nil
 end
 
@@ -156,20 +188,28 @@ ng.simple_props(ns.gui_window, {
 
 function ns.gui_window.set_title(ent, str)
     local window = ns.gui_window.tbl[ent]
-    if window then ns.gui_text.set_str(window.title_text, str) end
+    if window then
+        ns.gui_text.set_str(window.title_text, str)
+    end
 end
 function ns.gui_window.get_title(ent)
     local window = ns.gui_window.tbl[ent]
-    if window then return ns.gui_text.get_str(window.title_text) end
+    if window then
+        return ns.gui_text.get_str(window.title_text)
+    end
 end
 function ns.gui_window.get_title_buttons_area(ent)
     local window = ns.gui_window.tbl[ent]
-    if window then return window.title_buttons_area end
+    if window then
+        return window.title_buttons_area
+    end
 end
 
 function ns.gui_window.get_body(ent)
     local window = ns.gui_window.tbl[ent]
-    if window then return window.body end
+    if window then
+        return window.body
+    end
 end
 
 -- window that is being dragged
@@ -185,12 +225,13 @@ end
 function ns.gui_window.update_all()
     -- get mouse position
     local mouse_curr = ns.input.get_mouse_pos_pixels()
-    if not mouse_prev then mouse_prev = mouse_curr end
+    if not mouse_prev then
+        mouse_prev = mouse_curr
+    end
 
     -- close button clicked?
     for ent, window in pairs(ns.gui_window.tbl) do
-        if ns.gui.event_mouse_down(window.close_text) == ng.MC_LEFT
-        and window.closeable then
+        if ns.gui.event_mouse_down(window.close_text) == ng.MC_LEFT and window.closeable then
             ns.entity.destroy(ent)
         end
     end
@@ -200,15 +241,16 @@ function ns.gui_window.update_all()
         drag_window = nil
     end
     for ent in pairs(ns.gui_window.tbl) do
-        if ns.entity.destroyed(ent) then ns.gui_window.remove(ent) end
+        if ns.entity.destroyed(ent) then
+            ns.gui_window.remove(ent)
+        end
     end
 
     -- update all
     for ent, window in pairs(ns.gui_window.tbl) do
         -- new drag motion?
-        if ns.gui.event_mouse_down(window.titlebar) == ng.MC_LEFT
-        and ns.gui.get_halign(ent) == ng.GA_NONE
-        and ns.gui.get_valign(ent) == ng.GA_NONE then
+        if ns.gui.event_mouse_down(window.titlebar) == ng.MC_LEFT and ns.gui.get_halign(ent) == ng.GA_NONE and
+            ns.gui.get_valign(ent) == ng.GA_NONE then
             drag_window = ent
         end
 
@@ -238,39 +280,46 @@ function ns.gui_window.update_all()
     mouse_prev = mouse_curr
 end
 
-
 --- textbox --------------------------------------------------------------------
 
-ns.gui_textbox = { auto_saveload = true }
+ns.gui_textbox = {
+    auto_saveload = true
+}
 
 ns.gui_textbox.tbl = ng.entity_table()
 
 function ns.gui_textbox.add(ent)
-    if ns.gui_textbox.tbl[ent] then return end
+    if ns.gui_textbox.tbl[ent] then
+        return
+    end
     ns.gui_textbox.tbl[ent] = {}
     local gui_textbox = ns.gui_textbox.tbl[ent]
 
     -- add ent to gui_rect as container
     ng.add {
         ent = ent,
-        gui_rect = {},
+        gui_rect = {}
     }
 
     -- add text child
     gui_textbox.text = ng.add {
-        transform = { parent = ent },
+        transform = {
+            parent = ent
+        },
         gui = {
             color = ng.color_white,
             valign = ng.GA_MAX,
             halign = ng.GA_MIN
         },
-        gui_text = {},
+        gui_text = {}
     }
 end
 
 function ns.gui_textbox.remove(ent)
     local textbox = ns.gui_textbox.tbl[ent]
-    if textbox then ns.transform.destroy_rec(ent) end
+    if textbox then
+        ns.transform.destroy_rec(ent)
+    end
     ns.gui_textbox.tbl[ent] = nil
 end
 
@@ -284,31 +333,37 @@ ng.simple_props(ns.gui_textbox, {
 
 function ns.gui_textbox.get_text(ent)
     local gui_textbox = ns.gui_textbox.tbl[ent]
-    if gui_textbox then return gui_textbox.text end
+    if gui_textbox then
+        return gui_textbox.text
+    end
 end
 
 function ns.gui_textbox.update_all()
     for ent in pairs(ns.gui_textbox.tbl) do
-        if ns.entity.destroyed(ent) then ns.gui_textbox.remove(ent) end
+        if ns.entity.destroyed(ent) then
+            ns.gui_textbox.remove(ent)
+        end
     end
 
     for ent, textbox in pairs(ns.gui_textbox.tbl) do
-        if textbox.click_focus
-        and ns.gui.event_mouse_up(ent) == ng.MC_LEFT then
+        if textbox.click_focus and ns.gui.event_mouse_up(ent) == ng.MC_LEFT then
             ns.gui.set_focus(textbox.text, true)
         end
     end
 end
 
-
 --- gui_checkbox ---------------------------------------------------------------
 
-ns.gui_checkbox = { auto_saveload = true }
+ns.gui_checkbox = {
+    auto_saveload = true
+}
 
 ns.gui_checkbox.tbl = ng.entity_table()
 
 function ns.gui_checkbox.add(ent)
-    if ns.gui_checkbox.tbl[ent] then return end
+    if ns.gui_checkbox.tbl[ent] then
+        return
+    end
 
     local checkbox = {}
     ns.gui_checkbox.tbl[ent] = checkbox
@@ -335,21 +390,29 @@ local function checkbox_toggle(checkbox)
 end
 function ns.gui_checkbox.toggle(ent)
     local checkbox = ns.gui_checkbox.tbl[ent]
-    if checkbox then checkbox_toggle(checkbox) end
+    if checkbox then
+        checkbox_toggle(checkbox)
+    end
 end
 function ns.gui_checkbox.set_checked(ent, checked)
     local checkbox = ns.gui_checkbox.tbl[ent]
     -- do it this way to fire 'changed' event correctly
-    if checkbox.checked ~= checked then checkbox_toggle(checkbox) end
+    if checkbox.checked ~= checked then
+        checkbox_toggle(checkbox)
+    end
 end
 function ns.gui_checkbox.get_checked(ent, checked)
     local checkbox = ns.gui_checkbox.tbl[ent]
-    if checkbox then return checkbox.checked end
+    if checkbox then
+        return checkbox.checked
+    end
 end
 
 function ns.gui_checkbox.update_all(ent)
     for ent in pairs(ns.gui_checkbox.tbl) do
-        if ns.entity.destroyed(ent) then ns.gui_checkbox.remove(ent) end
+        if ns.entity.destroyed(ent) then
+            ns.gui_checkbox.remove(ent)
+        end
     end
 
     for ent, checkbox in pairs(ns.gui_checkbox.tbl) do

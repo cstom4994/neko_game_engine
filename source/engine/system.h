@@ -4,7 +4,7 @@
 #include "engine/base.h"
 #include "engine/prelude.h"
 
-SCRIPT(system,
+NEKO_SCRIPT(system,
 
        NEKO_EXPORT void system_load_all(Store *f);
        NEKO_EXPORT void system_save_all(Store *f);

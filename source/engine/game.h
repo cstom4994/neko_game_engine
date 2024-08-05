@@ -48,6 +48,9 @@ struct App {
 
     AppTime time;
 
+    f64 width;
+    f64 height;
+
     bool win_console;
     Slice<String> args;
 
@@ -106,9 +109,9 @@ inline ecs_t *&ENGINE_ECS() { return g_app->ECS; }
 
 i32 neko_buildnum(void);
 
-ECS_COMPONENT_EXTERN(pos_t);
-ECS_COMPONENT_EXTERN(vel_t);
-ECS_COMPONENT_EXTERN(rect_t);
+// ECS_COMPONENT_EXTERN(pos_t);
+// ECS_COMPONENT_EXTERN(vel_t);
+// ECS_COMPONENT_EXTERN(rect_t);
 
 void scratch_run();
 void scratch_update();
@@ -120,7 +123,7 @@ void game_run(int argc, char **argv);
 int game_get_argc();
 char **game_get_argv();
 
-SCRIPT(game,
+NEKO_SCRIPT(game,
 
        NEKO_EXPORT void game_set_bg_color(Color c);
 

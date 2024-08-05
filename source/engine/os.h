@@ -200,7 +200,7 @@ int neko_os_chdir(const char *path);
 
 typedef struct Store Store;
 
-SCRIPT(timing,
+NEKO_SCRIPT(timing,
 
        NEKO_EXPORT f32 timing_dt;
 

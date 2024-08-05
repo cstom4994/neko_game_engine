@@ -23,7 +23,7 @@
 #if LUA_VERSION_NUM < 504
 
 void *lua_newuserdatauv(lua_State *L_, size_t sz_, [[maybe_unused]] int nuvalue_) {
-    NEKO_ASSERT(L_, nuvalue_ <= 1);
+    NEKO_ASSERT(L_ && nuvalue_ <= 1);
     return lua_newuserdata(L_, sz_);
 }
 
@@ -290,12 +290,12 @@ void get(lua_State *L, const table &t) {
 int vfs_lua_loader(lua_State *L) {
     const_str name = luaL_checkstring(L, 1);
     std::string path = name;
-    std::replace(path.begin(), path.end(), '.', '\\');
+    std::replace(path.begin(), path.end(), '.', '/');
 
     neko_println("fuck:%s", path.c_str());
 
     bool ok = false;
-    auto load_list = {"code\\libs\\"};
+    auto load_list = {"code/libs/"};
     for (auto p : load_list) {
         std::string load_path = p + path + ".lua";
         String contents = {};

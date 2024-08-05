@@ -5,7 +5,7 @@
 #include "engine/ecs.h"
 #include "engine/prelude.h"
 
-SCRIPT(console,
+NEKO_SCRIPT(console,
 
        // 打印到此实体 添加到 gui_text 系统 (如果尚未在其中) 设置为entity_nil以禁用
        NEKO_EXPORT void console_set_entity(Entity ent);

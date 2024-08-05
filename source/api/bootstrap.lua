@@ -2,7 +2,6 @@ unsafe_require = require
 
 -- runs on start of the engine
 luadb = require("__neko.luadb")
-ImGui = require("__neko.imgui")
 Core = require("__neko.core")
 Inspector = require("__neko.inspector")
 
@@ -16,27 +15,24 @@ __print = print
 print = Core.print
 
 -- require
-function require(name)
-    local loaded = package.loaded[name]
-    if loaded ~= nil then
-        return loaded
-    end
-
-    local preload = package.preload[name]
-    if preload ~= nil then
-        return neko.__registry_load(name, preload(name))
-    end
-
-    local path = name:gsub("%.", "/")
-    if path:sub(-4) ~= ".lua" then
-        path = path .. ".lua"
-    end
-
-    local ret_tb = neko.__registry_lua_script(path)
-    if ret_tb ~= nil then
-        return table.unpack(ret_tb)
-    end
-end
+-- function require(name)
+--     local loaded = package.loaded[name]
+--     if loaded ~= nil then
+--         return loaded
+--     end
+--     local preload = package.preload[name]
+--     if preload ~= nil then
+--         return neko.__registry_load(name, preload(name))
+--     end
+--     local path = name:gsub("%.", "/")
+--     if path:sub(-4) ~= ".lua" then
+--         path = path .. ".lua"
+--     end
+--     local ret_tb = neko.__registry_lua_script(path)
+--     if ret_tb ~= nil then
+--         return table.unpack(ret_tb)
+--     end
+-- end
 
 default_require = require
 
@@ -1047,6 +1043,12 @@ function sleep(secs)
     end
 
     return neko.dt()
+end
+
+if math.pow == nil then
+    math.pow = function(a, b)
+        return a ^ b
+    end
 end
 
 print("lua startup")

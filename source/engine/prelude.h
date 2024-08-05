@@ -325,7 +325,7 @@ struct Instrument {
 #define PROFILE_BLOCK(name)
 #endif
 
-#define SCRIPT(name, ...)                                  \
+#define NEKO_SCRIPT(name, ...)                                  \
     static const char *nekogame_ffi_##name = #__VA_ARGS__; \
     __VA_ARGS__
 

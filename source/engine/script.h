@@ -23,4 +23,15 @@ void script_scroll(CVec2 scroll);
 void script_save_all(Store *s);
 void script_load_all(Store *s);
 
+int luax_pcall_nothrow(lua_State *L, int nargs, int nresults);
+void script_push_event(const char *event);
+
+#define errcheck(...)                                         \
+    do                                                        \
+        if (__VA_ARGS__) {                                    \
+            console_printf("lua: %s\n", lua_tostring(L, -1)); \
+            lua_pop(L, 1);                                    \
+        }                                                     \
+    while (0)
+
 #endif

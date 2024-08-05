@@ -11,10 +11,6 @@ ng.args = nekogame_args
 -- 有用的 ffi 函数
 ng.string = ffi.string
 
--- 自动生成的API
-require("gen_neko_api")
-ng.api = neko_api
-
 -- 导入所有内容
 
 require 'nekogame.util'
@@ -35,3 +31,4 @@ require 'nekogame.sound'
 
 require 'nekogame.console'
 require 'nekogame.fps'
+require 'nekogame.inspector'

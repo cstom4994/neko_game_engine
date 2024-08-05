@@ -1,5 +1,4 @@
 --- grab -----------------------------------------------------------------------
-
 local grab_old_pos, grab_mouse_start
 local grab_disp -- 'extra' displacement on top of mouse motion
 local grab_snap -- whether snapping to grid
@@ -18,8 +17,12 @@ function ns.edit.grab_cancel()
     ns.edit.set_mode('normal')
 end
 
-function ns.edit.grab_snap_on() grab_snap = true end
-function ns.edit.grab_snap_off() grab_snap = false end
+function ns.edit.grab_snap_on()
+    grab_snap = true
+end
+function ns.edit.grab_snap_off()
+    grab_snap = false
+end
 
 -- move all selected grid size times mult in a direction
 function ns.edit.grab_move_left(mult)
@@ -79,10 +82,8 @@ function ns.edit.modes.grab.update_all()
             -- find translation in parent space
             local parent = ns.transform.get_parent(ent)
             local m = ng.mat3_inverse(ns.transform.get_world_matrix(parent))
-            local d = ng.mat3_transform(m, mc)
-                - ng.mat3_transform(m, ms)
-            d = d + ng.mat3_transform(m, grab_disp)
-                - ng.mat3_transform(m, ng.vec2_zero)
+            local d = ng.mat3_transform(m, mc) - ng.mat3_transform(m, ms)
+            d = d + ng.mat3_transform(m, grab_disp) - ng.mat3_transform(m, ng.vec2_zero)
             ns.transform.set_position(ent, grab_old_pos[ent] + d)
         end
     end
@@ -93,7 +94,6 @@ function ns.edit.modes.grab.update_all()
     local mode_text = string.format('grab %s%.4f, %.4f', snap_text, d.x, d.y)
     ns.edit.set_mode_text(mode_text)
 end
-
 
 --- rotate ---------------------------------------------------------------------
 
@@ -126,7 +126,7 @@ function ns.edit.modes.rotate.enter()
     for ent in pairs(ns.edit.select) do
         rotate_old_posrot[ent] = {
             pos = ns.transform.get_position(ent),
-            rot = ns.transform.get_rotation(ent),
+            rot = ns.transform.get_rotation(ent)
         }
     end
 
@@ -143,8 +143,7 @@ end
 function ns.edit.modes.rotate.update_all()
     local ms = ns.camera.unit_to_world(rotate_mouse_start)
     local mc = ns.camera.unit_to_world(ns.input.get_mouse_pos_unit())
-    local ang = ng.vec2_atan2(mc - rotate_pivot)
-        - ng.vec2_atan2(ms - rotate_pivot)
+    local ang = ng.vec2_atan2(mc - rotate_pivot) - ng.vec2_atan2(ms - rotate_pivot)
 
     for ent in pairs(ns.edit.select) do
         -- set new rotation

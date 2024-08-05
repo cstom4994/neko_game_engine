@@ -4,23 +4,26 @@
 -- can't use normal Lua tables because Entity is cdata, which isn't
 -- hashed right
 --
-
 local function bind_defaults(t, v)
     if type(v) == 'table' then
         local defaults = rawget(t, 'defaults')
         if defaults then
-            setmetatable(v, { __index = defaults })
+            setmetatable(v, {
+                __index = defaults
+            })
         end
     end
 end
 
 local entity_table_mt = {
-    __newindex = function (t, k, v)
+    __newindex = function(t, k, v)
         local map = rawget(t, 'map')
 
         -- remove
         if v == nil then
-            if map == nil then return end
+            if map == nil then
+                return
+            end
             map[k.id] = nil
             return
         end
@@ -31,22 +34,29 @@ local entity_table_mt = {
             rawset(t, 'map', map)
         end
         bind_defaults(t, v)
-        map[k.id] = { ['k'] = ng.Entity(k), ['v'] = v }
+        map[k.id] = {
+            ['k'] = ng.Entity(k),
+            ['v'] = v
+        }
     end,
 
-    __index = function (t, k)
+    __index = function(t, k)
         local map = rawget(t, 'map')
 
         -- no map => empty
-        if not map then return nil end
+        if not map then
+            return nil
+        end
 
         -- find slot, return value in it
         local slot = map[k.id]
-        if not slot then return nil end
+        if not slot then
+            return nil
+        end
         return slot.v
     end,
 
-    __serialize_f = function (t)
+    __serialize_f = function(t)
         local map = rawget(t, 'map') or {}
 
         -- don't save filtered-out entities
@@ -60,19 +70,23 @@ local entity_table_mt = {
     end,
 
     -- allows iteration using pairs(...)
-    __pairs = function (t)
+    __pairs = function(t)
         local map = rawget(t, 'map')
 
-        return function (_, k)
+        return function(_, k)
             -- no map => empty
-            if not map then return nil, nil end
+            if not map then
+                return nil, nil
+            end
 
             -- get next in map
             local id, slot = next(map, k and k.id or nil)
-            if not id then return nil, nil end -- end
+            if not id then
+                return nil, nil
+            end -- end
             return slot.k, slot.v
         end, nil, nil
-    end,
+    end
 }
 
 function ng.is_entity_table(t)
@@ -84,7 +98,9 @@ function ng.entity_table()
 end
 
 function ng.entity_table_empty(t)
-    for _ in pairs(t) do return false end
+    for _ in pairs(t) do
+        return false
+    end
     return true
 end
 
@@ -105,7 +121,9 @@ end
 
 function ng.entity_table_remove_destroyed(t, f)
     for e in pairs(t) do
-        if ns.entity.destroyed(e) then f(e) end
+        if ns.entity.destroyed(e) then
+            f(e)
+        end
     end
 end
 
@@ -114,7 +132,9 @@ end
 -- sys is the system, tbl is the table properties are stored in, name is the
 -- name of the property and default is the default value if unset
 function ng.simple_prop(sys, name, default, tbl, set, get)
-    if tbl == nil then tbl = sys.tbl end
+    if tbl == nil then
+        tbl = sys.tbl
+    end
 
     -- update defaults
     if default ~= nil then
@@ -131,17 +151,21 @@ function ng.simple_prop(sys, name, default, tbl, set, get)
 
     -- setter
     if set ~= false then
-        sys['set_' .. name] = function (ent, val)
+        sys['set_' .. name] = function(ent, val)
             local t = tbl[ent]
-            if t then t[name] = val end
+            if t then
+                t[name] = val
+            end
         end
     end
 
     -- getter
     if get ~= false then
-        sys['get_' .. name] = function (ent)
+        sys['get_' .. name] = function(ent)
             local t = tbl[ent]
-            if t then return t[name] end
+            if t then
+                return t[name]
+            end
         end
     end
 end

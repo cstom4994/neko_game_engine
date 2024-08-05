@@ -3,29 +3,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "console.h"
+#include "engine/asset.h"
+#include "engine/console.h"
 
-static GLint _compile_shader(GLuint shader, const char *filename) {
-    char *file_contents, log[512];
-    long input_file_size;
-    FILE *input_file;
+static GLint gfx_compile_shader(GLuint shader, const char *filename) {
+    char log[512];
     GLint status;
 
-    input_file = fopen(filename, "rb");
-    fseek(input_file, 0, SEEK_END);
-    input_file_size = ftell(input_file);
-    rewind(input_file);
-    file_contents = (char *)mem_alloc((input_file_size + 1) * (sizeof(char)));
-    fread(file_contents, sizeof(char), input_file_size, input_file);
-    fclose(input_file);
-    file_contents[input_file_size] = '\0';
+    String contents = {};
+
+    bool ok = vfs_read_entire_file(&contents, filename);
+    neko_defer(mem_free(contents.data));
+
+    NEKO_ASSERT(ok);
 
     console_printf("gfx: compiling shader '%s' ...", filename);
 
-    glShaderSource(shader, 1, (const GLchar **)&file_contents, NULL);
+    glShaderSource(shader, 1, (const GLchar **)&contents.data, NULL);
     glCompileShader(shader);
-
-    mem_free(file_contents);
 
     // log
     glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
@@ -39,10 +34,10 @@ static GLint _compile_shader(GLuint shader, const char *filename) {
 GLuint gfx_create_program(const char *vert_path, const char *geom_path, const char *frag_path) {
     GLuint vert, geom, frag, program;
 
-#define compile(shader, type)                                  \
-    if (shader##_path) {                                       \
-        shader = glCreateShader(type);                         \
-        if (!_compile_shader(shader, shader##_path)) return 0; \
+#define compile(shader, type)                                     \
+    if (shader##_path) {                                          \
+        shader = glCreateShader(type);                            \
+        if (!gfx_compile_shader(shader, shader##_path)) return 0; \
     }
 
     compile(vert, GL_VERTEX_SHADER);

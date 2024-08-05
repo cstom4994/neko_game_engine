@@ -2,15 +2,14 @@
 
 #include <stdio.h>
 
-#include "engine/camera.h"
-#include "engine/game.h"
-#include "engine/ecs.h"
-#include "engine/prelude.h"
-#include "gfx.h"
-#include "engine/input.h"
 #include "engine/base.h"
+#include "engine/camera.h"
+#include "engine/ecs.h"
 #include "engine/game.h"
+#include "engine/input.h"
+#include "engine/prelude.h"
 #include "engine/transform.h"
+#include "gfx.h"
 
 static bool enabled;
 
@@ -106,7 +105,7 @@ static void _bboxes_init() {
     bbox_pool = entitypool_new(BBoxPoolElem);
 
     // create shader program, load atlas, bind parameters
-    bboxes_program = gfx_create_program(data_path("bbox.vert"), data_path("bbox.geom"), data_path("bbox.frag"));
+    bboxes_program = gfx_create_program("assets/data/bbox.vert", "assets/data/bbox.geom", "assets/data/bbox.frag");
     glUseProgram(bboxes_program);
 
     // make vao, vbo, bind attributes
@@ -284,7 +283,7 @@ static void _line_init() {
     line_points = array_new(LinePoint);
 
     // init draw stuff
-    line_program = gfx_create_program(data_path("edit_line.vert"), NULL, data_path("edit_line.frag"));
+    line_program = gfx_create_program("assets/data/edit_line.vert", NULL, "assets/data/edit_line.frag");
     glUseProgram(line_program);
     glGenVertexArrays(1, &line_vao);
     glBindVertexArray(line_vao);

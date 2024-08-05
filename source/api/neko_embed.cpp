@@ -1,10 +1,11 @@
 
 #include <string>
 
-#include "engine/luax.h"
 #include "engine/lua_util.h"
 #include "engine/luabind.hpp"
+#include "engine/luax.h"
 #include "engine/tolua.h"
+
 
 int load_embed_lua(lua_State* L, const u8 B[], const_str name) {
     std::string contents = (const_str)B;
@@ -87,7 +88,6 @@ LUAOPEN_EMBED_DATA(open_embed_socket_url, "socket.url.lua", socket_url_compresse
 extern "C" {
 int luaopen_socket_core(lua_State* L);
 int luaopen_mime_core(lua_State* L);
-int luaopen_cffi(lua_State* L);
 int luaopen_http(lua_State* L);
 int luaopen_enet(lua_State* l);
 }
@@ -98,10 +98,6 @@ void package_preload_embed(lua_State* L) {
     luaL_Reg preloads[] = {
             {"common", open_embed_common},
             {"gen_neko_api", open_embed_gen_neko_api},
-
-#ifdef NEKO_CFFI
-            {"ffi", luaopen_cffi},
-#endif
 
             {"http", luaopen_http},
 
@@ -140,7 +136,7 @@ void luax_run_bootstrap(lua_State* L) {
         lua_pop(L, 1);
         neko_panic("failed to run bootstrap");
     }
-    NEKO_INFO("loaded bootstrap");
+    console_log("loaded bootstrap");
 }
 }  // namespace neko::lua
 

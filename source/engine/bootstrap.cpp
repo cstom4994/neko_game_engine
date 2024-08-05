@@ -8,14 +8,13 @@
 #include <string.h>
 
 #include "engine/api.hpp"
-#include "engine/game.h"
 #include "engine/asset.h"
 #include "engine/base.h"
 #include "engine/draw.h"
 #include "engine/game.h"
-#include "engine/luax.h"
 #include "engine/lua_util.h"
 #include "engine/luabind.hpp"
+#include "engine/luax.h"
 #include "engine/math.h"
 #include "engine/os.h"
 #include "engine/prelude.h"
@@ -856,10 +855,6 @@ i32 neko_buildnum(void) {
 
 // static sgimgui_t sgimgui;
 
-static void *__neko_imgui_malloc(size_t sz, void *user_data) { return mem_alloc(sz); }
-
-static void __neko_imgui_free(void *ptr, void *user_data) { return mem_free(ptr); }
-
 // just for test
 // static MapTiled map;
 
@@ -890,8 +885,6 @@ static void init() {
         //     fprintf(stderr, "failed to create sokol_gp context: %s\n", sgp_get_error_message(sgp_get_last_error()));
         //     exit(-1);
         // }
-
-        ImGui::SetAllocatorFunctions(__neko_imgui_malloc, __neko_imgui_free);
 
         // const sgimgui_desc_t desc = {};
         // sgimgui_init(&sgimgui, &desc);
@@ -981,9 +974,6 @@ static void init() {
     }
 
     g_app->gpu_mtx.lock();
-
-    lua_channels_setup();
-    assets_start_hot_reload();
 
     tm_init.stop();
 
@@ -1284,23 +1274,7 @@ static void actually_cleanup() {
         // luaalloc_delete(g_app->LA);
     }
 
-    {
-        PROFILE_BLOCK("destroy assets");
 
-        lua_channels_shutdown();
-
-        if (g_app->default_font != nullptr) {
-            g_app->default_font->trash();
-            mem_free(g_app->default_font);
-        }
-
-        for (Sound *sound : g_app->garbage_sounds) {
-            sound->trash();
-        }
-        g_app->garbage_sounds.trash();
-
-        assets_shutdown();
-    }
 
     {
         PROFILE_BLOCK("audio uninit");
@@ -1320,19 +1294,9 @@ static void actually_cleanup() {
         sg_shutdown();
     }
 
-    vfs_fini();
 
-    mem_free(g_app->fatal_error.data);
-    mem_free(g_app->traceback.data);
 
-    for (String arg : g_app->args) {
-        mem_free(arg.data);
-    }
-    mem_free(g_app->args.data);
 
-    mem_free(g_app);
-
-    g_init_mtx.trash();
 }
 
 static void cleanup() {
@@ -1343,34 +1307,15 @@ static void cleanup() {
 
 #endif
 
-ECS_COMPONENT_DECL(pos_t);
-ECS_COMPONENT_DECL(vel_t);
-ECS_COMPONENT_DECL(rect_t);
+// ECS_COMPONENT_DECL(pos_t);
+// ECS_COMPONENT_DECL(vel_t);
+// ECS_COMPONENT_DECL(rect_t);
 
 static void neko_setup_w() {
     PROFILE_FUNC();
 
-    lua_State *L = neko::neko_lua_create();
-
-    // g_app->LA = LA;
-    g_app->L = L;
-
-    open_neko_api(L);
-
-    ENGINE_ECS() = ecs_init(ENGINE_LUA());
-
-    ECS_COMPONENT_DEFINE(pos_t, NULL, NULL);
-    ECS_COMPONENT_DEFINE(vel_t, NULL, NULL);
-    ECS_COMPONENT_DEFINE(rect_t, NULL, NULL);
-
-    g_app->g_lua_callbacks_table_ref = LUA_NOREF;
-
-    neko::lua::luax_run_bootstrap(L);
-
-    lua_pushcfunction(L, luax_msgh);  // 添加错误消息处理程序 始终位于堆栈底部
-
-    luax_neko_get(L, "__define_default_callbacks");
-    luax_pcall(L, 0, 0);
+    // luax_neko_get(L, "__define_default_callbacks");
+    // luax_pcall(L, 0, 0);
 }
 
 static void load_all_lua_scripts(lua_State *L) {
@@ -1425,59 +1370,7 @@ sapp_desc sokol_main(int argc, char **argv) {
     neko_setup_w();
     lua_State *L = ENGINE_LUA();
 
-#if defined(_DEBUG)
-    MountResult mount = vfs_mount(NEKO_PACKS::GAMEDATA, "./gamedir");
-    MountResult mount_luacode = vfs_mount(NEKO_PACKS::LUACODE, "./source/game");
-#else
-    MountResult mount = vfs_mount(NEKO_PACKS::GAMEDATA, nullptr);
-    MountResult mount_luacode = vfs_mount(NEKO_PACKS::LUACODE, "code.zip");
-#endif
 
-    g_app->is_fused.store(mount.is_fused);
-
-    if (!g_app->error_mode.load() && mount.ok && mount_luacode.ok) {
-        asset_load_kind(AssetKind_LuaRef, "main.lua", nullptr);
-    }
-
-    if (!g_app->error_mode.load()) {
-        luax_neko_get(L, "arg");
-
-        lua_createtable(L, argc - 1, 0);
-        for (i32 i = 1; i < argc; i++) {
-            lua_pushstring(L, argv[i]);
-            lua_rawseti(L, -2, i);
-        }
-
-        if (lua_pcall(L, 1, 0, 1) != LUA_OK) {
-            lua_pop(L, 1);
-        }
-    }
-
-    lua_newtable(L);
-    i32 conf_table = lua_gettop(L);
-
-    if (!g_app->error_mode.load()) {
-        luax_neko_get(L, "conf");
-        lua_pushvalue(L, conf_table);
-        luax_pcall(L, 1, 0);
-    }
-
-    g_app->win_console = g_app->win_console || luax_boolean_field(L, -1, "win_console", true);
-
-    bool hot_reload = luax_boolean_field(L, -1, "hot_reload", true);
-    bool startup_load_scripts = luax_boolean_field(L, -1, "startup_load_scripts", true);
-    bool fullscreen = luax_boolean_field(L, -1, "fullscreen", false);
-    lua_Number reload_interval = luax_opt_number_field(L, -1, "reload_interval", 0.1);
-    lua_Number swap_interval = luax_opt_number_field(L, -1, "swap_interval", 1);
-    lua_Number target_fps = luax_opt_number_field(L, -1, "target_fps", 0);
-    lua_Number width = luax_opt_number_field(L, -1, "window_width", 800);
-    lua_Number height = luax_opt_number_field(L, -1, "window_height", 600);
-    String title = luax_opt_string_field(L, -1, "window_title", "NekoEngine");
-    String imgui_font = luax_opt_string_field(L, -1, "imgui_font", "");
-    g_app->debug_on = luax_boolean_field(L, -1, "debug_on", true);
-    String game_proxy = luax_opt_string_field(L, -1, "game_proxy", "default");
-
-    lua_pop(L, 1);  // conf table
 
     if (!g_app->error_mode.load() && startup_load_scripts && mount.ok && mount_luacode.ok) {
         load_all_lua_scripts(L);

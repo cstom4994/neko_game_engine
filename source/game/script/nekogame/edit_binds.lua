@@ -42,10 +42,18 @@ ns.edit.modes.grab['<left>'] = ns.edit.grab_move_left
 ns.edit.modes.grab['<right>'] = ns.edit.grab_move_right
 ns.edit.modes.grab['<up>'] = ns.edit.grab_move_up
 ns.edit.modes.grab['<down>'] = ns.edit.grab_move_down
-ns.edit.modes.grab['S-<left>'] = function () ns.edit.grab_move_left(5) end
-ns.edit.modes.grab['S-<right>'] = function () ns.edit.grab_move_right(5) end
-ns.edit.modes.grab['S-<up>'] = function () ns.edit.grab_move_up(5) end
-ns.edit.modes.grab['S-<down>'] = function () ns.edit.grab_move_down(5) end
+ns.edit.modes.grab['S-<left>'] = function()
+    ns.edit.grab_move_left(5)
+end
+ns.edit.modes.grab['S-<right>'] = function()
+    ns.edit.grab_move_right(5)
+end
+ns.edit.modes.grab['S-<up>'] = function()
+    ns.edit.grab_move_up(5)
+end
+ns.edit.modes.grab['S-<down>'] = function()
+    ns.edit.grab_move_down(5)
+end
 
 -- rotate mode
 ns.edit.modes.rotate['<enter>'] = ns.edit.rotate_end
