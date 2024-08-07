@@ -1,11 +1,9 @@
 local M = {}
 
-local lust = require("libs/lust")
+local lust = hot_require("libs/lust")
 local describe, it, expect = lust.describe, lust.it, lust.expect
 
 local function UnitTest()
-
-    -- local Test = require("__neko.unittest")
 
     describe('my project', function()
         lust.before(function()
@@ -14,7 +12,7 @@ local function UnitTest()
         describe('module1', function()
 
             it('feature_ffi_reflect_enum', function()
-                local reflect = require("reflect")
+                local reflect = hot_require("reflect")
                 e = reflect.enum [[
                     A, B, /* 注释正确解析 */
                     C = 7,  // 注释正确解析
@@ -33,7 +31,7 @@ local function UnitTest()
             end)
 
             it('feature_table_gc', function()
-                -- local setmetatable = require("gc_metatable")
+                -- local setmetatable = hot_require("gc_metatable")
                 -- local r = {}
                 -- local tm = {}
                 -- local count = 0
@@ -55,7 +53,7 @@ local function UnitTest()
             end)
 
             it('feature_parser', function()
-                local parser = require("parser")
+                local parser = hot_require("parser")
 
                 parser([[
                     const vv = 3;
@@ -90,7 +88,7 @@ local function UnitTest()
 
             it('nn', function()
 
-                local nn = require("nn"):new_network({2, 3, 1})
+                local nn = hot_require("nn"):new_network({2, 3, 1})
                 for _ = 1, 1000 do
                     nn:learn({0, 0}, {0})
                     nn:learn({0, 1}, {1})
@@ -102,7 +100,7 @@ local function UnitTest()
                 print("Output for {1,0}: " .. nn:forward({1, 0})[1])
 
                 -- if 0 then
-                --     local nn = require("nn"):new_network({2, 3, 1}, 0.1, 0.03)
+                --     local nn = hot_require("nn"):new_network({2, 3, 1}, 0.1, 0.03)
                 --     -- 进行 20 *10,000 次迭代 每 10,000 次打印平均误差
                 --     for _ = 1, 20 do
                 --         local err = 0
@@ -120,12 +118,12 @@ local function UnitTest()
                 --         nn:forward({0, 0})[1], nn:forward({0, 1})[1], nn:forward({1, 0})[1], nn:forward({1, 1})[1]))
                 -- end
 
-                local my_network = require("nn"):new_network({2, 3, 1})
+                local my_network = hot_require("nn"):new_network({2, 3, 1})
                 -- 在这里训练学习
                 -- table.save(my_network.synapses, "network.txt")
 
                 -- -- 加载网络确保结构相同
-                -- local my_network = require("nn"):new_network({2, 3, 1})
+                -- local my_network = hot_require("nn"):new_network({2, 3, 1})
                 -- my_network.synapses = table.load("network.txt")
 
             end)

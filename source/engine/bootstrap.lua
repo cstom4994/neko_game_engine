@@ -4,7 +4,7 @@ unsafe_require = require
 luadb = require("__neko.luadb")
 Core = require("__neko.core")
 Inspector = require("__neko.inspector")
-
+FFI = require("ffi")
 common = require "common"
 
 -- FLECS = require "flecs"
@@ -14,30 +14,48 @@ common = require "common"
 __print = print
 print = Core.print
 
+dump_func = function(tbl, indent)
+    if not indent then
+        indent = 0
+        print("|inspect: \"" .. tostring(tbl) .. "\"")
+    end
+    for k, v in pairs(tbl) do
+        formatting = string.rep("  ", indent) .. k .. ": "
+        if type(v) == "table" then
+            print("|" .. formatting)
+            dump_func(v, indent + 1)
+        elseif type(v) == 'boolean' then
+            print("|" .. formatting .. tostring(v))
+        else
+            print("|" .. formatting .. v)
+        end
+    end
+end
+
+default_require = require
+
 -- require
 function hot_require(name)
-
-    name = "script." .. name
-
     local loaded = package.loaded[name]
     if loaded ~= nil then
+        print(("hot_require loaded %s"):format(name))
         return loaded
     end
     local preload = package.preload[name]
     if preload ~= nil then
+        print(("hot_require __registry_load %s"):format(name))
         return neko.__registry_load(name, preload(name))
     end
     local path = name:gsub("%.", "/")
     if path:sub(-4) ~= ".lua" then
         path = path .. ".lua"
     end
+    print(("hot_require __registry_lua_script %s"):format(name))
     local ret_tb = neko.__registry_lua_script(path)
     if ret_tb ~= nil then
         return table.unpack(ret_tb)
     end
 end
-
-default_require = require
 
 -- default callbacks
 
@@ -110,24 +128,6 @@ function neko.__define_default_callbacks()
         local y = (neko.window_height() - text_size) * 0.45
 
         default_font:draw(text, x, y, text_size)
-    end
-end
-
-dump_func = function(tbl, indent)
-    if not indent then
-        indent = 0
-        print("|inspect: \"" .. tostring(tbl) .. "\"")
-    end
-    for k, v in pairs(tbl) do
-        formatting = string.rep("  ", indent) .. k .. ": "
-        if type(v) == "table" then
-            print("|" .. formatting)
-            dump_func(v, indent + 1)
-        elseif type(v) == 'boolean' then
-            print("|" .. formatting .. tostring(v))
-        else
-            print("|" .. formatting .. v)
-        end
     end
 end
 

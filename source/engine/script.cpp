@@ -132,8 +132,6 @@ static void _forward_args() {
 
 static void _set_paths() {
     lua_State *L = ENGINE_LUA();
-    lua_pushstring(L, "./source/game/");
-    lua_setglobal(L, "nekogame_script_path");
     lua_pushstring(L, data_path(""));
     lua_setglobal(L, "nekogame_data_path");
     lua_pushstring(L, usr_path(""));

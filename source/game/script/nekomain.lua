@@ -1,11 +1,11 @@
 -- 添加nekogame需要路径并加载nekogame
-package.path = package.path .. ';' .. nekogame_script_path .. 'script/?.lua'
-package.path = package.path .. ';' .. nekogame_script_path .. 'script/?/init.lua'
-package.path = package.path .. ';' .. nekogame_script_path .. 'script/libs/?.lua'
-package.path = package.path .. ';' .. nekogame_script_path .. 'script/libs/?/init.lua'
-package.cpath = package.cpath .. ";" .. nekogame_script_path .. "script/libs/?.dll"
-
 hot_require 'nekogame'
+
+mm = hot_require("libs/mm")
+
+luainspector = Inspector.inspector_init()
+
+game_imgui = hot_require("cimgui")
 
 -- misc
 ns.app = {}
@@ -56,17 +56,13 @@ else
 
     -- ng.api.set_window_title("Sandbox")
 
-    require('test').UnitTest()
+    hot_require('test').UnitTest()
 
     -- 进入编辑模式
     ns.timing.set_paused(true)
     ns.edit.set_enabled(true)
 end
 
-luainspector = Inspector.inspector_init()
-
-game_imgui = require("cimgui")
-
 ns.edit.undo_save()
 
-print("main.lua loaded")
+print("nekomain.lua loaded default")

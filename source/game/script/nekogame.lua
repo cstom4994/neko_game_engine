@@ -1,6 +1,6 @@
 -- 任何导出 C 函数/变量 f 都可以作为 ng.f 使用
 -- 例如C函数 vec2(...) 可用为 ng.vec2(...) 在 Lua 中
-local ffi = require 'ffi'
+local ffi = FFI
 ng = setmetatable({}, {
     __index = ffi.C
 })
@@ -32,3 +32,5 @@ hot_require 'nekogame.sound'
 hot_require 'nekogame.console'
 hot_require 'nekogame.fps'
 hot_require 'nekogame.inspector'
+
+print("nekogame.lua loaded")

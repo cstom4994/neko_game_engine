@@ -658,7 +658,7 @@ static int neko_registry_load(lua_State *L) {
 static int neko_require_lua_script(lua_State *L) {
     PROFILE_FUNC();
 
-    String path = luax_check_string(L, 1);
+    String path = tmp_fmt("script/%s", luax_check_string(L, 1).cstr());
 
     Asset asset = {};
     bool ok = asset_load_kind(AssetKind_LuaRef, path, &asset);
@@ -1442,7 +1442,7 @@ static int neko_image_load(lua_State *L) {
 
     AssetLoadData desc = {};
     desc.kind = AssetKind_Image;
-    desc.generate_mips = generate_mips;
+    // desc.generate_mips = generate_mips;
 
     Asset asset = {};
     bool ok = asset_load(desc, str, &asset);
@@ -4681,9 +4681,9 @@ void open_neko_api(lua_State *L) {
     neko_register_common(L);
     neko_w_init();
 
-    lua_register(L, "__neko_loader", neko::vfs_lua_loader);
-    const_str str = "table.insert(package.searchers, 2, __neko_loader) \n";
-    luaL_dostring(L, str);
+    // lua_register(L, "__neko_loader", neko::vfs_lua_loader);
+    // const_str str = "table.insert(package.searchers, 2, __neko_loader) \n";
+    // luaL_dostring(L, str);
 }
 
 namespace neko::lua {

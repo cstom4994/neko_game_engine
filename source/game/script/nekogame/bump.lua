@@ -1,4 +1,4 @@
-local bump = require 'libs/bump'
+local bump = hot_require 'libs/bump'
 
 local world = bump.newWorld()
 

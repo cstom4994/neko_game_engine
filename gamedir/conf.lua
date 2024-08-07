@@ -5,7 +5,7 @@ function neko.conf(t)
     t.window_width = 1280
     t.window_height = 720
     t.debug_on = false
-    -- t.imgui_font = "assets/fonts/fusion-pixel-12px-monospaced-zh_hans.ttf"
+    t.imgui_font = "assets/fonts/fusion-pixel-12px-monospaced-zh_hans.ttf"
 
     t.game_proxy = "default"
 end

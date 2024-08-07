@@ -66,18 +66,18 @@ typedef struct {
     float tx, ty, tw, th;
 } batch_tex;
 
-void batch_test_draw(BatchRenderer *renderer, Texture *tex, batch_tex a) {
-    batch_texture(renderer, tex->id);
+void batch_test_draw(BatchRenderer *renderer, Texture tex, batch_tex a) {
+    batch_texture(renderer, tex.id);
 
     float x1 = a.px;
     float y1 = a.py;
     float x2 = a.px + 48;
     float y2 = a.py + 48;
 
-    float u1 = a.tx / tex->width;
-    float v1 = a.ty / tex->height;
-    float u2 = (a.tx + a.tw) / tex->width;
-    float v2 = (a.ty + a.th) / tex->height;
+    float u1 = a.tx / tex.width;
+    float v1 = a.ty / tex.height;
+    float u2 = (a.tx + a.tw) / tex.width;
+    float v2 = (a.ty + a.th) / tex.height;
 
     batch_push_vertex(renderer, x1, y1, u1, v1);
     batch_push_vertex(renderer, x2, y2, u2, v2);
@@ -184,7 +184,9 @@ static void _game_init() {
 
     renderer = batch_init(6000);
     // tex_aliens = create_texture("gamedir/assets/aliens.png");
-    texture_load("assets/aliens.png", false);
+    // texture_load();
+
+    asset_load(AssetLoadData{AssetKind_Image, false}, "assets/aliens.png", NULL);
 }
 
 static void _game_fini() {

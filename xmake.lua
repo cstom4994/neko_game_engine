@@ -152,32 +152,14 @@ do
     end
 
     set_basename("neko_$(mode)_$(arch)")
-    set_targetdir("./")
-    set_rundir("./")
-end
-
-xpack("luacode")
-do
-    set_formats("zip")
-    add_installfiles("source/game/(**)")
-    before_package(function(package)
-        local outputfile = package:outputfile()
-        -- if os.exists(outputfile) then
-        --     os.rm(outputfile)
-        -- end
-    end)
-    after_package(function(package)
-        local outputfile = package:outputfile()
-        if os.exists(outputfile) then
-            os.mv(outputfile, "./gamedir/code.zip")
-        end
-    end)
+    set_targetdir("./bin")
+    set_rundir("./bin")
 end
 
 xpack("gamedata")
 do
     set_formats("zip")
-    add_installfiles("gamedir/(**)")
+    add_installfiles("gamedir/(**)", "source/game/(**)")
     before_package(function(package)
         local outputfile = package:outputfile()
         -- if os.exists(outputfile) then
@@ -187,7 +169,7 @@ do
     after_package(function(package)
         local outputfile = package:outputfile()
         if os.exists(outputfile) then
-            os.mv(outputfile, "./gamedata.zip")
+            os.mv(outputfile, "./bin/gamedata.zip")
         end
     end)
 end

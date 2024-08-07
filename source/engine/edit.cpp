@@ -105,7 +105,7 @@ static void _bboxes_init() {
     bbox_pool = entitypool_new(BBoxPoolElem);
 
     // create shader program, load atlas, bind parameters
-    bboxes_program = gfx_create_program("bboxes_program", "assets/data/bbox.vert", "assets/data/bbox.geom", "assets/data/bbox.frag");
+    bboxes_program = gfx_create_program("bboxes_program", "shader/bbox.vert", "shader/bbox.geom", "shader/bbox.frag");
     glUseProgram(bboxes_program);
 
     // make vao, vbo, bind attributes
@@ -283,7 +283,7 @@ static void _line_init() {
     line_points = array_new(LinePoint);
 
     // init draw stuff
-    line_program = gfx_create_program("line_program", "assets/data/edit_line.vert", NULL, "assets/data/edit_line.frag");
+    line_program = gfx_create_program("line_program", "shader/edit_line.vert", NULL, "shader/edit_line.frag");
     glUseProgram(line_program);
     glGenVertexArrays(1, &line_vao);
     glBindVertexArray(line_vao);

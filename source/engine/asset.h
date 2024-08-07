@@ -4,6 +4,7 @@
 #include "engine/image.h"
 #include "engine/math.h"
 #include "engine/prelude.h"
+#include "engine/texture.h"
 #include "engine/tilemap.h"
 
 struct MountResult {
@@ -36,7 +37,7 @@ enum AssetKind : i32 {
 
 struct AssetLoadData {
     AssetKind kind;
-    bool generate_mips;
+    bool flip_image_vertical;
 };
 
 struct Asset {
@@ -46,11 +47,31 @@ struct Asset {
     AssetKind kind;
     union {
         i32 lua_ref;
-        Image image;
+        Texture texture;
         // SpriteData sprite;
         MapLdtk tilemap;
         // neko_pak pak;
     };
+};
+
+struct FileChange {
+    u64 key;
+    u64 modtime;
+};
+
+struct Assets {
+    HashMap<Asset> table;
+    RWLock rw_lock;
+
+    Mutex shutdown_mtx;
+    Cond shutdown_notify;
+    bool shutdown;
+
+    Thread reload_thread;
+
+    Mutex changes_mtx;
+    Array<FileChange> changes;
+    Array<FileChange> tmp_changes;
 };
 
 void assets_shutdown();

@@ -38,7 +38,9 @@ static GLuint vbo;
 static void _set_atlas(const char *filename, bool err) {
     CVec2 atlas_size;
 
-    if (!texture_load(filename)) {
+    bool ok = asset_load(AssetLoadData{AssetKind_Image, true}, filename, NULL);
+
+    if (!ok) {
         if (err) error("couldn't load atlas from path '%s', check path and format", filename);
         return;
     }
@@ -120,7 +122,7 @@ void sprite_init() {
 
     pool = entitypool_new(Sprite);
 
-    sprite_program = gfx_create_program("sprite_program", "assets/data/sprite.vert", "assets/data/sprite.geom", "assets/data/sprite.frag");
+    sprite_program = gfx_create_program("sprite_program", "shader/sprite.vert", "shader/sprite.geom", "shader/sprite.frag");
     glUseProgram(sprite_program);
     glUniform1i(glGetUniformLocation(sprite_program, "tex0"), 0);
     sprite_set_atlas("assets/data/default.png");

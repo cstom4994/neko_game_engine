@@ -1,5 +1,5 @@
-local ffi = require "ffi"
-local bit = require "bit"
+local ffi = default_require "ffi"
+local bit = default_require "bit"
 local reflect = {}
 
 local CTState, init_CTState
@@ -343,8 +343,8 @@ function reflect.getmetatable(x) -- mt = reflect.getmetatable(ct)
     return (miscmap or init_miscmap())[-tonumber(ffi.typeof(x))]
 end
 
-local t_concat = require"table".concat
-local new = require"ffi".new
+local t_concat = default_require"table".concat
+local new = default_require"ffi".new
 local cache = setmetatable({}, {
     __mode = "v"
 })

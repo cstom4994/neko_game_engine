@@ -515,7 +515,7 @@ static void _rect_init() {
     rect_pool = entitypool_new(Rect);
 
     // create shader program, load texture, bind parameters
-    rect_program = gfx_create_program("rect_program", "assets/data/rect.vert", "assets/data/rect.geom", "assets/data/rect.frag");
+    rect_program = gfx_create_program("rect_program", "shader/rect.vert", "shader/rect.geom", "shader/rect.frag");
     glUseProgram(rect_program);
 
     // make vao, vbo, bind attributes
@@ -897,9 +897,11 @@ static void _text_init() {
     text_pool = entitypool_new(Text);
 
     // create shader program, load texture, bind parameters
-    text_program = gfx_create_program("text_program", "assets/data/text.vert", "assets/data/text.geom", "assets/data/text.frag");
+    text_program = gfx_create_program("text_program", "shader/text.vert", "shader/text.geom", "shader/text.frag");
     glUseProgram(text_program);
-    texture_load("assets/data/font1.png");
+
+    asset_load(AssetLoadData{AssetKind_Image, true}, "assets/data/font1.png", NULL);
+
     glUniform1i(glGetUniformLocation(text_program, "tex0"), 0);
     glUniform2f(glGetUniformLocation(text_program, "inv_grid_size"), 1.0 / TEXT_GRID_W, 1.0 / TEXT_GRID_H);
     glUniform2f(glGetUniformLocation(text_program, "size"), TEXT_FONT_W, TEXT_FONT_H);

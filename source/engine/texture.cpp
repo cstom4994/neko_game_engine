@@ -22,8 +22,6 @@
 #define CUTE_ASEPRITE_IMPLEMENTATION
 #include <cute_aseprite.h>
 
-static CArray *textures;
-
 // -------------------------------------------------------------------------
 
 static void _flip_image_vertical(unsigned char *data, unsigned int width, unsigned int height) {
@@ -104,28 +102,12 @@ static void ase_default_blend_bind(ase_t *ase) {
     }
 }
 
-static bool _texture_load(Texture *tex) {
+static bool _texture_load(Texture *tex, String filename) {
     neko_assert(tex);
 
     u8 *data = nullptr;
 
-    // already have latest?
-
-    u64 modtime = vfs_file_modtime(tex->filename);
-
-    if (modtime == 0) {
-        if (tex->last_modified == 0) {
-            console_printf("texture: loading texture '%s' ... unsuccessful\n", tex->filename);
-            tex->last_modified = modtime;
-        }
-        return false;
-    }
-
-    if (modtime == tex->last_modified) return tex->id != 0;
-
-    console_printf("texture: loading texture '%s' ...", tex->filename);
-
-    String filename = {tex->filename};
+    console_printf("texture: loading texture '%s' ...", filename.cstr());
 
     String contents = {};
     bool ok = vfs_read_entire_file(&contents, filename);
@@ -162,7 +144,7 @@ static bool _texture_load(Texture *tex) {
 
     // 读入纹理数据
     if (!data) {
-        tex->last_modified = modtime;
+        // tex->last_modified = modtime;
         console_printf(" unsuccessful\n");
         return false;  // 保持旧的GL纹理
     }
@@ -199,68 +181,37 @@ static bool _texture_load(Texture *tex) {
         stbi_image_free(data);
     }
 
-    tex->last_modified = modtime;
+    // tex->last_modified = modtime;
     console_printf(" successful\n");
     return true;
 }
 
-static Texture *_texture_find(const char *filename) {
-    Texture *tex;
-
-    array_foreach(tex, textures) if (!strcmp(tex->filename, filename)) return tex;
-    return NULL;
-}
-
-bool texture_load(const char *filename, bool flip_image_vertical) {
-    Texture *tex;
-
-    // 已经存在
-    if ((tex = _texture_find(filename))) return tex->id != 0;
-
-    tex = (Texture *)array_add(textures);
+bool texture_load(Texture *tex, String filename, bool flip_image_vertical) {
     tex->id = 0;
-    tex->last_modified = 0;
     tex->flip_image_vertical = flip_image_vertical;
-    tex->filename = (char *)mem_alloc(strlen(filename) + 1);
-    strcpy(tex->filename, filename);
-    return _texture_load(tex);
+    return _texture_load(tex, filename);
 }
 
 void texture_bind(const char *filename) {
     LockGuard lock{&g_app->gpu_mtx};
 
-    Texture *tex;
+    Asset a = {};
+    bool ok = asset_load_kind(AssetKind_Image, filename, &a);
 
-    tex = _texture_find(filename);
-    if (tex && tex->id != 0) glBindTexture(GL_TEXTURE_2D, tex->id);
+    if (ok && a.texture.id != 0) glBindTexture(GL_TEXTURE_2D, a.texture.id);
 }
 
 CVec2 texture_get_size(const char *filename) {
-    Texture *tex;
-
-    tex = _texture_find(filename);
-    error_assert(tex);
-    return vec2(tex->width, tex->height);
+    Asset a = {};
+    bool ok = asset_load_kind(AssetKind_Image, filename, &a);
+    error_assert(ok);
+    return vec2(a.texture.width, a.texture.height);
 }
 
-Texture *texture_get_ptr(const char *filename) { return _texture_find(filename); }
-
-// -------------------------------------------------------------------------
-
-void texture_init() {
-    PROFILE_FUNC();
-    
-    textures = array_new(Texture);
+Texture texture_get_ptr(const char *filename) {
+    Asset a = {};
+    bool ok = asset_load_kind(AssetKind_Image, filename, &a);
+    return a.texture;
 }
 
-void texture_fini() {
-    Texture *tex;
-    array_foreach(tex, textures) mem_free(tex->filename);
-    array_free(textures);
-}
-
-void texture_update() {
-    Texture *tex;
-
-    array_foreach(tex, textures) _texture_load(tex);
-}
+bool texture_update(Texture *tex, String filename) { return _texture_load(tex, filename); }

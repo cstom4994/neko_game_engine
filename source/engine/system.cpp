@@ -32,7 +32,14 @@ static void load_all_lua_scripts(lua_State *L) {
         files.trash();
     });
 
-    bool ok = vfs_list_all_files(NEKO_PACKS::LUACODE, &files);
+    bool ok = false;
+
+#if defined(_DEBUG)
+    ok = vfs_list_all_files(NEKO_PACKS::LUACODE, &files);
+#else
+    ok = vfs_list_all_files(NEKO_PACKS::GAMEDATA, &files);
+#endif
+
     if (!ok) {
         neko_panic("failed to list all files");
     }
@@ -43,7 +50,7 @@ static void load_all_lua_scripts(lua_State *L) {
     });
 
     for (String file : files) {
-        if (file != "main.lua" && file.ends_with(".lua") && !file.starts_with("script/libs")) {
+        if (!file.ends_with("nekomain.lua") && file.ends_with(".lua")) {
             asset_load_kind(AssetKind_LuaRef, file, nullptr);
             console_log("load_all_lua_scripts: %s", file.cstr());
         } else {
@@ -75,11 +82,11 @@ void system_init() {
     PROFILE_FUNC();
 
 #if defined(_DEBUG)
-    MountResult mount = vfs_mount(NEKO_PACKS::GAMEDATA, "./gamedir");
-    MountResult mount_luacode = vfs_mount(NEKO_PACKS::LUACODE, "./source/game");
+    MountResult mount = vfs_mount(NEKO_PACKS::GAMEDATA, "../gamedir");
+    MountResult mount_luacode = vfs_mount(NEKO_PACKS::LUACODE, "../source/game");
 #else
     MountResult mount = vfs_mount(NEKO_PACKS::GAMEDATA, nullptr);
-    MountResult mount_luacode = vfs_mount(NEKO_PACKS::LUACODE, "code.zip");
+    MountResult mount_luacode = {true};
 #endif
 
     script_init();
@@ -89,7 +96,7 @@ void system_init() {
     g_app->is_fused.store(mount.is_fused);
 
     if (!g_app->error_mode.load() && mount.ok && mount_luacode.ok) {
-        asset_load_kind(AssetKind_LuaRef, "main.lua", nullptr);
+        asset_load_kind(AssetKind_LuaRef, "conf.lua", nullptr);
     }
 
     // if (!g_app->error_mode.load()) {
@@ -159,7 +166,6 @@ void system_init() {
     entity_init();
     transform_init();
     camera_init();
-    texture_init();
     sprite_init();
     gui_init();
     imgui_init();
@@ -168,16 +174,20 @@ void system_init() {
     physics_init();
     edit_init();
 
-    // g_app->hot_reload_enabled.store(mount.can_hot_reload && hot_reload);
-    // g_app->reload_interval.store((u32)(reload_interval * 1000));
+    g_app->hot_reload_enabled.store(mount.can_hot_reload && hot_reload);
+    g_app->reload_interval.store((u32)(reload_interval * 1000));
 
     if (!g_app->error_mode.load() && startup_load_scripts && mount.ok && mount_luacode.ok) {
         load_all_lua_scripts(L);
     }
 
     // run main.lua
-    errcheck(luaL_loadfile(L, "./source/game/script/main.lua"));
-    errcheck(luax_pcall_nothrow(L, 0, 0));
+    // String main_lua = {};
+    // vfs_read_entire_file(&main_lua, "script/nekomain.lua");
+    // neko_defer(mem_free(main_lua.data));
+    // errcheck(luaL_loadbuffer(L, main_lua.cstr(), main_lua.len, "nekomain.lua"));
+    // errcheck(luax_pcall_nothrow(L, 0, 0));
+    asset_load_kind(AssetKind_LuaRef, "script/nekomain.lua", nullptr);
 
     // fire init event
     script_push_event("init");
@@ -213,7 +223,6 @@ void system_fini() {
     sprite_fini();
     imgui_fini();
     gui_fini();
-    texture_fini();
     camera_fini();
     transform_fini();
     entity_fini();
@@ -247,7 +256,6 @@ void system_update_all() {
 
     timing_update();
 
-    texture_update();
     scratch_update();
 
     script_update_all();

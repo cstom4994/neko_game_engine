@@ -1,5 +1,5 @@
-local ffi = require 'ffi'
-local refct = require 'reflect'
+local ffi = FFI
+local refct = hot_require 'reflect'
 
 --- utilities ------------------------------------------------------------------
 

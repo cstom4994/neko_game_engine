@@ -1,4 +1,4 @@
-local ffi = require 'ffi'
+local ffi = FFI
 
 ns.edit = {
     inspect = false
@@ -288,18 +288,18 @@ end
 --- other files ----------------------------------------------------------------
 
 -- core edit stuff
-require 'nekogame.edit_select'
-require 'nekogame.edit_command'
-require 'nekogame.edit_bottom_gui'
-require 'nekogame.edit_inspector'
+hot_require 'nekogame.edit_select'
+hot_require 'nekogame.edit_command'
+hot_require 'nekogame.edit_bottom_gui'
+hot_require 'nekogame.edit_inspector'
 
 -- system-specific
-require 'nekogame.edit_entity'
-require 'nekogame.edit_transform'
-require 'nekogame.edit_physics'
+hot_require 'nekogame.edit_entity'
+hot_require 'nekogame.edit_transform'
+hot_require 'nekogame.edit_physics'
 
 -- default binds
-require 'nekogame.edit_binds'
+hot_require 'nekogame.edit_binds'
 
 --- main events ----------------------------------------------------------------
 

@@ -1,4 +1,4 @@
-local serpent = require("libs/serpent")
+local serpent = hot_require("libs/serpent")
 
 -- ng.systems (shortcut ns) is a special table such that ns.sys.func evaluates
 -- to C function sys_func, eg. ns.transform.rotate(...) becomes

@@ -35,7 +35,7 @@ local console_text = ng.add {
 ns.console.set_entity(console_text)
 
 -- rebind Lua 'print' to print to console
-function print(...)
+function console_print(...)
     local args = table.pack(...)
     local sargs = {}
     for i = 1, args.n do

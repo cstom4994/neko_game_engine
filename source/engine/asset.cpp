@@ -691,27 +691,7 @@ const_str neko_capi_vfs_read_file(const_str fsname, const_str filepath, size_t *
     return out.data;
 }
 
-struct FileChange {
-    u64 key;
-    u64 modtime;
-};
-
-struct Assets {
-    HashMap<Asset> table;
-    RWLock rw_lock;
-
-    Mutex shutdown_mtx;
-    Cond shutdown_notify;
-    bool shutdown;
-
-    Thread reload_thread;
-
-    Mutex changes_mtx;
-    Array<FileChange> changes;
-    Array<FileChange> tmp_changes;
-};
-
-static Assets g_assets = {};
+Assets g_assets = {};
 
 static void hot_reload_thread(void *) {
     u32 reload_interval = g_app->reload_interval.load();
@@ -787,9 +767,10 @@ void assets_perform_hot_reload_changes() {
                 break;
             }
             case AssetKind_Image: {
-                bool generate_mips = a.image.has_mips;
-                a.image.trash();
-                ok = a.image.load(a.name, generate_mips);
+                // bool generate_mips = a.image.has_mips;
+                // a.image.trash();
+                // ok = a.image.load(a.name, generate_mips);
+                ok = texture_update(&a.texture, a.name);
                 break;
             }
             // case AssetKind_Sprite: {
@@ -837,7 +818,7 @@ void assets_shutdown() {
 
         switch (v->kind) {
             case AssetKind_Image:
-                v->image.trash();
+                // v->image.trash();
                 break;
             // case AssetKind_Sprite:
             //     v->sprite.trash();
@@ -911,9 +892,9 @@ bool asset_load(AssetLoadData desc, String filepath, Asset *out) {
                 ok = true;
                 break;
             }
-            // case AssetKind_Image:
-            //     ok = asset.image.load(filepath, desc.generate_mips);
-            //     break;
+            case AssetKind_Image:
+                ok = texture_load(&asset.texture, filepath.cstr(), desc.flip_image_vertical);
+                break;
             // case AssetKind_Sprite:
             //     ok = asset.sprite.load(filepath);
             //     break;

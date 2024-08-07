@@ -1,4 +1,4 @@
-local ffi = require 'ffi'
+local ffi = FFI
 
 function ns.edit.destroy_rec()
     for ent in pairs(ns.edit.select) do

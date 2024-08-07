@@ -9,7 +9,7 @@
 #include <typeindex>
 #include <vector>
 
-// ImGui
+#include "engine/asset.h"
 #include "engine/glew_glfw.h"
 #include "engine/lua_util.h"
 #include "engine/luabind.hpp"
@@ -1011,6 +1011,8 @@ void neko::luainspector::inspect_table(lua_State* L, inspect_table_config& cfg) 
 
 neko::CCharacter cJohn;
 
+extern Assets g_assets;
+
 int neko::luainspector::luainspector_init(lua_State* L) {
 
     void* model_mem = lua_newuserdata(L, sizeof(neko::luainspector));
@@ -1129,6 +1131,10 @@ int neko::luainspector::luainspector_draw(lua_State* L) {
                 if (ImGui::Button("GC")) lua_gc(L, LUA_GCCOLLECT, 0);
 
                 // ImGui::PlotLines("Frame Times", arr.data(), arr.size(), 0, NULL, 0, 4000, ImVec2(0, 80.0f));
+
+                for (auto kv : g_assets.table) {
+                    ImGui::Text("%lld %s", kv.key, kv.value->name.cstr());
+                }
 
                 ImGui::EndTabItem();
             }
