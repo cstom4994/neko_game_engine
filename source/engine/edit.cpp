@@ -326,12 +326,15 @@ void edit_clear() {
 }
 
 void edit_init() {
+    PROFILE_FUNC();
+
     uneditable_pool = entitypool_new(EntityPoolElem);
 
     _bboxes_init();
     _grid_init();
     _line_init();
 }
+
 void edit_fini() {
     _line_fini();
     _grid_fini();

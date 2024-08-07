@@ -2,10 +2,11 @@
 
 #include <ctype.h>
 
-#include "engine/prelude.h"
-#include "glew_glfw.h"
 #include "engine/base.h"
 #include "engine/game.h"
+#include "engine/prelude.h"
+#include "glew_glfw.h"
+
 
 static CArray *key_down_cbs;
 static CArray *key_up_cbs;
@@ -160,6 +161,8 @@ static void _scroll_callback(GLFWwindow *window, double x, double y) {
 }
 
 void input_init() {
+    PROFILE_FUNC();
+
     key_down_cbs = array_new(KeyCallback);
     key_up_cbs = array_new(KeyCallback);
     glfwSetKeyCallback(g_app->game_window, _key_callback);

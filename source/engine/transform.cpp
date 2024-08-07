@@ -302,7 +302,12 @@ static void _free_children_arrays() {
     entitypool_foreach(transform, pool) if (transform->children) array_free(transform->children);
 }
 
-void transform_init() { pool = entitypool_new(Transform); }
+void transform_init() {
+    PROFILE_FUNC();
+
+    pool = entitypool_new(Transform);
+}
+
 void transform_fini() {
     _free_children_arrays();
     entitypool_free(pool);

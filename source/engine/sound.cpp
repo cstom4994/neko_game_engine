@@ -557,7 +557,29 @@ void sound_load_all(Store *s)
 
 #endif
 
-void sound_init() {}
+void sound_init() {
+    PROFILE_FUNC();
+
+    {
+#if NEKO_AUDIO == 1
+        PROFILE_BLOCK("miniaudio");
+
+        g_app->miniaudio_vfs = vfs_for_miniaudio();
+
+        ma_engine_config ma_config = ma_engine_config_init();
+        ma_config.channels = 2;
+        ma_config.sampleRate = 44100;
+        ma_config.pResourceManagerVFS = g_app->miniaudio_vfs;
+        ma_result res = ma_engine_init(&ma_config, &g_app->audio_engine);
+        if (res != MA_SUCCESS) {
+            fatal_error("failed to initialize audio engine");
+        }
+#elif NEKO_AUDIO == 2
+
+#endif
+    }
+}
+
 void sound_fini() {}
 void sound_update_all() {}
 void sound_save_all(Store *s) {}

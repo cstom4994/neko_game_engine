@@ -4,10 +4,12 @@
 
 #include "console.h"
 #include "edit.h"
+#include "engine/api.hpp"
 #include "engine/base.h"
 #include "engine/camera.h"
 #include "engine/game.h"
 #include "engine/input.h"
+#include "engine/lua_util.h"
 #include "engine/os.h"
 #include "engine/physics.h"
 #include "engine/prefab.h"
@@ -18,6 +20,36 @@
 #include "engine/transform.h"
 #include "engine/ui.h"
 #include "test/keyboard_controlled.h"
+
+static void load_all_lua_scripts(lua_State *L) {
+    PROFILE_FUNC();
+
+    Array<String> files = {};
+    neko_defer({
+        for (String str : files) {
+            mem_free(str.data);
+        }
+        files.trash();
+    });
+
+    bool ok = vfs_list_all_files(NEKO_PACKS::LUACODE, &files);
+    if (!ok) {
+        neko_panic("failed to list all files");
+    }
+    std::qsort(files.data, files.len, sizeof(String), [](const void *a, const void *b) -> int {
+        String *lhs = (String *)a;
+        String *rhs = (String *)b;
+        return std::strcmp(lhs->data, rhs->data);
+    });
+
+    for (String file : files) {
+        if (file != "main.lua" && file.ends_with(".lua") && !file.starts_with("script/libs")) {
+            asset_load_kind(AssetKind_LuaRef, file, nullptr);
+            console_log("load_all_lua_scripts: %s", file.cstr());
+        } else {
+        }
+    }
+}
 
 static void _key_down(KeyCode key) {
     gui_key_down(key);
@@ -40,6 +72,7 @@ static void _mouse_move(CVec2 pos) { script_mouse_move(pos); }
 static void _scroll(CVec2 scroll) { script_scroll(scroll); }
 
 void system_init() {
+    PROFILE_FUNC();
 
 #if defined(_DEBUG)
     MountResult mount = vfs_mount(NEKO_PACKS::GAMEDATA, "./gamedir");
@@ -49,17 +82,6 @@ void system_init() {
     MountResult mount_luacode = vfs_mount(NEKO_PACKS::LUACODE, "code.zip");
 #endif
 
-    input_init();
-    entity_init();
-    transform_init();
-    camera_init();
-    texture_init();
-    sprite_init();
-    gui_init();
-    console_init();
-    sound_init();
-    physics_init();
-    edit_init();
     script_init();
 
     lua_State *L = ENGINE_LUA();
@@ -111,6 +133,48 @@ void system_init() {
     // 刷新状态
     game_set_window_size(vec2(g_app->width, g_app->height));
 
+    if (fnv1a(game_proxy) == "default"_hash) {
+        neko::neko_lua_run_string(L, R"lua(
+            function neko.before_quit() game_proxy_before_quit() end
+            function neko.start(arg) game_proxy_start(arg) end
+            function neko.frame(dt) game_proxy_frame(dt) end
+        )lua");
+        console_log("using default game proxy");
+    }
+
+    CVAR(conf_hot_reload, hot_reload);
+    CVAR(conf_startup_load_scripts, startup_load_scripts);
+    CVAR(conf_fullscreen, fullscreen);
+    CVAR(conf_reload_interval, reload_interval);
+    CVAR(conf_swap_interval, swap_interval);
+    CVAR(conf_target_fps, target_fps);
+    CVAR(conf_width, g_app->width);
+    CVAR(conf_height, g_app->height);
+    CVAR(conf_title, title);
+    CVAR(conf_imgui_font, imgui_font);
+    CVAR(conf_debug_on, g_app->debug_on);
+    CVAR(conf_game_proxy, game_proxy);
+
+    input_init();
+    entity_init();
+    transform_init();
+    camera_init();
+    texture_init();
+    sprite_init();
+    gui_init();
+    imgui_init();
+    console_init();
+    sound_init();
+    physics_init();
+    edit_init();
+
+    // g_app->hot_reload_enabled.store(mount.can_hot_reload && hot_reload);
+    // g_app->reload_interval.store((u32)(reload_interval * 1000));
+
+    if (!g_app->error_mode.load() && startup_load_scripts && mount.ok && mount_luacode.ok) {
+        load_all_lua_scripts(L);
+    }
+
     // run main.lua
     errcheck(luaL_loadfile(L, "./source/game/script/main.lua"));
     errcheck(luax_pcall_nothrow(L, 0, 0));
@@ -126,21 +190,36 @@ void system_init() {
     input_add_mouse_up_callback(_mouse_up);
     input_add_mouse_move_callback(_mouse_move);
     input_add_scroll_callback(_scroll);
+
+    if (target_fps != 0) {
+        g_app->time.target_ticks = 1000000000 / target_fps;
+    }
+
+#ifdef NEKO_IS_WIN32
+    if (!g_app->win_console) {
+        FreeConsole();
+    }
+#endif
 }
 
 void system_fini() {
+    PROFILE_FUNC();
+
     edit_fini();
     script_fini();
     physics_fini();
     sound_fini();
     console_fini();
     sprite_fini();
+    imgui_fini();
     gui_fini();
     texture_fini();
     camera_fini();
     transform_fini();
     entity_fini();
     input_fini();
+
+    neko_dyn_array_free(g_app->shader_array);
 
     {
         PROFILE_BLOCK("destroy assets");

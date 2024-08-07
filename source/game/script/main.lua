@@ -2,9 +2,10 @@
 package.path = package.path .. ';' .. nekogame_script_path .. 'script/?.lua'
 package.path = package.path .. ';' .. nekogame_script_path .. 'script/?/init.lua'
 package.path = package.path .. ';' .. nekogame_script_path .. 'script/libs/?.lua'
+package.path = package.path .. ';' .. nekogame_script_path .. 'script/libs/?/init.lua'
 package.cpath = package.cpath .. ";" .. nekogame_script_path .. "script/libs/?.dll"
 
-require 'nekogame'
+hot_require 'nekogame'
 
 -- misc
 ns.app = {}

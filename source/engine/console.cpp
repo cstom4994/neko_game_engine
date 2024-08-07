@@ -6,11 +6,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "engine/game.h"
-#include "engine/ui.h"
-#include "engine/input.h"
 #include "engine/base.h"
+#include "engine/game.h"
+#include "engine/input.h"
 #include "engine/transform.h"
+#include "engine/ui.h"
 
 #define LINE_LEN 128  // including newline, null char
 #define NUM_LINES 20
@@ -144,5 +144,10 @@ void console_printf(const char *fmt, ...) {
     mem_free(s);
 }
 
-void console_init() { text = entity_nil; }
+void console_init() {
+    PROFILE_FUNC();
+
+    text = entity_nil;
+}
+
 void console_fini() {}

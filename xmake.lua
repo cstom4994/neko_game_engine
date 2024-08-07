@@ -28,6 +28,7 @@ local NEKO_AUDIO = "none"
 add_requires("glew")
 add_requires("glfw")
 add_requires("miniz")
+add_requires("cglm")
 add_requires("stb")
 add_requires("box2d")
 add_requires("cute_headers")

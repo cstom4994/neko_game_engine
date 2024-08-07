@@ -51,6 +51,7 @@ static void _set_atlas(const char *filename, bool err) {
     glUseProgram(sprite_program);
     glUniform2fv(glGetUniformLocation(sprite_program, "atlas_size"), 1, (const GLfloat *)&atlas_size);
 }
+
 void sprite_set_atlas(const char *filename) { _set_atlas(filename, true); }
 
 const char *sprite_get_atlas() { return atlas; }
@@ -115,6 +116,7 @@ int sprite_get_depth(Entity ent) {
 }
 
 void sprite_init() {
+    PROFILE_FUNC();
 
     pool = entitypool_new(Sprite);
 
@@ -152,9 +154,11 @@ void sprite_update_all() {
 
     entitypool_remove_destroyed(pool, sprite_remove);
 
-    entitypool_foreach(sprite, pool) sprite->wmat = transform_get_world_matrix(sprite->pool_elem.ent);
+    entitypool_foreach(sprite, pool) { sprite->wmat = transform_get_world_matrix(sprite->pool_elem.ent); }
 
-    if (edit_get_enabled()) entitypool_foreach(sprite, pool) edit_bboxes_update(sprite->pool_elem.ent, bbox(vec2_mul(sprite->size, min), vec2_mul(sprite->size, max)));
+    if (edit_get_enabled()) {
+        entitypool_foreach(sprite, pool) { edit_bboxes_update(sprite->pool_elem.ent, bbox(vec2_mul(sprite->size, min), vec2_mul(sprite->size, max))); }
+    }
 }
 
 static int _depth_compare(const void *a, const void *b) {

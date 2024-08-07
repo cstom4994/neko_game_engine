@@ -6,9 +6,10 @@
 
 #include "engine/draw.h"
 #include "engine/game.h"
-#include "engine/luax.h"
 #include "engine/lua_util.h"
+#include "engine/luax.h"
 #include "engine/os.h"
+
 
 static void contact_run_cb(lua_State *L, i32 ref, i32 a, i32 b, i32 msgh) {
     if (ref != LUA_REFNIL) {
@@ -1846,7 +1847,7 @@ void physics_load_all(Store *s)
 
 #endif
 
-void physics_init() {}
+void physics_init() { PROFILE_FUNC(); }
 void physics_fini() {}
 void physics_update_all() {}
 void physics_post_update_all() {}

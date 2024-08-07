@@ -13,7 +13,12 @@ function ns.inspector.draw_all()
     -- game_imgui.ShowDemoWindow()
 
     if game_imgui.Begin("Test") then
-        game_imgui.Text("hgaha")
+        game_imgui.Text("hello你好呀")
+
+        if game_imgui.Button("Test parser") then
+
+        end
+
         game_imgui.End()
     end
 end

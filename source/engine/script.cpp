@@ -192,6 +192,8 @@ int luaopen_bit(lua_State *L);
 #endif
 
 void script_init() {
+    PROFILE_FUNC();
+
     neko::timer timer;
     timer.start();
 

@@ -1849,6 +1849,8 @@ void entity_clear_save_filters() {
 }
 
 void entity_init() {
+    PROFILE_FUNC();
+
     exists_pool = entitypool_new(ExistsPoolElem);
     destroyed_map = entitymap_new(false);
     destroyed = array_new(DestroyEntry);

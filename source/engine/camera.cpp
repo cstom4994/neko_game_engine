@@ -1,10 +1,10 @@
 #include "engine/camera.h"
 
 #include "edit.h"
-#include "engine/ecs.h"
-#include "engine/prelude.h"
 #include "engine/base.h"
+#include "engine/ecs.h"
 #include "engine/game.h"
+#include "engine/prelude.h"
 #include "engine/transform.h"
 
 typedef struct Camera Camera;
@@ -87,11 +87,14 @@ CVec2 camera_unit_to_world(CVec2 p) {
 // -------------------------------------------------------------------------
 
 void camera_init() {
+    PROFILE_FUNC();
+
     pool = entitypool_new(Camera);
     curr_camera = entity_nil;
     edit_camera = entity_nil;
     inverse_view_matrix = mat3_identity();
 }
+
 void camera_fini() { entitypool_free(pool); }
 
 void camera_update_all() {

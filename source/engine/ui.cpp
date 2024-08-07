@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "edit.h"
+#include "engine/api.hpp"
 #include "engine/base.h"
 #include "engine/camera.h"
 #include "engine/ecs.h"
@@ -16,6 +17,10 @@
 #include "engine/texture.h"
 #include "engine/transform.h"
 #include "gfx.h"
+
+// imgui
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
 
 static Entity gui_root;  // 所有 gui 都应该是它的子节点 以便随屏幕移动
 
@@ -1176,6 +1181,8 @@ static void _create_root() {
 }
 
 void gui_init() {
+    PROFILE_FUNC();
+
     focused = entity_nil;
     _common_init();
     _rect_init();
@@ -1183,6 +1190,7 @@ void gui_init() {
     _textedit_init();
     _create_root();
 }
+
 void gui_fini() {
     _textedit_fini();
     _text_fini();
@@ -1505,3 +1513,57 @@ void init(lua_State *L) {
 }
 
 }  // namespace neko::imgui::util
+
+void imgui_init() {
+    PROFILE_FUNC();
+
+    ImGui::SetAllocatorFunctions(+[](size_t sz, void *user_data) { return mem_alloc(sz); }, +[](void *ptr, void *user_data) { return mem_free(ptr); });
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+    ImGui::StyleColorsDark();
+
+    ImGui_ImplGlfw_InitForOpenGL(g_app->game_window, true);
+    ImGui_ImplOpenGL3_Init();
+
+    CVAR_REF(conf_imgui_font, String);
+
+    if (neko_strlen(conf_imgui_font.data.str) > 0) {
+        auto &io = ImGui::GetIO();
+
+        ImFontConfig config;
+        // config.PixelSnapH = 1;
+
+        String ttf_file;
+        vfs_read_entire_file(&ttf_file, conf_imgui_font.data.str);
+        // neko_defer(mem_free(ttf_file.data));
+        // void *ttf_data = ::mem_alloc(ttf_file.len);  // TODO:: imgui 内存方法接管
+        // memcpy(ttf_data, ttf_file.data, ttf_file.len);
+        io.Fonts->AddFontFromMemoryTTF(ttf_file.data, ttf_file.len, 12.0f, &config, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
+    }
+}
+
+void imgui_fini() {
+
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+}
+
+void imgui_draw_pre() {
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+}
+
+void imgui_draw_post() {
+    ImGui::Render();
+    // int displayX, displayY;
+    // glfwGetFramebufferSize(window, &displayX, &displayY);
+    // glViewport(0, 0, displayX, displayY);
+    // glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
+    // glClear(GL_COLOR_BUFFER_BIT);
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+}

@@ -857,3 +857,8 @@ void flags_gen(lua_State *L, const char *name);
 void init(lua_State *L);
 
 }  // namespace neko::imgui::util
+
+void imgui_init();
+void imgui_fini();
+void imgui_draw_pre();
+void imgui_draw_post();

@@ -7,7 +7,6 @@
 #include <filesystem>
 
 #include "engine/base.h"
-#include "engine/common.h"
 #include "engine/draw.h"
 #include "engine/game.h"
 #include "engine/luax.h"
@@ -912,19 +911,20 @@ bool asset_load(AssetLoadData desc, String filepath, Asset *out) {
                 ok = true;
                 break;
             }
-            case AssetKind_Image:
-                ok = asset.image.load(filepath, desc.generate_mips);
-                break;
+            // case AssetKind_Image:
+            //     ok = asset.image.load(filepath, desc.generate_mips);
+            //     break;
             // case AssetKind_Sprite:
             //     ok = asset.sprite.load(filepath);
             //     break;
-            case AssetKind_Tilemap:
-                ok = asset.tilemap.load(filepath);
-                break;
+            // case AssetKind_Tilemap:
+            //     ok = asset.tilemap.load(filepath);
+            //     break;
             // case AssetKind_Pak:
             //     ok = asset.pak.load(filepath.data, 0, false);
             //     break;
             default:
+                console_log("asset_load %d undefined", desc.kind);
                 break;
         }
 

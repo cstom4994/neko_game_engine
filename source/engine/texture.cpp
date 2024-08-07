@@ -104,7 +104,9 @@ static void ase_default_blend_bind(ase_t *ase) {
     }
 }
 
-static bool texture_load(Texture *tex) {
+static bool _texture_load(Texture *tex) {
+    neko_assert(tex);
+
     u8 *data = nullptr;
 
     // already have latest?
@@ -119,7 +121,7 @@ static bool texture_load(Texture *tex) {
         return false;
     }
 
-    if (modtime == tex->last_modified) return tex->gl_name != 0;
+    if (modtime == tex->last_modified) return tex->id != 0;
 
     console_printf("texture: loading texture '%s' ...", tex->filename);
 
@@ -153,6 +155,7 @@ static bool texture_load(Texture *tex) {
 
         {
             PROFILE_BLOCK("stb_image load");
+            stbi_set_flip_vertically_on_load(false);
             data = stbi_load_from_memory((u8 *)contents.data, (i32)contents.len, &tex->width, &tex->height, &tex->components, 0);
         }
     }
@@ -168,18 +171,26 @@ static bool texture_load(Texture *tex) {
         LockGuard lock{&g_app->gpu_mtx};
 
         // 如果存在 则释放旧的 GL 纹理
-        if (tex->gl_name != 0) glDeleteTextures(1, &tex->gl_name);
+        if (tex->id != 0) glDeleteTextures(1, &tex->id);
 
         // 生成 GL 纹理
-        glGenTextures(1, &tex->gl_name);
+        glGenTextures(1, &tex->id);
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, tex->gl_name);
+        glBindTexture(GL_TEXTURE_2D, tex->id);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
+        if (tex->flip_image_vertical) {
+            _flip_image_vertical(data, tex->width, tex->height);
+        }
+
         // 将纹理数据复制到 GL
-        _flip_image_vertical(data, tex->width, tex->height);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex->width, tex->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, tex->width, tex->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+        glBindTexture(GL_TEXTURE_2D, 0);
     }
 
     if (filename.ends_with(".ase")) {
@@ -193,25 +204,26 @@ static bool texture_load(Texture *tex) {
     return true;
 }
 
-static Texture *_find(const char *filename) {
+static Texture *_texture_find(const char *filename) {
     Texture *tex;
 
     array_foreach(tex, textures) if (!strcmp(tex->filename, filename)) return tex;
     return NULL;
 }
 
-bool texture_load(const char *filename) {
+bool texture_load(const char *filename, bool flip_image_vertical) {
     Texture *tex;
 
-    // already exists?
-    if ((tex = _find(filename))) return tex->gl_name != 0;
+    // 已经存在
+    if ((tex = _texture_find(filename))) return tex->id != 0;
 
     tex = (Texture *)array_add(textures);
-    tex->gl_name = 0;
+    tex->id = 0;
     tex->last_modified = 0;
+    tex->flip_image_vertical = flip_image_vertical;
     tex->filename = (char *)mem_alloc(strlen(filename) + 1);
     strcpy(tex->filename, filename);
-    return texture_load(tex);
+    return _texture_load(tex);
 }
 
 void texture_bind(const char *filename) {
@@ -219,21 +231,27 @@ void texture_bind(const char *filename) {
 
     Texture *tex;
 
-    tex = _find(filename);
-    if (tex && tex->gl_name != 0) glBindTexture(GL_TEXTURE_2D, tex->gl_name);
+    tex = _texture_find(filename);
+    if (tex && tex->id != 0) glBindTexture(GL_TEXTURE_2D, tex->id);
 }
 
 CVec2 texture_get_size(const char *filename) {
     Texture *tex;
 
-    tex = _find(filename);
+    tex = _texture_find(filename);
     error_assert(tex);
     return vec2(tex->width, tex->height);
 }
 
+Texture *texture_get_ptr(const char *filename) { return _texture_find(filename); }
+
 // -------------------------------------------------------------------------
 
-void texture_init() { textures = array_new(Texture); }
+void texture_init() {
+    PROFILE_FUNC();
+    
+    textures = array_new(Texture);
+}
 
 void texture_fini() {
     Texture *tex;
@@ -244,5 +262,5 @@ void texture_fini() {
 void texture_update() {
     Texture *tex;
 
-    array_foreach(tex, textures) texture_load(tex);
+    array_foreach(tex, textures) _texture_load(tex);
 }

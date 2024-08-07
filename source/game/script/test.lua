@@ -54,7 +54,79 @@ local function UnitTest()
                 -- assert(count == 2)
             end)
 
-            it('feature_ffi_luastate', function()
+            it('feature_parser', function()
+                local parser = require("parser")
+
+                parser([[
+                    const vv = 3;
+                    -- vv = 4;
+    
+                    let test = 3;
+                    test++;
+                    test--;
+                    test += 5;
+                    test /= 4;
+                    test *= 3;
+                    test ^= 2;
+                    test -= 1;
+    
+                    print(test)
+    
+                    let test = () => {
+                        print("hello, world!");
+                    }
+                    test();
+    
+                    let test = (a, b) => a + b;
+                    print(test(1, 2));
+    
+                    -- try {
+                    --     nonExistingFunction();
+                    -- } catch(e) {
+                    --     print("can't call this function!\nerror: " .. e);
+                    -- }
+                ]])
+            end)
+
+            it('nn', function()
+
+                local nn = require("nn"):new_network({2, 3, 1})
+                for _ = 1, 1000 do
+                    nn:learn({0, 0}, {0})
+                    nn:learn({0, 1}, {1})
+                    nn:learn({1, 1}, {0})
+                    nn:learn({1, 0}, {1})
+                end
+
+                -- Test
+                print("Output for {1,0}: " .. nn:forward({1, 0})[1])
+
+                -- if 0 then
+                --     local nn = require("nn"):new_network({2, 3, 1}, 0.1, 0.03)
+                --     -- 进行 20 *10,000 次迭代 每 10,000 次打印平均误差
+                --     for _ = 1, 20 do
+                --         local err = 0
+                --         for _ = 1, 10000 do
+                --             err = err + nn:learn({0, 0}, {0})
+                --             err = err + nn:learn({0, 1}, {1})
+                --             err = err + nn:learn({1, 1}, {0})
+                --             err = err + nn:learn({1, 0}, {1})
+                --         end
+                --         err = err / (20 * 1000)
+                --         print(string.format("Average error: %0.5f", err))
+                --     end
+                --     print(string.format(
+                --         "Results of XOR Test!\n{0,0} = %.1f	Expected ~(0.0)\n{0,1} = %.1f	Expected ~(1.0)\n{1,0} = %.1f	Expected ~(1.0)\n{1,1} = %.1f	Expected ~(0.0)",
+                --         nn:forward({0, 0})[1], nn:forward({0, 1})[1], nn:forward({1, 0})[1], nn:forward({1, 1})[1]))
+                -- end
+
+                local my_network = require("nn"):new_network({2, 3, 1})
+                -- 在这里训练学习
+                -- table.save(my_network.synapses, "network.txt")
+
+                -- -- 加载网络确保结构相同
+                -- local my_network = require("nn"):new_network({2, 3, 1})
+                -- my_network.synapses = table.load("network.txt")
 
             end)
 

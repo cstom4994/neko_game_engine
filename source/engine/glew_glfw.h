@@ -1,15 +1,14 @@
 #ifndef GLEW_GLFW_H
 #define GLEW_GLFW_H
 
-#include "engine/prelude.h"
-
 // 确保在 GLFW 标头之前包含 GLEW 标头
 #include <GL/glew.h>
 
 // GLFW
 #include <GLFW/glfw3.h>
+#include <stdio.h>
 
-static const_str neko_opengl_string(GLenum e) {
+static const char* neko_opengl_string(GLenum e) {
 
 #define XX(x)      \
     case x:        \

@@ -15,24 +15,27 @@ __print = print
 print = Core.print
 
 -- require
--- function require(name)
---     local loaded = package.loaded[name]
---     if loaded ~= nil then
---         return loaded
---     end
---     local preload = package.preload[name]
---     if preload ~= nil then
---         return neko.__registry_load(name, preload(name))
---     end
---     local path = name:gsub("%.", "/")
---     if path:sub(-4) ~= ".lua" then
---         path = path .. ".lua"
---     end
---     local ret_tb = neko.__registry_lua_script(path)
---     if ret_tb ~= nil then
---         return table.unpack(ret_tb)
---     end
--- end
+function hot_require(name)
+
+    name = "script." .. name
+
+    local loaded = package.loaded[name]
+    if loaded ~= nil then
+        return loaded
+    end
+    local preload = package.preload[name]
+    if preload ~= nil then
+        return neko.__registry_load(name, preload(name))
+    end
+    local path = name:gsub("%.", "/")
+    if path:sub(-4) ~= ".lua" then
+        path = path .. ".lua"
+    end
+    local ret_tb = neko.__registry_lua_script(path)
+    if ret_tb ~= nil then
+        return table.unpack(ret_tb)
+    end
+end
 
 default_require = require
 
