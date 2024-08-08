@@ -224,90 +224,6 @@ static int open_mt_font(lua_State *L) {
     return 0;
 }
 
-// mt_sprite
-
-static Sprite *check_sprite_udata(lua_State *L, i32 arg) {
-    Sprite *spr = (Sprite *)luaL_checkudata(L, arg, "mt_sprite");
-    return spr;
-}
-
-static int mt_sprite_play(lua_State *L) {
-    Sprite *spr = check_sprite_udata(L, 1);
-    String tag = luax_check_string(L, 2);
-    bool restart = lua_toboolean(L, 3);
-
-    bool same = spr->play(tag);
-    if (!same || restart) {
-        spr->current_frame = 0;
-        spr->elapsed = 0;
-    }
-    return 0;
-}
-
-static int mt_sprite_update(lua_State *L) {
-    Sprite *spr = check_sprite_udata(L, 1);
-    lua_Number dt = luaL_checknumber(L, 2);
-
-    spr->update((float)dt);
-    return 0;
-}
-
-static int mt_sprite_draw(lua_State *L) {
-    Sprite *spr = check_sprite_udata(L, 1);
-    DrawDescription dd = draw_description_args(L, 2);
-
-    draw_sprite(spr, &dd);
-    return 0;
-}
-
-static int mt_sprite_width(lua_State *L) {
-    Sprite *spr = check_sprite_udata(L, 1);
-    SpriteData data = check_asset(L, spr->sprite).sprite;
-
-    lua_pushnumber(L, (lua_Number)data.width);
-    return 1;
-}
-
-static int mt_sprite_height(lua_State *L) {
-    Sprite *spr = check_sprite_udata(L, 1);
-    SpriteData data = check_asset(L, spr->sprite).sprite;
-
-    lua_pushnumber(L, (lua_Number)data.height);
-    return 1;
-}
-
-static int mt_sprite_set_frame(lua_State *L) {
-    Sprite *spr = check_sprite_udata(L, 1);
-    lua_Integer frame = luaL_checknumber(L, 2);
-
-    spr->set_frame((i32)frame);
-    return 0;
-}
-
-static int mt_sprite_total_frames(lua_State *L) {
-    Sprite *spr = check_sprite_udata(L, 1);
-    SpriteData data = check_asset(L, spr->sprite).sprite;
-
-    lua_pushinteger(L, data.frames.len);
-    return 1;
-}
-
-static int open_mt_sprite(lua_State *L) {
-    luaL_Reg reg[] = {
-            {"play", mt_sprite_play},
-            {"update", mt_sprite_update},
-            {"draw", mt_sprite_draw},
-            {"width", mt_sprite_width},
-            {"height", mt_sprite_height},
-            {"set_frame", mt_sprite_set_frame},
-            {"total_frames", mt_sprite_total_frames},
-            {nullptr, nullptr},
-    };
-
-    luax_new_class(L, "mt_sprite", reg);
-    return 0;
-}
-
 // mt_atlas_image
 
 static AtlasImage *check_atlas_image_udata(lua_State *L, i32 arg) {
@@ -541,6 +457,90 @@ static int open_mt_tilemap(lua_State *L) {
 }
 
 #endif
+
+// mt_sprite
+
+static AseSprite *check_sprite_udata(lua_State *L, i32 arg) {
+    AseSprite *spr = (AseSprite *)luaL_checkudata(L, arg, "mt_sprite");
+    return spr;
+}
+
+static int mt_sprite_play(lua_State *L) {
+    AseSprite *spr = check_sprite_udata(L, 1);
+    String tag = luax_check_string(L, 2);
+    bool restart = lua_toboolean(L, 3);
+
+    bool same = spr->play(tag);
+    if (!same || restart) {
+        spr->current_frame = 0;
+        spr->elapsed = 0;
+    }
+    return 0;
+}
+
+static int mt_sprite_update(lua_State *L) {
+    AseSprite *spr = check_sprite_udata(L, 1);
+    lua_Number dt = luaL_checknumber(L, 2);
+
+    spr->update((float)dt);
+    return 0;
+}
+
+static int mt_sprite_draw(lua_State *L) {
+    AseSprite *spr = check_sprite_udata(L, 1);
+    DrawDescription dd = draw_description_args(L, 2);
+
+    // draw_sprite(spr, &dd);
+    return 0;
+}
+
+static int mt_sprite_width(lua_State *L) {
+    AseSprite *spr = check_sprite_udata(L, 1);
+    AseSpriteData data = check_asset(L, spr->sprite).sprite;
+
+    lua_pushnumber(L, (lua_Number)data.width);
+    return 1;
+}
+
+static int mt_sprite_height(lua_State *L) {
+    AseSprite *spr = check_sprite_udata(L, 1);
+    AseSpriteData data = check_asset(L, spr->sprite).sprite;
+
+    lua_pushnumber(L, (lua_Number)data.height);
+    return 1;
+}
+
+static int mt_sprite_set_frame(lua_State *L) {
+    AseSprite *spr = check_sprite_udata(L, 1);
+    lua_Integer frame = luaL_checknumber(L, 2);
+
+    spr->set_frame((i32)frame);
+    return 0;
+}
+
+static int mt_sprite_total_frames(lua_State *L) {
+    AseSprite *spr = check_sprite_udata(L, 1);
+    AseSpriteData data = check_asset(L, spr->sprite).sprite;
+
+    lua_pushinteger(L, data.frames.len);
+    return 1;
+}
+
+static int open_mt_sprite(lua_State *L) {
+    luaL_Reg reg[] = {
+            {"play", mt_sprite_play},
+            {"update", mt_sprite_update},
+            {"draw", mt_sprite_draw},
+            {"width", mt_sprite_width},
+            {"height", mt_sprite_height},
+            {"set_frame", mt_sprite_set_frame},
+            {"total_frames", mt_sprite_total_frames},
+            {nullptr, nullptr},
+    };
+
+    luax_new_class(L, "mt_sprite", reg);
+    return 0;
+}
 
 // mt_pak
 
@@ -1470,22 +1470,6 @@ static int neko_font_load(lua_State *L) {
     return 1;
 }
 
-static int neko_sprite_load(lua_State *L) {
-    String str = luax_check_string(L, 1);
-
-    Asset asset = {};
-    bool ok = asset_load_kind(AssetKind_Sprite, str, &asset);
-    if (!ok) {
-        return 0;
-    }
-
-    Sprite spr = {};
-    spr.sprite = asset.hash;
-
-    luax_new_userdata(L, spr, "mt_sprite");
-    return 1;
-}
-
 static int neko_atlas_load(lua_State *L) {
     String str = luax_check_string(L, 1);
     bool generate_mips = lua_toboolean(L, 2);
@@ -1514,6 +1498,22 @@ static int neko_tilemap_load(lua_State *L) {
 }
 
 #endif
+
+static int neko_sprite_load(lua_State *L) {
+    String str = luax_check_string(L, 1);
+
+    Asset asset = {};
+    bool ok = asset_load_kind(AssetKind_AseSprite, str, &asset);
+    if (!ok) {
+        return 0;
+    }
+
+    AseSprite spr = {};
+    spr.sprite = asset.hash;
+
+    luax_new_userdata(L, spr, "mt_sprite");
+    return 1;
+}
 
 static int neko_pak_load(lua_State *L) {
     String name = luax_check_string(L, 1);
@@ -3925,7 +3925,7 @@ inline void neko_register_common(lua_State *L) {
     neko_lua_enum_value(L, AssetKind, AssetKind_None);
     neko_lua_enum_value(L, AssetKind, AssetKind_LuaRef);
     neko_lua_enum_value(L, AssetKind, AssetKind_Image);
-    neko_lua_enum_value(L, AssetKind, AssetKind_Sprite);
+    neko_lua_enum_value(L, AssetKind, AssetKind_AseSprite);
     neko_lua_enum_value(L, AssetKind, AssetKind_Tilemap);
 
     lua_register(L, "__neko_ls", __neko_ls);
@@ -4624,7 +4624,7 @@ static int open_neko(lua_State *L) {
             {"image_load", neko_image_load},
             // {"font_load", neko_font_load},
             // {"sound_load", neko_sound_load},
-            // {"sprite_load", neko_sprite_load},
+            {"sprite_load", neko_sprite_load},
             // {"atlas_load", neko_atlas_load},
             // {"tilemap_load", neko_tilemap_load},
             {"pak_load", neko_pak_load},
@@ -4647,7 +4647,7 @@ void open_neko_api(lua_State *L) {
         // open_mt_image,
         // open_mt_font,
         // open_mt_sound,
-        // open_mt_sprite,
+        open_mt_sprite,
         // open_mt_atlas_image,
         // open_mt_atlas,
         // open_mt_tilemap,

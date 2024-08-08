@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #include "engine/base.h"
+#include "engine/ecs.h"
 #include "engine/prelude.h"
 
 NEKO_SCRIPT(
@@ -139,7 +140,11 @@ NEKO_SCRIPT(
                 KC_MENU = 348,
         };
 
-        NEKO_EXPORT bool input_keycode_is_char(KeyCode key); NEKO_EXPORT char input_keycode_to_char(KeyCode key); NEKO_EXPORT KeyCode input_char_to_keycode(char c);
+        NEKO_EXPORT bool input_keycode_is_char(KeyCode key); 
+        
+        NEKO_EXPORT char input_keycode_to_char(KeyCode key); 
+        
+        NEKO_EXPORT KeyCode input_char_to_keycode(char c);
 
         NEKO_EXPORT bool input_key_down(KeyCode key);
 
@@ -160,7 +165,9 @@ NEKO_SCRIPT(
                 MC_MIDDLE = MC_3,
         };
 
-        NEKO_EXPORT CVec2 input_get_mouse_pos_pixels(); NEKO_EXPORT CVec2 input_get_mouse_pos_unit();
+        NEKO_EXPORT CVec2 input_get_mouse_pos_pixels(); 
+        
+        NEKO_EXPORT CVec2 input_get_mouse_pos_unit();
 
         NEKO_EXPORT bool input_mouse_down(MouseCode mouse);
 
@@ -185,5 +192,16 @@ void input_add_scroll_callback(ScrollCallback f);
 
 void input_init();
 void input_fini();
+
+NEKO_SCRIPT(keyboard_controlled,
+
+            NEKO_EXPORT void keyboard_controlled_add(Entity ent);
+            NEKO_EXPORT void keyboard_controlled_remove(Entity ent); NEKO_EXPORT bool keyboard_controlled_has(Entity ent);
+
+)
+
+void keyboard_controlled_update_all();
+void keyboard_controlled_save_all(Store *s);
+void keyboard_controlled_load_all(Store *s);
 
 #endif

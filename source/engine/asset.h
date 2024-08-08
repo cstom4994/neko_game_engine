@@ -4,6 +4,7 @@
 #include "engine/image.h"
 #include "engine/math.h"
 #include "engine/prelude.h"
+#include "engine/sprite.h"
 #include "engine/texture.h"
 #include "engine/tilemap.h"
 
@@ -30,7 +31,7 @@ enum AssetKind : i32 {
     AssetKind_None,
     AssetKind_LuaRef,
     AssetKind_Image,
-    AssetKind_Sprite,
+    AssetKind_AseSprite,
     AssetKind_Tilemap,
     // AssetKind_Pak,
 };
@@ -48,7 +49,7 @@ struct Asset {
     union {
         i32 lua_ref;
         Texture texture;
-        // SpriteData sprite;
+        AseSpriteData sprite;
         MapLdtk tilemap;
         // neko_pak pak;
     };
@@ -122,3 +123,5 @@ NEKO_SCRIPT(
         NEKO_EXPORT const_str neko_capi_vfs_read_file(const_str fsname, const_str filepath, size_t *size);
 
 )
+
+char *file_pathabs(const char *pathfile);

@@ -245,6 +245,14 @@ static inline FILE *neko_fopen(const char *filePath, const char *mode) {
 #define neko_fread(buffer, size, count, file) fread(buffer, size, count, file)
 #define neko_fclose(file) fclose(file)
 
+#if defined MAX_PATH
+#define DIR_MAX MAX_PATH
+#elif defined PATH_MAX
+#define DIR_MAX PATH_MAX
+#else
+#define DIR_MAX 260
+#endif
+
 static inline u64 neko_get_thread_id() {
 #if defined(NEKO_IS_WIN32)
     return (u64)GetCurrentThreadId();

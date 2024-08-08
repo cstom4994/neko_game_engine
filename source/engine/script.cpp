@@ -11,17 +11,13 @@
 #include "engine/camera.h"
 #include "engine/game.h"
 #include "engine/input.h"
-#include "engine/lua_custom_types.h"
 #include "engine/lua_util.h"
 #include "engine/luax.h"
-#include "engine/physics.h"
 #include "engine/prefab.h"
-#include "engine/sound.h"
 #include "engine/sprite.h"
 #include "engine/system.h"
 #include "engine/transform.h"
 #include "engine/ui.h"
-#include "test/keyboard_controlled.h"
 
 static const char **nekogame_ffi[] = {
         &nekogame_ffi_scalar,
@@ -183,7 +179,7 @@ static void _load_nekogame_ffi() {
 #ifdef NEKO_CFFI
 
 extern "C" {
-int luaopen_cffi(lua_State *L);
+int luaopen_ffi(lua_State *L);
 int luaopen_bit(lua_State *L);
 }
 
@@ -202,7 +198,7 @@ void script_init() {
     open_neko_api(L);
 
 #ifdef NEKO_CFFI
-    luax_package_preload(L, "ffi", luaopen_cffi);
+    luax_package_preload(L, "ffi", luaopen_ffi);
     luax_package_preload(L, "bit", luaopen_bit);
 #endif
 
@@ -240,6 +236,8 @@ void script_fini() {
 
     script_push_event("fini");
     errcheck(luax_pcall_nothrow(L, 1, 0));
+
+    lua_pop(L, 1);  // FFI
 
     neko::neko_lua_fini(L);
 }

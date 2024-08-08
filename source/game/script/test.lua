@@ -6,7 +6,32 @@ local describe, it, expect = lust.describe, lust.it, lust.expect
 local function UnitTest()
 
     describe('my project', function()
-        lust.before(function()
+        lust.before(function() end)
+
+        describe('module_nbt', function()
+
+            local nbt = hot_require("libs/nbt")
+            local result
+
+            it("nbt_load", function()
+                local f = assert(io.open("test.nbt", "rb"))
+                local str = f:read("*a")
+                f:close()
+                result = nbt.decode(str)
+                mm(result)
+            end)
+
+            it("nbt_tag_compound_id", function()
+                expect(nbt.TAG_COMPOUND).to.equal(result:getTypeID())
+                expect("hello world").to.equal(result:getName())
+            end)
+
+            it("nbt_entry_name", function()
+                local value = result:getValue()
+                expect(value.name).to.be.truthy()
+                expect(value.name:getString()).to.equal("Bananrama")
+            end)
+
         end)
 
         describe('module1', function()
@@ -19,7 +44,9 @@ local function UnitTest()
                     D,
                     E = 0xc
                 ]]
-                assert(e.A == 0 and e.B == 1 and e.C == 7 and e.D == 8 and e.E == 12)
+                assert(
+                    e.A == 0 and e.B == 1 and e.C == 7 and e.D == 8 and e.E ==
+                        12)
 
                 d = reflect.enum_define [[
                     #define foo 0 

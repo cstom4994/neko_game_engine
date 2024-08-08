@@ -773,11 +773,11 @@ void assets_perform_hot_reload_changes() {
                 ok = texture_update(&a.texture, a.name);
                 break;
             }
-            // case AssetKind_Sprite: {
-            //     a.sprite.trash();
-            //     ok = a.sprite.load(a.name);
-            //     break;
-            // }
+            case AssetKind_AseSprite: {
+                a.sprite.trash();
+                ok = a.sprite.load(a.name);
+                break;
+            }
             case AssetKind_Tilemap: {
                 a.tilemap.trash();
                 ok = a.tilemap.load(a.name);
@@ -820,9 +820,9 @@ void assets_shutdown() {
             case AssetKind_Image:
                 // v->image.trash();
                 break;
-            // case AssetKind_Sprite:
-            //     v->sprite.trash();
-            //     break;
+            case AssetKind_AseSprite:
+                v->sprite.trash();
+                break;
             case AssetKind_Tilemap:
                 v->tilemap.trash();
                 break;
@@ -895,9 +895,9 @@ bool asset_load(AssetLoadData desc, String filepath, Asset *out) {
             case AssetKind_Image:
                 ok = texture_load(&asset.texture, filepath.cstr(), desc.flip_image_vertical);
                 break;
-            // case AssetKind_Sprite:
-            //     ok = asset.sprite.load(filepath);
-            //     break;
+            case AssetKind_AseSprite:
+                ok = asset.sprite.load(filepath);
+                break;
             // case AssetKind_Tilemap:
             //     ok = asset.tilemap.load(filepath);
             //     break;
@@ -962,4 +962,14 @@ Asset check_asset_mt(lua_State *L, i32 arg, const char *mt) {
     }
 
     return asset;
+}
+
+char *file_pathabs(const char *pathfile) {
+    String out = str_fmt("%*.s", DIR_MAX + 1, "");
+#ifdef NEKO_IS_WIN32
+    _fullpath(out.data, pathfile, DIR_MAX);
+#else
+    realpath(pathfile, out.data);
+#endif
+    return out.data;
 }

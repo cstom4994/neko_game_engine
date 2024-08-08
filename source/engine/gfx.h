@@ -41,14 +41,16 @@ typedef struct {
     int vertex_capacity;
     Vertex *vertices;
 
+    float scale;
+
     // uniform values
     GLuint texture;
     // Matrix mvp;
-} BatchRenderer;
+} batch_renderer;
 
-BatchRenderer batch_init(int vertex_capacity);
-void batch_flush(BatchRenderer *renderer);
-void batch_texture(BatchRenderer *renderer, GLuint id);
-void batch_push_vertex(BatchRenderer *renderer, float x, float y, float u, float v);
+batch_renderer batch_init(int vertex_capacity);
+void batch_flush(batch_renderer *renderer);
+void batch_texture(batch_renderer *renderer, GLuint id);
+void batch_push_vertex(batch_renderer *renderer, float x, float y, float u, float v);
 
 #endif

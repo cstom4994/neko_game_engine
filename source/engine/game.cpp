@@ -10,6 +10,8 @@
 #include "console.h"
 #include "engine/camera.h"
 #include "engine/inspector.h"
+#include "engine/lite.h"
+#include "engine/lua_util.h"
 #include "engine/script.h"
 #include "engine/sprite.h"
 #include "engine/system.h"
@@ -66,13 +68,13 @@ typedef struct {
     float tx, ty, tw, th;
 } batch_tex;
 
-void batch_test_draw(BatchRenderer *renderer, Texture tex, batch_tex a) {
+void batch_test_draw(batch_renderer *renderer, Texture tex, batch_tex a) {
     batch_texture(renderer, tex.id);
 
     float x1 = a.px;
     float y1 = a.py;
-    float x2 = a.px + 48;
-    float y2 = a.py + 48;
+    float x2 = a.px + 24;
+    float y2 = a.py + 24;
 
     float u1 = a.tx / tex.width;
     float v1 = a.ty / tex.height;
@@ -98,7 +100,7 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
     glViewport(0, 0, width, height);
 }
 
-BatchRenderer renderer;
+batch_renderer renderer;
 
 static void _game_init() {
 
@@ -183,8 +185,6 @@ static void _game_init() {
     assets_start_hot_reload();
 
     renderer = batch_init(6000);
-    // tex_aliens = create_texture("gamedir/assets/aliens.png");
-    // texture_load();
 
     asset_load(AssetLoadData{AssetKind_Image, false}, "assets/aliens.png", NULL);
 }
@@ -193,6 +193,8 @@ static void _game_fini() {
     PROFILE_FUNC();
 
     mem_free(renderer.vertices);
+
+    neko::neko_lua_fini(g_app->lite_L);
 
     // fini systems
     system_fini();
@@ -267,6 +269,18 @@ static void _game_draw() {
     // glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
+    NEKO_INVOKE_ONCE({
+        g_app->lite_L = neko::neko_lua_create();
+
+        const char *platform = "Windows";  // "Android" "FreeBSD" "OpenBSD" "NetBSD" "macOS" "Linux"
+
+        lt_init(g_app->lite_L, g_app->game_window, LT_DATAPATH, __argc, __argv, window_scale(), platform, os_program_path().cstr());
+    });
+
+    unsigned lt_none = 0u;
+    unsigned lt_all = ~0u;
+    lt_events = lt_none;
+
     imgui_draw_pre();
 
     // ImGui::ShowDemoWindow();
@@ -291,6 +305,16 @@ static void _game_draw() {
     };
     batch_test_draw(&renderer, tex_aliens, ch);
 
+    ch = {
+            .px = 0,
+            .py = 48,
+            .tx = alien_uvs[2].x,
+            .ty = alien_uvs[2].y,
+            .tw = alien_uvs[2].w,
+            .th = alien_uvs[2].h,
+    };
+    batch_test_draw(&renderer, tex_aliens, ch);
+
     batch_flush(&renderer);
 
     {
@@ -302,8 +326,7 @@ static void _game_draw() {
             }
 
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - 275 - ImGui::GetScrollX());
-            ImGui::Text("%.2f Mb %.2f Mb %.1lf ms/frame (%.1lf FPS)", lua_gc(L, LUA_GCCOUNT, 0) / 1024.f, (f32)g_allocator->alloc_size / (1024 * 1024), g_app->time.delta * 1000.f,
-                        1.f / g_app->time.delta);
+            ImGui::Text("%.2f Mb %.2f Mb %.1lf ms/frame (%.1lf FPS)", lua_gc(L, LUA_GCCOUNT, 0) / 1024.f, (f32)g_allocator->alloc_size / (1024 * 1024), timing_true_dt * 1000.f, 1.f / timing_true_dt);
 
             ImGui::EndMainMenuBar();
         }
@@ -312,7 +335,33 @@ static void _game_draw() {
             auto sp = g_app->shader_array[i];
             inspect_shader(sp.name, sp.id);
         }
+
+        if (ImGui::Begin("Lite")) {
+            ImVec2 bounds = ImGui::GetContentRegionAvail();
+            ImVec2 mouse_pos = ImGui::GetCursorPos();  // 窗口内鼠标坐标
+            lt_mx = mouse_pos.x;
+            lt_my = mouse_pos.y;
+            lt_wx = 0;
+            lt_wy = 0;
+            lt_ww = bounds.x;
+            lt_wh = bounds.y;
+
+            if (lt_resizesurface(lt_getsurface(0), lt_ww, lt_wh)) {
+                // glfw_wrap__window_refresh_callback(g_app->game_window);
+            }
+            // fullscreen_quad_rgb( lt_getsurface(0)->t, 1.2f );
+            // ui_texture_fit(lt_getsurface(0)->t, bounds);
+
+            ImGui::Image((ImTextureID)lt_getsurface(0)->t.id, bounds);
+
+            // if (!!nk_input_is_mouse_hovering_rect(&ui_ctx->input, ((struct nk_rect){lt_wx + 5, lt_wy + 5, lt_ww - 10, lt_wh - 10}))) {
+            //     lt_events &= ~(1 << 31);
+            // }
+        }
+        ImGui::End();
     }
+
+    lt_tick(g_app->lite_L);
 
     imgui_draw_post();
 
@@ -443,4 +492,21 @@ int game_set_window_vsync(bool vsync) {
         glfwSwapInterval(0);
     }
     return 0;
+}
+
+const char *window_clipboard() { return glfwGetClipboardString(g_app->game_window); }
+
+void window_setclipboard(const char *text) { glfwSetClipboardString(g_app->game_window, text); }
+
+void window_focus() { glfwFocusWindow(g_app->game_window); }
+
+int window_has_focus() { return !!glfwGetWindowAttrib(g_app->game_window, GLFW_FOCUSED); }
+
+double window_scale() {
+    float xscale = 1, yscale = 1;
+#ifndef NEKO_IS_APPLE  // @todo: remove silicon mac M1 hack
+    GLFWmonitor *monitor = glfwGetPrimaryMonitor();
+    glfwGetMonitorContentScale(monitor, &xscale, &yscale);
+#endif
+    return NEKO_MAX(xscale, yscale);
 }

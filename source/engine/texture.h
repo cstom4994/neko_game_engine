@@ -21,5 +21,6 @@ void texture_bind(const char *filename);
 CVec2 texture_get_size(const char *filename);  // (width, height)
 Texture texture_get_ptr(const char *filename);
 bool texture_update(Texture *tex, String filename);
+bool texture_update_data(Texture *tex, u8 *data);
 
 #endif

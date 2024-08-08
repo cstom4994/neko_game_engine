@@ -4,6 +4,7 @@
 #include "engine/base.h"
 #include "engine/image.h"
 #include "engine/math.h"
+#include "engine/texture.h"
 
 struct Tile {
     float x, y, u, v;
@@ -20,7 +21,7 @@ using TilemapInt = unsigned char;
 
 struct TilemapLayer {
     String identifier;
-    Image image;
+    Texture image;
     Slice<Tile> tiles;
     Slice<TilemapEntity> entities;
     i32 c_width;
@@ -69,7 +70,7 @@ class b2World;
 struct MapLdtk {
     Arena arena;
     Slice<TilemapLevel> levels;
-    HashMap<Image> images;     // key: filepath
+    HashMap<Texture> images;     // key: filepath
     HashMap<b2Body *> bodies;  // key: layer name
     HashMap<TileNode> graph;   // key: x, y
     PriorityQueue<TileNode *> frontier;

@@ -44,6 +44,7 @@ struct App {
 
     // LuaAlloc *LA;
     lua_State *L;
+    lua_State *lite_L;  // lua state for lite editor
     ecs_t *ECS;
 
     AppTime time;
@@ -135,9 +136,24 @@ NEKO_SCRIPT(game,
             // unit: (0, 0) 中间, (1, 1) 右上
             // pixels: (0, 0) 左上方, game_get_window_size() 右下角
             NEKO_EXPORT void game_set_window_size(CVec2 s);  // width, height in pixels
-            NEKO_EXPORT CVec2 game_get_window_size(); NEKO_EXPORT CVec2 game_unit_to_pixels(CVec2 p); NEKO_EXPORT CVec2 game_pixels_to_unit(CVec2 p);
+
+            NEKO_EXPORT CVec2 game_get_window_size();
+
+            NEKO_EXPORT CVec2 game_unit_to_pixels(CVec2 p);
+
+            NEKO_EXPORT CVec2 game_pixels_to_unit(CVec2 p);
 
             NEKO_EXPORT void game_quit();
+
+            NEKO_EXPORT const char *window_clipboard();
+
+            NEKO_EXPORT void window_setclipboard(const char *text);
+
+            NEKO_EXPORT void window_focus();
+
+            NEKO_EXPORT int window_has_focus();
+
+            NEKO_EXPORT double window_scale();
 
 )
 

@@ -69,7 +69,7 @@ GLuint gfx_create_program(const_str name, const char *vert_path, const char *geo
     return program;
 }
 
-BatchRenderer batch_init(int vertex_capacity) {
+batch_renderer batch_init(int vertex_capacity) {
     GLuint vao;
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
@@ -87,7 +87,7 @@ BatchRenderer batch_init(int vertex_capacity) {
 
     GLuint program = gfx_create_program("batch", "shader/batch.vert", NULL, "shader/batch.frag");
 
-    return BatchRenderer{
+    return batch_renderer{
             .shader = program,
             .vao = vao,
             .vbo = vbo,
@@ -98,7 +98,7 @@ BatchRenderer batch_init(int vertex_capacity) {
     };
 }
 
-void batch_flush(BatchRenderer *renderer) {
+void batch_flush(batch_renderer *renderer) {
     if (renderer->vertex_count == 0) {
         return;
     }
@@ -112,6 +112,8 @@ void batch_flush(BatchRenderer *renderer) {
     // glUniformMatrix4fv(glGetUniformLocation(renderer->shader, "u_mvp"), 1, GL_FALSE, (const GLfloat *)&renderer->mvp.cols[0]);
     glUniformMatrix3fv(glGetUniformLocation(renderer->shader, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
 
+    glUniform1f(glGetUniformLocation(renderer->shader, "scale"), renderer->scale);
+
     glBindBuffer(GL_ARRAY_BUFFER, renderer->vbo);
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(Vertex) * renderer->vertex_count, renderer->vertices);
 
@@ -121,14 +123,14 @@ void batch_flush(BatchRenderer *renderer) {
     renderer->vertex_count = 0;
 }
 
-void batch_texture(BatchRenderer *renderer, GLuint id) {
+void batch_texture(batch_renderer *renderer, GLuint id) {
     if (renderer->texture != id) {
         batch_flush(renderer);
         renderer->texture = id;
     }
 }
 
-void batch_push_vertex(BatchRenderer *renderer, float x, float y, float u, float v) {
+void batch_push_vertex(batch_renderer *renderer, float x, float y, float u, float v) {
     if (renderer->vertex_count == renderer->vertex_capacity) {
         batch_flush(renderer);
     }

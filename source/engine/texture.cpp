@@ -102,7 +102,36 @@ static void ase_default_blend_bind(ase_t *ase) {
     }
 }
 
-static bool _texture_load(Texture *tex, String filename) {
+bool texture_update_data(Texture *tex, u8 *data) {
+
+    LockGuard lock{&g_app->gpu_mtx};
+
+    // 如果存在 则释放旧的 GL 纹理
+    if (tex->id != 0) glDeleteTextures(1, &tex->id);
+
+    // 生成 GL 纹理
+    glGenTextures(1, &tex->id);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, tex->id);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    if (tex->flip_image_vertical) {
+        _flip_image_vertical(data, tex->width, tex->height);
+    }
+
+    // 将纹理数据复制到 GL
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, tex->width, tex->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    return true;
+}
+
+static bool _texture_load_vfs(Texture *tex, String filename) {
     neko_assert(tex);
 
     u8 *data = nullptr;
@@ -189,7 +218,7 @@ static bool _texture_load(Texture *tex, String filename) {
 bool texture_load(Texture *tex, String filename, bool flip_image_vertical) {
     tex->id = 0;
     tex->flip_image_vertical = flip_image_vertical;
-    return _texture_load(tex, filename);
+    return _texture_load_vfs(tex, filename);
 }
 
 void texture_bind(const char *filename) {
@@ -214,4 +243,4 @@ Texture texture_get_ptr(const char *filename) {
     return a.texture;
 }
 
-bool texture_update(Texture *tex, String filename) { return _texture_load(tex, filename); }
+bool texture_update(Texture *tex, String filename) { return _texture_load_vfs(tex, filename); }

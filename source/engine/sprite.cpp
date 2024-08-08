@@ -14,6 +14,9 @@
 #include "engine/transform.h"
 #include "gfx.h"
 
+// deps
+#include <cute_aseprite.h>
+
 typedef struct Sprite Sprite;
 struct Sprite {
     EntityPoolElem pool_elem;
@@ -221,5 +224,203 @@ void sprite_load_all(Store *s) {
             vec2_load(&sprite->texsize, "texsize", vec2(32, 32), sprite_s);
             int_load(&sprite->depth, "depth", 0, sprite_s);
         }
+    }
+}
+
+bool AseSpriteData::load(String filepath) {
+    PROFILE_FUNC();
+
+    String contents = {};
+    bool ok = vfs_read_entire_file(&contents, filepath);
+    if (!ok) {
+        return false;
+    }
+    neko_defer(mem_free(contents.data));
+
+    ase_t *ase = nullptr;
+    {
+        PROFILE_BLOCK("aseprite load");
+        ase = cute_aseprite_load_from_memory(contents.data, (i32)contents.len, nullptr);
+    }
+    neko_defer(cute_aseprite_free(ase));
+
+    Arena arena = {};
+
+    i32 rect = ase->w * ase->h * 4;
+
+    Slice<AseSpriteFrame> frames = {};
+    frames.resize(&arena, ase->frame_count);
+
+    Array<char> pixels = {};
+    pixels.reserve(ase->frame_count * rect);
+    neko_defer(pixels.trash());
+
+    for (i32 i = 0; i < ase->frame_count; i++) {
+        ase_frame_t &frame = ase->frames[i];
+
+        AseSpriteFrame sf = {};
+        sf.duration = frame.duration_milliseconds;
+
+        sf.u0 = 0;
+        sf.v0 = (float)i / ase->frame_count;
+        sf.u1 = 1;
+        sf.v1 = (float)(i + 1) / ase->frame_count;
+
+        frames[i] = sf;
+        memcpy(pixels.data + (i * rect), &frame.pixels[0].r, rect);
+    }
+
+    // sg_image_desc desc = {};
+    int ase_width = ase->w;
+    int ase_height = ase->h * ase->frame_count;
+    // desc.data.subimage[0][0].ptr = pixels.data;
+    // desc.data.subimage[0][0].size = ase->frame_count * rect;
+
+    u32 id = 0;
+    {
+        PROFILE_BLOCK("make image");
+        LockGuard lock{&g_app->gpu_mtx};
+
+        // 如果存在 则释放旧的 GL 纹理
+        // if (tex->id != 0) glDeleteTextures(1, &tex->id);
+
+        // 生成 GL 纹理
+        glGenTextures(1, &id);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, id);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+        // if (flip_image_vertical) {
+        //     _flip_image_vertical(pixels.data, ase_width, ase_height);
+        // }
+
+        // 将纹理数据复制到 GL
+
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, ase_width, ase_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
+
+    Texture img = {};
+    img.id = id;
+    img.width = ase_width;
+    img.height = ase_height;
+
+    HashMap<AseSpriteLoop> by_tag = {};
+    by_tag.reserve(ase->tag_count);
+
+    for (i32 i = 0; i < ase->tag_count; i++) {
+        ase_tag_t &tag = ase->tags[i];
+
+        u64 len = (u64)((tag.to_frame + 1) - tag.from_frame);
+
+        AseSpriteLoop loop = {};
+
+        loop.indices.resize(&arena, len);
+        for (i32 j = 0; j < len; j++) {
+            loop.indices[j] = j + tag.from_frame;
+        }
+
+        by_tag[fnv1a(tag.name)] = loop;
+    }
+
+    console_log("created sprite with image id: %d and %llu frames", img.id, (unsigned long long)frames.len);
+
+    AseSpriteData s = {};
+    s.arena = arena;
+    s.img = img;
+    s.frames = frames;
+    s.by_tag = by_tag;
+    s.width = ase->w;
+    s.height = ase->h;
+    *this = s;
+    return true;
+}
+
+void AseSpriteData::trash() {
+    by_tag.trash();
+    arena.trash();
+}
+
+bool AseSprite::play(String tag) {
+    u64 key = fnv1a(tag);
+    bool same = loop == key;
+    loop = key;
+    return same;
+}
+
+void AseSprite::update(float dt) {
+    AseSpriteView view = {};
+    bool ok = view.make(this);
+    if (!ok) {
+        return;
+    }
+
+    i32 index = view.frame();
+    AseSpriteFrame frame = view.data.frames[index];
+
+    elapsed += dt * 1000;
+    if (elapsed > frame.duration) {
+        if (current_frame == view.len() - 1) {
+            current_frame = 0;
+        } else {
+            current_frame++;
+        }
+
+        elapsed -= frame.duration;
+    }
+}
+
+void AseSprite::set_frame(i32 frame) {
+    AseSpriteView view = {};
+    bool ok = view.make(this);
+    if (!ok) {
+        return;
+    }
+
+    if (0 <= frame && frame < view.len()) {
+        current_frame = frame;
+        elapsed = 0;
+    }
+}
+
+bool AseSpriteView::make(AseSprite *spr) {
+    Asset a = {};
+    bool ok = asset_read(spr->sprite, &a);
+    if (!ok) {
+        return false;
+    }
+
+    AseSpriteData data = a.sprite;
+    const AseSpriteLoop *res = data.by_tag.get(spr->loop);
+
+    AseSpriteView view = {};
+    view.sprite = spr;
+    view.data = data;
+
+    if (res != nullptr) {
+        view.loop = *res;
+    }
+
+    *this = view;
+    return true;
+}
+
+i32 AseSpriteView::frame() {
+    if (loop.indices.data != nullptr) {
+        return loop.indices[sprite->current_frame];
+    } else {
+        return sprite->current_frame;
+    }
+}
+
+u64 AseSpriteView::len() {
+    if (loop.indices.data != nullptr) {
+        return loop.indices.len;
+    } else {
+        return data.frames.len;
     }
 }

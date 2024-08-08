@@ -38,19 +38,16 @@ default_require = require
 function hot_require(name)
     local loaded = package.loaded[name]
     if loaded ~= nil then
-        print(("hot_require loaded %s"):format(name))
         return loaded
     end
     local preload = package.preload[name]
     if preload ~= nil then
-        print(("hot_require __registry_load %s"):format(name))
         return neko.__registry_load(name, preload(name))
     end
     local path = name:gsub("%.", "/")
     if path:sub(-4) ~= ".lua" then
         path = path .. ".lua"
     end
-    print(("hot_require __registry_lua_script %s"):format(name))
     local ret_tb = neko.__registry_lua_script(path)
     if ret_tb ~= nil then
         return table.unpack(ret_tb)

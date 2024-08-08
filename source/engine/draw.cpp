@@ -209,7 +209,7 @@ void draw_sprite(Sprite *spr, DrawDescription *desc) {
             return;
         }
 
-        SpriteView view = {};
+        AseSpriteView view = {};
         ok = view.make(spr);
         if (!ok) {
             return;
@@ -228,7 +228,7 @@ void draw_sprite(Sprite *spr, DrawDescription *desc) {
         float x1 = (float)view.data.width - desc->ox;
         float y1 = (float)view.data.height - desc->oy;
 
-        SpriteFrame f = view.data.frames[view.frame()];
+        AseSpriteFrame f = view.data.frames[view.frame()];
 
         renderer_apply_color();
         renderer_push_quad(vec4(x0, y0, x1, y1), vec4(f.u0, f.v0, f.u1, f.v1));

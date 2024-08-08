@@ -492,7 +492,7 @@ static int l_entityCacheUsage(lua_State *L) {
     return 1;
 }
 static int l_entityCacheWrite(lua_State *L) {
-    int entityId = luaL_checkint(L, 1);
+    int entityId = luaL_checkinteger(L, 1);
     int nuid = lua_tointeger(L, 2);
     if (nuid == NULL) {
         nuid = -1;
@@ -641,6 +641,6 @@ int luaopen_luaExtensions(lua_State *L) {
                                          {"size", l_entityCacheSize},
                                          {"usage", l_entityCacheUsage},
                                          {NULL, NULL}};
-    luaL_openlib(L, "EntityCache", eCachelib, 0);
+    // luaL_openlib(L, "EntityCache", eCachelib, 0);
     return 1;
 }

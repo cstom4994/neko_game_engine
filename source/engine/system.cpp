@@ -19,7 +19,6 @@
 #include "engine/texture.h"
 #include "engine/transform.h"
 #include "engine/ui.h"
-#include "test/keyboard_controlled.h"
 
 static void load_all_lua_scripts(lua_State *L) {
     PROFILE_FUNC();
@@ -52,7 +51,6 @@ static void load_all_lua_scripts(lua_State *L) {
     for (String file : files) {
         if (!file.ends_with("nekomain.lua") && file.ends_with(".lua")) {
             asset_load_kind(AssetKind_LuaRef, file, nullptr);
-            console_log("load_all_lua_scripts: %s", file.cstr());
         } else {
         }
     }

@@ -10,7 +10,7 @@
 #include <box2d/b2_polygon_shape.h>
 #include <box2d/b2_world.h>
 
-static bool layer_from_json(TilemapLayer *layer, JSON *json, bool *ok, Arena *arena, String filepath, HashMap<Image> *images) {
+static bool layer_from_json(TilemapLayer *layer, JSON *json, bool *ok, Arena *arena, String filepath, HashMap<Texture> *images) {
     PROFILE_FUNC();
 
     layer->identifier = arena->bump_string(json->lookup_string("__identifier", ok));
@@ -36,15 +36,17 @@ static bool layer_from_json(TilemapLayer *layer, JSON *json, bool *ok, Arena *ar
 
         u64 key = fnv1a(String(sb));
 
-        Image *img = images->get(key);
+        Texture *img = images->get(key);
         if (img != nullptr) {
             layer->image = *img;
         } else {
-            Image create_img = {};
-            bool success = create_img.load(String(sb), false);
-            if (!success) {
-                return false;
-            }
+            Texture create_img = {};
+            neko_assert(false);
+
+            // bool success = create_img.load(String(sb), false);
+            // if (!success) {
+            //     return false;
+            // }
 
             layer->image = create_img;
             (*images)[key] = create_img;
@@ -130,7 +132,7 @@ static bool layer_from_json(TilemapLayer *layer, JSON *json, bool *ok, Arena *ar
     return true;
 }
 
-static bool level_from_json(TilemapLevel *level, JSON *json, bool *ok, Arena *arena, String filepath, HashMap<Image> *images) {
+static bool level_from_json(TilemapLevel *level, JSON *json, bool *ok, Arena *arena, String filepath, HashMap<Texture> *images) {
     PROFILE_FUNC();
 
     level->identifier = arena->bump_string(json->lookup_string("identifier", ok));
@@ -180,16 +182,17 @@ bool MapLdtk::load(String filepath) {
     }
 
     Arena arena = {};
-    HashMap<Image> images = {};
+    HashMap<Texture> images = {};
     bool created = false;
     neko_defer({
-        if (!created) {
-            for (auto [k, v] : images) {
-                v->trash();
-            }
-            images.trash();
-            arena.trash();
-        }
+        neko_assert(false);
+        // if (!created) {
+        //     for (auto [k, v] : images) {
+        //         v->trash();
+        //     }
+        //     images.trash();
+        //     arena.trash();
+        // }
     });
 
     JSONArray *arr_levels = doc.root.lookup_array("levels", &ok);
@@ -225,7 +228,8 @@ bool MapLdtk::load(String filepath) {
 
 void MapLdtk::trash() {
     for (auto [k, v] : images) {
-        v->trash();
+        // v->trash();
+        neko_assert(false);
     }
     images.trash();
 
