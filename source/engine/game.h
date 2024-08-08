@@ -30,13 +30,33 @@ struct NEKO_PACKS {
     static constexpr const_str DEFAULT_FONT = "assets/fonts/Monocraft.ttf";
 };
 
-struct AppTime {
-    u64 startup;
-    u64 last;
-    u64 accumulator;
-    u64 target_ticks;
-    double delta;
-};
+typedef struct Store Store;
+
+NEKO_SCRIPT(
+        timing,
+
+        typedef struct AppTime {
+            u64 startup;
+            u64 last;
+            u64 accumulator;
+            u64 target_ticks;
+            f64 delta;
+
+            f32 dt;
+            f32 true_dt;  // 实际增量时间 不受 scale/pause 影响
+        } AppTime;
+
+        NEKO_EXPORT AppTime timing_instance;
+
+        NEKO_EXPORT void timing_set_scale(f32 s);
+
+        NEKO_EXPORT f32 timing_get_scale();
+
+        NEKO_EXPORT void timing_set_paused(bool p);  // 暂停将刻度设置为 0 并在恢复时恢复它
+
+        NEKO_EXPORT bool timing_get_paused();
+
+)
 
 struct lua_State;
 struct App {
@@ -46,8 +66,6 @@ struct App {
     lua_State *L;
     lua_State *lite_L;  // lua state for lite editor
     ecs_t *ECS;
-
-    AppTime time;
 
     f64 width;
     f64 height;
@@ -81,6 +99,8 @@ struct App {
     float scroll_y;
 
     bool debug_on;
+
+    String lite_init_path;
 
     // FontFamily *default_font;
 
@@ -156,5 +176,9 @@ NEKO_SCRIPT(game,
             NEKO_EXPORT double window_scale();
 
 )
+
+void timing_update();
+void timing_save_all(Store *s);
+void timing_load_all(Store *s);
 
 #endif

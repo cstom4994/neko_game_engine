@@ -704,7 +704,7 @@ static int neko_platform(lua_State *L) {
 }
 
 static int neko_dt(lua_State *L) {
-    lua_pushnumber(L, g_app->time.delta);
+    lua_pushnumber(L, timing_instance.dt);
     return 1;
 }
 
@@ -744,7 +744,7 @@ static int neko_difftime(lua_State *L) {
 }
 
 static int neko_elapsed(lua_State *L) {
-    lua_pushnumber(L, stm_sec(stm_now() - g_app->time.startup));
+    lua_pushnumber(L, stm_sec(stm_now() - timing_instance.startup));
     return 1;
 }
 
@@ -4680,10 +4680,6 @@ void open_neko_api(lua_State *L) {
 
     neko_register_common(L);
     neko_w_init();
-
-    // lua_register(L, "__neko_loader", neko::vfs_lua_loader);
-    // const_str str = "table.insert(package.searchers, 2, __neko_loader) \n";
-    // luaL_dostring(L, str);
 }
 
 namespace neko::lua {

@@ -965,7 +965,7 @@ Asset check_asset_mt(lua_State *L, i32 arg, const char *mt) {
 }
 
 char *file_pathabs(const char *pathfile) {
-    String out = str_fmt("%*.s", DIR_MAX + 1, "");
+    String out = tmp_fmt("%*.s", DIR_MAX + 1, "");
 #ifdef NEKO_IS_WIN32
     _fullpath(out.data, pathfile, DIR_MAX);
 #else

@@ -120,7 +120,7 @@ void rencache_begin_frame(void);
 void rencache_end_frame(void);
 
 // neko lite
-void lt_init(lua_State *L, void *handle, const char *pathdata, int argc, char **argv, float scale, const char *platform, const char *pathexe);
+void lt_init(lua_State *L, void *handle, const char *pathdata, int argc, char **argv, float scale, const char *platform);
 void lt_tick(struct lua_State *L);
 
 #endif

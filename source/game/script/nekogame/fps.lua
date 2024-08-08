@@ -26,7 +26,7 @@ local display = ng.add {
 function ns.fps.update_all()
     -- timing
     nframes = nframes + 1
-    timer = timer + ns.timing.true_dt
+    timer = timer + ns.timing.instance.true_dt
     if timer > 2.5 then -- recalculate every 2.5 seconds
         ns.gui_text.set_str(display, string.format('fps: %.2f', nframes / timer))
         timer = 0

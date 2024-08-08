@@ -315,14 +315,14 @@ static void render() {
         lua_State *L = g_app->L;
 
         luax_neko_get(L, "__timer_update");
-        lua_pushnumber(L, g_app->time.delta);
+        lua_pushnumber(L, timing_instance.delta);
         luax_pcall(L, 1, 0);
 
         {
             PROFILE_BLOCK("neko.frame");
 
             luax_neko_get(L, "frame");
-            lua_pushnumber(L, g_app->time.delta);
+            lua_pushnumber(L, timing_instance.delta);
             luax_pcall(L, 1, 0);
         }
 
@@ -387,54 +387,6 @@ static void render() {
 static void frame() {
     PROFILE_FUNC();
 
-    {
-        AppTime *time = &g_app->time;
-        u64 lap = stm_laptime(&time->last);
-        time->delta = stm_sec(lap);
-        time->accumulator += lap;
-
-#if !defined(NEKO_IS_WEB)
-        if (time->target_ticks > 0) {
-            u64 TICK_MS = 1000000;
-            u64 TICK_US = 1000;
-
-            u64 target = time->target_ticks;
-
-            if (time->accumulator < target) {
-                u64 ms = (target - time->accumulator) / TICK_MS;
-                if (ms > 0) {
-                    PROFILE_BLOCK("sleep");
-                    os_sleep(ms - 1);
-                }
-
-                {
-                    PROFILE_BLOCK("spin loop");
-
-                    u64 lap = stm_laptime(&time->last);
-                    time->delta += stm_sec(lap);
-                    time->accumulator += lap;
-
-                    while (time->accumulator < target) {
-                        os_yield();
-
-                        u64 lap = stm_laptime(&time->last);
-                        time->delta += stm_sec(lap);
-                        time->accumulator += lap;
-                    }
-                }
-            }
-
-            u64 fuzz = TICK_US * 100;
-            while (time->accumulator >= target - fuzz) {
-                if (time->accumulator < target + fuzz) {
-                    time->accumulator = 0;
-                } else {
-                    time->accumulator -= target + fuzz;
-                }
-            }
-        }
-#endif
-    }
 
     g_app->gpu_mtx.unlock();
     render();
@@ -542,59 +494,6 @@ static void neko_setup_w() {
 }
 
 App *g_app;
-
-#if 0
-
-sapp_desc sokol_main(int argc, char **argv) {
-
-
-    // const char *mount_path = nullptr;
-
-    // for (i32 i = 1; i < argc; i++) {
-    //     if (argv[i][0] != '-') {
-    //         mount_path = argv[i];
-    //         break;
-    //     }
-    // }
-
-
-
-
-
-    neko_setup_w();
-    lua_State *L = ENGINE_LUA();
-
-
-
-
-
-
-
-
-
-
-
-    sapp_desc sapp = {};
-    sapp.init_cb = init;
-    sapp.frame_cb = frame;
-    sapp.cleanup_cb = cleanup;
-    sapp.event_cb = event;
-    sapp.width = (i32)width;
-    sapp.height = (i32)height;
-    sapp.window_title = title.data;
-    sapp.logger.func = slog_func;
-    sapp.swap_interval = (i32)swap_interval;
-    sapp.fullscreen = fullscreen;
-    sapp.allocator = sapp_allocator{
-            .alloc_fn = +[](size_t size, void *user_data) { return mem_alloc(size); },
-            .free_fn = +[](void *ptr, void *user_data) { return mem_free(ptr); },
-    };
-    sapp.win32_console_utf8 = true;
-
-    return sapp;
-}
-
-#endif
 
 Allocator *g_allocator;
 

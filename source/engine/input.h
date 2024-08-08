@@ -140,15 +140,15 @@ NEKO_SCRIPT(
                 KC_MENU = 348,
         };
 
-        NEKO_EXPORT bool input_keycode_is_char(KeyCode key); 
-        
-        NEKO_EXPORT char input_keycode_to_char(KeyCode key); 
-        
+        NEKO_EXPORT bool input_keycode_is_char(KeyCode key);
+
+        NEKO_EXPORT char input_keycode_to_char(KeyCode key);
+
         NEKO_EXPORT KeyCode input_char_to_keycode(char c);
 
         NEKO_EXPORT bool input_key_down(KeyCode key);
 
-        typedef enum MouseCode MouseCode; enum MouseCode{
+        typedef enum MouseCode{
                 MC_1 = 0,
                 MC_2 = 1,
                 MC_3 = 2,
@@ -163,10 +163,10 @@ NEKO_SCRIPT(
                 MC_LEFT = MC_1,
                 MC_RIGHT = MC_2,
                 MC_MIDDLE = MC_3,
-        };
+        } MouseCode;
 
-        NEKO_EXPORT CVec2 input_get_mouse_pos_pixels(); 
-        
+        NEKO_EXPORT CVec2 input_get_mouse_pos_pixels();
+
         NEKO_EXPORT CVec2 input_get_mouse_pos_unit();
 
         NEKO_EXPORT bool input_mouse_down(MouseCode mouse);

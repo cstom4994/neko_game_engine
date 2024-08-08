@@ -31,10 +31,20 @@ function ns.app.key_down(key)
     end
 end
 
-local run = (ng.args[1] and loadfile(ng.args[1])) or loadfile('./main.lua')
+local run, err = (ng.args[1] and loadfile(ng.args[1])) or loadfile('./main.lua')
 if run then
+
+    local function errorHandler(err)
+        print("Error: ", err)
+    end
+
     -- 运行给定的脚本
-    run()
+    local status, result = xpcall(run, errorHandler)
+    if status then
+        print("run successful")
+    else
+        print("run failed")
+    end
 
     -- 没有相机则添加默认值
     if ns.camera.get_current_camera() == ng.entity_nil then

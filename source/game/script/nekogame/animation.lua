@@ -111,7 +111,7 @@ function ns.animation.update_all()
 
     for ent, entry in pairs(ns.animation.tbl) do
         if entry.curr_anim then
-            local dt = ns.timing.dt
+            local dt = ns.timing.instance.dt
             local anim = entry.anims[entry.curr_anim]
 
             -- next frame?

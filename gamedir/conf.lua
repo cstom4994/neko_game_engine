@@ -6,6 +6,7 @@ function neko.conf(t)
     t.window_height = 720
     t.debug_on = false
     t.imgui_font = "assets/fonts/fusion-pixel-12px-monospaced-zh_hans.ttf"
+    -- t.lite_init_path = "D:/Projects/Neko/DevNew/source/game/lite"
 
     t.game_proxy = "default"
 end

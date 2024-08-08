@@ -57,6 +57,10 @@ void rencache_invalidate(void);
 int lt_resizesurface(lt_surface *s, int ww, int wh) {
     s->w = ww, s->h = wh;
     // TODO
+    if (s->w * s->h <= 0) {
+        s->w = 0;
+        s->h = 0;
+    }
     if (s->t.id == 0 || s->w != s->t.width || s->h != s->t.height) {
         // invalidate tiles
         ren_set_clip_rect(lt_rect{0, 0, s->w, s->h});
@@ -1309,7 +1313,7 @@ static void lite_scroll(CVec2 scroll) { lt_emit_event(g_app->lite_L, "mousewheel
 // ----------------------------------------------------------------------------
 // lite/main.c
 
-void lt_init(lua_State *L, void *handle, const char *pathdata, int argc, char **argv, float scale, const char *platform, const char *pathexe) {
+void lt_init(lua_State *L, void *handle, const char *pathdata, int argc, char **argv, float scale, const char *platform) {
     // setup renderer
     ren_init(handle);
 
@@ -1335,8 +1339,11 @@ void lt_init(lua_State *L, void *handle, const char *pathdata, int argc, char **
     lua_pushstring(L, pathdata);
     lua_setglobal(L, "DATADIR");
 
-    lua_pushstring(L, pathexe);
-    lua_setglobal(L, "EXEFILE");
+    lua_pushstring(L, g_app->lite_init_path.cstr());
+    lua_setglobal(L, "NEKO_LITE_DIR");
+
+    lua_pushstring(L, os_program_dir().cstr());
+    lua_setglobal(L, "EXEDIR");
 
     // init lite
     luaL_dostring(L, "core = {}");
@@ -1344,10 +1351,9 @@ void lt_init(lua_State *L, void *handle, const char *pathdata, int argc, char **
                   "xpcall(function()\n"
                   "  SCALE = tonumber(os.getenv(\"LITE_SCALE\")) or SCALE\n"
                   "  PATHSEP = package.config:sub(1, 1)\n"
-                  "  EXEDIR = EXEFILE:match(\"^(.+)[/\\\\].*$\")\n"
-                  "  USERDIR = EXEDIR .. 'data/user/'\n"
-                  "  package.path = EXEDIR .. '/data/?.lua;' .. package.path\n"
-                  "  package.path = EXEDIR .. '/data/?/init.lua;' .. package.path\n"
+                  "  USERDIR = NEKO_LITE_DIR .. '/data/user/'\n"
+                  "  package.path = NEKO_LITE_DIR .. '/data/?.lua;' .. package.path\n"
+                  "  package.path = NEKO_LITE_DIR .. '/data/?/init.lua;' .. package.path\n"
                   "  core = require('core')\n"
                   "  core.init()\n"
                   "end, function(err)\n"
@@ -1359,6 +1365,7 @@ void lt_init(lua_State *L, void *handle, const char *pathdata, int argc, char **
                   "  os.exit(1)\n"
                   "end)");
 
+#if 0
     input_add_key_down_callback(lite_key_down);
     input_add_key_up_callback(lite_key_up);
     input_add_char_down_callback(lite_char_down);
@@ -1366,6 +1373,7 @@ void lt_init(lua_State *L, void *handle, const char *pathdata, int argc, char **
     input_add_mouse_up_callback(lite_mouse_up);
     input_add_mouse_move_callback(lite_mouse_move);
     input_add_scroll_callback(lite_scroll);
+#endif
 }
 void lt_tick(struct lua_State *L) {
     luaL_dostring(L,

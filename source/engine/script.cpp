@@ -58,12 +58,10 @@ static int _traceback(lua_State *L) {
 
 int luax_pcall_nothrow(lua_State *L, int nargs, int nresults) {
     int r, errfunc;
-
     // 将 _traceback 放在 function 和 args 下
     errfunc = lua_gettop(L) - nargs;
     lua_pushcfunction(L, _traceback);
     lua_insert(L, errfunc);
-
     // call, remove _traceback
     r = lua_pcall(L, nargs, nresults, errfunc);
     lua_remove(L, errfunc);

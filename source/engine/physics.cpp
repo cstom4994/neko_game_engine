@@ -10,7 +10,6 @@
 #include "engine/luax.h"
 #include "engine/os.h"
 
-
 static void contact_run_cb(lua_State *L, i32 ref, i32 a, i32 b, i32 msgh) {
     if (ref != LUA_REFNIL) {
         assert(ref != 0);
@@ -628,7 +627,7 @@ static int mt_b2_world_gc(lua_State *L) {
 
 static int mt_b2_world_step(lua_State *L) {
     Physics *physics = (Physics *)luaL_checkudata(L, 1, "mt_b2_world");
-    lua_Number dt = luaL_optnumber(L, 2, g_app->time.delta);
+    lua_Number dt = luaL_optnumber(L, 2, timing_instance.dt);
     lua_Integer vel_iters = luaL_optinteger(L, 3, 6);
     lua_Integer pos_iters = luaL_optinteger(L, 4, 2);
 
@@ -1363,7 +1362,7 @@ static void _step()
 {
     static Scalar remain = 0.0;
 
-    remain += timing_dt;
+    remain += dt;
     while (remain >= period)
     {
         cpSpaceStep(space, period);
@@ -1379,9 +1378,9 @@ static void _update_kinematics()
     Scalar invdt;
     Entity ent;
 
-    if (timing_dt <= FLT_EPSILON)
+    if (dt <= FLT_EPSILON)
         return;
-    invdt = 1 / timing_dt;
+    invdt = 1 / dt;
 
     entitypool_foreach(info, pool)
         if (info->type == PB_KINEMATIC)

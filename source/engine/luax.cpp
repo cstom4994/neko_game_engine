@@ -292,14 +292,30 @@ int vfs_lua_loader(lua_State *L) {
     std::string path = name;
     std::replace(path.begin(), path.end(), '.', '/');
 
-    neko_println("fuck:%s", path.c_str());
-
     bool ok = false;
-    auto load_list = {"code/libs/"};
+    auto load_list = {"lite/data/"};
     for (auto p : load_list) {
         std::string load_path = p + path + ".lua";
         String contents = {};
         ok = vfs_read_entire_file(&contents, load_path.c_str());
+        neko_println("fuck:%s", load_path.c_str());
+        if (ok) {
+            neko_defer(mem_free(contents.data));
+            if (luaL_loadbuffer(L, contents.data, contents.len, name) != LUA_OK) {
+                lua_pushfstring(L, "[lua] error loading module \"%s\"", name);
+                lua_pop(L, 1);
+            } else {
+                console_log("[lua] loaded : \"%s\"", path.c_str());
+            }
+            return 1;
+        }
+    }
+
+    for (auto p : load_list) {
+        std::string load_path = p + path + "/init.lua";
+        String contents = {};
+        ok = vfs_read_entire_file(&contents, load_path.c_str());
+        neko_println("fuck:%s", load_path.c_str());
         if (ok) {
             neko_defer(mem_free(contents.data));
             if (luaL_loadbuffer(L, contents.data, contents.len, name) != LUA_OK) {

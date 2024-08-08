@@ -7,8 +7,9 @@
 #include <sys/stat.h>
 #include <time.h>
 
-#include "console.h"
 #include "engine/camera.h"
+#include "engine/console.h"
+#include "engine/glew_glfw.h"
 #include "engine/inspector.h"
 #include "engine/lite.h"
 #include "engine/lua_util.h"
@@ -16,9 +17,8 @@
 #include "engine/sprite.h"
 #include "engine/system.h"
 #include "engine/texture.h"
+#include "engine/transform.h"
 #include "engine/ui.h"
-#include "glew_glfw.h"
-#include "test/test.h"
 
 // deps
 #include "vendor/sokol_time.h"
@@ -161,6 +161,16 @@ static void _game_init() {
     glewInit();
     glGetError();  // see http://www.opengl.org/wiki/OpenGL_Loading_Library
 
+    console_log("opengl vendor:   %s", glGetString(GL_VENDOR));
+    console_log("opengl renderer: %s", glGetString(GL_RENDERER));
+    console_log("opengl version:  %s", glGetString(GL_VERSION));
+
+    GLint max_texture_size;
+    glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_texture_size);
+    console_log("opengl maximum texture size: %d", max_texture_size);
+
+    if (max_texture_size < 2048) console_log("opengl maximum texture too small");
+
     // some GL settings
     glEnable(GL_PROGRAM_POINT_SIZE);
     glEnable(GL_BLEND);
@@ -172,21 +182,29 @@ static void _game_init() {
     srand(time(NULL));
 
     // time set
-    g_app->time.startup = stm_now();
-    g_app->time.last = stm_now();
+    timing_instance.startup = stm_now();
+    timing_instance.last = stm_now();
 
     // init systems
     console_puts("welcome to neko!");
     system_init();
-
-    // init test
-    test_init();
 
     assets_start_hot_reload();
 
     renderer = batch_init(6000);
 
     asset_load(AssetLoadData{AssetKind_Image, false}, "assets/aliens.png", NULL);
+
+    if (g_app->lite_init_path.len) {
+        PROFILE_BLOCK("lite init");
+        g_app->lite_L = neko::neko_lua_create();
+
+        // lua_register(g_app->lite_L, "__neko_loader", neko::vfs_lua_loader);
+        // const_str str = "table.insert(package.searchers, 2, __neko_loader) \n";
+        // luaL_dostring(g_app->lite_L, str);
+
+        lt_init(g_app->lite_L, g_app->game_window, g_app->lite_init_path.cstr(), __argc, __argv, window_scale(), "Windows");
+    }
 }
 
 static void _game_fini() {
@@ -269,14 +287,6 @@ static void _game_draw() {
     // glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    NEKO_INVOKE_ONCE({
-        g_app->lite_L = neko::neko_lua_create();
-
-        const char *platform = "Windows";  // "Android" "FreeBSD" "OpenBSD" "NetBSD" "macOS" "Linux"
-
-        lt_init(g_app->lite_L, g_app->game_window, LT_DATAPATH, __argc, __argv, window_scale(), platform, os_program_path().cstr());
-    });
-
     unsigned lt_none = 0u;
     unsigned lt_all = ~0u;
     lt_events = lt_none;
@@ -326,7 +336,8 @@ static void _game_draw() {
             }
 
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - 275 - ImGui::GetScrollX());
-            ImGui::Text("%.2f Mb %.2f Mb %.1lf ms/frame (%.1lf FPS)", lua_gc(L, LUA_GCCOUNT, 0) / 1024.f, (f32)g_allocator->alloc_size / (1024 * 1024), timing_true_dt * 1000.f, 1.f / timing_true_dt);
+            ImGui::Text("%.2f Mb %.2f Mb %.1lf ms/frame (%.1lf FPS)", lua_gc(L, LUA_GCCOUNT, 0) / 1024.f, (f32)g_allocator->alloc_size / (1024 * 1024), timing_instance.true_dt * 1000.f,
+                        1.f / timing_instance.true_dt);
 
             ImGui::EndMainMenuBar();
         }
@@ -336,32 +347,35 @@ static void _game_draw() {
             inspect_shader(sp.name, sp.id);
         }
 
-        if (ImGui::Begin("Lite")) {
-            ImVec2 bounds = ImGui::GetContentRegionAvail();
-            ImVec2 mouse_pos = ImGui::GetCursorPos();  // 窗口内鼠标坐标
-            lt_mx = mouse_pos.x;
-            lt_my = mouse_pos.y;
-            lt_wx = 0;
-            lt_wy = 0;
-            lt_ww = bounds.x;
-            lt_wh = bounds.y;
+        if (g_app->lite_init_path.len && g_app->lite_L) {
 
-            if (lt_resizesurface(lt_getsurface(0), lt_ww, lt_wh)) {
-                // glfw_wrap__window_refresh_callback(g_app->game_window);
+            if (ImGui::Begin("Lite")) {
+                ImVec2 bounds = ImGui::GetContentRegionAvail();
+                ImVec2 mouse_pos = ImGui::GetCursorPos();  // 窗口内鼠标坐标
+                lt_mx = mouse_pos.x;
+                lt_my = mouse_pos.y;
+                lt_wx = 0;
+                lt_wy = 0;
+                lt_ww = bounds.x;
+                lt_wh = bounds.y;
+
+                if (lt_resizesurface(lt_getsurface(0), lt_ww, lt_wh)) {
+                    // glfw_wrap__window_refresh_callback(g_app->game_window);
+                }
+                // fullscreen_quad_rgb( lt_getsurface(0)->t, 1.2f );
+                // ui_texture_fit(lt_getsurface(0)->t, bounds);
+
+                ImGui::Image((ImTextureID)lt_getsurface(0)->t.id, bounds);
+
+                // if (!!nk_input_is_mouse_hovering_rect(&ui_ctx->input, ((struct nk_rect){lt_wx + 5, lt_wy + 5, lt_ww - 10, lt_wh - 10}))) {
+                //     lt_events &= ~(1 << 31);
+                // }
             }
-            // fullscreen_quad_rgb( lt_getsurface(0)->t, 1.2f );
-            // ui_texture_fit(lt_getsurface(0)->t, bounds);
-
-            ImGui::Image((ImTextureID)lt_getsurface(0)->t.id, bounds);
-
-            // if (!!nk_input_is_mouse_hovering_rect(&ui_ctx->input, ((struct nk_rect){lt_wx + 5, lt_wy + 5, lt_ww - 10, lt_wh - 10}))) {
-            //     lt_events &= ~(1 << 31);
-            // }
+            ImGui::End();
         }
-        ImGui::End();
     }
 
-    lt_tick(g_app->lite_L);
+    if (g_app->lite_init_path.len && g_app->lite_L) lt_tick(g_app->lite_L);
 
     imgui_draw_post();
 
@@ -509,4 +523,128 @@ double window_scale() {
     glfwGetMonitorContentScale(monitor, &xscale, &yscale);
 #endif
     return NEKO_MAX(xscale, yscale);
+}
+
+void test_native_script() {
+    Entity camera, block, player;
+    unsigned int i, n_blocks;
+
+    // add camera
+
+    camera = entity_create();
+
+    transform_add(camera);
+
+    camera_add(camera);
+
+    // add some blocks
+
+    n_blocks = rand() % 50;
+    for (i = 0; i < n_blocks; ++i) {
+        block = entity_create();
+
+        transform_add(block);
+        transform_set_position(block, vec2((rand() % 25) - 12, (rand() % 9) - 4));
+
+        sprite_add(block);
+        sprite_set_texcell(block, vec2(32.0f, 32.0f));
+        sprite_set_texsize(block, vec2(32.0f, 32.0f));
+    }
+
+    // add player
+
+    player = entity_create();
+
+    transform_add(player);
+    transform_set_position(player, vec2(0.0f, 0.0f));
+
+    sprite_add(player);
+    sprite_set_texcell(player, vec2(0.0f, 32.0f));
+    sprite_set_texsize(player, vec2(32.0f, 32.0f));
+
+    // who gets keyboard control?
+    keyboard_controlled_add(camera);
+}
+
+AppTime timing_instance;
+
+static f32 scale = 1.0f;
+static bool paused = false;
+
+void timing_set_scale(f32 s) { scale = s; }
+f32 timing_get_scale() { return scale; }
+
+void timing_set_paused(bool p) { paused = p; }
+bool timing_get_paused() { return paused; }
+
+static void _dt_update() {
+    static double last_time = -1;
+    double curr_time;
+
+    // first update?
+    if (last_time < 0) last_time = glfwGetTime();
+
+    curr_time = glfwGetTime();
+    timing_instance.true_dt = curr_time - last_time;
+    timing_instance.dt = paused ? 0.0f : scale * timing_instance.true_dt;
+    last_time = curr_time;
+
+    {
+        AppTime *time = &timing_instance;
+
+#if !defined(NEKO_IS_WEB)
+        if (time->target_ticks > 0) {
+            u64 TICK_MS = 1000000;
+            u64 TICK_US = 1000;
+
+            u64 target = time->target_ticks;
+
+            if (time->accumulator < target) {
+                u64 ms = (target - time->accumulator) / TICK_MS;
+                if (ms > 0) {
+                    PROFILE_BLOCK("sleep");
+                    os_sleep(ms - 1);
+                }
+
+                {
+                    PROFILE_BLOCK("spin loop");
+
+                    u64 lap = stm_laptime(&time->last);
+                    time->delta += stm_sec(lap);
+                    time->accumulator += lap;
+
+                    while (time->accumulator < target) {
+                        os_yield();
+
+                        u64 lap = stm_laptime(&time->last);
+                        time->delta += stm_sec(lap);
+                        time->accumulator += lap;
+                    }
+                }
+            }
+
+            u64 fuzz = TICK_US * 100;
+            while (time->accumulator >= target - fuzz) {
+                if (time->accumulator < target + fuzz) {
+                    time->accumulator = 0;
+                } else {
+                    time->accumulator -= target + fuzz;
+                }
+            }
+        }
+#endif
+    }
+}
+
+void timing_update() { _dt_update(); }
+
+void timing_save_all(Store *s) {
+    Store *t;
+
+    if (store_child_save(&t, "timing", s)) scalar_save(&scale, "scale", t);
+}
+void timing_load_all(Store *s) {
+    Store *t;
+
+    if (store_child_load(&t, "timing", s)) scalar_load(&scale, "scale", 1, t);
 }

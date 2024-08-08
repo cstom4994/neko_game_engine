@@ -619,43 +619,6 @@ String neko_os_homedir() {
     return {path};
 }
 
-f32 timing_dt;
-f32 timing_true_dt;
-static f32 scale = 1.0f;
-static bool paused = false;
-
-void timing_set_scale(f32 s) { scale = s; }
-f32 timing_get_scale() { return scale; }
-
-void timing_set_paused(bool p) { paused = p; }
-bool timing_get_paused() { return paused; }
-
-static void _dt_update() {
-    static double last_time = -1;
-    double curr_time;
-
-    // first update?
-    if (last_time < 0) last_time = glfwGetTime();
-
-    curr_time = glfwGetTime();
-    timing_true_dt = curr_time - last_time;
-    timing_dt = paused ? 0.0f : scale * timing_true_dt;
-    last_time = curr_time;
-}
-
-void timing_update() { _dt_update(); }
-
-void timing_save_all(Store* s) {
-    Store* t;
-
-    if (store_child_save(&t, "timing", s)) scalar_save(&scale, "scale", t);
-}
-void timing_load_all(Store* s) {
-    Store* t;
-
-    if (store_child_load(&t, "timing", s)) scalar_load(&scale, "scale", 1, t);
-}
-
 void neko_log(const char* file, int line, const char* fmt, ...) {
 
     LockGuard lock{&g_app->log_mtx};
@@ -690,17 +653,6 @@ void neko_log(const char* file, int line, const char* fmt, ...) {
     fprintf(ev.udata, "\n");
     fflush(ev.udata);
     va_end(ev.ap);
-
-    // console callback
-    // if (NULL != neko_instance() && NULL != neko_instance()->console) {
-    //     va_start(ev.ap, fmt);
-    //     char buffer[512] = NEKO_DEFAULT_VAL();
-    //     vsnprintf(buffer, 512, ev.fmt, ev.ap);
-    //     neko_console_printf(neko_instance()->console, "%-1s %s:%d: ", level_strings[ev.level], neko_util_get_filename(ev.file), ev.line);
-    //     neko_console_printf(neko_instance()->console, buffer);
-    //     neko_console_printf(neko_instance()->console, "\n");
-    //     va_end(ev.ap);
-    // }
 }
 
 static void _error(const char* s) { script_error(s); }

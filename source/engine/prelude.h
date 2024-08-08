@@ -133,12 +133,12 @@ struct lua_State;
 
 #define NEKO_INT2VOIDP(I) (void *)(uintptr_t)(I)
 
-#define NEKO_EXPECT(x)                                               \
-    do {                                                             \
-        if (!(x)) {                                                  \
+#define NEKO_EXPECT(x)                                                \
+    do {                                                              \
+        if (!(x)) {                                                   \
             console_log("Unexpect error: assertion '%s' failed", #x); \
-            abort();                                                 \
-        }                                                            \
+            abort();                                                  \
+        }                                                             \
     } while (0)
 
 #define NEKO_CHOOSE(type, ...) ((type[]){__VA_ARGS__})[rand() % (sizeof((type[]){__VA_ARGS__}) / sizeof(type))]
@@ -180,7 +180,7 @@ inline void neko_printf(const char *fmt, ...) {
 
 void neko_log(const char *file, int line, const char *fmt, ...);
 
-#define console_log(...) neko_log( __FILE__, __LINE__, __VA_ARGS__)
+#define console_log(...) neko_log(__FILE__, __LINE__, __VA_ARGS__)
 
 void errorf(const char *fmt, ...);
 

@@ -231,20 +231,20 @@ void keyboard_controlled_update_all() {
         sca = transform_get_scale(kc_entity);
         aspect = sca.y / sca.x;
 
-        if (input_key_down(KC_LEFT)) dpos = vec2_add(dpos, vec2(-5 * timing_dt, 0));
-        if (input_key_down(KC_RIGHT)) dpos = vec2_add(dpos, vec2(5 * timing_dt, 0));
-        if (input_key_down(KC_UP)) dpos = vec2_add(dpos, vec2(0, 5 * timing_dt));
-        if (input_key_down(KC_DOWN)) dpos = vec2_add(dpos, vec2(0, -5 * timing_dt));
+        if (input_key_down(KC_LEFT)) dpos = vec2_add(dpos, vec2(-5 * timing_instance.dt, 0));
+        if (input_key_down(KC_RIGHT)) dpos = vec2_add(dpos, vec2(5 * timing_instance.dt, 0));
+        if (input_key_down(KC_UP)) dpos = vec2_add(dpos, vec2(0, 5 * timing_instance.dt));
+        if (input_key_down(KC_DOWN)) dpos = vec2_add(dpos, vec2(0, -5 * timing_instance.dt));
 
-        if (input_key_down(KC_N)) rot += 0.35 * SCALAR_PI * timing_dt;
-        if (input_key_down(KC_M)) rot -= 0.35 * SCALAR_PI * timing_dt;
+        if (input_key_down(KC_N)) rot += 0.35 * SCALAR_PI * timing_instance.dt;
+        if (input_key_down(KC_M)) rot -= 0.35 * SCALAR_PI * timing_instance.dt;
 
         if (input_key_down(KC_K)) {
-            sca.x += 12 * timing_dt;
+            sca.x += 12 * timing_instance.dt;
             sca.y = aspect * sca.x;
         }
-        if (sca.x > 12 * timing_dt && input_key_down(KC_I)) {
-            sca.x -= 12 * timing_dt;
+        if (sca.x > 12 * timing_instance.dt && input_key_down(KC_I)) {
+            sca.x -= 12 * timing_instance.dt;
             sca.y = aspect * sca.x;
         }
 

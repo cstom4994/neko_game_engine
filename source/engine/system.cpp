@@ -49,7 +49,7 @@ static void load_all_lua_scripts(lua_State *L) {
     });
 
     for (String file : files) {
-        if (!file.ends_with("nekomain.lua") && file.ends_with(".lua")) {
+        if (file.starts_with("script/") && !file.ends_with("nekomain.lua") && file.ends_with(".lua")) {
             asset_load_kind(AssetKind_LuaRef, file, nullptr);
         } else {
         }
@@ -130,6 +130,7 @@ void system_init() {
     g_app->height = luax_opt_number_field(L, -1, "window_height", 600);
     String title = luax_opt_string_field(L, -1, "window_title", "NekoEngine");
     String imgui_font = luax_opt_string_field(L, -1, "imgui_font", "");
+    g_app->lite_init_path = luax_opt_string_field(L, -1, "lite_init_path", "");
     g_app->debug_on = luax_boolean_field(L, -1, "debug_on", true);
     String game_proxy = luax_opt_string_field(L, -1, "game_proxy", "default");
 
@@ -200,7 +201,7 @@ void system_init() {
     input_add_scroll_callback(_scroll);
 
     if (target_fps != 0) {
-        g_app->time.target_ticks = 1000000000 / target_fps;
+        timing_instance.target_ticks = 1000000000 / target_fps;
     }
 
 #ifdef NEKO_IS_WIN32

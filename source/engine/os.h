@@ -197,28 +197,6 @@ void neko_os_library_unload(void *lib);
 void *neko_os_library_proc_address(void *lib, const char *func);
 int neko_os_chdir(const char *path);
 
-typedef struct Store Store;
-
-NEKO_SCRIPT(timing,
-
-            NEKO_EXPORT f32 timing_dt;
-
-            NEKO_EXPORT f32 timing_true_dt;  // 实际增量时间 不受 scale/pause 影响
-
-            NEKO_EXPORT void timing_set_scale(f32 s);
-
-            NEKO_EXPORT f32 timing_get_scale();
-
-            NEKO_EXPORT void timing_set_paused(bool p);  // 暂停将刻度设置为 0 并在恢复时恢复它
-
-            NEKO_EXPORT bool timing_get_paused();
-
-)
-
-void timing_update();
-void timing_save_all(Store *s);
-void timing_load_all(Store *s);
-
 #if defined(NEKO_IS_APPLE)
 #define neko_fopen(filePath, mode) fopen(filePath, mode)
 #define neko_fseek(file, offset, whence) fseeko(file, offset, whence)
