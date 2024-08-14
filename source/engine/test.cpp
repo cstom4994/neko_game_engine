@@ -24,8 +24,9 @@
 #include "engine/reflection.hpp"
 #include "engine/seri.h"
 
-
 #pragma region test
+
+int test_xml(lua_State* L);
 
 namespace neko::lua::__unittest {
 
@@ -261,7 +262,7 @@ LUABIND_MODULE() {
                  return 1;
              }},
             {"TestBinding_1", TestBinding_1},
-            // {"TestEcs", TestEcs},
+            {"test_xml", test_xml},
             {NULL, NULL},
     };
     luaL_newlibtable(L, lib);
@@ -450,6 +451,62 @@ void test_containers() {
     neko_hash_table_free(ht);
 
     neko_hash_table_free(htc);
+}
+
+void print_indent(int indent) {
+    for (int i = 0; i < indent; i++) {
+        putc('\t', stdout);
+    }
+}
+
+void print_xml_node(neko_xml_node_t* node, int indent) {
+    print_indent(indent);
+    printf("XML Node: %s\n", node->name);
+    print_indent(indent);
+    printf("\tText: %s\n", node->text);
+    print_indent(indent);
+    puts("\tAttributes:");
+    for (neko_hash_table_iter it = neko_hash_table_iter_new(node->attributes); neko_hash_table_iter_valid(node->attributes, it); neko_hash_table_iter_advance(node->attributes, it)) {
+        neko_xml_attribute_t attrib = neko_hash_table_iter_get(node->attributes, it);
+
+        print_indent(indent);
+        printf("\t\t%s: ", attrib.name);
+        switch (attrib.type) {
+            case NEKO_XML_ATTRIBUTE_NUMBER:
+                printf("(number) %g\n", attrib.value.number);
+                break;
+            case NEKO_XML_ATTRIBUTE_BOOLEAN:
+                printf("(boolean) %s\n", attrib.value.boolean ? "true" : "false");
+                break;
+            case NEKO_XML_ATTRIBUTE_STRING:
+                printf("(string) %s\n", attrib.value.string);
+                break;
+            default:
+                break;  // Unreachable
+        }
+    }
+
+    if (neko_dyn_array_size(node->children) > 0) {
+        print_indent(indent);
+        printf("\t = Children = \n");
+        for (uint32_t i = 0; i < neko_dyn_array_size(node->children); i++) {
+            print_xml_node(node->children + i, indent + 1);
+        }
+    }
+}
+
+int test_xml(lua_State* L) {
+    neko_xml_document_t* doc = neko_xml_parse_file("test/test.xml");
+    if (!doc) {
+        printf("XML Parse Error: %s\n", neko_xml_get_error());
+    } else {
+        for (uint32_t i = 0; i < neko_dyn_array_size(doc->nodes); i++) {
+            neko_xml_node_t* node = doc->nodes + i;
+            print_xml_node(node, 0);
+        }
+        neko_xml_free(doc);
+    }
+    return 0;
 }
 
 #pragma endregion test

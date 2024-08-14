@@ -19,8 +19,8 @@ add_rules("mode.debug", "mode.release")
 
 add_includedirs("source/")
 
-local NEKO_CFFI = false
 local NEKO_LUASOCKET = false
+local NEKO_BOX2D = false
 
 -- local NEKO_AUDIO = "miniaudio"
 local NEKO_AUDIO = "none"
@@ -28,21 +28,17 @@ local NEKO_AUDIO = "none"
 add_requires("glew")
 add_requires("glfw")
 add_requires("miniz")
-add_requires("cglm")
 add_requires("stb")
-add_requires("box2d")
 add_requires("cute_headers")
 
-if NEKO_CFFI == true then
-    add_requires("cffi-lua")
-    add_requires("libffi")
-    add_requires("lua")
-else
-    add_requires("openrestry-luajit", {
-        configs = {
-            gc64 = true
-        }
-    })
+add_requires("openrestry-luajit", {
+    configs = {
+        gc64 = true
+    }
+})
+
+if NEKO_BOX2D then
+    add_requires("box2d")
 end
 
 if NEKO_AUDIO == "miniaudio" then
@@ -131,18 +127,12 @@ do
     add_headerfiles("source/engine/**.h", "source/engine/**.hpp", "source/vendor/**.h")
 
     add_packages("imgui", "miniz", "cute_headers")
-    add_packages("box2d")
     add_packages("glfw", "stb", "glew")
+    add_packages("openrestry-luajit")
 
-    if NEKO_CFFI == true then
-        add_packages("lua")
-        add_packages("libffi")
-        add_packages("cffi-lua")
-        add_defines("NEKO_CFFI")
-
-        add_files("source/vendor/bit.c")
-    else
-        add_packages("openrestry-luajit")
+    if NEKO_BOX2D then
+        add_packages("box2d")
+        add_defines("NEKO_BOX2D=1")
     end
 
     if NEKO_AUDIO == "miniaudio" then

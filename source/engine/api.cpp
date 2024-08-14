@@ -1,8 +1,5 @@
 #include "engine/api.hpp"
 
-#include <box2d/box2d.h>
-
-#include "engine/api.hpp"
 #include "engine/asset.h"
 #include "engine/base.h"
 #include "engine/draw.h"
@@ -21,6 +18,8 @@
 #include "engine/seri.h"
 #include "engine/sound.h"
 #include "engine/ui.h"
+
+// deps
 #include "vendor/sokol_time.h"
 
 // mt_sampler
@@ -4062,6 +4061,9 @@ LUA_FUNCTION(__neko_bind_ecs_f) {
     return 1;
 }
 
+int lua_csb_core(lua_State *L);
+int lua_csb(lua_State *L);
+
 void createStructTables(lua_State *L);
 
 static neko_luaref getLr(lua_State *L) {
@@ -4281,6 +4283,9 @@ static int open_embed_core(lua_State *L) {
             {"from_registry", from_registry},
 
             {"nameof", __neko_bind_nameof},
+
+            {"csb_core", lua_csb_core},
+            {"csb", lua_csb},
 
             // {"tiled_create", __neko_bind_tiled_create},
             // {"tiled_render", __neko_bind_tiled_render},
@@ -4628,7 +4633,9 @@ static int open_neko(lua_State *L) {
             // {"atlas_load", neko_atlas_load},
             // {"tilemap_load", neko_tilemap_load},
             {"pak_load", neko_pak_load},
+#ifdef NEKO_BOX2D
             {"b2_world", neko_b2_world},
+#endif
             // {"ecs_create", neko_ecs_create_world},
 
             {nullptr, nullptr},
@@ -4652,9 +4659,11 @@ void open_neko_api(lua_State *L) {
         // open_mt_atlas,
         // open_mt_tilemap,
         open_mt_pak,
+#ifdef NEKO_BOX2D
         open_mt_b2_fixture,
         open_mt_b2_body,
         open_mt_b2_world,
+#endif
         // open_mt_lui_container,
         // open_mt_lui_style,
         // open_mt_lui_ref

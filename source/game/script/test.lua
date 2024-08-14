@@ -5,8 +5,11 @@ local describe, it, expect = lust.describe, lust.it, lust.expect
 
 local function UnitTest()
 
+    local Test = require("__neko.unittest")
+
     describe('my project', function()
-        lust.before(function() end)
+        lust.before(function()
+        end)
 
         describe('module_nbt', function()
 
@@ -44,9 +47,7 @@ local function UnitTest()
                     D,
                     E = 0xc
                 ]]
-                assert(
-                    e.A == 0 and e.B == 1 and e.C == 7 and e.D == 8 and e.E ==
-                        12)
+                assert(e.A == 0 and e.B == 1 and e.C == 7 and e.D == 8 and e.E == 12)
 
                 d = reflect.enum_define [[
                     #define foo 0 
@@ -153,6 +154,10 @@ local function UnitTest()
                 -- local my_network = hot_require("nn"):new_network({2, 3, 1})
                 -- my_network.synapses = table.load("network.txt")
 
+            end)
+
+            it('feature_xml_parser', function()
+                Test.test_xml()
             end)
 
         end)

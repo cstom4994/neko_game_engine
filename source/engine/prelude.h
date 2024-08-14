@@ -104,6 +104,8 @@ struct lua_State;
 #define NEKO_TOKEN_PASTE(X, Y) X##Y
 #define NEKO_CONCAT(X, Y) NEKO_TOKEN_PASTE(X, Y)
 
+#define NEKO_COL255(x) x / 255.f
+
 #define NEKO_TIMED_ACTION(INTERVAL, ...)                               \
     do {                                                               \
         static u32 NEKO_CONCAT(NEKO_CONCAT(__T, __LINE__), t) = 0;     \

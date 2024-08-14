@@ -212,7 +212,6 @@ static void init() {
     neko::timer tm_init;
     tm_init.start();
 
-
     // microui_init();
 
     renderer_reset();
@@ -314,9 +313,7 @@ static void render() {
 
         lua_State *L = g_app->L;
 
-        luax_neko_get(L, "__timer_update");
-        lua_pushnumber(L, timing_instance.delta);
-        luax_pcall(L, 1, 0);
+
 
         {
             PROFILE_BLOCK("neko.frame");

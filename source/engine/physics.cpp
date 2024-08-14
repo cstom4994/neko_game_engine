@@ -1,14 +1,16 @@
 #include "engine/physics.h"
 
-#include <box2d/box2d.h>
-// #include <sokol_gfx.h>
-// #include <util/sokol_gl.h>
-
 #include "engine/draw.h"
 #include "engine/game.h"
 #include "engine/lua_util.h"
 #include "engine/luax.h"
 #include "engine/os.h"
+
+#ifdef NEKO_BOX2D
+
+#include <box2d/box2d.h>
+// #include <sokol_gfx.h>
+// #include <util/sokol_gl.h>
 
 static void contact_run_cb(lua_State *L, i32 ref, i32 a, i32 b, i32 msgh) {
     if (ref != LUA_REFNIL) {
@@ -709,6 +711,8 @@ int open_mt_b2_world(lua_State *L) {
     luax_new_class(L, "mt_b2_world", reg);
     return 0;
 }
+
+#endif
 
 #if 0
 

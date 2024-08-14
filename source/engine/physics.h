@@ -1,11 +1,12 @@
 #pragma once
 
-#include <box2d/box2d.h>
-
+#include "engine/base.h"
 #include "engine/luax.h"
 #include "engine/prelude.h"
-#include "engine/base.h"
-#include "engine/prelude.h"
+
+#ifdef NEKO_BOX2D
+
+#include <box2d/box2d.h>
 
 struct PhysicsUserData {
     i32 begin_contact_ref;
@@ -57,6 +58,8 @@ inline int neko_b2_world(lua_State *L) {
     luax_new_userdata(L, p, "mt_b2_world");
     return 1;
 }
+
+#endif
 
 #if 0
 

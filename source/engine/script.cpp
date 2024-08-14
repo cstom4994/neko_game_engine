@@ -172,17 +172,6 @@ static void _load_nekogame_ffi() {
     errcheck(luax_pcall_nothrow(L, 1, 0));
 }
 
-// #define NEKO_CFFI
-
-#ifdef NEKO_CFFI
-
-extern "C" {
-int luaopen_ffi(lua_State *L);
-int luaopen_bit(lua_State *L);
-}
-
-#endif
-
 void script_init() {
     PROFILE_FUNC();
 
@@ -194,11 +183,6 @@ void script_init() {
     ENGINE_LUA() = L;
 
     open_neko_api(L);
-
-#ifdef NEKO_CFFI
-    luax_package_preload(L, "ffi", luaopen_ffi);
-    luax_package_preload(L, "bit", luaopen_bit);
-#endif
 
     lua_atpanic(
             L, +[](lua_State *L) {

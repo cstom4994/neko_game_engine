@@ -17,13 +17,7 @@ extern "C" {
 #include <lauxlib.h>
 #include <lua.h>
 #include <lualib.h>
-
-#ifndef NEKO_CFFI
 #include <luajit.h>
-#else
-#define LUAJIT_VERSION "No Luajit"
-#endif
-
 #ifdef __cplusplus
 }
 #endif

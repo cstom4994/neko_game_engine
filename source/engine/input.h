@@ -5,6 +5,7 @@
 
 #include "engine/base.h"
 #include "engine/ecs.h"
+#include "engine/glew_glfw.h"
 #include "engine/prelude.h"
 
 NEKO_SCRIPT(
@@ -173,7 +174,7 @@ NEKO_SCRIPT(
 
 )
 
-typedef void (*KeyCallback)(KeyCode key);
+typedef void (*KeyCallback)(KeyCode key, int scancode, int mode);
 void input_add_key_down_callback(KeyCallback f);
 void input_add_key_up_callback(KeyCallback f);
 

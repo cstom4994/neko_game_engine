@@ -1,4 +1,6 @@
 
+#include "engine/inspector.h"
+
 #include <inttypes.h>
 
 #include <algorithm>
@@ -10,6 +12,7 @@
 #include <vector>
 
 #include "engine/asset.h"
+#include "engine/game.h"
 #include "engine/glew_glfw.h"
 #include "engine/lua_util.h"
 #include "engine/luabind.hpp"
@@ -1134,6 +1137,16 @@ int neko::luainspector::luainspector_draw(lua_State* L) {
 
                 for (auto kv : g_assets.table) {
                     ImGui::Text("%lld %s", kv.key, kv.value->name.cstr());
+                }
+
+                ImGui::EndTabItem();
+            }
+
+            if (ImGui::BeginTabItem("Shaders")) {
+
+                for (uint32_t i = 0; i < neko_dyn_array_size(g_app->shader_array); ++i) {
+                    auto sp = g_app->shader_array[i];
+                    inspect_shader(sp.name, sp.id);
                 }
 
                 ImGui::EndTabItem();

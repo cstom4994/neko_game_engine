@@ -8,24 +8,11 @@
 #include "engine/ecs.h"
 #include "engine/prelude.h"
 
-typedef struct Transform Transform;
-struct Transform {
-    EntityPoolElem pool_elem;
-
-    CVec2 position;
-    Scalar rotation;
-    CVec2 scale;
-
-    Entity parent;  // 如果entity_nil 则为 root
-
-    CArray *children;  // 如果为 NULL 则为空
-
-    CMat3 mat_cache;  // 更新此内容
-
-    CMat3 worldmat_cache;  // 在父子更新时缓存
-
-    ecs_id_t dirty_count;
-};
+DECL_ENT(Transform, CVec2 position; Scalar rotation; CVec2 scale; Entity parent;  // 如果entity_nil 则为 root
+         CArray * children;                                                       // 如果为 NULL 则为空
+         CMat3 mat_cache;                                                         // 更新此内容
+         CMat3 worldmat_cache;                                                    // 在父子更新时缓存
+         ecs_id_t dirty_count;);
 
 static EntityPool *pool;
 
@@ -371,7 +358,8 @@ void transform_load_all(Store *s) {
     Store *t, *transform_s;
     Transform *transform;
 
-    if (store_child_load(&t, "transform", s)) entitypool_load_foreach(transform, transform_s, pool, "pool", t) {
+    if (store_child_load(&t, "transform", s)) {
+        entitypool_load_foreach(transform, transform_s, pool, "pool", t) {
             vec2_load(&transform->position, "position", vec2_zero, transform_s);
             scalar_load(&transform->rotation, "rotation", 0, transform_s);
             vec2_load(&transform->scale, "scale", vec2(1, 1), transform_s);
@@ -384,4 +372,5 @@ void transform_load_all(Store *s) {
 
             uint_load(&transform->dirty_count, "dirty_count", 0, transform_s);
         }
+    }
 }

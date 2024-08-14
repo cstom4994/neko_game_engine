@@ -6,6 +6,7 @@
 #include "edit.h"
 #include "engine/api.hpp"
 #include "engine/base.h"
+#include "engine/batch.h"
 #include "engine/camera.h"
 #include "engine/game.h"
 #include "engine/input.h"
@@ -56,11 +57,11 @@ static void load_all_lua_scripts(lua_State *L) {
     }
 }
 
-static void _key_down(KeyCode key) {
+static void _key_down(KeyCode key, int scancode, int mode) {
     gui_key_down(key);
     script_key_down(key);
 }
-static void _key_up(KeyCode key) {
+static void _key_up(KeyCode key, int scancode, int mode) {
     gui_key_up(key);
     script_key_up(key);
 }
@@ -165,6 +166,7 @@ void system_init() {
     entity_init();
     transform_init();
     camera_init();
+    batch_init(6000);
     sprite_init();
     gui_init();
     imgui_init();
@@ -220,6 +222,7 @@ void system_fini() {
     sound_fini();
     console_fini();
     sprite_fini();
+    batch_fini();
     imgui_fini();
     gui_fini();
     camera_fini();
@@ -266,6 +269,7 @@ void system_update_all() {
     camera_update_all();
     gui_update_all();
     sprite_update_all();
+    batch_update_all();
     sound_update_all();
 
     edit_update_all();
@@ -280,6 +284,7 @@ void system_update_all() {
 void system_draw_all() {
     script_draw_all();
     sprite_draw_all();
+    batch_draw_all();
     edit_draw_all();
     physics_draw_all();
     gui_draw_all();

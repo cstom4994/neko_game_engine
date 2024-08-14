@@ -1,7 +1,7 @@
 // Lite - A lightweight text editor written in Lua
 // modified from https://github.com/rxi/lite (MIT license)
 //               https://github.com/r-lyeh/FWK (public domain)
-// modified by KaoruXun for NekoEngine
+// modified by KaoruXun(cstom4994) for NekoEngine
 
 #ifndef NEKO_LITE_H
 #define NEKO_LITE_H
@@ -27,7 +27,7 @@
 #define lt_memcpy(d, s, c) memcpy(d, s, c)
 #define lt_memset(p, ch, c) memset(p, ch, c)
 
-#define lt_time_ms() stm_ms(stm_now())
+#define lt_time_ms() lt_time_now()
 #define lt_sleep_ms(ms) os_sleep(ms)
 
 #define lt_getclipboard(w) window_clipboard()
@@ -54,7 +54,6 @@ typedef struct lt_rect {
     int x, y, width, height;
 } lt_rect;
 
-extern unsigned lt_events;
 extern int lt_mx, lt_my, lt_wx, lt_wy, lt_ww, lt_wh;
 
 lt_surface *lt_getsurface(void *window);
@@ -122,5 +121,60 @@ void rencache_end_frame(void);
 // neko lite
 void lt_init(lua_State *L, void *handle, const char *pathdata, int argc, char **argv, float scale, const char *platform);
 void lt_tick(struct lua_State *L);
+void lt_fini();
+
+typedef enum {
+    LITE_WRAP_NONE = 0,
+    LITE_WRAP_WINDOW_MOVED = 1 << 1,
+    LITE_WRAP_WINDOW_RESIZED = 1 << 2,
+    LITE_WRAP_WINDOW_CLOSED = 1 << 3,
+    LITE_WRAP_WINDOW_REFRESH = 1 << 4,
+    LITE_WRAP_WINDOW_FOCUSED = 1 << 5,
+    LITE_WRAP_WINDOW_DEFOCUSED = 1 << 6,
+    LITE_WRAP_WINDOW_ICONIFIED = 1 << 7,
+    LITE_WRAP_WINDOW_UNICONIFIED = 1 << 8,
+    LITE_WRAP_FRAMEBUFFER_RESIZED = 1 << 9,
+    LITE_WRAP_BUTTON_PRESSED = 1 << 10,
+    LITE_WRAP_BUTTON_RELEASED = 1 << 11,
+    LITE_WRAP_CURSOR_MOVED = 1 << 12,
+    LITE_WRAP_CURSOR_ENTERED = 1 << 13,
+    LITE_WRAP_CURSOR_LEFT = 1 << 14,
+    LITE_WRAP_SCROLLED = 1 << 15,
+    LITE_WRAP_KEY_PRESSED = 1 << 16,
+    LITE_WRAP_KEY_REPEATED = 1 << 17,
+    LITE_WRAP_KEY_RELEASED = 1 << 18,
+    LITE_WRAP_CODEPOINT_INPUT = 1 << 19
+} LITE_WRAP_type;
+
+typedef struct LITE_WRAP_event {
+    LITE_WRAP_type type;
+    union {
+        struct {
+            int x;
+            int y;
+        } pos;
+        struct {
+            int width;
+            int height;
+        } size;
+        struct {
+            double x;
+            double y;
+        } scroll;
+        struct {
+            int key;
+            int scancode;
+            int mods;
+        } keyboard;
+        struct {
+            int button;
+            int mods;
+        } mouse;
+        unsigned int codepoint;
+    };
+} LITE_WRAP_event;
+
+int lt_wrap_next_e(LITE_WRAP_event *event);
+void lt_wrap_free_e(LITE_WRAP_event *event);
 
 #endif

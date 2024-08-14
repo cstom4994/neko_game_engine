@@ -1,4 +1,5 @@
 local serpent = hot_require("libs/serpent")
+local mm = hot_require("libs/mm")
 
 -- ng.systems (shortcut ns) is a special table such that ns.sys.func evaluates
 -- to C function sys_func, eg. ns.transform.rotate(...) becomes
@@ -113,10 +114,10 @@ end
 unpack = table.unpack
 
 function ng.getter(sys, prop)
-    return ns[sys]['get_' .. prop]
+    return ns[sys]['get_' .. prop] -- 这里转发到 ffi.C
 end
 function ng.setter(sys, prop)
-    return ns[sys]['set_' .. prop]
+    return ns[sys]['set_' .. prop] -- 这里转发到 ffi.C
 end
 function ng.get(sys, prop, ...)
     return ng.getter(sys, prop)(unpack({...}))
@@ -124,12 +125,11 @@ end
 function ng.set(sys, prop, ...)
     ng.setter(sys, prop)(unpack({...}))
 end
-
 function ng.adder(sys)
-    return ns[sys]['add']
+    return ns[sys]['add'] -- 这里转发到 ffi.C
 end
 function ng.remover(sys)
-    return ns[sys]['remove']
+    return ns[sys]['remove'] -- 这里转发到 ffi.C
 end
 function ng.remove(sys, ...)
     ng.remover(sys)(unpack({...}))
@@ -161,12 +161,14 @@ function ng.add(sys, ent, props)
         for k, v in pairs(sys) do
             ng.add(k, ent, v)
         end
+        -- mm({sys, ent, props})
         return ent
     end
 
-    -- all entities are already in 'entity' system
+    -- 所有实体都已经在 'entity' 系统
     if sys ~= 'entity' and not ns[sys].has(ent) then
         ng.adder(sys)(ent)
+        -- mm({"ng.adder", sys})
     end
     if (props) then
         for k, v in pairs(props) do

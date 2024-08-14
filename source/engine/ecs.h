@@ -139,6 +139,12 @@ typedef struct EntityPoolElem {
     Entity ent;  // 该元素的键
 } EntityPoolElem;
 
+#define DECL_ENT(T, ...)          \
+    typedef struct T {            \
+        EntityPoolElem pool_elem; \
+        __VA_ARGS__               \
+    } T
+
 // object_size 是每个元素的大小
 EntityPool* entitypool_new_(size_t object_size);
 #define entitypool_new(type) entitypool_new_(sizeof(type))

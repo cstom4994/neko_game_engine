@@ -31,6 +31,9 @@ void script_push_event(const char *event);
         if (__VA_ARGS__) {                                    \
             console_printf("lua: %s\n", lua_tostring(L, -1)); \
             lua_pop(L, 1);                                    \
+            if (LockGuard lock{&g_app->error_mtx}) {          \
+                g_app->error_mode.store(true);                \
+            }                                                 \
         }                                                     \
     while (0)
 

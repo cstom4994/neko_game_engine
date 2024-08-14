@@ -2123,6 +2123,9 @@ NEKO_SCRIPT(
         typedef struct Color Color;
         struct Color { Scalar r, g, b, a; };
 
+        typedef struct Color256 Color256; 
+        struct Color256 { uint8_t r, g, b, a; };
+
         NEKO_EXPORT Color color(Scalar r, Scalar g, Scalar b, Scalar a);
 
         NEKO_EXPORT Color color_opaque(Scalar r, Scalar g, Scalar b);
@@ -2149,3 +2152,4 @@ NEKO_SCRIPT(
 
 #define color(r, g, b, a) (Color{(r), (g), (b), (a)})
 #define color_opaque(r, g, b, a) color(r, g, b, 1)
+#define color256(r, g, b, a) (Color256{(r), (g), (b), (a)})
