@@ -9,6 +9,7 @@
 #include "engine/batch.h"
 #include "engine/camera.h"
 #include "engine/game.h"
+#include "engine/gfx.h"
 #include "engine/input.h"
 #include "engine/lua_util.h"
 #include "engine/os.h"
@@ -162,6 +163,9 @@ void system_init() {
     CVAR(conf_debug_on, g_app->debug_on);
     CVAR(conf_game_proxy, game_proxy);
 
+    g_render = gfx_create();
+    gfx_init(g_render);
+
     input_init();
     entity_init();
     transform_init();
@@ -230,6 +234,8 @@ void system_fini() {
     entity_fini();
     input_fini();
 
+    gfx_fini(g_render);
+
     neko_dyn_array_free(g_app->shader_array);
 
     {
@@ -288,6 +294,8 @@ void system_draw_all() {
     edit_draw_all();
     physics_draw_all();
     gui_draw_all();
+
+    neko_check_gl_error();
 }
 
 // 以相同的顺序 保存/加载

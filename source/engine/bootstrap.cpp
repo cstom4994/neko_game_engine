@@ -117,7 +117,7 @@ void game_init() {
     neko_asset_texture_load_from_file("gamedir/assets/textures/yzh.png", &tex0, NULL, false, false);
     ENGINE_INTERFACE()->tex_hndl = neko_assets_create_asset(&ENGINE_INTERFACE()->am, neko_asset_texture_t, &tex0);
 
-    neko_ui_init(&ENGINE_INTERFACE()->ui, neko_os_main_window());
+    ui_init(&ENGINE_INTERFACE()->ui, neko_os_main_window());
 
     // 加载自定义字体文件 初始化 gui font stash
     // neko_asset_font_load_from_memory(font_data, font_data_size, &CL_GAME_INTERFACE()->font, 24);
@@ -126,32 +126,32 @@ void game_init() {
     ENGINE_INTERFACE()->pack.free_item(font_data);
     ENGINE_INTERFACE()->pack.free_item(cat_data);
 
-    auto GUI_FONT_STASH = []() -> neko_ui_font_stash_desc_t * {
-        static neko_ui_font_desc_t font_decl[] = {{.key = "mc_regular", .font = &ENGINE_INTERFACE()->font}};
-        static neko_ui_font_stash_desc_t font_stash = {.fonts = font_decl, .size = 1 * sizeof(neko_ui_font_desc_t)};
+    auto GUI_FONT_STASH = []() -> ui_font_stash_desc_t * {
+        static ui_font_desc_t font_decl[] = {{.key = "mc_regular", .font = &ENGINE_INTERFACE()->font}};
+        static ui_font_stash_desc_t font_stash = {.fonts = font_decl, .size = 1 * sizeof(ui_font_desc_t)};
         return &font_stash;
     }();
 
-    neko_ui_init_font_stash(&ENGINE_INTERFACE()->ui, GUI_FONT_STASH);
+    ui_init_font_stash(&ENGINE_INTERFACE()->ui, GUI_FONT_STASH);
 
-    neko_ui_dock_ex(&ENGINE_INTERFACE()->ui, "Style_Editor", "Demo_Window", NEKO_UI_SPLIT_TAB, 0.5f);
+    ui_dock_ex(&ENGINE_INTERFACE()->ui, "Style_Editor", "Demo_Window", NEKO_UI_SPLIT_TAB, 0.5f);
 
     neko_game()->imgui = neko_imgui_new(&ENGINE_INTERFACE()->cb, neko_os_main_window(), false);
 
     // Construct frame buffer
-    neko_game()->r_main_fbo = neko_render_framebuffer_create({});
+    neko_game()->r_main_fbo = gfx_framebuffer_create({});
 
-    neko_render_texture_desc_t main_rt_desc = {.width = (u32)neko_game()->DisplaySize.x,
+    gfx_texture_desc_t main_rt_desc = {.width = (u32)neko_game()->DisplaySize.x,
                                                .height = (u32)neko_game()->DisplaySize.y,
                                                .format = R_TEXTURE_FORMAT_RGBA8,
                                                .wrap_s = R_TEXTURE_WRAP_REPEAT,
                                                .wrap_t = R_TEXTURE_WRAP_REPEAT,
                                                .min_filter = R_TEXTURE_FILTER_NEAREST,
                                                .mag_filter = R_TEXTURE_FILTER_NEAREST};
-    neko_game()->r_main_rt = neko_render_texture_create(main_rt_desc);
+    neko_game()->r_main_rt = gfx_texture_create(main_rt_desc);
 
-    neko_render_renderpass_desc_t main_rp_desc = {.fbo = neko_game()->r_main_fbo, .color = &neko_game()->r_main_rt, .color_size = sizeof(neko_game()->r_main_rt)};
-    neko_game()->r_main_rp = neko_render_renderpass_create(main_rp_desc);
+    gfx_renderpass_desc_t main_rp_desc = {.fbo = neko_game()->r_main_fbo, .color = &neko_game()->r_main_rt, .color_size = sizeof(neko_game()->r_main_rt)};
+    neko_game()->r_main_rp = gfx_renderpass_create(main_rp_desc);
 
     luax_get(ENGINE_LUA(), "neko", "game_init");
     luax_pcall(ENGINE_LUA(), 0, 0);
@@ -215,9 +215,6 @@ static void init() {
     // microui_init();
 
     renderer_reset();
-
-    // just for test
-    // neko_tiled_load(&map, "assets/maps/map.tmx", NULL);
 
     {
         PROFILE_BLOCK("neko.start");
@@ -419,8 +416,7 @@ static void actually_cleanup() {
 
     g_app->gpu_mtx.unlock();
 
-    // just for test
-    // neko_tiled_unload(&map);
+
 
     lua_State *L = g_app->L;
 

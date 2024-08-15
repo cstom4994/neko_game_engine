@@ -1940,7 +1940,7 @@ LUA_FUNCTION(__neko_bind_tiled_render) {
 
     neko_command_buffer_t* cb = &ENGINE_INTERFACE()->cb;
 
-    neko_render_renderpass_begin(cb, rp);
+    gfx_renderpass_begin(cb, rp);
     {
         neko_tiled_render_begin(cb, tiled_render);
 
@@ -2002,7 +2002,7 @@ LUA_FUNCTION(__neko_bind_tiled_render) {
         //     }
         // }
     }
-    neko_render_renderpass_end(cb);
+    gfx_renderpass_end(cb);
 
     return 0;
 }
@@ -2123,7 +2123,7 @@ LUA_FUNCTION(__neko_bind_fontbatch_create) {
 LUA_FUNCTION(__neko_bind_fontbatch_draw) {
     neko_fontbatch_t& fontbatch = neko::lua::toudata<neko_fontbatch_t>(L, 1);
 
-    neko_render_draw_batch(&ENGINE_INTERFACE()->cb, fontbatch.font_render, 0, 0, 0);
+    gfx_draw_batch(&ENGINE_INTERFACE()->cb, fontbatch.font_render, 0, 0, 0);
 
     return 0;
 }
@@ -2165,9 +2165,9 @@ struct neko_sprite_batch_t {
 
     neko_batch_t sb;
 
-    neko_render_batch_context_t* sprite_batch;
-    neko_render_batch_shader_t sprite_shader;
-    neko_render_batch_renderable_t sprite_renderable;
+    gfx_batch_context_t* sprite_batch;
+    gfx_batch_shader_t sprite_shader;
+    gfx_batch_renderable_t sprite_renderable;
     f32 sprite_projection[16];
 
     int call_count = 0;
@@ -2228,13 +2228,13 @@ static void batch_report(neko_batch_sprite_t* sprites, int count, int texture_w,
     // printf("end batch\n");
 
     // build the draw call
-    neko_render_batch_draw_call_t call;
+    gfx_batch_draw_call_t call;
     call.r = &user_handle->sprite_renderable;
     call.textures[0] = (u32)sprites[0].texture_id;
     call.texture_count = 1;
 
     // set texture uniform in shader
-    neko_render_batch_send_texture(call.r->program, "u_sprite_texture", 0);
+    gfx_batch_send_texture(call.r->program, "u_sprite_texture", 0);
 
     // TODO: 附加排序 遮盖判定系统
 
@@ -2312,7 +2312,7 @@ static void batch_report(neko_batch_sprite_t* sprites, int count, int texture_w,
     }
 
     // 提交对draw_call的调用
-    neko_render_batch_push_draw_call(user_handle->sprite_batch, call);
+    gfx_batch_push_draw_call(user_handle->sprite_batch, call);
 }
 
 void get_pixels(u64 image_id, void* buffer, int bytes_to_fill, void* udata) {
@@ -2348,22 +2348,22 @@ LUA_FUNCTION(__neko_bind_sprite_batch_create) {
     neko_sprite_batch_t* user_handle = (neko_sprite_batch_t*)lua_newuserdata(L, sizeof(neko_sprite_batch_t));
     memset(user_handle, 0, sizeof(neko_sprite_batch_t));
 
-    user_handle->sprite_batch = neko_render_batch_make_ctx(max_draw_calls);
+    user_handle->sprite_batch = gfx_batch_make_ctx(max_draw_calls);
 
     neko_vec2 fbs = neko_os_framebuffer_sizev(neko_os_main_window());
 
-    neko_render_batch_vertex_data_t vd;
-    neko_render_batch_make_vertex_data(&vd, 1024 * 1024, GL_TRIANGLES, sizeof(vertex_t), GL_DYNAMIC_DRAW);
-    neko_render_batch_add_attribute(&vd, "in_pos", 2, R_BATCH_FLOAT, NEKO_OFFSET(vertex_t, x));
-    neko_render_batch_add_attribute(&vd, "in_uv", 2, R_BATCH_FLOAT, NEKO_OFFSET(vertex_t, u));
+    gfx_batch_vertex_data_t vd;
+    gfx_batch_make_vertex_data(&vd, 1024 * 1024, GL_TRIANGLES, sizeof(vertex_t), GL_DYNAMIC_DRAW);
+    gfx_batch_add_attribute(&vd, "in_pos", 2, R_BATCH_FLOAT, NEKO_OFFSET(vertex_t, x));
+    gfx_batch_add_attribute(&vd, "in_uv", 2, R_BATCH_FLOAT, NEKO_OFFSET(vertex_t, u));
 
-    neko_render_batch_make_renderable(&user_handle->sprite_renderable, &vd);
-    neko_render_batch_load_shader(&user_handle->sprite_shader, glsl_vs_src, glsl_ps_src);
-    neko_render_batch_set_shader(&user_handle->sprite_renderable, &user_handle->sprite_shader);
+    gfx_batch_make_renderable(&user_handle->sprite_renderable, &vd);
+    gfx_batch_load_shader(&user_handle->sprite_shader, glsl_vs_src, glsl_ps_src);
+    gfx_batch_set_shader(&user_handle->sprite_renderable, &user_handle->sprite_shader);
 
-    neko_render_batch_ortho_2d(fbs.x, fbs.y, 0, 0, user_handle->sprite_projection);
+    gfx_batch_ortho_2d(fbs.x, fbs.y, 0, 0, user_handle->sprite_projection);
 
-    neko_render_batch_send_matrix(&user_handle->sprite_shader, "u_mvp", user_handle->sprite_projection);
+    gfx_batch_send_matrix(&user_handle->sprite_shader, "u_mvp", user_handle->sprite_projection);
 
     user_handle->images_count = count;
     user_handle->images = (neko_image*)neko_safe_malloc(sizeof(neko_image) * count);
@@ -2400,9 +2400,9 @@ LUA_FUNCTION(__neko_bind_sprite_batch_render_ortho) {
     f32 x = lua_tonumber(L, 4);
     f32 y = lua_tonumber(L, 5);
 
-    neko_render_batch_ortho_2d(w, h, x / w, y / h, user_handle->sprite_projection);
+    gfx_batch_ortho_2d(w, h, x / w, y / h, user_handle->sprite_projection);
 
-    neko_render_batch_send_matrix(&user_handle->sprite_shader, "u_mvp", user_handle->sprite_projection);
+    gfx_batch_send_matrix(&user_handle->sprite_shader, "u_mvp", user_handle->sprite_projection);
 
     return 0;
 }
@@ -2454,7 +2454,7 @@ LUA_FUNCTION(__neko_bind_sprite_batch_render_end) {
         user_handle->sprite_verts_count = 0;
     }
 
-    neko_render_draw_batch(&ENGINE_INTERFACE()->cb, user_handle->sprite_batch, 0, 0, 0);
+    gfx_draw_batch(&ENGINE_INTERFACE()->cb, user_handle->sprite_batch, 0, 0, 0);
 
     return 0;
 }
@@ -2471,7 +2471,7 @@ LUA_FUNCTION(__neko_bind_sprite_batch_end) {
 
     neko_safe_free(user_handle->images);
 
-    neko_render_batch_free(user_handle->sprite_batch);
+    gfx_batch_free(user_handle->sprite_batch);
 
     return 0;
 }
@@ -2718,8 +2718,8 @@ LUA_FUNCTION(__neko_bind_idraw_box) {
     u8 g = lua_tointeger(L, 8);
     u8 b = lua_tointeger(L, 9);
     u8 a = lua_tointeger(L, 10);
-    neko_render_primitive_type type_val;
-    neko_luabind_to(ENGINE_LUA(), neko_render_primitive_type, &type_val, 11);
+    gfx_primitive_type type_val;
+    neko_luabind_to(ENGINE_LUA(), gfx_primitive_type, &type_val, 11);
     neko_idraw_box(&ENGINE_INTERFACE()->idraw, x, y, z, hx, hy, hz, r, g, b, a, type_val);
     return 0;
 }
@@ -2739,8 +2739,8 @@ LUA_FUNCTION(__neko_bind_idraw_rectv) {
 
     v2 = neko_vec2_add(v1, v2);
 
-    neko_render_primitive_type type_val;
-    neko_luabind_to(ENGINE_LUA(), neko_render_primitive_type, &type_val, 3);
+    gfx_primitive_type type_val;
+    neko_luabind_to(ENGINE_LUA(), gfx_primitive_type, &type_val, 3);
 
     neko_color_t col = NEKO_COLOR_WHITE;
 
@@ -2760,8 +2760,8 @@ LUA_FUNCTION(__neko_bind_idraw_rectvd) {
     auto uv0 = lua2struct::unpack<neko_vec2>(L, 3);
     auto uv1 = lua2struct::unpack<neko_vec2>(L, 4);
 
-    neko_render_primitive_type type_val;
-    neko_luabind_to(ENGINE_LUA(), neko_render_primitive_type, &type_val, 5);
+    gfx_primitive_type type_val;
+    neko_luabind_to(ENGINE_LUA(), gfx_primitive_type, &type_val, 5);
 
     neko_color_t col = lua2struct::unpack<neko_color_t>(L, 6);
 
@@ -2816,7 +2816,7 @@ LUA_FUNCTION(__neko_bind_idraw_texture) {
 
 LUA_FUNCTION(__neko_bind_render_framebuffer_create) {
     neko_framebuffer_t fbo = NEKO_DEFAULT_VAL();
-    fbo = neko_render_framebuffer_create({});
+    fbo = gfx_framebuffer_create({});
     neko_luabind_struct_push_member(L, neko_framebuffer_t, id, &fbo);
     return 1;
 }
@@ -2824,7 +2824,7 @@ LUA_FUNCTION(__neko_bind_render_framebuffer_create) {
 LUA_FUNCTION(__neko_bind_render_framebuffer_fini) {
     neko_framebuffer_t fbo = NEKO_DEFAULT_VAL();
     neko_luabind_struct_to_member(L, neko_framebuffer_t, id, &fbo, 1);
-    neko_render_framebuffer_fini(fbo);
+    gfx_framebuffer_fini(fbo);
     return 0;
 }
 
@@ -2852,7 +2852,7 @@ LUA_FUNCTION(__neko_bind_render_shader_create) {
     luaL_checktype(L, 2, LUA_TTABLE);              // 检查是否为table
     int n = neko_lua_get_table_pairs_count(L, 2);  //
 
-    neko_render_shader_source_desc_t* sources = (neko_render_shader_source_desc_t*)neko_safe_malloc(n * sizeof(neko_render_shader_source_desc_t));
+    gfx_shader_source_desc_t* sources = (gfx_shader_source_desc_t*)neko_safe_malloc(n * sizeof(gfx_shader_source_desc_t));
 
     const_str shader_type[] = {"VERTEX", "FRAGMENT", "COMPUTE"};
 
@@ -2864,7 +2864,7 @@ LUA_FUNCTION(__neko_bind_render_shader_create) {
         if (!lua_isnil(L, -1)) {
             const_str src = lua_tostring(L, -1);  // # -1
             if (src != NULL) {
-                sources[j++] = neko_render_shader_source_desc_t{.type = (neko_render_shader_stage_type)(i + 1), .source = src};
+                sources[j++] = gfx_shader_source_desc_t{.type = (gfx_shader_stage_type)(i + 1), .source = src};
             }
         }
         lua_pop(L, 1);  // # -1
@@ -2874,11 +2874,11 @@ LUA_FUNCTION(__neko_bind_render_shader_create) {
 
     neko_shader_t shader_handle = NEKO_DEFAULT_VAL();
 
-    neko_render_shader_desc_t shader_desc = {.sources = sources, .size = n * sizeof(neko_render_shader_source_desc_t), .name = "unknown"};
+    gfx_shader_desc_t shader_desc = {.sources = sources, .size = n * sizeof(gfx_shader_source_desc_t), .name = "unknown"};
     strncpy(shader_desc.name, shader_name, sizeof(shader_desc.name) - 1);
     shader_desc.name[sizeof(shader_desc.name) - 1] = '\0';
 
-    shader_handle = neko_render_shader_create(shader_desc);
+    shader_handle = gfx_shader_create(shader_desc);
 
     neko_safe_free(sources);
 
@@ -2894,8 +2894,8 @@ LUA_FUNCTION(__neko_bind_render_uniform_create) {
     luaL_checktype(L, 2, LUA_TTABLE);  // 检查是否为table
     int n = lua_rawlen(L, 2);          //
 
-    neko_render_uniform_layout_desc_t* layouts = (neko_render_uniform_layout_desc_t*)neko_safe_malloc(n * sizeof(neko_render_uniform_layout_desc_t));
-    memset(layouts, 0, n * sizeof(neko_render_uniform_layout_desc_t));
+    gfx_uniform_layout_desc_t* layouts = (gfx_uniform_layout_desc_t*)neko_safe_malloc(n * sizeof(gfx_uniform_layout_desc_t));
+    memset(layouts, 0, n * sizeof(gfx_uniform_layout_desc_t));
 
     for (int i = 1; i <= n; i++) {
         lua_rawgeti(L, 2, i);  // 将index=i的元素压入堆栈顶部
@@ -2904,7 +2904,7 @@ LUA_FUNCTION(__neko_bind_render_uniform_create) {
         lua_pushstring(L, "type");  // # -1
         lua_gettable(L, -2);        // pop # -1
         if (!lua_isnil(L, -1)) {
-            neko_luabind_to(L, neko_render_uniform_type, &layouts[i - 1].type, -1);
+            neko_luabind_to(L, gfx_uniform_type, &layouts[i - 1].type, -1);
         }
         lua_pop(L, 1);  // # -1
 
@@ -2929,7 +2929,7 @@ LUA_FUNCTION(__neko_bind_render_uniform_create) {
         lua_pop(L, 1);  // # -1
     }
 
-    neko_render_uniform_desc_t u_desc = {
+    gfx_uniform_desc_t u_desc = {
             // .name = "unknown",
             .layout = layouts,
     };
@@ -2939,13 +2939,13 @@ LUA_FUNCTION(__neko_bind_render_uniform_create) {
     }
 
     if (lua_gettop(L) == 3) {
-        neko_luabind_to(L, neko_render_shader_stage_type, &u_desc.stage, 3);
+        neko_luabind_to(L, gfx_shader_stage_type, &u_desc.stage, 3);
     }
 
     neko_uniform_t uniform_handle = NEKO_DEFAULT_VAL();
 
     // Create uniform
-    uniform_handle = neko_render_uniform_create(u_desc);
+    uniform_handle = gfx_uniform_create(u_desc);
 
     neko_safe_free(layouts);
 
@@ -2960,7 +2960,7 @@ LUA_FUNCTION(__neko_bind_render_pipeline_create) {
     int n = neko_lua_get_table_pairs_count(L, 2);  //
     const_str pipeline_type[] = {"compute", "layout", "raster"};
 
-    neko_render_pipeline_desc_t pipeline_desc = NEKO_DEFAULT_VAL();
+    gfx_pipeline_desc_t pipeline_desc = NEKO_DEFAULT_VAL();
 
     for (int i = 0; i < NEKO_ARR_SIZE(pipeline_type); i++) {
         lua_pushstring(L, pipeline_type[i]);  // # -1
@@ -2985,12 +2985,12 @@ LUA_FUNCTION(__neko_bind_render_pipeline_create) {
                     pipeline_desc.compute.shader = shader_handle;
                 } break;
                 case neko::hash("layout"): {
-                    neko_render_vertex_attribute_desc_t* vertex_attr = NEKO_DEFAULT_VAL();
+                    gfx_vertex_attribute_desc_t* vertex_attr = NEKO_DEFAULT_VAL();
 
                     lua_pushstring(L, "attrs");  // # -1
                     lua_gettable(L, -2);         // pop # -1
                     if (!lua_isnil(L, -1)) {
-                        vertex_attr = (neko_render_vertex_attribute_desc_t*)lua_touserdata(L, -1);
+                        vertex_attr = (gfx_vertex_attribute_desc_t*)lua_touserdata(L, -1);
                     }
                     lua_pop(L, 1);  // # -1
 
@@ -3035,7 +3035,7 @@ LUA_FUNCTION(__neko_bind_render_pipeline_create) {
     }
 
     neko_pipeline_t pipeline_handle = NEKO_DEFAULT_VAL();
-    pipeline_handle = neko_render_pipeline_create(pipeline_desc);
+    pipeline_handle = gfx_pipeline_create(pipeline_desc);
     neko_luabind_struct_push_member(L, neko_pipeline_t, id, &pipeline_handle);
     return 1;
 }
@@ -3045,8 +3045,8 @@ LUA_FUNCTION(__neko_bind_render_vertex_buffer_create) {
     void* data = lua_touserdata(L, 2);
     size_t data_size = lua_tointeger(L, 3);
     neko_vbo_t vertex_buffer_handle = NEKO_DEFAULT_VAL();
-    neko_render_vertex_buffer_desc_t vertex_buffer_desc = {.data = data, .size = data_size};
-    vertex_buffer_handle = neko_render_vertex_buffer_create(vertex_buffer_desc);
+    gfx_vertex_buffer_desc_t vertex_buffer_desc = {.data = data, .size = data_size};
+    vertex_buffer_handle = gfx_vertex_buffer_create(vertex_buffer_desc);
     neko_luabind_struct_push_member(L, neko_vbo_t, id, &vertex_buffer_handle);
     return 1;
 }
@@ -3056,8 +3056,8 @@ LUA_FUNCTION(__neko_bind_render_index_buffer_create) {
     void* data = lua_touserdata(L, 2);
     size_t data_size = lua_tointeger(L, 3);
     neko_ibo_t index_buffer_handle = NEKO_DEFAULT_VAL();
-    neko_render_index_buffer_desc_t index_buffer_desc = {.data = data, .size = data_size};
-    index_buffer_handle = neko_render_index_buffer_create(index_buffer_desc);
+    gfx_index_buffer_desc_t index_buffer_desc = {.data = data, .size = data_size};
+    index_buffer_handle = gfx_index_buffer_create(index_buffer_desc);
     neko_luabind_struct_push_member(L, neko_ibo_t, id, &index_buffer_handle);
     return 1;
 }
@@ -3067,8 +3067,8 @@ LUA_FUNCTION(__neko_bind_render_vertex_attribute_create) {
     luaL_checktype(L, 2, LUA_TTABLE);
     int n = neko_lua_get_table_pairs_count(L, 2);  //
 
-    neko_render_vertex_attribute_desc_t* sources = (neko_render_vertex_attribute_desc_t*)neko_safe_malloc(n * sizeof(neko_render_vertex_attribute_desc_t));
-    memset(sources, 0, n * sizeof(neko_render_vertex_attribute_desc_t));
+    gfx_vertex_attribute_desc_t* sources = (gfx_vertex_attribute_desc_t*)neko_safe_malloc(n * sizeof(gfx_vertex_attribute_desc_t));
+    memset(sources, 0, n * sizeof(gfx_vertex_attribute_desc_t));
 
     for (int i = 0; i < n; i++) {
         lua_rawgeti(L, 2, i + 1);  // 将index=i的元素压入堆栈顶部
@@ -3088,19 +3088,19 @@ LUA_FUNCTION(__neko_bind_render_vertex_attribute_create) {
         lua_pushstring(L, "format");  // # -1
         lua_gettable(L, -2);          // pop # -1
         if (!lua_isnil(L, -1)) {
-            neko_luabind_to(L, neko_render_vertex_attribute_type, &sources[i].format, -1);
+            neko_luabind_to(L, gfx_vertex_attribute_type, &sources[i].format, -1);
         }
         lua_pop(L, 1);  // # -1
 
         lua_pop(L, 1);  // # -1
     }
 
-    neko_render_vertex_attribute_desc_t* push_userdata = (neko_render_vertex_attribute_desc_t*)lua_newuserdata(L, n * sizeof(neko_render_vertex_attribute_desc_t));
-    memcpy(push_userdata, sources, n * sizeof(neko_render_vertex_attribute_desc_t));
+    gfx_vertex_attribute_desc_t* push_userdata = (gfx_vertex_attribute_desc_t*)lua_newuserdata(L, n * sizeof(gfx_vertex_attribute_desc_t));
+    memcpy(push_userdata, sources, n * sizeof(gfx_vertex_attribute_desc_t));
 
     neko_safe_free(sources);
 
-    lua_pushinteger(L, n * sizeof(neko_render_vertex_attribute_desc_t));
+    lua_pushinteger(L, n * sizeof(gfx_vertex_attribute_desc_t));
 
     return 2;
 }
@@ -3114,13 +3114,13 @@ LUA_FUNCTION(__neko_bind_render_storage_buffer_create) {
 
     neko_storage_buffer_t storage_buffer_handle = NEKO_DEFAULT_VAL();
 
-    neko_render_storage_buffer_desc_t storage_buffer_desc = {.data = data, .size = data_size, .name = "unknown", .usage = R_BUFFER_USAGE_DYNAMIC};
+    gfx_storage_buffer_desc_t storage_buffer_desc = {.data = data, .size = data_size, .name = "unknown", .usage = R_BUFFER_USAGE_DYNAMIC};
 
     if (storage_buffer_name != NULL) {
         NEKO_STR_CPY(storage_buffer_desc.name, storage_buffer_name);
     }
 
-    storage_buffer_handle = neko_render_storage_buffer_create(storage_buffer_desc);
+    storage_buffer_handle = gfx_storage_buffer_create(storage_buffer_desc);
 
     neko_luabind_struct_push_member(L, neko_storage_buffer_t, id, &storage_buffer_handle);
 
@@ -3130,21 +3130,21 @@ LUA_FUNCTION(__neko_bind_render_storage_buffer_create) {
 LUA_FUNCTION(__neko_bind_render_pipeline_bind) {
     neko_pipeline_t pipeline_handle = NEKO_DEFAULT_VAL();
     neko_luabind_struct_to_member(L, neko_pipeline_t, id, &pipeline_handle, 1);
-    neko_render_pipeline_bind(&ENGINE_INTERFACE()->cb, pipeline_handle);
+    gfx_pipeline_bind(&ENGINE_INTERFACE()->cb, pipeline_handle);
     return 0;
 }
 
 LUA_FUNCTION(__neko_bind_render_apply_bindings) {
 
-    neko_render_bind_desc_t binds = NEKO_DEFAULT_VAL();
+    gfx_bind_desc_t binds = NEKO_DEFAULT_VAL();
 
     const_str pipeline_type[] = {"uniforms", "image_buffers", "storage_buffers", "vertex_buffers", "index_buffers"};
 
-    neko_render_bind_uniform_desc_t* u_desc = nullptr;
-    neko_render_bind_image_buffer_desc_t* ib_desc = nullptr;
-    neko_render_bind_storage_buffer_desc_t* sb_desc = nullptr;
-    neko_render_bind_vertex_buffer_desc_t* vbo_desc = nullptr;
-    neko_render_bind_index_buffer_desc_t* ibo_desc = nullptr;
+    gfx_bind_uniform_desc_t* u_desc = nullptr;
+    gfx_bind_image_buffer_desc_t* ib_desc = nullptr;
+    gfx_bind_storage_buffer_desc_t* sb_desc = nullptr;
+    gfx_bind_vertex_buffer_desc_t* vbo_desc = nullptr;
+    gfx_bind_index_buffer_desc_t* ibo_desc = nullptr;
 
     luaL_checktype(L, -1, LUA_TTABLE);
 
@@ -3161,11 +3161,11 @@ LUA_FUNCTION(__neko_bind_render_apply_bindings) {
             switch (neko::hash(pipeline_type[i])) {
                 case neko::hash("uniforms"): {
 
-                    u_desc = (neko_render_bind_uniform_desc_t*)neko_safe_malloc(n * sizeof(neko_render_bind_uniform_desc_t));
-                    memset(u_desc, 0, n * sizeof(neko_render_bind_uniform_desc_t));
+                    u_desc = (gfx_bind_uniform_desc_t*)neko_safe_malloc(n * sizeof(gfx_bind_uniform_desc_t));
+                    memset(u_desc, 0, n * sizeof(gfx_bind_uniform_desc_t));
 
                     binds.uniforms.desc = u_desc;
-                    binds.uniforms.size = n == 1 ? 0 : n * sizeof(neko_render_bind_uniform_desc_t);
+                    binds.uniforms.size = n == 1 ? 0 : n * sizeof(gfx_bind_uniform_desc_t);
 
                     for (int i = 1; i <= n; i++) {
                         lua_rawgeti(L, -1, i);  // 将index=i的元素压入堆栈顶部
@@ -3210,11 +3210,11 @@ LUA_FUNCTION(__neko_bind_render_apply_bindings) {
                     }
                 } break;
                 case neko::hash("image_buffers"): {
-                    ib_desc = (neko_render_bind_image_buffer_desc_t*)neko_safe_malloc(n * sizeof(neko_render_bind_image_buffer_desc_t));
-                    memset(ib_desc, 0, n * sizeof(neko_render_bind_image_buffer_desc_t));
+                    ib_desc = (gfx_bind_image_buffer_desc_t*)neko_safe_malloc(n * sizeof(gfx_bind_image_buffer_desc_t));
+                    memset(ib_desc, 0, n * sizeof(gfx_bind_image_buffer_desc_t));
 
                     binds.image_buffers.desc = ib_desc;
-                    binds.image_buffers.size = n == 1 ? 0 : n * sizeof(neko_render_bind_image_buffer_desc_t);
+                    binds.image_buffers.size = n == 1 ? 0 : n * sizeof(gfx_bind_image_buffer_desc_t);
 
                     for (int i = 1; i <= n; i++) {
                         lua_rawgeti(L, -1, i);  // 将index=i的元素压入堆栈顶部
@@ -3241,11 +3241,11 @@ LUA_FUNCTION(__neko_bind_render_apply_bindings) {
                     }
                 } break;
                 case neko::hash("storage_buffers"): {
-                    sb_desc = (neko_render_bind_storage_buffer_desc_t*)neko_safe_malloc(n * sizeof(neko_render_bind_storage_buffer_desc_t));
-                    memset(sb_desc, 0, n * sizeof(neko_render_bind_storage_buffer_desc_t));
+                    sb_desc = (gfx_bind_storage_buffer_desc_t*)neko_safe_malloc(n * sizeof(gfx_bind_storage_buffer_desc_t));
+                    memset(sb_desc, 0, n * sizeof(gfx_bind_storage_buffer_desc_t));
 
                     binds.storage_buffers.desc = sb_desc;
-                    binds.storage_buffers.size = n == 1 ? 0 : n * sizeof(neko_render_bind_storage_buffer_desc_t);
+                    binds.storage_buffers.size = n == 1 ? 0 : n * sizeof(gfx_bind_storage_buffer_desc_t);
 
                     for (int i = 1; i <= n; i++) {
                         lua_rawgeti(L, -1, i);  // 将index=i的元素压入堆栈顶部
@@ -3270,11 +3270,11 @@ LUA_FUNCTION(__neko_bind_render_apply_bindings) {
                     }
                 } break;
                 case neko::hash("vertex_buffers"): {
-                    vbo_desc = (neko_render_bind_vertex_buffer_desc_t*)neko_safe_malloc(n * sizeof(neko_render_bind_vertex_buffer_desc_t));
-                    memset(vbo_desc, 0, n * sizeof(neko_render_bind_vertex_buffer_desc_t));
+                    vbo_desc = (gfx_bind_vertex_buffer_desc_t*)neko_safe_malloc(n * sizeof(gfx_bind_vertex_buffer_desc_t));
+                    memset(vbo_desc, 0, n * sizeof(gfx_bind_vertex_buffer_desc_t));
 
                     binds.vertex_buffers.desc = vbo_desc;
-                    binds.vertex_buffers.size = n == 1 ? 0 : n * sizeof(neko_render_bind_vertex_buffer_desc_t);
+                    binds.vertex_buffers.size = n == 1 ? 0 : n * sizeof(gfx_bind_vertex_buffer_desc_t);
 
                     for (int i = 1; i <= n; i++) {
                         lua_rawgeti(L, -1, i);  // 将index=i的元素压入堆栈顶部
@@ -3292,11 +3292,11 @@ LUA_FUNCTION(__neko_bind_render_apply_bindings) {
                     }
                 } break;
                 case neko::hash("index_buffers"): {
-                    ibo_desc = (neko_render_bind_index_buffer_desc_t*)neko_safe_malloc(n * sizeof(neko_render_bind_index_buffer_desc_t));
-                    memset(ibo_desc, 0, n * sizeof(neko_render_bind_index_buffer_desc_t));
+                    ibo_desc = (gfx_bind_index_buffer_desc_t*)neko_safe_malloc(n * sizeof(gfx_bind_index_buffer_desc_t));
+                    memset(ibo_desc, 0, n * sizeof(gfx_bind_index_buffer_desc_t));
 
                     binds.index_buffers.desc = ibo_desc;
-                    binds.index_buffers.size = n == 1 ? 0 : n * sizeof(neko_render_bind_index_buffer_desc_t);
+                    binds.index_buffers.size = n == 1 ? 0 : n * sizeof(gfx_bind_index_buffer_desc_t);
 
                     for (int i = 1; i <= n; i++) {
                         lua_rawgeti(L, -1, i);  // 将index=i的元素压入堆栈顶部
@@ -3320,7 +3320,7 @@ LUA_FUNCTION(__neko_bind_render_apply_bindings) {
         lua_pop(L, 1);  // # -1
     }
 
-    neko_render_apply_bindings(&ENGINE_INTERFACE()->cb, &binds);
+    gfx_apply_bindings(&ENGINE_INTERFACE()->cb, &binds);
 
     if (u_desc) neko_safe_free(u_desc);
     if (ib_desc) neko_safe_free(ib_desc);
@@ -3357,14 +3357,14 @@ LUA_FUNCTION(__neko_bind_render_dispatch_compute) {
     f32 x_groups = lua_tonumber(L, 1);
     f32 y_groups = lua_tonumber(L, 2);
     f32 z_groups = lua_tonumber(L, 3);
-    neko_render_dispatch_compute(&ENGINE_INTERFACE()->cb, x_groups, y_groups, z_groups);
+    gfx_dispatch_compute(&ENGINE_INTERFACE()->cb, x_groups, y_groups, z_groups);
     return 0;
 }
 
 LUA_FUNCTION(__neko_bind_render_texture_create) {
     u32 w = lua_tointeger(L, 1);
     u32 h = lua_tointeger(L, 2);
-    neko_render_texture_desc_t texture_desc = {
+    gfx_texture_desc_t texture_desc = {
             .width = w,                             // 纹理的宽度
             .height = h,                            // 纹理的高度
             .format = R_TEXTURE_FORMAT_RGBA8,       // 纹理数据的格式
@@ -3380,42 +3380,42 @@ LUA_FUNCTION(__neko_bind_render_texture_create) {
             lua_pushstring(L, "type");  // # -1
             lua_gettable(L, -2);        // pop # -1
             if (!lua_isnil(L, -1)) {
-                neko_luabind_to(L, neko_render_texture_type, &texture_desc.type, -1);
+                neko_luabind_to(L, gfx_texture_type, &texture_desc.type, -1);
             }
             lua_pop(L, 1);  // # -1
 
             lua_pushstring(L, "format");  // # -1
             lua_gettable(L, -2);          // pop # -1
             if (!lua_isnil(L, -1)) {
-                neko_luabind_to(L, neko_render_texture_format_type, &texture_desc.format, -1);
+                neko_luabind_to(L, gfx_texture_format_type, &texture_desc.format, -1);
             }
             lua_pop(L, 1);  // # -1
 
             lua_pushstring(L, "wrap_s");  // # -1
             lua_gettable(L, -2);          // pop # -1
             if (!lua_isnil(L, -1)) {
-                neko_luabind_to(L, neko_render_texture_wrapping_type, &texture_desc.wrap_s, -1);
+                neko_luabind_to(L, gfx_texture_wrapping_type, &texture_desc.wrap_s, -1);
             }
             lua_pop(L, 1);  // # -1
 
             lua_pushstring(L, "wrap_t");  // # -1
             lua_gettable(L, -2);          // pop # -1
             if (!lua_isnil(L, -1)) {
-                neko_luabind_to(L, neko_render_texture_wrapping_type, &texture_desc.wrap_t, -1);
+                neko_luabind_to(L, gfx_texture_wrapping_type, &texture_desc.wrap_t, -1);
             }
             lua_pop(L, 1);  // # -1
 
             lua_pushstring(L, "min_filter");  // # -1
             lua_gettable(L, -2);              // pop # -1
             if (!lua_isnil(L, -1)) {
-                neko_luabind_to(L, neko_render_texture_filtering_type, &texture_desc.min_filter, -1);
+                neko_luabind_to(L, gfx_texture_filtering_type, &texture_desc.min_filter, -1);
             }
             lua_pop(L, 1);  // # -1
 
             lua_pushstring(L, "mag_filter");  // # -1
             lua_gettable(L, -2);              // pop # -1
             if (!lua_isnil(L, -1)) {
-                neko_luabind_to(L, neko_render_texture_filtering_type, &texture_desc.mag_filter, -1);
+                neko_luabind_to(L, gfx_texture_filtering_type, &texture_desc.mag_filter, -1);
             }
             lua_pop(L, 1);  // # -1
 
@@ -3429,7 +3429,7 @@ LUA_FUNCTION(__neko_bind_render_texture_create) {
         }
     }
     neko_texture_t texture = NEKO_DEFAULT_VAL();
-    texture = neko_render_texture_create(texture_desc);
+    texture = gfx_texture_create(texture_desc);
     neko_luabind_struct_push_member(L, neko_texture_t, id, &texture);
     return 1;
 }
@@ -3437,7 +3437,7 @@ LUA_FUNCTION(__neko_bind_render_texture_create) {
 LUA_FUNCTION(__neko_bind_render_texture_fini) {
     neko_texture_t rt = NEKO_DEFAULT_VAL();
     neko_luabind_struct_to_member(L, neko_texture_t, id, &rt, 1);
-    neko_render_texture_fini(rt);
+    gfx_texture_fini(rt);
     return 0;
 }
 
@@ -3450,7 +3450,7 @@ LUA_FUNCTION(__neko_bind_render_renderpass_create) {
     neko_luabind_struct_to_member(L, neko_texture_t, id, &rt, 2);
 
     neko_renderpass_t rp = NEKO_DEFAULT_VAL();
-    rp = neko_render_renderpass_create(neko_render_renderpass_desc_t{
+    rp = gfx_renderpass_create(gfx_renderpass_desc_t{
             .fbo = fbo,               // Frame buffer to bind for render pass
             .color = &rt,             // Color buffer array to bind to frame buffer
             .color_size = sizeof(rt)  // Size of color attachment array in bytes
@@ -3462,24 +3462,24 @@ LUA_FUNCTION(__neko_bind_render_renderpass_create) {
 LUA_FUNCTION(__neko_bind_render_renderpass_fini) {
     neko_renderpass_t rp = NEKO_DEFAULT_VAL();
     neko_luabind_struct_to_member(L, neko_renderpass_t, id, &rp, 1);
-    neko_render_renderpass_fini(rp);
+    gfx_renderpass_fini(rp);
     return 0;
 }
 
 LUA_FUNCTION(__neko_bind_render_renderpass_begin) {
     neko_renderpass_t rp = NEKO_DEFAULT_VAL();
     neko_luabind_struct_to_member(L, neko_renderpass_t, id, &rp, 1);
-    neko_render_renderpass_begin(&ENGINE_INTERFACE()->cb, rp);
+    gfx_renderpass_begin(&ENGINE_INTERFACE()->cb, rp);
     return 0;
 }
 
 LUA_FUNCTION(__neko_bind_render_renderpass_end) {
-    neko_render_renderpass_end(&ENGINE_INTERFACE()->cb);
+    gfx_renderpass_end(&ENGINE_INTERFACE()->cb);
     return 0;
 }
 
 LUA_FUNCTION(__neko_bind_render_draw) {
-    neko_render_draw_desc_t draw_desc = NEKO_DEFAULT_VAL();
+    gfx_draw_desc_t draw_desc = NEKO_DEFAULT_VAL();
 
     if (!lua_isnil(L, -1)) {
         luaL_checktype(L, -1, LUA_TTABLE);
@@ -3511,7 +3511,7 @@ LUA_FUNCTION(__neko_bind_render_draw) {
         lua_pop(L, 1);
     }
 
-    neko_render_draw(&ENGINE_INTERFACE()->cb, draw_desc);
+    gfx_draw(&ENGINE_INTERFACE()->cb, draw_desc);
     return 0;
 }
 
@@ -3520,7 +3520,7 @@ LUA_FUNCTION(__neko_bind_render_set_viewport) {
     f32 y = lua_tonumber(L, 2);
     f32 w = lua_tonumber(L, 3);
     f32 h = lua_tonumber(L, 4);
-    neko_render_set_viewport(&ENGINE_INTERFACE()->cb, x, y, w, h);
+    gfx_set_viewport(&ENGINE_INTERFACE()->cb, x, y, w, h);
     return 0;
 }
 
@@ -3529,8 +3529,8 @@ LUA_FUNCTION(__neko_bind_render_clear) {
     f32 g = lua_tonumber(L, 2);
     f32 b = lua_tonumber(L, 3);
     f32 a = lua_tonumber(L, 4);
-    neko_render_clear_action_t clear = {.color = {r, g, b, a}};
-    neko_render_clear(&ENGINE_INTERFACE()->cb, clear);
+    gfx_clear_action_t clear = {.color = {r, g, b, a}};
+    gfx_clear(&ENGINE_INTERFACE()->cb, clear);
     return 0;
 }
 
@@ -3552,10 +3552,10 @@ inline void neko_register_test(lua_State* L) {
     neko_lua_enum_value(L, neko_projection_type, NEKO_PROJECTION_TYPE_ORTHOGRAPHIC);
     neko_lua_enum_value(L, neko_projection_type, NEKO_PROJECTION_TYPE_PERSPECTIVE);
 
-    neko_lua_enum(L, neko_render_primitive_type);
-    neko_lua_enum_value(L, neko_render_primitive_type, R_PRIMITIVE_LINES);
-    neko_lua_enum_value(L, neko_render_primitive_type, R_PRIMITIVE_TRIANGLES);
-    neko_lua_enum_value(L, neko_render_primitive_type, R_PRIMITIVE_QUADS);
+    neko_lua_enum(L, gfx_primitive_type);
+    neko_lua_enum_value(L, gfx_primitive_type, R_PRIMITIVE_LINES);
+    neko_lua_enum_value(L, gfx_primitive_type, R_PRIMITIVE_TRIANGLES);
+    neko_lua_enum_value(L, gfx_primitive_type, R_PRIMITIVE_QUADS);
 
     neko_luabind_struct(L, neko_vec2);
     neko_luabind_struct_member(L, neko_vec2, x, f32);
@@ -3619,69 +3619,69 @@ inline void neko_register_test(lua_State* L) {
     // neko_luabind_struct(L, neko_sound_playing_sound_t);
     // neko_luabind_struct_member(L, neko_sound_playing_sound_t, id, unsigned long long);
 
-    neko_lua_enum(L, neko_render_vertex_attribute_type);
-    neko_lua_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_FLOAT4);
-    neko_lua_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_FLOAT3);
-    neko_lua_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_FLOAT2);
-    neko_lua_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_FLOAT);
-    neko_lua_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_UINT4);
-    neko_lua_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_UINT3);
-    neko_lua_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_UINT2);
-    neko_lua_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_UINT);
-    neko_lua_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_BYTE4);
-    neko_lua_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_BYTE3);
-    neko_lua_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_BYTE2);
-    neko_lua_enum_value(L, neko_render_vertex_attribute_type, R_VERTEX_ATTRIBUTE_BYTE);
+    neko_lua_enum(L, gfx_vertex_attribute_type);
+    neko_lua_enum_value(L, gfx_vertex_attribute_type, R_VERTEX_ATTRIBUTE_FLOAT4);
+    neko_lua_enum_value(L, gfx_vertex_attribute_type, R_VERTEX_ATTRIBUTE_FLOAT3);
+    neko_lua_enum_value(L, gfx_vertex_attribute_type, R_VERTEX_ATTRIBUTE_FLOAT2);
+    neko_lua_enum_value(L, gfx_vertex_attribute_type, R_VERTEX_ATTRIBUTE_FLOAT);
+    neko_lua_enum_value(L, gfx_vertex_attribute_type, R_VERTEX_ATTRIBUTE_UINT4);
+    neko_lua_enum_value(L, gfx_vertex_attribute_type, R_VERTEX_ATTRIBUTE_UINT3);
+    neko_lua_enum_value(L, gfx_vertex_attribute_type, R_VERTEX_ATTRIBUTE_UINT2);
+    neko_lua_enum_value(L, gfx_vertex_attribute_type, R_VERTEX_ATTRIBUTE_UINT);
+    neko_lua_enum_value(L, gfx_vertex_attribute_type, R_VERTEX_ATTRIBUTE_BYTE4);
+    neko_lua_enum_value(L, gfx_vertex_attribute_type, R_VERTEX_ATTRIBUTE_BYTE3);
+    neko_lua_enum_value(L, gfx_vertex_attribute_type, R_VERTEX_ATTRIBUTE_BYTE2);
+    neko_lua_enum_value(L, gfx_vertex_attribute_type, R_VERTEX_ATTRIBUTE_BYTE);
 
-    neko_lua_enum(L, neko_render_texture_type);
-    neko_lua_enum_value(L, neko_render_texture_type, R_TEXTURE_2D);
-    neko_lua_enum_value(L, neko_render_texture_type, R_TEXTURE_CUBEMAP);
+    neko_lua_enum(L, gfx_texture_type);
+    neko_lua_enum_value(L, gfx_texture_type, R_TEXTURE_2D);
+    neko_lua_enum_value(L, gfx_texture_type, R_TEXTURE_CUBEMAP);
 
-    neko_lua_enum(L, neko_render_shader_stage_type);
-    neko_lua_enum_value(L, neko_render_shader_stage_type, R_SHADER_STAGE_VERTEX);
-    neko_lua_enum_value(L, neko_render_shader_stage_type, R_SHADER_STAGE_FRAGMENT);
-    neko_lua_enum_value(L, neko_render_shader_stage_type, R_SHADER_STAGE_COMPUTE);
+    neko_lua_enum(L, gfx_shader_stage_type);
+    neko_lua_enum_value(L, gfx_shader_stage_type, R_SHADER_STAGE_VERTEX);
+    neko_lua_enum_value(L, gfx_shader_stage_type, R_SHADER_STAGE_FRAGMENT);
+    neko_lua_enum_value(L, gfx_shader_stage_type, R_SHADER_STAGE_COMPUTE);
 
-    neko_lua_enum(L, neko_render_texture_wrapping_type);
-    neko_lua_enum_value(L, neko_render_texture_wrapping_type, R_TEXTURE_WRAP_REPEAT);
-    neko_lua_enum_value(L, neko_render_texture_wrapping_type, R_TEXTURE_WRAP_MIRRORED_REPEAT);
-    neko_lua_enum_value(L, neko_render_texture_wrapping_type, R_TEXTURE_WRAP_CLAMP_TO_EDGE);
-    neko_lua_enum_value(L, neko_render_texture_wrapping_type, R_TEXTURE_WRAP_CLAMP_TO_BORDER);
+    neko_lua_enum(L, gfx_texture_wrapping_type);
+    neko_lua_enum_value(L, gfx_texture_wrapping_type, R_TEXTURE_WRAP_REPEAT);
+    neko_lua_enum_value(L, gfx_texture_wrapping_type, R_TEXTURE_WRAP_MIRRORED_REPEAT);
+    neko_lua_enum_value(L, gfx_texture_wrapping_type, R_TEXTURE_WRAP_CLAMP_TO_EDGE);
+    neko_lua_enum_value(L, gfx_texture_wrapping_type, R_TEXTURE_WRAP_CLAMP_TO_BORDER);
 
-    neko_lua_enum(L, neko_render_texture_filtering_type);
-    neko_lua_enum_value(L, neko_render_texture_filtering_type, R_TEXTURE_FILTER_NEAREST);
-    neko_lua_enum_value(L, neko_render_texture_filtering_type, R_TEXTURE_FILTER_LINEAR);
+    neko_lua_enum(L, gfx_texture_filtering_type);
+    neko_lua_enum_value(L, gfx_texture_filtering_type, R_TEXTURE_FILTER_NEAREST);
+    neko_lua_enum_value(L, gfx_texture_filtering_type, R_TEXTURE_FILTER_LINEAR);
 
-    neko_lua_enum(L, neko_render_texture_format_type);
-    neko_lua_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_RGBA8);
-    neko_lua_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_RGB8);
-    neko_lua_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_RG8);
-    neko_lua_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_R32);
-    neko_lua_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_R32F);
-    neko_lua_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_RGBA16F);
-    neko_lua_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_RGBA32F);
-    neko_lua_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_A8);
-    neko_lua_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_R8);
-    neko_lua_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_DEPTH8);
-    neko_lua_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_DEPTH16);
-    neko_lua_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_DEPTH24);
-    neko_lua_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_DEPTH32F);
-    neko_lua_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_DEPTH24_STENCIL8);
-    neko_lua_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_DEPTH32F_STENCIL8);
-    neko_lua_enum_value(L, neko_render_texture_format_type, R_TEXTURE_FORMAT_STENCIL8);
+    neko_lua_enum(L, gfx_texture_format_type);
+    neko_lua_enum_value(L, gfx_texture_format_type, R_TEXTURE_FORMAT_RGBA8);
+    neko_lua_enum_value(L, gfx_texture_format_type, R_TEXTURE_FORMAT_RGB8);
+    neko_lua_enum_value(L, gfx_texture_format_type, R_TEXTURE_FORMAT_RG8);
+    neko_lua_enum_value(L, gfx_texture_format_type, R_TEXTURE_FORMAT_R32);
+    neko_lua_enum_value(L, gfx_texture_format_type, R_TEXTURE_FORMAT_R32F);
+    neko_lua_enum_value(L, gfx_texture_format_type, R_TEXTURE_FORMAT_RGBA16F);
+    neko_lua_enum_value(L, gfx_texture_format_type, R_TEXTURE_FORMAT_RGBA32F);
+    neko_lua_enum_value(L, gfx_texture_format_type, R_TEXTURE_FORMAT_A8);
+    neko_lua_enum_value(L, gfx_texture_format_type, R_TEXTURE_FORMAT_R8);
+    neko_lua_enum_value(L, gfx_texture_format_type, R_TEXTURE_FORMAT_DEPTH8);
+    neko_lua_enum_value(L, gfx_texture_format_type, R_TEXTURE_FORMAT_DEPTH16);
+    neko_lua_enum_value(L, gfx_texture_format_type, R_TEXTURE_FORMAT_DEPTH24);
+    neko_lua_enum_value(L, gfx_texture_format_type, R_TEXTURE_FORMAT_DEPTH32F);
+    neko_lua_enum_value(L, gfx_texture_format_type, R_TEXTURE_FORMAT_DEPTH24_STENCIL8);
+    neko_lua_enum_value(L, gfx_texture_format_type, R_TEXTURE_FORMAT_DEPTH32F_STENCIL8);
+    neko_lua_enum_value(L, gfx_texture_format_type, R_TEXTURE_FORMAT_STENCIL8);
 
-    neko_lua_enum(L, neko_render_uniform_type);
-    neko_lua_enum_value(L, neko_render_uniform_type, R_UNIFORM_FLOAT);
-    neko_lua_enum_value(L, neko_render_uniform_type, R_UNIFORM_INT);
-    neko_lua_enum_value(L, neko_render_uniform_type, R_UNIFORM_VEC2);
-    neko_lua_enum_value(L, neko_render_uniform_type, R_UNIFORM_VEC3);
-    neko_lua_enum_value(L, neko_render_uniform_type, R_UNIFORM_VEC4);
-    neko_lua_enum_value(L, neko_render_uniform_type, R_UNIFORM_MAT4);
-    neko_lua_enum_value(L, neko_render_uniform_type, R_UNIFORM_SAMPLER2D);
-    neko_lua_enum_value(L, neko_render_uniform_type, R_UNIFORM_USAMPLER2D);
-    neko_lua_enum_value(L, neko_render_uniform_type, R_UNIFORM_SAMPLERCUBE);
-    neko_lua_enum_value(L, neko_render_uniform_type, R_UNIFORM_IMAGE2D_RGBA32F);
-    neko_lua_enum_value(L, neko_render_uniform_type, R_UNIFORM_BLOCK);
+    neko_lua_enum(L, gfx_uniform_type);
+    neko_lua_enum_value(L, gfx_uniform_type, R_UNIFORM_FLOAT);
+    neko_lua_enum_value(L, gfx_uniform_type, R_UNIFORM_INT);
+    neko_lua_enum_value(L, gfx_uniform_type, R_UNIFORM_VEC2);
+    neko_lua_enum_value(L, gfx_uniform_type, R_UNIFORM_VEC3);
+    neko_lua_enum_value(L, gfx_uniform_type, R_UNIFORM_VEC4);
+    neko_lua_enum_value(L, gfx_uniform_type, R_UNIFORM_MAT4);
+    neko_lua_enum_value(L, gfx_uniform_type, R_UNIFORM_SAMPLER2D);
+    neko_lua_enum_value(L, gfx_uniform_type, R_UNIFORM_USAMPLER2D);
+    neko_lua_enum_value(L, gfx_uniform_type, R_UNIFORM_SAMPLERCUBE);
+    neko_lua_enum_value(L, gfx_uniform_type, R_UNIFORM_IMAGE2D_RGBA32F);
+    neko_lua_enum_value(L, gfx_uniform_type, R_UNIFORM_BLOCK);
 }
 
 #endif
@@ -3700,7 +3700,7 @@ inline void neko_register_test(lua_State* L) {
     }                                                                                                        \
                                                                                                              \
     LUA_FUNCTION(__neko_bind_inspect_##NAME##_iterator) {                                                    \
-        neko_gl_data_t *ogl = neko_render_userdata();                                                        \
+        neko_gl_data_t *ogl = gfx_userdata();                                                        \
         neko_slot_array_iter *it = (neko_slot_array_iter *)lua_newuserdata(L, sizeof(neko_slot_array_iter)); \
         *it = neko_slot_array_iter_new(ogl->NAME);                                                           \
         lua_pushlightuserdata(L, ogl);                                                                       \

@@ -951,6 +951,30 @@ static void _text_update_all() {
     }
 }
 
+void ME_draw_text(String text, Color256 col, int x, int y, bool outline, Color256 outline_col) {
+
+    ImGuiViewport *viewport = ImGui::GetMainViewport();
+    ImDrawList *draw_list = ImGui::GetBackgroundDrawList(viewport);
+
+    if (outline) {
+
+        auto outline_col_im = ImColor(outline_col.r, outline_col.g, outline_col.b, col.a);
+
+        draw_list->AddText(ImVec2(x + 0, y - 1), outline_col_im, text.cstr());  // up
+        draw_list->AddText(ImVec2(x + 0, y + 1), outline_col_im, text.cstr());  // down
+        draw_list->AddText(ImVec2(x + 1, y + 0), outline_col_im, text.cstr());  // right
+        draw_list->AddText(ImVec2(x - 1, y + 0), outline_col_im, text.cstr());  // left
+
+        draw_list->AddText(ImVec2(x + 1, y + 1), outline_col_im, text.cstr());  // down-right
+        draw_list->AddText(ImVec2(x - 1, y + 1), outline_col_im, text.cstr());  // down-left
+
+        draw_list->AddText(ImVec2(x + 1, y - 1), outline_col_im, text.cstr());  // up-right
+        draw_list->AddText(ImVec2(x - 1, y - 1), outline_col_im, text.cstr());  // up-left
+    }
+
+    draw_list->AddText(ImVec2(x, y), ImColor(col.r, col.g, col.b, col.a), text.cstr());  // base
+}
+
 static void _text_draw_all() {
     CVec2 hwin;
     Text *text;
@@ -960,8 +984,17 @@ static void _text_draw_all() {
 
     hwin = vec2_scalar_mul(game_get_window_size(), 0.5);
 
+    glBindVertexArray(text_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, text_vbo);
+
+    // TODO: 我不知道为什么引入neko_render后会有错误 在这里重新设置顶点属性指针可以修复
+    gfx_bind_vertex_attrib(text_program, GL_FLOAT, 2, "pos", TextChar, pos);
+    gfx_bind_vertex_attrib(text_program, GL_FLOAT, 2, "cell", TextChar, cell);
+    gfx_bind_vertex_attrib(text_program, GL_FLOAT, 1, "is_cursor", TextChar, is_cursor);
+
     // bind shader program
     glUseProgram(text_program);
+    // glUniform1i(glGetUniformLocation(text_program, "tex0"), 1);
     glUniform1f(glGetUniformLocation(text_program, "cursor_blink"), ((int)cursor_blink_time) & 1);
     glUniformMatrix3fv(glGetUniformLocation(text_program, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
 
@@ -979,11 +1012,13 @@ static void _text_draw_all() {
         wmat = transform_get_world_matrix(text->pool_elem.ent);
         glUniformMatrix3fv(glGetUniformLocation(text_program, "wmat"), 1, GL_FALSE, (const GLfloat *)&wmat);
 
-        glBindVertexArray(text_vao);
-        glBindBuffer(GL_ARRAY_BUFFER, text_vbo);
         nchars = array_length(text->chars);
         glBufferData(GL_ARRAY_BUFFER, nchars * sizeof(TextChar), array_begin(text->chars), GL_STREAM_DRAW);
+
         glDrawArrays(GL_POINTS, 0, nchars);
+
+        CVec2 text_pos = transform_get_world_position(text->pool_elem.ent);
+        ME_draw_text(text->str, NEKO_COLOR_WHITE, text_pos.x, text_pos.y, false, NEKO_COLOR_WHITE);
     }
 }
 

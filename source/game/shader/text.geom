@@ -1,7 +1,7 @@
 #version 150
 
-layout(points) in;
-layout(triangle_strip, max_vertices = 4) out;
+layout(points) in; // 输入的图元类型是点
+layout(triangle_strip, max_vertices = 4) out; // 输出的图元类型是三角形带 triangle_strip 并且最多输出4个顶点
 
 in vec2 pos_[];
 in vec2 cell_[];

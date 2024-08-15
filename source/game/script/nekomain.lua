@@ -35,7 +35,7 @@ local run, err = (ng.args[1] and loadfile(ng.args[1])) or loadfile('./main.lua')
 if run then
 
     local function errorHandler(err)
-        print("Error: ", err)
+        __print("Error: ", err)
     end
 
     -- 运行给定的脚本
@@ -66,7 +66,9 @@ else
 
     -- ng.api.set_window_title("Sandbox")
 
-    hot_require('test').UnitTest()
+    if ng.args[1] == "unittest" then
+        hot_require('test').UnitTest()
+    end
 
     -- 进入编辑模式
     ns.timing.set_paused(true)

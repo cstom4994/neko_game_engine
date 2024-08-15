@@ -161,6 +161,14 @@ inline void *__neko_mem_calloc(size_t count, size_t element_size, const char *fi
 #define mem_realloc(ptr, size) g_allocator->realloc(ptr, size, __FILE__, __LINE__)
 #define mem_calloc(count, element_size) __neko_mem_calloc(count, element_size, (char *)__FILE__, __LINE__)
 
+inline void *neko_malloc_init_impl(size_t sz) {
+    void *data = mem_alloc(sz);
+    memset(data, 0, sz);
+    return data;
+}
+
+#define neko_malloc_init(__T) (__T *)neko_malloc_init_impl(sizeof(__T))
+
 // inline void *operator new(std::size_t, void *p) noexcept { return p; }
 // inline void *operator new[](std::size_t, void *p) noexcept { return p; }
 // inline void operator delete(void *, void *) noexcept {}

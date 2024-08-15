@@ -330,3 +330,33 @@ struct Instrument {
 #else
 #define NEKO_EXPORT extern "C"
 #endif
+
+/*===================================
+// Resource Handles
+===================================*/
+
+// Useful typedefs for typesafe, internal resource handles
+
+#define neko_handle(TYPE) neko_handle_##TYPE
+
+#define neko_handle_decl(TYPE)                                              \
+    typedef struct {                                                        \
+        u32 id;                                                             \
+    } neko_handle(TYPE);                                                    \
+    NEKO_FORCE_INLINE neko_handle(TYPE) neko_handle_invalid_##TYPE() {      \
+        neko_handle(TYPE) h;                                                \
+        h.id = UINT32_MAX;                                                  \
+        return h;                                                           \
+    }                                                                       \
+                                                                            \
+    NEKO_FORCE_INLINE neko_handle(TYPE) neko_handle_create_##TYPE(u32 id) { \
+        neko_handle(TYPE) h;                                                \
+        h.id = id;                                                          \
+        return h;                                                           \
+    }
+
+#define neko_handle_invalid(__TYPE) neko_handle_invalid_##__TYPE()
+
+#define neko_handle_create(__TYPE, __ID) neko_handle_create_##__TYPE(__ID)
+
+#define neko_handle_is_valid(HNDL) ((HNDL.id) != UINT32_MAX)

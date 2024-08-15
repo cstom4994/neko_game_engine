@@ -8,6 +8,7 @@
 #include "engine/component.h"
 #include "engine/ecs.h"
 #include "engine/gfx.h"
+#include "engine/math.h"
 #include "engine/os.h"
 #include "engine/prelude.h"
 #include "engine/sound.h"

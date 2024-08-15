@@ -10,6 +10,7 @@
 #include "engine/batch.h"
 #include "engine/camera.h"
 #include "engine/console.h"
+#include "engine/gfx.h"
 #include "engine/glew_glfw.h"
 #include "engine/inspector.h"
 #include "engine/lite.h"
@@ -22,6 +23,8 @@
 #include "engine/ui.h"
 
 // deps
+#include <cute_aseprite.h>
+
 #include "vendor/sokol_time.h"
 
 static bool quit = false;  // 如果为 true 则退出主循环
@@ -29,9 +32,64 @@ static int sargc = 0;
 static char **sargv;
 static Mutex g_init_mtx;
 
+// neko_tiled_renderer tiled;
+
+neko_command_buffer_t cb;
+ui_context_t ui;
+neko_immediate_draw_t idraw;
+neko_texture_t test_ase;
+
 // -------------------------------------------------------------------------
 
 static const char *filename = usr_path("scratch.lua");
+
+NEKO_FORCE_INLINE void neko_tex_flip_vertically(int width, int height, u8 *data) {
+    u8 rgb[4];
+    for (int y = 0; y < height / 2; y++) {
+        for (int x = 0; x < width; x++) {
+            int top = 4 * (x + y * width);
+            int bottom = 4 * (x + (height - y - 1) * width);
+            memcpy(rgb, data + top, sizeof(rgb));
+            memcpy(data + top, data + bottom, sizeof(rgb));
+            memcpy(data + bottom, rgb, sizeof(rgb));
+        }
+    }
+}
+
+neko_texture_t neko_aseprite_simple(String filename) {
+    String contents = {};
+    bool ok = vfs_read_entire_file(&contents, filename);
+
+    neko_defer(mem_free(contents.data));
+
+    ase_t *ase;
+
+    {
+        PROFILE_BLOCK("ase_image load");
+        ase = cute_aseprite_load_from_memory(contents.data, contents.len, nullptr);
+
+        neko_assert(ase->frame_count == 1);  // image_load_ase 用于加载简单的单帧 aseprite
+        // neko_aseprite_default_blend_bind(ase);
+    }
+
+    u8 *data = reinterpret_cast<u8 *>(ase->frames->pixels);
+
+    gfx_texture_desc_t t_desc = {};
+
+    t_desc.format = R_TEXTURE_FORMAT_RGBA8;
+    t_desc.mag_filter = R_TEXTURE_FILTER_NEAREST;
+    t_desc.min_filter = R_TEXTURE_FILTER_NEAREST;
+    t_desc.num_mips = 0;
+    t_desc.width = ase->w;
+    t_desc.height = ase->h;
+    // t_desc.num_comps = 4;
+    t_desc.data[0] = data;
+
+    neko_tex_flip_vertically(ase->w, ase->h, (u8 *)(t_desc.data[0]));
+    neko_texture_t tex = gfx_texture_create(t_desc);
+    cute_aseprite_free(ase);
+    return tex;
+}
 
 bool _exists() {
     struct stat st;
@@ -114,7 +172,7 @@ static void _game_init() {
     glfwInit();
 
     // create glfw window
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -159,6 +217,9 @@ static void _game_init() {
     console_puts("welcome to neko!");
     system_init();
 
+    cb = neko_command_buffer_new();
+    idraw = neko_immediate_draw_new();
+
     assets_start_hot_reload();
 
     if (g_app->lite_init_path.len) {
@@ -171,15 +232,30 @@ static void _game_init() {
 
         lt_init(g_app->lite_L, g_app->game_window, g_app->lite_init_path.cstr(), __argc, __argv, window_scale(), "Windows");
     }
+
+    {  // just for test
+        // neko_tiled_load(&tiled.map, "assets/maps/map.tmx", NULL);
+        // neko_tiled_render_init(NULL, &tiled, NULL, NULL);
+
+        test_ase = neko_aseprite_simple("assets/cat.ase");
+    }
 }
 
 static void _game_fini() {
     PROFILE_FUNC();
 
+    {  // just for test
+       // neko_tiled_unload(&tiled.map);
+       // neko_tiled_render_fini(&tiled);
+    }
+
     if (g_app->lite_init_path.len) {
         lt_fini();
         neko::neko_lua_fini(g_app->lite_L);
     }
+
+    neko_immediate_draw_free(&idraw);
+    neko_command_buffer_free(&cb);
 
     // fini systems
     system_fini();
@@ -254,8 +330,8 @@ static void _game_draw() {
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    // glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+    glDisable(GL_DEPTH_TEST);
+    glClearColor(NEKO_COL255(28.f), NEKO_COL255(28.f), NEKO_COL255(28.f), 1.f);
     glClear(GL_COLOR_BUFFER_BIT);
 
     if (!g_app->error_mode.load()) {
@@ -264,7 +340,7 @@ static void _game_draw() {
 
         // ImGui::ShowDemoWindow();
 
-        system_draw_all();
+        // neko_tiled_render_map(&tiled);
 
         {
             if (ImGui::BeginMainMenuBar()) {
@@ -316,10 +392,48 @@ static void _game_draw() {
             }
         }
 
+#if 1
+        // gfx_clear_action_t clear = {.color = {NEKO_COL255(28.f), NEKO_COL255(28.f), NEKO_COL255(28.f), 1.f}};
+        // gfx_renderpass_begin(&cb, neko_renderpass_t{0});
+        // { gfx_clear(&cb, clear); }
+        // gfx_renderpass_end(&cb);
+
+        // Set up 2D camera for projection matrix
+        neko_idraw_defaults(&idraw);
+        neko_idraw_camera2d(&idraw, (u32)g_app->width, (u32)g_app->height);
+
+        // 底层图片
+        char background_text[64] = "Project: unknown";
+
+        // neko_vec2 td = neko_asset_font_text_dimensions(neko_idraw_default_font(), background_text, -1);
+        neko_vec2 td = {};
+        neko_vec2 ts = neko_v2(512 + 128, 512 + 128);
+
+        // neko_idraw_text(&idraw, (g_app->width - td.x) * 0.5f, (g_app->height - td.y) * 0.5f + ts.y / 2.f - 100.f, background_text, NULL, false, color256(255, 255, 255, 255));
+        neko_idraw_texture(&idraw, test_ase);
+        neko_idraw_rectvd(&idraw, neko_v2((g_app->width - ts.x) * 0.5f, (g_app->height - ts.y) * 0.5f - td.y - 50.f), ts, neko_v2(0.f, 1.f), neko_v2(1.f, 0.f), color256(255, 255, 255, 255),
+                          R_PRIMITIVE_TRIANGLES);
+
+        gfx_renderpass_begin(&cb, R_RENDER_PASS_DEFAULT);
+        {
+            // gfx_set_viewport(&cb, 0, 0, (u32)g_app->width, (u32)g_app->height);
+            neko_idraw_draw(&idraw, &cb);  // 立即模式绘制 idraw
+
+            gfx_draw_func(&cb, system_draw_all);
+        }
+        gfx_renderpass_end(&cb);
+
+        gfx_cmd_submit(&cb);
+#else
+        system_draw_all();
+#endif
+
         if (g_app->lite_init_path.len && g_app->lite_L) lt_tick(g_app->lite_L);
 
         imgui_draw_post();
     }
+
+    neko_check_gl_error();
 
     glfwSwapBuffers(g_app->game_window);
 }

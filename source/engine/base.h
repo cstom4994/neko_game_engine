@@ -623,6 +623,7 @@ inline Vector4 vec4_xy(float x, float y) {
 union Matrix4 {
     float cols[4][4];
     Vector4 vecs[4];
+    float elements[16];
 #ifdef SSE_AVAILABLE
     __m128 sse[4];
 #endif
@@ -658,6 +659,44 @@ inline Matrix4 mat4_mul_mat4(Matrix4 lhs, Matrix4 rhs) {
     m.vecs[3] = vec4_mul_mat4(rhs.vecs[3], lhs);
     return m;
 }
+
+#if 0
+
+NEKO_FORCE_INLINE Matrix4 neko_mat4_diag(f32 val) {
+    Matrix4 m;
+    memset(m.elements, 0, sizeof(m.elements));
+    m.elements[0 + 0 * 4] = val;
+    m.elements[1 + 1 * 4] = val;
+    m.elements[2 + 2 * 4] = val;
+    m.elements[3 + 3 * 4] = val;
+    return m;
+}
+
+#define neko_mat4_identity() neko_mat4_diag(1.0f)
+
+// f32 l : left
+// f32 r : right
+// f32 b : bottom
+// f32 t : top
+// f32 n : near
+// f32 f : far
+NEKO_FORCE_INLINE Matrix4 neko_mat4_ortho(f32 l, f32 r, f32 b, f32 t, f32 n, f32 f) {
+    Matrix4 m_res = neko_mat4_identity();
+
+    // Main diagonal
+    m_res.elements[0 + 0 * 4] = 2.0f / (r - l);
+    m_res.elements[1 + 1 * 4] = 2.0f / (t - b);
+    m_res.elements[2 + 2 * 4] = -2.0f / (f - n);
+
+    // Last column
+    m_res.elements[0 + 3 * 4] = -(r + l) / (r - l);
+    m_res.elements[1 + 3 * 4] = -(t + b) / (t - b);
+    m_res.elements[2 + 3 * 4] = -(f + n) / (f - n);
+
+    return m_res;
+}
+
+#endif
 
 /*=============================
 //
@@ -2123,8 +2162,14 @@ NEKO_SCRIPT(
         typedef struct Color Color;
         struct Color { Scalar r, g, b, a; };
 
-        typedef struct Color256 Color256; 
-        struct Color256 { uint8_t r, g, b, a; };
+        typedef struct Color256 Color256; struct Color256 {
+            union {
+                uint8_t rgba[4];
+                struct {
+                    uint8_t r, g, b, a;
+                };
+            };
+        };
 
         NEKO_EXPORT Color color(Scalar r, Scalar g, Scalar b, Scalar a);
 
@@ -2153,3 +2198,14 @@ NEKO_SCRIPT(
 #define color(r, g, b, a) (Color{(r), (g), (b), (a)})
 #define color_opaque(r, g, b, a) color(r, g, b, 1)
 #define color256(r, g, b, a) (Color256{(r), (g), (b), (a)})
+
+#define NEKO_COLOR_BLACK color256(0, 0, 0, 255)
+#define NEKO_COLOR_WHITE color256(255, 255, 255, 255)
+#define NEKO_COLOR_RED color256(255, 0, 0, 255)
+#define NEKO_COLOR_GREEN color256(0, 255, 0, 255)
+#define NEKO_COLOR_BLUE color256(0, 0, 255, 255)
+#define NEKO_COLOR_ORANGE color256(255, 100, 0, 255)
+#define NEKO_COLOR_YELLOW color256(255, 255, 0, 255)
+#define NEKO_COLOR_PURPLE color256(128, 0, 128, 255)
+#define NEKO_COLOR_MAROON color256(128, 0, 0, 255)
+#define NEKO_COLOR_BROWN color256(165, 42, 42, 255)
