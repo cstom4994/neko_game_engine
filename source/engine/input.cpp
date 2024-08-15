@@ -95,6 +95,12 @@ bool input_key_down(KeyCode key) {
     return glfwGetKey(g_app->game_window, glfwkey) == GLFW_PRESS;
 }
 
+CVec2 input_get_mouse_pos_pixels_fix() {
+    double x, y;
+    glfwGetCursorPos(g_app->game_window, &x, &y);
+    return vec2(x, y);
+}
+
 CVec2 input_get_mouse_pos_pixels() {
     double x, y;
     glfwGetCursorPos(g_app->game_window, &x, &y);
@@ -264,3 +270,24 @@ void keyboard_controlled_load_all(Store *s) {
     if (store_child_load(&t, "keyboard_controlled", s))
         if (entity_load(&kc_entity, "kc_entity", kc_entity, t)) kc_exists = true;
 }
+
+INPUT_WRAP_event *input_wrap_new_event(event_queue *equeue) {
+    INPUT_WRAP_event *event = equeue->events + equeue->head;
+    equeue->head = (equeue->head + 1) % INPUT_WRAP_CAPACITY;
+    assert(equeue->head != equeue->tail);
+    memset(event, 0, sizeof(INPUT_WRAP_event));
+    return event;
+}
+
+int input_wrap_next_e(event_queue *equeue, INPUT_WRAP_event *event) {
+    memset(event, 0, sizeof(INPUT_WRAP_event));
+
+    if (equeue->head != equeue->tail) {
+        *event = equeue->events[equeue->tail];
+        equeue->tail = (equeue->tail + 1) % INPUT_WRAP_CAPACITY;
+    }
+
+    return event->type != INPUT_WRAP_NONE;
+}
+
+void input_wrap_free_e(INPUT_WRAP_event *event) { memset(event, 0, sizeof(INPUT_WRAP_event)); }

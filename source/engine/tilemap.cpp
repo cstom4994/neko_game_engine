@@ -555,36 +555,6 @@ TileNode *MapLdtk::astar(TilePoint start, TilePoint goal) {
     return nullptr;
 }
 
-bool neko_util_load_texture_data_from_memory(const void *memory, size_t sz, i32 *width, i32 *height, u32 *num_comps, void **data, bool flip_vertically_on_load) {
-    // Load texture data
-
-    int channels;
-    u8 *image = (u8 *)stbi_load_from_memory((unsigned char *)memory, sz, width, height, &channels, 0);
-
-    // if (flip_vertically_on_load) neko_png_flip_image_horizontal(&img);
-
-    *data = image;
-
-    if (!*data) {
-        // neko_image_free(&img);
-        console_log("could not load image %p", memory);
-        return false;
-    }
-    return true;
-}
-
-bool neko_util_load_texture_data_from_file(const char *file_path, i32 *width, i32 *height, u32 *num_comps, void **data, bool flip_vertically_on_load) {
-    u64 len = 0;
-    const_str file_data = neko_capi_vfs_read_file(NEKO_PACKS::GAMEDATA, file_path, &len);
-    neko_assert(file_data);
-    bool ret = neko_util_load_texture_data_from_memory(file_data, len, width, height, num_comps, data, flip_vertically_on_load);
-    if (!ret) {
-        console_log("could not load texture: %s", file_path);
-    }
-    mem_free(file_data);
-    return ret;
-}
-
 void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
 
     PROFILE_FUNC();

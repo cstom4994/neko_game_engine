@@ -53,6 +53,8 @@ NEKO_SCRIPT(
 
         NEKO_EXPORT f32 timing_get_scale();
 
+        NEKO_EXPORT f32 timing_get_elapsed();
+
         NEKO_EXPORT void timing_set_paused(bool p);  // 暂停将刻度设置为 0 并在恢复时恢复它
 
         NEKO_EXPORT bool timing_get_paused();

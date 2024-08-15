@@ -39,6 +39,8 @@ ui_context_t ui;
 neko_immediate_draw_t idraw;
 neko_texture_t test_ase;
 
+extern void draw_gui();
+
 // -------------------------------------------------------------------------
 
 static const char *filename = usr_path("scratch.lua");
@@ -238,6 +240,25 @@ static void _game_init() {
         // neko_tiled_render_init(NULL, &tiled, NULL, NULL);
 
         test_ase = neko_aseprite_simple("assets/cat.ase");
+
+        ui_init(&ui, 0);
+
+        // 加载自定义字体文件 初始化 gui font stash
+        // neko_asset_font_load_from_memory(font_data, font_data_size, &CL_GAME_INTERFACE()->font, 24);
+        // neko_asset_font_load_from_file("gamedir/assets/fonts/monocraft.ttf", &font, 24);
+
+        // pack.free_item(font_data);
+        // pack.free_item(cat_data);
+
+        // auto GUI_FONT_STASH = []() -> neko_ui_font_stash_desc_t * {
+        //     static neko_ui_font_desc_t font_decl[] = {{.key = "mc_regular", .font = &font}};
+        //     static neko_ui_font_stash_desc_t font_stash = {.fonts = font_decl, .size = 1 * sizeof(neko_ui_font_desc_t)};
+        //     return &font_stash;
+        // }();
+
+        // neko_ui_init_font_stash(&ui, GUI_FONT_STASH);
+
+        ui_dock_ex(&ui, "Style_Editor", "Demo_Window", NEKO_UI_SPLIT_TAB, 0.5f);
     }
 }
 
@@ -245,8 +266,9 @@ static void _game_fini() {
     PROFILE_FUNC();
 
     {  // just for test
-       // neko_tiled_unload(&tiled.map);
-       // neko_tiled_render_fini(&tiled);
+        // neko_tiled_unload(&tiled.map);
+        // neko_tiled_render_fini(&tiled);
+        ui_free(&ui);
     }
 
     if (g_app->lite_init_path.len) {
@@ -254,6 +276,7 @@ static void _game_fini() {
         neko::neko_lua_fini(g_app->lite_L);
     }
 
+    neko_immediate_draw_static_data_free();
     neko_immediate_draw_free(&idraw);
     neko_command_buffer_free(&cb);
 
@@ -314,7 +337,7 @@ static void _game_draw() {
 
     lua_State *L = ENGINE_LUA();
 
-    // don't draw first frame -- allow a full update
+    // 不绘制第一帧 等待完整更新
     if (first) {
         first = false;
         return;
@@ -364,13 +387,13 @@ static void _game_draw() {
                     ImGuiWindow *window = ImGui::GetCurrentWindow();
 
                     ImVec2 bounds = ImGui::GetContentRegionAvail();
-                    CVec2 mouse_pos = input_get_mouse_pos_pixels();  // 窗口内鼠标坐标
+                    CVec2 mouse_pos = input_get_mouse_pos_pixels_fix();  // 窗口内鼠标坐标
 
                     neko_assert(window);
                     ImVec2 pos = window->Pos;
                     ImVec2 size = window->Size;
                     lt_mx = mouse_pos.x - pos.x;
-                    lt_my = (-mouse_pos.y) - pos.y;
+                    lt_my = mouse_pos.y - pos.y;
                     lt_wx = pos.x;
                     lt_wy = pos.y;
                     lt_ww = size.x;
@@ -398,6 +421,8 @@ static void _game_draw() {
         // { gfx_clear(&cb, clear); }
         // gfx_renderpass_end(&cb);
 
+        draw_gui();
+
         // Set up 2D camera for projection matrix
         neko_idraw_defaults(&idraw);
         neko_idraw_camera2d(&idraw, (u32)g_app->width, (u32)g_app->height);
@@ -405,11 +430,11 @@ static void _game_draw() {
         // 底层图片
         char background_text[64] = "Project: unknown";
 
-        // neko_vec2 td = neko_asset_font_text_dimensions(neko_idraw_default_font(), background_text, -1);
-        neko_vec2 td = {};
+        neko_vec2 td = neko_asset_font_text_dimensions(neko_idraw_default_font(), background_text, -1);
+        // neko_vec2 td = {};
         neko_vec2 ts = neko_v2(512 + 128, 512 + 128);
 
-        // neko_idraw_text(&idraw, (g_app->width - td.x) * 0.5f, (g_app->height - td.y) * 0.5f + ts.y / 2.f - 100.f, background_text, NULL, false, color256(255, 255, 255, 255));
+        neko_idraw_text(&idraw, (g_app->width - td.x) * 0.5f, (g_app->height - td.y) * 0.5f + ts.y / 2.f - 100.f, background_text, NULL, false, color256(255, 255, 255, 255));
         neko_idraw_texture(&idraw, test_ase);
         neko_idraw_rectvd(&idraw, neko_v2((g_app->width - ts.x) * 0.5f, (g_app->height - ts.y) * 0.5f - td.y - 50.f), ts, neko_v2(0.f, 1.f), neko_v2(1.f, 0.f), color256(255, 255, 255, 255),
                           R_PRIMITIVE_TRIANGLES);
@@ -420,6 +445,8 @@ static void _game_draw() {
             neko_idraw_draw(&idraw, &cb);  // 立即模式绘制 idraw
 
             gfx_draw_func(&cb, system_draw_all);
+
+            ui_render(&ui, &cb);
         }
         gfx_renderpass_end(&cb);
 
@@ -626,6 +653,8 @@ AppTime timing_instance;
 
 static f32 scale = 1.0f;
 static bool paused = false;
+
+f32 timing_get_elapsed() { return glfwGetTime() * 1000.0f; }
 
 void timing_set_scale(f32 s) { scale = s; }
 f32 timing_get_scale() { return scale; }

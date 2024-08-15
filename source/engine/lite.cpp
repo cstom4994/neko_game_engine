@@ -259,23 +259,7 @@ int printi(int i) {
     return i;
 }
 
-#ifndef LITE_WRAP_CAPACITY
-#define LITE_WRAP_CAPACITY 1024
-#endif
-
-static struct {
-    LITE_WRAP_event events[LITE_WRAP_CAPACITY];
-    size_t head;
-    size_t tail;
-} gleq_queue = {{LITE_WRAP_NONE}, 0, 0};
-
-static LITE_WRAP_event *gleq_new_event(void) {
-    LITE_WRAP_event *event = gleq_queue.events + gleq_queue.head;
-    gleq_queue.head = (gleq_queue.head + 1) % LITE_WRAP_CAPACITY;
-    assert(gleq_queue.head != gleq_queue.tail);
-    memset(event, 0, sizeof(LITE_WRAP_event));
-    return event;
-}
+INPUT_WRAP_DEFINE(lt);
 
 static const char *codepoint_to_utf8_(unsigned c);
 int lt_poll_event(lua_State *L) {  // init.lua > core.step() wakes on mousemoved || inputtext
@@ -286,65 +270,65 @@ int lt_poll_event(lua_State *L) {  // init.lua > core.step() wakes on mousemoved
     static unsigned clicks_time = 0, clicks = 0;
     if ((lt_time_ms() - clicks_time) > 400) clicks = 0;
 
-    for (LITE_WRAP_event e; lt_wrap_next_e(&e); lt_wrap_free_e(&e))
+    for (INPUT_WRAP_event e; input_wrap_next_e(&lt_input_queue, &e); input_wrap_free_e(&e))
         if (e.type) switch (e.type) {
                 default:
                     break;
-                case LITE_WRAP_WINDOW_CLOSED:  // it used to be ok. depends on window_swap() flow
+                case INPUT_WRAP_WINDOW_CLOSED:  // it used to be ok. depends on window_swap() flow
                     rc += lt_emit_event(L, "quit", NULL);
                     return rc;
 
                     break;
-                case LITE_WRAP_WINDOW_MOVED:
+                case INPUT_WRAP_WINDOW_MOVED:
                     lt_wx = e.pos.x;
                     lt_wy = e.pos.y;
 
                     break;
-                case LITE_WRAP_WINDOW_RESIZED:
+                case INPUT_WRAP_WINDOW_RESIZED:
                     rc += lt_emit_event(L, "resized", "dd", lt_ww = e.size.width, lt_wh = e.size.height);
                     lt_resizesurface(lt_getsurface(lt_window()), lt_ww, lt_wh);
 
                     break;
-                case LITE_WRAP_WINDOW_REFRESH:
+                case INPUT_WRAP_WINDOW_REFRESH:
                     rc += lt_emit_event(L, "exposed", NULL);
                     rencache_invalidate();
 
                     break;
-                // case LITE_WRAP_FILE_DROPPED:
+                // case INPUT_WRAP_FILE_DROPPED:
                 //     rc += lt_emit_event(L, "filedropped", "sdd", e.file.paths[0], lt_mx, lt_my);
                 //     break;
-                case LITE_WRAP_KEY_PRESSED:
-                case LITE_WRAP_KEY_REPEATED:
+                case INPUT_WRAP_KEY_PRESSED:
+                case INPUT_WRAP_KEY_REPEATED:
                     rc += lt_emit_event(L, "keypressed", "s", lt_key_name(buf, e.keyboard.key, e.keyboard.scancode, e.keyboard.mods));
                     goto bottom;
 
                     break;
-                case LITE_WRAP_KEY_RELEASED:
+                case INPUT_WRAP_KEY_RELEASED:
                     rc += lt_emit_event(L, "keyreleased", "s", lt_key_name(buf, e.keyboard.key, e.keyboard.scancode, e.keyboard.mods));
                     goto bottom;
 
                     break;
-                case LITE_WRAP_CODEPOINT_INPUT:
+                case INPUT_WRAP_CODEPOINT_INPUT:
                     rc += lt_emit_event(L, "textinput", "s", codepoint_to_utf8_(e.codepoint));
 
                     break;
-                case LITE_WRAP_BUTTON_PRESSED:
+                case INPUT_WRAP_BUTTON_PRESSED:
                     rc += lt_emit_event(L, "mousepressed", "sddd", lt_button_name(e.mouse.button), lt_mx, lt_my, printi(1 + clicks));
 
                     break;
-                case LITE_WRAP_BUTTON_RELEASED:
+                case INPUT_WRAP_BUTTON_RELEASED:
                     clicks += e.mouse.button == GLFW_MOUSE_BUTTON_1;
                     clicks_time = lt_time_ms();
                     rc += lt_emit_event(L, "mousereleased", "sdd", lt_button_name(e.mouse.button), lt_mx, lt_my);
 
                     break;
-                case LITE_WRAP_CURSOR_MOVED:
+                case INPUT_WRAP_CURSOR_MOVED:
                     lt_mx = e.pos.x - lt_wx, lt_my = e.pos.y - lt_wy;
                     rc += lt_emit_event(L, "mousemoved", "dddd", lt_mx, lt_my, lt_mx - prevx, lt_my - prevy);
                     prevx = lt_mx, prevy = lt_my;
 
                     break;
-                case LITE_WRAP_SCROLLED:
+                case INPUT_WRAP_SCROLLED:
                     rc += lt_emit_event(L, "mousewheel", "f", e.scroll.y);
             }
 
@@ -1302,62 +1286,6 @@ void api_load_libs(lua_State *L) {
 }
 
 // ----------------------------------------------------------------------------
-
-static unsigned clicks_time = 0, clicks = 0;
-
-static void lite_char_down(unsigned int c) {
-    LITE_WRAP_event *event = gleq_new_event();
-    event->type = LITE_WRAP_CODEPOINT_INPUT;
-    event->codepoint = c;
-}
-
-static void lite_key_down(KeyCode key, int scancode, int mods) {
-    LITE_WRAP_event *event = gleq_new_event();
-    event->keyboard.key = key;
-    event->keyboard.scancode = scancode;
-    event->keyboard.mods = mods;
-
-    event->type = LITE_WRAP_KEY_PRESSED;
-}
-
-static void lite_key_up(KeyCode key, int scancode, int mods) {
-    LITE_WRAP_event *event = gleq_new_event();
-    event->keyboard.key = key;
-    event->keyboard.scancode = scancode;
-    event->keyboard.mods = mods;
-
-    event->type = LITE_WRAP_KEY_RELEASED;
-}
-
-static void lite_mouse_down(MouseCode mouse) {
-    LITE_WRAP_event *event = gleq_new_event();
-    event->mouse.button = mouse;
-
-    event->type = LITE_WRAP_BUTTON_PRESSED;
-}
-
-static void lite_mouse_up(MouseCode mouse) {
-    LITE_WRAP_event *event = gleq_new_event();
-    event->mouse.button = mouse;
-
-    event->type = LITE_WRAP_BUTTON_RELEASED;
-}
-
-static void lite_mouse_move(CVec2 pos) {
-    LITE_WRAP_event *event = gleq_new_event();
-    event->type = LITE_WRAP_CURSOR_MOVED;
-    event->pos.x = (int)pos.x;
-    event->pos.y = (int)pos.y;
-}
-
-static void lite_scroll(CVec2 scroll) {
-    LITE_WRAP_event *event = gleq_new_event();
-    event->type = LITE_WRAP_SCROLLED;
-    event->scroll.x = scroll.x;
-    event->scroll.y = scroll.y;
-}
-
-// ----------------------------------------------------------------------------
 // lite/main.c
 
 void lt_init(lua_State *L, void *handle, const char *pathdata, int argc, char **argv, float scale, const char *platform) {
@@ -1413,13 +1341,13 @@ void lt_init(lua_State *L, void *handle, const char *pathdata, int argc, char **
                   "end)");
 
 #if 1
-    input_add_key_down_callback(lite_key_down);
-    input_add_key_up_callback(lite_key_up);
-    input_add_char_down_callback(lite_char_down);
-    input_add_mouse_down_callback(lite_mouse_down);
-    input_add_mouse_up_callback(lite_mouse_up);
-    input_add_mouse_move_callback(lite_mouse_move);
-    input_add_scroll_callback(lite_scroll);
+    input_add_key_down_callback(lt_key_down);
+    input_add_key_up_callback(lt_key_up);
+    input_add_char_down_callback(lt_char_down);
+    input_add_mouse_down_callback(lt_mouse_down);
+    input_add_mouse_up_callback(lt_mouse_up);
+    input_add_mouse_move_callback(lt_mouse_move);
+    input_add_scroll_callback(lt_scroll);
 #endif
 }
 
@@ -1441,16 +1369,3 @@ void lt_fini() {
     auto s = lt_getsurface(lt_window());
     mem_free(s->pixels);
 }
-
-int lt_wrap_next_e(LITE_WRAP_event *event) {
-    memset(event, 0, sizeof(LITE_WRAP_event));
-
-    if (gleq_queue.head != gleq_queue.tail) {
-        *event = gleq_queue.events[gleq_queue.tail];
-        gleq_queue.tail = (gleq_queue.tail + 1) % LITE_WRAP_CAPACITY;
-    }
-
-    return event->type != LITE_WRAP_NONE;
-}
-
-void lt_wrap_free_e(LITE_WRAP_event *event) { memset(event, 0, sizeof(LITE_WRAP_event)); }

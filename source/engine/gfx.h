@@ -150,8 +150,8 @@ neko_enum_decl(gfx_shader_language_type, R_SHADER_LANGUAGE_GLSL);
 // Really don't want to handle "auto-merging" of data types
 
 /* Uniform Type */
-neko_enum_decl(gfx_uniform_type, R_UNIFORM_FLOAT, R_UNIFORM_INT, R_UNIFORM_VEC2, R_UNIFORM_VEC3, R_UNIFORM_VEC4, R_UNIFORM_MAT4, R_UNIFORM_SAMPLER2D, R_UNIFORM_USAMPLER2D,
-               R_UNIFORM_SAMPLERCUBE, R_UNIFORM_IMAGE2D_RGBA32F, R_UNIFORM_BLOCK);
+neko_enum_decl(gfx_uniform_type, R_UNIFORM_FLOAT, R_UNIFORM_INT, R_UNIFORM_VEC2, R_UNIFORM_VEC3, R_UNIFORM_VEC4, R_UNIFORM_MAT4, R_UNIFORM_SAMPLER2D, R_UNIFORM_USAMPLER2D, R_UNIFORM_SAMPLERCUBE,
+               R_UNIFORM_IMAGE2D_RGBA32F, R_UNIFORM_BLOCK);
 
 /* Uniform Block Usage Type */
 neko_enum_decl(gfx_uniform_block_usage_type,
@@ -165,8 +165,8 @@ neko_enum_decl(gfx_sampler_type, R_SAMPLER_2D);
 neko_enum_decl(gfx_primitive_type, R_PRIMITIVE_LINES, R_PRIMITIVE_TRIANGLES, R_PRIMITIVE_QUADS);
 
 /* Vertex Atribute Type */
-neko_enum_decl(gfx_vertex_attribute_type, R_VERTEX_ATTRIBUTE_FLOAT4, R_VERTEX_ATTRIBUTE_FLOAT3, R_VERTEX_ATTRIBUTE_FLOAT2, R_VERTEX_ATTRIBUTE_FLOAT, R_VERTEX_ATTRIBUTE_UINT4,
-               R_VERTEX_ATTRIBUTE_UINT3, R_VERTEX_ATTRIBUTE_UINT2, R_VERTEX_ATTRIBUTE_UINT, R_VERTEX_ATTRIBUTE_BYTE4, R_VERTEX_ATTRIBUTE_BYTE3, R_VERTEX_ATTRIBUTE_BYTE2, R_VERTEX_ATTRIBUTE_BYTE);
+neko_enum_decl(gfx_vertex_attribute_type, R_VERTEX_ATTRIBUTE_FLOAT4, R_VERTEX_ATTRIBUTE_FLOAT3, R_VERTEX_ATTRIBUTE_FLOAT2, R_VERTEX_ATTRIBUTE_FLOAT, R_VERTEX_ATTRIBUTE_UINT4, R_VERTEX_ATTRIBUTE_UINT3,
+               R_VERTEX_ATTRIBUTE_UINT2, R_VERTEX_ATTRIBUTE_UINT, R_VERTEX_ATTRIBUTE_BYTE4, R_VERTEX_ATTRIBUTE_BYTE3, R_VERTEX_ATTRIBUTE_BYTE2, R_VERTEX_ATTRIBUTE_BYTE);
 
 /* Buffer Type */
 neko_enum_decl(gfx_buffer_type, R_BUFFER_VERTEX, R_BUFFER_INDEX, R_BUFFER_FRAME, R_BUFFER_UNIFORM, R_BUFFER_UNIFORM_CONSTANT, R_BUFFER_SHADER_STORAGE, R_BUFFER_SAMPLER);
@@ -240,14 +240,14 @@ neko_handle_decl(gfx_pipeline_t);
 /* Graphics Shader Source Desc */
 typedef struct gfx_shader_source_desc_t {
     gfx_shader_stage_type type;  // Shader stage type (vertex, fragment, tesselation, geometry, compute)
-    const char* source;                  // Source for shader
+    const char* source;          // Source for shader
 } gfx_shader_source_desc_t;
 
 /* Graphics Shader Desc */
 typedef struct gfx_shader_desc_t {
     gfx_shader_source_desc_t* sources;  // Array of shader source descriptions
-    size_t size;                                // Size in bytes of shader source desc array
-    char name[64];                              // Optional (for logging and debugging mainly)
+    size_t size;                        // Size in bytes of shader source desc array
+    char name[64];                      // Optional (for logging and debugging mainly)
 } gfx_shader_desc_t;
 
 #define R_TEXTURE_DATA_MAX 6
@@ -255,10 +255,10 @@ typedef struct gfx_shader_desc_t {
 /* Graphics Texture Desc */
 typedef struct gfx_texture_desc_t {
     gfx_texture_type type;
-    u32 width;                                      // Width of texture in texels
-    u32 height;                                     // Height of texture in texels
-    u32 depth;                                      // Depth of texture
-    void* data[R_TEXTURE_DATA_MAX];                 // Texture data to upload (can be null)
+    u32 width;                              // Width of texture in texels
+    u32 height;                             // Height of texture in texels
+    u32 depth;                              // Depth of texture
+    void* data[R_TEXTURE_DATA_MAX];         // Texture data to upload (can be null)
     gfx_texture_format_type format;         // Format of texture data (rgba32, rgba8, rgba32f, r8, depth32f, etc...)
     gfx_texture_wrapping_type wrap_s;       // Wrapping type for s axis of texture
     gfx_texture_wrapping_type wrap_t;       // Wrapping type for t axis of texture
@@ -266,8 +266,8 @@ typedef struct gfx_texture_desc_t {
     gfx_texture_filtering_type min_filter;  // Minification filter for texture
     gfx_texture_filtering_type mag_filter;  // Magnification filter for texture
     gfx_texture_filtering_type mip_filter;  // Mip filter for texture
-    neko_vec2 offset;                               // Offset for updates
-    u32 num_mips;                                   // Number of mips to generate (default 0 is disable mip generation)
+    neko_vec2 offset;                       // Offset for updates
+    u32 num_mips;                           // Number of mips to generate (default 0 is disable mip generation)
     struct {
         u32 x;        // X offset in texels to start read
         u32 y;        // Y offset in texels to start read
@@ -281,16 +281,16 @@ typedef struct gfx_texture_desc_t {
 /* Graphics Uniform Layout Desc */
 typedef struct gfx_uniform_layout_desc_t {
     gfx_uniform_type type;  // Type of field
-    char fname[64];                 // The name of field (required for implicit APIs, like OpenGL/ES)
-    u32 count;                      // Count variable (used for arrays such as glUniformXXXv)
+    char fname[64];         // The name of field (required for implicit APIs, like OpenGL/ES)
+    u32 count;              // Count variable (used for arrays such as glUniformXXXv)
 } gfx_uniform_layout_desc_t;
 
 /* Graphics Uniform Desc */
 typedef struct gfx_uniform_desc_t {
     gfx_shader_stage_type stage;
-    char name[64];                              // The name of uniform (required for OpenGL/ES, WebGL)
+    char name[64];                      // The name of uniform (required for OpenGL/ES, WebGL)
     gfx_uniform_layout_desc_t* layout;  // Layout array for uniform data
-    size_t layout_size;                         // Size of uniform data in bytes
+    size_t layout_size;                 // Size of uniform data in bytes
 } gfx_uniform_desc_t;
 
 typedef struct gfx_buffer_update_desc_t {
@@ -351,14 +351,14 @@ typedef struct gfx_clear_action_t {
 /* Graphics Clear Desc */
 typedef struct gfx_clear_desc_t {
     gfx_clear_action_t* actions;  // Clear action
-    size_t size;                          // Size
+    size_t size;                  // Size
 } gfx_clear_desc_t;
 
 /* Graphics Render Pass Desc */
 typedef struct gfx_renderpass_desc_t {
     neko_handle(gfx_framebuffer_t) fbo;  // Default is set to invalid for backbuffer
     neko_handle(gfx_texture_t) * color;  // Array of color attachments to be bound (useful for MRT, if supported)
-    size_t color_size;                           // Size of color attachment array
+    size_t color_size;                   // Size of color attachment array
     neko_handle(gfx_texture_t) depth;    // Depth attachment to be bound
     neko_handle(gfx_texture_t) stencil;  // Depth attachment to be bound
 } gfx_renderpass_desc_t;
@@ -409,22 +409,22 @@ typedef struct gfx_bind_uniform_desc_t {
 typedef struct gfx_bind_desc_t {
     struct {
         gfx_bind_vertex_buffer_desc_t* desc;  // Array of vertex buffer declarations (NULL by default)
-        size_t size;                                  // Size of array in bytes (optional if only one)
+        size_t size;                          // Size of array in bytes (optional if only one)
     } vertex_buffers;
 
     struct {
         gfx_bind_index_buffer_desc_t* desc;  // Array of index buffer declarations (NULL by default)
-        size_t size;                                 // Size of array in bytes (optional if only one)
+        size_t size;                         // Size of array in bytes (optional if only one)
     } index_buffers;
 
     struct {
         gfx_bind_uniform_buffer_desc_t* desc;  // Array of uniform buffer declarations (NULL by default)
-        size_t size;                                   // Size of array in bytes (optional if only one)
+        size_t size;                           // Size of array in bytes (optional if only one)
     } uniform_buffers;
 
     struct {
         gfx_bind_uniform_desc_t* desc;  // Array of uniform declarations (NULL by default)
-        size_t size;                            // Size of array in bytes (optional if one)
+        size_t size;                    // Size of array in bytes (optional if one)
     } uniforms;
 
     struct {
@@ -455,9 +455,9 @@ typedef struct gfx_depth_state_desc_t {
 /* Graphics Stencil State Desc */
 typedef struct gfx_stencil_state_desc_t {
     gfx_stencil_func_type func;  // Function to set for stencil test
-    u32 ref;                             // Specifies reference val for stencil test
-    u32 comp_mask;                       // Specifies mask that is ANDed with both ref val and stored stencil val
-    u32 write_mask;                      // Specifies mask that is ANDed with both ref val and stored stencil val
+    u32 ref;                     // Specifies reference val for stencil test
+    u32 comp_mask;               // Specifies mask that is ANDed with both ref val and stored stencil val
+    u32 write_mask;              // Specifies mask that is ANDed with both ref val and stored stencil val
     gfx_stencil_op_type sfail;   // Action to take when stencil test fails
     gfx_stencil_op_type dpfail;  // Action to take when stencil test passes but depth test fails
     gfx_stencil_op_type dppass;  // Action to take when both stencil test passes and either depth passes or is not enabled
@@ -469,7 +469,7 @@ typedef struct gfx_raster_state_desc_t {
     gfx_winding_order_type winding_order;  // Winding order mode to be used (ccw, cw)
     gfx_primitive_type primitive;          // Primitive type for drawing (lines, quads, triangles, triangle strip)
     neko_handle(gfx_shader_t) shader;      // Shader to bind and use (might be in bindables later on, not sure)
-    size_t index_buffer_element_size;              // Element size of index buffer (used for parsing internal data)
+    size_t index_buffer_element_size;      // Element size of index buffer (used for parsing internal data)
 } gfx_raster_state_desc_t;
 
 /* Graphics Compute State Desc */
@@ -479,18 +479,18 @@ typedef struct gfx_compute_state_desc_t {
 
 /* Graphics Vertex Attribute Desc */
 typedef struct gfx_vertex_attribute_desc_t {
-    char name[64];                             // Attribute name (required for lower versions of OpenGL and ES)
+    char name[64];                     // Attribute name (required for lower versions of OpenGL and ES)
     gfx_vertex_attribute_type format;  // Format for vertex attribute
-    size_t stride;                             // Total stride of vertex layout (optional, calculated by default)
-    size_t offset;                             // Offset of this vertex from base pointer of data (optional, calaculated by default)
-    size_t divisor;                            // Used for instancing. (optional, default = 0x00 for no instancing)
-    u32 buffer_idx;                            // Vertex buffer to use (optional, default = 0x00)
+    size_t stride;                     // Total stride of vertex layout (optional, calculated by default)
+    size_t offset;                     // Offset of this vertex from base pointer of data (optional, calaculated by default)
+    size_t divisor;                    // Used for instancing. (optional, default = 0x00 for no instancing)
+    u32 buffer_idx;                    // Vertex buffer to use (optional, default = 0x00)
 } gfx_vertex_attribute_desc_t;
 
 /* Graphics Vertex Layout Desc */
 typedef struct gfx_vertex_layout_desc_t {
     gfx_vertex_attribute_desc_t* attrs;  // Vertex attribute array
-    size_t size;                                 // Size in bytes of vertex attribute array
+    size_t size;                         // Size in bytes of vertex attribute array
 } gfx_vertex_layout_desc_t;
 
 /* Graphics Pipeline Desc */
@@ -542,7 +542,7 @@ typedef struct gfx_info_t {
 ==========================*/
 
 typedef struct gfx_t {
-    void* user_data;          // For internal use
+    void* user_data;  // For internal use
     gfx_info_t info;  // Used for querying by user for features
     struct {
 
@@ -1052,7 +1052,10 @@ typedef struct neko_asset_font_t {
 
 // Texture
 
-#if 0
+bool neko_util_load_texture_data_from_memory(const void* memory, size_t sz, i32* width, i32* height, u32* num_comps, void** data, bool flip_vertically_on_load);
+bool neko_util_load_texture_data_from_file(const char* file_path, i32* width, i32* height, u32* num_comps, void** data, bool flip_vertically_on_load);
+
+#if 1
 bool neko_asset_texture_load_from_file(const_str path, void* out, gfx_texture_desc_t* desc, bool flip_on_load, bool keep_data);
 bool neko_asset_texture_load_from_memory(const void* memory, size_t sz, void* out, gfx_texture_desc_t* desc, bool flip_on_load, bool keep_data);
 
@@ -1182,6 +1185,7 @@ typedef neko_immediate_draw_t gsid;
 neko_immediate_draw_t neko_immediate_draw_new();
 void neko_immediate_draw_free(neko_immediate_draw_t* neko_idraw);
 void neko_immediate_draw_static_data_set(neko_immediate_draw_static_data_t* data);
+void neko_immediate_draw_static_data_free();
 neko_immediate_draw_static_data_t* neko_immediate_draw_static_data_get();  // 用于热更新
 
 // Get pipeline from state
@@ -1217,7 +1221,7 @@ void neko_idraw_stencil_enabled(neko_immediate_draw_t* neko_idraw, bool enabled)
 void neko_idraw_face_cull_enabled(neko_immediate_draw_t* neko_idraw, bool enabled);
 void neko_idraw_defaults(neko_immediate_draw_t* neko_idraw);
 void neko_idraw_pipeline_set(neko_immediate_draw_t* neko_idraw,
-                             neko_handle(gfx_pipeline_t) pipeline);                               // Binds custom user pipeline, sets flag NEKO_IDRAW_FLAG_NO_BIND_CACHED_PIPELINES
+                             neko_handle(gfx_pipeline_t) pipeline);                                       // Binds custom user pipeline, sets flag NEKO_IDRAW_FLAG_NO_BIND_CACHED_PIPELINES
 void neko_idraw_vattr_list(neko_immediate_draw_t* neko_idraw, neko_idraw_vattr_type* layout, size_t sz);  // Sets user vertex attribute list for custom bound pipeline
 void neko_idraw_vattr_list_mesh(neko_immediate_draw_t* neko_idraw, neko_asset_mesh_layout_t* layout,
                                 size_t sz);  // Same as above but uses mesh layout to determine which vertex attributes to bind and in what order
@@ -1276,8 +1280,7 @@ void neko_idraw_rect3Dv(neko_immediate_draw_t* neko_idraw, neko_vec3 min, neko_v
 void neko_idraw_rect3Dvd(neko_immediate_draw_t* neko_idraw, neko_vec3 xyz, neko_vec3 whd, neko_vec2 uv0, neko_vec2 uv1, Color256 c, gfx_primitive_type type);
 void neko_idraw_circle(neko_immediate_draw_t* neko_idraw, f32 cx, f32 cy, f32 radius, int32_t segments, u8 r, u8 g, u8 b, u8 a, gfx_primitive_type type);
 void neko_idraw_circlevx(neko_immediate_draw_t* neko_idraw, neko_vec3 c, f32 radius, int32_t segments, Color256 color, gfx_primitive_type type);
-void neko_idraw_circle_sector(neko_immediate_draw_t* neko_idraw, f32 cx, f32 cy, f32 radius, int32_t start_angle, int32_t end_angle, int32_t segments, u8 r, u8 g, u8 b, u8 a,
-                              gfx_primitive_type type);
+void neko_idraw_circle_sector(neko_immediate_draw_t* neko_idraw, f32 cx, f32 cy, f32 radius, int32_t start_angle, int32_t end_angle, int32_t segments, u8 r, u8 g, u8 b, u8 a, gfx_primitive_type type);
 void neko_idraw_circle_sectorvx(neko_immediate_draw_t* neko_idraw, neko_vec3 c, f32 radius, int32_t start_angle, int32_t end_angle, int32_t segments, Color256 color, gfx_primitive_type type);
 void neko_idraw_arc(neko_immediate_draw_t* neko_idraw, f32 cx, f32 cy, f32 radius_inner, f32 radius_outer, f32 start_angle, f32 end_angle, int32_t segments, u8 r, u8 g, u8 b, u8 a,
                     gfx_primitive_type type);
@@ -1337,18 +1340,18 @@ typedef struct neko_draw_raw_data_func_desc_t {
 
 //=== Uniforms/Uniform blocks ===//
 typedef struct neko_draw_uniform_desc_t {
-    char name[64];                        // the_name of uniform (for binding to shader)
+    char name[64];                // the_name of uniform (for binding to shader)
     gfx_uniform_type type;        // Type of uniform: R_UNIFORM_VEC2, R_UNIFORM_VEC3, etc.
-    uint32_t binding;                     // Binding for this uniform in shader
+    uint32_t binding;             // Binding for this uniform in shader
     gfx_shader_stage_type stage;  // Shader stage for this uniform
     gfx_access_type access_type;  // Access type for this uniform (compute only)
 } neko_draw_uniform_desc_t;
 
 typedef struct neko_draw_uniform_t {
     neko_handle(gfx_uniform_t) hndl;  // Graphics handle resource for actual uniform
-    uint32_t offset;                          // Individual offset for this uniform in material byte buffer data
-    uint32_t binding;                         // Binding for this uniform
-    size_t size;                              // Size of this uniform data in bytes
+    uint32_t offset;                  // Individual offset for this uniform in material byte buffer data
+    uint32_t binding;                 // Binding for this uniform
+    size_t size;                      // Size of this uniform data in bytes
     gfx_uniform_type type;            // Type of this uniform
     gfx_access_type access_type;      // Access type of uniform (compute only)
 } neko_draw_uniform_t;
@@ -1445,9 +1448,9 @@ typedef struct neko_draw_vertex_stream_t {
 } neko_draw_vertex_stream_t;
 
 typedef struct neko_draw_mesh_primitive_t {
-    neko_draw_vertex_stream_t stream;                 // All vertex data streams
+    neko_draw_vertex_stream_t stream;         // All vertex data streams
     neko_handle(gfx_index_buffer_t) indices;  // Index buffer
-    uint32_t count;                                   // Total number of vertices
+    uint32_t count;                           // Total number of vertices
 } neko_draw_mesh_primitive_t;
 
 typedef struct neko_draw_mesh_t {
@@ -1457,13 +1460,13 @@ typedef struct neko_draw_mesh_t {
 
 //=== Pipeline ===//
 typedef struct neko_draw_pipeline_desc_t {
-    gfx_pipeline_desc_t pip_desc;        // Description for constructing pipeline object
+    gfx_pipeline_desc_t pip_desc;                // Description for constructing pipeline object
     neko_draw_uniform_block_desc_t ublock_desc;  // Description for constructing uniform block object
 } neko_draw_pipeline_desc_t;
 
 typedef struct neko_draw_pipeline_t {
     neko_handle(gfx_pipeline_t) hndl;  // Graphics handle resource for actual pipeline
-    neko_draw_uniform_block_t ublock;          // Uniform block for holding all uniform data
+    neko_draw_uniform_block_t ublock;  // Uniform block for holding all uniform data
     neko_dyn_array(neko_draw_mesh_layout_t) mesh_layout;
     gfx_pipeline_desc_t desc;
 } neko_draw_pipeline_t;
@@ -1584,7 +1587,7 @@ typedef struct neko_draw_renderer {
 #define NEKO_UI_CLS_SELECTOR_MAX 4
 
 #ifdef __cplusplus
-#define ui_widths(...)                       \
+#define ui_widths(...)                            \
     [&]() -> const i32* {                         \
         static i32 temp_widths[] = {__VA_ARGS__}; \
         return temp_widths;                       \
@@ -1595,9 +1598,9 @@ typedef struct neko_draw_renderer {
 #endif
 
 #define ui_stack(T, n) \
-    struct {                \
-        i32 idx;            \
-        T items[n];         \
+    struct {           \
+        i32 idx;       \
+        T items[n];    \
     }
 
 enum { NEKO_UI_CLIP_PART = 1, NEKO_UI_CLIP_ALL };
@@ -1858,7 +1861,7 @@ typedef enum ui_split_type { NEKO_UI_SPLIT_LEFT = 0x00, NEKO_UI_SPLIT_RIGHT, NEK
 
 typedef struct ui_split_t {
     ui_split_type type;  // NEKO_UI_SPLIT_LEFT, NEKO_UI_SPLIT_RIGHT, NEKO_UI_SPLIT_TAB, NEKO_UI_SPLIT_BOTTOM, NEKO_UI_SPLIT_TOP
-    float ratio;              // Split ratio between children [0.f, 1.f], (left node = ratio), right node = (1.f - ratio)
+    float ratio;         // Split ratio between children [0.f, 1.f], (left node = ratio), right node = (1.f - ratio)
     ui_rect_t rect;
     ui_rect_t prev_rect;
     ui_split_node_t children[2];
@@ -1884,9 +1887,9 @@ typedef struct ui_tab_item_t {
 
 typedef struct ui_tab_bar_t {
     ui_tab_item_t items[NEKO_UI_TAB_ITEM_MAX];
-    u32 size;             // Current number of items in tab bar
+    u32 size;        // Current number of items in tab bar
     ui_rect_t rect;  // Cached sized for tab bar
-    u32 focus;            // Focused item in tab bar
+    u32 focus;       // Focused item in tab bar
 } ui_tab_bar_t;
 
 typedef struct ui_container_t {
@@ -2383,7 +2386,7 @@ enum { NEKO_UI_HINT_FLAG_NO_SCALE_BIAS_MOUSE = (1 << 0), NEKO_UI_HINT_FLAG_NO_IN
 
 typedef struct ui_hints_t {
     neko_vec2 framebuffer_size;  // Overall framebuffer size
-    ui_rect_t viewport;     // Viewport within framebuffer for gui context
+    ui_rect_t viewport;          // Viewport within framebuffer for gui context
     i32 flags;                   // Flags for hints
 } ui_hints_t;
 
@@ -2489,8 +2492,7 @@ void ui_draw_box(ui_context_t* ctx, ui_rect_t rect, i16* width, Color256 color);
 void ui_draw_line(ui_context_t* ctx, neko_vec2 start, neko_vec2 end, Color256 color);
 void ui_draw_text(ui_context_t* ctx, neko_asset_font_t* font, const char* str, i32 len, neko_vec2 pos, Color256 color, i32 shadow_x, i32 shadow_y, Color256 shadow_color);
 void ui_draw_image(ui_context_t* ctx, neko_handle(gfx_texture_t) hndl, ui_rect_t rect, neko_vec2 uv0, neko_vec2 uv1, Color256 color);
-void ui_draw_nine_rect(ui_context_t* ctx, neko_handle(gfx_texture_t) hndl, ui_rect_t rect, neko_vec2 uv0, neko_vec2 uv1, u32 left, u32 right, u32 top, u32 bottom,
-                            Color256 color);
+void ui_draw_nine_rect(ui_context_t* ctx, neko_handle(gfx_texture_t) hndl, ui_rect_t rect, neko_vec2 uv0, neko_vec2 uv1, u32 left, u32 right, u32 top, u32 bottom, Color256 color);
 void ui_draw_control_frame(ui_context_t* ctx, ui_id id, ui_rect_t rect, i32 elementid, u64 opt);
 void ui_draw_control_text(ui_context_t* ctx, const char* str, ui_rect_t rect, const ui_style_t* style, u64 opt);
 void ui_draw_custom(ui_context_t* ctx, ui_rect_t rect, ui_draw_callback_t cb, void* data, size_t sz);
@@ -2529,10 +2531,10 @@ ui_rect_t ui_layout_anchor(const ui_rect_t* parent, i32 width, i32 height, i32 x
 #define ui_dock(_CTX, _DST, _SRC, _TYPE) ui_dock_ex((_CTX), (_DST), (_SRC), (_TYPE), 0.5f)
 #define ui_undock(_CTX, _NAME) ui_undock_ex((_CTX), (_NAME))
 #define ui_label(_CTX, _FMT, ...) (neko_snprintf((_CTX)->number_edit_buf, sizeof((_CTX)->number_edit_buf), _FMT, ##__VA_ARGS__), ui_label_ex((_CTX), (_CTX)->number_edit_buf, NULL, 0x00))
-#define ui_labelf(STR, ...)                         \
+#define ui_labelf(STR, ...)                              \
     do {                                                 \
         neko_snprintfc(BUFFER, 256, STR, ##__VA_ARGS__); \
-        ui_label(&ENGINE_INTERFACE()->ui, BUFFER);  \
+        ui_label(&ui, BUFFER);                           \
     } while (0)
 
 //=== Elements (Extended) ===//

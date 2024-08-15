@@ -591,8 +591,10 @@ void *neko_dyn_array_resize_impl(void *arr, size_t sz, size_t amount) {
         capacity = 0;
     }
 
+    size_t new_size = capacity * sz + sizeof(neko_dyn_array);
+
     // 仅使用标头信息创建新的 neko_dyn_array
-    neko_dyn_array *data = (neko_dyn_array *)mem_realloc(arr ? neko_dyn_array_head(arr) : 0, capacity * sz + sizeof(neko_dyn_array));
+    neko_dyn_array *data = (neko_dyn_array *)mem_realloc(arr ? neko_dyn_array_head(arr) : 0, new_size);
 
     if (data) {
         if (!arr) {

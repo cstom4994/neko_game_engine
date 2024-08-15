@@ -166,6 +166,8 @@ NEKO_SCRIPT(
                 MC_MIDDLE = MC_3,
         } MouseCode;
 
+        NEKO_EXPORT CVec2 input_get_mouse_pos_pixels_fix();
+
         NEKO_EXPORT CVec2 input_get_mouse_pos_pixels();
 
         NEKO_EXPORT CVec2 input_get_mouse_pos_unit();
@@ -202,7 +204,116 @@ NEKO_SCRIPT(keyboard_controlled,
 )
 
 void keyboard_controlled_update_all();
-void keyboard_controlled_save_all(Store *s);
-void keyboard_controlled_load_all(Store *s);
+void keyboard_controlled_save_all(Store* s);
+void keyboard_controlled_load_all(Store* s);
+
+typedef enum {
+    INPUT_WRAP_NONE = 0,
+    INPUT_WRAP_WINDOW_MOVED = 1 << 1,
+    INPUT_WRAP_WINDOW_RESIZED = 1 << 2,
+    INPUT_WRAP_WINDOW_CLOSED = 1 << 3,
+    INPUT_WRAP_WINDOW_REFRESH = 1 << 4,
+    INPUT_WRAP_WINDOW_FOCUSED = 1 << 5,
+    INPUT_WRAP_WINDOW_DEFOCUSED = 1 << 6,
+    INPUT_WRAP_WINDOW_ICONIFIED = 1 << 7,
+    INPUT_WRAP_WINDOW_UNICONIFIED = 1 << 8,
+    INPUT_WRAP_FRAMEBUFFER_RESIZED = 1 << 9,
+    INPUT_WRAP_BUTTON_PRESSED = 1 << 10,
+    INPUT_WRAP_BUTTON_RELEASED = 1 << 11,
+    INPUT_WRAP_CURSOR_MOVED = 1 << 12,
+    INPUT_WRAP_CURSOR_ENTERED = 1 << 13,
+    INPUT_WRAP_CURSOR_LEFT = 1 << 14,
+    INPUT_WRAP_SCROLLED = 1 << 15,
+    INPUT_WRAP_KEY_PRESSED = 1 << 16,
+    INPUT_WRAP_KEY_REPEATED = 1 << 17,
+    INPUT_WRAP_KEY_RELEASED = 1 << 18,
+    INPUT_WRAP_CODEPOINT_INPUT = 1 << 19
+} INPUT_WRAP_type;
+
+typedef struct INPUT_WRAP_event {
+    INPUT_WRAP_type type;
+    union {
+        struct {
+            int x;
+            int y;
+        } pos;
+        struct {
+            int width;
+            int height;
+        } size;
+        struct {
+            double x;
+            double y;
+        } scroll;
+        struct {
+            int key;
+            int scancode;
+            int mods;
+        } keyboard;
+        struct {
+            int button;
+            int mods;
+        } mouse;
+        unsigned int codepoint;
+    };
+} INPUT_WRAP_event;
+
+#ifndef INPUT_WRAP_CAPACITY
+#define INPUT_WRAP_CAPACITY 1024
+#endif
+
+typedef struct event_queue {
+    INPUT_WRAP_event events[INPUT_WRAP_CAPACITY];
+    size_t head;
+    size_t tail;
+} event_queue;
+
+INPUT_WRAP_event* input_wrap_new_event(event_queue* equeue);
+int input_wrap_next_e(event_queue* equeue, INPUT_WRAP_event* event);
+void input_wrap_free_e(INPUT_WRAP_event* event);
+
+#define INPUT_WRAP_DEFINE(NAME)                                              \
+    static event_queue NAME##_input_queue = {{INPUT_WRAP_NONE}, 0, 0};       \
+    static void NAME##_char_down(unsigned int c) {                           \
+        INPUT_WRAP_event* event = input_wrap_new_event(&NAME##_input_queue); \
+        event->type = INPUT_WRAP_CODEPOINT_INPUT;                            \
+        event->codepoint = c;                                                \
+    }                                                                        \
+    static void NAME##_key_down(KeyCode key, int scancode, int mods) {       \
+        INPUT_WRAP_event* event = input_wrap_new_event(&NAME##_input_queue); \
+        event->keyboard.key = key;                                           \
+        event->keyboard.scancode = scancode;                                 \
+        event->keyboard.mods = mods;                                         \
+        event->type = INPUT_WRAP_KEY_PRESSED;                                \
+    }                                                                        \
+    static void NAME##_key_up(KeyCode key, int scancode, int mods) {         \
+        INPUT_WRAP_event* event = input_wrap_new_event(&NAME##_input_queue); \
+        event->keyboard.key = key;                                           \
+        event->keyboard.scancode = scancode;                                 \
+        event->keyboard.mods = mods;                                         \
+        event->type = INPUT_WRAP_KEY_RELEASED;                               \
+    }                                                                        \
+    static void NAME##_mouse_down(MouseCode mouse) {                         \
+        INPUT_WRAP_event* event = input_wrap_new_event(&NAME##_input_queue); \
+        event->mouse.button = mouse;                                         \
+        event->type = INPUT_WRAP_BUTTON_PRESSED;                             \
+    }                                                                        \
+    static void NAME##_mouse_up(MouseCode mouse) {                           \
+        INPUT_WRAP_event* event = input_wrap_new_event(&NAME##_input_queue); \
+        event->mouse.button = mouse;                                         \
+        event->type = INPUT_WRAP_BUTTON_RELEASED;                            \
+    }                                                                        \
+    static void NAME##_mouse_move(CVec2 pos) {                               \
+        INPUT_WRAP_event* event = input_wrap_new_event(&NAME##_input_queue); \
+        event->type = INPUT_WRAP_CURSOR_MOVED;                               \
+        event->pos.x = (int)pos.x;                                           \
+        event->pos.y = (int)pos.y;                                           \
+    }                                                                        \
+    static void NAME##_scroll(CVec2 scroll) {                                \
+        INPUT_WRAP_event* event = input_wrap_new_event(&NAME##_input_queue); \
+        event->type = INPUT_WRAP_SCROLLED;                                   \
+        event->scroll.x = scroll.x;                                          \
+        event->scroll.y = scroll.y;                                          \
+    }
 
 #endif

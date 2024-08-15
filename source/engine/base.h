@@ -2209,3 +2209,5 @@ NEKO_SCRIPT(
 #define NEKO_COLOR_PURPLE color256(128, 0, 128, 255)
 #define NEKO_COLOR_MAROON color256(128, 0, 0, 255)
 #define NEKO_COLOR_BROWN color256(165, 42, 42, 255)
+
+inline Color256 neko_color_alpha(Color256 c, u8 a) { return color256(c.r, c.g, c.b, a); }
