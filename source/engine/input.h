@@ -11,8 +11,7 @@
 NEKO_SCRIPT(
         input,
 
-        typedef enum KeyCode KeyCode;
-        enum KeyCode{
+        typedef enum KeyCode{
                 KC_UNKNOWN = -1,
                 KC_NONE = 0,
 
@@ -139,7 +138,7 @@ NEKO_SCRIPT(
                 KC_RIGHT_ALT = 346,
                 KC_RIGHT_SUPER = 347,
                 KC_MENU = 348,
-        };
+        } KeyCode;
 
         NEKO_EXPORT bool input_keycode_is_char(KeyCode key);
 
@@ -166,11 +165,11 @@ NEKO_SCRIPT(
                 MC_MIDDLE = MC_3,
         } MouseCode;
 
-        NEKO_EXPORT CVec2 input_get_mouse_pos_pixels_fix();
+        NEKO_EXPORT LuaVec2 input_get_mouse_pos_pixels_fix();
 
-        NEKO_EXPORT CVec2 input_get_mouse_pos_pixels();
+        NEKO_EXPORT LuaVec2 input_get_mouse_pos_pixels();
 
-        NEKO_EXPORT CVec2 input_get_mouse_pos_unit();
+        NEKO_EXPORT LuaVec2 input_get_mouse_pos_unit();
 
         NEKO_EXPORT bool input_mouse_down(MouseCode mouse);
 
@@ -187,10 +186,10 @@ typedef void (*MouseCallback)(MouseCode mouse);
 void input_add_mouse_down_callback(MouseCallback f);
 void input_add_mouse_up_callback(MouseCallback f);
 
-typedef void (*MouseMoveCallback)(CVec2 pos);
+typedef void (*MouseMoveCallback)(LuaVec2 pos);
 void input_add_mouse_move_callback(MouseMoveCallback f);
 
-typedef void (*ScrollCallback)(CVec2 scroll);
+typedef void (*ScrollCallback)(LuaVec2 scroll);
 void input_add_scroll_callback(ScrollCallback f);
 
 void input_init();
@@ -303,13 +302,13 @@ void input_wrap_free_e(INPUT_WRAP_event* event);
         event->mouse.button = mouse;                                         \
         event->type = INPUT_WRAP_BUTTON_RELEASED;                            \
     }                                                                        \
-    static void NAME##_mouse_move(CVec2 pos) {                               \
+    static void NAME##_mouse_move(LuaVec2 pos) {                               \
         INPUT_WRAP_event* event = input_wrap_new_event(&NAME##_input_queue); \
         event->type = INPUT_WRAP_CURSOR_MOVED;                               \
         event->pos.x = (int)pos.x;                                           \
         event->pos.y = (int)pos.y;                                           \
     }                                                                        \
-    static void NAME##_scroll(CVec2 scroll) {                                \
+    static void NAME##_scroll(LuaVec2 scroll) {                                \
         INPUT_WRAP_event* event = input_wrap_new_event(&NAME##_input_queue); \
         event->type = INPUT_WRAP_SCROLLED;                                   \
         event->scroll.x = scroll.x;                                          \

@@ -29,11 +29,11 @@ NEKO_SCRIPT(transform,
             // destroy ent and all children
             NEKO_EXPORT void transform_destroy_rec(Entity ent);
 
-            NEKO_EXPORT void transform_set_position(Entity ent, CVec2 pos);
+            NEKO_EXPORT void transform_set_position(Entity ent, LuaVec2 pos);
 
-            NEKO_EXPORT CVec2 transform_get_position(Entity ent);
+            NEKO_EXPORT LuaVec2 transform_get_position(Entity ent);
 
-            NEKO_EXPORT void transform_translate(Entity ent, CVec2 trans);
+            NEKO_EXPORT void transform_translate(Entity ent, LuaVec2 trans);
 
             NEKO_EXPORT void transform_set_rotation(Entity ent, Scalar rot);
 
@@ -41,23 +41,23 @@ NEKO_SCRIPT(transform,
 
             NEKO_EXPORT void transform_rotate(Entity ent, Scalar rot);
 
-            NEKO_EXPORT void transform_set_scale(Entity ent, CVec2 scale);
+            NEKO_EXPORT void transform_set_scale(Entity ent, LuaVec2 scale);
 
-            NEKO_EXPORT CVec2 transform_get_scale(Entity ent);
+            NEKO_EXPORT LuaVec2 transform_get_scale(Entity ent);
 
-            NEKO_EXPORT CVec2 transform_get_world_position(Entity ent);
+            NEKO_EXPORT LuaVec2 transform_get_world_position(Entity ent);
 
             NEKO_EXPORT Scalar transform_get_world_rotation(Entity ent);
 
-            NEKO_EXPORT CVec2 transform_get_world_scale(Entity ent);
+            NEKO_EXPORT LuaVec2 transform_get_world_scale(Entity ent);
 
-            NEKO_EXPORT CMat3 transform_get_world_matrix(Entity ent);  // world-space
+            NEKO_EXPORT LuaMat3 transform_get_world_matrix(Entity ent);  // world-space
 
-            NEKO_EXPORT CMat3 transform_get_matrix(Entity ent);  // parent-space
+            NEKO_EXPORT LuaMat3 transform_get_matrix(Entity ent);  // parent-space
 
-            NEKO_EXPORT CVec2 transform_local_to_world(Entity ent, CVec2 v);
+            NEKO_EXPORT LuaVec2 transform_local_to_world(Entity ent, LuaVec2 v);
 
-            NEKO_EXPORT CVec2 transform_world_to_local(Entity ent, CVec2 v);
+            NEKO_EXPORT LuaVec2 transform_world_to_local(Entity ent, LuaVec2 v);
 
             NEKO_EXPORT ecs_id_t transform_get_dirty_count(Entity ent);
 

@@ -35,20 +35,20 @@ NEKO_SCRIPT(camera,
 
        NEKO_EXPORT Scalar camera_get_viewport_height(Entity ent);
 
-       NEKO_EXPORT CMat3 camera_get_inverse_view_matrix();
+       NEKO_EXPORT LuaMat3 camera_get_inverse_view_matrix();
 
        // screen-space coordinates <-> world coordinates transformations
-       NEKO_EXPORT CVec2 camera_world_to_pixels(CVec2 p);
+       NEKO_EXPORT LuaVec2 camera_world_to_pixels(LuaVec2 p);
 
-       NEKO_EXPORT CVec2 camera_world_to_unit(CVec2 p);
+       NEKO_EXPORT LuaVec2 camera_world_to_unit(LuaVec2 p);
 
-       NEKO_EXPORT CVec2 camera_pixels_to_world(CVec2 p);
+       NEKO_EXPORT LuaVec2 camera_pixels_to_world(LuaVec2 p);
 
-       NEKO_EXPORT CVec2 camera_unit_to_world(CVec2 p);
+       NEKO_EXPORT LuaVec2 camera_unit_to_world(LuaVec2 p);
 
 )
 
-const CMat3 *camera_get_inverse_view_matrix_ptr();  // for quick GLSL binding
+const LuaMat3 *camera_get_inverse_view_matrix_ptr();  // for quick GLSL binding
 
 void camera_init();
 void camera_fini();

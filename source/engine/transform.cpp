@@ -8,10 +8,10 @@
 #include "engine/ecs.h"
 #include "engine/prelude.h"
 
-DECL_ENT(Transform, CVec2 position; Scalar rotation; CVec2 scale; Entity parent;  // 如果entity_nil 则为 root
+DECL_ENT(Transform, LuaVec2 position; Scalar rotation; LuaVec2 scale; Entity parent;  // 如果entity_nil 则为 root
          CArray * children;                                                       // 如果为 NULL 则为空
-         CMat3 mat_cache;                                                         // 更新此内容
-         CMat3 worldmat_cache;                                                    // 在父子更新时缓存
+         LuaMat3 mat_cache;                                                         // 更新此内容
+         LuaMat3 worldmat_cache;                                                    // 在父子更新时缓存
          ecs_id_t dirty_count;);
 
 static EntityPool *pool;
@@ -170,18 +170,18 @@ void transform_destroy_rec(Entity ent) {
     entity_destroy(ent);
 }
 
-void transform_set_position(Entity ent, CVec2 pos) {
+void transform_set_position(Entity ent, LuaVec2 pos) {
     Transform *transform = (Transform *)entitypool_get(pool, ent);
     error_assert(transform);
     transform->position = pos;
     _modified(transform);
 }
-CVec2 transform_get_position(Entity ent) {
+LuaVec2 transform_get_position(Entity ent) {
     Transform *transform = (Transform *)entitypool_get(pool, ent);
     error_assert(transform);
     return transform->position;
 }
-void transform_translate(Entity ent, CVec2 trans) {
+void transform_translate(Entity ent, LuaVec2 trans) {
     Transform *transform = (Transform *)entitypool_get(pool, ent);
     error_assert(transform);
     transform->position = vec2_add(transform->position, trans);
@@ -206,19 +206,19 @@ void transform_rotate(Entity ent, Scalar rot) {
     _modified(transform);
 }
 
-void transform_set_scale(Entity ent, CVec2 scale) {
+void transform_set_scale(Entity ent, LuaVec2 scale) {
     Transform *transform = (Transform *)entitypool_get(pool, ent);
     error_assert(transform);
     transform->scale = scale;
     _modified(transform);
 }
-CVec2 transform_get_scale(Entity ent) {
+LuaVec2 transform_get_scale(Entity ent) {
     Transform *transform = (Transform *)entitypool_get(pool, ent);
     error_assert(transform);
     return transform->scale;
 }
 
-CVec2 transform_get_world_position(Entity ent) {
+LuaVec2 transform_get_world_position(Entity ent) {
     Transform *transform = (Transform *)entitypool_get(pool, ent);
     error_assert(transform);
     return mat3_get_translation(transform->worldmat_cache);
@@ -228,13 +228,13 @@ Scalar transform_get_world_rotation(Entity ent) {
     error_assert(transform);
     return mat3_get_rotation(transform->worldmat_cache);
 }
-CVec2 transform_get_world_scale(Entity ent) {
+LuaVec2 transform_get_world_scale(Entity ent) {
     Transform *transform = (Transform *)entitypool_get(pool, ent);
     error_assert(transform);
     return mat3_get_scale(transform->worldmat_cache);
 }
 
-CMat3 transform_get_world_matrix(Entity ent) {
+LuaMat3 transform_get_world_matrix(Entity ent) {
     Transform *transform;
 
     if (entity_eq(ent, entity_nil)) return mat3_identity();
@@ -243,7 +243,7 @@ CMat3 transform_get_world_matrix(Entity ent) {
     error_assert(transform);
     return transform->worldmat_cache;
 }
-CMat3 transform_get_matrix(Entity ent) {
+LuaMat3 transform_get_matrix(Entity ent) {
     Transform *transform;
 
     if (entity_eq(ent, entity_nil)) return mat3_identity();
@@ -253,12 +253,12 @@ CMat3 transform_get_matrix(Entity ent) {
     return transform->mat_cache;
 }
 
-CVec2 transform_local_to_world(Entity ent, CVec2 v) {
+LuaVec2 transform_local_to_world(Entity ent, LuaVec2 v) {
     Transform *transform = (Transform *)entitypool_get(pool, ent);
     error_assert(transform);
     return mat3_transform(transform->worldmat_cache, v);
 }
-CVec2 transform_world_to_local(Entity ent, CVec2 v) {
+LuaVec2 transform_world_to_local(Entity ent, LuaVec2 v) {
     Transform *transform = (Transform *)entitypool_get(pool, ent);
     error_assert(transform);
     return mat3_transform(mat3_inverse(transform->worldmat_cache), v);

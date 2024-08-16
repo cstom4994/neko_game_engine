@@ -102,6 +102,24 @@ static void ase_default_blend_bind(ase_t *ase) {
     }
 }
 
+u64 generate_texture_handle(void *pixels, int w, int h, void *udata) {
+    (void)udata;
+    GLuint location;
+    glGenTextures(1, &location);
+    glBindTexture(GL_TEXTURE_2D, location);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    return (u64)location;
+}
+
+void destroy_texture_handle(u64 texture_id, void *udata) {
+    (void)udata;
+    GLuint id = (GLuint)texture_id;
+    glDeleteTextures(1, &id);
+}
+
 bool texture_update_data(Texture *tex, u8 *data) {
 
     LockGuard lock{&g_app->gpu_mtx};
@@ -230,7 +248,7 @@ void texture_bind(const char *filename) {
     if (ok && a.texture.id != 0) glBindTexture(GL_TEXTURE_2D, a.texture.id);
 }
 
-CVec2 texture_get_size(const char *filename) {
+LuaVec2 texture_get_size(const char *filename) {
     Asset a = {};
     bool ok = asset_load_kind(AssetKind_Image, filename, &a);
     error_assert(ok);

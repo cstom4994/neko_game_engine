@@ -83,17 +83,15 @@ gfx_t* g_render;
 #define R_IMPL_OPENGL_ES
 #endif
 
-// 图形信息对象查询
-gfx_info_t* gfx_info() { return &RENDER()->info; }
-
-#if (defined R_IMPL_OPENGL_CORE || defined R_IMPL_OPENGL_ES)
-
 // macOS 不支持 OpenGL 4.1+
 #if defined(NEKO_IS_APPLE)
 #define CHECK_GL_CORE(...)
 #else
 #define CHECK_GL_CORE(...) __VA_ARGS__
 #endif
+
+// 图形信息对象查询
+gfx_info_t* gfx_info() { return &RENDER()->info; }
 
 const char* gl_get_error_description(GLenum error_code) {
     switch (error_code) {
@@ -852,20 +850,20 @@ void neko_gl_pipeline_state() {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
-    // CHECK_GL_CORE(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);)
+    CHECK_GL_CORE(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);)
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_STENCIL_TEST);
     glDisable(GL_BLEND);
     CHECK_GL_CORE(glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS););
     glDisable(GL_MULTISAMPLE);
 
-    CHECK_GL_CORE(gfx_info_t* info = gfx_info(); if (info->compute.available){
-            // NEKO_INVOKE_ONCE(NEKO_TRACE("Compute shader available: %s", NEKO_BOOL_STR(info->compute.available)););
-            // glBindImageTexture(0, 0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+    CHECK_GL_CORE(gfx_info_t* info = gfx_info(); if (info->compute.available) {
+        NEKO_INVOKE_ONCE(console_log("compute shader available: %s", NEKO_BOOL_STR(info->compute.available)););
+        glBindImageTexture(0, 0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
     });
 }
 
-/* Utilities */
+// Utilities 
 i32 neko_gl_buffer_usage_to_gl_enum(gfx_buffer_usage_type type) {
     i32 mode = GL_STATIC_DRAW;
     switch (type) {
@@ -1078,7 +1076,7 @@ u32 neko_gl_shader_stage_to_gl_stage(gfx_shader_stage_type type) {
         case R_SHADER_STAGE_FRAGMENT:
             stage = GL_FRAGMENT_SHADER;
             break;
-            // CHECK_GL_CORE(case R_SHADER_STAGE_COMPUTE : stage = GL_COMPUTE_SHADER; break;)
+            CHECK_GL_CORE(case R_SHADER_STAGE_COMPUTE : stage = GL_COMPUTE_SHADER; break;)
     }
     return stage;
 }
@@ -1476,7 +1474,7 @@ gfx_t* gfx_create() {
     // 构建新的图形界面
     gfx_t* gfx = neko_malloc_init(gfx_t);
     // 为OpenGL构建内部数据
-    gfx->user_data = neko_malloc_init(neko_gl_data_t);
+    gfx->ud = neko_malloc_init(neko_gl_data_t);
     return gfx;
 }
 
@@ -1484,7 +1482,7 @@ void gfx_fini(gfx_t* render) {
     // 释放所有资源 (假设它们已从GPU中释放)
     if (render == NULL) return;
 
-    neko_gl_data_t* ogl = (neko_gl_data_t*)render->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)render->ud;
 
 #define OGL_FREE_DATA(SA, T, FUNC)                                                                                    \
     do {                                                                                                              \
@@ -1537,7 +1535,7 @@ void gfx_fini(gfx_t* render) {
 }
 
 neko_gl_texture_t gl_texture_update_internal(const gfx_texture_desc_t* desc, u32 hndl) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
 
     neko_gl_texture_t tex = NEKO_DEFAULT_VAL();
     if (hndl) tex = neko_slot_array_get(ogl->textures, hndl);
@@ -1718,7 +1716,7 @@ neko_gl_texture_t gl_texture_update_internal(const gfx_texture_desc_t* desc, u32
 
     // Need to make sure this is available before being able to use
 
-    // CHECK_GL_CORE(float aniso = 0.0f; glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &aniso); glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, aniso););
+    CHECK_GL_CORE(float aniso = 0.0f; glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &aniso); glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, aniso););
 
     glTexParameteri(target, GL_TEXTURE_WRAP_S, texture_wrap_s);
     glTexParameteri(target, GL_TEXTURE_WRAP_T, texture_wrap_t);
@@ -1737,16 +1735,16 @@ neko_gl_texture_t gl_texture_update_internal(const gfx_texture_desc_t* desc, u32
     return tex;
 }
 
-/* Resource Creation */
+// Resource Creation 
 neko_handle(gfx_texture_t) gfx_texture_create_impl(const gfx_texture_desc_t desc) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     neko_gl_texture_t tex = gl_texture_update_internal(&desc, 0);
     // Add texture to internal resource pool and return handle
     return (neko_handle_create(gfx_texture_t, neko_slot_array_insert(ogl->textures, tex)));
 }
 
 neko_handle(gfx_uniform_t) gfx_uniform_create_impl(const gfx_uniform_desc_t desc) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
 
     // Assert if data isn't named
     if (desc.name == NULL) {
@@ -1788,7 +1786,7 @@ neko_handle(gfx_uniform_t) gfx_uniform_create_impl(const gfx_uniform_desc_t desc
 }
 
 neko_handle(gfx_vertex_buffer_t) gfx_vertex_buffer_create_impl(const gfx_vertex_buffer_desc_t desc) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     neko_handle(gfx_vertex_buffer_t) hndl = NEKO_DEFAULT_VAL();
     neko_gl_buffer_t buffer = {0};
 
@@ -1808,7 +1806,7 @@ neko_handle(gfx_vertex_buffer_t) gfx_vertex_buffer_create_impl(const gfx_vertex_
 }
 
 neko_handle(gfx_index_buffer_t) gfx_index_buffer_create_impl(const gfx_index_buffer_desc_t desc) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     neko_handle(gfx_index_buffer_t) hndl = NEKO_DEFAULT_VAL();
     neko_gl_buffer_t buffer = {0};
 
@@ -1828,7 +1826,7 @@ neko_handle(gfx_index_buffer_t) gfx_index_buffer_create_impl(const gfx_index_buf
 }
 
 neko_handle(gfx_uniform_buffer_t) gfx_uniform_buffer_create_impl(const gfx_uniform_buffer_desc_t desc) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     neko_handle(gfx_uniform_buffer_t) hndl = NEKO_DEFAULT_VAL();
 
     // Assert if data isn't named
@@ -1853,7 +1851,7 @@ neko_handle(gfx_uniform_buffer_t) gfx_uniform_buffer_create_impl(const gfx_unifo
 }
 
 neko_handle(gfx_storage_buffer_t) gfx_storage_buffer_create_impl(const gfx_storage_buffer_desc_t desc) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     neko_handle(gfx_storage_buffer_t) hndl = NEKO_DEFAULT_VAL();
     neko_gl_storage_buffer_t sbo = NEKO_DEFAULT_VAL();
 
@@ -1926,7 +1924,7 @@ neko_handle(gfx_storage_buffer_t) gfx_storage_buffer_create_impl(const gfx_stora
 }
 
 neko_handle(gfx_framebuffer_t) gfx_framebuffer_create_impl(const gfx_framebuffer_desc_t desc) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     neko_handle(gfx_framebuffer_t) hndl = NEKO_DEFAULT_VAL();
     neko_gl_buffer_t buffer = {0};
     glGenFramebuffers(1, &buffer.id);
@@ -1939,7 +1937,7 @@ neko_handle(gfx_framebuffer_t) gfx_framebuffer_create_impl(const gfx_framebuffer
 #define NEKO_GL_GRAPHICS_MAX_SID 128
 
 neko_handle(gfx_shader_t) gfx_shader_create_impl(const gfx_shader_desc_t desc) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     neko_gl_shader_t shader = {0};
     u32 pip = 0x00;
 
@@ -2068,7 +2066,7 @@ neko_handle(gfx_shader_t) gfx_shader_create_impl(const gfx_shader_desc_t desc) {
 }
 
 neko_handle(gfx_renderpass_t) gfx_renderpass_create_impl(const gfx_renderpass_desc_t desc) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
 
     neko_gl_renderpass_t pass = NEKO_DEFAULT_VAL();
 
@@ -2088,7 +2086,7 @@ neko_handle(gfx_renderpass_t) gfx_renderpass_create_impl(const gfx_renderpass_de
 }
 
 neko_handle(gfx_pipeline_t) gfx_pipeline_create_impl(const gfx_pipeline_desc_t desc) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
 
     neko_gl_pipeline_t pipe = NEKO_DEFAULT_VAL();
 
@@ -2112,7 +2110,7 @@ neko_handle(gfx_pipeline_t) gfx_pipeline_create_impl(const gfx_pipeline_desc_t d
 
 // Resource Destruction
 void gfx_texture_fini_impl(neko_handle(gfx_texture_t) hndl) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     if (!neko_slot_array_handle_valid(ogl->textures, hndl.id)) return;
     neko_gl_texture_t* tex = neko_slot_array_getp(ogl->textures, hndl.id);
     glDeleteTextures(1, &tex->id);
@@ -2120,7 +2118,7 @@ void gfx_texture_fini_impl(neko_handle(gfx_texture_t) hndl) {
 }
 
 void gfx_uniform_fini_impl(neko_handle(gfx_uniform_t) hndl) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     if (!neko_slot_array_handle_valid(ogl->uniforms, hndl.id)) return;
     neko_gl_uniform_list_t* ul = neko_slot_array_getp(ogl->uniforms, hndl.id);
     neko_dyn_array_free(ul->uniforms);
@@ -2128,14 +2126,14 @@ void gfx_uniform_fini_impl(neko_handle(gfx_uniform_t) hndl) {
 }
 
 void gfx_shader_fini_impl(neko_handle(gfx_shader_t) hndl) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     if (!neko_slot_array_handle_valid(ogl->shaders, hndl.id)) return;
     glDeleteProgram(neko_slot_array_get(ogl->shaders, hndl.id).id);
     neko_slot_array_erase(ogl->shaders, hndl.id);
 }
 
 void gfx_vertex_buffer_fini_impl(neko_handle(gfx_vertex_buffer_t) hndl) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     if (!neko_slot_array_handle_valid(ogl->vertex_buffers, hndl.id)) return;
     neko_gl_buffer_t buffer = neko_slot_array_get(ogl->vertex_buffers, hndl.id);
     glDeleteBuffers(1, &buffer.id);
@@ -2143,7 +2141,7 @@ void gfx_vertex_buffer_fini_impl(neko_handle(gfx_vertex_buffer_t) hndl) {
 }
 
 void gfx_index_buffer_fini_impl(neko_handle(gfx_index_buffer_t) hndl) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     if (!neko_slot_array_handle_valid(ogl->index_buffers, hndl.id)) return;
     neko_gl_buffer_t buffer = neko_slot_array_get(ogl->index_buffers, hndl.id);
     glDeleteBuffers(1, &buffer.id);
@@ -2151,7 +2149,7 @@ void gfx_index_buffer_fini_impl(neko_handle(gfx_index_buffer_t) hndl) {
 }
 
 void gfx_uniform_buffer_fini_impl(neko_handle(gfx_uniform_buffer_t) hndl) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     if (!neko_slot_array_handle_valid(ogl->uniform_buffers, hndl.id)) return;
     neko_gl_uniform_buffer_t* u = neko_slot_array_getp(ogl->uniform_buffers, hndl.id);
 
@@ -2163,7 +2161,7 @@ void gfx_uniform_buffer_fini_impl(neko_handle(gfx_uniform_buffer_t) hndl) {
 }
 
 void gfx_storage_buffer_fini_impl(neko_handle(gfx_storage_buffer_t) hndl) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     if (!neko_slot_array_handle_valid(ogl->storage_buffers, hndl.id)) return;
     neko_gl_storage_buffer_t* sb = neko_slot_array_getp(ogl->storage_buffers, hndl.id);
 
@@ -2175,7 +2173,7 @@ void gfx_storage_buffer_fini_impl(neko_handle(gfx_storage_buffer_t) hndl) {
 }
 
 void gfx_framebuffer_fini_impl(neko_handle(gfx_framebuffer_t) hndl) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     if (!neko_slot_array_handle_valid(ogl->frame_buffers, hndl.id)) return;
     neko_gl_buffer_t buffer = neko_slot_array_get(ogl->frame_buffers, hndl.id);
     glDeleteFramebuffers(1, &buffer.id);
@@ -2183,14 +2181,14 @@ void gfx_framebuffer_fini_impl(neko_handle(gfx_framebuffer_t) hndl) {
 }
 
 void gfx_renderpass_fini_impl(neko_handle(gfx_renderpass_t) hndl) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     if (!neko_slot_array_handle_valid(ogl->renderpasses, hndl.id)) return;
     // TODO: erase all color attachments from renderpasss
     neko_slot_array_erase(ogl->renderpasses, hndl.id);
 }
 
 void gfx_pipeline_fini_impl(neko_handle(gfx_pipeline_t) hndl) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     if (!neko_slot_array_handle_valid(ogl->pipelines, hndl.id)) return;
     neko_gl_pipeline_t* pip = neko_slot_array_getp(ogl->pipelines, hndl.id);
 
@@ -2205,7 +2203,7 @@ void gfx_pipeline_fini_impl(neko_handle(gfx_pipeline_t) hndl) {
 void gfx_pipeline_desc_query(neko_handle(gfx_pipeline_t) hndl, gfx_pipeline_desc_t* out) {
     if (!out) return;
 
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     neko_gl_pipeline_t* pip = neko_slot_array_getp(ogl->pipelines, hndl.id);
 
     // Add states
@@ -2225,21 +2223,21 @@ void gfx_pipeline_desc_query(neko_handle(gfx_pipeline_t) hndl, gfx_pipeline_desc
 void gfx_texture_desc_query(neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t* out) {
     if (!out) return;
 
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     neko_gl_texture_t* tex = neko_slot_array_getp(ogl->textures, hndl.id);
 
     // Read back pixels
     if (out->data && out->read.width && out->read.height) {
         u32 type = neko_gl_texture_format_to_gl_data_type(tex->desc.format);
         u32 format = neko_gl_texture_format_to_gl_texture_format(tex->desc.format);
-        // CHECK_GL_CORE(glActiveTexture(GL_TEXTURE0); glGetTextureSubImage(tex->id, 0, out->read.x, out->read.y, 0, out->read.width, out->read.height, 1, format, type, out->read.size, out->data););
+        CHECK_GL_CORE(glActiveTexture(GL_TEXTURE0); glGetTextureSubImage(tex->id, 0, out->read.x, out->read.y, 0, out->read.width, out->read.height, 1, format, type, out->read.size, out->data););
     }
 
     *out = tex->desc;
 }
 
 size_t gfx_uniform_size_query(neko_handle(gfx_uniform_t) hndl) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     neko_gl_uniform_list_t* u = neko_slot_array_getp(ogl->uniforms, hndl.id);
     return u->uniforms[0].size;
 }
@@ -2248,7 +2246,7 @@ size_t gfx_uniform_size_query(neko_handle(gfx_uniform_t) hndl) {
 void gfx_texture_update_impl(neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t* desc) {
     if (!desc) return;
 
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     if (!neko_slot_array_handle_valid(ogl->textures, hndl.id)) {
         console_log("Texture handle invalid: %zu", hndl.id);
         return;
@@ -2257,39 +2255,7 @@ void gfx_texture_update_impl(neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t
 }
 
 void gfx_vertex_buffer_update_impl(neko_handle(gfx_vertex_buffer_t) hndl, gfx_vertex_buffer_desc_t* desc) {
-    /*
-    void __gfx_update_buffer_internal(neko_command_buffer_t* cb,
-        u32 id,
-        gfx_buffer_type type,
-        gfx_buffer_usage_type usage,
-        size_t sz,
-        size_t offset,
-        gfx_buffer_update_type update_type,
-        void* data)
-    {
-        // Write command
-        neko_byte_buffer_write(&cb->commands, u32, (u32)NEKO_OPENGL_OP_REQUEST_BUFFER_UPDATE);
-        cb->num_commands++;
-
-        // Write handle id
-        neko_byte_buffer_write(&cb->commands, u32, id);
-        // Write type
-        neko_byte_buffer_write(&cb->commands, gfx_buffer_type, type);
-        // Write usage
-        neko_byte_buffer_write(&cb->commands, gfx_buffer_usage_type, usage);
-        // Write data size
-        neko_byte_buffer_write(&cb->commands, size_t, sz);
-        // Write data offset
-        neko_byte_buffer_write(&cb->commands, size_t, offset);
-        // Write data update type
-        neko_byte_buffer_write(&cb->commands, gfx_buffer_update_type, update_type);
-        // Write data
-        neko_byte_buffer_write_bulk(&cb->commands, data, sz);
-    }
-    __gfx_update_buffer_internal(cb, hndl.id, R_BUFFER_VERTEX, desc.usage, desc.size, desc.update.offset, desc.update.type, desc.data);
-    */
-
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     neko_gl_buffer_t buffer = neko_slot_array_get(ogl->vertex_buffers, hndl.id);
     glBindBuffer(GL_ARRAY_BUFFER, buffer.id);
     i32 glusage = neko_gl_buffer_usage_to_gl_enum(desc->usage);
@@ -2305,7 +2271,7 @@ void gfx_vertex_buffer_update_impl(neko_handle(gfx_vertex_buffer_t) hndl, gfx_ve
 }
 
 void gfx_index_buffer_update_impl(neko_handle(gfx_index_buffer_t) hndl, gfx_index_buffer_desc_t* desc) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     neko_gl_buffer_t buffer = neko_slot_array_get(ogl->index_buffers, hndl.id);
     i32 glusage = neko_gl_buffer_usage_to_gl_enum(desc->usage);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer.id);
@@ -2321,7 +2287,7 @@ void gfx_index_buffer_update_impl(neko_handle(gfx_index_buffer_t) hndl, gfx_inde
 }
 
 void gfx_storage_buffer_update_impl(neko_handle(gfx_storage_buffer_t) hndl, gfx_storage_buffer_desc_t* desc) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     neko_gl_storage_buffer_t* sbo = neko_slot_array_getp(ogl->storage_buffers, hndl.id);
     if (!sbo) {
         console_log("Storage buffer %zu not found.", hndl.id);
@@ -2339,7 +2305,7 @@ void gfx_storage_buffer_update_impl(neko_handle(gfx_storage_buffer_t) hndl, gfx_
 }
 
 void gfx_texture_read_impl(neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t* desc) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     if (!desc) return;
     if (!neko_slot_array_handle_valid(ogl->textures, hndl.id)) {
         console_log("Texture handle invalid: %zu", hndl.id);
@@ -2365,7 +2331,7 @@ void gfx_texture_read_impl(neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t* 
 }
 
 void* gfx_storage_buffer_map_get_impl(neko_handle(gfx_storage_buffer_t) hndl) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     if (!neko_slot_array_handle_valid(ogl->storage_buffers, hndl.id)) {
         console_log("Storage buffer handle invalid: %zu", hndl.id);
         return NULL;
@@ -2376,7 +2342,7 @@ void* gfx_storage_buffer_map_get_impl(neko_handle(gfx_storage_buffer_t) hndl) {
 
 void gfx_storage_buffer_unlock_impl(neko_handle(gfx_storage_buffer_t) hndl) {
     // 解锁并返回映射指针
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     if (!neko_slot_array_handle_valid(ogl->storage_buffers, hndl.id)) {
         console_log("Storage buffer handle invalid: %zu", hndl.id);
         return;
@@ -2396,7 +2362,7 @@ void gfx_storage_buffer_unlock_impl(neko_handle(gfx_storage_buffer_t) hndl) {
 
 void* gfx_storage_buffer_lock_impl(neko_handle(gfx_storage_buffer_t) hndl) {
     // 锁
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     if (!neko_slot_array_handle_valid(ogl->storage_buffers, hndl.id)) {
         console_log("Storage buffer handle invalid: %zu", hndl.id);
         return NULL;
@@ -2419,15 +2385,15 @@ void* gfx_storage_buffer_lock_impl(neko_handle(gfx_storage_buffer_t) hndl) {
     return sbo->map;
 }
 
-#define __ogl_push_command(CB, OP_CODE, ...)                         \
-    do {                                                             \
-        neko_gl_data_t* DATA = (neko_gl_data_t*)RENDER()->user_data; \
-        neko_byte_buffer_write(&CB->commands, u32, (u32)OP_CODE);    \
-        __VA_ARGS__                                                  \
-        CB->num_commands++;                                          \
+#define __ogl_push_command(CB, OP_CODE, ...)                      \
+    do {                                                          \
+        neko_gl_data_t* DATA = (neko_gl_data_t*)RENDER()->ud;     \
+        neko_byte_buffer_write(&CB->commands, u32, (u32)OP_CODE); \
+        __VA_ARGS__                                               \
+        CB->num_commands++;                                       \
     } while (0)
 
-/* Command Buffer Ops: Pipeline / Pass / Bind / Draw */
+// Command Buffer Ops: Pipeline / Pass / Bind / Draw 
 void gfx_renderpass_begin(neko_command_buffer_t* cb, neko_handle(gfx_renderpass_t) hndl) {
     __ogl_push_command(cb, NEKO_OPENGL_OP_BEGIN_RENDER_PASS, { neko_byte_buffer_write(&cb->commands, u32, hndl.id); });
 }
@@ -2548,8 +2514,7 @@ void gfx_texture_request_update(neko_command_buffer_t* cb, neko_handle(gfx_textu
     neko_byte_buffer_write_bulk(&cb->commands, *desc.data, total_size);
 }
 
-void __gfx_update_buffer_internal(neko_command_buffer_t* cb, u32 id, gfx_buffer_type type, gfx_buffer_usage_type usage, size_t sz, size_t offset,
-                                          gfx_buffer_update_type update_type, void* data) {
+void __gfx_update_buffer_internal(neko_command_buffer_t* cb, u32 id, gfx_buffer_type type, gfx_buffer_usage_type usage, size_t sz, size_t offset, gfx_buffer_update_type update_type, void* data) {
     // Write command
     neko_byte_buffer_write(&cb->commands, u32, (u32)NEKO_OPENGL_OP_REQUEST_BUFFER_UPDATE);
     cb->num_commands++;
@@ -2571,7 +2536,7 @@ void __gfx_update_buffer_internal(neko_command_buffer_t* cb, u32 id, gfx_buffer_
 }
 
 void gfx_vertex_buffer_request_update(neko_command_buffer_t* cb, neko_handle(gfx_vertex_buffer_t) hndl, gfx_vertex_buffer_desc_t desc) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
 
     // 如果hndl无效则返回
     if (!hndl.id) return;
@@ -2580,7 +2545,7 @@ void gfx_vertex_buffer_request_update(neko_command_buffer_t* cb, neko_handle(gfx
 }
 
 void gfx_index_buffer_request_update(neko_command_buffer_t* cb, neko_handle(gfx_index_buffer_t) hndl, gfx_index_buffer_desc_t desc) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
 
     // 如果hndl无效则返回
     if (!hndl.id) return;
@@ -2589,7 +2554,7 @@ void gfx_index_buffer_request_update(neko_command_buffer_t* cb, neko_handle(gfx_
 }
 
 void gfx_uniform_buffer_request_update(neko_command_buffer_t* cb, neko_handle(gfx_uniform_buffer_t) hndl, gfx_uniform_buffer_desc_t desc) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
 
     // 如果hndl无效则返回
     if (!hndl.id) return;
@@ -2598,7 +2563,7 @@ void gfx_uniform_buffer_request_update(neko_command_buffer_t* cb, neko_handle(gf
 }
 
 void gfx_storage_buffer_request_update(neko_command_buffer_t* cb, neko_handle(gfx_storage_buffer_t) hndl, gfx_storage_buffer_desc_t desc) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
 
     // 如果hndl无效则返回
     if (!hndl.id) return;
@@ -2607,7 +2572,7 @@ void gfx_storage_buffer_request_update(neko_command_buffer_t* cb, neko_handle(gf
 }
 
 void gfx_apply_bindings(neko_command_buffer_t* cb, gfx_bind_desc_t* binds) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
 
     // Increment commands
     neko_byte_buffer_write(&cb->commands, u32, (u32)NEKO_OPENGL_OP_APPLY_BINDINGS);
@@ -2728,15 +2693,15 @@ void gfx_dispatch_compute(neko_command_buffer_t* cb, u32 num_x_groups, u32 num_y
     });
 }
 
-/* Submission (Main Thread) */
-void gfx_cmd_submit_impl(neko_command_buffer_t* cb) {
+// 提交绘制命令 (Main Thread)
+void gfx_cmd_submit(neko_command_buffer_t* cb) {
     /*
         // Structure of command:
             - Op code
             - Data packet
     */
 
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
 
     // Set read position of buffer to beginning
     neko_byte_buffer_seek_to_beg(&cb->commands);
@@ -2783,13 +2748,13 @@ void gfx_cmd_submit_impl(neko_command_buffer_t* cb) {
             } break;
 
             case NEKO_OPENGL_OP_END_RENDER_PASS: {
-                neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+                neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
                 neko_gl_reset_data_cache(&ogl->cache);
 
                 glBindFramebuffer(GL_FRAMEBUFFER, 0);
                 glBindBuffer(GL_ARRAY_BUFFER, 0);
                 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-                // CHECK_GL_CORE(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0););
+                CHECK_GL_CORE(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0););
                 glDisable(GL_SCISSOR_TEST);
                 glDisable(GL_DEPTH_TEST);
                 glDisable(GL_STENCIL_TEST);
@@ -3214,7 +3179,7 @@ void gfx_cmd_submit_impl(neko_command_buffer_t* cb) {
                             }
 
                             // This is required
-                            // CHECK_GL_CORE(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, sbo->buffer););
+                            CHECK_GL_CORE(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, sbo->buffer););
 
                         } break;
 
@@ -3240,7 +3205,7 @@ void gfx_cmd_submit_impl(neko_command_buffer_t* cb) {
                                     });
 
                             // Bind image texture
-                            // CHECK_GL_CORE(glBindImageTexture(binding, tex->id, 0, GL_FALSE, 0, gl_access, gl_format);)
+                            CHECK_GL_CORE(glBindImageTexture(binding, tex->id, 0, GL_FALSE, 0, gl_access, gl_format);)
                         } break;
 
                         default:
@@ -3269,15 +3234,15 @@ void gfx_cmd_submit_impl(neko_command_buffer_t* cb) {
                 // Reset state as well
                 neko_gl_pipeline_state();
 
-                /* Cache pipeline id */
+                // Cache pipeline id 
                 ogl->cache.pipeline = neko_handle_create(gfx_pipeline_t, pipid);
 
                 neko_gl_pipeline_t* pip = neko_slot_array_getp(ogl->pipelines, pipid);
 
-                /* Compute */
+                // Compute 
                 // Early out if compute, since we're not doing a rasterization stage
                 if (pip->compute.shader.id) {
-                    /* Shader */
+                    // Shader 
                     if (pip->compute.shader.id && neko_slot_array_exists(ogl->shaders, pip->compute.shader.id)) {
                         glUseProgram(neko_slot_array_get(ogl->shaders, pip->compute.shader.id).id);
                     } else {
@@ -3287,7 +3252,7 @@ void gfx_cmd_submit_impl(neko_command_buffer_t* cb) {
                     continue;
                 }
 
-                /* Depth */
+                // Depth 
                 if (!pip->depth.func) {
                     // If no depth function (default), then disable
                     glDisable(GL_DEPTH_TEST);
@@ -3297,7 +3262,7 @@ void gfx_cmd_submit_impl(neko_command_buffer_t* cb) {
                 }
                 glDepthMask(neko_gl_depth_mask_to_gl_mask(pip->depth.mask));
 
-                /* Stencil */
+                // Stencil 
                 if (!pip->stencil.func) {
                     // If no stencil function (default), then disable
                     glDisable(GL_STENCIL_TEST);
@@ -3312,7 +3277,7 @@ void gfx_cmd_submit_impl(neko_command_buffer_t* cb) {
                     glStencilOp(sfail, dpfail, dppass);
                 }
 
-                /* Blend */
+                // Blend 
                 if (!pip->blend.func) {
                     glDisable(GL_BLEND);
                 } else {
@@ -3321,7 +3286,7 @@ void gfx_cmd_submit_impl(neko_command_buffer_t* cb) {
                     glBlendFunc(neko_gl_blend_mode_to_gl_blend_mode(pip->blend.src, GL_ONE), neko_gl_blend_mode_to_gl_blend_mode(pip->blend.dst, GL_ZERO));
                 }
 
-                /* Raster */
+                // Raster 
                 // Face culling
                 if (!pip->raster.face_culling) {
                     glDisable(GL_CULL_FACE);
@@ -3333,7 +3298,7 @@ void gfx_cmd_submit_impl(neko_command_buffer_t* cb) {
                 // Winding order
                 glFrontFace(neko_gl_winding_order_to_gl_winding_order(pip->raster.winding_order));
 
-                /* Shader */
+                // Shader 
                 if (pip->raster.shader.id && neko_slot_array_exists(ogl->shaders, pip->raster.shader.id)) {
                     glUseProgram(neko_slot_array_get(ogl->shaders, pip->raster.shader.id).id);
                 } else {
@@ -3369,9 +3334,9 @@ void gfx_cmd_submit_impl(neko_command_buffer_t* cb) {
                 }
 
                 // Dispatch shader
-                // CHECK_GL_CORE(
-                //         // Memory barrier (TODO: make this specifically set in the pipeline state)
-                //         glDispatchCompute(num_x_groups, num_y_groups, num_z_groups); glMemoryBarrier(GL_ALL_BARRIER_BITS);)
+                CHECK_GL_CORE(
+                        // Memory barrier (TODO: make this specifically set in the pipeline state)
+                        glDispatchCompute(num_x_groups, num_y_groups, num_z_groups); glMemoryBarrier(GL_ALL_BARRIER_BITS);)
             } break;
 
             case NEKO_OPENGL_OP_DRAW: {
@@ -3558,7 +3523,7 @@ void gfx_cmd_submit_impl(neko_command_buffer_t* cb) {
             } break;
 
             case NEKO_OPENGL_OP_REQUEST_BUFFER_UPDATE: {
-                neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+                neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
 
                 // Read handle id
                 neko_byte_buffer_readc(&cb->commands, u32, id);
@@ -3666,13 +3631,13 @@ void gfx_cmd_submit_impl(neko_command_buffer_t* cb) {
 }
 
 neko_gl_data_t* gfx_ogl() {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     return ogl;
 }
 
 void gfx_init(gfx_t* render) {
     // Push back 0 handles into slot arrays (for 0 init validation)
-    neko_gl_data_t* ogl = (neko_gl_data_t*)render->user_data;
+    neko_gl_data_t* ogl = (neko_gl_data_t*)render->ud;
 
     neko_slot_array_insert(ogl->shaders, neko_gl_shader_t{0});
     neko_slot_array_insert(ogl->vertex_buffers, neko_gl_buffer_t{0});
@@ -3715,18 +3680,18 @@ void gfx_init(gfx_t* render) {
     // Compute shader info
     info->compute.available = info->major_version >= 4 && info->minor_version >= 3;
     if (info->compute.available) {
-        // CHECK_GL_CORE({
-        //     // Work group counts
-        //     glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, (i32*)&info->compute.max_work_group_count[0]);
-        //     glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 1, (i32*)&info->compute.max_work_group_count[1]);
-        //     glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 2, (i32*)&info->compute.max_work_group_count[2]);
-        //     // Work group sizes
-        //     glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, (i32*)&info->compute.max_work_group_size[0]);
-        //     glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1, (i32*)&info->compute.max_work_group_size[1]);
-        //     glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, (i32*)&info->compute.max_work_group_size[2]);
-        //     // Work group invocations
-        //     glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, (i32*)&info->compute.max_work_group_invocations);
-        // });
+        CHECK_GL_CORE({
+            // Work group counts
+            glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, (i32*)&info->compute.max_work_group_count[0]);
+            glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 1, (i32*)&info->compute.max_work_group_count[1]);
+            glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 2, (i32*)&info->compute.max_work_group_count[2]);
+            // Work group sizes
+            glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, (i32*)&info->compute.max_work_group_size[0]);
+            glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1, (i32*)&info->compute.max_work_group_size[1]);
+            glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, (i32*)&info->compute.max_work_group_size[2]);
+            // Work group invocations
+            glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, (i32*)&info->compute.max_work_group_invocations);
+        });
     } else {
         // console_log("opengl compute shaders not available");
     }
@@ -3741,108 +3706,65 @@ void gfx_init(gfx_t* render) {
     }
     neko_printf("\n");
 #endif
-
-    // 设置Render上下文的所有函数指针
-
-    // Create
-    render->api.texture_create = gfx_texture_create_impl;
-    render->api.uniform_create = gfx_uniform_create_impl;
-    render->api.shader_create = gfx_shader_create_impl;
-    render->api.vertex_buffer_create = gfx_vertex_buffer_create_impl;
-    render->api.index_buffer_create = gfx_index_buffer_create_impl;
-    render->api.uniform_buffer_create = gfx_uniform_buffer_create_impl;
-    render->api.storage_buffer_create = gfx_storage_buffer_create_impl;
-    render->api.framebuffer_create = gfx_framebuffer_create_impl;
-    render->api.renderpass_create = gfx_renderpass_create_impl;
-    render->api.pipeline_create = gfx_pipeline_create_impl;
-
-    // Destroy
-    render->api.texture_fini = gfx_texture_fini_impl;
-    render->api.uniform_fini = gfx_uniform_fini_impl;
-    render->api.shader_fini = gfx_shader_fini_impl;
-    render->api.vertex_buffer_fini = gfx_vertex_buffer_fini_impl;
-    render->api.index_buffer_fini = gfx_index_buffer_fini_impl;
-    render->api.uniform_buffer_fini = gfx_uniform_buffer_fini_impl;
-    render->api.storage_buffer_fini = gfx_storage_buffer_fini_impl;
-    render->api.framebuffer_fini = gfx_framebuffer_fini_impl;
-    render->api.renderpass_fini = gfx_renderpass_fini_impl;
-    render->api.pipeline_fini = gfx_pipeline_fini_impl;
-
-    // Resource Updates (main thread only)
-    render->api.vertex_buffer_update = gfx_vertex_buffer_update_impl;
-    render->api.index_buffer_update = gfx_index_buffer_update_impl;
-    render->api.storage_buffer_update = gfx_storage_buffer_update_impl;
-    render->api.texture_update = gfx_texture_update_impl;
-    render->api.texture_read = gfx_texture_read_impl;
-
-    // Util
-    render->api.storage_buffer_map_get = gfx_storage_buffer_map_get_impl;
-    render->api.storage_buffer_lock = gfx_storage_buffer_lock_impl;
-    render->api.storage_buffer_unlock = gfx_storage_buffer_unlock_impl;
-
-    // Submission (Main Thread)
-    render->api.command_buffer_submit = gfx_cmd_submit_impl;
 }
-
-#endif  // R_IMPL_OPENGL
 
 neko_gl_data_t* gfx_userdata() { return gfx_ogl(); }
 
 // 资源构造函数
-neko_handle(gfx_texture_t) gfx_texture_create(const gfx_texture_desc_t desc) { return neko_render()->api.texture_create(desc); }
+neko_handle(gfx_texture_t) gfx_texture_create(const gfx_texture_desc_t desc) { return gfx_texture_create_impl(desc); }
 
-neko_handle(gfx_uniform_t) gfx_uniform_create(const gfx_uniform_desc_t desc) { return neko_render()->api.uniform_create(desc); }
+neko_handle(gfx_uniform_t) gfx_uniform_create(const gfx_uniform_desc_t desc) { return gfx_uniform_create_impl(desc); }
 
-neko_handle(gfx_shader_t) gfx_shader_create(const gfx_shader_desc_t desc) { return neko_render()->api.shader_create(desc); }
+neko_handle(gfx_shader_t) gfx_shader_create(const gfx_shader_desc_t desc) { return gfx_shader_create_impl(desc); }
 
-neko_handle(gfx_vertex_buffer_t) gfx_vertex_buffer_create(const gfx_vertex_buffer_desc_t desc) { return neko_render()->api.vertex_buffer_create(desc); }
+neko_handle(gfx_vertex_buffer_t) gfx_vertex_buffer_create(const gfx_vertex_buffer_desc_t desc) { return gfx_vertex_buffer_create_impl(desc); }
 
-neko_handle(gfx_index_buffer_t) gfx_index_buffer_create(const gfx_index_buffer_desc_t desc) { return neko_render()->api.index_buffer_create(desc); }
+neko_handle(gfx_index_buffer_t) gfx_index_buffer_create(const gfx_index_buffer_desc_t desc) { return gfx_index_buffer_create_impl(desc); }
 
-neko_handle(gfx_uniform_buffer_t) gfx_uniform_buffer_create(const gfx_uniform_buffer_desc_t desc) { return neko_render()->api.uniform_buffer_create(desc); }
+neko_handle(gfx_uniform_buffer_t) gfx_uniform_buffer_create(const gfx_uniform_buffer_desc_t desc) { return gfx_uniform_buffer_create_impl(desc); }
 
-neko_handle(gfx_storage_buffer_t) gfx_storage_buffer_create(const gfx_storage_buffer_desc_t desc) { return neko_render()->api.storage_buffer_create(desc); }
+neko_handle(gfx_storage_buffer_t) gfx_storage_buffer_create(const gfx_storage_buffer_desc_t desc) { return gfx_storage_buffer_create_impl(desc); }
 
-neko_handle(gfx_framebuffer_t) gfx_framebuffer_create(const gfx_framebuffer_desc_t desc) { return neko_render()->api.framebuffer_create(desc); }
+neko_handle(gfx_framebuffer_t) gfx_framebuffer_create(const gfx_framebuffer_desc_t desc) { return gfx_framebuffer_create_impl(desc); }
 
-neko_handle(gfx_renderpass_t) gfx_renderpass_create(const gfx_renderpass_desc_t desc) { return neko_render()->api.renderpass_create(desc); }
+neko_handle(gfx_renderpass_t) gfx_renderpass_create(const gfx_renderpass_desc_t desc) { return gfx_renderpass_create_impl(desc); }
 
-neko_handle(gfx_pipeline_t) gfx_pipeline_create(const gfx_pipeline_desc_t desc) { return neko_render()->api.pipeline_create(desc); }
+neko_handle(gfx_pipeline_t) gfx_pipeline_create(const gfx_pipeline_desc_t desc) { return gfx_pipeline_create_impl(desc); }
 
 // Destroy
-void gfx_texture_fini(neko_handle(gfx_texture_t) hndl) { neko_render()->api.texture_fini(hndl); }
+void gfx_texture_fini(neko_handle(gfx_texture_t) hndl) { gfx_texture_fini_impl(hndl); }
 
-void gfx_uniform_fini(neko_handle(gfx_uniform_t) hndl) { neko_render()->api.uniform_fini(hndl); }
+void gfx_uniform_fini(neko_handle(gfx_uniform_t) hndl) { gfx_uniform_fini_impl(hndl); }
 
-void gfx_shader_fini(neko_handle(gfx_shader_t) hndl) { neko_render()->api.shader_fini(hndl); }
+void gfx_shader_fini(neko_handle(gfx_shader_t) hndl) { gfx_shader_fini_impl(hndl); }
 
-void gfx_vertex_buffer_fini(neko_handle(gfx_vertex_buffer_t) hndl) { neko_render()->api.vertex_buffer_fini(hndl); }
+void gfx_vertex_buffer_fini(neko_handle(gfx_vertex_buffer_t) hndl) { gfx_vertex_buffer_fini_impl(hndl); }
 
-void gfx_index_buffer_fini(neko_handle(gfx_index_buffer_t) hndl) { neko_render()->api.index_buffer_fini(hndl); }
+void gfx_index_buffer_fini(neko_handle(gfx_index_buffer_t) hndl) { gfx_index_buffer_fini_impl(hndl); }
 
-void gfx_uniform_buffer_fini(neko_handle(gfx_uniform_buffer_t) hndl) { neko_render()->api.uniform_buffer_fini(hndl); }
+void gfx_uniform_buffer_fini(neko_handle(gfx_uniform_buffer_t) hndl) { gfx_uniform_buffer_fini_impl(hndl); }
 
-void gfx_storage_buffer_fini(neko_handle(gfx_storage_buffer_t) hndl) { neko_render()->api.storage_buffer_fini(hndl); }
+void gfx_storage_buffer_fini(neko_handle(gfx_storage_buffer_t) hndl) { gfx_storage_buffer_fini_impl(hndl); }
 
-void gfx_framebuffer_fini(neko_handle(gfx_framebuffer_t) hndl) { neko_render()->api.framebuffer_fini(hndl); }
+void gfx_framebuffer_fini(neko_handle(gfx_framebuffer_t) hndl) { gfx_framebuffer_fini_impl(hndl); }
 
-void gfx_renderpass_fini(neko_handle(gfx_renderpass_t) hndl) { neko_render()->api.renderpass_fini(hndl); }
+void gfx_renderpass_fini(neko_handle(gfx_renderpass_t) hndl) { gfx_renderpass_fini_impl(hndl); }
 
-void gfx_pipeline_fini(neko_handle(gfx_pipeline_t) hndl) { neko_render()->api.pipeline_fini(hndl); }
+void gfx_pipeline_fini(neko_handle(gfx_pipeline_t) hndl) { gfx_pipeline_fini_impl(hndl); }
 
 // 资源更新 (仅限主线程)
-void gfx_vertex_buffer_update(neko_handle(gfx_vertex_buffer_t) hndl, gfx_vertex_buffer_desc_t* desc) { neko_render()->api.vertex_buffer_update(hndl, desc); }
+void gfx_vertex_buffer_update(neko_handle(gfx_vertex_buffer_t) hndl, gfx_vertex_buffer_desc_t* desc) { gfx_vertex_buffer_update_impl(hndl, desc); }
 
-void gfx_index_buffer_update(neko_handle(gfx_index_buffer_t) hndl, gfx_index_buffer_desc_t* desc) { neko_render()->api.index_buffer_update(hndl, desc); }
+void gfx_index_buffer_update(neko_handle(gfx_index_buffer_t) hndl, gfx_index_buffer_desc_t* desc) { gfx_index_buffer_update_impl(hndl, desc); }
 
-void gfx_storage_buffer_update(neko_handle(gfx_storage_buffer_t) hndl, gfx_storage_buffer_desc_t* desc) { neko_render()->api.storage_buffer_update(hndl, desc); }
+void gfx_storage_buffer_update(neko_handle(gfx_storage_buffer_t) hndl, gfx_storage_buffer_desc_t* desc) { gfx_storage_buffer_update_impl(hndl, desc); }
 
-void gfx_texture_update(neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t* desc) { neko_render()->api.texture_update(hndl, desc); }
+void gfx_texture_update(neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t* desc) { gfx_texture_update_impl(hndl, desc); }
 
-void gfx_texture_read(neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t* desc) { neko_render()->api.texture_read(hndl, desc); }
+void gfx_texture_read(neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t* desc) { gfx_texture_read_impl(hndl, desc); }
 
-void* gfx_storage_buffer_map_get(neko_handle(gfx_storage_buffer_t) hndl) { return neko_render()->api.storage_buffer_map_get(hndl); }
+void* gfx_storage_buffer_map_get(neko_handle(gfx_storage_buffer_t) hndl) { return gfx_storage_buffer_map_get_impl(hndl); }
 
-void gfx_storage_buffer_unlock(neko_handle(gfx_storage_buffer_t) hndl) { return neko_render()->api.storage_buffer_unlock(hndl); }
+void gfx_storage_buffer_unlock(neko_handle(gfx_storage_buffer_t) hndl) { return gfx_storage_buffer_unlock_impl(hndl); }
 
-void* gfx_storage_buffer_lock(neko_handle(gfx_storage_buffer_t) hndl) { return neko_render()->api.storage_buffer_lock(hndl); }
+void* gfx_storage_buffer_lock(neko_handle(gfx_storage_buffer_t) hndl) { return gfx_storage_buffer_lock_impl(hndl); }

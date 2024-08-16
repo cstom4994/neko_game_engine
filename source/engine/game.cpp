@@ -10,6 +10,8 @@
 #include "engine/batch.h"
 #include "engine/camera.h"
 #include "engine/console.h"
+#include "engine/draw.h"
+#include "engine/font.h"
 #include "engine/gfx.h"
 #include "engine/glew_glfw.h"
 #include "engine/inspector.h"
@@ -36,7 +38,7 @@ static Mutex g_init_mtx;
 
 neko_command_buffer_t cb;
 ui_context_t ui;
-neko_immediate_draw_t idraw;
+idraw_t idraw;
 neko_texture_t test_ase;
 
 extern void draw_gui();
@@ -258,7 +260,12 @@ static void _game_init() {
 
         // neko_ui_init_font_stash(&ui, GUI_FONT_STASH);
 
-        ui_dock_ex(&ui, "Style_Editor", "Demo_Window", NEKO_UI_SPLIT_TAB, 0.5f);
+        ui_dock_ex(&ui, "Style_Editor", "Demo_Window", UI_SPLIT_TAB, 0.5f);
+
+        if (g_app->default_font == nullptr) {
+            g_app->default_font = (FontFamily *)mem_alloc(sizeof(FontFamily));
+            g_app->default_font->load_default();
+        }
     }
 }
 
@@ -387,7 +394,7 @@ static void _game_draw() {
                     ImGuiWindow *window = ImGui::GetCurrentWindow();
 
                     ImVec2 bounds = ImGui::GetContentRegionAvail();
-                    CVec2 mouse_pos = input_get_mouse_pos_pixels_fix();  // 窗口内鼠标坐标
+                    LuaVec2 mouse_pos = input_get_mouse_pos_pixels_fix();  // 窗口内鼠标坐标
 
                     neko_assert(window);
                     ImVec2 pos = window->Pos;
@@ -439,6 +446,9 @@ static void _game_draw() {
         neko_idraw_rectvd(&idraw, neko_v2((g_app->width - ts.x) * 0.5f, (g_app->height - ts.y) * 0.5f - td.y - 50.f), ts, neko_v2(0.f, 1.f), neko_v2(1.f, 0.f), color256(255, 255, 255, 255),
                           R_PRIMITIVE_TRIANGLES);
 
+        // neko_idraw_defaults(&idraw);
+        // f32 fy = draw_font(&idraw, g_app->default_font, 40.f, 10.f, 20.f, "-- ! Neko Error ! --");
+
         gfx_renderpass_begin(&cb, R_RENDER_PASS_DEFAULT);
         {
             // gfx_set_viewport(&cb, 0, 0, (u32)g_app->width, (u32)g_app->height);
@@ -484,21 +494,21 @@ void game_run(int argc, char **argv) {
 
 void game_set_bg_color(Color c) { glClearColor(c.r, c.g, c.b, 1.0); }
 
-void game_set_window_size(CVec2 s) { glfwSetWindowSize(g_app->game_window, s.x, s.y); }
+void game_set_window_size(LuaVec2 s) { glfwSetWindowSize(g_app->game_window, s.x, s.y); }
 
-CVec2 game_get_window_size() {
+LuaVec2 game_get_window_size() {
     int w, h;
     glfwGetWindowSize(g_app->game_window, &w, &h);
     return vec2(w, h);
 }
-CVec2 game_unit_to_pixels(CVec2 p) {
-    CVec2 hw = vec2_scalar_mul(game_get_window_size(), 0.5f);
+LuaVec2 game_unit_to_pixels(LuaVec2 p) {
+    LuaVec2 hw = vec2_scalar_mul(game_get_window_size(), 0.5f);
     p = vec2_mul(p, hw);
     p = vec2(p.x + hw.x, p.y - hw.y);
     return p;
 }
-CVec2 game_pixels_to_unit(CVec2 p) {
-    CVec2 hw = vec2_scalar_mul(game_get_window_size(), 0.5f);
+LuaVec2 game_pixels_to_unit(LuaVec2 p) {
+    LuaVec2 hw = vec2_scalar_mul(game_get_window_size(), 0.5f);
     p = vec2(p.x - hw.x, p.y + hw.y);
     p = vec2_div(p, hw);
     return p;

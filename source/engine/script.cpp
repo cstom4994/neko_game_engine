@@ -84,8 +84,8 @@ void script_error(const char *s) {
 }
 
 // 将对象推送为 cdata, t 必须是字符串形式的 FFI 类型说明符
-// 如推入一个 CVec2 应该为 _push_cdata("CVec2 *", &v)
-// 结果是堆栈上的 CVec2 cdata (不是指针)
+// 如推入一个 LuaVec2 应该为 _push_cdata("LuaVec2 *", &v)
+// 结果是堆栈上的 LuaVec2 cdata (不是指针)
 static void _push_cdata(const char *t, void *p) {
     // just call __deref_cdata(t, p)
     lua_State *L = ENGINE_LUA();
@@ -275,19 +275,19 @@ void script_mouse_up(MouseCode mouse) {
     errcheck(luax_pcall_nothrow(L, 2, 0));
 }
 
-void script_mouse_move(CVec2 pos) {
+void script_mouse_move(LuaVec2 pos) {
     lua_State *L = ENGINE_LUA();
 
     script_push_event("mouse_move");
-    _push_cdata("CVec2 *", &pos);
+    _push_cdata("LuaVec2 *", &pos);
     errcheck(luax_pcall_nothrow(L, 2, 0));
 }
 
-void script_scroll(CVec2 scroll) {
+void script_scroll(LuaVec2 scroll) {
     lua_State *L = ENGINE_LUA();
 
     script_push_event("scroll");
-    _push_cdata("CVec2 *", &scroll);
+    _push_cdata("LuaVec2 *", &scroll);
     errcheck(luax_pcall_nothrow(L, 2, 0));
 }
 

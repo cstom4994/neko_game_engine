@@ -2,6 +2,7 @@
 
 #include "engine/asset.h"
 #include "engine/base.h"
+#include "engine/gfx.h"
 
 struct DrawDescription {
     float x;
@@ -55,14 +56,16 @@ void renderer_push_xy(float x, float y);
 #if 0
 void draw_image(const Image *img, DrawDescription *desc);
 void draw_sprite(Sprite *spr, DrawDescription *desc);
-float draw_font(FontFamily *font, float size, float x, float y, String text);
-float draw_font_wrapped(FontFamily *font, float size, float x, float y, String text, float limit);
 void draw_tilemap(const MapLdtk *tm);
 void draw_filled_rect(RectDescription *desc);
 void draw_line_rect(RectDescription *desc);
 void draw_line_circle(float x, float y, float radius);
 void draw_line(float x0, float y0, float x1, float y1);
 #endif
+
+struct FontFamily;
+float draw_font(idraw_t *idraw, FontFamily *font, float size, float x, float y, String text);
+float draw_font_wrapped(idraw_t *idraw, FontFamily *font, float size, float x, float y, String text, float limit);
 
 struct lua_State;
 DrawDescription draw_description_args(lua_State *L, i32 arg_start);

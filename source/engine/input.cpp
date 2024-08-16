@@ -95,18 +95,18 @@ bool input_key_down(KeyCode key) {
     return glfwGetKey(g_app->game_window, glfwkey) == GLFW_PRESS;
 }
 
-CVec2 input_get_mouse_pos_pixels_fix() {
+LuaVec2 input_get_mouse_pos_pixels_fix() {
     double x, y;
     glfwGetCursorPos(g_app->game_window, &x, &y);
     return vec2(x, y);
 }
 
-CVec2 input_get_mouse_pos_pixels() {
+LuaVec2 input_get_mouse_pos_pixels() {
     double x, y;
     glfwGetCursorPos(g_app->game_window, &x, &y);
     return vec2(x, -y);
 }
-CVec2 input_get_mouse_pos_unit() { return game_pixels_to_unit(input_get_mouse_pos_pixels()); }
+LuaVec2 input_get_mouse_pos_unit() { return game_pixels_to_unit(input_get_mouse_pos_pixels()); }
 
 bool input_mouse_down(MouseCode mouse) {
     int glfwmouse = _mousecode_to_glfw(mouse);
@@ -218,7 +218,7 @@ void keyboard_controlled_remove(Entity ent) {
 bool keyboard_controlled_has(Entity ent) { return kc_exists && entity_eq(kc_entity, ent); }
 
 void keyboard_controlled_update_all() {
-    CVec2 dpos = vec2(0, 0), sca;
+    LuaVec2 dpos = vec2(0, 0), sca;
     Scalar rot, aspect;
 
     if (kc_exists) {

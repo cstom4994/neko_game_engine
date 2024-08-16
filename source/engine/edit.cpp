@@ -35,7 +35,7 @@ typedef struct BBoxPoolElem BBoxPoolElem;
 struct BBoxPoolElem {
     EntityPoolElem pool_elem;
 
-    CMat3 wmat;
+    LuaMat3 wmat;
     BBox bbox;
     Scalar selected;  // > 0.5 if and only if selected
 };
@@ -150,7 +150,7 @@ static void _bboxes_update_all() {
 
 // needs bbox shader program to be bound
 static void _bboxes_draw_all() {
-    CVec2 win;
+    LuaVec2 win;
     unsigned int nbboxes;
 
     glUseProgram(bboxes_program);
@@ -168,15 +168,15 @@ static void _bboxes_draw_all() {
 
 // --- grid ----------------------------------------------------------------
 
-static CVec2 grid_size = {1.0, 1.0};
+static LuaVec2 grid_size = {1.0, 1.0};
 
-void edit_set_grid_size(CVec2 size) {
+void edit_set_grid_size(LuaVec2 size) {
     if (size.x < 0.0) size.x = 0.0;
     if (size.y < 0.0) size.y = 0.0;
 
     grid_size = size;
 }
-CVec2 edit_get_grid_size() { return grid_size; }
+LuaVec2 edit_get_grid_size() { return grid_size; }
 
 static CArray *grid_cells;  // bboxes used for drawing grid
 
@@ -184,7 +184,7 @@ static void _grid_create_cells() {
     BBoxPoolElem *cell;
     BBox cbox, cellbox;
     Entity camera;
-    CVec2 cur, csize;
+    LuaVec2 cur, csize;
 
     // find camera bounds in world space
     camera = camera_get_current_camera();
@@ -232,7 +232,7 @@ static void _grid_init() { grid_cells = array_new(BBoxPoolElem); }
 static void _grid_fini() { array_free(grid_cells); }
 
 static void _grid_draw() {
-    CVec2 win;
+    LuaVec2 win;
     unsigned int ncells;
 
     glUseProgram(bboxes_program);
@@ -258,14 +258,14 @@ static GLuint line_vbo;
 
 typedef struct LinePoint LinePoint;
 struct LinePoint {
-    CVec2 position;
+    LuaVec2 position;
     Scalar point_size;
     Color color;
 };
 
 static CArray *line_points;  // each consecutive pair is a line
 
-void edit_line_add(CVec2 a, CVec2 b, Scalar point_size, Color color) {
+void edit_line_add(LuaVec2 a, LuaVec2 b, Scalar point_size, Color color) {
     LinePoint *lp;
 
     lp = (LinePoint *)array_add(line_points);

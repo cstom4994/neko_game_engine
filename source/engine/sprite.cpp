@@ -21,11 +21,11 @@ typedef struct Sprite Sprite;
 struct Sprite {
     EntityPoolElem pool_elem;
 
-    CMat3 wmat;  // 要发送到着色器的世界变换矩阵
+    LuaMat3 wmat;  // 要发送到着色器的世界变换矩阵
 
-    CVec2 size;
-    CVec2 texcell;
-    CVec2 texsize;
+    LuaVec2 size;
+    LuaVec2 texcell;
+    LuaVec2 texsize;
 
     int depth;
 };
@@ -39,7 +39,7 @@ static GLuint vao;
 static GLuint vbo;
 
 static void _set_atlas(const char *filename, bool err) {
-    CVec2 atlas_size;
+    LuaVec2 atlas_size;
 
     bool ok = asset_load(AssetLoadData{AssetKind_Image, true}, filename, NULL);
 
@@ -77,33 +77,33 @@ void sprite_add(Entity ent) {
 void sprite_remove(Entity ent) { entitypool_remove(pool, ent); }
 bool sprite_has(Entity ent) { return entitypool_get(pool, ent) != NULL; }
 
-void sprite_set_size(Entity ent, CVec2 size) {
+void sprite_set_size(Entity ent, LuaVec2 size) {
     Sprite *sprite = (Sprite *)entitypool_get(pool, ent);
     error_assert(sprite);
     sprite->size = size;
 }
-CVec2 sprite_get_size(Entity ent) {
+LuaVec2 sprite_get_size(Entity ent) {
     Sprite *sprite = (Sprite *)entitypool_get(pool, ent);
     error_assert(sprite);
     return sprite->size;
 }
 
-void sprite_set_texcell(Entity ent, CVec2 texcell) {
+void sprite_set_texcell(Entity ent, LuaVec2 texcell) {
     Sprite *sprite = (Sprite *)entitypool_get(pool, ent);
     error_assert(sprite);
     sprite->texcell = texcell;
 }
-CVec2 sprite_get_texcell(Entity ent) {
+LuaVec2 sprite_get_texcell(Entity ent) {
     Sprite *sprite = (Sprite *)entitypool_get(pool, ent);
     error_assert(sprite);
     return sprite->texcell;
 }
-void sprite_set_texsize(Entity ent, CVec2 texsize) {
+void sprite_set_texsize(Entity ent, LuaVec2 texsize) {
     Sprite *sprite = (Sprite *)entitypool_get(pool, ent);
     error_assert(sprite);
     sprite->texsize = texsize;
 }
-CVec2 sprite_get_texsize(Entity ent) {
+LuaVec2 sprite_get_texsize(Entity ent) {
     Sprite *sprite = (Sprite *)entitypool_get(pool, ent);
     error_assert(sprite);
     return sprite->texsize;
@@ -155,7 +155,7 @@ void sprite_fini() {
 
 void sprite_update_all() {
     Sprite *sprite;
-    static CVec2 min = {-0.5, -0.5}, max = {0.5, 0.5};
+    static LuaVec2 min = {-0.5, -0.5}, max = {0.5, 0.5};
 
     entitypool_remove_destroyed(pool, sprite_remove);
 

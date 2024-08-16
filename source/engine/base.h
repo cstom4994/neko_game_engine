@@ -2066,29 +2066,29 @@ bool string_load(char** c, const char* name, const char* d, Store* s);
 NEKO_SCRIPT(
         vec2,
 
-        typedef struct CVec2 CVec2;
-        struct CVec2 {
+        typedef struct LuaVec2 LuaVec2;
+        struct LuaVec2 {
             Scalar x;
             Scalar y;
         };
 
-        NEKO_EXPORT CVec2 vec2(Scalar x, Scalar y); NEKO_EXPORT CVec2 vec2_zero;
+        NEKO_EXPORT LuaVec2 vec2(Scalar x, Scalar y); NEKO_EXPORT LuaVec2 vec2_zero;
 
-        NEKO_EXPORT CVec2 vec2_add(CVec2 u, CVec2 v); NEKO_EXPORT CVec2 vec2_sub(CVec2 u, CVec2 v); NEKO_EXPORT CVec2 vec2_mul(CVec2 u, CVec2 v);  // u * v componentwise
-        NEKO_EXPORT CVec2 vec2_div(CVec2 u, CVec2 v);                                                                                              // u / v componentwise
-        NEKO_EXPORT CVec2 vec2_scalar_mul(CVec2 v, Scalar f); NEKO_EXPORT CVec2 vec2_scalar_div(CVec2 v, Scalar f);                                // (v.x / f, v.y / f)
-        NEKO_EXPORT CVec2 scalar_vec2_div(Scalar f, CVec2 v);                                                                                      // (f / v.x, f / v.y)
-        NEKO_EXPORT CVec2 vec2_neg(CVec2 v);
+        NEKO_EXPORT LuaVec2 vec2_add(LuaVec2 u, LuaVec2 v); NEKO_EXPORT LuaVec2 vec2_sub(LuaVec2 u, LuaVec2 v); NEKO_EXPORT LuaVec2 vec2_mul(LuaVec2 u, LuaVec2 v);  // u * v componentwise
+        NEKO_EXPORT LuaVec2 vec2_div(LuaVec2 u, LuaVec2 v);                                                                                              // u / v componentwise
+        NEKO_EXPORT LuaVec2 vec2_scalar_mul(LuaVec2 v, Scalar f); NEKO_EXPORT LuaVec2 vec2_scalar_div(LuaVec2 v, Scalar f);                                // (v.x / f, v.y / f)
+        NEKO_EXPORT LuaVec2 scalar_vec2_div(Scalar f, LuaVec2 v);                                                                                      // (f / v.x, f / v.y)
+        NEKO_EXPORT LuaVec2 vec2_neg(LuaVec2 v);
 
-        NEKO_EXPORT Scalar vec2_len(CVec2 v); NEKO_EXPORT CVec2 vec2_normalize(CVec2 v); NEKO_EXPORT Scalar vec2_dot(CVec2 u, CVec2 v); NEKO_EXPORT Scalar vec2_dist(CVec2 u, CVec2 v);
+        NEKO_EXPORT Scalar vec2_len(LuaVec2 v); NEKO_EXPORT LuaVec2 vec2_normalize(LuaVec2 v); NEKO_EXPORT Scalar vec2_dot(LuaVec2 u, LuaVec2 v); NEKO_EXPORT Scalar vec2_dist(LuaVec2 u, LuaVec2 v);
 
-        NEKO_EXPORT CVec2 vec2_rot(CVec2 v, Scalar rot); NEKO_EXPORT Scalar vec2_atan2(CVec2 v);
+        NEKO_EXPORT LuaVec2 vec2_rot(LuaVec2 v, Scalar rot); NEKO_EXPORT Scalar vec2_atan2(LuaVec2 v);
 
-        NEKO_EXPORT void vec2_save(CVec2* v, const char* name, Store* s); NEKO_EXPORT bool vec2_load(CVec2* v, const char* name, CVec2 d, Store* s);
+        NEKO_EXPORT void vec2_save(LuaVec2* v, const char* name, Store* s); NEKO_EXPORT bool vec2_load(LuaVec2* v, const char* name, LuaVec2 d, Store* s);
 
 )
 
-#define vec2(x, y) (CVec2{(Scalar)(x), (Scalar)(y)})
+#define vec2(x, y) (LuaVec2{(Scalar)(x), (Scalar)(y)})
 
 NEKO_SCRIPT(
         mat3,
@@ -2102,35 +2102,35 @@ NEKO_SCRIPT(
          *         | m.m[0][2]  m.m[1][2]  m.m[2][2] |
          *         \                                 /
          */
-        typedef struct CMat3 CMat3;
-        struct CMat3 { Scalar m[3][3]; };
+        typedef struct LuaMat3 LuaMat3;
+        struct LuaMat3 { Scalar m[3][3]; };
 
-        NEKO_EXPORT CMat3 mat3(Scalar m00, Scalar m01, Scalar m02, Scalar m10, Scalar m11, Scalar m12, Scalar m20, Scalar m21, Scalar m22);
+        NEKO_EXPORT LuaMat3 mat3(Scalar m00, Scalar m01, Scalar m02, Scalar m10, Scalar m11, Scalar m12, Scalar m20, Scalar m21, Scalar m22);
 
-        NEKO_EXPORT CMat3 mat3_identity();  // 返回单位矩阵
+        NEKO_EXPORT LuaMat3 mat3_identity();  // 返回单位矩阵
 
-        NEKO_EXPORT CMat3 mat3_mul(CMat3 m, CMat3 n);
+        NEKO_EXPORT LuaMat3 mat3_mul(LuaMat3 m, LuaMat3 n);
 
         // 按顺序应用 scale rot 和 trans 的矩阵
-        NEKO_EXPORT CMat3 mat3_scaling_rotation_translation(CVec2 scale, Scalar rot, CVec2 trans);
+        NEKO_EXPORT LuaMat3 mat3_scaling_rotation_translation(LuaVec2 scale, Scalar rot, LuaVec2 trans);
 
-        NEKO_EXPORT CVec2 mat3_get_translation(CMat3 m);
+        NEKO_EXPORT LuaVec2 mat3_get_translation(LuaMat3 m);
 
-        NEKO_EXPORT Scalar mat3_get_rotation(CMat3 m);
+        NEKO_EXPORT Scalar mat3_get_rotation(LuaMat3 m);
 
-        NEKO_EXPORT CVec2 mat3_get_scale(CMat3 m);
+        NEKO_EXPORT LuaVec2 mat3_get_scale(LuaMat3 m);
 
-        NEKO_EXPORT CMat3 mat3_inverse(CMat3 m);
+        NEKO_EXPORT LuaMat3 mat3_inverse(LuaMat3 m);
 
-        NEKO_EXPORT CVec2 mat3_transform(CMat3 m, CVec2 v);
+        NEKO_EXPORT LuaVec2 mat3_transform(LuaMat3 m, LuaVec2 v);
 
-        NEKO_EXPORT void mat3_save(CMat3* m, const char* name, Store* s);
+        NEKO_EXPORT void mat3_save(LuaMat3* m, const char* name, Store* s);
 
-        NEKO_EXPORT bool mat3_load(CMat3* m, const char* name, CMat3 d, Store* s);
+        NEKO_EXPORT bool mat3_load(LuaMat3* m, const char* name, LuaMat3 d, Store* s);
 
 )
 
-#define mat3(m00, m01, m02, m10, m11, m12, m20, m21, m22) (CMat3{{{(m00), (m01), (m02)}, {(m10), (m11), (m12)}, {(m20), (m21), (m22)}}})
+#define mat3(m00, m01, m02, m10, m11, m12, m20, m21, m22) (LuaMat3{{{(m00), (m01), (m02)}, {(m10), (m11), (m12)}, {(m20), (m21), (m22)}}})
 
 #define mat3_identity() mat3(1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f)
 
@@ -2139,20 +2139,20 @@ NEKO_SCRIPT(
 
         typedef struct BBox BBox;
         struct BBox {
-            CVec2 min;
-            CVec2 max;
+            LuaVec2 min;
+            LuaVec2 max;
         };
 
-        NEKO_EXPORT BBox bbox(CVec2 min, CVec2 max);
+        NEKO_EXPORT BBox bbox(LuaVec2 min, LuaVec2 max);
 
-        NEKO_EXPORT BBox bbox_bound(CVec2 a, CVec2 b);
+        NEKO_EXPORT BBox bbox_bound(LuaVec2 a, LuaVec2 b);
 
         NEKO_EXPORT BBox bbox_merge(BBox a, BBox b);
 
-        NEKO_EXPORT bool bbox_contains(BBox b, CVec2 p);
+        NEKO_EXPORT bool bbox_contains(BBox b, LuaVec2 p);
 
         // 返回 bbox 围绕改造后的盒子
-        NEKO_EXPORT BBox bbox_transform(CMat3 m, BBox b);
+        NEKO_EXPORT BBox bbox_transform(LuaMat3 m, BBox b);
 
 )
 
@@ -2210,4 +2210,4 @@ NEKO_SCRIPT(
 #define NEKO_COLOR_MAROON color256(128, 0, 0, 255)
 #define NEKO_COLOR_BROWN color256(165, 42, 42, 255)
 
-inline Color256 neko_color_alpha(Color256 c, u8 a) { return color256(c.r, c.g, c.b, a); }
+inline Color256 color256_alpha(Color256 c, u8 a) { return color256(c.r, c.g, c.b, a); }

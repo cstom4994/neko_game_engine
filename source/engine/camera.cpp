@@ -17,7 +17,7 @@ struct Camera {
 static Entity curr_camera;
 static Entity edit_camera;
 
-static CMat3 inverse_view_matrix;  // 缓存逆视图矩阵
+static LuaMat3 inverse_view_matrix;  // 缓存逆视图矩阵
 
 static EntityPool *pool;
 
@@ -68,17 +68,17 @@ Scalar camera_get_viewport_height(Entity ent) {
     return camera->viewport_height;
 }
 
-CMat3 camera_get_inverse_view_matrix() { return inverse_view_matrix; }
+LuaMat3 camera_get_inverse_view_matrix() { return inverse_view_matrix; }
 
-const CMat3 *camera_get_inverse_view_matrix_ptr() { return &inverse_view_matrix; }
+const LuaMat3 *camera_get_inverse_view_matrix_ptr() { return &inverse_view_matrix; }
 
-CVec2 camera_world_to_pixels(CVec2 p) { return game_unit_to_pixels(camera_world_to_unit(p)); }
-CVec2 camera_world_to_unit(CVec2 p) {
+LuaVec2 camera_world_to_pixels(LuaVec2 p) { return game_unit_to_pixels(camera_world_to_unit(p)); }
+LuaVec2 camera_world_to_unit(LuaVec2 p) {
     // use cached inverse view matrix
     return mat3_transform(inverse_view_matrix, p);
 }
-CVec2 camera_pixels_to_world(CVec2 p) { return camera_unit_to_world(game_pixels_to_unit(p)); }
-CVec2 camera_unit_to_world(CVec2 p) {
+LuaVec2 camera_pixels_to_world(LuaVec2 p) { return camera_unit_to_world(game_pixels_to_unit(p)); }
+LuaVec2 camera_unit_to_world(LuaVec2 p) {
     Entity cam = camera_get_current_camera();
     if (!entity_eq(cam, entity_nil)) return transform_local_to_world(cam, p);
     return p;
@@ -98,11 +98,11 @@ void camera_init() {
 void camera_fini() { entitypool_free(pool); }
 
 void camera_update_all() {
-    CVec2 win_size;
+    LuaVec2 win_size;
     Scalar aspect;
     Camera *camera;
     Entity cam;
-    CVec2 scale;
+    LuaVec2 scale;
     static BBox bbox = {{-1, -1}, {1, 1}};
 
     entitypool_remove_destroyed(pool, camera_remove);

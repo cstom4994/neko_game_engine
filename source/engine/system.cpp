@@ -75,8 +75,8 @@ static void _mouse_up(MouseCode mouse) {
     gui_mouse_up(mouse);
     script_mouse_up(mouse);
 }
-static void _mouse_move(CVec2 pos) { script_mouse_move(pos); }
-static void _scroll(CVec2 scroll) { script_scroll(scroll); }
+static void _mouse_move(LuaVec2 pos) { script_mouse_move(pos); }
+static void _scroll(LuaVec2 scroll) { script_scroll(scroll); }
 
 void system_init() {
     PROFILE_FUNC();

@@ -146,9 +146,9 @@ void neko_tiled_unload(map_t* map);
 typedef struct neko_tiled_quad_t {
     u32 tileset_id;
     Texture texture;
-    CVec2 texture_size;
-    CVec2 position;
-    CVec2 dimentions;
+    LuaVec2 texture_size;
+    LuaVec2 position;
+    LuaVec2 dimentions;
     Vector4 rectangle;
     Color256 color;
     bool use_texture;

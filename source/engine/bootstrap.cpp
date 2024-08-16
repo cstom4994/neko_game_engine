@@ -134,7 +134,7 @@ void game_init() {
 
     ui_init_font_stash(&ENGINE_INTERFACE()->ui, GUI_FONT_STASH);
 
-    ui_dock_ex(&ENGINE_INTERFACE()->ui, "Style_Editor", "Demo_Window", NEKO_UI_SPLIT_TAB, 0.5f);
+    ui_dock_ex(&ENGINE_INTERFACE()->ui, "Style_Editor", "Demo_Window", UI_SPLIT_TAB, 0.5f);
 
     neko_game()->imgui = neko_imgui_new(&ENGINE_INTERFACE()->cb, neko_os_main_window(), false);
 

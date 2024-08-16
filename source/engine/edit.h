@@ -20,9 +20,9 @@ NEKO_SCRIPT(
         NEKO_EXPORT bool edit_get_editable(Entity ent);
 
         // 每个维度上都是非负的 零意味着没有网格
-        NEKO_EXPORT void edit_set_grid_size(CVec2 size);
+        NEKO_EXPORT void edit_set_grid_size(LuaVec2 size);
 
-        NEKO_EXPORT CVec2 edit_get_grid_size();
+        NEKO_EXPORT LuaVec2 edit_get_grid_size();
 
         // 用于点击选择等
         NEKO_EXPORT void edit_bboxes_update(Entity ent, BBox bbox);  // 合并bbox
@@ -43,7 +43,7 @@ NEKO_SCRIPT(
         NEKO_EXPORT void edit_bboxes_set_selected(Entity ent, bool selected);
 
         // 在两个世界空间坐标之间画一条线
-        NEKO_EXPORT void edit_line_add(CVec2 a, CVec2 b, Scalar point_size, Color color);
+        NEKO_EXPORT void edit_line_add(LuaVec2 a, LuaVec2 b, Scalar point_size, Color color);
 
 )
 

@@ -763,8 +763,8 @@ static EntityMap *debug_draw_map;
 
 // chipmunk utilities
 
-static inline cpVect cpv_of_vec2(CVec2 v) { return cpv(v.x, v.y); }
-static inline CVec2 vec2_of_cpv(cpVect v) { return vec2(v.x, v.y); }
+static inline cpVect cpv_of_vec2(LuaVec2 v) { return cpv(v.x, v.y); }
+static inline LuaVec2 vec2_of_cpv(cpVect v) { return vec2(v.x, v.y); }
 
 static inline void _remove_body(cpBody *body)
 {
@@ -781,11 +781,11 @@ static inline void _remove_shape(cpShape *shape)
 
 // -------------------------------------------------------------------------
 
-void physics_set_gravity(CVec2 g)
+void physics_set_gravity(LuaVec2 g)
 {
     cpSpaceSetGravity(space, cpv_of_vec2(g));
 }
-CVec2 physics_get_gravity()
+LuaVec2 physics_get_gravity()
 {
     return vec2_of_cpv(cpSpaceGetGravity(space));
 }
@@ -976,7 +976,7 @@ static unsigned int _shape_add(Entity ent, PhysicsShape type, cpShape *shape)
     return array_length(info->shapes) - 1;
 }
 unsigned int physics_shape_add_circle(Entity ent, Scalar r,
-                                      CVec2 offset)
+                                      LuaVec2 offset)
 {
     cpShape *shape = cpCircleShapeNew(NULL, r, cpv_of_vec2(offset));
     return _shape_add(ent, PS_CIRCLE, shape);
@@ -989,7 +989,7 @@ unsigned int physics_shape_add_box(Entity ent, BBox b, Scalar r)
 }
 unsigned int physics_shape_add_poly(Entity ent,
                                     unsigned int nverts,
-                                    const CVec2 *verts,
+                                    const LuaVec2 *verts,
                                     Scalar r)
 {
     unsigned int i;
@@ -1050,7 +1050,7 @@ int physics_poly_get_num_verts(Entity ent, unsigned int i)
     return cpPolyShapeGetNumVerts(_get_shape(info, i)->shape);
 }
 
-unsigned int physics_convex_hull(unsigned int nverts, CVec2 *verts)
+unsigned int physics_convex_hull(unsigned int nverts, LuaVec2 *verts)
 {
     cpVect *cpverts;
     unsigned int i;
@@ -1067,13 +1067,13 @@ unsigned int physics_convex_hull(unsigned int nverts, CVec2 *verts)
 
 void physics_shape_set_surface_velocity(Entity ent,
                                         unsigned int i,
-                                        CVec2 v)
+                                        LuaVec2 v)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
     error_assert(info);
     cpShapeSetSurfaceVelocity(_get_shape(info, i)->shape, cpv_of_vec2(v));
 }
-CVec2 physics_shape_get_surface_velocity(Entity ent,
+LuaVec2 physics_shape_get_surface_velocity(Entity ent,
                                         unsigned int i)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
@@ -1139,25 +1139,25 @@ bool physics_get_freeze_rotation(Entity ent)
     return cpBodyGetMoment(info->body) == SCALAR_INFINITY;
 }
 
-void physics_set_velocity(Entity ent, CVec2 vel)
+void physics_set_velocity(Entity ent, LuaVec2 vel)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
     error_assert(info);
     cpBodySetVel(info->body, cpv_of_vec2(vel));
 }
-CVec2 physics_get_velocity(Entity ent)
+LuaVec2 physics_get_velocity(Entity ent)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
     error_assert(info);
     return vec2_of_cpv(cpBodyGetVel(info->body));
 }
-void physics_set_force(Entity ent, CVec2 force)
+void physics_set_force(Entity ent, LuaVec2 force)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
     error_assert(info);
     cpBodySetForce(info->body, cpv_of_vec2(force));
 }
-CVec2 physics_get_force(Entity ent)
+LuaVec2 physics_get_force(Entity ent)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
     error_assert(info);
@@ -1220,21 +1220,21 @@ void physics_reset_forces(Entity ent)
     error_assert(info);
     cpBodyResetForces(info->body);
 }
-void physics_apply_force(Entity ent, CVec2 force)
+void physics_apply_force(Entity ent, LuaVec2 force)
 {
     physics_apply_force_at(ent, force, vec2_zero);
 }
-void physics_apply_force_at(Entity ent, CVec2 force, CVec2 at)
+void physics_apply_force_at(Entity ent, LuaVec2 force, LuaVec2 at)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
     error_assert(info);
     cpBodyApplyForce(info->body, cpv_of_vec2(force), cpv_of_vec2(at));
 }
-void physics_apply_impulse(Entity ent, CVec2 impulse)
+void physics_apply_impulse(Entity ent, LuaVec2 impulse)
 {
     physics_apply_impulse_at(ent, impulse, vec2_zero);
 }
-void physics_apply_impulse_at(Entity ent, CVec2 impulse, CVec2 at)
+void physics_apply_impulse_at(Entity ent, LuaVec2 impulse, LuaVec2 at)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
     error_assert(info);
@@ -1291,7 +1291,7 @@ Collision *physics_get_collisions(Entity ent)
 
 // --- queries -------------------------------------------------------------
 
-NearestResult physics_nearest(CVec2 point, Scalar max_dist)
+NearestResult physics_nearest(LuaVec2 point, Scalar max_dist)
 {
     cpNearestPointQueryInfo info;
     NearestResult res;
@@ -1336,7 +1336,7 @@ void physics_init()
     glBindVertexArray(vao);
     glGenBuffers(1, &vbo);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    gfx_bind_vertex_attrib(program, GL_FLOAT, 2, "position", CVec2, x);
+    gfx_bind_vertex_attrib(program, GL_FLOAT, 2, "position", LuaVec2, x);
 }
 void physics_fini()
 {
@@ -1468,7 +1468,7 @@ void physics_post_update_all()
 
 static void _circle_draw(PhysicsInfo *info, ShapeInfo *shapeInfo)
 {
-    static CVec2 verts[] = {
+    static LuaVec2 verts[] = {
         {  1.0,  0.0 }, {  0.7071,  0.7071 },
         {  0.0,  1.0 }, { -0.7071,  0.7071 },
         { -1.0,  0.0 }, { -0.7071, -0.7071 },
@@ -1476,7 +1476,7 @@ static void _circle_draw(PhysicsInfo *info, ShapeInfo *shapeInfo)
     }, offset;
     const unsigned int nverts = sizeof(verts) / sizeof(verts[0]);
     Scalar r;
-    CMat3 wmat;
+    LuaMat3 wmat;
 
     wmat = transform_get_world_matrix(info->pool_elem.ent);
     offset = vec2_of_cpv(cpCircleShapeGetOffset(shapeInfo->shape));
@@ -1490,7 +1490,7 @@ static void _circle_draw(PhysicsInfo *info, ShapeInfo *shapeInfo)
 
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, nverts * sizeof(CVec2),
+    glBufferData(GL_ARRAY_BUFFER, nverts * sizeof(LuaVec2),
                  verts, GL_STREAM_DRAW);
     glDrawArrays(GL_LINE_LOOP, 0, nverts);
     glDrawArrays(GL_POINTS, 0, nverts);
@@ -1499,8 +1499,8 @@ static void _circle_draw(PhysicsInfo *info, ShapeInfo *shapeInfo)
 static void _polygon_draw(PhysicsInfo *info, ShapeInfo *shapeInfo)
 {
     unsigned int i, nverts;
-    CVec2 *verts;
-    CMat3 wmat;
+    LuaVec2 *verts;
+    LuaMat3 wmat;
 
     wmat = transform_get_world_matrix(info->pool_elem.ent);
     glUniformMatrix3fv(glGetUniformLocation(program, "wmat"),
@@ -1511,15 +1511,15 @@ static void _polygon_draw(PhysicsInfo *info, ShapeInfo *shapeInfo)
     glUniform2f(glGetUniformLocation(program, "offset"), 0, 0);
     glUniform1f(glGetUniformLocation(program, "radius"), 1);
 
-    // copy as CVec2 array
+    // copy as LuaVec2 array
     nverts = cpPolyShapeGetNumVerts(shapeInfo->shape);
-    verts = mem_alloc(nverts * sizeof(CVec2));
+    verts = mem_alloc(nverts * sizeof(LuaVec2));
     for (i = 0; i < nverts; ++i)
         verts[i] = vec2_of_cpv(cpPolyShapeGetVert(shapeInfo->shape, i));
 
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, nverts * sizeof(CVec2),
+    glBufferData(GL_ARRAY_BUFFER, nverts * sizeof(LuaVec2),
                  verts, GL_STREAM_DRAW);
     glDrawArrays(GL_LINE_LOOP, 0, nverts);
     glDrawArrays(GL_POINTS, 0, nverts);
@@ -1562,12 +1562,12 @@ void physics_draw_all()
 // chipmunk data save/load helpers
 static void _cpv_save(cpVect *cv, const char *n, Store *s)
 {
-    CVec2 v = vec2_of_cpv(*cv);
+    LuaVec2 v = vec2_of_cpv(*cv);
     vec2_save(&v, n, s);
 }
 static bool _cpv_load(cpVect *cv, const char *n, cpVect d, Store *s)
 {
-    CVec2 v;
+    LuaVec2 v;
     if (vec2_load(&v, n, vec2_zero, s))
     {
         *cv = cpv_of_vec2(v);

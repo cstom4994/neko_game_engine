@@ -18,9 +18,12 @@ typedef struct Texture {
 
 bool texture_load(Texture *tex, String filename, bool flip_image_vertical = true);
 void texture_bind(const char *filename);
-CVec2 texture_get_size(const char *filename);  // (width, height)
+LuaVec2 texture_get_size(const char *filename);  // (width, height)
 Texture texture_get_ptr(const char *filename);
 bool texture_update(Texture *tex, String filename);
 bool texture_update_data(Texture *tex, u8 *data);
+
+u64 generate_texture_handle(void *pixels, int w, int h, void *udata);
+void destroy_texture_handle(u64 texture_id, void *udata);
 
 #endif

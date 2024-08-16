@@ -67,8 +67,8 @@ NEKO_SCRIPT(physics,
 
        // global
 
-       NEKO_EXPORT void physics_set_gravity(CVec2 g);
-       NEKO_EXPORT CVec2 physics_get_gravity();
+       NEKO_EXPORT void physics_set_gravity(LuaVec2 g);
+       NEKO_EXPORT LuaVec2 physics_get_gravity();
        NEKO_EXPORT void physics_set_simulation_frequency(Scalar freq);
        NEKO_EXPORT Scalar physics_get_simulation_frequency();
 
@@ -110,13 +110,13 @@ NEKO_SCRIPT(physics,
        };
 
        NEKO_EXPORT unsigned int physics_shape_add_circle(Entity ent, Scalar r,
-                                                    CVec2 offset);
+                                                    LuaVec2 offset);
 
        // 'r' is a 'rounding radius' added polygon to the polygon smooth
        NEKO_EXPORT unsigned int physics_shape_add_box(Entity ent, BBox b, Scalar r);
        NEKO_EXPORT unsigned int physics_shape_add_poly(Entity ent,
                                                   unsigned int nverts,
-                                                  const CVec2 *verts,
+                                                  const LuaVec2 *verts,
                                                   Scalar r);
 
        NEKO_EXPORT unsigned int physics_get_num_shapes(Entity ent);
@@ -128,7 +128,7 @@ NEKO_SCRIPT(physics,
 
        // modifies array in-place, returns number of convex hull vertices
        NEKO_EXPORT unsigned int physics_convex_hull(unsigned int nverts,
-                                               CVec2 *verts);
+                                               LuaVec2 *verts);
 
        NEKO_EXPORT void physics_shape_set_sensor(Entity ent,
                                             unsigned int i,
@@ -138,8 +138,8 @@ NEKO_SCRIPT(physics,
 
        NEKO_EXPORT void physics_shape_set_surface_velocity(Entity ent,
                                                       unsigned int i,
-                                                      CVec2 v);
-       NEKO_EXPORT CVec2 physics_shape_get_surface_velocity(Entity ent,
+                                                      LuaVec2 v);
+       NEKO_EXPORT LuaVec2 physics_shape_get_surface_velocity(Entity ent,
                                                       unsigned int i);
 
        // dynamics
@@ -150,10 +150,10 @@ NEKO_SCRIPT(physics,
        NEKO_EXPORT void physics_set_freeze_rotation(Entity ent, bool freeze);
        NEKO_EXPORT bool physics_get_freeze_rotation(Entity ent);
 
-       NEKO_EXPORT void physics_set_velocity(Entity ent, CVec2 vel);
-       NEKO_EXPORT CVec2 physics_get_velocity(Entity ent);
-       NEKO_EXPORT void physics_set_force(Entity ent, CVec2 force);
-       NEKO_EXPORT CVec2 physics_get_force(Entity ent);
+       NEKO_EXPORT void physics_set_velocity(Entity ent, LuaVec2 vel);
+       NEKO_EXPORT LuaVec2 physics_get_velocity(Entity ent);
+       NEKO_EXPORT void physics_set_force(Entity ent, LuaVec2 force);
+       NEKO_EXPORT LuaVec2 physics_get_force(Entity ent);
 
        NEKO_EXPORT void physics_set_angular_velocity(Entity ent, Scalar ang_vel);
        NEKO_EXPORT Scalar physics_get_angular_velocity(Entity ent);
@@ -166,10 +166,10 @@ NEKO_SCRIPT(physics,
        NEKO_EXPORT Scalar physics_get_angular_velocity_limit(Entity ent);
 
        NEKO_EXPORT void physics_reset_forces(Entity ent);
-       NEKO_EXPORT void physics_apply_force(Entity ent, CVec2 force);
-       NEKO_EXPORT void physics_apply_force_at(Entity ent, CVec2 force, CVec2 at);
-       NEKO_EXPORT void physics_apply_impulse(Entity ent, CVec2 impulse);
-       NEKO_EXPORT void physics_apply_impulse_at(Entity ent, CVec2 impulse, CVec2 at);
+       NEKO_EXPORT void physics_apply_force(Entity ent, LuaVec2 force);
+       NEKO_EXPORT void physics_apply_force_at(Entity ent, LuaVec2 force, LuaVec2 at);
+       NEKO_EXPORT void physics_apply_impulse(Entity ent, LuaVec2 impulse);
+       NEKO_EXPORT void physics_apply_impulse_at(Entity ent, LuaVec2 impulse, LuaVec2 at);
 
 
        // collisions
@@ -190,12 +190,12 @@ NEKO_SCRIPT(physics,
        struct NearestResult
        {
            Entity ent; // closest entity or entity_nil if none in range
-           CVec2 p; // closest point on shape surface
+           LuaVec2 p; // closest point on shape surface
            Scalar d; // distance to point, negative if inside
-           CVec2 g; // gradient of distance function
+           LuaVec2 g; // gradient of distance function
        };
 
-       NEKO_EXPORT NearestResult physics_nearest(CVec2 point, Scalar max_dist);
+       NEKO_EXPORT NearestResult physics_nearest(LuaVec2 point, Scalar max_dist);
 
 
     )

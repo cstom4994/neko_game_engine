@@ -1038,7 +1038,7 @@ void neko_tiled_render_map(neko_tiled_renderer *tiled_render) {
 
     // auto xform = lua2struct::unpack<neko_vec2>(L, 3);
 
-    CVec2 xform = {1.0f, 1.0f};
+    LuaVec2 xform = {1.0f, 1.0f};
 
     // f32 l = lua_tonumber(L, 4);
     // f32 r = lua_tonumber(L, 5);

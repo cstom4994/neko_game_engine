@@ -62,19 +62,19 @@ NEKO_SCRIPT(sprite,
             NEKO_EXPORT bool sprite_has(Entity ent);
 
             // size to draw in world units, centered at transform position
-            NEKO_EXPORT void sprite_set_size(Entity ent, CVec2 size);
+            NEKO_EXPORT void sprite_set_size(Entity ent, LuaVec2 size);
 
-            NEKO_EXPORT CVec2 sprite_get_size(Entity ent);
+            NEKO_EXPORT LuaVec2 sprite_get_size(Entity ent);
 
             // bottom left corner of atlas region in pixels
-            NEKO_EXPORT void sprite_set_texcell(Entity ent, CVec2 texcell);
+            NEKO_EXPORT void sprite_set_texcell(Entity ent, LuaVec2 texcell);
 
-            NEKO_EXPORT CVec2 sprite_get_texcell(Entity ent);
+            NEKO_EXPORT LuaVec2 sprite_get_texcell(Entity ent);
 
             // size of atlas region in pixels
-            NEKO_EXPORT void sprite_set_texsize(Entity ent, CVec2 texsize);
+            NEKO_EXPORT void sprite_set_texsize(Entity ent, LuaVec2 texsize);
 
-            NEKO_EXPORT CVec2 sprite_get_texsize(Entity ent);
+            NEKO_EXPORT LuaVec2 sprite_get_texsize(Entity ent);
 
             // lower depth drawn on top
             NEKO_EXPORT void sprite_set_depth(Entity ent, int depth);

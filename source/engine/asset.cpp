@@ -754,7 +754,7 @@ void assets_perform_hot_reload_changes() {
     for (FileChange change : g_assets.changes) {
         Asset a = {};
         bool exists = asset_read(change.key, &a);
-        assert(exists);
+        neko_assert(exists);
 
         a.modtime = change.modtime;
 

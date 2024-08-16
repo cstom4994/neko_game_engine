@@ -25,6 +25,7 @@
 #include "engine/prelude.h"
 #include "engine/reflection.hpp"
 #include "engine/seri.h"
+#include "engine/ui.h"
 
 #pragma region test
 
@@ -518,8 +519,7 @@ int test_xml(lua_State* L) {
 extern ui_context_t ui;
 
 void editor_dockspace(ui_context_t* ctx) {
-    u64 opt = NEKO_UI_OPT_NOCLIP | NEKO_UI_OPT_NOFRAME | NEKO_UI_OPT_FORCESETRECT | NEKO_UI_OPT_NOTITLE | NEKO_UI_OPT_DOCKSPACE | NEKO_UI_OPT_FULLSCREEN | NEKO_UI_OPT_NOMOVE |
-              NEKO_UI_OPT_NOBRINGTOFRONT | NEKO_UI_OPT_NOFOCUS | NEKO_UI_OPT_NORESIZE;
+    u64 opt = UI_OPT_NOCLIP | UI_OPT_NOFRAME | UI_OPT_FORCESETRECT | UI_OPT_NOTITLE | UI_OPT_DOCKSPACE | UI_OPT_FULLSCREEN | UI_OPT_NOMOVE | UI_OPT_NOBRINGTOFRONT | UI_OPT_NOFOCUS | UI_OPT_NORESIZE;
     ui_window_begin_ex(ctx, "Dockspace", ui_rect(350, 40, 600, 500), NULL, NULL, opt);
     {
         // Editor dockspace
@@ -557,7 +557,7 @@ void draw_gui() {
 
     // Custom callback for immediate drawing directly into the gui window
     auto gui_cb = [](ui_context_t* ctx, struct ui_customcommand_t* cmd) {
-        neko_immediate_draw_t* gui_idraw = &ctx->gui_idraw;  // Immediate draw list in gui context
+        idraw_t* gui_idraw = &ctx->gui_idraw;  // Immediate draw list in gui context
         neko_vec2 fbs = ctx->framebuffer_size;               // Framebuffer size bound for gui context
         Color256* color = (Color256*)cmd->data;              // Grab custom data
         // neko_asset_texture_t* tp = neko_assets_getp(&am, neko_asset_texture_t, tex_hndl);
@@ -660,8 +660,8 @@ void draw_gui() {
     {
         editor_dockspace(&ui);
 
-#if 0
-        if (neko_game()->cvar.show_gui) {
+#if 1
+        if (1) {
 
             ui_demo_window(&ui, ui_rect(100, 100, 500, 500), NULL);
             ui_style_editor(&ui, NULL, ui_rect(350, 250, 300, 240), NULL);
@@ -671,7 +671,7 @@ void draw_gui() {
             // const ui_style_sheet_t *ss = &game_userdata->style_sheet;
 
             const neko_vec2 ss_ws = neko_v2(500.f, 300.f);
-            ui_window_begin(&ui, "Window", ui_rect((neko_game()->DisplaySize.x - ss_ws.x) * 0.5f, (neko_game()->DisplaySize.y - ss_ws.y) * 0.5f, ss_ws.x, ss_ws.y));
+            ui_window_begin(&ui, "Window", ui_rect((g_app->width - ss_ws.x) * 0.5f, (g_app->height - ss_ws.y) * 0.5f, ss_ws.x, ss_ws.y));
             {
                 // Cache the current container
                 ui_container_t* cnt = ui_get_current_container(&ui);
@@ -706,7 +706,7 @@ void draw_gui() {
             }
             ui_window_end(&ui);
 
-            ui_window_begin(&ui, "Idraw", ui_rect((neko_game()->DisplaySize.x - ws.x) * 0.2f, (neko_game()->DisplaySize.y - ws.y) * 0.5f, ws.x, ws.y));
+            ui_window_begin(&ui, "Idraw", ui_rect((g_app->width - ws.x) * 0.2f, (g_app->height - ws.y) * 0.5f, ws.x, ws.y));
             {
                 // Cache the current container
                 ui_container_t* cnt = ui_get_current_container(&ui);
