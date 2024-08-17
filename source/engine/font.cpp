@@ -22,7 +22,8 @@ bool FontFamily::load(String filepath) {
 
 void FontFamily::trash() {
     for (auto [k, v] : ranges) {
-        // v->image.trash();
+        // gfx_fini会释放所有texture
+        // destroy_texture_handle(v->tex.id, NULL);
     }
     sb.trash();
     ranges.trash();

@@ -360,13 +360,13 @@ void DebugAllocator::free(void* ptr) {
     ::free(info);
 }
 
-void DebugAllocator::dump_allocs() {
+void DebugAllocator::dump_allocs(bool detailed) {
     i32 allocs = 0;
     for (DebugAllocInfo* info = head; info != nullptr; info = info->next) {
-        printf("  %10llu bytes: %s:%d\n", (unsigned long long)info->size, info->file, info->line);
+        if (detailed) printf("  %10llu bytes: %s:%d\n", (unsigned long long)info->size, info->file, info->line);
         allocs++;
     }
-    neko_println("  --- %d allocation(s) with %lld bytes ---", allocs, alloc_size);
+    neko_println("  --- leaks %d allocation(s) with %lld bytes ---", allocs, alloc_size);
 }
 
 // Platform File IO

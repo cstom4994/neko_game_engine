@@ -133,8 +133,8 @@ void draw_line(float x0, float y0, float x1, float y1);
 #endif
 
 struct FontFamily;
-float draw_font(idraw_t* idraw, FontFamily* font, float size, float x, float y, String text);
-float draw_font_wrapped(idraw_t* idraw, FontFamily* font, float size, float x, float y, String text, float limit);
+float draw_font(idraw_t* idraw, FontFamily* font, float size, float x, float y, String text, Color256 col);
+float draw_font_wrapped(idraw_t* idraw, FontFamily* font, float size, float x, float y, String text, Color256 col, float limit);
 
 struct lua_State;
 DrawDescription draw_description_args(lua_State* L, i32 arg_start);

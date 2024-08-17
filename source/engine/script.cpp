@@ -238,6 +238,13 @@ void script_post_update_all() {
     errcheck(luax_pcall_nothrow(L, 1, 0));
 }
 
+void script_draw_ui() {
+    lua_State *L = ENGINE_LUA();
+
+    script_push_event("draw_ui");
+    errcheck(luax_pcall_nothrow(L, 1, 0));
+}
+
 void script_draw_all() {
     lua_State *L = ENGINE_LUA();
 

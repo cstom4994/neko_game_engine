@@ -12,7 +12,6 @@
 #include <string>
 #include <tuple>
 #include <type_traits>
-#include <typeinfo>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -1682,8 +1681,8 @@ enum { UI_HINT_FLAG_NO_SCALE_BIAS_MOUSE = (1 << 0), UI_HINT_FLAG_NO_INVERT_Y = (
 
 typedef struct ui_hints_t {
     vec2 framebuffer_size;  // Overall framebuffer size
-    ui_rect_t viewport;          // Viewport within framebuffer for gui context
-    i32 flags;                   // Flags for hints
+    ui_rect_t viewport;     // Viewport within framebuffer for gui context
+    i32 flags;              // Flags for hints
 } ui_hints_t;
 
 ui_rect_t ui_rect(float x, float y, float w, float h);
@@ -1869,5 +1868,9 @@ void ui_dock_ex(ui_context_t* ctx, const char* dst, const char* src, i32 split_t
 void ui_undock_ex(ui_context_t* ctx, const char* name);
 void ui_dock_ex_cnt(ui_context_t* ctx, ui_container_t* dst, ui_container_t* src, i32 split_type, float ratio);
 void ui_undock_ex_cnt(ui_context_t* ctx, ui_container_t* cnt);
+
+// lua binding
+int open_ui(lua_State* L);
+int open_mt_ui_container(lua_State* L);
 
 #endif

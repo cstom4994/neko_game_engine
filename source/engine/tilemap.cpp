@@ -559,9 +559,9 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
 
     PROFILE_FUNC();
 
-    map->doc = neko_xml_parse_file(tmx_path);
+    map->doc = xml_parse_vfs(tmx_path);
     if (!map->doc) {
-        console_log("Failed to parse XML: %s", neko_xml_get_error());
+        neko_panic("Failed to parse XML: %s", xml_get_error());
         return;
     }
 
@@ -572,36 +572,36 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
         strcpy(tmx_root_path, res_path);
     }
 
-    neko_xml_node_t *map_node = neko_xml_find_node(map->doc, "map");
+    xml_node_t *map_node = xml_find_node(map->doc, "map");
     neko_assert(map_node);  // Must have a map node!
 
-    for (neko_xml_node_iter_t it = neko_xml_new_node_child_iter(map_node, "tileset"); neko_xml_node_iter_next(&it);) {
+    for (xml_node_iter_t it = xml_new_node_child_iter(map_node, "tileset"); xml_node_iter_next(&it);) {
         tileset_t tileset = {0};
 
-        tileset.first_gid = (u32)neko_xml_find_attribute(it.current, "firstgid")->value.number;
+        tileset.first_gid = (u32)xml_find_attribute(it.current, "firstgid")->value.number;
 
         char tileset_path[256];
-        neko_snprintf(tileset_path, 256, "%s/%s", tmx_root_path, neko_xml_find_attribute(it.current, "source")->value.string);
-        neko_xml_document_t *tileset_doc = neko_xml_parse_file(tileset_path);
+        neko_snprintf(tileset_path, 256, "%s/%s", tmx_root_path, xml_find_attribute(it.current, "source")->value.string);
+        xml_document_t *tileset_doc = xml_parse_vfs(tileset_path);
         if (!tileset_doc) {
-            console_log("Failed to parse XML from %s: %s", tileset_path, neko_xml_get_error());
+            neko_panic("Failed to parse XML from %s: %s", tileset_path, xml_get_error());
             return;
         }
 
-        neko_xml_node_t *tileset_node = neko_xml_find_node(tileset_doc, "tileset");
-        tileset.tile_width = (u32)neko_xml_find_attribute(tileset_node, "tilewidth")->value.number;
-        tileset.tile_height = (u32)neko_xml_find_attribute(tileset_node, "tileheight")->value.number;
-        tileset.tile_count = (u32)neko_xml_find_attribute(tileset_node, "tilecount")->value.number;
+        xml_node_t *tileset_node = xml_find_node(tileset_doc, "tileset");
+        tileset.tile_width = (u32)xml_find_attribute(tileset_node, "tilewidth")->value.number;
+        tileset.tile_height = (u32)xml_find_attribute(tileset_node, "tileheight")->value.number;
+        tileset.tile_count = (u32)xml_find_attribute(tileset_node, "tilecount")->value.number;
 
-        neko_xml_node_t *image_node = neko_xml_find_node_child(tileset_node, "image");
-        const char *image_path = neko_xml_find_attribute(image_node, "source")->value.string;
+        xml_node_t *image_node = xml_find_node_child(tileset_node, "image");
+        const char *image_path = xml_find_attribute(image_node, "source")->value.string;
 
         char full_image_path[256];
         neko_snprintf(full_image_path, 256, "%s/%s", tmx_root_path, image_path);
 
         bool ok = neko_capi_vfs_file_exists(NEKO_PACKS::GAMEDATA, full_image_path);
         if (!ok) {
-            console_log("failed to load texture file: %s", full_image_path);
+            neko_panic("failed to load texture file: %s", full_image_path);
             return;
         }
 
@@ -610,12 +610,12 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
         u32 cc;
         neko_util_load_texture_data_from_file(full_image_path, &w, &h, &cc, &tex_data, false);
 
-        // gfx_texture_desc_t tileset_tex_decl = {
-        //         .width = (u32)w, .height = (u32)h, .format = R_TEXTURE_FORMAT_RGBA8, .min_filter = R_TEXTURE_FILTER_NEAREST, .mag_filter = R_TEXTURE_FILTER_NEAREST, .num_mips = 0};
+        gfx_texture_desc_t tileset_tex_decl = {
+                .width = (u32)w, .height = (u32)h, .format = R_TEXTURE_FORMAT_RGBA8, .min_filter = R_TEXTURE_FILTER_NEAREST, .mag_filter = R_TEXTURE_FILTER_NEAREST, .num_mips = 0};
 
-        // tileset_tex_decl.data[0] = tex_data;
+        tileset_tex_decl.data[0] = tex_data;
 
-        // tileset.texture = gfx_texture_create(tileset_tex_decl);
+        tileset.texture = gfx_texture_create(tileset_tex_decl);
 
         tileset.width = w;
         tileset.height = h;
@@ -624,19 +624,19 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
 
         neko_dyn_array_push(map->tilesets, tileset);
 
-        neko_xml_free(tileset_doc);
+        xml_free(tileset_doc);
     }
 
-    for (neko_xml_node_iter_t it = neko_xml_new_node_child_iter(map_node, "layer"); neko_xml_node_iter_next(&it);) {
-        neko_xml_node_t *layer_node = it.current;
+    for (xml_node_iter_t it = xml_new_node_child_iter(map_node, "layer"); xml_node_iter_next(&it);) {
+        xml_node_t *layer_node = it.current;
 
         layer_t layer = {0};
         layer.tint = color256(255, 255, 255, 255);
 
-        layer.width = (u32)neko_xml_find_attribute(layer_node, "width")->value.number;
-        layer.height = (u32)neko_xml_find_attribute(layer_node, "height")->value.number;
+        layer.width = (u32)xml_find_attribute(layer_node, "width")->value.number;
+        layer.height = (u32)xml_find_attribute(layer_node, "height")->value.number;
 
-        neko_xml_attribute_t *tint_attrib = neko_xml_find_attribute(layer_node, "tintcolor");
+        xml_attribute_t *tint_attrib = xml_find_attribute(layer_node, "tintcolor");
         if (tint_attrib) {
             const char *hexstring = tint_attrib->value.string;
             u32 *cols = (u32 *)layer.tint.rgba;
@@ -644,12 +644,12 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
             layer.tint.a = 255;
         }
 
-        neko_xml_node_t *data_node = neko_xml_find_node_child(layer_node, "data");
+        xml_node_t *data_node = xml_find_node_child(layer_node, "data");
 
-        const char *encoding = neko_xml_find_attribute(data_node, "encoding")->value.string;
+        const char *encoding = xml_find_attribute(data_node, "encoding")->value.string;
 
         if (strcmp(encoding, "csv") != 0) {
-            console_log("%s", "Only CSV data encoding is supported.");
+            neko_panic("%s", "Only CSV data encoding is supported.");
             return;
         }
 
@@ -688,14 +688,14 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
         neko_dyn_array_push(map->layers, layer);
     }
 
-    for (neko_xml_node_iter_t it = neko_xml_new_node_child_iter(map_node, "objectgroup"); neko_xml_node_iter_next(&it);) {
-        neko_xml_node_t *object_group_node = it.current;
+    for (xml_node_iter_t it = xml_new_node_child_iter(map_node, "objectgroup"); xml_node_iter_next(&it);) {
+        xml_node_t *object_group_node = it.current;
 
         object_group_t object_group = {0};
         object_group.color = color256(255, 255, 255, 255);
 
         // 对象组名字
-        neko_xml_attribute_t *name_attrib = neko_xml_find_attribute(object_group_node, "name");
+        xml_attribute_t *name_attrib = xml_find_attribute(object_group_node, "name");
         if (name_attrib) {
             const char *namestring = name_attrib->value.string;
 
@@ -708,7 +708,7 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
         }
 
         // 对象组默认颜色
-        neko_xml_attribute_t *color_attrib = neko_xml_find_attribute(object_group_node, "color");
+        xml_attribute_t *color_attrib = xml_find_attribute(object_group_node, "color");
         if (color_attrib) {
             const char *hexstring = color_attrib->value.string;
             u32 *cols = (u32 *)object_group.color.rgba;
@@ -716,22 +716,22 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
             object_group.color.a = 128;
         }
 
-        for (neko_xml_node_iter_t iit = neko_xml_new_node_child_iter(object_group_node, "object"); neko_xml_node_iter_next(&iit);) {
-            neko_xml_node_t *object_node = iit.current;
+        for (xml_node_iter_t iit = xml_new_node_child_iter(object_group_node, "object"); xml_node_iter_next(&iit);) {
+            xml_node_t *object_node = iit.current;
 
             object_t object = {0};
-            object.id = (i32)neko_xml_find_attribute(object_node, "id")->value.number;
-            object.x = (i32)neko_xml_find_attribute(object_node, "x")->value.number;
-            object.y = (i32)neko_xml_find_attribute(object_node, "y")->value.number;
+            object.id = (i32)xml_find_attribute(object_node, "id")->value.number;
+            object.x = (i32)xml_find_attribute(object_node, "x")->value.number;
+            object.y = (i32)xml_find_attribute(object_node, "y")->value.number;
 
-            neko_xml_attribute_t *attrib;
-            if ((attrib = neko_xml_find_attribute(object_node, "width"))) {
+            xml_attribute_t *attrib;
+            if ((attrib = xml_find_attribute(object_node, "width"))) {
                 object.width = attrib->value.number;
             } else {
                 object.width = 1;
             }
 
-            if ((attrib = neko_xml_find_attribute(object_node, "height"))) {
+            if ((attrib = xml_find_attribute(object_node, "height"))) {
                 object.height = attrib->value.number;
             } else {
                 object.height = 1;
@@ -764,7 +764,7 @@ void neko_tiled_unload(map_t *map) {
     PROFILE_FUNC();
 
     for (u32 i = 0; i < neko_dyn_array_size(map->tilesets); i++) {
-        // gfx_texture_fini(map->tilesets[i].texture);
+        gfx_texture_fini(map->tilesets[i].texture);
     }
 
     for (u32 i = 0; i < neko_dyn_array_size(map->layers); i++) {
@@ -780,14 +780,13 @@ void neko_tiled_unload(map_t *map) {
 
     neko_dyn_array_free(map->object_groups);
 
-    neko_xml_free(map->doc);
+    xml_free(map->doc);
 }
 
 void neko_tiled_render_init(neko_command_buffer_t *cb, neko_tiled_renderer *renderer, const_str vert_src, const_str frag_src) {
 
     PROFILE_FUNC();
 
-#if 0
     gfx_vertex_buffer_desc_t vb_decl = {
             .data = NULL,
             .size = BATCH_SIZE * VERTS_PER_QUAD * FLOATS_PER_VERT * sizeof(f32),
@@ -805,7 +804,7 @@ void neko_tiled_render_init(neko_command_buffer_t *cb, neko_tiled_renderer *rend
     renderer->ib = gfx_index_buffer_create(ib_decl);
 
     if (!vert_src || !frag_src) {
-        console_log("%s", "Failed to load tiled renderer shaders.");
+        neko_panic("%s", "Failed to load tiled renderer shaders.");
     }
 
     gfx_uniform_layout_desc_t u_desc_layout = {.type = R_UNIFORM_SAMPLER2D};
@@ -839,12 +838,11 @@ void neko_tiled_render_init(neko_command_buffer_t *cb, neko_tiled_renderer *rend
     };
 
     renderer->pip = gfx_pipeline_create(gfx_pipeline_desc_t{.blend = {.func = R_BLEND_EQUATION_ADD, .src = R_BLEND_MODE_SRC_ALPHA, .dst = R_BLEND_MODE_ONE_MINUS_SRC_ALPHA},
-                                                                            .raster = {.shader = renderer->shader, .index_buffer_element_size = sizeof(uint32_t)},
-                                                                            .layout = {.attrs = vertex_attr_des, .size = 4 * sizeof(gfx_vertex_attribute_desc_t)}});
-#endif
+                                                            .raster = {.shader = renderer->shader, .index_buffer_element_size = sizeof(uint32_t)},
+                                                            .layout = {.attrs = vertex_attr_des, .size = 4 * sizeof(gfx_vertex_attribute_desc_t)}});
 }
 
-void neko_tiled_render_fini(neko_tiled_renderer *renderer) {
+void neko_tiled_render_deinit(neko_tiled_renderer *renderer) {
 
     PROFILE_FUNC();
 
@@ -859,7 +857,7 @@ void neko_tiled_render_fini(neko_tiled_renderer *renderer) {
 
     neko_hash_table_free(renderer->quad_table);
 
-    // gfx_shader_fini(renderer->shader);
+    gfx_shader_fini(renderer->shader);
     // neko_command_buffer_free(cb);
 }
 
@@ -875,12 +873,11 @@ void neko_tiled_render_flush(neko_command_buffer_t *cb, neko_tiled_renderer *ren
 
     PROFILE_FUNC();
 
-    // const vec2 ws = neko_pf_window_sizev(neko_os_main_window());
+    // const neko_vec2 ws = neko_pf_window_sizev(neko_os_main_window());
     // gfx_set_viewport(cb, 0, 0, ws.x, ws.y);
 
-    // renderer->camera_mat = mat4_ortho(0.0f, ws.x, ws.y, 0.0f, -1.0f, 1.0f);
+    // renderer->camera_mat = neko_mat4_ortho(0.0f, ws.x, ws.y, 0.0f, -1.0f, 1.0f);
 
-#if 0
     gfx_bind_vertex_buffer_desc_t vb_des = {.buffer = renderer->vb};
     gfx_bind_index_buffer_desc_t ib_des = {.buffer = renderer->ib};
 
@@ -912,7 +909,6 @@ void neko_tiled_render_flush(neko_command_buffer_t *cb, neko_tiled_renderer *ren
     gfx_draw(cb, gfx_draw_desc_t{.start = 0, .count = renderer->quad_count * IND_PER_QUAD});
 
     // neko_check_gl_error();
-#endif
 
     renderer->quad_count = 0;
 }
@@ -976,7 +972,7 @@ void neko_tiled_render_draw(neko_command_buffer_t *cb, neko_tiled_renderer *rend
                 //     }
                 // }
 
-                // renderer->batch_texture = quad->texture;
+                renderer->batch_texture = quad->texture;
             }
 
             const f32 x = quad->position.x;
@@ -1001,20 +997,17 @@ void neko_tiled_render_draw(neko_command_buffer_t *cb, neko_tiled_renderer *rend
             u32 indices[] = {idx_off + 3, idx_off + 2, idx_off + 1,   //
                              idx_off + 3, idx_off + 1, idx_off + 0};  //
 
-#if 0
-            gfx_vertex_buffer_request_update(
-                    cb, renderer->vb,
-                    gfx_vertex_buffer_desc_t{.data = verts,
-                                                     .size = VERTS_PER_QUAD * FLOATS_PER_VERT * sizeof(f32),
-                                                     .usage = R_BUFFER_USAGE_DYNAMIC,
-                                                     .update = {.type = R_BUFFER_UPDATE_SUBDATA, .offset = renderer->quad_count * VERTS_PER_QUAD * FLOATS_PER_VERT * sizeof(f32)}});
+            gfx_vertex_buffer_request_update(cb, renderer->vb,
+                                             gfx_vertex_buffer_desc_t{.data = verts,
+                                                                      .size = VERTS_PER_QUAD * FLOATS_PER_VERT * sizeof(f32),
+                                                                      .usage = R_BUFFER_USAGE_DYNAMIC,
+                                                                      .update = {.type = R_BUFFER_UPDATE_SUBDATA, .offset = renderer->quad_count * VERTS_PER_QUAD * FLOATS_PER_VERT * sizeof(f32)}});
 
             gfx_index_buffer_request_update(cb, renderer->ib,
-                                                    gfx_index_buffer_desc_t{.data = indices,
-                                                                                    .size = IND_PER_QUAD * sizeof(u32),
-                                                                                    .usage = R_BUFFER_USAGE_DYNAMIC,
-                                                                                    .update = {.type = R_BUFFER_UPDATE_SUBDATA, .offset = renderer->quad_count * IND_PER_QUAD * sizeof(u32)}});
-#endif
+                                            gfx_index_buffer_desc_t{.data = indices,
+                                                                    .size = IND_PER_QUAD * sizeof(u32),
+                                                                    .usage = R_BUFFER_USAGE_DYNAMIC,
+                                                                    .update = {.type = R_BUFFER_UPDATE_SUBDATA, .offset = renderer->quad_count * IND_PER_QUAD * sizeof(u32)}});
 
             renderer->quad_count++;
 
@@ -1029,28 +1022,33 @@ void neko_tiled_render_draw(neko_command_buffer_t *cb, neko_tiled_renderer *rend
     }
 }
 
-#define SPRITE_SCALE 3
+int tiled_render(neko_command_buffer_t *cb, neko_tiled_renderer *tiled_render) {
 
-void neko_tiled_render_map(neko_tiled_renderer *tiled_render) {
+    PROFILE_FUNC();
 
-    // neko_renderpass_t rp = R_RENDER_PASS_DEFAULT;
+    // neko_tiled_renderer *tiled_render = (neko_tiled_renderer *)lua_touserdata(L, 1);
+
+    neko_renderpass_t rp = R_RENDER_PASS_DEFAULT;
     // neko_luabind_struct_to_member(L, neko_renderpass_t, id, &rp, 2);
 
-    // auto xform = lua2struct::unpack<vec2>(L, 3);
-
-    LuaVec2 xform = {1.0f, 1.0f};
+    // auto xform = lua2struct::unpack<neko_vec2>(L, 3);
+    vec2 xform = {};
 
     // f32 l = lua_tonumber(L, 4);
     // f32 r = lua_tonumber(L, 5);
     // f32 t = lua_tonumber(L, 6);
     // f32 b = lua_tonumber(L, 7);
 
-    f32 l = 0.f, r = 640 * 1.5, t = 0.f, b = 360 * 1.5;
+    f32 l = 0.f;
+    f32 r = g_app->width;
+    f32 t = 0.f;
+    f32 b = g_app->height;
 
-    // tiled_render->camera_mat = mat4_ortho(l, r, b, t, -1.0f, 1.0f);
+    tiled_render->camera_mat = mat4_ortho(l, r, b, t, -1.0f, 1.0f);
 
+    gfx_renderpass_begin(cb, rp);
     {
-        neko_tiled_render_begin(NULL, tiled_render);
+        neko_tiled_render_begin(cb, tiled_render);
 
         PROFILE_BLOCK("tiled_render");
 
@@ -1071,11 +1069,11 @@ void neko_tiled_render_map(neko_tiled_renderer *tiled_render) {
                                                   .rectangle = {(f32)tsxx, (f32)tsyy, (f32)tileset->tile_width, (f32)tileset->tile_height},
                                                   .color = layer->tint,
                                                   .use_texture = true};
-                        neko_tiled_render_push(NULL, tiled_render, quad);
+                        neko_tiled_render_push(cb, tiled_render, quad);
                     }
                 }
             }
-            neko_tiled_render_draw(NULL, tiled_render);  // 一层渲染一次
+            neko_tiled_render_draw(cb, tiled_render);  // 一层渲染一次
         }
 
         for (u32 i = 0; i < neko_dyn_array_size(tiled_render->map.object_groups); i++) {
@@ -1086,9 +1084,9 @@ void neko_tiled_render_map(neko_tiled_renderer *tiled_render) {
                                           .dimentions = {(f32)(object->width * SPRITE_SCALE), (f32)(object->height * SPRITE_SCALE)},
                                           .color = group->color,
                                           .use_texture = false};
-                neko_tiled_render_push(NULL, tiled_render, quad);
+                neko_tiled_render_push(cb, tiled_render, quad);
             }
-            neko_tiled_render_draw(NULL, tiled_render);  // 一层渲染一次
+            neko_tiled_render_draw(cb, tiled_render);  // 一层渲染一次
         }
 
         // for (u32 i = 0; i < neko_dyn_array_size(tiled_render->map.object_groups); i++) {
@@ -1110,4 +1108,7 @@ void neko_tiled_render_map(neko_tiled_renderer *tiled_render) {
         //     }
         // }
     }
+    gfx_renderpass_end(cb);
+
+    return 0;
 }

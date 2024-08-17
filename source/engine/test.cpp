@@ -462,7 +462,7 @@ void print_indent(int indent) {
     }
 }
 
-void print_xml_node(neko_xml_node_t* node, int indent) {
+void print_xml_node(xml_node_t* node, int indent) {
     print_indent(indent);
     printf("XML Node: %s\n", node->name);
     print_indent(indent);
@@ -470,7 +470,7 @@ void print_xml_node(neko_xml_node_t* node, int indent) {
     print_indent(indent);
     puts("\tAttributes:");
     for (neko_hash_table_iter it = neko_hash_table_iter_new(node->attributes); neko_hash_table_iter_valid(node->attributes, it); neko_hash_table_iter_advance(node->attributes, it)) {
-        neko_xml_attribute_t attrib = neko_hash_table_iter_get(node->attributes, it);
+        xml_attribute_t attrib = neko_hash_table_iter_get(node->attributes, it);
 
         print_indent(indent);
         printf("\t\t%s: ", attrib.name);
@@ -499,15 +499,15 @@ void print_xml_node(neko_xml_node_t* node, int indent) {
 }
 
 int test_xml(lua_State* L) {
-    neko_xml_document_t* doc = neko_xml_parse_file("test/test.xml");
+    xml_document_t* doc = xml_parse_vfs("test/test.xml");
     if (!doc) {
-        printf("XML Parse Error: %s\n", neko_xml_get_error());
+        printf("XML Parse Error: %s\n", xml_get_error());
     } else {
         for (uint32_t i = 0; i < neko_dyn_array_size(doc->nodes); i++) {
-            neko_xml_node_t* node = doc->nodes + i;
+            xml_node_t* node = doc->nodes + i;
             print_xml_node(node, 0);
         }
-        neko_xml_free(doc);
+        xml_free(doc);
     }
     return 0;
 }
@@ -656,11 +656,10 @@ void draw_gui() {
         // neko_idraw_text(gui_idraw, 450.f, 200.f, "Default Font", NULL, false, 50, 100, 255, 255);
     };
 
-    ui_begin(&ui, NULL);
     {
         editor_dockspace(&ui);
 
-#if 1
+#if 0
         if (1) {
 
             ui_demo_window(&ui, ui_rect(100, 100, 500, 500), NULL);
@@ -848,7 +847,6 @@ void draw_gui() {
         screen = ui_rect(0, 0, fb.x, fb.y);
         // neko_console(&g_console, &ui, screen, NULL);
     }
-    ui_end(&ui, true);
 }
 
 #endif

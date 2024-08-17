@@ -410,7 +410,7 @@ RectDescription rect_description_args(lua_State* L, i32 arg_start) {
     return rd;
 }
 
-static void draw_font_line(idraw_t* idraw, FontFamily* font, float size, float* start_x, float* start_y, String line) {
+static void draw_font_line(idraw_t* idraw, FontFamily* font, float size, float* start_x, float* start_y, String line, Color256 col) {
     float x = *start_x;
     float y = *start_y;
     for (Rune r : UTF8(line)) {
@@ -425,7 +425,7 @@ static void draw_font_line(idraw_t* idraw, FontFamily* font, float size, float* 
         // sgl_end();
 
         neko_idraw_texture(idraw, neko_texture_t{tex_id});
-        neko_idraw_rectvx(idraw, neko_v2(x + q.x0, y + q.y0), neko_v2(x + q.x1, y + q.y1), neko_v2(q.s0, q.t0), neko_v2(q.s1, q.t1), NEKO_COLOR_WHITE, R_PRIMITIVE_TRIANGLES);
+        neko_idraw_rectvx(idraw, neko_v2(x + q.x0, y + q.y0), neko_v2(x + q.x1, y + q.y1), neko_v2(q.s0, q.t0), neko_v2(q.s1, q.t1), col, R_PRIMITIVE_TRIANGLES);
 
         x = xx;
         y = yy;
@@ -434,7 +434,7 @@ static void draw_font_line(idraw_t* idraw, FontFamily* font, float size, float* 
     *start_y += size;
 }
 
-float draw_font(idraw_t* idraw, FontFamily* font, float size, float x, float y, String text) {
+float draw_font(idraw_t* idraw, FontFamily* font, float size, float x, float y, String text, Color256 col) {
     PROFILE_FUNC();
 
     y += size;
@@ -442,13 +442,13 @@ float draw_font(idraw_t* idraw, FontFamily* font, float size, float x, float y, 
     // renderer_apply_color();
 
     for (String line : SplitLines(text)) {
-        draw_font_line(idraw, font, size, &x, &y, line);
+        draw_font_line(idraw, font, size, &x, &y, line, col);
     }
 
     return y - size;
 }
 
-float draw_font_wrapped(idraw_t* idraw, FontFamily* font, float size, float x, float y, String text, float limit) {
+float draw_font_wrapped(idraw_t* idraw, FontFamily* font, float size, float x, float y, String text, Color256 col, float limit) {
     PROFILE_FUNC();
 
     y += size;
@@ -472,13 +472,13 @@ float draw_font_wrapped(idraw_t* idraw, FontFamily* font, float size, float x, f
             font->sb.len -= word.len;
             font->sb.data[font->sb.len] = '\0';
 
-            draw_font_line(idraw, font, size, &x, &y, String(font->sb));
+            draw_font_line(idraw, font, size, &x, &y, String(font->sb), col);
 
             font->sb.clear();
             font->sb << word << " ";
         }
 
-        draw_font_line(idraw, font, size, &x, &y, String(font->sb));
+        draw_font_line(idraw, font, size, &x, &y, String(font->sb), col);
     }
 
     return y - size;
@@ -804,9 +804,7 @@ static void neko_idraw_rect_2d(idraw_t* neko_idraw, vec2 a, vec2 b, vec2 uv0, ve
     neko_idraw_end(neko_idraw);
 }
 
-void neko_idraw_rect_textured(idraw_t* neko_idraw, vec2 a, vec2 b, u32 tex_id, Color256 color) {
-    neko_idraw_rect_textured_ext(neko_idraw, a.x, a.y, b.x, b.y, 0.f, 0.f, 1.f, 1.f, tex_id, color);
-}
+void neko_idraw_rect_textured(idraw_t* neko_idraw, vec2 a, vec2 b, u32 tex_id, Color256 color) { neko_idraw_rect_textured_ext(neko_idraw, a.x, a.y, b.x, b.y, 0.f, 0.f, 1.f, 1.f, tex_id, color); }
 
 void neko_idraw_rect_textured_ext(idraw_t* neko_idraw, f32 x0, f32 y0, f32 x1, f32 y1, f32 u0, f32 v0, f32 u1, f32 v1, u32 tex_id, Color256 color) {
 
@@ -1344,8 +1342,7 @@ void neko_idraw_trianglevx(idraw_t* neko_idraw, vec3 v0, vec3 v1, vec3 v2, vec2 
     neko_idraw_trianglex(neko_idraw, v0.x, v0.y, v0.z, v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, uv0.x, uv0.y, uv1.x, uv1.y, uv2.x, uv2.y, color.r, color.g, color.b, color.a, type);
 }
 
-void neko_idraw_trianglevxmc(idraw_t* neko_idraw, vec3 v0, vec3 v1, vec3 v2, vec2 uv0, vec2 uv1, vec2 uv2, Color256 c0, Color256 c1, Color256 c2,
-                             gfx_primitive_type type) {
+void neko_idraw_trianglevxmc(idraw_t* neko_idraw, vec3 v0, vec3 v1, vec3 v2, vec2 uv0, vec2 uv1, vec2 uv2, Color256 c0, Color256 c1, Color256 c2, gfx_primitive_type type) {
     switch (type) {
         default:
         case R_PRIMITIVE_TRIANGLES: {
@@ -1985,7 +1982,7 @@ void neko_idraw_text(idraw_t* neko_idraw, f32 x, f32 y, const char* text, FontFa
         fp = neko_default_font();
     }
 
-    f32 fy = draw_font(neko_idraw, fp, 16.f, x, y, text);
+    f32 fy = draw_font(neko_idraw, fp, 16.f, x, y, text, col);
 }
 
 // View/Scissor 命令

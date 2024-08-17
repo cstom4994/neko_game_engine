@@ -238,6 +238,11 @@ void system_fini() {
     entity_fini();
     input_fini();
 
+    if (g_app->default_font != nullptr) {
+        g_app->default_font->trash();
+        mem_free(g_app->default_font);
+    }
+
     gfx_fini(g_render);
 
     neko_dyn_array_free(g_app->shader_array);

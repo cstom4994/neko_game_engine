@@ -16,10 +16,15 @@ extern "C" {
 #endif
 #include <lauxlib.h>
 #include <lua.h>
-#include <lualib.h>
 #include <luajit.h>
+#include <lualib.h>
+
 #ifdef __cplusplus
 }
+#endif
+
+#ifdef LUAJIT_MODE_MASK
+#define NEKO_LUAJIT
 #endif
 
 #define LUA_FUNCTION(F) static int F(lua_State *L)
@@ -259,6 +264,7 @@ enum {
     LUAX_UD_PTR_SIZE = 2,
 };
 
+#if !defined(NEKO_LUAJIT)
 template <typename T>
 void luax_new_userdata(lua_State *L, T data, const char *tname) {
     void *new_udata = lua_newuserdatauv(L, sizeof(T), 2);
@@ -272,6 +278,30 @@ void luax_new_userdata(lua_State *L, T data, const char *tname) {
     memcpy(new_udata, &data, sizeof(T));
     luaL_setmetatable(L, tname);
 }
+#else
+template <typename T>
+void luax_new_userdata(lua_State *L, T data, const char *tname) {
+    T *new_udata = (T *)lua_newuserdata(L, sizeof(T));
+
+    // 为用户数据设置元表
+    luaL_getmetatable(L, tname);
+    lua_setmetatable(L, -2);
+
+    memcpy(new_udata, &data, sizeof(T));
+
+    // 额外的值使用lua_setfield将其存储在表中
+    lua_newtable(L);
+
+    lua_pushstring(L, tname);
+    lua_setfield(L, -2, "tname");
+
+    lua_pushnumber(L, sizeof(T));
+    lua_setfield(L, -2, "size");
+
+    // 将这个表作为用户数据的环境表存储
+    lua_setfenv(L, -2);
+}
+#endif
 
 #define luax_ptr_userdata luax_new_userdata
 

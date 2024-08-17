@@ -144,7 +144,7 @@ struct DebugAllocator : Allocator {
     void *alloc(size_t bytes, const char *file, i32 line);
     void *realloc(void *ptr, size_t new_size, const char *file, i32 line);
     void free(void *ptr);
-    void dump_allocs();
+    void dump_allocs(bool detailed);
 };
 
 extern Allocator *g_allocator;

@@ -34,7 +34,7 @@ static int sargc = 0;
 static char **sargv;
 static Mutex g_init_mtx;
 
-// neko_tiled_renderer tiled;
+neko_tiled_renderer tiled;
 
 neko_command_buffer_t cb;
 ui_context_t ui;
@@ -240,8 +240,58 @@ static void _game_init() {
     }
 
     {  // just for test
-        // neko_tiled_load(&tiled.map, "assets/maps/map.tmx", NULL);
-        // neko_tiled_render_init(NULL, &tiled, NULL, NULL);
+
+        const_str sprite_vs = R"(
+#version 330
+
+layout (location = 0) in vec2 position;
+layout (location = 1) in vec2 uv;
+layout (location = 2) in vec4 color;
+layout (location = 3) in float use_texture;
+
+uniform mat4 tiled_sprite_camera;
+
+out VS_OUT {
+	vec4 color;
+	vec2 uv;
+	float use_texture;
+} vs_out;
+
+void main() {
+	vs_out.color = color;
+	vs_out.uv = uv;
+	vs_out.use_texture = use_texture;
+
+	gl_Position = tiled_sprite_camera * vec4(position, 0.0, 1.0);
+}
+)";
+
+        const_str sprite_fs = R"(
+#version 330
+
+out vec4 color;
+
+in VS_OUT {
+    vec4 color;
+    vec2 uv;
+    float use_texture;
+} fs_in;
+
+uniform sampler2D batch_texture;
+
+void main() {
+    vec4 texture_color = vec4(1.0);
+
+    if (fs_in.use_texture == 1.0) {
+        texture_color = texture(batch_texture,  fs_in.uv);
+    }
+
+    color = fs_in.color * texture_color;
+}
+)";
+
+        neko_tiled_load(&tiled.map, "assets/maps/map.tmx", NULL);
+        neko_tiled_render_init(&cb, &tiled, sprite_vs, sprite_fs);
 
         test_ase = neko_aseprite_simple("assets/cat.ase");
 
@@ -270,8 +320,8 @@ static void _game_fini() {
     PROFILE_FUNC();
 
     {  // just for test
-        // neko_tiled_unload(&tiled.map);
-        // neko_tiled_render_fini(&tiled);
+        neko_tiled_unload(&tiled.map);
+        neko_tiled_render_deinit(&tiled);
         ui_free(&ui);
     }
 
@@ -315,7 +365,7 @@ static void _game_fini() {
 #ifndef NDEBUG
     DebugAllocator *allocator = dynamic_cast<DebugAllocator *>(g_allocator);
     if (allocator != nullptr) {
-        allocator->dump_allocs();
+        allocator->dump_allocs(false);
     }
 #endif
 
@@ -425,7 +475,12 @@ static void _game_draw() {
         // { gfx_clear(&cb, clear); }
         // gfx_renderpass_end(&cb);
 
-        draw_gui();
+        DeferLoop(ui_begin(&ui, NULL), ui_end(&ui, true)) {
+
+            script_draw_ui();
+
+            draw_gui();
+        }
 
         // Set up 2D camera for projection matrix
         neko_idraw_defaults(&idraw);
@@ -444,7 +499,9 @@ static void _game_draw() {
                           R_PRIMITIVE_TRIANGLES);
 
         neko_idraw_defaults(&idraw);
-        f32 fy = draw_font(&idraw, g_app->default_font, 40.f, 10.f, 20.f, "-- ! Neko ! --");
+        f32 fy = draw_font(&idraw, g_app->default_font, 40.f, 10.f, 20.f, "-- ! Neko ! --", NEKO_COLOR_WHITE);
+
+        tiled_render(&cb, &tiled);
 
         gfx_renderpass_begin(&cb, R_RENDER_PASS_DEFAULT);
         {

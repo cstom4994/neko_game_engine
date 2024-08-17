@@ -5,7 +5,7 @@ mm = hot_require("libs/mm")
 
 luainspector = Inspector.inspector_init()
 
-game_imgui = hot_require("cimgui")
+mu = neko.ui
 
 -- misc
 ns.app = {}

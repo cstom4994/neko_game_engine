@@ -3,6 +3,7 @@
 #define NEKO_TILEMAP_H
 
 #include "engine/base.h"
+#include "engine/gfx.h"
 #include "engine/image.h"
 #include "engine/math.h"
 #include "engine/prelude.h"
@@ -87,6 +88,8 @@ struct MapLdtk {
     TileNode* astar(TilePoint start, TilePoint goal);
 };
 
+#define SPRITE_SCALE 3
+
 /*==========================
 // Tiled draw
 ==========================*/
@@ -97,7 +100,7 @@ typedef struct tile_t {
 } tile_t;
 
 typedef struct tileset_t {
-    Texture texture;
+    neko_handle(gfx_texture_t) texture;
     u32 tile_count;
     u32 tile_width;
     u32 tile_height;
@@ -134,7 +137,7 @@ typedef struct object_group_t {
 } object_group_t;
 
 typedef struct map_t {
-    neko_xml_document_t* doc;  // xml doc
+    xml_document_t* doc;  // xml doc
     neko_dyn_array(tileset_t) tilesets;
     neko_dyn_array(object_group_t) object_groups;
     neko_dyn_array(layer_t) layers;
@@ -145,10 +148,10 @@ void neko_tiled_unload(map_t* map);
 
 typedef struct neko_tiled_quad_t {
     u32 tileset_id;
-    Texture texture;
-    LuaVec2 texture_size;
-    LuaVec2 position;
-    LuaVec2 dimentions;
+    neko_texture_t texture;
+    vec2 texture_size;
+    vec2 position;
+    vec2 dimentions;
     vec4 rectangle;
     Color256 color;
     bool use_texture;
@@ -166,13 +169,13 @@ typedef struct neko_tiled_quad_list_t {
 } neko_tiled_quad_list_t;
 
 typedef struct neko_tiled_renderer {
-    // neko_handle(gfx_vertex_buffer_t) vb;
-    // neko_handle(gfx_index_buffer_t) ib;
-    // neko_handle(gfx_pipeline_t) pip;
-    // neko_handle(gfx_shader_t) shader;
-    // neko_handle(gfx_uniform_t) u_camera;
-    // neko_handle(gfx_uniform_t) u_batch_tex;
-    // neko_handle(gfx_texture_t) batch_texture;         // 当前绘制所用贴图
+    neko_handle(gfx_vertex_buffer_t) vb;
+    neko_handle(gfx_index_buffer_t) ib;
+    neko_handle(gfx_pipeline_t) pip;
+    neko_handle(gfx_shader_t) shader;
+    neko_handle(gfx_uniform_t) u_camera;
+    neko_handle(gfx_uniform_t) u_batch_tex;
+    neko_handle(gfx_texture_t) batch_texture;                 // 当前绘制所用贴图
     neko_hash_table(u32, neko_tiled_quad_list_t) quad_table;  // 分层绘制哈希表
 
     u32 quad_count;
@@ -183,11 +186,12 @@ typedef struct neko_tiled_renderer {
 } neko_tiled_renderer;
 
 void neko_tiled_render_init(neko_command_buffer_t* cb, neko_tiled_renderer* renderer, const_str vert_src, const_str frag_src);
-void neko_tiled_render_fini(neko_tiled_renderer* renderer);
+void neko_tiled_render_deinit(neko_tiled_renderer* renderer);
 void neko_tiled_render_begin(neko_command_buffer_t* cb, neko_tiled_renderer* renderer);
 void neko_tiled_render_flush(neko_command_buffer_t* cb, neko_tiled_renderer* renderer);
 void neko_tiled_render_push(neko_command_buffer_t* cb, neko_tiled_renderer* renderer, neko_tiled_quad_t quad);
 void neko_tiled_render_draw(neko_command_buffer_t* cb, neko_tiled_renderer* renderer);
-void neko_tiled_render_map(neko_tiled_renderer* tiled_render);
+
+int tiled_render(neko_command_buffer_t* cb, neko_tiled_renderer* tiled_render);
 
 #endif

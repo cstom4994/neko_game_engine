@@ -4666,7 +4666,7 @@ void open_neko_api(lua_State *L) {
         open_mt_b2_body,
         open_mt_b2_world,
 #endif
-        // open_mt_lui_container,
+        open_mt_ui_container,
         // open_mt_lui_style,
         // open_mt_lui_ref
     };
@@ -4678,8 +4678,8 @@ void open_neko_api(lua_State *L) {
 
     luaL_requiref(L, "neko", open_neko, 1);
 
-    // open_microui(L);
-    // lua_setfield(L, -2, "microui");
+    open_ui(L);
+    lua_setfield(L, -2, "ui");
 
     lua_pop(L, 1);
 

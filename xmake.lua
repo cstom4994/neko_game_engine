@@ -122,7 +122,6 @@ do
     add_files("source/engine/**.lua")
     add_files("source/engine/**.cpp")
     add_files("source/vendor/http.c")
-    add_files("source/vendor/cimgui.cpp")
 
     add_headerfiles("source/engine/**.h", "source/engine/**.hpp", "source/vendor/**.h")
 

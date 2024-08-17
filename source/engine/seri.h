@@ -10,60 +10,60 @@ inline bool neko_token_char_is_white_space(char c) { return (c == '\t' || c == '
 inline bool neko_token_char_is_alpha(char c) { return ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')); }
 inline bool neko_token_char_is_numeric(char c) { return (c >= '0' && c <= '9'); }
 
-typedef enum neko_xml_attribute_type_t {
+typedef enum xml_attribute_type_t {
     NEKO_XML_ATTRIBUTE_NUMBER,
     NEKO_XML_ATTRIBUTE_BOOLEAN,
     NEKO_XML_ATTRIBUTE_STRING,
-} neko_xml_attribute_type_t;
+} xml_attribute_type_t;
 
-typedef struct neko_xml_attribute_t {
+typedef struct xml_attribute_t {
     const_str name;
-    neko_xml_attribute_type_t type;
+    xml_attribute_type_t type;
 
     union {
         double number;
         bool boolean;
         const_str string;
     } value;
-} neko_xml_attribute_t;
+} xml_attribute_t;
 
-// neko_hash_table_decl(u64, neko_xml_attribute_t, neko_hash_u64, neko_hash_key_comp_std_type);
+// neko_hash_table_decl(u64, xml_attribute_t, neko_hash_u64, neko_hash_key_comp_std_type);
 
-typedef struct neko_xml_node_t {
+typedef struct xml_node_t {
     const_str name;
     const_str text;
 
-    neko_hash_table(u64, neko_xml_attribute_t) attributes;
-    neko_dyn_array(struct neko_xml_node_t) children;
+    neko_hash_table(u64, xml_attribute_t) attributes;
+    neko_dyn_array(xml_node_t) children;
 
-} neko_xml_node_t;
+} xml_node_t;
 
-typedef struct neko_xml_document_t {
-    neko_dyn_array(neko_xml_node_t) nodes;
-} neko_xml_document_t;
+typedef struct xml_document_t {
+    neko_dyn_array(xml_node_t) nodes;
+} xml_document_t;
 
-typedef struct neko_xml_node_iter_t {
-    neko_xml_document_t *doc;
-    neko_xml_node_t *node;
+typedef struct xml_node_iter_t {
+    xml_document_t *doc;
+    xml_node_t *node;
     const_str name;
     u32 idx;
 
-    neko_xml_node_t *current;
-} neko_xml_node_iter_t;
+    xml_node_t *current;
+} xml_node_iter_t;
 
-neko_xml_document_t *neko_xml_parse(const_str source);
-neko_xml_document_t *neko_xml_parse_file(const_str path);
-void neko_xml_free(neko_xml_document_t *document);
+xml_document_t *xml_parse(const_str source);
+xml_document_t *xml_parse_vfs(const_str path);
+void xml_free(xml_document_t *document);
 
-neko_xml_attribute_t *neko_xml_find_attribute(neko_xml_node_t *node, const_str name);
-neko_xml_node_t *neko_xml_find_node(neko_xml_document_t *doc, const_str name);
-neko_xml_node_t *neko_xml_find_node_child(neko_xml_node_t *node, const_str name);
+xml_attribute_t *xml_find_attribute(xml_node_t *node, const_str name);
+xml_node_t *xml_find_node(xml_document_t *doc, const_str name);
+xml_node_t *xml_find_node_child(xml_node_t *node, const_str name);
 
-const_str neko_xml_get_error();
+const_str xml_get_error();
 
-neko_xml_node_iter_t neko_xml_new_node_iter(neko_xml_document_t *doc, const_str name);
-neko_xml_node_iter_t neko_xml_new_node_child_iter(neko_xml_node_t *node, const_str name);
-bool neko_xml_node_iter_next(neko_xml_node_iter_t *iter);
+xml_node_iter_t xml_new_node_iter(xml_document_t *doc, const_str name);
+xml_node_iter_t xml_new_node_child_iter(xml_node_t *node, const_str name);
+bool xml_node_iter_next(xml_node_iter_t *iter);
 
 enum JSONKind : i32 {
     JSONKind_Null,
