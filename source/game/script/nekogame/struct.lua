@@ -80,6 +80,8 @@ ng.Entity = ffi.metatype('Entity', {
 
 --- Vec2 -----------------------------------------------------------------------
 
+ng.vec2 = ng.luavec2
+
 ng.Vec2 = ffi.metatype('LuaVec2', {
     __add = ng.vec2_add,
     __sub = ng.vec2_sub,
@@ -112,6 +114,10 @@ ng.Vec2 = ffi.metatype('LuaVec2', {
 })
 
 --- Mat3 -----------------------------------------------------------------------
+
+ng.mat3 = ng.luamat3
+
+ng.mat3_identity = ng.luamat3_identity
 
 ng.Mat3 = ffi.metatype('LuaMat3', {
     __index = {

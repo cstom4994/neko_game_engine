@@ -189,10 +189,10 @@ static void _grid_create_cells() {
     // find camera bounds in world space
     camera = camera_get_current_camera();
     if (entity_eq(camera, entity_nil))
-        cbox = bbox(vec2(-1, -1), vec2(1, 1));
+        cbox = bbox(luavec2(-1, -1), luavec2(1, 1));
     else
-        cbox = bbox_transform(transform_get_world_matrix(camera), bbox(vec2(-1, -1), vec2(1, 1)));
-    csize = vec2(cbox.max.x - cbox.min.x, cbox.max.y - cbox.min.y);
+        cbox = bbox_transform(transform_get_world_matrix(camera), bbox(luavec2(-1, -1), luavec2(1, 1)));
+    csize = luavec2(cbox.max.x - cbox.min.x, cbox.max.y - cbox.min.y);
 
     // create grid cell bbox
     cellbox.min = vec2_zero;
@@ -223,7 +223,7 @@ static void _grid_create_cells() {
         for (cur.y = cbox.min.y; cur.y < cbox.max.y; cur.y += cellbox.max.y) {
             cell = (BBoxPoolElem *)array_add(grid_cells);
             cell->bbox = cellbox;
-            cell->wmat = mat3_scaling_rotation_translation(vec2(1, 1), 0, cur);
+            cell->wmat = mat3_scaling_rotation_translation(luavec2(1, 1), 0, cur);
             cell->selected = 0;
         }
 }

@@ -130,6 +130,8 @@ static void _glfw_error_callback(int error, const char *desc) { fprintf(stderr, 
 
 // 窗口大小改变的回调函数
 void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
+    g_app->width = width;
+    g_app->height = height;
     // 更新视口
     glViewport(0, 0, width, height);
 }
@@ -261,11 +263,6 @@ static void _game_init() {
         // neko_ui_init_font_stash(&ui, GUI_FONT_STASH);
 
         ui_dock_ex(&ui, "Style_Editor", "Demo_Window", UI_SPLIT_TAB, 0.5f);
-
-        if (g_app->default_font == nullptr) {
-            g_app->default_font = (FontFamily *)mem_alloc(sizeof(FontFamily));
-            g_app->default_font->load_default();
-        }
     }
 }
 
@@ -437,17 +434,17 @@ static void _game_draw() {
         // 底层图片
         char background_text[64] = "Project: unknown";
 
-        neko_vec2 td = neko_asset_font_text_dimensions(neko_idraw_default_font(), background_text, -1);
-        // neko_vec2 td = {};
-        neko_vec2 ts = neko_v2(512 + 128, 512 + 128);
+        f32 td = g_app->default_font->width(16.f, background_text);
+        // vec2 td = {};
+        vec2 ts = neko_v2(512 + 128, 512 + 128);
 
-        neko_idraw_text(&idraw, (g_app->width - td.x) * 0.5f, (g_app->height - td.y) * 0.5f + ts.y / 2.f - 100.f, background_text, NULL, false, color256(255, 255, 255, 255));
+        neko_idraw_text(&idraw, (g_app->width - td) * 0.5f, (g_app->height) * 0.5f + ts.y / 2.f - 100.f, background_text, NULL, false, color256(255, 255, 255, 255));
         neko_idraw_texture(&idraw, test_ase);
-        neko_idraw_rectvd(&idraw, neko_v2((g_app->width - ts.x) * 0.5f, (g_app->height - ts.y) * 0.5f - td.y - 50.f), ts, neko_v2(0.f, 1.f), neko_v2(1.f, 0.f), color256(255, 255, 255, 255),
+        neko_idraw_rectvd(&idraw, neko_v2((g_app->width - ts.x) * 0.5f, (g_app->height - ts.y) * 0.5f - 16.f - 50.f), ts, neko_v2(0.f, 1.f), neko_v2(1.f, 0.f), color256(255, 255, 255, 255),
                           R_PRIMITIVE_TRIANGLES);
 
-        // neko_idraw_defaults(&idraw);
-        // f32 fy = draw_font(&idraw, g_app->default_font, 40.f, 10.f, 20.f, "-- ! Neko Error ! --");
+        neko_idraw_defaults(&idraw);
+        f32 fy = draw_font(&idraw, g_app->default_font, 40.f, 10.f, 20.f, "-- ! Neko ! --");
 
         gfx_renderpass_begin(&cb, R_RENDER_PASS_DEFAULT);
         {
@@ -499,17 +496,17 @@ void game_set_window_size(LuaVec2 s) { glfwSetWindowSize(g_app->game_window, s.x
 LuaVec2 game_get_window_size() {
     int w, h;
     glfwGetWindowSize(g_app->game_window, &w, &h);
-    return vec2(w, h);
+    return luavec2(w, h);
 }
 LuaVec2 game_unit_to_pixels(LuaVec2 p) {
     LuaVec2 hw = vec2_scalar_mul(game_get_window_size(), 0.5f);
     p = vec2_mul(p, hw);
-    p = vec2(p.x + hw.x, p.y - hw.y);
+    p = luavec2(p.x + hw.x, p.y - hw.y);
     return p;
 }
 LuaVec2 game_pixels_to_unit(LuaVec2 p) {
     LuaVec2 hw = vec2_scalar_mul(game_get_window_size(), 0.5f);
-    p = vec2(p.x - hw.x, p.y + hw.y);
+    p = luavec2(p.x - hw.x, p.y + hw.y);
     p = vec2_div(p, hw);
     return p;
 }
@@ -637,11 +634,11 @@ void test_native_script() {
         block = entity_create();
 
         transform_add(block);
-        transform_set_position(block, vec2((rand() % 25) - 12, (rand() % 9) - 4));
+        transform_set_position(block, luavec2((rand() % 25) - 12, (rand() % 9) - 4));
 
         sprite_add(block);
-        sprite_set_texcell(block, vec2(32.0f, 32.0f));
-        sprite_set_texsize(block, vec2(32.0f, 32.0f));
+        sprite_set_texcell(block, luavec2(32.0f, 32.0f));
+        sprite_set_texsize(block, luavec2(32.0f, 32.0f));
     }
 
     // add player
@@ -649,11 +646,11 @@ void test_native_script() {
     player = entity_create();
 
     transform_add(player);
-    transform_set_position(player, vec2(0.0f, 0.0f));
+    transform_set_position(player, luavec2(0.0f, 0.0f));
 
     sprite_add(player);
-    sprite_set_texcell(player, vec2(0.0f, 32.0f));
-    sprite_set_texsize(player, vec2(32.0f, 32.0f));
+    sprite_set_texcell(player, luavec2(0.0f, 32.0f));
+    sprite_set_texsize(player, luavec2(32.0f, 32.0f));
 
     // who gets keyboard control?
     keyboard_controlled_add(camera);

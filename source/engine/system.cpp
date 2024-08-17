@@ -131,6 +131,7 @@ void system_init() {
     g_app->width = luax_opt_number_field(L, -1, "window_width", 800);
     g_app->height = luax_opt_number_field(L, -1, "window_height", 600);
     String title = luax_opt_string_field(L, -1, "window_title", "NekoEngine");
+    String default_font = luax_opt_string_field(L, -1, "default_font", "assets/fonts/font.ttf");
     String imgui_font = luax_opt_string_field(L, -1, "imgui_font", "");
     g_app->lite_init_path = luax_opt_string_field(L, -1, "lite_init_path", "");
     g_app->debug_on = luax_boolean_field(L, -1, "debug_on", true);
@@ -139,7 +140,7 @@ void system_init() {
     lua_pop(L, 1);  // conf table
 
     // 刷新状态
-    game_set_window_size(vec2(g_app->width, g_app->height));
+    game_set_window_size(luavec2(g_app->width, g_app->height));
 
     if (fnv1a(game_proxy) == "default"_hash) {
         neko::neko_lua_run_string(L, R"lua(
@@ -162,9 +163,12 @@ void system_init() {
     CVAR(conf_imgui_font, imgui_font);
     CVAR(conf_debug_on, g_app->debug_on);
     CVAR(conf_game_proxy, game_proxy);
+    CVAR(conf_default_font, default_font);
 
     g_render = gfx_create();
     gfx_init(g_render);
+
+    neko_default_font();
 
     input_init();
     entity_init();
@@ -287,7 +291,7 @@ void system_update_all() {
     gui_event_clear();
 }
 
-void system_draw_all() {
+void system_draw_all(neko_command_buffer_t *cb) {
     script_draw_all();
     sprite_draw_all();
     batch_draw_all();

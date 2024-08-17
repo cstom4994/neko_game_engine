@@ -76,10 +76,10 @@ void gui_add(Entity ent) {
     gui->focusable = false;
     gui->captures_events = true;
     gui->color = color_gray;
-    gui->bbox = bbox(vec2_zero, vec2(32, 32));
+    gui->bbox = bbox(vec2_zero, luavec2(32, 32));
     gui->halign = GA_NONE;
     gui->valign = GA_NONE;
-    gui->padding = vec2(5, 5);
+    gui->padding = luavec2(5, 5);
 }
 
 void gui_remove(Entity ent) { entitypool_remove(gui_pool, ent); }
@@ -408,7 +408,7 @@ static void _common_load_all(Store* s) {
             bool_load(&gui->captures_events, "captures_events", true, gui_s);
             enum_load(&gui->halign, "halign", GA_NONE, gui_s);
             enum_load(&gui->valign, "valign", GA_NONE, gui_s);
-            vec2_load(&gui->padding, "padding", vec2(5, 5), gui_s);
+            vec2_load(&gui->padding, "padding", luavec2(5, 5), gui_s);
         }
 
     _common_attach_root();
@@ -445,7 +445,7 @@ void gui_rect_add(Entity ent) {
     gui_add(ent);
 
     rect = (Rect*)entitypool_add(rect_pool, ent);
-    rect->size = vec2(64, 64);
+    rect->size = luavec2(64, 64);
     rect->hfit = true;
     rect->vfit = true;
     rect->hfill = false;
@@ -619,7 +619,7 @@ static void _rect_update_child_first(Entity ent) {
     _rect_update_table_align(rect);
     _rect_update_fit(rect);
 
-    gui->bbox = bbox_bound(vec2_zero, vec2(rect->size.x, -rect->size.y));
+    gui->bbox = bbox_bound(vec2_zero, luavec2(rect->size.x, -rect->size.y));
 }
 
 static void _rect_update_parent_first(Entity ent);
@@ -670,7 +670,7 @@ static void _rect_update_parent_first(Entity ent) {
     _rect_update_fill(rect);
     _rect_update_depth(rect);
 
-    gui->bbox = bbox_bound(vec2_zero, vec2(rect->size.x, -rect->size.y));
+    gui->bbox = bbox_bound(vec2_zero, luavec2(rect->size.x, -rect->size.y));
 }
 
 static void _rect_update_all() {
@@ -690,7 +690,7 @@ static void _rect_update_all() {
         error_assert(gui);
 
         // write gui bbox
-        gui->bbox = bbox_bound(vec2_zero, vec2(rect->size.x, -rect->size.y));
+        gui->bbox = bbox_bound(vec2_zero, luavec2(rect->size.x, -rect->size.y));
 
         // read gui properties
         rect->visible = gui->visible;
@@ -745,7 +745,7 @@ static void _rect_load_all(Store* s) {
     Rect* rect;
 
     if (store_child_load(&t, "gui_rect", s)) entitypool_load_foreach(rect, rect_s, rect_pool, "pool", t) {
-            vec2_load(&rect->size, "size", vec2(64, 64), rect_s);
+            vec2_load(&rect->size, "size", luavec2(64, 64), rect_s);
             color_load(&rect->color, "color", color_gray, rect_s);
             bool_load(&rect->hfit, "hfit", true, rect_s);
             bool_load(&rect->vfit, "vfit", true, rect_s);
@@ -792,7 +792,7 @@ static void _text_add_cursor(Text* text, LuaVec2 pos) {
     // compute position in font grid
     tc = (TextChar*)array_add(text->chars);
     tc->pos = pos;
-    tc->cell = vec2(' ' % TEXT_GRID_W, TEXT_GRID_H - 1 - (' ' / TEXT_GRID_W));
+    tc->cell = luavec2(' ' % TEXT_GRID_W, TEXT_GRID_H - 1 - (' ' / TEXT_GRID_W));
     tc->is_cursor = 1;
 }
 
@@ -812,8 +812,8 @@ static void _text_set_str(Text* text, const char* str) {
         str = text->str;
 
     // create TextChar array and update bounds
-    pos = vec2(0, -1);
-    text->bounds = vec2(1, -1);
+    pos = luavec2(0, -1);
+    text->bounds = luavec2(1, -1);
     array_clear(text->chars);
     while (*str) {
         if (i++ == text->cursor) _text_add_cursor(text, pos);
@@ -830,7 +830,7 @@ static void _text_set_str(Text* text, const char* str) {
         // compute position in font grid
         tc = (TextChar*)array_add(text->chars);
         tc->pos = pos;
-        tc->cell = vec2(c % TEXT_GRID_W, TEXT_GRID_H - 1 - (c / TEXT_GRID_W));
+        tc->cell = luavec2(c % TEXT_GRID_W, TEXT_GRID_H - 1 - (c / TEXT_GRID_W));
         tc->is_cursor = -1;
 
         // move ahead
@@ -1210,7 +1210,7 @@ void gui_event_clear() { _common_event_clear(); }
 static void _create_root() {
     gui_root = entity_create();
     transform_add(gui_root);
-    transform_set_position(gui_root, vec2(-1, 1));  // origin at top-left
+    transform_set_position(gui_root, luavec2(-1, 1));  // origin at top-left
     gui_rect_add(gui_root);
     gui_rect_set_hfit(gui_root, false);
     gui_rect_set_vfit(gui_root, false);

@@ -1,12 +1,8 @@
 #include "engine/font.h"
 
+#include "engine/api.hpp"
 #include "engine/asset.h"
 #include "engine/game.h"
-
-// deps
-#include <stb_image_write.h>
-
-#include <format>
 
 bool FontFamily::load(String filepath) {
     PROFILE_FUNC();
@@ -22,20 +18,6 @@ bool FontFamily::load(String filepath) {
     f.sb = {};
     *this = f;
     return true;
-}
-
-void FontFamily::load_default() {
-    PROFILE_FUNC();
-
-    String contents = {};
-    bool ok = vfs_read_entire_file(&contents, "assets/fonts/Monocraft.ttf");
-
-    neko_assert(ok, "load default font failed");
-
-    FontFamily f = {};
-    f.ttf = contents;
-    f.sb = {};
-    *this = f;
 }
 
 void FontFamily::trash() {
@@ -95,35 +77,31 @@ static void make_font_range(FontRange *out, FontFamily *font, FontKey key) {
         }
     }
 
-    static int iii = 0;
-    stbi_write_png(std::format("font_bitmap_{}.png", iii).c_str(), width, height, 4, image_data, 0);
+    // static int iii = 0;
+    // stbi_write_png(std::format("font_bitmap_{}.png", iii++).c_str(), width, height, 4, image_data, 0);
 
     {
         PROFILE_BLOCK("make image");
 
-        // sg_image_desc sg_image = {};
-        // sg_image.width = width;
-        // sg_image.height = height;
-        // sg_image.data.subimage[0][0].ptr = image;
-        // sg_image.data.subimage[0][0].size = width * height * 4;
+        u8 *data = reinterpret_cast<u8 *>(image_data);
 
-        // Texture tex = {};
-        // tex.width = width;
-        // tex.height = height;
-        // tex.flip_image_vertical = true;
+        gfx_texture_desc_t t_desc = {};
 
-        {
-            // LockGuard lock{&g_app->gpu_mtx};
-            // id = sg_make(sg_image).id;
+        t_desc.format = R_TEXTURE_FORMAT_RGBA8;
+        t_desc.mag_filter = R_TEXTURE_FILTER_NEAREST;
+        t_desc.min_filter = R_TEXTURE_FILTER_NEAREST;
+        t_desc.num_mips = 0;
+        t_desc.width = width;
+        t_desc.height = height;
+        // t_desc.num_comps = 4;
+        t_desc.data[0] = data;
 
-            // out->tex.id = id;
-            out->tex.width = width;
-            out->tex.height = height;
-            // out->tex.flip_image_vertical = true;
+        // neko_tex_flip_vertically(width, height, (u8 *)(t_desc.data[0]));
+        neko_texture_t tex = gfx_texture_create(t_desc);
 
-            texture_update_data(&out->tex, image_data);
-            // out->tex.id = generate_texture_handle(image_data, width, height, NULL);
-        }
+        out->tex.id = tex.id;
+        out->tex.width = width;
+        out->tex.height = height;
     }
 
     console_log("created font range with id %d", out->tex.id);
@@ -168,4 +146,13 @@ float FontFamily::width(float size, String text) {
         width += baked->xadvance;
     }
     return width;
+}
+
+FontFamily *neko_default_font() {
+    if (g_app->default_font == nullptr) {
+        CVAR_REF(conf_default_font, String);
+        g_app->default_font = (FontFamily *)mem_alloc(sizeof(FontFamily));
+        g_app->default_font->load(conf_default_font.data.str);
+    }
+    return g_app->default_font;
 }

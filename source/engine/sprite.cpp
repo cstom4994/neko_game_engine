@@ -69,9 +69,9 @@ void sprite_add(Entity ent) {
     transform_add(ent);
 
     sprite = (Sprite *)entitypool_add(pool, ent);
-    sprite->size = vec2(1.0f, 1.0f);
-    sprite->texcell = vec2(32.0f, 32.0f);
-    sprite->texsize = vec2(32.0f, 32.0f);
+    sprite->size = luavec2(1.0f, 1.0f);
+    sprite->texcell = luavec2(32.0f, 32.0f);
+    sprite->texsize = luavec2(32.0f, 32.0f);
     sprite->depth = 0;
 }
 void sprite_remove(Entity ent) { entitypool_remove(pool, ent); }
@@ -219,9 +219,9 @@ void sprite_load_all(Store *s) {
         }
 
         entitypool_load_foreach(sprite, sprite_s, pool, "pool", t) {
-            vec2_load(&sprite->size, "size", vec2(1, 1), sprite_s);
-            vec2_load(&sprite->texcell, "texcell", vec2(32, 32), sprite_s);
-            vec2_load(&sprite->texsize, "texsize", vec2(32, 32), sprite_s);
+            vec2_load(&sprite->size, "size", luavec2(1, 1), sprite_s);
+            vec2_load(&sprite->texcell, "texcell", luavec2(32, 32), sprite_s);
+            vec2_load(&sprite->texsize, "texsize", luavec2(32, 32), sprite_s);
             int_load(&sprite->depth, "depth", 0, sprite_s);
         }
     }

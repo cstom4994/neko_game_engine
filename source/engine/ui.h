@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "engine/base.h"
+#include "engine/draw.h"
 #include "engine/ecs.h"
 #include "engine/gfx.h"
 #include "engine/input.h"
@@ -616,7 +617,7 @@ DEFINE_IMGUI_END();
 neko_imgui_def_inline(template <>, std::add_pointer_t<void()>, if (ImGui::Button(name.c_str())) var(););
 neko_imgui_def_inline(template <>, const std::add_pointer_t<void()>, if (ImGui::Button(name.c_str())) var(););
 
-// DEFINE_IMGUI_BEGIN(template <>, neko_vec2_t) {
+// DEFINE_IMGUI_BEGIN(template <>, vec2_t) {
 //     //    neko::static_refl::neko_type_info<CGameObject>::ForEachVarOf(var, [&](const auto& field, auto&& value) { neko::imgui::Auto(value, std::string(field.name)); });
 //     ImGui::Text("%f %f", var.x, var.y);
 // }
@@ -984,20 +985,22 @@ typedef struct ui_context_t ui_context_t;
 typedef u32 ui_id;
 typedef UI_REAL ui_real;
 
+struct FontFamily;
+
 // Shapes
 typedef struct {
     float x, y, w, h;
 } ui_rect_t;
 typedef struct {
     float radius;
-    neko_vec2 center;
+    vec2 center;
 } ui_circle_t;
 typedef struct {
-    neko_vec2 points[3];
+    vec2 points[3];
 } ui_triangle_t;
 typedef struct {
-    neko_vec2 start;
-    neko_vec2 end;
+    vec2 start;
+    vec2 end;
 } ui_line_t;
 
 typedef struct {
@@ -1021,8 +1024,8 @@ typedef struct {
 
 typedef struct {
     ui_basecommand_t base;
-    neko_asset_font_t* font;
-    neko_vec2 pos;
+    FontFamily* font;
+    vec2 pos;
     Color256 color;
     char str[1];
 } ui_textcommand_t;
@@ -1045,7 +1048,7 @@ typedef struct {
     ui_basecommand_t base;
     ui_rect_t rect;
     neko_handle(gfx_texture_t) hndl;
-    neko_vec4 uvs;
+    vec4 uvs;
     Color256 color;
 } ui_imagecommand_t;
 
@@ -1117,9 +1120,9 @@ typedef enum { UI_DIRECTION_COLUMN = 0x00, UI_DIRECTION_ROW, UI_DIRECTION_COLUMN
 typedef struct ui_layout_t {
     ui_rect_t body;
     ui_rect_t next;
-    neko_vec2 position;
-    neko_vec2 size;
-    neko_vec2 max;
+    vec2 position;
+    vec2 size;
+    vec2 max;
     i32 padding[4];
     i32 widths[UI_MAX_WIDTHS];
     i32 items;
@@ -1189,8 +1192,8 @@ typedef struct ui_container_t {
     ui_command_t *head, *tail;
     ui_rect_t rect;
     ui_rect_t body;
-    neko_vec2 content_size;
-    neko_vec2 scroll;
+    vec2 content_size;
+    vec2 scroll;
     i32 zindex;
     i32 open;
     ui_id id;
@@ -1301,7 +1304,7 @@ typedef struct {
     union {
         i32 value;
         Color256 color;
-        neko_asset_font_t* font;
+        FontFamily* font;
     };
 } ui_style_element_t;
 
@@ -1322,7 +1325,7 @@ typedef struct ui_animation_t {
 
 typedef struct ui_style_t {
     // font
-    neko_asset_font_t* font;
+    FontFamily* font;
 
     // dimensions
     float size[2];
@@ -1517,7 +1520,7 @@ typedef struct ui_context_t {
     i32 last_zindex;
     i32 updated_focus;
     i32 frame;
-    neko_vec2 framebuffer_size;
+    vec2 framebuffer_size;
     ui_rect_t viewport;
     ui_container_t* active_root;
     ui_container_t* hover_root;
@@ -1559,10 +1562,10 @@ typedef struct ui_context_t {
     neko_slot_array(ui_tab_bar_t) tab_bars;
 
     // Input state
-    neko_vec2 mouse_pos;
-    neko_vec2 last_mouse_pos;
-    neko_vec2 mouse_delta;
-    neko_vec2 scroll_delta;
+    vec2 mouse_pos;
+    vec2 last_mouse_pos;
+    vec2 mouse_delta;
+    vec2 scroll_delta;
     i32 mouse_down;
     i32 mouse_pressed;
     i32 key_down;
@@ -1578,7 +1581,7 @@ typedef struct ui_context_t {
     neko_hash_table(ui_id, ui_animation_t) animations;
 
     // Font stash
-    neko_hash_table(u64, neko_asset_font_t*) font_stash;
+    neko_hash_table(u64, FontFamily*) font_stash;
 
     // Callbacks
     struct {
@@ -1635,10 +1638,10 @@ typedef struct {
     neko_slot_array(ui_tab_bar_t) tab_bars;
 
     // Input state
-    neko_vec2 mouse_pos;
-    neko_vec2 last_mouse_pos;
-    neko_vec2 mouse_delta;
-    neko_vec2 scroll_delta;
+    vec2 mouse_pos;
+    vec2 last_mouse_pos;
+    vec2 mouse_delta;
+    vec2 scroll_delta;
     i16 mouse_down;
     i16 mouse_pressed;
     i16 key_down;
@@ -1662,7 +1665,7 @@ typedef struct {
 
 typedef struct {
     const char* key;
-    neko_asset_font_t* font;
+    FontFamily* font;
 } ui_font_desc_t;
 
 typedef struct {
@@ -1678,7 +1681,7 @@ typedef struct {
 enum { UI_HINT_FLAG_NO_SCALE_BIAS_MOUSE = (1 << 0), UI_HINT_FLAG_NO_INVERT_Y = (1 << 1) };
 
 typedef struct ui_hints_t {
-    neko_vec2 framebuffer_size;  // Overall framebuffer size
+    vec2 framebuffer_size;  // Overall framebuffer size
     ui_rect_t viewport;          // Viewport within framebuffer for gui context
     i32 flags;                   // Flags for hints
 } ui_hints_t;
@@ -1779,13 +1782,13 @@ void ui_bind_uniforms(ui_context_t* ctx, gfx_bind_uniform_desc_t* uniforms, size
 // Drawing
 
 void ui_draw_rect(ui_context_t* ctx, ui_rect_t rect, Color256 color);
-void ui_draw_circle(ui_context_t* ctx, neko_vec2 position, float radius, Color256 color);
-void ui_draw_triangle(ui_context_t* ctx, neko_vec2 a, neko_vec2 b, neko_vec2 c, Color256 color);
+void ui_draw_circle(ui_context_t* ctx, vec2 position, float radius, Color256 color);
+void ui_draw_triangle(ui_context_t* ctx, vec2 a, vec2 b, vec2 c, Color256 color);
 void ui_draw_box(ui_context_t* ctx, ui_rect_t rect, i16* width, Color256 color);
-void ui_draw_line(ui_context_t* ctx, neko_vec2 start, neko_vec2 end, Color256 color);
-void ui_draw_text(ui_context_t* ctx, neko_asset_font_t* font, const char* str, i32 len, neko_vec2 pos, Color256 color, i32 shadow_x, i32 shadow_y, Color256 shadow_color);
-void ui_draw_image(ui_context_t* ctx, neko_handle(gfx_texture_t) hndl, ui_rect_t rect, neko_vec2 uv0, neko_vec2 uv1, Color256 color);
-void ui_draw_nine_rect(ui_context_t* ctx, neko_handle(gfx_texture_t) hndl, ui_rect_t rect, neko_vec2 uv0, neko_vec2 uv1, u32 left, u32 right, u32 top, u32 bottom, Color256 color);
+void ui_draw_line(ui_context_t* ctx, vec2 start, vec2 end, Color256 color);
+void ui_draw_text(ui_context_t* ctx, FontFamily* font, const char* str, i32 len, vec2 pos, Color256 color, i32 shadow_x, i32 shadow_y, Color256 shadow_color);
+void ui_draw_image(ui_context_t* ctx, neko_handle(gfx_texture_t) hndl, ui_rect_t rect, vec2 uv0, vec2 uv1, Color256 color);
+void ui_draw_nine_rect(ui_context_t* ctx, neko_handle(gfx_texture_t) hndl, ui_rect_t rect, vec2 uv0, vec2 uv1, u32 left, u32 right, u32 top, u32 bottom, Color256 color);
 void ui_draw_control_frame(ui_context_t* ctx, ui_id id, ui_rect_t rect, i32 elementid, u64 opt);
 void ui_draw_control_text(ui_context_t* ctx, const char* str, ui_rect_t rect, const ui_style_t* style, u64 opt);
 void ui_draw_custom(ui_context_t* ctx, ui_rect_t rect, ui_draw_callback_t cb, void* data, size_t sz);
@@ -1832,7 +1835,7 @@ ui_rect_t ui_layout_anchor(const ui_rect_t* parent, i32 width, i32 height, i32 x
 
 // Elements (Extended)
 
-i32 ui_image_ex(ui_context_t* ctx, neko_handle(gfx_texture_t) hndl, neko_vec2 uv0, neko_vec2 uv1, const ui_selector_desc_t* desc, u64 opt);
+i32 ui_image_ex(ui_context_t* ctx, neko_handle(gfx_texture_t) hndl, vec2 uv0, vec2 uv1, const ui_selector_desc_t* desc, u64 opt);
 i32 ui_text_ex(ui_context_t* ctx, const char* text, i32 text_wrap, const ui_selector_desc_t* desc, u64 opt);
 i32 ui_label_ex(ui_context_t* ctx, const char* text, const ui_selector_desc_t* desc, u64 opt);
 i32 ui_button_ex(ui_context_t* ctx, const char* label, const ui_selector_desc_t* desc, u64 opt);
@@ -1866,9 +1869,5 @@ void ui_dock_ex(ui_context_t* ctx, const char* dst, const char* src, i32 split_t
 void ui_undock_ex(ui_context_t* ctx, const char* name);
 void ui_dock_ex_cnt(ui_context_t* ctx, ui_container_t* dst, ui_container_t* src, i32 split_type, float ratio);
 void ui_undock_ex_cnt(ui_context_t* ctx, ui_container_t* cnt);
-
-// Gizmo
-
-i32 ui_gizmo(ui_context_t* ctx, neko_camera_t* camera, neko_vqs* model, ui_rect_t viewport, bool invert_view_y, float snap, i32 op, i32 mode, u64 opt);
 
 #endif

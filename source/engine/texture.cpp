@@ -252,7 +252,7 @@ LuaVec2 texture_get_size(const char *filename) {
     Asset a = {};
     bool ok = asset_load_kind(AssetKind_Image, filename, &a);
     error_assert(ok);
-    return vec2(a.texture.width, a.texture.height);
+    return luavec2(a.texture.width, a.texture.height);
 }
 
 Texture texture_get_ptr(const char *filename) {

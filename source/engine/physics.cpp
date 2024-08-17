@@ -764,7 +764,7 @@ static EntityMap *debug_draw_map;
 // chipmunk utilities
 
 static inline cpVect cpv_of_vec2(LuaVec2 v) { return cpv(v.x, v.y); }
-static inline LuaVec2 vec2_of_cpv(cpVect v) { return vec2(v.x, v.y); }
+static inline LuaVec2 vec2_of_cpv(cpVect v) { return luavec2(v.x, v.y); }
 
 static inline void _remove_body(cpBody *body)
 {

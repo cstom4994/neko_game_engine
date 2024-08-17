@@ -149,7 +149,7 @@ typedef struct neko_tiled_quad_t {
     LuaVec2 texture_size;
     LuaVec2 position;
     LuaVec2 dimentions;
-    Vector4 rectangle;
+    vec4 rectangle;
     Color256 color;
     bool use_texture;
 } neko_tiled_quad_t;
@@ -179,7 +179,7 @@ typedef struct neko_tiled_renderer {
 
     map_t map;  // tiled data
 
-    Matrix4 camera_mat;
+    mat4 camera_mat;
 } neko_tiled_renderer;
 
 void neko_tiled_render_init(neko_command_buffer_t* cb, neko_tiled_renderer* renderer, const_str vert_src, const_str frag_src);

@@ -92,7 +92,7 @@ void camera_init() {
     pool = entitypool_new(Camera);
     curr_camera = entity_nil;
     edit_camera = entity_nil;
-    inverse_view_matrix = mat3_identity();
+    inverse_view_matrix = luamat3_identity();
 }
 
 void camera_fini() { entitypool_free(pool); }
@@ -111,7 +111,7 @@ void camera_update_all() {
     aspect = win_size.x / win_size.y;
 
     entitypool_foreach(camera, pool) {
-        scale = vec2(0.5 * aspect * camera->viewport_height, 0.5 * camera->viewport_height);
+        scale = luavec2(0.5 * aspect * camera->viewport_height, 0.5 * camera->viewport_height);
         transform_set_scale(camera->pool_elem.ent, scale);
 
         edit_bboxes_update(camera->pool_elem.ent, bbox);
@@ -119,7 +119,7 @@ void camera_update_all() {
 
     cam = camera_get_current_camera();
     if (entity_eq(cam, entity_nil))
-        inverse_view_matrix = mat3_identity();
+        inverse_view_matrix = luamat3_identity();
     else
         inverse_view_matrix = mat3_inverse(transform_get_world_matrix(cam));
 }
@@ -143,7 +143,7 @@ void camera_load_all(Store *s) {
     if (store_child_load(&t, "camera", s)) {
         entity_load(&curr_camera, "curr_camera", curr_camera, t);
 
-        mat3_load(&inverse_view_matrix, "inverse_view_matrix", mat3_identity(), t);
+        mat3_load(&inverse_view_matrix, "inverse_view_matrix", luamat3_identity(), t);
 
         entitypool_load_foreach(camera, camera_s, pool, "pool", t) scalar_load(&camera->viewport_height, "viewport_height", 1, camera_s);
     }

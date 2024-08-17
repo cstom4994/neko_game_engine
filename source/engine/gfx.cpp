@@ -863,7 +863,7 @@ void neko_gl_pipeline_state() {
     });
 }
 
-// Utilities 
+// Utilities
 i32 neko_gl_buffer_usage_to_gl_enum(gfx_buffer_usage_type type) {
     i32 mode = GL_STATIC_DRAW;
     switch (type) {
@@ -1735,7 +1735,7 @@ neko_gl_texture_t gl_texture_update_internal(const gfx_texture_desc_t* desc, u32
     return tex;
 }
 
-// Resource Creation 
+// Resource Creation
 neko_handle(gfx_texture_t) gfx_texture_create_impl(const gfx_texture_desc_t desc) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     neko_gl_texture_t tex = gl_texture_update_internal(&desc, 0);
@@ -2393,7 +2393,7 @@ void* gfx_storage_buffer_lock_impl(neko_handle(gfx_storage_buffer_t) hndl) {
         CB->num_commands++;                                       \
     } while (0)
 
-// Command Buffer Ops: Pipeline / Pass / Bind / Draw 
+// Command Buffer Ops: Pipeline / Pass / Bind / Draw
 void gfx_renderpass_begin(neko_command_buffer_t* cb, neko_handle(gfx_renderpass_t) hndl) {
     __ogl_push_command(cb, NEKO_OPENGL_OP_BEGIN_RENDER_PASS, { neko_byte_buffer_write(&cb->commands, u32, hndl.id); });
 }
@@ -2961,48 +2961,48 @@ void gfx_cmd_submit(neko_command_buffer_t* cb) {
                                     } break;
 
                                     case NEKO_GL_UNIFORMTYPE_VEC2: {
-                                        neko_assert(u->size == sizeof(neko_vec2));
+                                        neko_assert(u->size == sizeof(vec2));
                                         neko_dyn_array_clear(ogl->uniform_data.vec2);
                                         u32 ct = u->count ? u->count : 1;
                                         size_t sz = ct * u->size;
                                         NEKO_FOR_RANGE(ct) {
-                                            neko_byte_buffer_readc(&cb->commands, neko_vec2, v);
+                                            neko_byte_buffer_readc(&cb->commands, vec2, v);
                                             neko_dyn_array_push(ogl->uniform_data.vec2, v);
                                         }
                                         glUniform2fv(u->location, ct, (float*)ogl->uniform_data.vec2);
                                     } break;
 
                                     case NEKO_GL_UNIFORMTYPE_VEC3: {
-                                        neko_assert(u->size == sizeof(neko_vec3));
+                                        neko_assert(u->size == sizeof(vec3));
                                         neko_dyn_array_clear(ogl->uniform_data.vec3);
                                         u32 ct = u->count ? u->count : 1;
                                         size_t sz = ct * u->size;
                                         NEKO_FOR_RANGE(ct) {
-                                            neko_byte_buffer_readc(&cb->commands, neko_vec3, v);
+                                            neko_byte_buffer_readc(&cb->commands, vec3, v);
                                             neko_dyn_array_push(ogl->uniform_data.vec3, v);
                                         }
                                         glUniform3fv(u->location, ct, (float*)ogl->uniform_data.vec3);
                                     } break;
 
                                     case NEKO_GL_UNIFORMTYPE_VEC4: {
-                                        neko_assert(u->size == sizeof(neko_vec4));
+                                        neko_assert(u->size == sizeof(vec4));
                                         neko_dyn_array_clear(ogl->uniform_data.vec4);
                                         u32 ct = u->count ? u->count : 1;
                                         size_t sz = ct * u->size;
                                         NEKO_FOR_RANGE(ct) {
-                                            neko_byte_buffer_readc(&cb->commands, neko_vec4, v);
+                                            neko_byte_buffer_readc(&cb->commands, vec4, v);
                                             neko_dyn_array_push(ogl->uniform_data.vec4, v);
                                         }
                                         glUniform4fv(u->location, ct, (float*)ogl->uniform_data.vec4);
                                     } break;
 
                                     case NEKO_GL_UNIFORMTYPE_MAT4: {
-                                        neko_assert(u->size == sizeof(neko_mat4));
+                                        neko_assert(u->size == sizeof(mat4));
                                         neko_dyn_array_clear(ogl->uniform_data.mat4);
                                         u32 ct = u->count ? u->count : 1;
                                         size_t sz = ct * u->size;
                                         NEKO_FOR_RANGE(ct) {
-                                            neko_byte_buffer_readc(&cb->commands, neko_mat4, v);
+                                            neko_byte_buffer_readc(&cb->commands, mat4, v);
                                             neko_dyn_array_push(ogl->uniform_data.mat4, v);
                                         }
                                         glUniformMatrix4fv(u->location, ct, false, (float*)ogl->uniform_data.mat4);
@@ -3234,15 +3234,15 @@ void gfx_cmd_submit(neko_command_buffer_t* cb) {
                 // Reset state as well
                 neko_gl_pipeline_state();
 
-                // Cache pipeline id 
+                // Cache pipeline id
                 ogl->cache.pipeline = neko_handle_create(gfx_pipeline_t, pipid);
 
                 neko_gl_pipeline_t* pip = neko_slot_array_getp(ogl->pipelines, pipid);
 
-                // Compute 
+                // Compute
                 // Early out if compute, since we're not doing a rasterization stage
                 if (pip->compute.shader.id) {
-                    // Shader 
+                    // Shader
                     if (pip->compute.shader.id && neko_slot_array_exists(ogl->shaders, pip->compute.shader.id)) {
                         glUseProgram(neko_slot_array_get(ogl->shaders, pip->compute.shader.id).id);
                     } else {
@@ -3252,7 +3252,7 @@ void gfx_cmd_submit(neko_command_buffer_t* cb) {
                     continue;
                 }
 
-                // Depth 
+                // Depth
                 if (!pip->depth.func) {
                     // If no depth function (default), then disable
                     glDisable(GL_DEPTH_TEST);
@@ -3262,7 +3262,7 @@ void gfx_cmd_submit(neko_command_buffer_t* cb) {
                 }
                 glDepthMask(neko_gl_depth_mask_to_gl_mask(pip->depth.mask));
 
-                // Stencil 
+                // Stencil
                 if (!pip->stencil.func) {
                     // If no stencil function (default), then disable
                     glDisable(GL_STENCIL_TEST);
@@ -3277,7 +3277,7 @@ void gfx_cmd_submit(neko_command_buffer_t* cb) {
                     glStencilOp(sfail, dpfail, dppass);
                 }
 
-                // Blend 
+                // Blend
                 if (!pip->blend.func) {
                     glDisable(GL_BLEND);
                 } else {
@@ -3286,7 +3286,7 @@ void gfx_cmd_submit(neko_command_buffer_t* cb) {
                     glBlendFunc(neko_gl_blend_mode_to_gl_blend_mode(pip->blend.src, GL_ONE), neko_gl_blend_mode_to_gl_blend_mode(pip->blend.dst, GL_ZERO));
                 }
 
-                // Raster 
+                // Raster
                 // Face culling
                 if (!pip->raster.face_culling) {
                     glDisable(GL_CULL_FACE);
@@ -3298,7 +3298,7 @@ void gfx_cmd_submit(neko_command_buffer_t* cb) {
                 // Winding order
                 glFrontFace(neko_gl_winding_order_to_gl_winding_order(pip->raster.winding_order));
 
-                // Shader 
+                // Shader
                 if (pip->raster.shader.id && neko_slot_array_exists(ogl->shaders, pip->raster.shader.id)) {
                     glUseProgram(neko_slot_array_get(ogl->shaders, pip->raster.shader.id).id);
                 } else {
@@ -3489,7 +3489,7 @@ void gfx_cmd_submit(neko_command_buffer_t* cb) {
 
             case NEKO_OPENGL_OP_DRAW_FUNC: {
                 neko_byte_buffer_readc(&cb->commands, R_DRAW_FUNC, draw_func);
-                draw_func();
+                draw_func(cb);
             } break;
 
             case NEKO_OPENGL_OP_REQUEST_TEXTURE_UPDATE: {

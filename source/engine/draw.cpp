@@ -15,6 +15,8 @@
 #include <stb_rect_pack.h>
 #include <stb_truetype.h>
 
+#if 0
+
 struct Renderer2D {
     Matrix4 matrices[32];
     u64 matrices_len;
@@ -98,10 +100,6 @@ bool renderer_pop_matrix() {
     return true;
 }
 
-Matrix4 renderer_peek_matrix() { return g_renderer.matrices[g_renderer.matrices_len - 1]; }
-
-void renderer_set_top_matrix(Matrix4 mat) { g_renderer.matrices[g_renderer.matrices_len - 1] = mat; }
-
 void renderer_translate(float x, float y) {
     Matrix4 top = renderer_peek_matrix();
 
@@ -178,8 +176,6 @@ void renderer_push_xy(float x, float y) {
     Vector4 v = vec4_mul_mat4(vec4_xy(x, y), top);
     // sgl_v2f(v.x, v.y);
 }
-
-#if 0
 
 void draw_image(const Image *img, DrawDescription *desc) {
     bool ok = renderer_push_matrix();
@@ -443,7 +439,7 @@ float draw_font(idraw_t* idraw, FontFamily* font, float size, float x, float y, 
 
     y += size;
     // sgl_enable_texture();
-    renderer_apply_color();
+    // renderer_apply_color();
 
     for (String line : SplitLines(text)) {
         draw_font_line(idraw, font, size, &x, &y, line);
@@ -457,7 +453,7 @@ float draw_font_wrapped(idraw_t* idraw, FontFamily* font, float size, float x, f
 
     y += size;
     // sgl_enable_texture();
-    renderer_apply_color();
+    // renderer_apply_color();
 
     for (String line : SplitLines(text)) {
         font->sb.clear();
@@ -486,129 +482,6 @@ float draw_font_wrapped(idraw_t* idraw, FontFamily* font, float size, float x, f
     }
 
     return y - size;
-}
-
-/*=============================
-// Camera
-=============================*/
-
-neko_camera_t neko_camera_default() {
-    // Construct default camera parameters
-    neko_camera_t cam = NEKO_DEFAULT_VAL();
-    cam.transform = neko_vqs_default();
-    cam.transform.position.z = 1.f;
-    cam.fov = 60.f;
-    cam.near_plane = 0.1f;
-    cam.far_plane = 1000.f;
-    cam.ortho_scale = 1.f;
-    cam.proj_type = NEKO_PROJECTION_TYPE_ORTHOGRAPHIC;
-    return cam;
-}
-
-neko_camera_t neko_camera_perspective() {
-    neko_camera_t cam = neko_camera_default();
-    cam.proj_type = NEKO_PROJECTION_TYPE_PERSPECTIVE;
-    cam.transform.position.z = 1.f;
-    return cam;
-}
-
-neko_vec3 neko_camera_forward(const neko_camera_t* cam) { return (neko_quat_rotate(cam->transform.rotation, neko_v3(0.0f, 0.0f, -1.0f))); }
-
-neko_vec3 neko_camera_backward(const neko_camera_t* cam) { return (neko_quat_rotate(cam->transform.rotation, neko_v3(0.0f, 0.0f, 1.0f))); }
-
-neko_vec3 neko_camera_up(const neko_camera_t* cam) { return (neko_quat_rotate(cam->transform.rotation, neko_v3(0.0f, 1.0f, 0.0f))); }
-
-neko_vec3 neko_camera_down(const neko_camera_t* cam) { return (neko_quat_rotate(cam->transform.rotation, neko_v3(0.0f, -1.0f, 0.0f))); }
-
-neko_vec3 neko_camera_right(const neko_camera_t* cam) { return (neko_quat_rotate(cam->transform.rotation, neko_v3(1.0f, 0.0f, 0.0f))); }
-
-neko_vec3 neko_camera_left(const neko_camera_t* cam) { return (neko_quat_rotate(cam->transform.rotation, neko_v3(-1.0f, 0.0f, 0.0f))); }
-
-neko_vec3 neko_camera_world_to_screen(const neko_camera_t* cam, neko_vec3 coords, i32 view_width, i32 view_height) {
-    // Transform world coords to screen coords to place billboarded UI elements in world
-    neko_mat4 vp = neko_camera_get_view_projection(cam, view_width, view_height);
-    neko_vec4 p4 = neko_v4(coords.x, coords.y, coords.z, 1.f);
-    p4 = neko_mat4_mul_vec4(vp, p4);
-    p4.x /= p4.w;
-    p4.y /= p4.w;
-    p4.z /= p4.w;
-
-    // Bring into ndc
-    p4.x = p4.x * 0.5f + 0.5f;
-    p4.y = p4.y * 0.5f + 0.5f;
-
-    // Bring into screen space
-    p4.x = p4.x * (f32)view_width;
-    p4.y = neko_map_range(1.f, 0.f, 0.f, 1.f, p4.y) * (f32)view_height;
-
-    return neko_v3(p4.x, p4.y, p4.z);
-}
-
-neko_vec3 neko_camera_screen_to_world(const neko_camera_t* cam, neko_vec3 coords, i32 view_x, i32 view_y, i32 view_width, i32 view_height) {
-    neko_vec3 wc = NEKO_DEFAULT_VAL();
-
-    // Get inverse of view projection from camera
-    neko_mat4 inverse_vp = neko_mat4_inverse(neko_camera_get_view_projection(cam, view_width, view_height));
-    f32 w_x = (f32)coords.x - (f32)view_x;
-    f32 w_y = (f32)coords.y - (f32)view_y;
-    f32 w_z = (f32)coords.z;
-
-    // Transform from ndc
-    neko_vec4 in;
-    in.x = (w_x / (f32)view_width) * 2.f - 1.f;
-    in.y = 1.f - (w_y / (f32)view_height) * 2.f;
-    in.z = 2.f * w_z - 1.f;
-    in.w = 1.f;
-
-    // To world coords
-    neko_vec4 out = neko_mat4_mul_vec4(inverse_vp, in);
-    if (out.w == 0.f) {
-        // Avoid div by zero
-        return wc;
-    }
-
-    out.w = fabsf(out.w) > neko_epsilon ? 1.f / out.w : 0.0001f;
-    wc = neko_v3(out.x * out.w, out.y * out.w, out.z * out.w);
-
-    return wc;
-}
-
-neko_mat4 neko_camera_get_view_projection(const neko_camera_t* cam, i32 view_width, i32 view_height) {
-    neko_mat4 view = neko_camera_get_view(cam);
-    neko_mat4 proj = neko_camera_get_proj(cam, view_width, view_height);
-    return neko_mat4_mul(proj, view);
-}
-
-neko_mat4 neko_camera_get_view(const neko_camera_t* cam) {
-    neko_vec3 up = neko_camera_up(cam);
-    neko_vec3 forward = neko_camera_forward(cam);
-    neko_vec3 target = neko_vec3_add(forward, cam->transform.position);
-    return neko_mat4_look_at(cam->transform.position, target, up);
-}
-
-neko_mat4 neko_camera_get_proj(const neko_camera_t* cam, i32 view_width, i32 view_height) {
-    neko_mat4 proj_mat = neko_mat4_identity();
-
-    switch (cam->proj_type) {
-        case NEKO_PROJECTION_TYPE_PERSPECTIVE: {
-            proj_mat = neko_mat4_perspective(cam->fov, (f32)view_width / (f32)view_height, cam->near_plane, cam->far_plane);
-        } break;
-        case NEKO_PROJECTION_TYPE_ORTHOGRAPHIC: {
-            f32 _ar = (f32)view_width / (f32)view_height;
-            f32 distance = 0.5f * (cam->far_plane - cam->near_plane);
-            const f32 ortho_scale = cam->ortho_scale;
-            const f32 aspect_ratio = _ar;
-            proj_mat = neko_mat4_ortho(-ortho_scale * aspect_ratio, ortho_scale * aspect_ratio, -ortho_scale, ortho_scale, -distance, distance);
-        } break;
-    }
-
-    return proj_mat;
-}
-
-void neko_camera_offset_orientation(neko_camera_t* cam, f32 yaw, f32 pitch) {
-    neko_quat x = neko_quat_angle_axis(neko_deg2rad(yaw), neko_v3(0.f, 1.f, 0.f));    // Absolute up
-    neko_quat y = neko_quat_angle_axis(neko_deg2rad(pitch), neko_camera_right(cam));  // Relative right
-    cam->transform.rotation = neko_quat_mul(neko_quat_mul(x, y), cam->transform.rotation);
 }
 
 /*=============================
@@ -691,8 +564,8 @@ void neko_idraw_reset(idraw_t* neko_idraw) {
     neko_dyn_array_clear(neko_idraw->cache.modes);
     neko_dyn_array_clear(neko_idraw->vattributes);
 
-    neko_dyn_array_push(neko_idraw->cache.modelview, neko_mat4_identity());
-    neko_dyn_array_push(neko_idraw->cache.projection, neko_mat4_identity());
+    neko_dyn_array_push(neko_idraw->cache.modelview, mat4_identity());
+    neko_dyn_array_push(neko_idraw->cache.projection, mat4_identity());
     neko_dyn_array_push(neko_idraw->cache.modes, NEKO_IDRAW_MATRIX_MODELVIEW);
 
     neko_idraw->cache.texture = neko_idraw()->tex_default;
@@ -801,51 +674,6 @@ void neko_immediate_draw_static_data_init() {
                         neko_hash_table_insert(neko_idraw()->pipeline_table, attr, hndl);
                     }
 
-    // Create default font
-    neko_asset_font_t* f = &neko_idraw()->font_default;
-    stbtt_fontinfo font = NEKO_DEFAULT_VAL();
-
-    String ttf_data = {};
-    vfs_read_entire_file(&ttf_data, "assets/fonts/font.ttf");
-    neko_defer(mem_free(ttf_data.data));
-
-    const u32 w = 512;
-    const u32 h = 512;
-    const u32 num_comps = 4;
-    u8* alpha_bitmap = (u8*)mem_alloc(w * h);
-    u8* flipmap = (u8*)mem_alloc(w * h * num_comps);
-    memset(alpha_bitmap, 0, w * h);
-    memset(flipmap, 0, w * h * num_comps);
-    i32 v = stbtt_BakeFontBitmap((u8*)ttf_data.data, 0, 16.f, alpha_bitmap, w, h, 32, 96, (stbtt_bakedchar*)f->glyphs);  // no guarantee this fits!
-
-    // Flip texture
-    u32 r = h - 1;
-    for (u32 i = 0; i < h; ++i) {
-        for (u32 j = 0; j < w; ++j) {
-            u32 i0 = i * w + j;
-            u32 i1 = i * w * num_comps + j * num_comps;
-            u8 a = alpha_bitmap[i0];
-            flipmap[i1 + 0] = 255;
-            flipmap[i1 + 1] = 255;
-            flipmap[i1 + 2] = 255;
-            flipmap[i1 + 3] = a;
-        }
-        r--;
-    }
-
-    gfx_texture_desc_t desc = NEKO_DEFAULT_VAL();
-    desc.width = w;
-    desc.height = h;
-    *desc.data = flipmap;
-    desc.format = R_TEXTURE_FORMAT_RGBA8;
-    desc.min_filter = R_TEXTURE_FILTER_NEAREST;
-    desc.mag_filter = R_TEXTURE_FILTER_NEAREST;
-
-    // Generate atlas texture for bitmap with bitmap data
-    f->texture.hndl = gfx_texture_create(desc);
-    f->texture.desc = desc;
-    *f->texture.desc.data = NULL;
-
     // Create vertex buffer
     gfx_vertex_buffer_desc_t vdesc = NEKO_DEFAULT_VAL();
     vdesc.data = NULL;
@@ -855,8 +683,8 @@ void neko_immediate_draw_static_data_init() {
 
     // mem_free(compressed_ttf_data);
     // mem_free(buf_decompressed_data);
-    mem_free(alpha_bitmap);
-    mem_free(flipmap);
+    // mem_free(alpha_bitmap);
+    // mem_free(flipmap);
 }
 
 void neko_immediate_draw_static_data_set(neko_immediate_draw_static_data_t* data) { g_neko_idraw = data; }
@@ -908,11 +736,6 @@ void neko_immediate_draw_free(idraw_t* ctx) {
     neko_dyn_array_free(ctx->cache.modes);
 }
 
-neko_asset_font_t* neko_idraw_default_font() {
-    if (neko_idraw()) return &neko_idraw()->font_default;
-    return NULL;
-}
-
 neko_handle(gfx_pipeline_t) neko_idraw_get_pipeline(idraw_t* neko_idraw, neko_idraw_pipeline_state_attr_t state) {
     // Bind pipeline
     neko_assert(neko_hash_table_key_exists(neko_idraw()->pipeline_table, state));
@@ -945,16 +768,16 @@ f32 neko_hue_dist(f32 h1, f32 h2) {
     return d > 180.f ? 360.f - d : d;
 }
 
-static void neko_idraw_rect_2d(idraw_t* neko_idraw, neko_vec2 a, neko_vec2 b, neko_vec2 uv0, neko_vec2 uv1, Color256 color) {
-    neko_vec3 tl = neko_v3(a.x, a.y, 0.f);
-    neko_vec3 tr = neko_v3(b.x, a.y, 0.f);
-    neko_vec3 bl = neko_v3(a.x, b.y, 0.f);
-    neko_vec3 br = neko_v3(b.x, b.y, 0.f);
+static void neko_idraw_rect_2d(idraw_t* neko_idraw, vec2 a, vec2 b, vec2 uv0, vec2 uv1, Color256 color) {
+    vec3 tl = neko_v3(a.x, a.y, 0.f);
+    vec3 tr = neko_v3(b.x, a.y, 0.f);
+    vec3 bl = neko_v3(a.x, b.y, 0.f);
+    vec3 br = neko_v3(b.x, b.y, 0.f);
 
-    neko_vec2 tl_uv = neko_v2(uv0.x, uv1.y);
-    neko_vec2 tr_uv = neko_v2(uv1.x, uv1.y);
-    neko_vec2 bl_uv = neko_v2(uv0.x, uv0.y);
-    neko_vec2 br_uv = neko_v2(uv1.x, uv0.y);
+    vec2 tl_uv = neko_v2(uv0.x, uv1.y);
+    vec2 tr_uv = neko_v2(uv1.x, uv1.y);
+    vec2 bl_uv = neko_v2(uv0.x, uv0.y);
+    vec2 br_uv = neko_v2(uv1.x, uv0.y);
 
     neko_idraw_begin(neko_idraw, R_PRIMITIVE_TRIANGLES);
     {
@@ -981,7 +804,7 @@ static void neko_idraw_rect_2d(idraw_t* neko_idraw, neko_vec2 a, neko_vec2 b, ne
     neko_idraw_end(neko_idraw);
 }
 
-void neko_idraw_rect_textured(idraw_t* neko_idraw, neko_vec2 a, neko_vec2 b, u32 tex_id, Color256 color) {
+void neko_idraw_rect_textured(idraw_t* neko_idraw, vec2 a, vec2 b, u32 tex_id, Color256 color) {
     neko_idraw_rect_textured_ext(neko_idraw, a.x, a.y, b.x, b.y, 0.f, 0.f, 1.f, 1.f, tex_id, color);
 }
 
@@ -1026,14 +849,14 @@ void neko_idraw_end(idraw_t* neko_idraw) {
     // TODO
 }
 
-neko_mat4 neko_idraw_get_modelview_matrix(idraw_t* neko_idraw) { return neko_idraw->cache.modelview[neko_dyn_array_size(neko_idraw->cache.modelview) - 1]; }
+mat4 neko_idraw_get_modelview_matrix(idraw_t* neko_idraw) { return neko_idraw->cache.modelview[neko_dyn_array_size(neko_idraw->cache.modelview) - 1]; }
 
-neko_mat4 neko_idraw_get_projection_matrix(idraw_t* neko_idraw) { return neko_idraw->cache.projection[neko_dyn_array_size(neko_idraw->cache.projection) - 1]; }
+mat4 neko_idraw_get_projection_matrix(idraw_t* neko_idraw) { return neko_idraw->cache.projection[neko_dyn_array_size(neko_idraw->cache.projection) - 1]; }
 
-neko_mat4 neko_idraw_get_mvp_matrix(idraw_t* neko_idraw) {
-    neko_mat4* mv = &neko_idraw->cache.modelview[neko_dyn_array_size(neko_idraw->cache.modelview) - 1];
-    neko_mat4* proj = &neko_idraw->cache.projection[neko_dyn_array_size(neko_idraw->cache.projection) - 1];
-    return neko_mat4_mul(*proj, *mv);
+mat4 neko_idraw_get_mvp_matrix(idraw_t* neko_idraw) {
+    mat4* mv = &neko_idraw->cache.modelview[neko_dyn_array_size(neko_idraw->cache.modelview) - 1];
+    mat4* proj = &neko_idraw->cache.projection[neko_dyn_array_size(neko_idraw->cache.projection) - 1];
+    return mat4_mul(*proj, *mv);
 }
 
 void neko_idraw_flush(idraw_t* neko_idraw) {
@@ -1043,9 +866,9 @@ void neko_idraw_flush(idraw_t* neko_idraw) {
     }
 
     // 设置mvp矩阵
-    neko_mat4 mv = neko_idraw->cache.modelview[neko_dyn_array_size(neko_idraw->cache.modelview) - 1];
-    neko_mat4 proj = neko_idraw->cache.projection[neko_dyn_array_size(neko_idraw->cache.projection) - 1];
-    neko_mat4 mvp = neko_mat4_mul(proj, mv);
+    mat4 mv = neko_idraw->cache.modelview[neko_dyn_array_size(neko_idraw->cache.modelview) - 1];
+    mat4 proj = neko_idraw->cache.projection[neko_dyn_array_size(neko_idraw->cache.projection) - 1];
+    mat4 mvp = mat4_mul(proj, mv);
 
     // 更新顶点缓冲区 (使用命令缓冲区)
     gfx_vertex_buffer_desc_t vdesc = NEKO_DEFAULT_VAL();
@@ -1066,13 +889,13 @@ void neko_idraw_flush(idraw_t* neko_idraw) {
                 default:
                     break;
                 case NEKO_IDRAW_VATTR_POSITION:
-                    stride += sizeof(neko_vec3);
+                    stride += sizeof(vec3);
                     break;
                 case NEKO_IDRAW_VATTR_COLOR:
                     stride += sizeof(Color256);
                     break;
                 case NEKO_IDRAW_VATTR_UV:
-                    stride += sizeof(neko_vec2);
+                    stride += sizeof(vec2);
                     break;
             }
         }
@@ -1267,7 +1090,7 @@ void neko_idraw_defaults(idraw_t* neko_idraw) {
     neko_immediate_draw_set_pipeline(neko_idraw);
 }
 
-void neko_idraw_tc2fv(idraw_t* neko_idraw, neko_vec2 uv) {
+void neko_idraw_tc2fv(idraw_t* neko_idraw, vec2 uv) {
     // 设置缓存寄存器
     neko_idraw->cache.uv = uv;
 }
@@ -1284,7 +1107,7 @@ void neko_idraw_c4ub(idraw_t* neko_idraw, u8 r, u8 g, u8 b, u8 a) {
 
 void neko_idraw_c4ubv(idraw_t* neko_idraw, Color256 c) { neko_idraw_c4ub(neko_idraw, c.r, c.g, c.b, c.a); }
 
-void neko_idraw_v3fv(idraw_t* neko_idraw, neko_vec3 p) {
+void neko_idraw_v3fv(idraw_t* neko_idraw, vec3 p) {
     if (neko_dyn_array_size(neko_idraw->vattributes)) {
         // Iterate through attributes and push into stream
         for (u32 i = 0; i < neko_dyn_array_size(neko_idraw->vattributes); ++i) {
@@ -1294,7 +1117,7 @@ void neko_idraw_v3fv(idraw_t* neko_idraw, neko_vec3 p) {
                 } break;
 
                 case NEKO_IDRAW_VATTR_POSITION: {
-                    neko_byte_buffer_write(&neko_idraw->vertices, neko_vec3, p);
+                    neko_byte_buffer_write(&neko_idraw->vertices, vec3, p);
                 } break;
 
                 case NEKO_IDRAW_VATTR_COLOR: {
@@ -1302,7 +1125,7 @@ void neko_idraw_v3fv(idraw_t* neko_idraw, neko_vec3 p) {
                 } break;
 
                 case NEKO_IDRAW_VATTR_UV: {
-                    neko_byte_buffer_write(&neko_idraw->vertices, neko_vec2, neko_idraw->cache.uv);
+                    neko_byte_buffer_write(&neko_idraw->vertices, vec2, neko_idraw->cache.uv);
                 } break;
             }
         }
@@ -1325,7 +1148,7 @@ void neko_idraw_v2f(idraw_t* neko_idraw, f32 x, f32 y) {
     neko_idraw_v3f(neko_idraw, x, y, 0.f);
 }
 
-void neko_idraw_v2fv(idraw_t* neko_idraw, neko_vec2 v) {
+void neko_idraw_v2fv(idraw_t* neko_idraw, vec2 v) {
     // Push vert
     neko_idraw_v3f(neko_idraw, v.x, v.y, 0.f);
 }
@@ -1381,96 +1204,107 @@ void neko_idraw_pop_matrix_ex(idraw_t* neko_idraw, bool flush) {
 
 void neko_idraw_pop_matrix(idraw_t* neko_idraw) { neko_idraw_pop_matrix_ex(neko_idraw, true); }
 
-void neko_idraw_load_matrix(idraw_t* neko_idraw, neko_mat4 m) {
+void neko_idraw_load_matrix(idraw_t* neko_idraw, mat4 m) {
     // Load matrix at current mode
     switch (neko_dyn_array_back(neko_idraw->cache.modes)) {
         case NEKO_IDRAW_MATRIX_MODELVIEW: {
-            neko_mat4* mat = &neko_idraw->cache.modelview[neko_dyn_array_size(neko_idraw->cache.modelview) - 1];
+            mat4* mat = &neko_idraw->cache.modelview[neko_dyn_array_size(neko_idraw->cache.modelview) - 1];
             *mat = m;
         } break;
 
         case NEKO_IDRAW_MATRIX_PROJECTION: {
-            neko_mat4* mat = &neko_idraw->cache.projection[neko_dyn_array_size(neko_idraw->cache.projection) - 1];
+            mat4* mat = &neko_idraw->cache.projection[neko_dyn_array_size(neko_idraw->cache.projection) - 1];
             *mat = m;
         } break;
     }
 }
 
-void neko_idraw_mul_matrix(idraw_t* neko_idraw, neko_mat4 m) {
+void neko_idraw_mul_matrix(idraw_t* neko_idraw, mat4 m) {
     static int i = 0;
     // Multiply current matrix at mode with m
     switch (neko_dyn_array_back(neko_idraw->cache.modes)) {
         case NEKO_IDRAW_MATRIX_MODELVIEW: {
-            neko_mat4* mat = &neko_idraw->cache.modelview[neko_dyn_array_size(neko_idraw->cache.modelview) - 1];
-            *mat = neko_mat4_mul(*mat, m);
+            mat4* mat = &neko_idraw->cache.modelview[neko_dyn_array_size(neko_idraw->cache.modelview) - 1];
+            *mat = mat4_mul(*mat, m);
         } break;
 
         case NEKO_IDRAW_MATRIX_PROJECTION: {
-            neko_mat4* mat = &neko_idraw->cache.projection[neko_dyn_array_size(neko_idraw->cache.projection) - 1];
-            *mat = neko_mat4_mul(*mat, m);
+            mat4* mat = &neko_idraw->cache.projection[neko_dyn_array_size(neko_idraw->cache.projection) - 1];
+            *mat = mat4_mul(*mat, m);
         } break;
     }
 }
 
 void neko_idraw_perspective(idraw_t* neko_idraw, f32 fov, f32 aspect, f32 n, f32 f) {
     // Set current matrix at mode to perspective
-    neko_idraw_load_matrix(neko_idraw, neko_mat4_perspective(fov, aspect, n, f));
+    neko_idraw_load_matrix(neko_idraw, mat4_perspective(fov, aspect, n, f));
 }
 
 void neko_idraw_ortho(idraw_t* neko_idraw, f32 l, f32 r, f32 b, f32 t, f32 n, f32 f) {
     // Set current matrix at mode to ortho
-    neko_idraw_load_matrix(neko_idraw, neko_mat4_ortho(l, r, b, t, n, f));
+    neko_idraw_load_matrix(neko_idraw, mat4_ortho(l, r, b, t, n, f));
 }
 
 void neko_idraw_rotatef(idraw_t* neko_idraw, f32 angle, f32 x, f32 y, f32 z) {
     // Rotate current matrix at mode
-    neko_idraw_mul_matrix(neko_idraw, neko_mat4_rotatev(angle, neko_v3(x, y, z)));
+    neko_idraw_mul_matrix(neko_idraw, mat4_rotatev(angle, neko_v3(x, y, z)));
 }
 
-void neko_idraw_rotatev(idraw_t* neko_idraw, f32 angle, neko_vec3 v) { neko_idraw_rotatef(neko_idraw, angle, v.x, v.y, v.z); }
+void neko_idraw_rotatev(idraw_t* neko_idraw, f32 angle, vec3 v) { neko_idraw_rotatef(neko_idraw, angle, v.x, v.y, v.z); }
 
 void neko_idraw_translatef(idraw_t* neko_idraw, f32 x, f32 y, f32 z) {
     // Translate current matrix at mode
-    neko_idraw_mul_matrix(neko_idraw, neko_mat4_translate(x, y, z));
+    neko_idraw_mul_matrix(neko_idraw, mat4_translate(x, y, z));
 }
 
-void neko_idraw_translatev(idraw_t* neko_idraw, neko_vec3 v) {
+void neko_idraw_translatev(idraw_t* neko_idraw, vec3 v) {
     // Translate current matrix at mode
-    neko_idraw_mul_matrix(neko_idraw, neko_mat4_translate(v.x, v.y, v.z));
+    neko_idraw_mul_matrix(neko_idraw, mat4_translate(v.x, v.y, v.z));
 }
 
 void neko_idraw_scalef(idraw_t* neko_idraw, f32 x, f32 y, f32 z) {
     // Scale current matrix at mode
-    neko_idraw_mul_matrix(neko_idraw, neko_mat4_scale(x, y, z));
+    neko_idraw_mul_matrix(neko_idraw, mat4_scale(x, y, z));
 }
 
-void neko_idraw_scalev(idraw_t* neko_idraw, neko_vec3 v) { neko_idraw_mul_matrix(neko_idraw, neko_mat4_scalev(v)); }
+void neko_idraw_scalev(idraw_t* neko_idraw, vec3 v) { neko_idraw_mul_matrix(neko_idraw, mat4_scalev(v)); }
 
-void neko_idraw_camera(idraw_t* neko_idraw, neko_camera_t* cam, u32 width, u32 height) {
+void neko_idraw_camera(idraw_t* neko_idraw, mat4 m) {
     // 现在只需集成主窗口即可 将来需要占据视口堆栈的顶部
-    neko_idraw_load_matrix(neko_idraw, neko_camera_get_view_projection(cam, width, height));
+    neko_idraw_load_matrix(neko_idraw, m);
 }
 
 void neko_idraw_camera2d(idraw_t* neko_idraw, u32 width, u32 height) {
     // Flush previous
     neko_idraw_flush(neko_idraw);
     f32 l = 0.f, r = (f32)width, tp = 0.f, b = (f32)height;
-    neko_mat4 ortho = neko_mat4_ortho(l, r, b, tp, -1.f, 1.f);
+    mat4 ortho = mat4_ortho(l, r, b, tp, -1.f, 1.f);
     neko_idraw_load_matrix(neko_idraw, ortho);
 }
 
 void neko_idraw_camera2d_ex(idraw_t* neko_idraw, f32 l, f32 r, f32 t, f32 b) {
     // Flush previous
     neko_idraw_flush(neko_idraw);
-    neko_mat4 ortho = neko_mat4_ortho(l, r, b, t, -1.f, 1.f);
+    mat4 ortho = mat4_ortho(l, r, b, t, -1.f, 1.f);
     neko_idraw_load_matrix(neko_idraw, ortho);
 }
 
 void neko_idraw_camera3d(idraw_t* neko_idraw, u32 width, u32 height) {
     // Flush previous
     neko_idraw_flush(neko_idraw);
-    neko_camera_t c = neko_camera_perspective();
-    neko_idraw_camera(neko_idraw, &c, width, height);
+    // neko_camera_t c = neko_camera_perspective();
+
+    auto neko_camera_get_view = []() -> mat4 {
+        vec3 up = neko_v3(0.0f, 1.0f, 0.0f);
+        vec3 forward = neko_v3(0.0f, 0.0f, -1.0f);
+        vec3 target = vec3_add(forward, vec3_ctor(0.0f, 0.0f, 0.0f));
+        return mat4_look_at(vec3_ctor(0.0f, 0.0f, 0.0f), target, up);
+    };
+
+    mat4 view = neko_camera_get_view();
+    mat4 proj = mat4_perspective(90.f, (f32)width / (f32)height, 0.1f, 1000.0f);
+
+    neko_idraw_camera(neko_idraw, mat4_mul(proj, view));
 }
 
 // Shape Drawing Utils
@@ -1478,7 +1312,7 @@ void neko_idraw_triangle(idraw_t* neko_idraw, f32 x0, f32 y0, f32 x1, f32 y1, f3
     neko_idraw_trianglex(neko_idraw, x0, y0, 0.f, x1, y1, 0.f, x2, y2, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, r, g, b, a, type);
 }
 
-void neko_idraw_trianglev(idraw_t* neko_idraw, neko_vec2 a, neko_vec2 b, neko_vec2 c, Color256 color, gfx_primitive_type type) {
+void neko_idraw_trianglev(idraw_t* neko_idraw, vec2 a, vec2 b, vec2 c, Color256 color, gfx_primitive_type type) {
     neko_idraw_triangle(neko_idraw, a.x, a.y, b.x, b.y, c.x, c.y, color.r, color.g, color.b, color.a, type);
 }
 
@@ -1506,11 +1340,11 @@ void neko_idraw_trianglex(idraw_t* neko_idraw, f32 x0, f32 y0, f32 z0, f32 x1, f
     }
 }
 
-void neko_idraw_trianglevx(idraw_t* neko_idraw, neko_vec3 v0, neko_vec3 v1, neko_vec3 v2, neko_vec2 uv0, neko_vec2 uv1, neko_vec2 uv2, Color256 color, gfx_primitive_type type) {
+void neko_idraw_trianglevx(idraw_t* neko_idraw, vec3 v0, vec3 v1, vec3 v2, vec2 uv0, vec2 uv1, vec2 uv2, Color256 color, gfx_primitive_type type) {
     neko_idraw_trianglex(neko_idraw, v0.x, v0.y, v0.z, v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, uv0.x, uv0.y, uv1.x, uv1.y, uv2.x, uv2.y, color.r, color.g, color.b, color.a, type);
 }
 
-void neko_idraw_trianglevxmc(idraw_t* neko_idraw, neko_vec3 v0, neko_vec3 v1, neko_vec3 v2, neko_vec2 uv0, neko_vec2 uv1, neko_vec2 uv2, Color256 c0, Color256 c1, Color256 c2,
+void neko_idraw_trianglevxmc(idraw_t* neko_idraw, vec3 v0, vec3 v1, vec3 v2, vec2 uv0, vec2 uv1, vec2 uv2, Color256 c0, Color256 c1, Color256 c2,
                              gfx_primitive_type type) {
     switch (type) {
         default:
@@ -1567,11 +1401,11 @@ void neko_idraw_line3D(idraw_t* neko_idraw, f32 x0, f32 y0, f32 z0, f32 x1, f32 
     neko_idraw_end(neko_idraw);
 }
 
-void neko_idraw_line3Dv(idraw_t* neko_idraw, neko_vec3 s, neko_vec3 e, Color256 color) { neko_idraw_line3D(neko_idraw, s.x, s.y, s.z, e.x, e.y, e.z, color.r, color.g, color.b, color.a); }
+void neko_idraw_line3Dv(idraw_t* neko_idraw, vec3 s, vec3 e, Color256 color) { neko_idraw_line3D(neko_idraw, s.x, s.y, s.z, e.x, e.y, e.z, color.r, color.g, color.b, color.a); }
 
 void neko_idraw_line(idraw_t* neko_idraw, f32 x0, f32 y0, f32 x1, f32 y1, u8 r, u8 g, u8 b, u8 a) { neko_idraw_line3D(neko_idraw, x0, y0, 0.f, x1, y1, 0.f, r, g, b, a); }
 
-void neko_idraw_linev(idraw_t* neko_idraw, neko_vec2 v0, neko_vec2 v1, Color256 c) { neko_idraw_line(neko_idraw, v0.x, v0.y, v1.x, v1.y, c.r, c.g, c.b, c.a); }
+void neko_idraw_linev(idraw_t* neko_idraw, vec2 v0, vec2 v1, Color256 c) { neko_idraw_line(neko_idraw, v0.x, v0.y, v1.x, v1.y, c.r, c.g, c.b, c.a); }
 
 void neko_idraw_rectx(idraw_t* neko_idraw, f32 l, f32 b, f32 r, f32 t, f32 u0, f32 v0, f32 u1, f32 v1, u8 _r, u8 _g, u8 _b, u8 _a, gfx_primitive_type type) {
     // 不应该使用三角形 因为需要声明纹理坐标
@@ -1618,23 +1452,23 @@ void neko_idraw_rect(idraw_t* neko_idraw, f32 l, f32 b, f32 r, f32 t, u8 _r, u8 
     neko_idraw_rectx(neko_idraw, l, b, r, t, 0.f, 0.f, 1.f, 1.f, _r, _g, _b, _a, type);
 }
 
-void neko_idraw_rectv(idraw_t* neko_idraw, neko_vec2 bl, neko_vec2 tr, Color256 color, gfx_primitive_type type) {
+void neko_idraw_rectv(idraw_t* neko_idraw, vec2 bl, vec2 tr, Color256 color, gfx_primitive_type type) {
     neko_idraw_rectx(neko_idraw, bl.x, bl.y, tr.x, tr.y, 0.f, 0.f, 1.f, 1.f, color.r, color.g, color.b, color.a, type);
 }
 
-void neko_idraw_rectvx(idraw_t* neko_idraw, neko_vec2 bl, neko_vec2 tr, neko_vec2 uv0, neko_vec2 uv1, Color256 color, gfx_primitive_type type) {
+void neko_idraw_rectvx(idraw_t* neko_idraw, vec2 bl, vec2 tr, vec2 uv0, vec2 uv1, Color256 color, gfx_primitive_type type) {
     neko_idraw_rectx(neko_idraw, bl.x, bl.y, tr.x, tr.y, uv0.x, uv0.y, uv1.x, uv1.y, color.r, color.g, color.b, color.a, type);
 }
 
-void neko_idraw_rectvd(idraw_t* neko_idraw, neko_vec2 xy, neko_vec2 wh, neko_vec2 uv0, neko_vec2 uv1, Color256 color, gfx_primitive_type type) {
+void neko_idraw_rectvd(idraw_t* neko_idraw, vec2 xy, vec2 wh, vec2 uv0, vec2 uv1, Color256 color, gfx_primitive_type type) {
     neko_idraw_rectx(neko_idraw, xy.x, xy.y, xy.x + wh.x, xy.y + wh.y, uv0.x, uv0.y, uv1.x, uv1.y, color.r, color.g, color.b, color.a, type);
 }
 
-void neko_idraw_rect3Dv(idraw_t* neko_idraw, neko_vec3 min, neko_vec3 max, neko_vec2 uv0, neko_vec2 uv1, Color256 c, gfx_primitive_type type) {
-    const neko_vec3 vt0 = min;
-    const neko_vec3 vt1 = neko_v3(max.x, min.y, min.z);
-    const neko_vec3 vt2 = neko_v3(min.x, max.y, max.z);
-    const neko_vec3 vt3 = max;
+void neko_idraw_rect3Dv(idraw_t* neko_idraw, vec3 min, vec3 max, vec2 uv0, vec2 uv1, Color256 c, gfx_primitive_type type) {
+    const vec3 vt0 = min;
+    const vec3 vt1 = neko_v3(max.x, min.y, min.z);
+    const vec3 vt2 = neko_v3(min.x, max.y, max.z);
+    const vec3 vt3 = max;
 
     switch (type) {
         case R_PRIMITIVE_LINES: {
@@ -1678,8 +1512,8 @@ void neko_idraw_rect3Dv(idraw_t* neko_idraw, neko_vec3 min, neko_vec3 max, neko_
     }
 }
 
-void neko_idraw_rect3Dvd(idraw_t* neko_idraw, neko_vec3 xyz, neko_vec3 whd, neko_vec2 uv0, neko_vec2 uv1, Color256 c, gfx_primitive_type type) {
-    neko_idraw_rect3Dv(neko_idraw, xyz, neko_vec3_add(xyz, whd), uv0, uv1, c, type);
+void neko_idraw_rect3Dvd(idraw_t* neko_idraw, vec3 xyz, vec3 whd, vec2 uv0, vec2 uv1, Color256 c, gfx_primitive_type type) {
+    neko_idraw_rect3Dv(neko_idraw, xyz, vec3_add(xyz, whd), uv0, uv1, c, type);
 }
 
 void neko_idraw_circle_sector(idraw_t* neko_idraw, f32 cx, f32 cy, f32 radius, int32_t start_angle, int32_t end_angle, int32_t segments, u8 r, u8 g, u8 b, u8 a, gfx_primitive_type type) {
@@ -1707,15 +1541,15 @@ void neko_idraw_circle_sector(idraw_t* neko_idraw, f32 cx, f32 cy, f32 radius, i
     f32 step = (f32)(end_angle - start_angle) / (f32)segments;
     f32 angle = (f32)start_angle;
     NEKO_FOR_RANGE_N(segments, i) {
-        neko_vec2 _a = neko_v2(cx, cy);
-        neko_vec2 _b = neko_v2(cx + sinf(neko_idraw_deg2rad * angle) * radius, cy + cosf(neko_idraw_deg2rad * angle) * radius);
-        neko_vec2 _c = neko_v2(cx + sinf(neko_idraw_deg2rad * (angle + step)) * radius, cy + cosf(neko_idraw_deg2rad * (angle + step)) * radius);
+        vec2 _a = neko_v2(cx, cy);
+        vec2 _b = neko_v2(cx + sinf(neko_idraw_deg2rad * angle) * radius, cy + cosf(neko_idraw_deg2rad * angle) * radius);
+        vec2 _c = neko_v2(cx + sinf(neko_idraw_deg2rad * (angle + step)) * radius, cy + cosf(neko_idraw_deg2rad * (angle + step)) * radius);
         neko_idraw_trianglev(neko_idraw, _a, _b, _c, color256(r, g, b, a), type);
         angle += step;
     }
 }
 
-void neko_idraw_circle_sectorvx(idraw_t* neko_idraw, neko_vec3 c, f32 radius, int32_t start_angle, int32_t end_angle, int32_t segments, Color256 color, gfx_primitive_type type) {
+void neko_idraw_circle_sectorvx(idraw_t* neko_idraw, vec3 c, f32 radius, int32_t start_angle, int32_t end_angle, int32_t segments, Color256 color, gfx_primitive_type type) {
     if (radius <= 0.0f) {
         radius = 0.1f;
     }
@@ -1743,9 +1577,9 @@ void neko_idraw_circle_sectorvx(idraw_t* neko_idraw, neko_vec3 c, f32 radius, in
     f32 step = (f32)(end_angle - start_angle) / (f32)segments;
     f32 angle = (f32)start_angle;
     NEKO_FOR_RANGE_N(segments, i) {
-        neko_vec3 _a = neko_v3(cx, cy, cz);
-        neko_vec3 _b = neko_v3(cx + sinf(neko_idraw_deg2rad * angle) * radius, cy + cosf(neko_idraw_deg2rad * angle) * radius, cz);
-        neko_vec3 _c = neko_v3(cx + sinf(neko_idraw_deg2rad * (angle + step)) * radius, cy + cosf(neko_idraw_deg2rad * (angle + step)) * radius, cz);
+        vec3 _a = neko_v3(cx, cy, cz);
+        vec3 _b = neko_v3(cx + sinf(neko_idraw_deg2rad * angle) * radius, cy + cosf(neko_idraw_deg2rad * angle) * radius, cz);
+        vec3 _c = neko_v3(cx + sinf(neko_idraw_deg2rad * (angle + step)) * radius, cy + cosf(neko_idraw_deg2rad * (angle + step)) * radius, cz);
         neko_idraw_trianglevx(neko_idraw, _a, _b, _c, neko_v2s(0.f), neko_v2s(0.5f), neko_v2s(1.f), color, type);
         angle += step;
     }
@@ -1755,7 +1589,7 @@ void neko_idraw_circle(idraw_t* neko_idraw, f32 cx, f32 cy, f32 radius, int32_t 
     neko_idraw_circle_sector(neko_idraw, cx, cy, radius, 0, 360, segments, r, g, b, a, type);
 }
 
-void neko_idraw_circlevx(idraw_t* neko_idraw, neko_vec3 c, f32 radius, int32_t segments, Color256 color, gfx_primitive_type type) {
+void neko_idraw_circlevx(idraw_t* neko_idraw, vec3 c, f32 radius, int32_t segments, Color256 color, gfx_primitive_type type) {
     neko_idraw_circle_sectorvx(neko_idraw, c, radius, 0, 360, segments, color, type);
 }
 
@@ -1811,14 +1645,14 @@ void neko_idraw_box(idraw_t* neko_idraw, f32 x, f32 y, f32 z, f32 hx, f32 hy, f3
     f32 height = hy;
     f32 length = hz;
 
-    neko_vec3 v0 = neko_v3(x - width, y - height, z + length);
-    neko_vec3 v1 = neko_v3(x + width, y - height, z + length);
-    neko_vec3 v2 = neko_v3(x - width, y + height, z + length);
-    neko_vec3 v3 = neko_v3(x + width, y + height, z + length);
-    neko_vec3 v4 = neko_v3(x - width, y - height, z - length);
-    neko_vec3 v5 = neko_v3(x - width, y + height, z - length);
-    neko_vec3 v6 = neko_v3(x + width, y - height, z - length);
-    neko_vec3 v7 = neko_v3(x + width, y + height, z - length);
+    vec3 v0 = neko_v3(x - width, y - height, z + length);
+    vec3 v1 = neko_v3(x + width, y - height, z + length);
+    vec3 v2 = neko_v3(x - width, y + height, z + length);
+    vec3 v3 = neko_v3(x + width, y + height, z + length);
+    vec3 v4 = neko_v3(x - width, y - height, z - length);
+    vec3 v5 = neko_v3(x - width, y + height, z - length);
+    vec3 v6 = neko_v3(x + width, y - height, z - length);
+    vec3 v7 = neko_v3(x + width, y + height, z - length);
 
     Color256 color = color256(r, g, b, a);
 
@@ -1826,10 +1660,10 @@ void neko_idraw_box(idraw_t* neko_idraw, f32 x, f32 y, f32 z, f32 hx, f32 hy, f3
         case R_PRIMITIVE_TRIANGLES: {
             neko_idraw_begin(neko_idraw, R_PRIMITIVE_TRIANGLES);
             {
-                neko_vec2 uv0 = neko_v2(0.f, 0.f);
-                neko_vec2 uv1 = neko_v2(1.f, 0.f);
-                neko_vec2 uv2 = neko_v2(0.f, 1.f);
-                neko_vec2 uv3 = neko_v2(1.f, 1.f);
+                vec2 uv0 = neko_v2(0.f, 0.f);
+                vec2 uv1 = neko_v2(1.f, 0.f);
+                vec2 uv2 = neko_v2(0.f, 1.f);
+                vec2 uv3 = neko_v2(1.f, 1.f);
 
                 // Front Face
                 neko_idraw_trianglevx(neko_idraw, v0, v1, v2, uv0, uv1, uv2, color, type);
@@ -1909,8 +1743,8 @@ void neko_idraw_sphere(idraw_t* neko_idraw, f32 cx, f32 cy, f32 cz, f32 radius, 
     f32 sector_step = 2.f * (f32)neko_pi / (f32)sectors;
     f32 stack_step = (f32)neko_pi / (f32)stacks;
     struct {
-        neko_vec3 p;
-        neko_vec2 uv;
+        vec3 p;
+        vec2 uv;
     } v0, v1, v2, v3;
     Color256 color = color256(r, g, b, a);
 
@@ -1964,10 +1798,10 @@ void neko_idraw_sphere(idraw_t* neko_idraw, f32 cx, f32 cy, f32 cz, f32 radius, 
 
 // Modified from Raylib's implementation
 void neko_idraw_bezier(idraw_t* neko_idraw, f32 x0, f32 y0, f32 x1, f32 y1, u8 r, u8 g, u8 b, u8 a) {
-    neko_vec2 start = neko_v2(x0, y0);
-    neko_vec2 end = neko_v2(x1, y1);
-    neko_vec2 previous = start;
-    neko_vec2 current = NEKO_DEFAULT_VAL();
+    vec2 start = neko_v2(x0, y0);
+    vec2 end = neko_v2(x1, y1);
+    vec2 previous = start;
+    vec2 current = NEKO_DEFAULT_VAL();
     Color256 color = color256(r, g, b, a);
     const u32 bezier_line_divisions = 24;
 
@@ -2074,7 +1908,7 @@ void neko_idraw_cone(idraw_t* neko_idraw, f32 x, f32 y, f32 z, f32 radius, f32 h
     neko_idraw_cylinder(neko_idraw, x, y, z, 0.f, radius, height, sides, r, g, b, a, type);
 }
 
-#if 1
+#if 0
 void neko_idraw_text(idraw_t* neko_idraw, f32 x, f32 y, const char* text, const neko_asset_font_t* fp, bool flip_vertical, Color256 col) {
     // 如果没有指定字体 则使用默认字体
     if (!fp) {
@@ -2083,10 +1917,10 @@ void neko_idraw_text(idraw_t* neko_idraw, f32 x, f32 y, const char* text, const 
 
     neko_idraw_texture(neko_idraw, fp->texture.hndl);
 
-    neko_mat4 rot = neko_mat4_rotatev(neko_deg2rad(-180.f), NEKO_XAXIS);
+    mat4 rot = mat4_rotatev(neko_deg2rad(-180.f), NEKO_XAXIS);
 
     // Get total dimensions of text
-    neko_vec2 td = neko_asset_font_text_dimensions(fp, text, -1);
+    vec2 td = neko_asset_font_text_dimensions(fp, text, -1);
     f32 th = neko_asset_font_max_height(fp);
 
     // Move text to accomdate height
@@ -2102,22 +1936,22 @@ void neko_idraw_text(idraw_t* neko_idraw, f32 x, f32 y, const char* text, const 
                 stbtt_aligned_quad q = NEKO_DEFAULT_VAL();
                 stbtt_GetBakedQuad((stbtt_bakedchar*)fp->glyphs, fp->texture.desc.width, fp->texture.desc.height, c - 32, &x, &y, &q, 1);
 
-                neko_vec3 v0 = neko_v3(q.x0, q.y0, 0.f);  // TL
-                neko_vec3 v1 = neko_v3(q.x1, q.y0, 0.f);  // TR
-                neko_vec3 v2 = neko_v3(q.x0, q.y1, 0.f);  // BL
-                neko_vec3 v3 = neko_v3(q.x1, q.y1, 0.f);  // BR
+                vec3 v0 = neko_v3(q.x0, q.y0, 0.f);  // TL
+                vec3 v1 = neko_v3(q.x1, q.y0, 0.f);  // TR
+                vec3 v2 = neko_v3(q.x0, q.y1, 0.f);  // BL
+                vec3 v3 = neko_v3(q.x1, q.y1, 0.f);  // BR
 
                 if (flip_vertical) {
-                    v0 = neko_mat4_mul_vec3(rot, v0);
-                    v1 = neko_mat4_mul_vec3(rot, v1);
-                    v2 = neko_mat4_mul_vec3(rot, v2);
-                    v3 = neko_mat4_mul_vec3(rot, v3);
+                    v0 = mat4_mul_vec3(rot, v0);
+                    v1 = mat4_mul_vec3(rot, v1);
+                    v2 = mat4_mul_vec3(rot, v2);
+                    v3 = mat4_mul_vec3(rot, v3);
                 }
 
-                neko_vec2 uv0 = neko_v2(q.s0, q.t0);  // TL
-                neko_vec2 uv1 = neko_v2(q.s1, q.t0);  // TR
-                neko_vec2 uv2 = neko_v2(q.s0, q.t1);  // BL
-                neko_vec2 uv3 = neko_v2(q.s1, q.t1);  // BR
+                vec2 uv0 = neko_v2(q.s0, q.t0);  // TL
+                vec2 uv1 = neko_v2(q.s1, q.t0);  // TR
+                vec2 uv2 = neko_v2(q.s0, q.t1);  // BL
+                vec2 uv3 = neko_v2(q.s1, q.t1);  // BR
 
                 neko_idraw_tc2fv(neko_idraw, uv0);
                 neko_idraw_v3fv(neko_idraw, v0);
@@ -2144,6 +1978,16 @@ void neko_idraw_text(idraw_t* neko_idraw, f32 x, f32 y, const char* text, const 
 }
 #endif
 
+void neko_idraw_text(idraw_t* neko_idraw, f32 x, f32 y, const char* text, FontFamily* fp, bool flip_vertical, Color256 col) {
+    //
+
+    if (!fp) {
+        fp = neko_default_font();
+    }
+
+    f32 fy = draw_font(neko_idraw, fp, 16.f, x, y, text);
+}
+
 // View/Scissor 命令
 void neko_idraw_set_view_scissor(idraw_t* neko_idraw, u32 x, u32 y, u32 w, u32 h) {
     // 刷新上一个
@@ -2168,7 +2012,7 @@ void neko_idraw_draw(idraw_t* neko_idraw, neko_command_buffer_t* cb) {
     neko_idraw_reset(neko_idraw);
 }
 
-void neko_idraw_renderpass_submit(idraw_t* neko_idraw, neko_command_buffer_t* cb, neko_vec4 viewport, Color256 c) {
+void neko_idraw_renderpass_submit(idraw_t* neko_idraw, neko_command_buffer_t* cb, vec4 viewport, Color256 c) {
     gfx_clear_action_t action = NEKO_DEFAULT_VAL();
     action.color[0] = (f32)c.r / 255.f;
     action.color[1] = (f32)c.g / 255.f;
@@ -2182,7 +2026,7 @@ void neko_idraw_renderpass_submit(idraw_t* neko_idraw, neko_command_buffer_t* cb
     gfx_renderpass_end(cb);
 }
 
-void neko_idraw_renderpass_submit_ex(idraw_t* neko_idraw, neko_command_buffer_t* cb, neko_vec4 viewport, gfx_clear_action_t action) {
+void neko_idraw_renderpass_submit_ex(idraw_t* neko_idraw, neko_command_buffer_t* cb, vec4 viewport, gfx_clear_action_t action) {
     neko_renderpass_t pass = NEKO_DEFAULT_VAL();
     gfx_renderpass_begin(cb, pass);
     gfx_set_viewport(cb, (u32)viewport.x, (u32)viewport.y, (u32)viewport.z, (u32)viewport.w);
@@ -2310,126 +2154,4 @@ bool neko_asset_texture_load_from_memory(const void* memory, size_t sz, void* ou
     }
 
     return true;
-}
-
-bool neko_asset_font_load_from_file(const_str path, void* out, u32 point_size) {
-    size_t len = 0;
-    const_str ttf = neko_capi_vfs_read_file(NEKO_PACKS::GAMEDATA, path, &len);
-    if (!point_size) {
-        console_log("font: %s: point size not declared. setting to default 16.", neko_util_get_filename(path));
-        point_size = 16;
-    }
-    bool ret = neko_asset_font_load_from_memory(ttf, len, out, point_size);
-    if (!ret) {
-        console_log("font failed to load: %s", neko_util_get_filename(path));
-    } else {
-        console_log("font successfully loaded: %s", neko_util_get_filename(path));
-    }
-    mem_free(ttf);
-    return ret;
-}
-
-bool neko_asset_font_load_from_memory(const void* memory, size_t sz, void* out, u32 point_size) {
-    neko_asset_font_t* f = (neko_asset_font_t*)out;
-    // f->glyphs_num = 96;
-    // f->glyphs = mem_alloc(f->glyphs_num * sizeof(neko_baked_char_t));
-
-    if (!point_size) {
-        console_log("font: point size not declared. setting to default 16.");
-        point_size = 16;
-    }
-
-    // Poor attempt at an auto resized texture
-    const u32 point_wh = NEKO_MAX(point_size, 32);
-    const u32 w = (point_wh / 32 * 512) + (point_wh / 32 * 512) % 512;
-    const u32 h = (point_wh / 32 * 512) + (point_wh / 32 * 512) % 512;
-
-    const u32 num_comps = 4;
-    u8* alpha_bitmap = (u8*)mem_alloc(w * h);
-    u8* flipmap = (u8*)mem_alloc(w * h * num_comps);
-    memset(alpha_bitmap, 0, w * h);
-    memset(flipmap, 0, w * h * num_comps);
-    i32 v = stbtt_BakeFontBitmap((u8*)memory, 0, (f32)point_size, alpha_bitmap, w, h, 32, 96, (stbtt_bakedchar*)f->glyphs);
-
-    // 翻转纹理
-    u32 r = h - 1;
-    for (u32 i = 0; i < h; ++i) {
-        for (u32 j = 0; j < w; ++j) {
-            u32 i0 = i * w + j;
-            u32 i1 = i * w * num_comps + j * num_comps;
-            u8 a = alpha_bitmap[i0];
-            flipmap[i1 + 0] = 255;
-            flipmap[i1 + 1] = 255;
-            flipmap[i1 + 2] = 255;
-            flipmap[i1 + 3] = a;
-        }
-        r--;
-    }
-
-    gfx_texture_desc_t desc = NEKO_DEFAULT_VAL();
-    desc.width = w;
-    desc.height = h;
-    *desc.data = flipmap;
-    desc.format = R_TEXTURE_FORMAT_RGBA8;
-    desc.min_filter = R_TEXTURE_FILTER_NEAREST;
-    desc.mag_filter = R_TEXTURE_FILTER_NEAREST;
-
-    // 使用位图数据生成位图的图集纹理
-    f->texture.hndl = gfx_texture_create(desc);
-    f->texture.desc = desc;
-    *f->texture.desc.data = NULL;
-
-    bool success = false;
-    if (v <= 0) {
-        console_log("font failed to load, baked texture was too small: %d", v);
-    } else {
-        console_log("font baked size: %d", v);
-        success = true;
-    }
-
-    mem_free(alpha_bitmap);
-    mem_free(flipmap);
-    return success;
-}
-
-f32 neko_asset_font_max_height(const neko_asset_font_t* fp) {
-    if (!fp) return 0.f;
-    f32 h = 0.f, x = 0.f, y = 0.f;
-    const_str txt = "1l`'f()ABCDEFGHIJKLMNOjPQqSTU!";
-    while (txt[0] != '\0') {
-        char c = txt[0];
-        if (c >= 32 && c <= 127) {
-            stbtt_aligned_quad q = NEKO_DEFAULT_VAL();
-            stbtt_GetBakedQuad((stbtt_bakedchar*)fp->glyphs, fp->texture.desc.width, fp->texture.desc.height, c - 32, &x, &y, &q, 1);
-            h = NEKO_MAX(NEKO_MAX(h, fabsf(q.y0)), fabsf(q.y1));
-        }
-        txt++;
-    };
-    return h;
-}
-
-neko_vec2 neko_asset_font_text_dimensions(const neko_asset_font_t* fp, const_str text, i32 len) { return neko_asset_font_text_dimensions_ex(fp, text, len, 0); }
-
-neko_vec2 neko_asset_font_text_dimensions_ex(const neko_asset_font_t* fp, const_str text, i32 len, bool include_past_baseline) {
-    neko_vec2 dimensions = neko_v2s(0.f);
-
-    if (!fp || !text) return dimensions;
-    f32 x = 0.f;
-    f32 y = 0.f;
-    f32 y_under = 0;
-
-    while (text[0] != '\0' && len--) {
-        char c = text[0];
-        if (c >= 32 && c <= 127) {
-            stbtt_aligned_quad q = NEKO_DEFAULT_VAL();
-            stbtt_GetBakedQuad((stbtt_bakedchar*)fp->glyphs, fp->texture.desc.width, fp->texture.desc.height, c - 32, &x, &y, &q, 1);
-            dimensions.x = NEKO_MAX(dimensions.x, x);
-            dimensions.y = NEKO_MAX(dimensions.y, fabsf(q.y0));
-            if (include_past_baseline) y_under = NEKO_MAX(y_under, fabsf(q.y1));
-        }
-        text++;
-    };
-
-    if (include_past_baseline) dimensions.y += y_under;
-    return dimensions;
 }

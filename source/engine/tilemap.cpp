@@ -875,10 +875,10 @@ void neko_tiled_render_flush(neko_command_buffer_t *cb, neko_tiled_renderer *ren
 
     PROFILE_FUNC();
 
-    // const neko_vec2 ws = neko_pf_window_sizev(neko_os_main_window());
+    // const vec2 ws = neko_pf_window_sizev(neko_os_main_window());
     // gfx_set_viewport(cb, 0, 0, ws.x, ws.y);
 
-    // renderer->camera_mat = neko_mat4_ortho(0.0f, ws.x, ws.y, 0.0f, -1.0f, 1.0f);
+    // renderer->camera_mat = mat4_ortho(0.0f, ws.x, ws.y, 0.0f, -1.0f, 1.0f);
 
 #if 0
     gfx_bind_vertex_buffer_desc_t vb_des = {.buffer = renderer->vb};
@@ -1036,7 +1036,7 @@ void neko_tiled_render_map(neko_tiled_renderer *tiled_render) {
     // neko_renderpass_t rp = R_RENDER_PASS_DEFAULT;
     // neko_luabind_struct_to_member(L, neko_renderpass_t, id, &rp, 2);
 
-    // auto xform = lua2struct::unpack<neko_vec2>(L, 3);
+    // auto xform = lua2struct::unpack<vec2>(L, 3);
 
     LuaVec2 xform = {1.0f, 1.0f};
 
@@ -1047,7 +1047,7 @@ void neko_tiled_render_map(neko_tiled_renderer *tiled_render) {
 
     f32 l = 0.f, r = 640 * 1.5, t = 0.f, b = 360 * 1.5;
 
-    // tiled_render->camera_mat = neko_mat4_ortho(l, r, b, t, -1.0f, 1.0f);
+    // tiled_render->camera_mat = mat4_ortho(l, r, b, t, -1.0f, 1.0f);
 
     {
         neko_tiled_render_begin(NULL, tiled_render);

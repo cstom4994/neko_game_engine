@@ -236,12 +236,12 @@ int TestEcs(lua_State* L) {
 #endif
 
 static int LUASTRUCT_test_vec4(lua_State* L) {
-    Vector4* v4 = CHECK_STRUCT(L, 1, Vector4);
+    vec4* v4 = CHECK_STRUCT(L, 1, vec4);
     v4->x += 10.f;
     v4->y += 10.f;
     v4->z += 10.f;
     v4->w += 10.f;
-    PUSH_STRUCT(L, Vector4, *v4);
+    PUSH_STRUCT(L, vec4, *v4);
     return 1;
 }
 
@@ -557,9 +557,9 @@ void draw_gui() {
 
     // Custom callback for immediate drawing directly into the gui window
     auto gui_cb = [](ui_context_t* ctx, struct ui_customcommand_t* cmd) {
-        idraw_t* gui_idraw = &ctx->gui_idraw;  // Immediate draw list in gui context
-        neko_vec2 fbs = ctx->framebuffer_size;               // Framebuffer size bound for gui context
-        Color256* color = (Color256*)cmd->data;              // Grab custom data
+        idraw_t* gui_idraw = &ctx->gui_idraw;    // Immediate draw list in gui context
+        vec2 fbs = ctx->framebuffer_size;        // Framebuffer size bound for gui context
+        Color256* color = (Color256*)cmd->data;  // Grab custom data
         // neko_asset_texture_t* tp = neko_assets_getp(&am, neko_asset_texture_t, tex_hndl);
         const f32 t = timing_get_elapsed();
 
@@ -666,11 +666,11 @@ void draw_gui() {
             ui_demo_window(&ui, ui_rect(100, 100, 500, 500), NULL);
             ui_style_editor(&ui, NULL, ui_rect(350, 250, 300, 240), NULL);
 
-            const neko_vec2 ws = neko_v2(600.f, 300.f);
+            const vec2 ws = neko_v2(600.f, 300.f);
 
             // const ui_style_sheet_t *ss = &game_userdata->style_sheet;
 
-            const neko_vec2 ss_ws = neko_v2(500.f, 300.f);
+            const vec2 ss_ws = neko_v2(500.f, 300.f);
             ui_window_begin(&ui, "Window", ui_rect((g_app->width - ss_ws.x) * 0.5f, (g_app->height - ss_ws.y) * 0.5f, ss_ws.x, ss_ws.y));
             {
                 // Cache the current container
@@ -733,9 +733,9 @@ void draw_gui() {
 
         if (1) {
 
-            neko_vec2 mp = ui.mouse_pos;
-            neko_vec2 mw = ui.scroll_delta;
-            neko_vec2 md = {};
+            vec2 mp = ui.mouse_pos;
+            vec2 mw = ui.scroll_delta;
+            vec2 md = {};
             bool lock = ui.mouse_pressed;
             // bool moved = neko_os_mouse_moved();
 
@@ -751,6 +751,8 @@ void draw_gui() {
                 });
 
                 ui_labelf("FPS: %.2lf Delta: %.6lf", fps, delta * 1000.f);
+
+                ui_labelf("测试中文");
 
                 // ui_text_fc(&game_userdata->core_ui, "喵喵昂~");
 
@@ -837,7 +839,7 @@ void draw_gui() {
             }
         }
 
-        neko_vec2 fb = (&ui)->framebuffer_size;
+        vec2 fb = (&ui)->framebuffer_size;
         ui_rect_t screen;
         //            if (embeded)
         //                screen = l.body;

@@ -37,7 +37,7 @@ static int mt_sampler_gc(lua_State *L) {
 
 static int mt_sampler_use(lua_State *L) {
     u32 *id = (u32 *)luaL_checkudata(L, 1, "mt_sampler");
-    renderer_use_sampler(*id);
+    // renderer_use_sampler(*id);
     return 0;
 }
 
@@ -1127,6 +1127,9 @@ static int neko_scissor_rect(lua_State *L) {
     return 0;
 }
 
+#if 0
+
+
 static int neko_push_matrix(lua_State *L) {
     bool ok = renderer_push_matrix();
     return ok ? 0 : luaL_error(L, "matrix stack is full");
@@ -1200,7 +1203,6 @@ static int neko_pop_color(lua_State *L) {
     return ok ? 0 : luaL_error(L, "color stack can't be less than 1");
 }
 
-#if 0
 
 static int neko_default_font(lua_State *L) {
     if (g_app->default_font == nullptr) {
@@ -1615,21 +1617,21 @@ static bool __neko_bind_platform_mouse_released(const_str key) {
 }
 
 LUA_FUNCTION(__neko_bind_platform_mouse_delta) {
-    neko_vec2 v2 = neko_os_mouse_deltav();
+    vec2 v2 = neko_os_mouse_deltav();
     lua_pushnumber(L, v2.x);
     lua_pushnumber(L, v2.y);
     return 2;
 }
 
 LUA_FUNCTION(__neko_bind_platform_mouse_position) {
-    neko_vec2 v2 = neko_os_mouse_positionv();
+    vec2 v2 = neko_os_mouse_positionv();
     lua_pushnumber(L, v2.x);
     lua_pushnumber(L, v2.y);
     return 2;
 }
 
 LUA_FUNCTION(__neko_bind_platform_mouse_wheel) {
-    neko_vec2 v2 = neko_os_mouse_wheelv();
+    vec2 v2 = neko_os_mouse_wheelv();
     lua_pushnumber(L, v2.x);
     lua_pushnumber(L, v2.y);
     return 2;
@@ -1637,7 +1639,7 @@ LUA_FUNCTION(__neko_bind_platform_mouse_wheel) {
 
 LUA_FUNCTION(__neko_bind_platform_window_size) {
     u32 handle = lua_tointeger(L, -1);
-    neko_vec2 v2 = neko_os_window_sizev(handle);
+    vec2 v2 = neko_os_window_sizev(handle);
     lua_pushnumber(L, v2.x);
     lua_pushnumber(L, v2.y);
     return 2;
@@ -1645,7 +1647,7 @@ LUA_FUNCTION(__neko_bind_platform_window_size) {
 
 LUA_FUNCTION(__neko_bind_platform_framebuffer_size) {
     u32 handle = lua_tointeger(L, -1);
-    neko_vec2 v2 = neko_os_framebuffer_sizev(handle);
+    vec2 v2 = neko_os_framebuffer_sizev(handle);
     lua_pushnumber(L, v2.x);
     lua_pushnumber(L, v2.y);
     return 2;
@@ -1856,7 +1858,7 @@ LUA_FUNCTION(__neko_bind_aseprite_render) {
 
     neko_aseprite_renderer* user_handle = (neko_aseprite_renderer*)luaL_checkudata(L, 1, "mt_aseprite_renderer");
 
-    auto xform = lua2struct::unpack<neko_vec2>(L, 2);
+    auto xform = lua2struct::unpack<vec2>(L, 2);
 
     int direction = neko::neko_lua_to<int>(L, 3);
     f32 scale = neko::neko_lua_to<f32>(L, 4);
@@ -1929,14 +1931,14 @@ LUA_FUNCTION(__neko_bind_tiled_render) {
     neko_renderpass_t rp = R_RENDER_PASS_DEFAULT;
     neko_luabind_struct_to_member(L, neko_renderpass_t, id, &rp, 2);
 
-    auto xform = lua2struct::unpack<neko_vec2>(L, 3);
+    auto xform = lua2struct::unpack<vec2>(L, 3);
 
     f32 l = lua_tonumber(L, 4);
     f32 r = lua_tonumber(L, 5);
     f32 t = lua_tonumber(L, 6);
     f32 b = lua_tonumber(L, 7);
 
-    tiled_render->camera_mat = neko_mat4_ortho(l, r, b, t, -1.0f, 1.0f);
+    tiled_render->camera_mat = mat4_ortho(l, r, b, t, -1.0f, 1.0f);
 
     neko_command_buffer_t* cb = &ENGINE_INTERFACE()->cb;
 
@@ -2131,7 +2133,7 @@ LUA_FUNCTION(__neko_bind_fontbatch_draw) {
 LUA_FUNCTION(__neko_bind_fontbatch_text) {
     int numArgs = lua_gettop(L);  // 获取参数数量
     neko_fontbatch_t& fontbatch = neko::lua::toudata<neko_fontbatch_t>(L, 1);
-    auto v1 = lua2struct::unpack<neko_vec2>(L, 2);
+    auto v1 = lua2struct::unpack<vec2>(L, 2);
     const_str text = lua_tostring(L, 3);
 
     f32 scale = 0.f;
@@ -2181,7 +2183,7 @@ struct neko_sprite_batch_t {
 
 static void make_sprite(neko_sprite_batch_t* user_handle, neko_sprite_t* sprite, u64 image_id, f32 x, f32 y, f32 scale, f32 angle_radians, int depth) {
 
-    neko_vec2 fbs = neko_os_framebuffer_sizev(neko_os_main_window());
+    vec2 fbs = neko_os_framebuffer_sizev(neko_os_main_window());
 
     // f32 x0 = (x - fbs.x / 2.f) / scale /*+ -text_w / 2.f*/;
     // f32 y0 = (fbs.y / 2.f - y) / scale / 2.f;
@@ -2248,7 +2250,7 @@ static void batch_report(neko_batch_sprite_t* sprites, int count, int texture_w,
     for (int i = 0; i < count; ++i) {
         neko_batch_sprite_t* s = sprites + i;
 
-        neko_vec2 quad[] = {
+        vec2 quad[] = {
                 {-0.5f, 0.5f},
                 {0.5f, 0.5f},
                 {0.5f, -0.5f},
@@ -2350,7 +2352,7 @@ LUA_FUNCTION(__neko_bind_sprite_batch_create) {
 
     user_handle->sprite_batch = gfx_batch_make_ctx(max_draw_calls);
 
-    neko_vec2 fbs = neko_os_framebuffer_sizev(neko_os_main_window());
+    vec2 fbs = neko_os_framebuffer_sizev(neko_os_main_window());
 
     gfx_batch_vertex_data_t vd;
     gfx_batch_make_vertex_data(&vd, 1024 * 1024, GL_TRIANGLES, sizeof(vertex_t), GL_DYNAMIC_DRAW);
@@ -2734,10 +2736,10 @@ LUA_FUNCTION(__neko_bind_idraw_translatef) {
 
 LUA_FUNCTION(__neko_bind_idraw_rectv) {
 
-    auto v1 = lua2struct::unpack<neko_vec2>(L, 1);
-    auto v2 = lua2struct::unpack<neko_vec2>(L, 2);
+    auto v1 = lua2struct::unpack<vec2>(L, 1);
+    auto v2 = lua2struct::unpack<vec2>(L, 2);
 
-    v2 = neko_vec2_add(v1, v2);
+    v2 = vec2_add(v1, v2);
 
     gfx_primitive_type type_val;
     neko_luabind_to(ENGINE_LUA(), gfx_primitive_type, &type_val, 3);
@@ -2754,11 +2756,11 @@ LUA_FUNCTION(__neko_bind_idraw_rectv) {
 
 LUA_FUNCTION(__neko_bind_idraw_rectvd) {
 
-    auto v1 = lua2struct::unpack<neko_vec2>(L, 1);
-    auto v2 = lua2struct::unpack<neko_vec2>(L, 2);
+    auto v1 = lua2struct::unpack<vec2>(L, 1);
+    auto v2 = lua2struct::unpack<vec2>(L, 2);
 
-    auto uv0 = lua2struct::unpack<neko_vec2>(L, 3);
-    auto uv1 = lua2struct::unpack<neko_vec2>(L, 4);
+    auto uv0 = lua2struct::unpack<vec2>(L, 3);
+    auto uv1 = lua2struct::unpack<vec2>(L, 4);
 
     gfx_primitive_type type_val;
     neko_luabind_to(ENGINE_LUA(), gfx_primitive_type, &type_val, 5);
@@ -2790,7 +2792,7 @@ LUA_FUNCTION(__neko_bind_idraw_camera) {
     f32 y = lua_tonumber(L, 2);
     neko_camera_t camera;
     camera = neko_camera_default();
-    neko_vec2 fbs = neko_os_framebuffer_sizev(neko_os_main_window());
+    vec2 fbs = neko_os_framebuffer_sizev(neko_os_main_window());
     neko_idraw_camera(&ENGINE_INTERFACE()->idraw, &camera, (u32)fbs.x, (u32)fbs.y);
     return 0;
 }
@@ -3535,8 +3537,8 @@ LUA_FUNCTION(__neko_bind_render_clear) {
 }
 
 LUA_FUNCTION(__neko_bind_render_display_size) {
-    neko_vec2 v1 = neko_game()->DisplaySize;
-    // lua2struct::pack_struct<neko_vec2, 2>(L, v1);
+    vec2 v1 = neko_game()->DisplaySize;
+    // lua2struct::pack_struct<vec2, 2>(L, v1);
     lua_pushnumber(L, v1.x);
     lua_pushnumber(L, v1.y);
     return 2;
@@ -3557,16 +3559,16 @@ inline void neko_register_test(lua_State* L) {
     neko_lua_enum_value(L, gfx_primitive_type, R_PRIMITIVE_TRIANGLES);
     neko_lua_enum_value(L, gfx_primitive_type, R_PRIMITIVE_QUADS);
 
-    neko_luabind_struct(L, neko_vec2);
-    neko_luabind_struct_member(L, neko_vec2, x, f32);
-    neko_luabind_struct_member(L, neko_vec2, y, f32);
-    neko_luabind_struct_member(L, neko_vec2, xy, f32[2]);
+    neko_luabind_struct(L, vec2);
+    neko_luabind_struct_member(L, vec2, x, f32);
+    neko_luabind_struct_member(L, vec2, y, f32);
+    neko_luabind_struct_member(L, vec2, xy, f32[2]);
 
-    neko_luabind_struct(L, neko_vec3);
-    neko_luabind_struct_member(L, neko_vec3, x, f32);
-    neko_luabind_struct_member(L, neko_vec3, y, f32);
-    neko_luabind_struct_member(L, neko_vec3, z, f32);
-    neko_luabind_struct_member(L, neko_vec3, xyz, f32[3]);
+    neko_luabind_struct(L, vec3);
+    neko_luabind_struct_member(L, vec3, x, f32);
+    neko_luabind_struct_member(L, vec3, y, f32);
+    neko_luabind_struct_member(L, vec3, z, f32);
+    neko_luabind_struct_member(L, vec3, xyz, f32[3]);
 
     neko_luabind_struct(L, neko_quat);
     neko_luabind_struct_member(L, neko_quat, x, f32);
@@ -3575,10 +3577,10 @@ inline void neko_register_test(lua_State* L) {
     neko_luabind_struct_member(L, neko_quat, w, f32);
 
     neko_luabind_struct(L, neko_vqs);
-    neko_luabind_struct_member(L, neko_vqs, position, neko_vec3);
-    neko_luabind_struct_member(L, neko_vqs, translation, neko_vec3);
+    neko_luabind_struct_member(L, neko_vqs, position, vec3);
+    neko_luabind_struct_member(L, neko_vqs, translation, vec3);
     neko_luabind_struct_member(L, neko_vqs, rotation, neko_quat);
-    neko_luabind_struct_member(L, neko_vqs, scale, neko_vec3);
+    neko_luabind_struct_member(L, neko_vqs, scale, vec3);
 
     neko_luabind_struct(L, neko_camera_t);
     neko_luabind_struct_member(L, neko_camera_t, transform, neko_vqs);
@@ -3700,7 +3702,7 @@ inline void neko_register_test(lua_State* L) {
     }                                                                                                        \
                                                                                                              \
     LUA_FUNCTION(__neko_bind_inspect_##NAME##_iterator) {                                                    \
-        neko_gl_data_t *ogl = gfx_userdata();                                                        \
+        neko_gl_data_t *ogl = gfx_userdata();                                                                \
         neko_slot_array_iter *it = (neko_slot_array_iter *)lua_newuserdata(L, sizeof(neko_slot_array_iter)); \
         *it = neko_slot_array_iter_new(ogl->NAME);                                                           \
         lua_pushlightuserdata(L, ogl);                                                                       \
@@ -4589,15 +4591,15 @@ static int open_neko(lua_State *L) {
             {"scroll_wheel", neko_scroll_wheel},
 
             // draw
-            {"scissor_rect", neko_scissor_rect},
-            {"push_matrix", neko_push_matrix},
-            {"pop_matrix", neko_pop_matrix},
-            {"translate", neko_translate},
-            {"rotate", neko_rotate},
-            {"scale", neko_scale},
-            {"clear_color", neko_clear_color},
-            {"push_color", neko_push_color},
-            {"pop_color", neko_pop_color},
+            // {"scissor_rect", neko_scissor_rect},
+            // {"push_matrix", neko_push_matrix},
+            // {"pop_matrix", neko_pop_matrix},
+            // {"translate", neko_translate},
+            // {"rotate", neko_rotate},
+            // {"scale", neko_scale},
+            // {"clear_color", neko_clear_color},
+            // {"push_color", neko_push_color},
+            // {"pop_color", neko_pop_color},
             // {"default_font", neko_default_font},
             // {"default_sampler", neko_default_sampler},
             // {"draw_filled_rect", neko_draw_filled_rect},

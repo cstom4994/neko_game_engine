@@ -1,5 +1,8 @@
 #include "engine/lua_struct.h"
 
+#include "engine/math.h"
+
+
 static int g_reference_table = LUA_NOREF;
 
 // 从堆栈顶部弹出一个结构体实例
@@ -396,7 +399,7 @@ static int LUASTRUCT_access_ARRAY_uchar8(lua_State *L, const char *fieldName, uc
 
 // 这里定义 LUASTRUCT 结构
 
-LUASTRUCT_BEGIN(Vector4)
+LUASTRUCT_BEGIN(vec4)
 LUASTRUCT_FIELD(x, float)
 LUASTRUCT_FIELD(y, float)
 LUASTRUCT_FIELD(z, float)
@@ -411,7 +414,7 @@ LUASTRUCT_END
 // LUASTRUCT_END
 
 void createStructTables(lua_State *L) {
-    Vector4_create(L, "Vector4");
+    vec4_create(L, "vec4");
     // Color_create(L, "Color");
 
     ARRAY_uchar8_create(L);

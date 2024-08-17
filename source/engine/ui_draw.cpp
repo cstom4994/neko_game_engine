@@ -768,7 +768,7 @@ static ui_rect_t ui_intersect_rects(ui_rect_t r1, ui_rect_t r2) {
     return ui_rect((float)x1, (float)y1, (float)x2 - (float)x1, (float)y2 - (float)y1);
 }
 
-static i32 ui_rect_overlaps_vec2(ui_rect_t r, neko_vec2 p) { return p.x >= r.x && p.x < r.x + r.w && p.y >= r.y && p.y < r.y + r.h; }
+static i32 ui_rect_overlaps_vec2(ui_rect_t r, vec2 p) { return p.x >= r.x && p.x < r.x + r.w && p.y >= r.y && p.y < r.y + r.h; }
 
 ui_container_t* ui_get_top_most_container(ui_context_t* ctx, ui_split_t* split) {
     if (!split) return NULL;
@@ -1098,7 +1098,7 @@ void ui_pop_inline_style(ui_context_t* ctx, ui_element_type elementid) {
 
 void ui_pop_style(ui_context_t* ctx, ui_style_t* style) { ctx->style = style; }
 
-static void ui_push_layout(ui_context_t* ctx, ui_rect_t body, neko_vec2 scroll) {
+static void ui_push_layout(ui_context_t* ctx, ui_rect_t body, vec2 scroll) {
     ui_layout_t layout;
     i32 width = 0;
     memset(&layout, 0, sizeof(layout));
@@ -1207,7 +1207,7 @@ static void ui_pop_container(ui_context_t* ctx) {
 
 static void ui_scrollbars(ui_context_t* ctx, ui_container_t* cnt, ui_rect_t* body, const ui_selector_desc_t* desc, u64 opt) {
     i32 sz = (i32)ctx->style_sheet->styles[UI_ELEMENT_SCROLL][0x00].size[0];
-    neko_vec2 cs = cnt->content_size;
+    vec2 cs = cnt->content_size;
     cs.x += ctx->style->padding[UI_PADDING_LEFT] * 2;
     cs.y += ctx->style->padding[UI_PADDING_TOP] * 2;
     ui_push_clip_rect(ctx, *body);
@@ -1751,24 +1751,21 @@ ui_container_t* ui_get_container_ex(ui_context_t* ctx, ui_id id, u64 opt) {
     return cnt;
 }
 
-static i32 ui_text_width(neko_asset_font_t* font, const char* text, i32 len) {
-    neko_vec2 td = neko_asset_font_text_dimensions(font, text, len);
-    return (i32)td.x;
+static i32 ui_text_width(FontFamily* font, const char* text, i32 len) {
+    // vec2 td = neko_asset_font_text_dimensions(font, String(text, len));
+    return ((len > 0) ? len : neko_strlen(text)) * 6;
 }
 
-static i32 ui_text_height(neko_asset_font_t* font, const char* text, i32 len) {
-    return (i32)neko_asset_font_max_height(font);
-    neko_vec2 td = neko_asset_font_text_dimensions(font, text, len);
-    return (i32)td.y;
+// 获取给定字体的最大高度
+static i32 ui_font_height(FontFamily* font) { return 16; }
+
+static i32 ui_text_height(FontFamily* font, const char* text, i32 len) {
+    // return (i32)neko_asset_font_max_height(font);
+    // vec2 td = neko_asset_font_text_dimensions(font, String(text, len));
+    return ui_font_height(font);
 }
 
-// Grabs max height for a given font
-static i32 ui_font_height(neko_asset_font_t* font) { return (i32)neko_asset_font_max_height(font); }
-
-static neko_vec2 ui_text_dimensions(neko_asset_font_t* font, const char* text, i32 len) {
-    neko_vec2 td = neko_asset_font_text_dimensions(font, text, len);
-    return td;
-}
+static vec2 ui_text_dimensions(FontFamily* font, const char* text, i32 len) { return neko_v2(ui_text_width(font, text, len), ui_text_height(font, text, len)); }
 
 // =========================== //
 // ======== Docking ========== //
@@ -2277,7 +2274,7 @@ void ui_undock_ex_cnt(ui_context_t* ctx, ui_container_t* cnt) {
 
 static void ui_init_default_styles(ui_context_t* ctx) {
     // Set up main default style
-    ui_default_style.font = neko_idraw_default_font();
+    ui_default_style.font = neko_default_font();
     ui_default_style.size[0] = 68.f;
     ui_default_style.size[1] = 18.f;
     ui_default_style.spacing = 2;
@@ -2448,7 +2445,7 @@ static void ui_draw_splits(ui_context_t* ctx, ui_split_t* split) {
 
     // Draw split
     const ui_rect_t* sr = &split->rect;
-    neko_vec2 hd = neko_v2(sr->w * 0.5f, sr->h * 0.5f);
+    vec2 hd = neko_v2(sr->w * 0.5f, sr->h * 0.5f);
     ui_rect_t r = NEKO_DEFAULT_VAL();
     Color256 c = color256(0, 0, 0, 0);
     const float ratio = split->ratio;
@@ -2615,7 +2612,7 @@ void ui_begin(ui_context_t* ctx, const ui_hints_t* hints) {
 
     // 捕获事件信息
     auto mouse_pos_tmp = input_get_mouse_pos_pixels_fix();
-    neko_vec2 mouse_pos = {mouse_pos_tmp.x, mouse_pos_tmp.y};
+    vec2 mouse_pos = {mouse_pos_tmp.x, mouse_pos_tmp.y};
 
     // Check for scale and bias
     if (hint.flags & UI_HINT_FLAG_NO_SCALE_BIAS_MOUSE) {
@@ -2625,7 +2622,7 @@ void ui_begin(ui_context_t* ctx, const ui_hints_t* hints) {
         float yv = vp.h * py;
         mouse_pos = neko_v2(xv, yv);
     } else {
-        neko_vec2 fb_vp_ratio = neko_v2(hint.framebuffer_size.x / vp.w, hint.framebuffer_size.y / vp.h);
+        vec2 fb_vp_ratio = neko_v2(hint.framebuffer_size.x / vp.w, hint.framebuffer_size.y / vp.h);
         float px = mouse_pos.x - (vp.x * fb_vp_ratio.x);
         float py = mouse_pos.y + (vp.y * fb_vp_ratio.y);
         float xv = px / fb_vp_ratio.x;
@@ -2759,7 +2756,7 @@ void ui_begin(ui_context_t* ctx, const ui_hints_t* hints) {
     ctx->frame++;
 
     // Set up overlay draw list
-    neko_vec2 fbs = ctx->framebuffer_size;
+    vec2 fbs = ctx->framebuffer_size;
     neko_idraw_defaults(&ctx->overlay_draw_list);
     neko_idraw_camera2d(&ctx->overlay_draw_list, (u32)ctx->viewport.w, (u32)ctx->viewport.h);  // Need to pass in a viewport for this instead
 
@@ -2907,7 +2904,7 @@ static void ui_docking(ui_context_t* ctx) {
         }
 
         // Cache hoverable tile information
-        neko_vec2 c = neko_v2(cnt->rect.x + cnt->rect.w / 2.f, cnt->rect.y + cnt->rect.h / 2.f);
+        vec2 c = neko_v2(cnt->rect.x + cnt->rect.w / 2.f, cnt->rect.y + cnt->rect.h / 2.f);
 
         const float sz = NEKO_CLAMP(NEKO_MIN(cnt->rect.w * 0.1f, cnt->rect.h * 0.1f), 15.f, 25.f);
         const float off = sz + sz * 0.2f;
@@ -3323,7 +3320,7 @@ void ui_end(ui_context_t* ctx, bool update) {
 }
 
 void ui_render(ui_context_t* ctx, neko_command_buffer_t* cb) {
-    const neko_vec2 fb = ctx->framebuffer_size;
+    const vec2 fb = ctx->framebuffer_size;
     const ui_rect_t* viewport = &ctx->viewport;
     idraw_t* gui_idraw = &ctx->gui_idraw;
 
@@ -3411,10 +3408,10 @@ void ui_render(ui_context_t* ctx, neko_command_buffer_t* cb) {
             } break;
 
             case UI_COMMAND_TEXT: {
-                const neko_vec2* tp = &cmd->text.pos;
+                const vec2* tp = &cmd->text.pos;
                 const char* ts = cmd->text.str;
                 const Color256* tc = &cmd->text.color;
-                const neko_asset_font_t* tf = cmd->text.font;
+                FontFamily* tf = cmd->text.font;
                 neko_idraw_text(&ctx->gui_idraw, tp->x, tp->y, ts, tf, false, *tc);
             } break;
 
@@ -3429,22 +3426,22 @@ void ui_render(ui_context_t* ctx, neko_command_buffer_t* cb) {
                     } break;
 
                     case UI_SHAPE_CIRCLE: {
-                        neko_vec2* cp = &cmd->shape.circle.center;
+                        vec2* cp = &cmd->shape.circle.center;
                         float* r = &cmd->shape.circle.radius;
                         neko_idraw_circle(&ctx->gui_idraw, cp->x, cp->y, *r, 16, c->r, c->g, c->b, c->a, R_PRIMITIVE_TRIANGLES);
                     } break;
 
                     case UI_SHAPE_TRIANGLE: {
-                        neko_vec2* pa = &cmd->shape.triangle.points[0];
-                        neko_vec2* pb = &cmd->shape.triangle.points[1];
-                        neko_vec2* pc = &cmd->shape.triangle.points[2];
+                        vec2* pa = &cmd->shape.triangle.points[0];
+                        vec2* pb = &cmd->shape.triangle.points[1];
+                        vec2* pc = &cmd->shape.triangle.points[2];
                         neko_idraw_trianglev(&ctx->gui_idraw, *pa, *pb, *pc, *c, R_PRIMITIVE_TRIANGLES);
 
                     } break;
 
                     case UI_SHAPE_LINE: {
-                        neko_vec2* s = &cmd->shape.line.start;
-                        neko_vec2* e = &cmd->shape.line.end;
+                        vec2* s = &cmd->shape.line.start;
+                        vec2* e = &cmd->shape.line.end;
                         neko_idraw_linev(&ctx->gui_idraw, *s, *e, *c);
                     } break;
                 }
@@ -3455,14 +3452,14 @@ void ui_render(ui_context_t* ctx, neko_command_buffer_t* cb) {
                 neko_idraw_texture(&ctx->gui_idraw, cmd->image.hndl);
                 Color256* c = &cmd->image.color;
                 ui_rect_t* r = &cmd->image.rect;
-                neko_vec4* uvs = &cmd->image.uvs;
+                vec4* uvs = &cmd->image.uvs;
                 neko_idraw_rectvd(&ctx->gui_idraw, neko_v2(r->x, r->y), neko_v2(r->w, r->h), neko_v2(uvs->x, uvs->y), neko_v2(uvs->z, uvs->w), *c, R_PRIMITIVE_TRIANGLES);
             } break;
 
             case UI_COMMAND_CLIP: {
                 // Will project scissor/clipping rectangles into framebuffer space
-                neko_vec2 clip_off = neko_v2s(0.f);    // (0,0) unless using multi-viewports
-                neko_vec2 clip_scale = neko_v2s(1.f);  // (1,1) unless using retina display which are often (2,2)
+                vec2 clip_off = neko_v2s(0.f);    // (0,0) unless using multi-viewports
+                vec2 clip_scale = neko_v2s(1.f);  // (1,1) unless using retina display which are often (2,2)
 
                 ui_rect_t clip_rect;
                 clip_rect.x = (cmd->clip.rect.x - clip_off.x) * clip_scale.x;
@@ -3491,7 +3488,7 @@ void ui_render(ui_context_t* ctx, neko_command_buffer_t* cb) {
 }
 
 void ui_renderpass_submit(ui_context_t* ctx, neko_command_buffer_t* cb, Color256 c) {
-    neko_vec2 fbs = ctx->framebuffer_size;
+    vec2 fbs = ctx->framebuffer_size;
     ui_rect_t* vp = &ctx->viewport;
     gfx_clear_action_t action = NEKO_DEFAULT_VAL();
     action.color[0] = (float)c.r / 255.f;
@@ -3508,7 +3505,7 @@ void ui_renderpass_submit(ui_context_t* ctx, neko_command_buffer_t* cb, Color256
 }
 
 void ui_renderpass_submit_ex(ui_context_t* ctx, neko_command_buffer_t* cb, gfx_clear_action_t action) {
-    neko_vec2 fbs = ctx->framebuffer_size;
+    vec2 fbs = ctx->framebuffer_size;
     ui_rect_t* vp = &ctx->viewport;
     neko_renderpass_t pass = NEKO_DEFAULT_VAL();
     gfx_renderpass_begin(cb, pass);
@@ -3767,11 +3764,11 @@ void ui_bind_uniforms(ui_context_t* ctx, gfx_bind_uniform_desc_t* uniforms, size
     ctx->command_list.idx += sz;
 }
 
-void ui_draw_line(ui_context_t* ctx, neko_vec2 start, neko_vec2 end, Color256 color) {
+void ui_draw_line(ui_context_t* ctx, vec2 start, vec2 end, Color256 color) {
     ui_command_t* cmd;
     ui_rect_t rect = NEKO_DEFAULT_VAL();
-    neko_vec2 s = start.x < end.x ? start : end;
-    neko_vec2 e = start.x < end.x ? end : start;
+    vec2 s = start.x < end.x ? start : end;
+    vec2 e = start.x < end.x ? end : start;
     ui_rect(s.x, s.y, e.x - s.x, e.y - s.y);
     rect = ui_intersect_rects(rect, ui_get_clip_rect(ctx));
 
@@ -3807,7 +3804,7 @@ void ui_draw_rect(ui_context_t* ctx, ui_rect_t rect, Color256 color) {
     }
 }
 
-void ui_draw_circle(ui_context_t* ctx, neko_vec2 position, float radius, Color256 color) {
+void ui_draw_circle(ui_context_t* ctx, vec2 position, float radius, Color256 color) {
     ui_command_t* cmd;
     ui_rect_t rect = ui_rect(position.x - radius, position.y - radius, 2.f * radius, 2.f * radius);
 
@@ -3833,7 +3830,7 @@ void ui_draw_circle(ui_context_t* ctx, neko_vec2 position, float radius, Color25
     }
 }
 
-void ui_draw_triangle(ui_context_t* ctx, neko_vec2 a, neko_vec2 b, neko_vec2 c, Color256 color) {
+void ui_draw_triangle(ui_context_t* ctx, vec2 a, vec2 b, vec2 c, Color256 color) {
     ui_command_t* cmd;
 
     // Check each point against rect (if partially clipped, then good
@@ -3881,16 +3878,16 @@ void ui_draw_box(ui_context_t* ctx, ui_rect_t rect, i16* w, Color256 color) {
     ui_draw_rect(ctx, ui_rect(rect.x + rect.w - r, rect.y, r, rect.h), color);              // right
 }
 
-void ui_draw_text(ui_context_t* ctx, neko_asset_font_t* font, const char* str, i32 len, neko_vec2 pos, Color256 color, i32 shadow_x, i32 shadow_y, Color256 shadow_color) {
+void ui_draw_text(ui_context_t* ctx, FontFamily* font, const char* str, i32 len, vec2 pos, Color256 color, i32 shadow_x, i32 shadow_y, Color256 shadow_color) {
     // Set to default font
     if (!font) {
-        font = neko_idraw_default_font();
+        font = neko_default_font();
     }
 
 #define DRAW_TEXT(TEXT, RECT, COLOR)                                                 \
     do {                                                                             \
         ui_command_t* cmd;                                                           \
-        neko_vec2 td = ui_text_dimensions(font, TEXT, -1);                           \
+        vec2 td = ui_text_dimensions(font, TEXT, -1);                           \
         ui_rect_t rect = (RECT);                                                     \
         i32 clipped = ui_check_clip(ctx, rect);                                      \
                                                                                      \
@@ -3929,7 +3926,7 @@ void ui_draw_text(ui_context_t* ctx, neko_asset_font_t* font, const char* str, i
     { DRAW_TEXT(str, ui_rect(pos.x, pos.y, td.x, td.y), color); }
 }
 
-void ui_draw_image(ui_context_t* ctx, neko_handle(gfx_texture_t) hndl, ui_rect_t rect, neko_vec2 uv0, neko_vec2 uv1, Color256 color) {
+void ui_draw_image(ui_context_t* ctx, neko_handle(gfx_texture_t) hndl, ui_rect_t rect, vec2 uv0, vec2 uv1, Color256 color) {
     ui_command_t* cmd;
 
     // do clip command if the rect isn't fully contained within the cliprect
@@ -3995,7 +3992,7 @@ void ui_draw_custom(ui_context_t* ctx, ui_rect_t rect, ui_draw_callback_t cb, vo
     }
 }
 
-void ui_draw_nine_rect(ui_context_t* ctx, neko_handle(gfx_texture_t) hndl, ui_rect_t rect, neko_vec2 uv0, neko_vec2 uv1, u32 left, u32 right, u32 top, u32 bottom, Color256 color) {
+void ui_draw_nine_rect(ui_context_t* ctx, neko_handle(gfx_texture_t) hndl, ui_rect_t rect, vec2 uv0, vec2 uv1, u32 left, u32 right, u32 top, u32 bottom, Color256 color) {
     // Draw images based on rect, slice image based on uvs (uv0, uv1), original texture dimensions (width, height) and control margins (left, right, top, bottom)
     gfx_texture_desc_t desc = NEKO_DEFAULT_VAL();
     gfx_texture_desc_query(hndl, &desc);
@@ -4007,8 +4004,8 @@ void ui_draw_nine_rect(ui_context_t* ctx, neko_handle(gfx_texture_t) hndl, ui_re
         u32 w = left;
         u32 h = top;
         ui_rect_t r = ui_rect(rect.x, rect.y, (f32)w, (f32)h);
-        neko_vec2 st0 = neko_v2(uv0.x, uv0.y);
-        neko_vec2 st1 = neko_v2(uv0.x + ((float)left / (float)width), uv0.y + ((float)top / (float)height));
+        vec2 st0 = neko_v2(uv0.x, uv0.y);
+        vec2 st1 = neko_v2(uv0.x + ((float)left / (float)width), uv0.y + ((float)top / (float)height));
         ui_draw_image(ctx, hndl, r, st0, st1, color);
     }
 
@@ -4017,8 +4014,8 @@ void ui_draw_nine_rect(ui_context_t* ctx, neko_handle(gfx_texture_t) hndl, ui_re
         u32 w = right;
         u32 h = top;
         ui_rect_t r = ui_rect(rect.x + rect.w - w, rect.y, (f32)w, (f32)h);
-        neko_vec2 st0 = neko_v2(uv1.x - ((float)right / (float)width), uv0.y);
-        neko_vec2 st1 = neko_v2(uv1.x, uv0.y + ((float)top / (float)height));
+        vec2 st0 = neko_v2(uv1.x - ((float)right / (float)width), uv0.y);
+        vec2 st1 = neko_v2(uv1.x, uv0.y + ((float)top / (float)height));
         ui_draw_image(ctx, hndl, r, st0, st1, color);
     }
 
@@ -4027,8 +4024,8 @@ void ui_draw_nine_rect(ui_context_t* ctx, neko_handle(gfx_texture_t) hndl, ui_re
         u32 w = right;
         u32 h = bottom;
         ui_rect_t r = ui_rect(rect.x + rect.w - (f32)w, rect.y + rect.h - (f32)h, (f32)w, (f32)h);
-        neko_vec2 st0 = neko_v2(uv1.x - ((float)right / (float)width), uv1.y - ((float)bottom / (float)height));
-        neko_vec2 st1 = neko_v2(uv1.x, uv1.y);
+        vec2 st0 = neko_v2(uv1.x - ((float)right / (float)width), uv1.y - ((float)bottom / (float)height));
+        vec2 st1 = neko_v2(uv1.x, uv1.y);
         ui_draw_image(ctx, hndl, r, st0, st1, color);
     }
 
@@ -4037,8 +4034,8 @@ void ui_draw_nine_rect(ui_context_t* ctx, neko_handle(gfx_texture_t) hndl, ui_re
         u32 w = left;
         u32 h = bottom;
         ui_rect_t r = ui_rect(rect.x, rect.y + rect.h - (f32)h, (f32)w, (f32)h);
-        neko_vec2 st0 = neko_v2(uv0.x, uv1.y - ((float)bottom / (float)height));
-        neko_vec2 st1 = neko_v2(uv0.x + ((float)left / (float)width), uv1.y);
+        vec2 st0 = neko_v2(uv0.x, uv1.y - ((float)bottom / (float)height));
+        vec2 st1 = neko_v2(uv0.x + ((float)left / (float)width), uv1.y);
         ui_draw_image(ctx, hndl, r, st0, st1, color);
     }
 
@@ -4047,8 +4044,8 @@ void ui_draw_nine_rect(ui_context_t* ctx, neko_handle(gfx_texture_t) hndl, ui_re
         u32 w = (u32)rect.w - left - right;
         u32 h = top;
         ui_rect_t r = ui_rect(rect.x + left, rect.y, (f32)w, (f32)h);
-        neko_vec2 st0 = neko_v2(uv0.x + ((float)left / (float)width), uv0.y);
-        neko_vec2 st1 = neko_v2(uv1.x - ((float)right / (float)width), uv0.y + ((float)top / (float)height));
+        vec2 st0 = neko_v2(uv0.x + ((float)left / (float)width), uv0.y);
+        vec2 st1 = neko_v2(uv1.x - ((float)right / (float)width), uv0.y + ((float)top / (float)height));
         ui_draw_image(ctx, hndl, r, st0, st1, color);
     }
 
@@ -4057,8 +4054,8 @@ void ui_draw_nine_rect(ui_context_t* ctx, neko_handle(gfx_texture_t) hndl, ui_re
         u32 w = (u32)rect.w - left - right;
         u32 h = bottom;
         ui_rect_t r = ui_rect(rect.x + left, rect.y + rect.h - (f32)h, (f32)w, (f32)h);
-        neko_vec2 st0 = neko_v2(uv0.x + ((float)left / (float)width), uv1.y - ((float)bottom / (float)height));
-        neko_vec2 st1 = neko_v2(uv1.x - ((float)right / (float)width), uv1.y);
+        vec2 st0 = neko_v2(uv0.x + ((float)left / (float)width), uv1.y - ((float)bottom / (float)height));
+        vec2 st1 = neko_v2(uv1.x - ((float)right / (float)width), uv1.y);
         ui_draw_image(ctx, hndl, r, st0, st1, color);
     }
 
@@ -4067,8 +4064,8 @@ void ui_draw_nine_rect(ui_context_t* ctx, neko_handle(gfx_texture_t) hndl, ui_re
         u32 w = left;
         u32 h = (u32)rect.h - top - bottom;
         ui_rect_t r = ui_rect(rect.x, rect.y + top, (f32)w, (f32)h);
-        neko_vec2 st0 = neko_v2(uv0.x, uv0.y + ((float)top / (float)height));
-        neko_vec2 st1 = neko_v2(uv0.x + ((float)left / (float)width), uv1.y - ((float)bottom / (float)height));
+        vec2 st0 = neko_v2(uv0.x, uv0.y + ((float)top / (float)height));
+        vec2 st1 = neko_v2(uv0.x + ((float)left / (float)width), uv1.y - ((float)bottom / (float)height));
         ui_draw_image(ctx, hndl, r, st0, st1, color);
     }
 
@@ -4077,8 +4074,8 @@ void ui_draw_nine_rect(ui_context_t* ctx, neko_handle(gfx_texture_t) hndl, ui_re
         u32 w = right;
         u32 h = (u32)rect.h - top - bottom;
         ui_rect_t r = ui_rect(rect.x + rect.w - (f32)w, rect.y + top, (f32)w, (f32)h);
-        neko_vec2 st0 = neko_v2(uv1.x - ((float)right / (float)width), uv0.y + ((float)top / (float)height));
-        neko_vec2 st1 = neko_v2(uv1.x, uv1.y - ((float)bottom / (float)height));
+        vec2 st0 = neko_v2(uv1.x - ((float)right / (float)width), uv0.y + ((float)top / (float)height));
+        vec2 st1 = neko_v2(uv1.x, uv1.y - ((float)bottom / (float)height));
         ui_draw_image(ctx, hndl, r, st0, st1, color);
     }
 
@@ -4087,8 +4084,8 @@ void ui_draw_nine_rect(ui_context_t* ctx, neko_handle(gfx_texture_t) hndl, ui_re
         u32 w = (u32)rect.w - right - left;
         u32 h = (u32)rect.h - top - bottom;
         ui_rect_t r = ui_rect(rect.x + left, rect.y + top, (f32)w, (f32)h);
-        neko_vec2 st0 = neko_v2(uv0.x + ((float)left / (float)width), uv0.y + ((float)top / (float)height));
-        neko_vec2 st1 = neko_v2(uv1.x - ((float)right / (float)width), uv1.y - ((float)bottom / (float)height));
+        vec2 st0 = neko_v2(uv0.x + ((float)left / (float)width), uv0.y + ((float)top / (float)height));
+        vec2 st1 = neko_v2(uv1.x - ((float)right / (float)width), uv1.y - ((float)bottom / (float)height));
         ui_draw_image(ctx, hndl, r, st0, st1, color);
     }
 }
@@ -4387,9 +4384,9 @@ void ui_draw_control_frame(ui_context_t* ctx, ui_id id, ui_rect_t rect, i32 elem
 }
 
 void ui_draw_control_text(ui_context_t* ctx, const char* str, ui_rect_t rect, const ui_style_t* style, u64 opt) {
-    neko_vec2 pos = neko_v2(rect.x, rect.y);
-    neko_asset_font_t* font = style->font;
-    neko_vec2 td = ui_text_dimensions(font, str, -1);
+    vec2 pos = neko_v2(rect.x, rect.y);
+    FontFamily* font = style->font;
+    vec2 td = ui_text_dimensions(font, str, -1);
     i32 tw = (i32)td.x;
     i32 th = (i32)td.y;
 
@@ -4594,7 +4591,7 @@ i32 ui_text_ex(ui_context_t* ctx, const char* text, i32 wrap, const ui_selector_
     }
 
     ui_style_t* save = ui_push_style(ctx, &style);
-    neko_asset_font_t* font = ctx->style->font;
+    FontFamily* font = ctx->style->font;
     Color256* color = &ctx->style->colors[UI_COLOR_CONTENT];
     i32 sx = ctx->style->shadow_x;
     i32 sy = ctx->style->shadow_y;
@@ -4726,7 +4723,7 @@ i32 ui_label_ex(ui_context_t* ctx, const char* label, const ui_selector_desc_t* 
     return res;
 }
 
-i32 ui_image_ex(ui_context_t* ctx, neko_handle(gfx_texture_t) hndl, neko_vec2 uv0, neko_vec2 uv1, const ui_selector_desc_t* desc, u64 opt) {
+i32 ui_image_ex(ui_context_t* ctx, neko_handle(gfx_texture_t) hndl, vec2 uv0, vec2 uv1, const ui_selector_desc_t* desc, u64 opt) {
     i32 res = 0;
     ui_id id = ui_get_id(ctx, &hndl, sizeof(hndl));
     const i32 elementid = UI_ELEMENT_IMAGE;
@@ -5023,7 +5020,7 @@ i32 ui_textbox_raw(ui_context_t* ctx, char* buf, i32 bufsz, ui_id id, ui_rect_t 
         i32 sx = sp->shadow_x;
         i32 sy = sp->shadow_y;
         Color256* sc = &sp->colors[UI_COLOR_SHADOW];
-        neko_asset_font_t* font = sp->font;
+        FontFamily* font = sp->font;
         i32 textw = ui_text_width(font, buf, -1);
         i32 texth = ui_font_height(font);
         i32 ofx = (i32)(rect.w - sp->padding[UI_PADDING_RIGHT] - textw - 1);
@@ -5039,7 +5036,7 @@ i32 ui_textbox_raw(ui_context_t* ctx, char* buf, i32 bufsz, ui_id id, ui_rect_t 
         static bool on = true;
         static float ct = 0.f;
         if (~opt & UI_OPT_NOCARET) {
-            neko_vec2 pos = neko_v2(rect.x, rect.y);
+            vec2 pos = neko_v2(rect.x, rect.y);
 
             // Grab stylings
             const i32 padding_left = sp->padding[UI_PADDING_LEFT];
@@ -5086,7 +5083,7 @@ i32 ui_textbox_raw(ui_context_t* ctx, char* buf, i32 bufsz, ui_id id, ui_rect_t 
     } else {
         ui_style_t* sp = &style;
         Color256* color = &sp->colors[UI_COLOR_CONTENT];
-        neko_asset_font_t* font = sp->font;
+        FontFamily* font = sp->font;
         i32 sx = sp->shadow_x;
         i32 sy = sp->shadow_y;
         Color256* sc = &sp->colors[UI_COLOR_SHADOW];
@@ -5324,14 +5321,14 @@ static i32 __ui_header(ui_context_t* ctx, const char* label, i32 istreenode, con
 
     const float sz = 6.f;
     if (expanded) {
-        neko_vec2 a = {r.x + sz / 2.f, r.y + (r.h - sz) / 2.f};
-        neko_vec2 b = neko_vec2_add(a, neko_v2(sz, 0.f));
-        neko_vec2 c = neko_vec2_add(a, neko_v2(sz / 2.f, sz));
+        vec2 a = {r.x + sz / 2.f, r.y + (r.h - sz) / 2.f};
+        vec2 b = vec2_add(a, neko_v2(sz, 0.f));
+        vec2 c = vec2_add(a, neko_v2(sz / 2.f, sz));
         ui_draw_triangle(ctx, a, b, c, ctx->style_sheet->styles[UI_ELEMENT_TEXT][0x00].colors[UI_COLOR_CONTENT]);
     } else {
-        neko_vec2 a = {r.x + sz / 2.f, r.y + (r.h - sz) / 2.f};
-        neko_vec2 b = neko_vec2_add(a, neko_v2(sz, sz / 2.f));
-        neko_vec2 c = neko_vec2_add(a, neko_v2(0.f, sz));
+        vec2 a = {r.x + sz / 2.f, r.y + (r.h - sz) / 2.f};
+        vec2 b = vec2_add(a, neko_v2(sz, sz / 2.f));
+        vec2 c = vec2_add(a, neko_v2(0.f, sz));
         ui_draw_triangle(ctx, a, b, c, ctx->style_sheet->styles[UI_ELEMENT_TEXT][0x00].colors[UI_COLOR_CONTENT]);
     }
 
@@ -5427,7 +5424,7 @@ i32 ui_window_begin_ex(ui_context_t* ctx, const char* title, ui_rect_t rect, boo
     // Cache rect
     if ((cnt->rect.w == 0.f || opt & UI_OPT_FORCESETRECT || opt & UI_OPT_FULLSCREEN || cnt->flags & UI_WINDOW_FLAGS_FIRST_INIT) && new_frame) {
         if (opt & UI_OPT_FULLSCREEN) {
-            neko_vec2 fb = ctx->framebuffer_size;
+            vec2 fb = ctx->framebuffer_size;
             cnt->rect = ui_rect(0, 0, fb.x, fb.y);
 
             // Set root split rect size
@@ -6161,7 +6158,7 @@ void ui_window_end(ui_context_t* ctx) {
                                 });
 
         static bool capture = false;
-        static neko_vec2 mp = {0};
+        static vec2 mp = {0};
         static ui_rect_t _rect = {0};
 
         /*
@@ -6178,13 +6175,13 @@ void ui_window_end(ui_context_t* ctx) {
                 }
 
                 // Grow based on dist from center
-                neko_vec2 c = neko_v2(r->x + r->w * 0.5f, r->y + r->h * 0.5f);
-                neko_vec2 a = neko_vec2_sub(c, mp);
-                neko_vec2 b = neko_vec2_sub(c, ctx->mouse_pos);
-                neko_vec2 na = neko_vec2_norm(a);
-                neko_vec2 nb = neko_vec2_norm(b);
-                float dist = neko_vec2_len(neko_vec2_sub(b, a));
-                float dot = neko_vec2_dot(na, nb);
+                vec2 c = neko_v2(r->x + r->w * 0.5f, r->y + r->h * 0.5f);
+                vec2 a = vec2_sub(c, mp);
+                vec2 b = vec2_sub(c, ctx->mouse_pos);
+                vec2 na = vec2_norm(a);
+                vec2 nb = vec2_norm(b);
+                float dist = vec2_len(vec2_sub(b, a));
+                float dot = vec2_dot(na, nb);
                 neko_println("len: %.2f, dot: %.2f", dist, dot);
 
                 // Grow rect by dot product (scale dimensions)
@@ -6484,7 +6481,7 @@ i32 ui_demo_window(ui_context_t* ctx, ui_rect_t rect, bool* open) {
                 }
                 ui_label(ctx, "ABOUT THIS DEMO:");
                 ui_text(ctx, "  - Sections below are demonstrating many aspects of the util.");
-                // ui_text(ctx, " 测试中文，你好世界");
+                ui_text(ctx, " 测试中文，你好世界");
             }
             ui_panel_end(ctx);
             ui_treenode_end(ctx);

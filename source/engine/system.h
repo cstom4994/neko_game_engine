@@ -6,14 +6,16 @@
 
 NEKO_SCRIPT(system,
 
-       NEKO_EXPORT void system_load_all(Store *f);
-       NEKO_EXPORT void system_save_all(Store *f);
+            NEKO_EXPORT void system_load_all(Store *f);
+            NEKO_EXPORT void system_save_all(Store *f);
 
 )
+
+struct neko_command_buffer_t;
 
 void system_init();
 void system_fini();
 void system_update_all();
-void system_draw_all();
+void system_draw_all(neko_command_buffer_t *cb);
 
 #endif

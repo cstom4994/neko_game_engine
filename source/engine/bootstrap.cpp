@@ -214,7 +214,7 @@ static void init() {
 
     // microui_init();
 
-    renderer_reset();
+    // renderer_reset();
 
     {
         PROFILE_BLOCK("neko.start");

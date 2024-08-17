@@ -9,9 +9,9 @@
 #include "engine/prelude.h"
 
 DECL_ENT(Transform, LuaVec2 position; Scalar rotation; LuaVec2 scale; Entity parent;  // 如果entity_nil 则为 root
-         CArray * children;                                                       // 如果为 NULL 则为空
-         LuaMat3 mat_cache;                                                         // 更新此内容
-         LuaMat3 worldmat_cache;                                                    // 在父子更新时缓存
+         CArray * children;                                                           // 如果为 NULL 则为空
+         LuaMat3 mat_cache;                                                           // 更新此内容
+         LuaMat3 worldmat_cache;                                                      // 在父子更新时缓存
          ecs_id_t dirty_count;);
 
 static EntityPool *pool;
@@ -94,9 +94,9 @@ void transform_add(Entity ent) {
     if (entitypool_get(pool, ent)) return;
 
     transform = (Transform *)entitypool_add(pool, ent);
-    transform->position = vec2(0.0f, 0.0f);
+    transform->position = luavec2(0.0f, 0.0f);
     transform->rotation = 0.0f;
-    transform->scale = vec2(1.0f, 1.0f);
+    transform->scale = luavec2(1.0f, 1.0f);
 
     transform->parent = entity_nil;
     transform->children = NULL;
@@ -237,7 +237,7 @@ LuaVec2 transform_get_world_scale(Entity ent) {
 LuaMat3 transform_get_world_matrix(Entity ent) {
     Transform *transform;
 
-    if (entity_eq(ent, entity_nil)) return mat3_identity();
+    if (entity_eq(ent, entity_nil)) return luamat3_identity();
 
     transform = (Transform *)entitypool_get(pool, ent);
     error_assert(transform);
@@ -246,7 +246,7 @@ LuaMat3 transform_get_world_matrix(Entity ent) {
 LuaMat3 transform_get_matrix(Entity ent) {
     Transform *transform;
 
-    if (entity_eq(ent, entity_nil)) return mat3_identity();
+    if (entity_eq(ent, entity_nil)) return luamat3_identity();
 
     transform = (Transform *)entitypool_get(pool, ent);
     error_assert(transform);
@@ -362,13 +362,13 @@ void transform_load_all(Store *s) {
         entitypool_load_foreach(transform, transform_s, pool, "pool", t) {
             vec2_load(&transform->position, "position", vec2_zero, transform_s);
             scalar_load(&transform->rotation, "rotation", 0, transform_s);
-            vec2_load(&transform->scale, "scale", vec2(1, 1), transform_s);
+            vec2_load(&transform->scale, "scale", luavec2(1, 1), transform_s);
 
             entity_load(&transform->parent, "parent", entity_nil, transform_s);
             _children_load(transform, transform_s);
 
-            mat3_load(&transform->mat_cache, "mat_cache", mat3_identity(), transform_s);
-            mat3_load(&transform->worldmat_cache, "worldmat_cache", mat3_identity(), transform_s);
+            mat3_load(&transform->mat_cache, "mat_cache", luamat3_identity(), transform_s);
+            mat3_load(&transform->worldmat_cache, "worldmat_cache", luamat3_identity(), transform_s);
 
             uint_load(&transform->dirty_count, "dirty_count", 0, transform_s);
         }

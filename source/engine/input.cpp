@@ -98,13 +98,13 @@ bool input_key_down(KeyCode key) {
 LuaVec2 input_get_mouse_pos_pixels_fix() {
     double x, y;
     glfwGetCursorPos(g_app->game_window, &x, &y);
-    return vec2(x, y);
+    return luavec2(x, y);
 }
 
 LuaVec2 input_get_mouse_pos_pixels() {
     double x, y;
     glfwGetCursorPos(g_app->game_window, &x, &y);
-    return vec2(x, -y);
+    return luavec2(x, -y);
 }
 LuaVec2 input_get_mouse_pos_unit() { return game_pixels_to_unit(input_get_mouse_pos_pixels()); }
 
@@ -158,13 +158,13 @@ static void _mouse_callback(GLFWwindow *window, int mouse, int action, int mods)
 static void _cursor_pos_callback(GLFWwindow *window, double x, double y) {
     MouseMoveCallback *f;
 
-    array_foreach(f, mouse_move_cbs) (*f)(vec2(x, -y));
+    array_foreach(f, mouse_move_cbs) (*f)(luavec2(x, -y));
 }
 
 static void _scroll_callback(GLFWwindow *window, double x, double y) {
     ScrollCallback *f;
 
-    array_foreach(f, scroll_cbs) (*f)(vec2(x, y));
+    array_foreach(f, scroll_cbs) (*f)(luavec2(x, y));
 }
 
 void input_init() {
@@ -218,7 +218,7 @@ void keyboard_controlled_remove(Entity ent) {
 bool keyboard_controlled_has(Entity ent) { return kc_exists && entity_eq(kc_entity, ent); }
 
 void keyboard_controlled_update_all() {
-    LuaVec2 dpos = vec2(0, 0), sca;
+    LuaVec2 dpos = luavec2(0, 0), sca;
     Scalar rot, aspect;
 
     if (kc_exists) {
@@ -234,10 +234,10 @@ void keyboard_controlled_update_all() {
         sca = transform_get_scale(kc_entity);
         aspect = sca.y / sca.x;
 
-        if (input_key_down(KC_LEFT)) dpos = vec2_add(dpos, vec2(-5 * timing_instance.dt, 0));
-        if (input_key_down(KC_RIGHT)) dpos = vec2_add(dpos, vec2(5 * timing_instance.dt, 0));
-        if (input_key_down(KC_UP)) dpos = vec2_add(dpos, vec2(0, 5 * timing_instance.dt));
-        if (input_key_down(KC_DOWN)) dpos = vec2_add(dpos, vec2(0, -5 * timing_instance.dt));
+        if (input_key_down(KC_LEFT)) dpos = vec2_add(dpos, luavec2(-5 * timing_instance.dt, 0));
+        if (input_key_down(KC_RIGHT)) dpos = vec2_add(dpos, luavec2(5 * timing_instance.dt, 0));
+        if (input_key_down(KC_UP)) dpos = vec2_add(dpos, luavec2(0, 5 * timing_instance.dt));
+        if (input_key_down(KC_DOWN)) dpos = vec2_add(dpos, luavec2(0, -5 * timing_instance.dt));
 
         if (input_key_down(KC_N)) rot += 0.35 * SCALAR_PI * timing_instance.dt;
         if (input_key_down(KC_M)) rot -= 0.35 * SCALAR_PI * timing_instance.dt;

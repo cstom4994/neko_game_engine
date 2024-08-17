@@ -578,126 +578,6 @@ struct Scanner {
     i32 next_int();
 };
 
-#if defined(_M_AMD64) || defined(__SSE__)
-#ifndef SSE_AVAILABLE
-#define SSE_AVAILABLE
-#endif
-#include <immintrin.h>
-#endif
-
-union Vector4 {
-    struct {
-        float x, y, z, w;
-    };
-    float arr[4];
-#ifdef SSE_AVAILABLE
-    __m128 sse;
-#endif
-};
-
-inline Vector4 vec4(float x, float y, float z, float w) {
-    Vector4 v = {};
-#ifdef SSE_AVAILABLE
-    v.sse = _mm_set_ps(w, z, y, x);
-#else
-    v.x = x;
-    v.y = y;
-    v.z = z;
-    v.w = w;
-#endif
-    return v;
-}
-
-inline Vector4 vec4_xy(float x, float y) {
-    Vector4 v = {};
-#ifdef SSE_AVAILABLE
-    v.sse = _mm_set_ps(1, 0, y, x);
-#else
-    v.x = x;
-    v.y = y;
-    v.w = 1;
-#endif
-    return v;
-}
-
-union Matrix4 {
-    float cols[4][4];
-    Vector4 vecs[4];
-    float elements[16];
-#ifdef SSE_AVAILABLE
-    __m128 sse[4];
-#endif
-};
-
-inline Vector4 vec4_mul_mat4(Vector4 v, Matrix4 m) {
-#ifdef SSE_AVAILABLE
-    __m128 mul0 = _mm_mul_ps(_mm_shuffle_ps(v.sse, v.sse, 0x00), m.sse[0]);
-    __m128 mul1 = _mm_mul_ps(_mm_shuffle_ps(v.sse, v.sse, 0x55), m.sse[1]);
-    __m128 mul2 = _mm_mul_ps(_mm_shuffle_ps(v.sse, v.sse, 0xaa), m.sse[2]);
-    __m128 mul3 = _mm_mul_ps(_mm_shuffle_ps(v.sse, v.sse, 0xff), m.sse[3]);
-
-    Vector4 out = {};
-    out.sse = _mm_add_ps(_mm_add_ps(mul0, mul1), _mm_add_ps(mul2, mul3));
-    return out;
-#else
-    Vector4 out = {};
-    for (int i = 0; i < 4; i++) {
-        out.x += v.arr[i] * m.cols[i][0];
-        out.y += v.arr[i] * m.cols[i][1];
-        out.z += v.arr[i] * m.cols[i][2];
-        out.w += v.arr[i] * m.cols[i][3];
-    }
-    return out;
-#endif
-}
-
-inline Matrix4 mat4_mul_mat4(Matrix4 lhs, Matrix4 rhs) {
-    Matrix4 m = {};
-    m.vecs[0] = vec4_mul_mat4(rhs.vecs[0], lhs);
-    m.vecs[1] = vec4_mul_mat4(rhs.vecs[1], lhs);
-    m.vecs[2] = vec4_mul_mat4(rhs.vecs[2], lhs);
-    m.vecs[3] = vec4_mul_mat4(rhs.vecs[3], lhs);
-    return m;
-}
-
-#if 0
-
-NEKO_FORCE_INLINE Matrix4 neko_mat4_diag(f32 val) {
-    Matrix4 m;
-    memset(m.elements, 0, sizeof(m.elements));
-    m.elements[0 + 0 * 4] = val;
-    m.elements[1 + 1 * 4] = val;
-    m.elements[2 + 2 * 4] = val;
-    m.elements[3 + 3 * 4] = val;
-    return m;
-}
-
-#define neko_mat4_identity() neko_mat4_diag(1.0f)
-
-// f32 l : left
-// f32 r : right
-// f32 b : bottom
-// f32 t : top
-// f32 n : near
-// f32 f : far
-NEKO_FORCE_INLINE Matrix4 neko_mat4_ortho(f32 l, f32 r, f32 b, f32 t, f32 n, f32 f) {
-    Matrix4 m_res = neko_mat4_identity();
-
-    // Main diagonal
-    m_res.elements[0 + 0 * 4] = 2.0f / (r - l);
-    m_res.elements[1 + 1 * 4] = 2.0f / (t - b);
-    m_res.elements[2 + 2 * 4] = -2.0f / (f - n);
-
-    // Last column
-    m_res.elements[0 + 3 * 4] = -(r + l) / (r - l);
-    m_res.elements[1 + 3 * 4] = -(t + b) / (t - b);
-    m_res.elements[2 + 3 * 4] = -(f + n) / (f - n);
-
-    return m_res;
-}
-
-#endif
-
 /*=============================
 //
 =============================*/
@@ -2072,23 +1952,45 @@ NEKO_SCRIPT(
             Scalar y;
         };
 
-        NEKO_EXPORT LuaVec2 vec2(Scalar x, Scalar y); NEKO_EXPORT LuaVec2 vec2_zero;
+        NEKO_EXPORT LuaVec2 luavec2(Scalar x, Scalar y);
 
-        NEKO_EXPORT LuaVec2 vec2_add(LuaVec2 u, LuaVec2 v); NEKO_EXPORT LuaVec2 vec2_sub(LuaVec2 u, LuaVec2 v); NEKO_EXPORT LuaVec2 vec2_mul(LuaVec2 u, LuaVec2 v);  // u * v componentwise
-        NEKO_EXPORT LuaVec2 vec2_div(LuaVec2 u, LuaVec2 v);                                                                                              // u / v componentwise
-        NEKO_EXPORT LuaVec2 vec2_scalar_mul(LuaVec2 v, Scalar f); NEKO_EXPORT LuaVec2 vec2_scalar_div(LuaVec2 v, Scalar f);                                // (v.x / f, v.y / f)
-        NEKO_EXPORT LuaVec2 scalar_vec2_div(Scalar f, LuaVec2 v);                                                                                      // (f / v.x, f / v.y)
+        NEKO_EXPORT LuaVec2 vec2_zero;
+
+        NEKO_EXPORT LuaVec2 vec2_add(LuaVec2 u, LuaVec2 v);
+
+        NEKO_EXPORT LuaVec2 vec2_sub(LuaVec2 u, LuaVec2 v);
+
+        NEKO_EXPORT LuaVec2 vec2_mul(LuaVec2 u, LuaVec2 v);  // u * v componentwise
+
+        NEKO_EXPORT LuaVec2 vec2_div(LuaVec2 u, LuaVec2 v);  // u / v componentwise
+
+        NEKO_EXPORT LuaVec2 vec2_scalar_mul(LuaVec2 v, Scalar f);
+
+        NEKO_EXPORT LuaVec2 vec2_scalar_div(LuaVec2 v, Scalar f);  // (v.x / f, v.y / f)
+
+        NEKO_EXPORT LuaVec2 scalar_vec2_div(Scalar f, LuaVec2 v);  // (f / v.x, f / v.y)
+
         NEKO_EXPORT LuaVec2 vec2_neg(LuaVec2 v);
 
-        NEKO_EXPORT Scalar vec2_len(LuaVec2 v); NEKO_EXPORT LuaVec2 vec2_normalize(LuaVec2 v); NEKO_EXPORT Scalar vec2_dot(LuaVec2 u, LuaVec2 v); NEKO_EXPORT Scalar vec2_dist(LuaVec2 u, LuaVec2 v);
+        NEKO_EXPORT Scalar vec2_len(LuaVec2 v);
 
-        NEKO_EXPORT LuaVec2 vec2_rot(LuaVec2 v, Scalar rot); NEKO_EXPORT Scalar vec2_atan2(LuaVec2 v);
+        NEKO_EXPORT LuaVec2 vec2_normalize(LuaVec2 v);
 
-        NEKO_EXPORT void vec2_save(LuaVec2* v, const char* name, Store* s); NEKO_EXPORT bool vec2_load(LuaVec2* v, const char* name, LuaVec2 d, Store* s);
+        NEKO_EXPORT Scalar vec2_dot(LuaVec2 u, LuaVec2 v);
+
+        NEKO_EXPORT Scalar vec2_dist(LuaVec2 u, LuaVec2 v);
+
+        NEKO_EXPORT LuaVec2 vec2_rot(LuaVec2 v, Scalar rot);
+
+        NEKO_EXPORT Scalar vec2_atan2(LuaVec2 v);
+
+        NEKO_EXPORT void vec2_save(LuaVec2* v, const char* name, Store* s);
+
+        NEKO_EXPORT bool vec2_load(LuaVec2* v, const char* name, LuaVec2 d, Store* s);
 
 )
 
-#define vec2(x, y) (LuaVec2{(Scalar)(x), (Scalar)(y)})
+#define luavec2(x, y) (LuaVec2{(Scalar)(x), (Scalar)(y)})
 
 NEKO_SCRIPT(
         mat3,
@@ -2105,9 +2007,9 @@ NEKO_SCRIPT(
         typedef struct LuaMat3 LuaMat3;
         struct LuaMat3 { Scalar m[3][3]; };
 
-        NEKO_EXPORT LuaMat3 mat3(Scalar m00, Scalar m01, Scalar m02, Scalar m10, Scalar m11, Scalar m12, Scalar m20, Scalar m21, Scalar m22);
+        NEKO_EXPORT LuaMat3 luamat3(Scalar m00, Scalar m01, Scalar m02, Scalar m10, Scalar m11, Scalar m12, Scalar m20, Scalar m21, Scalar m22);
 
-        NEKO_EXPORT LuaMat3 mat3_identity();  // 返回单位矩阵
+        NEKO_EXPORT LuaMat3 luamat3_identity();  // 返回单位矩阵
 
         NEKO_EXPORT LuaMat3 mat3_mul(LuaMat3 m, LuaMat3 n);
 
@@ -2130,9 +2032,9 @@ NEKO_SCRIPT(
 
 )
 
-#define mat3(m00, m01, m02, m10, m11, m12, m20, m21, m22) (LuaMat3{{{(m00), (m01), (m02)}, {(m10), (m11), (m12)}, {(m20), (m21), (m22)}}})
+#define luamat3(m00, m01, m02, m10, m11, m12, m20, m21, m22) (LuaMat3{{{(m00), (m01), (m02)}, {(m10), (m11), (m12)}, {(m20), (m21), (m22)}}})
 
-#define mat3_identity() mat3(1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f)
+#define luamat3_identity() luamat3(1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f)
 
 NEKO_SCRIPT(
         bbox,
