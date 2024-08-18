@@ -8,7 +8,7 @@
 // deps
 #include <stb_truetype.h>
 
-#define NEKO_FONT_BAKED_SIZE 1024
+#define NEKO_FONT_BAKED_SIZE 128
 
 struct FontRange {
     stbtt_bakedchar chars[NEKO_FONT_BAKED_SIZE];

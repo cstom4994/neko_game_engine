@@ -13,6 +13,7 @@
 #include "engine/os.h"
 #include "engine/prelude.h"
 #include "engine/sound.h"
+#include "engine/ui.h"
 #include "glew_glfw.h"
 
 // deps
@@ -25,6 +26,8 @@
 
 #define data_path(path) (DATA_DIR path)
 #define usr_path(path) (USR_DIR path)
+
+#define default_font_size 22.f
 
 struct NEKO_PACKS {
     static constexpr const_str GAMEDATA = "default_pack";
@@ -70,6 +73,10 @@ struct App {
     lua_State *L;
     lua_State *lite_L;  // lua state for lite editor
     ecs_t *ECS;
+
+    neko_command_buffer_t cb;
+    ui_context_t ui;
+    idraw_t idraw;
 
     f64 width;
     f64 height;

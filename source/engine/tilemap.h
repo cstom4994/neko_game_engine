@@ -3,6 +3,7 @@
 #define NEKO_TILEMAP_H
 
 #include "engine/base.h"
+#include "engine/ecs.h"
 #include "engine/gfx.h"
 #include "engine/image.h"
 #include "engine/math.h"
@@ -192,6 +193,23 @@ void neko_tiled_render_flush(neko_command_buffer_t* cb, neko_tiled_renderer* ren
 void neko_tiled_render_push(neko_command_buffer_t* cb, neko_tiled_renderer* renderer, neko_tiled_quad_t quad);
 void neko_tiled_render_draw(neko_command_buffer_t* cb, neko_tiled_renderer* renderer);
 
-int tiled_render(neko_command_buffer_t* cb, neko_tiled_renderer* tiled_render);
+struct Tiled;
+
+int tiled_render(neko_command_buffer_t* cb, Tiled* tiled);
+
+NEKO_SCRIPT(tiled,
+
+            NEKO_EXPORT void tiled_add(Entity ent);
+
+            NEKO_EXPORT void tiled_remove(Entity ent);
+
+            NEKO_EXPORT bool tiled_has(Entity ent);
+
+)
+
+void tiled_init();
+void tiled_fini();
+void tiled_update_all();
+void tiled_draw_all();
 
 #endif

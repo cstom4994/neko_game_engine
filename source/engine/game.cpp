@@ -14,7 +14,6 @@
 #include "engine/font.h"
 #include "engine/gfx.h"
 #include "engine/glew_glfw.h"
-#include "engine/inspector.h"
 #include "engine/lite.h"
 #include "engine/lua_util.h"
 #include "engine/script.h"
@@ -34,11 +33,6 @@ static int sargc = 0;
 static char **sargv;
 static Mutex g_init_mtx;
 
-neko_tiled_renderer tiled;
-
-neko_command_buffer_t cb;
-ui_context_t ui;
-idraw_t idraw;
 neko_texture_t test_ase;
 
 extern void draw_gui();
@@ -223,8 +217,8 @@ static void _game_init() {
     console_puts("welcome to neko!");
     system_init();
 
-    cb = neko_command_buffer_new();
-    idraw = neko_immediate_draw_new();
+    g_app->cb = neko_command_buffer_new();
+    g_app->idraw = neko_immediate_draw_new();
 
     assets_start_hot_reload();
 
@@ -241,61 +235,9 @@ static void _game_init() {
 
     {  // just for test
 
-        const_str sprite_vs = R"(
-#version 330
-
-layout (location = 0) in vec2 position;
-layout (location = 1) in vec2 uv;
-layout (location = 2) in vec4 color;
-layout (location = 3) in float use_texture;
-
-uniform mat4 tiled_sprite_camera;
-
-out VS_OUT {
-	vec4 color;
-	vec2 uv;
-	float use_texture;
-} vs_out;
-
-void main() {
-	vs_out.color = color;
-	vs_out.uv = uv;
-	vs_out.use_texture = use_texture;
-
-	gl_Position = tiled_sprite_camera * vec4(position, 0.0, 1.0);
-}
-)";
-
-        const_str sprite_fs = R"(
-#version 330
-
-out vec4 color;
-
-in VS_OUT {
-    vec4 color;
-    vec2 uv;
-    float use_texture;
-} fs_in;
-
-uniform sampler2D batch_texture;
-
-void main() {
-    vec4 texture_color = vec4(1.0);
-
-    if (fs_in.use_texture == 1.0) {
-        texture_color = texture(batch_texture,  fs_in.uv);
-    }
-
-    color = fs_in.color * texture_color;
-}
-)";
-
-        neko_tiled_load(&tiled.map, "assets/maps/map.tmx", NULL);
-        neko_tiled_render_init(&cb, &tiled, sprite_vs, sprite_fs);
-
         test_ase = neko_aseprite_simple("assets/cat.ase");
 
-        ui_init(&ui, 0);
+        ui_init(&g_app->ui, 0);
 
         // 加载自定义字体文件 初始化 gui font stash
         // neko_asset_font_load_from_memory(font_data, font_data_size, &CL_GAME_INTERFACE()->font, 24);
@@ -310,9 +252,9 @@ void main() {
         //     return &font_stash;
         // }();
 
-        // neko_ui_init_font_stash(&ui, GUI_FONT_STASH);
+        // neko_ui_init_font_stash(&g_app->ui, GUI_FONT_STASH);
 
-        ui_dock_ex(&ui, "Style_Editor", "Demo_Window", UI_SPLIT_TAB, 0.5f);
+        ui_dock_ex(&g_app->ui, "Style_Editor", "Demo_Window", UI_SPLIT_TAB, 0.5f);
     }
 }
 
@@ -320,9 +262,8 @@ static void _game_fini() {
     PROFILE_FUNC();
 
     {  // just for test
-        neko_tiled_unload(&tiled.map);
-        neko_tiled_render_deinit(&tiled);
-        ui_free(&ui);
+
+        ui_free(&g_app->ui);
     }
 
     if (g_app->lite_init_path.len) {
@@ -331,8 +272,8 @@ static void _game_fini() {
     }
 
     neko_immediate_draw_static_data_free();
-    neko_immediate_draw_free(&idraw);
-    neko_command_buffer_free(&cb);
+    neko_immediate_draw_free(&g_app->idraw);
+    neko_command_buffer_free(&g_app->cb);
 
     // fini systems
     system_fini();
@@ -420,62 +361,49 @@ static void _game_draw() {
         // neko_tiled_render_map(&tiled);
 
         {
-            if (ImGui::BeginMainMenuBar()) {
-                ImGui::TextColored(ImVec4(0.19f, 1.f, 0.196f, 1.f), "Neko %d", neko_buildnum());
 
-                if (g_app->debug_on) {
-                    // sgimgui_draw_menu(&sgimgui, "gfx");
-                }
+            // if (g_app->lite_init_path.len && g_app->lite_L) {
 
-                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - 275 - ImGui::GetScrollX());
-                ImGui::Text("%.2f Mb %.2f Mb %.1lf ms/frame (%.1lf FPS)", lua_gc(L, LUA_GCCOUNT, 0) / 1024.f, (f32)g_allocator->alloc_size / (1024 * 1024), timing_instance.true_dt * 1000.f,
-                            1.f / timing_instance.true_dt);
+            //     if (ImGui::Begin("Lite")) {
 
-                ImGui::EndMainMenuBar();
-            }
+            //         ImGuiWindow *window = ImGui::GetCurrentWindow();
 
-            if (g_app->lite_init_path.len && g_app->lite_L) {
+            //         ImVec2 bounds = ImGui::GetContentRegionAvail();
+            //         LuaVec2 mouse_pos = input_get_mouse_pos_pixels_fix();  // 窗口内鼠标坐标
 
-                if (ImGui::Begin("Lite")) {
+            //         neko_assert(window);
+            //         ImVec2 pos = window->Pos;
+            //         ImVec2 size = window->Size;
+            //         lt_mx = mouse_pos.x - pos.x;
+            //         lt_my = mouse_pos.y - pos.y;
+            //         lt_wx = pos.x;
+            //         lt_wy = pos.y;
+            //         lt_ww = size.x;
+            //         lt_wh = size.y;
 
-                    ImGuiWindow *window = ImGui::GetCurrentWindow();
+            //         if (lt_resizesurface(lt_getsurface(0), lt_ww, lt_wh)) {
+            //             // glfw_wrap__window_refresh_callback(g_app->game_window);
+            //         }
+            //         // fullscreen_quad_rgb( lt_getsurface(0)->t, 1.2f );
+            //         // ui_texture_fit(lt_getsurface(0)->t, bounds);
 
-                    ImVec2 bounds = ImGui::GetContentRegionAvail();
-                    LuaVec2 mouse_pos = input_get_mouse_pos_pixels_fix();  // 窗口内鼠标坐标
+            //         ImGui::Image((ImTextureID)lt_getsurface(0)->t.id, bounds);
 
-                    neko_assert(window);
-                    ImVec2 pos = window->Pos;
-                    ImVec2 size = window->Size;
-                    lt_mx = mouse_pos.x - pos.x;
-                    lt_my = mouse_pos.y - pos.y;
-                    lt_wx = pos.x;
-                    lt_wy = pos.y;
-                    lt_ww = size.x;
-                    lt_wh = size.y;
-
-                    if (lt_resizesurface(lt_getsurface(0), lt_ww, lt_wh)) {
-                        // glfw_wrap__window_refresh_callback(g_app->game_window);
-                    }
-                    // fullscreen_quad_rgb( lt_getsurface(0)->t, 1.2f );
-                    // ui_texture_fit(lt_getsurface(0)->t, bounds);
-
-                    ImGui::Image((ImTextureID)lt_getsurface(0)->t.id, bounds);
-
-                    // if (!!nk_input_is_mouse_hovering_rect(&ui_ctx->input, ((struct nk_rect){lt_wx + 5, lt_wy + 5, lt_ww - 10, lt_wh - 10}))) {
-                    //     lt_events &= ~(1 << 31);
-                    // }
-                }
-                ImGui::End();
-            }
+            //         // if (!!nk_input_is_mouse_hovering_rect(&g_app->ui_ctx->input, ((struct nk_rect){lt_wx + 5, lt_wy + 5, lt_ww - 10, lt_wh - 10}))) {
+            //         //     lt_events &= ~(1 << 31);
+            //         // }
+            //     }
+            //     ImGui::End();
+            // }
         }
 
 #if 1
         // gfx_clear_action_t clear = {.color = {NEKO_COL255(28.f), NEKO_COL255(28.f), NEKO_COL255(28.f), 1.f}};
-        // gfx_renderpass_begin(&cb, neko_renderpass_t{0});
-        // { gfx_clear(&cb, clear); }
-        // gfx_renderpass_end(&cb);
+        // gfx_renderpass_begin(&g_app->cb, neko_renderpass_t{0});
+        // { gfx_clear(&g_app->cb, clear); }
+        // gfx_renderpass_end(&g_app->cb);
 
-        DeferLoop(ui_begin(&ui, NULL), ui_end(&ui, true)) {
+        DeferLoop(ui_begin(&g_app->ui, NULL), ui_end(&g_app->ui, true)) {
 
             script_draw_ui();
 
@@ -483,38 +411,40 @@ static void _game_draw() {
         }
 
         // Set up 2D camera for projection matrix
-        neko_idraw_defaults(&idraw);
-        neko_idraw_camera2d(&idraw, (u32)g_app->width, (u32)g_app->height);
+        neko_idraw_defaults(&g_app->idraw);
+        neko_idraw_camera2d(&g_app->idraw, (u32)g_app->width, (u32)g_app->height);
+
+        script_draw_all();
 
         // 底层图片
         char background_text[64] = "Project: unknown";
 
-        f32 td = g_app->default_font->width(16.f, background_text);
+        f32 td = g_app->default_font->width(22.f, background_text);
         // vec2 td = {};
         vec2 ts = neko_v2(512 + 128, 512 + 128);
 
-        neko_idraw_text(&idraw, (g_app->width - td) * 0.5f, (g_app->height) * 0.5f + ts.y / 2.f - 100.f, background_text, NULL, false, color256(255, 255, 255, 255));
-        neko_idraw_texture(&idraw, test_ase);
-        neko_idraw_rectvd(&idraw, neko_v2((g_app->width - ts.x) * 0.5f, (g_app->height - ts.y) * 0.5f - 16.f - 50.f), ts, neko_v2(0.f, 1.f), neko_v2(1.f, 0.f), color256(255, 255, 255, 255),
+        neko_idraw_text(&g_app->idraw, (g_app->width - td) * 0.5f, (g_app->height) * 0.5f + ts.y / 2.f - 100.f, background_text, NULL, false, color256(255, 255, 255, 255));
+        neko_idraw_texture(&g_app->idraw, test_ase);
+        neko_idraw_rectvd(&g_app->idraw, neko_v2((g_app->width - ts.x) * 0.5f, (g_app->height - ts.y) * 0.5f - 22.f - 50.f), ts, neko_v2(0.f, 1.f), neko_v2(1.f, 0.f), color256(255, 255, 255, 255),
                           R_PRIMITIVE_TRIANGLES);
 
-        neko_idraw_defaults(&idraw);
-        f32 fy = draw_font(&idraw, g_app->default_font, 40.f, 10.f, 20.f, "-- ! Neko ! --", NEKO_COLOR_WHITE);
+        neko_idraw_defaults(&g_app->idraw);
+        f32 fy = draw_font(&g_app->idraw, g_app->default_font, 40.f, 10.f, 20.f, "-- ! Neko ! --", NEKO_COLOR_WHITE);
 
-        tiled_render(&cb, &tiled);
+        tiled_draw_all();
 
-        gfx_renderpass_begin(&cb, R_RENDER_PASS_DEFAULT);
+        gfx_renderpass_begin(&g_app->cb, R_RENDER_PASS_DEFAULT);
         {
-            // gfx_set_viewport(&cb, 0, 0, (u32)g_app->width, (u32)g_app->height);
-            neko_idraw_draw(&idraw, &cb);  // 立即模式绘制 idraw
+            // gfx_set_viewport(&g_app->cb, 0, 0, (u32)g_app->width, (u32)g_app->height);
+            neko_idraw_draw(&g_app->idraw, &g_app->cb);  // 立即模式绘制 idraw
 
-            gfx_draw_func(&cb, system_draw_all);
+            gfx_draw_func(&g_app->cb, system_draw_all);
 
-            ui_render(&ui, &cb);
+            ui_render(&g_app->ui, &g_app->cb);
         }
-        gfx_renderpass_end(&cb);
+        gfx_renderpass_end(&g_app->cb);
 
-        gfx_cmd_submit(&cb);
+        gfx_cmd_submit(&g_app->cb);
 #else
         system_draw_all();
 #endif
@@ -741,7 +671,7 @@ static void _dt_update() {
     {
         AppTime *time = &timing_instance;
 
-#if !defined(NEKO_IS_WEB)
+#if 0
         if (time->target_ticks > 0) {
             u64 TICK_MS = 1000000;
             u64 TICK_US = 1000;

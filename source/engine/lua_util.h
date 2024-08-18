@@ -578,40 +578,15 @@ inline int neko_lua_load_file(lua_State *_L, const std::string &file_name_)  //
     return 0;
 }
 
-inline int neko_lua_pcall_wrap(lua_State *state, int argnum, int retnum, int msgh) {
-    int result = lua_pcall(state, argnum, retnum, msgh);
-    return result;
-}
-
 inline int neko_lua_safe_dofile(lua_State *state, const std::string &file) {
     neko_lua_run_string(state, std::format("xpcall(function ()\nrequire '{0}'\nend, function(err)\nprint(tostring(err))\nprint(debug.traceback(nil, 2))\n__neko_quit(1)\nend)\n", file));
     return 0;
 }
 
-inline bool neko_lua_dofile(lua_State *_L, const std::string &file) {
-    int status = luaL_loadfile(_L, file.c_str());
-
-    if (status) {
-        const char *err = lua_tostring(_L, -1);
-        console_log("luaL_loadfile ret %d\n%s\n", status, err);
-        lua_pop(_L, 1);
-        return false;
-    }
-
-    status = neko_lua_pcall_wrap(_L, 0, LUA_MULTRET, 0);
-    if (status) {
-        const char *err = lua_tostring(_L, -1);
-        console_log("lua_pcall_wrap ret %d\n%s\n", status, err);
-        lua_pop(_L, 1);
-        return false;
-    }
-    return true;
-}
-
 inline void neko_lua_call(lua_State *_L, const char *func_name_) {
     lua_getglobal(_L, func_name_);
 
-    if (neko_lua_pcall_wrap(_L, 0, 0, 0) != 0) {
+    if (lua_pcall(_L, 0, 0, 0) != 0) {
         std::string err = lua_tool::dump_error(_L, "lua_pcall_wrap failed func_name<%s>", func_name_);
         ::lua_pop(_L, 1);
         // console_log("%s", err.c_str());

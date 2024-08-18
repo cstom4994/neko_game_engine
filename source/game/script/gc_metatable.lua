@@ -1,3 +1,7 @@
+if not debug then
+    debug = require("debug")
+end
+
 if _VERSION == "Lua 5.1" then
     local rg = assert(rawget)
     local proxy_key = rg(_G, "__GC_PROXY") or "__gc_proxy"

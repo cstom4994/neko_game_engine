@@ -205,6 +205,7 @@ void input_fini() {
 // TODO: 应该使用entity_nil来表示不存在
 static bool kc_exists = false;
 static Entity kc_entity;
+static f32 v = 5.f;
 
 void keyboard_controlled_add(Entity ent) {
     transform_add(ent);
@@ -217,9 +218,16 @@ void keyboard_controlled_remove(Entity ent) {
 }
 bool keyboard_controlled_has(Entity ent) { return kc_exists && entity_eq(kc_entity, ent); }
 
+void keyboard_controlled_set_v(Entity ent, f32 _v) {
+    console_log("keyboard_controlled_set_v %d %f", ent.id, _v);
+    v = _v;
+}
+
 void keyboard_controlled_update_all() {
     LuaVec2 dpos = luavec2(0, 0), sca;
     Scalar rot, aspect;
+
+    // v = 5.f;
 
     if (kc_exists) {
         if (entity_destroyed(kc_entity)) {
@@ -234,10 +242,10 @@ void keyboard_controlled_update_all() {
         sca = transform_get_scale(kc_entity);
         aspect = sca.y / sca.x;
 
-        if (input_key_down(KC_LEFT)) dpos = vec2_add(dpos, luavec2(-5 * timing_instance.dt, 0));
-        if (input_key_down(KC_RIGHT)) dpos = vec2_add(dpos, luavec2(5 * timing_instance.dt, 0));
-        if (input_key_down(KC_UP)) dpos = vec2_add(dpos, luavec2(0, 5 * timing_instance.dt));
-        if (input_key_down(KC_DOWN)) dpos = vec2_add(dpos, luavec2(0, -5 * timing_instance.dt));
+        if (input_key_down(KC_LEFT)) dpos = vec2_add(dpos, luavec2(-v * timing_instance.dt, 0));
+        if (input_key_down(KC_RIGHT)) dpos = vec2_add(dpos, luavec2(v * timing_instance.dt, 0));
+        if (input_key_down(KC_UP)) dpos = vec2_add(dpos, luavec2(0, v * timing_instance.dt));
+        if (input_key_down(KC_DOWN)) dpos = vec2_add(dpos, luavec2(0, -v * timing_instance.dt));
 
         if (input_key_down(KC_N)) rot += 0.35 * SCALAR_PI * timing_instance.dt;
         if (input_key_down(KC_M)) rot -= 0.35 * SCALAR_PI * timing_instance.dt;

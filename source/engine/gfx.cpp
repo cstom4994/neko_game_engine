@@ -3708,8 +3708,6 @@ void gfx_init(gfx_t* render) {
 #endif
 }
 
-neko_gl_data_t* gfx_userdata() { return gfx_ogl(); }
-
 // 资源构造函数
 neko_handle(gfx_texture_t) gfx_texture_create(const gfx_texture_desc_t desc) { return gfx_texture_create_impl(desc); }
 

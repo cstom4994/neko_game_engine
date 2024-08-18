@@ -124,13 +124,14 @@ void renderer_push_quad(Vector4 pos, Vector4 tex);
 void renderer_push_xy(float x, float y);
 
 void draw_image(const Image *img, DrawDescription *desc);
-void draw_sprite(Sprite *spr, DrawDescription *desc);
 void draw_tilemap(const MapLdtk *tm);
 void draw_filled_rect(RectDescription *desc);
 void draw_line_rect(RectDescription *desc);
 void draw_line_circle(float x, float y, float radius);
 void draw_line(float x0, float y0, float x1, float y1);
 #endif
+
+void draw_sprite(AseSprite* spr, DrawDescription* desc);
 
 struct FontFamily;
 float draw_font(idraw_t* idraw, FontFamily* font, float size, float x, float y, String text, Color256 col);

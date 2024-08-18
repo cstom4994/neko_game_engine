@@ -45,14 +45,14 @@ if NEKO_AUDIO == "miniaudio" then
     add_requires("miniaudio")
 end
 
-add_requires("imgui v1.91.0-docking", {
-    configs = {
-        wchar32 = true,
-        freetype = true,
-        glfw = true,
-        opengl3 = true
-    }
-})
+-- add_requires("imgui v1.91.0-docking", {
+--     configs = {
+--         wchar32 = true,
+--         freetype = true,
+--         glfw = true,
+--         opengl3 = true
+--     }
+-- })
 
 if is_mode("debug") then
     add_defines("DEBUG", "_DEBUG")
@@ -125,7 +125,7 @@ do
 
     add_headerfiles("source/engine/**.h", "source/engine/**.hpp", "source/vendor/**.h")
 
-    add_packages("imgui", "miniz", "cute_headers")
+    add_packages("miniz", "cute_headers")
     add_packages("glfw", "stb", "glew")
     add_packages("openrestry-luajit")
 

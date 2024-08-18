@@ -50,7 +50,7 @@ inline int preload_module(lua_State* L) {
 
 #define DEFINE_LUAOPEN_EXTERN(name) \
     namespace neko::lua::__##name { \
-        LUABIND_MODULE();           \
+        int luaopen(lua_State* L);  \
     }                               \
     DEFINE_LUAOPEN(name)
 

@@ -424,7 +424,7 @@ static void actually_cleanup() {
         PROFILE_BLOCK("before quit");
 
         luax_neko_get(L, "before_quit");
-        if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
+        if (luax_pcall(L, 0, 0) != LUA_OK) {
             String err = luax_check_string(L, -1);
             neko_panic("%s", err.data);
         }

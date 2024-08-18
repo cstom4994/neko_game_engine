@@ -106,6 +106,8 @@ struct lua_State;
 
 #define NEKO_COL255(x) x / 255.f
 
+#define NEKO_STR(x) #x
+
 #define NEKO_TIMED_ACTION(INTERVAL, ...)                               \
     do {                                                               \
         static u32 NEKO_CONCAT(NEKO_CONCAT(__T, __LINE__), t) = 0;     \

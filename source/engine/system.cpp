@@ -106,7 +106,7 @@ void system_init() {
     //         lua_pushstring(L, game_get_argv()[i]);
     //         lua_rawseti(L, -2, i);
     //     }
-    //     if (lua_pcall(L, 1, 0, 1) != LUA_OK) {
+    //     if (luax_pcall(L, 1, 0) != LUA_OK) {
     //         lua_pop(L, 1);
     //     }
     // }
@@ -176,6 +176,7 @@ void system_init() {
     camera_init();
     batch_init(6000);
     sprite_init();
+    tiled_init();
     gui_init();
     imgui_init();
     console_init();
@@ -229,6 +230,7 @@ void system_fini() {
     physics_fini();
     sound_fini();
     console_fini();
+    tiled_fini();
     sprite_fini();
     batch_fini();
     imgui_fini();
@@ -286,6 +288,7 @@ void system_update_all() {
     sprite_update_all();
     batch_update_all();
     sound_update_all();
+    tiled_update_all();
 
     edit_update_all();
     script_post_update_all();
@@ -297,7 +300,8 @@ void system_update_all() {
 }
 
 void system_draw_all(neko_command_buffer_t *cb) {
-    script_draw_all();
+    // script_draw_all();
+    // tiled_draw_all();
     sprite_draw_all();
     batch_draw_all();
     edit_draw_all();

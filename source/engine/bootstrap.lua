@@ -2,7 +2,7 @@ unsafe_require = require
 
 -- runs on start of the engine
 luadb = require("__neko.luadb")
-Core = require("__neko.core")
+Core = neko.core
 Inspector = require("__neko.inspector")
 FFI = require("ffi")
 common = require "common"

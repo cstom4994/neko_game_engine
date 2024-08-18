@@ -64,7 +64,7 @@ end
 -- compress entity save format
 _cge = function(id)
     return ng._entity_resolve_saved_id(id)
-end 
+end
 
 ng.Entity = ffi.metatype('Entity', {
     __eq = function(a, b)

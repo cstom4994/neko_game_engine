@@ -258,7 +258,7 @@ typedef struct gfx_texture_desc_t {
     gfx_texture_filtering_type min_filter;  // Minification filter for texture
     gfx_texture_filtering_type mag_filter;  // Magnification filter for texture
     gfx_texture_filtering_type mip_filter;  // Mip filter for texture
-    vec2 offset;                       // Offset for updates
+    vec2 offset;                            // Offset for updates
     u32 num_mips;                           // Number of mips to generate (default 0 is disable mip generation)
     struct {
         u32 x;        // X offset in texels to start read
@@ -841,7 +841,7 @@ void gfx_batch_mul(float* a, float* b, float* out);  // perform a * b, stores re
 void gfx_batch_identity(float* m);
 void gfx_batch_copy(float* dst, float* src);
 
-neko_gl_data_t* gfx_userdata();
+neko_gl_data_t* gfx_ogl();
 
 // Resource Creation
 // Create

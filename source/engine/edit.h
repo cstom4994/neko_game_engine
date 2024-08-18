@@ -5,6 +5,7 @@
 
 #include "engine/base.h"
 #include "engine/ecs.h"
+#include "engine/glew_glfw.h"
 #include "engine/prelude.h"
 
 NEKO_SCRIPT(
@@ -53,7 +54,11 @@ void edit_init();
 void edit_fini();
 void edit_update_all();
 void edit_draw_all();
-void edit_save_all(Store *s);
-void edit_load_all(Store *s);
+void edit_save_all(Store* s);
+void edit_load_all(Store* s);
+
+void render_uniform_variable(GLuint program, GLenum type, const char* name, GLint location);
+void inspect_shader(const char* label, GLuint program);
+void inspect_vertex_array(const char* label, GLuint vao);
 
 #endif

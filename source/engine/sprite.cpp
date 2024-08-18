@@ -16,6 +16,7 @@
 
 // deps
 #include <cute_aseprite.h>
+#include <stb_image_write.h>
 
 typedef struct Sprite Sprite;
 struct Sprite {
@@ -276,38 +277,28 @@ bool AseSpriteData::load(String filepath) {
     // desc.data.subimage[0][0].ptr = pixels.data;
     // desc.data.subimage[0][0].size = ase->frame_count * rect;
 
-    u32 id = 0;
+    u8 *data = reinterpret_cast<u8 *>(pixels.data);
+
+    // stbi_write_png("h.png", ase_width, ase_height, 4, data, 0);
+
+    neko_texture_t new_tex = NEKO_DEFAULT_VAL();
     {
         PROFILE_BLOCK("make image");
-        LockGuard lock{&g_app->gpu_mtx};
 
-        // 如果存在 则释放旧的 GL 纹理
-        // if (tex->id != 0) glDeleteTextures(1, &tex->id);
+        gfx_texture_desc_t t_desc = {};
 
-        // 生成 GL 纹理
-        glGenTextures(1, &id);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, id);
+        t_desc.format = R_TEXTURE_FORMAT_RGBA8;
+        t_desc.mag_filter = R_TEXTURE_FILTER_NEAREST;
+        t_desc.min_filter = R_TEXTURE_FILTER_NEAREST;
+        // t_desc.num_mips = 0;
+        t_desc.width = ase_width;
+        t_desc.height = ase_height;
+        // t_desc.num_comps = 4;
+        t_desc.data[0] = data;
 
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-        // if (flip_image_vertical) {
-        //     _flip_image_vertical(pixels.data, ase_width, ase_height);
-        // }
-
-        // 将纹理数据复制到 GL
-
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, ase_width, ase_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data);
-        glBindTexture(GL_TEXTURE_2D, 0);
+        // neko_tex_flip_vertically(width, height, (u8 *)(t_desc.data[0]));
+        new_tex = gfx_texture_create(t_desc);
     }
-
-    Texture img = {};
-    img.id = id;
-    img.width = ase_width;
-    img.height = ase_height;
 
     HashMap<AseSpriteLoop> by_tag = {};
     by_tag.reserve(ase->tag_count);
@@ -327,11 +318,11 @@ bool AseSpriteData::load(String filepath) {
         by_tag[fnv1a(tag.name)] = loop;
     }
 
-    console_log("created sprite with image id: %d and %llu frames", img.id, (unsigned long long)frames.len);
+    console_log("created sprite with image id: %d and %llu frames", new_tex.id, (unsigned long long)frames.len);
 
     AseSpriteData s = {};
     s.arena = arena;
-    s.img = img;
+    s.tex = new_tex;
     s.frames = frames;
     s.by_tag = by_tag;
     s.width = ase->w;
@@ -423,4 +414,104 @@ u64 AseSpriteView::len() {
     } else {
         return data.frames.len;
     }
+}
+
+// mt_sprite
+
+static AseSprite *check_sprite_udata(lua_State *L, i32 arg) {
+    AseSprite *spr = (AseSprite *)luaL_checkudata(L, arg, "mt_sprite");
+    return spr;
+}
+
+static int mt_sprite_play(lua_State *L) {
+    AseSprite *spr = check_sprite_udata(L, 1);
+    String tag = luax_check_string(L, 2);
+    bool restart = lua_toboolean(L, 3);
+
+    bool same = spr->play(tag);
+    if (!same || restart) {
+        spr->current_frame = 0;
+        spr->elapsed = 0;
+    }
+    return 0;
+}
+
+static int mt_sprite_update(lua_State *L) {
+    AseSprite *spr = check_sprite_udata(L, 1);
+    lua_Number dt = luaL_checknumber(L, 2);
+
+    spr->update((float)dt);
+    return 0;
+}
+
+static int mt_sprite_draw(lua_State *L) {
+    AseSprite *spr = check_sprite_udata(L, 1);
+    DrawDescription dd = draw_description_args(L, 2);
+
+    draw_sprite(spr, &dd);
+    return 0;
+}
+
+static int mt_sprite_width(lua_State *L) {
+    AseSprite *spr = check_sprite_udata(L, 1);
+    AseSpriteData data = check_asset(L, spr->sprite).sprite;
+
+    lua_pushnumber(L, (lua_Number)data.width);
+    return 1;
+}
+
+static int mt_sprite_height(lua_State *L) {
+    AseSprite *spr = check_sprite_udata(L, 1);
+    AseSpriteData data = check_asset(L, spr->sprite).sprite;
+
+    lua_pushnumber(L, (lua_Number)data.height);
+    return 1;
+}
+
+static int mt_sprite_set_frame(lua_State *L) {
+    AseSprite *spr = check_sprite_udata(L, 1);
+    lua_Integer frame = luaL_checknumber(L, 2);
+
+    spr->set_frame((i32)frame);
+    return 0;
+}
+
+static int mt_sprite_total_frames(lua_State *L) {
+    AseSprite *spr = check_sprite_udata(L, 1);
+    AseSpriteData data = check_asset(L, spr->sprite).sprite;
+
+    lua_pushinteger(L, data.frames.len);
+    return 1;
+}
+
+int open_mt_sprite(lua_State *L) {
+    luaL_Reg reg[] = {
+            {"play", mt_sprite_play},
+            {"update", mt_sprite_update},
+            {"draw", mt_sprite_draw},
+            {"width", mt_sprite_width},
+            {"height", mt_sprite_height},
+            {"set_frame", mt_sprite_set_frame},
+            {"total_frames", mt_sprite_total_frames},
+            {nullptr, nullptr},
+    };
+
+    luax_new_class(L, "mt_sprite", reg);
+    return 0;
+}
+
+int neko_sprite_load(lua_State *L) {
+    String str = luax_check_string(L, 1);
+
+    Asset asset = {};
+    bool ok = asset_load_kind(AssetKind_AseSprite, str, &asset);
+    if (!ok) {
+        return 0;
+    }
+
+    AseSprite spr = {};
+    spr.sprite = asset.hash;
+
+    luax_new_userdata(L, spr, "mt_sprite");
+    return 1;
 }

@@ -3,6 +3,7 @@
 
 #include "engine/base.h"
 #include "engine/ecs.h"
+#include "engine/gfx.h"
 #include "engine/glew_glfw.h"
 #include "engine/image.h"
 #include "engine/prelude.h"
@@ -20,7 +21,7 @@ struct AseSpriteData {
     Arena arena;
     Slice<AseSpriteFrame> frames;
     HashMap<AseSpriteLoop> by_tag;
-    Texture img;
+    neko_texture_t tex;
     i32 width;
     i32 height;
 
@@ -89,5 +90,8 @@ void sprite_update_all();
 void sprite_draw_all();
 void sprite_save_all(Store *s);
 void sprite_load_all(Store *s);
+
+int open_mt_sprite(lua_State *L);
+int neko_sprite_load(lua_State *L);
 
 #endif

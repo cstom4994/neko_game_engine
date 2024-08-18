@@ -14,6 +14,7 @@
 #include "engine/asset.h"
 #include "engine/base.h"
 #include "engine/ecs.h"
+#include "engine/edit.h"
 #include "engine/game.h"
 #include "engine/gfx.h"
 #include "engine/input.h"
@@ -245,7 +246,7 @@ static int LUASTRUCT_test_vec4(lua_State* L) {
     return 1;
 }
 
-LUABIND_MODULE() {
+int luaopen(lua_State* L) {
 
     luaL_Reg lib[] = {
             {"LUASTRUCT_test_vec4", LUASTRUCT_test_vec4},
@@ -516,8 +517,6 @@ int test_xml(lua_State* L) {
 
 #if 1
 
-extern ui_context_t ui;
-
 void editor_dockspace(ui_context_t* ctx) {
     u64 opt = UI_OPT_NOCLIP | UI_OPT_NOFRAME | UI_OPT_FORCESETRECT | UI_OPT_NOTITLE | UI_OPT_DOCKSPACE | UI_OPT_FULLSCREEN | UI_OPT_NOMOVE | UI_OPT_NOBRINGTOFRONT | UI_OPT_NOFOCUS | UI_OPT_NORESIZE;
     ui_window_begin_ex(ctx, "Dockspace", ui_rect(350, 40, 600, 500), NULL, NULL, opt);
@@ -657,58 +656,68 @@ void draw_gui() {
     };
 
     {
-        editor_dockspace(&ui);
+        editor_dockspace(&g_app->ui);
+
+        // const vec2 ss_ws = neko_v2(500.f, 300.f);
+        // ui_window_begin(&g_app->ui, "Shader", ui_rect((g_app->width - ss_ws.x) * 0.5f, (g_app->height - ss_ws.y) * 0.5f, ss_ws.x, ss_ws.y));
+        // {
+        //     for (uint32_t i = 0; i < neko_dyn_array_size(g_app->shader_array); ++i) {
+        //         auto sp = g_app->shader_array[i];
+        //         inspect_shader(sp.name, sp.id);
+        //     }
+        // }
+        // ui_window_end(&g_app->ui);
 
 #if 0
         if (1) {
 
-            ui_demo_window(&ui, ui_rect(100, 100, 500, 500), NULL);
-            ui_style_editor(&ui, NULL, ui_rect(350, 250, 300, 240), NULL);
+            ui_demo_window(&g_app->ui, ui_rect(100, 100, 500, 500), NULL);
+            ui_style_editor(&g_app->ui, NULL, ui_rect(350, 250, 300, 240), NULL);
 
             const vec2 ws = neko_v2(600.f, 300.f);
 
             // const ui_style_sheet_t *ss = &game_userdata->style_sheet;
 
             const vec2 ss_ws = neko_v2(500.f, 300.f);
-            ui_window_begin(&ui, "Window", ui_rect((g_app->width - ss_ws.x) * 0.5f, (g_app->height - ss_ws.y) * 0.5f, ss_ws.x, ss_ws.y));
+            ui_window_begin(&g_app->ui, "Window", ui_rect((g_app->width - ss_ws.x) * 0.5f, (g_app->height - ss_ws.y) * 0.5f, ss_ws.x, ss_ws.y));
             {
                 // Cache the current container
-                ui_container_t* cnt = ui_get_current_container(&ui);
+                ui_container_t* cnt = ui_get_current_container(&g_app->ui);
 
-                ui_layout_row(&ui, 2, ui_widths(200, 0), 0);
+                ui_layout_row(&g_app->ui, 2, ui_widths(200, 0), 0);
 
-                ui_text(&ui, "A regular element button.");
-                ui_button(&ui, "button");
+                ui_text(&g_app->ui, "A regular element button.");
+                ui_button(&g_app->ui, "button");
 
-                ui_text(&ui, "A regular element label.");
-                ui_label(&ui, "label");
+                ui_text(&g_app->ui, "A regular element label.");
+                ui_label(&g_app->ui, "label");
 
-                ui_text(&ui, "Button with classes: {.c0 .btn}");
+                ui_text(&g_app->ui, "Button with classes: {.c0 .btn}");
 
                 ui_selector_desc_t selector_1 = {.classes = {"c0", "btn"}};
-                ui_button_ex(&ui, "hello?##btn", &selector_1, 0x00);
+                ui_button_ex(&g_app->ui, "hello?##btn", &selector_1, 0x00);
 
-                ui_text(&ui, "Label with id #lbl and class .c0");
+                ui_text(&g_app->ui, "Label with id #lbl and class .c0");
                 ui_selector_desc_t selector_2 = {.id = "lbl", .classes = {"c0"}};
-                ui_label_ex(&ui, "label##lbl", &selector_2, 0x00);
+                ui_label_ex(&g_app->ui, "label##lbl", &selector_2, 0x00);
 
                 const f32 m = cnt->body.w * 0.3f;
                 // ui_layout_row(gui, 2, (int[]){m, -m}, 0);
                 // ui_layout_next(gui); // Empty space at beginning
-                ui_layout_row(&ui, 1, ui_widths(0), 0);
+                ui_layout_row(&g_app->ui, 1, ui_widths(0), 0);
                 ui_selector_desc_t selector_3 = {.classes = {"reload_btn"}};
-                if (ui_button_ex(&ui, "reload style sheet", &selector_3, 0x00)) {
+                if (ui_button_ex(&g_app->ui, "reload style sheet", &selector_3, 0x00)) {
                     // app_load_style_sheet(true);
                 }
 
-                button_custom(&ui, "Hello?");
+                button_custom(&g_app->ui, "Hello?");
             }
-            ui_window_end(&ui);
+            ui_window_end(&g_app->ui);
 
-            ui_window_begin(&ui, "Idraw", ui_rect((g_app->width - ws.x) * 0.2f, (g_app->height - ws.y) * 0.5f, ws.x, ws.y));
+            ui_window_begin(&g_app->ui, "Idraw", ui_rect((g_app->width - ws.x) * 0.2f, (g_app->height - ws.y) * 0.5f, ws.x, ws.y));
             {
                 // Cache the current container
-                ui_container_t* cnt = ui_get_current_container(&ui);
+                ui_container_t* cnt = ui_get_current_container(&g_app->ui);
 
                 // 绘制到当前窗口中的转换对象的自定义回调
                 // 在这里，我们将容器的主体作为视口传递，但这可以是您想要的任何内容，
@@ -716,44 +725,39 @@ void draw_gui() {
                 // 我们还传递自定义数据（颜色），以便我们可以在回调中使用它。如果以下情况，这可以为 NULL
                 // 你不需要任何东西
                 Color256 color = color256_alpha(NEKO_COLOR_RED, (uint8_t)NEKO_CLAMP((sin(t * 0.001f) * 0.5f + 0.5f) * 255, 0, 255));
-                ui_draw_custom(&ui, cnt->body, gui_cb, &color, sizeof(color));
+                ui_draw_custom(&g_app->ui, cnt->body, gui_cb, &color, sizeof(color));
             }
-            ui_window_end(&ui);
+            ui_window_end(&g_app->ui);
         }
 #endif
-
-        // if (neko_os_key_pressed(NEKO_KEYCODE_GRAVE_ACCENT)) {
-        //     g_console.open = !g_console.open;
-        // } else if (neko_os_key_pressed(NEKO_KEYCODE_TAB) && g_console.open) {
-        //     g_console.autoscroll = !g_console.autoscroll;
-        // }
 
         ui_layout_t l;
 
         if (1) {
 
-            vec2 mp = ui.mouse_pos;
-            vec2 mw = ui.scroll_delta;
+            vec2 mp = g_app->ui.mouse_pos;
+            vec2 mw = g_app->ui.scroll_delta;
             vec2 md = {};
-            bool lock = ui.mouse_pressed;
+            bool lock = g_app->ui.mouse_pressed;
             // bool moved = neko_os_mouse_moved();
 
-            if (ui_window_begin(&ui, "App", ui_rect(g_app->width - 210, 30, 200, 200))) {
-                l = *ui_get_layout(&ui);
-                ui_layout_row(&ui, 1, ui_widths(-1), 0);
+            if (ui_window_begin(&g_app->ui, "App", ui_rect(g_app->width - 210, 30, 200, 200))) {
+                l = *ui_get_layout(&g_app->ui);
+                ui_layout_row(&g_app->ui, 1, ui_widths(-1), 0);
 
                 static f32 delta, fps = NEKO_DEFAULT_VAL();
+                delta = timing_instance.true_dt;
+                fps = 1.f / delta;
 
-                NEKO_TIMED_ACTION(5, {
-                    delta = timing_get_elapsed();
-                    fps = 1.f / delta;
-                });
+                Color256 col = NEKO_COLOR_GREEN;
+                ui_textf_colored(&g_app->ui, &col, "Neko %d", neko_buildnum());
+
+                ui_labelf("%.2f Mb %.2f Mb %.1lf ms/frame (%.1lf FPS)", lua_gc(g_app->L, LUA_GCCOUNT, 0) / 1024.f, (f32)g_allocator->alloc_size / (1024 * 1024), timing_instance.true_dt * 1000.f,
+                          1.f / timing_instance.true_dt);
 
                 ui_labelf("FPS: %.2lf Delta: %.6lf", fps, delta * 1000.f);
 
                 ui_labelf("测试中文");
-
-                // ui_text_fc(&game_userdata->core_ui, "喵喵昂~");
 
                 // ui_layout_row(&game_userdata->core_ui, 1, ui_widths(-1), 0);
 
@@ -790,7 +794,7 @@ void draw_gui() {
                 mouse_pressed[NEKO_MOUSE_RBUTTON] = neko_os_mouse_pressed(NEKO_MOUSE_RBUTTON);
                 mouse_pressed[NEKO_MOUSE_MBUTTON] = neko_os_mouse_pressed(NEKO_MOUSE_MBUTTON);
 
-                ui_layout_row(&ui, 7, ui_widths(100, 100, 32, 100, 32, 100, 32), 0);
+                ui_layout_row(&g_app->ui, 7, ui_widths(100, 100, 32, 100, 32, 100, 32), 0);
                 for (u32 i = 0; btns[i].str; ++i) {
                     ui_labelf("%s: ", btns[i].str);
                     ui_labelf("pressed: ");
@@ -803,7 +807,7 @@ void draw_gui() {
 
 #endif
 
-                ui_layout_row(&ui, 1, ui_widths(-1), 0);
+                ui_layout_row(&g_app->ui, 1, ui_widths(-1), 0);
                 {
                     // static neko_memory_info_t meminfo = NEKO_DEFAULT_VAL();
                     // NEKO_TIMED_ACTION(60, { meminfo = neko_os_memory_info(); });
@@ -834,18 +838,9 @@ void draw_gui() {
                     // ui_labelf("OpenGL version supported: %s", info->version);
                 }
 
-                ui_window_end(&ui);
+                ui_window_end(&g_app->ui);
             }
         }
-
-        vec2 fb = (&ui)->framebuffer_size;
-        ui_rect_t screen;
-        //            if (embeded)
-        //                screen = l.body;
-        //            else
-        //                screen = ui_rect(0, 0, fb.x, fb.y);
-        screen = ui_rect(0, 0, fb.x, fb.y);
-        // neko_console(&g_console, &ui, screen, NULL);
     }
 }
 

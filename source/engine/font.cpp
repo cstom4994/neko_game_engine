@@ -47,7 +47,7 @@ static void make_font_range(FontRange *out, FontFamily *font, FontKey key) {
     PROFILE_FUNC();
 
     i32 width = 512;
-    i32 height = 512;
+    i32 height = 256;
 
     u8 *bitmap = nullptr;
     while (bitmap == nullptr) {

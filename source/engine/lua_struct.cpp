@@ -1,7 +1,7 @@
 #include "engine/lua_struct.h"
 
+#include "engine/gfx.h"
 #include "engine/math.h"
-
 
 static int g_reference_table = LUA_NOREF;
 
@@ -406,6 +406,34 @@ LUASTRUCT_FIELD(z, float)
 LUASTRUCT_FIELD(w, float)
 LUASTRUCT_END
 
+LUASTRUCT_BEGIN(neko_shader_t)
+LUASTRUCT_FIELD(id, uint)
+LUASTRUCT_END
+
+LUASTRUCT_BEGIN(neko_pipeline_t)
+LUASTRUCT_FIELD(id, uint)
+LUASTRUCT_END
+
+LUASTRUCT_BEGIN(neko_vbo_t)
+LUASTRUCT_FIELD(id, uint)
+LUASTRUCT_END
+
+LUASTRUCT_BEGIN(neko_ibo_t)
+LUASTRUCT_FIELD(id, uint)
+LUASTRUCT_END
+
+LUASTRUCT_BEGIN(neko_uniform_t)
+LUASTRUCT_FIELD(id, uint)
+LUASTRUCT_END
+
+LUASTRUCT_BEGIN(neko_storage_buffer_t)
+LUASTRUCT_FIELD(id, uint)
+LUASTRUCT_END
+
+LUASTRUCT_BEGIN(neko_framebuffer_t)
+LUASTRUCT_FIELD(id, uint)
+LUASTRUCT_END
+
 // LUASTRUCT_BEGIN(Color)
 // LUASTRUCT_FIELD(r, u8)
 // LUASTRUCT_FIELD(g, u8)
@@ -414,10 +442,20 @@ LUASTRUCT_END
 // LUASTRUCT_END
 
 void createStructTables(lua_State *L) {
-    vec4_create(L, "vec4");
-    // Color_create(L, "Color");
+#define XX(T) T##_create(L, #T)
+    // vec4_create(L, "vec4");
+
+    XX(vec4);
+    XX(neko_shader_t);
+    XX(neko_pipeline_t);
+    XX(neko_vbo_t);
+    XX(neko_ibo_t);
+    XX(neko_uniform_t);
+    XX(neko_storage_buffer_t);
+    XX(neko_framebuffer_t);
 
     ARRAY_uchar8_create(L);
+#undef XX
 }
 
 // luabind

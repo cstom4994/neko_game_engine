@@ -11,7 +11,7 @@ int load_embed_lua(lua_State* L, const u8 B[], const_str name) {
         luaL_error(L, "%s", lua_tostring(L, -1));
         return 0;
     }
-    if (lua_pcall(L, 0, LUA_MULTRET, 1) != LUA_OK) {
+    if (lua_pcall(L, 0, LUA_MULTRET, 0) != LUA_OK) {
         luaL_error(L, "%s", lua_tostring(L, -1));
         return 0;
     }

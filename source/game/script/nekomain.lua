@@ -1,5 +1,5 @@
 -- 添加nekogame需要路径并加载nekogame
-hot_require 'nekogame'
+-- hot_require 'nekogame'
 
 mm = hot_require("libs/mm")
 

@@ -357,8 +357,7 @@ i32 luax_require_script(lua_State *L, String filepath) {
         return LUA_REFNIL;
     }
 
-    String path = to_cstr(filepath);
-    neko_defer(mem_free(path.data));
+    console_log("%s", filepath.cstr());
 
     String contents;
     bool ok = vfs_read_entire_file(&contents, filepath);
@@ -380,15 +379,23 @@ i32 luax_require_script(lua_State *L, String filepath) {
     {
         PROFILE_BLOCK("load lua script");
 
-        if (luaL_loadbuffer(L, contents.data, contents.len, path.data) != LUA_OK) {
-            fatal_error(luax_check_string(L, -1));
+        if (luaL_loadbuffer(L, contents.data, contents.len, filepath.data) != LUA_OK) {
+            String error_message = luax_check_string(L, -1);
+            lua_pop(L, 1);  // 弹出错误消息
+            StringBuilder sb = {};
+            neko_defer(sb.trash());
+            fatal_error(String(sb << "Error loading script: " << filepath << "\n" << error_message));
             return LUA_REFNIL;
         }
     }
 
     // run script
     if (lua_pcall(L, 0, LUA_MULTRET, 1) != LUA_OK) {
-        lua_pop(L, 2);  // also pop module table
+        String error_message = luax_check_string(L, -1);
+        lua_pop(L, 2);  // 弹出错误消息和模块表
+        StringBuilder sb = {};
+        neko_defer(sb.trash());
+        fatal_error(String(sb << "Error running script: " << filepath << "\n" << error_message));
         return LUA_REFNIL;
     }
 
@@ -428,7 +435,7 @@ void luax_stack_dump(lua_State *L) {
 }
 
 void luax_pcall(lua_State *L, i32 args, i32 results) {
-    if (lua_pcall(L, args, results, 1) != LUA_OK) {
+    if (lua_pcall(L, args, results, 0) != LUA_OK) {
         lua_pop(L, 1);
     }
 }
@@ -444,25 +451,23 @@ int luax_msgh(lua_State *L) {
         return 0;
     }
 
+    // 获取错误消息
     String err = luax_check_string(L, -1);
+    if (!err.len) {
+        err = "Unknown error";
+    }
 
-    console_log("luax_msgh");
+    // 获取堆栈跟踪
+    luaL_traceback(L, L, NULL, 1);
 
-    // traceback = debug.traceback(nil, 2)
-    lua_getglobal(L, "debug");
-    lua_getfield(L, -1, "traceback");
-    lua_remove(L, -2);
-    lua_pushnil(L);
-    lua_pushinteger(L, 2);
-    lua_call(L, 2, 1);
+    // 打印堆栈跟踪
     String traceback = luax_check_string(L, -1);
 
     if (LockGuard lock{&g_app->error_mtx}) {
         g_app->fatal_error = to_cstr(err);
         g_app->traceback = to_cstr(traceback);
 
-        fprintf(stderr, "%s\n", g_app->fatal_error.data);
-        fprintf(stderr, "%s\n", g_app->traceback.data);
+        fprintf(stderr, "================ Lua Error ================\n%s\n%s\n", g_app->fatal_error.data, g_app->traceback.data);
 
         for (u64 i = 0; i < g_app->traceback.len; i++) {
             if (g_app->traceback.data[i] == '\t') {
@@ -473,8 +478,8 @@ int luax_msgh(lua_State *L) {
         g_app->error_mode.store(true);
     }
 
-    lua_pop(L, 2);  // traceback and error
-    return 0;
+    // 返回带有堆栈跟踪的错误消息
+    return 1;
 }
 
 lua_Integer luax_len(lua_State *L, i32 arg) {

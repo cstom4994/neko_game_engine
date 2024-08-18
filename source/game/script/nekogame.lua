@@ -5,6 +5,8 @@ ng = setmetatable({}, {
     __index = ffi.C
 })
 
+ng.api = neko
+
 -- 命令行参数
 ng.args = nekogame_args
 
@@ -13,7 +15,12 @@ ng.string = ffi.string
 
 -- 导入所有内容
 
-hot_require 'nekogame.util'
+-- 'nekogame.util'
+-- 转义一个字符串以包含在另一个字符串中
+function ng.safestr(s)
+    return ("%q"):format(s):gsub("\010", "n"):gsub("\026", "\\026")
+end
+
 hot_require 'nekogame.struct'
 hot_require 'nekogame.entity_table'
 

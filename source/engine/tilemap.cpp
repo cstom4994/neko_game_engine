@@ -4,6 +4,7 @@
 #include "engine/asset.h"
 #include "engine/game.h"
 #include "engine/seri.h"
+#include "engine/transform.h"
 
 // deps
 #ifdef NEKO_BOX2D
@@ -14,6 +15,10 @@
 #endif
 
 #include <stb_image.h>
+
+DECL_ENT(Tiled, neko_tiled_renderer *render; LuaVec2 pos;);
+
+static EntityPool *pool;
 
 static bool layer_from_json(TilemapLayer *layer, JSON *json, bool *ok, Arena *arena, String filepath, HashMap<Texture> *images) {
     PROFILE_FUNC();
@@ -1022,7 +1027,7 @@ void neko_tiled_render_draw(neko_command_buffer_t *cb, neko_tiled_renderer *rend
     }
 }
 
-int tiled_render(neko_command_buffer_t *cb, neko_tiled_renderer *tiled_render) {
+int tiled_render(neko_command_buffer_t *cb, Tiled *tiled) {
 
     PROFILE_FUNC();
 
@@ -1032,7 +1037,8 @@ int tiled_render(neko_command_buffer_t *cb, neko_tiled_renderer *tiled_render) {
     // neko_luabind_struct_to_member(L, neko_renderpass_t, id, &rp, 2);
 
     // auto xform = lua2struct::unpack<neko_vec2>(L, 3);
-    vec2 xform = {};
+    // vec2 xform = {};
+    LuaVec2 xform = tiled->pos;
 
     // f32 l = lua_tonumber(L, 4);
     // f32 r = lua_tonumber(L, 5);
@@ -1044,21 +1050,21 @@ int tiled_render(neko_command_buffer_t *cb, neko_tiled_renderer *tiled_render) {
     f32 t = 0.f;
     f32 b = g_app->height;
 
-    tiled_render->camera_mat = mat4_ortho(l, r, b, t, -1.0f, 1.0f);
+    tiled->render->camera_mat = mat4_ortho(l, r, b, t, -1.0f, 1.0f);
 
     gfx_renderpass_begin(cb, rp);
     {
-        neko_tiled_render_begin(cb, tiled_render);
+        neko_tiled_render_begin(cb, tiled->render);
 
         PROFILE_BLOCK("tiled_render");
 
-        for (u32 i = 0; i < neko_dyn_array_size(tiled_render->map.layers); i++) {
-            layer_t *layer = tiled_render->map.layers + i;
+        for (u32 i = 0; i < neko_dyn_array_size(tiled->render->map.layers); i++) {
+            layer_t *layer = tiled->render->map.layers + i;
             for (u32 y = 0; y < layer->height; y++) {
                 for (u32 x = 0; x < layer->width; x++) {
                     tile_t *tile = layer->tiles + (x + y * layer->width);
                     if (tile->id != 0) {
-                        tileset_t *tileset = tiled_render->map.tilesets + tile->tileset_id;
+                        tileset_t *tileset = tiled->render->map.tilesets + tile->tileset_id;
                         u32 tsxx = (tile->id % (tileset->width / tileset->tile_width) - 1) * tileset->tile_width;
                         u32 tsyy = tileset->tile_height * ((tile->id - tileset->first_gid) / (tileset->width / tileset->tile_width));
                         neko_tiled_quad_t quad = {.tileset_id = tile->tileset_id,
@@ -1069,29 +1075,29 @@ int tiled_render(neko_command_buffer_t *cb, neko_tiled_renderer *tiled_render) {
                                                   .rectangle = {(f32)tsxx, (f32)tsyy, (f32)tileset->tile_width, (f32)tileset->tile_height},
                                                   .color = layer->tint,
                                                   .use_texture = true};
-                        neko_tiled_render_push(cb, tiled_render, quad);
+                        neko_tiled_render_push(cb, tiled->render, quad);
                     }
                 }
             }
-            neko_tiled_render_draw(cb, tiled_render);  // 一层渲染一次
+            neko_tiled_render_draw(cb, tiled->render);  // 一层渲染一次
         }
 
-        for (u32 i = 0; i < neko_dyn_array_size(tiled_render->map.object_groups); i++) {
-            object_group_t *group = tiled_render->map.object_groups + i;
-            for (u32 ii = 0; ii < neko_dyn_array_size(tiled_render->map.object_groups[i].objects); ii++) {
+        for (u32 i = 0; i < neko_dyn_array_size(tiled->render->map.object_groups); i++) {
+            object_group_t *group = tiled->render->map.object_groups + i;
+            for (u32 ii = 0; ii < neko_dyn_array_size(tiled->render->map.object_groups[i].objects); ii++) {
                 object_t *object = group->objects + ii;
                 neko_tiled_quad_t quad = {.position = {(f32)(object->x * SPRITE_SCALE) + xform.x, (f32)(object->y * SPRITE_SCALE) + xform.y},
                                           .dimentions = {(f32)(object->width * SPRITE_SCALE), (f32)(object->height * SPRITE_SCALE)},
                                           .color = group->color,
                                           .use_texture = false};
-                neko_tiled_render_push(cb, tiled_render, quad);
+                neko_tiled_render_push(cb, tiled->render, quad);
             }
-            neko_tiled_render_draw(cb, tiled_render);  // 一层渲染一次
+            neko_tiled_render_draw(cb, tiled->render);  // 一层渲染一次
         }
 
-        // for (u32 i = 0; i < neko_dyn_array_size(tiled_render->map.object_groups); i++) {
-        //     object_group_t *group = tiled_render->map.object_groups + i;
-        //     for (u32 ii = 0; ii < neko_dyn_array_size(tiled_render->map.object_groups[i].objects); ii++) {
+        // for (u32 i = 0; i < neko_dyn_array_size(tiled->render->map.object_groups); i++) {
+        //     object_group_t *group = tiled->render->map.object_groups + i;
+        //     for (u32 ii = 0; ii < neko_dyn_array_size(tiled->render->map.object_groups[i].objects); ii++) {
         //         object_t *object = group->objects + ii;
         //         auto draw_poly = [sprite_batch](c2Poly poly) {
         //             c2v *verts = poly.verts;
@@ -1111,4 +1117,104 @@ int tiled_render(neko_command_buffer_t *cb, neko_tiled_renderer *tiled_render) {
     gfx_renderpass_end(cb);
 
     return 0;
+}
+
+const_str sprite_vs = R"(
+#version 330
+
+layout (location = 0) in vec2 position;
+layout (location = 1) in vec2 uv;
+layout (location = 2) in vec4 color;
+layout (location = 3) in float use_texture;
+
+uniform mat4 tiled_sprite_camera;
+
+out VS_OUT {
+	vec4 color;
+	vec2 uv;
+	float use_texture;
+} vs_out;
+
+void main() {
+	vs_out.color = color;
+	vs_out.uv = uv;
+	vs_out.use_texture = use_texture;
+
+	gl_Position = tiled_sprite_camera * vec4(position, 0.0, 1.0);
+}
+)";
+
+const_str sprite_fs = R"(
+#version 330
+
+out vec4 color;
+
+in VS_OUT {
+    vec4 color;
+    vec2 uv;
+    float use_texture;
+} fs_in;
+
+uniform sampler2D batch_texture;
+
+void main() {
+    vec4 texture_color = vec4(1.0);
+
+    if (fs_in.use_texture == 1.0) {
+        texture_color = texture(batch_texture,  fs_in.uv);
+    }
+
+    color = fs_in.color * texture_color;
+}
+)";
+
+void tiled_add(Entity ent) {
+    Tiled *tiled;
+
+    if (entitypool_get(pool, ent)) return;
+
+    transform_add(ent);
+
+    tiled = (Tiled *)entitypool_add(pool, ent);
+
+    tiled->render = (neko_tiled_renderer *)mem_alloc(sizeof(neko_tiled_renderer));
+    memset(tiled->render, 0, sizeof(neko_tiled_renderer));
+
+    neko_tiled_load(&tiled->render->map, "assets/maps/map.tmx", NULL);
+    neko_tiled_render_init(&g_app->cb, tiled->render, sprite_vs, sprite_fs);
+}
+
+void tiled_remove(Entity ent) { entitypool_remove(pool, ent); }
+
+bool tiled_has(Entity ent) { return entitypool_get(pool, ent) != NULL; }
+
+void tiled_init() {
+    PROFILE_FUNC();
+
+    pool = entitypool_new(Tiled);
+}
+
+void tiled_fini() {
+    Tiled *tiled;
+    entitypool_foreach(tiled, pool) {
+        neko_tiled_unload(&tiled->render->map);
+        neko_tiled_render_deinit(tiled->render);
+        mem_free(tiled->render);
+    }
+
+    entitypool_free(pool);
+}
+
+void tiled_update_all() {
+    Tiled *tiled;
+
+    entitypool_remove_destroyed(pool, tiled_remove);
+
+    entitypool_foreach(tiled, pool) { tiled->pos = transform_get_position(tiled->pool_elem.ent); }
+}
+
+void tiled_draw_all() {
+
+    Tiled *tiled;
+    entitypool_foreach(tiled, pool) { tiled_render(&g_app->cb, tiled); }
 }

@@ -36,6 +36,7 @@ static const char **nekogame_ffi[] = {
         &nekogame_ffi_transform,
         &nekogame_ffi_camera,
         &nekogame_ffi_sprite,
+        &nekogame_ffi_tiled,
         &nekogame_ffi_gui,
         &nekogame_ffi_console,
         // &nekogame_ffi_sound,
@@ -57,7 +58,9 @@ static int _traceback(lua_State *L) {
 }
 
 int luax_pcall_nothrow(lua_State *L, int nargs, int nresults) {
-    int r, errfunc;
+    int r;
+#if 0
+    int errfunc;
     // 将 _traceback 放在 function 和 args 下
     errfunc = lua_gettop(L) - nargs;
     lua_pushcfunction(L, _traceback);
@@ -65,6 +68,8 @@ int luax_pcall_nothrow(lua_State *L, int nargs, int nresults) {
     // call, remove _traceback
     r = lua_pcall(L, nargs, nresults, errfunc);
     lua_remove(L, errfunc);
+#endif
+    r = lua_pcall(L, nargs, nresults, 0);
     return r;
 }
 
@@ -134,7 +139,7 @@ static void _set_paths() {
 
 // LuaJIT FFI 解析器无法解析 'NEKO_EXPORT' -- 使其成为空白
 static void _fix_exports(char *s) {
-    static const char keyword[] = "NEKO_EXPORT";
+    static const char keyword[] = NEKO_STR(NEKO_EXPORT);
     unsigned int i;
 
     while ((s = strstr(s, keyword)))
@@ -191,6 +196,10 @@ void script_init() {
                 return 0;
             });
 
+    lua_pushcfunction(L, luax_msgh);  // 添加错误消息处理程序 始终位于堆栈底部
+    // int n = lua_gettop(L);
+    // neko_assert(n == 1);
+
     _load_nekogame_ffi();
     _forward_args();
     _set_paths();
@@ -206,8 +215,6 @@ void script_init() {
     lua_channels_setup();
 
     neko::lua::luax_run_bootstrap(L);
-
-    // lua_pushcfunction(L, luax_msgh);  // 添加错误消息处理程序 始终位于堆栈底部
 
     timer.stop();
     console_log(std::format("lua init done in {0:.3f} ms", timer.get()).c_str());

@@ -195,10 +195,16 @@ void input_add_scroll_callback(ScrollCallback f);
 void input_init();
 void input_fini();
 
-NEKO_SCRIPT(keyboard_controlled,
+NEKO_SCRIPT(
+        keyboard_controlled,
 
-            NEKO_EXPORT void keyboard_controlled_add(Entity ent);
-            NEKO_EXPORT void keyboard_controlled_remove(Entity ent); NEKO_EXPORT bool keyboard_controlled_has(Entity ent);
+        NEKO_EXPORT void keyboard_controlled_add(Entity ent);
+
+        NEKO_EXPORT void keyboard_controlled_remove(Entity ent);
+
+        NEKO_EXPORT bool keyboard_controlled_has(Entity ent);
+
+        NEKO_EXPORT void keyboard_controlled_set_v(Entity ent, f32 v);
 
 )
 
@@ -302,13 +308,13 @@ void input_wrap_free_e(INPUT_WRAP_event* event);
         event->mouse.button = mouse;                                         \
         event->type = INPUT_WRAP_BUTTON_RELEASED;                            \
     }                                                                        \
-    static void NAME##_mouse_move(LuaVec2 pos) {                               \
+    static void NAME##_mouse_move(LuaVec2 pos) {                             \
         INPUT_WRAP_event* event = input_wrap_new_event(&NAME##_input_queue); \
         event->type = INPUT_WRAP_CURSOR_MOVED;                               \
         event->pos.x = (int)pos.x;                                           \
         event->pos.y = (int)pos.y;                                           \
     }                                                                        \
-    static void NAME##_scroll(LuaVec2 scroll) {                                \
+    static void NAME##_scroll(LuaVec2 scroll) {                              \
         INPUT_WRAP_event* event = input_wrap_new_event(&NAME##_input_queue); \
         event->type = INPUT_WRAP_SCROLLED;                                   \
         event->scroll.x = scroll.x;                                          \

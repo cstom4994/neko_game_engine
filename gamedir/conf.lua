@@ -5,7 +5,7 @@ function neko.conf(t)
     t.window_width = 1280
     t.window_height = 720
     t.debug_on = false
-    t.default_font = "assets/fonts/font.ttf"
+    t.default_font = "assets/fonts/VonwaonBitmap-16px.ttf"
     t.imgui_font = "assets/fonts/fusion-pixel-12px-monospaced-zh_hans.ttf"
     -- t.lite_init_path = "D:/Projects/Neko/DevNew/source/game/lite"
 

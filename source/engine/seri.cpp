@@ -123,7 +123,7 @@ static int luadb_copyvalue(lua_State *fromL, lua_State *toL, int index) {
     return 0;
 }
 
-LUABIND_MODULE() {
+int luaopen(lua_State *L) {
     luaL_checkversion(L);
     lua_newtable(L);
 

@@ -6,9 +6,9 @@
 #include <sys/stat.h>
 #include <time.h>
 
-#include "console.h"
 #include "engine/asset.h"
 #include "engine/base.h"
+#include "engine/console.h"
 #include "engine/game.h"
 #include "engine/prelude.h"
 

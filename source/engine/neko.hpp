@@ -22,23 +22,6 @@
 
 #define NEKO_VA_COUNT(...) detail::va_count(__VA_ARGS__)
 
-#if defined(__cplusplus)
-#include <string>
-#if defined(__cpp_char8_t)
-template <typename T>
-const_str u8Cpp20(T&& t) noexcept {
-#pragma warning(disable : 26490)
-    return reinterpret_cast<const_str>(t);
-#pragma warning(default : 26490)
-}
-#define NEKO_STR(x) u8Cpp20(u8##x)
-#else
-#define NEKO_STR(x) u8##x
-#endif
-#else
-#define NEKO_STR(x) x
-#endif
-
 #define NEKO_DYNAMIC_CAST(type, input_var, cast_var_name) \
     neko_assert(value);                                   \
     type* cast_var_name = dynamic_cast<type*>(input_var); \

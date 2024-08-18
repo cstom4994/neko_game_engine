@@ -1,5 +1,4 @@
 
-#include "engine/inspector.h"
 
 #include <inttypes.h>
 
@@ -12,6 +11,7 @@
 #include <vector>
 
 #include "engine/asset.h"
+#include "engine/console.h"
 #include "engine/game.h"
 #include "engine/glew_glfw.h"
 #include "engine/lua_util.h"
@@ -19,6 +19,8 @@
 #include "engine/luax.h"
 #include "engine/neko.hpp"
 #include "engine/ui.h"
+
+#if 1
 
 namespace neko {
 
@@ -30,38 +32,38 @@ public:
 };
 
 struct luainspector_property_st {
-    static void Render_TypeGeneric(const char* label, void* value) { IM_ASSERT(value); }
+    static void Render_TypeGeneric(const char* label, void* value) { neko_assert(value); }
 
     static void Render_TypeFloat(const char* label, void* value) {
         NEKO_STATIC_CAST(float, value, fValue);
-        ImGui::InputFloat(label, fValue);
+        // ImGui::InputFloat(label, fValue);
     }
 
     static void Render_TypeBool(const char* label, void* value) {
         NEKO_STATIC_CAST(bool, value, bValue);
-        ImGui::Checkbox(label, bValue);
+        // ImGui::Checkbox(label, bValue);
     }
 
     static void Render_TypeConstChar(const char* label, void* value) {
         NEKO_STATIC_CAST(char, value, cValue);
-        ImGui::InputText(label, cValue, std::strlen(cValue));
+        // ImGui::InputText(label, cValue, std::strlen(cValue));
     }
 
     static void Render_TypeDouble(const char* label, void* value) {
         NEKO_STATIC_CAST(double, value, dValue);
-        ImGui::InputDouble(label, dValue);
+        // ImGui::InputDouble(label, dValue);
     }
 
     static void Render_TypeInt(const char* label, void* value) {
         NEKO_STATIC_CAST(int, value, iValue);
-        ImGui::InputInt(label, iValue);
+        // ImGui::InputInt(label, iValue);
     }
 
     static void Render_TypeCharacter(const char* label, void* value) {
         NEKO_STATIC_CAST(CCharacter, value, character);
-        ImGui::InputInt("Age", &character->age);
-        ImGui::InputFloat("Stamina", &character->stamina);
-        ImGui::InputDouble("Skill", &character->skill);
+        // ImGui::InputInt("Age", &character->age);
+        // ImGui::InputFloat("Stamina", &character->stamina);
+        // ImGui::InputDouble("Skill", &character->skill);
     }
 };
 
@@ -89,7 +91,7 @@ class luainspector;
 
 struct command_line_input_callback_UserData {
     std::string* Str;
-    ImGuiInputTextCallback ChainCallback;
+    // ImGuiInputTextCallback ChainCallback;
     void* ChainCallbackUserData;
     neko::luainspector* luainspector_ptr;
 };
@@ -111,8 +113,8 @@ private:
 
     std::string cmd, cmd2;
     bool m_should_take_focus{false};
-    ImGuiID m_input_text_id{0u};
-    ImGuiID m_previously_active_id{0u};
+    // ImGuiID m_input_text_id{0u};
+    // ImGuiID m_previously_active_id{0u};
     std::string_view m_autocomlete_separator{" | "};
     std::vector<std::string> m_current_autocomplete_strings{};
 
@@ -121,13 +123,13 @@ private:
     std::vector<void*> m_variable_pool;
 
 private:
-    static int try_push_style(ImGuiCol col, const std::optional<ImVec4>& color) {
-        if (color) {
-            ImGui::PushStyleColor(col, *color);
-            return 1;
-        }
-        return 0;
-    }
+    // static int try_push_style(ImGuiCol col, const std::optional<ImVec4>& color) {
+    //     if (color) {
+    //         ImGui::PushStyleColor(col, *color);
+    //         return 1;
+    //     }
+    //     return 0;
+    // }
 
 public:
     void console_draw(bool& textbox_react) noexcept;
@@ -138,12 +140,12 @@ public:
     static int luainspector_init(lua_State* L);
     static int luainspector_draw(lua_State* L);
     static int luainspector_get(lua_State* L);
-    static int command_line_callback_st(ImGuiInputTextCallbackData* data) noexcept;
+    // static int command_line_callback_st(ImGuiInputTextCallbackData* data) noexcept;
 
     void setL(lua_State* L);
-    int command_line_input_callback(ImGuiInputTextCallbackData* data);
-    bool command_line_input(const char* label, std::string* str, ImGuiInputTextFlags flags = 0, ImGuiInputTextCallback callback = nullptr, void* user_data = nullptr);
-    void show_autocomplete() noexcept;
+    // int command_line_input_callback(ImGuiInputTextCallbackData* data);
+    // bool command_line_input(const char* label, std::string* str, ImGuiInputTextFlags flags = 0, ImGuiInputTextCallback callback = nullptr, void* user_data = nullptr);
+    // void show_autocomplete() noexcept;
     std::string read_history(int change);
     std::string try_complete(std::string inputbuffer);
     void print_luastack(int first, int last, luainspector_logtype logtype);
@@ -553,7 +555,7 @@ std::string neko::luainspector::try_complete(std::string inputbuffer) {
 
 //     assert(lua_type(L, -1) == LUA_TFUNCTION);
 //     lua_pushvalue(L, index);
-//     if (LUA_OK == lua_pcall(L, 1, 1, 0)) {
+//     if (LUA_OK == luax_pcall(L, 1, 1)) {
 //         lua_remove(L, index);
 //         lua_insert(L, index);
 //         return true;
@@ -564,6 +566,8 @@ std::string neko::luainspector::try_complete(std::string inputbuffer) {
 //     }
 //     return true;
 // }
+
+#if 0
 
 int neko::luainspector::command_line_callback_st(ImGuiInputTextCallbackData* data) noexcept {
     command_line_input_callback_UserData* user_data = (command_line_input_callback_UserData*)data->UserData;
@@ -734,11 +738,12 @@ void neko::luainspector::show_autocomplete() noexcept {
     }
 }
 
+
 void neko::luainspector::console_draw(bool& textbox_react) noexcept {
 
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
+    // ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
 
-    const float TEXT_BASE_HIGHT = ImGui::CalcTextSize("A").y;
+    const float TEXT_BASE_HIGHT = 6.f;
 
     ImVec2 size = ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetWindowSize().y - 80 - TEXT_BASE_HIGHT * 2);
     if (ImGui::BeginChild("##console_log", size)) {
@@ -802,7 +807,7 @@ void neko::luainspector::console_draw(bool& textbox_react) noexcept {
             const int oldtop = lua_gettop(L);
             bool evalok = try_eval(cmd, true) || try_eval(cmd, false);
 
-            if (evalok && LUA_OK == lua_pcall(L, 0, LUA_MULTRET, 0)) {
+            if (evalok && LUA_OK == luax_pcall(L, 0, LUA_MULTRET)) {
                 if (oldtop != lua_gettop(L)) print_luastack(oldtop + 1, lua_gettop(L), LUACON_LOG_TYPE_MESSAGE);
 
                 lua_settop(L, oldtop);
@@ -834,7 +839,13 @@ void neko::luainspector::console_draw(bool& textbox_react) noexcept {
     show_autocomplete();
 }
 
+#endif
+
 void neko::luainspector::print_line(const std::string& msg, luainspector_logtype type) noexcept { messageLog.emplace_back(msg, type); }
+
+// void neko::luainspector::inspect_table(lua_State* L, inspect_table_config& cfg) {}
+
+#if 1
 
 void neko::luainspector::inspect_table(lua_State* L, inspect_table_config& cfg) {
     auto is_multiline = [](const_str str) -> bool {
@@ -844,6 +855,8 @@ void neko::luainspector::inspect_table(lua_State* L, inspect_table_config& cfg) 
         }
         return false;
     };
+
+    ui_context_t* ui = &g_app->ui;
 
     lua_pushnil(L);
     while (lua_next(L, -2) != 0) {
@@ -866,17 +879,19 @@ void neko::luainspector::inspect_table(lua_State* L, inspect_table_config& cfg) 
             goto skip;
         }
 
-        ImGui::TableNextRow();
-        ImGui::TableNextColumn();
+        // ImGui::TableNextRow();
+        // ImGui::TableNextColumn();
 
-        static ImGuiTreeNodeFlags tree_node_flags = ImGuiTreeNodeFlags_SpanAllColumns;
+        // static ImGuiTreeNodeFlags tree_node_flags = ImGuiTreeNodeFlags_SpanAllColumns;
+
+        ui_layout_row(&g_app->ui, 3, ui_widths(200, 200, 200), 0);
 
         if (type == LUA_TSTRING) {
 
-            bool open = ImGui::TreeNodeEx(name, tree_node_flags);
-            ImGui::TableNextColumn();
-            ImGui::TextDisabled("%s", lua_typename(L, lua_type(L, -1)));
-            ImGui::TableNextColumn();
+            bool open = ui_text(ui, name);
+            // ImGui::TableNextColumn();
+            ui_labelf("%s", lua_typename(L, lua_type(L, -1)));
+            // ImGui::TableNextColumn();
             // ImGui::Text("%p", lua_topointer(L, -1));
 
             const_str str_mem = neko_lua_to<const_str>(L, -1);
@@ -884,52 +899,50 @@ void neko::luainspector::inspect_table(lua_State* L, inspect_table_config& cfg) 
             for (; buffer_size < strlen(str_mem);) buffer_size += 128;
             std::string v(neko_lua_to<const_str>(L, -1), buffer_size);
             if (!is_multiline(str_mem) && strlen(str_mem) < 32) {
-                ImGui::TextColored(rgba_to_imvec(40, 220, 55, 255), "\"%s\"", str_mem);
+                // ImGui::TextColored(rgba_to_imvec(40, 220, 55, 255), "\"%s\"", str_mem);
+                ui_text(ui, str_mem);
             } else {
-                ImGui::TextColored(rgba_to_imvec(40, 220, 55, 255), "\"...\"");
+                Color256 col = color256(40, 220, 55, 255);
+                ui_text_colored(ui, "\"...\"", &col);
             }
 
             if (open) {
 
-                ImGui::InputTextMultiline("value", const_cast<char*>(v.c_str()), buffer_size);
-                if (ImGui::IsKeyDown(ImGuiKey_Enter) && v != neko_lua_to<const_str>(L, -1)) {
-                    edited = true;
-                    lua_pop(L, 1);                 // # -1 pop value
-                    lua_pushstring(L, v.c_str());  // # -1 push new value
-                    lua_setfield(L, -3, name);     // -3 table
-                    console_log("改 %s = %s", name, v.c_str());
-                }
-
-                ImGui::TreePop();
+                // ImGui::InputTextMultiline("value", const_cast<char*>(v.c_str()), buffer_size);
+                // if (ImGui::IsKeyDown(ImGuiKey_Enter) && v != neko_lua_to<const_str>(L, -1)) {
+                //     edited = true;
+                //     lua_pop(L, 1);                 // # -1 pop value
+                //     lua_pushstring(L, v.c_str());  // # -1 push new value
+                //     lua_setfield(L, -3, name);     // -3 table
+                //     console_log("改 %s = %s", name, v.c_str());
+                // }
+                // ImGui::TreePop();
             }
 
         } else if (type == LUA_TNUMBER) {
 
-            bool open = ImGui::TreeNodeEx(name, tree_node_flags);
-            ImGui::TableNextColumn();
-            ImGui::TextDisabled("%s", lua_typename(L, lua_type(L, -1)));
-            ImGui::TableNextColumn();
-            ImGui::Text("%f", neko_lua_to<f64>(L, -1));
+            bool open = ui_text(ui, name);
+            ui_labelf("%s", lua_typename(L, lua_type(L, -1)));
+            ui_labelf("%f", neko_lua_to<f64>(L, -1));
 
             if (open) {
                 f64 v = neko_lua_to<f64>(L, -1);
-                // ImGui::Text("lua_v: %f", v);
-                ImGui::InputDouble("value", &v);
-                if (ImGui::IsKeyDown(ImGuiKey_Enter) && v != neko_lua_to<f64>(L, -1)) {
-                    edited = true;
-                    lua_pop(L, 1);              // # -1 pop value
-                    lua_pushnumber(L, v);       // # -1 push new value
-                    lua_setfield(L, -3, name);  // -3 table
-                }
-                ImGui::TreePop();
+                ui_labelf("lua_v: %f", v);
+                // ImGui::InputDouble("value", &v);
+                // if (ImGui::IsKeyDown(ImGuiKey_Enter) && v != neko_lua_to<f64>(L, -1)) {
+                //     edited = true;
+                //     lua_pop(L, 1);              // # -1 pop value
+                //     lua_pushnumber(L, v);       // # -1 push new value
+                //     lua_setfield(L, -3, name);  // -3 table
+                // }
+                // ImGui::TreePop();
             }
 
         } else if (type == LUA_TFUNCTION) {
-            ImGui::TreeNodeEx(name, tree_node_flags | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_Bullet | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-            ImGui::TableNextColumn();
-            ImGui::TextDisabled("%s", lua_typename(L, lua_type(L, -1)));
-            ImGui::TableNextColumn();
-            ImGui::TextColored(rgba_to_imvec(110, 180, 255, 255), "%p", lua_topointer(L, -1));
+            bool open = ui_text(ui, name);
+            ui_labelf("%s", lua_typename(L, lua_type(L, -1)));
+            Color256 col = color256(110, 180, 255, 255);
+            ui_textf_colored(ui, &col, "%p", lua_topointer(L, -1));
 
         } else if (type == LUA_TTABLE) {
             // ImGui::Text("lua_v: %p", lua_topointer(L, -1));
@@ -937,27 +950,25 @@ void neko::luainspector::inspect_table(lua_State* L, inspect_table_config& cfg) 
             // inspect_table(L);
             // ImGui::Unindent();
 
-            bool open = ImGui::TreeNodeEx(name, tree_node_flags);
-            ImGui::TableNextColumn();
-            ImGui::TextDisabled("%s", lua_typename(L, lua_type(L, -1)));
-            ImGui::TableNextColumn();
-            ImGui::TextDisabled("--");
+            bool open = ui_text(ui, name);
+            ui_labelf("%s", lua_typename(L, lua_type(L, -1)));
+            // ImGui::TextDisabled("--");
+            ui_labelf("--");
             if (open) {
                 inspect_table(L, cfg);
-                ImGui::TreePop();
+                // ImGui::TreePop();
             }
 
         } else if (type == LUA_TUSERDATA) {
 
-            bool open = ImGui::TreeNodeEx(name, tree_node_flags);
-            ImGui::TableNextColumn();
-            ImGui::TextDisabled("%s", lua_typename(L, lua_type(L, -1)));
-            ImGui::TableNextColumn();
-            ImGui::TextColored(rgba_to_imvec(75, 230, 250, 255), "%p", lua_topointer(L, -1));
+            bool open = ui_text(ui, name);
+            ui_labelf("%s", lua_typename(L, lua_type(L, -1)));
+            Color256 col = color256(75, 230, 250, 255);
+            ui_textf_colored(ui, &col, "%p", lua_topointer(L, -1));
 
             if (open) {
 
-                ImGui::Text("lua_v: %p", lua_topointer(L, -1));
+                ui_labelf("lua_v: %p", lua_topointer(L, -1));
 
                 const_str metafields[] = {"__name", "__index"};
 
@@ -967,41 +978,36 @@ void neko::luainspector::inspect_table(lua_State* L, inspect_table_config& cfg) 
                         lua_gettable(L, -2);
                         if (lua_isstring(L, -1)) {
                             const char* name = lua_tostring(L, -1);
-                            ImGui::Text("%s: %s", metafields[i], name);
+                            ui_labelf("%s: %s", metafields[i], name);
                         } else if (lua_isnumber(L, -1)) {
                             f64 name = lua_tonumber(L, -1);
-                            ImGui::Text("%s: %lf", metafields[i], name);
+                            ui_labelf("%s: %lf", metafields[i], name);
                         } else {
-                            ImGui::Text("%s field not exist", metafields[i]);
+                            ui_labelf("%s field not exist", metafields[i]);
                         }
                         // pop value and table
                         lua_pop(L, 1);
                     }
                     lua_pop(L, 1);
                 } else {
-                    ImGui::TextColored(rgba_to_imvec(240, 0, 0, 255), "Unknown Metatable");
+                    Color256 col = color256(240, 0, 0, 255);
+                    ui_textf_colored(ui, &col, "Unknown Metatable");
                 }
-
-                ImGui::TreePop();
             }
         } else if (type == LUA_TBOOLEAN) {
-            ImGui::TreeNodeEx(name, tree_node_flags | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_Bullet | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-            ImGui::TableNextColumn();
-            ImGui::TextDisabled("%s", lua_typename(L, lua_type(L, -1)));
-            ImGui::TableNextColumn();
-            ImGui::TextColored(rgba_to_imvec(220, 160, 40, 255), "%s", NEKO_BOOL_STR(lua_toboolean(L, -1)));
+            bool open = ui_text(ui, name);
+            ui_labelf("%s", lua_typename(L, lua_type(L, -1)));
+            Color256 col = color256(220, 160, 40, 255);
+            ui_textf_colored(ui, &col, "%s", NEKO_BOOL_STR(lua_toboolean(L, -1)));
         } else if (type == LUA_TCDATA) {
-            ImGui::TreeNodeEx(name, tree_node_flags | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_Bullet | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-            ImGui::TableNextColumn();
-            ImGui::TextDisabled("%s", lua_typename(L, lua_type(L, -1)));
-            ImGui::TableNextColumn();
-            ImGui::TextColored(rgba_to_imvec(220, 160, 40, 255), "%p", lua_topointer(L, -1));
+            bool open = ui_text(ui, name);
+            ui_labelf("%s", lua_typename(L, lua_type(L, -1)));
+            Color256 col = color256(240, 0, 0, 255);
+            ui_textf_colored(ui, &col, "Unknown Metatable");
         } else {
-            ImGui::TreeNodeEx(name, tree_node_flags | ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_Bullet | ImGuiTreeNodeFlags_NoTreePushOnOpen);
-            ImGui::TableNextColumn();
-            ImGui::TextColored(rgba_to_imvec(240, 0, 0, 255), "Unknown %d", type);
-            ImGui::TableNextColumn();
-            ImGui::Text("Unknown");
+            bool open = ui_text(ui, name);
+            ui_labelf("Unknown %d", type);
+            ui_labelf("Unknown");
         }
 
     skip:
@@ -1011,6 +1017,8 @@ void neko::luainspector::inspect_table(lua_State* L, inspect_table_config& cfg) 
         }
     }
 }
+
+#endif
 
 neko::CCharacter cJohn;
 
@@ -1047,512 +1055,137 @@ int neko::luainspector::luainspector_get(lua_State* L) {
 int neko::luainspector::luainspector_draw(lua_State* L) {
     neko::luainspector* model = (neko::luainspector*)lua_touserdata(L, 1);
 
-    if (ImGui::Begin("Inspector")) {
+    ui_context_t* ui = &g_app->ui;
 
-        if (ImGui::BeginTabBar("lua_inspector", ImGuiTabBarFlags_None)) {
-            if (ImGui::BeginTabItem("Console")) {
-                bool textbox_react;
-                model->console_draw(textbox_react);
-                ImGui::EndTabItem();
-            }
-            if (ImGui::BeginTabItem("Registry")) {
-                lua_pushglobaltable(L);  // _G
-                static char search_text[256] = "";
-                static inspect_table_config config;
-                config.search_str = search_text;
+    // ui_dock_ex(&g_app->ui, "Style_Editor", "Demo_Window", UI_SPLIT_TAB, 0.5f);
 
-                ImGui::InputTextWithHint("Search", "Search...", search_text, IM_ARRAYSIZE(search_text));
+    const vec2 ss_ws = neko_v2(500.f, 300.f);
+    if (ui_window_begin(&g_app->ui, "Inspector", ui_rect((g_app->width - ss_ws.x) * 0.5f, (g_app->height - ss_ws.y) * 0.5f, ss_ws.x, ss_ws.y))) {
 
-                ImGui::Checkbox("Non-Function", &config.is_non_function);
-
-                ImGui::Text("Registry contents:");
-
-                const float TEXT_BASE_WIDTH = ImGui::CalcTextSize("A").x;
-                const float TEXT_BASE_HIGHT = ImGui::CalcTextSize("A").y;
-
-                ImVec2 size = ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetWindowSize().y - 100 - TEXT_BASE_HIGHT * 4);
-                if (ImGui::BeginChild("##lua_registry", size)) {
-                    ImGui::PushTextWrapPos(ImGui::GetContentRegionAvail().x);
-
-                    static ImGuiTableFlags flags = ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
-
-                    if (ImGui::BeginTable("lua_inspector_reg", 3, flags)) {
-                        ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_NoHide);
-                        ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, TEXT_BASE_WIDTH * 8.0f);
-                        ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed, TEXT_BASE_WIDTH * 32.0f);
-                        ImGui::TableHeadersRow();
-
-                        inspect_table(L, config);
-
-                        ImGui::EndTable();
-                    }
-
-                    ImGui::PopTextWrapPos();
-
-                    if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY() - 50) ImGui::SetScrollY(ImGui::GetScrollMaxY());
-                }
-                ImGui::EndChild();
-
-                lua_pop(L, 1);  // pop _G
-                ImGui::EndTabItem();
-            }
-
-            if (ImGui::BeginTabItem("Property")) {
-
-                auto& properties = model->m_property_map;
-
-                ImGui::Text("Property count: %lld\nType count: %lld", properties.size(), model->m_type_render_functions.size());
-
-                for (auto& property_it : properties) {
-
-                    auto prop_render_func_it = model->m_type_render_functions.find(property_it.param_type);
-                    neko_assert(prop_render_func_it != model->m_type_render_functions.end());  // unsupported type, render function not found
-                    const_str label = property_it.label.c_str();
-                    void* value = property_it.param;
-                    if (ImGui::CollapsingHeader(std::format("{0} | {1}", label, property_it.param_type.name()).c_str())) {
-                        ImGui::Indent();
-                        prop_render_func_it->second(label, value);
-                        ImGui::Unindent();
-                    }
-                }
-
-                ImGui::EndTabItem();
-            }
-
-            if (ImGui::BeginTabItem("Info")) {
-                lua_Integer kb = lua_gc(L, LUA_GCCOUNT, 0);
-                lua_Integer bytes = lua_gc(L, LUA_GCCOUNTB, 0);
-
-                // if (!arr.empty() && arr.back() != ((f64)bytes)) {
-                //     arr.push_back(((f64)bytes));
-                //     arr.erase(arr.begin());
-                // }
-
-                ImGui::Text("Lua MemoryUsage: %.2lf mb", ((f64)kb / 1024.0f));
-                ImGui::Text("Lua Remaining: %.2lf mb", ((f64)bytes / 1024.0f));
-
-                if (ImGui::Button("GC")) lua_gc(L, LUA_GCCOLLECT, 0);
-
-                // ImGui::PlotLines("Frame Times", arr.data(), arr.size(), 0, NULL, 0, 4000, ImVec2(0, 80.0f));
-
-                for (auto kv : g_assets.table) {
-                    ImGui::Text("%lld %s", kv.key, kv.value->name.cstr());
-                }
-
-                ImGui::EndTabItem();
-            }
-
-            if (ImGui::BeginTabItem("Shaders")) {
-
-                for (uint32_t i = 0; i < neko_dyn_array_size(g_app->shader_array); ++i) {
-                    auto sp = g_app->shader_array[i];
-                    inspect_shader(sp.name, sp.id);
-                }
-
-                ImGui::EndTabItem();
-            }
-
-            ImGui::EndTabBar();
+        if (ui_header(ui, "Console")) {
+            // bool textbox_react;
+            // model->console_draw(textbox_react);
+            // ImGui::EndTabItem();
         }
+        if (ui_header(ui, "Registry")) {
+            lua_pushglobaltable(L);  // _G
+            static char search_text[256] = "";
+            static inspect_table_config config;
+            config.search_str = search_text;
+
+            // ImGui::InputTextWithHint("Search", "Search...", search_text, IM_ARRAYSIZE(search_text));
+
+            ui_checkbox(ui, "Non-Function", (i32*)&config.is_non_function);
+
+            ui_labelf("Registry contents:");
+
+            const float TEXT_BASE_WIDTH = 22.f;
+            const float TEXT_BASE_HIGHT = 22.f;
+
+            // ImVec2 size = ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetWindowSize().y - 100 - TEXT_BASE_HIGHT * 4);
+            // if (ImGui::BeginChild("##lua_registry", size)) {
+            // ImGui::PushTextWrapPos(ImGui::GetContentRegionAvail().x);
+
+            // static ImGuiTableFlags flags = ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
+
+            // Cache the current container
+            ui_container_t* cnt = ui_get_current_container(&g_app->ui);
+
+            ui_layout_row(&g_app->ui, 3, ui_widths(200, 0), 0);
+
+            ui_labelf("Name");
+            ui_labelf("Type");
+            ui_labelf("Value");
+
+            inspect_table(L, config);
+
+            ui_layout_row(&g_app->ui, 1, ui_widths(0), 0);
+
+            // if (ImGui::BeginTable("lua_inspector_reg", 3, flags)) {
+            //     ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_NoHide);
+            //     ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, TEXT_BASE_WIDTH * 8.0f);
+            //     ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed, TEXT_BASE_WIDTH * 32.0f);
+            //     ImGui::TableHeadersRow();
+
+            //     inspect_table(L, config);
+
+            //     ImGui::EndTable();
+            // }
+
+            // ImGui::PopTextWrapPos();
+
+            // if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY() - 50) ImGui::SetScrollY(ImGui::GetScrollMaxY());
+            // }
+            // ImGui::EndChild();
+
+            lua_pop(L, 1);  // pop _G
+            // ImGui::EndTabItem();
+        }
+
+        // if (ImGui::BeginTabItem("Property")) {
+
+        //     auto& properties = model->m_property_map;
+
+        //     ImGui::Text("Property count: %lld\nType count: %lld", properties.size(), model->m_type_render_functions.size());
+
+        //     for (auto& property_it : properties) {
+
+        //         auto prop_render_func_it = model->m_type_render_functions.find(property_it.param_type);
+        //         neko_assert(prop_render_func_it != model->m_type_render_functions.end());  // unsupported type, render function not found
+        //         const_str label = property_it.label.c_str();
+        //         void* value = property_it.param;
+        //         if (ImGui::CollapsingHeader(std::format("{0} | {1}", label, property_it.param_type.name()).c_str())) {
+        //             ImGui::Indent();
+        //             prop_render_func_it->second(label, value);
+        //             ImGui::Unindent();
+        //         }
+        //     }
+
+        //     ImGui::EndTabItem();
+        // }
+
+        if (ui_header(ui, "Info")) {
+            lua_Integer kb = lua_gc(L, LUA_GCCOUNT, 0);
+            lua_Integer bytes = lua_gc(L, LUA_GCCOUNTB, 0);
+
+            // if (!arr.empty() && arr.back() != ((f64)bytes)) {
+            //     arr.push_back(((f64)bytes));
+            //     arr.erase(arr.begin());
+            // }
+
+            ui_labelf("Lua MemoryUsage: %.2lf mb", ((f64)kb / 1024.0f));
+            ui_labelf("Lua Remaining: %.2lf mb", ((f64)bytes / 1024.0f));
+
+            if (ui_button(ui, "GC")) lua_gc(L, LUA_GCCOLLECT, 0);
+
+            // ImGui::PlotLines("Frame Times", arr.data(), arr.size(), 0, NULL, 0, 4000, ImVec2(0, 80.0f));
+
+            for (auto kv : g_assets.table) {
+                ui_labelf("%lld %s", kv.key, kv.value->name.cstr());
+            }
+
+            // ImGui::EndTabItem();
+        }
+
+        ui_window_end(&g_app->ui);
     }
-    ImGui::End();
+
+    if (input_key_down(KC_GRAVE_ACCENT)) {
+        g_console.open = !g_console.open;
+    } else if (input_key_down(KC_TAB) && g_console.open) {
+        g_console.autoscroll = !g_console.autoscroll;
+    }
+
+    vec2 fb = (&g_app->ui)->framebuffer_size;
+    ui_rect_t screen;
+    //            if (embeded)
+    //                screen = l.body;
+    //            else
+    //                screen = ui_rect(0, 0, fb.x, fb.y);
+    screen = ui_rect(0, 0, fb.x, fb.y);
+    neko_console(&g_console, &g_app->ui, &screen, NULL);
+
     return 0;
-}
-
-#if 1
-
-// 生成宏 以避免始终重复代码
-#define INSPECTOR_GENERATE_VARIABLE(cputype, count, gltype, glread, glwrite, imguifunc) \
-    {                                                                                   \
-        ImGui::Text(#gltype " %s:", name);                                              \
-        cputype value[count];                                                           \
-        glread(program, location, &value[0]);                                           \
-        if (imguifunc("", &value[0], 0.25f)) glwrite(program, location, 1, &value[0]);  \
-    }
-
-#define INSPECTOR_GENERATE_MATRIX(cputype, rows, columns, gltype, glread, glwrite, imguifunc) \
-    {                                                                                         \
-        ImGui::Text(#gltype " %s:", name);                                                    \
-        cputype value[rows * columns];                                                        \
-        int size = rows * columns;                                                            \
-        glread(program, location, &value[0]);                                                 \
-        int modified = 0;                                                                     \
-        for (int i = 0; i < size; i += rows) {                                                \
-            ImGui::PushID(i);                                                                 \
-            modified += imguifunc("", &value[i], 0.25f);                                      \
-            ImGui::PopID();                                                                   \
-        }                                                                                     \
-        if (modified) glwrite(program, location, 1, GL_FALSE, value);                         \
-    }
-
-void render_uniform_variable(GLuint program, GLenum type, const char* name, GLint location) {
-    static bool is_color = false;
-    switch (type) {
-        case GL_FLOAT:
-            INSPECTOR_GENERATE_VARIABLE(GLfloat, 1, GL_FLOAT, glGetUniformfv, glProgramUniform1fv, ImGui::DragFloat);
-            break;
-
-        case GL_FLOAT_VEC2:
-            INSPECTOR_GENERATE_VARIABLE(GLfloat, 2, GL_FLOAT_VEC2, glGetUniformfv, glProgramUniform2fv, ImGui::DragFloat2);
-            break;
-
-        case GL_FLOAT_VEC3: {
-            ImGui::Checkbox("##is_color", &is_color);
-            ImGui::SameLine();
-            ImGui::Text("GL_FLOAT_VEC3 %s", name);
-            ImGui::SameLine();
-            float value[3];
-            glGetUniformfv(program, location, &value[0]);
-            if ((!is_color && ImGui::DragFloat3("", &value[0])) || (is_color && ImGui::ColorEdit3("Color", &value[0], ImGuiColorEditFlags_NoLabel)))
-                glProgramUniform3fv(program, location, 1, &value[0]);
-        } break;
-
-        case GL_FLOAT_VEC4: {
-            ImGui::Checkbox("##is_color", &is_color);
-            ImGui::SameLine();
-            ImGui::Text("GL_FLOAT_VEC4 %s", name);
-            ImGui::SameLine();
-            float value[4];
-            glGetUniformfv(program, location, &value[0]);
-            if ((!is_color && ImGui::DragFloat4("", &value[0])) ||
-                (is_color && ImGui::ColorEdit4("Color", &value[0], ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreviewHalf)))
-                glProgramUniform4fv(program, location, 1, &value[0]);
-        } break;
-
-        case GL_INT:
-            INSPECTOR_GENERATE_VARIABLE(GLint, 1, GL_INT, glGetUniformiv, glProgramUniform1iv, ImGui::DragInt);
-            break;
-
-        case GL_INT_VEC2:
-            INSPECTOR_GENERATE_VARIABLE(GLint, 2, GL_INT, glGetUniformiv, glProgramUniform2iv, ImGui::DragInt2);
-            break;
-
-        case GL_INT_VEC3:
-            INSPECTOR_GENERATE_VARIABLE(GLint, 3, GL_INT, glGetUniformiv, glProgramUniform3iv, ImGui::DragInt3);
-            break;
-
-        case GL_INT_VEC4:
-            INSPECTOR_GENERATE_VARIABLE(GLint, 4, GL_INT, glGetUniformiv, glProgramUniform4iv, ImGui::DragInt4);
-            break;
-
-        case GL_UNSIGNED_INT: {
-            ImGui::Text("GL_UNSIGNED_INT %s:", name);
-            ImGui::SameLine();
-            GLuint value[1];
-            glGetUniformuiv(program, location, &value[0]);
-            if (ImGui::DragScalar("", ImGuiDataType_U32, &value[0], 0.25f)) glProgramUniform1uiv(program, location, 1, &value[0]);
-        } break;
-
-        case GL_UNSIGNED_INT_VEC3: {
-            ImGui::Text("GL_UNSIGNED_INT_VEC3 %s:", name);
-            ImGui::SameLine();
-            GLuint value[1];
-            glGetUniformuiv(program, location, &value[0]);
-            if (ImGui::DragScalarN("", ImGuiDataType_U32, &value[0], 3, 0.25f)) glProgramUniform3uiv(program, location, 1, &value[0]);
-        } break;
-
-        case GL_SAMPLER_2D:
-            INSPECTOR_GENERATE_VARIABLE(GLint, 1, GL_SAMPLER_2D, glGetUniformiv, glProgramUniform1iv, ImGui::DragInt);
-            break;
-
-        case GL_FLOAT_MAT2:
-            INSPECTOR_GENERATE_MATRIX(GLfloat, 2, 2, GL_FLOAT_MAT2, glGetUniformfv, glProgramUniformMatrix2fv, ImGui::DragFloat2);
-            break;
-
-        case GL_FLOAT_MAT3:
-            INSPECTOR_GENERATE_MATRIX(GLfloat, 3, 3, GL_FLOAT_MAT3, glGetUniformfv, glProgramUniformMatrix3fv, ImGui::DragFloat3);
-            break;
-
-        case GL_FLOAT_MAT4:
-            INSPECTOR_GENERATE_MATRIX(GLfloat, 4, 4, GL_FLOAT_MAT4, glGetUniformfv, glProgramUniformMatrix4fv, ImGui::DragFloat4);
-            break;
-
-        case GL_FLOAT_MAT2x3:
-            INSPECTOR_GENERATE_MATRIX(GLfloat, 3, 2, GL_FLOAT_MAT2x3, glGetUniformfv, glProgramUniformMatrix2x3fv, ImGui::DragFloat3);
-            break;
-
-        case GL_FLOAT_MAT2x4:
-            INSPECTOR_GENERATE_MATRIX(GLfloat, 4, 2, GL_FLOAT_MAT2x4, glGetUniformfv, glProgramUniformMatrix2x4fv, ImGui::DragFloat4);
-            break;
-
-        case GL_FLOAT_MAT3x2:
-            INSPECTOR_GENERATE_MATRIX(GLfloat, 2, 3, GL_FLOAT_MAT3x2, glGetUniformfv, glProgramUniformMatrix3x2fv, ImGui::DragFloat2);
-            break;
-
-        case GL_FLOAT_MAT3x4:
-            INSPECTOR_GENERATE_MATRIX(GLfloat, 4, 3, GL_FLOAT_MAT3x4, glGetUniformfv, glProgramUniformMatrix3x2fv, ImGui::DragFloat4);
-            break;
-
-        case GL_BOOL: {
-            ImGui::Text("GL_BOOL %s:", name);
-            ImGui::SameLine();
-            GLuint value;
-            glGetUniformuiv(program, location, &value);
-            if (ImGui::Checkbox("", (bool*)&value)) glProgramUniform1uiv(program, location, 1, &value);
-        } break;
-
-            // #if !defined(NEKO_IS_APPLE)
-            //         case GL_IMAGE_2D: {
-            //             ImGui::Text("GL_IMAGE_2D %s:", name);
-            //             // ImGui::SameLine();
-            //             GLuint value;
-            //             glGetUniformuiv(program, location, &value);
-            //             // if (ImGui::Checkbox("", (bool*)&value)) glProgramUniform1iv(program, location, 1, &value);
-            //             ImGui::Image((void*)(intptr_t)value, ImVec2(256, 256));
-            //         } break;
-            // #endif
-
-        case GL_SAMPLER_CUBE: {
-            ImGui::Text("GL_SAMPLER_CUBE %s:", name);
-            // ImGui::SameLine();
-            GLuint value;
-            glGetUniformuiv(program, location, &value);
-            ImGui::Image((void*)(intptr_t)value, ImVec2(256, 256));
-        } break;
-
-        default:
-            ImGui::TextColored(rgba_to_imvec(255, 64, 64), "%s has type %s, which isn't supported yet!", name, neko_opengl_string(type));
-            break;
-    }
-}
-
-float get_scrollable_height() { return ImGui::GetTextLineHeight() * 16; }
-
-void inspect_shader(const char* label, GLuint program) {
-    neko_assert(label != nullptr);
-
-    ImGui::PushID(label);
-    if (ImGui::CollapsingHeader(label)) {
-        if (!glIsProgram(program)) {
-            ImGui::Text("%d glIsProgram failed", program);
-        } else {
-            // Uniforms
-            ImGui::Indent();
-            if (ImGui::CollapsingHeader("Uniforms", ImGuiTreeNodeFlags_DefaultOpen)) {
-                GLint uniform_count;
-                glGetProgramiv(program, GL_ACTIVE_UNIFORMS, &uniform_count);
-
-                // Read the length of the longest active uniform.
-                GLint max_name_length;
-                glGetProgramiv(program, GL_ACTIVE_UNIFORM_MAX_LENGTH, &max_name_length);
-
-                static std::vector<char> name;
-                name.resize(max_name_length);
-
-                for (int i = 0; i < uniform_count; i++) {
-                    GLint ignored;
-                    GLenum type;
-                    glGetActiveUniform(program, i, max_name_length, nullptr, &ignored, &type, name.data());
-
-                    const auto location = glGetUniformLocation(program, name.data());
-                    ImGui::Indent();
-                    ImGui::PushID(i);
-                    ImGui::PushItemWidth(-1.0f);
-                    render_uniform_variable(program, type, name.data(), location);
-                    ImGui::PopItemWidth();
-                    ImGui::PopID();
-                    ImGui::Unindent();
-                }
-            }
-            ImGui::Unindent();
-
-            // Shaders
-            ImGui::Indent();
-            if (ImGui::CollapsingHeader("Shaders")) {
-                GLint shader_count;
-                glGetProgramiv(program, GL_ATTACHED_SHADERS, &shader_count);
-
-                static std::vector<GLuint> attached_shaders;
-                attached_shaders.resize(shader_count);
-                glGetAttachedShaders(program, shader_count, nullptr, attached_shaders.data());
-
-                for (const auto& shader : attached_shaders) {
-                    GLint source_length = 0;
-                    glGetShaderiv(shader, GL_SHADER_SOURCE_LENGTH, &source_length);
-                    static std::vector<char> source;
-                    source.resize(source_length);
-                    glGetShaderSource(shader, source_length, nullptr, source.data());
-
-                    GLint type = 0;
-                    glGetShaderiv(shader, GL_SHADER_TYPE, &type);
-
-                    ImGui::Indent();
-                    auto string_type = neko_opengl_string(type);
-                    ImGui::PushID(string_type);
-                    if (ImGui::CollapsingHeader(string_type)) {
-                        auto y_size = std::min(ImGui::CalcTextSize(source.data()).y, get_scrollable_height());
-                        ImGui::InputTextMultiline("", source.data(), source.size(), ImVec2(-1.0f, y_size), ImGuiInputTextFlags_ReadOnly);
-                    }
-                    ImGui::PopID();
-                    ImGui::Unindent();
-                }
-            }
-            ImGui::Unindent();
-        }
-    }
-    ImGui::PopID();
-}
-
-void inspect_vertex_array(const char* label, GLuint vao) {
-    neko_assert(label != nullptr);
-    neko_assert(glIsVertexArray(vao));
-
-    ImGui::PushID(label);
-    if (ImGui::CollapsingHeader(label)) {
-        ImGui::Indent();
-
-        // 获取当前绑定的顶点缓冲区对象 以便我们可以在完成后将其重置回来
-        GLint current_vbo = 0;
-        glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &current_vbo);
-
-        // 获取当前绑定的顶点数组对象 以便我们可以在完成后将其重置回来
-        GLint current_vao = 0;
-        glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &current_vao);
-        glBindVertexArray(vao);
-
-        // 获取顶点属性的最大数量
-        // 无论这里有多少个属性 迭代都应该是合理的
-        GLint max_vertex_attribs = 0;
-        glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &max_vertex_attribs);
-
-        GLint ebo = 0;
-        glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &ebo);
-
-        // EBO Visualization
-        char buffer[128];
-        std::snprintf(buffer, 128, "Element Array Buffer: %d", ebo);
-        ImGui::PushID(buffer);
-        if (ImGui::CollapsingHeader(buffer)) {
-            ImGui::Indent();
-            // 假设为 unsigned int
-            int size = 0;
-            glGetBufferParameteriv(GL_ELEMENT_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
-            size /= sizeof(GLuint);
-            ImGui::Text("Size: %d", size);
-
-            if (ImGui::TreeNode("Buffer Contents")) {
-                // TODO 找到一种更好的方法将其显示在屏幕上 因为当我们获得大量索引时 该解决方案可能不会有很好的伸缩性
-                // 可能的解决方案 像VBO一样将其做成列 并将索引显示为三角形
-                auto ptr = (GLuint*)glMapBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_READ_ONLY);
-                for (int i = 0; i < size; i++) {
-                    ImGui::Text("%u", ptr[i]);
-                    ImGui::SameLine();
-                    if ((i + 1) % 3 == 0) ImGui::NewLine();
-                }
-
-                glUnmapBuffer(GL_ELEMENT_ARRAY_BUFFER);
-
-                ImGui::TreePop();
-            }
-
-            ImGui::Unindent();
-        }
-        ImGui::PopID();
-
-        // VBO Visualization
-        for (intptr_t i = 0; i < max_vertex_attribs; i++) {
-            GLint enabled = 0;
-            glGetVertexAttribiv(i, GL_VERTEX_ATTRIB_ARRAY_ENABLED, &enabled);
-
-            if (!enabled) continue;
-
-            std::snprintf(buffer, 128, "Attribute: %" PRIdPTR "", i);
-            ImGui::PushID(buffer);
-            if (ImGui::CollapsingHeader(buffer)) {
-                ImGui::Indent();
-                // 元数据显示
-                GLint buffer = 0;
-                glGetVertexAttribiv(i, GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING, &buffer);
-                ImGui::Text("Buffer: %d", buffer);
-
-                GLint type = 0;
-                glGetVertexAttribiv(i, GL_VERTEX_ATTRIB_ARRAY_TYPE, &type);
-                ImGui::Text("Type: %s", neko_opengl_string(type));
-
-                GLint dimensions = 0;
-                glGetVertexAttribiv(i, GL_VERTEX_ATTRIB_ARRAY_SIZE, &dimensions);
-                ImGui::Text("Dimensions: %d", dimensions);
-
-                // 需要绑定缓冲区以访问 parameteriv 并在以后进行映射
-                glBindBuffer(GL_ARRAY_BUFFER, buffer);
-
-                GLint size = 0;
-                glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
-                ImGui::Text("Size in bytes: %d", size);
-
-                GLint stride = 0;
-                glGetVertexAttribiv(i, GL_VERTEX_ATTRIB_ARRAY_STRIDE, &stride);
-                ImGui::Text("Stride in bytes: %d", stride);
-
-                GLvoid* offset = nullptr;
-                glGetVertexAttribPointerv(i, GL_VERTEX_ATTRIB_ARRAY_POINTER, &offset);
-                ImGui::Text("Offset in bytes: %" PRIdPTR "", (intptr_t)offset);
-
-                GLint usage = 0;
-                glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_USAGE, &usage);
-                ImGui::Text("Usage: %s", neko_opengl_string(usage));
-
-                // 创建包含索引和实际内容的表
-                if (ImGui::TreeNode("Buffer Contents")) {
-                    ImGui::BeginChild(ImGui::GetID("vbo contents"), ImVec2(-1.0f, get_scrollable_height()), true, ImGuiWindowFlags_AlwaysVerticalScrollbar);
-                    ImGui::Columns(dimensions + 1);
-                    const char* descriptors[] = {"index", "x", "y", "z", "w"};
-                    for (int j = 0; j < dimensions + 1; j++) {
-                        ImGui::Text("%s", descriptors[j]);
-                        ImGui::NextColumn();
-                    }
-                    ImGui::Separator();
-
-                    auto ptr = (char*)glMapBuffer(GL_ARRAY_BUFFER, GL_READ_ONLY) + (intptr_t)offset;
-                    for (int j = 0, c = 0; j < size; j += stride, c++) {
-                        ImGui::Text("%d", c);
-                        ImGui::NextColumn();
-                        for (int k = 0; k < dimensions; k++) {
-                            switch (type) {
-                                case GL_BYTE:
-                                    ImGui::Text("% d", *(GLbyte*)&ptr[j + k * sizeof(GLbyte)]);
-                                    break;
-                                case GL_UNSIGNED_BYTE:
-                                    ImGui::Text("%u", *(GLubyte*)&ptr[j + k * sizeof(GLubyte)]);
-                                    break;
-                                case GL_SHORT:
-                                    ImGui::Text("% d", *(GLshort*)&ptr[j + k * sizeof(GLshort)]);
-                                    break;
-                                case GL_UNSIGNED_SHORT:
-                                    ImGui::Text("%u", *(GLushort*)&ptr[j + k * sizeof(GLushort)]);
-                                    break;
-                                case GL_INT:
-                                    ImGui::Text("% d", *(GLint*)&ptr[j + k * sizeof(GLint)]);
-                                    break;
-                                case GL_UNSIGNED_INT:
-                                    ImGui::Text("%u", *(GLuint*)&ptr[j + k * sizeof(GLuint)]);
-                                    break;
-                                case GL_FLOAT:
-                                    ImGui::Text("% f", *(GLfloat*)&ptr[j + k * sizeof(GLfloat)]);
-                                    break;
-                                case GL_DOUBLE:
-                                    ImGui::Text("% f", *(GLdouble*)&ptr[j + k * sizeof(GLdouble)]);
-                                    break;
-                            }
-                            ImGui::NextColumn();
-                        }
-                    }
-                    glUnmapBuffer(GL_ARRAY_BUFFER);
-                    ImGui::EndChild();
-                    ImGui::TreePop();
-                }
-                ImGui::Unindent();
-            }
-            ImGui::PopID();
-        }
-
-        // Cleanup
-        glBindVertexArray(current_vao);
-        glBindBuffer(GL_ARRAY_BUFFER, current_vbo);
-
-        ImGui::Unindent();
-    }
-    ImGui::PopID();
 }
 
 #endif
@@ -1571,7 +1204,7 @@ static int breakpoint_if_debugging(lua_State* L) {
     return 0;
 }
 
-LUABIND_MODULE() {
+int luaopen(lua_State* L) {
     luaL_Reg lib[] = {
             {"breakpoint", breakpoint},
             {"is_debugger_present", is_debugger_present},

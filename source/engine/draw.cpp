@@ -203,42 +203,6 @@ void draw_image(const Image *img, DrawDescription *desc) {
     renderer_pop_matrix();
 }
 
-void draw_sprite(Sprite *spr, DrawDescription *desc) {
-    bool ok = false;
-
-    DeferLoop(ok = renderer_push_matrix(), renderer_pop_matrix()) {
-        if (!ok) {
-            return;
-        }
-
-        AseSpriteView view = {};
-        ok = view.make(spr);
-        if (!ok) {
-            return;
-        }
-
-        renderer_translate(desc->x, desc->y);
-        renderer_rotate(desc->rotation);
-        renderer_scale(desc->sx, desc->sy);
-
-        // sgl_enable_texture();
-        // sgl_texture({view.data.img.id}, {g_renderer.sampler});
-        // sgl_begin_quads();
-
-        float x0 = -desc->ox;
-        float y0 = -desc->oy;
-        float x1 = (float)view.data.width - desc->ox;
-        float y1 = (float)view.data.height - desc->oy;
-
-        AseSpriteFrame f = view.data.frames[view.frame()];
-
-        renderer_apply_color();
-        renderer_push_quad(vec4(x0, y0, x1, y1), vec4(f.u0, f.v0, f.u1, f.v1));
-
-        // sgl_end();
-    }
-}
-
 void draw_tilemap(const MapLdtk *tm) {
     PROFILE_FUNC();
 
@@ -408,6 +372,49 @@ RectDescription rect_description_args(lua_State* L, i32 arg_start) {
     rd.oy = (float)luaL_optnumber(L, arg_start + 8, 0);
 
     return rd;
+}
+
+void draw_sprite(AseSprite* spr, DrawDescription* desc) {
+    bool ok = false;
+
+    DeferLoop(ok = true /*renderer_push_matrix()*/, 0 /*renderer_pop_matrix()*/) {
+        if (!ok) {
+            return;
+        }
+
+        idraw_t* idraw = &g_app->idraw;
+
+        AseSpriteView view = {};
+        ok = view.make(spr);
+        if (!ok) {
+            return;
+        }
+
+        // renderer_translate(desc->x, desc->y);
+        // renderer_rotate(desc->rotation);
+        // renderer_scale(desc->sx, desc->sy);
+
+        // sgl_enable_texture();
+        // sgl_texture({view.data.img.id}, {g_renderer.sampler});
+        // sgl_begin_quads();
+
+        neko_idraw_texture(idraw, neko_texture_t{view.data.tex.id});
+
+        // float x0 = -desc->ox;
+        // float y0 = -desc->oy;
+        // float x1 = (float)view.data.width - desc->ox;
+        // float y1 = (float)view.data.height - desc->oy;
+
+        AseSpriteFrame f = view.data.frames[view.frame()];
+
+        neko_idraw_rectvx(idraw, neko_v2(desc->x, desc->y), neko_v2(desc->x + (view.data.width * desc->sx), desc->y + (view.data.height * desc->sy)), neko_v2(f.u0, f.v0), neko_v2(f.u1, f.v1),
+                          NEKO_COLOR_WHITE, R_PRIMITIVE_TRIANGLES);
+
+        // renderer_apply_color();
+        // renderer_push_quad(vec4(x0, y0, x1, y1), vec4(f.u0, f.v0, f.u1, f.v1));
+
+        // sgl_end();
+    }
 }
 
 static void draw_font_line(idraw_t* idraw, FontFamily* font, float size, float* start_x, float* start_y, String line, Color256 col) {
@@ -1982,7 +1989,7 @@ void neko_idraw_text(idraw_t* neko_idraw, f32 x, f32 y, const char* text, FontFa
         fp = neko_default_font();
     }
 
-    f32 fy = draw_font(neko_idraw, fp, 16.f, x, y, text, col);
+    f32 fy = draw_font(neko_idraw, fp, 22.f, x, y, text, col);
 }
 
 // View/Scissor 命令
