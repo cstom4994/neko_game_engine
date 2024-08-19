@@ -1,3 +1,4 @@
+#include "engine/game.h"
 #include "engine/luax.h"
 #include "engine/ui.h"
 
@@ -189,6 +190,8 @@ static int open_mt_ui_style(lua_State *L) {
     return 0;
 }
 
+#endif
+
 // mt_ui_ref
 
 static int mt_ui_ref_gc(lua_State *L) {
@@ -222,7 +225,7 @@ static int mt_ui_ref_set(lua_State *L) {
     return 0;
 }
 
-static int open_mt_ui_ref(lua_State *L) {
+int open_mt_ui_ref(lua_State *L) {
     luaL_Reg reg[] = {
             {"__gc", mt_ui_ref_gc},
             {"get", mt_ui_ref_get},
@@ -233,12 +236,9 @@ static int open_mt_ui_ref(lua_State *L) {
     return 0;
 }
 
-#endif
-
 // ui api
 
-#if 0
-void lua_lui_set_ref(lua_State *L, MUIRef *ref, i32 arg) {
+void lua_ui_set_ref(lua_State *L, MUIRef *ref, i32 arg) {
     i32 type = lua_type(L, arg);
     switch (type) {
         case LUA_TBOOLEAN:
@@ -264,8 +264,8 @@ void lua_lui_set_ref(lua_State *L, MUIRef *ref, i32 arg) {
     }
 }
 
-MUIRef *lua_lui_check_ref(lua_State *L, i32 arg, MUIRefKind kind) {
-    MUIRef *ref = *(MUIRef **)luaL_checkudata(L, arg, "mt_lui_ref");
+MUIRef *lua_ui_check_ref(lua_State *L, i32 arg, MUIRefKind kind) {
+    MUIRef *ref = *(MUIRef **)luaL_checkudata(L, arg, "mt_ui_ref");
 
     if (ref->kind != kind) {
         memset(ref, 0, sizeof(MUIRef));
@@ -274,11 +274,8 @@ MUIRef *lua_lui_check_ref(lua_State *L, i32 arg, MUIRefKind kind) {
 
     return ref;
 }
-#endif
 
-extern ui_context_t ui;
-
-static ui_context_t *ui_ctx() { return &ui; }
+static ui_context_t *ui_ctx() { return &g_app->ui; }
 
 static int l_ui_set_focus(lua_State *L) {
     lua_Integer id = luaL_checkinteger(L, 1);
@@ -498,7 +495,6 @@ static int l_ui_button(lua_State *L) {
     return 1;
 }
 
-#if 0
 static int l_ui_checkbox(lua_State *L) {
     String text = luax_check_string(L, 1);
     MUIRef *ref = lua_ui_check_ref(L, 2, MUIRefKind_Boolean);
@@ -514,7 +510,7 @@ static int l_ui_textbox_raw(lua_State *L) {
     ui_rect_t rect = lua_ui_check_rect(L, 3);
     i32 opt = luaL_optinteger(L, 4, 0);
 
-    i32 res = ui_textbox_raw(ui_ctx(), ref->string, array_size(ref->string), id, rect, opt);
+    i32 res = ui_textbox_raw(ui_ctx(), ref->string, array_size(ref->string), id, rect, NULL, opt);
     lua_pushinteger(L, res);
     return 1;
 }
@@ -523,35 +519,34 @@ static int l_ui_textbox(lua_State *L) {
     MUIRef *ref = lua_ui_check_ref(L, 1, MUIRefKind_String);
     i32 opt = luaL_optinteger(L, 2, 0);
 
-    i32 res = ui_textbox_ex(ui_ctx(), ref->string, array_size(ref->string), opt);
+    i32 res = ui_textbox_ex(ui_ctx(), ref->string, array_size(ref->string), NULL, opt);
     lua_pushinteger(L, res);
     return 1;
 }
 
 static int l_ui_slider(lua_State *L) {
     MUIRef *ref = lua_ui_check_ref(L, 1, MUIRefKind_Real);
-    ui_Real low = (ui_Real)luaL_checknumber(L, 2);
-    ui_Real high = (ui_Real)luaL_checknumber(L, 3);
-    ui_Real step = (ui_Real)luaL_optnumber(L, 4, 0);
+    ui_real low = (ui_real)luaL_checknumber(L, 2);
+    ui_real high = (ui_real)luaL_checknumber(L, 3);
+    ui_real step = (ui_real)luaL_optnumber(L, 4, 0);
     String fmt = luax_opt_string(L, 5, UI_SLIDER_FMT);
-    i32 opt = luaL_optinteger(L, 6, UI_OPT_ALIGNCENTER);
+    i32 opt = luaL_optinteger(L, 6, UI_ALIGN_CENTER);
 
-    i32 res = ui_slider_ex(ui_ctx(), &ref->real, low, high, step, fmt.data, opt);
+    i32 res = ui_slider_ex(ui_ctx(), &ref->real, low, high, step, fmt.data, NULL, opt);
     lua_pushinteger(L, res);
     return 1;
 }
 
 static int l_ui_number(lua_State *L) {
     MUIRef *ref = lua_ui_check_ref(L, 1, MUIRefKind_Real);
-    ui_Real step = (ui_Real)luaL_checknumber(L, 2);
+    ui_real step = (ui_real)luaL_checknumber(L, 2);
     String fmt = luax_opt_string(L, 3, UI_SLIDER_FMT);
-    i32 opt = luaL_optinteger(L, 4, UI_OPT_ALIGNCENTER);
+    i32 opt = luaL_optinteger(L, 4, UI_ALIGN_CENTER);
 
-    i32 res = ui_number_ex(ui_ctx(), &ref->real, step, fmt.data, opt);
+    i32 res = ui_number_ex(ui_ctx(), &ref->real, step, fmt.data, NULL, opt);
     lua_pushinteger(L, res);
     return 1;
 }
-#endif
 
 static int l_ui_header(lua_State *L) {
     String text = luax_check_string(L, 1);
@@ -659,20 +654,20 @@ static int l_ui_color(lua_State *L) {
     return 1;
 }
 
-// static int l_ui_ref(lua_State *L) {
-//     MUIRef *ref = (MUIRef *)mem_alloc(sizeof(MUIRef));
-//     lua_ui_set_ref(L, ref, 1);
-//     luax_ptr_userdata(L, ref, "mt_ui_ref");
-//     return 1;
-// }
+static int l_ui_ref(lua_State *L) {
+    MUIRef *ref = (MUIRef *)mem_alloc(sizeof(MUIRef));
+    lua_ui_set_ref(L, ref, 1);
+    luax_ptr_userdata(L, ref, "mt_ui_ref");
+    return 1;
+}
 
 static int l_ui_begin(lua_State *L) {
-    ui_begin(&ui, NULL);
+    ui_begin(ui_ctx(), NULL);
     return 0;
 }
 
 static int l_ui_end(lua_State *L) {
-    ui_end(&ui, true);
+    ui_end(ui_ctx(), true);
     return 0;
 }
 
@@ -715,11 +710,11 @@ int open_ui(lua_State *L) {
             {"text", l_ui_text},
             {"label", l_ui_label},
             {"button", l_ui_button},
-            // {"checkbox", l_ui_checkbox},
-            // {"textbox_raw", l_ui_textbox_raw},
-            // {"textbox", l_ui_textbox},
-            // {"slider", l_ui_slider},
-            // {"number", l_ui_number},
+            {"checkbox", l_ui_checkbox},
+            {"textbox_raw", l_ui_textbox_raw},
+            {"textbox", l_ui_textbox},
+            {"slider", l_ui_slider},
+            {"number", l_ui_number},
             {"header", l_ui_header},
             {"begin_treenode", l_ui_begin_treenode},
             {"end_treenode", l_ui_end_treenode},
@@ -740,7 +735,7 @@ int open_ui(lua_State *L) {
             // utility
             {"rect", l_ui_rect},
             {"color", l_ui_color},
-            // {"ref", l_ui_ref},
+            {"ref", l_ui_ref},
             {nullptr, nullptr},
     };
 

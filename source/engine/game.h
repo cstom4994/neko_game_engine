@@ -74,7 +74,7 @@ struct App {
     lua_State *lite_L;  // lua state for lite editor
     ecs_t *ECS;
 
-    neko_command_buffer_t cb;
+    command_buffer_t cb;
     ui_context_t ui;
     idraw_t idraw;
 

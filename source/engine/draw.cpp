@@ -417,80 +417,6 @@ void draw_sprite(AseSprite* spr, DrawDescription* desc) {
     }
 }
 
-static void draw_font_line(idraw_t* idraw, FontFamily* font, float size, float* start_x, float* start_y, String line, Color256 col) {
-    float x = *start_x;
-    float y = *start_y;
-    for (Rune r : UTF8(line)) {
-        u32 tex_id = 0;
-        float xx = x;
-        float yy = y;
-        stbtt_aligned_quad q = font->quad(&tex_id, &xx, &yy, size, r.charcode());
-
-        // sgl_texture({atlas}, {g_renderer.sampler});
-        // sgl_begin_quads();
-        // renderer_push_quad(vec4(x + q.x0, y + q.y0, x + q.x1, y + q.y1), vec4(q.s0, q.t0, q.s1, q.t1));
-        // sgl_end();
-
-        neko_idraw_texture(idraw, neko_texture_t{tex_id});
-        neko_idraw_rectvx(idraw, neko_v2(x + q.x0, y + q.y0), neko_v2(x + q.x1, y + q.y1), neko_v2(q.s0, q.t0), neko_v2(q.s1, q.t1), col, R_PRIMITIVE_TRIANGLES);
-
-        x = xx;
-        y = yy;
-    }
-
-    *start_y += size;
-}
-
-float draw_font(idraw_t* idraw, FontFamily* font, float size, float x, float y, String text, Color256 col) {
-    PROFILE_FUNC();
-
-    y += size;
-    // sgl_enable_texture();
-    // renderer_apply_color();
-
-    for (String line : SplitLines(text)) {
-        draw_font_line(idraw, font, size, &x, &y, line, col);
-    }
-
-    return y - size;
-}
-
-float draw_font_wrapped(idraw_t* idraw, FontFamily* font, float size, float x, float y, String text, Color256 col, float limit) {
-    PROFILE_FUNC();
-
-    y += size;
-    // sgl_enable_texture();
-    // renderer_apply_color();
-
-    for (String line : SplitLines(text)) {
-        font->sb.clear();
-        Scanner scan = line;
-
-        for (String word = scan.next_string(); word != ""; word = scan.next_string()) {
-
-            font->sb << word;
-
-            float width = font->width(size, String(font->sb));
-            if (width < limit) {
-                font->sb << " ";
-                continue;
-            }
-
-            font->sb.len -= word.len;
-            font->sb.data[font->sb.len] = '\0';
-
-            draw_font_line(idraw, font, size, &x, &y, String(font->sb), col);
-
-            font->sb.clear();
-            font->sb << word << " ";
-        }
-
-        draw_font_line(idraw, font, size, &x, &y, String(font->sb), col);
-    }
-
-    return y - size;
-}
-
 /*=============================
 // IDraw
 =============================*/
@@ -562,7 +488,7 @@ neko_idraw_pipeline_state_attr_t neko_idraw_pipeline_state_default() {
 }
 
 void neko_idraw_reset(idraw_t* neko_idraw) {
-    neko_command_buffer_clear(&neko_idraw->commands);
+    command_buffer_clear(&neko_idraw->commands);
     neko_byte_buffer_clear(&neko_idraw->vertices);
     neko_dyn_array_clear(neko_idraw->indices);
     neko_dyn_array_clear(neko_idraw->cache.modelview);
@@ -612,7 +538,7 @@ void neko_immediate_draw_static_data_init() {
     tdesc.format = R_TEXTURE_FORMAT_RGBA8;
     tdesc.min_filter = R_TEXTURE_FILTER_NEAREST;
     tdesc.mag_filter = R_TEXTURE_FILTER_NEAREST;
-    *tdesc.data = pixels;
+    tdesc.data = pixels;
 
     neko_idraw()->tex_default = gfx_texture_create(tdesc);
 
@@ -722,7 +648,7 @@ idraw_t neko_immediate_draw_new() {
     neko_idraw.cache.color = NEKO_COLOR_WHITE;
 
     // Init command buffer
-    neko_idraw.commands = neko_command_buffer_new();  // Not totally sure on the syntax for new vs. create
+    neko_idraw.commands = command_buffer_new();  // Not totally sure on the syntax for new vs. create
 
     neko_idraw.vertices = neko_byte_buffer_new();
 
@@ -736,7 +662,7 @@ void neko_immediate_draw_free(idraw_t* ctx) {
     neko_byte_buffer_free(&ctx->vertices);
     neko_dyn_array_free(ctx->indices);
     neko_dyn_array_free(ctx->vattributes);
-    neko_command_buffer_free(&ctx->commands);
+    command_buffer_free(&ctx->commands);
     neko_dyn_array_free(ctx->cache.pipelines);
     neko_dyn_array_free(ctx->cache.modelview);
     neko_dyn_array_free(ctx->cache.projection);
@@ -2002,7 +1928,7 @@ void neko_idraw_set_view_scissor(idraw_t* neko_idraw, u32 x, u32 y, u32 w, u32 h
 }
 
 // 最终提交/合并
-void neko_idraw_draw(idraw_t* neko_idraw, neko_command_buffer_t* cb) {
+void neko_idraw_draw(idraw_t* neko_idraw, command_buffer_t* cb) {
     // 最终刷新 可以改为 neko_idraw_end() 的一部分
     neko_idraw_flush(neko_idraw);
 
@@ -2016,7 +1942,7 @@ void neko_idraw_draw(idraw_t* neko_idraw, neko_command_buffer_t* cb) {
     neko_idraw_reset(neko_idraw);
 }
 
-void neko_idraw_renderpass_submit(idraw_t* neko_idraw, neko_command_buffer_t* cb, vec4 viewport, Color256 c) {
+void neko_idraw_renderpass_submit(idraw_t* neko_idraw, command_buffer_t* cb, vec4 viewport, Color256 c) {
     gfx_clear_action_t action = NEKO_DEFAULT_VAL();
     action.color[0] = (f32)c.r / 255.f;
     action.color[1] = (f32)c.g / 255.f;
@@ -2030,7 +1956,7 @@ void neko_idraw_renderpass_submit(idraw_t* neko_idraw, neko_command_buffer_t* cb
     gfx_renderpass_end(cb);
 }
 
-void neko_idraw_renderpass_submit_ex(idraw_t* neko_idraw, neko_command_buffer_t* cb, vec4 viewport, gfx_clear_action_t action) {
+void neko_idraw_renderpass_submit_ex(idraw_t* neko_idraw, command_buffer_t* cb, vec4 viewport, gfx_clear_action_t action) {
     neko_renderpass_t pass = NEKO_DEFAULT_VAL();
     gfx_renderpass_begin(cb, pass);
     gfx_set_viewport(cb, (u32)viewport.x, (u32)viewport.y, (u32)viewport.z, (u32)viewport.w);
@@ -2095,11 +2021,11 @@ bool neko_asset_texture_load_from_file(const_str path, void* out, gfx_texture_de
     neko_util_load_texture_data_from_file(path, &w, &h, &cc, &tex_data, false);
     neko_defer(mem_free(tex_data));
 
-    t->desc.data[0] = tex_data;
+    t->desc.data = tex_data;
     t->desc.width = w;
     t->desc.height = h;
 
-    if (!t->desc.data[0]) {
+    if (!t->desc.data) {
 
         console_log("failed to load texture data %s", path);
         return false;
@@ -2109,7 +2035,7 @@ bool neko_asset_texture_load_from_file(const_str path, void* out, gfx_texture_de
 
     if (!keep_data) {
         // neko_image_free(&img);
-        *t->desc.data = NULL;
+        t->desc.data = NULL;
     }
 
     return true;
@@ -2153,8 +2079,8 @@ bool neko_asset_texture_load_from_memory(const void* memory, size_t sz, void* ou
     t->hndl = gfx_texture_create(t->desc);
 
     if (!keep_data) {
-        mem_free(t->desc.data[0]);
-        *t->desc.data = NULL;
+        mem_free(t->desc.data);
+        t->desc.data = NULL;
     }
 
     return true;

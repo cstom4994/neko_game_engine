@@ -1060,7 +1060,7 @@ int neko::luainspector::luainspector_draw(lua_State* L) {
     // ui_dock_ex(&g_app->ui, "Style_Editor", "Demo_Window", UI_SPLIT_TAB, 0.5f);
 
     const vec2 ss_ws = neko_v2(500.f, 300.f);
-    if (ui_window_begin(&g_app->ui, "Inspector", ui_rect((g_app->width - ss_ws.x) * 0.5f, (g_app->height - ss_ws.y) * 0.5f, ss_ws.x, ss_ws.y))) {
+    if (ui_window_begin(&g_app->ui, "检查器", ui_rect((g_app->width - ss_ws.x) * 0.5f, (g_app->height - ss_ws.y) * 0.5f, ss_ws.x, ss_ws.y))) {
 
         if (ui_header(ui, "Console")) {
             // bool textbox_react;

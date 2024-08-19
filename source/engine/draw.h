@@ -99,7 +99,7 @@ typedef struct idraw_t {
     neko_dyn_array(uint16_t) indices;
     neko_dyn_array(neko_idraw_vattr_type) vattributes;
     neko_immediate_cache_t cache;
-    neko_command_buffer_t commands;
+    command_buffer_t commands;
     u32 window_handle;
     neko_immediate_draw_static_data_t* data;
     u32 flags;
@@ -134,8 +134,6 @@ void draw_line(float x0, float y0, float x1, float y1);
 void draw_sprite(AseSprite* spr, DrawDescription* desc);
 
 struct FontFamily;
-float draw_font(idraw_t* idraw, FontFamily* font, float size, float x, float y, String text, Color256 col);
-float draw_font_wrapped(idraw_t* idraw, FontFamily* font, float size, float x, float y, String text, Color256 col, float limit);
 
 struct lua_State;
 DrawDescription draw_description_args(lua_State* L, i32 arg_start);
@@ -198,9 +196,9 @@ void neko_idraw_vattr_list(idraw_t* neko_idraw, neko_idraw_vattr_type* layout, s
 void neko_idraw_set_view_scissor(idraw_t* neko_idraw, u32 x, u32 y, u32 w, u32 h);
 
 // Final Submit / Merge
-void neko_idraw_draw(idraw_t* neko_idraw, neko_command_buffer_t* cb);
-void neko_idraw_renderpass_submit(idraw_t* neko_idraw, neko_command_buffer_t* cb, vec4 viewport, Color256 clear_color);
-void neko_idraw_renderpass_submit_ex(idraw_t* neko_idraw, neko_command_buffer_t* cb, vec4 viewport, gfx_clear_action_t action);
+void neko_idraw_draw(idraw_t* neko_idraw, command_buffer_t* cb);
+void neko_idraw_renderpass_submit(idraw_t* neko_idraw, command_buffer_t* cb, vec4 viewport, Color256 clear_color);
+void neko_idraw_renderpass_submit_ex(idraw_t* neko_idraw, command_buffer_t* cb, vec4 viewport, gfx_clear_action_t action);
 
 // Core Matrix Functions
 void neko_idraw_push_matrix(idraw_t* neko_idraw, neko_idraw_matrix_type type);

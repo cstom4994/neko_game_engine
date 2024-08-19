@@ -19,10 +19,6 @@
 #include "engine/texture.h"
 #include "engine/transform.h"
 
-// imgui
-#include <imgui_impl_glfw.h>
-#include <imgui_impl_opengl3.h>
-
 static Entity gui_root;  // 所有 gui 都应该是它的子节点 以便随屏幕移动
 
 static Entity focused;  // 当前聚焦的实体 如果没有则为entity_nil
@@ -952,30 +948,6 @@ static void _text_update_all() {
     }
 }
 
-void ME_draw_text(String text, Color256 col, int x, int y, bool outline, Color256 outline_col) {
-
-    ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImDrawList* draw_list = ImGui::GetBackgroundDrawList(viewport);
-
-    if (outline) {
-
-        auto outline_col_im = ImColor(outline_col.r, outline_col.g, outline_col.b, col.a);
-
-        draw_list->AddText(ImVec2(x + 0, y - 1), outline_col_im, text.cstr());  // up
-        draw_list->AddText(ImVec2(x + 0, y + 1), outline_col_im, text.cstr());  // down
-        draw_list->AddText(ImVec2(x + 1, y + 0), outline_col_im, text.cstr());  // right
-        draw_list->AddText(ImVec2(x - 1, y + 0), outline_col_im, text.cstr());  // left
-
-        draw_list->AddText(ImVec2(x + 1, y + 1), outline_col_im, text.cstr());  // down-right
-        draw_list->AddText(ImVec2(x - 1, y + 1), outline_col_im, text.cstr());  // down-left
-
-        draw_list->AddText(ImVec2(x + 1, y - 1), outline_col_im, text.cstr());  // up-right
-        draw_list->AddText(ImVec2(x - 1, y - 1), outline_col_im, text.cstr());  // up-left
-    }
-
-    draw_list->AddText(ImVec2(x, y), ImColor(col.r, col.g, col.b, col.a), text.cstr());  // base
-}
-
 static void _text_draw_all() {
     LuaVec2 hwin;
     Text* text;
@@ -1017,9 +989,6 @@ static void _text_draw_all() {
         glBufferData(GL_ARRAY_BUFFER, nchars * sizeof(TextChar), array_begin(text->chars), GL_STREAM_DRAW);
 
         glDrawArrays(GL_POINTS, 0, nchars);
-
-        LuaVec2 text_pos = transform_get_world_position(text->pool_elem.ent);
-        ME_draw_text(text->str, NEKO_COLOR_WHITE, text_pos.x, text_pos.y, false, NEKO_COLOR_WHITE);
     }
 }
 
@@ -1298,6 +1267,8 @@ void gui_load_all(Store* s) {
 // void pointer(lua_State *L, ImGuiInputTextCallbackData &v);
 // }
 
+#if 0
+
 namespace neko::imgui::util {
 
 static lua_CFunction str_format = NULL;
@@ -1437,7 +1408,7 @@ int input_callback(ImGuiInputTextCallbackData* data) {
     lua_State* L = ctx->L;
     lua_pushvalue(L, ctx->callback);
     // wrap_ImGuiInputTextCallbackData::pointer(L, *data);
-    if (lua_pcall(L, 1, 1, 0) != LUA_OK) {
+    if (luax_pcall(L, 1, 1) != LUA_OK) {
         return 1;
     }
     lua_Integer retval = lua_tointeger(L, -1);
@@ -1552,56 +1523,29 @@ void init(lua_State* L) {
 
 }  // namespace neko::imgui::util
 
+#endif
+
 void imgui_init() {
     PROFILE_FUNC();
-
-    ImGui::SetAllocatorFunctions(+[](size_t sz, void* user_data) { return mem_alloc(sz); }, +[](void* ptr, void* user_data) { return mem_free(ptr); });
-
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-
-    ImGui::StyleColorsDark();
-
-    ImGui_ImplGlfw_InitForOpenGL(g_app->game_window, true);
-    ImGui_ImplOpenGL3_Init();
-
-    CVAR_REF(conf_imgui_font, String);
-
-    if (neko_strlen(conf_imgui_font.data.str) > 0) {
-        auto& io = ImGui::GetIO();
-
-        ImFontConfig config;
-        // config.PixelSnapH = 1;
-
-        String ttf_file;
-        vfs_read_entire_file(&ttf_file, conf_imgui_font.data.str);
-        // neko_defer(mem_free(ttf_file.data));
-        // void *ttf_data = ::mem_alloc(ttf_file.len);  // TODO:: imgui 内存方法接管
-        // memcpy(ttf_data, ttf_file.data, ttf_file.len);
-        io.Fonts->AddFontFromMemoryTTF(ttf_file.data, ttf_file.len, 12.0f, &config, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
-    }
+    // CVAR_REF(conf_imgui_font, String);
+    // if (neko_strlen(conf_imgui_font.data.str) > 0) {
+    //     auto& io = ImGui::GetIO();
+    //     ImFontConfig config;
+    //     // config.PixelSnapH = 1;
+    //     String ttf_file;
+    //     vfs_read_entire_file(&ttf_file, conf_imgui_font.data.str);
+    //     // neko_defer(mem_free(ttf_file.data));
+    //     // void *ttf_data = ::mem_alloc(ttf_file.len);  // TODO:: imgui 内存方法接管
+    //     // memcpy(ttf_data, ttf_file.data, ttf_file.len);
+    //     io.Fonts->AddFontFromMemoryTTF(ttf_file.data, ttf_file.len, 12.0f, &config, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
+    // }
 }
 
 void imgui_fini() {
-
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
 }
 
 void imgui_draw_pre() {
-    ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
-    ImGui::NewFrame();
 }
 
 void imgui_draw_post() {
-    ImGui::Render();
-    // int displayX, displayY;
-    // glfwGetFramebufferSize(window, &displayX, &displayY);
-    // glViewport(0, 0, displayX, displayY);
-    // glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
-    // glClear(GL_COLOR_BUFFER_BIT);
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }

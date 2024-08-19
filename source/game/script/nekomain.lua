@@ -1,6 +1,5 @@
 -- 添加nekogame需要路径并加载nekogame
 -- hot_require 'nekogame'
-
 mm = hot_require("libs/mm")
 
 luainspector = Inspector.inspector_init()
@@ -14,20 +13,14 @@ function ns.app.key_down(key)
         return
     end
 
-    if key == ng.KC_Q then
-        ns.game.quit()
-
-    elseif key == ng.KC_1 then
+    if key == ng.KC_1 then
         ns.console.set_visible(not ns.console.get_visible())
-
     elseif key == ng.KC_E then
         ns.timing.set_paused(not ns.edit.get_enabled())
         ns.edit.set_enabled(not ns.edit.get_enabled())
-
     elseif key == ng.KC_C then
         print("destroying group 'default'")
         ns.group.destroy('default')
-
     end
 end
 

@@ -181,18 +181,6 @@ neko_enum_decl(gfx_access_type, R_ACCESS_READ_ONLY, R_ACCESS_WRITE_ONLY, R_ACCES
 
 neko_enum_decl(gfx_buffer_flags, R_BUFFER_FLAG_MAP_PERSISTENT, R_BUFFER_FLAG_MAP_COHERENT);
 
-// Texture
-typedef enum { R_TEXTURE_2D = 0x00, R_TEXTURE_CUBEMAP } gfx_texture_type;
-
-typedef enum {
-    R_TEXTURE_CUBEMAP_POSITIVE_X = 0x00,
-    R_TEXTURE_CUBEMAP_NEGATIVE_X,
-    R_TEXTURE_CUBEMAP_POSITIVE_Y,
-    R_TEXTURE_CUBEMAP_NEGATIVE_Y,
-    R_TEXTURE_CUBEMAP_POSITIVE_Z,
-    R_TEXTURE_CUBEMAP_NEGATIVE_Z
-} gfx_cubemap_face_type;
-
 neko_enum_decl(gfx_texture_format_type, R_TEXTURE_FORMAT_RGBA8, R_TEXTURE_FORMAT_RGB8, R_TEXTURE_FORMAT_RG8, R_TEXTURE_FORMAT_R32, R_TEXTURE_FORMAT_R32F, R_TEXTURE_FORMAT_RGBA16F,
                R_TEXTURE_FORMAT_RGBA32F, R_TEXTURE_FORMAT_A8, R_TEXTURE_FORMAT_R8, R_TEXTURE_FORMAT_DEPTH8, R_TEXTURE_FORMAT_DEPTH16, R_TEXTURE_FORMAT_DEPTH24, R_TEXTURE_FORMAT_DEPTH32F,
                R_TEXTURE_FORMAT_DEPTH24_STENCIL8, R_TEXTURE_FORMAT_DEPTH32F_STENCIL8, R_TEXTURE_FORMAT_STENCIL8);
@@ -242,15 +230,12 @@ typedef struct gfx_shader_desc_t {
     char name[64];                      // Optional (for logging and debugging mainly)
 } gfx_shader_desc_t;
 
-#define R_TEXTURE_DATA_MAX 6
-
 // Graphics Texture Desc
 typedef struct gfx_texture_desc_t {
-    gfx_texture_type type;
     u32 width;                              // Width of texture in texels
     u32 height;                             // Height of texture in texels
     u32 depth;                              // Depth of texture
-    void* data[R_TEXTURE_DATA_MAX];         // Texture data to upload (can be null)
+    void* data;                             // Texture data to upload (can be null)
     gfx_texture_format_type format;         // Format of texture data (rgba32, rgba8, rgba32f, r8, depth32f, etc...)
     gfx_texture_wrapping_type wrap_s;       // Wrapping type for s axis of texture
     gfx_texture_wrapping_type wrap_t;       // Wrapping type for t axis of texture
@@ -684,7 +669,6 @@ typedef enum neko_opengl_op_code_type {
     NEKO_OPENGL_OP_APPLY_BINDINGS,
     NEKO_OPENGL_OP_DISPATCH_COMPUTE,
     NEKO_OPENGL_OP_DRAW,
-    NEKO_OPENGL_OP_DRAW_BATCH,
     NEKO_OPENGL_OP_DRAW_FUNC,
 } neko_opengl_op_code_type;
 
@@ -702,144 +686,7 @@ void gfx_init(gfx_t* render);
 // 图形信息对象查询
 gfx_info_t* gfx_info();
 
-typedef void (*R_DRAW_FUNC)(neko_command_buffer_t* cb);
-
-// 建议尽可能长时间地保留此功能 (perhaps until release)
-#define R_BATCH_DEBUG_CHECKS 1
-
-enum {
-    R_BATCH_FLOAT,
-    R_BATCH_INT,
-    R_BATCH_BOOL,
-    R_BATCH_SAMPLER,
-    R_BATCH_UNKNOWN,
-};
-
-typedef struct gfx_batch_vertex_attribute_t {
-    const char* name;
-    u64 hash;
-    u32 size;
-    u32 type;
-    u32 offset;
-    u32 location;
-} gfx_batch_vertex_attribute_t;
-
-#define R_BATCH_ATTRIBUTE_MAX_COUNT 16
-typedef struct gfx_batch_vertex_data_t {
-    u32 buffer_size;
-    u32 vertex_stride;
-    u32 primitive;
-    u32 usage;
-
-    u32 attribute_count;
-    gfx_batch_vertex_attribute_t attributes[R_BATCH_ATTRIBUTE_MAX_COUNT];
-} gfx_batch_vertex_data_t;
-
-// 根据需要调整此项以创建绘制调用顺序
-// see: http://realtimecollisiondetection.net/blog/?p=86
-typedef struct gfx_batch_render_internal_state_t {
-    union {
-        struct {
-            int fullscreen : 2;
-            int hud : 5;
-            int depth : 25;
-            int translucency : 32;
-        } bits;
-
-        u64 key;
-    } u;
-} gfx_batch_render_internal_state_t;
-
-struct gfx_batch_shader_t;
-typedef struct gfx_batch_shader_t gfx_batch_shader_t;
-
-typedef struct gfx_batch_renderable_t {
-    gfx_batch_vertex_data_t data;
-    gfx_batch_shader_t* program;
-    gfx_batch_render_internal_state_t state;
-    u32 attribute_count;
-
-    u32 index0;
-    u32 index1;
-    u32 buffer_number;
-    u32 need_new_sync;
-    u32 buffer_count;
-    u32 buffers[3];
-    GLsync fences[3];
-} gfx_batch_renderable_t;
-
-#define R_BATCH_UNIFORM_NAME_LENGTH 64
-#define R_BATCH_UNIFORM_MAX_COUNT 16
-
-typedef struct gfx_batch_uniform_t {
-    char name[R_BATCH_UNIFORM_NAME_LENGTH];
-    u32 id;
-    u64 hash;
-    u32 size;
-    u32 type;
-    u32 location;
-} gfx_batch_uniform_t;
-
-struct gfx_batch_shader_t {
-    u32 program;
-    u32 uniform_count;
-    gfx_batch_uniform_t uniforms[R_BATCH_UNIFORM_MAX_COUNT];
-};
-
-typedef struct gfx_batch_framebuffer_t {
-    u32 fb_id;
-    u32 tex_id;
-    u32 rb_id;
-    u32 quad_id;
-    gfx_batch_shader_t* shader;
-    int w, h;
-} gfx_batch_framebuffer_t;
-
-typedef struct {
-    u32 vert_count;
-    void* verts;
-    gfx_batch_renderable_t* r;
-    u32 texture_count;
-    u32 textures[8];
-} gfx_batch_draw_call_t;
-
-struct gfx_batch_context_t;
-typedef struct gfx_batch_context_t gfx_batch_context_t;
-typedef struct gfx_batch_context_t* gfx_batch_context_ptr;
-typedef struct gfx_batch_framebuffer_t* gfx_batch_framebuffer_ptr;
-
-gfx_batch_context_t* gfx_batch_make_ctx(u32 max_draw_calls);
-void gfx_batch_free(void* ctx);
-
-void gfx_batch_make_frame_buffer(gfx_batch_framebuffer_t* fb, gfx_batch_shader_t* shader, int w, int h, int use_depth_test);
-void gfx_batch_free_frame_buffer(gfx_batch_framebuffer_t* fb);
-
-void gfx_batch_make_vertex_data(gfx_batch_vertex_data_t* vd, u32 buffer_size, u32 primitive, u32 vertex_stride, u32 usage);
-void gfx_batch_add_attribute(gfx_batch_vertex_data_t* vd, const char* name, u32 size, u32 type, u32 offset);
-void gfx_batch_make_renderable(gfx_batch_renderable_t* r, gfx_batch_vertex_data_t* vd);
-
-// Must be called after gl_make_renderable
-void gfx_batch_set_shader(gfx_batch_renderable_t* r, gfx_batch_shader_t* s);
-void gfx_batch_load_shader(gfx_batch_shader_t* s, const char* vertex, const char* pixel);
-void gfx_batch_free_shader(gfx_batch_shader_t* s);
-
-void gfx_batch_set_active_shader(gfx_batch_shader_t* s);
-void gfx_batch_deactivate_shader();
-void gfx_batch_send_f32(gfx_batch_shader_t* s, const char* uniform_name, u32 size, float* floats, u32 count);
-void gfx_batch_send_matrix(gfx_batch_shader_t* s, const char* uniform_name, float* floats);
-void gfx_batch_send_texture(gfx_batch_shader_t* s, const char* uniform_name, u32 index);
-
-void gfx_batch_push_draw_call(void* ctx, gfx_batch_draw_call_t call);
-
-void gfx_batch_flush(void* ctx, gfx_batch_framebuffer_t* fb, int w, int h);
-int gfx_batch_draw_call_count(void* ctx);
-
-// 4x4 matrix helper functions
-void gfx_batch_ortho_2d(float w, float h, float x, float y, float* m);
-void gfx_batch_perspective(float* m, float y_fov_radians, float aspect, float n, float f);
-void gfx_batch_mul(float* a, float* b, float* out);  // perform a * b, stores result in out
-void gfx_batch_identity(float* m);
-void gfx_batch_copy(float* dst, float* src);
+typedef void (*R_DRAW_FUNC)(command_buffer_t* cb);
 
 neko_gl_data_t* gfx_ogl();
 
@@ -885,27 +732,26 @@ void gfx_texture_desc_query(neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t*
 size_t gfx_uniform_size_query(neko_handle(gfx_uniform_t) hndl);
 
 // Resource In-Flight Update
-void gfx_texture_request_update(neko_command_buffer_t* cb, neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t desc);
-void gfx_vertex_buffer_request_update(neko_command_buffer_t* cb, neko_handle(gfx_vertex_buffer_t) hndl, gfx_vertex_buffer_desc_t desc);
-void gfx_index_buffer_request_update(neko_command_buffer_t* cb, neko_handle(gfx_index_buffer_t) hndl, gfx_index_buffer_desc_t desc);
-void gfx_uniform_buffer_request_update(neko_command_buffer_t* cb, neko_handle(gfx_uniform_buffer_t) hndl, gfx_uniform_buffer_desc_t desc);
-void gfx_storage_buffer_request_update(neko_command_buffer_t* cb, neko_handle(gfx_storage_buffer_t) hndl, gfx_storage_buffer_desc_t desc);
+void gfx_texture_request_update(command_buffer_t* cb, neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t desc);
+void gfx_vertex_buffer_request_update(command_buffer_t* cb, neko_handle(gfx_vertex_buffer_t) hndl, gfx_vertex_buffer_desc_t desc);
+void gfx_index_buffer_request_update(command_buffer_t* cb, neko_handle(gfx_index_buffer_t) hndl, gfx_index_buffer_desc_t desc);
+void gfx_uniform_buffer_request_update(command_buffer_t* cb, neko_handle(gfx_uniform_buffer_t) hndl, gfx_uniform_buffer_desc_t desc);
+void gfx_storage_buffer_request_update(command_buffer_t* cb, neko_handle(gfx_storage_buffer_t) hndl, gfx_storage_buffer_desc_t desc);
 
 // Pipeline / Pass / Bind / Draw
-void gfx_renderpass_begin(neko_command_buffer_t* cb, neko_handle(gfx_renderpass_t) hndl);
-void gfx_renderpass_end(neko_command_buffer_t* cb);
-void gfx_set_viewport(neko_command_buffer_t* cb, u32 x, u32 y, u32 w, u32 h);
-void gfx_set_view_scissor(neko_command_buffer_t* cb, u32 x, u32 y, u32 w, u32 h);
-void gfx_clear(neko_command_buffer_t* cb, gfx_clear_action_t action);
-void gfx_clear_ex(neko_command_buffer_t* cb, gfx_clear_desc_t* desc);
-void gfx_pipeline_bind(neko_command_buffer_t* cb, neko_handle(gfx_pipeline_t) hndl);
-void gfx_apply_bindings(neko_command_buffer_t* cb, gfx_bind_desc_t* binds);
-void gfx_draw(neko_command_buffer_t* cb, gfx_draw_desc_t desc);
-void gfx_draw_batch(neko_command_buffer_t* cb, gfx_batch_context_t* ctx, gfx_batch_framebuffer_t* fb, i32 w, i32 h);
-void gfx_draw_func(neko_command_buffer_t* cb, R_DRAW_FUNC draw_func);
-void gfx_dispatch_compute(neko_command_buffer_t* cb, u32 num_x_groups, u32 num_y_groups, u32 num_z_groups);
+void gfx_renderpass_begin(command_buffer_t* cb, neko_handle(gfx_renderpass_t) hndl);
+void gfx_renderpass_end(command_buffer_t* cb);
+void gfx_set_viewport(command_buffer_t* cb, u32 x, u32 y, u32 w, u32 h);
+void gfx_set_view_scissor(command_buffer_t* cb, u32 x, u32 y, u32 w, u32 h);
+void gfx_clear(command_buffer_t* cb, gfx_clear_action_t action);
+void gfx_clear_ex(command_buffer_t* cb, gfx_clear_desc_t* desc);
+void gfx_pipeline_bind(command_buffer_t* cb, neko_handle(gfx_pipeline_t) hndl);
+void gfx_apply_bindings(command_buffer_t* cb, gfx_bind_desc_t* binds);
+void gfx_draw(command_buffer_t* cb, gfx_draw_desc_t desc);
+void gfx_draw_func(command_buffer_t* cb, R_DRAW_FUNC draw_func);
+void gfx_dispatch_compute(command_buffer_t* cb, u32 num_x_groups, u32 num_y_groups, u32 num_z_groups);
 
-void gfx_cmd_submit(neko_command_buffer_t* cb);
+void gfx_cmd_submit(command_buffer_t* cb);
 
 typedef neko_handle(gfx_shader_t) neko_shader_t;
 typedef neko_handle(gfx_texture_t) neko_texture_t;

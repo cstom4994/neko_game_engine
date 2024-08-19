@@ -158,7 +158,7 @@ typedef struct neko_tiled_quad_t {
     bool use_texture;
 } neko_tiled_quad_t;
 
-#define BATCH_SIZE 2048
+#define BATCH_SIZE 4096
 
 #define IND_PER_QUAD 6
 
@@ -186,16 +186,16 @@ typedef struct neko_tiled_renderer {
     mat4 camera_mat;
 } neko_tiled_renderer;
 
-void neko_tiled_render_init(neko_command_buffer_t* cb, neko_tiled_renderer* renderer, const_str vert_src, const_str frag_src);
+void neko_tiled_render_init(command_buffer_t* cb, neko_tiled_renderer* renderer, const_str vert_src, const_str frag_src);
 void neko_tiled_render_deinit(neko_tiled_renderer* renderer);
-void neko_tiled_render_begin(neko_command_buffer_t* cb, neko_tiled_renderer* renderer);
-void neko_tiled_render_flush(neko_command_buffer_t* cb, neko_tiled_renderer* renderer);
-void neko_tiled_render_push(neko_command_buffer_t* cb, neko_tiled_renderer* renderer, neko_tiled_quad_t quad);
-void neko_tiled_render_draw(neko_command_buffer_t* cb, neko_tiled_renderer* renderer);
+void neko_tiled_render_begin(command_buffer_t* cb, neko_tiled_renderer* renderer);
+void neko_tiled_render_flush(command_buffer_t* cb, neko_tiled_renderer* renderer);
+void neko_tiled_render_push(command_buffer_t* cb, neko_tiled_renderer* renderer, neko_tiled_quad_t quad);
+void neko_tiled_render_draw(command_buffer_t* cb, neko_tiled_renderer* renderer);
 
 struct Tiled;
 
-int tiled_render(neko_command_buffer_t* cb, Tiled* tiled);
+int tiled_render(command_buffer_t* cb, Tiled* tiled);
 
 NEKO_SCRIPT(tiled,
 

@@ -81,9 +81,9 @@ neko_texture_t neko_aseprite_simple(String filename) {
     t_desc.width = ase->w;
     t_desc.height = ase->h;
     // t_desc.num_comps = 4;
-    t_desc.data[0] = data;
+    t_desc.data = data;
 
-    neko_tex_flip_vertically(ase->w, ase->h, (u8 *)(t_desc.data[0]));
+    neko_tex_flip_vertically(ase->w, ase->h, (u8 *)(t_desc.data));
     neko_texture_t tex = gfx_texture_create(t_desc);
     cute_aseprite_free(ase);
     return tex;
@@ -217,7 +217,7 @@ static void _game_init() {
     console_puts("welcome to neko!");
     system_init();
 
-    g_app->cb = neko_command_buffer_new();
+    g_app->cb = command_buffer_new();
     g_app->idraw = neko_immediate_draw_new();
 
     assets_start_hot_reload();
@@ -273,7 +273,7 @@ static void _game_fini() {
 
     neko_immediate_draw_static_data_free();
     neko_immediate_draw_free(&g_app->idraw);
-    neko_command_buffer_free(&g_app->cb);
+    command_buffer_free(&g_app->cb);
 
     // fini systems
     system_fini();
@@ -356,21 +356,13 @@ static void _game_draw() {
 
         imgui_draw_pre();
 
-        // ImGui::ShowDemoWindow();
-
-        // neko_tiled_render_map(&tiled);
-
         {
 
             // if (g_app->lite_init_path.len && g_app->lite_L) {
-
             //     if (ImGui::Begin("Lite")) {
-
             //         ImGuiWindow *window = ImGui::GetCurrentWindow();
-
             //         ImVec2 bounds = ImGui::GetContentRegionAvail();
             //         LuaVec2 mouse_pos = input_get_mouse_pos_pixels_fix();  // 窗口内鼠标坐标
-
             //         neko_assert(window);
             //         ImVec2 pos = window->Pos;
             //         ImVec2 size = window->Size;
@@ -380,15 +372,12 @@ static void _game_draw() {
             //         lt_wy = pos.y;
             //         lt_ww = size.x;
             //         lt_wh = size.y;
-
             //         if (lt_resizesurface(lt_getsurface(0), lt_ww, lt_wh)) {
             //             // glfw_wrap__window_refresh_callback(g_app->game_window);
             //         }
             //         // fullscreen_quad_rgb( lt_getsurface(0)->t, 1.2f );
             //         // ui_texture_fit(lt_getsurface(0)->t, bounds);
-
             //         ImGui::Image((ImTextureID)lt_getsurface(0)->t.id, bounds);
-
             //         // if (!!nk_input_is_mouse_hovering_rect(&g_app->ui_ctx->input, ((struct nk_rect){lt_wx + 5, lt_wy + 5, lt_ww - 10, lt_wh - 10}))) {
             //         //     lt_events &= ~(1 << 31);
             //         // }
@@ -431,12 +420,12 @@ static void _game_draw() {
         neko_idraw_defaults(&g_app->idraw);
         f32 fy = draw_font(&g_app->idraw, g_app->default_font, 40.f, 10.f, 20.f, "-- ! Neko ! --", NEKO_COLOR_WHITE);
 
-        tiled_draw_all();
-
         gfx_renderpass_begin(&g_app->cb, R_RENDER_PASS_DEFAULT);
         {
             // gfx_set_viewport(&g_app->cb, 0, 0, (u32)g_app->width, (u32)g_app->height);
             neko_idraw_draw(&g_app->idraw, &g_app->cb);  // 立即模式绘制 idraw
+
+            tiled_draw_all();
 
             gfx_draw_func(&g_app->cb, system_draw_all);
 

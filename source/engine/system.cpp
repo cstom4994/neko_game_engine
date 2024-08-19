@@ -299,7 +299,7 @@ void system_update_all() {
     gui_event_clear();
 }
 
-void system_draw_all(neko_command_buffer_t *cb) {
+void system_draw_all(command_buffer_t *cb) {
     // script_draw_all();
     // tiled_draw_all();
     sprite_draw_all();

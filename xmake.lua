@@ -45,15 +45,6 @@ if NEKO_AUDIO == "miniaudio" then
     add_requires("miniaudio")
 end
 
--- add_requires("imgui v1.91.0-docking", {
---     configs = {
---         wchar32 = true,
---         freetype = true,
---         glfw = true,
---         opengl3 = true
---     }
--- })
-
 if is_mode("debug") then
     add_defines("DEBUG", "_DEBUG")
     set_optimize("none")

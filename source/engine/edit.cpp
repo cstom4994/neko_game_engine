@@ -306,13 +306,17 @@ static void _line_fini() {
 static void _line_draw_all() {
     unsigned int npoints;
 
+    const LuaMat3 *mat = camera_get_inverse_view_matrix_ptr();
+
     // bind program, update uniforms
     glUseProgram(line_program);
-    glUniformMatrix3fv(glGetUniformLocation(line_program, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
+    GLuint inverse_view_matrix_id = glGetUniformLocation(line_program, "inverse_view_matrix");
+    glUniformMatrix3fv(inverse_view_matrix_id, 1, GL_FALSE, (const GLfloat *)mat);
 
     // draw!
     glBindVertexArray(line_vao);
-    glBindBuffer(GL_ARRAY_BUFFER, line_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, line_vbo);
+
     npoints = array_length(line_points);
     glBufferData(GL_ARRAY_BUFFER, npoints * sizeof(LinePoint), array_begin(line_points), GL_STREAM_DRAW);
     glDrawArrays(GL_LINES, 0, npoints);

@@ -618,7 +618,7 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
         gfx_texture_desc_t tileset_tex_decl = {
                 .width = (u32)w, .height = (u32)h, .format = R_TEXTURE_FORMAT_RGBA8, .min_filter = R_TEXTURE_FILTER_NEAREST, .mag_filter = R_TEXTURE_FILTER_NEAREST, .num_mips = 0};
 
-        tileset_tex_decl.data[0] = tex_data;
+        tileset_tex_decl.data = tex_data;
 
         tileset.texture = gfx_texture_create(tileset_tex_decl);
 
@@ -788,7 +788,7 @@ void neko_tiled_unload(map_t *map) {
     xml_free(map->doc);
 }
 
-void neko_tiled_render_init(neko_command_buffer_t *cb, neko_tiled_renderer *renderer, const_str vert_src, const_str frag_src) {
+void neko_tiled_render_init(command_buffer_t *cb, neko_tiled_renderer *renderer, const_str vert_src, const_str frag_src) {
 
     PROFILE_FUNC();
 
@@ -863,10 +863,10 @@ void neko_tiled_render_deinit(neko_tiled_renderer *renderer) {
     neko_hash_table_free(renderer->quad_table);
 
     gfx_shader_fini(renderer->shader);
-    // neko_command_buffer_free(cb);
+    // command_buffer_free(cb);
 }
 
-void neko_tiled_render_begin(neko_command_buffer_t *cb, neko_tiled_renderer *renderer) {
+void neko_tiled_render_begin(command_buffer_t *cb, neko_tiled_renderer *renderer) {
 
     // gfx_clear_desc_t clear = {.actions = &(gfx_clear_action_t){.color = {0.1f, 0.1f, 0.1f, 1.0f}}};
     // gfx_clear(cb, &clear);
@@ -874,7 +874,7 @@ void neko_tiled_render_begin(neko_command_buffer_t *cb, neko_tiled_renderer *ren
     renderer->quad_count = 0;
 }
 
-void neko_tiled_render_flush(neko_command_buffer_t *cb, neko_tiled_renderer *renderer) {
+void neko_tiled_render_flush(command_buffer_t *cb, neko_tiled_renderer *renderer) {
 
     PROFILE_FUNC();
 
@@ -918,7 +918,7 @@ void neko_tiled_render_flush(neko_command_buffer_t *cb, neko_tiled_renderer *ren
     renderer->quad_count = 0;
 }
 
-void neko_tiled_render_push(neko_command_buffer_t *cb, neko_tiled_renderer *renderer, neko_tiled_quad_t quad) {
+void neko_tiled_render_push(command_buffer_t *cb, neko_tiled_renderer *renderer, neko_tiled_quad_t quad) {
 
     // PROFILE_FUNC();
 
@@ -932,7 +932,7 @@ void neko_tiled_render_push(neko_command_buffer_t *cb, neko_tiled_renderer *rend
     neko_dyn_array_push(quad_list->quad_list, quad);
 }
 
-void neko_tiled_render_draw(neko_command_buffer_t *cb, neko_tiled_renderer *renderer) {
+void neko_tiled_render_draw(command_buffer_t *cb, neko_tiled_renderer *renderer) {
 
     PROFILE_FUNC();
 
@@ -1027,13 +1027,13 @@ void neko_tiled_render_draw(neko_command_buffer_t *cb, neko_tiled_renderer *rend
     }
 }
 
-int tiled_render(neko_command_buffer_t *cb, Tiled *tiled) {
+int tiled_render(command_buffer_t *cb, Tiled *tiled) {
 
     PROFILE_FUNC();
 
     // neko_tiled_renderer *tiled_render = (neko_tiled_renderer *)lua_touserdata(L, 1);
 
-    neko_renderpass_t rp = R_RENDER_PASS_DEFAULT;
+    // neko_renderpass_t rp = R_RENDER_PASS_DEFAULT;
     // neko_luabind_struct_to_member(L, neko_renderpass_t, id, &rp, 2);
 
     // auto xform = lua2struct::unpack<neko_vec2>(L, 3);
@@ -1052,7 +1052,7 @@ int tiled_render(neko_command_buffer_t *cb, Tiled *tiled) {
 
     tiled->render->camera_mat = mat4_ortho(l, r, b, t, -1.0f, 1.0f);
 
-    gfx_renderpass_begin(cb, rp);
+    // gfx_renderpass_begin(cb, rp);
     {
         neko_tiled_render_begin(cb, tiled->render);
 
@@ -1114,7 +1114,7 @@ int tiled_render(neko_command_buffer_t *cb, Tiled *tiled) {
         //     }
         // }
     }
-    gfx_renderpass_end(cb);
+    // gfx_renderpass_end(cb);
 
     return 0;
 }

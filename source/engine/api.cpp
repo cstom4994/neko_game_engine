@@ -195,68 +195,6 @@ static int open_mt_image(lua_State *L) {
     return 0;
 }
 
-// mt_font
-
-static FontFamily *check_font_udata(lua_State *L, i32 arg) {
-    FontFamily **udata = (FontFamily **)luaL_checkudata(L, arg, "mt_font");
-    FontFamily *font = *udata;
-    return font;
-}
-
-static int mt_font_gc(lua_State *L) {
-    FontFamily *font = check_font_udata(L, 1);
-
-    if (font != g_app->default_font) {
-        font->trash();
-        mem_free(font);
-    }
-    return 0;
-}
-
-static int mt_font_width(lua_State *L) {
-    FontFamily *font = check_font_udata(L, 1);
-
-    String text = luax_check_string(L, 2);
-    lua_Number size = luaL_checknumber(L, 3);
-
-    float w = font->width(size, text);
-
-    lua_pushnumber(L, w);
-    return 1;
-}
-
-static int mt_font_draw(lua_State *L) {
-    FontFamily *font = check_font_udata(L, 1);
-
-    String text = luax_check_string(L, 2);
-    lua_Number x = luaL_optnumber(L, 3, 0);
-    lua_Number y = luaL_optnumber(L, 4, 0);
-    lua_Number size = luaL_optnumber(L, 5, 12);
-    lua_Number wrap = luaL_optnumber(L, 6, -1);
-
-    float bottom = 0;
-    if (wrap < 0) {
-        bottom = draw_font(font, (u64)size, (float)x, (float)y, text);
-    } else {
-        bottom = draw_font_wrapped(font, (u64)size, (float)x, (float)y, text, (float)wrap);
-    }
-
-    lua_pushnumber(L, bottom);
-    return 1;
-}
-
-static int open_mt_font(lua_State *L) {
-    luaL_Reg reg[] = {
-            {"__gc", mt_font_gc},
-            {"width", mt_font_width},
-            {"draw", mt_font_draw},
-            {nullptr, nullptr},
-    };
-
-    luax_new_class(L, "mt_font", reg);
-    return 0;
-}
-
 // mt_atlas_image
 
 static AtlasImage *check_atlas_image_udata(lua_State *L, i32 arg) {
@@ -1407,20 +1345,6 @@ static int neko_image_load(lua_State *L) {
 
 #if 0
 
-static int neko_font_load(lua_State *L) {
-    String str = luax_check_string(L, 1);
-
-    FontFamily *font = (FontFamily *)mem_alloc(sizeof(FontFamily));
-    bool ok = font->load(str);
-    if (!ok) {
-        mem_free(font);
-        return 0;
-    }
-
-    luax_ptr_userdata(L, font, "mt_font");
-    return 1;
-}
-
 static int neko_atlas_load(lua_State *L) {
     String str = luax_check_string(L, 1);
     bool generate_mips = lua_toboolean(L, 2);
@@ -1877,7 +1801,7 @@ LUA_FUNCTION(__neko_bind_tiled_render) {
 
     tiled_render->camera_mat = mat4_ortho(l, r, b, t, -1.0f, 1.0f);
 
-    neko_command_buffer_t *cb = &g_app->cb;
+    command_buffer_t *cb = &g_app->cb;
 
     gfx_renderpass_begin(cb, rp);
     {
@@ -3334,12 +3258,12 @@ LUA_FUNCTION(__neko_bind_render_texture_create) {
         if (!lua_isnil(L, -1)) {
             luaL_checktype(L, -1, LUA_TTABLE);
 
-            lua_pushstring(L, "type");  // # -1
-            lua_gettable(L, -2);        // pop # -1
-            if (!lua_isnil(L, -1)) {
-                neko_luabind_to(L, gfx_texture_type, &texture_desc.type, -1);
-            }
-            lua_pop(L, 1);  // # -1
+            // lua_pushstring(L, "type");  // # -1
+            // lua_gettable(L, -2);        // pop # -1
+            // if (!lua_isnil(L, -1)) {
+            //     neko_luabind_to(L, gfx_texture_type, &texture_desc.type, -1);
+            // }
+            // lua_pop(L, 1);  // # -1
 
             lua_pushstring(L, "format");  // # -1
             lua_gettable(L, -2);          // pop # -1
@@ -3380,7 +3304,7 @@ LUA_FUNCTION(__neko_bind_render_texture_create) {
             lua_gettable(L, -2);        // pop # -1
             if (!lua_isnil(L, -1)) {
                 void *data = lua_touserdata(L, -1);
-                texture_desc.data[0] = data;
+                texture_desc.data = data;
             }
             lua_pop(L, 1);  // # -1
         }
@@ -3592,10 +3516,6 @@ static int open_enum(lua_State *L) {
     neko_lua_enum_value(L, gfx_vertex_attribute_type, R_VERTEX_ATTRIBUTE_BYTE3);
     neko_lua_enum_value(L, gfx_vertex_attribute_type, R_VERTEX_ATTRIBUTE_BYTE2);
     neko_lua_enum_value(L, gfx_vertex_attribute_type, R_VERTEX_ATTRIBUTE_BYTE);
-
-    neko_lua_enum(L, gfx_texture_type);
-    neko_lua_enum_value(L, gfx_texture_type, R_TEXTURE_2D);
-    neko_lua_enum_value(L, gfx_texture_type, R_TEXTURE_CUBEMAP);
 
     neko_lua_enum(L, gfx_shader_stage_type);
     neko_lua_enum_value(L, gfx_shader_stage_type, R_SHADER_STAGE_VERTEX);
@@ -4584,7 +4504,7 @@ static int open_neko(lua_State *L) {
             {"make_thread", neko_make_thread},
             {"make_channel", neko_make_channel},
             {"image_load", neko_image_load},
-            // {"font_load", neko_font_load},
+            {"font_load", neko_font_load},
             // {"sound_load", neko_sound_load},
             {"sprite_load", neko_sprite_load},
             // {"atlas_load", neko_atlas_load},
@@ -4609,7 +4529,7 @@ void open_neko_api(lua_State *L) {
         open_mt_thread,
         open_mt_channel,
         // open_mt_image,
-        // open_mt_font,
+        open_mt_font,
         // open_mt_sound,
         open_mt_sprite,
         // open_mt_atlas_image,

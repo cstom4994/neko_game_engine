@@ -294,7 +294,7 @@ bool AseSpriteData::load(String filepath) {
         t_desc.width = ase_width;
         t_desc.height = ase_height;
         // t_desc.num_comps = 4;
-        t_desc.data[0] = data;
+        t_desc.data = data;
 
         // neko_tex_flip_vertically(width, height, (u8 *)(t_desc.data[0]));
         new_tex = gfx_texture_create(t_desc);

@@ -1795,37 +1795,37 @@ typedef u32 neko_slot_map_iter;
 // Command Buffer
 ===================================*/
 
-typedef struct neko_command_buffer_t {
+typedef struct command_buffer_t {
     u32 num_commands;
     neko_byte_buffer_t commands;
-} neko_command_buffer_t;
+} command_buffer_t;
 
-NEKO_FORCE_INLINE neko_command_buffer_t neko_command_buffer_new() {
-    neko_command_buffer_t cb = NEKO_DEFAULT_VAL();
+NEKO_FORCE_INLINE command_buffer_t command_buffer_new() {
+    command_buffer_t cb = NEKO_DEFAULT_VAL();
     cb.commands = neko_byte_buffer_new();
     return cb;
 }
 
-#define neko_command_buffer_write(__CB, __CT, __C, __T, __VAL) \
+#define command_buffer_write(__CB, __CT, __C, __T, __VAL) \
     do {                                                       \
-        neko_command_buffer_t* __cb = (__CB);                  \
+        command_buffer_t* __cb = (__CB);                  \
         __cb->num_commands++;                                  \
         neko_byte_buffer_write(&__cb->commands, __CT, (__C));  \
         neko_byte_buffer_write(&__cb->commands, __T, (__VAL)); \
     } while (0)
 
-NEKO_FORCE_INLINE void neko_command_buffer_clear(neko_command_buffer_t* cb) {
+NEKO_FORCE_INLINE void command_buffer_clear(command_buffer_t* cb) {
     cb->num_commands = 0;
     neko_byte_buffer_clear(&cb->commands);
 }
 
-NEKO_FORCE_INLINE void neko_command_buffer_free(neko_command_buffer_t* cb) { neko_byte_buffer_free(&cb->commands); }
+NEKO_FORCE_INLINE void command_buffer_free(command_buffer_t* cb) { neko_byte_buffer_free(&cb->commands); }
 
-#define neko_command_buffer_readc(__CB, __T, __NAME) \
+#define command_buffer_readc(__CB, __T, __NAME) \
     __T __NAME = NEKO_DEFAULT_VAL();                 \
     neko_byte_buffer_read(&(__CB)->commands, __T, &__NAME);
 
-typedef neko_command_buffer_t neko_cmdbuf;
+typedef command_buffer_t neko_cmdbuf;
 
 // 在内存中存储连续的对象
 // 对象可能会在内存中移动 因此不要依赖指向 CArray 中对象的指针
