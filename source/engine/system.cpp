@@ -199,6 +199,12 @@ void system_init() {
     // errcheck(luax_pcall_nothrow(L, 0, 0));
     asset_load_kind(AssetKind_LuaRef, "script/nekomain.lua", nullptr);
 
+    luax_get(ENGINE_LUA(), "neko", "__define_default_callbacks");
+    luax_pcall(ENGINE_LUA(), 0, 0);
+
+    luax_get(ENGINE_LUA(), "neko", "game_init");
+    luax_pcall(ENGINE_LUA(), 0, 0);
+
     // fire init event
     script_push_event("init");
     errcheck(luax_pcall_nothrow(L, 1, 0));

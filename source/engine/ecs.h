@@ -11,6 +11,25 @@
 
 #define MAX_ENTITY_COUNT 100
 
+enum ECS_LUA_UPVALUES { NEKO_ECS_COMPONENTS_NAME = 1, NEKO_ECS_UPVAL_N };
+
+#define TYPE_MIN_ID 1
+#define TYPE_MAX_ID 255
+#define TYPE_COUNT 256
+
+#define WORLD_PROTO_ID 1
+#define WORLD_PROTO_DEFINE 2
+#define WORLD_COMPONENTS 3
+#define WORLD_MATCH_CTX 4
+#define WORLD_KEY_EID 5
+#define WORLD_KEY_TID 6
+#define WORLD_UPVAL_N 6
+
+#define LINK_NIL (-1)
+#define LINK_NONE (-2)
+
+#define ENTITY_MAX_COMPONENTS (64)  // 最大组件数量
+
 // 测试 ECS 用
 typedef struct CGameObjectTest {
     char name[64];
@@ -32,16 +51,7 @@ enum ComponentType {
 #define ECS_WORLD_UDATA_NAME "__NEKO_ECS_WORLD"
 #define ECS_WORLD (1)
 
-#if 0
-NEKO_API_DECL ECS_COMPONENT_DECLARE(position_t);
-NEKO_API_DECL ECS_COMPONENT_DECLARE(velocity_t);
-NEKO_API_DECL ECS_COMPONENT_DECLARE(bounds_t);
-NEKO_API_DECL ECS_COMPONENT_DECLARE(color_t);
-
-NEKO_API_DECL void neko_ecs_com_init(ecs_world_t* world);
-#endif
-
-int neko_ecs_create_world(lua_State* L);
+int l_ecs_create_world(lua_State* L);
 
 typedef struct ecs_s ecs_t;
 typedef uint32_t ecs_id_t;

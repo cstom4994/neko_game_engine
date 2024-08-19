@@ -144,8 +144,8 @@ void game_init() {
     gfx_texture_desc_t main_rt_desc = {.width = (u32)neko_game()->DisplaySize.x,
                                                .height = (u32)neko_game()->DisplaySize.y,
                                                .format = R_TEXTURE_FORMAT_RGBA8,
-                                               .wrap_s = R_TEXTURE_WRAP_REPEAT,
-                                               .wrap_t = R_TEXTURE_WRAP_REPEAT,
+                                               .wrap_s = GL_REPEAT,
+                                               .wrap_t = GL_REPEAT,
                                                .min_filter = R_TEXTURE_FILTER_NEAREST,
                                                .mag_filter = R_TEXTURE_FILTER_NEAREST};
     neko_game()->r_main_rt = gfx_texture_create(main_rt_desc);

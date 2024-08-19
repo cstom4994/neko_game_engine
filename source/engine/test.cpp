@@ -27,6 +27,7 @@
 #include "engine/reflection.hpp"
 #include "engine/seri.h"
 #include "engine/ui.h"
+#include "engine/ui_auto.h"
 
 #pragma region test
 
@@ -548,6 +549,8 @@ i32 button_custom(ui_context_t* ctx, const char* label) {
 
 // void neko_console(neko_console_t* console, ui_context_t* ctx, ui_rect_t screen, const ui_selector_desc_t* desc);
 
+void draw_gui_auto_test();
+
 void draw_gui() {
 
     PROFILE_FUNC();
@@ -769,6 +772,10 @@ void draw_gui() {
                 // ui_labelf("Hover: %zu", g_gui.mouse_is_hover);
                 ui_labelf("Time: %f", t);
 
+                // std::vector test_vector = {"hahah", "233", "中文?"};
+
+                // neko::imgui::Auto(test_vector, "test_vector");
+
 #if 0
                 struct {
                     const char* str;
@@ -842,6 +849,153 @@ void draw_gui() {
             }
         }
     }
+
+    draw_gui_auto_test();
+}
+
+void draw_gui_auto_test() {
+    ui_context_t* ui = &g_app->ui;
+    const vec2 ss_ws = neko_v2(500.f, 300.f);
+    ui_window_begin(&g_app->ui, "GUI Test", ui_rect((g_app->width - ss_ws.x) * 0.5f, (g_app->height - ss_ws.y) * 0.5f, ss_ws.x, ss_ws.y));
+    {
+
+        if (ui_header(ui, "1. String")) {
+
+            neko::imgui::Auto("Hello Imgui::Auto() !");  // This is how this text is written as well.
+
+            static std::string str = "Hello neko::imgui::Auto() for strings!";
+            neko::imgui::Auto(str, "str");
+
+            static std::string str2 = "neko::imgui::Auto()\n Automatically uses multiline input for strings!\n:)";
+            neko::imgui::Auto(str2, "str2");
+
+            static const std::string conststr = "Const types are not to be changed!";
+            neko::imgui::Auto(conststr, "conststr");
+
+            char* buffer = "To edit a string use std::string. Manual buffers are unwelcome here.";
+            neko::imgui::Auto(buffer, "buffer");
+        }
+        if (ui_header(ui, "2. Numbers")) {
+
+            static int i = 42;
+            neko::imgui::Auto(i, "i");
+
+            static float f = 3.14;
+            neko::imgui::Auto(f, "f");
+
+            //         static ImVec4 f4 = {1.5f, 2.1f, 3.4f, 4.3f};
+            //         neko::imgui::Auto(f4, "f4");
+
+            //         static const ImVec2 f2 = {1.f, 2.f};
+            //         neko::imgui::Auto(f2, "f2");
+        }
+        if (ui_header(ui, "3. Containers")) {
+
+            static std::vector<std::string> vec = {"First string", "Second str", ":)"};
+            neko::imgui::Auto(vec, "vec");
+
+            static const std::vector<float> constvec = {3, 1, 2.1f, 4, 3, 4, 5};
+            neko::imgui::Auto(constvec, "constvec");  // Cannot change vector, nor values
+
+            static std::vector<bool> bvec = {false, true, false, false};
+            neko::imgui::Auto(bvec, "bvec");
+
+            static const std::vector<bool> constbvec = {false, true, false, false};
+            neko::imgui::Auto(constbvec, "constbvec");
+
+            //         static std::map<int, float> map = {{3, 2}, {1, 2}};
+            //         neko::imgui::Auto(map, "map");  // insert and other operations
+
+            //             static std::deque<bool> deque = {false, true, false, false};
+            //             neko::imgui::Auto(deque, "deque");
+
+            //             static std::set<char*> set = {"set", "with", "char*"};  // for some reason, this does not work
+            //             neko::imgui::Auto(set, "set");                          // the problem is with the const iterator, but
+
+            //             static std::map<char*, std::string> map = {{"asd", "somevalue"}, {"bsd", "value"}};
+            //             neko::imgui::Auto(map, "map");  // insert and other operations
+            //         }
+        }
+        if (ui_header(ui, "4. Pointers and Arrays")) {
+
+            static float* pf = nullptr;
+            neko::imgui::Auto(pf, "pf");
+
+            static int i = 10, *pi = &i;
+            neko::imgui::Auto(pi, "pi");
+
+            static const std::string cs = "I cannot be changed!", *cps = &cs;
+            neko::imgui::Auto(cps, "cps");
+
+            static std::string str = "I can be changed! (my pointee cannot)";
+            static std::string* const strpc = &str;
+            neko::imgui::Auto(strpc, "strpc");
+
+            //         static std::array<float, 5> farray = {1.2, 3.4, 5.6, 7.8, 9.0};
+            //         neko::imgui::Auto(farray, "std::array");
+
+            static float farr[5] = {11.2, 3.4, 5.6, 7.8, 911.0};
+            neko::imgui::Auto(farr, "float[5]");
+        }
+        if (ui_header(ui, "5. Pairs and Tuples")) {
+
+            //         static std::pair<bool, ImVec2> pair = {true, {2.1f, 3.2f}};
+            //         neko::imgui::Auto(pair, "pair");
+
+            static std::pair<int, std::string> pair2 = {-3, "simple types appear next to each other in a pair"};
+            neko::imgui::Auto(pair2, "pair2");
+
+            //         neko::imgui::Auto(neko::cpp::as_const(pair), "as_const(pair)");  // easy way to view as const
+
+            //         std::tuple<const int, std::string, ImVec2> tuple = {42, "string in tuple", {3.1f, 3.2f}};
+            //         neko::imgui::Auto(tuple, "tuple");
+
+            //         const std::tuple<int, const char*, ImVec2> consttuple = {42, "Smaller tuples are inlined", {3.1f, 3.2f}};
+            //         neko::imgui::Auto(consttuple, "consttuple");
+        }
+        if (ui_header(ui, "6. Structs!!")) {
+
+            struct A {
+                int i = 216;
+                bool b = true;
+            };
+            static A a;
+            neko::imgui::Auto(a, "a");
+
+            neko::imgui::Auto(neko::cpp::as_const(a), "as_const(a)");
+
+            struct B {
+                std::string str = "Unfortunatelly, cannot deduce const-ness from within a struct";
+                const A a = A();
+            };
+            static B b;
+            neko::imgui::Auto(b, "b");
+
+            static std::vector<B> vec = {{"vector of structs!", A()}, B()};
+            neko::imgui::Auto(vec, "vec");
+
+            struct C {
+                std::list<B> vec;
+                A* a;
+            };
+            static C c = {{{"Container inside a struct!", A()}}, &a};
+            neko::imgui::Auto(c, "c");
+        }
+        //     if (ui_header(ui, "Functions")) {
+
+        //         void (*func)() = []() {
+        //             ImGui::SameLine();
+        //             ImGui::TextColored(ImVec4(0.5, 1, 0.5, 1.0), "Button pressed, function called :)");
+        //         };
+        //         neko::imgui::Auto(func, "void(void) function");
+        //     }
+
+        if (ui_header(ui, "ui_file_browser")) {
+            static std::string path = "./";
+            ui_file_browser(path);
+        }
+    }
+    ui_window_end(&g_app->ui);
 }
 
 #endif

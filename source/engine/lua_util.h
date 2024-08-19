@@ -543,7 +543,7 @@ inline void neko_lua_fini(lua_State *_L) {
         int top = lua_gettop(_L);
         if (top != 0) {
             lua_tool::dump_stack(_L);
-            console_log("[lua] luastack memory leak");
+            console_log("luastack memory leak");
         }
         ::lua_close(_L);
         _L = NULL;

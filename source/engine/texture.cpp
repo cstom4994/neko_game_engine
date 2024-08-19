@@ -262,3 +262,107 @@ Texture texture_get_ptr(const char *filename) {
 }
 
 bool texture_update(Texture *tex, String filename) { return _texture_load_vfs(tex, filename); }
+
+bool load_texture_data_from_memory(const void *memory, size_t sz, i32 *width, i32 *height, u32 *num_comps, void **data, bool flip_vertically_on_load) {
+    // Load texture data
+
+    int channels;
+    u8 *image = (u8 *)stbi_load_from_memory((unsigned char *)memory, sz, width, height, &channels, 0);
+
+    // if (flip_vertically_on_load) neko_png_flip_image_horizontal(&img);
+
+    *data = image;
+
+    if (!*data) {
+        // neko_image_free(&img);
+        console_log("could not load image %p", memory);
+        return false;
+    }
+    return true;
+}
+
+bool load_texture_data_from_file(const char *file_path, i32 *width, i32 *height, u32 *num_comps, void **data, bool flip_vertically_on_load) {
+    u64 len = 0;
+    const_str file_data = neko_capi_vfs_read_file(NEKO_PACKS::GAMEDATA, file_path, &len);
+    neko_assert(file_data);
+    bool ret = load_texture_data_from_memory(file_data, len, width, height, num_comps, data, flip_vertically_on_load);
+    if (!ret) {
+        console_log("could not load texture: %s", file_path);
+    }
+    mem_free(file_data);
+    return ret;
+}
+
+bool neko_asset_texture_load_from_file(const_str path, void *out, gfx_texture_desc_t *desc, bool flip_on_load, bool keep_data) {
+    neko_asset_texture_t *t = (neko_asset_texture_t *)out;
+
+    memset(&t->desc, 0, sizeof(gfx_texture_desc_t));
+
+    if (desc) {
+        t->desc = *desc;
+    } else {
+        t->desc.format = R_TEXTURE_FORMAT_RGBA8;
+        t->desc.min_filter = R_TEXTURE_FILTER_LINEAR;
+        t->desc.mag_filter = R_TEXTURE_FILTER_LINEAR;
+        t->desc.wrap_s = GL_REPEAT;
+        t->desc.wrap_t = GL_REPEAT;
+    }
+
+    void *tex_data = NULL;
+    i32 w, h;
+    u32 cc;
+    load_texture_data_from_file(path, &w, &h, &cc, &tex_data, false);
+    neko_defer(mem_free(tex_data));
+
+    t->desc.data = tex_data;
+    t->desc.width = w;
+    t->desc.height = h;
+
+    if (!t->desc.data) {
+
+        console_log("failed to load texture data %s", path);
+        return false;
+    }
+
+    t->hndl = gfx_texture_create(t->desc);
+
+    if (!keep_data) {
+        // neko_image_free(&img);
+        t->desc.data = NULL;
+    }
+
+    return true;
+}
+
+bool neko_asset_texture_load_from_memory(const void *memory, size_t sz, void *out, gfx_texture_desc_t *desc, bool flip_on_load, bool keep_data) {
+    neko_asset_texture_t *t = (neko_asset_texture_t *)out;
+
+    memset(&t->desc, 0, sizeof(gfx_texture_desc_t));
+
+    if (desc) {
+        t->desc = *desc;
+    } else {
+        t->desc.format = R_TEXTURE_FORMAT_RGBA8;
+        t->desc.min_filter = R_TEXTURE_FILTER_LINEAR;
+        t->desc.mag_filter = R_TEXTURE_FILTER_LINEAR;
+        t->desc.wrap_s = GL_REPEAT;
+        t->desc.wrap_t = GL_REPEAT;
+    }
+
+    // Load texture data
+    i32 num_comps = 0;
+    bool loaded = load_texture_data_from_memory(memory, sz, (i32 *)&t->desc.width, (i32 *)&t->desc.height, (u32 *)&num_comps, (void **)&t->desc.data, t->desc.flip_y);
+
+    if (!loaded) {
+        return false;
+    }
+
+    t->hndl = gfx_texture_create(t->desc);
+
+    if (!keep_data) {
+        mem_free(t->desc.data);
+        t->desc.data = NULL;
+    }
+
+    return true;
+}

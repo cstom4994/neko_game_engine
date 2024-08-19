@@ -544,10 +544,10 @@ void neko_immediate_draw_static_data_init() {
 
     // Create shader
     gfx_shader_source_desc_t vsrc;
-    vsrc.type = R_SHADER_STAGE_VERTEX;
+    vsrc.type = GL_VERTEX_SHADER;
     vsrc.source = neko_idraw_v_fillsrc;
     gfx_shader_source_desc_t fsrc;
-    fsrc.type = R_SHADER_STAGE_FRAGMENT;
+    fsrc.type = GL_FRAGMENT_SHADER;
     fsrc.source = neko_idraw_f_fillsrc;
     gfx_shader_source_desc_t neko_idraw_sources[] = {vsrc, fsrc};
 
@@ -587,19 +587,19 @@ void neko_immediate_draw_static_data_init() {
                         gfx_pipeline_desc_t pdesc = NEKO_DEFAULT_VAL();
                         pdesc.raster.shader = shader;
                         pdesc.raster.index_buffer_element_size = sizeof(u16);
-                        pdesc.raster.face_culling = attr.face_cull_enabled ? R_FACE_CULLING_BACK : (gfx_face_culling_type)0x00;
+                        pdesc.raster.face_culling = attr.face_cull_enabled ? GL_BACK : 0x00;
                         pdesc.raster.primitive = (gfx_primitive_type)attr.prim_type;
-                        pdesc.blend.func = attr.blend_enabled ? R_BLEND_EQUATION_ADD : (gfx_blend_equation_type)0x00;
-                        pdesc.blend.src = R_BLEND_MODE_SRC_ALPHA;
-                        pdesc.blend.dst = R_BLEND_MODE_ONE_MINUS_SRC_ALPHA;
-                        pdesc.depth.func = d ? R_DEPTH_FUNC_LESS : (gfx_depth_func_type)0x00;
-                        pdesc.stencil.func = s ? R_STENCIL_FUNC_ALWAYS : (gfx_stencil_func_type)0x00;
+                        pdesc.blend.func = attr.blend_enabled ? GL_FUNC_ADD : 0x00;
+                        pdesc.blend.src = GL_SRC_ALPHA;
+                        pdesc.blend.dst = GL_ONE_MINUS_SRC_ALPHA;
+                        pdesc.depth.func = d ? GL_LESS : 0x00;
+                        pdesc.stencil.func = s ? GL_ALWAYS : 0x00;
                         pdesc.stencil.ref = s ? 1 : 0x00;
                         pdesc.stencil.comp_mask = s ? 0xFF : 0x00;
                         pdesc.stencil.write_mask = s ? 0xFF : 0x00;
-                        pdesc.stencil.sfail = s ? R_STENCIL_OP_KEEP : (gfx_stencil_op_type)0x00;
-                        pdesc.stencil.dpfail = s ? R_STENCIL_OP_KEEP : (gfx_stencil_op_type)0x00;
-                        pdesc.stencil.dppass = s ? R_STENCIL_OP_REPLACE : (gfx_stencil_op_type)0x00;
+                        pdesc.stencil.sfail = s ? GL_KEEP : 0x00;
+                        pdesc.stencil.dpfail = s ? GL_KEEP : 0x00;
+                        pdesc.stencil.dppass = s ? GL_KEEP : 0x00;
                         pdesc.layout.attrs = neko_idraw_vattrs;
                         pdesc.layout.size = sizeof(neko_idraw_vattrs);
 
@@ -611,7 +611,7 @@ void neko_immediate_draw_static_data_init() {
     gfx_vertex_buffer_desc_t vdesc = NEKO_DEFAULT_VAL();
     vdesc.data = NULL;
     vdesc.size = 0;
-    vdesc.usage = R_BUFFER_USAGE_STREAM;
+    vdesc.usage = GL_STREAM_DRAW;
     neko_idraw()->vbo = gfx_vertex_buffer_create(vdesc);
 
     // mem_free(compressed_ttf_data);
@@ -805,7 +805,7 @@ void neko_idraw_flush(idraw_t* neko_idraw) {
     gfx_vertex_buffer_desc_t vdesc = NEKO_DEFAULT_VAL();
     vdesc.data = neko_idraw->vertices.data;
     vdesc.size = neko_byte_buffer_size(&neko_idraw->vertices);
-    vdesc.usage = R_BUFFER_USAGE_STREAM;
+    vdesc.usage = GL_STREAM_DRAW;
 
     gfx_vertex_buffer_request_update(&neko_idraw->commands, neko_idraw()->vbo, vdesc);
 
@@ -1963,125 +1963,4 @@ void neko_idraw_renderpass_submit_ex(idraw_t* neko_idraw, command_buffer_t* cb, 
     gfx_clear(cb, action);
     neko_idraw_draw(neko_idraw, cb);
     gfx_renderpass_end(cb);
-}
-
-bool neko_util_load_texture_data_from_memory(const void* memory, size_t sz, i32* width, i32* height, u32* num_comps, void** data, bool flip_vertically_on_load) {
-    // Load texture data
-
-    int channels;
-    u8* image = (u8*)stbi_load_from_memory((unsigned char*)memory, sz, width, height, &channels, 0);
-
-    // if (flip_vertically_on_load) neko_png_flip_image_horizontal(&img);
-
-    *data = image;
-
-    if (!*data) {
-        // neko_image_free(&img);
-        console_log("could not load image %p", memory);
-        return false;
-    }
-    return true;
-}
-
-bool neko_util_load_texture_data_from_file(const char* file_path, i32* width, i32* height, u32* num_comps, void** data, bool flip_vertically_on_load) {
-    u64 len = 0;
-    const_str file_data = neko_capi_vfs_read_file(NEKO_PACKS::GAMEDATA, file_path, &len);
-    neko_assert(file_data);
-    bool ret = neko_util_load_texture_data_from_memory(file_data, len, width, height, num_comps, data, flip_vertically_on_load);
-    if (!ret) {
-        console_log("could not load texture: %s", file_path);
-    }
-    mem_free(file_data);
-    return ret;
-}
-
-bool neko_asset_texture_load_from_file(const_str path, void* out, gfx_texture_desc_t* desc, bool flip_on_load, bool keep_data) {
-    neko_asset_texture_t* t = (neko_asset_texture_t*)out;
-
-    memset(&t->desc, 0, sizeof(gfx_texture_desc_t));
-
-    if (desc) {
-        t->desc = *desc;
-    } else {
-        t->desc.format = R_TEXTURE_FORMAT_RGBA8;
-        t->desc.min_filter = R_TEXTURE_FILTER_LINEAR;
-        t->desc.mag_filter = R_TEXTURE_FILTER_LINEAR;
-        t->desc.wrap_s = R_TEXTURE_WRAP_REPEAT;
-        t->desc.wrap_t = R_TEXTURE_WRAP_REPEAT;
-    }
-
-    // Load texture data
-    // neko_image img;
-    // img.load(path);
-    // if (t->desc.flip_y) neko_png_flip_image_horizontal(&img);
-
-    void* tex_data = NULL;
-    i32 w, h;
-    u32 cc;
-    neko_util_load_texture_data_from_file(path, &w, &h, &cc, &tex_data, false);
-    neko_defer(mem_free(tex_data));
-
-    t->desc.data = tex_data;
-    t->desc.width = w;
-    t->desc.height = h;
-
-    if (!t->desc.data) {
-
-        console_log("failed to load texture data %s", path);
-        return false;
-    }
-
-    t->hndl = gfx_texture_create(t->desc);
-
-    if (!keep_data) {
-        // neko_image_free(&img);
-        t->desc.data = NULL;
-    }
-
-    return true;
-}
-
-/*
-bool neko_asset_texture_load_from_file(const char* path, void* out, gfx_texture_desc_t* desc, bool flip_on_load, bool keep_data)
-{
-    size_t len = 0;
-    char* file_data = neko_os_read_file_contents(path, "rb", &len);
-    neko_assert(file_data);
-    bool ret = neko_asset_texture_load_from_memory(file_data, len, out, desc, flip_on_load, keep_data);
-    mem_free(file_data);
-    return ret;
-}
- */
-
-bool neko_asset_texture_load_from_memory(const void* memory, size_t sz, void* out, gfx_texture_desc_t* desc, bool flip_on_load, bool keep_data) {
-    neko_asset_texture_t* t = (neko_asset_texture_t*)out;
-
-    memset(&t->desc, 0, sizeof(gfx_texture_desc_t));
-
-    if (desc) {
-        t->desc = *desc;
-    } else {
-        t->desc.format = R_TEXTURE_FORMAT_RGBA8;
-        t->desc.min_filter = R_TEXTURE_FILTER_LINEAR;
-        t->desc.mag_filter = R_TEXTURE_FILTER_LINEAR;
-        t->desc.wrap_s = R_TEXTURE_WRAP_REPEAT;
-        t->desc.wrap_t = R_TEXTURE_WRAP_REPEAT;
-    }
-
-    // Load texture data
-    i32 num_comps = 0;
-    bool loaded = neko_util_load_texture_data_from_memory(memory, sz, (i32*)&t->desc.width, (i32*)&t->desc.height, (u32*)&num_comps, (void**)&t->desc.data, t->desc.flip_y);
-
-    if (!loaded) {
-        return false;
-    }
-
-    t->hndl = gfx_texture_create(t->desc);
-
-    if (!keep_data) {
-        mem_free(t->desc.data);
-        t->desc.data = NULL;
-    }
-
-    return true;
 }

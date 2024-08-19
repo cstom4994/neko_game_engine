@@ -2,6 +2,7 @@
 #include "engine/tilemap.h"
 
 #include "engine/asset.h"
+#include "engine/camera.h"
 #include "engine/game.h"
 #include "engine/seri.h"
 #include "engine/transform.h"
@@ -613,7 +614,7 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
         void *tex_data = NULL;
         i32 w, h;
         u32 cc;
-        neko_util_load_texture_data_from_file(full_image_path, &w, &h, &cc, &tex_data, false);
+        load_texture_data_from_file(full_image_path, &w, &h, &cc, &tex_data, false);
 
         gfx_texture_desc_t tileset_tex_decl = {
                 .width = (u32)w, .height = (u32)h, .format = R_TEXTURE_FORMAT_RGBA8, .min_filter = R_TEXTURE_FILTER_NEAREST, .mag_filter = R_TEXTURE_FILTER_NEAREST, .num_mips = 0};
@@ -788,14 +789,14 @@ void neko_tiled_unload(map_t *map) {
     xml_free(map->doc);
 }
 
-void neko_tiled_render_init(command_buffer_t *cb, neko_tiled_renderer *renderer, const_str vert_src, const_str frag_src) {
+void neko_tiled_render_init(command_buffer_t *cb, neko_tiled_renderer *renderer) {
 
     PROFILE_FUNC();
 
     gfx_vertex_buffer_desc_t vb_decl = {
             .data = NULL,
             .size = BATCH_SIZE * VERTS_PER_QUAD * FLOATS_PER_VERT * sizeof(f32),
-            .usage = R_BUFFER_USAGE_DYNAMIC,
+            .usage = GL_DYNAMIC_DRAW,
     };
 
     renderer->vb = gfx_vertex_buffer_create(vb_decl);
@@ -803,19 +804,28 @@ void neko_tiled_render_init(command_buffer_t *cb, neko_tiled_renderer *renderer,
     gfx_index_buffer_desc_t ib_decl = {
             .data = NULL,
             .size = BATCH_SIZE * IND_PER_QUAD * sizeof(u32),
-            .usage = R_BUFFER_USAGE_DYNAMIC,
+            .usage = GL_DYNAMIC_DRAW,
     };
 
     renderer->ib = gfx_index_buffer_create(ib_decl);
 
-    if (!vert_src || !frag_src) {
+    String vert_src = {};
+    String frag_src = {};
+
+    bool ok = vfs_read_entire_file(&vert_src, "shader/tiled.vert");
+    neko_defer(mem_free(vert_src.data));
+
+    ok = vfs_read_entire_file(&frag_src, "shader/tiled.frag");
+    neko_defer(mem_free(frag_src.data));
+
+    if (!vert_src.len || !frag_src.len) {
         neko_panic("%s", "Failed to load tiled renderer shaders.");
     }
 
     gfx_uniform_layout_desc_t u_desc_layout = {.type = R_UNIFORM_SAMPLER2D};
 
     gfx_uniform_desc_t u_desc = gfx_uniform_desc_t{
-            .stage = R_SHADER_STAGE_FRAGMENT,
+            .stage = GL_FRAGMENT_SHADER,
             .name = "batch_texture",
             .layout = &u_desc_layout,
     };
@@ -823,14 +833,14 @@ void neko_tiled_render_init(command_buffer_t *cb, neko_tiled_renderer *renderer,
     renderer->u_batch_tex = gfx_uniform_create(u_desc);
 
     gfx_shader_source_desc_t shader_src_des[] = {
-            {.type = R_SHADER_STAGE_VERTEX, .source = vert_src},
-            {.type = R_SHADER_STAGE_FRAGMENT, .source = frag_src},
+            {.type = GL_VERTEX_SHADER, .source = vert_src.cstr()},
+            {.type = GL_FRAGMENT_SHADER, .source = frag_src.cstr()},
     };
 
     renderer->shader = gfx_shader_create(gfx_shader_desc_t{.sources = shader_src_des, .size = 2 * sizeof(gfx_shader_source_desc_t), .name = "tiled_sprite_shader"});
 
-    gfx_uniform_layout_desc_t u_cam_des = {.type = R_UNIFORM_MAT4};
-    renderer->u_camera = gfx_uniform_create(gfx_uniform_desc_t{.name = "tiled_sprite_camera", .layout = &u_cam_des});
+    gfx_uniform_layout_desc_t u_cam_des = {.type = R_UNIFORM_MAT3};
+    renderer->u_camera = gfx_uniform_create(gfx_uniform_desc_t{.name = "inverse_view_matrix", .layout = &u_cam_des});
 
     gfx_vertex_attribute_desc_t vertex_attr_des[] = {
             {.name = "position", .format = R_VERTEX_ATTRIBUTE_FLOAT2},
@@ -842,7 +852,7 @@ void neko_tiled_render_init(command_buffer_t *cb, neko_tiled_renderer *renderer,
             {.name = "use_texture", .format = R_VERTEX_ATTRIBUTE_FLOAT},
     };
 
-    renderer->pip = gfx_pipeline_create(gfx_pipeline_desc_t{.blend = {.func = R_BLEND_EQUATION_ADD, .src = R_BLEND_MODE_SRC_ALPHA, .dst = R_BLEND_MODE_ONE_MINUS_SRC_ALPHA},
+    renderer->pip = gfx_pipeline_create(gfx_pipeline_desc_t{.blend = {.func = GL_FUNC_ADD, .src = GL_SRC_ALPHA, .dst = GL_ONE_MINUS_SRC_ALPHA},
                                                             .raster = {.shader = renderer->shader, .index_buffer_element_size = sizeof(uint32_t)},
                                                             .layout = {.attrs = vertex_attr_des, .size = 4 * sizeof(gfx_vertex_attribute_desc_t)}});
 }
@@ -886,7 +896,7 @@ void neko_tiled_render_flush(command_buffer_t *cb, neko_tiled_renderer *renderer
     gfx_bind_vertex_buffer_desc_t vb_des = {.buffer = renderer->vb};
     gfx_bind_index_buffer_desc_t ib_des = {.buffer = renderer->ib};
 
-    gfx_bind_image_buffer_desc_t imgb_des = {renderer->batch_texture, 0, R_ACCESS_READ_ONLY};
+    gfx_bind_image_buffer_desc_t imgb_des = {renderer->batch_texture, 0, GL_READ_ONLY};
 
     // clang-format off
 
@@ -1005,13 +1015,13 @@ void neko_tiled_render_draw(command_buffer_t *cb, neko_tiled_renderer *renderer)
             gfx_vertex_buffer_request_update(cb, renderer->vb,
                                              gfx_vertex_buffer_desc_t{.data = verts,
                                                                       .size = VERTS_PER_QUAD * FLOATS_PER_VERT * sizeof(f32),
-                                                                      .usage = R_BUFFER_USAGE_DYNAMIC,
+                                                                      .usage = GL_DYNAMIC_DRAW,
                                                                       .update = {.type = R_BUFFER_UPDATE_SUBDATA, .offset = renderer->quad_count * VERTS_PER_QUAD * FLOATS_PER_VERT * sizeof(f32)}});
 
             gfx_index_buffer_request_update(cb, renderer->ib,
                                             gfx_index_buffer_desc_t{.data = indices,
                                                                     .size = IND_PER_QUAD * sizeof(u32),
-                                                                    .usage = R_BUFFER_USAGE_DYNAMIC,
+                                                                    .usage = GL_DYNAMIC_DRAW,
                                                                     .update = {.type = R_BUFFER_UPDATE_SUBDATA, .offset = renderer->quad_count * IND_PER_QUAD * sizeof(u32)}});
 
             renderer->quad_count++;
@@ -1050,7 +1060,8 @@ int tiled_render(command_buffer_t *cb, Tiled *tiled) {
     f32 t = 0.f;
     f32 b = g_app->height;
 
-    tiled->render->camera_mat = mat4_ortho(l, r, b, t, -1.0f, 1.0f);
+    // tiled->render->camera_mat = mat4_ortho(l, r, b, t, -1.0f, 1.0f);
+    tiled->render->camera_mat = camera_get_inverse_view_matrix();
 
     // gfx_renderpass_begin(cb, rp);
     {
@@ -1119,55 +1130,6 @@ int tiled_render(command_buffer_t *cb, Tiled *tiled) {
     return 0;
 }
 
-const_str sprite_vs = R"(
-#version 330
-
-layout (location = 0) in vec2 position;
-layout (location = 1) in vec2 uv;
-layout (location = 2) in vec4 color;
-layout (location = 3) in float use_texture;
-
-uniform mat4 tiled_sprite_camera;
-
-out VS_OUT {
-	vec4 color;
-	vec2 uv;
-	float use_texture;
-} vs_out;
-
-void main() {
-	vs_out.color = color;
-	vs_out.uv = uv;
-	vs_out.use_texture = use_texture;
-
-	gl_Position = tiled_sprite_camera * vec4(position, 0.0, 1.0);
-}
-)";
-
-const_str sprite_fs = R"(
-#version 330
-
-out vec4 color;
-
-in VS_OUT {
-    vec4 color;
-    vec2 uv;
-    float use_texture;
-} fs_in;
-
-uniform sampler2D batch_texture;
-
-void main() {
-    vec4 texture_color = vec4(1.0);
-
-    if (fs_in.use_texture == 1.0) {
-        texture_color = texture(batch_texture,  fs_in.uv);
-    }
-
-    color = fs_in.color * texture_color;
-}
-)";
-
 void tiled_add(Entity ent) {
     Tiled *tiled;
 
@@ -1181,7 +1143,7 @@ void tiled_add(Entity ent) {
     memset(tiled->render, 0, sizeof(neko_tiled_renderer));
 
     neko_tiled_load(&tiled->render->map, "assets/maps/map.tmx", NULL);
-    neko_tiled_render_init(&g_app->cb, tiled->render, sprite_vs, sprite_fs);
+    neko_tiled_render_init(&g_app->cb, tiled->render);
 }
 
 void tiled_remove(Entity ent) { entitypool_remove(pool, ent); }

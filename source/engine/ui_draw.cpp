@@ -83,10 +83,10 @@ ui_style_t ui_get_current_element_style(ui_context_t* ctx, const ui_selector_des
     do {                                                                 \
         switch ((SE)->type) {                                            \
             case UI_STYLE_WIDTH:                                         \
-                style.size[0] = (float)(SE)->value;                      \
+                style.size.x = (float)(SE)->value;                       \
                 break;                                                   \
             case UI_STYLE_HEIGHT:                                        \
-                style.size[1] = (float)(SE)->value;                      \
+                style.size.y = (float)(SE)->value;                       \
                 break;                                                   \
                                                                          \
             case UI_STYLE_PADDING: {                                     \
@@ -391,10 +391,10 @@ ui_style_t ui_animation_get_blend_style(ui_context_t* ctx, ui_animation_t* anim,
                     UI_BLEND_COLOR(UI_COLOR_CONTENT_BORDER);                                                                                           \
                 } break;                                                                                                                               \
                 case UI_STYLE_WIDTH: {                                                                                                                 \
-                    UI_BLEND_VALUE(size[0], float);                                                                                                    \
+                    UI_BLEND_VALUE(size.x, float);                                                                                                     \
                 } break;                                                                                                                               \
                 case UI_STYLE_HEIGHT: {                                                                                                                \
-                    UI_BLEND_VALUE(size[1], float);                                                                                                    \
+                    UI_BLEND_VALUE(size.y, float);                                                                                                     \
                 } break;                                                                                                                               \
                 case UI_STYLE_BORDER_WIDTH: {                                                                                                          \
                     UI_BLEND_VALUE(border_width[0], i16);                                                                                              \
@@ -1137,7 +1137,7 @@ void ui_pop_container(ui_context_t* ctx) {
                                            : ui_get_current_element_style(ctx, desc, elementid, 0x00);                                      \
             }                                                                                                                               \
                                                                                                                                             \
-            i32 sz = (i32)style.size[0];                                                                                                    \
+            i32 sz = (i32)style.size.x;                                                                                                     \
             if (cs.y > cnt->body.h) {                                                                                                       \
                 body->w -= sz;                                                                                                              \
             }                                                                                                                               \
@@ -1148,7 +1148,7 @@ void ui_pop_container(ui_context_t* ctx) {
             /* get sizing / positioning */                                                                                                  \
             base = *b;                                                                                                                      \
             base.x = b->x + b->w;                                                                                                           \
-            base.w = style.size[0];                                                                                                         \
+            base.w = style.size.x;                                                                                                          \
                                                                                                                                             \
             /* handle input */                                                                                                              \
             ui_update_control(ctx, id, base, 0);                                                                                            \
@@ -1191,7 +1191,7 @@ void ui_pop_container(ui_context_t* ctx) {
     } while (0)
 
 static void ui_scrollbars(ui_context_t* ctx, ui_container_t* cnt, ui_rect_t* body, const ui_selector_desc_t* desc, u64 opt) {
-    i32 sz = (i32)ctx->style_sheet->styles[UI_ELEMENT_SCROLL][0x00].size[0];
+    i32 sz = (i32)ctx->style_sheet->styles[UI_ELEMENT_SCROLL][0x00].size.x;
     vec2 cs = cnt->content_size;
     cs.x += ctx->style->padding[UI_PADDING_LEFT] * 2;
     cs.y += ctx->style->padding[UI_PADDING_TOP] * 2;
@@ -1399,10 +1399,10 @@ void ui_style_sheet_set_element_styles(ui_style_sheet_t* ss, ui_element_type ele
             switch (se->type) {
                 // Width/Height
                 case UI_STYLE_WIDTH:
-                    cs->size[0] = (float)se->value;
+                    cs->size.x = (float)se->value;
                     break;
                 case UI_STYLE_HEIGHT:
-                    cs->size[1] = (float)se->value;
+                    cs->size.y = (float)se->value;
                     break;
 
                 // Padding
@@ -1567,10 +1567,10 @@ void ui_set_element_style(ui_context_t* ctx, ui_element_type element, ui_element
             switch (se->type) {
                 // Width/Height
                 case UI_STYLE_WIDTH:
-                    cs->size[0] = (float)se->value;
+                    cs->size.x = (float)se->value;
                     break;
                 case UI_STYLE_HEIGHT:
-                    cs->size[1] = (float)se->value;
+                    cs->size.y = (float)se->value;
                     break;
 
                 // Padding
@@ -2260,8 +2260,8 @@ void ui_undock_ex_cnt(ui_context_t* ctx, ui_container_t* cnt) {
 static void ui_init_default_styles(ui_context_t* ctx) {
     // Set up main default style
     ui_default_style.font = neko_default_font();
-    ui_default_style.size[0] = 68.f;
-    ui_default_style.size[1] = 18.f;
+    ui_default_style.size.x = 68.f;
+    ui_default_style.size.y = 18.f;
     ui_default_style.spacing = 2;
     ui_default_style.indent = 10;
     ui_default_style.title_height = 20;
@@ -2293,14 +2293,14 @@ static void ui_init_default_styles(ui_context_t* ctx) {
     for (u32 i = 0; i < 3; ++i) {
         style = &ui_default_panel_style[i];
         style->colors[UI_COLOR_BACKGROUND] = color256(30, 30, 30, 160);
-        style->size[1] = 19;
+        style->size.y = 19;
     }
 
     // input
     for (u32 i = 0; i < 3; ++i) {
         style = &ui_default_input_style[i];
         style->colors[UI_COLOR_BACKGROUND] = color256(20, 20, 20, 255);
-        style->size[1] = 19;
+        style->size.y = 19;
     }
 
     // text
@@ -2315,13 +2315,13 @@ static void ui_init_default_styles(ui_context_t* ctx) {
         style = &ui_default_label_style[i];
         style->colors[UI_COLOR_BACKGROUND] = color256(0, 0, 0, 0);
         style->colors[UI_COLOR_CONTENT] = NEKO_COLOR_WHITE;
-        style->size[1] = 19;
+        style->size.y = 19;
     }
 
     // scroll
     for (u32 i = 0; i < 3; ++i) {
         style = &ui_default_scroll_style[i];
-        style->size[0] = 10;
+        style->size.x = 10;
         style->padding[UI_PADDING_RIGHT] = 4;
     }
 
@@ -3538,6 +3538,8 @@ ui_id ui_get_id_hash(ui_context_t* ctx, const void* data, i32 size, ui_id hash) 
     return res;
 }
 
+void ui_push_id(ui_context_t* ctx, String str) { ui_push_id(ctx, str.data,str.len); }
+
 void ui_push_id(ui_context_t* ctx, const void* data, i32 size) { ui_stack_push(ctx->id_stack, ui_get_id(ctx, data, size)); }
 
 void ui_pop_id(ui_context_t* ctx) { ui_stack_pop(ctx->id_stack); }
@@ -4249,10 +4251,10 @@ ui_rect_t ui_layout_peek_next(ui_context_t* ctx) {
 
         // default fallbacks
         if (res.w == 0) {
-            res.w = style->size[0];
+            res.w = style->size.x;
         }
         if (res.h == 0) {
-            res.h = style->size[1];
+            res.h = style->size.y;
         }
 
         if (res.w < 0) {
@@ -4318,10 +4320,10 @@ ui_rect_t ui_layout_next(ui_context_t* ctx) {
 
         // default fallbacks
         if (res.w == 0) {
-            res.w = style->size[0];
+            res.w = style->size.x;
         }
         if (res.h == 0) {
-            res.h = style->size[1];
+            res.h = style->size.y;
         }
 
         // Not sure about this... should probably iterate through the rest, figure out what's left, then

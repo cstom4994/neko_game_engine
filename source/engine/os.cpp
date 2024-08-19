@@ -648,7 +648,7 @@ void neko_log(const char* file, int line, const char* fmt, ...) {
 
     init_event(&ev, stderr);
     va_start(ev.ap, fmt);
-    fprintf(ev.udata, "%s:%d: ", neko_util_get_filename(ev.file), ev.line);
+    // fprintf(ev.udata, "%s:%d: ", neko_util_get_filename(ev.file), ev.line);
     vfprintf(ev.udata, ev.fmt, ev.ap);
     fprintf(ev.udata, "\n");
     fflush(ev.udata);

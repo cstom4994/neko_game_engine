@@ -8,7 +8,7 @@
 #include <GLFW/glfw3.h>
 #include <stdio.h>
 
-static const char* neko_opengl_string(GLenum e) {
+static const char* opengl_string(GLenum e) {
 
 #define XX(x)      \
     case x:        \

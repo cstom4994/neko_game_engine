@@ -208,7 +208,7 @@ i32 ui_combo_begin_ex(ui_context_t* ctx, const char* id, const char* current_ite
     i32 ct = max_items > 0 ? max_items : 0;
     ui_rect_t rect = ctx->last_rect;
     rect.y += rect.h;
-    rect.h = ct ? (ct + 1) * ctx->style_sheet->styles[UI_ELEMENT_BUTTON][0x00].size[1] : rect.h;
+    rect.h = ct ? (ct + 1) * ctx->style_sheet->styles[UI_ELEMENT_BUTTON][0x00].size.y : rect.h;
     return ui_popup_begin_ex(ctx, id, rect, NULL, opt);
 }
 
@@ -1827,8 +1827,8 @@ i32 ui_style_editor(ui_context_t* ctx, ui_style_sheet_t* style_sheet, ui_rect_t 
                             }
 
                             ui_label(ctx, "size:");
-                            ui_slider(ctx, &s->size[0], 0.f, 500.f);
-                            ui_slider(ctx, &s->size[1], 0.f, 500.f);
+                            ui_slider(ctx, &s->size.x, 0.f, 500.f);
+                            ui_slider(ctx, &s->size.y, 0.f, 500.f);
 
                             w = (i32)((l->body.w - ls) * 0.2f);
 

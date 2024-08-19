@@ -538,7 +538,7 @@ void render_uniform_variable(GLuint program, GLenum type, const char *name, GLin
         } break;
 
         default:
-            ui_labelf("%s has type %s, which isn't supported yet!", name, neko_opengl_string(type));
+            ui_labelf("%s has type %s, which isn't supported yet!", name, opengl_string(type));
             break;
     }
 }
@@ -605,7 +605,7 @@ void inspect_shader(const char *label, GLuint program) {
                     GLint type = 0;
                     glGetShaderiv(shader, GL_SHADER_TYPE, &type);
 
-                    auto string_type = neko_opengl_string(type);
+                    auto string_type = opengl_string(type);
                     // ImGui::PushID(string_type);
                     if (ui_header(ui, string_type)) {
                         ui_text(ui, source.data());
@@ -695,7 +695,7 @@ void inspect_vertex_array(const char *label, GLuint vao) {
 
                 GLint type = 0;
                 glGetVertexAttribiv(i, GL_VERTEX_ATTRIB_ARRAY_TYPE, &type);
-                ui_labelf("Type: %s", neko_opengl_string(type));
+                ui_labelf("Type: %s", opengl_string(type));
 
                 GLint dimensions = 0;
                 glGetVertexAttribiv(i, GL_VERTEX_ATTRIB_ARRAY_SIZE, &dimensions);
@@ -718,7 +718,7 @@ void inspect_vertex_array(const char *label, GLuint vao) {
 
                 GLint usage = 0;
                 glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_USAGE, &usage);
-                ui_labelf("Usage: %s", neko_opengl_string(usage));
+                ui_labelf("Usage: %s", opengl_string(usage));
 
                 // 创建包含索引和实际内容的表
                 if (ui_header(ui, "Buffer Contents")) {

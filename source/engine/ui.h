@@ -588,7 +588,7 @@ typedef struct ui_style_t {
     FontFamily* font;
 
     // dimensions
-    float size[2];
+    vec2 size;
     i16 spacing;         // get rid of    (use padding)
     i16 indent;          // get rid of    (use margin)
     i16 title_height;    // get rid of    (use title_bar style)
@@ -1007,6 +1007,7 @@ void ui_pop_container(ui_context_t* ctx);
 void ui_set_focus(ui_context_t* ctx, ui_id id);
 void ui_set_hover(ui_context_t* ctx, ui_id id);
 ui_id ui_get_id(ui_context_t* ctx, const void* data, i32 size);
+void ui_push_id(ui_context_t* ctx, String str);
 void ui_push_id(ui_context_t* ctx, const void* data, i32 size);
 void ui_pop_id(ui_context_t* ctx);
 void ui_push_clip_rect(ui_context_t* ctx, ui_rect_t rect);
@@ -1176,6 +1177,7 @@ void ui_undock_ex_cnt(ui_context_t* ctx, ui_container_t* cnt);
 int open_ui(lua_State* L);
 int open_mt_ui_container(lua_State* L);
 int open_mt_ui_ref(lua_State* L);
+int open_mt_ui_style(lua_State *L);
 
 enum MUIRefKind : i32 {
     MUIRefKind_Nil,

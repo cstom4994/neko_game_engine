@@ -434,6 +434,14 @@ LUASTRUCT_BEGIN(neko_framebuffer_t)
 LUASTRUCT_FIELD(id, uint)
 LUASTRUCT_END
 
+LUASTRUCT_BEGIN(neko_texture_t)
+LUASTRUCT_FIELD(id, uint)
+LUASTRUCT_END
+
+LUASTRUCT_BEGIN(neko_renderpass_t)
+LUASTRUCT_FIELD(id, uint)
+LUASTRUCT_END
+
 // LUASTRUCT_BEGIN(Color)
 // LUASTRUCT_FIELD(r, u8)
 // LUASTRUCT_FIELD(g, u8)
@@ -453,6 +461,8 @@ void createStructTables(lua_State *L) {
     XX(neko_uniform_t);
     XX(neko_storage_buffer_t);
     XX(neko_framebuffer_t);
+    XX(neko_texture_t);
+    XX(neko_renderpass_t);
 
     ARRAY_uchar8_create(L);
 #undef XX

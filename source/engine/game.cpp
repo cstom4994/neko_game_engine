@@ -189,16 +189,6 @@ static void _game_init() {
     glewInit();
     glGetError();  // see http://www.opengl.org/wiki/OpenGL_Loading_Library
 
-    console_log("opengl vendor:   %s", glGetString(GL_VENDOR));
-    console_log("opengl renderer: %s", glGetString(GL_RENDERER));
-    console_log("opengl version:  %s", glGetString(GL_VERSION));
-
-    GLint max_texture_size;
-    glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_texture_size);
-    console_log("opengl maximum texture size: %d", max_texture_size);
-
-    if (max_texture_size < 2048) console_log("opengl maximum texture too small");
-
     // some GL settings
     glEnable(GL_PROGRAM_POINT_SIZE);
     glEnable(GL_BLEND);
@@ -399,11 +389,11 @@ static void _game_draw() {
             draw_gui();
         }
 
+        script_draw_all();
+
         // Set up 2D camera for projection matrix
         neko_idraw_defaults(&g_app->idraw);
         neko_idraw_camera2d(&g_app->idraw, (u32)g_app->width, (u32)g_app->height);
-
-        script_draw_all();
 
         // 底层图片
         char background_text[64] = "Project: unknown";

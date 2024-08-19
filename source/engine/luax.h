@@ -216,6 +216,7 @@ i32 luax_require_script(lua_State *L, String filepath);
 
 void luax_stack_dump(lua_State *L);
 
+void luax_get(lua_State *L, const_str tb, const_str field);
 void luax_pcall(lua_State *L, i32 args, i32 results);
 
 // get field in neko namespace

@@ -302,10 +302,10 @@ int vfs_lua_loader(lua_State *L) {
         if (ok) {
             neko_defer(mem_free(contents.data));
             if (luaL_loadbuffer(L, contents.data, contents.len, name) != LUA_OK) {
-                lua_pushfstring(L, "[lua] error loading module \"%s\"", name);
+                lua_pushfstring(L, "vfs_lua_loader error loading module \"%s\"", name);
                 lua_pop(L, 1);
             } else {
-                console_log("[lua] loaded : \"%s\"", path.c_str());
+                console_log("vfs_lua_loader loaded : \"%s\"", path.c_str());
             }
             return 1;
         }
@@ -319,10 +319,10 @@ int vfs_lua_loader(lua_State *L) {
         if (ok) {
             neko_defer(mem_free(contents.data));
             if (luaL_loadbuffer(L, contents.data, contents.len, name) != LUA_OK) {
-                lua_pushfstring(L, "[lua] error loading module \"%s\"", name);
+                lua_pushfstring(L, "vfs_lua_loader error loading module \"%s\"", name);
                 lua_pop(L, 1);
             } else {
-                console_log("[lua] loaded : \"%s\"", path.c_str());
+                console_log("vfs_lua_loader loaded : \"%s\"", path.c_str());
             }
             return 1;
         }
@@ -344,7 +344,7 @@ int vfs_lua_loader(lua_State *L) {
     }
 #endif
 
-    // lua_pushfstring(L, "[lua] module \"%s\" not found", name);
+    // lua_pushfstring(L, "vfs_lua_loader module \"%s\" not found", name);
     return 0;
 }
 
@@ -434,8 +434,14 @@ void luax_stack_dump(lua_State *L) {
     }
 }
 
+void luax_get(lua_State *L, const_str tb, const_str field) {
+    lua_getglobal(L, tb);
+    lua_getfield(L, -1, field);
+    lua_remove(L, -2);
+}
+
 void luax_pcall(lua_State *L, i32 args, i32 results) {
-    if (lua_pcall(L, args, results, 0) != LUA_OK) {
+    if (lua_pcall(L, args, results, 1) != LUA_OK) {
         lua_pop(L, 1);
     }
 }

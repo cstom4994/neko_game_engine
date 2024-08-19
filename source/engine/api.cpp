@@ -4,6 +4,7 @@
 
 #include "engine/asset.h"
 #include "engine/base.h"
+#include "engine/camera.h"
 #include "engine/draw.h"
 #include "engine/ecs.h"
 #include "engine/game.h"
@@ -1769,15 +1770,15 @@ LUA_FUNCTION(__neko_bind_aseprite_gc) {
 
 LUA_FUNCTION(__neko_bind_tiled_create) {
     const_str map_path = lua_tostring(L, 1);
-    const_str glsl_vs_src = lua_tostring(L, 2);
-    const_str glsl_fs_src = lua_tostring(L, 3);
+    // const_str glsl_vs_src = lua_tostring(L, 2);
+    // const_str glsl_fs_src = lua_tostring(L, 3);
 
     neko_tiled_renderer *user_handle = (neko_tiled_renderer *)lua_newuserdata(L, sizeof(neko_tiled_renderer));
     memset(user_handle, 0, sizeof(neko_tiled_renderer));
 
     neko_tiled_load(&(user_handle->map), map_path, NULL);
 
-    neko_tiled_render_init(&g_app->cb, user_handle, glsl_vs_src, glsl_fs_src);
+    neko_tiled_render_init(&g_app->cb, user_handle);
 
     return 1;
 }
@@ -1799,7 +1800,8 @@ LUA_FUNCTION(__neko_bind_tiled_render) {
     f32 t = lua_tonumber(L, 6);
     f32 b = lua_tonumber(L, 7);
 
-    tiled_render->camera_mat = mat4_ortho(l, r, b, t, -1.0f, 1.0f);
+    // tiled_render->camera_mat = mat4_ortho(l, r, b, t, -1.0f, 1.0f);
+    tiled_render->camera_mat = camera_get_inverse_view_matrix();
 
     command_buffer_t *cb = &g_app->cb;
 
@@ -2720,17 +2722,18 @@ LUA_FUNCTION(__neko_bind_render_shader_create) {
 
     gfx_shader_source_desc_t *sources = (gfx_shader_source_desc_t *)mem_alloc(n * sizeof(gfx_shader_source_desc_t));
 
-    const_str shader_type[] = {"VERTEX", "FRAGMENT", "COMPUTE"};
+    const_str shader_type_str[] = {"VERTEX", "FRAGMENT", "COMPUTE"};
+    u32 shader_type_enum[] = {GL_VERTEX_SHADER, GL_FRAGMENT_SHADER, GL_COMPUTE_SHADER};
 
     int j = 0;
 
     for (int i = 0; i < 3; i++) {
-        lua_pushstring(L, shader_type[i]);  // # -1
-        lua_gettable(L, -2);                // pop # -1
+        lua_pushstring(L, shader_type_str[i]);  // # -1
+        lua_gettable(L, -2);                    // pop # -1
         if (!lua_isnil(L, -1)) {
             const_str src = lua_tostring(L, -1);  // # -1
             if (src != NULL) {
-                sources[j++] = gfx_shader_source_desc_t{.type = (gfx_shader_stage_type)(i + 1), .source = src};
+                sources[j++] = gfx_shader_source_desc_t{.type = shader_type_enum[i], .source = src};
             }
         }
         lua_pop(L, 1);  // # -1
@@ -2807,7 +2810,8 @@ LUA_FUNCTION(__neko_bind_render_uniform_create) {
     }
 
     if (lua_gettop(L) == 3) {
-        neko_luabind_to(L, gfx_shader_stage_type, &u_desc.stage, 3);
+        // neko_luabind_to(L, gfx_shader_stage_type, &u_desc.stage, 3);
+        u_desc.stage = lua_tointeger(L, 3);
     }
 
     neko_uniform_t uniform_handle = NEKO_DEFAULT_VAL();
@@ -2989,7 +2993,7 @@ LUA_FUNCTION(__neko_bind_render_storage_buffer_create) {
 
     neko_storage_buffer_t storage_buffer_handle = NEKO_DEFAULT_VAL();
 
-    gfx_storage_buffer_desc_t storage_buffer_desc = {.data = data, .size = data_size, .name = "unknown", .usage = R_BUFFER_USAGE_DYNAMIC};
+    gfx_storage_buffer_desc_t storage_buffer_desc = {.data = data, .size = data_size, .name = "unknown", .usage = GL_DYNAMIC_DRAW};
 
     if (storage_buffer_name != NULL) {
         NEKO_STR_CPY(storage_buffer_desc.name, storage_buffer_name);
@@ -3106,7 +3110,7 @@ LUA_FUNCTION(__neko_bind_render_apply_bindings) {
                             neko_assert(false);
                         lua_pop(L, 1);  // # -1
 
-                        ib_desc[i - 1].access = R_ACCESS_WRITE_ONLY;
+                        ib_desc[i - 1].access = GL_WRITE_ONLY;
 
                         lua_pushstring(L, "binding");  // # -1
                         lua_gettable(L, -2);           // pop # -1
@@ -3249,8 +3253,8 @@ LUA_FUNCTION(__neko_bind_render_texture_create) {
             .width = w,                             // 纹理的宽度
             .height = h,                            // 纹理的高度
             .format = R_TEXTURE_FORMAT_RGBA8,       // 纹理数据的格式
-            .wrap_s = R_TEXTURE_WRAP_REPEAT,        // 纹理 s 轴的包裹类型
-            .wrap_t = R_TEXTURE_WRAP_REPEAT,        // 纹理 t 轴的包裹类型
+            .wrap_s = GL_REPEAT,                    // 纹理 s 轴的包裹类型
+            .wrap_t = GL_REPEAT,                    // 纹理 t 轴的包裹类型
             .min_filter = R_TEXTURE_FILTER_LINEAR,  // 纹理缩小过滤器
             .mag_filter = R_TEXTURE_FILTER_LINEAR   // 纹理放大滤镜
     };
@@ -3275,14 +3279,16 @@ LUA_FUNCTION(__neko_bind_render_texture_create) {
             lua_pushstring(L, "wrap_s");  // # -1
             lua_gettable(L, -2);          // pop # -1
             if (!lua_isnil(L, -1)) {
-                neko_luabind_to(L, gfx_texture_wrapping_type, &texture_desc.wrap_s, -1);
+                // neko_luabind_to(L, gfx_texture_wrapping_type, &texture_desc.wrap_s, -1);
+                texture_desc.wrap_s = lua_tointeger(L, -1);
             }
             lua_pop(L, 1);  // # -1
 
             lua_pushstring(L, "wrap_t");  // # -1
             lua_gettable(L, -2);          // pop # -1
             if (!lua_isnil(L, -1)) {
-                neko_luabind_to(L, gfx_texture_wrapping_type, &texture_desc.wrap_t, -1);
+                // neko_luabind_to(L, gfx_texture_wrapping_type, &texture_desc.wrap_t, -1);
+                texture_desc.wrap_t = lua_tointeger(L, -1);
             }
             lua_pop(L, 1);  // # -1
 
@@ -3351,6 +3357,12 @@ LUA_FUNCTION(__neko_bind_render_renderpass_fini) {
     rp = *CHECK_STRUCT(L, 1, neko_renderpass_t);
     gfx_renderpass_fini(rp);
     return 0;
+}
+
+LUA_FUNCTION(__neko_bind_render_renderpass_default) {
+    neko_renderpass_t rp = NEKO_DEFAULT_VAL();
+    PUSH_STRUCT(L, neko_renderpass_t, rp);
+    return 1;
 }
 
 LUA_FUNCTION(__neko_bind_render_renderpass_begin) {
@@ -3517,16 +3529,16 @@ static int open_enum(lua_State *L) {
     neko_lua_enum_value(L, gfx_vertex_attribute_type, R_VERTEX_ATTRIBUTE_BYTE2);
     neko_lua_enum_value(L, gfx_vertex_attribute_type, R_VERTEX_ATTRIBUTE_BYTE);
 
-    neko_lua_enum(L, gfx_shader_stage_type);
-    neko_lua_enum_value(L, gfx_shader_stage_type, R_SHADER_STAGE_VERTEX);
-    neko_lua_enum_value(L, gfx_shader_stage_type, R_SHADER_STAGE_FRAGMENT);
-    neko_lua_enum_value(L, gfx_shader_stage_type, R_SHADER_STAGE_COMPUTE);
+    // neko_lua_enum(L, gfx_shader_stage_type);
+    // neko_lua_enum_value(L, gfx_shader_stage_type, R_SHADER_STAGE_VERTEX);
+    // neko_lua_enum_value(L, gfx_shader_stage_type, R_SHADER_STAGE_FRAGMENT);
+    // neko_lua_enum_value(L, gfx_shader_stage_type, R_SHADER_STAGE_COMPUTE);
 
-    neko_lua_enum(L, gfx_texture_wrapping_type);
-    neko_lua_enum_value(L, gfx_texture_wrapping_type, R_TEXTURE_WRAP_REPEAT);
-    neko_lua_enum_value(L, gfx_texture_wrapping_type, R_TEXTURE_WRAP_MIRRORED_REPEAT);
-    neko_lua_enum_value(L, gfx_texture_wrapping_type, R_TEXTURE_WRAP_CLAMP_TO_EDGE);
-    neko_lua_enum_value(L, gfx_texture_wrapping_type, R_TEXTURE_WRAP_CLAMP_TO_BORDER);
+    // neko_lua_enum(L, gfx_texture_wrapping_type);
+    // neko_lua_enum_value(L, gfx_texture_wrapping_type, GL_REPEAT);
+    // neko_lua_enum_value(L, gfx_texture_wrapping_type, GL_MIRRORED_REPEAT);
+    // neko_lua_enum_value(L, gfx_texture_wrapping_type, GL_CLAMP_TO_EDGE);
+    // neko_lua_enum_value(L, gfx_texture_wrapping_type, GL_CLAMP_TO_BORDER);
 
     neko_lua_enum(L, gfx_texture_filtering_type);
     neko_lua_enum_value(L, gfx_texture_filtering_type, R_TEXTURE_FILTER_NEAREST);
@@ -3556,6 +3568,7 @@ static int open_enum(lua_State *L) {
     neko_lua_enum_value(L, gfx_uniform_type, R_UNIFORM_VEC2);
     neko_lua_enum_value(L, gfx_uniform_type, R_UNIFORM_VEC3);
     neko_lua_enum_value(L, gfx_uniform_type, R_UNIFORM_VEC4);
+    neko_lua_enum_value(L, gfx_uniform_type, R_UNIFORM_MAT3);
     neko_lua_enum_value(L, gfx_uniform_type, R_UNIFORM_MAT4);
     neko_lua_enum_value(L, gfx_uniform_type, R_UNIFORM_SAMPLER2D);
     neko_lua_enum_value(L, gfx_uniform_type, R_UNIFORM_USAMPLER2D);
@@ -3693,7 +3706,7 @@ LUA_FUNCTION(__neko_bind_print) {
         str.append(std::string(s, l));
         lua_pop(L, 1);
     }
-    console_log("[lua] %s", str.c_str());
+    console_log("LUA: %s", str.c_str());
     return 0;
 }
 
@@ -3939,9 +3952,6 @@ LUA_FUNCTION(__neko_bind_ecs_f) {
     return 1;
 }
 
-int lua_csb_core(lua_State *L);
-int lua_csb(lua_State *L);
-
 void createStructTables(lua_State *L);
 
 static neko_luaref getLr(lua_State *L) {
@@ -4162,9 +4172,6 @@ static int open_embed_core(lua_State *L) {
 
             {"nameof", __neko_bind_nameof},
 
-            {"csb_core", lua_csb_core},
-            {"csb", lua_csb},
-
             {"tiled_create", __neko_bind_tiled_create},
             {"tiled_render", __neko_bind_tiled_render},
             {"tiled_end", __neko_bind_tiled_end},
@@ -4223,6 +4230,7 @@ static int open_embed_core(lua_State *L) {
             {"render_framebuffer_fini", __neko_bind_render_framebuffer_fini},
             {"render_texture_create", __neko_bind_render_texture_create},
             {"render_texture_fini", __neko_bind_render_texture_fini},
+            {"render_renderpass_default", __neko_bind_render_renderpass_default},
             {"render_renderpass_create", __neko_bind_render_renderpass_create},
             {"render_renderpass_fini", __neko_bind_render_renderpass_fini},
             {"render_renderpass_begin", __neko_bind_render_renderpass_begin},
@@ -4513,7 +4521,7 @@ static int open_neko(lua_State *L) {
 #ifdef NEKO_BOX2D
             {"b2_world", neko_b2_world},
 #endif
-            // {"ecs_create", neko_ecs_create_world},
+            {"ecs_create", l_ecs_create_world},
 
             {nullptr, nullptr},
     };
@@ -4542,7 +4550,7 @@ void open_neko_api(lua_State *L) {
         open_mt_b2_world,
 #endif
         open_mt_ui_container,
-        // open_mt_lui_style,
+        open_mt_ui_style,
         open_mt_ui_ref,
 
         open_enum,

@@ -33,9 +33,6 @@ void gfx_free_program(GLuint program);
 // NEKO_GRAPHICS
 =============================*/
 
-const_str __neko_gl_error_string(GLenum const err);
-const_str neko_opengl_string(GLenum e);
-
 #define neko_check_gl_error() gfx_print_error(__FILE__, __LINE__)
 void gfx_print_error(const char* file, u32 line);
 
@@ -114,49 +111,14 @@ void gfx_print_error(const char* file, u32 line);
 
 // Graphics Pipeline
 
-// Main graphics resources:
-// Shader description: vertex, fragment, compute, geometry, tesselation
-// Texture Description: texture, depth, render target
-// Buffer Description: vertex, index, uniform, frame, pixel
-// Pipeline Description: vert-layout, shader, bindables, render states
-// Pass Description: render pass, action on render targets (clear, set viewport, etc.)
-
-// Useful macro for forcing enum decl to be u32 type with default = 0x00 for quick init
 #define neko_enum_decl(NAME, ...) typedef enum NAME { _neko_##NAME##_default = 0x0, __VA_ARGS__, _neko_##NAME##_count, _neko_##NAME##_force_u32 = 0x7fffffff } NAME;
-
-#define neko_enum_count(NAME) _neko_##NAME##_count
-
-// Shader Stage Type
-neko_enum_decl(gfx_shader_stage_type, R_SHADER_STAGE_VERTEX, R_SHADER_STAGE_FRAGMENT, R_SHADER_STAGE_COMPUTE);
 
 // Winding Order Type
 neko_enum_decl(gfx_winding_order_type, R_WINDING_ORDER_CW, R_WINDING_ORDER_CCW);
 
-// Face Culling Type
-neko_enum_decl(gfx_face_culling_type, R_FACE_CULLING_FRONT, R_FACE_CULLING_BACK, R_FACE_CULLING_FRONT_AND_BACK);
-
-// Blend Equation Type
-neko_enum_decl(gfx_blend_equation_type, R_BLEND_EQUATION_ADD, R_BLEND_EQUATION_SUBTRACT, R_BLEND_EQUATION_REVERSE_SUBTRACT, R_BLEND_EQUATION_MIN, R_BLEND_EQUATION_MAX);
-
-// Blend Mode Type
-neko_enum_decl(gfx_blend_mode_type, R_BLEND_MODE_ZERO, R_BLEND_MODE_ONE, R_BLEND_MODE_SRC_COLOR, R_BLEND_MODE_ONE_MINUS_SRC_COLOR, R_BLEND_MODE_DST_COLOR, R_BLEND_MODE_ONE_MINUS_DST_COLOR,
-               R_BLEND_MODE_SRC_ALPHA, R_BLEND_MODE_ONE_MINUS_SRC_ALPHA, R_BLEND_MODE_DST_ALPHA, R_BLEND_MODE_ONE_MINUS_DST_ALPHA, R_BLEND_MODE_CONSTANT_COLOR, R_BLEND_MODE_ONE_MINUS_CONSTANT_COLOR,
-               R_BLEND_MODE_CONSTANT_ALPHA, R_BLEND_MODE_ONE_MINUS_CONSTANT_ALPHA);
-
-// Shader Language Type
-neko_enum_decl(gfx_shader_language_type, R_SHADER_LANGUAGE_GLSL);
-
-// Push Constant Type
-// Really don't want to handle "auto-merging" of data types
-
 // Uniform Type
-neko_enum_decl(gfx_uniform_type, R_UNIFORM_FLOAT, R_UNIFORM_INT, R_UNIFORM_VEC2, R_UNIFORM_VEC3, R_UNIFORM_VEC4, R_UNIFORM_MAT4, R_UNIFORM_SAMPLER2D, R_UNIFORM_USAMPLER2D, R_UNIFORM_SAMPLERCUBE,
-               R_UNIFORM_IMAGE2D_RGBA32F, R_UNIFORM_BLOCK);
-
-// Uniform Block Usage Type
-neko_enum_decl(gfx_uniform_block_usage_type,
-               R_UNIFORM_BLOCK_USAGE_STATIC,  // Default of 0x00 is static
-               R_UNIFORM_BLOCK_USAGE_PUSH_CONSTANT);
+neko_enum_decl(gfx_uniform_type, R_UNIFORM_FLOAT, R_UNIFORM_INT, R_UNIFORM_VEC2, R_UNIFORM_VEC3, R_UNIFORM_VEC4, R_UNIFORM_MAT3, R_UNIFORM_MAT4, R_UNIFORM_SAMPLER2D, R_UNIFORM_USAMPLER2D,
+               R_UNIFORM_SAMPLERCUBE, R_UNIFORM_IMAGE2D_RGBA32F, R_UNIFORM_BLOCK);
 
 // Sampler Type
 neko_enum_decl(gfx_sampler_type, R_SAMPLER_2D);
@@ -171,21 +133,14 @@ neko_enum_decl(gfx_vertex_attribute_type, R_VERTEX_ATTRIBUTE_FLOAT4, R_VERTEX_AT
 // Buffer Type
 neko_enum_decl(gfx_buffer_type, R_BUFFER_VERTEX, R_BUFFER_INDEX, R_BUFFER_FRAME, R_BUFFER_UNIFORM, R_BUFFER_UNIFORM_CONSTANT, R_BUFFER_SHADER_STORAGE, R_BUFFER_SAMPLER);
 
-// Buffer Usage Type
-neko_enum_decl(gfx_buffer_usage_type, R_BUFFER_USAGE_STATIC, R_BUFFER_USAGE_STREAM, R_BUFFER_USAGE_DYNAMIC);
-
 // Buffer Update Type
 neko_enum_decl(gfx_buffer_update_type, R_BUFFER_UPDATE_RECREATE, R_BUFFER_UPDATE_SUBDATA);
-
-neko_enum_decl(gfx_access_type, R_ACCESS_READ_ONLY, R_ACCESS_WRITE_ONLY, R_ACCESS_READ_WRITE);
 
 neko_enum_decl(gfx_buffer_flags, R_BUFFER_FLAG_MAP_PERSISTENT, R_BUFFER_FLAG_MAP_COHERENT);
 
 neko_enum_decl(gfx_texture_format_type, R_TEXTURE_FORMAT_RGBA8, R_TEXTURE_FORMAT_RGB8, R_TEXTURE_FORMAT_RG8, R_TEXTURE_FORMAT_R32, R_TEXTURE_FORMAT_R32F, R_TEXTURE_FORMAT_RGBA16F,
                R_TEXTURE_FORMAT_RGBA32F, R_TEXTURE_FORMAT_A8, R_TEXTURE_FORMAT_R8, R_TEXTURE_FORMAT_DEPTH8, R_TEXTURE_FORMAT_DEPTH16, R_TEXTURE_FORMAT_DEPTH24, R_TEXTURE_FORMAT_DEPTH32F,
                R_TEXTURE_FORMAT_DEPTH24_STENCIL8, R_TEXTURE_FORMAT_DEPTH32F_STENCIL8, R_TEXTURE_FORMAT_STENCIL8);
-
-neko_enum_decl(gfx_texture_wrapping_type, R_TEXTURE_WRAP_REPEAT, R_TEXTURE_WRAP_MIRRORED_REPEAT, R_TEXTURE_WRAP_CLAMP_TO_EDGE, R_TEXTURE_WRAP_CLAMP_TO_BORDER);
 
 neko_enum_decl(gfx_texture_filtering_type, R_TEXTURE_FILTER_NEAREST, R_TEXTURE_FILTER_LINEAR);
 
@@ -194,19 +149,6 @@ neko_enum_decl(gfx_clear_flag, R_CLEAR_COLOR = 0x01, R_CLEAR_DEPTH = 0x02, R_CLE
 #define R_CLEAR_ALL R_CLEAR_COLOR | R_CLEAR_DEPTH | R_CLEAR_STENCIL
 
 neko_enum_decl(gfx_bind_type, R_BIND_VERTEX_BUFFER, R_BIND_INDEX_BUFFER, R_BIND_UNIFORM_BUFFER, R_BIND_STORAGE_BUFFER, R_BIND_IMAGE_BUFFER, R_BIND_UNIFORM);
-
-neko_enum_decl(gfx_depth_func_type,  // Default value of 0x00 means depth is disabled
-               R_DEPTH_FUNC_NEVER, R_DEPTH_FUNC_LESS, R_DEPTH_FUNC_EQUAL, R_DEPTH_FUNC_LEQUAL, R_DEPTH_FUNC_GREATER, R_DEPTH_FUNC_NOTEQUAL, R_DEPTH_FUNC_GEQUAL, R_DEPTH_FUNC_ALWAYS);
-
-neko_enum_decl(gfx_depth_mask_type,  // Default value 0x00 means depth writing enabled
-               R_DEPTH_MASK_ENABLED, R_DEPTH_MASK_DISABLED);
-
-neko_enum_decl(gfx_stencil_func_type,
-               R_STENCIL_FUNC_NEVER,  // Default value of 0x00 means stencil is disabled
-               R_STENCIL_FUNC_LESS, R_STENCIL_FUNC_EQUAL, R_STENCIL_FUNC_LEQUAL, R_STENCIL_FUNC_GREATER, R_STENCIL_FUNC_NOTEQUAL, R_STENCIL_FUNC_GEQUAL, R_STENCIL_FUNC_ALWAYS);
-
-neko_enum_decl(gfx_stencil_op_type,  // Default value of 0x00 means keep is used
-               R_STENCIL_OP_KEEP, R_STENCIL_OP_ZERO, R_STENCIL_OP_REPLACE, R_STENCIL_OP_INCR, R_STENCIL_OP_INCR_WRAP, R_STENCIL_OP_DECR, R_STENCIL_OP_DECR_WRAP, R_STENCIL_OP_INVERT);
 
 neko_handle_decl(gfx_shader_t);
 neko_handle_decl(gfx_texture_t);
@@ -220,8 +162,8 @@ neko_handle_decl(gfx_renderpass_t);
 neko_handle_decl(gfx_pipeline_t);
 
 typedef struct gfx_shader_source_desc_t {
-    gfx_shader_stage_type type;  // Shader stage type (vertex, fragment, tesselation, geometry, compute)
-    const char* source;          // Source for shader
+    u32 type;            // Shader stage type (vertex, fragment, tesselation, geometry, compute)
+    const char* source;  // Source for shader
 } gfx_shader_source_desc_t;
 
 typedef struct gfx_shader_desc_t {
@@ -237,9 +179,9 @@ typedef struct gfx_texture_desc_t {
     u32 depth;                              // Depth of texture
     void* data;                             // Texture data to upload (can be null)
     gfx_texture_format_type format;         // Format of texture data (rgba32, rgba8, rgba32f, r8, depth32f, etc...)
-    gfx_texture_wrapping_type wrap_s;       // Wrapping type for s axis of texture
-    gfx_texture_wrapping_type wrap_t;       // Wrapping type for t axis of texture
-    gfx_texture_wrapping_type wrap_r;       // Wrapping type for r axis of texture
+    u32 wrap_s;                             // Wrapping type for s axis of texture
+    u32 wrap_t;                             // Wrapping type for t axis of texture
+    u32 wrap_r;                             // Wrapping type for r axis of texture
     gfx_texture_filtering_type min_filter;  // Minification filter for texture
     gfx_texture_filtering_type mag_filter;  // Magnification filter for texture
     gfx_texture_filtering_type mip_filter;  // Mip filter for texture
@@ -264,7 +206,7 @@ typedef struct gfx_uniform_layout_desc_t {
 
 // Graphics Uniform Desc
 typedef struct gfx_uniform_desc_t {
-    gfx_shader_stage_type stage;
+    u32 stage;
     char name[64];                      // The name of uniform (required for OpenGL/ES, WebGL)
     gfx_uniform_layout_desc_t* layout;  // Layout array for uniform data
     size_t layout_size;                 // Size of uniform data in bytes
@@ -279,13 +221,13 @@ typedef struct gfx_buffer_update_desc_t {
 typedef struct gfx_buffer_base_desc_t {
     void* data;
     size_t size;
-    gfx_buffer_usage_type usage;
+    u32 usage;
 } gfx_buffer_base_desc_t;
 
 typedef struct gfx_vertex_buffer_desc_t {
     void* data;
     size_t size;
-    gfx_buffer_usage_type usage;
+    u32 usage;
     gfx_buffer_update_desc_t update;
 } gfx_vertex_buffer_desc_t;
 
@@ -294,9 +236,9 @@ typedef gfx_vertex_buffer_desc_t gfx_index_buffer_desc_t;
 typedef struct gfx_uniform_buffer_desc_t {
     void* data;
     size_t size;
-    gfx_buffer_usage_type usage;
+    u32 usage;
     const char* name;
-    gfx_shader_stage_type stage;
+    u32 stage;
     gfx_buffer_update_desc_t update;
 } gfx_uniform_buffer_desc_t;
 
@@ -305,8 +247,8 @@ typedef struct gfx_storage_buffer_desc_t {
     void* map;
     size_t size;
     char name[64];
-    gfx_buffer_usage_type usage;
-    gfx_access_type access;
+    u32 usage;
+    u32 access;
     gfx_buffer_flags flags;
     gfx_buffer_update_desc_t update;
 } gfx_storage_buffer_desc_t;
@@ -359,7 +301,7 @@ typedef struct gfx_bind_index_buffer_desc_t {
 typedef struct gfx_bind_image_buffer_desc_t {
     neko_handle(gfx_texture_t) tex;
     u32 binding;
-    gfx_access_type access;
+    u32 access;
 } gfx_bind_image_buffer_desc_t;
 
 typedef struct gfx_bind_uniform_buffer_desc_t {
@@ -418,31 +360,31 @@ typedef struct gfx_bind_desc_t {
 
 // Graphics Blend State Desc
 typedef struct gfx_blend_state_desc_t {
-    gfx_blend_equation_type func;  // Equation function to use for blend ops
-    gfx_blend_mode_type src;       // Source blend mode
-    gfx_blend_mode_type dst;       // Destination blend mode
+    u32 func;  // 用于混合运算的方程函数
+    u32 src;   // 源混合模式
+    u32 dst;   // 目标混合模式
 } gfx_blend_state_desc_t;
 
 // Graphics Depth State Desc
 typedef struct gfx_depth_state_desc_t {
-    gfx_depth_func_type func;  // Function to set for depth test
-    gfx_depth_mask_type mask;  // Whether or not writing is enabled/disabled
+    u32 func;   // Function to set for depth test
+    bool mask;  // Whether or not writing is enabled/disabled
 } gfx_depth_state_desc_t;
 
 // Graphics Stencil State Desc
 typedef struct gfx_stencil_state_desc_t {
-    gfx_stencil_func_type func;  // Function to set for stencil test
-    u32 ref;                     // Specifies reference val for stencil test
-    u32 comp_mask;               // Specifies mask that is ANDed with both ref val and stored stencil val
-    u32 write_mask;              // Specifies mask that is ANDed with both ref val and stored stencil val
-    gfx_stencil_op_type sfail;   // Action to take when stencil test fails
-    gfx_stencil_op_type dpfail;  // Action to take when stencil test passes but depth test fails
-    gfx_stencil_op_type dppass;  // Action to take when both stencil test passes and either depth passes or is not enabled
+    u32 func;        // Function to set for stencil test
+    u32 ref;         // Specifies reference val for stencil test
+    u32 comp_mask;   // Specifies mask that is ANDed with both ref val and stored stencil val
+    u32 write_mask;  // Specifies mask that is ANDed with both ref val and stored stencil val
+    u32 sfail;       // Action to take when stencil test fails
+    u32 dpfail;      // Action to take when stencil test passes but depth test fails
+    u32 dppass;      // Action to take when both stencil test passes and either depth passes or is not enabled
 } gfx_stencil_state_desc_t;
 
 // Graphics Raster State Desc
 typedef struct gfx_raster_state_desc_t {
-    gfx_face_culling_type face_culling;    // Face culling mode to be used (front, back, front and back)
+    u32 face_culling;                      // Face culling mode to be used (front, back, front and back)
     gfx_winding_order_type winding_order;  // Winding order mode to be used (ccw, cw)
     gfx_primitive_type primitive;          // Primitive type for drawing (lines, quads, triangles, triangle strip)
     neko_handle(gfx_shader_t) shader;      // Shader to bind and use (might be in bindables later on, not sure)
@@ -506,6 +448,7 @@ typedef struct gfx_info_t {
     u32 major_version;
     u32 minor_version;
     u32 max_texture_units;
+    u32 max_texture_size;
     struct {
         bool available;
         u32 max_work_group_count[3];
@@ -531,25 +474,14 @@ extern gfx_t* g_render;
 // NEKO_OPENGL
 =============================*/
 
-typedef enum neko_gl_uniform_type {
-    NEKO_GL_UNIFORMTYPE_FLOAT,
-    NEKO_GL_UNIFORMTYPE_INT,
-    NEKO_GL_UNIFORMTYPE_VEC2,
-    NEKO_GL_UNIFORMTYPE_VEC3,
-    NEKO_GL_UNIFORMTYPE_VEC4,
-    NEKO_GL_UNIFORMTYPE_MAT4,
-    NEKO_GL_UNIFORMTYPE_SAMPLER2D,
-    NEKO_GL_UNIFORMTYPE_SAMPLERCUBE
-} neko_gl_uniform_type;
-
 // Uniform (stores samplers as well as primitive uniforms)
 typedef struct neko_gl_uniform_t {
-    char name[64];              // Name of uniform to find location
-    neko_gl_uniform_type type;  // Type of uniform data
-    u32 location;               // Location of uniform
-    size_t size;                // Total data size of uniform
-    u32 sid;                    // Shader id (should probably inverse this, but I don't want to force a map lookup)
-    u32 count;                  // Count (used for arrays)
+    char name[64];          // Name of uniform to find location
+    gfx_uniform_type type;  // Type of uniform data
+    u32 location;           // Location of uniform
+    size_t size;            // Total data size of uniform
+    u32 sid;                // Shader id (should probably inverse this, but I don't want to force a map lookup)
+    u32 count;              // Count (used for arrays)
 } neko_gl_uniform_t;
 
 // When a user passes in a uniform layout, that handle could then pass to a WHOLE list of uniforms (if describing a struct)
@@ -648,6 +580,7 @@ typedef struct neko_gl_data_t {
         neko_dyn_array(vec2) vec2;
         neko_dyn_array(vec3) vec3;
         neko_dyn_array(vec4) vec4;
+        neko_dyn_array(mat3) mat3;
         neko_dyn_array(mat4) mat4;
     } uniform_data;
 
@@ -763,32 +696,5 @@ typedef neko_handle(gfx_index_buffer_t) neko_ibo_t;
 typedef neko_handle(gfx_uniform_buffer_t) neko_ubo_t;
 typedef neko_handle(gfx_uniform_t) neko_uniform_t;
 typedef neko_handle(gfx_storage_buffer_t) neko_storage_buffer_t;
-
-/*=============================
-//
-=============================*/
-
-typedef struct neko_asset_texture_t {
-    neko_handle(gfx_texture_t) hndl;
-    gfx_texture_desc_t desc;
-} neko_asset_texture_t;
-
-/*==========================
-// NEKO_ASSET_TYPES
-==========================*/
-
-// Texture
-
-bool neko_util_load_texture_data_from_memory(const void* memory, size_t sz, i32* width, i32* height, u32* num_comps, void** data, bool flip_vertically_on_load);
-bool neko_util_load_texture_data_from_file(const char* file_path, i32* width, i32* height, u32* num_comps, void** data, bool flip_vertically_on_load);
-
-#if 1
-bool neko_asset_texture_load_from_file(const_str path, void* out, gfx_texture_desc_t* desc, bool flip_on_load, bool keep_data);
-bool neko_asset_texture_load_from_memory(const void* memory, size_t sz, void* out, gfx_texture_desc_t* desc, bool flip_on_load, bool keep_data);
-
-//  bool neko_util_load_gltf_data_from_file(const_str path, neko_asset_mesh_decl_t* decl, neko_asset_mesh_raw_data_t** out, u32* mesh_count);
-//  bool neko_util_load_gltf_data_from_memory(const void* memory, size_t sz, neko_asset_mesh_decl_t* decl, neko_asset_mesh_raw_data_t** out, u32* mesh_count);
-
-#endif
 
 #endif

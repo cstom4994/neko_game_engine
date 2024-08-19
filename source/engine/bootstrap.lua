@@ -1051,4 +1051,8 @@ if math.pow == nil then
     end
 end
 
+function intdiv(a, b)
+    return math.floor(a / b)
+end
+
 print("lua startup")

@@ -69,7 +69,7 @@ int luax_pcall_nothrow(lua_State *L, int nargs, int nresults) {
     r = lua_pcall(L, nargs, nresults, errfunc);
     lua_remove(L, errfunc);
 #endif
-    r = lua_pcall(L, nargs, nresults, 0);
+    r = lua_pcall(L, nargs, nresults, 1);
     return r;
 }
 
@@ -192,23 +192,15 @@ void script_init() {
     lua_atpanic(
             L, +[](lua_State *L) {
                 auto msg = lua_tostring(L, -1);
-                printf("[lua] neko_panic error: %s", msg);
+                printf("LUA: neko_panic error: %s", msg);
                 return 0;
             });
 
     lua_pushcfunction(L, luax_msgh);  // 添加错误消息处理程序 始终位于堆栈底部
-    // int n = lua_gettop(L);
-    // neko_assert(n == 1);
 
     _load_nekogame_ffi();
     _forward_args();
     _set_paths();
-
-    // ENGINE_ECS() = ecs_init(ENGINE_LUA());
-
-    // ECS_COMPONENT_DEFINE(pos_t, NULL, NULL);
-    // ECS_COMPONENT_DEFINE(vel_t, NULL, NULL);
-    // ECS_COMPONENT_DEFINE(rect_t, NULL, NULL);
 
     g_app->g_lua_callbacks_table_ref = LUA_NOREF;
 
@@ -223,16 +215,27 @@ void script_init() {
 void script_fini() {
     lua_State *L = ENGINE_LUA();
 
+    luax_get(ENGINE_LUA(), "neko", "game_fini");
+    luax_pcall(ENGINE_LUA(), 0, 0);
+
     script_push_event("fini");
     errcheck(luax_pcall_nothrow(L, 1, 0));
 
     lua_pop(L, 1);  // FFI
+    lua_pop(L, 1);  // luax_msgh
 
     neko::neko_lua_fini(L);
 }
 
 void script_update_all() {
     lua_State *L = ENGINE_LUA();
+
+    luax_get(ENGINE_LUA(), "neko", "game_pre_update");
+    luax_pcall(ENGINE_LUA(), 0, 0);
+
+    luax_get(ENGINE_LUA(), "neko", "game_loop");
+    neko::luabind::LuaStack<f32>::push(ENGINE_LUA(), timing_instance.dt);
+    luax_pcall(ENGINE_LUA(), 1, 0);
 
     script_push_event("update_all");
     errcheck(luax_pcall_nothrow(L, 1, 0));
@@ -248,12 +251,18 @@ void script_post_update_all() {
 void script_draw_ui() {
     lua_State *L = ENGINE_LUA();
 
+    luax_get(ENGINE_LUA(), "neko", "game_ui");
+    luax_pcall(ENGINE_LUA(), 0, 0);
+
     script_push_event("draw_ui");
     errcheck(luax_pcall_nothrow(L, 1, 0));
 }
 
 void script_draw_all() {
     lua_State *L = ENGINE_LUA();
+
+    luax_get(ENGINE_LUA(), "neko", "game_render");
+    luax_pcall(ENGINE_LUA(), 0, 0);
 
     script_push_event("draw_all");
     errcheck(luax_pcall_nothrow(L, 1, 0));
