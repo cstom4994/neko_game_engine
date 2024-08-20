@@ -277,457 +277,6 @@ ui_style_t ui_get_current_element_style(ui_context_t* ctx, const ui_selector_des
     return style;
 }
 
-ui_style_t ui_animation_get_blend_style(ui_context_t* ctx, ui_animation_t* anim, const ui_selector_desc_t* desc, i32 elementid) {
-    ui_style_t ret = NEKO_DEFAULT_VAL();
-
-    i32 focus_state = anim->focus_state;
-    i32 hover_state = anim->hover_state;
-
-    ui_style_t s0 = ui_get_current_element_style(ctx, desc, elementid, anim->start_state);
-    ui_style_t s1 = ui_get_current_element_style(ctx, desc, elementid, anim->end_state);
-
-    ui_inline_style_stack_t* iss = NULL;
-    if (neko_hash_table_exists(ctx->inline_styles, (ui_element_type)elementid)) {
-        iss = neko_hash_table_getp(ctx->inline_styles, (ui_element_type)elementid);
-    }
-
-    if (anim->direction == UI_ANIMATION_DIRECTION_FORWARD) {
-        ret = s1;
-    } else {
-        ret = s0;
-    }
-
-    const ui_animation_property_list_t* list = NULL;
-    if (neko_hash_table_exists(ctx->style_sheet->animations, (ui_element_type)elementid)) {
-        list = neko_hash_table_getp(ctx->style_sheet->animations, (ui_element_type)elementid);
-    }
-
-    const ui_animation_property_list_t* id_list = NULL;
-    const ui_animation_property_list_t* cls_list[UI_CLS_SELECTOR_MAX] = NEKO_DEFAULT_VAL();
-    bool has_class_animations = false;
-
-    if (desc) {
-        char TMP[256] = NEKO_DEFAULT_VAL();
-
-        // ID animations
-        if (desc->id) {
-            neko_snprintf(TMP, sizeof(TMP), "#%s", desc->id);
-            const u64 id_hash = neko_hash_str64(TMP);
-            if (neko_hash_table_exists(ctx->style_sheet->cid_animations, id_hash)) {
-                id_list = neko_hash_table_getp(ctx->style_sheet->cid_animations, id_hash);
-            }
-        }
-
-        // Class animations
-        if (*desc->classes) {
-            for (u32 i = 0; i < UI_CLS_SELECTOR_MAX; ++i) {
-                if (!desc->classes[i]) break;
-                neko_snprintf(TMP, sizeof(TMP), ".%s", desc->classes[i]);
-                const u64 cls_hash = neko_hash_str64(TMP);
-                if (cls_hash && neko_hash_table_exists(ctx->style_sheet->cid_animations, cls_hash)) {
-                    cls_list[i] = neko_hash_table_getp(ctx->style_sheet->cid_animations, cls_hash);
-                    has_class_animations = true;
-                }
-            }
-        }
-    }
-
-#define UI_BLEND_COLOR(TYPE)                                                                     \
-    do {                                                                                         \
-        Color256* c0 = &s0.colors[TYPE];                                                         \
-        Color256* c1 = &s1.colors[TYPE];                                                         \
-        float r = 255.f * neko_interp_smoothstep((float)c0->r / 255.f, (float)c1->r / 255.f, t); \
-        float g = 255.f * neko_interp_smoothstep((float)c0->g / 255.f, (float)c1->g / 255.f, t); \
-        float b = 255.f * neko_interp_smoothstep((float)c0->b / 255.f, (float)c1->b / 255.f, t); \
-        float a = 255.f * neko_interp_smoothstep((float)c0->a / 255.f, (float)c1->a / 255.f, t); \
-        ret.colors[TYPE] = color256((u8)r, (u8)g, (u8)b, (u8)a);                                 \
-    } while (0)
-
-#define UI_BLEND_VALUE(FIELD, TYPE)                          \
-    do {                                                     \
-        float v0 = (float)s0.FIELD;                          \
-        float v1 = (float)s1.FIELD;                          \
-        ret.FIELD = (TYPE)neko_interp_smoothstep(v0, v1, t); \
-    } while (0)
-
-#define UI_BLEND_PROPERTIES(LIST)                                                                                                                      \
-    do {                                                                                                                                               \
-        for (u32 i = 0; i < neko_dyn_array_size(LIST); ++i) {                                                                                          \
-            const ui_animation_property_t* prop = &LIST[i];                                                                                            \
-            float t = 0.f;                                                                                                                             \
-            switch (anim->direction) {                                                                                                                 \
-                default:                                                                                                                               \
-                case UI_ANIMATION_DIRECTION_FORWARD: {                                                                                                 \
-                    t = NEKO_CLAMP(neko_map_range((float)prop->delay, (float)prop->time + (float)prop->delay, 0.f, 1.f, (float)anim->time), 0.f, 1.f); \
-                } break;                                                                                                                               \
-                case UI_ANIMATION_DIRECTION_BACKWARD: {                                                                                                \
-                    if (prop->time <= 0.f)                                                                                                             \
-                        t = 1.f;                                                                                                                       \
-                    else                                                                                                                               \
-                        t = NEKO_CLAMP(neko_map_range((float)0.f, (float)anim->max - (float)prop->delay, 0.f, 1.f, (float)anim->time), 0.f, 1.f);      \
-                } break;                                                                                                                               \
-            }                                                                                                                                          \
-                                                                                                                                                       \
-            switch (prop->type) {                                                                                                                      \
-                case UI_STYLE_COLOR_BACKGROUND: {                                                                                                      \
-                    UI_BLEND_COLOR(UI_COLOR_BACKGROUND);                                                                                               \
-                } break;                                                                                                                               \
-                case UI_STYLE_COLOR_SHADOW: {                                                                                                          \
-                    UI_BLEND_COLOR(UI_COLOR_SHADOW);                                                                                                   \
-                } break;                                                                                                                               \
-                case UI_STYLE_COLOR_BORDER: {                                                                                                          \
-                    UI_BLEND_COLOR(UI_COLOR_BORDER);                                                                                                   \
-                } break;                                                                                                                               \
-                case UI_STYLE_COLOR_CONTENT: {                                                                                                         \
-                    UI_BLEND_COLOR(UI_COLOR_CONTENT);                                                                                                  \
-                } break;                                                                                                                               \
-                case UI_STYLE_COLOR_CONTENT_BACKGROUND: {                                                                                              \
-                    UI_BLEND_COLOR(UI_COLOR_CONTENT_BACKGROUND);                                                                                       \
-                } break;                                                                                                                               \
-                case UI_STYLE_COLOR_CONTENT_SHADOW: {                                                                                                  \
-                    UI_BLEND_COLOR(UI_COLOR_CONTENT_SHADOW);                                                                                           \
-                } break;                                                                                                                               \
-                case UI_STYLE_COLOR_CONTENT_BORDER: {                                                                                                  \
-                    UI_BLEND_COLOR(UI_COLOR_CONTENT_BORDER);                                                                                           \
-                } break;                                                                                                                               \
-                case UI_STYLE_WIDTH: {                                                                                                                 \
-                    UI_BLEND_VALUE(size.x, float);                                                                                                     \
-                } break;                                                                                                                               \
-                case UI_STYLE_HEIGHT: {                                                                                                                \
-                    UI_BLEND_VALUE(size.y, float);                                                                                                     \
-                } break;                                                                                                                               \
-                case UI_STYLE_BORDER_WIDTH: {                                                                                                          \
-                    UI_BLEND_VALUE(border_width[0], i16);                                                                                              \
-                    UI_BLEND_VALUE(border_width[1], i16);                                                                                              \
-                    UI_BLEND_VALUE(border_width[2], i16);                                                                                              \
-                    UI_BLEND_VALUE(border_width[3], i16);                                                                                              \
-                } break;                                                                                                                               \
-                case UI_STYLE_BORDER_WIDTH_LEFT: {                                                                                                     \
-                    UI_BLEND_VALUE(border_width[0], i16);                                                                                              \
-                } break;                                                                                                                               \
-                case UI_STYLE_BORDER_WIDTH_RIGHT: {                                                                                                    \
-                    UI_BLEND_VALUE(border_width[1], i16);                                                                                              \
-                } break;                                                                                                                               \
-                case UI_STYLE_BORDER_WIDTH_TOP: {                                                                                                      \
-                    UI_BLEND_VALUE(border_width[2], i16);                                                                                              \
-                } break;                                                                                                                               \
-                case UI_STYLE_BORDER_WIDTH_BOTTOM: {                                                                                                   \
-                    UI_BLEND_VALUE(border_width[3], i16);                                                                                              \
-                } break;                                                                                                                               \
-                case UI_STYLE_BORDER_RADIUS: {                                                                                                         \
-                    UI_BLEND_VALUE(border_radius[0], i16);                                                                                             \
-                    UI_BLEND_VALUE(border_radius[1], i16);                                                                                             \
-                    UI_BLEND_VALUE(border_radius[2], i16);                                                                                             \
-                    UI_BLEND_VALUE(border_radius[3], i16);                                                                                             \
-                } break;                                                                                                                               \
-                case UI_STYLE_BORDER_RADIUS_LEFT: {                                                                                                    \
-                    UI_BLEND_VALUE(border_radius[0], i16);                                                                                             \
-                } break;                                                                                                                               \
-                case UI_STYLE_BORDER_RADIUS_RIGHT: {                                                                                                   \
-                    UI_BLEND_VALUE(border_radius[1], i16);                                                                                             \
-                } break;                                                                                                                               \
-                case UI_STYLE_BORDER_RADIUS_TOP: {                                                                                                     \
-                    UI_BLEND_VALUE(border_radius[2], i16);                                                                                             \
-                } break;                                                                                                                               \
-                case UI_STYLE_BORDER_RADIUS_BOTTOM: {                                                                                                  \
-                    UI_BLEND_VALUE(border_radius[3], i16);                                                                                             \
-                } break;                                                                                                                               \
-                case UI_STYLE_MARGIN_BOTTOM: {                                                                                                         \
-                    UI_BLEND_VALUE(margin[UI_MARGIN_BOTTOM], i16);                                                                                     \
-                } break;                                                                                                                               \
-                case UI_STYLE_MARGIN_TOP: {                                                                                                            \
-                    UI_BLEND_VALUE(margin[UI_MARGIN_TOP], i16);                                                                                        \
-                } break;                                                                                                                               \
-                case UI_STYLE_MARGIN_LEFT: {                                                                                                           \
-                    UI_BLEND_VALUE(margin[UI_MARGIN_LEFT], i16);                                                                                       \
-                } break;                                                                                                                               \
-                case UI_STYLE_MARGIN_RIGHT: {                                                                                                          \
-                    UI_BLEND_VALUE(margin[UI_MARGIN_RIGHT], i16);                                                                                      \
-                } break;                                                                                                                               \
-                case UI_STYLE_MARGIN: {                                                                                                                \
-                    UI_BLEND_VALUE(margin[0], i16);                                                                                                    \
-                    UI_BLEND_VALUE(margin[1], i16);                                                                                                    \
-                    UI_BLEND_VALUE(margin[2], i16);                                                                                                    \
-                    UI_BLEND_VALUE(margin[3], i16);                                                                                                    \
-                } break;                                                                                                                               \
-                case UI_STYLE_PADDING_BOTTOM: {                                                                                                        \
-                    UI_BLEND_VALUE(padding[UI_PADDING_BOTTOM], i32);                                                                                   \
-                } break;                                                                                                                               \
-                case UI_STYLE_PADDING_TOP: {                                                                                                           \
-                    UI_BLEND_VALUE(padding[UI_PADDING_TOP], i32);                                                                                      \
-                } break;                                                                                                                               \
-                case UI_STYLE_PADDING_LEFT: {                                                                                                          \
-                    UI_BLEND_VALUE(padding[UI_PADDING_LEFT], i32);                                                                                     \
-                } break;                                                                                                                               \
-                case UI_STYLE_PADDING_RIGHT: {                                                                                                         \
-                    UI_BLEND_VALUE(padding[UI_PADDING_RIGHT], i32);                                                                                    \
-                } break;                                                                                                                               \
-                case UI_STYLE_PADDING: {                                                                                                               \
-                    UI_BLEND_VALUE(padding[0], i32);                                                                                                   \
-                    UI_BLEND_VALUE(padding[1], i32);                                                                                                   \
-                    UI_BLEND_VALUE(padding[2], i32);                                                                                                   \
-                    UI_BLEND_VALUE(padding[3], i32);                                                                                                   \
-                } break;                                                                                                                               \
-                case UI_STYLE_SHADOW_X: {                                                                                                              \
-                    UI_BLEND_VALUE(shadow_x, i16);                                                                                                     \
-                } break;                                                                                                                               \
-                case UI_STYLE_SHADOW_Y: {                                                                                                              \
-                    UI_BLEND_VALUE(shadow_y, i16);                                                                                                     \
-                } break;                                                                                                                               \
-            }                                                                                                                                          \
-        }                                                                                                                                              \
-    } while (0)
-
-    // Get final blends
-    if (list && !neko_dyn_array_empty(list->properties[anim->end_state])) {
-        UI_BLEND_PROPERTIES(list->properties[anim->end_state]);
-    }
-
-    // Class list
-    if (has_class_animations) {
-        for (u32 c = 0; c < UI_CLS_SELECTOR_MAX; ++c) {
-            if (!cls_list[c]) continue;
-            if (!neko_dyn_array_empty(cls_list[c]->properties[anim->end_state])) {
-                UI_BLEND_PROPERTIES(cls_list[c]->properties[anim->end_state]);
-            }
-        }
-    }
-
-    // Id list
-    if (id_list && !neko_dyn_array_empty(id_list->properties[anim->end_state])) {
-        UI_BLEND_PROPERTIES(id_list->properties[anim->end_state]);
-    }
-
-    if (iss) {
-        UI_BLEND_PROPERTIES(iss->animations[anim->end_state]);
-    }
-
-    return ret;
-}
-
-static void __ui_animation_get_time(ui_context_t* ctx, ui_id id, i32 elementid, const ui_selector_desc_t* desc, ui_inline_style_stack_t* iss, i32 state, ui_animation_t* anim) {
-    u32 act = 0, ssz = 0;
-    if (iss && neko_dyn_array_size(iss->animations[state])) {
-        const u32 scz = neko_dyn_array_size(iss->animation_counts);
-        act = state == 0x00 ? iss->animation_counts[scz - 3] : state == 0x01 ? iss->animation_counts[scz - 2] : iss->animation_counts[scz - 1];
-        ssz = neko_dyn_array_size(iss->animations[state]);
-    }
-    ui_animation_property_list_t* cls_list[UI_CLS_SELECTOR_MAX] = NEKO_DEFAULT_VAL();
-    const ui_animation_property_list_t* id_list = NULL;
-    const ui_animation_property_list_t* list = NULL;
-    bool has_class_animations = false;
-
-    if (desc) {
-        char TMP[256] = NEKO_DEFAULT_VAL();
-
-        // Id animations
-        neko_snprintf(TMP, sizeof(TMP), "#%s", desc->id);
-        const u64 id_hash = neko_hash_str64(TMP);
-        if (neko_hash_table_exists(ctx->style_sheet->cid_animations, id_hash)) {
-            id_list = neko_hash_table_getp(ctx->style_sheet->cid_animations, id_hash);
-        }
-
-        // Class animations
-        for (u32 i = 0; i < UI_CLS_SELECTOR_MAX; ++i) {
-            if (!desc->classes[i]) break;
-            neko_snprintf(TMP, sizeof(TMP), ".%s", desc->classes[i]);
-            const u64 cls_hash = neko_hash_str64(TMP);
-            if (neko_hash_table_exists(ctx->style_sheet->cid_animations, cls_hash)) {
-                cls_list[i] = neko_hash_table_getp(ctx->style_sheet->cid_animations, cls_hash);
-                has_class_animations = true;
-            }
-        }
-    }
-
-    // Element type animations
-    if (neko_hash_table_exists(ctx->style_sheet->animations, (ui_element_type)elementid)) {
-        list = neko_hash_table_getp(ctx->style_sheet->animations, (ui_element_type)elementid);
-    }
-
-    // Fill properties in order of specificity
-    ui_animation_property_t properties[UI_STYLE_COUNT] = NEKO_DEFAULT_VAL();
-    for (u32 i = 0; i < UI_STYLE_COUNT; ++i) {
-        properties[i].type = (ui_style_element_type)i;
-    }
-
-#define GUI_SET_PROPERTY_TIMES(PROP_LIST)                            \
-    do {                                                             \
-        for (u32 p = 0; p < neko_dyn_array_size((PROP_LIST)); ++p) { \
-            ui_animation_property_t* prop = &(PROP_LIST)[p];         \
-            properties[prop->type].time = prop->time;                \
-            properties[prop->type].delay = prop->delay;              \
-        }                                                            \
-    } while (0)
-
-    // Element type list
-    if (list) {
-        neko_dyn_array(ui_animation_property_t) props = list->properties[state];
-        GUI_SET_PROPERTY_TIMES(props);
-    }
-
-    // Class list
-    if (has_class_animations) {
-        for (u32 c = 0; c < UI_CLS_SELECTOR_MAX; ++c) {
-            if (!cls_list[c]) continue;
-            neko_dyn_array(ui_animation_property_t) props = cls_list[c]->properties[state];
-            GUI_SET_PROPERTY_TIMES(props);
-        }
-    }
-
-    // Id list
-    if (id_list) {
-        neko_dyn_array(ui_animation_property_t) props = id_list->properties[state];
-        GUI_SET_PROPERTY_TIMES(props);
-    }
-
-    // Inline style list
-    if (act && iss) {
-        for (u32 a = 0; a < act; ++a) {
-            u32 idx = ssz - act + a;
-            ui_animation_property_t* ap = &iss->animations[state][idx];
-            properties[ap->type].time = ap->time;
-            properties[ap->type].delay = ap->delay;
-        }
-    }
-
-    // Set max times
-    for (u32 i = 0; i < UI_STYLE_COUNT; ++i) {
-        if (properties[i].time > anim->max) anim->max = properties[i].time;
-        if (properties[i].delay > anim->delay) anim->delay = properties[i].delay;
-    }
-
-    // Finalize time
-    anim->max += anim->delay;
-    anim->max = NEKO_MAX(anim->max, 5);
-}
-
-ui_animation_t* ui_get_animation(ui_context_t* ctx, ui_id id, const ui_selector_desc_t* desc, i32 elementid) {
-    ui_animation_t* anim = NULL;
-
-    const bool valid_eid = (elementid >= 0 && elementid < UI_ELEMENT_COUNT);
-
-    // Construct new animation if necessary to insert
-    if (ctx->state_switch_id == id) {
-        if (!neko_hash_table_exists(ctx->animations, id)) {
-            ui_animation_t val = NEKO_DEFAULT_VAL();
-            neko_hash_table_insert(ctx->animations, id, val);
-        }
-
-        ui_inline_style_stack_t* iss = NULL;
-        if (neko_hash_table_exists(ctx->inline_styles, (ui_element_type)elementid)) {
-            iss = neko_hash_table_getp(ctx->inline_styles, (ui_element_type)elementid);
-        }
-
-#define ANIM_GET_TIME(STATE)
-
-        anim = neko_hash_table_getp(ctx->animations, id);
-        anim->playing = true;
-
-        i16 focus_state = 0x00;
-        i16 hover_state = 0x00;
-        i16 direction = 0x00;
-        i16 start_state = 0x00;
-        i16 end_state = 0x00;
-        i16 time_state = 0x00;
-
-        switch (ctx->switch_state) {
-            case UI_ELEMENT_STATE_OFF_FOCUS: {
-                if (ctx->hover == id) {
-                    anim->direction = UI_ANIMATION_DIRECTION_BACKWARD;
-                    anim->start_state = UI_ELEMENT_STATE_HOVER;
-                    anim->end_state = UI_ELEMENT_STATE_FOCUS;
-                    time_state = UI_ELEMENT_STATE_HOVER;
-                    if (valid_eid) __ui_animation_get_time(ctx, id, elementid, desc, iss, time_state, anim);
-                    anim->time = anim->max;
-                } else {
-                    anim->direction = UI_ANIMATION_DIRECTION_BACKWARD;
-                    anim->start_state = UI_ELEMENT_STATE_DEFAULT;
-                    anim->end_state = UI_ELEMENT_STATE_FOCUS;
-                    time_state = UI_ELEMENT_STATE_DEFAULT;
-                    if (valid_eid) __ui_animation_get_time(ctx, id, elementid, desc, iss, time_state, anim);
-                    anim->time = anim->max;
-                }
-            } break;
-
-            case UI_ELEMENT_STATE_ON_FOCUS: {
-                anim->direction = UI_ANIMATION_DIRECTION_FORWARD;
-                anim->start_state = UI_ELEMENT_STATE_HOVER;
-                anim->end_state = UI_ELEMENT_STATE_FOCUS;
-                time_state = UI_ELEMENT_STATE_FOCUS;
-                if (valid_eid) __ui_animation_get_time(ctx, id, elementid, desc, iss, time_state, anim);
-                anim->time = 0;
-            } break;
-
-            case UI_ELEMENT_STATE_OFF_HOVER: {
-                anim->direction = UI_ANIMATION_DIRECTION_BACKWARD;
-                anim->start_state = UI_ELEMENT_STATE_DEFAULT;
-                anim->end_state = UI_ELEMENT_STATE_HOVER;
-                time_state = UI_ELEMENT_STATE_DEFAULT;
-                if (valid_eid) __ui_animation_get_time(ctx, id, elementid, desc, iss, time_state, anim);
-                anim->time = anim->max;
-            } break;
-
-            case UI_ELEMENT_STATE_ON_HOVER: {
-                anim->direction = UI_ANIMATION_DIRECTION_FORWARD;
-                anim->start_state = UI_ELEMENT_STATE_DEFAULT;
-                anim->end_state = UI_ELEMENT_STATE_HOVER;
-                time_state = UI_ELEMENT_STATE_HOVER;
-                if (valid_eid) __ui_animation_get_time(ctx, id, elementid, desc, iss, time_state, anim);
-                anim->time = 0;
-            } break;
-        }
-
-        // Reset state switches and id
-        ctx->state_switch_id = 0;
-        ctx->switch_state = 0;
-
-        return anim;
-    }
-
-    // Return if found
-    if (neko_hash_table_exists(ctx->animations, id)) {
-        anim = neko_hash_table_getp(ctx->animations, id);
-    }
-
-    if (anim && !anim->playing) {
-        // This is causing a crash...
-        neko_hash_table_erase(ctx->animations, id);
-        anim = NULL;
-    }
-
-    return anim;
-}
-
-void ui_animation_update(ui_context_t* ctx, ui_animation_t* anim) {
-    if (ctx->frame == anim->frame) return;
-
-    const i16 dt = (i16)(timing_instance.delta * 1000.f);
-
-    if (anim->playing) {
-        // Forward
-        switch (anim->direction) {
-            default:
-            case (UI_ANIMATION_DIRECTION_FORWARD): {
-                anim->time += dt;
-                if (anim->time >= anim->max) {
-                    anim->time = anim->max;
-                    anim->playing = false;
-                }
-            } break;
-
-            case (UI_ANIMATION_DIRECTION_BACKWARD): {
-                anim->time -= dt;
-                if (anim->time <= 0) {
-                    anim->time = 0;
-                    anim->playing = false;
-                }
-            } break;
-        }
-    }
-
-    anim->frame = ctx->frame;
-}
-
 ui_rect_t ui_rect(float x, float y, float w, float h) {
     ui_rect_t res;
     res.x = x;
@@ -996,37 +545,16 @@ void ui_push_inline_style(ui_context_t* ctx, ui_element_type elementid, ui_inlin
             neko_dyn_array_push(iss->styles[2], desc->all.style.data[i]);
         }
     }
-    if (desc->all.animation.data && desc->all.animation.size) {
-        // Total amount to write for each section
-        u32 ct = desc->all.animation.size / sizeof(ui_animation_property_t);
-        anim_ct[0] += ct;
-        anim_ct[1] += ct;
-        anim_ct[2] += ct;
 
-        for (u32 i = 0; i < ct; ++i) {
-            neko_dyn_array_push(iss->animations[0], desc->all.animation.data[i]);
-            neko_dyn_array_push(iss->animations[1], desc->all.animation.data[i]);
-            neko_dyn_array_push(iss->animations[2], desc->all.animation.data[i]);
-        }
-    }
-
-#define UI_COPY_INLINE_STYLE(TYPE, INDEX)                                                  \
-    do {                                                                                   \
-        if (desc->TYPE.style.data && desc->TYPE.style.size) {                              \
-            u32 ct = desc->TYPE.style.size / sizeof(ui_style_element_t);                   \
-            style_ct[INDEX] += ct;                                                         \
-            for (u32 i = 0; i < ct; ++i) {                                                 \
-                neko_dyn_array_push(iss->styles[INDEX], desc->TYPE.style.data[i]);         \
-            }                                                                              \
-        }                                                                                  \
-        if (desc->TYPE.animation.data && desc->TYPE.animation.size) {                      \
-            u32 ct = desc->TYPE.animation.size / sizeof(ui_animation_property_t);          \
-            anim_ct[INDEX] += ct;                                                          \
-                                                                                           \
-            for (u32 i = 0; i < ct; ++i) {                                                 \
-                neko_dyn_array_push(iss->animations[INDEX], desc->TYPE.animation.data[i]); \
-            }                                                                              \
-        }                                                                                  \
+#define UI_COPY_INLINE_STYLE(TYPE, INDEX)                                          \
+    do {                                                                           \
+        if (desc->TYPE.style.data && desc->TYPE.style.size) {                      \
+            u32 ct = desc->TYPE.style.size / sizeof(ui_style_element_t);           \
+            style_ct[INDEX] += ct;                                                 \
+            for (u32 i = 0; i < ct; ++i) {                                         \
+                neko_dyn_array_push(iss->styles[INDEX], desc->TYPE.style.data[i]); \
+            }                                                                      \
+        }                                                                          \
     } while (0)
 
     // Copy remaining individual styles
@@ -1038,10 +566,6 @@ void ui_push_inline_style(ui_context_t* ctx, ui_element_type elementid, ui_inlin
     neko_dyn_array_push(iss->style_counts, style_ct[0]);
     neko_dyn_array_push(iss->style_counts, style_ct[1]);
     neko_dyn_array_push(iss->style_counts, style_ct[2]);
-
-    neko_dyn_array_push(iss->animation_counts, anim_ct[0]);
-    neko_dyn_array_push(iss->animation_counts, anim_ct[1]);
-    neko_dyn_array_push(iss->animation_counts, anim_ct[2]);
 }
 
 void ui_pop_inline_style(ui_context_t* ctx, ui_element_type elementid) {
@@ -1066,18 +590,6 @@ void ui_pop_inline_style(ui_context_t* ctx, ui_element_type elementid) {
         if (iss->styles[0]) neko_dyn_array_head(iss->styles[0])->size -= c0;
         if (iss->styles[1]) neko_dyn_array_head(iss->styles[1])->size -= c1;
         if (iss->styles[2]) neko_dyn_array_head(iss->styles[2])->size -= c2;
-    }
-
-    if (neko_dyn_array_size(iss->animation_counts) >= 3) {
-        const u32 sz = neko_dyn_array_size(iss->animation_counts);
-        u32 c0 = iss->animation_counts[sz - 3];  // default
-        u32 c1 = iss->animation_counts[sz - 2];  // hover
-        u32 c2 = iss->animation_counts[sz - 1];  // focus
-
-        // Pop off elements
-        if (iss->animations[0]) neko_dyn_array_head(iss->animations[0])->size -= c0;
-        if (iss->animations[1]) neko_dyn_array_head(iss->animations[1])->size -= c1;
-        if (iss->animations[2]) neko_dyn_array_head(iss->animations[2])->size -= c2;
     }
 }
 
@@ -1123,19 +635,10 @@ void ui_pop_container(ui_context_t* ctx) {
             ui_id id = ui_get_id(ctx, "!scrollbar" #y, 11);                                                                                 \
             const i32 elementid = UI_ELEMENT_SCROLL;                                                                                        \
             ui_style_t style = NEKO_DEFAULT_VAL();                                                                                          \
-            ui_animation_t* anim = ui_get_animation(ctx, id, desc, elementid);                                                              \
                                                                                                                                             \
-            /* Update anim (keep states locally within animation, only way to do this)*/                                                    \
-            if (anim) {                                                                                                                     \
-                ui_animation_update(ctx, anim);                                                                                             \
-                                                                                                                                            \
-                /* Get blended style based on animation*/                                                                                   \
-                style = ui_animation_get_blend_style(ctx, anim, desc, elementid);                                                           \
-            } else {                                                                                                                        \
-                style = ctx->focus == id   ? ui_get_current_element_style(ctx, desc, elementid, 0x02)                                       \
-                        : ctx->hover == id ? ui_get_current_element_style(ctx, desc, elementid, 0x01)                                       \
-                                           : ui_get_current_element_style(ctx, desc, elementid, 0x00);                                      \
-            }                                                                                                                               \
+            style = ctx->focus == id   ? ui_get_current_element_style(ctx, desc, elementid, 0x02)                                           \
+                    : ctx->hover == id ? ui_get_current_element_style(ctx, desc, elementid, 0x01)                                           \
+                                       : ui_get_current_element_style(ctx, desc, elementid, 0x00);                                          \
                                                                                                                                             \
             i32 sz = (i32)style.size.x;                                                                                                     \
             if (cs.y > cnt->body.h) {                                                                                                       \
@@ -1319,53 +822,10 @@ ui_style_sheet_t ui_style_sheet_create(ui_context_t* ctx, ui_style_sheet_desc_t*
         UI_APPLY_STYLE_ELEMENT(desc->text, UI_ELEMENT_TEXT);
     }
 
-#define COPY_ANIM_DATA(TYPE, ELEMENT)                                                                   \
-    do {                                                                                                \
-        /* Apply animations */                                                                          \
-        if (desc->TYPE.all.animation.data) {                                                            \
-            i32 cnt = desc->TYPE.all.animation.size / sizeof(ui_animation_property_t);                  \
-            if (!neko_hash_table_exists(style_sheet.animations, ELEMENT)) {                             \
-                ui_animation_property_list_t v = NEKO_DEFAULT_VAL();                                    \
-                neko_hash_table_insert(style_sheet.animations, ELEMENT, v);                             \
-            }                                                                                           \
-            ui_animation_property_list_t* list = neko_hash_table_getp(style_sheet.animations, ELEMENT); \
-            neko_assert(list);                                                                          \
-            /* Register animation properties for all */                                                 \
-            for (u32 i = 0; i < 3; ++i) {                                                               \
-                for (u32 c = 0; c < cnt; ++c) {                                                         \
-                    neko_dyn_array_push(list->properties[i], desc->TYPE.all.animation.data[c]);         \
-                }                                                                                       \
-            }                                                                                           \
-        }                                                                                               \
-    } while (0)
-
-    // Copy animations
-    COPY_ANIM_DATA(button, UI_ELEMENT_BUTTON);
-    COPY_ANIM_DATA(label, UI_ELEMENT_LABEL);
-    COPY_ANIM_DATA(scroll, UI_ELEMENT_SCROLL);
-    COPY_ANIM_DATA(image, UI_ELEMENT_IMAGE);
-    COPY_ANIM_DATA(panel, UI_ELEMENT_PANEL);
-    COPY_ANIM_DATA(text, UI_ELEMENT_TEXT);
-    COPY_ANIM_DATA(container, UI_ELEMENT_CONTAINER);
-
     return style_sheet;
 }
 
-void ui_style_sheet_fini(ui_style_sheet_t* ss) {
-    // Need to free all animations
-    if (!ss || !ss->animations) {
-        console_log("Trying to destroy invalid style sheet");
-        return;
-    }
-
-    for (neko_hash_table_iter it = neko_hash_table_iter_new(ss->animations); neko_hash_table_iter_valid(ss->animations, it); neko_hash_table_iter_advance(ss->animations, it)) {
-        ui_animation_property_list_t* list = neko_hash_table_iter_getp(ss->animations, it);
-        for (u32 i = 0; i < 3; ++i) {
-            neko_dyn_array_free(list->properties[i]);
-        }
-    }
-    neko_hash_table_free(ss->animations);
-}
+void ui_style_sheet_fini(ui_style_sheet_t* ss) {}
 
 void ui_set_style_sheet(ui_context_t* ctx, ui_style_sheet_t* style_sheet) { ctx->style_sheet = style_sheet ? style_sheet : &ui_default_style_sheet; }
 
@@ -2404,7 +1864,7 @@ void ui_free(ui_context_t* ctx) {
     neko_hash_table_free(ctx->font_stash);
     neko_immediate_draw_free(&ctx->gui_idraw);
     neko_immediate_draw_free(&ctx->overlay_draw_list);
-    neko_hash_table_free(ctx->animations);
+    // neko_hash_table_free(ctx->animations);
     neko_slot_array_free(ctx->splits);
     neko_slot_array_free(ctx->tab_bars);
     neko_hash_table_free(ctx->inline_styles);
@@ -2414,10 +1874,8 @@ void ui_free(ui_context_t* ctx) {
         ui_inline_style_stack_t* stack = neko_hash_table_iter_getp(ctx->inline_styles, it);
         for (u32 i = 0; i < 3; ++i) {
             neko_dyn_array_free(stack->styles[i]);
-            neko_dyn_array_free(stack->animations[i]);
         }
-        neko_dyn_array_free(stack->style_counts);      // amount of styles to pop off at "top of stack" for each state
-        neko_dyn_array_free(stack->animation_counts);  // amount of animations to pop off at "top of stack" for each state
+        neko_dyn_array_free(stack->style_counts);  // amount of styles to pop off at "top of stack" for each state
     }
 
     neko_dyn_array_free(ctx->requests);
@@ -2742,8 +2200,8 @@ void ui_begin(ui_context_t* ctx, const ui_hints_t* hints) {
 
     // Set up overlay draw list
     vec2 fbs = ctx->framebuffer_size;
-    neko_idraw_defaults(&ctx->overlay_draw_list);
-    neko_idraw_camera2d(&ctx->overlay_draw_list, (u32)ctx->viewport.w, (u32)ctx->viewport.h);  // Need to pass in a viewport for this instead
+    idraw_defaults(&ctx->overlay_draw_list);
+    idraw_camera2d(&ctx->overlay_draw_list, (u32)ctx->viewport.w, (u32)ctx->viewport.h);  // Need to pass in a viewport for this instead
 
     for (neko_slot_array_iter it = neko_slot_array_iter_new(ctx->splits); neko_slot_array_iter_valid(ctx->splits, it); neko_slot_array_iter_advance(ctx->splits, it)) {
         if (!it) continue;
@@ -2935,21 +2393,21 @@ static void ui_docking(ui_context_t* ctx) {
             bool is_dockspace = ctx->dockable_root->opt & UI_OPT_DOCKSPACE;
 
             // Draw center rect
-            neko_idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w, center.h), neko_v2s(0.f), neko_v2s(1.f), hov_c ? hov_col : def_col, R_PRIMITIVE_TRIANGLES);
-            // neko_idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w + 1, center.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, R_PRIMITIVE_LINES);
+            idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w, center.h), neko_v2s(0.f), neko_v2s(1.f), hov_c ? hov_col : def_col, R_PRIMITIVE_TRIANGLES);
+            // idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w + 1, center.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, R_PRIMITIVE_LINES);
 
             if (!is_dockspace) {
-                neko_idraw_rectvd(dl, neko_v2(left.x, left.y), neko_v2(left.w, left.h), neko_v2s(0.f), neko_v2s(1.f), hov_l ? hov_col : def_col, R_PRIMITIVE_TRIANGLES);
-                // neko_idraw_rectvd(dl, neko_v2(left.x, left.y), neko_v2(left.w, left.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, R_PRIMITIVE_LINES);
+                idraw_rectvd(dl, neko_v2(left.x, left.y), neko_v2(left.w, left.h), neko_v2s(0.f), neko_v2s(1.f), hov_l ? hov_col : def_col, R_PRIMITIVE_TRIANGLES);
+                // idraw_rectvd(dl, neko_v2(left.x, left.y), neko_v2(left.w, left.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, R_PRIMITIVE_LINES);
 
-                neko_idraw_rectvd(dl, neko_v2(right.x, right.y), neko_v2(right.w, right.h), neko_v2s(0.f), neko_v2s(1.f), hov_r ? hov_col : def_col, R_PRIMITIVE_TRIANGLES);
-                // neko_idraw_rectvd(dl, neko_v2(right.x, right.y), neko_v2(right.w, right.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, R_PRIMITIVE_LINES);
+                idraw_rectvd(dl, neko_v2(right.x, right.y), neko_v2(right.w, right.h), neko_v2s(0.f), neko_v2s(1.f), hov_r ? hov_col : def_col, R_PRIMITIVE_TRIANGLES);
+                // idraw_rectvd(dl, neko_v2(right.x, right.y), neko_v2(right.w, right.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, R_PRIMITIVE_LINES);
 
-                neko_idraw_rectvd(dl, neko_v2(top.x, top.y), neko_v2(top.w, top.h), neko_v2s(0.f), neko_v2s(1.f), hov_t ? hov_col : def_col, R_PRIMITIVE_TRIANGLES);
-                // neko_idraw_rectvd(dl, neko_v2(top.x, top.y), neko_v2(top.w, top.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, R_PRIMITIVE_LINES);
+                idraw_rectvd(dl, neko_v2(top.x, top.y), neko_v2(top.w, top.h), neko_v2s(0.f), neko_v2s(1.f), hov_t ? hov_col : def_col, R_PRIMITIVE_TRIANGLES);
+                // idraw_rectvd(dl, neko_v2(top.x, top.y), neko_v2(top.w, top.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, R_PRIMITIVE_LINES);
 
-                neko_idraw_rectvd(dl, neko_v2(bottom.x, bottom.y), neko_v2(bottom.w, bottom.h), neko_v2s(0.f), neko_v2s(1.f), hov_b ? hov_col : def_col, R_PRIMITIVE_TRIANGLES);
-                // neko_idraw_rectvd(dl, neko_v2(bottom.x, bottom.y), neko_v2(bottom.w, bottom.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, R_PRIMITIVE_LINES);
+                idraw_rectvd(dl, neko_v2(bottom.x, bottom.y), neko_v2(bottom.w, bottom.h), neko_v2s(0.f), neko_v2s(1.f), hov_b ? hov_col : def_col, R_PRIMITIVE_TRIANGLES);
+                // idraw_rectvd(dl, neko_v2(bottom.x, bottom.y), neko_v2(bottom.w, bottom.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, R_PRIMITIVE_LINES);
             }
 
             const float d = 0.5f;
@@ -2958,30 +2416,30 @@ static void ui_docking(ui_context_t* ctx) {
             if (is_dockspace) {
                 if (hov_c) {
                     center = ui_rect(cnt->rect.x, cnt->rect.y, cnt->rect.w, cnt->rect.h);
-                    neko_idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w, center.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, R_PRIMITIVE_LINES);
-                    neko_idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w, center.h), neko_v2s(0.f), neko_v2s(1.f), def_col, R_PRIMITIVE_TRIANGLES);
+                    idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w, center.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, R_PRIMITIVE_LINES);
+                    idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w, center.h), neko_v2s(0.f), neko_v2s(1.f), def_col, R_PRIMITIVE_TRIANGLES);
                 }
             } else {
                 if (hov_c && !ctx->focus_root->split) {
                     center = ui_rect(cnt->rect.x, cnt->rect.y, cnt->rect.w, cnt->rect.h);
-                    neko_idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w, center.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, R_PRIMITIVE_LINES);
-                    neko_idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w, center.h), neko_v2s(0.f), neko_v2s(1.f), def_col, R_PRIMITIVE_TRIANGLES);
+                    idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w, center.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, R_PRIMITIVE_LINES);
+                    idraw_rectvd(dl, neko_v2(center.x, center.y), neko_v2(center.w, center.h), neko_v2s(0.f), neko_v2s(1.f), def_col, R_PRIMITIVE_TRIANGLES);
                 } else if (hov_l) {
                     left = ui_rect(cnt->rect.x, cnt->rect.y, cnt->rect.w * d + hs, cnt->rect.h);
-                    neko_idraw_rectvd(dl, neko_v2(left.x, left.y), neko_v2(left.w, left.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, R_PRIMITIVE_LINES);
-                    neko_idraw_rectvd(dl, neko_v2(left.x, left.y), neko_v2(left.w, left.h), neko_v2s(0.f), neko_v2s(1.f), def_col, R_PRIMITIVE_TRIANGLES);
+                    idraw_rectvd(dl, neko_v2(left.x, left.y), neko_v2(left.w, left.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, R_PRIMITIVE_LINES);
+                    idraw_rectvd(dl, neko_v2(left.x, left.y), neko_v2(left.w, left.h), neko_v2s(0.f), neko_v2s(1.f), def_col, R_PRIMITIVE_TRIANGLES);
                 } else if (hov_r) {
                     right = ui_rect(cnt->rect.x + cnt->rect.w * d + hs, cnt->rect.y, cnt->rect.w * (1.f - d) - hs, cnt->rect.h);
-                    neko_idraw_rectvd(dl, neko_v2(right.x, right.y), neko_v2(right.w, right.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, R_PRIMITIVE_LINES);
-                    neko_idraw_rectvd(dl, neko_v2(right.x, right.y), neko_v2(right.w, right.h), neko_v2s(0.f), neko_v2s(1.f), def_col, R_PRIMITIVE_TRIANGLES);
+                    idraw_rectvd(dl, neko_v2(right.x, right.y), neko_v2(right.w, right.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, R_PRIMITIVE_LINES);
+                    idraw_rectvd(dl, neko_v2(right.x, right.y), neko_v2(right.w, right.h), neko_v2s(0.f), neko_v2s(1.f), def_col, R_PRIMITIVE_TRIANGLES);
                 } else if (hov_b) {
                     bottom = ui_rect(cnt->rect.x, cnt->rect.y + cnt->rect.h * d + hs, cnt->rect.w, cnt->rect.h * (1.f - d) - hs);
-                    neko_idraw_rectvd(dl, neko_v2(bottom.x, bottom.y), neko_v2(bottom.w, bottom.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, R_PRIMITIVE_LINES);
-                    neko_idraw_rectvd(dl, neko_v2(bottom.x, bottom.y), neko_v2(bottom.w, bottom.h), neko_v2s(0.f), neko_v2s(1.f), def_col, R_PRIMITIVE_TRIANGLES);
+                    idraw_rectvd(dl, neko_v2(bottom.x, bottom.y), neko_v2(bottom.w, bottom.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, R_PRIMITIVE_LINES);
+                    idraw_rectvd(dl, neko_v2(bottom.x, bottom.y), neko_v2(bottom.w, bottom.h), neko_v2s(0.f), neko_v2s(1.f), def_col, R_PRIMITIVE_TRIANGLES);
                 } else if (hov_t) {
                     top = ui_rect(cnt->rect.x, cnt->rect.y, cnt->rect.w, cnt->rect.h * d + hs);
-                    neko_idraw_rectvd(dl, neko_v2(top.x, top.y), neko_v2(top.w, top.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, R_PRIMITIVE_LINES);
-                    neko_idraw_rectvd(dl, neko_v2(top.x, top.y), neko_v2(top.w, top.h), neko_v2s(0.f), neko_v2s(1.f), def_col, R_PRIMITIVE_TRIANGLES);
+                    idraw_rectvd(dl, neko_v2(top.x, top.y), neko_v2(top.w, top.h), neko_v2s(0.f), neko_v2s(1.f), hov_col, R_PRIMITIVE_LINES);
+                    idraw_rectvd(dl, neko_v2(top.x, top.y), neko_v2(top.w, top.h), neko_v2s(0.f), neko_v2s(1.f), def_col, R_PRIMITIVE_TRIANGLES);
                 }
             }
         }
@@ -3309,10 +2767,10 @@ void ui_render(ui_context_t* ctx, command_buffer_t* cb) {
     const ui_rect_t* viewport = &ctx->viewport;
     idraw_t* gui_idraw = &ctx->gui_idraw;
 
-    neko_idraw_defaults(&ctx->gui_idraw);
-    // neko_idraw_camera2D(&ctx->gsi, (u32)fb.x, (u32)fb.y);
-    neko_idraw_camera2d(&ctx->gui_idraw, (u32)viewport->w, (u32)viewport->h);
-    neko_idraw_blend_enabled(&ctx->gui_idraw, true);
+    idraw_defaults(&ctx->gui_idraw);
+    // idraw_camera2D(&ctx->gsi, (u32)fb.x, (u32)fb.y);
+    idraw_camera2d(&ctx->gui_idraw, (u32)viewport->w, (u32)viewport->h);
+    idraw_blend_enabled(&ctx->gui_idraw, true);
 
     ui_rect_t clip = ui_unclipped_rect;
 
@@ -3320,43 +2778,43 @@ void ui_render(ui_context_t* ctx, command_buffer_t* cb) {
     while (ui_next_command(ctx, &cmd)) {
         switch (cmd->type) {
             case UI_COMMAND_CUSTOM: {
-                neko_idraw_defaults(&ctx->gui_idraw);
-                neko_idraw_set_view_scissor(&ctx->gui_idraw, (i32)(cmd->custom.clip.x), (i32)(fb.y - cmd->custom.clip.h - cmd->custom.clip.y), (i32)(cmd->custom.clip.w), (i32)(cmd->custom.clip.h));
+                idraw_defaults(&ctx->gui_idraw);
+                idraw_set_view_scissor(&ctx->gui_idraw, (i32)(cmd->custom.clip.x), (i32)(fb.y - cmd->custom.clip.h - cmd->custom.clip.y), (i32)(cmd->custom.clip.w), (i32)(cmd->custom.clip.h));
 
                 if (cmd->custom.cb) {
                     cmd->custom.cb(ctx, &cmd->custom);
                 }
 
-                neko_idraw_defaults(&ctx->gui_idraw);
-                // neko_idraw_camera2D(&ctx->gsi, (u32)fb.x, (u32)fb.y);
-                neko_idraw_camera2d(&ctx->gui_idraw, (u32)viewport->w, (u32)viewport->h);
-                neko_idraw_blend_enabled(&ctx->gui_idraw, true);
+                idraw_defaults(&ctx->gui_idraw);
+                // idraw_camera2D(&ctx->gsi, (u32)fb.x, (u32)fb.y);
+                idraw_camera2d(&ctx->gui_idraw, (u32)viewport->w, (u32)viewport->h);
+                idraw_blend_enabled(&ctx->gui_idraw, true);
                 // gfx_set_viewport(&ctx->gsi.commands, 0, 0, (u32)fb.x, (u32)fb.y);
                 gfx_set_viewport(&ctx->gui_idraw.commands, (u32)viewport->x, (u32)viewport->y, (u32)viewport->w, (u32)viewport->h);
 
-                neko_idraw_set_view_scissor(&ctx->gui_idraw, (i32)(clip.x), (i32)(fb.y - clip.h - clip.y), (i32)(clip.w), (i32)(clip.h));
+                idraw_set_view_scissor(&ctx->gui_idraw, (i32)(clip.x), (i32)(fb.y - clip.h - clip.y), (i32)(clip.w), (i32)(clip.h));
 
             } break;
 
             case UI_COMMAND_PIPELINE: {
-                neko_idraw_pipeline_set(&ctx->gui_idraw, cmd->pipeline.pipeline);
+                idraw_pipeline_set(&ctx->gui_idraw, cmd->pipeline.pipeline);
 
                 // Set layout if valid
                 if (cmd->pipeline.layout_sz) {
                     switch (cmd->pipeline.layout_type) {
                         case NEKO_IDRAW_LAYOUT_VATTR: {
-                            neko_idraw_vattr_list(&ctx->gui_idraw, (neko_idraw_vattr_type*)cmd->pipeline.layout, cmd->pipeline.layout_sz);
+                            idraw_vattr_list(&ctx->gui_idraw, (idraw_vattr_type*)cmd->pipeline.layout, cmd->pipeline.layout_sz);
                         } break;
 
                             // case NEKO_IDRAW_LAYOUT_MESH: {
-                            //     neko_idraw_vattr_list_mesh(&ctx->gui_idraw, (neko_asset_mesh_layout_t*)cmd->pipeline.layout, cmd->pipeline.layout_sz);
+                            //     idraw_vattr_list_mesh(&ctx->gui_idraw, (neko_asset_mesh_layout_t*)cmd->pipeline.layout, cmd->pipeline.layout_sz);
                             // } break;
                     }
                 }
 
                 // If not a valid pipeline, then set back to default gui pipeline
                 if (!cmd->pipeline.pipeline.id) {
-                    neko_idraw_blend_enabled(&ctx->gui_idraw, true);
+                    idraw_blend_enabled(&ctx->gui_idraw, true);
                 }
 
             } break;
@@ -3401,37 +2859,37 @@ void ui_render(ui_context_t* ctx, command_buffer_t* cb) {
                 if (tp->x > g_app->width || tp->y > g_app->height || tp->x < 0 || tp->y < 0) {
                     break;
                 }
-                neko_idraw_text(&ctx->gui_idraw, tp->x, tp->y, ts, tf, false, *tc);
+                idraw_text(&ctx->gui_idraw, tp->x, tp->y, ts, tf, false, *tc);
             } break;
 
             case UI_COMMAND_SHAPE: {
-                neko_idraw_texture(&ctx->gui_idraw, neko_handle_invalid(gfx_texture_t));
+                idraw_texture(&ctx->gui_idraw, neko_handle_invalid(gfx_texture_t));
                 Color256* c = &cmd->shape.color;
 
                 switch (cmd->shape.type) {
                     case UI_SHAPE_RECT: {
                         ui_rect_t* r = &cmd->shape.rect;
-                        neko_idraw_rectvd(&ctx->gui_idraw, neko_v2(r->x, r->y), neko_v2(r->w, r->h), neko_v2s(0.f), neko_v2s(1.f), *c, R_PRIMITIVE_TRIANGLES);
+                        idraw_rectvd(&ctx->gui_idraw, neko_v2(r->x, r->y), neko_v2(r->w, r->h), neko_v2s(0.f), neko_v2s(1.f), *c, R_PRIMITIVE_TRIANGLES);
                     } break;
 
                     case UI_SHAPE_CIRCLE: {
                         vec2* cp = &cmd->shape.circle.center;
                         float* r = &cmd->shape.circle.radius;
-                        neko_idraw_circle(&ctx->gui_idraw, cp->x, cp->y, *r, 16, c->r, c->g, c->b, c->a, R_PRIMITIVE_TRIANGLES);
+                        idraw_circle(&ctx->gui_idraw, cp->x, cp->y, *r, 16, c->r, c->g, c->b, c->a, R_PRIMITIVE_TRIANGLES);
                     } break;
 
                     case UI_SHAPE_TRIANGLE: {
                         vec2* pa = &cmd->shape.triangle.points[0];
                         vec2* pb = &cmd->shape.triangle.points[1];
                         vec2* pc = &cmd->shape.triangle.points[2];
-                        neko_idraw_trianglev(&ctx->gui_idraw, *pa, *pb, *pc, *c, R_PRIMITIVE_TRIANGLES);
+                        idraw_trianglev(&ctx->gui_idraw, *pa, *pb, *pc, *c, R_PRIMITIVE_TRIANGLES);
 
                     } break;
 
                     case UI_SHAPE_LINE: {
                         vec2* s = &cmd->shape.line.start;
                         vec2* e = &cmd->shape.line.end;
-                        neko_idraw_linev(&ctx->gui_idraw, *s, *e, *c);
+                        idraw_linev(&ctx->gui_idraw, *s, *e, *c);
                     } break;
                 }
 
@@ -3444,8 +2902,8 @@ void ui_render(ui_context_t* ctx, command_buffer_t* cb) {
                 if (r->x > g_app->width || r->y > g_app->height) {  // 优化视野外渲染
                     break;
                 }
-                neko_idraw_texture(&ctx->gui_idraw, cmd->image.hndl);
-                neko_idraw_rectvd(&ctx->gui_idraw, neko_v2(r->x, r->y), neko_v2(r->w, r->h), neko_v2(uvs->x, uvs->y), neko_v2(uvs->z, uvs->w), *c, R_PRIMITIVE_TRIANGLES);
+                idraw_texture(&ctx->gui_idraw, cmd->image.hndl);
+                idraw_rectvd(&ctx->gui_idraw, neko_v2(r->x, r->y), neko_v2(r->w, r->h), neko_v2(uvs->x, uvs->y), neko_v2(uvs->z, uvs->w), *c, R_PRIMITIVE_TRIANGLES);
             } break;
 
             case UI_COMMAND_CLIP: {
@@ -3470,17 +2928,17 @@ void ui_render(ui_context_t* ctx, command_buffer_t* cb) {
                     break;
                 }
 
-                neko_idraw_set_view_scissor(&ctx->gui_idraw, (i32)(clip_rect.x), (i32)(fb.y - clip_rect.h - clip_rect.y), (i32)(clip_rect.w), (i32)(clip_rect.h));
+                idraw_set_view_scissor(&ctx->gui_idraw, (i32)(clip_rect.x), (i32)(fb.y - clip_rect.h - clip_rect.y), (i32)(clip_rect.w), (i32)(clip_rect.h));
 
             } break;
         }
     }
 
     // Draw main list
-    neko_idraw_draw(&ctx->gui_idraw, cb);
+    idraw_draw(&ctx->gui_idraw, cb);
 
     // Draw overlay list
-    neko_idraw_draw(&ctx->overlay_draw_list, cb);
+    idraw_draw(&ctx->overlay_draw_list, cb);
 }
 
 void ui_renderpass_submit(ui_context_t* ctx, command_buffer_t* cb, Color256 c) {
@@ -3538,7 +2996,7 @@ ui_id ui_get_id_hash(ui_context_t* ctx, const void* data, i32 size, ui_id hash) 
     return res;
 }
 
-void ui_push_id(ui_context_t* ctx, String str) { ui_push_id(ctx, str.data,str.len); }
+void ui_push_id(ui_context_t* ctx, String str) { ui_push_id(ctx, str.data, str.len); }
 
 void ui_push_id(ui_context_t* ctx, const void* data, i32 size) { ui_stack_push(ctx->id_stack, ui_get_id(ctx, data, size)); }
 
@@ -3716,7 +3174,7 @@ void ui_set_clip(ui_context_t* ctx, ui_rect_t rect) {
     cmd->clip.rect = rect;
 }
 
-void ui_set_pipeline(ui_context_t* ctx, neko_handle(gfx_pipeline_t) pip, void* layout, size_t sz, neko_idraw_layout_type type) {
+void ui_set_pipeline(ui_context_t* ctx, neko_handle(gfx_pipeline_t) pip, void* layout, size_t sz, idraw_layout_type type) {
     ui_command_t* cmd;
     cmd = ui_push_command(ctx, UI_COMMAND_PIPELINE, sizeof(ui_pipelinecommand_t));
     cmd->pipeline.pipeline = pip;
@@ -3867,7 +3325,7 @@ void ui_draw_triangle(ui_context_t* ctx, vec2 a, vec2 b, vec2 c, Color256 color)
 
 void ui_draw_box(ui_context_t* ctx, ui_rect_t rect, i16* w, Color256 color) {
     idraw_t* dl = &ctx->overlay_draw_list;
-    // neko_idraw_rectvd(dl, neko_v2(rect.x, rect.y), neko_v2(rect.w, rect.h), neko_v2s(0.f), neko_v2s(1.f), NEKO_COLOR_RED, R_PRIMITIVE_LINES);
+    // idraw_rectvd(dl, neko_v2(rect.x, rect.y), neko_v2(rect.w, rect.h), neko_v2s(0.f), neko_v2s(1.f), NEKO_COLOR_RED, R_PRIMITIVE_LINES);
 
     const float l = (float)w[0], r = (float)w[1], t = (float)w[2], b = (float)w[3];
     ui_draw_rect(ctx, ui_rect(rect.x + l, rect.y, rect.w - r - l, t), color);               // top

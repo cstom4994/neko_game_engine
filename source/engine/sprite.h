@@ -2,11 +2,11 @@
 #define SPRITE_H
 
 #include "engine/base.h"
-#include "engine/ecs.h"
+#include "engine/entity.h"
 #include "engine/gfx.h"
 #include "engine/glew_glfw.h"
-#include "engine/image.h"
 #include "engine/prelude.h"
+#include "engine/texture.h"
 
 struct AseSpriteFrame {
     i32 duration;

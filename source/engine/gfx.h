@@ -137,8 +137,8 @@ neko_enum_decl(gfx_buffer_type, R_BUFFER_VERTEX, R_BUFFER_INDEX, R_BUFFER_FRAME,
 neko_enum_decl(gfx_buffer_update_type, R_BUFFER_UPDATE_RECREATE, R_BUFFER_UPDATE_SUBDATA);
 
 enum gfx_flags {
-    R_BUFFER_FLAG_MAP_PERSISTENT = 0x01,
-    R_BUFFER_FLAG_MAP_COHERENT = 0x02,
+    // R_BUFFER_FLAG_MAP_PERSISTENT = 0x01,
+    // R_BUFFER_FLAG_MAP_COHERENT = 0x02,
 
     R_CLEAR_COLOR = 0x04,
     R_CLEAR_DEPTH = 0x05,
@@ -178,12 +178,12 @@ typedef struct gfx_shader_desc_t {
     char name[64];                      // Optional (for logging and debugging mainly)
 } gfx_shader_desc_t;
 
-// Graphics Texture Desc
+// Graphics AssetTexture Desc
 typedef struct gfx_texture_desc_t {
     u32 width;                              // Width of texture in texels
     u32 height;                             // Height of texture in texels
     u32 depth;                              // Depth of texture
-    void* data;                             // Texture data to upload (can be null)
+    void* data;                             // AssetTexture data to upload (can be null)
     gfx_texture_format_type format;         // Format of texture data (rgba32, rgba8, rgba32f, r8, depth32f, etc...)
     u32 wrap_s;                             // Wrapping type for s axis of texture
     u32 wrap_t;                             // Wrapping type for t axis of texture
@@ -248,17 +248,6 @@ typedef struct gfx_uniform_buffer_desc_t {
     gfx_buffer_update_desc_t update;
 } gfx_uniform_buffer_desc_t;
 
-typedef struct gfx_storage_buffer_desc_t {
-    void* data;
-    void* map;
-    size_t size;
-    char name[64];
-    u32 usage;
-    u32 access;
-    u32 flags;
-    gfx_buffer_update_desc_t update;
-} gfx_storage_buffer_desc_t;
-
 typedef struct gfx_framebuffer_desc_t {
     void* data;
 } gfx_framebuffer_desc_t;
@@ -313,11 +302,6 @@ typedef struct gfx_bind_uniform_buffer_desc_t {
     } range;
 } gfx_bind_uniform_buffer_desc_t;
 
-typedef struct gfx_bind_storage_buffer_desc_t {
-    neko_handle(gfx_storage_buffer_t) buffer;
-    u32 binding;
-} gfx_bind_storage_buffer_desc_t;
-
 typedef struct gfx_bind_uniform_desc_t {
     neko_handle(gfx_uniform_t) uniform;
     void* data;
@@ -350,11 +334,6 @@ typedef struct gfx_bind_desc_t {
         gfx_bind_image_buffer_desc_t* desc;
         size_t size;
     } image_buffers;
-
-    struct {
-        gfx_bind_storage_buffer_desc_t* desc;
-        size_t size;
-    } storage_buffers;
 
 } gfx_bind_desc_t;
 
@@ -499,17 +478,6 @@ typedef struct neko_gl_uniform_buffer_t {
     u32 sid;
 } neko_gl_uniform_buffer_t;
 
-typedef struct neko_gl_storage_buffer_t {
-    char name[64];
-    u32 buffer;
-    i32 access;
-    size_t size;
-    u32 block_idx;
-    u32 location;
-    void* map;
-    GLsync sync;
-} neko_gl_storage_buffer_t;
-
 // Pipeline
 typedef struct neko_gl_pipeline_t {
     gfx_blend_state_desc_t blend;
@@ -538,7 +506,7 @@ typedef struct neko_gl_buffer_t {
     u32 id;
 } neko_gl_buffer_t;
 
-// Texture
+// AssetTexture
 typedef struct neko_gl_texture_t {
     u32 id;
     gfx_texture_desc_t desc;
@@ -565,7 +533,6 @@ typedef struct neko_gl_data_t {
     neko_slot_array(neko_gl_texture_t) textures;
     neko_slot_array(neko_gl_buffer_t) vertex_buffers;
     neko_slot_array(neko_gl_uniform_buffer_t) uniform_buffers;
-    neko_slot_array(neko_gl_storage_buffer_t) storage_buffers;
     neko_slot_array(neko_gl_buffer_t) index_buffers;
     neko_slot_array(neko_gl_buffer_t) frame_buffers;
     neko_slot_array(neko_gl_uniform_list_t) uniforms;
@@ -631,7 +598,6 @@ neko_handle(gfx_shader_t) gfx_shader_create(const gfx_shader_desc_t desc);
 neko_handle(gfx_vertex_buffer_t) gfx_vertex_buffer_create(const gfx_vertex_buffer_desc_t desc);
 neko_handle(gfx_index_buffer_t) gfx_index_buffer_create(const gfx_index_buffer_desc_t desc);
 neko_handle(gfx_uniform_buffer_t) gfx_uniform_buffer_create(const gfx_uniform_buffer_desc_t desc);
-neko_handle(gfx_storage_buffer_t) gfx_storage_buffer_create(const gfx_storage_buffer_desc_t desc);
 neko_handle(gfx_framebuffer_t) gfx_framebuffer_create(const gfx_framebuffer_desc_t desc);
 neko_handle(gfx_renderpass_t) gfx_renderpass_create(const gfx_renderpass_desc_t desc);
 neko_handle(gfx_pipeline_t) gfx_pipeline_create(const gfx_pipeline_desc_t desc);
@@ -643,7 +609,6 @@ void gfx_shader_fini(neko_handle(gfx_shader_t) hndl);
 void gfx_vertex_buffer_fini(neko_handle(gfx_vertex_buffer_t) hndl);
 void gfx_index_buffer_fini(neko_handle(gfx_index_buffer_t) hndl);
 void gfx_uniform_buffer_fini(neko_handle(gfx_uniform_buffer_t) hndl);
-void gfx_storage_buffer_fini(neko_handle(gfx_storage_buffer_t) hndl);
 void gfx_framebuffer_fini(neko_handle(gfx_framebuffer_t) hndl);
 void gfx_renderpass_fini(neko_handle(gfx_renderpass_t) hndl);
 void gfx_pipeline_fini(neko_handle(gfx_pipeline_t) hndl);
@@ -651,13 +616,8 @@ void gfx_pipeline_fini(neko_handle(gfx_pipeline_t) hndl);
 // Resource Updates (main thread only)
 void gfx_vertex_buffer_update(neko_handle(gfx_vertex_buffer_t) hndl, gfx_vertex_buffer_desc_t* desc);
 void gfx_index_buffer_update(neko_handle(gfx_index_buffer_t) hndl, gfx_index_buffer_desc_t* desc);
-void gfx_storage_buffer_update(neko_handle(gfx_storage_buffer_t) hndl, gfx_storage_buffer_desc_t* desc);
 void gfx_texture_update(neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t* desc);
 void gfx_texture_read(neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t* desc);
-
-void* gfx_storage_buffer_map_get(neko_handle(gfx_storage_buffer_t) hndl);
-void* gfx_storage_buffer_lock(neko_handle(gfx_storage_buffer_t) hndl);
-void gfx_storage_buffer_unlock(neko_handle(gfx_storage_buffer_t) hndl);
 
 // Resource Queries
 void gfx_pipeline_desc_query(neko_handle(gfx_pipeline_t) hndl, gfx_pipeline_desc_t* out);
@@ -669,7 +629,6 @@ void gfx_texture_request_update(command_buffer_t* cb, neko_handle(gfx_texture_t)
 void gfx_vertex_buffer_request_update(command_buffer_t* cb, neko_handle(gfx_vertex_buffer_t) hndl, gfx_vertex_buffer_desc_t desc);
 void gfx_index_buffer_request_update(command_buffer_t* cb, neko_handle(gfx_index_buffer_t) hndl, gfx_index_buffer_desc_t desc);
 void gfx_uniform_buffer_request_update(command_buffer_t* cb, neko_handle(gfx_uniform_buffer_t) hndl, gfx_uniform_buffer_desc_t desc);
-void gfx_storage_buffer_request_update(command_buffer_t* cb, neko_handle(gfx_storage_buffer_t) hndl, gfx_storage_buffer_desc_t desc);
 
 // Pipeline / Pass / Bind / Draw
 void gfx_renderpass_begin(command_buffer_t* cb, neko_handle(gfx_renderpass_t) hndl);
@@ -694,6 +653,5 @@ typedef neko_handle(gfx_vertex_buffer_t) neko_vbo_t;
 typedef neko_handle(gfx_index_buffer_t) neko_ibo_t;
 typedef neko_handle(gfx_uniform_buffer_t) neko_ubo_t;
 typedef neko_handle(gfx_uniform_t) neko_uniform_t;
-typedef neko_handle(gfx_storage_buffer_t) neko_storage_buffer_t;
 
 #endif

@@ -173,8 +173,8 @@ static void draw_font_line(idraw_t *idraw, FontFamily *font, float size, float *
         // renderer_push_quad(vec4(x + q.x0, y + q.y0, x + q.x1, y + q.y1), vec4(q.s0, q.t0, q.s1, q.t1));
         // sgl_end();
 
-        neko_idraw_texture(idraw, neko_texture_t{tex_id});
-        neko_idraw_rectvx(idraw, neko_v2(x + q.x0, y + q.y0), neko_v2(x + q.x1, y + q.y1), neko_v2(q.s0, q.t0), neko_v2(q.s1, q.t1), col, R_PRIMITIVE_TRIANGLES);
+        idraw_texture(idraw, neko_texture_t{tex_id});
+        idraw_rectvx(idraw, neko_v2(x + q.x0, y + q.y0), neko_v2(x + q.x1, y + q.y1), neko_v2(q.s0, q.t0), neko_v2(q.s1, q.t1), col, R_PRIMITIVE_TRIANGLES);
 
         x = xx;
         y = yy;

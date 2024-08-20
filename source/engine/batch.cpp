@@ -15,7 +15,7 @@ typedef struct {
     float tx, ty, tw, th;
 } batch_tex;
 
-void batch_test_draw(batch_renderer *renderer, Texture tex, batch_tex a) {
+void batch_test_draw(batch_renderer *renderer, AssetTexture tex, batch_tex a) {
     batch_texture(renderer, tex.id);
 
     float x1 = a.px;

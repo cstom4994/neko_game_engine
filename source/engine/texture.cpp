@@ -42,6 +42,54 @@ static void _flip_image_vertical(unsigned char *data, unsigned int width, unsign
     mem_free(new_data);
 }
 
+NEKO_FORCE_INLINE void neko_tex_flip_vertically(int width, int height, u8 *data) {
+    u8 rgb[4];
+    for (int y = 0; y < height / 2; y++) {
+        for (int x = 0; x < width; x++) {
+            int top = 4 * (x + y * width);
+            int bottom = 4 * (x + (height - y - 1) * width);
+            memcpy(rgb, data + top, sizeof(rgb));
+            memcpy(data + top, data + bottom, sizeof(rgb));
+            memcpy(data + bottom, rgb, sizeof(rgb));
+        }
+    }
+}
+
+neko_texture_t neko_aseprite_simple(String filename) {
+    String contents = {};
+    bool ok = vfs_read_entire_file(&contents, filename);
+
+    neko_defer(mem_free(contents.data));
+
+    ase_t *ase;
+
+    {
+        PROFILE_BLOCK("ase_image load");
+        ase = cute_aseprite_load_from_memory(contents.data, contents.len, nullptr);
+
+        neko_assert(ase->frame_count == 1);  // image_load_ase 用于加载简单的单帧 aseprite
+        // neko_aseprite_default_blend_bind(ase);
+    }
+
+    u8 *data = reinterpret_cast<u8 *>(ase->frames->pixels);
+
+    gfx_texture_desc_t t_desc = {};
+
+    t_desc.format = R_TEXTURE_FORMAT_RGBA8;
+    t_desc.mag_filter = R_TEXTURE_FILTER_NEAREST;
+    t_desc.min_filter = R_TEXTURE_FILTER_NEAREST;
+    t_desc.num_mips = 0;
+    t_desc.width = ase->w;
+    t_desc.height = ase->h;
+    // t_desc.num_comps = 4;
+    t_desc.data = data;
+
+    neko_tex_flip_vertically(ase->w, ase->h, (u8 *)(t_desc.data));
+    neko_texture_t tex = gfx_texture_create(t_desc);
+    cute_aseprite_free(ase);
+    return tex;
+}
+
 static void ase_default_blend_bind(ase_t *ase) {
 
     neko_assert(ase);
@@ -121,7 +169,7 @@ void destroy_texture_handle(u64 texture_id, void *udata) {
     glDeleteTextures(1, &id);
 }
 
-bool texture_update_data(Texture *tex, u8 *data) {
+bool texture_update_data(AssetTexture *tex, u8 *data) {
 
     LockGuard lock{&g_app->gpu_mtx};
 
@@ -150,7 +198,7 @@ bool texture_update_data(Texture *tex, u8 *data) {
     return true;
 }
 
-static bool _texture_load_vfs(Texture *tex, String filename) {
+static bool _texture_load_vfs(AssetTexture *tex, String filename) {
     neko_assert(tex);
 
     u8 *data = nullptr;
@@ -234,7 +282,7 @@ static bool _texture_load_vfs(Texture *tex, String filename) {
     return true;
 }
 
-bool texture_load(Texture *tex, String filename, bool flip_image_vertical) {
+bool texture_load(AssetTexture *tex, String filename, bool flip_image_vertical) {
     tex->id = 0;
     tex->flip_image_vertical = flip_image_vertical;
     return _texture_load_vfs(tex, filename);
@@ -256,13 +304,13 @@ LuaVec2 texture_get_size(const char *filename) {
     return luavec2(a.texture.width, a.texture.height);
 }
 
-Texture texture_get_ptr(const char *filename) {
+AssetTexture texture_get_ptr(const char *filename) {
     Asset a = {};
     bool ok = asset_load_kind(AssetKind_Image, filename, &a);
     return a.texture;
 }
 
-bool texture_update(Texture *tex, String filename) { return _texture_load_vfs(tex, filename); }
+bool texture_update(AssetTexture *tex, String filename) { return _texture_load_vfs(tex, filename); }
 
 bool load_texture_data_from_memory(const void *memory, size_t sz, i32 *width, i32 *height, u32 *num_comps, void **data, bool flip_vertically_on_load) {
     // Load texture data
@@ -367,3 +415,103 @@ bool neko_asset_texture_load_from_memory(const void *memory, size_t sz, void *ou
 
     return true;
 }
+
+#if 0
+
+bool Atlas::load(String filepath, bool generate_mips) {
+    PROFILE_FUNC();
+
+    String contents = {};
+    bool ok = vfs_read_entire_file(&contents, filepath);
+    if (!ok) {
+        return false;
+    }
+    neko_defer(mem_free(contents.data));
+
+    Image img = {};
+    HashMap<AtlasImage> by_name = {};
+
+    for (String line : SplitLines(contents)) {
+        switch (line.data[0]) {
+            case 'a': {
+                Scanner scan = line;
+                scan.next_string();  // discard 'a'
+                String filename = scan.next_string();
+
+                StringBuilder sb = {};
+                neko_defer(sb.trash());
+                sb.swap_filename(filepath, filename);
+                bool ok = img.load(String(sb), generate_mips);
+                if (!ok) {
+                    return false;
+                }
+                break;
+            }
+            case 's': {
+                if (img.id == 0) {
+                    return false;
+                }
+
+                Scanner scan = line;
+                scan.next_string();  // discard 's'
+                String name = scan.next_string();
+                scan.next_string();  // discard origin x
+                scan.next_string();  // discard origin y
+                i32 x = scan.next_int();
+                i32 y = scan.next_int();
+                i32 width = scan.next_int();
+                i32 height = scan.next_int();
+                i32 padding = scan.next_int();
+                i32 trimmed = scan.next_int();
+                scan.next_int();  // discard trim x
+                scan.next_int();  // discard trim y
+                i32 trim_width = scan.next_int();
+                i32 trim_height = scan.next_int();
+
+                AtlasImage atlas_img = {};
+                atlas_img.img = img;
+                atlas_img.u0 = (x + padding) / (float)img.width;
+                atlas_img.v0 = (y + padding) / (float)img.height;
+
+                if (trimmed != 0) {
+                    atlas_img.width = (float)trim_width;
+                    atlas_img.height = (float)trim_height;
+                    atlas_img.u1 = (x + padding + trim_width) / (float)img.width;
+                    atlas_img.v1 = (y + padding + trim_height) / (float)img.height;
+                } else {
+                    atlas_img.width = (float)width;
+                    atlas_img.height = (float)height;
+                    atlas_img.u1 = (x + padding + width) / (float)img.width;
+                    atlas_img.v1 = (y + padding + height) / (float)img.height;
+                }
+
+                by_name[fnv1a(name)] = atlas_img;
+
+                break;
+            }
+            default:
+                break;
+        }
+    }
+
+    console_log("created atlas with image id: %d and %llu entries", img.id, (unsigned long long)by_name.load);
+
+    Atlas a;
+    a.by_name = by_name;
+    a.img = img;
+    *this = a;
+
+    return true;
+}
+
+void Atlas::trash() {
+    by_name.trash();
+    img.trash();
+}
+
+AtlasImage *Atlas::get(String name) {
+    u64 key = fnv1a(name);
+    return by_name.get(key);
+}
+
+#endif

@@ -1,4 +1,4 @@
-#include "engine/ecs.h"
+#include "engine/entity.h"
 #include "engine/luax.h"
 
 /*=============================

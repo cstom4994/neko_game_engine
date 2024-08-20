@@ -1,7 +1,7 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
-#include "engine/ecs.h"
+#include "engine/entity.h"
 #include "engine/base.h"
 #include "engine/prelude.h"
 

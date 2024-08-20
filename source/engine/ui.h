@@ -2,7 +2,7 @@
 
 #include "engine/base.h"
 #include "engine/draw.h"
-#include "engine/ecs.h"
+#include "engine/entity.h"
 #include "engine/gfx.h"
 #include "engine/input.h"
 #include "engine/luax.h"
@@ -293,7 +293,7 @@ typedef struct {
 typedef struct {
     ui_basecommand_t base;
     neko_handle(gfx_pipeline_t) pipeline;
-    neko_idraw_layout_type layout_type;
+    idraw_layout_type layout_type;
     void* layout;
     size_t layout_sz;
 } ui_pipelinecommand_t;
@@ -557,8 +557,6 @@ typedef enum {
 
 } ui_style_element_type;
 
-enum { UI_ANIMATION_DIRECTION_FORWARD = 0x00, UI_ANIMATION_DIRECTION_BACKWARD };
-
 typedef struct {
     ui_style_element_type type;
     union {
@@ -567,21 +565,6 @@ typedef struct {
         FontFamily* font;
     };
 } ui_style_element_t;
-
-typedef struct ui_animation_t {
-    i16 max;          // max time
-    i16 time;         // current time
-    i16 delay;        // delay
-    i16 curve;        // curve type
-    i16 direction;    // current direction
-    i16 playing;      // whether or not active
-    i16 iterations;   // number of iterations to play the animation
-    i16 focus_state;  // cached focus_state from frame (want to delete this somehow)
-    i16 hover_state;  // cached hover_state from frame (want to delete this somehow)
-    i16 start_state;  // starting state for animation blend
-    i16 end_state;    // ending state for animation blend
-    i32 frame;        // current frame (to match)
-} ui_animation_t;
 
 typedef struct ui_style_t {
     // font
@@ -617,40 +600,13 @@ typedef struct ui_style_t {
 
 } ui_style_t;
 
-// Keep animation properties lists within style sheet to look up
-
-typedef struct ui_animation_property_t {
-    ui_style_element_type type;
-    i16 time;
-    i16 delay;
-} ui_animation_property_t;
-
-typedef struct ui_animation_property_list_t {
-    neko_dyn_array(ui_animation_property_t) properties[3];
-} ui_animation_property_list_t;
-
-/*
-   element type
-   classes
-   id
-
-   ui_button(gui, "Text##.cls#id");
-   ui_label(gui, "Title###title");
-
-    button .class #id : hover {         // All of these styles get concat into one?
-    }
-*/
-
 typedef struct {
     neko_dyn_array(ui_style_element_t) styles[3];
 } ui_style_list_t;
 
 typedef struct ui_style_sheet_t {
     ui_style_t styles[UI_ELEMENT_COUNT][3];  // default | hovered | focused
-    neko_hash_table(ui_element_type, ui_animation_property_list_t) animations;
-
     neko_hash_table(u64, ui_style_list_t) cid_styles;
-    neko_hash_table(u64, ui_animation_property_list_t) cid_animations;
 } ui_style_sheet_t;
 
 typedef struct ui_style_sheet_element_desc_t {
@@ -662,11 +618,6 @@ typedef struct ui_style_sheet_element_desc_t {
             size_t size;
         } style;
 
-        struct {
-            ui_animation_property_t* data;
-            size_t size;
-        } animation;
-
     } all;
 
     struct {
@@ -676,11 +627,6 @@ typedef struct ui_style_sheet_element_desc_t {
             size_t size;
         } style;
 
-        struct {
-            ui_animation_property_t* data;
-            size_t size;
-        } animation;
-
     } def;
 
     struct {
@@ -688,11 +634,6 @@ typedef struct ui_style_sheet_element_desc_t {
             ui_style_element_t* data;
             size_t size;
         } style;
-
-        struct {
-            ui_animation_property_t* data;
-            size_t size;
-        } animation;
     } hover;
 
     struct {
@@ -700,11 +641,6 @@ typedef struct ui_style_sheet_element_desc_t {
             ui_style_element_t* data;
             size_t size;
         } style;
-
-        struct {
-            ui_animation_property_t* data;
-            size_t size;
-        } animation;
     } focus;
 
 } ui_style_sheet_element_desc_t;
@@ -757,9 +693,7 @@ typedef struct ui_request_t {
 
 typedef struct ui_inline_style_stack_t {
     neko_dyn_array(ui_style_element_t) styles[3];
-    neko_dyn_array(ui_animation_property_t) animations[3];
-    neko_dyn_array(u32) style_counts;      // amount of styles to pop off at "top of stack" for each state
-    neko_dyn_array(u32) animation_counts;  // amount of animations to pop off at "top of stack" for each state
+    neko_dyn_array(u32) style_counts;  // amount of styles to pop off at "top of stack" for each state
 } ui_inline_style_stack_t;
 
 typedef struct ui_context_t {
@@ -837,9 +771,6 @@ typedef struct ui_context_t {
     idraw_t gui_idraw;
     idraw_t overlay_draw_list;
 
-    // Active Transitions
-    neko_hash_table(ui_id, ui_animation_t) animations;
-
     // Font stash
     neko_hash_table(u64, FontFamily*) font_stash;
 
@@ -913,9 +844,6 @@ typedef struct {
     idraw_t gui_idraw;
     idraw_t overlay_draw_list;
 
-    // Active Transitions
-    neko_hash_table(ui_id, ui_animation_t) animations;
-
     // Callbacks
     struct {
         ui_on_draw_button_callback button;
@@ -987,7 +915,6 @@ i32 ui_text_width(FontFamily* font, const char* text, i32 len);
 i32 ui_font_height(FontFamily* font);
 i32 ui_text_height(FontFamily* font, const char* text, i32 len);
 vec2 ui_text_dimensions(FontFamily* font, const char* text, i32 len);
-void ui_animation_update(ui_context_t* ctx, ui_animation_t* anim);
 ui_style_t ui_get_current_element_style(ui_context_t* ctx, const ui_selector_desc_t* desc, i32 elementid, i32 state);
 ui_rect_t ui_expand_rect(ui_rect_t rect, i16 v[4]);
 void ui_draw_frame(ui_context_t* ctx, ui_rect_t rect, ui_style_t* style);
@@ -1033,12 +960,6 @@ ui_container_t* ui_get_root_container_from_split(ui_context_t* ctx, ui_split_t* 
 ui_container_t* ui_get_parent(ui_context_t* ctx, ui_container_t* cnt);
 void ui_current_container_close(ui_context_t* ctx);
 
-// Animation
-
-ui_animation_t* ui_get_animation(ui_context_t* ctx, ui_id id, const ui_selector_desc_t* desc, i32 elementid);
-
-ui_style_t ui_animation_get_blend_style(ui_context_t* ctx, ui_animation_t* anim, const ui_selector_desc_t* desc, i32 elementid);
-
 // Style Sheet
 
 ui_style_sheet_t ui_style_sheet_create(ui_context_t* ctx, ui_style_sheet_desc_t* desc);
@@ -1074,7 +995,7 @@ void ui_input_text(ui_context_t* ctx, const char* text);
 ui_command_t* ui_push_command(ui_context_t* ctx, i32 type, i32 size);
 i32 ui_next_command(ui_context_t* ctx, ui_command_t** cmd);
 void ui_set_clip(ui_context_t* ctx, ui_rect_t rect);
-void ui_set_pipeline(ui_context_t* ctx, neko_handle(gfx_pipeline_t) pip, void* layout, size_t layout_sz, neko_idraw_layout_type layout_type);
+void ui_set_pipeline(ui_context_t* ctx, neko_handle(gfx_pipeline_t) pip, void* layout, size_t layout_sz, idraw_layout_type layout_type);
 void ui_bind_uniforms(ui_context_t* ctx, gfx_bind_uniform_desc_t* uniforms, size_t uniforms_sz);
 
 // Drawing
@@ -1177,7 +1098,7 @@ void ui_undock_ex_cnt(ui_context_t* ctx, ui_container_t* cnt);
 int open_ui(lua_State* L);
 int open_mt_ui_container(lua_State* L);
 int open_mt_ui_ref(lua_State* L);
-int open_mt_ui_style(lua_State *L);
+int open_mt_ui_style(lua_State* L);
 
 enum MUIRefKind : i32 {
     MUIRefKind_Nil,

@@ -79,9 +79,9 @@ gfx_t* g_render;
 #define RENDER() (g_render)
 
 #if (defined NEKO_IS_WIN32 || defined NEKO_IS_APPLE || defined NEKO_IS_LINUX)
-#define R_IMPL_OPENGL_CORE
+#define R_IMPL_OpenGL_CORE
 #else
-#define R_IMPL_OPENGL_ES
+#define R_IMPL_OpenGL_ES
 #endif
 
 // macOS 不支持 OpenGL 4.1+
@@ -143,7 +143,6 @@ void neko_gl_pipeline_state() {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
-    CHECK_GL_CORE(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);)
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_STENCIL_TEST);
     glDisable(GL_BLEND);
@@ -497,7 +496,6 @@ void gfx_fini(gfx_t* render) {
     if (ogl->textures) OGL_FREE_DATA(ogl->textures, gfx_texture_t, gfx_texture_fini);
     if (ogl->uniforms) OGL_FREE_DATA(ogl->uniforms, gfx_uniform_t, gfx_uniform_fini);
     if (ogl->uniform_buffers) OGL_FREE_DATA(ogl->uniform_buffers, gfx_uniform_buffer_t, gfx_uniform_buffer_fini);
-    // if (ogl->storage_buffers)   OGL_FREE_DATA(ogl->storage_buffers, gfx_storage_buffer_t, gfx_storage_buffer_fini);
 
     neko_slot_array_free(ogl->shaders);
     neko_slot_array_free(ogl->vertex_buffers);
@@ -508,7 +506,6 @@ void gfx_fini(gfx_t* render) {
     neko_slot_array_free(ogl->pipelines);
     neko_slot_array_free(ogl->renderpasses);
     neko_slot_array_free(ogl->uniform_buffers);
-    neko_slot_array_free(ogl->storage_buffers);
 
     // Free uniform data array
     neko_dyn_array_free(ogl->uniform_data.mat4);
@@ -795,7 +792,7 @@ neko_handle(gfx_uniform_buffer_t) gfx_uniform_buffer_create_impl(gfx_uniform_buf
 
     // Assert if data isn't named
     if (desc.name == NULL) {
-        console_log("Uniform buffer must be named for Opengl.");
+        console_log("Uniform buffer must be named for OpenGL.");
     }
 
     neko_gl_uniform_buffer_t u = NEKO_DEFAULT_VAL();
@@ -812,79 +809,6 @@ neko_handle(gfx_uniform_buffer_t) gfx_uniform_buffer_create_impl(gfx_uniform_buf
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     hndl = neko_handle_create(gfx_uniform_buffer_t, neko_slot_array_insert(ogl->uniform_buffers, u));
-
-    return hndl;
-}
-
-neko_handle(gfx_storage_buffer_t) gfx_storage_buffer_create_impl(const gfx_storage_buffer_desc_t desc) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
-    neko_handle(gfx_storage_buffer_t) hndl = NEKO_DEFAULT_VAL();
-    neko_gl_storage_buffer_t sbo = NEKO_DEFAULT_VAL();
-
-    if (desc.name == NULL) {
-        console_log("Storage buffer must be named for Opengl.");
-    }
-
-    if (desc.usage == GL_STATIC_DRAW && !desc.data) {
-        neko_println("Error: Storage buffer desc must contain data when GL_STATIC_DRAW set.");
-        neko_assert(false);
-    }
-
-    glGenBuffers(1, &sbo.buffer);
-
-    // CHECK_GL_CORE(glBindBuffer(GL_SHADER_STORAGE_BUFFER, sbo.buffer); glBufferData(GL_SHADER_STORAGE_BUFFER, desc.size, desc.data, neko_gl_buffer_usage_to_gl_enum(desc.usage));
-    //               glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT); glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0););
-
-    // CHECK_GL_CORE(
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, sbo.buffer);
-
-    // 检查 desc 标志以映射缓冲区
-    GLbitfield flags = 0x00;
-    if (desc.flags & R_BUFFER_FLAG_MAP_PERSISTENT) {
-        flags |= GL_MAP_PERSISTENT_BIT;
-    }
-    if (desc.flags & R_BUFFER_FLAG_MAP_COHERENT) {
-        flags |= GL_MAP_PERSISTENT_BIT;
-        flags |= GL_MAP_COHERENT_BIT;
-    }
-    if (desc.access & GL_READ_ONLY) {
-        flags |= GL_MAP_READ_BIT;
-    } else if (desc.access & GL_WRITE_ONLY) {
-        flags |= GL_MAP_WRITE_BIT;
-    } else if (desc.access & GL_READ_WRITE) {
-        flags |= (GL_MAP_READ_BIT | GL_MAP_WRITE_BIT);
-    }
-
-    GLbitfield store_flags = flags;
-    if (desc.usage == GL_DYNAMIC_DRAW) {
-        store_flags |= GL_DYNAMIC_STORAGE_BIT;
-    }
-
-    // 现在只进行读/写访问
-    // flags |= GL_MAP_READ_BIT; flags |= GL_MAP_WRITE_BIT;
-    glBufferStorage(GL_SHADER_STORAGE_BUFFER, desc.size, desc.data, store_flags);
-    // glBufferData(GL_SHADER_STORAGE_BUFFER, desc.size, desc.data, neko_gl_buffer_usage_to_gl_enum(desc.usage));
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-
-    // 存储映射
-    if (flags & GL_MAP_PERSISTENT_BIT) {
-        sbo.map = glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, desc.size, flags);
-    }
-
-    GLenum err = glGetError();
-    while ((err = glGetError()) != GL_NO_ERROR) {
-        neko_println("GL ERROR: 0x%x: %s", err, glGetString(err));
-    }
-
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-    // );
-
-    memcpy(sbo.name, desc.name, 64);
-    sbo.access = desc.access;
-    sbo.size = desc.size;
-    sbo.block_idx = UINT32_MAX;
-
-    hndl = neko_handle_create(gfx_storage_buffer_t, neko_slot_array_insert(ogl->storage_buffers, sbo));
 
     return hndl;
 }
@@ -956,7 +880,7 @@ neko_handle(gfx_shader_t) gfx_shader_create_impl(const gfx_shader_desc_t desc) {
             glDeleteShader(shader.id);
 
             // Provide the infolog
-            neko_println("Opengl::opengl_compile_shader::shader: '%s'\nFAILED_TO_COMPILE: %s\n %s", desc.name, log, desc.sources[i].source);
+            neko_println("OpenGL::OpenGL_compile_shader::shader: '%s'\nFAILED_TO_COMPILE: %s\n %s", desc.name, log, desc.sources[i].source);
 
             mem_free(log);
             log = NULL;
@@ -987,7 +911,7 @@ neko_handle(gfx_shader_t) gfx_shader_create_impl(const gfx_shader_desc_t desc) {
         glGetProgramInfoLog(shader.id, max_len, &max_len, log);
 
         // Print error
-        neko_panic("Fail To Link::opengl_link_shaders::shader: '%s', \n%s", desc.name, log);
+        neko_panic("Fail To Link::OpenGL_link_shaders::shader: '%s', \n%s", desc.name, log);
 
         // //We don't need the program anymore.
         glDeleteProgram(shader.id);
@@ -1011,21 +935,18 @@ neko_handle(gfx_shader_t) gfx_shader_create_impl(const gfx_shader_desc_t desc) {
     }
 
     // Iterate over uniforms
-    /*
-    {
-        char tmp_name[256] = NEKO_DEFAULT_VAL();
-        i32 count = 0;
-        glGetProgramiv(shader, GL_ACTIVE_UNIFORMS, &count);
-        neko_println("Active Uniforms: %d\n", count);
-
-        for (u32 i = 0; i < count; i++) {
-            i32 sz = 0;
-            u32 type;
-            glGetActiveUniform(shader, (GLuint)i, 256, NULL, &sz, &type, tmp_name);
-            neko_println("Uniform #%d Type: %u the_name: %s\n", i, type, tmp_name);
-        }
-    }
-    */
+    // {
+    //     char tmp_name[256] = NEKO_DEFAULT_VAL();
+    //     i32 count = 0;
+    //     glGetProgramiv(shader.id, GL_ACTIVE_UNIFORMS, &count);
+    //     neko_println("Active Uniforms: %d\n", count);
+    //     for (u32 i = 0; i < count; i++) {
+    //         i32 sz = 0;
+    //         u32 type;
+    //         glGetActiveUniform(shader.id, (GLuint)i, 256, NULL, &sz, &type, tmp_name);
+    //         neko_println("Uniform #%d Type: %u the_name: %s\n", i, type, tmp_name);
+    //     }
+    // }
 
     // Add to pool and return handle
     return (neko_handle_create(gfx_shader_t, neko_slot_array_insert(ogl->shaders, shader)));
@@ -1126,18 +1047,6 @@ void gfx_uniform_buffer_fini_impl(neko_handle(gfx_uniform_buffer_t) hndl) {
     neko_slot_array_erase(ogl->uniform_buffers, hndl.id);
 }
 
-void gfx_storage_buffer_fini_impl(neko_handle(gfx_storage_buffer_t) hndl) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
-    if (!neko_slot_array_handle_valid(ogl->storage_buffers, hndl.id)) return;
-    neko_gl_storage_buffer_t* sb = neko_slot_array_getp(ogl->storage_buffers, hndl.id);
-
-    // Delete buffer (if needed)
-    glDeleteBuffers(1, &sb->buffer);
-
-    // Delete from slot array
-    neko_slot_array_erase(ogl->storage_buffers, hndl.id);
-}
-
 void gfx_framebuffer_fini_impl(neko_handle(gfx_framebuffer_t) hndl) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     if (!neko_slot_array_handle_valid(ogl->frame_buffers, hndl.id)) return;
@@ -1214,7 +1123,7 @@ void gfx_texture_update_impl(neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t
 
     neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     if (!neko_slot_array_handle_valid(ogl->textures, hndl.id)) {
-        console_log("Texture handle invalid: %zu", hndl.id);
+        console_log("AssetTexture handle invalid: %zu", hndl.id);
         return;
     }
     gl_texture_update_internal(desc, hndl.id);
@@ -1254,29 +1163,11 @@ void gfx_index_buffer_update_impl(neko_handle(gfx_index_buffer_t) hndl, gfx_inde
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
-void gfx_storage_buffer_update_impl(neko_handle(gfx_storage_buffer_t) hndl, gfx_storage_buffer_desc_t* desc) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
-    neko_gl_storage_buffer_t* sbo = neko_slot_array_getp(ogl->storage_buffers, hndl.id);
-    if (!sbo) {
-        console_log("Storage buffer %zu not found.", hndl.id);
-        return;
-    }
-
-    // CHECK_GL_CORE(glBindBuffer(GL_SHADER_STORAGE_BUFFER, sbo->buffer); switch (desc->update.type) {
-    //     case R_BUFFER_UPDATE_SUBDATA:
-    //         glBufferSubData(GL_SHADER_STORAGE_BUFFER, desc->update.offset, desc->size, desc->data);
-    //         break;
-    //     default:
-    //         glBufferData(GL_SHADER_STORAGE_BUFFER, desc->size, desc->data, neko_gl_buffer_usage_to_gl_enum(desc->usage));
-    // } glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-    //               glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0););
-}
-
 void gfx_texture_read_impl(neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t* desc) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     if (!desc) return;
     if (!neko_slot_array_handle_valid(ogl->textures, hndl.id)) {
-        console_log("Texture handle invalid: %zu", hndl.id);
+        console_log("AssetTexture handle invalid: %zu", hndl.id);
     }
 
     neko_gl_texture_t* tex = neko_slot_array_getp(ogl->textures, hndl.id);
@@ -1287,61 +1178,6 @@ void gfx_texture_read_impl(neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t* 
     glBindTexture(target, tex->id);
     glReadPixels(desc->read.x, desc->read.y, desc->read.width, desc->read.height, gl_format, gl_type, desc->data);
     glBindTexture(target, 0x00);
-}
-
-void* gfx_storage_buffer_map_get_impl(neko_handle(gfx_storage_buffer_t) hndl) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
-    if (!neko_slot_array_handle_valid(ogl->storage_buffers, hndl.id)) {
-        console_log("Storage buffer handle invalid: %zu", hndl.id);
-        return NULL;
-    }
-    neko_gl_storage_buffer_t* sbo = neko_slot_array_getp(ogl->storage_buffers, hndl.id);
-    return sbo->map;
-}
-
-void gfx_storage_buffer_unlock_impl(neko_handle(gfx_storage_buffer_t) hndl) {
-    // 解锁并返回映射指针
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
-    if (!neko_slot_array_handle_valid(ogl->storage_buffers, hndl.id)) {
-        console_log("Storage buffer handle invalid: %zu", hndl.id);
-        return;
-    }
-    neko_gl_storage_buffer_t* sbo = neko_slot_array_getp(ogl->storage_buffers, hndl.id);
-
-    // 已经解锁
-    if (sbo->sync) {
-        while (1) {
-            GLenum wait = glClientWaitSync(sbo->sync, GL_SYNC_FLUSH_COMMANDS_BIT, 1);
-            if (wait == GL_ALREADY_SIGNALED || wait == GL_CONDITION_SATISFIED) {
-                break;
-            }
-        }
-    }
-}
-
-void* gfx_storage_buffer_lock_impl(neko_handle(gfx_storage_buffer_t) hndl) {
-    // 锁
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
-    if (!neko_slot_array_handle_valid(ogl->storage_buffers, hndl.id)) {
-        console_log("Storage buffer handle invalid: %zu", hndl.id);
-        return NULL;
-    }
-    neko_gl_storage_buffer_t* sbo = neko_slot_array_getp(ogl->storage_buffers, hndl.id);
-
-    // 已经锁定
-    if (sbo->sync) {
-        glDeleteSync(sbo->sync);
-    }
-    sbo->sync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-    if (sbo->sync) {
-        while (1) {
-            GLenum wait = glClientWaitSync(sbo->sync, GL_SYNC_FLUSH_COMMANDS_BIT, 1);
-            if (wait == GL_ALREADY_SIGNALED || wait == GL_CONDITION_SATISFIED) {
-                break;
-            }
-        }
-    }
-    return sbo->map;
 }
 
 #define __ogl_push_command(CB, OP_CODE, ...)                  \
@@ -1507,15 +1343,6 @@ void gfx_uniform_buffer_request_update(command_buffer_t* cb, neko_handle(gfx_uni
     __gfx_update_buffer_internal(cb, hndl.id, R_BUFFER_UNIFORM, desc.usage, desc.size, desc.update.offset, desc.update.type, desc.data);
 }
 
-void gfx_storage_buffer_request_update(command_buffer_t* cb, neko_handle(gfx_storage_buffer_t) hndl, gfx_storage_buffer_desc_t desc) {
-    neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
-
-    // 如果hndl无效则返回
-    if (!hndl.id) return;
-
-    __gfx_update_buffer_internal(cb, hndl.id, R_BUFFER_SHADER_STORAGE, desc.usage, desc.size, desc.update.offset, desc.update.type, desc.data);
-}
-
 void gfx_apply_bindings(command_buffer_t* cb, gfx_bind_desc_t* binds) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
 
@@ -1531,10 +1358,9 @@ void gfx_apply_bindings(command_buffer_t* cb, gfx_bind_desc_t* binds) {
         u32 uct = binds->uniform_buffers.desc ? binds->uniform_buffers.size ? binds->uniform_buffers.size / sizeof(gfx_bind_uniform_buffer_desc_t) : 1 : 0;
         u32 pct = binds->uniforms.desc ? binds->uniforms.size ? binds->uniforms.size / sizeof(gfx_bind_uniform_desc_t) : 1 : 0;
         u32 ibc = binds->image_buffers.desc ? binds->image_buffers.size ? binds->image_buffers.size / sizeof(gfx_bind_image_buffer_desc_t) : 1 : 0;
-        u32 sbc = binds->storage_buffers.desc ? binds->storage_buffers.size ? binds->storage_buffers.size / sizeof(gfx_bind_storage_buffer_desc_t) : 1 : 0;
 
         // Determine total count to write into command buffer
-        u32 ct = vct + ict + uct + pct + ibc + sbc;
+        u32 ct = vct + ict + uct + pct + ibc;
         byte_buffer_write(&cb->commands, u32, ct);
 
         // Determine if need to clear any previous vertex buffers (if vct != 0)
@@ -1590,14 +1416,6 @@ void gfx_apply_bindings(command_buffer_t* cb, gfx_bind_desc_t* binds) {
             byte_buffer_write(&cb->commands, u32, decl->binding);
             byte_buffer_write_bulk(&cb->commands, decl->data, sz);
         }
-
-        // Storage buffers
-        CHECK_GL_CORE(for (u32 i = 0; i < sbc; ++i) {
-            gfx_bind_storage_buffer_desc_t* decl = &binds->storage_buffers.desc[i];
-            byte_buffer_write(&cb->commands, gfx_bind_type, R_BIND_STORAGE_BUFFER);
-            byte_buffer_write(&cb->commands, u32, decl->buffer.id);
-            byte_buffer_write(&cb->commands, u32, decl->binding);
-        });
     };
 }
 
@@ -1690,7 +1508,6 @@ void gfx_cmd_submit(command_buffer_t* cb) {
                 glBindFramebuffer(GL_FRAMEBUFFER, 0);
                 glBindBuffer(GL_ARRAY_BUFFER, 0);
                 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-                CHECK_GL_CORE(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0););
                 glDisable(GL_SCISSOR_TEST);
                 glDisable(GL_DEPTH_TEST);
                 glDisable(GL_STENCIL_TEST);
@@ -1756,7 +1573,7 @@ void gfx_cmd_submit(command_buffer_t* cb) {
 
                             if (!id || !neko_slot_array_exists(ogl->vertex_buffers, id)) {
                                 TimedAction(1000, {
-                                    console_log("Opengl:BindBindings:VertexBuffer %d does not exist.", id);
+                                    console_log("OpenGL:BindBindings:VertexBuffer %d does not exist.", id);
                                     continue;
                                 });
                             }
@@ -1779,11 +1596,7 @@ void gfx_cmd_submit(command_buffer_t* cb) {
                             byte_buffer_readc(&cb->commands, u32, id);
 
                             if (!neko_slot_array_exists(ogl->index_buffers, id)) {
-                                /*
-                                TimedAction(1000, {
-                                    neko_println("Warning:Opengl:BindBindings:IndexBuffer %d does not exist.", id);
-                                });
-                                */
+                                TimedAction(1000, { neko_println("OpenGL:BindBindings:IndexBuffer %d does not exist.", id); });
                             } else {
                                 neko_gl_buffer_t ibo = neko_slot_array_get(ogl->index_buffers, id);
 
@@ -2000,7 +1813,7 @@ void gfx_cmd_submit(command_buffer_t* cb) {
 
                             // Grab currently bound pipeline (TODO: assert if this isn't valid)
                             if (!ogl->cache.pipeline.id || !neko_slot_array_exists(ogl->pipelines, ogl->cache.pipeline.id)) {
-                                TimedAction(1000, { neko_println("Warning:Bind Uniform Buffer:Pipeline %d does not exist.", ogl->cache.pipeline.id); });
+                                TimedAction(1000, { neko_println("Bind Uniform Buffer:Pipeline %d does not exist.", ogl->cache.pipeline.id); });
                                 continue;
                             }
 
@@ -2041,75 +1854,6 @@ void gfx_cmd_submit(command_buffer_t* cb) {
 
                         } break;
 
-                        case R_BIND_STORAGE_BUFFER: {
-                            byte_buffer_readc(&cb->commands, u32, sb_slot_id);
-                            byte_buffer_readc(&cb->commands, u32, binding);
-
-                            // Grab storage buffer from id
-                            if (!sb_slot_id || !neko_slot_array_exists(ogl->storage_buffers, sb_slot_id)) {
-                                /*
-                                TimedAction(1000, {
-                                    neko_println("Warning:Bind Storage Buffer:Storage Buffer %d does not exist.", sb_slot_id);
-                                });
-                                */
-                                continue;
-                            }
-
-                            // Grab currently bound pipeline (TODO: assert if this isn't valid)
-                            if (!ogl->cache.pipeline.id || !neko_slot_array_exists(ogl->pipelines, ogl->cache.pipeline.id)) {
-                                /*
-                                TimedAction(1000, {
-                                    neko_println("Warning:Bind Storage Buffer:Pipeline %d does not exist or is not bound.", ogl->cache.pipeline.id);
-                                });
-                                */
-                                continue;
-                            }
-
-                            neko_gl_pipeline_t* pip = neko_slot_array_getp(ogl->pipelines, ogl->cache.pipeline.id);
-
-                            neko_gl_storage_buffer_t* sbo = neko_slot_array_getp(ogl->storage_buffers, sb_slot_id);
-
-                            // Get bound shader from pipeline (either compute or raster)
-                            u32 sid = pip->compute.shader.id ? pip->compute.shader.id : pip->raster.shader.id;
-
-                            if (!sid || !neko_slot_array_exists(ogl->shaders, sid)) {
-                                /*
-                                TimedAction(1000, {
-                                    neko_println("Warning:Bind Uniform Buffer:Shader %d does not exist.", sid);
-                                });
-                                */
-                                continue;
-                            }
-
-                            neko_gl_shader_t shader = neko_slot_array_get(ogl->shaders, sid);
-
-                            if ((sbo->block_idx == UINT32_MAX && sbo->block_idx != UINT32_MAX - 1)) {
-                                // Get uniform location based on name and bound shader
-                                // CHECK_GL_CORE({
-                                //     sbo->block_idx = glGetProgramResourceIndex(shader, GL_SHADER_STORAGE_BLOCK, sbo->name ? sbo->name : "__EMPTY_BUFFER_NAME");
-                                //     i32 params[1];
-                                //     GLenum props[1] = {GL_BUFFER_BINDING};
-                                //     glGetProgramResourceiv(shader, GL_SHADER_STORAGE_BLOCK, sbo->block_idx, 1, props, 1, NULL, params);
-                                //     sbo->location = (u32)params[0];
-                                //     console_log("Bind Storage Buffer: Binding \"%s\" to location %u, block index: %u, binding: %u", sbo->name, sbo->location, sbo->block_idx, binding);
-                                // });
-
-                                if (sbo->block_idx >= UINT32_MAX) {
-                                    console_log("Bind Storage Buffer: Buffer not found: \"%s\"", sbo->name);
-                                    sbo->block_idx = UINT32_MAX - 1;
-                                }
-                            }
-
-                            if (sbo->block_idx < UINT32_MAX - 1) {
-                                // Not sure what this actually does atm...
-                                // CHECK_GL_CORE(glShaderStorageBlockBinding(shader, sbo->block_idx, sbo->location););
-                            }
-
-                            // This is required
-                            CHECK_GL_CORE(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, sbo->buffer););
-
-                        } break;
-
                         case R_BIND_IMAGE_BUFFER: {
                             byte_buffer_readc(&cb->commands, u32, tex_slot_id);
                             byte_buffer_readc(&cb->commands, u32, binding);
@@ -2119,7 +1863,7 @@ void gfx_cmd_submit(command_buffer_t* cb) {
 
                             // Grab texture from sampler id
                             if (!tex_slot_id || !neko_slot_array_exists(ogl->textures, tex_slot_id)) {
-                                TimedAction(1000, { console_log("Bind Image Buffer: Texture %d does not exist.", tex_slot_id); });
+                                TimedAction(1000, { console_log("Bind Image Buffer: AssetTexture %d does not exist.", tex_slot_id); });
                                 continue;
                             }
 
@@ -2174,7 +1918,7 @@ void gfx_cmd_submit(command_buffer_t* cb) {
                     if (pip->compute.shader.id && neko_slot_array_exists(ogl->shaders, pip->compute.shader.id)) {
                         glUseProgram(neko_slot_array_get(ogl->shaders, pip->compute.shader.id).id);
                     } else {
-                        TimedAction(1000, { console_log("Opengl:BindPipeline:Compute:Shader %d does not exist.", pip->compute.shader.id); });
+                        TimedAction(1000, { console_log("OpenGL:BindPipeline:Compute:Shader %d does not exist.", pip->compute.shader.id); });
                     }
 
                     continue;
@@ -2230,7 +1974,7 @@ void gfx_cmd_submit(command_buffer_t* cb) {
                 if (pip->raster.shader.id && neko_slot_array_exists(ogl->shaders, pip->raster.shader.id)) {
                     glUseProgram(neko_slot_array_get(ogl->shaders, pip->raster.shader.id).id);
                 } else {
-                    TimedAction(1000, { console_log("Opengl:BindPipeline:Shader %d does not exist.", pip->raster.shader.id); });
+                    TimedAction(1000, { console_log("OpenGL:BindPipeline:Shader %d does not exist.", pip->raster.shader.id); });
                 }
             } break;
 
@@ -2241,11 +1985,9 @@ void gfx_cmd_submit(command_buffer_t* cb) {
 
                 // Grab currently bound pipeline (TODO: assert if this isn't valid)
                 if (ogl->cache.pipeline.id == 0 || !neko_slot_array_exists(ogl->pipelines, ogl->cache.pipeline.id)) {
-                    /*
-                    TimedAction(1000, {
-                        neko_println("Warning:Opengl:DispatchCompute:Compute Pipeline not bound.");
-                    });
-                    */
+
+                    TimedAction(1000, { neko_println("OpenGL:DispatchCompute:Compute Pipeline not bound."); });
+
                     continue;
                 }
 
@@ -2253,11 +1995,9 @@ void gfx_cmd_submit(command_buffer_t* cb) {
 
                 // If pipeline does not have a compute state bound, then leave
                 if (!pip->compute.shader.id) {
-                    /*
-                    TimedAction(1000, {
-                        neko_println("Warning:Opengl:DispatchCompute:Compute Pipeline not bound.");
-                    });
-                    */
+
+                    TimedAction(1000, { neko_println("OpenGL:DispatchCompute:Compute Pipeline not bound."); });
+
                     continue;
                 }
 
@@ -2273,7 +2013,7 @@ void gfx_cmd_submit(command_buffer_t* cb) {
 
                 // Must have a vertex buffer bound to draw
                 if (neko_dyn_array_empty(ogl->cache.vdecls)) {
-                    TimedAction(1000, { neko_println("Error:Opengl:Draw: No vertex buffer bound."); });
+                    TimedAction(1000, { neko_println("Error:OpenGL:Draw: No vertex buffer bound."); });
                     // neko_assert(false);
                 }
 
@@ -2380,7 +2120,7 @@ void gfx_cmd_submit(command_buffer_t* cb) {
 
                 // Draw
                 if (ogl->cache.ibo.id) {
-#ifdef R_IMPL_OPENGL_CORE
+#ifdef R_IMPL_OpenGL_CORE
                     if (is_instanced)
                         glDrawElementsInstancedBaseVertex(prim, count, itype, NEKO_INT2VOIDP(start), instance_count, base_vertex);
                     else
@@ -2414,7 +2154,7 @@ void gfx_cmd_submit(command_buffer_t* cb) {
 
                 // Grab texture from sampler id
                 if (!tex_slot_id || !neko_slot_array_exists(ogl->textures, tex_slot_id)) {
-                    TimedAction(60, { console_log("Bind Image Buffer: Texture %d does not exist.", tex_slot_id); });
+                    TimedAction(60, { console_log("Bind Image Buffer: AssetTexture %d does not exist.", tex_slot_id); });
                     byte_buffer_advance_position(&cb->commands, data_size);
                 }
 
@@ -2505,23 +2245,6 @@ void gfx_cmd_submit(command_buffer_t* cb) {
 
                         glBindBuffer(GL_UNIFORM_BUFFER, 0);
                     } break;
-
-                    case R_BUFFER_SHADER_STORAGE: {
-                        gfx_storage_buffer_desc_t desc = {
-                                .data = cb->commands.data + cb->commands.position,
-                                .size = sz,
-                                .usage = usage,
-                                .update =
-                                        {
-                                                .type = update_type,
-                                                .offset = offset,
-                                        },
-                        };
-                        neko_handle(gfx_storage_buffer_t) hndl;
-                        hndl.id = id;
-                        gfx_storage_buffer_update(hndl, &desc);
-
-                    } break;
                 }
 
                 // Advance past data
@@ -2563,14 +2286,12 @@ void gfx_init(gfx_t* render) {
     neko_gl_pipeline_t pip = NEKO_DEFAULT_VAL();
     neko_gl_renderpass_t rp = NEKO_DEFAULT_VAL();
     neko_gl_texture_t tex = NEKO_DEFAULT_VAL();
-    neko_gl_storage_buffer_t sb = NEKO_DEFAULT_VAL();
 
     neko_slot_array_insert(ogl->uniforms, ul);
     neko_slot_array_insert(ogl->pipelines, pip);
     neko_slot_array_insert(ogl->renderpasses, rp);
     neko_slot_array_insert(ogl->uniform_buffers, ub);
     neko_slot_array_insert(ogl->textures, tex);
-    neko_slot_array_insert(ogl->storage_buffers, sb);
 
     // Construct vao then bind
     glGenVertexArrays(1, &ogl->cache.vao.id);
@@ -2588,14 +2309,14 @@ void gfx_init(gfx_t* render) {
     info->version = (const_str)glGetString(GL_VERSION);
     info->vendor = (const_str)glGetString(GL_RENDERER);
 
-    // console_log("opengl vendor:   %s", glGetString(GL_VENDOR));
-    // console_log("opengl renderer: %s", glGetString(GL_RENDERER));
-    // console_log("opengl version:  %s", glGetString(GL_VERSION));
+    // console_log("OpenGL vendor:   %s", glGetString(GL_VENDOR));
+    // console_log("OpenGL renderer: %s", glGetString(GL_RENDERER));
+    // console_log("OpenGL version:  %s", glGetString(GL_VERSION));
 
     glGetIntegerv(GL_MAX_TEXTURE_SIZE, (GLint*)&info->max_texture_size);
     glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, (GLint*)&info->max_texture_units);
 
-    if (info->max_texture_size < 2048) console_log("opengl maximum texture too small");
+    if (info->max_texture_size < 2048) console_log("OpenGL maximum texture too small");
 
     // Compute shader info
     info->compute.available = info->major_version >= 4 && info->minor_version >= 3;
@@ -2613,7 +2334,7 @@ void gfx_init(gfx_t* render) {
             glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, (i32*)&info->compute.max_work_group_invocations);
         });
     } else {
-        // console_log("opengl compute shaders not available");
+        // console_log("OpenGL compute shaders not available");
     }
 
 #if defined(_DEBUG) && 0
@@ -2641,8 +2362,6 @@ neko_handle(gfx_index_buffer_t) gfx_index_buffer_create(const gfx_index_buffer_d
 
 neko_handle(gfx_uniform_buffer_t) gfx_uniform_buffer_create(const gfx_uniform_buffer_desc_t desc) { return gfx_uniform_buffer_create_impl(desc); }
 
-neko_handle(gfx_storage_buffer_t) gfx_storage_buffer_create(const gfx_storage_buffer_desc_t desc) { return gfx_storage_buffer_create_impl(desc); }
-
 neko_handle(gfx_framebuffer_t) gfx_framebuffer_create(const gfx_framebuffer_desc_t desc) { return gfx_framebuffer_create_impl(desc); }
 
 neko_handle(gfx_renderpass_t) gfx_renderpass_create(const gfx_renderpass_desc_t desc) { return gfx_renderpass_create_impl(desc); }
@@ -2662,8 +2381,6 @@ void gfx_index_buffer_fini(neko_handle(gfx_index_buffer_t) hndl) { gfx_index_buf
 
 void gfx_uniform_buffer_fini(neko_handle(gfx_uniform_buffer_t) hndl) { gfx_uniform_buffer_fini_impl(hndl); }
 
-void gfx_storage_buffer_fini(neko_handle(gfx_storage_buffer_t) hndl) { gfx_storage_buffer_fini_impl(hndl); }
-
 void gfx_framebuffer_fini(neko_handle(gfx_framebuffer_t) hndl) { gfx_framebuffer_fini_impl(hndl); }
 
 void gfx_renderpass_fini(neko_handle(gfx_renderpass_t) hndl) { gfx_renderpass_fini_impl(hndl); }
@@ -2675,14 +2392,6 @@ void gfx_vertex_buffer_update(neko_handle(gfx_vertex_buffer_t) hndl, gfx_vertex_
 
 void gfx_index_buffer_update(neko_handle(gfx_index_buffer_t) hndl, gfx_index_buffer_desc_t* desc) { gfx_index_buffer_update_impl(hndl, desc); }
 
-void gfx_storage_buffer_update(neko_handle(gfx_storage_buffer_t) hndl, gfx_storage_buffer_desc_t* desc) { gfx_storage_buffer_update_impl(hndl, desc); }
-
 void gfx_texture_update(neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t* desc) { gfx_texture_update_impl(hndl, desc); }
 
 void gfx_texture_read(neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t* desc) { gfx_texture_read_impl(hndl, desc); }
-
-void* gfx_storage_buffer_map_get(neko_handle(gfx_storage_buffer_t) hndl) { return gfx_storage_buffer_map_get_impl(hndl); }
-
-void gfx_storage_buffer_unlock(neko_handle(gfx_storage_buffer_t) hndl) { return gfx_storage_buffer_unlock_impl(hndl); }
-
-void* gfx_storage_buffer_lock(neko_handle(gfx_storage_buffer_t) hndl) { return gfx_storage_buffer_lock_impl(hndl); }

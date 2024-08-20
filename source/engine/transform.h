@@ -2,7 +2,7 @@
 #define TRANSFORM_H
 
 #include "engine/base.h"
-#include "engine/ecs.h"
+#include "engine/entity.h"
 #include "engine/prelude.h"
 
 

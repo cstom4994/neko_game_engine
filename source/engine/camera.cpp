@@ -2,7 +2,7 @@
 
 #include "engine/edit.h"
 #include "engine/base.h"
-#include "engine/ecs.h"
+#include "engine/entity.h"
 #include "engine/game.h"
 #include "engine/prelude.h"
 #include "engine/transform.h"

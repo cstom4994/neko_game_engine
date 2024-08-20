@@ -210,7 +210,8 @@ int neko_lua_get_table_pairs_count(lua_State *L, int index);
 
 namespace neko::lua {
 void luax_run_bootstrap(lua_State *L);
-}
+void luax_run_nekogame(lua_State *L);
+}  // namespace neko::lua
 
 i32 luax_require_script(lua_State *L, String filepath);
 

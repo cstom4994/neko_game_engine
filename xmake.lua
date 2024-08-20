@@ -19,7 +19,6 @@ add_rules("mode.debug", "mode.release")
 
 add_includedirs("source/")
 
-local NEKO_LUASOCKET = false
 local NEKO_BOX2D = false
 
 -- local NEKO_AUDIO = "miniaudio"
@@ -91,24 +90,6 @@ do
     add_rules("utils.bin2c", {
         extensions = {".lua"}
     })
-
-    if NEKO_LUASOCKET == true then
-        add_files("source/vendor/luasocket/auxiliar.c", "source/vendor/luasocket/buffer.c",
-            "source/vendor/luasocket/compat.c", "source/vendor/luasocket/except.c", "source/vendor/luasocket/inet.c",
-            "source/vendor/luasocket/io.c", "source/vendor/luasocket/luasocket.c", "source/vendor/luasocket/mime.c",
-            "source/vendor/luasocket/options.c", "source/vendor/luasocket/select.c", "source/vendor/luasocket/tcp.c",
-            "source/vendor/luasocket/timeout.c", "source/vendor/luasocket/udp.c", "source/vendor/luasocket/*.lua")
-
-        if is_plat("windows") then
-            add_files("source/vendor/luasocket/wsocket.c")
-        else
-            add_files("source/vendor/luasocket/serial.c", "source/vendor/luasocket/unix.c",
-                "source/vendor/luasocket/unixdgram.c", "source/vendor/luasocket/unixstream.c",
-                "source/vendor/luasocket/usocket.c")
-        end
-
-        add_defines("NEKO_LUASOCKET")
-    end
 
     add_files("source/engine/**.lua")
     add_files("source/engine/**.cpp")

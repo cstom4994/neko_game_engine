@@ -12,7 +12,7 @@
 
 struct FontRange {
     stbtt_bakedchar chars[NEKO_FONT_BAKED_SIZE];
-    Texture tex;
+    AssetTexture tex;
 };
 
 struct FontQuad {

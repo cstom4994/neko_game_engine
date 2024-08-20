@@ -2,7 +2,7 @@
 #ifndef NEKO_COMPONENT_H
 #define NEKO_COMPONENT_H
 
-#include "engine/ecs.h"
+#include "engine/entity.h"
 
 typedef struct {
     float x, y;

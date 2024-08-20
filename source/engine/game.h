@@ -6,7 +6,7 @@
 #include "engine/asset.h"
 #include "engine/base.h"
 #include "engine/component.h"
-#include "engine/ecs.h"
+#include "engine/entity.h"
 #include "engine/font.h"
 #include "engine/gfx.h"
 #include "engine/math.h"

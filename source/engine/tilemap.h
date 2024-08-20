@@ -3,9 +3,8 @@
 #define NEKO_TILEMAP_H
 
 #include "engine/base.h"
-#include "engine/ecs.h"
+#include "engine/entity.h"
 #include "engine/gfx.h"
-#include "engine/image.h"
 #include "engine/math.h"
 #include "engine/prelude.h"
 #include "engine/seri.h"
@@ -26,7 +25,7 @@ using TilemapInt = unsigned char;
 
 struct TilemapLayer {
     String identifier;
-    Texture image;
+    AssetTexture image;
     Slice<Tile> tiles;
     Slice<TilemapEntity> entities;
     i32 c_width;
@@ -75,7 +74,7 @@ class b2World;
 struct MapLdtk {
     Arena arena;
     Slice<TilemapLevel> levels;
-    HashMap<Texture> images;  // key: filepath
+    HashMap<AssetTexture> images;  // key: filepath
     HashMap<b2Body*> bodies;  // key: layer name
     HashMap<TileNode> graph;  // key: x, y
     PriorityQueue<TileNode*> frontier;
@@ -176,7 +175,7 @@ typedef struct tiled_renderer {
     neko_handle(gfx_shader_t) shader;
     neko_handle(gfx_uniform_t) u_camera;
     neko_handle(gfx_uniform_t) u_batch_tex;
-    neko_handle(gfx_texture_t) batch_texture;                 // 当前绘制所用贴图
+    neko_handle(gfx_texture_t) batch_texture;            // 当前绘制所用贴图
     neko_hash_table(u32, tiled_quad_list_t) quad_table;  // 分层绘制哈希表
 
     u32 quad_count;

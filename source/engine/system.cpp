@@ -188,6 +188,8 @@ void system_init() {
     g_app->hot_reload_enabled.store(mount.can_hot_reload && hot_reload);
     g_app->reload_interval.store((u32)(reload_interval * 1000));
 
+    neko::lua::luax_run_nekogame(L);
+
     if (!g_app->error_mode.load() && startup_load_scripts && mount.ok && mount_luacode.ok) {
         load_all_lua_scripts(L);
     }

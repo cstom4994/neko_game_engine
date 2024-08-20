@@ -5,22 +5,13 @@ i32 ui_text_ex(ui_context_t* ctx, const char* text, i32 wrap, Color256* col, con
     ui_id id = ui_get_id(ctx, text, strlen(text));
     idraw_t* dl = &ctx->overlay_draw_list;
     ui_style_t style = NEKO_DEFAULT_VAL();
-    ui_animation_t* anim = ui_get_animation(ctx, id, desc, elementid);
 
     const char *start, *end, *p = text;
     i32 width = -1;
 
-    // Update anim (keep states locally within animation, only way to do this)
-    if (anim) {
-        ui_animation_update(ctx, anim);
-
-        // Get blended style based on animation
-        style = ui_animation_get_blend_style(ctx, anim, desc, elementid);
-    } else {
-        style = ctx->focus == id   ? ui_get_current_element_style(ctx, desc, elementid, 0x02)
-                : ctx->hover == id ? ui_get_current_element_style(ctx, desc, elementid, 0x01)
-                                   : ui_get_current_element_style(ctx, desc, elementid, 0x00);
-    }
+    style = ctx->focus == id   ? ui_get_current_element_style(ctx, desc, elementid, 0x02)
+            : ctx->hover == id ? ui_get_current_element_style(ctx, desc, elementid, 0x01)
+                               : ui_get_current_element_style(ctx, desc, elementid, 0x00);
 
     ui_style_t* save = ui_push_style(ctx, &style);
     FontFamily* font = ctx->style->font;
@@ -127,18 +118,10 @@ i32 ui_label_ex(ui_context_t* ctx, const char* label, const ui_selector_desc_t* 
     if (id_tag) ui_push_id(ctx, id_tag, strlen(id_tag));
 
     ui_style_t style = NEKO_DEFAULT_VAL();
-    ui_animation_t* anim = ui_get_animation(ctx, id, desc, elementid);
 
-    if (anim) {
-        ui_animation_update(ctx, anim);
-
-        // Get blended style based on animation
-        style = ui_animation_get_blend_style(ctx, anim, desc, elementid);
-    } else {
-        style = ctx->focus == id   ? ui_get_current_element_style(ctx, desc, elementid, 0x02)
-                : ctx->hover == id ? ui_get_current_element_style(ctx, desc, elementid, 0x01)
-                                   : ui_get_current_element_style(ctx, desc, elementid, 0x00);
-    }
+    style = ctx->focus == id   ? ui_get_current_element_style(ctx, desc, elementid, 0x02)
+            : ctx->hover == id ? ui_get_current_element_style(ctx, desc, elementid, 0x01)
+                               : ui_get_current_element_style(ctx, desc, elementid, 0x00);
 
     ui_style_t* save = ui_push_style(ctx, &style);
     ui_rect_t r = ui_layout_next(ctx);
@@ -161,19 +144,10 @@ i32 ui_image_ex(ui_context_t* ctx, neko_handle(gfx_texture_t) hndl, vec2 uv0, ve
     const i32 elementid = UI_ELEMENT_IMAGE;
 
     ui_style_t style = NEKO_DEFAULT_VAL();
-    ui_animation_t* anim = ui_get_animation(ctx, id, desc, elementid);
 
-    // Update anim (keep states locally within animation, only way to do this)
-    if (anim) {
-        ui_animation_update(ctx, anim);
-
-        // Get blended style based on animation
-        style = ui_animation_get_blend_style(ctx, anim, desc, elementid);
-    } else {
-        style = ctx->focus == id   ? ui_get_current_element_style(ctx, desc, elementid, 0x02)
-                : ctx->hover == id ? ui_get_current_element_style(ctx, desc, elementid, 0x01)
-                                   : ui_get_current_element_style(ctx, desc, elementid, 0x00);
-    }
+    style = ctx->focus == id   ? ui_get_current_element_style(ctx, desc, elementid, 0x02)
+            : ctx->hover == id ? ui_get_current_element_style(ctx, desc, elementid, 0x01)
+                               : ui_get_current_element_style(ctx, desc, elementid, 0x00);
 
     // Temporary copy of style
     ui_style_t* save = ui_push_style(ctx, &style);
@@ -284,24 +258,15 @@ i32 ui_button_ex(ui_context_t* ctx, const char* label, const ui_selector_desc_t*
     ui_parse_label_tag(ctx, label, label_tag, sizeof(label_tag));
 
     ui_style_t style = NEKO_DEFAULT_VAL();
-    ui_animation_t* anim = ui_get_animation(ctx, id, desc, UI_ELEMENT_BUTTON);
 
     // Push id if tag available
     if (id_tag) {
         ui_push_id(ctx, id_tag, strlen(id_tag));
     }
 
-    // Update anim (keep states locally within animation, only way to do this)
-    if (anim) {
-        ui_animation_update(ctx, anim);
-
-        // Get blended style based on animation
-        style = ui_animation_get_blend_style(ctx, anim, desc, UI_ELEMENT_BUTTON);
-    } else {
-        style = ctx->focus == id   ? ui_get_current_element_style(ctx, desc, UI_ELEMENT_BUTTON, 0x02)
-                : ctx->hover == id ? ui_get_current_element_style(ctx, desc, UI_ELEMENT_BUTTON, 0x01)
-                                   : ui_get_current_element_style(ctx, desc, UI_ELEMENT_BUTTON, 0x00);
-    }
+    style = ctx->focus == id   ? ui_get_current_element_style(ctx, desc, UI_ELEMENT_BUTTON, 0x02)
+            : ctx->hover == id ? ui_get_current_element_style(ctx, desc, UI_ELEMENT_BUTTON, 0x01)
+                               : ui_get_current_element_style(ctx, desc, UI_ELEMENT_BUTTON, 0x00);
 
     // Temporary copy of style
     ui_style_t* save = ui_push_style(ctx, &style);
@@ -369,20 +334,10 @@ i32 ui_textbox_raw(ui_context_t* ctx, char* buf, i32 bufsz, ui_id id, ui_rect_t 
 
     i32 elementid = UI_ELEMENT_INPUT;
     ui_style_t style = NEKO_DEFAULT_VAL();
-    ui_animation_t* anim = ui_get_animation(ctx, id, desc, elementid);
 
-    // Update anim (keep states locally within animation, only way to do this)
-    if (anim) {
-        // Need to check that I haven't updated more than once this frame
-        ui_animation_update(ctx, anim);
-
-        // Get blended style based on animation
-        style = ui_animation_get_blend_style(ctx, anim, desc, elementid);
-    } else {
-        style = ctx->focus == id   ? ui_get_current_element_style(ctx, desc, elementid, 0x02)
-                : ctx->hover == id ? ui_get_current_element_style(ctx, desc, elementid, 0x01)
-                                   : ui_get_current_element_style(ctx, desc, elementid, 0x00);
-    }
+    style = ctx->focus == id   ? ui_get_current_element_style(ctx, desc, elementid, 0x02)
+            : ctx->hover == id ? ui_get_current_element_style(ctx, desc, elementid, 0x01)
+                               : ui_get_current_element_style(ctx, desc, elementid, 0x00);
 
     // Push temp style
     ui_style_t* save = ui_push_style(ctx, &style);
@@ -558,20 +513,10 @@ i32 ui_textbox_ex(ui_context_t* ctx, char* buf, i32 bufsz, const ui_selector_des
     ui_id id = ui_get_id(ctx, &buf, sizeof(buf));
     i32 elementid = UI_ELEMENT_INPUT;
     ui_style_t style = NEKO_DEFAULT_VAL();
-    ui_animation_t* anim = ui_get_animation(ctx, id, desc, elementid);
 
-    // Update anim (keep states locally within animation, only way to do this)
-    if (anim) {
-        // Need to check that I haven't updated more than once this frame
-        ui_animation_update(ctx, anim);
-
-        // Get blended style based on animation
-        style = ui_animation_get_blend_style(ctx, anim, desc, elementid);
-    } else {
-        style = ctx->focus == id   ? ui_get_current_element_style(ctx, desc, elementid, 0x02)
-                : ctx->hover == id ? ui_get_current_element_style(ctx, desc, elementid, 0x01)
-                                   : ui_get_current_element_style(ctx, desc, elementid, 0x00);
-    }
+    style = ctx->focus == id   ? ui_get_current_element_style(ctx, desc, elementid, 0x02)
+            : ctx->hover == id ? ui_get_current_element_style(ctx, desc, elementid, 0x01)
+                               : ui_get_current_element_style(ctx, desc, elementid, 0x00);
 
     // Push temp style
     ui_style_t* save = ui_push_style(ctx, &style);
@@ -591,18 +536,9 @@ i32 ui_slider_ex(ui_context_t* ctx, ui_real* value, ui_real low, ui_real high, u
     ui_id id = ui_get_id(ctx, &value, sizeof(value));
     i32 elementid = UI_ELEMENT_INPUT;
     ui_style_t style = NEKO_DEFAULT_VAL();
-    ui_animation_t* anim = ui_get_animation(ctx, id, desc, elementid);
     i32 state = ctx->focus == id ? UI_ELEMENT_STATE_FOCUS : ctx->hover == id ? UI_ELEMENT_STATE_HOVER : UI_ELEMENT_STATE_DEFAULT;
 
-    // Update anim (keep states locally within animation, only way to do this)
-    if (anim) {
-        ui_animation_update(ctx, anim);
-
-        // Get blended style based on animation
-        style = ui_animation_get_blend_style(ctx, anim, desc, elementid);
-    } else {
-        style = ui_get_current_element_style(ctx, desc, elementid, state);
-    }
+    style = ui_get_current_element_style(ctx, desc, elementid, state);
 
     // Temporary copy of style
     ui_style_t* save = ui_push_style(ctx, &style);
@@ -656,19 +592,10 @@ i32 ui_number_ex(ui_context_t* ctx, ui_real* value, ui_real step, const char* fm
     ui_id id = ui_get_id(ctx, &value, sizeof(value));
     i32 elementid = UI_ELEMENT_INPUT;
     ui_style_t style = NEKO_DEFAULT_VAL();
-    ui_animation_t* anim = ui_get_animation(ctx, id, desc, elementid);
 
-    // Update anim (keep states locally within animation, only way to do this)
-    if (anim) {
-        ui_animation_update(ctx, anim);
-
-        // Get blended style based on animation
-        style = ui_animation_get_blend_style(ctx, anim, desc, elementid);
-    } else {
-        style = ctx->focus == id   ? ui_get_current_element_style(ctx, desc, elementid, 0x02)
-                : ctx->hover == id ? ui_get_current_element_style(ctx, desc, elementid, 0x01)
-                                   : ui_get_current_element_style(ctx, desc, elementid, 0x00);
-    }
+    style = ctx->focus == id   ? ui_get_current_element_style(ctx, desc, elementid, 0x02)
+            : ctx->hover == id ? ui_get_current_element_style(ctx, desc, elementid, 0x01)
+                               : ui_get_current_element_style(ctx, desc, elementid, 0x00);
 
     // Temporary copy of style
     ui_style_t* save = ui_push_style(ctx, &style);
@@ -1256,7 +1183,7 @@ i32 ui_window_begin_ex(ui_context_t* ctx, const char* title, ui_rect_t rect, boo
 
             if (in_root && ui_rect_overlaps_vec2(r, ctx->mouse_pos)) {
                 idraw_t* dl = &ctx->overlay_draw_list;
-                // neko_idraw_rectvd(dl, neko_v2(r.x, r.y), neko_v2(r.w, r.h), neko_v2s(0.f), neko_v2s(1.f), NEKO_COLOR_WHITE, R_PRIMITIVE_LINES);
+                // idraw_rectvd(dl, neko_v2(r.x, r.y), neko_v2(r.w, r.h), neko_v2s(0.f), neko_v2s(1.f), NEKO_COLOR_WHITE, R_PRIMITIVE_LINES);
                 hovered = true;
             }
 
@@ -1713,19 +1640,10 @@ void ui_panel_begin_ex(ui_context_t* ctx, const char* name, const ui_selector_de
     const ui_id id = ui_get_id(ctx, name, strlen(name));
 
     ui_style_t style = NEKO_DEFAULT_VAL();
-    ui_animation_t* anim = ui_get_animation(ctx, id, desc, elementid);
 
-    // Update anim (keep states locally within animation, only way to do this)
-    if (anim) {
-        ui_animation_update(ctx, anim);
-
-        // Get blended style based on animation
-        style = ui_animation_get_blend_style(ctx, anim, desc, elementid);
-    } else {
-        style = ctx->focus == id   ? ui_get_current_element_style(ctx, desc, elementid, 0x02)
-                : ctx->hover == id ? ui_get_current_element_style(ctx, desc, elementid, 0x01)
-                                   : ui_get_current_element_style(ctx, desc, elementid, 0x00);
-    }
+    style = ctx->focus == id   ? ui_get_current_element_style(ctx, desc, elementid, 0x02)
+            : ctx->hover == id ? ui_get_current_element_style(ctx, desc, elementid, 0x01)
+                               : ui_get_current_element_style(ctx, desc, elementid, 0x00);
 
     if (~opt & UI_OPT_NOFRAME) {
         ui_draw_frame(ctx, cnt->rect, &style);

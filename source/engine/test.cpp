@@ -13,7 +13,7 @@
 #include "engine/api.hpp"
 #include "engine/asset.h"
 #include "engine/base.h"
-#include "engine/ecs.h"
+#include "engine/entity.h"
 #include "engine/edit.h"
 #include "engine/game.h"
 #include "engine/gfx.h"
@@ -566,96 +566,96 @@ void draw_gui() {
         const f32 t = timing_get_elapsed();
 
         // Set up an immedaite camera using our passed in cmd viewport (this is the clipped viewport of the gui window being drawn)
-        neko_idraw_camera3d(gui_idraw, (u32)cmd->viewport.w, (u32)cmd->viewport.h);
-        neko_idraw_blend_enabled(gui_idraw, true);
+        idraw_camera3d(gui_idraw, (u32)cmd->viewport.w, (u32)cmd->viewport.h);
+        idraw_blend_enabled(gui_idraw, true);
         gfx_set_viewport(&gui_idraw->commands, cmd->viewport.x, fbs.y - cmd->viewport.h - cmd->viewport.y, cmd->viewport.w, cmd->viewport.h);
-        neko_idraw_push_matrix(gui_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);
+        idraw_push_matrix(gui_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);
         {
-            neko_idraw_rotatev(gui_idraw, t * 0.001f, NEKO_YAXIS);
-            neko_idraw_scalef(gui_idraw, 0.5f, 0.5f, 0.5f);
-            neko_idraw_box(gui_idraw, 0.f, 0.f, 0.f, 0.5f, 0.5f, 0.5f, color->r, color->g, color->b, color->a, R_PRIMITIVE_LINES);
+            idraw_rotatev(gui_idraw, t * 0.001f, NEKO_YAXIS);
+            idraw_scalef(gui_idraw, 0.5f, 0.5f, 0.5f);
+            idraw_box(gui_idraw, 0.f, 0.f, 0.f, 0.5f, 0.5f, 0.5f, color->r, color->g, color->b, color->a, R_PRIMITIVE_LINES);
         }
-        neko_idraw_pop_matrix(gui_idraw);
+        idraw_pop_matrix(gui_idraw);
 
         // Set up 2D camera for projection matrix
-        neko_idraw_camera2d(gui_idraw, (u32)fbs.x, (u32)fbs.y);
+        idraw_camera2d(gui_idraw, (u32)fbs.x, (u32)fbs.y);
 
         // Rect
-        neko_idraw_rectv(gui_idraw, neko_v2(500.f, 50.f), neko_v2(600.f, 100.f), NEKO_COLOR_RED, R_PRIMITIVE_TRIANGLES);
-        neko_idraw_rectv(gui_idraw, neko_v2(650.f, 50.f), neko_v2(750.f, 100.f), NEKO_COLOR_RED, R_PRIMITIVE_LINES);
+        idraw_rectv(gui_idraw, neko_v2(500.f, 50.f), neko_v2(600.f, 100.f), NEKO_COLOR_RED, R_PRIMITIVE_TRIANGLES);
+        idraw_rectv(gui_idraw, neko_v2(650.f, 50.f), neko_v2(750.f, 100.f), NEKO_COLOR_RED, R_PRIMITIVE_LINES);
 
         // Triangle
-        neko_idraw_trianglev(gui_idraw, neko_v2(50.f, 50.f), neko_v2(100.f, 100.f), neko_v2(50.f, 100.f), NEKO_COLOR_WHITE, R_PRIMITIVE_TRIANGLES);
-        neko_idraw_trianglev(gui_idraw, neko_v2(200.f, 50.f), neko_v2(300.f, 100.f), neko_v2(200.f, 100.f), NEKO_COLOR_WHITE, R_PRIMITIVE_LINES);
+        idraw_trianglev(gui_idraw, neko_v2(50.f, 50.f), neko_v2(100.f, 100.f), neko_v2(50.f, 100.f), NEKO_COLOR_WHITE, R_PRIMITIVE_TRIANGLES);
+        idraw_trianglev(gui_idraw, neko_v2(200.f, 50.f), neko_v2(300.f, 100.f), neko_v2(200.f, 100.f), NEKO_COLOR_WHITE, R_PRIMITIVE_LINES);
 
         // Lines
-        neko_idraw_linev(gui_idraw, neko_v2(50.f, 20.f), neko_v2(500.f, 20.f), color256(0, 255, 0, 255));
+        idraw_linev(gui_idraw, neko_v2(50.f, 20.f), neko_v2(500.f, 20.f), color256(0, 255, 0, 255));
 
         // Circle
-        neko_idraw_circle(gui_idraw, 350.f, 170.f, 50.f, 20, 100, 150, 220, 255, R_PRIMITIVE_TRIANGLES);
-        neko_idraw_circle(gui_idraw, 250.f, 170.f, 50.f, 20, 100, 150, 220, 255, R_PRIMITIVE_LINES);
+        idraw_circle(gui_idraw, 350.f, 170.f, 50.f, 20, 100, 150, 220, 255, R_PRIMITIVE_TRIANGLES);
+        idraw_circle(gui_idraw, 250.f, 170.f, 50.f, 20, 100, 150, 220, 255, R_PRIMITIVE_LINES);
 
         // Circle Sector
-        neko_idraw_circle_sector(gui_idraw, 50.f, 150.f, 50.f, 0, 90, 32, 255, 255, 255, 255, R_PRIMITIVE_TRIANGLES);
-        neko_idraw_circle_sector(gui_idraw, 150.f, 200.f, 50.f, 90, 270, 32, 255, 255, 255, 255, R_PRIMITIVE_LINES);
+        idraw_circle_sector(gui_idraw, 50.f, 150.f, 50.f, 0, 90, 32, 255, 255, 255, 255, R_PRIMITIVE_TRIANGLES);
+        idraw_circle_sector(gui_idraw, 150.f, 200.f, 50.f, 90, 270, 32, 255, 255, 255, 255, R_PRIMITIVE_LINES);
 
         // Box (with texture)
-        neko_idraw_depth_enabled(gui_idraw, true);
-        neko_idraw_face_cull_enabled(gui_idraw, true);
-        neko_idraw_camera3d(gui_idraw, (u32)fbs.x, (u32)fbs.y);
-        neko_idraw_push_matrix(gui_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);
+        idraw_depth_enabled(gui_idraw, true);
+        idraw_face_cull_enabled(gui_idraw, true);
+        idraw_camera3d(gui_idraw, (u32)fbs.x, (u32)fbs.y);
+        idraw_push_matrix(gui_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);
         {
-            neko_idraw_translatef(gui_idraw, -2.f, -1.f, -5.f);
-            neko_idraw_rotatev(gui_idraw, timing_get_elapsed() * 0.001f, NEKO_YAXIS);
-            neko_idraw_rotatev(gui_idraw, timing_get_elapsed() * 0.0005f, NEKO_ZAXIS);
-            // neko_idraw_texture(gui_idraw, tp->hndl);
-            neko_idraw_scalef(gui_idraw, 1.5f, 1.5f, 1.5f);
-            neko_idraw_box(gui_idraw, 0.f, 0.f, 0.f, 0.5f, 0.5f, 0.5f, 255, 255, 255, 255, R_PRIMITIVE_TRIANGLES);
-            neko_idraw_texture(gui_idraw, neko_handle(gfx_texture_t){0});
+            idraw_translatef(gui_idraw, -2.f, -1.f, -5.f);
+            idraw_rotatev(gui_idraw, timing_get_elapsed() * 0.001f, NEKO_YAXIS);
+            idraw_rotatev(gui_idraw, timing_get_elapsed() * 0.0005f, NEKO_ZAXIS);
+            // idraw_texture(gui_idraw, tp->hndl);
+            idraw_scalef(gui_idraw, 1.5f, 1.5f, 1.5f);
+            idraw_box(gui_idraw, 0.f, 0.f, 0.f, 0.5f, 0.5f, 0.5f, 255, 255, 255, 255, R_PRIMITIVE_TRIANGLES);
+            idraw_texture(gui_idraw, neko_handle(gfx_texture_t){0});
         }
-        neko_idraw_pop_matrix(gui_idraw);
+        idraw_pop_matrix(gui_idraw);
 
         // Box (lines, no texture)
-        neko_idraw_push_matrix(gui_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);
+        idraw_push_matrix(gui_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);
         {
-            neko_idraw_translatef(gui_idraw, 2.f, -1.f, -5.f);
-            neko_idraw_rotatev(gui_idraw, timing_get_elapsed() * 0.001f, NEKO_YAXIS);
-            neko_idraw_rotatev(gui_idraw, timing_get_elapsed() * 0.0008f, NEKO_ZAXIS);
-            neko_idraw_rotatev(gui_idraw, timing_get_elapsed() * 0.0009f, NEKO_XAXIS);
-            neko_idraw_scalef(gui_idraw, 1.5f, 1.5f, 1.5f);
-            neko_idraw_box(gui_idraw, 0.f, 0.f, 0.f, 0.5f, 0.5f, 0.5f, 255, 200, 100, 255, R_PRIMITIVE_LINES);
+            idraw_translatef(gui_idraw, 2.f, -1.f, -5.f);
+            idraw_rotatev(gui_idraw, timing_get_elapsed() * 0.001f, NEKO_YAXIS);
+            idraw_rotatev(gui_idraw, timing_get_elapsed() * 0.0008f, NEKO_ZAXIS);
+            idraw_rotatev(gui_idraw, timing_get_elapsed() * 0.0009f, NEKO_XAXIS);
+            idraw_scalef(gui_idraw, 1.5f, 1.5f, 1.5f);
+            idraw_box(gui_idraw, 0.f, 0.f, 0.f, 0.5f, 0.5f, 0.5f, 255, 200, 100, 255, R_PRIMITIVE_LINES);
         }
-        neko_idraw_pop_matrix(gui_idraw);
+        idraw_pop_matrix(gui_idraw);
 
         // Sphere (triangles, no texture)
-        neko_idraw_camera3d(gui_idraw, (u32)fbs.x, (u32)fbs.y);
-        neko_idraw_push_matrix(gui_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);
+        idraw_camera3d(gui_idraw, (u32)fbs.x, (u32)fbs.y);
+        idraw_push_matrix(gui_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);
         {
-            neko_idraw_translatef(gui_idraw, -2.f, -1.f, -5.f);
-            neko_idraw_rotatev(gui_idraw, timing_get_elapsed() * 0.001f, NEKO_YAXIS);
-            neko_idraw_rotatev(gui_idraw, timing_get_elapsed() * 0.0005f, NEKO_ZAXIS);
-            neko_idraw_scalef(gui_idraw, 1.5f, 1.5f, 1.5f);
-            neko_idraw_sphere(gui_idraw, 0.f, 0.f, 0.f, 1.0f, 255, 255, 255, 50, R_PRIMITIVE_TRIANGLES);
+            idraw_translatef(gui_idraw, -2.f, -1.f, -5.f);
+            idraw_rotatev(gui_idraw, timing_get_elapsed() * 0.001f, NEKO_YAXIS);
+            idraw_rotatev(gui_idraw, timing_get_elapsed() * 0.0005f, NEKO_ZAXIS);
+            idraw_scalef(gui_idraw, 1.5f, 1.5f, 1.5f);
+            idraw_sphere(gui_idraw, 0.f, 0.f, 0.f, 1.0f, 255, 255, 255, 50, R_PRIMITIVE_TRIANGLES);
         }
-        neko_idraw_pop_matrix(gui_idraw);
+        idraw_pop_matrix(gui_idraw);
 
         // Sphere (lines)
-        neko_idraw_push_matrix(gui_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);
+        idraw_push_matrix(gui_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);
         {
-            neko_idraw_translatef(gui_idraw, 2.f, -1.f, -5.f);
-            neko_idraw_rotatev(gui_idraw, timing_get_elapsed() * 0.001f, NEKO_YAXIS);
-            neko_idraw_rotatev(gui_idraw, timing_get_elapsed() * 0.0008f, NEKO_ZAXIS);
-            neko_idraw_rotatev(gui_idraw, timing_get_elapsed() * 0.0009f, NEKO_XAXIS);
-            neko_idraw_scalef(gui_idraw, 1.5f, 1.5f, 1.5f);
-            neko_idraw_sphere(gui_idraw, 0.f, 0.f, 0.f, 1.0f, 255, 255, 255, 50, R_PRIMITIVE_LINES);
+            idraw_translatef(gui_idraw, 2.f, -1.f, -5.f);
+            idraw_rotatev(gui_idraw, timing_get_elapsed() * 0.001f, NEKO_YAXIS);
+            idraw_rotatev(gui_idraw, timing_get_elapsed() * 0.0008f, NEKO_ZAXIS);
+            idraw_rotatev(gui_idraw, timing_get_elapsed() * 0.0009f, NEKO_XAXIS);
+            idraw_scalef(gui_idraw, 1.5f, 1.5f, 1.5f);
+            idraw_sphere(gui_idraw, 0.f, 0.f, 0.f, 1.0f, 255, 255, 255, 50, R_PRIMITIVE_LINES);
         }
-        neko_idraw_pop_matrix(gui_idraw);
+        idraw_pop_matrix(gui_idraw);
 
         // Text (custom and default fonts)
-        // neko_idraw_camera2D(gui_idraw, (u32)ws.x, (u32)ws.y);
-        // neko_idraw_defaults(gui_idraw);
-        // neko_idraw_text(gui_idraw, 410.f, 150.f, "Custom Font", &font, false, 200, 100, 50, 255);
-        // neko_idraw_text(gui_idraw, 450.f, 200.f, "Default Font", NULL, false, 50, 100, 255, 255);
+        // idraw_camera2D(gui_idraw, (u32)ws.x, (u32)ws.y);
+        // idraw_defaults(gui_idraw);
+        // idraw_text(gui_idraw, 410.f, 150.f, "Custom Font", &font, false, 200, 100, 50, 255);
+        // idraw_text(gui_idraw, 450.f, 200.f, "Default Font", NULL, false, 50, 100, 255, 255);
     };
 
     {

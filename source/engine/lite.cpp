@@ -74,7 +74,7 @@ int lt_resizesurface(lt_surface *s, int ww, int wh) {
         // texture clear
         // if (!s->t.id) s->t = texture_create(1, 1, 4, "    ", TEXTURE_LINEAR | TEXTURE_RGBA | TEXTURE_BYTE);
         if (!s->t.id) {
-            Texture t = {.width = 1, .height = 1};
+            AssetTexture t = {.width = 1, .height = 1};
             bool ok = texture_update_data(&t, (u8 *)"    ");
             s->t = t;
         }

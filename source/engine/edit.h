@@ -4,7 +4,7 @@
 #include <stdbool.h>
 
 #include "engine/base.h"
-#include "engine/ecs.h"
+#include "engine/entity.h"
 #include "engine/glew_glfw.h"
 #include "engine/prelude.h"
 

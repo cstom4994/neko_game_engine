@@ -47,7 +47,7 @@
 typedef struct lt_surface {
     int w, h;
     void *pixels;
-    Texture t;
+    AssetTexture t;
 } lt_surface;
 
 typedef struct lt_rect {

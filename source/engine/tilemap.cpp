@@ -22,7 +22,7 @@ DECL_ENT(Tiled, tiled_renderer *render; LuaVec2 pos;);
 
 static EntityPool *pool;
 
-static bool layer_from_json(TilemapLayer *layer, JSON *json, bool *ok, Arena *arena, String filepath, HashMap<Texture> *images) {
+static bool layer_from_json(TilemapLayer *layer, JSON *json, bool *ok, Arena *arena, String filepath, HashMap<AssetTexture> *images) {
     PROFILE_FUNC();
 
     layer->identifier = arena->bump_string(json->lookup_string("__identifier", ok));
@@ -48,11 +48,11 @@ static bool layer_from_json(TilemapLayer *layer, JSON *json, bool *ok, Arena *ar
 
         u64 key = fnv1a(String(sb));
 
-        Texture *img = images->get(key);
+        AssetTexture *img = images->get(key);
         if (img != nullptr) {
             layer->image = *img;
         } else {
-            Texture create_img = {};
+            AssetTexture create_img = {};
             neko_assert(false);
 
             // bool success = create_img.load(String(sb), false);
@@ -144,7 +144,7 @@ static bool layer_from_json(TilemapLayer *layer, JSON *json, bool *ok, Arena *ar
     return true;
 }
 
-static bool level_from_json(TilemapLevel *level, JSON *json, bool *ok, Arena *arena, String filepath, HashMap<Texture> *images) {
+static bool level_from_json(TilemapLevel *level, JSON *json, bool *ok, Arena *arena, String filepath, HashMap<AssetTexture> *images) {
     PROFILE_FUNC();
 
     level->identifier = arena->bump_string(json->lookup_string("identifier", ok));
@@ -194,7 +194,7 @@ bool MapLdtk::load(String filepath) {
     }
 
     Arena arena = {};
-    HashMap<Texture> images = {};
+    HashMap<AssetTexture> images = {};
     bool created = false;
     neko_defer({
         neko_assert(false);

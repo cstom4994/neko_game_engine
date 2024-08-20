@@ -1,7 +1,6 @@
 #pragma once
 
 #include "engine/base.h"
-#include "engine/image.h"
 #include "engine/math.h"
 #include "engine/prelude.h"
 #include "engine/sprite.h"
@@ -29,7 +28,7 @@ struct Asset {
     AssetKind kind;
     union {
         i32 lua_ref;
-        Texture texture;
+        AssetTexture texture;
         AseSpriteData sprite;
         MapLdtk tilemap;
         // Pak pak;

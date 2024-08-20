@@ -6,7 +6,7 @@
 #include "engine/base.h"
 #include "engine/camera.h"
 #include "engine/draw.h"
-#include "engine/ecs.h"
+#include "engine/entity.h"
 #include "engine/game.h"
 #include "engine/lua_custom_types.h"
 #include "engine/lua_struct.h"
@@ -1631,10 +1631,10 @@ LUA_FUNCTION(__neko_bind_aseprite_render) {
     neko_aseprite_frame f = spr->frames[index];
 
     if (direction)
-        neko_idraw_rect_textured_ext(&g_app->idraw, xform.x, xform.y, xform.x + spr->width * scale, xform.y + spr->height * scale, f.u1, f.v0, f.u0, f.v1, user_handle->sprite->img.id,
+        idraw_rect_textured_ext(&g_app->idraw, xform.x, xform.y, xform.x + spr->width * scale, xform.y + spr->height * scale, f.u1, f.v0, f.u0, f.v1, user_handle->sprite->img.id,
                                      NEKO_COLOR_WHITE);
     else
-        neko_idraw_rect_textured_ext(&g_app->idraw, xform.x, xform.y, xform.x + spr->width * scale, xform.y + spr->height * scale, f.u0, f.v0, f.u1, f.v1, user_handle->sprite->img.id,
+        idraw_rect_textured_ext(&g_app->idraw, xform.x, xform.y, xform.x + spr->width * scale, xform.y + spr->height * scale, f.u0, f.v0, f.u1, f.v1, user_handle->sprite->img.id,
                                      NEKO_COLOR_WHITE);
 
     return 0;
@@ -2430,27 +2430,27 @@ LUA_FUNCTION(__neko_bind_idraw_get) {
 
 LUA_FUNCTION(__neko_bind_idraw_draw) {
     PROFILE_FUNC();
-    neko_idraw_draw(&g_app->idraw, &g_app->cb);
+    idraw_draw(&g_app->idraw, &g_app->cb);
     return 1;
 }
 
 LUA_FUNCTION(__neko_bind_idraw_defaults) {
     PROFILE_FUNC();
-    neko_idraw_defaults(&g_app->idraw);
+    idraw_defaults(&g_app->idraw);
     return 0;
 }
 
 LUA_FUNCTION(__neko_bind_idraw_camera2d) {
     f32 w = lua_tonumber(L, 1);
     f32 h = lua_tonumber(L, 2);
-    neko_idraw_camera2d(&g_app->idraw, w, h);
+    idraw_camera2d(&g_app->idraw, w, h);
     return 0;
 }
 
 LUA_FUNCTION(__neko_bind_idraw_camera3d) {
     f32 w = lua_tonumber(L, 1);
     f32 h = lua_tonumber(L, 2);
-    neko_idraw_camera3d(&g_app->idraw, w, h);
+    idraw_camera3d(&g_app->idraw, w, h);
     return 0;
 }
 
@@ -2459,7 +2459,7 @@ LUA_FUNCTION(__neko_bind_idraw_camera2d_ex) {
     f32 r = lua_tonumber(L, 2);
     f32 t = lua_tonumber(L, 3);
     f32 b = lua_tonumber(L, 4);
-    neko_idraw_camera2d_ex(&g_app->idraw, l, r, t, b);
+    idraw_camera2d_ex(&g_app->idraw, l, r, t, b);
     return 0;
 }
 
@@ -2468,7 +2468,7 @@ LUA_FUNCTION(__neko_bind_idraw_rotatev) {
     f32 x = lua_tonumber(L, 2);
     f32 y = lua_tonumber(L, 3);
     f32 z = lua_tonumber(L, 4);
-    neko_idraw_rotatev(&g_app->idraw, angle, neko_v3(x, y, z));
+    idraw_rotatev(&g_app->idraw, angle, neko_v3(x, y, z));
     return 0;
 }
 
@@ -2485,7 +2485,7 @@ LUA_FUNCTION(__neko_bind_idraw_box) {
     u8 a = lua_tointeger(L, 10);
     gfx_primitive_type type_val;
     neko_luabind_to(ENGINE_LUA(), gfx_primitive_type, &type_val, 11);
-    neko_idraw_box(&g_app->idraw, x, y, z, hx, hy, hz, r, g, b, a, type_val);
+    idraw_box(&g_app->idraw, x, y, z, hx, hy, hz, r, g, b, a, type_val);
     return 0;
 }
 
@@ -2493,7 +2493,7 @@ LUA_FUNCTION(__neko_bind_idraw_translatef) {
     f32 x = lua_tonumber(L, 1);
     f32 y = lua_tonumber(L, 2);
     f32 z = lua_tonumber(L, 3);
-    neko_idraw_translatef(&g_app->idraw, x, y, z);
+    idraw_translatef(&g_app->idraw, x, y, z);
     return 0;
 }
 
@@ -2513,7 +2513,7 @@ LUA_FUNCTION(__neko_bind_idraw_rectv) {
         col = lua2struct::unpack<Color256>(L, 4);
     }
 
-    neko_idraw_rectv(&g_app->idraw, v1, v2, col, type_val);
+    idraw_rectv(&g_app->idraw, v1, v2, col, type_val);
     return 0;
 }
 
@@ -2530,7 +2530,7 @@ LUA_FUNCTION(__neko_bind_idraw_rectvd) {
 
     Color256 col = lua2struct::unpack<Color256>(L, 6);
 
-    neko_idraw_rectvd(&g_app->idraw, v1, v2, uv0, uv1, col, type_val);
+    idraw_rectvd(&g_app->idraw, v1, v2, uv0, uv1, col, type_val);
     return 0;
 }
 
@@ -2546,7 +2546,7 @@ LUA_FUNCTION(__neko_bind_idraw_text) {
         col = lua2struct::unpack<Color256>(L, 4);
     }
 
-    neko_idraw_text(&g_app->idraw, x, y, text, NULL, false, col);
+    idraw_text(&g_app->idraw, x, y, text, NULL, false, col);
     return 0;
 }
 
@@ -2556,19 +2556,19 @@ LUA_FUNCTION(__neko_bind_idraw_text) {
 //     neko_camera_t camera;
 //     camera = neko_camera_default();
 //     vec2 fbs = neko_os_framebuffer_sizev(neko_os_main_window());
-//     neko_idraw_camera(&g_app->idraw, &camera, (u32)fbs.x, (u32)fbs.y);
+//     idraw_camera(&g_app->idraw, &camera, (u32)fbs.x, (u32)fbs.y);
 //     return 0;
 // }
 
 LUA_FUNCTION(__neko_bind_idraw_depth_enabled) {
     bool enable = lua_toboolean(L, 1);
-    neko_idraw_depth_enabled(&g_app->idraw, enable);
+    idraw_depth_enabled(&g_app->idraw, enable);
     return 0;
 }
 
 LUA_FUNCTION(__neko_bind_idraw_face_cull_enabled) {
     bool enable = lua_toboolean(L, 1);
-    neko_idraw_face_cull_enabled(&g_app->idraw, enable);
+    idraw_face_cull_enabled(&g_app->idraw, enable);
     return 0;
 }
 
@@ -2576,7 +2576,7 @@ LUA_FUNCTION(__neko_bind_idraw_texture) {
     neko_texture_t rt = NEKO_DEFAULT_VAL();
     // neko_luabind_struct_to_member(ENGINE_LUA(), neko_texture_t, id, &rt, 1);
     rt = *CHECK_STRUCT(L, 1, neko_texture_t);
-    neko_idraw_texture(&g_app->idraw, rt);
+    idraw_texture(&g_app->idraw, rt);
     return 0;
 }
 
@@ -2880,28 +2880,6 @@ LUA_FUNCTION(__neko_bind_render_vertex_attribute_create) {
     return 2;
 }
 
-LUA_FUNCTION(__neko_bind_render_storage_buffer_create) {
-
-    const_str storage_buffer_name = lua_tostring(L, 1);
-
-    void *data = lua_touserdata(L, 2);
-    size_t data_size = lua_tointeger(L, 3);
-
-    neko_storage_buffer_t storage_buffer_handle = NEKO_DEFAULT_VAL();
-
-    gfx_storage_buffer_desc_t storage_buffer_desc = {.data = data, .size = data_size, .name = "unknown", .usage = GL_DYNAMIC_DRAW};
-
-    if (storage_buffer_name != NULL) {
-        NEKO_STR_CPY(storage_buffer_desc.name, storage_buffer_name);
-    }
-
-    storage_buffer_handle = gfx_storage_buffer_create(storage_buffer_desc);
-
-    // neko_luabind_struct_push_member(L, neko_storage_buffer_t, id, &storage_buffer_handle);
-    PUSH_STRUCT(L, neko_storage_buffer_t, storage_buffer_handle);
-    return 1;
-}
-
 LUA_FUNCTION(__neko_bind_render_pipeline_bind) {
     neko_pipeline_t pipeline_handle = NEKO_DEFAULT_VAL();
     // neko_luabind_struct_to_member(L, neko_pipeline_t, id, &pipeline_handle, 1);
@@ -2914,11 +2892,11 @@ LUA_FUNCTION(__neko_bind_render_apply_bindings) {
 
     gfx_bind_desc_t binds = NEKO_DEFAULT_VAL();
 
-    const_str pipeline_type[] = {"uniforms", "image_buffers", "storage_buffers", "vertex_buffers", "index_buffers"};
+    const_str pipeline_type[] = {"uniforms", "image_buffers", "vertex_buffers", "index_buffers"};
 
     gfx_bind_uniform_desc_t *u_desc = nullptr;
     gfx_bind_image_buffer_desc_t *ib_desc = nullptr;
-    gfx_bind_storage_buffer_desc_t *sb_desc = nullptr;
+    // gfx_bind_storage_buffer_desc_t *sb_desc = nullptr;
     gfx_bind_vertex_buffer_desc_t *vbo_desc = nullptr;
     gfx_bind_index_buffer_desc_t *ibo_desc = nullptr;
 
@@ -3018,6 +2996,7 @@ LUA_FUNCTION(__neko_bind_render_apply_bindings) {
                         lua_pop(L, 1);  // # -1
                     }
                 } break;
+#if 0
                 case neko::hash("storage_buffers"): {
                     sb_desc = (gfx_bind_storage_buffer_desc_t *)mem_alloc(n * sizeof(gfx_bind_storage_buffer_desc_t));
                     memset(sb_desc, 0, n * sizeof(gfx_bind_storage_buffer_desc_t));
@@ -3048,6 +3027,7 @@ LUA_FUNCTION(__neko_bind_render_apply_bindings) {
                         lua_pop(L, 1);  // # -1
                     }
                 } break;
+#endif
                 case neko::hash("vertex_buffers"): {
                     vbo_desc = (gfx_bind_vertex_buffer_desc_t *)mem_alloc(n * sizeof(gfx_bind_vertex_buffer_desc_t));
                     memset(vbo_desc, 0, n * sizeof(gfx_bind_vertex_buffer_desc_t));
@@ -3105,7 +3085,6 @@ LUA_FUNCTION(__neko_bind_render_apply_bindings) {
 
     if (u_desc) mem_free(u_desc);
     if (ib_desc) mem_free(ib_desc);
-    if (sb_desc) mem_free(sb_desc);
     if (vbo_desc) mem_free(vbo_desc);
     if (ibo_desc) mem_free(ibo_desc);
 
@@ -4136,7 +4115,6 @@ static int open_embed_core(lua_State *L) {
             {"render_shader_create", __neko_bind_render_shader_create},
             {"render_uniform_create", __neko_bind_render_uniform_create},
             {"render_pipeline_create", __neko_bind_render_pipeline_create},
-            {"render_storage_buffer_create", __neko_bind_render_storage_buffer_create},
             {"render_vertex_buffer_create", __neko_bind_render_vertex_buffer_create},
             {"render_index_buffer_create", __neko_bind_render_index_buffer_create},
             {"render_vertex_attribute_create", __neko_bind_render_vertex_attribute_create},

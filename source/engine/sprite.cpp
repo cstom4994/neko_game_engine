@@ -6,7 +6,7 @@
 
 #include "engine/base.h"
 #include "engine/camera.h"
-#include "engine/ecs.h"
+#include "engine/entity.h"
 #include "engine/edit.h"
 #include "engine/game.h"
 #include "engine/gfx.h"

@@ -42,54 +42,6 @@ extern void draw_gui();
 
 static const char *filename = usr_path("scratch.lua");
 
-NEKO_FORCE_INLINE void neko_tex_flip_vertically(int width, int height, u8 *data) {
-    u8 rgb[4];
-    for (int y = 0; y < height / 2; y++) {
-        for (int x = 0; x < width; x++) {
-            int top = 4 * (x + y * width);
-            int bottom = 4 * (x + (height - y - 1) * width);
-            memcpy(rgb, data + top, sizeof(rgb));
-            memcpy(data + top, data + bottom, sizeof(rgb));
-            memcpy(data + bottom, rgb, sizeof(rgb));
-        }
-    }
-}
-
-neko_texture_t neko_aseprite_simple(String filename) {
-    String contents = {};
-    bool ok = vfs_read_entire_file(&contents, filename);
-
-    neko_defer(mem_free(contents.data));
-
-    ase_t *ase;
-
-    {
-        PROFILE_BLOCK("ase_image load");
-        ase = cute_aseprite_load_from_memory(contents.data, contents.len, nullptr);
-
-        neko_assert(ase->frame_count == 1);  // image_load_ase 用于加载简单的单帧 aseprite
-        // neko_aseprite_default_blend_bind(ase);
-    }
-
-    u8 *data = reinterpret_cast<u8 *>(ase->frames->pixels);
-
-    gfx_texture_desc_t t_desc = {};
-
-    t_desc.format = R_TEXTURE_FORMAT_RGBA8;
-    t_desc.mag_filter = R_TEXTURE_FILTER_NEAREST;
-    t_desc.min_filter = R_TEXTURE_FILTER_NEAREST;
-    t_desc.num_mips = 0;
-    t_desc.width = ase->w;
-    t_desc.height = ase->h;
-    // t_desc.num_comps = 4;
-    t_desc.data = data;
-
-    neko_tex_flip_vertically(ase->w, ase->h, (u8 *)(t_desc.data));
-    neko_texture_t tex = gfx_texture_create(t_desc);
-    cute_aseprite_free(ase);
-    return tex;
-}
-
 bool _exists() {
     struct stat st;
     return stat(filename, &st) == 0;
@@ -393,8 +345,8 @@ static void _game_draw() {
         script_draw_all();
 
         // Set up 2D camera for projection matrix
-        neko_idraw_defaults(&g_app->idraw);
-        neko_idraw_camera2d(&g_app->idraw, (u32)g_app->width, (u32)g_app->height);
+        idraw_defaults(&g_app->idraw);
+        idraw_camera2d(&g_app->idraw, (u32)g_app->width, (u32)g_app->height);
 
         // 底层图片
         char background_text[64] = "Project: unknown";
@@ -403,18 +355,18 @@ static void _game_draw() {
         // vec2 td = {};
         vec2 ts = neko_v2(512 + 128, 512 + 128);
 
-        neko_idraw_text(&g_app->idraw, (g_app->width - td) * 0.5f, (g_app->height) * 0.5f + ts.y / 2.f - 100.f, background_text, NULL, false, color256(255, 255, 255, 255));
-        neko_idraw_texture(&g_app->idraw, test_ase);
-        neko_idraw_rectvd(&g_app->idraw, neko_v2((g_app->width - ts.x) * 0.5f, (g_app->height - ts.y) * 0.5f - 22.f - 50.f), ts, neko_v2(0.f, 1.f), neko_v2(1.f, 0.f), color256(255, 255, 255, 255),
-                          R_PRIMITIVE_TRIANGLES);
+        idraw_text(&g_app->idraw, (g_app->width - td) * 0.5f, (g_app->height) * 0.5f + ts.y / 2.f - 100.f, background_text, NULL, false, color256(255, 255, 255, 255));
+        idraw_texture(&g_app->idraw, test_ase);
+        idraw_rectvd(&g_app->idraw, neko_v2((g_app->width - ts.x) * 0.5f, (g_app->height - ts.y) * 0.5f - 22.f - 50.f), ts, neko_v2(0.f, 1.f), neko_v2(1.f, 0.f), color256(255, 255, 255, 255),
+                     R_PRIMITIVE_TRIANGLES);
 
-        neko_idraw_defaults(&g_app->idraw);
+        idraw_defaults(&g_app->idraw);
         f32 fy = draw_font(&g_app->idraw, g_app->default_font, 40.f, 10.f, 20.f, "-- ! Neko ! --", NEKO_COLOR_WHITE);
 
         gfx_renderpass_begin(&g_app->cb, R_RENDER_PASS_DEFAULT);
         {
             // gfx_set_viewport(&g_app->cb, 0, 0, (u32)g_app->width, (u32)g_app->height);
-            neko_idraw_draw(&g_app->idraw, &g_app->cb);  // 立即模式绘制 idraw
+            idraw_draw(&g_app->idraw, &g_app->cb);  // 立即模式绘制 idraw
 
             tiled_draw_all();
 
