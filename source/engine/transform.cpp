@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "edit.h"
+#include "engine/edit.h"
 #include "engine/base.h"
 #include "engine/ecs.h"
 #include "engine/prelude.h"

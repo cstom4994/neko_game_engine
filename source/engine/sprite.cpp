@@ -4,15 +4,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "edit.h"
 #include "engine/base.h"
 #include "engine/camera.h"
 #include "engine/ecs.h"
+#include "engine/edit.h"
 #include "engine/game.h"
+#include "engine/gfx.h"
 #include "engine/prelude.h"
 #include "engine/texture.h"
 #include "engine/transform.h"
-#include "gfx.h"
+#include "engine/vfs.h"
 
 // deps
 #include <cute_aseprite.h>

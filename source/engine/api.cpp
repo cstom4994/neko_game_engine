@@ -23,6 +23,7 @@
 #include "engine/ui.h"
 
 // deps
+#include "engine/vfs.h"
 #include "vendor/sokol_time.h"
 
 namespace lua2struct {
@@ -429,95 +430,6 @@ static int open_mt_tilemap(lua_State *L) {
 }
 
 #endif
-
-// mt_pak
-
-struct pak_assets_t {
-    const_str name;
-    size_t size;
-    String data;
-};
-
-static neko_pak *check_pak_udata(lua_State *L, i32 arg) {
-    neko_pak *udata = (neko_pak *)luaL_checkudata(L, arg, "mt_pak");
-    if (!udata || !udata->item_count) {
-        luaL_error(L, "cannot read pak");
-    }
-    return udata;
-}
-
-static int mt_pak_gc(lua_State *L) {
-    neko_pak *pak = check_pak_udata(L, 1);
-    pak->fini();
-    console_log("pak __gc %p", pak);
-    return 0;
-}
-
-static int mt_pak_items(lua_State *L) {
-    neko_pak *pak = check_pak_udata(L, 1);
-
-    u64 item_count = pak->get_item_count();
-
-    lua_newtable(L);  // # -2
-    for (int i = 0; i < item_count; ++i) {
-        lua_pushstring(L, pak->get_item_path(i));  // # -1
-        lua_rawseti(L, -2, i + 1);
-    }
-
-    return 1;
-}
-
-static int mt_pak_assets_load(lua_State *L) {
-    neko_pak *pak = check_pak_udata(L, 1);
-
-    const_str path = lua_tostring(L, 2);
-
-    pak_assets_t *assets_user_handle = (pak_assets_t *)lua_newuserdata(L, sizeof(pak_assets_t));
-    assets_user_handle->name = path;
-    assets_user_handle->size = 0;
-
-    bool ok = pak->get_data(path, &assets_user_handle->data, (u32 *)&assets_user_handle->size);
-
-    if (!ok) {
-        const_str error_message = "mt_pak_assets_load failed";
-        lua_pushstring(L, error_message);  // 将错误信息压入堆栈
-        return lua_error(L);               // 抛出lua错误
-    }
-
-    // asset_write(asset);
-
-    return 1;
-}
-
-static int mt_pak_assets_unload(lua_State *L) {
-    neko_pak *pak = check_pak_udata(L, 1);
-
-    pak_assets_t *assets_user_handle = (pak_assets_t *)lua_touserdata(L, 2);
-
-    if (assets_user_handle && assets_user_handle->data.len)
-        pak->free_item(assets_user_handle->data);
-    else
-        console_log("unknown assets unload %p", assets_user_handle);
-
-    // asset_write(asset);
-
-    return 0;
-}
-
-static int open_mt_pak(lua_State *L) {
-    // clang-format off
-    luaL_Reg reg[] = {
-            {"__gc", mt_pak_gc},
-            {"items", mt_pak_items},
-            {"assets_load", mt_pak_assets_load},
-            {"assets_unload", mt_pak_assets_unload},
-            {nullptr, nullptr},
-    };
-    // clang-format on
-
-    luax_new_class(L, "mt_pak", reg);
-    return 0;
-}
 
 // neko api
 
@@ -1375,22 +1287,6 @@ static int neko_tilemap_load(lua_State *L) {
 
 #endif
 
-static int neko_pak_load(lua_State *L) {
-    String name = luax_check_string(L, 1);
-    String path = luax_check_string(L, 2);
-
-    neko_pak pak;
-
-    bool ok = pak.load(path.cstr(), 0, false);
-
-    if (!ok) {
-        return 0;
-    }
-
-    luax_new_userdata(L, pak, "mt_pak");
-    return 1;
-}
-
 #if 1
 
 #if 0
@@ -1773,12 +1669,12 @@ LUA_FUNCTION(__neko_bind_tiled_create) {
     // const_str glsl_vs_src = lua_tostring(L, 2);
     // const_str glsl_fs_src = lua_tostring(L, 3);
 
-    neko_tiled_renderer *user_handle = (neko_tiled_renderer *)lua_newuserdata(L, sizeof(neko_tiled_renderer));
-    memset(user_handle, 0, sizeof(neko_tiled_renderer));
+    tiled_renderer *user_handle = (tiled_renderer *)lua_newuserdata(L, sizeof(tiled_renderer));
+    memset(user_handle, 0, sizeof(tiled_renderer));
 
-    neko_tiled_load(&(user_handle->map), map_path, NULL);
+    tiled_load(&(user_handle->map), map_path, NULL);
 
-    neko_tiled_render_init(&g_app->cb, user_handle);
+    tiled_render_init(&g_app->cb, user_handle);
 
     return 1;
 }
@@ -1787,7 +1683,7 @@ LUA_FUNCTION(__neko_bind_tiled_render) {
 
     PROFILE_FUNC();
 
-    neko_tiled_renderer *tiled_render = (neko_tiled_renderer *)lua_touserdata(L, 1);
+    tiled_renderer *tiled_render = (tiled_renderer *)lua_touserdata(L, 1);
 
     neko_renderpass_t rp = R_RENDER_PASS_DEFAULT;
     // neko_luabind_struct_to_member(L, neko_renderpass_t, id, &rp, 2);
@@ -1807,7 +1703,7 @@ LUA_FUNCTION(__neko_bind_tiled_render) {
 
     gfx_renderpass_begin(cb, rp);
     {
-        neko_tiled_render_begin(cb, tiled_render);
+        tiled_render_begin(cb, tiled_render);
 
         PROFILE_BLOCK("tiled_render");
 
@@ -1820,32 +1716,32 @@ LUA_FUNCTION(__neko_bind_tiled_render) {
                         tileset_t *tileset = tiled_render->map.tilesets + tile->tileset_id;
                         u32 tsxx = (tile->id % (tileset->width / tileset->tile_width) - 1) * tileset->tile_width;
                         u32 tsyy = tileset->tile_height * ((tile->id - tileset->first_gid) / (tileset->width / tileset->tile_width));
-                        neko_tiled_quad_t quad = {.tileset_id = tile->tileset_id,
-                                                  .texture = tileset->texture,
-                                                  .texture_size = {(f32)tileset->width, (f32)tileset->height},
-                                                  .position = {(f32)(x * tileset->tile_width * SPRITE_SCALE) + xform.x, (f32)(y * tileset->tile_height * SPRITE_SCALE) + xform.y},
-                                                  .dimentions = {(f32)(tileset->tile_width * SPRITE_SCALE), (f32)(tileset->tile_height * SPRITE_SCALE)},
-                                                  .rectangle = {(f32)tsxx, (f32)tsyy, (f32)tileset->tile_width, (f32)tileset->tile_height},
-                                                  .color = layer->tint,
-                                                  .use_texture = true};
-                        neko_tiled_render_push(cb, tiled_render, quad);
+                        tiled_quad_t quad = {.tileset_id = tile->tileset_id,
+                                             .texture = tileset->texture,
+                                             .texture_size = {(f32)tileset->width, (f32)tileset->height},
+                                             .position = {(f32)(x * tileset->tile_width * SPRITE_SCALE) + xform.x, (f32)(y * tileset->tile_height * SPRITE_SCALE) + xform.y},
+                                             .dimentions = {(f32)(tileset->tile_width * SPRITE_SCALE), (f32)(tileset->tile_height * SPRITE_SCALE)},
+                                             .rectangle = {(f32)tsxx, (f32)tsyy, (f32)tileset->tile_width, (f32)tileset->tile_height},
+                                             .color = layer->tint,
+                                             .use_texture = true};
+                        tiled_render_push(cb, tiled_render, quad);
                     }
                 }
             }
-            neko_tiled_render_draw(cb, tiled_render);  // 一层渲染一次
+            tiled_render_draw(cb, tiled_render);  // 一层渲染一次
         }
 
         for (u32 i = 0; i < neko_dyn_array_size(tiled_render->map.object_groups); i++) {
             object_group_t *group = tiled_render->map.object_groups + i;
             for (u32 ii = 0; ii < neko_dyn_array_size(tiled_render->map.object_groups[i].objects); ii++) {
                 object_t *object = group->objects + ii;
-                neko_tiled_quad_t quad = {.position = {(f32)(object->x * SPRITE_SCALE) + xform.x, (f32)(object->y * SPRITE_SCALE) + xform.y},
-                                          .dimentions = {(f32)(object->width * SPRITE_SCALE), (f32)(object->height * SPRITE_SCALE)},
-                                          .color = group->color,
-                                          .use_texture = false};
-                neko_tiled_render_push(cb, tiled_render, quad);
+                tiled_quad_t quad = {.position = {(f32)(object->x * SPRITE_SCALE) + xform.x, (f32)(object->y * SPRITE_SCALE) + xform.y},
+                                     .dimentions = {(f32)(object->width * SPRITE_SCALE), (f32)(object->height * SPRITE_SCALE)},
+                                     .color = group->color,
+                                     .use_texture = false};
+                tiled_render_push(cb, tiled_render, quad);
             }
-            neko_tiled_render_draw(cb, tiled_render);  // 一层渲染一次
+            tiled_render_draw(cb, tiled_render);  // 一层渲染一次
         }
 
         // for (u32 i = 0; i < neko_dyn_array_size(tiled_render->map.object_groups); i++) {
@@ -1873,27 +1769,27 @@ LUA_FUNCTION(__neko_bind_tiled_render) {
 }
 
 LUA_FUNCTION(__neko_bind_tiled_unload) {
-    neko_tiled_renderer *user_handle = (neko_tiled_renderer *)lua_touserdata(L, 1);
-    neko_tiled_unload(&user_handle->map);
+    tiled_renderer *user_handle = (tiled_renderer *)lua_touserdata(L, 1);
+    tiled_unload(&user_handle->map);
     return 0;
 }
 
 LUA_FUNCTION(__neko_bind_tiled_load) {
-    neko_tiled_renderer *user_handle = (neko_tiled_renderer *)lua_touserdata(L, 1);
+    tiled_renderer *user_handle = (tiled_renderer *)lua_touserdata(L, 1);
     const_str path = lua_tostring(L, 2);
-    neko_tiled_load(&user_handle->map, path, NULL);
+    tiled_load(&user_handle->map, path, NULL);
     return 0;
 }
 
 LUA_FUNCTION(__neko_bind_tiled_end) {
-    neko_tiled_renderer *user_handle = (neko_tiled_renderer *)lua_touserdata(L, 1);
-    neko_tiled_unload(&user_handle->map);
-    neko_tiled_render_deinit(user_handle);
+    tiled_renderer *user_handle = (tiled_renderer *)lua_touserdata(L, 1);
+    tiled_unload(&user_handle->map);
+    tiled_render_deinit(user_handle);
     return 0;
 }
 
 auto __neko_bind_tiled_get_objects(void *tiled_render_ud) {
-    neko_tiled_renderer *tiled_render = (neko_tiled_renderer *)tiled_render_ud;
+    tiled_renderer *tiled_render = (tiled_renderer *)tiled_render_ud;
     std::map<std::string, std::vector<std::list<f32>>> data;
     for (u32 i = 0; i < neko_dyn_array_size(tiled_render->map.object_groups); i++) {
         object_group_t *group = tiled_render->map.object_groups + i;
@@ -3446,7 +3342,7 @@ LUA_FUNCTION(__neko_bind_render_display_size) {
 
 static int open_enum(lua_State *L) {
 
-    // neko::lua_bind::bind("neko_tiled_get_objects", &__neko_bind_tiled_get_objects);
+    // neko::lua_bind::bind("tiled_get_objects", &__neko_bind_tiled_get_objects);
 
     neko_lua_enum(L, gfx_primitive_type);
     neko_lua_enum_value(L, gfx_primitive_type, R_PRIMITIVE_LINES);

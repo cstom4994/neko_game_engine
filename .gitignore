@@ -11,6 +11,7 @@ cmake-*/
 
 gamedir/assets/
 gamedir/test/
+gamedir/lite/
 gamedir/code/libs
 gamedir/*.pack
 gamedir/*.zip

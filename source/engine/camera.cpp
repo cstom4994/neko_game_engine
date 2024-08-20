@@ -1,6 +1,6 @@
 #include "engine/camera.h"
 
-#include "edit.h"
+#include "engine/edit.h"
 #include "engine/base.h"
 #include "engine/ecs.h"
 #include "engine/game.h"

@@ -489,7 +489,7 @@ neko_idraw_pipeline_state_attr_t neko_idraw_pipeline_state_default() {
 
 void neko_idraw_reset(idraw_t* neko_idraw) {
     command_buffer_clear(&neko_idraw->commands);
-    neko_byte_buffer_clear(&neko_idraw->vertices);
+    byte_buffer_clear(&neko_idraw->vertices);
     neko_dyn_array_clear(neko_idraw->indices);
     neko_dyn_array_clear(neko_idraw->cache.modelview);
     neko_dyn_array_clear(neko_idraw->cache.projection);
@@ -650,7 +650,7 @@ idraw_t neko_immediate_draw_new() {
     // Init command buffer
     neko_idraw.commands = command_buffer_new();  // Not totally sure on the syntax for new vs. create
 
-    neko_idraw.vertices = neko_byte_buffer_new();
+    neko_idraw.vertices = byte_buffer_new();
 
     // Set up cache
     neko_idraw_reset(&neko_idraw);
@@ -659,7 +659,7 @@ idraw_t neko_immediate_draw_new() {
 }
 
 void neko_immediate_draw_free(idraw_t* ctx) {
-    neko_byte_buffer_free(&ctx->vertices);
+    byte_buffer_free(&ctx->vertices);
     neko_dyn_array_free(ctx->indices);
     neko_dyn_array_free(ctx->vattributes);
     command_buffer_free(&ctx->commands);
@@ -792,7 +792,7 @@ mat4 neko_idraw_get_mvp_matrix(idraw_t* neko_idraw) {
 
 void neko_idraw_flush(idraw_t* neko_idraw) {
     // 如果顶点数据为空则不刷新
-    if (neko_byte_buffer_empty(&neko_idraw->vertices)) {
+    if (byte_buffer_empty(&neko_idraw->vertices)) {
         return;
     }
 
@@ -804,7 +804,7 @@ void neko_idraw_flush(idraw_t* neko_idraw) {
     // 更新顶点缓冲区 (使用命令缓冲区)
     gfx_vertex_buffer_desc_t vdesc = NEKO_DEFAULT_VAL();
     vdesc.data = neko_idraw->vertices.data;
-    vdesc.size = neko_byte_buffer_size(&neko_idraw->vertices);
+    vdesc.size = byte_buffer_size(&neko_idraw->vertices);
     vdesc.usage = GL_STREAM_DRAW;
 
     gfx_vertex_buffer_request_update(&neko_idraw->commands, neko_idraw()->vbo, vdesc);
@@ -833,7 +833,7 @@ void neko_idraw_flush(idraw_t* neko_idraw) {
         vsz = stride;
     }
 
-    u32 ct = neko_byte_buffer_size(&neko_idraw->vertices) / vsz;
+    u32 ct = byte_buffer_size(&neko_idraw->vertices) / vsz;
 
     // 设置所有绑定数据
     gfx_bind_vertex_buffer_desc_t vbuffer = NEKO_DEFAULT_VAL();
@@ -866,7 +866,7 @@ void neko_idraw_flush(idraw_t* neko_idraw) {
     gfx_draw(&neko_idraw->commands, draw);
 
     // 绘制后清理缓冲区
-    neko_byte_buffer_clear(&neko_idraw->vertices);
+    byte_buffer_clear(&neko_idraw->vertices);
 }
 
 // Core pipeline functions
@@ -1048,15 +1048,15 @@ void neko_idraw_v3fv(idraw_t* neko_idraw, vec3 p) {
                 } break;
 
                 case NEKO_IDRAW_VATTR_POSITION: {
-                    neko_byte_buffer_write(&neko_idraw->vertices, vec3, p);
+                    byte_buffer_write(&neko_idraw->vertices, vec3, p);
                 } break;
 
                 case NEKO_IDRAW_VATTR_COLOR: {
-                    neko_byte_buffer_write(&neko_idraw->vertices, Color256, neko_idraw->cache.color);
+                    byte_buffer_write(&neko_idraw->vertices, Color256, neko_idraw->cache.color);
                 } break;
 
                 case NEKO_IDRAW_VATTR_UV: {
-                    neko_byte_buffer_write(&neko_idraw->vertices, vec2, neko_idraw->cache.uv);
+                    byte_buffer_write(&neko_idraw->vertices, vec2, neko_idraw->cache.uv);
                 } break;
             }
         }
@@ -1065,7 +1065,7 @@ void neko_idraw_v3fv(idraw_t* neko_idraw, vec3 p) {
         v.position = p;
         v.uv = neko_idraw->cache.uv;
         v.color = neko_idraw->cache.color;
-        neko_byte_buffer_write(&neko_idraw->vertices, neko_immediate_vert_t, v);
+        byte_buffer_write(&neko_idraw->vertices, neko_immediate_vert_t, v);
     }
 }
 
@@ -1933,7 +1933,7 @@ void neko_idraw_draw(idraw_t* neko_idraw, command_buffer_t* cb) {
     neko_idraw_flush(neko_idraw);
 
     // 将 neko_idraw 命令合并到 cb 末尾
-    neko_byte_buffer_write_bulk(&cb->commands, neko_idraw->commands.commands.data, neko_idraw->commands.commands.position);
+    byte_buffer_write_bulk(&cb->commands, neko_idraw->commands.commands.data, neko_idraw->commands.commands.position);
 
     // 增加合并缓冲区的命令数量
     cb->num_commands += neko_idraw->commands.num_commands;

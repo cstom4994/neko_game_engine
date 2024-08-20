@@ -19,6 +19,7 @@
 #include "engine/lua_util.h"
 #include "engine/os.h"
 #include "engine/prelude.h"
+#include "engine/vfs.h"
 
 #if LUA_VERSION_NUM < 504
 

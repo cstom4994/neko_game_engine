@@ -11,6 +11,7 @@
 #include "engine/asset.h"
 #include "engine/os.h"
 #include "engine/prelude.h"
+#include "engine/vfs.h"
 
 SplitLinesIterator &SplitLinesIterator::operator++() {
     if (&view.data[view.len] == &data.data[data.len]) {
@@ -452,38 +453,38 @@ i32 Scanner::next_int() {
 }
 
 /*========================
-// neko_byte_buffer
+// byte_buffer
 ========================*/
 
-void neko_byte_buffer_init(neko_byte_buffer_t *buffer) {
+void byte_buffer_init(byte_buffer_t *buffer) {
     buffer->data = (u8 *)mem_alloc(NEKO_BYTE_BUFFER_DEFAULT_CAPCITY);
     buffer->capacity = NEKO_BYTE_BUFFER_DEFAULT_CAPCITY;
     buffer->size = 0;
     buffer->position = 0;
 }
 
-neko_byte_buffer_t neko_byte_buffer_new() {
-    neko_byte_buffer_t buffer;
-    neko_byte_buffer_init(&buffer);
+byte_buffer_t byte_buffer_new() {
+    byte_buffer_t buffer;
+    byte_buffer_init(&buffer);
     return buffer;
 }
 
-void neko_byte_buffer_free(neko_byte_buffer_t *buffer) {
+void byte_buffer_free(byte_buffer_t *buffer) {
     if (buffer && buffer->data) {
         mem_free(buffer->data);
     }
 }
 
-void neko_byte_buffer_clear(neko_byte_buffer_t *buffer) {
+void byte_buffer_clear(byte_buffer_t *buffer) {
     buffer->size = 0;
     buffer->position = 0;
 }
 
-bool neko_byte_buffer_empty(neko_byte_buffer_t *buffer) { return (buffer->size == 0); }
+bool byte_buffer_empty(byte_buffer_t *buffer) { return (buffer->size == 0); }
 
-size_t neko_byte_buffer_size(neko_byte_buffer_t *buffer) { return buffer->size; }
+size_t byte_buffer_size(byte_buffer_t *buffer) { return buffer->size; }
 
-void neko_byte_buffer_resize(neko_byte_buffer_t *buffer, size_t sz) {
+void byte_buffer_resize(byte_buffer_t *buffer, size_t sz) {
 
     // if (sz == 4096) neko_assert(0);
 
@@ -497,19 +498,19 @@ void neko_byte_buffer_resize(neko_byte_buffer_t *buffer, size_t sz) {
     buffer->capacity = (u32)sz;
 }
 
-void neko_byte_buffer_copy_contents(neko_byte_buffer_t *dst, neko_byte_buffer_t *src) {
-    neko_byte_buffer_seek_to_beg(dst);
-    neko_byte_buffer_seek_to_beg(src);
-    neko_byte_buffer_write_bulk(dst, src->data, src->size);
+void byte_buffer_copy_contents(byte_buffer_t *dst, byte_buffer_t *src) {
+    byte_buffer_seek_to_beg(dst);
+    byte_buffer_seek_to_beg(src);
+    byte_buffer_write_bulk(dst, src->data, src->size);
 }
 
-void neko_byte_buffer_seek_to_beg(neko_byte_buffer_t *buffer) { buffer->position = 0; }
+void byte_buffer_seek_to_beg(byte_buffer_t *buffer) { buffer->position = 0; }
 
-void neko_byte_buffer_seek_to_end(neko_byte_buffer_t *buffer) { buffer->position = buffer->size; }
+void byte_buffer_seek_to_end(byte_buffer_t *buffer) { buffer->position = buffer->size; }
 
-void neko_byte_buffer_advance_position(neko_byte_buffer_t *buffer, size_t sz) { buffer->position += (u32)sz; }
+void byte_buffer_advance_position(byte_buffer_t *buffer, size_t sz) { buffer->position += (u32)sz; }
 
-void neko_byte_buffer_write_bulk(neko_byte_buffer_t *buffer, void *src, size_t size) {
+void byte_buffer_write_bulk(byte_buffer_t *buffer, void *src, size_t size) {
     // 检查是否需要调整大小
     size_t total_write_size = buffer->position + size;
     if (total_write_size >= (size_t)buffer->capacity) {
@@ -518,7 +519,7 @@ void neko_byte_buffer_write_bulk(neko_byte_buffer_t *buffer, void *src, size_t s
             capacity *= 2;
         }
 
-        neko_byte_buffer_resize(buffer, capacity);
+        byte_buffer_resize(buffer, capacity);
     }
 
     // memcpy data
@@ -528,41 +529,41 @@ void neko_byte_buffer_write_bulk(neko_byte_buffer_t *buffer, void *src, size_t s
     buffer->position += (u32)size;
 }
 
-void neko_byte_buffer_read_bulk(neko_byte_buffer_t *buffer, void **dst, size_t size) {
+void byte_buffer_read_bulk(byte_buffer_t *buffer, void **dst, size_t size) {
     memcpy(*dst, (buffer->data + buffer->position), size);
     buffer->position += (u32)size;
 }
 
-void neko_byte_buffer_write_str(neko_byte_buffer_t *buffer, const char *str) {
+void byte_buffer_write_str(byte_buffer_t *buffer, const char *str) {
     // 写入字符串的大小
     u32 str_len = neko_string_length(str);
-    neko_byte_buffer_write(buffer, uint16_t, str_len);
+    byte_buffer_write(buffer, uint16_t, str_len);
 
     size_t i;
     for (i = 0; i < str_len; ++i) {
-        neko_byte_buffer_write(buffer, u8, str[i]);
+        byte_buffer_write(buffer, u8, str[i]);
     }
 }
 
-void neko_byte_buffer_read_str(neko_byte_buffer_t *buffer, char *str) {
+void byte_buffer_read_str(byte_buffer_t *buffer, char *str) {
     // 从缓冲区读取字符串的大小
     uint16_t sz;
-    neko_byte_buffer_read(buffer, uint16_t, &sz);
+    byte_buffer_read(buffer, uint16_t, &sz);
 
     u32 i;
     for (i = 0; i < sz; ++i) {
-        neko_byte_buffer_read(buffer, u8, &str[i]);
+        byte_buffer_read(buffer, u8, &str[i]);
     }
     str[i] = '\0';
 }
 
-bool neko_byte_buffer_write_to_file(neko_byte_buffer_t *buffer, const char *output_path) { return neko_os_write_file_contents(output_path, "wb", buffer->data, buffer->size); }
+bool byte_buffer_write_to_file(byte_buffer_t *buffer, const char *output_path) { return neko_os_write_file_contents(output_path, "wb", buffer->data, buffer->size); }
 
-bool neko_byte_buffer_read_from_file(neko_byte_buffer_t *buffer, const char *file_path) {
+bool byte_buffer_read_from_file(byte_buffer_t *buffer, const char *file_path) {
     if (!buffer) return false;
 
     if (buffer->data) {
-        neko_byte_buffer_free(buffer);
+        byte_buffer_free(buffer);
     }
 
     buffer->data = (u8 *)neko_os_read_file_contents(file_path, "rb", (size_t *)&buffer->size);
@@ -576,7 +577,7 @@ bool neko_byte_buffer_read_from_file(neko_byte_buffer_t *buffer, const char *fil
     return true;
 }
 
-void neko_byte_buffer_memset(neko_byte_buffer_t *buffer, u8 val) { memset(buffer->data, val, buffer->capacity); }
+void byte_buffer_memset(byte_buffer_t *buffer, u8 val) { memset(buffer->data, val, buffer->capacity); }
 
 /*========================
 // Dynamic Array

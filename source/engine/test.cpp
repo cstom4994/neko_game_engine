@@ -357,7 +357,7 @@ neko_hash_table(float, uint32_t) ht = NULL;
 neko_hash_table(custom_key_t, uint32_t) htc = NULL;
 neko_slot_array(double) sa = NULL;
 neko_slot_map(uint64_t, uint32_t) sm = NULL;
-neko_byte_buffer_t bb = {0};
+byte_buffer_t bb = {0};
 
 #define ITER_CT 5
 
@@ -367,9 +367,9 @@ const char* smkeys[ITER_CT] = {"John", "Dick", "Harry", "Donald", "Wayne"};
 void test_containers() {
 
     NEKO_INVOKE_ONCE([] {
-        bb = neko_byte_buffer_new();
+        bb = byte_buffer_new();
 
-        neko_byte_buffer_write(&bb, uint32_t, ITER_CT);
+        byte_buffer_write(&bb, uint32_t, ITER_CT);
 
         for (uint32_t i = 0; i < ITER_CT; ++i) {
             neko_dyn_array_push(arr, i);
@@ -383,10 +383,10 @@ void test_containers() {
 
             neko_slot_map_insert(sm, neko_hash_str64(smkeys[i]), i);
 
-            neko_byte_buffer_write(&bb, uint32_t, i);
+            byte_buffer_write(&bb, uint32_t, i);
         }
 
-        neko_byte_buffer_seek_to_beg(&bb);
+        byte_buffer_seek_to_beg(&bb);
     }(););
 
     neko_printf("neko_dyn_array: [");
@@ -433,19 +433,19 @@ void test_containers() {
     }
     neko_println("]");
 
-    neko_println("neko_byte_buffer_t: [");
+    neko_println("byte_buffer_t: [");
 
-    neko_byte_buffer_readc(&bb, uint32_t, ct);
+    byte_buffer_readc(&bb, uint32_t, ct);
 
     for (uint32_t i = 0; i < ct; ++i) {
-        neko_byte_buffer_readc(&bb, uint32_t, v);
+        byte_buffer_readc(&bb, uint32_t, v);
         neko_println("v: %zu", v);
     }
     neko_println("]");
 
-    neko_byte_buffer_seek_to_beg(&bb);
+    byte_buffer_seek_to_beg(&bb);
 
-    neko_byte_buffer_free(&bb);
+    byte_buffer_free(&bb);
 
     neko_dyn_array_free(arr);
 
@@ -774,7 +774,7 @@ void draw_gui() {
 
                 // std::vector test_vector = {"hahah", "233", "中文?"};
 
-                // neko::imgui::Auto(test_vector, "test_vector");
+                // ui::Auto(test_vector, "test_vector");
 
 #if 0
                 struct {
@@ -817,7 +817,7 @@ void draw_gui() {
                 ui_layout_row(&g_app->ui, 1, ui_widths(-1), 0);
                 {
                     // static neko_memory_info_t meminfo = NEKO_DEFAULT_VAL();
-                    // NEKO_TIMED_ACTION(60, { meminfo = neko_os_memory_info(); });
+                    // TimedAction(60, { meminfo = neko_os_memory_info(); });
 
                     // ui_labelf("GC MemAllocInUsed: %.2lf mb", (f64)(neko_mem_bytes_inuse() / 1048576.0));
                     // ui_labelf("GC MemTotalAllocated: %.2lf mb", (f64)(g_allocation_metrics.total_allocated / 1048576.0));
@@ -861,97 +861,97 @@ void draw_gui_auto_test() {
 
         if (ui_header(ui, "1. String")) {
 
-            neko::imgui::Auto("Hello Imgui::Auto() !");  // This is how this text is written as well.
+            ui::Auto("Hello Imgui::Auto() !");  // This is how this text is written as well.
 
-            static std::string str = "Hello neko::imgui::Auto() for strings!";
-            neko::imgui::Auto(str, "str");
+            static std::string str = "Hello ui::Auto() for strings!";
+            ui::Auto(str, "str");
 
-            static std::string str2 = "neko::imgui::Auto()\n Automatically uses multiline input for strings!\n:)";
-            neko::imgui::Auto(str2, "str2");
+            static std::string str2 = "ui::Auto()\n Automatically uses multiline input for strings!\n:)";
+            ui::Auto(str2, "str2");
 
             static const std::string conststr = "Const types are not to be changed!";
-            neko::imgui::Auto(conststr, "conststr");
+            ui::Auto(conststr, "conststr");
 
             char* buffer = "To edit a string use std::string. Manual buffers are unwelcome here.";
-            neko::imgui::Auto(buffer, "buffer");
+            ui::Auto(buffer, "buffer");
         }
         if (ui_header(ui, "2. Numbers")) {
 
             static int i = 42;
-            neko::imgui::Auto(i, "i");
+            ui::Auto(i, "i");
 
             static float f = 3.14;
-            neko::imgui::Auto(f, "f");
+            ui::Auto(f, "f");
 
             //         static ImVec4 f4 = {1.5f, 2.1f, 3.4f, 4.3f};
-            //         neko::imgui::Auto(f4, "f4");
+            //         ui::Auto(f4, "f4");
 
             //         static const ImVec2 f2 = {1.f, 2.f};
-            //         neko::imgui::Auto(f2, "f2");
+            //         ui::Auto(f2, "f2");
         }
         if (ui_header(ui, "3. Containers")) {
 
             static std::vector<std::string> vec = {"First string", "Second str", ":)"};
-            neko::imgui::Auto(vec, "vec");
+            ui::Auto(vec, "vec");
 
             static const std::vector<float> constvec = {3, 1, 2.1f, 4, 3, 4, 5};
-            neko::imgui::Auto(constvec, "constvec");  // Cannot change vector, nor values
+            ui::Auto(constvec, "constvec");  // Cannot change vector, nor values
 
             static std::vector<bool> bvec = {false, true, false, false};
-            neko::imgui::Auto(bvec, "bvec");
+            ui::Auto(bvec, "bvec");
 
             static const std::vector<bool> constbvec = {false, true, false, false};
-            neko::imgui::Auto(constbvec, "constbvec");
+            ui::Auto(constbvec, "constbvec");
 
             //         static std::map<int, float> map = {{3, 2}, {1, 2}};
-            //         neko::imgui::Auto(map, "map");  // insert and other operations
+            //         ui::Auto(map, "map");  // insert and other operations
 
             //             static std::deque<bool> deque = {false, true, false, false};
-            //             neko::imgui::Auto(deque, "deque");
+            //             ui::Auto(deque, "deque");
 
             //             static std::set<char*> set = {"set", "with", "char*"};  // for some reason, this does not work
-            //             neko::imgui::Auto(set, "set");                          // the problem is with the const iterator, but
+            //             ui::Auto(set, "set");                          // the problem is with the const iterator, but
 
             //             static std::map<char*, std::string> map = {{"asd", "somevalue"}, {"bsd", "value"}};
-            //             neko::imgui::Auto(map, "map");  // insert and other operations
+            //             ui::Auto(map, "map");  // insert and other operations
             //         }
         }
         if (ui_header(ui, "4. Pointers and Arrays")) {
 
             static float* pf = nullptr;
-            neko::imgui::Auto(pf, "pf");
+            ui::Auto(pf, "pf");
 
             static int i = 10, *pi = &i;
-            neko::imgui::Auto(pi, "pi");
+            ui::Auto(pi, "pi");
 
             static const std::string cs = "I cannot be changed!", *cps = &cs;
-            neko::imgui::Auto(cps, "cps");
+            ui::Auto(cps, "cps");
 
             static std::string str = "I can be changed! (my pointee cannot)";
             static std::string* const strpc = &str;
-            neko::imgui::Auto(strpc, "strpc");
+            ui::Auto(strpc, "strpc");
 
             //         static std::array<float, 5> farray = {1.2, 3.4, 5.6, 7.8, 9.0};
-            //         neko::imgui::Auto(farray, "std::array");
+            //         ui::Auto(farray, "std::array");
 
             static float farr[5] = {11.2, 3.4, 5.6, 7.8, 911.0};
-            neko::imgui::Auto(farr, "float[5]");
+            ui::Auto(farr, "float[5]");
         }
         if (ui_header(ui, "5. Pairs and Tuples")) {
 
             //         static std::pair<bool, ImVec2> pair = {true, {2.1f, 3.2f}};
-            //         neko::imgui::Auto(pair, "pair");
+            //         ui::Auto(pair, "pair");
 
             static std::pair<int, std::string> pair2 = {-3, "simple types appear next to each other in a pair"};
-            neko::imgui::Auto(pair2, "pair2");
+            ui::Auto(pair2, "pair2");
 
-            //         neko::imgui::Auto(neko::cpp::as_const(pair), "as_const(pair)");  // easy way to view as const
+            //         ui::Auto(neko::cpp::as_const(pair), "as_const(pair)");  // easy way to view as const
 
             //         std::tuple<const int, std::string, ImVec2> tuple = {42, "string in tuple", {3.1f, 3.2f}};
-            //         neko::imgui::Auto(tuple, "tuple");
+            //         ui::Auto(tuple, "tuple");
 
             //         const std::tuple<int, const char*, ImVec2> consttuple = {42, "Smaller tuples are inlined", {3.1f, 3.2f}};
-            //         neko::imgui::Auto(consttuple, "consttuple");
+            //         ui::Auto(consttuple, "consttuple");
         }
         if (ui_header(ui, "6. Structs!!")) {
 
@@ -960,35 +960,34 @@ void draw_gui_auto_test() {
                 bool b = true;
             };
             static A a;
-            neko::imgui::Auto(a, "a");
+            ui::Auto(a, "a");
 
-            neko::imgui::Auto(neko::cpp::as_const(a), "as_const(a)");
+            ui::Auto(neko::cpp::as_const(a), "as_const(a)");
 
             struct B {
                 std::string str = "Unfortunatelly, cannot deduce const-ness from within a struct";
                 const A a = A();
             };
             static B b;
-            neko::imgui::Auto(b, "b");
+            ui::Auto(b, "b");
 
             static std::vector<B> vec = {{"vector of structs!", A()}, B()};
-            neko::imgui::Auto(vec, "vec");
+            ui::Auto(vec, "vec");
 
             struct C {
                 std::list<B> vec;
                 A* a;
             };
             static C c = {{{"Container inside a struct!", A()}}, &a};
-            neko::imgui::Auto(c, "c");
+            ui::Auto(c, "c");
         }
-        //     if (ui_header(ui, "Functions")) {
-
-        //         void (*func)() = []() {
-        //             ImGui::SameLine();
-        //             ImGui::TextColored(ImVec4(0.5, 1, 0.5, 1.0), "Button pressed, function called :)");
-        //         };
-        //         neko::imgui::Auto(func, "void(void) function");
-        //     }
+        if (ui_header(ui, "Functions")) {
+            void (*func)() = []() {
+                auto col = NEKO_COLOR_GREEN;
+                ui_text_colored(&g_app->ui, "Button pressed, function called :)", &col);
+            };
+            ui::Auto(func, "void(void) function");
+        }
 
         if (ui_header(ui, "ui_file_browser")) {
             static std::string path = "./";

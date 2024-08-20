@@ -2,6 +2,7 @@
 #include "engine/pak.h"
 
 #include "engine/game.h"
+#include "engine/vfs.h"
 
 // miniz
 #include <miniz.h>
@@ -10,41 +11,52 @@
 // NEKO_PACK
 ==========================*/
 
-static void destroy_pack_items(u64 item_count, neko_pak::item *items) {
+static int _compare_item_paths(const void *_a, const void *_b) {
+    // 要保证a与b不为NULL
+    char *a = *(char **)_a;
+    char *b = *(char **)_b;
+    u8 al = (u8)strlen(a);
+    u8 bl = (u8)strlen(b);
+    int difference = al - bl;
+    if (difference != 0) return difference;
+    return memcmp(a, b, al * sizeof(u8));
+}
+
+static void _destroy_pack_items(u64 item_count, PakItem *items) {
     neko_assert(item_count == 0 || (item_count > 0 && items));
 
     for (u64 i = 0; i < item_count; i++) mem_free(items[i].path);
     mem_free(items);
 }
 
-bool create_pack_items(vfs_file *pak, u64 item_count, neko_pak::item **_items) {
+static bool _create_pack_items(vfs_file *pak, u64 item_count, PakItem **_items) {
     neko_assert(pak);
     neko_assert(item_count > 0);
     neko_assert(_items);
 
-    neko_pak::item *items = (neko_pak::item *)mem_alloc(item_count * sizeof(neko_pak::item));
+    PakItem *items = (PakItem *)mem_alloc(item_count * sizeof(PakItem));
 
     if (!items) return false;  // FAILED_TO_ALLOCATE_PACK_RESULT
 
     for (u64 i = 0; i < item_count; i++) {
-        neko_pak::iteminfo info;
+        PakItemInfo info;
 
-        size_t result = neko_capi_vfs_fread(&info, sizeof(neko_pak::iteminfo), 1, pak);
+        size_t result = neko_capi_vfs_fread(&info, sizeof(PakItemInfo), 1, pak);
 
         if (result != 1) {
-            destroy_pack_items(i, items);
+            _destroy_pack_items(i, items);
             return false;  // FAILED_TO_READ_FILE_PACK_RESULT
         }
 
         if (info.data_size == 0 || info.path_size == 0) {
-            destroy_pack_items(i, items);
+            _destroy_pack_items(i, items);
             return false;  // BAD_DATA_SIZE_PACK_RESULT
         }
 
         char *path = (char *)mem_alloc((info.path_size + 1) * sizeof(char));
 
         if (!path) {
-            destroy_pack_items(i, items);
+            _destroy_pack_items(i, items);
             return false;  // FAILED_TO_ALLOCATE_PACK_RESULT
         }
 
@@ -53,7 +65,7 @@ bool create_pack_items(vfs_file *pak, u64 item_count, neko_pak::item **_items) {
         path[info.path_size] = 0;
 
         if (result != info.path_size) {
-            destroy_pack_items(i, items);
+            _destroy_pack_items(i, items);
             return false;  // FAILED_TO_READ_FILE_PACK_RESULT
         }
 
@@ -62,11 +74,11 @@ bool create_pack_items(vfs_file *pak, u64 item_count, neko_pak::item **_items) {
         int seekResult = neko_capi_vfs_fseek(pak, fileOffset, SEEK_CUR);
 
         if (seekResult != 0) {
-            destroy_pack_items(i, items);
+            _destroy_pack_items(i, items);
             return false;  // FAILED_TO_SEEK_FILE_PACK_RESULT
         }
 
-        neko_pak::item *item = &items[i];
+        PakItem *item = &items[i];
         item->info = info;
         item->path = path;
     }
@@ -75,23 +87,34 @@ bool create_pack_items(vfs_file *pak, u64 item_count, neko_pak::item **_items) {
     return true;
 }
 
-bool neko_pak::load(const_str file_path, u32 data_buffer_capacity, bool is_resources_directory) {
+static int _compare_pack_items(const void *_a, const void *_b) {
+    const PakItem *a = (PakItem *)_a;
+    const PakItem *b = (PakItem *)_b;
+
+    int difference = (int)a->info.path_size - (int)b->info.path_size;
+
+    if (difference != 0) return difference;
+
+    return memcmp(a->path, b->path, a->info.path_size * sizeof(char));
+}
+
+bool pak_load(Pak *pak, const_str file_path, u32 data_buffer_capacity, bool is_resources_directory) {
     neko_assert(file_path);
 
-    // memset(this, 0, sizeof(neko_pak));
+    // memset(pak, 0, sizeof(Pak));
 
-    this->zip_buffer = NULL;
-    this->zip_size = 0;
+    pak->zip_buffer = NULL;
+    pak->zip_size = 0;
 
-    this->vf = neko_capi_vfs_fopen(file_path);
+    pak->vf = neko_capi_vfs_fopen(file_path);
 
-    if (!this->vf.data) return false;  // FAILED_TO_OPEN_FILE_PACK_RESULT
+    if (!pak->vf.data) return false;  // FAILED_TO_OPEN_FILE_PACK_RESULT
 
     char header[NEKO_PAK_HEAD_SIZE];
     i32 buildnum;
 
-    size_t result = neko_capi_vfs_fread(header, sizeof(u8), NEKO_PAK_HEAD_SIZE, &this->vf);
-    result += neko_capi_vfs_fread(&buildnum, sizeof(i32), 1, &this->vf);
+    size_t result = neko_capi_vfs_fread(header, sizeof(u8), NEKO_PAK_HEAD_SIZE, &pak->vf);
+    result += neko_capi_vfs_fread(&buildnum, sizeof(i32), 1, &pak->vf);
 
     // 检查文件头
     if (result != NEKO_PAK_HEAD_SIZE + 1 ||  //
@@ -103,31 +126,31 @@ bool neko_pak::load(const_str file_path, u32 data_buffer_capacity, bool is_resou
         header[5] != 'A' ||                  //
         header[6] != 'C' ||                  //
         header[7] != 'K') {
-        this->fini();
+        pak_fini(pak);
         return false;
     }
 
     u64 item_count;
 
-    result = neko_capi_vfs_fread(&item_count, sizeof(u64), 1, &this->vf);
+    result = neko_capi_vfs_fread(&item_count, sizeof(u64), 1, &pak->vf);
 
     if (result != 1 ||  //
         item_count == 0) {
-        this->fini();
+        pak_fini(pak);
         return false;
     }
 
-    neko_pak::item *items;
+    PakItem *items;
 
-    bool ok = create_pack_items(&this->vf, item_count, &items);
+    bool ok = _create_pack_items(&pak->vf, item_count, &items);
 
     if (!ok) {
-        this->fini();
+        pak_fini(pak);
         return false;
     }
 
-    this->item_count = item_count;
-    this->items = items;
+    pak->item_count = item_count;
+    pak->items = items;
 
     u8 *_data_buffer = NULL;
 
@@ -137,88 +160,77 @@ bool neko_pak::load(const_str file_path, u32 data_buffer_capacity, bool is_resou
         _data_buffer = NULL;
     }
 
-    this->data_buffer = _data_buffer;
-    this->data_size = data_buffer_capacity;
+    pak->data_buffer = _data_buffer;
+    pak->data_size = data_buffer_capacity;
 
     console_log("load pack %s buildnum: %d (engine %d)", neko_util_get_filename(file_path), buildnum, neko_buildnum());
 
     return true;
 }
-void neko_pak::fini() {
-    if (this->file_ref_count != 0) {
-        console_log("assets loader leaks detected %d refs", this->file_ref_count);
+void pak_fini(Pak *pak) {
+    if (pak->file_ref_count != 0) {
+        console_log("assets loader leaks detected %d refs", pak->file_ref_count);
     }
 
-    free_buffer();
+    pak_free_buffer(pak);
 
-    destroy_pack_items(this->item_count, this->items);
-    if (this->vf.data) neko_capi_vfs_fclose(&this->vf);
+    _destroy_pack_items(pak->item_count, pak->items);
+    if (pak->vf.data) neko_capi_vfs_fclose(&pak->vf);
 }
 
-static int neko_compare_pack_items(const void *_a, const void *_b) {
-    const neko_pak::item *a = (neko_pak::item *)_a;
-    const neko_pak::item *b = (neko_pak::item *)_b;
-
-    int difference = (int)a->info.path_size - (int)b->info.path_size;
-
-    if (difference != 0) return difference;
-
-    return memcmp(a->path, b->path, a->info.path_size * sizeof(char));
-}
-
-u64 neko_pak::get_item_index(const_str path) {
+u64 pak_get_item_index(Pak *pak, const_str path) {
     neko_assert(path);
     neko_assert(strlen(path) <= u8_max);
 
-    neko_pak::item *search_item = &this->search_item;
+    PakItem *search_item = &pak->search_item;
 
     search_item->info.path_size = (u8)strlen(path);
     search_item->path = (char *)path;
 
-    neko_pak::item *items = (neko_pak::item *)bsearch(search_item, this->items, this->item_count, sizeof(neko_pak::item), neko_compare_pack_items);
+    PakItem *items = (PakItem *)bsearch(search_item, pak->items, pak->item_count, sizeof(PakItem), _compare_pack_items);
 
     if (!items) return u64_max;
 
-    u64 index = items - this->items;
+    u64 index = items - pak->items;
     return index;
 }
 
-bool neko_pak::get_data(u64 index, String *out, u32 *size) {
-    neko_assert((index < this->item_count) && out && size);
+bool pak_get_data(Pak *pak, u64 index, String *out, u32 *size) {
+    neko_assert((index < pak->item_count) && out && size);
 
-    neko_pak::iteminfo info = this->items[index].info;
+    PakItemInfo info = pak->items[index].info;
 
-    u8 *_data_buffer = this->data_buffer;
+    u8 *_data_buffer = pak->data_buffer;
     if (_data_buffer) {
-        if (info.data_size > this->data_size) {
+        if (info.data_size > pak->data_size) {
             _data_buffer = (u8 *)mem_realloc(_data_buffer, info.data_size * sizeof(u8));
-            this->data_buffer = _data_buffer;
-            this->data_size = info.data_size;
+            pak->data_buffer = _data_buffer;
+            pak->data_size = info.data_size;
         }
     } else {
         _data_buffer = (u8 *)mem_alloc(info.data_size * sizeof(u8));
-        this->data_buffer = _data_buffer;
-        this->data_size = info.data_size;
+        pak->data_buffer = _data_buffer;
+        pak->data_size = info.data_size;
     }
 
-    u8 *_zip_buffer = this->zip_buffer;
-    if (this->zip_buffer) {
-        if (info.zip_size > this->zip_size) {
-            _zip_buffer = (u8 *)mem_realloc(this->zip_buffer, info.zip_size * sizeof(u8));
-            this->zip_buffer = _zip_buffer;
-            this->zip_size = info.zip_size;
+    u8 *_zip_buffer = pak->zip_buffer;
+    if (pak->zip_buffer) {
+        if (info.zip_size > pak->zip_size) {
+            _zip_buffer = (u8 *)mem_realloc(pak->zip_buffer, info.zip_size * sizeof(u8));
+            pak->zip_buffer = _zip_buffer;
+            pak->zip_size = info.zip_size;
         }
     } else {
         if (info.zip_size > 0) {
             _zip_buffer = (u8 *)mem_alloc(info.zip_size * sizeof(u8));
-            this->zip_buffer = _zip_buffer;
-            this->zip_size = info.zip_size;
+            pak->zip_buffer = _zip_buffer;
+            pak->zip_size = info.zip_size;
         }
     }
 
-    vfs_file *vf = &this->vf;
+    vfs_file *vf = &pak->vf;
 
-    i64 file_offset = (i64)(info.file_offset + sizeof(neko_pak::iteminfo) + info.path_size);
+    i64 file_offset = (i64)(info.file_offset + sizeof(PakItemInfo) + info.path_size);
 
     int seek_result = neko_capi_vfs_fseek(vf, file_offset, SEEK_SET);
 
@@ -254,32 +266,32 @@ bool neko_pak::get_data(u64 index, String *out, u32 *size) {
     data[info.data_size] = 0;
     *out = {data, info.data_size};
 
-    this->file_ref_count++;
+    pak->file_ref_count++;
     return true;
 }
 
-bool neko_pak::get_data(const_str path, String *out, u32 *size) {
+bool pak_get_data(Pak *pak, const_str path, String *out, u32 *size) {
     neko_assert(path && out && size);
     neko_assert(strlen(path) <= u8_max);
-    u64 index = this->get_item_index(path);
+    u64 index = pak_get_item_index(pak, path);
     if (index == u64_max) return false;  // FAILED_TO_GET_ITEM_PACK_RESULT
-    return this->get_data(index, out, size);
+    return pak_get_data(pak, index, out, size);
 }
 
-void neko_pak::free_item(String data) {
+void pak_free_item(Pak *pak, String data) {
     mem_free(data.data);
-    this->file_ref_count--;
+    pak->file_ref_count--;
 }
 
-void neko_pak::free_buffer() {
+void pak_free_buffer(Pak *pak) {
 
-    mem_free(this->data_buffer);
-    mem_free(this->zip_buffer);
-    this->data_buffer = NULL;
-    this->zip_buffer = NULL;
+    mem_free(pak->data_buffer);
+    mem_free(pak->zip_buffer);
+    pak->data_buffer = NULL;
+    pak->zip_buffer = NULL;
 }
 
-static void neko_pak_remove_item(u64 item_count, neko_pak::item *pack_items) {
+static void pak_remove_item(u64 item_count, PakItem *pack_items) {
     neko_assert(item_count == 0 || (item_count > 0 && pack_items));
     for (u64 i = 0; i < item_count; i++) remove(pack_items[i].path);
 }
@@ -287,19 +299,19 @@ static void neko_pak_remove_item(u64 item_count, neko_pak::item *pack_items) {
 bool neko_pak_unzip(const_str file_path, bool print_progress) {
     neko_assert(file_path);
 
-    neko_pak pak;
+    Pak pak;
 
-    int pack_result = pak.load(file_path, 128, false);
+    int pack_result = pak_load(&pak, file_path, 128, false);
 
     if (pack_result != 0) return pack_result;
 
     u64 total_raw_size = 0, total_zip_size = 0;
 
     u64 item_count = pak.item_count;
-    neko_pak::item *items = pak.items;
+    PakItem *items = pak.items;
 
     for (u64 i = 0; i < item_count; i++) {
-        neko_pak::item *item = &items[i];
+        PakItem *item = &items[i];
 
         if (print_progress) {
             console_log("Unpacking %s", item->path);
@@ -308,11 +320,11 @@ bool neko_pak_unzip(const_str file_path, bool print_progress) {
         String data;
         u32 data_size;
 
-        pack_result = pak.get_data(i, &data, &data_size);
+        pack_result = pak_get_data(&pak, i, &data, &data_size);
 
         if (pack_result != 0) {
-            neko_pak_remove_item(i, items);
-            pak.fini();
+            pak_remove_item(i, items);
+            pak_fini(&pak);
             return pack_result;
         }
 
@@ -330,8 +342,8 @@ bool neko_pak_unzip(const_str file_path, bool print_progress) {
         FILE *item_file = neko_fopen(item_path, "wb");
 
         if (!item_file) {
-            neko_pak_remove_item(i, items);
-            pak.fini();
+            pak_remove_item(i, items);
+            pak_fini(&pak);
             return false;  // FAILED_TO_OPEN_FILE_PACK_RESULT
         }
 
@@ -340,8 +352,8 @@ bool neko_pak_unzip(const_str file_path, bool print_progress) {
         neko_fclose(item_file);
 
         if (result != data_size) {
-            neko_pak_remove_item(i, items);
-            pak.fini();
+            pak_remove_item(i, items);
+            pak_fini(&pak);
             return false;  // FAILED_TO_OPEN_FILE_PACK_RESULT
         }
 
@@ -358,7 +370,7 @@ bool neko_pak_unzip(const_str file_path, bool print_progress) {
         }
     }
 
-    pak.fini();
+    pak_fini(&pak);
 
     if (print_progress) {
         neko_printf("Unpacked %llu files. (%llu/%llu bytes)\n", (long long unsigned int)item_count, (long long unsigned int)total_raw_size, (long long unsigned int)total_zip_size);
@@ -489,14 +501,14 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
 
         i64 file_offset = neko_ftell(pack_file);
 
-        neko_pak::iteminfo info = {
+        PakItemInfo info = {
                 (u32)zip_size,
                 (u32)item_size,
                 (u64)file_offset,
                 (u8)path_size,
         };
 
-        result = fwrite(&info, sizeof(neko_pak::iteminfo), 1, pack_file);
+        result = fwrite(&info, sizeof(PakItemInfo), 1, pack_file);
 
         if (result != 1) {
             mem_free(zip_data);
@@ -556,17 +568,6 @@ bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, b
     return true;
 }
 
-static int neko_pak_compare_item_paths(const void *_a, const void *_b) {
-    // 要保证a与b不为NULL
-    char *a = *(char **)_a;
-    char *b = *(char **)_b;
-    u8 al = (u8)strlen(a);
-    u8 bl = (u8)strlen(b);
-    int difference = al - bl;
-    if (difference != 0) return difference;
-    return memcmp(a, b, al * sizeof(u8));
-}
-
 bool neko_pak_build(const_str file_path, u64 file_count, const_str *file_paths, bool print_progress) {
     neko_assert(file_path);
     neko_assert(file_count > 0);
@@ -588,7 +589,7 @@ bool neko_pak_build(const_str file_path, u64 file_count, const_str *file_paths, 
         if (!already_added) item_paths[item_count++] = (char *)file_paths[i];
     }
 
-    qsort(item_paths, item_count, sizeof(char *), neko_pak_compare_item_paths);
+    qsort(item_paths, item_count, sizeof(char *), _compare_item_paths);
 
     FILE *pack_file = neko_fopen(file_path, "wb");
 
@@ -674,4 +675,109 @@ bool neko_pak_info(const_str file_path, i32 *buildnum, u64 *item_count) {
 
     if (result != 1) return false;  // FAILED_TO_READ_FILE_PACK_RESULT
     return true;
+}
+
+// mt_pak
+
+struct pak_assets_t {
+    const_str name;
+    size_t size;
+    String data;
+};
+
+static Pak *check_pak_udata(lua_State *L, i32 arg) {
+    Pak *udata = (Pak *)luaL_checkudata(L, arg, "mt_pak");
+    if (!udata || !udata->item_count) {
+        luaL_error(L, "cannot read pak");
+    }
+    return udata;
+}
+
+static int mt_pak_gc(lua_State *L) {
+    Pak *pak = check_pak_udata(L, 1);
+    pak_fini(pak);
+    console_log("pak __gc %p", pak);
+    return 0;
+}
+
+static int mt_pak_items(lua_State *L) {
+    Pak *pak = check_pak_udata(L, 1);
+
+    u64 item_count = pak_get_item_count(pak);
+
+    lua_newtable(L);  // # -2
+    for (int i = 0; i < item_count; ++i) {
+        lua_pushstring(L, pak_get_item_path(pak, i));  // # -1
+        lua_rawseti(L, -2, i + 1);
+    }
+
+    return 1;
+}
+
+static int mt_pak_assets_load(lua_State *L) {
+    Pak *pak = check_pak_udata(L, 1);
+
+    const_str path = lua_tostring(L, 2);
+
+    pak_assets_t *assets_user_handle = (pak_assets_t *)lua_newuserdata(L, sizeof(pak_assets_t));
+    assets_user_handle->name = path;
+    assets_user_handle->size = 0;
+
+    bool ok = pak_get_data(pak, path, &assets_user_handle->data, (u32 *)&assets_user_handle->size);
+
+    if (!ok) {
+        const_str error_message = "mt_pak_assets_load failed";
+        lua_pushstring(L, error_message);  // 将错误信息压入堆栈
+        return lua_error(L);               // 抛出lua错误
+    }
+
+    // asset_write(asset);
+
+    return 1;
+}
+
+static int mt_pak_assets_unload(lua_State *L) {
+    Pak *pak = check_pak_udata(L, 1);
+
+    pak_assets_t *assets_user_handle = (pak_assets_t *)lua_touserdata(L, 2);
+
+    if (assets_user_handle && assets_user_handle->data.len)
+        pak_free_item(pak, assets_user_handle->data);
+    else
+        console_log("unknown assets unload %p", assets_user_handle);
+
+    // asset_write(asset);
+
+    return 0;
+}
+
+int open_mt_pak(lua_State *L) {
+    // clang-format off
+    luaL_Reg reg[] = {
+            {"__gc", mt_pak_gc},
+            {"items", mt_pak_items},
+            {"assets_load", mt_pak_assets_load},
+            {"assets_unload", mt_pak_assets_unload},
+            {nullptr, nullptr},
+    };
+    // clang-format on
+
+    luax_new_class(L, "mt_pak", reg);
+    return 0;
+}
+
+int neko_pak_load(lua_State *L) {
+    String name = luax_check_string(L, 1);
+    String path = luax_check_string(L, 2);
+
+    Pak pak;
+
+    bool ok = pak_load(&pak, path.cstr(), 0, false);
+
+    if (!ok) {
+        return 0;
+    }
+
+    luax_new_userdata(L, pak, "mt_pak");
+    return 1;
 }

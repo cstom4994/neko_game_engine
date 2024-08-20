@@ -3370,20 +3370,20 @@ void ui_render(ui_context_t* ctx, command_buffer_t* cb) {
                 bind.uniforms.size = sizeof(uniforms);
 
                 // Treat as byte buffer, read data
-                neko_byte_buffer_t buffer = NEKO_DEFAULT_VAL();
+                byte_buffer_t buffer = NEKO_DEFAULT_VAL();
                 buffer.capacity = UI_COMMANDLIST_SIZE;
                 buffer.data = (u8*)cmd->uniforms.data;
 
                 // Write count
-                neko_byte_buffer_readc(&buffer, u16, ct);
+                byte_buffer_readc(&buffer, u16, ct);
 
                 // Iterate through all uniforms, memcpy data as needed for each uniform in list
                 for (u32 i = 0; i < ct; ++i) {
-                    neko_byte_buffer_readc(&buffer, neko_handle(gfx_uniform_t), hndl);
-                    neko_byte_buffer_readc(&buffer, size_t, sz);
-                    neko_byte_buffer_readc(&buffer, u16, binding);
+                    byte_buffer_readc(&buffer, neko_handle(gfx_uniform_t), hndl);
+                    byte_buffer_readc(&buffer, size_t, sz);
+                    byte_buffer_readc(&buffer, u16, binding);
                     void* udata = (buffer.data + buffer.position);
-                    neko_byte_buffer_advance_position(&buffer, sz);
+                    byte_buffer_advance_position(&buffer, sz);
 
                     uniforms[0].uniform = hndl;
                     uniforms[0].binding = binding;
@@ -3736,24 +3736,24 @@ void ui_bind_uniforms(ui_context_t* ctx, gfx_bind_uniform_desc_t* uniforms, size
     cmd->uniforms.data = ctx->command_list.items + ctx->command_list.idx;
 
     // Treat as byte buffer, write into data then set size
-    neko_byte_buffer_t buffer = NEKO_DEFAULT_VAL();
+    byte_buffer_t buffer = NEKO_DEFAULT_VAL();
     buffer.capacity = UI_COMMANDLIST_SIZE;
     buffer.data = (u8*)cmd->uniforms.data;
 
     const u16 ct = uniforms_sz / sizeof(gfx_bind_uniform_desc_t);
 
     // Write count
-    neko_byte_buffer_write(&buffer, u16, ct);
+    byte_buffer_write(&buffer, u16, ct);
 
     // Iterate through all uniforms, memcpy data as needed for each uniform in list
     for (u32 i = 0; i < ct; ++i) {
         gfx_bind_uniform_desc_t* decl = &uniforms[i];
         neko_handle(gfx_uniform_t) hndl = decl->uniform;
         const size_t sz = gfx_uniform_size_query(hndl);
-        neko_byte_buffer_write(&buffer, neko_handle(gfx_uniform_t), hndl);
-        neko_byte_buffer_write(&buffer, size_t, sz);
-        neko_byte_buffer_write(&buffer, u16, (u16)decl->binding);
-        neko_byte_buffer_write_bulk(&buffer, decl->data, sz);
+        byte_buffer_write(&buffer, neko_handle(gfx_uniform_t), hndl);
+        byte_buffer_write(&buffer, size_t, sz);
+        byte_buffer_write(&buffer, u16, (u16)decl->binding);
+        byte_buffer_write_bulk(&buffer, decl->data, sz);
     }
 
     // Record final sizes

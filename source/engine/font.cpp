@@ -3,6 +3,7 @@
 #include "engine/api.hpp"
 #include "engine/asset.h"
 #include "engine/game.h"
+#include "engine/vfs.h"
 
 bool FontFamily::load(String filepath) {
     PROFILE_FUNC();

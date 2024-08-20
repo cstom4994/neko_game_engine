@@ -22,6 +22,7 @@
 #include "engine/texture.h"
 #include "engine/transform.h"
 #include "engine/ui.h"
+#include "engine/vfs.h"
 
 // deps
 #include <cute_aseprite.h>

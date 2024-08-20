@@ -95,7 +95,7 @@ typedef struct neko_immediate_draw_static_data_t {
 } neko_immediate_draw_static_data_t;
 
 typedef struct idraw_t {
-    neko_byte_buffer_t vertices;
+    byte_buffer_t vertices;
     neko_dyn_array(uint16_t) indices;
     neko_dyn_array(neko_idraw_vattr_type) vattributes;
     neko_immediate_cache_t cache;

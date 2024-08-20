@@ -3,11 +3,11 @@
 #include <stdbool.h>
 
 #include "console.h"
-#include "edit.h"
 #include "engine/api.hpp"
 #include "engine/base.h"
 #include "engine/batch.h"
 #include "engine/camera.h"
+#include "engine/edit.h"
 #include "engine/game.h"
 #include "engine/gfx.h"
 #include "engine/input.h"
@@ -21,6 +21,7 @@
 #include "engine/texture.h"
 #include "engine/transform.h"
 #include "engine/ui.h"
+#include "engine/vfs.h"
 
 static void load_all_lua_scripts(lua_State *L) {
     PROFILE_FUNC();

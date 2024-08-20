@@ -3,6 +3,7 @@
 
 #include "engine/game.h"
 #include "engine/luax.h"
+#include "engine/vfs.h"
 
 namespace neko::lua::__luadb {
 

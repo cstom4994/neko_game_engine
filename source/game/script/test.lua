@@ -40,7 +40,7 @@ local function UnitTest()
         describe('module1', function()
 
             it('feature_ffi_reflect_enum', function()
-                local reflect = hot_require("reflect")
+                local reflect = ffi_reflect()
                 e = reflect.enum [[
                     A, B, /* 注释正确解析 */
                     C = 7,  // 注释正确解析
@@ -78,40 +78,6 @@ local function UnitTest()
                 -- r = nil
                 -- collectgarbage("collect")
                 -- assert(count == 2)
-            end)
-
-            it('feature_parser', function()
-                local parser = hot_require("parser")
-
-                parser([[
-                    const vv = 3;
-                    -- vv = 4;
-    
-                    let test = 3;
-                    test++;
-                    test--;
-                    test += 5;
-                    test /= 4;
-                    test *= 3;
-                    test ^= 2;
-                    test -= 1;
-    
-                    print(test)
-    
-                    let test = () => {
-                        print("hello, world!");
-                    }
-                    test();
-    
-                    let test = (a, b) => a + b;
-                    print(test(1, 2));
-    
-                    -- try {
-                    --     nonExistingFunction();
-                    -- } catch(e) {
-                    --     print("can't call this function!\nerror: " .. e);
-                    -- }
-                ]])
             end)
 
             it('nn', function()

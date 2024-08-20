@@ -108,7 +108,7 @@ struct lua_State;
 
 #define NEKO_STR(x) #x
 
-#define NEKO_TIMED_ACTION(INTERVAL, ...)                               \
+#define TimedAction(INTERVAL, ...)                               \
     do {                                                               \
         static u32 NEKO_CONCAT(NEKO_CONCAT(__T, __LINE__), t) = 0;     \
         if (NEKO_CONCAT(NEKO_CONCAT(__T, __LINE__), t)++ > INTERVAL) { \

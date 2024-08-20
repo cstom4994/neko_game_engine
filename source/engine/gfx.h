@@ -136,15 +136,21 @@ neko_enum_decl(gfx_buffer_type, R_BUFFER_VERTEX, R_BUFFER_INDEX, R_BUFFER_FRAME,
 // Buffer Update Type
 neko_enum_decl(gfx_buffer_update_type, R_BUFFER_UPDATE_RECREATE, R_BUFFER_UPDATE_SUBDATA);
 
-neko_enum_decl(gfx_buffer_flags, R_BUFFER_FLAG_MAP_PERSISTENT, R_BUFFER_FLAG_MAP_COHERENT);
+enum gfx_flags {
+    R_BUFFER_FLAG_MAP_PERSISTENT = 0x01,
+    R_BUFFER_FLAG_MAP_COHERENT = 0x02,
+
+    R_CLEAR_COLOR = 0x04,
+    R_CLEAR_DEPTH = 0x05,
+    R_CLEAR_STENCIL = 0x06,
+    R_CLEAR_NONE = 0x07
+};
 
 neko_enum_decl(gfx_texture_format_type, R_TEXTURE_FORMAT_RGBA8, R_TEXTURE_FORMAT_RGB8, R_TEXTURE_FORMAT_RG8, R_TEXTURE_FORMAT_R32, R_TEXTURE_FORMAT_R32F, R_TEXTURE_FORMAT_RGBA16F,
                R_TEXTURE_FORMAT_RGBA32F, R_TEXTURE_FORMAT_A8, R_TEXTURE_FORMAT_R8, R_TEXTURE_FORMAT_DEPTH8, R_TEXTURE_FORMAT_DEPTH16, R_TEXTURE_FORMAT_DEPTH24, R_TEXTURE_FORMAT_DEPTH32F,
                R_TEXTURE_FORMAT_DEPTH24_STENCIL8, R_TEXTURE_FORMAT_DEPTH32F_STENCIL8, R_TEXTURE_FORMAT_STENCIL8);
 
 neko_enum_decl(gfx_texture_filtering_type, R_TEXTURE_FILTER_NEAREST, R_TEXTURE_FILTER_LINEAR);
-
-neko_enum_decl(gfx_clear_flag, R_CLEAR_COLOR = 0x01, R_CLEAR_DEPTH = 0x02, R_CLEAR_STENCIL = 0x04, R_CLEAR_NONE = 0x08);
 
 #define R_CLEAR_ALL R_CLEAR_COLOR | R_CLEAR_DEPTH | R_CLEAR_STENCIL
 
@@ -249,7 +255,7 @@ typedef struct gfx_storage_buffer_desc_t {
     char name[64];
     u32 usage;
     u32 access;
-    gfx_buffer_flags flags;
+    u32 flags;
     gfx_buffer_update_desc_t update;
 } gfx_storage_buffer_desc_t;
 
@@ -259,19 +265,13 @@ typedef struct gfx_framebuffer_desc_t {
 
 // Graphics Clear Action
 typedef struct gfx_clear_action_t {
-    gfx_clear_flag flag;  // Flag to be set (clear color, clear depth, clear stencil, clear all)
+    u32 flag;
     union {
         float color[4];   // Clear color value
         float depth;      // Clear depth value
         int32_t stencil;  // Clear stencil value
     };
 } gfx_clear_action_t;
-
-// Graphics Clear Desc
-typedef struct gfx_clear_desc_t {
-    gfx_clear_action_t* actions;  // Clear action
-    size_t size;                  // Size
-} gfx_clear_desc_t;
 
 // Graphics Render Pass Desc
 typedef struct gfx_renderpass_desc_t {
@@ -590,20 +590,20 @@ typedef struct neko_gl_data_t {
 } neko_gl_data_t;
 
 // 内部OpenGL命令缓冲指令
-typedef enum neko_opengl_op_code_type {
-    NEKO_OPENGL_OP_BEGIN_RENDER_PASS = 0x00,
-    NEKO_OPENGL_OP_END_RENDER_PASS,
-    NEKO_OPENGL_OP_SET_VIEWPORT,
-    NEKO_OPENGL_OP_SET_VIEW_SCISSOR,
-    NEKO_OPENGL_OP_CLEAR,
-    NEKO_OPENGL_OP_REQUEST_BUFFER_UPDATE,
-    NEKO_OPENGL_OP_REQUEST_TEXTURE_UPDATE,
-    NEKO_OPENGL_OP_BIND_PIPELINE,
-    NEKO_OPENGL_OP_APPLY_BINDINGS,
-    NEKO_OPENGL_OP_DISPATCH_COMPUTE,
-    NEKO_OPENGL_OP_DRAW,
-    NEKO_OPENGL_OP_DRAW_FUNC,
-} neko_opengl_op_code_type;
+enum op_code_type {
+    OP_BEGIN_RENDER_PASS = 0x00,
+    OP_END_RENDER_PASS,
+    OP_SET_VIEWPORT,
+    OP_SET_VIEW_SCISSOR,
+    OP_CLEAR,
+    OP_REQUEST_BUFFER_UPDATE,
+    OP_REQUEST_TEXTURE_UPDATE,
+    OP_BIND_PIPELINE,
+    OP_APPLY_BINDINGS,
+    OP_DISPATCH_COMPUTE,
+    OP_DRAW,
+    OP_DRAW_FUNC,
+};
 
 /*==========================
 // Graphics API
@@ -677,7 +677,6 @@ void gfx_renderpass_end(command_buffer_t* cb);
 void gfx_set_viewport(command_buffer_t* cb, u32 x, u32 y, u32 w, u32 h);
 void gfx_set_view_scissor(command_buffer_t* cb, u32 x, u32 y, u32 w, u32 h);
 void gfx_clear(command_buffer_t* cb, gfx_clear_action_t action);
-void gfx_clear_ex(command_buffer_t* cb, gfx_clear_desc_t* desc);
 void gfx_pipeline_bind(command_buffer_t* cb, neko_handle(gfx_pipeline_t) hndl);
 void gfx_apply_bindings(command_buffer_t* cb, gfx_bind_desc_t* binds);
 void gfx_draw(command_buffer_t* cb, gfx_draw_desc_t desc);

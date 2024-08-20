@@ -899,8 +899,8 @@ void neko::luainspector::inspect_table(lua_State* L, inspect_table_config& cfg) 
             for (; buffer_size < strlen(str_mem);) buffer_size += 128;
             std::string v(neko_lua_to<const_str>(L, -1), buffer_size);
             if (!is_multiline(str_mem) && strlen(str_mem) < 32) {
-                // ImGui::TextColored(rgba_to_imvec(40, 220, 55, 255), "\"%s\"", str_mem);
-                ui_text(ui, str_mem);
+                Color256 col = color256(40, 220, 55, 255);
+                ui_text_colored(ui, str_mem, &col);
             } else {
                 Color256 col = color256(40, 220, 55, 255);
                 ui_text_colored(ui, "\"...\"", &col);

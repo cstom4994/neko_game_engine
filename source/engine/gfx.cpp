@@ -8,6 +8,7 @@
 #include "engine/camera.h"
 #include "engine/console.h"
 #include "engine/game.h"
+#include "engine/vfs.h"
 
 // deps
 #include <stb_image.h>
@@ -1343,65 +1344,51 @@ void* gfx_storage_buffer_lock_impl(neko_handle(gfx_storage_buffer_t) hndl) {
     return sbo->map;
 }
 
-#define __ogl_push_command(CB, OP_CODE, ...)                      \
-    do {                                                          \
-        neko_gl_data_t* DATA = (neko_gl_data_t*)RENDER()->ud;     \
-        neko_byte_buffer_write(&CB->commands, u32, (u32)OP_CODE); \
-        __VA_ARGS__                                               \
-        CB->num_commands++;                                       \
+#define __ogl_push_command(CB, OP_CODE, ...)                  \
+    do {                                                      \
+        neko_gl_data_t* DATA = (neko_gl_data_t*)RENDER()->ud; \
+        byte_buffer_write(&CB->commands, u32, (u32)OP_CODE);  \
+        __VA_ARGS__                                           \
+        CB->num_commands++;                                   \
     } while (0)
 
 // Command Buffer Ops: Pipeline / Pass / Bind / Draw
 void gfx_renderpass_begin(command_buffer_t* cb, neko_handle(gfx_renderpass_t) hndl) {
-    __ogl_push_command(cb, NEKO_OPENGL_OP_BEGIN_RENDER_PASS, { neko_byte_buffer_write(&cb->commands, u32, hndl.id); });
+    __ogl_push_command(cb, OP_BEGIN_RENDER_PASS, { byte_buffer_write(&cb->commands, u32, hndl.id); });
 }
 
 void gfx_renderpass_end(command_buffer_t* cb) {
-    __ogl_push_command(cb, NEKO_OPENGL_OP_END_RENDER_PASS,
+    __ogl_push_command(cb, OP_END_RENDER_PASS,
                        {
                                // 没事...
                        });
 }
 
 void gfx_clear(command_buffer_t* cb, gfx_clear_action_t action) {
-    __ogl_push_command(cb, NEKO_OPENGL_OP_CLEAR, {
-        u32 count = 1;
-        neko_byte_buffer_write(&cb->commands, u32, count);
-        neko_byte_buffer_write(&cb->commands, gfx_clear_action_t, action);
-    });
-}
-
-void gfx_clear_ex(command_buffer_t* cb, gfx_clear_desc_t* desc) {
-    __ogl_push_command(cb, NEKO_OPENGL_OP_CLEAR, {
-        u32 count = !desc->actions ? 0 : !desc->size ? 1 : (u32)((size_t)desc->size / (size_t)sizeof(gfx_clear_action_t));
-        neko_byte_buffer_write(&cb->commands, u32, count);
-        for (u32 i = 0; i < count; ++i) {
-            neko_byte_buffer_write(&cb->commands, gfx_clear_action_t, desc->actions[i]);
-        }
-    });
+    __ogl_push_command(cb, OP_CLEAR, { byte_buffer_write(&cb->commands, gfx_clear_action_t, action); });
 }
 
 void gfx_set_viewport(command_buffer_t* cb, u32 x, u32 y, u32 w, u32 h) {
-    __ogl_push_command(cb, NEKO_OPENGL_OP_SET_VIEWPORT, {
-        neko_byte_buffer_write(&cb->commands, u32, x);
-        neko_byte_buffer_write(&cb->commands, u32, y);
-        neko_byte_buffer_write(&cb->commands, u32, w);
-        neko_byte_buffer_write(&cb->commands, u32, h);
+    __ogl_push_command(cb, OP_SET_VIEWPORT, {
+        byte_buffer_write(&cb->commands, u32, x);
+        byte_buffer_write(&cb->commands, u32, y);
+        byte_buffer_write(&cb->commands, u32, w);
+        byte_buffer_write(&cb->commands, u32, h);
     });
 }
 
 void gfx_set_view_scissor(command_buffer_t* cb, u32 x, u32 y, u32 w, u32 h) {
-    __ogl_push_command(cb, NEKO_OPENGL_OP_SET_VIEW_SCISSOR, {
-        neko_byte_buffer_write(&cb->commands, u32, x);
-        neko_byte_buffer_write(&cb->commands, u32, y);
-        neko_byte_buffer_write(&cb->commands, u32, w);
-        neko_byte_buffer_write(&cb->commands, u32, h);
+    __ogl_push_command(cb, OP_SET_VIEW_SCISSOR, {
+        byte_buffer_write(&cb->commands, u32, x);
+        byte_buffer_write(&cb->commands, u32, y);
+        byte_buffer_write(&cb->commands, u32, w);
+        byte_buffer_write(&cb->commands, u32, h);
     });
 }
 
 void gfx_texture_request_update(command_buffer_t* cb, neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t desc) {
     // Write command
-    neko_byte_buffer_write(&cb->commands, u32, (u32)NEKO_OPENGL_OP_REQUEST_TEXTURE_UPDATE);
+    byte_buffer_write(&cb->commands, u32, (u32)OP_REQUEST_TEXTURE_UPDATE);
     cb->num_commands++;
 
     u32 num_comps = 0;
@@ -1466,31 +1453,31 @@ void gfx_texture_request_update(command_buffer_t* cb, neko_handle(gfx_texture_t)
             // case R_TEXTURE_FORMAT_STENCIL8:            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT8, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
     }
     total_size = desc.width * desc.height * num_comps * data_type_size;
-    neko_byte_buffer_write(&cb->commands, u32, hndl.id);
-    neko_byte_buffer_write(&cb->commands, gfx_texture_desc_t, desc);
-    neko_byte_buffer_write(&cb->commands, size_t, total_size);
-    neko_byte_buffer_write_bulk(&cb->commands, desc.data, total_size);
+    byte_buffer_write(&cb->commands, u32, hndl.id);
+    byte_buffer_write(&cb->commands, gfx_texture_desc_t, desc);
+    byte_buffer_write(&cb->commands, size_t, total_size);
+    byte_buffer_write_bulk(&cb->commands, desc.data, total_size);
 }
 
 void __gfx_update_buffer_internal(command_buffer_t* cb, u32 id, gfx_buffer_type type, u32 usage, size_t sz, size_t offset, gfx_buffer_update_type update_type, void* data) {
     // Write command
-    neko_byte_buffer_write(&cb->commands, u32, (u32)NEKO_OPENGL_OP_REQUEST_BUFFER_UPDATE);
+    byte_buffer_write(&cb->commands, u32, (u32)OP_REQUEST_BUFFER_UPDATE);
     cb->num_commands++;
 
     // Write handle id
-    neko_byte_buffer_write(&cb->commands, u32, id);
+    byte_buffer_write(&cb->commands, u32, id);
     // Write type
-    neko_byte_buffer_write(&cb->commands, gfx_buffer_type, type);
+    byte_buffer_write(&cb->commands, gfx_buffer_type, type);
     // Write usage
-    neko_byte_buffer_write(&cb->commands, u32, usage);
+    byte_buffer_write(&cb->commands, u32, usage);
     // Write data size
-    neko_byte_buffer_write(&cb->commands, size_t, sz);
+    byte_buffer_write(&cb->commands, size_t, sz);
     // Write data offset
-    neko_byte_buffer_write(&cb->commands, size_t, offset);
+    byte_buffer_write(&cb->commands, size_t, offset);
     // Write data update type
-    neko_byte_buffer_write(&cb->commands, gfx_buffer_update_type, update_type);
+    byte_buffer_write(&cb->commands, gfx_buffer_update_type, update_type);
     // Write data
-    neko_byte_buffer_write_bulk(&cb->commands, data, sz);
+    byte_buffer_write_bulk(&cb->commands, data, sz);
 }
 
 void gfx_vertex_buffer_request_update(command_buffer_t* cb, neko_handle(gfx_vertex_buffer_t) hndl, gfx_vertex_buffer_desc_t desc) {
@@ -1533,10 +1520,10 @@ void gfx_apply_bindings(command_buffer_t* cb, gfx_bind_desc_t* binds) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
 
     // Increment commands
-    neko_byte_buffer_write(&cb->commands, u32, (u32)NEKO_OPENGL_OP_APPLY_BINDINGS);
+    byte_buffer_write(&cb->commands, u32, (u32)OP_APPLY_BINDINGS);
     cb->num_commands++;
 
-    // __ogl_push_command(cb, NEKO_OPENGL_OP_APPLY_BINDINGS,
+    // __ogl_push_command(cb, OP_APPLY_BINDINGS,
     {
         // Get counts from buffers
         u32 vct = binds->vertex_buffers.desc ? binds->vertex_buffers.size ? binds->vertex_buffers.size / sizeof(gfx_bind_vertex_buffer_desc_t) : 1 : 0;
@@ -1548,25 +1535,25 @@ void gfx_apply_bindings(command_buffer_t* cb, gfx_bind_desc_t* binds) {
 
         // Determine total count to write into command buffer
         u32 ct = vct + ict + uct + pct + ibc + sbc;
-        neko_byte_buffer_write(&cb->commands, u32, ct);
+        byte_buffer_write(&cb->commands, u32, ct);
 
         // Determine if need to clear any previous vertex buffers (if vct != 0)
-        neko_byte_buffer_write(&cb->commands, bool, (vct != 0));
+        byte_buffer_write(&cb->commands, bool, (vct != 0));
 
         // Vertex buffers
         for (u32 i = 0; i < vct; ++i) {
             gfx_bind_vertex_buffer_desc_t* decl = &binds->vertex_buffers.desc[i];
-            neko_byte_buffer_write(&cb->commands, gfx_bind_type, R_BIND_VERTEX_BUFFER);
-            neko_byte_buffer_write(&cb->commands, u32, decl->buffer.id);
-            neko_byte_buffer_write(&cb->commands, size_t, decl->offset);
-            neko_byte_buffer_write(&cb->commands, gfx_vertex_data_type, decl->data_type);
+            byte_buffer_write(&cb->commands, gfx_bind_type, R_BIND_VERTEX_BUFFER);
+            byte_buffer_write(&cb->commands, u32, decl->buffer.id);
+            byte_buffer_write(&cb->commands, size_t, decl->offset);
+            byte_buffer_write(&cb->commands, gfx_vertex_data_type, decl->data_type);
         }
 
         // Index buffers
         for (u32 i = 0; i < ict; ++i) {
             gfx_bind_index_buffer_desc_t* decl = &binds->index_buffers.desc[i];
-            neko_byte_buffer_write(&cb->commands, gfx_bind_type, R_BIND_INDEX_BUFFER);
-            neko_byte_buffer_write(&cb->commands, u32, decl->buffer.id);
+            byte_buffer_write(&cb->commands, gfx_bind_type, R_BIND_INDEX_BUFFER);
+            byte_buffer_write(&cb->commands, u32, decl->buffer.id);
         }
 
         // Uniform buffers
@@ -1575,20 +1562,20 @@ void gfx_apply_bindings(command_buffer_t* cb, gfx_bind_desc_t* binds) {
 
             u32 id = decl->buffer.id;
             size_t sz = (size_t)(neko_slot_array_getp(ogl->uniform_buffers, id))->size;
-            neko_byte_buffer_write(&cb->commands, gfx_bind_type, R_BIND_UNIFORM_BUFFER);
-            neko_byte_buffer_write(&cb->commands, u32, decl->buffer.id);
-            neko_byte_buffer_write(&cb->commands, u32, decl->binding);
-            neko_byte_buffer_write(&cb->commands, size_t, decl->range.offset);
-            neko_byte_buffer_write(&cb->commands, size_t, decl->range.size);
+            byte_buffer_write(&cb->commands, gfx_bind_type, R_BIND_UNIFORM_BUFFER);
+            byte_buffer_write(&cb->commands, u32, decl->buffer.id);
+            byte_buffer_write(&cb->commands, u32, decl->binding);
+            byte_buffer_write(&cb->commands, size_t, decl->range.offset);
+            byte_buffer_write(&cb->commands, size_t, decl->range.size);
         }
 
         // Image buffers
         for (u32 i = 0; i < ibc; ++i) {
             gfx_bind_image_buffer_desc_t* decl = &binds->image_buffers.desc[i];
-            neko_byte_buffer_write(&cb->commands, gfx_bind_type, R_BIND_IMAGE_BUFFER);
-            neko_byte_buffer_write(&cb->commands, u32, decl->tex.id);
-            neko_byte_buffer_write(&cb->commands, u32, decl->binding);
-            neko_byte_buffer_write(&cb->commands, u32, decl->access);
+            byte_buffer_write(&cb->commands, gfx_bind_type, R_BIND_IMAGE_BUFFER);
+            byte_buffer_write(&cb->commands, u32, decl->tex.id);
+            byte_buffer_write(&cb->commands, u32, decl->binding);
+            byte_buffer_write(&cb->commands, u32, decl->access);
         }
 
         // Uniforms
@@ -1597,48 +1584,48 @@ void gfx_apply_bindings(command_buffer_t* cb, gfx_bind_desc_t* binds) {
 
             // Get size from uniform list
             size_t sz = neko_slot_array_getp(ogl->uniforms, decl->uniform.id)->size;
-            neko_byte_buffer_write(&cb->commands, gfx_bind_type, R_BIND_UNIFORM);
-            neko_byte_buffer_write(&cb->commands, u32, decl->uniform.id);
-            neko_byte_buffer_write(&cb->commands, size_t, sz);
-            neko_byte_buffer_write(&cb->commands, u32, decl->binding);
-            neko_byte_buffer_write_bulk(&cb->commands, decl->data, sz);
+            byte_buffer_write(&cb->commands, gfx_bind_type, R_BIND_UNIFORM);
+            byte_buffer_write(&cb->commands, u32, decl->uniform.id);
+            byte_buffer_write(&cb->commands, size_t, sz);
+            byte_buffer_write(&cb->commands, u32, decl->binding);
+            byte_buffer_write_bulk(&cb->commands, decl->data, sz);
         }
 
         // Storage buffers
         CHECK_GL_CORE(for (u32 i = 0; i < sbc; ++i) {
             gfx_bind_storage_buffer_desc_t* decl = &binds->storage_buffers.desc[i];
-            neko_byte_buffer_write(&cb->commands, gfx_bind_type, R_BIND_STORAGE_BUFFER);
-            neko_byte_buffer_write(&cb->commands, u32, decl->buffer.id);
-            neko_byte_buffer_write(&cb->commands, u32, decl->binding);
+            byte_buffer_write(&cb->commands, gfx_bind_type, R_BIND_STORAGE_BUFFER);
+            byte_buffer_write(&cb->commands, u32, decl->buffer.id);
+            byte_buffer_write(&cb->commands, u32, decl->binding);
         });
     };
 }
 
 void gfx_pipeline_bind(command_buffer_t* cb, neko_handle(gfx_pipeline_t) hndl) {
     // TODO: 不确定这将来是否安全 因为管道的数据位于主线程上 并且可能会在单独的线程上被篡改
-    __ogl_push_command(cb, NEKO_OPENGL_OP_BIND_PIPELINE, { neko_byte_buffer_write(&cb->commands, u32, hndl.id); });
+    __ogl_push_command(cb, OP_BIND_PIPELINE, { byte_buffer_write(&cb->commands, u32, hndl.id); });
 }
 
 void gfx_draw(command_buffer_t* cb, gfx_draw_desc_t desc) {
-    __ogl_push_command(cb, NEKO_OPENGL_OP_DRAW, {
-        neko_byte_buffer_write(&cb->commands, u32, desc.start);
-        neko_byte_buffer_write(&cb->commands, u32, desc.count);
-        neko_byte_buffer_write(&cb->commands, u32, desc.instances);
-        neko_byte_buffer_write(&cb->commands, u32, desc.base_vertex);
-        neko_byte_buffer_write(&cb->commands, u32, desc.range.start);
-        neko_byte_buffer_write(&cb->commands, u32, desc.range.end);
+    __ogl_push_command(cb, OP_DRAW, {
+        byte_buffer_write(&cb->commands, u32, desc.start);
+        byte_buffer_write(&cb->commands, u32, desc.count);
+        byte_buffer_write(&cb->commands, u32, desc.instances);
+        byte_buffer_write(&cb->commands, u32, desc.base_vertex);
+        byte_buffer_write(&cb->commands, u32, desc.range.start);
+        byte_buffer_write(&cb->commands, u32, desc.range.end);
     });
 }
 
 void gfx_draw_func(command_buffer_t* cb, R_DRAW_FUNC draw_func) {
-    __ogl_push_command(cb, NEKO_OPENGL_OP_DRAW_FUNC, { neko_byte_buffer_write(&cb->commands, R_DRAW_FUNC, draw_func); });
+    __ogl_push_command(cb, OP_DRAW_FUNC, { byte_buffer_write(&cb->commands, R_DRAW_FUNC, draw_func); });
 }
 
 void gfx_dispatch_compute(command_buffer_t* cb, u32 num_x_groups, u32 num_y_groups, u32 num_z_groups) {
-    __ogl_push_command(cb, NEKO_OPENGL_OP_DISPATCH_COMPUTE, {
-        neko_byte_buffer_write(&cb->commands, u32, num_x_groups);
-        neko_byte_buffer_write(&cb->commands, u32, num_y_groups);
-        neko_byte_buffer_write(&cb->commands, u32, num_z_groups);
+    __ogl_push_command(cb, OP_DISPATCH_COMPUTE, {
+        byte_buffer_write(&cb->commands, u32, num_x_groups);
+        byte_buffer_write(&cb->commands, u32, num_y_groups);
+        byte_buffer_write(&cb->commands, u32, num_z_groups);
     });
 }
 
@@ -1653,17 +1640,17 @@ void gfx_cmd_submit(command_buffer_t* cb) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
 
     // Set read position of buffer to beginning
-    neko_byte_buffer_seek_to_beg(&cb->commands);
+    byte_buffer_seek_to_beg(&cb->commands);
 
     // For each command in buffer
     NEKO_FOR_RANGE(cb->num_commands) {
         // Read in op code of command
-        neko_byte_buffer_readc(&cb->commands, neko_opengl_op_code_type, op_code);
+        byte_buffer_readc(&cb->commands, op_code_type, op_code);
 
         switch (op_code) {
-            case NEKO_OPENGL_OP_BEGIN_RENDER_PASS: {
+            case OP_BEGIN_RENDER_PASS: {
                 // Bind render pass stuff
-                neko_byte_buffer_readc(&cb->commands, u32, rpid);
+                byte_buffer_readc(&cb->commands, u32, rpid);
 
                 // If render pass exists, then we'll bind frame buffer and attachments
                 if (rpid && neko_slot_array_exists(ogl->renderpasses, rpid)) {
@@ -1696,7 +1683,7 @@ void gfx_cmd_submit(command_buffer_t* cb) {
                 }
             } break;
 
-            case NEKO_OPENGL_OP_END_RENDER_PASS: {
+            case OP_END_RENDER_PASS: {
                 neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
                 neko_gl_reset_data_cache(&ogl->cache);
 
@@ -1710,59 +1697,48 @@ void gfx_cmd_submit(command_buffer_t* cb) {
                 glDisable(GL_BLEND);
             } break;
 
-            case NEKO_OPENGL_OP_CLEAR: {
-                // Actions
-                neko_byte_buffer_readc(&cb->commands, u32, action_count);
-                for (u32 j = 0; j < action_count; ++j) {
-                    neko_byte_buffer_readc(&cb->commands, gfx_clear_action_t, action);
-
-                    // No clear
-                    if (action.flag & R_CLEAR_NONE) {
-                        continue;
-                    }
-
-                    u32 bit = 0x00;
-
-                    if (action.flag & R_CLEAR_COLOR || action.flag == 0x00) {
-                        glClearColor(action.color[0], action.color[1], action.color[2], action.color[3]);
-                        bit |= GL_COLOR_BUFFER_BIT;
-                    }
-                    if (action.flag & R_CLEAR_DEPTH || action.flag == 0x00) {
-                        bit |= GL_DEPTH_BUFFER_BIT;
-                    }
-                    if (action.flag & R_CLEAR_STENCIL || action.flag == 0x00) {
-                        bit |= GL_STENCIL_BUFFER_BIT;
-                        glStencilMask(~0);
-                    }
-
-                    glClear(bit);
+            case OP_CLEAR: {
+                byte_buffer_readc(&cb->commands, gfx_clear_action_t, action);
+                if (action.flag & R_CLEAR_NONE) {
+                    continue;
                 }
+                u32 bit = 0x00;
+                if (action.flag & R_CLEAR_COLOR || action.flag == 0x00) {
+                    glClearColor(action.color[0], action.color[1], action.color[2], action.color[3]);
+                    bit |= GL_COLOR_BUFFER_BIT;
+                }
+                if (action.flag & R_CLEAR_DEPTH || action.flag == 0x00) bit |= GL_DEPTH_BUFFER_BIT;
+                if (action.flag & R_CLEAR_STENCIL || action.flag == 0x00) {
+                    bit |= GL_STENCIL_BUFFER_BIT;
+                    glStencilMask(~0);
+                }
+                glClear(bit);
             } break;
 
-            case NEKO_OPENGL_OP_SET_VIEWPORT: {
-                neko_byte_buffer_readc(&cb->commands, u32, x);
-                neko_byte_buffer_readc(&cb->commands, u32, y);
-                neko_byte_buffer_readc(&cb->commands, u32, w);
-                neko_byte_buffer_readc(&cb->commands, u32, h);
+            case OP_SET_VIEWPORT: {
+                byte_buffer_readc(&cb->commands, u32, x);
+                byte_buffer_readc(&cb->commands, u32, y);
+                byte_buffer_readc(&cb->commands, u32, w);
+                byte_buffer_readc(&cb->commands, u32, h);
 
                 glViewport(x, y, w, h);
             } break;
 
-            case NEKO_OPENGL_OP_SET_VIEW_SCISSOR: {
-                neko_byte_buffer_readc(&cb->commands, u32, x);
-                neko_byte_buffer_readc(&cb->commands, u32, y);
-                neko_byte_buffer_readc(&cb->commands, u32, w);
-                neko_byte_buffer_readc(&cb->commands, u32, h);
+            case OP_SET_VIEW_SCISSOR: {
+                byte_buffer_readc(&cb->commands, u32, x);
+                byte_buffer_readc(&cb->commands, u32, y);
+                byte_buffer_readc(&cb->commands, u32, w);
+                byte_buffer_readc(&cb->commands, u32, h);
 
                 glEnable(GL_SCISSOR_TEST);
                 glScissor(x, y, w, h);
             } break;
 
-            case NEKO_OPENGL_OP_APPLY_BINDINGS: {
-                neko_byte_buffer_readc(&cb->commands, u32, ct);
+            case OP_APPLY_BINDINGS: {
+                byte_buffer_readc(&cb->commands, u32, ct);
 
                 // Determine if need to clear any previous vertex buffers here
-                neko_byte_buffer_readc(&cb->commands, bool, clear_vertex_buffers);
+                byte_buffer_readc(&cb->commands, bool, clear_vertex_buffers);
 
                 // Clear previous vertex decls if necessary
                 if (clear_vertex_buffers) {
@@ -1771,15 +1747,15 @@ void gfx_cmd_submit(command_buffer_t* cb) {
                 }
 
                 for (u32 i = 0; i < ct; ++i) {
-                    neko_byte_buffer_readc(&cb->commands, gfx_bind_type, type);
+                    byte_buffer_readc(&cb->commands, gfx_bind_type, type);
                     switch (type) {
                         case R_BIND_VERTEX_BUFFER: {
-                            neko_byte_buffer_readc(&cb->commands, u32, id);
-                            neko_byte_buffer_readc(&cb->commands, size_t, offset);
-                            neko_byte_buffer_readc(&cb->commands, gfx_vertex_data_type, data_type);
+                            byte_buffer_readc(&cb->commands, u32, id);
+                            byte_buffer_readc(&cb->commands, size_t, offset);
+                            byte_buffer_readc(&cb->commands, gfx_vertex_data_type, data_type);
 
                             if (!id || !neko_slot_array_exists(ogl->vertex_buffers, id)) {
-                                NEKO_TIMED_ACTION(1000, {
+                                TimedAction(1000, {
                                     console_log("Opengl:BindBindings:VertexBuffer %d does not exist.", id);
                                     continue;
                                 });
@@ -1800,11 +1776,11 @@ void gfx_cmd_submit(command_buffer_t* cb) {
                         } break;
 
                         case R_BIND_INDEX_BUFFER: {
-                            neko_byte_buffer_readc(&cb->commands, u32, id);
+                            byte_buffer_readc(&cb->commands, u32, id);
 
                             if (!neko_slot_array_exists(ogl->index_buffers, id)) {
                                 /*
-                                NEKO_TIMED_ACTION(1000, {
+                                TimedAction(1000, {
                                     neko_println("Warning:Opengl:BindBindings:IndexBuffer %d does not exist.", id);
                                 });
                                 */
@@ -1818,23 +1794,23 @@ void gfx_cmd_submit(command_buffer_t* cb) {
 
                         case R_BIND_UNIFORM: {
                             // Get size from uniform list
-                            neko_byte_buffer_readc(&cb->commands, u32, id);
+                            byte_buffer_readc(&cb->commands, u32, id);
                             // Read data size for uniform list
-                            neko_byte_buffer_readc(&cb->commands, size_t, sz);
+                            byte_buffer_readc(&cb->commands, size_t, sz);
                             // Read binding from uniform list (could make this a binding list? not sure how to handle this)
-                            neko_byte_buffer_readc(&cb->commands, u32, binding);
+                            byte_buffer_readc(&cb->commands, u32, binding);
 
                             // Check buffer id. If invalid, then we can't operate, and instead just need to pass over the data.
                             if (!id || !neko_slot_array_exists(ogl->uniforms, id)) {
-                                NEKO_TIMED_ACTION(1000, { console_log("Bind Uniform:Uniform %d does not exist.", id); });
-                                neko_byte_buffer_advance_position(&cb->commands, sz);
+                                TimedAction(1000, { console_log("Bind Uniform:Uniform %d does not exist.", id); });
+                                byte_buffer_advance_position(&cb->commands, sz);
                                 continue;
                             }
 
                             // Grab currently bound pipeline (TODO: assert if this isn't valid)
                             if (!ogl->cache.pipeline.id || !neko_slot_array_exists(ogl->pipelines, ogl->cache.pipeline.id)) {
-                                NEKO_TIMED_ACTION(1000, { console_log("Bind Uniform Buffer:Pipeline %d does not exist.", ogl->cache.pipeline.id); });
-                                neko_byte_buffer_advance_position(&cb->commands, sz);
+                                TimedAction(1000, { console_log("Bind Uniform Buffer:Pipeline %d does not exist.", ogl->cache.pipeline.id); });
+                                byte_buffer_advance_position(&cb->commands, sz);
                                 continue;
                             }
 
@@ -1854,10 +1830,10 @@ void gfx_cmd_submit(command_buffer_t* cb) {
                                 if ((u->location == UINT32_MAX && u->location != UINT32_MAX - 1) || u->sid != pip->raster.shader.id) {
                                     if (!sid || !neko_slot_array_exists(ogl->shaders, sid)) {
 
-                                        NEKO_TIMED_ACTION(1000, { console_log("Bind Uniform:Shader %d does not exist.", sid); });
+                                        TimedAction(1000, { console_log("Bind Uniform:Shader %d does not exist.", sid); });
 
                                         // Advance by size of uniform
-                                        neko_byte_buffer_advance_position(&cb->commands, sz);
+                                        byte_buffer_advance_position(&cb->commands, sz);
                                         continue;
                                     }
 
@@ -1891,7 +1867,7 @@ void gfx_cmd_submit(command_buffer_t* cb) {
                                         u32 ct = u->count ? u->count : 1;
                                         size_t sz = ct * u->size;
                                         NEKO_FOR_RANGE(ct) {
-                                            neko_byte_buffer_readc(&cb->commands, float, v);
+                                            byte_buffer_readc(&cb->commands, float, v);
                                             neko_dyn_array_push(ogl->uniform_data.flt, v);
                                         }
                                         glUniform1fv(u->location, ct, ogl->uniform_data.flt);
@@ -1903,7 +1879,7 @@ void gfx_cmd_submit(command_buffer_t* cb) {
                                         u32 ct = u->count ? u->count : 1;
                                         size_t sz = ct * u->size;
                                         NEKO_FOR_RANGE(ct) {
-                                            neko_byte_buffer_readc(&cb->commands, i32, v);
+                                            byte_buffer_readc(&cb->commands, i32, v);
                                             neko_dyn_array_push(ogl->uniform_data.i32, v);
                                         }
                                         glUniform1iv(u->location, ct, ogl->uniform_data.i32);
@@ -1915,7 +1891,7 @@ void gfx_cmd_submit(command_buffer_t* cb) {
                                         u32 ct = u->count ? u->count : 1;
                                         size_t sz = ct * u->size;
                                         NEKO_FOR_RANGE(ct) {
-                                            neko_byte_buffer_readc(&cb->commands, vec2, v);
+                                            byte_buffer_readc(&cb->commands, vec2, v);
                                             neko_dyn_array_push(ogl->uniform_data.vec2, v);
                                         }
                                         glUniform2fv(u->location, ct, (float*)ogl->uniform_data.vec2);
@@ -1927,7 +1903,7 @@ void gfx_cmd_submit(command_buffer_t* cb) {
                                         u32 ct = u->count ? u->count : 1;
                                         size_t sz = ct * u->size;
                                         NEKO_FOR_RANGE(ct) {
-                                            neko_byte_buffer_readc(&cb->commands, vec3, v);
+                                            byte_buffer_readc(&cb->commands, vec3, v);
                                             neko_dyn_array_push(ogl->uniform_data.vec3, v);
                                         }
                                         glUniform3fv(u->location, ct, (float*)ogl->uniform_data.vec3);
@@ -1939,7 +1915,7 @@ void gfx_cmd_submit(command_buffer_t* cb) {
                                         u32 ct = u->count ? u->count : 1;
                                         size_t sz = ct * u->size;
                                         NEKO_FOR_RANGE(ct) {
-                                            neko_byte_buffer_readc(&cb->commands, vec4, v);
+                                            byte_buffer_readc(&cb->commands, vec4, v);
                                             neko_dyn_array_push(ogl->uniform_data.vec4, v);
                                         }
                                         glUniform4fv(u->location, ct, (float*)ogl->uniform_data.vec4);
@@ -1951,7 +1927,7 @@ void gfx_cmd_submit(command_buffer_t* cb) {
                                         u32 ct = u->count ? u->count : 1;
                                         size_t sz = ct * u->size;
                                         NEKO_FOR_RANGE(ct) {
-                                            neko_byte_buffer_readc(&cb->commands, mat3, v);
+                                            byte_buffer_readc(&cb->commands, mat3, v);
                                             neko_dyn_array_push(ogl->uniform_data.mat3, v);
                                         }
                                         glUniformMatrix3fv(u->location, ct, false, (float*)ogl->uniform_data.mat3);
@@ -1963,7 +1939,7 @@ void gfx_cmd_submit(command_buffer_t* cb) {
                                         u32 ct = u->count ? u->count : 1;
                                         size_t sz = ct * u->size;
                                         NEKO_FOR_RANGE(ct) {
-                                            neko_byte_buffer_readc(&cb->commands, mat4, v);
+                                            byte_buffer_readc(&cb->commands, mat4, v);
                                             neko_dyn_array_push(ogl->uniform_data.mat4, v);
                                         }
                                         glUniformMatrix4fv(u->location, ct, false, (float*)ogl->uniform_data.mat4);
@@ -1976,7 +1952,7 @@ void gfx_cmd_submit(command_buffer_t* cb) {
                                         i32 binds[128] = NEKO_DEFAULT_VAL();
                                         for (u32 i = 0; (i < ct && i < 128); ++i)  // Max of 128 texture binds. Get real.
                                         {
-                                            neko_byte_buffer_read_bulkc(&cb->commands, neko_handle(gfx_texture_t), v, u->size);
+                                            byte_buffer_read_bulkc(&cb->commands, neko_handle(gfx_texture_t), v, u->size);
 
                                             // Get texture, also need binding, but will worry about that in a bit
                                             neko_gl_texture_t* tex = neko_slot_array_getp(ogl->textures, v.id);
@@ -2008,23 +1984,23 @@ void gfx_cmd_submit(command_buffer_t* cb) {
 
                         case R_BIND_UNIFORM_BUFFER: {
                             // Read slot id of uniform buffer
-                            neko_byte_buffer_readc(&cb->commands, u32, id);
+                            byte_buffer_readc(&cb->commands, u32, id);
                             // Read binding
-                            neko_byte_buffer_readc(&cb->commands, u32, binding);
+                            byte_buffer_readc(&cb->commands, u32, binding);
                             // Read range offset
-                            neko_byte_buffer_readc(&cb->commands, size_t, range_offset);
+                            byte_buffer_readc(&cb->commands, size_t, range_offset);
                             // Read range size
-                            neko_byte_buffer_readc(&cb->commands, size_t, range_size);
+                            byte_buffer_readc(&cb->commands, size_t, range_size);
 
                             // Check buffer id. If invalid, then we can't operate, and instead just need to pass over the data.
                             if (!id || !neko_slot_array_exists(ogl->uniform_buffers, id)) {
-                                NEKO_TIMED_ACTION(1000, { console_log("Bind Uniform Buffer:Uniform %d does not exist.", id); });
+                                TimedAction(1000, { console_log("Bind Uniform Buffer:Uniform %d does not exist.", id); });
                                 continue;
                             }
 
                             // Grab currently bound pipeline (TODO: assert if this isn't valid)
                             if (!ogl->cache.pipeline.id || !neko_slot_array_exists(ogl->pipelines, ogl->cache.pipeline.id)) {
-                                NEKO_TIMED_ACTION(1000, { neko_println("Warning:Bind Uniform Buffer:Pipeline %d does not exist.", ogl->cache.pipeline.id); });
+                                TimedAction(1000, { neko_println("Warning:Bind Uniform Buffer:Pipeline %d does not exist.", ogl->cache.pipeline.id); });
                                 continue;
                             }
 
@@ -2041,7 +2017,7 @@ void gfx_cmd_submit(command_buffer_t* cb) {
                             // TODO: To avoid constant lookups in this case, allow for shaders to hold uniform handles references instead.
                             if ((u->location == UINT32_MAX && u->location != UINT32_MAX - 1) || u->sid != pip->raster.shader.id) {
                                 if (!sid || !neko_slot_array_exists(ogl->shaders, sid)) {
-                                    NEKO_TIMED_ACTION(1000, { console_log("Bind Uniform Buffer:Shader %d does not exist.", sid); });
+                                    TimedAction(1000, { console_log("Bind Uniform Buffer:Shader %d does not exist.", sid); });
                                     continue;
                                 }
 
@@ -2066,13 +2042,13 @@ void gfx_cmd_submit(command_buffer_t* cb) {
                         } break;
 
                         case R_BIND_STORAGE_BUFFER: {
-                            neko_byte_buffer_readc(&cb->commands, u32, sb_slot_id);
-                            neko_byte_buffer_readc(&cb->commands, u32, binding);
+                            byte_buffer_readc(&cb->commands, u32, sb_slot_id);
+                            byte_buffer_readc(&cb->commands, u32, binding);
 
                             // Grab storage buffer from id
                             if (!sb_slot_id || !neko_slot_array_exists(ogl->storage_buffers, sb_slot_id)) {
                                 /*
-                                NEKO_TIMED_ACTION(1000, {
+                                TimedAction(1000, {
                                     neko_println("Warning:Bind Storage Buffer:Storage Buffer %d does not exist.", sb_slot_id);
                                 });
                                 */
@@ -2082,7 +2058,7 @@ void gfx_cmd_submit(command_buffer_t* cb) {
                             // Grab currently bound pipeline (TODO: assert if this isn't valid)
                             if (!ogl->cache.pipeline.id || !neko_slot_array_exists(ogl->pipelines, ogl->cache.pipeline.id)) {
                                 /*
-                                NEKO_TIMED_ACTION(1000, {
+                                TimedAction(1000, {
                                     neko_println("Warning:Bind Storage Buffer:Pipeline %d does not exist or is not bound.", ogl->cache.pipeline.id);
                                 });
                                 */
@@ -2098,7 +2074,7 @@ void gfx_cmd_submit(command_buffer_t* cb) {
 
                             if (!sid || !neko_slot_array_exists(ogl->shaders, sid)) {
                                 /*
-                                NEKO_TIMED_ACTION(1000, {
+                                TimedAction(1000, {
                                     neko_println("Warning:Bind Uniform Buffer:Shader %d does not exist.", sid);
                                 });
                                 */
@@ -2135,22 +2111,22 @@ void gfx_cmd_submit(command_buffer_t* cb) {
                         } break;
 
                         case R_BIND_IMAGE_BUFFER: {
-                            neko_byte_buffer_readc(&cb->commands, u32, tex_slot_id);
-                            neko_byte_buffer_readc(&cb->commands, u32, binding);
-                            neko_byte_buffer_readc(&cb->commands, u32, access);
+                            byte_buffer_readc(&cb->commands, u32, tex_slot_id);
+                            byte_buffer_readc(&cb->commands, u32, binding);
+                            byte_buffer_readc(&cb->commands, u32, access);
 
                             if (access == 0) access = GL_WRITE_ONLY;
 
                             // Grab texture from sampler id
                             if (!tex_slot_id || !neko_slot_array_exists(ogl->textures, tex_slot_id)) {
-                                NEKO_TIMED_ACTION(1000, { console_log("Bind Image Buffer: Texture %d does not exist.", tex_slot_id); });
+                                TimedAction(1000, { console_log("Bind Image Buffer: Texture %d does not exist.", tex_slot_id); });
                                 continue;
                             }
 
                             neko_gl_texture_t* tex = neko_slot_array_getp(ogl->textures, tex_slot_id);
                             u32 gl_format = neko_gl_texture_format_to_gl_texture_internal_format(tex->desc.format);
 
-                            NEKO_TIMED_ACTION(
+                            TimedAction(
                                     60, gfx_info_t* info = gfx_info(); if (info->major_version < 4) {
                                         neko_panic("%s", "OpenGL4 not available, failed to call glBindImageTexture.");
                                         continue;
@@ -2168,14 +2144,14 @@ void gfx_cmd_submit(command_buffer_t* cb) {
 
             } break;
 
-            case NEKO_OPENGL_OP_BIND_PIPELINE: {
+            case OP_BIND_PIPELINE: {
                 // Bind pipeline stuff
-                neko_byte_buffer_readc(&cb->commands, u32, pipid);
+                byte_buffer_readc(&cb->commands, u32, pipid);
 
                 // Make sure pipeline exists
                 if (!pipid || !neko_slot_array_exists(ogl->pipelines, pipid)) {
 
-                    NEKO_TIMED_ACTION(1000, { console_log("Pipeline %d does not exist.", pipid); });
+                    TimedAction(1000, { console_log("Pipeline %d does not exist.", pipid); });
 
                     continue;
                 }
@@ -2198,7 +2174,7 @@ void gfx_cmd_submit(command_buffer_t* cb) {
                     if (pip->compute.shader.id && neko_slot_array_exists(ogl->shaders, pip->compute.shader.id)) {
                         glUseProgram(neko_slot_array_get(ogl->shaders, pip->compute.shader.id).id);
                     } else {
-                        NEKO_TIMED_ACTION(1000, { console_log("Opengl:BindPipeline:Compute:Shader %d does not exist.", pip->compute.shader.id); });
+                        TimedAction(1000, { console_log("Opengl:BindPipeline:Compute:Shader %d does not exist.", pip->compute.shader.id); });
                     }
 
                     continue;
@@ -2254,19 +2230,19 @@ void gfx_cmd_submit(command_buffer_t* cb) {
                 if (pip->raster.shader.id && neko_slot_array_exists(ogl->shaders, pip->raster.shader.id)) {
                     glUseProgram(neko_slot_array_get(ogl->shaders, pip->raster.shader.id).id);
                 } else {
-                    NEKO_TIMED_ACTION(1000, { console_log("Opengl:BindPipeline:Shader %d does not exist.", pip->raster.shader.id); });
+                    TimedAction(1000, { console_log("Opengl:BindPipeline:Shader %d does not exist.", pip->raster.shader.id); });
                 }
             } break;
 
-            case NEKO_OPENGL_OP_DISPATCH_COMPUTE: {
-                neko_byte_buffer_readc(&cb->commands, u32, num_x_groups);
-                neko_byte_buffer_readc(&cb->commands, u32, num_y_groups);
-                neko_byte_buffer_readc(&cb->commands, u32, num_z_groups);
+            case OP_DISPATCH_COMPUTE: {
+                byte_buffer_readc(&cb->commands, u32, num_x_groups);
+                byte_buffer_readc(&cb->commands, u32, num_y_groups);
+                byte_buffer_readc(&cb->commands, u32, num_z_groups);
 
                 // Grab currently bound pipeline (TODO: assert if this isn't valid)
                 if (ogl->cache.pipeline.id == 0 || !neko_slot_array_exists(ogl->pipelines, ogl->cache.pipeline.id)) {
                     /*
-                    NEKO_TIMED_ACTION(1000, {
+                    TimedAction(1000, {
                         neko_println("Warning:Opengl:DispatchCompute:Compute Pipeline not bound.");
                     });
                     */
@@ -2278,7 +2254,7 @@ void gfx_cmd_submit(command_buffer_t* cb) {
                 // If pipeline does not have a compute state bound, then leave
                 if (!pip->compute.shader.id) {
                     /*
-                    NEKO_TIMED_ACTION(1000, {
+                    TimedAction(1000, {
                         neko_println("Warning:Opengl:DispatchCompute:Compute Pipeline not bound.");
                     });
                     */
@@ -2291,13 +2267,13 @@ void gfx_cmd_submit(command_buffer_t* cb) {
                         glDispatchCompute(num_x_groups, num_y_groups, num_z_groups); glMemoryBarrier(GL_ALL_BARRIER_BITS);)
             } break;
 
-            case NEKO_OPENGL_OP_DRAW: {
+            case OP_DRAW: {
                 // Grab currently bound pipeline (TODO: assert if this isn't valid)
                 neko_gl_pipeline_t* pip = neko_slot_array_getp(ogl->pipelines, ogl->cache.pipeline.id);
 
                 // Must have a vertex buffer bound to draw
                 if (neko_dyn_array_empty(ogl->cache.vdecls)) {
-                    NEKO_TIMED_ACTION(1000, { neko_println("Error:Opengl:Draw: No vertex buffer bound."); });
+                    TimedAction(1000, { neko_println("Error:Opengl:Draw: No vertex buffer bound."); });
                     // neko_assert(false);
                 }
 
@@ -2382,12 +2358,12 @@ void gfx_cmd_submit(command_buffer_t* cb) {
                 }
 
                 // Draw based on bound primitive type in raster
-                neko_byte_buffer_readc(&cb->commands, u32, start);
-                neko_byte_buffer_readc(&cb->commands, u32, count);
-                neko_byte_buffer_readc(&cb->commands, u32, instance_count);
-                neko_byte_buffer_readc(&cb->commands, u32, base_vertex);
-                neko_byte_buffer_readc(&cb->commands, u32, range_start);
-                neko_byte_buffer_readc(&cb->commands, u32, range_end);
+                byte_buffer_readc(&cb->commands, u32, start);
+                byte_buffer_readc(&cb->commands, u32, count);
+                byte_buffer_readc(&cb->commands, u32, instance_count);
+                byte_buffer_readc(&cb->commands, u32, base_vertex);
+                byte_buffer_readc(&cb->commands, u32, range_start);
+                byte_buffer_readc(&cb->commands, u32, range_end);
 
                 range_end = (range_end && range_end > range_start) ? range_end : start + count;
 
@@ -2424,22 +2400,22 @@ void gfx_cmd_submit(command_buffer_t* cb) {
 
             } break;
 
-            case NEKO_OPENGL_OP_DRAW_FUNC: {
-                neko_byte_buffer_readc(&cb->commands, R_DRAW_FUNC, draw_func);
+            case OP_DRAW_FUNC: {
+                byte_buffer_readc(&cb->commands, R_DRAW_FUNC, draw_func);
                 draw_func(cb);
             } break;
 
-            case NEKO_OPENGL_OP_REQUEST_TEXTURE_UPDATE: {
-                neko_byte_buffer_readc(&cb->commands, u32, tex_slot_id);
-                neko_byte_buffer_readc(&cb->commands, gfx_texture_desc_t, desc);
-                neko_byte_buffer_readc(&cb->commands, size_t, data_size);
+            case OP_REQUEST_TEXTURE_UPDATE: {
+                byte_buffer_readc(&cb->commands, u32, tex_slot_id);
+                byte_buffer_readc(&cb->commands, gfx_texture_desc_t, desc);
+                byte_buffer_readc(&cb->commands, size_t, data_size);
 
                 // Update texture with data, depending on update type (for now, just stream new data)
 
                 // Grab texture from sampler id
                 if (!tex_slot_id || !neko_slot_array_exists(ogl->textures, tex_slot_id)) {
-                    NEKO_TIMED_ACTION(60, { console_log("Bind Image Buffer: Texture %d does not exist.", tex_slot_id); });
-                    neko_byte_buffer_advance_position(&cb->commands, data_size);
+                    TimedAction(60, { console_log("Bind Image Buffer: Texture %d does not exist.", tex_slot_id); });
+                    byte_buffer_advance_position(&cb->commands, data_size);
                 }
 
                 neko_gl_texture_t* tex = neko_slot_array_getp(ogl->textures, tex_slot_id);
@@ -2456,24 +2432,24 @@ void gfx_cmd_submit(command_buffer_t* cb) {
                 // // glTexImage2D(GL_TEXTURE_2D, 0, int_format, desc.width, desc.height, 0, format, dt, (cb->commands.data, cb->commands.position));
                 // glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, desc.width, desc.height, format, dt, (cb->commands.data + cb->commands.position));
                 // glBindTexture(GL_TEXTURE_2D, 0);
-                neko_byte_buffer_advance_position(&cb->commands, data_size);
+                byte_buffer_advance_position(&cb->commands, data_size);
             } break;
 
-            case NEKO_OPENGL_OP_REQUEST_BUFFER_UPDATE: {
+            case OP_REQUEST_BUFFER_UPDATE: {
                 neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
 
                 // Read handle id
-                neko_byte_buffer_readc(&cb->commands, u32, id);
+                byte_buffer_readc(&cb->commands, u32, id);
                 // Read type
-                neko_byte_buffer_readc(&cb->commands, gfx_buffer_type, type);
+                byte_buffer_readc(&cb->commands, gfx_buffer_type, type);
                 // Read usage
-                neko_byte_buffer_readc(&cb->commands, u32, usage);
+                byte_buffer_readc(&cb->commands, u32, usage);
                 // Read data size
-                neko_byte_buffer_readc(&cb->commands, size_t, sz);
+                byte_buffer_readc(&cb->commands, size_t, sz);
                 // Read data offset
-                neko_byte_buffer_readc(&cb->commands, size_t, offset);
+                byte_buffer_readc(&cb->commands, size_t, offset);
                 // Read update type
-                neko_byte_buffer_readc(&cb->commands, gfx_buffer_update_type, update_type);
+                byte_buffer_readc(&cb->commands, gfx_buffer_update_type, update_type);
 
                 if (usage == 0) usage = GL_STATIC_DRAW;
                 u32 glusage = usage;
@@ -2549,7 +2525,7 @@ void gfx_cmd_submit(command_buffer_t* cb) {
                 }
 
                 // Advance past data
-                neko_byte_buffer_advance_position(&cb->commands, sz);
+                byte_buffer_advance_position(&cb->commands, sz);
 
             } break;
 
@@ -2562,7 +2538,7 @@ void gfx_cmd_submit(command_buffer_t* cb) {
     }
 
     // Clear byte buffer of commands
-    neko_byte_buffer_clear(&cb->commands);
+    byte_buffer_clear(&cb->commands);
 
     // Set num commands to 0
     cb->num_commands = 0;

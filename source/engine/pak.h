@@ -4,6 +4,7 @@
 
 #include "engine/asset.h"
 #include "engine/prelude.h"
+#include "engine/vfs.h"
 
 /*==========================
 // NEKO_PACK
@@ -11,57 +12,57 @@
 
 #define NEKO_PAK_HEAD_SIZE 8
 
-typedef struct neko_pak {
+struct PakItemInfo {
+    u32 zip_size;
+    u32 data_size;
+    u64 file_offset;
+    u8 path_size;
+};
 
-    typedef struct {
-        u32 zip_size;
-        u32 data_size;
-        u64 file_offset;
-        u8 path_size;
-    } iteminfo;
+struct PakItem {
+    PakItemInfo info;
+    const_str path;
+};
 
-    typedef struct {
-        iteminfo info;
-        const_str path;
-    } item;
-
+struct Pak {
     vfs_file vf;
     u64 item_count;
-    item *items;
+    PakItem *items;
     u8 *data_buffer;
     u8 *zip_buffer;
     u32 data_size;
     u32 zip_size;
-    item search_item;
+    PakItem search_item;
     u32 file_ref_count;
+};
 
-    bool load(const_str file_path, u32 data_buffer_capacity, bool is_resources_directory);
-    void fini();
+bool pak_load(Pak *pak, const_str file_path, u32 data_buffer_capacity, bool is_resources_directory);
+void pak_fini(Pak *pak);
 
-    inline u64 get_item_count() const { return this->item_count; }
+inline u64 pak_get_item_count(Pak *pak) { return pak->item_count; }
 
-    inline u32 get_item_size(u64 index) {
-        neko_assert(index < this->item_count);
-        return this->items[index].info.data_size;
-    }
+inline u32 pak_get_item_size(Pak *pak, u64 index) {
+    neko_assert(index < pak->item_count);
+    return pak->items[index].info.data_size;
+}
 
-    inline const_str get_item_path(u64 index) {
-        neko_assert(index < this->item_count);
-        return this->items[index].path;
-    }
+inline const_str pak_get_item_path(Pak *pak, u64 index) {
+    neko_assert(index < pak->item_count);
+    return pak->items[index].path;
+}
 
-    u64 get_item_index(const_str path);
+u64 pak_get_item_index(Pak *pak, const_str path);
 
-    bool get_data(u64 index, String *out, u32 *size);
-    bool get_data(const_str path, String *out, u32 *size);
-    void free_item(String data);
-
-    void free_buffer();
-
-} neko_pak;
+bool pak_get_data(Pak *pak, u64 index, String *out, u32 *size);
+bool pak_get_data(Pak *pak, const_str path, String *out, u32 *size);
+void pak_free_item(Pak *pak, String data);
+void pak_free_buffer(Pak *pak);
 
 bool neko_pak_unzip(const_str file_path, bool print_progress);
 bool neko_pak_build(const_str pack_path, u64 file_count, const_str *file_paths, bool print_progress);
 bool neko_pak_info(const_str file_path, i32 *buildnum, u64 *item_count);
+
+int open_mt_pak(lua_State *L);
+int neko_pak_load(lua_State *L);
 
 #endif

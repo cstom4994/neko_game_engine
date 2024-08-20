@@ -1114,26 +1114,26 @@ NEKO_FORCE_INLINE size_t neko_hash_bytes(void* p, size_t len, size_t seed) {
 // Byte Buffer
 ========================*/
 
-/** @defgroup neko_byte_buffer Byte Buffer
+/** @defgroup byte_buffer Byte Buffer
  *  @ingroup neko_containers
  *  Byte Buffer
  */
 
 #define NEKO_BYTE_BUFFER_DEFAULT_CAPCITY 1024
 
-/** @addtogroup neko_byte_buffer
+/** @addtogroup byte_buffer
  */
-typedef struct neko_byte_buffer_t {
+typedef struct byte_buffer_t {
     u8* data;      // Buffer that actually holds all relevant byte data
     u32 size;      // Current size of the stored buffer data
     u32 position;  // Current read/write position in the buffer
     u32 capacity;  // Current max capacity for the buffer
-} neko_byte_buffer_t;
+} byte_buffer_t;
 
 // Generic "write" function for a byte buffer
-#define neko_byte_buffer_write(__BB, __T, __VAL)              \
+#define byte_buffer_write(__BB, __T, __VAL)              \
     do {                                                      \
-        neko_byte_buffer_t* __BUFFER = __BB;                  \
+        byte_buffer_t* __BUFFER = __BB;                  \
         usize __SZ = sizeof(__T);                             \
         usize __TWS = __BUFFER->position + __SZ;              \
         if (__TWS >= (usize)__BUFFER->capacity) {             \
@@ -1141,7 +1141,7 @@ typedef struct neko_byte_buffer_t {
             while (__CAP < __TWS) {                           \
                 __CAP *= 2;                                   \
             }                                                 \
-            neko_byte_buffer_resize(__BUFFER, __CAP);         \
+            byte_buffer_resize(__BUFFER, __CAP);         \
         }                                                     \
         *(__T*)(__BUFFER->data + __BUFFER->position) = __VAL; \
         __BUFFER->position += (u32)__SZ;                      \
@@ -1149,43 +1149,43 @@ typedef struct neko_byte_buffer_t {
     } while (0)
 
 // Generic "read" function
-#define neko_byte_buffer_read(__BUFFER, __T, __VAL_P)  \
+#define byte_buffer_read(__BUFFER, __T, __VAL_P)  \
     do {                                               \
         __T* __V = (__T*)(__VAL_P);                    \
-        neko_byte_buffer_t* __BB = (__BUFFER);         \
+        byte_buffer_t* __BB = (__BUFFER);         \
         *(__V) = *(__T*)(__BB->data + __BB->position); \
         __BB->position += sizeof(__T);                 \
     } while (0)
 
 // Defines variable and sets value from buffer in place
 // Use to construct a new variable
-#define neko_byte_buffer_readc(__BUFFER, __T, __NAME) \
+#define byte_buffer_readc(__BUFFER, __T, __NAME) \
     __T __NAME = NEKO_DEFAULT_VAL();                  \
-    neko_byte_buffer_read((__BUFFER), __T, &__NAME);
+    byte_buffer_read((__BUFFER), __T, &__NAME);
 
-#define neko_byte_buffer_read_bulkc(__BUFFER, __T, __NAME, __SZ) \
+#define byte_buffer_read_bulkc(__BUFFER, __T, __NAME, __SZ) \
     __T __NAME = NEKO_DEFAULT_VAL();                             \
     __T* NEKO_CONCAT(__NAME, __LINE__) = &(__NAME);              \
-    neko_byte_buffer_read_bulk(__BUFFER, (void**)&NEKO_CONCAT(__NAME, __LINE__), __SZ);
+    byte_buffer_read_bulk(__BUFFER, (void**)&NEKO_CONCAT(__NAME, __LINE__), __SZ);
 
-void neko_byte_buffer_init(neko_byte_buffer_t* buffer);
-neko_byte_buffer_t neko_byte_buffer_new();
-void neko_byte_buffer_free(neko_byte_buffer_t* buffer);
-void neko_byte_buffer_clear(neko_byte_buffer_t* buffer);
-bool neko_byte_buffer_empty(neko_byte_buffer_t* buffer);
-size_t neko_byte_buffer_size(neko_byte_buffer_t* buffer);
-void neko_byte_buffer_resize(neko_byte_buffer_t* buffer, size_t sz);
-void neko_byte_buffer_copy_contents(neko_byte_buffer_t* dst, neko_byte_buffer_t* src);
-void neko_byte_buffer_seek_to_beg(neko_byte_buffer_t* buffer);
-void neko_byte_buffer_seek_to_end(neko_byte_buffer_t* buffer);
-void neko_byte_buffer_advance_position(neko_byte_buffer_t* buffer, size_t sz);
-void neko_byte_buffer_write_str(neko_byte_buffer_t* buffer, const char* str);  // Expects a null terminated string
-void neko_byte_buffer_read_str(neko_byte_buffer_t* buffer, char* str);         // Expects an allocated string
-void neko_byte_buffer_write_bulk(neko_byte_buffer_t* buffer, void* src, size_t sz);
-void neko_byte_buffer_read_bulk(neko_byte_buffer_t* buffer, void** dst, size_t sz);
-bool neko_byte_buffer_write_to_file(neko_byte_buffer_t* buffer, const char* output_path);  // Assumes that the output directory exists
-bool neko_byte_buffer_read_from_file(neko_byte_buffer_t* buffer, const char* file_path);   // Assumes an allocated byte buffer
-void neko_byte_buffer_memset(neko_byte_buffer_t* buffer, u8 val);
+void byte_buffer_init(byte_buffer_t* buffer);
+byte_buffer_t byte_buffer_new();
+void byte_buffer_free(byte_buffer_t* buffer);
+void byte_buffer_clear(byte_buffer_t* buffer);
+bool byte_buffer_empty(byte_buffer_t* buffer);
+size_t byte_buffer_size(byte_buffer_t* buffer);
+void byte_buffer_resize(byte_buffer_t* buffer, size_t sz);
+void byte_buffer_copy_contents(byte_buffer_t* dst, byte_buffer_t* src);
+void byte_buffer_seek_to_beg(byte_buffer_t* buffer);
+void byte_buffer_seek_to_end(byte_buffer_t* buffer);
+void byte_buffer_advance_position(byte_buffer_t* buffer, size_t sz);
+void byte_buffer_write_str(byte_buffer_t* buffer, const char* str);  // Expects a null terminated string
+void byte_buffer_read_str(byte_buffer_t* buffer, char* str);         // Expects an allocated string
+void byte_buffer_write_bulk(byte_buffer_t* buffer, void* src, size_t sz);
+void byte_buffer_read_bulk(byte_buffer_t* buffer, void** dst, size_t sz);
+bool byte_buffer_write_to_file(byte_buffer_t* buffer, const char* output_path);  // Assumes that the output directory exists
+bool byte_buffer_read_from_file(byte_buffer_t* buffer, const char* file_path);   // Assumes an allocated byte buffer
+void byte_buffer_memset(byte_buffer_t* buffer, u8 val);
 
 /*===================================
 // Dynamic Array
@@ -1797,12 +1797,12 @@ typedef u32 neko_slot_map_iter;
 
 typedef struct command_buffer_t {
     u32 num_commands;
-    neko_byte_buffer_t commands;
+    byte_buffer_t commands;
 } command_buffer_t;
 
 NEKO_FORCE_INLINE command_buffer_t command_buffer_new() {
     command_buffer_t cb = NEKO_DEFAULT_VAL();
-    cb.commands = neko_byte_buffer_new();
+    cb.commands = byte_buffer_new();
     return cb;
 }
 
@@ -1810,20 +1810,20 @@ NEKO_FORCE_INLINE command_buffer_t command_buffer_new() {
     do {                                                       \
         command_buffer_t* __cb = (__CB);                  \
         __cb->num_commands++;                                  \
-        neko_byte_buffer_write(&__cb->commands, __CT, (__C));  \
-        neko_byte_buffer_write(&__cb->commands, __T, (__VAL)); \
+        byte_buffer_write(&__cb->commands, __CT, (__C));  \
+        byte_buffer_write(&__cb->commands, __T, (__VAL)); \
     } while (0)
 
 NEKO_FORCE_INLINE void command_buffer_clear(command_buffer_t* cb) {
     cb->num_commands = 0;
-    neko_byte_buffer_clear(&cb->commands);
+    byte_buffer_clear(&cb->commands);
 }
 
-NEKO_FORCE_INLINE void command_buffer_free(command_buffer_t* cb) { neko_byte_buffer_free(&cb->commands); }
+NEKO_FORCE_INLINE void command_buffer_free(command_buffer_t* cb) { byte_buffer_free(&cb->commands); }
 
 #define command_buffer_readc(__CB, __T, __NAME) \
     __T __NAME = NEKO_DEFAULT_VAL();                 \
-    neko_byte_buffer_read(&(__CB)->commands, __T, &__NAME);
+    byte_buffer_read(&(__CB)->commands, __T, &__NAME);
 
 typedef command_buffer_t neko_cmdbuf;
 

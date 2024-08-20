@@ -6,6 +6,7 @@
 #include "engine/game.h"
 #include "engine/seri.h"
 #include "engine/transform.h"
+#include "engine/vfs.h"
 
 // deps
 #ifdef NEKO_BOX2D
@@ -17,7 +18,7 @@
 
 #include <stb_image.h>
 
-DECL_ENT(Tiled, neko_tiled_renderer *render; LuaVec2 pos;);
+DECL_ENT(Tiled, tiled_renderer *render; LuaVec2 pos;);
 
 static EntityPool *pool;
 
@@ -561,7 +562,7 @@ TileNode *MapLdtk::astar(TilePoint start, TilePoint goal) {
     return nullptr;
 }
 
-void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
+void tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
 
     PROFILE_FUNC();
 
@@ -765,7 +766,7 @@ void neko_tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
     }
 }
 
-void neko_tiled_unload(map_t *map) {
+void tiled_unload(map_t *map) {
 
     PROFILE_FUNC();
 
@@ -789,7 +790,7 @@ void neko_tiled_unload(map_t *map) {
     xml_free(map->doc);
 }
 
-void neko_tiled_render_init(command_buffer_t *cb, neko_tiled_renderer *renderer) {
+void tiled_render_init(command_buffer_t *cb, tiled_renderer *renderer) {
 
     PROFILE_FUNC();
 
@@ -857,15 +858,15 @@ void neko_tiled_render_init(command_buffer_t *cb, neko_tiled_renderer *renderer)
                                                             .layout = {.attrs = vertex_attr_des, .size = 4 * sizeof(gfx_vertex_attribute_desc_t)}});
 }
 
-void neko_tiled_render_deinit(neko_tiled_renderer *renderer) {
+void tiled_render_deinit(tiled_renderer *renderer) {
 
     PROFILE_FUNC();
 
     for (neko_hash_table_iter it = neko_hash_table_iter_new(renderer->quad_table); neko_hash_table_iter_valid(renderer->quad_table, it); neko_hash_table_iter_advance(renderer->quad_table, it)) {
         u32 k = neko_hash_table_iter_getk(renderer->quad_table, it);
-        neko_tiled_quad_list_t quad_list = neko_hash_table_iter_get(renderer->quad_table, it);
+        tiled_quad_list_t quad_list = neko_hash_table_iter_get(renderer->quad_table, it);
 
-        neko_dyn_array(neko_tiled_quad_t) v = quad_list.quad_list;
+        neko_dyn_array(tiled_quad_t) v = quad_list.quad_list;
 
         neko_dyn_array_free(v);
     }
@@ -876,7 +877,7 @@ void neko_tiled_render_deinit(neko_tiled_renderer *renderer) {
     // command_buffer_free(cb);
 }
 
-void neko_tiled_render_begin(command_buffer_t *cb, neko_tiled_renderer *renderer) {
+void tiled_render_begin(command_buffer_t *cb, tiled_renderer *renderer) {
 
     // gfx_clear_desc_t clear = {.actions = &(gfx_clear_action_t){.color = {0.1f, 0.1f, 0.1f, 1.0f}}};
     // gfx_clear(cb, &clear);
@@ -884,7 +885,7 @@ void neko_tiled_render_begin(command_buffer_t *cb, neko_tiled_renderer *renderer
     renderer->quad_count = 0;
 }
 
-void neko_tiled_render_flush(command_buffer_t *cb, neko_tiled_renderer *renderer) {
+void tiled_render_flush(command_buffer_t *cb, tiled_renderer *renderer) {
 
     PROFILE_FUNC();
 
@@ -928,21 +929,21 @@ void neko_tiled_render_flush(command_buffer_t *cb, neko_tiled_renderer *renderer
     renderer->quad_count = 0;
 }
 
-void neko_tiled_render_push(command_buffer_t *cb, neko_tiled_renderer *renderer, neko_tiled_quad_t quad) {
+void tiled_render_push(command_buffer_t *cb, tiled_renderer *renderer, tiled_quad_t quad) {
 
     // PROFILE_FUNC();
 
     // 如果这个quad的tileset还不存在于quad_table中则插入一个
     // tileset_id为quad_table的键值
-    if (!neko_hash_table_exists(renderer->quad_table, quad.tileset_id))                            //
-        neko_hash_table_insert(renderer->quad_table, quad.tileset_id, neko_tiled_quad_list_t{0});  //
+    if (!neko_hash_table_exists(renderer->quad_table, quad.tileset_id))                       //
+        neko_hash_table_insert(renderer->quad_table, quad.tileset_id, tiled_quad_list_t{0});  //
 
     //
-    neko_tiled_quad_list_t *quad_list = neko_hash_table_getp(renderer->quad_table, quad.tileset_id);
+    tiled_quad_list_t *quad_list = neko_hash_table_getp(renderer->quad_table, quad.tileset_id);
     neko_dyn_array_push(quad_list->quad_list, quad);
 }
 
-void neko_tiled_render_draw(command_buffer_t *cb, neko_tiled_renderer *renderer) {
+void tiled_render_draw(command_buffer_t *cb, tiled_renderer *renderer) {
 
     PROFILE_FUNC();
 
@@ -951,15 +952,15 @@ void neko_tiled_render_draw(command_buffer_t *cb, neko_tiled_renderer *renderer)
     // iterate quads hash table
     for (neko_hash_table_iter it = neko_hash_table_iter_new(renderer->quad_table); neko_hash_table_iter_valid(renderer->quad_table, it); neko_hash_table_iter_advance(renderer->quad_table, it)) {
         u32 k = neko_hash_table_iter_getk(renderer->quad_table, it);
-        neko_tiled_quad_list_t quad_list = neko_hash_table_iter_get(renderer->quad_table, it);
+        tiled_quad_list_t quad_list = neko_hash_table_iter_get(renderer->quad_table, it);
 
-        neko_dyn_array(neko_tiled_quad_t) v = quad_list.quad_list;
+        neko_dyn_array(tiled_quad_t) v = quad_list.quad_list;
 
         u32 quad_size = neko_dyn_array_size(v);
 
         for (u32 i = 0; i < quad_size; i++) {
 
-            neko_tiled_quad_t *quad = &v[i];
+            tiled_quad_t *quad = &v[i];
 
             f32 tx = 0.f, ty = 0.f, tw = 0.f, th = 0.f;
 
@@ -981,7 +982,7 @@ void neko_tiled_render_draw(command_buffer_t *cb, neko_tiled_renderer *renderer)
                 //     renderer->textures[renderer->texture_count] = quad->texture;
                 //     tex_id = renderer->texture_count++;
                 //     if (renderer->texture_count >= MAX_TEXTURES) {
-                //         neko_tiled_render_flush(cb);
+                //         tiled_render_flush(cb);
                 //         tex_id = 0;
                 //         renderer->textures[0] = quad->texture;
                 //     }
@@ -1027,13 +1028,13 @@ void neko_tiled_render_draw(command_buffer_t *cb, neko_tiled_renderer *renderer)
             renderer->quad_count++;
 
             if (renderer->quad_count >= BATCH_SIZE) {
-                neko_tiled_render_flush(cb, renderer);
+                tiled_render_flush(cb, renderer);
             }
         }
 
         neko_dyn_array_clear(v);
 
-        neko_tiled_render_flush(cb, renderer);
+        tiled_render_flush(cb, renderer);
     }
 }
 
@@ -1041,7 +1042,7 @@ int tiled_render(command_buffer_t *cb, Tiled *tiled) {
 
     PROFILE_FUNC();
 
-    // neko_tiled_renderer *tiled_render = (neko_tiled_renderer *)lua_touserdata(L, 1);
+    // tiled_renderer *tiled_render = (tiled_renderer *)lua_touserdata(L, 1);
 
     // neko_renderpass_t rp = R_RENDER_PASS_DEFAULT;
     // neko_luabind_struct_to_member(L, neko_renderpass_t, id, &rp, 2);
@@ -1065,7 +1066,7 @@ int tiled_render(command_buffer_t *cb, Tiled *tiled) {
 
     // gfx_renderpass_begin(cb, rp);
     {
-        neko_tiled_render_begin(cb, tiled->render);
+        tiled_render_begin(cb, tiled->render);
 
         PROFILE_BLOCK("tiled_render");
 
@@ -1078,32 +1079,32 @@ int tiled_render(command_buffer_t *cb, Tiled *tiled) {
                         tileset_t *tileset = tiled->render->map.tilesets + tile->tileset_id;
                         u32 tsxx = (tile->id % (tileset->width / tileset->tile_width) - 1) * tileset->tile_width;
                         u32 tsyy = tileset->tile_height * ((tile->id - tileset->first_gid) / (tileset->width / tileset->tile_width));
-                        neko_tiled_quad_t quad = {.tileset_id = tile->tileset_id,
-                                                  .texture = tileset->texture,
-                                                  .texture_size = {(f32)tileset->width, (f32)tileset->height},
-                                                  .position = {(f32)(x * tileset->tile_width * SPRITE_SCALE) + xform.x, (f32)(y * tileset->tile_height * SPRITE_SCALE) + xform.y},
-                                                  .dimentions = {(f32)(tileset->tile_width * SPRITE_SCALE), (f32)(tileset->tile_height * SPRITE_SCALE)},
-                                                  .rectangle = {(f32)tsxx, (f32)tsyy, (f32)tileset->tile_width, (f32)tileset->tile_height},
-                                                  .color = layer->tint,
-                                                  .use_texture = true};
-                        neko_tiled_render_push(cb, tiled->render, quad);
+                        tiled_quad_t quad = {.tileset_id = tile->tileset_id,
+                                             .texture = tileset->texture,
+                                             .texture_size = {(f32)tileset->width, (f32)tileset->height},
+                                             .position = {(f32)(x * tileset->tile_width * SPRITE_SCALE) + xform.x, (f32)(y * tileset->tile_height * SPRITE_SCALE) + xform.y},
+                                             .dimentions = {(f32)(tileset->tile_width * SPRITE_SCALE), (f32)(tileset->tile_height * SPRITE_SCALE)},
+                                             .rectangle = {(f32)tsxx, (f32)tsyy, (f32)tileset->tile_width, (f32)tileset->tile_height},
+                                             .color = layer->tint,
+                                             .use_texture = true};
+                        tiled_render_push(cb, tiled->render, quad);
                     }
                 }
             }
-            neko_tiled_render_draw(cb, tiled->render);  // 一层渲染一次
+            tiled_render_draw(cb, tiled->render);  // 一层渲染一次
         }
 
         for (u32 i = 0; i < neko_dyn_array_size(tiled->render->map.object_groups); i++) {
             object_group_t *group = tiled->render->map.object_groups + i;
             for (u32 ii = 0; ii < neko_dyn_array_size(tiled->render->map.object_groups[i].objects); ii++) {
                 object_t *object = group->objects + ii;
-                neko_tiled_quad_t quad = {.position = {(f32)(object->x * SPRITE_SCALE) + xform.x, (f32)(object->y * SPRITE_SCALE) + xform.y},
-                                          .dimentions = {(f32)(object->width * SPRITE_SCALE), (f32)(object->height * SPRITE_SCALE)},
-                                          .color = group->color,
-                                          .use_texture = false};
-                neko_tiled_render_push(cb, tiled->render, quad);
+                tiled_quad_t quad = {.position = {(f32)(object->x * SPRITE_SCALE) + xform.x, (f32)(object->y * SPRITE_SCALE) + xform.y},
+                                     .dimentions = {(f32)(object->width * SPRITE_SCALE), (f32)(object->height * SPRITE_SCALE)},
+                                     .color = group->color,
+                                     .use_texture = false};
+                tiled_render_push(cb, tiled->render, quad);
             }
-            neko_tiled_render_draw(cb, tiled->render);  // 一层渲染一次
+            tiled_render_draw(cb, tiled->render);  // 一层渲染一次
         }
 
         // for (u32 i = 0; i < neko_dyn_array_size(tiled->render->map.object_groups); i++) {
@@ -1139,11 +1140,11 @@ void tiled_add(Entity ent) {
 
     tiled = (Tiled *)entitypool_add(pool, ent);
 
-    tiled->render = (neko_tiled_renderer *)mem_alloc(sizeof(neko_tiled_renderer));
-    memset(tiled->render, 0, sizeof(neko_tiled_renderer));
+    tiled->render = (tiled_renderer *)mem_alloc(sizeof(tiled_renderer));
+    memset(tiled->render, 0, sizeof(tiled_renderer));
 
-    neko_tiled_load(&tiled->render->map, "assets/maps/map.tmx", NULL);
-    neko_tiled_render_init(&g_app->cb, tiled->render);
+    tiled_load(&tiled->render->map, "assets/maps/map.tmx", NULL);
+    tiled_render_init(&g_app->cb, tiled->render);
 }
 
 void tiled_remove(Entity ent) { entitypool_remove(pool, ent); }
@@ -1159,8 +1160,8 @@ void tiled_init() {
 void tiled_fini() {
     Tiled *tiled;
     entitypool_foreach(tiled, pool) {
-        neko_tiled_unload(&tiled->render->map);
-        neko_tiled_render_deinit(tiled->render);
+        tiled_unload(&tiled->render->map);
+        tiled_render_deinit(tiled->render);
         mem_free(tiled->render);
     }
 

@@ -11,6 +11,7 @@
 #include "engine/console.h"
 #include "engine/game.h"
 #include "engine/prelude.h"
+#include "engine/vfs.h"
 
 // deps
 #include <stb_image.h>

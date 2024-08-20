@@ -144,10 +144,10 @@ typedef struct map_t {
     neko_dyn_array(layer_t) layers;
 } map_t;
 
-void neko_tiled_load(map_t* map, const_str tmx_path, const_str res_path);
-void neko_tiled_unload(map_t* map);
+void tiled_load(map_t* map, const_str tmx_path, const_str res_path);
+void tiled_unload(map_t* map);
 
-typedef struct neko_tiled_quad_t {
+typedef struct tiled_quad_t {
     u32 tileset_id;
     neko_texture_t texture;
     vec2 texture_size;
@@ -156,7 +156,7 @@ typedef struct neko_tiled_quad_t {
     vec4 rectangle;
     Color256 color;
     bool use_texture;
-} neko_tiled_quad_t;
+} tiled_quad_t;
 
 #define BATCH_SIZE 4096
 
@@ -165,11 +165,11 @@ typedef struct neko_tiled_quad_t {
 #define VERTS_PER_QUAD 4   // 一次发送多少个verts数据
 #define FLOATS_PER_VERT 9  // 每个verts数据的大小
 
-typedef struct neko_tiled_quad_list_t {
-    neko_dyn_array(neko_tiled_quad_t) quad_list;  // quad 绘制队列
-} neko_tiled_quad_list_t;
+typedef struct tiled_quad_list_t {
+    neko_dyn_array(tiled_quad_t) quad_list;  // quad 绘制队列
+} tiled_quad_list_t;
 
-typedef struct neko_tiled_renderer {
+typedef struct tiled_renderer {
     neko_handle(gfx_vertex_buffer_t) vb;
     neko_handle(gfx_index_buffer_t) ib;
     neko_handle(gfx_pipeline_t) pip;
@@ -177,21 +177,21 @@ typedef struct neko_tiled_renderer {
     neko_handle(gfx_uniform_t) u_camera;
     neko_handle(gfx_uniform_t) u_batch_tex;
     neko_handle(gfx_texture_t) batch_texture;                 // 当前绘制所用贴图
-    neko_hash_table(u32, neko_tiled_quad_list_t) quad_table;  // 分层绘制哈希表
+    neko_hash_table(u32, tiled_quad_list_t) quad_table;  // 分层绘制哈希表
 
     u32 quad_count;
 
     map_t map;  // tiled data
 
     LuaMat3 camera_mat;
-} neko_tiled_renderer;
+} tiled_renderer;
 
-void neko_tiled_render_init(command_buffer_t* cb, neko_tiled_renderer* renderer);
-void neko_tiled_render_deinit(neko_tiled_renderer* renderer);
-void neko_tiled_render_begin(command_buffer_t* cb, neko_tiled_renderer* renderer);
-void neko_tiled_render_flush(command_buffer_t* cb, neko_tiled_renderer* renderer);
-void neko_tiled_render_push(command_buffer_t* cb, neko_tiled_renderer* renderer, neko_tiled_quad_t quad);
-void neko_tiled_render_draw(command_buffer_t* cb, neko_tiled_renderer* renderer);
+void tiled_render_init(command_buffer_t* cb, tiled_renderer* renderer);
+void tiled_render_deinit(tiled_renderer* renderer);
+void tiled_render_begin(command_buffer_t* cb, tiled_renderer* renderer);
+void tiled_render_flush(command_buffer_t* cb, tiled_renderer* renderer);
+void tiled_render_push(command_buffer_t* cb, tiled_renderer* renderer, tiled_quad_t quad);
+void tiled_render_draw(command_buffer_t* cb, tiled_renderer* renderer);
 
 struct Tiled;
 
