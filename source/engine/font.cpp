@@ -1,5 +1,7 @@
 #include "engine/font.h"
 
+#include <stb_truetype.h>
+
 #include "engine/api.hpp"
 #include "engine/asset.h"
 #include "engine/camera.h"
@@ -103,7 +105,7 @@ static void make_font_range(FontRange *out, FontFamily *font, FontKey key) {
         t_desc.data = data;
 
         // neko_tex_flip_vertically(width, height, (u8 *)(t_desc.data[0]));
-        neko_texture_t tex = gfx_texture_create(t_desc);
+        gfx_texture_t tex = gfx_texture_create(t_desc);
 
         out->tex.id = tex.id;
         out->tex.width = width;
@@ -166,7 +168,7 @@ FontFamily *neko_default_font() {
 
 void font_draw_all() {}
 
-static void draw_font_line(idraw_t *idraw, FontFamily *font, float size, float *start_x, float *start_y, String line, Color256 col) {
+static void draw_font_line(FontFamily *font, float size, float *start_x, float *start_y, String line, Color256 col) {
     float x = *start_x;
     float y = *start_y;
 
@@ -224,19 +226,19 @@ static void draw_font_line(idraw_t *idraw, FontFamily *font, float size, float *
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-float draw_font(idraw_t *idraw, FontFamily *font, float size, float x, float y, String text, Color256 col) {
+float draw_font(FontFamily *font, float size, float x, float y, String text, Color256 col) {
     PROFILE_FUNC();
 
     y += size;
 
     for (String line : SplitLines(text)) {
-        draw_font_line(idraw, font, size, &x, &y, line, col);
+        draw_font_line(font, size, &x, &y, line, col);
     }
 
     return y - size;
 }
 
-float draw_font_wrapped(idraw_t *idraw, FontFamily *font, float size, float x, float y, String text, Color256 col, float limit) {
+float draw_font_wrapped(FontFamily *font, float size, float x, float y, String text, Color256 col, float limit) {
     PROFILE_FUNC();
 
     y += size;
@@ -258,13 +260,13 @@ float draw_font_wrapped(idraw_t *idraw, FontFamily *font, float size, float x, f
             font->sb.len -= word.len;
             font->sb.data[font->sb.len] = '\0';
 
-            draw_font_line(idraw, font, size, &x, &y, String(font->sb), col);
+            draw_font_line(font, size, &x, &y, String(font->sb), col);
 
             font->sb.clear();
             font->sb << word << " ";
         }
 
-        draw_font_line(idraw, font, size, &x, &y, String(font->sb), col);
+        draw_font_line(font, size, &x, &y, String(font->sb), col);
     }
 
     return y - size;
@@ -331,13 +333,13 @@ static int mt_font_draw(lua_State *L) {
     lua_Number size = luaL_optnumber(L, 5, 12);
     lua_Number wrap = luaL_optnumber(L, 6, -1);
 
-    idraw_t *idraw = &g_app->idraw;
+    // idraw_t *idraw = &g_app->idraw;
 
     float bottom = 0;
     if (wrap < 0) {
-        bottom = draw_font(idraw, font, (u64)size, (float)x, (float)y, text, NEKO_COLOR_WHITE);
+        bottom = draw_font(font, (u64)size, (float)x, (float)y, text, NEKO_COLOR_WHITE);
     } else {
-        bottom = draw_font_wrapped(idraw, font, (u64)size, (float)x, (float)y, text, NEKO_COLOR_WHITE, (float)wrap);
+        bottom = draw_font_wrapped(font, (u64)size, (float)x, (float)y, text, NEKO_COLOR_WHITE, (float)wrap);
     }
 
     lua_pushnumber(L, bottom);

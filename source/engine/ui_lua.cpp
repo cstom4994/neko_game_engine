@@ -3,7 +3,6 @@
 
 #include "engine/game.h"
 #include "engine/luax.h"
-#include "engine/ui.h"
 
 ui_rect_t lua_ui_check_rect(lua_State *L, i32 arg) {
     ui_rect_t rect = {};

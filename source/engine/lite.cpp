@@ -20,7 +20,6 @@
 #include <filesystem>
 
 #include "engine/input.h"
-#include "engine/ui.h"
 #include "engine/vfs.h"
 
 // deps

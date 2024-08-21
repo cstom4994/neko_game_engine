@@ -8,7 +8,6 @@
 
 #include <array>
 
-#include "engine/ui.h"
 
 #define neko_imgui_tree_max_elementsize sizeof(std::string)
 #define neko_imgui_tree_max_tuple 3

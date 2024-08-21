@@ -847,4 +847,131 @@ inline bool neko_aabb_vs_aabb(neko_aabb_t* a, neko_aabb_t* b) {
     return false;
 }
 
+// #define neko_pi 3.14159265358f
+
+#define neko_squared(a_) ((a_) * (a_))
+
+typedef struct neko_v2f_t {
+    float x, y;
+} neko_v2f_t;
+
+typedef struct neko_v2i_t {
+    i32 x, y;
+} neko_v2i_t;
+
+typedef struct neko_v2u_t {
+    u32 x, y;
+} neko_v2u_t;
+
+float neko_v2f_mag(neko_v2f_t v);
+neko_v2f_t neko_v2f_normalise(neko_v2f_t v);
+float neko_v2f_dist(neko_v2f_t a, neko_v2f_t b);
+float neko_v2f_dot(neko_v2f_t a, neko_v2f_t b);
+
+i32 neko_v2i_mag(neko_v2i_t v);
+neko_v2i_t neko_v2i_normalise(neko_v2i_t v);
+i32 neko_v2i_dist(neko_v2i_t a, neko_v2i_t b);
+i32 neko_v2i_dot(neko_v2i_t a, neko_v2i_t b);
+
+u32 neko_v2u_mag(neko_v2u_t v);
+neko_v2u_t neko_v2u_normalise(neko_v2u_t v);
+u32 neko_v2u_dist(neko_v2u_t a, neko_v2u_t b);
+u32 neko_v2u_dot(neko_v2u_t a, neko_v2u_t b);
+
+typedef struct neko_v3f_t {
+    float x, y, z;
+} neko_v3f_t;
+
+typedef struct neko_v3i_t {
+    i32 x, y, z;
+} neko_v3i_t;
+
+typedef struct neko_v3u_t {
+    u32 x, y, z;
+} neko_v3u_t;
+
+float neko_v3f_mag(neko_v3f_t v);
+neko_v3f_t neko_v3f_normalise(neko_v3f_t v);
+float neko_v3f_dist(neko_v3f_t a, neko_v3f_t b);
+float neko_v3f_dot(neko_v3f_t a, neko_v3f_t b);
+neko_v3f_t neko_v3f_cross(neko_v3f_t a, neko_v3f_t b);
+
+i32 neko_v3i_mag(neko_v3i_t v);
+neko_v3i_t neko_v3i_normalise(neko_v3i_t v);
+i32 neko_v3i_dist(neko_v3i_t a, neko_v3i_t b);
+i32 neko_v3i_dot(neko_v3i_t a, neko_v3i_t b);
+
+u32 neko_v3u_mag(neko_v3u_t v);
+neko_v3u_t neko_v3u_normalise(neko_v3u_t v);
+u32 neko_v3u_dist(neko_v3u_t a, neko_v3u_t b);
+u32 neko_v3u_dot(neko_v3u_t a, neko_v3u_t b);
+
+typedef struct neko_v4f_t {
+    float x, y, z, w;
+} neko_v4f_t;
+
+typedef struct neko_v4i {
+    i32 x, y, z, w;
+} neko_v4i;
+
+typedef struct neko_v4u {
+    u32 x, y, z, w;
+} neko_v4u;
+
+float neko_v4f_mag(neko_v4f_t v);
+neko_v4f_t neko_v4f_normalise(neko_v4f_t v);
+float neko_v4f_dist(neko_v4f_t a, neko_v4f_t b);
+float neko_v4f_dot(neko_v4f_t a, neko_v4f_t b);
+
+i32 neko_v4i_mag(neko_v4i v);
+neko_v4i neko_v4i_normalise(neko_v4i v);
+i32 neko_v4i_dist(neko_v4i a, neko_v4i b);
+i32 neko_v4i_dot(neko_v4i a, neko_v4i b);
+
+u32 neko_v4u_mag(neko_v4u v);
+neko_v4u neko_v4u_normalise(neko_v4u v);
+u32 neko_v4u_dist(neko_v4u a, neko_v4u b);
+u32 neko_v4u_dot(neko_v4u a, neko_v4u b);
+
+/* To-degrees */
+float neko_todeg(float rad);
+neko_v2f_t neko_todeg_v2f(neko_v2f_t rad);
+neko_v3f_t neko_todeg_v3f(neko_v3f_t rad);
+neko_v4f_t neko_todeg_v4f(neko_v4f_t rad);
+
+/* To-radians */
+float neko_torad(float deg);
+neko_v2f_t neko_torad_v2f(neko_v2f_t deg);
+neko_v3f_t neko_torad_v3f(neko_v3f_t deg);
+neko_v4f_t neko_torad_v4f(neko_v4f_t deg);
+
+/* 4x4 float matrix */
+typedef struct neko_m4f_t {
+    float elements[4][4];
+} neko_m4f_t;
+
+neko_m4f_t neko_new_mf4(float diagonal);
+neko_m4f_t neko_m4f_identity();
+
+neko_m4f_t neko_m4f_multiply(neko_m4f_t a, neko_m4f_t b);
+
+neko_m4f_t neko_m4f_translate(neko_m4f_t m, neko_v3f_t v);
+neko_m4f_t neko_m4f_rotate(neko_m4f_t m, float a, neko_v3f_t v);
+neko_m4f_t neko_m4f_scale(neko_m4f_t m, neko_v3f_t v);
+
+neko_m4f_t neko_m4f_ortho(float left, float right, float bottom, float top, float near, float far);
+
+neko_m4f_t neko_m4f_persp(float fov, float aspect, float near, float far);
+
+neko_m4f_t neko_m4f_lookat(neko_v3f_t camera, neko_v3f_t object, neko_v3f_t up);
+
+void neko_m4f_decompose(neko_m4f_t matrix, neko_v3f_t* translation, neko_v3f_t* rotation, neko_v3f_t* scale);
+
+neko_m4f_t neko_m4f_inverse(neko_m4f_t m);
+
+neko_v3f_t neko_v3f_transform(neko_v3f_t v, neko_m4f_t m);
+neko_v4f_t neko_v4f_transform(neko_v4f_t v, neko_m4f_t m);
+
+/* TODO: signed and unsigned integer matrices */
+
 #endif

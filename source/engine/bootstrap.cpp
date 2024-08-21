@@ -18,7 +18,6 @@
 #include "engine/math.h"
 #include "engine/os.h"
 #include "engine/prelude.h"
-#include "engine/ui.h"
 
 // deps
 #include "vendor/sokol_time.h"
@@ -212,7 +211,7 @@ static void init() {
     neko::timer tm_init;
     tm_init.start();
 
-    // microui_init();
+    // ui_init();
 
     // renderer_reset();
 
@@ -306,7 +305,7 @@ static void render() {
         const int height = sapp_height();
         simgui_new_frame({width, height, sapp_frame_duration(), sapp_dpi_scale()});
 
-        microui_begin();
+        ui_begin();
 
         lua_State *L = g_app->L;
 
@@ -322,7 +321,7 @@ static void render() {
 
         assert(lua_gettop(L) == 1);
 
-        microui_end_and_present();
+        ui_end_and_present();
 
 
         sgimgui_draw(&sgimgui);
@@ -430,7 +429,7 @@ static void actually_cleanup() {
         }
     }
 
-    microui_trash();
+    ui_trash();
 
     {
         PROFILE_BLOCK("lua close");

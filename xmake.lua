@@ -94,8 +94,8 @@ do
     add_files("source/engine/**.lua")
     add_files("source/engine/**.cpp")
     add_files("source/vendor/http.c")
-    add_files("source/vendor/microui.c")
-    add_files("source/engine2/*.c")
+    add_files("source/vendor/ui.c")
+    -- add_files("source/engine2/*.c")
 
     add_headerfiles("source/engine/**.h", "source/engine/**.hpp", "source/engine2/**.h", "source/vendor/**.h")
 

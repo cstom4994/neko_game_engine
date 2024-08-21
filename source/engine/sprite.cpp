@@ -6,8 +6,9 @@
 
 #include "engine/base.h"
 #include "engine/camera.h"
-#include "engine/entity.h"
+#include "engine/draw.h"
 #include "engine/edit.h"
+#include "engine/entity.h"
 #include "engine/game.h"
 #include "engine/gfx.h"
 #include "engine/prelude.h"
@@ -282,7 +283,7 @@ bool AseSpriteData::load(String filepath) {
 
     // stbi_write_png("h.png", ase_width, ase_height, 4, data, 0);
 
-    neko_texture_t new_tex = NEKO_DEFAULT_VAL();
+    gfx_texture_t new_tex = NEKO_DEFAULT_VAL();
     {
         PROFILE_BLOCK("make image");
 

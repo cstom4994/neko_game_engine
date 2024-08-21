@@ -34,9 +34,8 @@ struct FontFamily {
 
 FontFamily* neko_default_font();
 
-struct idraw_t;
-float draw_font(idraw_t* idraw, FontFamily* font, float size, float x, float y, String text, Color256 col);
-float draw_font_wrapped(idraw_t* idraw, FontFamily* font, float size, float x, float y, String text, Color256 col, float limit);
+float draw_font(FontFamily* font, float size, float x, float y, String text, Color256 col);
+float draw_font_wrapped(FontFamily* font, float size, float x, float y, String text, Color256 col, float limit);
 
 void font_init();
 void font_draw_all();

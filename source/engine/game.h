@@ -76,7 +76,9 @@ struct App {
 
     command_buffer_t cb;
     // ui_context_t ui;
-    idraw_t idraw;
+    // idraw_t idraw;
+
+    mu_Context *ui;
 
     f64 width;
     f64 height;

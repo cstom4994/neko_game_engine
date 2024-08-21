@@ -55,7 +55,7 @@ NEKO_FORCE_INLINE void neko_tex_flip_vertically(int width, int height, u8 *data)
     }
 }
 
-neko_texture_t neko_aseprite_simple(String filename) {
+gfx_texture_t neko_aseprite_simple(String filename) {
     String contents = {};
     bool ok = vfs_read_entire_file(&contents, filename);
 
@@ -85,7 +85,7 @@ neko_texture_t neko_aseprite_simple(String filename) {
     t_desc.data = data;
 
     neko_tex_flip_vertically(ase->w, ase->h, (u8 *)(t_desc.data));
-    neko_texture_t tex = gfx_texture_create(t_desc);
+    gfx_texture_t tex = gfx_texture_create(t_desc);
     cute_aseprite_free(ase);
     return tex;
 }

@@ -406,37 +406,37 @@ LUASTRUCT_FIELD(z, float)
 LUASTRUCT_FIELD(w, float)
 LUASTRUCT_END
 
-LUASTRUCT_BEGIN(neko_shader_t)
+// LUASTRUCT_BEGIN(gfx_shader_t)
+// LUASTRUCT_FIELD(id, uint)
+// LUASTRUCT_END
+
+// LUASTRUCT_BEGIN(neko_pipeline_t)
+// LUASTRUCT_FIELD(id, uint)
+// LUASTRUCT_END
+
+// LUASTRUCT_BEGIN(neko_vbo_t)
+// LUASTRUCT_FIELD(id, uint)
+// LUASTRUCT_END
+
+// LUASTRUCT_BEGIN(neko_ibo_t)
+// LUASTRUCT_FIELD(id, uint)
+// LUASTRUCT_END
+
+// LUASTRUCT_BEGIN(neko_uniform_t)
+// LUASTRUCT_FIELD(id, uint)
+// LUASTRUCT_END
+
+// LUASTRUCT_BEGIN(neko_framebuffer_t)
+// LUASTRUCT_FIELD(id, uint)
+// LUASTRUCT_END
+
+LUASTRUCT_BEGIN(gfx_texture_t)
 LUASTRUCT_FIELD(id, uint)
 LUASTRUCT_END
 
-LUASTRUCT_BEGIN(neko_pipeline_t)
-LUASTRUCT_FIELD(id, uint)
-LUASTRUCT_END
-
-LUASTRUCT_BEGIN(neko_vbo_t)
-LUASTRUCT_FIELD(id, uint)
-LUASTRUCT_END
-
-LUASTRUCT_BEGIN(neko_ibo_t)
-LUASTRUCT_FIELD(id, uint)
-LUASTRUCT_END
-
-LUASTRUCT_BEGIN(neko_uniform_t)
-LUASTRUCT_FIELD(id, uint)
-LUASTRUCT_END
-
-LUASTRUCT_BEGIN(neko_framebuffer_t)
-LUASTRUCT_FIELD(id, uint)
-LUASTRUCT_END
-
-LUASTRUCT_BEGIN(neko_texture_t)
-LUASTRUCT_FIELD(id, uint)
-LUASTRUCT_END
-
-LUASTRUCT_BEGIN(neko_renderpass_t)
-LUASTRUCT_FIELD(id, uint)
-LUASTRUCT_END
+// LUASTRUCT_BEGIN(neko_renderpass_t)
+// LUASTRUCT_FIELD(id, uint)
+// LUASTRUCT_END
 
 // LUASTRUCT_BEGIN(Color)
 // LUASTRUCT_FIELD(r, u8)
@@ -450,14 +450,14 @@ void createStructTables(lua_State *L) {
     // vec4_create(L, "vec4");
 
     XX(vec4);
-    XX(neko_shader_t);
-    XX(neko_pipeline_t);
-    XX(neko_vbo_t);
-    XX(neko_ibo_t);
-    XX(neko_uniform_t);
-    XX(neko_framebuffer_t);
-    XX(neko_texture_t);
-    XX(neko_renderpass_t);
+    // XX(gfx_shader_t);
+    // XX(neko_pipeline_t);
+    // XX(neko_vbo_t);
+    // XX(neko_ibo_t);
+    // XX(neko_uniform_t);
+    // XX(neko_framebuffer_t);
+    XX(gfx_texture_t);
+    // XX(neko_renderpass_t);
 
     ARRAY_uchar8_create(L);
 #undef XX

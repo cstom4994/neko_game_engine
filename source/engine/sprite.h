@@ -21,7 +21,7 @@ struct AseSpriteData {
     Arena arena;
     Slice<AseSpriteFrame> frames;
     HashMap<AseSpriteLoop> by_tag;
-    neko_texture_t tex;
+    gfx_texture_t tex;
     i32 width;
     i32 height;
 

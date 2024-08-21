@@ -18,7 +18,6 @@
 #include "engine/sprite.h"
 #include "engine/system.h"
 #include "engine/transform.h"
-#include "engine/ui.h"
 #include "engine/vfs.h"
 
 static const char **nekogame_ffi[] = {

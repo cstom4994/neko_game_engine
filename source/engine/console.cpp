@@ -11,7 +11,6 @@
 #include "engine/gui.h"
 #include "engine/input.h"
 #include "engine/transform.h"
-#include "engine/ui.h"
 
 #define LINE_LEN 128  // including newline, null char
 #define NUM_LINES 20

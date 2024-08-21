@@ -35,6 +35,31 @@ struct Asset {
     };
 };
 
+typedef enum neko_resource_type_t {
+    NEKO_RESOURCE_STRING,
+    NEKO_RESOURCE_BINARY,
+    NEKO_RESOURCE_TEXTURE,
+    NEKO_RESOURCE_SHADER,
+    NEKO_RESOURCE_ASSEMBLY,
+    NEKO_RESOURCE_SCRIPT,
+    NEKO_RESOURCE_MODEL,
+    NEKO_RESOURCE_MATERIAL,
+    NEKO_RESOURCE_FONT
+} neko_resource_type_t;
+
+typedef struct neko_resource_t {
+    neko_resource_type_t type;
+
+    void *payload;
+    u32 payload_size;
+
+    i64 modtime;
+
+    char *file_name;
+    u32 file_name_length;
+    u32 file_name_hash;
+} neko_resource_t;
+
 struct FileChange {
     u64 key;
     u64 modtime;

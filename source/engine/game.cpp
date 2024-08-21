@@ -22,7 +22,6 @@
 #include "engine/system.h"
 #include "engine/texture.h"
 #include "engine/transform.h"
-#include "engine/ui.h"
 #include "engine/vfs.h"
 
 // deps
@@ -35,7 +34,7 @@ static int sargc = 0;
 static char **sargv;
 static Mutex g_init_mtx;
 
-neko_texture_t test_ase;
+gfx_texture_t test_ase;
 
 extern void draw_gui();
 
@@ -171,7 +170,7 @@ static void _game_init() {
     system_init();
 
     g_app->cb = command_buffer_new();
-    g_app->idraw = neko_immediate_draw_new();
+    // g_app->idraw = neko_immediate_draw_new();
 
     assets_start_hot_reload();
 
@@ -199,15 +198,24 @@ static void _game_init() {
         // pack.free_item(font_data);
         // pack.free_item(cat_data);
 
-        // auto GUI_FONT_STASH = []() -> neko_ui_font_stash_desc_t * {
-        //     static neko_ui_font_desc_t font_decl[] = {{.key = "mc_regular", .font = &font}};
-        //     static neko_ui_font_stash_desc_t font_stash = {.fonts = font_decl, .size = 1 * sizeof(neko_ui_font_desc_t)};
+        // auto GUI_FONT_STASH = []() -> engine_ui_font_stash_desc_t * {
+        //     static engine_ui_font_desc_t font_decl[] = {{.key = "mc_regular", .font = &font}};
+        //     static engine_ui_font_stash_desc_t font_stash = {.fonts = font_decl, .size = 1 * sizeof(engine_ui_font_desc_t)};
         //     return &font_stash;
         // }();
 
-        // neko_ui_init_font_stash(&g_app->ui, GUI_FONT_STASH);
+        // engine_ui_init_font_stash(&g_app->ui, GUI_FONT_STASH);
 
         // ui_dock_ex(&g_app->ui, "Style_Editor", "Demo_Window", UI_SPLIT_TAB, 0.5f);
+
+        g_app->ui = (mu_Context *)mem_alloc(sizeof(mu_Context));
+        mu_init(g_app->ui);
+
+        g_app->ui->style->colors[MU_COLOR_WINDOWBG] = mu_color(50, 50, 50, 200);
+
+        g_app->ui->text_width = neko_ui_text_width;
+        g_app->ui->text_height = neko_ui_text_height;
+        neko_init_ui_renderer(gfx_create_program("ui_glsl", "shader/ui.vert", NULL, "shader/ui.frag"));
     }
 }
 
@@ -216,7 +224,8 @@ static void _game_fini() {
 
     {  // just for test
 
-        // ui_free(&g_app->ui);
+        mem_free(g_app->ui);
+        neko_deinit_ui_renderer();
     }
 
     if (g_app->lite_init_path.len) {
@@ -224,8 +233,8 @@ static void _game_fini() {
         neko::neko_lua_fini(g_app->lite_L);
     }
 
-    neko_immediate_draw_static_data_free();
-    neko_immediate_draw_free(&g_app->idraw);
+    // neko_immediate_draw_static_data_free();
+    // neko_immediate_draw_free(&g_app->idraw);
     command_buffer_free(&g_app->cb);
 
     // fini systems
@@ -354,8 +363,8 @@ static void _game_draw() {
         script_draw_all();
 
         // Set up 2D camera for projection matrix
-        idraw_defaults(&g_app->idraw);
-        idraw_camera2d(&g_app->idraw, (u32)g_app->width, (u32)g_app->height);
+        // idraw_defaults(&g_app->idraw);
+        // idraw_camera2d(&g_app->idraw, (u32)g_app->width, (u32)g_app->height);
 
         // 底层图片
         char background_text[64] = "Project: unknown";
@@ -371,21 +380,35 @@ static void _game_draw() {
 
         // idraw_defaults(&g_app->idraw);
 
-        gfx_renderpass_begin(&g_app->cb, R_RENDER_PASS_DEFAULT);
         {
             // gfx_set_viewport(&g_app->cb, 0, 0, (u32)g_app->width, (u32)g_app->height);
-            idraw_draw(&g_app->idraw, &g_app->cb);  // 立即模式绘制 idraw
+            // idraw_draw(&g_app->idraw, &g_app->cb);  // 立即模式绘制 idraw
 
-            f32 fy = draw_font(&g_app->idraw, g_app->default_font, 16.f, 0.f, 0.f, "Hello World 测试中文，你好世界", NEKO_COLOR_WHITE);
-            fy = draw_font(&g_app->idraw, g_app->default_font, 16.f, 0.f, 20.f, "我是第二行", NEKO_COLOR_WHITE);
+            f32 fy = draw_font(g_app->default_font, 16.f, 0.f, 0.f, "Hello World 测试中文，你好世界", NEKO_COLOR_WHITE);
+            fy = draw_font(g_app->default_font, 16.f, 0.f, 20.f, "我是第二行", NEKO_COLOR_WHITE);
 
-            gfx_draw_func(&g_app->cb, system_draw_all);
+            system_draw_all(NULL);
+
+            // gfx_draw_func(&g_app->cb, system_draw_all);
 
             // ui_render(&g_app->ui, &g_app->cb);
         }
-        gfx_renderpass_end(&g_app->cb);
 
-        gfx_cmd_submit(&g_app->cb);
+        auto ui = g_app->ui;
+
+        neko_update_ui(ui);
+
+        mu_begin(ui);
+        if (mu_begin_window(ui, "Entity", mu_rect(10, 420, 400, 300))) {
+            mu_label(ui, "Name");
+
+            mu_end_window(ui);
+        }
+
+        mu_end(ui);
+
+        neko_render_ui(ui, g_app->width, g_app->height);
+
 #else
         system_draw_all();
 #endif

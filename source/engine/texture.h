@@ -23,7 +23,7 @@ bool texture_update_data(AssetTexture* tex, u8* data);
 u64 generate_texture_handle(void* pixels, int w, int h, void* udata);
 void destroy_texture_handle(u64 texture_id, void* udata);
 
-neko_texture_t neko_aseprite_simple(String filename);
+gfx_texture_t neko_aseprite_simple(String filename);
 
 typedef struct neko_asset_texture_t {
     neko_handle(gfx_texture_t) hndl;

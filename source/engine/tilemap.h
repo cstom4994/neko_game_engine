@@ -148,7 +148,7 @@ void tiled_unload(map_t* map);
 
 typedef struct tiled_quad_t {
     u32 tileset_id;
-    neko_texture_t texture;
+    gfx_texture_t texture;
     vec2 texture_size;
     vec2 position;
     vec2 dimentions;
@@ -182,7 +182,7 @@ typedef struct tiled_renderer {
 
     // neko_handle(gfx_uniform_t) u_camera;
     // neko_handle(gfx_uniform_t) u_batch_tex;
-    neko_texture_t batch_texture;                        // 当前绘制所用贴图
+    gfx_texture_t batch_texture;                        // 当前绘制所用贴图
     neko_hash_table(u32, tiled_quad_list_t) quad_table;  // 分层绘制哈希表
 
     u32 quad_count;
