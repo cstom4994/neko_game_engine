@@ -5,7 +5,7 @@
 #include <typeindex>
 #include <vector>
 
-#include "engine/luax.h"
+#include "engine/luax.hpp"
 
 extern std::unordered_map<std::type_index, std::string> usertypeNames;
 int userdata_destructor(lua_State* L);

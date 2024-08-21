@@ -14,9 +14,8 @@
 #include "engine/console.h"
 #include "engine/game.h"
 #include "engine/glew_glfw.h"
-#include "engine/lua_util.h"
 #include "engine/luabind.hpp"
-#include "engine/luax.h"
+#include "engine/luax.hpp"
 #include "engine/neko.hpp"
 
 #if 1

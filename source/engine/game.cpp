@@ -7,22 +7,16 @@
 #include <sys/stat.h>
 #include <time.h>
 
-#include "engine/batch.h"
-#include "engine/camera.h"
+#include "engine/asset.h"
 #include "engine/console.h"
 #include "engine/draw.h"
-#include "engine/font.h"
+#include "engine/edit.h"
 #include "engine/gfx.h"
 #include "engine/glew_glfw.h"
 #include "engine/gui.h"
-#include "engine/lite.h"
-#include "engine/lua_util.h"
 #include "engine/script.h"
-#include "engine/sprite.h"
 #include "engine/system.h"
-#include "engine/texture.h"
 #include "engine/transform.h"
-#include "engine/vfs.h"
 
 // dep
 #include "vendor/sokol_time.h"

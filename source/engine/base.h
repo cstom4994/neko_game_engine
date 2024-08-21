@@ -1,586 +1,12 @@
 #pragma once
 
+#include <ctype.h>
 #include <float.h>
 #include <math.h>
 #include <stdbool.h>
 #include <stddef.h>
 
-#include "engine/os.h"
 #include "engine/prelude.h"
-
-// struct Color {
-//     union {
-//         u8 rgba[4];
-//         struct {
-//             u8 r, g, b, a;
-//         };
-//     };
-// };
-
-struct SplitLinesIterator {
-    String data;
-    String view;
-
-    String operator*() const { return view; }
-    SplitLinesIterator& operator++();
-};
-
-bool operator!=(SplitLinesIterator lhs, SplitLinesIterator rhs);
-
-struct SplitLines {
-    String str;
-    SplitLines(String s) : str(s) {}
-
-    SplitLinesIterator begin();
-    SplitLinesIterator end();
-};
-
-i32 utf8_size(u8 c);
-
-struct Rune {
-    u32 value;
-
-    u32 charcode();
-    bool is_whitespace();
-    bool is_digit();
-};
-
-Rune rune_from_string(const char* buf);
-
-struct UTF8Iterator {
-    String str;
-    u64 cursor;
-    Rune rune;
-
-    Rune operator*() const { return rune; }
-    UTF8Iterator& operator++();
-};
-
-bool operator!=(UTF8Iterator lhs, UTF8Iterator rhs);
-
-struct UTF8 {
-    String str;
-    UTF8(String s) : str(s) {}
-
-    UTF8Iterator begin();
-    UTF8Iterator end();
-};
-
-struct StringBuilder {
-    char* data;
-    u64 len;       // does not include null term
-    u64 capacity;  // includes null term
-
-    StringBuilder();
-
-    void trash();
-    void reserve(u64 capacity);
-    void clear();
-    void swap_filename(String filepath, String file);
-    void concat(String str, i32 times);
-
-    StringBuilder& operator<<(String str);
-    explicit operator String();
-};
-
-FORMAT_ARGS(1) String str_fmt(const char* fmt, ...);
-FORMAT_ARGS(1) String tmp_fmt(const char* fmt, ...);
-
-double string_to_double(String str);
-
-enum HashMapKind : u8 {
-    HashMapKind_None,
-    HashMapKind_Some,
-    HashMapKind_Tombstone,
-};
-
-#define HASH_MAP_LOAD_FACTOR 0.75f
-
-template <typename T>
-struct HashMap {
-    u64* keys = nullptr;
-    T* values = nullptr;
-    HashMapKind* kinds = nullptr;
-    u64 load = 0;
-    u64 capacity = 0;
-
-    void trash() {
-        mem_free(keys);
-        mem_free(values);
-        mem_free(kinds);
-    }
-
-    u64 find_entry(u64 key) const {
-        u64 index = key & (capacity - 1);
-        u64 tombstone = (u64)-1;
-        while (true) {
-            HashMapKind kind = kinds[index];
-            if (kind == HashMapKind_None) {
-                return tombstone != (u64)-1 ? tombstone : index;
-            } else if (kind == HashMapKind_Tombstone) {
-                tombstone = index;
-            } else if (keys[index] == key) {
-                return index;
-            }
-
-            index = (index + 1) & (capacity - 1);
-        }
-    }
-
-    void real_reserve(u64 cap) {
-        if (cap <= capacity) {
-            return;
-        }
-
-        HashMap<T> map = {};
-        map.capacity = cap;
-
-        size_t bytes = sizeof(u64) * cap;
-        map.keys = (u64*)mem_alloc(bytes);
-        memset(map.keys, 0, bytes);
-
-        map.values = (T*)mem_alloc(sizeof(T) * cap);
-        memset(map.values, 0, sizeof(T) * cap);
-
-        map.kinds = (HashMapKind*)mem_alloc(sizeof(HashMapKind) * cap);
-        memset(map.kinds, 0, sizeof(HashMapKind) * cap);
-
-        for (u64 i = 0; i < capacity; i++) {
-            HashMapKind kind = kinds[i];
-            if (kind != HashMapKind_Some) {
-                continue;
-            }
-
-            u64 index = map.find_entry(keys[i]);
-            map.keys[index] = keys[i];
-            map.values[index] = values[i];
-            map.kinds[index] = HashMapKind_Some;
-            map.load++;
-        }
-
-        mem_free(keys);
-        mem_free(values);
-        mem_free(kinds);
-        *this = map;
-    }
-
-    void reserve(u64 capacity) {
-        u64 n = (u64)(capacity / HASH_MAP_LOAD_FACTOR) + 1;
-
-        // next pow of 2
-        n--;
-        n |= n >> 1;
-        n |= n >> 2;
-        n |= n >> 4;
-        n |= n >> 8;
-        n |= n >> 16;
-        n |= n >> 32;
-        n++;
-
-        real_reserve(n);
-    }
-
-    T* get(u64 key) {
-        if (load == 0) {
-            return nullptr;
-        }
-        u64 index = find_entry(key);
-        return kinds[index] == HashMapKind_Some ? &values[index] : nullptr;
-    }
-
-    const T* get(u64 key) const {
-        if (load == 0) {
-            return nullptr;
-        }
-        u64 index = find_entry(key);
-        return kinds[index] == HashMapKind_Some ? &values[index] : nullptr;
-    }
-
-    bool find_or_insert(u64 key, T** value) {
-        if (load >= capacity * HASH_MAP_LOAD_FACTOR) {
-            real_reserve(capacity > 0 ? capacity * 2 : 16);
-        }
-
-        u64 index = find_entry(key);
-        bool exists = kinds[index] == HashMapKind_Some;
-        if (!exists) {
-            values[index] = {};
-        }
-
-        if (kinds[index] == HashMapKind_None) {
-            load++;
-            keys[index] = key;
-            kinds[index] = HashMapKind_Some;
-        }
-
-        *value = &values[index];
-        return exists;
-    }
-
-    T& operator[](u64 key) {
-        T* value;
-        find_or_insert(key, &value);
-        return *value;
-    }
-
-    void unset(u64 key) {
-        if (load == 0) {
-            return;
-        }
-
-        u64 index = find_entry(key);
-        if (kinds[index] != HashMapKind_None) {
-            kinds[index] = HashMapKind_Tombstone;
-        }
-    }
-
-    void clear() {
-        memset(keys, 0, sizeof(u64) * capacity);
-        memset(values, 0, sizeof(T) * capacity);
-        memset(kinds, 0, sizeof(HashMapKind) * capacity);
-        load = 0;
-    }
-};
-
-template <typename T>
-struct HashMapKV {
-    u64 key;
-    T* value;
-};
-
-template <typename T>
-struct HashMapIterator {
-    HashMap<T>* map;
-    u64 cursor;
-
-    HashMapKV<T> operator*() const {
-        HashMapKV<T> kv;
-        kv.key = map->keys[cursor];
-        kv.value = &map->values[cursor];
-        return kv;
-    }
-
-    HashMapIterator& operator++() {
-        cursor++;
-        while (cursor != map->capacity) {
-            if (map->kinds[cursor] == HashMapKind_Some) {
-                return *this;
-            }
-            cursor++;
-        }
-
-        return *this;
-    }
-};
-
-template <typename T>
-bool operator!=(HashMapIterator<T> lhs, HashMapIterator<T> rhs) {
-    return lhs.map != rhs.map || lhs.cursor != rhs.cursor;
-}
-
-template <typename T>
-HashMapIterator<T> begin(HashMap<T>& map) {
-    HashMapIterator<T> it = {};
-    it.map = &map;
-    it.cursor = map.capacity;
-
-    for (u64 i = 0; i < map.capacity; i++) {
-        if (map.kinds[i] == HashMapKind_Some) {
-            it.cursor = i;
-            break;
-        }
-    }
-
-    return it;
-}
-
-template <typename T>
-HashMapIterator<T> end(HashMap<T>& map) {
-    HashMapIterator<T> it = {};
-    it.map = &map;
-    it.cursor = map.capacity;
-    return it;
-}
-
-template <typename T>
-struct Array {
-    T* data = nullptr;
-    u64 len = 0;
-    u64 capacity = 0;
-
-    T& operator[](size_t i) {
-        assert(i >= 0 && i < len);
-        return data[i];
-    }
-
-    void trash() { mem_free(data); }
-
-    void reserve(u64 cap) {
-        if (cap > capacity) {
-            T* buf = (T*)mem_alloc(sizeof(T) * cap);
-            memcpy(buf, data, sizeof(T) * len);
-            mem_free(data);
-            data = buf;
-            capacity = cap;
-        }
-    }
-
-    void resize(u64 n) {
-        reserve(n);
-        len = n;
-    }
-
-    void push(T item) {
-        if (len == capacity) {
-            reserve(len > 0 ? len * 2 : 8);
-        }
-        data[len] = item;
-        len++;
-    }
-
-    T* begin() { return data; }
-    T* end() { return &data[len]; }
-};
-
-template <typename T>
-struct Queue {
-    Mutex mtx = {};
-    Cond cv = {};
-
-    T* data = nullptr;
-    u64 front = 0;
-    u64 back = 0;
-    u64 len = 0;
-    u64 capacity = 0;
-
-    void make() {
-        mtx.make();
-        cv.make();
-    }
-
-    void trash() {
-        mtx.trash();
-        cv.trash();
-        mem_free(data);
-    }
-
-    void reserve(u64 cap) {
-        if (cap <= capacity) {
-            return;
-        }
-
-        T* buf = (T*)mem_alloc(sizeof(T) * cap);
-
-        if (front < back) {
-            memcpy(buf, &data[front], sizeof(T) * len);
-        } else {
-            u64 lhs = back;
-            u64 rhs = (capacity - front);
-
-            memcpy(buf, &data[front], sizeof(T) * rhs);
-            memcpy(&buf[rhs], &data[0], sizeof(T) * lhs);
-        }
-
-        mem_free(data);
-
-        data = buf;
-        front = 0;
-        back = len;
-        capacity = cap;
-    }
-
-    void enqueue(T item) {
-        LockGuard lock{&mtx};
-
-        if (len == capacity) {
-            reserve(len > 0 ? len * 2 : 8);
-        }
-
-        data[back] = item;
-        back = (back + 1) % capacity;
-        len++;
-
-        cv.signal();
-    }
-
-    T demand() {
-        LockGuard lock{&mtx};
-
-        while (len == 0) {
-            cv.wait(&mtx);
-        }
-
-        T item = data[front];
-        front = (front + 1) % capacity;
-        len--;
-
-        return item;
-    }
-};
-
-template <typename T>
-struct PriorityQueue {
-    T* data = nullptr;
-    float* costs = nullptr;
-    u64 len = 0;
-    u64 capacity = 0;
-
-    void trash() {
-        mem_free(data);
-        mem_free(costs);
-    }
-
-    void reserve(u64 cap) {
-        if (cap <= capacity) {
-            return;
-        }
-
-        T* buf = (T*)mem_alloc(sizeof(T) * cap);
-        memcpy(buf, data, sizeof(T) * len);
-        mem_free(data);
-        data = buf;
-
-        float* cbuf = (float*)mem_alloc(sizeof(float) * cap);
-        memcpy(cbuf, costs, sizeof(float) * len);
-        mem_free(costs);
-        costs = cbuf;
-
-        capacity = cap;
-    }
-
-    void swap(i32 i, i32 j) {
-        T t = data[i];
-        data[i] = data[j];
-        data[j] = t;
-
-        float f = costs[i];
-        costs[i] = costs[j];
-        costs[j] = f;
-    }
-
-    void shift_up(i32 j) {
-        while (j > 0) {
-            i32 i = (j - 1) / 2;
-            if (i == j || costs[i] < costs[j]) {
-                break;
-            }
-
-            swap(i, j);
-            j = i;
-        }
-    }
-
-    void shift_down(i32 i, i32 n) {
-        if (i < 0 || i > n) {
-            return;
-        }
-
-        i32 j = 2 * i + 1;
-        while (j >= 0 && j < n) {
-            if (j + 1 < n && costs[j + 1] < costs[j]) {
-                j = j + 1;
-            }
-
-            if (costs[i] < costs[j]) {
-                break;
-            }
-
-            swap(i, j);
-            i = j;
-            j = 2 * i + 1;
-        }
-    }
-
-    void push(T item, float cost) {
-        if (len == capacity) {
-            reserve(len > 0 ? len * 2 : 8);
-        }
-
-        data[len] = item;
-        costs[len] = cost;
-        len++;
-
-        shift_up(len - 1);
-    }
-
-    bool pop(T* item) {
-        if (len == 0) {
-            return false;
-        }
-
-        *item = data[0];
-
-        data[0] = data[len - 1];
-        costs[0] = costs[len - 1];
-        len--;
-
-        shift_down(0, len);
-        return true;
-    }
-};
-
-struct ArenaNode;
-struct Arena {
-    ArenaNode* head;
-
-    void trash();
-    void* bump(u64 size);
-    void* rebump(void* ptr, u64 old, u64 size);
-    String bump_string(String s);
-};
-
-template <typename T>
-struct Slice {
-    T* data = nullptr;
-    u64 len = 0;
-
-    Slice() = default;
-    explicit Slice(Array<T> arr) : data(arr.data), len(arr.len) {}
-
-    T& operator[](size_t i) {
-        assert(i >= 0 && i < len);
-        return data[i];
-    }
-
-    const T& operator[](size_t i) const {
-        assert(i >= 0 && i < len);
-        return data[i];
-    }
-
-    void resize(u64 n) {
-        T* buf = (T*)mem_alloc(sizeof(T) * n);
-        memcpy(buf, data, sizeof(T) * len);
-        mem_free(data);
-        data = buf;
-        len = n;
-    }
-
-    void resize(Arena* arena, u64 n) {
-        T* buf = (T*)arena->rebump(data, sizeof(T) * len, sizeof(T) * n);
-        data = buf;
-        len = n;
-    }
-
-    T* begin() { return data; }
-    T* end() { return &data[len]; }
-    const T* begin() const { return data; }
-    const T* end() const { return &data[len]; }
-};
-
-struct Scanner {
-    char* data;
-    u64 len;
-    u64 pos;
-    u64 end;
-
-    Scanner(String str);
-    String next_string();
-    i32 next_int();
-};
-
-/*=============================
-//
-=============================*/
 
 /*===================================
 // String Utils
@@ -1131,9 +557,9 @@ typedef struct byte_buffer_t {
 } byte_buffer_t;
 
 // Generic "write" function for a byte buffer
-#define byte_buffer_write(__BB, __T, __VAL)              \
+#define byte_buffer_write(__BB, __T, __VAL)                   \
     do {                                                      \
-        byte_buffer_t* __BUFFER = __BB;                  \
+        byte_buffer_t* __BUFFER = __BB;                       \
         usize __SZ = sizeof(__T);                             \
         usize __TWS = __BUFFER->position + __SZ;              \
         if (__TWS >= (usize)__BUFFER->capacity) {             \
@@ -1141,7 +567,7 @@ typedef struct byte_buffer_t {
             while (__CAP < __TWS) {                           \
                 __CAP *= 2;                                   \
             }                                                 \
-            byte_buffer_resize(__BUFFER, __CAP);         \
+            byte_buffer_resize(__BUFFER, __CAP);              \
         }                                                     \
         *(__T*)(__BUFFER->data + __BUFFER->position) = __VAL; \
         __BUFFER->position += (u32)__SZ;                      \
@@ -1149,10 +575,10 @@ typedef struct byte_buffer_t {
     } while (0)
 
 // Generic "read" function
-#define byte_buffer_read(__BUFFER, __T, __VAL_P)  \
+#define byte_buffer_read(__BUFFER, __T, __VAL_P)       \
     do {                                               \
         __T* __V = (__T*)(__VAL_P);                    \
-        byte_buffer_t* __BB = (__BUFFER);         \
+        byte_buffer_t* __BB = (__BUFFER);              \
         *(__V) = *(__T*)(__BB->data + __BB->position); \
         __BB->position += sizeof(__T);                 \
     } while (0)
@@ -1160,12 +586,12 @@ typedef struct byte_buffer_t {
 // Defines variable and sets value from buffer in place
 // Use to construct a new variable
 #define byte_buffer_readc(__BUFFER, __T, __NAME) \
-    __T __NAME = NEKO_DEFAULT_VAL();                  \
+    __T __NAME = NEKO_DEFAULT_VAL();             \
     byte_buffer_read((__BUFFER), __T, &__NAME);
 
 #define byte_buffer_read_bulkc(__BUFFER, __T, __NAME, __SZ) \
-    __T __NAME = NEKO_DEFAULT_VAL();                             \
-    __T* NEKO_CONCAT(__NAME, __LINE__) = &(__NAME);              \
+    __T __NAME = NEKO_DEFAULT_VAL();                        \
+    __T* NEKO_CONCAT(__NAME, __LINE__) = &(__NAME);         \
     byte_buffer_read_bulk(__BUFFER, (void**)&NEKO_CONCAT(__NAME, __LINE__), __SZ);
 
 void byte_buffer_init(byte_buffer_t* buffer);
@@ -1807,9 +1233,9 @@ NEKO_FORCE_INLINE command_buffer_t command_buffer_new() {
 }
 
 #define command_buffer_write(__CB, __CT, __C, __T, __VAL) \
-    do {                                                       \
+    do {                                                  \
         command_buffer_t* __cb = (__CB);                  \
-        __cb->num_commands++;                                  \
+        __cb->num_commands++;                             \
         byte_buffer_write(&__cb->commands, __CT, (__C));  \
         byte_buffer_write(&__cb->commands, __T, (__VAL)); \
     } while (0)
@@ -1822,7 +1248,7 @@ NEKO_FORCE_INLINE void command_buffer_clear(command_buffer_t* cb) {
 NEKO_FORCE_INLINE void command_buffer_free(command_buffer_t* cb) { byte_buffer_free(&cb->commands); }
 
 #define command_buffer_readc(__CB, __T, __NAME) \
-    __T __NAME = NEKO_DEFAULT_VAL();                 \
+    __T __NAME = NEKO_DEFAULT_VAL();            \
     byte_buffer_read(&(__CB)->commands, __T, &__NAME);
 
 typedef command_buffer_t neko_cmdbuf;
@@ -2097,9 +1523,15 @@ NEKO_SCRIPT(
 
 )
 
+#ifdef __cplusplus
 #define color(r, g, b, a) (Color{(r), (g), (b), (a)})
 #define color_opaque(r, g, b, a) color(r, g, b, 1)
 #define color256(r, g, b, a) (Color256{(r), (g), (b), (a)})
+#else
+#define color(r, g, b, a) ((Color){(r), (g), (b), (a)})
+#define color_opaque(r, g, b, a) color(r, g, b, 1)
+#define color256(r, g, b, a) ((Color256){(r), (g), (b), (a)})
+#endif
 
 #define NEKO_COLOR_BLACK color256(0, 0, 0, 255)
 #define NEKO_COLOR_WHITE color256(255, 255, 255, 255)

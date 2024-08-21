@@ -51,7 +51,7 @@ enum ComponentType {
 #define ECS_WORLD_UDATA_NAME "__NEKO_ECS_WORLD"
 #define ECS_WORLD (1)
 
-int l_ecs_create_world(lua_State* L);
+NEKO_EXTERN int l_ecs_create_world(lua_State* L);
 
 typedef struct ecs_s ecs_t;
 typedef uint32_t ecs_id_t;
@@ -61,7 +61,7 @@ typedef uint32_t ecs_id_t;
 
 typedef int8_t ecs_ret_t;
 
-ecs_id_t ecs_component_w(ecs_t* registry, const_str component_name, size_t component_size);
+NEKO_EXTERN ecs_id_t ecs_component_w(ecs_t* registry, const_str component_name, size_t component_size);
 
 // #define ECS_COMPONENT(type, ctor, dtor) ecs_component_w(ENGINE_ECS(), #type, sizeof(type), ctor, dtor)
 // #define ECS_COMPONENT_DEFINE(type, ctor, dtor) ECS_COMPONENT_ID(type) = ECS_COMPONENT(type, ctor, dtor)
@@ -110,14 +110,14 @@ NEKO_SCRIPT(
 
 )
 
-void entity_init();
-void entity_fini();
-void entity_update_all();
+NEKO_EXTERN void entity_init();
+NEKO_EXTERN void entity_fini();
+NEKO_EXTERN void entity_update_all();
 
-void entity_save_all(Store* s);
-void entity_load_all(Store* s);
-void entity_load_all_begin();
-void entity_load_all_end();
+NEKO_EXTERN void entity_save_all(Store* s);
+NEKO_EXTERN void entity_load_all(Store* s);
+NEKO_EXTERN void entity_load_all_begin();
+NEKO_EXTERN void entity_load_all_end();
 
 #define entity_eq(e, f) ((e).id == (f).id)
 
@@ -128,12 +128,12 @@ typedef struct EntityMap {
     int def;            // 未设置键的值
 } EntityMap;
 
-EntityMap* entitymap_new(int def);  // def 为默认值
-void entitymap_clear(EntityMap* emap);
-void entitymap_free(EntityMap* emap);
+NEKO_EXTERN EntityMap* entitymap_new(int def);  // def 为默认值
+NEKO_EXTERN void entitymap_clear(EntityMap* emap);
+NEKO_EXTERN void entitymap_free(EntityMap* emap);
 
-void entitymap_set(EntityMap* emap, Entity ent, int val);
-int entitymap_get(EntityMap* emap, Entity ent);
+NEKO_EXTERN void entitymap_set(EntityMap* emap, Entity ent, int val);
+NEKO_EXTERN int entitymap_get(EntityMap* emap, Entity ent);
 
 // 在内存中连续 可能会被重新定位/打乱 所以要小心
 typedef struct EntityPool EntityPool;
@@ -156,32 +156,32 @@ typedef struct EntityPoolElem {
     } T
 
 // object_size 是每个元素的大小
-EntityPool* entitypool_new_(size_t object_size);
+NEKO_EXTERN EntityPool* entitypool_new_(size_t object_size);
 #define entitypool_new(type) entitypool_new_(sizeof(type))
-void entitypool_free(EntityPool* pool);
+NEKO_EXTERN void entitypool_free(EntityPool* pool);
 
-void* entitypool_add(EntityPool* pool, Entity ent);
-void entitypool_remove(EntityPool* pool, Entity ent);
-void* entitypool_get(EntityPool* pool, Entity ent);  // 如果未映射则为 NULL
+NEKO_EXTERN void* entitypool_add(EntityPool* pool, Entity ent);
+NEKO_EXTERN void entitypool_remove(EntityPool* pool, Entity ent);
+NEKO_EXTERN void* entitypool_get(EntityPool* pool, Entity ent);  // 如果未映射则为 NULL
 
 // 由于元素是连续的 因此可以使用指针进行迭代:
 //     for (ptr = entitypool_begin(pool), end = entitypool_end(pool);
 //             ptr != end; ++ptr)
 //         ... use ptr ...
 // 如果在迭代期间添加/删除指针将无效
-void* entitypool_begin(EntityPool* pool);
-void* entitypool_end(EntityPool* pool);              // one-past-end
-void* entitypool_nth(EntityPool* pool, ecs_id_t n);  // 0-indexed
+NEKO_EXTERN void* entitypool_begin(EntityPool* pool);
+NEKO_EXTERN void* entitypool_end(EntityPool* pool);              // one-past-end
+NEKO_EXTERN void* entitypool_nth(EntityPool* pool, ecs_id_t n);  // 0-indexed
 
-ecs_id_t entitypool_size(EntityPool* pool);
+NEKO_EXTERN ecs_id_t entitypool_size(EntityPool* pool);
 
-void entitypool_clear(EntityPool* pool);
+NEKO_EXTERN void entitypool_clear(EntityPool* pool);
 
-void entitypool_sort(EntityPool* pool, int (*compar)(const void*, const void*));
+NEKO_EXTERN void entitypool_sort(EntityPool* pool, int (*compar)(const void*, const void*));
 
 // elem must be /pointer to/ pointer to element
-void entitypool_elem_save(EntityPool* pool, void* elem, Store* s);
-void entitypool_elem_load(EntityPool* pool, void* elem, Store* s);
+NEKO_EXTERN void entitypool_elem_save(EntityPool* pool, void* elem, Store* s);
+NEKO_EXTERN void entitypool_elem_load(EntityPool* pool, void* elem, Store* s);
 
 /*
  * call 'func' on each destroyed Entity, generally done in

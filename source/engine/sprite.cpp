@@ -1,20 +1,15 @@
-#include "engine/sprite.h"
-
-#include <GL/glew.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "engine/asset.h"
 #include "engine/base.h"
-#include "engine/camera.h"
 #include "engine/draw.h"
 #include "engine/edit.h"
 #include "engine/entity.h"
 #include "engine/game.h"
 #include "engine/gfx.h"
 #include "engine/prelude.h"
-#include "engine/texture.h"
 #include "engine/transform.h"
-#include "engine/vfs.h"
 
 // deps
 #include <stb_image_write.h>
@@ -34,13 +29,13 @@ struct Sprite {
     int depth;
 };
 
-static EntityPool *pool;
+static EntityPool *pool_sprite;
 
 static char *atlas = NULL;
 
 static GLuint sprite_program;
-static GLuint vao;
-static GLuint vbo;
+static GLuint sprite_vao;
+static GLuint sprite_vbo;
 
 static void _set_atlas(const char *filename, bool err) {
     LuaVec2 atlas_size;
@@ -68,58 +63,58 @@ const char *sprite_get_atlas() { return atlas; }
 void sprite_add(Entity ent) {
     Sprite *sprite;
 
-    if (entitypool_get(pool, ent)) return;
+    if (entitypool_get(pool_sprite, ent)) return;
 
     transform_add(ent);
 
-    sprite = (Sprite *)entitypool_add(pool, ent);
+    sprite = (Sprite *)entitypool_add(pool_sprite, ent);
     sprite->size = luavec2(1.0f, 1.0f);
     sprite->texcell = luavec2(32.0f, 32.0f);
     sprite->texsize = luavec2(32.0f, 32.0f);
     sprite->depth = 0;
 }
-void sprite_remove(Entity ent) { entitypool_remove(pool, ent); }
-bool sprite_has(Entity ent) { return entitypool_get(pool, ent) != NULL; }
+void sprite_remove(Entity ent) { entitypool_remove(pool_sprite, ent); }
+bool sprite_has(Entity ent) { return entitypool_get(pool_sprite, ent) != NULL; }
 
 void sprite_set_size(Entity ent, LuaVec2 size) {
-    Sprite *sprite = (Sprite *)entitypool_get(pool, ent);
+    Sprite *sprite = (Sprite *)entitypool_get(pool_sprite, ent);
     error_assert(sprite);
     sprite->size = size;
 }
 LuaVec2 sprite_get_size(Entity ent) {
-    Sprite *sprite = (Sprite *)entitypool_get(pool, ent);
+    Sprite *sprite = (Sprite *)entitypool_get(pool_sprite, ent);
     error_assert(sprite);
     return sprite->size;
 }
 
 void sprite_set_texcell(Entity ent, LuaVec2 texcell) {
-    Sprite *sprite = (Sprite *)entitypool_get(pool, ent);
+    Sprite *sprite = (Sprite *)entitypool_get(pool_sprite, ent);
     error_assert(sprite);
     sprite->texcell = texcell;
 }
 LuaVec2 sprite_get_texcell(Entity ent) {
-    Sprite *sprite = (Sprite *)entitypool_get(pool, ent);
+    Sprite *sprite = (Sprite *)entitypool_get(pool_sprite, ent);
     error_assert(sprite);
     return sprite->texcell;
 }
 void sprite_set_texsize(Entity ent, LuaVec2 texsize) {
-    Sprite *sprite = (Sprite *)entitypool_get(pool, ent);
+    Sprite *sprite = (Sprite *)entitypool_get(pool_sprite, ent);
     error_assert(sprite);
     sprite->texsize = texsize;
 }
 LuaVec2 sprite_get_texsize(Entity ent) {
-    Sprite *sprite = (Sprite *)entitypool_get(pool, ent);
+    Sprite *sprite = (Sprite *)entitypool_get(pool_sprite, ent);
     error_assert(sprite);
     return sprite->texsize;
 }
 
 void sprite_set_depth(Entity ent, int depth) {
-    Sprite *sprite = (Sprite *)entitypool_get(pool, ent);
+    Sprite *sprite = (Sprite *)entitypool_get(pool_sprite, ent);
     error_assert(sprite);
     sprite->depth = depth;
 }
 int sprite_get_depth(Entity ent) {
-    Sprite *sprite = (Sprite *)entitypool_get(pool, ent);
+    Sprite *sprite = (Sprite *)entitypool_get(pool_sprite, ent);
     error_assert(sprite);
     return sprite->depth;
 }
@@ -127,17 +122,17 @@ int sprite_get_depth(Entity ent) {
 void sprite_init() {
     PROFILE_FUNC();
 
-    pool = entitypool_new(Sprite);
+    pool_sprite = entitypool_new(Sprite);
 
     sprite_program = gfx_create_program("sprite_program", "shader/sprite.vert", "shader/sprite.geom", "shader/sprite.frag");
     glUseProgram(sprite_program);
     glUniform1i(glGetUniformLocation(sprite_program, "tex0"), 0);
     sprite_set_atlas("assets/data/default.png");
 
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
-    glGenBuffers(1, &vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glGenVertexArrays(1, &sprite_vao);
+    glBindVertexArray(sprite_vao);
+    glGenBuffers(1, &sprite_vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, sprite_vbo);
     gfx_bind_vertex_attrib(sprite_program, GL_FLOAT, 3, "wmat1", Sprite, wmat.m[0]);
     gfx_bind_vertex_attrib(sprite_program, GL_FLOAT, 3, "wmat2", Sprite, wmat.m[1]);
     gfx_bind_vertex_attrib(sprite_program, GL_FLOAT, 3, "wmat3", Sprite, wmat.m[2]);
@@ -149,10 +144,10 @@ void sprite_init() {
 void sprite_fini() {
 
     glDeleteProgram(sprite_program);
-    glDeleteBuffers(1, &vbo);
-    glDeleteVertexArrays(1, &vao);
+    glDeleteBuffers(1, &sprite_vbo);
+    glDeleteVertexArrays(1, &sprite_vao);
 
-    entitypool_free(pool);
+    entitypool_free(pool_sprite);
 
     mem_free(atlas);
 }
@@ -161,12 +156,12 @@ void sprite_update_all() {
     Sprite *sprite;
     static LuaVec2 min = {-0.5, -0.5}, max = {0.5, 0.5};
 
-    entitypool_remove_destroyed(pool, sprite_remove);
+    entitypool_remove_destroyed(pool_sprite, sprite_remove);
 
-    entitypool_foreach(sprite, pool) { sprite->wmat = transform_get_world_matrix(sprite->pool_elem.ent); }
+    entitypool_foreach(sprite, pool_sprite) { sprite->wmat = transform_get_world_matrix(sprite->pool_elem.ent); }
 
     if (edit_get_enabled()) {
-        entitypool_foreach(sprite, pool) { edit_bboxes_update(sprite->pool_elem.ent, bbox(vec2_mul(sprite->size, min), vec2_mul(sprite->size, max))); }
+        entitypool_foreach(sprite, pool_sprite) { edit_bboxes_update(sprite->pool_elem.ent, bbox(vec2_mul(sprite->size, min), vec2_mul(sprite->size, max))); }
     }
 }
 
@@ -180,7 +175,7 @@ static int _depth_compare(const void *a, const void *b) {
 void sprite_draw_all() {
     unsigned int nsprites;
 
-    entitypool_sort(pool, _depth_compare);
+    entitypool_sort(pool_sprite, _depth_compare);
 
     glUseProgram(sprite_program);
     glUniformMatrix3fv(glGetUniformLocation(sprite_program, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
@@ -188,10 +183,10 @@ void sprite_draw_all() {
     glActiveTexture(GL_TEXTURE0);
     texture_bind(atlas);
 
-    glBindVertexArray(vao);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    nsprites = entitypool_size(pool);
-    glBufferData(GL_ARRAY_BUFFER, nsprites * sizeof(Sprite), entitypool_begin(pool), GL_STREAM_DRAW);
+    glBindVertexArray(sprite_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, sprite_vbo);
+    nsprites = entitypool_size(pool_sprite);
+    glBufferData(GL_ARRAY_BUFFER, nsprites * sizeof(Sprite), entitypool_begin(pool_sprite), GL_STREAM_DRAW);
     glDrawArrays(GL_POINTS, 0, nsprites);
 }
 
@@ -202,7 +197,7 @@ void sprite_save_all(Store *s) {
     if (store_child_save(&t, "sprite", s)) {
         string_save((const char **)&atlas, "atlas", t);
 
-        entitypool_save_foreach(sprite, sprite_s, pool, "pool", t) {
+        entitypool_save_foreach(sprite, sprite_s, pool_sprite, "pool", t) {
             vec2_save(&sprite->size, "size", sprite_s);
             vec2_save(&sprite->texcell, "texcell", sprite_s);
             vec2_save(&sprite->texsize, "texsize", sprite_s);
@@ -222,7 +217,7 @@ void sprite_load_all(Store *s) {
             mem_free(tatlas);
         }
 
-        entitypool_load_foreach(sprite, sprite_s, pool, "pool", t) {
+        entitypool_load_foreach(sprite, sprite_s, pool_sprite, "pool", t) {
             vec2_load(&sprite->size, "size", luavec2(1, 1), sprite_s);
             vec2_load(&sprite->texcell, "texcell", luavec2(32, 32), sprite_s);
             vec2_load(&sprite->texsize, "texsize", luavec2(32, 32), sprite_s);

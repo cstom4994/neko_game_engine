@@ -1,9 +1,9 @@
 
 #include "engine/seri.h"
 
+#include "engine/asset.h"
 #include "engine/game.h"
-#include "engine/luax.h"
-#include "engine/vfs.h"
+#include "engine/luax.hpp"
 
 namespace neko::lua::__luadb {
 

@@ -4,24 +4,18 @@
 
 #include "console.h"
 #include "engine/api.hpp"
+#include "engine/asset.h"
 #include "engine/base.h"
-#include "engine/batch.h"
-#include "engine/camera.h"
+#include "engine/base.hpp"
 #include "engine/edit.h"
 #include "engine/game.h"
 #include "engine/gfx.h"
 #include "engine/gui.h"
 #include "engine/input.h"
-#include "engine/lua_util.h"
-#include "engine/os.h"
 #include "engine/physics.h"
 #include "engine/prefab.h"
 #include "engine/script.h"
-#include "engine/sound.h"
-#include "engine/sprite.h"
-#include "engine/texture.h"
 #include "engine/transform.h"
-#include "engine/vfs.h"
 
 static void load_all_lua_scripts(lua_State *L) {
     PROFILE_FUNC();

@@ -4,26 +4,21 @@
 
 #include "engine/asset.h"
 #include "engine/base.h"
-#include "engine/camera.h"
+#include "engine/base.hpp"
 #include "engine/draw.h"
 #include "engine/entity.h"
 #include "engine/game.h"
 #include "engine/lua_custom_types.h"
 #include "engine/lua_struct.h"
-#include "engine/lua_util.h"
 #include "engine/luabind.hpp"
-#include "engine/luax.h"
-#include "engine/os.h"
-#include "engine/pak.h"
+#include "engine/luax.hpp"
 #include "engine/physics.h"
 #include "engine/prelude.h"
 #include "engine/reflection.hpp"
 #include "engine/seri.h"
-#include "engine/sound.h"
-#include "engine/ui_lua.h"
+#include "engine/ui.h"
 
 // deps
-#include "engine/vfs.h"
 #include "vendor/sokol_time.h"
 
 namespace lua2struct {

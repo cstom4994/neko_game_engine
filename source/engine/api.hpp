@@ -1,6 +1,6 @@
 #pragma once
 
-#include "engine/luax.h"
+#include "engine/luax.hpp"
 #include "engine/neko.hpp"
 
 struct lua_State;

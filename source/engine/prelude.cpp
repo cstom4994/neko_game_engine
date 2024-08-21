@@ -1,6 +1,6 @@
 #include "engine/prelude.h"
 
-#include "engine/os.h"
+#include "engine/base.hpp"
 
 bool String::is_cstr() { return data[len] == '\0'; }
 
@@ -59,7 +59,7 @@ void profile_shutdown() {}
 #ifdef USE_PROFILER
 
 #include "engine/base.h"
-#include "engine/os.h"
+#include "engine/base.hpp"
 #include "vendor/sokol_time.h"
 
 struct Profile {

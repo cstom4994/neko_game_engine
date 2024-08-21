@@ -20,14 +20,13 @@
 #include "engine/gfx.h"
 #include "engine/input.h"
 #include "engine/lua_struct.h"
-#include "engine/lua_table.hpp"
 #include "engine/luabind.hpp"
-#include "engine/luax.h"
+#include "engine/luax.hpp"
 #include "engine/neko.hpp"
 #include "engine/prelude.h"
 #include "engine/reflection.hpp"
 #include "engine/seri.h"
-#include "engine/ui_auto.h"
+#include "engine/ui.h"
 
 #pragma region test
 
@@ -771,7 +770,7 @@ void draw_gui() {
 void draw_gui_auto_test() {
     ui_context_t* ui = g_app->ui;
     const vec2 ss_ws = neko_v2(500.f, 300.f);
-    ui_begin_window(g_app->ui, "GUI Test",  neko_rect((g_app->width - ss_ws.x) * 0.5f, (g_app->height - ss_ws.y) * 0.5f, ss_ws.x, ss_ws.y));
+    ui_begin_window(g_app->ui, "GUI Test", neko_rect((g_app->width - ss_ws.x) * 0.5f, (g_app->height - ss_ws.y) * 0.5f, ss_ws.x, ss_ws.y));
     {
 
         if (ui_header(ui, "1. String")) {

@@ -3,11 +3,10 @@
 
 #include <stdlib.h>
 
-#include "engine/base.h"
-#include "engine/game.h"
-#include "engine/lua_util.h"
-#include "engine/luax.h"
-#include "engine/prelude.h"
+#include "engine/base.hpp"
+#include "engine/luax.hpp"
+
+#if 1
 
 // 为池 ID 提供 O(1) 操作的 ID 池的数据结构
 typedef struct {
@@ -29,11 +28,11 @@ static int __neko_ecs_lua_create_ent(lua_State* L) {
     return 1;
 }
 
-struct ecs_ent_iter_t {
+typedef struct ecs_ent_iter_t {
     ecs_stack_t* pool;
     ecs_id_t index;
     bool check_ready;
-};
+} ecs_ent_iter_t;
 
 LUA_FUNCTION(__neko_ecs_lua_ent_next) {
     ecs_t* w = (ecs_t*)lua_touserdata(L, lua_upvalueindex(1));
@@ -468,6 +467,8 @@ ecs_t* ecs_init(lua_State* L) {
 
     return w;
 }
+
+#endif
 
 typedef struct DestroyEntry DestroyEntry;
 struct DestroyEntry {

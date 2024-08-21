@@ -1,9 +1,8 @@
 
 #include <string>
 
-#include "engine/lua_util.h"
 #include "engine/luabind.hpp"
-#include "engine/luax.h"
+#include "engine/luax.hpp"
 
 int load_embed_lua(lua_State* L, const u8 B[], const_str name) {
     std::string contents = (const_str)B;
@@ -59,7 +58,7 @@ void package_preload_embed(lua_State* L) {
 }
 void luax_run_bootstrap(lua_State* L) {
     std::string contents = (const_str)g_lua_bootstrap_data;
-    if (luaL_loadbuffer(L, contents.c_str(), contents.size(), "bootstrap.lua") != LUA_OK) {
+    if (luaL_loadbuffer(L, contents.c_str(), contents.size(), "<bootstrap>") != LUA_OK) {
         fprintf(stderr, "%s\n", lua_tostring(L, -1));
         neko_panic("failed to load bootstrap");
     }
@@ -73,7 +72,7 @@ void luax_run_bootstrap(lua_State* L) {
 }
 void luax_run_nekogame(lua_State* L) {
     std::string contents = (const_str)g_lua_nekogame_data;
-    if (luaL_loadbuffer(L, contents.c_str(), contents.size(), "nekogame.lua") != LUA_OK) {
+    if (luaL_loadbuffer(L, contents.c_str(), contents.size(), "<nekogame>") != LUA_OK) {
         fprintf(stderr, "%s\n", lua_tostring(L, -1));
         neko_panic("failed to load nekogame");
     }

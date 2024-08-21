@@ -1,5 +1,5 @@
 #include "engine/entity.h"
-#include "engine/luax.h"
+#include "engine/luax.hpp"
 
 /*=============================
 // ECS

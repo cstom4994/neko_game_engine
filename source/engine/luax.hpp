@@ -1,6 +1,207 @@
 
-#if !defined(NEKO_LUA_HPP)
-#define NEKO_LUA_HPP
+#ifndef NEKO_LUAX_HPP
+#define NEKO_LUAX_HPP
+
+#include <atomic>
+#include <initializer_list>
+
+#include "engine/base.h"
+#include "engine/base.hpp"
+#include "engine/luax.h"
+#include "engine/prelude.h"
+#include "vendor/luaalloc.h"
+
+#define PRELOAD(name, function)     \
+    lua_getglobal(L, "package");    \
+    lua_getfield(L, -1, "preload"); \
+    lua_pushcfunction(L, function); \
+    lua_setfield(L, -2, name);      \
+    lua_pop(L, 2)
+
+namespace neko::lua {
+void luax_run_bootstrap(lua_State *L);
+void luax_run_nekogame(lua_State *L);
+}  // namespace neko::lua
+
+i32 luax_require_script(lua_State *L, String filepath);
+
+void luax_stack_dump(lua_State *L);
+
+void luax_get(lua_State *L, const_str tb, const_str field);
+void luax_pcall(lua_State *L, i32 args, i32 results);
+
+// get field in neko namespace
+void luax_neko_get(lua_State *L, const char *field);
+
+// message handler. prints error and traceback
+int luax_msgh(lua_State *L);
+
+lua_Integer luax_len(lua_State *L, i32 arg);
+void luax_geti(lua_State *L, i32 arg, lua_Integer n);
+
+// set table value at top of stack
+void luax_set_number_field(lua_State *L, const char *key, lua_Number n);
+void luax_set_int_field(lua_State *L, const char *key, lua_Integer n);
+void luax_set_string_field(lua_State *L, const char *key, const char *str);
+
+// get value from table
+lua_Number luax_number_field(lua_State *L, i32 arg, const char *key);
+lua_Number luax_opt_number_field(lua_State *L, i32 arg, const char *key, lua_Number fallback);
+
+lua_Integer luax_int_field(lua_State *L, i32 arg, const char *key);
+lua_Integer luax_opt_int_field(lua_State *L, i32 arg, const char *key, lua_Integer fallback);
+
+String luax_string_field(lua_State *L, i32 arg, const char *key);
+String luax_opt_string_field(lua_State *L, i32 arg, const char *key, const char *fallback);
+
+bool luax_boolean_field(lua_State *L, i32 arg, const char *key, bool fallback = false);
+
+String luax_check_string(lua_State *L, i32 arg);
+String luax_opt_string(lua_State *L, i32 arg, String def);
+
+int luax_string_oneof(lua_State *L, std::initializer_list<String> haystack, String needle);
+void luax_new_class(lua_State *L, const char *mt_name, const luaL_Reg *l);
+
+inline void luax_package_preload(lua_State *L, const_str name, lua_CFunction function) {
+    lua_getglobal(L, "package");
+    lua_getfield(L, -1, "preload");
+    lua_pushcfunction(L, function);
+    lua_setfield(L, -2, name);
+    lua_pop(L, 2);
+}
+
+enum {
+    LUAX_UD_TNAME = 1,
+    LUAX_UD_PTR_SIZE = 2,
+};
+
+#if !defined(NEKO_LUAJIT)
+template <typename T>
+void luax_new_userdata(lua_State *L, T data, const char *tname) {
+    void *new_udata = lua_newuserdatauv(L, sizeof(T), 2);
+
+    lua_pushstring(L, tname);
+    lua_setiuservalue(L, -2, LUAX_UD_TNAME);
+
+    lua_pushnumber(L, sizeof(T));
+    lua_setiuservalue(L, -2, LUAX_UD_PTR_SIZE);
+
+    memcpy(new_udata, &data, sizeof(T));
+    luaL_setmetatable(L, tname);
+}
+#else
+template <typename T>
+void luax_new_userdata(lua_State *L, T data, const char *tname) {
+    T *new_udata = (T *)lua_newuserdata(L, sizeof(T));
+
+    // 为用户数据设置元表
+    luaL_getmetatable(L, tname);
+    lua_setmetatable(L, -2);
+
+    memcpy(new_udata, &data, sizeof(T));
+
+    // 额外的值使用lua_setfield将其存储在表中
+    lua_newtable(L);
+
+    lua_pushstring(L, tname);
+    lua_setfield(L, -2, "tname");
+
+    lua_pushnumber(L, sizeof(T));
+    lua_setfield(L, -2, "size");
+
+    // 将这个表作为用户数据的环境表存储
+    lua_setfenv(L, -2);
+}
+#endif
+
+#define luax_ptr_userdata luax_new_userdata
+
+struct LuaThread {
+    Mutex mtx;
+    String contents;
+    String name;
+    Thread thread;
+
+    void make(String code, String thread_name);
+    void join();
+};
+
+struct lua_State;
+struct LuaTableEntry;
+struct LuaVariant {
+    i32 type;
+    union {
+        bool boolean;
+        double number;
+        String string;
+        Slice<LuaTableEntry> table;
+        struct {
+            void *ptr;
+            String tname;
+        } udata;
+    };
+
+    void make(lua_State *L, i32 arg);
+    void trash();
+    void push(lua_State *L);
+};
+
+struct LuaTableEntry {
+    LuaVariant key;
+    LuaVariant value;
+};
+
+struct LuaChannel {
+    std::atomic<char *> name;
+
+    Mutex mtx;
+    Cond received;
+    Cond sent;
+
+    u64 received_total;
+    u64 sent_total;
+
+    Slice<LuaVariant> items;
+    u64 front;
+    u64 back;
+    u64 len;
+
+    void make(String n, u64 buf);
+    void trash();
+    void send(LuaVariant item);
+    LuaVariant recv();
+    bool try_recv(LuaVariant *v);
+};
+
+LuaChannel *lua_channel_make(String name, u64 buf);
+LuaChannel *lua_channel_get(String name);
+LuaChannel *lua_channels_select(lua_State *L, LuaVariant *v);
+void lua_channels_setup();
+void lua_channels_shutdown();
+
+typedef lua_State *luaref;
+
+struct neko_luaref {
+    luaref refL;
+
+    void make(lua_State *L);
+    void fini();
+
+    bool isvalid(int ref);
+    int ref(lua_State *L);
+    void unref(int ref);
+    void get(lua_State *L, int ref);
+    void set(lua_State *L, int ref);
+};
+
+int __neko_bind_callback_save(lua_State *L);
+int __neko_bind_callback_call(lua_State *L);
+int __neko_bind_nameof(lua_State *L);
+
+#endif
+
+#if !defined(NEKO_LUA_UTIL_H)
+#define NEKO_LUA_UTIL_H
 
 #include <cassert>
 #include <cstdlib>
@@ -13,8 +214,6 @@
 #include <utility>
 #include <variant>
 #include <vector>
-
-#include "engine/luax.h"
 
 #ifndef _WIN32
 #include <stdint.h>
@@ -264,147 +463,126 @@ struct LuaStack<lua_State *> {
 template <>
 struct LuaStack<lua_CFunction> {
     static void push(lua_State *L, lua_CFunction f) { lua_pushcfunction(L, f); }
-
     static lua_CFunction get(lua_State *L, int index) { return lua_tocfunction(L, index); }
 };
 
 template <>
 struct LuaStack<int> {
     static inline void push(lua_State *L, int value) { lua_pushinteger(L, static_cast<lua_Integer>(value)); }
-
     static inline int get(lua_State *L, int index) { return static_cast<int>(luaL_checkinteger(L, index)); }
 };
 
 template <>
 struct LuaStack<int const &> {
     static inline void push(lua_State *L, int value) { lua_pushnumber(L, static_cast<lua_Number>(value)); }
-
     static inline int get(lua_State *L, int index) { return static_cast<int>(luaL_checknumber(L, index)); }
 };
 
 template <>
 struct LuaStack<unsigned int> {
     static inline void push(lua_State *L, unsigned int value) { lua_pushinteger(L, static_cast<lua_Integer>(value)); }
-
     static inline unsigned int get(lua_State *L, int index) { return static_cast<unsigned int>(luaL_checkinteger(L, index)); }
 };
 
 template <>
 struct LuaStack<unsigned int const &> {
     static inline void push(lua_State *L, unsigned int value) { lua_pushnumber(L, static_cast<lua_Number>(value)); }
-
     static inline unsigned int get(lua_State *L, int index) { return static_cast<unsigned int>(luaL_checknumber(L, index)); }
 };
 
 template <>
 struct LuaStack<unsigned char> {
     static inline void push(lua_State *L, unsigned char value) { lua_pushinteger(L, static_cast<lua_Integer>(value)); }
-
     static inline unsigned char get(lua_State *L, int index) { return static_cast<unsigned char>(luaL_checkinteger(L, index)); }
 };
 
 template <>
 struct LuaStack<unsigned char const &> {
     static inline void push(lua_State *L, unsigned char value) { lua_pushnumber(L, static_cast<lua_Number>(value)); }
-
     static inline unsigned char get(lua_State *L, int index) { return static_cast<unsigned char>(luaL_checknumber(L, index)); }
 };
 
 template <>
 struct LuaStack<short> {
     static inline void push(lua_State *L, short value) { lua_pushinteger(L, static_cast<lua_Integer>(value)); }
-
     static inline short get(lua_State *L, int index) { return static_cast<short>(luaL_checkinteger(L, index)); }
 };
 
 template <>
 struct LuaStack<short const &> {
     static inline void push(lua_State *L, short value) { lua_pushnumber(L, static_cast<lua_Number>(value)); }
-
     static inline short get(lua_State *L, int index) { return static_cast<short>(luaL_checknumber(L, index)); }
 };
 
 template <>
 struct LuaStack<unsigned short> {
     static inline void push(lua_State *L, unsigned short value) { lua_pushinteger(L, static_cast<lua_Integer>(value)); }
-
     static inline unsigned short get(lua_State *L, int index) { return static_cast<unsigned short>(luaL_checkinteger(L, index)); }
 };
 
 template <>
 struct LuaStack<unsigned short const &> {
     static inline void push(lua_State *L, unsigned short value) { lua_pushnumber(L, static_cast<lua_Number>(value)); }
-
     static inline unsigned short get(lua_State *L, int index) { return static_cast<unsigned short>(luaL_checknumber(L, index)); }
 };
 
 template <>
 struct LuaStack<long> {
     static inline void push(lua_State *L, long value) { lua_pushinteger(L, static_cast<lua_Integer>(value)); }
-
     static inline long get(lua_State *L, int index) { return static_cast<long>(luaL_checkinteger(L, index)); }
 };
 
 template <>
 struct LuaStack<long const &> {
     static inline void push(lua_State *L, long value) { lua_pushnumber(L, static_cast<lua_Number>(value)); }
-
     static inline long get(lua_State *L, int index) { return static_cast<long>(luaL_checknumber(L, index)); }
 };
 
 template <>
 struct LuaStack<unsigned long> {
     static inline void push(lua_State *L, unsigned long value) { lua_pushinteger(L, static_cast<lua_Integer>(value)); }
-
     static inline unsigned long get(lua_State *L, int index) { return static_cast<unsigned long>(luaL_checkinteger(L, index)); }
 };
 
 template <>
 struct LuaStack<unsigned long const &> {
     static inline void push(lua_State *L, unsigned long value) { lua_pushnumber(L, static_cast<lua_Number>(value)); }
-
     static inline unsigned long get(lua_State *L, int index) { return static_cast<unsigned long>(luaL_checknumber(L, index)); }
 };
 
 template <>
 struct LuaStack<float> {
     static inline void push(lua_State *L, float value) { lua_pushnumber(L, static_cast<lua_Number>(value)); }
-
     static inline float get(lua_State *L, int index) { return static_cast<float>(luaL_checknumber(L, index)); }
 };
 
 template <>
 struct LuaStack<float const &> {
     static inline void push(lua_State *L, float value) { lua_pushnumber(L, static_cast<lua_Number>(value)); }
-
     static inline float get(lua_State *L, int index) { return static_cast<float>(luaL_checknumber(L, index)); }
 };
 
 template <>
 struct LuaStack<double> {
     static inline void push(lua_State *L, double value) { lua_pushnumber(L, static_cast<lua_Number>(value)); }
-
     static inline double get(lua_State *L, int index) { return static_cast<double>(luaL_checknumber(L, index)); }
 };
 
 template <>
 struct LuaStack<double const &> {
     static inline void push(lua_State *L, double value) { lua_pushnumber(L, static_cast<lua_Number>(value)); }
-
     static inline double get(lua_State *L, int index) { return static_cast<double>(luaL_checknumber(L, index)); }
 };
 
 template <>
 struct LuaStack<bool> {
     static inline void push(lua_State *L, bool value) { lua_pushboolean(L, value ? 1 : 0); }
-
     static inline bool get(lua_State *L, int index) { return lua_toboolean(L, index) ? true : false; }
 };
 
 template <>
 struct LuaStack<bool const &> {
     static inline void push(lua_State *L, bool value) { lua_pushboolean(L, value ? 1 : 0); }
-
     static inline bool get(lua_State *L, int index) { return lua_toboolean(L, index) ? true : false; }
 };
 
@@ -616,5 +794,266 @@ void get(lua_State *L, const table &v);
 int vfs_lua_loader(lua_State *L);
 
 }  // namespace neko
+
+#endif
+
+#ifndef NEKO_LUA_REF_HPP
+#define NEKO_LUA_REF_HPP
+
+#include <string>
+#include <tuple>  // std::ignore
+
+namespace neko {
+
+struct LuaNil {};
+
+template <>
+struct luabind::LuaStack<LuaNil> {
+    static inline void push(lua_State *L, LuaNil const &nil) { lua_pushnil(L); }
+};
+
+class LuaRef;
+
+class LuaRefBase {
+protected:
+    lua_State *L;
+    int m_ref;
+
+    struct lua_stack_auto_popper {
+        lua_State *L;
+        int m_count;
+        lua_stack_auto_popper(lua_State *L, int count = 1) : L(L), m_count(count) {}
+        ~lua_stack_auto_popper() { lua_pop(L, m_count); }
+    };
+    struct FromStackIndex {};
+
+    // 不应该直接使用
+    LuaRefBase(lua_State *L, FromStackIndex) : L(L) { m_ref = luaL_ref(L, LUA_REGISTRYINDEX); }
+    LuaRefBase(lua_State *L, int ref) : L(L), m_ref(ref) {}
+    ~LuaRefBase() { luaL_unref(L, LUA_REGISTRYINDEX, m_ref); }
+
+public:
+    virtual void push() const { lua_rawgeti(L, LUA_REGISTRYINDEX, m_ref); }
+
+    std::string tostring() const {
+        lua_getglobal(L, "tostring");
+        push();
+        lua_call(L, 1, 1);
+        const char *str = lua_tostring(L, 1);
+        lua_pop(L, 1);
+        return std::string(str);
+    }
+
+    int type() const {
+        int result;
+        push();
+        result = lua_type(L, -1);
+        lua_pop(L, 1);
+        return result;
+    }
+
+    inline bool isNil() const { return type() == LUA_TNIL; }
+    inline bool isNumber() const { return type() == LUA_TNUMBER; }
+    inline bool isString() const { return type() == LUA_TSTRING; }
+    inline bool isTable() const { return type() == LUA_TTABLE; }
+    inline bool isFunction() const { return type() == LUA_TFUNCTION; }
+    inline bool isUserdata() const { return type() == LUA_TUSERDATA; }
+    inline bool isThread() const { return type() == LUA_TTHREAD; }
+    inline bool isLightUserdata() const { return type() == LUA_TLIGHTUSERDATA; }
+    inline bool isBool() const { return type() == LUA_TBOOLEAN; }
+
+    template <typename... Args>
+    inline LuaRef const operator()(Args... args) const;
+
+    template <typename... Args>
+    inline void call(int ret, Args... args) const;
+
+    template <typename T>
+    void append(T v) const {
+        push();
+        size_t len = lua_rawlen(L, -1);
+        neko::luabind::LuaStack<T>::push(L, v);
+        lua_rawseti(L, -2, ++len);
+        lua_pop(L, 1);
+    }
+
+    template <typename T>
+    T cast() {
+        lua_stack_auto_popper p(L);
+        push();
+        return neko::luabind::LuaStack<T>::get(L, -1);
+    }
+
+    template <typename T>
+    operator T() {
+        return cast<T>();
+    }
+};
+
+template <typename K>
+class LuaTableElement : public LuaRefBase {
+    friend class LuaRef;
+
+private:
+    K m_key;
+
+public:
+    LuaTableElement(lua_State *L, K key) : LuaRefBase(L, FromStackIndex()), m_key(key) {}
+
+    void push() const override {
+        lua_rawgeti(L, LUA_REGISTRYINDEX, m_ref);
+        neko::luabind::LuaStack<K>::push(L, (K)m_key);
+        lua_gettable(L, -2);
+        lua_remove(L, -2);
+    }
+
+    // 为该表/键分配一个新值
+    template <typename T>
+    LuaTableElement &operator=(T v) {
+        lua_stack_auto_popper p(L);
+        lua_rawgeti(L, LUA_REGISTRYINDEX, m_ref);
+        neko::luabind::LuaStack<K>::push(L, m_key);
+        neko::luabind::LuaStack<T>::push(L, v);
+        lua_settable(L, -3);
+        return *this;
+    }
+
+    template <typename NK>
+    LuaTableElement<NK> operator[](NK key) const {
+        push();
+        return LuaTableElement<NK>(L, key);
+    }
+};
+
+template <typename K>
+struct neko::luabind::LuaStack<LuaTableElement<K> > {
+    static inline void push(lua_State *L, LuaTableElement<K> const &e) { e.push(); }
+};
+
+class LuaRef : public LuaRefBase {
+    friend LuaRefBase;
+
+private:
+    LuaRef(lua_State *L, FromStackIndex fs) : LuaRefBase(L, fs) {}
+
+public:
+    LuaRef(lua_State *L) : LuaRefBase(L, LUA_REFNIL) {}
+
+    LuaRef(lua_State *L, const std::string &global) : LuaRefBase(L, LUA_REFNIL) {
+        lua_getglobal(L, global.c_str());
+        m_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    }
+
+    LuaRef(LuaRef const &other) : LuaRefBase(other.L, LUA_REFNIL) {
+        other.push();
+        m_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    }
+
+    LuaRef(LuaRef &&other) noexcept : LuaRefBase(other.L, other.m_ref) { other.m_ref = LUA_REFNIL; }
+
+    LuaRef &operator=(LuaRef &&other) noexcept {
+        if (this == &other) return *this;
+
+        std::swap(L, other.L);
+        std::swap(m_ref, other.m_ref);
+
+        return *this;
+    }
+
+    LuaRef &operator=(LuaRef const &other) {
+        if (this == &other) return *this;
+        luaL_unref(L, LUA_REGISTRYINDEX, m_ref);
+        other.push();
+        L = other.L;
+        m_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+        return *this;
+    }
+
+    template <typename K>
+    LuaRef &operator=(LuaTableElement<K> &&other) noexcept {
+        luaL_unref(L, LUA_REGISTRYINDEX, m_ref);
+        other.push();
+        L = other.L;
+        m_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+        return *this;
+    }
+
+    template <typename K>
+    LuaRef &operator=(LuaTableElement<K> const &other) {
+        luaL_unref(L, LUA_REGISTRYINDEX, m_ref);
+        other.push();
+        L = other.L;
+        m_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+        return *this;
+    }
+
+    template <typename K>
+    LuaTableElement<K> operator[](K key) const {
+        push();
+        return LuaTableElement<K>(L, key);
+    }
+
+    static LuaRef fromStack(lua_State *L, int index = -1) {
+        lua_pushvalue(L, index);
+        return LuaRef(L, FromStackIndex());
+    }
+
+    static LuaRef newTable(lua_State *L) {
+        lua_newtable(L);
+        return LuaRef(L, FromStackIndex());
+    }
+
+    static LuaRef getGlobal(lua_State *L, char const *name) {
+        lua_getglobal(L, name);
+        return LuaRef(L, FromStackIndex());
+    }
+};
+
+template <>
+struct luabind::LuaStack<LuaRef> {
+    static inline void push(lua_State *L, LuaRef const &r) { r.push(); }
+};
+
+template <>
+inline LuaRef const LuaRefBase::operator()() const {
+    push();
+    luax_pcall(L, 0, 1);
+    return LuaRef(L, FromStackIndex());
+}
+
+template <typename... Args>
+inline LuaRef const LuaRefBase::operator()(Args... args) const {
+    const int n = sizeof...(Args);
+    push();
+    int dummy[] = {0, ((void)neko::luabind::LuaStack<Args>::push(L, std::forward<Args>(args)), 0)...};
+    std::ignore = dummy;
+    luax_pcall(L, n, 1);
+    return LuaRef(L, FromStackIndex());
+}
+
+template <>
+inline void LuaRefBase::call(int ret) const {
+    push();
+    luax_pcall(L, 0, ret);
+    return;  // 如果有返回值保留在 Lua 堆栈中
+}
+
+template <typename... Args>
+inline void LuaRefBase::call(int ret, Args... args) const {
+    const int n = sizeof...(Args);
+    push();
+    int dummy[] = {0, ((void)neko::luabind::LuaStack<Args>::push(L, std::forward<Args>(args)), 0)...};
+    std::ignore = dummy;
+    luax_pcall(L, n, ret);
+    return;  // 如果有返回值保留在 Lua 堆栈中
+}
+
+template <>
+inline LuaRef LuaRefBase::cast() {
+    push();
+    return LuaRef(L, FromStackIndex());
+}
+
+};  // namespace neko
 
 #endif

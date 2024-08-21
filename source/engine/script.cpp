@@ -7,18 +7,15 @@
 #include "engine/api.hpp"
 #include "engine/asset.h"
 #include "engine/base.h"
-#include "engine/camera.h"
 #include "engine/edit.h"
 #include "engine/game.h"
 #include "engine/gui.h"
 #include "engine/input.h"
-#include "engine/lua_util.h"
-#include "engine/luax.h"
+#include "engine/luax.hpp"
 #include "engine/prefab.h"
-#include "engine/sprite.h"
+#include "engine/asset.h"
 #include "engine/system.h"
 #include "engine/transform.h"
-#include "engine/vfs.h"
 
 static const char **nekogame_ffi[] = {
         &nekogame_ffi_scalar,

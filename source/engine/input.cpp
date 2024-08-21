@@ -8,7 +8,7 @@
 #include "engine/glew_glfw.h"
 #include "engine/gui.h"
 #include "engine/input.h"
-#include "engine/os.h"
+#include "engine/base.hpp"
 #include "engine/prelude.h"
 #include "engine/transform.h"
 

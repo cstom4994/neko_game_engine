@@ -12,11 +12,10 @@
 #include "engine/base.h"
 #include "engine/draw.h"
 #include "engine/game.h"
-#include "engine/lua_util.h"
 #include "engine/luabind.hpp"
-#include "engine/luax.h"
+#include "engine/luax.hpp"
 #include "engine/math.h"
-#include "engine/os.h"
+#include "engine/base.hpp"
 #include "engine/prelude.h"
 
 // deps

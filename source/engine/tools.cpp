@@ -3,7 +3,7 @@
 #include <stb/stb_image_write.h>
 #include <stb/stb_rect_pack.h>
 
-#include "engine/luax.h"
+#include "engine/luax.hpp"
 
 static int limginfo(lua_State *L) {
     const char *filename = luaL_checkstring(L, 1);

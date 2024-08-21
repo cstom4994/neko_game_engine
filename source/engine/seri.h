@@ -3,6 +3,7 @@
 #define NEKO_SERI_H
 
 #include "engine/base.h"
+#include "engine/base.hpp"
 #include "engine/prelude.h"
 
 inline bool neko_token_is_end_of_line(char c) { return (c == '\n' || c == '\r'); }

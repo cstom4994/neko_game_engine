@@ -2,7 +2,7 @@
 #ifndef NEKO_LUA_STRUCT_H
 #define NEKO_LUA_STRUCT_H
 
-#include "engine/luax.h"
+#include "engine/luax.hpp"
 
 #define LUASTRUCT_REQUIRED 1
 #define LUASTRUCT_OPTIONAL 0

@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "engine/base.h"
-#include "engine/luax.h"
+#include "engine/luax.hpp"
 #include "engine/prelude.h"
 #include "engine/reflection.hpp"
 

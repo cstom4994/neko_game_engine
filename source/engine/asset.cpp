@@ -1,24 +1,1979 @@
 #include "engine/asset.h"
 
+#include <GL/glew.h>
 #include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
 #include <sys/types.h>
+#include <time.h>
 
 #include <cstdio>
 #include <filesystem>
 
+#include "engine/asset.h"
 #include "engine/base.h"
+#include "engine/base.hpp"
+#include "engine/console.h"
 #include "engine/draw.h"
 #include "engine/game.h"
-#include "engine/luax.h"
+#include "engine/luax.hpp"
 #include "engine/neko.hpp"
-#include "engine/os.h"
 #include "engine/prelude.h"
 #include "engine/seri.h"
-#include "engine/vfs.h"
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
+
+// deps
+#include <stb_image.h>
+
+// miniz
+#include <miniz.h>
+
+#define CUTE_ASEPRITE_ASSERT neko_assert
+#define CUTE_ASEPRITE_ALLOC(size, ctx) mem_alloc(size)
+#define CUTE_ASEPRITE_FREE(mem, ctx) mem_free(mem)
+
+#define CUTE_ASEPRITE_IMPLEMENTATION
+#include "vendor/cute_aseprite.h"
+
+// -------------------------------------------------------------------------
+
+static void _flip_image_vertical(unsigned char *data, unsigned int width, unsigned int height) {
+    unsigned int size, stride, i, j;
+    unsigned char *new_data;
+
+    size = width * height * 4;
+    stride = sizeof(char) * width * 4;
+
+    new_data = (unsigned char *)mem_alloc(sizeof(char) * size);
+    for (i = 0; i < height; i++) {
+        j = height - i - 1;
+        memcpy(new_data + j * stride, data + i * stride, stride);
+    }
+
+    memcpy(data, new_data, size);
+    mem_free(new_data);
+}
+
+NEKO_FORCE_INLINE void neko_tex_flip_vertically(int width, int height, u8 *data) {
+    u8 rgb[4];
+    for (int y = 0; y < height / 2; y++) {
+        for (int x = 0; x < width; x++) {
+            int top = 4 * (x + y * width);
+            int bottom = 4 * (x + (height - y - 1) * width);
+            memcpy(rgb, data + top, sizeof(rgb));
+            memcpy(data + top, data + bottom, sizeof(rgb));
+            memcpy(data + bottom, rgb, sizeof(rgb));
+        }
+    }
+}
+
+gfx_texture_t neko_aseprite_simple(String filename) {
+    String contents = {};
+    bool ok = vfs_read_entire_file(&contents, filename);
+
+    neko_defer(mem_free(contents.data));
+
+    ase_t *ase;
+
+    {
+        PROFILE_BLOCK("ase_image load");
+        ase = cute_aseprite_load_from_memory(contents.data, contents.len, nullptr);
+
+        neko_assert(ase->frame_count == 1);  // image_load_ase 用于加载简单的单帧 aseprite
+        // neko_aseprite_default_blend_bind(ase);
+    }
+
+    u8 *data = reinterpret_cast<u8 *>(ase->frames->pixels);
+
+    gfx_texture_desc_t t_desc = {};
+
+    t_desc.format = R_TEXTURE_FORMAT_RGBA8;
+    t_desc.mag_filter = R_TEXTURE_FILTER_NEAREST;
+    t_desc.min_filter = R_TEXTURE_FILTER_NEAREST;
+    t_desc.num_mips = 0;
+    t_desc.width = ase->w;
+    t_desc.height = ase->h;
+    // t_desc.num_comps = 4;
+    t_desc.data = data;
+
+    neko_tex_flip_vertically(ase->w, ase->h, (u8 *)(t_desc.data));
+    gfx_texture_t tex = gfx_texture_create(t_desc);
+    cute_aseprite_free(ase);
+    return tex;
+}
+
+static void ase_default_blend_bind(ase_t *ase) {
+
+    neko_assert(ase);
+    neko_assert(ase->frame_count);
+
+    // 为了方便起见，将所有单元像素混合到各自的帧中
+    for (int i = 0; i < ase->frame_count; ++i) {
+        ase_frame_t *frame = ase->frames + i;
+        if (frame->pixels != NULL) mem_free(frame->pixels);
+        frame->pixels = (ase_color_t *)mem_alloc((size_t)(sizeof(ase_color_t)) * ase->w * ase->h);
+        memset(frame->pixels, 0, sizeof(ase_color_t) * (size_t)ase->w * (size_t)ase->h);
+        ase_color_t *dst = frame->pixels;
+
+        console_log("neko_aseprite_default_blend_bind: frame: %d cel_count: %d", i, frame->cel_count);
+
+        for (int j = 0; j < frame->cel_count; ++j) {  //
+
+            ase_cel_t *cel = frame->cels + j;
+
+            if (!(cel->layer->flags & ASE_LAYER_FLAGS_VISIBLE) || (cel->layer->parent && !(cel->layer->parent->flags & ASE_LAYER_FLAGS_VISIBLE))) {
+                continue;
+            }
+
+            while (cel->is_linked) {
+                ase_frame_t *frame = ase->frames + cel->linked_frame_index;
+                int found = 0;
+                for (int k = 0; k < frame->cel_count; ++k) {
+                    if (frame->cels[k].layer == cel->layer) {
+                        cel = frame->cels + k;
+                        found = 1;
+                        break;
+                    }
+                }
+                neko_assert(found);
+            }
+            void *src = cel->pixels;
+            u8 opacity = (u8)(cel->opacity * cel->layer->opacity * 255.0f);
+            int cx = cel->x;
+            int cy = cel->y;
+            int cw = cel->w;
+            int ch = cel->h;
+            int cl = -NEKO_MIN(cx, 0);
+            int ct = -NEKO_MIN(cy, 0);
+            int dl = NEKO_MAX(cx, 0);
+            int dt = NEKO_MAX(cy, 0);
+            int dr = NEKO_MIN(ase->w, cw + cx);
+            int db = NEKO_MIN(ase->h, ch + cy);
+            int aw = ase->w;
+            for (int dx = dl, sx = cl; dx < dr; dx++, sx++) {
+                for (int dy = dt, sy = ct; dy < db; dy++, sy++) {
+                    int dst_index = aw * dy + dx;
+                    ase_color_t src_color = s_color(ase, src, cw * sy + sx);
+                    ase_color_t dst_color = dst[dst_index];
+                    ase_color_t result = s_blend(src_color, dst_color, opacity);
+                    dst[dst_index] = result;
+                }
+            }
+        }
+    }
+}
+
+u64 generate_texture_handle(void *pixels, int w, int h, void *udata) {
+    (void)udata;
+    GLuint location;
+    glGenTextures(1, &location);
+    glBindTexture(GL_TEXTURE_2D, location);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    return (u64)location;
+}
+
+void destroy_texture_handle(u64 texture_id, void *udata) {
+    (void)udata;
+    GLuint id = (GLuint)texture_id;
+    glDeleteTextures(1, &id);
+}
+
+bool texture_update_data(AssetTexture *tex, u8 *data) {
+
+    LockGuard lock{&g_app->gpu_mtx};
+
+    // 如果存在 则释放旧的 GL 纹理
+    if (tex->id != 0) glDeleteTextures(1, &tex->id);
+
+    // 生成 GL 纹理
+    glGenTextures(1, &tex->id);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, tex->id);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    if (tex->flip_image_vertical) {
+        _flip_image_vertical(data, tex->width, tex->height);
+    }
+
+    // 将纹理数据复制到 GL
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, tex->width, tex->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    return true;
+}
+
+static bool _texture_load_vfs(AssetTexture *tex, String filename) {
+    neko_assert(tex);
+
+    u8 *data = nullptr;
+
+    console_printf("texture: loading texture '%s' ...", filename.cstr());
+
+    String contents = {};
+    bool ok = vfs_read_entire_file(&contents, filename);
+    if (!ok) {
+        return false;
+    }
+    neko_defer(mem_free(contents.data));
+
+    ase_t *ase;
+
+    if (filename.ends_with(".ase")) {
+
+        {
+            PROFILE_BLOCK("ase_image load");
+            ase = cute_aseprite_load_from_memory(contents.data, contents.len, nullptr);
+
+            neko_assert(ase->frame_count == 1);  // image_load_ase 用于加载简单的单帧 aseprite
+            // neko_aseprite_default_blend_bind(ase);
+
+            tex->width = ase->w;
+            tex->height = ase->h;
+        }
+
+        data = reinterpret_cast<u8 *>(ase->frames->pixels);
+
+    } else {
+
+        {
+            PROFILE_BLOCK("stb_image load");
+            stbi_set_flip_vertically_on_load(false);
+            data = stbi_load_from_memory((u8 *)contents.data, (i32)contents.len, &tex->width, &tex->height, &tex->components, 0);
+        }
+    }
+
+    // 读入纹理数据
+    if (!data) {
+        // tex->last_modified = modtime;
+        console_printf(" unsuccessful\n");
+        return false;  // 保持旧的GL纹理
+    }
+
+    {
+        LockGuard lock{&g_app->gpu_mtx};
+
+        // 如果存在 则释放旧的 GL 纹理
+        if (tex->id != 0) glDeleteTextures(1, &tex->id);
+
+        // 生成 GL 纹理
+        glGenTextures(1, &tex->id);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, tex->id);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+        if (tex->flip_image_vertical) {
+            _flip_image_vertical(data, tex->width, tex->height);
+        }
+
+        // 将纹理数据复制到 GL
+
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, tex->width, tex->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
+
+    if (filename.ends_with(".ase")) {
+        cute_aseprite_free(ase);
+    } else {
+        stbi_image_free(data);
+    }
+
+    // tex->last_modified = modtime;
+    console_printf(" successful\n");
+    return true;
+}
+
+bool texture_load(AssetTexture *tex, String filename, bool flip_image_vertical) {
+    tex->id = 0;
+    tex->flip_image_vertical = flip_image_vertical;
+    return _texture_load_vfs(tex, filename);
+}
+
+void texture_bind(const char *filename) {
+    LockGuard lock{&g_app->gpu_mtx};
+
+    Asset a = {};
+    bool ok = asset_load_kind(AssetKind_Image, filename, &a);
+
+    if (ok && a.texture.id != 0) glBindTexture(GL_TEXTURE_2D, a.texture.id);
+}
+
+LuaVec2 texture_get_size(const char *filename) {
+    Asset a = {};
+    bool ok = asset_load_kind(AssetKind_Image, filename, &a);
+    error_assert(ok);
+    return luavec2(a.texture.width, a.texture.height);
+}
+
+AssetTexture texture_get_ptr(const char *filename) {
+    Asset a = {};
+    bool ok = asset_load_kind(AssetKind_Image, filename, &a);
+    return a.texture;
+}
+
+bool texture_update(AssetTexture *tex, String filename) { return _texture_load_vfs(tex, filename); }
+
+bool load_texture_data_from_memory(const void *memory, size_t sz, i32 *width, i32 *height, u32 *num_comps, void **data, bool flip_vertically_on_load) {
+    // Load texture data
+
+    int channels;
+    u8 *image = (u8 *)stbi_load_from_memory((unsigned char *)memory, sz, width, height, &channels, 0);
+
+    // if (flip_vertically_on_load) neko_png_flip_image_horizontal(&img);
+
+    *data = image;
+
+    if (!*data) {
+        // neko_image_free(&img);
+        console_log("could not load image %p", memory);
+        return false;
+    }
+    return true;
+}
+
+bool load_texture_data_from_file(const char *file_path, i32 *width, i32 *height, u32 *num_comps, void **data, bool flip_vertically_on_load) {
+    u64 len = 0;
+    const_str file_data = neko_capi_vfs_read_file(NEKO_PACKS::GAMEDATA, file_path, &len);
+    neko_assert(file_data);
+    bool ret = load_texture_data_from_memory(file_data, len, width, height, num_comps, data, flip_vertically_on_load);
+    if (!ret) {
+        console_log("could not load texture: %s", file_path);
+    }
+    mem_free(file_data);
+    return ret;
+}
+
+bool neko_asset_texture_load_from_file(const_str path, void *out, gfx_texture_desc_t *desc, bool flip_on_load, bool keep_data) {
+    neko_asset_texture_t *t = (neko_asset_texture_t *)out;
+
+    memset(&t->desc, 0, sizeof(gfx_texture_desc_t));
+
+    if (desc) {
+        t->desc = *desc;
+    } else {
+        t->desc.format = R_TEXTURE_FORMAT_RGBA8;
+        t->desc.min_filter = R_TEXTURE_FILTER_LINEAR;
+        t->desc.mag_filter = R_TEXTURE_FILTER_LINEAR;
+        t->desc.wrap_s = GL_REPEAT;
+        t->desc.wrap_t = GL_REPEAT;
+    }
+
+    void *tex_data = NULL;
+    i32 w, h;
+    u32 cc;
+    load_texture_data_from_file(path, &w, &h, &cc, &tex_data, false);
+    neko_defer(mem_free(tex_data));
+
+    t->desc.data = tex_data;
+    t->desc.width = w;
+    t->desc.height = h;
+
+    if (!t->desc.data) {
+
+        console_log("failed to load texture data %s", path);
+        return false;
+    }
+
+    t->hndl = gfx_texture_create(t->desc);
+
+    if (!keep_data) {
+        // neko_image_free(&img);
+        t->desc.data = NULL;
+    }
+
+    return true;
+}
+
+bool neko_asset_texture_load_from_memory(const void *memory, size_t sz, void *out, gfx_texture_desc_t *desc, bool flip_on_load, bool keep_data) {
+    neko_asset_texture_t *t = (neko_asset_texture_t *)out;
+
+    memset(&t->desc, 0, sizeof(gfx_texture_desc_t));
+
+    if (desc) {
+        t->desc = *desc;
+    } else {
+        t->desc.format = R_TEXTURE_FORMAT_RGBA8;
+        t->desc.min_filter = R_TEXTURE_FILTER_LINEAR;
+        t->desc.mag_filter = R_TEXTURE_FILTER_LINEAR;
+        t->desc.wrap_s = GL_REPEAT;
+        t->desc.wrap_t = GL_REPEAT;
+    }
+
+    // Load texture data
+    i32 num_comps = 0;
+    bool loaded = load_texture_data_from_memory(memory, sz, (i32 *)&t->desc.width, (i32 *)&t->desc.height, (u32 *)&num_comps, (void **)&t->desc.data, t->desc.flip_y);
+
+    if (!loaded) {
+        return false;
+    }
+
+    t->hndl = gfx_texture_create(t->desc);
+
+    if (!keep_data) {
+        mem_free(t->desc.data);
+        t->desc.data = NULL;
+    }
+
+    return true;
+}
+
+#if 0
+
+bool Atlas::load(String filepath, bool generate_mips) {
+    PROFILE_FUNC();
+
+    String contents = {};
+    bool ok = vfs_read_entire_file(&contents, filepath);
+    if (!ok) {
+        return false;
+    }
+    neko_defer(mem_free(contents.data));
+
+    Image img = {};
+    HashMap<AtlasImage> by_name = {};
+
+    for (String line : SplitLines(contents)) {
+        switch (line.data[0]) {
+            case 'a': {
+                Scanner scan = line;
+                scan.next_string();  // discard 'a'
+                String filename = scan.next_string();
+
+                StringBuilder sb = {};
+                neko_defer(sb.trash());
+                sb.swap_filename(filepath, filename);
+                bool ok = img.load(String(sb), generate_mips);
+                if (!ok) {
+                    return false;
+                }
+                break;
+            }
+            case 's': {
+                if (img.id == 0) {
+                    return false;
+                }
+
+                Scanner scan = line;
+                scan.next_string();  // discard 's'
+                String name = scan.next_string();
+                scan.next_string();  // discard origin x
+                scan.next_string();  // discard origin y
+                i32 x = scan.next_int();
+                i32 y = scan.next_int();
+                i32 width = scan.next_int();
+                i32 height = scan.next_int();
+                i32 padding = scan.next_int();
+                i32 trimmed = scan.next_int();
+                scan.next_int();  // discard trim x
+                scan.next_int();  // discard trim y
+                i32 trim_width = scan.next_int();
+                i32 trim_height = scan.next_int();
+
+                AtlasImage atlas_img = {};
+                atlas_img.img = img;
+                atlas_img.u0 = (x + padding) / (float)img.width;
+                atlas_img.v0 = (y + padding) / (float)img.height;
+
+                if (trimmed != 0) {
+                    atlas_img.width = (float)trim_width;
+                    atlas_img.height = (float)trim_height;
+                    atlas_img.u1 = (x + padding + trim_width) / (float)img.width;
+                    atlas_img.v1 = (y + padding + trim_height) / (float)img.height;
+                } else {
+                    atlas_img.width = (float)width;
+                    atlas_img.height = (float)height;
+                    atlas_img.u1 = (x + padding + width) / (float)img.width;
+                    atlas_img.v1 = (y + padding + height) / (float)img.height;
+                }
+
+                by_name[fnv1a(name)] = atlas_img;
+
+                break;
+            }
+            default:
+                break;
+        }
+    }
+
+    console_log("created atlas with image id: %d and %llu entries", img.id, (unsigned long long)by_name.load);
+
+    Atlas a;
+    a.by_name = by_name;
+    a.img = img;
+    *this = a;
+
+    return true;
+}
+
+void Atlas::trash() {
+    by_name.trash();
+    img.trash();
+}
+
+AtlasImage *Atlas::get(String name) {
+    u64 key = fnv1a(name);
+    return by_name.get(key);
+}
+
+#endif
+
+/*==========================
+// NEKO_PACK
+==========================*/
+
+static int _compare_item_paths(const void *_a, const void *_b) {
+    // 要保证a与b不为NULL
+    char *a = *(char **)_a;
+    char *b = *(char **)_b;
+    u8 al = (u8)strlen(a);
+    u8 bl = (u8)strlen(b);
+    int difference = al - bl;
+    if (difference != 0) return difference;
+    return memcmp(a, b, al * sizeof(u8));
+}
+
+static void _destroy_pack_items(u64 item_count, PakItem *items) {
+    neko_assert(item_count == 0 || (item_count > 0 && items));
+
+    for (u64 i = 0; i < item_count; i++) mem_free(items[i].path);
+    mem_free(items);
+}
+
+static bool _create_pack_items(vfs_file *pak, u64 item_count, PakItem **_items) {
+    neko_assert(pak);
+    neko_assert(item_count > 0);
+    neko_assert(_items);
+
+    PakItem *items = (PakItem *)mem_alloc(item_count * sizeof(PakItem));
+
+    if (!items) return false;  // FAILED_TO_ALLOCATE_PACK_RESULT
+
+    for (u64 i = 0; i < item_count; i++) {
+        PakItemInfo info;
+
+        size_t result = neko_capi_vfs_fread(&info, sizeof(PakItemInfo), 1, pak);
+
+        if (result != 1) {
+            _destroy_pack_items(i, items);
+            return false;  // FAILED_TO_READ_FILE_PACK_RESULT
+        }
+
+        if (info.data_size == 0 || info.path_size == 0) {
+            _destroy_pack_items(i, items);
+            return false;  // BAD_DATA_SIZE_PACK_RESULT
+        }
+
+        char *path = (char *)mem_alloc((info.path_size + 1) * sizeof(char));
+
+        if (!path) {
+            _destroy_pack_items(i, items);
+            return false;  // FAILED_TO_ALLOCATE_PACK_RESULT
+        }
+
+        result = neko_capi_vfs_fread(path, sizeof(char), info.path_size, pak);
+
+        path[info.path_size] = 0;
+
+        if (result != info.path_size) {
+            _destroy_pack_items(i, items);
+            return false;  // FAILED_TO_READ_FILE_PACK_RESULT
+        }
+
+        i64 fileOffset = info.zip_size > 0 ? info.zip_size : info.data_size;
+
+        int seekResult = neko_capi_vfs_fseek(pak, fileOffset, SEEK_CUR);
+
+        if (seekResult != 0) {
+            _destroy_pack_items(i, items);
+            return false;  // FAILED_TO_SEEK_FILE_PACK_RESULT
+        }
+
+        PakItem *item = &items[i];
+        item->info = info;
+        item->path = path;
+    }
+
+    *_items = items;
+    return true;
+}
+
+static int _compare_pack_items(const void *_a, const void *_b) {
+    const PakItem *a = (PakItem *)_a;
+    const PakItem *b = (PakItem *)_b;
+
+    int difference = (int)a->info.path_size - (int)b->info.path_size;
+
+    if (difference != 0) return difference;
+
+    return memcmp(a->path, b->path, a->info.path_size * sizeof(char));
+}
+
+bool pak_load(Pak *pak, const_str file_path, u32 data_buffer_capacity, bool is_resources_directory) {
+    neko_assert(file_path);
+
+    // memset(pak, 0, sizeof(Pak));
+
+    pak->zip_buffer = NULL;
+    pak->zip_size = 0;
+
+    pak->vf = neko_capi_vfs_fopen(file_path);
+
+    if (!pak->vf.data) return false;  // FAILED_TO_OPEN_FILE_PACK_RESULT
+
+    char header[NEKO_PAK_HEAD_SIZE];
+    i32 buildnum;
+
+    size_t result = neko_capi_vfs_fread(header, sizeof(u8), NEKO_PAK_HEAD_SIZE, &pak->vf);
+    result += neko_capi_vfs_fread(&buildnum, sizeof(i32), 1, &pak->vf);
+
+    // 检查文件头
+    if (result != NEKO_PAK_HEAD_SIZE + 1 ||  //
+        header[0] != 'N' ||                  //
+        header[1] != 'E' ||                  //
+        header[2] != 'K' ||                  //
+        header[3] != 'O' ||                  //
+        header[4] != 'P' ||                  //
+        header[5] != 'A' ||                  //
+        header[6] != 'C' ||                  //
+        header[7] != 'K') {
+        pak_fini(pak);
+        return false;
+    }
+
+    u64 item_count;
+
+    result = neko_capi_vfs_fread(&item_count, sizeof(u64), 1, &pak->vf);
+
+    if (result != 1 ||  //
+        item_count == 0) {
+        pak_fini(pak);
+        return false;
+    }
+
+    PakItem *items;
+
+    bool ok = _create_pack_items(&pak->vf, item_count, &items);
+
+    if (!ok) {
+        pak_fini(pak);
+        return false;
+    }
+
+    pak->item_count = item_count;
+    pak->items = items;
+
+    u8 *_data_buffer = NULL;
+
+    if (data_buffer_capacity > 0) {
+        _data_buffer = (u8 *)mem_alloc(data_buffer_capacity * sizeof(u8));
+    } else {
+        _data_buffer = NULL;
+    }
+
+    pak->data_buffer = _data_buffer;
+    pak->data_size = data_buffer_capacity;
+
+    console_log("load pack %s buildnum: %d (engine %d)", neko_util_get_filename(file_path), buildnum, neko_buildnum());
+
+    return true;
+}
+void pak_fini(Pak *pak) {
+    if (pak->file_ref_count != 0) {
+        console_log("assets loader leaks detected %d refs", pak->file_ref_count);
+    }
+
+    pak_free_buffer(pak);
+
+    _destroy_pack_items(pak->item_count, pak->items);
+    if (pak->vf.data) neko_capi_vfs_fclose(&pak->vf);
+}
+
+u64 pak_get_item_index(Pak *pak, const_str path) {
+    neko_assert(path);
+    neko_assert(strlen(path) <= u8_max);
+
+    PakItem *search_item = &pak->search_item;
+
+    search_item->info.path_size = (u8)strlen(path);
+    search_item->path = (char *)path;
+
+    PakItem *items = (PakItem *)bsearch(search_item, pak->items, pak->item_count, sizeof(PakItem), _compare_pack_items);
+
+    if (!items) return u64_max;
+
+    u64 index = items - pak->items;
+    return index;
+}
+
+bool pak_get_data(Pak *pak, u64 index, String *out, u32 *size) {
+    neko_assert((index < pak->item_count) && out && size);
+
+    PakItemInfo info = pak->items[index].info;
+
+    u8 *_data_buffer = pak->data_buffer;
+    if (_data_buffer) {
+        if (info.data_size > pak->data_size) {
+            _data_buffer = (u8 *)mem_realloc(_data_buffer, info.data_size * sizeof(u8));
+            pak->data_buffer = _data_buffer;
+            pak->data_size = info.data_size;
+        }
+    } else {
+        _data_buffer = (u8 *)mem_alloc(info.data_size * sizeof(u8));
+        pak->data_buffer = _data_buffer;
+        pak->data_size = info.data_size;
+    }
+
+    u8 *_zip_buffer = pak->zip_buffer;
+    if (pak->zip_buffer) {
+        if (info.zip_size > pak->zip_size) {
+            _zip_buffer = (u8 *)mem_realloc(pak->zip_buffer, info.zip_size * sizeof(u8));
+            pak->zip_buffer = _zip_buffer;
+            pak->zip_size = info.zip_size;
+        }
+    } else {
+        if (info.zip_size > 0) {
+            _zip_buffer = (u8 *)mem_alloc(info.zip_size * sizeof(u8));
+            pak->zip_buffer = _zip_buffer;
+            pak->zip_size = info.zip_size;
+        }
+    }
+
+    vfs_file *vf = &pak->vf;
+
+    i64 file_offset = (i64)(info.file_offset + sizeof(PakItemInfo) + info.path_size);
+
+    int seek_result = neko_capi_vfs_fseek(vf, file_offset, SEEK_SET);
+
+    if (seek_result != 0) return false;  // FAILED_TO_SEEK_FILE_PACK_RESULT
+
+    if (info.zip_size > 0) {
+        size_t result = neko_capi_vfs_fread(_zip_buffer, sizeof(u8), info.zip_size, vf);
+
+        if (result != info.zip_size) return false;  // FAILED_TO_READ_FILE_PACK_RESULT
+
+        // result = neko_lz_decode(_zip_buffer, info.zip_size, _data_buffer, info.data_size);
+
+        unsigned long decompress_buf_len = info.data_size;
+        int decompress_status = uncompress(_data_buffer, &decompress_buf_len, _zip_buffer, info.zip_size);
+
+        result = decompress_buf_len;
+
+        console_log("[assets] neko_lz_decode %u %u", info.zip_size, info.data_size);
+
+        if (result < 0 || result != info.data_size || decompress_status != MZ_OK) {
+            return false;  // FAILED_TO_DECOMPRESS_PACK_RESULT
+        }
+    } else {
+        size_t result = neko_capi_vfs_fread(_data_buffer, sizeof(u8), info.data_size, vf);
+
+        if (result != info.data_size) return false;  // FAILED_TO_READ_FILE_PACK_RESULT
+    }
+
+    (*size) = info.data_size;
+
+    char *data = (char *)mem_alloc(info.data_size + 1);
+    memcpy((void *)(data), _data_buffer, info.data_size);
+    data[info.data_size] = 0;
+    *out = {data, info.data_size};
+
+    pak->file_ref_count++;
+    return true;
+}
+
+bool pak_get_data(Pak *pak, const_str path, String *out, u32 *size) {
+    neko_assert(path && out && size);
+    neko_assert(strlen(path) <= u8_max);
+    u64 index = pak_get_item_index(pak, path);
+    if (index == u64_max) return false;  // FAILED_TO_GET_ITEM_PACK_RESULT
+    return pak_get_data(pak, index, out, size);
+}
+
+void pak_free_item(Pak *pak, String data) {
+    mem_free(data.data);
+    pak->file_ref_count--;
+}
+
+void pak_free_buffer(Pak *pak) {
+
+    mem_free(pak->data_buffer);
+    mem_free(pak->zip_buffer);
+    pak->data_buffer = NULL;
+    pak->zip_buffer = NULL;
+}
+
+static void pak_remove_item(u64 item_count, PakItem *pack_items) {
+    neko_assert(item_count == 0 || (item_count > 0 && pack_items));
+    for (u64 i = 0; i < item_count; i++) remove(pack_items[i].path);
+}
+
+bool neko_pak_unzip(const_str file_path, bool print_progress) {
+    neko_assert(file_path);
+
+    Pak pak;
+
+    int pack_result = pak_load(&pak, file_path, 128, false);
+
+    if (pack_result != 0) return pack_result;
+
+    u64 total_raw_size = 0, total_zip_size = 0;
+
+    u64 item_count = pak.item_count;
+    PakItem *items = pak.items;
+
+    for (u64 i = 0; i < item_count; i++) {
+        PakItem *item = &items[i];
+
+        if (print_progress) {
+            console_log("Unpacking %s", item->path);
+        }
+
+        String data;
+        u32 data_size;
+
+        pack_result = pak_get_data(&pak, i, &data, &data_size);
+
+        if (pack_result != 0) {
+            pak_remove_item(i, items);
+            pak_fini(&pak);
+            return pack_result;
+        }
+
+        u8 path_size = item->info.path_size;
+
+        char item_path[u8_max + 1];
+
+        memcpy(item_path, item->path, path_size * sizeof(char));
+        item_path[path_size] = 0;
+
+        // 解压的时候路径节替换为 '-'
+        for (u8 j = 0; j < path_size; j++)
+            if (item_path[j] == '/' || item_path[j] == '\\' || (item_path[j] == '.' && j == 0)) item_path[j] = '-';
+
+        FILE *item_file = neko_fopen(item_path, "wb");
+
+        if (!item_file) {
+            pak_remove_item(i, items);
+            pak_fini(&pak);
+            return false;  // FAILED_TO_OPEN_FILE_PACK_RESULT
+        }
+
+        size_t result = fwrite(data.data, sizeof(u8), data_size, item_file);
+
+        neko_fclose(item_file);
+
+        if (result != data_size) {
+            pak_remove_item(i, items);
+            pak_fini(&pak);
+            return false;  // FAILED_TO_OPEN_FILE_PACK_RESULT
+        }
+
+        if (print_progress) {
+            u32 raw_file_size = item->info.data_size;
+            u32 zip_file_size = item->info.zip_size > 0 ? item->info.zip_size : item->info.data_size;
+
+            total_raw_size += raw_file_size;
+            total_zip_size += zip_file_size;
+
+            int progress = (int)(((f32)(i + 1) / (f32)item_count) * 100.0f);
+
+            neko_printf("(%u/%u bytes) [%d%%]\n", raw_file_size, zip_file_size, progress);
+        }
+    }
+
+    pak_fini(&pak);
+
+    if (print_progress) {
+        neko_printf("Unpacked %llu files. (%llu/%llu bytes)\n", (long long unsigned int)item_count, (long long unsigned int)total_raw_size, (long long unsigned int)total_zip_size);
+    }
+
+    return true;
+}
+
+bool neko_write_pack_items(FILE *pack_file, u64 item_count, char **item_paths, bool print_progress) {
+    neko_assert(pack_file);
+    neko_assert(item_count > 0);
+    neko_assert(item_paths);
+
+    u32 buffer_size = 128;  // 提高初始缓冲大小
+
+    u8 *item_data = (u8 *)mem_alloc(sizeof(u8) * buffer_size);
+    u8 *zip_data = (u8 *)mem_alloc(sizeof(u8) * buffer_size);
+    if (!zip_data) {
+        mem_free(item_data);
+        return false;  // FAILED_TO_ALLOCATE_PACK_RESULT
+    }
+
+    u64 total_zip_size = 0, total_raw_size = 0;
+
+    for (u64 i = 0; i < item_count; i++) {
+        char *item_path = item_paths[i];
+
+        if (print_progress) {
+            neko_printf("Packing \"%s\" file. ", item_path);
+            fflush(stdout);
+        }
+
+        size_t path_size = strlen(item_path);
+
+        if (path_size > u8_max) {
+            mem_free(zip_data);
+            mem_free(item_data);
+            return false;  // BAD_DATA_SIZE_PACK_RESULT
+        }
+
+        FILE *item_file = neko_fopen(item_path, "rb");
+
+        if (!item_file) {
+            mem_free(zip_data);
+            mem_free(item_data);
+            return false;  // FAILED_TO_OPEN_FILE_PACK_RESULT
+        }
+
+        int seek_result = neko_fseek(item_file, 0, SEEK_END);
+
+        if (seek_result != 0) {
+            neko_fclose(item_file);
+            mem_free(zip_data);
+            mem_free(item_data);
+            return false;  // FAILED_TO_SEEK_FILE_PACK_RESULT
+        }
+
+        u64 item_size = (u64)neko_ftell(item_file);
+
+        if (item_size == 0 || item_size > UINT32_MAX) {
+            neko_fclose(item_file);
+            mem_free(zip_data);
+            mem_free(item_data);
+            return false;  // BAD_DATA_SIZE_PACK_RESULT
+        }
+
+        seek_result = neko_fseek(item_file, 0, SEEK_SET);
+
+        if (seek_result != 0) {
+            neko_fclose(item_file);
+            mem_free(zip_data);
+            mem_free(item_data);
+            return false;  // FAILED_TO_SEEK_FILE_PACK_RESULT
+        }
+
+        if (item_size > buffer_size) {
+            u8 *new_buffer = (u8 *)mem_realloc(item_data, item_size * sizeof(u8));
+
+            if (!new_buffer) {
+                neko_fclose(item_file);
+                mem_free(zip_data);
+                mem_free(item_data);
+                return false;  // FAILED_TO_ALLOCATE_PACK_RESULT
+            }
+
+            item_data = new_buffer;
+
+            new_buffer = (u8 *)mem_realloc(zip_data, item_size * sizeof(u8));
+
+            if (!new_buffer) {
+                neko_fclose(item_file);
+                mem_free(zip_data);
+                mem_free(item_data);
+                return false;  // FAILED_TO_ALLOCATE_PACK_RESULT
+            }
+
+            zip_data = new_buffer;
+        }
+
+        size_t result = neko_fread(item_data, sizeof(u8), item_size, item_file);
+
+        neko_fclose(item_file);
+
+        if (result != item_size) {
+            mem_free(zip_data);
+            mem_free(item_data);
+            return false;  // FAILED_TO_READ_FILE_PACK_RESULT
+        }
+
+        size_t zip_size;
+
+        if (item_size > 1) {
+
+            unsigned long compress_buf_len = compressBound(item_size);
+            int compress_status = compress(zip_data, &compress_buf_len, (const unsigned char *)item_data, item_size);
+
+            zip_size = compress_buf_len;
+
+            // const int max_dst_size = neko_lz_bounds(item_size, 0);
+            // zip_size = neko_lz_encode(item_data, item_size, zip_data, max_dst_size, 9);
+
+            if (zip_size <= 0 || zip_size >= item_size || compress_status != MZ_OK) {
+                zip_size = 0;
+            }
+        } else {
+            zip_size = 0;
+        }
+
+        i64 file_offset = neko_ftell(pack_file);
+
+        PakItemInfo info = {
+                (u32)zip_size,
+                (u32)item_size,
+                (u64)file_offset,
+                (u8)path_size,
+        };
+
+        result = fwrite(&info, sizeof(PakItemInfo), 1, pack_file);
+
+        if (result != 1) {
+            mem_free(zip_data);
+            mem_free(item_data);
+            return false;  // FAILED_TO_WRITE_FILE_PACK_RESULT
+        }
+
+        result = fwrite(item_path, sizeof(char), info.path_size, pack_file);
+
+        if (result != info.path_size) {
+            mem_free(zip_data);
+            mem_free(item_data);
+            return false;  // FAILED_TO_WRITE_FILE_PACK_RESULT
+        }
+
+        if (zip_size > 0) {
+            result = fwrite(zip_data, sizeof(u8), zip_size, pack_file);
+
+            if (result != zip_size) {
+                mem_free(zip_data);
+                mem_free(item_data);
+                return false;  // FAILED_TO_WRITE_FILE_PACK_RESULT
+            }
+        } else {
+            result = fwrite(item_data, sizeof(u8), item_size, pack_file);
+
+            if (result != item_size) {
+                mem_free(zip_data);
+                mem_free(item_data);
+                return false;  // FAILED_TO_WRITE_FILE_PACK_RESULT
+            }
+        }
+
+        if (print_progress) {
+            u32 zip_file_size = zip_size > 0 ? (u32)zip_size : (u32)item_size;
+            u32 raw_file_size = (u32)item_size;
+
+            total_zip_size += zip_file_size;
+            total_raw_size += raw_file_size;
+
+            int progress = (int)(((f32)(i + 1) / (f32)item_count) * 100.0f);
+
+            neko_printf("(%u/%u bytes) [%d%%]\n", zip_file_size, raw_file_size, progress);
+            fflush(stdout);
+        }
+    }
+
+    mem_free(zip_data);
+    mem_free(item_data);
+
+    if (print_progress) {
+        int compression = (int)((1.0 - (f64)(total_zip_size) / (f64)total_raw_size) * 100.0);
+        neko_printf("Packed %llu files. (%llu/%llu bytes, %d%% saved)\n", (long long unsigned int)item_count, (long long unsigned int)total_zip_size, (long long unsigned int)total_raw_size,
+                    compression);
+    }
+
+    return true;
+}
+
+bool neko_pak_build(const_str file_path, u64 file_count, const_str *file_paths, bool print_progress) {
+    neko_assert(file_path);
+    neko_assert(file_count > 0);
+    neko_assert(file_paths);
+
+    char **item_paths = (char **)mem_alloc(file_count * sizeof(char *));
+
+    if (!item_paths) return false;  // FAILED_TO_ALLOCATE_PACK_RESULT
+
+    u64 item_count = 0;
+
+    for (u64 i = 0; i < file_count; i++) {
+        bool already_added = false;
+
+        for (u64 j = 0; j < item_count; j++) {
+            if (i != j && strcmp(file_paths[i], item_paths[j]) == 0) already_added = true;
+        }
+
+        if (!already_added) item_paths[item_count++] = (char *)file_paths[i];
+    }
+
+    qsort(item_paths, item_count, sizeof(char *), _compare_item_paths);
+
+    FILE *pack_file = neko_fopen(file_path, "wb");
+
+    if (!pack_file) {
+        mem_free(item_paths);
+        return false;  // FAILED_TO_CREATE_FILE_PACK_RESULT
+    }
+
+    char header[NEKO_PAK_HEAD_SIZE] = {
+            'N', 'E', 'K', 'O', 'P', 'A', 'C', 'K',
+    };
+
+    i32 buildnum = neko_buildnum();
+
+    size_t write_result = fwrite(header, sizeof(u8), NEKO_PAK_HEAD_SIZE, pack_file);
+    write_result += fwrite(&buildnum, sizeof(i32), 1, pack_file);
+
+    if (write_result != NEKO_PAK_HEAD_SIZE + 1) {
+        mem_free(item_paths);
+        neko_fclose(pack_file);
+        remove(file_path);
+        return false;  // FAILED_TO_WRITE_FILE_PACK_RESULT
+    }
+
+    write_result = fwrite(&item_count, sizeof(u64), 1, pack_file);
+
+    if (write_result != 1) {
+        mem_free(item_paths);
+        neko_fclose(pack_file);
+        remove(file_path);
+        return false;  // FAILED_TO_WRITE_FILE_PACK_RESULT
+    }
+
+    bool ok = neko_write_pack_items(pack_file, item_count, item_paths, print_progress);
+
+    mem_free(item_paths);
+    neko_fclose(pack_file);
+
+    if (!ok) {
+        remove(file_path);
+        return ok;
+    }
+
+    neko_printf("Packed %s ok\n", file_path);
+
+    return true;
+}
+
+bool neko_pak_info(const_str file_path, i32 *buildnum, u64 *item_count) {
+    neko_assert(file_path);
+    neko_assert(buildnum);
+    neko_assert(item_count);
+
+    vfs_file vf = neko_capi_vfs_fopen(file_path);
+
+    if (!vf.data) return false;  // FAILED_TO_OPEN_FILE_PACK_RESULT
+
+    char header[NEKO_PAK_HEAD_SIZE];
+
+    size_t result = neko_capi_vfs_fread(header, sizeof(u8), NEKO_PAK_HEAD_SIZE, &vf);
+    result += neko_capi_vfs_fread(buildnum, sizeof(i32), 1, &vf);
+
+    if (result != NEKO_PAK_HEAD_SIZE + 1) {
+        neko_capi_vfs_fclose(&vf);
+        return false;  // FAILED_TO_READ_FILE_PACK_RESULT
+    }
+
+    if (header[0] != 'N' ||  //
+        header[1] != 'E' ||  //
+        header[2] != 'K' ||  //
+        header[3] != 'O' ||  //
+        header[4] != 'P' ||  //
+        header[5] != 'A' ||  //
+        header[6] != 'C' ||  //
+        header[7] != 'K') {
+        neko_capi_vfs_fclose(&vf);
+        return false;  // BAD_FILE_TYPE_PACK_RESULT
+    }
+
+    result = neko_capi_vfs_fread(item_count, sizeof(u64), 1, &vf);
+
+    neko_capi_vfs_fclose(&vf);
+
+    if (result != 1) return false;  // FAILED_TO_READ_FILE_PACK_RESULT
+    return true;
+}
+
+// mt_pak
+
+struct pak_assets_t {
+    const_str name;
+    size_t size;
+    String data;
+};
+
+static Pak *check_pak_udata(lua_State *L, i32 arg) {
+    Pak *udata = (Pak *)luaL_checkudata(L, arg, "mt_pak");
+    if (!udata || !udata->item_count) {
+        luaL_error(L, "cannot read pak");
+    }
+    return udata;
+}
+
+static int mt_pak_gc(lua_State *L) {
+    Pak *pak = check_pak_udata(L, 1);
+    pak_fini(pak);
+    console_log("pak __gc %p", pak);
+    return 0;
+}
+
+static int mt_pak_items(lua_State *L) {
+    Pak *pak = check_pak_udata(L, 1);
+
+    u64 item_count = pak_get_item_count(pak);
+
+    lua_newtable(L);  // # -2
+    for (int i = 0; i < item_count; ++i) {
+        lua_pushstring(L, pak_get_item_path(pak, i));  // # -1
+        lua_rawseti(L, -2, i + 1);
+    }
+
+    return 1;
+}
+
+static int mt_pak_assets_load(lua_State *L) {
+    Pak *pak = check_pak_udata(L, 1);
+
+    const_str path = lua_tostring(L, 2);
+
+    pak_assets_t *assets_user_handle = (pak_assets_t *)lua_newuserdata(L, sizeof(pak_assets_t));
+    assets_user_handle->name = path;
+    assets_user_handle->size = 0;
+
+    bool ok = pak_get_data(pak, path, &assets_user_handle->data, (u32 *)&assets_user_handle->size);
+
+    if (!ok) {
+        const_str error_message = "mt_pak_assets_load failed";
+        lua_pushstring(L, error_message);  // 将错误信息压入堆栈
+        return lua_error(L);               // 抛出lua错误
+    }
+
+    // asset_write(asset);
+
+    return 1;
+}
+
+static int mt_pak_assets_unload(lua_State *L) {
+    Pak *pak = check_pak_udata(L, 1);
+
+    pak_assets_t *assets_user_handle = (pak_assets_t *)lua_touserdata(L, 2);
+
+    if (assets_user_handle && assets_user_handle->data.len)
+        pak_free_item(pak, assets_user_handle->data);
+    else
+        console_log("unknown assets unload %p", assets_user_handle);
+
+    // asset_write(asset);
+
+    return 0;
+}
+
+int open_mt_pak(lua_State *L) {
+    // clang-format off
+    luaL_Reg reg[] = {
+            {"__gc", mt_pak_gc},
+            {"items", mt_pak_items},
+            {"assets_load", mt_pak_assets_load},
+            {"assets_unload", mt_pak_assets_unload},
+            {nullptr, nullptr},
+    };
+    // clang-format on
+
+    luax_new_class(L, "mt_pak", reg);
+    return 0;
+}
+
+int neko_pak_load(lua_State *L) {
+    String name = luax_check_string(L, 1);
+    String path = luax_check_string(L, 2);
+
+    Pak pak;
+
+    bool ok = pak_load(&pak, path.cstr(), 0, false);
+
+    if (!ok) {
+        return 0;
+    }
+
+    luax_new_userdata(L, pak, "mt_pak");
+    return 1;
+}
+
+static u32 read4(char *bytes) {
+    u32 n;
+    memcpy(&n, bytes, 4);
+    return n;
+}
+
+bool read_entire_file_raw(String *out, String filepath) {
+    PROFILE_FUNC();
+
+    String path = to_cstr(filepath);
+    neko_defer(mem_free(path.data));
+
+    FILE *file = neko_fopen(path.data, "rb");
+    if (file == nullptr) {
+        console_log("failed to load file %s", path.data);
+        return false;
+    }
+
+    neko_fseek(file, 0L, SEEK_END);
+    size_t size = neko_ftell(file);
+    rewind(file);
+
+    char *buf = (char *)mem_alloc(size + 1);
+    size_t read = neko_fread(buf, sizeof(char), size, file);
+    neko_fclose(file);
+
+    if (read != size) {
+        mem_free(buf);
+        return false;
+    }
+
+    buf[size] = 0;
+    *out = {buf, size};
+    return true;
+}
+
+static bool list_all_files_help(Array<String> *files, const_str path) {
+    PROFILE_FUNC();
+    std::filesystem::path search_path = (path != nullptr) ? path : std::filesystem::current_path();
+    for (const auto &entry : std::filesystem::recursive_directory_iterator(search_path)) {
+        if (!entry.is_regular_file()) continue;
+        std::filesystem::path relative_path = std::filesystem::relative(entry.path(), search_path);
+        files->push(str_fmt("%s", relative_path.generic_string().c_str()));
+    }
+    return true;
+}
+
+struct FileSystem {
+    virtual void make() = 0;
+    virtual void trash() = 0;
+    virtual bool mount(String filepath) = 0;
+    virtual bool file_exists(String filepath) = 0;
+    virtual bool read_entire_file(String *out, String filepath) = 0;
+    virtual bool list_all_files(Array<String> *files) = 0;
+    virtual u64 file_modtime(String filepath) = 0;
+};
+
+static HashMap<FileSystem *> g_vfs;
+
+struct DirectoryFileSystem : FileSystem {
+    String basepath;
+
+    void make() {}
+    void trash() { mem_free(basepath.data); }
+
+    bool mount(String filepath) {
+        // String path = to_cstr(filepath);
+        // neko_defer(mem_free(path.data));
+        // i32 res = os_change_dir(path.data);
+        // return res == 0;
+        basepath = to_cstr(filepath);
+        return true;
+    }
+
+    bool file_exists(String filepath) {
+        String path = str_fmt("%s/%s", basepath.cstr(), filepath.cstr());
+        neko_defer(mem_free(path.data));
+
+        FILE *fp = neko_fopen(path.cstr(), "r");
+        if (fp != nullptr) {
+            neko_fclose(fp);
+            return true;
+        }
+
+        return false;
+    }
+
+    bool read_entire_file(String *out, String filepath) {
+        if (!file_exists(filepath)) return false;
+        String path = str_fmt("%s/%s", basepath.cstr(), filepath.cstr());
+        neko_defer(mem_free(path.data));
+        return read_entire_file_raw(out, path);
+    }
+
+    bool list_all_files(Array<String> *files) { return list_all_files_help(files, basepath.cstr()); }
+
+    u64 file_modtime(String filepath) {
+        if (!file_exists(filepath)) return 0;
+        String path = tmp_fmt("%s/%s", basepath.cstr(), filepath.cstr());
+        u64 modtime = os_file_modtime(path.cstr());
+        return modtime;
+    }
+};
+
+struct ZipFileSystem : FileSystem {
+    Mutex mtx = {};
+    mz_zip_archive zip = {};
+    String zip_contents = {};
+
+    void make() { mtx.make(); }
+
+    void trash() {
+        if (zip_contents.data != nullptr) {
+            mz_zip_reader_end(&zip);
+            mem_free(zip_contents.data);
+        }
+
+        mtx.trash();
+    }
+
+    bool mount(String filepath) {
+        PROFILE_FUNC();
+
+        String contents = {};
+        bool contents_ok = false;
+
+        // 判断是否已经挂载gamedata
+        // 如果已经挂载gamedata则其余所有ZipFileSystem均加载自gamedata
+        if (g_vfs.get(fnv1a(NEKO_PACKS::GAMEDATA))) {
+            contents_ok = vfs_read_entire_file(&contents, filepath);
+        } else {
+            contents_ok = read_entire_file_raw(&contents, filepath);
+        }
+
+        if (!contents_ok) {
+            return false;
+        }
+
+        bool success = false;
+        neko_defer({
+            if (!success) {
+                mem_free(contents.data);
+            }
+        });
+
+        char *data = contents.data;
+        char *end = &data[contents.len];
+
+        constexpr i32 eocd_size = 22;
+        char *eocd = end - eocd_size;
+        if (read4(eocd) != 0x06054b50) {
+            console_log("zip_fs failed to find EOCD record");
+            return false;
+        }
+
+        u32 central_size = read4(&eocd[12]);
+        if (read4(eocd - central_size) != 0x02014b50) {
+            console_log("zip_fs failed to find central directory");
+            return false;
+        }
+
+        u32 central_offset = read4(&eocd[16]);
+        char *begin = eocd - central_size - central_offset;
+        u64 zip_len = end - begin;
+        if (read4(begin) != 0x04034b50) {
+            console_log("zip_fs failed to read local file header");
+            return false;
+        }
+
+        mz_bool zip_ok = mz_zip_reader_init_mem(&zip, begin, zip_len, 0);
+        if (!zip_ok) {
+            mz_zip_error err = mz_zip_get_last_error(&zip);
+            console_log("zip_fs failed to read zip: %s", mz_zip_get_error_string(err));
+            return false;
+        }
+
+        zip_contents = contents;
+
+        success = true;
+        return true;
+    }
+
+    bool file_exists(String filepath) {
+        PROFILE_FUNC();
+
+        String path = to_cstr(filepath);
+        neko_defer(mem_free(path.data));
+
+        LockGuard lock{&mtx};
+
+        i32 i = mz_zip_reader_locate_file(&zip, path.data, nullptr, 0);
+        if (i == -1) {
+            return false;
+        }
+
+        mz_zip_archive_file_stat stat;
+        mz_bool ok = mz_zip_reader_file_stat(&zip, i, &stat);
+        if (!ok) {
+            return false;
+        }
+
+        return true;
+    }
+
+    bool read_entire_file(String *out, String filepath) {
+        PROFILE_FUNC();
+
+        String path = to_cstr(filepath);
+        neko_defer(mem_free(path.data));
+
+        LockGuard lock{&mtx};
+
+        i32 file_index = mz_zip_reader_locate_file(&zip, path.data, nullptr, 0);
+        if (file_index == -1) {
+            return false;
+        }
+
+        mz_zip_archive_file_stat stat;
+        mz_bool ok = mz_zip_reader_file_stat(&zip, file_index, &stat);
+        if (!ok) {
+            return false;
+        }
+
+        size_t size = stat.m_uncomp_size;
+        char *buf = (char *)mem_alloc(size + 1);
+
+        ok = mz_zip_reader_extract_to_mem(&zip, file_index, buf, size, 0);
+        if (!ok) {
+            mz_zip_error err = mz_zip_get_last_error(&zip);
+            fprintf(stderr, "failed to read file '%s': %s\n", path.data, mz_zip_get_error_string(err));
+            mem_free(buf);
+            return false;
+        }
+
+        buf[size] = 0;
+        *out = {buf, size};
+        return true;
+    }
+
+    bool list_all_files(Array<String> *files) {
+        PROFILE_FUNC();
+
+        LockGuard lock{&mtx};
+
+        for (u32 i = 0; i < mz_zip_reader_get_num_files(&zip); i++) {
+            mz_zip_archive_file_stat file_stat;
+            mz_bool ok = mz_zip_reader_file_stat(&zip, i, &file_stat);
+            if (!ok) {
+                return false;
+            }
+
+            String name = {file_stat.m_filename, strlen(file_stat.m_filename)};
+            files->push(to_cstr(name));
+        }
+
+        return true;
+    }
+
+    u64 file_modtime(String filepath) { return 0; }
+};
+
+#if defined(NEKO_IS_WEB)
+EM_JS(char *, web_mount_dir, (), { return stringToNewUTF8(nekoMount); });
+
+EM_ASYNC_JS(void, web_load_zip, (), {
+    var dirs = nekoMount.split("/");
+    dirs.pop();
+
+    var path = [];
+    for (var dir of dirs) {
+        path.push(dir);
+        FS.mkdir(path.join("/"));
+    }
+
+    await fetch(nekoMount).then(async function(res) {
+        if (!res.ok) {
+            throw new Error("failed to fetch " + nekoMount);
+        }
+
+        var data = await res.arrayBuffer();
+        FS.writeFile(nekoMount, new Uint8Array(data));
+    });
+});
+
+EM_ASYNC_JS(void, web_load_files, (), {
+    var jobs = [];
+
+    function nekoWalkFiles(files, leading) {
+        var path = leading.join("/");
+        if (path != "") {
+            FS.mkdir(path);
+        }
+
+        for (var entry of Object.entries(files)) {
+            var key = entry[0];
+            var value = entry[1];
+            var filepath = [... leading, key ];
+            if (typeof value == "object") {
+                nekoWalkFiles(value, filepath);
+            } else if (value == 1) {
+                var file = filepath.join("/");
+
+                var job = fetch(file).then(async function(res) {
+                    if (!res.ok) {
+                        throw new Error("failed to fetch " + file);
+                    }
+                    var data = await res.arrayBuffer();
+                    FS.writeFile(file, new Uint8Array(data));
+                });
+
+                jobs.push(job);
+            }
+        }
+    }
+    nekoWalkFiles(nekoFiles, []);
+
+    await Promise.all(jobs);
+});
+#endif
+
+template <typename T>
+static bool vfs_mount_type(String fsname, String mount) {
+    void *ptr = mem_alloc(sizeof(T));
+    T *vfs = new (ptr) T();
+
+    vfs->make();
+    bool ok = vfs->mount(mount);
+    if (!ok) {
+        vfs->trash();
+        mem_free(vfs);
+        return false;
+    }
+
+    g_vfs[fnv1a(fsname)] = vfs;
+
+    return true;
+}
+
+MountResult vfs_mount(const_str fsname, const char *filepath) {
+    PROFILE_FUNC();
+
+    MountResult res = {};
+
+#if defined(NEKO_IS_WEB)
+    String mount_dir = web_mount_dir();
+    neko_defer(free(mount_dir.data));
+
+    if (mount_dir.ends_with(".zip")) {
+        web_load_zip();
+        res.ok = vfs_mount_type<ZipFileSystem>(mount_dir);
+    } else {
+        web_load_files();
+        res.ok = vfs_mount_type<DirectoryFileSystem>(mount_dir);
+    }
+#else
+    if (filepath == nullptr) {
+
+        String path = os_program_path();
+        console_log("program path: %s", path.data);
+
+        res.ok = vfs_mount_type<ZipFileSystem>(fsname, path);
+        if (!res.ok) {
+            res.ok = vfs_mount_type<ZipFileSystem>(fsname, "./gamedata.zip");
+            res.is_fused = true;
+            console_log("zip_fs load with gamedata.zip");
+        }
+    } else {
+        String mount_dir = filepath;
+
+        if (mount_dir.ends_with(".zip")) {
+            res.ok = vfs_mount_type<ZipFileSystem>(fsname, mount_dir);
+            res.is_fused = true;
+        } else {
+            res.ok = vfs_mount_type<DirectoryFileSystem>(fsname, mount_dir);
+            res.can_hot_reload = res.ok;
+        }
+    }
+#endif
+
+    if (filepath != nullptr && !res.ok) {
+        fatal_error(tmp_fmt("failed to load: %s", filepath));
+    }
+
+    return res;
+}
+
+void vfs_fini() {
+    for (auto vfs : g_vfs) {
+        console_log("vfs_fini(%p)", (*vfs.value));
+        (*vfs.value)->trash();
+        mem_free((*vfs.value));
+    }
+
+    g_vfs.trash();
+}
+
+u64 vfs_file_modtime(String filepath) {
+    for (auto v : g_vfs) {
+        FileSystem *vfs = static_cast<FileSystem *>(*v.value);
+        if (vfs->file_exists(filepath)) {
+            return vfs->file_modtime(filepath);
+        }
+    }
+    return 0;
+}
+
+bool vfs_file_exists(String filepath) {
+    for (auto v : g_vfs) {
+        FileSystem *vfs = static_cast<FileSystem *>(*v.value);
+        if (vfs->file_exists(filepath)) return true;
+    }
+    return false;
+}
+
+bool vfs_read_entire_file(String *out, String filepath) {
+    for (auto v : g_vfs) {
+        FileSystem *vfs = static_cast<FileSystem *>(*v.value);
+        if (vfs->file_exists(filepath)) return vfs->read_entire_file(out, filepath);
+    }
+    return false;
+}
+
+bool vfs_list_all_files(String fsname, Array<String> *files) { return g_vfs[fnv1a(fsname)]->list_all_files(files); }
+
+struct AudioFile {
+    u8 *buf;
+    u64 cursor;
+    u64 len;
+};
+
+void *vfs_for_miniaudio() {
+#if NEKO_AUDIO == 1
+    ma_vfs_callbacks vtbl = {};
+
+    vtbl.onOpen = [](ma_vfs *pVFS, const char *pFilePath, ma_uint32 openMode, ma_vfs_file *pFile) -> ma_result {
+        String contents = {};
+
+        if (openMode & MA_OPEN_MODE_WRITE) {
+            return MA_ERROR;
+        }
+
+        bool ok = vfs_read_entire_file(&contents, pFilePath);
+        if (!ok) {
+            return MA_ERROR;
+        }
+
+        AudioFile *file = (AudioFile *)mem_alloc(sizeof(AudioFile));
+        file->buf = (u8 *)contents.data;
+        file->len = contents.len;
+        file->cursor = 0;
+
+        *pFile = file;
+        return MA_SUCCESS;
+    };
+
+    vtbl.onClose = [](ma_vfs *pVFS, ma_vfs_file file) -> ma_result {
+        AudioFile *f = (AudioFile *)file;
+        mem_free(f->buf);
+        mem_free(f);
+        return MA_SUCCESS;
+    };
+
+    vtbl.onRead = [](ma_vfs *pVFS, ma_vfs_file file, void *pDst, size_t sizeInBytes, size_t *pBytesRead) -> ma_result {
+        AudioFile *f = (AudioFile *)file;
+
+        u64 remaining = f->len - f->cursor;
+        u64 len = remaining < sizeInBytes ? remaining : sizeInBytes;
+        memcpy(pDst, &f->buf[f->cursor], len);
+
+        if (pBytesRead != nullptr) {
+            *pBytesRead = len;
+        }
+
+        if (len != sizeInBytes) {
+            return MA_AT_END;
+        }
+
+        return MA_SUCCESS;
+    };
+
+    vtbl.onWrite = [](ma_vfs *pVFS, ma_vfs_file file, const void *pSrc, size_t sizeInBytes, size_t *pBytesWritten) -> ma_result { return MA_NOT_IMPLEMENTED; };
+
+    vtbl.onSeek = [](ma_vfs *pVFS, ma_vfs_file file, ma_int64 offset, ma_seek_origin origin) -> ma_result {
+        AudioFile *f = (AudioFile *)file;
+
+        i64 seek = 0;
+        switch (origin) {
+            case ma_seek_origin_start:
+                seek = offset;
+                break;
+            case ma_seek_origin_end:
+                seek = f->len + offset;
+                break;
+            case ma_seek_origin_current:
+            default:
+                seek = f->cursor + offset;
+                break;
+        }
+
+        if (seek < 0 || seek > f->len) {
+            return MA_ERROR;
+        }
+
+        f->cursor = (u64)seek;
+        return MA_SUCCESS;
+    };
+
+    vtbl.onTell = [](ma_vfs *pVFS, ma_vfs_file file, ma_int64 *pCursor) -> ma_result {
+        AudioFile *f = (AudioFile *)file;
+        *pCursor = f->cursor;
+        return MA_SUCCESS;
+    };
+
+    vtbl.onInfo = [](ma_vfs *pVFS, ma_vfs_file file, ma_file_info *pInfo) -> ma_result {
+        AudioFile *f = (AudioFile *)file;
+        pInfo->sizeInBytes = f->len;
+        return MA_SUCCESS;
+    };
+
+    ma_vfs_callbacks *ptr = (ma_vfs_callbacks *)mem_alloc(sizeof(ma_vfs_callbacks));
+    *ptr = vtbl;
+    return ptr;
+#else
+    return NULL;
+#endif
+}
+
+// #define SEEK_SET 0
+// #define SEEK_CUR 1
+// #define SEEK_END 2
+
+size_t neko_capi_vfs_fread(void *dest, size_t size, size_t count, vfs_file *vf) {
+    size_t bytes_to_read = size * count;
+    std::memcpy(dest, static_cast<const char *>(vf->data) + vf->offset, bytes_to_read);
+    vf->offset += bytes_to_read;
+    return count;
+}
+
+int neko_capi_vfs_fseek(vfs_file *vf, u64 of, int whence) {
+    u64 new_offset;
+    switch (whence) {
+        case SEEK_SET:
+            new_offset = of;
+            break;
+        case SEEK_CUR:
+            new_offset = vf->offset + of;
+            break;
+        case SEEK_END:
+            new_offset = vf->len + of;
+            break;
+        default:
+            errno = EINVAL;
+            return -1;
+    }
+    if (new_offset < 0 || new_offset > vf->len) {
+        errno = EINVAL;
+        return -1;
+    }
+    vf->offset = new_offset;
+    return 0;
+}
+
+u64 neko_capi_vfs_ftell(vfs_file *vf) { return vf->offset; }
+
+vfs_file neko_capi_vfs_fopen(const_str path) {
+    vfs_file vf{};
+    vf.data = neko_capi_vfs_read_file(NEKO_PACKS::GAMEDATA, path, &vf.len);
+    return vf;
+}
+
+int neko_capi_vfs_fclose(vfs_file *vf) {
+    neko_assert(vf);
+    mem_free(vf->data);
+    return 0;
+}
+
+int neko_capi_vfs_fscanf(vfs_file *vf, const char *format, ...) {
+    if (!vf || !format) {
+        errno = EINVAL;
+        return -1;
+    }
+    va_list args;
+    va_start(args, format);
+
+    const char *fmt = format;
+    int count = 0;
+
+    while (*fmt) {
+        // 跳过格式字符串中的空格
+        while (isspace(*fmt)) ++fmt;
+        if (*fmt == '\0') break;
+        if (*fmt != '%') {
+            // 匹配单个字符文字
+            if (*fmt != static_cast<const char *>(vf->data)[vf->offset]) {
+                va_end(args);
+                return count;
+            }
+            ++fmt;
+            ++vf->offset;
+            continue;
+        }
+
+        ++fmt;  // 跳过 '%'
+        if (*fmt == '\0') {
+            break;
+        }
+
+        // 支持的格式说明符: %d, %u, %s, %c
+        switch (*fmt) {
+            case 'd': {
+                int *int_arg = va_arg(args, int *);
+                int scanned;
+                int bytes_read = sscanf(static_cast<const char *>(vf->data) + vf->offset, "%d", &scanned);
+                if (bytes_read == 1) {
+                    *int_arg = scanned;
+                    vf->offset += std::to_string(scanned).length();
+                    ++count;
+                }
+                break;
+            }
+            case 'u': {
+                unsigned int *uint_arg = va_arg(args, unsigned int *);
+                unsigned int scanned;
+                int bytes_read = sscanf(static_cast<const char *>(vf->data) + vf->offset, "%u", &scanned);
+                if (bytes_read == 1) {
+                    *uint_arg = scanned;
+                    vf->offset += std::to_string(scanned).length();
+                    ++count;
+                }
+                break;
+            }
+            case 's': {
+                char *str_arg = va_arg(args, char *);
+                int read = 0;
+                while (!isspace(static_cast<const char *>(vf->data)[vf->offset]) && static_cast<const char *>(vf->data)[vf->offset] != '\0') {
+                    str_arg[read++] = static_cast<const char *>(vf->data)[vf->offset++];
+                }
+                str_arg[read] = '\0';
+                ++count;
+                break;
+            }
+            case 'c': {
+                char *char_arg = va_arg(args, char *);
+                *char_arg = static_cast<const char *>(vf->data)[vf->offset++];
+                ++count;
+                break;
+            }
+            default:
+                // 不支持的格式说明符
+                va_end(args);
+                return count;
+        }
+        ++fmt;
+    }
+
+    va_end(args);
+    return count;
+}
+
+bool neko_capi_vfs_file_exists(const_str fsname, const_str filepath) { return vfs_file_exists(filepath); }
+
+const_str neko_capi_vfs_read_file(const_str fsname, const_str filepath, size_t *size) {
+    String out;
+    bool ok = vfs_read_entire_file(&out, filepath);
+    if (!ok) return NULL;
+    *size = out.len;
+    return out.data;
+}
 
 Assets g_assets = {};
 
@@ -107,11 +2062,11 @@ void assets_perform_hot_reload_changes() {
                 ok = a.sprite.load(a.name);
                 break;
             }
-            case AssetKind_Tilemap: {
-                a.tilemap.trash();
-                ok = a.tilemap.load(a.name);
-                break;
-            }
+            // case AssetKind_Tilemap: {
+            //     a.tilemap.trash();
+            //     ok = a.tilemap.load(a.name);
+            //     break;
+            // }
             default:
                 continue;
                 break;
@@ -152,9 +2107,9 @@ void assets_shutdown() {
             case AssetKind_AseSprite:
                 v->sprite.trash();
                 break;
-            case AssetKind_Tilemap:
-                v->tilemap.trash();
-                break;
+            // case AssetKind_Tilemap:
+            //     v->tilemap.trash();
+            //     break;
             default:
                 break;
         }

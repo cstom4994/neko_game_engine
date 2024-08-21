@@ -6,18 +6,17 @@
 #include <string.h>
 
 #include "engine/api.hpp"
+#include "engine/asset.h"
 #include "engine/base.h"
-#include "engine/camera.h"
+#include "engine/base.hpp"
+#include "engine/draw.h"
 #include "engine/edit.h"
 #include "engine/entity.h"
-#include "engine/font.h"
 #include "engine/game.h"
 #include "engine/gfx.h"
 #include "engine/input.h"
-#include "engine/luax.h"
-#include "engine/os.h"
+#include "engine/luax.hpp"
 #include "engine/prelude.h"
-#include "engine/texture.h"
 #include "engine/transform.h"
 
 static Entity gui_root;  // 所有 gui 都应该是它的子节点 以便随屏幕移动
@@ -48,7 +47,7 @@ struct Gui {
     LuaVec2 padding;
 };
 
-static EntityPool* gui_pool;
+static EntityPool* pool_gui;
 
 static EntityMap* focus_enter_map;
 static EntityMap* focus_exit_map;
@@ -63,11 +62,11 @@ Entity gui_get_root() { return gui_root; }
 void gui_add(Entity ent) {
     Gui* gui;
 
-    if (entitypool_get(gui_pool, ent)) return;  // 已经有gui
+    if (entitypool_get(pool_gui, ent)) return;  // 已经有gui
 
     transform_add(ent);
 
-    gui = (Gui*)entitypool_add(gui_pool, ent);
+    gui = (Gui*)entitypool_add(pool_gui, ent);
     gui->visible = true;
     gui->setvisible = true;
     gui->focusable = false;
@@ -79,81 +78,81 @@ void gui_add(Entity ent) {
     gui->padding = luavec2(5, 5);
 }
 
-void gui_remove(Entity ent) { entitypool_remove(gui_pool, ent); }
+void gui_remove(Entity ent) { entitypool_remove(pool_gui, ent); }
 
-bool gui_has(Entity ent) { return entitypool_get(gui_pool, ent) != NULL; }
+bool gui_has(Entity ent) { return entitypool_get(pool_gui, ent) != NULL; }
 
 void gui_set_color(Entity ent, Color color) {
-    Gui* gui = (Gui*)entitypool_get(gui_pool, ent);
+    Gui* gui = (Gui*)entitypool_get(pool_gui, ent);
     error_assert(gui);
     gui->color = color;
 }
 Color gui_get_color(Entity ent) {
-    Gui* gui = (Gui*)entitypool_get(gui_pool, ent);
+    Gui* gui = (Gui*)entitypool_get(pool_gui, ent);
     error_assert(gui);
     return gui->color;
 }
 
 void gui_set_visible(Entity ent, bool visible) {
-    Gui* gui = (Gui*)entitypool_get(gui_pool, ent);
+    Gui* gui = (Gui*)entitypool_get(pool_gui, ent);
     error_assert(gui);
     gui->setvisible = visible;
 }
 bool gui_get_visible(Entity ent) {
-    Gui* gui = (Gui*)entitypool_get(gui_pool, ent);
+    Gui* gui = (Gui*)entitypool_get(pool_gui, ent);
     error_assert(gui);
     return gui->visible;
 }
 
 void gui_set_focusable(Entity ent, bool focusable) {
-    Gui* gui = (Gui*)entitypool_get(gui_pool, ent);
+    Gui* gui = (Gui*)entitypool_get(pool_gui, ent);
     error_assert(gui);
     gui->focusable = focusable;
 }
 bool gui_get_focusable(Entity ent) {
-    Gui* gui = (Gui*)entitypool_get(gui_pool, ent);
+    Gui* gui = (Gui*)entitypool_get(pool_gui, ent);
     error_assert(gui);
     return gui->focusable;
 }
 
 void gui_set_captures_events(Entity ent, bool captures_events) {
-    Gui* gui = (Gui*)entitypool_get(gui_pool, ent);
+    Gui* gui = (Gui*)entitypool_get(pool_gui, ent);
     error_assert(gui);
     gui->captures_events = captures_events;
 }
 bool gui_get_captures_events(Entity ent) {
-    Gui* gui = (Gui*)entitypool_get(gui_pool, ent);
+    Gui* gui = (Gui*)entitypool_get(pool_gui, ent);
     error_assert(gui);
     return gui->captures_events;
 }
 
 void gui_set_halign(Entity ent, GuiAlign align) {
-    Gui* gui = (Gui*)entitypool_get(gui_pool, ent);
+    Gui* gui = (Gui*)entitypool_get(pool_gui, ent);
     error_assert(gui);
     gui->halign = align;
 }
 GuiAlign gui_get_halign(Entity ent) {
-    Gui* gui = (Gui*)entitypool_get(gui_pool, ent);
+    Gui* gui = (Gui*)entitypool_get(pool_gui, ent);
     error_assert(gui);
     return gui->halign;
 }
 void gui_set_valign(Entity ent, GuiAlign align) {
-    Gui* gui = (Gui*)entitypool_get(gui_pool, ent);
+    Gui* gui = (Gui*)entitypool_get(pool_gui, ent);
     error_assert(gui);
     gui->valign = align;
 }
 GuiAlign gui_get_valign(Entity ent) {
-    Gui* gui = (Gui*)entitypool_get(gui_pool, ent);
+    Gui* gui = (Gui*)entitypool_get(pool_gui, ent);
     error_assert(gui);
     return gui->valign;
 }
 void gui_set_padding(Entity ent, LuaVec2 padding) {
-    Gui* gui = (Gui*)entitypool_get(gui_pool, ent);
+    Gui* gui = (Gui*)entitypool_get(pool_gui, ent);
     error_assert(gui);
     gui->padding = padding;
 }
 LuaVec2 gui_get_padding(Entity ent) {
-    Gui* gui = (Gui*)entitypool_get(gui_pool, ent);
+    Gui* gui = (Gui*)entitypool_get(pool_gui, ent);
     error_assert(gui);
     return gui->padding;
 }
@@ -188,7 +187,7 @@ KeyCode gui_event_key_up(Entity ent) { return (KeyCode)entitymap_get(key_up_map,
 bool gui_captured_event() { return captured_event; }
 
 static void _common_init() {
-    gui_pool = entitypool_new(Gui);
+    pool_gui = entitypool_new(Gui);
     focus_enter_map = entitymap_new(false);
     focus_exit_map = entitymap_new(false);
     changed_map = entitymap_new(false);
@@ -205,12 +204,12 @@ static void _common_fini() {
     entitymap_free(changed_map);
     entitymap_free(focus_enter_map);
     entitymap_free(focus_exit_map);
-    entitypool_free(gui_pool);
+    entitypool_free(pool_gui);
 }
 
 static void _common_update_destroyed() {
     if (entity_destroyed(focused)) focused = entity_nil;
-    entitypool_remove_destroyed(gui_pool, gui_remove);
+    entitypool_remove_destroyed(pool_gui, gui_remove);
 }
 
 static void _common_update_visible_rec(Gui* gui) {
@@ -226,7 +225,7 @@ static void _common_update_visible_rec(Gui* gui) {
     }
 
     // if has parent, inherit
-    pgui = (Gui*)entitypool_get(gui_pool, transform_get_parent(gui->pool_elem.ent));
+    pgui = (Gui*)entitypool_get(pool_gui, transform_get_parent(gui->pool_elem.ent));
     if (pgui) {
         _common_update_visible_rec(pgui);
         gui->visible = pgui->visible;
@@ -241,8 +240,8 @@ static void _common_update_visible_rec(Gui* gui) {
 static void _common_update_visible() {
     Gui* gui;
 
-    entitypool_foreach(gui, gui_pool) gui->updated_visible = false;
-    entitypool_foreach(gui, gui_pool) _common_update_visible_rec(gui);
+    entitypool_foreach(gui, pool_gui) gui->updated_visible = false;
+    entitypool_foreach(gui, pool_gui) _common_update_visible_rec(gui);
 }
 
 static void _common_align(Gui* gui, GuiAlign halign, GuiAlign valign) {
@@ -261,7 +260,7 @@ static void _common_align(Gui* gui, GuiAlign halign, GuiAlign valign) {
     pos = transform_get_position(ent);
 
     // get parent gui and its bounding box
-    pgui = (Gui*)entitypool_get(gui_pool, transform_get_parent(ent));
+    pgui = (Gui*)entitypool_get(pool_gui, transform_get_parent(ent));
     if (!pgui) return;
     pb = pgui->bbox;
 
@@ -291,12 +290,12 @@ static void _common_align(Gui* gui, GuiAlign halign, GuiAlign valign) {
 // move everything to top-left -- for fit calculations
 static void _common_reset_align() {
     Gui* gui;
-    entitypool_foreach(gui, gui_pool) _common_align(gui, gui->halign == GA_NONE ? GA_NONE : GA_MIN, gui->valign == GA_NONE ? GA_NONE : GA_MAX);
+    entitypool_foreach(gui, pool_gui) _common_align(gui, gui->halign == GA_NONE ? GA_NONE : GA_MIN, gui->valign == GA_NONE ? GA_NONE : GA_MAX);
 }
 
 static void _common_update_align() {
     Gui* gui;
-    entitypool_foreach(gui, gui_pool) _common_align(gui, gui->halign, gui->valign);
+    entitypool_foreach(gui, pool_gui) _common_align(gui, gui->halign, gui->valign);
 }
 
 // attach root GUI entities to gui_root
@@ -304,7 +303,7 @@ static void _common_attach_root() {
     Gui* gui;
     Entity ent;
 
-    entitypool_foreach(gui, gui_pool) {
+    entitypool_foreach(gui, pool_gui) {
         ent = gui->pool_elem.ent;
         if (!entity_eq(ent, gui_root) && entity_eq(transform_get_parent(ent), entity_nil)) transform_set_parent(ent, gui_root);
     }
@@ -316,7 +315,7 @@ static void _common_update_all() {
     _common_attach_root();
 
     // update edit bboxes
-    if (edit_get_enabled()) entitypool_foreach(gui, gui_pool) edit_bboxes_update(gui->pool_elem.ent, gui->bbox);
+    if (edit_get_enabled()) entitypool_foreach(gui, pool_gui) edit_bboxes_update(gui->pool_elem.ent, gui->bbox);
 }
 
 // 'focus_clear' is whether to clear focus if click outside
@@ -328,7 +327,7 @@ static void _common_mouse_event(EntityMap* emap, MouseCode mouse, bool focus_cle
     bool some_focused = false;
 
     m = camera_unit_to_world(input_get_mouse_pos_unit());
-    entitypool_foreach(gui, gui_pool) if (gui->visible && !(edit_get_enabled() && edit_get_editable(gui->pool_elem.ent))) {
+    entitypool_foreach(gui, pool_gui) if (gui->visible && !(edit_get_enabled() && edit_get_editable(gui->pool_elem.ent))) {
         ent = gui->pool_elem.ent;
 
         t = mat3_inverse(transform_get_world_matrix(ent));
@@ -382,7 +381,7 @@ static void _common_save_all(Store* s) {
     Store *t, *gui_s;
     Gui* gui;
 
-    if (store_child_save(&t, "gui", s)) entitypool_save_foreach(gui, gui_s, gui_pool, "pool", t) {
+    if (store_child_save(&t, "gui", s)) entitypool_save_foreach(gui, gui_s, pool_gui, "pool", t) {
             color_save(&gui->color, "color", gui_s);
             bool_save(&gui->visible, "visible", gui_s);
             bool_save(&gui->setvisible, "setvisible", gui_s);
@@ -397,7 +396,7 @@ static void _common_load_all(Store* s) {
     Store *t, *gui_s;
     Gui* gui;
 
-    if (store_child_load(&t, "gui", s)) entitypool_load_foreach(gui, gui_s, gui_pool, "pool", t) {
+    if (store_child_load(&t, "gui", s)) entitypool_load_foreach(gui, gui_s, pool_gui, "pool", t) {
             color_load(&gui->color, "color", color_gray, gui_s);
             bool_load(&gui->visible, "visible", true, gui_s);
             bool_load(&gui->setvisible, "setvisible", true, gui_s);
@@ -554,7 +553,7 @@ static void _rect_update_table_align(Rect* rect) {
     children = transform_get_children(rect_ent);
     nchildren = transform_get_num_children(rect_ent);
     for (i = 0; i < nchildren; ++i) {
-        child = (Gui*)entitypool_get(gui_pool, children[i]);
+        child = (Gui*)entitypool_get(pool_gui, children[i]);
         if (!(child && child->visible && (child->halign == GA_TABLE || child->valign == GA_TABLE))) continue;
         _rect_update_child_first(children[i]);
 
@@ -591,7 +590,7 @@ static void _rect_update_fit(Rect* rect) {
     children = transform_get_children(rect_ent);
     nchildren = transform_get_num_children(rect_ent);
     for (i = 0; i < nchildren; ++i) {
-        child = (Gui*)entitypool_get(gui_pool, children[i]);
+        child = (Gui*)entitypool_get(pool_gui, children[i]);
         if (!child || !child->visible) continue;
         _rect_update_child_first(children[i]);
 
@@ -608,7 +607,7 @@ static void _rect_update_child_first(Entity ent) {
     Rect* rect;
     Gui* gui;
 
-    gui = (Gui*)entitypool_get(gui_pool, ent);
+    gui = (Gui*)entitypool_get(pool_gui, ent);
     if (!gui) return;
 
     rect = (Rect*)entitypool_get(rect_pool, ent);
@@ -628,13 +627,13 @@ static void _rect_update_fill(Rect* rect) {
     Entity parent;
 
     ent = rect->pool_elem.ent;
-    gui = (Gui*)entitypool_get(gui_pool, ent);
+    gui = (Gui*)entitypool_get(pool_gui, ent);
     if (!gui) return;
 
     if (!rect || !rect->visible || rect->updated || !(rect->hfill || rect->vfill)) return;
 
     parent = transform_get_parent(ent);
-    pgui = (Gui*)entitypool_get(gui_pool, parent);
+    pgui = (Gui*)entitypool_get(pool_gui, parent);
     if (!pgui) return;  // no parent to fill to
 
     _rect_update_parent_first(parent);
@@ -659,7 +658,7 @@ static void _rect_update_parent_first(Entity ent) {
     Rect* rect;
     Gui* gui;
 
-    gui = (Gui*)entitypool_get(gui_pool, ent);
+    gui = (Gui*)entitypool_get(pool_gui, ent);
     if (!gui) return;
 
     rect = (Rect*)entitypool_get(rect_pool, ent);
@@ -683,7 +682,7 @@ static void _rect_update_all() {
     entitypool_foreach(rect, rect_pool) _rect_update_parent_first(rect->pool_elem.ent);
 
     entitypool_foreach(rect, rect_pool) {
-        gui = (Gui*)entitypool_get(gui_pool, rect->pool_elem.ent);
+        gui = (Gui*)entitypool_get(pool_gui, rect->pool_elem.ent);
         error_assert(gui);
 
         // write gui bbox
@@ -943,7 +942,7 @@ static void _text_update_all() {
         if (gui_event_focus_enter(text->pool_elem.ent)) cursor_blink_time = 1;
 
         // gui bbox
-        gui = (Gui*)entitypool_get(gui_pool, text->pool_elem.ent);
+        gui = (Gui*)entitypool_get(pool_gui, text->pool_elem.ent);
         error_assert(gui);
         gui->bbox = bbox_bound(vec2_zero, vec2_mul(size, text->bounds));
     }
@@ -979,7 +978,7 @@ static void _text_draw_all() {
 
     // draw!
     entitypool_foreach(text, text_pool) {
-        gui = (Gui*)entitypool_get(gui_pool, text->pool_elem.ent);
+        gui = (Gui*)entitypool_get(pool_gui, text->pool_elem.ent);
         error_assert(gui);
         if (!gui->visible) continue;
         glUniform4fv(glGetUniformLocation(text_program, "base_color"), 1, (const GLfloat*)&gui->color);
