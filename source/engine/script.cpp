@@ -10,6 +10,7 @@
 #include "engine/camera.h"
 #include "engine/edit.h"
 #include "engine/game.h"
+#include "engine/gui.h"
 #include "engine/input.h"
 #include "engine/lua_util.h"
 #include "engine/luax.h"

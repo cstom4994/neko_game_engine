@@ -75,8 +75,8 @@ struct MapLdtk {
     Arena arena;
     Slice<TilemapLevel> levels;
     HashMap<AssetTexture> images;  // key: filepath
-    HashMap<b2Body*> bodies;  // key: layer name
-    HashMap<TileNode> graph;  // key: x, y
+    HashMap<b2Body*> bodies;       // key: layer name
+    HashMap<TileNode> graph;       // key: x, y
     PriorityQueue<TileNode*> frontier;
     float graph_grid_size;
 
@@ -169,13 +169,20 @@ typedef struct tiled_quad_list_t {
 } tiled_quad_list_t;
 
 typedef struct tiled_renderer {
-    neko_handle(gfx_vertex_buffer_t) vb;
-    neko_handle(gfx_index_buffer_t) ib;
-    neko_handle(gfx_pipeline_t) pip;
-    neko_handle(gfx_shader_t) shader;
-    neko_handle(gfx_uniform_t) u_camera;
-    neko_handle(gfx_uniform_t) u_batch_tex;
-    neko_handle(gfx_texture_t) batch_texture;            // 当前绘制所用贴图
+    // neko_handle(gfx_vertex_buffer_t) vb;
+    // neko_handle(gfx_index_buffer_t) ib;
+    // neko_handle(gfx_pipeline_t) pip;
+    // neko_handle(gfx_shader_t) shader;
+
+    GLuint vao;
+    GLuint vbo;
+    GLuint ib;
+
+    // GLuint shader;
+
+    // neko_handle(gfx_uniform_t) u_camera;
+    // neko_handle(gfx_uniform_t) u_batch_tex;
+    neko_texture_t batch_texture;                        // 当前绘制所用贴图
     neko_hash_table(u32, tiled_quad_list_t) quad_table;  // 分层绘制哈希表
 
     u32 quad_count;
@@ -203,6 +210,10 @@ NEKO_SCRIPT(tiled,
             NEKO_EXPORT void tiled_remove(Entity ent);
 
             NEKO_EXPORT bool tiled_has(Entity ent);
+
+            NEKO_EXPORT void tiled_set_map(Entity ent, const char* str);
+
+            NEKO_EXPORT const char* tiled_get_map(Entity ent);
 
 )
 

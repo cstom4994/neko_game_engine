@@ -383,7 +383,7 @@ void edit_load_all(Store *s) {
     }
 }
 
-#if 1
+#if 0
 
 // 生成宏 以避免始终重复代码
 #define INSPECTOR_GENERATE_VARIABLE(cputype, count, gltype, glread, glwrite, imguifunc)               \

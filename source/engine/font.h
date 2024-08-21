@@ -2,6 +2,7 @@
 #define NEKO_FONT_H
 
 #include "engine/base.h"
+#include "engine/batch.h"
 #include "engine/math.h"
 #include "engine/texture.h"
 
@@ -36,6 +37,9 @@ FontFamily* neko_default_font();
 struct idraw_t;
 float draw_font(idraw_t* idraw, FontFamily* font, float size, float x, float y, String text, Color256 col);
 float draw_font_wrapped(idraw_t* idraw, FontFamily* font, float size, float x, float y, String text, Color256 col, float limit);
+
+void font_init();
+void font_draw_all();
 
 int open_mt_font(lua_State* L);
 

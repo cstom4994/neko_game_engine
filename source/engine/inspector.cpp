@@ -845,7 +845,7 @@ void neko::luainspector::print_line(const std::string& msg, luainspector_logtype
 
 // void neko::luainspector::inspect_table(lua_State* L, inspect_table_config& cfg) {}
 
-#if 1
+#if 0
 
 void neko::luainspector::inspect_table(lua_State* L, inspect_table_config& cfg) {
     auto is_multiline = [](const_str str) -> bool {
@@ -1018,7 +1018,6 @@ void neko::luainspector::inspect_table(lua_State* L, inspect_table_config& cfg) 
     }
 }
 
-#endif
 
 neko::CCharacter cJohn;
 
@@ -1187,6 +1186,7 @@ int neko::luainspector::luainspector_draw(lua_State* L) {
 
     return 0;
 }
+#endif
 
 #endif
 
@@ -1209,9 +1209,9 @@ int luaopen(lua_State* L) {
             {"breakpoint", breakpoint},
             {"is_debugger_present", is_debugger_present},
             {"breakpoint_if_debugging", breakpoint_if_debugging},
-            {"inspector_init", neko::luainspector::luainspector_init},
-            {"inspector_draw", neko::luainspector::luainspector_draw},
-            {"inspector_get", neko::luainspector::luainspector_get},
+            // {"inspector_init", neko::luainspector::luainspector_init},
+            // {"inspector_draw", neko::luainspector::luainspector_draw},
+            // {"inspector_get", neko::luainspector::luainspector_get},
             {NULL, NULL},
     };
     luaL_newlibtable(L, lib);

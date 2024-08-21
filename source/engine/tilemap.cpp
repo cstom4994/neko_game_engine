@@ -18,7 +18,9 @@
 
 #include <stb_image.h>
 
-DECL_ENT(Tiled, tiled_renderer *render; LuaVec2 pos;);
+DECL_ENT(Tiled, tiled_renderer *render; LuaVec2 pos; String map_name;);
+
+GLuint tiled_program;
 
 static EntityPool *pool;
 
@@ -787,75 +789,40 @@ void tiled_unload(map_t *map) {
 
     neko_dyn_array_free(map->object_groups);
 
-    xml_free(map->doc);
+    if (map->doc) {
+        xml_free(map->doc);
+    }
 }
 
 void tiled_render_init(command_buffer_t *cb, tiled_renderer *renderer) {
 
     PROFILE_FUNC();
 
-    gfx_vertex_buffer_desc_t vb_decl = {
-            .data = NULL,
-            .size = BATCH_SIZE * VERTS_PER_QUAD * FLOATS_PER_VERT * sizeof(f32),
-            .usage = GL_DYNAMIC_DRAW,
-    };
+    glUseProgram(tiled_program);
 
-    renderer->vb = gfx_vertex_buffer_create(vb_decl);
+    GLuint loc = glGetUniformLocation(tiled_program, "inverse_view_matrix");
+    glUniformMatrix3fv(loc, 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
 
-    gfx_index_buffer_desc_t ib_decl = {
-            .data = NULL,
-            .size = BATCH_SIZE * IND_PER_QUAD * sizeof(u32),
-            .usage = GL_DYNAMIC_DRAW,
-    };
+    loc = glGetUniformLocation(tiled_program, "batch_texture");
+    glUniform1i(loc, 0);
 
-    renderer->ib = gfx_index_buffer_create(ib_decl);
+    glGenVertexArrays(1, &renderer->vao);
+    glBindVertexArray(renderer->vao);
 
-    String vert_src = {};
-    String frag_src = {};
+    glGenBuffers(1, &renderer->vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, renderer->vbo);
 
-    bool ok = vfs_read_entire_file(&vert_src, "shader/tiled.vert");
-    neko_defer(mem_free(vert_src.data));
+    glBufferData(GL_ARRAY_BUFFER, BATCH_SIZE * VERTS_PER_QUAD * FLOATS_PER_VERT * sizeof(f32), NULL, GL_DYNAMIC_DRAW);
 
-    ok = vfs_read_entire_file(&frag_src, "shader/tiled.frag");
-    neko_defer(mem_free(frag_src.data));
+    glGenBuffers(1, &renderer->ib);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renderer->ib);
 
-    if (!vert_src.len || !frag_src.len) {
-        neko_panic("%s", "Failed to load tiled renderer shaders.");
-    }
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, BATCH_SIZE * IND_PER_QUAD * sizeof(u32), NULL, GL_DYNAMIC_DRAW);
 
-    gfx_uniform_layout_desc_t u_desc_layout = {.type = R_UNIFORM_SAMPLER2D};
-
-    gfx_uniform_desc_t u_desc = gfx_uniform_desc_t{
-            .stage = GL_FRAGMENT_SHADER,
-            .name = "batch_texture",
-            .layout = &u_desc_layout,
-    };
-
-    renderer->u_batch_tex = gfx_uniform_create(u_desc);
-
-    gfx_shader_source_desc_t shader_src_des[] = {
-            {.type = GL_VERTEX_SHADER, .source = vert_src.cstr()},
-            {.type = GL_FRAGMENT_SHADER, .source = frag_src.cstr()},
-    };
-
-    renderer->shader = gfx_shader_create(gfx_shader_desc_t{.sources = shader_src_des, .size = 2 * sizeof(gfx_shader_source_desc_t), .name = "tiled_sprite_shader"});
-
-    gfx_uniform_layout_desc_t u_cam_des = {.type = R_UNIFORM_MAT3};
-    renderer->u_camera = gfx_uniform_create(gfx_uniform_desc_t{.name = "inverse_view_matrix", .layout = &u_cam_des});
-
-    gfx_vertex_attribute_desc_t vertex_attr_des[] = {
-            {.name = "position", .format = R_VERTEX_ATTRIBUTE_FLOAT2},
-            {.name = "uv", .format = R_VERTEX_ATTRIBUTE_FLOAT2},
-            {
-                    .name = "color",
-                    .format = R_VERTEX_ATTRIBUTE_FLOAT4,
-            },
-            {.name = "use_texture", .format = R_VERTEX_ATTRIBUTE_FLOAT},
-    };
-
-    renderer->pip = gfx_pipeline_create(gfx_pipeline_desc_t{.blend = {.func = GL_FUNC_ADD, .src = GL_SRC_ALPHA, .dst = GL_ONE_MINUS_SRC_ALPHA},
-                                                            .raster = {.shader = renderer->shader, .index_buffer_element_size = sizeof(uint32_t)},
-                                                            .layout = {.attrs = vertex_attr_des, .size = 4 * sizeof(gfx_vertex_attribute_desc_t)}});
+    gfx_bind_vertex_attrib_auto(tiled_program, GL_FLOAT, 2, "position", FLOATS_PER_VERT * sizeof(f32), NEKO_INT2VOIDP(sizeof(f32) * 0));
+    gfx_bind_vertex_attrib_auto(tiled_program, GL_FLOAT, 2, "uv", FLOATS_PER_VERT * sizeof(f32), NEKO_INT2VOIDP(sizeof(f32) * 2));
+    gfx_bind_vertex_attrib_auto(tiled_program, GL_FLOAT, 4, "color", FLOATS_PER_VERT * sizeof(f32), NEKO_INT2VOIDP(sizeof(f32) * 4));
+    gfx_bind_vertex_attrib_auto(tiled_program, GL_FLOAT, 1, "use_texture", FLOATS_PER_VERT * sizeof(f32), NEKO_INT2VOIDP(sizeof(f32) * 8));
 }
 
 void tiled_render_deinit(tiled_renderer *renderer) {
@@ -873,58 +840,40 @@ void tiled_render_deinit(tiled_renderer *renderer) {
 
     neko_hash_table_free(renderer->quad_table);
 
-    gfx_shader_fini(renderer->shader);
-    // command_buffer_free(cb);
+    glDeleteBuffers(1, &renderer->ib);
+    glDeleteBuffers(1, &renderer->vbo);
+    glDeleteVertexArrays(1, &renderer->vao);
 }
 
-void tiled_render_begin(command_buffer_t *cb, tiled_renderer *renderer) {
-
-    // gfx_clear_desc_t clear = {.actions = &(gfx_clear_action_t){.color = {0.1f, 0.1f, 0.1f, 1.0f}}};
-    // gfx_clear(cb, &clear);
-
-    renderer->quad_count = 0;
-}
+void tiled_render_begin(command_buffer_t *cb, tiled_renderer *renderer) { renderer->quad_count = 0; }
 
 void tiled_render_flush(command_buffer_t *cb, tiled_renderer *renderer) {
 
     PROFILE_FUNC();
 
-    // const neko_vec2 ws = neko_pf_window_sizev(neko_os_main_window());
-    // gfx_set_viewport(cb, 0, 0, ws.x, ws.y);
+    glUseProgram(tiled_program);
 
-    // renderer->camera_mat = neko_mat4_ortho(0.0f, ws.x, ws.y, 0.0f, -1.0f, 1.0f);
+    glBindVertexArray(renderer->vao);
+    glBindBuffer(GL_ARRAY_BUFFER, renderer->vbo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renderer->ib);
 
-    gfx_bind_vertex_buffer_desc_t vb_des = {.buffer = renderer->vb};
-    gfx_bind_index_buffer_desc_t ib_des = {.buffer = renderer->ib};
+    gfx_bind_vertex_attrib_auto(tiled_program, GL_FLOAT, 2, "position", FLOATS_PER_VERT * sizeof(f32), NEKO_INT2VOIDP(sizeof(f32) * 0));
+    gfx_bind_vertex_attrib_auto(tiled_program, GL_FLOAT, 2, "uv", FLOATS_PER_VERT * sizeof(f32), NEKO_INT2VOIDP(sizeof(f32) * 2));
+    gfx_bind_vertex_attrib_auto(tiled_program, GL_FLOAT, 4, "color", FLOATS_PER_VERT * sizeof(f32), NEKO_INT2VOIDP(sizeof(f32) * 4));
+    gfx_bind_vertex_attrib_auto(tiled_program, GL_FLOAT, 1, "use_texture", FLOATS_PER_VERT * sizeof(f32), NEKO_INT2VOIDP(sizeof(f32) * 8));
 
-    gfx_bind_image_buffer_desc_t imgb_des = {renderer->batch_texture, 0, GL_READ_ONLY};
+    glUniformMatrix3fv(glGetUniformLocation(tiled_program, "inverse_view_matrix"), 1, false, (float *)&renderer->camera_mat);
 
-    // clang-format off
+    neko_gl_data_t *ogl = gfx_ogl();
+    GLuint tex_id = neko_slot_array_get(ogl->textures, renderer->batch_texture.id).id;
 
-    gfx_bind_uniform_desc_t uniform_des[2] = {
-        {.uniform = renderer->u_camera, .data = &renderer->camera_mat},
-        {.uniform = renderer->u_batch_tex, .data = &renderer->batch_texture}
-    };
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, tex_id);
+    // glUniform1iv(glGetUniformLocation(tiled_program, "batch_texture"), 1, 0);
 
-    gfx_bind_desc_t binds = {
-    .vertex_buffers = {.desc =&vb_des},
-    .index_buffers = {.desc = &ib_des},
-    .uniforms = {
-        .desc = uniform_des,
-        .size = 2 * sizeof(gfx_bind_uniform_desc_t)
-    },
-    .image_buffers = {
-        .desc = &imgb_des,  
-        .size = sizeof(gfx_bind_image_buffer_desc_t)
-    }};
-    // clang-format on
+    glBindImageTexture(0, tex_id, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
 
-    gfx_pipeline_bind(cb, renderer->pip);
-    gfx_apply_bindings(cb, &binds);
-
-    gfx_draw(cb, gfx_draw_desc_t{.start = 0, .count = renderer->quad_count * IND_PER_QUAD});
-
-    // neko_check_gl_error();
+    glDrawRangeElementsBaseVertex(GL_TRIANGLES, 0, renderer->quad_count * IND_PER_QUAD, renderer->quad_count * IND_PER_QUAD, GL_UNSIGNED_INT, NEKO_INT2VOIDP(0), NULL);
 
     renderer->quad_count = 0;
 }
@@ -947,7 +896,10 @@ void tiled_render_draw(command_buffer_t *cb, tiled_renderer *renderer) {
 
     PROFILE_FUNC();
 
-    // TODO: 23/10/16 检测quad是否在屏幕视角范围外 进行剔除性优化
+    // TODO: 24/8/20 检测quad是否在屏幕视角范围外 进行剔除性优化
+
+    glBindBuffer(GL_ARRAY_BUFFER, renderer->vbo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renderer->ib);
 
     // iterate quads hash table
     for (neko_hash_table_iter it = neko_hash_table_iter_new(renderer->quad_table); neko_hash_table_iter_valid(renderer->quad_table, it); neko_hash_table_iter_advance(renderer->quad_table, it)) {
@@ -1013,17 +965,9 @@ void tiled_render_draw(command_buffer_t *cb, tiled_renderer *renderer) {
             u32 indices[] = {idx_off + 3, idx_off + 2, idx_off + 1,   //
                              idx_off + 3, idx_off + 1, idx_off + 0};  //
 
-            gfx_vertex_buffer_request_update(cb, renderer->vb,
-                                             gfx_vertex_buffer_desc_t{.data = verts,
-                                                                      .size = VERTS_PER_QUAD * FLOATS_PER_VERT * sizeof(f32),
-                                                                      .usage = GL_DYNAMIC_DRAW,
-                                                                      .update = {.type = R_BUFFER_UPDATE_SUBDATA, .offset = renderer->quad_count * VERTS_PER_QUAD * FLOATS_PER_VERT * sizeof(f32)}});
+            glBufferSubData(GL_ARRAY_BUFFER, renderer->quad_count * VERTS_PER_QUAD * FLOATS_PER_VERT * sizeof(f32), VERTS_PER_QUAD * FLOATS_PER_VERT * sizeof(f32), verts);
 
-            gfx_index_buffer_request_update(cb, renderer->ib,
-                                            gfx_index_buffer_desc_t{.data = indices,
-                                                                    .size = IND_PER_QUAD * sizeof(u32),
-                                                                    .usage = GL_DYNAMIC_DRAW,
-                                                                    .update = {.type = R_BUFFER_UPDATE_SUBDATA, .offset = renderer->quad_count * IND_PER_QUAD * sizeof(u32)}});
+            glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, renderer->quad_count * IND_PER_QUAD * sizeof(u32), IND_PER_QUAD * sizeof(u32), indices);
 
             renderer->quad_count++;
 
@@ -1036,6 +980,9 @@ void tiled_render_draw(command_buffer_t *cb, tiled_renderer *renderer) {
 
         tiled_render_flush(cb, renderer);
     }
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
 int tiled_render(command_buffer_t *cb, Tiled *tiled) {
@@ -1061,10 +1008,8 @@ int tiled_render(command_buffer_t *cb, Tiled *tiled) {
     f32 t = 0.f;
     f32 b = g_app->height;
 
-    // tiled->render->camera_mat = mat4_ortho(l, r, b, t, -1.0f, 1.0f);
     tiled->render->camera_mat = camera_get_inverse_view_matrix();
 
-    // gfx_renderpass_begin(cb, rp);
     {
         tiled_render_begin(cb, tiled->render);
 
@@ -1126,7 +1071,6 @@ int tiled_render(command_buffer_t *cb, Tiled *tiled) {
         //     }
         // }
     }
-    // gfx_renderpass_end(cb);
 
     return 0;
 }
@@ -1143,7 +1087,6 @@ void tiled_add(Entity ent) {
     tiled->render = (tiled_renderer *)mem_alloc(sizeof(tiled_renderer));
     memset(tiled->render, 0, sizeof(tiled_renderer));
 
-    tiled_load(&tiled->render->map, "assets/maps/map.tmx", NULL);
     tiled_render_init(&g_app->cb, tiled->render);
 }
 
@@ -1155,6 +1098,8 @@ void tiled_init() {
     PROFILE_FUNC();
 
     pool = entitypool_new(Tiled);
+
+    tiled_program = gfx_create_program("tiledmap", "shader/tiled.vert", NULL, "shader/tiled.frag");
 }
 
 void tiled_fini() {
@@ -1162,8 +1107,11 @@ void tiled_fini() {
     entitypool_foreach(tiled, pool) {
         tiled_unload(&tiled->render->map);
         tiled_render_deinit(tiled->render);
+        mem_free(tiled->map_name.data);
         mem_free(tiled->render);
     }
+
+    glDeleteProgram(tiled_program);
 
     entitypool_free(pool);
 }
@@ -1180,4 +1128,19 @@ void tiled_draw_all() {
 
     Tiled *tiled;
     entitypool_foreach(tiled, pool) { tiled_render(&g_app->cb, tiled); }
+}
+
+void tiled_set_map(Entity ent, const char *str) {
+    Tiled *tiled = (Tiled *)entitypool_get(pool, ent);
+    error_assert(tiled);
+    // _text_set_str(tiled, str);
+    tiled->map_name = to_cstr(str);
+
+    tiled_load(&tiled->render->map, tiled->map_name.cstr(), NULL);
+}
+
+const char *tiled_get_map(Entity ent) {
+    Tiled *tiled = (Tiled *)entitypool_get(pool, ent);
+    error_assert(tiled);
+    return tiled->map_name.cstr();
 }

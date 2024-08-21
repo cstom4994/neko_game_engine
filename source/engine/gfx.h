@@ -29,6 +29,13 @@ void gfx_free_program(GLuint program);
         glEnableVertexAttribArray(a__);                                                                  \
     } while (0)
 
+#define gfx_bind_vertex_attrib_auto(program, gl_type, components, param_name, size, offset) \
+    do {                                                                                    \
+        GLuint a__ = glGetAttribLocation(program, param_name);                              \
+        glVertexAttribPointer(a__, components, gl_type, GL_FALSE, size, offset);            \
+        glEnableVertexAttribArray(a__);                                                     \
+    } while (0)
+
 /*=============================
 // NEKO_GRAPHICS
 =============================*/

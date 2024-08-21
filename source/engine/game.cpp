@@ -14,6 +14,7 @@
 #include "engine/font.h"
 #include "engine/gfx.h"
 #include "engine/glew_glfw.h"
+#include "engine/gui.h"
 #include "engine/lite.h"
 #include "engine/lua_util.h"
 #include "engine/script.h"
@@ -75,6 +76,10 @@ void scratch_update() {
 
 static void _glfw_error_callback(int error, const char *desc) { fprintf(stderr, "glfw: %s\n", desc); }
 
+static void _opengl_error_callback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam) {
+    fprintf(stderr, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n", (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""), type, severity, message);
+}
+
 // 窗口大小改变的回调函数
 void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
     g_app->width = width;
@@ -126,7 +131,7 @@ static void _game_init() {
 
     // create glfw window
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     g_app->game_window = glfwCreateWindow(800, 600, "neko_game", NULL, NULL);
@@ -141,6 +146,11 @@ static void _game_init() {
     glewExperimental = GL_TRUE;
     glewInit();
     glGetError();  // see http://www.opengl.org/wiki/OpenGL_Loading_Library
+
+#if defined(_DEBUG)
+    glEnable(GL_DEBUG_OUTPUT);
+    glDebugMessageCallback(_opengl_error_callback, 0);
+#endif
 
     // some GL settings
     glEnable(GL_PROGRAM_POINT_SIZE);
@@ -180,7 +190,7 @@ static void _game_init() {
 
         test_ase = neko_aseprite_simple("assets/cat.ase");
 
-        ui_init(&g_app->ui, 0);
+        // ui_init(&g_app->ui, 0);
 
         // 加载自定义字体文件 初始化 gui font stash
         // neko_asset_font_load_from_memory(font_data, font_data_size, &CL_GAME_INTERFACE()->font, 24);
@@ -197,7 +207,7 @@ static void _game_init() {
 
         // neko_ui_init_font_stash(&g_app->ui, GUI_FONT_STASH);
 
-        ui_dock_ex(&g_app->ui, "Style_Editor", "Demo_Window", UI_SPLIT_TAB, 0.5f);
+        // ui_dock_ex(&g_app->ui, "Style_Editor", "Demo_Window", UI_SPLIT_TAB, 0.5f);
     }
 }
 
@@ -206,7 +216,7 @@ static void _game_fini() {
 
     {  // just for test
 
-        ui_free(&g_app->ui);
+        // ui_free(&g_app->ui);
     }
 
     if (g_app->lite_init_path.len) {
@@ -222,6 +232,7 @@ static void _game_fini() {
     system_fini();
 
     // fini glfw
+    glfwDestroyWindow(g_app->game_window);
     glfwTerminate();
 
     g_app->gpu_mtx.trash();
@@ -297,8 +308,6 @@ static void _game_draw() {
 
     if (!g_app->error_mode.load()) {
 
-        imgui_draw_pre();
-
         {
 
             // if (g_app->lite_init_path.len && g_app->lite_L) {
@@ -335,12 +344,12 @@ static void _game_draw() {
         // { gfx_clear(&g_app->cb, clear); }
         // gfx_renderpass_end(&g_app->cb);
 
-        DeferLoop(ui_begin(&g_app->ui, NULL), ui_end(&g_app->ui, true)) {
+        // DeferLoop(ui_begin(&g_app->ui, NULL), ui_end(&g_app->ui, true)) {
 
-            script_draw_ui();
+        //     script_draw_ui();
 
-            draw_gui();
-        }
+        //     draw_gui();
+        // }
 
         script_draw_all();
 
@@ -355,24 +364,24 @@ static void _game_draw() {
         // vec2 td = {};
         vec2 ts = neko_v2(512 + 128, 512 + 128);
 
-        idraw_text(&g_app->idraw, (g_app->width - td) * 0.5f, (g_app->height) * 0.5f + ts.y / 2.f - 100.f, background_text, NULL, false, color256(255, 255, 255, 255));
-        idraw_texture(&g_app->idraw, test_ase);
-        idraw_rectvd(&g_app->idraw, neko_v2((g_app->width - ts.x) * 0.5f, (g_app->height - ts.y) * 0.5f - 22.f - 50.f), ts, neko_v2(0.f, 1.f), neko_v2(1.f, 0.f), color256(255, 255, 255, 255),
-                     R_PRIMITIVE_TRIANGLES);
+        // idraw_text(&g_app->idraw, (g_app->width - td) * 0.5f, (g_app->height) * 0.5f + ts.y / 2.f - 100.f, background_text, NULL, false, color256(255, 255, 255, 255));
+        // idraw_texture(&g_app->idraw, test_ase);
+        // idraw_rectvd(&g_app->idraw, neko_v2((g_app->width - ts.x) * 0.5f, (g_app->height - ts.y) * 0.5f - 22.f - 50.f), ts, neko_v2(0.f, 1.f), neko_v2(1.f, 0.f), color256(255, 255, 255, 255),
+        //              R_PRIMITIVE_TRIANGLES);
 
-        idraw_defaults(&g_app->idraw);
-        f32 fy = draw_font(&g_app->idraw, g_app->default_font, 40.f, 10.f, 20.f, "-- ! Neko ! --", NEKO_COLOR_WHITE);
+        // idraw_defaults(&g_app->idraw);
 
         gfx_renderpass_begin(&g_app->cb, R_RENDER_PASS_DEFAULT);
         {
             // gfx_set_viewport(&g_app->cb, 0, 0, (u32)g_app->width, (u32)g_app->height);
             idraw_draw(&g_app->idraw, &g_app->cb);  // 立即模式绘制 idraw
 
-            tiled_draw_all();
+            f32 fy = draw_font(&g_app->idraw, g_app->default_font, 16.f, 0.f, 0.f, "Hello World 测试中文，你好世界", NEKO_COLOR_WHITE);
+            fy = draw_font(&g_app->idraw, g_app->default_font, 16.f, 0.f, 20.f, "我是第二行", NEKO_COLOR_WHITE);
 
             gfx_draw_func(&g_app->cb, system_draw_all);
 
-            ui_render(&g_app->ui, &g_app->cb);
+            // ui_render(&g_app->ui, &g_app->cb);
         }
         gfx_renderpass_end(&g_app->cb);
 
@@ -382,8 +391,6 @@ static void _game_draw() {
 #endif
 
         if (g_app->lite_init_path.len && g_app->lite_L) lt_tick(g_app->lite_L);
-
-        imgui_draw_post();
     }
 
     neko_check_gl_error();

@@ -2,8 +2,12 @@
 
 #include "engine/api.hpp"
 #include "engine/asset.h"
+#include "engine/camera.h"
 #include "engine/game.h"
 #include "engine/vfs.h"
+
+GLuint font_program;
+GLuint font_vbo, font_vao;
 
 bool FontFamily::load(String filepath) {
     PROFILE_FUNC();
@@ -121,6 +125,7 @@ static FontRange *get_range(FontFamily *font, FontKey key) {
 }
 
 stbtt_aligned_quad FontFamily::quad(u32 *img, float *x, float *y, float size, i32 ch) {
+
     FontRange *range = get_range(this, font_key(size, ch));
     assert(range != nullptr);
 
@@ -159,36 +164,70 @@ FontFamily *neko_default_font() {
     return g_app->default_font;
 }
 
+void font_draw_all() {}
+
 static void draw_font_line(idraw_t *idraw, FontFamily *font, float size, float *start_x, float *start_y, String line, Color256 col) {
     float x = *start_x;
     float y = *start_y;
+
+    glUseProgram(font_program);
+    glUniform3f(glGetUniformLocation(font_program, "textColor"), col.r / 255.f, col.g / 255.f, col.b / 255.f);
+    glActiveTexture(GL_TEXTURE0);
+    glUniform1i(glGetUniformLocation(font_program, "text"), 0);
+
+    glUniformMatrix3fv(glGetUniformLocation(font_program, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
+
+    glBindVertexArray(font_vao);
+
     for (Rune r : UTF8(line)) {
         u32 tex_id = 0;
         float xx = x;
         float yy = y;
         stbtt_aligned_quad q = font->quad(&tex_id, &xx, &yy, size, r.charcode());
 
-        // sgl_texture({atlas}, {g_renderer.sampler});
-        // sgl_begin_quads();
-        // renderer_push_quad(vec4(x + q.x0, y + q.y0, x + q.x1, y + q.y1), vec4(q.s0, q.t0, q.s1, q.t1));
-        // sgl_end();
+        neko_gl_data_t *ogl = gfx_ogl();
+        GLuint gl_tex_id = neko_slot_array_get(ogl->textures, tex_id).id;
 
-        idraw_texture(idraw, neko_texture_t{tex_id});
-        idraw_rectvx(idraw, neko_v2(x + q.x0, y + q.y0), neko_v2(x + q.x1, y + q.y1), neko_v2(q.s0, q.t0), neko_v2(q.s1, q.t1), col, R_PRIMITIVE_TRIANGLES);
+        // float x1 = x + q.x0;
+        // float y1 = y + q.y0;
+        // float x2 = x + q.x1;
+        // float y2 = y + q.y1;
+
+        // float u1 = q.s0;
+        // float v1 = q.t0;
+        // float u2 = q.s1;
+        // float v2 = q.t1;
+
+        float xpos = x + q.x0;
+        float ypos = y + q.y0;
+
+        float w = q.x1 - q.x0;
+        float h = q.y1 - q.y0;
+
+        float vertices[6][4] = {{xpos, ypos + h, q.s0, q.t1}, {xpos, ypos, q.s0, q.t0},     {xpos + w, ypos, q.s1, q.t0},
+                                {xpos, ypos + h, q.s0, q.t1}, {xpos + w, ypos, q.s1, q.t0}, {xpos + w, ypos + h, q.s1, q.t1}};
+
+        glBindTexture(GL_TEXTURE_2D, gl_tex_id);
+        glBindBuffer(GL_ARRAY_BUFFER, font_vbo);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        glDrawArrays(GL_TRIANGLES, 0, 6);
 
         x = xx;
         y = yy;
     }
 
     *start_y += size;
+
+    glBindVertexArray(0);
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 float draw_font(idraw_t *idraw, FontFamily *font, float size, float x, float y, String text, Color256 col) {
     PROFILE_FUNC();
 
     y += size;
-    // sgl_enable_texture();
-    // renderer_apply_color();
 
     for (String line : SplitLines(text)) {
         draw_font_line(idraw, font, size, &x, &y, line, col);
@@ -201,8 +240,6 @@ float draw_font_wrapped(idraw_t *idraw, FontFamily *font, float size, float x, f
     PROFILE_FUNC();
 
     y += size;
-    // sgl_enable_texture();
-    // renderer_apply_color();
 
     for (String line : SplitLines(text)) {
         font->sb.clear();
@@ -231,6 +268,28 @@ float draw_font_wrapped(idraw_t *idraw, FontFamily *font, float size, float x, f
     }
 
     return y - size;
+}
+
+void font_init() {
+
+    // 编译着色器并创建程序
+    font_program = gfx_create_program("font", "shader/font.vert", NULL, "shader/font.frag");
+
+    glGenVertexArrays(1, &font_vao);
+    glGenBuffers(1, &font_vbo);
+
+    glBindVertexArray(font_vao);
+
+    glBindBuffer(GL_ARRAY_BUFFER, font_vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6 * 4, nullptr, GL_DYNAMIC_DRAW);
+
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 }
 
 // mt_font

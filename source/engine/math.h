@@ -2,7 +2,7 @@
 #ifndef NEKO_MATH_H
 #define NEKO_MATH_H
 
-#include <cmath>
+#include <math.h>
 
 #include "engine/prelude.h"
 
@@ -90,10 +90,10 @@ inline float neko_ease_cubic_in_out(float t, float b, float c, float d) {
 /** @brief struct vec2 in neko math */
 typedef struct {
     union {
-        f32 xy[2];
         struct {
             f32 x, y;
         };
+        f32 xy[2];
     };
 } vec2_t;
 
@@ -500,6 +500,14 @@ inline mat4 mat4_mul(mat4 m0, mat4 m1) {
     }
 
     return m_res;
+}
+
+inline vec4 mat4_mulv(mat4 m, vec4 v) {
+    vec4 dest = {};
+    for (int i = 0; i < 4; i++) {
+        dest.xyzw[i] = m.m[i][0] * v.xyzw[0] + m.m[i][1] * v.xyzw[1] + m.m[i][2] * v.xyzw[2] + m.m[i][3] * v.xyzw[3];
+    }
+    return dest;
 }
 
 inline mat4 mat4_mul_list(uint32_t count, ...) {

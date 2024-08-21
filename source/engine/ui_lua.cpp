@@ -1,3 +1,6 @@
+
+#if 0
+
 #include "engine/game.h"
 #include "engine/luax.h"
 #include "engine/ui.h"
@@ -797,6 +800,17 @@ int open_ui(lua_State *L) {
 
     return 1;
 }
+
+#else
+
+#include "engine/luax.h"
+
+int open_ui(lua_State *L) { return 0; }
+int open_mt_ui_container(lua_State *L) { return 0; }
+int open_mt_ui_ref(lua_State *L) { return 0; }
+int open_mt_ui_style(lua_State *L) { return 0; }
+
+#endif
 
 #if 0
 

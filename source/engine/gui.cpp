@@ -1,4 +1,4 @@
-#include "engine/ui.h"
+#include "engine/gui.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -8,8 +8,9 @@
 #include "engine/api.hpp"
 #include "engine/base.h"
 #include "engine/camera.h"
-#include "engine/entity.h"
 #include "engine/edit.h"
+#include "engine/entity.h"
+#include "engine/font.h"
 #include "engine/game.h"
 #include "engine/gfx.h"
 #include "engine/input.h"
@@ -953,6 +954,7 @@ static void _text_draw_all() {
     Text* text;
     Gui* gui;
     LuaMat3 wmat;
+    LuaVec2 pos;
     unsigned int nchars;
 
     hwin = vec2_scalar_mul(game_get_window_size(), 0.5);
@@ -990,6 +992,15 @@ static void _text_draw_all() {
 
         glDrawArrays(GL_POINTS, 0, nchars);
     }
+
+    // entitypool_foreach(text, text_pool) {
+    //     gui = (Gui*)entitypool_get(gui_pool, text->pool_elem.ent);
+    //     error_assert(gui);
+    //     if (!gui->visible) continue;
+    //     pos = transform_get_position(text->pool_elem.ent);
+    //     const_str str = text->str;
+    //     draw_font(&g_app->idraw, g_app->default_font, 16.f, pos.x, pos.y, str, NEKO_COLOR_WHITE);
+    // }
 }
 
 static void _text_save_all(Store* s) {
@@ -1194,6 +1205,7 @@ void gui_init() {
     _common_init();
     _rect_init();
     _text_init();
+    font_init();
     _textedit_init();
     _create_root();
 }
@@ -1236,6 +1248,7 @@ void gui_update_all() {
 void gui_draw_all() {
     _rect_draw_all();
     _text_draw_all();
+    font_draw_all();
 }
 
 void gui_key_down(KeyCode key) {
@@ -1278,9 +1291,3 @@ void imgui_init() {
     //     io.Fonts->AddFontFromMemoryTTF(ttf_file.data, ttf_file.len, 12.0f, &config, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
     // }
 }
-
-void imgui_fini() {}
-
-void imgui_draw_pre() {}
-
-void imgui_draw_post() {}

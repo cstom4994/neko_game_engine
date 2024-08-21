@@ -516,7 +516,7 @@ int test_xml(lua_State* L) {
 
 #pragma endregion test
 
-#if 1
+#if 0
 
 void editor_dockspace(ui_context_t* ctx) {
     u64 opt = UI_OPT_NOCLIP | UI_OPT_NOFRAME | UI_OPT_FORCESETRECT | UI_OPT_NOTITLE | UI_OPT_DOCKSPACE | UI_OPT_FULLSCREEN | UI_OPT_NOMOVE | UI_OPT_NOBRINGTOFRONT | UI_OPT_NOFOCUS | UI_OPT_NORESIZE;
@@ -850,9 +850,10 @@ void draw_gui() {
         }
     }
 
-    draw_gui_auto_test();
+    // draw_gui_auto_test();
 }
 
+#if 0
 void draw_gui_auto_test() {
     ui_context_t* ui = &g_app->ui;
     const vec2 ss_ws = neko_v2(500.f, 300.f);
@@ -990,12 +991,13 @@ void draw_gui_auto_test() {
         }
 
         if (ui_header(ui, "ui_file_browser")) {
-            static std::string path = "./";
+            static std::string path = "D:/Projects/Neko/DevNew/bin";
             ui_file_browser(path);
         }
     }
     ui_window_end(&g_app->ui);
 }
+#endif
 
 #endif
 

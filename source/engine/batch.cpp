@@ -6,7 +6,7 @@
 #include "engine/os.h"
 #include "engine/texture.h"
 
-static batch_renderer batch;
+// static batch_renderer batch;
 
 typedef struct {
     // position
@@ -37,7 +37,7 @@ void batch_test_draw(batch_renderer *renderer, AssetTexture tex, batch_tex a) {
     batch_push_vertex(renderer, x2, y2, u2, v2);
 }
 
-void batch_init(int vertex_capacity) {
+batch_renderer batch_init(int vertex_capacity) {
     GLuint vao;
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
@@ -55,7 +55,7 @@ void batch_init(int vertex_capacity) {
 
     GLuint program = gfx_create_program("batch", "shader/batch.vert", NULL, "shader/batch.frag");
 
-    batch = {
+    batch_renderer batch = {
             .shader = program,
             .vao = vao,
             .vbo = vbo,
@@ -66,11 +66,13 @@ void batch_init(int vertex_capacity) {
     };
 
     asset_load(AssetLoadData{AssetKind_Image, false}, "assets/aliens.png", NULL);
+
+    return batch;
 }
 
-void batch_fini() { mem_free(batch.vertices); }
+void batch_fini(batch_renderer *batch) { mem_free(batch->vertices); }
 
-void batch_update_all() {
+void batch_update_all(batch_renderer *batch) {
     auto tex_aliens = texture_get_ptr("assets/aliens.png");
 
     struct {
@@ -87,10 +89,10 @@ void batch_update_all() {
             .tw = alien_uvs[2].w,
             .th = alien_uvs[2].h,
     };
-    batch_test_draw(&batch, tex_aliens, ch);
+    batch_test_draw(batch, tex_aliens, ch);
 }
 
-void batch_draw_all() { batch_flush(&batch); }
+void batch_draw_all(batch_renderer *batch) { batch_flush(batch); }
 
 void batch_flush(batch_renderer *renderer) {
     if (renderer->vertex_count == 0) {

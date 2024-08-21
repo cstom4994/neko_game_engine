@@ -2,7 +2,7 @@
 -- hot_require 'nekogame'
 mm = hot_require("libs/mm")
 
-luainspector = Inspector.inspector_init()
+-- luainspector = Inspector.inspector_init()
 
 mu = neko.ui
 

@@ -21,6 +21,29 @@ function ng.safestr(s)
     return ("%q"):format(s):gsub("\010", "n"):gsub("\026", "\\026")
 end
 
+function ng.color_from_hex(hex)
+    local function hexToRGBA(hex)
+        -- 移除十六进制字符串中的 # 号（如果有）
+        hex = hex:gsub("#", "")
+
+        -- 如果没有指定Alpha值，默认为255（完全不透明）
+        local r, g, b, a
+        if #hex == 6 then
+            r, g, b = tonumber(hex:sub(1, 2), 16), tonumber(hex:sub(3, 4), 16), tonumber(hex:sub(5, 6), 16)
+            a = 255
+        elseif #hex == 8 then
+            r, g, b, a = tonumber(hex:sub(1, 2), 16), tonumber(hex:sub(3, 4), 16), tonumber(hex:sub(5, 6), 16),
+                tonumber(hex:sub(7, 8), 16)
+        else
+            error("Invalid hex string")
+        end
+
+        return r, g, b, a
+    end
+    local r, g, b, a = hexToRGBA(hex)
+    return ng.color(r / 255.0, g / 255.0, b / 255.0, a / 255.0)
+end
+
 function ng.gc_setmetatable()
     if _VERSION == "Lua 5.1" then
         local rg = assert(rawget)
@@ -1006,8 +1029,15 @@ function ng.add(sys, ent, props)
     end
 
     -- 所有实体都已经在 'entity' 系统
-    if sys ~= 'entity' and not ns[sys].has(ent) then
-        ng.adder(sys)(ent)
+    if sys ~= 'entity' then
+        if ns[sys]["has"] ~= nil then
+            if not ns[sys].has(ent) then
+                ng.adder(sys)(ent)
+            end
+        else
+            print("system " .. sys .. " 'has' func is nil")
+        end
+
         -- mm({"ng.adder", sys})
     end
     if (props) then
@@ -1455,7 +1485,7 @@ function ns.gui_window.add(ent)
         ent = ent,
         gui_rect = {},
         gui = {
-            color = ng.color(0.3, 0.3, 0.5, 0.95)
+            color = ng.color_from_hex("#434343")
         }
     }
 
@@ -1469,7 +1499,7 @@ function ns.gui_window.add(ent)
         },
         gui = {
             padding = ng.vec2_zero,
-            color = ng.color(0.15, 0.15, 0.35, 0.95),
+            color = ng.color_from_hex("#3d85c6"),
             valign = ng.GA_TABLE,
             halign = ng.GA_MIN
         }
@@ -1553,6 +1583,24 @@ function ns.gui_window.add(ent)
             halign = ng.GA_MIN
         }
     }
+
+    window.statusbar = ng.add {
+        transform = {
+            parent = window.body
+        },
+        gui_rect = {
+            -- hfill = true
+        },
+        gui = {
+            padding = ng.vec2_zero,
+            color = ng.color_from_hex("#ff0000"),
+            valign = ng.GA_TABLE,
+            halign = ng.GA_MID
+        },
+        gui_text = {
+            str = 'statusbar'
+        }
+    }
 end
 
 function ns.gui_window.remove(ent)
@@ -1570,7 +1618,8 @@ end
 ng.simple_props(ns.gui_window, {
     minimized = false,
     closeable = true,
-    highlight = false
+    highlight = false,
+    resizable = true
 })
 
 function ns.gui_window.set_title(ent, str)
@@ -1601,7 +1650,8 @@ end
 
 -- window that is being dragged
 local drag_window
-local mouse_prev = nil, mouse_curr
+local mouse_prev = nil
+local mouse_curr
 
 function ns.gui_window.mouse_up(mouse)
     if mouse == ng.MC_LEFT then
@@ -1620,6 +1670,12 @@ function ns.gui_window.update_all()
     for ent, window in pairs(ns.gui_window.tbl) do
         if ns.gui.event_mouse_down(window.close_text) == ng.MC_LEFT and window.closeable then
             ns.entity.destroy(ent)
+        end
+        -- if ns.gui.event_mouse_down(window.statusbar) == ng.MC_LEFT then
+        --     print("resize " .. window)
+        -- end
+        if ns.gui.event_mouse_down(window.body) == ng.MC_LEFT then
+            print("body " .. ent.id)
         end
     end
 
@@ -2632,7 +2688,7 @@ ns.edit.status_bar = ng.add {
         hfill = true
     },
     gui = {
-        color = ng.color(0.8, 0.3, 0.3, 1.0),
+        color = ng.color(0.1, 0.1, 0.1, 1.0),
         halign = ng.GA_MIN,
         valign = ng.GA_TABLE,
         padding = ng.vec2_zero

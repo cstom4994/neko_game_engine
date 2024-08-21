@@ -75,7 +75,7 @@ struct App {
     ecs_t *ECS;
 
     command_buffer_t cb;
-    ui_context_t ui;
+    // ui_context_t ui;
     idraw_t idraw;
 
     f64 width;

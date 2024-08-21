@@ -2596,7 +2596,7 @@ LUA_FUNCTION(__neko_bind_render_framebuffer_fini) {
     return 0;
 }
 
-void inspect_shader(const_str label, GLuint program);
+void inspect_shader(const_str label, GLuint program) {}
 
 LUA_FUNCTION(__neko_bind_inspect_shaders) {
     u32 shader_id = lua_tonumber(L, 1);
@@ -4440,8 +4440,8 @@ void open_neko_api(lua_State *L) {
     open_embed_core(L);
     lua_setfield(L, -2, "core");
 
-    open_ui(L);
-    lua_setfield(L, -2, "ui");
+    // open_ui(L);
+    // lua_setfield(L, -2, "ui");
 
     lua_pop(L, 1);
 

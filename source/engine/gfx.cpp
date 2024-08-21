@@ -1587,7 +1587,7 @@ void gfx_cmd_submit(command_buffer_t* cb) {
                             vbo_decl.data_type = data_type;
                             vbo_decl.offset = offset;
 
-                            // Cache vertex buffer for later use
+                            // 缓存顶点缓冲区以供以后使用
                             neko_dyn_array_push(ogl->cache.vdecls, vbo_decl);
 
                         } break;

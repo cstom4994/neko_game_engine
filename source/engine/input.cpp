@@ -6,11 +6,11 @@
 #include "engine/base.h"
 #include "engine/game.h"
 #include "engine/glew_glfw.h"
+#include "engine/gui.h"
 #include "engine/input.h"
 #include "engine/os.h"
 #include "engine/prelude.h"
 #include "engine/transform.h"
-#include "engine/ui.h"
 
 static CArray *key_down_cbs;
 static CArray *key_up_cbs;

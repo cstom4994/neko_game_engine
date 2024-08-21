@@ -10,6 +10,7 @@
 #include "engine/edit.h"
 #include "engine/game.h"
 #include "engine/gfx.h"
+#include "engine/gui.h"
 #include "engine/input.h"
 #include "engine/lua_util.h"
 #include "engine/os.h"
@@ -20,7 +21,6 @@
 #include "engine/sprite.h"
 #include "engine/texture.h"
 #include "engine/transform.h"
-#include "engine/ui.h"
 #include "engine/vfs.h"
 
 static void load_all_lua_scripts(lua_State *L) {
@@ -78,6 +78,8 @@ static void _mouse_up(MouseCode mouse) {
 }
 static void _mouse_move(LuaVec2 pos) { script_mouse_move(pos); }
 static void _scroll(LuaVec2 scroll) { script_scroll(scroll); }
+
+static batch_renderer batch;
 
 void system_init() {
     PROFILE_FUNC();
@@ -175,11 +177,11 @@ void system_init() {
     entity_init();
     transform_init();
     camera_init();
-    batch_init(6000);
+    batch = batch_init(6000);
     sprite_init();
     tiled_init();
     gui_init();
-    imgui_init();
+    // font_init();
     console_init();
     sound_init();
     physics_init();
@@ -241,8 +243,7 @@ void system_fini() {
     console_fini();
     tiled_fini();
     sprite_fini();
-    batch_fini();
-    imgui_fini();
+    batch_fini(&batch);
     gui_fini();
     camera_fini();
     transform_fini();
@@ -295,7 +296,7 @@ void system_update_all() {
     camera_update_all();
     gui_update_all();
     sprite_update_all();
-    batch_update_all();
+    batch_update_all(&batch);
     sound_update_all();
     tiled_update_all();
 
@@ -311,8 +312,11 @@ void system_update_all() {
 void system_draw_all(command_buffer_t *cb) {
     // script_draw_all();
     // tiled_draw_all();
+    tiled_draw_all();
+
     sprite_draw_all();
-    batch_draw_all();
+    batch_draw_all(&batch);
+    // font_draw_all();
     edit_draw_all();
     physics_draw_all();
     gui_draw_all();

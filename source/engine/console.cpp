@@ -8,6 +8,7 @@
 
 #include "engine/base.h"
 #include "engine/game.h"
+#include "engine/gui.h"
 #include "engine/input.h"
 #include "engine/transform.h"
 #include "engine/ui.h"
@@ -151,6 +152,8 @@ void console_init() {
 }
 
 void console_fini() {}
+
+#if 0
 
 void neko_console_printf(neko_console_t* console, const char* fmt, ...);
 
@@ -424,3 +427,5 @@ void help(int argc, char** argv) {
         if (commands[i].desc) neko_console_printf(&g_console, "- desc: %s\n", commands[i].desc);
     }
 }
+
+#endif

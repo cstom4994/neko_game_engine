@@ -25,10 +25,10 @@ typedef struct {
     // Matrix mvp;
 } batch_renderer;
 
-void batch_init(int vertex_capacity);
-void batch_fini();
-void batch_update_all();
-void batch_draw_all();
+batch_renderer batch_init(int vertex_capacity);
+void batch_fini(batch_renderer *batch);
+void batch_update_all(batch_renderer *batch);
+void batch_draw_all(batch_renderer *batch);
 
 void batch_flush(batch_renderer *renderer);
 void batch_texture(batch_renderer *renderer, GLuint id);
