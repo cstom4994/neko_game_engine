@@ -29,12 +29,16 @@ struct AseSpriteData {
     void trash();
 };
 
+struct batch_renderer;
+
 struct AseSprite {
+    batch_renderer *batch;
     u64 sprite;  // index into assets
     u64 loop;    // index into AseSpriteData::by_tag
     float elapsed;
     i32 current_frame;
 
+    void make();
     bool play(String tag);
     void update(float dt);
     void set_frame(i32 frame);

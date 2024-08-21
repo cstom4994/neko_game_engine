@@ -53,8 +53,8 @@ static FontKey font_key(float size, i32 charcode) {
 static void make_font_range(FontRange *out, FontFamily *font, FontKey key) {
     PROFILE_FUNC();
 
-    i32 width = 512;
-    i32 height = 256;
+    i32 width = 64;
+    i32 height = 64;
 
     u8 *bitmap = nullptr;
     while (bitmap == nullptr) {

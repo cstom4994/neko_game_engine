@@ -21,7 +21,7 @@ void main() {
 
 	// gl_Position = vec4(inverse_view_matrix * vec3(position, 1.0), 1.0);
 
-	vec3 transformed_position = inverse_view_matrix * 0.05 * vec3(position, 1.0);
+	vec3 transformed_position = inverse_view_matrix * 0.04 * vec3(position, 1.0);
     transformed_position.y = -transformed_position.y;  // 翻转Y轴
 
     gl_Position = vec4(transformed_position, 1.0);

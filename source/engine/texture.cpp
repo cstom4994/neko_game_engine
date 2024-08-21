@@ -21,7 +21,7 @@
 #define CUTE_ASEPRITE_FREE(mem, ctx) mem_free(mem)
 
 #define CUTE_ASEPRITE_IMPLEMENTATION
-#include <cute_aseprite.h>
+#include "vendor/cute_aseprite.h"
 
 // -------------------------------------------------------------------------
 

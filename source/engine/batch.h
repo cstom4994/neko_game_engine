@@ -8,8 +8,7 @@ typedef struct {
     float texcoord[2];
 } Vertex;
 
-typedef struct {
-    GLuint shader;
+struct batch_renderer {
 
     // vertex buffer data
     GLuint vao;
@@ -20,12 +19,10 @@ typedef struct {
 
     float scale;
 
-    // uniform values
     GLuint texture;
-    // Matrix mvp;
-} batch_renderer;
+};
 
-batch_renderer batch_init(int vertex_capacity);
+batch_renderer *batch_init(int vertex_capacity);
 void batch_fini(batch_renderer *batch);
 void batch_update_all(batch_renderer *batch);
 void batch_draw_all(batch_renderer *batch);

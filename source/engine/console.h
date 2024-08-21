@@ -30,8 +30,6 @@ void console_fini();
 // Console
 =============================*/
 
-#if 0
-
 typedef void (*neko_console_func)(int argc, char** argv);
 
 typedef struct neko_console_command_t {
@@ -62,10 +60,8 @@ extern neko_console_t g_console;
 
 struct ui_context_t;
 struct ui_selector_desc_t;
-struct ui_rect_t;
+struct rect_t;
 
-void neko_console(neko_console_t* console, ui_context_t* ctx, ui_rect_t *rect, const ui_selector_desc_t* desc);
-
-#endif
+void neko_console(neko_console_t* console, ui_context_t* ctx, rect_t* rect, const ui_selector_desc_t* desc);
 
 #endif

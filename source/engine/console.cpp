@@ -11,6 +11,7 @@
 #include "engine/gui.h"
 #include "engine/input.h"
 #include "engine/transform.h"
+#include "engine/ui.h"
 
 #define LINE_LEN 128  // including newline, null char
 #define NUM_LINES 20
@@ -152,12 +153,10 @@ void console_init() {
 
 void console_fini() {}
 
-#if 0
-
 void neko_console_printf(neko_console_t* console, const char* fmt, ...);
 
-void neko_console(neko_console_t* console, ui_context_t* ctx, ui_rect_t* rect, const ui_selector_desc_t* desc) {
-    ui_rect_t screen = *rect;
+void neko_console(neko_console_t* console, ui_context_t* ctx, rect_t* r, const ui_selector_desc_t* desc) {
+    rect_t screen = *r;
     if (console->open)
         console->y += (screen.h * console->size - console->y) * console->open_speed;
     else if (!console->open && console->y >= 1.0f)
@@ -166,19 +165,17 @@ void neko_console(neko_console_t* console, ui_context_t* ctx, ui_rect_t* rect, c
         return;
 
     const f32 sz = NEKO_MIN(console->y, 26);
-    if (ui_window_begin_ex(ctx, "neko_console_content", ui_rect(screen.x, screen.y, screen.w, console->y - sz), NULL, NULL,
-                           UI_OPT_FORCESETRECT | UI_OPT_NOTITLE | UI_OPT_NORESIZE | UI_OPT_NODOCK | UI_OPT_FORCEFOCUS | UI_OPT_HOLDFOCUS)) {
+    if (ui_begin_window_ex(ctx, "neko_console_content", neko_rect(screen.x, screen.y, screen.w, console->y - sz), UI_OPT_NOTITLE | UI_OPT_NORESIZE | UI_OPT_HOLDFOCUS)) {
         ui_layout_row(ctx, 1, ui_widths(-1), 0);
         ui_text(ctx, console->tb);
         // neko_imgui_draw_text(console->tb, NEKO_COLOR_WHITE, 10.f, 10.f, true, NEKO_COLOR_BLACK);
         if (console->autoscroll) ui_get_current_container(ctx)->scroll.y = sizeof(console->tb) * 7 + 100;
         ui_container_t* ctn = ui_get_current_container(ctx);
         ui_bring_to_front(ctx, ctn);
-        ui_window_end(ctx);
+        ui_end_window(ctx);
     }
 
-    if (ui_window_begin_ex(ctx, "neko_console_input", ui_rect(screen.x, screen.y + console->y - sz, screen.w, sz), NULL, NULL,
-                           UI_OPT_FORCESETRECT | UI_OPT_NOTITLE | UI_OPT_NORESIZE | UI_OPT_NODOCK | UI_OPT_NOHOVER | UI_OPT_NOINTERACT)) {
+    if (ui_begin_window_ex(ctx, "neko_console_input", neko_rect(screen.x, screen.y + console->y - sz, screen.w, sz), UI_OPT_NOTITLE | UI_OPT_NORESIZE | UI_OPT_NOINTERACT)) {
         int len = strlen(console->cb[0]);
         ui_layout_row(ctx, 3, ui_widths(14, len * 7 + 2, 10), 0);
         ui_text(ctx, "$>");
@@ -261,13 +258,13 @@ void neko_console(neko_console_t* console, ui_context_t* ctx, ui_rect_t* rect, c
     console_input_handling_done:
 
         // 闪烁光标
-        ui_get_layout(ctx)->body.x += len * 7 - 5;
+        // ui_get_layout(ctx)->body.x += len * 7 - 5;
         if ((int)(timing_get_elapsed() / 666.0f) & 1) ui_text(ctx, "|");
 
         ui_container_t* ctn = ui_get_current_container(ctx);
         ui_bring_to_front(ctx, ctn);
 
-        ui_window_end(ctx);
+        ui_end_window(ctx);
     }
 
     console->last_open_state = console->open;
@@ -426,5 +423,3 @@ void help(int argc, char** argv) {
         if (commands[i].desc) neko_console_printf(&g_console, "- desc: %s\n", commands[i].desc);
     }
 }
-
-#endif

@@ -12,8 +12,4 @@ typedef struct {
     float vx, vy;
 } vel_t;
 
-typedef struct {
-    int x, y, w, h;
-} rect_t;
-
 #endif

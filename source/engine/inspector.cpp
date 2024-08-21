@@ -1168,20 +1168,7 @@ int neko::luainspector::luainspector_draw(lua_State* L) {
         ui_window_end(&g_app->ui);
     }
 
-    if (input_key_down(KC_GRAVE_ACCENT)) {
-        g_console.open = !g_console.open;
-    } else if (input_key_down(KC_TAB) && g_console.open) {
-        g_console.autoscroll = !g_console.autoscroll;
-    }
 
-    vec2 fb = (&g_app->ui)->framebuffer_size;
-    ui_rect_t screen;
-    //            if (embeded)
-    //                screen = l.body;
-    //            else
-    //                screen = ui_rect(0, 0, fb.x, fb.y);
-    screen = ui_rect(0, 0, fb.x, fb.y);
-    neko_console(&g_console, &g_app->ui, &screen, NULL);
 
     return 0;
 }

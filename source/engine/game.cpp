@@ -24,9 +24,7 @@
 #include "engine/transform.h"
 #include "engine/vfs.h"
 
-// deps
-#include <cute_aseprite.h>
-
+// dep
 #include "vendor/sokol_time.h"
 
 static bool quit = false;  // 如果为 true 则退出主循环
@@ -208,10 +206,10 @@ static void _game_init() {
 
         // ui_dock_ex(&g_app->ui, "Style_Editor", "Demo_Window", UI_SPLIT_TAB, 0.5f);
 
-        g_app->ui = (mu_Context *)mem_alloc(sizeof(mu_Context));
-        mu_init(g_app->ui);
+        g_app->ui = (ui_context_t *)mem_alloc(sizeof(ui_context_t));
+        ui_init(g_app->ui);
 
-        g_app->ui->style->colors[MU_COLOR_WINDOWBG] = mu_color(50, 50, 50, 200);
+        g_app->ui->style->colors[UI_COLOR_WINDOWBG] = color256(50, 50, 50, 200);
 
         g_app->ui->text_width = neko_ui_text_width;
         g_app->ui->text_height = neko_ui_text_height;
@@ -353,13 +351,6 @@ static void _game_draw() {
         // { gfx_clear(&g_app->cb, clear); }
         // gfx_renderpass_end(&g_app->cb);
 
-        // DeferLoop(ui_begin(&g_app->ui, NULL), ui_end(&g_app->ui, true)) {
-
-        //     script_draw_ui();
-
-        //     draw_gui();
-        // }
-
         script_draw_all();
 
         // Set up 2D camera for projection matrix
@@ -398,14 +389,16 @@ static void _game_draw() {
 
         neko_update_ui(ui);
 
-        mu_begin(ui);
-        if (mu_begin_window(ui, "Entity", mu_rect(10, 420, 400, 300))) {
-            mu_label(ui, "Name");
+        DeferLoop(ui_begin(ui), ui_end(ui)) {
+            script_draw_ui();
+            draw_gui();
 
-            mu_end_window(ui);
+            if (ui_begin_window(ui, "Hello World", neko_rect(10, 420, 400, 300))) {
+                ui_label(ui, "Name");
+
+                ui_end_window(ui);
+            }
         }
-
-        mu_end(ui);
 
         neko_render_ui(ui, g_app->width, g_app->height);
 

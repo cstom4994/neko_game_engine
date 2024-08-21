@@ -78,7 +78,7 @@ struct App {
     // ui_context_t ui;
     // idraw_t idraw;
 
-    mu_Context *ui;
+    ui_context_t *ui;
 
     f64 width;
     f64 height;

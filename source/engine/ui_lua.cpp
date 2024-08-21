@@ -1,11 +1,13 @@
 
-#if 0
+#include "engine/ui_lua.h"
+#if 1
 
 #include "engine/game.h"
 #include "engine/luax.h"
+#include "engine/ui.h"
 
-ui_rect_t lua_ui_check_rect(lua_State *L, i32 arg) {
-    ui_rect_t rect = {};
+rect_t lua_ui_check_rect(lua_State *L, i32 arg) {
+    rect_t rect = {};
     rect.x = luax_number_field(L, arg, "x");
     rect.y = luax_number_field(L, arg, "y");
     rect.w = luax_number_field(L, arg, "w");
@@ -13,7 +15,7 @@ ui_rect_t lua_ui_check_rect(lua_State *L, i32 arg) {
     return rect;
 }
 
-void lua_ui_rect_push(lua_State *L, ui_rect_t rect) {
+void lua_ui_rect_push(lua_State *L, rect_t rect) {
     lua_createtable(L, 0, 4);
     luax_set_number_field(L, "x", rect.x);
     luax_set_number_field(L, "y", rect.y);
@@ -269,7 +271,7 @@ MUIRef *lua_ui_check_ref(lua_State *L, i32 arg, MUIRefKind kind) {
     return ref;
 }
 
-static ui_context_t *ui_ctx() { return &g_app->ui; }
+static ui_context_t *ui_ctx() { return g_app->ui; }
 
 static int l_ui_set_focus(lua_State *L) {
     lua_Integer id = luaL_checkinteger(L, 1);
@@ -296,7 +298,7 @@ static int l_ui_pop_id(lua_State *L) {
 }
 
 static int l_ui_push_clip_rect(lua_State *L) {
-    ui_rect_t rect = lua_ui_check_rect(L, 1);
+    rect_t rect = lua_ui_check_rect(L, 1);
     ui_push_clip_rect(ui_ctx(), rect);
     return 0;
 }
@@ -307,13 +309,13 @@ static int l_ui_pop_clip_rect(lua_State *L) {
 }
 
 static int l_ui_get_clip_rect(lua_State *L) {
-    ui_rect_t rect = ui_get_clip_rect(ui_ctx());
+    rect_t rect = ui_get_clip_rect(ui_ctx());
     lua_ui_rect_push(L, rect);
     return 1;
 }
 
 static int l_ui_check_clip(lua_State *L) {
-    ui_rect_t rect = lua_ui_check_rect(L, 1);
+    rect_t rect = lua_ui_check_rect(L, 1);
 
     i32 clip = ui_check_clip(ui_ctx(), rect);
     lua_pushinteger(L, clip);
@@ -340,24 +342,22 @@ static int l_ui_bring_to_front(lua_State *L) {
 }
 
 static int l_ui_set_clip(lua_State *L) {
-    ui_rect_t rect = lua_ui_check_rect(L, 1);
+    rect_t rect = lua_ui_check_rect(L, 1);
     ui_set_clip(ui_ctx(), rect);
     return 0;
 }
 
 static int l_ui_draw_rect(lua_State *L) {
-    ui_rect_t rect = lua_ui_check_rect(L, 1);
+    rect_t rect = lua_ui_check_rect(L, 1);
     Color256 color = lua_ui_check_color(L, 2);
     ui_draw_rect(ui_ctx(), rect, color);
     return 0;
 }
 
 static int l_ui_draw_box(lua_State *L) {
-    ui_rect_t rect = lua_ui_check_rect(L, 1);
+    rect_t rect = lua_ui_check_rect(L, 1);
     Color256 color = lua_ui_check_color(L, 2);
-    // i16 border_width = 1;
-    ui_style_t *style = ui_ctx()->style;
-    ui_draw_box(ui_ctx(), rect, style->border_width, color);
+    ui_draw_box(ui_ctx(), rect, color);
     return 0;
 }
 
@@ -368,13 +368,13 @@ static int l_ui_draw_text(lua_State *L) {
     Color256 color = lua_ui_check_color(L, 4);
 
     vec2 pos = {(f32)x, (f32)y};
-    ui_draw_text(ui_ctx(), nullptr, str.data, str.len, pos, color, 0, 0, color);
+    ui_draw_text(ui_ctx(), nullptr, str.data, str.len, pos, color);
     return 0;
 }
 
 // static int l_ui_draw_icon(lua_State *L) {
 //     lua_Integer id = luaL_checkinteger(L, 1);
-//     ui_rect_t rect = lua_ui_check_rect(L, 2);
+//     rect_t rect = lua_ui_check_rect(L, 2);
 //     Color256 color = lua_ui_check_color(L, 3);
 //     ui_draw_icon(ui_ctx(), id, rect, color);
 //     return 0;
@@ -413,31 +413,31 @@ static int l_ui_layout_height(lua_State *L) {
 }
 
 static int l_ui_layout_begin_column(lua_State *L) {
-    ui_layout_column_begin(ui_ctx());
+    ui_layout_begin_column(ui_ctx());
     return 0;
 }
 
 static int l_ui_layout_end_column(lua_State *L) {
-    ui_layout_column_end(ui_ctx());
+    ui_layout_end_column(ui_ctx());
     return 0;
 }
 
 static int l_ui_layout_set_next(lua_State *L) {
-    ui_rect_t rect = lua_ui_check_rect(L, 1);
+    rect_t rect = lua_ui_check_rect(L, 1);
     bool relative = lua_toboolean(L, 2);
     ui_layout_set_next(ui_ctx(), rect, relative);
     return 0;
 }
 
 static int l_ui_layout_next(lua_State *L) {
-    ui_rect_t rect = ui_layout_next(ui_ctx());
+    rect_t rect = ui_layout_next(ui_ctx());
     lua_ui_rect_push(L, rect);
     return 1;
 }
 
 static int l_ui_draw_control_frame(lua_State *L) {
     lua_Integer id = luaL_checkinteger(L, 1);
-    ui_rect_t rect = lua_ui_check_rect(L, 2);
+    rect_t rect = lua_ui_check_rect(L, 2);
     lua_Integer colorid = luaL_checkinteger(L, 3);
     lua_Integer opt = luaL_checkinteger(L, 4);
     ui_draw_control_frame(ui_ctx(), id, rect, colorid, opt);
@@ -446,15 +446,15 @@ static int l_ui_draw_control_frame(lua_State *L) {
 
 static int l_ui_draw_control_text(lua_State *L) {
     String str = luax_check_string(L, 1);
-    ui_rect_t rect = lua_ui_check_rect(L, 2);
+    rect_t rect = lua_ui_check_rect(L, 2);
     lua_Integer colorid = luaL_checkinteger(L, 3);
     lua_Integer opt = luaL_checkinteger(L, 4);
-    ui_draw_control_text(ui_ctx(), str.data, rect, ui_ctx()->style, opt);
+    ui_draw_control_text(ui_ctx(), str.data, rect, colorid, opt);
     return 0;
 }
 
 static int l_ui_mouse_over(lua_State *L) {
-    ui_rect_t rect = lua_ui_check_rect(L, 1);
+    rect_t rect = lua_ui_check_rect(L, 1);
     int res = ui_mouse_over(ui_ctx(), rect);
     lua_pushboolean(L, res);
     return 1;
@@ -462,7 +462,7 @@ static int l_ui_mouse_over(lua_State *L) {
 
 static int l_ui_update_control(lua_State *L) {
     lua_Integer id = luaL_checkinteger(L, 1);
-    ui_rect_t rect = lua_ui_check_rect(L, 2);
+    rect_t rect = lua_ui_check_rect(L, 2);
     lua_Integer opt = luaL_checkinteger(L, 3);
     ui_update_control(ui_ctx(), id, rect, opt);
     return 0;
@@ -483,8 +483,8 @@ static int l_ui_label(lua_State *L) {
 static int l_ui_button(lua_State *L) {
     String text = luax_check_string(L, 1);
     lua_Integer icon = luaL_optinteger(L, 2, 0);
-    lua_Integer opt = luaL_optinteger(L, 3, UI_ALIGN_CENTER);
-    i32 res = ui_button_ex(ui_ctx(), text.data, NULL, opt);
+    lua_Integer opt = luaL_optinteger(L, 3, UI_OPT_ALIGNCENTER);
+    i32 res = ui_button_ex(ui_ctx(), text.data, icon, opt);
     lua_pushboolean(L, res);
     return 1;
 }
@@ -501,10 +501,10 @@ static int l_ui_checkbox(lua_State *L) {
 static int l_ui_textbox_raw(lua_State *L) {
     MUIRef *ref = lua_ui_check_ref(L, 1, MUIRefKind_String);
     lua_Integer id = luaL_checkinteger(L, 2);
-    ui_rect_t rect = lua_ui_check_rect(L, 3);
+    rect_t rect = lua_ui_check_rect(L, 3);
     i32 opt = luaL_optinteger(L, 4, 0);
 
-    i32 res = ui_textbox_raw(ui_ctx(), ref->string, array_size(ref->string), id, rect, NULL, opt);
+    i32 res = ui_textbox_raw(ui_ctx(), ref->string, array_size(ref->string), id, rect, opt);
     lua_pushinteger(L, res);
     return 1;
 }
@@ -513,7 +513,7 @@ static int l_ui_textbox(lua_State *L) {
     MUIRef *ref = lua_ui_check_ref(L, 1, MUIRefKind_String);
     i32 opt = luaL_optinteger(L, 2, 0);
 
-    i32 res = ui_textbox_ex(ui_ctx(), ref->string, array_size(ref->string), NULL, opt);
+    i32 res = ui_textbox_ex(ui_ctx(), ref->string, array_size(ref->string), opt);
     lua_pushinteger(L, res);
     return 1;
 }
@@ -524,9 +524,9 @@ static int l_ui_slider(lua_State *L) {
     ui_real high = (ui_real)luaL_checknumber(L, 3);
     ui_real step = (ui_real)luaL_optnumber(L, 4, 0);
     String fmt = luax_opt_string(L, 5, UI_SLIDER_FMT);
-    i32 opt = luaL_optinteger(L, 6, UI_ALIGN_CENTER);
+    i32 opt = luaL_optinteger(L, 6, UI_OPT_ALIGNCENTER);
 
-    i32 res = ui_slider_ex(ui_ctx(), &ref->real, low, high, step, fmt.data, NULL, opt);
+    i32 res = ui_slider_ex(ui_ctx(), &ref->real, low, high, step, fmt.data, opt);
     lua_pushinteger(L, res);
     return 1;
 }
@@ -535,9 +535,9 @@ static int l_ui_number(lua_State *L) {
     MUIRef *ref = lua_ui_check_ref(L, 1, MUIRefKind_Real);
     ui_real step = (ui_real)luaL_checknumber(L, 2);
     String fmt = luax_opt_string(L, 3, UI_SLIDER_FMT);
-    i32 opt = luaL_optinteger(L, 4, UI_ALIGN_CENTER);
+    i32 opt = luaL_optinteger(L, 4, UI_OPT_ALIGNCENTER);
 
-    i32 res = ui_number_ex(ui_ctx(), &ref->real, step, fmt.data, NULL, opt);
+    i32 res = ui_number_ex(ui_ctx(), &ref->real, step, fmt.data, opt);
     lua_pushinteger(L, res);
     return 1;
 }
@@ -545,7 +545,7 @@ static int l_ui_number(lua_State *L) {
 static int l_ui_header(lua_State *L) {
     String text = luax_check_string(L, 1);
     lua_Integer opt = luaL_optinteger(L, 2, 0);
-    i32 res = ui_header_ex(ui_ctx(), text.data, NULL, opt);
+    i32 res = ui_header_ex(ui_ctx(), text.data, opt);
     lua_pushboolean(L, res);
     return 1;
 }
@@ -554,59 +554,58 @@ static int l_ui_begin_treenode(lua_State *L) {
     String label = luax_check_string(L, 1);
     lua_Integer opt = luaL_optinteger(L, 2, 0);
 
-    i32 res = ui_treenode_begin_ex(ui_ctx(), label.data, NULL, opt);
+    i32 res = ui_begin_treenode_ex(ui_ctx(), label.data, opt);
     lua_pushboolean(L, res);
     return 1;
 }
 
 static int l_ui_end_treenode(lua_State *L) {
-    ui_treenode_end(ui_ctx());
+    ui_end_treenode(ui_ctx());
     return 0;
 }
 
 static int l_ui_begin_window(lua_State *L) {
     String title = luax_check_string(L, 1);
-    ui_rect_t rect = lua_ui_check_rect(L, 2);
+    rect_t rect = lua_ui_check_rect(L, 2);
     lua_Integer opt = luaL_optinteger(L, 3, 0x00);
 
-    i32 res = ui_window_begin_ex(ui_ctx(), title.data, rect, 0, NULL, opt);
+    i32 res = ui_begin_window_ex(ui_ctx(), title.data, rect, opt);
     lua_pushboolean(L, res);
     return 1;
 }
 
 static int l_ui_end_window(lua_State *L) {
-    ui_window_end(ui_ctx());
+    ui_end_window(ui_ctx());
     return 0;
 }
 
 static int l_ui_open_popup(lua_State *L) {
     String name = luax_check_string(L, 1);
-    ui_popup_open(ui_ctx(), name.data);
+    ui_open_popup(ui_ctx(), name.data);
     return 0;
 }
 
 static int l_ui_begin_popup(lua_State *L) {
     String name = luax_check_string(L, 1);
-    ui_rect_t rect = lua_ui_check_rect(L, 2);
-    i32 res = ui_popup_begin(ui_ctx(), name.data, rect);
+    i32 res = ui_begin_popup(ui_ctx(), name.data);
     lua_pushboolean(L, res);
     return 1;
 }
 
 static int l_ui_end_popup(lua_State *L) {
-    ui_popup_end(ui_ctx());
+    ui_end_popup(ui_ctx());
     return 0;
 }
 
 static int l_ui_begin_panel(lua_State *L) {
     String name = luax_check_string(L, 1);
     lua_Integer opt = luaL_optinteger(L, 2, 0);
-    ui_panel_begin_ex(ui_ctx(), name.data, NULL, opt);
+    ui_begin_panel_ex(ui_ctx(), name.data, opt);
     return 0;
 }
 
 static int l_ui_end_panel(lua_State *L) {
-    ui_panel_end(ui_ctx());
+    ui_end_panel(ui_ctx());
     return 0;
 }
 
@@ -656,12 +655,12 @@ static int l_ui_ref(lua_State *L) {
 }
 
 static int l_ui_begin(lua_State *L) {
-    ui_begin(ui_ctx(), NULL);
+    ui_begin(ui_ctx());
     return 0;
 }
 
 static int l_ui_end(lua_State *L) {
-    ui_end(ui_ctx(), true);
+    ui_end(ui_ctx());
     return 0;
 }
 
@@ -755,24 +754,24 @@ int open_ui(lua_State *L) {
 
     luax_set_int_field(L, "COMMAND_JUMP", UI_COMMAND_JUMP);
     luax_set_int_field(L, "COMMAND_CLIP", UI_COMMAND_CLIP);
-    luax_set_int_field(L, "COMMAND_SHAPE", UI_COMMAND_SHAPE);
+    luax_set_int_field(L, "UI_COMMAND_RECT", UI_COMMAND_RECT);
     luax_set_int_field(L, "COMMAND_TEXT", UI_COMMAND_TEXT);
     luax_set_int_field(L, "COMMAND_ICON", UI_COMMAND_ICON);
 
-    // luax_set_int_field(L, "COLOR_TEXT", UI_COLOR_TEXT);
-    // luax_set_int_field(L, "COLOR_BORDER", UI_COLOR_BORDER);
-    // luax_set_int_field(L, "COLOR_WINDOWBG", UI_COLOR_WINDOWBG);
-    // luax_set_int_field(L, "COLOR_TITLEBG", UI_COLOR_TITLEBG);
-    // luax_set_int_field(L, "COLOR_TITLETEXT", UI_COLOR_TITLETEXT);
-    // luax_set_int_field(L, "COLOR_PANELBG", UI_COLOR_PANELBG);
-    // luax_set_int_field(L, "COLOR_BUTTON", UI_COLOR_BUTTON);
-    // luax_set_int_field(L, "COLOR_BUTTONHOVER", UI_COLOR_BUTTONHOVER);
-    // luax_set_int_field(L, "COLOR_BUTTONFOCUS", UI_COLOR_BUTTONFOCUS);
-    // luax_set_int_field(L, "COLOR_BASE", UI_COLOR_BASE);
-    // luax_set_int_field(L, "COLOR_BASEHOVER", UI_COLOR_BASEHOVER);
-    // luax_set_int_field(L, "COLOR_BASEFOCUS", UI_COLOR_BASEFOCUS);
-    // luax_set_int_field(L, "COLOR_SCROLLBASE", UI_COLOR_SCROLLBASE);
-    // luax_set_int_field(L, "COLOR_SCROLLTHUMB", UI_COLOR_SCROLLTHUMB);
+    luax_set_int_field(L, "COLOR_TEXT", UI_COLOR_TEXT);
+    luax_set_int_field(L, "COLOR_BORDER", UI_COLOR_BORDER);
+    luax_set_int_field(L, "COLOR_WINDOWBG", UI_COLOR_WINDOWBG);
+    luax_set_int_field(L, "COLOR_TITLEBG", UI_COLOR_TITLEBG);
+    luax_set_int_field(L, "COLOR_TITLETEXT", UI_COLOR_TITLETEXT);
+    luax_set_int_field(L, "COLOR_PANELBG", UI_COLOR_PANELBG);
+    luax_set_int_field(L, "COLOR_BUTTON", UI_COLOR_BUTTON);
+    luax_set_int_field(L, "COLOR_BUTTONHOVER", UI_COLOR_BUTTONHOVER);
+    luax_set_int_field(L, "COLOR_BUTTONFOCUS", UI_COLOR_BUTTONFOCUS);
+    luax_set_int_field(L, "COLOR_BASE", UI_COLOR_BASE);
+    luax_set_int_field(L, "COLOR_BASEHOVER", UI_COLOR_BASEHOVER);
+    luax_set_int_field(L, "COLOR_BASEFOCUS", UI_COLOR_BASEFOCUS);
+    luax_set_int_field(L, "COLOR_SCROLLBASE", UI_COLOR_SCROLLBASE);
+    luax_set_int_field(L, "COLOR_SCROLLTHUMB", UI_COLOR_SCROLLTHUMB);
 
     luax_set_int_field(L, "ICON_CLOSE", UI_ICON_CLOSE);
     luax_set_int_field(L, "ICON_CHECK", UI_ICON_CHECK);
@@ -783,8 +782,8 @@ int open_ui(lua_State *L) {
     luax_set_int_field(L, "RES_SUBMIT", UI_RES_SUBMIT);
     luax_set_int_field(L, "RES_CHANGE", UI_RES_CHANGE);
 
-    luax_set_int_field(L, "OPT_ALIGNCENTER", UI_ALIGN_CENTER);
-    // luax_set_int_field(L, "OPT_ALIGNRIGHT", UI_OPT_ALIGN_RIGHT);
+    luax_set_int_field(L, "OPT_ALIGNCENTER", UI_OPT_ALIGNCENTER);
+    luax_set_int_field(L, "OPT_ALIGNRIGHT", UI_OPT_ALIGNRIGHT);
     luax_set_int_field(L, "OPT_NOINTERACT", UI_OPT_NOINTERACT);
     luax_set_int_field(L, "OPT_NOFRAME", UI_OPT_NOFRAME);
     luax_set_int_field(L, "OPT_NORESIZE", UI_OPT_NORESIZE);

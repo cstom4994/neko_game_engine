@@ -13,8 +13,9 @@
 #include "engine/api.hpp"
 #include "engine/asset.h"
 #include "engine/base.h"
-#include "engine/entity.h"
+#include "engine/console.h"
 #include "engine/edit.h"
+#include "engine/entity.h"
 #include "engine/game.h"
 #include "engine/gfx.h"
 #include "engine/input.h"
@@ -515,16 +516,16 @@ int test_xml(lua_State* L) {
 
 #pragma endregion test
 
-#if 0
+#if 1
 
-void editor_dockspace(ui_context_t* ctx) {
-    u64 opt = UI_OPT_NOCLIP | UI_OPT_NOFRAME | UI_OPT_FORCESETRECT | UI_OPT_NOTITLE | UI_OPT_DOCKSPACE | UI_OPT_FULLSCREEN | UI_OPT_NOMOVE | UI_OPT_NOBRINGTOFRONT | UI_OPT_NOFOCUS | UI_OPT_NORESIZE;
-    ui_window_begin_ex(ctx, "Dockspace", ui_rect(350, 40, 600, 500), NULL, NULL, opt);
-    {
-        // Editor dockspace
-    }
-    ui_window_end(ctx);
-}
+// void editor_dockspace(ui_context_t* ctx) {
+//     u64 opt = UI_OPT_NOCLIP | UI_OPT_NOFRAME | UI_OPT_FORCESETRECT | UI_OPT_NOTITLE | UI_OPT_DOCKSPACE | UI_OPT_FULLSCREEN | UI_OPT_NOMOVE | UI_OPT_NOBRINGTOFRONT | UI_OPT_NOFOCUS |
+//     UI_OPT_NORESIZE; ui_window_begin_ex(ctx, "Dockspace", ui_rect(350, 40, 600, 500), NULL, NULL, opt);
+//     {
+//         // Editor dockspace
+//     }
+//     ui_window_end(ctx);
+// }
 
 ///////////////////////////////////////////////
 //
@@ -536,17 +537,17 @@ i32 button_custom(ui_context_t* ctx, const char* label) {
 
     // Draw inner shadows/highlights over button
     Color256 hc = NEKO_COLOR_WHITE, sc = color256(85, 85, 85, 255);
-    ui_rect_t r = ctx->last_rect;
+    rect_t r = ctx->last_rect;
     i32 w = 2;
-    ui_draw_rect(ctx, ui_rect(r.x + w, r.y, r.w - 2 * w, w), hc);
-    ui_draw_rect(ctx, ui_rect(r.x + w, r.y + r.h - w, r.w - 2 * w, w), sc);
-    ui_draw_rect(ctx, ui_rect(r.x, r.y, w, r.h), hc);
-    ui_draw_rect(ctx, ui_rect(r.x + r.w - w, r.y, w, r.h), sc);
+    ui_draw_rect(ctx, neko_rect(r.x + w, r.y, r.w - 2 * w, w), hc);
+    ui_draw_rect(ctx, neko_rect(r.x + w, r.y + r.h - w, r.w - 2 * w, w), sc);
+    ui_draw_rect(ctx, neko_rect(r.x, r.y, w, r.h), hc);
+    ui_draw_rect(ctx, neko_rect(r.x + r.w - w, r.y, w, r.h), sc);
 
     return res;
 }
 
-// void neko_console(neko_console_t* console, ui_context_t* ctx, ui_rect_t screen, const ui_selector_desc_t* desc);
+// void neko_console(neko_console_t* console, ui_context_t* ctx, rect_t screen, const ui_selector_desc_t* desc);
 
 void draw_gui_auto_test();
 
@@ -556,170 +557,69 @@ void draw_gui() {
 
     const f64 t = timing_get_elapsed();
 
-    // Custom callback for immediate drawing directly into the gui window
-    auto gui_cb = [](ui_context_t* ctx, struct ui_customcommand_t* cmd) {
-        idraw_t* gui_idraw = &ctx->gui_idraw;    // Immediate draw list in gui context
-        vec2 fbs = ctx->framebuffer_size;        // Framebuffer size bound for gui context
-        Color256* color = (Color256*)cmd->data;  // Grab custom data
-        // neko_asset_texture_t* tp = neko_assets_getp(&am, neko_asset_texture_t, tex_hndl);
-        const f32 t = timing_get_elapsed();
-
-        // Set up an immedaite camera using our passed in cmd viewport (this is the clipped viewport of the gui window being drawn)
-        idraw_camera3d(gui_idraw, (u32)cmd->viewport.w, (u32)cmd->viewport.h);
-        idraw_blend_enabled(gui_idraw, true);
-        gfx_set_viewport(&gui_idraw->commands, cmd->viewport.x, fbs.y - cmd->viewport.h - cmd->viewport.y, cmd->viewport.w, cmd->viewport.h);
-        idraw_push_matrix(gui_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);
-        {
-            idraw_rotatev(gui_idraw, t * 0.001f, NEKO_YAXIS);
-            idraw_scalef(gui_idraw, 0.5f, 0.5f, 0.5f);
-            idraw_box(gui_idraw, 0.f, 0.f, 0.f, 0.5f, 0.5f, 0.5f, color->r, color->g, color->b, color->a, R_PRIMITIVE_LINES);
-        }
-        idraw_pop_matrix(gui_idraw);
-
-        // Set up 2D camera for projection matrix
-        idraw_camera2d(gui_idraw, (u32)fbs.x, (u32)fbs.y);
-
-        // Rect
-        idraw_rectv(gui_idraw, neko_v2(500.f, 50.f), neko_v2(600.f, 100.f), NEKO_COLOR_RED, R_PRIMITIVE_TRIANGLES);
-        idraw_rectv(gui_idraw, neko_v2(650.f, 50.f), neko_v2(750.f, 100.f), NEKO_COLOR_RED, R_PRIMITIVE_LINES);
-
-        // Triangle
-        idraw_trianglev(gui_idraw, neko_v2(50.f, 50.f), neko_v2(100.f, 100.f), neko_v2(50.f, 100.f), NEKO_COLOR_WHITE, R_PRIMITIVE_TRIANGLES);
-        idraw_trianglev(gui_idraw, neko_v2(200.f, 50.f), neko_v2(300.f, 100.f), neko_v2(200.f, 100.f), NEKO_COLOR_WHITE, R_PRIMITIVE_LINES);
-
-        // Lines
-        idraw_linev(gui_idraw, neko_v2(50.f, 20.f), neko_v2(500.f, 20.f), color256(0, 255, 0, 255));
-
-        // Circle
-        idraw_circle(gui_idraw, 350.f, 170.f, 50.f, 20, 100, 150, 220, 255, R_PRIMITIVE_TRIANGLES);
-        idraw_circle(gui_idraw, 250.f, 170.f, 50.f, 20, 100, 150, 220, 255, R_PRIMITIVE_LINES);
-
-        // Circle Sector
-        idraw_circle_sector(gui_idraw, 50.f, 150.f, 50.f, 0, 90, 32, 255, 255, 255, 255, R_PRIMITIVE_TRIANGLES);
-        idraw_circle_sector(gui_idraw, 150.f, 200.f, 50.f, 90, 270, 32, 255, 255, 255, 255, R_PRIMITIVE_LINES);
-
-        // Box (with texture)
-        idraw_depth_enabled(gui_idraw, true);
-        idraw_face_cull_enabled(gui_idraw, true);
-        idraw_camera3d(gui_idraw, (u32)fbs.x, (u32)fbs.y);
-        idraw_push_matrix(gui_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);
-        {
-            idraw_translatef(gui_idraw, -2.f, -1.f, -5.f);
-            idraw_rotatev(gui_idraw, timing_get_elapsed() * 0.001f, NEKO_YAXIS);
-            idraw_rotatev(gui_idraw, timing_get_elapsed() * 0.0005f, NEKO_ZAXIS);
-            // idraw_texture(gui_idraw, tp->hndl);
-            idraw_scalef(gui_idraw, 1.5f, 1.5f, 1.5f);
-            idraw_box(gui_idraw, 0.f, 0.f, 0.f, 0.5f, 0.5f, 0.5f, 255, 255, 255, 255, R_PRIMITIVE_TRIANGLES);
-            idraw_texture(gui_idraw, neko_handle(gfx_texture_t){0});
-        }
-        idraw_pop_matrix(gui_idraw);
-
-        // Box (lines, no texture)
-        idraw_push_matrix(gui_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);
-        {
-            idraw_translatef(gui_idraw, 2.f, -1.f, -5.f);
-            idraw_rotatev(gui_idraw, timing_get_elapsed() * 0.001f, NEKO_YAXIS);
-            idraw_rotatev(gui_idraw, timing_get_elapsed() * 0.0008f, NEKO_ZAXIS);
-            idraw_rotatev(gui_idraw, timing_get_elapsed() * 0.0009f, NEKO_XAXIS);
-            idraw_scalef(gui_idraw, 1.5f, 1.5f, 1.5f);
-            idraw_box(gui_idraw, 0.f, 0.f, 0.f, 0.5f, 0.5f, 0.5f, 255, 200, 100, 255, R_PRIMITIVE_LINES);
-        }
-        idraw_pop_matrix(gui_idraw);
-
-        // Sphere (triangles, no texture)
-        idraw_camera3d(gui_idraw, (u32)fbs.x, (u32)fbs.y);
-        idraw_push_matrix(gui_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);
-        {
-            idraw_translatef(gui_idraw, -2.f, -1.f, -5.f);
-            idraw_rotatev(gui_idraw, timing_get_elapsed() * 0.001f, NEKO_YAXIS);
-            idraw_rotatev(gui_idraw, timing_get_elapsed() * 0.0005f, NEKO_ZAXIS);
-            idraw_scalef(gui_idraw, 1.5f, 1.5f, 1.5f);
-            idraw_sphere(gui_idraw, 0.f, 0.f, 0.f, 1.0f, 255, 255, 255, 50, R_PRIMITIVE_TRIANGLES);
-        }
-        idraw_pop_matrix(gui_idraw);
-
-        // Sphere (lines)
-        idraw_push_matrix(gui_idraw, NEKO_IDRAW_MATRIX_MODELVIEW);
-        {
-            idraw_translatef(gui_idraw, 2.f, -1.f, -5.f);
-            idraw_rotatev(gui_idraw, timing_get_elapsed() * 0.001f, NEKO_YAXIS);
-            idraw_rotatev(gui_idraw, timing_get_elapsed() * 0.0008f, NEKO_ZAXIS);
-            idraw_rotatev(gui_idraw, timing_get_elapsed() * 0.0009f, NEKO_XAXIS);
-            idraw_scalef(gui_idraw, 1.5f, 1.5f, 1.5f);
-            idraw_sphere(gui_idraw, 0.f, 0.f, 0.f, 1.0f, 255, 255, 255, 50, R_PRIMITIVE_LINES);
-        }
-        idraw_pop_matrix(gui_idraw);
-
-        // Text (custom and default fonts)
-        // idraw_camera2D(gui_idraw, (u32)ws.x, (u32)ws.y);
-        // idraw_defaults(gui_idraw);
-        // idraw_text(gui_idraw, 410.f, 150.f, "Custom Font", &font, false, 200, 100, 50, 255);
-        // idraw_text(gui_idraw, 450.f, 200.f, "Default Font", NULL, false, 50, 100, 255, 255);
-    };
-
     {
-        editor_dockspace(&g_app->ui);
+        // editor_dockspace(g_app->ui);
 
         // const vec2 ss_ws = neko_v2(500.f, 300.f);
-        // ui_window_begin(&g_app->ui, "Shader", ui_rect((g_app->width - ss_ws.x) * 0.5f, (g_app->height - ss_ws.y) * 0.5f, ss_ws.x, ss_ws.y));
+        // ui_window_begin(g_app->ui, "Shader", ui_rect((g_app->width - ss_ws.x) * 0.5f, (g_app->height - ss_ws.y) * 0.5f, ss_ws.x, ss_ws.y));
         // {
         //     for (uint32_t i = 0; i < neko_dyn_array_size(g_app->shader_array); ++i) {
         //         auto sp = g_app->shader_array[i];
         //         inspect_shader(sp.name, sp.id);
         //     }
         // }
-        // ui_window_end(&g_app->ui);
+        // ui_window_end(g_app->ui);
 
 #if 0
         if (1) {
 
-            ui_demo_window(&g_app->ui, ui_rect(100, 100, 500, 500), NULL);
-            ui_style_editor(&g_app->ui, NULL, ui_rect(350, 250, 300, 240), NULL);
+            ui_demo_window(g_app->ui, ui_rect(100, 100, 500, 500), NULL);
+            ui_style_editor(g_app->ui, NULL, ui_rect(350, 250, 300, 240), NULL);
 
             const vec2 ws = neko_v2(600.f, 300.f);
 
             // const ui_style_sheet_t *ss = &game_userdata->style_sheet;
 
             const vec2 ss_ws = neko_v2(500.f, 300.f);
-            ui_window_begin(&g_app->ui, "Window", ui_rect((g_app->width - ss_ws.x) * 0.5f, (g_app->height - ss_ws.y) * 0.5f, ss_ws.x, ss_ws.y));
+            ui_window_begin(g_app->ui, "Window", ui_rect((g_app->width - ss_ws.x) * 0.5f, (g_app->height - ss_ws.y) * 0.5f, ss_ws.x, ss_ws.y));
             {
                 // Cache the current container
-                ui_container_t* cnt = ui_get_current_container(&g_app->ui);
+                ui_container_t* cnt = ui_get_current_container(g_app->ui);
 
-                ui_layout_row(&g_app->ui, 2, ui_widths(200, 0), 0);
+                ui_layout_row(g_app->ui, 2, ui_widths(200, 0), 0);
 
-                ui_text(&g_app->ui, "A regular element button.");
-                ui_button(&g_app->ui, "button");
+                ui_text(g_app->ui, "A regular element button.");
+                ui_button(g_app->ui, "button");
 
-                ui_text(&g_app->ui, "A regular element label.");
-                ui_label(&g_app->ui, "label");
+                ui_text(g_app->ui, "A regular element label.");
+                ui_label(g_app->ui, "label");
 
-                ui_text(&g_app->ui, "Button with classes: {.c0 .btn}");
+                ui_text(g_app->ui, "Button with classes: {.c0 .btn}");
 
                 ui_selector_desc_t selector_1 = {.classes = {"c0", "btn"}};
-                ui_button_ex(&g_app->ui, "hello?##btn", &selector_1, 0x00);
+                ui_button_ex(g_app->ui, "hello?##btn", &selector_1, 0x00);
 
-                ui_text(&g_app->ui, "Label with id #lbl and class .c0");
+                ui_text(g_app->ui, "Label with id #lbl and class .c0");
                 ui_selector_desc_t selector_2 = {.id = "lbl", .classes = {"c0"}};
-                ui_label_ex(&g_app->ui, "label##lbl", &selector_2, 0x00);
+                ui_label_ex(g_app->ui, "label##lbl", &selector_2, 0x00);
 
                 const f32 m = cnt->body.w * 0.3f;
                 // ui_layout_row(gui, 2, (int[]){m, -m}, 0);
                 // ui_layout_next(gui); // Empty space at beginning
-                ui_layout_row(&g_app->ui, 1, ui_widths(0), 0);
+                ui_layout_row(g_app->ui, 1, ui_widths(0), 0);
                 ui_selector_desc_t selector_3 = {.classes = {"reload_btn"}};
-                if (ui_button_ex(&g_app->ui, "reload style sheet", &selector_3, 0x00)) {
+                if (ui_button_ex(g_app->ui, "reload style sheet", &selector_3, 0x00)) {
                     // app_load_style_sheet(true);
                 }
 
-                button_custom(&g_app->ui, "Hello?");
+                button_custom(g_app->ui, "Hello?");
             }
-            ui_window_end(&g_app->ui);
+            ui_window_end(g_app->ui);
 
-            ui_window_begin(&g_app->ui, "Idraw", ui_rect((g_app->width - ws.x) * 0.2f, (g_app->height - ws.y) * 0.5f, ws.x, ws.y));
+            ui_window_begin(g_app->ui, "Idraw", ui_rect((g_app->width - ws.x) * 0.2f, (g_app->height - ws.y) * 0.5f, ws.x, ws.y));
             {
                 // Cache the current container
-                ui_container_t* cnt = ui_get_current_container(&g_app->ui);
+                ui_container_t* cnt = ui_get_current_container(g_app->ui);
 
                 // 绘制到当前窗口中的转换对象的自定义回调
                 // 在这里，我们将容器的主体作为视口传递，但这可以是您想要的任何内容，
@@ -727,32 +627,32 @@ void draw_gui() {
                 // 我们还传递自定义数据（颜色），以便我们可以在回调中使用它。如果以下情况，这可以为 NULL
                 // 你不需要任何东西
                 Color256 color = color256_alpha(NEKO_COLOR_RED, (uint8_t)NEKO_CLAMP((sin(t * 0.001f) * 0.5f + 0.5f) * 255, 0, 255));
-                ui_draw_custom(&g_app->ui, cnt->body, gui_cb, &color, sizeof(color));
+                ui_draw_custom(g_app->ui, cnt->body, gui_cb, &color, sizeof(color));
             }
-            ui_window_end(&g_app->ui);
+            ui_window_end(g_app->ui);
         }
 #endif
 
-        ui_layout_t l;
+        // ui_Layout l;
 
         if (1) {
 
-            vec2 mp = g_app->ui.mouse_pos;
-            vec2 mw = g_app->ui.scroll_delta;
+            // vec2 mp = g_app->ui.mouse_pos;
+            // vec2 mw = g_app->ui.scroll_delta;
             vec2 md = {};
-            bool lock = g_app->ui.mouse_pressed;
+            // bool lock = g_app->ui.mouse_pressed;
             // bool moved = neko_os_mouse_moved();
 
-            if (ui_window_begin(&g_app->ui, "App", ui_rect(g_app->width - 210, 30, 200, 200))) {
-                l = *ui_get_layout(&g_app->ui);
-                ui_layout_row(&g_app->ui, 1, ui_widths(-1), 0);
+            if (ui_begin_window(g_app->ui, "App", neko_rect(g_app->width - 210, 30, 200, 200))) {
+                // l = g_app->ui->layout_stack[0];
+                ui_layout_row(g_app->ui, 1, ui_widths(-1), 0);
 
                 static f32 delta, fps = NEKO_DEFAULT_VAL();
                 delta = timing_instance.true_dt;
                 fps = 1.f / delta;
 
                 Color256 col = NEKO_COLOR_GREEN;
-                ui_textf_colored(&g_app->ui, &col, "Neko %d", neko_buildnum());
+                // ui_textf_colored(g_app->ui, &col, "Neko %d", neko_buildnum());
 
                 ui_labelf("%.2f Mb %.2f Mb %.1lf ms/frame (%.1lf FPS)", lua_gc(g_app->L, LUA_GCCOUNT, 0) / 1024.f, (f32)g_allocator->alloc_size / (1024 * 1024), timing_instance.true_dt * 1000.f,
                           1.f / timing_instance.true_dt);
@@ -763,10 +663,10 @@ void draw_gui() {
 
                 // ui_layout_row(&game_userdata->core_ui, 1, ui_widths(-1), 0);
 
-                ui_labelf("Position: <%.2f %.2f>", mp.x, mp.y);
-                ui_labelf("Wheel: <%.2f %.2f>", mw.x, mw.y);
+                // ui_labelf("Position: <%.2f %.2f>", mp.x, mp.y);
+                // ui_labelf("Wheel: <%.2f %.2f>", mw.x, mw.y);
                 ui_labelf("Delta: <%.2f %.2f>", md.x, md.y);
-                ui_labelf("Lock: %zu", lock);
+                // ui_labelf("Lock: %zu", lock);
                 // ui_labelf("Moved: %zu", moved);
                 // ui_labelf("Hover: %zu", g_gui.mouse_is_hover);
                 ui_labelf("Time: %f", t);
@@ -800,7 +700,7 @@ void draw_gui() {
                 mouse_pressed[NEKO_MOUSE_RBUTTON] = neko_os_mouse_pressed(NEKO_MOUSE_RBUTTON);
                 mouse_pressed[NEKO_MOUSE_MBUTTON] = neko_os_mouse_pressed(NEKO_MOUSE_MBUTTON);
 
-                ui_layout_row(&g_app->ui, 7, ui_widths(100, 100, 32, 100, 32, 100, 32), 0);
+                ui_layout_row(g_app->ui, 7, ui_widths(100, 100, 32, 100, 32, 100, 32), 0);
                 for (u32 i = 0; btns[i].str; ++i) {
                     ui_labelf("%s: ", btns[i].str);
                     ui_labelf("pressed: ");
@@ -813,7 +713,7 @@ void draw_gui() {
 
 #endif
 
-                ui_layout_row(&g_app->ui, 1, ui_widths(-1), 0);
+                ui_layout_row(g_app->ui, 1, ui_widths(-1), 0);
                 {
                     // static neko_memory_info_t meminfo = NEKO_DEFAULT_VAL();
                     // TimedAction(60, { meminfo = neko_os_memory_info(); });
@@ -844,19 +744,34 @@ void draw_gui() {
                     // ui_labelf("OpenGL version supported: %s", info->version);
                 }
 
-                ui_window_end(&g_app->ui);
+                ui_end_window(g_app->ui);
             }
         }
     }
 
+    if (input_key_down(KC_GRAVE_ACCENT)) {
+        g_console.open = !g_console.open;
+    } else if (input_key_down(KC_TAB) && g_console.open) {
+        g_console.autoscroll = !g_console.autoscroll;
+    }
+
+    LuaVec2 fb = game_get_window_size();
+    rect_t screen;
+    //            if (embeded)
+    //                screen = l.body;
+    //            else
+    //                screen = ui_rect(0, 0, fb.x, fb.y);
+    screen = neko_rect(0, 0, fb.x, fb.y);
+    neko_console(&g_console, g_app->ui, &screen, NULL);
+
     // draw_gui_auto_test();
 }
 
-#if 0
+#if 1
 void draw_gui_auto_test() {
-    ui_context_t* ui = &g_app->ui;
+    ui_context_t* ui = g_app->ui;
     const vec2 ss_ws = neko_v2(500.f, 300.f);
-    ui_window_begin(&g_app->ui, "GUI Test", ui_rect((g_app->width - ss_ws.x) * 0.5f, (g_app->height - ss_ws.y) * 0.5f, ss_ws.x, ss_ws.y));
+    ui_begin_window(g_app->ui, "GUI Test",  neko_rect((g_app->width - ss_ws.x) * 0.5f, (g_app->height - ss_ws.y) * 0.5f, ss_ws.x, ss_ws.y));
     {
 
         if (ui_header(ui, "1. String")) {
@@ -984,7 +899,7 @@ void draw_gui_auto_test() {
         if (ui_header(ui, "Functions")) {
             void (*func)() = []() {
                 auto col = NEKO_COLOR_GREEN;
-                ui_text_colored(&g_app->ui, "Button pressed, function called :)", &col);
+                // ui_text_colored(g_app->ui, "Button pressed, function called :)", &col);
             };
             ui::Auto(func, "void(void) function");
         }
@@ -994,7 +909,7 @@ void draw_gui_auto_test() {
             ui_file_browser(path);
         }
     }
-    ui_window_end(&g_app->ui);
+    ui_end_window(g_app->ui);
 }
 #endif
 

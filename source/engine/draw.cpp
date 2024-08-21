@@ -377,6 +377,8 @@ RectDescription rect_description_args(lua_State* L, i32 arg_start) {
 void draw_sprite(AseSprite* spr, DrawDescription* desc) {
     bool ok = false;
 
+    neko_assert(spr->batch);
+
     DeferLoop(ok = true /*renderer_push_matrix()*/, 0 /*renderer_pop_matrix()*/) {
         if (!ok) {
             return;
@@ -400,6 +402,9 @@ void draw_sprite(AseSprite* spr, DrawDescription* desc) {
 
         // idraw_texture(idraw, gfx_texture_t{view.data.tex.id});
 
+        neko_gl_data_t* ogl = gfx_ogl();
+        GLuint gl_tex_id = neko_slot_array_get(ogl->textures, view.data.tex.id).id;
+
         // float x0 = -desc->ox;
         // float y0 = -desc->oy;
         // float x1 = (float)view.data.width - desc->ox;
@@ -413,6 +418,26 @@ void draw_sprite(AseSprite* spr, DrawDescription* desc) {
         // renderer_apply_color();
         // renderer_push_quad(vec4(x0, y0, x1, y1), vec4(f.u0, f.v0, f.u1, f.v1));
 
+        batch_texture(spr->batch, gl_tex_id);
+
+        desc->x -= desc->ox;
+        desc->y -= desc->oy;
+
+        float u1 = f.u0;
+        float v1 = f.v0;
+        float u2 = f.u1;
+        float v2 = f.v1;
+
+        batch_push_vertex(spr->batch, desc->x, desc->y, u1, v1);
+        batch_push_vertex(spr->batch, desc->x + (view.data.width * desc->sx), desc->y + (view.data.height * desc->sy), u2, v2);
+        batch_push_vertex(spr->batch, desc->x, desc->y + (view.data.height * desc->sy), u1, v2);
+
+        batch_push_vertex(spr->batch, desc->x, desc->y, u1, v1);
+        batch_push_vertex(spr->batch, desc->x + (view.data.width * desc->sx), desc->y, u2, v1);
+        batch_push_vertex(spr->batch, desc->x + (view.data.width * desc->sx), desc->y + (view.data.height * desc->sy), u2, v2);
+
         // sgl_end();
+
+        batch_flush(spr->batch);
     }
 }

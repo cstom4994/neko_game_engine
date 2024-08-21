@@ -17,8 +17,9 @@
 #include "engine/vfs.h"
 
 // deps
-#include <cute_aseprite.h>
 #include <stb_image_write.h>
+
+#include "vendor/cute_aseprite.h"
 
 typedef struct Sprite Sprite;
 struct Sprite {
@@ -338,6 +339,8 @@ void AseSpriteData::trash() {
     arena.trash();
 }
 
+void AseSprite::make() { this->batch = batch_init(800); }
+
 bool AseSprite::play(String tag) {
     u64 key = fnv1a(tag);
     bool same = loop == key;
@@ -513,6 +516,8 @@ int neko_sprite_load(lua_State *L) {
 
     AseSprite spr = {};
     spr.sprite = asset.hash;
+
+    spr.make();
 
     luax_new_userdata(L, spr, "mt_sprite");
     return 1;

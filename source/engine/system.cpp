@@ -79,7 +79,7 @@ static void _mouse_up(MouseCode mouse) {
 static void _mouse_move(LuaVec2 pos) { script_mouse_move(pos); }
 static void _scroll(LuaVec2 scroll) { script_scroll(scroll); }
 
-static batch_renderer batch;
+static batch_renderer *batch;
 
 void system_init() {
     PROFILE_FUNC();
@@ -243,7 +243,7 @@ void system_fini() {
     console_fini();
     tiled_fini();
     sprite_fini();
-    batch_fini(&batch);
+    batch_fini(batch);
     gui_fini();
     camera_fini();
     transform_fini();
@@ -296,7 +296,7 @@ void system_update_all() {
     camera_update_all();
     gui_update_all();
     sprite_update_all();
-    batch_update_all(&batch);
+    batch_update_all(batch);
     sound_update_all();
     tiled_update_all();
 
@@ -315,7 +315,7 @@ void system_draw_all(command_buffer_t *cb) {
     tiled_draw_all();
 
     sprite_draw_all();
-    batch_draw_all(&batch);
+    batch_draw_all(batch);
     // font_draw_all();
     edit_draw_all();
     physics_draw_all();

@@ -12,7 +12,7 @@ struct DrawDescription {
     float sx;  // scale
     float sy;
 
-    float ox;  // origin
+    float ox;  // offset
     float oy;
 
     float u0;  // uv coords

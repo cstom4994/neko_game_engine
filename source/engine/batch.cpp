@@ -15,6 +15,8 @@ typedef struct {
     float tx, ty, tw, th;
 } batch_tex;
 
+static GLuint batch_shader;
+
 void batch_test_draw(batch_renderer *renderer, AssetTexture tex, batch_tex a) {
     batch_texture(renderer, tex.id);
 
@@ -37,7 +39,7 @@ void batch_test_draw(batch_renderer *renderer, AssetTexture tex, batch_tex a) {
     batch_push_vertex(renderer, x2, y2, u2, v2);
 }
 
-batch_renderer batch_init(int vertex_capacity) {
+batch_renderer *batch_init(int vertex_capacity) {
     GLuint vao;
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
@@ -53,19 +55,22 @@ batch_renderer batch_init(int vertex_capacity) {
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, texcoord));
 
-    GLuint program = gfx_create_program("batch", "shader/batch.vert", NULL, "shader/batch.frag");
+    if (batch_shader == 0) {
+        batch_shader = gfx_create_program("batch", "shader/batch.vert", NULL, "shader/batch.frag");
+    }
 
-    batch_renderer batch = {
-            .shader = program,
-            .vao = vao,
-            .vbo = vbo,
-            .vertex_count = 0,
-            .vertex_capacity = vertex_capacity,
-            .vertices = (Vertex *)mem_alloc(sizeof(Vertex) * vertex_capacity),
-            .texture = 0,
-    };
+    batch_renderer *batch = (batch_renderer *)mem_alloc(sizeof(batch_renderer));
 
     asset_load(AssetLoadData{AssetKind_Image, false}, "assets/aliens.png", NULL);
+
+    // batch->shader = program;
+    batch->vao = vao;
+    batch->vbo = vbo;
+    batch->vertex_count = 0;
+    batch->vertex_capacity = vertex_capacity;
+    batch->vertices = (Vertex *)mem_alloc(sizeof(Vertex) * vertex_capacity);
+    batch->texture = 0;
+    batch->scale = 0;
 
     return batch;
 }
@@ -99,16 +104,16 @@ void batch_flush(batch_renderer *renderer) {
         return;
     }
 
-    glUseProgram(renderer->shader);
+    glUseProgram(batch_shader);
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, renderer->texture);
 
-    glUniform1i(glGetUniformLocation(renderer->shader, "u_texture"), 0);
-    // glUniformMatrix4fv(glGetUniformLocation(renderer->shader, "u_mvp"), 1, GL_FALSE, (const GLfloat *)&renderer->mvp.cols[0]);
-    glUniformMatrix3fv(glGetUniformLocation(renderer->shader, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
+    glUniform1i(glGetUniformLocation(batch_shader, "u_texture"), 0);
+    // glUniformMatrix4fv(glGetUniformLocation(batch_shader, "u_mvp"), 1, GL_FALSE, (const GLfloat *)&renderer->mvp.cols[0]);
+    glUniformMatrix3fv(glGetUniformLocation(batch_shader, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
 
-    glUniform1f(glGetUniformLocation(renderer->shader, "scale"), renderer->scale);
+    glUniform1f(glGetUniformLocation(batch_shader, "scale"), renderer->scale);
 
     glBindBuffer(GL_ARRAY_BUFFER, renderer->vbo);
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(Vertex) * renderer->vertex_count, renderer->vertices);

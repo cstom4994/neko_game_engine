@@ -58,36 +58,6 @@ Color256 unpack<Color256>(lua_State *L, int idx) {
 }
 }  // namespace lua2struct
 
-// mt_sampler
-
-static int mt_sampler_gc(lua_State *L) {
-    u32 *udata = (u32 *)luaL_checkudata(L, 1, "mt_sampler");
-    u32 id = *udata;
-
-    // if (id != SG_INVALID_ID) {
-    //     sg_destroy_sampler({id});
-    // }
-
-    return 0;
-}
-
-static int mt_sampler_use(lua_State *L) {
-    u32 *id = (u32 *)luaL_checkudata(L, 1, "mt_sampler");
-    // renderer_use_sampler(*id);
-    return 0;
-}
-
-static int open_mt_sampler(lua_State *L) {
-    luaL_Reg reg[] = {
-            {"__gc", mt_sampler_gc},
-            {"use", mt_sampler_use},
-            {nullptr, nullptr},
-    };
-
-    luax_new_class(L, "mt_sampler", reg);
-    return 0;
-}
-
 // mt_thread
 
 static int mt_thread_join(lua_State *L) {
@@ -1154,70 +1124,6 @@ static int neko_file_write(lua_State *L) {
     return 1;
 }
 
-#if 0
-
-static sg_filter str_to_filter_mode(lua_State *L, String s) {
-    switch (fnv1a(s)) {
-        case "none"_hash:
-            return SG_FILTER_NONE;
-            break;
-        case "nearest"_hash:
-            return SG_FILTER_NEAREST;
-            break;
-        case "linear"_hash:
-            return SG_FILTER_LINEAR;
-            break;
-        default:
-            luax_string_oneof(L, {"none", "nearest", "linear"}, s);
-            return _SG_FILTER_DEFAULT;
-    }
-}
-
-static sg_wrap str_to_wrap_mode(lua_State *L, String s) {
-    switch (fnv1a(s)) {
-        case "repeat"_hash:
-            return SG_WRAP_REPEAT;
-            break;
-        case "mirroredrepeat"_hash:
-            return SG_WRAP_MIRRORED_REPEAT;
-            break;
-        case "clamp"_hash:
-            return SG_WRAP_CLAMP_TO_EDGE;
-            break;
-        default:
-            luax_string_oneof(L, {"repeat", "mirroredrepeat", "clamp"}, s);
-            return _SG_WRAP_DEFAULT;
-    }
-}
-
-static int neko_make_sampler(lua_State *L) {
-    String min_filter = luax_opt_string_field(L, 1, "min_filter", "nearest");
-    String mag_filter = luax_opt_string_field(L, 1, "mag_filter", "nearest");
-    String mipmap_filter = luax_opt_string_field(L, 1, "mipmap_filter", "none");
-    String wrap_u = luax_opt_string_field(L, 1, "wrap_u", "repeat");
-    String wrap_v = luax_opt_string_field(L, 1, "wrap_v", "repeat");
-
-    sg_sampler_desc desc = {};
-    desc.min_filter = str_to_filter_mode(L, min_filter);
-    desc.mag_filter = str_to_filter_mode(L, mag_filter);
-    desc.mipmap_filter = str_to_filter_mode(L, mipmap_filter);
-    desc.wrap_u = str_to_wrap_mode(L, wrap_u);
-    desc.wrap_v = str_to_wrap_mode(L, wrap_v);
-
-    sg_sampler sampler = sg_make_sampler(&desc);
-
-    luax_new_userdata(L, sampler.id, "mt_sampler");
-    return 1;
-}
-
-static int neko_default_sampler(lua_State *L) {
-    u32 id = SG_INVALID_ID;
-    luax_new_userdata(L, id, "mt_sampler");
-    return 1;
-}
-
-#endif
-
 static int neko_make_thread(lua_State *L) {
     String contents = luax_check_string(L, 1);
     LuaThread *lt = (LuaThread *)mem_alloc(sizeof(LuaThread));
@@ -1864,45 +1770,6 @@ struct udata<neko_fontbatch_t> {
     static inline auto metatable = fontbatch_metatable;
 };
 }  // namespace neko::lua
-
-LUA_FUNCTION(__neko_bind_fontbatch_create) {
-
-    neko::string font_vs = neko::luax_check_string(L, 1);
-    neko::string font_ps = neko::luax_check_string(L, 2);
-
-    neko_fontbatch_t& fontbatch = neko::lua::newudata<neko_fontbatch_t>(L);
-
-    neko::string contents = {};
-    bool ok = vfs_read_entire_file( &contents, "gamedir/1.fnt");
-    neko_assert(ok);
-    neko_fontbatch_init(&fontbatch, font_vs.data, font_ps.data, neko_game()->DisplaySize, "gamedir/1_0.png", contents.data, (i32)contents.len);
-    neko_defer(mem_free(contents.data));
-
-    return 1;
-}
-
-LUA_FUNCTION(__neko_bind_fontbatch_draw) {
-    neko_fontbatch_t& fontbatch = neko::lua::toudata<neko_fontbatch_t>(L, 1);
-
-    gfx_draw_batch(&g_app->cb, fontbatch.font_render, 0, 0, 0);
-
-    return 0;
-}
-
-LUA_FUNCTION(__neko_bind_fontbatch_text) {
-    int numArgs = lua_gettop(L);  // 获取参数数量
-    neko_fontbatch_t& fontbatch = neko::lua::toudata<neko_fontbatch_t>(L, 1);
-    auto v1 = lua2struct::unpack<vec2>(L, 2);
-    const_str text = lua_tostring(L, 3);
-
-    f32 scale = 0.f;
-
-    if (numArgs > 3) scale = lua_tonumber(L, 4);
-
-    neko_fontbatch_draw(&fontbatch, neko_game()->DisplaySize, text, v1.x, v1.y, 1, 1.f, 800.f, scale);
-
-    return 0;
-}
 
 typedef struct {
     u64 image_id;  // NEKO_SPRITEBATCH_U64
@@ -4357,7 +4224,6 @@ static int open_neko(lua_State *L) {
             // {"push_color", neko_push_color},
             // {"pop_color", neko_pop_color},
             // {"default_font", neko_default_font},
-            // {"default_sampler", neko_default_sampler},
             // {"draw_filled_rect", neko_draw_filled_rect},
             // {"draw_line_rect", neko_draw_line_rect},
             // {"draw_line_circle", neko_draw_line_circle},
@@ -4381,7 +4247,6 @@ static int open_neko(lua_State *L) {
             {"file_write", neko_file_write},
 
             // construct types
-            // {"make_sampler", neko_make_sampler},
             {"make_thread", neko_make_thread},
             {"make_channel", neko_make_channel},
             {"image_load", neko_image_load},
@@ -4406,7 +4271,6 @@ static int open_neko(lua_State *L) {
 void open_neko_api(lua_State *L) {
     // clang-format off
     lua_CFunction funcs[] = {
-        open_mt_sampler,
         open_mt_thread,
         open_mt_channel,
         // open_mt_image,
@@ -4439,8 +4303,8 @@ void open_neko_api(lua_State *L) {
     open_embed_core(L);
     lua_setfield(L, -2, "core");
 
-    // open_ui(L);
-    // lua_setfield(L, -2, "ui");
+    open_ui(L);
+    lua_setfield(L, -2, "ui");
 
     lua_pop(L, 1);
 

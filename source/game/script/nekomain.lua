@@ -6,6 +6,23 @@ mm = hot_require("libs/mm")
 
 mu = neko.ui
 
+function neko.__define_default_callbacks()
+    neko.game_init_thread = function()
+    end
+    neko.game_init = function()
+    end
+    neko.game_fini = function()
+    end
+    neko.game_pre_update = function()
+    end
+    neko.game_loop = function(dt)
+    end
+    neko.game_ui = function()
+    end
+    neko.game_render = function()
+    end
+end
+
 -- misc
 ns.app = {}
 function ns.app.key_down(key)
@@ -69,22 +86,5 @@ else
 end
 
 ns.edit.undo_save()
-
-function neko.__define_default_callbacks()
-    neko.game_init_thread = function()
-    end
-    neko.game_init = function()
-    end
-    neko.game_fini = function()
-    end
-    neko.game_pre_update = function()
-    end
-    neko.game_loop = function(dt)
-    end
-    neko.game_ui = function()
-    end
-    neko.game_render = function()
-    end
-end
 
 print("nekomain.lua loaded default")

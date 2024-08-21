@@ -791,66 +791,30 @@ void neko_shader_set_color(u32 shader, const char* name, neko_color_t color) {
 
     neko_rgb_color_t rgb = neko_rgb_color_from_color(color);
 
-    neko_shader_set_v3f(shader, name, neko_v3f_t{rgb.r, rgb.g, rgb.b});
+    neko_shader_set_v3f(shader, name, vec3{rgb.r, rgb.g, rgb.b});
 }
 
-void neko_shader_set_rgb_color(u32 shader, const char* name, neko_rgb_color_t color) { neko_shader_set_v3f(shader, name, neko_v3f_t{color.r, color.g, color.b}); }
+void neko_shader_set_rgb_color(u32 shader, const char* name, neko_rgb_color_t color) { neko_shader_set_v3f(shader, name, vec3{color.r, color.g, color.b}); }
 
-void neko_shader_set_v2i(u32 shader, const char* name, neko_v2i_t v) {
-
-    u32 location = glGetUniformLocation(shader, name);
-    glUniform2i(location, v.x, v.y);
-}
-
-void neko_shader_set_v2u(u32 shader, const char* name, neko_v2u_t v) {
-
-    u32 location = glGetUniformLocation(shader, name);
-    glUniform2ui(location, v.x, v.y);
-}
-
-void neko_shader_set_v2f(u32 shader, const char* name, neko_v2f_t v) {
+void neko_shader_set_v2f(u32 shader, const char* name, vec2 v) {
 
     u32 location = glGetUniformLocation(shader, name);
     glUniform2f(location, v.x, v.y);
 }
 
-void neko_shader_set_v3i(u32 shader, const char* name, neko_v3i_t v) {
-
-    u32 location = glGetUniformLocation(shader, name);
-    glUniform3i(location, v.x, v.y, v.z);
-}
-
-void neko_shader_set_v3u(u32 shader, const char* name, neko_v3u_t v) {
-
-    u32 location = glGetUniformLocation(shader, name);
-    glUniform3ui(location, v.x, v.y, v.z);
-}
-
-void neko_shader_set_v3f(u32 shader, const char* name, neko_v3f_t v) {
+void neko_shader_set_v3f(u32 shader, const char* name, vec3 v) {
 
     u32 location = glGetUniformLocation(shader, name);
     glUniform3f(location, v.x, v.y, v.z);
 }
 
-void neko_shader_set_v4i(u32 shader, const char* name, neko_v4i v) {
-
-    u32 location = glGetUniformLocation(shader, name);
-    glUniform4i(location, v.x, v.y, v.z, v.w);
-}
-
-void neko_shader_set_v4u(u32 shader, const char* name, neko_v4u v) {
-
-    u32 location = glGetUniformLocation(shader, name);
-    glUniform4ui(location, v.x, v.y, v.z, v.w);
-}
-
-void neko_shader_set_v4f(u32 shader, const char* name, neko_v4f_t v) {
+void neko_shader_set_v4f(u32 shader, const char* name, vec4 v) {
 
     u32 location = glGetUniformLocation(shader, name);
     glUniform4f(location, v.x, v.y, v.z, v.w);
 }
 
-void neko_shader_set_m4f(u32 shader, const char* name, neko_m4f_t v) {
+void neko_shader_set_m4f(u32 shader, const char* name, mat4 v) {
 
     u32 location = glGetUniformLocation(shader, name);
     glUniformMatrix4fv(location, 1, GL_FALSE, (float*)v.elements);

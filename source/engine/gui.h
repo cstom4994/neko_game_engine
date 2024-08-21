@@ -91,37 +91,62 @@ NEKO_SCRIPT(
 
         // gui_rect
 
-        NEKO_EXPORT void gui_rect_add(Entity ent); NEKO_EXPORT void gui_rect_remove(Entity ent); NEKO_EXPORT bool gui_rect_has(Entity ent);
+        NEKO_EXPORT void gui_rect_add(Entity ent);
 
-        NEKO_EXPORT void gui_rect_set_size(Entity ent, LuaVec2 size); NEKO_EXPORT LuaVec2 gui_rect_get_size(Entity ent);
+        NEKO_EXPORT void gui_rect_remove(Entity ent);
 
-        NEKO_EXPORT void gui_rect_set_hfit(Entity ent, bool fit); NEKO_EXPORT bool gui_rect_get_hfit(Entity ent); NEKO_EXPORT void gui_rect_set_vfit(Entity ent, bool fit);
+        NEKO_EXPORT bool gui_rect_has(Entity ent);
+
+        NEKO_EXPORT void gui_rect_set_size(Entity ent, LuaVec2 size);
+
+        NEKO_EXPORT LuaVec2 gui_rect_get_size(Entity ent);
+
+        NEKO_EXPORT void gui_rect_set_hfit(Entity ent, bool fit);
+
+        NEKO_EXPORT bool gui_rect_get_hfit(Entity ent);
+
+        NEKO_EXPORT void gui_rect_set_vfit(Entity ent, bool fit);
+
         NEKO_EXPORT bool gui_rect_get_vfit(Entity ent);
 
-        NEKO_EXPORT void gui_rect_set_hfill(Entity ent, bool fill); NEKO_EXPORT bool gui_rect_get_hfill(Entity ent); NEKO_EXPORT void gui_rect_set_vfill(Entity ent, bool fill);
+        NEKO_EXPORT void gui_rect_set_hfill(Entity ent, bool fill);
+
+        NEKO_EXPORT bool gui_rect_get_hfill(Entity ent);
+
+        NEKO_EXPORT void gui_rect_set_vfill(Entity ent, bool fill);
+
         NEKO_EXPORT bool gui_rect_get_vfill(Entity ent);
 
         // gui_text
 
-        NEKO_EXPORT void gui_text_add(Entity ent); 
-        
-        NEKO_EXPORT void gui_text_remove(Entity ent); 
-        
+        NEKO_EXPORT void gui_text_add(Entity ent);
+
+        NEKO_EXPORT void gui_text_remove(Entity ent);
+
         NEKO_EXPORT bool gui_text_has(Entity ent);
 
-        NEKO_EXPORT void gui_text_set_str(Entity ent, const char* str); 
-        
-        NEKO_EXPORT const char* gui_text_get_str(Entity ent); 
-        
+        NEKO_EXPORT void gui_text_set_str(Entity ent, const char* str);
+
+        NEKO_EXPORT const char* gui_text_get_str(Entity ent);
+
         NEKO_EXPORT void gui_text_set_cursor(Entity ent, int cursor);
 
         // gui_textedit
 
-        NEKO_EXPORT void gui_textedit_add(Entity ent); NEKO_EXPORT void gui_textedit_remove(Entity ent); NEKO_EXPORT bool gui_textedit_has(Entity ent);
+        NEKO_EXPORT void gui_textedit_add(Entity ent);
 
-        NEKO_EXPORT void gui_textedit_set_cursor(Entity ent, unsigned int cursor); NEKO_EXPORT unsigned int gui_textedit_get_cursor(Entity ent);
+        NEKO_EXPORT void gui_textedit_remove(Entity ent);
 
-        NEKO_EXPORT void gui_textedit_set_numerical(Entity ent, bool numerical); NEKO_EXPORT bool gui_textedit_get_numerical(Entity ent);
+        NEKO_EXPORT bool gui_textedit_has(Entity ent);
+
+        NEKO_EXPORT void gui_textedit_set_cursor(Entity ent, unsigned int cursor);
+
+        NEKO_EXPORT unsigned int gui_textedit_get_cursor(Entity ent);
+
+        NEKO_EXPORT void gui_textedit_set_numerical(Entity ent, bool numerical);
+
+        NEKO_EXPORT bool gui_textedit_get_numerical(Entity ent);
+
         NEKO_EXPORT Scalar gui_textedit_get_num(Entity ent);  // 0 if not numerical
 
 )

@@ -241,16 +241,10 @@ void neko_shader_set_uint(u32 shader, const char* name, u32 v);
 void neko_shader_set_float(u32 shader, const char* name, float v);
 void neko_shader_set_color(u32 shader, const char* name, neko_color_t color);
 void neko_shader_set_rgb_color(u32 shader, const char* name, neko_rgb_color_t color);
-void neko_shader_set_v2i(u32 shader, const char* name, neko_v2i_t v);
-void neko_shader_set_v2u(u32 shader, const char* name, neko_v2u_t v);
-void neko_shader_set_v2f(u32 shader, const char* name, neko_v2f_t v);
-void neko_shader_set_v3i(u32 shader, const char* name, neko_v3i_t v);
-void neko_shader_set_v3u(u32 shader, const char* name, neko_v3u_t v);
-void neko_shader_set_v3f(u32 shader, const char* name, neko_v3f_t v);
-void neko_shader_set_v4i(u32 shader, const char* name, neko_v4i v);
-void neko_shader_set_v4u(u32 shader, const char* name, neko_v4u v);
-void neko_shader_set_v4f(u32 shader, const char* name, neko_v4f_t v);
-void neko_shader_set_m4f(u32 shader, const char* name, neko_m4f_t v);
+void neko_shader_set_v2f(u32 shader, const char* name, vec2 v);
+void neko_shader_set_v3f(u32 shader, const char* name, vec3 v);
+void neko_shader_set_v4f(u32 shader, const char* name, vec4 v);
+void neko_shader_set_m4f(u32 shader, const char* name, mat4 v);
 
 typedef enum neko_vertex_buffer_flags_t {
     NEKO_VERTEXBUFFER_STATIC_DRAW = 1 << 0,
@@ -302,9 +296,5 @@ void neko_deinit_texture(neko_texture_t* texture);
 
 void neko_free_texture(neko_texture_t* texture);
 void neko_bind_texture(neko_texture_t* texture, u32 slot);
-
-typedef struct neko_rect_t {
-    float x, y, w, h;
-} neko_rect_t;
 
 #endif
