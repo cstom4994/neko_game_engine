@@ -9,10 +9,8 @@
 #include "engine/component.h"
 #include "engine/draw.h"
 #include "engine/entity.h"
-#include "engine/gfx.h"
-#include "engine/math.h"
+#include "engine/graphics.h"
 #include "engine/physics.h"
-#include "engine/prelude.h"
 #include "engine/ui.h"
 #include "glew_glfw.h"
 
@@ -168,13 +166,13 @@ NEKO_SCRIPT(game,
             // 屏幕空间坐标系:
             // unit: (0, 0) 中间, (1, 1) 右上
             // pixels: (0, 0) 左上方, game_get_window_size() 右下角
-            NEKO_EXPORT void game_set_window_size(LuaVec2 s);  // width, height in pixels
+            NEKO_EXPORT void game_set_window_size(vec2 s);  // width, height in pixels
 
-            NEKO_EXPORT LuaVec2 game_get_window_size();
+            NEKO_EXPORT vec2 game_get_window_size();
 
-            NEKO_EXPORT LuaVec2 game_unit_to_pixels(LuaVec2 p);
+            NEKO_EXPORT vec2 game_unit_to_pixels(vec2 p);
 
-            NEKO_EXPORT LuaVec2 game_pixels_to_unit(LuaVec2 p);
+            NEKO_EXPORT vec2 game_pixels_to_unit(vec2 p);
 
             NEKO_EXPORT void game_quit();
 

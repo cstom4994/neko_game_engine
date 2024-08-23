@@ -6,7 +6,7 @@
 #include <string.h>
 
 #include "engine/draw.h"
-#include "engine/game.h"
+#include "engine/bootstrap.h"
 #include "engine/glew_glfw.h"
 #include "engine/input.h"
 #include "engine/luax.hpp"

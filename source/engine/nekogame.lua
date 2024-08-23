@@ -625,7 +625,7 @@ ng.Entity = ffi.metatype('Entity', {
 
 ng.vec2 = ng.luavec2
 
-ng.Vec2 = ffi.metatype('LuaVec2', {
+ng.Vec2 = ffi.metatype('vec2', {
     __add = ng.vec2_add,
     __sub = ng.vec2_sub,
     __unm = function(v)
@@ -660,9 +660,7 @@ ng.Vec2 = ffi.metatype('LuaVec2', {
 
 ng.mat3 = ng.luamat3
 
-ng.mat3_identity = ng.luamat3_identity
-
-ng.Mat3 = ffi.metatype('LuaMat3', {
+ng.Mat3 = ffi.metatype('mat3', {
     __index = {
         __serialize = function(m)
             return string.format('ng.mat3(%f, %f, %f, %f, %f, %f, %f, %f, %f)', m.m[0][0], m.m[0][1], m.m[0][2],

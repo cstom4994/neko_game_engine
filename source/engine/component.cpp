@@ -1,4 +1,4 @@
-#include "engine/transform.h"
+#include "engine/component.h"
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -7,10 +7,7 @@
 #include "engine/base.h"
 #include "engine/edit.h"
 #include "engine/entity.h"
-#include "engine/game.h"
-#include "engine/prelude.h"
-#include "engine/seri.h"
-#include "engine/transform.h"
+#include "engine/bootstrap.h"
 
 // deps
 #ifdef NEKO_BOX2D
@@ -22,10 +19,10 @@
 
 #include <stb_image.h>
 
-DECL_ENT(Transform, LuaVec2 position; Scalar rotation; LuaVec2 scale; Entity parent;  // 如果entity_nil 则为 root
+DECL_ENT(Transform, vec2 position; Scalar rotation; vec2 scale; Entity parent;  // 如果entity_nil 则为 root
          CArray * children;                                                           // 如果为 NULL 则为空
-         LuaMat3 mat_cache;                                                           // 更新此内容
-         LuaMat3 worldmat_cache;                                                      // 在父子更新时缓存
+         mat3 mat_cache;                                                           // 更新此内容
+         mat3 worldmat_cache;                                                      // 在父子更新时缓存
          ecs_id_t dirty_count;);
 
 static EntityPool *pool_transform;
@@ -184,18 +181,18 @@ void transform_destroy_rec(Entity ent) {
     entity_destroy(ent);
 }
 
-void transform_set_position(Entity ent, LuaVec2 pos) {
+void transform_set_position(Entity ent, vec2 pos) {
     Transform *transform = (Transform *)entitypool_get(pool_transform, ent);
     error_assert(transform);
     transform->position = pos;
     _modified(transform);
 }
-LuaVec2 transform_get_position(Entity ent) {
+vec2 transform_get_position(Entity ent) {
     Transform *transform = (Transform *)entitypool_get(pool_transform, ent);
     error_assert(transform);
     return transform->position;
 }
-void transform_translate(Entity ent, LuaVec2 trans) {
+void transform_translate(Entity ent, vec2 trans) {
     Transform *transform = (Transform *)entitypool_get(pool_transform, ent);
     error_assert(transform);
     transform->position = vec2_add(transform->position, trans);
@@ -220,19 +217,19 @@ void transform_rotate(Entity ent, Scalar rot) {
     _modified(transform);
 }
 
-void transform_set_scale(Entity ent, LuaVec2 scale) {
+void transform_set_scale(Entity ent, vec2 scale) {
     Transform *transform = (Transform *)entitypool_get(pool_transform, ent);
     error_assert(transform);
     transform->scale = scale;
     _modified(transform);
 }
-LuaVec2 transform_get_scale(Entity ent) {
+vec2 transform_get_scale(Entity ent) {
     Transform *transform = (Transform *)entitypool_get(pool_transform, ent);
     error_assert(transform);
     return transform->scale;
 }
 
-LuaVec2 transform_get_world_position(Entity ent) {
+vec2 transform_get_world_position(Entity ent) {
     Transform *transform = (Transform *)entitypool_get(pool_transform, ent);
     error_assert(transform);
     return mat3_get_translation(transform->worldmat_cache);
@@ -242,37 +239,37 @@ Scalar transform_get_world_rotation(Entity ent) {
     error_assert(transform);
     return mat3_get_rotation(transform->worldmat_cache);
 }
-LuaVec2 transform_get_world_scale(Entity ent) {
+vec2 transform_get_world_scale(Entity ent) {
     Transform *transform = (Transform *)entitypool_get(pool_transform, ent);
     error_assert(transform);
     return mat3_get_scale(transform->worldmat_cache);
 }
 
-LuaMat3 transform_get_world_matrix(Entity ent) {
+mat3 transform_get_world_matrix(Entity ent) {
     Transform *transform;
 
-    if (entity_eq(ent, entity_nil)) return luamat3_identity();
+    if (entity_eq(ent, entity_nil)) return mat3_identity();
 
     transform = (Transform *)entitypool_get(pool_transform, ent);
     error_assert(transform);
     return transform->worldmat_cache;
 }
-LuaMat3 transform_get_matrix(Entity ent) {
+mat3 transform_get_matrix(Entity ent) {
     Transform *transform;
 
-    if (entity_eq(ent, entity_nil)) return luamat3_identity();
+    if (entity_eq(ent, entity_nil)) return mat3_identity();
 
     transform = (Transform *)entitypool_get(pool_transform, ent);
     error_assert(transform);
     return transform->mat_cache;
 }
 
-LuaVec2 transform_local_to_world(Entity ent, LuaVec2 v) {
+vec2 transform_local_to_world(Entity ent, vec2 v) {
     Transform *transform = (Transform *)entitypool_get(pool_transform, ent);
     error_assert(transform);
     return mat3_transform(transform->worldmat_cache, v);
 }
-LuaVec2 transform_world_to_local(Entity ent, LuaVec2 v) {
+vec2 transform_world_to_local(Entity ent, vec2 v) {
     Transform *transform = (Transform *)entitypool_get(pool_transform, ent);
     error_assert(transform);
     return mat3_transform(mat3_inverse(transform->worldmat_cache), v);
@@ -381,15 +378,15 @@ void transform_load_all(Store *s) {
             entity_load(&transform->parent, "parent", entity_nil, transform_s);
             _children_load(transform, transform_s);
 
-            mat3_load(&transform->mat_cache, "mat_cache", luamat3_identity(), transform_s);
-            mat3_load(&transform->worldmat_cache, "worldmat_cache", luamat3_identity(), transform_s);
+            mat3_load(&transform->mat_cache, "mat_cache", mat3_identity(), transform_s);
+            mat3_load(&transform->worldmat_cache, "worldmat_cache", mat3_identity(), transform_s);
 
             uint_load(&transform->dirty_count, "dirty_count", 0, transform_s);
         }
     }
 }
 
-DECL_ENT(Tiled, tiled_renderer *render; LuaVec2 pos; String map_name;);
+DECL_ENT(Tiled, tiled_renderer *render; vec2 pos; String map_name;);
 
 GLuint tiled_program;
 
@@ -1367,7 +1364,7 @@ int tiled_render(command_buffer_t *cb, Tiled *tiled) {
 
     // auto xform = lua2struct::unpack<neko_vec2>(L, 3);
     // vec2 xform = {};
-    LuaVec2 xform = tiled->pos;
+    vec2 xform = tiled->pos;
 
     // f32 l = lua_tonumber(L, 4);
     // f32 r = lua_tonumber(L, 5);
@@ -1526,7 +1523,7 @@ struct Camera {
 static Entity curr_camera;
 static Entity edit_camera;
 
-static LuaMat3 inverse_view_matrix;  // 缓存逆视图矩阵
+static mat3 inverse_view_matrix;  // 缓存逆视图矩阵
 
 static EntityPool *pool_camera;
 
@@ -1577,17 +1574,17 @@ Scalar camera_get_viewport_height(Entity ent) {
     return camera->viewport_height;
 }
 
-LuaMat3 camera_get_inverse_view_matrix() { return inverse_view_matrix; }
+mat3 camera_get_inverse_view_matrix() { return inverse_view_matrix; }
 
-const LuaMat3 *camera_get_inverse_view_matrix_ptr() { return &inverse_view_matrix; }
+const mat3 *camera_get_inverse_view_matrix_ptr() { return &inverse_view_matrix; }
 
-LuaVec2 camera_world_to_pixels(LuaVec2 p) { return game_unit_to_pixels(camera_world_to_unit(p)); }
-LuaVec2 camera_world_to_unit(LuaVec2 p) {
+vec2 camera_world_to_pixels(vec2 p) { return game_unit_to_pixels(camera_world_to_unit(p)); }
+vec2 camera_world_to_unit(vec2 p) {
     // use cached inverse view matrix
     return mat3_transform(inverse_view_matrix, p);
 }
-LuaVec2 camera_pixels_to_world(LuaVec2 p) { return camera_unit_to_world(game_pixels_to_unit(p)); }
-LuaVec2 camera_unit_to_world(LuaVec2 p) {
+vec2 camera_pixels_to_world(vec2 p) { return camera_unit_to_world(game_pixels_to_unit(p)); }
+vec2 camera_unit_to_world(vec2 p) {
     Entity cam = camera_get_current_camera();
     if (!entity_eq(cam, entity_nil)) return transform_local_to_world(cam, p);
     return p;
@@ -1601,17 +1598,17 @@ void camera_init() {
     pool_camera = entitypool_new(Camera);
     curr_camera = entity_nil;
     edit_camera = entity_nil;
-    inverse_view_matrix = luamat3_identity();
+    inverse_view_matrix = mat3_identity();
 }
 
 void camera_fini() { entitypool_free(pool_camera); }
 
 void camera_update_all() {
-    LuaVec2 win_size;
+    vec2 win_size;
     Scalar aspect;
     Camera *camera;
     Entity cam;
-    LuaVec2 scale;
+    vec2 scale;
     static BBox bbox = {{-1, -1}, {1, 1}};
 
     entitypool_remove_destroyed(pool_camera, camera_remove);
@@ -1628,7 +1625,7 @@ void camera_update_all() {
 
     cam = camera_get_current_camera();
     if (entity_eq(cam, entity_nil))
-        inverse_view_matrix = luamat3_identity();
+        inverse_view_matrix = mat3_identity();
     else
         inverse_view_matrix = mat3_inverse(transform_get_world_matrix(cam));
 }
@@ -1652,7 +1649,7 @@ void camera_load_all(Store *s) {
     if (store_child_load(&t, "camera", s)) {
         entity_load(&curr_camera, "curr_camera", curr_camera, t);
 
-        mat3_load(&inverse_view_matrix, "inverse_view_matrix", luamat3_identity(), t);
+        mat3_load(&inverse_view_matrix, "inverse_view_matrix", mat3_identity(), t);
 
         entitypool_load_foreach(camera, camera_s, pool_camera, "pool", t) scalar_load(&camera->viewport_height, "viewport_height", 1, camera_s);
     }

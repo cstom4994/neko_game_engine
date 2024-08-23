@@ -1,7 +1,238 @@
-#include "engine/lua_struct.h"
 
-#include "engine/gfx.h"
-#include "engine/math.h"
+#include "engine/scripting.h"
+
+#include "engine/base.h"
+#include "engine/luax.h"
+
+
+int load_embed_lua(lua_State *L, const u8 B[], const_str name) {
+    if (luaL_loadbuffer(L, (const_str)B, neko_strlen((const_str)B), name) != LUA_OK) {
+        luaL_error(L, "%s", lua_tostring(L, -1));
+        return 0;
+    }
+    if (lua_pcall(L, 0, LUA_MULTRET, 0) != LUA_OK) {
+        luaL_error(L, "%s", lua_tostring(L, -1));
+        return 0;
+    }
+    return 1;
+}
+
+#define LUAOPEN_EMBED_DATA(func, name, compressed_data) \
+    static int func(lua_State *L) {                     \
+        i32 top = lua_gettop(L);                        \
+        load_embed_lua(L, compressed_data, name);       \
+        return lua_gettop(L) - top;                     \
+    }
+
+static const u8 g_lua_common_data[] = {
+#include "common.lua.h"
+};
+static const u8 g_lua_bootstrap_data[] = {
+#include "bootstrap.lua.h"
+};
+static const u8 g_lua_nekogame_data[] = {
+#include "nekogame.lua.h"
+};
+
+LUAOPEN_EMBED_DATA(open_embed_common, "common.lua", g_lua_common_data);
+LUAOPEN_EMBED_DATA(open_embed_bootstrap, "bootstrap.lua", g_lua_bootstrap_data);
+// LUAOPEN_EMBED_DATA(open_embed_nekogame, "nekogame.lua", g_lua_nekogame_data);
+
+int luaopen_socket_core(lua_State *L);
+int luaopen_mime_core(lua_State *L);
+int luaopen_http(lua_State *L);
+
+void package_preload_embed(lua_State *L) {
+
+    luaL_Reg preloads[] = {
+            {"common", open_embed_common},
+            {"http", luaopen_http},
+    };
+
+    for (int i = 0; i < NEKO_ARR_SIZE(preloads); i++) {
+        luax_package_preload(L, preloads[i].name, preloads[i].func);
+    }
+}
+void luax_run_bootstrap(lua_State *L) {
+    if (luaL_loadbuffer(L, (const_str)g_lua_bootstrap_data, neko_strlen((const_str)g_lua_bootstrap_data), "<bootstrap>") != LUA_OK) {
+        fprintf(stderr, "%s\n", lua_tostring(L, -1));
+        neko_panic("failed to load bootstrap");
+    }
+    if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
+        const char *errorMsg = lua_tostring(L, -1);
+        fprintf(stderr, "bootstrap error: %s\n", errorMsg);
+        lua_pop(L, 1);
+        neko_panic("failed to run bootstrap");
+    }
+    console_log("loaded bootstrap");
+}
+void luax_run_nekogame(lua_State *L) {
+    if (luaL_loadbuffer(L, (const_str)g_lua_nekogame_data, neko_strlen((const_str)g_lua_nekogame_data), "<nekogame>") != LUA_OK) {
+        fprintf(stderr, "%s\n", lua_tostring(L, -1));
+        neko_panic("failed to load nekogame");
+    }
+    if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
+        const char *errorMsg = lua_tostring(L, -1);
+        fprintf(stderr, "nekogame error: %s\n", errorMsg);
+        lua_pop(L, 1);
+        neko_panic("failed to run nekogame");
+    }
+    console_log("loaded nekogame");
+}
+
+#if LUA_VERSION_NUM < 504
+
+void *lua_newuserdatauv(lua_State *L_, size_t sz_, int nuvalue_) {
+    neko_assert(L_ && nuvalue_ <= 1);
+    return lua_newuserdata(L_, sz_);
+}
+
+int lua_getiuservalue(lua_State *const L_, int const idx_, int const n_) {
+    if (n_ > 1) {
+        lua_pushnil(L_);
+        return LUA_TNONE;
+    }
+
+#if LUA_VERSION_NUM == 501
+    lua_getfenv(L_, idx_);
+    lua_getglobal(L_, LUA_LOADLIBNAME);
+    if (lua_rawequal(L_, -2, -1) || lua_rawequal(L_, -2, LUA_GLOBALSINDEX)) {
+        lua_pop(L_, 2);
+        lua_pushnil(L_);
+
+        return LUA_TNONE;
+    } else {
+        lua_pop(L_, 1);
+    }
+#else
+    lua_getuservalue(L_, idx_);
+#endif
+
+    int const _uvType = lua_type(L_, -1);
+
+    return (LUA_VERSION_NUM == 502 && _uvType == LUA_TNIL) ? LUA_TNONE : _uvType;
+}
+
+int lua_setiuservalue(lua_State *L_, int idx_, int n_) {
+    if (n_ > 1
+#if LUA_VERSION_NUM == 501
+        || lua_type(L_, -1) != LUA_TTABLE
+#endif
+    ) {
+        lua_pop(L_, 1);
+        return 0;
+    }
+
+#if LUA_VERSION_NUM == 501
+    lua_setfenv(L_, idx_);
+#else
+    lua_setuservalue(L_, idx_);
+#endif
+    return 1;
+}
+
+#endif
+
+void __neko_luabind_init(lua_State *L) {
+
+    lua_pushinteger(L, 0);
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "type_index");
+    lua_newtable(L);
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "type_ids");
+    lua_newtable(L);
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "type_names");
+    lua_newtable(L);
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "type_sizes");
+
+    lua_newtable(L);
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "stack_push");
+    lua_newtable(L);
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "stack_to");
+
+    lua_newtable(L);
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "enums");
+    lua_newtable(L);
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "enums_sizes");
+    lua_newtable(L);
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "enums_values");
+}
+
+void __neko_luabind_fini(lua_State *L) {
+
+    lua_pushnil(L);
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "type_index");
+    lua_pushnil(L);
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "type_ids");
+    lua_pushnil(L);
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "type_names");
+    lua_pushnil(L);
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "type_sizes");
+
+    lua_pushnil(L);
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "stack_push");
+    lua_pushnil(L);
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "stack_to");
+
+    lua_pushnil(L);
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "enums");
+    lua_pushnil(L);
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "enums_sizes");
+    lua_pushnil(L);
+    lua_setfield(L, LUA_REGISTRYINDEX, NEKO_LUA_AUTO_REGISTER_PREFIX "enums_values");
+}
+
+bool neko_lua_equal(lua_State *state, int index1, int index2) {
+#if LUA_VERSION_NUM <= 501
+    return lua_equal(state, index1, index2) == 1;
+#else
+    return lua_compare(state, index1, index2, LUA_OPEQ) == 1;
+#endif
+}
+
+int neko_lua_preload(lua_State *L, lua_CFunction f, const char *name) {
+    lua_getglobal(L, "package");
+    lua_getfield(L, -1, "preload");
+    lua_pushcfunction(L, f);
+    lua_setfield(L, -2, name);
+    lua_pop(L, 2);
+    return 0;
+}
+
+int neko_lua_preload_auto(lua_State *L, lua_CFunction f, const char *name) {
+    neko_lua_preload(L, f, name);
+    lua_getglobal(L, "require");
+    lua_pushstring(L, name);
+    lua_call(L, 1, 0);
+    return 0;
+}
+
+void neko_lua_load(lua_State *L, const luaL_Reg *l, const char *name) {
+    lua_getglobal(L, name);
+    if (lua_isnil(L, -1)) {
+        lua_pop(L, 1);
+        lua_newtable(L);
+    }
+    luaL_setfuncs(L, l, 0);
+    lua_setglobal(L, name);
+}
+
+void neko_lua_loadover(lua_State *L, const luaL_Reg *l, const char *name) {
+    lua_newtable(L);
+    luaL_setfuncs(L, l, 0);
+    lua_setglobal(L, name);
+}
+
+int neko_lua_get_table_pairs_count(lua_State *L, int index) {
+    int count = 0;
+    index = lua_absindex(L, index);
+    lua_pushnil(L);
+    while (lua_next(L, index) != 0) {
+        // 现在栈顶是value，下一个栈元素是key
+        count++;
+        lua_pop(L, 1);  // 移除value，保留key作为下一次迭代的key
+    }
+    return count;
+}
 
 static int g_reference_table = LUA_NOREF;
 
@@ -399,31 +630,11 @@ static int LUASTRUCT_access_ARRAY_uchar8(lua_State *L, const char *fieldName, uc
 
 // 这里定义 LUASTRUCT 结构
 
-LUASTRUCT_BEGIN(vec4)
-LUASTRUCT_FIELD(x, float)
-LUASTRUCT_FIELD(y, float)
-LUASTRUCT_FIELD(z, float)
-LUASTRUCT_FIELD(w, float)
-LUASTRUCT_END
-
-// LUASTRUCT_BEGIN(gfx_shader_t)
-// LUASTRUCT_FIELD(id, uint)
-// LUASTRUCT_END
-
-// LUASTRUCT_BEGIN(neko_pipeline_t)
-// LUASTRUCT_FIELD(id, uint)
-// LUASTRUCT_END
-
-// LUASTRUCT_BEGIN(neko_vbo_t)
-// LUASTRUCT_FIELD(id, uint)
-// LUASTRUCT_END
-
-// LUASTRUCT_BEGIN(neko_ibo_t)
-// LUASTRUCT_FIELD(id, uint)
-// LUASTRUCT_END
-
-// LUASTRUCT_BEGIN(neko_uniform_t)
-// LUASTRUCT_FIELD(id, uint)
+// LUASTRUCT_BEGIN(vec4)
+// LUASTRUCT_FIELD(x, float)
+// LUASTRUCT_FIELD(y, float)
+// LUASTRUCT_FIELD(z, float)
+// LUASTRUCT_FIELD(w, float)
 // LUASTRUCT_END
 
 // LUASTRUCT_BEGIN(neko_framebuffer_t)
@@ -433,10 +644,6 @@ LUASTRUCT_END
 LUASTRUCT_BEGIN(gfx_texture_t)
 LUASTRUCT_FIELD(id, uint)
 LUASTRUCT_END
-
-// LUASTRUCT_BEGIN(neko_renderpass_t)
-// LUASTRUCT_FIELD(id, uint)
-// LUASTRUCT_END
 
 // LUASTRUCT_BEGIN(Color)
 // LUASTRUCT_FIELD(r, u8)
@@ -449,15 +656,9 @@ void createStructTables(lua_State *L) {
 #define XX(T) T##_create(L, #T)
     // vec4_create(L, "vec4");
 
-    XX(vec4);
-    // XX(gfx_shader_t);
-    // XX(neko_pipeline_t);
-    // XX(neko_vbo_t);
-    // XX(neko_ibo_t);
-    // XX(neko_uniform_t);
+    // XX(vec4);
     // XX(neko_framebuffer_t);
     XX(gfx_texture_t);
-    // XX(neko_renderpass_t);
 
     ARRAY_uchar8_create(L);
 #undef XX

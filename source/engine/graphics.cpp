@@ -1,4 +1,4 @@
-#include "gfx.h"
+#include "graphics.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,10 +6,10 @@
 #include "engine/asset.h"
 #include "engine/base.h"
 #include "engine/base.hpp"
-#include "engine/console.h"
-#include "engine/game.h"
-#include "engine/gfx.h"
-#include "engine/transform.h"
+#include "engine/bootstrap.h"
+#include "engine/component.h"
+#include "engine/edit.h"
+#include "engine/graphics.h"
 
 // deps
 #include <stb_image.h>

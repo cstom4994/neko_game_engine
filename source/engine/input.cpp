@@ -4,13 +4,13 @@
 #include <stdbool.h>
 
 #include "engine/base.h"
-#include "engine/game.h"
+#include "engine/bootstrap.h"
 #include "engine/glew_glfw.h"
 #include "engine/gui.h"
 #include "engine/input.h"
 #include "engine/base.hpp"
-#include "engine/prelude.h"
-#include "engine/transform.h"
+
+#include "engine/component.h"
 
 static CArray *key_down_cbs;
 static CArray *key_up_cbs;
@@ -95,18 +95,18 @@ bool input_key_down(KeyCode key) {
     return glfwGetKey(g_app->game_window, glfwkey) == GLFW_PRESS;
 }
 
-LuaVec2 input_get_mouse_pos_pixels_fix() {
+vec2 input_get_mouse_pos_pixels_fix() {
     double x, y;
     glfwGetCursorPos(g_app->game_window, &x, &y);
     return luavec2(x, y);
 }
 
-LuaVec2 input_get_mouse_pos_pixels() {
+vec2 input_get_mouse_pos_pixels() {
     double x, y;
     glfwGetCursorPos(g_app->game_window, &x, &y);
     return luavec2(x, -y);
 }
-LuaVec2 input_get_mouse_pos_unit() { return game_pixels_to_unit(input_get_mouse_pos_pixels()); }
+vec2 input_get_mouse_pos_unit() { return game_pixels_to_unit(input_get_mouse_pos_pixels()); }
 
 bool input_mouse_down(MouseCode mouse) {
     int glfwmouse = _mousecode_to_glfw(mouse);
@@ -224,7 +224,7 @@ void keyboard_controlled_set_v(Entity ent, f32 _v) {
 }
 
 void keyboard_controlled_update_all() {
-    LuaVec2 dpos = luavec2(0, 0), sca;
+    vec2 dpos = luavec2(0, 0), sca;
     Scalar rot, aspect;
 
     // v = 5.f;

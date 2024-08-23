@@ -55,9 +55,9 @@ NEKO_SCRIPT(
 
         NEKO_EXPORT GuiAlign gui_get_valign(Entity ent);
 
-        NEKO_EXPORT void gui_set_padding(Entity ent, LuaVec2 padding);  // h, v
+        NEKO_EXPORT void gui_set_padding(Entity ent, vec2 padding);  // h, v
 
-        NEKO_EXPORT LuaVec2 gui_get_padding(Entity ent);  // h, v
+        NEKO_EXPORT vec2 gui_get_padding(Entity ent);  // h, v
 
         // entity_nil for no focus
         NEKO_EXPORT void gui_set_focused_entity(Entity ent);
@@ -97,9 +97,9 @@ NEKO_SCRIPT(
 
         NEKO_EXPORT bool gui_rect_has(Entity ent);
 
-        NEKO_EXPORT void gui_rect_set_size(Entity ent, LuaVec2 size);
+        NEKO_EXPORT void gui_rect_set_size(Entity ent, vec2 size);
 
-        NEKO_EXPORT LuaVec2 gui_rect_get_size(Entity ent);
+        NEKO_EXPORT vec2 gui_rect_get_size(Entity ent);
 
         NEKO_EXPORT void gui_rect_set_hfit(Entity ent, bool fit);
 

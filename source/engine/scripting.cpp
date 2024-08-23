@@ -1,21 +1,17 @@
-#include "engine/script.h"
-
 #include <stdlib.h>
 #include <string.h>
 
-#include "console.h"
 #include "engine/api.hpp"
 #include "engine/asset.h"
 #include "engine/base.h"
+#include "engine/component.h"
 #include "engine/edit.h"
-#include "engine/game.h"
+#include "engine/entity.h"
+#include "engine/bootstrap.h"
 #include "engine/gui.h"
 #include "engine/input.h"
 #include "engine/luax.hpp"
-#include "engine/prefab.h"
-#include "engine/asset.h"
-#include "engine/system.h"
-#include "engine/transform.h"
+#include "engine/scripting.h"
 
 static const char **nekogame_ffi[] = {
         &nekogame_ffi_scalar,
@@ -87,8 +83,8 @@ void script_error(const char *s) {
 }
 
 // 将对象推送为 cdata, t 必须是字符串形式的 FFI 类型说明符
-// 如推入一个 LuaVec2 应该为 _push_cdata("LuaVec2 *", &v)
-// 结果是堆栈上的 LuaVec2 cdata (不是指针)
+// 如推入一个 vec2 应该为 _push_cdata("vec2 *", &v)
+// 结果是堆栈上的 vec2 cdata (不是指针)
 static void _push_cdata(const char *t, void *p) {
     // just call __deref_cdata(t, p)
     lua_State *L = ENGINE_LUA();
@@ -204,7 +200,7 @@ void script_init() {
 
     lua_channels_setup();
 
-    neko::lua::luax_run_bootstrap(L);
+    luax_run_bootstrap(L);
 
     timer.stop();
     console_log(std::format("lua init done in {0:.3f} ms", timer.get()).c_str());
@@ -296,19 +292,19 @@ void script_mouse_up(MouseCode mouse) {
     errcheck(luax_pcall_nothrow(L, 2, 0));
 }
 
-void script_mouse_move(LuaVec2 pos) {
+void script_mouse_move(vec2 pos) {
     lua_State *L = ENGINE_LUA();
 
     script_push_event("mouse_move");
-    _push_cdata("LuaVec2 *", &pos);
+    _push_cdata("vec2 *", &pos);
     errcheck(luax_pcall_nothrow(L, 2, 0));
 }
 
-void script_scroll(LuaVec2 scroll) {
+void script_scroll(vec2 scroll) {
     lua_State *L = ENGINE_LUA();
 
     script_push_event("scroll");
-    _push_cdata("LuaVec2 *", &scroll);
+    _push_cdata("vec2 *", &scroll);
     errcheck(luax_pcall_nothrow(L, 2, 0));
 }
 

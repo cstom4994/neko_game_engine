@@ -14,11 +14,10 @@
 #include "engine/api.hpp"
 #include "engine/asset.h"
 #include "engine/base.hpp"
-#include "engine/game.h"
+#include "engine/bootstrap.h"
 #include "engine/glew_glfw.h"
 #include "engine/luax.hpp"
-#include "engine/prelude.h"
-#include "engine/script.h"
+#include "engine/scripting.h"
 #include "vendor/luaalloc.h"
 
 #if defined(NEKO_IS_WIN32)
@@ -38,6 +37,132 @@
 #include <time.h>
 #include <unistd.h>
 #endif
+
+bool String::is_cstr() { return data[len] == '\0'; }
+
+String String::substr(u64 i, u64 j) {
+    assert(i <= j);
+    assert(j <= (i64)len);
+    return {&data[i], j - i};
+}
+
+bool String::starts_with(String match) {
+    if (len < match.len) {
+        return false;
+    }
+    return substr(0, match.len) == match;
+}
+
+bool String::ends_with(String match) {
+    if (len < match.len) {
+        return false;
+    }
+    return substr(len - match.len, len) == match;
+}
+
+u64 String::first_of(char c) {
+    for (u64 i = 0; i < len; i++) {
+        if (data[i] == c) {
+            return i;
+        }
+    }
+
+    return (u64)-1;
+}
+
+u64 String::last_of(char c) {
+    for (u64 i = len; i > 0; i--) {
+        if (data[i - 1] == c) {
+            return i - 1;
+        }
+    }
+
+    return (u64)-1;
+}
+
+String to_cstr(String str) {
+    char *buf = (char *)mem_alloc(str.len + 1);
+    memcpy(buf, str.data, str.len);
+    buf[str.len] = 0;
+    return {buf, str.len};
+}
+
+#ifndef USE_PROFILER
+void profile_setup() {}
+void profile_shutdown() {}
+#endif
+
+#ifdef USE_PROFILER
+
+#include "engine/base.h"
+#include "engine/base.hpp"
+#include "vendor/sokol_time.h"
+
+struct Profile {
+    Queue<TraceEvent> events;
+    Thread recv_thread;
+};
+
+static Profile g_profile = {};
+
+static void profile_recv_thread(void *) {
+    StringBuilder sb = {};
+    sb.swap_filename(os_program_path(), "profile.json");
+
+    FILE *f = neko_fopen(sb.data, "w");
+    sb.trash();
+
+    neko_defer(neko_fclose(f));
+
+    fputs("[", f);
+    while (true) {
+        TraceEvent e = g_profile.events.demand();
+        if (e.name == nullptr) {
+            return;
+        }
+
+        fprintf(f,
+                R"({"name":"%s","cat":"%s","ph":"%c","ts":%.3f,"pid":0,"tid":%hu},)"
+                "\n",
+                e.name, e.cat, e.ph, stm_us(e.ts), e.tid);
+    }
+}
+
+void profile_setup() {
+    g_profile.events.make();
+    g_profile.events.reserve(256);
+    g_profile.recv_thread.make(profile_recv_thread, nullptr);
+}
+
+void profile_shutdown() {
+    g_profile.events.enqueue({});
+    g_profile.recv_thread.join();
+    g_profile.events.trash();
+}
+
+Instrument::Instrument(const char *cat, const char *name) : cat(cat), name(name), tid(this_thread_id()) {
+    TraceEvent e = {};
+    e.cat = cat;
+    e.name = name;
+    e.ph = 'B';
+    e.ts = stm_now();
+    e.tid = tid;
+
+    g_profile.events.enqueue(e);
+}
+
+Instrument::~Instrument() {
+    TraceEvent e = {};
+    e.cat = cat;
+    e.name = name;
+    e.ph = 'E';
+    e.ts = stm_now();
+    e.tid = tid;
+
+    g_profile.events.enqueue(e);
+}
+
+#endif  // USE_PROFILER
 
 SplitLinesIterator &SplitLinesIterator::operator++() {
     if (&view.data[view.len] == &data.data[data.len]) {
@@ -2108,29 +2233,39 @@ int main() {
 
 #endif
 
-LuaVec2 vec2_zero = {0.0, 0.0};
+#if 0
 
-LuaVec2 vec2_add(LuaVec2 u, LuaVec2 v) { return luavec2(u.x + v.x, u.y + v.y); }
-LuaVec2 vec2_sub(LuaVec2 u, LuaVec2 v) { return luavec2(u.x - v.x, u.y - v.y); }
-LuaVec2 vec2_mul(LuaVec2 u, LuaVec2 v) { return luavec2(u.x * v.x, u.y * v.y); }
-LuaVec2 vec2_div(LuaVec2 u, LuaVec2 v) { return luavec2(u.x / v.x, u.y / v.y); }
-LuaVec2 vec2_scalar_mul(LuaVec2 v, Scalar f) { return luavec2(v.x * f, v.y * f); }
-LuaVec2 vec2_scalar_div(LuaVec2 v, Scalar f) { return luavec2(v.x / f, v.y / f); }
-LuaVec2 scalar_vec2_div(Scalar f, LuaVec2 v) { return luavec2(f / v.x, f / v.y); }
-LuaVec2 vec2_neg(LuaVec2 v) { return luavec2(-v.x, -v.y); }
+vec2 vec2_add(vec2 u, vec2 v) { return luavec2(u.x + v.x, u.y + v.y); }
+vec2 vec2_sub(vec2 u, vec2 v) { return luavec2(u.x - v.x, u.y - v.y); }
+vec2 vec2_mul(vec2 u, vec2 v) { return luavec2(u.x * v.x, u.y * v.y); }
+vec2 vec2_div(vec2 u, vec2 v) { return luavec2(u.x / v.x, u.y / v.y); }
 
-Scalar vec2_len(LuaVec2 v) { return scalar_sqrt(v.x * v.x + v.y * v.y); }
-LuaVec2 vec2_normalize(LuaVec2 v) {
+vec2 vec2_neg(vec2 v) { return luavec2(-v.x, -v.y); }
+
+Scalar vec2_len(vec2 v) { return scalar_sqrt(v.x * v.x + v.y * v.y); }
+vec2 vec2_normalize(vec2 v) {
     if (v.x == 0 && v.y == 0) return v;
     return vec2_scalar_div(v, vec2_len(v));
 }
-Scalar vec2_dot(LuaVec2 u, LuaVec2 v) { return u.x * v.x + u.y * v.y; }
-Scalar vec2_dist(LuaVec2 u, LuaVec2 v) { return vec2_len(vec2_sub(u, v)); }
+Scalar vec2_dot(vec2 u, vec2 v) { return u.x * v.x + u.y * v.y; }
+Scalar vec2_dist(vec2 u, vec2 v) { return vec2_len(vec2_sub(u, v)); }
 
-LuaVec2 vec2_rot(LuaVec2 v, Scalar rot) { return luavec2(v.x * scalar_cos(rot) - v.y * scalar_sin(rot), v.x * scalar_sin(rot) + v.y * scalar_cos(rot)); }
-Scalar vec2_atan2(LuaVec2 v) { return scalar_atan2(v.y, v.x); }
+Scalar vec2_atan2(vec2 v) { return scalar_atan2(v.y, v.x); }
 
-void vec2_save(LuaVec2 *v, const char *n, Store *s) {
+#endif
+
+vec2 vec2_zero = {0.0, 0.0};
+
+vec2 vec2_rot(vec2 v, Scalar rot) { return luavec2(v.x * scalar_cos(rot) - v.y * scalar_sin(rot), v.x * scalar_sin(rot) + v.y * scalar_cos(rot)); }
+
+vec2 vec2_scalar_mul(vec2 v, Scalar f) { return luavec2(v.x * f, v.y * f); }
+vec2 vec2_scalar_div(vec2 v, Scalar f) { return luavec2(v.x / f, v.y / f); }
+vec2 scalar_vec2_div(Scalar f, vec2 v) { return luavec2(f / v.x, f / v.y); }
+
+#undef luavec2
+vec2 luavec2(Scalar x, Scalar y) { return vec2{x, y}; }
+
+void vec2_save(vec2 *v, const char *n, Store *s) {
     Store *t;
 
     if (store_child_save_compressed(&t, n, s)) {
@@ -2138,7 +2273,7 @@ void vec2_save(LuaVec2 *v, const char *n, Store *s) {
         scalar_save(&v->y, "y", t);
     }
 }
-bool vec2_load(LuaVec2 *v, const char *n, LuaVec2 d, Store *s) {
+bool vec2_load(vec2 *v, const char *n, vec2 d, Store *s) {
     Store *t;
 
     if (store_child_load(&t, n, s)) {
@@ -2149,10 +2284,9 @@ bool vec2_load(LuaVec2 *v, const char *n, LuaVec2 d, Store *s) {
     return t != NULL;
 }
 
-#undef luavec2
-LuaVec2 luavec2(Scalar x, Scalar y) { return LuaVec2{x, y}; }
+#if 0
 
-LuaMat3 mat3_mul(LuaMat3 m, LuaMat3 n) {
+mat3 mat3_mul(mat3 m, mat3 n) {
     return luamat3(m.m[0][0] * n.m[0][0] + m.m[1][0] * n.m[0][1] + m.m[2][0] * n.m[0][2], m.m[0][1] * n.m[0][0] + m.m[1][1] * n.m[0][1] + m.m[2][1] * n.m[0][2],
                    m.m[0][2] * n.m[0][0] + m.m[1][2] * n.m[0][1] + m.m[2][2] * n.m[0][2],
 
@@ -2163,19 +2297,12 @@ LuaMat3 mat3_mul(LuaMat3 m, LuaMat3 n) {
                    m.m[0][2] * n.m[2][0] + m.m[1][2] * n.m[2][1] + m.m[2][2] * n.m[2][2]);
 }
 
-LuaMat3 mat3_scaling_rotation_translation(LuaVec2 scale, Scalar rot, LuaVec2 trans) {
-    return luamat3(scale.x * scalar_cos(rot), scale.x * scalar_sin(rot), 0.0f, scale.y * -scalar_sin(rot), scale.y * scalar_cos(rot), 0.0f, trans.x, trans.y, 1.0f);
-}
 
-LuaVec2 mat3_get_translation(LuaMat3 m) { return luavec2(m.m[2][0], m.m[2][1]); }
-Scalar mat3_get_rotation(LuaMat3 m) { return scalar_atan2(m.m[0][1], m.m[0][0]); }
-LuaVec2 mat3_get_scale(LuaMat3 m) { return luavec2(scalar_sqrt(m.m[0][0] * m.m[0][0] + m.m[0][1] * m.m[0][1]), scalar_sqrt(m.m[1][0] * m.m[1][0] + m.m[1][1] * m.m[1][1])); }
-
-LuaMat3 mat3_inverse(LuaMat3 m) {
+mat3 mat3_inverse(mat3 m) {
     Scalar det;
-    LuaMat3 inv;
+    mat3 inv;
 
-    inv.m[0][0] = m.m[1][1] * m.m[2][2] - m.m[1][2] * m.m[2][1];
+    inv.m[0][0] = m.m[1][1] * m.m[2][2] - m.m[1][2] * m.m[2][1];`
     inv.m[0][1] = m.m[0][2] * m.m[2][1] - m.m[0][1] * m.m[2][2];
     inv.m[0][2] = m.m[0][1] * m.m[1][2] - m.m[0][2] * m.m[1][1];
     inv.m[1][0] = m.m[1][2] * m.m[2][0] - m.m[1][0] * m.m[2][2];
@@ -2202,9 +2329,19 @@ LuaMat3 mat3_inverse(LuaMat3 m) {
     return inv;
 }
 
-LuaVec2 mat3_transform(LuaMat3 m, LuaVec2 v) { return luavec2(m.m[0][0] * v.x + m.m[1][0] * v.y + m.m[2][0], m.m[0][1] * v.x + m.m[1][1] * v.y + m.m[2][1]); }
+#endif
 
-void mat3_save(LuaMat3 *m, const char *n, Store *s) {
+vec2 mat3_transform(mat3 m, vec2 v) { return luavec2(m.m[0][0] * v.x + m.m[1][0] * v.y + m.m[2][0], m.m[0][1] * v.x + m.m[1][1] * v.y + m.m[2][1]); }
+
+mat3 mat3_scaling_rotation_translation(vec2 scale, Scalar rot, vec2 trans) {
+    return luamat3(scale.x * scalar_cos(rot), scale.x * scalar_sin(rot), 0.0f, scale.y * -scalar_sin(rot), scale.y * scalar_cos(rot), 0.0f, trans.x, trans.y, 1.0f);
+}
+
+vec2 mat3_get_translation(mat3 m) { return luavec2(m.m[2][0], m.m[2][1]); }
+Scalar mat3_get_rotation(mat3 m) { return scalar_atan2(m.m[0][1], m.m[0][0]); }
+vec2 mat3_get_scale(mat3 m) { return luavec2(scalar_sqrt(m.m[0][0] * m.m[0][0] + m.m[0][1] * m.m[0][1]), scalar_sqrt(m.m[1][0] * m.m[1][0] + m.m[1][1] * m.m[1][1])); }
+
+void mat3_save(mat3 *m, const char *n, Store *s) {
     Store *t;
     unsigned int i, j;
 
@@ -2212,7 +2349,7 @@ void mat3_save(LuaMat3 *m, const char *n, Store *s) {
         for (i = 0; i < 3; ++i)
             for (j = 0; j < 3; ++j) scalar_save(&m->m[i][j], NULL, t);
 }
-bool mat3_load(LuaMat3 *m, const char *n, LuaMat3 d, Store *s) {
+bool mat3_load(mat3 *m, const char *n, mat3 d, Store *s) {
     Store *t;
     unsigned int i, j;
 
@@ -2224,25 +2361,24 @@ bool mat3_load(LuaMat3 *m, const char *n, LuaMat3 d, Store *s) {
     return t != NULL;
 }
 
-#undef luamat3_identity
-LuaMat3 luamat3_identity() { return luamat3(1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f); }
-
 #undef luamat3
-LuaMat3 luamat3(Scalar m00, Scalar m01, Scalar m02, Scalar m10, Scalar m11, Scalar m12, Scalar m20, Scalar m21, Scalar m22) { return LuaMat3{{{m00, m01, m02}, {m10, m11, m12}, {m20, m21, m22}}}; }
+mat3 luamat3(Scalar m00, Scalar m01, Scalar m02, Scalar m10, Scalar m11, Scalar m12, Scalar m20, Scalar m21, Scalar m22) { return mat3{.m = {{m00, m01, m02}, {m10, m11, m12}, {m20, m21, m22}}}; }
+
+mat3 mat3_identity() { return mat3_diag(1.f); }
 
 BBox bbox_merge(BBox a, BBox b) { return bbox(luavec2(scalar_min(a.min.x, b.min.x), scalar_min(a.min.y, b.min.y)), luavec2(scalar_max(a.max.x, b.max.x), scalar_max(a.max.y, b.max.y))); }
-BBox bbox_bound(LuaVec2 a, LuaVec2 b) { return bbox(luavec2(scalar_min(a.x, b.x), scalar_min(a.y, b.y)), luavec2(scalar_max(a.x, b.x), scalar_max(a.y, b.y))); }
-bool bbox_contains(BBox b, LuaVec2 p) { return b.min.x <= p.x && p.x <= b.max.x && b.min.y <= p.y && p.y <= b.max.y; }
+BBox bbox_bound(vec2 a, vec2 b) { return bbox(luavec2(scalar_min(a.x, b.x), scalar_min(a.y, b.y)), luavec2(scalar_max(a.x, b.x), scalar_max(a.y, b.y))); }
+bool bbox_contains(BBox b, vec2 p) { return b.min.x <= p.x && p.x <= b.max.x && b.min.y <= p.y && p.y <= b.max.y; }
 
-BBox bbox(LuaVec2 min, LuaVec2 max) {
+BBox bbox(vec2 min, vec2 max) {
     BBox bb;
     bb.min = min;
     bb.max = max;
     return bb;
 }
 
-BBox bbox_transform(LuaMat3 m, BBox b) {
-    LuaVec2 v1, v2, v3, v4;
+BBox bbox_transform(mat3 m, BBox b) {
+    vec2 v1, v2, v3, v4;
 
     v1 = mat3_transform(m, luavec2(b.min.x, b.min.y));
     v2 = mat3_transform(m, luavec2(b.max.x, b.min.y));

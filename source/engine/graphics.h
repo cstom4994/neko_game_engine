@@ -3,8 +3,7 @@
 
 #include "engine/base.h"
 #include "engine/glew_glfw.h"
-#include "engine/math.h"
-#include "engine/prelude.h"
+
 
 struct shader_pair {
     GLuint id;
@@ -126,8 +125,6 @@ neko_enum_decl(gfx_texture_format_type, R_TEXTURE_FORMAT_RGBA8, R_TEXTURE_FORMAT
 
 neko_enum_decl(gfx_texture_filtering_type, R_TEXTURE_FILTER_NEAREST, R_TEXTURE_FILTER_LINEAR);
 
-neko_handle_decl(gfx_texture_t);
-
 typedef struct gfx_shader_source_desc_t {
     u32 type;            // Shader stage type (vertex, fragment, tesselation, geometry, compute)
     const char* source;  // Source for shader
@@ -221,8 +218,6 @@ neko_handle(gfx_texture_t) gfx_texture_create(const gfx_texture_desc_t desc);
 void gfx_texture_fini(neko_handle(gfx_texture_t) hndl);
 void gfx_texture_read(neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t* desc);
 void gfx_texture_request_update(command_buffer_t* cb, neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t desc);
-
-typedef neko_handle(gfx_texture_t) gfx_texture_t;
 
 typedef struct neko_rgb_color_t {
     float r, g, b;

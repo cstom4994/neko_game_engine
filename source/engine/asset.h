@@ -4,10 +4,8 @@
 #include "engine/base.h"
 #include "engine/base.hpp"
 #include "engine/entity.h"
-#include "engine/gfx.h"
+#include "engine/graphics.h"
 #include "engine/glew_glfw.h"
-#include "engine/math.h"
-#include "engine/prelude.h"
 
 typedef struct AssetTexture {
     GLuint id;  // 如果未初始化或纹理错误 则为 0
@@ -19,7 +17,7 @@ typedef struct AssetTexture {
 
 bool texture_load(AssetTexture* tex, String filename, bool flip_image_vertical = true);
 void texture_bind(const char* filename);
-LuaVec2 texture_get_size(const char* filename);  // (width, height)
+vec2 texture_get_size(const char* filename);  // (width, height)
 AssetTexture texture_get_ptr(const char* filename);
 bool texture_update(AssetTexture* tex, String filename);
 bool texture_update_data(AssetTexture* tex, u8* data);
@@ -109,50 +107,6 @@ struct AseSpriteView {
     i32 frame();
     u64 len();
 };
-
-NEKO_SCRIPT(sprite,
-
-            NEKO_EXPORT void sprite_set_atlas(const char* filename);
-
-            NEKO_EXPORT const char* sprite_get_atlas();
-
-            NEKO_EXPORT void sprite_add(Entity ent);
-
-            NEKO_EXPORT void sprite_remove(Entity ent);
-
-            NEKO_EXPORT bool sprite_has(Entity ent);
-
-            // size to draw in world units, centered at transform position
-            NEKO_EXPORT void sprite_set_size(Entity ent, LuaVec2 size);
-
-            NEKO_EXPORT LuaVec2 sprite_get_size(Entity ent);
-
-            // bottom left corner of atlas region in pixels
-            NEKO_EXPORT void sprite_set_texcell(Entity ent, LuaVec2 texcell);
-
-            NEKO_EXPORT LuaVec2 sprite_get_texcell(Entity ent);
-
-            // size of atlas region in pixels
-            NEKO_EXPORT void sprite_set_texsize(Entity ent, LuaVec2 texsize);
-
-            NEKO_EXPORT LuaVec2 sprite_get_texsize(Entity ent);
-
-            // lower depth drawn on top
-            NEKO_EXPORT void sprite_set_depth(Entity ent, int depth);
-
-            NEKO_EXPORT int sprite_get_depth(Entity ent);
-
-)
-
-void sprite_init();
-void sprite_fini();
-void sprite_update_all();
-void sprite_draw_all();
-void sprite_save_all(Store* s);
-void sprite_load_all(Store* s);
-
-int open_mt_sprite(lua_State* L);
-int neko_sprite_load(lua_State* L);
 
 struct MountResult {
     bool ok;
@@ -266,6 +220,133 @@ bool neko_pak_info(const_str file_path, i32* buildnum, u64* item_count);
 
 int open_mt_pak(lua_State* L);
 int neko_pak_load(lua_State* L);
+
+inline bool neko_token_is_end_of_line(char c) { return (c == '\n' || c == '\r'); }
+inline bool neko_token_char_is_white_space(char c) { return (c == '\t' || c == ' ' || neko_token_is_end_of_line(c)); }
+inline bool neko_token_char_is_alpha(char c) { return ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')); }
+inline bool neko_token_char_is_numeric(char c) { return (c >= '0' && c <= '9'); }
+
+typedef enum xml_attribute_type_t {
+    NEKO_XML_ATTRIBUTE_NUMBER,
+    NEKO_XML_ATTRIBUTE_BOOLEAN,
+    NEKO_XML_ATTRIBUTE_STRING,
+} xml_attribute_type_t;
+
+typedef struct xml_attribute_t {
+    const_str name;
+    xml_attribute_type_t type;
+
+    union {
+        double number;
+        bool boolean;
+        const_str string;
+    } value;
+} xml_attribute_t;
+
+// neko_hash_table_decl(u64, xml_attribute_t, neko_hash_u64, neko_hash_key_comp_std_type);
+
+typedef struct xml_node_t {
+    const_str name;
+    const_str text;
+
+    neko_hash_table(u64, xml_attribute_t) attributes;
+    neko_dyn_array(xml_node_t) children;
+
+} xml_node_t;
+
+typedef struct xml_document_t {
+    neko_dyn_array(xml_node_t) nodes;
+} xml_document_t;
+
+typedef struct xml_node_iter_t {
+    xml_document_t* doc;
+    xml_node_t* node;
+    const_str name;
+    u32 idx;
+
+    xml_node_t* current;
+} xml_node_iter_t;
+
+xml_document_t* xml_parse(const_str source);
+xml_document_t* xml_parse_vfs(const_str path);
+void xml_free(xml_document_t* document);
+
+xml_attribute_t* xml_find_attribute(xml_node_t* node, const_str name);
+xml_node_t* xml_find_node(xml_document_t* doc, const_str name);
+xml_node_t* xml_find_node_child(xml_node_t* node, const_str name);
+
+const_str xml_get_error();
+
+xml_node_iter_t xml_new_node_iter(xml_document_t* doc, const_str name);
+xml_node_iter_t xml_new_node_child_iter(xml_node_t* node, const_str name);
+bool xml_node_iter_next(xml_node_iter_t* iter);
+
+enum JSONKind : i32 {
+    JSONKind_Null,
+    JSONKind_Object,
+    JSONKind_Array,
+    JSONKind_String,
+    JSONKind_Number,
+    JSONKind_Boolean,
+};
+
+struct JSONObject;
+struct JSONArray;
+struct JSON {
+    union {
+        JSONObject* object;
+        JSONArray* array;
+        String string;
+        double number;
+        bool boolean;
+    };
+    JSONKind kind;
+
+    JSON lookup(String key, bool* ok);
+    JSON index(i32 i, bool* ok);
+
+    JSONObject* as_object(bool* ok);
+    JSONArray* as_array(bool* ok);
+    String as_string(bool* ok);
+    double as_number(bool* ok);
+
+    JSONObject* lookup_object(String key, bool* ok);
+    JSONArray* lookup_array(String key, bool* ok);
+    String lookup_string(String key, bool* ok);
+    double lookup_number(String key, bool* ok);
+
+    double index_number(i32 i, bool* ok);
+};
+
+struct JSONObject {
+    JSON value;
+    String key;
+    JSONObject* next;
+    u64 hash;
+};
+
+struct JSONArray {
+    JSON value;
+    JSONArray* next;
+    u64 index;
+};
+
+struct JSONDocument {
+    JSON root;
+    String error;
+    Arena arena;
+
+    void parse(String contents);
+    void trash();
+};
+
+struct StringBuilder;
+void json_write_string(StringBuilder* sb, JSON* json);
+void json_print(JSON* json);
+
+struct lua_State;
+void json_to_lua(lua_State* L, JSON* json);
+String lua_to_json_string(lua_State* L, i32 arg, String* contents, i32 width);
 
 enum AssetKind : i32 {
     AssetKind_None,

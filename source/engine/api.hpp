@@ -1,7 +1,7 @@
 #pragma once
 
 #include "engine/luax.hpp"
-#include "engine/neko.hpp"
+#include "engine/base.hpp"
 
 struct lua_State;
 void open_neko_api(lua_State *L);
@@ -9,8 +9,9 @@ void open_luasocket(lua_State *L);
 
 namespace neko::lua {
 void package_preload(lua_State *L);
-void package_preload_embed(lua_State *L);
 }  // namespace neko::lua
+
+NEKO_API() void package_preload_embed(lua_State *L);
 
 enum W_LUA_UPVALUES { NEKO_W_COMPONENTS_NAME = 1, NEKO_W_UPVAL_N };
 

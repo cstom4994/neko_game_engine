@@ -12,12 +12,12 @@
 #include "engine/draw.h"
 #include "engine/edit.h"
 #include "engine/entity.h"
-#include "engine/game.h"
-#include "engine/gfx.h"
+#include "engine/bootstrap.h"
+#include "engine/graphics.h"
 #include "engine/input.h"
 #include "engine/luax.hpp"
-#include "engine/prelude.h"
-#include "engine/transform.h"
+
+#include "engine/component.h"
 
 static Entity gui_root;  // 所有 gui 都应该是它的子节点 以便随屏幕移动
 
@@ -44,7 +44,7 @@ struct Gui {
     BBox bbox;  // 在实体空间中
     GuiAlign halign;
     GuiAlign valign;
-    LuaVec2 padding;
+    vec2 padding;
 };
 
 static EntityPool* pool_gui;
@@ -146,12 +146,12 @@ GuiAlign gui_get_valign(Entity ent) {
     error_assert(gui);
     return gui->valign;
 }
-void gui_set_padding(Entity ent, LuaVec2 padding) {
+void gui_set_padding(Entity ent, vec2 padding) {
     Gui* gui = (Gui*)entitypool_get(pool_gui, ent);
     error_assert(gui);
     gui->padding = padding;
 }
-LuaVec2 gui_get_padding(Entity ent) {
+vec2 gui_get_padding(Entity ent) {
     Gui* gui = (Gui*)entitypool_get(pool_gui, ent);
     error_assert(gui);
     return gui->padding;
@@ -247,7 +247,7 @@ static void _common_update_visible() {
 static void _common_align(Gui* gui, GuiAlign halign, GuiAlign valign) {
     Gui* pgui;
     BBox b, pb;
-    LuaVec2 pos;
+    vec2 pos;
     Entity ent;
     Scalar mid, pmid;
 
@@ -264,7 +264,7 @@ static void _common_align(Gui* gui, GuiAlign halign, GuiAlign valign) {
     if (!pgui) return;
     pb = pgui->bbox;
 
-    // macro to avoid repetition -- 'z' is LuaVec2 axis member (x or y)
+    // macro to avoid repetition -- 'z' is vec2 axis member (x or y)
 #define axis_align(align, z)                                       \
     switch (align) {                                               \
         case GA_MIN:                                               \
@@ -321,8 +321,8 @@ static void _common_update_all() {
 // 'focus_clear' is whether to clear focus if click outside
 static void _common_mouse_event(EntityMap* emap, MouseCode mouse, bool focus_clear) {
     Gui* gui;
-    LuaVec2 m;
-    LuaMat3 t;
+    vec2 m;
+    mat3 t;
     Entity ent;
     bool some_focused = false;
 
@@ -416,9 +416,9 @@ typedef struct Rect Rect;
 struct Rect {
     EntityPoolElem pool_elem;
 
-    LuaMat3 wmat;
+    mat3 wmat;
 
-    LuaVec2 size;
+    vec2 size;
     bool visible;
     Color color;
 
@@ -450,12 +450,12 @@ void gui_rect_add(Entity ent) {
 void gui_rect_remove(Entity ent) { entitypool_remove(rect_pool, ent); }
 bool gui_rect_has(Entity ent) { return entitypool_get(rect_pool, ent) != NULL; }
 
-void gui_rect_set_size(Entity ent, LuaVec2 size) {
+void gui_rect_set_size(Entity ent, vec2 size) {
     Rect* rect = (Rect*)entitypool_get(rect_pool, ent);
     error_assert(rect);
     rect->size = size;
 }
-LuaVec2 gui_rect_get_size(Entity ent) {
+vec2 gui_rect_get_size(Entity ent) {
     Rect* rect = (Rect*)entitypool_get(rect_pool, ent);
     error_assert(rect);
     return rect->size;
@@ -545,7 +545,7 @@ static void _rect_update_table_align(Rect* rect) {
     unsigned int nchildren, i;
     Scalar delta;
     BBox b;
-    LuaVec2 pos, curr;
+    vec2 pos, curr;
 
     rect_ent = rect->pool_elem.ent;
 
@@ -761,8 +761,8 @@ static void _rect_load_all(Store* s) {
 // info to send to shader program for each character
 typedef struct TextChar TextChar;
 struct TextChar {
-    LuaVec2 pos;      // position in space of text entity in size-less units
-    LuaVec2 cell;     // cell in font image
+    vec2 pos;      // position in space of text entity in size-less units
+    vec2 cell;     // cell in font image
     float is_cursor;  // > 0 iff. this char is cursor
 };
 
@@ -773,7 +773,7 @@ struct Text {
 
     char* str;
     CArray* chars;   // per-character info buffered to shader
-    LuaVec2 bounds;  // max x, min y in size-less units
+    vec2 bounds;  // max x, min y in size-less units
 
     int cursor;
 };
@@ -782,7 +782,7 @@ static EntityPool* text_pool;
 
 static Scalar cursor_blink_time = 0;
 
-static void _text_add_cursor(Text* text, LuaVec2 pos) {
+static void _text_add_cursor(Text* text, vec2 pos) {
     TextChar* tc;
 
     // compute position in font grid
@@ -796,7 +796,7 @@ static void _text_add_cursor(Text* text, LuaVec2 pos) {
 static void _text_set_str(Text* text, const char* str) {
     char c;
     TextChar* tc;
-    LuaVec2 pos;
+    vec2 pos;
     int i = 0;
 
     // copy to struct?
@@ -931,7 +931,7 @@ static void _text_fini() {
 static void _text_update_all() {
     Text* text;
     Gui* gui;
-    static LuaVec2 size = {TEXT_FONT_W, TEXT_FONT_H};
+    static vec2 size = {TEXT_FONT_W, TEXT_FONT_H};
 
     cursor_blink_time += 2 * timing_instance.true_dt;
 
@@ -949,11 +949,11 @@ static void _text_update_all() {
 }
 
 static void _text_draw_all() {
-    LuaVec2 hwin;
+    vec2 hwin;
     Text* text;
     Gui* gui;
-    LuaMat3 wmat;
-    LuaVec2 pos;
+    mat3 wmat;
+    vec2 pos;
     unsigned int nchars;
 
     hwin = vec2_scalar_mul(game_get_window_size(), 0.5);
@@ -1217,7 +1217,7 @@ void gui_fini() {
 }
 
 static void _update_root() {
-    LuaVec2 win_size;
+    vec2 win_size;
 
     win_size = game_get_window_size();
 

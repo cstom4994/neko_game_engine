@@ -1,15 +1,13 @@
 #ifndef NEKO_UI
 #define NEKO_UI
 
-#include "engine/base.h"
+#include "engine/base.hpp"
 #include "engine/draw.h"
 #include "engine/entity.h"
-#include "engine/gfx.h"
+#include "engine/graphics.h"
 #include "engine/input.h"
 #include "engine/luax.hpp"
-#include "engine/math.h"
-#include "engine/neko.hpp"
-#include "engine/prelude.h"
+
 #include "vendor/ui.h"
 
 #ifdef __cplusplus

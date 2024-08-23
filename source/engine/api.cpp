@@ -7,15 +7,11 @@
 #include "engine/base.hpp"
 #include "engine/draw.h"
 #include "engine/entity.h"
-#include "engine/game.h"
-#include "engine/lua_custom_types.h"
-#include "engine/lua_struct.h"
-#include "engine/luabind.hpp"
+#include "engine/bootstrap.h"
 #include "engine/luax.hpp"
 #include "engine/physics.h"
-#include "engine/prelude.h"
 #include "engine/reflection.hpp"
-#include "engine/seri.h"
+#include "engine/scripting.h"
 #include "engine/ui.h"
 
 // deps
@@ -3688,8 +3684,6 @@ LUA_FUNCTION(__neko_bind_ecs_f) {
     return 1;
 }
 
-void createStructTables(lua_State *L);
-
 static neko_luaref getLr(lua_State *L) {
     luaL_checktype(L, 1, LUA_TLIGHTUSERDATA);
     neko_luaref ref;
@@ -4307,7 +4301,7 @@ void open_neko_api(lua_State *L) {
 
     neko::lua::preload_module(L);
     neko::lua::package_preload(L);
-    neko::lua::package_preload_embed(L);
+    package_preload_embed(L);
 
     neko_register_common(L);
     neko_w_init();
