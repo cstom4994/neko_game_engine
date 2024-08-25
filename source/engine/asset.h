@@ -5,15 +5,6 @@
 #include "engine/base.hpp"
 #include "engine/entity.h"
 #include "engine/graphics.h"
-#include "engine/glew_glfw.h"
-
-typedef struct AssetTexture {
-    GLuint id;  // 如果未初始化或纹理错误 则为 0
-    int width;
-    int height;
-    int components;
-    bool flip_image_vertical;
-} AssetTexture;
 
 bool texture_load(AssetTexture* tex, String filename, bool flip_image_vertical = true);
 void texture_bind(const char* filename);
@@ -127,40 +118,6 @@ bool vfs_list_all_files(String fsname, Array<String>* files);
 
 void* vfs_for_miniaudio();
 
-NEKO_SCRIPT(
-        fs,
-
-        // remember to *_close(...) when done to free resources!
-
-        // NEKO_EXPORT Dir * fs_dir_open(const char *path);
-
-        // NEKO_EXPORT const char *fs_dir_next_file(Dir *dir);  // NULL after last file
-
-        // NEKO_EXPORT void fs_dir_close(Dir *dir);
-
-        typedef struct vfs_file {
-            const_str data;
-            size_t len;
-            u64 offset;
-        } vfs_file;
-
-        NEKO_EXPORT size_t neko_capi_vfs_fread(void* dest, size_t size, size_t count, vfs_file* vf);
-
-        NEKO_EXPORT int neko_capi_vfs_fseek(vfs_file* vf, u64 of, int whence);
-
-        NEKO_EXPORT u64 neko_capi_vfs_ftell(vfs_file * vf);
-
-        NEKO_EXPORT vfs_file neko_capi_vfs_fopen(const_str path);
-
-        NEKO_EXPORT int neko_capi_vfs_fclose(vfs_file* vf);
-
-        NEKO_EXPORT int neko_capi_vfs_fscanf(vfs_file* vf, const char* format, ...);
-
-        NEKO_EXPORT bool neko_capi_vfs_file_exists(const_str fsname, const_str filepath);
-
-        NEKO_EXPORT const_str neko_capi_vfs_read_file(const_str fsname, const_str filepath, size_t* size);
-
-)
 
 /*==========================
 // NEKO_PACK
@@ -375,31 +332,6 @@ struct Asset {
         // Pak pak;
     };
 };
-
-typedef enum neko_resource_type_t {
-    NEKO_RESOURCE_STRING,
-    NEKO_RESOURCE_BINARY,
-    NEKO_RESOURCE_TEXTURE,
-    NEKO_RESOURCE_SHADER,
-    NEKO_RESOURCE_ASSEMBLY,
-    NEKO_RESOURCE_SCRIPT,
-    NEKO_RESOURCE_MODEL,
-    NEKO_RESOURCE_MATERIAL,
-    NEKO_RESOURCE_FONT
-} neko_resource_type_t;
-
-typedef struct neko_resource_t {
-    neko_resource_type_t type;
-
-    void* payload;
-    u32 payload_size;
-
-    i64 modtime;
-
-    char* file_name;
-    u32 file_name_length;
-    u32 file_name_hash;
-} neko_resource_t;
 
 struct FileChange {
     u64 key;

@@ -1,17 +1,17 @@
+#include "engine/scripting.h"
+
 #include <stdlib.h>
 #include <string.h>
 
-#include "engine/api.hpp"
 #include "engine/asset.h"
 #include "engine/base.h"
+#include "engine/bootstrap.h"
 #include "engine/component.h"
 #include "engine/edit.h"
 #include "engine/entity.h"
-#include "engine/bootstrap.h"
-#include "engine/gui.h"
 #include "engine/input.h"
 #include "engine/luax.hpp"
-#include "engine/scripting.h"
+#include "engine/ui.h"
 
 static const char **nekogame_ffi[] = {
         &nekogame_ffi_scalar,

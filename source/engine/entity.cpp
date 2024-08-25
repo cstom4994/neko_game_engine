@@ -4,7 +4,6 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-#include "engine/api.hpp"
 #include "engine/asset.h"
 #include "engine/base.h"
 #include "engine/base.hpp"
@@ -12,11 +11,11 @@
 #include "engine/component.h"
 #include "engine/edit.h"
 #include "engine/graphics.h"
-#include "engine/gui.h"
 #include "engine/input.h"
 #include "engine/luax.hpp"
-#include "engine/physics.h"
 #include "engine/scripting.h"
+#include "engine/test.h"
+#include "engine/ui.h"
 
 #if 1
 

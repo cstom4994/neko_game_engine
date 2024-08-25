@@ -1,21 +1,32 @@
-#include "engine/api.hpp"
+
 
 #include <filesystem>
 
 #include "engine/asset.h"
 #include "engine/base.h"
 #include "engine/base.hpp"
+#include "engine/bootstrap.h"
 #include "engine/draw.h"
 #include "engine/entity.h"
-#include "engine/bootstrap.h"
 #include "engine/luax.hpp"
-#include "engine/physics.h"
-#include "engine/reflection.hpp"
 #include "engine/scripting.h"
+#include "engine/test.h"
 #include "engine/ui.h"
 
 // deps
 #include "vendor/sokol_time.h"
+
+void open_luasocket(lua_State *L);
+
+namespace neko::lua {
+void package_preload(lua_State *L);
+}  // namespace neko::lua
+
+NEKO_API() void package_preload_embed(lua_State *L);
+
+// extern impl
+extern int open_tools_spritepack(lua_State *L);
+extern int open_filesys(lua_State *L);
 
 namespace lua2struct {
 template <>

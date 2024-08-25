@@ -13,7 +13,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 #if defined(_WIN32)
 #define NEKO_IS_WIN32
 #elif defined(__EMSCRIPTEN__)
@@ -958,7 +957,7 @@ typedef struct neko_dyn_array {
 
 #define neko_dyn_array_byte_size(__ARR) (neko_dyn_array_size((__ARR)) * sizeof(*__ARR))
 
-void* neko_dyn_array_resize_impl(void* arr, size_t sz, size_t amount);
+NEKO_API() void* neko_dyn_array_resize_impl(void* arr, size_t sz, size_t amount);
 
 #define neko_dyn_array_need_grow(__ARR, __N) ((__ARR) == 0 || neko_dyn_array_size(__ARR) + (__N) >= neko_dyn_array_capacity(__ARR))
 
@@ -966,11 +965,11 @@ void* neko_dyn_array_resize_impl(void* arr, size_t sz, size_t amount);
 
 #define neko_dyn_array_grow_size(__ARR, __SZ) neko_dyn_array_resize_impl((__ARR), (__SZ), neko_dyn_array_capacity(__ARR) ? neko_dyn_array_capacity(__ARR) * 2 : 1)
 
-void** neko_dyn_array_init(void** arr, size_t val_len);
+NEKO_API() void** neko_dyn_array_init(void** arr, size_t val_len);
 
-void neko_dyn_array_push_data(void** arr, void* val, size_t val_len);
+NEKO_API() void neko_dyn_array_push_data(void** arr, void* val, size_t val_len);
 
-NEKO_FORCE_INLINE void neko_dyn_array_set_data_i(void** arr, void* val, size_t val_len, u32 offset) { memcpy(((char*)(*arr)) + offset * val_len, val, val_len); }
+NEKO_API() inline void neko_dyn_array_set_data_i(void** arr, void* val, size_t val_len, u32 offset) { memcpy(((char*)(*arr)) + offset * val_len, val, val_len); }
 
 #define neko_dyn_array_push(__ARR, __ARRVAL)                               \
     do {                                                                   \
@@ -1296,7 +1295,7 @@ typedef struct __neko_slot_array_dummy_header {
 
 #define neko_slot_array_new(__T) NULL
 
-NEKO_FORCE_INLINE u32 __neko_slot_array_find_next_available_index(neko_dyn_array(u32) indices) {
+NEKO_API() inline u32 __neko_slot_array_find_next_available_index(neko_dyn_array(u32) indices) {
     u32 idx = NEKO_SLOT_ARRAY_INVALID_HANDLE;
     for (u32 i = 0; i < (u32)neko_dyn_array_size(indices); ++i) {
         u32 handle = indices[i];
@@ -1312,12 +1311,12 @@ NEKO_FORCE_INLINE u32 __neko_slot_array_find_next_available_index(neko_dyn_array
     return idx;
 }
 
-void** neko_slot_array_init(void** sa, size_t sz);
+NEKO_API() void** neko_slot_array_init(void** sa, size_t sz);
 
 #define neko_slot_array_init_all(__SA) \
     (neko_slot_array_init((void**)&(__SA), sizeof(*(__SA))), neko_dyn_array_init((void**)&((__SA)->indices), sizeof(u32)), neko_dyn_array_init((void**)&((__SA)->data), sizeof((__SA)->tmp)))
 
-NEKO_FORCE_INLINE u32 neko_slot_array_insert_func(void** indices, void** data, void* val, size_t val_len, u32* ip) {
+NEKO_API() inline u32 neko_slot_array_insert_func(void** indices, void** data, void* val, size_t val_len, u32* ip) {
     // Find next available index
     u32 idx = __neko_slot_array_find_next_available_index((u32*)*indices);
 
@@ -1687,6 +1686,75 @@ bool bool_load(bool* b, const char* name, bool d, Store* s);
 
 void string_save(const char** c, const char* name, Store* s);
 bool string_load(char** c, const char* name, const char* d, Store* s);
+
+typedef struct AssetTexture {
+    u32 id;  // 如果未初始化或纹理错误 则为 0
+    int width;
+    int height;
+    int components;
+    bool flip_image_vertical;
+} AssetTexture;
+
+typedef enum neko_resource_type_t {
+    NEKO_RESOURCE_STRING,
+    NEKO_RESOURCE_BINARY,
+    NEKO_RESOURCE_TEXTURE,
+    NEKO_RESOURCE_SHADER,
+    NEKO_RESOURCE_ASSEMBLY,
+    NEKO_RESOURCE_SCRIPT,
+    NEKO_RESOURCE_MODEL,
+    NEKO_RESOURCE_MATERIAL,
+    NEKO_RESOURCE_FONT
+} neko_resource_type_t;
+
+typedef struct neko_resource_t {
+    neko_resource_type_t type;
+
+    void* payload;
+    u32 payload_size;
+
+    i64 modtime;
+
+    char* file_name;
+    u32 file_name_length;
+    u32 file_name_hash;
+} neko_resource_t;
+
+NEKO_SCRIPT(
+        fs,
+
+        // remember to *_close(...) when done to free resources!
+
+        // NEKO_EXPORT Dir * fs_dir_open(const char *path);
+
+        // NEKO_EXPORT const char *fs_dir_next_file(Dir *dir);  // NULL after last file
+
+        // NEKO_EXPORT void fs_dir_close(Dir *dir);
+
+        typedef struct vfs_file {
+            const_str data;
+            size_t len;
+            u64 offset;
+        } vfs_file;
+
+        NEKO_EXPORT size_t neko_capi_vfs_fread(void* dest, size_t size, size_t count, vfs_file* vf);
+
+        NEKO_EXPORT int neko_capi_vfs_fseek(vfs_file* vf, u64 of, int whence);
+
+        NEKO_EXPORT u64 neko_capi_vfs_ftell(vfs_file * vf);
+
+        NEKO_EXPORT vfs_file neko_capi_vfs_fopen(const_str path);
+
+        NEKO_EXPORT int neko_capi_vfs_fclose(vfs_file* vf);
+
+        NEKO_EXPORT int neko_capi_vfs_fscanf(vfs_file* vf, const char* format, ...);
+
+        NEKO_EXPORT bool neko_capi_vfs_file_exists(const_str fsname, const_str filepath);
+
+        NEKO_EXPORT const_str neko_capi_vfs_read_file(const_str fsname, const_str filepath, size_t* size);
+
+)
+
 
 NEKO_SCRIPT(
         vec2,
@@ -2706,5 +2774,23 @@ inline rect_t rect_ctor(f32 _x, f32 _y, f32 _w, f32 _h) {
     v.h = _h;
     return v;
 }
+
+NEKO_API() void* cmem_alloc(size_t bytes);
+NEKO_API() void cmem_free(void* ptr);
+NEKO_API() void* cmem_realloc(void* ptr, size_t size);
+NEKO_API() void* cmem_calloc(size_t count, size_t element_size);
+
+#define mem_alloc(bytes) cmem_alloc(bytes)
+#define mem_free(ptr) cmem_free((void*)ptr)
+#define mem_realloc(ptr, size) cmem_realloc(ptr, size)
+#define mem_calloc(count, element_size) cmem_calloc(count, element_size)
+
+inline void* neko_malloc_init_impl(size_t sz) {
+    void* data = mem_alloc(sz);
+    memset(data, 0, sz);
+    return data;
+}
+
+#define neko_malloc_init(__T) (__T*)neko_malloc_init_impl(sizeof(__T))
 
 #endif

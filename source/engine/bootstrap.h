@@ -10,9 +10,8 @@
 #include "engine/draw.h"
 #include "engine/entity.h"
 #include "engine/graphics.h"
-#include "engine/physics.h"
+#include "engine/test.h"
 #include "engine/ui.h"
-#include "glew_glfw.h"
 
 // deps
 #include "vendor/luaalloc.h"

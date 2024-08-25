@@ -29,8 +29,6 @@
 #include "engine/component.h"
 #include "engine/entity.h"
 #include "engine/graphics.h"
-#include "engine/glew_glfw.h"
-#include "engine/gui.h"
 #include "engine/input.h"
 #include "engine/luax.hpp"
 #include "engine/ui.h"

@@ -24,9 +24,6 @@ int load_embed_lua(lua_State *L, const u8 B[], const_str name) {
         return lua_gettop(L) - top;                     \
     }
 
-static const u8 g_lua_common_data[] = {
-#include "common.lua.h"
-};
 static const u8 g_lua_bootstrap_data[] = {
 #include "bootstrap.lua.h"
 };
@@ -34,7 +31,7 @@ static const u8 g_lua_nekogame_data[] = {
 #include "nekogame.lua.h"
 };
 
-LUAOPEN_EMBED_DATA(open_embed_common, "common.lua", g_lua_common_data);
+// LUAOPEN_EMBED_DATA(open_embed_common, "common.lua", g_lua_common_data);
 LUAOPEN_EMBED_DATA(open_embed_bootstrap, "bootstrap.lua", g_lua_bootstrap_data);
 // LUAOPEN_EMBED_DATA(open_embed_nekogame, "nekogame.lua", g_lua_nekogame_data);
 
@@ -45,7 +42,7 @@ int luaopen_http(lua_State *L);
 void package_preload_embed(lua_State *L) {
 
     luaL_Reg preloads[] = {
-            {"common", open_embed_common},
+            // {"common", open_embed_common},
             {"http", luaopen_http},
     };
 

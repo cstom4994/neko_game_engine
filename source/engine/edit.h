@@ -7,7 +7,7 @@
 #include "engine/base.h"
 #include "engine/bootstrap.h"
 #include "engine/entity.h"
-#include "engine/glew_glfw.h"
+#include "engine/graphics.h"
 #include "engine/luax.hpp"
 
 NEKO_SCRIPT(

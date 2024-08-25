@@ -5,12 +5,10 @@
 
 #include "engine/base.h"
 #include "engine/bootstrap.h"
-#include "engine/glew_glfw.h"
-#include "engine/gui.h"
-#include "engine/input.h"
-#include "engine/base.hpp"
-
 #include "engine/component.h"
+#include "engine/graphics.h"
+#include "engine/input.h"
+#include "engine/ui.h"
 
 static CArray *key_down_cbs;
 static CArray *key_up_cbs;

@@ -120,4 +120,6 @@ NEKO_API() const char *neko_lua_enum_next_value_name_type(lua_State *L, neko_lua
 
 NEKO_API() void createStructTables(lua_State *L);
 
+NEKO_API() void open_neko_api(lua_State *L);
+
 #endif

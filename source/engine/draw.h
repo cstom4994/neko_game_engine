@@ -153,4 +153,32 @@ void sprite_load_all(Store* s);
 int open_mt_sprite(lua_State* L);
 int neko_sprite_load(lua_State* L);
 
+typedef struct {
+    float position[2];
+    float texcoord[2];
+} Vertex;
+
+typedef struct batch_renderer {
+
+    // vertex buffer data
+    GLuint vao;
+    GLuint vbo;
+    int vertex_count;
+    int vertex_capacity;
+    Vertex* vertices;
+
+    float scale;
+
+    GLuint texture;
+} batch_renderer;
+
+NEKO_API() batch_renderer* batch_init(int vertex_capacity);
+NEKO_API() void batch_fini(batch_renderer* batch);
+NEKO_API() void batch_update_all(batch_renderer* batch);
+NEKO_API() void batch_draw_all(batch_renderer* batch);
+
+NEKO_API() void batch_flush(batch_renderer* renderer);
+NEKO_API() void batch_texture(batch_renderer* renderer, GLuint id);
+NEKO_API() void batch_push_vertex(batch_renderer* renderer, float x, float y, float u, float v);
+
 #endif

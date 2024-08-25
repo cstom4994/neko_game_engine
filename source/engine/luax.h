@@ -1,9 +1,7 @@
 #ifndef NEKO_LUAX_H
 #define NEKO_LUAX_H
 
-#include <stdbool.h>
-
-
+#include "engine/base.h"
 
 // lua
 #ifdef __cplusplus
