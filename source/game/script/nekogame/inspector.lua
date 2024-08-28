@@ -1,7 +1,7 @@
 ns.inspector = {}
 
--- display gui entity
-local display = ng.add {
+-- inspector entity
+local inspector = ng.add {
     group = {
         groups = 'builtin'
     }

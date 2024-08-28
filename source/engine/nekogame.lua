@@ -1,20 +1,4 @@
--- 任何导出 C 函数/变量 f 都可以作为 ng.f 使用
--- 例如C函数 vec2(...) 可用为 ng.vec2(...) 在 Lua 中
-local ffi = FFI
-ng = setmetatable({}, {
-    __index = ffi.C
-})
-
-ng.api = neko
-
--- 命令行参数
-ng.args = nekogame_args
-
--- 有用的 ffi 函数
-ng.string = ffi.string
-
 -- 导入所有内容
-
 -- 'nekogame.util'
 -- 转义一个字符串以包含在另一个字符串中
 function ng.safestr(s)
@@ -602,17 +586,17 @@ function ng.c_save_load(ctype, c_save, c_load)
     end
 end
 
---- Entity ---------------------------------------------------------------------
+--- NativeEntity ---------------------------------------------------------------------
 
 -- compress entity save format
 _cge = function(id)
     return ng._entity_resolve_saved_id(id)
 end
 
-ng.Entity = ffi.metatype('Entity', {
+ng.NativeEntity = ffi.metatype('NativeEntity', {
     __eq = function(a, b)
-        return type(a) == 'cdata' and type(b) == 'cdata' and ffi.istype('Entity', a) and ffi.istype('Entity', b) and
-                   ng.entity_eq(a, b)
+        return type(a) == 'cdata' and type(b) == 'cdata' and ffi.istype('NativeEntity', a) and ffi.istype('NativeEntity', b) and
+                   ng.native_entity_eq(a, b)
     end,
     __index = {
         __serialize = function(e)
@@ -681,9 +665,9 @@ ng.BBox = ffi.metatype('BBox', {
 
 -- hot_require 'nekogame.entity_table'
 --
--- Entity -> data map
+-- NativeEntity -> data map
 --
--- can't use normal Lua tables because Entity is cdata, which isn't
+-- can't use normal Lua tables because NativeEntity is cdata, which isn't
 -- hashed right
 --
 local function bind_defaults(t, v)
@@ -717,7 +701,7 @@ local entity_table_mt = {
         end
         bind_defaults(t, v)
         map[k.id] = {
-            ['k'] = ng.Entity(k),
+            ['k'] = ng.NativeEntity(k),
             ['v'] = v
         }
     end,
@@ -860,7 +844,6 @@ end
 
 -- hot_require 'nekogame.system'
 local serpent = hot_require("libs/serpent")
-local mm = hot_require("libs/mm")
 
 -- ng.systems (shortcut ns) is a special table such that ns.sys.func evaluates
 -- to C function sys_func, eg. ns.transform.rotate(...) becomes
@@ -1022,7 +1005,7 @@ function ng.add(sys, ent, props)
         for k, v in pairs(sys) do
             ng.add(k, ent, v)
         end
-        -- mm({sys, ent, props})
+        -- print({sys, ent, props})
         return ent
     end
 
@@ -1036,7 +1019,7 @@ function ng.add(sys, ent, props)
             print("system " .. sys .. " 'has' func is nil")
         end
 
-        -- mm({"ng.adder", sys})
+        -- print({"ng.adder", sys})
     end
     if (props) then
         for k, v in pairs(props) do
@@ -1166,7 +1149,7 @@ function ns.name.get_name(ent, name)
 end
 
 function ns.name.find(name)
-    return name_entity[name] and name_entity[name] or ng.Entity(ng.entity_nil)
+    return name_entity[name] and name_entity[name] or ng.NativeEntity(ng.entity_nil)
 end
 
 function ns.name.update_all()
@@ -2196,7 +2179,7 @@ local function _get_entities_under_mouse()
         -- transform m to local space
         local t = ng.mat3_inverse(ns.transform.get_world_matrix(ent))
         if ng.bbox_contains(bbox, ng.mat3_transform(t, m)) then
-            table.insert(ents, ng.Entity(ent))
+            table.insert(ents, ng.NativeEntity(ent))
         end
     end
 
@@ -2284,7 +2267,7 @@ function ns.edit.boxsel_end_add()
         bb = ng.BBox(ng.bbox_bound(b, e))
 
         for i = 0, ns.edit.bboxes_get_num() - 1 do
-            local ent = ng.Entity(ns.edit.bboxes_get_nth_ent(i))
+            local ent = ng.NativeEntity(ns.edit.bboxes_get_nth_ent(i))
             if ng.bbox_contains(bb, ns.transform.get_world_position(ent)) then
                 ns.edit.select[ent] = true
             end
@@ -2389,30 +2372,27 @@ function ns.edit.command_completion_substr(t)
     end
 end
 
--- completion function that uses file system search, case
--- insensitive
+-- 使用文件系统搜索的补全函数 不区分大小写
 function ns.edit.command_completion_fs(s)
     local comps = {}
-    local s = string.lower(s)
-
-    local dir_path = string.match(s, '(.*/)') or './'
-    local suffix = string.match(s, '.*/(.*)') or s
-    local dir = ns.fs.dir_open(dir_path)
-    if dir == nil then
-        return {}
-    end
-    while true do
-        local f = ns.fs.dir_next_file(dir)
-        if f == nil then
-            break
-        end
-        f = ng.string(f)
-        if f ~= '.' and f ~= '..' and subseq(string.lower(dir_path .. f), s) then
-            table.insert(comps, dir_path .. f)
-        end
-    end
-    ns.fs.dir_close(dir)
-
+    -- local s = string.lower(s)
+    -- local dir_path = string.match(s, '(.*/)') or './'
+    -- local suffix = string.match(s, '.*/(.*)') or s
+    -- local dir = ns.fs.dir_open(dir_path)
+    -- if dir == nil then
+    --     return {}
+    -- end
+    -- while true do
+    --     local f = ns.fs.dir_next_file(dir)
+    --     if f == nil then
+    --         break
+    --     end
+    --     f = ng.string(f)
+    --     if f ~= '.' and f ~= '..' and subseq(string.lower(dir_path .. f), s) then
+    --         table.insert(comps, dir_path .. f)
+    --     end
+    -- end
+    -- ns.fs.dir_close(dir)
     return comps
 end
 
@@ -2591,7 +2571,7 @@ function ns.edit.command_load()
         last_load = f
     end
 
-    ns.edit.command_start('load from file: ', load, ns.edit.command_completion_fs, true, last_load)
+    ns.edit.command_start('load from file: ', load, ns.edit.command_completion_fs, false, last_load)
 end
 
 function ns.edit.set_default_file(s)
@@ -2912,7 +2892,7 @@ local field_types = {}
 
 -- 'args' may contain:
 --      field_type: the field type (boolean, string, Scalar, enum, Vec2,
---                                  Color, Entity)
+--                                  Color, NativeEntity)
 --      ctype: the name of the underlying C type, if any
 --      parent: the parent GUI entity
 --      label: descriptive label (optional)
@@ -3184,7 +3164,7 @@ field_types['Color'] = {
     end
 }
 
-field_types['Entity'] = {
+field_types['NativeEntity'] = {
     create = function(args)
         local field = field_create_common(args)
         field.enumtype = args.ctype
@@ -3265,7 +3245,7 @@ ns.edit_inspector = {
 
 ns.edit_inspector.custom = {} -- custom inspectors -- eg. for physics
 
-local inspectors = ng.entity_table() -- Entity (sys --> inspector) map
+local inspectors = ng.entity_table() -- NativeEntity (sys --> inspector) map
 
 ns.edit_inspector.gui_root = ng.add {
     transform = {
@@ -3368,7 +3348,7 @@ end
 local function make_inspector(ent, sys)
     local inspector = {}
 
-    inspector.ent = ng.Entity(ent)
+    inspector.ent = ng.NativeEntity(ent)
     inspector.sys = sys
 
     -- put near entity initially
@@ -3429,7 +3409,7 @@ local function make_inspector(ent, sys)
     return inspector
 end
 
--- add a sys inspector for Entity ent
+-- add a sys inspector for NativeEntity ent
 function ns.edit_inspector.add(ent, sys)
     local adder = ns[sys].add
     if not adder then
@@ -3449,7 +3429,7 @@ function ns.edit_inspector.add(ent, sys)
     inspectors[ent][sys] = make_inspector(ent, sys)
 end
 
--- remove sys inspector for Entity ent -- sys is optional, removes all
+-- remove sys inspector for NativeEntity ent -- sys is optional, removes all
 -- inspectors on ent if not specified
 function ns.edit_inspector.remove(ent, sys)
     if not inspectors[ent] then
@@ -4764,7 +4744,7 @@ end
 
 local function _filter_wrap(filter)
     return filter and function(id)
-        return filter(ng.Entity {
+        return filter(ng.NativeEntity {
             id = id
         })
     end
@@ -4785,7 +4765,7 @@ function ns.bump.sweep(ent, p, filter)
         local col = cols[i]
         local tl, tt, nx, ny, sl, st = col:getSlide()
         table.insert(ecols, {
-            other = ng.Entity {
+            other = ng.NativeEntity {
                 id = col.other
             },
             touch = ng.vec2(tl, tt) - min,
@@ -4836,7 +4816,7 @@ function ns.bump.slide(ent, p, filter)
 
         -- add next collision and return
         table.insert(mcols, {
-            other = ng.Entity {
+            other = ng.NativeEntity {
                 id = mcol.other
             },
             touch = ng.vec2(mtx, mty) - min,

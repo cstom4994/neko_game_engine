@@ -691,6 +691,8 @@ static void _game_init() {
 static void _game_fini() {
     PROFILE_FUNC();
 
+    bool dump_allocs_detailed = g_app->dump_allocs_detailed;
+
     {  // just for test
 
         mem_free(g_app->ui);
@@ -738,7 +740,7 @@ static void _game_fini() {
 #ifndef NDEBUG
     DebugAllocator *allocator = dynamic_cast<DebugAllocator *>(g_allocator);
     if (allocator != nullptr) {
-        allocator->dump_allocs(false);
+        allocator->dump_allocs(dump_allocs_detailed);
     }
 #endif
 
@@ -1029,7 +1031,7 @@ double window_scale() {
 }
 
 void test_native_script() {
-    Entity camera, block, player;
+    NativeEntity camera, block, player;
     unsigned int i, n_blocks;
 
     // add camera

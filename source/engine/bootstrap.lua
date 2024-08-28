@@ -2,11 +2,23 @@ unsafe_require = require
 
 -- runs on start of the engine
 luadb = require("__neko.luadb")
-Core = neko.core
 Inspector = require("__neko.inspector")
 FFI = require("ffi")
 
--- FLECS = require "flecs"
+-- 任何导出 C 函数/变量 f 都可以作为 ng.f 使用
+-- 例如C函数 vec2(...) 可用为 ng.vec2(...) 在 Lua 中
+local ffi = FFI
+ng = setmetatable({}, {
+    __index = ffi.C
+})
+
+ng.api = neko
+
+-- 命令行参数
+ng.args = nekogame_args
+
+-- 有用的 ffi 函数
+ng.string = ffi.string
 
 -- ffi = unsafe_require("ffi")
 
@@ -1224,23 +1236,82 @@ common.prefabs = prefabs
 ------------------------------------------------------------------
 
 __print = print
-print = Core.print
 
-dump_func = function(tbl, indent)
-    if not indent then
-        indent = 0
-        print("|inspect: \"" .. tostring(tbl) .. "\"")
+function table.show(t, name, indent)
+    local cart -- 一个容器
+    local autoref -- 供自我参考
+    local function isemptytable(t)
+        return next(t) == nil
     end
-    for k, v in pairs(tbl) do
-        formatting = string.rep("  ", indent) .. k .. ": "
-        if type(v) == "table" then
-            print("|" .. formatting)
-            dump_func(v, indent + 1)
-        elseif type(v) == 'boolean' then
-            print("|" .. formatting .. tostring(v))
+    local function basicSerialize(o)
+        local so = tostring(o)
+        if type(o) == "function" then
+            local info = debug.getinfo(o, "S")
+            -- info.name is nil because o is not a calling level
+            if info.what == "C" then
+                return string.format("%q", so .. ", C function")
+            else
+                -- the information is defined through lines
+                return string.format("%q", so .. ", defined in (" .. info.linedefined .. "-" .. info.lastlinedefined ..
+                    ")" .. info.source)
+            end
+        elseif type(o) == "number" or type(o) == "boolean" then
+            return so
         else
-            print("|" .. formatting .. v)
+            return string.format("%q", so)
         end
+    end
+
+    local function addtocart(value, name, indent, saved, field)
+        indent = indent or ""
+        saved = saved or {}
+        field = field or name
+
+        cart = cart .. indent .. field
+
+        if type(value) ~= "table" then
+            cart = cart .. " = " .. basicSerialize(value) .. ";\n"
+        else
+            if saved[value] then
+                cart = cart .. " = {}; -- " .. saved[value] .. " (self reference)\n"
+                autoref = autoref .. name .. " = " .. saved[value] .. ";\n"
+            else
+                saved[value] = name
+                -- if tablecount(value) == 0 then
+                if isemptytable(value) then
+                    cart = cart .. " = {};\n"
+                else
+                    cart = cart .. " = {\n"
+                    for k, v in pairs(value) do
+                        k = basicSerialize(k)
+                        local fname = string.format("%s[%s]", name, k)
+                        field = string.format("[%s]", k)
+                        -- three spaces between levels
+                        addtocart(v, fname, indent .. "   ", saved, field)
+                    end
+                    cart = cart .. indent .. "};\n"
+                end
+            end
+        end
+    end
+
+    name = name or "__unnamed__"
+    if type(t) ~= "table" then
+        return name .. " = " .. basicSerialize(t)
+    end
+    cart, autoref = "", ""
+    addtocart(t, name, indent)
+    return cart .. autoref
+end
+
+print = function(...)
+    local print_func = ng.api.core.print
+    local tb = {...}
+    local n = select("#", ...)
+    if n == 1 and type(tb[1]) == "table" then
+        print_func(table.show(tb))
+    else
+        print_func(...)
     end
 end
 
@@ -1382,7 +1453,7 @@ function read_file(filename)
     local file = io.open(filename, "r")
     local content
     if not file then
-        content = Core.vfs_read_file(filename)
+        content = ng.api.core.vfs_read_file(filename)
         if content ~= nil then
             return content
         end

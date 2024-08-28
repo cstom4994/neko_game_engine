@@ -103,52 +103,10 @@ float draw_font(FontFamily* font, float size, float x, float y, String text, Col
 float draw_font_wrapped(FontFamily* font, float size, float x, float y, String text, Color256 col, float limit);
 
 void font_init();
-void font_draw_all();
 
 int open_mt_font(lua_State* L);
 
 int neko_font_load(lua_State* L);
-
-NEKO_SCRIPT(sprite,
-
-            NEKO_EXPORT void sprite_set_atlas(const char* filename);
-
-            NEKO_EXPORT const char* sprite_get_atlas();
-
-            NEKO_EXPORT void sprite_add(Entity ent);
-
-            NEKO_EXPORT void sprite_remove(Entity ent);
-
-            NEKO_EXPORT bool sprite_has(Entity ent);
-
-            // size to draw in world units, centered at transform position
-            NEKO_EXPORT void sprite_set_size(Entity ent, vec2 size);
-
-            NEKO_EXPORT vec2 sprite_get_size(Entity ent);
-
-            // bottom left corner of atlas region in pixels
-            NEKO_EXPORT void sprite_set_texcell(Entity ent, vec2 texcell);
-
-            NEKO_EXPORT vec2 sprite_get_texcell(Entity ent);
-
-            // size of atlas region in pixels
-            NEKO_EXPORT void sprite_set_texsize(Entity ent, vec2 texsize);
-
-            NEKO_EXPORT vec2 sprite_get_texsize(Entity ent);
-
-            // lower depth drawn on top
-            NEKO_EXPORT void sprite_set_depth(Entity ent, int depth);
-
-            NEKO_EXPORT int sprite_get_depth(Entity ent);
-
-)
-
-void sprite_init();
-void sprite_fini();
-void sprite_update_all();
-void sprite_draw_all();
-void sprite_save_all(Store* s);
-void sprite_load_all(Store* s);
 
 int open_mt_sprite(lua_State* L);
 int neko_sprite_load(lua_State* L);

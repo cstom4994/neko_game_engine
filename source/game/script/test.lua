@@ -21,7 +21,7 @@ local function UnitTest()
                 local str = f:read("*a")
                 f:close()
                 result = nbt.decode(str)
-                mm(result)
+                print(result)
             end)
 
             it("nbt_tag_compound_id", function()
@@ -204,7 +204,7 @@ local function UnitTest()
             end)
 
             it('feature_bind_struct', function()
-                local v4 = Core.vec4.new()
+                local v4 = ng.api.core.vec4.new()
                 v4.x = 10
                 v4.y = 10
                 v4.z = 10
@@ -264,16 +264,16 @@ local function UnitTest()
             end)
 
             it('feature_nameof', function()
-                print("Name of table: ", Core.nameof({}))
-                print("Name of string.sub: ", Core.nameof(string.sub))
-                print("Name of print: ", Core.nameof(print))
+                print("Name of table: ", ng.api.core.nameof({}))
+                print("Name of string.sub: ", ng.api.core.nameof(string.sub))
+                print("Name of print: ", ng.api.core.nameof(print))
 
                 local Field_foo = 100
-                print(Core.nameof(Field_foo))
+                print(ng.api.core.nameof(Field_foo))
             end)
 
             it('feature_ltype', function()
-                local coroutine_create, type = coroutine.create, Core.ltype
+                local coroutine_create, type = coroutine.create, ng.api.core.ltype
                 local nil_ = nil
                 local boolean_ = true
                 local number_ = 123
@@ -292,35 +292,35 @@ local function UnitTest()
             end)
 
             it('feature_luaref', function()
-                local ref = Core.ref_init()
-                assert(Core.ref_ref(ref) == 2)
+                local ref = ng.api.core.ref_init()
+                assert(ng.api.core.ref_ref(ref) == 2)
                 local lst = {1, 2, 3, 4, 5, 1.2345, {}, "ok"}
                 local r = {}
                 for i, v in ipairs(lst) do
-                    r[i] = Core.ref_ref(ref, v)
+                    r[i] = ng.api.core.ref_ref(ref, v)
                 end
                 for i, v in ipairs(lst) do
-                    assert(v == Core.ref_get(ref, r[i]))
-                    print(v, Core.ref_get(ref, r[i]))
+                    assert(v == ng.api.core.ref_get(ref, r[i]))
+                    print(v, ng.api.core.ref_get(ref, r[i]))
                 end
                 r = {}
                 for i = 1, 10 do
-                    r[i] = Core.ref_ref(ref, i)
+                    r[i] = ng.api.core.ref_ref(ref, i)
                 end
                 for i = 1, 10 do
-                    Core.ref_set(ref, r[i], i * 2)
+                    ng.api.core.ref_set(ref, r[i], i * 2)
                 end
                 for i = 1, 10 do
-                    assert(i * 2 == Core.ref_get(ref, r[i]))
-                    print(i * 2, Core.ref_get(ref, r[i]))
+                    assert(i * 2 == ng.api.core.ref_get(ref, r[i]))
+                    print(i * 2, ng.api.core.ref_get(ref, r[i]))
                 end
-                Core.ref_close(ref)
+                ng.api.core.ref_close(ref)
             end)
 
             -- it('feature_pak', function()
             --     local test_pack, test_handle, test_items
 
-            --     local test_pack_buildnum, test_pack_item_count = Core.pak_info("fgd.pack")
+            --     local test_pack_buildnum, test_pack_item_count = ng.api.core.pak_info("fgd.pack")
             --     print("pack_info", test_pack_buildnum, test_pack_item_count)
             --     test_pack = neko.pak_load("test_pack_handle", "fgd.pack")
             --     test_handle = test_pack:assets_load("gamedir/assets/test_1.fgd")
@@ -333,7 +333,7 @@ local function UnitTest()
 
             --     expect(Test.TestEcs()).to.be.truthy()
 
-            --     local w = Core.ecs_f()
+            --     local w = ng.api.core.ecs_f()
 
             --     local csb = w:csb()
 

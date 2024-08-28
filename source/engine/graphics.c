@@ -20,16 +20,16 @@ static GLint gfx_compile_shader(GLuint shader, const char* filename) {
 
     neko_assert(contents);
 
-    console_log("gfx: compiling shader '%s' ...", filename);
+    neko_printf("gfx: compiling shader '%s' ...", filename);
 
     glShaderSource(shader, 1, (const GLchar**)&contents, NULL);
     glCompileShader(shader);
 
     // log
     glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
-    console_log(status ? " successful\n" : " unsuccessful\n");
+    neko_printf(status ? " successful\n" : " unsuccessful\n");
     glGetShaderInfoLog(shader, 512, NULL, log);
-    console_log("%s", log);
+    neko_printf("%s", log);
 
     mem_free(contents);
 

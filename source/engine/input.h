@@ -195,13 +195,13 @@ void input_fini();
 
 NEKO_SCRIPT(keyboard_controlled,
 
-            NEKO_EXPORT void keyboard_controlled_add(Entity ent);
+            NEKO_EXPORT void keyboard_controlled_add(NativeEntity ent);
 
-            NEKO_EXPORT void keyboard_controlled_remove(Entity ent);
+            NEKO_EXPORT void keyboard_controlled_remove(NativeEntity ent);
 
-            NEKO_EXPORT bool keyboard_controlled_has(Entity ent);
+            NEKO_EXPORT bool keyboard_controlled_has(NativeEntity ent);
 
-            NEKO_EXPORT void keyboard_controlled_set_v(Entity ent, f32 v);
+            NEKO_EXPORT void keyboard_controlled_set_v(NativeEntity ent, f32 v);
 
 )
 

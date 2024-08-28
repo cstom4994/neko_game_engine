@@ -13,7 +13,6 @@
 #include "engine/luax.h"
 #include "vendor/luaalloc.h"
 
-
 #define PRELOAD(name, function)     \
     lua_getglobal(L, "package");    \
     lua_getfield(L, -1, "preload"); \
@@ -700,7 +699,12 @@ inline lua_State *neko_lua_create() {
 
     // neko_defer(luaalloc_delete(LA));
 
+#ifdef _DEBUG
     lua_State *_L = ::lua_newstate(Allocf, NULL);
+#else
+    lua_State *_L = ::luaL_newstate();
+#endif
+
     ::luaL_openlibs(_L);
 
     __neko_luabind_init(_L);

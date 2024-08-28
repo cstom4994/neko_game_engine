@@ -2323,7 +2323,7 @@ int open_mt_b2_world(lua_State *L) {
 
 #include <stdlib.h>
 
-#define CP_DATA_POINTER_TYPE Entity
+#define CP_DATA_POINTER_TYPE NativeEntity
 #include <chipmunk/chipmunk.h>
 
 
@@ -2360,9 +2360,9 @@ struct ShapeInfo
 
 static cpSpace *space;
 static Scalar period = 1.0 / 60.0; // 1.0 / simulation_frequency
-static EntityPool *pool;
+static NativeEntityPool *pool;
 
-static EntityMap *debug_draw_map;
+static NativeEntityMap *debug_draw_map;
 
 // -------------------------------------------------------------------------
 
@@ -2404,7 +2404,7 @@ Scalar physics_get_simulation_frequency()
     return 1.0 / period;
 }
 
-void physics_add(Entity ent)
+void physics_add(NativeEntity ent)
 {
     PhysicsInfo *info;
 
@@ -2420,7 +2420,7 @@ void physics_add(Entity ent)
 
     // create, init cpBody
     info->body = cpSpaceAddBody(space, cpBodyNew(info->mass, 1.0));
-    cpBodySetUserData(info->body, ent); // for cpBody -> Entity mapping
+    cpBodySetUserData(info->body, ent); // for cpBody -> NativeEntity mapping
     cpBodySetPos(info->body, cpv_of_vec2(transform_get_position(ent)));
     cpBodySetAngle(info->body, transform_get_rotation(ent));
     info->last_dirty_count = transform_get_dirty_count(ent);
@@ -2447,7 +2447,7 @@ static void _remove(PhysicsInfo *info)
     _remove_body(info->body);
 }
 
-void physics_remove(Entity ent)
+void physics_remove(NativeEntity ent)
 {
     PhysicsInfo *info;
 
@@ -2459,7 +2459,7 @@ void physics_remove(Entity ent)
     entitypool_remove(pool, ent);
 }
 
-bool physics_has(Entity ent)
+bool physics_has(NativeEntity ent)
 {
     return entitypool_get(pool, ent) != NULL;
 }
@@ -2528,20 +2528,20 @@ static void _set_type(PhysicsInfo *info, PhysicsBody type)
             break;
     }
 }
-void physics_set_type(Entity ent, PhysicsBody type)
+void physics_set_type(NativeEntity ent, PhysicsBody type)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
     error_assert(info);
     _set_type(info, type);
 }
-PhysicsBody physics_get_type(Entity ent)
+PhysicsBody physics_get_type(NativeEntity ent)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
     error_assert(info);
     return info->type;
 }
 
-void physics_debug_draw(Entity ent)
+void physics_debug_draw(NativeEntity ent)
 {
     entitymap_set(debug_draw_map, ent, true);
 }
@@ -2549,7 +2549,7 @@ void physics_debug_draw(Entity ent)
 
 // --- shape ---------------------------------------------------------------
 
-static unsigned int _shape_add(Entity ent, PhysicsShape type, cpShape *shape)
+static unsigned int _shape_add(NativeEntity ent, PhysicsShape type, cpShape *shape)
 {
     PhysicsInfo *info;
     ShapeInfo *shapeInfo;
@@ -2580,19 +2580,19 @@ static unsigned int _shape_add(Entity ent, PhysicsShape type, cpShape *shape)
 
     return array_length(info->shapes) - 1;
 }
-unsigned int physics_shape_add_circle(Entity ent, Scalar r,
+unsigned int physics_shape_add_circle(NativeEntity ent, Scalar r,
                                       vec2 offset)
 {
     cpShape *shape = cpCircleShapeNew(NULL, r, cpv_of_vec2(offset));
     return _shape_add(ent, PS_CIRCLE, shape);
 }
-unsigned int physics_shape_add_box(Entity ent, BBox b, Scalar r)
+unsigned int physics_shape_add_box(NativeEntity ent, BBox b, Scalar r)
 {
     cpShape *shape = cpBoxShapeNew3(NULL, cpBBNew(b.min.x, b.min.y,
                                                   b.max.x, b.max.y), r);
     return _shape_add(ent, PS_POLYGON, shape);
 }
-unsigned int physics_shape_add_poly(Entity ent,
+unsigned int physics_shape_add_poly(NativeEntity ent,
                                     unsigned int nverts,
                                     const vec2 *verts,
                                     Scalar r)
@@ -2610,20 +2610,20 @@ unsigned int physics_shape_add_poly(Entity ent,
     return _shape_add(ent, PS_POLYGON, shape);
 }
 
-unsigned int physics_get_num_shapes(Entity ent)
+unsigned int physics_get_num_shapes(NativeEntity ent)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
     error_assert(info);
     return array_length(info->shapes);
 }
-PhysicsShape physics_shape_get_type(Entity ent, unsigned int i)
+PhysicsShape physics_shape_get_type(NativeEntity ent, unsigned int i)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
     error_assert(info);
     error_assert(i < array_length(info->shapes));
     return array_get_val(ShapeInfo, info->shapes, i).type;
 }
-void physics_shape_remove(Entity ent, unsigned int i)
+void physics_shape_remove(NativeEntity ent, unsigned int i)
 {
     PhysicsInfo *info;
     ShapeInfo *shapeInfo;
@@ -2647,7 +2647,7 @@ static ShapeInfo *_get_shape(PhysicsInfo *info, unsigned int i)
     return array_get(info->shapes, i);
 }
 
-int physics_poly_get_num_verts(Entity ent, unsigned int i)
+int physics_poly_get_num_verts(NativeEntity ent, unsigned int i)
 {
     PhysicsInfo *info;
     info = entitypool_get(pool, ent);
@@ -2670,7 +2670,7 @@ unsigned int physics_convex_hull(unsigned int nverts, vec2 *verts)
     return nverts;
 }
 
-void physics_shape_set_surface_velocity(Entity ent,
+void physics_shape_set_surface_velocity(NativeEntity ent,
                                         unsigned int i,
                                         vec2 v)
 {
@@ -2678,7 +2678,7 @@ void physics_shape_set_surface_velocity(Entity ent,
     error_assert(info);
     cpShapeSetSurfaceVelocity(_get_shape(info, i)->shape, cpv_of_vec2(v));
 }
-vec2 physics_shape_get_surface_velocity(Entity ent,
+vec2 physics_shape_get_surface_velocity(NativeEntity ent,
                                         unsigned int i)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
@@ -2686,7 +2686,7 @@ vec2 physics_shape_get_surface_velocity(Entity ent,
     return vec2_of_cpv(cpShapeGetSurfaceVelocity(_get_shape(info, i)->shape));
 }
 
-void physics_shape_set_sensor(Entity ent,
+void physics_shape_set_sensor(NativeEntity ent,
                               unsigned int i,
                               bool sensor)
 {
@@ -2694,7 +2694,7 @@ void physics_shape_set_sensor(Entity ent,
     error_assert(info);
     cpShapeSetSensor(_get_shape(info, i)->shape, sensor);
 }
-bool physics_shape_get_sensor(Entity ent,
+bool physics_shape_get_sensor(NativeEntity ent,
                               unsigned int i)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
@@ -2704,7 +2704,7 @@ bool physics_shape_get_sensor(Entity ent,
 
 // --- dynamics ------------------------------------------------------------
 
-void physics_set_mass(Entity ent, Scalar mass)
+void physics_set_mass(NativeEntity ent, Scalar mass)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
     error_assert(info);
@@ -2715,14 +2715,14 @@ void physics_set_mass(Entity ent, Scalar mass)
     cpBodySetMass(info->body, info->mass = mass);
     _recalculate_moment(info);
 }
-Scalar physics_get_mass(Entity ent)
+Scalar physics_get_mass(NativeEntity ent)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
     error_assert(info);
     return info->mass;
 }
 
-void physics_set_freeze_rotation(Entity ent, bool freeze)
+void physics_set_freeze_rotation(NativeEntity ent, bool freeze)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
     error_assert(info);
@@ -2735,7 +2735,7 @@ void physics_set_freeze_rotation(Entity ent, bool freeze)
     else
         _recalculate_moment(info);
 }
-bool physics_get_freeze_rotation(Entity ent)
+bool physics_get_freeze_rotation(NativeEntity ent)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
     error_assert(info);
@@ -2744,102 +2744,102 @@ bool physics_get_freeze_rotation(Entity ent)
     return cpBodyGetMoment(info->body) == SCALAR_INFINITY;
 }
 
-void physics_set_velocity(Entity ent, vec2 vel)
+void physics_set_velocity(NativeEntity ent, vec2 vel)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
     error_assert(info);
     cpBodySetVel(info->body, cpv_of_vec2(vel));
 }
-vec2 physics_get_velocity(Entity ent)
+vec2 physics_get_velocity(NativeEntity ent)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
     error_assert(info);
     return vec2_of_cpv(cpBodyGetVel(info->body));
 }
-void physics_set_force(Entity ent, vec2 force)
+void physics_set_force(NativeEntity ent, vec2 force)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
     error_assert(info);
     cpBodySetForce(info->body, cpv_of_vec2(force));
 }
-vec2 physics_get_force(Entity ent)
+vec2 physics_get_force(NativeEntity ent)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
     error_assert(info);
     return vec2_of_cpv(cpBodyGetForce(info->body));
 }
 
-void physics_set_angular_velocity(Entity ent, Scalar ang_vel)
+void physics_set_angular_velocity(NativeEntity ent, Scalar ang_vel)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
     error_assert(info);
     cpBodySetAngVel(info->body, ang_vel);
 }
-Scalar physics_get_angular_velocity(Entity ent)
+Scalar physics_get_angular_velocity(NativeEntity ent)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
     error_assert(info);
     return cpBodyGetAngVel(info->body);
 }
-void physics_set_torque(Entity ent, Scalar torque)
+void physics_set_torque(NativeEntity ent, Scalar torque)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
     error_assert(info);
     cpBodySetTorque(info->body, torque);
 }
-Scalar physics_get_torque(Entity ent)
+Scalar physics_get_torque(NativeEntity ent)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
     error_assert(info);
     return cpBodyGetTorque(info->body);
 }
 
-void physics_set_velocity_limit(Entity ent, Scalar lim)
+void physics_set_velocity_limit(NativeEntity ent, Scalar lim)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
     error_assert(info);
     cpBodySetVelLimit(info->body, lim);
 }
-Scalar physics_get_velocity_limit(Entity ent)
+Scalar physics_get_velocity_limit(NativeEntity ent)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
     error_assert(info);
     return cpBodyGetVelLimit(info->body);
 }
-void physics_set_angular_velocity_limit(Entity ent, Scalar lim)
+void physics_set_angular_velocity_limit(NativeEntity ent, Scalar lim)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
     error_assert(info);
     cpBodySetAngVelLimit(info->body, lim);
 }
-Scalar physics_get_angular_velocity_limit(Entity ent)
+Scalar physics_get_angular_velocity_limit(NativeEntity ent)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
     error_assert(info);
     return cpBodyGetAngVelLimit(info->body);
 }
 
-void physics_reset_forces(Entity ent)
+void physics_reset_forces(NativeEntity ent)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
     error_assert(info);
     cpBodyResetForces(info->body);
 }
-void physics_apply_force(Entity ent, vec2 force)
+void physics_apply_force(NativeEntity ent, vec2 force)
 {
     physics_apply_force_at(ent, force, vec2_zero);
 }
-void physics_apply_force_at(Entity ent, vec2 force, vec2 at)
+void physics_apply_force_at(NativeEntity ent, vec2 force, vec2 at)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
     error_assert(info);
     cpBodyApplyForce(info->body, cpv_of_vec2(force), cpv_of_vec2(at));
 }
-void physics_apply_impulse(Entity ent, vec2 impulse)
+void physics_apply_impulse(NativeEntity ent, vec2 impulse)
 {
     physics_apply_impulse_at(ent, impulse, vec2_zero);
 }
-void physics_apply_impulse_at(Entity ent, vec2 impulse, vec2 at)
+void physics_apply_impulse_at(NativeEntity ent, vec2 impulse, vec2 at)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
     error_assert(info);
@@ -2876,7 +2876,7 @@ static void _update_collisions(PhysicsInfo *info)
     cpBodyEachArbiter(info->body, _add_collision, info->collisions);
 }
 
-unsigned int physics_get_num_collisions(Entity ent)
+unsigned int physics_get_num_collisions(NativeEntity ent)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
     error_assert(info);
@@ -2884,7 +2884,7 @@ unsigned int physics_get_num_collisions(Entity ent)
     _update_collisions(info);
     return array_length(info->collisions);
 }
-Collision *physics_get_collisions(Entity ent)
+Collision *physics_get_collisions(NativeEntity ent)
 {
     PhysicsInfo *info = entitypool_get(pool, ent);
     error_assert(info);
@@ -2985,7 +2985,7 @@ static void _update_kinematics()
     cpVect pos;
     cpFloat ang;
     Scalar invdt;
-    Entity ent;
+    NativeEntity ent;
 
     if (dt <= FLT_EPSILON)
         return;
@@ -3017,7 +3017,7 @@ static void _update_kinematics()
 void physics_update_all()
 {
     PhysicsInfo *info;
-    Entity ent;
+    NativeEntity ent;
 
     entitypool_remove_destroyed(pool, physics_remove);
 
@@ -3202,7 +3202,7 @@ static bool _cpf_load(cpFloat *cf, const char *n, cpFloat d, Store *s)
 
 /*
  * note that UserData isn't directly save/load'd -- it is restored to
- * the Entity value on load separately
+ * the NativeEntity value on load separately
  */
 
 // some hax to reduce typing for body properties save/load
@@ -3241,7 +3241,7 @@ static void _body_save(PhysicsInfo *info, Store *s)
 static void _body_load(PhysicsInfo *info, Store *s)
 {
     Store *body_s;
-    Entity ent;
+    NativeEntity ent;
     PhysicsBody type;
 
     error_assert(store_child_load(&body_s, "body", s),
@@ -3701,7 +3701,7 @@ struct Sound
     bool loop;
 };
 
-static EntityPool *pool;
+static NativeEntityPool *pool;
 
 static gau_Manager *mgr;
 static ga_Mixer *mixer;
@@ -3787,7 +3787,7 @@ static void _set_path(Sound *sound, const char *path)
         ga_handle_play(sound->handle);
 }
 
-void sound_add(Entity ent)
+void sound_add(NativeEntity ent)
 {
     Sound *sound;
 
@@ -3804,7 +3804,7 @@ void sound_add(Entity ent)
     _set_path(sound, data_path("default.wav"));
 }
 
-void sound_remove(Entity ent)
+void sound_remove(NativeEntity ent)
 {
     Sound *sound;
 
@@ -3816,12 +3816,12 @@ void sound_remove(Entity ent)
     entitypool_remove(pool, ent);
 }
 
-bool sound_has(Entity ent)
+bool sound_has(NativeEntity ent)
 {
     return entitypool_get(pool, ent) != NULL;
 }
 
-void sound_set_path(Entity ent, const char *path)
+void sound_set_path(NativeEntity ent, const char *path)
 {
     Sound *sound;
 
@@ -3829,14 +3829,14 @@ void sound_set_path(Entity ent, const char *path)
     error_assert(sound, "entity must be in sound system");
     _set_path(sound, path);
 }
-const char *sound_get_path(Entity ent)
+const char *sound_get_path(NativeEntity ent)
 {
     Sound *sound = entitypool_get(pool, ent);
     error_assert(sound, "entity must be in sound system");
     return sound->path;
 }
 
-void sound_set_playing(Entity ent, bool playing)
+void sound_set_playing(NativeEntity ent, bool playing)
 {
     Sound *sound = entitypool_get(pool, ent);
     error_assert(sound, "entity must be in sound system");
@@ -3850,7 +3850,7 @@ void sound_set_playing(Entity ent, bool playing)
     else
         ga_handle_stop(sound->handle);
 }
-bool sound_get_playing(Entity ent)
+bool sound_get_playing(NativeEntity ent)
 {
     Sound *sound = entitypool_get(pool, ent);
     error_assert(sound, "entity must be in sound system");
@@ -3858,14 +3858,14 @@ bool sound_get_playing(Entity ent)
     return ga_handle_playing(sound->handle);
 }
 
-void sound_set_seek(Entity ent, int seek)
+void sound_set_seek(NativeEntity ent, int seek)
 {
     Sound *sound = entitypool_get(pool, ent);
     error_assert(sound, "entity must be in sound system");
     error_assert(sound->handle, "sound must be valid");
     ga_handle_seek(sound->handle, seek);
 }
-int sound_get_seek(Entity ent)
+int sound_get_seek(NativeEntity ent)
 {
     Sound *sound = entitypool_get(pool, ent);
     error_assert(sound, "entity must be in sound system");
@@ -3873,20 +3873,20 @@ int sound_get_seek(Entity ent)
     return ga_handle_tell(sound->handle, GA_TELL_PARAM_CURRENT);
 }
 
-void sound_set_finish_destroy(Entity ent, bool finish_destroy)
+void sound_set_finish_destroy(NativeEntity ent, bool finish_destroy)
 {
     Sound *sound = entitypool_get(pool, ent);
     error_assert(sound, "entity must be in sound system");
     sound->finish_destroy = finish_destroy;
 }
-bool sound_get_finish_destroy(Entity ent)
+bool sound_get_finish_destroy(NativeEntity ent)
 {
     Sound *sound = entitypool_get(pool, ent);
     error_assert(sound, "entity must be in sound system");
     return sound->finish_destroy;
 }
 
-void sound_set_loop(Entity ent, bool loop)
+void sound_set_loop(NativeEntity ent, bool loop)
 {
     Sound *sound = entitypool_get(pool, ent);
     error_assert(sound, "entity must be in sound system");
@@ -3894,21 +3894,21 @@ void sound_set_loop(Entity ent, bool loop)
     sound->loop = loop;
     _update_loop(sound);
 }
-bool sound_get_loop(Entity ent)
+bool sound_get_loop(NativeEntity ent)
 {
     Sound *sound = entitypool_get(pool, ent);
     error_assert(sound, "entity must be in sound system");
     return sound->loop;
 }
 
-void sound_set_gain(Entity ent, Scalar gain)
+void sound_set_gain(NativeEntity ent, Scalar gain)
 {
     Sound *sound = entitypool_get(pool, ent);
     error_assert(sound, "entity must be in sound system");
     error_assert(sound->handle, "sound must be valid");
     ga_handle_setParamf(sound->handle, GA_HANDLE_PARAM_GAIN, gain);
 }
-Scalar sound_get_gain(Entity ent)
+Scalar sound_get_gain(NativeEntity ent)
 {
     Sound *sound;
     gc_float32 v;

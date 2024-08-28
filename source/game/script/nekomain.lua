@@ -1,6 +1,5 @@
 -- 添加nekogame需要路径并加载nekogame
 -- hot_require 'nekogame'
-mm = hot_require("libs/mm")
 
 -- luainspector = Inspector.inspector_init()
 

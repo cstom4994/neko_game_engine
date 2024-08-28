@@ -202,4 +202,10 @@ inline void luax_package_preload(lua_State *L, const_str name, lua_CFunction fun
     lua_pop(L, 2);
 }
 
+inline void luax_setfunc2table(lua_State *L, const char *n, lua_CFunction func) {
+    lua_pushstring(L, n);
+    lua_pushcfunction(L, func);
+    lua_settable(L, -3);
+}
+
 #endif

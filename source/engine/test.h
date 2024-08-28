@@ -88,15 +88,15 @@ NEKO_SCRIPT(physics,
                                   use forces, velocities, etc. instead */
        };
 
-       NEKO_EXPORT void physics_add(Entity ent); // PB_DYNAMIC by default
-       NEKO_EXPORT void physics_remove(Entity ent);
-       NEKO_EXPORT bool physics_has(Entity ent);
+       NEKO_EXPORT void physics_add(NativeEntity ent); // PB_DYNAMIC by default
+       NEKO_EXPORT void physics_remove(NativeEntity ent);
+       NEKO_EXPORT bool physics_has(NativeEntity ent);
 
-       NEKO_EXPORT void physics_set_type(Entity ent, PhysicsBody type);
-       NEKO_EXPORT PhysicsBody physics_get_type(Entity ent);
+       NEKO_EXPORT void physics_set_type(NativeEntity ent, PhysicsBody type);
+       NEKO_EXPORT PhysicsBody physics_get_type(NativeEntity ent);
 
        // draws this object for one frame
-       NEKO_EXPORT void physics_debug_draw(Entity ent);
+       NEKO_EXPORT void physics_debug_draw(NativeEntity ent);
 
 
        // shape
@@ -109,67 +109,67 @@ NEKO_SCRIPT(physics,
            PS_POLYGON = 1,
        };
 
-       NEKO_EXPORT unsigned int physics_shape_add_circle(Entity ent, Scalar r,
+       NEKO_EXPORT unsigned int physics_shape_add_circle(NativeEntity ent, Scalar r,
                                                     vec2 offset);
 
        // 'r' is a 'rounding radius' added polygon to the polygon smooth
-       NEKO_EXPORT unsigned int physics_shape_add_box(Entity ent, BBox b, Scalar r);
-       NEKO_EXPORT unsigned int physics_shape_add_poly(Entity ent,
+       NEKO_EXPORT unsigned int physics_shape_add_box(NativeEntity ent, BBox b, Scalar r);
+       NEKO_EXPORT unsigned int physics_shape_add_poly(NativeEntity ent,
                                                   unsigned int nverts,
                                                   const vec2 *verts,
                                                   Scalar r);
 
-       NEKO_EXPORT unsigned int physics_get_num_shapes(Entity ent);
-       NEKO_EXPORT PhysicsShape physics_shape_get_type(Entity ent, unsigned int i);
-       NEKO_EXPORT void physics_shape_remove(Entity ent, unsigned int i);
+       NEKO_EXPORT unsigned int physics_get_num_shapes(NativeEntity ent);
+       NEKO_EXPORT PhysicsShape physics_shape_get_type(NativeEntity ent, unsigned int i);
+       NEKO_EXPORT void physics_shape_remove(NativeEntity ent, unsigned int i);
 
        // -1 if not a PS_POLYGON
-       NEKO_EXPORT int physics_poly_get_num_verts(Entity ent, unsigned int i);
+       NEKO_EXPORT int physics_poly_get_num_verts(NativeEntity ent, unsigned int i);
 
        // modifies array in-place, returns number of convex hull vertices
        NEKO_EXPORT unsigned int physics_convex_hull(unsigned int nverts,
                                                vec2 *verts);
 
-       NEKO_EXPORT void physics_shape_set_sensor(Entity ent,
+       NEKO_EXPORT void physics_shape_set_sensor(NativeEntity ent,
                                             unsigned int i,
                                             bool sensor);
-       NEKO_EXPORT bool physics_shape_get_sensor(Entity ent,
+       NEKO_EXPORT bool physics_shape_get_sensor(NativeEntity ent,
                                             unsigned int i);
 
-       NEKO_EXPORT void physics_shape_set_surface_velocity(Entity ent,
+       NEKO_EXPORT void physics_shape_set_surface_velocity(NativeEntity ent,
                                                       unsigned int i,
                                                       vec2 v);
-       NEKO_EXPORT vec2 physics_shape_get_surface_velocity(Entity ent,
+       NEKO_EXPORT vec2 physics_shape_get_surface_velocity(NativeEntity ent,
                                                       unsigned int i);
 
        // dynamics
 
-       NEKO_EXPORT void physics_set_mass(Entity ent, Scalar mass);
-       NEKO_EXPORT Scalar physics_get_mass(Entity ent);
+       NEKO_EXPORT void physics_set_mass(NativeEntity ent, Scalar mass);
+       NEKO_EXPORT Scalar physics_get_mass(NativeEntity ent);
 
-       NEKO_EXPORT void physics_set_freeze_rotation(Entity ent, bool freeze);
-       NEKO_EXPORT bool physics_get_freeze_rotation(Entity ent);
+       NEKO_EXPORT void physics_set_freeze_rotation(NativeEntity ent, bool freeze);
+       NEKO_EXPORT bool physics_get_freeze_rotation(NativeEntity ent);
 
-       NEKO_EXPORT void physics_set_velocity(Entity ent, vec2 vel);
-       NEKO_EXPORT vec2 physics_get_velocity(Entity ent);
-       NEKO_EXPORT void physics_set_force(Entity ent, vec2 force);
-       NEKO_EXPORT vec2 physics_get_force(Entity ent);
+       NEKO_EXPORT void physics_set_velocity(NativeEntity ent, vec2 vel);
+       NEKO_EXPORT vec2 physics_get_velocity(NativeEntity ent);
+       NEKO_EXPORT void physics_set_force(NativeEntity ent, vec2 force);
+       NEKO_EXPORT vec2 physics_get_force(NativeEntity ent);
 
-       NEKO_EXPORT void physics_set_angular_velocity(Entity ent, Scalar ang_vel);
-       NEKO_EXPORT Scalar physics_get_angular_velocity(Entity ent);
-       NEKO_EXPORT void physics_set_torque(Entity ent, Scalar torque);
-       NEKO_EXPORT Scalar physics_get_torque(Entity ent);
+       NEKO_EXPORT void physics_set_angular_velocity(NativeEntity ent, Scalar ang_vel);
+       NEKO_EXPORT Scalar physics_get_angular_velocity(NativeEntity ent);
+       NEKO_EXPORT void physics_set_torque(NativeEntity ent, Scalar torque);
+       NEKO_EXPORT Scalar physics_get_torque(NativeEntity ent);
 
-       NEKO_EXPORT void physics_set_velocity_limit(Entity ent, Scalar lim);
-       NEKO_EXPORT Scalar physics_get_velocity_limit(Entity ent);
-       NEKO_EXPORT void physics_set_angular_velocity_limit(Entity ent, Scalar lim);
-       NEKO_EXPORT Scalar physics_get_angular_velocity_limit(Entity ent);
+       NEKO_EXPORT void physics_set_velocity_limit(NativeEntity ent, Scalar lim);
+       NEKO_EXPORT Scalar physics_get_velocity_limit(NativeEntity ent);
+       NEKO_EXPORT void physics_set_angular_velocity_limit(NativeEntity ent, Scalar lim);
+       NEKO_EXPORT Scalar physics_get_angular_velocity_limit(NativeEntity ent);
 
-       NEKO_EXPORT void physics_reset_forces(Entity ent);
-       NEKO_EXPORT void physics_apply_force(Entity ent, vec2 force);
-       NEKO_EXPORT void physics_apply_force_at(Entity ent, vec2 force, vec2 at);
-       NEKO_EXPORT void physics_apply_impulse(Entity ent, vec2 impulse);
-       NEKO_EXPORT void physics_apply_impulse_at(Entity ent, vec2 impulse, vec2 at);
+       NEKO_EXPORT void physics_reset_forces(NativeEntity ent);
+       NEKO_EXPORT void physics_apply_force(NativeEntity ent, vec2 force);
+       NEKO_EXPORT void physics_apply_force_at(NativeEntity ent, vec2 force, vec2 at);
+       NEKO_EXPORT void physics_apply_impulse(NativeEntity ent, vec2 impulse);
+       NEKO_EXPORT void physics_apply_impulse_at(NativeEntity ent, vec2 impulse, vec2 at);
 
 
        // collisions
@@ -177,11 +177,11 @@ NEKO_SCRIPT(physics,
        typedef struct Collision Collision;
        struct Collision
        {
-           Entity a, b;
+           NativeEntity a, b;
        };
 
-       NEKO_EXPORT unsigned int physics_get_num_collisions(Entity ent);
-       NEKO_EXPORT Collision *physics_get_collisions(Entity ent);
+       NEKO_EXPORT unsigned int physics_get_num_collisions(NativeEntity ent);
+       NEKO_EXPORT Collision *physics_get_collisions(NativeEntity ent);
 
 
        // nearest query
@@ -189,7 +189,7 @@ NEKO_SCRIPT(physics,
        typedef struct NearestResult NearestResult;
        struct NearestResult
        {
-           Entity ent; // closest entity or entity_nil if none in range
+           NativeEntity ent; // closest entity or entity_nil if none in range
            vec2 p; // closest point on shape surface
            Scalar d; // distance to point, negative if inside
            vec2 g; // gradient of distance function
@@ -245,27 +245,27 @@ inline int neko_sound_load(lua_State *L) {
 
 // NEKO_SCRIPT(sound,
 //
-//        NEKO_EXPORT void sound_add(Entity ent);
-//        NEKO_EXPORT void sound_remove(Entity ent);
-//        NEKO_EXPORT bool sound_has(Entity ent);
+//        NEKO_EXPORT void sound_add(NativeEntity ent);
+//        NEKO_EXPORT void sound_remove(NativeEntity ent);
+//        NEKO_EXPORT bool sound_has(NativeEntity ent);
 //
-//        NEKO_EXPORT void sound_set_path(Entity ent, const char *path);
-//        NEKO_EXPORT const char *sound_get_path(Entity ent);
+//        NEKO_EXPORT void sound_set_path(NativeEntity ent, const char *path);
+//        NEKO_EXPORT const char *sound_get_path(NativeEntity ent);
 //
-//        NEKO_EXPORT void sound_set_playing(Entity ent, bool playing);
-//        NEKO_EXPORT bool sound_get_playing(Entity ent);
+//        NEKO_EXPORT void sound_set_playing(NativeEntity ent, bool playing);
+//        NEKO_EXPORT bool sound_get_playing(NativeEntity ent);
 //
-//        NEKO_EXPORT void sound_set_seek(Entity ent, int seek);
-//        NEKO_EXPORT int sound_get_seek(Entity ent);
+//        NEKO_EXPORT void sound_set_seek(NativeEntity ent, int seek);
+//        NEKO_EXPORT int sound_get_seek(NativeEntity ent);
 //
-//        NEKO_EXPORT void sound_set_finish_destroy(Entity ent, bool finish_destroy);
-//        NEKO_EXPORT bool sound_get_finish_destroy(Entity ent);
+//        NEKO_EXPORT void sound_set_finish_destroy(NativeEntity ent, bool finish_destroy);
+//        NEKO_EXPORT bool sound_get_finish_destroy(NativeEntity ent);
 //
-//        NEKO_EXPORT void sound_set_loop(Entity ent, bool loop);
-//        NEKO_EXPORT bool sound_get_loop(Entity ent);
+//        NEKO_EXPORT void sound_set_loop(NativeEntity ent, bool loop);
+//        NEKO_EXPORT bool sound_get_loop(NativeEntity ent);
 //
-//        NEKO_EXPORT void sound_set_gain(Entity ent, Scalar gain);
-//        NEKO_EXPORT Scalar sound_get_gain(Entity ent);
+//        NEKO_EXPORT void sound_set_gain(NativeEntity ent, Scalar gain);
+//        NEKO_EXPORT Scalar sound_get_gain(NativeEntity ent);
 //     )
 
 NEKO_API() void sound_init();

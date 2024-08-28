@@ -18,8 +18,8 @@
 
 #define NEKO_C_EXTERN extern "C"
 
-#define DATA_DIR "./gamedir/assets/data/"
-#define USR_DIR "./gamedir/usr/"
+#define DATA_DIR "../gamedir/assets/data/"
+#define USR_DIR "../gamedir/usr/"
 
 #define data_path(path) (DATA_DIR path)
 #define usr_path(path) (USR_DIR path)
@@ -109,6 +109,7 @@ struct App {
     float scroll_y;
 
     bool debug_on;
+    bool dump_allocs_detailed;
 
     String lite_init_path;
 

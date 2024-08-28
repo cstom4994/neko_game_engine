@@ -3439,14 +3439,19 @@ LUA_FUNCTION(__neko_bind_cvar) {
 #endif
 
 LUA_FUNCTION(__neko_bind_print) {
-    std::string str;
     int n = lua_gettop(L);
     int i;
+    std::string str;
+    lua_getglobal(L, "tostring");  // 获取全局函数 tostring
     for (i = 1; i <= n; i++) {
-        size_t l;
-        const_str s = luaL_tolstring(L, i, &l);
+        const char *s;
+        lua_pushvalue(L, -1);  // 将 tostring 函数推入堆栈
+        lua_pushvalue(L, i);   // 将第 i 个参数推入堆栈
+        lua_call(L, 1, 1);     // 调用 tostring
+        s = lua_tostring(L, -1);
+        if (s == NULL) return luaL_error(L, "'tostring' must return a string to 'print'");
         if (i > 1) str.append("\t");
-        str.append(std::string(s, l));
+        str.append(std::string(s, strlen(s)));
         lua_pop(L, 1);
     }
     console_log("LUA: %s", str.c_str());
@@ -3596,99 +3601,6 @@ int register_mt_aseprite(lua_State* L) {
 }
 
 #endif
-
-typedef struct neko_lua_profiler_data {
-    int linedefined;
-    char source[LUA_IDSIZE];
-} neko_lua_profiler_data;
-
-typedef struct neko_lua_profiler_count {
-    u32 total;
-    u32 index;
-    // u64 t;
-} neko_lua_profiler_count;
-
-static void neko_lua_profiler_hook(lua_State *L, lua_Debug *ar) {
-    if (lua_rawgetp(L, LUA_REGISTRYINDEX, L) != LUA_TUSERDATA) {
-        lua_pop(L, 1);
-        return;
-    }
-    neko_lua_profiler_count *p = (neko_lua_profiler_count *)lua_touserdata(L, -1);
-    lua_pop(L, 1);
-    neko_lua_profiler_data *log = (neko_lua_profiler_data *)(p + 1);
-    int index = p->index++;
-    while (index >= p->total) {
-        index -= p->total;
-    }
-    if (lua_getinfo(L, "S", ar) != 0) {
-        log[index].linedefined = ar->linedefined;
-        strcpy(log[index].source, ar->short_src);
-    } else {
-        log[index].linedefined = 1;
-        strcpy(log[index].source, "[unknown]");
-    }
-}
-
-static int neko_lua_profiler_start(lua_State *L) {
-    lua_State *cL = L;  // 支持多线程
-    int args = 0;
-    if (lua_isthread(L, 1)) {
-        cL = lua_tothread(L, 1);
-        args = 1;
-    }
-    int c = luaL_optinteger(L, args + 1, 1000);    // 记录数量
-    int ival = luaL_optinteger(L, args + 2, 100);  // 检测间隔
-    neko_lua_profiler_count *p = (neko_lua_profiler_count *)lua_newuserdata(L, sizeof(neko_lua_profiler_count) + c * sizeof(neko_lua_profiler_data));
-    p->total = c;
-    p->index = 0;
-    // p->t = neko_os_elapsed_time();
-    lua_pushvalue(L, -1);
-    lua_rawsetp(L, LUA_REGISTRYINDEX, cL);
-    lua_sethook(cL, neko_lua_profiler_hook, LUA_MASKCOUNT, ival);
-    return 0;
-}
-
-static int neko_lua_profiler_stop(lua_State *L) {
-    lua_State *cL = L;  // 支持多线程
-    if (lua_isthread(L, 1)) {
-        cL = lua_tothread(L, 1);
-    }
-    if (lua_rawgetp(L, LUA_REGISTRYINDEX, cL) != LUA_TNIL) {
-        lua_pushnil(L);
-        lua_rawsetp(L, LUA_REGISTRYINDEX, cL);
-        lua_sethook(cL, NULL, 0, 0);
-    } else {
-        return luaL_error(L, "thread profiler not begin");
-    }
-    return 0;
-}
-
-static int neko_lua_profiler_info(lua_State *L) {
-    lua_State *cL = L;
-    if (lua_isthread(L, 1)) {
-        cL = lua_tothread(L, 1);
-    }
-    if (lua_rawgetp(L, LUA_REGISTRYINDEX, cL) != LUA_TUSERDATA) {
-        return luaL_error(L, "thread profiler not begin");
-    }
-    neko_lua_profiler_count *p = (neko_lua_profiler_count *)lua_touserdata(L, -1);
-    neko_lua_profiler_data *log = (neko_lua_profiler_data *)(p + 1);
-    lua_newtable(L);
-    int n = (p->index > p->total) ? p->total : p->index;
-    int i;
-    for (i = 0; i < n; i++) {
-        luaL_getsubtable(L, -1, log[i].source);
-        lua_rawgeti(L, -1, log[i].linedefined);
-        int c = lua_tointeger(L, -1);
-        lua_pushinteger(L, c + 1);
-        // subtbl, c, c + 1
-        lua_rawseti(L, -3, log[i].linedefined);
-        lua_pop(L, 2);
-    }
-    lua_pushinteger(L, p->index);
-    // lua_pushinteger(L, neko_os_elapsed_time() - p->t);
-    return 2;
-}
 
 LUA_FUNCTION(__neko_bind_ecs_f) {
     lua_getfield(L, LUA_REGISTRYINDEX, "__NEKO_ECS_CORE");
@@ -3890,10 +3802,6 @@ static int open_embed_core(lua_State *L) {
             {"vfs_read_file", __neko_bind_vfs_read_file},
 
             {"print", __neko_bind_print},
-
-            {"profiler_start", neko_lua_profiler_start},
-            {"profiler_stop", neko_lua_profiler_stop},
-            {"profiler_info", neko_lua_profiler_info},
 
             // luaref
             {"ref_init", ref_init},

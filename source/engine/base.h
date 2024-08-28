@@ -1723,14 +1723,6 @@ typedef struct neko_resource_t {
 NEKO_SCRIPT(
         fs,
 
-        // remember to *_close(...) when done to free resources!
-
-        // NEKO_EXPORT Dir * fs_dir_open(const char *path);
-
-        // NEKO_EXPORT const char *fs_dir_next_file(Dir *dir);  // NULL after last file
-
-        // NEKO_EXPORT void fs_dir_close(Dir *dir);
-
         typedef struct vfs_file {
             const_str data;
             size_t len;
@@ -1754,7 +1746,6 @@ NEKO_SCRIPT(
         NEKO_EXPORT const_str neko_capi_vfs_read_file(const_str fsname, const_str filepath, size_t* size);
 
 )
-
 
 NEKO_SCRIPT(
         vec2,

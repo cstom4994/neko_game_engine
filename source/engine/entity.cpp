@@ -483,23 +483,23 @@ ecs_t* ecs_init(lua_State* L) {
 
 typedef struct DestroyEntry DestroyEntry;
 struct DestroyEntry {
-    Entity ent;
+    NativeEntity ent;
     ecs_id_t pass;
 };
 
-Entity entity_nil = {0};
+NativeEntity entity_nil = {0};
 static ecs_id_t counter = 1;
 
 typedef struct ExistsPoolElem {
     EntityPoolElem pool_elem;
 } ExistsPoolElem;
 
-static EntityPool* exists_pool;   // 所有现有实体
-static EntityMap* destroyed_map;  // 实体是否被销毁
+static NativeEntityPool* exists_pool;   // 所有现有实体
+static NativeEntityMap* destroyed_map;  // 实体是否被销毁
 static CArray* destroyed;         // 被销毁对象的 DestroyEntry 数组
-static EntityMap* unused_map;     // 未使用的数组中是否有条目
+static NativeEntityMap* unused_map;     // 未使用的数组中是否有条目
 static CArray* unused;            // id 放在这里 _remove() 之后 可以复用
-static EntityMap* load_map;       // 保存的 ID 映射 --> 真实 ID
+static NativeEntityMap* load_map;       // 保存的 ID 映射 --> 真实 ID
 
 typedef enum SaveFilter {
     SF_SAVE,     // 保存此实体
@@ -507,41 +507,41 @@ typedef enum SaveFilter {
     SF_UNSET,    // 未设置过滤器 -- 使用默认值
 } SaveFilter;
 
-static EntityMap* save_filter_map;
+static NativeEntityMap* save_filter_map;
 static SaveFilter save_filter_default = SF_SAVE;
 
-static Entity _generate_id() {
-    Entity ent;
+static NativeEntity _generate_id() {
+    NativeEntity ent;
 
     if (array_length(unused) > 0) {
 
-        ent = array_top_val(Entity, unused);
+        ent = array_top_val(NativeEntity, unused);
         entitymap_set(unused_map, ent, false);
         array_pop(unused);
     } else
         ent.id = counter++;
-    error_assert(!entity_eq(ent, entity_nil));
+    error_assert(!native_entity_eq(ent, entity_nil));
 
     entitypool_add(exists_pool, ent);
     return ent;
 }
 
-Entity entity_create() {
-    Entity ent;
+NativeEntity entity_create() {
+    NativeEntity ent;
 
     ent = _generate_id();
 
     return ent;
 }
 
-static void entity_remove(Entity ent) {
+static void entity_remove(NativeEntity ent) {
 
     entitymap_set(destroyed_map, ent, false);
-    array_add_val(Entity, unused) = ent;
+    array_add_val(NativeEntity, unused) = ent;
     entitymap_set(unused_map, ent, true);
 }
 
-void entity_destroy(Entity ent) {
+void entity_destroy(NativeEntity ent) {
     if (!entitypool_get(exists_pool, ent)) return;
     if (entitymap_get(unused_map, ent)) return;
     if (entitymap_get(destroyed_map, ent)) return;
@@ -557,16 +557,16 @@ void entity_destroy_all() {
     entitypool_foreach(exists, exists_pool) entity_destroy(exists->pool_elem.ent);
 }
 
-bool entity_destroyed(Entity ent) { return entitymap_get(destroyed_map, ent); }
+bool entity_destroyed(NativeEntity ent) { return entitymap_get(destroyed_map, ent); }
 
-void entity_set_save_filter(Entity ent, bool filter) {
+void entity_set_save_filter(NativeEntity ent, bool filter) {
     if (filter) {
         entitymap_set(save_filter_map, ent, SF_SAVE);
         save_filter_default = SF_NO_SAVE;
     } else
         entitymap_set(save_filter_map, ent, SF_NO_SAVE);
 }
-bool entity_get_save_filter(Entity ent) {
+bool entity_get_save_filter(NativeEntity ent) {
     SaveFilter filter = (SaveFilter)entitymap_get(save_filter_map, ent);
     if (filter == SF_UNSET) filter = save_filter_default;
     return filter == SF_SAVE;
@@ -583,7 +583,7 @@ void entity_init() {
     destroyed_map = entitymap_new(false);
     destroyed = array_new(DestroyEntry);
     unused_map = entitymap_new(false);
-    unused = array_new(Entity);
+    unused = array_new(NativeEntity);
     save_filter_map = entitymap_new(SF_UNSET);
 }
 
@@ -612,26 +612,26 @@ void entity_update_all() {
     }
 }
 
-void entity_save(Entity* ent, const char* n, Store* s) {
+void entity_save(NativeEntity* ent, const char* n, Store* s) {
     Store* t;
 
-    if (!entity_eq(*ent, entity_nil) && !entity_get_save_filter(*ent)) error("filtered-out entity referenced in save!");
+    if (!native_entity_eq(*ent, entity_nil) && !entity_get_save_filter(*ent)) error("filtered-out entity referenced in save!");
 
     if (store_child_save(&t, n, s)) uint_save(&ent->id, "id", t);
 }
-Entity _entity_resolve_saved_id(ecs_id_t id) {
-    Entity ent, sav = {id};
+NativeEntity _entity_resolve_saved_id(ecs_id_t id) {
+    NativeEntity ent, sav = {id};
 
-    if (entity_eq(sav, entity_nil)) return entity_nil;
+    if (native_entity_eq(sav, entity_nil)) return entity_nil;
 
     ent.id = entitymap_get(load_map, sav);
-    if (entity_eq(ent, entity_nil)) {
+    if (native_entity_eq(ent, entity_nil)) {
         ent = _generate_id();
         entitymap_set(load_map, sav, ent.id);
     }
     return ent;
 }
-bool entity_load(Entity* ent, const char* n, Entity d, Store* s) {
+bool entity_load(NativeEntity* ent, const char* n, NativeEntity d, Store* s) {
     Store* t;
     ecs_id_t id;
 
@@ -651,8 +651,8 @@ void entity_load_all_end() {
     entity_clear_save_filters();
 }
 
-#undef entity_eq
-bool entity_eq(Entity e, Entity f) { return e.id == f.id; }
+#undef native_entity_eq
+bool native_entity_eq(NativeEntity e, NativeEntity f) { return e.id == f.id; }
 
 void entity_save_all(Store* s) {
     DestroyEntry* entry;
@@ -686,27 +686,27 @@ void entity_load_all(Store* s) {
     }
 }
 
-struct EntityPool {
+struct NativeEntityPool {
     // just a map of indices into an array, -1 if doesn't exist
-    EntityMap* emap;
+    NativeEntityMap* emap;
     CArray* array;
 };
 
-EntityPool* entitypool_new_(size_t object_size) {
-    EntityPool* pool = (EntityPool*)mem_alloc(sizeof(EntityPool));
+NativeEntityPool* entitypool_new_(size_t object_size) {
+    NativeEntityPool* pool = (NativeEntityPool*)mem_alloc(sizeof(NativeEntityPool));
 
     pool->emap = entitymap_new(-1);
     pool->array = array_new_(object_size);
 
     return pool;
 }
-void entitypool_free(EntityPool* pool) {
+void entitypool_free(NativeEntityPool* pool) {
     array_free(pool->array);
     entitymap_free(pool->emap);
     mem_free(pool);
 }
 
-void* entitypool_add(EntityPool* pool, Entity ent) {
+void* entitypool_add(NativeEntityPool* pool, NativeEntity ent) {
     EntityPoolElem* elem;
 
     if ((elem = (EntityPoolElem*)entitypool_get(pool, ent))) return elem;
@@ -717,7 +717,7 @@ void* entitypool_add(EntityPool* pool, Entity ent) {
     entitymap_set(pool->emap, ent, array_length(pool->array) - 1);
     return elem;
 }
-void entitypool_remove(EntityPool* pool, Entity ent) {
+void entitypool_remove(NativeEntityPool* pool, NativeEntity ent) {
     int i;
     EntityPoolElem* elem;
 
@@ -733,7 +733,7 @@ void entitypool_remove(EntityPool* pool, Entity ent) {
         entitymap_set(pool->emap, ent, -1);
     }
 }
-void* entitypool_get(EntityPool* pool, Entity ent) {
+void* entitypool_get(NativeEntityPool* pool, NativeEntity ent) {
     int i;
 
     i = entitymap_get(pool->emap, ent);
@@ -741,24 +741,24 @@ void* entitypool_get(EntityPool* pool, Entity ent) {
     return NULL;
 }
 
-void* entitypool_begin(EntityPool* pool) { return array_begin(pool->array); }
-void* entitypool_end(EntityPool* pool) { return array_end(pool->array); }
-void* entitypool_nth(EntityPool* pool, ecs_id_t n) { return array_get(pool->array, n); }
+void* entitypool_begin(NativeEntityPool* pool) { return array_begin(pool->array); }
+void* entitypool_end(NativeEntityPool* pool) { return array_end(pool->array); }
+void* entitypool_nth(NativeEntityPool* pool, ecs_id_t n) { return array_get(pool->array, n); }
 
-ecs_id_t entitypool_size(EntityPool* pool) { return array_length(pool->array); }
+ecs_id_t entitypool_size(NativeEntityPool* pool) { return array_length(pool->array); }
 
-void entitypool_clear(EntityPool* pool) {
+void entitypool_clear(NativeEntityPool* pool) {
     entitymap_clear(pool->emap);
     array_clear(pool->array);
 }
 
-void entitypool_sort(EntityPool* pool, int (*compar)(const void*, const void*)) {
+void entitypool_sort(NativeEntityPool* pool, int (*compar)(const void*, const void*)) {
     ecs_id_t i, n;
     EntityPoolElem* elem;
 
     array_sort(pool->array, compar);
 
-    // remap Entity -> index
+    // remap NativeEntity -> index
     n = array_length(pool->array);
     for (i = 0; i < n; ++i) {
         elem = (EntityPoolElem*)array_get(pool->array, i);
@@ -766,18 +766,18 @@ void entitypool_sort(EntityPool* pool, int (*compar)(const void*, const void*)) 
     }
 }
 
-void entitypool_elem_save(EntityPool* pool, void* elem, Store* s) {
+void entitypool_elem_save(NativeEntityPool* pool, void* elem, Store* s) {
     EntityPoolElem** p;
 
-    // save Entity id
+    // save NativeEntity id
     p = (EntityPoolElem**)elem;
     entity_save(&(*p)->ent, "pool_elem", s);
 }
-void entitypool_elem_load(EntityPool* pool, void* elem, Store* s) {
-    Entity ent;
+void entitypool_elem_load(NativeEntityPool* pool, void* elem, Store* s) {
+    NativeEntity ent;
     EntityPoolElem** p;
 
-    // load Entity id, add element with that key
+    // load NativeEntity id, add element with that key
     error_assert(entity_load(&ent, "pool_elem", entity_nil, s), "saved EntityPoolElem entry must exist");
     p = (EntityPoolElem**)elem;
     *p = (EntityPoolElem*)entitypool_add(pool, ent);
@@ -786,7 +786,7 @@ void entitypool_elem_load(EntityPool* pool, void* elem, Store* s) {
 
 #define MIN_CAPACITY 2
 
-static void entitymap_init_w(EntityMap* emap) {
+static void entitymap_init_w(NativeEntityMap* emap) {
     ecs_id_t i;
 
     emap->bound = 0;                // bound <= capacity (so that maximum key < capacity)
@@ -796,26 +796,26 @@ static void entitymap_init_w(EntityMap* emap) {
     for (i = 0; i < emap->capacity; ++i) emap->arr[i] = emap->def;
 }
 
-EntityMap* entitymap_new(int def) {
-    EntityMap* emap;
+NativeEntityMap* entitymap_new(int def) {
+    NativeEntityMap* emap;
 
-    emap = (EntityMap*)mem_alloc(sizeof(EntityMap));
+    emap = (NativeEntityMap*)mem_alloc(sizeof(NativeEntityMap));
     emap->def = def;
 
     entitymap_init_w(emap);
 
     return emap;
 }
-void entitymap_clear(EntityMap* emap) {
+void entitymap_clear(NativeEntityMap* emap) {
     mem_free(emap->arr);
     entitymap_init_w(emap);
 }
-void entitymap_free(EntityMap* emap) {
+void entitymap_free(NativeEntityMap* emap) {
     mem_free(emap->arr);
     mem_free(emap);
 }
 
-static void _grow(EntityMap* emap) {
+static void _grow(NativeEntityMap* emap) {
     ecs_id_t new_capacity, i, bound;
 
     // find next power of 2 (TODO: use log?)
@@ -827,7 +827,7 @@ static void _grow(EntityMap* emap) {
     for (i = emap->capacity; i < new_capacity; ++i) emap->arr[i] = emap->def;
     emap->capacity = new_capacity;
 }
-static void _shrink(EntityMap* emap) {
+static void _shrink(NativeEntityMap* emap) {
     ecs_id_t new_capacity, bound_times_4;
 
     if (emap->capacity <= MIN_CAPACITY) return;
@@ -842,7 +842,7 @@ static void _shrink(EntityMap* emap) {
     emap->capacity = new_capacity;
 }
 
-void entitymap_set(EntityMap* emap, Entity ent, int val) {
+void entitymap_set(NativeEntityMap* emap, NativeEntity ent, int val) {
     if (val == emap->def)  // deleting?
     {
         emap->arr[ent.id] = val;
@@ -862,7 +862,7 @@ void entitymap_set(EntityMap* emap, Entity ent, int val) {
         emap->arr[ent.id] = val;
     }
 }
-int entitymap_get(EntityMap* emap, Entity ent) {
+int entitymap_get(NativeEntityMap* emap, NativeEntity ent) {
     if (ent.id >= emap->capacity) return emap->def;
     return emap->arr[ent.id];
 }
@@ -982,6 +982,7 @@ void system_init() {
     String imgui_font = luax_opt_string_field(L, -1, "imgui_font", "");
     g_app->lite_init_path = luax_opt_string_field(L, -1, "lite_init_path", "");
     g_app->debug_on = luax_boolean_field(L, -1, "debug_on", true);
+    g_app->dump_allocs_detailed = luax_boolean_field(L, -1, "dump_allocs_detailed", false);
     String game_proxy = luax_opt_string_field(L, -1, "game_proxy", "default");
 
     lua_pop(L, 1);  // conf table
@@ -1024,8 +1025,8 @@ void system_init() {
     batch = batch_init(6000);
     sprite_init();
     tiled_init();
+    font_init();
     gui_init();
-    // font_init();
     console_init();
     sound_init();
     physics_init();
@@ -1041,11 +1042,6 @@ void system_init() {
     }
 
     // run main.lua
-    // String main_lua = {};
-    // vfs_read_entire_file(&main_lua, "script/nekomain.lua");
-    // neko_defer(mem_free(main_lua.data));
-    // errcheck(luaL_loadbuffer(L, main_lua.cstr(), main_lua.len, "nekomain.lua"));
-    // errcheck(luax_pcall_nothrow(L, 0, 0));
     asset_load_kind(AssetKind_LuaRef, "script/nekomain.lua", nullptr);
 
     luax_get(ENGINE_LUA(), "neko", "__define_default_callbacks");
@@ -1160,7 +1156,6 @@ void system_draw_all(command_buffer_t* cb) {
 
     sprite_draw_all();
     batch_draw_all(batch);
-    // font_draw_all();
     edit_draw_all();
     physics_draw_all();
     gui_draw_all();
@@ -1200,9 +1195,9 @@ void system_save_all(Store* s) { _saveload_all(s, true); }
 
 void system_load_all(Store* s) { _saveload_all(s, false); }
 
-static Entity saved_root;
+static NativeEntity saved_root;
 
-void prefab_save(const char* filename, Entity root) {
+void prefab_save(const char* filename, NativeEntity root) {
     Store* s;
 
     saved_root = root;
@@ -1212,9 +1207,9 @@ void prefab_save(const char* filename, Entity root) {
     store_close(s);
     saved_root = entity_nil;
 }
-Entity prefab_load(const char* filename) {
+NativeEntity prefab_load(const char* filename) {
     Store* s;
-    Entity root;
+    NativeEntity root;
 
     s = store_open_file(filename);
     system_load_all(s);
@@ -1310,10 +1305,10 @@ static inline int component_add(lua_State* L, struct l_ecs_world_t* w, struct en
     struct component_pool* cp;
     struct component_ptr* ptr;
     if (e->components[tid] < ENTITY_MAX_COMPONENTS) {
-        return luaL_error(L, "Entity(%d) already exist component(%d)", e - w->entity_buf, tid);
+        return luaL_error(L, "NativeEntity(%d) already exist component(%d)", e - w->entity_buf, tid);
     }
     if (e->cn >= ENTITY_MAX_COMPONENTS) {
-        return luaL_error(L, "Entity(%d) add to many components", e - w->entity_buf);
+        return luaL_error(L, "NativeEntity(%d) add to many components", e - w->entity_buf);
     }
     // new component
     cp = &w->component_pool[tid];

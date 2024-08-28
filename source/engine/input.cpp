@@ -202,21 +202,21 @@ void input_fini() {
 
 // TODO: 应该使用entity_nil来表示不存在
 static bool kc_exists = false;
-static Entity kc_entity;
+static NativeEntity kc_entity;
 static f32 v = 5.f;
 
-void keyboard_controlled_add(Entity ent) {
+void keyboard_controlled_add(NativeEntity ent) {
     transform_add(ent);
 
     kc_exists = true;
     kc_entity = ent;
 }
-void keyboard_controlled_remove(Entity ent) {
-    if (entity_eq(ent, kc_entity)) kc_exists = false;
+void keyboard_controlled_remove(NativeEntity ent) {
+    if (native_entity_eq(ent, kc_entity)) kc_exists = false;
 }
-bool keyboard_controlled_has(Entity ent) { return kc_exists && entity_eq(kc_entity, ent); }
+bool keyboard_controlled_has(NativeEntity ent) { return kc_exists && native_entity_eq(kc_entity, ent); }
 
-void keyboard_controlled_set_v(Entity ent, f32 _v) {
+void keyboard_controlled_set_v(NativeEntity ent, f32 _v) {
     console_log("keyboard_controlled_set_v %d %f", ent.id, _v);
     v = _v;
 }
