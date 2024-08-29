@@ -75,7 +75,7 @@ typedef struct engine_ui_renderer_t {
     neko_texture_t* icon_texture;
 } engine_ui_renderer_t;
 
-engine_ui_renderer_t* neko_new_ui_renderer(u32 shader);
+engine_ui_renderer_t* neko_new_ui_renderer();
 void neko_free_ui_renderer(engine_ui_renderer_t* renderer);
 void engine_ui_renderer_push_quad(engine_ui_renderer_t* renderer, rect_t dst, rect_t src, neko_color_t color, float transparency, u32 mode);
 void neko_begin_ui_renderer(engine_ui_renderer_t* renderer, u32 width, u32 height);
@@ -88,7 +88,7 @@ void engine_ui_renderer_draw_icon(engine_ui_renderer_t* renderer, u32 id, rect_t
 float engine_ui_text_width(engine_ui_renderer_t* rendere, const char* text);
 float engine_ui_tect_height(engine_ui_renderer_t* renderer);
 
-void neko_init_ui_renderer(u32 shader);
+void neko_init_ui_renderer();
 void neko_deinit_ui_renderer();
 i32 neko_ui_text_width(ui_font font, const char* test, i32 len);
 i32 neko_ui_text_height(ui_font font);

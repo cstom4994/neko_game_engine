@@ -3,69 +3,158 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-// #include "engine/asset.h"
-#include "engine/base.h"
+#include "engine/asset.h"
+#include "engine/base.hpp"
 
 // deps
 #include <stb_image.h>
 
 extern const mat3* camera_get_inverse_view_matrix_ptr();  // for GLSL binding : in component.cpp
 
-static GLint gfx_compile_shader(GLuint shader, const char* filename) {
-    char log[512];
-    GLint status;
+bool neko_init_shader(AssetShader* shader, char* source) {
+    neko_assert(shader);
 
-    size_t filesize;
-    const char* contents = neko_capi_vfs_read_file(NULL, filename, &filesize);
+    shader->panic_mode = false;
 
-    neko_assert(contents);
+    const u32 source_len = (u32)strlen(source);
 
-    neko_printf("gfx: compiling shader '%s' ...", filename);
+    char* vertex_source = (char*)mem_alloc(source_len);
+    char* fragment_source = (char*)mem_alloc(source_len);
+    char* geometry_source = (char*)mem_alloc(source_len);
+    neko_defer(mem_free(vertex_source));
+    neko_defer(mem_free(fragment_source));
+    neko_defer(mem_free(geometry_source));
 
-    glShaderSource(shader, 1, (const GLchar**)&contents, NULL);
-    glCompileShader(shader);
+    memset(vertex_source, 0, source_len);
+    memset(fragment_source, 0, source_len);
+    memset(geometry_source, 0, source_len);
 
-    // log
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
-    neko_printf(status ? " successful\n" : " unsuccessful\n");
-    glGetShaderInfoLog(shader, 512, NULL, log);
-    neko_printf("%s", log);
+    bool has_geometry = false;
 
-    mem_free(contents);
+    u32 count = 0;
+    i32 adding_to = -1;
+    for (char* current = source; *current != '\0'; current++) {
+        if (*current == '\n' && *(current + 1) != '\0') {
+            i32 minus = 1;
 
-    return status;
-}
+            current++;
 
-GLuint gfx_create_program(const_str name, const char* vert_path, const char* geom_path, const char* frag_path) {
-    GLuint vert, geom, frag, program;
+            char* line = current - count - minus;
+            line[count] = '\0';
 
-#define compile(shader, type)                                     \
-    if (shader##_path) {                                          \
-        shader = glCreateShader(type);                            \
-        if (!gfx_compile_shader(shader, shader##_path)) return 0; \
+            if (strstr(line, "#begin VERTEX")) {
+                adding_to = 0;
+            } else if (strstr(line, "#begin FRAGMENT")) {
+                adding_to = 1;
+            } else if (strstr(line, "#begin GEOMETRY")) {
+                adding_to = 2;
+                has_geometry = true;
+            } else if (strstr(line, "#end VERTEX") || strstr(line, "#end FRAGMENT") || strstr(line, "#end GEOMETRY")) {
+                adding_to = -1;
+            } else if (adding_to == 0) {
+                strcat(vertex_source, line);
+                strcat(vertex_source, "\n");
+            } else if (adding_to == 1) {
+                strcat(fragment_source, line);
+                strcat(fragment_source, "\n");
+            } else if (adding_to == 2) {
+                strcat(geometry_source, line);
+                strcat(geometry_source, "\n");
+            }
+
+            count = 0;
+        }
+
+        count++;
     }
 
-    compile(vert, GL_VERTEX_SHADER);
-    compile(geom, GL_GEOMETRY_SHADER);
-    compile(frag, GL_FRAGMENT_SHADER);
+    const char* vsp = vertex_source;
+    const char* fsp = fragment_source;
+    const char* gsp = geometry_source;
 
-    program = glCreateProgram();
+    i32 success;
+    u32 v, f, g;
+    v = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(v, 1, &vsp, NULL);
+    glCompileShader(v);
 
-    if (vert_path) glAttachShader(program, vert);
-    if (geom_path) glAttachShader(program, geom);
-    if (frag_path) glAttachShader(program, frag);
+    glGetShaderiv(v, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        char info_log[1024];
+        glGetShaderInfoLog(v, 1024, 0x0, info_log);
+        console_log("error %s", info_log);
+        shader->panic_mode = true;
+    }
 
-    glLinkProgram(program);
+    f = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(f, 1, &fsp, NULL);
+    glCompileShader(f);
 
-    // GL will automatically detach and free shaders when program is deleted
-    if (vert_path) glDeleteShader(vert);
-    if (geom_path) glDeleteShader(geom);
-    if (frag_path) glDeleteShader(frag);
+    glGetShaderiv(f, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        char info_log[1024];
+        glGetShaderInfoLog(f, 1024, 0x0, info_log);
+        console_log("error %s", info_log);
+        shader->panic_mode = true;
+    }
 
-    // shader_pair pair = {program, name};
-    // neko_dyn_array_push(g_app->shader_array, pair);
+    if (has_geometry) {
+        g = glCreateShader(GL_GEOMETRY_SHADER);
+        glShaderSource(g, 1, &gsp, NULL);
+        glCompileShader(g);
 
-    return program;
+        glGetShaderiv(g, GL_COMPILE_STATUS, &success);
+        if (!success) {
+            char info_log[1024];
+            glGetShaderInfoLog(g, 1024, 0x0, info_log);
+            console_log("error %s", info_log);
+            shader->panic_mode = true;
+        }
+    }
+
+    u32 id;
+    id = glCreateProgram();
+    glAttachShader(id, v);
+    glAttachShader(id, f);
+    if (has_geometry) {
+        glAttachShader(id, g);
+    }
+    glLinkProgram(id);
+
+    glGetProgramiv(id, GL_LINK_STATUS, &success);
+    if (!success) {
+        shader->panic_mode = true;
+    }
+
+    glDeleteShader(v);
+    glDeleteShader(f);
+
+    if (has_geometry) {
+        glDeleteShader(g);
+    }
+
+    shader->id = id;
+    return !shader->panic_mode;
+}
+
+void neko_unload_shader(AssetShader* shader) {
+    neko_assert(shader);
+    if (shader->panic_mode) return;
+    glDeleteProgram(shader->id);
+}
+
+bool neko_load_shader(AssetShader* shader, String path) {
+    neko_assert(shader);
+
+    String source = {};
+    bool ok = vfs_read_entire_file(&source, path);
+    neko_defer(mem_free(source.data));
+
+    if (ok) {
+        ok = neko_init_shader(shader, source.data);
+    }
+
+    return ok;
 }
 
 /*=============================
@@ -647,7 +736,7 @@ neko_rgb_color_t neko_rgb_color_from_color(neko_color_t color) {
     float gf = (float)g / 255.0f;
     float bf = (float)b / 255.0f;
 
-    return (neko_rgb_color_t){rf, gf, bf};
+    return neko_rgb_color_t{rf, gf, bf};
 }
 
 u32 total_draw_calls;
@@ -789,10 +878,10 @@ void neko_shader_set_color(u32 shader, const char* name, neko_color_t color) {
 
     neko_rgb_color_t rgb = neko_rgb_color_from_color(color);
 
-    neko_shader_set_v3f(shader, name, (vec3){rgb.r, rgb.g, rgb.b});
+    neko_shader_set_v3f(shader, name, vec3{rgb.r, rgb.g, rgb.b});
 }
 
-void neko_shader_set_rgb_color(u32 shader, const char* name, neko_rgb_color_t color) { neko_shader_set_v3f(shader, name, (vec3){color.r, color.g, color.b}); }
+void neko_shader_set_rgb_color(u32 shader, const char* name, neko_rgb_color_t color) { neko_shader_set_v3f(shader, name, vec3{color.r, color.g, color.b}); }
 
 void neko_shader_set_v2f(u32 shader, const char* name, vec2 v) {
 

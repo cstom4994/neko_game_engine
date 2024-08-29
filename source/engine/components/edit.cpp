@@ -82,32 +82,36 @@ void edit_bboxes_set_selected(NativeEntity ent, bool selected) {
     elem->selected = selected;
 }
 
-static GLuint bboxes_program;
+static Asset bboxes_shader = {};
 static GLuint bboxes_vao;
 static GLuint bboxes_vbo;
 
 static void _bboxes_init() {
     pool_bbox = entitypool_new(BBoxPoolElem);
 
-    // create shader program, load atlas, bind parameters
-    bboxes_program = gfx_create_program("bboxes_program", "shader/bbox.vert", "shader/bbox.geom", "shader/bbox.frag");
-    glUseProgram(bboxes_program);
+    // 创建着色器程序 加载图集 绑定参数
+    bool ok = asset_load_kind(AssetKind_Shader, "shader/bbox.glsl", &bboxes_shader);
+    error_assert(ok);
+
+    GLuint sid = bboxes_shader.shader.id;
+
+    glUseProgram(sid);
 
     // make vao, vbo, bind attributes
     glGenVertexArrays(1, &bboxes_vao);
     glBindVertexArray(bboxes_vao);
     glGenBuffers(1, &bboxes_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, bboxes_vbo);
-    gfx_bind_vertex_attrib(bboxes_program, GL_FLOAT, 3, "wmat1", BBoxPoolElem, wmat.m[0]);
-    gfx_bind_vertex_attrib(bboxes_program, GL_FLOAT, 3, "wmat2", BBoxPoolElem, wmat.m[1]);
-    gfx_bind_vertex_attrib(bboxes_program, GL_FLOAT, 3, "wmat3", BBoxPoolElem, wmat.m[2]);
-    gfx_bind_vertex_attrib(bboxes_program, GL_FLOAT, 2, "bbmin", BBoxPoolElem, bbox.min);
-    gfx_bind_vertex_attrib(bboxes_program, GL_FLOAT, 2, "bbmax", BBoxPoolElem, bbox.max);
-    gfx_bind_vertex_attrib(bboxes_program, GL_FLOAT, 1, "selected", BBoxPoolElem, selected);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 3, "wmat1", BBoxPoolElem, wmat.m[0]);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 3, "wmat2", BBoxPoolElem, wmat.m[1]);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 3, "wmat3", BBoxPoolElem, wmat.m[2]);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 2, "bbmin", BBoxPoolElem, bbox.min);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 2, "bbmax", BBoxPoolElem, bbox.max);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 1, "selected", BBoxPoolElem, selected);
 }
 static void _bboxes_fini() {
     // clean up GL stuff
-    glDeleteProgram(bboxes_program);
+
     glDeleteBuffers(1, &bboxes_vbo);
     glDeleteVertexArrays(1, &bboxes_vao);
 
@@ -138,11 +142,13 @@ static void _bboxes_draw_all() {
     vec2 win;
     unsigned int nbboxes;
 
-    glUseProgram(bboxes_program);
-    glUniformMatrix3fv(glGetUniformLocation(bboxes_program, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
+    GLuint sid = bboxes_shader.shader.id;
+
+    glUseProgram(sid);
+    glUniformMatrix3fv(glGetUniformLocation(sid, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
     win = game_get_window_size();
-    glUniform1f(glGetUniformLocation(bboxes_program, "aspect"), win.x / win.y);
-    glUniform1f(glGetUniformLocation(bboxes_program, "is_grid"), 0);
+    glUniform1f(glGetUniformLocation(sid, "aspect"), win.x / win.y);
+    glUniform1f(glGetUniformLocation(sid, "is_grid"), 0);
 
     glBindVertexArray(bboxes_vao);
     glBindBuffer(GL_ARRAY_BUFFER, bboxes_vbo);
@@ -220,11 +226,13 @@ static void _grid_draw() {
     vec2 win;
     unsigned int ncells;
 
-    glUseProgram(bboxes_program);
-    glUniformMatrix3fv(glGetUniformLocation(bboxes_program, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
+    GLuint sid = bboxes_shader.shader.id;
+
+    glUseProgram(sid);
+    glUniformMatrix3fv(glGetUniformLocation(sid, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
     win = game_get_window_size();
-    glUniform1f(glGetUniformLocation(bboxes_program, "aspect"), win.x / win.y);
-    glUniform1f(glGetUniformLocation(bboxes_program, "is_grid"), 1);
+    glUniform1f(glGetUniformLocation(sid, "aspect"), win.x / win.y);
+    glUniform1f(glGetUniformLocation(sid, "is_grid"), 1);
 
     _grid_create_cells();
     glBindVertexArray(bboxes_vao);
@@ -237,7 +245,7 @@ static void _grid_draw() {
 
 // --- line ----------------------------------------------------------------
 
-static GLuint line_program;
+static Asset line_shader = {};
 static GLuint line_vao;
 static GLuint line_vbo;
 
@@ -268,19 +276,22 @@ static void _line_init() {
     line_points = array_new(LinePoint);
 
     // init draw stuff
-    line_program = gfx_create_program("line_program", "shader/edit_line.vert", NULL, "shader/edit_line.frag");
-    glUseProgram(line_program);
+    bool ok = asset_load_kind(AssetKind_Shader, "shader/edit_line.glsl", &line_shader);
+    error_assert(ok);
+
+    GLuint sid = line_shader.shader.id;
+
+    glUseProgram(sid);
     glGenVertexArrays(1, &line_vao);
     glBindVertexArray(line_vao);
     glGenBuffers(1, &line_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, line_vbo);
-    gfx_bind_vertex_attrib(line_program, GL_FLOAT, 2, "position", LinePoint, position);
-    gfx_bind_vertex_attrib(line_program, GL_FLOAT, 1, "point_size", LinePoint, point_size);
-    gfx_bind_vertex_attrib(line_program, GL_FLOAT, 4, "color", LinePoint, color);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 2, "position", LinePoint, position);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 1, "point_size", LinePoint, point_size);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 4, "color", LinePoint, color);
 }
 static void _line_fini() {
     // clean up draw stuff
-    glDeleteProgram(line_program);
     glDeleteBuffers(1, &line_vbo);
     glDeleteVertexArrays(1, &line_vao);
 
@@ -292,9 +303,11 @@ static void _line_draw_all() {
 
     const mat3 *mat = camera_get_inverse_view_matrix_ptr();
 
+    GLuint sid = line_shader.shader.id;
+
     // bind program, update uniforms
-    glUseProgram(line_program);
-    GLuint inverse_view_matrix_id = glGetUniformLocation(line_program, "inverse_view_matrix");
+    glUseProgram(sid);
+    GLuint inverse_view_matrix_id = glGetUniformLocation(sid, "inverse_view_matrix");
     glUniformMatrix3fv(inverse_view_matrix_id, 1, GL_FALSE, (const GLfloat *)mat);
 
     // draw!

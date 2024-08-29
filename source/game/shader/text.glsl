@@ -1,3 +1,52 @@
+
+#begin VERTEX
+
+#version 150
+
+in vec2 pos;
+in vec2 cell;
+in float is_cursor;
+
+out vec2 pos_;
+out vec2 cell_;
+out float is_cursor_;
+
+void main()
+{
+    pos_ = pos;
+    cell_ = cell;
+    is_cursor_ = is_cursor;
+}
+
+#end VERTEX
+
+#begin FRAGMENT
+
+#version 150
+
+in vec2 texcoord;
+in float is_cursor;
+
+uniform sampler2D tex0;
+uniform vec4 base_color;
+uniform float cursor_blink;
+
+out vec4 outColor;
+
+void main()
+{
+    if (is_cursor > 0)
+        outColor = vec4(base_color.xyz, cursor_blink);
+    else
+        outColor = base_color * texture(tex0, texcoord);
+}
+
+
+
+#end FRAGMENT
+
+#begin GEOMETRY
+
 #version 150
 
 layout(points) in; // 输入的图元类型是点
@@ -44,3 +93,6 @@ void main()
     EndPrimitive();
 }
 
+
+
+#end GEOMETRY

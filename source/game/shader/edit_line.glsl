@@ -1,3 +1,6 @@
+
+#begin VERTEX
+
 #version 150
 
 in vec2 position;
@@ -14,3 +17,23 @@ void main()
     gl_PointSize = point_size;
     color_ = color;
 }
+
+
+#end VERTEX
+
+#begin FRAGMENT
+
+#version 150
+
+in vec4 color_;
+
+out vec4 outColor;
+
+void main()
+{
+    outColor = color_;
+}
+
+
+
+#end FRAGMENT

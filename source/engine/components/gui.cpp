@@ -479,7 +479,7 @@ bool gui_rect_get_vfill(NativeEntity ent) {
     return rect->vfill;
 }
 
-static GLuint rect_program;
+static Asset rect_shader = {};
 static GLuint rect_vao;
 static GLuint rect_vbo;
 
@@ -488,24 +488,27 @@ static void _rect_init() {
     rect_pool = entitypool_new(Rect);
 
     // create shader program, load texture, bind parameters
-    rect_program = gfx_create_program("rect_program", "shader/rect.vert", "shader/rect.geom", "shader/rect.frag");
-    glUseProgram(rect_program);
+    bool ok = asset_load_kind(AssetKind_Shader, "shader/rect.glsl", &rect_shader);
+    error_assert(ok);
+
+    GLuint sid = rect_shader.shader.id;
+
+    glUseProgram(sid);
 
     // make vao, vbo, bind attributes
     glGenVertexArrays(1, &rect_vao);
     glBindVertexArray(rect_vao);
     glGenBuffers(1, &rect_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, rect_vbo);
-    gfx_bind_vertex_attrib(rect_program, GL_FLOAT, 3, "wmat1", Rect, wmat.m[0]);
-    gfx_bind_vertex_attrib(rect_program, GL_FLOAT, 3, "wmat2", Rect, wmat.m[1]);
-    gfx_bind_vertex_attrib(rect_program, GL_FLOAT, 3, "wmat3", Rect, wmat.m[2]);
-    gfx_bind_vertex_attrib(rect_program, GL_FLOAT, 2, "size", Rect, size);
-    gfx_bind_vertex_attrib(rect_program, GL_INT, 1, "visible", Rect, visible);
-    gfx_bind_vertex_attrib(rect_program, GL_FLOAT, 4, "color", Rect, color);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 3, "wmat1", Rect, wmat.m[0]);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 3, "wmat2", Rect, wmat.m[1]);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 3, "wmat3", Rect, wmat.m[2]);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 2, "size", Rect, size);
+    gfx_bind_vertex_attrib(sid, GL_INT, 1, "visible", Rect, visible);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 4, "color", Rect, color);
 }
 static void _rect_fini() {
     // fini gl stuff
-    glDeleteProgram(rect_program);
     glDeleteBuffers(1, &rect_vbo);
     glDeleteVertexArrays(1, &rect_vao);
 
@@ -687,9 +690,11 @@ static void _rect_draw_all() {
     // depth sort
     entitypool_sort(rect_pool, _rect_depth_compare);
 
+    GLuint sid = rect_shader.shader.id;
+
     // bind shader program
-    glUseProgram(rect_program);
-    glUniformMatrix3fv(glGetUniformLocation(rect_program, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
+    glUseProgram(sid);
+    glUniformMatrix3fv(glGetUniformLocation(sid, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
 
     // draw!
     glBindVertexArray(rect_vao);
@@ -861,7 +866,7 @@ static void _text_set_cursor(NativeEntity ent, int cursor) {
     _text_set_str(text, NULL);
 }
 
-static GLuint text_program;
+static Asset text_shader = {};
 static GLuint text_vao;
 static GLuint text_vbo;
 
@@ -870,29 +875,32 @@ static void _text_init() {
     text_pool = entitypool_new(Text);
 
     // create shader program, load texture, bind parameters
-    text_program = gfx_create_program("text_program", "shader/text.vert", "shader/text.geom", "shader/text.frag");
-    glUseProgram(text_program);
+    bool ok = asset_load_kind(AssetKind_Shader, "shader/text.glsl", &text_shader);
+    error_assert(ok);
+
+    GLuint sid = text_shader.shader.id;
+
+    glUseProgram(sid);
 
     asset_load(AssetLoadData{AssetKind_Image, true}, "assets/data/font1.png", NULL);
 
-    glUniform1i(glGetUniformLocation(text_program, "tex0"), 0);
-    glUniform2f(glGetUniformLocation(text_program, "inv_grid_size"), 1.0 / TEXT_GRID_W, 1.0 / TEXT_GRID_H);
-    glUniform2f(glGetUniformLocation(text_program, "size"), TEXT_FONT_W, TEXT_FONT_H);
+    glUniform1i(glGetUniformLocation(sid, "tex0"), 0);
+    glUniform2f(glGetUniformLocation(sid, "inv_grid_size"), 1.0 / TEXT_GRID_W, 1.0 / TEXT_GRID_H);
+    glUniform2f(glGetUniformLocation(sid, "size"), TEXT_FONT_W, TEXT_FONT_H);
 
     // make vao, vbo, bind attributes
     glGenVertexArrays(1, &text_vao);
     glBindVertexArray(text_vao);
     glGenBuffers(1, &text_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, text_vbo);
-    gfx_bind_vertex_attrib(text_program, GL_FLOAT, 2, "pos", TextChar, pos);
-    gfx_bind_vertex_attrib(text_program, GL_FLOAT, 2, "cell", TextChar, cell);
-    gfx_bind_vertex_attrib(text_program, GL_FLOAT, 1, "is_cursor", TextChar, is_cursor);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 2, "pos", TextChar, pos);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 2, "cell", TextChar, cell);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 1, "is_cursor", TextChar, is_cursor);
 }
 static void _text_fini() {
     Text *text;
 
     // fini gl stuff
-    glDeleteProgram(text_program);
     glDeleteBuffers(1, &text_vbo);
     glDeleteVertexArrays(1, &text_vao);
 
@@ -934,19 +942,21 @@ static void _text_draw_all() {
 
     hwin = vec2_scalar_mul(game_get_window_size(), 0.5);
 
+    GLuint sid = text_shader.shader.id;
+
     glBindVertexArray(text_vao);
     glBindBuffer(GL_ARRAY_BUFFER, text_vbo);
 
     // TODO: 我不知道为什么引入neko_render后会有错误 在这里重新设置顶点属性指针可以修复
-    gfx_bind_vertex_attrib(text_program, GL_FLOAT, 2, "pos", TextChar, pos);
-    gfx_bind_vertex_attrib(text_program, GL_FLOAT, 2, "cell", TextChar, cell);
-    gfx_bind_vertex_attrib(text_program, GL_FLOAT, 1, "is_cursor", TextChar, is_cursor);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 2, "pos", TextChar, pos);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 2, "cell", TextChar, cell);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 1, "is_cursor", TextChar, is_cursor);
 
     // bind shader program
-    glUseProgram(text_program);
-    // glUniform1i(glGetUniformLocation(text_program, "tex0"), 1);
-    glUniform1f(glGetUniformLocation(text_program, "cursor_blink"), ((int)cursor_blink_time) & 1);
-    glUniformMatrix3fv(glGetUniformLocation(text_program, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
+    glUseProgram(sid);
+    // glUniform1i(glGetUniformLocation(sid, "tex0"), 1);
+    glUniform1f(glGetUniformLocation(sid, "cursor_blink"), ((int)cursor_blink_time) & 1);
+    glUniformMatrix3fv(glGetUniformLocation(sid, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
 
     // bind texture
     glActiveTexture(GL_TEXTURE0);
@@ -957,10 +967,10 @@ static void _text_draw_all() {
         gui = (Gui *)entitypool_get(pool_gui, text->pool_elem.ent);
         error_assert(gui);
         if (!gui->visible) continue;
-        glUniform4fv(glGetUniformLocation(text_program, "base_color"), 1, (const GLfloat *)&gui->color);
+        glUniform4fv(glGetUniformLocation(sid, "base_color"), 1, (const GLfloat *)&gui->color);
 
         wmat = transform_get_world_matrix(text->pool_elem.ent);
-        glUniformMatrix3fv(glGetUniformLocation(text_program, "wmat"), 1, GL_FALSE, (const GLfloat *)&wmat);
+        glUniformMatrix3fv(glGetUniformLocation(sid, "wmat"), 1, GL_FALSE, (const GLfloat *)&wmat);
 
         nchars = array_length(text->chars);
         glBufferData(GL_ARRAY_BUFFER, nchars * sizeof(TextChar), array_begin(text->chars), GL_STREAM_DRAW);

@@ -125,7 +125,7 @@ struct App {
 
     GLFWwindow *game_window;
 
-    neko_dyn_array(shader_pair) shader_array;
+    // neko_dyn_array(shader_pair) shader_array;
 };
 
 extern App *g_app;

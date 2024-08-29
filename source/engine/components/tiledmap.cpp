@@ -5,7 +5,7 @@
 
 DECL_ENT(Tiled, tiled_renderer *render; vec2 pos; String map_name;);
 
-GLuint tiled_program;
+static Asset tiled_shader = {};
 
 static NativeEntityPool *pool_tiled;
 
@@ -781,14 +781,16 @@ void tiled_unload(map_t *map) {
 
 void tiled_render_init(command_buffer_t *cb, tiled_renderer *renderer) {
 
+    GLuint sid = tiled_shader.shader.id;
+
     PROFILE_FUNC();
 
-    glUseProgram(tiled_program);
+    glUseProgram(sid);
 
-    GLuint loc = glGetUniformLocation(tiled_program, "inverse_view_matrix");
+    GLuint loc = glGetUniformLocation(sid, "inverse_view_matrix");
     glUniformMatrix3fv(loc, 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
 
-    loc = glGetUniformLocation(tiled_program, "batch_texture");
+    loc = glGetUniformLocation(sid, "batch_texture");
     glUniform1i(loc, 0);
 
     glGenVertexArrays(1, &renderer->vao);
@@ -804,10 +806,10 @@ void tiled_render_init(command_buffer_t *cb, tiled_renderer *renderer) {
 
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, BATCH_SIZE * IND_PER_QUAD * sizeof(u32), NULL, GL_DYNAMIC_DRAW);
 
-    gfx_bind_vertex_attrib_auto(tiled_program, GL_FLOAT, 2, "position", FLOATS_PER_VERT * sizeof(f32), NEKO_INT2VOIDP(sizeof(f32) * 0));
-    gfx_bind_vertex_attrib_auto(tiled_program, GL_FLOAT, 2, "uv", FLOATS_PER_VERT * sizeof(f32), NEKO_INT2VOIDP(sizeof(f32) * 2));
-    gfx_bind_vertex_attrib_auto(tiled_program, GL_FLOAT, 4, "color", FLOATS_PER_VERT * sizeof(f32), NEKO_INT2VOIDP(sizeof(f32) * 4));
-    gfx_bind_vertex_attrib_auto(tiled_program, GL_FLOAT, 1, "use_texture", FLOATS_PER_VERT * sizeof(f32), NEKO_INT2VOIDP(sizeof(f32) * 8));
+    gfx_bind_vertex_attrib_auto(sid, GL_FLOAT, 2, "position", FLOATS_PER_VERT * sizeof(f32), NEKO_INT2VOIDP(sizeof(f32) * 0));
+    gfx_bind_vertex_attrib_auto(sid, GL_FLOAT, 2, "uv", FLOATS_PER_VERT * sizeof(f32), NEKO_INT2VOIDP(sizeof(f32) * 2));
+    gfx_bind_vertex_attrib_auto(sid, GL_FLOAT, 4, "color", FLOATS_PER_VERT * sizeof(f32), NEKO_INT2VOIDP(sizeof(f32) * 4));
+    gfx_bind_vertex_attrib_auto(sid, GL_FLOAT, 1, "use_texture", FLOATS_PER_VERT * sizeof(f32), NEKO_INT2VOIDP(sizeof(f32) * 8));
 }
 
 void tiled_render_deinit(tiled_renderer *renderer) {
@@ -836,25 +838,27 @@ void tiled_render_flush(command_buffer_t *cb, tiled_renderer *renderer) {
 
     PROFILE_FUNC();
 
-    glUseProgram(tiled_program);
+    GLuint sid = tiled_shader.shader.id;
+
+    glUseProgram(sid);
 
     glBindVertexArray(renderer->vao);
     glBindBuffer(GL_ARRAY_BUFFER, renderer->vbo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renderer->ib);
 
-    gfx_bind_vertex_attrib_auto(tiled_program, GL_FLOAT, 2, "position", FLOATS_PER_VERT * sizeof(f32), NEKO_INT2VOIDP(sizeof(f32) * 0));
-    gfx_bind_vertex_attrib_auto(tiled_program, GL_FLOAT, 2, "uv", FLOATS_PER_VERT * sizeof(f32), NEKO_INT2VOIDP(sizeof(f32) * 2));
-    gfx_bind_vertex_attrib_auto(tiled_program, GL_FLOAT, 4, "color", FLOATS_PER_VERT * sizeof(f32), NEKO_INT2VOIDP(sizeof(f32) * 4));
-    gfx_bind_vertex_attrib_auto(tiled_program, GL_FLOAT, 1, "use_texture", FLOATS_PER_VERT * sizeof(f32), NEKO_INT2VOIDP(sizeof(f32) * 8));
+    gfx_bind_vertex_attrib_auto(sid, GL_FLOAT, 2, "position", FLOATS_PER_VERT * sizeof(f32), NEKO_INT2VOIDP(sizeof(f32) * 0));
+    gfx_bind_vertex_attrib_auto(sid, GL_FLOAT, 2, "uv", FLOATS_PER_VERT * sizeof(f32), NEKO_INT2VOIDP(sizeof(f32) * 2));
+    gfx_bind_vertex_attrib_auto(sid, GL_FLOAT, 4, "color", FLOATS_PER_VERT * sizeof(f32), NEKO_INT2VOIDP(sizeof(f32) * 4));
+    gfx_bind_vertex_attrib_auto(sid, GL_FLOAT, 1, "use_texture", FLOATS_PER_VERT * sizeof(f32), NEKO_INT2VOIDP(sizeof(f32) * 8));
 
-    glUniformMatrix3fv(glGetUniformLocation(tiled_program, "inverse_view_matrix"), 1, false, (float *)&renderer->camera_mat);
+    glUniformMatrix3fv(glGetUniformLocation(sid, "inverse_view_matrix"), 1, false, (float *)&renderer->camera_mat);
 
     neko_gl_data_t *ogl = gfx_ogl();
     GLuint tex_id = neko_slot_array_get(ogl->textures, renderer->batch_texture.id).id;
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, tex_id);
-    // glUniform1iv(glGetUniformLocation(tiled_program, "batch_texture"), 1, 0);
+    // glUniform1iv(glGetUniformLocation(sid, "batch_texture"), 1, 0);
 
     glBindImageTexture(0, tex_id, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
 
@@ -1084,7 +1088,8 @@ void tiled_init() {
 
     pool_tiled = entitypool_new(Tiled);
 
-    tiled_program = gfx_create_program("tiledmap", "shader/tiled.vert", NULL, "shader/tiled.frag");
+    bool ok = asset_load_kind(AssetKind_Shader, "shader/tiled.glsl", &tiled_shader);
+    error_assert(ok);
 }
 
 void tiled_fini() {
@@ -1095,8 +1100,6 @@ void tiled_fini() {
         mem_free(tiled->map_name.data);
         mem_free(tiled->render);
     }
-
-    glDeleteProgram(tiled_program);
 
     entitypool_free(pool_tiled);
 }

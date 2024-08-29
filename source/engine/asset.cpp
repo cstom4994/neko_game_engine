@@ -2063,6 +2063,13 @@ void assets_perform_hot_reload_changes() {
             //     ok = a.tilemap.load(a.name);
             //     break;
             // }
+            case AssetKind_Shader: {
+                GLuint save_sid = a.shader.id;
+                neko_unload_shader(&a.shader);
+                ok = neko_load_shader(&a.shader, a.name);
+                neko_assert(save_sid == a.shader.id);
+                break;
+            }
             default:
                 continue;
                 break;
@@ -2102,6 +2109,9 @@ void assets_shutdown() {
                 break;
             case AssetKind_AseSprite:
                 v->sprite.trash();
+                break;
+            case AssetKind_Shader:
+                neko_unload_shader(&v->shader);
                 break;
             // case AssetKind_Tilemap:
             //     v->tilemap.trash();
@@ -2177,6 +2187,9 @@ bool asset_load(AssetLoadData desc, String filepath, Asset *out) {
                 break;
             case AssetKind_AseSprite:
                 ok = asset.sprite.load(filepath);
+                break;
+            case AssetKind_Shader:
+                ok = neko_load_shader(&asset.shader, filepath);
                 break;
             // case AssetKind_Tilemap:
             //     ok = asset.tilemap.load(filepath);
@@ -2362,7 +2375,12 @@ void AseSpriteData::trash() {
     arena.trash();
 }
 
-void AseSprite::make() { this->batch = batch_init(800); }
+extern batch_renderer* g_batch;
+
+void AseSprite::make() {
+    // this->batch = batch_init(128);
+    this->batch = g_batch;
+}
 
 bool AseSprite::play(String tag) {
     u64 key = fnv1a(tag);

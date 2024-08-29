@@ -54,12 +54,18 @@ static const char *neko_utf8_to_codepoint(const char *p, u32 *dst) {
     return p + 1;
 }
 
-engine_ui_renderer_t *neko_new_ui_renderer(u32 shader) {
+engine_ui_renderer_t *neko_new_ui_renderer() {
     engine_ui_renderer_t *renderer = (engine_ui_renderer_t *)mem_alloc(sizeof(engine_ui_renderer_t));
+
+    Asset ui_shader = {};
+    bool ok = asset_load_kind(AssetKind_Shader, "shader/ui.glsl", &ui_shader);
+    error_assert(ok);
+
+    // gfx_create_program("ui_glsl", , NULL, "shader/ui.frag");
 
     renderer->draw_call_count = 0;
 
-    renderer->shader = shader;
+    renderer->shader = ui_shader.shader.id;
     renderer->quad_count = 0;
 
     neko_vertex_buffer_t *buffer = neko_new_vertex_buffer((neko_vertex_buffer_flags_t)(NEKO_VERTEXBUFFER_DRAW_TRIANGLES | NEKO_VERTEXBUFFER_DYNAMIC_DRAW));
@@ -307,8 +313,8 @@ INPUT_WRAP_DEFINE(ui);
 
 ui_context_t *ui_global_ctx() { return g_app->ui; }
 
-void neko_init_ui_renderer(u32 shader_id) {
-    ui_renderer = neko_new_ui_renderer(shader_id);
+void neko_init_ui_renderer() {
+    ui_renderer = neko_new_ui_renderer();
 
     ui_renderer->icon_texture = neko_new_texture_from_memory_uncompressed(ui_atlas_texture, sizeof(ui_atlas_texture), UI_ATLAS_WIDTH, UI_ATLAS_HEIGHT, 1, NEKO_TEXTURE_ANTIALIASED);
 

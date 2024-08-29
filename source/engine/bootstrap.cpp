@@ -684,7 +684,7 @@ static void _game_init() {
 
         g_app->ui->text_width = neko_ui_text_width;
         g_app->ui->text_height = neko_ui_text_height;
-        neko_init_ui_renderer(gfx_create_program("ui_glsl", "shader/ui.vert", NULL, "shader/ui.frag"));
+        neko_init_ui_renderer();
     }
 }
 
@@ -848,8 +848,8 @@ static void _game_draw() {
             // gfx_set_viewport(&g_app->cb, 0, 0, (u32)g_app->width, (u32)g_app->height);
             // idraw_draw(&g_app->idraw, &g_app->cb);  // 立即模式绘制 idraw
 
-            // f32 fy = draw_font(g_app->default_font, 16.f, 0.f, 0.f, "Hello World 测试中文，你好世界", NEKO_COLOR_WHITE);
-            // fy = draw_font(g_app->default_font, 16.f, 0.f, 20.f, "我是第二行", NEKO_COLOR_WHITE);
+            f32 fy = draw_font(g_app->default_font, 16.f, 0.f, 0.f, "Hello World 测试中文，你好世界", NEKO_COLOR_WHITE);
+            fy = draw_font(g_app->default_font, 16.f, 0.f, 20.f, "我是第二行", NEKO_COLOR_WHITE);
 
             system_draw_all(NULL);
 

@@ -496,9 +496,9 @@ typedef struct ExistsPoolElem {
 
 static NativeEntityPool* exists_pool;   // 所有现有实体
 static NativeEntityMap* destroyed_map;  // 实体是否被销毁
-static CArray* destroyed;         // 被销毁对象的 DestroyEntry 数组
+static CArray* destroyed;               // 被销毁对象的 DestroyEntry 数组
 static NativeEntityMap* unused_map;     // 未使用的数组中是否有条目
-static CArray* unused;            // id 放在这里 _remove() 之后 可以复用
+static CArray* unused;                  // id 放在这里 _remove() 之后 可以复用
 static NativeEntityMap* load_map;       // 保存的 ID 映射 --> 真实 ID
 
 typedef enum SaveFilter {
@@ -711,7 +711,7 @@ void* entitypool_add(NativeEntityPool* pool, NativeEntity ent) {
 
     if ((elem = (EntityPoolElem*)entitypool_get(pool, ent))) return elem;
 
-    // add element to array and set id in map
+    // 将元素添加到pool->array并在pool->emap中设置id
     elem = (EntityPoolElem*)array_add(pool->array);
     elem->ent = ent;
     entitymap_set(pool->emap, ent, array_length(pool->array) - 1);
@@ -843,22 +843,20 @@ static void _shrink(NativeEntityMap* emap) {
 }
 
 void entitymap_set(NativeEntityMap* emap, NativeEntity ent, int val) {
-    if (val == emap->def)  // deleting?
+    if (val == emap->def)  // 判断删除操作
     {
         emap->arr[ent.id] = val;
-
-        // possibly move bound down and shrink
+        // 可能会向下移动并_shrink
         if (emap->bound == ent.id + 1) {
             while (emap->bound > 0 && emap->arr[emap->bound - 1] == emap->def) --emap->bound;
             _shrink(emap);
         }
     } else {
-        // possibly move bound up and grow
+        // 可能会受到限制并_grow
         if (ent.id + 1 > emap->bound) {
             emap->bound = ent.id + 1;
             if (ent.id >= emap->capacity) _grow(emap);
         }
-
         emap->arr[ent.id] = val;
     }
 }
@@ -923,7 +921,7 @@ static void _mouse_up(MouseCode mouse) {
 static void _mouse_move(vec2 pos) { script_mouse_move(pos); }
 static void _scroll(vec2 scroll) { script_scroll(scroll); }
 
-static batch_renderer* batch;
+batch_renderer* g_batch;
 
 void system_init() {
     PROFILE_FUNC();
@@ -1022,7 +1020,7 @@ void system_init() {
     entity_init();
     transform_init();
     camera_init();
-    batch = batch_init(6000);
+    g_batch = batch_init(6000);
     sprite_init();
     tiled_init();
     font_init();
@@ -1083,7 +1081,7 @@ void system_fini() {
     console_fini();
     tiled_fini();
     sprite_fini();
-    batch_fini(batch);
+    batch_fini(g_batch);
     gui_fini();
     camera_fini();
     transform_fini();
@@ -1097,7 +1095,7 @@ void system_fini() {
 
     gfx_fini(g_render);
 
-    neko_dyn_array_free(g_app->shader_array);
+    // neko_dyn_array_free(g_app->shader_array);
 
     {
         PROFILE_BLOCK("destroy assets");
@@ -1136,7 +1134,7 @@ void system_update_all() {
     camera_update_all();
     gui_update_all();
     sprite_update_all();
-    batch_update_all(batch);
+    batch_update_all(g_batch);
     sound_update_all();
     tiled_update_all();
 
@@ -1155,7 +1153,7 @@ void system_draw_all(command_buffer_t* cb) {
     tiled_draw_all();
 
     sprite_draw_all();
-    batch_draw_all(batch);
+    batch_draw_all(g_batch);
     edit_draw_all();
     physics_draw_all();
     gui_draw_all();

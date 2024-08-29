@@ -435,11 +435,12 @@ void draw_sprite(AseSprite *spr, DrawDescription *desc) {
 
         // sgl_end();
 
-        batch_flush(spr->batch);  // TODO: 优化不要每一draw都刷新
+        // batch_flush(spr->batch);  // TODO: 优化不要每一draw都刷新
     }
 }
 
-static GLuint font_program;
+// static GLuint font_program;
+static Asset font_shader = {};
 static GLuint font_vbo, font_vao;
 
 bool FontFamily::load(String filepath) {
@@ -597,10 +598,11 @@ FontFamily *neko_default_font() {
     return g_app->default_font;
 }
 
-
 static void draw_font_line(FontFamily *font, float size, float *start_x, float *start_y, String line, Color256 col) {
     float x = *start_x;
     float y = *start_y;
+
+    GLuint font_program = font_shader.shader.id;
 
     glUseProgram(font_program);
     glUniform3f(glGetUniformLocation(font_program, "textColor"), col.r / 255.f, col.g / 255.f, col.b / 255.f);
@@ -705,7 +707,8 @@ float draw_font_wrapped(FontFamily *font, float size, float x, float y, String t
 void font_init() {
 
     // 编译着色器并创建程序
-    font_program = gfx_create_program("font", "shader/font.vert", NULL, "shader/font.frag");
+    bool ok = asset_load_kind(AssetKind_Shader, "shader/font.glsl", &font_shader);
+    error_assert(ok);
 
     glGenVertexArrays(1, &font_vao);
     glGenBuffers(1, &font_vbo);
@@ -819,7 +822,6 @@ int neko_font_load(lua_State *L) {
 
 #include "vendor/cute_aseprite.h"
 
-
 // mt_sprite
 
 static AseSprite *check_sprite_udata(lua_State *L, i32 arg) {
@@ -931,7 +933,7 @@ typedef struct {
     float tx, ty, tw, th;
 } batch_tex;
 
-static GLuint batch_shader;
+static Asset batch_shader = {};
 
 void batch_test_draw(batch_renderer *renderer, AssetTexture tex, batch_tex a) {
     batch_texture(renderer, tex.id);
@@ -971,8 +973,9 @@ batch_renderer *batch_init(int vertex_capacity) {
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, texcoord));
 
-    if (batch_shader == 0) {
-        batch_shader = gfx_create_program("batch", "shader/batch.vert", NULL, "shader/batch.frag");
+    if (batch_shader.shader.id == 0) {
+        bool ok = asset_load_kind(AssetKind_Shader, "shader/batch.glsl", &batch_shader);
+        error_assert(ok);
     }
 
     batch_renderer *batch = (batch_renderer *)mem_alloc(sizeof(batch_renderer));
@@ -1020,16 +1023,18 @@ void batch_flush(batch_renderer *renderer) {
         return;
     }
 
-    glUseProgram(batch_shader);
+    GLuint sid = batch_shader.shader.id;
+
+    glUseProgram(sid);
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, renderer->texture);
 
-    glUniform1i(glGetUniformLocation(batch_shader, "u_texture"), 0);
-    // glUniformMatrix4fv(glGetUniformLocation(batch_shader, "u_mvp"), 1, GL_FALSE, (const GLfloat *)&renderer->mvp.cols[0]);
-    glUniformMatrix3fv(glGetUniformLocation(batch_shader, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
+    glUniform1i(glGetUniformLocation(sid, "u_texture"), 0);
+    // glUniformMatrix4fv(glGetUniformLocation(sid, "u_mvp"), 1, GL_FALSE, (const GLfloat *)&renderer->mvp.cols[0]);
+    glUniformMatrix3fv(glGetUniformLocation(sid, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
 
-    glUniform1f(glGetUniformLocation(batch_shader, "scale"), renderer->scale);
+    glUniform1f(glGetUniformLocation(sid, "scale"), renderer->scale);
 
     glBindBuffer(GL_ARRAY_BUFFER, renderer->vbo);
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(Vertex) * renderer->vertex_count, renderer->vertices);

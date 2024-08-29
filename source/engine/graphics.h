@@ -175,16 +175,16 @@ static const char* opengl_string(GLenum e) {
 #ifndef NEKO_GRAPHICS_h
 #define NEKO_GRAPHICS_h
 
-#include "engine/base.h"
+#include "engine/base.hpp"
 
-struct shader_pair {
+typedef struct AssetShader {
     GLuint id;
     const char* name;
-};
+    bool panic_mode;
+} AssetShader;
 
-// compile link program given paths to shader files possibly NULL doesn't glUseProgram(...)
-NEKO_API() GLuint gfx_create_program(const char* name, const char* vert_path, const char* geom_path, const char* frag_path);
-NEKO_API() void gfx_free_program(GLuint program);
+bool neko_load_shader(AssetShader* shader, String path);
+void neko_unload_shader(AssetShader* shader);
 
 // get pointer offset of 'field' in struct 'type'
 #define poffsetof(type, field) ((void*)(&((type*)0)->field))

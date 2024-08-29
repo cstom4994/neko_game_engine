@@ -14,12 +14,14 @@ static NativeEntityPool *pool_sprite;
 
 static char *atlas = NULL;
 
-static GLuint sprite_program;
+static Asset sprite_shader = {};
 static GLuint sprite_vao;
 static GLuint sprite_vbo;
 
 static void _set_atlas(const char *filename, bool err) {
     vec2 atlas_size;
+
+    GLuint sid = sprite_shader.shader.id;
 
     bool ok = asset_load(AssetLoadData{AssetKind_Image, true}, filename, NULL);
 
@@ -33,8 +35,8 @@ static void _set_atlas(const char *filename, bool err) {
     strcpy(atlas, filename);
 
     atlas_size = texture_get_size(atlas);
-    glUseProgram(sprite_program);
-    glUniform2fv(glGetUniformLocation(sprite_program, "atlas_size"), 1, (const GLfloat *)&atlas_size);
+    glUseProgram(sid);
+    glUniform2fv(glGetUniformLocation(sid, "atlas_size"), 1, (const GLfloat *)&atlas_size);
 }
 
 void sprite_set_atlas(const char *filename) { _set_atlas(filename, true); }
@@ -105,26 +107,29 @@ void sprite_init() {
 
     pool_sprite = entitypool_new(Sprite);
 
-    sprite_program = gfx_create_program("sprite_program", "shader/sprite.vert", "shader/sprite.geom", "shader/sprite.frag");
-    glUseProgram(sprite_program);
-    glUniform1i(glGetUniformLocation(sprite_program, "tex0"), 0);
+    bool ok = asset_load_kind(AssetKind_Shader, "shader/sprite.glsl", &sprite_shader);
+    error_assert(ok);
+
+    GLuint sid = sprite_shader.shader.id;
+
+    glUseProgram(sid);
+    glUniform1i(glGetUniformLocation(sid, "tex0"), 0);
     sprite_set_atlas("assets/data/default.png");
 
     glGenVertexArrays(1, &sprite_vao);
     glBindVertexArray(sprite_vao);
     glGenBuffers(1, &sprite_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, sprite_vbo);
-    gfx_bind_vertex_attrib(sprite_program, GL_FLOAT, 3, "wmat1", Sprite, wmat.m[0]);
-    gfx_bind_vertex_attrib(sprite_program, GL_FLOAT, 3, "wmat2", Sprite, wmat.m[1]);
-    gfx_bind_vertex_attrib(sprite_program, GL_FLOAT, 3, "wmat3", Sprite, wmat.m[2]);
-    gfx_bind_vertex_attrib(sprite_program, GL_FLOAT, 2, "size", Sprite, size);
-    gfx_bind_vertex_attrib(sprite_program, GL_FLOAT, 2, "texcell", Sprite, texcell);
-    gfx_bind_vertex_attrib(sprite_program, GL_FLOAT, 2, "texsize", Sprite, texsize);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 3, "wmat1", Sprite, wmat.m[0]);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 3, "wmat2", Sprite, wmat.m[1]);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 3, "wmat3", Sprite, wmat.m[2]);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 2, "size", Sprite, size);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 2, "texcell", Sprite, texcell);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 2, "texsize", Sprite, texsize);
 }
 
 void sprite_fini() {
 
-    glDeleteProgram(sprite_program);
     glDeleteBuffers(1, &sprite_vbo);
     glDeleteVertexArrays(1, &sprite_vao);
 
@@ -158,8 +163,10 @@ void sprite_draw_all() {
 
     entitypool_sort(pool_sprite, _depth_compare);
 
-    glUseProgram(sprite_program);
-    glUniformMatrix3fv(glGetUniformLocation(sprite_program, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
+    GLuint sid = sprite_shader.shader.id;
+
+    glUseProgram(sid);
+    glUniformMatrix3fv(glGetUniformLocation(sid, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
 
     glActiveTexture(GL_TEXTURE0);
     texture_bind(atlas);

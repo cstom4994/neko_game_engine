@@ -627,12 +627,12 @@ static int LUASTRUCT_access_ARRAY_uchar8(lua_State *L, const char *fieldName, uc
 
 // 这里定义 LUASTRUCT 结构
 
-// LUASTRUCT_BEGIN(vec4)
-// LUASTRUCT_FIELD(x, float)
-// LUASTRUCT_FIELD(y, float)
-// LUASTRUCT_FIELD(z, float)
-// LUASTRUCT_FIELD(w, float)
-// LUASTRUCT_END
+LUASTRUCT_BEGIN(vec4)
+LUASTRUCT_FIELD(x, float)
+LUASTRUCT_FIELD(y, float)
+LUASTRUCT_FIELD(z, float)
+LUASTRUCT_FIELD(w, float)
+LUASTRUCT_END
 
 // LUASTRUCT_BEGIN(neko_framebuffer_t)
 // LUASTRUCT_FIELD(id, uint)
@@ -642,20 +642,21 @@ LUASTRUCT_BEGIN(gfx_texture_t)
 LUASTRUCT_FIELD(id, uint)
 LUASTRUCT_END
 
-// LUASTRUCT_BEGIN(Color)
-// LUASTRUCT_FIELD(r, u8)
-// LUASTRUCT_FIELD(g, u8)
-// LUASTRUCT_FIELD(b, u8)
-// LUASTRUCT_FIELD(a, u8)
-// LUASTRUCT_END
+LUASTRUCT_BEGIN(Color)
+LUASTRUCT_FIELD(r, float)
+LUASTRUCT_FIELD(g, float)
+LUASTRUCT_FIELD(b, float)
+LUASTRUCT_FIELD(a, float)
+LUASTRUCT_END
 
 void createStructTables(lua_State *L) {
 #define XX(T) T##_create(L, #T)
     // vec4_create(L, "vec4");
 
-    // XX(vec4);
+    XX(vec4);
     // XX(neko_framebuffer_t);
     XX(gfx_texture_t);
+    XX(Color);
 
     ARRAY_uchar8_create(L);
 #undef XX

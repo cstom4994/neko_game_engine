@@ -122,7 +122,7 @@ NEKO_API() void entity_load_all_end();
 
 typedef struct NativeEntityMap {
     int* arr;
-    ecs_id_t bound;     // 1 + 最大键
+    ecs_id_t bound;     // 数组中的第一个空闲位置的索引 = 1 + 最大键
     ecs_id_t capacity;  // 拥有堆空间的元素数量
     int def;            // 未设置键的值
 } NativeEntityMap;
@@ -130,7 +130,6 @@ typedef struct NativeEntityMap {
 NEKO_API() NativeEntityMap* entitymap_new(int def);  // def 为默认值
 NEKO_API() void entitymap_clear(NativeEntityMap* emap);
 NEKO_API() void entitymap_free(NativeEntityMap* emap);
-
 NEKO_API() void entitymap_set(NativeEntityMap* emap, NativeEntity ent, int val);
 NEKO_API() int entitymap_get(NativeEntityMap* emap, NativeEntity ent);
 

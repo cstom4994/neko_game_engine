@@ -1,3 +1,6 @@
+
+#begin VERTEX
+
 #version 330 core
 
 layout (location = 0) in vec2 position;
@@ -26,3 +29,31 @@ void main() {
 
     gl_Position = vec4(transformed_position, 1.0);
 }
+
+#end VERTEX
+
+#begin FRAGMENT
+
+#version 330 core
+
+out vec4 color;
+
+in VS_OUT {
+    vec4 color;
+    vec2 uv;
+    float use_texture;
+} fs_in;
+
+uniform sampler2D batch_texture;
+
+void main() {
+    vec4 texture_color = vec4(1.0);
+
+    if (fs_in.use_texture == 1.0) {
+        texture_color = texture(batch_texture,  fs_in.uv);
+    }
+
+    color = fs_in.color * texture_color;
+}
+
+#end FRAGMENT

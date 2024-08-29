@@ -843,7 +843,6 @@ function ng.simple_props(sys, props, tbl)
 end
 
 -- hot_require 'nekogame.system'
-local serpent = hot_require("libs/serpent")
 
 -- ng.systems (shortcut ns) is a special table such that ns.sys.func evaluates
 -- to C function sys_func, eg. ns.transform.rotate(...) becomes
@@ -903,6 +902,8 @@ function ng.__fire_event(event, args)
     end
 end
 
+local serpent = hot_require("libs/serpent")
+
 function ng.__save_all()
     local data = {}
 
@@ -919,6 +920,7 @@ function ng.__save_all()
         indent = '  ',
         nocode = true
     })
+    -- return table.show(data)
 end
 
 function ng.__load_all(str)

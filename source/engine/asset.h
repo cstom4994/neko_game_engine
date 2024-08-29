@@ -118,7 +118,6 @@ bool vfs_list_all_files(String fsname, Array<String>* files);
 
 void* vfs_for_miniaudio();
 
-
 /*==========================
 // NEKO_PACK
 ==========================*/
@@ -311,6 +310,7 @@ enum AssetKind : i32 {
     AssetKind_Image,
     AssetKind_AseSprite,
     AssetKind_Tilemap,
+    AssetKind_Shader,
     // AssetKind_Pak,
 };
 
@@ -328,6 +328,7 @@ struct Asset {
         i32 lua_ref;
         AssetTexture texture;
         AseSpriteData sprite;
+        AssetShader shader;
         // MapLdtk tilemap;
         // Pak pak;
     };
