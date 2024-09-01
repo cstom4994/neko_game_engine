@@ -93,6 +93,7 @@ do
     add_files("source/engine/**.lua")
     add_files("source/engine/**.c")
     add_files("source/engine/**.cpp")
+    add_files("source/vendor/luaalloc.c")
     add_files("source/vendor/http.c")
     add_files("source/vendor/ui.cpp")
 

@@ -967,28 +967,19 @@ void system_init() {
 
     g_app->win_console = g_app->win_console || luax_boolean_field(L, -1, "win_console", true);
 
-    bool hot_reload = luax_boolean_field(L, -1, "hot_reload", true);
-    bool startup_load_scripts = luax_boolean_field(L, -1, "startup_load_scripts", true);
-    bool fullscreen = luax_boolean_field(L, -1, "fullscreen", false);
-    lua_Number reload_interval = luax_opt_number_field(L, -1, "reload_interval", 0.1);
-    lua_Number swap_interval = luax_opt_number_field(L, -1, "swap_interval", 1);
-    lua_Number target_fps = luax_opt_number_field(L, -1, "target_fps", 0);
-    g_app->width = luax_opt_number_field(L, -1, "window_width", 800);
-    g_app->height = luax_opt_number_field(L, -1, "window_height", 600);
-    String title = luax_opt_string_field(L, -1, "window_title", "NekoEngine");
-    String default_font = luax_opt_string_field(L, -1, "default_font", "assets/fonts/font.ttf");
-    String imgui_font = luax_opt_string_field(L, -1, "imgui_font", "");
-    g_app->lite_init_path = luax_opt_string_field(L, -1, "lite_init_path", "");
-    g_app->debug_on = luax_boolean_field(L, -1, "debug_on", true);
-    g_app->dump_allocs_detailed = luax_boolean_field(L, -1, "dump_allocs_detailed", false);
-    String game_proxy = luax_opt_string_field(L, -1, "game_proxy", "default");
+    neko::reflection::Any v = engine_cfg_t{.title = "NekoEngine", .hot_reload = true, .startup_load_scripts = true, .fullscreen = false};
+    neko::lua::checktable_refl(ENGINE_LUA(), "app", v);
+    g_app->cfg = v.cast<engine_cfg_t>();
+
+    console_log("load game: %s %f %f", g_app->cfg.title.cstr(), g_app->cfg.width, g_app->cfg.height);
 
     lua_pop(L, 1);  // conf table
 
     // 刷新状态
-    game_set_window_size(luavec2(g_app->width, g_app->height));
+    game_set_window_size(luavec2(g_app->cfg.width, g_app->cfg.height));
+    game_set_window_title(g_app->cfg.title.cstr());
 
-    if (fnv1a(game_proxy) == "default"_hash) {
+    if (fnv1a(g_app->cfg.game_proxy) == "default"_hash) {
         neko::neko_lua_run_string(L, R"lua(
             function neko.before_quit() game_proxy_before_quit() end
             function neko.start(arg) game_proxy_start(arg) end
@@ -996,20 +987,6 @@ void system_init() {
         )lua");
         console_log("using default game proxy");
     }
-
-    CVAR(conf_hot_reload, hot_reload);
-    CVAR(conf_startup_load_scripts, startup_load_scripts);
-    CVAR(conf_fullscreen, fullscreen);
-    CVAR(conf_reload_interval, reload_interval);
-    CVAR(conf_swap_interval, swap_interval);
-    CVAR(conf_target_fps, target_fps);
-    CVAR(conf_width, g_app->width);
-    CVAR(conf_height, g_app->height);
-    CVAR(conf_title, title);
-    CVAR(conf_imgui_font, imgui_font);
-    CVAR(conf_debug_on, g_app->debug_on);
-    CVAR(conf_game_proxy, game_proxy);
-    CVAR(conf_default_font, default_font);
 
     g_render = gfx_create();
     gfx_init(g_render);
@@ -1020,7 +997,7 @@ void system_init() {
     entity_init();
     transform_init();
     camera_init();
-    g_batch = batch_init(6000);
+    g_batch = batch_init(g_app->cfg.batch_vertex_capacity);
     sprite_init();
     tiled_init();
     font_init();
@@ -1030,12 +1007,12 @@ void system_init() {
     physics_init();
     edit_init();
 
-    g_app->hot_reload_enabled.store(mount.can_hot_reload && hot_reload);
-    g_app->reload_interval.store((u32)(reload_interval * 1000));
+    g_app->hot_reload_enabled.store(mount.can_hot_reload && g_app->cfg.hot_reload);
+    g_app->reload_interval.store((u32)(g_app->cfg.reload_interval * 1000));
 
     luax_run_nekogame(L);
 
-    if (!g_app->error_mode.load() && startup_load_scripts && mount.ok && mount_luacode.ok) {
+    if (!g_app->error_mode.load() && g_app->cfg.startup_load_scripts && mount.ok && mount_luacode.ok) {
         load_all_lua_scripts(L);
     }
 
@@ -1060,8 +1037,8 @@ void system_init() {
     input_add_mouse_move_callback(_mouse_move);
     input_add_scroll_callback(_scroll);
 
-    if (target_fps != 0) {
-        timing_instance.target_ticks = 1000000000 / target_fps;
+    if (g_app->cfg.target_fps != 0) {
+        timing_instance.target_ticks = 1000000000 / g_app->cfg.target_fps;
     }
 
 #ifdef NEKO_IS_WIN32

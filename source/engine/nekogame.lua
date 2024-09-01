@@ -2083,7 +2083,7 @@ ns.edit.gui_root = ng.add {
 
 --- edit camera ----------------------------------------------------------------
 
-local camera_default_height = 25
+local camera_default_height = 150
 ns.edit.camera = ng.add {
     group = {
         groups = 'builtin'

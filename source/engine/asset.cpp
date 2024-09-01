@@ -445,7 +445,7 @@ bool Atlas::load(String filepath, bool generate_mips) {
     for (String line : SplitLines(contents)) {
         switch (line.data[0]) {
             case 'a': {
-                Scanner scan = line;
+                StringScanner scan = line;
                 scan.next_string();  // discard 'a'
                 String filename = scan.next_string();
 
@@ -463,7 +463,7 @@ bool Atlas::load(String filepath, bool generate_mips) {
                     return false;
                 }
 
-                Scanner scan = line;
+                StringScanner scan = line;
                 scan.next_string();  // discard 's'
                 String name = scan.next_string();
                 scan.next_string();  // discard origin x
@@ -2031,6 +2031,8 @@ void assets_perform_hot_reload_changes() {
 
     PROFILE_BLOCK("perform hot reload");
 
+    auto L = ENGINE_LUA();
+
     for (FileChange change : g_assets.changes) {
         Asset a = {};
         bool exists = asset_read(change.key, &a);
@@ -2041,8 +2043,8 @@ void assets_perform_hot_reload_changes() {
         bool ok = false;
         switch (a.kind) {
             case AssetKind_LuaRef: {
-                luaL_unref(g_app->L, LUA_REGISTRYINDEX, a.lua_ref);
-                a.lua_ref = luax_require_script(g_app->L, a.name);
+                luaL_unref(L, LUA_REGISTRYINDEX, a.lua_ref);
+                a.lua_ref = luax_require_script(L, a.name);
                 ok = true;
                 break;
             }
@@ -2178,7 +2180,7 @@ bool asset_load(AssetLoadData desc, String filepath, Asset *out) {
             case AssetKind_LuaRef: {
                 asset.lua_ref = LUA_REFNIL;
                 asset_write(asset);
-                asset.lua_ref = luax_require_script(g_app->L, filepath);
+                asset.lua_ref = luax_require_script(ENGINE_LUA(), filepath);
                 ok = true;
                 break;
             }
@@ -2375,7 +2377,7 @@ void AseSpriteData::trash() {
     arena.trash();
 }
 
-extern batch_renderer* g_batch;
+extern batch_renderer *g_batch;
 
 void AseSprite::make() {
     // this->batch = batch_init(128);

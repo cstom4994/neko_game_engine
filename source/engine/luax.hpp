@@ -229,10 +229,6 @@ struct userdata_for_object_t {
     T *obj;
 };
 
-size_t neko_lua_mem_usage();
-
-void *Allocf(void *ud, void *ptr, size_t osize, size_t nsize);
-
 struct lua_tool {
 
     static std::string_view PushFQN(lua_State *const L, int const t, int const last) {
@@ -262,7 +258,7 @@ struct lua_tool {
     };
 
     static lua_State *mark_create(const_str mark_name) {
-        lua_State *L = lua_newstate(Allocf, NULL);
+        lua_State *L = luaL_newstate();
         lua_newtable(L);
         lua_setglobal(L, mark_name);
         return L;
@@ -642,6 +638,9 @@ T neko_lua_to(lua_State *L, int index) {
     } else if constexpr (std::same_as<T, f32> || std::same_as<T, f64>) {
         luaL_argcheck(L, lua_isnumber(L, index), index, "number expected");
         return static_cast<T>(lua_tonumber(L, index));
+    } else if constexpr (std::same_as<T, String>) {
+        // luaL_argcheck(L, lua_isstring(L, index), index, "Neko::String expected");
+        return luax_check_string(L, index);
     } else if constexpr (std::same_as<T, const_str>) {
         luaL_argcheck(L, lua_isstring(L, index), index, "string expected");
         return lua_tostring(L, index);
@@ -685,43 +684,50 @@ struct void_ignore_t<void> {
 
 #define ret(R) typename void_ignore_t<R>::value_t
 
-inline lua_State *neko_lua_create() {
+struct neko_luastate {
+    lua_State *L;
+    LuaAlloc *LA;
+};
 
-    // LuaAlloc *LA = luaalloc_create(
-    //         +[](void *user, void *ptr, size_t osize, size_t nsize) -> void * {
-    //             (void)user;
-    //             (void)osize;
-    //             if (nsize) return realloc(ptr, nsize);
-    //             free(ptr);
-    //             return nullptr;
-    //         },
-    //         nullptr);
+inline neko_luastate neko_lua_create() {
 
-    // neko_defer(luaalloc_delete(LA));
+    neko_luastate l = {};
+
+    l.LA = luaalloc_create(
+            +[](void *user, void *ptr, size_t osize, size_t nsize) -> void * {
+                (void)user;
+                (void)osize;
+                if (nsize) return mem_realloc(ptr, nsize);
+                mem_free(ptr);
+                return nullptr;
+            },
+            nullptr);
 
 #ifdef _DEBUG
-    lua_State *_L = ::lua_newstate(Allocf, NULL);
+    l.L = ::lua_newstate(luaalloc, l.LA);
 #else
-    lua_State *_L = ::luaL_newstate();
+    l.L = ::luaL_newstate();
 #endif
 
-    ::luaL_openlibs(_L);
+    ::luaL_openlibs(l.L);
 
-    __neko_luabind_init(_L);
+    __neko_luabind_init(l.L);
 
-    return _L;
+    return l;
 }
 
-inline void neko_lua_fini(lua_State *_L) {
-    if (_L) {
-        __neko_luabind_fini(_L);
-        int top = lua_gettop(_L);
+inline void neko_lua_fini(neko_luastate l) {
+    if (l.L) {
+        __neko_luabind_fini(l.L);
+        int top = lua_gettop(l.L);
         if (top != 0) {
-            lua_tool::dump_stack(_L);
+            lua_tool::dump_stack(l.L);
             console_log("luastack memory leak");
         }
-        ::lua_close(_L);
-        _L = NULL;
+        ::lua_close(l.L);
+    }
+    if (l.LA) {
+        luaalloc_delete(l.LA);
     }
 }
 
@@ -1641,39 +1647,21 @@ T &checkudata(lua_State *L, int arg, const_str tname = reflection::name_v<T>.dat
 template <typename T>
 void checktable_refl(lua_State *L, const_str tname, T &&v) {
 
-#define FUCK_TYPES() u32, bool, f32, bool, const_str
+#define FUCK_TYPES() i32, u32, bool, f32, bool, const_str, String
 
     if (lua_getfield(L, -1, tname) == LUA_TNIL) {
         console_log("[exception] no %s table", tname);
     }
     if (lua_istable(L, -1)) {
-        // neko::static_refl::neko_type_info<neko_os_running_desc_t>::ForEachVarOf(t, [](auto field, auto &&value) {
-        //     static_assert(std::is_lvalue_reference_v<decltype(value)>);
-        //     if (lua_getfield(L, -1, std::string(field.name).c_str()) != LUA_TNIL) value = neko_lua_to<std::remove_reference_t<decltype(value)>>(L, -1);
-        //     lua_pop(L, 1);
-        // });
-
         auto f = [&L](std::string_view name, neko::reflection::Any &value) {
             static_assert(std::is_lvalue_reference_v<decltype(value)>);
-            // if (value.GetType() == neko::reflection::type_of<std::string_view>()) {
-            //     std::cout << name << " = " << value.cast<std::string_view>() << std::endl;
-            // } else if (value.GetType() == neko::reflection::type_of<std::size_t>()) {
-            //     std::cout << name << " = " << value.cast<std::size_t>() << std::endl;
-            // }
             if (lua_getfield(L, -1, std::string(name).c_str()) != LUA_TNIL) {
-
                 auto ff = [&]<typename S>(const_str name, neko::reflection::Any &var, S &t) {
                     if (value.GetType() == neko::reflection::type_of<S>()) {
                         S s = neko_lua_to<std::remove_reference_t<S>>(L, -1);
                         value.cast<S>() = s;
-                        if constexpr (std::is_same_v<S, const_str>) {
-                            console_log("%s : %s", neko::reflection::name_v<std::remove_reference_t<S>>.data(), s);
-                        } else if constexpr (std::is_integral_v<S>) {
-                            console_log("%s : %d", neko::reflection::name_v<std::remove_reference_t<S>>.data(), s);
-                        }
                     }
                 };
-
                 std::apply([&](auto &&...args) { (ff(std::string(name).c_str(), value, args), ...); }, std::tuple<FUCK_TYPES()>());
             }
             lua_pop(L, 1);

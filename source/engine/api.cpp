@@ -2140,6 +2140,7 @@ REGISTER_TYPE_DF(bool)
 REGISTER_TYPE_DF(f32)
 REGISTER_TYPE_DF(f64)
 REGISTER_TYPE_DF(const_str)
+REGISTER_TYPE_DF(String)
 
 namespace neko::reflection {
 template <>
@@ -3777,6 +3778,7 @@ static void typeclosure(lua_State *L) {
             "userdata",  // 7
             "thread",    // 8
             "proto",     // 9
+            "cdata",     // 10
     };
     size_t i;
     const size_t n = array_size(typenames);

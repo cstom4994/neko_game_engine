@@ -7,6 +7,8 @@ local function UnitTest()
 
     local Test = require("__neko.unittest")
 
+    print("===============================UnitTest========================================")
+
     describe('my project', function()
         lust.before(function()
         end)
@@ -132,15 +134,22 @@ local function UnitTest()
             it('feature_common_va', function()
 
                 local va = common.va()
-                local ip = "127.0.0.2"
-                -- expect(inspect({va.map(tonumber, string.match(ip, "^(%d+)%.(%d+)%.(%d+)%.(%d+)$"))})).to.equal(inspect(
-                --     {127, 0, 0, 2})) -- Pass
 
                 local function f(...)
                     return ...
                 end
                 local t = {va.concat(va(f(1, 2, 3)), va(f(4, 5, 6)))}
-                -- expect(inspect(t)).to.equal(inspect({1, 2, 3, 4, 5, 6}))
+                expect(table.show(t[1])).to.equal(table.show({1, 2, 3, 4, 5, 6}))
+
+                local function bind(f, ...)
+                    local args = va(...)
+                    return function(...)
+                        return f(table.unpack(va.concat(args, va(...))))
+                    end
+                end
+
+                local debug_print = bind(print, '[debug]')
+                debug_print("This is a test") -- 输出: [debug] This is a test
 
                 expect(1).to.be.a('number') -- Pass
             end)
@@ -210,7 +219,7 @@ local function UnitTest()
                 v4.z = 10
                 v4.w = 10
                 local v4_c = Test.LUASTRUCT_test_vec4(v4)
-                -- expect(inspect({v4_c.x, v4_c.y, v4_c.z, v4_c.w})).to.equal(inspect({20.0, 20.0, 20.0, 20.0}))
+                expect(table.show({v4_c.x, v4_c.y, v4_c.z, v4_c.w})).to.equal(table.show({20.0, 20.0, 20.0, 20.0}))
             end)
 
             -- it('feature_spritepack', function()
@@ -396,6 +405,8 @@ local function UnitTest()
         end)
 
     end)
+
+    print("===============================UnitTest========================================")
 
 end
 

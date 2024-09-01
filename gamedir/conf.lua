@@ -1,14 +1,16 @@
 function neko.conf(t)
-    t.swap_interval = 1
-    t.target_fps = 120
-    t.reload_interval = 0.001
-    t.window_width = 1280
-    t.window_height = 720
-    t.debug_on = false
-    t.dump_allocs_detailed = false
-    t.default_font = "assets/fonts/VonwaonBitmap-16px.ttf"
-    t.imgui_font = "assets/fonts/fusion-pixel-12px-monospaced-zh_hans.ttf"
-    -- t.lite_init_path = "D:/Projects/Neko/DevNew/source/game/lite"
 
-    t.game_proxy = "default"
+    t.app = {
+        title = "ahaha",
+        width = 1280.0,
+        height = 720.0,
+        game_proxy = "default",
+        default_font = "assets/fonts/VonwaonBitmap-16px.ttf",
+        dump_allocs_detailed = false,
+        swap_interval = 1,
+        target_fps = 120,
+        reload_interval = 0.001,
+        debug_on = false,
+        batch_vertex_capacity = 2048
+    }
 end

@@ -211,7 +211,12 @@ void neko_unload_shader(AssetShader* shader);
 // NEKO_GRAPHICS
 =============================*/
 
+#ifdef _DEBUG
 #define neko_check_gl_error() gfx_print_error(__FILE__, __LINE__)
+#else
+#define neko_check_gl_error() 
+#endif
+
 NEKO_API() void gfx_print_error(const char* file, u32 line);
 
 // OpenGL

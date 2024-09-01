@@ -61,10 +61,9 @@ engine_ui_renderer_t *neko_new_ui_renderer() {
     bool ok = asset_load_kind(AssetKind_Shader, "shader/ui.glsl", &ui_shader);
     error_assert(ok);
 
-    // gfx_create_program("ui_glsl", , NULL, "shader/ui.frag");
-
     renderer->draw_call_count = 0;
 
+    renderer->tex = 0;
     renderer->shader = ui_shader.shader.id;
     renderer->quad_count = 0;
 
@@ -78,10 +77,11 @@ engine_ui_renderer_t *neko_new_ui_renderer() {
     neko_configure_vertex_buffer(buffer, 0, 2, 9, 0); /* vec2 position */
     neko_configure_vertex_buffer(buffer, 1, 2, 9, 2); /* vec2 uv */
     neko_configure_vertex_buffer(buffer, 2, 4, 9, 4); /* vec4 color */
-    /* Layout 3 specifies a mode for the rendering.
-     * 	0 = rectangle
-     * 	1 = icon (using atlas)
-     * 	2 = text (using supplied font) */
+    //  布局指定渲染模式
+    //  	0 = rectangle
+    //   	1 = icon (using atlas)
+    //  	2 = text (ascii)
+    //  	3 = text (unicode)
     neko_configure_vertex_buffer(buffer, 3, 1, 9, 8); /* float mode */
     neko_bind_vertex_buffer_for_edit(NULL);
 
@@ -110,12 +110,6 @@ void engine_ui_renderer_push_quad(engine_ui_renderer_t *renderer, rect_t dst, re
         tw /= (float)UI_ATLAS_WIDTH;
         th /= (float)UI_ATLAS_HEIGHT;
     } else if (mode == 2) {
-        // neko_texture_t* atlas = neko_get_glyph_set(renderer->font, 'a')->atlas;
-
-        // tx *= (float)256;
-        // ty *= (float)128;
-        // tw *= (float)256;
-        // th *= (float)128;
     }
 
     neko_rgb_color_t col = neko_rgb_color_from_color(color);
@@ -136,7 +130,7 @@ void engine_ui_renderer_push_quad(engine_ui_renderer_t *renderer, rect_t dst, re
 
     renderer->quad_count++;
 
-    if (/*mode == 2 ||*/ renderer->quad_count >= ui_renderer_max_quads) {
+    if (renderer->quad_count >= ui_renderer_max_quads || mode == 3) {
         neko_flush_ui_renderer(renderer);
     }
 }
@@ -218,44 +212,61 @@ float engine_ui_renderer_draw_text(engine_ui_renderer_t *renderer, const char *t
     //     p = neko_utf8_to_codepoint(p, &code_point);
     //     neko_glyph_set_t* set = neko_get_glyph_set(renderer->font, code_point);
     //     stbtt_bakedchar* g = &set->glyphs[code_point & 0xff];
-    //     rect_t src = {(float)g->x0, (float)g->y0, (float)g->x1 - g->x0, (float)g->y1 - g->y0};
+    //     rect_t src = {(f32)g->x0, (f32)g->y0, (f32)g->x1 - g->x0, (f32)g->y1 - g->y0};
     //     rect_t dst = {position.x + g->xoff, position.y + g->yoff, src.w, src.h};
     //     engine_ui_renderer_push_quad(renderer, dst, src, color, transparency, 2);
     //     position.x += g->xadvance;
     // }
 
-    float x = position.x;
-    float y = position.y;
+    f32 x = position.x;
+    f32 y = position.y;
 
     for (Rune r : UTF8(text)) {
 
         u32 tex_id = 0;
-        float xx = x;
-        float yy = y;
-        stbtt_aligned_quad q = renderer->font->quad(&tex_id, &xx, &yy, 16.f, r.charcode());
+        f32 xx = x;
+        f32 yy = y;
+        u32 ch = r.charcode();
+        stbtt_aligned_quad q = renderer->font->quad(&tex_id, &xx, &yy, 16.f, ch);
 
         neko_gl_data_t *ogl = gfx_ogl();
-        GLuint gl_tex_id = neko_slot_array_get(ogl->textures, tex_id).id;
+        u32 ch_tex_id = neko_slot_array_get(ogl->textures, tex_id).id;
 
-        float x1 = x + q.x0;
-        float y1 = y + q.y0;
-        float x2 = x + q.x1;
-        float y2 = y + q.y1;
+        f32 x1 = x + q.x0;
+        f32 y1 = y + q.y0;
+        f32 x2 = x + q.x1;
+        f32 y2 = y + q.y1;
 
-        float u1 = q.s0;
-        float v1 = q.t0;
-        float u2 = q.s1;
-        float v2 = q.t1;
+        f32 u1 = q.s0;
+        f32 v1 = q.t0;
+        f32 u2 = q.s1;
+        f32 v2 = q.t1;
 
-        float w = q.x1 - q.x0;
-        float h = q.y1 - q.y0;
+        f32 w = q.x1 - q.x0;
+        f32 h = q.y1 - q.y0;
 
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, gl_tex_id);
+        renderer->tex = (renderer->tex << 32) | ch_tex_id;  // 前32bit 上一字贴图ID 后32bit 当前贴图ID
 
-        rect_t src = {(float)q.s0, (float)q.t0, (float)q.s1 - q.s0, (float)q.t1 - q.t0};
+        rect_t src = {(f32)q.s0, (f32)q.t0, (f32)q.s1 - q.s0, (f32)q.t1 - q.t0};
         rect_t dst = {x1, y1, w, h};
-        engine_ui_renderer_push_quad(renderer, dst, src, color, transparency, 2);
+
+        if (ch > 256) {
+            if (renderer->quad_count > 0) {
+                u32 last_tex = (u32)(renderer->tex >> 32);  // 前32bit 上一字贴图ID
+                glActiveTexture(GL_TEXTURE1);
+                glBindTexture(GL_TEXTURE_2D, last_tex);
+                neko_flush_ui_renderer(renderer);
+            }
+            u32 tex = (u32)renderer->tex;  // 后32bit 当前贴图ID
+            glActiveTexture(GL_TEXTURE1);
+            glBindTexture(GL_TEXTURE_2D, tex);
+            engine_ui_renderer_push_quad(renderer, dst, src, color, transparency, 3);
+        } else {
+            u32 tex = (u32)renderer->tex;  // 后32bit 当前贴图ID
+            glActiveTexture(GL_TEXTURE1);
+            glBindTexture(GL_TEXTURE_2D, tex);
+            engine_ui_renderer_push_quad(renderer, dst, src, color, transparency, 2);
+        }
 
         x = xx;
         y = yy;
@@ -299,10 +310,7 @@ float engine_ui_text_width(engine_ui_renderer_t *renderer, const char *text) {
     return (float)len * 15.f;
 }
 
-float engine_ui_tect_height(engine_ui_renderer_t *renderer) {
-    // return renderer->font->height;
-    return -2.0f;
-}
+float engine_ui_tect_height(engine_ui_renderer_t *renderer) { return -16.0f; }
 
 void neko_set_ui_renderer_clip(engine_ui_renderer_t *renderer, rect_t rect) {
     neko_flush_ui_renderer(renderer);

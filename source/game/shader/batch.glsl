@@ -11,11 +11,9 @@ uniform mat3 inverse_view_matrix;
 uniform float scale;
 
 void main() {
-    float adjusted_scale = scale;
-    if (scale == 0.0) {
-        adjusted_scale = 0.1;
-    }
-    gl_Position = vec4(inverse_view_matrix * adjusted_scale * vec3(a_position, 1.0), 1.0);
+    vec2 position = a_position * 1.0; // 应用缩放因子
+    // position.y = -position.y;
+    gl_Position = vec4(inverse_view_matrix * vec3(position, 1.0), 1.0);
     v_texindex = a_texindex;
 }
 

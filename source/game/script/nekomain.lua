@@ -1,8 +1,5 @@
 -- 添加nekogame需要路径并加载nekogame
 -- hot_require 'nekogame'
-
--- luainspector = Inspector.inspector_init()
-
 mu = neko.ui
 
 function neko.__define_default_callbacks()
@@ -58,10 +55,16 @@ if run then
     -- 没有相机则添加默认值
     if ns.camera.get_current_camera() == ng.entity_nil then
         ng.add {
+            transform = {
+                position = ng.vec2(0, 0)
+            },
             camera = {
                 viewport_height = 18.75
             }
         }
+        print("Add camera")
+    else
+        print("Default camera")
     end
 else
     -- 没有启动脚本

@@ -494,7 +494,7 @@ void print_xml_node(xml_node_t *node, int indent) {
 }
 
 int test_xml(lua_State *L) {
-    xml_document_t *doc = xml_parse_vfs("test/test.xml");
+    xml_document_t *doc = xml_parse_vfs("assets/maps/tileset.tsx");
     if (!doc) {
         printf("XML Parse Error: %s\n", xml_get_error());
     } else {
@@ -636,7 +636,7 @@ void draw_gui() {
             // bool lock = g_app->ui.mouse_pressed;
             // bool moved = neko_os_mouse_moved();
 
-            if (ui_begin_window(g_app->ui, "App", neko_rect(g_app->width - 210, 30, 200, 200))) {
+            if (ui_begin_window(g_app->ui, "App", neko_rect(g_app->cfg.width - 210, 30, 200, 200))) {
                 // l = g_app->ui->layout_stack[0];
                 ui_layout_row(g_app->ui, 1, ui_widths(-1), 0);
 
@@ -647,7 +647,7 @@ void draw_gui() {
                 Color256 col = NEKO_COLOR_GREEN;
                 // ui_textf_colored(g_app->ui, &col, "Neko %d", neko_buildnum());
 
-                ui_labelf("%.2f Mb %.2f Mb %.1lf ms/frame (%.1lf FPS)", lua_gc(g_app->L, LUA_GCCOUNT, 0) / 1024.f, (f32)g_allocator->alloc_size / (1024 * 1024), timing_instance.true_dt * 1000.f,
+                ui_labelf("%.2f Mb %.2f Mb %.1lf ms/frame (%.1lf FPS)", lua_gc(ENGINE_LUA(), LUA_GCCOUNT, 0) / 1024.f, (f32)g_allocator->alloc_size / (1024 * 1024), timing_instance.true_dt * 1000.f,
                           1.f / timing_instance.true_dt);
 
                 ui_labelf("FPS: %.2lf Delta: %.6lf", fps, delta * 1000.f);
@@ -764,7 +764,7 @@ void draw_gui() {
 void draw_gui_auto_test() {
     ui_context_t *ui = g_app->ui;
     const vec2 ss_ws = neko_v2(500.f, 300.f);
-    ui_begin_window(g_app->ui, "GUI Test", neko_rect((g_app->width - ss_ws.x) * 0.5f, (g_app->height - ss_ws.y) * 0.5f, ss_ws.x, ss_ws.y));
+    ui_begin_window(g_app->ui, "GUI Test", neko_rect((g_app->cfg.width - ss_ws.x) * 0.5f, (g_app->cfg.height - ss_ws.y) * 0.5f, ss_ws.x, ss_ws.y));
     {
 
         if (ui_header(ui, "1. String")) {

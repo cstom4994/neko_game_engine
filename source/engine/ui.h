@@ -27,6 +27,12 @@
         ui_label(ui_global_ctx(), BUFFER);               \
     } while (0)
 
+#define ui_textf_colored(ui, col, STR, ...)              \
+    do {                                                 \
+        neko_snprintfc(BUFFER, 256, STR, ##__VA_ARGS__); \
+        ui_text_colored(ui, BUFFER, col);                \
+    } while (0)
+
 inline void ui_push_id(ui_context_t* ctx, String str) { ui_push_id(ctx, str.data, str.len); }
 
 inline void ui_text_colored(ui_context_t* ctx, const char* text, Color256 col) {
@@ -65,6 +71,7 @@ typedef struct engine_ui_renderer_t {
 
     neko_vertex_buffer_t* vb;
     u32 shader;
+    u64 tex;  // 64bit
 
     FontFamily* font;
 

@@ -17,16 +17,15 @@ out VS_OUT {
 } vs_out;
 
 void main() {
-
-	vs_out.color = color;
-	vs_out.uv = uv;
-	vs_out.use_texture = use_texture;
-
-	// gl_Position = vec4(inverse_view_matrix * vec3(position, 1.0), 1.0);
-
-	vec3 transformed_position = inverse_view_matrix * 0.04 * vec3(position, 1.0);
-    transformed_position.y = -transformed_position.y;  // 翻转Y轴
-
+    {	
+        vs_out.color = color;
+        vs_out.uv = uv;
+        vs_out.use_texture = use_texture;
+    }
+    vec2 pos = position * 1.0; // 应用缩放因子
+    pos.y = -pos.y;
+    pos = pos;
+	vec3 transformed_position = inverse_view_matrix * vec3(pos, 1.0);
     gl_Position = vec4(transformed_position, 1.0);
 }
 

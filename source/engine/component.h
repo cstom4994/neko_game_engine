@@ -150,7 +150,7 @@ struct MapLdtk {
     TileNode* astar(TilePoint start, TilePoint goal);
 };
 
-#define SPRITE_SCALE 3
+#define SPRITE_SCALE 1.0
 
 /*==========================
 // Tiled draw

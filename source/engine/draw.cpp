@@ -591,14 +591,13 @@ float FontFamily::width(float size, String text) {
 
 FontFamily *neko_default_font() {
     if (g_app->default_font == nullptr) {
-        CVAR_REF(conf_default_font, String);
         g_app->default_font = (FontFamily *)mem_alloc(sizeof(FontFamily));
-        g_app->default_font->load(conf_default_font.data.str);
+        g_app->default_font->load(g_app->cfg.default_font);
     }
     return g_app->default_font;
 }
 
-static void draw_font_line(FontFamily *font, float size, float *start_x, float *start_y, String line, Color256 col) {
+static void draw_font_line(FontFamily *font, bool draw_in_world, float size, float *start_x, float *start_y, String line, Color256 col) {
     float x = *start_x;
     float y = *start_y;
 
@@ -609,7 +608,14 @@ static void draw_font_line(FontFamily *font, float size, float *start_x, float *
     glActiveTexture(GL_TEXTURE0);
     glUniform1i(glGetUniformLocation(font_program, "text"), 0);
 
-    glUniformMatrix3fv(glGetUniformLocation(font_program, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
+    if (draw_in_world) {
+        glUniformMatrix3fv(glGetUniformLocation(font_program, "inverse_view_matrix"), 1, GL_FALSE, (const GLfloat *)camera_get_inverse_view_matrix_ptr());
+        glUniform1i(glGetUniformLocation(font_program, "mode"), 0);
+    } else {
+        mat4 cam_mat = mat4_ortho(0.0f, (float)g_app->cfg.width, (float)g_app->cfg.height, 0.0f, -1.0f, 1.0f);
+        glUniformMatrix4fv(glGetUniformLocation(font_program, "u_mvp"), 1, GL_FALSE, (const GLfloat *)cam_mat.elements);
+        glUniform1i(glGetUniformLocation(font_program, "mode"), 1);
+    }
 
     glBindVertexArray(font_vao);
 
@@ -658,26 +664,26 @@ static void draw_font_line(FontFamily *font, float size, float *start_x, float *
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-float draw_font(FontFamily *font, float size, float x, float y, String text, Color256 col) {
+float draw_font(FontFamily *font, bool draw_in_world, float size, float x, float y, String text, Color256 col) {
     PROFILE_FUNC();
 
     y += size;
 
     for (String line : SplitLines(text)) {
-        draw_font_line(font, size, &x, &y, line, col);
+        draw_font_line(font, draw_in_world, size, &x, &y, line, col);
     }
 
     return y - size;
 }
 
-float draw_font_wrapped(FontFamily *font, float size, float x, float y, String text, Color256 col, float limit) {
+float draw_font_wrapped(FontFamily *font, bool draw_in_world, float size, float x, float y, String text, Color256 col, float limit) {
     PROFILE_FUNC();
 
     y += size;
 
     for (String line : SplitLines(text)) {
         font->sb.clear();
-        Scanner scan = line;
+        StringScanner scan = line;
 
         for (String word = scan.next_string(); word != ""; word = scan.next_string()) {
 
@@ -692,13 +698,13 @@ float draw_font_wrapped(FontFamily *font, float size, float x, float y, String t
             font->sb.len -= word.len;
             font->sb.data[font->sb.len] = '\0';
 
-            draw_font_line(font, size, &x, &y, String(font->sb), col);
+            draw_font_line(font, draw_in_world, size, &x, &y, String(font->sb), col);
 
             font->sb.clear();
             font->sb << word << " ";
         }
 
-        draw_font_line(font, size, &x, &y, String(font->sb), col);
+        draw_font_line(font, draw_in_world, size, &x, &y, String(font->sb), col);
     }
 
     return y - size;
@@ -770,9 +776,9 @@ static int mt_font_draw(lua_State *L) {
 
     float bottom = 0;
     if (wrap < 0) {
-        bottom = draw_font(font, (u64)size, (float)x, (float)y, text, NEKO_COLOR_WHITE);
+        bottom = draw_font(font, false, (u64)size, (float)x, (float)y, text, NEKO_COLOR_WHITE);
     } else {
-        bottom = draw_font_wrapped(font, (u64)size, (float)x, (float)y, text, NEKO_COLOR_WHITE, (float)wrap);
+        bottom = draw_font_wrapped(font, false, (u64)size, (float)x, (float)y, text, NEKO_COLOR_WHITE, (float)wrap);
     }
 
     lua_pushnumber(L, bottom);
@@ -924,38 +930,7 @@ int neko_sprite_load(lua_State *L) {
     return 1;
 }
 
-// static batch_renderer batch;
-
-typedef struct {
-    // position
-    float px, py;
-    // texcoords
-    float tx, ty, tw, th;
-} batch_tex;
-
 static Asset batch_shader = {};
-
-void batch_test_draw(batch_renderer *renderer, AssetTexture tex, batch_tex a) {
-    batch_texture(renderer, tex.id);
-
-    float x1 = a.px;
-    float y1 = a.py;
-    float x2 = a.px + 24;
-    float y2 = a.py + 24;
-
-    float u1 = a.tx / tex.width;
-    float v1 = a.ty / tex.height;
-    float u2 = (a.tx + a.tw) / tex.width;
-    float v2 = (a.ty + a.th) / tex.height;
-
-    batch_push_vertex(renderer, x1, y1, u1, v1);
-    batch_push_vertex(renderer, x2, y2, u2, v2);
-    batch_push_vertex(renderer, x1, y2, u1, v2);
-
-    batch_push_vertex(renderer, x1, y1, u1, v1);
-    batch_push_vertex(renderer, x2, y1, u2, v1);
-    batch_push_vertex(renderer, x2, y2, u2, v2);
-}
 
 batch_renderer *batch_init(int vertex_capacity) {
     GLuint vao;
@@ -1005,7 +980,12 @@ void batch_update_all(batch_renderer *batch) {
             {2, 2, 24, 24}, {58, 2, 24, 24}, {114, 2, 24, 24}, {170, 2, 24, 24}, {2, 30, 24, 24},
     };
 
-    batch_tex ch = {
+    struct {
+        // position
+        float px, py;
+        // texcoords
+        float tx, ty, tw, th;
+    } ch = {
             .px = 0,
             .py = 48,
             .tx = alien_uvs[2].x,
@@ -1013,7 +993,26 @@ void batch_update_all(batch_renderer *batch) {
             .tw = alien_uvs[2].w,
             .th = alien_uvs[2].h,
     };
-    batch_test_draw(batch, tex_aliens, ch);
+
+    batch_texture(batch, tex_aliens.id);
+
+    float x1 = ch.px;
+    float y1 = ch.py;
+    float x2 = ch.px + 24;
+    float y2 = ch.py + 24;
+
+    float u1 = ch.tx / tex_aliens.width;
+    float v1 = ch.ty / tex_aliens.height;
+    float u2 = (ch.tx + ch.tw) / tex_aliens.width;
+    float v2 = (ch.ty + ch.th) / tex_aliens.height;
+
+    batch_push_vertex(batch, x1, y1, u1, v1);
+    batch_push_vertex(batch, x2, y2, u2, v2);
+    batch_push_vertex(batch, x1, y2, u1, v2);
+
+    batch_push_vertex(batch, x1, y1, u1, v1);
+    batch_push_vertex(batch, x2, y1, u2, v1);
+    batch_push_vertex(batch, x2, y2, u2, v2);
 }
 
 void batch_draw_all(batch_renderer *batch) { batch_flush(batch); }

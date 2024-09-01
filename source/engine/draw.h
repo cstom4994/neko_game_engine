@@ -74,7 +74,7 @@ struct lua_State;
 DrawDescription draw_description_args(lua_State* L, i32 arg_start);
 RectDescription rect_description_args(lua_State* L, i32 arg_start);
 
-#define NEKO_FONT_BAKED_SIZE 128
+#define NEKO_FONT_BAKED_SIZE 256
 
 struct FontRange {
     stbtt_bakedchar chars[NEKO_FONT_BAKED_SIZE];
@@ -99,8 +99,8 @@ struct FontFamily {
 
 FontFamily* neko_default_font();
 
-float draw_font(FontFamily* font, float size, float x, float y, String text, Color256 col);
-float draw_font_wrapped(FontFamily* font, float size, float x, float y, String text, Color256 col, float limit);
+float draw_font(FontFamily* font, bool draw_in_world, float size, float x, float y, String text, Color256 col);
+float draw_font_wrapped(FontFamily* font, bool draw_in_world, float size, float x, float y, String text, Color256 col, float limit);
 
 void font_init();
 

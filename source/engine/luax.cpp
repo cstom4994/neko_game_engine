@@ -17,23 +17,7 @@
 #include "engine/bootstrap.h"
 #include "engine/scripting.h"
 
-
 namespace neko {
-
-static size_t lua_mem_usage;
-
-size_t neko_lua_mem_usage() { return lua_mem_usage; }
-
-void *Allocf(void *ud, void *ptr, size_t osize, size_t nsize) {
-    if (!ptr) osize = 0;
-    if (!nsize) {
-        lua_mem_usage -= osize;
-        mem_free(ptr);
-        return NULL;
-    }
-    lua_mem_usage += (nsize - osize);
-    return mem_realloc(ptr, nsize);
-}
 
 void neko_lua_run_string(lua_State *m_ls, const_str str_) {
     if (luaL_dostring(m_ls, str_)) {
@@ -465,8 +449,10 @@ static void lua_thread_proc(void *udata) {
     // lua_State *L = lua_newstate(luaalloc, LA);
     // neko_defer(lua_close(L));
 
-    lua_State *L = neko::neko_lua_create();
-    neko_defer(neko::neko_lua_fini(L));
+    neko::neko_luastate LS = neko::neko_lua_create();
+    neko_defer(neko::neko_lua_fini(LS));
+
+    auto L = LS.L;
 
     {
         PROFILE_BLOCK("open libs");

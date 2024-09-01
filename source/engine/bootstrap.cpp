@@ -26,146 +26,35 @@
 // deps
 #include "vendor/sokol_time.h"
 
-#if 0
-
-using namespace neko;
-
-namespace neko::reflection {
-template <>
-Type *type_of<neko_os_running_desc_t>() {
-    static Type type;
-    type.name = "neko_os_running_desc_t";
-    type.destroy = [](void *obj) { delete static_cast<neko_os_running_desc_t *>(obj); };
-    type.copy = [](const void *obj) { return (void *)(new neko_os_running_desc_t(*static_cast<const neko_os_running_desc_t *>(obj))); };
-    type.move = [](void *obj) { return (void *)(new neko_os_running_desc_t(std::move(*static_cast<neko_os_running_desc_t *>(obj)))); };
-
 #define REFL_FIELDS(C, field) type.fields.insert({#field, {type_of<decltype(C::field)>(), offsetof(C, field)}})
 
-    REFL_FIELDS(neko_os_running_desc_t, title);
-    REFL_FIELDS(neko_os_running_desc_t, width);
-    REFL_FIELDS(neko_os_running_desc_t, height);
-    REFL_FIELDS(neko_os_running_desc_t, flags);
-    REFL_FIELDS(neko_os_running_desc_t, num_samples);
-    REFL_FIELDS(neko_os_running_desc_t, monitor_index);
-    REFL_FIELDS(neko_os_running_desc_t, vsync);
-    REFL_FIELDS(neko_os_running_desc_t, frame_rate);
+// clang-format off
 
-    return &type;
-};
-}  // namespace neko::reflection
+REGISTER_TYPE_DF(engine_cfg_t, 
+REFL_FIELDS(engine_cfg_t, show_editor); 
+REFL_FIELDS(engine_cfg_t, show_demo_window); 
+REFL_FIELDS(engine_cfg_t, show_gui); 
+REFL_FIELDS(engine_cfg_t, shader_inspect);
+REFL_FIELDS(engine_cfg_t, hello_ai_shit); 
+REFL_FIELDS(engine_cfg_t, vsync); 
+REFL_FIELDS(engine_cfg_t, is_hotfix); 
+REFL_FIELDS(engine_cfg_t, title); 
+REFL_FIELDS(engine_cfg_t, height);
+REFL_FIELDS(engine_cfg_t, width); 
+REFL_FIELDS(engine_cfg_t, game_proxy); 
+REFL_FIELDS(engine_cfg_t, default_font); 
+REFL_FIELDS(engine_cfg_t, dump_allocs_detailed);
+REFL_FIELDS(engine_cfg_t, hot_reload);
+REFL_FIELDS(engine_cfg_t, startup_load_scripts);
+REFL_FIELDS(engine_cfg_t, fullscreen);
+REFL_FIELDS(engine_cfg_t, debug_on);
+REFL_FIELDS(engine_cfg_t, reload_interval);
+REFL_FIELDS(engine_cfg_t, swap_interval);
+REFL_FIELDS(engine_cfg_t, target_fps);
+REFL_FIELDS(engine_cfg_t, batch_vertex_capacity);
+);
 
-void game_init() {
-
-    neko_game()->cvar.bg[0] = neko_game()->cvar.bg[1] = neko_game()->cvar.bg[2] = 28.f;
-
-    {
-
-        neko_lua_safe_dofile(ENGINE_LUA(), "main");
-
-        luax_get(ENGINE_LUA(), "neko", "__define_default_callbacks");
-        luax_pcall(ENGINE_LUA(), 0, 0);
-
-        // 获取 neko.conf.table
-        luax_get(ENGINE_LUA(), "neko", "conf");
-        if (!lua_istable(ENGINE_LUA(), -1)) {
-            console_log("%s", "neko_game is not a table");
-        }
-
-        neko::reflection::Any v = neko_os_running_desc_t{.title = "Neko Engine"};
-        neko::lua::checktable_refl(ENGINE_LUA(), "app", v);
-
-        neko_client_cvar_t &cvar = neko_game()->cvar;
-        // if (lua_getfield(ENGINE_L(), -1, "cvar") == LUA_TNIL) throw std::exception("no cvar");
-        // if (lua_istable(ENGINE_L(), -1)) {
-        //     neko::static_refl::neko_type_info<neko_client_cvar_t>::ForEachVarOf(cvar, [](auto field, auto &&value) {
-        //         static_assert(std::is_lvalue_reference_v<decltype(value)>);
-        //         if (lua_getfield(ENGINE_L(), -1, std::string(field.name).c_str()) != LUA_TNIL) value = neko_lua_to<std::remove_reference_t<decltype(value)>>(ENGINE_L(), -1);
-        //         lua_pop(ENGINE_L(), 1);
-        //     });
-        // } else {
-        //     throw std::exception("no cvar table");
-        // }
-        // lua_pop(ENGINE_L(), 1);
-
-        cvar.show_editor = false;
-        cvar.show_demo_window = false;
-        cvar.show_pack_editor = false;
-        cvar.show_profiler_window = false;
-        cvar.show_test_window = false;
-        cvar.show_gui = false;
-        cvar.shader_inspect = false;
-        cvar.hello_ai_shit = false;
-        cvar.vsync = false;
-        cvar.is_hotfix = false;
-
-        lua_pop(ENGINE_LUA(), 1);  // 弹出 neko.conf.table
-
-        console_log("load game: %s %d %d", v.cast<neko_os_running_desc_t>().title, v.cast<neko_os_running_desc_t>().width, v.cast<neko_os_running_desc_t>().height);
-
-        neko_os_set_window_title(neko_os_main_window(), v.cast<neko_os_running_desc_t>().title);
-    }
-
-    bool ok = ENGINE_INTERFACE()->pack.load("gamedir/res.pack", 0, false);
-    neko_assert(ok == true);
-
-    u8 *font_data, *cat_data;
-    u32 font_data_size, cat_data_size;
-
-    ENGINE_INTERFACE()->pack.get_data(".\\data\\assets\\fonts\\fusion-pixel-12px-monospaced.ttf", (const u8 **)&font_data, &font_data_size);
-    ENGINE_INTERFACE()->pack.get_data(".\\data\\assets\\textures\\cat.aseprite", (const u8 **)&cat_data, &cat_data_size);
-
-    ENGINE_INTERFACE()->test_ase = neko_aseprite_simple(cat_data, cat_data_size);
-
-    neko_asset_texture_t tex0 = {0};
-    neko_asset_texture_load_from_file("gamedir/assets/textures/yzh.png", &tex0, NULL, false, false);
-    ENGINE_INTERFACE()->tex_hndl = neko_assets_create_asset(&ENGINE_INTERFACE()->am, neko_asset_texture_t, &tex0);
-
-    ui_init(&ENGINE_INTERFACE()->ui, neko_os_main_window());
-
-    // 加载自定义字体文件 初始化 gui font stash
-    // neko_asset_font_load_from_memory(font_data, font_data_size, &CL_GAME_INTERFACE()->font, 24);
-    neko_asset_font_load_from_file("gamedir/assets/fonts/monocraft.ttf", &ENGINE_INTERFACE()->font, 24);
-
-    ENGINE_INTERFACE()->pack.free_item(font_data);
-    ENGINE_INTERFACE()->pack.free_item(cat_data);
-
-    auto GUI_FONT_STASH = []() -> ui_font_stash_desc_t * {
-        static ui_font_desc_t font_decl[] = {{.key = "mc_regular", .font = &ENGINE_INTERFACE()->font}};
-        static ui_font_stash_desc_t font_stash = {.fonts = font_decl, .size = 1 * sizeof(ui_font_desc_t)};
-        return &font_stash;
-    }();
-
-    ui_init_font_stash(&ENGINE_INTERFACE()->ui, GUI_FONT_STASH);
-
-    ui_dock_ex(&ENGINE_INTERFACE()->ui, "Style_Editor", "Demo_Window", UI_SPLIT_TAB, 0.5f);
-
-    neko_game()->imgui = neko_imgui_new(&ENGINE_INTERFACE()->cb, neko_os_main_window(), false);
-
-    // Construct frame buffer
-    neko_game()->r_main_fbo = gfx_framebuffer_create({});
-
-    gfx_texture_desc_t main_rt_desc = {.width = (u32)neko_game()->DisplaySize.x,
-                                               .height = (u32)neko_game()->DisplaySize.y,
-                                               .format = R_TEXTURE_FORMAT_RGBA8,
-                                               .wrap_s = GL_REPEAT,
-                                               .wrap_t = GL_REPEAT,
-                                               .min_filter = R_TEXTURE_FILTER_NEAREST,
-                                               .mag_filter = R_TEXTURE_FILTER_NEAREST};
-    neko_game()->r_main_rt = gfx_texture_create(main_rt_desc);
-
-    gfx_renderpass_desc_t main_rp_desc = {.fbo = neko_game()->r_main_fbo, .color = &neko_game()->r_main_rt, .color_size = sizeof(neko_game()->r_main_rt)};
-    neko_game()->r_main_rp = gfx_renderpass_create(main_rp_desc);
-
-    luax_get(ENGINE_LUA(), "neko", "game_init");
-    luax_pcall(ENGINE_LUA(), 0, 0);
-
-    neko::timer timer;
-    timer.start();
-    luax_get(ENGINE_LUA(), "neko", "game_init_thread");
-    luax_pcall(ENGINE_LUA(), 0, 0);
-    timer.stop();
-    console_log(std::format("game_init_thread loading done in {0:.3f} ms", timer.get()).c_str());
-}
+// clang-format on
 
 #if 0
             if (ImGui::Button("test_ecs_cpp")) {
@@ -185,8 +74,6 @@ void game_init() {
                     });
                 });
             }
-#endif
-
 #endif
 
 i32 neko_buildnum(void) {
@@ -222,7 +109,7 @@ static void init() {
     {
         PROFILE_BLOCK("neko.start");
 
-        lua_State *L = g_app->L;
+        lua_State *L = ENGINE_LUA();
 
         if (!g_app->error_mode.load()) {
             luax_neko_get(L, "start");
@@ -550,8 +437,8 @@ static void _opengl_error_callback(GLenum source, GLenum type, GLuint id, GLenum
 
 // 窗口大小改变的回调函数
 void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
-    g_app->width = width;
-    g_app->height = height;
+    g_app->cfg.width = width;
+    g_app->cfg.height = height;
     // 更新视口
     glViewport(0, 0, width, height);
 }
@@ -643,17 +530,6 @@ static void _game_init() {
 
     assets_start_hot_reload();
 
-    if (g_app->lite_init_path.len) {
-        PROFILE_BLOCK("lite init");
-        g_app->lite_L = neko::neko_lua_create();
-
-        // lua_register(g_app->lite_L, "__neko_loader", neko::vfs_lua_loader);
-        // const_str str = "table.insert(package.searchers, 2, __neko_loader) \n";
-        // luaL_dostring(g_app->lite_L, str);
-
-        lt_init(g_app->lite_L, g_app->game_window, g_app->lite_init_path.cstr(), __argc, __argv, window_scale(), "Windows");
-    }
-
     {  // just for test
 
         test_ase = neko_aseprite_simple("assets/cat.ase");
@@ -691,17 +567,12 @@ static void _game_init() {
 static void _game_fini() {
     PROFILE_FUNC();
 
-    bool dump_allocs_detailed = g_app->dump_allocs_detailed;
+    bool dump_allocs_detailed = g_app->cfg.dump_allocs_detailed;
 
     {  // just for test
 
         mem_free(g_app->ui);
         neko_deinit_ui_renderer();
-    }
-
-    if (g_app->lite_init_path.len) {
-        lt_fini();
-        neko::neko_lua_fini(g_app->lite_L);
     }
 
     // neko_immediate_draw_static_data_free();
@@ -788,36 +659,6 @@ static void _game_draw() {
 
     if (!g_app->error_mode.load()) {
 
-        {
-
-            // if (g_app->lite_init_path.len && g_app->lite_L) {
-            //     if (ImGui::Begin("Lite")) {
-            //         ImGuiWindow *window = ImGui::GetCurrentWindow();
-            //         ImVec2 bounds = ImGui::GetContentRegionAvail();
-            //         vec2 mouse_pos = input_get_mouse_pos_pixels_fix();  // 窗口内鼠标坐标
-            //         neko_assert(window);
-            //         ImVec2 pos = window->Pos;
-            //         ImVec2 size = window->Size;
-            //         lt_mx = mouse_pos.x - pos.x;
-            //         lt_my = mouse_pos.y - pos.y;
-            //         lt_wx = pos.x;
-            //         lt_wy = pos.y;
-            //         lt_ww = size.x;
-            //         lt_wh = size.y;
-            //         if (lt_resizesurface(lt_getsurface(0), lt_ww, lt_wh)) {
-            //             // glfw_wrap__window_refresh_callback(g_app->game_window);
-            //         }
-            //         // fullscreen_quad_rgb( lt_getsurface(0)->t, 1.2f );
-            //         // ui_texture_fit(lt_getsurface(0)->t, bounds);
-            //         ImGui::Image((ImTextureID)lt_getsurface(0)->t.id, bounds);
-            //         // if (!!nk_input_is_mouse_hovering_rect(&g_app->ui_ctx->input, ((struct nk_rect){lt_wx + 5, lt_wy + 5, lt_ww - 10, lt_wh - 10}))) {
-            //         //     lt_events &= ~(1 << 31);
-            //         // }
-            //     }
-            //     ImGui::End();
-            // }
-        }
-
 #if 1
         // gfx_clear_action_t clear = {.color = {NEKO_COL255(28.f), NEKO_COL255(28.f), NEKO_COL255(28.f), 1.f}};
         // gfx_renderpass_begin(&g_app->cb, neko_renderpass_t{0});
@@ -848,10 +689,11 @@ static void _game_draw() {
             // gfx_set_viewport(&g_app->cb, 0, 0, (u32)g_app->width, (u32)g_app->height);
             // idraw_draw(&g_app->idraw, &g_app->cb);  // 立即模式绘制 idraw
 
-            f32 fy = draw_font(g_app->default_font, 16.f, 0.f, 0.f, "Hello World 测试中文，你好世界", NEKO_COLOR_WHITE);
-            fy = draw_font(g_app->default_font, 16.f, 0.f, 20.f, "我是第二行", NEKO_COLOR_WHITE);
-
             system_draw_all(NULL);
+
+            f32 fy = draw_font(g_app->default_font, false, 16.f, 0.f, 0.f, "Hello World 测试中文，你好世界", NEKO_COLOR_WHITE);
+            fy += draw_font(g_app->default_font, false, 16.f, 0.f, 20.f, "我是第二行", NEKO_COLOR_WHITE);
+            fy += draw_font(g_app->default_font, true, 16.f, 0.f, 20.f, "这一行字 draw_in_world", NEKO_COLOR_WHITE);
 
             // gfx_draw_func(&g_app->cb, system_draw_all);
 
@@ -866,20 +708,18 @@ static void _game_draw() {
             script_draw_ui();
             draw_gui();
 
-            if (ui_begin_window(ui, "Hello World", neko_rect(10, 420, 400, 300))) {
+            if (ui_begin_window(ui, "Hello World", neko_rect(10, 410, 400, 300))) {
                 ui_label(ui, "Name");
 
                 ui_end_window(ui);
             }
         }
 
-        neko_render_ui(ui, g_app->width, g_app->height);
+        neko_render_ui(ui, g_app->cfg.width, g_app->cfg.height);
 
 #else
         system_draw_all();
 #endif
-
-        if (g_app->lite_init_path.len && g_app->lite_L) lt_tick(g_app->lite_L);
     }
 
     neko_check_gl_error();

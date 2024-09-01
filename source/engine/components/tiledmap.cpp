@@ -978,24 +978,8 @@ int tiled_render(command_buffer_t *cb, Tiled *tiled) {
 
     PROFILE_FUNC();
 
-    // tiled_renderer *tiled_render = (tiled_renderer *)lua_touserdata(L, 1);
-
-    // neko_renderpass_t rp = R_RENDER_PASS_DEFAULT;
-    // neko_luabind_struct_to_member(L, neko_renderpass_t, id, &rp, 2);
-
     // auto xform = lua2struct::unpack<neko_vec2>(L, 3);
-    // vec2 xform = {};
     vec2 xform = tiled->pos;
-
-    // f32 l = lua_tonumber(L, 4);
-    // f32 r = lua_tonumber(L, 5);
-    // f32 t = lua_tonumber(L, 6);
-    // f32 b = lua_tonumber(L, 7);
-
-    f32 l = 0.f;
-    f32 r = g_app->width;
-    f32 t = 0.f;
-    f32 b = g_app->height;
 
     tiled->render->camera_mat = camera_get_inverse_view_matrix();
 

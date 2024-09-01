@@ -21,7 +21,9 @@ static void _update_child(Transform *parent, NativeEntity ent) {
     transform = (Transform *)entitypool_get(pool_transform, ent);
     error_assert(transform);
     transform->worldmat_cache = mat3_mul(parent->worldmat_cache, transform->mat_cache);
-    if (transform->children) array_foreach(child, transform->children) _update_child(transform, *child);
+    if (transform->children) array_foreach(child, transform->children) {
+            _update_child(transform, *child);
+        }
 }
 static void _modified(Transform *transform) {
     Transform *parent;
@@ -39,7 +41,9 @@ static void _modified(Transform *transform) {
         transform->worldmat_cache = transform->mat_cache;
 
     // 更新子世界矩阵
-    if (transform->children) array_foreach(child, transform->children) _update_child(transform, *child);
+    if (transform->children) array_foreach(child, transform->children) {
+            _update_child(transform, *child);
+        }
 }
 
 static void _detach(Transform *p, Transform *c) {

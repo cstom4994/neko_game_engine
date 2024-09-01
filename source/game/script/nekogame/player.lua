@@ -12,8 +12,12 @@ function ns.player.update_all()
         return
     end
     local pl = Player.current_player
-    local cam_pos = ns.transform.get_world_position(cam)
-    local pl_pos = ns.transform.get_world_position(pl)
+    local cam_pos = ns.transform.get_position(cam)
+    if pl == ng.entity_nil then
+        -- print("no player?")
+        return
+    end
+    local pl_pos = ns.transform.get_position(pl)
     local dt = ns.timing.instance.dt
 
     local blend = 1 - 0.85 ^ (dt * 40)
@@ -22,7 +26,11 @@ function ns.player.update_all()
     -- camera.scale = lerp(camera.scale, 4, dt ^ 0.8)
 
     ns.transform.set_position(cam, cam_pos)
+    -- print(table.show({cam_pos.x,cam_pos.y}))
 
+    if ns.edit.get_enabled() and pl ~= ng.entity_nil then
+        -- ns.edit.bboxes_update(pl, ng.BBox(ng.bbox_bound(pl_pos, b)));
+    end
 end
 
 function ns.player.draw_ui()
@@ -38,6 +46,8 @@ function ns.player.add(ent)
     print("ns.player.add " .. ent.id)
     assert(Player.current_player == ng.entity_nil)
     Player.current_player = ent
+
+    ns.transform.add(ent)
 end
 
 function ns.player.remove(ent)
@@ -54,17 +64,26 @@ ns.aseprite = {
 
 local Aseprite = ns.aseprite
 
+function ns.aseprite.update_all()
+    for ent, e in pairs(Aseprite.pool) do
+        if e.ase_data ~= nil then
+            local ase_data = e.ase_data
+            local dt = ns.timing.instance.dt
+            ase_data:update(dt)
+        end
+    end
+end
+
 function ns.aseprite.draw_all()
     for ent, e in pairs(Aseprite.pool) do
         if e.ase_data ~= nil then
             local ase_data = e.ase_data
             local dt = ns.timing.instance.dt
 
-            local pos = ns.transform.get_world_position(ent)
+            local pos = ns.transform.get_position(ent)
 
-            ase_data:update(dt)
             local ox = ase_data:width() / 2
-            local oy = -ase_data:height()
+            local oy = -ase_data:height() / 2 - 10
             ase_data:draw(pos.x, pos.y, 0, 1, -1, ox, oy)
         end
     end
@@ -79,15 +98,15 @@ function ns.aseprite._flush(ent)
 
     local e = Aseprite.pool[ent]
 
-    if e ~= nil and e["ase"] ~= nil then
-        e.ase_data = neko.sprite_load(e["ase"])
+    if e ~= nil and e.ase ~= nil then
+        e.ase_data = neko.sprite_load(e.ase)
     end
 end
 
 function ns.aseprite.set_ase(ent, data)
     print("ns.aseprite.set_ase " .. ent.id .. " " .. tostring(data))
 
-    Aseprite.pool[ent]["ase"] = data
+    Aseprite.pool[ent].ase = data
 
     Aseprite._flush(ent)
 end

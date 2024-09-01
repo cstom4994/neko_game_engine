@@ -67,8 +67,7 @@ struct App {
     Mutex gpu_mtx;
 
     // LuaAlloc *LA;
-    lua_State *L;
-    lua_State *lite_L;  // lua state for lite editor
+    neko::neko_luastate LS;
     ecs_t *ECS;
 
     command_buffer_t cb;
@@ -76,9 +75,6 @@ struct App {
     // idraw_t idraw;
 
     ui_context_t *ui;
-
-    f64 width;
-    f64 height;
 
     bool win_console;
     Slice<String> args;
@@ -96,6 +92,8 @@ struct App {
     std::atomic<bool> hot_reload_enabled;
     std::atomic<u32> reload_interval;
 
+    engine_cfg_t cfg;
+
     bool key_state[349];
     bool prev_key_state[349];
 
@@ -107,11 +105,6 @@ struct App {
     float mouse_y;
     float scroll_x;
     float scroll_y;
-
-    bool debug_on;
-    bool dump_allocs_detailed;
-
-    String lite_init_path;
 
     FontFamily *default_font;
 
@@ -140,7 +133,8 @@ inline void fatal_error(String str) {
     }
 }
 
-inline lua_State *&ENGINE_LUA() { return g_app->L; }
+inline neko::neko_luastate &ENGINE_LS() { return g_app->LS; }
+inline lua_State *&ENGINE_LUA() { return g_app->LS.L; }
 inline ecs_t *&ENGINE_ECS() { return g_app->ECS; }
 
 i32 neko_buildnum(void);
@@ -169,6 +163,8 @@ NEKO_SCRIPT(game,
             NEKO_EXPORT void game_set_window_size(vec2 s);  // width, height in pixels
 
             NEKO_EXPORT vec2 game_get_window_size();
+
+            NEKO_EXPORT int game_set_window_title(const char *title);
 
             NEKO_EXPORT vec2 game_unit_to_pixels(vec2 p);
 

@@ -177,9 +177,9 @@ void script_init() {
     neko::timer timer;
     timer.start();
 
-    lua_State *L = neko::neko_lua_create();
+    ENGINE_LS() = neko::neko_lua_create();
 
-    ENGINE_LUA() = L;
+    auto L = ENGINE_LUA();
 
     open_neko_api(L);
 
@@ -218,7 +218,7 @@ void script_fini() {
     lua_pop(L, 1);  // FFI
     lua_pop(L, 1);  // luax_msgh
 
-    neko::neko_lua_fini(L);
+    neko::neko_lua_fini(ENGINE_LS());
 }
 
 void script_update_all() {

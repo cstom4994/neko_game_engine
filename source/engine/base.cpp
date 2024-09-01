@@ -539,17 +539,17 @@ String Arena::bump_string(String s) {
     }
 }
 
-Scanner::Scanner(String str) {
+StringScanner::StringScanner(String str) {
     data = str.data;
     len = str.len;
     pos = 0;
     end = 0;
 }
 
-static void advance(Scanner *s) { s->end += utf8_size(s->data[s->end]); }
-static bool at_end(Scanner *s) { return s->end >= s->len; }
+static void advance(StringScanner *s) { s->end += utf8_size(s->data[s->end]); }
+static bool at_end(StringScanner *s) { return s->end >= s->len; }
 
-static Rune peek(Scanner *s) {
+static Rune peek(StringScanner *s) {
     if (at_end(s)) {
         return {0};
     } else {
@@ -557,13 +557,13 @@ static Rune peek(Scanner *s) {
     }
 }
 
-static void skip_whitespace(Scanner *s) {
+static void skip_whitespace(StringScanner *s) {
     while (peek(s).is_whitespace() && !at_end(s)) {
         advance(s);
     }
 }
 
-String Scanner::next_string() {
+String StringScanner::next_string() {
     skip_whitespace(this);
     pos = end;
 
@@ -578,7 +578,7 @@ String Scanner::next_string() {
     return {&data[pos], end - pos};
 }
 
-i32 Scanner::next_int() {
+i32 StringScanner::next_int() {
     skip_whitespace(this);
     pos = end;
 
