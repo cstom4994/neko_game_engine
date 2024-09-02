@@ -9,7 +9,7 @@ function neko.conf(t)
         dump_allocs_detailed = false,
         swap_interval = 1,
         target_fps = 120,
-        reload_interval = 0.001,
+        reload_interval = 0.005,
         debug_on = false,
         batch_vertex_capacity = 2048
     }

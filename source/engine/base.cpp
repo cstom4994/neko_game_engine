@@ -608,36 +608,12 @@ i32 StringScanner::next_int() {
 
 #ifdef NEKO_IS_WIN32
 
-void Mutex::make() { srwlock = {}; }
-void Mutex::trash() {}
-void Mutex::lock() { AcquireSRWLockExclusive(&srwlock); }
-void Mutex::unlock() { ReleaseSRWLockExclusive(&srwlock); }
-
-bool Mutex::try_lock() {
-    BOOLEAN ok = TryAcquireSRWLockExclusive(&srwlock);
-    return ok != 0;
-}
-
-void Cond::make() { InitializeConditionVariable(&cv); }
-void Cond::trash() {}
-void Cond::signal() { WakeConditionVariable(&cv); }
-void Cond::broadcast() { WakeAllConditionVariable(&cv); }
-
-void Cond::wait(Mutex *mtx) { SleepConditionVariableSRW(&cv, &mtx->srwlock, INFINITE, 0); }
-
-bool Cond::timed_wait(Mutex *mtx, uint32_t ms) { return SleepConditionVariableSRW(&cv, &mtx->srwlock, ms, 0); }
-
 void RWLock::make() { srwlock = {}; }
 void RWLock::trash() {}
 void RWLock::shared_lock() { AcquireSRWLockShared(&srwlock); }
 void RWLock::shared_unlock() { ReleaseSRWLockShared(&srwlock); }
 void RWLock::unique_lock() { AcquireSRWLockExclusive(&srwlock); }
 void RWLock::unique_unlock() { ReleaseSRWLockExclusive(&srwlock); }
-
-void Sema::make(int n) { handle = CreateSemaphoreA(nullptr, n, LONG_MAX, nullptr); }
-void Sema::trash() { CloseHandle(handle); }
-void Sema::post(int n) { ReleaseSemaphore(handle, n, nullptr); }
-void Sema::wait() { WaitForSingleObjectEx(handle, INFINITE, false); }
 
 void Thread::make(ThreadProc fn, void *udata) {
     DWORD id = 0;
@@ -667,52 +643,12 @@ static struct timespec ms_from_now(u32 ms) {
     return ts;
 }
 
-void Mutex::make() { pthread_mutex_init(&pt, nullptr); }
-void Mutex::trash() { pthread_mutex_destroy(&pt); }
-void Mutex::lock() { pthread_mutex_lock(&pt); }
-void Mutex::unlock() { pthread_mutex_unlock(&pt); }
-
-bool Mutex::try_lock() {
-    int res = pthread_mutex_trylock(&pt);
-    return res == 0;
-}
-
-void Cond::make() { pthread_cond_init(&pt, nullptr); }
-void Cond::trash() { pthread_cond_destroy(&pt); }
-void Cond::signal() { pthread_cond_signal(&pt); }
-void Cond::broadcast() { pthread_cond_broadcast(&pt); }
-void Cond::wait(Mutex *mtx) { pthread_cond_wait(&pt, &mtx->pt); }
-
-bool Cond::timed_wait(Mutex *mtx, uint32_t ms) {
-    struct timespec ts = ms_from_now(ms);
-    int res = pthread_cond_timedwait(&pt, &mtx->pt, &ts);
-    return res == 0;
-}
-
 void RWLock::make() { pthread_rwlock_init(&pt, nullptr); }
 void RWLock::trash() { pthread_rwlock_destroy(&pt); }
 void RWLock::shared_lock() { pthread_rwlock_rdlock(&pt); }
 void RWLock::shared_unlock() { pthread_rwlock_unlock(&pt); }
 void RWLock::unique_lock() { pthread_rwlock_wrlock(&pt); }
 void RWLock::unique_unlock() { pthread_rwlock_unlock(&pt); }
-
-void Sema::make(int n) {
-    sem = (sem_t *)mem_alloc(sizeof(sem_t));
-    sem_init(sem, 0, n);
-}
-
-void Sema::trash() {
-    sem_destroy(sem);
-    mem_free(sem);
-}
-
-void Sema::post(int n) {
-    for (int i = 0; i < n; i++) {
-        sem_post(sem);
-    }
-}
-
-void Sema::wait() { sem_wait(sem); }
 
 void Thread::make(ThreadProc fn, void *udata) {
     pthread_t pt = {};
@@ -840,7 +776,7 @@ void os_yield() {}
 #endif  // NEKO_IS_WEB
 
 void *DebugAllocator::alloc(size_t bytes, const char *file, i32 line) {
-    LockGuard lock{&mtx};
+    std::unique_lock<std::mutex> lock{mtx};
 
     DebugAllocInfo *info = (DebugAllocInfo *)::malloc(offsetof(DebugAllocInfo, buf[bytes]));
     neko_assert(info, "FAILED_TO_ALLOCATE");
@@ -871,7 +807,7 @@ void *DebugAllocator::realloc(void *ptr, size_t new_size, const char *file, i32 
         return nullptr;
     }
 
-    LockGuard lock{&mtx};
+    std::unique_lock<std::mutex> lock{mtx};
 
     DebugAllocInfo *old_info = (DebugAllocInfo *)((u8 *)ptr - offsetof(DebugAllocInfo, buf));
 
@@ -916,7 +852,7 @@ void DebugAllocator::free(void *ptr) {
         return;
     }
 
-    LockGuard lock{&mtx};
+    std::unique_lock<std::mutex> lock{mtx};
 
     DebugAllocInfo *info = (DebugAllocInfo *)((u8 *)ptr - offsetof(DebugAllocInfo, buf));
 
@@ -1196,7 +1132,7 @@ String neko_os_homedir() {
 
 void neko_log(const char *file, int line, const char *fmt, ...) {
 
-    LockGuard lock{&g_app->log_mtx};
+    std::unique_lock<std::mutex> lock{g_app->log_mtx};
 
     typedef struct {
         va_list ap;
@@ -2903,6 +2839,25 @@ NEKO_API() void *cmem_alloc(size_t bytes) { return g_allocator->alloc(bytes, __F
 NEKO_API() void cmem_free(void *ptr) { g_allocator->free((void *)ptr); }
 NEKO_API() void *cmem_realloc(void *ptr, size_t size) { return g_allocator->realloc(ptr, size, __FILE__, __LINE__); }
 NEKO_API() void *cmem_calloc(size_t count, size_t element_size) { return __neko_mem_calloc(count, element_size, (char *)__FILE__, __LINE__); }
+
+/*================================================================================
+// Reflection
+================================================================================*/
+
+REGISTER_TYPE_DF(i8)
+REGISTER_TYPE_DF(i16)
+REGISTER_TYPE_DF(i32)
+REGISTER_TYPE_DF(i64)
+REGISTER_TYPE_DF(u8)
+REGISTER_TYPE_DF(u16)
+REGISTER_TYPE_DF(u32)
+REGISTER_TYPE_DF(u64)
+REGISTER_TYPE_DF(bool)
+// REGISTER_TYPE_DF(b32)
+REGISTER_TYPE_DF(f32)
+REGISTER_TYPE_DF(f64)
+REGISTER_TYPE_DF(const_str)
+REGISTER_TYPE_DF(String)
 
 /*================================================================================
 // Deps

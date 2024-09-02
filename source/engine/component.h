@@ -156,57 +156,8 @@ struct MapLdtk {
 // Tiled draw
 ==========================*/
 
-typedef struct tile_t {
-    u32 id;
-    u32 tileset_id;
-} tile_t;
-
-typedef struct tileset_t {
-    neko_handle(gfx_texture_t) texture;
-    u32 tile_count;
-    u32 tile_width;
-    u32 tile_height;
-    u32 first_gid;
-
-    u32 width, height;
-} tileset_t;
-
-typedef struct layer_t {
-    tile_t* tiles;
-    u32 width;
-    u32 height;
-
-    Color256 tint;
-} layer_t;
-
-typedef struct object_t {
-    u32 id;
-    i32 x, y, width, height;
-    // C2_TYPE phy_type;
-    // c2AABB aabb;
-    // union {
-    //     c2AABB box;
-    //     c2Poly poly;
-    // } phy;
-} object_t;
-
-typedef struct object_group_t {
-    neko_dyn_array(object_t) objects;
-
-    Color256 color;
-
-    const_str name;
-} object_group_t;
-
-typedef struct map_t {
-    xml_document_t* doc;  // xml doc
-    neko_dyn_array(tileset_t) tilesets;
-    neko_dyn_array(object_group_t) object_groups;
-    neko_dyn_array(layer_t) layers;
-} map_t;
-
-void tiled_load(map_t* map, const_str tmx_path, const_str res_path);
-void tiled_unload(map_t* map);
+bool tiled_load(TiledMap* map, const_str tmx_path, const_str res_path);
+void tiled_unload(TiledMap* map);
 
 typedef struct tiled_quad_t {
     u32 tileset_id;
@@ -249,7 +200,7 @@ typedef struct tiled_renderer {
 
     u32 quad_count;
 
-    map_t map;  // tiled data
+    u64 map_asset;  // tiled data
 
     mat3 camera_mat;
 } tiled_renderer;

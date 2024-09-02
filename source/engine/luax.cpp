@@ -297,7 +297,7 @@ int luax_msgh(lua_State *L) {
     // 打印堆栈跟踪
     String traceback = luax_check_string(L, -1);
 
-    if (LockGuard lock{&g_app->error_mtx}) {
+    if (std::unique_lock<std::mutex> lock{g_app->error_mtx}) {
         g_app->fatal_error = to_cstr(err);
         g_app->traceback = to_cstr(traceback);
 
@@ -496,20 +496,17 @@ static void lua_thread_proc(void *udata) {
 }
 
 void LuaThread::make(String code, String thread_name) {
-    mtx.make();
     contents = to_cstr(code);
     name = to_cstr(thread_name);
 
-    LockGuard lock{&mtx};
+    std::unique_lock<std::mutex> lock{mtx};
     thread.make(lua_thread_proc, this);
 }
 
 void LuaThread::join() {
-    if (LockGuard lock{&mtx}) {
+    if (std::unique_lock<std::mutex> lock{mtx}) {
         thread.join();
     }
-
-    mtx.trash();
 }
 
 //
@@ -631,17 +628,14 @@ void LuaVariant::push(lua_State *L) {
 //
 
 struct LuaChannels {
-    Mutex mtx;
-    Cond select;
+    std::mutex mtx;
+    std::condition_variable select;
     HashMap<LuaChannel *> by_name;
 };
 
 static LuaChannels g_channels = {};
 
 void LuaChannel::make(String n, u64 buf) {
-    mtx.make();
-    sent.make();
-    received.make();
     items.data = (LuaVariant *)mem_alloc(sizeof(LuaVariant) * (buf + 1));
     items.len = (buf + 1);
     front = 0;
@@ -659,29 +653,22 @@ void LuaChannel::trash() {
 
     mem_free(items.data);
     mem_free(name.exchange(nullptr));
-    mtx.trash();
-    sent.trash();
-    received.trash();
 }
 
 void LuaChannel::send(LuaVariant item) {
-    LockGuard lock{&mtx};
+    std::unique_lock<std::mutex> lock{mtx};
 
-    while (len == items.len) {
-        received.wait(&mtx);
-    }
+    received.wait(lock, [this] { return len == items.len; });
 
     items[back] = item;
     back = (back + 1) % items.len;
     len++;
 
-    g_channels.select.broadcast();
-    sent.signal();
+    g_channels.select.notify_all();
+    sent.notify_one();
     sent_total++;
 
-    while (sent_total >= received_total + items.len) {
-        received.wait(&mtx);
-    }
+    received.wait(lock, [this] { return sent_total >= received_total + items.len; });
 }
 
 static LuaVariant lua_channel_dequeue(LuaChannel *ch) {
@@ -689,24 +676,22 @@ static LuaVariant lua_channel_dequeue(LuaChannel *ch) {
     ch->front = (ch->front + 1) % ch->items.len;
     ch->len--;
 
-    ch->received.broadcast();
+    ch->received.notify_all();
     ch->received_total++;
 
     return item;
 }
 
 LuaVariant LuaChannel::recv() {
-    LockGuard lock{&mtx};
+    std::unique_lock<std::mutex> lock{mtx};
 
-    while (len == 0) {
-        sent.wait(&mtx);
-    }
+    sent.wait(lock, [this] { return len == 0; });
 
     return lua_channel_dequeue(this);
 }
 
 bool LuaChannel::try_recv(LuaVariant *v) {
-    LockGuard lock{&mtx};
+    std::unique_lock<std::mutex> lock{mtx};
 
     if (len == 0) {
         return false;
@@ -721,14 +706,14 @@ LuaChannel *lua_channel_make(String name, u64 buf) {
     new (&chan->name) std::atomic<char *>();
     chan->make(name, buf);
 
-    LockGuard lock{&g_channels.mtx};
+    std::unique_lock<std::mutex> lock{g_channels.mtx};
     g_channels.by_name[fnv1a(name)] = chan;
 
     return chan;
 }
 
 LuaChannel *lua_channel_get(String name) {
-    LockGuard lock{&g_channels.mtx};
+    std::unique_lock<std::mutex> lock{g_channels.mtx};
 
     LuaChannel **chan = g_channels.by_name.get(fnv1a(name));
     if (chan == nullptr) {
@@ -749,27 +734,23 @@ LuaChannel *lua_channels_select(lua_State *L, LuaVariant *v) {
         buf[i] = *(LuaChannel **)luaL_checkudata(L, i + 1, "mt_channel");
     }
 
-    Mutex mtx = {};
-    mtx.make();
-    LockGuard lock{&mtx};
+    std::mutex mtx = {};
+    std::unique_lock<std::mutex> lock{mtx};
 
     while (true) {
         for (i32 i = 0; i < len; i++) {
-            LockGuard lock{&buf[i]->mtx};
+            std::unique_lock<std::mutex> lock{buf[i]->mtx};
             if (buf[i]->len > 0) {
                 *v = lua_channel_dequeue(buf[i]);
                 return buf[i];
             }
         }
 
-        g_channels.select.wait(&mtx);
+        g_channels.select.wait(lock);
     }
 }
 
-void lua_channels_setup() {
-    g_channels.select.make();
-    g_channels.mtx.make();
-}
+void lua_channels_setup() {}
 
 void lua_channels_shutdown() {
     for (auto [k, v] : g_channels.by_name) {
@@ -778,8 +759,6 @@ void lua_channels_shutdown() {
         mem_free(chan);
     }
     g_channels.by_name.trash();
-    g_channels.select.trash();
-    g_channels.mtx.trash();
 }
 
 #define FREELIST 1

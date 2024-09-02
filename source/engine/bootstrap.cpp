@@ -388,7 +388,7 @@ int main(int argc, char **argv) {
 static bool quit = false;  // 如果为 true 则退出主循环
 static int sargc = 0;
 static char **sargv;
-static Mutex g_init_mtx;
+static std::mutex g_init_mtx;
 
 gfx_texture_t test_ase;
 
@@ -445,8 +445,7 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
 
 static void _game_init() {
 
-    g_init_mtx.make();
-    LockGuard lock(&g_init_mtx);
+    std::unique_lock<std::mutex> lock(g_init_mtx);
 
 #ifndef NDEBUG
     g_allocator = new DebugAllocator();
@@ -458,10 +457,6 @@ static void _game_init() {
 
     g_app = (App *)mem_alloc(sizeof(App));
     memset(g_app, 0, sizeof(App));
-
-    g_app->gpu_mtx.make();
-
-    g_app->error_mtx.make();
 
     os_high_timer_resolution();
     stm_setup();
@@ -586,10 +581,6 @@ static void _game_fini() {
     glfwDestroyWindow(g_app->game_window);
     glfwTerminate();
 
-    g_app->gpu_mtx.trash();
-
-    g_app->error_mtx.trash();
-
 #ifdef USE_PROFILER
     profile_shutdown();
 #endif
@@ -605,8 +596,6 @@ static void _game_fini() {
     mem_free(g_app->args.data);
 
     mem_free(g_app);
-
-    g_init_mtx.trash();
 
 #ifndef NDEBUG
     DebugAllocator *allocator = dynamic_cast<DebugAllocator *>(g_allocator);

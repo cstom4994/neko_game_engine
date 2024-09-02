@@ -64,7 +64,7 @@ NEKO_SCRIPT(
 
 struct lua_State;
 struct App {
-    Mutex gpu_mtx;
+    std::mutex gpu_mtx;
 
     // LuaAlloc *LA;
     neko::neko_luastate LS;
@@ -83,14 +83,14 @@ struct App {
     std::atomic<bool> error_mode;
     std::atomic<bool> is_fused;
 
-    Mutex log_mtx;
+    std::mutex log_mtx;
 
-    Mutex error_mtx;
+    std::mutex error_mtx;
     String fatal_error;
     String traceback;
 
     std::atomic<bool> hot_reload_enabled;
-    std::atomic<u32> reload_interval;
+    std::atomic<f32> reload_interval;
 
     engine_cfg_t cfg;
 
@@ -125,7 +125,7 @@ extern App *g_app;
 
 inline void fatal_error(String str) {
     if (!g_app->error_mode.load()) {
-        LockGuard lock{&g_app->error_mtx};
+        std::unique_lock<std::mutex> lock{g_app->error_mtx};
 
         g_app->fatal_error = to_cstr(str);
         fprintf(stderr, "%s\n", g_app->fatal_error.data);

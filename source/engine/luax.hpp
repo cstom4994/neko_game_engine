@@ -109,7 +109,7 @@ void luax_new_userdata(lua_State *L, T data, const char *tname) {
 #define luax_ptr_userdata luax_new_userdata
 
 struct LuaThread {
-    Mutex mtx;
+    std::mutex mtx;
     String contents;
     String name;
     Thread thread;
@@ -146,9 +146,9 @@ struct LuaTableEntry {
 struct LuaChannel {
     std::atomic<char *> name;
 
-    Mutex mtx;
-    Cond received;
-    Cond sent;
+    std::mutex mtx;
+    std::condition_variable received;
+    std::condition_variable sent;
 
     u64 received_total;
     u64 sent_total;

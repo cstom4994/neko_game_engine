@@ -1008,7 +1008,7 @@ void system_init() {
     edit_init();
 
     g_app->hot_reload_enabled.store(mount.can_hot_reload && g_app->cfg.hot_reload);
-    g_app->reload_interval.store((u32)(g_app->cfg.reload_interval * 1000));
+    g_app->reload_interval.store(g_app->cfg.reload_interval);
 
     luax_run_nekogame(L);
 

@@ -2,7 +2,6 @@ unsafe_require = require
 
 -- runs on start of the engine
 luadb = require("__neko.luadb")
-Inspector = require("__neko.inspector")
 FFI = require("ffi")
 
 -- 任何导出 C 函数/变量 f 都可以作为 ng.f 使用

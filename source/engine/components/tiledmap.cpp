@@ -549,14 +549,14 @@ TileNode *MapLdtk::astar(TilePoint start, TilePoint goal) {
     return nullptr;
 }
 
-void tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
+bool tiled_load(TiledMap *map, const_str tmx_path, const_str res_path) {
 
     PROFILE_FUNC();
 
     map->doc = xml_parse_vfs(tmx_path);
     if (!map->doc) {
         neko_panic("Failed to parse XML: %s", xml_get_error());
-        return;
+        return false;
     }
 
     char tmx_root_path[256];
@@ -579,7 +579,7 @@ void tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
         xml_document_t *tileset_doc = xml_parse_vfs(tileset_path);
         if (!tileset_doc) {
             neko_panic("Failed to parse XML from %s: %s", tileset_path, xml_get_error());
-            return;
+            return false;
         }
 
         xml_node_t *tileset_node = xml_find_node(tileset_doc, "tileset");
@@ -596,7 +596,7 @@ void tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
         bool ok = neko_capi_vfs_file_exists(NEKO_PACKS::GAMEDATA, full_image_path);
         if (!ok) {
             neko_panic("failed to load texture file: %s", full_image_path);
-            return;
+            return false;
         }
 
         void *tex_data = NULL;
@@ -644,7 +644,7 @@ void tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
 
         if (strcmp(encoding, "csv") != 0) {
             neko_panic("%s", "Only CSV data encoding is supported.");
-            return;
+            return false;
         }
 
         const char *data_text = data_node->text;
@@ -751,14 +751,16 @@ void tiled_load(map_t *map, const_str tmx_path, const_str res_path) {
 
         neko_dyn_array_push(map->object_groups, object_group);
     }
+
+    return true;
 }
 
-void tiled_unload(map_t *map) {
+void tiled_unload(TiledMap *map) {
 
     PROFILE_FUNC();
 
     for (u32 i = 0; i < neko_dyn_array_size(map->tilesets); i++) {
-        gfx_texture_fini(map->tilesets[i].texture);
+        // gfx_texture_fini(map->tilesets[i].texture);
     }
 
     for (u32 i = 0; i < neko_dyn_array_size(map->layers); i++) {
@@ -983,18 +985,24 @@ int tiled_render(command_buffer_t *cb, Tiled *tiled) {
 
     tiled->render->camera_mat = camera_get_inverse_view_matrix();
 
+    Asset asset = {};
+    bool ok = asset_read(tiled->render->map_asset, &asset);
+    error_assert(ok);
+
+    TiledMap map = asset.tiledmap;
+
     {
         tiled_render_begin(cb, tiled->render);
 
         PROFILE_BLOCK("tiled_render");
 
-        for (u32 i = 0; i < neko_dyn_array_size(tiled->render->map.layers); i++) {
-            layer_t *layer = tiled->render->map.layers + i;
+        for (u32 i = 0; i < neko_dyn_array_size(map.layers); i++) {
+            layer_t *layer = map.layers + i;
             for (u32 y = 0; y < layer->height; y++) {
                 for (u32 x = 0; x < layer->width; x++) {
                     tile_t *tile = layer->tiles + (x + y * layer->width);
                     if (tile->id != 0) {
-                        tileset_t *tileset = tiled->render->map.tilesets + tile->tileset_id;
+                        tileset_t *tileset = map.tilesets + tile->tileset_id;
                         u32 tsxx = (tile->id % (tileset->width / tileset->tile_width) - 1) * tileset->tile_width;
                         u32 tsyy = tileset->tile_height * ((tile->id - tileset->first_gid) / (tileset->width / tileset->tile_width));
                         tiled_quad_t quad = {.tileset_id = tile->tileset_id,
@@ -1012,9 +1020,9 @@ int tiled_render(command_buffer_t *cb, Tiled *tiled) {
             tiled_render_draw(cb, tiled->render);  // 一层渲染一次
         }
 
-        for (u32 i = 0; i < neko_dyn_array_size(tiled->render->map.object_groups); i++) {
-            object_group_t *group = tiled->render->map.object_groups + i;
-            for (u32 ii = 0; ii < neko_dyn_array_size(tiled->render->map.object_groups[i].objects); ii++) {
+        for (u32 i = 0; i < neko_dyn_array_size(map.object_groups); i++) {
+            object_group_t *group = map.object_groups + i;
+            for (u32 ii = 0; ii < neko_dyn_array_size(map.object_groups[i].objects); ii++) {
                 object_t *object = group->objects + ii;
                 tiled_quad_t quad = {.position = {(f32)(object->x * SPRITE_SCALE) + xform.x, (f32)(object->y * SPRITE_SCALE) + xform.y},
                                      .dimentions = {(f32)(object->width * SPRITE_SCALE), (f32)(object->height * SPRITE_SCALE)},
@@ -1025,9 +1033,9 @@ int tiled_render(command_buffer_t *cb, Tiled *tiled) {
             tiled_render_draw(cb, tiled->render);  // 一层渲染一次
         }
 
-        // for (u32 i = 0; i < neko_dyn_array_size(tiled->render->map.object_groups); i++) {
-        //     object_group_t *group = tiled->render->map.object_groups + i;
-        //     for (u32 ii = 0; ii < neko_dyn_array_size(tiled->render->map.object_groups[i].objects); ii++) {
+        // for (u32 i = 0; i < neko_dyn_array_size(map.object_groups); i++) {
+        //     object_group_t *group = map.object_groups + i;
+        //     for (u32 ii = 0; ii < neko_dyn_array_size(map.object_groups[i].objects); ii++) {
         //         object_t *object = group->objects + ii;
         //         auto draw_poly = [sprite_batch](c2Poly poly) {
         //             c2v *verts = poly.verts;
@@ -1079,7 +1087,7 @@ void tiled_init() {
 void tiled_fini() {
     Tiled *tiled;
     entitypool_foreach(tiled, pool_tiled) {
-        tiled_unload(&tiled->render->map);
+        // tiled_unload(&tiled->render->map);
         tiled_render_deinit(tiled->render);
         mem_free(tiled->map_name.data);
         mem_free(tiled->render);
@@ -1105,10 +1113,13 @@ void tiled_draw_all() {
 void tiled_set_map(NativeEntity ent, const char *str) {
     Tiled *tiled = (Tiled *)entitypool_get(pool_tiled, ent);
     error_assert(tiled);
-    // _text_set_str(tiled, str);
     tiled->map_name = to_cstr(str);
 
-    tiled_load(&tiled->render->map, tiled->map_name.cstr(), NULL);
+    Asset asset = {};
+    bool ok = asset_load_kind(AssetKind_Tiledmap, tiled->map_name, &asset);
+    error_assert(ok);
+
+    tiled->render->map_asset = asset.hash;
 }
 
 const char *tiled_get_map(NativeEntity ent) {

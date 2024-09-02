@@ -1,7 +1,6 @@
 #ifndef NEKO_ASSET_H
 #define NEKO_ASSET_H
 
-#include "engine/base.h"
 #include "engine/base.hpp"
 #include "engine/entity.h"
 #include "engine/graphics.h"
@@ -237,6 +236,55 @@ xml_node_iter_t xml_new_node_iter(xml_document_t* doc, const_str name);
 xml_node_iter_t xml_new_node_child_iter(xml_node_t* node, const_str name);
 bool xml_node_iter_next(xml_node_iter_t* iter);
 
+typedef struct tile_t {
+    u32 id;
+    u32 tileset_id;
+} tile_t;
+
+typedef struct tileset_t {
+    neko_handle(gfx_texture_t) texture;
+    u32 tile_count;
+    u32 tile_width;
+    u32 tile_height;
+    u32 first_gid;
+
+    u32 width, height;
+} tileset_t;
+
+typedef struct layer_t {
+    tile_t* tiles;
+    u32 width;
+    u32 height;
+
+    Color256 tint;
+} layer_t;
+
+typedef struct object_t {
+    u32 id;
+    i32 x, y, width, height;
+    // C2_TYPE phy_type;
+    // c2AABB aabb;
+    // union {
+    //     c2AABB box;
+    //     c2Poly poly;
+    // } phy;
+} object_t;
+
+typedef struct object_group_t {
+    neko_dyn_array(object_t) objects;
+
+    Color256 color;
+
+    const_str name;
+} object_group_t;
+
+typedef struct TiledMap {
+    xml_document_t* doc;  // xml doc
+    neko_dyn_array(tileset_t) tilesets;
+    neko_dyn_array(object_group_t) object_groups;
+    neko_dyn_array(layer_t) layers;
+} TiledMap;
+
 enum JSONKind : i32 {
     JSONKind_Null,
     JSONKind_Object,
@@ -309,7 +357,7 @@ enum AssetKind : i32 {
     AssetKind_LuaRef,
     AssetKind_Image,
     AssetKind_AseSprite,
-    AssetKind_Tilemap,
+    AssetKind_Tiledmap,
     AssetKind_Shader,
     // AssetKind_Pak,
 };
@@ -329,7 +377,7 @@ struct Asset {
         AssetTexture texture;
         AseSpriteData sprite;
         AssetShader shader;
-        // MapLdtk tilemap;
+        TiledMap tiledmap;
         // Pak pak;
     };
 };
@@ -343,13 +391,13 @@ struct Assets {
     HashMap<Asset> table;
     RWLock rw_lock;
 
-    Mutex shutdown_mtx;
-    Cond shutdown_notify;
+    std::mutex shutdown_mtx;
+    std::condition_variable shutdown_notify;
     bool shutdown;
 
     Thread reload_thread;
 
-    Mutex changes_mtx;
+    std::mutex changes_mtx;
     Array<FileChange> changes;
     Array<FileChange> tmp_changes;
 };

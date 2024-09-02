@@ -182,7 +182,7 @@ void destroy_texture_handle(u64 texture_id, void *udata) {
 
 bool texture_update_data(AssetTexture *tex, u8 *data) {
 
-    LockGuard lock{&g_app->gpu_mtx};
+    std::unique_lock<std::mutex> lock{g_app->gpu_mtx};
 
     // 如果存在 则释放旧的 GL 纹理
     if (tex->id != 0) glDeleteTextures(1, &tex->id);
@@ -257,7 +257,7 @@ static bool _texture_load_vfs(AssetTexture *tex, String filename) {
     }
 
     {
-        LockGuard lock{&g_app->gpu_mtx};
+        std::unique_lock<std::mutex> lock{g_app->gpu_mtx};
 
         // 如果存在 则释放旧的 GL 纹理
         if (tex->id != 0) glDeleteTextures(1, &tex->id);
@@ -300,7 +300,7 @@ bool texture_load(AssetTexture *tex, String filename, bool flip_image_vertical) 
 }
 
 void texture_bind(const char *filename) {
-    LockGuard lock{&g_app->gpu_mtx};
+    std::unique_lock<std::mutex> lock{g_app->gpu_mtx};
 
     Asset a = {};
     bool ok = asset_load_kind(AssetKind_Image, filename, &a);
@@ -1407,19 +1407,17 @@ struct DirectoryFileSystem : FileSystem {
 };
 
 struct ZipFileSystem : FileSystem {
-    Mutex mtx = {};
+    std::mutex mtx = {};
     mz_zip_archive zip = {};
     String zip_contents = {};
 
-    void make() { mtx.make(); }
+    void make() {}
 
     void trash() {
         if (zip_contents.data != nullptr) {
             mz_zip_reader_end(&zip);
             mem_free(zip_contents.data);
         }
-
-        mtx.trash();
     }
 
     bool mount(String filepath) {
@@ -1490,7 +1488,7 @@ struct ZipFileSystem : FileSystem {
         String path = to_cstr(filepath);
         neko_defer(mem_free(path.data));
 
-        LockGuard lock{&mtx};
+        std::unique_lock<std::mutex> lock{mtx};
 
         i32 i = mz_zip_reader_locate_file(&zip, path.data, nullptr, 0);
         if (i == -1) {
@@ -1512,7 +1510,7 @@ struct ZipFileSystem : FileSystem {
         String path = to_cstr(filepath);
         neko_defer(mem_free(path.data));
 
-        LockGuard lock{&mtx};
+        std::unique_lock<std::mutex> lock{mtx};
 
         i32 file_index = mz_zip_reader_locate_file(&zip, path.data, nullptr, 0);
         if (file_index == -1) {
@@ -1544,7 +1542,7 @@ struct ZipFileSystem : FileSystem {
     bool list_all_files(Array<String> *files) {
         PROFILE_FUNC();
 
-        LockGuard lock{&mtx};
+        std::unique_lock<std::mutex> lock{mtx};
 
         for (u32 i = 0; i < mz_zip_reader_get_num_files(&zip); i++) {
             mz_zip_archive_file_stat file_stat;
@@ -1974,18 +1972,18 @@ const_str neko_capi_vfs_read_file(const_str fsname, const_str filepath, size_t *
 Assets g_assets = {};
 
 static void hot_reload_thread(void *) {
-    u32 reload_interval = g_app->reload_interval.load();
+    u32 reload_interval = g_app->reload_interval.load() * 1000;
 
     while (true) {
         PROFILE_BLOCK("hot reload");
 
         {
-            LockGuard lock{&g_assets.shutdown_mtx};
+            std::unique_lock<std::mutex> lock{g_assets.shutdown_mtx};
             if (g_assets.shutdown) {
                 return;
             }
 
-            bool signaled = g_assets.shutdown_notify.timed_wait(&g_assets.shutdown_mtx, reload_interval);
+            bool signaled = g_assets.shutdown_notify.wait_for(lock, std::chrono::microseconds(reload_interval)) == std::cv_status::no_timeout;
             if (signaled) {
                 return;
             }
@@ -2014,7 +2012,7 @@ static void hot_reload_thread(void *) {
         }
 
         if (g_assets.tmp_changes.len > 0) {
-            LockGuard lock{&g_assets.changes_mtx};
+            std::unique_lock<std::mutex> lock{g_assets.changes_mtx};
             for (FileChange change : g_assets.tmp_changes) {
                 g_assets.changes.push(change);
             }
@@ -2023,7 +2021,7 @@ static void hot_reload_thread(void *) {
 }
 
 void assets_perform_hot_reload_changes() {
-    LockGuard lock{&g_assets.changes_mtx};
+    std::unique_lock<std::mutex> lock{g_assets.changes_mtx};
 
     if (g_assets.changes.len == 0) {
         return;
@@ -2049,9 +2047,6 @@ void assets_perform_hot_reload_changes() {
                 break;
             }
             case AssetKind_Image: {
-                // bool generate_mips = a.image.has_mips;
-                // a.image.trash();
-                // ok = a.image.load(a.name, generate_mips);
                 ok = texture_update(&a.texture, a.name);
                 break;
             }
@@ -2060,11 +2055,11 @@ void assets_perform_hot_reload_changes() {
                 ok = a.sprite.load(a.name);
                 break;
             }
-            // case AssetKind_Tilemap: {
-            //     a.tilemap.trash();
-            //     ok = a.tilemap.load(a.name);
-            //     break;
-            // }
+            case AssetKind_Tiledmap: {
+                tiled_unload(&a.tiledmap);
+                ok = tiled_load(&a.tiledmap, a.name.cstr(), NULL);
+                break;
+            }
             case AssetKind_Shader: {
                 GLuint save_sid = a.shader.id;
                 neko_unload_shader(&a.shader);
@@ -2092,11 +2087,11 @@ void assets_perform_hot_reload_changes() {
 void assets_shutdown() {
     if (g_app->hot_reload_enabled.load()) {
         {
-            LockGuard lock{&g_assets.shutdown_mtx};
+            std::unique_lock<std::mutex> lock{g_assets.shutdown_mtx};
             g_assets.shutdown = true;
         }
 
-        g_assets.shutdown_notify.signal();
+        g_assets.shutdown_notify.notify_one();
         g_assets.reload_thread.join();
         g_assets.changes.trash();
         g_assets.tmp_changes.trash();
@@ -2115,25 +2110,20 @@ void assets_shutdown() {
             case AssetKind_Shader:
                 neko_unload_shader(&v->shader);
                 break;
-            // case AssetKind_Tilemap:
-            //     v->tilemap.trash();
-            //     break;
+            case AssetKind_Tiledmap:
+                tiled_unload(&v->tiledmap);
+                break;
             default:
                 break;
         }
     }
     g_assets.table.trash();
 
-    g_assets.shutdown_notify.trash();
-    g_assets.changes_mtx.trash();
-    g_assets.shutdown_mtx.trash();
     g_assets.rw_lock.trash();
 }
 
 void assets_start_hot_reload() {
-    g_assets.shutdown_notify.make();
-    g_assets.changes_mtx.make();
-    g_assets.shutdown_mtx.make();
+
     g_assets.rw_lock.make();
 
     if (g_app->hot_reload_enabled.load()) {
@@ -2184,18 +2174,22 @@ bool asset_load(AssetLoadData desc, String filepath, Asset *out) {
                 ok = true;
                 break;
             }
-            case AssetKind_Image:
+            case AssetKind_Image: {
                 ok = texture_load(&asset.texture, filepath.cstr(), desc.flip_image_vertical);
                 break;
-            case AssetKind_AseSprite:
+            }
+            case AssetKind_AseSprite: {
                 ok = asset.sprite.load(filepath);
                 break;
-            case AssetKind_Shader:
+            }
+            case AssetKind_Shader: {
                 ok = neko_load_shader(&asset.shader, filepath);
                 break;
-            // case AssetKind_Tilemap:
-            //     ok = asset.tilemap.load(filepath);
-            //     break;
+            }
+            case AssetKind_Tiledmap: {
+                ok = tiled_load(&asset.tiledmap, filepath.cstr(), NULL);
+                break;
+            }
             // case AssetKind_Pak:
             //     ok = asset.pak.load(filepath.data, 0, false);
             //     break;

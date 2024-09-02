@@ -5,7 +5,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include <condition_variable>
 #include <functional>
+#include <memory>
+#include <mutex>
 #include <optional>
 #include <queue>
 #include <string>
@@ -168,35 +171,6 @@ double string_to_double(String str);
 //
 =============================*/
 
-struct Mutex {
-#ifdef _WIN32
-    SRWLOCK srwlock;
-#else
-    pthread_mutex_t pt;
-#endif
-
-    void make();
-    void trash();
-    void lock();
-    void unlock();
-    bool try_lock();
-};
-
-struct Cond {
-#ifdef _WIN32
-    CONDITION_VARIABLE cv;
-#else
-    pthread_cond_t pt;
-#endif
-
-    void make();
-    void trash();
-    void signal();
-    void broadcast();
-    void wait(Mutex *mtx);
-    bool timed_wait(Mutex *mtx, uint32_t ms);
-};
-
 struct RWLock {
 #if _WIN32
     SRWLOCK srwlock;
@@ -212,19 +186,6 @@ struct RWLock {
     void unique_unlock();
 };
 
-struct Sema {
-#ifdef _WIN32
-    HANDLE handle;
-#else
-    sem_t *sem;
-#endif
-
-    void make(int n = 0);
-    void trash();
-    void post(int n = 1);
-    void wait();
-};
-
 typedef void (*ThreadProc)(void *);
 
 struct Thread {
@@ -232,17 +193,6 @@ struct Thread {
 
     void make(ThreadProc fn, void *udata);
     void join();
-};
-
-struct LockGuard {
-    Mutex *mtx;
-
-    LockGuard(Mutex *mtx) : mtx(mtx) { mtx->lock(); };
-    ~LockGuard() { mtx->unlock(); };
-    LockGuard(LockGuard &&) = delete;
-    LockGuard &operator=(LockGuard &&) = delete;
-
-    operator bool() { return true; }
 };
 
 uint64_t this_thread_id();
@@ -279,10 +229,10 @@ struct DebugAllocInfo {
 
 struct DebugAllocator : Allocator {
     DebugAllocInfo *head = nullptr;
-    Mutex mtx = {};
+    std::mutex mtx;
 
-    void make() { mtx.make(); }
-    void trash() { mtx.trash(); }
+    void make() {}
+    void trash() {}
     void *alloc(size_t bytes, const char *file, i32 line);
     void *realloc(void *ptr, size_t new_size, const char *file, i32 line);
     void free(void *ptr);
@@ -471,8 +421,8 @@ private:
 
 template <typename T>
 struct Queue {
-    Mutex mtx = {};
-    Cond cv = {};
+    std::mutex mtx;
+    std::condition_variable cv;
 
     T *data = nullptr;
     u64 front = 0;
@@ -480,16 +430,9 @@ struct Queue {
     u64 len = 0;
     u64 capacity = 0;
 
-    void make() {
-        mtx.make();
-        cv.make();
-    }
+    void make() {}
 
-    void trash() {
-        mtx.trash();
-        cv.trash();
-        mem_free(data);
-    }
+    void trash() { mem_free(data); }
 
     void reserve(u64 cap) {
         if (cap <= capacity) {
@@ -517,7 +460,7 @@ struct Queue {
     }
 
     void enqueue(T item) {
-        LockGuard lock{&mtx};
+        std::unique_lock<std::mutex> lock(mtx);
 
         if (len == capacity) {
             reserve(len > 0 ? len * 2 : 8);
@@ -527,15 +470,13 @@ struct Queue {
         back = (back + 1) % capacity;
         len++;
 
-        cv.signal();
+        cv.notify_one();
     }
 
     T demand() {
-        LockGuard lock{&mtx};
+        std::unique_lock<std::mutex> lock(mtx);
 
-        while (len == 0) {
-            cv.wait(&mtx);
-        }
+        cv.wait(lock, [this] { return len > 0; });
 
         T item = data[front];
         front = (front + 1) % capacity;
@@ -1227,6 +1168,36 @@ static inline std::string fs_normalize_path(const std::string &path, char delimi
 }
 
 }  // namespace neko
+
+#ifdef USE_PROFILER
+
+struct TraceEvent {
+    const char *cat;
+    const char *name;
+    u64 ts;
+    u16 tid;
+    char ph;
+};
+
+struct Instrument {
+    const char *cat;
+    const char *name;
+    i32 tid;
+
+    Instrument(const char *cat, const char *name);
+    ~Instrument();
+};
+
+#define PROFILE_FUNC() auto JOIN_2(_profile_, __COUNTER__) = Instrument("function", __func__);
+
+#define PROFILE_BLOCK(name) auto JOIN_2(_profile_, __COUNTER__) = Instrument("block", name);
+
+#endif  // USE_PROFILER
+
+#ifndef USE_PROFILER
+#define PROFILE_FUNC()
+#define PROFILE_BLOCK(name)
+#endif
 
 namespace neko::wtf8 {
 std::wstring u2w(std::string_view str) noexcept;

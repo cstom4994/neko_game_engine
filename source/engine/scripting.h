@@ -5,7 +5,6 @@
 #include "engine/input.h"
 #include "engine/luax.h"
 
-
 NEKO_API() void script_run_string(const char *s);
 NEKO_API() void script_run_file(const char *filename);
 NEKO_API() void script_error(const char *s);
@@ -28,15 +27,15 @@ NEKO_API() void script_load_all(Store *s);
 NEKO_API() int luax_pcall_nothrow(lua_State *L, int nargs, int nresults);
 NEKO_API() void script_push_event(const char *event);
 
-#define errcheck(...)                                         \
-    do                                                        \
-        if (__VA_ARGS__) {                                    \
-            console_printf("lua: %s\n", lua_tostring(L, -1)); \
-            lua_pop(L, 1);                                    \
-            if (LockGuard lock{&g_app->error_mtx}) {          \
-                g_app->error_mode.store(true);                \
-            }                                                 \
-        }                                                     \
+#define errcheck(...)                                                  \
+    do                                                                 \
+        if (__VA_ARGS__) {                                             \
+            console_printf("lua: %s\n", lua_tostring(L, -1));          \
+            lua_pop(L, 1);                                             \
+            if (std::unique_lock<std::mutex> lock{g_app->error_mtx}) { \
+                g_app->error_mode.store(true);                         \
+            }                                                          \
+        }                                                              \
     while (0)
 
 #endif

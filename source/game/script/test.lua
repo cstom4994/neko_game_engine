@@ -208,7 +208,7 @@ local function UnitTest()
             end)
 
             it('feature_bind_enum', function()
-                expect(Test.TestAssetKind_1("AssetKind_Tilemap")).to.equal(4)
+                expect(Test.TestAssetKind_1("AssetKind_Tiledmap")).to.equal(4)
                 expect(Test.TestAssetKind_2(2)).to.equal("AssetKind_Image")
             end)
 

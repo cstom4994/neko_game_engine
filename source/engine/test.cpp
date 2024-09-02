@@ -626,8 +626,6 @@ void draw_gui() {
         }
 #endif
 
-        // ui_Layout l;
-
         if (1) {
 
             // vec2 mp = g_app->ui.mouse_pos;
@@ -749,12 +747,12 @@ void draw_gui() {
     }
 
     vec2 fb = game_get_window_size();
-    rect_t screen;
+    rect_t screen = neko_rect(0, 0, fb.x, fb.y);
+    // ui_Layout l;
     //            if (embeded)
     //                screen = l.body;
     //            else
     //                screen = ui_rect(0, 0, fb.x, fb.y);
-    screen = neko_rect(0, 0, fb.x, fb.y);
     neko_console(&g_console, g_app->ui, &screen, NULL);
 
     // draw_gui_auto_test();
