@@ -275,19 +275,19 @@ struct PointInner {
 
 NEKO_STRUCT(PointInner, _Fs(xx, "inner_xxx"), _Fs(yy, "inner_yyy"));
 
-struct Point {
+struct MyPoint {
     int x, y;
     PointInner inner;
 };
 
-NEKO_STRUCT(Point, _Fs(x, "xxx"), _Fs(y, "yyy"), _Fs(inner, "inner_shit"));
+NEKO_STRUCT(MyPoint, _Fs(x, "xxx"), _Fs(y, "yyy"), _Fs(inner, "inner_shit"));
 
-struct Rect {
-    Point p1, p2;
+struct MyRect {
+    MyPoint p1, p2;
     u32 color;
 };
 
-NEKO_STRUCT(Rect, _F(p1), _F(p2), _F(color));
+NEKO_STRUCT(MyRect, _F(p1), _F(p2), _F(color));
 
 template <typename T, typename Fields = std::tuple<>>
 void dumpObj(T &&obj, int depth = 0, const char *fieldName = "", Fields &&fields = std::make_tuple()) {
@@ -324,7 +324,7 @@ static void test_struct() {
     MyStruct myStruct{1001, 2.f};
     neko::reflection::struct_apply(myStruct, [](auto &...args) { (..., As(args)); });
 
-    Rect rect{
+    MyRect rect{
             {0, 0},
             {8, 9},
             12345678,
@@ -340,117 +340,6 @@ static void test_struct() {
 
 void test_se() { test_struct(); }
 
-typedef struct custom_key_t {
-    uint32_t uval;
-    float fval;
-} custom_key_t;
-
-neko_dyn_array(uint32_t) arr = NULL;
-neko_hash_table(float, uint32_t) ht = NULL;
-neko_hash_table(custom_key_t, uint32_t) htc = NULL;
-neko_slot_array(double) sa = NULL;
-neko_slot_map(uint64_t, uint32_t) sm = NULL;
-byte_buffer_t bb = {0};
-
-#define ITER_CT 5
-
-// Keys for slot map
-const char *smkeys[ITER_CT] = {"John", "Dick", "Harry", "Donald", "Wayne"};
-
-void test_containers() {
-
-    NEKO_INVOKE_ONCE([] {
-        bb = byte_buffer_new();
-
-        byte_buffer_write(&bb, uint32_t, ITER_CT);
-
-        for (uint32_t i = 0; i < ITER_CT; ++i) {
-            neko_dyn_array_push(arr, i);
-
-            neko_hash_table_insert(ht, (float)i, i);
-
-            custom_key_t k = {.uval = i, .fval = (float)i * 2.f};
-            neko_hash_table_insert(htc, k, i * 2);
-
-            neko_slot_array_insert(sa, (double)i * 3.f);
-
-            neko_slot_map_insert(sm, neko_hash_str64(smkeys[i]), i);
-
-            byte_buffer_write(&bb, uint32_t, i);
-        }
-
-        byte_buffer_seek_to_beg(&bb);
-    }(););
-
-    neko_printf("neko_dyn_array: [");
-    for (uint32_t i = 0; i < neko_dyn_array_size(arr); ++i) {
-        neko_printf("%zu, ", arr[i]);
-    }
-    neko_println("]");
-
-    neko_println("neko_hash_table: [");
-    for (neko_hash_table_iter it = neko_hash_table_iter_new(ht); neko_hash_table_iter_valid(ht, it); neko_hash_table_iter_advance(ht, it)) {
-        float k = neko_hash_table_iter_getk(ht, it);
-        uint32_t v = neko_hash_table_iter_get(ht, it);
-        neko_println("  {k: %.2f, v: %zu},", k, v);
-    }
-    neko_println("]");
-
-    neko_println("neko_hash_table: [");
-    for (neko_hash_table_iter it = neko_hash_table_iter_new(htc); neko_hash_table_iter_valid(htc, it); neko_hash_table_iter_advance(htc, it)) {
-        custom_key_t *kp = neko_hash_table_iter_getkp(htc, it);
-        uint32_t v = neko_hash_table_iter_get(htc, it);
-        neko_println("  {k: {%zu, %.2f}, v: %zu},", kp->uval, kp->fval, v);
-    }
-    neko_println("]");
-
-    neko_println("neko_slot_array: [");
-    for (neko_slot_array_iter it = neko_slot_array_iter_new(sa); neko_slot_array_iter_valid(sa, it); neko_slot_array_iter_advance(sa, it)) {
-        double v = neko_slot_array_iter_get(sa, it);
-        neko_println("  id: %zu, v: %.2f", it, v);
-    }
-    neko_println("]");
-
-    neko_println("neko_slot_map (manual): [");
-    for (uint32_t i = 0; i < ITER_CT; ++i) {
-        uint32_t v = neko_slot_map_get(sm, neko_hash_str64(smkeys[i]));
-        neko_println("k: %s, h: %lu, v: %zu", smkeys[i], neko_hash_str64(smkeys[i]), v);
-    }
-    neko_println("]");
-
-    neko_println("neko_slot_map (iterator): [");
-    for (neko_slot_map_iter it = neko_slot_map_iter_new(sm); neko_slot_map_iter_valid(sm, it); neko_slot_map_iter_advance(sm, it)) {
-        uint64_t k = neko_slot_map_iter_getk(sm, it);
-        uint32_t v = neko_slot_map_iter_get(sm, it);
-        neko_println("k: %lu, v: %zu", k, v);
-    }
-    neko_println("]");
-
-    neko_println("byte_buffer_t: [");
-
-    byte_buffer_readc(&bb, uint32_t, ct);
-
-    for (uint32_t i = 0; i < ct; ++i) {
-        byte_buffer_readc(&bb, uint32_t, v);
-        neko_println("v: %zu", v);
-    }
-    neko_println("]");
-
-    byte_buffer_seek_to_beg(&bb);
-
-    byte_buffer_free(&bb);
-
-    neko_dyn_array_free(arr);
-
-    neko_slot_array_free(sa);
-
-    neko_slot_map_free(sm);
-
-    neko_hash_table_free(ht);
-
-    neko_hash_table_free(htc);
-}
-
 void print_indent(int indent) {
     for (int i = 0; i < indent; i++) {
         putc('\t', stdout);
@@ -464,31 +353,31 @@ void print_xml_node(xml_node_t *node, int indent) {
     printf("\tText: %s\n", node->text);
     print_indent(indent);
     puts("\tAttributes:");
-    for (neko_hash_table_iter it = neko_hash_table_iter_new(node->attributes); neko_hash_table_iter_valid(node->attributes, it); neko_hash_table_iter_advance(node->attributes, it)) {
-        xml_attribute_t attrib = neko_hash_table_iter_get(node->attributes, it);
+    for (auto kv : node->attributes) {
+        xml_attribute_t *attrib = kv.value;
 
         print_indent(indent);
-        printf("\t\t%s: ", attrib.name);
-        switch (attrib.type) {
+        printf("\t\t%s: ", attrib->name);
+        switch (attrib->type) {
             case NEKO_XML_ATTRIBUTE_NUMBER:
-                printf("(number) %g\n", attrib.value.number);
+                printf("(number) %g\n", attrib->value.number);
                 break;
             case NEKO_XML_ATTRIBUTE_BOOLEAN:
-                printf("(boolean) %s\n", attrib.value.boolean ? "true" : "false");
+                printf("(boolean) %s\n", attrib->value.boolean ? "true" : "false");
                 break;
             case NEKO_XML_ATTRIBUTE_STRING:
-                printf("(string) %s\n", attrib.value.string);
+                printf("(string) %s\n", attrib->value.string);
                 break;
             default:
                 break;  // Unreachable
         }
     }
 
-    if (neko_dyn_array_size(node->children) > 0) {
+    if (node->children.len > 0) {
         print_indent(indent);
         printf("\t = Children = \n");
-        for (uint32_t i = 0; i < neko_dyn_array_size(node->children); i++) {
-            print_xml_node(node->children + i, indent + 1);
+        for (uint32_t i = 0; i < node->children.len; i++) {
+            print_xml_node(&node->children[i], indent + 1);
         }
     }
 }
@@ -498,8 +387,8 @@ int test_xml(lua_State *L) {
     if (!doc) {
         printf("XML Parse Error: %s\n", xml_get_error());
     } else {
-        for (uint32_t i = 0; i < neko_dyn_array_size(doc->nodes); i++) {
-            xml_node_t *node = doc->nodes + i;
+        for (uint32_t i = 0; i < doc->nodes.len; i++) {
+            xml_node_t *node = &doc->nodes[i];
             print_xml_node(node, 0);
         }
         xml_free(doc);
@@ -1192,6 +1081,26 @@ struct Comp(Name) {
 // `forEachComponentType` to iterate all component types
 UseComponentTypes();
 
+#endif
+
+#if 0
+            if (ImGui::Button("test_ecs_cpp")) {
+                forEachComponentType([&]<typename T>() {
+                    constexpr auto typeName = getTypeName<T>();
+                    std::printf("component type: %.*s\n", int(typeName.size()), typeName.data());
+
+                    T val{};
+                    std::printf("  props:\n");
+                    forEachProp(val, [&](auto propTag, auto &propVal) {
+                        std::printf("    %s: ", propTag.attribs.name.data());
+                        print(propVal);
+                        if (propTag.attribs.exampleFlag) {
+                            std::printf(" (example flag set)");
+                        }
+                        std::printf("\n");
+                    });
+                });
+            }
 #endif
 
 #define NEKO_LUA_FS

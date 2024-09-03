@@ -257,7 +257,7 @@ static bool _texture_load_vfs(AssetTexture *tex, String filename) {
     }
 
     {
-        std::unique_lock<std::mutex> lock{g_app->gpu_mtx};
+        std::unique_lock<std::mutex> lock(g_app->gpu_mtx);
 
         // 如果存在 则释放旧的 GL 纹理
         if (tex->id != 0) glDeleteTextures(1, &tex->id);
@@ -342,7 +342,7 @@ bool load_texture_data_from_memory(const void *memory, size_t sz, i32 *width, i3
 }
 
 bool load_texture_data_from_file(const char *file_path, i32 *width, i32 *height, u32 *num_comps, void **data, bool flip_vertically_on_load) {
-    u64 len = 0;
+    size_t len = 0;
     const_str file_data = neko_capi_vfs_read_file(NEKO_PACKS::GAMEDATA, file_path, &len);
     neko_assert(file_data);
     bool ret = load_texture_data_from_memory(file_data, len, width, height, num_comps, data, flip_vertically_on_load);
@@ -2461,7 +2461,7 @@ u64 AseSpriteView::len() {
 #define xml_expect_not_end(c_)             \
     if (!*(c_)) {                          \
         xml_emit_error("Unexpected end."); \
-        return NULL;                       \
+        return {};                         \
     }
 
 typedef struct xml_entity_t {
@@ -2532,24 +2532,22 @@ static u64 xml_hash_string(const_str str, u32 len) {
 }
 
 static void xml_node_free(xml_node_t *node) {
-    for (neko_hash_table_iter it = neko_hash_table_iter_new(node->attributes); neko_hash_table_iter_valid(node->attributes, it); neko_hash_table_iter_advance(node->attributes, it)) {
-        xml_attribute_t attrib = neko_hash_table_iter_get(node->attributes, it);
-
-        if (attrib.type == NEKO_XML_ATTRIBUTE_STRING) {
-            mem_free(attrib.value.string);
+    for (auto kv : node->attributes) {
+        xml_attribute_t *attrib = kv.value;
+        if (attrib->type == NEKO_XML_ATTRIBUTE_STRING) {
+            mem_free(attrib->value.string);
         }
-
-        mem_free(attrib.name);
+        mem_free(attrib->name);
     }
 
-    for (u32 i = 0; i < neko_dyn_array_size(node->children); i++) {
-        xml_node_free(node->children + i);
+    for (u32 i = 0; i < node->children.len; i++) {
+        xml_node_free(&node->children[i]);
     }
 
     mem_free(node->name);
     mem_free(node->text);
-    neko_hash_table_free(node->attributes);
-    neko_dyn_array_free(node->children);
+    node->attributes.trash();
+    node->children.trash();
 }
 
 static char *xml_process_text(const_str start, u32 length) {
@@ -2581,8 +2579,8 @@ static char *xml_process_text(const_str start, u32 length) {
 }
 
 // 解析XML块 返回块中的节点数组
-static neko_dyn_array(xml_node_t) xml_parse_block(const_str start, u32 length) {
-    neko_dyn_array(xml_node_t) root = neko_dyn_array_new(xml_node_t);
+static Array<xml_node_t> xml_parse_block(const_str start, u32 length) {
+    Array<xml_node_t> root = {};
 
     bool is_inside = false;
 
@@ -2626,9 +2624,9 @@ static neko_dyn_array(xml_node_t) xml_parse_block(const_str start, u32 length) {
 
             xml_node_t current_node = {0};
 
-            current_node.attributes = neko_hash_table_new(u64, xml_attribute_t);
+            // current_node.attributes = neko_hash_table_new(u64, xml_attribute_t);
 
-            current_node.children = neko_dyn_array_new(xml_node_t);
+            // current_node.children = neko_dyn_array_new(xml_node_t);
 
             if (is_inside) {
                 for (; *c != '>' && *c != ' ' && *c != '/'; c++) node_name_len++;
@@ -2683,7 +2681,7 @@ static neko_dyn_array(xml_node_t) xml_parse_block(const_str start, u32 length) {
                             attrib.value.string = xml_process_text(attrib_text_start, attrib_text_len);
                         }
 
-                        neko_hash_table_insert(current_node.attributes, xml_hash_string(attrib_name_start, attrib_name_len), attrib);
+                        current_node.attributes[xml_hash_string(attrib_name_start, attrib_name_len)] = attrib;
                     }
                 }
 
@@ -2692,7 +2690,7 @@ static neko_dyn_array(xml_node_t) xml_parse_block(const_str start, u32 length) {
                     c++;
                     xml_expect_not_end(c);
                     current_node.name = xml_copy_string(node_name_start, node_name_len);
-                    neko_dyn_array_push(root, current_node);
+                    root.push(current_node);
                     is_inside = false;
                 }
             } else {
@@ -2743,12 +2741,12 @@ static neko_dyn_array(xml_node_t) xml_parse_block(const_str start, u32 length) {
                 }
 
                 current_node.children = xml_parse_block(text_start, text_len);
-                if (neko_dyn_array_size(current_node.children) == 0)
+                if (current_node.children.len == 0)
                     current_node.text = xml_process_text(text_start, text_len);
                 else
                     current_node.text = xml_copy_string(text_start, text_len);
 
-                neko_dyn_array_push(root, current_node);
+                root.push(current_node);
 
                 c--;
             }
@@ -2759,7 +2757,7 @@ static neko_dyn_array(xml_node_t) xml_parse_block(const_str start, u32 length) {
 }
 
 xml_document_t *xml_parse_vfs(const_str path) {
-    u64 size;
+    size_t size;
     const_str source = neko_capi_vfs_read_file(NEKO_PACKS::GAMEDATA, path, &size);
     if (!source) {
         xml_emit_error("Failed to load xml file!");
@@ -2791,26 +2789,24 @@ xml_document_t *xml_parse(const_str source) {
 }
 
 void xml_free(xml_document_t *document) {
-    for (u32 i = 0; i < neko_dyn_array_size(document->nodes); i++) {
+    for (u32 i = 0; i < document->nodes.len; i++) {
         xml_node_free(&document->nodes[i]);
     }
 
-    neko_dyn_array_free(document->nodes);
+    document->nodes.trash();
     mem_free(document);
 }
 
 xml_attribute_t *xml_find_attribute(xml_node_t *node, const_str name) {
-    if (!neko_hash_table_exists(node->attributes, xml_hash_string(name, neko_string_length(name)))) {
-        return NULL;
-    } else {
-        return neko_hash_table_getp(node->attributes, xml_hash_string(name, neko_string_length(name)));
-    }
+    u64 key = xml_hash_string(name, neko_string_length(name));
+    xml_attribute_t *attr = node->attributes.get(key);
+    return attr;
 }
 
 xml_node_t *xml_find_node(xml_document_t *doc, const_str name) {
-    for (u32 i = 0; i < neko_dyn_array_size(doc->nodes); i++) {
+    for (u32 i = 0; i < doc->nodes.len; i++) {
         if (neko_string_compare_equal(name, doc->nodes[i].name)) {
-            return doc->nodes + i;
+            return &doc->nodes[i];
         }
     }
 
@@ -2818,9 +2814,9 @@ xml_node_t *xml_find_node(xml_document_t *doc, const_str name) {
 }
 
 xml_node_t *xml_find_node_child(xml_node_t *node, const_str name) {
-    for (u32 i = 0; i < neko_dyn_array_size(node->children); i++) {
+    for (u32 i = 0; i < node->children.len; i++) {
         if (neko_string_compare_equal(name, node->children[i].name)) {
-            return node->children + i;
+            return &node->children[i];
         }
     }
 
@@ -2831,7 +2827,6 @@ const_str xml_get_error() { return g_xml_error; }
 
 xml_node_iter_t xml_new_node_iter(xml_document_t *doc, const_str name) {
     xml_node_iter_t it = {.doc = doc, .name = name, .idx = 0};
-
     return it;
 }
 
@@ -2842,9 +2837,9 @@ xml_node_iter_t xml_new_node_child_iter(xml_node_t *parent, const_str name) {
 
 bool xml_node_iter_next(xml_node_iter_t *iter) {
     if (iter->node) {
-        for (u32 i = iter->idx; i < neko_dyn_array_size(iter->node->children); i++) {
+        for (u32 i = iter->idx; i < iter->node->children.len; i++) {
             if (neko_string_compare_equal(iter->name, iter->node->children[i].name)) {
-                iter->current = iter->node->children + i;
+                iter->current = &iter->node->children[i];
                 iter->idx = i + 1;
                 return true;
             }
@@ -2852,9 +2847,9 @@ bool xml_node_iter_next(xml_node_iter_t *iter) {
 
         return false;
     } else {
-        for (u32 i = iter->idx; i < neko_dyn_array_size(iter->doc->nodes); i++) {
+        for (u32 i = iter->idx; i < iter->doc->nodes.len; i++) {
             if (neko_string_compare_equal(iter->name, iter->doc->nodes[i].name)) {
-                iter->current = iter->doc->nodes + i;
+                iter->current = &iter->doc->nodes[i];
                 iter->idx = i + 1;
                 return true;
             }

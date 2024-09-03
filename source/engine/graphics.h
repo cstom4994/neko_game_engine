@@ -214,7 +214,7 @@ void neko_unload_shader(AssetShader* shader);
 #ifdef _DEBUG
 #define neko_check_gl_error() gfx_print_error(__FILE__, __LINE__)
 #else
-#define neko_check_gl_error() 
+#define neko_check_gl_error()
 #endif
 
 NEKO_API() void gfx_print_error(const char* file, u32 line);
@@ -370,7 +370,7 @@ typedef struct neko_gl_texture_t {
 
 // 内部 OpenGL 数据
 typedef struct neko_gl_data_t {
-    neko_slot_array(neko_gl_texture_t) textures;
+    Array<neko_gl_texture_t> textures;
 } neko_gl_data_t;
 
 typedef struct gfx_t {
@@ -392,7 +392,6 @@ NEKO_API() neko_gl_data_t* gfx_ogl();
 NEKO_API() neko_handle(gfx_texture_t) gfx_texture_create(const gfx_texture_desc_t desc);
 NEKO_API() void gfx_texture_fini(neko_handle(gfx_texture_t) hndl);
 NEKO_API() void gfx_texture_read(neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t* desc);
-NEKO_API() void gfx_texture_request_update(command_buffer_t* cb, neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t desc);
 
 typedef struct neko_rgb_color_t {
     float r, g, b;

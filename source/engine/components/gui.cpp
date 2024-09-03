@@ -388,8 +388,8 @@ static void _common_load_all(Store *s) {
 
 // --- rect ----------------------------------------------------------------
 
-typedef struct Rect Rect;
-struct Rect {
+typedef struct GuiRect GuiRect;
+struct GuiRect {
     EntityPoolElem pool_elem;
 
     mat3 wmat;
@@ -410,13 +410,13 @@ struct Rect {
 static NativeEntityPool *rect_pool;
 
 void gui_rect_add(NativeEntity ent) {
-    Rect *rect;
+    GuiRect *rect;
 
     if (entitypool_get(rect_pool, ent)) return;
 
     gui_add(ent);
 
-    rect = (Rect *)entitypool_add(rect_pool, ent);
+    rect = (GuiRect *)entitypool_add(rect_pool, ent);
     rect->size = luavec2(64, 64);
     rect->hfit = true;
     rect->vfit = true;
@@ -427,54 +427,54 @@ void gui_rect_remove(NativeEntity ent) { entitypool_remove(rect_pool, ent); }
 bool gui_rect_has(NativeEntity ent) { return entitypool_get(rect_pool, ent) != NULL; }
 
 void gui_rect_set_size(NativeEntity ent, vec2 size) {
-    Rect *rect = (Rect *)entitypool_get(rect_pool, ent);
+    GuiRect *rect = (GuiRect *)entitypool_get(rect_pool, ent);
     error_assert(rect);
     rect->size = size;
 }
 vec2 gui_rect_get_size(NativeEntity ent) {
-    Rect *rect = (Rect *)entitypool_get(rect_pool, ent);
+    GuiRect *rect = (GuiRect *)entitypool_get(rect_pool, ent);
     error_assert(rect);
     return rect->size;
 }
 
 void gui_rect_set_hfit(NativeEntity ent, bool fit) {
-    Rect *rect = (Rect *)entitypool_get(rect_pool, ent);
+    GuiRect *rect = (GuiRect *)entitypool_get(rect_pool, ent);
     error_assert(rect);
     rect->hfit = fit;
 }
 bool gui_rect_get_hfit(NativeEntity ent) {
-    Rect *rect = (Rect *)entitypool_get(rect_pool, ent);
+    GuiRect *rect = (GuiRect *)entitypool_get(rect_pool, ent);
     error_assert(rect);
     return rect->hfit;
 }
 void gui_rect_set_vfit(NativeEntity ent, bool fit) {
-    Rect *rect = (Rect *)entitypool_get(rect_pool, ent);
+    GuiRect *rect = (GuiRect *)entitypool_get(rect_pool, ent);
     error_assert(rect);
     rect->vfit = fit;
 }
 bool gui_rect_get_vfit(NativeEntity ent) {
-    Rect *rect = (Rect *)entitypool_get(rect_pool, ent);
+    GuiRect *rect = (GuiRect *)entitypool_get(rect_pool, ent);
     error_assert(rect);
     return rect->vfit;
 }
 
 void gui_rect_set_hfill(NativeEntity ent, bool fill) {
-    Rect *rect = (Rect *)entitypool_get(rect_pool, ent);
+    GuiRect *rect = (GuiRect *)entitypool_get(rect_pool, ent);
     error_assert(rect);
     rect->hfill = fill;
 }
 bool gui_rect_get_hfill(NativeEntity ent) {
-    Rect *rect = (Rect *)entitypool_get(rect_pool, ent);
+    GuiRect *rect = (GuiRect *)entitypool_get(rect_pool, ent);
     error_assert(rect);
     return rect->hfill;
 }
 void gui_rect_set_vfill(NativeEntity ent, bool fill) {
-    Rect *rect = (Rect *)entitypool_get(rect_pool, ent);
+    GuiRect *rect = (GuiRect *)entitypool_get(rect_pool, ent);
     error_assert(rect);
     rect->vfill = fill;
 }
 bool gui_rect_get_vfill(NativeEntity ent) {
-    Rect *rect = (Rect *)entitypool_get(rect_pool, ent);
+    GuiRect *rect = (GuiRect *)entitypool_get(rect_pool, ent);
     error_assert(rect);
     return rect->vfill;
 }
@@ -485,7 +485,7 @@ static GLuint rect_vbo;
 
 static void _rect_init() {
     // init pool
-    rect_pool = entitypool_new(Rect);
+    rect_pool = entitypool_new(GuiRect);
 
     // create shader program, load texture, bind parameters
     bool ok = asset_load_kind(AssetKind_Shader, "shader/rect.glsl", &rect_shader);
@@ -500,12 +500,12 @@ static void _rect_init() {
     glBindVertexArray(rect_vao);
     glGenBuffers(1, &rect_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, rect_vbo);
-    gfx_bind_vertex_attrib(sid, GL_FLOAT, 3, "wmat1", Rect, wmat.m[0]);
-    gfx_bind_vertex_attrib(sid, GL_FLOAT, 3, "wmat2", Rect, wmat.m[1]);
-    gfx_bind_vertex_attrib(sid, GL_FLOAT, 3, "wmat3", Rect, wmat.m[2]);
-    gfx_bind_vertex_attrib(sid, GL_FLOAT, 2, "size", Rect, size);
-    gfx_bind_vertex_attrib(sid, GL_INT, 1, "visible", Rect, visible);
-    gfx_bind_vertex_attrib(sid, GL_FLOAT, 4, "color", Rect, color);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 3, "wmat1", GuiRect, wmat.m[0]);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 3, "wmat2", GuiRect, wmat.m[1]);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 3, "wmat3", GuiRect, wmat.m[2]);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 2, "size", GuiRect, size);
+    gfx_bind_vertex_attrib(sid, GL_INT, 1, "visible", GuiRect, visible);
+    gfx_bind_vertex_attrib(sid, GL_FLOAT, 4, "color", GuiRect, color);
 }
 static void _rect_fini() {
     // fini gl stuff
@@ -518,7 +518,7 @@ static void _rect_fini() {
 
 static void _rect_update_child_first(NativeEntity ent);
 
-static void _rect_update_table_align(Rect *rect) {
+static void _rect_update_table_align(GuiRect *rect) {
     NativeEntity rect_ent, *children;
     Gui *child;
     unsigned int nchildren, i;
@@ -554,7 +554,7 @@ static void _rect_update_table_align(Rect *rect) {
     }
 }
 
-static void _rect_update_fit(Rect *rect) {
+static void _rect_update_fit(GuiRect *rect) {
     NativeEntity rect_ent, *children;
     Gui *child;
     unsigned int nchildren, i;
@@ -583,13 +583,13 @@ static void _rect_update_fit(Rect *rect) {
 }
 
 static void _rect_update_child_first(NativeEntity ent) {
-    Rect *rect;
+    GuiRect *rect;
     Gui *gui;
 
     gui = (Gui *)entitypool_get(pool_gui, ent);
     if (!gui) return;
 
-    rect = (Rect *)entitypool_get(rect_pool, ent);
+    rect = (GuiRect *)entitypool_get(rect_pool, ent);
     if (!rect || rect->updated) return;
     _rect_update_table_align(rect);
     _rect_update_fit(rect);
@@ -599,7 +599,7 @@ static void _rect_update_child_first(NativeEntity ent) {
 
 static void _rect_update_parent_first(NativeEntity ent);
 
-static void _rect_update_fill(Rect *rect) {
+static void _rect_update_fill(GuiRect *rect) {
     NativeEntity ent;
     Gui *pgui, *gui;
     BBox b;
@@ -622,10 +622,10 @@ static void _rect_update_fill(Rect *rect) {
     if (rect->vfill) rect->size.y = -b.min.y + gui->padding.y;
 }
 
-static void _rect_update_depth(Rect *rect) {
-    Rect *prect;
+static void _rect_update_depth(GuiRect *rect) {
+    GuiRect *prect;
 
-    prect = (Rect *)entitypool_get(rect_pool, transform_get_parent(rect->pool_elem.ent));
+    prect = (GuiRect *)entitypool_get(rect_pool, transform_get_parent(rect->pool_elem.ent));
     if (prect) {
         _rect_update_parent_first(prect->pool_elem.ent);
         rect->depth = prect->depth + 1;
@@ -634,13 +634,13 @@ static void _rect_update_depth(Rect *rect) {
 }
 
 static void _rect_update_parent_first(NativeEntity ent) {
-    Rect *rect;
+    GuiRect *rect;
     Gui *gui;
 
     gui = (Gui *)entitypool_get(pool_gui, ent);
     if (!gui) return;
 
-    rect = (Rect *)entitypool_get(rect_pool, ent);
+    rect = (GuiRect *)entitypool_get(rect_pool, ent);
     if (!rect || rect->updated) return;
     _rect_update_fill(rect);
     _rect_update_depth(rect);
@@ -649,7 +649,7 @@ static void _rect_update_parent_first(NativeEntity ent) {
 }
 
 static void _rect_update_all() {
-    Rect *rect;
+    GuiRect *rect;
     Gui *gui;
 
     entitypool_remove_destroyed(rect_pool, gui_rect_remove);
@@ -674,12 +674,12 @@ static void _rect_update_all() {
 }
 
 static void _rect_update_wmat() {
-    Rect *rect;
+    GuiRect *rect;
     entitypool_foreach(rect, rect_pool) rect->wmat = transform_get_world_matrix(rect->pool_elem.ent);
 }
 
 static int _rect_depth_compare(const void *a, const void *b) {
-    const Rect *ra = (Rect *)a, *rb = (Rect *)b;
+    const GuiRect *ra = (GuiRect *)a, *rb = (GuiRect *)b;
     if (ra->depth == rb->depth) return ((int)ra->pool_elem.ent.id) - ((int)rb->pool_elem.ent.id);
     return ra->depth - rb->depth;
 }
@@ -700,13 +700,13 @@ static void _rect_draw_all() {
     glBindVertexArray(rect_vao);
     glBindBuffer(GL_ARRAY_BUFFER, rect_vbo);
     nrects = entitypool_size(rect_pool);
-    glBufferData(GL_ARRAY_BUFFER, nrects * sizeof(Rect), entitypool_begin(rect_pool), GL_STREAM_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, nrects * sizeof(GuiRect), entitypool_begin(rect_pool), GL_STREAM_DRAW);
     glDrawArrays(GL_POINTS, 0, nrects);
 }
 
 static void _rect_save_all(Store *s) {
     Store *t, *rect_s;
-    Rect *rect;
+    GuiRect *rect;
 
     if (store_child_save(&t, "gui_rect", s)) entitypool_save_foreach(rect, rect_s, rect_pool, "pool", t) {
             vec2_save(&rect->size, "size", rect_s);
@@ -719,7 +719,7 @@ static void _rect_save_all(Store *s) {
 }
 static void _rect_load_all(Store *s) {
     Store *t, *rect_s;
-    Rect *rect;
+    GuiRect *rect;
 
     if (store_child_load(&t, "gui_rect", s)) entitypool_load_foreach(rect, rect_s, rect_pool, "pool", t) {
             vec2_load(&rect->size, "size", luavec2(64, 64), rect_s);

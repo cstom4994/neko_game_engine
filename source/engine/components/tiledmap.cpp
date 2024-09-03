@@ -616,7 +616,7 @@ bool tiled_load(TiledMap *map, const_str tmx_path, const_str res_path) {
 
         mem_free(tex_data);
 
-        neko_dyn_array_push(map->tilesets, tileset);
+        map->tilesets.push(tileset);
 
         xml_free(tileset_doc);
     }
@@ -659,7 +659,7 @@ bool tiled_load(TiledMap *map, const_str tmx_path, const_str res_path) {
                 u32 tls_id = 0;
 
                 u32 closest = 0;
-                for (u32 i = 0; i < neko_dyn_array_size(map->tilesets); i++) {
+                for (u32 i = 0; i < map->tilesets.len; i++) {
                     if (map->tilesets[i].first_gid <= gid) {
                         if (map->tilesets[i].first_gid > closest) {
                             closest = map->tilesets[i].first_gid;
@@ -679,7 +679,7 @@ bool tiled_load(TiledMap *map, const_str tmx_path, const_str res_path) {
             }
         }
 
-        neko_dyn_array_push(map->layers, layer);
+        map->layers.push(layer);
     }
 
     for (xml_node_iter_t it = xml_new_node_child_iter(map_node, "objectgroup"); xml_node_iter_next(&it);) {
@@ -746,10 +746,10 @@ bool tiled_load(TiledMap *map, const_str tmx_path, const_str res_path) {
             }
 #endif
 
-            neko_dyn_array_push(object_group.objects, object);
+            object_group.objects.push(object);
         }
 
-        neko_dyn_array_push(map->object_groups, object_group);
+        map->object_groups.push(object_group);
     }
 
     return true;
@@ -759,29 +759,31 @@ void tiled_unload(TiledMap *map) {
 
     PROFILE_FUNC();
 
-    for (u32 i = 0; i < neko_dyn_array_size(map->tilesets); i++) {
+    for (u32 i = 0; i < map->tilesets.len; i++) {
         // gfx_texture_fini(map->tilesets[i].texture);
     }
 
-    for (u32 i = 0; i < neko_dyn_array_size(map->layers); i++) {
+    for (u32 i = 0; i < map->layers.len; i++) {
         mem_free(map->layers[i].tiles);
     }
 
-    neko_dyn_array_free(map->layers);
-    neko_dyn_array_free(map->tilesets);
+    map->layers.trash();
+    map->tilesets.trash();
 
-    for (u32 i = 0; i < neko_dyn_array_size(map->object_groups); i++) {
-        neko_dyn_array_free(map->object_groups[i].objects);
+    for (u32 i = 0; i < map->object_groups.len; i++) {
+        map->object_groups[i].objects.trash();
     }
 
-    neko_dyn_array_free(map->object_groups);
+    map->object_groups.trash();
 
     if (map->doc) {
         xml_free(map->doc);
     }
 }
 
-void tiled_render_init(command_buffer_t *cb, tiled_renderer *renderer) {
+void tiled_render_init(tiled_renderer *renderer) {
+
+    // hashmap_init(&renderer->quad_table);
 
     GLuint sid = tiled_shader.shader.id;
 
@@ -815,28 +817,25 @@ void tiled_render_init(command_buffer_t *cb, tiled_renderer *renderer) {
 }
 
 void tiled_render_deinit(tiled_renderer *renderer) {
-
     PROFILE_FUNC();
 
-    for (neko_hash_table_iter it = neko_hash_table_iter_new(renderer->quad_table); neko_hash_table_iter_valid(renderer->quad_table, it); neko_hash_table_iter_advance(renderer->quad_table, it)) {
-        u32 k = neko_hash_table_iter_getk(renderer->quad_table, it);
-        tiled_quad_list_t quad_list = neko_hash_table_iter_get(renderer->quad_table, it);
+    for (auto kv : renderer->quad_table) {
+        u32 k = kv.key;
+        tiled_quad_list_t *quad_list = kv.value;
 
-        neko_dyn_array(tiled_quad_t) v = quad_list.quad_list;
-
-        neko_dyn_array_free(v);
+        quad_list->quad_list.trash();
     }
 
-    neko_hash_table_free(renderer->quad_table);
+    renderer->quad_table.trash();
 
     glDeleteBuffers(1, &renderer->ib);
     glDeleteBuffers(1, &renderer->vbo);
     glDeleteVertexArrays(1, &renderer->vao);
 }
 
-void tiled_render_begin(command_buffer_t *cb, tiled_renderer *renderer) { renderer->quad_count = 0; }
+void tiled_render_begin(tiled_renderer *renderer) { renderer->quad_count = 0; }
 
-void tiled_render_flush(command_buffer_t *cb, tiled_renderer *renderer) {
+void tiled_render_flush(tiled_renderer *renderer) {
 
     PROFILE_FUNC();
 
@@ -856,7 +855,7 @@ void tiled_render_flush(command_buffer_t *cb, tiled_renderer *renderer) {
     glUniformMatrix3fv(glGetUniformLocation(sid, "inverse_view_matrix"), 1, false, (float *)&renderer->camera_mat);
 
     neko_gl_data_t *ogl = gfx_ogl();
-    GLuint tex_id = neko_slot_array_get(ogl->textures, renderer->batch_texture.id).id;
+    GLuint tex_id = ogl->textures[renderer->batch_texture.id].id;
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, tex_id);
@@ -869,21 +868,29 @@ void tiled_render_flush(command_buffer_t *cb, tiled_renderer *renderer) {
     renderer->quad_count = 0;
 }
 
-void tiled_render_push(command_buffer_t *cb, tiled_renderer *renderer, tiled_quad_t quad) {
+void tiled_render_push(tiled_renderer *renderer, tiled_quad_t quad) {
 
     // PROFILE_FUNC();
 
     // 如果这个quad的tileset还不存在于quad_table中则插入一个
     // tileset_id为quad_table的键值
-    if (!neko_hash_table_exists(renderer->quad_table, quad.tileset_id))                       //
-        neko_hash_table_insert(renderer->quad_table, quad.tileset_id, tiled_quad_list_t{0});  //
+
+    // if (!neko_hash_table_exists(renderer->quad_table, quad.tileset_id))                       //
+    //     neko_hash_table_insert(renderer->quad_table, quad.tileset_id, tiled_quad_list_t{0});  //
 
     //
-    tiled_quad_list_t *quad_list = neko_hash_table_getp(renderer->quad_table, quad.tileset_id);
-    neko_dyn_array_push(quad_list->quad_list, quad);
+
+    tiled_quad_list_t *quad_list = renderer->quad_table.get(quad.tileset_id);
+    if (NULL == quad_list) {
+        // *quad_list = tiled_quad_list_t{0};
+        renderer->quad_table[quad.tileset_id] = tiled_quad_list_t{0};
+
+        quad_list = renderer->quad_table.get(quad.tileset_id);
+    }
+    quad_list->quad_list.push(quad);
 }
 
-void tiled_render_draw(command_buffer_t *cb, tiled_renderer *renderer) {
+void tiled_render_draw(tiled_renderer *renderer) {
 
     PROFILE_FUNC();
 
@@ -893,17 +900,13 @@ void tiled_render_draw(command_buffer_t *cb, tiled_renderer *renderer) {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renderer->ib);
 
     // iterate quads hash table
-    for (neko_hash_table_iter it = neko_hash_table_iter_new(renderer->quad_table); neko_hash_table_iter_valid(renderer->quad_table, it); neko_hash_table_iter_advance(renderer->quad_table, it)) {
-        u32 k = neko_hash_table_iter_getk(renderer->quad_table, it);
-        tiled_quad_list_t quad_list = neko_hash_table_iter_get(renderer->quad_table, it);
+    for (auto kv : renderer->quad_table) {
+        u32 k = kv.key;
+        tiled_quad_list_t *quad_list = kv.value;
 
-        neko_dyn_array(tiled_quad_t) v = quad_list.quad_list;
+        for (u32 i = 0; i < quad_list->quad_list.len; i++) {
 
-        u32 quad_size = neko_dyn_array_size(v);
-
-        for (u32 i = 0; i < quad_size; i++) {
-
-            tiled_quad_t *quad = &v[i];
+            tiled_quad_t *quad = &quad_list->quad_list[i];
 
             f32 tx = 0.f, ty = 0.f, tw = 0.f, th = 0.f;
 
@@ -963,20 +966,20 @@ void tiled_render_draw(command_buffer_t *cb, tiled_renderer *renderer) {
             renderer->quad_count++;
 
             if (renderer->quad_count >= BATCH_SIZE) {
-                tiled_render_flush(cb, renderer);
+                tiled_render_flush(renderer);
             }
         }
 
-        neko_dyn_array_clear(v);
+        quad_list->quad_list.len = 0;
 
-        tiled_render_flush(cb, renderer);
+        tiled_render_flush(renderer);
     }
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
-int tiled_render(command_buffer_t *cb, Tiled *tiled) {
+int tiled_render(Tiled *tiled) {
 
     PROFILE_FUNC();
 
@@ -992,17 +995,17 @@ int tiled_render(command_buffer_t *cb, Tiled *tiled) {
     TiledMap map = asset.tiledmap;
 
     {
-        tiled_render_begin(cb, tiled->render);
+        tiled_render_begin(tiled->render);
 
         PROFILE_BLOCK("tiled_render");
 
-        for (u32 i = 0; i < neko_dyn_array_size(map.layers); i++) {
-            layer_t *layer = map.layers + i;
+        for (u32 i = 0; i < map.layers.len; i++) {
+            layer_t *layer = &map.layers[i];
             for (u32 y = 0; y < layer->height; y++) {
                 for (u32 x = 0; x < layer->width; x++) {
                     tile_t *tile = layer->tiles + (x + y * layer->width);
                     if (tile->id != 0) {
-                        tileset_t *tileset = map.tilesets + tile->tileset_id;
+                        tileset_t *tileset = &map.tilesets[tile->tileset_id];
                         u32 tsxx = (tile->id % (tileset->width / tileset->tile_width) - 1) * tileset->tile_width;
                         u32 tsyy = tileset->tile_height * ((tile->id - tileset->first_gid) / (tileset->width / tileset->tile_width));
                         tiled_quad_t quad = {.tileset_id = tile->tileset_id,
@@ -1013,24 +1016,24 @@ int tiled_render(command_buffer_t *cb, Tiled *tiled) {
                                              .rectangle = {(f32)tsxx, (f32)tsyy, (f32)tileset->tile_width, (f32)tileset->tile_height},
                                              .color = layer->tint,
                                              .use_texture = true};
-                        tiled_render_push(cb, tiled->render, quad);
+                        tiled_render_push(tiled->render, quad);
                     }
                 }
             }
-            tiled_render_draw(cb, tiled->render);  // 一层渲染一次
+            tiled_render_draw(tiled->render);  // 一层渲染一次
         }
 
-        for (u32 i = 0; i < neko_dyn_array_size(map.object_groups); i++) {
-            object_group_t *group = map.object_groups + i;
-            for (u32 ii = 0; ii < neko_dyn_array_size(map.object_groups[i].objects); ii++) {
-                object_t *object = group->objects + ii;
+        for (u32 i = 0; i < map.object_groups.len; i++) {
+            object_group_t *group = &map.object_groups[i];
+            for (u32 ii = 0; ii < map.object_groups[i].objects.len; ii++) {
+                object_t *object = &group->objects[ii];
                 tiled_quad_t quad = {.position = {(f32)(object->x * SPRITE_SCALE) + xform.x, (f32)(object->y * SPRITE_SCALE) + xform.y},
                                      .dimentions = {(f32)(object->width * SPRITE_SCALE), (f32)(object->height * SPRITE_SCALE)},
                                      .color = group->color,
                                      .use_texture = false};
-                tiled_render_push(cb, tiled->render, quad);
+                tiled_render_push(tiled->render, quad);
             }
-            tiled_render_draw(cb, tiled->render);  // 一层渲染一次
+            tiled_render_draw(tiled->render);  // 一层渲染一次
         }
 
         // for (u32 i = 0; i < neko_dyn_array_size(map.object_groups); i++) {
@@ -1068,7 +1071,7 @@ void tiled_add(NativeEntity ent) {
     tiled->render = (tiled_renderer *)mem_alloc(sizeof(tiled_renderer));
     memset(tiled->render, 0, sizeof(tiled_renderer));
 
-    tiled_render_init(&g_app->cb, tiled->render);
+    tiled_render_init(tiled->render);
 }
 
 void tiled_remove(NativeEntity ent) { entitypool_remove(pool_tiled, ent); }
@@ -1107,7 +1110,7 @@ void tiled_update_all() {
 void tiled_draw_all() {
 
     Tiled *tiled;
-    entitypool_foreach(tiled, pool_tiled) { tiled_render(&g_app->cb, tiled); }
+    entitypool_foreach(tiled, pool_tiled) { tiled_render(tiled); }
 }
 
 void tiled_set_map(NativeEntity ent, const char *str) {

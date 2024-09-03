@@ -9,6 +9,7 @@
 #include "engine/draw.h"
 #include "engine/edit.h"
 #include "engine/entity.h"
+#include "engine/event.h"
 #include "engine/luax.hpp"
 #include "engine/scripting.h"
 #include "engine/test.h"
@@ -23,7 +24,7 @@ namespace neko::lua {
 void package_preload(lua_State *L);
 }  // namespace neko::lua
 
-NEKO_API() void package_preload_embed(lua_State *L);
+void package_preload_embed(lua_State *L);
 
 // extern impl
 extern int open_tools_spritepack(lua_State *L);
@@ -2309,7 +2310,6 @@ LUA_FUNCTION(__neko_bind_render_display_size) {
 
 static int open_enum(lua_State *L) {
 
-
     neko_lua_enum(L, gfx_texture_filtering_type);
     neko_lua_enum_value(L, gfx_texture_filtering_type, R_TEXTURE_FILTER_NEAREST);
     neko_lua_enum_value(L, gfx_texture_filtering_type, R_TEXTURE_FILTER_LINEAR);
@@ -2375,7 +2375,7 @@ static int open_enum(lua_State *L) {
 #define NEKO_LUA_INSPECT_REG(NAME) \
     { "inspect_" #NAME "_iter", __neko_bind_inspect_##NAME##_iterator }
 
-NEKO_LUA_INSPECT_ITER(textures)
+// NEKO_LUA_INSPECT_ITER(textures)
 // NEKO_LUA_INSPECT_ITER(vertex_buffers)
 // NEKO_LUA_INSPECT_ITER(index_buffers)
 // NEKO_LUA_INSPECT_ITER(frame_buffers)
@@ -2768,7 +2768,7 @@ void neko_w_init() {
 
     lua_register(L, "neko_w_f", __neko_bind_w_f);
 
-    neko_w_lua_variant<i64> version("neko_engine_version", neko_buildnum());
+    // neko_w_lua_variant<i64> version("neko_engine_version", neko_buildnum());
 
     neko_assert(lua_gettop(L) == 0);
 }
@@ -2909,6 +2909,8 @@ static int open_embed_core(lua_State *L) {
 DEFINE_LUAOPEN_EXTERN(luadb)
 DEFINE_LUAOPEN_EXTERN(unittest)
 
+#if 0
+
 namespace neko::lua::__filewatch {
 static filewatch::watch &to(lua_State *L, int idx) { return lua::checkudata<filewatch::watch>(L, idx); }
 
@@ -3042,6 +3044,8 @@ struct udata<filewatch::watch> {
     static inline auto metatable = neko::lua::__filewatch::metatable;
 };
 }  // namespace neko::lua
+
+#endif
 
 static int open_neko(lua_State *L) {
     luaL_Reg reg[] = {
@@ -3178,6 +3182,8 @@ void open_neko_api(lua_State *L) {
     neko::lua::preload_module(L);
     neko::lua::package_preload(L);
     package_preload_embed(L);
+
+    openlib_Event(L);
 
     neko_register_common(L);
     neko_w_init();

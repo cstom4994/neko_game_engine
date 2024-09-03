@@ -1,6 +1,8 @@
 #ifndef NEKO_UI
 #define NEKO_UI
 
+#include <forward_list>
+
 #include "engine/base.h"
 #include "engine/base.hpp"
 #include "engine/draw.h"

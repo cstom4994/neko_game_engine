@@ -208,4 +208,15 @@ inline void luax_setfunc2table(lua_State *L, const char *n, lua_CFunction func) 
     lua_settable(L, -3);
 }
 
+#define create_lua_class(L, metaname, init, methods) \
+    luaL_newmetatable(L, metaname);                  \
+    lua_pushvalue(L, -1);                            \
+    lua_setfield(L, -2, "__index");                  \
+    luaL_setfuncs(L, methods, 0);                    \
+    lua_newtable(L);                                 \
+    lua_pushcfunction(L, init);                      \
+    lua_setfield(L, -2, "__call");                   \
+    lua_setmetatable(L, -2);                         \
+    lua_setglobal(L, metaname)
+
 #endif

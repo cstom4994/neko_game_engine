@@ -6,7 +6,7 @@ function neko.conf(t)
         height = 720.0,
         game_proxy = "default",
         default_font = "assets/fonts/VonwaonBitmap-16px.ttf",
-        dump_allocs_detailed = false,
+        dump_allocs_detailed = true,
         swap_interval = 1,
         target_fps = 120,
         reload_interval = 0.005,

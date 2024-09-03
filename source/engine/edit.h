@@ -189,6 +189,8 @@ public:
     void console_draw(bool &textbox_react) noexcept;
     void print_line(const std::string &msg, luainspector_logtype type) noexcept;
 
+    static bool visible;
+
     static luainspector *get_from_registry(lua_State *L);
     static void inspect_table(lua_State *L, inspect_table_config &cfg);
     static int luainspector_init(lua_State *L);
@@ -287,5 +289,17 @@ public:
     }
 };
 }  // namespace neko
+
+NEKO_SCRIPT(inspector,
+
+            // NEKO_EXPORT void console_set_entity(NativeEntity ent);
+
+            // NEKO_EXPORT NativeEntity console_get_entity();  // 如果没有设置则entity_nil
+
+            NEKO_EXPORT void inspector_set_visible(bool visible);
+
+            NEKO_EXPORT bool inspector_get_visible();
+
+)
 
 #endif

@@ -21,6 +21,10 @@ ng.string = ffi.string
 
 -- ffi = unsafe_require("ffi")
 
+if table.unpack == nil then
+    table.unpack = unpack
+end
+
 -- 声明全局静态变量 不被热更新
 function _G.MEMVAR(key, def)
     if not __NEKO_MEMVARS then

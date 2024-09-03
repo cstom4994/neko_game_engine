@@ -400,7 +400,7 @@ void draw_sprite(AseSprite *spr, DrawDescription *desc) {
         // idraw_texture(idraw, gfx_texture_t{view.data.tex.id});
 
         neko_gl_data_t *ogl = gfx_ogl();
-        GLuint gl_tex_id = neko_slot_array_get(ogl->textures, view.data.tex.id).id;
+        GLuint gl_tex_id = ogl->textures[view.data.tex.id].id;
 
         // float x0 = -desc->ox;
         // float y0 = -desc->oy;
@@ -626,7 +626,7 @@ static void draw_font_line(FontFamily *font, bool draw_in_world, float size, flo
         stbtt_aligned_quad q = font->quad(&tex_id, &xx, &yy, size, r.charcode());
 
         neko_gl_data_t *ogl = gfx_ogl();
-        GLuint gl_tex_id = neko_slot_array_get(ogl->textures, tex_id).id;
+        GLuint gl_tex_id = ogl->textures[tex_id].id;
 
         // float x1 = x + q.x0;
         // float y1 = y + q.y0;
@@ -969,7 +969,10 @@ batch_renderer *batch_init(int vertex_capacity) {
     return batch;
 }
 
-void batch_fini(batch_renderer *batch) { mem_free(batch->vertices); }
+void batch_fini(batch_renderer *batch) {
+    mem_free(batch->vertices);
+    mem_free(batch);
+}
 
 void batch_update_all(batch_renderer *batch) {
     auto tex_aliens = texture_get_ptr("assets/aliens.png");

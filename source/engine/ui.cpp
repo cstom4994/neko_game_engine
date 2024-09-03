@@ -230,7 +230,7 @@ float engine_ui_renderer_draw_text(engine_ui_renderer_t *renderer, const char *t
         stbtt_aligned_quad q = renderer->font->quad(&tex_id, &xx, &yy, 16.f, ch);
 
         neko_gl_data_t *ogl = gfx_ogl();
-        u32 ch_tex_id = neko_slot_array_get(ogl->textures, tex_id).id;
+        u32 ch_tex_id = ogl->textures[tex_id].id;
 
         f32 x1 = x + q.x0;
         f32 y1 = y + q.y0;

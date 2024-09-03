@@ -809,6 +809,8 @@ struct W_LUA_REGISTRY_CONST {
     static constexpr i32 CVAR_MAP_MAX = 64;
 };
 
+#if 0
+
 template <typename T>
 struct neko_w_lua_variant {
     enum { NATIVE, LUA } stype;
@@ -1028,6 +1030,8 @@ static_assert(std::is_trivially_copyable_v<neko_w_lua_variant<f64>>);
 
 #endif
 
+#endif
+
 #ifndef NEKO_LUA_REF_HPP
 #define NEKO_LUA_REF_HPP
 
@@ -1040,7 +1044,7 @@ struct LuaNil {};
 
 template <>
 struct luabind::LuaStack<LuaNil> {
-    static inline void push(lua_State *L, LuaNil const &nil) { lua_pushnil(L); }
+    static inline void push(lua_State *L, LuaNil const &any) { lua_pushnil(L); }
 };
 
 class LuaRef;
@@ -2024,7 +2028,7 @@ template <typename T>
 T unpack(lua_State *L, int arg) {
     arg = lua_absindex(L, arg);
     luaL_checktype(L, arg, LUA_TTABLE);
-    lua_Integer n = luaL_len(L, arg);
+    lua_Integer n = lua_len(L, arg);
     T v;
     v.reserve((size_t)n);
     for (lua_Integer i = 1; i <= n; ++i) {

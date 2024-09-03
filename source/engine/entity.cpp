@@ -944,18 +944,6 @@ void system_init() {
         asset_load_kind(AssetKind_LuaRef, "conf.lua", nullptr);
     }
 
-    // if (!g_app->error_mode.load()) {
-    //     luax_neko_get(L, "arg");
-    //     lua_createtable(L, game_get_argc() - 1, 0);
-    //     for (i32 i = 1; i < game_get_argc(); i++) {
-    //         lua_pushstring(L, game_get_argv()[i]);
-    //         lua_rawseti(L, -2, i);
-    //     }
-    //     if (luax_pcall(L, 1, 0) != LUA_OK) {
-    //         lua_pop(L, 1);
-    //     }
-    // }
-
     lua_newtable(L);
     i32 conf_table = lua_gettop(L);
 
@@ -981,9 +969,6 @@ void system_init() {
 
     if (fnv1a(g_app->cfg.game_proxy) == "default"_hash) {
         neko::neko_lua_run_string(L, R"lua(
-            function neko.before_quit() game_proxy_before_quit() end
-            function neko.start(arg) game_proxy_start(arg) end
-            function neko.frame(dt) game_proxy_frame(dt) end
         )lua");
         console_log("using default game proxy");
     }
@@ -1021,6 +1006,25 @@ void system_init() {
 
     luax_get(ENGINE_LUA(), "neko", "__define_default_callbacks");
     luax_pcall(ENGINE_LUA(), 0, 0);
+
+    {
+        PROFILE_BLOCK("neko.args");
+
+        lua_State* L = ENGINE_LUA();
+
+        if (!g_app->error_mode.load()) {
+            luax_neko_get(L, "args");
+
+            Slice<String> args = g_app->args;
+            lua_createtable(L, args.len - 1, 0);
+            for (u64 i = 1; i < args.len; i++) {
+                lua_pushlstring(L, args[i].data, args[i].len);
+                lua_rawseti(L, -2, i);
+            }
+
+            luax_pcall(L, 1, 0);
+        }
+    }
 
     luax_get(ENGINE_LUA(), "neko", "game_init");
     luax_pcall(ENGINE_LUA(), 0, 0);

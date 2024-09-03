@@ -178,25 +178,17 @@ typedef struct tiled_quad_t {
 #define FLOATS_PER_VERT 9  // 每个verts数据的大小
 
 typedef struct tiled_quad_list_t {
-    neko_dyn_array(tiled_quad_t) quad_list;  // quad 绘制队列
+    Array<tiled_quad_t> quad_list;  // quad 绘制队列
 } tiled_quad_list_t;
 
 typedef struct tiled_renderer {
-    // neko_handle(gfx_vertex_buffer_t) vb;
-    // neko_handle(gfx_index_buffer_t) ib;
-    // neko_handle(gfx_pipeline_t) pip;
-    // neko_handle(gfx_shader_t) shader;
 
     GLuint vao;
     GLuint vbo;
     GLuint ib;
 
-    // GLuint shader;
-
-    // neko_handle(gfx_uniform_t) u_camera;
-    // neko_handle(gfx_uniform_t) u_batch_tex;
-    gfx_texture_t batch_texture;                         // 当前绘制所用贴图
-    neko_hash_table(u32, tiled_quad_list_t) quad_table;  // 分层绘制哈希表
+    gfx_texture_t batch_texture;            // 当前绘制所用贴图
+    HashMap<tiled_quad_list_t> quad_table;  // 分层绘制哈希表 (tiled_quad_list_t)
 
     u32 quad_count;
 
@@ -205,16 +197,16 @@ typedef struct tiled_renderer {
     mat3 camera_mat;
 } tiled_renderer;
 
-void tiled_render_init(command_buffer_t* cb, tiled_renderer* renderer);
+void tiled_render_init(tiled_renderer* renderer);
 void tiled_render_deinit(tiled_renderer* renderer);
-void tiled_render_begin(command_buffer_t* cb, tiled_renderer* renderer);
-void tiled_render_flush(command_buffer_t* cb, tiled_renderer* renderer);
-void tiled_render_push(command_buffer_t* cb, tiled_renderer* renderer, tiled_quad_t quad);
-void tiled_render_draw(command_buffer_t* cb, tiled_renderer* renderer);
+void tiled_render_begin(tiled_renderer* renderer);
+void tiled_render_flush(tiled_renderer* renderer);
+void tiled_render_push(tiled_renderer* renderer, tiled_quad_t quad);
+void tiled_render_draw(tiled_renderer* renderer);
 
 struct Tiled;
 
-int tiled_render(command_buffer_t* cb, Tiled* tiled);
+int tiled_render(Tiled* tiled);
 
 NEKO_SCRIPT(tiled,
 
@@ -411,13 +403,13 @@ NEKO_SCRIPT(
 
         NEKO_EXPORT bool gui_get_captures_events(NativeEntity ent);
 
-        typedef enum GuiAlign GuiAlign; enum GuiAlign{
+        typedef enum GuiAlign{
                 GA_MIN = 0,    // h: left, v: bottom
                 GA_MID = 1,    // h: center, v: center
                 GA_MAX = 2,    // h: right, v: top
                 GA_TABLE = 3,  // h: left-right table, v: top-down table
                 GA_NONE = 4,   // manual position
-        };
+        } GuiAlign;
 
         NEKO_EXPORT void gui_set_halign(NativeEntity ent, GuiAlign align);
 

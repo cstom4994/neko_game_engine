@@ -1490,8 +1490,14 @@ int neko::luainspector::luainspector_get(lua_State *L) {
     return 1;
 }
 
+bool neko::luainspector::visible = false;
+
 int neko::luainspector::luainspector_draw(lua_State *L) {
     neko::luainspector *model = (neko::luainspector *)lua_touserdata(L, 1);
+
+    if (!visible) {
+        return 0;
+    }
 
     ui_context_t *ui = g_app->ui;
 
@@ -1622,6 +1628,10 @@ int neko::luainspector::luainspector_draw(lua_State *L) {
 
     return 0;
 }
+
+void inspector_set_visible(bool visible) { neko::luainspector::visible = visible; }
+bool inspector_get_visible() { return neko::luainspector::visible; }
+
 #endif
 
 #endif
@@ -1918,7 +1928,7 @@ static void toggle_embedded(int argc, char **argv);
 static void help(int argc, char **argv);
 static void echo(int argc, char **argv);
 static void spam(int argc, char **argv);
-static void crash(int argc, char **argv);
+// static void crash(int argc, char **argv);
 void summon(int argc, char **argv);
 void exec(int argc, char **argv);
 void sz(int argc, char **argv);
@@ -1958,11 +1968,11 @@ neko_console_command_t commands[] = {{
                                              .name = "sz",
                                              .desc = "change console size",
                                      },
-                                     {
-                                             .func = crash,
-                                             .name = "crash",
-                                             .desc = "test crashhhhhhhhh.....",
-                                     },
+                                     //  {
+                                     //          .func = crash,
+                                     //          .name = "crash",
+                                     //          .desc = "test crashhhhhhhhh.....",
+                                     //  },
                                      {
                                              .func = exec,
                                              .name = "exec",
@@ -2014,10 +2024,10 @@ void summon(int argc, char **argv) {
     summons++;
 }
 
-void crash(int argc, char **argv) {
-    // const_str trace_info = neko_os_stacktrace();
-    // neko_os_msgbox(std::format("Crash...\n{0}", trace_info).c_str());
-}
+// void crash(int argc, char **argv) {
+//     // const_str trace_info = neko_os_stacktrace();
+//     // neko_os_msgbox(std::format("Crash...\n{0}", trace_info).c_str());
+// }
 
 void spam(int argc, char **argv) {
     int count;

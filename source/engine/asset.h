@@ -2,6 +2,7 @@
 #define NEKO_ASSET_H
 
 #include "engine/base.hpp"
+#include "engine/data.h"
 #include "engine/entity.h"
 #include "engine/graphics.h"
 
@@ -198,19 +199,17 @@ typedef struct xml_attribute_t {
     } value;
 } xml_attribute_t;
 
-// neko_hash_table_decl(u64, xml_attribute_t, neko_hash_u64, neko_hash_key_comp_std_type);
-
 typedef struct xml_node_t {
     const_str name;
     const_str text;
 
-    neko_hash_table(u64, xml_attribute_t) attributes;
-    neko_dyn_array(xml_node_t) children;
+    HashMap<xml_attribute_t> attributes;
+    Array<xml_node_t> children;
 
 } xml_node_t;
 
 typedef struct xml_document_t {
-    neko_dyn_array(xml_node_t) nodes;
+    Array<xml_node_t> nodes;
 } xml_document_t;
 
 typedef struct xml_node_iter_t {
@@ -271,7 +270,7 @@ typedef struct object_t {
 } object_t;
 
 typedef struct object_group_t {
-    neko_dyn_array(object_t) objects;
+    Array<object_t> objects;
 
     Color256 color;
 
@@ -280,9 +279,9 @@ typedef struct object_group_t {
 
 typedef struct TiledMap {
     xml_document_t* doc;  // xml doc
-    neko_dyn_array(tileset_t) tilesets;
-    neko_dyn_array(object_group_t) object_groups;
-    neko_dyn_array(layer_t) layers;
+    Array<tileset_t> tilesets;
+    Array<object_group_t> object_groups;
+    Array<layer_t> layers;
 } TiledMap;
 
 enum JSONKind : i32 {

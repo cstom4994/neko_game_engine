@@ -595,8 +595,8 @@ end
 
 ng.NativeEntity = ffi.metatype('NativeEntity', {
     __eq = function(a, b)
-        return type(a) == 'cdata' and type(b) == 'cdata' and ffi.istype('NativeEntity', a) and ffi.istype('NativeEntity', b) and
-                   ng.native_entity_eq(a, b)
+        return type(a) == 'cdata' and type(b) == 'cdata' and ffi.istype('NativeEntity', a) and
+                   ffi.istype('NativeEntity', b) and ng.native_entity_eq(a, b)
     end,
     __index = {
         __serialize = function(e)
@@ -1282,6 +1282,9 @@ function ns.group.set_save_filter(groups, val)
     for group in _groups(groups) do
         if group_entities[group] then
             for ent in pairs(group_entities[group]) do
+                if neko.core.ltype(ent) == "string" then
+                    print(ent) -- bug
+                end
                 ns.entity.set_save_filter(ent, val)
             end
         end

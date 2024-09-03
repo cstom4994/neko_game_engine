@@ -66,13 +66,8 @@ struct lua_State;
 struct App {
     std::mutex gpu_mtx;
 
-    // LuaAlloc *LA;
     neko::neko_luastate LS;
     ecs_t *ECS;
-
-    command_buffer_t cb;
-    // ui_context_t ui;
-    // idraw_t idraw;
 
     ui_context_t *ui;
 
@@ -117,8 +112,6 @@ struct App {
 #endif
 
     GLFWwindow *game_window;
-
-    // neko_dyn_array(shader_pair) shader_array;
 };
 
 extern App *g_app;

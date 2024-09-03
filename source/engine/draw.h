@@ -74,7 +74,7 @@ struct lua_State;
 DrawDescription draw_description_args(lua_State* L, i32 arg_start);
 RectDescription rect_description_args(lua_State* L, i32 arg_start);
 
-#define NEKO_FONT_BAKED_SIZE 1024
+#define NEKO_FONT_BAKED_SIZE 256
 
 struct FontRange {
     stbtt_bakedchar chars[NEKO_FONT_BAKED_SIZE];

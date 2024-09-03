@@ -11,29 +11,10 @@
 #include <mutex>
 #include <optional>
 #include <queue>
+#include <shared_mutex>
 #include <string>
 
 #include "engine/base.h"
-
-#if defined(_WIN32)
-#include <windows.h>
-#else
-#include <pthread.h>
-#include <semaphore.h>
-#endif
-
-#if defined(_WIN32)
-#include <list>
-#elif defined(__APPLE__)
-#include <CoreServices/CoreServices.h>
-
-#include <mutex>
-#include <set>
-#elif defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
-#include <map>
-#else
-#error unsupport platform
-#endif
 
 template <typename F>
 struct Defer {
@@ -171,19 +152,17 @@ double string_to_double(String str);
 //
 =============================*/
 
-struct RWLock {
-#if _WIN32
-    SRWLOCK srwlock;
-#else
-    pthread_rwlock_t pt;
-#endif
+class RWLock {
+public:
+    inline void make() {}
+    inline void trash() {}
+    inline void shared_lock() { mtx.lock_shared(); }
+    inline void shared_unlock() { mtx.unlock_shared(); }
+    inline void unique_lock() { mtx.lock(); }
+    inline void unique_unlock() { mtx.unlock(); }
 
-    void make();
-    void trash();
-    void shared_lock();
-    void shared_unlock();
-    void unique_lock();
-    void unique_unlock();
+private:
+    std::shared_mutex mtx;
 };
 
 typedef void (*ThreadProc)(void *);
@@ -248,19 +227,10 @@ inline void *__neko_mem_calloc(size_t count, size_t element_size, const char *fi
     return mem;
 }
 
-#undef mem_alloc
-#undef mem_free
-#undef mem_realloc
-#undef mem_calloc
 #define mem_alloc(bytes) g_allocator->alloc(bytes, __FILE__, __LINE__)
 #define mem_free(ptr) g_allocator->free((void *)ptr)
 #define mem_realloc(ptr, size) g_allocator->realloc(ptr, size, __FILE__, __LINE__)
 #define mem_calloc(count, element_size) __neko_mem_calloc(count, element_size, (char *)__FILE__, __LINE__)
-
-// inline void *operator new(std::size_t, void *p) noexcept { return p; }
-// inline void *operator new[](std::size_t, void *p) noexcept { return p; }
-// inline void operator delete(void *, void *) noexcept {}
-// inline void operator delete[](void *, void *) noexcept {}
 
 String os_program_dir();
 String os_program_path();
@@ -327,20 +297,6 @@ static inline FILE *neko_fopen(const char *filePath, const char *mode) {
 #define DIR_MAX 260
 #endif
 
-static inline u64 neko_get_thread_id() {
-#if defined(NEKO_IS_WIN32)
-    return (u64)GetCurrentThreadId();
-#elif defined(NEKO_IS_LINUX)
-    return (u64)syscall(SYS_gettid);
-#elif defined(NEKO_IS_APPLE)
-    return (mach_port_t)pthread_mach_thread_np(pthread_self());
-#elif defined(NEKO_IS_WEB)
-    return 0;
-#else
-#error "Unsupported platform!"
-#endif
-}
-
 typedef struct neko_dynlib {
     void *hndl;
 } neko_dynlib;
@@ -349,71 +305,6 @@ neko_dynlib neko_dylib_open(const_str name);
 void neko_dylib_close(neko_dynlib lib);
 void *neko_dylib_get_symbol(neko_dynlib lib, const_str symbol_name);
 bool neko_dylib_has_symbol(neko_dynlib lib, const_str symbol_name);
-
-namespace neko::filewatch {
-class task;
-
-struct notify {
-    enum class flag {
-        modify,
-        rename,
-    };
-    flag flags;
-    std::string path;
-    notify(const flag &flags, const std::string &path) noexcept : flags(flags), path(path) {}
-};
-
-class watch {
-public:
-#if defined(_WIN32)
-    using string_type = std::wstring;
-#else
-    using string_type = std::string;
-#endif
-    using filter = std::function<bool(const char *)>;
-    static inline filter DefaultFilter = [](const char *) { return true; };
-
-    watch() noexcept;
-    ~watch() noexcept;
-    void stop() noexcept;
-    void add(const string_type &path) noexcept;
-    void set_recursive(bool enable) noexcept;
-    bool set_follow_symlinks(bool enable) noexcept;
-    bool set_filter(filter f = DefaultFilter) noexcept;
-    std::optional<notify> select() noexcept;
-#if defined(__APPLE__)
-    void event_update(const char *paths[], const FSEventStreamEventFlags flags[], size_t n) noexcept;
-#endif
-
-private:
-#if defined(_WIN32)
-    bool event_update(task &task) noexcept;
-#elif defined(__APPLE__)
-    bool create_stream(CFArrayRef cf_paths) noexcept;
-    void destroy_stream() noexcept;
-    void update_stream() noexcept;
-#elif defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
-    void event_update(void *event) noexcept;
-#endif
-
-private:
-    std::queue<notify> m_notify;
-    bool m_recursive = true;
-#if defined(_WIN32)
-    std::list<task> m_tasks;
-#elif defined(__APPLE__)
-    std::mutex m_mutex;
-    std::set<std::string> m_paths;
-    FSEventStreamRef m_stream;
-    dispatch_queue_t m_fsevent_queue;
-#elif defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
-    std::map<int, std::string> m_fd_path;
-    int m_inotify_fd;
-    bool m_follow_symlinks = false;
-    filter m_filter = DefaultFilter;
-#endif
-};
-}  // namespace neko::filewatch
 
 /*=============================
 //
@@ -514,12 +405,14 @@ struct Array {
         len = n;
     }
 
-    void push(T item) {
+    bool valid(u64 i) { return (i >= 0 && i < len); }
+
+    u64 push(T item) {
         if (len == capacity) {
             reserve(len > 0 ? len * 2 : 8);
         }
         data[len] = item;
-        len++;
+        return len++;
     }
 
     T *begin() { return data; }

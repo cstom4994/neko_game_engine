@@ -388,9 +388,11 @@ u32 neko_gl_texture_format_to_gl_texture_internal_format(gfx_texture_format_type
 
 gfx_t* gfx_create() {
     // 构建新的图形界面
-    gfx_t* gfx = neko_malloc_init(gfx_t);
+    gfx_t* gfx = (gfx_t*)mem_alloc(sizeof(gfx_t));
+    memset(gfx, 0, sizeof(gfx_t));
     // 为OpenGL构建内部数据
-    gfx->ud = neko_malloc_init(neko_gl_data_t);
+    gfx->ud = (neko_gl_data_t*)mem_alloc(sizeof(neko_gl_data_t));
+    memset(gfx->ud, 0, sizeof(neko_gl_data_t));
     return gfx;
 }
 
@@ -400,18 +402,18 @@ void gfx_fini(gfx_t* render) {
 
     neko_gl_data_t* ogl = (neko_gl_data_t*)render->ud;
 
-#define OGL_FREE_DATA(SA, T, FUNC)                                                                                    \
-    do {                                                                                                              \
-        for (neko_slot_array_iter it = 1; neko_slot_array_iter_valid(SA, it); neko_slot_array_iter_advance(SA, it)) { \
-            neko_handle(T) hndl = NEKO_DEFAULT_VAL();                                                                 \
-            hndl.id = it;                                                                                             \
-            FUNC(hndl);                                                                                               \
-        }                                                                                                             \
+#define OGL_FREE_DATA(SA, T, FUNC)                    \
+    do {                                              \
+        for (auto v : SA) {                           \
+            neko_handle(T) hndl = NEKO_DEFAULT_VAL(); \
+            hndl.id = v.id;                           \
+            FUNC(hndl);                               \
+        }                                             \
     } while (0)
 
-    if (ogl->textures) OGL_FREE_DATA(ogl->textures, gfx_texture_t, gfx_texture_fini);
+    if (ogl->textures.len) OGL_FREE_DATA(ogl->textures, gfx_texture_t, gfx_texture_fini);
 
-    neko_slot_array_free(ogl->textures);
+    ogl->textures.trash();
 
     mem_free(ogl);
 
@@ -423,7 +425,7 @@ neko_gl_texture_t gl_texture_update_internal(const gfx_texture_desc_t* desc, u32
     neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
 
     neko_gl_texture_t tex = NEKO_DEFAULT_VAL();
-    if (hndl) tex = neko_slot_array_get(ogl->textures, hndl);
+    if (hndl) tex = ogl->textures[hndl];
     u32 width = desc->width;
     u32 height = desc->height;
     void* data = desc->data;
@@ -591,23 +593,23 @@ neko_handle(gfx_texture_t) gfx_texture_create_impl(const gfx_texture_desc_t desc
     neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     neko_gl_texture_t tex = gl_texture_update_internal(&desc, 0);
     // Add texture to internal resource pool and return handle
-    return (neko_handle_create(gfx_texture_t, neko_slot_array_insert(ogl->textures, tex)));
+    return (neko_handle_create(gfx_texture_t, ogl->textures.push(tex)));
 }
 
 // Resource Destruction
 void gfx_texture_fini_impl(neko_handle(gfx_texture_t) hndl) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
-    if (!neko_slot_array_handle_valid(ogl->textures, hndl.id)) return;
-    neko_gl_texture_t* tex = neko_slot_array_getp(ogl->textures, hndl.id);
+    if (!ogl->textures.valid(hndl.id)) return;
+    neko_gl_texture_t* tex = &ogl->textures[hndl.id];
     glDeleteTextures(1, &tex->id);
-    neko_slot_array_erase(ogl->textures, hndl.id);
+    // neko_slot_array_erase(ogl->textures, hndl.id); // TODO 删除ogl->textures元素
 }
 
 void gfx_texture_desc_query(neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t* out) {
     if (!out) return;
 
     neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
-    neko_gl_texture_t* tex = neko_slot_array_getp(ogl->textures, hndl.id);
+    neko_gl_texture_t* tex = &ogl->textures[hndl.id];
 
     // Read back pixels
     if (out->data && out->read.width && out->read.height) {
@@ -624,7 +626,7 @@ void gfx_texture_update_impl(neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t
     if (!desc) return;
 
     neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
-    if (!neko_slot_array_handle_valid(ogl->textures, hndl.id)) {
+    if (!ogl->textures.valid(hndl.id)) {
         console_log("AssetTexture handle invalid: %zu", hndl.id);
         return;
     }
@@ -634,11 +636,11 @@ void gfx_texture_update_impl(neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t
 void gfx_texture_read_impl(neko_handle(gfx_texture_t) hndl, gfx_texture_desc_t* desc) {
     neko_gl_data_t* ogl = (neko_gl_data_t*)RENDER()->ud;
     if (!desc) return;
-    if (!neko_slot_array_handle_valid(ogl->textures, hndl.id)) {
+    if (!ogl->textures.valid(hndl.id)) {
         console_log("AssetTexture handle invalid: %zu", hndl.id);
     }
 
-    neko_gl_texture_t* tex = neko_slot_array_getp(ogl->textures, hndl.id);
+    neko_gl_texture_t* tex = &ogl->textures[hndl.id];
     // Bind texture
     GLenum target = GL_TEXTURE_2D;
     u32 gl_format = neko_gl_texture_format_to_gl_texture_format(tex->desc.format);
@@ -659,7 +661,7 @@ void gfx_init(gfx_t* render) {
 
     neko_gl_texture_t tex = NEKO_DEFAULT_VAL();
 
-    neko_slot_array_insert(ogl->textures, tex);
+    ogl->textures.push(tex);
 
     // Init info object
     gfx_info_t* info = &RENDER()->info;

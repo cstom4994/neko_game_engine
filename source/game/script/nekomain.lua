@@ -17,6 +17,10 @@ function neko.__define_default_callbacks()
     end
     neko.game_render = function()
     end
+    neko.before_quit = function()
+    end
+    neko.args = function(args)
+    end
 end
 
 -- misc
@@ -26,8 +30,10 @@ function ns.app.key_down(key)
         return
     end
 
-    if key == ng.KC_1 then
+    if key == ng.KC_F1 then
         ns.console.set_visible(not ns.console.get_visible())
+    elseif key == ng.KC_F2 then
+        ns.inspector.set_visible(not ns.inspector.get_visible())
     elseif key == ng.KC_E then
         ns.timing.set_paused(not ns.edit.get_enabled())
         ns.edit.set_enabled(not ns.edit.get_enabled())
