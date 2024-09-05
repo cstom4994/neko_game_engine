@@ -26,10 +26,10 @@
 
 #define list_foreach(_list, _node) for ((_node) = (_list)->next; (_list) != (_node); (_node) = (_node)->next)
 
-#define hashmap_put(_m, _k, _v) _hashmap_put((_m), (key_t)(_k), (void*)(_v))
-#define hashmap_get(_m, _k) _hashmap_get((_m), (key_t)(_k))
+#define hashmap_put(_m, _k, _v) _hashmap_put((_m), (hashmap_key_t)(_k), (void*)(_v))
+#define hashmap_get(_m, _k) _hashmap_get((_m), (hashmap_key_t)(_k))
 #define hashmap_isempty(_m) allocator_isempty(_m)
-#define hashmap_remove(_m, _k) _hashmap_remove((_m), (key_t)(_k))
+#define hashmap_remove(_m, _k) _hashmap_remove((_m), (hashmap_key_t)(_k))
 #define hashmap_foreach(_m, _key, _value)                                   \
     if (!hashmap_isempty(_m))                                               \
         for (unsigned int _i = 0; _i < (_m)->cap / sizeof(hash_node); _i++) \
@@ -65,7 +65,7 @@
         return manager;                                 \
     }
 
-typedef uint64_t key_t;
+typedef uint64_t hashmap_key_t;
 
 // typedef struct {
 //     int t;
@@ -78,7 +78,7 @@ typedef uint64_t key_t;
 
 using event_variant_t = struct {
     int t;
-    std::variant<u64, f64, void*> v;
+    std::variant<std::monostate, u64, f64, void*> v;
 };
 
 typedef struct listnode_t {
@@ -118,7 +118,7 @@ typedef struct {
 } queue_t;
 
 typedef struct {
-    key_t key;
+    hashmap_key_t key;
     int count;
     void* data;
 } hash_node;
@@ -141,9 +141,9 @@ inline void list_remove(listnode_t* list, listnode_t* node) {
 }
 
 void hashmap_init(hashmap_t* map);
-int _hashmap_put(hashmap_t* m, key_t key, void* value);
-void* _hashmap_get(hashmap_t* m, key_t key);
-int _hashmap_remove(hashmap_t* m, key_t key);
+int _hashmap_put(hashmap_t* m, hashmap_key_t key, void* value);
+void* _hashmap_get(hashmap_t* m, hashmap_key_t key);
+int _hashmap_remove(hashmap_t* m, hashmap_key_t key);
 void hashmap_free(hashmap_t* m);
 
 void vector_init(vector_t* vec, size_t element_size);

@@ -89,7 +89,7 @@ void camera_init() {
 
 void camera_fini() { entitypool_free(pool_camera); }
 
-void camera_update_all() {
+int camera_update_all(App *app, event_t evt) {
     vec2 win_size;
     Scalar aspect;
     Camera *camera;
@@ -114,6 +114,8 @@ void camera_update_all() {
         inverse_view_matrix = mat3_identity();
     else
         inverse_view_matrix = mat3_inverse(transform_get_world_matrix(cam));
+
+    return 0;
 }
 
 void camera_save_all(Store *s) {

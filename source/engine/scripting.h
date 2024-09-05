@@ -2,8 +2,11 @@
 #define SCRIPT_H
 
 #include "engine/base.h"
+#include "engine/event.h"
 #include "engine/input.h"
 #include "engine/luax.h"
+
+struct App;
 
 NEKO_API() void script_run_string(const char *s);
 NEKO_API() void script_run_file(const char *filename);
@@ -11,8 +14,8 @@ NEKO_API() void script_error(const char *s);
 
 NEKO_API() void script_init();
 NEKO_API() void script_fini();
-NEKO_API() void script_update_all();
-NEKO_API() void script_post_update_all();
+NEKO_API() int script_update_all(App *app, event_t evt);
+NEKO_API() int script_post_update_all(App *app, event_t evt);
 NEKO_API() void script_draw_ui();
 NEKO_API() void script_draw_all();
 NEKO_API() void script_key_down(KeyCode key);
@@ -32,7 +35,7 @@ NEKO_API() void script_push_event(const char *event);
         if (__VA_ARGS__) {                                             \
             console_printf("lua: %s\n", lua_tostring(L, -1));          \
             lua_pop(L, 1);                                             \
-            if (std::unique_lock<std::mutex> lock{g_app->error_mtx}) { \
+            if (LockGuard<Mutex> lock{g_app->error_mtx}) { \
                 g_app->error_mode.store(true);                         \
             }                                                          \
         }                                                              \

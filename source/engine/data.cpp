@@ -11,7 +11,7 @@
 
 void hashmap_init(hashmap_t* m) { ALLOCATOR_INIT(m, (char*)mem_calloc(INITIAL_MAP_SIZE, sizeof(hash_node)), INITIAL_MAP_SIZE); }
 
-int hashmap_hash(hashmap_t* m, key_t key) {
+int hashmap_hash(hashmap_t* m, hashmap_key_t key) {
     const int mask = MAP_MASK(m);
     const u32 hash = hash_int(key);
     int curr = hash & mask;
@@ -49,7 +49,7 @@ int hashmap_rehash(hashmap_t* m) {
     return 0;
 }
 
-int _hashmap_put(hashmap_t* m, key_t key, void* value) {
+int _hashmap_put(hashmap_t* m, hashmap_key_t key, void* value) {
     int index = hashmap_hash(m, key);
     while (index < 0) {
         if (hashmap_rehash(m) == -1) return -1;
@@ -62,7 +62,7 @@ int _hashmap_put(hashmap_t* m, key_t key, void* value) {
     return 0;
 }
 
-void* _hashmap_get(hashmap_t* m, key_t key) {
+void* _hashmap_get(hashmap_t* m, hashmap_key_t key) {
     int curr = hash_int(key) & MAP_MASK(m);
 
     for (int i = 0; i < HASHMAP_MAX_CHAIN_LENGTH; i++) {
@@ -77,7 +77,7 @@ void* _hashmap_get(hashmap_t* m, key_t key) {
     return NULL;
 }
 
-int _hashmap_remove(hashmap_t* m, key_t key) {
+int _hashmap_remove(hashmap_t* m, hashmap_key_t key) {
     int curr = hash_int(key) & MAP_MASK(m);
     for (int i = 0; i < HASHMAP_MAX_CHAIN_LENGTH; i++) {
         if (MAP_ENTRY(m, curr).count > 0) {

@@ -13,7 +13,6 @@
     X(quit)           \
     X(press)          \
     X(release)        \
-    X(text)           \
     X(fileread)       \
     X(filewrite)      \
     X(preupdate)      \

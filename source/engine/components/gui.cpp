@@ -1170,7 +1170,10 @@ static void _textedit_load_all(Store *s) {
 
 // -------------------------------------------------------------------------
 
-void gui_event_clear() { _common_event_clear(); }
+int gui_event_clear(App *app, event_t evt) {
+    _common_event_clear();
+    return 0;
+}
 
 static void _create_root() {
     gui_root = entity_create();
@@ -1216,7 +1219,7 @@ static void _update_root() {
     gui_rect_set_size(gui_root, win_size);
 }
 
-void gui_update_all() {
+int gui_update_all(App *app, event_t evt) {
     _update_root();
     _common_update_destroyed();
     _common_update_visible();
@@ -1227,6 +1230,8 @@ void gui_update_all() {
     _common_update_align();
     _rect_update_wmat();
     _common_update_all();
+
+    return 0;
 }
 
 void gui_draw_all() {

@@ -64,10 +64,17 @@ NEKO_SCRIPT(
 
 struct lua_State;
 struct App {
-    std::mutex gpu_mtx;
+    Mutex gpu_mtx;
+
+    bool g_quit = false;  // 如果为 true 则退出主循环
+    Mutex g_init_mtx;
+
+    gfx_texture_t test_ase;
 
     neko::neko_luastate LS;
     ecs_t *ECS;
+
+    batch_renderer *batch;
 
     ui_context_t *ui;
 
@@ -78,9 +85,9 @@ struct App {
     std::atomic<bool> error_mode;
     std::atomic<bool> is_fused;
 
-    std::mutex log_mtx;
+    Mutex log_mtx;
 
-    std::mutex error_mtx;
+    Mutex error_mtx;
     String fatal_error;
     String traceback;
 
@@ -103,6 +110,9 @@ struct App {
 
     FontFamily *default_font;
 
+    f32 scale = 1.0f;
+    bool paused = false;
+
     int g_lua_callbacks_table_ref;  // LUA_NOREF
 
 #if NEKO_AUDIO == 1
@@ -111,6 +121,9 @@ struct App {
     Array<Sound *> garbage_sounds;
 #endif
 
+    int argc;
+    char **argv;
+
     GLFWwindow *game_window;
 };
 
@@ -118,7 +131,7 @@ extern App *g_app;
 
 inline void fatal_error(String str) {
     if (!g_app->error_mode.load()) {
-        std::unique_lock<std::mutex> lock{g_app->error_mtx};
+        LockGuard<Mutex> lock{g_app->error_mtx};
 
         g_app->fatal_error = to_cstr(str);
         fprintf(stderr, "%s\n", g_app->fatal_error.data);
@@ -137,7 +150,7 @@ i32 neko_buildnum(void);
 // ECS_COMPONENT_EXTERN(rect_t);
 
 void scratch_run();
-void scratch_update();
+int scratch_update(App *app, event_t evt);
 
 // 入口点
 void game_run(int argc, char **argv);
@@ -177,7 +190,7 @@ NEKO_SCRIPT(game,
 
 )
 
-void timing_update();
+int timing_update(App *app, event_t evt);
 void timing_save_all(Store *s);
 void timing_load_all(Store *s);
 

@@ -2,6 +2,7 @@
 #define NEKO_TEST_MODULES
 
 #include "engine/base.h"
+#include "engine/event.h"
 #include "engine/luax.h"
 
 #ifdef NEKO_BOX2D
@@ -202,10 +203,11 @@ NEKO_SCRIPT(physics,
 
 #endif
 
+struct App;
 NEKO_API() void physics_init();
 NEKO_API() void physics_fini();
-NEKO_API() void physics_update_all();
-NEKO_API() void physics_post_update_all();
+NEKO_API() int physics_update_all(App *app, event_t evt);
+NEKO_API() int physics_post_update_all(App *app, event_t evt);
 NEKO_API() void physics_draw_all();
 NEKO_API() void physics_save_all(Store *s);
 NEKO_API() void physics_load_all(Store *s);
@@ -270,7 +272,7 @@ inline int neko_sound_load(lua_State *L) {
 
 NEKO_API() void sound_init();
 NEKO_API() void sound_fini();
-NEKO_API() void sound_update_all();
+NEKO_API() int sound_update_all(App *app, event_t evt);
 NEKO_API() void sound_save_all(Store *s);
 NEKO_API() void sound_load_all(Store *s);
 

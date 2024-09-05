@@ -13,6 +13,7 @@
 #include <queue>
 #include <shared_mutex>
 #include <string>
+#include <thread>
 
 #include "engine/base.h"
 
@@ -152,6 +153,13 @@ double string_to_double(String str);
 //
 =============================*/
 
+using Mutex = std::mutex;
+using SharedMutex = std::shared_mutex;
+using Cond = std::condition_variable;
+
+template <typename T>
+using LockGuard = std::unique_lock<T>;
+
 class RWLock {
 public:
     inline void make() {}
@@ -162,16 +170,21 @@ public:
     inline void unique_unlock() { mtx.unlock(); }
 
 private:
-    std::shared_mutex mtx;
+    SharedMutex mtx;
 };
 
-typedef void (*ThreadProc)(void *);
+class Thread {
+public:
+    using ThreadProc = void (*)(void *);
 
-struct Thread {
-    void *ptr = nullptr;
+    inline void make(ThreadProc fn, void *udata) { thread = std::thread(fn, udata); }
 
-    void make(ThreadProc fn, void *udata);
-    void join();
+    inline void join() {
+        if (thread.joinable()) thread.join();
+    }
+
+private:
+    std::thread thread;
 };
 
 uint64_t this_thread_id();
@@ -208,7 +221,7 @@ struct DebugAllocInfo {
 
 struct DebugAllocator : Allocator {
     DebugAllocInfo *head = nullptr;
-    std::mutex mtx;
+    Mutex mtx;
 
     void make() {}
     void trash() {}
@@ -312,8 +325,8 @@ bool neko_dylib_has_symbol(neko_dynlib lib, const_str symbol_name);
 
 template <typename T>
 struct Queue {
-    std::mutex mtx;
-    std::condition_variable cv;
+    Mutex mtx;
+    Cond cv;
 
     T *data = nullptr;
     u64 front = 0;
@@ -351,7 +364,7 @@ struct Queue {
     }
 
     void enqueue(T item) {
-        std::unique_lock<std::mutex> lock(mtx);
+        LockGuard<Mutex> lock(mtx);
 
         if (len == capacity) {
             reserve(len > 0 ? len * 2 : 8);
@@ -365,7 +378,7 @@ struct Queue {
     }
 
     T demand() {
-        std::unique_lock<std::mutex> lock(mtx);
+        LockGuard<Mutex> lock(mtx);
 
         cv.wait(lock, [this] { return len > 0; });
 

@@ -374,69 +374,38 @@ RectDescription rect_description_args(lua_State *L, i32 arg_start) {
 void draw_sprite(AseSprite *spr, DrawDescription *desc) {
     bool ok = false;
 
-    neko_assert(spr->batch);
+    neko_assert(g_app->batch);
 
-    DeferLoop(ok = true /*renderer_push_matrix()*/, 0 /*renderer_pop_matrix()*/) {
-        if (!ok) {
-            return;
-        }
-
-        // idraw_t* idraw = &g_app->idraw;
-
-        AseSpriteView view = {};
-        ok = view.make(spr);
-        if (!ok) {
-            return;
-        }
-
-        // renderer_translate(desc->x, desc->y);
-        // renderer_rotate(desc->rotation);
-        // renderer_scale(desc->sx, desc->sy);
-
-        // sgl_enable_texture();
-        // sgl_texture({view.data.img.id}, {g_renderer.sampler});
-        // sgl_begin_quads();
-
-        // idraw_texture(idraw, gfx_texture_t{view.data.tex.id});
-
-        neko_gl_data_t *ogl = gfx_ogl();
-        GLuint gl_tex_id = ogl->textures[view.data.tex.id].id;
-
-        // float x0 = -desc->ox;
-        // float y0 = -desc->oy;
-        // float x1 = (float)view.data.width - desc->ox;
-        // float y1 = (float)view.data.height - desc->oy;
-
-        AseSpriteFrame f = view.data.frames[view.frame()];
-
-        // idraw_rectvx(idraw, neko_v2(desc->x, desc->y), neko_v2(desc->x + (view.data.width * desc->sx), desc->y + (view.data.height * desc->sy)), neko_v2(f.u0, f.v0), neko_v2(f.u1, f.v1),
-        //                   NEKO_COLOR_WHITE, R_PRIMITIVE_TRIANGLES);
-
-        // renderer_apply_color();
-        // renderer_push_quad(vec4(x0, y0, x1, y1), vec4(f.u0, f.v0, f.u1, f.v1));
-
-        batch_texture(spr->batch, gl_tex_id);
-
-        desc->x -= desc->ox;
-        desc->y -= desc->oy;
-
-        float u1 = f.u0;
-        float v1 = f.v0;
-        float u2 = f.u1;
-        float v2 = f.v1;
-
-        batch_push_vertex(spr->batch, desc->x, desc->y, u1, v1);
-        batch_push_vertex(spr->batch, desc->x + (view.data.width * desc->sx), desc->y + (view.data.height * desc->sy), u2, v2);
-        batch_push_vertex(spr->batch, desc->x, desc->y + (view.data.height * desc->sy), u1, v2);
-
-        batch_push_vertex(spr->batch, desc->x, desc->y, u1, v1);
-        batch_push_vertex(spr->batch, desc->x + (view.data.width * desc->sx), desc->y, u2, v1);
-        batch_push_vertex(spr->batch, desc->x + (view.data.width * desc->sx), desc->y + (view.data.height * desc->sy), u2, v2);
-
-        // sgl_end();
-
-        // batch_flush(spr->batch);  // TODO: 优化不要每一draw都刷新
+    AseSpriteView view = {};
+    ok = view.make(spr);
+    if (!ok) {
+        return;
     }
+
+    neko_gl_data_t *ogl = gfx_ogl();
+    GLuint gl_tex_id = ogl->textures[view.data.tex.id].id;
+
+    AseSpriteFrame f = view.data.frames[view.frame()];
+
+    batch_texture(g_app->batch, gl_tex_id);
+
+    desc->x -= desc->ox;
+    desc->y -= desc->oy;
+
+    float u1 = f.u0;
+    float v1 = f.v0;
+    float u2 = f.u1;
+    float v2 = f.v1;
+
+    batch_push_vertex(g_app->batch, desc->x, desc->y, u1, v1);
+    batch_push_vertex(g_app->batch, desc->x + (view.data.width * desc->sx), desc->y + (view.data.height * desc->sy), u2, v2);
+    batch_push_vertex(g_app->batch, desc->x, desc->y + (view.data.height * desc->sy), u1, v2);
+
+    batch_push_vertex(g_app->batch, desc->x, desc->y, u1, v1);
+    batch_push_vertex(g_app->batch, desc->x + (view.data.width * desc->sx), desc->y, u2, v1);
+    batch_push_vertex(g_app->batch, desc->x + (view.data.width * desc->sx), desc->y + (view.data.height * desc->sy), u2, v2);
+
+    // batch_flush(g_app->batch);  // TODO: 优化不要每一draw都刷新
 }
 
 // static GLuint font_program;
@@ -517,9 +486,6 @@ static void make_font_range(FontRange *out, FontFamily *font, FontKey key) {
         }
     }
 
-    // static int iii = 0;
-    // stbi_write_png(std::format("font_bitmap_{}.png", iii++).c_str(), width, height, 4, image_data, 0);
-
     {
         PROFILE_BLOCK("make image");
 
@@ -533,7 +499,6 @@ static void make_font_range(FontRange *out, FontFamily *font, FontKey key) {
         t_desc.num_mips = 0;
         t_desc.width = width;
         t_desc.height = height;
-        // t_desc.num_comps = 4;
         t_desc.data = data;
 
         // neko_tex_flip_vertically(width, height, (u8 *)(t_desc.data[0]));
@@ -974,7 +939,8 @@ void batch_fini(batch_renderer *batch) {
     mem_free(batch);
 }
 
-void batch_update_all(batch_renderer *batch) {
+int batch_update_all(App *app, event_t evt) {
+
     auto tex_aliens = texture_get_ptr("assets/aliens.png");
 
     struct {
@@ -997,7 +963,7 @@ void batch_update_all(batch_renderer *batch) {
             .th = alien_uvs[2].h,
     };
 
-    batch_texture(batch, tex_aliens.id);
+    batch_texture(app->batch, tex_aliens.id);
 
     float x1 = ch.px;
     float y1 = ch.py;
@@ -1009,13 +975,15 @@ void batch_update_all(batch_renderer *batch) {
     float u2 = (ch.tx + ch.tw) / tex_aliens.width;
     float v2 = (ch.ty + ch.th) / tex_aliens.height;
 
-    batch_push_vertex(batch, x1, y1, u1, v1);
-    batch_push_vertex(batch, x2, y2, u2, v2);
-    batch_push_vertex(batch, x1, y2, u1, v2);
+    batch_push_vertex(app->batch, x1, y1, u1, v1);
+    batch_push_vertex(app->batch, x2, y2, u2, v2);
+    batch_push_vertex(app->batch, x1, y2, u1, v2);
 
-    batch_push_vertex(batch, x1, y1, u1, v1);
-    batch_push_vertex(batch, x2, y1, u2, v1);
-    batch_push_vertex(batch, x2, y2, u2, v2);
+    batch_push_vertex(app->batch, x1, y1, u1, v1);
+    batch_push_vertex(app->batch, x2, y1, u2, v1);
+    batch_push_vertex(app->batch, x2, y2, u2, v2);
+
+    return 0;
 }
 
 void batch_draw_all(batch_renderer *batch) { batch_flush(batch); }

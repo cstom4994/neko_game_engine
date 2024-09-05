@@ -68,7 +68,7 @@ NEKO_SCRIPT(transform,
 
 void transform_init();
 void transform_fini();
-void transform_update_all();
+int transform_update_all(App *app, event_t evt);
 void transform_save_all(Store* s);
 void transform_load_all(Store* s);
 
@@ -224,7 +224,7 @@ NEKO_SCRIPT(tiled,
 
 void tiled_init();
 void tiled_fini();
-void tiled_update_all();
+int tiled_update_all(App *app, event_t evt);
 void tiled_draw_all();
 
 /*
@@ -274,7 +274,7 @@ const mat3* camera_get_inverse_view_matrix_ptr();  // for quick GLSL binding
 
 void camera_init();
 void camera_fini();
-void camera_update_all();
+int camera_update_all(App *app, event_t evt);
 void camera_save_all(Store* s);
 void camera_load_all(Store* s);
 
@@ -314,7 +314,7 @@ NEKO_SCRIPT(sprite,
 
 void sprite_init();
 void sprite_fini();
-void sprite_update_all();
+int sprite_update_all(App *app, event_t evt);
 void sprite_draw_all();
 void sprite_save_all(Store* s);
 void sprite_load_all(Store* s);
@@ -359,11 +359,13 @@ NEKO_SCRIPT(
 
 )
 
-void edit_clear();
+struct App;
+
+int edit_clear(App* app, event_t evt);
 
 void edit_init();
 void edit_fini();
-void edit_update_all();
+int edit_update_all(App *app, event_t evt);
 void edit_draw_all();
 void edit_save_all(Store* s);
 void edit_load_all(Store* s);
@@ -515,11 +517,11 @@ NEKO_SCRIPT(
 
 )
 
-void gui_event_clear();
+int gui_event_clear(App *app, event_t evt);
 
 void gui_init();
 void gui_fini();
-void gui_update_all();
+int gui_update_all(App *app, event_t evt);
 void gui_draw_all();
 void gui_key_down(KeyCode key);
 void gui_key_up(KeyCode key);

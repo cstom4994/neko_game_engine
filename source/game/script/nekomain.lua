@@ -37,10 +37,15 @@ function ns.app.key_down(key)
     elseif key == ng.KC_E then
         ns.timing.set_paused(not ns.edit.get_enabled())
         ns.edit.set_enabled(not ns.edit.get_enabled())
-    elseif key == ng.KC_C then
-        print("destroying group 'default'")
-        ns.group.destroy('default')
     end
+
+    if ns.edit.get_enabled() then
+        if key == ng.KC_C then
+            print("destroying group 'default'")
+            ns.group.destroy('default')
+        end
+    end
+
 end
 
 local run, err = (ng.args[1] and loadfile(ng.args[1])) or loadfile('./main.lua')

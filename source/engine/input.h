@@ -5,6 +5,7 @@
 
 #include "engine/base.h"
 #include "engine/entity.h"
+#include "engine/event.h"
 
 NEKO_SCRIPT(
         input,
@@ -205,7 +206,8 @@ NEKO_SCRIPT(keyboard_controlled,
 
 )
 
-void keyboard_controlled_update_all();
+struct App;
+int keyboard_controlled_update_all(App* app, event_t evt);
 void keyboard_controlled_save_all(Store* s);
 void keyboard_controlled_load_all(Store* s);
 

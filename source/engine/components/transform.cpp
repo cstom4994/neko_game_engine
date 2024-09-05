@@ -300,7 +300,7 @@ void transform_fini() {
     entitypool_free(pool_transform);
 }
 
-void transform_update_all() {
+int transform_update_all(App *app, event_t evt) {
     Transform *transform;
     static BBox bbox = {{0, 0}, {0, 0}};
 
@@ -308,6 +308,8 @@ void transform_update_all() {
 
     // update edit bbox
     if (edit_get_enabled()) entitypool_foreach(transform, pool_transform) edit_bboxes_update(transform->pool_elem.ent, bbox);
+
+    return 0;
 }
 
 // save/load for just the children array

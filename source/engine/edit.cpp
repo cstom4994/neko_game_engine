@@ -40,7 +40,7 @@
 #include <stb_image_write.h>
 #include <stb_rect_pack.h>
 
-#if 0
+#if 1
 
 // 生成宏 以避免始终重复代码
 #define INSPECTOR_GENERATE_VARIABLE(cputype, count, gltype, glread, glwrite, imguifunc)               \
@@ -67,7 +67,7 @@
     }
 
 void render_uniform_variable(GLuint program, GLenum type, const char *name, GLint location) {
-    ui_context_t *ui = &g_app->ui;
+    ui_context_t *ui = g_app->ui;
     static bool is_color = false;
     switch (type) {
         case GL_FLOAT:
@@ -205,7 +205,7 @@ void render_uniform_variable(GLuint program, GLenum type, const char *name, GLin
 void inspect_shader(const char *label, GLuint program) {
     neko_assert(label != nullptr);
 
-    ui_context_t *ui = &g_app->ui;
+    ui_context_t *ui = g_app->ui;
 
     // ImGui::PushID(label);
     if (ui_header(ui, label)) {
@@ -281,7 +281,7 @@ void inspect_vertex_array(const char *label, GLuint vao) {
     neko_assert(label != nullptr);
     neko_assert(glIsVertexArray(vao));
 
-    ui_context_t *ui = &g_app->ui;
+    ui_context_t *ui = g_app->ui;
 
     // ImGui::PushID(label);
     if (ui_header(ui, label)) {
@@ -677,7 +677,6 @@ static int __luainspector_echo(lua_State *L) {
 static int __luainspector_gc(lua_State *L) {
     neko::luainspector *m = *static_cast<neko::luainspector **>(lua_touserdata(L, 1));
     if (m) {
-        m->variable_pool_free();
         m->setL(0x0);
     }
     console_log("luainspector __gc %p", m);
@@ -1458,8 +1457,6 @@ void neko::luainspector::inspect_table(lua_State *L, inspect_table_config &cfg) 
     }
 }
 
-neko::CCharacter cJohn;
-
 extern Assets g_assets;
 
 int neko::luainspector::luainspector_init(lua_State *L) {
@@ -1470,16 +1467,6 @@ int neko::luainspector::luainspector_init(lua_State *L) {
 
     inspector->setL(L);
     inspector->m_history.resize(8);
-
-    inspector->register_function<float>(std::bind(&luainspector_property_st::Render_TypeFloat, std::placeholders::_1, std::placeholders::_2));
-    inspector->register_function<bool>(std::bind(&luainspector_property_st::Render_TypeBool, std::placeholders::_1, std::placeholders::_2));
-    inspector->register_function<char>(std::bind(&luainspector_property_st::Render_TypeConstChar, std::placeholders::_1, std::placeholders::_2));
-    inspector->register_function<double>(std::bind(&luainspector_property_st::Render_TypeDouble, std::placeholders::_1, std::placeholders::_2));
-    inspector->register_function<int>(std::bind(&luainspector_property_st::Render_TypeInt, std::placeholders::_1, std::placeholders::_2));
-
-    inspector->register_function<CCharacter>(std::bind(&luainspector_property_st::Render_TypeCharacter, std::placeholders::_1, std::placeholders::_2));
-
-    inspector->property_register<CCharacter>("John", &cJohn, "John");
 
     return 1;
 }
@@ -1504,7 +1491,7 @@ int neko::luainspector::luainspector_draw(lua_State *L) {
     // ui_dock_ex(&g_app->ui, "Style_Editor", "Demo_Window", UI_SPLIT_TAB, 0.5f);
 
     const vec2 ss_ws = neko_v2(500.f, 300.f);
-    if (ui_begin_window(g_app->ui, "检查器", neko_rect((g_app->cfg.width - ss_ws.x) * 0.5f, (g_app->cfg.height - ss_ws.y) * 0.5f, ss_ws.x, ss_ws.y))) {
+    if (ui_begin_window_ex(g_app->ui, "检查器", neko_rect((g_app->cfg.width - ss_ws.x) * 0.5f, (g_app->cfg.height - ss_ws.y) * 0.5f, ss_ws.x, ss_ws.y), UI_OPT_NOCLOSE)) {
 
         if (ui_header(ui, "Console")) {
             // bool textbox_react;
@@ -1621,6 +1608,14 @@ int neko::luainspector::luainspector_draw(lua_State *L) {
                 ui_labelf("%s", kv.value->name.cstr());
             }
             ui_layout_row(g_app->ui, 1, ui_widths(0), 0);
+        }
+
+        if (ui_header(ui, "Shader")) {
+            for (auto kv : g_assets.table) {
+                if (kv.value->kind == AssetKind_Shader) {
+                    inspect_shader(kv.value->name.cstr(), kv.value->shader.id);
+                }
+            }
         }
 
         ui_end_window(g_app->ui);

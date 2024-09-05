@@ -322,9 +322,10 @@ static void _line_draw_all() {
 
 // -------------------------------------------------------------------------
 
-void edit_clear() {
+int edit_clear(App *app, event_t evt) {
     entitypool_clear(pool_bbox);
     array_clear(line_points);
+    return 0;
 }
 
 void edit_init() {
@@ -347,10 +348,12 @@ void edit_fini() {
 
 static void _uneditable_remove(NativeEntity ent) { entitypool_remove(pool_uneditable, ent); }
 
-void edit_update_all() {
+int edit_update_all(App *app, event_t evt) {
     entitypool_remove_destroyed(pool_uneditable, _uneditable_remove);
 
     _bboxes_update_all();
+
+    return 0;
 }
 
 void edit_draw_all() {

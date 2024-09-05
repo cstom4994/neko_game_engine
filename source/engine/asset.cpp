@@ -182,7 +182,7 @@ void destroy_texture_handle(u64 texture_id, void *udata) {
 
 bool texture_update_data(AssetTexture *tex, u8 *data) {
 
-    std::unique_lock<std::mutex> lock{g_app->gpu_mtx};
+    LockGuard<Mutex> lock{g_app->gpu_mtx};
 
     // 如果存在 则释放旧的 GL 纹理
     if (tex->id != 0) glDeleteTextures(1, &tex->id);
@@ -257,7 +257,7 @@ static bool _texture_load_vfs(AssetTexture *tex, String filename) {
     }
 
     {
-        std::unique_lock<std::mutex> lock(g_app->gpu_mtx);
+        LockGuard<Mutex> lock(g_app->gpu_mtx);
 
         // 如果存在 则释放旧的 GL 纹理
         if (tex->id != 0) glDeleteTextures(1, &tex->id);
@@ -300,7 +300,7 @@ bool texture_load(AssetTexture *tex, String filename, bool flip_image_vertical) 
 }
 
 void texture_bind(const char *filename) {
-    std::unique_lock<std::mutex> lock{g_app->gpu_mtx};
+    LockGuard<Mutex> lock{g_app->gpu_mtx};
 
     Asset a = {};
     bool ok = asset_load_kind(AssetKind_Image, filename, &a);
@@ -1407,7 +1407,7 @@ struct DirectoryFileSystem : FileSystem {
 };
 
 struct ZipFileSystem : FileSystem {
-    std::mutex mtx = {};
+    Mutex mtx = {};
     mz_zip_archive zip = {};
     String zip_contents = {};
 
@@ -1488,7 +1488,7 @@ struct ZipFileSystem : FileSystem {
         String path = to_cstr(filepath);
         neko_defer(mem_free(path.data));
 
-        std::unique_lock<std::mutex> lock{mtx};
+        LockGuard<Mutex> lock{mtx};
 
         i32 i = mz_zip_reader_locate_file(&zip, path.data, nullptr, 0);
         if (i == -1) {
@@ -1510,7 +1510,7 @@ struct ZipFileSystem : FileSystem {
         String path = to_cstr(filepath);
         neko_defer(mem_free(path.data));
 
-        std::unique_lock<std::mutex> lock{mtx};
+        LockGuard<Mutex> lock{mtx};
 
         i32 file_index = mz_zip_reader_locate_file(&zip, path.data, nullptr, 0);
         if (file_index == -1) {
@@ -1542,7 +1542,7 @@ struct ZipFileSystem : FileSystem {
     bool list_all_files(Array<String> *files) {
         PROFILE_FUNC();
 
-        std::unique_lock<std::mutex> lock{mtx};
+        LockGuard<Mutex> lock{mtx};
 
         for (u32 i = 0; i < mz_zip_reader_get_num_files(&zip); i++) {
             mz_zip_archive_file_stat file_stat;
@@ -1978,7 +1978,7 @@ static void hot_reload_thread(void *) {
         PROFILE_BLOCK("hot reload");
 
         {
-            std::unique_lock<std::mutex> lock{g_assets.shutdown_mtx};
+            LockGuard<Mutex> lock{g_assets.shutdown_mtx};
             if (g_assets.shutdown) {
                 return;
             }
@@ -2012,7 +2012,7 @@ static void hot_reload_thread(void *) {
         }
 
         if (g_assets.tmp_changes.len > 0) {
-            std::unique_lock<std::mutex> lock{g_assets.changes_mtx};
+            LockGuard<Mutex> lock{g_assets.changes_mtx};
             for (FileChange change : g_assets.tmp_changes) {
                 g_assets.changes.push(change);
             }
@@ -2020,11 +2020,11 @@ static void hot_reload_thread(void *) {
     }
 }
 
-void assets_perform_hot_reload_changes() {
-    std::unique_lock<std::mutex> lock{g_assets.changes_mtx};
+int assets_perform_hot_reload_changes(App *app, event_t evt) {
+    LockGuard<Mutex> lock{g_assets.changes_mtx};
 
     if (g_assets.changes.len == 0) {
-        return;
+        return 0;
     }
 
     PROFILE_BLOCK("perform hot reload");
@@ -2074,7 +2074,7 @@ void assets_perform_hot_reload_changes() {
 
         if (!ok) {
             fatal_error(tmp_fmt("failed to hot reload: %s", a.name.data));
-            return;
+            return 0;
         }
 
         asset_write(a);
@@ -2082,12 +2082,14 @@ void assets_perform_hot_reload_changes() {
     }
 
     g_assets.changes.len = 0;
+
+    return 0;
 }
 
 void assets_shutdown() {
     if (g_app->hot_reload_enabled.load()) {
         {
-            std::unique_lock<std::mutex> lock{g_assets.shutdown_mtx};
+            LockGuard<Mutex> lock{g_assets.shutdown_mtx};
             g_assets.shutdown = true;
         }
 
@@ -2371,12 +2373,7 @@ void AseSpriteData::trash() {
     arena.trash();
 }
 
-extern batch_renderer *g_batch;
-
-void AseSprite::make() {
-    // this->batch = batch_init(128);
-    this->batch = g_batch;
-}
+void AseSprite::make() {}
 
 bool AseSprite::play(String tag) {
     u64 key = fnv1a(tag);

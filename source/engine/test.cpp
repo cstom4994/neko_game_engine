@@ -442,16 +442,6 @@ void draw_gui() {
     {
         // editor_dockspace(g_app->ui);
 
-        // const vec2 ss_ws = neko_v2(500.f, 300.f);
-        // ui_window_begin(g_app->ui, "Shader", ui_rect((g_app->width - ss_ws.x) * 0.5f, (g_app->height - ss_ws.y) * 0.5f, ss_ws.x, ss_ws.y));
-        // {
-        //     for (uint32_t i = 0; i < neko_dyn_array_size(g_app->shader_array); ++i) {
-        //         auto sp = g_app->shader_array[i];
-        //         inspect_shader(sp.name, sp.id);
-        //     }
-        // }
-        // ui_window_end(g_app->ui);
-
 #if 0
         if (1) {
 
@@ -3364,8 +3354,8 @@ void physics_load_all(Store *s)
 
 void physics_init() { PROFILE_FUNC(); }
 void physics_fini() {}
-void physics_update_all() {}
-void physics_post_update_all() {}
+int physics_update_all(App *app, event_t evt) { return 0; }
+int physics_post_update_all(App *app, event_t evt) { return 0; }
 void physics_draw_all() {}
 void physics_save_all(Store *s) {}
 void physics_load_all(Store *s) {}
@@ -3948,6 +3938,6 @@ void sound_init() {
 }
 
 void sound_fini() {}
-void sound_update_all() {}
+int sound_update_all(App *app, event_t evt) { return 0; }
 void sound_save_all(Store *s) {}
 void sound_load_all(Store *s) {}

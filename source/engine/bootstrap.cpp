@@ -113,22 +113,15 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-static bool g_quit = false;  // 如果为 true 则退出主循环
-static int sargc = 0;
-static char **sargv;
-static std::mutex g_init_mtx;
-
-gfx_texture_t test_ase;
-
 extern void draw_gui();
 
 // -------------------------------------------------------------------------
 
-static const char *filename = usr_path("scratch.lua");
+static const char *scratch_filename = usr_path("scratch.lua");
 
 bool _exists() {
     struct stat st;
-    return stat(filename, &st) == 0;
+    return stat(scratch_filename, &st) == 0;
 }
 
 // 自上次调用 _modified() 后是否已修改 一开始为 false
@@ -138,7 +131,7 @@ bool _modified() {
     bool modified;
     static bool first = true;
 
-    if (stat(filename, &st) != 0) {
+    if (stat(scratch_filename, &st) != 0) {
         first = false;
         return false;  // 不存在或错误
     }
@@ -149,10 +142,11 @@ bool _modified() {
     return modified;
 }
 
-void scratch_run() { script_run_file(filename); }
+void scratch_run() { script_run_file(scratch_filename); }
 
-void scratch_update() {
+int scratch_update(App *app, event_t evt) {
     if (_modified()) scratch_run();
+    return 0;
 }
 
 // -------------------------------------------------------------------------
@@ -171,9 +165,108 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
     glViewport(0, 0, width, height);
 }
 
-static void _game_init() {
+int _game_draw(App *app, event_t evt) {
+    static bool first = true;
 
-    std::unique_lock<std::mutex> lock(g_init_mtx);
+    lua_State *L = ENGINE_LUA();
+
+    // 不绘制第一帧 等待完整更新
+    if (first) {
+        first = false;
+        return 0;
+    }
+
+    luax_neko_get(L, "__timer_update");
+    lua_pushnumber(L, timing_instance.delta);
+    luax_pcall(L, 1, 0);
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glDisable(GL_DEPTH_TEST);
+    glClearColor(NEKO_COL255(28.f), NEKO_COL255(28.f), NEKO_COL255(28.f), 1.f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    if (!g_app->error_mode.load()) {
+
+        script_draw_all();
+
+        // 底层图片
+        char background_text[64] = "Project: unknown";
+
+        f32 td = g_app->default_font->width(22.f, background_text);
+        // vec2 td = {};
+        vec2 ts = neko_v2(512 + 128, 512 + 128);
+
+        // idraw_text(&g_app->idraw, (g_app->width - td) * 0.5f, (g_app->height) * 0.5f + ts.y / 2.f - 100.f, background_text, NULL, false, color256(255, 255, 255, 255));
+        // idraw_texture(&g_app->idraw, test_ase);
+        // idraw_rectvd(&g_app->idraw, neko_v2((g_app->width - ts.x) * 0.5f, (g_app->height - ts.y) * 0.5f - 22.f - 50.f), ts, neko_v2(0.f, 1.f), neko_v2(1.f, 0.f), color256(255, 255, 255, 255),
+        //              R_PRIMITIVE_TRIANGLES);
+
+        // idraw_defaults(&g_app->idraw);
+        {
+
+            // script_draw_all();
+            // tiled_draw_all();
+            tiled_draw_all();
+
+            sprite_draw_all();
+            batch_draw_all(g_app->batch);
+            edit_draw_all();
+            physics_draw_all();
+            gui_draw_all();
+
+            f32 fy = draw_font(g_app->default_font, false, 16.f, 0.f, 0.f, "Hello World 测试中文，你好世界", NEKO_COLOR_WHITE);
+            fy += draw_font(g_app->default_font, false, 16.f, 0.f, 20.f, "我是第二行", NEKO_COLOR_WHITE);
+            fy += draw_font(g_app->default_font, true, 16.f, 0.f, 20.f, "这一行字 draw_in_world", NEKO_COLOR_WHITE);
+        }
+
+        auto ui = g_app->ui;
+
+        neko_update_ui(ui);
+
+        DeferLoop(ui_begin(ui), ui_end(ui)) {
+            script_draw_ui();
+            draw_gui();
+        }
+
+        neko_render_ui(ui, g_app->cfg.width, g_app->cfg.height);
+
+    } else {
+
+        auto font = neko_default_font();
+
+        float x = 20;
+        float y = 25;
+        u64 font_size = 28;
+
+        if (LockGuard<Mutex> lock{g_app->error_mtx}) {
+            y = draw_font(font, false, font_size, x, y, "-- ! Neko Error ! --", NEKO_COLOR_WHITE);
+            y += font_size;
+
+            y = draw_font_wrapped(font, false, font_size, x, y, g_app->fatal_error, NEKO_COLOR_WHITE, g_app->cfg.width - x);
+            y += font_size;
+
+            if (g_app->traceback.data) {
+                y = draw_font(font, false, font_size, x, y, g_app->traceback, NEKO_COLOR_WHITE);
+                y += (font_size * 2);
+
+                draw_font(font, false, font_size, x, y, "按下 Ctrl+C 复制以上堆栈信息", NEKO_COLOR_WHITE);
+
+                if (input_key_down(KC_LEFT_CONTROL) && input_key_down(KC_C)) {
+                    window_setclipboard(g_app->traceback.cstr());
+                }
+            }
+        }
+    }
+
+    neko_check_gl_error();
+
+    glfwSwapBuffers(g_app->game_window);
+
+    return 0;
+}
+
+static void _game_init(int argc, char **argv) {
 
 #ifndef NDEBUG
     g_allocator = new DebugAllocator();
@@ -185,13 +278,17 @@ static void _game_init() {
 
     g_app = new (mem_alloc(sizeof(App))) App();
 
+    LockGuard<Mutex> lock(g_app->g_init_mtx);
+
     os_high_timer_resolution();
     stm_setup();
 
-    g_app->args.resize(sargc);
-    for (i32 i = 0; i < sargc; i++) {
-        g_app->args[i] = to_cstr(sargv[i]);
+    g_app->args.resize(argc);
+    for (i32 i = 0; i < argc; i++) {
+        g_app->args[i] = to_cstr(argv[i]);
     }
+    g_app->argc = argc;
+    g_app->argv = argv;
 
 #if defined(NDEBUG)
     console_log("neko %d", neko_buildnum());
@@ -221,8 +318,11 @@ static void _game_init() {
 
     // initialize GLEW
     glewExperimental = GL_TRUE;
-    glewInit();
-    glGetError();  // see http://www.opengl.org/wiki/OpenGL_Loading_Library
+    GLenum err = glewInit();
+    if (err != GLEW_OK) {
+        console_log("glewInit failed: ", glewGetErrorString(err));
+    }
+    bool gl_dsa_support = glewIsSupported("GL_ARB_direct_state_access");
 
 #if defined(_DEBUG) && !defined(NEKO_IS_APPLE)
     glEnable(GL_DEBUG_OUTPUT);
@@ -251,7 +351,7 @@ static void _game_init() {
 
     {  // just for test
 
-        test_ase = neko_aseprite_simple("assets/cat.ase");
+        g_app->test_ase = neko_aseprite_simple("assets/cat.ase");
 
         g_app->ui = (ui_context_t *)mem_alloc(sizeof(ui_context_t));
         ui_init(g_app->ui);
@@ -262,6 +362,33 @@ static void _game_init() {
         g_app->ui->text_height = neko_ui_text_height;
         neko_init_ui_renderer();
     }
+
+    eventhandler_t *eh = eventhandler_instance();
+
+    event_register(eh, g_app, preupdate, (evt_callback_t)assets_perform_hot_reload_changes, NULL);
+    event_register(eh, g_app, preupdate, (evt_callback_t)edit_clear, NULL);
+    event_register(eh, g_app, preupdate, (evt_callback_t)timing_update, NULL);
+
+    event_register(eh, g_app, update, (evt_callback_t)scratch_update, NULL);
+    event_register(eh, g_app, update, (evt_callback_t)script_update_all, NULL);
+    event_register(eh, g_app, update, (evt_callback_t)keyboard_controlled_update_all, NULL);
+    event_register(eh, g_app, update, (evt_callback_t)physics_update_all, NULL);
+    event_register(eh, g_app, update, (evt_callback_t)transform_update_all, NULL);
+
+    event_register(eh, g_app, update, (evt_callback_t)camera_update_all, NULL);
+    event_register(eh, g_app, update, (evt_callback_t)gui_update_all, NULL);
+    event_register(eh, g_app, update, (evt_callback_t)sprite_update_all, NULL);
+    event_register(eh, g_app, update, (evt_callback_t)batch_update_all, NULL);
+    event_register(eh, g_app, update, (evt_callback_t)sound_update_all, NULL);
+    event_register(eh, g_app, update, (evt_callback_t)tiled_update_all, NULL);
+    event_register(eh, g_app, update, (evt_callback_t)edit_update_all, NULL);
+
+    event_register(eh, g_app, postupdate, (evt_callback_t)script_post_update_all, NULL);
+    event_register(eh, g_app, postupdate, (evt_callback_t)physics_post_update_all, NULL);
+    event_register(eh, g_app, postupdate, (evt_callback_t)entity_update_all, NULL);
+    event_register(eh, g_app, postupdate, (evt_callback_t)gui_event_clear, NULL);
+
+    event_register(eh, g_app, draw, (evt_callback_t)_game_draw, NULL);
 }
 
 static void _game_fini() {
@@ -314,150 +441,25 @@ static void _game_fini() {
     neko_println("see ya");
 }
 
-static void _game_events() {
-    glfwPollEvents();
-
-    if (glfwWindowShouldClose(g_app->game_window)) game_quit();
-}
-
-static void _game_update() {
-    assets_perform_hot_reload_changes();
-
-    if (!g_app->error_mode.load()) {
-        system_update_all();
-    }
-}
-
-static void _game_draw() {
-    static bool first = true;
-
-    lua_State *L = ENGINE_LUA();
-
-    // 不绘制第一帧 等待完整更新
-    if (first) {
-        first = false;
-        return;
-    }
-
-    luax_neko_get(L, "__timer_update");
-    lua_pushnumber(L, timing_instance.delta);
-    luax_pcall(L, 1, 0);
-
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glDisable(GL_DEPTH_TEST);
-    glClearColor(NEKO_COL255(28.f), NEKO_COL255(28.f), NEKO_COL255(28.f), 1.f);
-    glClear(GL_COLOR_BUFFER_BIT);
-
-    if (!g_app->error_mode.load()) {
-
-#if 1
-        // gfx_clear_action_t clear = {.color = {NEKO_COL255(28.f), NEKO_COL255(28.f), NEKO_COL255(28.f), 1.f}};
-        // gfx_renderpass_begin(&g_app->cb, neko_renderpass_t{0});
-        // { gfx_clear(&g_app->cb, clear); }
-        // gfx_renderpass_end(&g_app->cb);
-
-        script_draw_all();
-
-        // Set up 2D camera for projection matrix
-        // idraw_defaults(&g_app->idraw);
-        // idraw_camera2d(&g_app->idraw, (u32)g_app->width, (u32)g_app->height);
-
-        // 底层图片
-        char background_text[64] = "Project: unknown";
-
-        f32 td = g_app->default_font->width(22.f, background_text);
-        // vec2 td = {};
-        vec2 ts = neko_v2(512 + 128, 512 + 128);
-
-        // idraw_text(&g_app->idraw, (g_app->width - td) * 0.5f, (g_app->height) * 0.5f + ts.y / 2.f - 100.f, background_text, NULL, false, color256(255, 255, 255, 255));
-        // idraw_texture(&g_app->idraw, test_ase);
-        // idraw_rectvd(&g_app->idraw, neko_v2((g_app->width - ts.x) * 0.5f, (g_app->height - ts.y) * 0.5f - 22.f - 50.f), ts, neko_v2(0.f, 1.f), neko_v2(1.f, 0.f), color256(255, 255, 255, 255),
-        //              R_PRIMITIVE_TRIANGLES);
-
-        // idraw_defaults(&g_app->idraw);
-
-        {
-            // gfx_set_viewport(&g_app->cb, 0, 0, (u32)g_app->width, (u32)g_app->height);
-            // idraw_draw(&g_app->idraw, &g_app->cb);  // 立即模式绘制 idraw
-
-            system_draw_all(NULL);
-
-            f32 fy = draw_font(g_app->default_font, false, 16.f, 0.f, 0.f, "Hello World 测试中文，你好世界", NEKO_COLOR_WHITE);
-            fy += draw_font(g_app->default_font, false, 16.f, 0.f, 20.f, "我是第二行", NEKO_COLOR_WHITE);
-            fy += draw_font(g_app->default_font, true, 16.f, 0.f, 20.f, "这一行字 draw_in_world", NEKO_COLOR_WHITE);
-
-            // gfx_draw_func(&g_app->cb, system_draw_all);
-
-            // ui_render(&g_app->ui, &g_app->cb);
-        }
-
-        auto ui = g_app->ui;
-
-        neko_update_ui(ui);
-
-        DeferLoop(ui_begin(ui), ui_end(ui)) {
-            script_draw_ui();
-            draw_gui();
-
-            // if (ui_begin_window(ui, "Hello World", neko_rect(10, 410, 400, 300))) {
-            //     ui_label(ui, "Name");
-            //     ui_end_window(ui);
-            // }
-        }
-
-        neko_render_ui(ui, g_app->cfg.width, g_app->cfg.height);
-
-#else
-        system_draw_all();
-#endif
-    } else {
-
-        auto font = neko_default_font();
-
-        float x = 20;
-        float y = 25;
-        u64 font_size = 28;
-
-        if (std::unique_lock<std::mutex> lock{g_app->error_mtx}) {
-            y = draw_font(font, false, font_size, x, y, "-- ! Neko Error ! --", NEKO_COLOR_WHITE);
-            y += font_size;
-
-            y = draw_font_wrapped(font, false, font_size, x, y, g_app->fatal_error, NEKO_COLOR_WHITE, g_app->cfg.width - x);
-            y += font_size;
-
-            if (g_app->traceback.data) {
-                y = draw_font(font, false, font_size, x, y, g_app->traceback, NEKO_COLOR_WHITE);
-                y += (font_size * 2);
-
-                draw_font(font, false, font_size, x, y, "按下 Ctrl+C 复制以上堆栈信息", NEKO_COLOR_WHITE);
-
-                if (input_key_down(KC_LEFT_CONTROL) && input_key_down(KC_C)) {
-                    window_setclipboard(g_app->traceback.cstr());
-                }
-            }
-        }
-    }
-
-    neko_check_gl_error();
-
-    glfwSwapBuffers(g_app->game_window);
-}
-
 // -------------------------------------------------------------------------
 
 void game_run(int argc, char **argv) {
-    sargc = argc;
-    sargv = argv;
+    _game_init(argc, argv);
+    while (!g_app->g_quit) {
+        App *app = g_app;
+        eventhandler_t *handler = eventhandler_instance();
+        glfwPollEvents();
+        if (glfwWindowShouldClose(g_app->game_window)) game_quit();
+        event_pump(handler);
 
-    _game_init();
+        event_dispatch(handler, event_t{.type = on_preupdate});
+        if (!g_app->error_mode.load()) {
+            event_dispatch(handler, event_t{.type = on_update});
+        }
+        event_dispatch(handler, event_t{.type = on_postupdate});
 
-    while (!g_quit) {
-        _game_events();
-        _game_update();
-        _game_draw();
+        event_dispatch(handler, event_t{.type = on_draw});
     }
-
     _game_fini();
 }
 
@@ -483,10 +485,10 @@ vec2 game_pixels_to_unit(vec2 p) {
     return p;
 }
 
-void game_quit() { g_quit = true; }
+void game_quit() { g_app->g_quit = true; }
 
-int game_get_argc() { return sargc; }
-char **game_get_argv() { return sargv; }
+int game_get_argc() { return g_app->argc; }
+char **game_get_argv() { return g_app->argv; }
 
 int game_set_window_minsize(int width, int height) {
     glfwSetWindowSizeLimits(g_app->game_window, width, height, GLFW_DONT_CARE, GLFW_DONT_CARE);
@@ -630,18 +632,17 @@ void test_native_script() {
 
 AppTime timing_instance;
 
-static f32 scale = 1.0f;
-static bool paused = false;
-
 f32 timing_get_elapsed() { return glfwGetTime() * 1000.0f; }
 
-void timing_set_scale(f32 s) { scale = s; }
-f32 timing_get_scale() { return scale; }
+void timing_set_scale(f32 s) { g_app->scale = s; }
+f32 timing_get_scale() { return g_app->scale; }
 
-void timing_set_paused(bool p) { paused = p; }
-bool timing_get_paused() { return paused; }
+void timing_set_paused(bool p) { g_app->paused = p; }
+bool timing_get_paused() { return g_app->paused; }
 
-static void _dt_update() {
+int timing_update(App *app, event_t evt) {
+
+    // update dt
     static double last_time = -1;
     double curr_time;
 
@@ -650,7 +651,7 @@ static void _dt_update() {
 
     curr_time = glfwGetTime();
     timing_instance.true_dt = curr_time - last_time;
-    timing_instance.dt = paused ? 0.0f : scale * timing_instance.true_dt;
+    timing_instance.dt = g_app->paused ? 0.0f : g_app->scale * timing_instance.true_dt;
     last_time = curr_time;
 
     {
@@ -698,17 +699,17 @@ static void _dt_update() {
         }
 #endif
     }
-}
 
-void timing_update() { _dt_update(); }
+    return 0;
+}
 
 void timing_save_all(Store *s) {
     Store *t;
 
-    if (store_child_save(&t, "timing", s)) scalar_save(&scale, "scale", t);
+    if (store_child_save(&t, "timing", s)) scalar_save(&g_app->scale, "scale", t);
 }
 void timing_load_all(Store *s) {
     Store *t;
 
-    if (store_child_load(&t, "timing", s)) scalar_load(&scale, "scale", 1, t);
+    if (store_child_load(&t, "timing", s)) scalar_load(&g_app->scale, "scale", 1, t);
 }

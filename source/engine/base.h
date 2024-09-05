@@ -104,13 +104,6 @@ typedef struct lua_State lua_State;
 #define NEKO_UNUSED(x) (void)(sizeof(x))
 #endif
 
-#define neko_assert(x, ...)                                                                                                \
-    do {                                                                                                                   \
-        if (!(x)) {                                                                                                        \
-            neko_printf("    assertion failed: (%s), function %s, file %s, line %d.\n", #x, __func__, __FILE__, __LINE__); \
-        }                                                                                                                  \
-    } while (0)
-
 #define NEKO_FOR_RANGE_N(__COUNT, N) for (u32 N = 0; N < __COUNT; ++N)
 #define NEKO_FOR_RANGE(__COUNT) for (u32 NEKO_TOKEN_PASTE(__T, __LINE__) = 0; NEKO_TOKEN_PASTE(__T, __LINE__) < __COUNT; ++(NEKO_TOKEN_PASTE(__T, __LINE__)))
 
@@ -226,6 +219,10 @@ NEKO_API() void errorf(const char* fmt, ...);
 #define error(...) errorf(line_str() __VA_ARGS__)
 
 #define error_assert(cond, ...) ((cond) ? 0 : (error("assertion '" #cond "' failed ... " __VA_ARGS__), 0))
+
+#define normal_assert(cond, ...) ((cond) ? 0 : (neko_printf("    assertion failed: (%s), function %s, file %s, line %d.\n" __VA_ARGS__, #cond, __func__, __FILE__, __LINE__), 0))
+
+#define neko_assert normal_assert
 
 FORMAT_ARGS(1)
 inline void neko_panic(const char* fmt, ...) {

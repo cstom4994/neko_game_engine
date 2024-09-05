@@ -41,6 +41,9 @@ static const u8 g_lua_bootstrap_data[] = {
 static const u8 g_lua_nekogame_data[] = {
 #include "nekogame.lua.h"
 };
+static const u8 g_lua_nekoeditor_data[] = {
+#include "nekoeditor.lua.h"
+};
 
 // LUAOPEN_EMBED_DATA(open_embed_common, "common.lua", g_lua_common_data);
 LUAOPEN_EMBED_DATA(open_embed_bootstrap, "bootstrap.lua", g_lua_bootstrap_data);
@@ -86,6 +89,18 @@ void luax_run_nekogame(lua_State *L) {
         neko_panic("failed to run nekogame");
     }
     console_log("loaded nekogame");
+
+    if (luaL_loadbuffer(L, (const_str)g_lua_nekoeditor_data, neko_strlen((const_str)g_lua_nekoeditor_data), "<nekoeditor>") != LUA_OK) {
+        fprintf(stderr, "%s\n", lua_tostring(L, -1));
+        neko_panic("failed to load nekoeditor");
+    }
+    if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
+        const char *errorMsg = lua_tostring(L, -1);
+        fprintf(stderr, "nekoeditor error: %s\n", errorMsg);
+        lua_pop(L, 1);
+        neko_panic("failed to run nekoeditor");
+    }
+    console_log("loaded nekoeditor");
 }
 
 #if LUA_VERSION_NUM < 504
@@ -1281,7 +1296,7 @@ void script_fini() {
     neko::neko_lua_fini(ENGINE_LS());
 }
 
-void script_update_all() {
+int script_update_all(App *app, event_t evt) {
     lua_State *L = ENGINE_LUA();
 
     luax_get(ENGINE_LUA(), "neko", "game_pre_update");
@@ -1293,13 +1308,17 @@ void script_update_all() {
 
     script_push_event("update_all");
     errcheck(luax_pcall_nothrow(L, 1, 0));
+
+    return 0;
 }
 
-void script_post_update_all() {
+int script_post_update_all(App *app, event_t evt) {
     lua_State *L = ENGINE_LUA();
 
     script_push_event("post_update_all");
     errcheck(luax_pcall_nothrow(L, 1, 0));
+
+    return 0;
 }
 
 void script_draw_ui() {

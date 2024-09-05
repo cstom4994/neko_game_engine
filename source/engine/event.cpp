@@ -2,8 +2,6 @@
 
 #include "data.h"
 
-#define EVENT_BUFFER_SIZE 4096
-
 void eventhandler_init(eventhandler_t* eventhandler, const char* name) {
     assert(NUM_EVENTS < 32);
     queue_init(&eventhandler->queue, sizeof(event_t));
@@ -62,8 +60,10 @@ void event_dispatch(eventhandler_t* eventhandler, event_t evt) {
             lua_pushinteger(l.L, std::get<u64>(evt.p1.v));
             lua_call(l.L, 4, 1);
             if (lua_toboolean(l.L, -1)) break;
-        } else if (l.callback(l.receiver, evt))
-            break;
+        } else {
+            error_assert(l.callback);
+            if (l.callback(l.receiver, evt)) break;
+        }
     }
 }
 

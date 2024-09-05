@@ -297,7 +297,7 @@ int luax_msgh(lua_State *L) {
     // 打印堆栈跟踪
     String traceback = luax_check_string(L, -1);
 
-    if (std::unique_lock<std::mutex> lock{g_app->error_mtx}) {
+    if (LockGuard<Mutex> lock{g_app->error_mtx}) {
         g_app->fatal_error = to_cstr(err);
         g_app->traceback = to_cstr(traceback);
 
@@ -499,12 +499,12 @@ void LuaThread::make(String code, String thread_name) {
     contents = to_cstr(code);
     name = to_cstr(thread_name);
 
-    std::unique_lock<std::mutex> lock{mtx};
+    LockGuard<Mutex> lock{mtx};
     thread.make(lua_thread_proc, this);
 }
 
 void LuaThread::join() {
-    if (std::unique_lock<std::mutex> lock{mtx}) {
+    if (LockGuard<Mutex> lock{mtx}) {
         thread.join();
     }
 }
@@ -628,8 +628,8 @@ void LuaVariant::push(lua_State *L) {
 //
 
 struct LuaChannels {
-    std::mutex mtx;
-    std::condition_variable select;
+    Mutex mtx;
+    Cond select;
     HashMap<LuaChannel *> by_name;
 };
 
@@ -656,7 +656,7 @@ void LuaChannel::trash() {
 }
 
 void LuaChannel::send(LuaVariant item) {
-    std::unique_lock<std::mutex> lock{mtx};
+    LockGuard<Mutex> lock{mtx};
 
     received.wait(lock, [this] { return len == items.len; });
 
@@ -683,7 +683,7 @@ static LuaVariant lua_channel_dequeue(LuaChannel *ch) {
 }
 
 LuaVariant LuaChannel::recv() {
-    std::unique_lock<std::mutex> lock{mtx};
+    LockGuard<Mutex> lock{mtx};
 
     sent.wait(lock, [this] { return len == 0; });
 
@@ -691,7 +691,7 @@ LuaVariant LuaChannel::recv() {
 }
 
 bool LuaChannel::try_recv(LuaVariant *v) {
-    std::unique_lock<std::mutex> lock{mtx};
+    LockGuard<Mutex> lock{mtx};
 
     if (len == 0) {
         return false;
@@ -706,14 +706,14 @@ LuaChannel *lua_channel_make(String name, u64 buf) {
     new (&chan->name) std::atomic<char *>();
     chan->make(name, buf);
 
-    std::unique_lock<std::mutex> lock{g_channels.mtx};
+    LockGuard<Mutex> lock{g_channels.mtx};
     g_channels.by_name[fnv1a(name)] = chan;
 
     return chan;
 }
 
 LuaChannel *lua_channel_get(String name) {
-    std::unique_lock<std::mutex> lock{g_channels.mtx};
+    LockGuard<Mutex> lock{g_channels.mtx};
 
     LuaChannel **chan = g_channels.by_name.get(fnv1a(name));
     if (chan == nullptr) {
@@ -734,12 +734,12 @@ LuaChannel *lua_channels_select(lua_State *L, LuaVariant *v) {
         buf[i] = *(LuaChannel **)luaL_checkudata(L, i + 1, "mt_channel");
     }
 
-    std::mutex mtx = {};
-    std::unique_lock<std::mutex> lock{mtx};
+    Mutex mtx = {};
+    LockGuard<Mutex> lock{mtx};
 
     while (true) {
         for (i32 i = 0; i < len; i++) {
-            std::unique_lock<std::mutex> lock{buf[i]->mtx};
+            LockGuard<Mutex> lock{buf[i]->mtx};
             if (buf[i]->len > 0) {
                 *v = lua_channel_dequeue(buf[i]);
                 return buf[i];

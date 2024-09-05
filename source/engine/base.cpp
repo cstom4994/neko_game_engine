@@ -609,52 +609,9 @@ i32 StringScanner::next_int() {
 
 #ifdef NEKO_IS_WIN32
 
-void Thread::make(ThreadProc fn, void *udata) {
-    DWORD id = 0;
-    HANDLE handle = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)fn, udata, 0, &id);
-    ptr = (void *)handle;
-}
-
-void Thread::join() {
-    WaitForSingleObject((HANDLE)ptr, INFINITE);
-    CloseHandle((HANDLE)ptr);
-}
-
 uint64_t this_thread_id() { return GetCurrentThreadId(); }
 
-#else
-
-static struct timespec ms_from_now(u32 ms) {
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-
-    unsigned long long tally = ts.tv_sec * 1000LL + ts.tv_nsec / 1000000LL;
-    tally += ms;
-
-    ts.tv_sec = tally / 1000LL;
-    ts.tv_nsec = (tally % 1000LL) * 1000000LL;
-
-    return ts;
-}
-
-void RWLock::make() { pthread_rwlock_init(&pt, nullptr); }
-void RWLock::trash() { pthread_rwlock_destroy(&pt); }
-void RWLock::shared_lock() { pthread_rwlock_rdlock(&pt); }
-void RWLock::shared_unlock() { pthread_rwlock_unlock(&pt); }
-void RWLock::unique_lock() { pthread_rwlock_wrlock(&pt); }
-void RWLock::unique_unlock() { pthread_rwlock_unlock(&pt); }
-
-void Thread::make(ThreadProc fn, void *udata) {
-    pthread_t pt = {};
-    pthread_create(&pt, nullptr, (void *(*)(void *))fn, udata);
-    ptr = (void *)pt;
-}
-
-void Thread::join() { pthread_join((pthread_t)ptr, nullptr); }
-
-#endif
-
-#if defined(NEKO_IS_LINUX) || defined(NEKO_IS_APPLE)
+#elif defined(NEKO_IS_LINUX) || defined(NEKO_IS_APPLE)
 
 uint64_t this_thread_id() {
     thread_local uint64_t s_tid = syscall(SYS_gettid);
@@ -770,7 +727,7 @@ void os_yield() {}
 #endif  // NEKO_IS_WEB
 
 void *DebugAllocator::alloc(size_t bytes, const char *file, i32 line) {
-    std::unique_lock<std::mutex> lock{mtx};
+    LockGuard<Mutex> lock{mtx};
 
     DebugAllocInfo *info = (DebugAllocInfo *)::malloc(offsetof(DebugAllocInfo, buf[bytes]));
     neko_assert(info, "FAILED_TO_ALLOCATE");
@@ -801,7 +758,7 @@ void *DebugAllocator::realloc(void *ptr, size_t new_size, const char *file, i32 
         return nullptr;
     }
 
-    std::unique_lock<std::mutex> lock{mtx};
+    LockGuard<Mutex> lock{mtx};
 
     DebugAllocInfo *old_info = (DebugAllocInfo *)((u8 *)ptr - offsetof(DebugAllocInfo, buf));
 
@@ -846,7 +803,7 @@ void DebugAllocator::free(void *ptr) {
         return;
     }
 
-    std::unique_lock<std::mutex> lock{mtx};
+    LockGuard<Mutex> lock{mtx};
 
     DebugAllocInfo *info = (DebugAllocInfo *)((u8 *)ptr - offsetof(DebugAllocInfo, buf));
 
@@ -1126,7 +1083,7 @@ String neko_os_homedir() {
 
 void neko_log(const char *file, int line, const char *fmt, ...) {
 
-    std::unique_lock<std::mutex> lock(g_app->log_mtx);
+    LockGuard<Mutex> lock(g_app->log_mtx);
 
     typedef struct {
         va_list ap;

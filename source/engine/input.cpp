@@ -221,7 +221,7 @@ void keyboard_controlled_set_v(NativeEntity ent, f32 _v) {
     v = _v;
 }
 
-void keyboard_controlled_update_all() {
+int keyboard_controlled_update_all(App *app, event_t evt) {
     vec2 dpos = luavec2(0, 0), sca;
     Scalar rot, aspect;
 
@@ -230,11 +230,11 @@ void keyboard_controlled_update_all() {
     if (kc_exists) {
         if (entity_destroyed(kc_entity)) {
             keyboard_controlled_remove(kc_entity);
-            return;
+            return 0;
         }
 
-        if (timing_get_paused()) return;
-        if (gui_has_focus()) return;
+        if (timing_get_paused()) return 0;
+        if (gui_has_focus()) return 0;
 
         rot = transform_get_rotation(kc_entity);
         sca = transform_get_scale(kc_entity);
@@ -262,6 +262,8 @@ void keyboard_controlled_update_all() {
         transform_set_rotation(kc_entity, rot);
         transform_set_scale(kc_entity, sca);
     }
+
+    return 0;
 }
 
 void keyboard_controlled_save_all(Store *s) {

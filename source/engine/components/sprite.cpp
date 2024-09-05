@@ -138,7 +138,7 @@ void sprite_fini() {
     mem_free(atlas);
 }
 
-void sprite_update_all() {
+int sprite_update_all(App *app, event_t evt) {
     Sprite *sprite;
     static vec2 min = {-0.5, -0.5}, max = {0.5, 0.5};
 
@@ -149,6 +149,8 @@ void sprite_update_all() {
     if (edit_get_enabled()) {
         entitypool_foreach(sprite, pool_sprite) { edit_bboxes_update(sprite->pool_elem.ent, bbox(vec2_mul(sprite->size, min), vec2_mul(sprite->size, max))); }
     }
+
+    return 0;
 }
 
 static int _depth_compare(const void *a, const void *b) {

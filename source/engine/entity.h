@@ -3,6 +3,7 @@
 #define NEKO_ECS_H
 
 #include "engine/base.h"
+#include "engine/event.h"
 
 #define __neko_ecs_ent_id(index, ver) (((u64)ver << 32) | index)
 #define __neko_ecs_ent_index(id) ((u32)id)
@@ -109,9 +110,11 @@ NEKO_SCRIPT(
 
 )
 
+struct App;
+
 NEKO_API() void entity_init();
 NEKO_API() void entity_fini();
-NEKO_API() void entity_update_all();
+NEKO_API() int entity_update_all(App* app, event_t evt);
 
 NEKO_API() void entity_save_all(Store* s);
 NEKO_API() void entity_load_all(Store* s);
@@ -246,12 +249,8 @@ NEKO_SCRIPT(system,
 
 )
 
-struct command_buffer_t;
-
 void system_init();
 void system_fini();
-void system_update_all();
-void system_draw_all(command_buffer_t* cb);
 
 NEKO_SCRIPT(prefab,
 

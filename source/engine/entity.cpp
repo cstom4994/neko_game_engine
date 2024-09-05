@@ -596,7 +596,7 @@ void entity_fini() {
     entitypool_free(exists_pool);
 }
 
-void entity_update_all() {
+int entity_update_all(App* app, event_t evt) {
     ecs_id_t i;
     DestroyEntry* entry;
 
@@ -610,6 +610,8 @@ void entity_update_all() {
             array_quick_remove(destroyed, i);
         }
     }
+
+    return 0;
 }
 
 void entity_save(NativeEntity* ent, const char* n, Store* s) {
@@ -921,8 +923,6 @@ static void _mouse_up(MouseCode mouse) {
 static void _mouse_move(vec2 pos) { script_mouse_move(pos); }
 static void _scroll(vec2 scroll) { script_scroll(scroll); }
 
-batch_renderer* g_batch;
-
 void system_init() {
     PROFILE_FUNC();
 
@@ -982,7 +982,7 @@ void system_init() {
     entity_init();
     transform_init();
     camera_init();
-    g_batch = batch_init(g_app->cfg.batch_vertex_capacity);
+    g_app->batch = batch_init(g_app->cfg.batch_vertex_capacity);
     sprite_init();
     tiled_init();
     font_init();
@@ -1062,7 +1062,7 @@ void system_fini() {
     console_fini();
     tiled_fini();
     sprite_fini();
-    batch_fini(g_batch);
+    batch_fini(g_app->batch);
     gui_fini();
     camera_fini();
     transform_fini();
@@ -1075,8 +1075,6 @@ void system_fini() {
     }
 
     gfx_fini(g_render);
-
-    // neko_dyn_array_free(g_app->shader_array);
 
     {
         PROFILE_BLOCK("destroy assets");
@@ -1097,49 +1095,6 @@ void system_fini() {
 
         assets_shutdown();
     }
-}
-
-void system_update_all() {
-    edit_clear();
-
-    timing_update();
-
-    scratch_update();
-
-    script_update_all();
-
-    keyboard_controlled_update_all();
-
-    physics_update_all();
-    transform_update_all();
-    camera_update_all();
-    gui_update_all();
-    sprite_update_all();
-    batch_update_all(g_batch);
-    sound_update_all();
-    tiled_update_all();
-
-    edit_update_all();
-    script_post_update_all();
-    physics_post_update_all();
-
-    entity_update_all();
-
-    gui_event_clear();
-}
-
-void system_draw_all(command_buffer_t* cb) {
-    // script_draw_all();
-    // tiled_draw_all();
-    tiled_draw_all();
-
-    sprite_draw_all();
-    batch_draw_all(g_batch);
-    edit_draw_all();
-    physics_draw_all();
-    gui_draw_all();
-
-    neko_check_gl_error();
 }
 
 // 以相同的顺序 保存/加载

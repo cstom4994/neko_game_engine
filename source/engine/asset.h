@@ -4,6 +4,7 @@
 #include "engine/base.hpp"
 #include "engine/data.h"
 #include "engine/entity.h"
+#include "engine/event.h"
 #include "engine/graphics.h"
 
 bool texture_load(AssetTexture* tex, String filename, bool flip_image_vertical = true);
@@ -74,10 +75,7 @@ struct AseSpriteData {
     void trash();
 };
 
-struct batch_renderer;
-
 struct AseSprite {
-    batch_renderer* batch;
     u64 sprite;  // index into assets
     u64 loop;    // index into AseSpriteData::by_tag
     float elapsed;
@@ -390,20 +388,22 @@ struct Assets {
     HashMap<Asset> table;
     RWLock rw_lock;
 
-    std::mutex shutdown_mtx;
-    std::condition_variable shutdown_notify;
+    Mutex shutdown_mtx;
+    Cond shutdown_notify;
     bool shutdown;
 
     Thread reload_thread;
 
-    std::mutex changes_mtx;
+    Mutex changes_mtx;
     Array<FileChange> changes;
     Array<FileChange> tmp_changes;
 };
 
+struct App;
+
 void assets_shutdown();
 void assets_start_hot_reload();
-void assets_perform_hot_reload_changes();
+int assets_perform_hot_reload_changes(App* app, event_t evt);
 
 bool asset_load_kind(AssetKind kind, String filepath, Asset* out);
 bool asset_load(AssetLoadData desc, String filepath, Asset* out);

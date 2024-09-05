@@ -130,9 +130,11 @@ typedef struct batch_renderer {
     GLuint texture;
 } batch_renderer;
 
+struct App;
+
 NEKO_API() batch_renderer* batch_init(int vertex_capacity);
 NEKO_API() void batch_fini(batch_renderer* batch);
-NEKO_API() void batch_update_all(batch_renderer* batch);
+NEKO_API() int batch_update_all(App *app, event_t evt);
 NEKO_API() void batch_draw_all(batch_renderer* batch);
 
 NEKO_API() void batch_flush(batch_renderer* renderer);

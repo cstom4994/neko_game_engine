@@ -1099,12 +1099,14 @@ void tiled_fini() {
     entitypool_free(pool_tiled);
 }
 
-void tiled_update_all() {
+int tiled_update_all(App *app, event_t evt) {
     Tiled *tiled;
 
     entitypool_remove_destroyed(pool_tiled, tiled_remove);
 
     entitypool_foreach(tiled, pool_tiled) { tiled->pos = transform_get_position(tiled->pool_elem.ent); }
+
+    return 0;
 }
 
 void tiled_draw_all() {
