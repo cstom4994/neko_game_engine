@@ -20,7 +20,7 @@
 #include "vendor/atlas.h"
 
 // deps
-#include <stb_truetype.h>
+#include "vendor/stb_truetype.h"
 
 const u32 ui_renderer_max_quads = 1024;
 

@@ -478,7 +478,7 @@ static int neko_platform(lua_State *L) {
 }
 
 static int neko_dt(lua_State *L) {
-    lua_pushnumber(L, timing_instance.dt);
+    lua_pushnumber(L, get_timing_instance()->dt);
     return 1;
 }
 
@@ -518,7 +518,7 @@ static int neko_difftime(lua_State *L) {
 }
 
 static int neko_elapsed(lua_State *L) {
-    lua_pushnumber(L, stm_sec(stm_now() - timing_instance.startup));
+    lua_pushnumber(L, stm_sec(stm_now() - get_timing_instance()->startup));
     return 1;
 }
 
@@ -2906,7 +2906,7 @@ static int open_embed_core(lua_State *L) {
 
 #endif
 
-DEFINE_LUAOPEN_EXTERN(luadb)
+// DEFINE_LUAOPEN_EXTERN(luadb)
 DEFINE_LUAOPEN_EXTERN(unittest)
 
 #if 0
@@ -3138,6 +3138,9 @@ static int open_neko(lua_State *L) {
 }
 
 void open_neko_api(lua_State *L) {
+
+    luaL_checkversion(L);
+
     // clang-format off
     lua_CFunction funcs[] = {
         open_mt_thread,
@@ -3174,6 +3177,9 @@ void open_neko_api(lua_State *L) {
 
     open_ui(L);
     lua_setfield(L, -2, "ui");
+
+    open_db(L);
+    lua_setfield(L, -2, "db");
 
     lua_pop(L, 1);
 

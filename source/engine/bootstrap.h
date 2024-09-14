@@ -48,7 +48,7 @@ NEKO_SCRIPT(
             f32 true_dt;  // 实际增量时间 不受 scale/pause 影响
         } AppTime;
 
-        NEKO_EXPORT AppTime timing_instance;
+        NEKO_EXPORT AppTime * get_timing_instance();
 
         NEKO_EXPORT void timing_set_scale(f32 s);
 
@@ -71,7 +71,9 @@ struct App {
 
     gfx_texture_t test_ase;
 
-    neko::neko_luastate LS;
+    AppTime timing_instance;
+
+    lua_State *L;
     ecs_t *ECS;
 
     batch_renderer *batch;
@@ -139,8 +141,7 @@ inline void fatal_error(String str) {
     }
 }
 
-inline neko::neko_luastate &ENGINE_LS() { return g_app->LS; }
-inline lua_State *&ENGINE_LUA() { return g_app->LS.L; }
+inline lua_State *&ENGINE_LUA() { return g_app->L; }
 inline ecs_t *&ENGINE_ECS() { return g_app->ECS; }
 
 i32 neko_buildnum(void);

@@ -663,8 +663,11 @@ ng.BBox = ffi.metatype('BBox', {
     }
 })
 
-
 -- hot_require 'nekogame.entity_table'
+
+ng.is_nil_entity = function(ent)
+    return ent.id == 0
+end
 
 local entity_table_mt__regname = ng.NativeEntity(0x114514)
 local defaults_table_mt__regname = ng.NativeEntity(0x114514 + 1)
@@ -849,6 +852,12 @@ end
 
 -- hot_require 'nekogame.system'
 
+ng.cent = function(ent)
+    local ent_c = ng.api.core.NativeEntity.new()
+    ent_c.id = ent.id
+    return ent_c
+end
+
 -- ng.systems (shortcut ns) is a special table such that ns.sys.func evaluates
 -- to C function sys_func, eg. ns.transform.rotate(...) becomes
 -- transform_rotate(...)
@@ -886,7 +895,7 @@ ng.systems = setmetatable({}, systems_mt)
 ns = ng.systems
 
 function ng.__fire_event(event, args)
-    -- store system names before firing event because systems list may change
+    -- 在触发事件之前存储系统名称 因为系统列表可能会更改
 
     local sysnames = {}
     for name, sys in pairs(ns) do

@@ -22,10 +22,10 @@
 #endif
 
 // deps
-#include <stb_image.h>
+#include "vendor/stb_image.h"
 
 // miniz
-#include <miniz.h>
+#include "vendor/miniz.h"
 
 #define CUTE_ASEPRITE_ASSERT neko_assert
 #define CUTE_ASEPRITE_ALLOC(size, ctx) mem_alloc(size)

@@ -1,6 +1,7 @@
 -- 添加nekogame需要路径并加载nekogame
 -- hot_require 'nekogame'
 mu = neko.ui
+db = neko.db
 
 function neko.__define_default_callbacks()
     neko.game_init_thread = function()
@@ -64,7 +65,7 @@ if run then
     end
 
     -- 没有相机则添加默认值
-    if ns.camera.get_current_camera() == ng.entity_nil then
+    if ng.is_nil_entity(ns.camera.get_current_camera()) then
         ng.add {
             transform = {
                 position = ng.vec2(0, 0)

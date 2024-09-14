@@ -8,9 +8,9 @@
 #include "engine/luax.hpp"
 
 // deps
-#include <stb_image.h>
-#include <stb_rect_pack.h>
-#include <stb_truetype.h>
+#include "vendor/stb_image.h"
+#include "vendor/stb_rect_pack.h"
+#include "vendor/stb_truetype.h"
 
 #if 0
 
@@ -789,8 +789,6 @@ int neko_font_load(lua_State *L) {
 #include "engine/graphics.h"
 
 // deps
-#include <stb_image_write.h>
-
 #include "vendor/cute_aseprite.h"
 
 // mt_sprite

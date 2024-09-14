@@ -177,7 +177,7 @@ int _game_draw(App *app, event_t evt) {
     }
 
     luax_neko_get(L, "__timer_update");
-    lua_pushnumber(L, timing_instance.delta);
+    lua_pushnumber(L, get_timing_instance()->delta);
     luax_pcall(L, 1, 0);
 
     glEnable(GL_BLEND);
@@ -340,8 +340,8 @@ static void _game_init(int argc, char **argv) {
     srand(time(NULL));
 
     // time set
-    timing_instance.startup = stm_now();
-    timing_instance.last = stm_now();
+    get_timing_instance()->startup = stm_now();
+    get_timing_instance()->last = stm_now();
 
     // init systems
     console_puts("welcome to neko!");
@@ -365,30 +365,39 @@ static void _game_init(int argc, char **argv) {
 
     eventhandler_t *eh = eventhandler_instance();
 
-    event_register(eh, g_app, preupdate, (evt_callback_t)assets_perform_hot_reload_changes, NULL);
-    event_register(eh, g_app, preupdate, (evt_callback_t)edit_clear, NULL);
-    event_register(eh, g_app, preupdate, (evt_callback_t)timing_update, NULL);
+    struct {
+        int evt;
+        evt_callback_t cb;
+    } evt_list[] = {
+            {preupdate, (evt_callback_t)assets_perform_hot_reload_changes},  //
+            {preupdate, (evt_callback_t)edit_clear},                         //
+            {preupdate, (evt_callback_t)timing_update},                      //
 
-    event_register(eh, g_app, update, (evt_callback_t)scratch_update, NULL);
-    event_register(eh, g_app, update, (evt_callback_t)script_update_all, NULL);
-    event_register(eh, g_app, update, (evt_callback_t)keyboard_controlled_update_all, NULL);
-    event_register(eh, g_app, update, (evt_callback_t)physics_update_all, NULL);
-    event_register(eh, g_app, update, (evt_callback_t)transform_update_all, NULL);
+            {update, (evt_callback_t)scratch_update},
+            {update, (evt_callback_t)script_update_all},
+            {update, (evt_callback_t)keyboard_controlled_update_all},
+            {update, (evt_callback_t)physics_update_all},
+            {update, (evt_callback_t)transform_update_all},
 
-    event_register(eh, g_app, update, (evt_callback_t)camera_update_all, NULL);
-    event_register(eh, g_app, update, (evt_callback_t)gui_update_all, NULL);
-    event_register(eh, g_app, update, (evt_callback_t)sprite_update_all, NULL);
-    event_register(eh, g_app, update, (evt_callback_t)batch_update_all, NULL);
-    event_register(eh, g_app, update, (evt_callback_t)sound_update_all, NULL);
-    event_register(eh, g_app, update, (evt_callback_t)tiled_update_all, NULL);
-    event_register(eh, g_app, update, (evt_callback_t)edit_update_all, NULL);
+            {update, (evt_callback_t)camera_update_all},
+            {update, (evt_callback_t)gui_update_all},
+            {update, (evt_callback_t)sprite_update_all},
+            {update, (evt_callback_t)batch_update_all},
+            {update, (evt_callback_t)sound_update_all},
+            {update, (evt_callback_t)tiled_update_all},
+            {update, (evt_callback_t)edit_update_all},
 
-    event_register(eh, g_app, postupdate, (evt_callback_t)script_post_update_all, NULL);
-    event_register(eh, g_app, postupdate, (evt_callback_t)physics_post_update_all, NULL);
-    event_register(eh, g_app, postupdate, (evt_callback_t)entity_update_all, NULL);
-    event_register(eh, g_app, postupdate, (evt_callback_t)gui_event_clear, NULL);
+            {postupdate, (evt_callback_t)script_post_update_all},
+            {postupdate, (evt_callback_t)physics_post_update_all},
+            {postupdate, (evt_callback_t)entity_update_all},
+            {postupdate, (evt_callback_t)gui_event_clear},
 
-    event_register(eh, g_app, draw, (evt_callback_t)_game_draw, NULL);
+            {draw, (evt_callback_t)_game_draw},
+    };
+
+    for (auto evt : evt_list) {
+        event_register(eh, g_app, evt.evt, evt.cb, NULL);
+    }
 }
 
 static void _game_fini() {
@@ -627,10 +636,10 @@ void test_native_script() {
     sprite_set_texsize(player, luavec2(32.0f, 32.0f));
 
     // who gets keyboard control?
-    keyboard_controlled_add(camera);
+    // keyboard_controlled_add(camera);
 }
 
-AppTime timing_instance;
+AppTime *get_timing_instance() { return &g_app->timing_instance; }
 
 f32 timing_get_elapsed() { return glfwGetTime() * 1000.0f; }
 
@@ -650,12 +659,12 @@ int timing_update(App *app, event_t evt) {
     if (last_time < 0) last_time = glfwGetTime();
 
     curr_time = glfwGetTime();
-    timing_instance.true_dt = curr_time - last_time;
-    timing_instance.dt = g_app->paused ? 0.0f : g_app->scale * timing_instance.true_dt;
+    get_timing_instance()->true_dt = curr_time - last_time;
+    get_timing_instance()->dt = g_app->paused ? 0.0f : g_app->scale * get_timing_instance()->true_dt;
     last_time = curr_time;
 
     {
-        AppTime *time = &timing_instance;
+        AppTime *time = get_timing_instance();
 
 #if 0
         if (time->target_ticks > 0) {

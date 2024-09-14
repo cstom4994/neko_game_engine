@@ -1042,7 +1042,7 @@ void system_init() {
     input_add_scroll_callback(_scroll);
 
     if (g_app->cfg.target_fps != 0) {
-        timing_instance.target_ticks = 1000000000 / g_app->cfg.target_fps;
+        get_timing_instance()->target_ticks = 1000000000 / g_app->cfg.target_fps;
     }
 
 #ifdef NEKO_IS_WIN32

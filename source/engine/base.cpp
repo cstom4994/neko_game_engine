@@ -2127,29 +2127,29 @@ REGISTER_TYPE_DF(String)
 #define STBI_FREE(p) mem_free(p)
 
 #define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
+#include "vendor/stb_image.h"
 
 #define STBIR_MALLOC(size, user_data) ((void)(user_data), mem_alloc(size))
 #define STBIR_FREE(ptr, user_data) ((void)(user_data), mem_free(ptr))
 
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
-#include <stb_image_resize2.h>
+#include "vendor/stb_image_resize2.h"
 
 #define STBIW_MALLOC(sz) mem_alloc(sz)
 #define STBIW_REALLOC(p, newsz) mem_realloc(p, newsz)
 #define STBIW_FREE(p) mem_free(p)
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include <stb/stb_image_write.h>
+#include "vendor/stb_image_write.h"
 
 #define STB_RECT_PACK_IMPLEMENTATION
-#include <stb/stb_rect_pack.h>
+#include "vendor/stb_rect_pack.h"
 
 #define STBTT_malloc(x, u) ((void)(u), mem_alloc(x))
 #define STBTT_free(x, u) ((void)(u), mem_free(x))
 
 #define STB_TRUETYPE_IMPLEMENTATION
-#include <stb_truetype.h>
+#include "vendor/stb_truetype.h"
 
 #ifdef __clang__
 #pragma clang diagnostic push

@@ -24,16 +24,23 @@ local NEKO_BOX2D = false
 -- local NEKO_AUDIO = "miniaudio"
 local NEKO_AUDIO = "none"
 
+local NEKO_CFFI = true
+
 add_requires("glew")
 add_requires("glfw")
-add_requires("miniz")
-add_requires("stb")
 
-add_requires("openrestry-luajit", {
-    configs = {
-        gc64 = true
-    }
-})
+if NEKO_CFFI then
+    add_requires("libffi")
+    add_requires("lua")
+
+    add_defines("NEKO_CFFI")
+else
+    add_requires("openrestry-luajit", {
+        configs = {
+            gc64 = true
+        }
+    })
+end
 
 if NEKO_BOX2D then
     add_requires("box2d")
@@ -66,6 +73,7 @@ if is_plat("windows") then
     -- add_ldflags("/MACHINE:X64", "/SUBSYSTEM:CONSOLE", "/INCREMENTAL")
     -- add_cxflags("/MT")
     add_syslinks("ws2_32", "wininet")
+    add_defines("FFI_LITTLE_ENDIAN")
 elseif is_plat("linux") then
     add_cxflags("-Wtautological-compare")
     add_cxflags("-fno-strict-aliasing", "-fms-extensions", "-finline-functions", "-fPIC")
@@ -94,13 +102,23 @@ do
     add_files("source/engine/**.cpp")
     add_files("source/vendor/luaalloc.c")
     add_files("source/vendor/http.c")
+    add_files("source/vendor/miniz.c")
     add_files("source/vendor/ui.cpp")
 
     add_headerfiles("source/engine/**.h", "source/engine/**.hpp", "source/engine2/**.h", "source/vendor/**.h")
 
-    add_packages("miniz")
-    add_packages("glfw", "stb", "glew")
-    add_packages("openrestry-luajit")
+    if NEKO_CFFI then
+        add_files("source/vendor/bit.c")
+        add_files("source/vendor/cffi/**.cc")
+        add_headerfiles("source/vendor/cffi/**.hh")
+
+        add_packages("libffi")
+        add_packages("lua")
+    else
+        add_packages("openrestry-luajit")
+    end
+
+    add_packages("glfw", "glew")
 
     if NEKO_BOX2D then
         add_packages("box2d")

@@ -80,9 +80,9 @@ void event_pump(eventhandler_t* handler) {
 // event_t.listen(obj, evt, func [, filter])
 static int w_event_listen(lua_State* L) {
     lua_pushvalue(L, 1);
-    int ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    i64 ref = luaL_ref(L, LUA_REGISTRYINDEX);
     int evt = luaL_checkinteger(L, 2);
-    int cb = 0;
+    i64 cb = 0;
     if (lua_isfunction(L, 3)) {
         lua_pushvalue(L, 3);
         cb = luaL_ref(L, LUA_REGISTRYINDEX);

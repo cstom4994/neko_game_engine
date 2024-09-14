@@ -7,7 +7,7 @@
 #include "engine/base.hpp"
 
 // deps
-#include <stb_image.h>
+#include "vendor/stb_image.h"
 
 extern const mat3* camera_get_inverse_view_matrix_ptr();  // for GLSL binding : in component.cpp
 

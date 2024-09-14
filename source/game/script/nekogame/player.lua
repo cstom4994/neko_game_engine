@@ -7,18 +7,18 @@ local Player = ns.player
 
 function ns.player.update_all()
     local cam = ns.camera.get_current_camera()
-    if cam == ng.entity_nil then
+    if ng.is_nil_entity(cam) then
         print("player no camera?")
         return
     end
     local pl = Player.current_player
     local cam_pos = ns.transform.get_position(cam)
-    if pl == ng.entity_nil then
+    if ng.is_nil_entity(pl) then
         -- print("no player?")
         return
     end
     local pl_pos = ns.transform.get_position(pl)
-    local dt = ns.timing.instance.dt
+    local dt = ng.get_timing_instance().dt
 
     local blend = 1 - 0.85 ^ (dt * 40)
     cam_pos.x = lerp(cam_pos.x, pl_pos.x, blend)
@@ -28,7 +28,7 @@ function ns.player.update_all()
     ns.transform.set_position(cam, cam_pos)
     -- print(table.show({cam_pos.x,cam_pos.y}))
 
-    if ns.edit.get_enabled() and pl ~= ng.entity_nil then
+    if ns.edit.get_enabled() and not ng.is_nil_entity(pl) then
         -- ns.edit.bboxes_update(pl, ng.BBox(ng.bbox_bound(pl_pos, b)));
     end
 end
@@ -44,7 +44,9 @@ end
 
 function ns.player.add(ent)
     print("ns.player.add " .. ent.id)
-    assert(Player.current_player == ng.entity_nil)
+
+    print(Player.current_player)
+    assert(ng.is_nil_entity(Player.current_player))
     Player.current_player = ent
 
     ns.transform.add(ent)
@@ -68,7 +70,7 @@ function ns.aseprite.update_all()
     for ent, e in pairs(Aseprite.pool) do
         if e.ase_data ~= nil then
             local ase_data = e.ase_data
-            local dt = ns.timing.instance.dt
+            local dt = ng.get_timing_instance().dt
             ase_data:update(dt)
         end
     end
@@ -78,7 +80,7 @@ function ns.aseprite.draw_all()
     for ent, e in pairs(Aseprite.pool) do
         if e.ase_data ~= nil then
             local ase_data = e.ase_data
-            local dt = ns.timing.instance.dt
+            local dt = ng.get_timing_instance().dt
 
             local pos = ns.transform.get_position(ent)
 

@@ -917,7 +917,7 @@ static void _text_update_all() {
     Gui *gui;
     static vec2 size = {TEXT_FONT_W, TEXT_FONT_H};
 
-    cursor_blink_time += 2 * timing_instance.true_dt;
+    cursor_blink_time += 2 * get_timing_instance()->true_dt;
 
     entitypool_remove_destroyed(text_pool, gui_text_remove);
 

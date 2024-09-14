@@ -518,14 +518,14 @@ void draw_gui() {
                 ui_layout_row(g_app->ui, 1, ui_widths(-1), 0);
 
                 static f32 delta, fps = NEKO_DEFAULT_VAL();
-                delta = timing_instance.true_dt;
+                delta = get_timing_instance()->true_dt;
                 fps = 1.f / delta;
 
                 Color256 col = NEKO_COLOR_GREEN;
                 // ui_textf_colored(g_app->ui, &col, "Neko %d", neko_buildnum());
 
-                ui_labelf("%.2f Mb %.2f Mb %.1lf ms/frame (%.1lf FPS)", lua_gc(ENGINE_LUA(), LUA_GCCOUNT, 0) / 1024.f, (f32)g_allocator->alloc_size / (1024 * 1024), timing_instance.true_dt * 1000.f,
-                          1.f / timing_instance.true_dt);
+                ui_labelf("%.2f Mb %.2f Mb %.1lf ms/frame (%.1lf FPS)", lua_gc(ENGINE_LUA(), LUA_GCCOUNT, 0) / 1024.f, (f32)g_allocator->alloc_size / (1024 * 1024),
+                          get_timing_instance()->true_dt * 1000.f, 1.f / get_timing_instance()->true_dt);
 
                 ui_labelf("FPS: %.2lf Delta: %.6lf", fps, delta * 1000.f);
 
@@ -2131,7 +2131,7 @@ static int mt_b2_world_gc(lua_State *L) {
 
 static int mt_b2_world_step(lua_State *L) {
     Physics *physics = (Physics *)luaL_checkudata(L, 1, "mt_b2_world");
-    lua_Number dt = luaL_optnumber(L, 2, timing_instance.dt);
+    lua_Number dt = luaL_optnumber(L, 2, get_timing_instance()->dt);
     lua_Integer vel_iters = luaL_optinteger(L, 3, 6);
     lua_Integer pos_iters = luaL_optinteger(L, 4, 2);
 

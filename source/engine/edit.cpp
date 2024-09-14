@@ -35,10 +35,9 @@
 #include "engine/ui.h"
 
 // deps
-
-#include <stb_image.h>
-#include <stb_image_write.h>
-#include <stb_rect_pack.h>
+#include "vendor/stb_image.h"
+#include "vendor/stb_image_write.h"
+#include "vendor/stb_rect_pack.h"
 
 #if 1
 
@@ -1583,16 +1582,6 @@ int neko::luainspector::luainspector_draw(lua_State *L) {
             ui_labelf("Lua Remaining: %.2lf mb", ((f64)bytes / 1024.0f));
 
             if (ui_button(ui, "GC")) lua_gc(L, LUA_GCCOLLECT, 0);
-
-            if (ui_button(ui, "Memory")) {
-                const size_t *alive, *total, *blocks;
-                unsigned step, n = luaalloc_getstats(ENGINE_LS().LA, &alive, &total, &blocks, &step);
-                if (n) {
-                    for (unsigned i = 0, a = 1, b = step; i < n - 1; ++i, a = b + 1, b += step)
-                        printf("%zu blocks of %u..%u bytes: %zu allocations alive, %zu done all-time\n", blocks[i], a, b, alive[i], total[i]);
-                    printf("large allocations: %zu alive, %zu done all-time\n", alive[n - 1], total[n - 1]);
-                }
-            }
 
             ui_layout_row(g_app->ui, 3, ui_widths(150, 200, 200), 0);
             for (auto kv : g_assets.table) {

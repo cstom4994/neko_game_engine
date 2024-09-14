@@ -51,12 +51,20 @@ LUAOPEN_EMBED_DATA(open_embed_bootstrap, "bootstrap.lua", g_lua_bootstrap_data);
 
 extern "C" {
 int luaopen_http(lua_State *L);
+
+#if defined(NEKO_CFFI)
+int luaopen_cffi(lua_State *L);
+int luaopen_bit(lua_State *L);
+#endif
 }
 
 void package_preload_embed(lua_State *L) {
 
     luaL_Reg preloads[] = {
-            // {"common", open_embed_common},
+#if defined(NEKO_CFFI)
+            {"ffi", luaopen_cffi},
+            {"bit", luaopen_bit},
+#endif
             {"http", luaopen_http},
     };
 
@@ -675,6 +683,10 @@ LUASTRUCT_FIELD(b, float)
 LUASTRUCT_FIELD(a, float)
 LUASTRUCT_END
 
+LUASTRUCT_BEGIN(NativeEntity)
+LUASTRUCT_FIELD(id, uint)
+LUASTRUCT_END
+
 void createStructTables(lua_State *L) {
 #define XX(T) T##_create(L, #T)
     // vec4_create(L, "vec4");
@@ -683,6 +695,7 @@ void createStructTables(lua_State *L) {
     // XX(neko_framebuffer_t);
     XX(gfx_texture_t);
     XX(Color);
+    XX(NativeEntity);
 
     ARRAY_uchar8_create(L);
 #undef XX
@@ -1238,7 +1251,7 @@ void script_init() {
     neko::timer timer;
     timer.start();
 
-    ENGINE_LS() = neko::neko_lua_create();
+    ENGINE_LUA() = neko::neko_lua_create();
 
     auto L = ENGINE_LUA();
 
@@ -1293,7 +1306,7 @@ void script_fini() {
     lua_pop(L, 1);  // FFI
     lua_pop(L, 1);  // luax_msgh
 
-    neko::neko_lua_fini(ENGINE_LS());
+    neko::neko_lua_fini(ENGINE_LUA());
 }
 
 int script_update_all(App *app, event_t evt) {
@@ -1303,7 +1316,7 @@ int script_update_all(App *app, event_t evt) {
     luax_pcall(ENGINE_LUA(), 0, 0);
 
     luax_get(ENGINE_LUA(), "neko", "game_loop");
-    neko::luabind::LuaStack<f32>::push(ENGINE_LUA(), timing_instance.dt);
+    neko::luabind::LuaStack<f32>::push(ENGINE_LUA(), get_timing_instance()->dt);
     luax_pcall(ENGINE_LUA(), 1, 0);
 
     script_push_event("update_all");
@@ -1428,3 +1441,224 @@ void script_load_all(Store *s) {
             mem_free(str);
         }
 }
+
+#ifdef NEKO_IS_WIN32
+#include <windows.h>
+
+static void alice_init_script_context_library(alice_script_context_t *context, const char *assembly_path) {
+    assert(context);
+
+    context->handle = LoadLibraryA(assembly_path);
+    if (!context->handle) {
+        console_log("Failed to load script assembly: `%s'", assembly_path);
+    }
+}
+
+static void *alice_get_script_proc(alice_script_context_t *context, const char *name) {
+    assert(context);
+
+    void *function = GetProcAddress((HMODULE)context->handle, name);
+    if (!function) {
+        console_log("Failed to locate function `%s'", name);
+    }
+
+    return function;
+}
+
+static void alice_deinit_script_context_library(alice_script_context_t *context) {
+    assert(context);
+
+    FreeLibrary((HMODULE)context->handle);
+}
+
+#else
+
+#endif
+
+#if 0
+
+alice_script_context_t *alice_new_script_context(App *scene, const char *assembly_path) {
+    assert(scene);
+
+    alice_script_context_t *new_ctx = (alice_script_context_t *)mem_alloc(sizeof(alice_script_context_t));
+
+    new_ctx->scripts = NULL;
+    new_ctx->script_count = 0;
+    new_ctx->script_capacity = 0;
+
+    new_ctx->scene = scene;
+
+    alice_init_script_context_library(new_ctx, assembly_path);
+
+    return new_ctx;
+}
+
+void alice_free_script_context(alice_script_context_t *context) {
+    assert(context);
+
+    alice_deinit_script_context_library(context);
+
+    if (context->script_capacity > 0) {
+        free(context->scripts);
+    }
+
+    free(context);
+}
+
+alice_script_t *alice_new_script(alice_script_context_t *context, NativeEntity entity, const char *get_instance_size_name, const char *on_init_name, const char *on_update_name,
+                                 const char *on_physics_update_name, const char *on_free_name, bool init_on_create) {
+    assert(context);
+
+    if (context->script_count >= context->script_capacity) {
+        context->script_capacity = alice_grow_capacity(context->script_capacity);
+        context->scripts = (alice_script_t *)mem_realloc(context->scripts, context->script_capacity * sizeof(alice_script_t));
+    }
+
+    alice_script_t *new_ctx = &context->scripts[context->script_count++];
+
+    new_ctx->instance = NULL;
+
+    new_ctx->entity = entity;
+
+    NativeEntity *entity_ptr = alice_get_entity_ptr(context->scene, entity);
+    entity_ptr->script = new_ctx;
+
+    new_ctx->get_instance_size_name = NULL;
+    new_ctx->on_init_name = NULL;
+    new_ctx->on_update_name = NULL;
+    new_ctx->on_physics_update_name = NULL;
+    new_ctx->on_free_name = NULL;
+
+    new_ctx->on_init = NULL;
+    new_ctx->on_update = NULL;
+    new_ctx->on_physics_update = NULL;
+    new_ctx->on_free = NULL;
+
+    alice_script_get_instance_size_f get_size = NULL;
+    if (get_instance_size_name) {
+        new_ctx->get_instance_size_name = alice_copy_string(get_instance_size_name);
+
+        get_size = alice_get_script_proc(context, get_instance_size_name);
+    }
+
+    if (on_init_name) {
+        new_ctx->on_init_name = alice_copy_string(on_init_name);
+        new_ctx->on_init = alice_get_script_proc(context, on_init_name);
+    }
+
+    if (on_update_name) {
+        new_ctx->on_update_name = alice_copy_string(on_update_name);
+        new_ctx->on_update = alice_get_script_proc(context, on_update_name);
+    }
+
+    if (on_physics_update_name) {
+        new_ctx->on_physics_update_name = alice_copy_string(on_physics_update_name);
+        new_ctx->on_physics_update = alice_get_script_proc(context, on_physics_update_name);
+    }
+
+    if (on_free_name) {
+        new_ctx->on_free_name = alice_copy_string(on_free_name);
+        new_ctx->on_free = alice_get_script_proc(context, on_free_name);
+    }
+
+    if (get_size) {
+        new_ctx->instance = malloc(get_size());
+    }
+
+    if (init_on_create && new_ctx->on_init) {
+        new_ctx->on_init(context->scene, entity, new_ctx->instance);
+    }
+
+    return new_ctx;
+}
+
+void alice_delete_script(alice_script_context_t *context, alice_script_t *script) {
+    assert(context);
+    assert(script);
+
+    i32 index = -1;
+
+    for (u32 i = 0; i < context->script_count; i++) {
+        if (&context->scripts[i] == script) {
+            index = i;
+            break;
+        }
+    }
+
+    if (index == -1) {
+        return;
+    }
+
+    alice_deinit_script(context, &context->scripts[index]);
+
+    for (u32 i = index; i < context->script_count - 1; i++) {
+        context->scripts[i] = context->scripts[i + 1];
+    }
+
+    context->script_count--;
+}
+
+void alice_deinit_script(alice_script_context_t *context, alice_script_t *script) {
+    assert(context);
+    assert(script);
+
+    if (script->on_free) {
+        script->on_free(context->scene, script->entity, script->instance);
+    }
+
+    if (script->instance) {
+        free(script->instance);
+    }
+
+    NativeEntity *entity_ptr = alice_get_entity_ptr(context->scene, script->entity);
+    entity_ptr->script = NULL;
+
+    free(script->get_instance_size_name);
+    free(script->on_init_name);
+    free(script->on_update_name);
+    free(script->on_free_name);
+}
+
+void alice_init_scripts(alice_script_context_t *context) {
+    assert(context);
+
+    for (u32 i = 0; i < context->script_count; i++) {
+        alice_script_t *script = &context->scripts[i];
+        if (script->on_init) {
+            script->on_init(context->scene, script->entity, script->instance);
+        }
+    }
+}
+
+void alice_update_scripts(alice_script_context_t *context, double timestep) {
+    assert(context);
+
+    for (u32 i = 0; i < context->script_count; i++) {
+        alice_script_t *script = &context->scripts[i];
+        if (script->on_update) {
+            script->on_update(context->scene, script->entity, script->instance, timestep);
+        }
+    }
+}
+
+void alice_physics_update_scripts(alice_script_context_t *context, double timestep) {
+    assert(context);
+
+    for (u32 i = 0; i < context->script_count; i++) {
+        alice_script_t *script = &context->scripts[i];
+        if (script->on_physics_update) {
+            script->on_physics_update(context->scene, script->entity, script->instance, timestep);
+        }
+    }
+}
+
+void alice_free_scripts(alice_script_context_t *context) {
+    assert(context);
+
+    for (u32 i = 0; i < context->script_count; i++) {
+        alice_script_t *script = &context->scripts[i];
+        alice_deinit_script(context, script);
+    }
+}
+
+#endif

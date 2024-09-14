@@ -30,15 +30,15 @@ NEKO_API() void script_load_all(Store *s);
 NEKO_API() int luax_pcall_nothrow(lua_State *L, int nargs, int nresults);
 NEKO_API() void script_push_event(const char *event);
 
-#define errcheck(...)                                                  \
-    do                                                                 \
-        if (__VA_ARGS__) {                                             \
-            console_printf("lua: %s\n", lua_tostring(L, -1));          \
-            lua_pop(L, 1);                                             \
-            if (LockGuard<Mutex> lock{g_app->error_mtx}) { \
-                g_app->error_mode.store(true);                         \
-            }                                                          \
-        }                                                              \
+#define errcheck(...)                                         \
+    do                                                        \
+        if (__VA_ARGS__) {                                    \
+            console_printf("lua: %s\n", lua_tostring(L, -1)); \
+            lua_pop(L, 1);                                    \
+            if (LockGuard<Mutex> lock{g_app->error_mtx}) {    \
+                g_app->error_mode.store(true);                \
+            }                                                 \
+        }                                                     \
     while (0)
 
 #endif
@@ -123,5 +123,40 @@ NEKO_API() const char *neko_lua_enum_next_value_name_type(lua_State *L, neko_lua
 NEKO_API() void createStructTables(lua_State *L);
 
 NEKO_API() void open_neko_api(lua_State *L);
+
+struct App;
+
+typedef u32 (*alice_script_get_instance_size_f)();
+typedef void (*alice_script_init_f)(App *scene, NativeEntity entity, void *);
+typedef void (*alice_script_update_f)(App *scene, NativeEntity entity, void *, double);
+typedef void (*alice_script_physics_update_f)(App *scene, NativeEntity entity, void *, double);
+typedef void (*alice_script_free_f)(App *scene, NativeEntity entity, void *);
+
+typedef struct alice_script_t {
+    void *instance;
+
+    char *get_instance_size_name;
+    char *on_init_name;
+    char *on_update_name;
+    char *on_physics_update_name;
+    char *on_free_name;
+
+    alice_script_init_f on_init;
+    alice_script_update_f on_update;
+    alice_script_physics_update_f on_physics_update;
+    alice_script_free_f on_free;
+
+    NativeEntity entity;
+} alice_script_t;
+
+typedef struct alice_script_context_t {
+    alice_script_t *scripts;
+    u32 script_count;
+    u32 script_capacity;
+
+    App *scene;
+
+    void *handle;
+} alice_script_context_t;
 
 #endif

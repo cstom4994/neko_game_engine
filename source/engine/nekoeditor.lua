@@ -1345,8 +1345,8 @@ field_types['NativeEntity'] = {
         end
 
         -- display, select on click
-        ns.gui_text.set_str(field.text, val == ng.entity_nil and '(nil)' or string.format('[%d]', val.id))
-        if ns.gui.event_mouse_down(field.textbox) == ng.MC_LEFT and val ~= ng.entity_nil then
+        ns.gui_text.set_str(field.text, ng.is_nil_entity(val) and '(nil)' or string.format('[%d]', val.id))
+        if ns.gui.event_mouse_down(field.textbox) == ng.MC_LEFT and not ng.is_nil_entity(val) then
             ns.edit.select_clear()
             ns.edit.select[val] = true
         end
@@ -1982,10 +1982,10 @@ function ns.edit.modes.grab.update_all()
     for ent in pairs(ns.edit.select) do
         -- move only if no ancestor is being moved (avoid double-move)
         local anc = ns.transform.get_parent(ent)
-        while anc ~= ng.entity_nil and not ns.edit.select[anc] do
+        while not ng.is_nil_entity(anc) and not ns.edit.select[anc] do
             anc = ns.transform.get_parent(anc)
         end
-        if anc == ng.entity_nil then
+        if ng.is_nil_entity(anc) then
             -- find translation in parent space
             local parent = ns.transform.get_parent(ent)
             local m = ng.mat3_inverse(ns.transform.get_world_matrix(parent))
@@ -2646,7 +2646,7 @@ function ns.animation.update_all()
 
     for ent, entry in pairs(ns.animation.tbl) do
         if entry.curr_anim then
-            local dt = ns.timing.instance.dt
+            local dt = ng.get_timing_instance().dt
             local anim = entry.anims[entry.curr_anim]
 
             -- next frame?

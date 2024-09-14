@@ -8,6 +8,7 @@
 #include "engine/component.h"
 #include "engine/graphics.h"
 #include "engine/input.h"
+#include "engine/scripting.h"
 #include "engine/ui.h"
 
 static CArray *key_down_cbs;
@@ -165,6 +166,11 @@ static void _scroll_callback(GLFWwindow *window, double x, double y) {
     array_foreach(f, scroll_cbs) (*f)(luavec2(x, y));
 }
 
+int keyboard_controlled_add(lua_State *L);
+int keyboard_controlled_remove(lua_State *L);
+int keyboard_controlled_has(lua_State *L);
+int keyboard_controlled_set_v(lua_State *L);
+
 void input_init() {
     PROFILE_FUNC();
 
@@ -184,6 +190,13 @@ void input_init() {
 
     scroll_cbs = array_new(ScrollCallback);
     glfwSetScrollCallback(g_app->game_window, _scroll_callback);
+
+    auto L = ENGINE_LUA();
+
+    lua_register(L, "keyboard_controlled_add", keyboard_controlled_add);
+    lua_register(L, "keyboard_controlled_remove", keyboard_controlled_remove);
+    lua_register(L, "keyboard_controlled_has", keyboard_controlled_has);
+    lua_register(L, "keyboard_controlled_set_v", keyboard_controlled_set_v);
 }
 
 void input_fini() {
@@ -205,20 +218,43 @@ static bool kc_exists = false;
 static NativeEntity kc_entity;
 static f32 v = 5.f;
 
-void keyboard_controlled_add(NativeEntity ent) {
+int keyboard_controlled_add(lua_State *L) {
+
+    NativeEntity ent = *CHECK_STRUCT(L, 1, NativeEntity);
+
     transform_add(ent);
 
     kc_exists = true;
     kc_entity = ent;
-}
-void keyboard_controlled_remove(NativeEntity ent) {
-    if (native_entity_eq(ent, kc_entity)) kc_exists = false;
-}
-bool keyboard_controlled_has(NativeEntity ent) { return kc_exists && native_entity_eq(kc_entity, ent); }
 
-void keyboard_controlled_set_v(NativeEntity ent, f32 _v) {
+    return 0;
+}
+
+int keyboard_controlled_remove(lua_State *L) {
+
+    NativeEntity ent = *CHECK_STRUCT(L, 1, NativeEntity);
+
+    if (native_entity_eq(ent, kc_entity)) kc_exists = false;
+
+    return 0;
+}
+
+int keyboard_controlled_has(lua_State *L) {
+    NativeEntity ent = *CHECK_STRUCT(L, 1, NativeEntity);
+    bool ret = kc_exists && native_entity_eq(kc_entity, ent);
+    lua_pushboolean(L, ret);
+    return 1;
+}
+
+int keyboard_controlled_set_v(lua_State *L) {
+    NativeEntity ent = *CHECK_STRUCT(L, 1, NativeEntity);
+
+    f32 _v = lua_tonumber(L, 2);
+
     console_log("keyboard_controlled_set_v %d %f", ent.id, _v);
     v = _v;
+
+    return 0;
 }
 
 int keyboard_controlled_update_all(App *app, event_t evt) {
@@ -229,31 +265,34 @@ int keyboard_controlled_update_all(App *app, event_t evt) {
 
     if (kc_exists) {
         if (entity_destroyed(kc_entity)) {
-            keyboard_controlled_remove(kc_entity);
+            // keyboard_controlled_remove(kc_entity);
+            kc_exists = false;
             return 0;
         }
 
         if (timing_get_paused()) return 0;
         if (gui_has_focus()) return 0;
 
+        AppTime *time = get_timing_instance();
+
         rot = transform_get_rotation(kc_entity);
         sca = transform_get_scale(kc_entity);
         aspect = sca.y / sca.x;
 
-        if (input_key_down(KC_LEFT)) dpos = vec2_add(dpos, luavec2(-v * timing_instance.dt, 0));
-        if (input_key_down(KC_RIGHT)) dpos = vec2_add(dpos, luavec2(v * timing_instance.dt, 0));
-        if (input_key_down(KC_UP)) dpos = vec2_add(dpos, luavec2(0, v * timing_instance.dt));
-        if (input_key_down(KC_DOWN)) dpos = vec2_add(dpos, luavec2(0, -v * timing_instance.dt));
+        if (input_key_down(KC_LEFT)) dpos = vec2_add(dpos, luavec2(-v * time->dt, 0));
+        if (input_key_down(KC_RIGHT)) dpos = vec2_add(dpos, luavec2(v * time->dt, 0));
+        if (input_key_down(KC_UP)) dpos = vec2_add(dpos, luavec2(0, v * time->dt));
+        if (input_key_down(KC_DOWN)) dpos = vec2_add(dpos, luavec2(0, -v * time->dt));
 
-        if (input_key_down(KC_N)) rot += 0.35 * SCALAR_PI * timing_instance.dt;
-        if (input_key_down(KC_M)) rot -= 0.35 * SCALAR_PI * timing_instance.dt;
+        if (input_key_down(KC_N)) rot += 0.35 * SCALAR_PI * time->dt;
+        if (input_key_down(KC_M)) rot -= 0.35 * SCALAR_PI * time->dt;
 
         if (input_key_down(KC_K)) {
-            sca.x += 12 * timing_instance.dt;
+            sca.x += 12 * time->dt;
             sca.y = aspect * sca.x;
         }
-        if (sca.x > 12 * timing_instance.dt && input_key_down(KC_I)) {
-            sca.x -= 12 * timing_instance.dt;
+        if (sca.x > 12 * time->dt && input_key_down(KC_I)) {
+            sca.x -= 12 * time->dt;
             sca.y = aspect * sca.x;
         }
 

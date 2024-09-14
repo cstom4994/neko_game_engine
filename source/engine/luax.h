@@ -9,15 +9,20 @@ extern "C" {
 #endif
 #include <lauxlib.h>
 #include <lua.h>
-#include <luajit.h>
 #include <lualib.h>
+
+#ifndef NEKO_CFFI
+#include <luajit.h>
+#endif
 
 #ifdef __cplusplus
 }
 #endif
 
-#ifdef LUAJIT_MODE_MASK
+#ifndef NEKO_CFFI
 #define NEKO_LUAJIT
+#else
+#define LUAJIT_VERSION "NOJIT"
 #endif
 
 #define LUA_FUNCTION(F) static int F(lua_State *L)
@@ -43,12 +48,17 @@ typedef size_t lua_Unsigned;
 #define luaL_checkunsigned(L, a) ((lua_Unsigned)luaL_checkinteger((L), (a)))
 #define luaL_optunsigned(L, a, d) ((lua_Unsigned)luaL_optinteger((L), (a), (lua_Integer)(d)))
 
-#define LUAI_MAXALIGN \
-    lua_Number n;     \
-    double u;         \
-    void *s;          \
-    lua_Integer i;    \
-    long l
+#ifndef luaL_newlibtable
+#define luaL_newlibtable(L, l) (lua_createtable((L), 0, sizeof((l)) / sizeof(*(l)) - 1))
+#endif
+
+#ifndef luaL_newlib
+#define luaL_newlib(L, l) (luaL_newlibtable((L), (l)), luaL_register((L), NULL, (l)))
+#endif
+
+#ifndef LUA_OK
+#define LUA_OK 0
+#endif
 
 NEKO_API() inline int lua_absindex(lua_State *L, int idx) {
     if (idx > 0 || idx <= LUA_REGISTRYINDEX) {
@@ -56,6 +66,13 @@ NEKO_API() inline int lua_absindex(lua_State *L, int idx) {
     }
     return lua_gettop(L) + idx + 1;
 }
+
+#define LUAI_MAXALIGN \
+    lua_Number n;     \
+    double u;         \
+    void *s;          \
+    lua_Integer i;    \
+    long l
 
 NEKO_API() inline void lua_pushglobaltable(lua_State *L) {
     lua_pushvalue(L, LUA_GLOBALSINDEX);  // 将全局表压入栈中
@@ -164,6 +181,10 @@ NEKO_API() int lua_setiuservalue(lua_State *L_, int idx_, int n_);
 #ifndef LUA_TCDATA
 #define LUA_TCDATA 10
 #endif
+
+#ifndef LUA_LOADED_TABLE
+#define LUA_LOADED_TABLE "_LOADED"  // doesn't exist before Lua 5.3
+#endif                              // LUA_LOADED_TABLE
 
 NEKO_API() inline void luax_pushloadedtable(lua_State *L) {
 #if LUA_VERSION_NUM < 502

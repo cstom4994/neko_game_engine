@@ -17,5 +17,4 @@
 #include <box2d/b2_world.h>
 #endif
 
-#include <stb_image.h>
 

@@ -684,50 +684,56 @@ struct void_ignore_t<void> {
 
 #define ret(R) typename void_ignore_t<R>::value_t
 
-struct neko_luastate {
-    lua_State *L;
-    LuaAlloc *LA;
-};
+static size_t lua_mem_usage;
 
-inline neko_luastate neko_lua_create() {
-
-    neko_luastate l = {};
-
-    l.LA = luaalloc_create(
-            +[](void *user, void *ptr, size_t osize, size_t nsize) -> void * {
-                (void)user;
-                (void)osize;
-                if (nsize) return mem_realloc(ptr, nsize);
-                mem_free(ptr);
-                return nullptr;
-            },
-            nullptr);
-
-#ifdef _DEBUG
-    l.L = ::lua_newstate(luaalloc, l.LA);
-#else
-    l.L = ::luaL_newstate();
-#endif
-
-    ::luaL_openlibs(l.L);
-
-    __neko_luabind_init(l.L);
-
-    return l;
+static void *Allocf(void *ud, void *ptr, size_t osize, size_t nsize) {
+    if (!ptr) osize = 0;
+    if (!nsize) {
+        lua_mem_usage -= osize;
+        mem_free(ptr);
+        return NULL;
+    }
+    lua_mem_usage += (nsize - osize);
+    return mem_realloc(ptr, nsize);
 }
 
-inline void neko_lua_fini(neko_luastate l) {
-    if (l.L) {
-        __neko_luabind_fini(l.L);
-        int top = lua_gettop(l.L);
+inline lua_State *neko_lua_create() {
+
+#ifdef _DEBUG
+
+    lua_State *L = ::lua_newstate(Allocf, NULL);
+
+#else
+    lua_State *L = ::luaL_newstate();
+#endif
+
+    ::luaL_openlibs(L);
+
+#ifdef NEKO_CFFI
+    // lua_gc(L, LUA_GCSTOP, 0);
+
+    lua_gc(L, LUA_GCSETPAUSE, 150);
+#endif
+
+    __neko_luabind_init(L);
+
+    return L;
+}
+
+inline void neko_lua_fini(lua_State *L) {
+    if (L) {
+
+#ifdef NEKO_CFFI
+        // lua_gc(L, LUA_GCRESTART, 0);
+#endif
+
+        __neko_luabind_fini(L);
+        int top = lua_gettop(L);
         if (top != 0) {
-            lua_tool::dump_stack(l.L);
+            lua_tool::dump_stack(L);
             console_log("luastack memory leak");
         }
-        ::lua_close(l.L);
-    }
-    if (l.LA) {
-        luaalloc_delete(l.LA);
+        ::lua_close(L);
     }
 }
 
@@ -2028,7 +2034,7 @@ template <typename T>
 T unpack(lua_State *L, int arg) {
     arg = lua_absindex(L, arg);
     luaL_checktype(L, arg, LUA_TTABLE);
-    lua_Integer n = lua_len(L, arg);
+    lua_Integer n = luaL_len(L, arg);
     T v;
     v.reserve((size_t)n);
     for (lua_Integer i = 1; i <= n; ++i) {
