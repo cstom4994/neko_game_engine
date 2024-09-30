@@ -8,7 +8,7 @@
 #include "engine/bootstrap.h"
 #include "engine/entity.h"
 #include "engine/graphics.h"
-#include "engine/luax.hpp"
+#include "engine/scripting/lua_wrapper.hpp"
 
 void render_uniform_variable(GLuint program, GLenum type, const char *name, GLint location);
 void inspect_shader(const char *label, GLuint program);

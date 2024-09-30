@@ -2,7 +2,7 @@
 
 #include "engine/base.hpp"
 #include "engine/data.h"
-#include "engine/luax.h"
+#include "engine/scripting/luax.h"
 
 #define Event_mt "event"
 

@@ -15,7 +15,7 @@
 #include "engine/bootstrap.h"
 #include "engine/draw.h"
 #include "engine/edit.h"
-#include "engine/luax.hpp"
+#include "engine/scripting/lua_wrapper.hpp"
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -33,6 +33,8 @@
 
 #define CUTE_ASEPRITE_IMPLEMENTATION
 #include "vendor/cute_aseprite.h"
+
+using namespace neko::luabind;
 
 // -------------------------------------------------------------------------
 

@@ -1,5 +1,5 @@
 #include "engine/component.h"
-#include "engine/luax.hpp"
+#include "engine/scripting/lua_wrapper.hpp"
 
 #define MAX_DEPTH 256
 #define SHORT_STRING 1024
@@ -41,7 +41,7 @@ static void luadb_get(lua_State *L, lua_State *Ldb, int index) {
     if (lua_rawgetp(L, -1, key) == LUA_TNIL) {
         lua_pop(L, 1);
         luadb *t = (luadb *)lua_newuserdata(L, sizeof(*t));
-        // auto t = neko::lua::newudata<luadb>(L);
+        // auto t = neko::luabind::newudata<luadb>(L);
         t->L = Ldb;
         t->key = key;
         lua_pushvalue(L, lua_upvalueindex(UV_PROXY));  // 代理的元表
@@ -56,7 +56,7 @@ static void luadb_get(lua_State *L, lua_State *Ldb, int index) {
 // kv推入luadb
 static luadb *luadb_pretable(lua_State *L) {
     luadb *t = (luadb *)lua_touserdata(L, 1);
-    // auto t = neko::lua::toudata<luadb>(L, 1);
+    // auto t = neko::luabind::toudata<luadb>(L, 1);
     if (t->L == NULL) {
         luaL_error(L, "invalid proxy object");
     }
@@ -189,7 +189,7 @@ int open_db(lua_State *L) {
 
     static auto tostring = [](lua_State *L) {
         luadb *t = (luadb *)lua_touserdata(L, 1);
-        // auto t = neko::lua::toudata<luadb>(L, 1);
+        // auto t = neko::luabind::toudata<luadb>(L, 1);
         lua_pushfstring(L, "[luadb %p:%p]", t->L, t->key);
         return 1;
     };

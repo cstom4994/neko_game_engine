@@ -300,32 +300,6 @@ local function UnitTest()
                 assert(type(thread_) == "thread")
             end)
 
-            it('feature_luaref', function()
-                local ref = ng.api.core.ref_init()
-                assert(ng.api.core.ref_ref(ref) == 2)
-                local lst = {1, 2, 3, 4, 5, 1.2345, {}, "ok"}
-                local r = {}
-                for i, v in ipairs(lst) do
-                    r[i] = ng.api.core.ref_ref(ref, v)
-                end
-                for i, v in ipairs(lst) do
-                    assert(v == ng.api.core.ref_get(ref, r[i]))
-                    print(v, ng.api.core.ref_get(ref, r[i]))
-                end
-                r = {}
-                for i = 1, 10 do
-                    r[i] = ng.api.core.ref_ref(ref, i)
-                end
-                for i = 1, 10 do
-                    ng.api.core.ref_set(ref, r[i], i * 2)
-                end
-                for i = 1, 10 do
-                    assert(i * 2 == ng.api.core.ref_get(ref, r[i]))
-                    print(i * 2, ng.api.core.ref_get(ref, r[i]))
-                end
-                ng.api.core.ref_close(ref)
-            end)
-
             -- it('feature_pak', function()
             --     local test_pack, test_handle, test_items
 

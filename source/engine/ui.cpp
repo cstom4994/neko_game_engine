@@ -16,11 +16,13 @@
 #include "engine/entity.h"
 #include "engine/graphics.h"
 #include "engine/input.h"
-#include "engine/luax.hpp"
+#include "engine/scripting/lua_wrapper.hpp"
 #include "vendor/atlas.h"
 
 // deps
 #include "vendor/stb_truetype.h"
+
+using namespace neko::luabind;
 
 const u32 ui_renderer_max_quads = 1024;
 

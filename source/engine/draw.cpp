@@ -5,12 +5,14 @@
 #include "engine/bootstrap.h"
 #include "engine/component.h"
 #include "engine/graphics.h"
-#include "engine/luax.hpp"
+#include "engine/scripting/lua_wrapper.hpp"
 
 // deps
 #include "vendor/stb_image.h"
 #include "vendor/stb_rect_pack.h"
 #include "vendor/stb_truetype.h"
+
+using namespace neko::luabind;
 
 #if 0
 

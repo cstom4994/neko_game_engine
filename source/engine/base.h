@@ -1421,12 +1421,7 @@ inline vec3 vec3_triple_cross_product(vec3 a, vec3 b, vec3 c) { return vec3_sub(
 ================================================================================*/
 
 typedef struct {
-    union {
-        f32 xyzw[4];
-        struct {
-            f32 x, y, z, w;
-        };
-    };
+    f32 x, y, z, w;
 } vec4_t;
 
 typedef vec4_t vec4;
@@ -1649,11 +1644,11 @@ inline mat4 mat4_mul(mat4 m0, mat4 m1) {
 }
 
 inline vec4 mat4_mulv(mat4 m, vec4 v) {
-    vec4 dest = {};
+    f32 xyzw[4];
     for (int i = 0; i < 4; i++) {
-        dest.xyzw[i] = m.m[i][0] * v.xyzw[0] + m.m[i][1] * v.xyzw[1] + m.m[i][2] * v.xyzw[2] + m.m[i][3] * v.xyzw[3];
+        xyzw[i] = m.m[i][0] * v.x + m.m[i][1] * v.y + m.m[i][2] * v.z + m.m[i][3] * v.w;
     }
-    return dest;
+    return vec4{xyzw[0],xyzw[1],xyzw[2],xyzw[3]};
 }
 
 inline mat4 mat4_mul_list(uint32_t count, ...) {

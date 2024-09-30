@@ -8,8 +8,10 @@
 #include "engine/component.h"
 #include "engine/graphics.h"
 #include "engine/input.h"
-#include "engine/scripting.h"
+#include "engine/scripting/scripting.h"
 #include "engine/ui.h"
+
+using namespace neko::luabind;
 
 static CArray *key_down_cbs;
 static CArray *key_up_cbs;
@@ -220,7 +222,7 @@ static f32 v = 5.f;
 
 int keyboard_controlled_add(lua_State *L) {
 
-    NativeEntity ent = *CHECK_STRUCT(L, 1, NativeEntity);
+    NativeEntity ent = *LuaGet<NativeEntity>(L, 1);
 
     transform_add(ent);
 
@@ -232,7 +234,7 @@ int keyboard_controlled_add(lua_State *L) {
 
 int keyboard_controlled_remove(lua_State *L) {
 
-    NativeEntity ent = *CHECK_STRUCT(L, 1, NativeEntity);
+    NativeEntity ent = *LuaGet<NativeEntity>(L, 1);
 
     if (native_entity_eq(ent, kc_entity)) kc_exists = false;
 
@@ -240,14 +242,14 @@ int keyboard_controlled_remove(lua_State *L) {
 }
 
 int keyboard_controlled_has(lua_State *L) {
-    NativeEntity ent = *CHECK_STRUCT(L, 1, NativeEntity);
+    NativeEntity ent = *LuaGet<NativeEntity>(L, 1);
     bool ret = kc_exists && native_entity_eq(kc_entity, ent);
     lua_pushboolean(L, ret);
     return 1;
 }
 
 int keyboard_controlled_set_v(lua_State *L) {
-    NativeEntity ent = *CHECK_STRUCT(L, 1, NativeEntity);
+    NativeEntity ent = *LuaGet<NativeEntity>(L, 1);
 
     f32 _v = lua_tonumber(L, 2);
 
@@ -279,10 +281,10 @@ int keyboard_controlled_update_all(App *app, event_t evt) {
         sca = transform_get_scale(kc_entity);
         aspect = sca.y / sca.x;
 
-        if (input_key_down(KC_LEFT)) dpos = vec2_add(dpos, luavec2(-v * time->dt, 0));
-        if (input_key_down(KC_RIGHT)) dpos = vec2_add(dpos, luavec2(v * time->dt, 0));
-        if (input_key_down(KC_UP)) dpos = vec2_add(dpos, luavec2(0, v * time->dt));
-        if (input_key_down(KC_DOWN)) dpos = vec2_add(dpos, luavec2(0, -v * time->dt));
+        if (input_key_down(KC_A)) dpos = vec2_add(dpos, luavec2(-v * time->dt, 0));
+        if (input_key_down(KC_D)) dpos = vec2_add(dpos, luavec2(v * time->dt, 0));
+        if (input_key_down(KC_W)) dpos = vec2_add(dpos, luavec2(0, v * time->dt));
+        if (input_key_down(KC_S)) dpos = vec2_add(dpos, luavec2(0, -v * time->dt));
 
         if (input_key_down(KC_N)) rot += 0.35 * SCALAR_PI * time->dt;
         if (input_key_down(KC_M)) rot -= 0.35 * SCALAR_PI * time->dt;

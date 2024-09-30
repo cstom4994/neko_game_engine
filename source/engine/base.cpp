@@ -15,8 +15,8 @@
 #include "engine/base.hpp"
 #include "engine/bootstrap.h"
 #include "engine/graphics.h"
-#include "engine/luax.hpp"
-#include "engine/scripting.h"
+#include "engine/scripting/lua_wrapper.hpp"
+#include "engine/scripting/scripting.h"
 #include "vendor/luaalloc.h"
 
 #if defined(NEKO_IS_WIN32)

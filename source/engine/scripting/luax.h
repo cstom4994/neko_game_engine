@@ -1,9 +1,11 @@
 #ifndef NEKO_LUAX_H
 #define NEKO_LUAX_H
 
-#include "engine/base.h"
+#include "engine/base.hpp"
 
 // lua
+#include <atomic>
+#include <cstdint>
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -60,7 +62,7 @@ typedef size_t lua_Unsigned;
 #define LUA_OK 0
 #endif
 
-NEKO_API() inline int lua_absindex(lua_State *L, int idx) {
+inline int lua_absindex(lua_State *L, int idx) {
     if (idx > 0 || idx <= LUA_REGISTRYINDEX) {
         return idx;
     }
@@ -74,13 +76,13 @@ NEKO_API() inline int lua_absindex(lua_State *L, int idx) {
     lua_Integer i;    \
     long l
 
-NEKO_API() inline void lua_pushglobaltable(lua_State *L) {
+inline void lua_pushglobaltable(lua_State *L) {
     lua_pushvalue(L, LUA_GLOBALSINDEX);  // 将全局表压入栈中
 }
 
-NEKO_API() inline size_t lua_rawlen(lua_State *L, int index) { return lua_objlen(L, index); }
+inline size_t lua_rawlen(lua_State *L, int index) { return lua_objlen(L, index); }
 
-NEKO_API() inline size_t lua_len(lua_State *L, int index) {
+inline size_t lua_len(lua_State *L, int index) {
     int type = lua_type(L, index);
     if (type == LUA_TTABLE || type == LUA_TSTRING) {
         return lua_objlen(L, index);
@@ -88,21 +90,21 @@ NEKO_API() inline size_t lua_len(lua_State *L, int index) {
     return 0;  // 不支持的类型返回 0
 }
 
-NEKO_API() inline int lua_rawgetp(lua_State *L, int index, const void *p) {
+inline int lua_rawgetp(lua_State *L, int index, const void *p) {
     index = lua_absindex(L, index);
     lua_pushlightuserdata(L, (void *)p);  // 将指针转换为轻量用户数据
     lua_rawget(L, index);                 // 从表中获取值
     return lua_type(L, -1);
 }
 
-NEKO_API() inline void lua_rawsetp(lua_State *L, int index, const void *p) {
+inline void lua_rawsetp(lua_State *L, int index, const void *p) {
     index = lua_absindex(L, index);
     lua_pushlightuserdata(L, (void *)p);  // 将指针转换为轻量用户数据
     lua_insert(L, -2);                    // 将轻量用户数据移动到值的下面
     lua_rawset(L, index);                 // 将键值对设置到表中
 }
 
-NEKO_API() inline int lua_isinteger(lua_State *L, int index) {
+inline int lua_isinteger(lua_State *L, int index) {
     if (lua_type(L, index) == LUA_TNUMBER) {
         lua_Number n = lua_tonumber(L, index);
         lua_Integer i = lua_tointeger(L, index);
@@ -111,16 +113,16 @@ NEKO_API() inline int lua_isinteger(lua_State *L, int index) {
     return 0;
 }
 
-NEKO_API() inline int lua_geti(lua_State *L, int index, lua_Integer i) {
+inline int lua_geti(lua_State *L, int index, lua_Integer i) {
     index = lua_absindex(L, index);
     lua_pushinteger(L, i);
     lua_gettable(L, index);
     return lua_type(L, -1);
 }
 
-NEKO_API() inline void luaL_checkversion(lua_State *L) { (void)L; }
+inline void luaL_checkversion(lua_State *L) { (void)L; }
 
-NEKO_API() inline int luaL_getsubtable(lua_State *L, int i, const char *name) {
+inline int luaL_getsubtable(lua_State *L, int i, const char *name) {
     int abs_i = lua_absindex(L, i);
     luaL_checkstack(L, 3, "not enough stack slots");
     lua_pushstring(L, name);
@@ -134,7 +136,7 @@ NEKO_API() inline int luaL_getsubtable(lua_State *L, int i, const char *name) {
     return 0;
 }
 
-NEKO_API() inline void lua_seti(lua_State *L, int index, lua_Integer i) {
+inline void lua_seti(lua_State *L, int index, lua_Integer i) {
     luaL_checkstack(L, 1, "not enough stack slots available");
     index = lua_absindex(L, index);
     lua_pushinteger(L, i);
@@ -142,7 +144,7 @@ NEKO_API() inline void lua_seti(lua_State *L, int index, lua_Integer i) {
     lua_settable(L, index);
 }
 
-NEKO_API() inline void luaL_requiref(lua_State *L, const char *modname, lua_CFunction openf, int glb) {
+inline void luaL_requiref(lua_State *L, const char *modname, lua_CFunction openf, int glb) {
     luaL_checkstack(L, 3, "not enough stack slots available");
     luaL_getsubtable(L, LUA_REGISTRYINDEX, "_LOADED");
     if (lua_getfield(L, -1, modname) == LUA_TNIL) {
@@ -168,9 +170,9 @@ NEKO_API() inline void luaL_requiref(lua_State *L, const char *modname, lua_CFun
 
 #if LUA_VERSION_NUM < 504
 
-NEKO_API() void *lua_newuserdatauv(lua_State *L_, size_t sz_, int nuvalue_);
-NEKO_API() int lua_getiuservalue(lua_State *L_, int idx_, int n_);
-NEKO_API() int lua_setiuservalue(lua_State *L_, int idx_, int n_);
+void *lua_newuserdatauv(lua_State *L_, size_t sz_, int nuvalue_);
+int lua_getiuservalue(lua_State *L_, int idx_, int n_);
+int lua_setiuservalue(lua_State *L_, int idx_, int n_);
 
 #define LUA_GNAME "_G"
 
@@ -186,7 +188,7 @@ NEKO_API() int lua_setiuservalue(lua_State *L_, int idx_, int n_);
 #define LUA_LOADED_TABLE "_LOADED"  // doesn't exist before Lua 5.3
 #endif                              // LUA_LOADED_TABLE
 
-NEKO_API() inline void luax_pushloadedtable(lua_State *L) {
+inline void luax_pushloadedtable(lua_State *L) {
 #if LUA_VERSION_NUM < 502
     // 获取全局表 _G
     lua_getfield(L, LUA_GLOBALSINDEX, "package");
@@ -198,24 +200,28 @@ NEKO_API() inline void luax_pushloadedtable(lua_State *L) {
 #endif
 }
 
-NEKO_API() void __neko_luabind_init(lua_State *L);
-NEKO_API() void __neko_luabind_fini(lua_State *L);
-
 #define neko_lua_register(FUNCTIONS)                              \
     for (unsigned i = 0; i < NEKO_ARR_SIZE(FUNCTIONS) - 1; ++i) { \
         lua_pushcfunction(L, FUNCTIONS[i].func);                  \
         lua_setglobal(L, FUNCTIONS[i].name);                      \
     }
 
-NEKO_API() bool neko_lua_equal(lua_State *state, int index1, int index2);
+bool neko_lua_equal(lua_State *state, int index1, int index2);
 
-NEKO_API() int neko_lua_preload(lua_State *L, lua_CFunction f, const char *name);
-NEKO_API() int neko_lua_preload_auto(lua_State *L, lua_CFunction f, const char *name);
-NEKO_API() void neko_lua_load(lua_State *L, const luaL_Reg *l, const char *name);
-NEKO_API() void neko_lua_loadover(lua_State *L, const luaL_Reg *l, const char *name);
-NEKO_API() int neko_lua_get_table_pairs_count(lua_State *L, int index);
+int neko_lua_preload(lua_State *L, lua_CFunction f, const char *name);
+int neko_lua_preload_auto(lua_State *L, lua_CFunction f, const char *name);
+void neko_lua_load(lua_State *L, const luaL_Reg *l, const char *name);
+void neko_lua_loadover(lua_State *L, const luaL_Reg *l, const char *name);
+int neko_lua_get_table_pairs_count(lua_State *L, int index);
 
-inline void luax_package_preload(lua_State *L, const_str name, lua_CFunction function) {
+int __neko_bind_callback_save(lua_State *L);
+int __neko_bind_callback_call(lua_State *L);
+
+void luax_get(lua_State *L, const_str tb, const_str field);
+void luax_pcall(lua_State *L, i32 args, i32 results);
+
+template <typename F>
+inline void luax_package_preload(lua_State *L, const_str name, F function) {
     lua_getglobal(L, "package");
     lua_getfield(L, -1, "preload");
     lua_pushcfunction(L, function);
@@ -223,7 +229,8 @@ inline void luax_package_preload(lua_State *L, const_str name, lua_CFunction fun
     lua_pop(L, 2);
 }
 
-inline void luax_setfunc2table(lua_State *L, const char *n, lua_CFunction func) {
+template <typename F>
+inline void luax_setfunc2table(lua_State *L, const char *n, F func) {
     lua_pushstring(L, n);
     lua_pushcfunction(L, func);
     lua_settable(L, -3);
@@ -239,5 +246,83 @@ inline void luax_setfunc2table(lua_State *L, const char *n, lua_CFunction func) 
     lua_setfield(L, -2, "__call");                   \
     lua_setmetatable(L, -2);                         \
     lua_setglobal(L, metaname)
+
+struct LuaThread {
+    Mutex mtx;
+    String contents;
+    String name;
+    Thread thread;
+
+    void make(String code, String thread_name);
+    void join();
+};
+
+struct lua_State;
+struct LuaTableEntry;
+struct LuaVariant {
+    i32 type;
+    union {
+        bool boolean;
+        double number;
+        String string;
+        Slice<LuaTableEntry> table;
+        struct {
+            void *ptr;
+            String tname;
+        } udata;
+    };
+
+    void make(lua_State *L, i32 arg);
+    void trash();
+    void push(lua_State *L);
+};
+
+struct LuaTableEntry {
+    LuaVariant key;
+    LuaVariant value;
+};
+
+struct LuaChannel {
+    std::atomic<char *> name;
+
+    Mutex mtx;
+    Cond received;
+    Cond sent;
+
+    u64 received_total;
+    u64 sent_total;
+
+    Slice<LuaVariant> items;
+    u64 front;
+    u64 back;
+    u64 len;
+
+    void make(String n, u64 buf);
+    void trash();
+    void send(LuaVariant item);
+    LuaVariant recv();
+    bool try_recv(LuaVariant *v);
+};
+
+LuaChannel *lua_channel_make(String name, u64 buf);
+LuaChannel *lua_channel_get(String name);
+LuaChannel *lua_channels_select(lua_State *L, LuaVariant *v);
+void lua_channels_setup();
+void lua_channels_shutdown();
+
+void luax_neko_get(lua_State *L, const char *field);
+int luax_msgh(lua_State *L);
+i32 luax_require_script(lua_State *L, String filepath);
+
+enum W_LUA_UPVALUES { NEKO_W_COMPONENTS_NAME = 1, NEKO_W_UPVAL_N };
+
+struct W_LUA_REGISTRY_CONST {
+    static constexpr i32 W_CORE_IDX = 1;                             // neko_instance_t* index
+    static constexpr const_str W_CORE = "__NEKO_W_CORE";             // neko_instance_t* reg
+    static constexpr const_str ENG_UDATA_NAME = "__NEKO_ENGINE_UD";  // neko_instance_t* udata
+    static constexpr const_str CVAR_MAP = "cvar_map";
+
+    static constexpr i32 CVAR_MAP_MAX = 64;
+};
 
 #endif

@@ -20,8 +20,8 @@
 #include "engine/entity.h"
 #include "engine/event.h"
 #include "engine/graphics.h"
-#include "engine/luax.hpp"
-#include "engine/scripting.h"
+#include "engine/scripting/lua_wrapper.hpp"
+#include "engine/scripting/scripting.h"
 #include "engine/ui.h"
 
 // deps

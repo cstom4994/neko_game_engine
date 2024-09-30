@@ -18,112 +18,16 @@
 #include "engine/entity.h"
 #include "engine/graphics.h"
 #include "engine/input.h"
-#include "engine/luax.hpp"
-#include "engine/scripting.h"
+#include "engine/scripting/lua_wrapper.hpp"
+#include "engine/scripting/scripting.h"
+#include "engine/scripting/reflection.hpp"
 #include "engine/ui.h"
 
 #pragma region test
 
 int test_xml(lua_State *L);
 
-namespace neko::lua::__unittest {
-
-void run(lua_State *L, const char *code) {
-    std::cout << "code: " << code << std::endl;
-    if (luaL_dostring(L, code)) {
-        std::cout << lua_tostring(L, -1) << std::endl;
-        lua_pop(L, 1);
-    }
-}
-
-LuaRef getTesting(lua_State *L) {
-    lua_getglobal(L, "testing");
-    return LuaRef::fromStack(L);
-}
-
-void printString(const std::string &str) { std::cout << str << std::endl; }
-
-int TestBinding_1(lua_State *L) {
-
-    run(L, "function testing( ... ) print( '> ', ... ) end");
-
-    {
-        LuaRef testing(L, "testing");
-        LuaRef table = LuaRef::newTable(L);
-        table["testing"] = testing;
-
-        table.push();
-        lua_setglobal(L, "a");
-
-        run(L, "print( a.testing )");
-        run(L, "a.b = {}");
-        run(L, "a.b.c = {}");
-
-        std::cout << "Is table a table? " << (table.isTable() ? "true" : "false") << std::endl;
-        std::cout << "Is table[\"b\"] a table? " << (table["b"].isTable() ? "true" : "false") << std::endl;
-
-        table["b"]["c"]["hello"] = "World!";
-
-        run(L, "print( a.b.c.hello )");
-
-        auto b = table["b"];  // returns a LuaTableElement
-        b[3] = "Index 3";
-
-        LuaRef faster_b = b;  // Convert LuaTableElement to LuaRef for faster pushing
-
-        for (int i = 1; i < 5; i++) {
-            faster_b.append(i);
-        }
-        b[1] = LuaNil();
-        b.append("Add more.");
-
-        run(L, "for k,v in pairs( a.b ) do print( k,v ) end");
-
-        table["b"] = LuaNil();
-
-        run(L, "print( a.b )");
-
-        testing();
-        testing(1, 2, 3);
-        testing("Hello", "World");
-
-        testing("Hello", "World", 1, 2, 3, testing);
-
-        testing("Nigel", "Alara", "Aldora", "Ayna", "Sarah", "Gavin", "Joe", "Linda", "Tom", "Sonja", "Greg", "Trish");
-
-        // No return value
-        testing.call(0, "No return value.");
-
-        table["testing"](testing, 3, 2, 1, "Calling array element");
-        table["testing"]();
-
-        LuaRef newfuncref(L);
-
-        newfuncref = testing;
-
-        newfuncref("Did it copy correctly?");
-
-        newfuncref(getTesting(L));  // Check move semantics
-
-        newfuncref = getTesting(L);  // Check move semantics
-
-        run(L, "text = 'This has been implicitly cast to std::string'");
-
-        LuaRef luaStr1(L, "text");
-
-        std::string str1 = luaStr1;
-
-        printString(str1);
-
-        run(L, "a.text = text");
-
-        printString(table["text"]);
-    }
-
-    lua_pushboolean(L, 1);
-
-    return 1;
-}
+namespace neko::luabind::__unittest {
 
 #if 0
 
@@ -230,44 +134,34 @@ int TestEcs(lua_State* L) {
 
 #endif
 
-static int LUASTRUCT_test_vec4(lua_State *L) {
-    vec4 *v4 = CHECK_STRUCT(L, 1, vec4);
-    v4->x += 10.f;
-    v4->y += 10.f;
-    v4->z += 10.f;
-    v4->w += 10.f;
-    PUSH_STRUCT(L, vec4, *v4);
-    return 1;
-}
-
 int luaopen(lua_State *L) {
 
-    luaL_Reg lib[] = {
-            {"LUASTRUCT_test_vec4", LUASTRUCT_test_vec4},
-            {"TestAssetKind_1",
-             +[](lua_State *L) {
-                 AssetKind type_val;
-                 neko_luabind_to(L, AssetKind, &type_val, 1);
-                 neko_printf("%d", type_val);
-                 lua_pushinteger(L, type_val);
-                 return 1;
-             }},
+    // luaL_Reg lib[] = {
+    //         {"LUASTRUCT_test_vec4", LUASTRUCT_test_vec4},
+    //         {"TestAssetKind_1",
+    //          +[](lua_State *L) {
+    //              AssetKind type_val;
+    //              neko_luabind_to(L, AssetKind, &type_val, 1);
+    //              neko_printf("%d", type_val);
+    //              lua_pushinteger(L, type_val);
+    //              return 1;
+    //          }},
 
-            {"TestAssetKind_2",
-             +[](lua_State *L) {
-                 AssetKind type_val = (AssetKind)lua_tointeger(L, 1);
-                 neko_luabind_push(L, AssetKind, &type_val);
-                 return 1;
-             }},
-            {"TestBinding_1", TestBinding_1},
-            {"test_xml", test_xml},
-            {NULL, NULL},
-    };
-    luaL_newlibtable(L, lib);
-    luaL_setfuncs(L, lib, 0);
-    return 1;
+    //         {"TestAssetKind_2",
+    //          +[](lua_State *L) {
+    //              AssetKind type_val = (AssetKind)lua_tointeger(L, 1);
+    //              neko_luabind_push(L, AssetKind, &type_val);
+    //              return 1;
+    //          }},
+    //         {"TestBinding_1", TestBinding_1},
+    //         {"test_xml", test_xml},
+    //         {NULL, NULL},
+    // };
+    // luaL_newlibtable(L, lib);
+    // luaL_setfuncs(L, lib, 0);
+    return 0;
 }
-}  // namespace neko::lua::__unittest
+}  // namespace neko::luabind::__unittest
 
 struct PointInner {
     int xx, yy;
@@ -1104,7 +998,6 @@ UseComponentTypes();
 #include <sys/stat.h>
 
 #include "engine/base.hpp"
-#include "engine/luax.h"
 
 #if defined(NEKO_IS_WIN32)
 #include <direct.h>
@@ -1505,8 +1398,6 @@ int open_filesys(lua_State *L) {
 }
 
 #endif
-
-#include "engine/luax.h"
 
 #ifdef NEKO_BOX2D
 

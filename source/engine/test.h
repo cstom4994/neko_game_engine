@@ -3,7 +3,7 @@
 
 #include "engine/base.h"
 #include "engine/event.h"
-#include "engine/luax.h"
+#include "engine/scripting/luax.h"
 
 #ifdef NEKO_BOX2D
 
@@ -213,7 +213,6 @@ NEKO_API() void physics_save_all(Store *s);
 NEKO_API() void physics_load_all(Store *s);
 
 #include "engine/base.h"
-#include "engine/luax.h"
 
 #if NEKO_AUDIO == 1
 

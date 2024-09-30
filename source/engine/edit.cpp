@@ -30,8 +30,8 @@
 #include "engine/entity.h"
 #include "engine/graphics.h"
 #include "engine/input.h"
-#include "engine/luax.hpp"
-#include "engine/scripting.h"
+#include "engine/scripting/scripting.h"
+#include "engine/scripting/lua_wrapper.hpp"
 #include "engine/ui.h"
 
 // deps
@@ -1299,7 +1299,7 @@ void neko::luainspector::inspect_table(lua_State *L, inspect_table_config &cfg) 
         }
 
         bool edited = false;
-        auto name = neko_lua_to<const_str>(L, -2);
+        auto name = luabind::LuaGet<const_str>(L, -2);
         if (cfg.search_str != 0 && !strstr(name, cfg.search_str)) {
             lua_pop(L, 1);
             continue;
@@ -1326,10 +1326,10 @@ void neko::luainspector::inspect_table(lua_State *L, inspect_table_config &cfg) 
             // ImGui::TableNextColumn();
             // ImGui::Text("%p", lua_topointer(L, -1));
 
-            const_str str_mem = neko_lua_to<const_str>(L, -1);
+            const_str str_mem = luabind::LuaGet<const_str>(L, -1);
             size_t buffer_size = 256;
             for (; buffer_size < strlen(str_mem);) buffer_size += 128;
-            std::string v(neko_lua_to<const_str>(L, -1), buffer_size);
+            std::string v(luabind::LuaGet<const_str>(L, -1), buffer_size);
             if (!is_multiline(str_mem) && strlen(str_mem) < 32) {
                 Color256 col = color256(40, 220, 55, 255);
                 ui_text_colored(ui, str_mem, col);
@@ -1340,7 +1340,7 @@ void neko::luainspector::inspect_table(lua_State *L, inspect_table_config &cfg) 
 
             // if (open) {
             // ImGui::InputTextMultiline("value", const_cast<char*>(v.c_str()), buffer_size);
-            // if (ImGui::IsKeyDown(ImGuiKey_Enter) && v != neko_lua_to<const_str>(L, -1)) {
+            // if (ImGui::IsKeyDown(ImGuiKey_Enter) && v != luabind::LuaGet<const_str>(L, -1)) {
             //     edited = true;
             //     lua_pop(L, 1);                 // # -1 pop value
             //     lua_pushstring(L, v.c_str());  // # -1 push new value
@@ -1355,13 +1355,13 @@ void neko::luainspector::inspect_table(lua_State *L, inspect_table_config &cfg) 
             bool open = false;
             ui_text(ui, name);
             ui_labelf("%s", lua_typename(L, lua_type(L, -1)));
-            ui_labelf("%f", neko_lua_to<f64>(L, -1));
+            ui_labelf("%f", luabind::LuaGet<f64>(L, -1));
 
             if (open) {
-                f64 v = neko_lua_to<f64>(L, -1);
+                f64 v = luabind::LuaGet<f64>(L, -1);
                 ui_labelf("lua_v: %f", v);
                 // ImGui::InputDouble("value", &v);
-                // if (ImGui::IsKeyDown(ImGuiKey_Enter) && v != neko_lua_to<f64>(L, -1)) {
+                // if (ImGui::IsKeyDown(ImGuiKey_Enter) && v != luabind::LuaGet<f64>(L, -1)) {
                 //     edited = true;
                 //     lua_pop(L, 1);              // # -1 pop value
                 //     lua_pushnumber(L, v);       // # -1 push new value
@@ -1588,7 +1588,9 @@ int neko::luainspector::luainspector_draw(lua_State *L) {
                 AssetKind kind = kv.value->kind;
 
                 // 这应该很慢
-                neko_luabind_push(L, AssetKind, &kind);
+                // neko_luabind_push(L, AssetKind, &kind);
+                luabind::LuaPush<AssetKind>(L, kind);
+
                 const_str kind_name = lua_tostring(L, -1);
                 lua_pop(L, 1);
 

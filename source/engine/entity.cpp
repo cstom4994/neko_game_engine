@@ -12,10 +12,12 @@
 #include "engine/edit.h"
 #include "engine/graphics.h"
 #include "engine/input.h"
-#include "engine/luax.hpp"
-#include "engine/scripting.h"
+#include "engine/scripting/scripting.h"
+#include "engine/scripting/lua_wrapper.hpp"
 #include "engine/test.h"
 #include "engine/ui.h"
+
+using namespace neko::luabind;
 
 #if 1
 
@@ -956,7 +958,7 @@ void system_init() {
     g_app->win_console = g_app->win_console || luax_boolean_field(L, -1, "win_console", true);
 
     neko::reflection::Any v = engine_cfg_t{.title = "NekoEngine", .hot_reload = true, .startup_load_scripts = true, .fullscreen = false};
-    neko::lua::checktable_refl(ENGINE_LUA(), "app", v);
+    neko::luabind::checktable_refl(ENGINE_LUA(), "app", v);
     g_app->cfg = v.cast<engine_cfg_t>();
 
     console_log("load game: %s %f %f", g_app->cfg.title.cstr(), g_app->cfg.width, g_app->cfg.height);
@@ -968,8 +970,8 @@ void system_init() {
     game_set_window_title(g_app->cfg.title.cstr());
 
     if (fnv1a(g_app->cfg.game_proxy) == "default"_hash) {
-        neko::neko_lua_run_string(L, R"lua(
-        )lua");
+        // neko::neko_lua_run_string(L, R"lua(
+        // )lua");
         console_log("using default game proxy");
     }
 

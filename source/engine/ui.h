@@ -9,7 +9,7 @@
 #include "engine/entity.h"
 #include "engine/graphics.h"
 #include "engine/input.h"
-#include "engine/luax.hpp"
+#include "engine/scripting/lua_wrapper.hpp"
 #include "vendor/ui.h"
 
 #ifdef __cplusplus
