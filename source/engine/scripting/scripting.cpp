@@ -8,14 +8,13 @@
 #include "engine/bootstrap.h"
 #include "engine/component.h"
 #include "engine/edit.h"
-#include "engine/entity.h"
+#include "engine/ecs/entity.h"
 #include "engine/event.h"
 #include "engine/input.h"
 #include "engine/scripting/lua_wrapper.hpp"
 #include "engine/scripting/luax.h"
 #include "engine/scripting/scripting.h"
 #include "engine/ui.h"
-
 
 using namespace neko::luabind;
 
@@ -373,6 +372,27 @@ void script_init() {
     event_register(eventhandler_instance(), g_app, quit, (evt_callback_t)app_stop, NULL);
 
     luax_run_bootstrap(L);
+
+    lua_register(L, "ecs_create", l_ecs_create_world);
+
+    vm.RunString(R"(
+        local __worlds = {}
+
+        function fetch_world(name)
+            local mw = __worlds[name]
+            if not mw then
+                mw = ecs_create()
+                __worlds[name] = mw
+            end
+            return mw
+        end
+
+        gw = fetch_world("Admin")
+    )");
+
+    lua_getfield(L, LUA_REGISTRYINDEX, "__NEKO_ECS_CORE");
+    ENGINE_ECS() = (EcsWorld *)luaL_checkudata(L, -1, ECS_WORLD_OLD_UDATA_NAME);
+    lua_pop(L, 1);
 
     timer.stop();
     console_log(std::format("lua init done in {0:.3f} ms", timer.get()).c_str());

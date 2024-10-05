@@ -1092,34 +1092,6 @@ imageStore(destTex, storePos, color);
 LUA_RIDX_MAINTHREAD = 1
 LUA_RIDX_GLOBALS = 2
 
---[[
-
-sandbox = {}
-local worlds = {}
-
-function sandbox.fetch_world(name)
-    local w = worlds[name]
-    if not w then
-        w = neko.ecs_create()
-        worlds[name] = w
-    end
-    return w
-end
-
-function sandbox.select(ecs_world, func, ...)
-    local w
-    if type(ecs_world) == "string" then
-        w = worlds[ecs_world]
-    else
-        w = ecs_world
-    end
-    for c in w:match("all", ...) do
-        func(c)
-    end
-end
-
-]]
-
 -- object oriented
 
 Object = {}

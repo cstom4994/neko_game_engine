@@ -1,7 +1,7 @@
 
 
 #include "engine/bootstrap.h"
-#include "engine/entity.h"
+#include "engine/ecs/entity.h"
 
 DECL_ENT(Tiled, tiled_renderer *render; vec2 pos; String map_name;);
 

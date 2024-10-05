@@ -27,7 +27,7 @@
 #include "engine/base.hpp"
 #include "engine/bootstrap.h"
 #include "engine/component.h"
-#include "engine/entity.h"
+#include "engine/ecs/entity.h"
 #include "engine/graphics.h"
 #include "engine/input.h"
 #include "engine/scripting/scripting.h"

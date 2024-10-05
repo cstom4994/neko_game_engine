@@ -84,9 +84,11 @@ function ns.aseprite.draw_all()
 
             local pos = ns.transform.get_position(ent)
 
-            local ox = ase_data:width() / 2
+            local sx = 1
+
+            local ox = sx * ase_data:width() / 2
             local oy = -ase_data:height() / 2 - 10
-            ase_data:draw(pos.x, pos.y, 0, 1, -1, ox, oy)
+            ase_data:draw(pos.x, pos.y, 0, sx * 1, -1, ox, oy)
         end
     end
 end

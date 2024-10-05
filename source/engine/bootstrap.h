@@ -8,10 +8,12 @@
 #include "engine/base.hpp"
 #include "engine/component.h"
 #include "engine/draw.h"
-#include "engine/entity.h"
+#include "engine/ecs/lua_ecs.hpp"
+#include "engine/ecs/entity.h"
 #include "engine/graphics.h"
 #include "engine/test.h"
 #include "engine/ui.h"
+
 
 // deps
 #include "vendor/luaalloc.h"
@@ -25,6 +27,8 @@
 #define usr_path(path) (USR_DIR path)
 
 #define default_font_size 22.f
+
+using namespace neko::ecs;
 
 struct NEKO_PACKS {
     static constexpr const_str GAMEDATA = "default_pack";
@@ -74,7 +78,7 @@ struct App {
     AppTime timing_instance;
 
     lua_State *L;
-    ecs_t *ECS;
+    EcsWorld *ECS;
 
     batch_renderer *batch;
 
@@ -142,7 +146,7 @@ inline void fatal_error(String str) {
 }
 
 inline lua_State *&ENGINE_LUA() { return g_app->L; }
-inline ecs_t *&ENGINE_ECS() { return g_app->ECS; }
+inline EcsWorld *&ENGINE_ECS() { return g_app->ECS; }
 
 i32 neko_buildnum(void);
 

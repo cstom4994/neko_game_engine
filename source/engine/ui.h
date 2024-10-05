@@ -6,7 +6,7 @@
 #include "engine/base.h"
 #include "engine/base.hpp"
 #include "engine/draw.h"
-#include "engine/entity.h"
+#include "engine/ecs/entity.h"
 #include "engine/graphics.h"
 #include "engine/input.h"
 #include "engine/scripting/lua_wrapper.hpp"

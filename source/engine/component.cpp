@@ -7,7 +7,7 @@
 #include "engine/base.h"
 #include "engine/bootstrap.h"
 #include "engine/edit.h"
-#include "engine/entity.h"
+#include "engine/ecs/entity.h"
 
 // deps
 #ifdef NEKO_BOX2D

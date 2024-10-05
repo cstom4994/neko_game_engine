@@ -8,12 +8,13 @@
 #include "engine/bootstrap.h"
 #include "engine/draw.h"
 #include "engine/edit.h"
-#include "engine/entity.h"
+#include "engine/ecs/entity.h"
 #include "engine/event.h"
-#include "engine/scripting/scripting.h"
 #include "engine/scripting/lua_wrapper.hpp"
+#include "engine/scripting/scripting.h"
 #include "engine/test.h"
 #include "engine/ui.h"
+
 
 // deps
 #include "vendor/sokol_time.h"
@@ -3052,7 +3053,6 @@ static int open_neko(lua_State *L) {
 #ifdef NEKO_BOX2D
             {"b2_world", neko_b2_world},
 #endif
-            {"ecs_create", l_ecs_create_world},
 
             {nullptr, nullptr},
     };

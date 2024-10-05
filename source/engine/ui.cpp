@@ -13,7 +13,7 @@
 #include "engine/component.h"
 #include "engine/draw.h"
 #include "engine/edit.h"
-#include "engine/entity.h"
+#include "engine/ecs/entity.h"
 #include "engine/graphics.h"
 #include "engine/input.h"
 #include "engine/scripting/lua_wrapper.hpp"

@@ -2,7 +2,7 @@
 
 #include "engine/bootstrap.h"
 #include "engine/edit.h"
-#include "engine/entity.h"
+#include "engine/ecs/entity.h"
 
 DECL_ENT(Sprite, mat3 wmat;  // 要发送到着色器的世界变换矩阵
 

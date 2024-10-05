@@ -4,7 +4,7 @@
 #include <stdbool.h>
 
 #include "engine/base.h"
-#include "engine/entity.h"
+#include "engine/ecs/entity.h"
 #include "engine/event.h"
 
 NEKO_SCRIPT(

@@ -13,13 +13,13 @@
 
 using namespace neko::luabind;
 
-static CArray *key_down_cbs;
-static CArray *key_up_cbs;
-static CArray *char_down_cbs;
-static CArray *mouse_down_cbs;
-static CArray *mouse_up_cbs;
-static CArray *mouse_move_cbs;
-static CArray *scroll_cbs;
+static Array<KeyCallback> key_down_cbs;
+static Array<KeyCallback> key_up_cbs;
+static Array<CharCallback> char_down_cbs;
+static Array<MouseCallback> mouse_down_cbs;
+static Array<MouseCallback> mouse_up_cbs;
+static Array<MouseMoveCallback> mouse_move_cbs;
+static Array<ScrollCallback> scroll_cbs;
 
 static int _keycode_to_glfw(KeyCode key) { return key; }
 static KeyCode _glfw_to_keycode(int key) { return (KeyCode)key; }
@@ -114,58 +114,62 @@ bool input_mouse_down(MouseCode mouse) {
     return glfwGetMouseButton(g_app->game_window, glfwmouse) == GLFW_PRESS;
 }
 
-void input_add_key_down_callback(KeyCallback f) { array_add_val(KeyCallback, key_down_cbs) = f; }
-void input_add_key_up_callback(KeyCallback f) { array_add_val(KeyCallback, key_up_cbs) = f; }
-void input_add_char_down_callback(CharCallback f) { array_add_val(CharCallback, char_down_cbs) = f; }
-void input_add_mouse_down_callback(MouseCallback f) { array_add_val(MouseCallback, mouse_down_cbs) = f; }
-void input_add_mouse_up_callback(MouseCallback f) { array_add_val(MouseCallback, mouse_up_cbs) = f; }
-void input_add_mouse_move_callback(MouseMoveCallback f) { array_add_val(MouseMoveCallback, mouse_move_cbs) = f; }
-void input_add_scroll_callback(ScrollCallback f) { array_add_val(ScrollCallback, scroll_cbs) = f; }
+void input_add_key_down_callback(KeyCallback f) { key_down_cbs.push(f); }
+void input_add_key_up_callback(KeyCallback f) { key_up_cbs.push(f); }
+void input_add_char_down_callback(CharCallback f) { char_down_cbs.push(f); }
+void input_add_mouse_down_callback(MouseCallback f) { mouse_down_cbs.push(f); }
+void input_add_mouse_up_callback(MouseCallback f) { mouse_up_cbs.push(f); }
+void input_add_mouse_move_callback(MouseMoveCallback f) { mouse_move_cbs.push(f); }
+void input_add_scroll_callback(ScrollCallback f) { scroll_cbs.push(f); }
 
 static void _key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
-    KeyCallback *f;
 
     switch (action) {
-        case GLFW_PRESS:
-            array_foreach(f, key_down_cbs) (*f)(_glfw_to_keycode(key), scancode, mods);
+        case GLFW_PRESS: {
+            for (auto f : key_down_cbs) {
+                (*f)(_glfw_to_keycode(key), scancode, mods);
+            }
             break;
-
-        case GLFW_RELEASE:
-            array_foreach(f, key_up_cbs) (*f)(_glfw_to_keycode(key), scancode, mods);
+        }
+        case GLFW_RELEASE: {
+            for (auto f : key_up_cbs) {
+                (*f)(_glfw_to_keycode(key), scancode, mods);
+            }
             break;
+        }
     }
 }
 
 static void _char_callback(GLFWwindow *window, unsigned int c) {
-    CharCallback *f;
-
-    array_foreach(f, char_down_cbs) (*f)(c);
+    for (auto f : char_down_cbs) {
+        (*f)(c);
+    }
 }
 
 static void _mouse_callback(GLFWwindow *window, int mouse, int action, int mods) {
-    MouseCallback *f;
-
     switch (action) {
-        case GLFW_PRESS:
-            array_foreach(f, mouse_down_cbs) (*f)(_glfw_to_mousecode(mouse));
+        case GLFW_PRESS: {
+            for (auto f : mouse_down_cbs) (*f)(_glfw_to_mousecode(mouse));
             break;
+        }
 
-        case GLFW_RELEASE:
-            array_foreach(f, mouse_up_cbs) (*f)(_glfw_to_mousecode(mouse));
+        case GLFW_RELEASE: {
+            for (auto f : mouse_up_cbs) (*f)(_glfw_to_mousecode(mouse));
             break;
+        }
     }
 }
 
 static void _cursor_pos_callback(GLFWwindow *window, double x, double y) {
     MouseMoveCallback *f;
 
-    array_foreach(f, mouse_move_cbs) (*f)(luavec2(x, -y));
+    for (auto f : mouse_move_cbs) (*f)(luavec2(x, -y));
 }
 
 static void _scroll_callback(GLFWwindow *window, double x, double y) {
     ScrollCallback *f;
 
-    array_foreach(f, scroll_cbs) (*f)(luavec2(x, y));
+    for (auto f : scroll_cbs) (*f)(luavec2(x, y));
 }
 
 int keyboard_controlled_add(lua_State *L);
@@ -176,21 +180,10 @@ int keyboard_controlled_set_v(lua_State *L);
 void input_init() {
     PROFILE_FUNC();
 
-    key_down_cbs = array_new(KeyCallback);
-    key_up_cbs = array_new(KeyCallback);
     glfwSetKeyCallback(g_app->game_window, _key_callback);
-
-    char_down_cbs = array_new(CharCallback);
     glfwSetCharCallback(g_app->game_window, _char_callback);
-
-    mouse_down_cbs = array_new(MouseCallback);
-    mouse_up_cbs = array_new(MouseCallback);
     glfwSetMouseButtonCallback(g_app->game_window, _mouse_callback);
-
-    mouse_move_cbs = array_new(MouseMoveCallback);
     glfwSetCursorPosCallback(g_app->game_window, _cursor_pos_callback);
-
-    scroll_cbs = array_new(ScrollCallback);
     glfwSetScrollCallback(g_app->game_window, _scroll_callback);
 
     auto L = ENGINE_LUA();
@@ -202,17 +195,17 @@ void input_init() {
 }
 
 void input_fini() {
-    array_free(scroll_cbs);
+    scroll_cbs.trash();
 
-    array_free(mouse_move_cbs);
+    mouse_move_cbs.trash();
 
-    array_free(mouse_up_cbs);
-    array_free(mouse_down_cbs);
+    mouse_up_cbs.trash();
+    mouse_down_cbs.trash();
 
-    array_free(char_down_cbs);
+    char_down_cbs.trash();
 
-    array_free(key_up_cbs);
-    array_free(key_down_cbs);
+    key_up_cbs.trash();
+    key_down_cbs.trash();
 }
 
 // TODO: 应该使用entity_nil来表示不存在

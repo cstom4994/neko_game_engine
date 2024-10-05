@@ -2,7 +2,7 @@
 
 #include "engine/bootstrap.h"
 #include "engine/edit.h"
-#include "engine/entity.h"
+#include "engine/ecs/entity.h"
 
 DECL_ENT(Camera, Scalar viewport_height;);
 

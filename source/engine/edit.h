@@ -6,7 +6,7 @@
 #include "engine/asset.h"
 #include "engine/base.h"
 #include "engine/bootstrap.h"
-#include "engine/entity.h"
+#include "engine/ecs/entity.h"
 #include "engine/graphics.h"
 #include "engine/scripting/lua_wrapper.hpp"
 

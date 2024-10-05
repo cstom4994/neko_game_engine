@@ -3,7 +3,7 @@
 
 #include "engine/base.hpp"
 #include "engine/data.h"
-#include "engine/entity.h"
+#include "engine/ecs/entity.h"
 #include "engine/event.h"
 #include "engine/graphics.h"
 

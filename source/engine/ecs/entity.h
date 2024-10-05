@@ -5,31 +5,6 @@
 #include "engine/base.h"
 #include "engine/event.h"
 
-#define __neko_ecs_ent_id(index, ver) (((u64)ver << 32) | index)
-#define __neko_ecs_ent_index(id) ((u32)id)
-#define __neko_ecs_ent_ver(id) ((u32)(id >> 32))
-
-#define MAX_ENTITY_COUNT 100
-
-enum ECS_LUA_UPVALUES { NEKO_ECS_COMPONENTS_NAME = 1, NEKO_ECS_UPVAL_N };
-
-#define TYPE_MIN_ID 1
-#define TYPE_MAX_ID 255
-#define TYPE_COUNT 256
-
-#define WORLD_PROTO_ID 1
-#define WORLD_PROTO_DEFINE 2
-#define WORLD_COMPONENTS 3
-#define WORLD_MATCH_CTX 4
-#define WORLD_KEY_EID 5
-#define WORLD_KEY_TID 6
-#define WORLD_UPVAL_N 6
-
-#define LINK_NIL (-1)
-#define LINK_NONE (-2)
-
-#define ENTITY_MAX_COMPONENTS (64)  // 最大组件数量
-
 // 测试 ECS 用
 typedef struct CGameObjectTest {
     char name[64];
@@ -47,28 +22,6 @@ enum ComponentType {
 
     COMPONENT_COUNT
 };
-
-#define ECS_WORLD_UDATA_NAME "__NEKO_ECS_WORLD"
-#define ECS_WORLD (1)
-
-NEKO_API() int l_ecs_create_world(lua_State* L);
-
-typedef struct ecs_s ecs_t;
-typedef uint32_t ecs_id_t;
-
-// NULL/invalid/undefined value
-#define ECS_NULL ((ecs_id_t) - 1)
-
-typedef int8_t ecs_ret_t;
-
-NEKO_API() ecs_id_t ecs_component_w(ecs_t* registry, const_str component_name, size_t component_size);
-
-// #define ECS_COMPONENT(type, ctor, dtor) ecs_component_w(ENGINE_ECS(), #type, sizeof(type), ctor, dtor)
-// #define ECS_COMPONENT_DEFINE(type, ctor, dtor) ECS_COMPONENT_ID(type) = ECS_COMPONENT(type, ctor, dtor)
-
-// #define ECS_COMPONENT_ID(type) __NEKO_GEN_COMPONENT_##type
-// #define ECS_COMPONENT_DECL(type) ecs_id_t ECS_COMPONENT_ID(type)
-// #define ECS_COMPONENT_EXTERN(type) extern ecs_id_t ECS_COMPONENT_ID(type)
 
 NEKO_SCRIPT(
         entity,
@@ -240,7 +193,7 @@ NEKO_API() void entitypool_elem_load(NativeEntityPool* pool, void* elem, Store* 
 #define SYSTEM_H
 
 #include "engine/base.h"
-#include "engine/entity.h"
+#include "engine/ecs/entity.h"
 
 NEKO_SCRIPT(system,
 

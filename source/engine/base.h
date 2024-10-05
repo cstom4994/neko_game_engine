@@ -821,6 +821,8 @@ NEKO_FORCE_INLINE size_t neko_hash_bytes(void* p, size_t len, size_t seed) {
 #endif
 }
 
+#if 1
+
 // 在内存中存储连续的对象
 // 对象可能会在内存中移动 因此不要依赖指向 CArray 中对象的指针
 typedef struct CArray CArray;
@@ -847,6 +849,8 @@ void array_sort(CArray* arr, int (*compar)(const void*, const void*));  // compa
 #define array_new(type) array_new_(sizeof(type))
 
 #define array_foreach(var, arr) for (void* __end = (var = (decltype(var))array_begin(arr), array_end(arr)); var != __end; ++var)
+
+#endif
 
 NEKO_SCRIPT(scalar,
 

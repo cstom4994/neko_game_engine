@@ -169,10 +169,9 @@ void edit_set_grid_size(vec2 size) {
 }
 vec2 edit_get_grid_size() { return grid_size; }
 
-static CArray *grid_cells;  // bboxes used for drawing grid
+static Array<BBoxPoolElem> grid_cells;  // 用于绘制网格的bbox
 
 static void _grid_create_cells() {
-    BBoxPoolElem *cell;
     BBox cbox, cellbox;
     NativeEntity camera;
     vec2 cur, csize;
@@ -212,15 +211,12 @@ static void _grid_create_cells() {
     // fill in with grid cells
     for (cur.x = cbox.min.x; cur.x < cbox.max.x; cur.x += cellbox.max.x)
         for (cur.y = cbox.min.y; cur.y < cbox.max.y; cur.y += cellbox.max.y) {
-            cell = (BBoxPoolElem *)array_add(grid_cells);
-            cell->bbox = cellbox;
-            cell->wmat = mat3_scaling_rotation_translation(luavec2(1, 1), 0, cur);
-            cell->selected = 0;
+            grid_cells.push(BBoxPoolElem{.wmat = mat3_scaling_rotation_translation(luavec2(1, 1), 0, cur), .bbox = cellbox, .selected = 0});
         }
 }
 
-static void _grid_init() { grid_cells = array_new(BBoxPoolElem); }
-static void _grid_fini() { array_free(grid_cells); }
+static void _grid_init() {}
+static void _grid_fini() { grid_cells.trash(); }
 
 static void _grid_draw() {
     vec2 win;
@@ -237,10 +233,10 @@ static void _grid_draw() {
     _grid_create_cells();
     glBindVertexArray(bboxes_vao);
     glBindBuffer(GL_ARRAY_BUFFER, bboxes_vbo);
-    ncells = array_length(grid_cells);
-    glBufferData(GL_ARRAY_BUFFER, ncells * sizeof(BBoxPoolElem), array_begin(grid_cells), GL_STREAM_DRAW);
+    ncells = grid_cells.len;
+    glBufferData(GL_ARRAY_BUFFER, ncells * sizeof(BBoxPoolElem), grid_cells.data, GL_STREAM_DRAW);
     glDrawArrays(GL_POINTS, 0, ncells);
-    array_clear(grid_cells);
+    grid_cells.resize(0);
 }
 
 // --- line ----------------------------------------------------------------
@@ -256,24 +252,14 @@ struct LinePoint {
     Color color;
 };
 
-static CArray *line_points;  // each consecutive pair is a line
+static Array<LinePoint> line_points;  // 每个连续的对都是一条线
 
 void edit_line_add(vec2 a, vec2 b, Scalar point_size, Color color) {
-    LinePoint *lp;
-
-    lp = (LinePoint *)array_add(line_points);
-    lp->position = a;
-    lp->point_size = point_size;
-    lp->color = color;
-
-    lp = (LinePoint *)array_add(line_points);
-    lp->position = b;
-    lp->point_size = point_size;
-    lp->color = color;
+    line_points.push(LinePoint{.position = a, .point_size = point_size, .color = color});
+    line_points.push(LinePoint{.position = b, .point_size = point_size, .color = color});
 }
 
 static void _line_init() {
-    line_points = array_new(LinePoint);
 
     // init draw stuff
     bool ok = asset_load_kind(AssetKind_Shader, "shader/edit_line.glsl", &line_shader);
@@ -295,7 +281,7 @@ static void _line_fini() {
     glDeleteBuffers(1, &line_vbo);
     glDeleteVertexArrays(1, &line_vao);
 
-    array_free(line_points);
+    line_points.trash();
 }
 
 static void _line_draw_all() {
@@ -314,8 +300,8 @@ static void _line_draw_all() {
     glBindVertexArray(line_vao);
     glBindBuffer(GL_ARRAY_BUFFER, line_vbo);
 
-    npoints = array_length(line_points);
-    glBufferData(GL_ARRAY_BUFFER, npoints * sizeof(LinePoint), array_begin(line_points), GL_STREAM_DRAW);
+    npoints = line_points.len;
+    glBufferData(GL_ARRAY_BUFFER, npoints * sizeof(LinePoint), line_points.data, GL_STREAM_DRAW);
     glDrawArrays(GL_LINES, 0, npoints);
     glDrawArrays(GL_POINTS, 0, npoints);
 }
@@ -324,7 +310,7 @@ static void _line_draw_all() {
 
 int edit_clear(App *app, event_t evt) {
     entitypool_clear(pool_bbox);
-    array_clear(line_points);
+    line_points.resize(0);
     return 0;
 }
 

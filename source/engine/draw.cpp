@@ -787,7 +787,7 @@ int neko_font_load(lua_State *L) {
 #include "engine/component.h"
 #include "engine/draw.h"
 #include "engine/edit.h"
-#include "engine/entity.h"
+#include "engine/ecs/entity.h"
 #include "engine/graphics.h"
 
 // deps
