@@ -500,6 +500,7 @@ void system_init() {
     sound_init();
     physics_init();
     edit_init();
+    imgui_init();
 
     g_app->hot_reload_enabled.store(mount.can_hot_reload && g_app->cfg.hot_reload);
     g_app->reload_interval.store(g_app->cfg.reload_interval);
@@ -577,6 +578,7 @@ void system_fini() {
     transform_fini();
     entity_fini();
     input_fini();
+    imgui_fini();
 
     if (g_app->default_font != nullptr) {
         g_app->default_font->trash();
@@ -594,13 +596,6 @@ void system_fini() {
         //     g_app->default_font->trash();
         //     mem_free(g_app->default_font);
         // }
-
-#if NEKO_AUDIO == 1
-        for (Sound* sound : g_app->garbage_sounds) {
-            sound->trash();
-        }
-        g_app->garbage_sounds.trash();
-#endif
 
         assets_shutdown();
     }

@@ -49,7 +49,7 @@ function ns.app.key_down(key)
 
 end
 
-local run, err = (ng.args[1] and loadfile(ng.args[1])) or loadfile('./main.lua')
+local run, err = (ng.args[1] and loadfile(ng.args[1])) or loadfile('./main.lua') or haha
 if run then
 
     local function errorHandler(err)

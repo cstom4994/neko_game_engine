@@ -3,6 +3,9 @@
 #include "engine/bootstrap.h"
 #include "engine/ecs/entity.h"
 
+// deps
+#include <box2d/box2d.h>
+
 DECL_ENT(Tiled, tiled_renderer *render; vec2 pos; String map_name;);
 
 static Asset tiled_shader = {};

@@ -12,12 +12,16 @@
 #include "engine/bootstrap.h"
 #include "engine/component.h"
 #include "engine/draw.h"
-#include "engine/edit.h"
 #include "engine/ecs/entity.h"
+#include "engine/edit.h"
 #include "engine/graphics.h"
 #include "engine/input.h"
 #include "engine/scripting/lua_wrapper.hpp"
 #include "vendor/atlas.h"
+
+// imgui
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
 
 // deps
 #include "vendor/stb_truetype.h"
@@ -1330,6 +1334,86 @@ int open_ui(lua_State *L) {
     luax_set_int_field(L, "OPT_EXPANDED", UI_OPT_EXPANDED);
 
     return 1;
+}
+
+void ME_draw_text(String text, Color256 col, int x, int y, bool outline, Color256 outline_col) {
+
+    ImGuiViewport *viewport = ImGui::GetMainViewport();
+    ImDrawList *draw_list = ImGui::GetBackgroundDrawList(viewport);
+
+    if (outline) {
+
+        auto outline_col_im = ImColor(outline_col.r, outline_col.g, outline_col.b, col.a);
+
+        draw_list->AddText(ImVec2(x + 0, y - 1), outline_col_im, text.cstr());  // up
+        draw_list->AddText(ImVec2(x + 0, y + 1), outline_col_im, text.cstr());  // down
+        draw_list->AddText(ImVec2(x + 1, y + 0), outline_col_im, text.cstr());  // right
+        draw_list->AddText(ImVec2(x - 1, y + 0), outline_col_im, text.cstr());  // left
+
+        draw_list->AddText(ImVec2(x + 1, y + 1), outline_col_im, text.cstr());  // down-right
+        draw_list->AddText(ImVec2(x - 1, y + 1), outline_col_im, text.cstr());  // down-left
+
+        draw_list->AddText(ImVec2(x + 1, y - 1), outline_col_im, text.cstr());  // up-right
+        draw_list->AddText(ImVec2(x - 1, y - 1), outline_col_im, text.cstr());  // up-left
+    }
+
+    draw_list->AddText(ImVec2(x, y), ImColor(col.r, col.g, col.b, col.a), text.cstr());  // base
+}
+
+void imgui_init() {
+    PROFILE_FUNC();
+
+    ImGui::SetAllocatorFunctions(+[](size_t sz, void *user_data) { return mem_alloc(sz); }, +[](void *ptr, void *user_data) { return mem_free(ptr); });
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+    ImGui::StyleColorsDark();
+
+    ImGui_ImplGlfw_InitForOpenGL(g_app->game_window, true);
+    ImGui_ImplOpenGL3_Init();
+
+#if 0
+    CVAR_REF(conf_imgui_font, String);
+
+    if (neko_strlen(conf_imgui_font.data.str) > 0) {
+        auto &io = ImGui::GetIO();
+
+        ImFontConfig config;
+        // config.PixelSnapH = 1;
+
+        String ttf_file;
+        vfs_read_entire_file(&ttf_file, conf_imgui_font.data.str);
+        // neko_defer(mem_free(ttf_file.data));
+        // void *ttf_data = ::mem_alloc(ttf_file.len);  // TODO:: imgui 内存方法接管
+        // memcpy(ttf_data, ttf_file.data, ttf_file.len);
+        io.Fonts->AddFontFromMemoryTTF(ttf_file.data, ttf_file.len, 12.0f, &config, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
+    }
+#endif
+}
+
+void imgui_fini() {
+
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+}
+
+void imgui_draw_pre() {
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+}
+
+void imgui_draw_post() {
+    ImGui::Render();
+    // int displayX, displayY;
+    // glfwGetFramebufferSize(window, &displayX, &displayY);
+    // glViewport(0, 0, displayX, displayY);
+    // glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
+    // glClear(GL_COLOR_BUFFER_BIT);
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
 #if 0

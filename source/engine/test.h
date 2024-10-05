@@ -5,63 +5,6 @@
 #include "engine/event.h"
 #include "engine/scripting/luax.h"
 
-#ifdef NEKO_BOX2D
-
-#include <box2d/box2d.h>
-
-struct PhysicsUserData {
-    i32 begin_contact_ref;
-    i32 end_contact_ref;
-
-    i32 ref_count;
-    i32 type;
-    union {
-        char *str;
-        lua_Number num;
-    };
-};
-
-struct PhysicsContactListener;
-struct Physics {
-    b2World *world;
-    PhysicsContactListener *contact_listener;
-    f32 meter;
-
-    union {
-        b2Body *body;
-        b2Fixture *fixture;
-    };
-};
-
-Physics physics_world_make(lua_State *L, b2Vec2 gravity, f32 meter);
-void physics_world_trash(lua_State *L, Physics *p);
-void physics_world_begin_contact(lua_State *L, Physics *p, i32 arg);
-void physics_world_end_contact(lua_State *L, Physics *p, i32 arg);
-Physics physics_weak_copy(Physics *p);
-
-void physics_destroy_body(lua_State *L, Physics *physics);
-PhysicsUserData *physics_userdata(lua_State *L);
-void physics_push_userdata(lua_State *L, u64 ptr);
-void draw_fixtures_for_body(b2Body *body, f32 meter);
-
-int open_mt_b2_world(lua_State *L);
-int open_mt_b2_body(lua_State *L);
-int open_mt_b2_fixture(lua_State *L);
-
-inline int neko_b2_world(lua_State *L) {
-    lua_Number gx = luax_opt_number_field(L, 1, "gx", 0);
-    lua_Number gy = luax_opt_number_field(L, 1, "gy", 9.81);
-    lua_Number meter = luax_opt_number_field(L, 1, "meter", 16);
-
-    b2Vec2 gravity = {(f32)gx, (f32)gy};
-
-    Physics p = physics_world_make(L, gravity, meter);
-    luax_new_userdata(L, p, "mt_b2_world");
-    return 1;
-}
-
-#endif
-
 #if 0
 
 NEKO_SCRIPT(physics,
@@ -212,38 +155,6 @@ NEKO_API() void physics_draw_all();
 NEKO_API() void physics_save_all(Store *s);
 NEKO_API() void physics_load_all(Store *s);
 
-#include "engine/base.h"
-
-#if NEKO_AUDIO == 1
-
-#include <miniaudio.h>
-
-struct Sound {
-    ma_sound ma;
-    bool zombie;
-    bool dead_end;
-
-    void trash();
-};
-
-Sound *sound_load(String filepath);
-
-int open_mt_sound(lua_State *L);
-
-inline int neko_sound_load(lua_State *L) {
-    String str = luax_check_string(L, 1);
-
-    Sound *sound = sound_load(str);
-    if (sound == nullptr) {
-        return 0;
-    }
-
-    luax_ptr_userdata(L, sound, "mt_sound");
-    return 1;
-}
-
-#endif
-
 // NEKO_SCRIPT(sound,
 //
 //        NEKO_EXPORT void sound_add(NativeEntity ent);
@@ -269,10 +180,5 @@ inline int neko_sound_load(lua_State *L) {
 //        NEKO_EXPORT Scalar sound_get_gain(NativeEntity ent);
 //     )
 
-NEKO_API() void sound_init();
-NEKO_API() void sound_fini();
-NEKO_API() int sound_update_all(App *app, event_t evt);
-NEKO_API() void sound_save_all(Store *s);
-NEKO_API() void sound_load_all(Store *s);
 
 #endif

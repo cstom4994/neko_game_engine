@@ -7,14 +7,14 @@
 #include "engine/base.hpp"
 #include "engine/bootstrap.h"
 #include "engine/draw.h"
-#include "engine/edit.h"
 #include "engine/ecs/entity.h"
+#include "engine/edit.h"
 #include "engine/event.h"
+#include "engine/physics.h"
 #include "engine/scripting/lua_wrapper.hpp"
 #include "engine/scripting/scripting.h"
 #include "engine/test.h"
 #include "engine/ui.h"
-
 
 // deps
 #include "vendor/sokol_time.h"
@@ -815,7 +815,7 @@ static i32 keyboard_lookup(String str) {
 static int neko_key_down(lua_State *L) {
     String str = luax_check_string(L, 1);
     i32 key = keyboard_lookup(str);
-    bool is_down = g_app->key_state[key];
+    bool is_down = input_key_down((KeyCode)key);
     lua_pushboolean(L, is_down);
     return 1;
 }
@@ -823,7 +823,7 @@ static int neko_key_down(lua_State *L) {
 static int neko_key_release(lua_State *L) {
     String str = luax_check_string(L, 1);
     i32 key = keyboard_lookup(str);
-    bool is_release = !g_app->key_state[key] && g_app->prev_key_state[key];
+    bool is_release = input_key_release((KeyCode)key);
     lua_pushboolean(L, is_release);
     return 1;
 }
@@ -831,7 +831,7 @@ static int neko_key_release(lua_State *L) {
 static int neko_key_press(lua_State *L) {
     String str = luax_check_string(L, 1);
     i32 key = keyboard_lookup(str);
-    bool is_press = g_app->key_state[key] && !g_app->prev_key_state[key];
+    bool is_press = input_key_down((KeyCode)key);
     lua_pushboolean(L, is_press);
     return 1;
 }

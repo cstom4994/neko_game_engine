@@ -8,12 +8,12 @@
 #include "engine/base.hpp"
 #include "engine/component.h"
 #include "engine/draw.h"
-#include "engine/ecs/lua_ecs.hpp"
 #include "engine/ecs/entity.h"
+#include "engine/ecs/lua_ecs.hpp"
 #include "engine/graphics.h"
+#include "engine/sound.h"
 #include "engine/test.h"
 #include "engine/ui.h"
-
 
 // deps
 #include "vendor/luaalloc.h"
@@ -101,9 +101,6 @@ struct App {
     std::atomic<f32> reload_interval;
 
     engine_cfg_t cfg;
-
-    bool key_state[349];
-    bool prev_key_state[349];
 
     bool mouse_state[3];
     bool prev_mouse_state[3];

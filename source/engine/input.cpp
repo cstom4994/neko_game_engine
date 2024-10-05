@@ -96,6 +96,11 @@ bool input_key_down(KeyCode key) {
     return glfwGetKey(g_app->game_window, glfwkey) == GLFW_PRESS;
 }
 
+bool input_key_release(KeyCode key) {
+    int glfwkey = _keycode_to_glfw(key);
+    return glfwGetKey(g_app->game_window, glfwkey) == GLFW_RELEASE;
+}
+
 vec2 input_get_mouse_pos_pixels_fix() {
     double x, y;
     glfwGetCursorPos(g_app->game_window, &x, &y);
@@ -176,6 +181,7 @@ int keyboard_controlled_add(lua_State *L);
 int keyboard_controlled_remove(lua_State *L);
 int keyboard_controlled_has(lua_State *L);
 int keyboard_controlled_set_v(lua_State *L);
+int keyboard_controlled_is_moving(lua_State *L);
 
 void input_init() {
     PROFILE_FUNC();
@@ -192,6 +198,7 @@ void input_init() {
     lua_register(L, "keyboard_controlled_remove", keyboard_controlled_remove);
     lua_register(L, "keyboard_controlled_has", keyboard_controlled_has);
     lua_register(L, "keyboard_controlled_set_v", keyboard_controlled_set_v);
+    lua_register(L, "keyboard_controlled_is_moving", keyboard_controlled_is_moving);
 }
 
 void input_fini() {
@@ -210,6 +217,7 @@ void input_fini() {
 
 // TODO: 应该使用entity_nil来表示不存在
 static bool kc_exists = false;
+static bool is_moving = false;
 static NativeEntity kc_entity;
 static f32 v = 5.f;
 
@@ -250,6 +258,11 @@ int keyboard_controlled_set_v(lua_State *L) {
     v = _v;
 
     return 0;
+}
+
+int keyboard_controlled_is_moving(lua_State *L) {
+    lua_pushboolean(L, is_moving);
+    return 1;
 }
 
 int keyboard_controlled_update_all(App *app, event_t evt) {
@@ -295,6 +308,8 @@ int keyboard_controlled_update_all(App *app, event_t evt) {
         transform_translate(kc_entity, dpos);
         transform_set_rotation(kc_entity, rot);
         transform_set_scale(kc_entity, sca);
+
+        is_moving = (v * time->dt - 0.0001f) > 0;
     }
 
     return 0;

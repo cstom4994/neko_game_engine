@@ -16,13 +16,14 @@
 #include "engine/base.hpp"
 #include "engine/component.h"
 #include "engine/draw.h"
-#include "engine/edit.h"
 #include "engine/ecs/entity.h"
+#include "engine/edit.h"
 #include "engine/event.h"
 #include "engine/graphics.h"
 #include "engine/scripting/lua_wrapper.hpp"
 #include "engine/scripting/scripting.h"
 #include "engine/ui.h"
+
 
 // deps
 #include "vendor/sokol_time.h"
@@ -75,30 +76,6 @@ i32 neko_buildnum(void) {
     b -= 211;
     return b;
 }
-
-#if 0
-
-static void frame() {
-    PROFILE_FUNC();
-
-    Array<Sound *> &sounds = g_app->garbage_sounds;
-    for (u64 i = 0; i < sounds.len;) {
-        Sound *sound = sounds[i];
-
-        if (sound->dead_end) {
-            assert(sound->zombie);
-            sound->trash();
-            mem_free(sound);
-
-            sounds[i] = sounds[sounds.len - 1];
-            sounds.len--;
-        } else {
-            i++;
-        }
-    }
-}
-
-#endif
 
 // ECS_COMPONENT_DECL(pos_t);
 // ECS_COMPONENT_DECL(vel_t);
@@ -186,6 +163,8 @@ int _game_draw(App *app, event_t evt) {
     glClearColor(NEKO_COL255(28.f), NEKO_COL255(28.f), NEKO_COL255(28.f), 1.f);
     glClear(GL_COLOR_BUFFER_BIT);
 
+    imgui_draw_pre();
+
     if (!g_app->error_mode.load()) {
 
         script_draw_all();
@@ -221,6 +200,8 @@ int _game_draw(App *app, event_t evt) {
         }
 
         auto ui = g_app->ui;
+
+        // ImGui::ShowDemoWindow();
 
         neko_update_ui(ui);
 
@@ -258,6 +239,8 @@ int _game_draw(App *app, event_t evt) {
             }
         }
     }
+
+    imgui_draw_post();
 
     neko_check_gl_error();
 
@@ -389,6 +372,7 @@ static void _game_init(int argc, char **argv) {
 
             {postupdate, (evt_callback_t)script_post_update_all},
             {postupdate, (evt_callback_t)physics_post_update_all},
+            {postupdate, (evt_callback_t)sound_postupdate},
             {postupdate, (evt_callback_t)entity_update_all},
             {postupdate, (evt_callback_t)gui_event_clear},
 

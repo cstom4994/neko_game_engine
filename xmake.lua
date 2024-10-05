@@ -19,15 +19,21 @@ add_rules("mode.debug", "mode.release")
 
 add_includedirs("source/")
 
-local NEKO_BOX2D = false
-
--- local NEKO_AUDIO = "miniaudio"
-local NEKO_AUDIO = "none"
+local NEKO_AUDIO = "none" -- "none" / "miniaudio" or "fmod"
 
 local NEKO_CFFI = true
 
 add_requires("glew")
 add_requires("glfw")
+add_requires("box2d v2.4.2")
+
+add_requires("imgui v1.91.3-docking", {
+    configs = {
+        wchar32 = true,
+        glfw = true,
+        opengl3 = true
+    }
+})
 
 if NEKO_CFFI then
     add_requires("libffi")
@@ -40,10 +46,6 @@ else
             gc64 = true
         }
     })
-end
-
-if NEKO_BOX2D then
-    add_requires("box2d")
 end
 
 if NEKO_AUDIO == "miniaudio" then
@@ -118,17 +120,17 @@ do
         add_packages("openrestry-luajit")
     end
 
-    add_packages("glfw", "glew")
+    add_packages("glfw", "glew", "imgui", "box2d")
 
-    if NEKO_BOX2D then
-        add_packages("box2d")
-        add_defines("NEKO_BOX2D=1")
-    end
+    add_defines("NEKO_BOX2D=1")
 
     if NEKO_AUDIO == "miniaudio" then
         add_packages("miniaudio")
-
         add_defines("NEKO_AUDIO=1")
+    end
+
+    if NEKO_AUDIO == "fmod" then
+        add_defines("NEKO_AUDIO=2")
     end
 
     set_basename("neko_$(mode)_$(arch)")

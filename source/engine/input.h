@@ -147,6 +147,8 @@ NEKO_SCRIPT(
 
         NEKO_EXPORT bool input_key_down(KeyCode key);
 
+        NEKO_EXPORT bool input_key_release(KeyCode key);
+
         typedef enum MouseCode{
                 MC_1 = 0,
                 MC_2 = 1,

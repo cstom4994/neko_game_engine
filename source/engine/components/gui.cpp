@@ -1263,19 +1263,3 @@ void gui_load_all(Store *s) {
     _text_load_all(s);
     _textedit_load_all(s);
 }
-
-void imgui_init() {
-    PROFILE_FUNC();
-    // CVAR_REF(conf_imgui_font, String);
-    // if (neko_strlen(conf_imgui_font.data.str) > 0) {
-    //     auto& io = ImGui::GetIO();
-    //     ImFontConfig config;
-    //     // config.PixelSnapH = 1;
-    //     String ttf_file;
-    //     vfs_read_entire_file(&ttf_file, conf_imgui_font.data.str);
-    //     // neko_defer(mem_free(ttf_file.data));
-    //     // void *ttf_data = ::mem_alloc(ttf_file.len);  // TODO:: imgui 内存方法接管
-    //     // memcpy(ttf_data, ttf_file.data, ttf_file.len);
-    //     io.Fonts->AddFontFromMemoryTTF(ttf_file.data, ttf_file.len, 12.0f, &config, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
-    // }
-}
