@@ -378,7 +378,9 @@ RectDescription rect_description_args(lua_State *L, i32 arg_start) {
 void draw_sprite(AseSprite *spr, DrawDescription *desc) {
     bool ok = false;
 
-    neko_assert(g_app->batch);
+    batch_renderer *b = g_app->batch;
+
+    neko_assert(b);
 
     AseSpriteView view = {};
     ok = view.make(spr);
@@ -391,7 +393,7 @@ void draw_sprite(AseSprite *spr, DrawDescription *desc) {
 
     AseSpriteFrame f = view.data.frames[view.frame()];
 
-    batch_texture(g_app->batch, gl_tex_id);
+    batch_texture(b, gl_tex_id);
 
     desc->x -= desc->ox;
     desc->y -= desc->oy;
@@ -431,20 +433,24 @@ void draw_sprite(AseSprite *spr, DrawDescription *desc) {
     float y4_rot = sin_rot * x2 + cos_rot * y1 + desc->y + hh;
 
     // 绘制两个三角形
-    batch_push_vertex(g_app->batch, x1_rot, y1_rot, u1, v1);  // 左上
-    batch_push_vertex(g_app->batch, x2_rot, y2_rot, u2, v2);  // 右下
-    batch_push_vertex(g_app->batch, x3_rot, y3_rot, u1, v2);  // 左下
+    batch_push_vertex(b, x1_rot, y1_rot, u1, v1);  // 左上
+    batch_push_vertex(b, x2_rot, y2_rot, u2, v2);  // 右下
+    batch_push_vertex(b, x3_rot, y3_rot, u1, v2);  // 左下
 
-    batch_push_vertex(g_app->batch, x1_rot, y1_rot, u1, v1);  // 左上
-    batch_push_vertex(g_app->batch, x4_rot, y4_rot, u2, v1);  // 右上
-    batch_push_vertex(g_app->batch, x2_rot, y2_rot, u2, v2);  // 右下
+    batch_push_vertex(b, x1_rot, y1_rot, u1, v1);  // 左上
+    batch_push_vertex(b, x4_rot, y4_rot, u2, v1);  // 右上
+    batch_push_vertex(b, x2_rot, y2_rot, u2, v2);  // 右下
 
-    g_app->batch->outline = desc->outline;
-
-    if (desc->flush) batch_flush(g_app->batch);  // TODO: 优化不要每一draw都刷新
+    if (spr->effects.any()) {
+        b->outline = spr->effects[0];
+        b->glow = spr->effects[1];
+        b->bloom = spr->effects[2];
+        batch_flush(b);
+    } else {
+        b->outline = b->glow = b->bloom = false;
+    }
 }
 
-// static GLuint font_program;
 static Asset font_shader = {};
 static GLuint font_vbo, font_vao;
 
@@ -859,16 +865,20 @@ static int mt_sprite_draw(lua_State *L) {
     AseSprite *spr = check_sprite_udata(L, 1);
     DrawDescription dd = draw_description_args(L, 2);
 
-    dd.outline = spr->outline;
-    if (spr->outline) dd.flush = true;
-
     draw_sprite(spr, &dd);
     return 0;
 }
 
 static int mt_sprite_effect(lua_State *L) {
     AseSprite *spr = check_sprite_udata(L, 1);
-    spr->outline = lua_toboolean(L, 2);
+    int te = lua_type(L, 2);
+    if (te == LUA_TSTRING) {
+        const char *bits = lua_tostring(L, 2);
+        spr->effects = neko::BitSet<3>(bits);
+    } else if (te == LUA_TNUMBER) {
+        int bits = lua_tointeger(L, 2);
+        spr->effects = std::bitset<3>(bits);
+    }
     return 0;
 }
 
@@ -1039,6 +1049,8 @@ void batch_flush(batch_renderer *renderer) {
     glBindTexture(GL_TEXTURE_2D, renderer->texture);
 
     glUniform1i(glGetUniformLocation(sid, "outline_enable"), renderer->outline);
+    glUniform1i(glGetUniformLocation(sid, "glow_enable"), renderer->glow);
+    glUniform1i(glGetUniformLocation(sid, "bloom_enable"), renderer->bloom);
 
     glUniform1i(glGetUniformLocation(sid, "u_texture"), 0);
     // glUniformMatrix4fv(glGetUniformLocation(sid, "u_mvp"), 1, GL_FALSE, (const GLfloat *)&renderer->mvp.cols[0]);

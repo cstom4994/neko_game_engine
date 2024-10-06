@@ -17,9 +17,10 @@ set_languages("c17", "c++20")
 
 add_rules("mode.debug", "mode.release")
 
-add_includedirs("source/")
+add_includedirs("source")
 
-local NEKO_AUDIO = "none" -- "none" / "miniaudio" or "fmod"
+local NEKO_AUDIO = "fmod" -- "none" / "miniaudio" or "fmod"
+local lib_fmod_dir = "C:/Program Files (x86)/FMOD SoundSystem/FMOD Studio API Windows"
 
 local NEKO_CFFI = true
 
@@ -50,6 +51,11 @@ end
 
 if NEKO_AUDIO == "miniaudio" then
     add_requires("miniaudio")
+elseif NEKO_AUDIO == "fmod" then
+    add_linkdirs(lib_fmod_dir .. "/api/core/lib/x64")
+    add_linkdirs(lib_fmod_dir .. "/api/studio/lib/x64")
+    add_includedirs(lib_fmod_dir .. "/api/core/inc")
+    add_includedirs(lib_fmod_dir .. "/api/studio/inc")
 end
 
 if is_mode("debug") then
@@ -127,9 +133,8 @@ do
     if NEKO_AUDIO == "miniaudio" then
         add_packages("miniaudio")
         add_defines("NEKO_AUDIO=1")
-    end
-
-    if NEKO_AUDIO == "fmod" then
+    elseif NEKO_AUDIO == "fmod" then
+        add_links("fmod_vc", "fmodstudio_vc")
         add_defines("NEKO_AUDIO=2")
     end
 

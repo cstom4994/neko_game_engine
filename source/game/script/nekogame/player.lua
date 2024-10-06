@@ -133,7 +133,7 @@ function CPlayer:update(dt)
     -- ns.edit.bboxes_update(pl, ng.BBox(ng.bbox_bound(pl_pos, b)));
     -- end
 
-    function player_shoot(dt)
+    local function player_shoot(dt)
         -- if score <= 0 then
         --     return
         -- end
@@ -176,10 +176,10 @@ function CPlayer:draw()
             -- pass
         elseif cos < 0 then
             sx = -1
-            self.sprite:effect(true)
+            self.sprite:effect("110")
         elseif cos > 0 then
             sx = 1
-            self.sprite:effect(false)
+            self.sprite:effect(0)
         end
     end
 

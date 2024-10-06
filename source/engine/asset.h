@@ -1,6 +1,8 @@
 #ifndef NEKO_ASSET_H
 #define NEKO_ASSET_H
 
+#include <bitset>
+
 #include "engine/base.hpp"
 #include "engine/ecs/entity.h"
 #include "engine/event.h"
@@ -79,7 +81,8 @@ struct AseSprite {
     u64 loop;    // index into AseSpriteData::by_tag
     float elapsed;
     i32 current_frame;
-    bool outline;
+
+    std::bitset<3> effects;
 
     void make();
     bool play(String tag);
